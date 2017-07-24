@@ -120,7 +120,7 @@ begin
  inherited Create;
  fSelectedIndex:=-1;
  fReady:=false;
- fTime:=0;
+ fTime:=0.48;
 end;
 
 destructor TScreenExampleCanvas.Destroy;
@@ -656,6 +656,25 @@ begin
    fVulkanCanvas.EndPath;
   end;
  end;
+ fVulkanCanvas.Pop;
+
+ fVulkanCanvas.Push;
+ fVulkanCanvas.ModelMatrix:=TpvMatrix3x3.CreateTranslation(fVulkanCanvas.Width*0.75,fVulkanCanvas.Height*0.0);
+ fVulkanCanvas.BeginPath;
+{fVulkanCanvas.MoveTo(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height*0.125);
+ fVulkanCanvas.LineTo(fVulkanCanvas.Width*0.25,fVulkanCanvas.Height*0.125);
+ fVulkanCanvas.LineTo(fVulkanCanvas.Width*0.25,fVulkanCanvas.Height*0.25);
+ fVulkanCanvas.LineTo(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.25);
+ fVulkanCanvas.LineTo(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5);}
+ fVulkanCanvas.MoveTo(fVulkanCanvas.Width*(0.5+(sin(fTime*0.5)*0.375))*0.25,fVulkanCanvas.Height*(0.5+(cos(fTime*2.0)*0.375))*0.25);
+ fVulkanCanvas.LineTo(fVulkanCanvas.Width*(0.5+(cos(fTime*0.5)*0.375))*0.25,fVulkanCanvas.Height*(0.5+(sin(fTime*2.0)*0.375))*0.25);
+ fVulkanCanvas.LineTo(fVulkanCanvas.Width*(0.5+(cos(fTime*0.75)*0.375))*0.25,fVulkanCanvas.Height*(0.5+(sin(fTime*0.25)*0.375))*0.25);
+ fVulkanCanvas.LineTo(fVulkanCanvas.Width*(0.5+(cos(fTime*0.3)*0.375))*0.25,fVulkanCanvas.Height*(0.5+(cos(fTime*3.0)*0.375))*0.25);
+ fVulkanCanvas.LineTo(fVulkanCanvas.Width*(0.5+(sin(fTime*1.3)*0.375))*0.25,fVulkanCanvas.Height*(0.5+(cos(fTime*0.7)*0.375))*0.25);
+ fVulkanCanvas.LineTo(fVulkanCanvas.Width*(0.5+(sin(fTime*0.78)*0.375))*0.25,fVulkanCanvas.Height*(0.5+(sin(fTime*1.3)*0.375))*0.25);
+ fVulkanCanvas.ClosePath;
+ fVulkanCanvas.Fill;
+ fVulkanCanvas.EndPath;
  fVulkanCanvas.Pop;
 
  fVulkanCanvas.Stop;

@@ -1702,6 +1702,51 @@ var CommandIndex:TpvInt32;
   begin
    // TODO
   end;
+  procedure AddIntersectionSteinerPoints;
+   procedure AddPoint(const aP0:TpvVector2);
+   var Index:TpvInt32;
+       ShapeCacheLinePoint:PpvCanvasShapeCacheLinePoint;
+   begin
+    if (fCountCacheLinePoints=0) or
+       (fCacheLinePoints[fCountCacheLinePoints-1].Position<>aP0) then begin
+     Index:=fCountCacheLinePoints;
+     inc(fCountCacheLinePoints);
+     if length(fCacheLinePoints)<fCountCacheLinePoints then begin
+      SetLength(fCacheLinePoints,fCountCacheLinePoints*2);
+     end;
+     ShapeCacheLinePoint:=@fCacheLinePoints[Index];
+     ShapeCacheLinePoint^.Position:=aP0;
+    end;
+   end;
+  var SegmentIndex,OtherSegmentIndex:TpvInt32;
+      a0,a1,b0,b1,a10,b10,ab0,t:TpvVector2;
+      Determinant,ai,bi:TpvFloat;
+  begin
+   for SegmentIndex:=0 to fCountCacheSegments-1 do begin
+    a0:=fCacheSegments[SegmentIndex,0];
+    a1:=fCacheSegments[SegmentIndex,1];
+    for OtherSegmentIndex:=SegmentIndex+1 to fCountCacheSegments-1 do begin
+     b0:=fCacheSegments[OtherSegmentIndex,0];
+     b1:=fCacheSegments[OtherSegmentIndex,1];
+     a10:=a1-a0;
+     b10:=b1-b0;
+     Determinant:=(a10.x*b10.y)-(b10.x*a10.y);
+     if not IsZero(Determinant) then begin
+      ab0:=a0-b0;
+      ai:=((b10.x*ab0.y)-(b10.y*ab0.x))/Determinant;
+      if (ai>=0.0) and (ai<=1.0) then begin
+       bi:=((a10.x*ab0.y)-(a10.y*ab0.x))/Determinant;
+       if (bi>=0.0) and (bi<=1.0) then begin
+        t:=a0.Lerp(a1,ai);
+        if (a0<>t) and (a1<>t) and (b0<>t) and (b1<>t) then begin
+         AddPoint(t);
+        end;
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
   procedure DelaunayTriangulation;
   var Center:TpvVector2;
    function InCircle(const aA,aB,aC,aP:TpvVector2):boolean;
@@ -2128,6 +2173,7 @@ var CommandIndex:TpvInt32;
     SweepVertical;
     TriangulateQuads;
    end else begin
+    AddIntersectionSteinerPoints;
     DelaunayTriangulation;
     PostProcessDelaunayTriangulationResult;
    end;
