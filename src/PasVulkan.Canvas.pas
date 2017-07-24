@@ -316,6 +316,11 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCountCacheDelaunayTriangulationHashItems:TpvInt32;
        fCacheSegmentPointHashMap:TpvCanvasShapeCacheSegmentPointHashMap;
        procedure SortSegmentPointsRelativeToCenter(const aCenter:TpvVector2);
+       procedure BeginPart(const aCountVertices:TpvInt32=0;const aCountIndices:TpvInt32=0);
+       procedure EndPart;
+       function AddVertex(const Position:TpvVector2;const ObjectMode:TpvUInt8;const MetaInfo:TpvVector4):TpvInt32;
+       function AddIndex(const VertexIndex:TpvInt32):TpvInt32;
+       function GetWindingNumberAtPointInPolygon(const Point:TpvVector2):TpvInt32;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -608,8 +613,10 @@ implementation
 uses PasVulkan.Assets,
      PasVulkan.Streams;
 
-const pcvvaomLineEdge=1;
+const pcvvaomSolid=0;
+      pcvvaomLineEdge=1;
       pcvvaomRoundLineCapCircle=2;
+      pcvvaomTriangleEdge=3;
 
 constructor TpvCanvasPath.Create;
 begin
@@ -964,6 +971,95 @@ begin
  end;
 end;
 
+procedure TpvCanvasShape.BeginPart(const aCountVertices:TpvInt32=0;const aCountIndices:TpvInt32=0);
+var CachePart:PpvCanvasShapeCachePart;
+begin
+ inc(fCountCacheParts);
+ if length(fCacheParts)<fCountCacheParts then begin
+  SetLength(fCacheParts,fCountCacheParts*2);
+ end;
+ CachePart:=@fCacheParts[fCountCacheParts-1];
+ CachePart^.BaseVertexIndex:=fCountCacheVertices;
+ CachePart^.BaseIndexIndex:=fCountCacheIndices;
+ CachePart^.CountVertices:=aCountVertices;
+ CachePart^.CountIndices:=aCountIndices;
+end;
+
+procedure TpvCanvasShape.EndPart;
+var CachePart:PpvCanvasShapeCachePart;
+begin
+ if fCountCacheParts>0 then begin
+  CachePart:=@fCacheParts[fCountCacheParts-1];
+  CachePart^.CountVertices:=Max(0,fCountCacheVertices-CachePart^.BaseVertexIndex);
+  CachePart^.CountIndices:=Max(0,fCountCacheIndices-CachePart^.BaseIndexIndex);
+  if (CachePart^.CountVertices=0) and (CachePart^.CountIndices=0) then begin
+   dec(fCountCacheParts);
+  end;
+ end;
+end;
+
+function TpvCanvasShape.AddVertex(const Position:TpvVector2;const ObjectMode:TpvUInt8;const MetaInfo:TpvVector4):TpvInt32;
+var CacheVertex:PpvCanvasShapeCacheVertex;
+begin
+ result:=fCountCacheVertices;
+ inc(fCountCacheVertices);
+ if length(fCacheVertices)<fCountCacheVertices then begin
+  SetLength(fCacheVertices,fCountCacheVertices*2);
+ end;
+ CacheVertex:=@fCacheVertices[result];
+ CacheVertex^.Position:=Position;
+ CacheVertex^.ObjectMode:=ObjectMode;
+ CacheVertex^.MetaInfo:=MetaInfo;
+end;
+
+function TpvCanvasShape.AddIndex(const VertexIndex:TpvInt32):TpvInt32;
+begin
+ result:=fCountCacheIndices;
+ inc(fCountCacheIndices);
+ if length(fCacheIndices)<fCountCacheIndices then begin
+  SetLength(fCacheIndices,fCountCacheIndices*2);
+ end;
+ fCacheIndices[result]:=VertexIndex;
+end;
+
+function TpvCanvasShape.GetWindingNumberAtPointInPolygon(const Point:TpvVector2):TpvInt32;
+var Index,CaseIndex:TpvInt32;
+    ShapeCacheSegment:PpvCanvasShapeCacheSegment;
+    x0,y0,x1,y1:TpvFloat;
+begin
+ result:=0;
+ for Index:=0 to fCountCacheSegments-1 do begin
+  ShapeCacheSegment:=@fCacheSegments[Index];
+  y0:=ShapeCacheSegment^[0].y-Point.y;
+  y1:=ShapeCacheSegment^[1].y-Point.y;
+  if y0<0.0 then begin
+   CaseIndex:=0;
+  end else if y0>0.0 then begin
+   CaseIndex:=2;
+  end else begin
+   CaseIndex:=1;
+  end;
+  if y1<0.0 then begin
+   inc(CaseIndex,0);
+  end else if y1>0.0 then begin
+   inc(CaseIndex,6);
+  end else begin
+   inc(CaseIndex,3);
+  end;
+  if CaseIndex in [1,2,3,6] then begin
+   x0:=ShapeCacheSegment^[0].x-Point.x;
+   x1:=ShapeCacheSegment^[1].x-Point.x;
+   if not (((x0>0.0) and (x1>0.0)) or ((not ((x0<=0.0) and (x1<=0.0))) and ((x0-(y0*((x1-x0)/(y1-y0))))>0.0))) then begin
+    if CaseIndex in [1,2] then begin
+     inc(result);
+    end else begin
+     dec(result);
+    end;
+   end;
+  end;
+ end;
+end;
+
 procedure TpvCanvasShape.Reset;
 begin
 
@@ -1002,59 +1098,10 @@ var StartPoint,LastPoint:TpvVector2;
   end;
  end;
  procedure StrokeFlush;
- var VertexColor:TpvHalfFloatVector4;
-     VertexState:TpvUInt32;
-     Closed:boolean;
+ var Closed:boolean;
      Width:TpvFloat;
      v0,v1,v2,v3:TpvVector2;
      First:boolean;
-  procedure BeginPart(const aCountVertices:TpvInt32=0;const aCountIndices:TpvInt32=0);
-  var CachePart:PpvCanvasShapeCachePart;
-  begin
-   inc(fCountCacheParts);
-   if length(fCacheParts)<fCountCacheParts then begin
-    SetLength(fCacheParts,fCountCacheParts*2);
-   end;
-   CachePart:=@fCacheParts[fCountCacheParts-1];
-   CachePart^.BaseVertexIndex:=fCountCacheVertices;
-   CachePart^.BaseIndexIndex:=fCountCacheIndices;
-   CachePart^.CountVertices:=aCountVertices;
-   CachePart^.CountIndices:=aCountIndices;
-  end;
-  procedure EndPart;
-  var CachePart:PpvCanvasShapeCachePart;
-  begin
-   if fCountCacheParts>0 then begin
-    CachePart:=@fCacheParts[fCountCacheParts-1];
-    CachePart^.CountVertices:=Max(0,fCountCacheVertices-CachePart^.BaseVertexIndex);
-    CachePart^.CountIndices:=Max(0,fCountCacheIndices-CachePart^.BaseIndexIndex);
-    if (CachePart^.CountVertices=0) and (CachePart^.CountIndices=0) then begin
-     dec(fCountCacheParts);
-    end;
-   end;
-  end;
-  function AddVertex(const Position:TpvVector2;const ObjectMode:TpvUInt8;const MetaInfo:TpvVector4):TpvInt32;
-  var CacheVertex:PpvCanvasShapeCacheVertex;
-  begin
-   result:=fCountCacheVertices;
-   inc(fCountCacheVertices);
-   if length(fCacheVertices)<fCountCacheVertices then begin
-    SetLength(fCacheVertices,fCountCacheVertices*2);
-   end;
-   CacheVertex:=@fCacheVertices[result];
-   CacheVertex^.Position:=Position;
-   CacheVertex^.ObjectMode:=ObjectMode;
-   CacheVertex^.MetaInfo:=MetaInfo;
-  end;
-  function AddIndex(const VertexIndex:TpvInt32):TpvInt32;
-  begin
-   result:=fCountCacheIndices;
-   inc(fCountCacheIndices);
-   if length(fCacheIndices)<fCountCacheIndices then begin
-    SetLength(fCacheIndices,fCountCacheIndices*2);
-   end;
-   fCacheIndices[result]:=VertexIndex;
-  end;
   procedure TriangulateSegment(const p0,p1,p2:TpvVector2;const LineJoin:TpvCanvasLineJoin;MiterLimit:TpvFloat;const IsFirst,IsLast:boolean);
    function LineIntersection(out p:TpvVector2;const v0,v1,v2,v3:TpvVector2):boolean;
    const EPSILON=1e-8;
@@ -2009,45 +2056,33 @@ var CommandIndex:TpvInt32;
    end;
 
   end;
-  function GetWindingNumberAtPointInPolygon(const Point:TpvVector2):TpvInt32;
-  var Index,CaseIndex:TpvInt32;
-      ShapeCacheSegment:PpvCanvasShapeCacheSegment;
-      x0,y0,x1,y1:TpvFloat;
+  procedure PostProcessDelaunayTriangulationResult;
+  var TriangleSegmentPointIndex,WindingNumber:TpvInt32;
+      v0,v1,v2,Center:TpvVector2;
   begin
-   result:=0;
-   for Index:=0 to fCountCacheSegments-1 do begin
-    ShapeCacheSegment:=@fCacheSegments[Index];
-    y0:=ShapeCacheSegment^[0].y-Point.y;
-    y1:=ShapeCacheSegment^[1].y-Point.y;
-    if y0<0.0 then begin
-     CaseIndex:=0;
-    end else if y0>0.0 then begin
-     CaseIndex:=2;
-    end else begin
-     CaseIndex:=1;
+   TriangleSegmentPointIndex:=0;
+   while (TriangleSegmentPointIndex+2)<fCountCacheDelaunayTriangulationTriangleSegmentPoints do begin
+    v0:=fCacheSegmentPoints[fCacheDelaunayTriangulationTriangleSegmentPoints[TriangleSegmentPointIndex+0]];
+    v1:=fCacheSegmentPoints[fCacheDelaunayTriangulationTriangleSegmentPoints[TriangleSegmentPointIndex+1]];
+    v2:=fCacheSegmentPoints[fCacheDelaunayTriangulationTriangleSegmentPoints[TriangleSegmentPointIndex+0]];
+    Center:=(v0+v1+v2)/3.0;
+    WindingNumber:=GetWindingNumberAtPointInPolygon(Center);
+    if aState.fFillRule=pvcfrEvenOdd then begin
+     WindingNumber:=WindingNumber and 1;
     end;
-    if y1<0.0 then begin
-     inc(CaseIndex,0);
-    end else if y1>0.0 then begin
-     inc(CaseIndex,6);
-    end else begin
-     inc(CaseIndex,3);
+    if WindingNumber<>0 then begin
+     BeginPart(3,3);
+     AddIndex(AddVertex(v0,pcvvaomTriangleEdge,Vector4Origin));
+     AddIndex(AddVertex(v1,pcvvaomTriangleEdge,Vector4Origin));
+     AddIndex(AddVertex(v2,pcvvaomTriangleEdge,Vector4Origin));
+     EndPart;
     end;
-    if CaseIndex in [1,2,3,6] then begin
-     x0:=ShapeCacheSegment^[0].x-Point.x;
-     x1:=ShapeCacheSegment^[1].x-Point.x;
-     if not (((x0>0.0) and (x1>0.0)) or ((not ((x0<=0.0) and (x1<=0.0))) and ((x0-(y0*((x1-x0)/(y1-y0))))>0.0))) then begin
-      if CaseIndex in [1,2] then begin
-       inc(result);
-      end else begin
-       dec(result);
-      end;
-     end;
-    end;
+    inc(TriangleSegmentPointIndex,3);
    end;
   end;
  begin
   DelaunayTriangulation;
+  PostProcessDelaunayTriangulationResult;
  end;
 begin
  Reset;
