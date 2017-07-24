@@ -372,16 +372,16 @@ type PpvScalar=^TpvScalar;
       Latitude:TpvScalar;
      end;
 
-     TVector3Array=array of TpvVector3;
+     TpvVector3Array=array of TpvVector3;
 
-     PVector3s=^TVector3s;
-     TVector3s=array[0..$ff] of TpvVector3;
+     PpvVector3s=^TpvVector3s;
+     TpvVector3s=array[0..$ff] of TpvVector3;
 
-     PPVector3s=^TPVector3s;
-     TPVector3s=array[0..$ff] of PpvVector3;
+     PPpvVector3s=^TPpvVector3s;
+     TPpvVector3s=array[0..$ff] of PpvVector3;
 
-     PPlane=^TPlane;
-     TPlane=record
+     PpvPlane=^TpvPlane;
+     TpvPlane=record
       public
        constructor Create(const pNormal:TpvVector3;const pDistance:TpvScalar); overload;
        constructor Create(const x,y,z,pDistance:TpvScalar); overload;
@@ -389,7 +389,7 @@ type PpvScalar=^TpvScalar;
        constructor Create(const pA,pB,pC:TpvVector4); overload;
        constructor Create(const Vector:TpvVector4); overload;
        function ToVector:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Normalize:TPlane; {$ifdef CAN_INLINE}inline;{$endif}
+       function Normalize:TpvPlane; {$ifdef CAN_INLINE}inline;{$endif}
        function DistanceTo(const Point:TpvVector3):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DistanceTo(const Point:TpvVector4):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
        procedure ClipSegment(const p0,p1:TpvVector3;out Clipped:TpvVector3); overload;
@@ -602,8 +602,8 @@ type PpvScalar=^TpvScalar;
        class operator Multiply(const a:TpvVector3;const b:TpvMatrix3x3):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Multiply(const a:TpvMatrix3x3;const b:TpvVector4):TpvVector4;  {$ifdef CAN_INLINE}inline;{$endif}
        class operator Multiply(const a:TpvVector4;const b:TpvMatrix3x3):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TpvMatrix3x3;const b:TPlane):TPlane; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Multiply(const a:TPlane;const b:TpvMatrix3x3):TPlane; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvMatrix3x3;const b:TpvPlane):TpvPlane; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Multiply(const a:TpvPlane;const b:TpvMatrix3x3):TpvPlane; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Divide(const a,b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Divide(const a:TpvMatrix3x3;const b:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Divide(const a:TpvScalar;const b:TpvMatrix3x3):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
@@ -703,7 +703,7 @@ type PpvScalar=^TpvScalar;
        constructor CreateOuterProduct(const u,v:TpvVector3);
        constructor CreateFromQuaternion(ppvQuaternion:TpvQuaternion);
        constructor CreateFromQTangent(pQTangent:TpvQuaternion);
-       constructor CreateReflect(const pPlane:TPlane);
+       constructor CreateReflect(const PpvPlane:TpvPlane);
        constructor CreateFrustum(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
        constructor CreateOrtho(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
        constructor CreateOrthoLH(const Left,Right,Bottom,Top,zNear,zFar:TpvScalar);
@@ -716,7 +716,7 @@ type PpvScalar=^TpvScalar;
        constructor CreateConstructX(const xAxis:TpvVector3);
        constructor CreateConstructY(const yAxis:TpvVector3);
        constructor CreateConstructZ(const zAxis:TpvVector3);
-       constructor CreateProjectionMatrixClip(const ProjectionMatrix:TpvMatrix4x4;const ClipPlane:TPlane);
+       constructor CreateProjectionMatrixClip(const ProjectionMatrix:TpvMatrix4x4;const ClipPlane:TpvPlane);
        constructor CreateRecomposed(const DecomposedMatrix4x4:TpvDecomposedMatrix4x4);
        class function Identity:TpvMatrix4x4; static; {$ifdef CAN_INLINE}inline;{$endif}
        class function Null:TpvMatrix4x4; static; {$ifdef CAN_INLINE}inline;{$endif}
@@ -741,8 +741,8 @@ type PpvScalar=^TpvScalar;
        class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector3;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TPlane):TPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TPlane;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvPlane):TpvPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       class operator Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvPlane;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvPlane; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Divide({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
@@ -969,7 +969,7 @@ type PpvScalar=^TpvScalar;
        constructor CreateFromAABB(const ppvAABB:TpvAABB);
        constructor CreateFromFrustum(const zNear,zFar,FOV,AspectRatio:TpvScalar;const Position,Direction:TpvVector3);
        function ToAABB(const pScale:TpvScalar=1.0):TpvAABB;
-       function Cull(const p:array of TPlane):boolean;
+       function Cull(const p:array of TpvPlane):boolean;
        function Contains(const b:TpvSphere):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Contains(const v:TpvVector3):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DistanceTo(const b:TpvSphere):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1025,10 +1025,23 @@ type PpvScalar=^TpvScalar;
          Bottom:TpvFloat;
         );
         1:(
+         MinX:TpvFloat;
+         MinY:TpvFloat;
+         MaxX:TpvFloat;
+         MaxY:TpvFloat;
+        );
+        2:(
          LeftTop:TpvVector2;
          RightBottom:TpvVector2;
         );
+        3:(
+         Min:TpvVector2;
+         Max:TpvVector2;
+        );
      end;
+
+     PpvAABB2D=^TpvAABB2D;
+     TpvAABB2D=TpvRect;
 
      Vec2=TpvVector2;
 
@@ -1366,8 +1379,8 @@ function SuperSmoothestStep(const Edge0,Edge1,Value:TpvVector2):TpvVector2; over
 function SuperSmoothestStep(const Edge0,Edge1,Value:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 function SuperSmoothestStep(const Edge0,Edge1,Value:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
-procedure DoCalculateInterval(const Vertices:PVector3s;const Count:TpvInt32;const Axis:TpvVector3;out OutMin,OutMax:TpvScalar);
-function DoSpanIntersect(const Vertices1:PVector3s;const Count1:TpvInt32;const Vertices2:PVector3s;const Count2:TpvInt32;const AxisTest:TpvVector3;out AxisPenetration:TpvVector3):TpvScalar;
+procedure DoCalculateInterval(const Vertices:PpvVector3s;const Count:TpvInt32;const Axis:TpvVector3;out OutMin,OutMax:TpvScalar);
+function DoSpanIntersect(const Vertices1:PpvVector3s;const Count1:TpvInt32;const Vertices2:PpvVector3s;const Count2:TpvInt32;const AxisTest:TpvVector3;out AxisPenetration:TpvVector3):TpvScalar;
 
 function BoxGetDistanceToPoint(Point:TpvVector3;const Center,Size:TpvVector3;const InvTransformMatrix,TransformMatrix:TpvMatrix4x4;var ClosestBoxPoint:TpvVector3):TpvScalar;
 function GetDistanceFromLine(const p0,p1,p:TpvVector3;var Projected:TpvVector3;const Time:PpvScalar=nil):TpvScalar;
@@ -3855,13 +3868,13 @@ end;
 {$i PasVulkan.Math.TpvVector3Helper.Swizzle.Implementations.inc}
 {$i PasVulkan.Math.TpvVector4Helper.Swizzle.Implementations.inc}
 
-constructor TPlane.Create(const pNormal:TpvVector3;const pDistance:TpvScalar);
+constructor TpvPlane.Create(const pNormal:TpvVector3;const pDistance:TpvScalar);
 begin
  Normal:=pNormal;
  Distance:=pDistance;
 end;
 
-constructor TPlane.Create(const x,y,z,pDistance:TpvScalar);
+constructor TpvPlane.Create(const x,y,z,pDistance:TpvScalar);
 begin
  Normal.x:=x;
  Normal.y:=y;
@@ -3869,19 +3882,19 @@ begin
  Distance:=pDistance;
 end;
 
-constructor TPlane.Create(const pA,pB,pC:TpvVector3);
+constructor TpvPlane.Create(const pA,pB,pC:TpvVector3);
 begin
  Normal:=((pB-pA).Cross(pC-pA)).Normalize;
  Distance:=-((Normal.x*pA.x)+(Normal.y*pA.y)+(Normal.z*pA.z));
 end;
 
-constructor TPlane.Create(const pA,pB,pC:TpvVector4);
+constructor TpvPlane.Create(const pA,pB,pC:TpvVector4);
 begin
  Normal:=((pB.xyz-pA.xyz).Cross(pC.xyz-pA.xyz)).Normalize;
  Distance:=-((Normal.x*pA.x)+(Normal.y*pA.y)+(Normal.z*pA.z));
 end;
 
-constructor TPlane.Create(const Vector:TpvVector4);
+constructor TpvPlane.Create(const Vector:TpvVector4);
 begin
  Normal.x:=Vector.x;
  Normal.y:=Vector.y;
@@ -3889,7 +3902,7 @@ begin
  Distance:=Vector.w;
 end;
 
-function TPlane.ToVector:TpvVector4;
+function TpvPlane.ToVector:TpvVector4;
 begin
  result.x:=Normal.x;
  result.y:=Normal.y;
@@ -3897,7 +3910,7 @@ begin
  result.w:=Distance;
 end;
 
-function TPlane.Normalize:TPlane;
+function TpvPlane.Normalize:TpvPlane;
 var l:TpvScalar;
 begin
  l:=Normal.Length;
@@ -3911,23 +3924,23 @@ begin
  end;
 end;
 
-function TPlane.DistanceTo(const Point:TpvVector3):TpvScalar;
+function TpvPlane.DistanceTo(const Point:TpvVector3):TpvScalar;
 begin
  result:=Normal.Dot(Point)+Distance;
 end;
 
-function TPlane.DistanceTo(const Point:TpvVector4):TpvScalar;
+function TpvPlane.DistanceTo(const Point:TpvVector4):TpvScalar;
 begin
  result:=Normal.Dot(Point.xyz)+(Point.w*Distance);
 end;
 
-procedure TPlane.ClipSegment(const p0,p1:TpvVector3;out Clipped:TpvVector3);
+procedure TpvPlane.ClipSegment(const p0,p1:TpvVector3;out Clipped:TpvVector3);
 begin
  Clipped:=p0+((p1-p0).Normalize*(-DistanceTo(p0)));
 //Clipped:=p0+((p1-p0)*((-DistanceTo(p0))/Normal.Dot(p1-p0)));
 end;
 
-function TPlane.ClipSegmentClosest(const p0,p1:TpvVector3;out Clipped0,Clipped1:TpvVector3):TpvInt32;
+function TpvPlane.ClipSegmentClosest(const p0,p1:TpvVector3;out Clipped0,Clipped1:TpvVector3):TpvInt32;
 var d0,d1:TpvScalar;
 begin
  d0:=-DistanceTo(p0);
@@ -3965,7 +3978,7 @@ begin
  end;
 end;
 
-function TPlane.ClipSegmentLine(var p0,p1:TpvVector3):boolean;
+function TpvPlane.ClipSegmentLine(var p0,p1:TpvVector3):boolean;
 var d0,d1:TpvScalar;
     o0,o1:boolean;
 begin
@@ -6227,13 +6240,13 @@ begin
  result.w:=a.w;
 end;
 
-class operator TpvMatrix3x3.Multiply(const a:TpvMatrix3x3;const b:TPlane):TPlane;
+class operator TpvMatrix3x3.Multiply(const a:TpvMatrix3x3;const b:TpvPlane):TpvPlane;
 begin
  result.Normal:=a.Inverse.Transpose*b.Normal;
  result.Distance:=result.Normal.Dot(a*((b.Normal*b.Distance)));
 end;
 
-class operator TpvMatrix3x3.Multiply(const a:TPlane;const b:TpvMatrix3x3):TPlane;
+class operator TpvMatrix3x3.Multiply(const a:TpvPlane;const b:TpvMatrix3x3):TpvPlane;
 begin
  result:=b.Transpose*a;
 end;
@@ -7667,11 +7680,11 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TpvMatrix4x4.CreateReflect(const pPlane:TPlane);
-var Plane:TPlane;
+constructor TpvMatrix4x4.CreateReflect(const PpvPlane:TpvPlane);
+var Plane:TpvPlane;
     l:TpvScalar;
 begin
- Plane:=pPlane;
+ Plane:=PpvPlane;
  l:=sqr(Plane.Normal.x)+sqr(Plane.Normal.y)+sqr(Plane.Normal.z);
  if l>0.0 then begin
   l:=sqrt(l);
@@ -7983,7 +7996,7 @@ begin
  RawComponents[3,3]:=1.0;
 end;
 
-constructor TpvMatrix4x4.CreateProjectionMatrixClip(const ProjectionMatrix:TpvMatrix4x4;const ClipPlane:TPlane);
+constructor TpvMatrix4x4.CreateProjectionMatrixClip(const ProjectionMatrix:TpvMatrix4x4;const ClipPlane:TpvPlane);
 var q,c:TpvVector4;
 begin
  RawComponents:=ProjectionMatrix.RawComponents;
@@ -8872,13 +8885,13 @@ begin
 end;
 {$ifend}
 
-class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TPlane):TPlane;
+class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvPlane):TpvPlane;
 begin
  result.Normal:=a.Inverse.Transpose.MulBasis(b.Normal);
  result.Distance:=result.Normal.Dot(a*((b.Normal*b.Distance)));
 end;
 
-class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TPlane;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TPlane;
+class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvPlane;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvPlane;
 begin
  result:=b.Transpose*a;
 end;
@@ -13144,7 +13157,7 @@ begin
  result.Max.z:=Center.z+(Radius*pScale);
 end;
 
-function TpvSphere.Cull(const p:array of TPlane):boolean;
+function TpvSphere.Cull(const p:array of TpvPlane):boolean;
 var i:TpvInt32;
 begin
  result:=true;
@@ -13914,7 +13927,7 @@ begin
  result.w:=SuperSmoothestStep(Edge0.w,Edge1.w,Value.w);
 end;
 
-procedure DoCalculateInterval(const Vertices:PVector3s;const Count:TpvInt32;const Axis:TpvVector3;out OutMin,OutMax:TpvScalar);
+procedure DoCalculateInterval(const Vertices:PpvVector3s;const Count:TpvInt32;const Axis:TpvVector3;out OutMin,OutMax:TpvScalar);
 var Distance:TpvScalar;
     Index:TpvInt32;
 begin
@@ -13932,7 +13945,7 @@ begin
  end;
 end;
 
-function DoSpanIntersect(const Vertices1:PVector3s;const Count1:TpvInt32;const Vertices2:PVector3s;const Count2:TpvInt32;const AxisTest:TpvVector3;out AxisPenetration:TpvVector3):TpvScalar;
+function DoSpanIntersect(const Vertices1:PpvVector3s;const Count1:TpvInt32;const Vertices2:PpvVector3s;const Count2:TpvInt32;const AxisTest:TpvVector3;out AxisPenetration:TpvVector3):TpvScalar;
 var min1,max1,min2,max2,len1,len2:TpvScalar;
 begin
  AxisPenetration:=AxisTest.Normalize;

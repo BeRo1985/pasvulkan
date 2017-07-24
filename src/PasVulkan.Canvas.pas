@@ -250,6 +250,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasShapeCacheSegments=array of TpvCanvasShapeCacheSegment;
 
+     TpvCanvasShapeCacheSegmentPoints=array of TpvVector2;
+
      PpvCanvasShapeCacheVertices=^TpvCanvasShapeCacheVertices;
      TpvCanvasShapeCacheVertices=array of TpvCanvasShapeCacheVertex;
 
@@ -265,18 +267,26 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasShapeCacheParts=array of TpvCanvasShapeCachePart;
 
+     TpvCanvasShapeCacheSegmentPointHashMap=class(TpvHashMap<TpvVector2,TpvInt32>);
+
+     EpvCanvasShape=class(Exception);
+
      TpvCanvasShape=class
       private
        fCacheLinePoints:TpvCanvasShapeCacheLinePoints;
        fCacheSegments:TpvCanvasShapeCacheSegments;
+       fCacheSegmentPoints:TpvCanvasShapeCacheSegmentPoints;
        fCacheVertices:TpvCanvasShapeCacheVertices;
        fCacheIndices:TpvCanvasShapeCacheIndices;
        fCacheParts:TpvCanvasShapeCacheParts;
        fCountCacheLinePoints:TpvInt32;
        fCountCacheSegments:TpvInt32;
+       fCountCacheSegmentPoints:TpvInt32;
        fCountCacheVertices:TpvInt32;
        fCountCacheIndices:TpvInt32;
        fCountCacheParts:TpvInt32;
+       fCacheSegmentPointHashMap:TpvCanvasShapeCacheSegmentPointHashMap;
+       procedure SortSegmentPointsRelativeToCenter(const aCenter:TpvVector2);
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -728,35 +738,204 @@ end;
 constructor TpvCanvasShape.Create;
 begin
  inherited Create;
+
  fCacheLinePoints:=nil;
  fCacheSegments:=nil;
+ fCacheSegmentPoints:=nil;
  fCacheVertices:=nil;
  fCacheIndices:=nil;
  fCacheParts:=nil;
+
  fCountCacheLinePoints:=0;
  fCountCacheSegments:=0;
+ fCountCacheSegmentPoints:=0;
  fCountCacheVertices:=0;
  fCountCacheIndices:=0;
  fCountCacheParts:=0;
+
+ fCacheSegmentPointHashMap:=nil;
+
 end;
 
 destructor TpvCanvasShape.Destroy;
 begin
+
+ FreeAndNil(fCacheSegmentPointHashMap);
+
  fCacheLinePoints:=nil;
  fCacheSegments:=nil;
+ fCacheSegmentPoints:=nil;
  fCacheVertices:=nil;
  fCacheIndices:=nil;
  fCacheParts:=nil;
+
  inherited Destroy;
+end;
+
+procedure TpvCanvasShape.SortSegmentPointsRelativeToCenter(const aCenter:TpvVector2);
+ function Compare(const a,b:TpvVector2):TpvInt32;
+ begin
+  result:=Sign(a.DistanceTo(aCenter)-b.DistanceTo(aCenter));
+  if result=0 then begin
+   result:=Sign(a.x-b.x);
+   if result=0 then begin
+    result:=Sign(a.y-b.y);
+   end;
+  end;
+ end;
+type PStackItem=^TStackItem;
+     TStackItem=record
+      Left,Right,Depth:TpvInt32;
+     end;
+var Left,Right,Depth,i,j,Middle,Size,Parent,Child,Pivot,iA,iB,iC:TpvInt32;
+    StackItem:PStackItem;
+    Stack:array[0..31] of TStackItem;
+    Temp:TpvVector2;
+begin
+ if fCountCacheSegmentPoints>1 then begin
+  StackItem:=@Stack[0];
+  StackItem^.Left:=0;
+  StackItem^.Right:=fCountCacheSegmentPoints-1;
+  StackItem^.Depth:=IntLog2(fCountCacheSegmentPoints) shl 1;
+  inc(StackItem);
+  while TpvPtrUInt(TpvPointer(StackItem))>TpvPtrUInt(TpvPointer(@Stack[0])) do begin
+   dec(StackItem);
+   Left:=StackItem^.Left;
+   Right:=StackItem^.Right;
+   Depth:=StackItem^.Depth;
+   Size:=(Right-Left)+1;
+   if Size<16 then begin
+    // Insertion sort
+    iA:=Left;
+    iB:=iA+1;
+    while iB<=Right do begin
+     iC:=iB;
+     while (iA>=Left) and
+           (iC>=Left) and
+           (Compare(fCacheSegmentPoints[iA],fCacheSegmentPoints[iC])>0) do begin
+      Temp:=fCacheSegmentPoints[iA];
+      fCacheSegmentPoints[iA]:=fCacheSegmentPoints[iC];
+      fCacheSegmentPoints[iC]:=Temp;
+      dec(iA);
+      dec(iC);
+     end;
+     iA:=iB;
+     inc(iB);
+    end;
+   end else begin
+    if (Depth=0) or (TpvPtrUInt(TpvPointer(StackItem))>=TpvPtrUInt(TpvPointer(@Stack[high(Stack)-1]))) then begin
+     // Heap sort
+     i:=Size div 2;
+     repeat
+      if i>0 then begin
+       dec(i);
+      end else begin
+       dec(Size);
+       if Size>0 then begin
+        Temp:=fCacheSegmentPoints[Left+Size];
+        fCacheSegmentPoints[Left+Size]:=fCacheSegmentPoints[Left];
+        fCacheSegmentPoints[Left]:=Temp;
+       end else begin
+        break;
+       end;
+      end;
+      Parent:=i;
+      repeat
+       Child:=(Parent*2)+1;
+       if Child<Size then begin
+        if (Child<(Size-1)) and (Compare(fCacheSegmentPoints[Left+Child],fCacheSegmentPoints[Left+Child+1])<0) then begin
+         inc(Child);
+        end;
+        if Compare(fCacheSegmentPoints[Left+Parent],fCacheSegmentPoints[Left+Child])<0 then begin
+         Temp:=fCacheSegmentPoints[Left+Parent];
+         fCacheSegmentPoints[Left+Parent]:=fCacheSegmentPoints[Left+Child];
+         fCacheSegmentPoints[Left+Child]:=Temp;
+         Parent:=Child;
+         continue;
+        end;
+       end;
+       break;
+      until false;
+     until false;
+    end else begin
+     // Quick sort width median-of-three optimization
+     Middle:=Left+((Right-Left) shr 1);
+     if (Right-Left)>3 then begin
+      if Compare(fCacheSegmentPoints[Left],fCacheSegmentPoints[Middle])>0 then begin
+       Temp:=fCacheSegmentPoints[Left];
+       fCacheSegmentPoints[Left]:=fCacheSegmentPoints[Middle];
+       fCacheSegmentPoints[Middle]:=Temp;
+      end;
+      if Compare(fCacheSegmentPoints[Left],fCacheSegmentPoints[Right])>0 then begin
+       Temp:=fCacheSegmentPoints[Left];
+       fCacheSegmentPoints[Left]:=fCacheSegmentPoints[Right];
+       fCacheSegmentPoints[Right]:=Temp;
+      end;
+      if Compare(fCacheSegmentPoints[Middle],fCacheSegmentPoints[Right])>0 then begin
+       Temp:=fCacheSegmentPoints[Middle];
+       fCacheSegmentPoints[Middle]:=fCacheSegmentPoints[Right];
+       fCacheSegmentPoints[Right]:=Temp;
+      end;
+     end;
+     Pivot:=Middle;
+     i:=Left;
+     j:=Right;
+     repeat
+      while (i<Right) and (Compare(fCacheSegmentPoints[i],fCacheSegmentPoints[Pivot])<0) do begin
+       inc(i);
+      end;
+      while (j>=i) and (Compare(fCacheSegmentPoints[j],fCacheSegmentPoints[Pivot])>0) do begin
+       dec(j);
+      end;
+      if i>j then begin
+       break;
+      end else begin
+       if i<>j then begin
+        Temp:=fCacheSegmentPoints[i];
+        fCacheSegmentPoints[i]:=fCacheSegmentPoints[j];
+        fCacheSegmentPoints[j]:=Temp;
+        if Pivot=i then begin
+         Pivot:=j;
+        end else if Pivot=j then begin
+         Pivot:=i;
+        end;
+       end;
+       inc(i);
+       dec(j);
+      end;
+     until false;
+     if i<Right then begin
+      StackItem^.Left:=i;
+      StackItem^.Right:=Right;
+      StackItem^.Depth:=Depth-1;
+      inc(StackItem);
+     end;
+     if Left<j then begin
+      StackItem^.Left:=Left;
+      StackItem^.Right:=j;
+      StackItem^.Depth:=Depth-1;
+      inc(StackItem);
+     end;
+    end;
+   end;
+  end;
+ end;
 end;
 
 procedure TpvCanvasShape.Reset;
 begin
+
  fCountCacheLinePoints:=0;
  fCountCacheSegments:=0;
+ fCountCacheSegmentPoints:=0;
  fCountCacheVertices:=0;
  fCountCacheIndices:=0;
  fCountCacheParts:=0;
+
+ if assigned(fCacheSegmentPointHashMap) then begin
+  fCacheSegmentPointHashMap.Clear;
+ end;
+
 end;
 
 procedure TpvCanvasShape.StrokeFromPath(const aPath:TpvCanvasPath;const aState:TpvCanvasState);
@@ -1397,6 +1576,145 @@ var CommandIndex:TpvInt32;
   end;
  end;
  procedure FillFlush;
+  procedure DelaunayTriangulation;
+   function InCircle(const aA,aB,aC,aP:TpvVector2):boolean;
+   var a,b,c:TpvVector2;
+       bsl,csl:TpvFloat;
+   begin
+    a:=aA-aP;
+    b:=aB-aP;
+    c:=aC-aP;
+    bsl:=b.SquaredLength;
+    csl:=c.SquaredLength;
+    result:=(((a.x*((b.y*csl)-(bsl*c.y)))-(a.y*((b.x*csl)-(bsl*c.x))))+(a.SquaredLength*((b.x*c.y)-(b.y*c.x))))<0;
+   end;
+   function CircumcircleRadius(const aA,aB,aC:TpvVector2):TpvFloat;
+   var b,c:TpvVector2;
+       bsl,csl,Determinant:TpvFloat;
+   begin
+    b:=aB-aA;
+    c:=aC-aC;
+    bsl:=b.SquaredLength;
+    csl:=c.SquaredLength;
+    if IsZero(bsl) or IsZero(csl) then begin
+     result:=Infinity;
+    end else begin
+     Determinant:=((b.x*c.y)-(c.x*b.y))*2.0;
+     if IsZero(Determinant) then begin
+      result:=Infinity;
+     end else begin
+      result:=TpvVector2(TpvVector2.Create((c.y*bsl)-(b.y*csl),(b.x*csl)-(c.x*bsl))/Determinant).SquaredLength;
+     end;
+    end;
+   end;
+   function CircumcircleCenter(const aA,aB,aC:TpvVector2):TpvVector2;
+   var b,c:TpvVector2;
+       bsl,csl:TpvFloat;
+   begin
+    b:=aB-aA;
+    c:=aC-aC;
+    bsl:=b.SquaredLength;
+    csl:=c.SquaredLength;
+    result:=TpvVector2.Create((c.y*bsl)-(b.y*csl),(b.x*csl)-(c.x*bsl))/(((b.x*c.y)-(c.x*b.y))*2.0);
+   end;
+   function Area(const aP,aQ,aR:TpvVector2):TpvFloat;
+   begin
+    result:=((aQ.y-aP.y)*(aR.x-aQ.x))-((aQ.x-aP.x)*(aR.y-aQ.y));
+   end;
+  var SegmentIndex,PointIndex,SegmentPointIndex,
+      SegmentPointIndex0,SegmentPointIndex1,SegmentPointIndex2:TpvInt32;
+      MinMax:TpvAABB2D;
+      CurrentSegmentPoint:PpvVector2;
+      Center,SegmentPoint0,SegmentPoint1,SegmentPoint2:TpvVector2;
+      MinDistance,Distance,MinRadius,Radius:TpvFloat;
+  begin
+
+   MinMax:=TpvAABB2D.Create(Infinity,Infinity,-Infinity,-Infinity);
+
+   fCountCacheSegmentPoints:=0;
+
+   for SegmentIndex:=0 to fCountCacheSegments-1 do begin
+    for PointIndex:=0 to 1 do begin
+     CurrentSegmentPoint:=@fCacheSegments[SegmentIndex,PointIndex];
+     MinMax.Min.X:=Min(MinMax.Min.X,CurrentSegmentPoint^.x);
+     MinMax.Min.Y:=Min(MinMax.Min.Y,CurrentSegmentPoint^.y);
+     MinMax.Max.X:=Max(MinMax.Max.X,CurrentSegmentPoint^.x);
+     MinMax.Max.Y:=Max(MinMax.Max.Y,CurrentSegmentPoint^.y);
+     if not fCacheSegmentPointHashMap.ExistKey(CurrentSegmentPoint^) then begin
+      SegmentPointIndex:=fCountCacheSegmentPoints;
+      inc(fCountCacheSegmentPoints);
+      if length(fCacheSegmentPoints)<fCountCacheSegmentPoints then begin
+       SetLength(fCacheSegmentPoints,fCountCacheSegmentPoints*2);
+      end;
+      fCacheSegmentPoints[SegmentPointIndex]:=CurrentSegmentPoint^;
+      fCacheSegmentPointHashMap.Add(CurrentSegmentPoint^,SegmentPointIndex);
+     end;
+    end;
+   end;
+
+   Center:=(MinMax.Min+MinMax.Max)*0.5;
+
+   MinDistance:=Infinity;
+   SegmentPointIndex0:=-1;
+   for SegmentPointIndex:=0 to fCountCacheSegmentPoints-1 do begin
+    Distance:=Center.DistanceTo(fCacheSegmentPoints[SegmentPointIndex]);
+    if MinDistance>Distance then begin
+     MinDistance:=Distance;
+     SegmentPointIndex0:=SegmentPointIndex;
+    end;
+   end;
+   if (SegmentPointIndex0<0) or IsInfinite(MinDistance) then begin
+    raise EpvCanvasShape.Create('No Delaunay triangulation exists for this input');
+   end;
+
+   MinDistance:=Infinity;
+   SegmentPointIndex1:=-1;
+   for SegmentPointIndex:=0 to fCountCacheSegmentPoints-1 do begin
+    if SegmentPointIndex<>SegmentPointIndex0 then begin
+     Distance:=fCacheSegmentPoints[SegmentPointIndex0].DistanceTo(fCacheSegmentPoints[SegmentPointIndex]);
+     if MinDistance>Distance then begin
+      MinDistance:=Distance;
+      SegmentPointIndex1:=SegmentPointIndex;
+     end;
+    end;
+   end;
+   if (SegmentPointIndex1<0) or IsInfinite(MinDistance) then begin
+    raise EpvCanvasShape.Create('No Delaunay triangulation exists for this input');
+   end;
+
+   MinRadius:=Infinity;
+   SegmentPointIndex2:=-1;
+   for SegmentPointIndex:=0 to fCountCacheSegmentPoints-1 do begin
+    if (SegmentPointIndex<>SegmentPointIndex0) and
+       (SegmentPointIndex<>SegmentPointIndex1) then begin
+     Radius:=CircumcircleRadius(fCacheSegmentPoints[SegmentPointIndex0],
+                                fCacheSegmentPoints[SegmentPointIndex1],
+                                fCacheSegmentPoints[SegmentPointIndex]);
+     if MinRadius>Radius then begin
+      MinRadius:=Radius;
+      SegmentPointIndex2:=SegmentPointIndex;
+     end;
+    end;
+   end;
+   if (SegmentPointIndex2<0) or IsInfinite(MinRadius) then begin
+    raise EpvCanvasShape.Create('No Delaunay triangulation exists for this input');
+   end;
+
+   if Area(fCacheSegmentPoints[SegmentPointIndex0],
+           fCacheSegmentPoints[SegmentPointIndex1],
+           fCacheSegmentPoints[SegmentPointIndex2])<0.0 then begin
+    SegmentPointIndex:=SegmentPointIndex1;
+    SegmentPointIndex1:=SegmentPointIndex2;
+    SegmentPointIndex2:=SegmentPointIndex;
+   end;
+
+   SegmentPoint0:=fCacheSegmentPoints[SegmentPointIndex0];
+   SegmentPoint1:=fCacheSegmentPoints[SegmentPointIndex1];
+   SegmentPoint2:=fCacheSegmentPoints[SegmentPointIndex2];
+
+   SortSegmentPointsRelativeToCenter(Center);
+
+  end;
   function GetWindingNumberAtPointInPolygon(const Point:TpvVector2):TpvInt32;
   var Index,CaseIndex:TpvInt32;
       ShapeCacheSegment:PpvCanvasShapeCacheSegment;
@@ -1435,7 +1753,7 @@ var CommandIndex:TpvInt32;
    end;
   end;
  begin
-  // TODO
+  DelaunayTriangulation;
  end;
 begin
  Reset;
