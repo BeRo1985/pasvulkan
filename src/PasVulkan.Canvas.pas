@@ -1939,9 +1939,11 @@ var CommandIndex:TpvInt32;
   end;
   procedure VerticalSweep;
    procedure HorizontalSweep(const aFromY,aToY:TpvCanvasShapeCacheSegmentScalar;const aStartSegmentIndex:TpvInt32);
-   var CurrentSegmentIndex,LastSegmentIndex,Winding,i0,i1,i2,i3:TpvInt32;
+   var CurrentSegmentIndex,LastSegmentIndex,PointSegmentIndex,Winding,i0,i1,i2,i3:TpvInt32;
        Flag,Draw:boolean;
        CurrentSegment,LastSegment:PpvCanvasShapeCacheSegment;
+       Points:array[0..1,0..1] of TpvCanvasShapeCacheSegmentPoint;
+       IntersectionTime:TpvCanvasShapeCacheSegmentScalar;
    begin
     Winding:=0;
     Flag:=false;
@@ -1972,23 +1974,37 @@ var CommandIndex:TpvInt32;
         end;
        end;
        if Draw then begin
-        LastSegment:=@fCacheSegments[LastSegmentIndex];
-        CurrentSegment:=@fCacheSegments[CurrentSegmentIndex];
+        if fCacheSegments[LastSegmentIndex].Points[0].y<fCacheSegments[LastSegmentIndex].Points[1].y then begin
+         Points[0,0]:=fCacheSegments[LastSegmentIndex].Points[0];
+         Points[0,1]:=fCacheSegments[LastSegmentIndex].Points[1];
+        end else begin
+         Points[0,0]:=fCacheSegments[LastSegmentIndex].Points[1];
+         Points[0,1]:=fCacheSegments[LastSegmentIndex].Points[0];
+        end;
+        if fCacheSegments[CurrentSegmentIndex].Points[0].y<fCacheSegments[CurrentSegmentIndex].Points[1].y then begin
+         Points[1,0]:=fCacheSegments[CurrentSegmentIndex].Points[0];
+         Points[1,1]:=fCacheSegments[CurrentSegmentIndex].Points[1];
+        end else begin
+         Points[1,0]:=fCacheSegments[CurrentSegmentIndex].Points[1];
+         Points[1,1]:=fCacheSegments[CurrentSegmentIndex].Points[0];
+        end;
+        for PointSegmentIndex:=0 to 1 do begin
+         if Points[PointSegmentIndex,0].y<aFromY then begin
+          IntersectionTime:=(Points[PointSegmentIndex,0].y-aFromY)/(Points[PointSegmentIndex,1].x-Points[PointSegmentIndex,0].x);
+          Points[PointSegmentIndex,0].x:=(Points[PointSegmentIndex,0].x*(1.0-IntersectionTime))+(Points[PointSegmentIndex,1].x*IntersectionTime);
+          Points[PointSegmentIndex,0].y:=aFromY;
+         end;
+         if Points[PointSegmentIndex,1].y>aToY then begin
+          IntersectionTime:=(Points[PointSegmentIndex,0].y-aToY)/(Points[PointSegmentIndex,1].x-Points[PointSegmentIndex,0].x);
+          Points[PointSegmentIndex,1].x:=(Points[PointSegmentIndex,0].x*(1.0-IntersectionTime))+(Points[PointSegmentIndex,1].x*IntersectionTime);
+          Points[PointSegmentIndex,1].y:=aToY;
+         end;
+        end;
         BeginPart(4,6);
-        if LastSegment^.Points[0].y<LastSegment^.Points[1].y then begin
-         i0:=AddVertex(TpvVector2.Create(LastSegment^.Points[0].x,LastSegment^.Points[0].y),0,Vector4Origin);
-         i1:=AddVertex(TpvVector2.Create(LastSegment^.Points[1].x,LastSegment^.Points[1].y),0,Vector4Origin);
-        end else begin
-         i0:=AddVertex(TpvVector2.Create(LastSegment^.Points[1].x,LastSegment^.Points[1].y),0,Vector4Origin);
-         i1:=AddVertex(TpvVector2.Create(LastSegment^.Points[0].x,LastSegment^.Points[0].y),0,Vector4Origin);
-        end;
-        if CurrentSegment^.Points[0].y<CurrentSegment^.Points[1].y then begin
-         i2:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[1].x,CurrentSegment^.Points[1].y),0,Vector4Origin);
-         i3:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[0].x,CurrentSegment^.Points[0].y),0,Vector4Origin);
-        end else begin
-         i2:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[0].x,CurrentSegment^.Points[0].y),0,Vector4Origin);
-         i3:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[1].x,CurrentSegment^.Points[1].y),0,Vector4Origin);
-        end;
+        i0:=AddVertex(TpvVector2.Create(Points[0,0].x,Points[0,0].y),0,Vector4Origin);
+        i1:=AddVertex(TpvVector2.Create(Points[0,1].x,Points[0,1].y),0,Vector4Origin);
+        i2:=AddVertex(TpvVector2.Create(Points[1,1].x,Points[1,1].y),0,Vector4Origin);
+        i3:=AddVertex(TpvVector2.Create(Points[1,0].x,Points[0,0].y),0,Vector4Origin);
         AddIndex(i0);
         AddIndex(i1);
         AddIndex(i2);
@@ -2027,6 +2043,7 @@ var CommandIndex:TpvInt32;
    RemovePlainVerticalSegments;
    CollectYCoordinates;
    SplitSegmentsAtYCoordinates;
+   RemovePlainVerticalSegments;
    VerticalSweep;
   except
    on e:EpvCanvasShape do begin
