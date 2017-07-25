@@ -255,12 +255,15 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       y:TpvCanvasShapeCacheSegmentScalar;
      end;
 
+     PpvCanvasShapeCacheSegmentTwoPoints=^TpvCanvasShapeCacheSegmentTwoPoints;
+     TpvCanvasShapeCacheSegmentTwoPoints=array[0..1] of TpvCanvasShapeCacheSegmentPoint;
+
      PpvCanvasShapeCacheSegment=^TpvCanvasShapeCacheSegment;
      TpvCanvasShapeCacheSegment=record
       public
        Previous:TpvInt32;
        Next:TpvInt32;
-       Points:array[0..1] of TpvCanvasShapeCacheSegmentPoint;
+       Points:TpvCanvasShapeCacheSegmentTwoPoints;
        AABBMin:TpvCanvasShapeCacheSegmentPoint;
        AABBMax:TpvCanvasShapeCacheSegmentPoint;
        procedure UpdateBoundingBox;
@@ -1822,9 +1825,11 @@ var CommandIndex:TpvInt32;
    CurrentSegmentIndex:=fCacheFirstSegment;
    while CurrentSegmentIndex>=0 do begin
     Segment:=@fCacheSegments[CurrentSegmentIndex];
-    fCacheTemporaryYCoordinates[LocalCountCacheYCoordinates+0]:=Segment^.Points[0].y;
-    fCacheTemporaryYCoordinates[LocalCountCacheYCoordinates+1]:=Segment^.Points[1].y;
-    inc(LocalCountCacheYCoordinates,2);
+    if Segment^.Points[0].y<>Segment^.Points[1].y then begin
+     fCacheTemporaryYCoordinates[LocalCountCacheYCoordinates+0]:=Segment^.Points[0].y;
+     fCacheTemporaryYCoordinates[LocalCountCacheYCoordinates+1]:=Segment^.Points[1].y;
+     inc(LocalCountCacheYCoordinates,2);
+    end;
     CurrentSegmentIndex:=fCacheSegments[CurrentSegmentIndex].Next;
    end;
    if LocalCountCacheYCoordinates>1 then begin
@@ -1844,107 +1849,97 @@ var CommandIndex:TpvInt32;
    end;
   end;
   procedure SplitSegmentsAtYCoordinates;
-  var CurrentSegmentIndex,NextSegmentIndex,
-      MinYCoordinateIndex,MaxYCoordinateIndex,MidYCoordinateIndex,YCoordinateIndex,ComparsionResult:TpvInt32;
-      p0,p1,p:TpvCanvasShapeCacheSegmentPoint;
+  var UntilIncludingSegmentIndex,CurrentSegmentIndex,NextSegmentIndex,
+      MinYCoordinateIndex,MaxYCoordinateIndex,MidYCoordinateIndex,YCoordinateIndex,
+      ComparsionResult:TpvInt32;
+      TopPoint,BottomPoint,LastPoint,NewPoint:TpvCanvasShapeCacheSegmentPoint;
       YCoordinate,IntersectionTime:TpvCanvasShapeCacheSegmentScalar;
-      TryAgain,SegmentTryAgain:boolean;
+      Swapped:boolean;
   begin
-
-   repeat
-
-    TryAgain:=false;
-
-    CurrentSegmentIndex:=fCacheFirstSegment;
-
-    while CurrentSegmentIndex>=0 do begin
-
-     NextSegmentIndex:=fCacheSegments[CurrentSegmentIndex].Next;
-
-     if fCacheSegments[CurrentSegmentIndex].Points[0].y<fCacheSegments[CurrentSegmentIndex].Points[1].y then begin
-      p0:=fCacheSegments[CurrentSegmentIndex].Points[0];
-      p1:=fCacheSegments[CurrentSegmentIndex].Points[1];
-     end else begin
-      p0:=fCacheSegments[CurrentSegmentIndex].Points[1];
-      p1:=fCacheSegments[CurrentSegmentIndex].Points[0];
-     end;
-
+   UntilIncludingSegmentIndex:=fCacheLastSegment;
+   CurrentSegmentIndex:=fCacheFirstSegment;
+   while CurrentSegmentIndex>=0 do begin
+    NextSegmentIndex:=fCacheSegments[CurrentSegmentIndex].Next;
+    Swapped:=fCacheSegments[CurrentSegmentIndex].Points[0].y>fCacheSegments[CurrentSegmentIndex].Points[1].y;
+    if Swapped then begin
+     TopPoint:=fCacheSegments[CurrentSegmentIndex].Points[1];
+     BottomPoint:=fCacheSegments[CurrentSegmentIndex].Points[0];
+    end else begin
+     TopPoint:=fCacheSegments[CurrentSegmentIndex].Points[0];
+     BottomPoint:=fCacheSegments[CurrentSegmentIndex].Points[1];
+    end;
+    if TopPoint.y<BottomPoint.y then begin
      MidYCoordinateIndex:=0;
      MinYCoordinateIndex:=0;
      MaxYCoordinateIndex:=fCountCacheYCoordinates-1;
      while MinYCoordinateIndex<=MaxYCoordinateIndex do begin
       MidYCoordinateIndex:=MinYCoordinateIndex+((MaxYCoordinateIndex-MinYCoordinateIndex) shr 1);
       YCoordinate:=fCacheYCoordinates[MidYCoordinateIndex];
-      if p0.y<YCoordinate then begin
+      if TopPoint.y<YCoordinate then begin
        MaxYCoordinateIndex:=MidYCoordinateIndex-1;
-      end else if p0.y>YCoordinate then begin
+      end else if TopPoint.y>YCoordinate then begin
        MinYCoordinateIndex:=MidYCoordinateIndex+1;
       end else begin
        break;
       end;
      end;
-
-     while (MidYCoordinateIndex>0) and (p0.y<fCacheYCoordinates[MidYCoordinateIndex]) do begin
+     while (MidYCoordinateIndex>0) and (TopPoint.y<fCacheYCoordinates[MidYCoordinateIndex]) do begin
       dec(MidYCoordinateIndex);
      end;
-
-     while ((MidYCoordinateIndex+1)<fCountCacheYCoordinates) and (p0.y>fCacheYCoordinates[MidYCoordinateIndex]) do begin
+     while ((MidYCoordinateIndex+1)<fCountCacheYCoordinates) and (TopPoint.y>fCacheYCoordinates[MidYCoordinateIndex]) do begin
       inc(MidYCoordinateIndex);
      end;
-
-     repeat
-      SegmentTryAgain:=false;
-      YCoordinateIndex:=MidYCoordinateIndex;
-      while (YCoordinateIndex<fCountCacheYCoordinates) and
-            (fCacheYCoordinates[YCoordinateIndex]<p1.y) do begin
-       YCoordinate:=fCacheYCoordinates[YCoordinateIndex];
-       if ((p0.y<p1.y) and
-           ((p0.y<YCoordinate) and (YCoordinate<p1.y))) and not
-           (SameValue(p0.y,YCoordinate) or SameValue(p1.y,YCoordinate)) then begin
-        IntersectionTime:=(YCoordinate-p0.y)/(p1.y-p0.y);
+     LastPoint:=TopPoint;
+     for YCoordinateIndex:=MidYCoordinateIndex to fCountCacheYCoordinates-1 do begin
+      YCoordinate:=fCacheYCoordinates[YCoordinateIndex];
+      if YCoordinate<BottomPoint.y then begin
+       if (TopPoint.y<YCoordinate) and not (SameValue(TopPoint.y,YCoordinate) or SameValue(BottomPoint.y,YCoordinate)) then begin
+        IntersectionTime:=(YCoordinate-TopPoint.y)/(BottomPoint.y-TopPoint.y);
         if (IntersectionTime>0.0) and (IntersectionTime<1.0) then begin
-         p.x:=(p0.x*(1.0-IntersectionTime))+(p1.x*IntersectionTime);
-         p.y:=YCoordinate;
-         AddSegment(p,fCacheSegments[CurrentSegmentIndex].Points[1]);
-         fCacheSegments[CurrentSegmentIndex].Points[1]:=p;
-         fCacheSegments[CurrentSegmentIndex].UpdateBoundingBox;
-         if fCacheSegments[CurrentSegmentIndex].Points[0].y<fCacheSegments[CurrentSegmentIndex].Points[1].y then begin
-          p0:=fCacheSegments[CurrentSegmentIndex].Points[0];
-          p1:=fCacheSegments[CurrentSegmentIndex].Points[1];
+         NewPoint.x:=(TopPoint.x*(1.0-IntersectionTime))+(BottomPoint.x*IntersectionTime);
+         NewPoint.y:=YCoordinate;
+         if Swapped then begin
+          AddSegment(NewPoint,LastPoint);
          end else begin
-          p0:=fCacheSegments[CurrentSegmentIndex].Points[1];
-          p1:=fCacheSegments[CurrentSegmentIndex].Points[0];
+          AddSegment(LastPoint,NewPoint);
          end;
-         TryAgain:=true;
-         SegmentTryAgain:=true;
-         break;
+         LastPoint:=NewPoint;
         end;
        end;
-       inc(YCoordinateIndex);
+      end else begin
+       break;
       end;
-     until not SegmentTryAgain;
-
-     CurrentSegmentIndex:=NextSegmentIndex;
-
+     end;
+     if LastPoint.y<BottomPoint.y then begin
+      if Swapped then begin
+       fCacheSegments[CurrentSegmentIndex].Points[0]:=BottomPoint;
+       fCacheSegments[CurrentSegmentIndex].Points[1]:=LastPoint;
+      end else begin
+       fCacheSegments[CurrentSegmentIndex].Points[0]:=LastPoint;
+       fCacheSegments[CurrentSegmentIndex].Points[1]:=BottomPoint;
+      end;
+      fCacheSegments[CurrentSegmentIndex].UpdateBoundingBox;
+     end else begin
+      RemoveSegment(CurrentSegmentIndex);
+     end;
+    end else begin
+     RemoveSegment(CurrentSegmentIndex);
     end;
-
-    if TryAgain then begin
-     MergeSortLinkedListSegments;
+    if CurrentSegmentIndex<>UntilIncludingSegmentIndex then begin
+     CurrentSegmentIndex:=NextSegmentIndex;
     end else begin
      break;
     end;
-
-   until false;
-
+   end;
+   MergeSortLinkedListSegments;
   end;
   procedure VerticalSweep;
    procedure HorizontalSweep(const aFromY,aToY:TpvCanvasShapeCacheSegmentScalar;const aStartSegmentIndex:TpvInt32);
    var CurrentSegmentIndex,LastSegmentIndex,Winding,i0,i1,i2,i3:TpvInt32;
-       Flag,Draw:boolean;
+       Visible:boolean;
        CurrentSegment,LastSegment:PpvCanvasShapeCacheSegment;
    begin
     Winding:=0;
-    Flag:=false;
     CurrentSegmentIndex:=aStartSegmentIndex;
     LastSegmentIndex:=-1;
     while (CurrentSegmentIndex>=0) and
@@ -1953,25 +1948,20 @@ var CommandIndex:TpvInt32;
         ((fCacheSegments[CurrentSegmentIndex].AABBMin.y<aToY) and
          (aFromY<fCacheSegments[CurrentSegmentIndex].AABBMax.y)) then begin
       if LastSegmentIndex>=0 then begin
+       if fCacheSegments[LastSegmentIndex].Points[0].y<=fCacheSegments[LastSegmentIndex].Points[1].y then begin
+        inc(Winding);
+       end else begin
+        dec(Winding);
+       end;
        case aState.fFillRule of
-        pvcfrEvenOdd:begin
-         Flag:=not Flag;
-         Draw:=Flag;
+        pvcfrNonZero:begin
+         Visible:=Winding<>0;
         end;
-        else begin
-         if fCacheSegments[LastSegmentIndex].Points[0].y<=fCacheSegments[LastSegmentIndex].Points[1].y then begin
-          inc(Winding);
-         end else begin
-          dec(Winding);
-         end;
-         case aState.fFillRule of
-          pvcfrNonZero:begin
-           Draw:=Winding<>0;
-          end;
-         end;
+        else {pvcfrEvenOdd:}begin
+         Visible:=(Winding and 1)<>0;
         end;
        end;
-       if Draw then begin
+       if Visible then begin
         LastSegment:=@fCacheSegments[LastSegmentIndex];
         CurrentSegment:=@fCacheSegments[CurrentSegmentIndex];
         BeginPart(4,6);
