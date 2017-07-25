@@ -312,10 +312,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCountCacheIndices:TpvInt32;
        fCountCacheParts:TpvInt32;
        fCountCacheYCoordinates:TpvInt32;
-       fCountCacheDelaunayTriangulationNodes:TpvInt32;
-       fCountCacheDelaunayTriangulationTriangleSegmentPoints:TpvInt32;
-       fCountCacheDelaunayTriangulationHalfEdges:TpvInt32;
-       fCountCacheDelaunayTriangulationHashItems:TpvInt32;
        fCacheFirstSegment:TpvInt32;
        fCacheLastSegment:TpvInt32;
        procedure BeginPart(const aCountVertices:TpvInt32=0;const aCountIndices:TpvInt32=0);
@@ -844,10 +840,6 @@ begin
  fCountCacheIndices:=0;
  fCountCacheParts:=0;
  fCountCacheYCoordinates:=0;
- fCountCacheDelaunayTriangulationNodes:=0;
- fCountCacheDelaunayTriangulationTriangleSegmentPoints:=0;
- fCountCacheDelaunayTriangulationHalfEdges:=0;
- fCountCacheDelaunayTriangulationHashItems:=0;
 
 end;
 
@@ -966,10 +958,6 @@ begin
  fCountCacheIndices:=0;
  fCountCacheParts:=0;
  fCountCacheYCoordinates:=0;
- fCountCacheDelaunayTriangulationNodes:=0;
- fCountCacheDelaunayTriangulationTriangleSegmentPoints:=0;
- fCountCacheDelaunayTriangulationHalfEdges:=0;
- fCountCacheDelaunayTriangulationHashItems:=0;
 
 end;
 
