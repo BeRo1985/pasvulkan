@@ -1748,13 +1748,13 @@ var CommandIndex:TpvInt32;
    end;
   end;
   procedure SplitSegmentsAtIntersections;
-  var LastSegmentIndex,SegmentAIndex,SegmentBIndex,TryIndex,Intersections:TpvInt32;
+  var UntilIncludingSegmentIndex,SegmentAIndex,SegmentBIndex,TryIndex,Intersections:TpvInt32;
       IntersectionPoint:TpvCanvasShapeCacheSegmentPoint;
       TryAgain:boolean;
   begin
    repeat
     TryAgain:=false;
-    LastSegmentIndex:=fCacheLastSegment;
+    UntilIncludingSegmentIndex:=fCacheLastSegment;
     SegmentAIndex:=fCacheFirstSegment;
     while SegmentAIndex>=0 do begin
      SegmentBIndex:=fCacheSegments[SegmentAIndex].Next;
@@ -1780,13 +1780,13 @@ var CommandIndex:TpvInt32;
       end else begin
        break;
       end;
-      if SegmentBIndex=LastSegmentIndex then begin
+      if SegmentBIndex=UntilIncludingSegmentIndex then begin
        break;
       end else begin
        SegmentBIndex:=fCacheSegments[SegmentBIndex].Next;
       end;
      end;
-     if SegmentAIndex=LastSegmentIndex then begin
+     if SegmentAIndex=UntilIncludingSegmentIndex then begin
       break;
      end else begin
       SegmentAIndex:=fCacheSegments[SegmentAIndex].Next;
@@ -1925,86 +1925,85 @@ var CommandIndex:TpvInt32;
     end else begin
      RemoveSegment(CurrentSegmentIndex);
     end;
-    if CurrentSegmentIndex<>UntilIncludingSegmentIndex then begin
-     CurrentSegmentIndex:=NextSegmentIndex;
-    end else begin
+    if CurrentSegmentIndex=UntilIncludingSegmentIndex then begin
      break;
+    end else begin
+     CurrentSegmentIndex:=NextSegmentIndex;
     end;
    end;
    MergeSortLinkedListSegments;
   end;
-  procedure VerticalSweep;
-   procedure HorizontalSweep(const aFromY,aToY:TpvCanvasShapeCacheSegmentScalar;const aStartSegmentIndex:TpvInt32);
-   var CurrentSegmentIndex,LastSegmentIndex,Winding,i0,i1,i2,i3:TpvInt32;
-       Visible:boolean;
-       CurrentSegment,LastSegment:PpvCanvasShapeCacheSegment;
-   begin
-    Winding:=0;
-    CurrentSegmentIndex:=aStartSegmentIndex;
-    LastSegmentIndex:=-1;
-    while (CurrentSegmentIndex>=0) and
-          (fCacheSegments[CurrentSegmentIndex].AABBMin.Y<aToY) do begin
-     if (fCacheSegments[CurrentSegmentIndex].AABBMin.y<fCacheSegments[CurrentSegmentIndex].AABBMax.y) and
-        ((fCacheSegments[CurrentSegmentIndex].AABBMin.y<aToY) and
-         (aFromY<fCacheSegments[CurrentSegmentIndex].AABBMax.y)) then begin
-      if LastSegmentIndex>=0 then begin
-       if fCacheSegments[LastSegmentIndex].Points[0].y<=fCacheSegments[LastSegmentIndex].Points[1].y then begin
-        inc(Winding);
-       end else begin
-        dec(Winding);
-       end;
-       case aState.fFillRule of
-        pvcfrNonZero:begin
-         Visible:=Winding<>0;
-        end;
-        else {pvcfrEvenOdd:}begin
-         Visible:=(Winding and 1)<>0;
-        end;
-       end;
-       if Visible then begin
-        LastSegment:=@fCacheSegments[LastSegmentIndex];
-        CurrentSegment:=@fCacheSegments[CurrentSegmentIndex];
-        BeginPart(4,6);
-        if LastSegment^.Points[0].y<LastSegment^.Points[1].y then begin
-         i0:=AddVertex(TpvVector2.Create(LastSegment^.Points[0].x,LastSegment^.Points[0].y),0,Vector4Origin);
-         i1:=AddVertex(TpvVector2.Create(LastSegment^.Points[1].x,LastSegment^.Points[1].y),0,Vector4Origin);
-        end else begin
-         i0:=AddVertex(TpvVector2.Create(LastSegment^.Points[1].x,LastSegment^.Points[1].y),0,Vector4Origin);
-         i1:=AddVertex(TpvVector2.Create(LastSegment^.Points[0].x,LastSegment^.Points[0].y),0,Vector4Origin);
-        end;
-        if CurrentSegment^.Points[0].y<CurrentSegment^.Points[1].y then begin
-         i2:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[1].x,CurrentSegment^.Points[1].y),0,Vector4Origin);
-         i3:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[0].x,CurrentSegment^.Points[0].y),0,Vector4Origin);
-        end else begin
-         i2:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[0].x,CurrentSegment^.Points[0].y),0,Vector4Origin);
-         i3:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[1].x,CurrentSegment^.Points[1].y),0,Vector4Origin);
-        end;
-        AddIndex(i0);
-        AddIndex(i1);
-        AddIndex(i2);
-        AddIndex(i2);
-        AddIndex(i3);
-        AddIndex(i0);
-        EndPart;
-       end;
-      end;
-      LastSegmentIndex:=CurrentSegmentIndex;
-     end;
-     CurrentSegmentIndex:=fCacheSegments[CurrentSegmentIndex].Next;
-    end;
-   end;
-  var CurrentSegmentIndex,LastYCoordinateIndex,CurrentYCoordinateIndex:TpvInt32;
+  procedure Sweep;
+  var CurrentYSegmentIndex,LastYCoordinateIndex,CurrentYCoordinateIndex,
+      CurrentSegmentIndex,LastSegmentIndex,Winding,i0,i1,i2,i3:TpvInt32;
+      CurrentSegment,LastSegment:PpvCanvasShapeCacheSegment;
+      Visible:boolean;
+      FromY,ToY:TpvCanvasShapeCacheSegmentScalar;
   begin
-   CurrentSegmentIndex:=fCacheFirstSegment;
+   CurrentYSegmentIndex:=fCacheFirstSegment;
    LastYCoordinateIndex:=-1;
    CurrentYCoordinateIndex:=0;
    while CurrentYCoordinateIndex<fCountCacheYCoordinates do begin
     if LastYCoordinateIndex>=0 then begin
+     while (CurrentYSegmentIndex>=0) and
+           (fCacheSegments[CurrentYSegmentIndex].AABBMin.Y<fCacheYCoordinates[LastYCoordinateIndex]) do begin
+      CurrentYSegmentIndex:=fCacheSegments[CurrentYSegmentIndex].Next;
+     end;
+     FromY:=fCacheYCoordinates[LastYCoordinateIndex];
+     ToY:=fCacheYCoordinates[CurrentYCoordinateIndex];
+     CurrentSegmentIndex:=CurrentYSegmentIndex;
+     Winding:=0;
+     LastSegmentIndex:=-1;
      while (CurrentSegmentIndex>=0) and
-           (fCacheSegments[CurrentSegmentIndex].AABBMin.Y<fCacheYCoordinates[LastYCoordinateIndex]) do begin
+           (fCacheSegments[CurrentSegmentIndex].AABBMin.Y<ToY) do begin
+      if (fCacheSegments[CurrentSegmentIndex].AABBMin.y<fCacheSegments[CurrentSegmentIndex].AABBMax.y) and
+         ((fCacheSegments[CurrentSegmentIndex].AABBMin.y<ToY) and
+          (FromY<fCacheSegments[CurrentSegmentIndex].AABBMax.y)) then begin
+       if LastSegmentIndex>=0 then begin
+        if fCacheSegments[LastSegmentIndex].Points[0].y<=fCacheSegments[LastSegmentIndex].Points[1].y then begin
+         inc(Winding);
+        end else begin
+         dec(Winding);
+        end;
+        case aState.fFillRule of
+         pvcfrNonZero:begin
+          Visible:=Winding<>0;
+         end;
+         else {pvcfrEvenOdd:}begin
+          Visible:=(Winding and 1)<>0;
+         end;
+        end;
+        if Visible then begin
+         LastSegment:=@fCacheSegments[LastSegmentIndex];
+         CurrentSegment:=@fCacheSegments[CurrentSegmentIndex];
+         BeginPart(4,6);
+         if LastSegment^.Points[0].y<LastSegment^.Points[1].y then begin
+          i0:=AddVertex(TpvVector2.Create(LastSegment^.Points[0].x,LastSegment^.Points[0].y),0,Vector4Origin);
+          i1:=AddVertex(TpvVector2.Create(LastSegment^.Points[1].x,LastSegment^.Points[1].y),0,Vector4Origin);
+         end else begin
+          i0:=AddVertex(TpvVector2.Create(LastSegment^.Points[1].x,LastSegment^.Points[1].y),0,Vector4Origin);
+          i1:=AddVertex(TpvVector2.Create(LastSegment^.Points[0].x,LastSegment^.Points[0].y),0,Vector4Origin);
+         end;
+         if CurrentSegment^.Points[0].y<CurrentSegment^.Points[1].y then begin
+          i2:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[1].x,CurrentSegment^.Points[1].y),0,Vector4Origin);
+          i3:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[0].x,CurrentSegment^.Points[0].y),0,Vector4Origin);
+         end else begin
+          i2:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[0].x,CurrentSegment^.Points[0].y),0,Vector4Origin);
+          i3:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[1].x,CurrentSegment^.Points[1].y),0,Vector4Origin);
+         end;
+         AddIndex(i0);
+         AddIndex(i1);
+         AddIndex(i2);
+         AddIndex(i2);
+         AddIndex(i3);
+         AddIndex(i0);
+         EndPart;
+        end;
+       end;
+       LastSegmentIndex:=CurrentSegmentIndex;
+      end;
       CurrentSegmentIndex:=fCacheSegments[CurrentSegmentIndex].Next;
      end;
-     HorizontalSweep(fCacheYCoordinates[LastYCoordinateIndex],fCacheYCoordinates[CurrentYCoordinateIndex],CurrentSegmentIndex);
     end;
     LastYCoordinateIndex:=CurrentYCoordinateIndex;
     inc(CurrentYCoordinateIndex);
@@ -2017,7 +2016,8 @@ var CommandIndex:TpvInt32;
    RemovePlainVerticalSegments;
    CollectYCoordinates;
    SplitSegmentsAtYCoordinates;
-   VerticalSweep;
+   Sweep;
+   // TODO: Triangle-merging + Triangle-metainfo-postprocessing for edge signed distance dFdx/dFdy-based antialiasing
   except
    on e:EpvCanvasShape do begin
    end;
