@@ -576,7 +576,7 @@ class procedure TpvTypedSort<T>.IntroSort(const pItems:TpvPointer;const pLeft,pR
 type PItem=^TItem;
      TItem=T;
      PItemArray=^TItemArray;
-     TItemArray=array of TItem;
+     TItemArray=array[0..65535] of TItem;
      PStackItem=^TStackItem;
      TStackItem=record
       Left,Right,Depth:TpvInt32;

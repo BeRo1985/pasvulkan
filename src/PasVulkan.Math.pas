@@ -1017,6 +1017,7 @@ type PpvScalar=^TpvScalar;
       public
        constructor Create(const aLeft,aTop,aRight,aBottom:TpvFloat); overload;
        constructor Create(const aLeftTop,aRightBottom:TpvVector2); overload;
+       function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        case TpvInt32 of
         0:(
          Left:TpvFloat;
@@ -13356,6 +13357,12 @@ constructor TpvRect.Create(const aLeftTop,aRightBottom:TpvVector2);
 begin
  LeftTop:=aLeftTop;
  RightBottom:=aRightBottom;
+end;
+
+function TpvRect.Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean;
+begin
+ result:=(((Max.x+Threshold)>=(aWithRect.Min.x-Threshold)) and ((Min.x-Threshold)<=(aWithRect.Max.x+Threshold))) and
+         (((Max.y+Threshold)>=(aWithRect.Min.y-Threshold)) and ((Min.y-Threshold)<=(aWithRect.Max.y+Threshold)));
 end;
 
 function Cross(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
