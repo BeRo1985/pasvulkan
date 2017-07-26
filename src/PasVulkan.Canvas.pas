@@ -267,7 +267,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        AABBMin:TpvCanvasShapeCacheSegmentPoint;
        AABBMax:TpvCanvasShapeCacheSegmentPoint;
        procedure UpdateBoundingBox;
-       function GetIntersectionPoint(const aOtherSegment:TpvCanvasShapeCacheSegment;out aIntersectionPoint:TpvCanvasShapeCacheSegmentPoint):TpvInt32;
      end;
 
      TpvCanvasShapeCacheSegments=array of TpvCanvasShapeCacheSegment;
@@ -778,48 +777,6 @@ begin
  AABBMin.y:=Min(Points[0].y,Points[1].y);
  AABBMax.x:=Max(Points[0].x,Points[1].x);
  AABBMax.y:=Max(Points[0].y,Points[1].y);
-end;
-
-function TpvCanvasShapeCacheSegment.GetIntersectionPoint(const aOtherSegment:TpvCanvasShapeCacheSegment;out aIntersectionPoint:TpvCanvasShapeCacheSegmentPoint):TpvInt32;
-const EPSILON=1e-8;
-      InvEPSILON=1.0-EPSILON;
-      Threshold=1e-4;
-var a10x,a10y,b10x,b10y,ab0x,ab0y,Determinant,ai,bi,aiInv:TpvCanvasShapeCacheSegmentScalar;
-begin
- result:=0;
- if (((AABBMax.x+Threshold)>=(aOtherSegment.AABBMin.x-Threshold)) and ((AABBMin.x-Threshold)<=(aOtherSegment.AABBMax.x+Threshold))) and
-    (((AABBMax.y+Threshold)>=(aOtherSegment.AABBMin.y-Threshold)) and ((AABBMin.y-Threshold)<=(aOtherSegment.AABBMax.y+Threshold))) then begin
-  a10x:=Points[1].x-Points[0].x;
-  a10y:=Points[1].y-Points[0].y;
-  b10x:=aOtherSegment.Points[1].x-aOtherSegment.Points[0].x;
-  b10y:=aOtherSegment.Points[1].y-aOtherSegment.Points[0].y;
-  Determinant:=(a10x*b10y)-(b10x*a10y);
-  if not IsZero(Determinant) then begin
-   ab0x:=Points[0].x-aOtherSegment.Points[0].x;
-   ab0y:=Points[0].y-aOtherSegment.Points[0].y;
-   ai:=((b10x*ab0y)-(b10y*ab0x))/Determinant;
-   if (ai>=0.0) and (ai<=1.0) then begin
-    bi:=((a10x*ab0y)-(a10y*ab0x))/Determinant;
-    if (bi>=0.0) and (bi<=1.0) then begin
-     aiInv:=1.0-ai;
-     aIntersectionPoint.x:=(Points[0].x*aiInv)+(Points[1].x*ai);
-     aIntersectionPoint.y:=(Points[0].y*aiInv)+(Points[1].y*ai);
-     if ((ai>EPSILON) and (ai<InvEPSILON)) and not
-        ((SameValue(ai,0.0) or SameValue(ai,1.0)) or
-         (SameValue(aIntersectionPoint.x,Points[0].x) and SameValue(aIntersectionPoint.y,Points[0].y)) or
-         (SameValue(aIntersectionPoint.x,Points[1].x) and SameValue(aIntersectionPoint.y,Points[1].y))) then begin
-      result:=result or 1;
-     end;
-     if ((bi>EPSILON) and (bi<InvEPSILON)) and not
-        ((SameValue(bi,0.0) or SameValue(bi,1.0)) or
-         (SameValue(aIntersectionPoint.x,aOtherSegment.Points[0].x) and SameValue(aIntersectionPoint.y,aOtherSegment.Points[0].y)) or
-         (SameValue(aIntersectionPoint.x,aOtherSegment.Points[1].x) and SameValue(aIntersectionPoint.y,aOtherSegment.Points[1].y))) then begin
-      result:=result or 2;
-     end;
-    end;
-   end;
-  end;
- end;
 end;
 
 constructor TpvCanvasShape.Create;
@@ -1682,9 +1639,14 @@ var CommandIndex:TpvInt32;
    end;
   end;
   procedure SweepAndSplitSegmentsAtIntersections;
+  const EPSILON=1e-8;
+        InvEPSILON=1.0-EPSILON;
+        Threshold=1e-4;
   var UntilIncludingSegmentIndex,SegmentAIndex,SegmentBIndex,TryIndex,Intersections:TpvInt32;
+      SegmentA,SegmentB:PpvCanvasShapeCacheSegment;
       IntersectionPoint:TpvCanvasShapeCacheSegmentPoint;
       TryAgain:boolean;
+      a10x,a10y,b10x,b10y,ab0x,ab0y,Determinant,ai,bi,aiInv:TpvCanvasShapeCacheSegmentScalar;
   begin
    repeat
     TryAgain:=false;
@@ -1693,10 +1655,42 @@ var CommandIndex:TpvInt32;
     while SegmentAIndex>=0 do begin
      SegmentBIndex:=fCacheSegments[SegmentAIndex].Next;
      while SegmentBIndex>=0 do begin
-      if fCacheSegments[SegmentBIndex].AABBMin.y<=fCacheSegments[SegmentAIndex].AABBMax.y then begin
-       if (fCacheSegments[SegmentAIndex].AABBMin.x<=fCacheSegments[SegmentBIndex].AABBMax.x) and
-          (fCacheSegments[SegmentBIndex].AABBMin.x<=fCacheSegments[SegmentAIndex].AABBMax.x) then begin
-        Intersections:=fCacheSegments[SegmentAIndex].GetIntersectionPoint(fCacheSegments[SegmentBIndex],IntersectionPoint);
+      SegmentA:=@fCacheSegments[SegmentAIndex];
+      SegmentB:=@fCacheSegments[SegmentBIndex];
+      if SegmentB^.AABBMin.y<=SegmentA^.AABBMax.y then begin
+       if (SegmentA^.AABBMin.x<=SegmentB^.AABBMax.x) and
+           (SegmentB^.AABBMin.x<=SegmentA^.AABBMax.x) then begin
+        Intersections:=0;
+        a10x:=SegmentA^.Points[1].x-SegmentA^.Points[0].x;
+        a10y:=SegmentA^.Points[1].y-SegmentA^.Points[0].y;
+        b10x:=SegmentB^.Points[1].x-SegmentB^.Points[0].x;
+        b10y:=SegmentB^.Points[1].y-SegmentB^.Points[0].y;
+        Determinant:=(a10x*b10y)-(b10x*a10y);
+        if not IsZero(Determinant) then begin
+         ab0x:=SegmentA^.Points[0].x-SegmentB^.Points[0].x;
+         ab0y:=SegmentA^.Points[0].y-SegmentB^.Points[0].y;
+         ai:=((b10x*ab0y)-(b10y*ab0x))/Determinant;
+         if (ai>=0.0) and (ai<=1.0) then begin
+          bi:=((a10x*ab0y)-(a10y*ab0x))/Determinant;
+          if (bi>=0.0) and (bi<=1.0) then begin
+           aiInv:=1.0-ai;
+           IntersectionPoint.x:=(SegmentA^.Points[0].x*aiInv)+(SegmentA^.Points[1].x*ai);
+           IntersectionPoint.y:=(SegmentA^.Points[0].y*aiInv)+(SegmentA^.Points[1].y*ai);
+           if ((ai>EPSILON) and (ai<InvEPSILON)) and not
+              ((SameValue(ai,0.0) or SameValue(ai,1.0)) or
+               (SameValue(IntersectionPoint.x,SegmentA^.Points[0].x) and SameValue(IntersectionPoint.y,SegmentA^.Points[0].y)) or
+               (SameValue(IntersectionPoint.x,SegmentA^.Points[1].x) and SameValue(IntersectionPoint.y,SegmentA^.Points[1].y))) then begin
+            Intersections:=Intersections or 1;
+           end;
+           if ((bi>EPSILON) and (bi<InvEPSILON)) and not
+              ((SameValue(bi,0.0) or SameValue(bi,1.0)) or
+               (SameValue(IntersectionPoint.x,SegmentB^.Points[0].x) and SameValue(IntersectionPoint.y,SegmentB^.Points[0].y)) or
+               (SameValue(IntersectionPoint.x,SegmentB^.Points[1].x) and SameValue(IntersectionPoint.y,SegmentB^.Points[1].y))) then begin
+            Intersections:=Intersections or 2;
+           end;
+          end;
+         end;
+        end;
         if (Intersections and (1 or 2))<>0 then begin
          if (Intersections and 1)<>0 then begin
           AddSegment(IntersectionPoint,fCacheSegments[SegmentAIndex].Points[1]);
