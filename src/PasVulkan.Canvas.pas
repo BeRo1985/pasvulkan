@@ -1464,21 +1464,6 @@ procedure TpvCanvasShape.FillFromPath(const aPath:TpvCanvasPath;const aState:Tpv
 var StartPoint,LastPoint:TpvVector2;
 var CommandIndex:TpvInt32;
     Command:PpvCanvasPathCommand;
- procedure FillAddPoint(const aP0:TpvVector2);
- var Index:TpvInt32;
-     ShapeCacheLinePoint:PpvCanvasShapeCacheLinePoint;
- begin
-  if (fCountCacheLinePoints=0) or
-     (fCacheLinePoints[fCountCacheLinePoints-1].Position<>aP0) then begin
-   Index:=fCountCacheLinePoints;
-   inc(fCountCacheLinePoints);
-   if length(fCacheLinePoints)<fCountCacheLinePoints then begin
-    SetLength(fCacheLinePoints,fCountCacheLinePoints*2);
-   end;
-   ShapeCacheLinePoint:=@fCacheLinePoints[Index];
-   ShapeCacheLinePoint^.Position:=aP0;
-  end;
- end;
  procedure FillAddSegment(const aP0,aP1:TpvVector2);
  var Index:TpvInt32;
      ShapeCacheSegment:PpvCanvasShapeCacheSegment;
@@ -1512,12 +1497,10 @@ var CommandIndex:TpvInt32;
  procedure FillMoveTo(const aP0:TpvVector2);
  begin
   StartPoint:=aP0;
-  FillAddPoint(aP0);
   LastPoint:=aP0;
  end;
  procedure FillLineTo(const aP0:TpvVector2);
  begin
-  FillAddPoint(aP0);
   FillAddSegment(LastPoint,aP0);
   LastPoint:=aP0;
  end;
@@ -1763,7 +1746,7 @@ var CommandIndex:TpvInt32;
    end;
   end;
   procedure CollectYCoordinates;
-  var CurrentSegmentIndex,YCoordinateIndex,LocalCountCacheYCoordinates:TpvInt32;
+  var CurrentSegmentIndex,YCoordinateIndex,LocalCountCacheYCoordinates,PointIndex:TpvInt32;
       Segment:PpvCanvasShapeCacheSegment;
       CurrentY:TpvCanvasShapeCacheSegmentScalar;
   begin
@@ -1777,9 +1760,10 @@ var CommandIndex:TpvInt32;
    while CurrentSegmentIndex>=0 do begin
     Segment:=@fCacheSegments[CurrentSegmentIndex];
     if Segment^.Points[0].y<>Segment^.Points[1].y then begin
-     fCacheTemporaryYCoordinates[LocalCountCacheYCoordinates+0]:=Segment^.Points[0].y;
-     fCacheTemporaryYCoordinates[LocalCountCacheYCoordinates+1]:=Segment^.Points[1].y;
-     inc(LocalCountCacheYCoordinates,2);
+     for PointIndex:=0 to 1 do begin
+      fCacheTemporaryYCoordinates[LocalCountCacheYCoordinates]:=Segment^.Points[PointIndex].y;
+      inc(LocalCountCacheYCoordinates);
+     end;
     end;
     CurrentSegmentIndex:=fCacheSegments[CurrentSegmentIndex].Next;
    end;
@@ -1801,13 +1785,14 @@ var CommandIndex:TpvInt32;
   end;
   procedure SplitSegmentsAtYCoordinates;
   var UntilIncludingSegmentIndex,CurrentSegmentIndex,NextSegmentIndex,
-      MinYCoordinateIndex,MaxYCoordinateIndex,MidYCoordinateIndex,YCoordinateIndex,
-      ComparsionResult:TpvInt32;
+      StartYCoordinateIndex,CurrentYCoordinateIndex:TpvInt32;
       TopPoint,BottomPoint,LastPoint,NewPoint:TpvCanvasShapeCacheSegmentPoint;
-      YCoordinate,IntersectionTime:TpvCanvasShapeCacheSegmentScalar;
-      Swapped:boolean;
+      CurrentYCoordinate,IntersectionTime:TpvCanvasShapeCacheSegmentScalar;
+      Swapped,NeedSort:boolean;
   begin
+   NeedSort:=false;
    UntilIncludingSegmentIndex:=fCacheLastSegment;
+   StartYCoordinateIndex:=0;
    CurrentSegmentIndex:=fCacheFirstSegment;
    while CurrentSegmentIndex>=0 do begin
     NextSegmentIndex:=fCacheSegments[CurrentSegmentIndex].Next;
@@ -1820,41 +1805,25 @@ var CommandIndex:TpvInt32;
      BottomPoint:=fCacheSegments[CurrentSegmentIndex].Points[1];
     end;
     if TopPoint.y<BottomPoint.y then begin
-     MidYCoordinateIndex:=0;
-     MinYCoordinateIndex:=0;
-     MaxYCoordinateIndex:=fCountCacheYCoordinates-1;
-     while MinYCoordinateIndex<=MaxYCoordinateIndex do begin
-      MidYCoordinateIndex:=MinYCoordinateIndex+((MaxYCoordinateIndex-MinYCoordinateIndex) shr 1);
-      YCoordinate:=fCacheYCoordinates[MidYCoordinateIndex];
-      if TopPoint.y<YCoordinate then begin
-       MaxYCoordinateIndex:=MidYCoordinateIndex-1;
-      end else if TopPoint.y>YCoordinate then begin
-       MinYCoordinateIndex:=MidYCoordinateIndex+1;
-      end else begin
-       break;
-      end;
-     end;
-     while (MidYCoordinateIndex>0) and (TopPoint.y<fCacheYCoordinates[MidYCoordinateIndex]) do begin
-      dec(MidYCoordinateIndex);
-     end;
-     while ((MidYCoordinateIndex+1)<fCountCacheYCoordinates) and (TopPoint.y>fCacheYCoordinates[MidYCoordinateIndex]) do begin
-      inc(MidYCoordinateIndex);
+     while ((StartYCoordinateIndex+1)<fCountCacheYCoordinates) and (TopPoint.y>fCacheYCoordinates[StartYCoordinateIndex]) do begin
+      inc(StartYCoordinateIndex);
      end;
      LastPoint:=TopPoint;
-     for YCoordinateIndex:=MidYCoordinateIndex to fCountCacheYCoordinates-1 do begin
-      YCoordinate:=fCacheYCoordinates[YCoordinateIndex];
-      if YCoordinate<BottomPoint.y then begin
-       if (TopPoint.y<YCoordinate) and not (SameValue(TopPoint.y,YCoordinate) or SameValue(BottomPoint.y,YCoordinate)) then begin
-        IntersectionTime:=(YCoordinate-TopPoint.y)/(BottomPoint.y-TopPoint.y);
+     for CurrentYCoordinateIndex:=StartYCoordinateIndex to fCountCacheYCoordinates-1 do begin
+      CurrentYCoordinate:=fCacheYCoordinates[CurrentYCoordinateIndex];
+      if CurrentYCoordinate<BottomPoint.y then begin
+       if (TopPoint.y<CurrentYCoordinate) and not (SameValue(TopPoint.y,CurrentYCoordinate) or SameValue(BottomPoint.y,CurrentYCoordinate)) then begin
+        IntersectionTime:=(CurrentYCoordinate-TopPoint.y)/(BottomPoint.y-TopPoint.y);
         if (IntersectionTime>0.0) and (IntersectionTime<1.0) then begin
          NewPoint.x:=(TopPoint.x*(1.0-IntersectionTime))+(BottomPoint.x*IntersectionTime);
-         NewPoint.y:=YCoordinate;
+         NewPoint.y:=CurrentYCoordinate;
          if Swapped then begin
           AddSegment(NewPoint,LastPoint);
          end else begin
           AddSegment(LastPoint,NewPoint);
          end;
          LastPoint:=NewPoint;
+         NeedSort:=true;
         end;
        end;
       end else begin
@@ -1882,7 +1851,9 @@ var CommandIndex:TpvInt32;
      CurrentSegmentIndex:=NextSegmentIndex;
     end;
    end;
-   MergeSortLinkedListSegments;
+   if NeedSort then begin
+    MergeSortLinkedListSegments;
+   end;
   end;
   procedure Sweep;
   var CurrentYSegmentIndex,LastYCoordinateIndex,CurrentYCoordinateIndex,
