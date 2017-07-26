@@ -1587,19 +1587,19 @@ var CommandIndex:TpvInt32;
   end;
  end;
  procedure FillFlush;
-  procedure AddSegment(const aP0,aP1:TpvCanvasShapeCacheSegmentPoint);
+  procedure AddSegment(const aP0,aP1:TpvInt32); overload;
   var Index:TpvInt32;
       ShapeCacheSegment:PpvCanvasShapeCacheSegment;
   begin
-   if (aP0.x<>aP1.x) or (aP0.y<>aP1.y) then begin
+   if aP0<>aP1 then begin
     Index:=fCountCacheSegments;
     inc(fCountCacheSegments);
     if length(fCacheSegments)<fCountCacheSegments then begin
      SetLength(fCacheSegments,fCountCacheSegments*2);
     end;
     ShapeCacheSegment:=@fCacheSegments[Index];
-    ShapeCacheSegment^.Points[0]:=AddSegmentPoint(aP0);
-    ShapeCacheSegment^.Points[1]:=AddSegmentPoint(aP1);
+    ShapeCacheSegment^.Points[0]:=aP0;
+    ShapeCacheSegment^.Points[1]:=aP1;
     UpdateSegmentBoundingBox(ShapeCacheSegment^);
     if fCacheFirstSegment<0 then begin
      fCacheFirstSegment:=Index;
@@ -1610,6 +1610,12 @@ var CommandIndex:TpvInt32;
     end;
     ShapeCacheSegment^.Next:=-1;
     fCacheLastSegment:=Index;
+   end;
+  end;
+  procedure AddSegment(const aP0,aP1:TpvCanvasShapeCacheSegmentPoint); overload;
+  begin
+   if (aP0.x<>aP1.x) or (aP0.y<>aP1.y) then begin
+    AddSegment(AddSegmentPoint(aP0),AddSegmentPoint(aP1));
    end;
   end;
   procedure RemoveSegment(const aSegmentIndex:TpvInt32);
@@ -1701,7 +1707,8 @@ var CommandIndex:TpvInt32;
   const EPSILON=1e-8;
         InvEPSILON=1.0-EPSILON;
         Threshold=1e-4;
-  var UntilIncludingSegmentIndex,SegmentAIndex,SegmentBIndex,TryIndex,Intersections:TpvInt32;
+  var UntilIncludingSegmentIndex,SegmentAIndex,SegmentBIndex,TryIndex,Intersections,
+      IntersectionPointIndex:TpvInt32;
       SegmentA,SegmentB:PpvCanvasShapeCacheSegment;
       IntersectionPoint:TpvCanvasShapeCacheSegmentPoint;
       TryAgain:boolean;
@@ -1756,14 +1763,15 @@ var CommandIndex:TpvInt32;
          end;
         end;
         if (Intersections and (1 or 2))<>0 then begin
+         IntersectionPointIndex:=AddSegmentPoint(IntersectionPoint);
          if (Intersections and 1)<>0 then begin
-          AddSegment(IntersectionPoint,a1^);
-          fCacheSegments[SegmentAIndex].Points[1]:=AddSegmentPoint(IntersectionPoint);
+          AddSegment(IntersectionPointIndex,fCacheSegments[SegmentAIndex].Points[1]);
+          fCacheSegments[SegmentAIndex].Points[1]:=IntersectionPointIndex;
           UpdateSegmentBoundingBox(fCacheSegments[SegmentAIndex]);
          end;
          if (Intersections and 2)<>0 then begin
-          AddSegment(IntersectionPoint,b1^);
-          fCacheSegments[SegmentBIndex].Points[1]:=AddSegmentPoint(IntersectionPoint);
+          AddSegment(IntersectionPointIndex,fCacheSegments[SegmentBIndex].Points[1]);
+          fCacheSegments[SegmentBIndex].Points[1]:=IntersectionPointIndex;
           UpdateSegmentBoundingBox(fCacheSegments[SegmentBIndex]);
          end;
          TryAgain:=true;
@@ -1822,7 +1830,8 @@ var CommandIndex:TpvInt32;
   end;
   procedure SweepAndSplitSegmentsAtYCoordinates;
   var UntilIncludingSegmentIndex,CurrentSegmentIndex,NextSegmentIndex,
-      StartYCoordinateIndex,CurrentYCoordinateIndex:TpvInt32;
+      StartYCoordinateIndex,CurrentYCoordinateIndex,
+      TopPointIndex,BottomPointIndex,LastPointIndex,NewPointIndex:TpvInt32;
       TopPoint,BottomPoint,LastPoint,NewPoint:TpvCanvasShapeCacheSegmentPoint;
       CurrentYCoordinate,IntersectionTime:TpvCanvasShapeCacheSegmentScalar;
       Swapped,NeedSort:boolean;
@@ -1840,15 +1849,20 @@ var CommandIndex:TpvInt32;
     if Swapped then begin
      TopPoint:=p1^;
      BottomPoint:=p0^;
+     TopPointIndex:=fCacheSegments[CurrentSegmentIndex].Points[1];
+     BottomPointIndex:=fCacheSegments[CurrentSegmentIndex].Points[0];
     end else begin
      TopPoint:=p0^;
      BottomPoint:=p1^;
+     TopPointIndex:=fCacheSegments[CurrentSegmentIndex].Points[0];
+     BottomPointIndex:=fCacheSegments[CurrentSegmentIndex].Points[1];
     end;
     if TopPoint.y<BottomPoint.y then begin
      while ((StartYCoordinateIndex+1)<fCountCacheYCoordinates) and (TopPoint.y>fCacheYCoordinates[StartYCoordinateIndex]) do begin
       inc(StartYCoordinateIndex);
      end;
      LastPoint:=TopPoint;
+     LastPointIndex:=TopPointIndex;
      for CurrentYCoordinateIndex:=StartYCoordinateIndex to fCountCacheYCoordinates-1 do begin
       CurrentYCoordinate:=fCacheYCoordinates[CurrentYCoordinateIndex];
       if CurrentYCoordinate<BottomPoint.y then begin
@@ -1857,12 +1871,14 @@ var CommandIndex:TpvInt32;
         if (IntersectionTime>0.0) and (IntersectionTime<1.0) then begin
          NewPoint.x:=(TopPoint.x*(1.0-IntersectionTime))+(BottomPoint.x*IntersectionTime);
          NewPoint.y:=CurrentYCoordinate;
+         NewPointIndex:=AddSegmentPoint(NewPoint);
          if Swapped then begin
-          AddSegment(NewPoint,LastPoint);
+          AddSegment(NewPointIndex,LastPointIndex);
          end else begin
-          AddSegment(LastPoint,NewPoint);
+          AddSegment(LastPointIndex,NewPointIndex);
          end;
          LastPoint:=NewPoint;
+         LastPointIndex:=NewPointIndex;
          NeedSort:=true;
         end;
        end;
@@ -1872,11 +1888,11 @@ var CommandIndex:TpvInt32;
      end;
      if LastPoint.y<BottomPoint.y then begin
       if Swapped then begin
-       fCacheSegments[CurrentSegmentIndex].Points[0]:=AddSegmentPoint(BottomPoint);
-       fCacheSegments[CurrentSegmentIndex].Points[1]:=AddSegmentPoint(LastPoint);
+       fCacheSegments[CurrentSegmentIndex].Points[0]:=BottomPointIndex;
+       fCacheSegments[CurrentSegmentIndex].Points[1]:=LastPointIndex;
       end else begin
-       fCacheSegments[CurrentSegmentIndex].Points[0]:=AddSegmentPoint(LastPoint);
-       fCacheSegments[CurrentSegmentIndex].Points[1]:=AddSegmentPoint(BottomPoint);
+       fCacheSegments[CurrentSegmentIndex].Points[0]:=LastPointIndex;
+       fCacheSegments[CurrentSegmentIndex].Points[1]:=BottomPointIndex;
       end;
       UpdateSegmentBoundingBox(fCacheSegments[CurrentSegmentIndex]);
      end else begin
