@@ -1668,15 +1668,10 @@ var CommandIndex:TpvInt32;
       end;
       PartBSize:=InSize;
       while (PartASize>0) or ((PartBSize>0) and (PartB>=0)) do begin
-       if PartASize=0 then begin
-        CurrentSegment:=PartB;
-        PartB:=fCacheSegments[PartB].Next;
-        dec(PartBSize);
-       end else if (PartBSize=0) or (PartB<0) then begin
-        CurrentSegment:=PartA;
-        PartA:=fCacheSegments[PartA].Next;
-        dec(PartASize);
-       end else if CompareSegments(fCacheSegments[PartA],fCacheSegments[PartB])<=0 then begin
+       if (PartASize<>0) and
+          ((PartBSize=0) or
+           (PartB<0) or
+           (CompareSegments(fCacheSegments[PartA],fCacheSegments[PartB])<=0)) then begin
         CurrentSegment:=PartA;
         PartA:=fCacheSegments[PartA].Next;
         dec(PartASize);
@@ -1701,50 +1696,6 @@ var CommandIndex:TpvInt32;
      end;
      inc(InSize,InSize);
     until false;
-   end;
-  end;
-  procedure InsertionSortLinkedListSegments;
-  var CurrentSegment,WorkSegment,TemporarySegment,PreviousSegment,NextSegment:TpvInt32;
-  begin
-   // Sort for from top to bottom and from left to right
-   CurrentSegment:=fCacheFirstSegment;
-   if CurrentSegment>=0 then begin
-    NextSegment:=fCacheSegments[CurrentSegment].Next;
-    if NextSegment>=0 then begin
-     CurrentSegment:=NextSegment;
-     while CurrentSegment>=0 do begin
-      WorkSegment:=CurrentSegment;
-      TemporarySegment:=fCacheSegments[WorkSegment].Previous;
-      CurrentSegment:=fCacheSegments[CurrentSegment].Next;
-      if (TemporarySegment>=0) and (CompareSegments(fCacheSegments[TemporarySegment],fCacheSegments[WorkSegment])>0) then begin
-       repeat
-        TemporarySegment:=fCacheSegments[TemporarySegment].Previous;
-       until (TemporarySegment<0) or (CompareSegments(fCacheSegments[TemporarySegment],fCacheSegments[WorkSegment])<=0);
-       PreviousSegment:=fCacheSegments[WorkSegment].Previous;
-       NextSegment:=fCacheSegments[WorkSegment].Next;
-       fCacheSegments[PreviousSegment].Next:=NextSegment;
-       if NextSegment>=0 then begin
-        fCacheSegments[NextSegment].Previous:=PreviousSegment;
-       end else if fCacheLastSegment=WorkSegment then begin
-        fCacheLastSegment:=PreviousSegment;
-       end;
-       if TemporarySegment>=0 then begin
-        PreviousSegment:=TemporarySegment;
-        TemporarySegment:=fCacheSegments[TemporarySegment].Next;
-        fCacheSegments[PreviousSegment].Next:=WorkSegment;
-        fCacheSegments[WorkSegment].Previous:=PreviousSegment;
-        fCacheSegments[TemporarySegment].Previous:=WorkSegment;
-        fCacheSegments[WorkSegment].Next:=TemporarySegment;
-       end else begin
-        TemporarySegment:=fCacheFirstSegment;
-        fCacheSegments[WorkSegment].Previous:=-1;
-        fCacheSegments[WorkSegment].Next:=TemporarySegment;
-        fCacheSegments[TemporarySegment].Previous:=WorkSegment;
-        fCacheFirstSegment:=WorkSegment;
-       end;
-      end;
-     end;
-    end;
    end;
   end;
   procedure SplitSegmentsAtIntersections;
@@ -1793,7 +1744,7 @@ var CommandIndex:TpvInt32;
      end;
     end;
     if TryAgain then begin
-     InsertionSortLinkedListSegments;
+     MergeSortLinkedListSegments;
     end else begin
      break;
     end;
