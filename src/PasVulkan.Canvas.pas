@@ -1614,20 +1614,20 @@ var CommandIndex:TpvInt32;
    fCacheSegments[aSegmentIndex].Previous:=-1;
    fCacheSegments[aSegmentIndex].Next:=-1;
   end;
-  function CompareSegments(const a,b:TpvCanvasShapeCacheSegment):TpvInt32;
-  begin
-   result:=Sign(a.AABBMin.y-b.AABBMin.y);
-   if result=0 then begin
-    result:=Sign(a.AABBMin.x-b.AABBMin.x);
+  procedure SortLinkedListSegments;
+   function CompareSegments(const a,b:TpvCanvasShapeCacheSegment):TpvInt32;
+   begin
+    result:=Sign(a.AABBMin.y-b.AABBMin.y);
     if result=0 then begin
-     result:=Sign(a.AABBMax.x-b.AABBMax.x);
+     result:=Sign(a.AABBMin.x-b.AABBMin.x);
      if result=0 then begin
-      result:=Sign(a.AABBMax.y-b.AABBMax.y);
+      result:=Sign(a.AABBMax.x-b.AABBMax.x);
+      if result=0 then begin
+       result:=Sign(a.AABBMax.y-b.AABBMax.y);
+      end;
      end;
     end;
    end;
-  end;
-  procedure MergeSortLinkedListSegments;
   var PartA,PartB,CurrentSegment,InSize,PartASize,PartBSize,Merges:TpvInt32;
   begin
    // Sort for from top to bottom and from left to right
@@ -1681,7 +1681,7 @@ var CommandIndex:TpvInt32;
     until false;
    end;
   end;
-  procedure SplitSegmentsAtIntersections;
+  procedure SweepAndSplitSegmentsAtIntersections;
   var UntilIncludingSegmentIndex,SegmentAIndex,SegmentBIndex,TryIndex,Intersections:TpvInt32;
       IntersectionPoint:TpvCanvasShapeCacheSegmentPoint;
       TryAgain:boolean;
@@ -1727,23 +1727,11 @@ var CommandIndex:TpvInt32;
      end;
     end;
     if TryAgain then begin
-     MergeSortLinkedListSegments;
+     SortLinkedListSegments;
     end else begin
      break;
     end;
    until false;
-  end;
-  procedure RemovePlainVerticalSegments;
-  var CurrentSegmentIndex,NextSegmentIndex:TpvInt32;
-  begin
-   CurrentSegmentIndex:=fCacheFirstSegment;
-   while CurrentSegmentIndex>=0 do begin
-    NextSegmentIndex:=fCacheSegments[CurrentSegmentIndex].Next;
-    if SameValue(fCacheSegments[CurrentSegmentIndex].Points[0].y,fCacheSegments[CurrentSegmentIndex].Points[1].y) then begin
-     RemoveSegment(CurrentSegmentIndex);
-    end;
-    CurrentSegmentIndex:=NextSegmentIndex;
-   end;
   end;
   procedure CollectYCoordinates;
   var CurrentSegmentIndex,YCoordinateIndex,LocalCountCacheYCoordinates,PointIndex:TpvInt32;
@@ -1783,7 +1771,7 @@ var CommandIndex:TpvInt32;
     inc(fCountCacheYCoordinates);
    end;
   end;
-  procedure SplitSegmentsAtYCoordinates;
+  procedure SweepAndSplitSegmentsAtYCoordinates;
   var UntilIncludingSegmentIndex,CurrentSegmentIndex,NextSegmentIndex,
       StartYCoordinateIndex,CurrentYCoordinateIndex:TpvInt32;
       TopPoint,BottomPoint,LastPoint,NewPoint:TpvCanvasShapeCacheSegmentPoint;
@@ -1852,10 +1840,10 @@ var CommandIndex:TpvInt32;
     end;
    end;
    if NeedSort then begin
-    MergeSortLinkedListSegments;
+    SortLinkedListSegments;
    end;
   end;
-  procedure Sweep;
+  procedure SweepAndGenerateQuadrilaterals;
   var CurrentYSegmentIndex,LastYCoordinateIndex,CurrentYCoordinateIndex,
       CurrentSegmentIndex,LastSegmentIndex,Winding,i0,i1,i2,i3:TpvInt32;
       CurrentSegment,LastSegment:PpvCanvasShapeCacheSegment;
@@ -1933,13 +1921,12 @@ var CommandIndex:TpvInt32;
   end;
  begin
   try
-   MergeSortLinkedListSegments;
-   SplitSegmentsAtIntersections;
-   RemovePlainVerticalSegments;
+   SortLinkedListSegments;
+   SweepAndSplitSegmentsAtIntersections;
    CollectYCoordinates;
-   SplitSegmentsAtYCoordinates;
-   Sweep;
-   // TODO: Triangle-merging + Triangle-metainfo-postprocessing for edge signed distance dFdx/dFdy-based antialiasing
+   SweepAndSplitSegmentsAtYCoordinates;
+   SweepAndGenerateQuadrilaterals;
+   // TODO: Quadrilaterals-postprocessing + Triangle-metainfo-postprocessing for edge signed distance dFdx/dFdy-based antialiasing
   except
    on e:EpvCanvasShape do begin
    end;
