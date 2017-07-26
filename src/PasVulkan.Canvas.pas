@@ -256,7 +256,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      end;
 
      PpvCanvasShapeCacheSegmentTwoPoints=^TpvCanvasShapeCacheSegmentTwoPoints;
-     TpvCanvasShapeCacheSegmentTwoPoints=array[0..1] of TpvCanvasShapeCacheSegmentPoint;
+     TpvCanvasShapeCacheSegmentTwoPoints=array[0..1] of TpvInt32;
 
      PpvCanvasShapeCacheSegment=^TpvCanvasShapeCacheSegment;
      TpvCanvasShapeCacheSegment=record
@@ -266,16 +266,22 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        Points:TpvCanvasShapeCacheSegmentTwoPoints;
        AABBMin:TpvCanvasShapeCacheSegmentPoint;
        AABBMax:TpvCanvasShapeCacheSegmentPoint;
-       procedure UpdateBoundingBox;
      end;
 
      TpvCanvasShapeCacheSegments=array of TpvCanvasShapeCacheSegment;
 
      TpvCanvasShapeCacheSegmentIndices=array of TpvInt32;
 
-     TpvCanvasShapeCacheSegmentPoints=array of TpvVector2;
+     PpvCanvasShapeCacheSegmentUniquePoint=^TpvCanvasShapeCacheSegmentUniquePoint;
+     TpvCanvasShapeCacheSegmentUniquePoint=record
+      HashNext:TpvInt32;
+      Hash:TpvUInt32;
+      Point:TpvCanvasShapeCacheSegmentPoint;
+     end;
 
-     TpvCanvasShapeCacheSegmentPointIndices=array of TpvInt32;
+     TpvCanvasShapeCacheSegmentUniquePoints=array of TpvCanvasShapeCacheSegmentUniquePoint;
+
+     TpvCanvasShapeCacheSegmentUniquePointIndices=array of TpvInt32;
 
      PpvCanvasShapeCacheVertices=^TpvCanvasShapeCacheVertices;
      TpvCanvasShapeCacheVertices=array of TpvCanvasShapeCacheVertex;
@@ -298,10 +304,14 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasShape=class
       private
+       const pvCanvasShapeCacheSegmentUniquePointHashSize=1 shl 12;
+             pvCanvasShapeCacheSegmentUniquePointHashMask=pvCanvasShapeCacheSegmentUniquePointHashSize-1;
+       type TpvCanvasShapeCacheSegmentUniquePointHashTable=array of TpvInt32;
+      private
        fCacheLinePoints:TpvCanvasShapeCacheLinePoints;
        fCacheSegments:TpvCanvasShapeCacheSegments;
-       fCacheSegmentPoints:TpvCanvasShapeCacheSegmentPoints;
-       fCacheSegmentPointIndices:TpvCanvasShapeCacheSegmentPointIndices;
+       fCacheSegmentUniquePoints:TpvCanvasShapeCacheSegmentUniquePoints;
+       fCacheSegmentUniquePointHashTable:TpvCanvasShapeCacheSegmentUniquePointHashTable;
        fCacheVertices:TpvCanvasShapeCacheVertices;
        fCacheIndices:TpvCanvasShapeCacheIndices;
        fCacheParts:TpvCanvasShapeCacheParts;
@@ -309,7 +319,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCacheTemporaryYCoordinates:TpvCanvasShapeCacheYCoordinates;
        fCountCacheLinePoints:TpvInt32;
        fCountCacheSegments:TpvInt32;
-       fCountCacheSegmentPoints:TpvInt32;
+       fCountCacheSegmentUniquePoints:TpvInt32;
        fCountCacheVertices:TpvInt32;
        fCountCacheIndices:TpvInt32;
        fCountCacheParts:TpvInt32;
@@ -771,22 +781,14 @@ begin
  end;
 end;
 
-procedure TpvCanvasShapeCacheSegment.UpdateBoundingBox;
-begin
- AABBMin.x:=Min(Points[0].x,Points[1].x);
- AABBMin.y:=Min(Points[0].y,Points[1].y);
- AABBMax.x:=Max(Points[0].x,Points[1].x);
- AABBMax.y:=Max(Points[0].y,Points[1].y);
-end;
-
 constructor TpvCanvasShape.Create;
 begin
  inherited Create;
 
  fCacheLinePoints:=nil;
  fCacheSegments:=nil;
- fCacheSegmentPoints:=nil;
- fCacheSegmentPointIndices:=nil;
+ fCacheSegmentUniquePoints:=nil;
+ fCacheSegmentUniquePointHashTable:=nil;
  fCacheVertices:=nil;
  fCacheIndices:=nil;
  fCacheParts:=nil;
@@ -795,7 +797,7 @@ begin
 
  fCountCacheLinePoints:=0;
  fCountCacheSegments:=0;
- fCountCacheSegmentPoints:=0;
+ fCountCacheSegmentUniquePoints:=0;
  fCountCacheVertices:=0;
  fCountCacheIndices:=0;
  fCountCacheParts:=0;
@@ -808,8 +810,8 @@ begin
 
  fCacheLinePoints:=nil;
  fCacheSegments:=nil;
- fCacheSegmentPoints:=nil;
- fCacheSegmentPointIndices:=nil;
+ fCacheSegmentUniquePoints:=nil;
+ fCacheSegmentUniquePointHashTable:=nil;
  fCacheVertices:=nil;
  fCacheIndices:=nil;
  fCacheParts:=nil;
@@ -878,8 +880,8 @@ begin
  result:=0;
  for Index:=0 to fCountCacheSegments-1 do begin
   ShapeCacheSegment:=@fCacheSegments[Index];
-  y0:=ShapeCacheSegment^.Points[0].y-Point.y;
-  y1:=ShapeCacheSegment^.Points[1].y-Point.y;
+  y0:=fCacheSegmentUniquePoints[ShapeCacheSegment^.Points[0]].Point.y-Point.y;
+  y1:=fCacheSegmentUniquePoints[ShapeCacheSegment^.Points[1]].Point.y-Point.y;
   if y0<0.0 then begin
    CaseIndex:=0;
   end else if y0>0.0 then begin
@@ -895,8 +897,8 @@ begin
    inc(CaseIndex,3);
   end;
   if CaseIndex in [1,2,3,6] then begin
-   x0:=ShapeCacheSegment^.Points[0].x-Point.x;
-   x1:=ShapeCacheSegment^.Points[1].x-Point.x;
+   x0:=fCacheSegmentUniquePoints[ShapeCacheSegment^.Points[0]].Point.x-Point.x;
+   x1:=fCacheSegmentUniquePoints[ShapeCacheSegment^.Points[1]].Point.x-Point.x;
    if not (((x0>0.0) and (x1>0.0)) or ((not ((x0<=0.0) and (x1<=0.0))) and ((x0-(y0*((x1-x0)/(y1-y0))))>0.0))) then begin
     if CaseIndex in [1,2] then begin
      inc(result);
@@ -913,7 +915,7 @@ begin
 
  fCountCacheLinePoints:=0;
  fCountCacheSegments:=0;
- fCountCacheSegmentPoints:=0;
+ fCountCacheSegmentUniquePoints:=0;
  fCountCacheVertices:=0;
  fCountCacheIndices:=0;
  fCountCacheParts:=0;
@@ -1418,16 +1420,75 @@ begin
 end;
 
 procedure TpvCanvasShape.FillFromPath(const aPath:TpvCanvasPath;const aState:TpvCanvasState);
-var StartPoint,LastPoint:TpvVector2;
 var CommandIndex:TpvInt32;
     Command:PpvCanvasPathCommand;
+    StartPoint,LastPoint:TpvVector2;
+ procedure InitializeSegmentUniquePointHashTable;
+ begin
+  if length(fCacheSegmentUniquePointHashTable)<pvCanvasShapeCacheSegmentUniquePointHashSize then begin
+   SetLength(fCacheSegmentUniquePointHashTable,pvCanvasShapeCacheSegmentUniquePointHashSize);
+  end;
+  FillChar(fCacheSegmentUniquePointHashTable[0],pvCanvasShapeCacheSegmentUniquePointHashSize*SizeOf(TpvInt32),$ff);
+  fCountCacheSegmentUniquePoints:=0;
+ end;
+ function GetSegmentPointHash(const aPoint:TpvCanvasShapeCacheSegmentPoint):TpvUInt32;
+ begin
+  result:=trunc(floor((aPoint.x*256)+0.5)*73856093) xor trunc(floor((aPoint.y*256)+0.5)*19349653);
+ end;
+ function AddSegmentPoint(const aPoint:TpvCanvasShapeCacheSegmentPoint):TpvInt32; overload;
+ var Hash,HashBucket:TpvUInt32;
+     UniquePoint:PpvCanvasShapeCacheSegmentUniquePoint;
+ begin
+  Hash:=GetSegmentPointHash(aPoint);
+  HashBucket:=Hash and pvCanvasShapeCacheSegmentUniquePointHashMask;
+  result:=fCacheSegmentUniquePointHashTable[HashBucket];
+  while result>=0 do begin
+   UniquePoint:=@fCacheSegmentUniquePoints[result];
+   if (UniquePoint^.Hash=Hash) and
+      SameValue(UniquePoint^.Point.x,aPoint.x) and
+      SameValue(UniquePoint^.Point.y,aPoint.y) then begin
+    break;
+   end else begin
+    result:=UniquePoint^.HashNext;
+   end;
+  end;
+  if result<0 then begin
+   result:=fCountCacheSegmentUniquePoints;
+   inc(fCountCacheSegmentUniquePoints);
+   if length(fCacheSegmentUniquePoints)<fCountCacheSegmentUniquePoints then begin
+    SetLength(fCacheSegmentUniquePoints,fCountCacheSegmentUniquePoints*2);
+   end;
+   UniquePoint:=@fCacheSegmentUniquePoints[result];
+   UniquePoint^.HashNext:=fCacheSegmentUniquePointHashTable[HashBucket];
+   fCacheSegmentUniquePointHashTable[HashBucket]:=result;
+   UniquePoint^.Hash:=Hash;
+   UniquePoint^.Point:=aPoint;
+  end;
+ end;
+ function AddSegmentPoint(const aPoint:TpvVector2):TpvInt32; overload;
+ var p:TpvCanvasShapeCacheSegmentPoint;
+ begin
+  p.x:=aPoint.x;
+  p.y:=aPoint.y;
+  result:=AddSegmentPoint(p);
+ end;
+ procedure UpdateSegmentBoundingBox(var Segment:TpvCanvasShapeCacheSegment);
+ var p0,p1:PpvCanvasShapeCacheSegmentPoint;
+ begin
+  p0:=@fCacheSegmentUniquePoints[Segment.Points[0]].Point;
+  p1:=@fCacheSegmentUniquePoints[Segment.Points[1]].Point;
+  Segment.AABBMin.x:=Min(p0^.x,p1^.x);
+  Segment.AABBMin.y:=Min(p0^.y,p1^.y);
+  Segment.AABBMax.x:=Max(p0^.x,p1^.x);
+  Segment.AABBMax.y:=Max(p0^.y,p1^.y);
+ end;
  procedure FillAddSegment(const aP0,aP1:TpvVector2);
  var Index:TpvInt32;
      ShapeCacheSegment:PpvCanvasShapeCacheSegment;
  begin
   if ((fCountCacheSegments=0) or
-      (fCacheSegments[fCountCacheSegments-1].Points[1].x<>aP1.x) or
-      (fCacheSegments[fCountCacheSegments-1].Points[1].y<>aP1.y)) and
+      (fCacheSegmentUniquePoints[fCacheSegments[fCountCacheSegments-1].Points[1]].Point.x<>aP1.x) or
+      (fCacheSegmentUniquePoints[fCacheSegments[fCountCacheSegments-1].Points[1]].Point.y<>aP1.y)) and
      (aP0<>aP1) then begin
    Index:=fCountCacheSegments;
    inc(fCountCacheSegments);
@@ -1435,11 +1496,9 @@ var CommandIndex:TpvInt32;
     SetLength(fCacheSegments,fCountCacheSegments*2);
    end;
    ShapeCacheSegment:=@fCacheSegments[Index];
-   ShapeCacheSegment^.Points[0].x:=aP0.x;
-   ShapeCacheSegment^.Points[0].y:=aP0.y;
-   ShapeCacheSegment^.Points[1].x:=aP1.x;
-   ShapeCacheSegment^.Points[1].y:=aP1.y;
-   ShapeCacheSegment^.UpdateBoundingBox;
+   ShapeCacheSegment^.Points[0]:=AddSegmentPoint(aP0);
+   ShapeCacheSegment^.Points[1]:=AddSegmentPoint(aP1);
+   UpdateSegmentBoundingBox(ShapeCacheSegment^);
    if fCacheFirstSegment<0 then begin
     fCacheFirstSegment:=Index;
     ShapeCacheSegment^.Previous:=-1;
@@ -1539,9 +1598,9 @@ var CommandIndex:TpvInt32;
      SetLength(fCacheSegments,fCountCacheSegments*2);
     end;
     ShapeCacheSegment:=@fCacheSegments[Index];
-    ShapeCacheSegment^.Points[0]:=aP0;
-    ShapeCacheSegment^.Points[1]:=aP1;
-    ShapeCacheSegment^.UpdateBoundingBox;
+    ShapeCacheSegment^.Points[0]:=AddSegmentPoint(aP0);
+    ShapeCacheSegment^.Points[1]:=AddSegmentPoint(aP1);
+    UpdateSegmentBoundingBox(ShapeCacheSegment^);
     if fCacheFirstSegment<0 then begin
      fCacheFirstSegment:=Index;
      ShapeCacheSegment^.Previous:=-1;
@@ -1646,6 +1705,7 @@ var CommandIndex:TpvInt32;
       SegmentA,SegmentB:PpvCanvasShapeCacheSegment;
       IntersectionPoint:TpvCanvasShapeCacheSegmentPoint;
       TryAgain:boolean;
+      a0,a1,b0,b1:PpvCanvasShapeCacheSegmentPoint;
       a10x,a10y,b10x,b10y,ab0x,ab0y,Determinant,ai,bi,aiInv:TpvCanvasShapeCacheSegmentScalar;
   begin
    repeat
@@ -1661,31 +1721,35 @@ var CommandIndex:TpvInt32;
        if (SegmentA^.AABBMin.x<=SegmentB^.AABBMax.x) and
            (SegmentB^.AABBMin.x<=SegmentA^.AABBMax.x) then begin
         Intersections:=0;
-        a10x:=SegmentA^.Points[1].x-SegmentA^.Points[0].x;
-        a10y:=SegmentA^.Points[1].y-SegmentA^.Points[0].y;
-        b10x:=SegmentB^.Points[1].x-SegmentB^.Points[0].x;
-        b10y:=SegmentB^.Points[1].y-SegmentB^.Points[0].y;
+        a0:=@fCacheSegmentUniquePoints[SegmentA^.Points[0]].Point;
+        a1:=@fCacheSegmentUniquePoints[SegmentA^.Points[1]].Point;
+        b0:=@fCacheSegmentUniquePoints[SegmentB^.Points[0]].Point;
+        b1:=@fCacheSegmentUniquePoints[SegmentB^.Points[1]].Point;
+        a10x:=a1^.x-a0^.x;
+        a10y:=a1^.y-a0^.y;
+        b10x:=b1^.x-b0^.x;
+        b10y:=b1^.y-b0^.y;
         Determinant:=(a10x*b10y)-(b10x*a10y);
         if not IsZero(Determinant) then begin
-         ab0x:=SegmentA^.Points[0].x-SegmentB^.Points[0].x;
-         ab0y:=SegmentA^.Points[0].y-SegmentB^.Points[0].y;
+         ab0x:=a0^.x-b0^.x;
+         ab0y:=a0^.y-b0^.y;
          ai:=((b10x*ab0y)-(b10y*ab0x))/Determinant;
          if (ai>=0.0) and (ai<=1.0) then begin
           bi:=((a10x*ab0y)-(a10y*ab0x))/Determinant;
           if (bi>=0.0) and (bi<=1.0) then begin
            aiInv:=1.0-ai;
-           IntersectionPoint.x:=(SegmentA^.Points[0].x*aiInv)+(SegmentA^.Points[1].x*ai);
-           IntersectionPoint.y:=(SegmentA^.Points[0].y*aiInv)+(SegmentA^.Points[1].y*ai);
+           IntersectionPoint.x:=(a0^.x*aiInv)+(a1^.x*ai);
+           IntersectionPoint.y:=(a0^.y*aiInv)+(a1^.y*ai);
            if ((ai>EPSILON) and (ai<InvEPSILON)) and not
               ((SameValue(ai,0.0) or SameValue(ai,1.0)) or
-               (SameValue(IntersectionPoint.x,SegmentA^.Points[0].x) and SameValue(IntersectionPoint.y,SegmentA^.Points[0].y)) or
-               (SameValue(IntersectionPoint.x,SegmentA^.Points[1].x) and SameValue(IntersectionPoint.y,SegmentA^.Points[1].y))) then begin
+               (SameValue(IntersectionPoint.x,a0^.x) and SameValue(IntersectionPoint.y,a0^.y)) or
+               (SameValue(IntersectionPoint.x,a1^.x) and SameValue(IntersectionPoint.y,a1^.y))) then begin
             Intersections:=Intersections or 1;
            end;
            if ((bi>EPSILON) and (bi<InvEPSILON)) and not
               ((SameValue(bi,0.0) or SameValue(bi,1.0)) or
-               (SameValue(IntersectionPoint.x,SegmentB^.Points[0].x) and SameValue(IntersectionPoint.y,SegmentB^.Points[0].y)) or
-               (SameValue(IntersectionPoint.x,SegmentB^.Points[1].x) and SameValue(IntersectionPoint.y,SegmentB^.Points[1].y))) then begin
+               (SameValue(IntersectionPoint.x,b0^.x) and SameValue(IntersectionPoint.y,b0^.y)) or
+               (SameValue(IntersectionPoint.x,b1^.x) and SameValue(IntersectionPoint.y,b1^.y))) then begin
             Intersections:=Intersections or 2;
            end;
           end;
@@ -1693,14 +1757,14 @@ var CommandIndex:TpvInt32;
         end;
         if (Intersections and (1 or 2))<>0 then begin
          if (Intersections and 1)<>0 then begin
-          AddSegment(IntersectionPoint,fCacheSegments[SegmentAIndex].Points[1]);
-          fCacheSegments[SegmentAIndex].Points[1]:=IntersectionPoint;
-          fCacheSegments[SegmentAIndex].UpdateBoundingBox;
+          AddSegment(IntersectionPoint,a1^);
+          fCacheSegments[SegmentAIndex].Points[1]:=AddSegmentPoint(IntersectionPoint);
+          UpdateSegmentBoundingBox(fCacheSegments[SegmentAIndex]);
          end;
          if (Intersections and 2)<>0 then begin
-          AddSegment(IntersectionPoint,fCacheSegments[SegmentBIndex].Points[1]);
-          fCacheSegments[SegmentBIndex].Points[1]:=IntersectionPoint;
-          fCacheSegments[SegmentBIndex].UpdateBoundingBox;
+          AddSegment(IntersectionPoint,b1^);
+          fCacheSegments[SegmentBIndex].Points[1]:=AddSegmentPoint(IntersectionPoint);
+          UpdateSegmentBoundingBox(fCacheSegments[SegmentBIndex]);
          end;
          TryAgain:=true;
         end;
@@ -1728,26 +1792,17 @@ var CommandIndex:TpvInt32;
    until false;
   end;
   procedure CollectYCoordinates;
-  var CurrentSegmentIndex,YCoordinateIndex,LocalCountCacheYCoordinates,PointIndex:TpvInt32;
-      Segment:PpvCanvasShapeCacheSegment;
+  var YCoordinateIndex,LocalCountCacheYCoordinates,PointIndex:TpvInt32;
       CurrentY:TpvCanvasShapeCacheSegmentScalar;
+      Points:array[0..1] of PpvCanvasShapeCacheSegmentPoint;
   begin
-   LocalCountCacheYCoordinates:=fCountCacheSegments*2;
+   LocalCountCacheYCoordinates:=fCountCacheSegmentUniquePoints;
    if length(fCacheYCoordinates)<LocalCountCacheYCoordinates then begin
     SetLength(fCacheYCoordinates,LocalCountCacheYCoordinates*2);
     SetLength(fCacheTemporaryYCoordinates,LocalCountCacheYCoordinates*2);
    end;
-   LocalCountCacheYCoordinates:=0;
-   CurrentSegmentIndex:=fCacheFirstSegment;
-   while CurrentSegmentIndex>=0 do begin
-    Segment:=@fCacheSegments[CurrentSegmentIndex];
-    if Segment^.Points[0].y<>Segment^.Points[1].y then begin
-     for PointIndex:=0 to 1 do begin
-      fCacheTemporaryYCoordinates[LocalCountCacheYCoordinates]:=Segment^.Points[PointIndex].y;
-      inc(LocalCountCacheYCoordinates);
-     end;
-    end;
-    CurrentSegmentIndex:=fCacheSegments[CurrentSegmentIndex].Next;
+   for PointIndex:=0 to fCountCacheSegmentUniquePoints-1 do begin
+    fCacheTemporaryYCoordinates[PointIndex]:=fCacheSegmentUniquePoints[PointIndex].Point.y;
    end;
    if LocalCountCacheYCoordinates>1 then begin
     TpvTypedSort<TpvCanvasShapeCacheSegmentScalar>.IntroSort(@fCacheTemporaryYCoordinates[0],0,LocalCountCacheYCoordinates-1,TpvCanvasShapeCacheYCoordinateCompare);
@@ -1771,6 +1826,7 @@ var CommandIndex:TpvInt32;
       TopPoint,BottomPoint,LastPoint,NewPoint:TpvCanvasShapeCacheSegmentPoint;
       CurrentYCoordinate,IntersectionTime:TpvCanvasShapeCacheSegmentScalar;
       Swapped,NeedSort:boolean;
+      p0,p1:PpvCanvasShapeCacheSegmentPoint;
   begin
    NeedSort:=false;
    UntilIncludingSegmentIndex:=fCacheLastSegment;
@@ -1778,13 +1834,15 @@ var CommandIndex:TpvInt32;
    CurrentSegmentIndex:=fCacheFirstSegment;
    while CurrentSegmentIndex>=0 do begin
     NextSegmentIndex:=fCacheSegments[CurrentSegmentIndex].Next;
-    Swapped:=fCacheSegments[CurrentSegmentIndex].Points[0].y>fCacheSegments[CurrentSegmentIndex].Points[1].y;
+    p0:=@fCacheSegmentUniquePoints[fCacheSegments[CurrentSegmentIndex].Points[0]].Point;
+    p1:=@fCacheSegmentUniquePoints[fCacheSegments[CurrentSegmentIndex].Points[1]].Point;
+    Swapped:=p0^.y>p1^.y;
     if Swapped then begin
-     TopPoint:=fCacheSegments[CurrentSegmentIndex].Points[1];
-     BottomPoint:=fCacheSegments[CurrentSegmentIndex].Points[0];
+     TopPoint:=p1^;
+     BottomPoint:=p0^;
     end else begin
-     TopPoint:=fCacheSegments[CurrentSegmentIndex].Points[0];
-     BottomPoint:=fCacheSegments[CurrentSegmentIndex].Points[1];
+     TopPoint:=p0^;
+     BottomPoint:=p1^;
     end;
     if TopPoint.y<BottomPoint.y then begin
      while ((StartYCoordinateIndex+1)<fCountCacheYCoordinates) and (TopPoint.y>fCacheYCoordinates[StartYCoordinateIndex]) do begin
@@ -1814,13 +1872,13 @@ var CommandIndex:TpvInt32;
      end;
      if LastPoint.y<BottomPoint.y then begin
       if Swapped then begin
-       fCacheSegments[CurrentSegmentIndex].Points[0]:=BottomPoint;
-       fCacheSegments[CurrentSegmentIndex].Points[1]:=LastPoint;
+       fCacheSegments[CurrentSegmentIndex].Points[0]:=AddSegmentPoint(BottomPoint);
+       fCacheSegments[CurrentSegmentIndex].Points[1]:=AddSegmentPoint(LastPoint);
       end else begin
-       fCacheSegments[CurrentSegmentIndex].Points[0]:=LastPoint;
-       fCacheSegments[CurrentSegmentIndex].Points[1]:=BottomPoint;
+       fCacheSegments[CurrentSegmentIndex].Points[0]:=AddSegmentPoint(LastPoint);
+       fCacheSegments[CurrentSegmentIndex].Points[1]:=AddSegmentPoint(BottomPoint);
       end;
-      fCacheSegments[CurrentSegmentIndex].UpdateBoundingBox;
+      UpdateSegmentBoundingBox(fCacheSegments[CurrentSegmentIndex]);
      end else begin
       RemoveSegment(CurrentSegmentIndex);
      end;
@@ -1843,6 +1901,7 @@ var CommandIndex:TpvInt32;
       CurrentSegment,LastSegment:PpvCanvasShapeCacheSegment;
       Visible:boolean;
       FromY,ToY:TpvCanvasShapeCacheSegmentScalar;
+      a0,a1,b0,b1:PpvCanvasShapeCacheSegmentPoint;
   begin
    CurrentYSegmentIndex:=fCacheFirstSegment;
    LastYCoordinateIndex:=-1;
@@ -1864,7 +1923,11 @@ var CommandIndex:TpvInt32;
          ((fCacheSegments[CurrentSegmentIndex].AABBMin.y<ToY) and
           (FromY<fCacheSegments[CurrentSegmentIndex].AABBMax.y)) then begin
        if LastSegmentIndex>=0 then begin
-        if fCacheSegments[LastSegmentIndex].Points[0].y<=fCacheSegments[LastSegmentIndex].Points[1].y then begin
+        a0:=@fCacheSegmentUniquePoints[fCacheSegments[LastSegmentIndex].Points[0]].Point;
+        a1:=@fCacheSegmentUniquePoints[fCacheSegments[LastSegmentIndex].Points[1]].Point;
+        b0:=@fCacheSegmentUniquePoints[fCacheSegments[CurrentSegmentIndex].Points[0]].Point;
+        b1:=@fCacheSegmentUniquePoints[fCacheSegments[CurrentSegmentIndex].Points[1]].Point;
+        if a0^.y<=a1^.y then begin
          inc(Winding);
         end else begin
          dec(Winding);
@@ -1881,19 +1944,19 @@ var CommandIndex:TpvInt32;
          LastSegment:=@fCacheSegments[LastSegmentIndex];
          CurrentSegment:=@fCacheSegments[CurrentSegmentIndex];
          BeginPart(4,6);
-         if LastSegment^.Points[0].y<LastSegment^.Points[1].y then begin
-          i0:=AddVertex(TpvVector2.Create(LastSegment^.Points[0].x,LastSegment^.Points[0].y),0,Vector4Origin);
-          i1:=AddVertex(TpvVector2.Create(LastSegment^.Points[1].x,LastSegment^.Points[1].y),0,Vector4Origin);
+         if a0^.y<a1^.y then begin
+          i0:=AddVertex(TpvVector2.Create(a0^.x,a0^.y),0,Vector4Origin);
+          i1:=AddVertex(TpvVector2.Create(a1^.x,a1^.y),0,Vector4Origin);
          end else begin
-          i0:=AddVertex(TpvVector2.Create(LastSegment^.Points[1].x,LastSegment^.Points[1].y),0,Vector4Origin);
-          i1:=AddVertex(TpvVector2.Create(LastSegment^.Points[0].x,LastSegment^.Points[0].y),0,Vector4Origin);
+          i0:=AddVertex(TpvVector2.Create(a1^.x,a1^.y),0,Vector4Origin);
+          i1:=AddVertex(TpvVector2.Create(a0^.x,a0^.y),0,Vector4Origin);
          end;
-         if CurrentSegment^.Points[0].y<CurrentSegment^.Points[1].y then begin
-          i2:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[1].x,CurrentSegment^.Points[1].y),0,Vector4Origin);
-          i3:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[0].x,CurrentSegment^.Points[0].y),0,Vector4Origin);
+         if b0^.y<b1^.y then begin
+          i2:=AddVertex(TpvVector2.Create(b1^.x,b1^.y),0,Vector4Origin);
+          i3:=AddVertex(TpvVector2.Create(b0^.x,b0^.y),0,Vector4Origin);
          end else begin
-          i2:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[0].x,CurrentSegment^.Points[0].y),0,Vector4Origin);
-          i3:=AddVertex(TpvVector2.Create(CurrentSegment^.Points[1].x,CurrentSegment^.Points[1].y),0,Vector4Origin);
+          i2:=AddVertex(TpvVector2.Create(b0^.x,b0^.y),0,Vector4Origin);
+          i3:=AddVertex(TpvVector2.Create(b1^.x,b1^.y),0,Vector4Origin);
          end;
          AddIndex(i0);
          AddIndex(i1);
@@ -1931,6 +1994,7 @@ var CommandIndex:TpvInt32;
  end;
 begin
  Reset;
+ InitializeSegmentUniquePointHashTable;
  fCacheFirstSegment:=-1;
  fCacheLastSegment:=-1;
  for CommandIndex:=0 to aPath.fCountCommands-1 do begin
