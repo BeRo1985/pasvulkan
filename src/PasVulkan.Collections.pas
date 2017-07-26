@@ -236,6 +236,7 @@ type TpvDynamicArray<T>=class
        fEntityToCellIndex:TpvHashMapEntityIndices;
        fCellToEntityIndex:TpvHashMapEntityIndices;
        fDefaultValue:TpvHashMapValue;
+       fCanShrink:boolean;
        function HashData(const Data:pointer;const DataLength:TpvUInt32):TpvUInt32;
        function HashKey(const Key:TpvHashMapKey):TpvUInt32;
        function CompareKey(const KeyA,KeyB:TpvHashMapKey):boolean;
@@ -254,6 +255,7 @@ type TpvDynamicArray<T>=class
        function ExistKey(const Key:TpvHashMapKey):boolean;
        function Delete(const Key:TpvHashMapKey):boolean;
        property Values[const Key:TpvHashMapKey]:TpvHashMapValue read GetValue write SetValue; default;
+       property CanShrink:boolean read fCanShrink write fCanShrink;
      end;
 
 {$ifdef ExtraStringHashMap}
@@ -278,6 +280,7 @@ type TpvDynamicArray<T>=class
        fEntityToCellIndex:TpvHashMapEntityIndices;
        fCellToEntityIndex:TpvHashMapEntityIndices;
        fDefaultValue:TpvHashMapValue;
+       fCanShrink:boolean;
       private
        function HashKey(const Key:TpvHashMapKey):TpvUInt32;
        function FindCell(const Key:TpvHashMapKey):TpvUInt32;
@@ -295,6 +298,7 @@ type TpvDynamicArray<T>=class
        function ExistKey(const Key:TpvHashMapKey):boolean;
        function Delete(const Key:TpvHashMapKey):boolean;
        property Values[const Key:TpvHashMapKey]:TpvHashMapValue read GetValue write SetValue; default;
+       property CanShrink:boolean read fCanShrink write fCanShrink;
      end;
 {$else}
      TpvStringHashMap<TpvHashMapValue>=class(TpvHashMap<RawByteString,TpvHashMapValue>);
@@ -1380,6 +1384,7 @@ begin
  fEntityToCellIndex:=nil;
  fCellToEntityIndex:=nil;
  fDefaultValue:=DefaultValue;
+ fCanShrink:=true;
  Resize;
 end;
 
@@ -1404,13 +1409,22 @@ begin
   Finalize(fEntities[Counter].Key);
   Finalize(fEntities[Counter].Value);
  end;
- fRealSize:=0;
- fLogSize:=0;
- fSize:=0;
- SetLength(fEntities,0);
- SetLength(fEntityToCellIndex,0);
- SetLength(fCellToEntityIndex,0);
- Resize;
+ if fCanShrink then begin
+  fRealSize:=0;
+  fLogSize:=0;
+  fSize:=0;
+  SetLength(fEntities,0);
+  SetLength(fEntityToCellIndex,0);
+  SetLength(fCellToEntityIndex,0);
+  Resize;
+ end else begin
+  for Counter:=0 to length(fCellToEntityIndex)-1 do begin
+   fCellToEntityIndex[Counter]:=ENT_EMPTY;
+  end;
+  for Counter:=0 to length(fEntityToCellIndex)-1 do begin
+   fEntityToCellIndex[Counter]:=CELL_EMPTY;
+  end;
+ end;
 end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.HashData(const Data:pointer;const DataLength:TpvUInt32):TpvUInt32;
@@ -1782,6 +1796,7 @@ begin
  fEntityToCellIndex:=nil;
  fCellToEntityIndex:=nil;
  fDefaultValue:=DefaultValue;
+ fCanShrink:=true;
  Resize;
 end;
 
@@ -1806,13 +1821,22 @@ begin
   Finalize(fEntities[Counter].Key);
   Finalize(fEntities[Counter].Value);
  end;
- fRealSize:=0;
- fLogSize:=0;
- fSize:=0;
- SetLength(fEntities,0);
- SetLength(fEntityToCellIndex,0);
- SetLength(fCellToEntityIndex,0);
- Resize;
+ if fCanShrink then begin
+  fRealSize:=0;
+  fLogSize:=0;
+  fSize:=0;
+  SetLength(fEntities,0);
+  SetLength(fEntityToCellIndex,0);
+  SetLength(fCellToEntityIndex,0);
+  Resize;
+ end else begin
+  for Counter:=0 to length(fCellToEntityIndex)-1 do begin
+   fCellToEntityIndex[Counter]:=ENT_EMPTY;
+  end;
+  for Counter:=0 to length(fEntityToCellIndex)-1 do begin
+   fEntityToCellIndex[Counter]:=CELL_EMPTY;
+  end;
+ end;
 end;
 
 function TpvStringHashMap<TpvHashMapValue>.HashKey(const Key:TpvHashMapKey):TpvUInt32;
