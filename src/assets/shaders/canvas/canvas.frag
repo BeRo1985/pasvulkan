@@ -72,7 +72,7 @@ void main(void){
       }
       case 0x03:{
         // Distance to triangle edge 
-        color.yz *= smoothstep(0.0, -1.0, dot(inPosition.xy - inMetaInfo.xy, normalize(inMetaInfo.xy - inMetaInfo.zw)));
+        color.a *= smoothstep(0.0, -threshold, dot(inPosition.xy - inMetaInfo.xy, normalize(inMetaInfo.xy - inMetaInfo.zw)));
         break;      
       }
     }
