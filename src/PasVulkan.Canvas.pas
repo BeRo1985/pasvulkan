@@ -236,6 +236,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       ObjectMode:TVkUInt32;
       Position:TpvVector2;
       MetaInfo:TpvVector4;
+      Offset:TpvVector2;
      end;
 
      PpvCanvasShapeCacheLinePoint=^TpvCanvasShapeCacheLinePoint;
@@ -328,7 +329,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCacheLastSegment:TpvInt32;
        procedure BeginPart(const aCountVertices:TpvInt32=0;const aCountIndices:TpvInt32=0);
        procedure EndPart;
-       function AddVertex(const Position:TpvVector2;const ObjectMode:TpvUInt8;const MetaInfo:TpvVector4):TpvInt32;
+       function AddVertex(const Position:TpvVector2;const ObjectMode:TpvUInt8;const MetaInfo:TpvVector4;const Offset:TpvVector2):TpvInt32;
        function AddIndex(const VertexIndex:TpvInt32):TpvInt32;
        function GetWindingNumberAtPointInPolygon(const Point:TpvVector2):TpvInt32;
       public
@@ -853,7 +854,7 @@ begin
  end;
 end;
 
-function TpvCanvasShape.AddVertex(const Position:TpvVector2;const ObjectMode:TpvUInt8;const MetaInfo:TpvVector4):TpvInt32;
+function TpvCanvasShape.AddVertex(const Position:TpvVector2;const ObjectMode:TpvUInt8;const MetaInfo:TpvVector4;const Offset:TpvVector2):TpvInt32;
 var CacheVertex:PpvCanvasShapeCacheVertex;
 begin
  result:=fCountCacheVertices;
@@ -865,6 +866,7 @@ begin
  CacheVertex^.Position:=Position;
  CacheVertex^.ObjectMode:=ObjectMode;
  CacheVertex^.MetaInfo:=MetaInfo;
+ CacheVertex^.Offset:=Offset;
 end;
 
 function TpvCanvasShape.AddIndex(const VertexIndex:TpvInt32):TpvInt32;
@@ -984,11 +986,11 @@ var StartPoint,LastPoint:TpvVector2;
     Radius:=Radius+1.0; // Add some headroom to the radius
     Normal:=(Center-NextPointInLine).Normalize*Radius;
     BeginPart(5,9);
-    iP0:=AddVertex(p0,pcvvaomRoundLineCapCircle,MetaInfo);
-    iP1:=AddVertex(p1,pcvvaomRoundLineCapCircle,MetaInfo);
-    iP0Normal:=AddVertex(p0+Normal,pcvvaomRoundLineCapCircle,MetaInfo);
-    iP1Normal:=AddVertex(p1+Normal,pcvvaomRoundLineCapCircle,MetaInfo);
-    iCenter:=AddVertex(Center,pcvvaomRoundLineCapCircle,MetaInfo);
+    iP0:=AddVertex(p0,pcvvaomRoundLineCapCircle,MetaInfo,Vector2Origin);
+    iP1:=AddVertex(p1,pcvvaomRoundLineCapCircle,MetaInfo,Vector2Origin);
+    iP0Normal:=AddVertex(p0+Normal,pcvvaomRoundLineCapCircle,MetaInfo,Vector2Origin);
+    iP1Normal:=AddVertex(p1+Normal,pcvvaomRoundLineCapCircle,MetaInfo,Vector2Origin);
+    iCenter:=AddVertex(Center,pcvvaomRoundLineCapCircle,MetaInfo,Vector2Origin);
     AddIndex(iP0Normal);
     AddIndex(iP0);
     AddIndex(iCenter);
@@ -1074,20 +1076,20 @@ var StartPoint,LastPoint:TpvVector2;
     end;
     BeginPart(CountVerticesToAdd,CountIndicesToAdd);
     begin
-     ip0at0:=AddVertex(p0+t0,pcvvaomLineEdge,TpvVector4.Create(Width,l0,Width,s0));
-     ip0st0:=AddVertex(p0-t0,pcvvaomLineEdge,TpvVector4.Create(-Width,l0,Width,s0));
-     ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s0));
-     ip1st0:=AddVertex(p1-t0,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s0));
+     ip0at0:=AddVertex(p0+t0,pcvvaomLineEdge,TpvVector4.Create(Width,l0,Width,s0),Vector2Origin);
+     ip0st0:=AddVertex(p0-t0,pcvvaomLineEdge,TpvVector4.Create(-Width,l0,Width,s0),Vector2Origin);
+     ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s0),Vector2Origin);
+     ip1st0:=AddVertex(p1-t0,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s0),Vector2Origin);
      AddIndex(ip0at0);
      AddIndex(ip0st0);
      AddIndex(ip1at0);
      AddIndex(ip0st0);
      AddIndex(ip1at0);
      AddIndex(ip1st0);
-     ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s2));
-     ip2at2:=AddVertex(p2+t2,pcvvaomLineEdge,TpvVector4.Create(Width,l2,Width,s2));
-     ip1st2:=AddVertex(p1-t2,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s2));
-     ip2st2:=AddVertex(p2-t2,pcvvaomLineEdge,TpvVector4.Create(-Width,l2,Width,s2));
+     ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s2),Vector2Origin);
+     ip2at2:=AddVertex(p2+t2,pcvvaomLineEdge,TpvVector4.Create(Width,l2,Width,s2),Vector2Origin);
+     ip1st2:=AddVertex(p1-t2,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s2),Vector2Origin);
+     ip2st2:=AddVertex(p2-t2,pcvvaomLineEdge,TpvVector4.Create(-Width,l2,Width,s2),Vector2Origin);
      AddIndex(ip2at2);
      AddIndex(ip1st2);
      AddIndex(ip1at2);
@@ -1100,19 +1102,19 @@ var StartPoint,LastPoint:TpvVector2;
       end;
       1:begin
        // Bevel join
-       ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(0.0,0.0,Width,Width));
-       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width));
-       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width));
+       ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(0.0,0.0,Width,Width),Vector2Origin);
+       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width),Vector2Origin);
+       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width),Vector2Origin);
        AddIndex(ip1);
        AddIndex(ip1at0);
        AddIndex(ip1at2);
       end;
       2:begin
        // Miter join
-       ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(0.0,0.0,Width,Width));
-       iIntersectionPoint:=AddVertex(IntersectionPoint,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
-       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
-       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
+       ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(0.0,0.0,Width,Width),Vector2Origin);
+       iIntersectionPoint:=AddVertex(IntersectionPoint,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),Vector2Origin);
+       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),Vector2Origin);
+       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),Vector2Origin);
        AddIndex(ip1at0);
        AddIndex(ip1);
        AddIndex(iIntersectionPoint);
@@ -1150,20 +1152,20 @@ var StartPoint,LastPoint:TpvVector2;
     end;
     BeginPart(CountVerticesToAdd,CountIndicesToAdd);
     begin
-     ip0at0:=AddVertex(p0+t0,pcvvaomLineEdge,TpvVector4.Create(Width,l0,Width,s0));
-     ip0st0:=AddVertex(p0-t0,pcvvaomLineEdge,TpvVector4.Create(-Width,l0,Width,s0));
-     ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s0));
-     ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s0));
+     ip0at0:=AddVertex(p0+t0,pcvvaomLineEdge,TpvVector4.Create(Width,l0,Width,s0),Vector2Origin);
+     ip0st0:=AddVertex(p0-t0,pcvvaomLineEdge,TpvVector4.Create(-Width,l0,Width,s0),Vector2Origin);
+     ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s0),Vector2Origin);
+     ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s0),Vector2Origin);
      AddIndex(ip0at0);
      AddIndex(ip0st0);
      AddIndex(ip1sAnchor);
      AddIndex(ip0at0);
      AddIndex(ip1sAnchor);
      AddIndex(ip1at0);
-     ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s2));
-     ip2at2:=AddVertex(p2+t2,pcvvaomLineEdge,TpvVector4.Create(Width,l2,Width,s2));
-     ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s2));
-     ip2st2:=AddVertex(p2-t2,pcvvaomLineEdge,TpvVector4.Create(-Width,l2,Width,s2));
+     ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s2),Vector2Origin);
+     ip2at2:=AddVertex(p2+t2,pcvvaomLineEdge,TpvVector4.Create(Width,l2,Width,s2),Vector2Origin);
+     ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s2),Vector2Origin);
+     ip2st2:=AddVertex(p2-t2,pcvvaomLineEdge,TpvVector4.Create(-Width,l2,Width,s2),Vector2Origin);
      AddIndex(ip2at2);
      AddIndex(ip1sAnchor);
      AddIndex(ip1at2);
@@ -1173,10 +1175,10 @@ var StartPoint,LastPoint:TpvVector2;
      case LineJoinCase of
       0:begin
        // Round join
-       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
-       ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(0.0,0.0,Width,Width));
-       ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width));
-       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
+       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),Vector2Origin);
+       ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(0.0,0.0,Width,Width),Vector2Origin);
+       ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width),Vector2Origin);
+       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),Vector2Origin);
        AddIndex(ip1at0);
        AddIndex(ip1);
        AddIndex(ip1sAnchor);
@@ -1186,19 +1188,19 @@ var StartPoint,LastPoint:TpvVector2;
       end;
       1:begin
        // Bevel join
-       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width));
-       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width));
-       ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width));
+       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width),Vector2Origin);
+       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width),Vector2Origin);
+       ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width),Vector2Origin);
        AddIndex(ip1at0);
        AddIndex(ip1at2);
        AddIndex(ip1sAnchor);
       end;
       2:begin
        // Miter join
-       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
-       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
-       iCenter:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width));
-       iIntersectionPoint:=AddVertex(IntersectionPoint,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
+       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),Vector2Origin);
+       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),Vector2Origin);
+       iCenter:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width),Vector2Origin);
+       iIntersectionPoint:=AddVertex(IntersectionPoint,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),Vector2Origin);
        AddIndex(ip1at0);
        AddIndex(iCenter);
        AddIndex(iIntersectionPoint);
@@ -1220,10 +1222,10 @@ var StartPoint,LastPoint:TpvVector2;
   var ip0,ip0d,ip1d,ip1:TpvInt32;
   begin
    BeginPart(4,6);
-   ip0:=AddVertex(p0,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width));
-   ip0d:=AddVertex(p0+d,pcvvaomLineEdge,TpvVector4.Create(-Width,Width,Width,Width));
-   ip1d:=AddVertex(p1+d,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width));
-   ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width));
+   ip0:=AddVertex(p0,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width),Vector2Origin);
+   ip0d:=AddVertex(p0+d,pcvvaomLineEdge,TpvVector4.Create(-Width,Width,Width,Width),Vector2Origin);
+   ip1d:=AddVertex(p1+d,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width),Vector2Origin);
+   ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),Vector2Origin);
    AddIndex(ip0);
    AddIndex(ip0d);
    AddIndex(ip1d);
@@ -1242,9 +1244,9 @@ var StartPoint,LastPoint:TpvVector2;
    MetaInfo:=TpvVector4.Create(Center.x,Center.y,Radius,-1.0);
    Radius:=Radius+1.0; // Add some headroom to the radius
    BeginPart(3,3);
-   AddIndex(AddVertex(Center+((p0-Center).Normalize*Radius*Sqrt2),pcvvaomRoundLineCapCircle,MetaInfo));
-   AddIndex(AddVertex(Center+((p1-Center).Normalize*Radius*Sqrt2),pcvvaomRoundLineCapCircle,MetaInfo));
-   AddIndex(AddVertex(Center+((Center-NextPointInLine).Normalize*Radius*Sqrt2),pcvvaomRoundLineCapCircle,MetaInfo));
+   AddIndex(AddVertex(Center+((p0-Center).Normalize*Radius*Sqrt2),pcvvaomRoundLineCapCircle,MetaInfo,Vector2Origin));
+   AddIndex(AddVertex(Center+((p1-Center).Normalize*Radius*Sqrt2),pcvvaomRoundLineCapCircle,MetaInfo,Vector2Origin));
+   AddIndex(AddVertex(Center+((Center-NextPointInLine).Normalize*Radius*Sqrt2),pcvvaomRoundLineCapCircle,MetaInfo,Vector2Origin));
    EndPart;
   end;
  var i:TpvInt32;
@@ -1971,18 +1973,18 @@ var CommandIndex:TpvInt32;
          CurrentSegment:=@fCacheSegments[CurrentSegmentIndex];
          BeginPart(4,6);
          if a0^.y<a1^.y then begin
-          i0:=AddVertex(TpvVector2.Create(a0^.x,a0^.y),0,Vector4Origin);
-          i1:=AddVertex(TpvVector2.Create(a1^.x,a1^.y),0,Vector4Origin);
+          i0:=AddVertex(TpvVector2.Create(a0^.x,a0^.y),0,Vector4Origin,Vector2Origin);
+          i1:=AddVertex(TpvVector2.Create(a1^.x,a1^.y),0,Vector4Origin,Vector2Origin);
          end else begin
-          i0:=AddVertex(TpvVector2.Create(a1^.x,a1^.y),0,Vector4Origin);
-          i1:=AddVertex(TpvVector2.Create(a0^.x,a0^.y),0,Vector4Origin);
+          i0:=AddVertex(TpvVector2.Create(a1^.x,a1^.y),0,Vector4Origin,Vector2Origin);
+          i1:=AddVertex(TpvVector2.Create(a0^.x,a0^.y),0,Vector4Origin,Vector2Origin);
          end;
          if b0^.y<b1^.y then begin
-          i2:=AddVertex(TpvVector2.Create(b1^.x,b1^.y),0,Vector4Origin);
-          i3:=AddVertex(TpvVector2.Create(b0^.x,b0^.y),0,Vector4Origin);
+          i2:=AddVertex(TpvVector2.Create(b1^.x,b1^.y),0,Vector4Origin,Vector2Origin);
+          i3:=AddVertex(TpvVector2.Create(b0^.x,b0^.y),0,Vector4Origin,Vector2Origin);
          end else begin
-          i2:=AddVertex(TpvVector2.Create(b0^.x,b0^.y),0,Vector4Origin);
-          i3:=AddVertex(TpvVector2.Create(b1^.x,b1^.y),0,Vector4Origin);
+          i2:=AddVertex(TpvVector2.Create(b0^.x,b0^.y),0,Vector4Origin,Vector2Origin);
+          i3:=AddVertex(TpvVector2.Create(b1^.x,b1^.y),0,Vector4Origin,Vector2Origin);
          end;
          AddIndex(i0);
          AddIndex(i1);
@@ -2005,7 +2007,7 @@ var CommandIndex:TpvInt32;
   procedure GenerateSegmentEdgeTriangles;
   var CurrentSegmentIndex,i0,i1,i2,i3:TpvInt32;
       up0,up1:PpvCanvasShapeCacheSegmentPoint;
-      p0,p1,p10,n10,t10,a0,a1,a2,a3:TpvVector2;
+      p0,p1,p10,n10,t10:TpvVector2;
       MetaInfo:TpvVector4;
   begin
    CurrentSegmentIndex:=fCacheFirstSegment;
@@ -2016,20 +2018,16 @@ var CommandIndex:TpvInt32;
     p1:=TpvVector2.Create(up1^.x,up1^.y);
     p10:=p1-p0;
     n10:=p10.Normalize;
-    t10:=n10.Perpendicular*Max(1.0,p10.Length*0.0);
+    t10:=n10.Perpendicular;
     MetaInfo.xy:=p0;
     MetaInfo.zw:=p1;
-    p0:=p0-(n10*2.0);
-    p1:=p1+(n10*2.0);
     BeginPart(4,6);
-    a0:=p0-t10;
-    a1:=p0+t10;
-    a2:=p1+t10;
-    a3:=p1-t10;
-    i0:=AddVertex(a0,pcvvaomRoundLine,MetaInfo);
-    i1:=AddVertex(a1,pcvvaomRoundLine,MetaInfo);
-    i2:=AddVertex(a2,pcvvaomRoundLine,MetaInfo);
-    i3:=AddVertex(a3,pcvvaomRoundLine,MetaInfo);
+    p0:=p0-n10;
+    p1:=p1+n10;
+    i0:=AddVertex(p0-t10,pcvvaomRoundLine,MetaInfo,(-2.0)*(n10+t10));
+    i1:=AddVertex(p0+t10,pcvvaomRoundLine,MetaInfo,2.0*(t10-n10));
+    i2:=AddVertex(p1+t10,pcvvaomRoundLine,MetaInfo,2.0*(n10+t10));
+    i3:=AddVertex(p1-t10,pcvvaomRoundLine,MetaInfo,2.0*(n10-t10));
     AddIndex(i0);
     AddIndex(i1);
     AddIndex(i2);
@@ -3420,6 +3418,7 @@ var CachePartIndex,VertexIndex,IndexIndex:TpvInt32;
     VertexColor:TpvHalfFloatVector4;
     VertexState:TpvUInt32;
     ModelMatrixIsIdentity:boolean;
+    OffsetMatrix:TpvMatrix3x3;
 begin
  fInternalRenderingMode:=pvcrmNormal;
  SetInternalTexture(nil);
@@ -3429,6 +3428,9 @@ begin
  VertexColor.a:=fState.fColor.a;
  VertexState:=GetVertexState;
  ModelMatrixIsIdentity:=fState.fModelMatrix=TpvMatrix3x3.Identity;
+ OffsetMatrix:=fState.fModelMatrix;
+ OffsetMatrix[2,0]:=0.0;
+ OffsetMatrix[2,1]:=0.0;
  for CachePartIndex:=0 to aShape.fCountCacheParts-1 do begin
   CachePart:=@aShape.fCacheParts[CachePartIndex];
   FlushAndGetNewDestinationBuffersIfNeeded(CachePart^.CountVertices,CachePart^.CountIndices);
@@ -3436,7 +3438,7 @@ begin
    for VertexIndex:=0 to CachePart^.CountVertices-1 do begin
     CacheVertex:=@aShape.fCacheVertices[CachePart^.BaseVertexIndex+VertexIndex];
     CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+VertexIndex];
-    CanvasVertex^.Position:=CacheVertex^.Position;
+    CanvasVertex^.Position:=CacheVertex^.Position+CacheVertex^.Offset;
     CanvasVertex^.Color:=VertexColor;
     CanvasVertex^.TextureCoord:=Vector3Origin;
     CanvasVertex^.State:=VertexState or ((CacheVertex^.ObjectMode and $ff) shl 4);
@@ -3447,7 +3449,8 @@ begin
    for VertexIndex:=0 to CachePart^.CountVertices-1 do begin
     CacheVertex:=@aShape.fCacheVertices[CachePart^.BaseVertexIndex+VertexIndex];
     CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+VertexIndex];
-    CanvasVertex^.Position:=fState.fModelMatrix*CacheVertex^.Position;
+    CanvasVertex^.Position:=(fState.fModelMatrix*CacheVertex^.Position)+
+                            (OffsetMatrix*CacheVertex^.Offset);
     CanvasVertex^.Color:=VertexColor;
     CanvasVertex^.TextureCoord:=Vector3Origin;
     CanvasVertex^.State:=VertexState or ((CacheVertex^.ObjectMode and $ff) shl 4);
