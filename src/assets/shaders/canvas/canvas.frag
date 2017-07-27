@@ -67,7 +67,12 @@ void main(void){
       }
       case 0x02:{
         // Distance to line round cap circle       
-        color.a *= smoothstep(0, -threshold, length(inPosition.xy - inMetaInfo.xy) - inMetaInfo.z);
+        color.a *= smoothstep(0.0, -threshold, length(inPosition.xy - inMetaInfo.xy) - inMetaInfo.z);
+        break;      
+      }
+      case 0x03:{
+        // Distance to triangle edge 
+        color.yz *= smoothstep(0.0, -1.0, dot(inPosition.xy - inMetaInfo.xy, normalize(inMetaInfo.xy - inMetaInfo.zw)));
         break;      
       }
     }
