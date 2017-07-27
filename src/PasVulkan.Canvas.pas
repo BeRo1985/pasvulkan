@@ -377,6 +377,11 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        pvcqikHook
       );
 
+     PpvCanvasPushConstants=^TpvCanvasPushConstants;
+     TpvCanvasPushConstants=record
+      Matrix:TpvMatrix4x4;
+     end;
+
      PpvCanvasQueueItem=^TpvCanvasQueueItem;
      TpvCanvasQueueItem=record
       Kind:TpvCanvasQueueItemKind;
@@ -388,7 +393,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       CountVertices:TpvInt32;
       CountIndices:TpvInt32;
       Scissor:TVkRect2D;
-      Matrix:TpvMatrix4x4;
+      PushConstants:TpvCanvasPushConstants;
       Hook:TpvCanvasHook;
       HookData:TVkPointer;
      end;
@@ -2000,7 +2005,7 @@ var CommandIndex:TpvInt32;
   procedure GenerateSegmentEdgeTriangles;
   var CurrentSegmentIndex,i0,i1,i2,i3:TpvInt32;
       up0,up1:PpvCanvasShapeCacheSegmentPoint;
-      p0,p1,p10,n10,t10:TpvVector2;
+      p0,p1,p10,n10,t10,a0,a1,a2,a3:TpvVector2;
       MetaInfo:TpvVector4;
   begin
    CurrentSegmentIndex:=fCacheFirstSegment;
@@ -2017,10 +2022,14 @@ var CommandIndex:TpvInt32;
     p0:=p0-(n10*2.0);
     p1:=p1+(n10*2.0);
     BeginPart(4,6);
-    i0:=AddVertex(p0-t10,pcvvaomRoundLine,MetaInfo);
-    i1:=AddVertex(p0+t10,pcvvaomRoundLine,MetaInfo);
-    i2:=AddVertex(p1+t10,pcvvaomRoundLine,MetaInfo);
-    i3:=AddVertex(p1-t10,pcvvaomRoundLine,MetaInfo);
+    a0:=p0-t10;
+    a1:=p0+t10;
+    a2:=p1+t10;
+    a3:=p1-t10;
+    i0:=AddVertex(a0,pcvvaomRoundLine,MetaInfo);
+    i1:=AddVertex(a1,pcvvaomRoundLine,MetaInfo);
+    i2:=AddVertex(a2,pcvvaomRoundLine,MetaInfo);
+    i3:=AddVertex(a3,pcvvaomRoundLine,MetaInfo);
     AddIndex(i0);
     AddIndex(i1);
     AddIndex(i2);
@@ -2279,7 +2288,7 @@ begin
   end else begin
    VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetNoTextureLayout);
   end;
-  VulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvMatrix4x4));
+  VulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvCanvasPushConstants));
   VulkanPipelineLayout.Initialize;
 
   VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fDevice,
@@ -2780,7 +2789,7 @@ begin
    QueueItem^.CountVertices:=fCurrentCountVertices;
    QueueItem^.CountIndices:=fCurrentCountIndices;
    QueueItem^.Scissor:=fState.fScissor;
-   QueueItem^.Matrix:=fState.fViewMatrix*fState.fProjectionMatrix;
+   QueueItem^.PushConstants.Matrix:=fState.fViewMatrix*fState.fProjectionMatrix;
 
   finally
    TPasMPInterlocked.Exchange(fCurrentFillBuffer^.fSpinLock,0);
@@ -2998,8 +3007,9 @@ begin
      end;
 
      if ForceUpdate or
-        (Matrix<>QueueItem^.Matrix) then begin
-      aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayouts[TextureMode].Handle,TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvMatrix4x4),@QueueItem^.Matrix);
+        (Matrix<>QueueItem^.PushConstants.Matrix) then begin
+      Matrix:=QueueItem^.PushConstants.Matrix;
+      aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayouts[TextureMode].Handle,TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT),0,SizeOf(TpvCanvasPushConstants),@QueueItem^.PushConstants);
      end;
 
      if ForceUpdate or
