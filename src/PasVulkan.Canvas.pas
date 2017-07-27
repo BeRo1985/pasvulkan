@@ -1866,7 +1866,10 @@ var CommandIndex:TpvInt32;
      for CurrentYCoordinateIndex:=StartYCoordinateIndex to fCountCacheYCoordinates-1 do begin
       CurrentYCoordinate:=fCacheYCoordinates[CurrentYCoordinateIndex];
       if CurrentYCoordinate<BottomPoint.y then begin
-       if (TopPoint.y<CurrentYCoordinate) and not (SameValue(TopPoint.y,CurrentYCoordinate) or SameValue(BottomPoint.y,CurrentYCoordinate)) then begin
+       if (TopPoint.y<CurrentYCoordinate) and not
+          (SameValue(TopPoint.y,CurrentYCoordinate) or
+           SameValue(BottomPoint.y,CurrentYCoordinate) or
+           SameValue(LastPoint.y,CurrentYCoordinate)) then begin
         IntersectionTime:=(CurrentYCoordinate-TopPoint.y)/(BottomPoint.y-TopPoint.y);
         if (IntersectionTime>0.0) and (IntersectionTime<1.0) then begin
          NewPoint.x:=(TopPoint.x*(1.0-IntersectionTime))+(BottomPoint.x*IntersectionTime);
@@ -1887,14 +1890,16 @@ var CommandIndex:TpvInt32;
       end;
      end;
      if LastPoint.y<BottomPoint.y then begin
-      if Swapped then begin
-       fCacheSegments[CurrentSegmentIndex].Points[0]:=BottomPointIndex;
-       fCacheSegments[CurrentSegmentIndex].Points[1]:=LastPointIndex;
-      end else begin
-       fCacheSegments[CurrentSegmentIndex].Points[0]:=LastPointIndex;
-       fCacheSegments[CurrentSegmentIndex].Points[1]:=BottomPointIndex;
+      if LastPointIndex<>TopPointIndex then begin
+       if Swapped then begin
+        fCacheSegments[CurrentSegmentIndex].Points[0]:=BottomPointIndex;
+        fCacheSegments[CurrentSegmentIndex].Points[1]:=LastPointIndex;
+       end else begin
+        fCacheSegments[CurrentSegmentIndex].Points[0]:=LastPointIndex;
+        fCacheSegments[CurrentSegmentIndex].Points[1]:=BottomPointIndex;
+       end;
+       UpdateSegmentBoundingBox(fCacheSegments[CurrentSegmentIndex]);
       end;
-      UpdateSegmentBoundingBox(fCacheSegments[CurrentSegmentIndex]);
      end else begin
       RemoveSegment(CurrentSegmentIndex);
      end;
