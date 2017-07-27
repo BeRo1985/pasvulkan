@@ -71,8 +71,9 @@ void main(void){
         break;      
       }
       case 0x03:{
-        // Distance to triangle edge 
-        color.a *= smoothstep(0.0, -threshold, dot(inPosition.xy - inMetaInfo.xy, normalize(inMetaInfo.xy - inMetaInfo.zw)));
+        // Distance to round line
+        vec2 pa = inPosition.xy - inMetaInfo.xy, ba = inMetaInfo.zw - inMetaInfo.xy;
+        color.a *= smoothstep(0.0, -threshold, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - threshold);
         break;      
       }
     }

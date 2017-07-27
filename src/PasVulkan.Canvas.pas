@@ -626,7 +626,7 @@ uses PasVulkan.Assets,
 const pcvvaomSolid=0;
       pcvvaomLineEdge=1;
       pcvvaomRoundLineCapCircle=2;
-      pcvvaomTriangleEdge=3;
+      pcvvaomRoundLine=3;
 
 constructor TpvCanvasPath.Create;
 begin
@@ -1916,7 +1916,7 @@ var CommandIndex:TpvInt32;
     SortLinkedListSegments;
    end;
   end;
-  procedure SweepAndGenerateQuadrilaterals;
+  procedure SweepAndGenerateTriangles;
   var CurrentYSegmentIndex,LastYCoordinateIndex,CurrentYCoordinateIndex,
       CurrentSegmentIndex,LastSegmentIndex,Winding,i0,i1,i2,i3:TpvInt32;
       CurrentSegment,LastSegment:PpvCanvasShapeCacheSegment;
@@ -1997,14 +1997,48 @@ var CommandIndex:TpvInt32;
     inc(CurrentYCoordinateIndex);
    end;
   end;
+  procedure GenerateSegmentEdgeTriangles;
+  var CurrentSegmentIndex,i0,i1,i2,i3:TpvInt32;
+      up0,up1:PpvCanvasShapeCacheSegmentPoint;
+      p0,p1,p10,n10,t10:TpvVector2;
+      MetaInfo:TpvVector4;
+  begin
+   CurrentSegmentIndex:=fCacheFirstSegment;
+   while CurrentSegmentIndex>=0 do begin
+    up0:=@fCacheSegmentUniquePoints[fCacheSegments[CurrentSegmentIndex].Points[0]].Point;
+    up1:=@fCacheSegmentUniquePoints[fCacheSegments[CurrentSegmentIndex].Points[1]].Point;
+    p0:=TpvVector2.Create(up0^.x,up0^.y);
+    p1:=TpvVector2.Create(up1^.x,up1^.y);
+    p10:=p1-p0;
+    n10:=p10.Normalize;
+    t10:=n10.Perpendicular*Max(1.0,p10.Length*0.0);
+    MetaInfo.xy:=p0;
+    MetaInfo.zw:=p1;
+    p0:=p0-(n10*2.0);
+    p1:=p1+(n10*2.0);
+    BeginPart(4,6);
+    i0:=AddVertex(p0-t10,pcvvaomRoundLine,MetaInfo);
+    i1:=AddVertex(p0+t10,pcvvaomRoundLine,MetaInfo);
+    i2:=AddVertex(p1+t10,pcvvaomRoundLine,MetaInfo);
+    i3:=AddVertex(p1-t10,pcvvaomRoundLine,MetaInfo);
+    AddIndex(i0);
+    AddIndex(i1);
+    AddIndex(i2);
+    AddIndex(i2);
+    AddIndex(i3);
+    AddIndex(i0);
+    EndPart;
+    CurrentSegmentIndex:=fCacheSegments[CurrentSegmentIndex].Next;
+   end;
+  end;
  begin
   try
    SortLinkedListSegments;
    SweepAndSplitSegmentsAtIntersections;
    CollectYCoordinates;
    SweepAndSplitSegmentsAtYCoordinates;
-   SweepAndGenerateQuadrilaterals;
-   // TODO: Quadrilaterals-postprocessing + Triangle-metainfo-postprocessing for edge signed distance dFdx/dFdy-based antialiasing
+   SweepAndGenerateTriangles;
+   GenerateSegmentEdgeTriangles;
   except
    on e:EpvCanvasShape do begin
    end;
@@ -3412,6 +3446,10 @@ begin
     case CacheVertex^.ObjectMode of
      pcvvaomRoundLineCapCircle:begin
       CanvasVertex^.MetaInfo.xy:=fState.fModelMatrix*CanvasVertex^.MetaInfo.xy;
+     end;
+     pcvvaomRoundLine:begin
+      CanvasVertex^.MetaInfo.xy:=fState.fModelMatrix*CanvasVertex^.MetaInfo.xy;
+      CanvasVertex^.MetaInfo.zw:=fState.fModelMatrix*CanvasVertex^.MetaInfo.zw;
      end;
     end;
    end;
