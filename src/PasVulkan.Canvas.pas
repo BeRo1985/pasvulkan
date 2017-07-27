@@ -276,12 +276,36 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      TpvCanvasShapeCacheSegmentUniquePoint=record
       HashNext:TpvInt32;
       Hash:TpvUInt32;
+      Triangle:TpvInt32;
       Point:TpvCanvasShapeCacheSegmentPoint;
      end;
 
      TpvCanvasShapeCacheSegmentUniquePoints=array of TpvCanvasShapeCacheSegmentUniquePoint;
 
      TpvCanvasShapeCacheSegmentUniquePointIndices=array of TpvInt32;
+
+     PpvCanvasShapeCacheTriangleIndices=^TpvCanvasShapeCacheTriangleIndices;
+     TpvCanvasShapeCacheTriangleIndices=array[0..2] of TpvInt32;
+
+     PpvCanvasShapeCacheTriangle=^TpvCanvasShapeCacheTriangle;
+     TpvCanvasShapeCacheTriangle=record
+      Points:TpvCanvasShapeCacheTriangleIndices;
+      Triangles:TpvCanvasShapeCacheTriangleIndices;
+     end;
+
+     TpvCanvasShapeCacheTriangles=array of TpvCanvasShapeCacheTriangle;
+
+     PpvCanvasShapeCacheTriangleEdgeIndices=^TpvCanvasShapeCacheTriangleEdgeIndices;
+     TpvCanvasShapeCacheTriangleEdgeIndices=array[0..2] of TpvInt32;
+
+     PpvCanvasShapeCacheTriangleEdge=^TpvCanvasShapeCacheTriangleEdge;
+     TpvCanvasShapeCacheTriangleEdge=record
+      HashNext:TpvInt32;
+      Triangle:TpvInt32;
+      Points:TpvCanvasShapeCacheTriangleEdgeIndices;
+     end;
+
+     TpvCanvasShapeCacheTriangleEdges=array of TpvCanvasShapeCacheTriangleEdge;
 
      PpvCanvasShapeCacheVertices=^TpvCanvasShapeCacheVertices;
      TpvCanvasShapeCacheVertices=array of TpvCanvasShapeCacheVertex;
@@ -306,14 +330,20 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       private
        const pvCanvasShapeCacheSegmentUniquePointHashSize=1 shl 12;
              pvCanvasShapeCacheSegmentUniquePointHashMask=pvCanvasShapeCacheSegmentUniquePointHashSize-1;
+             pvCanvasShapeCacheTriangleEdgeHashSize=1 shl 12;
+             pvCanvasShapeCacheTriangleEdgePointHashMask=pvCanvasShapeCacheTriangleEdgeHashSize-1;
        type TpvCanvasShapeCacheSegmentUniquePointHashTable=array of TpvInt32;
+            TpvCanvasShapeCacheTriangleEdgeHashTable=array of TpvInt32;
       private
        fCacheLinePoints:TpvCanvasShapeCacheLinePoints;
        fCacheSegments:TpvCanvasShapeCacheSegments;
        fCacheSegmentUniquePoints:TpvCanvasShapeCacheSegmentUniquePoints;
        fCacheSegmentUniquePointHashTable:TpvCanvasShapeCacheSegmentUniquePointHashTable;
+       fCacheTriangleEdgeHashTable:TpvCanvasShapeCacheTriangleEdgeHashTable;
        fCacheVertices:TpvCanvasShapeCacheVertices;
        fCacheIndices:TpvCanvasShapeCacheIndices;
+       fCacheTriangles:TpvCanvasShapeCacheTriangles;
+       fCacheTriangleEdges:TpvCanvasShapeCacheTriangleEdges;
        fCacheParts:TpvCanvasShapeCacheParts;
        fCacheYCoordinates:TpvCanvasShapeCacheYCoordinates;
        fCacheTemporaryYCoordinates:TpvCanvasShapeCacheYCoordinates;
@@ -322,6 +352,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCountCacheSegmentUniquePoints:TpvInt32;
        fCountCacheVertices:TpvInt32;
        fCountCacheIndices:TpvInt32;
+       fCountCacheTriangles:TpvInt32;
+       fCountCacheTriangleEdges:TpvInt32;
        fCountCacheParts:TpvInt32;
        fCountCacheYCoordinates:TpvInt32;
        fCacheFirstSegment:TpvInt32;
@@ -789,8 +821,11 @@ begin
  fCacheSegments:=nil;
  fCacheSegmentUniquePoints:=nil;
  fCacheSegmentUniquePointHashTable:=nil;
+ fCacheTriangleEdgeHashTable:=nil;
  fCacheVertices:=nil;
  fCacheIndices:=nil;
+ fCacheTriangles:=nil;
+ fCacheTriangleEdges:=nil;
  fCacheParts:=nil;
  fCacheYCoordinates:=nil;
  fCacheTemporaryYCoordinates:=nil;
@@ -800,6 +835,8 @@ begin
  fCountCacheSegmentUniquePoints:=0;
  fCountCacheVertices:=0;
  fCountCacheIndices:=0;
+ fCountCacheTriangles:=0;
+ fCountCacheTriangleEdges:=0;
  fCountCacheParts:=0;
  fCountCacheYCoordinates:=0;
 
@@ -812,8 +849,11 @@ begin
  fCacheSegments:=nil;
  fCacheSegmentUniquePoints:=nil;
  fCacheSegmentUniquePointHashTable:=nil;
+ fCacheTriangleEdgeHashTable:=nil;
  fCacheVertices:=nil;
  fCacheIndices:=nil;
+ fCacheTriangles:=nil;
+ fCacheTriangleEdges:=nil;
  fCacheParts:=nil;
  fCacheYCoordinates:=nil;
  fCacheTemporaryYCoordinates:=nil;
@@ -918,6 +958,8 @@ begin
  fCountCacheSegmentUniquePoints:=0;
  fCountCacheVertices:=0;
  fCountCacheIndices:=0;
+ fCountCacheTriangles:=0;
+ fCountCacheTriangleEdges:=0;
  fCountCacheParts:=0;
  fCountCacheYCoordinates:=0;
 
@@ -1423,6 +1465,14 @@ procedure TpvCanvasShape.FillFromPath(const aPath:TpvCanvasPath;const aState:Tpv
 var CommandIndex:TpvInt32;
     Command:PpvCanvasPathCommand;
     StartPoint,LastPoint:TpvVector2;
+ procedure InitializeTriangleEdgeHashTable;
+ begin
+  if length(fCacheTriangleEdgeHashTable)<pvCanvasShapeCacheTriangleEdgeHashSize then begin
+   SetLength(fCacheTriangleEdgeHashTable,pvCanvasShapeCacheTriangleEdgeHashSize);
+  end;
+  FillChar(fCacheTriangleEdgeHashTable[0],pvCanvasShapeCacheTriangleEdgeHashSize*SizeOf(TpvInt32),$ff);
+  fCountCacheTriangleEdges:=0;
+ end;
  procedure InitializeSegmentUniquePointHashTable;
  begin
   if length(fCacheSegmentUniquePointHashTable)<pvCanvasShapeCacheSegmentUniquePointHashSize then begin
@@ -1462,6 +1512,7 @@ var CommandIndex:TpvInt32;
    UniquePoint^.HashNext:=fCacheSegmentUniquePointHashTable[HashBucket];
    fCacheSegmentUniquePointHashTable[HashBucket]:=result;
    UniquePoint^.Hash:=Hash;
+   UniquePoint^.Triangle:=-1;
    UniquePoint^.Point:=aPoint;
   end;
  end;
@@ -1911,7 +1962,97 @@ var CommandIndex:TpvInt32;
     SortLinkedListSegments;
    end;
   end;
-  procedure SweepAndGenerateQuadrilaterals;
+  function HashTriangleEdge(const aP0,aP1:TpvInt32):TpvUInt32;
+  begin
+   result:=(TpvUInt32(aP0)*73856093) xor (TpvUInt32(aP1)*19349669);
+  end;
+  function AddTriangleEdge(const aP0,aP1,aTriangle:TpvInt32):TpvInt32;
+  var Hash:TpvUInt32;
+      HashBucket:TpvInt32;
+      TriangleEdge:PpvCanvasShapeCacheTriangleEdge;
+  begin
+   Hash:=HashTriangleEdge(aP0,aP1);
+   HashBucket:=Hash and pvCanvasShapeCacheTriangleEdgePointHashMask;
+   result:=fCacheTriangleEdgeHashTable[HashBucket];
+   while result>=0 do begin
+    TriangleEdge:=@fCacheTriangleEdges[result];
+    if (TriangleEdge^.Points[0]=aP0) and
+       (TriangleEdge^.Points[1]=aP1) then begin
+     break;
+    end else begin
+     result:=TriangleEdge^.HashNext;
+    end;
+   end;
+   if result<0 then begin
+    result:=fCountCacheTriangleEdges;
+    inc(fCountCacheTriangleEdges);
+    if length(fCacheTriangleEdges)<fCountCacheTriangleEdges then begin
+     SetLength(fCacheTriangleEdges,fCountCacheTriangleEdges*2);
+    end;
+    TriangleEdge:=@fCacheTriangleEdges[result];
+    TriangleEdge^.HashNext:=fCacheTriangleEdgeHashTable[HashBucket];
+    fCacheTriangleEdgeHashTable[HashBucket]:=result;
+    TriangleEdge^.Triangle:=aTriangle;
+    TriangleEdge^.Points[0]:=aP0;
+    TriangleEdge^.Points[1]:=aP1;
+   end;
+  end;
+  function GetTriangleEdgeTriangle(const aP0,aP1:TpvInt32):TpvInt32;
+  var Hash:TpvUInt32;
+      HashBucket:TpvInt32;
+      TriangleEdge:PpvCanvasShapeCacheTriangleEdge;
+  begin
+   Hash:=HashTriangleEdge(aP0,aP1);
+   HashBucket:=Hash and pvCanvasShapeCacheTriangleEdgePointHashMask;
+   result:=fCacheTriangleEdgeHashTable[HashBucket];
+   while result>=0 do begin
+    TriangleEdge:=@fCacheTriangleEdges[result];
+    if (TriangleEdge^.Points[0]=aP0) and
+       (TriangleEdge^.Points[1]=aP1) then begin
+     break;
+    end else begin
+     result:=TriangleEdge^.HashNext;
+    end;
+   end;
+  end;
+  function AddTriangle(const aP0,aP1,aP2:TpvInt32):TpvInt32;
+  var Triangle:PpvCanvasShapeCacheTriangle;
+      EdgePointIndex,PointIndex:TpvInt32;
+  begin
+   result:=fCountCacheTriangles;
+   inc(fCountCacheTriangles);
+   if length(fCacheTriangles)<fCountCacheTriangles then begin
+    SetLength(fCacheTriangles,fCountCacheTriangles*2);
+   end;
+   Triangle:=@fCacheTriangles[result];
+   Triangle^.Points[0]:=aP0;
+   Triangle^.Points[1]:=aP1;
+   Triangle^.Points[2]:=aP2;
+   Triangle^.Triangles[0]:=-1;
+   Triangle^.Triangles[1]:=-1;
+   Triangle^.Triangles[2]:=-1;
+   AddTriangleEdge(aP0,aP1,result);
+   AddTriangleEdge(aP1,aP2,result);
+   AddTriangleEdge(aP2,aP0,result);
+   for EdgePointIndex:=0 to 2 do begin
+    PointIndex:=Triangle^.Points[EdgePointIndex];
+    if fCacheSegmentUniquePoints[PointIndex].Triangle<0 then begin
+     fCacheSegmentUniquePoints[PointIndex].Triangle:=result;
+    end;
+   end;
+  end;
+  procedure FinalizeNeighbourTriangleInformation;
+  var TriangleIndex:TpvInt32;
+      Triangle:PpvCanvasShapeCacheTriangle;
+  begin
+   for TriangleIndex:=0 to fCountCacheTriangles-1 do begin
+    Triangle:=@fCacheTriangles[TriangleIndex];
+    Triangle^.Triangles[0]:=GetTriangleEdgeTriangle(Triangle^.Points[1],Triangle^.Points[0]);
+    Triangle^.Triangles[1]:=GetTriangleEdgeTriangle(Triangle^.Points[2],Triangle^.Points[1]);
+    Triangle^.Triangles[2]:=GetTriangleEdgeTriangle(Triangle^.Points[0],Triangle^.Points[2]);
+   end;
+  end;
+  procedure SweepAndGenerateTriangles;
   var CurrentYSegmentIndex,LastYCoordinateIndex,CurrentYCoordinateIndex,
       CurrentSegmentIndex,LastSegmentIndex,Winding,i0,i1,i2,i3:TpvInt32;
       CurrentSegment,LastSegment:PpvCanvasShapeCacheSegment;
@@ -1919,6 +2060,7 @@ var CommandIndex:TpvInt32;
       FromY,ToY:TpvCanvasShapeCacheSegmentScalar;
       a0,a1,b0,b1:PpvCanvasShapeCacheSegmentPoint;
   begin
+   fCountCacheTriangles:=0;
    CurrentYSegmentIndex:=fCacheFirstSegment;
    LastYCoordinateIndex:=-1;
    CurrentYCoordinateIndex:=0;
@@ -1959,28 +2101,22 @@ var CommandIndex:TpvInt32;
         if Visible then begin
          LastSegment:=@fCacheSegments[LastSegmentIndex];
          CurrentSegment:=@fCacheSegments[CurrentSegmentIndex];
-         BeginPart(4,6);
          if a0^.y<a1^.y then begin
-          i0:=AddVertex(TpvVector2.Create(a0^.x,a0^.y),0,Vector4Origin);
-          i1:=AddVertex(TpvVector2.Create(a1^.x,a1^.y),0,Vector4Origin);
+          i0:=LastSegment^.Points[0];
+          i1:=LastSegment^.Points[1];
          end else begin
-          i0:=AddVertex(TpvVector2.Create(a1^.x,a1^.y),0,Vector4Origin);
-          i1:=AddVertex(TpvVector2.Create(a0^.x,a0^.y),0,Vector4Origin);
+          i0:=LastSegment^.Points[1];
+          i1:=LastSegment^.Points[0];
          end;
          if b0^.y<b1^.y then begin
-          i2:=AddVertex(TpvVector2.Create(b1^.x,b1^.y),0,Vector4Origin);
-          i3:=AddVertex(TpvVector2.Create(b0^.x,b0^.y),0,Vector4Origin);
+          i2:=CurrentSegment^.Points[1];
+          i3:=CurrentSegment^.Points[0];
          end else begin
-          i2:=AddVertex(TpvVector2.Create(b0^.x,b0^.y),0,Vector4Origin);
-          i3:=AddVertex(TpvVector2.Create(b1^.x,b1^.y),0,Vector4Origin);
+          i2:=CurrentSegment^.Points[0];
+          i3:=CurrentSegment^.Points[1];
          end;
-         AddIndex(i0);
-         AddIndex(i1);
-         AddIndex(i2);
-         AddIndex(i2);
-         AddIndex(i3);
-         AddIndex(i0);
-         EndPart;
+         AddTriangle(i0,i1,i2);
+         AddTriangle(i2,i3,i0);
         end;
        end;
        LastSegmentIndex:=CurrentSegmentIndex;
@@ -1991,6 +2127,87 @@ var CommandIndex:TpvInt32;
     LastYCoordinateIndex:=CurrentYCoordinateIndex;
     inc(CurrentYCoordinateIndex);
    end;
+   FinalizeNeighbourTriangleInformation;
+  end;
+  procedure OutputTriangles;
+  var TriangleIndex,CountBoundaryEdges,EdgeIndex,ObjectMode,p0,p1:TpvInt32;
+      Triangle:PpvCanvasShapeCacheTriangle;
+      UniquePoints:array[0..2] of PpvCanvasShapeCacheSegmentUniquePoint;
+      Points:array[0..2] of TpvVector2;
+      Center:TpvVector2;
+      MetaInfo:TpvVector4;
+  begin
+   for TriangleIndex:=0 to fCountCacheTriangles-1 do begin
+    Triangle:=@fCacheTriangles[TriangleIndex];
+    UniquePoints[0]:=@fCacheSegmentUniquePoints[Triangle^.Points[0]];
+    UniquePoints[1]:=@fCacheSegmentUniquePoints[Triangle^.Points[1]];
+    UniquePoints[2]:=@fCacheSegmentUniquePoints[Triangle^.Points[2]];
+    Points[0]:=TpvVector2.Create(UniquePoints[0]^.Point.x,UniquePoints[0]^.Point.y);
+    Points[1]:=TpvVector2.Create(UniquePoints[1]^.Point.x,UniquePoints[1]^.Point.y);
+    Points[2]:=TpvVector2.Create(UniquePoints[2]^.Point.x,UniquePoints[2]^.Point.y);
+    CountBoundaryEdges:=(ord(Triangle^.Triangles[0]<0) and 1)+
+                        (ord(Triangle^.Triangles[1]<0) and 1)+
+                        (ord(Triangle^.Triangles[2]<0) and 1);
+    Center:=(Points[0]+Points[1]+Points[2])/3.0;
+    if CountBoundaryEdges<2 then begin
+     if Triangle^.Triangles[0]>=0 then begin
+      EdgeIndex:=0;
+    end else if Triangle^.Triangles[1]>=0 then begin
+      EdgeIndex:=1;
+     end else if Triangle^.Triangles[2]>=0 then begin
+      EdgeIndex:=2;
+     end else begin
+      EdgeIndex:=-1;
+     end;
+     if EdgeIndex>=0 then begin
+      p0:=EdgeIndex;
+      p1:=p0+1;
+      if p1>2 then begin
+       p1:=0;
+      end;
+      MetaInfo.xy:=(Points[p0]-Points[p1]).Normalize;
+      MetaInfo.z:=-MetaInfo.xy.Dot(Points[p0]);
+      if (MetaInfo.xy.Dot(Center)+MetaInfo.z)>=0.0 then begin
+       MetaInfo.xy:=-MetaInfo.xy;
+      end;
+      MetaInfo.w:=0.0;
+      ObjectMode:=pcvvaomTriangleEdge;
+     end else begin
+      MetaInfo:=Vector4Origin;
+      ObjectMode:=pcvvaomSolid;
+     end;
+     BeginPart(3,3);
+     AddIndex(AddVertex(Points[0],0,MetaInfo));
+     AddIndex(AddVertex(Points[1],0,MetaInfo));
+     AddIndex(AddVertex(Points[2],0,MetaInfo));
+     EndPart;
+    end else begin
+     BeginPart(9,9);
+     for EdgeIndex:=0 to 2 do begin
+      p0:=EdgeIndex;
+      p1:=p0+1;
+      if p1>2 then begin
+       p1:=0;
+      end;
+      if EdgeIndex>=0 then begin
+       MetaInfo.xy:=(Points[p0]-Points[p1]).Normalize;
+       MetaInfo.z:=-MetaInfo.xy.Dot(Points[p0]);
+       if (MetaInfo.xy.Dot(Center)+MetaInfo.z)>=0.0 then begin
+        MetaInfo.xy:=-MetaInfo.xy;
+       end;
+       MetaInfo.w:=0.0;
+       ObjectMode:=pcvvaomTriangleEdge;
+      end else begin
+       MetaInfo:=Vector4Origin;
+       ObjectMode:=pcvvaomSolid;
+      end;
+      AddIndex(AddVertex(Center,ObjectMode,MetaInfo));
+      AddIndex(AddVertex(Points[p0],ObjectMode,MetaInfo));
+      AddIndex(AddVertex(Points[p1],ObjectMode,MetaInfo));
+     end;
+     EndPart;
+    end;
+   end;
   end;
  begin
   try
@@ -1998,8 +2215,8 @@ var CommandIndex:TpvInt32;
    SweepAndSplitSegmentsAtIntersections;
    CollectYCoordinates;
    SweepAndSplitSegmentsAtYCoordinates;
-   SweepAndGenerateQuadrilaterals;
-   // TODO: Quadrilaterals-postprocessing + Triangle-metainfo-postprocessing for edge signed distance dFdx/dFdy-based antialiasing
+   SweepAndGenerateTriangles;
+   OutputTriangles;
   except
    on e:EpvCanvasShape do begin
    end;
@@ -2010,6 +2227,7 @@ var CommandIndex:TpvInt32;
  end;
 begin
  Reset;
+ InitializeTriangleEdgeHashTable;
  InitializeSegmentUniquePointHashTable;
  fCacheFirstSegment:=-1;
  fCacheLastSegment:=-1;
