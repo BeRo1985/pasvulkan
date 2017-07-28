@@ -110,7 +110,7 @@ void main(void){
         break;      
       }
       case 0x03:{
-        // Distance to round line
+        // Distance to round line (polygon edge) 
         vec2 pa = inPosition.xy - inMetaInfo.xy, ba = inMetaInfo.zw - inMetaInfo.xy;
         color.a *= linearstep(0.0, -threshold, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - threshold);
         break;      

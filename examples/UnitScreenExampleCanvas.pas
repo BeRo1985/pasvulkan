@@ -701,6 +701,8 @@ begin
                                         1.0);
  fVulkanCanvas.DrawShape(fShapeCircle);
 
+ fVulkanCanvas.DrawFilledCircle(fVulkanCanvas.Width*0.9375,fVulkanCanvas.Height-(fVulkanCanvas.Width*0.0625),fVulkanCanvas.Width*0.05);
+
  fVulkanCanvas.Stop;
 
  ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,ExampleApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Canvas');
