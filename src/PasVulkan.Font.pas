@@ -227,6 +227,12 @@ const VulkanFontDistanceFieldMagnitudeValue=VulkanFontDistanceFieldSpreadValue;
       VulkanFontTangentToleranceValue=VulkanFontScalar1Value/int64(1 shl 11);
       VulkanFontRasterizerToScreenScale=1.0/256.0;
 
+      CurveDistanceTolerance=0.125;
+
+      CurveDistanceToleranceSquared=CurveDistanceTolerance*CurveDistanceTolerance;
+
+      CurveRecursionLimit=32;
+
 type PpvFontPathSegmentSide=^TpvFontPathSegmentSide;
      TpvFontPathSegmentSide=
       (
@@ -381,9 +387,9 @@ type PpvFontPathSegmentSide=^TpvFontPathSegmentSide;
        procedure InitializeDistances;
        function AddLineToPathSegmentArray(var Contour:TpvFontPathContour;const Points:array of TpvFontDoublePrecisionPoint):TpvInt32;
        function AddQuadraticBezierCurveToPathSegmentArray(var Contour:TpvFontPathContour;const Points:array of TpvFontDoublePrecisionPoint):TpvInt32;
-       function AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TpvFontPathContour;const Points:array of TpvFontDoublePrecisionPoint;const Tolerance:TpvDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TpvInt32=32):TpvInt32;
+       function AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TpvFontPathContour;const Points:array of TpvFontDoublePrecisionPoint):TpvInt32;
        function AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(var Contour:TpvFontPathContour;const Points:array of TpvFontDoublePrecisionPoint):TpvInt32;
-       function AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TpvFontPathContour;const Points:array of TpvFontDoublePrecisionPoint;const Tolerance:TpvDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TpvInt32=32):TpvInt32;
+       function AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TpvFontPathContour;const Points:array of TpvFontDoublePrecisionPoint):TpvInt32;
        function CubeRoot(Value:TpvDouble):TpvDouble;
        function CalculateNearestPointForQuadraticBezierCurve(const PathSegment:TpvFontPathSegment;const XFormPoint:TpvFontDoublePrecisionPoint):TpvDouble;
        procedure PrecomputationForRow(out RowData:TpvFontRowData;const PathSegment:TpvFontPathSegment;const PointLeft,PointRight:TpvFontDoublePrecisionPoint);
@@ -838,7 +844,7 @@ begin
  end;
 end;
 
-function TpvFontDataGenerator.AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TpvFontPathContour;const Points:array of TpvFontDoublePrecisionPoint;const Tolerance:TpvDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TpvInt32=32):TpvInt32;
+function TpvFontDataGenerator.AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TpvFontPathContour;const Points:array of TpvFontDoublePrecisionPoint):TpvInt32;
 var LastPoint:TpvFontDoublePrecisionPoint;
  procedure LineToPointAt(const Point:TpvFontDoublePrecisionPoint);
  begin
@@ -846,7 +852,7 @@ var LastPoint:TpvFontDoublePrecisionPoint;
   LastPoint:=Point;
  end;
  procedure Recursive(const x1,y1,x2,y2,x3,y3:TpvDouble;const Level:TpvInt32);
- var x12,y12,x23,y23,x123,y123,mx,my,d:TpvDouble;
+ var x12,y12,x23,y23,x123,y123,dx,dy:TpvDouble;
      Point:TpvFontDoublePrecisionPoint;
  begin
   x12:=(x1+x2)*0.5;
@@ -855,16 +861,17 @@ var LastPoint:TpvFontDoublePrecisionPoint;
   y23:=(y2+y3)*0.5;
   x123:=(x12+x23)*0.5;
   y123:=(y12+y23)*0.5;
-  mx:=(x1+x3)*0.5;
-  my:=(y1+y3)*0.5;
-  d:=abs(mx-x123)+abs(my-y123);
-  if (Level>MaxLevel) or (d<Tolerance) then begin
-   Point.x:=x123;
-   Point.y:=y123;
+  dx:=x3-x1;
+  dy:=y3-y1;
+  if (Level>CurveRecursionLimit) or
+     ((Level>0) and
+      (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared))) then begin
+   Point.x:=x3;
+   Point.y:=y3;
    LineToPointAt(Point);
   end else begin
-   Recursive(x1,y1,x12,y12,x123,y123,level+1);
-   Recursive(x123,y123,x23,y23,x3,y3,level+1);
+   Recursive(x1,y1,x12,y12,x123,y123,Level+1);
+   Recursive(x123,y123,x23,y23,x3,y3,Level+1);
   end;
  end;
 begin
@@ -1097,7 +1104,7 @@ begin
  CubicCurveToTangent(Points[0],Points[1],Points[2],Points[3]);
 end;
 
-function TpvFontDataGenerator.AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TpvFontPathContour;const Points:array of TpvFontDoublePrecisionPoint;const Tolerance:TpvDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TpvInt32=32):TpvInt32;
+function TpvFontDataGenerator.AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(var Contour:TpvFontPathContour;const Points:array of TpvFontDoublePrecisionPoint):TpvInt32;
 var LastPoint:TpvFontDoublePrecisionPoint;
  procedure LineToPointAt(const Point:TpvFontDoublePrecisionPoint);
  begin
@@ -1105,7 +1112,7 @@ var LastPoint:TpvFontDoublePrecisionPoint;
   LastPoint:=Point;
  end;
  procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TpvDouble;const Level:TpvInt32);
- var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,mx,my,d:TpvDouble;
+ var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,dx,dy:TpvDouble;
      Point:TpvFontDoublePrecisionPoint;
  begin
   x12:=(x1+x2)*0.5;
@@ -1120,12 +1127,14 @@ var LastPoint:TpvFontDoublePrecisionPoint;
   y234:=(y23+y34)*0.5;
   x1234:=(x123+x234)*0.5;
   y1234:=(y123+y234)*0.5;
-  mx:=(x1+x4)*0.5;
-  my:=(y1+y4)*0.5;
-  d:=abs(mx-x1234)+abs(my-y1234);
-  if (Level>MaxLevel) or (d<Tolerance) then begin
-   Point.x:=x1234;
-   Point.y:=y1234;
+  dx:=x4-x1;
+  dy:=y4-y1;
+  if (Level>CurveRecursionLimit) or
+     ((Level>0) and
+      (sqr(abs(((x2-x4)*dy)-((y2-y4)*dx))+
+           abs(((x3-x4)*dy)-((y3-y4)*dx)))<((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared))) then begin
+   Point.x:=x4;
+   Point.y:=y4;
    LineToPointAt(Point);
   end else begin
    Recursive(x1,y1,x12,y12,x123,y123,x1234,y1234,Level+1);
@@ -1942,7 +1951,7 @@ var ContourIndex,PathSegmentIndex,CountPathSegments:TpvInt32;
   PointInPolygonPathSegment^.Points[0]:=p0;
   PointInPolygonPathSegment^.Points[1]:=p1;
  end;
- procedure AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(const p0,p1,p2:TpvFontDoublePrecisionPoint;const Tolerance:TpvDouble=VulkanFontRasterizerToScreenScale;const MaxLevel:TpvInt32=32);
+ procedure AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(const p0,p1,p2:TpvFontDoublePrecisionPoint);
  var LastPoint:TpvFontDoublePrecisionPoint;
   procedure LineToPointAt(const Point:TpvFontDoublePrecisionPoint);
   begin
@@ -1950,7 +1959,7 @@ var ContourIndex,PathSegmentIndex,CountPathSegments:TpvInt32;
    LastPoint:=Point;
   end;
   procedure Recursive(const x1,y1,x2,y2,x3,y3:TpvDouble;const Level:TpvInt32);
-  var x12,y12,x23,y23,x123,y123,mx,my,d:TpvDouble;
+  var x12,y12,x23,y23,x123,y123,dx,dy:TpvDouble;
       Point:TpvFontDoublePrecisionPoint;
   begin
    x12:=(x1+x2)*0.5;
@@ -1959,16 +1968,17 @@ var ContourIndex,PathSegmentIndex,CountPathSegments:TpvInt32;
    y23:=(y2+y3)*0.5;
    x123:=(x12+x23)*0.5;
    y123:=(y12+y23)*0.5;
-   mx:=(x1+x3)*0.5;
-   my:=(y1+y3)*0.5;
-   d:=abs(mx-x123)+abs(my-y123);
-   if (Level>MaxLevel) or (d<Tolerance) then begin
-    Point.x:=x123;
-    Point.y:=y123;
+   dx:=x3-x1;
+   dy:=y3-y1;
+   if (Level>CurveRecursionLimit) or
+      ((Level>0) and
+       (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared))) then begin
+    Point.x:=x3;
+    Point.y:=y3;
     LineToPointAt(Point);
    end else begin
-    Recursive(x1,y1,x12,y12,x123,y123,level+1);
-    Recursive(x123,y123,x23,y23,x3,y3,level+1);
+    Recursive(x1,y1,x12,y12,x123,y123,Level+1);
+    Recursive(x123,y123,x23,y23,x3,y3,Level+1);
    end;
   end;
  begin

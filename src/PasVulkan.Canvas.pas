@@ -643,13 +643,10 @@ const pcvvaomSolid=0;
       pcvvaomRoundLineCapCircle=2;
       pcvvaomRoundLine=3;
 
-      CurveDistanceEpsilon=1e-30;
-      CurveCollinearityEpsilon=1e-30;
-      CurveAngleToleranceEpsilon=1e-2;
       CurveDistanceTolerance=0.5;
+
       CurveDistanceToleranceSquared=CurveDistanceTolerance*CurveDistanceTolerance;
-      CurveAngleTolerance=0.0;
-      CurveCuspLimit=0;
+
       CurveRecursionLimit=32;
 
 constructor TpvCanvasPath.Create;
@@ -1372,7 +1369,7 @@ var StartPoint,LastPoint:TpvVector2;
  end;
  procedure StrokeQuadraticCurveTo(const aC0,aA0:TpvVector2;const Tolerance:TpvDouble=1.0/16.0;const MaxLevel:TpvInt32=32);
   procedure Recursive(const x1,y1,x2,y2,x3,y3:TpvFloat;const Level:TpvInt32);
-  var x12,y12,x23,y23,x123,y123,mx,my,d:TpvFloat;
+  var x12,y12,x23,y23,x123,y123,dx,dy:TpvFloat;
       Point:TpvVector2;
   begin
    x12:=(x1+x2)*0.5;
@@ -1381,12 +1378,13 @@ var StartPoint,LastPoint:TpvVector2;
    y23:=(y2+y3)*0.5;
    x123:=(x12+x23)*0.5;
    y123:=(y12+y23)*0.5;
-   mx:=(x1+x3)*0.5;
-   my:=(y1+y3)*0.5;
-   d:=abs(mx-x123)+abs(my-y123);
-   if (Level>MaxLevel) or (d<Tolerance) then begin
-    Point.x:=x123;
-    Point.y:=y123;
+   dx:=x3-x1;
+   dy:=y3-y1;
+   if (Level>CurveRecursionLimit) or
+      ((Level>0) and
+       (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared))) then begin
+    Point.x:=x3;
+    Point.y:=y3;
     StrokeLineTo(Point);
    end else begin
     Recursive(x1,y1,x12,y12,x123,y123,level+1);
@@ -1400,7 +1398,7 @@ var StartPoint,LastPoint:TpvVector2;
  procedure StrokeCubicCurveTo(const aC0,aC1,aA0:TpvVector2);
   procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TpvDouble;const Level:TpvInt32);
   const CaseTable:array[boolean,boolean] of TpvInt32=((0,1),(2,3));
-  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,dx,dy,mx,my,d,d2,d3:TpvDouble;
+  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,dx,dy:TpvDouble;
       Point:TpvVector2;
   begin
    x12:=(x1+x2)*0.5;
@@ -1417,156 +1415,12 @@ var StartPoint,LastPoint:TpvVector2;
    y1234:=(y123+y234)*0.5;
    dx:=x4-x1;
    dy:=y4-y1;
-   d2:=abs(((x2-x4)*dy)-((y2-y4)*dx));
-   d3:=abs(((x3-x4)*dy)-((y3-y4)*dx));
-   case CaseTable[d2>CurveCollinearityEpsilon,d3>CurveCollinearityEpsilon] of
-    0:begin
-     d:=sqr(dx)+sqr(dy);
-     if IsZero(d) then begin
-      d2:=sqr(x2-x1)+sqr(y2-y1);
-      d3:=sqr(x2-x3)+sqr(y4-y3);
-     end else begin
-      d:=1.0/d;
-      d2:=(((x2-x1)*dx)+((y2-y1)*dy))*d;
-      d3:=(((x3-x1)*dx)+((y3-y1)*dy))*d;
-      if ((d2>0.0) and (d2<1.0)) and ((d3>0.0) and (d3<1.0)) then begin
-      end else begin
-       if d2<=0.0 then begin
-        d2:=sqr(x2-x1)+sqr(y2-y1);
-       end else if d2>=1.0 then begin
-        d2:=sqr(x2-x4)+sqr(y2-y4);
-       end else begin
-        d2:=sqr(x2-(x1+(dx*d2)))+sqr(y2-(y1+(dy*d2)));
-       end;
-       if d3<=0.0 then begin
-        d3:=sqr(x3-x1)+sqr(y3-y1);
-       end else if d2>=1.0 then begin
-        d3:=sqr(x3-x4)+sqr(y3-y4);
-       end else begin
-        d3:=sqr(x3-(x1+(dx*d3)))+sqr(y3-(y1+(dy*d3)));
-       end;
-      end;
-      if d2>d3 then begin
-       if d2<CurveDistanceToleranceSquared then begin
-        Point.x:=x2;
-        Point.y:=y2;
-        StrokeLineTo(Point);
-        exit;
-       end;
-      end else begin
-       if d3<CurveDistanceToleranceSquared then begin
-        Point.x:=x3;
-        Point.y:=y3;
-        StrokeLineTo(Point);
-        exit;
-       end;
-      end;
-     end;
-    end;
-    1:begin
-     if sqr(d3)<=((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared) then begin
-      if CurveAngleTolerance<CurveAngleToleranceEpsilon then begin
-       Point.x:=x23;
-       Point.y:=y23;
-       StrokeLineTo(Point);
-       exit;
-      end else begin
-       d:=abs(ArcTan2(y4-y3,x4-x3)-ArcTan2(y3-y2,x3-x2));
-       if d>=PI then begin
-        d:=TwoPI-d;
-       end;
-       if d<CurveAngleTolerance then begin
-        Point.x:=x2;
-        Point.y:=y2;
-        StrokeLineTo(Point);
-        Point.x:=x3;
-        Point.y:=y3;
-        StrokeLineTo(Point);
-        exit;
-       end else if (d>CurveCuspLimit) and not IsZero(CurveCuspLimit) then begin
-        Point.x:=x3;
-        Point.y:=y3;
-        StrokeLineTo(Point);
-        exit;
-       end;
-      end;
-     end;
-    end;
-    2:begin
-     if sqr(d2)<=((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared) then begin
-      if CurveAngleTolerance<CurveAngleToleranceEpsilon then begin
-       Point.x:=x23;
-       Point.y:=y23;
-       StrokeLineTo(Point);
-       exit;
-      end else begin
-       d:=abs(ArcTan2(y3-y2,x3-x2)-ArcTan2(y2-y1,x2-x1));
-       if d>=PI then begin
-        d:=TwoPI-d;
-       end;
-       if d<CurveAngleTolerance then begin
-        Point.x:=x2;
-        Point.y:=y2;
-        StrokeLineTo(Point);
-        Point.x:=x3;
-        Point.y:=y3;
-        StrokeLineTo(Point);
-        exit;
-       end else if (d>CurveCuspLimit) and not IsZero(CurveCuspLimit) then begin
-        Point.x:=x2;
-        Point.y:=y2;
-        StrokeLineTo(Point);
-        exit;
-       end;
-      end;
-     end;
-    end;
-    3:begin
-     if sqr(d2+d3)<=((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared) then begin
-      if CurveAngleTolerance<CurveAngleToleranceEpsilon then begin
-       Point.x:=x23;
-       Point.y:=y23;
-       StrokeLineTo(Point);
-       exit;
-      end else begin
-       d:=ArcTan2(y3-y2,x3-x2);
-       d2:=abs(d-ArcTan2(y2-y1,x2-x1));
-       d3:=abs(ArcTan2(y4-y3,x4-x3)-d);
-       if d2>=PI then begin
-        d2:=TwoPI-d2;
-       end;
-       if d3>=PI then begin
-        d3:=TwoPI-d3;
-       end;
-       if (d2+d3)<CurveAngleTolerance then begin
-        Point.x:=x23;
-        Point.y:=y23;
-        StrokeLineTo(Point);
-        exit;
-       end else if CurveCuspLimit<>0.0 then begin
-        if d2>CurveCuspLimit then begin
-         Point.x:=x2;
-         Point.y:=y2;
-         StrokeLineTo(Point);
-         exit;
-        end;
-        if d3>CurveCuspLimit then begin
-         Point.x:=x3;
-         Point.y:=y3;
-         StrokeLineTo(Point);
-         exit;
-        end;
-       end;
-      end;
-     end;
-    end;
-   end;
-   mx:=(x1+x4)*0.5;
-   my:=(y1+y4)*0.5;
-   d:=abs(mx-x1234)+abs(my-y1234);
-   if (Level>CurveRecursionLimit) or (d<CurveDistanceToleranceSquared) then begin
-    Point.x:=x1234;
-    Point.y:=y1234;
+   if (Level>CurveRecursionLimit) or
+      ((Level>0) and
+       (sqr(abs(((x2-x4)*dy)-((y2-y4)*dx))+
+            abs(((x3-x4)*dy)-((y3-y4)*dx)))<((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared))) then begin
+    Point.x:=x4;
+    Point.y:=y4;
     StrokeLineTo(Point);
    end else begin
     Recursive(x1,y1,x12,y12,x123,y123,x1234,y1234,Level+1);
@@ -1764,7 +1618,7 @@ var CommandIndex,LastLinePoint:TpvInt32;
  end;
  procedure FillQuadraticCurveTo(const aC0,aA0:TpvVector2;const Tolerance:TpvDouble=1.0/16.0;const MaxLevel:TpvInt32=32);
   procedure Recursive(const x1,y1,x2,y2,x3,y3:TpvFloat;const Level:TpvInt32);
-  var x12,y12,x23,y23,x123,y123,mx,my,d:TpvFloat;
+  var x12,y12,x23,y23,x123,y123,dx,dy:TpvFloat;
       Point:TpvVector2;
   begin
    x12:=(x1+x2)*0.5;
@@ -1773,10 +1627,11 @@ var CommandIndex,LastLinePoint:TpvInt32;
    y23:=(y2+y3)*0.5;
    x123:=(x12+x23)*0.5;
    y123:=(y12+y23)*0.5;
-   mx:=(x1+x3)*0.5;
-   my:=(y1+y3)*0.5;
-   d:=abs(mx-x123)+abs(my-y123);
-   if (Level>MaxLevel) or (d<Tolerance) then begin
+   dx:=x3-x1;
+   dy:=y3-y1;
+   if (Level>CurveRecursionLimit) or
+      ((Level>0) and
+       (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared))) then begin
     Point.x:=x123;
     Point.y:=y123;
     FillLineTo(Point);
@@ -1789,9 +1644,9 @@ var CommandIndex,LastLinePoint:TpvInt32;
   Recursive(LastPoint.x,LastPoint.y,aC0.x,aC0.y,aA0.x,aA0.y,0);
   FillLineTo(aA0);
  end;
- procedure FillCubicCurveTo(const aC0,aC1,aA0:TpvVector2;const Tolerance:TpvDouble=1.0/16.0;const MaxLevel:TpvInt32=32);
+ procedure FillCubicCurveTo(const aC0,aC1,aA0:TpvVector2);
   procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TpvDouble;const Level:TpvInt32);
-  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,mx,my,d:TpvDouble;
+  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,dx,dy:TpvDouble;
       Point:TpvVector2;
   begin
    x12:=(x1+x2)*0.5;
@@ -1806,12 +1661,14 @@ var CommandIndex,LastLinePoint:TpvInt32;
    y234:=(y23+y34)*0.5;
    x1234:=(x123+x234)*0.5;
    y1234:=(y123+y234)*0.5;
-   mx:=(x1+x4)*0.5;
-   my:=(y1+y4)*0.5;
-   d:=abs(mx-x1234)+abs(my-y1234);
-   if (Level>MaxLevel) or (d<Tolerance) then begin
-    Point.x:=x1234;
-    Point.y:=y1234;
+   dx:=x4-x1;
+   dy:=y4-y1;
+   if (Level>CurveRecursionLimit) or
+      ((Level>0) and
+       (sqr(abs(((x2-x4)*dy)-((y2-y4)*dx))+
+            abs(((x3-x4)*dy)-((y3-y4)*dx)))<((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared))) then begin
+    Point.x:=x4;
+    Point.y:=y4;
     FillLineTo(Point);
    end else begin
     Recursive(x1,y1,x12,y12,x123,y123,x1234,y1234,Level+1);
