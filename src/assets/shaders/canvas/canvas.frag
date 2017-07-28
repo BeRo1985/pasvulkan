@@ -27,6 +27,34 @@ TEMPLATE_LINEARSTEP(vec4)
 
 const float SQRT_0_DOT_5 = sqrt(0.5);
 
+float sdEllipse(vec2 p, in vec2 ab){
+  float d;
+  if(ab.x == ab.y){
+    d = length(p) - ab.x;
+  }else{  
+    // iq's ellipse distance function in a reformatted form
+    p = abs(p); 
+    if(p.x > p.y){
+      p = p.yx; 
+      ab = ab.yx; 
+    }	
+    float l = (ab.y * ab.y) - (ab.x * ab.x), m = (ab.x * p.x) / l, n = (ab.y * p.y) / l, m2 = m * m, n2 = n * n, 
+          c = ((m2 + n2) - 1.0) / 3.0, c3 = c * c  * c, q = c3 + ((m2 * n2) * 2.0), d = c3 + (m2 * n2), g = m + (m * n2),
+          co;
+    if(d < 0.0){
+      float p = acos(q / c3) / 3.0, s = cos(p), t = sin(p) * sqrt(3.0), rx = sqrt((-(c*(s + t + 2.0))) + m2), ry = sqrt((-(c * ((s - t) + 2.0))) + m2);
+      co = (((ry + (sign(l) * rx)) + (abs(g) / (rx * ry))) - m) * 0.5;
+    }else{
+      float h = 2.0 * m * n * sqrt(d), s = sign(q + h) * pow(abs(q + h), 1.0/3.0), u = sign(q - h) * pow(abs(q-h), 1.0 / 3.0), 
+            rx = (((-s) - u) - (c * 4.0)) + (2.0 * m2), ry = (s - u) * sqrt(3.0), rm = length(vec2(rx, ry)), p = ry / sqrt(rm - rx);
+      co = ((p + ((2.0*g) / rm)) - m) * 0.5;
+    }
+    vec2 r = vec2(ab.x * co, ab.y * sqrt(1.0 - co*co));
+    d = length(r - p) * sign(p.y - r.y);
+  }
+  return d;
+}
+
 void main(void){
   vec4 color;
 #ifdef NO_TEXTURE
@@ -85,6 +113,22 @@ void main(void){
         // Distance to round line
         vec2 pa = inPosition.xy - inMetaInfo.xy, ba = inMetaInfo.zw - inMetaInfo.xy;
         color.a *= linearstep(0.0, -threshold, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - threshold);
+        break;      
+      }
+      case 0x04:{
+        // Distance to circle       
+        color.a *= linearstep(0.0, -threshold, length(inPosition.xy - inMetaInfo.xy) - inMetaInfo.z);
+        break;      
+      }
+      case 0x05:{
+        // Distance to ellipse
+        color.a *= linearstep(0.0, -threshold, sdEllipse(inPosition.xy - inMetaInfo.xy, inMetaInfo.zw));
+        break;      
+      }
+      case 0x06:{
+        // Distance to rectangle
+        vec2 d = abs(inPosition.xy - inMetaInfo.xy) - inMetaInfo.zw;
+        color.a *= linearstep(0.0, -threshold, min(max(d.x, d.y), 0.0) + length(max(d, 0.0)));
         break;      
       }
     }
