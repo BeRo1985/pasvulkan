@@ -677,6 +677,15 @@ begin
  fVulkanCanvas.EndPath;
  fVulkanCanvas.Pop;
 
+ fVulkanCanvas.Push;
+ fVulkanCanvas.ModelMatrix:=TpvMatrix3x3.CreateTranslation(fVulkanCanvas.Width*0.25,fVulkanCanvas.Height*0.0);
+ fVulkanCanvas.LineWidth:=4.0;
+ fVulkanCanvas.BeginPath;
+ fVulkanCanvas.Ellipse(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height*0.125,fVulkanCanvas.Width*0.1,fVulkanCanvas.Height*0.1);
+ fVulkanCanvas.Stroke;
+ fVulkanCanvas.EndPath;
+ fVulkanCanvas.Pop;
+
  fVulkanCanvas.Stop;
 
  ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,ExampleApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Canvas');
