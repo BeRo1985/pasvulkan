@@ -16,6 +16,14 @@ layout(binding = 0) uniform sampler2D uTexture;
 
 layout(location = 0) out vec4 outFragColor;
 
+#define TEMPLATE_LINEARSTEP(DATATYPE) \
+  DATATYPE linearstep(DATATYPE edge0, DATATYPE edge1, DATATYPE value){ \
+    return clamp((value - edge0) / (edge1 - edge0), DATATYPE(0.0), DATATYPE(1.0)); \
+  }
+
+TEMPLATE_LINEARSTEP(float)  
+TEMPLATE_LINEARSTEP(vec4)  
+
 void main(void){
   vec4 color;
 #ifdef NO_TEXTURE
@@ -36,8 +44,8 @@ void main(void){
 #else
     #define ADJUST_TEXCOORD(uv) uv
 #endif
-      color = vec4(vec3(1.0), clamp((smoothstep(width.x, width.y, center) + 
-                                                dot(smoothstep(width.xxxx, 
+      color = vec4(vec3(1.0), clamp((linearstep(width.x, width.y, center) + 
+                                                dot(linearstep(width.xxxx, 
                                                                width.yyyy,
                                                                vec4(textureLod(uTexture, ADJUST_TEXCOORD(buv.xy), 0.0).w,
                                                                     textureLod(uTexture, ADJUST_TEXCOORD(buv.zw), 0.0).w,
@@ -61,19 +69,19 @@ void main(void){
     switch(inState.y){
       case 0x01:{
         // Distance to line edge
-        color.a *= min(smoothstep(0.0, -threshold, -(inMetaInfo.z - abs(inMetaInfo.x))),  // To the line edges left and right
-                       smoothstep(0.0, -threshold, -(inMetaInfo.w - abs(inMetaInfo.y)))); // To the line ends
+        color.a *= min(linearstep(0.0, -threshold, -(inMetaInfo.z - abs(inMetaInfo.x))),  // To the line edges left and right
+                       linearstep(0.0, -threshold, -(inMetaInfo.w - abs(inMetaInfo.y)))); // To the line ends
         break;      
       }
       case 0x02:{
         // Distance to line round cap circle       
-        color.a *= smoothstep(0.0, -threshold, length(inPosition.xy - inMetaInfo.xy) - inMetaInfo.z);
+        color.a *= linearstep(0.0, -threshold, length(inPosition.xy - inMetaInfo.xy) - inMetaInfo.z);
         break;      
       }
       case 0x03:{
         // Distance to round line
         vec2 pa = inPosition.xy - inMetaInfo.xy, ba = inMetaInfo.zw - inMetaInfo.xy;
-        color.a *= smoothstep(0.0, -threshold, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - threshold);
+        color.a *= linearstep(0.0, -threshold, length(pa - (ba * (clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0)))) - threshold);
         break;      
       }
     }

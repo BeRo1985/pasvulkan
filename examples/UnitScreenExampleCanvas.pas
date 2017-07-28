@@ -687,6 +687,8 @@ begin
  if not assigned(fShapeCircle) then begin
   fVulkanCanvas.Push;
   fVulkanCanvas.LineWidth:=10.0;
+  fVulkanCanvas.LineCap:=pvclcButt;
+  fVulkanCanvas.LineJoin:=pvcljBevel;
   fVulkanCanvas.BeginPath;
   fVulkanCanvas.Circle(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height-(fVulkanCanvas.Width*0.125),fVulkanCanvas.Width*0.1);
   fShapeCircle:=fVulkanCanvas.GetStrokeShape;
