@@ -12,6 +12,15 @@ layout (binding = 1) uniform sampler2DArray uSamplerFont;
 
 layout (location = 0) out vec4 outFragColor;
 
+// Define our own linearstep function for to map distance coverage, when we have sRGB output. 
+// Smoothstep's nonlinear response is actually doing some fake-gamma, so it ends up over-correcting when the output is already gamma-correct.
+#define TEMPLATE_LINEARSTEP(DATATYPE) \
+  DATATYPE linearstep(DATATYPE edge0, DATATYPE edge1, DATATYPE value){ \
+    return clamp((value - edge0) / (edge1 - edge0), DATATYPE(0.0), DATATYPE(1.0)); \
+  }
+TEMPLATE_LINEARSTEP(float)  
+TEMPLATE_LINEARSTEP(vec4)  
+
 // SDF with 5 point tap tent filter-based supersampling
 
 const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0),
@@ -23,8 +32,8 @@ void main(void){
   vec4 buv = inUV.xyxy + (vec2((dFdx(inUV.xy) + dFdy(inUV.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
   outFragColor = mix(inBackgroundColor, 
                      inForegroundColor, 
-                     clamp((smoothstep(width, -width, center - 0.5) + 
-                            dot(smoothstep(vec4(width), 
+                     clamp((linearstep(width, -width, center - 0.5) + 
+                            dot(linearstep(vec4(width), 
                                            vec4(-width), 
                                            vec4(textureLod(uSamplerFont, vec3(buv.xy, inUV.z), 0.0).r,
                                                 textureLod(uSamplerFont, vec3(buv.zw, inUV.z), 0.0).r,
