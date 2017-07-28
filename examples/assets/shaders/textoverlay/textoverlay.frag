@@ -23,20 +23,21 @@ TEMPLATE_LINEARSTEP(vec4)
 
 // SDF with 5 point tap tent filter-based supersampling
 
-const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0),
+const float SQRT_0_DOT_5 = sqrt(0.5),
+            HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0),
             ONE_BY_THREE = 1.0 / 3.0;
  
 void main(void){
-  float center = textureLod(uSamplerFont, inUV, 0.0).r,
-        width = abs(dFdx(center)) + abs(dFdy(center)); // ubo.uThreshold * 0.25;
+  float center = textureLod(uSamplerFont, inUV, 0.0).r;
+  vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
   vec4 buv = inUV.xyxy + (vec2((dFdx(inUV.xy) + dFdy(inUV.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
-  outFragColor = mix(inBackgroundColor, 
-                     inForegroundColor, 
-                     clamp((linearstep(width, -width, center - 0.5) + 
-                            dot(linearstep(vec4(width), 
-                                           vec4(-width), 
+  outFragColor = mix(inForegroundColor, 
+                     inBackgroundColor, 
+                     clamp((linearstep(width.x, width.y, center) + 
+                            dot(linearstep(width.xxxx, 
+                                           width.yyyy, 
                                            vec4(textureLod(uSamplerFont, vec3(buv.xy, inUV.z), 0.0).r,
                                                 textureLod(uSamplerFont, vec3(buv.zw, inUV.z), 0.0).r,
                                                 textureLod(uSamplerFont, vec3(buv.xw, inUV.z), 0.0).r,
-                                                textureLod(uSamplerFont, vec3(buv.zy, inUV.z), 0.0).r) - vec4(0.5)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0));
+                                                textureLod(uSamplerFont, vec3(buv.zy, inUV.z), 0.0).r)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0));
 }

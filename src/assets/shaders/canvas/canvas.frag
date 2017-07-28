@@ -25,6 +25,8 @@ layout(location = 0) out vec4 outFragColor;
 TEMPLATE_LINEARSTEP(float)  
 TEMPLATE_LINEARSTEP(vec4)  
 
+const float SQRT_0_DOT_5 = sqrt(0.5);
+
 void main(void){
   vec4 color;
 #ifdef NO_TEXTURE
@@ -38,7 +40,7 @@ void main(void){
 #else
       float center = textureLod(uTexture, inTexCoord.xy, 0.0).w;
 #endif
-      vec2 width = vec2(0.5) + (vec2(clamp(abs(dFdx(center)) + abs(dFdy(center)), 0.0, 1.0 / 1.0)) * vec2(-1.0, 1.0));
+      vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
       vec4 buv = inTexCoord.xyxy + (vec2((dFdx(inTexCoord.xy) + dFdy(inTexCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
 #if defined(ATLAS_TEXTURE)
     #define ADJUST_TEXCOORD(uv) vec3(uv, inTexCoord.z)
@@ -66,7 +68,7 @@ void main(void){
   color *= inColor;
 #endif
   if(inState.y != 0){
-    float threshold = length(abs(dFdx(inPosition.xy)) + abs(dFdy(inPosition.xy)));
+    float threshold = length(abs(dFdx(inPosition.xy)) + abs(dFdy(inPosition.xy))) * SQRT_0_DOT_5;
     switch(inState.y){
       case 0x01:{
         // Distance to line edge
