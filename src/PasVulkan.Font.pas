@@ -231,7 +231,7 @@ const VulkanFontDistanceFieldMagnitudeValue=VulkanFontDistanceFieldSpreadValue;
 
       CurveTessellationToleranceSquared=CurveTessellationTolerance*CurveTessellationTolerance;
 
-      CurveRecursionLimit=32;
+      CurveRecursionLimit=16;
 
 type PpvFontPathSegmentSide=^TpvFontPathSegmentSide;
      TpvFontPathSegmentSide=

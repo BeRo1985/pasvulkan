@@ -650,7 +650,7 @@ const pcvvaomSolid=0;
       pcvvaomRoundLineCapCircle=2;
       pcvvaomRoundLine=3;
 
-      CurveRecursionLimit=32;
+      CurveRecursionLimit=16;
 
 constructor TpvCanvasPath.Create;
 begin
