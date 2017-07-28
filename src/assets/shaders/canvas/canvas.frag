@@ -16,11 +16,12 @@ layout(binding = 0) uniform sampler2D uTexture;
 
 layout(location = 0) out vec4 outFragColor;
 
+// Define our own linearstep function for to map distance coverage, when we have sRGB output. 
+// Smoothstep's nonlinear response is actually doing some fake-gamma, so it ends up over-correcting when the output is already gamma-correct.
 #define TEMPLATE_LINEARSTEP(DATATYPE) \
   DATATYPE linearstep(DATATYPE edge0, DATATYPE edge1, DATATYPE value){ \
     return clamp((value - edge0) / (edge1 - edge0), DATATYPE(0.0), DATATYPE(1.0)); \
   }
-
 TEMPLATE_LINEARSTEP(float)  
 TEMPLATE_LINEARSTEP(vec4)  
 
