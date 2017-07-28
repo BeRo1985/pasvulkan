@@ -227,9 +227,9 @@ const VulkanFontDistanceFieldMagnitudeValue=VulkanFontDistanceFieldSpreadValue;
       VulkanFontTangentToleranceValue=VulkanFontScalar1Value/int64(1 shl 11);
       VulkanFontRasterizerToScreenScale=1.0/256.0;
 
-      CurveDistanceTolerance=0.125;
+      CurveTessellationTolerance=0.125;
 
-      CurveDistanceToleranceSquared=CurveDistanceTolerance*CurveDistanceTolerance;
+      CurveTessellationToleranceSquared=CurveTessellationTolerance*CurveTessellationTolerance;
 
       CurveRecursionLimit=32;
 
@@ -865,7 +865,7 @@ var LastPoint:TpvFontDoublePrecisionPoint;
   dy:=y3-y1;
   if (Level>CurveRecursionLimit) or
      ((Level>0) and
-      (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared))) then begin
+      (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*CurveTessellationToleranceSquared))) then begin
    Point.x:=x3;
    Point.y:=y3;
    LineToPointAt(Point);
@@ -1132,7 +1132,7 @@ var LastPoint:TpvFontDoublePrecisionPoint;
   if (Level>CurveRecursionLimit) or
      ((Level>0) and
       (sqr(abs(((x2-x4)*dy)-((y2-y4)*dx))+
-           abs(((x3-x4)*dy)-((y3-y4)*dx)))<((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared))) then begin
+           abs(((x3-x4)*dy)-((y3-y4)*dx)))<((sqr(dx)+sqr(dy))*CurveTessellationToleranceSquared))) then begin
    Point.x:=x4;
    Point.y:=y4;
    LineToPointAt(Point);
@@ -1972,7 +1972,7 @@ var ContourIndex,PathSegmentIndex,CountPathSegments:TpvInt32;
    dy:=y3-y1;
    if (Level>CurveRecursionLimit) or
       ((Level>0) and
-       (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared))) then begin
+       (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*CurveTessellationToleranceSquared))) then begin
     Point.x:=x3;
     Point.y:=y3;
     LineToPointAt(Point);

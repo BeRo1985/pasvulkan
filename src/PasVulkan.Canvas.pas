@@ -166,6 +166,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasPathCommands=array of TpvCanvasPathCommand;
 
+     TpvCanvas=class;
+
      TpvCanvasPath=class(TPersistent)
       private
        fCommands:TpvCanvasPathCommands;
@@ -332,6 +334,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCountCacheYCoordinates:TpvInt32;
        fCacheFirstSegment:TpvInt32;
        fCacheLastSegment:TpvInt32;
+       fCurveTessellationTolerance:TpvDouble;
+       fCurveTessellationToleranceSquared:TpvDouble;
+       procedure InitializeCurveTessellationTolerance(const aState:TpvCanvasState;const aCanvas:TpvCanvas=nil);
        procedure BeginPart(const aCountVertices:TpvInt32=0;const aCountIndices:TpvInt32=0);
        procedure EndPart;
        function AddVertex(const Position:TpvVector2;const ObjectMode:TpvUInt8;const MetaInfo:TpvVector4;const Offset:TpvVector2):TpvInt32;
@@ -341,8 +346,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        constructor Create; reintroduce;
        destructor Destroy; override;
        procedure Reset;
-       procedure StrokeFromPath(const aPath:TpvCanvasPath;const aState:TpvCanvasState);
-       procedure FillFromPath(const aPath:TpvCanvasPath;const aState:TpvCanvasState);
+       procedure StrokeFromPath(const aPath:TpvCanvasPath;const aState:TpvCanvasState;const aCanvas:TpvCanvas=nil);
+       procedure FillFromPath(const aPath:TpvCanvasPath;const aState:TpvCanvasState;const aCanvas:TpvCanvas=nil);
      end;
 
      PpvCanvasVertex=^TpvCanvasVertex;
@@ -642,10 +647,6 @@ const pcvvaomSolid=0;
       pcvvaomLineEdge=1;
       pcvvaomRoundLineCapCircle=2;
       pcvvaomRoundLine=3;
-
-      CurveDistanceTolerance=0.5;
-
-      CurveDistanceToleranceSquared=CurveDistanceTolerance*CurveDistanceTolerance;
 
       CurveRecursionLimit=32;
 
@@ -957,6 +958,24 @@ begin
  end;
 end;
 
+procedure TpvCanvasShape.InitializeCurveTessellationTolerance(const aState:TpvCanvasState;const aCanvas:TpvCanvas=nil);
+var Scale,PixelRatio:TpvFloat;
+begin
+ Scale:=((sqrt(sqr(aState.fModelMatrix.RawComponents[0,0])+sqr(aState.fModelMatrix.RawComponents[0,1]))+
+          sqrt(sqr(aState.fModelMatrix.RawComponents[1,0])+sqr(aState.fModelMatrix.RawComponents[1,1])))*0.5)*
+        ((aState.fViewMatrix.Right.xyz.Length+aState.fViewMatrix.Up.xyz.Length)*0.5);
+ if assigned(aCanvas) then begin
+  Scale:=Scale*
+         (((aState.fProjectionMatrix.Right.xyz.Length+aState.fProjectionMatrix.Up.xyz.Length)*0.5)/
+          ((1.0/aCanvas.fWidth)+(1.0/aCanvas.fHeight)));
+  PixelRatio:=aCanvas.fWidth/aCanvas.fHeight;
+ end else begin
+  PixelRatio:=1.0;
+ end;
+ fCurveTessellationTolerance:=(0.25*Scale)/PixelRatio;
+ fCurveTessellationToleranceSquared:=sqr(fCurveTessellationTolerance);
+end;
+
 procedure TpvCanvasShape.Reset;
 begin
 
@@ -970,7 +989,7 @@ begin
 
 end;
 
-procedure TpvCanvasShape.StrokeFromPath(const aPath:TpvCanvasPath;const aState:TpvCanvasState);
+procedure TpvCanvasShape.StrokeFromPath(const aPath:TpvCanvasPath;const aState:TpvCanvasState;const aCanvas:TpvCanvas=nil);
 var StartPoint,LastPoint:TpvVector2;
  procedure StrokeAddPoint(const aP0:TpvVector2);
  var Index:TpvInt32;
@@ -1367,7 +1386,7 @@ var StartPoint,LastPoint:TpvVector2;
   StrokeAddPoint(aP0);
   LastPoint:=aP0;
  end;
- procedure StrokeQuadraticCurveTo(const aC0,aA0:TpvVector2;const Tolerance:TpvDouble=1.0/16.0;const MaxLevel:TpvInt32=32);
+ procedure StrokeQuadraticCurveTo(const aC0,aA0:TpvVector2);
   procedure Recursive(const x1,y1,x2,y2,x3,y3:TpvFloat;const Level:TpvInt32);
   var x12,y12,x23,y23,x123,y123,dx,dy:TpvFloat;
       Point:TpvVector2;
@@ -1382,7 +1401,7 @@ var StartPoint,LastPoint:TpvVector2;
    dy:=y3-y1;
    if (Level>CurveRecursionLimit) or
       ((Level>0) and
-       (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared))) then begin
+       (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*fCurveTessellationToleranceSquared))) then begin
     Point.x:=x3;
     Point.y:=y3;
     StrokeLineTo(Point);
@@ -1418,7 +1437,7 @@ var StartPoint,LastPoint:TpvVector2;
    if (Level>CurveRecursionLimit) or
       ((Level>0) and
        (sqr(abs(((x2-x4)*dy)-((y2-y4)*dx))+
-            abs(((x3-x4)*dy)-((y3-y4)*dx)))<((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared))) then begin
+            abs(((x3-x4)*dy)-((y3-y4)*dx)))<((sqr(dx)+sqr(dy))*fCurveTessellationToleranceSquared))) then begin
     Point.x:=x4;
     Point.y:=y4;
     StrokeLineTo(Point);
@@ -1442,6 +1461,7 @@ var CommandIndex:TpvInt32;
     Command:PpvCanvasPathCommand;
 begin
  Reset;
+ InitializeCurveTessellationTolerance(aState,aCanvas);
  for CommandIndex:=0 to aPath.fCountCommands-1 do begin
   Command:=@aPath.fCommands[CommandIndex];
   case Command^.CommandType of
@@ -1470,7 +1490,7 @@ begin
  result:=Sign(a-b);
 end;
 
-procedure TpvCanvasShape.FillFromPath(const aPath:TpvCanvasPath;const aState:TpvCanvasState);
+procedure TpvCanvasShape.FillFromPath(const aPath:TpvCanvasPath;const aState:TpvCanvasState;const aCanvas:TpvCanvas=nil);
 var CommandIndex,LastLinePoint:TpvInt32;
     Command:PpvCanvasPathCommand;
     StartPoint,LastPoint:TpvVector2;
@@ -1616,7 +1636,7 @@ var CommandIndex,LastLinePoint:TpvInt32;
   end;
   LastPoint:=aP0;
  end;
- procedure FillQuadraticCurveTo(const aC0,aA0:TpvVector2;const Tolerance:TpvDouble=1.0/16.0;const MaxLevel:TpvInt32=32);
+ procedure FillQuadraticCurveTo(const aC0,aA0:TpvVector2);
   procedure Recursive(const x1,y1,x2,y2,x3,y3:TpvFloat;const Level:TpvInt32);
   var x12,y12,x23,y23,x123,y123,dx,dy:TpvFloat;
       Point:TpvVector2;
@@ -1631,7 +1651,7 @@ var CommandIndex,LastLinePoint:TpvInt32;
    dy:=y3-y1;
    if (Level>CurveRecursionLimit) or
       ((Level>0) and
-       (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared))) then begin
+       (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*fCurveTessellationToleranceSquared))) then begin
     Point.x:=x123;
     Point.y:=y123;
     FillLineTo(Point);
@@ -1666,7 +1686,7 @@ var CommandIndex,LastLinePoint:TpvInt32;
    if (Level>CurveRecursionLimit) or
       ((Level>0) and
        (sqr(abs(((x2-x4)*dy)-((y2-y4)*dx))+
-            abs(((x3-x4)*dy)-((y3-y4)*dx)))<((sqr(dx)+sqr(dy))*CurveDistanceToleranceSquared))) then begin
+            abs(((x3-x4)*dy)-((y3-y4)*dx)))<((sqr(dx)+sqr(dy))*fCurveTessellationToleranceSquared))) then begin
     Point.x:=x4;
     Point.y:=y4;
     FillLineTo(Point);
@@ -2098,6 +2118,7 @@ var CommandIndex,LastLinePoint:TpvInt32;
  end;
 begin
  Reset;
+ InitializeCurveTessellationTolerance(aState,aCanvas);
  InitializeSegmentUniquePointHashTable;
  LastLinePoint:=-1;
  fCacheFirstSegment:=-1;
@@ -3611,13 +3632,13 @@ end;
 
 function TpvCanvas.Stroke:TpvCanvas;
 begin
- fShape.StrokeFromPath(fState.fPath,fState);
+ fShape.StrokeFromPath(fState.fPath,fState,self);
  result:=DrawShape(fShape);
 end;
 
 function TpvCanvas.Fill:TpvCanvas;
 begin
- fShape.FillFromPath(fState.fPath,fState);
+ fShape.FillFromPath(fState.fPath,fState,self);
  result:=DrawShape(fShape);
 end;
 
