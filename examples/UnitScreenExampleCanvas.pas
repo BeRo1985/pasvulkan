@@ -47,6 +47,7 @@ type TScreenExampleCanvas=class(TpvApplicationScreen)
        fVulkanSpriteSmiley0:TpvSprite;
        fVulkanSpriteAppIcon:TpvSprite;
        fVulkanSpriteDancer0:TpvSprite;
+       fShapeCircle:TpvCanvasShape;
        fReady:boolean;
        fSelectedIndex:TpvInt32;
        fStartY:TpvFloat;
@@ -121,10 +122,12 @@ begin
  fSelectedIndex:=-1;
  fReady:=false;
  fTime:=0.48;
+ fShapeCircle:=nil;
 end;
 
 destructor TScreenExampleCanvas.Destroy;
 begin
+ FreeAndNil(fShapeCircle);
  inherited Destroy;
 end;
 
@@ -224,6 +227,8 @@ begin
                            pvApplication.VulkanDevice.TransferQueue,
                            pvApplication.VulkanTransferCommandBuffers[0,0],
                            pvApplication.VulkanTransferCommandBufferFences[0,0]);
+
+ FreeAndNil(fShapeCircle);
 
 end;
 
@@ -342,6 +347,8 @@ begin
   FreeAndNil(fVulkanRenderCommandBuffers[SwapChainImageIndex]);
   fVulkanRenderCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
  end;
+
+ FreeAndNil(fShapeCircle);
 
 end;
 
@@ -677,14 +684,20 @@ begin
  fVulkanCanvas.EndPath;
  fVulkanCanvas.Pop;
 
- fVulkanCanvas.Push;
- fVulkanCanvas.ModelMatrix:=TpvMatrix3x3.CreateTranslation(fVulkanCanvas.Width*0.25,fVulkanCanvas.Height*0.0);
- fVulkanCanvas.LineWidth:=4.0;
- fVulkanCanvas.BeginPath;
- fVulkanCanvas.Ellipse(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height*0.125,fVulkanCanvas.Width*0.1,fVulkanCanvas.Height*0.1);
- fVulkanCanvas.Stroke;
- fVulkanCanvas.EndPath;
- fVulkanCanvas.Pop;
+ if not assigned(fShapeCircle) then begin
+  fVulkanCanvas.Push;
+  fVulkanCanvas.LineWidth:=10.0;
+  fVulkanCanvas.BeginPath;
+  fVulkanCanvas.Circle(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height-(fVulkanCanvas.Width*0.125),fVulkanCanvas.Width*0.1);
+  fShapeCircle:=fVulkanCanvas.GetStrokeShape;
+  fVulkanCanvas.EndPath;
+  fVulkanCanvas.Pop;
+ end;
+ fVulkanCanvas.Color:=TpvVector4.Create((sin((fTime*0.78)*pi*2.0)*0.5)+0.5,
+                                        (cos((fTime*0.65)*pi*2.0)*0.5)+0.5,
+                                        (sin((fTime*0.91)*pi*2.0)*0.5)+0.5,
+                                        1.0);
+ fVulkanCanvas.DrawShape(fShapeCircle);
 
  fVulkanCanvas.Stop;
 

@@ -605,6 +605,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function Stroke:TpvCanvas;
        function Fill:TpvCanvas;
       public
+       function GetStrokeShape:TpvCanvasShape;
+       function GetFillShape:TpvCanvasShape;
+      public
        property Viewport:PVkViewport read fPointerToViewport;
        property Color:TpvVector4 read GetColor write SetColor;
        property ProjectionMatrix:TpvMatrix4x4 read GetProjectionMatrix write SetProjectionMatrix;
@@ -3648,6 +3651,18 @@ function TpvCanvas.Fill:TpvCanvas;
 begin
  fShape.FillFromPath(fState.fPath,fState,self);
  result:=DrawShape(fShape);
+end;
+
+function TpvCanvas.GetStrokeShape:TpvCanvasShape;
+begin
+ result:=TpvCanvasShape.Create;
+ result.StrokeFromPath(fState.fPath,fState,self);
+end;
+
+function TpvCanvas.GetFillShape:TpvCanvasShape;
+begin
+ result:=TpvCanvasShape.Create;
+ result.FillFromPath(fState.fPath,fState,self);
 end;
 
 end.
