@@ -334,6 +334,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCountCacheYCoordinates:TpvInt32;
        fCacheFirstSegment:TpvInt32;
        fCacheLastSegment:TpvInt32;
+       fForcedCurveTessellationTolerance:TpvDouble;
        fCurveTessellationTolerance:TpvDouble;
        fCurveTessellationToleranceSquared:TpvDouble;
        procedure InitializeCurveTessellationTolerance(const aState:TpvCanvasState;const aCanvas:TpvCanvas=nil);
@@ -348,6 +349,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure Reset;
        procedure StrokeFromPath(const aPath:TpvCanvasPath;const aState:TpvCanvasState;const aCanvas:TpvCanvas=nil);
        procedure FillFromPath(const aPath:TpvCanvasPath;const aState:TpvCanvasState;const aCanvas:TpvCanvas=nil);
+       property ForcedCurveTessellationTolerance:TpvDouble read fForcedCurveTessellationTolerance write fForcedCurveTessellationTolerance;
      end;
 
      PpvCanvasVertex=^TpvCanvasVertex;
@@ -850,6 +852,8 @@ begin
  fCountCacheParts:=0;
  fCountCacheYCoordinates:=0;
 
+ fForcedCurveTessellationTolerance:=-1.0;
+
 end;
 
 destructor TpvCanvasShape.Destroy;
@@ -961,18 +965,22 @@ end;
 procedure TpvCanvasShape.InitializeCurveTessellationTolerance(const aState:TpvCanvasState;const aCanvas:TpvCanvas=nil);
 var Scale,PixelRatio:TpvFloat;
 begin
- Scale:=((sqrt(sqr(aState.fModelMatrix.RawComponents[0,0])+sqr(aState.fModelMatrix.RawComponents[0,1]))+
-          sqrt(sqr(aState.fModelMatrix.RawComponents[1,0])+sqr(aState.fModelMatrix.RawComponents[1,1])))*0.5)*
-        ((aState.fViewMatrix.Right.xyz.Length+aState.fViewMatrix.Up.xyz.Length)*0.5);
- if assigned(aCanvas) then begin
-  Scale:=Scale*
-         (((aState.fProjectionMatrix.Right.xyz.Length+aState.fProjectionMatrix.Up.xyz.Length)*0.5)/
-          ((1.0/aCanvas.fWidth)+(1.0/aCanvas.fHeight)));
-  PixelRatio:=aCanvas.fWidth/aCanvas.fHeight;
+ if fForcedCurveTessellationTolerance>0.0 then begin
+  fCurveTessellationTolerance:=fForcedCurveTessellationTolerance;
  end else begin
-  PixelRatio:=1.0;
+  Scale:=((sqrt(sqr(aState.fModelMatrix.RawComponents[0,0])+sqr(aState.fModelMatrix.RawComponents[0,1]))+
+           sqrt(sqr(aState.fModelMatrix.RawComponents[1,0])+sqr(aState.fModelMatrix.RawComponents[1,1])))*0.5)*
+         ((aState.fViewMatrix.Right.xyz.Length+aState.fViewMatrix.Up.xyz.Length)*0.5);
+  if assigned(aCanvas) then begin
+   Scale:=Scale*
+          (((aState.fProjectionMatrix.Right.xyz.Length+aState.fProjectionMatrix.Up.xyz.Length)*0.5)/
+           ((1.0/aCanvas.fWidth)+(1.0/aCanvas.fHeight)));
+   PixelRatio:=aCanvas.fWidth/aCanvas.fHeight;
+  end else begin
+   PixelRatio:=1.0;
+  end;
+  fCurveTessellationTolerance:=(0.5*Scale)/PixelRatio;
  end;
- fCurveTessellationTolerance:=(0.5*Scale)/PixelRatio;
  fCurveTessellationToleranceSquared:=sqr(fCurveTessellationTolerance);
 end;
 
