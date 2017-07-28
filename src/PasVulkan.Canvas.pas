@@ -242,7 +242,13 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      PpvCanvasShapeCacheLinePoint=^TpvCanvasShapeCacheLinePoint;
      TpvCanvasShapeCacheLinePoint=record
       Position:TpvVector2;
-      Middle:TpvVector2;
+      case boolean of
+       false:(
+        Middle:TpvVector2;
+       );
+       true:(
+        Last:TpvInt32;
+       );
      end;
 
      TpvCanvasShapeCacheLinePoints=array of TpvCanvasShapeCacheLinePoint;
@@ -261,17 +267,14 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      PpvCanvasShapeCacheSegment=^TpvCanvasShapeCacheSegment;
      TpvCanvasShapeCacheSegment=record
-      public
-       Previous:TpvInt32;
-       Next:TpvInt32;
-       Points:TpvCanvasShapeCacheSegmentTwoPoints;
-       AABBMin:TpvCanvasShapeCacheSegmentPoint;
-       AABBMax:TpvCanvasShapeCacheSegmentPoint;
+      Previous:TpvInt32;
+      Next:TpvInt32;
+      Points:TpvCanvasShapeCacheSegmentTwoPoints;
+      AABBMin:TpvCanvasShapeCacheSegmentPoint;
+      AABBMax:TpvCanvasShapeCacheSegmentPoint;
      end;
 
      TpvCanvasShapeCacheSegments=array of TpvCanvasShapeCacheSegment;
-
-     TpvCanvasShapeCacheSegmentIndices=array of TpvInt32;
 
      PpvCanvasShapeCacheSegmentUniquePoint=^TpvCanvasShapeCacheSegmentUniquePoint;
      TpvCanvasShapeCacheSegmentUniquePoint=record
@@ -1427,7 +1430,7 @@ begin
 end;
 
 procedure TpvCanvasShape.FillFromPath(const aPath:TpvCanvasPath;const aState:TpvCanvasState);
-var CommandIndex:TpvInt32;
+var CommandIndex,LastLinePoint:TpvInt32;
     Command:PpvCanvasPathCommand;
     StartPoint,LastPoint:TpvVector2;
  procedure InitializeSegmentUniquePointHashTable;
@@ -1489,22 +1492,19 @@ var CommandIndex:TpvInt32;
   Segment.AABBMax.x:=Max(p0^.x,p1^.x);
   Segment.AABBMax.y:=Max(p0^.y,p1^.y);
  end;
- procedure FillAddSegment(const aP0,aP1:TpvVector2);
+ procedure AddSegment(const aP0,aP1:TpvInt32); overload;
  var Index:TpvInt32;
      ShapeCacheSegment:PpvCanvasShapeCacheSegment;
  begin
-  if ((fCountCacheSegments=0) or
-      (fCacheSegmentUniquePoints[fCacheSegments[fCountCacheSegments-1].Points[1]].Point.x<>aP1.x) or
-      (fCacheSegmentUniquePoints[fCacheSegments[fCountCacheSegments-1].Points[1]].Point.y<>aP1.y)) and
-     (aP0<>aP1) then begin
+  if aP0<>aP1 then begin
    Index:=fCountCacheSegments;
    inc(fCountCacheSegments);
    if length(fCacheSegments)<fCountCacheSegments then begin
     SetLength(fCacheSegments,fCountCacheSegments*2);
    end;
    ShapeCacheSegment:=@fCacheSegments[Index];
-   ShapeCacheSegment^.Points[0]:=AddSegmentPoint(aP0);
-   ShapeCacheSegment^.Points[1]:=AddSegmentPoint(aP1);
+   ShapeCacheSegment^.Points[0]:=aP0;
+   ShapeCacheSegment^.Points[1]:=aP1;
    UpdateSegmentBoundingBox(ShapeCacheSegment^);
    if fCacheFirstSegment<0 then begin
     fCacheFirstSegment:=Index;
@@ -1517,14 +1517,62 @@ var CommandIndex:TpvInt32;
    fCacheLastSegment:=Index;
   end;
  end;
- procedure FillMoveTo(const aP0:TpvVector2);
+ procedure AddSegment(const aP0,aP1:TpvCanvasShapeCacheSegmentPoint); overload;
  begin
+  if (aP0.x<>aP1.x) or (aP0.y<>aP1.y) then begin
+   AddSegment(AddSegmentPoint(aP0),AddSegmentPoint(aP1));
+  end;
+ end;
+ procedure RemoveSegment(const aSegmentIndex:TpvInt32);
+ var PreviousSegmentIndex,NextSegmentIndex:TpvInt32;
+ begin
+  PreviousSegmentIndex:=fCacheSegments[aSegmentIndex].Previous;
+  NextSegmentIndex:=fCacheSegments[aSegmentIndex].Next;
+  if PreviousSegmentIndex>=0 then begin
+   fCacheSegments[PreviousSegmentIndex].Next:=NextSegmentIndex;
+  end else if fCacheFirstSegment=aSegmentIndex then begin
+   fCacheFirstSegment:=NextSegmentIndex;
+  end;
+  if NextSegmentIndex>=0 then begin
+   fCacheSegments[NextSegmentIndex].Previous:=PreviousSegmentIndex;
+  end else if fCacheLastSegment=aSegmentIndex then begin
+   fCacheLastSegment:=PreviousSegmentIndex;
+  end;
+  fCacheSegments[aSegmentIndex].Previous:=-1;
+  fCacheSegments[aSegmentIndex].Next:=-1;
+ end;
+ procedure FillMoveTo(const aP0:TpvVector2);
+ var Index:TpvInt32;
+     LinePoint:PpvCanvasShapeCacheLinePoint;
+ begin
+  Index:=fCountCacheLinePoints;
+  inc(fCountCacheLinePoints);
+  if length(fCacheLinePoints)<fCountCacheLinePoints then begin
+   SetLength(fCacheLinePoints,fCountCacheLinePoints*2);
+  end;
+  LinePoint:=@fCacheLinePoints[Index];
+  LinePoint^.Last:=-1;
+  LinePoint^.Position:=aP0;
+  LastLinePoint:=Index;
   StartPoint:=aP0;
   LastPoint:=aP0;
  end;
  procedure FillLineTo(const aP0:TpvVector2);
+ var Index:TpvInt32;
+     LinePoint:PpvCanvasShapeCacheLinePoint;
  begin
-  FillAddSegment(LastPoint,aP0);
+  if LastPoint<>aP0 then begin
+   Index:=fCountCacheLinePoints;
+   inc(fCountCacheLinePoints);
+   if length(fCacheLinePoints)<fCountCacheLinePoints then begin
+    SetLength(fCacheLinePoints,fCountCacheLinePoints*2);
+   end;
+   LinePoint:=@fCacheLinePoints[Index];
+   LinePoint^.Last:=LastLinePoint;
+   LinePoint^.Position:=aP0;
+   LastLinePoint:=Index;
+   AddSegment(AddSegmentPoint(LastPoint),AddSegmentPoint(aP0));
+  end;
   LastPoint:=aP0;
  end;
  procedure FillQuadraticCurveTo(const aC0,aA0:TpvVector2;const Tolerance:TpvDouble=1.0/256.0;const MaxLevel:TpvInt32=32);
@@ -1589,60 +1637,11 @@ var CommandIndex:TpvInt32;
  end;
  procedure FillClose;
  begin
-  if fCountCacheSegments>0 then begin
+  if (fCountCacheLinePoints>0) or (fCountCacheSegments>0) then begin
    FillLineTo(StartPoint);
   end;
  end;
  procedure FillFlush;
-  procedure AddSegment(const aP0,aP1:TpvInt32); overload;
-  var Index:TpvInt32;
-      ShapeCacheSegment:PpvCanvasShapeCacheSegment;
-  begin
-   if aP0<>aP1 then begin
-    Index:=fCountCacheSegments;
-    inc(fCountCacheSegments);
-    if length(fCacheSegments)<fCountCacheSegments then begin
-     SetLength(fCacheSegments,fCountCacheSegments*2);
-    end;
-    ShapeCacheSegment:=@fCacheSegments[Index];
-    ShapeCacheSegment^.Points[0]:=aP0;
-    ShapeCacheSegment^.Points[1]:=aP1;
-    UpdateSegmentBoundingBox(ShapeCacheSegment^);
-    if fCacheFirstSegment<0 then begin
-     fCacheFirstSegment:=Index;
-     ShapeCacheSegment^.Previous:=-1;
-    end else begin
-     fCacheSegments[fCacheLastSegment].Next:=Index;
-     ShapeCacheSegment^.Previous:=fCacheLastSegment;
-    end;
-    ShapeCacheSegment^.Next:=-1;
-    fCacheLastSegment:=Index;
-   end;
-  end;
-  procedure AddSegment(const aP0,aP1:TpvCanvasShapeCacheSegmentPoint); overload;
-  begin
-   if (aP0.x<>aP1.x) or (aP0.y<>aP1.y) then begin
-    AddSegment(AddSegmentPoint(aP0),AddSegmentPoint(aP1));
-   end;
-  end;
-  procedure RemoveSegment(const aSegmentIndex:TpvInt32);
-  var PreviousSegmentIndex,NextSegmentIndex:TpvInt32;
-  begin
-   PreviousSegmentIndex:=fCacheSegments[aSegmentIndex].Previous;
-   NextSegmentIndex:=fCacheSegments[aSegmentIndex].Next;
-   if PreviousSegmentIndex>=0 then begin
-    fCacheSegments[PreviousSegmentIndex].Next:=NextSegmentIndex;
-   end else if fCacheFirstSegment=aSegmentIndex then begin
-    fCacheFirstSegment:=NextSegmentIndex;
-   end;
-   if NextSegmentIndex>=0 then begin
-    fCacheSegments[NextSegmentIndex].Previous:=PreviousSegmentIndex;
-   end else if fCacheLastSegment=aSegmentIndex then begin
-    fCacheLastSegment:=PreviousSegmentIndex;
-   end;
-   fCacheSegments[aSegmentIndex].Previous:=-1;
-   fCacheSegments[aSegmentIndex].Next:=-1;
-  end;
   procedure SortLinkedListSegments;
    function CompareSegments(const a,b:TpvCanvasShapeCacheSegment):TpvInt32;
    begin
@@ -2005,37 +2004,36 @@ var CommandIndex:TpvInt32;
    end;
   end;
   procedure GenerateSegmentEdgeTriangles;
-  var CurrentSegmentIndex,i0,i1,i2,i3:TpvInt32;
-      up0,up1:PpvCanvasShapeCacheSegmentPoint;
+  var CurrentLinePointIndex,i0,i1,i2,i3:TpvInt32;
+      LinePoint:PpvCanvasShapeCacheLinePoint;
       p0,p1,p10,n10,t10:TpvVector2;
       MetaInfo:TpvVector4;
   begin
-   CurrentSegmentIndex:=fCacheFirstSegment;
-   while CurrentSegmentIndex>=0 do begin
-    up0:=@fCacheSegmentUniquePoints[fCacheSegments[CurrentSegmentIndex].Points[0]].Point;
-    up1:=@fCacheSegmentUniquePoints[fCacheSegments[CurrentSegmentIndex].Points[1]].Point;
-    p0:=TpvVector2.Create(up0^.x,up0^.y);
-    p1:=TpvVector2.Create(up1^.x,up1^.y);
-    p10:=p1-p0;
-    n10:=p10.Normalize;
-    t10:=n10.Perpendicular;
-    MetaInfo.xy:=p0;
-    MetaInfo.zw:=p1;
-    BeginPart(4,6);
-    p0:=p0-n10;
-    p1:=p1+n10;
-    i0:=AddVertex(p0-t10,pcvvaomRoundLine,MetaInfo,(-2.0)*(n10+t10));
-    i1:=AddVertex(p0+t10,pcvvaomRoundLine,MetaInfo,2.0*(t10-n10));
-    i2:=AddVertex(p1+t10,pcvvaomRoundLine,MetaInfo,2.0*(n10+t10));
-    i3:=AddVertex(p1-t10,pcvvaomRoundLine,MetaInfo,2.0*(n10-t10));
-    AddIndex(i0);
-    AddIndex(i1);
-    AddIndex(i2);
-    AddIndex(i2);
-    AddIndex(i3);
-    AddIndex(i0);
-    EndPart;
-    CurrentSegmentIndex:=fCacheSegments[CurrentSegmentIndex].Next;
+   for CurrentLinePointIndex:=0 to fCountCacheLinePoints-1 do begin
+    LinePoint:=@fCacheLinePoints[CurrentLinePointIndex];
+    if LinePoint^.Last>=0 then begin
+     p0:=fCacheLinePoints[LinePoint^.Last].Position;
+     p1:=LinePoint^.Position;
+     p10:=p1-p0;
+     n10:=p10.Normalize;
+     t10:=n10.Perpendicular;
+     MetaInfo.xy:=p0;
+     MetaInfo.zw:=p1;
+     BeginPart(4,6);
+     p0:=p0-n10;
+     p1:=p1+n10;
+     i0:=AddVertex(p0-t10,pcvvaomRoundLine,MetaInfo,(-2.0)*(n10+t10));
+     i1:=AddVertex(p0+t10,pcvvaomRoundLine,MetaInfo,2.0*(t10-n10));
+     i2:=AddVertex(p1+t10,pcvvaomRoundLine,MetaInfo,2.0*(n10+t10));
+     i3:=AddVertex(p1-t10,pcvvaomRoundLine,MetaInfo,2.0*(n10-t10));
+     AddIndex(i0);
+     AddIndex(i1);
+     AddIndex(i2);
+     AddIndex(i2);
+     AddIndex(i3);
+     AddIndex(i0);
+     EndPart;
+    end;
    end;
   end;
  begin
@@ -2057,6 +2055,7 @@ var CommandIndex:TpvInt32;
 begin
  Reset;
  InitializeSegmentUniquePointHashTable;
+ LastLinePoint:=-1;
  fCacheFirstSegment:=-1;
  fCacheLastSegment:=-1;
  for CommandIndex:=0 to aPath.fCountCommands-1 do begin
