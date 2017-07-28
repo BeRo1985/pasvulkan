@@ -972,7 +972,7 @@ begin
  end else begin
   PixelRatio:=1.0;
  end;
- fCurveTessellationTolerance:=(0.25*Scale)/PixelRatio;
+ fCurveTessellationTolerance:=(0.5*Scale)/PixelRatio;
  fCurveTessellationToleranceSquared:=sqr(fCurveTessellationTolerance);
 end;
 
