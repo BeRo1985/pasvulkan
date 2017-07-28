@@ -182,6 +182,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function LineTo(const aP0:TpvVector2):TpvCanvasPath;
        function QuadraticCurveTo(const aC0,aA0:TpvVector2):TpvCanvasPath;
        function CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvasPath;
+       function Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvasPath;
+       function Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
      end;
 
      TpvCanvasState=class(TPersistent)
@@ -588,6 +590,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Ellipse(const aCenterX,aCenterY,aRadiusX,aRadiusY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Circle(const aCenterX,aCenterY,aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
        function Stroke:TpvCanvas;
        function Fill:TpvCanvas;
@@ -731,6 +737,31 @@ begin
  Command^.Points[1]:=aC1;
  Command^.Points[2]:=aA0;
  result:=self;
+end;
+
+function TpvCanvasPath.Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvasPath;
+const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45°)/sin 45° = 4/3 * (sqrt(2) - 1)
+begin
+ MoveTo(TpvVector2.Create(aCenter.x+aRadius.x,aCenter.y));
+ CubicCurveTo(TpvVector2.Create(aCenter.x+aRadius.x,aCenter.y-(aRadius.y*ARC_MAGIC)),
+              TpvVector2.Create(aCenter.x+(aRadius.x*ARC_MAGIC),aCenter.y-aRadius.y),
+              TpvVector2.Create(aCenter.x,aCenter.y-aRadius.y));
+ CubicCurveTo(TpvVector2.Create(aCenter.x-(aRadius.x*ARC_MAGIC),aCenter.y-aRadius.y),
+              TpvVector2.Create(aCenter.x-aRadius.x,aCenter.y-(aRadius.y*ARC_MAGIC)),
+              TpvVector2.Create(aCenter.x-aRadius.x,aCenter.y));
+ CubicCurveTo(TpvVector2.Create(aCenter.x-aRadius.x,aCenter.y-(aRadius.y*ARC_MAGIC)),
+              TpvVector2.Create(aCenter.x-(aRadius.x*ARC_MAGIC),aCenter.y+aRadius.y),
+              TpvVector2.Create(aCenter.x,aCenter.y+aRadius.y));
+ CubicCurveTo(TpvVector2.Create(aCenter.x+(aRadius.x*ARC_MAGIC),aCenter.y+aRadius.y),
+              TpvVector2.Create(aCenter.x+aRadius.x,aCenter.y+(aRadius.y*ARC_MAGIC)),
+              TpvVector2.Create(aCenter.x+aRadius.x,aCenter.y));
+ ClosePath;
+ result:=self;
+end;
+
+function TpvCanvasPath.Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
+begin
+ result:=Ellipse(aCenter,TpvVector2.Create(aRadius,aRadius));
 end;
 
 constructor TpvCanvasState.Create;
@@ -3538,6 +3569,30 @@ end;
 function TpvCanvas.CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvFloat):TpvCanvas;
 begin
  fState.fPath.CubicCurveTo(TpvVector2.Create(aC0X,aC0Y),TpvVector2.Create(aC1X,aC1Y),TpvVector2.Create(aAX,aAY));
+ result:=self;
+end;
+
+function TpvCanvas.Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvas;
+begin
+ fState.fPath.Ellipse(aCenter,aRadius);
+ result:=self;
+end;
+
+function TpvCanvas.Ellipse(const aCenterX,aCenterY,aRadiusX,aRadiusY:TpvFloat):TpvCanvas;
+begin
+ fState.fPath.Ellipse(TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aRadiusX,aRadiusY));
+ result:=self;
+end;
+
+function TpvCanvas.Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvas;
+begin
+ fState.fPath.Circle(aCenter,aRadius);
+ result:=self;
+end;
+
+function TpvCanvas.Circle(const aCenterX,aCenterY,aRadius:TpvFloat):TpvCanvas;
+begin
+ fState.fPath.Circle(TpvVector2.Create(aCenterX,aCenterY),aRadius);
  result:=self;
 end;
 
