@@ -426,7 +426,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       Kind:TpvCanvasQueueItemKind;
       BufferIndex:TpvInt32;
       DescriptorIndex:TpvInt32;
-      TextureMode:TPasMPBool32;
+      TextureMode:TpvInt32;
       StartVertexIndex:TpvInt32;
       StartIndexIndex:TpvInt32;
       CountVertices:TpvInt32;
@@ -469,11 +469,13 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fDevice:TpvVulkanDevice;
        fReferenceCounter:TpvInt32;
        fCanvasVertexShaderModule:TpvVulkanShaderModule;
-       fCanvasFragmentAtlasTextureShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentNoTextureShaderModule:TpvVulkanShaderModule;
+       fCanvasFragmentTextureShaderModule:TpvVulkanShaderModule;
+       fCanvasFragmentAtlasTextureShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineCanvasShaderStageVertex:TpvVulkanPipelineShaderStage;
-       fVulkanPipelineCanvasShaderStageFragmentAtlasTexture:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentNoTexture:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineCanvasShaderStageFragmentTexture:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineCanvasShaderStageFragmentAtlasTexture:TpvVulkanPipelineShaderStage;
       public
        constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
@@ -481,9 +483,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        class procedure Release(const aDevice:TpvVulkanDevice);
      end;
 
-     TpvCanvasVulkanPipelineLayouts=array[boolean] of TpvVulkanPipelineLayout;
+     TpvCanvasVulkanPipelineLayouts=array[0..2] of TpvVulkanPipelineLayout;
 
-     TpvCanvasVulkanGraphicsPipelines=array[boolean] of TpvVulkanGraphicsPipeline;
+     TpvCanvasVulkanGraphicsPipelines=array[0..2] of TpvVulkanGraphicsPipeline;
 
      TpvCanvas=class
       private
@@ -497,8 +499,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fTransferFence:TpvVulkanFence;
        fPipelineCache:TpvVulkanPipelineCache;
        fVulkanDescriptorPools:TpvCanvasDescriptorPools;
-       fVulkanDescriptorSetTextureLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSetNoTextureLayout:TpvVulkanDescriptorSetLayout;
+       fVulkanDescriptorSetTextureLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSets:TpvCanvasDescriptorSets;
        fCountVulkanDescriptors:TpvInt32;
        fVulkanTextureDescriptorSetHashMap:TpvCanvasTextureDescriptorSetHashMap;
@@ -2271,13 +2273,6 @@ begin
   Stream.Free;
  end;
 
- Stream:=TpvDataStream.Create(@CanvasFragmentAtlasTextureSPIRVData,CanvasFragmentAtlasTextureSPIRVDataSize);
- try
-  fCanvasFragmentAtlasTextureShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
- finally
-  Stream.Free;
- end;
-
  Stream:=TpvDataStream.Create(@CanvasFragmentNoTextureSPIRVData,CanvasFragmentNoTextureSPIRVDataSize);
  try
   fCanvasFragmentNoTextureShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
@@ -2285,11 +2280,28 @@ begin
   Stream.Free;
  end;
 
+ Stream:=TpvDataStream.Create(@CanvasFragmentTextureSPIRVData,CanvasFragmentTextureSPIRVDataSize);
+ try
+  fCanvasFragmentTextureShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ Stream:=TpvDataStream.Create(@CanvasFragmentAtlasTextureSPIRVData,CanvasFragmentAtlasTextureSPIRVDataSize);
+ try
+  fCanvasFragmentAtlasTextureShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
  fVulkanPipelineCanvasShaderStageVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fCanvasVertexShaderModule,'main');
+
+ fVulkanPipelineCanvasShaderStageFragmentNoTexture:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentNoTextureShaderModule,'main');
+
+ fVulkanPipelineCanvasShaderStageFragmentTexture:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentTextureShaderModule,'main');
 
  fVulkanPipelineCanvasShaderStageFragmentAtlasTexture:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentAtlasTextureShaderModule,'main');
 
- fVulkanPipelineCanvasShaderStageFragmentNoTexture:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentNoTextureShaderModule,'main');
 
 end;
 
@@ -2297,11 +2309,13 @@ destructor TpvCanvasCommon.Destroy;
 begin
  fDevice.CanvasCommon:=nil;
  FreeAndNil(fVulkanPipelineCanvasShaderStageVertex);
- FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentAtlasTexture);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentNoTexture);
+ FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentTexture);
+ FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentAtlasTexture);
  FreeAndNil(fCanvasVertexShaderModule);
- FreeAndNil(fCanvasFragmentAtlasTextureShaderModule);
  FreeAndNil(fCanvasFragmentNoTextureShaderModule);
+ FreeAndNil(fCanvasFragmentTextureShaderModule);
+ FreeAndNil(fCanvasFragmentAtlasTextureShaderModule);
  inherited Destroy;
 end;
 
@@ -2351,14 +2365,13 @@ constructor TpvCanvas.Create(const aDevice:TpvVulkanDevice;
                              const aPipelineCache:TpvVulkanPipelineCache;
                              const aRenderPass:TpvVulkanRenderPass;
                              const aCountBuffers:TpvInt32);
-var Index:TpvInt32;
+var Index,TextureModeIndex:TpvInt32;
     RenderingModeIndex:TpvCanvasRenderingMode;
     BlendingModeIndex:TpvCanvasBlendingMode;
     VulkanPipelineLayout:TpvVulkanPipelineLayout;
     VulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
     VulkanCanvasBuffer:PpvCanvasBuffer;
     Stream:TStream;
-    TextureModeIndex:boolean;
 begin
  inherited Create;
 
@@ -2427,6 +2440,9 @@ begin
  fCurrentVulkanVertexBufferOffset:=0;
  fCurrentVulkanIndexBufferOffset:=0;
 
+ fVulkanDescriptorSetNoTextureLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
+ fVulkanDescriptorSetNoTextureLayout.Initialize;
+
  fVulkanDescriptorSetTextureLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
  fVulkanDescriptorSetTextureLayout.AddBinding(0,
                                               VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
@@ -2434,9 +2450,6 @@ begin
                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                               []);
  fVulkanDescriptorSetTextureLayout.Initialize;
-
- fVulkanDescriptorSetNoTextureLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
- fVulkanDescriptorSetNoTextureLayout.Initialize;
 
  fVulkanDescriptorPools:=nil;
  fVulkanDescriptorSets:=nil;
@@ -2446,11 +2459,11 @@ begin
 
  fVulkanRenderPass:=aRenderPass;
 
- for TextureModeIndex:=false to true do begin
+ for TextureModeIndex:=0 to 2 do begin
 
   VulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
   fVulkanPipelineLayouts[TextureModeIndex]:=VulkanPipelineLayout;
-  if TextureModeIndex then begin
+  if TextureModeIndex<>0 then begin
    VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout);
   end else begin
    VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetNoTextureLayout);
@@ -2474,10 +2487,16 @@ begin
 
   VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageVertex);
 
-  if TextureModeIndex then begin
-   VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentAtlasTexture);
-  end else begin
-   VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentNoTexture);
+  case TextureModeIndex of
+   1:begin
+    VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentTexture);
+   end;
+   2:begin
+    VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentAtlasTexture);
+   end;
+   else begin
+    VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentNoTexture);
+   end;
   end;
 
   VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -2552,11 +2571,10 @@ begin
 end;
 
 destructor TpvCanvas.Destroy;
-var Index,SubIndex:TpvInt32;
+var Index,SubIndex,TextureModeIndex:TpvInt32;
     RenderingModeIndex:TpvCanvasRenderingMode;
     BlendingModeIndex:TpvCanvasBlendingMode;
     VulkanCanvasBuffer:PpvCanvasBuffer;
-    TextureModeIndex:boolean;
 begin
 
  FreeAndNil(fStateStack);
@@ -2565,7 +2583,7 @@ begin
 
  FreeAndNil(fShape);
 
- for TextureModeIndex:=false to true do begin
+ for TextureModeIndex:=0 to 2 do begin
   FreeAndNil(fVulkanGraphicsPipelines[TextureModeIndex]);
   FreeAndNil(fVulkanPipelineLayouts[TextureModeIndex]);
  end;
@@ -3043,7 +3061,15 @@ begin
    QueueItem^.Kind:=pvcqikNormal;
    QueueItem^.BufferIndex:=CurrentVulkanBufferIndex;
    QueueItem^.DescriptorIndex:=DescriptorIndex;
-   QueueItem^.TextureMode:=assigned(CurrentTexture);
+   if assigned(CurrentTexture) then begin
+    if CurrentTexture is TpvSpriteAtlasArrayTexture then begin
+     QueueItem^.TextureMode:=2;
+    end else begin
+     QueueItem^.TextureMode:=1;
+    end;
+   end else begin
+    QueueItem^.TextureMode:=0;
+   end;
    QueueItem^.StartVertexIndex:=fCurrentVulkanVertexBufferOffset;
    QueueItem^.StartIndexIndex:=fCurrentVulkanIndexBufferOffset;
    QueueItem^.CountVertices:=fCurrentCountVertices;
@@ -3203,14 +3229,14 @@ end;
 
 procedure TpvCanvas.ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
-var Index,DescriptorIndex,StartVertexIndex:TpvInt32;
+var Index,DescriptorIndex,StartVertexIndex,TextureMode:TpvInt32;
     QueueItem:PpvCanvasQueueItem;
     OldQueueItemKind:TpvCanvasQueueItemKind;
     CurrentBuffer:PpvCanvasBuffer;
     VulkanVertexBuffer,VulkanIndexBuffer,OldVulkanVertexBuffer,OldVulkanIndexBuffer:TpvVulkanBuffer;
     OldScissor:TVkRect2D;
     TransformMatrix,FillMatrix:TpvMatrix4x4;
-    ForceUpdate,TextureMode:boolean;
+    ForceUpdate:boolean;
 begin
  CurrentBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
  if assigned(CurrentBuffer) and (CurrentBuffer^.fCountQueueItems>0) then begin
@@ -3230,7 +3256,7 @@ begin
 
   ForceUpdate:=true;
 
-  TextureMode:=true;
+  TextureMode:=-1;
 
   OldVulkanVertexBuffer:=nil;
 

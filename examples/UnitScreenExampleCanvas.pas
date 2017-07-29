@@ -39,6 +39,7 @@ type TScreenExampleCanvas=class(TpvApplicationScreen)
        fVulkanCommandPool:TpvVulkanCommandPool;
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fTextureTreeLeafs:TpvVulkanTexture;
        fVulkanSpriteAtlas:TpvSpriteAtlas;
        fVulkanFontSpriteAtlas:TpvSpriteAtlas;
        fVulkanCanvas:TpvCanvas;
@@ -228,6 +229,27 @@ begin
                            pvApplication.VulkanTransferCommandBuffers[0,0],
                            pvApplication.VulkanTransferCommandBufferFences[0,0]);
 
+ Stream:=pvApplication.Assets.GetAssetStream('textures/treeleafs.jpg');
+ try
+  fTextureTreeLeafs:=TpvVulkanTexture.CreateFromJPEG(pvApplication.VulkanDevice,
+                                                     pvApplication.VulkanDevice.GraphicsQueue,
+                                                     pvApplication.VulkanGraphicsCommandBuffers[0,0],
+                                                     pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                                     pvApplication.VulkanDevice.TransferQueue,
+                                                     pvApplication.VulkanTransferCommandBuffers[0,0],
+                                                     pvApplication.VulkanTransferCommandBufferFences[0,0],
+                                                     Stream,
+                                                     true);
+ finally
+  Stream.Free;
+ end;
+
+ fTextureTreeLeafs.WrapModeU:=vtwmRepeat;
+ fTextureTreeLeafs.WrapModeV:=vtwmRepeat;
+ fTextureTreeLeafs.WrapModeW:=vtwmClampToEdge;
+ fTextureTreeLeafs.BorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+ fTextureTreeLeafs.UpdateSampler;
+
  FreeAndNil(fShapeCircle);
 
 end;
@@ -238,6 +260,7 @@ begin
  FreeAndNil(fVulkanFont);
  FreeAndNil(fVulkanFontSpriteAtlas);
  FreeAndNil(fVulkanSpriteAtlas);
+ FreeAndNil(fTextureTreeLeafs);
  FreeAndNil(fVulkanRenderPass);
  for Index:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fVulkanRenderCommandBuffers[Index]);
@@ -665,8 +688,11 @@ begin
  end;
  fVulkanCanvas.Pop;
 
+ fVulkanCanvas.Flush;
+
  fVulkanCanvas.Push;
  fVulkanCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.75,fVulkanCanvas.Height*0.0);
+ fVulkanCanvas.Texture:=fTextureTreeLeafs;
  fVulkanCanvas.BeginPath;
 {fVulkanCanvas.MoveTo(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height*0.125);
  fVulkanCanvas.LineTo(fVulkanCanvas.Width*0.25,fVulkanCanvas.Height*0.125);
@@ -682,6 +708,7 @@ begin
  fVulkanCanvas.ClosePath;
  fVulkanCanvas.Fill;
  fVulkanCanvas.EndPath;
+ fVulkanCanvas.Flush;
  fVulkanCanvas.Pop;
 
  if not assigned(fShapeCircle) then begin
