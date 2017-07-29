@@ -3310,9 +3310,27 @@ begin
 end;
 
 function TpvCanvas.Pop:TpvCanvas;
+var PeekState:TpvCanvasState;
 begin
- Flush;
- TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(fStateStack.Extract)))).Free;
+ PeekState:=fStateStack.Peek;
+ if assigned(PeekState) then begin
+  if (assigned(fCurrentFillBuffer) and
+      (fCurrentCountVertices>0)) and
+     ((fState.fFillStyle<>PeekState.fFillStyle) or
+      (fState.fFillWrapMode<>PeekState.fFillWrapMode) or
+      (fState.fScissor.offset.x<>PeekState.fScissor.offset.x) or
+      (fState.fScissor.offset.y<>PeekState.fScissor.offset.y) or
+      (fState.fScissor.extent.width<>PeekState.fScissor.extent.width) or
+      (fState.fScissor.extent.height<>PeekState.fScissor.extent.height) or
+      (fState.fProjectionMatrix<>PeekState.fProjectionMatrix) or
+      (fState.fViewMatrix<>PeekState.fViewMatrix) or
+      (fState.fFillMatrix<>PeekState.fFillMatrix)) then begin
+   Flush;
+  end;
+  TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(fStateStack.Extract)))).Free;
+ end else begin
+  Assert(false);
+ end;
  result:=self;
 end;
 
