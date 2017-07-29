@@ -688,11 +688,14 @@ begin
  end;
  fVulkanCanvas.Pop;
 
- fVulkanCanvas.Flush;
-
  fVulkanCanvas.Push;
  fVulkanCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.75,fVulkanCanvas.Height*0.0);
  fVulkanCanvas.Texture:=fTextureTreeLeafs;
+ fVulkanCanvas.FillStyle:=pvcfsImage;
+ fVulkanCanvas.FillMatrix:=TpvMatrix4x4.CreateScale(4.0/fVulkanCanvas.Width,
+                                                    (4.0/fVulkanCanvas.Height)*(fVulkanCanvas.Height/fVulkanCanvas.Width))*
+                           TpvMatrix4x4.CreateTranslation(cos(fTime*0.5)*0.25,
+                                                          sin(fTime*2.0)*0.25);
  fVulkanCanvas.BeginPath;
 {fVulkanCanvas.MoveTo(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height*0.125);
  fVulkanCanvas.LineTo(fVulkanCanvas.Width*0.25,fVulkanCanvas.Height*0.125);
@@ -708,7 +711,6 @@ begin
  fVulkanCanvas.ClosePath;
  fVulkanCanvas.Fill;
  fVulkanCanvas.EndPath;
- fVulkanCanvas.Flush;
  fVulkanCanvas.Pop;
 
  if not assigned(fShapeCircle) then begin
