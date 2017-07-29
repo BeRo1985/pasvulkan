@@ -178,6 +178,22 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvas=class;
 
+     TpvCanvasStrokePatternSteps=array of TpvFloat;
+
+     PpvCanvasStrokePattern=^TpvCanvasStrokePattern;
+     TpvCanvasStrokePattern=record
+      private
+       fSteps:TpvCanvasStrokePatternSteps;
+       fStepSize:TpvFloat;
+      public
+       constructor Create(const aPattern:string;const aStepSize:TpvFloat); overload;
+       constructor Create(const aPattern:string); overload;
+       constructor Create(const aSteps:array of TpvFloat;const aStepSize:TpvFloat); overload;
+       constructor Create(const aSteps:array of TpvFloat); overload;
+       property Steps:TpvCanvasStrokePatternSteps read fSteps write fSteps;
+       property StepSize:TpvFloat read fStepSize write fStepSize;
+     end;
+
      TpvCanvasPath=class(TPersistent)
       private
        fCommands:TpvCanvasPathCommands;
@@ -699,7 +715,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 implementation
 
 uses PasVulkan.Assets,
-     PasVulkan.Streams;
+     PasVulkan.Streams,
+     PasDblStrUtils;
 
 const pcvvaomSolid=0;
       pcvvaomLineEdge=1;
@@ -710,6 +727,101 @@ const pcvvaomSolid=0;
       pcvvaomRectangle=6;
 
       CurveRecursionLimit=16;
+
+constructor TpvCanvasStrokePattern.Create(const aPattern:string;const aStepSize:TpvFloat);
+var CountSteps,Position,Len,StartPosition,Count,Index:TpvInt32;
+    Value:TpvFloat;
+    OK:TPasDblStrUtilsBoolean;
+    c:AnsiChar;
+begin
+ fStepSize:=aStepSize;
+ fSteps:=nil;
+ CountSteps:=0;
+ try
+  Len:=length(aPattern);
+  if Len>0 then begin
+   Position:=1;
+   if AnsiChar(aPattern[Position]) in ['0'..'9','x','X','o','O','-','+','a'..'f','A'..'F'] then begin
+    while Position<=Len do begin
+     if AnsiChar(aPattern[Position]) in ['0'..'9','x','X','o','O','-','+','a'..'f','A'..'F'] then begin
+      StartPosition:=Position;
+      repeat
+       inc(Position);
+      until (Position>Len) or not (AnsiChar(aPattern[Position]) in ['0'..'9','x','X','o','O','-','+','a'..'f','A'..'F']);
+      OK:=false;
+      Value:=ConvertStringToDouble(TPasDblStrUtilsRawByteString(Copy(aPattern,StartPosition,Position-StartPosition)),rmNearest,@OK,-1);
+      if OK and not SameValue(Value,0) then begin
+       if length(fSteps)<(CountSteps+1) then begin
+        SetLength(fSteps,(CountSteps+1)*2);
+       end;
+       fSteps[CountSteps]:=Value;
+       inc(CountSteps);
+      end;
+     end else begin
+      break;
+     end;
+     if (Position<=Len) and (AnsiChar(aPattern[Position]) in [#0..#32,',']) then begin
+      repeat
+       inc(Position);
+      until (Position>Len) or not (AnsiChar(aPattern[Position]) in [#0..#32,',']);
+     end else begin
+      break;
+     end;
+    end;
+   end else begin
+    while Position<=Len do begin
+     c:=AnsiChar(AnsiChar(aPattern[Position]));
+     Count:=0;
+     repeat
+      inc(Count);
+      inc(Position);
+     until (Position>Len) or (AnsiChar(aPattern[Position])<>c);
+     if Count>0 then begin
+      if length(fSteps)<(CountSteps+1) then begin
+       SetLength(fSteps,(CountSteps+1)*2);
+      end;
+      if c in [#0..#32] then begin
+       fSteps[CountSteps]:=-Count;
+      end else begin
+       fSteps[CountSteps]:=Count;
+      end;
+      inc(CountSteps);
+     end;
+    end;
+   end;
+   if CountSteps>0 then begin
+    if (CountSteps and 1)=1 then begin
+     SetLength(fSteps,CountSteps*2);
+     for Index:=0 to CountSteps-1 do begin
+      fSteps[CountSteps+Index]:=fSteps[Index]*(-Sign(fSteps[(CountSteps+Index)-1]));
+     end;
+     inc(CountSteps,CountSteps);
+    end;
+   end;
+  end;
+ finally
+  SetLength(fSteps,CountSteps);
+ end;
+end;
+
+constructor TpvCanvasStrokePattern.Create(const aPattern:string);
+begin
+ self:=TpvCanvasStrokePattern.Create(aPattern,1.0);
+end;
+
+constructor TpvCanvasStrokePattern.Create(const aSteps:array of TpvFloat;const aStepSize:TpvFloat);
+begin
+ SetLength(fSteps,length(aSteps));
+ if length(aSteps)>0 then begin
+  Move(aSteps[0],fSteps[0],length(aSteps)*SizeOf(TpvFloat));
+ end;
+ fStepSize:=aStepSize;
+end;
+
+constructor TpvCanvasStrokePattern.Create(const aSteps:array of TpvFloat);
+begin
+ self:=TpvCanvasStrokePattern.Create(aSteps,1.0);
+end;
 
 constructor TpvCanvasPath.Create;
 begin
@@ -858,6 +970,7 @@ begin
   Previous:=Current;
   PreviousTangent:=Tangent;
  end;
+ result:=self;
 end;
 
 function TpvCanvasPath.Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvasPath;
