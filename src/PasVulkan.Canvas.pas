@@ -371,6 +371,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
              pvCanvasShapeCacheSegmentUniquePointHashMask=pvCanvasShapeCacheSegmentUniquePointHashSize-1;
        type TpvCanvasShapeCacheSegmentUniquePointHashTable=array of TpvInt32;
       private
+       fCacheTemporaryLinePoints:TpvCanvasShapeCacheLinePoints;
        fCacheLinePoints:TpvCanvasShapeCacheLinePoints;
        fCacheSegments:TpvCanvasShapeCacheSegments;
        fCacheSegmentUniquePoints:TpvCanvasShapeCacheSegmentUniquePoints;
@@ -380,6 +381,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCacheParts:TpvCanvasShapeCacheParts;
        fCacheYCoordinates:TpvCanvasShapeCacheYCoordinates;
        fCacheTemporaryYCoordinates:TpvCanvasShapeCacheYCoordinates;
+       fCountCacheTemporaryLinePoints:TpvInt32;
        fCountCacheLinePoints:TpvInt32;
        fCountCacheSegments:TpvInt32;
        fCountCacheSegmentUniquePoints:TpvInt32;
@@ -1219,6 +1221,7 @@ constructor TpvCanvasShape.Create;
 begin
  inherited Create;
 
+ fCacheTemporaryLinePoints:=nil;
  fCacheLinePoints:=nil;
  fCacheSegments:=nil;
  fCacheSegmentUniquePoints:=nil;
@@ -1229,6 +1232,7 @@ begin
  fCacheYCoordinates:=nil;
  fCacheTemporaryYCoordinates:=nil;
 
+ fCountCacheTemporaryLinePoints:=0;
  fCountCacheLinePoints:=0;
  fCountCacheSegments:=0;
  fCountCacheSegmentUniquePoints:=0;
@@ -1244,6 +1248,7 @@ end;
 destructor TpvCanvasShape.Destroy;
 begin
 
+ fCacheTemporaryLinePoints:=nil;
  fCacheLinePoints:=nil;
  fCacheSegments:=nil;
  fCacheSegmentUniquePoints:=nil;
@@ -1372,6 +1377,7 @@ end;
 procedure TpvCanvasShape.Reset;
 begin
 
+ fCountCacheTemporaryLinePoints:=0;
  fCountCacheLinePoints:=0;
  fCountCacheSegments:=0;
  fCountCacheSegmentUniquePoints:=0;
@@ -1399,7 +1405,7 @@ var StartPoint,LastPoint:TpvVector2;
    ShapeCacheLinePoint^.Position:=aP0;
   end;
  end;
- procedure StrokeFlush;
+ procedure ConvertStroke(var aLinePoints:TpvCanvasShapeCacheLinePoints;var aCountLinePoints:TpvInt32);
  var Closed:boolean;
      Width:TpvFloat;
      v0,v1,v2,v3:TpvVector2;
@@ -1703,66 +1709,78 @@ var StartPoint,LastPoint:TpvVector2;
   end;
  var i:TpvInt32;
  begin
-  if fCountCacheLinePoints>2 then begin
-   for i:=fCountCacheLinePoints-2 downto 0 do begin
-    if fCacheLinePoints[i].Position=fCacheLinePoints[i+1].Position then begin
-     dec(fCountCacheLinePoints);
-     Move(fCacheLinePoints[i-1],fCacheLinePoints[i],fCountCacheLinePoints*SizeOf(TpvCanvasShapeCacheLinePoint));
+  if aCountLinePoints>2 then begin
+   for i:=aCountLinePoints-2 downto 0 do begin
+    if aLinePoints[i].Position=aLinePoints[i+1].Position then begin
+     dec(aCountLinePoints);
+     Move(aLinePoints[i-1],aLinePoints[i],aCountLinePoints*SizeOf(TpvCanvasShapeCacheLinePoint));
     end;
    end;
-   if fCountCacheLinePoints>2 then begin
+   if aCountLinePoints>2 then begin
     Width:=abs(aState.fLineWidth)*0.5;
     First:=true;
-    if fCountCacheLinePoints=2 then begin
+    if aCountLinePoints=2 then begin
      Closed:=false;
-     TriangulateSegment(fCacheLinePoints[0].Position,
-                        fCacheLinePoints[0].Position.Lerp(fCacheLinePoints[1].Position,0.5),
-                        fCacheLinePoints[1].Position,
+     TriangulateSegment(aLinePoints[0].Position,
+                        aLinePoints[0].Position.Lerp(aLinePoints[1].Position,0.5),
+                        aLinePoints[1].Position,
                         pvcljBevel,
                         aState.fMiterLimit,
                         true,
                         true);
-    end else if fCountCacheLinePoints>2 then begin
-     Closed:=fCacheLinePoints[0].Position.DistanceTo(fCacheLinePoints[fCountCacheLinePoints-1].Position)<EPSILON;
+    end else if aCountLinePoints>2 then begin
+     Closed:=aLinePoints[0].Position.DistanceTo(aLinePoints[aCountLinePoints-1].Position)<EPSILON;
      if Closed then begin
-      fCacheLinePoints[0].Position:=(fCacheLinePoints[0].Position+fCacheLinePoints[1].Position)*0.5;
-      inc(fCountCacheLinePoints);
-      if fCountCacheLinePoints>length(fCacheLinePoints) then begin
-       SetLength(fCacheLinePoints,fCountCacheLinePoints*2);
+      aLinePoints[0].Position:=(aLinePoints[0].Position+aLinePoints[1].Position)*0.5;
+      inc(aCountLinePoints);
+      if aCountLinePoints>length(aLinePoints) then begin
+       SetLength(aLinePoints,aCountLinePoints*2);
       end;
-      fCacheLinePoints[fCountCacheLinePoints-1]:=fCacheLinePoints[0];
+      aLinePoints[aCountLinePoints-1]:=aLinePoints[0];
      end;
-     fCacheLinePoints[0].Middle:=fCacheLinePoints[0].Position;
-     for i:=1 to fCountCacheLinePoints-3 do begin
-      fCacheLinePoints[i].Middle:=(fCacheLinePoints[i].Position+fCacheLinePoints[i+1].Position)*0.5;
+     aLinePoints[0].Middle:=aLinePoints[0].Position;
+     for i:=1 to aCountLinePoints-3 do begin
+      aLinePoints[i].Middle:=(aLinePoints[i].Position+aLinePoints[i+1].Position)*0.5;
      end;
-     fCacheLinePoints[fCountCacheLinePoints-2].Middle:=fCacheLinePoints[fCountCacheLinePoints-1].Position;
-     for i:=1 to fCountCacheLinePoints-2 do begin
-      TriangulateSegment(fCacheLinePoints[i-1].Middle,
-                         fCacheLinePoints[i].Position,
-                         fCacheLinePoints[i].Middle,
+     aLinePoints[aCountLinePoints-2].Middle:=aLinePoints[aCountLinePoints-1].Position;
+     for i:=1 to aCountLinePoints-2 do begin
+      TriangulateSegment(aLinePoints[i-1].Middle,
+                         aLinePoints[i].Position,
+                         aLinePoints[i].Middle,
                          aState.fLineJoin,
                          aState.fMiterLimit,
                          i=1,
-                         i=(fCountCacheLinePoints-2));
+                         i=(aCountLinePoints-2));
      end;
     end;
     if not Closed then begin
      case aState.fLineCap of
       pvclcRound:begin
-       AddRoundCap(fCacheLinePoints[0].Position,v0,v1,fCacheLinePoints[1].Position);
-       AddRoundCap(fCacheLinePoints[fCountCacheLinePoints-1].Position,v2,v3,fCacheLinePoints[fCountCacheLinePoints-2].Position);
+       AddRoundCap(aLinePoints[0].Position,v0,v1,aLinePoints[1].Position);
+       AddRoundCap(aLinePoints[aCountLinePoints-1].Position,v2,v3,aLinePoints[aCountLinePoints-2].Position);
       end;
       pvclcSquare:begin
        AddSquareCap(v0,
                     v1,
-                    (fCacheLinePoints[0].Position-fCacheLinePoints[1].Position).Normalize*fCacheLinePoints[0].Position.DistanceTo(v0));
+                    (aLinePoints[0].Position-aLinePoints[1].Position).Normalize*aLinePoints[0].Position.DistanceTo(v0));
        AddSquareCap(v2,
                     v3,
-                    (fCacheLinePoints[fCountCacheLinePoints-1].Position-fCacheLinePoints[fCountCacheLinePoints-2].Position).Normalize*fCacheLinePoints[fCountCacheLinePoints-1].Position.DistanceTo(v3));
+                    (aLinePoints[aCountLinePoints-1].Position-aLinePoints[aCountLinePoints-2].Position).Normalize*aLinePoints[aCountLinePoints-1].Position.DistanceTo(v3));
       end;
      end;
     end;
+   end;
+  end;
+  aCountLinePoints:=0;
+ end;
+ procedure StrokeFlush;
+ begin
+  if fCountCacheLinePoints>0 then begin
+   if (length(aState.fStrokePattern.fSteps)>0) and
+      (aState.fStrokePattern.fStepSize>0.0) then begin
+
+   end else begin
+    ConvertStroke(fCacheLinePoints,fCountCacheLinePoints);
    end;
   end;
   fCountCacheLinePoints:=0;
