@@ -16,6 +16,11 @@ layout(binding = 0) uniform sampler2D uTexture;
 
 layout(location = 0) out vec4 outFragColor;
 
+layout(push_constant) uniform PushConstants {
+  layout(offset = 0) mat4 transformMatrix;
+  layout(offset = 64) mat4 fillMatrix;
+} pushConstants;
+
 // Define our own linearstep function for to map distance coverage, when we have sRGB output. 
 // Smoothstep's nonlinear response is actually doing some fake-gamma, so it ends up over-correcting when the output is already gamma-correct.
 #define TEMPLATE_LINEARSTEP(DATATYPE) \
@@ -57,24 +62,25 @@ float sdEllipse(vec2 p, in vec2 ab){
 
 void main(void){
   vec4 color;
+#ifndef ATLAS_TEXTURE
+  mat2x3 fillTransformMatrix = mat2x3(pushConstants.fillMatrix);
+#endif
 #ifdef NO_TEXTURE
   color = inColor;
 #else 
+#ifdef ATLAS_TEXTURE
+  #define ADJUST_TEXCOORD(uv) vec3(uv, texCoord.z)
+  #define texCoord inTexCoord
+#else
+  #define ADJUST_TEXCOORD(uv) uv
+  vec2 texCoord = (inState.z == 0x01) ? (fillTransformMatrix * inPosition).xy : inTexCoord.xy;
+#endif
   switch(inState.x){ 
     case 1:{
       const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0), ONE_BY_THREE = 1.0 / 3.0;     
-#if defined(ATLAS_TEXTURE)
-      float center = textureLod(uTexture, inTexCoord, 0.0).w;
-#else
-      float center = textureLod(uTexture, inTexCoord.xy, 0.0).w;
-#endif
+      float center = textureLod(uTexture, texCoord, 0.0).w;
       vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
-      vec4 buv = inTexCoord.xyxy + (vec2((dFdx(inTexCoord.xy) + dFdy(inTexCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
-#if defined(ATLAS_TEXTURE)
-    #define ADJUST_TEXCOORD(uv) vec3(uv, inTexCoord.z)
-#else
-    #define ADJUST_TEXCOORD(uv) uv
-#endif
+      vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
       color = vec4(vec3(1.0), clamp((linearstep(width.x, width.y, center) + 
                                                 dot(linearstep(width.xxxx, 
                                                                width.yyyy,
@@ -85,15 +91,43 @@ void main(void){
       break;
     }
     default:{
-#if defined(ATLAS_TEXTURE)
-      color = texture(uTexture, inTexCoord);
-#else
-      color = texture(uTexture, inTexCoord.xy);
-#endif
+      color = texture(uTexture, texCoord);
       break;
     }
   }
   color *= inColor;
+#endif
+#ifndef ATLAS_TEXTURE
+  if(inState.z == 0x02){
+    vec2 gradientPosition = (fillTransformMatrix * inPosition).xy;      
+    float gradientTime = 0.0;
+    int gradientFlags = int(pushConstants.fillMatrix[0].w + 0.5);
+    switch(gradientFlags & 0x3){
+      case 0x01:{
+        // Linear gradient
+        gradientTime = gradientPosition.x;
+        break;
+      }
+      case 0x02:{
+        // Radial gradient
+        gradientTime = length(gradientPosition);
+        break;
+      }
+    }
+    switch((gradientFlags >> 2) & 0x3){
+      case 0x01:{
+        // Repeat
+        gradientTime = fract(gradientTime);
+        break;
+      }
+      case 0x02:{
+        // Mirrored repeat
+        gradientTime = fract(1.0 - abs(gradientTime * 2.0));
+        break;
+      }
+    }
+    color *= mix(pushConstants.fillMatrix[2], pushConstants.fillMatrix[3], clamp(gradientTime, 0.0, 1.0));
+  }
 #endif
   if(inState.y != 0){
     float threshold = length(abs(dFdx(inPosition.xy)) + abs(dFdy(inPosition.xy))) * SQRT_0_DOT_5;

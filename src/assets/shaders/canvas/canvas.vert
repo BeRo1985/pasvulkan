@@ -16,7 +16,8 @@ layout(location = 5) out vec4 outMetaInfo;
 layout(location = 6) flat out vec2 outBlendFactors; 
 
 layout(push_constant) uniform PushConstants {
-  layout(offset = 0) mat4 matrix;
+  layout(offset = 0) mat4 transformMatrix;
+  layout(offset = 64) mat4 fillMatrix;
 } pushConstants;
 
 out gl_PerVertex {
@@ -29,7 +30,7 @@ void main(void){
   outTexCoord = inTexCoord;
   outState = ivec4(uvec4((inState >> 2u) & 0x3u,
                          (inState >> 4u) & 0xffu,                         
-                         0u,
+                         (inState >> 12u) & 0x3u,                         
                          0u));
   outClipRect = inClipRect;
   outMetaInfo = inMetaInfo;
@@ -50,5 +51,5 @@ void main(void){
       break;
     }
   }  
-  gl_Position = pushConstants.matrix * vec4(inPosition, 0.0, 1.0);
+  gl_Position = pushConstants.transformMatrix * vec4(inPosition, 0.0, 1.0);
 }
