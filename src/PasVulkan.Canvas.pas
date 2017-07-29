@@ -219,6 +219,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fTextHorizontalAlignment:TpvCanvasTextHorizontalAlignment;
        fTextVerticalAlignment:TpvCanvasTextVerticalAlignment;
        fPath:TpvCanvasPath;
+       fTexture:TObject;
+       fAtlasTexture:TObject;
        function GetStartColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetStartColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
        function GetStopColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -254,6 +256,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment read fTextHorizontalAlignment write fTextHorizontalAlignment;
        property TextVerticalAlignment:TpvCanvasTextVerticalAlignment read fTextVerticalAlignment write fTextVerticalAlignment;
        property Path:TpvCanvasPath read fPath write fPath;
+       property Texture:TObject read fTexture write fTexture;
      end;
 
      TpvCanvasStateStack=class(TObjectStack<TpvCanvasState>);
@@ -517,11 +520,13 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fCurrentDestinationVertexBufferPointer:PpvCanvasVertexBuffer;
        fCurrentDestinationIndexBufferPointer:PpvCanvasIndexBuffer;
        fInternalRenderingMode:TpvCanvasRenderingMode;
-       fInternalTexture:TObject;
        fShape:TpvCanvasShape;
        fState:TpvCanvasState;
        fStateStack:TpvCanvasStateStack;
-       procedure SetInternalTexture(const aTexture:TpvSpriteAtlasArrayTexture);
+       function GetTexture:TObject; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetTexture(const aTexture:TObject);
+       function GetAtlasTexture:TObject; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetAtlasTexture(const aTexture:TObject);
        function GetBlendingMode:TpvCanvasBlendingMode; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
        function GetLineWidth:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -666,6 +671,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property FillRule:TpvCanvasFillRule read GetFillRule write SetFillRule;
        property FillStyle:TpvCanvasFillStyle read GetFillStyle write SetFillStyle;
        property FillWrapMode:TpvCanvasFillWrapMode read GetFillWrapMode write SetFillWrapMode;
+       property Texture:TObject read GetTexture write SetTexture;
        property State:TpvCanvasState read fState;
      end;
 
@@ -892,6 +898,8 @@ begin
  fFillMatrix.Columns[2]:=fColor;
  fFillMatrix.Columns[3]:=fColor;
  fPath.fCountCommands:=0;
+ fTexture:=nil;
+ fAtlasTexture:=nil;
 end;
 
 procedure TpvCanvasState.Assign(aSource:TPersistent);
@@ -916,6 +924,8 @@ begin
   fTextHorizontalAlignment:=TpvCanvasState(aSource).fTextHorizontalAlignment;
   fTextVerticalAlignment:=TpvCanvasState(aSource).fTextVerticalAlignment;
   fPath.Assign(TpvCanvasState(aSource).fPath);
+  fTexture:=TpvCanvasState(aSource).fTexture;
+  fAtlasTexture:=TpvCanvasState(aSource).fAtlasTexture;
  end;
 end;
 
@@ -2375,8 +2385,6 @@ begin
  fCurrentCountVertices:=0;
  fCurrentCountIndices:=0;
 
- fInternalTexture:=nil;
-
  fShape:=TpvCanvasShape.Create;
 
  fState:=TpvCanvasState.Create;
@@ -2606,11 +2614,29 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvCanvas.SetInternalTexture(const aTexture:TpvSpriteAtlasArrayTexture);
+function TpvCanvas.GetTexture:TObject;
 begin
- if fInternalTexture<>aTexture then begin
+ result:=fState.fTexture;
+end;
+
+procedure TpvCanvas.SetTexture(const aTexture:TObject);
+begin
+ if fState.fTexture<>aTexture then begin
   Flush;
-  fInternalTexture:=aTexture;
+  fState.fTexture:=aTexture;
+ end;
+end;
+
+function TpvCanvas.GetAtlasTexture:TObject;
+begin
+ result:=fState.fAtlasTexture;
+end;
+
+procedure TpvCanvas.SetAtlasTexture(const aTexture:TObject);
+begin
+ if fState.fAtlasTexture<>aTexture then begin
+  Flush;
+  fState.fAtlasTexture:=aTexture;
  end;
 end;
 
@@ -2881,8 +2907,6 @@ begin
  fCurrentFillBuffer^.fCountQueueItems:=0;
  fCurrentFillBuffer^.fCountUsedBuffers:=0;
 
- fInternalTexture:=nil;
-
  fState.Reset;
 
  fState.fScissor.offset.x:=trunc(floor(fViewport.x));
@@ -2916,6 +2940,7 @@ var CurrentVulkanBufferIndex,OldCount,NewCount,QueueItemIndex,DescriptorIndex:Tp
     QueueItem:PpvCanvasQueueItem;
     VulkanDescriptorPool:TpvVulkanDescriptorPool;
     VulkanDescriptorSet:TpvVulkanDescriptorSet;
+    CurrentTexture:TObject;
 begin
  if assigned(fCurrentFillBuffer) and (fCurrentCountVertices>0) then begin
 
@@ -2947,7 +2972,13 @@ begin
 
    inc(fCurrentFillBuffer^.fIndexBufferSizes[CurrentVulkanBufferIndex],fCurrentCountIndices*SizeOf(TpvUInt32));
 
-   if not fVulkanTextureDescriptorSetHashMap.TryGet(fInternalTexture,DescriptorIndex) then begin
+   if assigned(fState.fAtlasTexture) then begin
+    CurrentTexture:=fState.fAtlasTexture;
+   end else begin
+    CurrentTexture:=fState.fTexture;
+   end;
+
+   if not fVulkanTextureDescriptorSetHashMap.TryGet(CurrentTexture,DescriptorIndex) then begin
     DescriptorIndex:=fCountVulkanDescriptors;
     inc(fCountVulkanDescriptors);
     if length(fVulkanDescriptorPools)<fCountVulkanDescriptors then begin
@@ -2956,7 +2987,7 @@ begin
     if length(fVulkanDescriptorSets)<fCountVulkanDescriptors then begin
      SetLength(fVulkanDescriptorSets,fCountVulkanDescriptors*2);
     end;
-    if assigned(fInternalTexture) then begin
+    if assigned(CurrentTexture) then begin
      VulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
                                                           TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                           1);
@@ -2966,12 +2997,12 @@ begin
      VulkanDescriptorSet:=TpvVulkanDescriptorSet.Create(VulkanDescriptorPool,
                                                         fVulkanDescriptorSetTextureLayout);
      fVulkanDescriptorSets[DescriptorIndex]:=VulkanDescriptorSet;
-     if fInternalTexture is TpvSpriteAtlasArrayTexture then begin
+     if CurrentTexture is TpvSpriteAtlasArrayTexture then begin
       VulkanDescriptorSet.WriteToDescriptorSet(0,
                                                0,
                                                1,
                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                               [TpvSpriteAtlasArrayTexture(fInternalTexture).Texture.DescriptorImageInfo],
+                                               [TpvSpriteAtlasArrayTexture(CurrentTexture).Texture.DescriptorImageInfo],
                                                [],
                                                [],
                                                false
@@ -2981,7 +3012,7 @@ begin
                                                0,
                                                1,
                                                TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                               [TpvVulkanTexture(fInternalTexture).DescriptorImageInfo],
+                                               [TpvVulkanTexture(CurrentTexture).DescriptorImageInfo],
                                                [],
                                                [],
                                                false
@@ -3000,7 +3031,7 @@ begin
      fVulkanDescriptorSets[DescriptorIndex]:=VulkanDescriptorSet;
      VulkanDescriptorSet.Flush;
     end;
-    fVulkanTextureDescriptorSetHashMap.Add(fInternalTexture,DescriptorIndex);
+    fVulkanTextureDescriptorSetHashMap.Add(CurrentTexture,DescriptorIndex);
    end;
 
    QueueItemIndex:=fCurrentFillBuffer^.fCountQueueItems;
@@ -3012,7 +3043,7 @@ begin
    QueueItem^.Kind:=pvcqikNormal;
    QueueItem^.BufferIndex:=CurrentVulkanBufferIndex;
    QueueItem^.DescriptorIndex:=DescriptorIndex;
-   QueueItem^.TextureMode:=assigned(fInternalTexture);
+   QueueItem^.TextureMode:=assigned(CurrentTexture);
    QueueItem^.StartVertexIndex:=fCurrentVulkanVertexBufferOffset;
    QueueItem^.StartIndexIndex:=fCurrentVulkanIndexBufferOffset;
    QueueItem^.CountVertices:=fCurrentCountVertices;
@@ -3324,7 +3355,9 @@ begin
       (fState.fScissor.extent.height<>PeekState.fScissor.extent.height) or
       (fState.fProjectionMatrix<>PeekState.fProjectionMatrix) or
       (fState.fViewMatrix<>PeekState.fViewMatrix) or
-      (fState.fFillMatrix<>PeekState.fFillMatrix)) then begin
+      (fState.fFillMatrix<>PeekState.fFillMatrix) or
+      (fState.fTexture<>PeekState.fTexture) or
+      (fState.fAtlasTexture<>PeekState.fAtlasTexture)) then begin
    Flush;
   end;
   TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(fStateStack.Extract)))).Free;
@@ -3374,7 +3407,7 @@ begin
   VertexColor.b:=fState.fColor.b;
   VertexColor.a:=fState.fColor.a;
   VertexState:=GetVertexState;
-  SetInternalTexture(aSprite.ArrayTexture);
+  SetAtlasTexture(aSprite.ArrayTexture);
   FlushAndGetNewDestinationBuffersIfNeeded(4,6);
   if aSprite.Rotated then begin
    tx1:=Max(aSprite.TrimmedX,aSrc.Left);
@@ -3405,10 +3438,10 @@ begin
    TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
    TempSrc.Right:=TempSrc.Left+(ty2-ty1);
    TempSrc.Bottom:=TempSrc.Top+(tx2-tx1);
-   sX0:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
-   sY0:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
-   sX1:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
-   sY1:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
+   sX0:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
+   sY0:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
+   sX1:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
+   sY1:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
@@ -3496,10 +3529,10 @@ begin
      TempDest.Bottom:=fState.fClipRect.RightBottom.y;
     end;
    end;
-   sX0:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
-   sY0:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
-   sX1:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseWidth;
-   sY1:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fInternalTexture).InverseHeight;
+   sX0:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
+   sY0:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
+   sX1:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
+   sY1:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
@@ -3684,8 +3717,8 @@ var MetaInfo:TpvVector4;
     VertexState:TpvUInt32;
     CanvasVertex:PpvCanvasVertex;
 begin
+ SetAtlasTexture(nil);
  fInternalRenderingMode:=pvcrmNormal;
- SetInternalTexture(nil);
  VertexColor.r:=fState.fColor.r;
  VertexColor.g:=fState.fColor.g;
  VertexColor.b:=fState.fColor.b;
@@ -3744,8 +3777,8 @@ var MetaInfo:TpvVector4;
     VertexState:TpvUInt32;
     CanvasVertex:PpvCanvasVertex;
 begin
+ SetAtlasTexture(nil);
  fInternalRenderingMode:=pvcrmNormal;
- SetInternalTexture(nil);
  VertexColor.r:=fState.fColor.r;
  VertexColor.g:=fState.fColor.g;
  VertexColor.b:=fState.fColor.b;
@@ -3805,8 +3838,8 @@ var MetaInfo:TpvVector4;
     VertexState:TpvUInt32;
     CanvasVertex:PpvCanvasVertex;
 begin
+ SetAtlasTexture(nil);
  fInternalRenderingMode:=pvcrmNormal;
- SetInternalTexture(nil);
  VertexColor.r:=fState.fColor.r;
  VertexColor.g:=fState.fColor.g;
  VertexColor.b:=fState.fColor.b;
@@ -3869,8 +3902,8 @@ var CachePartIndex,VertexIndex,IndexIndex:TpvInt32;
     ModelMatrixIsIdentity:boolean;
     OffsetMatrix:TpvMatrix3x3;
 begin
+ SetAtlasTexture(nil);
  fInternalRenderingMode:=pvcrmNormal;
- SetInternalTexture(nil);
  VertexColor.r:=fState.fColor.r;
  VertexColor.g:=fState.fColor.g;
  VertexColor.b:=fState.fColor.b;
