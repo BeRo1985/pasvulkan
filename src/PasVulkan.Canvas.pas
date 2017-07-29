@@ -79,20 +79,22 @@ uses SysUtils,
 const pvcvsBlendingModeShift=0;
       pvcvsRenderingModeShift=2;
       pvcvsObjectModeShift=4;
+      pvcvsFillStyleShift=12;
+      pvcvsFillWrapModeShift=14;
 
 type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      TpvCanvasRenderingMode=
       (
-       pvcrmNormal,
-       pvcrmFont
+       pvcrmNormal=0,
+       pvcrmFont=1
       );
 
      PpvCanvasBlendingMode=^TpvCanvasBlendingMode;
      TpvCanvasBlendingMode=
       (
-       pvcbmNone,
-       pvcbmAlphaBlending,
-       pvcbmAdditiveBlending
+       pvcbmNone=0,
+       pvcbmAlphaBlending=1,
+       pvcbmAdditiveBlending=2
       );
 
      PpvCanvasLineJoin=^TpvCanvasLineJoin;
@@ -122,15 +124,18 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      PpvCanvasFillStyle=^TpvCanvasFillStyle;
      TpvCanvasFillStyle=
       (
-       pvcfsClear,
-       pvcfsSolid
+       pvcfsColor=0,
+       pvcfsImage=1,
+       pvcfsLinearGradient=2,
+       pvcfsGradientGradient=3
       );
 
-     PpvCanvasStrokeStyle=^TpvCanvasStrokeStyle;
-     TpvCanvasStrokeStyle=
+     PpvCanvasFillWrapMode=^TpvCanvasFillWrapMode;
+     TpvCanvasFillWrapMode=
       (
-       pvcssClear,
-       pvcssSolid
+       pvcfwmNone=0,
+       pvcfwmRepeat=1,
+       pvcfwmMirroredRepeat=2
       );
 
      PpvCanvasTextHorizontalAlignment=^TpvCanvasTextHorizontalAlignment;
@@ -200,6 +205,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fLineJoin:TpvCanvasLineJoin;
        fLineCap:TpvCanvasLineCap;
        fFillRule:TpvCanvasFillRule;
+       fFillStyle:TpvCanvasFillStyle;
+       fFillWrapMode:TpvCanvasFillWrapMode;
        fColor:TpvVector4;
        fClipRect:TpvRect;
        fScissor:TVkRect2D;
@@ -232,6 +239,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property LineJoin:TpvCanvasLineJoin read fLineJoin write fLineJoin;
        property LineCap:TpvCanvasLineCap read fLineCap write fLineCap;
        property FillRule:TpvCanvasFillRule read fFillRule write fFillRule;
+       property FillStyle:TpvCanvasFillStyle read fFillStyle write fFillStyle;
+       property FillWrapMode:TpvCanvasFillWrapMode read fFillWrapMode write fFillWrapMode;
        property Font:TpvFont read fFont write fFont;
        property FontSize:TpvFloat read fFontSize write fFontSize;
        property TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment read fTextHorizontalAlignment write fTextHorizontalAlignment;
@@ -443,12 +452,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasTextureDescriptorSetHashMap=class(TpvHashMap<TObject,TpvInt32>);
 
-     PpvCanvasRenderingModeValues=^TpvCanvasRenderingModeValues;
-     TpvCanvasRenderingModeValues=array[TpvCanvasRenderingMode] of TpvUInt32;
-
-     PpvCanvasBlendingModeValues=^TpvCanvasBlendingModeValues;
-     TpvCanvasBlendingModeValues=array[TpvCanvasBlendingMode] of TpvUInt32;
-
      TpvCanvasCommon=class
       private
        class var fLock:TPasMPInt32;
@@ -524,6 +527,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure SetLineCap(const aLineCap:TpvCanvasLineCap); {$ifdef CAN_INLINE}inline;{$endif}
        function GetFillRule:TpvCanvasFillRule; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetFillRule(const aFillRule:TpvCanvasFillRule); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetFillStyle:TpvCanvasFillStyle; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetFillStyle(const aFillStyle:TpvCanvasFillStyle); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetFillWrapMode:TpvCanvasFillWrapMode; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetFillWrapMode(const aFillWrapMode:TpvCanvasFillWrapMode); {$ifdef CAN_INLINE}inline;{$endif}
        function GetColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
        function GetProjectionMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -641,21 +648,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property LineJoin:TpvCanvasLineJoin read GetLineJoin write SetLineJoin;
        property LineCap:TpvCanvasLineCap read GetLineCap write SetLineCap;
        property FillRule:TpvCanvasFillRule read GetFillRule write SetFillRule;
+       property FillStyle:TpvCanvasFillStyle read GetFillStyle write SetFillStyle;
+       property FillWrapMode:TpvCanvasFillWrapMode read GetFillWrapMode write SetFillWrapMode;
        property State:TpvCanvasState read fState;
      end;
-
-const pvCanvasRenderingModeValues:TpvCanvasRenderingModeValues=
-       (
-        0, // pvcrmNormal
-        1  // pvcrmFont
-       );
-
-      pvCanvasBlendingModeValues:TpvCanvasBlendingModeValues=
-       (
-         0, // pvcbmNone
-         1, // pvcbmAlphaBlending
-         2  // pvcbmAdditiveBlending
-        );
 
 implementation
 
@@ -817,6 +813,8 @@ begin
  fLineJoin:=TpvCanvasLineJoin.pvcljRound;
  fLineCap:=TpvCanvasLineCap.pvclcRound;
  fFillRule:=TpvCanvasFillRule.pvcfrEvenOdd;
+ fFillStyle:=TpvCanvasFillStyle.pvcfsColor;
+ fFillWrapMode:=TpvCanvasFillWrapMode.pvcfwmNone;
  fColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
  fFont:=nil;
  fFontSize:=-12;
@@ -825,6 +823,8 @@ begin
  fViewMatrix:=TpvMatrix4x4.Identity;
  fModelMatrix:=TpvMatrix3x3.Identity;
  fFillMatrix:=TpvMatrix4x4.Identity;
+ fFillMatrix.Columns[2]:=fColor;
+ fFillMatrix.Columns[3]:=fColor;
  fPath.fCountCommands:=0;
 end;
 
@@ -837,6 +837,7 @@ begin
   fLineJoin:=TpvCanvasState(aSource).fLineJoin;
   fLineCap:=TpvCanvasState(aSource).fLineCap;
   fFillRule:=TpvCanvasState(aSource).fFillRule;
+  fFillStyle:=TpvCanvasState(aSource).fFillStyle;
   fColor:=TpvCanvasState(aSource).fColor;
   fClipRect:=TpvCanvasState(aSource).fClipRect;
   fScissor:=TpvCanvasState(aSource).fScissor;
@@ -2645,6 +2646,26 @@ begin
  fState.fFillRule:=aFillRule;
 end;
 
+function TpvCanvas.GetFillStyle:TpvCanvasFillStyle;
+begin
+ result:=fState.fFillStyle;
+end;
+
+procedure TpvCanvas.SetFillStyle(const aFillStyle:TpvCanvasFillStyle);
+begin
+ fState.fFillStyle:=aFillStyle;
+end;
+
+function TpvCanvas.GetFillWrapMode:TpvCanvasFillWrapMode;
+begin
+ result:=fState.fFillWrapMode;
+end;
+
+procedure TpvCanvas.SetFillWrapMode(const aFillWrapMode:TpvCanvasFillWrapMode);
+begin
+ fState.fFillWrapMode:=aFillWrapMode;
+end;
+
 function TpvCanvas.GetColor:TpvVector4;
 begin
  result:=fState.fColor;
@@ -2733,8 +2754,10 @@ end;
 
 function TpvCanvas.GetVertexState:TpvUInt32;
 begin
- result:=(pvCanvasBlendingModeValues[fState.fBlendingMode] shl pvcvsBlendingModeShift) or
-         (pvCanvasRenderingModeValues[fInternalRenderingMode] shl pvcvsRenderingModeShift);
+ result:=(TpvUInt32(fState.fBlendingMode) shl pvcvsBlendingModeShift) or
+         (TpvUInt32(fInternalRenderingMode) shl pvcvsRenderingModeShift) or
+         (TpvUInt32(fState.fFillStyle) shl pvcvsFillStyleShift) or
+         (TpvUInt32(fState.FillWrapMode) shl pvcvsFillWrapModeShift);
 end;
 
 procedure TpvCanvas.Start(const aBufferIndex:TpvInt32);

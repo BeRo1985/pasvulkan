@@ -30,7 +30,7 @@ void main(void){
   outTexCoord = inTexCoord;
   outState = ivec4(uvec4((inState >> 2u) & 0x3u,
                          (inState >> 4u) & 0xffu,                         
-                         (inState >> 12u) & 0x3u,                         
+                         (inState >> 12u) & 0xfu,                         
                          0u));
   outClipRect = inClipRect;
   outMetaInfo = inMetaInfo;

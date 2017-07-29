@@ -73,7 +73,7 @@ void main(void){
   #define texCoord inTexCoord
 #else
   #define ADJUST_TEXCOORD(uv) uv
-  vec2 texCoord = (inState.z == 0x01) ? (fillTransformMatrix * inPosition).xy : inTexCoord.xy;
+  vec2 texCoord = ((inState.z & 0x03) == 0x01) ? (fillTransformMatrix * inPosition).xy : inTexCoord.xy;
 #endif
   switch(inState.x){ 
     case 1:{
@@ -98,23 +98,22 @@ void main(void){
   color *= inColor;
 #endif
 #ifndef ATLAS_TEXTURE
-  if(inState.z == 0x02){
+  if((inState.z & 0x03) >= 0x02){
     vec2 gradientPosition = (fillTransformMatrix * inPosition).xy;      
     float gradientTime = 0.0;
-    int gradientFlags = int(pushConstants.fillMatrix[0].w + 0.5);
-    switch(gradientFlags & 0x3){
-      case 0x01:{
+    switch(inState.z & 0x03){
+      case 0x02:{
         // Linear gradient
         gradientTime = gradientPosition.x;
         break;
       }
-      case 0x02:{
+      case 0x03:{
         // Radial gradient
         gradientTime = length(gradientPosition);
         break;
       }
     }
-    switch((gradientFlags >> 2) & 0x3){
+    switch((inState.z >> 2) & 0x03){
       case 0x01:{
         // Repeat
         gradientTime = fract(gradientTime);
