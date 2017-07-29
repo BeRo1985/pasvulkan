@@ -48,7 +48,7 @@ type TScreenExampleCanvas=class(TpvApplicationScreen)
        fVulkanSpriteSmiley0:TpvSprite;
        fVulkanSpriteAppIcon:TpvSprite;
        fVulkanSpriteDancer0:TpvSprite;
-       fShapeCircle:TpvCanvasShape;
+       fShapeCircleInsideRoundedRectangle:TpvCanvasShape;
        fReady:boolean;
        fSelectedIndex:TpvInt32;
        fStartY:TpvFloat;
@@ -123,12 +123,12 @@ begin
  fSelectedIndex:=-1;
  fReady:=false;
  fTime:=0.48;
- fShapeCircle:=nil;
+ fShapeCircleInsideRoundedRectangle:=nil;
 end;
 
 destructor TScreenExampleCanvas.Destroy;
 begin
- FreeAndNil(fShapeCircle);
+ FreeAndNil(fShapeCircleInsideRoundedRectangle);
  inherited Destroy;
 end;
 
@@ -250,7 +250,7 @@ begin
  fTextureTreeLeafs.BorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
  fTextureTreeLeafs.UpdateSampler;
 
- FreeAndNil(fShapeCircle);
+ FreeAndNil(fShapeCircleInsideRoundedRectangle);
 
 end;
 
@@ -371,7 +371,7 @@ begin
   fVulkanRenderCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
  end;
 
- FreeAndNil(fShapeCircle);
+ FreeAndNil(fShapeCircleInsideRoundedRectangle);
 
 end;
 
@@ -545,7 +545,7 @@ begin
 
  fVulkanCanvas.Texture:=nil;
 
- if not assigned(fShapeCircle) then begin
+ if not assigned(fShapeCircleInsideRoundedRectangle) then begin
   fVulkanCanvas.Push;
   fVulkanCanvas.LineWidth:=10.0;
   fVulkanCanvas.LineCap:=pvclcButt;
@@ -553,7 +553,7 @@ begin
   fVulkanCanvas.BeginPath;
   fVulkanCanvas.RoundedRectangle(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height-(fVulkanCanvas.Width*0.125),fVulkanCanvas.Width*0.1,fVulkanCanvas.Width*0.1,fVulkanCanvas.Width*0.02);
   fVulkanCanvas.Circle(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height-(fVulkanCanvas.Width*0.125),fVulkanCanvas.Width*0.1);
-  fShapeCircle:=fVulkanCanvas.GetStrokeShape;
+  fShapeCircleInsideRoundedRectangle:=fVulkanCanvas.GetStrokeShape;
   fVulkanCanvas.EndPath;
   fVulkanCanvas.Pop;
  end;
@@ -572,7 +572,7 @@ begin
                                                           -(fVulkanCanvas.Height-(fVulkanCanvas.Width*0.125))+(fVulkanCanvas.Height*(sin(fTime*2.0)*0.08)))*
                            TpvMatrix4x4.CreateScale(128.0/fVulkanCanvas.Width,
                                                     (128.0/fVulkanCanvas.Height)*(fVulkanCanvas.Height/fVulkanCanvas.Width));
- fVulkanCanvas.DrawShape(fShapeCircle);
+ fVulkanCanvas.DrawShape(fShapeCircleInsideRoundedRectangle);
 
  if frac(fTime*0.5)<0.5 then begin
   fVulkanCanvas.FillStyle:=pvcfsRadialGradient;
