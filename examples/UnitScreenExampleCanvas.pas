@@ -551,6 +551,7 @@ begin
   fVulkanCanvas.LineCap:=pvclcButt;
   fVulkanCanvas.LineJoin:=pvcljBevel;
   fVulkanCanvas.BeginPath;
+  fVulkanCanvas.RoundedRectangle(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height-(fVulkanCanvas.Width*0.125),fVulkanCanvas.Width*0.1,fVulkanCanvas.Width*0.1,fVulkanCanvas.Width*0.02);
   fVulkanCanvas.Circle(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height-(fVulkanCanvas.Width*0.125),fVulkanCanvas.Width*0.1);
   fShapeCircle:=fVulkanCanvas.GetStrokeShape;
   fVulkanCanvas.EndPath;
