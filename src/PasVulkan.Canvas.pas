@@ -161,6 +161,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        pcpctLineTo,
        pcpctQuadraticCurveTo,
        pcpctCubicCurveTo,
+       pcpctArcTo,
        pcpctClose
       );
 
@@ -193,6 +194,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function LineTo(const aP0:TpvVector2):TpvCanvasPath;
        function QuadraticCurveTo(const aC0,aA0:TpvVector2):TpvCanvasPath;
        function CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvasPath;
+       function ArcTo(const aP0,aP1:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
        function Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvasPath;
        function Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
        function Rectangle(const aCenter,aBounds:TpvVector2):TpvCanvasPath;
@@ -642,6 +644,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function ArcTo(const aP0,aP1:TpvVector2;const aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function ArcTo(const aP0X,aP0Y,aP1X,aP1Y,aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Ellipse(const aCenterX,aCenterY,aRadiusX,aRadiusY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -791,6 +795,17 @@ begin
  Command^.Points[0]:=aC0;
  Command^.Points[1]:=aC1;
  Command^.Points[2]:=aA0;
+ result:=self;
+end;
+
+function TpvCanvasPath.ArcTo(const aP0,aP1:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
+var Command:PpvCanvasPathCommand;
+begin
+ Command:=NewCommand;
+ Command^.CommandType:=pcpctArcTo;
+ Command^.Points[0]:=aP0;
+ Command^.Points[1]:=aP1;
+ Command^.Points[2]:=TpvVector2.Create(aRadius,aRadius);
  result:=self;
 end;
 
@@ -1575,6 +1590,72 @@ var StartPoint,LastPoint:TpvVector2;
   Recursive(LastPoint.x,LastPoint.y,aC0.x,aC0.y,aC1.x,aC1.y,aA0.x,aA0.y,0);
   StrokeLineTo(aA0);
  end;
+ procedure StrokeArcTo(const aP1,aP2:TpvVector2;const aRadius:TpvFloat);
+ const CCW=0;
+       CW=1;
+ var Direction,CountSubdivisions,SubdivisionIndex:TpvInt32;
+     p0,d01,d21,Center,Normal,Tangent,Current,Previous,PreviousTangent:TpvVector2;
+     d,Angle0,Angle1,AngleDifference,PartAngleDifference,Kappa:TpvFloat;
+ begin
+  if (aP1=aP2) or IsZero(aRadius) then begin
+   StrokeLineTo(aP1);
+  end else begin
+   p0:=LastPoint;
+   d01:=(p0-aP1).Normalize;
+   d21:=(aP2-aP1).Normalize;
+   d:=aRadius/tan(ArcCos(d01.Dot(d21))*0.5);
+   if d>1e+4 then begin
+    StrokeLineTo(aP1);
+   end else begin
+    if ((d01.y*d21.x)-(d01.x*d21.y))>0.0 then begin
+     Center:=aP1+TpvVector2.Create((d01.x*d)+(d01.y*aRadius),(d01.y*d)-(d01.x*aRadius));
+     Angle0:=ArcTan2(d01.x,-d01.y);
+     Angle1:=ArcTan2(-d21.x,d21.y);
+     Direction:=CW;
+    end else begin
+     Center:=aP1+TpvVector2.Create((d01.x*d)-(d01.y*aRadius),(d01.y*d)+(d01.x*aRadius));
+     Angle0:=ArcTan2(-d01.x,d01.y);
+     Angle1:=ArcTan2(d21.x,-d21.y);
+     Direction:=CCW;
+    end;
+    AngleDifference:=Angle1-Angle0;
+    if Direction=CW then begin
+     if abs(AngleDifference)>=TwoPI then begin
+      AngleDifference:=TwoPI;
+     end else begin
+      while AngleDifference<0.0 do begin
+       AngleDifference:=AngleDifference+TwoPI;
+      end;
+     end;
+    end else begin
+     if abs(AngleDifference)>=TwoPI then begin
+      AngleDifference:=-TwoPI;
+     end else begin
+      while AngleDifference>0.0 do begin
+       AngleDifference:=AngleDifference-TwoPI;
+      end;
+     end;
+    end;
+    CountSubdivisions:=Min(Max(round(abs(AngleDifference)/HalfPI),1),5);
+    PartAngleDifference:=AngleDifference/CountSubdivisions;
+    Kappa:=abs((4.0/3.0)*(1.0-cos(PartAngleDifference))/sin(PartAngleDifference))*IfThen(Direction=CCW,-1,1);
+    Previous:=Vector2Origin;
+    PreviousTangent:=Vector2Origin;
+    for SubdivisionIndex:=0 to CountSubdivisions-1 do begin
+     SinCos(Mix(Angle0,Angle1,SubdivisionIndex/CountSubdivisions),Normal.y,Normal.x);
+     Current:=Center+(Normal*aRadius);
+     Tangent:=TpvVector2.Create(-Normal.y,Normal.x)*aRadius*Kappa;
+     if SubdivisionIndex=0 then begin
+      StrokeLineTo(Current);
+     end else begin
+      StrokeCubicCurveTo(Previous+PreviousTangent,Current-Tangent,Current);
+     end;
+     Previous:=Current;
+     PreviousTangent:=Tangent;
+    end;
+   end;
+  end;
+ end;
  procedure StrokeClose;
  begin
   if fCountCacheLinePoints>0 then begin
@@ -1601,6 +1682,9 @@ begin
    end;
    pcpctCubicCurveTo:begin
     StrokeCubicCurveTo(Command.Points[0],Command.Points[1],Command.Points[2]);
+   end;
+   pcpctArcTo:begin
+    StrokeArcTo(Command.Points[0],Command.Points[1],Command.Points[2].x);
    end;
    pcpctClose:begin
     StrokeClose;
@@ -1823,6 +1907,72 @@ var CommandIndex,LastLinePoint:TpvInt32;
  begin
   Recursive(LastPoint.x,LastPoint.y,aC0.x,aC0.y,aC1.x,aC1.y,aA0.x,aA0.y,0);
   FillLineTo(aA0);
+ end;
+ procedure FillArcTo(const aP1,aP2:TpvVector2;const aRadius:TpvFloat);
+ const CCW=0;
+       CW=1;
+ var Direction,CountSubdivisions,SubdivisionIndex:TpvInt32;
+     p0,d01,d21,Center,Normal,Tangent,Current,Previous,PreviousTangent:TpvVector2;
+     d,Angle0,Angle1,AngleDifference,PartAngleDifference,Kappa:TpvFloat;
+ begin
+  if (aP1=aP2) or IsZero(aRadius) then begin
+   FillLineTo(aP1);
+  end else begin
+   p0:=LastPoint;
+   d01:=(p0-aP1).Normalize;
+   d21:=(aP2-aP1).Normalize;
+   d:=aRadius/tan(ArcCos(d01.Dot(d21))*0.5);
+   if d>1e+4 then begin
+    FillLineTo(aP1);
+   end else begin
+    if ((d01.y*d21.x)-(d01.x*d21.y))>0.0 then begin
+     Center:=aP1+TpvVector2.Create((d01.x*d)+(d01.y*aRadius),(d01.y*d)-(d01.x*aRadius));
+     Angle0:=ArcTan2(d01.x,-d01.y);
+     Angle1:=ArcTan2(-d21.x,d21.y);
+     Direction:=CW;
+    end else begin
+     Center:=aP1+TpvVector2.Create((d01.x*d)-(d01.y*aRadius),(d01.y*d)+(d01.x*aRadius));
+     Angle0:=ArcTan2(-d01.x,d01.y);
+     Angle1:=ArcTan2(d21.x,-d21.y);
+     Direction:=CCW;
+    end;
+    AngleDifference:=Angle1-Angle0;
+    if Direction=CW then begin
+     if abs(AngleDifference)>=TwoPI then begin
+      AngleDifference:=TwoPI;
+     end else begin
+      while AngleDifference<0.0 do begin
+       AngleDifference:=AngleDifference+TwoPI;
+      end;
+     end;
+    end else begin
+     if abs(AngleDifference)>=TwoPI then begin
+      AngleDifference:=-TwoPI;
+     end else begin
+      while AngleDifference>0.0 do begin
+       AngleDifference:=AngleDifference-TwoPI;
+      end;
+     end;
+    end;
+    CountSubdivisions:=Min(Max(round(abs(AngleDifference)/HalfPI),1),5);
+    PartAngleDifference:=AngleDifference/CountSubdivisions;
+    Kappa:=abs((4.0/3.0)*(1.0-cos(PartAngleDifference))/sin(PartAngleDifference))*IfThen(Direction=CCW,-1,1);
+    Previous:=Vector2Origin;
+    PreviousTangent:=Vector2Origin;
+    for SubdivisionIndex:=0 to CountSubdivisions-1 do begin
+     SinCos(Mix(Angle0,Angle1,SubdivisionIndex/CountSubdivisions),Normal.y,Normal.x);
+     Current:=Center+(Normal*aRadius);
+     Tangent:=TpvVector2.Create(-Normal.y,Normal.x)*aRadius*Kappa;
+     if SubdivisionIndex=0 then begin
+      FillLineTo(Current);
+     end else begin
+      FillCubicCurveTo(Previous+PreviousTangent,Current-Tangent,Current);
+     end;
+     Previous:=Current;
+     PreviousTangent:=Tangent;
+    end;
+   end;
+  end;
  end;
  procedure FillClose;
  begin
@@ -2262,6 +2412,9 @@ begin
    end;
    pcpctCubicCurveTo:begin
     FillCubicCurveTo(Command.Points[0],Command.Points[1],Command.Points[2]);
+   end;
+   pcpctArcTo:begin
+    FillArcTo(Command.Points[0],Command.Points[1],Command.Points[2].x);
    end;
    pcpctClose:begin
     FillClose;
@@ -4134,6 +4287,18 @@ end;
 function TpvCanvas.CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvFloat):TpvCanvas;
 begin
  fState.fPath.CubicCurveTo(TpvVector2.Create(aC0X,aC0Y),TpvVector2.Create(aC1X,aC1Y),TpvVector2.Create(aAX,aAY));
+ result:=self;
+end;
+
+function TpvCanvas.ArcTo(const aP0,aP1:TpvVector2;const aRadius:TpvFloat):TpvCanvas;
+begin
+ fState.fPath.ArcTo(aP0,aP1,aRadius);
+ result:=self;
+end;
+
+function TpvCanvas.ArcTo(const aP0X,aP0Y,aP1X,aP1Y,aRadius:TpvFloat):TpvCanvas;
+begin
+ fState.fPath.ArcTo(TpvVector2.Create(aP0X,aP0Y),TpvVector2.Create(aP1X,aP1Y),aRadius);
  result:=self;
 end;
 
