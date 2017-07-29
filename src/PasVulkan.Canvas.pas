@@ -190,6 +190,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        constructor Create(const aPattern:string); overload;
        constructor Create(const aSteps:array of TpvFloat;const aStepSize:TpvFloat); overload;
        constructor Create(const aSteps:array of TpvFloat); overload;
+       class operator Implicit(const aPattern:string):TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const aPattern:string):TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Implicit(const aSteps:TpvCanvasStrokePatternSteps):TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const aSteps:TpvCanvasStrokePatternSteps):TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
        property Steps:TpvCanvasStrokePatternSteps read fSteps write fSteps;
        property StepSize:TpvFloat read fStepSize write fStepSize;
      end;
@@ -821,6 +825,26 @@ end;
 constructor TpvCanvasStrokePattern.Create(const aSteps:array of TpvFloat);
 begin
  self:=TpvCanvasStrokePattern.Create(aSteps,1.0);
+end;
+
+class operator TpvCanvasStrokePattern.Implicit(const aPattern:string):TpvCanvasStrokePattern;
+begin
+ result:=TpvCanvasStrokePattern.Create(aPattern,1.0);
+end;
+
+class operator TpvCanvasStrokePattern.Explicit(const aPattern:string):TpvCanvasStrokePattern;
+begin
+ result:=TpvCanvasStrokePattern.Create(aPattern,1.0);
+end;
+
+class operator TpvCanvasStrokePattern.Implicit(const aSteps:TpvCanvasStrokePatternSteps):TpvCanvasStrokePattern;
+begin
+ result:=TpvCanvasStrokePattern.Create(aSteps,1.0);
+end;
+
+class operator TpvCanvasStrokePattern.Explicit(const aSteps:TpvCanvasStrokePatternSteps):TpvCanvasStrokePattern;
+begin
+ result:=TpvCanvasStrokePattern.Create(aSteps,1.0);
 end;
 
 constructor TpvCanvasPath.Create;
