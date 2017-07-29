@@ -928,14 +928,14 @@ begin
   CubicCurveTo(Offset+TpvVector2.Create(Size.x-(BottomRight.x*(1.0-ARC_MAGIC)),Size.y),
                Offset+TpvVector2.Create(Size.x,Size.y-(BottomRight.y*(1.0-ARC_MAGIC))),
                Offset+TpvVector2.Create(Size.x,Size.y-BottomRight.y));
-  LineTo(Offset+TpvVector2.Create(Size.x,Size.y+TopRight.y));
-  CubicCurveTo(Offset+TpvVector2.Create(Size.x,Size.y+(TopRight.y*(1.0-ARC_MAGIC))),
-               Offset+TpvVector2.Create(Size.x-(TopRight.x*(1.0-ARC_MAGIC)),Size.y),
-               Offset+TpvVector2.Create(Size.x-TopRight.x,Size.y));
-  LineTo(Offset+TpvVector2.Create(Size.x+TopLeft.y,Size.y));
-  CubicCurveTo(Offset+TpvVector2.Create(Size.x+(TopLeft.y*(1.0-ARC_MAGIC)),Size.y),
-               Offset+TpvVector2.Create(Size.x,Size.y+(TopLeft.y*(1.0-ARC_MAGIC))),
-               Offset+TpvVector2.Create(Size.x,Size.y+TopLeft.y));
+  LineTo(Offset+TpvVector2.Create(Size.x,TopRight.y));
+  CubicCurveTo(Offset+TpvVector2.Create(Size.x,TopRight.y*(1.0-ARC_MAGIC)),
+               Offset+TpvVector2.Create(Size.x-(TopRight.x*(1.0-ARC_MAGIC)),0.0),
+               Offset+TpvVector2.Create(Size.x-TopRight.x,0.0));
+  LineTo(Offset+TpvVector2.Create(TopLeft.y,0.0));
+  CubicCurveTo(Offset+TpvVector2.Create(TopLeft.x*(1.0-ARC_MAGIC),0.0),
+               Offset+TpvVector2.Create(0.0,TopLeft.y*(1.0-ARC_MAGIC)),
+               Offset+TpvVector2.Create(0.0,TopLeft.y));
   ClosePath;
  end;
  result:=self;
