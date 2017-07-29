@@ -2767,7 +2767,7 @@ end;
 procedure TpvCanvas.SetFillStyle(const aFillStyle:TpvCanvasFillStyle);
 begin
  if fState.fFillStyle<>aFillStyle then begin
-  Flush;
+//Flush;
   fState.fFillStyle:=aFillStyle;
  end;
 end;
@@ -2780,7 +2780,7 @@ end;
 procedure TpvCanvas.SetFillWrapMode(const aFillWrapMode:TpvCanvasFillWrapMode);
 begin
  if fState.fFillWrapMode<>aFillWrapMode then begin
-  Flush;
+//Flush;
   fState.fFillWrapMode:=aFillWrapMode;
  end;
 end;
@@ -3376,8 +3376,8 @@ begin
  if assigned(PeekState) then begin
   if (assigned(fCurrentFillBuffer) and
       (fCurrentCountVertices>0)) and
-     ((fState.fFillStyle<>PeekState.fFillStyle) or
-      (fState.fFillWrapMode<>PeekState.fFillWrapMode) or
+     ({(fState.fFillStyle<>PeekState.fFillStyle) or
+      (fState.fFillWrapMode<>PeekState.fFillWrapMode) or}
       (fState.fScissor.offset.x<>PeekState.fScissor.offset.x) or
       (fState.fScissor.offset.y<>PeekState.fScissor.offset.y) or
       (fState.fScissor.extent.width<>PeekState.fScissor.extent.width) or

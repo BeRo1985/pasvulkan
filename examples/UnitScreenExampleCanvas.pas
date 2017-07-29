@@ -244,8 +244,8 @@ begin
   Stream.Free;
  end;
 
- fTextureTreeLeafs.WrapModeU:=vtwmRepeat;
- fTextureTreeLeafs.WrapModeV:=vtwmRepeat;
+ fTextureTreeLeafs.WrapModeU:=vtwmMirroredRepeat;
+ fTextureTreeLeafs.WrapModeV:=vtwmMirroredRepeat;
  fTextureTreeLeafs.WrapModeW:=vtwmClampToEdge;
  fTextureTreeLeafs.BorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
  fTextureTreeLeafs.UpdateSampler;
@@ -528,6 +528,22 @@ begin
  fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
 
  fVulkanCanvas.Push;
+
+ fVulkanCanvas.ModelMatrix:=TpvMatrix4x4.Identity;
+ fVulkanCanvas.Texture:=fTextureTreeLeafs;
+ fVulkanCanvas.FillStyle:=pvcfsImage;
+ fVulkanCanvas.FillMatrix:=TpvMatrix4x4.CreateTranslation(-fVulkanCanvas.Width*0.125,
+                                                          -fVulkanCanvas.Height*0.5)*
+                           TpvMatrix4x4.CreateScale(Mix(4,32,(((cos(fTime*pi*1.0)*0.5)+0.5)))/fVulkanCanvas.Width,
+                                                    (Mix(4,32,(((cos(fTime*pi*1.0)*0.5)+0.5)))/fVulkanCanvas.Height)*(fVulkanCanvas.Height/fVulkanCanvas.Width))*
+                           TpvMatrix4x4.CreateTranslation(cos(fTime*0.5)*0.25,
+                                                          sin(fTime*2.0)*0.25)*
+                           TpvMatrix4x4.CreateRotateZ(cos(fTime*pi*0.0625)*TwoPI);
+ fVulkanCanvas.DrawFilledCircle(fVulkanCanvas.Width*0.125,
+                                fVulkanCanvas.Height-(fVulkanCanvas.Width*0.125),
+                                fVulkanCanvas.Width*0.1);
+
+ fVulkanCanvas.Texture:=nil;
 
  if not assigned(fShapeCircle) then begin
   fVulkanCanvas.Push;

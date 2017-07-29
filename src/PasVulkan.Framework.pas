@@ -2576,8 +2576,10 @@ type EpvVulkanException=class(Exception);
      TpvVulkanTextureWrapMode=
       (
        vtwmRepeat,
+       vtwmMirroredRepeat,
        vtwmClampToEdge,
-       vtwmClampToBorder
+       vtwmClampToBorder,
+       vtwmMirrorClampToEdge
       );
 
      TpvVulkanTextureFilterMode=
@@ -18920,33 +18922,51 @@ begin
   vtwmRepeat:begin
    AddressModeU:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
   end;
+  vtwmMirroredRepeat:begin
+   AddressModeU:=VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+  end;
   vtwmClampToEdge:begin
    AddressModeU:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
   end;
-  else {vtwmClampToBorder:}begin
+  vtwmClampToBorder:begin
    AddressModeU:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+  end;
+  else {vtwmMirrorClampToEdge:}begin
+   AddressModeU:=VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
   end;
  end;
  case fWrapModeV of
   vtwmRepeat:begin
    AddressModeV:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
   end;
+  vtwmMirroredRepeat:begin
+   AddressModeV:=VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+  end;
   vtwmClampToEdge:begin
    AddressModeV:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
   end;
-  else {vtwmClampToBorder:}begin
+  vtwmClampToBorder:begin
    AddressModeV:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+  end;
+  else {vtwmMirrorClampToEdge:}begin
+   AddressModeV:=VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
   end;
  end;
  case fWrapModeW of
   vtwmRepeat:begin
    AddressModeW:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
   end;
+  vtwmMirroredRepeat:begin
+   AddressModeW:=VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+  end;
   vtwmClampToEdge:begin
    AddressModeW:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
   end;
-  else {vtwmClampToBorder:}begin
+  vtwmClampToBorder:begin
    AddressModeW:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+  end;
+  else {vtwmMirrorClampToEdge:}begin
+   AddressModeW:=VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
   end;
  end;
  AnisotropyEnable:=fMaxAnisotropy>1.0;
