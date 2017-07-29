@@ -194,6 +194,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        class operator Explicit(const aPattern:string):TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Implicit(const aSteps:TpvCanvasStrokePatternSteps):TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const aSteps:TpvCanvasStrokePatternSteps):TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
+       class function Empty:TpvCanvasStrokePattern; static; {$ifdef CAN_INLINE}inline;{$endif}
        property Steps:TpvCanvasStrokePatternSteps read fSteps write fSteps;
        property StepSize:TpvFloat read fStepSize write fStepSize;
      end;
@@ -247,6 +248,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fPath:TpvCanvasPath;
        fTexture:TObject;
        fAtlasTexture:TObject;
+       fStrokePattern:TpvCanvasStrokePattern;
        function GetStartColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetStartColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
        function GetStopColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -268,6 +270,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property ViewMatrix:TpvMatrix4x4 read fViewMatrix write fViewMatrix;
        property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
        property FillMatrix:TpvMatrix4x4 read GetFillMatrix write SetFillMatrix;
+       property StrokePattern:TpvCanvasStrokePattern read fStrokePattern write fStrokePattern;
       published
        property BlendingMode:TpvCanvasBlendingMode read fBlendingMode write fBlendingMode;
        property LineWidth:TpvFloat read fLineWidth write fLineWidth;
@@ -585,6 +588,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4); {$ifdef CAN_INLINE}inline;{$endif}
        function GetFillMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetFillMatrix(const aMatrix:TpvMatrix4x4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetStrokePattern:TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetStrokePattern(const aStrokePattern:TpvCanvasStrokePattern); {$ifdef CAN_INLINE}inline;{$endif}
        function GetFont:TpvFont; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetFont(const aFont:TpvFont); {$ifdef CAN_INLINE}inline;{$endif}
        function GetFontSize:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -696,6 +701,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property ViewMatrix:TpvMatrix4x4 read GetViewMatrix write SetViewMatrix;
        property ModelMatrix:TpvMatrix4x4 read GetModelMatrix write SetModelMatrix;
        property FillMatrix:TpvMatrix4x4 read GetFillMatrix write SetFillMatrix;
+       property StrokePattern:TpvCanvasStrokePattern read GetStrokePattern write SetStrokePattern;
        property Font:TpvFont read GetFont write SetFont;
        property FontSize:TpvFloat read GetFontSize write SetFontSize;
        property TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment read GetTextHorizontalAlignment write SetTextHorizontalAlignment;
@@ -845,6 +851,12 @@ end;
 class operator TpvCanvasStrokePattern.Explicit(const aSteps:TpvCanvasStrokePatternSteps):TpvCanvasStrokePattern;
 begin
  result:=TpvCanvasStrokePattern.Create(aSteps,1.0);
+end;
+
+class function TpvCanvasStrokePattern.Empty:TpvCanvasStrokePattern;
+begin
+ result.fSteps:=nil;
+ result.fStepSize:=1.0;
 end;
 
 constructor TpvCanvasPath.Create;
@@ -1172,6 +1184,7 @@ begin
  fPath.fCountCommands:=0;
  fTexture:=nil;
  fAtlasTexture:=nil;
+ fStrokePattern:=TpvCanvasStrokePattern.Empty;
 end;
 
 procedure TpvCanvasState.Assign(aSource:TPersistent);
@@ -1198,6 +1211,7 @@ begin
   fPath.Assign(TpvCanvasState(aSource).fPath);
   fTexture:=TpvCanvasState(aSource).fTexture;
   fAtlasTexture:=TpvCanvasState(aSource).fAtlasTexture;
+  fStrokePattern:=TpvCanvasState(aSource).fStrokePattern;
  end;
 end;
 
@@ -3273,6 +3287,16 @@ begin
   Flush;
   fState.FillMatrix:=aMatrix;
  end;
+end;
+
+function TpvCanvas.GetStrokePattern:TpvCanvasStrokePattern;
+begin
+ result:=fState.fStrokePattern;
+end;
+
+procedure TpvCanvas.SetStrokePattern(const aStrokePattern:TpvCanvasStrokePattern);
+begin
+ fState.fStrokePattern:=aStrokePattern;
 end;
 
 function TpvCanvas.GetFont:TpvFont;
