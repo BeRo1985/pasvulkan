@@ -1843,33 +1843,32 @@ var StartPoint,LastPoint:TpvVector2;
     LineLen:=p0.DistanceTo(p1);
     LineRemain:=LineLen;
     while LineRemain>0 do begin
-     StepLength:=min(DashRemain,LineRemain);
-     if StepLength=0 then begin
-      if StepLength=0 then begin
-      end;
+     StepLength:=Min(DashRemain,LineRemain);
+     if IsZero(StepLength) then begin
       break;
-     end;
-     Distance:=(LineLen-LineRemain)/LineLen;
-     CurrentPosition:=p0.Lerp(p1,Distance);
-     if aState.fStrokePattern.fDashes[DashIndex]>0.0 then begin
-      IsInLine:=true;
-      AddLinePoint(CurrentPosition);
      end else begin
-      if IsInLine then begin
-       IsInLine:=false;
+      Distance:=(LineLen-LineRemain)/LineLen;
+      CurrentPosition:=p0.Lerp(p1,Distance);
+      if aState.fStrokePattern.fDashes[DashIndex]>0.0 then begin
+       IsInLine:=true;
        AddLinePoint(CurrentPosition);
-       ConvertStroke(fCacheTemporaryLinePoints,fCountCacheTemporaryLinePoints);
-       fCountCacheTemporaryLinePoints:=0;
+      end else begin
+       if IsInLine then begin
+        IsInLine:=false;
+        AddLinePoint(CurrentPosition);
+        ConvertStroke(fCacheTemporaryLinePoints,fCountCacheTemporaryLinePoints);
+        fCountCacheTemporaryLinePoints:=0;
+       end;
       end;
-     end;
-     LineRemain:=LineRemain-StepLength;
-     DashRemain:=DashRemain-StepLength;
-     if DashRemain<=0 then begin
-      inc(DashIndex);
-      if DashIndex>=length(aState.fStrokePattern.fDashes) then begin
-       DashIndex:=0;
+      LineRemain:=LineRemain-StepLength;
+      DashRemain:=DashRemain-StepLength;
+      if DashRemain<=0 then begin
+       inc(DashIndex);
+       if DashIndex>=length(aState.fStrokePattern.fDashes) then begin
+        DashIndex:=0;
+       end;
+       DashRemain:=abs(aState.fStrokePattern.fDashes[DashIndex]);
       end;
-      DashRemain:=abs(aState.fStrokePattern.fDashes[DashIndex]);
      end;
     end;
    end;
