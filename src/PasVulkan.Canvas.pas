@@ -127,7 +127,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        pvcfsColor=0,
        pvcfsImage=1,
        pvcfsLinearGradient=2,
-       pvcfsGradientGradient=3
+       pvcfsRadialGradient=3
       );
 
      PpvCanvasFillWrapMode=^TpvCanvasFillWrapMode;
@@ -2720,7 +2720,10 @@ end;
 
 procedure TpvCanvas.SetFillStyle(const aFillStyle:TpvCanvasFillStyle);
 begin
- fState.fFillStyle:=aFillStyle;
+ if fState.fFillStyle<>aFillStyle then begin
+  Flush;
+  fState.fFillStyle:=aFillStyle;
+ end;
 end;
 
 function TpvCanvas.GetFillWrapMode:TpvCanvasFillWrapMode;
@@ -2730,7 +2733,10 @@ end;
 
 procedure TpvCanvas.SetFillWrapMode(const aFillWrapMode:TpvCanvasFillWrapMode);
 begin
- fState.fFillWrapMode:=aFillWrapMode;
+ if fState.fFillWrapMode<>aFillWrapMode then begin
+  Flush;
+  fState.fFillWrapMode:=aFillWrapMode;
+ end;
 end;
 
 function TpvCanvas.GetColor:TpvVector4;
@@ -2750,7 +2756,10 @@ end;
 
 procedure TpvCanvas.SetStartColor(const aColor:TpvVector4);
 begin
- fState.StartColor:=aColor;
+ if fState.StartColor<>aColor then begin
+  Flush;
+  fState.StartColor:=aColor;
+ end;
 end;
 
 function TpvCanvas.GetStopColor:TpvVector4;
@@ -2760,7 +2769,10 @@ end;
 
 procedure TpvCanvas.SetStopColor(const aColor:TpvVector4);
 begin
- fState.StopColor:=aColor;
+ if fState.StopColor<>aColor then begin
+  Flush;
+  fState.StopColor:=aColor;
+ end;
 end;
 
 function TpvCanvas.GetProjectionMatrix:TpvMatrix4x4;

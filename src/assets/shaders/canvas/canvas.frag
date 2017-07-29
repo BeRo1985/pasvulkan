@@ -63,7 +63,9 @@ float sdEllipse(vec2 p, in vec2 ab){
 void main(void){
   vec4 color;
 #ifndef ATLAS_TEXTURE
-  mat2x3 fillTransformMatrix = mat2x3(pushConstants.fillMatrix);
+  mat3x2 fillTransformMatrix = mat3x2(pushConstants.fillMatrix[0].xy, 
+                                      pushConstants.fillMatrix[1].xy, 
+                                      vec2(pushConstants.fillMatrix[0].z, pushConstants.fillMatrix[1].z));
 #endif
 #ifdef NO_TEXTURE
   color = inColor;
@@ -73,7 +75,7 @@ void main(void){
   #define texCoord inTexCoord
 #else
   #define ADJUST_TEXCOORD(uv) uv
-  vec2 texCoord = ((inState.z & 0x03) == 0x01) ? (fillTransformMatrix * inPosition).xy : inTexCoord.xy;
+  vec2 texCoord = ((inState.z & 0x03) == 0x01) ? (fillTransformMatrix * vec3(inPosition, 1.0)).xy : inTexCoord.xy;
 #endif
   switch(inState.x){ 
     case 1:{
@@ -99,7 +101,7 @@ void main(void){
 #endif
 #ifndef ATLAS_TEXTURE
   if((inState.z & 0x03) >= 0x02){
-    vec2 gradientPosition = (fillTransformMatrix * inPosition).xy;      
+    vec2 gradientPosition = (fillTransformMatrix * vec3(inPosition, 1.0)).xy;      
     float gradientTime = 0.0;
     switch(inState.z & 0x03){
       case 0x02:{
@@ -121,7 +123,7 @@ void main(void){
       }
       case 0x02:{
         // Mirrored repeat
-        gradientTime = fract(1.0 - abs(gradientTime * 2.0));
+        gradientTime = 1.0 - abs(mod(gradientTime, 2.0) - 1.0);
         break;
       }
     }

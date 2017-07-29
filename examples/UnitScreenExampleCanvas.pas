@@ -695,12 +695,38 @@ begin
   fVulkanCanvas.EndPath;
   fVulkanCanvas.Pop;
  end;
- fVulkanCanvas.Color:=TpvVector4.Create((sin((fTime*0.78)*pi*2.0)*0.5)+0.5,
-                                        (cos((fTime*0.65)*pi*2.0)*0.5)+0.5,
-                                        (sin((fTime*0.91)*pi*2.0)*0.5)+0.5,
-                                        1.0);
+ fVulkanCanvas.FillStyle:=pvcfsRadialGradient;
+ fVulkanCanvas.FillWrapMode:=pvcfwmMirroredRepeat;
+ fVulkanCanvas.StartColor:=TpvVector4.Create((sin((fTime*0.84)*pi*2.0)*0.5)+0.5,
+                                             (cos((fTime*0.98)*pi*2.0)*0.5)+0.5,
+                                             (sin((fTime*0.43)*pi*2.0)*0.5)+0.5,
+                                             1.0);
+ fVulkanCanvas.StopColor:=TpvVector4.Create((cos((fTime*0.57)*pi*2.0)*0.5)+0.5,
+                                            (sin((fTime*1.04)*pi*2.0)*0.5)+0.5,
+                                            (cos((fTime*0.79)*pi*2.0)*0.5)+0.5,
+                                            1.0);
+ fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+ fVulkanCanvas.FillMatrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.125)+(fVulkanCanvas.Width*(cos(fTime*0.5)*0.08)),
+                                                          -(fVulkanCanvas.Height-(fVulkanCanvas.Width*0.125))+(fVulkanCanvas.Height*(sin(fTime*2.0)*0.08)))*
+                           TpvMatrix4x4.CreateScale(128.0/fVulkanCanvas.Width,
+                                                    (128.0/fVulkanCanvas.Height)*(fVulkanCanvas.Height/fVulkanCanvas.Width));
  fVulkanCanvas.DrawShape(fShapeCircle);
 
+ fVulkanCanvas.FillStyle:=pvcfsRadialGradient;
+ fVulkanCanvas.FillWrapMode:=pvcfwmMirroredRepeat;
+ fVulkanCanvas.StartColor:=TpvVector4.Create((sin((fTime*0.78)*pi*2.0)*0.5)+0.5,
+                                             (cos((fTime*0.65)*pi*2.0)*0.5)+0.5,
+                                             (sin((fTime*0.91)*pi*2.0)*0.5)+0.5,
+                                             1.0);
+ fVulkanCanvas.StopColor:=TpvVector4.Create((cos((fTime*0.78)*pi*2.0)*0.5)+0.5,
+                                            (sin((fTime*0.65)*pi*2.0)*0.5)+0.5,
+                                            (cos((fTime*0.91)*pi*2.0)*0.5)+0.5,
+                                            1.0);
+ fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+ fVulkanCanvas.FillMatrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.9375)+(fVulkanCanvas.Width*(cos(fTime*0.5)*0.025)),
+                                                          -(fVulkanCanvas.Height-(fVulkanCanvas.Width*0.0625))+(fVulkanCanvas.Height*(sin(fTime*2.0)*0.025)))*
+                           TpvMatrix4x4.CreateScale(64.0/fVulkanCanvas.Width,
+                                                    (64.0/fVulkanCanvas.Height)*(fVulkanCanvas.Height/fVulkanCanvas.Width));
  fVulkanCanvas.DrawFilledCircle(fVulkanCanvas.Width*0.9375,fVulkanCanvas.Height-(fVulkanCanvas.Width*0.0625),fVulkanCanvas.Width*0.05);
 
  fVulkanCanvas.Stop;
