@@ -178,25 +178,29 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvas=class;
 
-     TpvCanvasStrokePatternSteps=array of TpvFloat;
+     TpvCanvasStrokePatternDashes=array of TpvDouble;
 
      PpvCanvasStrokePattern=^TpvCanvasStrokePattern;
      TpvCanvasStrokePattern=record
       private
-       fSteps:TpvCanvasStrokePatternSteps;
-       fStepSize:TpvFloat;
+       fDashes:TpvCanvasStrokePatternDashes;
+       fDashSize:TpvDouble;
+       fStart:TpvDouble;
       public
-       constructor Create(const aPattern:string;const aStepSize:TpvFloat); overload;
+       constructor Create(const aPattern:string;const aDashSize,aStart:TpvDouble); overload;
+       constructor Create(const aPattern:string;const aDashSize:TpvDouble); overload;
        constructor Create(const aPattern:string); overload;
-       constructor Create(const aSteps:array of TpvFloat;const aStepSize:TpvFloat); overload;
-       constructor Create(const aSteps:array of TpvFloat); overload;
+       constructor Create(const aDashes:array of TpvDouble;const aDashSize,aStart:TpvDouble); overload;
+       constructor Create(const aDashes:array of TpvDouble;const aDashSize:TpvDouble); overload;
+       constructor Create(const aDashes:array of TpvDouble); overload;
        class operator Implicit(const aPattern:string):TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const aPattern:string):TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Implicit(const aSteps:TpvCanvasStrokePatternSteps):TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Explicit(const aSteps:TpvCanvasStrokePatternSteps):TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Implicit(const aDashes:TpvCanvasStrokePatternDashes):TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const aDashes:TpvCanvasStrokePatternDashes):TpvCanvasStrokePattern; {$ifdef CAN_INLINE}inline;{$endif}
        class function Empty:TpvCanvasStrokePattern; static; {$ifdef CAN_INLINE}inline;{$endif}
-       property Steps:TpvCanvasStrokePatternSteps read fSteps write fSteps;
-       property StepSize:TpvFloat read fStepSize write fStepSize;
+       property Steps:TpvCanvasStrokePatternDashes read fDashes write fDashes;
+       property DashSize:TpvDouble read fDashSize write fDashSize;
+       property Start:TpvDouble read fStart write fStart;
      end;
 
      TpvCanvasPath=class(TPersistent)
@@ -740,14 +744,15 @@ const pcvvaomSolid=0;
 
       CurveRecursionLimit=16;
 
-constructor TpvCanvasStrokePattern.Create(const aPattern:string;const aStepSize:TpvFloat);
+constructor TpvCanvasStrokePattern.Create(const aPattern:string;const aDashSize,aStart:TpvDouble);
 var CountSteps,Position,Len,StartPosition,Count,Index:TpvInt32;
-    Value:TpvFloat;
+    Value:TpvDouble;
     OK:TPasDblStrUtilsBoolean;
     c:AnsiChar;
 begin
- fStepSize:=aStepSize;
- fSteps:=nil;
+ fDashSize:=aDashSize;
+ fStart:=aStart;
+ fDashes:=nil;
  CountSteps:=0;
  try
   Len:=length(aPattern);
@@ -763,10 +768,10 @@ begin
       OK:=false;
       Value:=ConvertStringToDouble(TPasDblStrUtilsRawByteString(Copy(aPattern,StartPosition,Position-StartPosition)),rmNearest,@OK,-1);
       if OK and not SameValue(Value,0) then begin
-       if length(fSteps)<(CountSteps+1) then begin
-        SetLength(fSteps,(CountSteps+1)*2);
+       if length(fDashes)<(CountSteps+1) then begin
+        SetLength(fDashes,(CountSteps+1)*2);
        end;
-       fSteps[CountSteps]:=Value;
+       fDashes[CountSteps]:=Value;
        inc(CountSteps);
       end;
      end else begin
@@ -789,13 +794,13 @@ begin
       inc(Position);
      until (Position>Len) or (AnsiChar(aPattern[Position])<>c);
      if Count>0 then begin
-      if length(fSteps)<(CountSteps+1) then begin
-       SetLength(fSteps,(CountSteps+1)*2);
+      if length(fDashes)<(CountSteps+1) then begin
+       SetLength(fDashes,(CountSteps+1)*2);
       end;
       if c in [#0..#32] then begin
-       fSteps[CountSteps]:=-Count;
+       fDashes[CountSteps]:=-Count;
       end else begin
-       fSteps[CountSteps]:=Count;
+       fDashes[CountSteps]:=Count;
       end;
       inc(CountSteps);
      end;
@@ -803,62 +808,74 @@ begin
    end;
    if CountSteps>0 then begin
     if (CountSteps and 1)=1 then begin
-     SetLength(fSteps,CountSteps*2);
+     SetLength(fDashes,CountSteps*2);
      for Index:=0 to CountSteps-1 do begin
-      fSteps[CountSteps+Index]:=fSteps[Index]*(-Sign(fSteps[(CountSteps+Index)-1]));
+      fDashes[CountSteps+Index]:=fDashes[Index]*(-Sign(fDashes[(CountSteps+Index)-1]));
      end;
      inc(CountSteps,CountSteps);
     end;
    end;
   end;
  finally
-  SetLength(fSteps,CountSteps);
+  SetLength(fDashes,CountSteps);
  end;
+end;
+
+constructor TpvCanvasStrokePattern.Create(const aPattern:string;const aDashSize:TpvDouble);
+begin
+ self:=TpvCanvasStrokePattern.Create(aPattern,aDashSize,0.0);
 end;
 
 constructor TpvCanvasStrokePattern.Create(const aPattern:string);
 begin
- self:=TpvCanvasStrokePattern.Create(aPattern,1.0);
+ self:=TpvCanvasStrokePattern.Create(aPattern,1.0,0.0);
 end;
 
-constructor TpvCanvasStrokePattern.Create(const aSteps:array of TpvFloat;const aStepSize:TpvFloat);
+constructor TpvCanvasStrokePattern.Create(const aDashes:array of TpvDouble;const aDashSize,aStart:TpvDouble);
 begin
- SetLength(fSteps,length(aSteps));
- if length(aSteps)>0 then begin
-  Move(aSteps[0],fSteps[0],length(aSteps)*SizeOf(TpvFloat));
+ SetLength(fDashes,length(aDashes));
+ if length(aDashes)>0 then begin
+  Move(aDashes[0],fDashes[0],length(aDashes)*SizeOf(TpvDouble));
  end;
- fStepSize:=aStepSize;
+ fDashSize:=aDashSize;
+ fStart:=aStart;
 end;
 
-constructor TpvCanvasStrokePattern.Create(const aSteps:array of TpvFloat);
+constructor TpvCanvasStrokePattern.Create(const aDashes:array of TpvDouble;const aDashSize:TpvDouble);
 begin
- self:=TpvCanvasStrokePattern.Create(aSteps,1.0);
+ self:=TpvCanvasStrokePattern.Create(aDashes,aDashSize,0.0);
+end;
+
+constructor TpvCanvasStrokePattern.Create(const aDashes:array of TpvDouble);
+begin
+ self:=TpvCanvasStrokePattern.Create(aDashes,1.0,0.0);
 end;
 
 class operator TpvCanvasStrokePattern.Implicit(const aPattern:string):TpvCanvasStrokePattern;
 begin
- result:=TpvCanvasStrokePattern.Create(aPattern,1.0);
+ result:=TpvCanvasStrokePattern.Create(aPattern,1.0,0.0);
 end;
 
 class operator TpvCanvasStrokePattern.Explicit(const aPattern:string):TpvCanvasStrokePattern;
 begin
- result:=TpvCanvasStrokePattern.Create(aPattern,1.0);
+ result:=TpvCanvasStrokePattern.Create(aPattern,1.0,0.0);
 end;
 
-class operator TpvCanvasStrokePattern.Implicit(const aSteps:TpvCanvasStrokePatternSteps):TpvCanvasStrokePattern;
+class operator TpvCanvasStrokePattern.Implicit(const aDashes:TpvCanvasStrokePatternDashes):TpvCanvasStrokePattern;
 begin
- result:=TpvCanvasStrokePattern.Create(aSteps,1.0);
+ result:=TpvCanvasStrokePattern.Create(aDashes,1.0,0.0);
 end;
 
-class operator TpvCanvasStrokePattern.Explicit(const aSteps:TpvCanvasStrokePatternSteps):TpvCanvasStrokePattern;
+class operator TpvCanvasStrokePattern.Explicit(const aDashes:TpvCanvasStrokePatternDashes):TpvCanvasStrokePattern;
 begin
- result:=TpvCanvasStrokePattern.Create(aSteps,1.0);
+ result:=TpvCanvasStrokePattern.Create(aDashes,1.0,0.0);
 end;
 
 class function TpvCanvasStrokePattern.Empty:TpvCanvasStrokePattern;
 begin
- result.fSteps:=nil;
- result.fStepSize:=1.0;
+ result.fDashes:=nil;
+ result.fDashSize:=1.0;
+ result.fStart:=0.0;
 end;
 
 constructor TpvCanvasPath.Create;
@@ -1774,11 +1791,99 @@ var StartPoint,LastPoint:TpvVector2;
   aCountLinePoints:=0;
  end;
  procedure StrokeFlush;
+  procedure ConvertStrokeWithPattern;
+   procedure AddLinePoint(const aP0:TpvVector2);
+   var Index:TpvInt32;
+       ShapeCacheTemporaryLinePoint:PpvCanvasShapeCacheLinePoint;
+   begin
+    if (fCountCacheTemporaryLinePoints=0) or
+       (fCacheTemporaryLinePoints[fCountCacheTemporaryLinePoints-1].Position<>aP0) then begin
+     Index:=fCountCacheTemporaryLinePoints;
+     inc(fCountCacheTemporaryLinePoints);
+     if length(fCacheTemporaryLinePoints)<fCountCacheTemporaryLinePoints then begin
+      SetLength(fCacheTemporaryLinePoints,fCountCacheTemporaryLinePoints*2);
+     end;
+     ShapeCacheTemporaryLinePoint:=@fCacheTemporaryLinePoints[Index];
+     ShapeCacheTemporaryLinePoint^.Position:=aP0;
+    end;
+   end;
+  var DashIndex,PointIndex:TpvInt32;
+      IsInLine:boolean;
+      LineRemain,LineLen,DashRemain,StartRemain,StepLength,Distance:TpvDouble;
+      p0,p1,CurrentPosition:TpvVector2;
+  begin
+   IsInLine:=false;
+   fCountCacheTemporaryLinePoints:=0;
+   LineRemain:=0;
+   LineLen:=0;
+   p0:=Vector2Origin;
+   p1:=Vector2Origin;
+   DashIndex:=0;
+   DashRemain:=abs(aState.fStrokePattern.fDashes[DashIndex]);
+   StartRemain:=aState.fStrokePattern.fStart;
+   while StartRemain>0.0 do begin
+    StepLength:=Min(DashRemain,StartRemain);
+    if IsZero(StepLength) then begin
+     break;
+    end else begin
+     StartRemain:=StartRemain-StepLength;
+     DashRemain:=DashRemain-StepLength;
+     if DashRemain<=0 then begin
+      inc(DashIndex);
+      if DashIndex>=length(aState.fStrokePattern.fDashes) then begin
+       DashIndex:=0;
+      end;
+      DashRemain:=abs(aState.fStrokePattern.fDashes[DashIndex]);
+     end;
+    end;
+   end;
+   for PointIndex:=0 to fCountCacheLinePoints-2 do begin
+    p0:=fCacheLinePoints[PointIndex].Position;
+    p1:=fCacheLinePoints[PointIndex+1].Position;
+    LineLen:=p0.DistanceTo(p1);
+    LineRemain:=LineLen;
+    while LineRemain>0 do begin
+     StepLength:=min(DashRemain,LineRemain);
+     if StepLength=0 then begin
+      if StepLength=0 then begin
+      end;
+      break;
+     end;
+     Distance:=(LineLen-LineRemain)/LineLen;
+     CurrentPosition:=p0.Lerp(p1,Distance);
+     if aState.fStrokePattern.fDashes[DashIndex]>0.0 then begin
+      IsInLine:=true;
+      AddLinePoint(CurrentPosition);
+     end else begin
+      if IsInLine then begin
+       IsInLine:=false;
+       AddLinePoint(CurrentPosition);
+       ConvertStroke(fCacheTemporaryLinePoints,fCountCacheTemporaryLinePoints);
+       fCountCacheTemporaryLinePoints:=0;
+      end;
+     end;
+     LineRemain:=LineRemain-StepLength;
+     DashRemain:=DashRemain-StepLength;
+     if DashRemain<=0 then begin
+      inc(DashIndex);
+      if DashIndex>=length(aState.fStrokePattern.fDashes) then begin
+       DashIndex:=0;
+      end;
+      DashRemain:=abs(aState.fStrokePattern.fDashes[DashIndex]);
+     end;
+    end;
+   end;
+   if IsInLine and not IsZero(LineLen) then begin
+    AddLinePoint(p0.Lerp(p1,(LineLen-LineRemain)/LineLen));
+    ConvertStroke(fCacheTemporaryLinePoints,fCountCacheTemporaryLinePoints);
+    fCountCacheTemporaryLinePoints:=0;
+   end;
+  end;
  begin
   if fCountCacheLinePoints>0 then begin
-   if (length(aState.fStrokePattern.fSteps)>0) and
-      (aState.fStrokePattern.fStepSize>0.0) then begin
-
+   if (length(aState.fStrokePattern.fDashes)>0) and
+      (aState.fStrokePattern.fDashSize>0.0) then begin
+    ConvertStrokeWithPattern;
    end else begin
     ConvertStroke(fCacheLinePoints,fCountCacheLinePoints);
    end;
