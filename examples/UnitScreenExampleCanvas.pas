@@ -686,13 +686,13 @@ begin
  fVulkanCanvas.Pop;
 
  fVulkanCanvas.Push;
-//fVulkanCanvas.ModelMatrix:=TpvMatrix3x3.CreateTranslation(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5);
  fVulkanCanvas.LineWidth:=10.0+(sin((fTime*0.13)*pi*2.0)*6.0);
-//fVulkanCanvas.StrokePattern:=TpvCanvasStrokePattern.Create('- - --  --  ----    ----    --------        --------        ',fVulkanCanvas.LineWidth,0.0);
  fVulkanCanvas.StrokePattern:=TpvCanvasStrokePattern.Create([1.0,-1.0,1.0,-1.0,
                                                              2.0,-2.0,2.0,-2.0,
                                                              4.0,-4.0,4.0,-4.0,
                                                              8.0,-8.0,8.0,-8.0],fVulkanCanvas.LineWidth,0.0);
+ // or also: fVulkanCanvas.StrokePattern:=TpvCanvasStrokePattern.Create('- - --  --  ----    ----    --------        --------        ',fVulkanCanvas.LineWidth,0.0);
+ // or also: fVulkanCanvas.StrokePattern:='- - --  --  ----    ----    --------        --------        '
  fVulkanCanvas.BeginPath;
  fVulkanCanvas.MoveTo(fVulkanCanvas.Width*(0.5+(sin(fTime*0.5)*0.375)),fVulkanCanvas.Height*(0.5+(cos(fTime*2.0)*0.375)));
  fVulkanCanvas.LineTo(fVulkanCanvas.Width*(0.5+(cos(fTime*0.5)*0.375)),fVulkanCanvas.Height*(0.5+(sin(fTime*2.0)*0.375)));
@@ -704,6 +704,7 @@ begin
  fVulkanCanvas.Stroke;
  fVulkanCanvas.EndPath;
  fVulkanCanvas.StrokePattern:=TpvCanvasStrokePattern.Empty;
+ // or also: fVulkanCanvas.StrokePattern:='';
  fVulkanCanvas.Pop;
 
  fVulkanCanvas.Push;
