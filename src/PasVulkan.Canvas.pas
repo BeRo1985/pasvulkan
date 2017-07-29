@@ -409,7 +409,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       (
        pvcqikNone,
        pvcqikNormal,
-       pvcqikVector,
        pvcqikHook
       );
 
@@ -3172,15 +3171,15 @@ begin
 end;
 
 procedure TpvCanvas.ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
+const Offsets:array[0..0] of TVkDeviceSize=(0);
 var Index,DescriptorIndex,StartVertexIndex:TpvInt32;
     QueueItem:PpvCanvasQueueItem;
     OldQueueItemKind:TpvCanvasQueueItemKind;
     CurrentBuffer:PpvCanvasBuffer;
-    VulkanVertexBuffer,VulkanIndexBuffer:TpvVulkanBuffer;
+    VulkanVertexBuffer,VulkanIndexBuffer,OldVulkanVertexBuffer,OldVulkanIndexBuffer:TpvVulkanBuffer;
     OldScissor:TVkRect2D;
     TransformMatrix,FillMatrix:TpvMatrix4x4;
     ForceUpdate,TextureMode:boolean;
-    Offsets:array[0..0] of TVkDeviceSize;
 begin
  CurrentBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
  if assigned(CurrentBuffer) and (CurrentBuffer^.fCountQueueItems>0) then begin
@@ -3201,6 +3200,10 @@ begin
   ForceUpdate:=true;
 
   TextureMode:=true;
+
+  OldVulkanVertexBuffer:=nil;
+
+  OldVulkanIndexBuffer:=nil;
 
   for Index:=0 to CurrentBuffer^.fCountQueueItems-1 do begin
 
@@ -3261,17 +3264,22 @@ begin
       aVulkanCommandBuffer.CmdSetScissor(0,1,@QueueItem^.Scissor);
      end;
 
-     Offsets[0]:=QueueItem^.StartVertexIndex*SizeOf(TpvCanvasVertex);
-     aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
+     if ForceUpdate or
+        (OldVulkanVertexBuffer<>VulkanVertexBuffer) then begin
+      OldVulkanVertexBuffer:=VulkanVertexBuffer;
+      aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
+     end;
 
-     aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,QueueItem^.StartIndexIndex*SizeOf(TpvUInt32),VK_INDEX_TYPE_UINT32);
-     aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,0,0,0);
+     if ForceUpdate or
+        (OldVulkanIndexBuffer<>VulkanIndexBuffer) then begin
+      OldVulkanIndexBuffer:=VulkanIndexBuffer;
+      aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+     end;
+
+     aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
 
      ForceUpdate:=false;
 
-    end;
-    pvcqikVector:begin
-     // TODO
     end;
     pvcqikHook:begin
      if assigned(QueueItem^.Hook) then begin
