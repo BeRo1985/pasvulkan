@@ -199,6 +199,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvasPath;
        function Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
        function Rectangle(const aCenter,aBounds:TpvVector2):TpvCanvasPath;
+       function RoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvasPath;
      end;
 
      TpvCanvasState=class(TPersistent)
@@ -655,6 +656,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function Circle(const aCenterX,aCenterY,aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Rectangle(const aCenter,aBounds:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Rectangle(const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function RoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function RoundedRectangle(const aCenterX,aCenterY,aBoundX,aBoundY,aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
        function Stroke:TpvCanvas;
        function Fill:TpvCanvas;
@@ -886,6 +889,52 @@ begin
  LineTo(TpvVector2.Create(aCenter.x+aBounds.x,aCenter.y+aBounds.y));
  LineTo(TpvVector2.Create(aCenter.x-aBounds.x,aCenter.y+aBounds.y));
  ClosePath;
+ result:=self;
+end;
+
+function TpvCanvasPath.RoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvasPath;
+const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45°)/sin 45° = 4/3 * (sqrt(2) - 1)
+var Offset,Size,TopLeft,TopRight,BottomLeft,BottomRight:TpvVector2;
+begin
+ if IsZero(aRadiusTopLeft) and
+    IsZero(aRadiusTopRight) and
+    IsZero(aRadiusBottomLeft) and
+    IsZero(aRadiusBottomRight) then begin
+  MoveTo(TpvVector2.Create(aCenter.x-aBounds.x,aCenter.y-aBounds.y));
+  LineTo(TpvVector2.Create(aCenter.x+aBounds.x,aCenter.y-aBounds.y));
+  LineTo(TpvVector2.Create(aCenter.x+aBounds.x,aCenter.y+aBounds.y));
+  LineTo(TpvVector2.Create(aCenter.x-aBounds.x,aCenter.y+aBounds.y));
+  ClosePath;
+ end else begin
+  Offset:=aCenter-aBounds;
+  Size:=aBounds*2.0;
+  TopLeft:=TpvVector2.Create(Min(ABounds.x,aRadiusTopLeft)*Sign(Size.x),
+                             Min(ABounds.y,aRadiusTopLeft)*Sign(Size.y));
+  TopRight:=TpvVector2.Create(Min(ABounds.x,aRadiusTopRight)*Sign(Size.x),
+                              Min(ABounds.y,aRadiusTopRight)*Sign(Size.y));
+  BottomLeft:=TpvVector2.Create(Min(ABounds.x,aRadiusBottomLeft)*Sign(Size.x),
+                                Min(ABounds.y,aRadiusBottomLeft)*Sign(Size.y));
+  BottomRight:=TpvVector2.Create(Min(ABounds.x,aRadiusBottomRight)*Sign(Size.x),
+                                 Min(ABounds.y,aRadiusBottomRight)*Sign(Size.y));
+  MoveTo(Offset+TpvVector2.Create(0.0,TopLeft.y));
+  LineTo(Offset+TpvVector2.Create(0.0,Size.y-BottomLeft.y));
+  CubicCurveTo(Offset+TpvVector2.Create(0.0,Size.y-(BottomLeft.y*(1.0-ARC_MAGIC))),
+               Offset+TpvVector2.Create(BottomLeft.x*(1.0-ARC_MAGIC),Size.y),
+               Offset+TpvVector2.Create(BottomLeft.x,Size.y));
+  LineTo(Offset+TpvVector2.Create(Size.x-BottomRight.x,Size.y));
+  CubicCurveTo(Offset+TpvVector2.Create(Size.x-(BottomRight.x*(1.0-ARC_MAGIC)),Size.y),
+               Offset+TpvVector2.Create(Size.x,Size.y-(BottomRight.y*(1.0-ARC_MAGIC))),
+               Offset+TpvVector2.Create(Size.x,Size.y-BottomRight.y));
+  LineTo(Offset+TpvVector2.Create(Size.x,Size.y+TopRight.y));
+  CubicCurveTo(Offset+TpvVector2.Create(Size.x,Size.y+(TopRight.y*(1.0-ARC_MAGIC))),
+               Offset+TpvVector2.Create(Size.x-(TopRight.x*(1.0-ARC_MAGIC)),Size.y),
+               Offset+TpvVector2.Create(Size.x-TopRight.x,Size.y));
+  LineTo(Offset+TpvVector2.Create(Size.x+TopLeft.y,Size.y));
+  CubicCurveTo(Offset+TpvVector2.Create(Size.x+(TopLeft.y*(1.0-ARC_MAGIC)),Size.y),
+               Offset+TpvVector2.Create(Size.x,Size.y+(TopLeft.y*(1.0-ARC_MAGIC))),
+               Offset+TpvVector2.Create(Size.x,Size.y+TopLeft.y));
+  ClosePath;
+ end;
  result:=self;
 end;
 
@@ -4392,6 +4441,18 @@ end;
 function TpvCanvas.Rectangle(const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat):TpvCanvas;
 begin
  fState.fPath.Rectangle(TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY));
+ result:=self;
+end;
+
+function TpvCanvas.RoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvas;
+begin
+ fState.fPath.RoundedRectangle(aCenter,aBounds,aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight);
+ result:=self;
+end;
+
+function TpvCanvas.RoundedRectangle(const aCenterX,aCenterY,aBoundX,aBoundY,aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvas;
+begin
+ fState.fPath.RoundedRectangle(TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY),aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight);
  result:=self;
 end;
 
