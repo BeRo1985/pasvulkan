@@ -195,6 +195,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function QuadraticCurveTo(const aC0,aA0:TpvVector2):TpvCanvasPath;
        function CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvasPath;
        function ArcTo(const aP0,aP1:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
+       function Arc(const aCenter:TpvVector2;const aRadius,aAngle0,aAngle1:TpvFloat;const aClockwise:boolean):TpvCanvasPath;
        function Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvasPath;
        function Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
        function Rectangle(const aCenter,aBounds:TpvVector2):TpvCanvasPath;
@@ -646,6 +647,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function ArcTo(const aP0,aP1:TpvVector2;const aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function ArcTo(const aP0X,aP0Y,aP1X,aP1Y,aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Arc(const aCenter:TpvVector2;const aRadius,aAngle0,aAngle1:TpvFloat;const aClockwise:boolean):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Arc(const aCenterX,aCenterY,aRadius,aAngle0,aAngle1:TpvFloat;const aClockwise:boolean):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Ellipse(const aCenterX,aCenterY,aRadiusX,aRadiusY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -807,6 +810,48 @@ begin
  Command^.Points[1]:=aP1;
  Command^.Points[2]:=TpvVector2.Create(aRadius,aRadius);
  result:=self;
+end;
+
+function TpvCanvasPath.Arc(const aCenter:TpvVector2;const aRadius,aAngle0,aAngle1:TpvFloat;const aClockwise:boolean):TpvCanvasPath;
+var Direction,CountSubdivisions,SubdivisionIndex:TpvInt32;
+    p0,d01,d21,Normal,Tangent,Current,Previous,PreviousTangent:TpvVector2;
+    d,AngleDifference,PartAngleDifference,Kappa:TpvFloat;
+begin
+ AngleDifference:=aAngle1-aAngle0;
+ if aClockwise then begin
+  if abs(AngleDifference)>=TwoPI then begin
+   AngleDifference:=TwoPI;
+  end else begin
+   while AngleDifference<0.0 do begin
+    AngleDifference:=AngleDifference+TwoPI;
+   end;
+  end;
+ end else begin
+  if abs(AngleDifference)>=TwoPI then begin
+   AngleDifference:=-TwoPI;
+  end else begin
+   while AngleDifference>0.0 do begin
+    AngleDifference:=AngleDifference-TwoPI;
+   end;
+  end;
+ end;
+ CountSubdivisions:=Min(Max(round(abs(AngleDifference)/HalfPI),1),5);
+ PartAngleDifference:=AngleDifference/CountSubdivisions;
+ Kappa:=abs((4.0/3.0)*(1.0-cos(PartAngleDifference))/sin(PartAngleDifference))*IfThen(not aClockwise,-1,1);
+ Previous:=Vector2Origin;
+ PreviousTangent:=Vector2Origin;
+ for SubdivisionIndex:=0 to CountSubdivisions-1 do begin
+  SinCos(Mix(aAngle0,aAngle1,SubdivisionIndex/CountSubdivisions),Normal.y,Normal.x);
+  Current:=aCenter+(Normal*aRadius);
+  Tangent:=TpvVector2.Create(-Normal.y,Normal.x)*aRadius*Kappa;
+  if SubdivisionIndex=0 then begin
+   MoveTo(Current);
+  end else begin
+   CubicCurveTo(Previous+PreviousTangent,Current-Tangent,Current);
+  end;
+  Previous:=Current;
+  PreviousTangent:=Tangent;
+ end;
 end;
 
 function TpvCanvasPath.Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvasPath;
@@ -4299,6 +4344,18 @@ end;
 function TpvCanvas.ArcTo(const aP0X,aP0Y,aP1X,aP1Y,aRadius:TpvFloat):TpvCanvas;
 begin
  fState.fPath.ArcTo(TpvVector2.Create(aP0X,aP0Y),TpvVector2.Create(aP1X,aP1Y),aRadius);
+ result:=self;
+end;
+
+function TpvCanvas.Arc(const aCenter:TpvVector2;const aRadius,aAngle0,aAngle1:TpvFloat;const aClockwise:boolean):TpvCanvas;
+begin
+ fState.fPath.Arc(aCenter,aRadius,aAngle0,aAngle1,aClockwise);
+ result:=self;
+end;
+
+function TpvCanvas.Arc(const aCenterX,aCenterY,aRadius,aAngle0,aAngle1:TpvFloat;const aClockwise:boolean):TpvCanvas;
+begin
+ fState.fPath.Arc(TpvVector2.Create(aCenterX,aCenterY),aRadius,aAngle0,aAngle1,aClockwise);
  result:=self;
 end;
 
