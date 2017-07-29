@@ -148,9 +148,9 @@ end;
 begin
  StringList:=TStringList.Create;
  try
-  ConvertFile('shaders/canvas/canvas_frag_atlas_texture.spv','CanvasFragmentAtlasTextureSPIRV');
-  ConvertFile('shaders/canvas/canvas_frag_texture.spv','CanvasFragmentTextureSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_no_texture.spv','CanvasFragmentNoTextureSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_texture.spv','CanvasFragmentTextureSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_atlas_texture.spv','CanvasFragmentAtlasTextureSPIRV');
   ConvertFile('shaders/canvas/canvas_vert.spv','CanvasVertexSPIRV');
   StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanAssets.inc');
  finally

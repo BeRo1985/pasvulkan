@@ -1,5 +1,17 @@
 #version 450 core
 
+#define FILLTYPE_NO_TEXTURE 0
+#define FILLTYPE_TEXTURE 1
+#define FILLTYPE_ATLAS_TEXTURE 2
+
+#ifndef FILLTYPE
+  #define FILLTYPE FILLTYPE_COLOR
+#endif
+
+#if FILLTYPE != FILLTYPE_ATLAS_TEXTURE
+  #define SIGNEDDISTANCEDFIELD
+#endif
+
 layout(location = 0) in vec2 inPosition; // 2D position
 layout(location = 1) in vec4 inColor;    // RGBA Color 
 layout(location = 2) in vec3 inTexCoord; // 2D texture coordinate with array texture layer index inside the z component
@@ -8,9 +20,9 @@ layout(location = 4) in vec4 inClipRect; // xy = Left Top, zw = Right Bottom
 layout(location = 5) in vec4 inMetaInfo; // Various stuff
 layout(location = 6) flat in vec2 inBlendFactors; // x = Alpha channel factor, y = multiplication mode factor 
 
-#if defined(ATLAS_TEXTURE)
+#if FILLTYPE == FILLTYPE_ATLAS_TEXTURE 
 layout(binding = 0) uniform sampler2DArray uTexture;
-#elif defined(TEXTURE)
+#elif FILLTYPE == FILLTYPE_TEXTURE
 layout(binding = 0) uniform sampler2D uTexture;
 #endif
 
@@ -32,6 +44,7 @@ TEMPLATE_LINEARSTEP(vec4)
 
 const float SQRT_0_DOT_5 = sqrt(0.5);
 
+#ifdef SIGNEDDISTANCEDFIELD
 float sdEllipse(vec2 p, in vec2 ab){
   float d;
   if(ab.x == ab.y){
@@ -59,18 +72,19 @@ float sdEllipse(vec2 p, in vec2 ab){
   }
   return d;
 }
+#endif
 
 void main(void){
   vec4 color;
-#ifndef ATLAS_TEXTURE
+#if (FILLTYPE == FILLTYPE_NO_TEXTURE) || (FILLTYPE == FILLTYPE_TEXTURE)
   mat3x2 fillTransformMatrix = mat3x2(pushConstants.fillMatrix[0].xy, 
                                       pushConstants.fillMatrix[1].xy, 
                                       vec2(pushConstants.fillMatrix[0].z, pushConstants.fillMatrix[1].z));
 #endif
-#ifdef NO_TEXTURE
+#if !((FILLTYPE == FILLTYPE_TEXTURE) || (FILLTYPE == FILLTYPE_ATLAS_TEXTURE))
   color = inColor;
 #else 
-#ifdef ATLAS_TEXTURE
+#if FILLTYPE == FILLTYPE_ATLAS_TEXTURE
   #define ADJUST_TEXCOORD(uv) vec3(uv, texCoord.z)
   #define texCoord inTexCoord
 #else
@@ -99,7 +113,7 @@ void main(void){
   }
   color *= inColor;
 #endif
-#ifndef ATLAS_TEXTURE
+#if FILLTYPE == FILLTYPE_NO_TEXTURE
   if((inState.z & 0x03) >= 0x02){
     vec2 gradientPosition = (fillTransformMatrix * vec3(inPosition, 1.0)).xy;      
     float gradientTime = 0.0;
@@ -130,6 +144,7 @@ void main(void){
     color *= mix(pushConstants.fillMatrix[2], pushConstants.fillMatrix[3], clamp(gradientTime, 0.0, 1.0));
   }
 #endif
+#ifdef SIGNEDDISTANCEDFIELD
   if(inState.y != 0){
     float threshold = length(abs(dFdx(inPosition.xy)) + abs(dFdy(inPosition.xy))) * SQRT_0_DOT_5;
     switch(inState.y){
@@ -168,6 +183,7 @@ void main(void){
       }
     }
   }
+#endif
   outFragColor = (vec4(color.rgb, inBlendFactors.x) * mix(clamp(floor(color.a + 0.5), 0.0, 1.0), color.a, inBlendFactors.y)) * 
                  (step(inClipRect.x, inPosition.x) * step(inClipRect.y, inPosition.y) * step(inPosition.x, inClipRect.z) * step(inPosition.y, inClipRect.w));
 }
