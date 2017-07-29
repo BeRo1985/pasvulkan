@@ -758,7 +758,7 @@ begin
   Len:=length(aPattern);
   if Len>0 then begin
    Position:=1;
-   if AnsiChar(aPattern[Position]) in ['0'..'9','x','X','o','O','-','+','a'..'f','A'..'F'] then begin
+   if AnsiChar(aPattern[Position]) in ['0'..'9','x','X','o','O','a'..'f','A'..'F'] then begin
     while Position<=Len do begin
      if AnsiChar(aPattern[Position]) in ['0'..'9','x','X','o','O','-','+','a'..'f','A'..'F'] then begin
       StartPosition:=Position;
@@ -1726,14 +1726,14 @@ var StartPoint,LastPoint:TpvVector2;
   end;
  var i:TpvInt32;
  begin
-  if aCountLinePoints>2 then begin
+  if aCountLinePoints>1 then begin
    for i:=aCountLinePoints-2 downto 0 do begin
     if aLinePoints[i].Position=aLinePoints[i+1].Position then begin
      dec(aCountLinePoints);
      Move(aLinePoints[i-1],aLinePoints[i],aCountLinePoints*SizeOf(TpvCanvasShapeCacheLinePoint));
     end;
    end;
-   if aCountLinePoints>2 then begin
+   if aCountLinePoints>1 then begin
     Width:=abs(aState.fLineWidth)*0.5;
     First:=true;
     if aCountLinePoints=2 then begin
@@ -1819,7 +1819,7 @@ var StartPoint,LastPoint:TpvVector2;
    p0:=Vector2Origin;
    p1:=Vector2Origin;
    DashIndex:=0;
-   DashRemain:=abs(aState.fStrokePattern.fDashes[DashIndex]);
+   DashRemain:=abs(aState.fStrokePattern.fDashes[DashIndex]*aState.fStrokePattern.fDashSize);
    StartRemain:=aState.fStrokePattern.fStart;
    while StartRemain>0.0 do begin
     StepLength:=Min(DashRemain,StartRemain);
@@ -1833,7 +1833,7 @@ var StartPoint,LastPoint:TpvVector2;
       if DashIndex>=length(aState.fStrokePattern.fDashes) then begin
        DashIndex:=0;
       end;
-      DashRemain:=abs(aState.fStrokePattern.fDashes[DashIndex]);
+      DashRemain:=abs(aState.fStrokePattern.fDashes[DashIndex]*aState.fStrokePattern.fDashSize);
      end;
     end;
    end;
@@ -1849,7 +1849,7 @@ var StartPoint,LastPoint:TpvVector2;
      end else begin
       Distance:=(LineLen-LineRemain)/LineLen;
       CurrentPosition:=p0.Lerp(p1,Distance);
-      if aState.fStrokePattern.fDashes[DashIndex]>0.0 then begin
+      if (aState.fStrokePattern.fDashes[DashIndex]*aState.fStrokePattern.fDashSize)>0.0 then begin
        IsInLine:=true;
        AddLinePoint(CurrentPosition);
       end else begin
@@ -1867,7 +1867,7 @@ var StartPoint,LastPoint:TpvVector2;
        if DashIndex>=length(aState.fStrokePattern.fDashes) then begin
         DashIndex:=0;
        end;
-       DashRemain:=abs(aState.fStrokePattern.fDashes[DashIndex]);
+       DashRemain:=abs(aState.fStrokePattern.fDashes[DashIndex]*aState.fStrokePattern.fDashSize);
       end;
      end;
     end;
