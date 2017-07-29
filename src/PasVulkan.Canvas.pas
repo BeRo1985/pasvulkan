@@ -195,6 +195,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvasPath;
        function Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvasPath;
        function Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
+       function Rectangle(const aCenter,aBounds:TpvVector2):TpvCanvasPath;
      end;
 
      TpvCanvasState=class(TPersistent)
@@ -645,6 +646,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function Ellipse(const aCenterX,aCenterY,aRadiusX,aRadiusY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Circle(const aCenterX,aCenterY,aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Rectangle(const aCenter,aBounds:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Rectangle(const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
        function Stroke:TpvCanvas;
        function Fill:TpvCanvas;
@@ -814,6 +817,16 @@ end;
 function TpvCanvasPath.Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
 begin
  result:=Ellipse(aCenter,TpvVector2.Create(aRadius,aRadius));
+end;
+
+function TpvCanvasPath.Rectangle(const aCenter,aBounds:TpvVector2):TpvCanvasPath;
+begin
+ MoveTo(TpvVector2.Create(aCenter.x-aBounds.x,aCenter.y-aBounds.y));
+ LineTo(TpvVector2.Create(aCenter.x+aBounds.x,aCenter.y-aBounds.y));
+ LineTo(TpvVector2.Create(aCenter.x+aBounds.x,aCenter.y+aBounds.y));
+ LineTo(TpvVector2.Create(aCenter.x-aBounds.x,aCenter.y+aBounds.y));
+ ClosePath;
+ result:=self;
 end;
 
 constructor TpvCanvasState.Create;
@@ -4145,6 +4158,18 @@ end;
 function TpvCanvas.Circle(const aCenterX,aCenterY,aRadius:TpvFloat):TpvCanvas;
 begin
  fState.fPath.Circle(TpvVector2.Create(aCenterX,aCenterY),aRadius);
+ result:=self;
+end;
+
+function TpvCanvas.Rectangle(const aCenter,aBounds:TpvVector2):TpvCanvas;
+begin
+ fState.fPath.Rectangle(aCenter,aBounds);
+ result:=self;
+end;
+
+function TpvCanvas.Rectangle(const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat):TpvCanvas;
+begin
+ fState.fPath.Rectangle(TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY));
  result:=self;
 end;
 
