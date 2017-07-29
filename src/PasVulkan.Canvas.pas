@@ -212,13 +212,19 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fScissor:TVkRect2D;
        fProjectionMatrix:TpvMatrix4x4;
        fViewMatrix:TpvMatrix4x4;
-       fModelMatrix:TpvMatrix3x3;
+       fModelMatrix:TpvMatrix4x4;
        fFillMatrix:TpvMatrix4x4;
        fFont:TpvFont;
        fFontSize:TpvFloat;
        fTextHorizontalAlignment:TpvCanvasTextHorizontalAlignment;
        fTextVerticalAlignment:TpvCanvasTextVerticalAlignment;
        fPath:TpvCanvasPath;
+       function GetStartColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetStartColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetStopColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetStopColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetFillMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetFillMatrix(const aMatrix:TpvMatrix4x4); {$ifdef CAN_INLINE}inline;{$endif}
        procedure Reset;
       public
        constructor Create; reintroduce;
@@ -226,12 +232,14 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure Assign(aSource:TPersistent); override;
       public
        property Color:TpvVector4 read fColor write fColor;
+       property StartColor:TpvVector4 read GetStartColor write SetStartColor;
+       property StopColor:TpvVector4 read GetStopColor write SetStopColor;
        property ClipRect:TpvRect read fClipRect write fClipRect;
        property Scissor:TVkRect2D read fScissor write fScissor;
        property ProjectionMatrix:TpvMatrix4x4 read fProjectionMatrix write fProjectionMatrix;
        property ViewMatrix:TpvMatrix4x4 read fViewMatrix write fViewMatrix;
-       property ModelMatrix:TpvMatrix3x3 read fModelMatrix write fModelMatrix;
-       property FillMatrix:TpvMatrix4x4 read fFillMatrix write fFillMatrix;
+       property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
+       property FillMatrix:TpvMatrix4x4 read GetFillMatrix write SetFillMatrix;
       published
        property BlendingMode:TpvCanvasBlendingMode read fBlendingMode write fBlendingMode;
        property LineWidth:TpvFloat read fLineWidth write fLineWidth;
@@ -533,12 +541,18 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure SetFillWrapMode(const aFillWrapMode:TpvCanvasFillWrapMode); {$ifdef CAN_INLINE}inline;{$endif}
        function GetColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetStartColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetStartColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetStopColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetStopColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
        function GetProjectionMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetProjectionMatrix(const aProjectionMatrix:TpvMatrix4x4);
        function GetViewMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetViewMatrix(const aViewMatrix:TpvMatrix4x4);
-       function GetModelMatrix:TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetModelMatrix(const aModelMatrix:TpvMatrix3x3); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetModelMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetFillMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetFillMatrix(const aMatrix:TpvMatrix4x4); {$ifdef CAN_INLINE}inline;{$endif}
        function GetFont:TpvFont; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetFont(const aFont:TpvFont); {$ifdef CAN_INLINE}inline;{$endif}
        function GetFontSize:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -631,9 +645,12 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       public
        property Viewport:PVkViewport read fPointerToViewport;
        property Color:TpvVector4 read GetColor write SetColor;
+       property StartColor:TpvVector4 read GetStartColor write SetStartColor;
+       property StopColor:TpvVector4 read GetStopColor write SetStopColor;
        property ProjectionMatrix:TpvMatrix4x4 read GetProjectionMatrix write SetProjectionMatrix;
        property ViewMatrix:TpvMatrix4x4 read GetViewMatrix write SetViewMatrix;
-       property ModelMatrix:TpvMatrix3x3 read GetModelMatrix write SetModelMatrix;
+       property ModelMatrix:TpvMatrix4x4 read GetModelMatrix write SetModelMatrix;
+       property FillMatrix:TpvMatrix4x4 read GetFillMatrix write SetFillMatrix;
        property Font:TpvFont read GetFont write SetFont;
        property FontSize:TpvFloat read GetFontSize write SetFontSize;
        property TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment read GetTextHorizontalAlignment write SetTextHorizontalAlignment;
@@ -805,6 +822,56 @@ begin
  inherited Destroy;
 end;
 
+function TpvCanvasState.GetStartColor:TpvVector4;
+begin
+ result:=fFillMatrix.Columns[2];
+end;
+
+procedure TpvCanvasState.SetStartColor(const aColor:TpvVector4);
+begin
+ fFillMatrix.Columns[2]:=aColor;
+end;
+
+function TpvCanvasState.GetStopColor:TpvVector4;
+begin
+ result:=fFillMatrix.Columns[3];
+end;
+
+procedure TpvCanvasState.SetStopColor(const aColor:TpvVector4);
+begin
+ fFillMatrix.Columns[3]:=aColor;
+end;
+
+function TpvCanvasState.GetFillMatrix:TpvMatrix4x4;
+begin
+ result.RawComponents[0,0]:=fFillMatrix.RawComponents[0,0];
+ result.RawComponents[0,1]:=fFillMatrix.RawComponents[0,1];
+ result.RawComponents[0,2]:=0.0;
+ result.RawComponents[0,3]:=0.0;
+ result.RawComponents[1,0]:=fFillMatrix.RawComponents[1,0];
+ result.RawComponents[1,1]:=fFillMatrix.RawComponents[1,1];
+ result.RawComponents[1,2]:=0.0;
+ result.RawComponents[1,3]:=0.0;
+ result.RawComponents[2,0]:=0.0;
+ result.RawComponents[2,1]:=0-0;
+ result.RawComponents[2,2]:=1.0;
+ result.RawComponents[2,3]:=0.0;
+ result.RawComponents[3,0]:=fFillMatrix.RawComponents[0,2];
+ result.RawComponents[3,1]:=fFillMatrix.RawComponents[1,2];
+ result.RawComponents[3,2]:=0.0;
+ result.RawComponents[3,3]:=1.0;
+end;
+
+procedure TpvCanvasState.SetFillMatrix(const aMatrix:TpvMatrix4x4);
+begin
+ fFillMatrix.RawComponents[0,0]:=aMatrix.RawComponents[0,0];
+ fFillMatrix.RawComponents[0,1]:=aMatrix.RawComponents[0,1];
+ fFillMatrix.RawComponents[1,0]:=aMatrix.RawComponents[1,0];
+ fFillMatrix.RawComponents[1,1]:=aMatrix.RawComponents[1,1];
+ fFillMatrix.RawComponents[0,2]:=aMatrix.RawComponents[3,0];
+ fFillMatrix.RawComponents[1,2]:=aMatrix.RawComponents[3,1];
+end;
+
 procedure TpvCanvasState.Reset;
 begin
  fBlendingMode:=pvcbmAlphaBlending;
@@ -821,7 +888,7 @@ begin
  fTextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.pvcthaLeft;
  fTextVerticalAlignment:=TpvCanvasTextVerticalAlignment.pvctvaTop;
  fViewMatrix:=TpvMatrix4x4.Identity;
- fModelMatrix:=TpvMatrix3x3.Identity;
+ fModelMatrix:=TpvMatrix4x4.Identity;
  fFillMatrix:=TpvMatrix4x4.Identity;
  fFillMatrix.Columns[2]:=fColor;
  fFillMatrix.Columns[3]:=fColor;
@@ -2676,6 +2743,26 @@ begin
  fState.fColor:=aColor;
 end;
 
+function TpvCanvas.GetStartColor:TpvVector4;
+begin
+ result:=fState.StartColor;
+end;
+
+procedure TpvCanvas.SetStartColor(const aColor:TpvVector4);
+begin
+ fState.StartColor:=aColor;
+end;
+
+function TpvCanvas.GetStopColor:TpvVector4;
+begin
+ result:=fState.StopColor;
+end;
+
+procedure TpvCanvas.SetStopColor(const aColor:TpvVector4);
+begin
+ fState.StopColor:=aColor;
+end;
+
 function TpvCanvas.GetProjectionMatrix:TpvMatrix4x4;
 begin
  result:=fState.fProjectionMatrix;
@@ -2702,14 +2789,27 @@ begin
  end;
 end;
 
-function TpvCanvas.GetModelMatrix:TpvMatrix3x3;
+function TpvCanvas.GetModelMatrix:TpvMatrix4x4;
 begin
  result:=fState.fModelMatrix;
 end;
 
-procedure TpvCanvas.SetModelMatrix(const aModelMatrix:TpvMatrix3x3);
+procedure TpvCanvas.SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
 begin
  fState.fModelMatrix:=aModelMatrix;
+end;
+
+function TpvCanvas.GetFillMatrix:TpvMatrix4x4;
+begin
+ result:=fState.FillMatrix;
+end;
+
+procedure TpvCanvas.SetFillMatrix(const aMatrix:TpvMatrix4x4);
+begin
+ if fState.FillMatrix<>aMatrix then begin
+  Flush;
+  fState.FillMatrix:=aMatrix;
+ end;
 end;
 
 function TpvCanvas.GetFont:TpvFont;
@@ -3340,7 +3440,7 @@ begin
    TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
    TempSrc.Right:=TempSrc.Left+(tx2-tx1);
    TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
-   if fState.fModelMatrix=Matrix3x3Identity then begin
+   if fState.fModelMatrix=Matrix4x4Identity then begin
     if TempDest.Left<fState.fClipRect.LeftTop.x then begin
      TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fState.fClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
      TempDest.Left:=fState.fClipRect.LeftTop.x;
@@ -3418,15 +3518,15 @@ begin
 end;
 
 function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotation:TpvFloat):TpvCanvas;
-var OldMatrix:TpvMatrix3x3;
+var OldMatrix:TpvMatrix4x4;
     AroundPoint:TpvVector2;
 begin
  OldMatrix:=fState.fModelMatrix;
  try
   AroundPoint:=aDest.LeftTop+aOrigin;
-  fState.fModelMatrix:=((TpvMatrix3x3.CreateTranslation(-AroundPoint)*
-                         TpvMatrix3x3.CreateRotateZ(aRotation))*
-                        TpvMatrix3x3.CreateTranslation(AroundPoint))*
+  fState.fModelMatrix:=((TpvMatrix4x4.CreateTranslation(-AroundPoint)*
+                         TpvMatrix4x4.CreateRotateZ(aRotation))*
+                        TpvMatrix4x4.CreateTranslation(AroundPoint))*
                         fState.fModelMatrix;
   result:=DrawSprite(aSprite,aSrc,aDest,pvcrmNormal);
  finally
@@ -3738,10 +3838,8 @@ begin
  VertexColor.b:=fState.fColor.b;
  VertexColor.a:=fState.fColor.a;
  VertexState:=GetVertexState;
- ModelMatrixIsIdentity:=fState.fModelMatrix=TpvMatrix3x3.Identity;
- OffsetMatrix:=fState.fModelMatrix;
- OffsetMatrix[2,0]:=0.0;
- OffsetMatrix[2,1]:=0.0;
+ ModelMatrixIsIdentity:=fState.fModelMatrix=TpvMatrix4x4.Identity;
+ OffsetMatrix:=fState.fModelMatrix.ToMatrix3x3;
  for CachePartIndex:=0 to aShape.fCountCacheParts-1 do begin
   CachePart:=@aShape.fCacheParts[CachePartIndex];
   FlushAndGetNewDestinationBuffersIfNeeded(CachePart^.CountVertices,CachePart^.CountIndices);

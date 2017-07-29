@@ -654,7 +654,7 @@ begin
      end;
     end;
    end;
-   fVulkanCanvas.ModelMatrix:=TpvMatrix3x3.CreateTranslation(fVulkanCanvas.Width*(0.125+(0.175*(Index+1))),fVulkanCanvas.Height*0.7);
+   fVulkanCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*(0.125+(0.175*(Index+1))),fVulkanCanvas.Height*0.7);
    fVulkanCanvas.BeginPath;
    fVulkanCanvas.MoveTo(0.0,0.0);
    fVulkanCanvas.LineTo(0.0,fVulkanCanvas.Height*0.125);
@@ -666,7 +666,7 @@ begin
  fVulkanCanvas.Pop;
 
  fVulkanCanvas.Push;
- fVulkanCanvas.ModelMatrix:=TpvMatrix3x3.CreateTranslation(fVulkanCanvas.Width*0.75,fVulkanCanvas.Height*0.0);
+ fVulkanCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.75,fVulkanCanvas.Height*0.0);
  fVulkanCanvas.BeginPath;
 {fVulkanCanvas.MoveTo(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height*0.125);
  fVulkanCanvas.LineTo(fVulkanCanvas.Width*0.25,fVulkanCanvas.Height*0.125);
