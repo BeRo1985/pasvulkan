@@ -605,7 +605,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function DrawFontGlyphSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas;
       public
        function DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas; overload;
-       function DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotation:TpvFloat):TpvCanvas; overload;
+       function DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotationAngle:TpvFloat):TpvCanvas; overload;
        function DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawSprite(const aSprite:TpvSprite):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
@@ -623,6 +623,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function DrawFilledCircle(const aCenterX,aCenterY,aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawFilledRectangle(const aCenter,aBounds:TpvVector2):TpvCanvas; overload;
        function DrawFilledRectangle(const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+      public
+       function DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenter,aBounds:TpvVector2;const aRotationAngle:TpvFloat=0.0):TpvCanvas; overload;
+       function DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat;const aRotationAngle:TpvFloat=0.0):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
        function DrawShape(const aShape:TpvCanvasShape):TpvCanvas;
       public
@@ -2912,7 +2915,7 @@ begin
  result:=(TpvUInt32(fState.fBlendingMode) shl pvcvsBlendingModeShift) or
          (TpvUInt32(fInternalRenderingMode) shl pvcvsRenderingModeShift) or
          (TpvUInt32(fState.fFillStyle) shl pvcvsFillStyleShift) or
-         (TpvUInt32(fState.FillWrapMode) shl pvcvsFillWrapModeShift);
+         (TpvUInt32(fState.fFillWrapMode) shl pvcvsFillWrapModeShift);
 end;
 
 procedure TpvCanvas.Start(const aBufferIndex:TpvInt32);
@@ -3614,7 +3617,7 @@ begin
  result:=DrawSprite(aSprite,aSrc,aDest,pvcrmNormal);
 end;
 
-function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotation:TpvFloat):TpvCanvas;
+function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotationAngle:TpvFloat):TpvCanvas;
 var OldMatrix:TpvMatrix4x4;
     AroundPoint:TpvVector2;
 begin
@@ -3622,7 +3625,7 @@ begin
  try
   AroundPoint:=aDest.LeftTop+aOrigin;
   fState.fModelMatrix:=((TpvMatrix4x4.CreateTranslation(-AroundPoint)*
-                         TpvMatrix4x4.CreateRotateZ(aRotation))*
+                         TpvMatrix4x4.CreateRotateZ(aRotationAngle))*
                         TpvMatrix4x4.CreateTranslation(AroundPoint))*
                         fState.fModelMatrix;
   result:=DrawSprite(aSprite,aSrc,aDest,pvcrmNormal);
@@ -3916,6 +3919,79 @@ end;
 function TpvCanvas.DrawFilledRectangle(const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat):TpvCanvas;
 begin
  result:=DrawFilledRectangle(TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY));
+end;
+
+function TpvCanvas.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenter,aBounds:TpvVector2;const aRotationAngle:TpvFloat=0.0):TpvCanvas;
+var MetaInfo:TpvVector4;
+    VertexColor:TpvHalfFloatVector4;
+    VertexState:TpvUInt32;
+    CanvasVertex:PpvCanvasVertex;
+    OldTexture:TObject;
+    LocaLModelMatrix:TpvMatrix4x4;
+begin
+ SetAtlasTexture(nil);
+ OldTexture:=GetTexture;
+ SetTexture(aTexture);
+ fInternalRenderingMode:=pvcrmNormal;
+ VertexColor.r:=fState.fColor.r;
+ VertexColor.g:=fState.fColor.g;
+ VertexColor.b:=fState.fColor.b;
+ VertexColor.a:=fState.fColor.a;
+ MetaInfo.xy:=aCenter;
+ MetaInfo.zw:=aBounds;
+ if aRotationAngle<>0.0 then begin
+  LocalModelMatrix:=((TpvMatrix4x4.CreateTranslation(-aCenter)*
+                          TpvMatrix4x4.CreateRotateZ(aRotationAngle))*
+                         TpvMatrix4x4.CreateTranslation(aCenter))*
+                    fState.ModelMatrix;
+ end else begin
+  LocalModelMatrix:=fState.ModelMatrix;
+ end;
+ VertexState:=GetVertexState and not ($f shl pvcvsFillStyleShift);
+ FlushAndGetNewDestinationBuffersIfNeeded(4,6);
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
+ CanvasVertex^.Position:=LocalModelMatrix*(aCenter+TpvVector2.Create(-aBounds.x,-aBounds.y));
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Create(0.0,0.0,0.0);
+ CanvasVertex^.State:=VertexState or ((pcvvaomSolid and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
+ CanvasVertex^.Position:=LocalModelMatrix*(aCenter+TpvVector2.Create(aBounds.x,-aBounds.y));
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Create(1.0,0.0,0.0);
+ CanvasVertex^.State:=VertexState or ((pcvvaomSolid and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
+ CanvasVertex^.Position:=LocalModelMatrix*(aCenter+TpvVector2.Create(aBounds.x,aBounds.y));
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Create(1.0,1.0,0.0);
+ CanvasVertex^.State:=VertexState or ((pcvvaomSolid and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
+ CanvasVertex^.Position:=LocalModelMatrix*(aCenter+TpvVector2.Create(-aBounds.x,aBounds.y));
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Create(0.0,1.0,0.0);
+ CanvasVertex^.State:=VertexState or ((pcvvaomSolid and $ff) shl pvcvsObjectModeShift);
+ CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+3]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+3;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+0;
+ inc(fCurrentCountVertices,4);
+ inc(fCurrentCountIndices,6);
+ SetTexture(OldTexture);
+ result:=self;
+end;
+
+function TpvCanvas.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat;const aRotationAngle:TpvFloat=0.0):TpvCanvas;
+begin
+ result:=DrawTexturedRectangle(aTexture,TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY),aRotationAngle);
 end;
 
 function TpvCanvas.DrawShape(const aShape:TpvCanvasShape):TpvCanvas;
