@@ -70,7 +70,7 @@ type TScreenExampleEmpty=class(TpvApplicationScreen)
 
        function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; override;
 
-       function MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean; override;
+       function TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean; override;
 
        function Scrolled(const aAmount:TpvInt32):boolean; override;
 
@@ -351,7 +351,7 @@ begin
  end;
 end;
 
-function TScreenExampleEmpty.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+function TScreenExampleEmpty.TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
