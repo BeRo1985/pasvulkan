@@ -113,6 +113,8 @@ type TPasVulkanGUIObject=class;
      end;
 
      TPasVulkanGUITheme=class(TPasVulkanGUIObject)
+      private
+       fFontSize:TpvFloat;
       protected
       public
      end;
@@ -149,6 +151,7 @@ type TPasVulkanGUIObject=class;
        fEnabled:boolean;
        fFocused:boolean;
        fHint:TpvUTF8String;
+       fFontSize:TpvFloat;
        function GetLeft:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetLeft(const aLeft:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetTop:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -164,6 +167,7 @@ type TPasVulkanGUIObject=class;
        function GetAbsolutePosition:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function GetRecursiveVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function GetPreferredSize:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function GetFontSize:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
       protected
        procedure SetTheme(const aTheme:TPasVulkanGUITheme); virtual;
        procedure PerformLayout; virtual;
@@ -199,6 +203,7 @@ type TPasVulkanGUIObject=class;
        property FixedWidth:TpvFloat read GetFixedWidth write SetFixedWidth;
        property FixedHeight:TpvFloat read GetFixedHeight write SetFixedHeight;
        property Hint:TpvUTF8String read fHint write fHint;
+       property FontSize:TpvFloat read GetFontSize write fFontSize;
      end;
 
      TPasVulkanGUIInstance=class(TPasVulkanGUIWidget)
@@ -326,6 +331,8 @@ begin
 
  fHint:='';
 
+ fFontSize:=0.0;
+
 end;
 
 destructor TPasVulkanGUIWidget.Destroy;
@@ -445,6 +452,15 @@ begin
   result:=fLayout.GetPreferredSize(self);
  end else begin
   result:=fSize;
+ end;
+end;
+
+function TPasVulkanGUIWidget.GetFontSize:TpvFloat;
+begin
+ if assigned(fTheme) and IsZero(fFontSize) then begin
+  result:=fTheme.fFontSize;
+ end else begin
+  result:=fFontSize;
  end;
 end;
 
