@@ -96,7 +96,7 @@ type TPasVulkanGUIInstance=class;
        pvgaBottom
       );
 
-     TPasVulkanGUIObject=class
+     TPasVulkanGUIObject=class(TPersistent)
       private
        fInstance:TPasVulkanGUIInstance;
        fParent:TPasVulkanGUIObject;
