@@ -47,15 +47,15 @@ type TScreenMainMenu=class(TScreenBlank)
 
        function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; override;
+       function TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; override;
 
-       function TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean; override;
+       function TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean; override;
 
-       function Scrolled(const aAmount:TpvInt32):boolean; override;
+       function Scrolled(const aAmount:TpvFloat):boolean; override;
 
        function CanBeParallelProcessed:boolean; override;
 
@@ -148,7 +148,7 @@ begin
  result:=false;
 end;
 
-function TScreenMainMenu.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TScreenMainMenu.TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
@@ -157,7 +157,7 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to RegisteredExamplesList.Count do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aPosition.y>=cy) and (aPosition.y<(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
     if fSelectedIndex=RegisteredExamplesList.Count then begin
      pvApplication.NextScreen:=TScreenExit.Create;
@@ -170,12 +170,12 @@ begin
  end;
 end;
 
-function TScreenMainMenu.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TScreenMainMenu.TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenMainMenu.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+function TScreenMainMenu.TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
@@ -184,7 +184,7 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to RegisteredExamplesList.Count do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aPosition.y>=cy) and (aPosition.y<(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
    cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
@@ -192,7 +192,7 @@ begin
  end;
 end;
 
-function TScreenMainMenu.TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+function TScreenMainMenu.TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
@@ -201,7 +201,7 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to RegisteredExamplesList.Count do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aPosition.y>=cy) and (aPosition.y<(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
    cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
@@ -209,7 +209,7 @@ begin
  end;
 end;
 
-function TScreenMainMenu.Scrolled(const aAmount:TpvInt32):boolean;
+function TScreenMainMenu.Scrolled(const aAmount:TpvFloat):boolean;
 begin
  result:=false;
 end;

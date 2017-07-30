@@ -103,7 +103,7 @@ const MaxSwapChainImages=3;
       EVENT_TOUCH_DOWN=4;
       EVENT_TOUCH_UP=5;
       EVENT_TOUCH_DRAGGED=6;
-      EVENT_MOUSE_MOVED=7;
+      EVENT_TOUCH_MOVED=7;
       EVENT_SCROLLED=8;
 
       KEYCODE_ANYKEY=-1;
@@ -555,11 +555,11 @@ type EpvApplication=class(Exception)
        function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
        function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
        function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
-       function TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
-       function TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
-       function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; virtual;
-       function TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean; virtual;
-       function Scrolled(const aAmount:TpvInt32):boolean; virtual;
+       function TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
+       function TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
+       function TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; virtual;
+       function TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean; virtual;
+       function Scrolled(const aAmount:TpvFloat):boolean; virtual;
      end;
 
      PpvApplicationInputProcessorQueueEvent=^TpvApplicationInputProcessorQueueEvent;
@@ -571,19 +571,14 @@ type EpvApplication=class(Exception)
         KeyCode:TpvInt32;
         KeyModifier:TpvInt32;
        );
-       EVENT_TOUCH_DOWN,EVENT_TOUCH_UP,EVENT_TOUCH_DRAGGED:(
-        ScreenX:TpvFloat;
-        ScreenY:TpvFloat;
+       EVENT_TOUCH_DOWN,EVENT_TOUCH_UP,EVENT_TOUCH_DRAGGED,EVENT_TOUCH_MOVED:(
+        Position:TpvVector2;
         Pressure:TpvFloat;
         PointerID:TpvInt32;
         Button:TpvInt32;
        );
-       EVENT_MOUSE_MOVED:(
-        MouseScreenX:TpvInt32;
-        MouseScreenY:TpvInt32;
-       );
        EVENT_SCROLLED:(
-        Amount:TpvInt32;
+        Amount:TpvFloat;
        );
      end;
 
@@ -607,11 +602,11 @@ type EpvApplication=class(Exception)
        function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
        function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
        function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
-       function TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
-       function TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
-       function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; override;
-       function TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean; override;
-       function Scrolled(const aAmount:TpvInt32):boolean; override;
+       function TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; override;
+       function TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean; override;
+       function Scrolled(const aAmount:TpvFloat):boolean; override;
      end;
 
      TpvApplicationInputMultiplexer=class(TpvApplicationInputProcessor)
@@ -630,11 +625,11 @@ type EpvApplication=class(Exception)
        function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
        function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
        function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
-       function TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
-       function TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
-       function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; override;
-       function TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean; override;
-       function Scrolled(const aAmount:TpvInt32):boolean; override;
+       function TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; override;
+       function TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean; override;
+       function Scrolled(const aAmount:TpvFloat):boolean; override;
      end;
 
      TpvApplicationInputTextInputCallback=procedure(aSuccessful:boolean;const aText:TpvApplicationRawByteString) of object;
@@ -797,15 +792,15 @@ type EpvApplication=class(Exception)
 
        function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
 
-       function TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
+       function TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
 
-       function TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
+       function TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
 
-       function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; virtual;
+       function TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; virtual;
 
-       function TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean; virtual;
+       function TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean; virtual;
 
-       function Scrolled(const aAmount:TpvInt32):boolean; virtual;
+       function Scrolled(const aAmount:TpvFloat):boolean; virtual;
 
        function CanBeParallelProcessed:boolean; virtual;
 
@@ -1194,15 +1189,15 @@ type EpvApplication=class(Exception)
 
        function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
 
-       function TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
+       function TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
 
-       function TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
+       function TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
 
-       function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; virtual;
+       function TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; virtual;
 
-       function TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean; virtual;
+       function TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean; virtual;
 
-       function Scrolled(const aAmount:TpvInt32):boolean; virtual;
+       function Scrolled(const aAmount:TpvFloat):boolean; virtual;
 
        function CanBeParallelProcessed:boolean; virtual;
 
@@ -1996,27 +1991,27 @@ begin
  result:=false;
 end;
 
-function TpvApplicationInputProcessor.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplicationInputProcessor.TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TpvApplicationInputProcessor.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplicationInputProcessor.TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TpvApplicationInputProcessor.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+function TpvApplicationInputProcessor.TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TpvApplicationInputProcessor.TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+function TpvApplicationInputProcessor.TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TpvApplicationInputProcessor.Scrolled(const aAmount:TpvInt32):boolean;
+function TpvApplicationInputProcessor.Scrolled(const aAmount:TpvFloat):boolean;
 begin
  result:=false;
 end;
@@ -2114,16 +2109,16 @@ begin
      fProcessor.KeyTyped(CurrentEvent^.KeyCode,CurrentEvent^.KeyModifier);
     end;
     EVENT_TOUCH_DOWN:begin
-     fProcessor.TouchDown(CurrentEvent^.ScreenX,CurrentEvent^.ScreenY,CurrentEvent^.Pressure,CurrentEvent^.PointerID,CurrentEvent^.Button);
+     fProcessor.TouchDown(CurrentEvent^.Position,CurrentEvent^.Pressure,CurrentEvent^.PointerID,CurrentEvent^.Button);
     end;
     EVENT_TOUCH_UP:begin
-     fProcessor.TouchUp(CurrentEvent^.ScreenX,CurrentEvent^.ScreenY,CurrentEvent^.Pressure,CurrentEvent^.PointerID,CurrentEvent^.Button);
+     fProcessor.TouchUp(CurrentEvent^.Position,CurrentEvent^.Pressure,CurrentEvent^.PointerID,CurrentEvent^.Button);
     end;
     EVENT_TOUCH_DRAGGED:begin
-     fProcessor.TouchDragged(CurrentEvent^.ScreenX,CurrentEvent^.ScreenY,CurrentEvent^.Pressure,CurrentEvent^.PointerID);
+     fProcessor.TouchDragged(CurrentEvent^.Position,CurrentEvent^.Pressure,CurrentEvent^.PointerID);
     end;
-    EVENT_MOUSE_MOVED:begin
-     fProcessor.TouchMoved(CurrentEvent^.MouseScreenX,CurrentEvent^.MouseScreenY);
+    EVENT_TOUCH_MOVED:begin
+     fProcessor.TouchMoved(CurrentEvent^.Position,CurrentEvent^.PointerID);
     end;
     EVENT_SCROLLED:begin
      fProcessor.Scrolled(CurrentEvent^.Amount);
@@ -2204,7 +2199,7 @@ begin
  end;
 end;
 
-function TpvApplicationInputProcessorQueue.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplicationInputProcessorQueue.TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2213,8 +2208,7 @@ begin
   Event:=NewEvent;
   if assigned(Event) then begin
    Event^.Event:=EVENT_TOUCH_DOWN;
-   Event^.ScreenX:=aScreenX;
-   Event^.ScreenY:=aScreenY;
+   Event^.Position:=aPosition;
    Event^.Pressure:=aPressure;
    Event^.PointerID:=aPointerID;
    Event^.Button:=aButton;
@@ -2225,7 +2219,7 @@ begin
  end;
 end;
 
-function TpvApplicationInputProcessorQueue.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplicationInputProcessorQueue.TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2234,8 +2228,7 @@ begin
   Event:=NewEvent;
   if assigned(Event) then begin
    Event^.Event:=EVENT_TOUCH_UP;
-   Event^.ScreenX:=aScreenX;
-   Event^.ScreenY:=aScreenY;
+   Event^.Position:=aPosition;
    Event^.Pressure:=aPressure;
    Event^.PointerID:=aPointerID;
    Event^.Button:=aButton;
@@ -2246,7 +2239,7 @@ begin
  end;
 end;
 
-function TpvApplicationInputProcessorQueue.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+function TpvApplicationInputProcessorQueue.TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
 var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2255,8 +2248,7 @@ begin
   Event:=NewEvent;
   if assigned(Event) then begin
    Event^.Event:=EVENT_TOUCH_DRAGGED;
-   Event^.ScreenX:=aScreenX;
-   Event^.ScreenY:=aScreenY;
+   Event^.Position:=aPosition;
    Event^.PointerID:=aPointerID;
    PushEvent(Event);
   end;
@@ -2265,7 +2257,7 @@ begin
  end;
 end;
 
-function TpvApplicationInputProcessorQueue.TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+function TpvApplicationInputProcessorQueue.TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean;
 var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2273,9 +2265,9 @@ begin
  try
   Event:=NewEvent;
   if assigned(Event) then begin
-   Event^.Event:=EVENT_MOUSE_MOVED;
-   Event^.MouseScreenX:=aScreenX;
-   Event^.MouseScreenY:=aScreenY;
+   Event^.Event:=EVENT_TOUCH_MOVED;
+   Event^.Position:=aPosition;
+   Event^.PointerID:=aPointerID;
    PushEvent(Event);
   end;
  finally
@@ -2283,7 +2275,7 @@ begin
  end;
 end;
 
-function TpvApplicationInputProcessorQueue.Scrolled(const aAmount:TpvInt32):boolean;
+function TpvApplicationInputProcessorQueue.Scrolled(const aAmount:TpvFloat):boolean;
 var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2398,7 +2390,7 @@ begin
  end;
 end;
 
-function TpvApplicationInputMultiplexer.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplicationInputMultiplexer.TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var i:TpvInt32;
     p:TpvApplicationInputProcessor;
 begin
@@ -2406,7 +2398,7 @@ begin
  for i:=0 to fProcessors.Count-1 do begin
   p:=fProcessors.Items[i];
   if assigned(p) then begin
-   if p.TouchDown(aScreenX,aScreenY,aPressure,aPointerID,aButton) then begin
+   if p.TouchDown(aPosition,aPressure,aPointerID,aButton) then begin
     result:=true;
     exit;
    end;
@@ -2414,7 +2406,7 @@ begin
  end;
 end;
 
-function TpvApplicationInputMultiplexer.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplicationInputMultiplexer.TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var i:TpvInt32;
     p:TpvApplicationInputProcessor;
 begin
@@ -2422,7 +2414,7 @@ begin
  for i:=0 to fProcessors.Count-1 do begin
   p:=fProcessors.Items[i];
   if assigned(p) then begin
-   if p.TouchUp(aScreenX,aScreenY,aPressure,aPointerID,aButton) then begin
+   if p.TouchUp(aPosition,aPressure,aPointerID,aButton) then begin
     result:=true;
     exit;
    end;
@@ -2430,7 +2422,7 @@ begin
  end;
 end;
 
-function TpvApplicationInputMultiplexer.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+function TpvApplicationInputMultiplexer.TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
 var i:TpvInt32;
     p:TpvApplicationInputProcessor;
 begin
@@ -2438,7 +2430,7 @@ begin
  for i:=0 to fProcessors.Count-1 do begin
   p:=fProcessors.Items[i];
   if assigned(p) then begin
-   if p.TouchDragged(aScreenX,aScreenY,aPressure,aPointerID) then begin
+   if p.TouchDragged(aPosition,aPressure,aPointerID) then begin
     result:=true;
     exit;
    end;
@@ -2446,7 +2438,7 @@ begin
  end;
 end;
 
-function TpvApplicationInputMultiplexer.TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+function TpvApplicationInputMultiplexer.TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean;
 var i:TpvInt32;
     p:TpvApplicationInputProcessor;
 begin
@@ -2454,7 +2446,7 @@ begin
  for i:=0 to fProcessors.Count-1 do begin
   p:=fProcessors.Items[i];
   if assigned(p) then begin
-   if p.TouchMoved(aScreenX,aScreenY) then begin
+   if p.TouchMoved(aPosition,aPointerID) then begin
     result:=true;
     exit;
    end;
@@ -2462,7 +2454,7 @@ begin
  end;
 end;
 
-function TpvApplicationInputMultiplexer.Scrolled(const aAmount:TpvInt32):boolean;
+function TpvApplicationInputMultiplexer.Scrolled(const aAmount:TpvFloat):boolean;
 var i:TpvInt32;
     p:TpvApplicationInputProcessor;
 begin
@@ -3957,15 +3949,15 @@ begin
       fMouseDeltaX:=Event^.motion.xrel;
       fMouseDeltaY:=Event^.motion.yrel;
       if fMouseDown<>0 then begin
-       OK:=pvApplication.TouchDragged(Event^.motion.x,Event^.motion.y,1.0,0);
+       OK:=pvApplication.TouchDragged(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0);
       end else begin
-       OK:=pvApplication.TouchMoved(Event^.motion.x,Event^.motion.y);
+       OK:=pvApplication.TouchMoved(TpvVector2.Create(Event^.motion.x,Event^.motion.y),0);
       end;
       if assigned(fProcessor) and not OK then begin
        if fMouseDown<>0 then begin
-        fProcessor.TouchDragged(Event^.motion.x,Event^.motion.y,1.0,0);
+        fProcessor.TouchDragged(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0);
        end else begin
-        fProcessor.TouchMoved(Event^.motion.x,Event^.motion.y);
+        fProcessor.TouchMoved(TpvVector2.Create(Event^.motion.x,Event^.motion.y),0);
        end;
       end;
      end;
@@ -3980,24 +3972,24 @@ begin
         fMouseDown:=fMouseDown or 1;
         fMouseJustDown:=fMouseJustDown or 1;
         fJustTouched:=true;
-        if (not pvApplication.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT)) and assigned(fProcessor) then begin
-         fProcessor.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT);
+        if (not pvApplication.TouchDown(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT)) and assigned(fProcessor) then begin
+         fProcessor.TouchDown(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT);
         end;
        end;
        SDL_BUTTON_RIGHT:begin
         fMouseDown:=fMouseDown or 2;
         fMouseJustDown:=fMouseJustDown or 2;
         fJustTouched:=true;
-        if (not pvApplication.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT)) and assigned(fProcessor) then begin
-         fProcessor.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT);
+        if (not pvApplication.TouchDown(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT)) and assigned(fProcessor) then begin
+         fProcessor.TouchDown(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT);
         end;
        end;
        SDL_BUTTON_MIDDLE:begin
         fMouseDown:=fMouseDown or 4;
         fMouseJustDown:=fMouseJustDown or 4;
         fJustTouched:=true;
-        if (not pvApplication.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE)) and assigned(fProcessor) then begin
-         fProcessor.TouchDown(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE);
+        if (not pvApplication.TouchDown(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE)) and assigned(fProcessor) then begin
+         fProcessor.TouchDown(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE);
         end;
        end;
       end;
@@ -4012,22 +4004,22 @@ begin
        SDL_BUTTON_LEFT:begin
         fMouseDown:=fMouseDown and not 1;
         fMouseJustDown:=fMouseJustDown and not 1;
-        if (not pvApplication.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT)) and assigned(fProcessor) then begin
-         fProcessor.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_LEFT);
+        if (not pvApplication.TouchUp(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT)) and assigned(fProcessor) then begin
+         fProcessor.TouchUp(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT);
         end;
        end;
        SDL_BUTTON_RIGHT:begin
         fMouseDown:=fMouseDown and not 2;
         fMouseJustDown:=fMouseJustDown and not 2;
-        if (not pvApplication.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT)) and assigned(fProcessor) then begin
-         fProcessor.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_RIGHT);
+        if (not pvApplication.TouchUp(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT)) and assigned(fProcessor) then begin
+         fProcessor.TouchUp(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT);
         end;
        end;
        SDL_BUTTON_MIDDLE:begin
         fMouseDown:=fMouseDown and not 4;
         fMouseJustDown:=fMouseJustDown and not 4;
-        if (not pvApplication.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE)) and assigned(fProcessor) then begin
-         fProcessor.TouchUp(Event^.motion.x,Event^.motion.y,1.0,0,BUTTON_MIDDLE);
+        if (not pvApplication.TouchUp(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE)) and assigned(fProcessor) then begin
+         fProcessor.TouchUp(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE);
         end;
        end;
       end;
@@ -4045,8 +4037,8 @@ begin
       fPointerPressure[PointerID]:=Event^.tfinger.pressure;
       fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
       fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
-      if (not pvApplication.TouchDragged(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1)) and assigned(fProcessor) then begin
-       fProcessor.TouchDragged(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1);
+      if (not pvApplication.TouchDragged(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1)) and assigned(fProcessor) then begin
+       fProcessor.TouchDragged(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1);
       end;
      end;
      SDL_FINGERDOWN:begin
@@ -4061,8 +4053,8 @@ begin
       fPointerDown[PointerID]:=true;
       fPointerJustDown[PointerID]:=true;
       fJustTouched:=true;
-      if (not pvApplication.TouchDown(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0)) and assigned(fProcessor) then begin
-       fProcessor.TouchDown(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0);
+      if (not pvApplication.TouchDown(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,0)) and assigned(fProcessor) then begin
+       fProcessor.TouchDown(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,0);
       end;
      end;
      SDL_FINGERUP:begin
@@ -4078,8 +4070,8 @@ begin
       fPointerDeltaY[PointerID]:=Event^.tfinger.dy;
       fPointerDown[PointerID]:=false;
       fPointerJustDown[PointerID]:=false;
-      if (not pvApplication.TouchUp(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0)) and assigned(fProcessor) then begin
-       fProcessor.TouchUp(fPointerX[PointerID],fPointerY[PointerID],fPointerPressure[PointerID],PointerID+1,0);
+      if (not pvApplication.TouchUp(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,0)) and assigned(fProcessor) then begin
+       fProcessor.TouchUp(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,0);
       end;
      end;
     end;
@@ -4574,27 +4566,27 @@ begin
  result:=false;
 end;
 
-function TpvApplicationScreen.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplicationScreen.TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TpvApplicationScreen.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplicationScreen.TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TpvApplicationScreen.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+function TpvApplicationScreen.TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TpvApplicationScreen.TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+function TpvApplicationScreen.TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TpvApplicationScreen.Scrolled(const aAmount:TpvInt32):boolean;
+function TpvApplicationScreen.Scrolled(const aAmount:TpvFloat):boolean;
 begin
  result:=false;
 end;
@@ -7173,43 +7165,43 @@ begin
  end;
 end;
 
-function TpvApplication.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplication.TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  if assigned(fScreen) then begin
-  result:=fScreen.TouchDown(aScreenX,aScreenY,aPressure,aPointerID,aButton);
+  result:=fScreen.TouchDown(aPosition,aPressure,aPointerID,aButton);
  end else begin
   result:=false;
  end;
 end;
 
-function TpvApplication.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvApplication.TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  if assigned(fScreen) then begin
-  result:=fScreen.TouchUp(aScreenX,aScreenY,aPressure,aPointerID,aButton);
+  result:=fScreen.TouchUp(aPosition,aPressure,aPointerID,aButton);
  end else begin
   result:=false;
  end;
 end;
 
-function TpvApplication.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+function TpvApplication.TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
 begin
  if assigned(fScreen) then begin
-  result:=fScreen.TouchDragged(aScreenX,aScreenY,aPressure,aPointerID);
+  result:=fScreen.TouchDragged(aPosition,aPressure,aPointerID);
  end else begin
   result:=false;
  end;
 end;
 
-function TpvApplication.TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+function TpvApplication.TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean;
 begin
  if assigned(fScreen) then begin
-  result:=fScreen.TouchMoved(aScreenX,aScreenY);
+  result:=fScreen.TouchMoved(aPosition,aPointerID);
  end else begin
   result:=false;
  end;
 end;
 
-function TpvApplication.Scrolled(const aAmount:TpvInt32):boolean;
+function TpvApplication.Scrolled(const aAmount:TpvFloat):boolean;
 begin
  if assigned(fScreen) then begin
   result:=fScreen.Scrolled(aAmount);

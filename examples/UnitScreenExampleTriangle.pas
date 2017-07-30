@@ -76,15 +76,15 @@ type TScreenExampleTriangle=class(TpvApplicationScreen)
 
        function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; override;
+       function TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; override;
 
-       function TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean; override;
+       function TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean; override;
 
-       function Scrolled(const aAmount:TpvInt32):boolean; override;
+       function Scrolled(const aAmount:TpvFloat):boolean; override;
 
        function CanBeParallelProcessed:boolean; override;
 
@@ -504,7 +504,7 @@ begin
  result:=false;
 end;
 
-function TScreenExampleTriangle.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TScreenExampleTriangle.TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
@@ -513,7 +513,7 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aPosition.y>=cy) and (aPosition.y<(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
     if fSelectedIndex=0 then begin
      pvApplication.NextScreen:=TScreenMainMenu.Create;
@@ -524,12 +524,12 @@ begin
  end;
 end;
 
-function TScreenExampleTriangle.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TScreenExampleTriangle.TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleTriangle.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+function TScreenExampleTriangle.TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
@@ -538,7 +538,7 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aPosition.y>=cy) and (aPosition.y<(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
    cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
@@ -546,7 +546,7 @@ begin
  end;
 end;
 
-function TScreenExampleTriangle.TouchMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+function TScreenExampleTriangle.TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
@@ -555,7 +555,7 @@ begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
-   if (aScreenY>=cy) and (aScreenY<=(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+   if (aPosition.y>=cy) and (aPosition.y<(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
     fSelectedIndex:=Index;
    end;
    cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
@@ -563,7 +563,7 @@ begin
  end;
 end;
 
-function TScreenExampleTriangle.Scrolled(const aAmount:TpvInt32):boolean;
+function TScreenExampleTriangle.Scrolled(const aAmount:TpvFloat):boolean;
 begin
  result:=false;
 end;
