@@ -105,17 +105,38 @@ type TPasVulkanGUIInstance=class;
       public
      end;
 
+     TPasVulkanGUITheme=class(TPasVulkanGUIObject)
+      protected
+      public
+     end;
+
      TPasVulkanGUIWidget=class(TPasVulkanGUIObject)
       private
        fLayout:TPasVulkanGUILayout;
+       fTheme:TPasVulkanGUITheme;
        fPosition:TpvVector2;
        fSize:TpvVector2;
+       fFixedSize:TpvVector2;
        fPositionProperty:TpvVector2Property;
        fSizeProperty:TpvVector2Property;
+       fFixedSizeProperty:TpvVector2Property;
        fVisible:boolean;
        fEnabled:boolean;
+       function GetLeft:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetLeft(const aLeft:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetTop:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetTop(const aTop:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetWidth:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetWidth(const aWidth:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetHeight:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetHeight(const aHeight:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetFixedWidth:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetFixedWidth(const aFixedWidth:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetFixedHeight:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetFixedHeight(const aFixedHeight:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetAbsolutePosition:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
       protected
+       procedure SetTheme(const aTheme:TPasVulkanGUITheme); virtual;
        procedure Paint; virtual;
       public
        constructor Create(const aParent:TPasVulkanGUIObject=nil); override;
@@ -125,10 +146,19 @@ type TPasVulkanGUIInstance=class;
       public
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
       published
+       property Layout:TPasVulkanGUILayout read fLayout write fLayout;
+       property Theme:TPasVulkanGUITheme read fTheme write SetTheme;
        property Position:TpvVector2Property read fPositionProperty;
        property Size:TpvVector2Property read fSizeProperty;
+       property FixedSize:TpvVector2Property read fFixedSizeProperty;
        property Visible:boolean read fVisible write fVisible;
        property Enabled:boolean read fEnabled write fEnabled;
+       property Left:TpvFloat read GetLeft write SetLeft;
+       property Top:TpvFloat read GetTop write SetTop;
+       property Width:TpvFloat read GetWidth write SetWidth;
+       property Height:TpvFloat read GetHeight write SetHeight;
+       property FixedWidth:TpvFloat read GetFixedWidth write SetFixedWidth;
+       property FixedHeight:TpvFloat read GetFixedHeight write SetFixedHeight;
      end;
 
      TPasVulkanGUIInstance=class(TPasVulkanGUIWidget)
@@ -191,19 +221,42 @@ end;
 
 constructor TPasVulkanGUIWidget.Create(const aParent:TPasVulkanGUIObject=nil);
 begin
+
  inherited Create(aParent);
+
  fLayout:=nil;
+
+ fTheme:=nil;
+
  fPosition:=TpvVector2.Create(0.0,0.0);
+
  fSize:=TpvVector2.Create(1.0,1.0);
+
+ fFixedSize:=TpvVector2.Create(-1.0,-1.0);
+
+ fPositionProperty:=TpvVector2Property.Create(@fPosition);
+
+ fSizeProperty:=TpvVector2Property(@fSize);
+
+ fFixedSizeProperty:=TpvVector2Property(@fFixedSize);
+
  fVisible:=true;
+
  fEnabled:=true;
+
 end;
 
 destructor TPasVulkanGUIWidget.Destroy;
 begin
+
  FreeAndNil(fPositionProperty);
+
  FreeAndNil(fSizeProperty);
+
+ FreeAndNil(fFixedSizeProperty);
+
  inherited Destroy;
+
 end;
 
 procedure TPasVulkanGUIWidget.AfterConstruction;
@@ -214,6 +267,71 @@ end;
 procedure TPasVulkanGUIWidget.BeforeDestruction;
 begin
  inherited BeforeDestruction;
+end;
+
+procedure TPasVulkanGUIWidget.SetTheme(const aTheme:TPasVulkanGUITheme);
+begin
+ fTheme:=aTheme;
+end;
+
+function TPasVulkanGUIWidget.GetLeft:TpvFloat;
+begin
+ result:=fPosition.x;
+end;
+
+procedure TPasVulkanGUIWidget.SetLeft(const aLeft:TpvFloat);
+begin
+ fPosition.x:=aLeft;
+end;
+
+function TPasVulkanGUIWidget.GetTop:TpvFloat;
+begin
+ result:=fPosition.y;
+end;
+
+procedure TPasVulkanGUIWidget.SetTop(const aTop:TpvFloat);
+begin
+ fPosition.y:=aTop;
+end;
+
+function TPasVulkanGUIWidget.GetWidth:TpvFloat;
+begin
+ result:=fSize.x;
+end;
+
+procedure TPasVulkanGUIWidget.SetWidth(const aWidth:TpvFloat);
+begin
+ fSize.x:=aWidth;
+end;
+
+function TPasVulkanGUIWidget.GetHeight:TpvFloat;
+begin
+ result:=fSize.y;
+end;
+
+procedure TPasVulkanGUIWidget.SetHeight(const aHeight:TpvFloat);
+begin
+ fSize.y:=aHeight;
+end;
+
+function TPasVulkanGUIWidget.GetFixedWidth:TpvFloat;
+begin
+ result:=fFixedSize.x;
+end;
+
+procedure TPasVulkanGUIWidget.SetFixedWidth(const aFixedWidth:TpvFloat);
+begin
+ fFixedSize.x:=aFixedWidth;
+end;
+
+function TPasVulkanGUIWidget.GetFixedHeight:TpvFloat;
+begin
+ result:=fFixedSize.y;
+end;
+
+procedure TPasVulkanGUIWidget.SetFixedHeight(const aFixedHeight:TpvFloat);
+begin
+ fFixedSize.y:=aFixedHeight;
 end;
 
 function TPasVulkanGUIWidget.GetAbsolutePosition:TpvVector2;
