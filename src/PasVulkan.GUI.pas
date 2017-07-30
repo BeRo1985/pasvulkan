@@ -83,6 +83,8 @@ type TpvGUIObject=class;
 
      TpvGUIWindow=class;
 
+     EpvGUIWidget=class(Exception);
+
      TpvGUIObjectList=class(TObjectList<TpvGUIObject>);
 
      TpvGUIObject=class(TPersistent)
@@ -137,7 +139,6 @@ type TpvGUIObject=class;
 
      TpvGUIWidget=class(TpvGUIObject)
       private
-       fWindow:TpvGUIWindow;
        fLayout:TpvGUILayout;
        fTheme:TpvGUITheme;
        fCursor:TpvGUICursor;
@@ -168,6 +169,7 @@ type TpvGUIObject=class;
        function GetRecursiveVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function GetPreferredSize:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function GetFontSize:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       function GetWindow:TpvGUIWindow;
       protected
        procedure SetTheme(const aTheme:TpvGUITheme); virtual;
        procedure PerformLayout; virtual;
@@ -192,7 +194,7 @@ type TpvGUIObject=class;
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
        property PreferredSize:TpvVector2 read GetPreferredSize;
       published
-       property Window:TpvGUIWindow read fWindow write fWindow;
+       property Window:TpvGUIWindow read GetWindow;
        property Layout:TpvGUILayout read fLayout write fLayout;
        property Theme:TpvGUITheme read fTheme write SetTheme;
        property Cursor:TpvGUICursor read fCursor write fCursor;
@@ -310,8 +312,6 @@ constructor TpvGUIWidget.Create(const aParent:TpvGUIObject=nil);
 begin
 
  inherited Create(aParent);
-
- fWindow:=nil;
 
  fLayout:=nil;
 
@@ -517,6 +517,26 @@ begin
  end;
 end;
 
+function TpvGUIWidget.GetWindow:TpvGUIWindow;
+var CurrentWidget:TpvGUIWidget;
+begin
+ result:=nil;
+ CurrentWidget:=self;
+ while assigned(CurrentWidget) do begin
+  if CurrentWidget is TpvGUIWindow then begin
+   result:=CurrentWidget as TpvGUIWindow;
+   exit;
+  end else begin
+   if assigned(CurrentWidget.Parent) and (CurrentWidget.Parent is TpvGUIWidget) then begin
+    CurrentWidget:=CurrentWidget.fParent as TpvGUIWidget;
+   end else begin
+    break;
+   end;
+  end;
+ end;
+ raise EpvGUIWidget.Create('Could not find parent window');
+end;
+
 procedure TpvGUIWidget.RequestFocus;
 var CurrentWidget:TpvGUIWidget;
 begin
@@ -528,10 +548,12 @@ begin
    if CurrentWidget is TpvGUIInstance then begin
     (CurrentWidget as TpvGUIInstance).UpdateFocus(self);
     break;
-   end else if assigned(CurrentWidget.Parent) and (CurrentWidget.Parent is TpvGUIWidget) then begin
-    CurrentWidget:=CurrentWidget.fParent as TpvGUIWidget;
    end else begin
-    break;
+    if assigned(CurrentWidget.Parent) and (CurrentWidget.Parent is TpvGUIWidget) then begin
+     CurrentWidget:=CurrentWidget.fParent as TpvGUIWidget;
+    end else begin
+     break;
+    end;
    end;
   end;
  end;
