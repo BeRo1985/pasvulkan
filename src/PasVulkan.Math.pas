@@ -1239,7 +1239,7 @@ type PpvScalar=^TpvScalar;
 const Vector2Origin:TpvVector2=(x:0.0;y:0.0);
       Vector2XAxis:TpvVector2=(x:1.0;y:0.0);
       Vector2YAxis:TpvVector2=(x:0.0;y:1.0);
-      Vector2ZAxis:TpvVector2=(x:0.0;y:0.0);
+      Vector2All:TpvVector3=(x:1.0;y:1.0);
 
       Vector3Origin:TpvVector3=(x:0.0;y:0.0;z:0.0);
       Vector3XAxis:TpvVector3=(x:1.0;y:0.0;z:0.0);
@@ -1247,10 +1247,12 @@ const Vector2Origin:TpvVector2=(x:0.0;y:0.0);
       Vector3ZAxis:TpvVector3=(x:0.0;y:0.0;z:1.0);
       Vector3All:TpvVector3=(x:1.0;y:1.0;z:1.0);
 
-      Vector4Origin:TpvVector4=(x:0.0;y:0.0;z:0.0;w:1.0);
-      Vector4XAxis:TpvVector4=(x:1.0;y:0.0;z:0.0;w:1.0);
-      Vector4YAxis:TpvVector4=(x:0.0;y:1.0;z:0.0;w:1.0);
-      Vector4ZAxis:TpvVector4=(x:0.0;y:0.0;z:1.0;w:1.0);
+      Vector4Origin:TpvVector4=(x:0.0;y:0.0;z:0.0;w:0.0);
+      Vector4XAxis:TpvVector4=(x:1.0;y:0.0;z:0.0;w:0.0);
+      Vector4YAxis:TpvVector4=(x:0.0;y:1.0;z:0.0;w:0.0);
+      Vector4ZAxis:TpvVector4=(x:0.0;y:0.0;z:1.0;w:0.0);
+      Vector4WAxis:TpvVector4=(x:0.0;y:0.0;z:0.0;w:1.0);
+      Vector4All:TpvVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
 
       Matrix2x2Identity:TpvMatrix2x2=(RawComponents:((1.0,0.0),(0.0,1.0)));
       Matrix2x2Null:TpvMatrix2x2=(RawComponents:((0.0,0.0),(0.0,0.0)));
