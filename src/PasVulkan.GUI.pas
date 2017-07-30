@@ -359,8 +359,18 @@ begin
 end;
 
 procedure TPasVulkanGUIWidget.SetTheme(const aTheme:TPasVulkanGUITheme);
+var ChildIndex:TpvInt32;
+    Child:TPasVulkanGUIObject;
+    ChildWidget:TPasVulkanGUIWidget;
 begin
  fTheme:=aTheme;
+ for ChildIndex:=0 to fChildren.Count-1 do begin
+  Child:=fChildren.Items[ChildIndex];
+  if Child is TPasVulkanGUIWidget then begin
+   ChildWidget:=Child as TPasVulkanGUIWidget;
+   ChildWidget.SetTheme(aTheme);
+  end;
+ end;
 end;
 
 function TPasVulkanGUIWidget.GetLeft:TpvFloat;
