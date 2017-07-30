@@ -122,6 +122,17 @@ type TPasVulkanGUIObject=class;
       public
      end;
 
+     TPasVulkanGUIWidgetEnumerator=class(TEnumerator<TPasVulkanGUIWidget>)
+      private
+       fWidget:TPasVulkanGUIWidget;
+       fIndex:TpvSizeInt;
+      protected
+       function DoMoveNext:boolean; override;
+       function DoGetCurrent:TPasVulkanGUIWidget; override;
+      public
+       constructor Create(const aWidget:TPasVulkanGUIWidget); reintroduce;
+     end;
+
      TPasVulkanGUIWidget=class(TPasVulkanGUIObject)
       private
        fWindow:TPasVulkanGUIWindow;
@@ -162,6 +173,7 @@ type TPasVulkanGUIObject=class;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
+       function GetEnumerator:TPasVulkanGUIWidgetEnumerator;
        function Contains(const aPosition:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function FindWidget(const aPosition:TpvVector2):TPasVulkanGUIWidget;
        procedure RequestFocus; virtual;
@@ -258,6 +270,27 @@ begin
   fParent.fChildren.Extract(self);
  end;
  inherited BeforeDestruction;
+end;
+
+constructor TPasVulkanGUIWidgetEnumerator.Create(const aWidget:TPasVulkanGUIWidget);
+begin
+ inherited Create;
+ fWidget:=aWidget;
+ fIndex:=-1;
+end;
+
+function TPasVulkanGUIWidgetEnumerator.DoMoveNext:boolean;
+begin
+ inc(fIndex);
+ while (fIndex<fWidget.fChildren.Count) and not (fWidget.fChildren[fIndex] is TPasVulkanGUIWidget) do begin
+  inc(fIndex);
+ end;
+ result:=(fWidget.fChildren.Count<>0) and (fIndex<fWidget.fChildren.Count);
+end;
+
+function TPasVulkanGUIWidgetEnumerator.DoGetCurrent:TPasVulkanGUIWidget;
+begin
+ result:=fWidget.fChildren[fIndex] as TPasVulkanGUIWidget;
 end;
 
 constructor TPasVulkanGUIWidget.Create(const aParent:TPasVulkanGUIObject=nil);
@@ -415,6 +448,11 @@ begin
  end;
 end;
 
+function TPasVulkanGUIWidget.GetEnumerator:TPasVulkanGUIWidgetEnumerator;
+begin
+ result:=TPasVulkanGUIWidgetEnumerator.Create(self);
+end;
+
 function TPasVulkanGUIWidget.Contains(const aPosition:TpvVector2):boolean;
 begin
  result:=(aPosition.x>=fPosition.x) and
@@ -455,7 +493,7 @@ begin
  if assigned(fLayout) then begin
   fLayout.PerformLayout(self);
  end else begin
-  for Child in fChildren do begin
+  for Child in self do begin
    if Child is TPasVulkanGUIWidget then begin
     ChildWidget:=Child as TPasVulkanGUIWidget;
     ChildWidgetPreferredSize:=ChildWidget.GetPreferredSize;
@@ -475,9 +513,7 @@ begin
    end;
   end;
  end;
-
 end;
-
 
 procedure TPasVulkanGUIWidget.Paint;
 begin
