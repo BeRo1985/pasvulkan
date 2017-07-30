@@ -3616,7 +3616,9 @@ begin
    QueueItem^.BufferIndex:=CurrentVulkanBufferIndex;
    QueueItem^.DescriptorIndex:=DescriptorIndex;
    if assigned(CurrentTexture) then begin
-    if CurrentTexture is TpvSpriteAtlasArrayTexture then begin
+    if (CurrentTexture is TpvSpriteAtlasArrayTexture) or
+       ((CurrentTexture is TpvVulkanTexture) and
+        (TpvVulkanTexture(CurrentTexture).ImageViewType=VK_IMAGE_VIEW_TYPE_2D_ARRAY)) then begin
      QueueItem^.TextureMode:=2;
     end else begin
      QueueItem^.TextureMode:=1;
