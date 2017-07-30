@@ -75,72 +75,72 @@ uses SysUtils,
      PasVulkan.Sprites,
      PasVulkan.Canvas;
 
-type TPasVulkanGUIObject=class;
+type TpvGUIObject=class;
 
-     TPasVulkanGUIWidget=class;
+     TpvGUIWidget=class;
 
-     TPasVulkanGUIInstance=class;
+     TpvGUIInstance=class;
 
-     TPasVulkanGUIWindow=class;
+     TpvGUIWindow=class;
 
-     TPasVulkanGUIObjectList=class(TObjectList<TPasVulkanGUIObject>);
+     TpvGUIObjectList=class(TObjectList<TpvGUIObject>);
 
-     TPasVulkanGUIObject=class(TPersistent)
+     TpvGUIObject=class(TPersistent)
       private
-       fInstance:TPasVulkanGUIInstance;
-       fParent:TPasVulkanGUIObject;
-       fChildren:TPasVulkanGUIObjectList;
+       fInstance:TpvGUIInstance;
+       fParent:TpvGUIObject;
+       fChildren:TpvGUIObjectList;
        fID:TpvUTF8String;
        fTag:TpvPtrInt;
       public
-       constructor Create(const aParent:TPasVulkanGUIObject=nil); reintroduce; virtual;
+       constructor Create(const aParent:TpvGUIObject=nil); reintroduce; virtual;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
       published
-       property Instance:TPasVulkanGUIInstance read fInstance;
-       property Parent:TPasVulkanGUIObject read fParent write fParent;
-       property Children:TPasVulkanGUIObjectList read fChildren;
+       property Instance:TpvGUIInstance read fInstance;
+       property Parent:TpvGUIObject read fParent write fParent;
+       property Children:TpvGUIObjectList read fChildren;
        property ID:TpvUTF8String read fID write fID;
        property Tag:TpvPtrInt read fTag write fTag;
      end;
 
-     TPasVulkanGUILayout=class(TPasVulkanGUIObject)
+     TpvGUILayout=class(TpvGUIObject)
       protected
-       function GetPreferredSize(const aWidget:TPasVulkanGUIWidget):TpvVector2; virtual;
-       procedure PerformLayout(const aWidget:TPasVulkanGUIWidget); virtual;
+       function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; virtual;
+       procedure PerformLayout(const aWidget:TpvGUIWidget); virtual;
       public
      end;
 
-     TPasVulkanGUITheme=class(TPasVulkanGUIObject)
+     TpvGUITheme=class(TpvGUIObject)
       private
        fFontSize:TpvFloat;
       protected
       public
      end;
 
-     TPasVulkanGUICursor=class(TPasVulkanGUIObject)
+     TpvGUICursor=class(TpvGUIObject)
       protected
       public
      end;
 
-     TPasVulkanGUIWidgetEnumerator=class(TEnumerator<TPasVulkanGUIWidget>)
+     TpvGUIWidgetEnumerator=class(TEnumerator<TpvGUIWidget>)
       private
-       fWidget:TPasVulkanGUIWidget;
+       fWidget:TpvGUIWidget;
        fIndex:TpvSizeInt;
       protected
        function DoMoveNext:boolean; override;
-       function DoGetCurrent:TPasVulkanGUIWidget; override;
+       function DoGetCurrent:TpvGUIWidget; override;
       public
-       constructor Create(const aWidget:TPasVulkanGUIWidget); reintroduce;
+       constructor Create(const aWidget:TpvGUIWidget); reintroduce;
      end;
 
-     TPasVulkanGUIWidget=class(TPasVulkanGUIObject)
+     TpvGUIWidget=class(TpvGUIObject)
       private
-       fWindow:TPasVulkanGUIWindow;
-       fLayout:TPasVulkanGUILayout;
-       fTheme:TPasVulkanGUITheme;
-       fCursor:TPasVulkanGUICursor;
+       fWindow:TpvGUIWindow;
+       fLayout:TpvGUILayout;
+       fTheme:TpvGUITheme;
+       fCursor:TpvGUICursor;
        fPosition:TpvVector2;
        fSize:TpvVector2;
        fFixedSize:TpvVector2;
@@ -169,16 +169,16 @@ type TPasVulkanGUIObject=class;
        function GetPreferredSize:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function GetFontSize:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
       protected
-       procedure SetTheme(const aTheme:TPasVulkanGUITheme); virtual;
+       procedure SetTheme(const aTheme:TpvGUITheme); virtual;
        procedure PerformLayout; virtual;
       public
-       constructor Create(const aParent:TPasVulkanGUIObject=nil); override;
+       constructor Create(const aParent:TpvGUIObject=nil); override;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
-       function GetEnumerator:TPasVulkanGUIWidgetEnumerator;
+       function GetEnumerator:TpvGUIWidgetEnumerator;
        function Contains(const aPosition:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function FindWidget(const aPosition:TpvVector2):TPasVulkanGUIWidget;
+       function FindWidget(const aPosition:TpvVector2):TpvGUIWidget;
        procedure RequestFocus; virtual;
        procedure Draw; virtual;
        function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
@@ -192,10 +192,10 @@ type TPasVulkanGUIObject=class;
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
        property PreferredSize:TpvVector2 read GetPreferredSize;
       published
-       property Window:TPasVulkanGUIWindow read fWindow write fWindow;
-       property Layout:TPasVulkanGUILayout read fLayout write fLayout;
-       property Theme:TPasVulkanGUITheme read fTheme write SetTheme;
-       property Cursor:TPasVulkanGUICursor read fCursor write fCursor;
+       property Window:TpvGUIWindow read fWindow write fWindow;
+       property Layout:TpvGUILayout read fLayout write fLayout;
+       property Theme:TpvGUITheme read fTheme write SetTheme;
+       property Cursor:TpvGUICursor read fCursor write fCursor;
        property Position:TpvVector2Property read fPositionProperty;
        property Size:TpvVector2Property read fSizeProperty;
        property FixedSize:TpvVector2Property read fFixedSizeProperty;
@@ -213,48 +213,49 @@ type TPasVulkanGUIObject=class;
        property FontSize:TpvFloat read GetFontSize write fFontSize;
      end;
 
-     TPasVulkanGUIInstance=class(TPasVulkanGUIWidget)
+     TpvGUIInstance=class(TpvGUIWidget)
       private
        fCanvas:TpvCanvas;
       public
        constructor Create(const aCanvas:TpvCanvas); reintroduce;
        destructor Destroy; override;
+       procedure UpdateFocus(const aWidget:TpvGUIWidget);
       published
        property Canvas:TpvCanvas read fCanvas;
      end;
 
-     TPasVulkanGUIWindow=class(TPasVulkanGUIWidget)
+     TpvGUIWindow=class(TpvGUIWidget)
       public
      end;
 
 implementation
 
-function TPasVulkanGUILayout.GetPreferredSize(const aWidget:TPasVulkanGUIWidget):TpvVector2;
+function TpvGUILayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
 begin
  result:=aWidget.fSize;
 end;
 
-procedure TPasVulkanGUILayout.PerformLayout(const aWidget:TPasVulkanGUIWidget);
+procedure TpvGUILayout.PerformLayout(const aWidget:TpvGUIWidget);
 begin
 
 end;
 
-constructor TPasVulkanGUIObject.Create(const aParent:TPasVulkanGUIObject=nil);
+constructor TpvGUIObject.Create(const aParent:TpvGUIObject=nil);
 begin
 
  inherited Create;
 
  if assigned(aParent) then begin
   fInstance:=aParent.fInstance;
- end else if self is TPasVulkanGUIInstance then begin
-  fInstance:=TPasVulkanGUIInstance(self);
+ end else if self is TpvGUIInstance then begin
+  fInstance:=TpvGUIInstance(self);
  end else begin
   fInstance:=nil;
  end;
 
  fParent:=aParent;
 
- fChildren:=TPasVulkanGUIObjectList.Create(true);
+ fChildren:=TpvGUIObjectList.Create(true);
 
  fID:='';
 
@@ -262,13 +263,13 @@ begin
 
 end;
 
-destructor TPasVulkanGUIObject.Destroy;
+destructor TpvGUIObject.Destroy;
 begin
  FreeAndNil(fChildren);
  inherited Destroy;
 end;
 
-procedure TPasVulkanGUIObject.AfterConstruction;
+procedure TpvGUIObject.AfterConstruction;
 begin
  inherited AfterConstruction;
  if assigned(fParent) then begin
@@ -276,7 +277,7 @@ begin
  end;
 end;
 
-procedure TPasVulkanGUIObject.BeforeDestruction;
+procedure TpvGUIObject.BeforeDestruction;
 begin
  if assigned(fParent) then begin
   fParent.fChildren.Extract(self);
@@ -284,28 +285,28 @@ begin
  inherited BeforeDestruction;
 end;
 
-constructor TPasVulkanGUIWidgetEnumerator.Create(const aWidget:TPasVulkanGUIWidget);
+constructor TpvGUIWidgetEnumerator.Create(const aWidget:TpvGUIWidget);
 begin
  inherited Create;
  fWidget:=aWidget;
  fIndex:=-1;
 end;
 
-function TPasVulkanGUIWidgetEnumerator.DoMoveNext:boolean;
+function TpvGUIWidgetEnumerator.DoMoveNext:boolean;
 begin
  inc(fIndex);
- while (fIndex<fWidget.fChildren.Count) and not (fWidget.fChildren[fIndex] is TPasVulkanGUIWidget) do begin
+ while (fIndex<fWidget.fChildren.Count) and not (fWidget.fChildren[fIndex] is TpvGUIWidget) do begin
   inc(fIndex);
  end;
  result:=(fWidget.fChildren.Count<>0) and (fIndex<fWidget.fChildren.Count);
 end;
 
-function TPasVulkanGUIWidgetEnumerator.DoGetCurrent:TPasVulkanGUIWidget;
+function TpvGUIWidgetEnumerator.DoGetCurrent:TpvGUIWidget;
 begin
- result:=fWidget.fChildren[fIndex] as TPasVulkanGUIWidget;
+ result:=fWidget.fChildren[fIndex] as TpvGUIWidget;
 end;
 
-constructor TPasVulkanGUIWidget.Create(const aParent:TPasVulkanGUIObject=nil);
+constructor TpvGUIWidget.Create(const aParent:TpvGUIObject=nil);
 begin
 
  inherited Create(aParent);
@@ -342,7 +343,7 @@ begin
 
 end;
 
-destructor TPasVulkanGUIWidget.Destroy;
+destructor TpvGUIWidget.Destroy;
 begin
 
  FreeAndNil(fPositionProperty);
@@ -355,115 +356,115 @@ begin
 
 end;
 
-procedure TPasVulkanGUIWidget.AfterConstruction;
+procedure TpvGUIWidget.AfterConstruction;
 begin
  inherited AfterConstruction;
 end;
 
-procedure TPasVulkanGUIWidget.BeforeDestruction;
+procedure TpvGUIWidget.BeforeDestruction;
 begin
  inherited BeforeDestruction;
 end;
 
-procedure TPasVulkanGUIWidget.SetTheme(const aTheme:TPasVulkanGUITheme);
+procedure TpvGUIWidget.SetTheme(const aTheme:TpvGUITheme);
 var ChildIndex:TpvInt32;
-    Child:TPasVulkanGUIObject;
-    ChildWidget:TPasVulkanGUIWidget;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
 begin
  fTheme:=aTheme;
  for ChildIndex:=0 to fChildren.Count-1 do begin
   Child:=fChildren.Items[ChildIndex];
-  if Child is TPasVulkanGUIWidget then begin
-   ChildWidget:=Child as TPasVulkanGUIWidget;
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
    ChildWidget.SetTheme(aTheme);
   end;
  end;
 end;
 
-function TPasVulkanGUIWidget.GetLeft:TpvFloat;
+function TpvGUIWidget.GetLeft:TpvFloat;
 begin
  result:=fPosition.x;
 end;
 
-procedure TPasVulkanGUIWidget.SetLeft(const aLeft:TpvFloat);
+procedure TpvGUIWidget.SetLeft(const aLeft:TpvFloat);
 begin
  fPosition.x:=aLeft;
 end;
 
-function TPasVulkanGUIWidget.GetTop:TpvFloat;
+function TpvGUIWidget.GetTop:TpvFloat;
 begin
  result:=fPosition.y;
 end;
 
-procedure TPasVulkanGUIWidget.SetTop(const aTop:TpvFloat);
+procedure TpvGUIWidget.SetTop(const aTop:TpvFloat);
 begin
  fPosition.y:=aTop;
 end;
 
-function TPasVulkanGUIWidget.GetWidth:TpvFloat;
+function TpvGUIWidget.GetWidth:TpvFloat;
 begin
  result:=fSize.x;
 end;
 
-procedure TPasVulkanGUIWidget.SetWidth(const aWidth:TpvFloat);
+procedure TpvGUIWidget.SetWidth(const aWidth:TpvFloat);
 begin
  fSize.x:=aWidth;
 end;
 
-function TPasVulkanGUIWidget.GetHeight:TpvFloat;
+function TpvGUIWidget.GetHeight:TpvFloat;
 begin
  result:=fSize.y;
 end;
 
-procedure TPasVulkanGUIWidget.SetHeight(const aHeight:TpvFloat);
+procedure TpvGUIWidget.SetHeight(const aHeight:TpvFloat);
 begin
  fSize.y:=aHeight;
 end;
 
-function TPasVulkanGUIWidget.GetFixedWidth:TpvFloat;
+function TpvGUIWidget.GetFixedWidth:TpvFloat;
 begin
  result:=fFixedSize.x;
 end;
 
-procedure TPasVulkanGUIWidget.SetFixedWidth(const aFixedWidth:TpvFloat);
+procedure TpvGUIWidget.SetFixedWidth(const aFixedWidth:TpvFloat);
 begin
  fFixedSize.x:=aFixedWidth;
 end;
 
-function TPasVulkanGUIWidget.GetFixedHeight:TpvFloat;
+function TpvGUIWidget.GetFixedHeight:TpvFloat;
 begin
  result:=fFixedSize.y;
 end;
 
-procedure TPasVulkanGUIWidget.SetFixedHeight(const aFixedHeight:TpvFloat);
+procedure TpvGUIWidget.SetFixedHeight(const aFixedHeight:TpvFloat);
 begin
  fFixedSize.y:=aFixedHeight;
 end;
 
-function TPasVulkanGUIWidget.GetAbsolutePosition:TpvVector2;
+function TpvGUIWidget.GetAbsolutePosition:TpvVector2;
 begin
- if assigned(fParent) and (fParent is TPasVulkanGUIWidget) then begin
-  result:=(fParent as TPasVulkanGUIWidget).AbsolutePosition+fPosition;
+ if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+  result:=(fParent as TpvGUIWidget).AbsolutePosition+fPosition;
  end else begin
   result:=fPosition;
  end;
 end;
 
-function TPasVulkanGUIWidget.GetRecursiveVisible:boolean;
-var CurrentWidget:TPasVulkanGUIWidget;
+function TpvGUIWidget.GetRecursiveVisible:boolean;
+var CurrentWidget:TpvGUIWidget;
 begin
  CurrentWidget:=self;
  repeat
   result:=CurrentWidget.Visible;
-  if result and assigned(fParent) and (fParent is TPasVulkanGUIWidget) then begin
-   CurrentWidget:=fParent as TPasVulkanGUIWidget;
+  if result and assigned(CurrentWidget.fParent) and (CurrentWidget.fParent is TpvGUIWidget) then begin
+   CurrentWidget:=CurrentWidget.fParent as TpvGUIWidget;
   end else begin
    break;
   end;
  until false;
 end;
 
-function TPasVulkanGUIWidget.GetPreferredSize:TpvVector2;
+function TpvGUIWidget.GetPreferredSize:TpvVector2;
 begin
  if assigned(fLayout) then begin
   result:=fLayout.GetPreferredSize(self);
@@ -472,7 +473,7 @@ begin
  end;
 end;
 
-function TPasVulkanGUIWidget.GetFontSize:TpvFloat;
+function TpvGUIWidget.GetFontSize:TpvFloat;
 begin
  if assigned(fTheme) and IsZero(fFontSize) then begin
   result:=fTheme.fFontSize;
@@ -481,12 +482,12 @@ begin
  end;
 end;
 
-function TPasVulkanGUIWidget.GetEnumerator:TPasVulkanGUIWidgetEnumerator;
+function TpvGUIWidget.GetEnumerator:TpvGUIWidgetEnumerator;
 begin
- result:=TPasVulkanGUIWidgetEnumerator.Create(self);
+ result:=TpvGUIWidgetEnumerator.Create(self);
 end;
 
-function TPasVulkanGUIWidget.Contains(const aPosition:TpvVector2):boolean;
+function TpvGUIWidget.Contains(const aPosition:TpvVector2):boolean;
 begin
  result:=(aPosition.x>=fPosition.x) and
          (aPosition.y>=fPosition.y) and
@@ -494,15 +495,15 @@ begin
          (aPosition.y<(fPosition.y+fSize.y));
 end;
 
-function TPasVulkanGUIWidget.FindWidget(const aPosition:TpvVector2):TPasVulkanGUIWidget;
+function TpvGUIWidget.FindWidget(const aPosition:TpvVector2):TpvGUIWidget;
 var ChildIndex:TpvInt32;
-    Child:TPasVulkanGUIObject;
-    ChildWidget:TPasVulkanGUIWidget;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
 begin
  for ChildIndex:=0 to fChildren.Count-1 do begin
   Child:=fChildren.Items[ChildIndex];
-  if Child is TPasVulkanGUIWidget then begin
-   ChildWidget:=Child as TPasVulkanGUIWidget;
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
     result:=ChildWidget.FindWidget(aPosition-fPosition);
     exit;
@@ -516,14 +517,30 @@ begin
  end;
 end;
 
-procedure TPasVulkanGUIWidget.RequestFocus;
+procedure TpvGUIWidget.RequestFocus;
+var CurrentWidget:TpvGUIWidget;
 begin
+ if assigned(fInstance) then begin
+  fInstance.UpdateFocus(self);
+ end else begin
+  CurrentWidget:=self;
+  while assigned(CurrentWidget) do begin
+   if CurrentWidget is TpvGUIInstance then begin
+    (CurrentWidget as TpvGUIInstance).UpdateFocus(self);
+    break;
+   end else if assigned(CurrentWidget.Parent) and (CurrentWidget.Parent is TpvGUIWidget) then begin
+    CurrentWidget:=CurrentWidget.fParent as TpvGUIWidget;
+   end else begin
+    break;
+   end;
+  end;
+ end;
 end;
 
-procedure TPasVulkanGUIWidget.PerformLayout;
+procedure TpvGUIWidget.PerformLayout;
 var ChildIndex:TpvInt32;
-    Child:TPasVulkanGUIObject;
-    ChildWidget:TPasVulkanGUIWidget;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
     ChildWidgetPreferredSize,ChildWidgetFixedSize,ChildWidgetSize:TpvVector2;
 begin
  if assigned(fLayout) then begin
@@ -531,8 +548,8 @@ begin
  end else begin
   for ChildIndex:=0 to fChildren.Count-1 do begin
    Child:=fChildren.Items[ChildIndex];
-   if Child is TPasVulkanGUIWidget then begin
-    ChildWidget:=Child as TPasVulkanGUIWidget;
+   if Child is TpvGUIWidget then begin
+    ChildWidget:=Child as TpvGUIWidget;
     ChildWidgetPreferredSize:=ChildWidget.GetPreferredSize;
     ChildWidgetFixedSize:=ChildWidget.fFixedSize;
     if ChildWidgetFixedSize.x>0.0 then begin
@@ -552,35 +569,35 @@ begin
  end;
 end;
 
-procedure TPasVulkanGUIWidget.Draw;
+procedure TpvGUIWidget.Draw;
 begin
 
 end;
 
-function TPasVulkanGUIWidget.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
-begin
- result:=false;
-end;
-
-function TPasVulkanGUIWidget.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TpvGUIWidget.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TPasVulkanGUIWidget.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TpvGUIWidget.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
 end;
 
-function TPasVulkanGUIWidget.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvGUIWidget.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUIWidget.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var ChildIndex:TpvInt32;
-    Child:TPasVulkanGUIObject;
-    ChildWidget:TPasVulkanGUIWidget;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
 begin
  for ChildIndex:=fChildren.Count-1 downto 0 do begin
   Child:=fChildren.Items[ChildIndex];
-  if Child is TPasVulkanGUIWidget then begin
-   ChildWidget:=Child as TPasVulkanGUIWidget;
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
     result:=ChildWidget.PointerDown(aPosition-fPosition,aPressure,aPointerID,aButton);
     if result then begin
@@ -595,15 +612,15 @@ begin
  result:=false;
 end;
 
-function TPasVulkanGUIWidget.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvGUIWidget.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var ChildIndex:TpvInt32;
-    Child:TPasVulkanGUIObject;
-    ChildWidget:TPasVulkanGUIWidget;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
 begin
  for ChildIndex:=fChildren.Count-1 downto 0 do begin
   Child:=fChildren.Items[ChildIndex];
-  if Child is TPasVulkanGUIWidget then begin
-   ChildWidget:=Child as TPasVulkanGUIWidget;
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
     result:=ChildWidget.PointerUp(aPosition-fPosition,aPressure,aPointerID,aButton);
     if result then begin
@@ -615,15 +632,15 @@ begin
  result:=false;
 end;
 
-function TPasVulkanGUIWidget.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvGUIWidget.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var ChildIndex:TpvInt32;
-    Child:TPasVulkanGUIObject;
-    ChildWidget:TPasVulkanGUIWidget;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
 begin
  for ChildIndex:=fChildren.Count-1 downto 0 do begin
   Child:=fChildren.Items[ChildIndex];
-  if Child is TPasVulkanGUIWidget then begin
-   ChildWidget:=Child as TPasVulkanGUIWidget;
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
     result:=ChildWidget.PointerMotion(aPosition-fPosition,aRelativePosition,aPressure,aPointerID,aButton);
     if result then begin
@@ -635,15 +652,15 @@ begin
  result:=false;
 end;
 
-function TPasVulkanGUIWidget.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIWidget.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
 var ChildIndex:TpvInt32;
-    Child:TPasVulkanGUIObject;
-    ChildWidget:TPasVulkanGUIWidget;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
 begin
  for ChildIndex:=fChildren.Count-1 downto 0 do begin
   Child:=fChildren.Items[ChildIndex];
-  if Child is TPasVulkanGUIWidget then begin
-   ChildWidget:=Child as TPasVulkanGUIWidget;
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
     result:=ChildWidget.Scrolled(aPosition-fPosition,aRelativeAmount);
     if result then begin
@@ -655,7 +672,7 @@ begin
  result:=false;
 end;
 
-constructor TPasVulkanGUIInstance.Create(const aCanvas:TpvCanvas);
+constructor TpvGUIInstance.Create(const aCanvas:TpvCanvas);
 begin
 
  inherited Create(nil);
@@ -666,10 +683,15 @@ begin
 
 end;
 
-destructor TPasVulkanGUIInstance.Destroy;
+destructor TpvGUIInstance.Destroy;
 begin
 
  inherited Destroy;
+
+end;
+
+procedure TpvGUIInstance.UpdateFocus(const aWidget:TpvGUIWidget);
+begin
 
 end;
 
