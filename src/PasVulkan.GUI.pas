@@ -184,10 +184,9 @@ type TPasVulkanGUIObject=class;
        function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
        function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
        function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
-       function TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
-       function TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
-       function TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; virtual;
-       function TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean; virtual;
+       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
+       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
+       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
        function Scrolled(const aPosition:TpvVector2;const aAmount:TpvFloat):boolean; virtual;
       public
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
@@ -573,7 +572,7 @@ begin
  result:=false;
 end;
 
-function TPasVulkanGUIWidget.TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TPasVulkanGUIWidget.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var ChildIndex:TpvInt32;
     Child:TPasVulkanGUIObject;
     ChildWidget:TPasVulkanGUIWidget;
@@ -583,7 +582,7 @@ begin
   if Child is TPasVulkanGUIWidget then begin
    ChildWidget:=Child as TPasVulkanGUIWidget;
    if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
-    result:=ChildWidget.TouchDown(aPosition-fPosition,aPressure,aPointerID,aButton);
+    result:=ChildWidget.PointerDown(aPosition-fPosition,aPressure,aPointerID,aButton);
     if result then begin
      exit;
     end;
@@ -596,7 +595,7 @@ begin
  result:=false;
 end;
 
-function TPasVulkanGUIWidget.TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TPasVulkanGUIWidget.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var ChildIndex:TpvInt32;
     Child:TPasVulkanGUIObject;
     ChildWidget:TPasVulkanGUIWidget;
@@ -606,7 +605,7 @@ begin
   if Child is TPasVulkanGUIWidget then begin
    ChildWidget:=Child as TPasVulkanGUIWidget;
    if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
-    result:=ChildWidget.TouchUp(aPosition-fPosition,aPressure,aPointerID,aButton);
+    result:=ChildWidget.PointerUp(aPosition-fPosition,aPressure,aPointerID,aButton);
     if result then begin
      exit;
     end;
@@ -616,7 +615,7 @@ begin
  result:=false;
 end;
 
-function TPasVulkanGUIWidget.TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+function TPasVulkanGUIWidget.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 var ChildIndex:TpvInt32;
     Child:TPasVulkanGUIObject;
     ChildWidget:TPasVulkanGUIWidget;
@@ -626,27 +625,7 @@ begin
   if Child is TPasVulkanGUIWidget then begin
    ChildWidget:=Child as TPasVulkanGUIWidget;
    if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
-    result:=ChildWidget.TouchDragged(aPosition-fPosition,aPressure,aPointerID);
-    if result then begin
-     exit;
-    end;
-   end;
-  end;
- end;
- result:=false;
-end;
-
-function TPasVulkanGUIWidget.TouchMoved(const aPosition:TpvVector2;const aPointerID:TpvInt32):boolean;
-var ChildIndex:TpvInt32;
-    Child:TPasVulkanGUIObject;
-    ChildWidget:TPasVulkanGUIWidget;
-begin
- for ChildIndex:=fChildren.Count-1 downto 0 do begin
-  Child:=fChildren.Items[ChildIndex];
-  if Child is TPasVulkanGUIWidget then begin
-   ChildWidget:=Child as TPasVulkanGUIWidget;
-   if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
-    result:=ChildWidget.TouchMoved(aPosition-fPosition,aPointerID);
+    result:=ChildWidget.PointerMotion(aPosition-fPosition,aRelativePosition,aPressure,aPointerID,aButton);
     if result then begin
      exit;
     end;
