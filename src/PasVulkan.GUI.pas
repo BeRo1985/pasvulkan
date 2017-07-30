@@ -101,12 +101,15 @@ type TPasVulkanGUIInstance=class;
        fAutoSize:boolean;
        fLastPosition:TpvVector2;
        fLastSize:TpvVector2;
+       fLastTotalSize:TpvVector2;
        fPosition:TpvVector2;
        fSize:TpvVector2;
+       fTotalSize:TpvVector2;
        fMargin:TpvVector4;
        fPadding:TpvVector4;
        fPositionProperty:TpvVector2Property;
        fSizeProperty:TpvVector2Property;
+       fTotalSizeProperty:TpvVector2Property;
        fMarginProperty:TpvVector4Property;
        fPaddingProperty:TpvVector4Property;
       protected
@@ -125,6 +128,7 @@ type TPasVulkanGUIInstance=class;
        property AutoSize:boolean read fAutoSize write fAutoSize;
        property Position:TpvVector2Property read fPositionProperty;
        property Size:TpvVector2Property read fSizeProperty;
+       property TotalSize:TpvVector2Property read fTotalSizeProperty;
        property Margin:TpvVector4Property read fMarginProperty;
        property Padding:TpvVector4Property read fPaddingProperty;
      end;
@@ -162,9 +166,13 @@ begin
 
  fLastSize:=TpvVector2.Create(-Infinity,-Infinity);
 
+ fLastTotalSize:=TpvVector2.Create(Infinity,-Infinity);
+
  fPosition:=TpvVector2.Create(0.0,0.0);
 
  fSize:=TpvVector2.Create(1.0,1.0);
+
+ fTotalSize:=TpvVector2.Create(-Infinity,Infinity);
 
  fMargin:=TpvVector4.Create(0.0,0.0,0.0,0.0);
 
@@ -173,6 +181,8 @@ begin
  fPositionProperty:=TpvVector2Property.Create(@fPosition);
 
  fSizeProperty:=TpvVector2Property.Create(@fSize);
+
+ fTotalSizeProperty:=TpvVector2Property.Create(@fTotalSize);
 
  fMarginProperty:=TpvVector4Property.Create(@fMargin);
 
@@ -194,6 +204,8 @@ begin
  FreeAndNil(fPositionProperty);
 
  FreeAndNil(fSizeProperty);
+
+ FreeAndNil(fTotalSizeProperty);
 
  FreeAndNil(fMarginProperty);
 
@@ -239,6 +251,16 @@ begin
    fLastSize:=fSize;
   end;
 
+  fTotalSize:=fSize+
+              fMargin.xy+
+              fMargin.zw+
+              fPadding.xy+
+              fPadding.zw;
+
+  if fLastTotalSize<>fTotalSize then begin
+   fLastTotalSize:=fTotalSize;
+  end;
+
   for AlignmentIndex:=low(TPasVulkanGUIAlignment) to high(TPasVulkanGUIAlignment) do begin
    for Child in fChildren do begin
     if Child.fAlignment=AlignmentIndex then begin
@@ -266,7 +288,6 @@ begin
    end;
   end;
 
-
   for Child in fChildren do begin
    Child.Prepare;
   end;
@@ -278,8 +299,8 @@ begin
    for Child in fChildren do begin
     AABB.Min.x:=Min(AABB.Min.x,Child.fPosition.x);
     AABB.Min.y:=Min(AABB.Min.y,Child.fPosition.y);
-    AABB.Max.x:=Max(AABB.Max.x,Child.fPosition.x+Child.fSize.x);
-    AABB.Max.y:=Max(AABB.Max.y,Child.fPosition.y+Child.fSize.y);
+    AABB.Max.x:=Max(AABB.Max.x,Child.fPosition.x+Child.fTotalSize.x);
+    AABB.Max.y:=Max(AABB.Max.y,Child.fPosition.y+Child.fTotalSize.y);
    end;
 
    if (AABB.Min.x>=AABB.Max.x) or
@@ -287,10 +308,8 @@ begin
     AABB:=TpvAABB2D.Create(0.0,0.0,1.0,1.0);
    end;
 
-   if (AABB.Min.x<AABB.Max.x) and
-      (AABB.Min.y<AABB.Max.y) and not
-      (SameValue(fSize.x,AABB.Max.x) and
-       SameValue(fSize.y,AABB.Max.y)) then begin
+   if (not SameValue(fSize.x,AABB.Max.x)) or
+      (not SameValue(fSize.y,AABB.Max.y)) then begin
     fSize.x:=AABB.Max.x;
     fSize.y:=AABB.Max.y;
     continue;
