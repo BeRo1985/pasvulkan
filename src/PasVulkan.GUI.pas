@@ -574,27 +574,105 @@ begin
 end;
 
 function TPasVulkanGUIWidget.TouchDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+var ChildIndex:TpvInt32;
+    Child:TPasVulkanGUIObject;
+    ChildWidget:TPasVulkanGUIWidget;
 begin
+ for ChildIndex:=fChildren.Count-1 downto 0 do begin
+  Child:=fChildren.Items[ChildIndex];
+  if Child is TPasVulkanGUIWidget then begin
+   ChildWidget:=Child as TPasVulkanGUIWidget;
+   if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
+    result:=ChildWidget.TouchDown(aPosition-fPosition,aPressure,aPointerID,aButton);
+    if result then begin
+     exit;
+    end;
+   end;
+  end;
+ end;
+ if (aButton=BUTTON_LEFT) and not fFocused then begin
+  RequestFocus;
+ end;
  result:=false;
 end;
 
 function TPasVulkanGUIWidget.TouchUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+var ChildIndex:TpvInt32;
+    Child:TPasVulkanGUIObject;
+    ChildWidget:TPasVulkanGUIWidget;
 begin
+ for ChildIndex:=fChildren.Count-1 downto 0 do begin
+  Child:=fChildren.Items[ChildIndex];
+  if Child is TPasVulkanGUIWidget then begin
+   ChildWidget:=Child as TPasVulkanGUIWidget;
+   if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
+    result:=ChildWidget.TouchUp(aPosition-fPosition,aPressure,aPointerID,aButton);
+    if result then begin
+     exit;
+    end;
+   end;
+  end;
+ end;
  result:=false;
 end;
 
 function TPasVulkanGUIWidget.TouchDragged(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+var ChildIndex:TpvInt32;
+    Child:TPasVulkanGUIObject;
+    ChildWidget:TPasVulkanGUIWidget;
 begin
+ for ChildIndex:=fChildren.Count-1 downto 0 do begin
+  Child:=fChildren.Items[ChildIndex];
+  if Child is TPasVulkanGUIWidget then begin
+   ChildWidget:=Child as TPasVulkanGUIWidget;
+   if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
+    result:=ChildWidget.TouchDragged(aPosition-fPosition,aPressure,aPointerID);
+    if result then begin
+     exit;
+    end;
+   end;
+  end;
+ end;
  result:=false;
 end;
 
 function TPasVulkanGUIWidget.MouseMoved(const aPosition:TpvVector2):boolean;
+var ChildIndex:TpvInt32;
+    Child:TPasVulkanGUIObject;
+    ChildWidget:TPasVulkanGUIWidget;
 begin
+ for ChildIndex:=fChildren.Count-1 downto 0 do begin
+  Child:=fChildren.Items[ChildIndex];
+  if Child is TPasVulkanGUIWidget then begin
+   ChildWidget:=Child as TPasVulkanGUIWidget;
+   if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
+    result:=ChildWidget.MouseMoved(aPosition-fPosition);
+    if result then begin
+     exit;
+    end;
+   end;
+  end;
+ end;
  result:=false;
 end;
 
 function TPasVulkanGUIWidget.Scrolled(const aPosition:TpvVector2;const aAmount:TpvFloat):boolean;
+var ChildIndex:TpvInt32;
+    Child:TPasVulkanGUIObject;
+    ChildWidget:TPasVulkanGUIWidget;
 begin
+ for ChildIndex:=fChildren.Count-1 downto 0 do begin
+  Child:=fChildren.Items[ChildIndex];
+  if Child is TPasVulkanGUIWidget then begin
+   ChildWidget:=Child as TPasVulkanGUIWidget;
+   if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
+    result:=ChildWidget.Scrolled(aPosition-fPosition,aAmount);
+    if result then begin
+     exit;
+    end;
+   end;
+  end;
+ end;
  result:=false;
 end;
 
