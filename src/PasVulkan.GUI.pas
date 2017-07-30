@@ -108,6 +108,7 @@ type TPasVulkanGUIObject=class;
      TPasVulkanGUILayout=class(TPasVulkanGUIObject)
       protected
        function GetPreferredSize(const aWidget:TPasVulkanGUIWidget):TpvVector2; virtual;
+       procedure PerformLayout(const aWidget:TPasVulkanGUIWidget); virtual;
       public
      end;
 
@@ -151,8 +152,10 @@ type TPasVulkanGUIObject=class;
        procedure SetFixedHeight(const aFixedHeight:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetAbsolutePosition:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function GetRecursiveVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function GetPreferredSize:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
       protected
        procedure SetTheme(const aTheme:TPasVulkanGUITheme); virtual;
+       procedure PerformLayout; virtual;
        procedure Paint; virtual;
       public
        constructor Create(const aParent:TPasVulkanGUIObject=nil); override;
@@ -164,6 +167,7 @@ type TPasVulkanGUIObject=class;
        procedure RequestFocus; virtual;
       public
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
+       property PreferredSize:TpvVector2 read GetPreferredSize;
       published
        property Window:TPasVulkanGUIWindow read fWindow write fWindow;
        property Layout:TPasVulkanGUILayout read fLayout write fLayout;
@@ -203,7 +207,12 @@ implementation
 
 function TPasVulkanGUILayout.GetPreferredSize(const aWidget:TPasVulkanGUIWidget):TpvVector2;
 begin
- result:=TpvVector2.Create(0.0,0.0);
+ result:=aWidget.fSize;
+end;
+
+procedure TPasVulkanGUILayout.PerformLayout(const aWidget:TPasVulkanGUIWidget);
+begin
+
 end;
 
 constructor TPasVulkanGUIObject.Create(const aParent:TPasVulkanGUIObject=nil);
@@ -397,6 +406,15 @@ begin
  until false;
 end;
 
+function TPasVulkanGUIWidget.GetPreferredSize:TpvVector2;
+begin
+ if assigned(fLayout) then begin
+  result:=fLayout.GetPreferredSize(self);
+ end else begin
+  result:=fSize;
+ end;
+end;
+
 function TPasVulkanGUIWidget.Contains(const aPosition:TpvVector2):boolean;
 begin
  result:=(aPosition.x>=fPosition.x) and
@@ -427,8 +445,39 @@ end;
 
 procedure TPasVulkanGUIWidget.RequestFocus;
 begin
+end;
+
+procedure TPasVulkanGUIWidget.PerformLayout;
+var Child:TPasVulkanGUIObject;
+    ChildWidget:TPasVulkanGUIWidget;
+    ChildWidgetPreferredSize,ChildWidgetFixedSize,ChildWidgetSize:TpvVector2;
+begin
+ if assigned(fLayout) then begin
+  fLayout.PerformLayout(self);
+ end else begin
+  for Child in fChildren do begin
+   if Child is TPasVulkanGUIWidget then begin
+    ChildWidget:=Child as TPasVulkanGUIWidget;
+    ChildWidgetPreferredSize:=ChildWidget.GetPreferredSize;
+    ChildWidgetFixedSize:=ChildWidget.fFixedSize;
+    if ChildWidgetFixedSize.x>0.0 then begin
+     ChildWidgetSize.x:=ChildWidgetFixedSize.x;
+    end else begin
+     ChildWidgetSize.x:=ChildWidgetPreferredSize.x;
+    end;
+    if ChildWidgetFixedSize.y>0.0 then begin
+     ChildWidgetSize.y:=ChildWidgetFixedSize.y;
+    end else begin
+     ChildWidgetSize.y:=ChildWidgetPreferredSize.y;
+    end;
+    ChildWidget.fSize:=ChildWidgetSize;
+    ChildWidget.PerformLayout;
+   end;
+  end;
+ end;
 
 end;
+
 
 procedure TPasVulkanGUIWidget.Paint;
 begin
