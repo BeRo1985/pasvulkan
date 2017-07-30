@@ -4054,7 +4054,7 @@ begin
       fPointerJustDown[PointerID]:=true;
       fJustTouched:=true;
       if (not pvApplication.TouchDown(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,0)) and assigned(fProcessor) then begin
-       fProcessor.TouchDown(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,0);
+       fProcessor.TouchDown(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT);
       end;
      end;
      SDL_FINGERUP:begin
@@ -4071,7 +4071,7 @@ begin
       fPointerDown[PointerID]:=false;
       fPointerJustDown[PointerID]:=false;
       if (not pvApplication.TouchUp(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,0)) and assigned(fProcessor) then begin
-       fProcessor.TouchUp(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,0);
+       fProcessor.TouchUp(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT);
       end;
      end;
     end;
