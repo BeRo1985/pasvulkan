@@ -58,24 +58,36 @@ unit PasVulkan.GUI;
   {$ifend}
  {$endif}
 {$endif}
+{$m+}
 
 interface
 
-uses SysUtils,Classes,Vulkan,PasVulkan.Framework,PasVulkan.Application;
+uses SysUtils,
+     Classes,
+     Vulkan,
+     PasVulkan.Types,
+     PasVulkan.Collections,
+     PasVulkan.Framework,
+     PasVulkan.Application,
+     PasVulkan.Sprites,
+     PasVulkan.Canvas;
 
-type TPasVulkanGUIObject=class;
+type TPasVulkanGUIInstance=class;
+
+     TPasVulkanGUIObject=class;
 
      TPasVulkanGUIObjectList=class(TList)
       private
-       function GetItem(const aIndex:TVkInt32):TPasVulkanGUIObject;
-       procedure SetItem(const aIndex:TVkInt32;const aItem:TPasVulkanGUIObject);
+       function GetItem(const aIndex:TpvInt32):TPasVulkanGUIObject;
+       procedure SetItem(const aIndex:TpvInt32;const aItem:TPasVulkanGUIObject);
       public
        procedure ClearObjects;
-       property Items[const aIndex:TVkInt32]:TPasVulkanGUIObject read GetItem write SetItem; default;
+       property Items[const aIndex:TpvInt32]:TPasVulkanGUIObject read GetItem write SetItem; default;
      end;
 
      TPasVulkanGUIObject=class
       private
+       fInstance:TPasVulkanGUIInstance;
        fParent:TPasVulkanGUIObject;
        fChildren:TPasVulkanGUIObjectList;
       public
@@ -84,22 +96,29 @@ type TPasVulkanGUIObject=class;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
       published
+       property Instance:TPasVulkanGUIInstance read fInstance;
        property Parent:TPasVulkanGUIObject read fParent write fParent;
        property Children:TPasVulkanGUIObjectList read fChildren;
      end;
 
      TPasVulkanGUIInstance=class(TPasVulkanGUIObject)
+      private
+       fCanvas:TpvCanvas;
       public
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+      published
+       property Canvas:TpvCanvas read fCanvas;
      end;
 
 implementation
 
-function TPasVulkanGUIObjectList.GetItem(const aIndex:TVkInt32):TPasVulkanGUIObject;
+function TPasVulkanGUIObjectList.GetItem(const aIndex:TpvInt32):TPasVulkanGUIObject;
 begin
  result:=inherited Items[aIndex];
 end;
 
-procedure TPasVulkanGUIObjectList.SetItem(const aIndex:TVkInt32;const aItem:TPasVulkanGUIObject);
+procedure TPasVulkanGUIObjectList.SetItem(const aIndex:TpvInt32;const aItem:TPasVulkanGUIObject);
 begin
  inherited Items[aIndex]:=aItem;
 end;
@@ -118,6 +137,14 @@ constructor TPasVulkanGUIObject.Create(const aParent:TPasVulkanGUIObject=nil);
 begin
 
  inherited Create;
+
+ if assigned(aParent) then begin
+  fInstance:=aParent.fInstance;
+ end else if self is TPasVulkanGUIInstance then begin
+  fInstance:=TPasVulkanGUIInstance(self);
+ end else begin
+  fInstance:=nil;
+ end;
 
  fParent:=aParent;
 
@@ -154,6 +181,22 @@ begin
  end;
 
  inherited BeforeDestruction;
+
+end;
+
+constructor TPasVulkanGUIInstance.Create;
+begin
+
+ inherited Create(nil);
+
+ fInstance:=self;
+
+end;
+
+destructor TPasVulkanGUIInstance.Destroy;
+begin
+
+ inherited Destroy;
 
 end;
 
