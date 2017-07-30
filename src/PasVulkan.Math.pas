@@ -317,15 +317,39 @@ type PpvScalar=^TpvScalar;
      end;
 
      TpvVector2Helper=record helper for TpvVector2
-      {$i PasVulkan.Math.TpvVector2Helper.Swizzle.Definitions.inc}
+      public
+       const Null:TpvVector2=(x:0.0;y:0.0);
+             Origin:TpvVector2=(x:0.0;y:0.0);
+             XAxis:TpvVector2=(x:1.0;y:0.0);
+             YAxis:TpvVector2=(x:0.0;y:1.0);
+             AllAxis:TpvVector2=(x:1.0;y:1.0);
+      public
+       {$i PasVulkan.Math.TpvVector2Helper.Swizzle.Definitions.inc}
      end;
 
      TpvVector3Helper=record helper for TpvVector3
-      {$i PasVulkan.Math.TpvVector3Helper.Swizzle.Definitions.inc}
+      public
+       const Null:TpvVector3=(x:0.0;y:0.0;z:0.0);
+             Origin:TpvVector3=(x:0.0;y:0.0;z:0.0);
+             XAxis:TpvVector3=(x:1.0;y:0.0;z:0.0);
+             YAxis:TpvVector3=(x:0.0;y:1.0;z:0.0);
+             ZAxis:TpvVector3=(x:0.0;y:0.0;z:1.0);
+             AllAxis:TpvVector3=(x:1.0;y:1.0;z:1.0);
+      public
+       {$i PasVulkan.Math.TpvVector3Helper.Swizzle.Definitions.inc}
      end;
 
      TpvVector4Helper=record helper for TpvVector4
-      {$i PasVulkan.Math.TpvVector4Helper.Swizzle.Definitions.inc}
+      public
+       const Null:TpvVector4=(x:0.0;y:0.0;z:0.0;w:0.0);
+             Origin:TpvVector4=(x:0.0;y:0.0;z:0.0;w:0.0);
+             XAxis:TpvVector4=(x:1.0;y:0.0;z:0.0;w:0.0);
+             YAxis:TpvVector4=(x:0.0;y:1.0;z:0.0;w:0.0);
+             ZAxis:TpvVector4=(x:0.0;y:0.0;z:1.0;w:0.0);
+             WAxis:TpvVector4=(x:0.0;y:0.0;z:0.0;w:1.0);
+             AllAxis:TpvVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
+      public
+       {$i PasVulkan.Math.TpvVector4Helper.Swizzle.Definitions.inc}
      end;
 
      PpvHalfFloatVector2=^TpvHalfFloatVector2;
@@ -490,8 +514,6 @@ type PpvScalar=^TpvScalar;
        constructor Create(const pX:TpvScalar); overload;
        constructor Create(const pXX,pXY,pYX,pYY:TpvScalar); overload;
        constructor Create(const pX,pY:TpvVector2); overload;
-       class function Identity:TpvMatrix2x2; static; {$ifdef CAN_INLINE}inline;{$endif}
-       class function Null:TpvMatrix2x2; static; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Implicit(const a:TpvScalar):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvScalar):TpvMatrix2x2; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvMatrix2x2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -579,8 +601,6 @@ type PpvScalar=^TpvScalar;
        constructor CreateFromQuaternion(ppvQuaternion:TpvQuaternion);
        constructor CreateFromQTangent(pQTangent:TpvQuaternion);
        constructor CreateRecomposed(const DecomposedMatrix3x3:TpvDecomposedMatrix3x3);
-       class function Identity:TpvMatrix3x3; static; {$ifdef CAN_INLINE}inline;{$endif}
-       class function Null:TpvMatrix3x3; static; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Implicit(const a:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvScalar):TpvMatrix3x3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvMatrix3x3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -718,8 +738,6 @@ type PpvScalar=^TpvScalar;
        constructor CreateConstructZ(const zAxis:TpvVector3);
        constructor CreateProjectionMatrixClip(const ProjectionMatrix:TpvMatrix4x4;const ClipPlane:TpvPlane);
        constructor CreateRecomposed(const DecomposedMatrix4x4:TpvDecomposedMatrix4x4);
-       class function Identity:TpvMatrix4x4; static; {$ifdef CAN_INLINE}inline;{$endif}
-       class function Null:TpvMatrix4x4; static; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Implicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Explicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Equal({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -842,6 +860,36 @@ type PpvScalar=^TpvScalar;
         0:(RawQuaternions:array[0..1] of TpvQuaternion);
         1:(QuaternionR,QuaternionD:TpvQuaternion);
      end;
+
+     TpvMatrix2x2Helper=record helper for TpvMatrix2x2
+      public
+       const Null:TpvMatrix2x2=(RawComponents:((0.0,0.0),(0.0,0.0)));
+             Identity:TpvMatrix2x2=(RawComponents:((1.0,0.0),(0.0,1.0)));
+     end;
+
+     TpvMatrix3x3Helper=record helper for TpvMatrix3x3
+      public
+       const Null:TpvMatrix3x3=(RawComponents:((0.0,0.0,0.0),(0.0,0.0,0.0),(0.0,0.0,0.0)));
+             Identity:TpvMatrix3x3=(RawComponents:((1.0,0.0,0.0),(0.0,1.0,0.0),(0.0,0.0,1.0)));
+     end;
+
+     TpvMatrix4x4Helper=record helper for TpvMatrix4x4
+      public
+       const Null:TpvMatrix4x4=(RawComponents:((0.0,0.0,0,0.0),(0.0,0.0,0,0.0),(0.0,0.0,0,0.0),(0.0,0.0,0,0.0)));
+             Identity:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0)));
+             RightToLeftHanded:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,0.0,0,1.0)));
+             Flip:TpvMatrix4x4=(RawComponents:((0.0,0.0,-1.0,0.0),(-1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0,1.0)));
+             InverseFlip:TpvMatrix4x4=(RawComponents:((0.0,-1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(-1.0,0.0,0,0.0),(0.0,0.0,0,1.0)));
+             FlipYZ:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,0.0,1.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,0,1.0)));
+             InverseFlipYZ:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,0.0,-1.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0,1.0)));
+             NormalizedSpace:TpvMatrix4x4=(RawComponents:((2.0,0.0,0,0.0),(0.0,2.0,0.0,0.0),(0.0,0.0,2.0,0.0),(-1.0,-1.0,-1.0,1.0)));
+     end;
+
+     TpvQuaternionHelper=record helper for TpvQuaternion
+      public
+       const Identity:TpvQuaternion=(x:0.0;y:0.0;z:0.0;w:1.0);
+     end;
+
 
      PpvSegment=^TpvSegment;
      TpvSegment=record
@@ -1235,41 +1283,6 @@ type PpvScalar=^TpvScalar;
        property b:TpvScalar read GetB write SetB;
        property a:TpvScalar read GetA write SetA;
      end;
-
-const Vector2Origin:TpvVector2=(x:0.0;y:0.0);
-      Vector2XAxis:TpvVector2=(x:1.0;y:0.0);
-      Vector2YAxis:TpvVector2=(x:0.0;y:1.0);
-      Vector2All:TpvVector3=(x:1.0;y:1.0);
-
-      Vector3Origin:TpvVector3=(x:0.0;y:0.0;z:0.0);
-      Vector3XAxis:TpvVector3=(x:1.0;y:0.0;z:0.0);
-      Vector3YAxis:TpvVector3=(x:0.0;y:1.0;z:0.0);
-      Vector3ZAxis:TpvVector3=(x:0.0;y:0.0;z:1.0);
-      Vector3All:TpvVector3=(x:1.0;y:1.0;z:1.0);
-
-      Vector4Origin:TpvVector4=(x:0.0;y:0.0;z:0.0;w:0.0);
-      Vector4XAxis:TpvVector4=(x:1.0;y:0.0;z:0.0;w:0.0);
-      Vector4YAxis:TpvVector4=(x:0.0;y:1.0;z:0.0;w:0.0);
-      Vector4ZAxis:TpvVector4=(x:0.0;y:0.0;z:1.0;w:0.0);
-      Vector4WAxis:TpvVector4=(x:0.0;y:0.0;z:0.0;w:1.0);
-      Vector4All:TpvVector4=(x:1.0;y:1.0;z:1.0;w:1.0);
-
-      Matrix2x2Identity:TpvMatrix2x2=(RawComponents:((1.0,0.0),(0.0,1.0)));
-      Matrix2x2Null:TpvMatrix2x2=(RawComponents:((0.0,0.0),(0.0,0.0)));
-
-      Matrix3x3Identity:TpvMatrix3x3=(RawComponents:((1.0,0.0,0.0),(0.0,1.0,0.0),(0.0,0.0,1.0)));
-      Matrix3x3Null:TpvMatrix3x3=(RawComponents:((0.0,0.0,0.0),(0.0,0.0,0.0),(0.0,0.0,0.0)));
-
-      Matrix4x4Identity:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(0.0,0.0,0,1.0)));
-      Matrix4x4RightToLeftHanded:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,-1.0,0.0),(0.0,0.0,0,1.0)));
-      Matrix4x4Flip:TpvMatrix4x4=(RawComponents:((0.0,0.0,-1.0,0.0),(-1.0,0.0,0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0,1.0)));
-      Matrix4x4InverseFlip:TpvMatrix4x4=(RawComponents:((0.0,-1.0,0.0,0.0),(0.0,0.0,1.0,0.0),(-1.0,0.0,0,0.0),(0.0,0.0,0,1.0)));
-      Matrix4x4FlipYZ:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,0.0,1.0,0.0),(0.0,-1.0,0.0,0.0),(0.0,0.0,0,1.0)));
-      Matrix4x4InverseFlipYZ:TpvMatrix4x4=(RawComponents:((1.0,0.0,0,0.0),(0.0,0.0,-1.0,0.0),(0.0,1.0,0.0,0.0),(0.0,0.0,0,1.0)));
-      Matrix4x4Null:TpvMatrix4x4=(RawComponents:((0.0,0.0,0,0.0),(0.0,0.0,0,0.0),(0.0,0.0,0,0.0),(0.0,0.0,0,0.0)));
-      Matrix4x4NormalizedSpace:TpvMatrix4x4=(RawComponents:((2.0,0.0,0,0.0),(0.0,2.0,0.0,0.0),(0.0,0.0,2.0,0.0),(-1.0,-1.0,-1.0,1.0)));
-
-      QuaternionIdentity:TpvQuaternion=(x:0.0;y:0.0;z:0.0;w:1.0);
 
 function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 
@@ -5212,22 +5225,6 @@ begin
  RawComponents[1,1]:=pY.y;
 end;
 
-class function TpvMatrix2x2.Identity:TpvMatrix2x2;
-begin
- result.RawComponents[0,0]:=1.0;
- result.RawComponents[0,1]:=0.0;
- result.RawComponents[1,0]:=0.0;
- result.RawComponents[1,1]:=1.0;
-end;
-
-class function TpvMatrix2x2.Null:TpvMatrix2x2;
-begin
- result.RawComponents[0,0]:=0.0;
- result.RawComponents[0,1]:=0.0;
- result.RawComponents[1,0]:=0.0;
- result.RawComponents[1,1]:=0.0;
-end;
-
 class operator TpvMatrix2x2.Implicit(const a:TpvScalar):TpvMatrix2x2;
 begin
  result.RawComponents[0,0]:=a;
@@ -5489,7 +5486,7 @@ begin
   result.RawComponents[1,0]:=-(RawComponents[1,0]*d);
   result.RawComponents[1,1]:=RawComponents[0,0]*d;
  end else begin
-  result:=Matrix2x2Identity;
+  result:=TpvMatrix2x2.Identity;
  end;
 end;
 
@@ -5980,32 +5977,6 @@ begin
 
 end;
 
-class function TpvMatrix3x3.Identity:TpvMatrix3x3;
-begin
- result.RawComponents[0,0]:=1.0;
- result.RawComponents[0,1]:=0.0;
- result.RawComponents[0,2]:=0.0;
- result.RawComponents[1,0]:=0.0;
- result.RawComponents[1,1]:=1.0;
- result.RawComponents[1,2]:=0.0;
- result.RawComponents[2,0]:=0.0;
- result.RawComponents[2,1]:=0.0;
- result.RawComponents[2,2]:=1.0;
-end;
-
-class function TpvMatrix3x3.Null:TpvMatrix3x3;
-begin
- result.RawComponents[0,0]:=0.0;
- result.RawComponents[0,1]:=0.0;
- result.RawComponents[0,2]:=0.0;
- result.RawComponents[1,0]:=0.0;
- result.RawComponents[1,1]:=0.0;
- result.RawComponents[1,2]:=0.0;
- result.RawComponents[2,0]:=0.0;
- result.RawComponents[2,1]:=0.0;
- result.RawComponents[2,2]:=1.0;
-end;
-
 class operator TpvMatrix3x3.Implicit(const a:TpvScalar):TpvMatrix3x3;
 begin
  result.RawComponents[0,0]:=a;
@@ -6436,7 +6407,7 @@ begin
   result.RawComponents[2,1]:=((RawComponents[0,1]*RawComponents[2,0])-(RawComponents[0,0]*RawComponents[2,1]))*d;
   result.RawComponents[2,2]:=((RawComponents[0,0]*RawComponents[1,1])-(RawComponents[0,1]*RawComponents[1,0]))*d;
  end else begin
-  result:=Matrix3x3Identity;
+  result:=TpvMatrix3x3.Identity;
  end;
 end;
 
@@ -6505,9 +6476,9 @@ begin
    // Degenerate case, compute new normal
    Normal:=Tangent.Cross(Bitangent);
    if Normal.Length<Tolerance then begin
-    result.Tangent:=Vector3XAxis;
-    result.Bitangent:=Vector3YAxis;
-    result.Normal:=Vector3ZAxis;
+    result.Tangent:=TpvVector3.XAxis;
+    result.Bitangent:=TpvVector3.YAxis;
+    result.Normal:=TpvVector3.ZAxis;
     exit;
    end;
   end;
@@ -6524,11 +6495,11 @@ begin
    if result.Bitangent.Length<Tolerance then begin
     result.Tangent:=result.Normal.Normalize;
     if (result.Tangent.x<=result.Tangent.y) and (result.Tangent.x<=result.Tangent.z) then begin
-     result.Tangent:=Vector3XAxis;
+     result.Tangent:=TpvVector3.XAxis;
     end else if (result.Tangent.y<=result.Tangent.x) and (result.Tangent.y<=result.Tangent.z) then begin
-     result.Tangent:=Vector3YAxis;
+     result.Tangent:=TpvVector3.YAxis;
     end else begin
-     result.Tangent:=Vector3ZAxis;
+     result.Tangent:=TpvVector3.ZAxis;
     end;
     result.Tangent:=result.Tangent-(result.Normal*result.Tangent.Dot(result.Normal));
     result.Bitangent:=result.Normal.Cross(result.Tangent).Normalize;
@@ -7871,7 +7842,7 @@ begin
  Sine:=sin(Radians);
  if not ((ZDelta=0) or (Sine=0) or (aspect=0)) then begin
   Cotangent:=cos(Radians)/Sine;
-  RawComponents:=Matrix4x4Identity.RawComponents;
+  RawComponents:=TpvMatrix4x4.Identity.RawComponents;
   RawComponents[0,0]:=Cotangent/aspect;
   RawComponents[1,1]:=Cotangent;
   RawComponents[2,2]:=(-(zFar+zNear))/ZDelta;
@@ -8069,46 +8040,6 @@ begin
 
  self:=TpvMatrix4x4.CreateScale(DecomposedMatrix4x4.Scale)*self;
 
-end;
-
-class function TpvMatrix4x4.Identity:TpvMatrix4x4;
-begin
- result.RawComponents[0,0]:=1.0;
- result.RawComponents[0,1]:=0.0;
- result.RawComponents[0,2]:=0.0;
- result.RawComponents[0,3]:=0.0;
- result.RawComponents[1,0]:=0.0;
- result.RawComponents[1,1]:=1.0;
- result.RawComponents[1,2]:=0.0;
- result.RawComponents[1,3]:=0.0;
- result.RawComponents[2,0]:=0.0;
- result.RawComponents[2,1]:=0.0;
- result.RawComponents[2,2]:=1.0;
- result.RawComponents[2,3]:=0.0;
- result.RawComponents[3,0]:=0.0;
- result.RawComponents[3,1]:=0.0;
- result.RawComponents[3,2]:=0.0;
- result.RawComponents[3,3]:=1.0;
-end;
-
-class function TpvMatrix4x4.Null:TpvMatrix4x4;
-begin
- result.RawComponents[0,0]:=0.0;
- result.RawComponents[0,1]:=0.0;
- result.RawComponents[0,2]:=0.0;
- result.RawComponents[0,3]:=0.0;
- result.RawComponents[1,0]:=0.0;
- result.RawComponents[1,1]:=0.0;
- result.RawComponents[1,2]:=0.0;
- result.RawComponents[1,3]:=0.0;
- result.RawComponents[2,0]:=0.0;
- result.RawComponents[2,1]:=0.0;
- result.RawComponents[2,2]:=0.0;
- result.RawComponents[2,3]:=0.0;
- result.RawComponents[3,0]:=0.0;
- result.RawComponents[3,1]:=0.0;
- result.RawComponents[3,2]:=0.0;
- result.RawComponents[3,3]:=0.0;
 end;
 
 class operator TpvMatrix4x4.Implicit({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar):TpvMatrix4x4;
@@ -9866,9 +9797,9 @@ begin
    // Degenerate case, compute new normal
    Normal.xyz:=Tangent.xyz.Cross(Bitangent.xyz);
    if Normal.xyz.Length<Tolerance then begin
-    Tangent.xyz:=Vector3XAxis;
-    Bitangent.xyz:=Vector3YAxis;
-    Normal.xyz:=Vector3ZAxis;
+    Tangent.xyz:=TpvVector3.XAxis;
+    Bitangent.xyz:=TpvVector3.YAxis;
+    Normal.xyz:=TpvVector3.ZAxis;
     RawComponents[0,3]:=Backup.x;
     RawComponents[1,3]:=Backup.y;
     RawComponents[2,3]:=Backup.z;
@@ -9888,11 +9819,11 @@ begin
    if Bitangent.xyz.Length<Tolerance then begin
     Tangent.xyz:=Normal.xyz.Normalize;
     if (Tangent.x<=Tangent.y) and (Tangent.x<=Tangent.z) then begin
-     Tangent.xyz:=Vector3XAxis;
+     Tangent.xyz:=TpvVector3.XAxis;
     end else if (Tangent.y<=Tangent.x) and (Tangent.y<=Tangent.z) then begin
-     Tangent.xyz:=Vector3YAxis;
+     Tangent.xyz:=TpvVector3.YAxis;
     end else begin
-     Tangent.xyz:=Vector3ZAxis;
+     Tangent.xyz:=TpvVector3.ZAxis;
     end;
     Tangent.xyz:=Tangent.xyz-(Normal.xyz*Tangent.xyz.Dot(Normal.xyz));
     Bitangent.xyz:=Normal.xyz.Cross(Tangent.xyz).Normalize;
@@ -11230,7 +11161,7 @@ begin
 
  Time:=NaN;
 
- IntersectionPoint:=Vector3Origin;
+ IntersectionPoint:=TpvVector3.Origin;
 
  Switched:=false;
 
@@ -11363,7 +11294,7 @@ begin
 
   MinDist:=MAX_SCALAR;
 
-  pClosestPointOnSegment:=Vector3Origin;
+  pClosestPointOnSegment:=TpvVector3.Origin;
 
   dtri:=Normal.Dot(Points[0]);
 
@@ -11955,8 +11886,8 @@ begin
  result:=false;
 
  fracOut:=1e+34;
- posOut:=Vector3Origin;
- normalOut:=Vector3Origin;
+ posOut:=TpvVector3.Origin;
+ normalOut:=TpvVector3.Origin;
 
  min_:=-1e+34;
  max_:=1e+34;
@@ -12068,7 +11999,7 @@ begin
  TriangleNormal:=TriangleEdges[0].Cross(TriangleEdges[1]).Normalize;
 
  BestPenetration:=0;
- BestAxis:=Vector3Origin;
+ BestAxis:=TpvVector3.Origin;
  BestAxisIndex:=-1;
 
  for i:=0 to 2 do begin
@@ -12109,7 +12040,7 @@ begin
 
  if BestAxisIndex>=0 then begin
   j:=0;
-  v:=Vector3Origin;
+  v:=TpvVector3.Origin;
   SegmentTriangle.Origin:=Triangle.Points[0];
   SegmentTriangle.Edge0:=Triangle.Points[1]-Triangle.Points[0];
   SegmentTriangle.Edge1:=Triangle.Points[2]-Triangle.Points[0];
@@ -12824,7 +12755,7 @@ begin
  MinVector:=Min-Center;
  MaxVector:=Max-Center;
 
- NewCenter:=Center+(Transform*Vector3Origin);
+ NewCenter:=Center+(Transform*TpvVector3.Origin);
 
  v[0]:=Rotation*TpvVector3.Create(MinVector.x,MinVector.y,MinVector.z);
  v[1]:=Rotation*TpvVector3.Create(MaxVector.x,MinVector.y,MinVector.z);
@@ -14017,7 +13948,7 @@ begin
  p10:=p1-p0;
  t:=p10.Length;
  if t<EPSILON then begin
-  p10:=Vector3Origin;
+  p10:=TpvVector3.Origin;
  end else begin
   p10:=p10/t;
  end;
@@ -15114,15 +15045,15 @@ function InertiaTensorParallelAxisTheorem(const Center:TpvVector3;const Mass:Tpv
 var CenterDotCenter:TpvScalar;
 begin
  CenterDotCenter:=sqr(Center.x)+sqr(Center.y)+sqr(Center.z);
- result[0,0]:=((Matrix3x3Identity[0,0]*CenterDotCenter)-(Center.x*Center.x))*Mass;
- result[0,1]:=((Matrix3x3Identity[0,1]*CenterDotCenter)-(Center.y*Center.x))*Mass;
- result[0,2]:=((Matrix3x3Identity[0,2]*CenterDotCenter)-(Center.z*Center.x))*Mass;
- result[1,0]:=((Matrix3x3Identity[1,0]*CenterDotCenter)-(Center.x*Center.y))*Mass;
- result[1,1]:=((Matrix3x3Identity[1,1]*CenterDotCenter)-(Center.y*Center.y))*Mass;
- result[1,2]:=((Matrix3x3Identity[1,2]*CenterDotCenter)-(Center.z*Center.y))*Mass;
- result[2,0]:=((Matrix3x3Identity[2,0]*CenterDotCenter)-(Center.x*Center.z))*Mass;
- result[2,1]:=((Matrix3x3Identity[2,1]*CenterDotCenter)-(Center.y*Center.z))*Mass;
- result[2,2]:=((Matrix3x3Identity[2,2]*CenterDotCenter)-(Center.z*Center.z))*Mass;
+ result[0,0]:=((TpvMatrix3x3.Identity[0,0]*CenterDotCenter)-(Center.x*Center.x))*Mass;
+ result[0,1]:=((TpvMatrix3x3.Identity[0,1]*CenterDotCenter)-(Center.y*Center.x))*Mass;
+ result[0,2]:=((TpvMatrix3x3.Identity[0,2]*CenterDotCenter)-(Center.z*Center.x))*Mass;
+ result[1,0]:=((TpvMatrix3x3.Identity[1,0]*CenterDotCenter)-(Center.x*Center.y))*Mass;
+ result[1,1]:=((TpvMatrix3x3.Identity[1,1]*CenterDotCenter)-(Center.y*Center.y))*Mass;
+ result[1,2]:=((TpvMatrix3x3.Identity[1,2]*CenterDotCenter)-(Center.z*Center.y))*Mass;
+ result[2,0]:=((TpvMatrix3x3.Identity[2,0]*CenterDotCenter)-(Center.x*Center.z))*Mass;
+ result[2,1]:=((TpvMatrix3x3.Identity[2,1]*CenterDotCenter)-(Center.y*Center.z))*Mass;
+ result[2,2]:=((TpvMatrix3x3.Identity[2,2]*CenterDotCenter)-(Center.z*Center.z))*Mass;
 end;
 
 procedure OrthoNormalize(var Tangent,Bitangent,Normal:TpvVector3);
@@ -15144,9 +15075,9 @@ begin
    // Degenerate case, compute new normal
    Normal:=Tangent.Cross(Bitangent);
    if Normal.Length<Tolerance then begin
-    Tangent:=Vector3XAxis;
-    Bitangent:=Vector3YAxis;
-    Normal:=Vector3ZAxis;
+    Tangent:=TpvVector3.XAxis;
+    Bitangent:=TpvVector3.YAxis;
+    Normal:=TpvVector3.ZAxis;
     exit;
    end;
   end;
@@ -15163,11 +15094,11 @@ begin
    if Bitangent.Length<Tolerance then begin
     Tangent:=Normal.Normalize;
     if (Tangent.x<=Tangent.y) and (Tangent.x<=Tangent.z) then begin
-     Tangent:=Vector3XAxis;
+     Tangent:=TpvVector3.XAxis;
     end else if (Tangent.y<=Tangent.x) and (Tangent.y<=Tangent.z) then begin
-     Tangent:=Vector3YAxis;
+     Tangent:=TpvVector3.YAxis;
     end else begin
-     Tangent:=Vector3ZAxis;
+     Tangent:=TpvVector3.ZAxis;
     end;
     Tangent:=Tangent-(Normal*Tangent.Dot(Normal));
     Bitangent:=Normal.Cross(Tangent).Normalize;

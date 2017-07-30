@@ -873,7 +873,7 @@ begin
  HRTFCounter:=0;
  HRTFRampingRemain:=0;
  HRTFRampingStepRemain:=0;
- LastDirection:=Vector3Origin;
+ LastDirection:=TpvVector3.Null;
  SpatializationVolumeLast:=0;
  SpatializationDelayLeft:=0;
  SpatializationDelayRight:=0;
@@ -900,8 +900,8 @@ begin
  RampingSamples:=AudioEngine.RampingSamples;
  VoiceIndexPointer:=nil;
  Spatialization:=false;
- SpatializationOrigin:=Vector3Origin;
- SpatializationVelocity:=Vector3Origin;
+ SpatializationOrigin:=TpvVector3.Null;
+ SpatializationVelocity:=TpvVector3.Null;
  if AudioEngine.HRTF then begin
   HRTFLength:=AudioEngine.HRTFPreset^.irSize;
  end else begin
@@ -4072,9 +4072,9 @@ begin
    CubicSplineTable[i,3]:=round(((0.5*x*x*x)-(0.5*x*x))*ResamplerCubicSplineValueLength);
   end;
  end;
- ListenerOrigin:=Vector3Origin;
- ListenerVelocity:=Vector3Origin;
- ListenerMatrix:=Matrix4x4Identity;
+ ListenerOrigin:=TpvVector3.Null;
+ ListenerVelocity:=TpvVector3.Null;
+ ListenerMatrix:=TpvMatrix4x4.Identity;
  ListenerUnderwater:=false;
  LowPassLeft:=0;
  LowPassRight:=0;
