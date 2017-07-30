@@ -64,6 +64,8 @@ interface
 
 uses SysUtils,
      Classes,
+     Math,
+     Generics.Collections,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Collections,
@@ -77,23 +79,17 @@ type TPasVulkanGUIInstance=class;
 
      TPasVulkanGUIObject=class;
 
-     TPasVulkanGUIObjectList=class(TList)
-      private
-       function GetItem(const aIndex:TpvInt32):TPasVulkanGUIObject;
-       procedure SetItem(const aIndex:TpvInt32;const aItem:TPasVulkanGUIObject);
-      public
-       procedure ClearObjects;
-       property Items[const aIndex:TpvInt32]:TPasVulkanGUIObject read GetItem write SetItem; default;
-     end;
+     TPasVulkanGUIObjectList=class(TObjectList<TPasVulkanGUIObject>);
 
+     PPasVulkanGUIAlignment=^TPasVulkanGUIAlignment;
      TPasVulkanGUIAlignment=
       (
-       pvgaNone,
-       pvgaClient,
+       pvgaTop,
+       pvgaBottom,
        pvgaLeft,
        pvgaRight,
-       pvgaTop,
-       pvgaBottom
+       pvgaClient,
+       pvgaNone
       );
 
      TPasVulkanGUIObject=class(TPersistent)
@@ -101,23 +97,36 @@ type TPasVulkanGUIInstance=class;
        fInstance:TPasVulkanGUIInstance;
        fParent:TPasVulkanGUIObject;
        fChildren:TPasVulkanGUIObjectList;
-       fPosition:TpvVector2;
-       fPositionProperty:TpvVector2Property;
-       fSize:TpvVector2;
-       fSizeProperty:TpvVector2Property;
        fAlignment:TPasVulkanGUIAlignment;
+       fAutoSize:boolean;
+       fLastPosition:TpvVector2;
+       fLastSize:TpvVector2;
+       fPosition:TpvVector2;
+       fSize:TpvVector2;
+       fMargin:TpvVector4;
+       fPadding:TpvVector4;
+       fPositionProperty:TpvVector2Property;
+       fSizeProperty:TpvVector2Property;
+       fMarginProperty:TpvVector4Property;
+       fPaddingProperty:TpvVector4Property;
+      protected
+       procedure Prepare; virtual;
       public
        constructor Create(const aParent:TPasVulkanGUIObject=nil); reintroduce;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
+       procedure Paint; virtual;
       published
        property Instance:TPasVulkanGUIInstance read fInstance;
        property Parent:TPasVulkanGUIObject read fParent write fParent;
        property Children:TPasVulkanGUIObjectList read fChildren;
+       property Alignment:TPasVulkanGUIAlignment read fAlignment write fAlignment;
+       property AutoSize:boolean read fAutoSize write fAutoSize;
        property Position:TpvVector2Property read fPositionProperty;
        property Size:TpvVector2Property read fSizeProperty;
-       property Alignment:TPasVulkanGUIAlignment read fAlignment write fAlignment;
+       property Margin:TpvVector4Property read fMarginProperty;
+       property Padding:TpvVector4Property read fPaddingProperty;
      end;
 
      TPasVulkanGUIInstance=class(TPasVulkanGUIObject)
@@ -131,26 +140,6 @@ type TPasVulkanGUIInstance=class;
      end;
 
 implementation
-
-function TPasVulkanGUIObjectList.GetItem(const aIndex:TpvInt32):TPasVulkanGUIObject;
-begin
- result:=inherited Items[aIndex];
-end;
-
-procedure TPasVulkanGUIObjectList.SetItem(const aIndex:TpvInt32;const aItem:TPasVulkanGUIObject);
-begin
- inherited Items[aIndex]:=aItem;
-end;
-
-procedure TPasVulkanGUIObjectList.ClearObjects;
-var CurrentObject:TPasVulkanGUIObject;
-begin
- while Count>0 do begin
-  CurrentObject:=Items[Count-1];
-  Delete(Count-1);
-  CurrentObject.Free;
- end;
-end;
 
 constructor TPasVulkanGUIObject.Create(const aParent:TPasVulkanGUIObject=nil);
 begin
@@ -167,29 +156,48 @@ begin
 
  fParent:=aParent;
 
- fChildren:=TPasVulkanGUIObjectList.Create;
+ fChildren:=TPasVulkanGUIObjectList.Create(true);
+
+ fLastPosition:=TpvVector2.Create(Infinity,Infinity);
+
+ fLastSize:=TpvVector2.Create(-Infinity,-Infinity);
 
  fPosition:=TpvVector2.Create(0.0,0.0);
 
- fPositionProperty:=TpvVector2Property.Create(@fPosition);
-
  fSize:=TpvVector2.Create(1.0,1.0);
+
+ fMargin:=TpvVector4.Create(0.0,0.0,0.0,0.0);
+
+ fPadding:=TpvVector4.Create(0.0,0.0,0.0,0.0);
+
+ fPositionProperty:=TpvVector2Property.Create(@fPosition);
 
  fSizeProperty:=TpvVector2Property.Create(@fSize);
 
+ fMarginProperty:=TpvVector4Property.Create(@fMargin);
+
+ fPaddingProperty:=TpvVector4Property.Create(@fPadding);
+
  fAlignment:=pvgaNone;
+
+ fAutoSize:=false;
 
 end;
 
 destructor TPasVulkanGUIObject.Destroy;
 begin
 
- fChildren.ClearObjects;
+ fChildren.Clear;
+
  FreeAndNil(fChildren);
 
  FreeAndNil(fPositionProperty);
 
  FreeAndNil(fSizeProperty);
+
+ FreeAndNil(fMarginProperty);
+
+ FreeAndNil(fPaddingProperty);
 
  inherited Destroy;
 
@@ -214,6 +222,90 @@ begin
  end;
 
  inherited BeforeDestruction;
+
+end;
+
+procedure TPasVulkanGUIObject.Prepare;
+var TryIteration:TpvInt32;
+    Child:TPasVulkanGUIObject;
+    AABB:TpvAABB2D;
+    AlignmentIndex:TPasVulkanGUIAlignment;
+begin
+
+ for TryIteration:=1 to 10 do begin
+
+  if (fLastPosition<>fPosition) or (fLastSize<>fSize) then begin
+   fLastPosition:=fPosition;
+   fLastSize:=fSize;
+  end;
+
+  for AlignmentIndex:=low(TPasVulkanGUIAlignment) to high(TPasVulkanGUIAlignment) do begin
+   for Child in fChildren do begin
+    if Child.fAlignment=AlignmentIndex then begin
+     case AlignmentIndex of
+      pvgaTop:begin
+
+      end;
+      pvgaBottom:begin
+
+      end;
+      pvgaLeft:begin
+
+      end;
+      pvgaRight:begin
+
+      end;
+      pvgaClient:begin
+
+      end;
+      pvgaNone:begin
+
+      end;
+     end;
+    end;
+   end;
+  end;
+
+
+  for Child in fChildren do begin
+   Child.Prepare;
+  end;
+
+  if fAutoSize then begin
+
+   AABB:=TpvAABB2D.Create(Infinity,Infinity,-Infinity,-Infinity);
+
+   for Child in fChildren do begin
+    AABB.Min.x:=Min(AABB.Min.x,Child.fPosition.x);
+    AABB.Min.y:=Min(AABB.Min.y,Child.fPosition.y);
+    AABB.Max.x:=Max(AABB.Max.x,Child.fPosition.x+Child.fSize.x);
+    AABB.Max.y:=Max(AABB.Max.y,Child.fPosition.y+Child.fSize.y);
+   end;
+
+   if (AABB.Min.x>=AABB.Max.x) or
+      (AABB.Min.y>=AABB.Max.y) then begin
+    AABB:=TpvAABB2D.Create(0.0,0.0,1.0,1.0);
+   end;
+
+   if (AABB.Min.x<AABB.Max.x) and
+      (AABB.Min.y<AABB.Max.y) and not
+      (SameValue(fSize.x,AABB.Max.x) and
+       SameValue(fSize.y,AABB.Max.y)) then begin
+    fSize.x:=AABB.Max.x;
+    fSize.y:=AABB.Max.y;
+    continue;
+   end;
+
+  end;
+
+  break;
+
+ end;
+
+end;
+
+procedure TPasVulkanGUIObject.Paint;
+begin
 
 end;
 
