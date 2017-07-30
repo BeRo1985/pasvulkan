@@ -75,11 +75,13 @@ uses SysUtils,
      PasVulkan.Sprites,
      PasVulkan.Canvas;
 
-type TPasVulkanGUIInstance=class;
-
-     TPasVulkanGUIObject=class;
+type TPasVulkanGUIObject=class;
 
      TPasVulkanGUIWidget=class;
+
+     TPasVulkanGUIInstance=class;
+
+     TPasVulkanGUIWindow=class;
 
      TPasVulkanGUIObjectList=class(TObjectList<TPasVulkanGUIObject>);
 
@@ -88,6 +90,8 @@ type TPasVulkanGUIInstance=class;
        fInstance:TPasVulkanGUIInstance;
        fParent:TPasVulkanGUIObject;
        fChildren:TPasVulkanGUIObjectList;
+       fID:TpvUTF8String;
+       fTag:TpvPtrInt;
       public
        constructor Create(const aParent:TPasVulkanGUIObject=nil); reintroduce; virtual;
        destructor Destroy; override;
@@ -97,6 +101,8 @@ type TPasVulkanGUIInstance=class;
        property Instance:TPasVulkanGUIInstance read fInstance;
        property Parent:TPasVulkanGUIObject read fParent write fParent;
        property Children:TPasVulkanGUIObjectList read fChildren;
+       property ID:TpvUTF8String read fID write fID;
+       property Tag:TpvPtrInt read fTag write fTag;
      end;
 
      TPasVulkanGUILayout=class(TPasVulkanGUIObject)
@@ -110,10 +116,17 @@ type TPasVulkanGUIInstance=class;
       public
      end;
 
+     TPasVulkanGUICursor=class(TPasVulkanGUIObject)
+      protected
+      public
+     end;
+
      TPasVulkanGUIWidget=class(TPasVulkanGUIObject)
       private
+       fWindow:TPasVulkanGUIWindow;
        fLayout:TPasVulkanGUILayout;
        fTheme:TPasVulkanGUITheme;
+       fCursor:TPasVulkanGUICursor;
        fPosition:TpvVector2;
        fSize:TpvVector2;
        fFixedSize:TpvVector2;
@@ -122,6 +135,8 @@ type TPasVulkanGUIInstance=class;
        fFixedSizeProperty:TpvVector2Property;
        fVisible:boolean;
        fEnabled:boolean;
+       fFocused:boolean;
+       fHint:TpvUTF8String;
        function GetLeft:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetLeft(const aLeft:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetTop:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -135,6 +150,7 @@ type TPasVulkanGUIInstance=class;
        function GetFixedHeight:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetFixedHeight(const aFixedHeight:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetAbsolutePosition:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function GetRecursiveVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
       protected
        procedure SetTheme(const aTheme:TPasVulkanGUITheme); virtual;
        procedure Paint; virtual;
@@ -143,22 +159,28 @@ type TPasVulkanGUIInstance=class;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
+       procedure RequestFocus; virtual;
       public
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
       published
+       property Window:TPasVulkanGUIWindow read fWindow write fWindow;
        property Layout:TPasVulkanGUILayout read fLayout write fLayout;
        property Theme:TPasVulkanGUITheme read fTheme write SetTheme;
+       property Cursor:TPasVulkanGUICursor read fCursor write fCursor;
        property Position:TpvVector2Property read fPositionProperty;
        property Size:TpvVector2Property read fSizeProperty;
        property FixedSize:TpvVector2Property read fFixedSizeProperty;
        property Visible:boolean read fVisible write fVisible;
+       property RecursiveVisible:boolean read GetRecursiveVisible;
        property Enabled:boolean read fEnabled write fEnabled;
+       property Focused:boolean read fFocused write fFocused;
        property Left:TpvFloat read GetLeft write SetLeft;
        property Top:TpvFloat read GetTop write SetTop;
        property Width:TpvFloat read GetWidth write SetWidth;
        property Height:TpvFloat read GetHeight write SetHeight;
        property FixedWidth:TpvFloat read GetFixedWidth write SetFixedWidth;
        property FixedHeight:TpvFloat read GetFixedHeight write SetFixedHeight;
+       property Hint:TpvUTF8String read fHint write fHint;
      end;
 
      TPasVulkanGUIInstance=class(TPasVulkanGUIWidget)
@@ -169,6 +191,10 @@ type TPasVulkanGUIInstance=class;
        destructor Destroy; override;
       published
        property Canvas:TpvCanvas read fCanvas;
+     end;
+
+     TPasVulkanGUIWindow=class(TPasVulkanGUIWidget)
+      public
      end;
 
 implementation
@@ -194,6 +220,10 @@ begin
  fParent:=aParent;
 
  fChildren:=TPasVulkanGUIObjectList.Create(true);
+
+ fID:='';
+
+ fTag:=0;
 
 end;
 
@@ -224,9 +254,13 @@ begin
 
  inherited Create(aParent);
 
+ fWindow:=nil;
+
  fLayout:=nil;
 
  fTheme:=nil;
+
+ fCursor:=nil;
 
  fPosition:=TpvVector2.Create(0.0,0.0);
 
@@ -243,6 +277,10 @@ begin
  fVisible:=true;
 
  fEnabled:=true;
+
+ fFocused:=false;
+
+ fHint:='';
 
 end;
 
@@ -341,6 +379,25 @@ begin
  end else begin
   result:=fPosition;
  end;
+end;
+
+function TPasVulkanGUIWidget.GetRecursiveVisible:boolean;
+var CurrentWidget:TPasVulkanGUIWidget;
+begin
+ CurrentWidget:=self;
+ repeat
+  result:=CurrentWidget.Visible;
+  if result and assigned(fParent) and (fParent is TPasVulkanGUIWidget) then begin
+   CurrentWidget:=fParent as TPasVulkanGUIWidget;
+  end else begin
+   break;
+  end;
+ until false;
+end;
+
+procedure TPasVulkanGUIWidget.RequestFocus;
+begin
+
 end;
 
 procedure TPasVulkanGUIWidget.Paint;
