@@ -8,9 +8,7 @@
   #define FILLTYPE FILLTYPE_COLOR
 #endif
 
-#if FILLTYPE != FILLTYPE_ATLAS_TEXTURE
-  #define SIGNEDDISTANCEDFIELD
-#endif
+#define SIGNEDDISTANCEDFIELD
 
 layout(location = 0) in vec2 inPosition; // 2D position
 layout(location = 1) in vec4 inColor;    // RGBA Color 
