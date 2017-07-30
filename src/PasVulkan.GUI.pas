@@ -159,6 +159,8 @@ type TPasVulkanGUIObject=class;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
+       function Contains(const aPosition:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function FindWidget(const aPosition:TpvVector2):TPasVulkanGUIWidget;
        procedure RequestFocus; virtual;
       public
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
@@ -393,6 +395,34 @@ begin
    break;
   end;
  until false;
+end;
+
+function TPasVulkanGUIWidget.Contains(const aPosition:TpvVector2):boolean;
+begin
+ result:=(aPosition.x>=fPosition.x) and
+         (aPosition.y>=fPosition.y) and
+         (aPosition.x<(fPosition.x+fSize.x)) and
+         (aPosition.y<(fPosition.y+fSize.y));
+end;
+
+function TPasVulkanGUIWidget.FindWidget(const aPosition:TpvVector2):TPasVulkanGUIWidget;
+var Child:TPasVulkanGUIObject;
+    ChildWidget:TPasVulkanGUIWidget;
+begin
+ for Child in fChildren do begin
+  if Child is TPasVulkanGUIWidget then begin
+   ChildWidget:=Child as TPasVulkanGUIWidget;
+   if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
+    result:=ChildWidget.FindWidget(aPosition-fPosition);
+    exit;
+   end;
+  end;
+ end;
+ if Contains(aPosition) then begin
+  result:=self;
+ end else begin
+  result:=nil;
+ end;
 end;
 
 procedure TPasVulkanGUIWidget.RequestFocus;
