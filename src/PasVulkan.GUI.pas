@@ -478,10 +478,12 @@ begin
 end;
 
 function TPasVulkanGUIWidget.FindWidget(const aPosition:TpvVector2):TPasVulkanGUIWidget;
-var Child:TPasVulkanGUIObject;
+var ChildIndex:TpvInt32;
+    Child:TPasVulkanGUIObject;
     ChildWidget:TPasVulkanGUIWidget;
 begin
- for Child in fChildren do begin
+ for ChildIndex:=0 to fChildren.Count-1 do begin
+  Child:=fChildren.Items[ChildIndex];
   if Child is TPasVulkanGUIWidget then begin
    ChildWidget:=Child as TPasVulkanGUIWidget;
    if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
@@ -502,14 +504,16 @@ begin
 end;
 
 procedure TPasVulkanGUIWidget.PerformLayout;
-var Child:TPasVulkanGUIObject;
+var ChildIndex:TpvInt32;
+    Child:TPasVulkanGUIObject;
     ChildWidget:TPasVulkanGUIWidget;
     ChildWidgetPreferredSize,ChildWidgetFixedSize,ChildWidgetSize:TpvVector2;
 begin
  if assigned(fLayout) then begin
   fLayout.PerformLayout(self);
  end else begin
-  for Child in self do begin
+  for ChildIndex:=0 to fChildren.Count-1 do begin
+   Child:=fChildren.Items[ChildIndex];
    if Child is TPasVulkanGUIWidget then begin
     ChildWidget:=Child as TPasVulkanGUIWidget;
     ChildWidgetPreferredSize:=ChildWidget.GetPreferredSize;
