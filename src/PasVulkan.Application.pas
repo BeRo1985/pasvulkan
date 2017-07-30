@@ -557,7 +557,7 @@ type EpvApplication=class(Exception)
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
        function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
-       function Scrolled(const aAmount:TpvFloat):boolean; virtual;
+       function Scrolled(const aRelativeAmount:TpvVector2):boolean; virtual;
      end;
 
      PpvApplicationInputProcessorQueueEvent=^TpvApplicationInputProcessorQueueEvent;
@@ -577,7 +577,7 @@ type EpvApplication=class(Exception)
         Button:TpvInt32;
        );
        EVENT_SCROLLED:(
-        Amount:TpvFloat;
+        RelativeAmount:TpvVector2;
        );
      end;
 
@@ -604,7 +604,7 @@ type EpvApplication=class(Exception)
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
        function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
-       function Scrolled(const aAmount:TpvFloat):boolean; override;
+       function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
      end;
 
      TpvApplicationInputMultiplexer=class(TpvApplicationInputProcessor)
@@ -626,7 +626,7 @@ type EpvApplication=class(Exception)
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
        function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
-       function Scrolled(const aAmount:TpvFloat):boolean; override;
+       function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
      end;
 
      TpvApplicationInputTextInputCallback=procedure(aSuccessful:boolean;const aText:TpvApplicationRawByteString) of object;
@@ -795,7 +795,7 @@ type EpvApplication=class(Exception)
 
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
 
-       function Scrolled(const aAmount:TpvFloat):boolean; virtual;
+       function Scrolled(const aRelativeAmount:TpvVector2):boolean; virtual;
 
        function CanBeParallelProcessed:boolean; virtual;
 
@@ -1190,7 +1190,7 @@ type EpvApplication=class(Exception)
 
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
 
-       function Scrolled(const aAmount:TpvFloat):boolean; virtual;
+       function Scrolled(const aRelativeAmount:TpvVector2):boolean; virtual;
 
        function CanBeParallelProcessed:boolean; virtual;
 
@@ -1999,7 +1999,7 @@ begin
  result:=false;
 end;
 
-function TpvApplicationInputProcessor.Scrolled(const aAmount:TpvFloat):boolean;
+function TpvApplicationInputProcessor.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
  result:=false;
 end;
@@ -2106,7 +2106,7 @@ begin
      fProcessor.PointerMotion(CurrentEvent^.Position,CurrentEvent^.RelativePosition,CurrentEvent^.Pressure,CurrentEvent^.PointerID,CurrentEvent^.Button);
     end;
     EVENT_SCROLLED:begin
-     fProcessor.Scrolled(CurrentEvent^.Amount);
+     fProcessor.Scrolled(CurrentEvent^.RelativeAmount);
     end;
    end;
   end;
@@ -2245,7 +2245,7 @@ begin
  end;
 end;
 
-function TpvApplicationInputProcessorQueue.Scrolled(const aAmount:TpvFloat):boolean;
+function TpvApplicationInputProcessorQueue.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2253,8 +2253,8 @@ begin
  try
   Event:=NewEvent;
   if assigned(Event) then begin
-   Event^.Event:=EVENT_SCROLled;
-   Event^.Amount:=aAmount;
+   Event^.Event:=EVENT_SCROLLED;
+   Event^.RelativeAmount:=aRelativeAmount;
    PushEvent(Event);
   end;
  finally
@@ -2408,7 +2408,7 @@ begin
  end;
 end;
 
-function TpvApplicationInputMultiplexer.Scrolled(const aAmount:TpvFloat):boolean;
+function TpvApplicationInputMultiplexer.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 var i:TpvInt32;
     p:TpvApplicationInputProcessor;
 begin
@@ -2416,7 +2416,7 @@ begin
  for i:=0 to fProcessors.Count-1 do begin
   p:=fProcessors.Items[i];
   if assigned(p) then begin
-   if p.Scrolled(aAmount) then begin
+   if p.Scrolled(aRelativeAmount) then begin
     result:=true;
     exit;
    end;
@@ -3971,8 +3971,8 @@ begin
       end;
      end;
      SDL_MOUSEWHEEL:begin
-      if (not pvApplication.Scrolled(Event^.wheel.x+Event^.wheel.y)) and assigned(fProcessor) then begin
-       fProcessor.Scrolled(Event^.wheel.x+Event^.wheel.y);
+      if (not pvApplication.Scrolled(TpvVector2.Create(Event^.wheel.x,Event^.wheel.y))) and assigned(fProcessor) then begin
+       fProcessor.Scrolled(TpvVector2.Create(Event^.wheel.x,Event^.wheel.y));
       end;
      end;
      SDL_FINGERMOTION:begin
@@ -4527,7 +4527,7 @@ begin
  result:=false;
 end;
 
-function TpvApplicationScreen.Scrolled(const aAmount:TpvFloat):boolean;
+function TpvApplicationScreen.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
  result:=false;
 end;
@@ -7133,10 +7133,10 @@ begin
  end;
 end;
 
-function TpvApplication.Scrolled(const aAmount:TpvFloat):boolean;
+function TpvApplication.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
  if assigned(fScreen) then begin
-  result:=fScreen.Scrolled(aAmount);
+  result:=fScreen.Scrolled(aRelativeAmount);
  end else begin
   result:=false;
  end;

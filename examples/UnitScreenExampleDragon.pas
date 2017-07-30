@@ -102,7 +102,7 @@ type PScreenExampleDragonUniformBuffer=^TScreenExampleDragonUniformBuffer;
 
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function Scrolled(const aAmount:TpvFloat):boolean; override;
+       function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
 
        function CanBeParallelProcessed:boolean; override;
 
@@ -596,7 +596,7 @@ begin
  end;
 end;
 
-function TScreenExampleDragon.Scrolled(const aAmount:TpvFloat):boolean;
+function TScreenExampleDragon.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
  result:=false;
 end;

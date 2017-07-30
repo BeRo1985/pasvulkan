@@ -187,7 +187,7 @@ type TPasVulkanGUIObject=class;
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
        function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
-       function Scrolled(const aPosition:TpvVector2;const aAmount:TpvFloat):boolean; virtual;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; virtual;
       public
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
        property PreferredSize:TpvVector2 read GetPreferredSize;
@@ -635,7 +635,7 @@ begin
  result:=false;
 end;
 
-function TPasVulkanGUIWidget.Scrolled(const aPosition:TpvVector2;const aAmount:TpvFloat):boolean;
+function TPasVulkanGUIWidget.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
 var ChildIndex:TpvInt32;
     Child:TPasVulkanGUIObject;
     ChildWidget:TPasVulkanGUIWidget;
@@ -645,7 +645,7 @@ begin
   if Child is TPasVulkanGUIWidget then begin
    ChildWidget:=Child as TPasVulkanGUIWidget;
    if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
-    result:=ChildWidget.Scrolled(aPosition-fPosition,aAmount);
+    result:=ChildWidget.Scrolled(aPosition-fPosition,aRelativeAmount);
     if result then begin
      exit;
     end;

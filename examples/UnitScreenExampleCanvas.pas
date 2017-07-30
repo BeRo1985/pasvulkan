@@ -85,7 +85,7 @@ type TScreenExampleCanvas=class(TpvApplicationScreen)
 
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
 
-       function Scrolled(const aAmount:TpvFloat):boolean; override;
+       function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
 
        function CanBeParallelProcessed:boolean; override;
 
@@ -479,7 +479,7 @@ begin
  end;
 end;
 
-function TScreenExampleCanvas.Scrolled(const aAmount:TpvFloat):boolean;
+function TScreenExampleCanvas.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
  result:=false;
 end;
