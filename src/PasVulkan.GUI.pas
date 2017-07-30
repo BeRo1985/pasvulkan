@@ -85,7 +85,24 @@ type TpvGUIObject=class;
 
      EpvGUIWidget=class(Exception);
 
-     TpvGUIObjectList=class(TObjectList<TpvGUIObject>);
+     PpvGUIDelayedDeleteQueueItem=^TpvGUIDelayedDeleteQueueItem;
+     TpvGUIDelayedDeleteQueueItem=record
+      private
+       fObject:TObject;
+       fCounter:TpvInt32;
+      public
+       constructor Create(const aObject:TObject;const aCounter:TpvInt32);
+       property TheObject:TObject read fObject write fObject;
+       property Counter:TpvInt32 read fCounter write fCounter;
+     end;
+
+     TpvGUIDelayedDeleteQueue=class(TList<TpvGUIDelayedDeleteQueueItem>);
+
+     TpvGUIObjectList=class(TObjectList<TpvGUIObject>)
+      protected
+       procedure Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification); override;
+      public
+     end;
 
      TpvGUIObject=class(TPersistent)
       private
@@ -99,6 +116,7 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
+       procedure Release;
       published
        property Instance:TpvGUIInstance read fInstance;
        property Parent:TpvGUIObject read fParent write fParent;
@@ -187,7 +205,6 @@ type TpvGUIObject=class;
        function Leave:boolean; virtual;
        function PointerEnter:boolean; virtual;
        function PointerLeave:boolean; virtual;
-       procedure Draw; virtual;
        function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
        function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
        function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
@@ -195,6 +212,8 @@ type TpvGUIObject=class;
        function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; virtual;
+       procedure Update(const aDeltaTime:TpvDouble); virtual;
+       procedure Draw; virtual;
       public
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
        property PreferredSize:TpvVector2 read GetPreferredSize;
@@ -223,11 +242,15 @@ type TpvGUIObject=class;
 
      TpvGUIInstance=class(TpvGUIWidget)
       private
+       fDelayedDeleteQueue:TpvGUIDelayedDeleteQueue;
        fCanvas:TpvCanvas;
       public
        constructor Create(const aCanvas:TpvCanvas); reintroduce;
        destructor Destroy; override;
+       procedure ProcessDelayedDeleteQueue;
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
+       procedure Update(const aDeltaTime:TpvDouble); override;
+       procedure Draw; override;
       published
        property Canvas:TpvCanvas read fCanvas;
      end;
@@ -238,14 +261,19 @@ type TpvGUIObject=class;
 
 implementation
 
-function TpvGUILayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
+constructor TpvGUIDelayedDeleteQueueItem.Create(const aObject:TObject;const aCounter:TpvInt32);
 begin
- result:=aWidget.fSize;
+ fObject:=aObject;
+ fCounter:=aCounter;
 end;
 
-procedure TpvGUILayout.PerformLayout(const aWidget:TpvGUIWidget);
+procedure TpvGUIObjectList.Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification);
 begin
-
+ if (Action=cnRemoved) and assigned(Value) and assigned(Value.fInstance) then begin
+  Value.fInstance.fDelayedDeleteQueue.Add(TpvGUIDelayedDeleteQueueItem.Create(Value,0));
+ end else begin
+  inherited Notify(Value,Action);
+ end;
 end;
 
 constructor TpvGUIObject.Create(const aParent:TpvGUIObject=nil);
@@ -291,6 +319,27 @@ begin
   fParent.fChildren.Extract(self);
  end;
  inherited BeforeDestruction;
+end;
+
+procedure TpvGUIObject.Release;
+begin
+ if assigned(self) then begin
+  if assigned(fInstance) and (fInstance<>self) then begin
+   fInstance.fDelayedDeleteQueue.Add(TpvGUIDelayedDeleteQueueItem.Create(self,0));
+  end else begin
+   Free;
+  end;
+ end;
+end;
+
+function TpvGUILayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
+begin
+ result:=aWidget.fSize;
+end;
+
+procedure TpvGUILayout.PerformLayout(const aWidget:TpvGUIWidget);
+begin
+
 end;
 
 constructor TpvGUIWidgetEnumerator.Create(const aWidget:TpvGUIWidget);
@@ -623,11 +672,6 @@ begin
  result:=false;
 end;
 
-procedure TpvGUIWidget.Draw;
-begin
-
-end;
-
 function TpvGUIWidget.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
@@ -736,6 +780,16 @@ begin
  result:=false;
 end;
 
+procedure TpvGUIWidget.Update(const aDeltaTime:TpvDouble);
+begin
+
+end;
+
+procedure TpvGUIWidget.Draw;
+begin
+
+end;
+
 constructor TpvGUIInstance.Create(const aCanvas:TpvCanvas);
 begin
 
@@ -743,20 +797,57 @@ begin
 
  fInstance:=self;
 
+ fDelayedDeleteQueue:=TpvGUIDelayedDeleteQueue.Create;
+
  fCanvas:=aCanvas;
 
 end;
 
 destructor TpvGUIInstance.Destroy;
+var DelayedDeleteQueueItem:TpvGUIDelayedDeleteQueueItem;
 begin
-
+ for DelayedDeleteQueueItem in fDelayedDeleteQueue do begin
+  DelayedDeleteQueueItem.fObject.Free;
+ end;
+ FreeAndNil(fDelayedDeleteQueue);
  inherited Destroy;
+end;
 
+procedure TpvGUIInstance.ProcessDelayedDeleteQueue;
+var DelayedDeleteQueueItemIndex,CounterThreshold:TpvInt32;
+    DelayedDeleteQueueItem:TpvGUIDelayedDeleteQueueItem;
+begin
+ CounterThreshold:=-((pvApplication.VulkanSwapChain.CountImages shl 1) or 1);
+ DelayedDeleteQueueItemIndex:=0;
+ while DelayedDeleteQueueItemIndex<fDelayedDeleteQueue.Count do begin
+  DelayedDeleteQueueItem:=fDelayedDeleteQueue.Items[DelayedDeleteQueueItemIndex];
+  if DelayedDeleteQueueItem.fCounter>CounterThreshold then begin
+   dec(DelayedDeleteQueueItem.fCounter);
+   if DelayedDeleteQueueItem.fCounter=CounterThreshold then begin
+    DelayedDeleteQueueItem.fObject.Free;
+    fDelayedDeleteQueue.Delete(DelayedDeleteQueueItemIndex);
+   end else begin
+    fDelayedDeleteQueue.Items[DelayedDeleteQueueItemIndex]:=DelayedDeleteQueueItem;
+    inc(DelayedDeleteQueueItemIndex);
+   end;
+  end;
+ end;
 end;
 
 procedure TpvGUIInstance.UpdateFocus(const aWidget:TpvGUIWidget);
 begin
 
+end;
+
+procedure TpvGUIInstance.Update(const aDeltaTime:TpvDouble);
+begin
+ ProcessDelayedDeleteQueue;
+ inherited Update(aDeltaTime);
+end;
+
+procedure TpvGUIInstance.Draw;
+begin
+ inherited Draw;
 end;
 
 end.
