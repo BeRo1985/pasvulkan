@@ -1056,7 +1056,7 @@ type PpvScalar=^TpvScalar;
 
      Mat4=TpvMatrix4x4;
 
-     TpvPropertyVector2=class(TPersistent)
+     TpvVector2Property=class(TPersistent)
       private
        fVector:PpvVector2;
        function GetX:TpvScalar;
@@ -1074,7 +1074,7 @@ type PpvScalar=^TpvScalar;
        property y:TpvScalar read GetY write SetY;
      end;
 
-     TpvPropertyVector3=class(TPersistent)
+     TpvVector3Property=class(TPersistent)
       private
        fVector:PpvVector3;
        function GetX:TpvScalar;
@@ -1095,7 +1095,7 @@ type PpvScalar=^TpvScalar;
        property z:TpvScalar read GetZ write SetZ;
      end;
 
-     TpvPropertyVector4=class(TPersistent)
+     TpvVector4Property=class(TPersistent)
       private
        fVector:PpvVector4;
        function GetX:TpvScalar;
@@ -1119,7 +1119,7 @@ type PpvScalar=^TpvScalar;
        property w:TpvScalar read GetW write SetW;
      end;
 
-     TpvPropertyQuaternion=class(TPersistent)
+     TpvQuaternionProperty=class(TPersistent)
       private
        fQuaternion:PpvQuaternion;
        function GetX:TpvScalar;
@@ -1143,7 +1143,7 @@ type PpvScalar=^TpvScalar;
        property w:TpvScalar read GetW write SetW;
      end;
 
-     TpvPropertyAngle=class(TPersistent)
+     TpvAngleProperty=class(TPersistent)
       private
        fRadianAngle:PpvScalar;
        function GetAngle:TpvScalar;
@@ -1158,7 +1158,7 @@ type PpvScalar=^TpvScalar;
        property Angle:TpvScalar read GetAngle write SetAngle;
      end;
 
-     TpvPropertyRotation3D=class(TPersistent)
+     TpvRotation3DProperty=class(TPersistent)
       private
        fQuaternion:PpvQuaternion;
        function GetX:TpvScalar;
@@ -1191,7 +1191,7 @@ type PpvScalar=^TpvScalar;
        property Roll:TpvScalar read GetRoll write SetRoll;
      end;
 
-     TpvPropertyColorRGB=class(TPersistent)
+     TpvColorRGBProperty=class(TPersistent)
       private
        fVector:PpvVector3;
        function GetR:TpvScalar;
@@ -1212,7 +1212,7 @@ type PpvScalar=^TpvScalar;
        property b:TpvScalar read GetB write SetB;
      end;
 
-     TpvPropertyColorRGBA=class(TPersistent)
+     TpvColorRGBAProperty=class(TPersistent)
       private
        fVector:PpvVector4;
        function GetR:TpvScalar;
@@ -15583,323 +15583,323 @@ begin
  Bitangent:=Vector3Norm(Vector3Cross(Normal,Tangent));
 end;{}
 
-constructor TpvPropertyVector2.Create(AVector:PpvVector2);
+constructor TpvVector2Property.Create(AVector:PpvVector2);
 begin
  inherited Create;
  fVector:=AVector;
 end;
 
-destructor TpvPropertyVector2.Destroy;
+destructor TpvVector2Property.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TpvPropertyVector2.GetX:TpvScalar;
+function TpvVector2Property.GetX:TpvScalar;
 begin
  result:=fVector^.x;
 end;
 
-function TpvPropertyVector2.GetY:TpvScalar;
+function TpvVector2Property.GetY:TpvScalar;
 begin
  result:=fVector^.y;
 end;
 
-function TpvPropertyVector2.GetVector:TpvVector2;
+function TpvVector2Property.GetVector:TpvVector2;
 begin
  result:=fVector^;
 end;
 
-procedure TpvPropertyVector2.SetX(const pNewValue:TpvScalar);
+procedure TpvVector2Property.SetX(const pNewValue:TpvScalar);
 begin
  fVector^.x:=pNewValue;
 end;
 
-procedure TpvPropertyVector2.SetY(const pNewValue:TpvScalar);
+procedure TpvVector2Property.SetY(const pNewValue:TpvScalar);
 begin
  fVector^.y:=pNewValue;
 end;
 
-procedure TpvPropertyVector2.SetVector(const pNewVector:TpvVector2);
+procedure TpvVector2Property.SetVector(const pNewVector:TpvVector2);
 begin
  fVector^:=pNewVector;
 end;
 
-constructor TpvPropertyVector3.Create(AVector:PpvVector3);
+constructor TpvVector3Property.Create(AVector:PpvVector3);
 begin
  inherited Create;
  fVector:=AVector;
 end;
 
-destructor TpvPropertyVector3.Destroy;
+destructor TpvVector3Property.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TpvPropertyVector3.GetX:TpvScalar;
+function TpvVector3Property.GetX:TpvScalar;
 begin
  result:=fVector^.x;
 end;
 
-function TpvPropertyVector3.GetY:TpvScalar;
+function TpvVector3Property.GetY:TpvScalar;
 begin
  result:=fVector^.y;
 end;
 
-function TpvPropertyVector3.GetZ:TpvScalar;
+function TpvVector3Property.GetZ:TpvScalar;
 begin
  result:=fVector^.z;
 end;
 
-function TpvPropertyVector3.GetVector:TpvVector3;
+function TpvVector3Property.GetVector:TpvVector3;
 begin
  result:=fVector^;
 end;
 
-procedure TpvPropertyVector3.SetX(const pNewValue:TpvScalar);
+procedure TpvVector3Property.SetX(const pNewValue:TpvScalar);
 begin
  fVector^.x:=pNewValue;
 end;
 
-procedure TpvPropertyVector3.SetY(const pNewValue:TpvScalar);
+procedure TpvVector3Property.SetY(const pNewValue:TpvScalar);
 begin
  fVector^.y:=pNewValue;
 end;
 
-procedure TpvPropertyVector3.SetZ(const pNewValue:TpvScalar);
+procedure TpvVector3Property.SetZ(const pNewValue:TpvScalar);
 begin
  fVector^.z:=pNewValue;
 end;
 
-procedure TpvPropertyVector3.SetVector(const pNewVector:TpvVector3);
+procedure TpvVector3Property.SetVector(const pNewVector:TpvVector3);
 begin
  fVector^:=pNewVector;
 end;
 
-constructor TpvPropertyVector4.Create(AVector:PpvVector4);
+constructor TpvVector4Property.Create(AVector:PpvVector4);
 begin
  inherited Create;
  fVector:=AVector;
 end;
 
-destructor TpvPropertyVector4.Destroy;
+destructor TpvVector4Property.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TpvPropertyVector4.GetX:TpvScalar;
+function TpvVector4Property.GetX:TpvScalar;
 begin
  result:=fVector^.x;
 end;
 
-function TpvPropertyVector4.GetY:TpvScalar;
+function TpvVector4Property.GetY:TpvScalar;
 begin
  result:=fVector^.y;
 end;
 
-function TpvPropertyVector4.GetZ:TpvScalar;
+function TpvVector4Property.GetZ:TpvScalar;
 begin
  result:=fVector^.z;
 end;
 
-function TpvPropertyVector4.GetW:TpvScalar;
+function TpvVector4Property.GetW:TpvScalar;
 begin
  result:=fVector^.w;
 end;
 
-function TpvPropertyVector4.GetVector:TpvVector4;
+function TpvVector4Property.GetVector:TpvVector4;
 begin
  result:=fVector^;
 end;
 
-procedure TpvPropertyVector4.SetX(const pNewValue:TpvScalar);
+procedure TpvVector4Property.SetX(const pNewValue:TpvScalar);
 begin
  fVector^.x:=pNewValue;
 end;
 
-procedure TpvPropertyVector4.SetY(const pNewValue:TpvScalar);
+procedure TpvVector4Property.SetY(const pNewValue:TpvScalar);
 begin
  fVector^.y:=pNewValue;
 end;
 
-procedure TpvPropertyVector4.SetZ(const pNewValue:TpvScalar);
+procedure TpvVector4Property.SetZ(const pNewValue:TpvScalar);
 begin
  fVector^.z:=pNewValue;
 end;
 
-procedure TpvPropertyVector4.SetW(const pNewValue:TpvScalar);
+procedure TpvVector4Property.SetW(const pNewValue:TpvScalar);
 begin
  fVector^.w:=pNewValue;
 end;
 
-procedure TpvPropertyVector4.SetVector(const pNewVector:TpvVector4);
+procedure TpvVector4Property.SetVector(const pNewVector:TpvVector4);
 begin
  fVector^:=pNewVector;
 end;
 
-constructor TpvPropertyQuaternion.Create(AQuaternion:PpvQuaternion);
+constructor TpvQuaternionProperty.Create(AQuaternion:PpvQuaternion);
 begin
  inherited Create;
  fQuaternion:=AQuaternion;
 end;
 
-destructor TpvPropertyQuaternion.Destroy;
+destructor TpvQuaternionProperty.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TpvPropertyQuaternion.GetX:TpvScalar;
+function TpvQuaternionProperty.GetX:TpvScalar;
 begin
  result:=fQuaternion^.x;
 end;
 
-function TpvPropertyQuaternion.GetY:TpvScalar;
+function TpvQuaternionProperty.GetY:TpvScalar;
 begin
  result:=fQuaternion^.y;
 end;
 
-function TpvPropertyQuaternion.GetZ:TpvScalar;
+function TpvQuaternionProperty.GetZ:TpvScalar;
 begin
  result:=fQuaternion^.z;
 end;
 
-function TpvPropertyQuaternion.GetW:TpvScalar;
+function TpvQuaternionProperty.GetW:TpvScalar;
 begin
  result:=fQuaternion^.w;
 end;
 
-function TpvPropertyQuaternion.GetQuaternion:TpvQuaternion;
+function TpvQuaternionProperty.GetQuaternion:TpvQuaternion;
 begin
  result:=fQuaternion^;
 end;
 
-procedure TpvPropertyQuaternion.SetX(const pNewValue:TpvScalar);
+procedure TpvQuaternionProperty.SetX(const pNewValue:TpvScalar);
 begin
  fQuaternion^.x:=pNewValue;
 end;
 
-procedure TpvPropertyQuaternion.SetY(const pNewValue:TpvScalar);
+procedure TpvQuaternionProperty.SetY(const pNewValue:TpvScalar);
 begin
  fQuaternion^.y:=pNewValue;
 end;
 
-procedure TpvPropertyQuaternion.SetZ(const pNewValue:TpvScalar);
+procedure TpvQuaternionProperty.SetZ(const pNewValue:TpvScalar);
 begin
  fQuaternion^.z:=pNewValue;
 end;
 
-procedure TpvPropertyQuaternion.SetW(const pNewValue:TpvScalar);
+procedure TpvQuaternionProperty.SetW(const pNewValue:TpvScalar);
 begin
  fQuaternion^.w:=pNewValue;
 end;
 
-procedure TpvPropertyQuaternion.SetQuaternion(const NewQuaternion:TpvQuaternion);
+procedure TpvQuaternionProperty.SetQuaternion(const NewQuaternion:TpvQuaternion);
 begin
  fQuaternion^:=NewQuaternion;
 end;
 
-constructor TpvPropertyAngle.Create(ARadianAngle:PpvScalar);
+constructor TpvAngleProperty.Create(ARadianAngle:PpvScalar);
 begin
  inherited Create;
  fRadianAngle:=ARadianAngle;
 end;
 
-destructor TpvPropertyAngle.Destroy;
+destructor TpvAngleProperty.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TpvPropertyAngle.GetAngle:TpvScalar;
+function TpvAngleProperty.GetAngle:TpvScalar;
 begin
  result:=fRadianAngle^*RAD2DEG;
 end;
 
-function TpvPropertyAngle.GetRadianAngle:TpvScalar;
+function TpvAngleProperty.GetRadianAngle:TpvScalar;
 begin
  result:=fRadianAngle^;
 end;
 
-procedure TpvPropertyAngle.SetAngle(const pNewValue:TpvScalar);
+procedure TpvAngleProperty.SetAngle(const pNewValue:TpvScalar);
 begin
  fRadianAngle^:=pNewValue*DEG2RAD;
 end;
 
-procedure TpvPropertyAngle.SetRadianAngle(const pNewValue:TpvScalar);
+procedure TpvAngleProperty.SetRadianAngle(const pNewValue:TpvScalar);
 begin
  fRadianAngle^:=pNewValue;
 end;
 
-constructor TpvPropertyRotation3D.Create(AQuaternion:PpvQuaternion);
+constructor TpvRotation3DProperty.Create(AQuaternion:PpvQuaternion);
 begin
  inherited Create;
  fQuaternion:=AQuaternion;
 end;
 
-destructor TpvPropertyRotation3D.Destroy;
+destructor TpvRotation3DProperty.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TpvPropertyRotation3D.GetX:TpvScalar;
+function TpvRotation3DProperty.GetX:TpvScalar;
 begin
  result:=fQuaternion^.x;
 end;
 
-function TpvPropertyRotation3D.GetY:TpvScalar;
+function TpvRotation3DProperty.GetY:TpvScalar;
 begin
  result:=fQuaternion^.y;
 end;
 
-function TpvPropertyRotation3D.GetZ:TpvScalar;
+function TpvRotation3DProperty.GetZ:TpvScalar;
 begin
  result:=fQuaternion^.z;
 end;
 
-function TpvPropertyRotation3D.GetW:TpvScalar;
+function TpvRotation3DProperty.GetW:TpvScalar;
 begin
  result:=fQuaternion^.w;
 end;
 
-function TpvPropertyRotation3D.GetPitch:TpvScalar;
+function TpvRotation3DProperty.GetPitch:TpvScalar;
 begin
  result:=fQuaternion^.Normalize.ToEuler.Pitch*RAD2DEG;
 end;
 
-function TpvPropertyRotation3D.GetYaw:TpvScalar;
+function TpvRotation3DProperty.GetYaw:TpvScalar;
 begin
  result:=fQuaternion^.Normalize.ToEuler.Yaw*RAD2DEG;
 end;
 
-function TpvPropertyRotation3D.GetRoll:TpvScalar;
+function TpvRotation3DProperty.GetRoll:TpvScalar;
 begin
  result:=fQuaternion^.Normalize.ToEuler.Roll*RAD2DEG;
 end;
 
-function TpvPropertyRotation3D.GetQuaternion:TpvQuaternion;
+function TpvRotation3DProperty.GetQuaternion:TpvQuaternion;
 begin
  result:=fQuaternion^;
 end;
 
-procedure TpvPropertyRotation3D.SetX(const pNewValue:TpvScalar);
+procedure TpvRotation3DProperty.SetX(const pNewValue:TpvScalar);
 begin
  fQuaternion^.x:=pNewValue;
 end;
 
-procedure TpvPropertyRotation3D.SetY(const pNewValue:TpvScalar);
+procedure TpvRotation3DProperty.SetY(const pNewValue:TpvScalar);
 begin
  fQuaternion^.y:=pNewValue;
 end;
 
-procedure TpvPropertyRotation3D.SetZ(const pNewValue:TpvScalar);
+procedure TpvRotation3DProperty.SetZ(const pNewValue:TpvScalar);
 begin
  fQuaternion^.z:=pNewValue;
 end;
 
-procedure TpvPropertyRotation3D.SetW(const pNewValue:TpvScalar);
+procedure TpvRotation3DProperty.SetW(const pNewValue:TpvScalar);
 begin
  fQuaternion^.w:=pNewValue;
 end;
 
-procedure TpvPropertyRotation3D.SetPitch(const pNewValue:TpvScalar);
+procedure TpvRotation3DProperty.SetPitch(const pNewValue:TpvScalar);
 var Angles:TpvVector3;
 begin
  Angles:=fQuaternion^.Normalize.ToEuler;
@@ -15907,7 +15907,7 @@ begin
  fQuaternion^:=TpvQuaternion.CreateFromEuler(Angles);
 end;
 
-procedure TpvPropertyRotation3D.SetYaw(const pNewValue:TpvScalar);
+procedure TpvRotation3DProperty.SetYaw(const pNewValue:TpvScalar);
 var Angles:TpvVector3;
 begin
  Angles:=fQuaternion^.Normalize.ToEuler;
@@ -15915,7 +15915,7 @@ begin
  fQuaternion^:=TpvQuaternion.CreateFromEuler(Angles);
 end;
 
-procedure TpvPropertyRotation3D.SetRoll(const pNewValue:TpvScalar);
+procedure TpvRotation3DProperty.SetRoll(const pNewValue:TpvScalar);
 var Angles:TpvVector3;
 begin
  Angles:=fQuaternion^.Normalize.ToEuler;
@@ -15923,119 +15923,119 @@ begin
  fQuaternion^:=TpvQuaternion.CreateFromEuler(Angles);
 end;
 
-procedure TpvPropertyRotation3D.SetQuaternion(const NewQuaternion:TpvQuaternion);
+procedure TpvRotation3DProperty.SetQuaternion(const NewQuaternion:TpvQuaternion);
 begin
  fQuaternion^:=NewQuaternion;
 end;
 
-constructor TpvPropertyColorRGB.Create(AVector:PpvVector3);
+constructor TpvColorRGBProperty.Create(AVector:PpvVector3);
 begin
  inherited Create;
  fVector:=AVector;
 end;
 
-destructor TpvPropertyColorRGB.Destroy;
+destructor TpvColorRGBProperty.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TpvPropertyColorRGB.GetR:TpvScalar;
+function TpvColorRGBProperty.GetR:TpvScalar;
 begin
  result:=fVector^.r;
 end;
 
-function TpvPropertyColorRGB.GetG:TpvScalar;
+function TpvColorRGBProperty.GetG:TpvScalar;
 begin
  result:=fVector^.g;
 end;
 
-function TpvPropertyColorRGB.GetB:TpvScalar;
+function TpvColorRGBProperty.GetB:TpvScalar;
 begin
  result:=fVector^.b;
 end;
 
-function TpvPropertyColorRGB.GetVector:TpvVector3;
+function TpvColorRGBProperty.GetVector:TpvVector3;
 begin
  result:=fVector^;
 end;
 
-procedure TpvPropertyColorRGB.SetR(const pNewValue:TpvScalar);
+procedure TpvColorRGBProperty.SetR(const pNewValue:TpvScalar);
 begin
  fVector^.r:=pNewValue;
 end;
 
-procedure TpvPropertyColorRGB.SetG(const pNewValue:TpvScalar);
+procedure TpvColorRGBProperty.SetG(const pNewValue:TpvScalar);
 begin
  fVector^.g:=pNewValue;
 end;
 
-procedure TpvPropertyColorRGB.SetB(const pNewValue:TpvScalar);
+procedure TpvColorRGBProperty.SetB(const pNewValue:TpvScalar);
 begin
  fVector^.b:=pNewValue;
 end;
 
-procedure TpvPropertyColorRGB.SetVector(const pNewVector:TpvVector3);
+procedure TpvColorRGBProperty.SetVector(const pNewVector:TpvVector3);
 begin
  fVector^:=pNewVector;
 end;
 
-constructor TpvPropertyColorRGBA.Create(AVector:PpvVector4);
+constructor TpvColorRGBAProperty.Create(AVector:PpvVector4);
 begin
  inherited Create;
  fVector:=AVector;
 end;
 
-destructor TpvPropertyColorRGBA.Destroy;
+destructor TpvColorRGBAProperty.Destroy;
 begin
  inherited Destroy;
 end;
 
-function TpvPropertyColorRGBA.GetR:TpvScalar;
+function TpvColorRGBAProperty.GetR:TpvScalar;
 begin
  result:=fVector^.r;
 end;
 
-function TpvPropertyColorRGBA.GetG:TpvScalar;
+function TpvColorRGBAProperty.GetG:TpvScalar;
 begin
  result:=fVector^.g;
 end;
 
-function TpvPropertyColorRGBA.GetB:TpvScalar;
+function TpvColorRGBAProperty.GetB:TpvScalar;
 begin
  result:=fVector^.b;
 end;
 
-function TpvPropertyColorRGBA.GetA:TpvScalar;
+function TpvColorRGBAProperty.GetA:TpvScalar;
 begin
  result:=fVector^.a;
 end;
 
-function TpvPropertyColorRGBA.GetVector:TpvVector4;
+function TpvColorRGBAProperty.GetVector:TpvVector4;
 begin
  result:=fVector^;
 end;
 
-procedure TpvPropertyColorRGBA.SetR(const pNewValue:TpvScalar);
+procedure TpvColorRGBAProperty.SetR(const pNewValue:TpvScalar);
 begin
  fVector^.r:=pNewValue;
 end;
 
-procedure TpvPropertyColorRGBA.SetG(const pNewValue:TpvScalar);
+procedure TpvColorRGBAProperty.SetG(const pNewValue:TpvScalar);
 begin
  fVector^.g:=pNewValue;
 end;
 
-procedure TpvPropertyColorRGBA.SetB(const pNewValue:TpvScalar);
+procedure TpvColorRGBAProperty.SetB(const pNewValue:TpvScalar);
 begin
  fVector^.b:=pNewValue;
 end;
 
-procedure TpvPropertyColorRGBA.SetA(const pNewValue:TpvScalar);
+procedure TpvColorRGBAProperty.SetA(const pNewValue:TpvScalar);
 begin
  fVector^.a:=pNewValue;
 end;
 
-procedure TpvPropertyColorRGBA.SetVector(const pNewVector:TpvVector4);
+procedure TpvColorRGBAProperty.SetVector(const pNewVector:TpvVector4);
 begin
  fVector^:=pNewVector;
 end;

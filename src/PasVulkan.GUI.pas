@@ -67,6 +67,7 @@ uses SysUtils,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Collections,
+     PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
      PasVulkan.Sprites,
@@ -85,11 +86,26 @@ type TPasVulkanGUIInstance=class;
        property Items[const aIndex:TpvInt32]:TPasVulkanGUIObject read GetItem write SetItem; default;
      end;
 
+     TPasVulkanGUIAlignment=
+      (
+       pvgaNone,
+       pvgaClient,
+       pvgaLeft,
+       pvgaRight,
+       pvgaTop,
+       pvgaBottom
+      );
+
      TPasVulkanGUIObject=class
       private
        fInstance:TPasVulkanGUIInstance;
        fParent:TPasVulkanGUIObject;
        fChildren:TPasVulkanGUIObjectList;
+       fPosition:TpvVector2;
+       fPositionProperty:TpvVector2Property;
+       fSize:TpvVector2;
+       fSizeProperty:TpvVector2Property;
+       fAlignment:TPasVulkanGUIAlignment;
       public
        constructor Create(const aParent:TPasVulkanGUIObject=nil); reintroduce;
        destructor Destroy; override;
@@ -99,13 +115,16 @@ type TPasVulkanGUIInstance=class;
        property Instance:TPasVulkanGUIInstance read fInstance;
        property Parent:TPasVulkanGUIObject read fParent write fParent;
        property Children:TPasVulkanGUIObjectList read fChildren;
+       property Position:TpvVector2Property read fPositionProperty;
+       property Size:TpvVector2Property read fSizeProperty;
+       property Alignment:TPasVulkanGUIAlignment read fAlignment write fAlignment;
      end;
 
      TPasVulkanGUIInstance=class(TPasVulkanGUIObject)
       private
        fCanvas:TpvCanvas;
       public
-       constructor Create; reintroduce;
+       constructor Create(const aCanvas:TpvCanvas); reintroduce;
        destructor Destroy; override;
       published
        property Canvas:TpvCanvas read fCanvas;
@@ -150,6 +169,16 @@ begin
 
  fChildren:=TPasVulkanGUIObjectList.Create;
 
+ fPosition:=TpvVector2.Create(0.0,0.0);
+
+ fPositionProperty:=TpvVector2Property.Create(@fPosition);
+
+ fSize:=TpvVector2.Create(1.0,1.0);
+
+ fSizeProperty:=TpvVector2Property.Create(@fSize);
+
+ fAlignment:=pvgaNone;
+
 end;
 
 destructor TPasVulkanGUIObject.Destroy;
@@ -157,6 +186,10 @@ begin
 
  fChildren.ClearObjects;
  FreeAndNil(fChildren);
+
+ FreeAndNil(fPositionProperty);
+
+ FreeAndNil(fSizeProperty);
 
  inherited Destroy;
 
@@ -184,12 +217,14 @@ begin
 
 end;
 
-constructor TPasVulkanGUIInstance.Create;
+constructor TPasVulkanGUIInstance.Create(const aCanvas:TpvCanvas);
 begin
 
  inherited Create(nil);
 
  fInstance:=self;
+
+ fCanvas:=aCanvas;
 
 end;
 
