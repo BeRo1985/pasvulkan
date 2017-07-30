@@ -605,7 +605,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function GetTextVerticalAlignment:TpvCanvasTextVerticalAlignment; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetTextVerticalAlignment(aTextVerticalAlignment:TpvCanvasTextVerticalAlignment); {$ifdef CAN_INLINE}inline;{$endif}
        procedure GetNextDestinationVertexBuffer;
-       procedure FlushAndGetNewDestinationBuffersIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
        function ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
        function GetVertexState:TpvUInt32; {$ifdef CAN_INLINE}inline;{$endif}
       public
@@ -628,6 +627,10 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure SetClipRect(const aClipRect:TVkRect2D); overload;
        procedure SetClipRect(const aClipRect:TpvRect); overload;
        procedure SetClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32); overload;
+      public
+       procedure EnsureSufficientReserveUsableSpace(const aCountVertices,aCountIndices:TpvInt32);
+       function AddVertex(const aPosition:TpvVector2;const aTexCoord:TpvVector3;const aColor:TpvVector4):TpvInt32;
+       function AddIndex(const aVertexIndex:TpvInt32):TpvInt32; {$ifdef CAN_INLINE}inline;{$endif}
       public
        procedure ExecuteUpload(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
        procedure ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
@@ -3685,15 +3688,38 @@ begin
 
 end;
 
-procedure TpvCanvas.FlushAndGetNewDestinationBuffersIfNeeded(const aCountVerticesToCheck,aCountIndicesToCheck:TpvInt32);
+procedure TpvCanvas.EnsureSufficientReserveUsableSpace(const aCountVertices,aCountIndices:TpvInt32);
 const UntilCountVertices=SizeOf(TpvCanvasVertexBuffer) div SizeOf(TpvCanvasVertex);
       UntilCountIndices=SizeOf(TpvCanvasIndexBuffer) div SizeOf(TpvUInt32);
 begin
- if ((fCurrentVulkanVertexBufferOffset+fCurrentCountVertices+aCountVerticesToCheck)>=UntilCountVertices) or
-    ((fCurrentVulkanIndexBufferOffset+fCurrentCountIndices+aCountIndicesToCheck)>=UntilCountIndices) then begin
+ if ((fCurrentVulkanVertexBufferOffset+fCurrentCountVertices+aCountVertices)>=UntilCountVertices) or
+    ((fCurrentVulkanIndexBufferOffset+fCurrentCountIndices+aCountIndices)>=UntilCountIndices) then begin
   Flush;
   GetNextDestinationVertexBuffer;
  end;
+end;
+
+function TpvCanvas.AddVertex(const aPosition:TpvVector2;const aTexCoord:TpvVector3;const aColor:TpvVector4):TpvInt32;
+var Vertex:PpvCanvasVertex;
+begin
+ result:=fCurrentCountVertices;
+ Vertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices];
+ inc(fCurrentCountVertices);
+ Vertex^.Position:=fState.fModelMatrix*aPosition;
+ Vertex^.TextureCoord:=aTexCoord;
+ Vertex^.Color.r:=aColor.r;
+ Vertex^.Color.g:=aColor.g;
+ Vertex^.Color.b:=aColor.b;
+ Vertex^.Color.a:=aColor.a;
+ Vertex^.State:=GetVertexState;
+ Vertex^.ClipRect:=fState.fClipRect;
+end;
+
+function TpvCanvas.AddIndex(const aVertexIndex:TpvInt32):TpvInt32;
+begin
+ result:=fCurrentCountIndices;
+ fCurrentDestinationIndexBufferPointer^[result]:=aVertexIndex;
+ inc(fCurrentCountIndices);
 end;
 
 function TpvCanvas.ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
@@ -3990,7 +4016,7 @@ begin
   VertexColor.a:=fState.fColor.a;
   VertexState:=GetVertexState;
   SetAtlasTexture(aSprite.ArrayTexture);
-  FlushAndGetNewDestinationBuffersIfNeeded(4,6);
+  EnsureSufficientReserveUsableSpace(4,6);
   if aSprite.Rotated then begin
    tx1:=Max(aSprite.TrimmedX,aSrc.Left);
    ty1:=Max(aSprite.TrimmedY,aSrc.Top);
@@ -4308,7 +4334,7 @@ begin
  MetaInfo.xy:=aCenter;
  MetaInfo.zw:=aRadius;
  VertexState:=GetVertexState;
- FlushAndGetNewDestinationBuffersIfNeeded(4,6);
+ EnsureSufficientReserveUsableSpace(4,6);
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
  CanvasVertex^.Position:=aCenter+TpvVector2.Create(-aRadius.x,-aRadius.y);
  CanvasVertex^.Color:=VertexColor;
@@ -4369,7 +4395,7 @@ begin
  MetaInfo.z:=aRadius;
  MetaInfo.w:=0.0;
  VertexState:=GetVertexState;
- FlushAndGetNewDestinationBuffersIfNeeded(4,6);
+ EnsureSufficientReserveUsableSpace(4,6);
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
  CanvasVertex^.Position:=aCenter+TpvVector2.Create(-aRadius,-aRadius);
  CanvasVertex^.Color:=VertexColor;
@@ -4429,7 +4455,7 @@ begin
  MetaInfo.xy:=aCenter;
  MetaInfo.zw:=aBounds;
  VertexState:=GetVertexState;
- FlushAndGetNewDestinationBuffersIfNeeded(4,6);
+ EnsureSufficientReserveUsableSpace(4,6);
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
  CanvasVertex^.Position:=aCenter+TpvVector2.Create(-aBounds.x,-aBounds.y);
  CanvasVertex^.Color:=VertexColor;
@@ -4501,7 +4527,7 @@ begin
   LocalModelMatrix:=fState.ModelMatrix;
  end;
  VertexState:=GetVertexState and not ($f shl pvcvsFillStyleShift);
- FlushAndGetNewDestinationBuffersIfNeeded(4,6);
+ EnsureSufficientReserveUsableSpace(4,6);
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
  CanvasVertex^.Position:=LocalModelMatrix*(aCenter+TpvVector2.Create(-aBounds.x,-aBounds.y));
  CanvasVertex^.Color:=VertexColor;
@@ -4568,7 +4594,7 @@ begin
  OffsetMatrix:=fState.fModelMatrix.ToMatrix3x3;
  for CachePartIndex:=0 to aShape.fCountCacheParts-1 do begin
   CachePart:=@aShape.fCacheParts[CachePartIndex];
-  FlushAndGetNewDestinationBuffersIfNeeded(CachePart^.CountVertices,CachePart^.CountIndices);
+  EnsureSufficientReserveUsableSpace(CachePart^.CountVertices,CachePart^.CountIndices);
   if ModelMatrixIsIdentity then begin
    for VertexIndex:=0 to CachePart^.CountVertices-1 do begin
     CacheVertex:=@aShape.fCacheVertices[CachePart^.BaseVertexIndex+VertexIndex];
