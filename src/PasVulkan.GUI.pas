@@ -151,6 +151,7 @@ type TpvGUIObject=class;
        fVisible:boolean;
        fEnabled:boolean;
        fFocused:boolean;
+       fPointerFocused:boolean;
        fHint:TpvUTF8String;
        fFontSize:TpvFloat;
        function GetLeft:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -182,6 +183,10 @@ type TpvGUIObject=class;
        function Contains(const aPosition:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget;
        procedure RequestFocus; virtual;
+       function Enter:boolean; virtual;
+       function Leave:boolean; virtual;
+       function PointerEnter:boolean; virtual;
+       function PointerLeave:boolean; virtual;
        procedure Draw; virtual;
        function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
        function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
@@ -205,6 +210,7 @@ type TpvGUIObject=class;
        property RecursiveVisible:boolean read GetRecursiveVisible;
        property Enabled:boolean read fEnabled write fEnabled;
        property Focused:boolean read fFocused write fFocused;
+       property PointerFocused:boolean read fPointerFocused write fPointerFocused;
        property Left:TpvFloat read GetLeft write SetLeft;
        property Top:TpvFloat read GetTop write SetTop;
        property Width:TpvFloat read GetWidth write SetWidth;
@@ -336,6 +342,8 @@ begin
  fEnabled:=true;
 
  fFocused:=false;
+
+ fPointerFocused:=false;
 
  fHint:='';
 
@@ -591,6 +599,30 @@ begin
  end;
 end;
 
+function TpvGUIWidget.Enter:boolean;
+begin
+ fFocused:=true;
+ result:=false;
+end;
+
+function TpvGUIWidget.Leave:boolean;
+begin
+ fFocused:=false;
+ result:=false;
+end;
+
+function TpvGUIWidget.PointerEnter:boolean;
+begin
+ fPointerFocused:=true;
+ result:=false;
+end;
+
+function TpvGUIWidget.PointerLeave:boolean;
+begin
+ fPointerFocused:=false;
+ result:=false;
+end;
+
 procedure TpvGUIWidget.Draw;
 begin
 
@@ -658,15 +690,25 @@ function TpvGUIWidget.PointerMotion(const aPosition,aRelativePosition:TpvVector2
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
+    PreviousContained,CurrentContained:boolean;
 begin
  for ChildIndex:=fChildren.Count-1 downto 0 do begin
   Child:=fChildren.Items[ChildIndex];
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
-   if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
-    result:=ChildWidget.PointerMotion(aPosition-fPosition,aRelativePosition,aPressure,aPointerID,aButton);
-    if result then begin
-     exit;
+   if ChildWidget.Visible then begin
+    PreviousContained:=ChildWidget.Contains((aPosition-fPosition)-aRelativePosition);
+    CurrentContained:=ChildWidget.Contains(aPosition-fPosition);
+    if CurrentContained and not PreviousContained then begin
+     ChildWidget.PointerEnter;
+    end else if PreviousContained and not CurrentContained then begin
+     ChildWidget.PointerLeave;
+    end;
+    if PreviousContained or CurrentContained then begin
+     result:=ChildWidget.PointerMotion(aPosition-fPosition,aRelativePosition,aPressure,aPointerID,aButton);
+     if result then begin
+      exit;
+     end;
     end;
    end;
   end;
