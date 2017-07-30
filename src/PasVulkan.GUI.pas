@@ -171,7 +171,6 @@ type TPasVulkanGUIObject=class;
       protected
        procedure SetTheme(const aTheme:TPasVulkanGUITheme); virtual;
        procedure PerformLayout; virtual;
-       procedure Paint; virtual;
       public
        constructor Create(const aParent:TPasVulkanGUIObject=nil); override;
        destructor Destroy; override;
@@ -181,6 +180,15 @@ type TPasVulkanGUIObject=class;
        function Contains(const aPosition:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function FindWidget(const aPosition:TpvVector2):TPasVulkanGUIWidget;
        procedure RequestFocus; virtual;
+       procedure Draw; virtual;
+       function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
+       function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
+       function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
+       function TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
+       function TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
+       function TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean; virtual;
+       function MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean; virtual;
+       function Scrolled(const aAmount:TpvInt32):boolean; virtual;
       public
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
        property PreferredSize:TpvVector2 read GetPreferredSize;
@@ -545,9 +553,49 @@ begin
  end;
 end;
 
-procedure TPasVulkanGUIWidget.Paint;
+procedure TPasVulkanGUIWidget.Draw;
 begin
 
+end;
+
+function TPasVulkanGUIWidget.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TPasVulkanGUIWidget.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TPasVulkanGUIWidget.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TPasVulkanGUIWidget.TouchDown(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TPasVulkanGUIWidget.TouchUp(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TPasVulkanGUIWidget.TouchDragged(const aScreenX,aScreenY,aPressure:TpvFloat;const aPointerID:TpvInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TPasVulkanGUIWidget.MouseMoved(const aScreenX,aScreenY:TpvInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TPasVulkanGUIWidget.Scrolled(const aAmount:TpvInt32):boolean;
+begin
+ result:=false;
 end;
 
 constructor TPasVulkanGUIInstance.Create(const aCanvas:TpvCanvas);
