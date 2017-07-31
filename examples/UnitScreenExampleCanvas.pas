@@ -148,6 +148,15 @@ begin
 
  fVulkanRenderPass:=nil;
 
+ fVulkanCanvas:=TpvCanvas.Create(pvApplication.VulkanDevice,
+                                 pvApplication.VulkanDevice.GraphicsQueue,
+                                 pvApplication.VulkanGraphicsCommandBuffers[0,0],
+                                 pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                 pvApplication.VulkanDevice.TransferQueue,
+                                 pvApplication.VulkanTransferCommandBuffers[0,0],
+                                 pvApplication.VulkanTransferCommandBufferFences[0,0],
+                                 pvApplication.VulkanPipelineCache);
+
  fVulkanSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice);
 
  fVulkanFontSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice);
@@ -259,6 +268,7 @@ begin
  FreeAndNil(fVulkanFontSpriteAtlas);
  FreeAndNil(fVulkanSpriteAtlas);
  FreeAndNil(fTextureTreeLeafs);
+ FreeAndNil(fVulkanCanvas);
  FreeAndNil(fVulkanRenderPass);
  for Index:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fVulkanRenderCommandBuffers[Index]);
@@ -342,16 +352,8 @@ begin
  fVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
  fVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
 
- fVulkanCanvas:=TpvCanvas.Create(pvApplication.VulkanDevice,
-                                       pvApplication.VulkanDevice.GraphicsQueue,
-                                       pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                                       pvApplication.VulkanGraphicsCommandBufferFences[0,0],
-                                       pvApplication.VulkanDevice.TransferQueue,
-                                       pvApplication.VulkanTransferCommandBuffers[0,0],
-                                       pvApplication.VulkanTransferCommandBufferFences[0,0],
-                                       pvApplication.VulkanPipelineCache,
-                                       fVulkanRenderPass,
-                                       pvApplication.CountSwapChainImages);
+ fVulkanCanvas.VulkanRenderPass:=fVulkanRenderPass;
+ fVulkanCanvas.CountBuffers:=pvApplication.CountSwapChainImages;
  if pvApplication.Width<pvApplication.Height then begin
   fVulkanCanvas.Width:=(720*pvApplication.Width) div pvApplication.Height;
   fVulkanCanvas.Height:=720;
@@ -375,7 +377,7 @@ end;
 
 procedure TScreenExampleCanvas.BeforeDestroySwapChain;
 begin
- FreeAndNil(fVulkanCanvas);
+ fVulkanCanvas.VulkanRenderPass:=nil;
  FreeAndNil(fVulkanRenderPass);
  inherited BeforeDestroySwapChain;
 end;

@@ -201,7 +201,7 @@ type TpvGUIObject=class;
        function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; virtual;
-       procedure Update(const aDeltaTime:TpvDouble); virtual;
+       procedure Update(const aCanvas:TpvCanvas;const aDeltaTime:TpvDouble); virtual;
        procedure Draw; virtual;
       public
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
@@ -241,7 +241,7 @@ type TpvGUIObject=class;
 
      TpvGUIInstance=class(TpvGUIWidget)
       private
-       fCanvas:TpvCanvas;
+       fDrawWidgetBounds:boolean;
        fBuffers:TpvGUIInstanceBuffers;
        fCountBuffers:TpvInt32;
        fUpdateBufferIndex:TpvInt32;
@@ -250,15 +250,15 @@ type TpvGUIObject=class;
        procedure SetUpdateBufferIndex(const aUpdateBufferIndex:TpvInt32);
        procedure SetDrawBufferIndex(const aDrawBufferIndex:TpvInt32);
       public
-       constructor Create(const aCanvas:TpvCanvas); reintroduce;
+       constructor Create; reintroduce;
        destructor Destroy; override;
        procedure ClearReferenceCountedObjectList;
        procedure AddReferenceCountedObjectForNextDraw(const aObject:TpvReferenceCountedObject);
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
-       procedure Update(const aDeltaTime:TpvDouble); override;
+       procedure Update(const aCanvas:TpvCanvas;const aDeltaTime:TpvDouble); override;
        procedure Draw; override;
       published
-       property Canvas:TpvCanvas read fCanvas;
+       property DrawWidgetBounds:boolean read fDrawWidgetBounds write fDrawWidgetBounds;
        property CountBuffers:TpvInt32 read fCountBuffers write fCountBuffers;
        property UpdateBufferIndex:TpvInt32 read fUpdateBufferIndex write fUpdateBufferIndex;
        property DrawBufferIndex:TpvInt32 read fDrawBufferIndex write fDrawBufferIndex;
@@ -385,9 +385,9 @@ begin
 
  fPositionProperty:=TpvVector2Property.Create(@fPosition);
 
- fSizeProperty:=TpvVector2Property(@fSize);
+ fSizeProperty:=TpvVector2Property.Create(@fSize);
 
- fFixedSizeProperty:=TpvVector2Property(@fFixedSize);
+ fFixedSizeProperty:=TpvVector2Property.Create(@fFixedSize);
 
  fVisible:=true;
 
@@ -783,47 +783,69 @@ begin
  result:=false;
 end;
 
-procedure TpvGUIWidget.Update(const aDeltaTime:TpvDouble);
+procedure TpvGUIWidget.Update(const aCanvas:TpvCanvas;const aDeltaTime:TpvDouble);
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
     BaseClipRect:TpvRect;
     BaseModelMatrix:TpvMatrix4x4;
 begin
- BaseClipRect:=fInstance.fCanvas.State.ClipRect;
- BaseModelMatrix:=fInstance.fCanvas.ModelMatrix;
+ BaseClipRect:=aCanvas.State.ClipRect;
+ BaseModelMatrix:=aCanvas.ModelMatrix;
  try
+  if fInstance.fDrawWidgetBounds then begin
+   aCanvas.Push;
+   try
+    aCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+    aCanvas.DrawFilledRectangle(ChildWidget.Left+(ChildWidget.Width*0.5),ChildWidget.Top+(ChildWidget.Height*0.5),ChildWidget.Width*0.625,ChildWidget.Height*0.625);
+    aCanvas.Color:=TpvVector4.Create(0.5,0.5,0.5,1.0);
+    aCanvas.DrawFilledRectangle(ChildWidget.Left+(ChildWidget.Width*0.5),ChildWidget.Top+(ChildWidget.Height*0.5),ChildWidget.Width*0.5,ChildWidget.Height*0.5);
+   finally
+    aCanvas.Pop;
+   end;
+  end;
   for ChildIndex:=0 to fChildren.Count-1 do begin
    Child:=fChildren.Items[ChildIndex];
    if Child is TpvGUIWidget then begin
     ChildWidget:=Child as TpvGUIWidget;
+    fInstance.AddReferenceCountedObjectForNextDraw(ChildWidget);
     if ChildWidget.Visible then begin
-     fInstance.AddReferenceCountedObjectForNextDraw(ChildWidget);
-     fInstance.fCanvas.ClipRect:=BaseClipRect.GetIntersection(TpvRect.Create(ChildWidget.Left,ChildWidget.Top,ChildWidget.Left+ChildWidget.Width,ChildWidget.Top+ChildWidget.Height));
-     fInstance.fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(ChildWidget.Left,ChildWidget.Top)*fInstance.fCanvas.ModelMatrix;
-     ChildWidget.Update(aDeltaTime);
+     aCanvas.ClipRect:=BaseClipRect.GetIntersection(TpvRect.Create(ChildWidget.Left,ChildWidget.Top,ChildWidget.Left+ChildWidget.Width,ChildWidget.Top+ChildWidget.Height));
+     aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(ChildWidget.Left,ChildWidget.Top)*aCanvas.ModelMatrix;
+     ChildWidget.Update(aCanvas,aDeltaTime);
     end;
    end;
   end;
  finally
-  fInstance.fCanvas.ClipRect:=BaseClipRect;
-  fInstance.fCanvas.ModelMatrix:=BaseModelMatrix;
+  aCanvas.ClipRect:=BaseClipRect;
+  aCanvas.ModelMatrix:=BaseModelMatrix;
  end;
 end;
 
 procedure TpvGUIWidget.Draw;
+var ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
 begin
-
+ for ChildIndex:=0 to fChildren.Count-1 do begin
+  Child:=fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    ChildWidget.Draw;
+   end;
+  end;
+ end;
 end;
 
-constructor TpvGUIInstance.Create(const aCanvas:TpvCanvas);
+constructor TpvGUIInstance.Create;
 begin
 
  inherited Create(nil);
 
  fInstance:=self;
 
- fCanvas:=aCanvas;
+ DrawWidgetBounds:=false;
 
  fBuffers:=nil;
 
@@ -921,10 +943,10 @@ begin
 
 end;
 
-procedure TpvGUIInstance.Update(const aDeltaTime:TpvDouble);
+procedure TpvGUIInstance.Update(const aCanvas:TpvCanvas;const aDeltaTime:TpvDouble);
 begin
  ClearReferenceCountedObjectList;
- inherited Update(aDeltaTime);
+ inherited Update(aCanvas,aDeltaTime);
 end;
 
 procedure TpvGUIInstance.Draw;

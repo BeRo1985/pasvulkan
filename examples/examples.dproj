@@ -250,6 +250,7 @@
         <DCCReference Include="UnitScreenExampleCube.pas"/>
         <DCCReference Include="UnitScreenExampleDragon.pas"/>
         <DCCReference Include="UnitScreenExampleCanvas.pas"/>
+        <DCCReference Include="UnitScreenExampleGUI.pas"/>
         <None Include="..\src\PasVulkan.inc"/>
         <BuildConfiguration Include="Debug">
             <Key>Cfg_2</Key>
@@ -281,6 +282,7 @@
                 <Platform value="iOSDevice32">False</Platform>
                 <Platform value="iOSDevice64">False</Platform>
                 <Platform value="iOSSimulator">False</Platform>
+                <Platform value="Linux64">False</Platform>
                 <Platform value="OSX32">False</Platform>
                 <Platform value="Win32">True</Platform>
                 <Platform value="Win64">True</Platform>

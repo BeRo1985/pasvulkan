@@ -23,7 +23,7 @@
 uses
   {$if defined(fpc) and defined(Unix)}
   cthreads,
-  {$ifend}
+  {$ifend }
   SysUtils,
   Classes,
   PasDblStrUtils in '..\externals\pasdblstrutils\src\PasDblStrUtils.pas',
@@ -71,7 +71,8 @@ uses
   UnitScreenExampleTriangle in 'UnitScreenExampleTriangle.pas',
   UnitScreenExampleCube in 'UnitScreenExampleCube.pas',
   UnitScreenExampleDragon in 'UnitScreenExampleDragon.pas',
-  UnitScreenExampleCanvas in 'UnitScreenExampleCanvas.pas';
+  UnitScreenExampleCanvas in 'UnitScreenExampleCanvas.pas',
+  UnitScreenExampleGUI in 'UnitScreenExampleGUI.pas';
 
 // {$if defined(fpc) and defined(android)}
 
