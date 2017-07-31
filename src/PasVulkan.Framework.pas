@@ -2648,7 +2648,7 @@ type EpvVulkanException=class(Exception);
                                     const aMipMapSizeStored:boolean;
                                     const aSwapEndianness:boolean;
                                     const aSwapEndiannessTexels:TpvInt32;
-                                    const aFromDDS:boolean=false);
+                                    const aDDSStructure:boolean=true);
        constructor CreateFromStream(const aDevice:TpvVulkanDevice;
                                     const aGraphicsQueue:TpvVulkanQueue;
                                     const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -2669,7 +2669,7 @@ type EpvVulkanException=class(Exception);
                                     const aMipMapSizeStored:boolean;
                                     const aSwapEndianness:boolean;
                                     const aSwapEndiannessTexels:TpvInt32;
-                                    const aFromDDS:boolean=false);
+                                    const aDDSStructure:boolean=true);
        constructor CreateFromKTX(const aDevice:TpvVulkanDevice;
                                  const aGraphicsQueue:TpvVulkanQueue;
                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -2764,10 +2764,10 @@ type EpvVulkanException=class(Exception);
                         const aTransferFence:TpvVulkanFence;
                         const aData:TpvPointer;
                         const aDataSize:TVkSizeInt;
-                        const aMipMapSizeStored:boolean;
-                        const aSwapEndianness:boolean;
-                        const aSwapEndiannessTexels:TpvInt32;
-                        const aFromDDS:boolean=false;
+                        const aMipMapSizeStored:boolean=false;
+                        const aSwapEndianness:boolean=false;
+                        const aSwapEndiannessTexels:TpvInt32=0;
+                        const aDDSStructure:boolean=true;
                         const aStagingBuffer:TpvVulkanBuffer=nil);
        procedure UpdateSampler;
        property DescriptorImageInfo:TVkDescriptorImageInfo read fDescriptorImageInfo;
@@ -16055,7 +16055,7 @@ constructor TpvVulkanTexture.CreateFromMemory(const aDevice:TpvVulkanDevice;
                                               const aMipMapSizeStored:boolean;
                                               const aSwapEndianness:boolean;
                                               const aSwapEndiannessTexels:TpvInt32;
-                                              const aFromDDS:boolean=false);
+                                              const aDDSStructure:boolean=true);
 var MaxDimension,MaxMipMapLevels:TpvInt32;
     FormatProperties:TVkFormatProperties;
     Usage:TVkImageUsageFlags;
@@ -16245,17 +16245,17 @@ begin
                                                         fMemoryBlock.fOffset));
 
  Upload(aGraphicsQueue,
-                  aGraphicsCommandBuffer,
-                  aGraphicsFence,
-                  aTransferQueue,
-                  aTransferCommandBuffer,
-                  aTransferFence,
-                  aData,
-                  aDataSize,
-                  aMipMapSizeStored,
-                  aSwapEndianness,
-                  aSwapEndiannessTexels,
-                  aFromDDS);
+        aGraphicsCommandBuffer,
+        aGraphicsFence,
+        aTransferQueue,
+        aTransferCommandBuffer,
+        aTransferFence,
+        aData,
+        aDataSize,
+        aMipMapSizeStored,
+        aSwapEndianness,
+        aSwapEndiannessTexels,
+        aDDSStructure);
 
  fUsage:=vtufSampled;
  fImageLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -16327,7 +16327,7 @@ constructor TpvVulkanTexture.CreateFromStream(const aDevice:TpvVulkanDevice;
                                               const aMipMapSizeStored:boolean;
                                               const aSwapEndianness:boolean;
                                               const aSwapEndiannessTexels:TpvInt32;
-                                              const aFromDDS:boolean=false);
+                                              const aDDSStructure:boolean=true);
 var Data:TpvPointer;
     DataSize:TpvUInt32;
 begin
@@ -16358,7 +16358,7 @@ begin
                    aMipMapSizeStored,
                    aSwapEndianness,
                    aSwapEndiannessTexels,
-                   aFromDDS);
+                   aDDSStructure);
  finally
   FreeMem(Data);
  end;
@@ -18197,10 +18197,10 @@ procedure TpvVulkanTexture.Upload(const aGraphicsQueue:TpvVulkanQueue;
                                   const aTransferFence:TpvVulkanFence;
                                   const aData:TpvPointer;
                                   const aDataSize:TVkSizeInt;
-                                  const aMipMapSizeStored:boolean;
-                                  const aSwapEndianness:boolean;
-                                  const aSwapEndiannessTexels:TpvInt32;
-                                  const aFromDDS:boolean=false;
+                                  const aMipMapSizeStored:boolean=false;
+                                  const aSwapEndianness:boolean=false;
+                                  const aSwapEndiannessTexels:TpvInt32=0;
+                                  const aDDSStructure:boolean=true;
                                   const aStagingBuffer:TpvVulkanBuffer=nil);
 type PpvUInt8Array=^TpvUInt8Array;
      TpvUInt8Array=array[0..65535] of TpvUInt8;
@@ -18621,7 +18621,7 @@ begin
 
    Compressed:=false;
 
-   if (not aFromDDS) and (aSwapEndianness and (aSwapEndiannessTexels in [2,4,8])) then begin
+   if (not aDDSStructure) and (aSwapEndianness and (aSwapEndiannessTexels in [2,4,8])) then begin
     DataOffset:=0;
     for MipMapLevelIndex:=0 to fCountDataLevels-1 do begin
      MipMapWidth:=Max(1,Max(1,fWidth) shr MipMapLevelIndex);
@@ -18748,7 +18748,7 @@ begin
      SetLength(BufferImageCopyArray,fCountDataLevels*Max(1,fTotalCountArrayLayers)*Max(1,fDepth));
      BufferImageCopyArraySize:=0;
      DataOffset:=0;
-     if aFromDDS then begin
+     if aDDSStructure then begin
       for LayerIndex:=0 to Max(1,fTotalCountArrayLayers)-1 do begin
        for MipMapLevelIndex:=0 to fCountDataLevels-1 do begin
         MipMapWidth:=Max(1,Max(1,fWidth) shr MipMapLevelIndex);
