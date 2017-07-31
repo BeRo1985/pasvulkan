@@ -318,7 +318,7 @@ type TpvGUIObject=class;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property StandardTheme:TpvGUITheme read fStandardTheme;
        property DrawWidgetBounds:boolean read fDrawWidgetBounds write fDrawWidgetBounds;
-       property CountBuffers:TpvInt32 read fCountBuffers write fCountBuffers;
+       property CountBuffers:TpvInt32 read fCountBuffers write SetCountBuffers;
        property UpdateBufferIndex:TpvInt32 read fUpdateBufferIndex write fUpdateBufferIndex;
        property DrawBufferIndex:TpvInt32 read fDrawBufferIndex write fDrawBufferIndex;
        property DeltaTime:TpvDouble read fDeltaTime write fDeltaTime;
@@ -1257,11 +1257,11 @@ begin
 
  fBuffers:=nil;
 
- fCountBuffers:=-1;
+ fCountBuffers:=0;
 
- fUpdateBufferIndex:=-1;
+ fUpdateBufferIndex:=0;
 
- fDrawBufferIndex:=-1;
+ fDrawBufferIndex:=0;
 
  fDeltaTime:=0.0;
 
@@ -1303,6 +1303,9 @@ begin
 
   if length(fBuffers)<aCountBuffers then begin
    SetLength(fBuffers,aCountBuffers*2);
+   for Index:=Max(0,fCountBuffers) to length(fBuffers)-1 do begin
+    fBuffers[Index].CountReferenceCountedObjects:=0;
+   end;
   end;
 
   for Index:=fCountBuffers to aCountBuffers-1 do begin
@@ -1343,7 +1346,7 @@ procedure TpvGUIInstance.ClearReferenceCountedObjectList;
 var Index:TpvInt32;
     Buffer:PpvGUIInstanceBuffer;
 begin
- if (fUpdateBufferIndex>=0) and (fUpdateBufferIndex<fCountBuffers)  then begin
+ if (fUpdateBufferIndex>=0) and (fUpdateBufferIndex<fCountBuffers) then begin
   Buffer:=@fBuffers[fUpdateBufferIndex];
   for Index:=0 to Buffer^.CountReferenceCountedObjects-1 do begin
    Buffer^.ReferenceCountedObjects[Index].DecRef;

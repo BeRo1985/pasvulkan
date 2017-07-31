@@ -25,7 +25,7 @@
         <FormatVersion Value="1"/>
       </local>
     </RunParams>
-    <Units Count="57">
+    <Units Count="58">
       <Unit0>
         <Filename Value="examples.dpr"/>
         <IsPartOfProject Value="True"/>
@@ -254,6 +254,10 @@
         <Filename Value="UnitExampleApplication.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit56>
+      <Unit57>
+        <Filename Value="UnitScreenExampleGUI.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit57>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
