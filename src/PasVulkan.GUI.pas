@@ -218,14 +218,13 @@ type TpvGUIObject=class;
        procedure SetFixedHeight(const aFixedHeight:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetAbsolutePosition:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function GetRecursiveVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       function GetPreferredSize:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       function GetFontSize:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        function GetWindow:TpvGUIWindow;
       protected
        procedure SetCanvas(const aCanvas:TpvCanvas); virtual;
        function GetTheme:TpvGUITheme; virtual;
        procedure SetTheme(const aTheme:TpvGUITheme); virtual;
-       procedure PerformLayout; virtual;
+       function GetPreferredSize:TpvVector2; virtual;
+       function GetFontSize:TpvFloat; virtual;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -234,6 +233,7 @@ type TpvGUIObject=class;
        function GetEnumerator:TpvGUIWidgetEnumerator;
        function Contains(const aPosition:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget;
+       procedure PerformLayout; virtual;
        procedure RequestFocus; virtual;
        function Enter:boolean; virtual;
        function Leave:boolean; virtual;
@@ -296,10 +296,14 @@ type TpvGUIObject=class;
        fDrawBufferIndex:TpvInt32;
        fDeltaTime:TpvDouble;
        fFocusPath:TpvGUIObjectList;
+       fDragWidget:TpvGUIWidget;
        fWindow:TpvGUIWindow;
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
        procedure SetUpdateBufferIndex(const aUpdateBufferIndex:TpvInt32);
        procedure SetDrawBufferIndex(const aDrawBufferIndex:TpvInt32);
+       procedure DisposeWindow(const aWindow:TpvGUIWindow);
+       procedure CenterWindow(const aWindow:TpvGUIWindow);
+       procedure MoveWindowToFront(const aWindow:TpvGUIWindow);
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
@@ -336,10 +340,21 @@ type TpvGUIObject=class;
       private
        fTitle:TpvRawByteString;
        fMouseAction:TpvGUIWindowMouseAction;
+       fModal:boolean;
        fResizable:boolean;
+       fButtonPanel:TpvGUIWidget;
+       function GetButtonPanel:TpvGUIWidget;
+      protected
+       function GetPreferredSize:TpvVector2; override;
+       procedure RefreshRelativePlacement; virtual;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
+       procedure AfterConstruction; override;
+       procedure BeforeDestruction; override;
+       procedure DisposeWindow;
+       procedure Center;
+       procedure PerformLayout; override;
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
        function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
@@ -348,7 +363,9 @@ type TpvGUIObject=class;
        procedure Draw; override;
       published
        property Title:TpvRawByteString read fTitle write fTitle;
+       property Modal:boolean read fModal write fModal;
        property Resizable:boolean read fResizable write fResizable;
+       property ButtonPanel:TpvGUIWidget read GetButtonPanel;
      end;
 
 implementation
@@ -1213,7 +1230,7 @@ begin
                                                                            ChildWidget.Top,
                                                                            ChildWidget.Left+ChildWidget.Width,
                                                                            ChildWidget.Top+ChildWidget.Height));
-     fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(ChildWidget.Left,ChildWidget.Top)*fCanvas.ModelMatrix;
+     fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(ChildWidget.Left,ChildWidget.Top)*BaseModelMatrix;
      ChildWidget.fCanvas:=fCanvas;
      ChildWidget.Update;
     end;
@@ -1267,6 +1284,8 @@ begin
 
  fFocusPath:=TpvGUIObjectList.Create(false);
 
+ fDragWidget:=nil;
+
  fWindow:=nil;
 
  SetCountBuffers(1);
@@ -1275,6 +1294,8 @@ end;
 
 destructor TpvGUIInstance.Destroy;
 begin
+
+ TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
 
  FreeAndNil(fFocusPath);
 
@@ -1326,6 +1347,7 @@ end;
 
 procedure TpvGUIInstance.BeforeDestruction;
 begin
+ TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
  fFocusPath.Clear;
  DecRefWithoutFree;
@@ -1409,6 +1431,72 @@ begin
   end;
  end;
  if assigned(fWindow) then begin
+  MoveWindowToFront(fWindow);
+ end;
+end;
+
+procedure TpvGUIInstance.DisposeWindow(const aWindow:TpvGUIWindow);
+begin
+ if assigned(aWindow) then begin
+  if assigned(fFocusPath) and fFocusPath.Contains(aWindow) then begin
+   fFocusPath.Clear;
+  end;
+  if fDragWidget=aWindow then begin
+   TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+  end;
+  if assigned(fChildren) and fChildren.Contains(aWindow) then begin
+   fChildren.Remove(aWindow);
+  end;
+ end;
+end;
+
+procedure TpvGUIInstance.CenterWindow(const aWindow:TpvGUIWindow);
+begin
+ if assigned(aWindow) then begin
+  if aWindow.fSize=TpvVector2.Null then begin
+   aWindow.fSize:=aWindow.PreferredSize;
+   aWindow.PerformLayout;
+  end;
+  aWindow.fPosition:=(fSize-aWindow.fSize)*0.5;
+ end;
+end;
+
+procedure TpvGUIInstance.MoveWindowToFront(const aWindow:TpvGUIWindow);
+var Index,BaseIndex:TpvInt32;
+    Changed:boolean;
+    Current:TpvGUIObject;
+//  PopupWidget:TpvGUIPopup;
+begin
+ if assigned(aWindow) then begin
+  Index:=fChildren.IndexOf(aWindow);
+  if Index>=0 then begin
+   if Index<>(fChildren.Count-1) then begin
+    fChildren.Move(Index,fChildren.Count-1);
+   end;
+   repeat
+    Changed:=false;
+    BaseIndex:=0;
+    for Index:=0 to fChildren.Count-1 do begin
+     if fChildren[Index]=aWindow then begin
+      BaseIndex:=Index;
+      break;
+     end;
+    end;
+    for Index:=0 to fChildren.Count-1 do begin
+     Current:=fChildren[Index];
+     if assigned(Current) then begin
+{     if Current is TpvGUIPopup then begin
+       PopupWidget:=Current as TpvGUIPopup;
+       if (PopupWidget.ParentWindow=aWindow) and (Index<BaseIndex) then begin
+        MoveWindowToFront(PopupWidget);
+        Changed:=true;
+        break;
+       end;
+      end;}
+     end;
+    end;
+   until not Changed;
+  end;
  end;
 end;
 
@@ -1449,15 +1537,93 @@ end;
 constructor TpvGUIWindow.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
- fTitle:='';
+ fTitle:='Window';
  fMouseAction:=pvgwmaNone;
  fFocused:=false;
+ fModal:=false;
  fResizable:=true;
+ fButtonPanel:=nil;
 end;
 
 destructor TpvGUIWindow.Destroy;
 begin
  inherited Destroy;
+end;
+
+procedure TpvGUIWindow.AfterConstruction;
+begin
+ inherited AfterConstruction;
+end;
+
+procedure TpvGUIWindow.BeforeDestruction;
+begin
+ if assigned(fInstance) then begin
+  fInstance.DisposeWindow(self);
+ end;
+ inherited BeforeDestruction;
+end;
+
+procedure TpvGUIWindow.DisposeWindow;
+begin
+ if assigned(fInstance) then begin
+  fInstance.DisposeWindow(self);
+ end;
+end;
+
+function TpvGUIWindow.GetButtonPanel:TpvGUIWidget;
+begin
+ result:=fButtonPanel;
+end;
+
+function TpvGUIWindow.GetPreferredSize:TpvVector2;
+begin
+ if assigned(fButtonPanel) then begin
+  fButtonPanel.Visible:=false;
+ end;
+ result:=inherited GetPreferredSize;
+ if assigned(fButtonPanel) then begin
+  fButtonPanel.Visible:=true;
+ end;
+end;
+
+procedure TpvGUIWindow.PerformLayout;
+var ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+begin
+ if assigned(fButtonPanel) then begin
+  fButtonPanel.Visible:=false;
+  inherited PerformLayout;
+  fButtonPanel.Visible:=true;
+  for ChildIndex:=0 to fButtonPanel.fChildren.Count-1 do begin
+   Child:=fButtonPanel.fChildren.Items[ChildIndex];
+   if Child is TpvGUIWidget then begin
+    ChildWidget:=Child as TpvGUIWidget;
+    ChildWidget.FixedWidth:=22;
+    ChildWidget.FixedHeight:=22;
+    ChildWidget.FontSize:=-15;
+   end;
+  end;
+  fButtonPanel.Width:=Width;
+  fButtonPanel.Height:=22;
+  fButtonPanel.Left:=Width-(fButtonPanel.PreferredSize.x+5);
+  fButtonPanel.Top:=3;
+  fButtonPanel.PerformLayout;
+ end else begin
+  inherited PerformLayout;
+ end;
+end;
+
+procedure TpvGUIWindow.RefreshRelativePlacement;
+begin
+
+end;
+
+procedure TpvGUIWindow.Center;
+begin
+ if assigned(fInstance) then begin
+  fInstance.CenterWindow(self);
+ end;
 end;
 
 function TpvGUIWindow.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;

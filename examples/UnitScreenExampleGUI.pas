@@ -44,6 +44,7 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
        fScreenToCanvasScale:TpvVector2;
        fGUIInstance:TpvGUIInstance;
        fGUIWindow:TpvGUIWindow;
+       fGUIOtherWindow:TpvGUIWindow;
        fReady:boolean;
        fSelectedIndex:TpvInt32;
        fStartY:TpvFloat;
@@ -158,6 +159,13 @@ begin
  fGUIWindow.Height:=200;
  fGUIWindow.Visible:=true;
 
+ fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
+ fGUIOtherWindow.Left:=450;
+ fGUIOtherWindow.Top:=200;
+ fGUIOtherWindow.Width:=200;
+ fGUIOtherWindow.Height:=200;
+ fGUIOtherWindow.Visible:=true;
+
 end;
 
 procedure TScreenExampleGUI.Hide;
@@ -271,6 +279,8 @@ begin
  fGUIInstance.CountBuffers:=pvApplication.CountSwapChainImages;
  fGUIInstance.Width:=fVulkanCanvas.Width;
  fGUIInstance.Height:=fVulkanCanvas.Height;
+
+ fGUIInstance.PerformLayout;
 
 end;
 
