@@ -399,6 +399,7 @@ begin
 
  fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
 
+ fGUIInstance.DrawWidgetBounds:=true;
  fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateSwapChainImageIndex;
  fGUIInstance.DeltaTime:=aDeltaTime;
  fGUIInstance.Update;

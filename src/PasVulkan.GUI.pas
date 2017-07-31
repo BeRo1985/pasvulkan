@@ -819,9 +819,9 @@ begin
    fCanvas.Push;
    try
     fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-    fCanvas.DrawFilledRectangle(ChildWidget.Left+(ChildWidget.Width*0.5),ChildWidget.Top+(ChildWidget.Height*0.5),ChildWidget.Width*0.625,ChildWidget.Height*0.625);
-    fCanvas.Color:=TpvVector4.Create(0.5,0.5,0.5,1.0);
-    fCanvas.DrawFilledRectangle(ChildWidget.Left+(ChildWidget.Width*0.5),ChildWidget.Top+(ChildWidget.Height*0.5),ChildWidget.Width*0.5,ChildWidget.Height*0.5);
+    fCanvas.DrawFilledRectangle(Left+(Width*0.5),Top+(Height*0.5),Width*0.625,Height*0.625);
+    fCanvas.Color:=TpvVector4.Create(0.125,0.125,0.125,1.0);
+    fCanvas.DrawFilledRectangle(Left+(Width*0.5),Top+(Height*0.5),Width*0.5,Height*0.5);
    finally
     fCanvas.Pop;
    end;
