@@ -271,6 +271,8 @@ type TpvGUIObject=class;
 
      TpvGUIWindow=class(TpvGUIWidget)
       public
+       procedure Update; override;
+       procedure Draw; override;
      end;
 
 implementation
@@ -819,9 +821,17 @@ begin
    fCanvas.Push;
    try
     fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-    fCanvas.DrawFilledRectangle(Width*0.5,Height*0.5,Width*0.625,Height*0.625);
-    fCanvas.Color:=TpvVector4.Create(0.125,0.125,0.125,1.0);
-    fCanvas.DrawFilledRectangle(Width*0.5,Height*0.5,Width*0.5,Height*0.5);
+    fCanvas.LineWidth:=4.0;
+    fCanvas.LineJoin:=pvcljRound;
+    fCanvas.LineCap:=pvclcRound;
+    fCanvas.BeginPath;
+    fCanvas.MoveTo(0.0,0.0);
+    fCanvas.LineTo(Width,0.0);
+    fCanvas.LineTo(Width,Height);
+    fCanvas.LineTo(0.0,Height);
+    fCanvas.ClosePath;
+    fCanvas.Stroke;
+    fCanvas.EndPath;
    finally
     fCanvas.Pop;
    end;
@@ -982,5 +992,23 @@ procedure TpvGUIInstance.Draw;
 begin
  inherited Draw;
 end;
+
+procedure TpvGUIWindow.Update;
+begin
+ fCanvas.Push;
+ try
+  fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+  fCanvas.DrawFilledRectangle(Width*0.5,Height*0.5,Width*0.25,Height*0.25);
+ finally
+  fCanvas.Pop;
+ end;
+ inherited Update;
+end;
+
+procedure TpvGUIWindow.Draw;
+begin
+ inherited Draw;
+end;
+
 
 end.
