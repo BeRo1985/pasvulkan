@@ -784,8 +784,20 @@ begin
 end;
 
 procedure TpvGUIWidget.Update(const aDeltaTime:TpvDouble);
+var ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
 begin
-
+ for ChildIndex:=0 to fChildren.Count-1 do begin
+  Child:=fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    fInstance.AddReferenceCountedObjectForNextDraw(ChildWidget);
+    ChildWidget.Update(aDeltaTime);
+   end;
+  end;
+ end;
 end;
 
 procedure TpvGUIWidget.Draw;
@@ -900,6 +912,7 @@ end;
 
 procedure TpvGUIInstance.Update(const aDeltaTime:TpvDouble);
 begin
+ ClearReferenceCountedObjectList;
  inherited Update(aDeltaTime);
 end;
 
