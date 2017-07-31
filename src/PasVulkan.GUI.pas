@@ -1048,8 +1048,6 @@ begin
 
  fBuffers:=nil;
 
- FreeAndNil(fStandardTheme);
-
  inherited Destroy;
 
 end;
@@ -1154,7 +1152,10 @@ begin
  fCanvas.Push;
  try
   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-  fCanvas.DrawNinePatchSprite(Theme.fSpriteUnfocusedWindowFill,Theme.fSpriteUnfocusedWindowFillNinePatch,TpvVector2.Null,fSize);
+  fCanvas.DrawNinePatchSprite(Theme.fSpriteUnfocusedWindowFill,
+                              Theme.fSpriteUnfocusedWindowFillNinePatch,
+                              TpvVector2.Null,
+                              fSize);
  finally
   fCanvas.Pop;
  end;

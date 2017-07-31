@@ -4068,7 +4068,7 @@ var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     VertexState:TpvUInt32;
 begin
  if ((fState.fBlendingMode=pvcbmNone) or (abs(fState.fColor.a)>MinA)) and
-    ClipCheck(aDest.Left,aDest.Top,aDest.Right,aDest.Bottom) and
+    //ClipCheck(aDest.Left,aDest.Top,aDest.Right,aDest.Bottom) and
     (((aSrc.Right>=aSprite.TrimmedX) and (aSrc.Bottom>=aSprite.TrimmedY)) and
     (((not aSprite.Rotated) and (((aSprite.TrimmedX+aSprite.TrimmedWidth)>=aSrc.Left) and ((aSprite.TrimmedY+aSprite.TrimmedHeight)>=aSrc.Top))) or
      (aSprite.Rotated and (((aSprite.TrimmedX+aSprite.TrimmedHeight)>=aSrc.Left) and ((aSprite.TrimmedY+aSprite.TrimmedWidth)>=aSrc.Top))))) then begin
