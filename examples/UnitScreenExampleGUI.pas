@@ -147,6 +147,7 @@ begin
                                  pvApplication.VulkanPipelineCache);
 
  fGUIInstance:=TpvGUIInstance.Create;
+ fGUIInstance.Canvas:=fVulkanCanvas;
 
 end;
 
@@ -399,7 +400,8 @@ begin
  fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
 
  fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateSwapChainImageIndex;
- fGUIInstance.Update(fVulkanCanvas,aDeltaTime);
+ fGUIInstance.DeltaTime:=aDeltaTime;
+ fGUIInstance.Update;
 
  fVulkanCanvas.Stop;
 

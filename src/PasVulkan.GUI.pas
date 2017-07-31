@@ -146,6 +146,7 @@ type TpvGUIObject=class;
 
      TpvGUIWidget=class(TpvGUIObject)
       private
+       fCanvas:TpvCanvas;
        fLayout:TpvGUILayout;
        fTheme:TpvGUITheme;
        fCursor:TpvGUICursor;
@@ -179,6 +180,7 @@ type TpvGUIObject=class;
        function GetFontSize:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        function GetWindow:TpvGUIWindow;
       protected
+       procedure SetCanvas(const aCanvas:TpvCanvas); virtual;
        procedure SetTheme(const aTheme:TpvGUITheme); virtual;
        procedure PerformLayout; virtual;
       public
@@ -201,13 +203,14 @@ type TpvGUIObject=class;
        function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; virtual;
-       procedure Update(const aCanvas:TpvCanvas;const aDeltaTime:TpvDouble); virtual;
+       procedure Update; virtual;
        procedure Draw; virtual;
       public
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
        property PreferredSize:TpvVector2 read GetPreferredSize;
       published
        property Window:TpvGUIWindow read GetWindow;
+       property Canvas:TpvCanvas read fCanvas write SetCanvas;
        property Layout:TpvGUILayout read fLayout write fLayout;
        property Theme:TpvGUITheme read fTheme write SetTheme;
        property Cursor:TpvGUICursor read fCursor write fCursor;
@@ -246,6 +249,7 @@ type TpvGUIObject=class;
        fCountBuffers:TpvInt32;
        fUpdateBufferIndex:TpvInt32;
        fDrawBufferIndex:TpvInt32;
+       fDeltaTime:TpvDouble;
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
        procedure SetUpdateBufferIndex(const aUpdateBufferIndex:TpvInt32);
        procedure SetDrawBufferIndex(const aDrawBufferIndex:TpvInt32);
@@ -255,13 +259,14 @@ type TpvGUIObject=class;
        procedure ClearReferenceCountedObjectList;
        procedure AddReferenceCountedObjectForNextDraw(const aObject:TpvReferenceCountedObject);
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
-       procedure Update(const aCanvas:TpvCanvas;const aDeltaTime:TpvDouble); override;
+       procedure Update; override;
        procedure Draw; override;
       published
        property DrawWidgetBounds:boolean read fDrawWidgetBounds write fDrawWidgetBounds;
        property CountBuffers:TpvInt32 read fCountBuffers write fCountBuffers;
        property UpdateBufferIndex:TpvInt32 read fUpdateBufferIndex write fUpdateBufferIndex;
        property DrawBufferIndex:TpvInt32 read fDrawBufferIndex write fDrawBufferIndex;
+       property DeltaTime:TpvDouble read fDeltaTime write fDeltaTime;
      end;
 
      TpvGUIWindow=class(TpvGUIWidget)
@@ -371,6 +376,8 @@ begin
 
  inherited Create(aParent);
 
+ fCanvas:=nil;
+
  fLayout:=nil;
 
  fTheme:=nil;
@@ -424,6 +431,21 @@ end;
 procedure TpvGUIWidget.BeforeDestruction;
 begin
  inherited BeforeDestruction;
+end;
+
+procedure TpvGUIWidget.SetCanvas(const aCanvas:TpvCanvas);
+var ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+begin
+ fCanvas:=aCanvas;
+ for ChildIndex:=0 to fChildren.Count-1 do begin
+  Child:=fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   ChildWidget.SetCanvas(aCanvas);
+  end;
+ end;
 end;
 
 procedure TpvGUIWidget.SetTheme(const aTheme:TpvGUITheme);
@@ -783,25 +805,25 @@ begin
  result:=false;
 end;
 
-procedure TpvGUIWidget.Update(const aCanvas:TpvCanvas;const aDeltaTime:TpvDouble);
+procedure TpvGUIWidget.Update;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
     BaseClipRect:TpvRect;
     BaseModelMatrix:TpvMatrix4x4;
 begin
- BaseClipRect:=aCanvas.State.ClipRect;
- BaseModelMatrix:=aCanvas.ModelMatrix;
+ BaseClipRect:=fCanvas.State.ClipRect;
+ BaseModelMatrix:=fCanvas.ModelMatrix;
  try
   if fInstance.fDrawWidgetBounds then begin
-   aCanvas.Push;
+   fCanvas.Push;
    try
-    aCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-    aCanvas.DrawFilledRectangle(ChildWidget.Left+(ChildWidget.Width*0.5),ChildWidget.Top+(ChildWidget.Height*0.5),ChildWidget.Width*0.625,ChildWidget.Height*0.625);
-    aCanvas.Color:=TpvVector4.Create(0.5,0.5,0.5,1.0);
-    aCanvas.DrawFilledRectangle(ChildWidget.Left+(ChildWidget.Width*0.5),ChildWidget.Top+(ChildWidget.Height*0.5),ChildWidget.Width*0.5,ChildWidget.Height*0.5);
+    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+    fCanvas.DrawFilledRectangle(ChildWidget.Left+(ChildWidget.Width*0.5),ChildWidget.Top+(ChildWidget.Height*0.5),ChildWidget.Width*0.625,ChildWidget.Height*0.625);
+    fCanvas.Color:=TpvVector4.Create(0.5,0.5,0.5,1.0);
+    fCanvas.DrawFilledRectangle(ChildWidget.Left+(ChildWidget.Width*0.5),ChildWidget.Top+(ChildWidget.Height*0.5),ChildWidget.Width*0.5,ChildWidget.Height*0.5);
    finally
-    aCanvas.Pop;
+    fCanvas.Pop;
    end;
   end;
   for ChildIndex:=0 to fChildren.Count-1 do begin
@@ -810,15 +832,16 @@ begin
     ChildWidget:=Child as TpvGUIWidget;
     fInstance.AddReferenceCountedObjectForNextDraw(ChildWidget);
     if ChildWidget.Visible then begin
-     aCanvas.ClipRect:=BaseClipRect.GetIntersection(TpvRect.Create(ChildWidget.Left,ChildWidget.Top,ChildWidget.Left+ChildWidget.Width,ChildWidget.Top+ChildWidget.Height));
-     aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(ChildWidget.Left,ChildWidget.Top)*aCanvas.ModelMatrix;
-     ChildWidget.Update(aCanvas,aDeltaTime);
+     fCanvas.ClipRect:=BaseClipRect.GetIntersection(TpvRect.Create(ChildWidget.Left,ChildWidget.Top,ChildWidget.Left+ChildWidget.Width,ChildWidget.Top+ChildWidget.Height));
+     fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(ChildWidget.Left,ChildWidget.Top)*fCanvas.ModelMatrix;
+     ChildWidget.fCanvas:=fCanvas;
+     ChildWidget.Update;
     end;
    end;
   end;
  finally
-  aCanvas.ClipRect:=BaseClipRect;
-  aCanvas.ModelMatrix:=BaseModelMatrix;
+  fCanvas.ClipRect:=BaseClipRect;
+  fCanvas.ModelMatrix:=BaseModelMatrix;
  end;
 end;
 
@@ -832,6 +855,7 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
+    ChildWidget.fCanvas:=fCanvas;
     ChildWidget.Draw;
    end;
   end;
@@ -854,6 +878,8 @@ begin
  fUpdateBufferIndex:=-1;
 
  fDrawBufferIndex:=-1;
+
+ fDeltaTime:=0.0;
 
  SetCountBuffers(1);
 
@@ -943,10 +969,10 @@ begin
 
 end;
 
-procedure TpvGUIInstance.Update(const aCanvas:TpvCanvas;const aDeltaTime:TpvDouble);
+procedure TpvGUIInstance.Update;
 begin
  ClearReferenceCountedObjectList;
- inherited Update(aCanvas,aDeltaTime);
+ inherited Update;
 end;
 
 procedure TpvGUIInstance.Draw;
