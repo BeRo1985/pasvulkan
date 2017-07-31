@@ -331,7 +331,7 @@ type PPpvInt8=^PpvInt8;
         );
      end;
 
-     TpvObject=class(TObject);
+     TpvObject=class(TPersistent);
 
      TpvReferenceCountedObject=class;
 
@@ -339,7 +339,7 @@ type PPpvInt8=^PpvInt8;
       function GetReferenceCountedObject:TpvReferenceCountedObject;
      end;
 
-     TpvReferenceCountedObject=class(TPersistent,IpvReferenceCountedObject)
+     TpvReferenceCountedObject=class(TpvObject,IpvReferenceCountedObject)
       private
       protected
        fReferenceCounter:TpvInt32;

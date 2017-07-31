@@ -147,7 +147,7 @@ type EpvVulkanException=class(Exception);
       BlockDepth:TpvUInt32; // in texels
      end;
 
-     TpvVulkanObject=class(TInterfacedObject);
+     TpvVulkanObject=class(TpvReferenceCountedObject);
 
      PpvVulkanRawByteChar=PAnsiChar;
      TpvVulkanRawByteChar=AnsiChar;
