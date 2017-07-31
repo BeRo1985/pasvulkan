@@ -3869,123 +3869,131 @@ var Index,DescriptorIndex,StartVertexIndex,TextureMode:TpvInt32;
     TransformMatrix,FillMatrix:TpvMatrix4x4;
     ForceUpdate:boolean;
 begin
- CurrentBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
- if assigned(CurrentBuffer) and (CurrentBuffer^.fCountQueueItems>0) then begin
 
-  OldScissor.offset.x:=-$7fffffff;
-  OldScissor.offset.y:=-$7fffffff;
-  OldScissor.extent.Width:=$7fffffff;
-  OldScissor.extent.Height:=$7fffffff;
+ if assigned(fVulkanRenderPass) and
+    ((aBufferIndex>=0) and
+     (aBufferIndex<fCountBuffers)) then begin
 
-  DescriptorIndex:=-1;
+  CurrentBuffer:=@fVulkanCanvasBuffers[aBufferIndex];
+  if assigned(CurrentBuffer) and (CurrentBuffer^.fCountQueueItems>0) then begin
 
-  TransformMatrix:=TpvMatrix4x4.Null;
+   OldScissor.offset.x:=-$7fffffff;
+   OldScissor.offset.y:=-$7fffffff;
+   OldScissor.extent.Width:=$7fffffff;
+   OldScissor.extent.Height:=$7fffffff;
 
-  FillMatrix:=TpvMatrix4x4.Null;
+   DescriptorIndex:=-1;
 
-  OldQueueItemKind:=pvcqikNone;
+   TransformMatrix:=TpvMatrix4x4.Null;
 
-  ForceUpdate:=true;
+   FillMatrix:=TpvMatrix4x4.Null;
 
-  TextureMode:=-1;
+   OldQueueItemKind:=pvcqikNone;
 
-  OldVulkanVertexBuffer:=nil;
+   ForceUpdate:=true;
 
-  OldVulkanIndexBuffer:=nil;
+   TextureMode:=-1;
 
-  for Index:=0 to CurrentBuffer^.fCountQueueItems-1 do begin
+   OldVulkanVertexBuffer:=nil;
 
-   QueueItem:=@CurrentBuffer^.fQueueItems[Index];
+   OldVulkanIndexBuffer:=nil;
 
-   if OldQueueItemKind<>QueueItem^.Kind then begin
-    OldQueueItemKind:=QueueItem^.Kind;
-    ForceUpdate:=true;
-   end;
+   for Index:=0 to CurrentBuffer^.fCountQueueItems-1 do begin
 
-   case QueueItem^.Kind of
-    pvcqikNormal:begin
+    QueueItem:=@CurrentBuffer^.fQueueItems[Index];
 
-     VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
-
-     VulkanIndexBuffer:=CurrentBuffer^.fVulkanIndexBuffers[QueueItem^.BufferIndex];
-
-     if ForceUpdate then begin
-      aVulkanCommandBuffer.CmdSetViewport(0,1,fPointerToViewport);
-     end;
-
-     if ForceUpdate or
-        (TextureMode<>QueueItem^.TextureMode) then begin
-      TextureMode:=QueueItem^.TextureMode;
-      aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[QueueItem^.TextureMode].Handle);
-      OldScissor.offset.x:=-$7fffffff;
-      OldScissor.offset.y:=-$7fffffff;
-      OldScissor.extent.Width:=$7fffffff;
-      OldScissor.extent.Height:=$7fffffff;
-      DescriptorIndex:=-1;
-     end;
-
-     if ForceUpdate or
-        (DescriptorIndex<>QueueItem^.DescriptorIndex) then begin
-      DescriptorIndex:=QueueItem^.DescriptorIndex;
-      aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayouts[QueueItem^.TextureMode].Handle,0,1,@fVulkanDescriptorSets[DescriptorIndex].Handle,0,nil);
-     end;
-
-     if ForceUpdate or
-        (TransformMatrix<>QueueItem^.PushConstants.TransformMatrix) or
-        (FillMatrix<>QueueItem^.PushConstants.FillMatrix) then begin
-      TransformMatrix:=QueueItem^.PushConstants.TransformMatrix;
-      FillMatrix:=QueueItem^.PushConstants.FillMatrix;
-      aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayouts[TextureMode].Handle,
-                                            TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                            TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                            0,
-                                            SizeOf(TpvCanvasPushConstants),
-                                            @QueueItem^.PushConstants);
-     end;
-
-     if ForceUpdate or
-        (OldScissor.offset.x<>QueueItem^.Scissor.offset.x) or
-        (OldScissor.offset.y<>QueueItem^.Scissor.offset.y) or
-        (OldScissor.extent.Width<>QueueItem^.Scissor.extent.Width) or
-        (OldScissor.extent.Height<>QueueItem^.Scissor.extent.Height) then begin
-      OldScissor:=QueueItem^.Scissor;
-      aVulkanCommandBuffer.CmdSetScissor(0,1,@QueueItem^.Scissor);
-     end;
-
-     if ForceUpdate or
-        (OldVulkanVertexBuffer<>VulkanVertexBuffer) then begin
-      OldVulkanVertexBuffer:=VulkanVertexBuffer;
-      aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
-     end;
-
-     if ForceUpdate or
-        (OldVulkanIndexBuffer<>VulkanIndexBuffer) then begin
-      OldVulkanIndexBuffer:=VulkanIndexBuffer;
-      aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
-     end;
-
-     aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
-
-     ForceUpdate:=false;
-
-    end;
-    pvcqikHook:begin
-     if assigned(QueueItem^.Hook) then begin
-      QueueItem^.Hook(QueueItem^.HookData);
-     end;
+    if OldQueueItemKind<>QueueItem^.Kind then begin
+     OldQueueItemKind:=QueueItem^.Kind;
      ForceUpdate:=true;
     end;
-    else {pvcqikNone:}begin
-     ForceUpdate:=true;
+
+    case QueueItem^.Kind of
+     pvcqikNormal:begin
+
+      VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
+
+      VulkanIndexBuffer:=CurrentBuffer^.fVulkanIndexBuffers[QueueItem^.BufferIndex];
+
+      if ForceUpdate then begin
+       aVulkanCommandBuffer.CmdSetViewport(0,1,fPointerToViewport);
+      end;
+
+      if ForceUpdate or
+         (TextureMode<>QueueItem^.TextureMode) then begin
+       TextureMode:=QueueItem^.TextureMode;
+       aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[QueueItem^.TextureMode].Handle);
+       OldScissor.offset.x:=-$7fffffff;
+       OldScissor.offset.y:=-$7fffffff;
+       OldScissor.extent.Width:=$7fffffff;
+       OldScissor.extent.Height:=$7fffffff;
+       DescriptorIndex:=-1;
+      end;
+
+      if ForceUpdate or
+         (DescriptorIndex<>QueueItem^.DescriptorIndex) then begin
+       DescriptorIndex:=QueueItem^.DescriptorIndex;
+       aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayouts[QueueItem^.TextureMode].Handle,0,1,@fVulkanDescriptorSets[DescriptorIndex].Handle,0,nil);
+      end;
+
+      if ForceUpdate or
+         (TransformMatrix<>QueueItem^.PushConstants.TransformMatrix) or
+         (FillMatrix<>QueueItem^.PushConstants.FillMatrix) then begin
+       TransformMatrix:=QueueItem^.PushConstants.TransformMatrix;
+       FillMatrix:=QueueItem^.PushConstants.FillMatrix;
+       aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayouts[TextureMode].Handle,
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                             TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                             0,
+                                             SizeOf(TpvCanvasPushConstants),
+                                             @QueueItem^.PushConstants);
+      end;
+
+      if ForceUpdate or
+         (OldScissor.offset.x<>QueueItem^.Scissor.offset.x) or
+         (OldScissor.offset.y<>QueueItem^.Scissor.offset.y) or
+         (OldScissor.extent.Width<>QueueItem^.Scissor.extent.Width) or
+         (OldScissor.extent.Height<>QueueItem^.Scissor.extent.Height) then begin
+       OldScissor:=QueueItem^.Scissor;
+       aVulkanCommandBuffer.CmdSetScissor(0,1,@QueueItem^.Scissor);
+      end;
+
+      if ForceUpdate or
+         (OldVulkanVertexBuffer<>VulkanVertexBuffer) then begin
+       OldVulkanVertexBuffer:=VulkanVertexBuffer;
+       aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@Offsets);
+      end;
+
+      if ForceUpdate or
+         (OldVulkanIndexBuffer<>VulkanIndexBuffer) then begin
+       OldVulkanIndexBuffer:=VulkanIndexBuffer;
+       aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+      end;
+
+      aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
+
+      ForceUpdate:=false;
+
+     end;
+     pvcqikHook:begin
+      if assigned(QueueItem^.Hook) then begin
+       QueueItem^.Hook(QueueItem^.HookData);
+      end;
+      ForceUpdate:=true;
+     end;
+     else {pvcqikNone:}begin
+      ForceUpdate:=true;
+     end;
     end;
+
    end;
+
+   CurrentBuffer^.fCountQueueItems:=0;
+   CurrentBuffer^.fCountUsedBuffers:=0;
 
   end;
 
-  CurrentBuffer^.fCountQueueItems:=0;
-  CurrentBuffer^.fCountUsedBuffers:=0;
-
  end;
+
 end;
 
 function TpvCanvas.Push:TpvCanvas;
