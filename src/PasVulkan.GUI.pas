@@ -673,10 +673,10 @@ begin
                                  16,
                                  8,
                                  2,
+                                 TpvVector4.Create(48.0,48.0,48.0,255.0)/255.0,
                                  TpvVector4.Create(64.0,64.0,64.0,255.0)/255.0,
-                                 TpvVector4.Create(48.0,48.0,48.0,255.0)/255.0,
-                                 TpvVector4.Create(48.0,48.0,48.0,255.0)/255.0,
                                  TpvVector4.Create(32.0,32.0,32.0,255.0)/255.0,
+                                 TpvVector4.Create(48.0,48.0,48.0,255.0)/255.0,
                                  TpvVector4.Create(29.0,29.0,29.0,255.0)/255.0,
                                  TpvVector4.Create(92.0,92.0,92.0,255.0)/255.0,
                                  TpvVector4.Create(29.0,29.0,29.0,0.0)/255.0,
@@ -687,10 +687,10 @@ begin
                                  16,
                                  8,
                                  2,
+                                 TpvVector4.Create(58.0,58.0,58.0,255.0)/255.0,
                                  TpvVector4.Create(74.0,74.0,74.0,255.0)/255.0,
-                                 TpvVector4.Create(58.0,58.0,58.0,255.0)/255.0,
-                                 TpvVector4.Create(58.0,58.0,58.0,255.0)/255.0,
                                  TpvVector4.Create(37.0,37.0,37.0,255.0)/255.0,
+                                 TpvVector4.Create(58.0,58.0,58.0,255.0)/255.0,
                                  TpvVector4.Create(29.0,29.0,29.0,255.0)/255.0,
                                  TpvVector4.Create(92.0,92.0,92.0,255.0)/255.0,
                                  TpvVector4.Create(29.0,29.0,29.0,0.0)/255.0,
@@ -1479,18 +1479,6 @@ end;
 function TpvGUIWindow.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=inherited PointerUp(aPosition,aPressure,aPointerID,aButton);
- if (not result) and ((aPosition.y-fPosition.y)<Theme.fWindowHeaderHeight) then begin
-  if fMouseAction=pvgwmaMove then begin
-   fMouseAction:=pvgwmaNone;
-  end;
- end;
- if (not result) and
-    ((aPosition.x-fPosition.x)>(fSize.x-(Theme.fWindowGripWidth+Theme.fWindowGripPaddingRight))) and
-    ((aPosition.y-fPosition.y)>(fSize.y-(Theme.fWindowGripHeight+Theme.fWindowGripPaddingBottom))) then begin
-  if fMouseAction=pvgwmaSize then begin
-   fMouseAction:=pvgwmaNone;
-  end;
- end;
  fMouseAction:=pvgwmaNone;
  result:=true;
 end;
@@ -1527,10 +1515,12 @@ begin
                                Theme.fSpriteFocusedWindowHeaderNinePatch,
                                TpvVector2.Null,
                                TpvVector2.Create(fSize.x,Theme.fSpriteFocusedWindowHeader.Height));
-   fCanvas.DrawNinePatchSprite(Theme.fSpriteFocusedWindowGrip,
-                               Theme.fSpriteFocusedWindowGripNinePatch,
-                               TpvVector2.Create(fSize.x-(Theme.fSpriteFocusedWindowGrip.Width+Theme.fWindowGripPaddingRight),fSize.y-(Theme.fSpriteFocusedWindowGrip.Height+Theme.fWindowGripPaddingBottom)),
-                               TpvVector2.Create(Theme.fSpriteFocusedWindowGrip.Width,Theme.fSpriteFocusedWindowGrip.Height));
+   if Resizable then begin
+    fCanvas.DrawNinePatchSprite(Theme.fSpriteFocusedWindowGrip,
+                                Theme.fSpriteFocusedWindowGripNinePatch,
+                                TpvVector2.Create(fSize.x-(Theme.fSpriteFocusedWindowGrip.Width+Theme.fWindowGripPaddingRight),fSize.y-(Theme.fSpriteFocusedWindowGrip.Height+Theme.fWindowGripPaddingBottom)),
+                                TpvVector2.Create(Theme.fSpriteFocusedWindowGrip.Width,Theme.fSpriteFocusedWindowGrip.Height));
+   end;
   end else begin
    fCanvas.DrawNinePatchSprite(Theme.fSpriteUnfocusedWindowFill,
                                Theme.fSpriteUnfocusedWindowFillNinePatch,
@@ -1540,10 +1530,12 @@ begin
                                Theme.fSpriteUnfocusedWindowHeaderNinePatch,
                                TpvVector2.Null,
                                TpvVector2.Create(fSize.x,Theme.fSpriteUnfocusedWindowHeader.Height));
-   fCanvas.DrawNinePatchSprite(Theme.fSpriteUnfocusedWindowGrip,
-                               Theme.fSpriteUnfocusedWindowGripNinePatch,
-                               TpvVector2.Create(fSize.x-(Theme.fSpriteUnfocusedWindowGrip.Width+Theme.fWindowGripPaddingRight),fSize.y-(Theme.fSpriteUnfocusedWindowGrip.Height+Theme.fWindowGripPaddingBottom)),
-                               TpvVector2.Create(Theme.fSpriteUnfocusedWindowGrip.Width,Theme.fSpriteUnfocusedWindowGrip.Height));
+   if Resizable then begin
+    fCanvas.DrawNinePatchSprite(Theme.fSpriteUnfocusedWindowGrip,
+                                Theme.fSpriteUnfocusedWindowGripNinePatch,
+                                TpvVector2.Create(fSize.x-(Theme.fSpriteUnfocusedWindowGrip.Width+Theme.fWindowGripPaddingRight),fSize.y-(Theme.fSpriteUnfocusedWindowGrip.Height+Theme.fWindowGripPaddingBottom)),
+                                TpvVector2.Create(Theme.fSpriteUnfocusedWindowGrip.Width,Theme.fSpriteUnfocusedWindowGrip.Height));
+   end;
   end;
  finally
   fCanvas.Pop;
