@@ -331,6 +331,8 @@ type PPpvInt8=^PpvInt8;
         );
      end;
 
+     TpvObject=class(TObject);
+
      TpvReferenceCountedObject=class;
 
      IpvReferenceCountedObject=interface(IUnknown)['{BFA22544-BB9E-4C6B-A667-BA217B3867AD}']
