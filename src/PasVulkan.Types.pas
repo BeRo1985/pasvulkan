@@ -61,7 +61,7 @@ unit PasVulkan.Types;
 
 interface
 
-uses SysUtils,Classes,Math,PUCU;
+uses SysUtils,Classes,Math,PasMP,PUCU;
 
 type PPpvInt8=^PpvInt8;
      PpvInt8=^TpvInt8;
@@ -329,6 +329,31 @@ type PPpvInt8=^PpvInt8;
         5:(
          QuadTpvUInt16s:array[0..1] of TpvUInt64;
         );
+     end;
+
+     TpvReferenceCountedObject=class;
+
+     IpvReferenceCountedObject=interface(IUnknown)['{BFA22544-BB9E-4C6B-A667-BA217B3867AD}']
+      function GetReferenceCountedObject:TpvReferenceCountedObject;
+     end;
+
+     TpvReferenceCountedObject=class(TPersistent,IpvReferenceCountedObject)
+      private
+      protected
+       fReferenceCounter:TpvInt32;
+       function QueryInterface({$ifdef FPC_HAS_CONSTREF}constref{$else}const{$endif}pGUID:TGUID;out pObject):TpvInt32; virtual; {$ifdef Windows}stdcall{$else}cdecl{$endif};
+       function _AddRef:TpvInt32; virtual; {$ifdef Windows}stdcall{$else}cdecl{$endif};
+       function _Release:TpvInt32; virtual; {$ifdef Windows}stdcall{$else}cdecl{$endif};
+      public
+       constructor Create;
+       destructor Destroy; override;
+       procedure AfterConstruction; override;
+       procedure BeforeDestruction; override;
+       class function NewInstance:TObject; override;
+       function GetReferenceCountedObject:TpvReferenceCountedObject; inline;
+       function IncRef:TpvInt32; inline;
+       function DecRef:TpvInt32; inline;
+       property ReferenceCounter:TpvInt32 read fReferenceCounter;
      end;
 
 var FloatToHalfFloatBaseTable:array[0..511] of TpvUInt16;
@@ -951,6 +976,75 @@ begin
          (a.D4[5]<>b.D4[5]) or
          (a.D4[6]<>b.D4[6]) or
          (a.D4[7]<>b.D4[7]);
+end;
+
+constructor TpvReferenceCountedObject.Create;
+begin
+ inherited Create;
+end;
+
+destructor TpvReferenceCountedObject.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvReferenceCountedObject.AfterConstruction;
+begin
+ TPasMPInterlocked.Decrement(fReferenceCounter);
+ inherited AfterConstruction;
+end;
+
+procedure TpvReferenceCountedObject.BeforeDestruction;
+begin
+ inherited BeforeDestruction;
+ if fReferenceCounter<>0 then begin
+  raise Exception.Create('fReferenceCounter is larger than zero');
+ end;
+end;
+
+class function TpvReferenceCountedObject.NewInstance:TObject;
+begin
+ result:=inherited NewInstance;
+ if assigned(result) then begin
+  TpvReferenceCountedObject(result).fReferenceCounter:=1;
+ end;
+end;
+
+function TpvReferenceCountedObject.QueryInterface({$ifdef FPC_HAS_CONSTREF}constref{$else}const{$endif}pGUID:TGUID;out pObject):TpvInt32;
+begin
+ if GetInterface(pGUID,pObject) then begin
+  result:=S_OK;
+ end else begin
+  result:=TpvInt32(E_NOINTERFACE);
+ end;
+end;
+
+function TpvReferenceCountedObject._AddRef:TpvInt32;
+begin
+ result:=TPasMPInterlocked.Increment(fReferenceCounter);
+end;
+
+function TpvReferenceCountedObject._Release:TpvInt32;
+begin
+ result:=TPasMPInterlocked.Decrement(fReferenceCounter);
+ if result=0 then begin
+  Free;
+ end;
+end;
+
+function TpvReferenceCountedObject.GetReferenceCountedObject:TpvReferenceCountedObject;
+begin
+ result:=self;
+end;
+
+function TpvReferenceCountedObject.IncRef:TpvInt32;
+begin
+ result:=_AddRef;
+end;
+
+function TpvReferenceCountedObject.DecRef:TpvInt32;
+begin
+ result:=_Release;
 end;
 
 initialization
