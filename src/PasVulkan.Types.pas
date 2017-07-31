@@ -353,6 +353,7 @@ type PPpvInt8=^PpvInt8;
        function GetReferenceCountedObject:TpvReferenceCountedObject; inline;
        function IncRef:TpvInt32; inline;
        function DecRef:TpvInt32; inline;
+       class procedure DecRefOrFreeAndNil(var aObject); static; inline;
        property ReferenceCounter:TpvInt32 read fReferenceCounter;
      end;
 
@@ -998,7 +999,7 @@ procedure TpvReferenceCountedObject.BeforeDestruction;
 begin
  inherited BeforeDestruction;
  if fReferenceCounter<>0 then begin
-  raise Exception.Create('fReferenceCounter is larger than zero');
+  raise Exception.Create('Reference counter is larger than zero');
  end;
 end;
 
@@ -1045,6 +1046,20 @@ end;
 function TpvReferenceCountedObject.DecRef:TpvInt32;
 begin
  result:=_Release;
+end;
+
+class procedure TpvReferenceCountedObject.DecRefOrFreeAndNil(var aObject);
+var TheObject:TObject;
+begin
+ TheObject:=TObject(aObject);
+ if assigned(TheObject) then begin
+  TObject(aObject):=nil;
+  if TheObject is TpvReferenceCountedObject then begin
+   (TheObject as TpvReferenceCountedObject).DecRef;
+  end else begin
+   TheObject.Free;
+  end;
+ end;
 end;
 
 initialization

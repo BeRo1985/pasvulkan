@@ -92,7 +92,7 @@ type TpvGUIObject=class;
       public
      end;
 
-     TpvGUIObject=class(TPersistent)
+     TpvGUIObject=class(TpvReferenceCountedObject)
       private
        fInstance:TpvGUIInstance;
        fParent:TpvGUIObject;
@@ -105,9 +105,6 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
-       procedure IncRef;
-       procedure DecRef;
-       class procedure DefRecAndNil(var aObject); static;
       published
        property Instance:TpvGUIInstance read fInstance;
        property Parent:TpvGUIObject read fParent write fParent;
@@ -314,32 +311,6 @@ begin
   fParent.fChildren.Extract(self);
  end;
  inherited BeforeDestruction;
-end;
-
-procedure TpvGUIObject.IncRef;
-begin
- TPasMPInterlocked.Increment(fReferenceCounter);
-end;
-
-procedure TpvGUIObject.DecRef;
-begin
- if TPasMPInterlocked.Increment(fReferenceCounter)=0 then begin
-  Free;
- end;
-end;
-
-class procedure TpvGUIObject.DefRecAndNil(var aObject);
-var TheObject:TObject;
-begin
- if assigned(TObject(aObject)) then begin
-  TheObject:=TObject(aObject);
-  TObject(aObject):=nil;
-  if TheObject is TpvGUIObject then begin
-   (TheObject as TpvGUIObject).DecRef;
-  end else begin
-   TheObject.Free;
-  end;
- end;
 end;
 
 function TpvGUILayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
