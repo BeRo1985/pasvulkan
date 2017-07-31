@@ -3557,6 +3557,10 @@ begin
 
  fCurrentFillBuffer:=nil;
 
+ while fStateStack.Count>0 do begin
+  Pop;
+ end;
+
 end;
 
 procedure TpvCanvas.Flush;

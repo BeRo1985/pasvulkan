@@ -334,7 +334,7 @@ end;
 
 procedure TpvGUIObject.BeforeDestruction;
 begin
- if assigned(fParent) then begin
+ if assigned(fParent) and assigned(fParent.fChildren) then begin
   fParent.fChildren.Extract(self);
  end;
  inherited BeforeDestruction;
@@ -819,9 +819,9 @@ begin
    fCanvas.Push;
    try
     fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-    fCanvas.DrawFilledRectangle(Left+(Width*0.5),Top+(Height*0.5),Width*0.625,Height*0.625);
+    fCanvas.DrawFilledRectangle(Width*0.5,Height*0.5,Width*0.625,Height*0.625);
     fCanvas.Color:=TpvVector4.Create(0.125,0.125,0.125,1.0);
-    fCanvas.DrawFilledRectangle(Left+(Width*0.5),Top+(Height*0.5),Width*0.5,Height*0.5);
+    fCanvas.DrawFilledRectangle(Width*0.5,Height*0.5,Width*0.5,Height*0.5);
    finally
     fCanvas.Pop;
    end;
@@ -832,7 +832,10 @@ begin
     ChildWidget:=Child as TpvGUIWidget;
     fInstance.AddReferenceCountedObjectForNextDraw(ChildWidget);
     if ChildWidget.Visible then begin
-     fCanvas.ClipRect:=BaseClipRect.GetIntersection(TpvRect.Create(ChildWidget.Left,ChildWidget.Top,ChildWidget.Left+ChildWidget.Width,ChildWidget.Top+ChildWidget.Height));
+     fCanvas.ClipRect:=BaseClipRect.GetIntersection(TpvRect.Create(ChildWidget.Left,
+                                                                   ChildWidget.Top,
+                                                                   ChildWidget.Left+ChildWidget.Width,
+                                                                   ChildWidget.Top+ChildWidget.Height));
      fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(ChildWidget.Left,ChildWidget.Top)*fCanvas.ModelMatrix;
      ChildWidget.fCanvas:=fCanvas;
      ChildWidget.Update;

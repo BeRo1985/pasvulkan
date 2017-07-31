@@ -42,6 +42,7 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
        fVulkanCanvas:TpvCanvas;
        fGUIInstance:TpvGUIInstance;
+       fGUIWindow:TpvGUIWindow;
        fReady:boolean;
        fSelectedIndex:TpvInt32;
        fStartY:TpvFloat;
@@ -148,6 +149,13 @@ begin
 
  fGUIInstance:=TpvGUIInstance.Create;
  fGUIInstance.Canvas:=fVulkanCanvas;
+
+ fGUIWindow:=TpvGUIWindow.Create(fGUIInstance);
+ fGUIWindow.Left:=100;
+ fGUIWindow.Top:=200;
+ fGUIWindow.Width:=200;
+ fGUIWindow.Height:=200;
+ fGUIWindow.Visible:=true;
 
 end;
 
