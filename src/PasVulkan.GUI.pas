@@ -138,11 +138,17 @@ type TpvGUIObject=class;
        fSpriteUnfocusedWindowGripNinePatch:TpvSpriteNinePatch;
        fSpriteFocusedWindowGrip:TpvSprite;
        fSpriteFocusedWindowGripNinePatch:TpvSpriteNinePatch;
+       fSpriteUnfocusedWindowShadow:TpvSprite;
+       fSpriteUnfocusedWindowShadowNinePatch:TpvSpriteNinePatch;
+       fSpriteFocusedWindowShadow:TpvSprite;
+       fSpriteFocusedWindowShadowNinePatch:TpvSpriteNinePatch;
        fWindowHeaderHeight:TpvFloat;
        fWindowGripPaddingRight:TpvFloat;
        fWindowGripPaddingBottom:TpvFloat;
        fWindowGripWidth:TpvFloat;
        fWindowGripHeight:TpvFloat;
+       fWindowShadowWidth:TpvFloat;
+       fWindowShadowHeight:TpvFloat;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -154,6 +160,8 @@ type TpvGUIObject=class;
        property SpriteFocusedWindowHeaderNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowHeaderNinePatch write fSpriteFocusedWindowHeaderNinePatch;
        property SpriteUnfocusedWindowGripNinePatch:TpvSpriteNinePatch read fSpriteUnfocusedWindowGripNinePatch write fSpriteUnfocusedWindowGripNinePatch;
        property SpriteFocusedWindowGripNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowGripNinePatch write fSpriteFocusedWindowGripNinePatch;
+       property SpriteUnfocusedWindowShadowNinePatch:TpvSpriteNinePatch read fSpriteUnfocusedWindowShadowNinePatch write fSpriteUnfocusedWindowShadowNinePatch;
+       property SpriteFocusedWindowShadowNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowShadowNinePatch write fSpriteFocusedWindowShadowNinePatch;
       published
        property FontSize:TpvFloat read fFontSize write fFontSize;
        property SpriteAtlas:TpvSpriteAtlas read fSpriteAtlas;
@@ -163,11 +171,15 @@ type TpvGUIObject=class;
        property SpriteFocusedWindowHeader:TpvSprite read fSpriteFocusedWindowHeader write fSpriteFocusedWindowHeader;
        property SpriteUnfocusedWindowGrip:TpvSprite read fSpriteUnfocusedWindowGrip write fSpriteUnfocusedWindowGrip;
        property SpriteFocusedWindowGrip:TpvSprite read fSpriteFocusedWindowGrip write fSpriteFocusedWindowGrip;
+       property SpriteUnfocusedWindowShadow:TpvSprite read fSpriteUnfocusedWindowShadow write fSpriteUnfocusedWindowShadow;
+       property SpriteFocusedWindowShadow:TpvSprite read fSpriteFocusedWindowShadow write fSpriteFocusedWindowShadow;
        property WindowHeaderHeight:TpvFloat read fWindowHeaderHeight write fWindowHeaderHeight;
        property WindowGripPaddingRight:TpvFloat read fWindowGripPaddingRight write fWindowGripPaddingRight;
        property WindowGripPaddingBottom:TpvFloat read fWindowGripPaddingBottom write fWindowGripPaddingBottom;
        property WindowGripWidth:TpvFloat read fWindowGripWidth write fWindowGripWidth;
        property WindowGripHeight:TpvFloat read fWindowGripHeight write fWindowGripHeight;
+       property WindowShadowWidth:TpvFloat read fWindowShadowWidth write fWindowShadowWidth;
+       property WindowShadowHeight:TpvFloat read fWindowShadowHeight write fWindowShadowHeight;
      end;
 
      TpvGUICursor=class(TpvGUIObject)
@@ -629,6 +641,52 @@ procedure TpvGUITheme.Setup;
    ImageData:=nil;
   end;
  end;
+ procedure CreateWindowShadowNinePatchSprite(var aSprite:TpvSprite;
+                                             var aSpriteNinePatch:TpvSpriteNinePatch;
+                                             const aWidth:TpvInt32;
+                                             const aHeight:TpvInt32;
+                                             const aRadius:TpvInt32;
+                                             const aFillStartColor:TpvVector4;
+                                             const aFillStopColor:TpvVector4);
+ var x,y,Index,r:TpvInt32;
+     ImageData:array of TpvSpriteTextureTexel;
+     FillColor,BorderColor,TransparentColor,Color:TpvSpriteTextureTexel;
+     c:TpvVector4;
+     f:TpvFloat;
+ begin
+  ImageData:=nil;
+  try
+   SetLength(ImageData,aWidth*aHeight);
+   Index:=0;
+   for y:=0 to aHeight-1 do begin
+    for x:=0 to aWidth-1 do begin
+     f:=sdRoundBox(TpvVector2.Create((x+0.5)-(aWidth*0.5),(y+0.5)-(aHeight*0.5)),
+                   TpvVector2.Create((aWidth*0.5)-(aRadius*2.0),(aHeight*0.5)-(aRadius*2.0)),
+                   aRadius);
+     c:=Mix(aFillStartColor,aFillStopColor,LinearStep(0.0,aRadius,f));
+     Color.r:=Min(Max(round(c.r*255.0),0),255);
+     Color.g:=Min(Max(round(c.g*255.0),0),255);
+     Color.b:=Min(Max(round(c.b*255.0),0),255);
+     Color.a:=Min(Max(round(c.a*255.0),0),255);
+     ImageData[Index]:=Color;
+     inc(Index);
+    end;
+   end;
+   aSprite:=fSpriteAtlas.LoadRawSprite('',@ImageData[0],aWidth,aHeight,false);
+   r:=aRadius+1;
+   aSpriteNinePatch.Regions[0,0]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,0,0,r,r);
+   aSpriteNinePatch.Regions[0,1]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,r,0,aWidth-(r*2),r);
+   aSpriteNinePatch.Regions[0,2]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aWidth-r,0,r,r);
+   aSpriteNinePatch.Regions[1,0]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,0,r,r,aHeight-(r*2));
+   aSpriteNinePatch.Regions[1,1]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,r,r,aWidth-(r*2),aHeight-(r*2));
+   aSpriteNinePatch.Regions[1,2]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aWidth-r,r,r,aHeight-(r*2));
+   aSpriteNinePatch.Regions[2,0]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,0,aHeight-r,r,r);
+   aSpriteNinePatch.Regions[2,1]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,r,aHeight-r,aWidth-(r*2),r);
+   aSpriteNinePatch.Regions[2,2]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aWidth-r,aHeight-r,r,r);
+  finally
+   ImageData:=nil;
+  end;
+ end;
 begin
 
  fFontSize:=-12;
@@ -640,6 +698,9 @@ begin
 
  fWindowGripWidth:=16;
  fWindowGripHeight:=8;
+
+ fWindowShadowWidth:=16;
+ fWindowShadowHeight:=16;
 
  fSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice);
 
@@ -712,6 +773,22 @@ begin
                                  TpvVector4.Create(92.0,92.0,92.0,255.0)/255.0,
                                  TpvVector4.Create(29.0,29.0,29.0,0.0)/255.0,
                                  TpvVector4.Create(92.0,92.0,92.0,0.0)/255.0);
+
+ CreateWindowShadowNinePatchSprite(fSpriteUnfocusedWindowShadow,
+                                   fSpriteUnfocusedWindowShadowNinePatch,
+                                   64,
+                                   64,
+                                   16,
+                                   TpvVector4.Create(0.0,0.0,0.0,16.0)/255.0,
+                                   TpvVector4.Create(0.0,0.0,0.0,0.0)/255.0);
+
+ CreateWindowShadowNinePatchSprite(fSpriteFocusedWindowShadow,
+                                   fSpriteFocusedWindowShadowNinePatch,
+                                   64,
+                                   64,
+                                   16,
+                                   TpvVector4.Create(0.0,0.0,0.0,64.0)/255.0,
+                                   TpvVector4.Create(0.0,0.0,0.0,0.0)/255.0);
 
  fSpriteAtlas.MipMaps:=false;
 
@@ -1671,10 +1748,24 @@ begin
 end;
 
 procedure TpvGUIWindow.Update;
+var LastClipRect:TpvRect;
 begin
  fCanvas.Push;
  try
   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+  begin
+   LastClipRect:=fCanvas.ClipRect;
+   fCanvas.ClipRect:=TpvRect.CreateAbsolute(LastClipRect.Left-Theme.fWindowShadowWidth,
+                                            LastClipRect.Top-Theme.fWindowShadowHeight,
+                                            LastClipRect.Right+Theme.fWindowShadowWidth,
+                                            LastClipRect.Bottom+Theme.fWindowShadowHeight);
+   fCanvas.DrawNinePatchSprite(Theme.fSpriteFocusedWindowShadow,
+                               Theme.fSpriteFocusedWindowShadowNinePatch,
+                               TpvVector2.Create(-Theme.fWindowShadowWidth,-Theme.fWindowShadowHeight),
+                               fSize+TpvVector2.Create(Theme.fWindowShadowWidth*2,Theme.fWindowShadowHeight*2));
+   fCanvas.ClipRect:=LastClipRect;
+  end;
+
   if fFocused then begin
    fCanvas.DrawNinePatchSprite(Theme.fSpriteFocusedWindowFill,
                                Theme.fSpriteFocusedWindowFillNinePatch,
