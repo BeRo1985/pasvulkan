@@ -355,6 +355,7 @@ type PPpvInt8=^PpvInt8;
        function GetReferenceCountedObject:TpvReferenceCountedObject; inline;
        function IncRef:TpvInt32; inline;
        function DecRef:TpvInt32; inline;
+       function DecRefWithoutFree:TpvInt32; inline;
        class procedure DecRefOrFreeAndNil(var aObject); static; inline;
        property ReferenceCounter:TpvInt32 read fReferenceCounter;
      end;
@@ -1048,6 +1049,11 @@ end;
 function TpvReferenceCountedObject.DecRef:TpvInt32;
 begin
  result:=_Release;
+end;
+
+function TpvReferenceCountedObject.DecRefWithoutFree:TpvInt32;
+begin
+ result:=TPasMPInterlocked.Decrement(fReferenceCounter);
 end;
 
 class procedure TpvReferenceCountedObject.DecRefOrFreeAndNil(var aObject);
