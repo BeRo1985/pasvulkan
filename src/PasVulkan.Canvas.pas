@@ -1126,7 +1126,7 @@ end;
 constructor TpvCanvasState.Create;
 begin
  inherited Create;
- fClipRect:=TpvRect.Create(-MaxSingle,-MaxSingle,MaxSingle,MaxSingle);
+ fClipRect:=TpvRect.CreateAbsolute(-MaxSingle,-MaxSingle,MaxSingle,MaxSingle);
  fScissor:=TVkRect2D.Create(TVkOffset2D.Create(0,0),TVkExtent2D.Create($7fffffff,$7fffffff));
  fProjectionMatrix:=TpvMatrix4x4.Identity;
  fPath:=TpvCanvasPath.Create;
@@ -3540,7 +3540,7 @@ begin
  fState.fScissor.extent.Width:=trunc(ceil(fViewport.Width));
  fState.fScissor.extent.Height:=trunc(ceil(fViewport.Height));
 
- fState.fClipRect:=TpvRect.Create(0.0,0.0,fWidth,fHeight);
+ fState.fClipRect:=TpvRect.CreateAbsolute(0.0,0.0,fWidth,fHeight);
 
  fState.fProjectionMatrix:=TpvMatrix4x4.CreateOrtho(0.0,fWidth,0.0,fHeight,-100.0,100.0);
 
@@ -4279,8 +4279,8 @@ end;
 function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2):TpvCanvas;
 begin
  DrawSprite(aSprite,
-            TpvRect.Create(0.0,0.0,aSprite.Width,aSprite.Height),
-            TpvRect.Create(aPosition.x,aPosition.y,aPosition.x+aSprite.Width,aPosition.y+aSprite.Height));
+            TpvRect.CreateAbsolute(0.0,0.0,aSprite.Width,aSprite.Height),
+            TpvRect.CreateAbsolute(aPosition.x,aPosition.y,aPosition.x+aSprite.Width,aPosition.y+aSprite.Height));
  result:=self;
 end;
 
@@ -4344,8 +4344,8 @@ begin
       while x<DestRect.Right do begin
        StepX:=Max(1e-4,Min(DestRect.Right-x,NinePatchRegion^.Width));
        DrawSprite(aSprite,
-                  TpvRect.Create(SrcRect.Left,SrcRect.Top,SrcRect.Left+StepX,SrcRect.Top+StepY),
-                  TpvRect.Create(x,y,x+StepX,y+StepY));
+                  TpvRect.CreateAbsolute(SrcRect.Left,SrcRect.Top,SrcRect.Left+StepX,SrcRect.Top+StepY),
+                  TpvRect.CreateAbsolute(x,y,x+StepX,y+StepY));
        x:=x+StepX;
       end;
       y:=y+StepY;

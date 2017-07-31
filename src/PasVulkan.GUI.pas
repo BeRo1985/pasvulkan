@@ -861,10 +861,10 @@ begin
     ChildWidget:=Child as TpvGUIWidget;
     fInstance.AddReferenceCountedObjectForNextDraw(ChildWidget);
     if ChildWidget.Visible then begin
-     fCanvas.ClipRect:=BaseClipRect.GetIntersection(TpvRect.Create(ChildWidget.Left,
-                                                                   ChildWidget.Top,
-                                                                   ChildWidget.Left+ChildWidget.Width,
-                                                                   ChildWidget.Top+ChildWidget.Height));
+     fCanvas.ClipRect:=BaseClipRect.GetIntersection(TpvRect.CreateAbsolute(ChildWidget.Left,
+                                                                           ChildWidget.Top,
+                                                                           ChildWidget.Left+ChildWidget.Width,
+                                                                           ChildWidget.Top+ChildWidget.Height));
      fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(ChildWidget.Left,ChildWidget.Top)*fCanvas.ModelMatrix;
      ChildWidget.fCanvas:=fCanvas;
      ChildWidget.Update;

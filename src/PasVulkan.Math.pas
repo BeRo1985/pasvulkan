@@ -1062,11 +1062,23 @@ type PpvScalar=^TpvScalar;
 
      PpvRect=^TpvRect;
      TpvRect=packed record
+      private
+       function GetWidth:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetWidth(const aWidth:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetHeight:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetHeight(const aHeight:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetSize:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetSize(const aSize:TpvVector2); {$ifdef CAN_INLINE}inline;{$endif}
       public
-       constructor Create(const aLeft,aTop,aRight,aBottom:TpvFloat); overload;
-       constructor Create(const aLeftTop,aRightBottom:TpvVector2); overload;
+       constructor CreateAbsolute(const aLeft,aTop,aRight,aBottom:TpvFloat); overload;
+       constructor CreateAbsolute(const aLeftTop,aRightBottom:TpvVector2); overload;
+       constructor CreateRelative(const aLeft,aTop,aWidth,aHeight:TpvFloat); overload;
+       constructor CreateRelative(const aLeftTop,aSize:TpvVector2); overload;
        function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function GetIntersection(const WithAABB:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
+       property Width:TpvFloat read GetWidth write SetWidth;
+       property Height:TpvFloat read GetHeight write SetHeight;
+       property Size:TpvVector2 read GetSize write SetSize;
       public
        case TpvInt32 of
         0:(
@@ -1088,6 +1100,9 @@ type PpvScalar=^TpvScalar;
         3:(
          Min:TpvVector2;
          Max:TpvVector2;
+        );
+        4:(
+         Offset:TpvVector2;
         );
      end;
 
@@ -13280,7 +13295,7 @@ begin
  result.z:=Radius*cos(Theta);
 end;
 
-constructor TpvRect.Create(const aLeft,aTop,aRight,aBottom:TpvFloat);
+constructor TpvRect.CreateAbsolute(const aLeft,aTop,aRight,aBottom:TpvFloat);
 begin
  Left:=aLeft;
  Top:=aTop;
@@ -13288,10 +13303,24 @@ begin
  Bottom:=aBottom;
 end;
 
-constructor TpvRect.Create(const aLeftTop,aRightBottom:TpvVector2);
+constructor TpvRect.CreateAbsolute(const aLeftTop,aRightBottom:TpvVector2);
 begin
  LeftTop:=aLeftTop;
  RightBottom:=aRightBottom;
+end;
+
+constructor TpvRect.CreateRelative(const aLeft,aTop,aWidth,aHeight:TpvFloat);
+begin
+ Left:=aLeft;
+ Top:=aTop;
+ Right:=aLeft+aWidth;
+ Bottom:=aTop+aHeight;
+end;
+
+constructor TpvRect.CreateRelative(const aLeftTop,aSize:TpvVector2);
+begin
+ LeftTop:=aLeftTop;
+ RightBottom:=aLeftTop+aSize;
 end;
 
 function TpvRect.Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean;
@@ -13306,6 +13335,36 @@ begin
  result.Min.y:=Math.Max(Min.y,WithAABB.Min.y);
  result.Max.x:=Math.Min(Max.x,WithAABB.Max.x);
  result.Max.y:=Math.Min(Max.y,WithAABB.Max.y);
+end;
+
+function TpvRect.GetWidth:TpvFloat;
+begin
+ result:=Right-Left;
+end;
+
+procedure TpvRect.SetWidth(const aWidth:TpvFloat);
+begin
+ Right:=Left+aWidth;
+end;
+
+function TpvRect.GetHeight:TpvFloat;
+begin
+ result:=Bottom-Top;
+end;
+
+procedure TpvRect.SetHeight(const aHeight:TpvFloat);
+begin
+ Bottom:=Top+aHeight;
+end;
+
+function TpvRect.GetSize:TpvVector2;
+begin
+ result:=Max-Min;
+end;
+
+procedure TpvRect.SetSize(const aSize:TpvVector2);
+begin
+ Max:=Min+aSize;
 end;
 
 function Cross(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}

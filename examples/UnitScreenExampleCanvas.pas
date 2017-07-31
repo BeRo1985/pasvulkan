@@ -586,7 +586,7 @@ begin
 
  fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 
- SrcRect:=TpvRect.Create(0,0,fVulkanSpriteTest.Width,fVulkanSpriteTest.Height);
+ SrcRect:=TpvRect.CreateAbsolute(0,0,fVulkanSpriteTest.Width,fVulkanSpriteTest.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteTest.Width)*0.5)+(cos(fTime*pi*2.0*0.1)*128.0);
  DstRect.Top:=((fVulkanCanvas.Height-fVulkanSpriteTest.Height)*0.5)+(sin(fTime*pi*3.0*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteTest.Width;
@@ -595,7 +595,7 @@ begin
 
  fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
 
- SrcRect:=TpvRect.Create(0,0,fVulkanSpriteAppIcon.Width,fVulkanSpriteAppIcon.Height);
+ SrcRect:=TpvRect.CreateAbsolute(0,0,fVulkanSpriteAppIcon.Width,fVulkanSpriteAppIcon.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteAppIcon.Width)*0.5)+(sin(fTime*pi*2.0*0.1)*128.0);
  DstRect.Top:=((fVulkanCanvas.Height-fVulkanSpriteAppIcon.Height)*0.5)+(cos(fTime*pi*3.0*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteAppIcon.Width;
@@ -606,7 +606,7 @@ begin
 
  fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,0.5);
 
- SrcRect:=TpvRect.Create(0,0,fVulkanSpriteDancer0.Width,fVulkanSpriteDancer0.Height);
+ SrcRect:=TpvRect.CreateAbsolute(0,0,fVulkanSpriteDancer0.Width,fVulkanSpriteDancer0.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteDancer0.Width)*0.5)+(cos(fTime*pi*1.7*0.1)*128.0);
  DstRect.Top:=((fVulkanCanvas.Height-fVulkanSpriteDancer0.Height)*0.5)+(sin(fTime*pi*2.3*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteDancer0.Width;
@@ -617,7 +617,7 @@ begin
 
  fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 
- SrcRect:=TpvRect.Create(0,0,fVulkanSpriteSmiley0.Width,fVulkanSpriteSmiley0.Height);
+ SrcRect:=TpvRect.CreateAbsolute(0,0,fVulkanSpriteSmiley0.Width,fVulkanSpriteSmiley0.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteSmiley0.Width)*0.5)+(sin(fTime*pi*1.7*0.1)*128.0);
  DstRect.Top:=((fVulkanCanvas.Height-fVulkanSpriteSmiley0.Height)*0.5)+(cos(fTime*pi*2.3*0.1)*128.0);
  DstRect.Right:=DstRect.Left+fVulkanSpriteSmiley0.Width;
