@@ -229,17 +229,39 @@ type TpvGUIObject=class;
        property FontSize:TpvFloat read GetFontSize write fFontSize;
      end;
 
+     TpvGUIInstanceBufferReferenceCountedObjects=array of TpvReferenceCountedObject;
+
+     PpvGUIInstanceBuffer=^TpvGUIInstanceBuffer;
+     TpvGUIInstanceBuffer=record
+      ReferenceCountedObjects:TpvGUIInstanceBufferReferenceCountedObjects;
+      CountReferenceCountedObjects:TpvInt32;
+     end;
+
+     TpvGUIInstanceBuffers=array of TpvGUIInstanceBuffer;
+
      TpvGUIInstance=class(TpvGUIWidget)
       private
        fCanvas:TpvCanvas;
+       fBuffers:TpvGUIInstanceBuffers;
+       fCountBuffers:TpvInt32;
+       fUpdateBufferIndex:TpvInt32;
+       fDrawBufferIndex:TpvInt32;
+       procedure SetCountBuffers(const aCountBuffers:TpvInt32);
+       procedure SetUpdateBufferIndex(const aUpdateBufferIndex:TpvInt32);
+       procedure SetDrawBufferIndex(const aDrawBufferIndex:TpvInt32);
       public
        constructor Create(const aCanvas:TpvCanvas); reintroduce;
        destructor Destroy; override;
+       procedure ClearReferenceCountedObjectList;
+       procedure AddReferenceCountedObjectForNextDraw(const aObject:TpvReferenceCountedObject);
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
        procedure Update(const aDeltaTime:TpvDouble); override;
        procedure Draw; override;
       published
        property Canvas:TpvCanvas read fCanvas;
+       property CountBuffers:TpvInt32 read fCountBuffers write fCountBuffers;
+       property UpdateBufferIndex:TpvInt32 read fUpdateBufferIndex write fUpdateBufferIndex;
+       property DrawBufferIndex:TpvInt32 read fDrawBufferIndex write fDrawBufferIndex;
      end;
 
      TpvGUIWindow=class(TpvGUIWidget)
@@ -780,13 +802,95 @@ begin
 
  fCanvas:=aCanvas;
 
+ fBuffers:=nil;
+
+ fCountBuffers:=-1;
+
+ fUpdateBufferIndex:=-1;
+
+ fDrawBufferIndex:=-1;
+
+ SetCountBuffers(1);
+
 end;
 
 destructor TpvGUIInstance.Destroy;
 begin
 
+ SetCountBuffers(0);
+
+ fBuffers:=nil;
+
  inherited Destroy;
 
+end;
+
+procedure TpvGUIInstance.SetCountBuffers(const aCountBuffers:TpvInt32);
+var Index,SubIndex:TpvInt32;
+    Buffer:PpvGUIInstanceBuffer;
+begin
+
+ if fCountBuffers<>aCountBuffers then begin
+
+  for Index:=aCountBuffers to fCountBuffers-1 do begin
+   Buffer:=@fBuffers[Index];
+   for SubIndex:=0 to Buffer^.CountReferenceCountedObjects-1 do begin
+    Buffer^.ReferenceCountedObjects[SubIndex].DecRef;
+   end;
+   Buffer^.CountReferenceCountedObjects:=0;
+  end;
+
+  if length(fBuffers)<aCountBuffers then begin
+   SetLength(fBuffers,aCountBuffers*2);
+  end;
+
+  for Index:=fCountBuffers to aCountBuffers-1 do begin
+   fBuffers[Index].CountReferenceCountedObjects:=0;
+  end;
+
+  fCountBuffers:=aCountBuffers;
+
+ end;
+
+end;
+
+procedure TpvGUIInstance.SetUpdateBufferIndex(const aUpdateBufferIndex:TpvInt32);
+begin
+ fUpdateBufferIndex:=aUpdateBufferIndex;
+end;
+
+procedure TpvGUIInstance.SetDrawBufferIndex(const aDrawBufferIndex:TpvInt32);
+begin
+ fDrawBufferIndex:=aDrawBufferIndex;
+end;
+
+procedure TpvGUIInstance.ClearReferenceCountedObjectList;
+var Index:TpvInt32;
+    Buffer:PpvGUIInstanceBuffer;
+begin
+ if (fUpdateBufferIndex>=0) and (fUpdateBufferIndex<fCountBuffers)  then begin
+  Buffer:=@fBuffers[fUpdateBufferIndex];
+  for Index:=0 to Buffer^.CountReferenceCountedObjects-1 do begin
+   Buffer^.ReferenceCountedObjects[Index].DecRef;
+  end;
+  Buffer^.CountReferenceCountedObjects:=0;
+ end;
+end;
+
+procedure TpvGUIInstance.AddReferenceCountedObjectForNextDraw(const aObject:TpvReferenceCountedObject);
+var Index:TpvInt32;
+    Buffer:PpvGUIInstanceBuffer;
+begin
+ if assigned(aObject) and ((fUpdateBufferIndex>=0) and (fUpdateBufferIndex<fCountBuffers)) then begin
+  Buffer:=@fBuffers[fUpdateBufferIndex];
+  Index:=Buffer^.CountReferenceCountedObjects;
+  inc(Buffer^.CountReferenceCountedObjects);
+  if length(Buffer^.ReferenceCountedObjects)<Buffer^.CountReferenceCountedObjects then begin
+   SetLength(Buffer^.ReferenceCountedObjects,Buffer^.CountReferenceCountedObjects*2);
+  end;
+  Buffer^.ReferenceCountedObjects[Index]:=aObject;
+  aObject.IncRef;
+ end;
 end;
 
 procedure TpvGUIInstance.UpdateFocus(const aWidget:TpvGUIWidget);
