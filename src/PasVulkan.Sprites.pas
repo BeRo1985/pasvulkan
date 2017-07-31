@@ -201,13 +201,37 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
        TrimmedWidth:TpvInt32;
        TrimmedHeight:TpvInt32;
        Rotated:boolean;
-       constructor Create;
+       constructor Create; reintroduce;
        destructor Destroy; override;
      end;
 
      TpvSprites=array of TpvSprite;
 
-     TpvSpriteAtlasStringHashMap=class(TpvStringHashMap<TpvSprite>);
+     TpvSpriteAtlasSpriteStringHashMap=class(TpvStringHashMap<TpvSprite>);
+
+     PpvSpriteNinePatchRegionMode=^TpvSpriteNinePatchRegionMode;
+     TpvSpriteNinePatchRegionMode=
+      (
+       pvsnprmStretch,
+       pvsnprmTile
+      );
+
+     PpvSpriteNinePatchRegion=^TpvSpriteNinePatchRegion;
+     TpvSpriteNinePatchRegion=record
+      Mode:TpvSpriteNinePatchRegionMode;
+      Left:TpvInt32;
+      Top:TpvInt32;
+      Width:TpvInt32;
+      Height:TpvInt32;
+     end;
+
+     PpvSpriteNinePatchRegions=^TpvSpriteNinePatchRegions;
+     TpvSpriteNinePatchRegions=array[0..2,0..2] of TpvSpriteNinePatchRegion;
+
+     PpvSpriteNinePatch=^TpvSpriteNinePatch;
+     TpvSpriteNinePatch=record
+      Regions:TpvSpriteNinePatchRegions;
+     end;
 
      TpvSpriteAtlas=class
       private
@@ -215,7 +239,7 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
        fArrayTextures:TpvSpriteAtlasArrayTextures;
        fCountArrayTextures:TpvInt32;
        fList:TList;
-       fHashMap:TpvSpriteAtlasStringHashMap;
+       fHashMap:TpvSpriteAtlasSpriteStringHashMap;
        fIsUploaded:boolean;
        fMipMaps:boolean;
        fWidth:TpvInt32;
@@ -637,7 +661,7 @@ begin
  fArrayTextures:=nil;
  fCountArrayTextures:=0;
  fList:=TList.Create;
- fHashMap:=TpvSpriteAtlasStringHashMap.Create(nil);
+ fHashMap:=TpvSpriteAtlasSpriteStringHashMap.Create(nil);
  fIsUploaded:=false;
  fMipMaps:=true;
  fWidth:=Min(VULKAN_SPRITEATLASTEXTURE_WIDTH,fDevice.PhysicalDevice.Properties.limits.maxImageDimension2D);

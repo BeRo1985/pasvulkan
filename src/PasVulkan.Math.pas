@@ -1067,6 +1067,7 @@ type PpvScalar=^TpvScalar;
        constructor Create(const aLeftTop,aRightBottom:TpvVector2); overload;
        function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function GetIntersection(const WithAABB:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
+      public
        case TpvInt32 of
         0:(
          Left:TpvFloat;

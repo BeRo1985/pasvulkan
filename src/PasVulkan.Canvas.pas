@@ -650,6 +650,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawSprite(const aSprite:TpvSprite):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
+       function DrawNinePatchSprite(const aSprite:TpvSprite;const aNinePatch:TpvSpriteNinePatch;const aPosition,aSize:TpvVector2):TpvCanvas; overload;
+      public
        function TextWidth(const aText:TpvUTF8String):TpvFloat;
        function TextHeight(const aText:TpvUTF8String):TpvFloat;
        function TextSize(const aText:TpvUTF8String):TpvVector2;
@@ -4286,6 +4288,72 @@ function TpvCanvas.DrawSprite(const aSprite:TpvSprite):TpvCanvas;
 begin
  DrawSprite(aSprite,
             TpvVector2.Create(0.0,0.0));
+ result:=self;
+end;
+
+function TpvCanvas.DrawNinePatchSprite(const aSprite:TpvSprite;const aNinePatch:TpvSpriteNinePatch;const aPosition,aSize:TpvVector2):TpvCanvas;
+var RowIndex,ColumnIndex:TpvInt32;
+    NinePatchRegion:PpvSpriteNinePatchRegion;
+    SrcRect,DestRect:TpvRect;
+    x,y,StepX,StepY:TpvDouble;
+begin
+ for RowIndex:=0 to 2 do begin
+  for ColumnIndex:=0 to 2 do begin
+   NinePatchRegion:=@aNinePatch.Regions[RowIndex,ColumnIndex];
+   SrcRect.Left:=NinePatchRegion^.Left;
+   SrcRect.Top:=NinePatchRegion^.Top;
+   SrcRect.Right:=SrcRect.Left+NinePatchRegion^.Width;
+   SrcRect.Bottom:=SrcRect.Top+NinePatchRegion^.Height;
+   case ColumnIndex of
+    0:begin
+     DestRect.Left:=aPosition.x;
+     DestRect.Right:=aPosition.x+aNinePatch.Regions[RowIndex,0].Width;
+    end;
+    1:begin
+     DestRect.Left:=aPosition.x+aNinePatch.Regions[RowIndex,0].Width;
+     DestRect.Right:=(aPosition.x+aSize.x)-aNinePatch.Regions[RowIndex,2].Width;
+    end;
+    else begin
+     DestRect.Left:=(aPosition.x+aSize.x)-aNinePatch.Regions[RowIndex,2].Width;
+     DestRect.Right:=aPosition.x+aSize.x;
+    end;
+   end;
+   case RowIndex of
+    0:begin
+     DestRect.Top:=aPosition.y;
+     DestRect.Bottom:=aPosition.y+aNinePatch.Regions[0,ColumnIndex].Height;
+    end;
+    1:begin
+     DestRect.Top:=aPosition.y+aNinePatch.Regions[0,ColumnIndex].Height;
+     DestRect.Bottom:=(aPosition.y+aSize.y)-aNinePatch.Regions[0,ColumnIndex].Height;
+    end;
+    else begin
+     DestRect.Top:=(aPosition.y+aSize.y)-aNinePatch.Regions[0,ColumnIndex].Height;
+     DestRect.Bottom:=aPosition.y+aSize.y;
+    end;
+   end;
+   case NinePatchRegion^.Mode of
+    pvsnprmStretch:begin
+     DrawSprite(aSprite,SrcRect,DestRect);
+    end;
+    else {pvsnprmTile:}begin
+     y:=DestRect.Top;
+     while y<DestRect.Bottom do begin
+      StepY:=Max(1e-4,Min(DestRect.Bottom-y,NinePatchRegion^.Height));
+      x:=DestRect.Left;
+      while x<DestRect.Right do begin
+       StepX:=Max(1e-4,Min(DestRect.Right-x,NinePatchRegion^.Width));
+       DrawSprite(aSprite,
+                  TpvRect.Create(SrcRect.Left,SrcRect.Top,SrcRect.Left+StepX,SrcRect.Top+StepY),
+                  TpvRect.Create(x,y,x+StepX,y+StepY));
+       x:=x+StepX;
+      end;
+      y:=y+StepY;
+     end;
+    end;
+   end;
+  end;
+ end;
  result:=self;
 end;
 

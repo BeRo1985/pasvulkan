@@ -101,7 +101,7 @@ type TpvGUIObject=class;
        fTag:TpvPtrInt;
        fReferenceCounter:TpvInt32;
       public
-       constructor Create(const aParent:TpvGUIObject=nil); reintroduce; virtual;
+       constructor Create(const aParent:TpvGUIObject); reintroduce; virtual;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -124,8 +124,11 @@ type TpvGUIObject=class;
      TpvGUITheme=class(TpvGUIObject)
       private
        fFontSize:TpvFloat;
+       fSpriteAtlas:TpvSpriteAtlas;
       protected
       public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
      end;
 
      TpvGUICursor=class(TpvGUIObject)
@@ -184,7 +187,7 @@ type TpvGUIObject=class;
        procedure SetTheme(const aTheme:TpvGUITheme); virtual;
        procedure PerformLayout; virtual;
       public
-       constructor Create(const aParent:TpvGUIObject=nil); override;
+       constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -270,9 +273,15 @@ type TpvGUIObject=class;
      end;
 
      TpvGUIWindow=class(TpvGUIWidget)
+      private
+       fTitle:TpvRawByteString;
       public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
        procedure Update; override;
        procedure Draw; override;
+      published
+       property Title:TpvRawByteString read fTitle write fTitle;
      end;
 
 implementation
@@ -295,7 +304,7 @@ begin
  end;
 end;
 
-constructor TpvGUIObject.Create(const aParent:TpvGUIObject=nil);
+constructor TpvGUIObject.Create(const aParent:TpvGUIObject);
 begin
 
  inherited Create;
@@ -352,6 +361,16 @@ begin
 
 end;
 
+constructor TpvGUITheme.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+end;
+
+destructor TpvGUITheme.Destroy;
+begin
+ inherited Destroy;
+end;
+
 constructor TpvGUIWidgetEnumerator.Create(const aWidget:TpvGUIWidget);
 begin
  inherited Create;
@@ -373,7 +392,7 @@ begin
  result:=fWidget.fChildren[fIndex] as TpvGUIWidget;
 end;
 
-constructor TpvGUIWidget.Create(const aParent:TpvGUIObject=nil);
+constructor TpvGUIWidget.Create(const aParent:TpvGUIObject);
 begin
 
  inherited Create(aParent);
@@ -993,12 +1012,23 @@ begin
  inherited Draw;
 end;
 
+constructor TpvGUIWindow.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+ fTitle:='';
+end;
+
+destructor TpvGUIWindow.Destroy;
+begin
+ inherited Destroy;
+end;
+
 procedure TpvGUIWindow.Update;
 begin
  fCanvas.Push;
  try
   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-  fCanvas.DrawFilledRectangle(Width*0.5,Height*0.5,Width*0.25,Height*0.25);
+//  fCanvas.DrawSprite();
  finally
   fCanvas.Pop;
  end;
@@ -1009,6 +1039,5 @@ procedure TpvGUIWindow.Draw;
 begin
  inherited Draw;
 end;
-
 
 end.
