@@ -86,19 +86,6 @@ type TpvGUIObject=class;
 
      EpvGUIWidget=class(Exception);
 
-     PpvGUIDelayedDeleteQueueItem=^TpvGUIDelayedDeleteQueueItem;
-     TpvGUIDelayedDeleteQueueItem=record
-      private
-       fObject:TObject;
-       fCounter:TpvInt32;
-      public
-       constructor Create(const aObject:TObject;const aCounter:TpvInt32);
-       property TheObject:TObject read fObject write fObject;
-       property Counter:TpvInt32 read fCounter write fCounter;
-     end;
-
-     TpvGUIDelayedDeleteQueue=class(TPasMPUnboundedQueue<TpvGUIDelayedDeleteQueueItem>);
-
      TpvGUIObjectList=class(TObjectList<TpvGUIObject>)
       protected
        procedure Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification); override;
@@ -112,18 +99,22 @@ type TpvGUIObject=class;
        fChildren:TpvGUIObjectList;
        fID:TpvUTF8String;
        fTag:TpvPtrInt;
+       fReferenceCounter:TpvInt32;
       public
        constructor Create(const aParent:TpvGUIObject=nil); reintroduce; virtual;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
-       procedure Release;
+       procedure IncRef;
+       procedure DecRef;
+       class procedure DefRecAndNil(var aObject); static;
       published
        property Instance:TpvGUIInstance read fInstance;
        property Parent:TpvGUIObject read fParent write fParent;
        property Children:TpvGUIObjectList read fChildren;
        property ID:TpvUTF8String read fID write fID;
        property Tag:TpvPtrInt read fTag write fTag;
+       property ReferenceCounter:TpvInt32 read fReferenceCounter write fReferenceCounter;
      end;
 
      TpvGUILayout=class(TpvGUIObject)
@@ -243,13 +234,10 @@ type TpvGUIObject=class;
 
      TpvGUIInstance=class(TpvGUIWidget)
       private
-       fDelayedDeleteQueue:TpvGUIDelayedDeleteQueue;
        fCanvas:TpvCanvas;
       public
        constructor Create(const aCanvas:TpvCanvas); reintroduce;
        destructor Destroy; override;
-       procedure ReleaseAndNil(var aObject);
-       procedure ProcessDelayedDeleteQueue;
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
        procedure Update(const aDeltaTime:TpvDouble); override;
        procedure Draw; override;
@@ -263,16 +251,19 @@ type TpvGUIObject=class;
 
 implementation
 
-constructor TpvGUIDelayedDeleteQueueItem.Create(const aObject:TObject;const aCounter:TpvInt32);
-begin
- fObject:=aObject;
- fCounter:=aCounter;
-end;
-
 procedure TpvGUIObjectList.Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification);
 begin
- if (Action=cnRemoved) and assigned(Value) and assigned(Value.fInstance) then begin
-  Value.fInstance.fDelayedDeleteQueue.Enqueue(TpvGUIDelayedDeleteQueueItem.Create(Value,0));
+ if assigned(Value) then begin
+  case Action of
+   cnAdded:begin
+    Value.IncRef;
+   end;
+   cnRemoved:begin
+    Value.DecRef;
+   end;
+   cnExtracted:begin
+   end;
+  end;
  end else begin
   inherited Notify(Value,Action);
  end;
@@ -299,6 +290,8 @@ begin
 
  fTag:=0;
 
+ fReferenceCounter:=0;
+
 end;
 
 destructor TpvGUIObject.Destroy;
@@ -323,13 +316,28 @@ begin
  inherited BeforeDestruction;
 end;
 
-procedure TpvGUIObject.Release;
+procedure TpvGUIObject.IncRef;
 begin
- if assigned(self) then begin
-  if assigned(fInstance) and (fInstance<>self) then begin
-   fInstance.fDelayedDeleteQueue.Enqueue(TpvGUIDelayedDeleteQueueItem.Create(self,0));
+ TPasMPInterlocked.Increment(fReferenceCounter);
+end;
+
+procedure TpvGUIObject.DecRef;
+begin
+ if TPasMPInterlocked.Increment(fReferenceCounter)=0 then begin
+  Free;
+ end;
+end;
+
+class procedure TpvGUIObject.DefRecAndNil(var aObject);
+var TheObject:TObject;
+begin
+ if assigned(TObject(aObject)) then begin
+  TheObject:=TObject(aObject);
+  TObject(aObject):=nil;
+  if TheObject is TpvGUIObject then begin
+   (TheObject as TpvGUIObject).DecRef;
   end else begin
-   Free;
+   TheObject.Free;
   end;
  end;
 end;
@@ -799,49 +807,15 @@ begin
 
  fInstance:=self;
 
- fDelayedDeleteQueue:=TpvGUIDelayedDeleteQueue.Create;
-
  fCanvas:=aCanvas;
 
 end;
 
 destructor TpvGUIInstance.Destroy;
-var DelayedDeleteQueueItem:TpvGUIDelayedDeleteQueueItem;
 begin
- while fDelayedDeleteQueue.Dequeue(DelayedDeleteQueueItem) do begin
-  DelayedDeleteQueueItem.fObject.Free;
- end;
- FreeAndNil(fDelayedDeleteQueue);
+
  inherited Destroy;
-end;
 
-procedure TpvGUIInstance.ReleaseAndNil(var aObject);
-var TheObject:TObject;
-begin
- if assigned(TObject(aObject)) then begin
-  TheObject:=TObject(aObject);
-  TObject(aObject):=nil;
-  if assigned(fInstance) and (fInstance<>TObject(aObject)) then begin
-   fInstance.fDelayedDeleteQueue.Enqueue(TpvGUIDelayedDeleteQueueItem.Create(TheObject,0));
-  end else begin
-   TheObject.Free;
-  end;
- end;
-end;
-
-procedure TpvGUIInstance.ProcessDelayedDeleteQueue;
-var CounterThreshold:TpvInt32;
-    DelayedDeleteQueueItem:TpvGUIDelayedDeleteQueueItem;
-begin
- CounterThreshold:=-((pvApplication.VulkanSwapChain.CountImages shl 1) or 1);
- while fDelayedDeleteQueue.Dequeue(DelayedDeleteQueueItem) do begin
-  dec(DelayedDeleteQueueItem.fCounter);
-  if DelayedDeleteQueueItem.fCounter<CounterThreshold then begin
-   DelayedDeleteQueueItem.fObject.Free;
-  end else begin
-   fDelayedDeleteQueue.Enqueue(DelayedDeleteQueueItem);
-  end;
- end;
 end;
 
 procedure TpvGUIInstance.UpdateFocus(const aWidget:TpvGUIWidget);
@@ -851,7 +825,6 @@ end;
 
 procedure TpvGUIInstance.Update(const aDeltaTime:TpvDouble);
 begin
- ProcessDelayedDeleteQueue;
  inherited Update(aDeltaTime);
 end;
 
