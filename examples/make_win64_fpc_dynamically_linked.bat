@@ -1,4 +1,6 @@
 @echo off 
+SET PATH=c:\FPC\3.1.1\bin\i386-win32\
+SET nodosfilewarning=1
 del *.a
 del *.ppu
 del *.o
