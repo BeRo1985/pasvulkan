@@ -284,7 +284,7 @@ begin
 
  fParent:=aParent;
 
- fChildren:=TpvGUIObjectList.Create(true);
+ fChildren:=TpvGUIObjectList.Create(false);
 
  fID:='';
 
