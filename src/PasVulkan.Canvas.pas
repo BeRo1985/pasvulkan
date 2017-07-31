@@ -4325,10 +4325,10 @@ begin
     end;
     1:begin
      DestRect.Top:=aPosition.y+aNinePatch.Regions[0,ColumnIndex].Height;
-     DestRect.Bottom:=(aPosition.y+aSize.y)-aNinePatch.Regions[0,ColumnIndex].Height;
+     DestRect.Bottom:=(aPosition.y+aSize.y)-aNinePatch.Regions[2,ColumnIndex].Height;
     end;
     else begin
-     DestRect.Top:=(aPosition.y+aSize.y)-aNinePatch.Regions[0,ColumnIndex].Height;
+     DestRect.Top:=(aPosition.y+aSize.y)-aNinePatch.Regions[2,ColumnIndex].Height;
      DestRect.Bottom:=aPosition.y+aSize.y;
     end;
    end;

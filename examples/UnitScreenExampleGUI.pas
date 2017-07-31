@@ -41,6 +41,7 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
        fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
        fVulkanCanvas:TpvCanvas;
+       fScreenToCanvasScale:TpvVector2;
        fGUIInstance:TpvGUIInstance;
        fGUIWindow:TpvGUIWindow;
        fReady:boolean;
@@ -260,6 +261,7 @@ begin
  fVulkanCanvas.Viewport.y:=0;
  fVulkanCanvas.Viewport.width:=pvApplication.Width;
  fVulkanCanvas.Viewport.height:=pvApplication.Height;
+ fScreenToCanvasScale:=TpvVector2.Create(fVulkanCanvas.Width,fVulkanCanvas.Height)/TpvVector2.Create(pvApplication.Width,pvApplication.Height);
 
  for SwapChainImageIndex:=0 to length(fVulkanRenderCommandBuffers)-1 do begin
   FreeAndNil(fVulkanRenderCommandBuffers[SwapChainImageIndex]);
@@ -282,7 +284,7 @@ end;
 function TScreenExampleGUI.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
- if fReady then begin
+ if fReady and not fGUIInstance.KeyDown(aKeyCode,aKeyModifier) then begin
   case aKeyCode of
    KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
     pvApplication.NextScreen:=TScreenMainMenu.Create;
@@ -329,11 +331,15 @@ end;
 function TScreenExampleGUI.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
+ if fReady and not fGUIInstance.KeyUp(aKeyCode,aKeyModifier) then begin
+ end;
 end;
 
 function TScreenExampleGUI.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
 begin
  result:=false;
+ if fReady and not fGUIInstance.KeyTyped(aKeyCode,aKeyModifier) then begin
+ end;
 end;
 
 function TScreenExampleGUI.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
@@ -341,7 +347,7 @@ var Index:TpvInt32;
     cy:TpvFloat;
 begin
  result:=false;
- if fReady then begin
+ if fReady and not fGUIInstance.PointerDown(aPosition*fScreenToCanvasScale,aPressure,aPointerID,aButton) then begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
@@ -359,6 +365,9 @@ end;
 function TScreenExampleGUI.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
 begin
  result:=false;
+ if fReady and not fGUIInstance.PointerUp(aPosition*fScreenToCanvasScale,aPressure,aPointerID,aButton) then begin
+
+ end;
 end;
 
 function TScreenExampleGUI.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
@@ -366,7 +375,7 @@ var Index:TpvInt32;
     cy:TpvFloat;
 begin
  result:=false;
- if fReady then begin
+ if fReady and not fGUIInstance.PointerMotion(aPosition*fScreenToCanvasScale,aRelativePosition*fScreenToCanvasScale,aPressure,aPointerID,aButton) then begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
