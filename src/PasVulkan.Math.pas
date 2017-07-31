@@ -1066,6 +1066,7 @@ type PpvScalar=^TpvScalar;
        constructor Create(const aLeft,aTop,aRight,aBottom:TpvFloat); overload;
        constructor Create(const aLeftTop,aRightBottom:TpvVector2); overload;
        function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function GetIntersection(const WithAABB:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
        case TpvInt32 of
         0:(
          Left:TpvFloat;
@@ -13296,6 +13297,14 @@ function TpvRect.Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):
 begin
  result:=(((Max.x+Threshold)>=(aWithRect.Min.x-Threshold)) and ((Min.x-Threshold)<=(aWithRect.Max.x+Threshold))) and
          (((Max.y+Threshold)>=(aWithRect.Min.y-Threshold)) and ((Min.y-Threshold)<=(aWithRect.Max.y+Threshold)));
+end;
+
+function TpvRect.GetIntersection(const WithAABB:TpvRect):TpvRect;
+begin
+ result.Min.x:=Math.Max(Min.x,WithAABB.Min.x);
+ result.Min.y:=Math.Max(Min.y,WithAABB.Min.y);
+ result.Max.x:=Math.Min(Max.x,WithAABB.Max.x);
+ result.Max.y:=Math.Min(Max.y,WithAABB.Max.y);
 end;
 
 function Cross(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}

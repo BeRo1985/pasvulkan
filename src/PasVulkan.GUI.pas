@@ -787,16 +787,27 @@ procedure TpvGUIWidget.Update(const aDeltaTime:TpvDouble);
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
+    BaseClipRect:TpvRect;
+    BaseModelMatrix:TpvMatrix4x4;
 begin
- for ChildIndex:=0 to fChildren.Count-1 do begin
-  Child:=fChildren.Items[ChildIndex];
-  if Child is TpvGUIWidget then begin
-   ChildWidget:=Child as TpvGUIWidget;
-   if ChildWidget.Visible then begin
-    fInstance.AddReferenceCountedObjectForNextDraw(ChildWidget);
-    ChildWidget.Update(aDeltaTime);
+ BaseClipRect:=fInstance.fCanvas.State.ClipRect;
+ BaseModelMatrix:=fInstance.fCanvas.ModelMatrix;
+ try
+  for ChildIndex:=0 to fChildren.Count-1 do begin
+   Child:=fChildren.Items[ChildIndex];
+   if Child is TpvGUIWidget then begin
+    ChildWidget:=Child as TpvGUIWidget;
+    if ChildWidget.Visible then begin
+     fInstance.AddReferenceCountedObjectForNextDraw(ChildWidget);
+     fInstance.fCanvas.ClipRect:=BaseClipRect.GetIntersection(TpvRect.Create(ChildWidget.Left,ChildWidget.Top,ChildWidget.Left+ChildWidget.Width,ChildWidget.Top+ChildWidget.Height));
+     fInstance.fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(ChildWidget.Left,ChildWidget.Top)*fInstance.fCanvas.ModelMatrix;
+     ChildWidget.Update(aDeltaTime);
+    end;
    end;
   end;
+ finally
+  fInstance.fCanvas.ClipRect:=BaseClipRect;
+  fInstance.fCanvas.ModelMatrix:=BaseModelMatrix;
  end;
 end;
 
