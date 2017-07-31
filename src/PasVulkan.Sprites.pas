@@ -218,11 +218,13 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
 
      PpvSpriteNinePatchRegion=^TpvSpriteNinePatchRegion;
      TpvSpriteNinePatchRegion=record
-      Mode:TpvSpriteNinePatchRegionMode;
-      Left:TpvInt32;
-      Top:TpvInt32;
-      Width:TpvInt32;
-      Height:TpvInt32;
+      public
+       Mode:TpvSpriteNinePatchRegionMode;
+       Left:TpvInt32;
+       Top:TpvInt32;
+       Width:TpvInt32;
+       Height:TpvInt32;
+       constructor Create(const aMode:TpvSpriteNinePatchRegionMode;const aLeft,aTop,aWidth,aHeight:TpvInt32);
      end;
 
      PpvSpriteNinePatchRegions=^TpvSpriteNinePatchRegions;
@@ -653,6 +655,15 @@ destructor TpvSprite.Destroy;
 begin
  Name:='';
  inherited Destroy;
+end;
+
+constructor TpvSpriteNinePatchRegion.Create(const aMode:TpvSpriteNinePatchRegionMode;const aLeft,aTop,aWidth,aHeight:TpvInt32);
+begin
+ Mode:=aMode;
+ Left:=aLeft;
+ Top:=aTop;
+ Width:=aWidth;
+ Height:=aHeight;
 end;
 
 constructor TpvSpriteAtlas.Create(const aDevice:TpvVulkanDevice);

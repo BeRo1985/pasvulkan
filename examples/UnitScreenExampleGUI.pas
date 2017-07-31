@@ -147,7 +147,7 @@ begin
                                  pvApplication.VulkanTransferCommandBufferFences[0,0],
                                  pvApplication.VulkanPipelineCache);
 
- fGUIInstance:=TpvGUIInstance.Create;
+ fGUIInstance:=TpvGUIInstance.Create(pvApplication.VulkanDevice);
  fGUIInstance.Canvas:=fVulkanCanvas;
 
  fGUIWindow:=TpvGUIWindow.Create(fGUIInstance);

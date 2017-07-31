@@ -123,12 +123,33 @@ type TpvGUIObject=class;
 
      TpvGUITheme=class(TpvGUIObject)
       private
+      protected
        fFontSize:TpvFloat;
        fSpriteAtlas:TpvSpriteAtlas;
-      protected
+       fSpriteUnfocusedWindowFill:TpvSprite;
+       fSpriteUnfocusedWindowFillNinePatch:TpvSpriteNinePatch;
+       fSpriteFocusedWindowFill:TpvSprite;
+       fSpriteFocusedWindowFillNinePatch:TpvSpriteNinePatch;
+       fSpriteUnfocusedWindowCaption:TpvSprite;
+       fSpriteUnfocusedWindowCaptionNinePatch:TpvSpriteNinePatch;
+       fSpriteFocusedWindowCaption:TpvSprite;
+       fSpriteFocusedWindowCaptionNinePatch:TpvSpriteNinePatch;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
+       procedure Setup; virtual;
+      public
+       property SpriteUnfocusedWindowFillNinePatch:TpvSpriteNinePatch read fSpriteUnfocusedWindowFillNinePatch write fSpriteUnfocusedWindowFillNinePatch;
+       property SpriteFocusedWindowFillNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowFillNinePatch write fSpriteFocusedWindowFillNinePatch;
+       property SpriteUnfocusedWindowCaptionNinePatch:TpvSpriteNinePatch read fSpriteUnfocusedWindowCaptionNinePatch write fSpriteUnfocusedWindowCaptionNinePatch;
+       property SpriteFocusedWindowCaptionNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowCaptionNinePatch write fSpriteFocusedWindowCaptionNinePatch;
+      published
+       property FontSize:TpvFloat read fFontSize write fFontSize;
+       property SpriteAtlas:TpvSpriteAtlas read fSpriteAtlas;
+       property SpriteUnfocusedWindowFill:TpvSprite read fSpriteUnfocusedWindowFill write fSpriteUnfocusedWindowFill;
+       property SpriteFocusedWindowFill:TpvSprite read fSpriteFocusedWindowFill write fSpriteFocusedWindowFill;
+       property SpriteUnfocusedWindowCaption:TpvSprite read fSpriteUnfocusedWindowCaption write fSpriteUnfocusedWindowCaption;
+       property SpriteFocusedWindowCaption:TpvSprite read fSpriteFocusedWindowCaption write fSpriteFocusedWindowCaption;
      end;
 
      TpvGUICursor=class(TpvGUIObject)
@@ -184,6 +205,7 @@ type TpvGUIObject=class;
        function GetWindow:TpvGUIWindow;
       protected
        procedure SetCanvas(const aCanvas:TpvCanvas); virtual;
+       function GetTheme:TpvGUITheme; virtual;
        procedure SetTheme(const aTheme:TpvGUITheme); virtual;
        procedure PerformLayout; virtual;
       public
@@ -215,7 +237,7 @@ type TpvGUIObject=class;
        property Window:TpvGUIWindow read GetWindow;
        property Canvas:TpvCanvas read fCanvas write SetCanvas;
        property Layout:TpvGUILayout read fLayout write fLayout;
-       property Theme:TpvGUITheme read fTheme write SetTheme;
+       property Theme:TpvGUITheme read GetTheme write SetTheme;
        property Cursor:TpvGUICursor read fCursor write fCursor;
        property Position:TpvVector2Property read fPositionProperty;
        property Size:TpvVector2Property read fSizeProperty;
@@ -247,6 +269,8 @@ type TpvGUIObject=class;
 
      TpvGUIInstance=class(TpvGUIWidget)
       private
+       fVulkanDevice:TpvVulkanDevice;
+       fStandardTheme:TpvGUITheme;
        fDrawWidgetBounds:boolean;
        fBuffers:TpvGUIInstanceBuffers;
        fCountBuffers:TpvInt32;
@@ -257,7 +281,7 @@ type TpvGUIObject=class;
        procedure SetUpdateBufferIndex(const aUpdateBufferIndex:TpvInt32);
        procedure SetDrawBufferIndex(const aDrawBufferIndex:TpvInt32);
       public
-       constructor Create; reintroduce;
+       constructor Create(const aVulkanDevice:TpvVulkanDevice); reintroduce;
        destructor Destroy; override;
        procedure ClearReferenceCountedObjectList;
        procedure AddReferenceCountedObjectForNextDraw(const aObject:TpvReferenceCountedObject);
@@ -265,6 +289,8 @@ type TpvGUIObject=class;
        procedure Update; override;
        procedure Draw; override;
       published
+       property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
+       property StandardTheme:TpvGUITheme read fStandardTheme;
        property DrawWidgetBounds:boolean read fDrawWidgetBounds write fDrawWidgetBounds;
        property CountBuffers:TpvInt32 read fCountBuffers write fCountBuffers;
        property UpdateBufferIndex:TpvInt32 read fUpdateBufferIndex write fUpdateBufferIndex;
@@ -364,12 +390,95 @@ end;
 constructor TpvGUITheme.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
+ fSpriteAtlas:=nil;
+ Setup;
 end;
 
 destructor TpvGUITheme.Destroy;
 begin
+ FreeAndNil(fSpriteAtlas);
  inherited Destroy;
 end;
+
+procedure TpvGUITheme.Setup;
+ procedure CreateWindowFillNinePatchSprite(var aSprite:TpvSprite;
+                                           var aSpriteNinePatch:TpvSpriteNinePatch;
+                                           const aWidth:TpvInt32;
+                                           const aHeight:TpvInt32;
+                                           const aRadius:TpvInt32;
+                                           const aFillColor:TpvVector4;
+                                           const aBorderColor:TpvVector4);
+ var x,y,Index:TpvInt32;
+     ImageData:array of TpvSpriteTextureTexel;
+     FillColor,BorderColor,TransparentColor,Color:TpvSpriteTextureTexel;
+ begin
+  ImageData:=nil;
+  try
+   SetLength(ImageData,aWidth*aHeight);
+   FillColor.r:=Min(Max(round(aFillColor.r*255.0),0),255);
+   FillColor.g:=Min(Max(round(aFillColor.g*255.0),0),255);
+   FillColor.b:=Min(Max(round(aFillColor.b*255.0),0),255);
+   FillColor.a:=Min(Max(round(aFillColor.a*255.0),0),255);
+   BorderColor.r:=Min(Max(round(aBorderColor.r*255.0),0),255);
+   BorderColor.g:=Min(Max(round(aBorderColor.g*255.0),0),255);
+   BorderColor.b:=Min(Max(round(aBorderColor.b*255.0),0),255);
+   BorderColor.a:=Min(Max(round(aBorderColor.a*255.0),0),255);
+   TransparentColor.r:=Min(Max(round(aBorderColor.r*255.0),0),255);
+   TransparentColor.g:=Min(Max(round(aBorderColor.g*255.0),0),255);
+   TransparentColor.b:=Min(Max(round(aBorderColor.b*255.0),0),255);
+   TransparentColor.a:=0;
+   Index:=0;
+   for y:=0 to aHeight-1 do begin
+    for x:=0 to aWidth-1 do begin
+     Color:=FillColor;
+     ImageData[Index]:=Color;
+     inc(Index);
+    end;
+   end;
+   aSprite:=fSpriteAtlas.LoadRawSprite('',@ImageData[0],aWidth,aHeight,true);
+   aSpriteNinePatch.Regions[0,0]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,0,0,aRadius,aRadius);
+   aSpriteNinePatch.Regions[0,1]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aRadius,0,aWidth-(aRadius*2),aRadius);
+   aSpriteNinePatch.Regions[0,2]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aWidth-aRadius,0,aRadius,aRadius);
+   aSpriteNinePatch.Regions[1,0]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,0,aRadius,aRadius,aHeight-(aRadius*2));
+   aSpriteNinePatch.Regions[1,1]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aRadius,aRadius,aWidth-(aRadius*2),aHeight-(aRadius*2));
+   aSpriteNinePatch.Regions[1,2]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aWidth-aRadius,aRadius,aRadius,aHeight-(aRadius*2));
+   aSpriteNinePatch.Regions[2,0]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,0,aHeight-aRadius,aRadius,aRadius);
+   aSpriteNinePatch.Regions[2,1]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aRadius,aHeight-aRadius,aWidth-(aRadius*2),aRadius);
+   aSpriteNinePatch.Regions[2,2]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aWidth-aRadius,aHeight-aRadius,aRadius,aRadius);
+  finally
+   ImageData:=nil;
+  end;
+ end;
+begin
+ fFontSize:=-12;
+
+ fSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice);
+
+ CreateWindowFillNinePatchSprite(fSpriteUnfocusedWindowFill,
+                                 fSpriteUnfocusedWindowFillNinePatch,
+                                 128,
+                                 128,
+                                 2,
+                                 TpvVector4.Create(43.0,43.0,43.0,230.0)/255.0,
+                                 TpvVector4.Create(21.5,21.5,21.5,21.5)/255.0);
+
+ CreateWindowFillNinePatchSprite(fSpriteFocusedWindowFill,
+                                 fSpriteFocusedWindowFillNinePatch,
+                                 128,
+                                 128,
+                                 2,
+                                 TpvVector4.Create(45.0,45.0,45.0,230.0)/255.0,
+                                 TpvVector4.Create(22.5,22.5,22.5,230.0)/255.0);
+
+ fSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
+                     pvApplication.VulkanGraphicsCommandBuffers[0,0],
+                     pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                     pvApplication.VulkanDevice.TransferQueue,
+                     pvApplication.VulkanTransferCommandBuffers[0,0],
+                     pvApplication.VulkanTransferCommandBufferFences[0,0]);
+
+end;
+
 
 constructor TpvGUIWidgetEnumerator.Create(const aWidget:TpvGUIWidget);
 begin
@@ -466,6 +575,17 @@ begin
    ChildWidget:=Child as TpvGUIWidget;
    ChildWidget.SetCanvas(aCanvas);
   end;
+ end;
+end;
+
+function TpvGUIWidget.GetTheme:TpvGUITheme;
+begin
+ if assigned(fTheme) then begin
+  result:=fTheme;
+ end else if assigned(fInstance) then begin
+  result:=fInstance.fStandardTheme;
+ end else begin
+  result:=nil;
  end;
 end;
 
@@ -894,14 +1014,18 @@ begin
  end;
 end;
 
-constructor TpvGUIInstance.Create;
+constructor TpvGUIInstance.Create(const aVulkanDevice:TpvVulkanDevice);
 begin
 
  inherited Create(nil);
 
  fInstance:=self;
 
- DrawWidgetBounds:=false;
+ fVulkanDevice:=aVulkanDevice;
+
+ fStandardTheme:=TpvGUITheme.Create(self);
+
+ fDrawWidgetBounds:=false;
 
  fBuffers:=nil;
 
@@ -923,6 +1047,8 @@ begin
  SetCountBuffers(0);
 
  fBuffers:=nil;
+
+ FreeAndNil(fStandardTheme);
 
  inherited Destroy;
 
@@ -1028,7 +1154,7 @@ begin
  fCanvas.Push;
  try
   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-//  fCanvas.DrawSprite();
+  fCanvas.DrawNinePatchSprite(Theme.fSpriteUnfocusedWindowFill,Theme.fSpriteUnfocusedWindowFillNinePatch,TpvVector2.Null,fSize);
  finally
   fCanvas.Pop;
  end;
