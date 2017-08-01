@@ -45,6 +45,7 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
        fGUIInstance:TpvGUIInstance;
        fGUIWindow:TpvGUIWindow;
        fGUIOtherWindow:TpvGUIWindow;
+       fLastMousePosition:TpvVector2;
        fReady:boolean;
        fSelectedIndex:TpvInt32;
        fStartY:TpvFloat;
@@ -109,6 +110,7 @@ begin
  fSelectedIndex:=-1;
  fReady:=false;
  fTime:=0.48;
+ fLastMousePosition:=TpvVector2.Null;
 end;
 
 destructor TScreenExampleGUI.Destroy;
@@ -374,11 +376,16 @@ begin
    end;
   end;
  end;
+ fLastMousePosition:=aPointerEvent.Position;
 end;
 
 function TScreenExampleGUI.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
- result:=false;
+ if fReady then begin
+  result:=fGUIInstance.Scrolled(fLastMousePosition,aRelativeAmount);
+ end else begin
+  result:=false;
+ end;
 end;
 
 function TScreenExampleGUI.CanBeParallelProcessed:boolean;
