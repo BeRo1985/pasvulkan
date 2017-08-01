@@ -255,9 +255,9 @@ type TpvGUIObject=class;
        function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
        function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
        function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; virtual;
-       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
-       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
-       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; virtual;
+       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; virtual;
+       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; virtual;
+       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons):boolean; virtual;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; virtual;
        procedure Update; virtual;
        procedure Draw; virtual;
@@ -330,9 +330,9 @@ type TpvGUIObject=class;
        function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
        function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
        function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
-       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
-       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
-       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
+       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
+       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Update; override;
        procedure Draw; override;
@@ -376,9 +376,9 @@ type TpvGUIObject=class;
        function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
        function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
        function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
-       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
-       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
-       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
+       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
+       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Update; override;
        procedure Draw; override;
@@ -1184,7 +1184,7 @@ begin
  result:=false;
 end;
 
-function TpvGUIWidget.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvGUIWidget.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
@@ -1194,7 +1194,7 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
-    result:=ChildWidget.PointerDown(aPosition-fPosition,aPressure,aPointerID,aButton);
+    result:=ChildWidget.PointerDown(aPosition-fPosition,aPressure,aPointerID,aButton,aButtons);
     if result then begin
      exit;
     end;
@@ -1207,7 +1207,7 @@ begin
  result:=false;
 end;
 
-function TpvGUIWidget.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvGUIWidget.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
@@ -1217,7 +1217,7 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible and ChildWidget.Contains(aPosition-fPosition) then begin
-    result:=ChildWidget.PointerUp(aPosition-fPosition,aPressure,aPointerID,aButton);
+    result:=ChildWidget.PointerUp(aPosition-fPosition,aPressure,aPointerID,aButton,aButtons);
     if result then begin
      exit;
     end;
@@ -1227,7 +1227,7 @@ begin
  result:=false;
 end;
 
-function TpvGUIWidget.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvGUIWidget.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons):boolean;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
@@ -1246,7 +1246,7 @@ begin
      ChildWidget.PointerLeave;
     end;
     if PreviousContained or CurrentContained then begin
-     result:=ChildWidget.PointerMotion(aPosition-fPosition,aRelativePosition,aPressure,aPointerID,aButton);
+     result:=ChildWidget.PointerMotion(aPosition-fPosition,aRelativePosition,aPressure,aPointerID,aButtons);
      if result then begin
       exit;
      end;
@@ -1670,22 +1670,83 @@ begin
  end;
 end;
 
-function TpvGUIInstance.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvGUIInstance.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean;
+var Index:TpvInt32;
+    Current:TpvGUIObject;
+    CurrentWindow:TpvGUIWindow;
+    CurrentWidget:TpvGUIWidget;
 begin
- result:=inherited PointerDown(aPosition,aPressure,aPointerID,aButton);
+ for Index:=0 to fCurrentFocusPath.Count-1 do begin
+  Current:=fCurrentFocusPath.Items[Index];
+  if (Current<>self) and (Current is TpvGUIWindow) then begin
+   CurrentWindow:=Current as TpvGUIWindow;
+   if CurrentWindow.Modal and not CurrentWindow.Contains(aPosition) then begin
+    result:=false;
+    exit;
+   end;
+  end;
+ end;
+ CurrentWidget:=FindWidget(aPosition);
+ if assigned(CurrentWidget) and (fCursor<>CurrentWidget.fCursor) then begin
+  fCursor:=CurrentWidget.fCursor;
+ end;
+ result:=inherited PointerDown(aPosition,aPressure,aPointerID,aButton,aButtons);
  if not result then begin
   RequestFocus;
  end;
 end;
 
-function TpvGUIInstance.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvGUIInstance.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean;
+var Index:TpvInt32;
+    Current:TpvGUIObject;
+    CurrentWindow:TpvGUIWindow;
+    CurrentWidget:TpvGUIWidget;
 begin
- result:=inherited PointerUp(aPosition,aPressure,aPointerID,aButton);
+ for Index:=0 to fCurrentFocusPath.Count-1 do begin
+  Current:=fCurrentFocusPath.Items[Index];
+  if (Current<>self) and (Current is TpvGUIWindow) then begin
+   CurrentWindow:=Current as TpvGUIWindow;
+   if CurrentWindow.Modal and not CurrentWindow.Contains(aPosition) then begin
+    result:=false;
+    exit;
+   end;
+  end;
+ end;
+ result:=inherited PointerUp(aPosition,aPressure,aPointerID,aButton,aButtons);
+ CurrentWidget:=FindWidget(aPosition);
+ if assigned(CurrentWidget) and (fCursor<>CurrentWidget.fCursor) then begin
+  fCursor:=CurrentWidget.fCursor;
+ end;
 end;
 
-function TpvGUIInstance.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvGUIInstance.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons):boolean;
+var Index:TpvInt32;
+    Current:TpvGUIObject;
+    CurrentWindow:TpvGUIWindow;
+    CurrentWidget:TpvGUIWidget;
 begin
- result:=inherited PointerMotion(aPosition,aRelativePosition,aPressure,aPointerID,aButton);
+ for Index:=0 to fCurrentFocusPath.Count-1 do begin
+  Current:=fCurrentFocusPath.Items[Index];
+  if (Current<>self) and (Current is TpvGUIWindow) then begin
+   CurrentWindow:=Current as TpvGUIWindow;
+   if CurrentWindow.Modal and not CurrentWindow.Contains(aPosition) then begin
+    result:=false;
+    exit;
+   end;
+  end;
+ end;
+ if fDragActive then begin
+  result:=false;
+ end else begin
+  result:=false;
+  CurrentWidget:=FindWidget(aPosition);
+  if assigned(CurrentWidget) and (fCursor<>CurrentWidget.fCursor) then begin
+   fCursor:=CurrentWidget.fCursor;
+  end;
+ end;
+ if not result then begin
+  result:=inherited PointerMotion(aPosition,aRelativePosition,aPressure,aPointerID,aButtons);
+ end;
 end;
 
 function TpvGUIInstance.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
@@ -1811,9 +1872,9 @@ begin
  result:=false;
 end;
 
-function TpvGUIWindow.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvGUIWindow.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean;
 begin
- result:=inherited PointerDown(aPosition,aPressure,aPointerID,aButton);
+ result:=inherited PointerDown(aPosition,aPressure,aPointerID,aButton,aButtons);
  fMouseAction:=pvgwmaNone;
  if (not result) and ((aPosition.y-fPosition.y)<Theme.fWindowHeaderHeight) then begin
   fMouseAction:=pvgwmaMove;
@@ -1830,23 +1891,23 @@ begin
  result:=true;
 end;
 
-function TpvGUIWindow.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvGUIWindow.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean;
 begin
- result:=inherited PointerUp(aPosition,aPressure,aPointerID,aButton);
+ result:=inherited PointerUp(aPosition,aPressure,aPointerID,aButton,aButtons);
  fMouseAction:=pvgwmaNone;
  result:=true;
 end;
 
-function TpvGUIWindow.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TpvGUIWindow.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons):boolean;
 begin
- if (fMouseAction=pvgwmaMove) and ((aButton and BUTTON_LEFT)<>0) then begin
+ if (fMouseAction=pvgwmaMove) and (BUTTON_LEFT in aButtons) then begin
   fPosition:=fPosition+aRelativePosition;
  end;
- if (fMouseAction=pvgwmaSize) and ((aButton and BUTTON_LEFT)<>0) then begin
+ if (fMouseAction=pvgwmaSize) and (BUTTON_LEFT in aButtons) then begin
   fSize.x:=Max(32.0++Theme.fWindowGripWidth+Theme.fWindowGripPaddingRight,fSize.x+aRelativePosition.x);
   fSize.y:=Max(Max(32.0,Theme.fWindowHeaderHeight+Theme.fWindowGripHeight+Theme.fWindowGripPaddingBottom),fSize.y+aRelativePosition.y);
  end;
- result:=inherited PointerMotion(aPosition,aRelativePosition,aPressure,aPointerID,aButton);
+ result:=inherited PointerMotion(aPosition,aRelativePosition,aPressure,aPointerID,aButtons);
 end;
 
 function TpvGUIWindow.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;

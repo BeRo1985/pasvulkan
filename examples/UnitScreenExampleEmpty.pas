@@ -64,11 +64,11 @@ type TScreenExampleEmpty=class(TpvApplicationScreen)
 
        function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
 
-       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
 
-       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
 
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
 
@@ -307,7 +307,7 @@ begin
  result:=false;
 end;
 
-function TScreenExampleEmpty.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TScreenExampleEmpty.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
@@ -327,12 +327,12 @@ begin
  end;
 end;
 
-function TScreenExampleEmpty.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TScreenExampleEmpty.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleEmpty.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TScreenExampleEmpty.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin

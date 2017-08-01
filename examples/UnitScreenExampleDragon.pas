@@ -96,11 +96,11 @@ type PScreenExampleDragonUniformBuffer=^TScreenExampleDragonUniformBuffer;
 
        function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
 
-       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
 
-       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
 
-       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
+       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
 
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
 
@@ -554,7 +554,7 @@ begin
  result:=false;
 end;
 
-function TScreenExampleDragon.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TScreenExampleDragon.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
@@ -574,12 +574,12 @@ begin
  end;
 end;
 
-function TScreenExampleDragon.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TScreenExampleDragon.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleDragon.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
+function TScreenExampleDragon.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
