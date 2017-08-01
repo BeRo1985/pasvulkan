@@ -1604,19 +1604,82 @@ var Index:TpvInt32;
     Current:TpvGUIObject;
     CurrentWindow:TpvGUIWindow;
     CurrentWidget:TpvGUIWidget;
+    LocalPointerEvent:TpvApplicationInputPointerEvent;
 begin
-
  result:=false;
-
- for Index:=0 to fCurrentFocusPath.Count-1 do begin
-  Current:=fCurrentFocusPath.Items[Index];
-  if (Current<>self) and (Current is TpvGUIWindow) then begin
-   CurrentWindow:=Current as TpvGUIWindow;
-   if CurrentWindow.Modal and not CurrentWindow.Contains(aPointerEvent.Position) then begin
-    exit;
+ case aPointerEvent.PointerEventType of
+  POINTEREVENT_DOWN,POINTEREVENT_UP:begin
+   for Index:=0 to fCurrentFocusPath.Count-1 do begin
+    Current:=fCurrentFocusPath.Items[Index];
+    if (Current<>self) and (Current is TpvGUIWindow) then begin
+     CurrentWindow:=Current as TpvGUIWindow;
+     if CurrentWindow.Modal and not CurrentWindow.Contains(aPointerEvent.Position) then begin
+      exit;
+     end;
+    end;
+   end;
+   CurrentWidget:=FindWidget(aPointerEvent.Position);
+   case aPointerEvent.PointerEventType of
+    POINTEREVENT_DOWN:begin
+     if assigned(CurrentWidget) and (fCursor<>CurrentWidget.fCursor) then begin
+      fCursor:=CurrentWidget.fCursor;
+     end;
+     case aPointerEvent.Button of
+      BUTTON_LEFT,BUTTON_RIGHT:begin
+       TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+       if assigned(CurrentWidget) and (CurrentWidget<>self) then begin
+        fDragWidget:=CurrentWidget;
+        fDragWidget.IncRef;
+        fDragActive:=true;
+       end else begin
+        fDragActive:=false;
+        UpdateFocus(nil);
+       end;
+      end;
+      else begin
+       TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+       fDragActive:=false;
+      end;
+     end;
+    end;
+    POINTEREVENT_UP:begin
+     if fDragActive and assigned(fDragWidget) and (fDragWidget<>CurrentWidget) then begin
+      LocalPointerEvent.PointerEventType:=POINTEREVENT_UP;
+      LocalPointerEvent.Button:=BUTTON_LEFT;
+      fDragWidget.PointerEvent(LocalPointerEvent);
+     end;
+     TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+     fDragActive:=false;
+     if assigned(CurrentWidget) and (fCursor<>CurrentWidget.fCursor) then begin
+      fCursor:=CurrentWidget.fCursor;
+     end;
+    end;
+   end;
+   result:=inherited PointerEvent(aPointerEvent);
+  end;
+  POINTEREVENT_MOTION:begin
+   if fDragActive then begin
+    LocalPointerEvent:=aPointerEvent;
+    LocalPointerEvent.PointerEventType:=POINTEREVENT_DRAG;
+    result:=PointerEvent(LocalPointerEvent);
+   end else begin
+    CurrentWidget:=FindWidget(aPointerEvent.Position);
+    if assigned(CurrentWidget) and (fCursor<>CurrentWidget.fCursor) then begin
+     fCursor:=CurrentWidget.fCursor;
+    end;
+   end;
+   if not result then begin
+    result:=inherited PointerEvent(aPointerEvent);
    end;
   end;
+  POINTEREVENT_DRAG:begin
+   result:=inherited PointerEvent(aPointerEvent);
+  end;
+  else begin
+
+  end;
  end;
+
 
  case aPointerEvent.PointerEventType of
   POINTEREVENT_MOTION,POINTEREVENT_DRAG:begin
@@ -1794,12 +1857,22 @@ begin
     fMouseAction:=pvgwmaNone;
    end;
    POINTEREVENT_MOTION:begin
+   end;
+   POINTEREVENT_DRAG:begin
     if (fMouseAction=pvgwmaMove) and (BUTTON_LEFT in aPointerEvent.Buttons) then begin
-     fPosition:=fPosition+aPointerEvent.RelativePosition;
+     if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+      fPosition:=Clamp(fPosition+aPointerEvent.RelativePosition,
+                       TpvVector2.Null,
+                       (fParent as TpvGUIWidget).fSize-fSize);
+     end else begin
+      fPosition:=Maximum(fPosition+aPointerEvent.RelativePosition,
+                         TpvVector2.Null);
+     end;
     end;
     if (fMouseAction=pvgwmaSize) and (BUTTON_LEFT in aPointerEvent.Buttons) then begin
-     fSize.x:=Max(32.0+Theme.fWindowGripWidth+Theme.fWindowGripPaddingRight,fSize.x+aPointerEvent.RelativePosition.x);
-     fSize.y:=Max(Max(32.0,Theme.fWindowHeaderHeight+Theme.fWindowGripHeight+Theme.fWindowGripPaddingBottom),fSize.y+aPointerEvent.RelativePosition.y);
+     fSize:=Maximum(TpvVector2.Create(Theme.fWindowGripWidth+Theme.fWindowGripPaddingRight+32.0,
+                                      Max(Theme.fWindowHeaderHeight+Theme.fWindowGripHeight+Theme.fWindowGripPaddingBottom,32.0)),
+                    fSize+aPointerEvent.RelativePosition);
     end;
    end;
   end;
