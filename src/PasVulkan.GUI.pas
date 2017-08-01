@@ -1947,6 +1947,10 @@ end;
 
 function TpvGUIWindow.GetButtonPanel:TpvGUIWidget;
 begin
+ if not assigned(fButtonPanel) then begin
+  fButtonPanel:=TpvGUIWidget.Create(self);
+  fButtonPanel.fLayout:=TpvGUIBoxLayout.Create(fButtonPanel,pvglaMiddle,pvgloHorizontal,0.0,4.0);
+ end;
  result:=fButtonPanel;
 end;
 
