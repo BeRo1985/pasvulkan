@@ -75,11 +75,11 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
 
        function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
-       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
+       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
-       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
+       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
-       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
+       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
 
@@ -352,12 +352,12 @@ begin
  end;
 end;
 
-function TScreenExampleGUI.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean;
+function TScreenExampleGUI.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
  result:=false;
- if fReady and not fGUIInstance.PointerDown(aPosition*fScreenToCanvasScale,aPressure,aPointerID,aButton,aButtons) then begin
+ if fReady and not fGUIInstance.PointerDown(aPosition*fScreenToCanvasScale,aPressure,aPointerID,aButton,aButtons,aKeyModifiers) then begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin
@@ -372,20 +372,20 @@ begin
  end;
 end;
 
-function TScreenExampleGUI.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean;
+function TScreenExampleGUI.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
 begin
  result:=false;
- if fReady and not fGUIInstance.PointerUp(aPosition*fScreenToCanvasScale,aPressure,aPointerID,aButton,aButtons) then begin
+ if fReady and not fGUIInstance.PointerUp(aPosition*fScreenToCanvasScale,aPressure,aPointerID,aButton,aButtons,aKeyModifiers) then begin
 
  end;
 end;
 
-function TScreenExampleGUI.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons):boolean;
+function TScreenExampleGUI.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
  result:=false;
- if fReady and not fGUIInstance.PointerMotion(aPosition*fScreenToCanvasScale,aRelativePosition*fScreenToCanvasScale,aPressure,aPointerID,aButtons) then begin
+ if fReady and not fGUIInstance.PointerMotion(aPosition*fScreenToCanvasScale,aRelativePosition*fScreenToCanvasScale,aPressure,aPointerID,aButtons,aKeyModifiers) then begin
   fSelectedIndex:=-1;
   cy:=fStartY;
   for Index:=0 to 0 do begin

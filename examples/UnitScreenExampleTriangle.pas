@@ -76,11 +76,11 @@ type TScreenExampleTriangle=class(TpvApplicationScreen)
 
        function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
-       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
+       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
-       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
+       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
-       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
+       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
 
@@ -502,7 +502,7 @@ begin
  result:=false;
 end;
 
-function TScreenExampleTriangle.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean;
+function TScreenExampleTriangle.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
@@ -522,12 +522,12 @@ begin
  end;
 end;
 
-function TScreenExampleTriangle.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean;
+function TScreenExampleTriangle.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleTriangle.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons):boolean;
+function TScreenExampleTriangle.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
