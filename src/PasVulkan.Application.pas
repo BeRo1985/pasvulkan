@@ -98,9 +98,7 @@ const MaxSwapChainImages=3;
       LOG_DEBUG=3;
 
       EVENT_NONE=0;
-      EVENT_KEY_DOWN=1;
-      EVENT_KEY_UP=2;
-      EVENT_KEY_TYPED=3;
+      EVENT_KEY=1;
       EVENT_POINTER_DOWN=4;
       EVENT_POINTER_UP=5;
       EVENT_POINTER_MOTION=6;
@@ -522,16 +520,13 @@ type EpvApplication=class(Exception)
        property HourInterval:TpvApplicationHighResolutionTime read fHourInterval;
      end;
 
-     PpvApplicationInputPointerButton=^TpvApplicationInputPointerButton;
-     TpvApplicationInputPointerButton=
+     PpvApplicationInputKeyEventType=^TpvApplicationInputKeyEventType;
+     TpvApplicationInputKeyEventType=
       (
-       BUTTON_LEFT,
-       BUTTON_MIDDLE,
-       BUTTON_RIGHT
+       KEYEVENT_DOWN,
+       KEYEVENT_UP,
+       KEYEVENT_TYPED
       );
-
-     PpvApplicationInputPointerButtons=^TpvApplicationInputPointerButtons;
-     TpvApplicationInputPointerButtons=set of TpvApplicationInputPointerButton;
 
      PpvApplicationInputKeyModifier=^TpvApplicationInputKeyModifier;
      TpvApplicationInputKeyModifier=
@@ -557,13 +552,40 @@ type EpvApplication=class(Exception)
      PpvApplicationInputKeyModifiers=^TpvApplicationInputKeyModifiers;
      TpvApplicationInputKeyModifiers=set of TpvApplicationInputKeyModifier;
 
+     PpvApplicationInputKeyEvent=^TpvApplicationInputKeyEventType;
+     TpvApplicationInputKeyEvent=record
+      public
+       KeyEventType:TpvApplicationInputKeyEventType;
+       KeyCode:TpvInt32;
+       KeyModifiers:TpvApplicationInputKeyModifiers;
+       constructor Create(const aKeyEventType:TpvApplicationInputKeyEventType;
+                          const aKeyCode:TpvInt32;
+                          const aKeyModifiers:TpvApplicationInputKeyModifiers);
+     end;
+
+     PpvApplicationInputPointerEventType=^TpvApplicationInputPointerEventType;
+     TpvApplicationInputPointerEventType=
+      (
+       POINTEREVENT_DOWN,
+       POINTEREVENT_UP
+      );
+
+     PpvApplicationInputPointerButton=^TpvApplicationInputPointerButton;
+     TpvApplicationInputPointerButton=
+      (
+       BUTTON_LEFT,
+       BUTTON_MIDDLE,
+       BUTTON_RIGHT
+      );
+
+     PpvApplicationInputPointerButtons=^TpvApplicationInputPointerButtons;
+     TpvApplicationInputPointerButtons=set of TpvApplicationInputPointerButton;
+
      TpvApplicationInputProcessor=class
       public
        constructor Create; virtual;
        destructor Destroy; override;
-       function KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
-       function KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
-       function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
        function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
@@ -576,8 +598,8 @@ type EpvApplication=class(Exception)
       Time:TpvInt64;
       KeyModifiers:TpvApplicationInputKeyModifiers;
       case Event:TpvInt32 of
-       EVENT_KEY_DOWN,EVENT_KEY_UP,EVENT_KEY_TYPED:(
-        KeyCode:TpvInt32;
+       EVENT_KEY:(
+        KeyEvent:TpvApplicationInputKeyEvent;
        );
        EVENT_POINTER_DOWN,EVENT_POINTER_UP,EVENT_POINTER_MOTION:(
         Position:TpvVector2;
@@ -609,9 +631,7 @@ type EpvApplication=class(Exception)
        function GetProcessor:TpvApplicationInputProcessor;
        procedure Drain;
        function GetCurrentEventTime:TpvInt64;
-       function KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-       function KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-       function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
        function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
@@ -631,9 +651,7 @@ type EpvApplication=class(Exception)
        procedure RemoveProcessor(const aIndex:TpvInt32); overload;
        procedure ClearProcessors;
        function CountProcessors:TpvInt32;
-       function KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-       function KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-       function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
        function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
@@ -794,11 +812,7 @@ type EpvApplication=class(Exception)
 
        function HandleEvent(const aEvent:TSDL_Event):boolean; virtual;
 
-       function KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
-
-       function KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
-
-       function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
 
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
 
@@ -1189,11 +1203,7 @@ type EpvApplication=class(Exception)
 
        function HandleEvent(const aEvent:TSDL_Event):boolean; virtual;
 
-       function KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
-
-       function KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
-
-       function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
 
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
 
@@ -1972,6 +1982,15 @@ begin
  end;
 end;
 
+constructor TpvApplicationInputKeyEvent.Create(const aKeyEventType:TpvApplicationInputKeyEventType;
+                                               const aKeyCode:TpvInt32;
+                                               const aKeyModifiers:TpvApplicationInputKeyModifiers);
+begin
+ KeyEventType:=aKeyEventType;
+ KeyCode:=aKeyCode;
+ KeyModifiers:=aKeyModifiers;
+end;
+
 constructor TpvApplicationInputProcessor.Create;
 begin
 end;
@@ -1980,17 +1999,7 @@ destructor TpvApplicationInputProcessor.Destroy;
 begin
 end;
 
-function TpvApplicationInputProcessor.KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
-end;
-
-function TpvApplicationInputProcessor.KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
-end;
-
-function TpvApplicationInputProcessor.KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TpvApplicationInputProcessor.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=false;
 end;
@@ -2098,14 +2107,8 @@ begin
   fCurrentEventTime:=CurrentEvent^.Time;
   if assigned(fProcessor) then begin
    case CurrentEvent^.Event of
-    EVENT_KEY_DOWN:begin
-     fProcessor.KeyDown(CurrentEvent^.KeyCode,CurrentEvent^.KeyModifiers);
-    end;
-    EVENT_KEY_UP:begin
-     fProcessor.KeyUp(CurrentEvent^.KeyCode,CurrentEvent^.KeyModifiers);
-    end;
-    EVENT_KEY_TYPED:begin
-     fProcessor.KeyTyped(CurrentEvent^.KeyCode,CurrentEvent^.KeyModifiers);
+    EVENT_KEY:begin
+     fProcessor.KeyEvent(CurrentEvent^.KeyEvent);
     end;
     EVENT_POINTER_DOWN:begin
      fProcessor.PointerDown(CurrentEvent^.Position,CurrentEvent^.Pressure,CurrentEvent^.PointerID,CurrentEvent^.Button,CurrentEvent^.Buttons,CurrentEvent^.KeyModifiers);
@@ -2141,7 +2144,7 @@ begin
  result:=fCurrentEventTime;
 end;
 
-function TpvApplicationInputProcessorQueue.KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TpvApplicationInputProcessorQueue.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2149,45 +2152,8 @@ begin
  try
   Event:=NewEvent;
   if assigned(Event) then begin
-   Event^.Event:=EVENT_KEY_DOWN;
-   Event^.KeyCode:=aKeyCode;
-   Event^.KeyModifiers:=aKeyModifiers;
-   PushEvent(Event);
-  end;
- finally
-  fCriticalSection.Release;
- end;
-end;
-
-function TpvApplicationInputProcessorQueue.KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-var Event:PpvApplicationInputProcessorQueueEvent;
-begin
- result:=false;
- fCriticalSection.Acquire;
- try
-  Event:=NewEvent;
-  if assigned(Event) then begin
-   Event^.Event:=EVENT_KEY_UP;
-   Event^.KeyCode:=aKeyCode;
-   Event^.KeyModifiers:=aKeyModifiers;
-   PushEvent(Event);
-  end;
- finally
-  fCriticalSection.Release;
- end;
-end;
-
-function TpvApplicationInputProcessorQueue.KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-var Event:PpvApplicationInputProcessorQueueEvent;
-begin
- result:=false;
- fCriticalSection.Acquire;
- try
-  Event:=NewEvent;
-  if assigned(Event) then begin
-   Event^.Event:=EVENT_KEY_TYPED;
-   Event^.KeyCode:=aKeyCode;
-   Event^.KeyModifiers:=aKeyModifiers;
+   Event^.Event:=EVENT_KEY;
+   Event^.KeyEvent:=aKeyEvent;
    PushEvent(Event);
   end;
  finally
@@ -2328,7 +2294,7 @@ begin
  result:=fProcessors.Count;
 end;
 
-function TpvApplicationInputMultiplexer.KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TpvApplicationInputMultiplexer.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 var i:TpvInt32;
     p:TpvApplicationInputProcessor;
 begin
@@ -2336,39 +2302,7 @@ begin
  for i:=0 to fProcessors.Count-1 do begin
   p:=fProcessors.Items[i];
   if assigned(p) then begin
-   if p.KeyDown(aKeyCode,aKeyModifiers) then begin
-    result:=true;
-    exit;
-   end;
-  end;
- end;
-end;
-
-function TpvApplicationInputMultiplexer.KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-var i:TpvInt32;
-    p:TpvApplicationInputProcessor;
-begin
- result:=false;
- for i:=0 to fProcessors.Count-1 do begin
-  p:=fProcessors.Items[i];
-  if assigned(p) then begin
-   if p.KeyUp(aKeyCode,aKeyModifiers) then begin
-    result:=true;
-    exit;
-   end;
-  end;
- end;
-end;
-
-function TpvApplicationInputMultiplexer.KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-var i:TpvInt32;
-    p:TpvApplicationInputProcessor;
-begin
- result:=false;
- for i:=0 to fProcessors.Count-1 do begin
-  p:=fProcessors.Items[i];
-  if assigned(p) then begin
-   if p.KeyTyped(aKeyCode,aKeyModifiers) then begin
+   if p.KeyEvent(aKeyEvent) then begin
     result:=true;
     exit;
    end;
@@ -3900,8 +3834,8 @@ begin
         fKeyDown[KeyCode and $ffff]:=true;
         inc(fKeyDownCount);
         fJustKeyDown[KeyCode and $ffff]:=true;
-        if (not pvApplication.KeyDown(KeyCode,KeyModifiers)) and assigned(fProcessor) then begin
-         fProcessor.KeyDown(KeyCode,KeyModifiers);
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_DOWN,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_DOWN,KeyCode,KeyModifiers));
         end;
        end;
        SDL_KEYUP:begin
@@ -3910,13 +3844,13 @@ begin
          dec(fKeyDownCount);
         end;
         fJustKeyDown[KeyCode and $ffff]:=false;
-        if (not pvApplication.KeyUp(KeyCode,KeyModifiers)) and assigned(fProcessor) then begin
-         fProcessor.KeyUp(KeyCode,KeyModifiers);
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_UP,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_UP,KeyCode,KeyModifiers));
         end;
        end;
        SDL_KEYTYPED:begin
-        if (not pvApplication.KeyTyped(KeyCode,KeyModifiers)) and assigned(fProcessor) then begin
-         fProcessor.KeyTyped(KeyCode,KeyModifiers);
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_TYPED,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_TYPED,KeyCode,KeyModifiers));
         end;
        end;
       end;
@@ -4514,17 +4448,7 @@ begin
  result:=false;
 end;
 
-function TpvApplicationScreen.KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
-end;
-
-function TpvApplicationScreen.KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
-end;
-
-function TpvApplicationScreen.KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TpvApplicationScreen.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=false;
 end;
@@ -7096,28 +7020,10 @@ begin
  end;
 end;
 
-function TpvApplication.KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TpvApplication.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  if assigned(fScreen) then begin
-  result:=fScreen.KeyDown(aKeyCode,aKeyModifiers);
- end else begin
-  result:=false;
- end;
-end;
-
-function TpvApplication.KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- if assigned(fScreen) then begin
-  result:=fScreen.KeyUp(aKeyCode,aKeyModifiers);
- end else begin
-  result:=false;
- end;
-end;
-
-function TpvApplication.KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- if assigned(fScreen) then begin
-  result:=fScreen.KeyTyped(aKeyCode,aKeyModifiers);
+  result:=fScreen.KeyEvent(aKeyEvent);
  end else begin
   result:=false;
  end;

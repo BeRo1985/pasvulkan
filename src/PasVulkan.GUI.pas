@@ -252,7 +252,7 @@ type TpvGUIObject=class;
        function Leave:boolean; virtual;
        function PointerEnter:boolean; virtual;
        function PointerLeave:boolean; virtual;
-       function KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
        function KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
        function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
@@ -327,9 +327,7 @@ type TpvGUIObject=class;
        procedure ClearReferenceCountedObjectList;
        procedure AddReferenceCountedObjectForNextDraw(const aObject:TpvReferenceCountedObject);
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
-       function KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-       function KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-       function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
        function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
@@ -373,7 +371,7 @@ type TpvGUIObject=class;
        procedure DisposeWindow;
        procedure Center;
        procedure PerformLayout; override;
-       function KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
        function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
@@ -1169,7 +1167,7 @@ begin
  result:=false;
 end;
 
-function TpvGUIWidget.KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TpvGUIWidget.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=false;
 end;
@@ -1610,7 +1608,7 @@ begin
  end;
 end;
 
-function TpvGUIInstance.KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TpvGUIInstance.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 var Index:TpvInt32;
     Current:TpvGUIObject;
     CurrentWidget:TpvGUIWidget;
@@ -1621,47 +1619,7 @@ begin
   if (Current<>self) and (Current is TpvGUIWidget) then begin
    CurrentWidget:=Current as TpvGUIWidget;
    if CurrentWidget.Focused then begin
-    result:=CurrentWidget.KeyDown(aKeyCode,aKeyModifiers);
-    if result then begin
-     break;
-    end;
-   end;
-  end;
- end;
-end;
-
-function TpvGUIInstance.KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-var Index:TpvInt32;
-    Current:TpvGUIObject;
-    CurrentWidget:TpvGUIWidget;
-begin
- result:=false;
- for Index:=0 to fCurrentFocusPath.Count-1 do begin
-  Current:=fCurrentFocusPath.Items[Index];
-  if (Current<>self) and (Current is TpvGUIWidget) then begin
-   CurrentWidget:=Current as TpvGUIWidget;
-   if CurrentWidget.Focused then begin
-    result:=CurrentWidget.KeyUp(aKeyCode,aKeyModifiers);
-    if result then begin
-     break;
-    end;
-   end;
-  end;
- end;
-end;
-
-function TpvGUIInstance.KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-var Index:TpvInt32;
-    Current:TpvGUIObject;
-    CurrentWidget:TpvGUIWidget;
-begin
- result:=false;
- for Index:=0 to fCurrentFocusPath.Count-1 do begin
-  Current:=fCurrentFocusPath.Items[Index];
-  if (Current<>self) and (Current is TpvGUIWidget) then begin
-   CurrentWidget:=Current as TpvGUIWidget;
-   if CurrentWidget.Focused then begin
-    result:=CurrentWidget.KeyTyped(aKeyCode,aKeyModifiers);
+    result:=CurrentWidget.KeyEvent(aKeyEvent);
     if result then begin
      break;
     end;
@@ -1857,7 +1815,7 @@ begin
  end;
 end;
 
-function TpvGUIWindow.KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TpvGUIWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=false;
 end;

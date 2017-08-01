@@ -69,11 +69,7 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
 
        procedure BeforeDestroySwapChain; override;
 
-       function KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-
-       function KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-
-       function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
 
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
@@ -291,64 +287,52 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-function TScreenExampleGUI.KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TScreenExampleGUI.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=false;
- if fReady and not fGUIInstance.KeyDown(aKeyCode,aKeyModifiers) then begin
-  case aKeyCode of
-   KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
-    pvApplication.NextScreen:=TScreenMainMenu.Create;
-   end;
-   KEYCODE_UP:begin
-    if fSelectedIndex<=0 then begin
-     fSelectedIndex:=0;
-    end else begin
-     dec(fSelectedIndex);
-    end;
-   end;
-   KEYCODE_DOWN:begin
-    if fSelectedIndex>=0 then begin
-     fSelectedIndex:=0;
-    end else begin
-     inc(fSelectedIndex);
-    end;
-   end;
-   KEYCODE_PAGEUP:begin
-    if fSelectedIndex<0 then begin
-     fSelectedIndex:=0;
-    end;
-   end;
-   KEYCODE_PAGEDOWN:begin
-    if fSelectedIndex<0 then begin
-     fSelectedIndex:=0;
-    end;
-   end;
-   KEYCODE_HOME:begin
-    fSelectedIndex:=0;
-   end;
-   KEYCODE_END:begin
-    fSelectedIndex:=0
-   end;
-   KEYCODE_RETURN,KEYCODE_SPACE:begin
-    if fSelectedIndex=0 then begin
+ if fReady and not fGUIInstance.KeyEvent(aKeyEvent) then begin
+  if aKeyEvent.KeyEventType=KEYEVENT_DOWN then begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
      pvApplication.NextScreen:=TScreenMainMenu.Create;
+    end;
+    KEYCODE_UP:begin
+     if fSelectedIndex<=0 then begin
+      fSelectedIndex:=0;
+     end else begin
+      dec(fSelectedIndex);
+     end;
+    end;
+    KEYCODE_DOWN:begin
+     if fSelectedIndex>=0 then begin
+      fSelectedIndex:=0;
+     end else begin
+      inc(fSelectedIndex);
+     end;
+    end;
+    KEYCODE_PAGEUP:begin
+     if fSelectedIndex<0 then begin
+      fSelectedIndex:=0;
+     end;
+    end;
+    KEYCODE_PAGEDOWN:begin
+     if fSelectedIndex<0 then begin
+      fSelectedIndex:=0;
+     end;
+    end;
+    KEYCODE_HOME:begin
+     fSelectedIndex:=0;
+    end;
+    KEYCODE_END:begin
+     fSelectedIndex:=0
+    end;
+    KEYCODE_RETURN,KEYCODE_SPACE:begin
+     if fSelectedIndex=0 then begin
+      pvApplication.NextScreen:=TScreenMainMenu.Create;
+     end;
     end;
    end;
   end;
- end;
-end;
-
-function TScreenExampleGUI.KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
- if fReady and not fGUIInstance.KeyUp(aKeyCode,aKeyModifiers) then begin
- end;
-end;
-
-function TScreenExampleGUI.KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
- if fReady and not fGUIInstance.KeyTyped(aKeyCode,aKeyModifiers) then begin
  end;
 end;
 
