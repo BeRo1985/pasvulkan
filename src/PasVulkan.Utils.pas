@@ -65,7 +65,12 @@ uses SysUtils,
      Classes,
      PasVulkan.Types;
 
-type TpvUntypedSortCompareFunction=function(const a,b:TpvPointer):TpvInt32;
+type TpvSwap<T>=class
+      public
+       class procedure Swap(var aValue,aOtherValue:T); static; inline;
+     end;
+
+     TpvUntypedSortCompareFunction=function(const a,b:TpvPointer):TpvInt32;
 
      TpvIndirectSortCompareFunction=function(const a,b:TpvPointer):TpvInt32;
 
@@ -141,6 +146,14 @@ implementation
 
 uses PasVulkan.Math,
      Generics.Defaults;
+
+class procedure TpvSwap<T>.Swap(var aValue,aOtherValue:T);
+var Temporary:T;
+begin
+ Temporary:=aValue;
+ aValue:=aOtherValue;
+ aOtherValue:=Temporary;
+end;
 
 function CombineTwoUInt32IntoOneUInt64(const a,b:TpvUInt32):TpvUInt64; {$ifdef caninline}inline;{$endif}
 begin

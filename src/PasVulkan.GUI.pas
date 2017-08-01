@@ -69,6 +69,7 @@ uses SysUtils,
      PasMP,
      Vulkan,
      PasVulkan.Types,
+     PasVulkan.Utils,
      PasVulkan.Collections,
      PasVulkan.Math,
      PasVulkan.Framework,
@@ -307,8 +308,9 @@ type TpvGUIObject=class;
        fUpdateBufferIndex:TpvInt32;
        fDrawBufferIndex:TpvInt32;
        fDeltaTime:TpvDouble;
-       fFocusPaths:array[boolean] of TpvGUIObjectList;
-       fFocusPathIndex:boolean;
+       fLastFocusPath:TpvGUIObjectList;
+       fCurrentFocusPath:TpvGUIObjectList;
+       fDragActive:boolean;
        fDragWidget:TpvGUIWidget;
        fWindow:TpvGUIWindow;
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
@@ -325,6 +327,9 @@ type TpvGUIObject=class;
        procedure ClearReferenceCountedObjectList;
        procedure AddReferenceCountedObjectForNextDraw(const aObject:TpvReferenceCountedObject);
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
+       function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
+       function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
+       function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
        function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
@@ -368,6 +373,9 @@ type TpvGUIObject=class;
        procedure DisposeWindow;
        procedure Center;
        procedure PerformLayout; override;
+       function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
+       function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
+       function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
        function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
        function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean; override;
@@ -1360,11 +1368,11 @@ begin
 
  fDeltaTime:=0.0;
 
- fFocusPaths[false]:=TpvGUIObjectList.Create(false);
+ fLastFocusPath:=TpvGUIObjectList.Create(false);
 
- fFocusPaths[true]:=TpvGUIObjectList.Create(false);
+ fCurrentFocusPath:=TpvGUIObjectList.Create(false);
 
- fFocusPathIndex:=false;
+ fDragActive:=false;
 
  fDragWidget:=nil;
 
@@ -1379,9 +1387,9 @@ begin
 
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
 
- FreeAndNil(fFocusPaths[false]);
+ FreeAndNil(fLastFocusPath);
 
- FreeAndNil(fFocusPaths[true]);
+ FreeAndNil(fCurrentFocusPath);
 
  SetCountBuffers(0);
 
@@ -1433,8 +1441,8 @@ procedure TpvGUIInstance.BeforeDestruction;
 begin
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
- fFocusPaths[false].Clear;
- fFocusPaths[true].Clear;
+ fLastFocusPath.Clear;
+ fCurrentFocusPath.Clear;
  DecRefWithoutFree;
  inherited BeforeDestruction;
 end;
@@ -1483,11 +1491,16 @@ var CurrentIndex:TpvInt32;
     Current:TpvGUIObject;
     CurrentWidget:TpvGUIWidget;
 begin
- fFocusPaths[fFocusPathIndex].Clear;
+
+ TpvSwap<TpvGUIObjectList>.Swap(fCurrentFocusPath,fLastFocusPath);
+
+ fCurrentFocusPath.Clear;
+
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
+
  CurrentWidget:=aWidget;
  while assigned(CurrentWidget) do begin
-  fFocusPaths[fFocusPathIndex].Add(CurrentWidget);
+  fCurrentFocusPath.Add(CurrentWidget);
   if CurrentWidget is TpvGUIWindow then begin
    TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
    fWindow:=CurrentWidget as TpvGUIWindow;
@@ -1500,40 +1513,43 @@ begin
    break;
   end;
  end;
+
  try
-  for CurrentIndex:=0 to fFocusPaths[not fFocusPathIndex].Count-1 do begin
-   Current:=fFocusPaths[not fFocusPathIndex].Items[CurrentIndex];
+  for CurrentIndex:=0 to fLastFocusPath.Count-1 do begin
+   Current:=fLastFocusPath.Items[CurrentIndex];
    if Current is TpvGUIWidget then begin
     CurrentWidget:=Current as TpvGUIWidget;
-    if CurrentWidget.Focused and not fFocusPaths[fFocusPathIndex].Contains(Current) then begin
+    if CurrentWidget.Focused and not fCurrentFocusPath.Contains(Current) then begin
      CurrentWidget.Leave;
     end;
    end;
   end;
  finally
-  fFocusPaths[not fFocusPathIndex].Clear;
+  fLastFocusPath.Clear;
  end;
- for CurrentIndex:=0 to fFocusPaths[fFocusPathIndex].Count-1 do begin
-  Current:=fFocusPaths[fFocusPathIndex].Items[CurrentIndex];
+
+ for CurrentIndex:=0 to fCurrentFocusPath.Count-1 do begin
+  Current:=fCurrentFocusPath.Items[CurrentIndex];
   if Current is TpvGUIWidget then begin
    CurrentWidget:=Current as TpvGUIWidget;
    CurrentWidget.Enter;
   end;
  end;
- fFocusPathIndex:=not fFocusPathIndex;
+
  if assigned(fWindow) then begin
   MoveWindowToFront(fWindow);
  end;
+
 end;
 
 procedure TpvGUIInstance.DisposeWindow(const aWindow:TpvGUIWindow);
 begin
  if assigned(aWindow) then begin
-  if assigned(fFocusPaths[false]) and fFocusPaths[false].Contains(aWindow) then begin
-   fFocusPaths[false].Clear;
+  if assigned(fLastFocusPath) and fLastFocusPath.Contains(aWindow) then begin
+   fLastFocusPath.Clear;
   end;
-  if assigned(fFocusPaths[true]) and fFocusPaths[true].Contains(aWindow) then begin
-   fFocusPaths[true].Clear;
+  if assigned(fCurrentFocusPath) and fCurrentFocusPath.Contains(aWindow) then begin
+   fCurrentFocusPath.Clear;
   end;
   if fDragWidget=aWindow then begin
    TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
@@ -1592,6 +1608,21 @@ begin
    until not Changed;
   end;
  end;
+end;
+
+function TpvGUIInstance.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUIInstance.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUIInstance.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+begin
+ result:=false;
 end;
 
 function TpvGUIInstance.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
@@ -1718,6 +1749,21 @@ begin
  if assigned(fInstance) then begin
   fInstance.CenterWindow(self);
  end;
+end;
+
+function TpvGUIWindow.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUIWindow.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUIWindow.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+begin
+ result:=false;
 end;
 
 function TpvGUIWindow.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
