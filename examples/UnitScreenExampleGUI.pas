@@ -69,11 +69,11 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
 
        procedure BeforeDestroySwapChain; override;
 
-       function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
+       function KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
-       function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
+       function KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
-       function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
+       function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
 
@@ -291,10 +291,10 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-function TScreenExampleGUI.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TScreenExampleGUI.KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
 begin
  result:=false;
- if fReady and not fGUIInstance.KeyDown(aKeyCode,aKeyModifier) then begin
+ if fReady and not fGUIInstance.KeyDown(aKeyCode,aKeyModifiers) then begin
   case aKeyCode of
    KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
     pvApplication.NextScreen:=TScreenMainMenu.Create;
@@ -338,17 +338,17 @@ begin
  end;
 end;
 
-function TScreenExampleGUI.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TScreenExampleGUI.KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
 begin
  result:=false;
- if fReady and not fGUIInstance.KeyUp(aKeyCode,aKeyModifier) then begin
+ if fReady and not fGUIInstance.KeyUp(aKeyCode,aKeyModifiers) then begin
  end;
 end;
 
-function TScreenExampleGUI.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TScreenExampleGUI.KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
 begin
  result:=false;
- if fReady and not fGUIInstance.KeyTyped(aKeyCode,aKeyModifier) then begin
+ if fReady and not fGUIInstance.KeyTyped(aKeyCode,aKeyModifiers) then begin
  end;
 end;
 

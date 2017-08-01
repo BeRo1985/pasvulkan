@@ -50,7 +50,7 @@ type TExampleApplication=class(TpvApplication)
        procedure BeforeDestroySwapChain; override;
        procedure Resume; override;
        procedure Pause; override;
-       function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
+       function KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
        procedure Update(const aDeltaTime:TpvDouble); override;
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
        class procedure Main; override;
@@ -128,9 +128,9 @@ begin
  inherited Pause;
 end;
 
-function TExampleApplication.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TExampleApplication.KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
 begin
- result:=inherited KeyDown(aKeyCode,aKeyModifier);
+ result:=inherited KeyDown(aKeyCode,aKeyModifiers);
  case aKeyCode of
   KEYCODE_F10:begin
    fMakeScreenshotJPEG:=true;

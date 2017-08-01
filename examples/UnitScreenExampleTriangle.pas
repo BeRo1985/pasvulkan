@@ -70,11 +70,11 @@ type TScreenExampleTriangle=class(TpvApplicationScreen)
 
        procedure BeforeDestroySwapChain; override;
 
-       function KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
+       function KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
-       function KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
+       function KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
-       function KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean; override;
+       function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
 
        function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons):boolean; override;
 
@@ -445,7 +445,7 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-function TScreenExampleTriangle.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TScreenExampleTriangle.KeyDown(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
 begin
  result:=false;
  if fReady then begin
@@ -492,12 +492,12 @@ begin
  end;
 end;
 
-function TScreenExampleTriangle.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TScreenExampleTriangle.KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
 begin
  result:=false;
 end;
 
-function TScreenExampleTriangle.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+function TScreenExampleTriangle.KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
 begin
  result:=false;
 end;
