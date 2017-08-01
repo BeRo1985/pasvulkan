@@ -1748,17 +1748,23 @@ begin
 end;
 
 procedure TpvGUIWindow.Update;
-var LastClipRect:TpvRect;
+var LastClipRect,NewClipRect:TpvRect;
 begin
  fCanvas.Push;
  try
   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
   begin
    LastClipRect:=fCanvas.ClipRect;
-   fCanvas.ClipRect:=TpvRect.CreateAbsolute(LastClipRect.Left-Theme.fWindowShadowWidth,
-                                            LastClipRect.Top-Theme.fWindowShadowHeight,
-                                            LastClipRect.Right+Theme.fWindowShadowWidth,
-                                            LastClipRect.Bottom+Theme.fWindowShadowHeight);
+   NewClipRect:=TpvRect.CreateAbsolute(LastClipRect.Left-Theme.fWindowShadowWidth,
+                                       LastClipRect.Top-Theme.fWindowShadowHeight,
+                                       LastClipRect.Right+Theme.fWindowShadowWidth,
+                                       LastClipRect.Bottom+Theme.fWindowShadowHeight);
+   if assigned(fParent) and
+      (fParent is TpvGUIWidget) then begin
+    NewClipRect:=TpvRect.CreateRelative((fParent as TpvGUIWidget).fPosition,
+                                        (fParent as TpvGUIWidget).fSize).GetIntersection(NewClipRect);
+   end;
+   fCanvas.ClipRect:=NewClipRect;
    fCanvas.DrawNinePatchSprite(Theme.fSpriteFocusedWindowShadow,
                                Theme.fSpriteFocusedWindowShadowNinePatch,
                                TpvVector2.Create(-Theme.fWindowShadowWidth,-Theme.fWindowShadowHeight),
