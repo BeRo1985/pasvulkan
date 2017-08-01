@@ -1611,18 +1611,63 @@ begin
 end;
 
 function TpvGUIInstance.KeyDown(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+var Index:TpvInt32;
+    Current:TpvGUIObject;
+    CurrentWidget:TpvGUIWidget;
 begin
  result:=false;
+ for Index:=0 to fCurrentFocusPath.Count-1 do begin
+  Current:=fCurrentFocusPath.Items[Index];
+  if (Current<>self) and (Current is TpvGUIWidget) then begin
+   CurrentWidget:=Current as TpvGUIWidget;
+   if CurrentWidget.Focused then begin
+    result:=CurrentWidget.KeyDown(aKeyCode,aKeyModifier);
+    if result then begin
+     break;
+    end;
+   end;
+  end;
+ end;
 end;
 
 function TpvGUIInstance.KeyUp(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+var Index:TpvInt32;
+    Current:TpvGUIObject;
+    CurrentWidget:TpvGUIWidget;
 begin
  result:=false;
+ for Index:=0 to fCurrentFocusPath.Count-1 do begin
+  Current:=fCurrentFocusPath.Items[Index];
+  if (Current<>self) and (Current is TpvGUIWidget) then begin
+   CurrentWidget:=Current as TpvGUIWidget;
+   if CurrentWidget.Focused then begin
+    result:=CurrentWidget.KeyUp(aKeyCode,aKeyModifier);
+    if result then begin
+     break;
+    end;
+   end;
+  end;
+ end;
 end;
 
 function TpvGUIInstance.KeyTyped(const aKeyCode,aKeyModifier:TpvInt32):boolean;
+var Index:TpvInt32;
+    Current:TpvGUIObject;
+    CurrentWidget:TpvGUIWidget;
 begin
  result:=false;
+ for Index:=0 to fCurrentFocusPath.Count-1 do begin
+  Current:=fCurrentFocusPath.Items[Index];
+  if (Current<>self) and (Current is TpvGUIWidget) then begin
+   CurrentWidget:=Current as TpvGUIWidget;
+   if CurrentWidget.Focused then begin
+    result:=CurrentWidget.KeyTyped(aKeyCode,aKeyModifier);
+    if result then begin
+     break;
+    end;
+   end;
+  end;
+ end;
 end;
 
 function TpvGUIInstance.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID,aButton:TpvInt32):boolean;
