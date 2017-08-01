@@ -99,10 +99,8 @@ const MaxSwapChainImages=3;
 
       EVENT_NONE=0;
       EVENT_KEY=1;
-      EVENT_POINTER_DOWN=4;
-      EVENT_POINTER_UP=5;
-      EVENT_POINTER_MOTION=6;
-      EVENT_SCROLLED=7;
+      EVENT_POINTER=2;
+      EVENT_SCROLLED=3;
 
       KEYCODE_ANYKEY=-1;
       KEYCODE_UNKNOWN=0;
@@ -567,7 +565,9 @@ type EpvApplication=class(Exception)
      TpvApplicationInputPointerEventType=
       (
        POINTEREVENT_DOWN,
-       POINTEREVENT_UP
+       POINTEREVENT_UP,
+       POINTEREVENT_MOTION,
+       POINTEREVENT_DRAG
       );
 
      PpvApplicationInputPointerButton=^TpvApplicationInputPointerButton;
@@ -581,14 +581,39 @@ type EpvApplication=class(Exception)
      PpvApplicationInputPointerButtons=^TpvApplicationInputPointerButtons;
      TpvApplicationInputPointerButtons=set of TpvApplicationInputPointerButton;
 
+     PpvApplicationInputPointerEvent=^TpvApplicationInputPointerEventType;
+     TpvApplicationInputPointerEvent=record
+      public
+       PointerEventType:TpvApplicationInputPointerEventType;
+       Position:TpvVector2;
+       RelativePosition:TpvVector2;
+       Pressure:TpvFloat;
+       PointerID:TpvInt32;
+       Button:TpvApplicationInputPointerButton;
+       Buttons:TpvApplicationInputPointerButtons;
+       KeyModifiers:TpvApplicationInputKeyModifiers;
+       constructor Create(const aPointerEventType:TpvApplicationInputPointerEventType;
+                          const aPosition:TpvVector2;
+                          const aPressure:TpvFloat;
+                          const aPointerID:TpvInt32;
+                          const aButton:TpvApplicationInputPointerButton;
+                          const aButtons:TpvApplicationInputPointerButtons;
+                          const aKeyModifiers:TpvApplicationInputKeyModifiers); overload;
+       constructor Create(const aPointerEventType:TpvApplicationInputPointerEventType;
+                          const aPosition:TpvVector2;
+                          const aRelativePosition:TpvVector2;
+                          const aPressure:TpvFloat;
+                          const aPointerID:TpvInt32;
+                          const aButtons:TpvApplicationInputPointerButtons;
+                          const aKeyModifiers:TpvApplicationInputKeyModifiers); overload;
+     end;
+
      TpvApplicationInputProcessor=class
       public
        constructor Create; virtual;
        destructor Destroy; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
-       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
-       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
-       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; virtual;
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; virtual;
      end;
 
@@ -596,18 +621,12 @@ type EpvApplication=class(Exception)
      TpvApplicationInputProcessorQueueEvent=record
       Next:PpvApplicationInputProcessorQueueEvent;
       Time:TpvInt64;
-      KeyModifiers:TpvApplicationInputKeyModifiers;
       case Event:TpvInt32 of
        EVENT_KEY:(
         KeyEvent:TpvApplicationInputKeyEvent;
        );
-       EVENT_POINTER_DOWN,EVENT_POINTER_UP,EVENT_POINTER_MOTION:(
-        Position:TpvVector2;
-        RelativePosition:TpvVector2;
-        Pressure:TpvFloat;
-        PointerID:TpvInt32;
-        Button:TpvApplicationInputPointerButton;
-        Buttons:TpvApplicationInputPointerButtons;
+       EVENT_POINTER:(
+        PointerEvent:TpvApplicationInputPointerEvent;
        );
        EVENT_SCROLLED:(
         RelativeAmount:TpvVector2;
@@ -632,9 +651,7 @@ type EpvApplication=class(Exception)
        procedure Drain;
        function GetCurrentEventTime:TpvInt64;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
      end;
 
@@ -652,9 +669,7 @@ type EpvApplication=class(Exception)
        procedure ClearProcessors;
        function CountProcessors:TpvInt32;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
      end;
 
@@ -814,11 +829,7 @@ type EpvApplication=class(Exception)
 
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
 
-       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
-
-       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
-
-       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; virtual;
 
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; virtual;
 
@@ -1205,11 +1216,7 @@ type EpvApplication=class(Exception)
 
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
 
-       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
-
-       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
-
-       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; virtual;
 
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; virtual;
 
@@ -1991,6 +1998,40 @@ begin
  KeyModifiers:=aKeyModifiers;
 end;
 
+constructor TpvApplicationInputPointerEvent.Create(const aPointerEventType:TpvApplicationInputPointerEventType;
+                                                   const aPosition:TpvVector2;
+                                                   const aPressure:TpvFloat;
+                                                   const aPointerID:TpvInt32;
+                                                   const aButton:TpvApplicationInputPointerButton;
+                                                   const aButtons:TpvApplicationInputPointerButtons;
+                                                   const aKeyModifiers:TpvApplicationInputKeyModifiers);
+begin
+ PointerEventType:=aPointerEventType;
+ Position:=aPosition;
+ Pressure:=aPressure;
+ PointerID:=aPointerID;
+ Button:=aButton;
+ Buttons:=aButtons;
+ KeyModifiers:=aKeyModifiers;
+end;
+
+constructor TpvApplicationInputPointerEvent.Create(const aPointerEventType:TpvApplicationInputPointerEventType;
+                                                   const aPosition:TpvVector2;
+                                                   const aRelativePosition:TpvVector2;
+                                                   const aPressure:TpvFloat;
+                                                   const aPointerID:TpvInt32;
+                                                   const aButtons:TpvApplicationInputPointerButtons;
+                                                   const aKeyModifiers:TpvApplicationInputKeyModifiers);
+begin
+ PointerEventType:=aPointerEventType;
+ Position:=aPosition;
+ RelativePosition:=aRelativePosition;
+ Pressure:=aPressure;
+ PointerID:=aPointerID;
+ Buttons:=aButtons;
+ KeyModifiers:=aKeyModifiers;
+end;
+
 constructor TpvApplicationInputProcessor.Create;
 begin
 end;
@@ -2004,17 +2045,7 @@ begin
  result:=false;
 end;
 
-function TpvApplicationInputProcessor.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
-end;
-
-function TpvApplicationInputProcessor.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
-end;
-
-function TpvApplicationInputProcessor.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TpvApplicationInputProcessor.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 begin
  result:=false;
 end;
@@ -2110,14 +2141,8 @@ begin
     EVENT_KEY:begin
      fProcessor.KeyEvent(CurrentEvent^.KeyEvent);
     end;
-    EVENT_POINTER_DOWN:begin
-     fProcessor.PointerDown(CurrentEvent^.Position,CurrentEvent^.Pressure,CurrentEvent^.PointerID,CurrentEvent^.Button,CurrentEvent^.Buttons,CurrentEvent^.KeyModifiers);
-    end;
-    EVENT_POINTER_UP:begin
-     fProcessor.PointerUp(CurrentEvent^.Position,CurrentEvent^.Pressure,CurrentEvent^.PointerID,CurrentEvent^.Button,CurrentEvent^.Buttons,CurrentEvent^.KeyModifiers);
-    end;
-    EVENT_POINTER_MOTION:begin
-     fProcessor.PointerMotion(CurrentEvent^.Position,CurrentEvent^.RelativePosition,CurrentEvent^.Pressure,CurrentEvent^.PointerID,CurrentEvent^.Buttons,CurrentEvent^.KeyModifiers);
+    EVENT_POINTER:begin
+     fProcessor.PointerEvent(CurrentEvent^.PointerEvent);
     end;
     EVENT_SCROLLED:begin
      fProcessor.Scrolled(CurrentEvent^.RelativeAmount);
@@ -2161,7 +2186,7 @@ begin
  end;
 end;
 
-function TpvApplicationInputProcessorQueue.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TpvApplicationInputProcessorQueue.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 var Event:PpvApplicationInputProcessorQueueEvent;
 begin
  result:=false;
@@ -2169,57 +2194,8 @@ begin
  try
   Event:=NewEvent;
   if assigned(Event) then begin
-   Event^.Event:=EVENT_POINTER_DOWN;
-   Event^.Position:=aPosition;
-   Event^.Pressure:=aPressure;
-   Event^.PointerID:=aPointerID;
-   Event^.Button:=aButton;
-   Event^.Buttons:=aButtons;
-   Event^.KeyModifiers:=aKeyModifiers;
-   PushEvent(Event);
-  end;
- finally
-  fCriticalSection.Release;
- end;
-end;
-
-function TpvApplicationInputProcessorQueue.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-var Event:PpvApplicationInputProcessorQueueEvent;
-begin
- result:=false;
- fCriticalSection.Acquire;
- try
-  Event:=NewEvent;
-  if assigned(Event) then begin
-   Event^.Event:=EVENT_POINTER_UP;
-   Event^.Position:=aPosition;
-   Event^.Pressure:=aPressure;
-   Event^.PointerID:=aPointerID;
-   Event^.Button:=aButton;
-   Event^.Buttons:=aButtons;
-   Event^.KeyModifiers:=aKeyModifiers;
-   PushEvent(Event);
-  end;
- finally
-  fCriticalSection.Release;
- end;
-end;
-
-function TpvApplicationInputProcessorQueue.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-var Event:PpvApplicationInputProcessorQueueEvent;
-begin
- result:=false;
- fCriticalSection.Acquire;
- try
-  Event:=NewEvent;
-  if assigned(Event) then begin
-   Event^.Event:=EVENT_POINTER_MOTION;
-   Event^.Position:=aPosition;
-   Event^.RelativePosition:=aRelativePosition;
-   Event^.Pressure:=aPressure;
-   Event^.PointerID:=aPointerID;
-   Event^.Buttons:=aButtons;
-   Event^.KeyModifiers:=aKeyModifiers;
+   Event^.Event:=EVENT_POINTER;
+   Event^.PointerEvent:=aPointerEvent;
    PushEvent(Event);
   end;
  finally
@@ -2301,59 +2277,23 @@ begin
  result:=false;
  for i:=0 to fProcessors.Count-1 do begin
   p:=fProcessors.Items[i];
-  if assigned(p) then begin
-   if p.KeyEvent(aKeyEvent) then begin
-    result:=true;
-    exit;
-   end;
+  if assigned(p) and p.KeyEvent(aKeyEvent) then begin
+   result:=true;
+   exit;
   end;
  end;
 end;
 
-function TpvApplicationInputMultiplexer.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TpvApplicationInputMultiplexer.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 var i:TpvInt32;
     p:TpvApplicationInputProcessor;
 begin
  result:=false;
  for i:=0 to fProcessors.Count-1 do begin
   p:=fProcessors.Items[i];
-  if assigned(p) then begin
-   if p.PointerDown(aPosition,aPressure,aPointerID,aButton,aButtons,aKeyModifiers) then begin
-    result:=true;
-    exit;
-   end;
-  end;
- end;
-end;
-
-function TpvApplicationInputMultiplexer.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-var i:TpvInt32;
-    p:TpvApplicationInputProcessor;
-begin
- result:=false;
- for i:=0 to fProcessors.Count-1 do begin
-  p:=fProcessors.Items[i];
-  if assigned(p) then begin
-   if p.PointerUp(aPosition,aPressure,aPointerID,aButton,aButtons,aKeyModifiers) then begin
-    result:=true;
-    exit;
-   end;
-  end;
- end;
-end;
-
-function TpvApplicationInputMultiplexer.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-var i:TpvInt32;
-    p:TpvApplicationInputProcessor;
-begin
- result:=false;
- for i:=0 to fProcessors.Count-1 do begin
-  p:=fProcessors.Items[i];
-  if assigned(p) then begin
-   if p.PointerMotion(aPosition,aRelativePosition,aPressure,aPointerID,aButtons,aKeyModifiers) then begin
-    result:=true;
-    exit;
-   end;
+  if assigned(p) and p.PointerEvent(aPointerEvent) then begin
+   result:=true;
+   exit;
   end;
  end;
 end;
@@ -3861,9 +3801,9 @@ begin
       fMouseY:=Event^.motion.y;
       fMouseDeltaX:=Event^.motion.xrel;
       fMouseDeltaY:=Event^.motion.yrel;
-      OK:=pvApplication.PointerMotion(TpvVector2.Create(Event^.motion.x,Event^.motion.y),TpvVector2.Create(Event^.motion.xrel,Event^.motion.yrel),ord(fMouseDown<>[]) and 1,0,fMouseDown,KeyModifiers);
+      OK:=pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,TpvVector2.Create(Event^.motion.x,Event^.motion.y),TpvVector2.Create(Event^.motion.xrel,Event^.motion.yrel),ord(fMouseDown<>[]) and 1,0,fMouseDown,KeyModifiers));
       if assigned(fProcessor) and not OK then begin
-       fProcessor.PointerMotion(TpvVector2.Create(Event^.motion.x,Event^.motion.y),TpvVector2.Create(Event^.motion.xrel,Event^.motion.yrel),ord(fMouseDown<>[]) and 1,0,fMouseDown,KeyModifiers);
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,TpvVector2.Create(Event^.motion.x,Event^.motion.y),TpvVector2.Create(Event^.motion.xrel,Event^.motion.yrel),ord(fMouseDown<>[]) and 1,0,fMouseDown,KeyModifiers));
       end;
      end;
      SDL_MOUSEBUTTONDOWN:begin
@@ -3878,24 +3818,24 @@ begin
         Include(fMouseDown,BUTTON_LEFT);
         Include(fMouseJustDown,BUTTON_LEFT);
         fJustTouched:=true;
-        if (not pvApplication.PointerDown(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT,fMouseDown,KeyModifiers)) and assigned(fProcessor) then begin
-         fProcessor.PointerDown(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT,fMouseDown,KeyModifiers);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_RIGHT:begin
         Include(fMouseDown,BUTTON_RIGHT);
         Include(fMouseJustDown,BUTTON_RIGHT);
         fJustTouched:=true;
-        if (not pvApplication.PointerDown(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT,fMouseDown,KeyModifiers)) and assigned(fProcessor) then begin
-         fProcessor.PointerDown(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT,fMouseDown,KeyModifiers);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_MIDDLE:begin
         Include(fMouseDown,BUTTON_MIDDLE);
         Include(fMouseJustDown,BUTTON_MIDDLE);
         fJustTouched:=true;
-        if (not pvApplication.PointerDown(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE,fMouseDown,KeyModifiers)) and assigned(fProcessor) then begin
-         fProcessor.PointerDown(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE,fMouseDown,KeyModifiers);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE,fMouseDown,KeyModifiers));
         end;
        end;
       end;
@@ -3911,22 +3851,22 @@ begin
        SDL_BUTTON_LEFT:begin
         Exclude(fMouseDown,BUTTON_LEFT);
         Exclude(fMouseJustDown,BUTTON_LEFT);
-        if (not pvApplication.PointerUp(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT,fMouseDown,KeyModifiers)) and assigned(fProcessor) then begin
-         fProcessor.PointerUp(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT,fMouseDown,KeyModifiers);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_RIGHT:begin
         Exclude(fMouseDown,BUTTON_RIGHT);
         Exclude(fMouseJustDown,BUTTON_RIGHT);
-        if (not pvApplication.PointerUp(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT,fMouseDown,KeyModifiers)) and assigned(fProcessor) then begin
-         fProcessor.PointerUp(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT,fMouseDown,KeyModifiers);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_MIDDLE:begin
         Exclude(fMouseDown,BUTTON_MIDDLE);
         Exclude(fMouseJustDown,BUTTON_MIDDLE);
-        if (not pvApplication.PointerUp(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE,fMouseDown,KeyModifiers)) and assigned(fProcessor) then begin
-         fProcessor.PointerUp(TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE,fMouseDown,KeyModifiers);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE,fMouseDown,KeyModifiers));
         end;
        end;
       end;
@@ -3945,8 +3885,8 @@ begin
       fPointerPressure[PointerID]:=Event^.tfinger.pressure;
       fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
       fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
-      if (not pvApplication.PointerMotion(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,[BUTTON_LEFT],KeyModifiers)) and assigned(fProcessor) then begin
-       fProcessor.PointerMotion(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,[BUTTON_LEFT],KeyModifiers);
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,[BUTTON_LEFT],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,[BUTTON_LEFT],KeyModifiers));
       end;
      end;
      SDL_FINGERDOWN:begin
@@ -3962,8 +3902,8 @@ begin
       Include(fPointerDown[PointerID],BUTTON_LEFT);
       Include(fPointerJustDown[PointerID],BUTTON_LEFT);
       fJustTouched:=true;
-      if (not pvApplication.PointerDown(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT,fPointerDown[PointerID],KeyModifiers)) and assigned(fProcessor) then begin
-       fProcessor.PointerDown(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT,fPointerDown[PointerID],KeyModifiers);
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT,fPointerDown[PointerID],KeyModifiers));
       end;
      end;
      SDL_FINGERUP:begin
@@ -3980,8 +3920,8 @@ begin
       fPointerDeltaY[PointerID]:=Event^.tfinger.dy;
       Exclude(fPointerDown[PointerID],BUTTON_LEFT);
       Exclude(fPointerJustDown[PointerID],BUTTON_LEFT);
-      if (not pvApplication.PointerUp(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT,fPointerDown[PointerID],KeyModifiers)) and assigned(fProcessor) then begin
-       fProcessor.PointerUp(TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT,fPointerDown[PointerID],KeyModifiers);
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT,fPointerDown[PointerID],KeyModifiers));
       end;
      end;
     end;
@@ -4453,17 +4393,7 @@ begin
  result:=false;
 end;
 
-function TpvApplicationScreen.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
-end;
-
-function TpvApplicationScreen.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
-end;
-
-function TpvApplicationScreen.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TpvApplicationScreen.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 begin
  result:=false;
 end;
@@ -7029,28 +6959,10 @@ begin
  end;
 end;
 
-function TpvApplication.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TpvApplication.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 begin
  if assigned(fScreen) then begin
-  result:=fScreen.PointerDown(aPosition,aPressure,aPointerID,aButton,aButtons,aKeyModifiers);
- end else begin
-  result:=false;
- end;
-end;
-
-function TpvApplication.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- if assigned(fScreen) then begin
-  result:=fScreen.PointerUp(aPosition,aPressure,aPointerID,aButton,aButtons,aKeyModifiers);
- end else begin
-  result:=false;
- end;
-end;
-
-function TpvApplication.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- if assigned(fScreen) then begin
-  result:=fScreen.PointerMotion(aPosition,aRelativePosition,aPressure,aPointerID,aButtons,aKeyModifiers);
+  result:=fScreen.PointerEvent(aPointerEvent);
  end else begin
   result:=false;
  end;

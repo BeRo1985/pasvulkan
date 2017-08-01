@@ -72,11 +72,7 @@ type TScreenExampleTriangle=class(TpvApplicationScreen)
 
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
 
-       function PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-
-       function PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-
-       function PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
 
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; override;
 
@@ -488,44 +484,40 @@ begin
  end;
 end;
 
-function TScreenExampleTriangle.PointerDown(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
+function TScreenExampleTriangle.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 var Index:TpvInt32;
     cy:TpvFloat;
 begin
  result:=false;
  if fReady then begin
-  fSelectedIndex:=-1;
-  cy:=fStartY;
-  for Index:=0 to 0 do begin
-   if (aPosition.y>=cy) and (aPosition.y<(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
-    fSelectedIndex:=Index;
-    if fSelectedIndex=0 then begin
-     pvApplication.NextScreen:=TScreenMainMenu.Create;
+  case aPointerEvent.PointerEventType of
+   POINTEREVENT_DOWN:begin
+    fSelectedIndex:=-1;
+    cy:=fStartY;
+    for Index:=0 to 0 do begin
+     if (aPointerEvent.Position.y>=cy) and (aPointerEvent.Position.y<(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+      fSelectedIndex:=Index;
+      if fSelectedIndex=0 then begin
+       pvApplication.NextScreen:=TScreenMainMenu.Create;
+      end;
+     end;
+     cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
     end;
    end;
-   cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
-  end;
- end;
-end;
-
-function TScreenExampleTriangle.PointerUp(const aPosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButton:TpvApplicationInputPointerButton;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
-end;
-
-function TScreenExampleTriangle.PointerMotion(const aPosition,aRelativePosition:TpvVector2;const aPressure:TpvFloat;const aPointerID:TpvInt32;const aButtons:TpvApplicationInputPointerButtons;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-var Index:TpvInt32;
-    cy:TpvFloat;
-begin
- result:=false;
- if fReady then begin
-  fSelectedIndex:=-1;
-  cy:=fStartY;
-  for Index:=0 to 0 do begin
-   if (aPosition.y>=cy) and (aPosition.y<(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
-    fSelectedIndex:=Index;
+   POINTEREVENT_UP:begin
    end;
-   cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
+   POINTEREVENT_MOTION:begin
+    fSelectedIndex:=-1;
+    cy:=fStartY;
+    for Index:=0 to 0 do begin
+     if (aPointerEvent.Position.y>=cy) and (aPointerEvent.Position.y<(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+      fSelectedIndex:=Index;
+     end;
+     cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
+    end;
+   end;
+   POINTEREVENT_DRAG:begin
+   end;
   end;
  end;
 end;
