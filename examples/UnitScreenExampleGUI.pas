@@ -382,7 +382,7 @@ end;
 function TScreenExampleGUI.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
  if fReady then begin
-  result:=fGUIInstance.Scrolled(fLastMousePosition,aRelativeAmount);
+  result:=fGUIInstance.Scrolled(fLastMousePosition*fScreenToCanvasScale,aRelativeAmount);
  end else begin
   result:=false;
  end;
