@@ -547,7 +547,11 @@ type EpvApplication=class(Exception)
        KEYMODIFIER_NUM,
        KEYMODIFIER_CAPS,
        KEYMODIFIER_MODE,
-       KEYMODIFIER_RESERVED
+       KEYMODIFIER_RESERVED,
+       KEYMODIFIER_CTRL,
+       KEYMODIFIER_SHIFT,
+       KEYMODIFIER_ALT,
+       KEYMODIFIER_META
       );
 
      PpvApplicationInputKeyModifiers=^TpvApplicationInputKeyModifiers;
@@ -1331,11 +1335,6 @@ type EpvApplication=class(Exception)
        property RealUsedDrawSwapChainImageIndex:TpvInt32 read fRealUsedDrawSwapChainImageIndex;
 
      end;
-
-const KEYMODIFIER_CTRL=[KEYMODIFIER_LCTRL,KEYMODIFIER_RCTRL];
-      KEYMODIFIER_SHIFT=[KEYMODIFIER_LSHIFT,KEYMODIFIER_RSHIFT];
-      KEYMODIFIER_ALT=[KEYMODIFIER_LALT,KEYMODIFIER_RALT];
-      KEYMODIFIER_META=[KEYMODIFIER_LMETA,KEYMODIFIER_RMETA];
 
 var pvApplication:TpvApplication=nil;
 
@@ -3826,24 +3825,31 @@ begin
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_RSHIFT)<>0 then begin
   Include(result,KEYMODIFIER_RSHIFT);
+  Include(result,KEYMODIFIER_SHIFT);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_LCTRL)<>0 then begin
   Include(result,KEYMODIFIER_LCTRL);
+  Include(result,KEYMODIFIER_CTRL);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_RCTRL)<>0 then begin
   Include(result,KEYMODIFIER_RCTRL);
+  Include(result,KEYMODIFIER_CTRL);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_LALT)<>0 then begin
   Include(result,KEYMODIFIER_LALT);
+  Include(result,KEYMODIFIER_ALT);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_RALT)<>0 then begin
   Include(result,KEYMODIFIER_RALT);
+  Include(result,KEYMODIFIER_ALT);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_LMETA)<>0 then begin
   Include(result,KEYMODIFIER_LMETA);
+  Include(result,KEYMODIFIER_META);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_RMETA)<>0 then begin
   Include(result,KEYMODIFIER_RMETA);
+  Include(result,KEYMODIFIER_META);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_NUM)<>0 then begin
   Include(result,KEYMODIFIER_NUM);
