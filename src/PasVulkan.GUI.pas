@@ -307,7 +307,8 @@ type TpvGUIObject=class;
        fUpdateBufferIndex:TpvInt32;
        fDrawBufferIndex:TpvInt32;
        fDeltaTime:TpvDouble;
-       fFocusPath:TpvGUIObjectList;
+       fFocusPaths:array[boolean] of TpvGUIObjectList;
+       fFocusPathIndex:boolean;
        fDragWidget:TpvGUIWidget;
        fWindow:TpvGUIWindow;
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
@@ -1359,7 +1360,11 @@ begin
 
  fDeltaTime:=0.0;
 
- fFocusPath:=TpvGUIObjectList.Create(false);
+ fFocusPaths[false]:=TpvGUIObjectList.Create(false);
+
+ fFocusPaths[true]:=TpvGUIObjectList.Create(false);
+
+ fFocusPathIndex:=false;
 
  fDragWidget:=nil;
 
@@ -1374,7 +1379,9 @@ begin
 
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
 
- FreeAndNil(fFocusPath);
+ FreeAndNil(fFocusPaths[false]);
+
+ FreeAndNil(fFocusPaths[true]);
 
  SetCountBuffers(0);
 
@@ -1426,7 +1433,8 @@ procedure TpvGUIInstance.BeforeDestruction;
 begin
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
- fFocusPath.Clear;
+ fFocusPaths[false].Clear;
+ fFocusPaths[true].Clear;
  DecRefWithoutFree;
  inherited BeforeDestruction;
 end;
@@ -1475,24 +1483,16 @@ var CurrentIndex:TpvInt32;
     Current:TpvGUIObject;
     CurrentWidget:TpvGUIWidget;
 begin
- for CurrentIndex:=0 to fFocusPath.Count-1 do begin
-  Current:=fFocusPath.Items[CurrentIndex];
-  if Current is TpvGUIWidget then begin
-   CurrentWidget:=Current as TpvGUIWidget;
-   if CurrentWidget.Focused then begin
-    CurrentWidget.Leave;
-   end;
-  end;
- end;
- fFocusPath.Clear;
+ fFocusPaths[fFocusPathIndex].Clear;
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
  CurrentWidget:=aWidget;
  while assigned(CurrentWidget) do begin
-  fFocusPath.Add(CurrentWidget);
+  fFocusPaths[fFocusPathIndex].Add(CurrentWidget);
   if CurrentWidget is TpvGUIWindow then begin
    TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
    fWindow:=CurrentWidget as TpvGUIWindow;
    fWindow.IncRef;
+   break;
   end;
   if assigned(CurrentWidget.fParent) and (CurrentWidget.fParent is TpvGUIWidget) then begin
    CurrentWidget:=CurrentWidget.fParent as TpvGUIWidget;
@@ -1500,13 +1500,27 @@ begin
    break;
   end;
  end;
- for CurrentIndex:=0 to fFocusPath.Count-1 do begin
-  Current:=fFocusPath.Items[CurrentIndex];
+ try
+  for CurrentIndex:=0 to fFocusPaths[not fFocusPathIndex].Count-1 do begin
+   Current:=fFocusPaths[not fFocusPathIndex].Items[CurrentIndex];
+   if Current is TpvGUIWidget then begin
+    CurrentWidget:=Current as TpvGUIWidget;
+    if CurrentWidget.Focused and not fFocusPaths[fFocusPathIndex].Contains(Current) then begin
+     CurrentWidget.Leave;
+    end;
+   end;
+  end;
+ finally
+  fFocusPaths[not fFocusPathIndex].Clear;
+ end;
+ for CurrentIndex:=0 to fFocusPaths[fFocusPathIndex].Count-1 do begin
+  Current:=fFocusPaths[fFocusPathIndex].Items[CurrentIndex];
   if Current is TpvGUIWidget then begin
    CurrentWidget:=Current as TpvGUIWidget;
    CurrentWidget.Enter;
   end;
  end;
+ fFocusPathIndex:=not fFocusPathIndex;
  if assigned(fWindow) then begin
   MoveWindowToFront(fWindow);
  end;
@@ -1515,8 +1529,11 @@ end;
 procedure TpvGUIInstance.DisposeWindow(const aWindow:TpvGUIWindow);
 begin
  if assigned(aWindow) then begin
-  if assigned(fFocusPath) and fFocusPath.Contains(aWindow) then begin
-   fFocusPath.Clear;
+  if assigned(fFocusPaths[false]) and fFocusPaths[false].Contains(aWindow) then begin
+   fFocusPaths[false].Clear;
+  end;
+  if assigned(fFocusPaths[true]) and fFocusPaths[true].Contains(aWindow) then begin
+   fFocusPaths[true].Clear;
   end;
   if fDragWidget=aWindow then begin
    TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
