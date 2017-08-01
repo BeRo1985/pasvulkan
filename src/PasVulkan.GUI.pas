@@ -115,11 +115,50 @@ type TpvGUIObject=class;
        property ReferenceCounter:TpvInt32 read fReferenceCounter write fReferenceCounter;
      end;
 
+     PpvGUILayoutAlignment=^TpvGUILayoutAlignment;
+     TpvGUILayoutAlignment=
+      (
+       pvglaLeading,
+       pvglaMiddle,
+       pvglaTailing,
+       pvglaFill
+      );
+
+     PpvGUILayoutOrientation=^TpvGUILayoutOrientation;
+     TpvGUILayoutOrientation=
+      (
+       pvgloHorizontal,
+       pvgloVertical
+      );
+
      TpvGUILayout=class(TpvGUIObject)
       protected
        function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; virtual;
        procedure PerformLayout(const aWidget:TpvGUIWidget); virtual;
       public
+     end;
+
+     TpvGUIBoxLayout=class(TpvGUILayout)
+      private
+       fAlignment:TpvGUILayoutAlignment;
+       fOrientation:TpvGUILayoutOrientation;
+       fMargin:TpvFloat;
+       fSpacing:TpvFloat;
+      protected
+       function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
+       procedure PerformLayout(const aWidget:TpvGUIWidget); override;
+      public
+       constructor Create(const aParent:TpvGUIObject;
+                          const aAlignment:TpvGUILayoutAlignment=pvglaMiddle;
+                          const aOrientation:TpvGUILayoutOrientation=pvgloHorizontal;
+                          const aMargin:TpvFloat=0.0;
+                          const aSpacing:TpvFloat=0.0); reintroduce; virtual;
+       destructor Destroy; override;
+      published
+       property Alignment:TpvGUILayoutAlignment read fAlignment write fAlignment;
+       property Orientation:TpvGUILayoutOrientation read fOrientation write fOrientation;
+       property Margin:TpvFloat read fMargin write fMargin;
+       property Spacing:TpvFloat read fSpacing write fSpacing;
      end;
 
      TpvGUITheme=class(TpvGUIObject)
@@ -456,6 +495,181 @@ end;
 procedure TpvGUILayout.PerformLayout(const aWidget:TpvGUIWidget);
 begin
 
+end;
+
+constructor TpvGUIBoxLayout.Create(const aParent:TpvGUIObject;
+                                   const aAlignment:TpvGUILayoutAlignment=pvglaMiddle;
+                                   const aOrientation:TpvGUILayoutOrientation=pvgloHorizontal;
+                                   const aMargin:TpvFloat=0.0;
+                                   const aSpacing:TpvFloat=0.0);
+begin
+ inherited Create(aParent);
+ fAlignment:=aAlignment;
+ fOrientation:=aOrientation;
+ fMargin:=0.0;
+ fSpacing:=0.0;
+end;
+
+destructor TpvGUIBoxLayout.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TpvGUIBoxLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
+var Axis0,Axis1,ChildIndex:TpvInt32;
+    YOffset:TpvFloat;
+    Size,ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
+    First:boolean;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+begin
+ Size:=TpvVector2.Create(fMargin*2.0,fMargin*2.0);
+ YOffset:=0;
+ if (aWidget is TpvGUIWindow) and
+    (length((aWidget as TpvGUIWindow).fTitle)<>0) then begin
+  case fOrientation of
+   pvgloHorizontal:begin
+    YOffset:=aWidget.Theme.WindowHeaderHeight;
+   end;
+   pvgloVertical:begin
+    Size.y:=Size.y+(aWidget.Theme.WindowHeaderHeight-(fMargin*0.5));
+   end;
+  end;
+ end;
+ case fOrientation of
+  pvgloHorizontal:begin
+   Axis0:=0;
+   Axis1:=1;
+  end;
+  else begin
+   Axis0:=1;
+   Axis1:=0;
+  end;
+ end;
+ First:=true;
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    if not First then begin
+     Size[Axis1]:=Size[Axis1]+fSpacing;
+    end;
+    ChildPreferredSize:=ChildWidget.PreferredSize;
+    ChildFixedSize:=ChildWidget.fFixedSize;
+    if ChildFixedSize.x>0.0 then begin
+     ChildTargetSize.x:=ChildFixedSize.x;
+    end else begin
+     ChildTargetSize.x:=ChildPreferredSize.x;
+    end;
+    if ChildFixedSize.y>0.0 then begin
+     ChildTargetSize.y:=ChildFixedSize.y;
+    end else begin
+     ChildTargetSize.y:=ChildPreferredSize.y;
+    end;
+    Size[Axis0]:=Size[Axis0]+ChildTargetSize[Axis0];
+    Size[Axis1]:=Max(Size[Axis1],ChildTargetSize[Axis1]+(fMargin*2.0));
+    First:=false;
+   end;
+  end;
+ end;
+ result:=Size+TpvVector2.Create(0.0,YOffset);
+end;
+
+procedure TpvGUIBoxLayout.PerformLayout(const aWidget:TpvGUIWidget);
+var Axis0,Axis1,ChildIndex:TpvInt32;
+    Offset,YOffset:TpvFloat;
+    FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
+    Position:TpvVector2;
+    First:boolean;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+begin
+ FixedSize:=aWidget.fFixedSize;
+ if FixedSize.x>0.0 then begin
+  ContainerSize.x:=FixedSize.x;
+ end else begin
+  ContainerSize.x:=aWidget.Width;
+ end;
+ if FixedSize.y>0.0 then begin
+  ContainerSize.y:=FixedSize.y;
+ end else begin
+  ContainerSize.y:=aWidget.Height;
+ end;
+ case fOrientation of
+  pvgloHorizontal:begin
+   Axis0:=0;
+   Axis1:=1;
+  end;
+  else begin
+   Axis0:=1;
+   Axis1:=0;
+  end;
+ end;
+ Offset:=fMargin;
+ YOffset:=0;
+ if (aWidget is TpvGUIWindow) and
+    (length((aWidget as TpvGUIWindow).fTitle)<>0) then begin
+  case fOrientation of
+   pvgloHorizontal:begin
+    YOffset:=aWidget.Theme.WindowHeaderHeight;
+    ContainerSize.y:=ContainerSize.y-YOffset;
+   end;
+   pvgloVertical:begin
+    Offset:=Offset+(aWidget.Theme.WindowHeaderHeight-(fMargin*0.5));
+   end;
+  end;
+ end;
+ First:=true;
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    if not First then begin
+     Offset:=Offset+fSpacing;
+    end;
+    ChildPreferredSize:=ChildWidget.PreferredSize;
+    ChildFixedSize:=ChildWidget.fFixedSize;
+    if ChildFixedSize.x>0.0 then begin
+     ChildTargetSize.x:=ChildFixedSize.x;
+    end else begin
+     ChildTargetSize.x:=ChildPreferredSize.x;
+    end;
+    if ChildFixedSize.y>0.0 then begin
+     ChildTargetSize.y:=ChildFixedSize.y;
+    end else begin
+     ChildTargetSize.y:=ChildPreferredSize.y;
+    end;
+    Position:=TpvVector2.Create(0,YOffset);
+    Position[Axis0]:=Offset;
+    case fAlignment of
+     pvglaLeading:begin
+      Position[Axis1]:=Position[Axis1]+fMargin;
+     end;
+     pvglaMiddle:begin
+      Position[Axis1]:=Position[Axis1]+((ContainerSize[Axis1]-ChildTargetSize[Axis1])*0.5);
+     end;
+     pvglaTailing:begin
+      Position[Axis1]:=Position[Axis1]+((ContainerSize[Axis1]-ChildTargetSize[Axis1])-(fMargin*2.0));
+     end;
+     else {pvglaFill:}begin
+      Position[Axis1]:=Position[Axis1]+fMargin;
+      if ChildFixedSize[Axis1]>0.0 then begin
+       ChildTargetSize[Axis1]:=ChildFixedSize[Axis1];
+      end else begin
+       ChildTargetSize[Axis1]:=ContainerSize[Axis1]-(fMargin*2.0);
+      end;
+     end;
+    end;
+    ChildWidget.fPosition:=Position;
+    ChildWidget.fSize:=ChildTargetSize;
+    ChildWidget.PerformLayout;
+    Offset:=Offset+ChildTargetSize[Axis0];
+    First:=false;
+   end;
+  end;
+ end;
 end;
 
 constructor TpvGUITheme.Create(const aParent:TpvGUIObject);
