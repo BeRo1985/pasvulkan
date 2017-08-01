@@ -1605,8 +1605,10 @@ var Index:TpvInt32;
     CurrentWindow:TpvGUIWindow;
     CurrentWidget:TpvGUIWidget;
     LocalPointerEvent:TpvApplicationInputPointerEvent;
+    DoUpdateCursor:boolean;
 begin
  result:=false;
+ DoUpdateCursor:=false;
  case aPointerEvent.PointerEventType of
   POINTEREVENT_DOWN,POINTEREVENT_UP:begin
    for Index:=0 to fCurrentFocusPath.Count-1 do begin
@@ -1618,15 +1620,12 @@ begin
      end;
     end;
    end;
-   CurrentWidget:=FindWidget(aPointerEvent.Position);
    case aPointerEvent.PointerEventType of
     POINTEREVENT_DOWN:begin
-     if assigned(CurrentWidget) and (fCursor<>CurrentWidget.fCursor) then begin
-      fCursor:=CurrentWidget.fCursor;
-     end;
      case aPointerEvent.Button of
       BUTTON_LEFT,BUTTON_RIGHT:begin
        TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+       CurrentWidget:=FindWidget(aPointerEvent.Position);
        if assigned(CurrentWidget) and (CurrentWidget<>self) then begin
         fDragWidget:=CurrentWidget;
         fDragWidget.IncRef;
@@ -1643,6 +1642,7 @@ begin
      end;
     end;
     POINTEREVENT_UP:begin
+     CurrentWidget:=FindWidget(aPointerEvent.Position);
      if fDragActive and assigned(fDragWidget) and (fDragWidget<>CurrentWidget) then begin
       LocalPointerEvent.PointerEventType:=POINTEREVENT_UP;
       LocalPointerEvent.Button:=BUTTON_LEFT;
@@ -1650,66 +1650,33 @@ begin
      end;
      TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
      fDragActive:=false;
-     if assigned(CurrentWidget) and (fCursor<>CurrentWidget.fCursor) then begin
-      fCursor:=CurrentWidget.fCursor;
-     end;
     end;
    end;
    result:=inherited PointerEvent(aPointerEvent);
+   DoUpdateCursor:=true;
   end;
   POINTEREVENT_MOTION:begin
    if fDragActive then begin
     LocalPointerEvent:=aPointerEvent;
     LocalPointerEvent.PointerEventType:=POINTEREVENT_DRAG;
     result:=PointerEvent(LocalPointerEvent);
-   end else begin
-    CurrentWidget:=FindWidget(aPointerEvent.Position);
-    if assigned(CurrentWidget) and (fCursor<>CurrentWidget.fCursor) then begin
-     fCursor:=CurrentWidget.fCursor;
+    if result then begin
+     exit;
     end;
    end;
-   if not result then begin
-    result:=inherited PointerEvent(aPointerEvent);
-   end;
+   result:=inherited PointerEvent(aPointerEvent);
+   DoUpdateCursor:=true;
   end;
   POINTEREVENT_DRAG:begin
    result:=inherited PointerEvent(aPointerEvent);
   end;
-  else begin
-
-  end;
  end;
-
-
- case aPointerEvent.PointerEventType of
-  POINTEREVENT_MOTION,POINTEREVENT_DRAG:begin
-
-   if fDragActive then begin
-
-   end;
-
-   if not result then begin
-    result:=inherited PointerEvent(aPointerEvent);
-   end;
-
-  end;
-  else begin
-
-   result:=inherited PointerEvent(aPointerEvent);
-   if (aPointerEvent.PointerEventType=POINTEREVENT_DOWN) and not result then begin
-    RequestFocus;
-   end;
-
-  end;
- end;
-
- if not ((aPointerEvent.PointerEventType in [POINTEREVENT_MOTION,POINTEREVENT_DRAG]) and fDragActive) then begin
+ if DoUpdateCursor then begin
   CurrentWidget:=FindWidget(aPointerEvent.Position);
   if assigned(CurrentWidget) and (fCursor<>CurrentWidget.fCursor) then begin
    fCursor:=CurrentWidget.fCursor;
   end;
  end;
-
 end;
 
 function TpvGUIInstance.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
