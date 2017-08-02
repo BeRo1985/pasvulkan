@@ -2120,6 +2120,7 @@ end;
 
 procedure TpvGUIWindow.Update;
 var LastClipRect,NewClipRect:TpvRect;
+    LastModelMatrix,NewModelMatrix:TpvMatrix4x4;
 begin
  fCanvas.Push;
  try
@@ -2176,12 +2177,24 @@ begin
   end;
 
   if length(fTitle)>0 then begin
-   fCanvas.Font:=Theme.fSansFont;
-   fCanvas.FontSize:=-Max(8,Theme.fSpriteUnfocusedWindowHeader.Height*0.5);
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawText(fTitle,
-                    (fSize.x-fCanvas.TextWidth(fTitle))*0.5,
-                    (Theme.fSpriteUnfocusedWindowHeader.Height-fCanvas.TextHeight(fTitle))*0.5);
+   LastModelMatrix:=fCanvas.ModelMatrix;
+   try
+    fCanvas.Font:=Theme.fSansFont;
+    fCanvas.FontSize:=-Max(8,Theme.fSpriteUnfocusedWindowHeader.Height*0.5);
+    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.5);
+    NewModelMatrix:=TpvMatrix4x4.CreateTranslation(fSize.x*0.5,
+                                                   Theme.fSpriteUnfocusedWindowHeader.Height*0.5)*
+                    LastModelMatrix;
+    fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(2.0,2.0)*NewModelMatrix;
+    fCanvas.TextHorizontalAlignment:=pvcthaCenter;
+    fCanvas.TextVerticalAlignment:=pvctvaMiddle;
+    fCanvas.DrawText(fTitle);
+    fCanvas.ModelMatrix:=NewModelMatrix;
+    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+    fCanvas.DrawText(fTitle);
+   finally
+    fCanvas.ModelMatrix:=LastModelMatrix;
+   end;
   end;
 
  finally
