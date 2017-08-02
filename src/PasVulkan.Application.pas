@@ -60,6 +60,18 @@ unit PasVulkan.Application;
  {$endif}
 {$endif}
 
+{$if defined(Windows)}
+ {$define PasVulkanUseSDL2}
+{$ifend}
+
+{$if defined(Linux)}
+ {$define PasVulkanUseSDL2}
+{$ifend}
+
+{$if defined(Android)}
+ {$define PasVulkanUseSDL2}
+{$ifend}
+
 interface
 
 uses {$if defined(Unix)}
@@ -84,7 +96,9 @@ uses {$if defined(Unix)}
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
+{$if defined(PasVulkanUseSDL2)}
      PasVulkan.SDL2,
+{$ifend}
      PasVulkan.Android,
      PasVulkan.Audio;
 
@@ -93,9 +107,10 @@ const MaxSwapChainImages=3;
       FrameTimesHistorySize=1 shl 10;
 
       LOG_NONE=0;
-      LOG_ERROR=1;
-      LOG_INFO=2;
+      LOG_INFO=1;
+      LOG_VERBOSE=2;
       LOG_DEBUG=3;
+      LOG_ERROR=4;
 
       EVENT_NONE=0;
       EVENT_KEY=1;
@@ -477,8 +492,6 @@ type EpvApplication=class(Exception)
 
      TpvApplicationUTF8String={$if declared(UnicodeString)}UTF8String{$else}AnsiString{$ifend};
 
-     TpvApplicationOnEvent=function(const aVulkanApplication:TpvApplication;const aEvent:TSDL_Event):boolean of object;
-
      TpvApplicationOnStep=procedure(const aVulkanApplication:TpvApplication) of object;
 
      PPpvApplicationHighResolutionTime=^PpvApplicationHighResolutionTime;
@@ -681,15 +694,21 @@ type EpvApplication=class(Exception)
       private
        fIndex:TpvInt32;
        fID:TpvInt32;
+{$if defined(PasVulkanUseSDL2)}
        fJoystick:PSDL_Joystick;
        fGameController:PSDL_GameController;
+{$ifend}
        fCountAxes:TpvInt32;
        fCountBalls:TpvInt32;
        fCountHats:TpvInt32;
        fCountButtons:TpvInt32;
        procedure Initialize;
       public
+{$if defined(PasVulkanUseSDL2)}
        constructor Create(const aIndex:TpvInt32;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController); reintroduce;
+{$else}
+       constructor Create(const aIndex:TpvInt32); reintroduce;
+{$ifend}
        destructor Destroy; override;
        function IsGameController:boolean;
        function Index:TpvInt32;
@@ -713,13 +732,21 @@ type EpvApplication=class(Exception)
        function GetGameControllerMapping:TpvApplicationRawByteString;
      end;
 
+     TpvApplicationEvent=record
+{$if defined(PasVulkanUseSDL2)}
+      SDLEvent:TSDL_Event;
+{$else}
+      Dummy:TpvUInt32;
+{$ifend}
+     end;
+
      TpvApplicationInput=class
       private
        fVulkanApplication:TpvApplication;
        fKeyCodeNames:array[-1..1023] of TpvApplicationRawByteString;
        fCriticalSection:TPasMPCriticalSection;
        fProcessor:TpvApplicationInputProcessor;
-       fEvents:array of TSDL_Event;
+       fEvents:array of TpvApplicationEvent;
        fEventTimes:array of int64;
        fEventCount:TpvInt32;
        fCurrentEventTime:int64;
@@ -744,9 +771,12 @@ type EpvApplication=class(Exception)
        fMaxPointerID:TpvInt32;
        fJoysticks:TList;
        fMainJoystick:TpvApplicationJoystick;
+{$if defined(PasVulkanUseSDL2)}
        function TranslateSDLKeyCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
        function TranslateSDLKeyModifier(const aKeyModifier:TpvInt32):TpvApplicationInputKeyModifiers;
-       procedure AddEvent(const aEvent:TSDL_Event);
+{$else}
+{$ifend}
+       procedure AddEvent(const aEvent:TpvApplicationEvent);
        procedure ProcessEvents;
       public
        constructor Create(const aVulkanApplication:TpvApplication); reintroduce;
@@ -825,7 +855,7 @@ type EpvApplication=class(Exception)
 
        procedure BeforeDestroySwapChain; virtual;
 
-       function HandleEvent(const aEvent:TSDL_Event):boolean; virtual;
+       function HandleEvent(const aEvent:TpvApplicationEvent):boolean; virtual;
 
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
 
@@ -900,6 +930,8 @@ type EpvApplication=class(Exception)
        vavrkDevice
       );
 
+     TpvApplicationOnEvent=function(const aVulkanApplication:TpvApplication;const aEvent:TpvApplicationEvent):boolean of object;
+
      TpvApplication=class
       private
 
@@ -962,14 +994,16 @@ type EpvApplication=class(Exception)
 
        fTerminated:boolean;
 
+{$if defined(PasVulkanUseSDL2)}
        fSDLWaveFormat:TSDL_AudioSpec;
 
        fSDLDisplayMode:TSDL_DisplayMode;
        fSurfaceWindow:PSDL_Window;
+{$ifend}
 
-       fEvent:TSDL_Event;
+       fEvent:TpvApplicationEvent;
 
-       fLastPressedKeyEvent:TSDL_Event;
+       fLastPressedKeyEvent:TpvApplicationEvent;
        fKeyRepeatTimeAccumulator:TpvApplicationHighResolutionTime;
        fKeyRepeatInterval:TpvApplicationHighResolutionTime;
        fKeyRepeatInitialInterval:TpvApplicationHighResolutionTime;
@@ -977,7 +1011,9 @@ type EpvApplication=class(Exception)
        fScreenWidth:TpvInt32;
        fScreenHeight:TpvInt32;
 
+{$if defined(PasVulkanUseSDL2)}
        fVideoFlags:TSDLUInt32;
+{$ifend}
 
        fGraphicsReady:boolean;
 
@@ -1174,6 +1210,8 @@ type EpvApplication=class(Exception)
        constructor Create; reintroduce; virtual;
        destructor Destroy; override;
 
+       class procedure Log(const aLevel:TpvInt32;const aWhere,aWhat:string); static;
+
        procedure ReadConfig; virtual;
        procedure SaveConfig; virtual;
 
@@ -1212,7 +1250,7 @@ type EpvApplication=class(Exception)
 
        procedure BeforeDestroySwapChain; virtual;
 
-       function HandleEvent(const aEvent:TSDL_Event):boolean; virtual;
+       function HandleEvent(const aEvent:TpvApplicationEvent):boolean; virtual;
 
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
 
@@ -2314,6 +2352,7 @@ begin
  end;
 end;
 
+{$if defined(PasVulkanUseSDL2)}
 constructor TpvApplicationJoystick.Create(const aIndex:TpvInt32;const aJoystick:PSDL_Joystick;const aGameController:PSDL_GameController);
 begin
  inherited Create;
@@ -2326,28 +2365,44 @@ begin
   fID:=-1;
  end;
 end;
+{$else}
+constructor TpvApplicationJoystick.Create(const aIndex:TpvInt32);
+begin
+ inherited Create;
+ fIndex:=aIndex;
+ fID:=-1;
+end;
+{$ifend}
 
 destructor TpvApplicationJoystick.Destroy;
 begin
+{$if defined(PasVulkanUseSDL2)}
  if assigned(fGameController) then begin
   SDL_GameControllerClose(fGameController);
  end else if assigned(fJoystick) then begin
   SDL_JoystickClose(fJoystick);
  end;
+{$ifend}
  inherited Destroy;
 end;
 
 procedure TpvApplicationJoystick.Initialize;
 begin
+{$if defined(PasVulkanUseSDL2)}
  fCountAxes:=SDL_JoystickNumAxes(fJoystick);
  fCountBalls:=SDL_JoystickNumBalls(fJoystick);
  fCountHats:=SDL_JoystickNumHats(fJoystick);
  fCountButtons:=SDL_JoystickNumButtons(fJoystick);
+{$ifend}
 end;
 
 function TpvApplicationJoystick.IsGameController:boolean;
 begin
+{$if defined(PasVulkanUseSDL2)}
  result:=assigned(fGameController);
+{$else}
+ result:=false;
+{$ifend}
 end;
 
 function TpvApplicationJoystick.Index:TpvInt32;
@@ -2357,22 +2412,38 @@ end;
 
 function TpvApplicationJoystick.ID:TpvInt32;
 begin
+{$if defined(PasVulkanUseSDL2)}
  result:=SDL_JoystickInstanceID(fJoystick);
+{$else}
+ result:=0;
+{$ifend}
 end;
 
 function TpvApplicationJoystick.Name:TpvApplicationRawByteString;
 begin
+{$if defined(PasVulkanUseSDL2)}
  result:=SDL_JoystickName(fJoystick);
+{$else}
+ result:='';
+{$ifend}
 end;
 
 function TpvApplicationJoystick.GUID:TGUID;
 begin
+{$if defined(PasVulkanUseSDL2)}
  result:=SDL_JoystickGetGUID(fJoystick);
+{$else}
+ FillChar(result,SizeOf(TGUID),#0);
+{$ifend}
 end;
 
 function TpvApplicationJoystick.DeviceGUID:TGUID;
 begin
+{$if defined(PasVulkanUseSDL2)}
  result:=SDL_JoystickGetDeviceGUID(fJoystick);
+{$else}
+ FillChar(result,SizeOf(TGUID),#0);
+{$ifend}
 end;
 
 function TpvApplicationJoystick.CountAxes:TpvInt32;
@@ -2397,21 +2468,33 @@ end;
 
 procedure TpvApplicationJoystick.Update;
 begin
+{$if defined(PasVulkanUseSDL2)}
  SDL_JoystickUpdate;
+{$else}
+{$ifend}
 end;
 
 function TpvApplicationJoystick.GetAxis(const aAxisIndex:TpvInt32):TpvInt32;
 begin
+{$if defined(PasVulkanUseSDL2)}
  result:=SDL_JoystickGetAxis(fJoystick,aAxisIndex);
+{$else}
+ result:=0;
+{$ifend}
 end;
 
 function TpvApplicationJoystick.GetBall(const aBallIndex:TpvInt32;out aDeltaX,aDeltaY:TpvInt32):boolean;
 begin
+{$if defined(PasVulkanUseSDL2)}
  result:=SDL_JoystickGetBall(fJoystick,aBallIndex,@aDeltaX,@aDeltaY)<>0;
+{$else}
+ result:=false;
+{$ifend}
 end;
 
 function TpvApplicationJoystick.GetHat(const aHatIndex:TpvInt32):TpvInt32;
 begin
+{$if defined(PasVulkanUseSDL2)}
  case SDL_JoystickGetHat(fJoystick,aHatIndex) of
   SDL_HAT_LEFTUP:begin
    result:=JOYSTICK_HAT_LEFTUP;
@@ -2444,24 +2527,36 @@ begin
    result:=JOYSTICK_HAT_NONE;
   end;
  end;
+{$else}
+ result:=JOYSTICK_HAT_NONE;
+{$ifend}
 end;
 
 function TpvApplicationJoystick.GetButton(const aButtonIndex:TpvInt32):boolean;
 begin
+{$if defined(PasVulkanUseSDL2)}
  result:=SDL_JoystickGetButton(fJoystick,aButtonIndex)<>0;
+{$else}
+ result:=false;
+{$ifend}
 end;
 
 function TpvApplicationJoystick.IsGameControllerAttached:boolean;
 begin
+{$if defined(PasVulkanUseSDL2)}
  if assigned(fGameController) then begin
   result:=SDL_GameControllerGetAttached(fGameController)<>0;
  end else begin
   result:=false;
  end;
+{$else}
+ result:=false;
+{$ifend}
 end;
 
 function TpvApplicationJoystick.GetGameControllerAxis(const aAxis:TpvInt32):TpvInt32;
 begin
+{$if defined(PasVulkanUseSDL2)}
  if assigned(fGameController) then begin
   case aAxis of
    GAME_CONTROLLER_AXIS_LEFTX:begin
@@ -2492,10 +2587,14 @@ begin
  end else begin
   result:=0;
  end;
+{$else}
+ result:=0;
+{$ifend}
 end;
 
 function TpvApplicationJoystick.GetGameControllerButton(const aButton:TpvInt32):boolean;
 begin
+{$if defined(PasVulkanUseSDL2)}
  if assigned(fGameController) then begin
   case aButton of
    GAME_CONTROLLER_BUTTON_A:begin
@@ -2550,24 +2649,35 @@ begin
  end else begin
   result:=false;
  end;
+{$else}
+ result:=false;
+{$ifend}
 end;
 
 function TpvApplicationJoystick.GetGameControllerName:TpvApplicationRawByteString;
 begin
+{$if defined(PasVulkanUseSDL2)}
  if assigned(fGameController) then begin
   result:=SDL_GameControllerName(fGameController);
  end else begin
   result:='';
  end;
+{$else}
+ result:='';
+{$ifend}
 end;
 
 function TpvApplicationJoystick.GetGameControllerMapping:TpvApplicationRawByteString;
 begin
+{$if defined(PasVulkanUseSDL2)}
  if assigned(fGameController) then begin
   result:=SDL_GameControllerMapping(fGameController);
  end else begin
   result:='';
  end;
+{$else}
+ result:='';
+{$ifend}
 end;
 
 constructor TpvApplicationInput.Create(const aVulkanApplication:TpvApplication);
@@ -2913,6 +3023,7 @@ begin
  inherited Destroy;
 end;
 
+{$if defined(PasVulkanUseSDL2)}
 function TpvApplicationInput.TranslateSDLKeyCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
 begin
  case aKeyCode of
@@ -3741,7 +3852,10 @@ end;
 
 const SDL_KEYTYPED=$30000;
 
-procedure TpvApplicationInput.AddEvent(const aEvent:TSDL_Event);
+{$else}
+{$ifend}
+
+procedure TpvApplicationInput.AddEvent(const aEvent:TpvApplicationEvent);
 begin
  if fEventCount>=length(fEvents) then begin
   SetLength(fEvents,(fEventCount+1)*2);
@@ -3753,6 +3867,7 @@ begin
 end;
 
 procedure TpvApplicationInput.ProcessEvents;
+{$if defined(PasVulkanUseSDL2)}
 var Index,PointerID,KeyCode:TpvInt32;
     KeyModifiers:TpvApplicationInputKeyModifiers;
     Event:PSDL_Event;
@@ -3932,6 +4047,11 @@ begin
   fEventCount:=0;
  end;
 end;
+{$else}
+begin
+ fEventCount:=0;
+end;
+{$ifend}
 
 function TpvApplicationInput.GetAccelerometerX:TpvFloat;
 begin
@@ -4166,7 +4286,11 @@ end;
 
 function TpvApplicationInput.GetKeyModifiers:TpvApplicationInputKeyModifiers;
 begin
+{$if defined(PasVulkanUseSDL2)}
  result:=TranslateSDLKeyModifier(SDL_GetModState);
+{$else}
+ result:=[];
+{$ifend}
 end;
 
 procedure TpvApplicationInput.GetTextInput(const aCallback:TpvApplicationInputTextInputCallback;const aTitle,aText:TpvApplicationRawByteString;const aPlaceholder:TpvApplicationRawByteString='');
@@ -4247,6 +4371,7 @@ begin
 end;
 
 function TpvApplicationInput.GetNativeOrientation:TpvInt32;
+{$if defined(PasVulkanUseSDL2)}
 var SDLDisplayMode:TSDL_DisplayMode;
 begin
  if SDL_GetDesktopDisplayMode(SDL_GetWindowDisplayIndex(pvApplication.fSurfaceWindow),@SDLDisplayMode)=0 then begin
@@ -4259,6 +4384,11 @@ begin
   result:=ORIENTATION_LANDSCAPE;
  end;
 end;
+{$else}
+begin
+ result:=ORIENTATION_LANDSCAPE;
+end;
+{$ifend}
 
 procedure TpvApplicationInput.SetCursorCatched(const aCatched:boolean);
 begin
@@ -4284,7 +4414,10 @@ procedure TpvApplicationInput.SetCursorPosition(const pX,pY:TpvInt32);
 begin
  fCriticalSection.Acquire;
  try
+{$if defined(PasVulkanUseSDL2)}
   SDL_WarpMouseInWindow(pvApplication.fSurfaceWindow,pX,pY);
+{$else}
+{$ifend}
  finally
   fCriticalSection.Release;
  end;
@@ -4292,10 +4425,15 @@ end;
 
 function TpvApplicationInput.GetJoystickCount:TpvInt32;
 begin
+{$if defined(PasVulkanUseSDL2)}
  result:=SDL_NumJoysticks;
+{$else}
+ result:=0;
+{$ifend}
 end;
 
 function TpvApplicationInput.GetJoystick(const aIndex:TpvInt32=-1):TpvApplicationJoystick;
+{$if defined(PasVulkanUseSDL2)}
 var ListIndex:TpvInt32;
 begin
  if (aIndex>=0) and (aIndex<SDL_NumJoysticks) then begin
@@ -4310,6 +4448,11 @@ begin
   result:=fMainJoystick;
  end;
 end;
+{$else}
+begin
+ result:=fMainJoystick;
+end;
+{$ifend}
 
 constructor TpvApplicationLifecycleListener.Create;
 begin
@@ -4383,7 +4526,7 @@ procedure TpvApplicationScreen.BeforeDestroySwapChain;
 begin
 end;
 
-function TpvApplicationScreen.HandleEvent(const aEvent:TSDL_Event):boolean;
+function TpvApplicationScreen.HandleEvent(const aEvent:TpvApplicationEvent):boolean;
 begin
  result:=false;
 end;
@@ -4595,10 +4738,15 @@ end;
 
 function TpvApplicationClipboard.HasText:boolean;
 begin
+{$if defined(PasVulkanUseSDL2)}
  result:=SDL_HasClipboardText<>SDL_FALSE;
+{$else}
+ result:=false;
+{$ifend}
 end;
 
 function TpvApplicationClipboard.GetText:TpvApplicationUTF8String;
+{$if defined(PasVulkanUseSDL2)}
 var p:PAnsiChar;
     l:TpvInt32;
 begin
@@ -4616,13 +4764,21 @@ begin
   end;
  end;
 end;
+{$else}
+begin
+ result:='';
+end;
+{$ifend}
 
 procedure TpvApplicationClipboard.SetText(const aTextString:TpvApplicationUTF8String);
 begin
+{$if defined(PasVulkanUseSDL2)}
  SDL_SetClipboardText(PAnsiChar(aTextString));
+{$else}
+{$ifend}
 end;
 
-procedure AudioFillBuffer(AudioEngine:TpvAudio;Buffer:TpvPointer;Len:TSDLInt32);
+procedure AudioFillBuffer(AudioEngine:TpvAudio;Buffer:TpvPointer;Len:TpvInt32);
 begin
  while (AudioEngine.IsReady and AudioEngine.IsActive) and assigned(AudioEngine.Thread) and not AudioEngine.Thread.Terminated do begin
   if AudioEngine.RingBuffer.AvailableForRead>=Len then begin
@@ -4637,17 +4793,23 @@ begin
  FillChar(Buffer^,Len,0);
 end;
 
+{$if defined(PasVulkanUseSDL2)}
 procedure SDLFillBuffer(UserData:TpvPointer;Stream:PSDLUInt8;Remain:TSDLInt32); cdecl;
 begin
  AudioFillBuffer(UserData,Stream,Remain);
 end;
+{$else}
+{$ifend}
 
 constructor TpvApplication.Create;
 begin
 
+{$if defined(PasVulkanUseSDL2)}
  SDL_SetMainReady;
 
  SDL_SetHint(SDL_HINT_WINDOWS_DISABLE_THREAD_NAMING,'1');
+{$else}
+{$ifend}
 
  inherited Create;
 
@@ -4661,10 +4823,10 @@ begin
  fDebugging:=true;
 {$ifend}
 
- fTitle:='SDL2 Vulkan Application';
+ fTitle:='PasVulkan Application';
  fVersion:=$0100;
 
- fPathName:='SDL2VulkanApplication';
+ fPathName:='PasVulkanApplication';
 
  fLocalDataPath:='';
 
@@ -4705,7 +4867,10 @@ begin
  fLifecycleListenerList:=TList.Create;
  fLifecycleListenerListCriticalSection:=TPasMPCriticalSection.Create;
 
- fLastPressedKeyEvent.type_:=0;
+{$if defined(PasVulkanUseSDL2)}
+ fLastPressedKeyEvent.SDLEvent.type_:=0;
+{$else}
+{$ifend}
  fKeyRepeatTimeAccumulator:=0;
  fKeyRepeatInterval:=fHighResolutionTimer.MillisecondInterval*100;
  fKeyRepeatInitialInterval:=fHighResolutionTimer.MillisecondInterval*400;
@@ -4853,6 +5018,45 @@ begin
  pvApplication:=nil;
  
  inherited Destroy;
+end;
+
+class procedure TpvApplication.Log(const aLevel:TpvInt32;const aWhere,aWhat:string);
+begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ case aLevel of
+  LOG_NONE:begin
+  end;
+  LOG_INFO:begin
+   __android_log_write(ANDROID_LOG_INFO,PAnsiChar(AnsiString(aWhere)),PAnsiChar(AnsiString(aWhat)));
+  end;
+  LOG_VERBOSE:begin
+   __android_log_write(ANDROID_LOG_VERBOSE,PAnsiChar(AnsiString(aWhere)),PAnsiChar(AnsiString(aWhat)));
+  end;
+  LOG_DEBUG:begin
+   __android_log_write(ANDROID_LOG_DEBUG,PAnsiChar(AnsiString(aWhere)),PAnsiChar(AnsiString(aWhat)));
+  end;
+  LOG_ERROR:begin
+   __android_log_write(ANDROID_LOG_ERROR,PAnsiChar(AnsiString(aWhere)),PAnsiChar(AnsiString(aWhat)));
+  end;
+ end;
+{$elseif not defined(Release)}
+ case aLevel of
+  LOG_NONE:begin
+  end;
+  LOG_INFO:begin
+   WriteLn('[Info] ',aWhere,': ',aWhat);
+  end;
+  LOG_VERBOSE:begin
+   WriteLn('[Verbose] ',aWhere,': ',aWhat);
+  end;
+  LOG_DEBUG:begin
+   WriteLn('[Debug] ',aWhere,': ',aWhat);
+  end;
+  LOG_ERROR:begin
+   WriteLn('[Error] ',aWhere,': ',aWhat);
+  end;
+ end;
+{$ifend}
 end;
 
 procedure TpvApplication.VulkanDebugLn(const What:string);
@@ -5031,6 +5235,7 @@ begin
 end;
 
 procedure TpvApplication.CreateVulkanInstance;
+{$if defined(PasVulkanUseSDL2)}
 var i:TpvInt32;
     SDL_SysWMinfo:TSDL_SysWMinfo;
 begin
@@ -5122,6 +5327,11 @@ begin
   end;
  end;
 end;
+{$else}
+begin
+ Assert(false);
+end;
+{$ifend}
 
 procedure TpvApplication.DestroyVulkanInstance;
 var Index,SubIndex,SubSubIndex:TpvInt32;
@@ -5180,6 +5390,7 @@ begin
 end;
 
 procedure TpvApplication.CreateVulkanSurface;
+{$if defined(PasVulkanUseSDL2)}
 var SDL_SysWMinfo:TSDL_SysWMinfo;
     VulkanSurfaceCreateInfo:TpvVulkanSurfaceCreateInfo;
 begin
@@ -5254,6 +5465,11 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.AllocateVulkanSurface');
 {$ifend}
 end;
+{$else}
+begin
+ Assert(false);
+end;
+{$ifend}
 
 procedure TpvApplication.DestroyVulkanSurface;
 begin
@@ -6050,6 +6266,7 @@ begin
 end;
 
 procedure TpvApplication.InitializeAudio;
+{$if defined(PasVulkanUseSDL2)}
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.InitializeAudio . . .');
@@ -6079,8 +6296,16 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.InitializeAudio . . .');
 {$ifend}
 end;
+{$else}
+begin
+ if fUseAudio and not assigned(fAudio) then begin
+  Assert(false);
+ end;
+end;
+{$ifend}
 
 procedure TpvApplication.DeinitializeAudio;
+{$if defined(PasVulkanUseSDL2)}
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.DeinitializeAudio . . .');
@@ -6093,6 +6318,13 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DeinitializeAudio . . .');
 {$ifend}
 end;
+{$else}
+begin
+ if assigned(fAudio) then begin
+  FreeAndNil(fAudio);
+ end;
+end;
+{$ifend}
 
 procedure TpvApplication.UpdateFrameTimesHistory;
 var Index,Count:TpvInt32;
@@ -6190,6 +6422,7 @@ begin
 end;
 
 function TpvApplication.IsVisibleToUser:boolean;
+{$if defined(PasVulkanUseSDL2)}
 const FullScreenFocusActiveFlags=SDL_WINDOW_SHOWN or SDL_WINDOW_INPUT_FOCUS {sor SDL_WINDOW_MOUSE_FOCUS};
 var WindowFlags:TSDLUInt32;
 begin
@@ -6197,12 +6430,20 @@ begin
  result:=(fCurrentFullScreen=0) or
          ((WindowFlags and FullScreenFocusActiveFlags)=FullScreenFocusActiveFlags);
 end;
+{$else}
+begin
+ result:=true;
+end;
+{$ifend}
 
 procedure TpvApplication.ProcessMessages;
 var Index,Counter:TpvInt32;
     Joystick:TpvApplicationJoystick;
+{$if defined(PasVulkanUseSDL2)}
     SDLJoystick:PSDL_Joystick;
     SDLGameController:PSDL_GameController;
+{$else}
+{$ifend}
     OK,Found,DoUpdateMainJoystick:boolean;
     Jobs:array[0..1] of PPasMPJob;
 begin
@@ -6212,29 +6453,38 @@ begin
  DoUpdateMainJoystick:=false;
 
  if fCurrentHideSystemBars<>ord(fHideSystemBars) then begin
+{$if defined(PasVulkanUseSDL2)}
   if fHideSystemBars then begin
    SDL_SetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS,'1');
   end else begin
    SDL_SetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS,'0');
   end;
+{$else}
+{$ifend}
  end;
 
  if fCurrentVisibleMouseCursor<>ord(fVisibleMouseCursor) then begin
   fCurrentVisibleMouseCursor:=ord(fVisibleMouseCursor);
+{$if defined(PasVulkanUseSDL2)}
   if fVisibleMouseCursor then begin
    SDL_ShowCursor(1);
   end else begin
    SDL_ShowCursor(0);
   end;
+{$else}
+{$ifend}
  end;
 
  if fCurrentCatchMouse<>ord(fCatchMouse) then begin
   fCurrentCatchMouse:=ord(fCatchMouse);
+{$if defined(PasVulkanUseSDL2)}
   if fCatchMouse then begin
    SDL_SetRelativeMouseMode(1);
   end else begin
    SDL_SetRelativeMouseMode(0);
   end;
+{$else}
+{$ifend}
  end;
 
  if fHasNewNextScreen then begin
@@ -6252,7 +6502,10 @@ begin
   fCurrentHeight:=fHeight;
   fCurrentVSync:=ord(fVSync);
   if not fFullscreen then begin
+{$if defined(PasVulkanUseSDL2)}
    SDL_SetWindowSize(fSurfaceWindow,fWidth,fHeight);
+{$else}
+{$ifend}
   end;
   if fGraphicsReady then begin
    DeinitializeGraphics;
@@ -6269,7 +6522,8 @@ begin
   FillChar(fInput.fPointerDeltaX,SizeOf(fInput.fPointerDeltaX[0])*max(fInput.fMaxPointerID+1,0),AnsiChar(#0));
   FillChar(fInput.fPointerDeltaY,SizeOf(fInput.fPointerDeltaY[0])*max(fInput.fMaxPointerID+1,0),AnsiChar(#0));
 
-  if fLastPressedKeyEvent.type_<>0 then begin
+{$if defined(PasVulkanUseSDL2)}
+  if fLastPressedKeyEvent.SDLEvent.type_<>0 then begin
    dec(fKeyRepeatTimeAccumulator,fDeltaTime);
    while fKeyRepeatTimeAccumulator<0 do begin
     inc(fKeyRepeatTimeAccumulator,fKeyRepeatInterval);
@@ -6277,11 +6531,11 @@ begin
    end;
   end;
 
-  while SDL_PollEvent(@fEvent)<>0 do begin
+  while SDL_PollEvent(@fEvent.SDLEvent)<>0 do begin
    if HandleEvent(fEvent) then begin
     continue;
    end;
-   case fEvent.type_ of
+   case fEvent.SDLEvent.type_ of
     SDL_QUITEV,
     SDL_APP_TERMINATING:begin
      VulkanWaitIdle;
@@ -6341,10 +6595,10 @@ begin
      fHasLastTime:=false;
     end;
     SDL_WINDOWEVENT:begin
-     case fEvent.window.event of
+     case fEvent.SDLEvent.window.event of
       SDL_WINDOWEVENT_RESIZED:begin
-       fWidth:=fEvent.window.Data1;
-       fHeight:=fEvent.window.Data2;
+       fWidth:=fEvent.SDLEvent.window.Data1;
+       fHeight:=fEvent.SDLEvent.window.Data2;
        fCurrentWidth:=fWidth;
        fCurrentHeight:=fHeight;
        if fGraphicsReady then begin
@@ -6365,7 +6619,7 @@ begin
      end;
     end;
     SDL_JOYDEVICEADDED:begin
-     Index:=fEvent.jdevice.which;
+     Index:=fEvent.SDLEvent.jdevice.which;
      Found:=false;
      for Counter:=0 to fInput.fJoysticks.Count-1 do begin
       Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
@@ -6404,7 +6658,7 @@ begin
     SDL_JOYDEVICEREMOVED:begin
      for Counter:=0 to fInput.fJoysticks.Count-1 do begin
       Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
-      if assigned(Joystick) and (Joystick.ID=fEvent.jdevice.which) then begin
+      if assigned(Joystick) and (Joystick.ID=fEvent.SDLEvent.jdevice.which) then begin
        Joystick.Free;
        fInput.fJoysticks.Delete(Counter);
        DoUpdateMainJoystick:=true;
@@ -6420,18 +6674,18 @@ begin
     end;
     SDL_KEYDOWN:begin
      OK:=true;
-     case fEvent.key.keysym.sym of
+     case fEvent.SDLEvent.key.keysym.sym of
       SDLK_F4:begin
-       if ((fEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
+       if ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
         OK:=false;
-        if fEvent.key.repeat_=0 then begin
+        if fEvent.SDLEvent.key.repeat_=0 then begin
          Terminate;
         end;
        end;
       end;
       SDLK_RETURN:begin
-       if ((fEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
-        if fEvent.key.repeat_=0 then begin
+       if ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
+        if fEvent.SDLEvent.key.repeat_=0 then begin
          OK:=false;
          fFullScreen:=not fFullScreen;
         end;
@@ -6439,9 +6693,9 @@ begin
       end;
      end;
      if OK then begin
-      if fEvent.key.repeat_=0 then begin
+      if fEvent.SDLEvent.key.repeat_=0 then begin
        fInput.AddEvent(fEvent);
-       fEvent.type_:=SDL_KEYTYPED;
+       fEvent.SDLEvent.type_:=SDL_KEYTYPED;
        fInput.AddEvent(fEvent);
        fLastPressedKeyEvent:=fEvent;
        fKeyRepeatTimeAccumulator:=fKeyRepeatInitialInterval;
@@ -6450,22 +6704,22 @@ begin
     end;
     SDL_KEYUP:begin
      OK:=true;
-     case fEvent.key.keysym.sym of
+     case fEvent.SDLEvent.key.keysym.sym of
       SDLK_F4:begin
-       if ((fEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
+       if ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
         OK:=false;
        end;
       end;
       SDLK_RETURN:begin
-       if ((fEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
+       if ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
         OK:=false;
        end;
       end;
      end;
      if OK then begin
-      if fEvent.key.repeat_=0 then begin
+      if fEvent.SDLEvent.key.repeat_=0 then begin
        fInput.AddEvent(fEvent);
-       fLastPressedKeyEvent.type_:=0;
+       fLastPressedKeyEvent.SDLEvent.type_:=0;
       end;
      end;
     end;
@@ -6492,6 +6746,8 @@ begin
     end;
    end;
   end;
+{$else}
+{$ifend}
   if DoUpdateMainJoystick then begin
    fInput.fMainJoystick:=nil;
    if fInput.fJoysticks.Count>0 then begin
@@ -6515,11 +6771,14 @@ begin
 
  if fCurrentFullScreen<>ord(fFullScreen) then begin
   fCurrentFullScreen:=ord(fFullScreen);
+{$if defined(PasVulkanUseSDL2)}
   if fFullScreen then begin
    SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
   end else begin
    SDL_SetWindowFullscreen(fSurfaceWindow,0);
   end;
+{$else}
+{$ifend}
  end;
 
  if fGraphicsReady and IsVisibleToUser then begin
@@ -6633,27 +6892,37 @@ begin
 
  ReadConfig;
 
+{$if defined(PasVulkanUseSDL2)}
  if fAndroidSeparateMouseAndTouch then begin
   SDL_SetHint(SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH,'1');
  end else begin
   SDL_SetHint(SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH,'0');
  end;
+{$else}
+{$ifend}
 
+{$if defined(PasVulkanUseSDL2)}
  if fHideSystemBars then begin
   SDL_SetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS,'1');
  end else begin
   SDL_SetHint(SDL_HINT_ANDROID_HIDE_SYSTEM_BARS,'0');
  end;
+{$else}
+{$ifend}
  fCurrentHideSystemBars:=ord(fHideSystemBars);
 
+{$if defined(PasVulkanUseSDL2)}
  if SDL_Init(SDL_INIT_VIDEO or SDL_INIT_EVENTS or SDL_INIT_TIMER)<0 then begin
   raise EpvApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
  end;
+{$else}
+{$ifend}
 
 {$ifdef Unix}
  InstallSignalHandlers;
 {$endif}
 
+{$if defined(PasVulkanUseSDL2)}
  if SDL_GetCurrentDisplayMode(0,@fSDLDisplayMode)=0 then begin
   fScreenWidth:=fSDLDisplayMode.w;
   fScreenHeight:=fSDLDisplayMode.h;
@@ -6661,7 +6930,12 @@ begin
   fScreenWidth:=-1;
   fScreenHeight:=-1;
  end;
+{$else}
+ fScreenWidth:=-1;
+ fScreenHeight:=-1;
+{$ifend}
 
+{$if defined(PasVulkanUseSDL2)}
  fVideoFlags:=SDL_WINDOW_ALLOW_HIGHDPI;
  if fFullscreen then begin
 {$ifndef Android}
@@ -6704,12 +6978,15 @@ begin
  if not assigned(fSurfaceWindow) then begin
   raise EpvApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
  end;
+{$else}
+{$ifend}
 
  fCurrentWidth:=fWidth;
  fCurrentHeight:=fHeight;
 
  fCurrentVSync:=ord(fVSync);
 
+{$if defined(PasVulkanUseSDL2)}
 {SDL_EventState(SDL_MOUSEMOTION,SDL_ENABLE);
  SDL_EventState(SDL_MOUSEBUTTONDOWN,SDL_ENABLE);
  SDL_EventState(SDL_MOUSEBUTTONUP,SDL_ENABLE);
@@ -6717,6 +6994,8 @@ begin
  SDL_EventState(SDL_KEYUP,SDL_ENABLE);
  SDL_EventState(SDL_QUITEV,SDL_ENABLE);
  SDL_EventState(SDL_WINDOWEVENT,SDL_ENABLE);}
+{$else}
+{$ifend}
 
  FillChar(fFrameTimesHistoryDeltaTimes,SizeOf(fFrameTimesHistoryDeltaTimes),#0);
  FillChar(fFrameTimesHistoryTimePoints,SizeOf(fFrameTimesHistoryTimePoints),#$ff);
@@ -6761,7 +7040,10 @@ begin
        try
 
         if assigned(fAudio) then begin
+{$if defined(PasVulkanUseSDL2)}
          SDL_PauseAudio(0);
+{$else}
+{$ifend}
         end;
         try
 
@@ -6771,7 +7053,10 @@ begin
 
         finally
          if assigned(fAudio) then begin
+{$if defined(PasVulkanUseSDL2)}
           SDL_PauseAudio(1);
+{$else}
+{$ifend}
          end;
         end;
 
@@ -6828,10 +7113,13 @@ begin
 
  finally
 
+{$if defined(PasVulkanUseSDL2)}
   if assigned(fSurfaceWindow) then begin
    SDL_DestroyWindow(fSurfaceWindow);
    fSurfaceWindow:=nil;
   end;
+{$else}
+{$ifend}
 
   SaveConfig;
 
@@ -6939,7 +7227,7 @@ begin
  end;
 end;
 
-function TpvApplication.HandleEvent(const aEvent:TSDL_Event):boolean;
+function TpvApplication.HandleEvent(const aEvent:TpvApplicationEvent):boolean;
 begin
  if assigned(fOnEvent) and fOnEvent(self,aEvent) then begin
   result:=true;
