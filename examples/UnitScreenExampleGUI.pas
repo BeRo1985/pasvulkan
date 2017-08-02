@@ -150,7 +150,6 @@ begin
  fGUIWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIWindow.Left:=50;
  fGUIWindow.Top:=200;
- fGUIWindow.Visible:=true;
  fGUIWindow.Title:='An example window';
  fGUIWindow.Layout:=TpvGUIBoxLayout.Create(fGUIWindow,pvglaLeading,pvgloVertical,8.0,8.0);
 
@@ -162,7 +161,6 @@ begin
  fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIOtherWindow.Left:=550;
  fGUIOtherWindow.Top:=200;
- fGUIOtherWindow.Visible:=true;
  fGUIOtherWindow.Title:='An another example window';
  fGUIOtherWindow.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow,pvglaLeading,pvgloVertical,8.0,8.0);
 
