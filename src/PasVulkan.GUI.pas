@@ -209,6 +209,12 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure Setup; virtual;
       public
+       property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
+       property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
+       property UnfocusedWindowHeaderFontShadowColor:TpvVector4 read fUnfocusedWindowHeaderFontShadowColor write fUnfocusedWindowHeaderFontShadowColor;
+       property FocusedWindowHeaderFontShadowColor:TpvVector4 read fFocusedWindowHeaderFontShadowColor write fFocusedWindowHeaderFontShadowColor;
+       property UnfocusedWindowHeaderFontColor:TpvVector4 read fUnfocusedWindowHeaderFontColor write fUnfocusedWindowHeaderFontColor;
+       property FocusedWindowHeaderFontColor:TpvVector4 read fFocusedWindowHeaderFontColor write fFocusedWindowHeaderFontColor;
        property SpriteUnfocusedWindowFillNinePatch:TpvSpriteNinePatch read fSpriteUnfocusedWindowFillNinePatch write fSpriteUnfocusedWindowFillNinePatch;
        property SpriteFocusedWindowFillNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowFillNinePatch write fSpriteFocusedWindowFillNinePatch;
        property SpriteUnfocusedWindowHeaderNinePatch:TpvSpriteNinePatch read fSpriteUnfocusedWindowHeaderNinePatch write fSpriteUnfocusedWindowHeaderNinePatch;
