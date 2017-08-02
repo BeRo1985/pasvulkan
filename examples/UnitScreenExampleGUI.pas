@@ -44,6 +44,7 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
        fScreenToCanvasScale:TpvVector2;
        fGUIInstance:TpvGUIInstance;
        fGUIWindow:TpvGUIWindow;
+       fGUILabel:TpvGUILabel;
        fGUIOtherWindow:TpvGUIWindow;
        fLastMousePosition:TpvVector2;
        fReady:boolean;
@@ -149,18 +150,31 @@ begin
  fGUIWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIWindow.Left:=50;
  fGUIWindow.Top:=200;
- fGUIWindow.Width:=300;
- fGUIWindow.Height:=200;
  fGUIWindow.Visible:=true;
  fGUIWindow.Title:='An example window';
+ fGUIWindow.Layout:=TpvGUIBoxLayout.Create(fGUIWindow,pvglaLeading,pvgloVertical,8.0,8.0);
+
+ fGUILabel:=TpvGUILabel.Create(fGUIWindow);
+ fGUILabel.Left:=8;
+ fGUILabel.Top:=40;
+ fGUILabel.Caption:='An example label';
 
  fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIOtherWindow.Left:=550;
  fGUIOtherWindow.Top:=200;
- fGUIOtherWindow.Width:=300;
- fGUIOtherWindow.Height:=200;
  fGUIOtherWindow.Visible:=true;
  fGUIOtherWindow.Title:='An another example window';
+ fGUIOtherWindow.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow,pvglaLeading,pvgloVertical,8.0,8.0);
+
+ fGUILabel:=TpvGUILabel.Create(fGUIOtherWindow);
+ fGUILabel.Left:=8;
+ fGUILabel.Top:=40;
+ fGUILabel.Caption:='An example label';
+
+ fGUILabel:=TpvGUILabel.Create(fGUIOtherWindow);
+ fGUILabel.Left:=8;
+ fGUILabel.Top:=40;
+ fGUILabel.Caption:='An example label';
 
 end;
 

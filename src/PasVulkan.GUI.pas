@@ -414,7 +414,7 @@ type TpvGUIObject=class;
 
      TpvGUIWindow=class(TpvGUIWidget)
       private
-       fTitle:TpvRawByteString;
+       fTitle:TpvUTF8String;
        fMouseAction:TpvGUIWindowMouseAction;
        fModal:boolean;
        fResizable:boolean;
@@ -439,10 +439,24 @@ type TpvGUIObject=class;
        procedure Update; override;
        procedure Draw; override;
       published
-       property Title:TpvRawByteString read fTitle write fTitle;
+       property Title:TpvUTF8String read fTitle write fTitle;
        property Modal:boolean read fModal write fModal;
        property Resizable:boolean read fResizable write fResizable;
        property ButtonPanel:TpvGUIWidget read GetButtonPanel;
+     end;
+
+     TpvGUILabel=class(TpvGUIWidget)
+      private
+       fCaption:TpvUTF8String;
+      protected
+       function GetPreferredSize:TpvVector2; override;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure Update; override;
+       procedure Draw; override;
+      published
+       property Caption:TpvUTF8String read fCaption write fCaption;
      end;
 
 implementation
@@ -533,8 +547,8 @@ begin
  inherited Create(aParent);
  fAlignment:=aAlignment;
  fOrientation:=aOrientation;
- fMargin:=0.0;
- fSpacing:=0.0;
+ fMargin:=aMargin;
+ fSpacing:=aSpacing;
 end;
 
 destructor TpvGUIBoxLayout.Destroy;
@@ -580,7 +594,7 @@ begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
     if not First then begin
-     Size[Axis1]:=Size[Axis1]+fSpacing;
+     Size[Axis0]:=Size[Axis0]+fSpacing;
     end;
     ChildPreferredSize:=ChildWidget.PreferredSize;
     ChildFixedSize:=ChildWidget.fFixedSize;
@@ -1317,8 +1331,8 @@ end;
 
 function TpvGUIWidget.GetFontSize:TpvFloat;
 begin
- if assigned(fTheme) and IsZero(fFontSize) then begin
-  result:=fTheme.fFontSize;
+ if assigned(Theme) and IsZero(fFontSize) then begin
+  result:=Theme.fFontSize;
  end else begin
   result:=fFontSize;
  end;
@@ -1577,10 +1591,8 @@ begin
     ChildWidget:=Child as TpvGUIWidget;
     fInstance.AddReferenceCountedObjectForNextDraw(ChildWidget);
     if ChildWidget.Visible then begin
-     fCanvas.ClipRect:=BaseClipRect.GetIntersection(TpvRect.CreateAbsolute(ChildWidget.Left,
-                                                                           ChildWidget.Top,
-                                                                           ChildWidget.Left+ChildWidget.Width,
-                                                                           ChildWidget.Top+ChildWidget.Height));
+     fCanvas.ClipRect:=BaseClipRect.GetIntersection(TpvRect.CreateRelative(BaseModelMatrix*ChildWidget.fPosition,
+                                                                           ChildWidget.fSize));
      fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(ChildWidget.Left,ChildWidget.Top)*BaseModelMatrix;
      ChildWidget.fCanvas:=fCanvas;
      ChildWidget.Update;
@@ -2041,7 +2053,14 @@ begin
  if assigned(fButtonPanel) then begin
   fButtonPanel.Visible:=false;
  end;
- result:=inherited GetPreferredSize;
+ result:=Maximum(inherited GetPreferredSize,
+                 Theme.fSansFont.TextSize(fTitle,
+                                          Max(Theme.fUnfocusedWindowHeaderFontSize,
+                                              Theme.fFocusedWindowHeaderFontSize))+
+                 TpvVector2.Create(Theme.fSansFont.TextWidth('====',
+                                                             Max(Theme.fUnfocusedWindowHeaderFontSize,
+                                                             Theme.fFocusedWindowHeaderFontSize)),
+                                   0.0));
  if assigned(fButtonPanel) then begin
   fButtonPanel.Visible:=true;
  end;
@@ -2254,5 +2273,44 @@ procedure TpvGUIWindow.Draw;
 begin
  inherited Draw;
 end;
+
+constructor TpvGUILabel.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+ fCaption:='Label';
+end;
+
+destructor TpvGUILabel.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TpvGUILabel.GetPreferredSize:TpvVector2;
+begin
+ result:=Maximum(inherited GetPreferredSize,
+                 Theme.fSansFont.TextSize(fCaption,FontSize)+TpvVector2.Create(0.0,0.0));
+end;
+
+procedure TpvGUILabel.Update;
+begin
+ fCanvas.Push;
+ try
+  fCanvas.Font:=Theme.fSansFont;
+  fCanvas.FontSize:=FontSize;
+  fCanvas.TextHorizontalAlignment:=pvcthaLeft;
+  fCanvas.TextVerticalAlignment:=pvctvaTop;
+  fCanvas.Color:=Theme.fFocusedWindowHeaderFontColor;
+  fCanvas.DrawText(fCaption);
+ finally
+  fCanvas.Pop;
+ end;
+ inherited Update;
+end;
+
+procedure TpvGUILabel.Draw;
+begin
+ inherited Draw;
+end;
+
 
 end.
