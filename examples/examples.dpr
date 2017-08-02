@@ -92,7 +92,9 @@ begin
   inc(Frames);
  end;
 end;
+{$ifend}
 
+{$if defined(fpc) and defined(android) and defined(PasVulkanUseSDL2)}
 procedure Java_org_libsdl_app_SDLActivity_nativeSetAssetManager(pJavaEnv:PJNIEnv;pJavaClass:jclass;pAssetManager:JObject); cdecl;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -103,7 +105,10 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Java_org_libsdl_app_SDLActivity_nativeSetAssetManager . . .');
 {$ifend}
 end;
+{$ifend}
 
+{$if defined(PasVulkanUseSDL2)}
+{$if defined(fpc) and defined(android)}
 procedure Java_org_libsdl_app_SDLActivity_nativeInit(pJavaEnv:PJNIEnv;pJavaClass:jclass;pJavaObject:jobject); cdecl;
 var s:string;
 {$else}
@@ -140,14 +145,20 @@ begin
  SDL_Quit;
 {$ifend}
 end;
+{$ifend}
 
 {$if defined(fpc) and defined(android)}
+{$if defined(PasVulkanUseSDL2)}
 exports JNI_OnLoad name 'JNI_OnLoad',
         JNI_OnUnload name 'JNI_OnUnload',
         Android_JNI_GetEnv name 'Android_JNI_GetEnv',
         Java_org_libsdl_app_SDLActivity_nativeSetAssetManager name 'Java_org_libsdl_app_SDLActivity_nativeSetAssetManager',
-        Java_org_libsdl_app_SDLActivity_nativeInit name 'Java_org_libsdl_app_SDLActivity_nativeInit',
+        Java_org_libsdl_app_SDLActivity_nativeInit name 'Java_org_libsdl_app_SDLActivity_nativeInit';
+{$else}
+exports JNI_OnLoad name 'JNI_OnLoad',
+        JNI_OnUnload name 'JNI_OnUnload',
         ANativeActivity_onCreate name 'ANativeActivity_onCreate';
+{$ifend}
 {$ifend}
 
 {$if defined(fpc) and defined(Windows)}
@@ -156,13 +167,19 @@ function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDe
 
 {$if not (defined(fpc) and defined(android))}
 begin
+{$if defined(PasVulkanUseSDL2)}
  SDLMain;
+{$else}
+ TExampleApplication.Main;
+{$ifend}
 {$ifdef Windows}
  if {$ifdef fpc}IsDebuggerPresent{$else}DebugHook<>0{$endif} then begin
   writeln('Press return to exit . . . ');
   readln;
  end;
 {$endif}
+{$if defined(PasVulkanUseSDL2)}
  SDL_Quit;
+{$ifend}
 {$ifend}
 end.

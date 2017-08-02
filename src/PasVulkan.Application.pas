@@ -60,18 +60,6 @@ unit PasVulkan.Application;
  {$endif}
 {$endif}
 
-{$if defined(Windows)}
- {$define PasVulkanUseSDL2}
-{$ifend}
-
-{$if defined(Linux)}
- {$define PasVulkanUseSDL2}
-{$ifend}
-
-{$if defined(Android)}
- {$define PasVulkanUseSDL2}
-{$ifend}
-
 interface
 
 uses {$if defined(Unix)}
@@ -1394,6 +1382,7 @@ type EpvApplication=class(Exception)
 var pvApplication:TpvApplication=nil;
 
 {$if defined(fpc) and defined(android)}
+     AndroidJavaVM:PJavaVM=nil;
      AndroidJavaEnv:PJNIEnv=nil;
      AndroidJavaClass:jclass=nil;
      AndroidJavaObject:jobject=nil;
@@ -1412,7 +1401,11 @@ function AndroidGetManufacturerName:TpvApplicationUnicodeString;
 function AndroidGetModelName:TpvApplicationUnicodeString;
 function AndroidGetDeviceName:TpvApplicationUnicodeString;
 function Android_JNI_GetEnv:PJNIEnv; cdecl;
+
+{$if not defined(PasVulkanUseSDL2)}
 procedure ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedState:pointer;aSavedStateSize:cuint32); cdecl;
+{$ifend}
+
 {$ifend}
 
 implementation
@@ -7392,12 +7385,16 @@ begin
 {$ifend}
 end;
 
+{$if not defined(PasVulkanUseSDL2)}
 procedure ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedState:pointer;aSavedStateSize:cuint32); cdecl;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering ANativeActivity_onCreate . . .');
 {$ifend}
  AndroidActivity:=aActivity;
+ AndroidJavaVM:=aActivity^.VM;
+ AndroidJavaEnv:=aActivity^.env;
+ AndroidJavaObject:=aActivity^.clazz;
  AndroidAssetManager:=aActivity^.assetManager;
  AndroidInternalDataPath:=aActivity^.internalDataPath;
  AndroidExternalDataPath:=aActivity^.externalDataPath;
@@ -7406,6 +7403,8 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving ANativeActivity_onCreate . . .');
 {$ifend}
 end;
+{$ifend}
+
 {$ifend}
 
 {$ifdef Windows}

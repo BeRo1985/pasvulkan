@@ -12,12 +12,12 @@ del libSDL2.so
 del "android\\app\\src\\main\\jniLibs\\armeabi-v7a\\libmain.so"
 del libmain.so
 copy .\..\libs\sdl20androidarm32\libSDL2.so libSDL2.so
-"c:\FPC\3.1.1\bin\i386-win32\ppcrossarm.exe" -Tandroid -Sd -B -g -gl -CpARMv7A -CfVFPv3 -OpARMv7a -O1 -XX -Xs -CX -Cg "-olibmain.so" -dPasVulkanPasMP examples.dpr
+"c:\FPC\3.1.1\bin\i386-win32\ppcrossarm.exe" -Tandroid -Sd -B -g -gl -gw3 -CpARMv7A -CfVFPv3 -OpARMv7a -O1 -XX -Xs -CX -Cg "-olibmain.so" -dPasVulkanPasMP -dPasVulkanUseSDL2 examples.dpr
 copy libmain.so "android\\app\\src\\main\\jniLibs\\armeabi-v7a\\libmain.so"
-del *.a
+rem del *.a
 del *.ppu
-del *.o
+rem del *.o
 del .\..\src\*.a
 del .\..\src\*.ppu
-del .\..\src\*.o
-del libSDL2.so
+rem del .\..\src\*.o
+rem del libSDL2.so
