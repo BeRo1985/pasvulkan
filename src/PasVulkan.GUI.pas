@@ -74,8 +74,11 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
+     PasVulkan.Streams,
      PasVulkan.Sprites,
-     PasVulkan.Canvas;
+     PasVulkan.Canvas,
+     PasVulkan.TrueTypeFont,
+     PasVulkan.Font;
 
 type TpvGUIObject=class;
 
@@ -166,6 +169,8 @@ type TpvGUIObject=class;
       protected
        fFontSize:TpvFloat;
        fSpriteAtlas:TpvSpriteAtlas;
+       fSansFont:TpvFont;
+       fMonoFont:TpvFont;
        fSpriteUnfocusedWindowFill:TpvSprite;
        fSpriteUnfocusedWindowFillNinePatch:TpvSpriteNinePatch;
        fSpriteFocusedWindowFill:TpvSprite;
@@ -422,6 +427,8 @@ type TpvGUIObject=class;
 
 implementation
 
+uses PasVulkan.Assets;
+
 procedure TpvGUIObjectList.Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification);
 begin
  if assigned(Value) then begin
@@ -676,11 +683,15 @@ constructor TpvGUITheme.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
  fSpriteAtlas:=nil;
+ fSansFont:=nil;
+ fMonoFont:=nil;
  Setup;
 end;
 
 destructor TpvGUITheme.Destroy;
 begin
+ FreeAndNil(fSansFont);
+ FreeAndNil(fMonoFont);
  FreeAndNil(fSpriteAtlas);
  inherited Destroy;
 end;
@@ -902,6 +913,8 @@ procedure TpvGUITheme.Setup;
    ImageData:=nil;
   end;
  end;
+var Stream:TStream;
+    TrueTypeFont:TpvTrueTypeFont;
 begin
 
  fFontSize:=-12;
@@ -1004,6 +1017,40 @@ begin
                                    16,
                                    TpvVector4.Create(0.0,0.0,0.0,64.0)/255.0,
                                    TpvVector4.Create(0.0,0.0,0.0,0.0)/255.0);
+
+ Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansFontData,GUIStandardTrueTypeFontSansFontDataSize);
+ try
+  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+  try
+   TrueTypeFont.Size:=-64;
+   TrueTypeFont.Hinting:=false;
+   fSansFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
+                                             fSpriteAtlas,
+                                             TrueTypeFont,
+                                             [TpvFontCodePointRange.Create(0,255)]);
+  finally
+   TrueTypeFont.Free;
+  end;
+ finally
+  Stream.Free;
+ end;
+
+ Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontMonoFontData,GUIStandardTrueTypeFontMonoFontDataSize);
+ try
+  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+  try
+   TrueTypeFont.Size:=-64;
+   TrueTypeFont.Hinting:=false;
+   fMonoFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
+                                             fSpriteAtlas,
+                                             TrueTypeFont,
+                                             [TpvFontCodePointRange.Create(0,255)]);
+  finally
+   TrueTypeFont.Free;
+  end;
+ finally
+  Stream.Free;
+ end;
 
  fSpriteAtlas.MipMaps:=false;
 

@@ -162,7 +162,7 @@ begin
   try
    TrueTypeFont.Size:=-64;
    TrueTypeFont.Hinting:=false;
-   fVulkanFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,fVulkanFontSpriteAtlas,TrueTypeFont,[TpvFont.CodePointRange(0,255)]);
+   fVulkanFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,fVulkanFontSpriteAtlas,TrueTypeFont,[TpvFontCodePointRange.Create(0,255)]);
   finally
    TrueTypeFont.Free;
   end;

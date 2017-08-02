@@ -82,8 +82,12 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
 
      PpvFontCodePointRange=^TpvFontCodePointRange;
      TpvFontCodePointRange=record
-      FromCodePoint:TpvUInt32;
-      ToCodePoint:TpvUInt32;
+      public
+       FromCodePoint:TpvUInt32;
+       ToCodePoint:TpvUInt32;
+       constructor Create(const aFromCodePoint,aToCodePoint:TpvUInt32); overload;
+       constructor Create(const aFromCodePoint,aToCodePoint:WideChar); overload;
+       constructor Create(const aCharacterRange:TpvFontCharacterRange); overload;
      end;
 
      TpvFontCodePointRanges=array of TpvFontCodePointRange;
@@ -187,9 +191,6 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        constructor Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0); reintroduce;
        constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange);
        destructor Destroy; override;
-       class function CodePointRange(const aFromCodePoint,aToCodePoint:TpvUInt32):TpvFontCodePointRange; overload;
-       class function CodePointRange(const aFromCodePoint,aToCodePoint:WideChar):TpvFontCodePointRange; overload;
-       class function CodePointRange(const aCharacterRange:TpvFontCharacterRange):TpvFontCodePointRange; overload;
        function GetScaleFactor(const aSize:TpvFloat):TpvFloat;
        function TextWidth(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
        function TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
@@ -204,6 +205,38 @@ implementation
 
 uses PasVulkan.Utils,
      PasVulkan.Canvas;
+
+
+constructor TpvFontCodePointRange.Create(const aFromCodePoint,aToCodePoint:TpvUInt32);
+begin
+ FromCodePoint:=Min(aFromCodePoint,aToCodePoint);
+ ToCodePoint:=Max(aFromCodePoint,aToCodePoint);
+end;
+
+constructor TpvFontCodePointRange.Create(const aFromCodePoint,aToCodePoint:WideChar);
+begin
+ FromCodePoint:=Min(TpvUInt16(WideChar(aFromCodePoint)),TpvUInt16(WideChar(aToCodePoint)));
+ ToCodePoint:=Max(TpvUInt16(WideChar(aFromCodePoint)),TpvUInt16(WideChar(aToCodePoint)));
+end;
+
+constructor TpvFontCodePointRange.Create(const aCharacterRange:TpvFontCharacterRange);
+var Index:AnsiChar;
+begin
+ FromCodePoint:=High(TpvUInt32);
+ ToCodePoint:=Low(TpvUInt32);
+ for Index:=Low(AnsiChar) to High(AnsiChar) do begin
+  if Index in aCharacterRange then begin
+   FromCodePoint:=TpvUInt8(AnsiChar(Index));
+   break;
+  end;
+ end;
+ for Index:=High(AnsiChar) downto Low(AnsiChar) do begin
+  if Index in aCharacterRange then begin
+   ToCodePoint:=TpvUInt8(AnsiChar(Index));
+   break;
+  end;
+ end;
+end;
 
 function CompareVulkanFontGlyphsByArea(const a,b:TpvPointer):TpvInt32;
 begin
@@ -2552,37 +2585,6 @@ begin
  fDistanceFieldJobs:=nil;
 
  inherited Destroy;
-end;
-
-class function TpvFont.CodePointRange(const aFromCodePoint,aToCodePoint:TpvUInt32): TpvFontCodePointRange;
-begin
- result.FromCodePoint:=Min(aFromCodePoint,aToCodePoint);
- result.ToCodePoint:=Max(aFromCodePoint,aToCodePoint);
-end;
-
-class function TpvFont.CodePointRange(const aFromCodePoint,aToCodePoint:WideChar):TpvFontCodePointRange;
-begin
- result.FromCodePoint:=Min(TpvUInt16(WideChar(aFromCodePoint)),TpvUInt16(WideChar(aToCodePoint)));
- result.ToCodePoint:=Max(TpvUInt16(WideChar(aFromCodePoint)),TpvUInt16(WideChar(aToCodePoint)));
-end;
-
-class function TpvFont.CodePointRange(const aCharacterRange:TpvFontCharacterRange):TpvFontCodePointRange;
-var Index:AnsiChar;
-begin
- result.FromCodePoint:=High(TpvUInt32);
- result.ToCodePoint:=Low(TpvUInt32);
- for Index:=Low(AnsiChar) to High(AnsiChar) do begin
-  if Index in aCharacterRange then begin
-   result.FromCodePoint:=TpvUInt8(AnsiChar(Index));
-   break;
-  end;
- end;
- for Index:=High(AnsiChar) downto Low(AnsiChar) do begin
-  if Index in aCharacterRange then begin
-   result.ToCodePoint:=TpvUInt8(AnsiChar(Index));
-   break;
-  end;
- end;
 end;
 
 function TpvFont.GetScaleFactor(const aSize:TpvFloat):TpvFloat;
