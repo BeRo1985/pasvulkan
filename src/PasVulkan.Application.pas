@@ -7423,14 +7423,43 @@ begin
  end;
 end;
 
-type PAndroidApp=^TAndroidApp;
+type PLooperID=^TLooperID;
+     TLooperID=
+      (
+       LOOPER_ID_MAIN=1,
+       LOOPER_ID_INPUT,
+       LOOPER_ID_USER
+      );
+
+     PAppCmd=^TAppCmd;
+     TAppCmd=
+      (
+       APP_CMD_INPUT_CHANGED=1,
+       APP_CMD_INIT_WINDOW,
+       APP_CMD_DONE_WINDOW,
+       APP_CMD_RESIZED,
+       APP_CMD_REDRAW_NEEDED,
+       APP_CMD_CONTENT_RECT_CHANGED,
+       APP_CMD_GAINED_FOCUS,
+       APP_CMD_LOST_FOCUS,
+       APP_CMD_CONFIG_CHANGED,
+       APP_CMD_LOW_MEMORY,
+       APP_CMD_START,
+       APP_CMD_RESUME,
+       APP_CMD_SAVE_STATE,
+       APP_CMD_PAUSE,
+       APP_CMD_STOP,
+       APP_CMD_DESTROY
+      );
+
+     PAndroidApp=^TAndroidApp;
 
      PAndroidPollSource=^TAndroidPollSource;
      TAndroidPollSource=packed record
       public
        fID:cint32;
        fApp:PAndroidApp:
-       Process:procedure(const aApp:PAndroidApp;const aSource:PAndroidPollSource);
+       fProcess:procedure(const aApp:PAndroidApp;const aSource:PAndroidPollSource);
      end;
 
      TAndroidAppThread=class(TThread)
@@ -7448,12 +7477,12 @@ type PAndroidApp=^TAndroidApp;
        fActivity:PANativeActivity;
        fConfiguration:PAConfiguration;
        fSavedState:TpvPointer;
-       fSavedStateSize:csize_t;
+       fSavedStateSize:TPasMPUInt32;
        fLooper:PALooper;
        fInputQueue:PAInputQueue;
        fWindow:PANativeWindow;
        fContentRect:TARect;
-       fActivityState:cint;
+       fActivityState:TAppCmd;
        fDestroyRequested:TPasMPBool32;
        fConditionVariableLock:TPasMPConditionVariableLock;
        fConditionVariable:TPasMPConditionVariable;
@@ -7476,6 +7505,10 @@ type PAndroidApp=^TAndroidApp;
        procedure Destroy;
        function AllocateSavedState(const aSize:TpvNativeUInt):TpvPointer;
        procedure FreeSavedState;
+       procedure SendCmd(const aCmd:TAppCmd);
+       procedure SetInput(const aInputQueue:PAInputQueue);
+       procedure SetWindow(const aWindow:PANativeWindow);
+       procedure SetActivityState(const aCmd:TAppCmd);
      end;
 
 constructor TAndroidAppThread.Create(const aAndroidApp:PAndroidApp);
@@ -7486,22 +7519,70 @@ begin
 end;
 
 procedure TAndroidAppThread.Execute;
+var Looper:PALooper;
 begin
  try
-  aAndroidApp^.fApplication:=aAndroidApp^.fApplicationClass.Create;
+
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TAndroidAppThread.Execute . . .');
+{$ifend}
+
   try
-   aAndroidApp^.fApplication.Setup;
-   TPasMPInterlocked.Write(aAndroidApp^.fRunning,true);
+
+   fAndroidApp^.fConfiguration:=AConfiguration_new();
+   AConfiguration_fromAssetManager(fAndroidApp^.fConfiguration,fAndroidApp^.fActivity^.assetManager);
+
+   fAndroidApp^.fCmdPollSource.fID:=LOOPER_ID_MAIN;
+   fAndroidApp^.fCmdPollSource.fApp:=fAndroidApp;
+   fAndroidApp^.fCmdPollSource.fProcess:=@AppProcessCmd;
+
+   fAndroidApp^.fInputPollSource.fID:=LOOPER_ID_INPUT;
+   fAndroidApp^.fInputPollSource.fApp:=fAndroidApp;
+   fAndroidApp^.fInputPollSource.fProcess:=@AppProcessInput;
+
+   Looper:=ALooper_prepare(ALOOPER_PREPARE_ALLOW_NON_CALLBACKS);
+   ALooper_addFd(Looper,fAndroidApp^.fMsgPipe[0],TpvInt32(LOOPER_ID_MAIN),ALOOPER_EVENT_INPUT,nil,@fAndroidApp^.fCmdPollSource);
+   fAndroidApp^.fLooper:=Looper;
+
+   fAndroidApp^.fApplication:=aAndroidApp^.fApplicationClass.Create;
    try
-    aAndroidApp^.fApplication.Run;
+    fAndroidApp^.fApplication.Setup;
+    fAndroidApp^.fConditionVariableLock.Acquire;
+    try
+     TPasMPInterlocked.Write(fAndroidApp^.fRunning,true);
+     fAndroidApp^.fConditionVariable.Broadcast;
+    finally
+     fAndroidApp^.fConditionVariableLock.Release;
+    end;
+    try
+     fAndroidApp^.fApplication.Run;
+    finally
+     fAndroidApp^.fConditionVariableLock.Acquire;
+     try
+      TPasMPInterlocked.Write(fAndroidApp^.fRunning,false);
+      fAndroidApp^.fConditionVariable.Broadcast;
+     finally
+      fAndroidApp^.fConditionVariableLock.Release;
+     end;
+    end;
    finally
-    TPasMPInterlocked.Write(aAndroidApp^.fRunning,false);
+    FreeAndNil(fAndroidApp^.fApplication);
    end;
+
   finally
-   FreeAndNil(aAndroidApp^.fApplication);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TAndroidAppThread.Execute . . .');
+{$ifend}
   end;
+
  finally
-  TPasMPInterlocked.Write(aAndroidApp^.fDestroyed,true);
+  fAndroidApp^.fConditionVariableLock.Acquire;
+  try
+   TPasMPInterlocked.Write(aAndroidApp^.fDestroyed,true);
+   fAndroidApp^.fConditionVariable.Broadcast;
+  finally
+   fAndroidApp^.fConditionVariableLock.Release;
+  end;
  end;
 end;
 
@@ -7567,6 +7648,7 @@ begin
 
    fConditionVariableLock.Acquire;
    try
+    SendCmd(APP_CMD_DESTROY);
     while not TPasMPInterlocked.Read(fDestroyed) do begin
      fConditionVariable.Wait(fConditionVariableLock);
     end;
@@ -7606,6 +7688,58 @@ begin
  end;
 end;
 
+procedure TAndroidApp.SendCmd(const aCmd:TAppCmd);
+begin
+ if fpwrite(fMsgPipe[1],aCmd,SizeOf(TAppCmd))<>SizeOf(TAppCmd) then begin
+ end;
+end;
+
+procedure TAndroidApp.SetInput(const aInputQueue:PAInputQueue);
+begin
+ fConditionVariableLock.Acquire;
+ try
+  fPendingInputQueue:=aInputQueue;
+  SendCmd(APP_CMD_INPUT_CHANGED);
+  while fInputQueue<>fPendingInputQueue do begin
+   fConditionVariable.Wait(fConditionVariableLock);
+  end;
+ finally
+  fConditionVariableLock.Release;
+ end;
+end;
+
+procedure TAndroidApp.SetWindow(const aWindow:PANativeWindow);
+begin
+ fConditionVariableLock.Acquire;
+ try
+  if assigned(fPendingWindow) then begin
+   SendCmd(APP_CMD_DONE_WINDOW);
+  end;
+  fPendingWindow:=aWindow;
+  if assigned(aWindow) then begin
+   SendCmd(APP_CMD_INIT_WINDOW);
+  end;
+  while fWindow<>fPendingWindow do begin
+   fConditionVariable.Wait(fConditionVariableLock);
+  end;
+ finally
+  fConditionVariableLock.Release;
+ end;
+end;
+
+procedure TAndroidApp.SetActivityState(const aCmd:TAppCmd);
+begin
+ fConditionVariableLock.Acquire;
+ try
+  SendCmd(aCmd);
+  while fActivityState<>aCmd do begin
+   fConditionVariable.Wait(fConditionVariableLock);
+  end;
+ finally
+  fConditionVariableLock.Release;
+ end;
+end;
+
 procedure Android_ANativeActivity_onStart(aActivity:PANativeActivity); cdecl;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -7613,7 +7747,7 @@ begin
 {$ifend}
  try
   try
-
+   PAndroidApp(aActivity^.instance)^.SetActivityState(APP_CMD_START);
   except
    on e:Exception do begin
     __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
@@ -7633,7 +7767,7 @@ begin
 {$ifend}
  try
   try
-
+   PAndroidApp(aActivity^.instance)^.SetActivityState(APP_CMD_RESUME);
   except
    on e:Exception do begin
     __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
@@ -7648,6 +7782,37 @@ end;
 
 function Android_ANativeActivity_onSaveInstanceState(aActivity:PANativeActivity;aOutSize:Psize_t):TpvPointer; cdecl;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_ANativeActivity_onSaveInstanceState . . .');
+{$ifend}
+ try
+  try
+   PAndroidApp(aActivity^.instance)^.fConditionVariableLock.Acquire;
+   try                                         f
+    PAndroidApp(aActivity^.instance)^.fStateSaved:=false;
+    PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_SAVE_STATE);
+    while not PAndroidApp(aActivity^.instance)^.fStateSaved do begin
+     fConditionVariable.Wait(PAndroidApp(aActivity^.instance)^.fConditionVariableLock);
+    end;
+    if assigned(PAndroidApp(aActivity^.instance)^.fSavedState) then begin
+     result:=TPasMPInterlocked.Exchange(PAndroidApp(aActivity^.instance)^.fSavedState,nil);
+     aOutSize^:=TPasMPInterlocked.Exchange(PAndroidApp(aActivity^.instance)^.fSavedStateSize,0);
+    end else begin
+     result:=nil;
+    end;
+   finally
+    PAndroidApp(aActivity^.instance)^.fConditionVariableLock.Release;
+   end;
+  except
+   on e:Exception do begin
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+   end;
+  end;
+ finally
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Android_ANativeActivity_onSaveInstanceState . . .');
+{$ifend}
+ end;
 end;
 
 procedure Android_ANativeActivity_onPause(aActivity:PANativeActivity); cdecl;
@@ -7657,7 +7822,7 @@ begin
 {$ifend}
  try
   try
-
+   PAndroidApp(aActivity^.instance)^.SetActivityState(APP_CMD_PAUSE);
   except
    on e:Exception do begin
     __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
@@ -7677,7 +7842,7 @@ begin
 {$ifend}
  try
   try
-
+   PAndroidApp(aActivity^.instance)^.SetActivityState(APP_CMD_STOP);
   except
    on e:Exception do begin
     __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
@@ -7713,42 +7878,206 @@ end;
 
 procedure Android_ANativeActivity_onWindowFocusChanged(aActivity:PANativeActivity;aHasFocus:cint); cdecl;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_ANativeActivity_onWindowFocusChanged . .');
+{$ifend}
+ try
+  try
+   if aHasFocus<>0 then begin
+    PAndroidApp(aActivity^.instance)^.SetActivityState(APP_CMD_GAINED_FOCUS);
+   end else begin
+    PAndroidApp(aActivity^.instance)^.SetActivityState(APP_CMD_LOST_FOCUS);
+   end;
+  except
+   on e:Exception do begin
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+   end;
+  end;
+ finally
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Android_ANativeActivity_onWindowFocusChanged . . .');
+{$ifend}
+ end;
 end;
 
 procedure Android_ANativeActivity_onNativeWindowCreated(aActivity:PANativeActivity;aWindow:PANativeWindow); cdecl;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_ANativeActivity_onNativeWindowCreated . .');
+{$ifend}
+ try
+  try
+   PAndroidApp(aActivity^.instance)^.SetWindow(aWindow);
+  except
+   on e:Exception do begin
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+   end;
+  end;
+ finally
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Android_ANativeActivity_onNativeWindowCreated . . .');
+{$ifend}
+ end;
 end;
 
 procedure Android_ANativeActivity_onNativeWindowResized(aActivity:PANativeActivity;aWindow:PANativeWindow); cdecl;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_ANativeActivity_onNativeWindowResized . .');
+{$ifend}
+ try
+  try
+   PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_RESIZED);
+  except
+   on e:Exception do begin
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+   end;
+  end;
+ finally
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Android_ANativeActivity_onNativeWindowResized . . .');
+{$ifend}
+ end;
 end;
 
 procedure Android_ANativeActivity_onNativeWindowRedrawNeeded(aActivity:PANativeActivity;aWindow:PANativeWindow); cdecl;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_ANativeActivity_onNativeWindowRedrawNeeded . .');
+{$ifend}
+ try
+  try
+   PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_REDRAW_NEEDED);
+  except
+   on e:Exception do begin
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+   end;
+  end;
+ finally
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Android_ANativeActivity_onNativeWindowRedrawNeeded . . .');
+{$ifend}
+ end;
 end;
 
 procedure Android_ANativeActivity_onNativeWindowDestroyed(aActivity:PANativeActivity;aWindow:PANativeWindow); cdecl;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_ANativeActivity_onNativeWindowDestroyed . .');
+{$ifend}
+ try
+  try
+   PAndroidApp(aActivity^.instance)^.SetWindow(nil);
+  except
+   on e:Exception do begin
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+   end;
+  end;
+ finally
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Android_ANativeActivity_onNativeWindowDestroyed . . .');
+{$ifend}
+ end;
 end;
 
 procedure Android_ANativeActivity_onInputQueueCreated(aActivity:PANativeActivity;aQueue:PAInputQueue); cdecl;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_ANativeActivity_onInputQueueCreated . .');
+{$ifend}
+ try
+  try
+   PAndroidApp(aActivity^.instance)^.SetInput(aQueue);
+  except
+   on e:Exception do begin
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+   end;
+  end;
+ finally
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Android_ANativeActivity_onInputQueueCreated . . .');
+{$ifend}
+ end;
 end;
 
 procedure Android_ANativeActivity_onInputQueueDestroyed(aActivity:PANativeActivity;aQueue:PAInputQueue); cdecl;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_ANativeActivity_onInputQueueDestroyed . .');
+{$ifend}
+ try
+  try
+   PAndroidApp(aActivity^.instance)^.SetInput(nil);
+  except
+   on e:Exception do begin
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+   end;
+  end;
+ finally
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Android_ANativeActivity_onInputQueueDestroyed . . .');
+{$ifend}
+ end;
 end;
 
 procedure Android_ANativeActivity_onContentRectChanged(aActivity:PANativeActivity;aRect:PARect); cdecl;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_ANativeActivity_onContentRectChanged . .');
+{$ifend}
+ try
+  try
+   PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_CONTENT_RECT_CHANGED);
+  except
+   on e:Exception do begin
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+   end;
+  end;
+ finally
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Android_ANativeActivity_onContentRectChanged . . .');
+{$ifend}
+ end;
 end;
 
 procedure Android_ANativeActivity_onConfigurationChanged(aActivity:PANativeActivity); cdecl;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_ANativeActivity_onConfigurationChanged . .');
+{$ifend}
+ try
+  try
+   PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_CONFIG_CHANGED);
+  except
+   on e:Exception do begin
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+   end;
+  end;
+ finally
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Android_ANativeActivity_onConfigurationChanged . . .');
+{$ifend}
+ end;
 end;
 
 procedure Android_ANativeActivity_onLowMemory(activity:PANativeActivity); cdecl;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_ANativeActivity_onLowMemory . .');
+{$ifend}
+ try
+  try
+   PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_LOW_MEMORY);
+  except
+   on e:Exception do begin
+    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
+   end;
+  end;
+ finally
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Android_ANativeActivity_onLowMemory . . .');
+{$ifend}
+ end;
 end;
 
 procedure Android_ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedState:pointer;aSavedStateSize:cuint32;const aApplicationClass:TpvApplicationClass);
