@@ -154,8 +154,6 @@ begin
  fGUIWindow.Layout:=TpvGUIBoxLayout.Create(fGUIWindow,pvglaLeading,pvgloVertical,8.0,8.0);
 
  fGUILabel:=TpvGUILabel.Create(fGUIWindow);
- fGUILabel.Left:=8;
- fGUILabel.Top:=40;
  fGUILabel.Caption:='An example label';
 
  fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
@@ -165,14 +163,10 @@ begin
  fGUIOtherWindow.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow,pvglaLeading,pvgloVertical,8.0,8.0);
 
  fGUILabel:=TpvGUILabel.Create(fGUIOtherWindow);
- fGUILabel.Left:=8;
- fGUILabel.Top:=40;
- fGUILabel.Caption:='An example label';
+ fGUILabel.Caption:='An other example label';
 
  fGUILabel:=TpvGUILabel.Create(fGUIOtherWindow);
- fGUILabel.Left:=8;
- fGUILabel.Top:=40;
- fGUILabel.Caption:='An example label';
+ fGUILabel.Caption:='An another example label';
 
 end;
 
