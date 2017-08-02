@@ -2174,6 +2174,16 @@ begin
                                 TpvVector2.Create(Theme.fSpriteUnfocusedWindowGrip.Width,Theme.fSpriteUnfocusedWindowGrip.Height));
    end;
   end;
+
+  if length(fTitle)>0 then begin
+   fCanvas.Font:=Theme.fSansFont;
+   fCanvas.FontSize:=-Max(8,Theme.fSpriteUnfocusedWindowHeader.Height*0.5);
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.DrawText(fTitle,
+                    (fSize.x-fCanvas.TextWidth(fTitle))*0.5,
+                    (Theme.fSpriteUnfocusedWindowHeader.Height-fCanvas.TextHeight(fTitle))*0.5);
+  end;
+
  finally
   fCanvas.Pop;
  end;

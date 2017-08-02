@@ -147,18 +147,20 @@ begin
  fGUIInstance.Canvas:=fVulkanCanvas;
 
  fGUIWindow:=TpvGUIWindow.Create(fGUIInstance);
- fGUIWindow.Left:=100;
+ fGUIWindow.Left:=50;
  fGUIWindow.Top:=200;
- fGUIWindow.Width:=200;
+ fGUIWindow.Width:=300;
  fGUIWindow.Height:=200;
  fGUIWindow.Visible:=true;
+ fGUIWindow.Title:='An example window';
 
  fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
- fGUIOtherWindow.Left:=450;
+ fGUIOtherWindow.Left:=550;
  fGUIOtherWindow.Top:=200;
- fGUIOtherWindow.Width:=200;
+ fGUIOtherWindow.Width:=300;
  fGUIOtherWindow.Height:=200;
  fGUIOtherWindow.Visible:=true;
+ fGUIOtherWindow.Title:='An another example window';
 
 end;
 
