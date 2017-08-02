@@ -168,6 +168,16 @@ type TpvGUIObject=class;
       private
       protected
        fFontSize:TpvFloat;
+       fUnfocusedWindowHeaderFontSize:TpvFloat;
+       fFocusedWindowHeaderFontSize:tpvFloat;
+       fUnfocusedWindowHeaderFontShadow:boolean;
+       fFocusedWindowHeaderFontShadow:boolean;
+       fUnfocusedWindowHeaderFontShadowOffset:TpvVector2;
+       fFocusedWindowHeaderFontShadowOffset:TpvVector2;
+       fUnfocusedWindowHeaderFontShadowColor:TpvVector4;
+       fFocusedWindowHeaderFontShadowColor:TpvVector4;
+       fUnfocusedWindowHeaderFontColor:TpvVector4;
+       fFocusedWindowHeaderFontColor:TpvVector4;
        fSpriteAtlas:TpvSpriteAtlas;
        fSansFont:TpvFont;
        fMonoFont:TpvFont;
@@ -209,6 +219,10 @@ type TpvGUIObject=class;
        property SpriteFocusedWindowShadowNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowShadowNinePatch write fSpriteFocusedWindowShadowNinePatch;
       published
        property FontSize:TpvFloat read fFontSize write fFontSize;
+       property UnfocusedWindowHeaderFontSize:TpvFloat read fUnfocusedWindowHeaderFontSize write fUnfocusedWindowHeaderFontSize;
+       property FocusedWindowHeaderFontSize:TpvFloat read fFocusedWindowHeaderFontSize write fFocusedWindowHeaderFontSize;
+       property UnfocusedWindowHeaderFontShadow:boolean read fUnfocusedWindowHeaderFontShadow write fUnfocusedWindowHeaderFontShadow;
+       property FocusedWindowHeaderFontShadow:boolean read fFocusedWindowHeaderFontShadow write fFocusedWindowHeaderFontShadow;
        property SpriteAtlas:TpvSpriteAtlas read fSpriteAtlas;
        property SpriteUnfocusedWindowFill:TpvSprite read fSpriteUnfocusedWindowFill write fSpriteUnfocusedWindowFill;
        property SpriteFocusedWindowFill:TpvSprite read fSpriteFocusedWindowFill write fSpriteFocusedWindowFill;
@@ -918,6 +932,21 @@ var Stream:TStream;
 begin
 
  fFontSize:=-12;
+
+ fUnfocusedWindowHeaderFontSize:=-16;
+ fFocusedWindowHeaderFontSize:=-16;
+
+ fUnfocusedWindowHeaderFontShadow:=true;
+ fFocusedWindowHeaderFontShadow:=true;
+
+ fUnfocusedWindowHeaderFontShadowOffset:=TpvVector2.Create(2.0,2.0);
+ fFocusedWindowHeaderFontShadowOffset:=TpvVector2.Create(2.0,2.0);
+
+ fUnfocusedWindowHeaderFontShadowColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+ fFocusedWindowHeaderFontShadowColor:=TpvVector4.Create(0.0,0.0,0.0,0.5);
+
+ fUnfocusedWindowHeaderFontColor:=TpvVector4.Create(0.5,0.5,0.5,1.0);
+ fFocusedWindowHeaderFontColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 
  fWindowHeaderHeight:=32;
 
@@ -2180,17 +2209,29 @@ begin
    LastModelMatrix:=fCanvas.ModelMatrix;
    try
     fCanvas.Font:=Theme.fSansFont;
-    fCanvas.FontSize:=-Max(8,Theme.fSpriteUnfocusedWindowHeader.Height*0.5);
-    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.5);
+    fCanvas.FontSize:=IfThen(fFocused,Theme.fFocusedWindowHeaderFontSize,Theme.fUnfocusedWindowHeaderFontSize);
+    fCanvas.TextHorizontalAlignment:=pvcthaCenter;
+    fCanvas.TextVerticalAlignment:=pvctvaMiddle;
     NewModelMatrix:=TpvMatrix4x4.CreateTranslation(fSize.x*0.5,
                                                    Theme.fSpriteUnfocusedWindowHeader.Height*0.5)*
                     LastModelMatrix;
-    fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(2.0,2.0)*NewModelMatrix;
-    fCanvas.TextHorizontalAlignment:=pvcthaCenter;
-    fCanvas.TextVerticalAlignment:=pvctvaMiddle;
-    fCanvas.DrawText(fTitle);
+    if (fFocused and Theme.fFocusedWindowHeaderFontShadow) or
+       ((not fFocused) and Theme.fUnfocusedWindowHeaderFontShadow) then begin
+     if fFocused then begin
+      fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(Theme.fFocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
+      fCanvas.Color:=Theme.fFocusedWindowHeaderFontShadowColor;
+     end else begin
+      fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(Theme.fUnfocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
+      fCanvas.Color:=Theme.fUnfocusedWindowHeaderFontShadowColor;
+     end;
+     fCanvas.DrawText(fTitle);
+    end;
     fCanvas.ModelMatrix:=NewModelMatrix;
-    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+    if fFocused then begin
+     fCanvas.Color:=Theme.fFocusedWindowHeaderFontColor;
+    end else begin
+     fCanvas.Color:=Theme.fUnfocusedWindowHeaderFontColor;
+    end;
     fCanvas.DrawText(fTitle);
    finally
     fCanvas.ModelMatrix:=LastModelMatrix;
