@@ -275,6 +275,8 @@
  CustomOptions += ' -dMir -dWayland -dXCB -dXLIB';
 end;
 
+ CustomOptions += ' -dPasVulkanPasMP -dPasVulkanUseSDL2';
+
 // example for adding linker options on Mac OS X
 //if TargetOS='darwin' then
 //  LinkerOptions := ' -framework OpenGL';
