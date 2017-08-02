@@ -7457,9 +7457,9 @@ type PLooperID=^TLooperID;
      PAndroidPollSource=^TAndroidPollSource;
      TAndroidPollSource=packed record
       public
-       fID:cint32;
-       fApp:PAndroidApp:
-       fProcess:procedure(const aApp:PAndroidApp;const aSource:PAndroidPollSource);
+       fID:TLooperID;
+       fApp:PAndroidApp;
+       fProcess:procedure(const aApp:PAndroidApp;const aSource:PAndroidPollSource); cdecl;
      end;
 
      TAndroidAppThread=class(TThread)
@@ -7497,7 +7497,7 @@ type PLooperID=^TLooperID;
        fPendingInputQueue:PAInputQueue;
        fPendingWindow:PANativeWindow;
        fPendingContentRect:TARect;
-       fMsgPipe:array[0..1] of cint;
+       fMsgPipe:TFilDes;
        constructor Create(const aActivity:PANativeActivity;
                           const aApplicationClass:TpvApplicationClass;
                           const aSavedState:TpvPointer;
@@ -7509,13 +7509,186 @@ type PLooperID=^TLooperID;
        procedure SetInput(const aInputQueue:PAInputQueue);
        procedure SetWindow(const aWindow:PANativeWindow);
        procedure SetActivityState(const aCmd:TAppCmd);
+       procedure ProcessInputEvent(const aEvent:PAInputEvent);
+       procedure ProcessCmd(const aCmd:TAppCmd);
      end;
+
+procedure AppProcessInput(const aApp:PAndroidApp;const aSource:PAndroidPollSource); cdecl;
+var Event:PAInputEvent;
+    Handled,Processed:boolean;
+begin
+ Event:=nil;
+ Processed:=false;
+ while AInputQueue_getEvent(aApp^.fInputQueue,@Event)>=0 do begin
+  if AInputQueue_preDispatchEvent(aApp^.fInputQueue,Event)=0 then begin
+   Handled:=false;
+   aApp^.ProcessInputEvent(Event);
+   AInputQueue_finishEvent(aApp^.fInputQueue,Event,IfThen(Handled,1,0));
+   Processed:=true;
+  end;
+ end;
+ if not Processed then begin
+  __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication','Failure reading next input event . . .');
+ end;
+end;
+
+procedure AppProcessCmd(const aApp:PAndroidApp;const aSource:PAndroidPollSource); cdecl;
+var Cmd:TAppCmd;
+begin
+ if fpread(aApp^.fMsgPipe[0],@Cmd,SizeOf(TAppCmd))=SizeOf(TAppCmd) then begin
+  case Cmd of
+   APP_CMD_INPUT_CHANGED:begin
+    aApp^.fConditionVariableLock.Acquire;
+    try
+     if assigned(aApp^.fInputQueue) then begin
+      AInputQueue_detachLooper(aApp^.fInputQueue);
+     end;
+     aApp^.fInputQueue:=aApp^.fPendingInputQueue;
+     if assigned(aApp^.fInputQueue) then begin
+      AInputQueue_attachLooper(aApp^.fInputQueue,aApp^.fLooper,TpvInt32(LOOPER_ID_INPUT),nil,@aApp^.fInputPollSource);
+     end;
+     aApp^.fConditionVariable.Broadcast;
+    finally
+     aApp^.fConditionVariableLock.Release;
+    end;
+   end;
+   APP_CMD_INIT_WINDOW:begin
+    aApp^.fConditionVariableLock.Acquire;
+    try
+     aApp^.fWindow:=aApp^.fPendingWindow;
+     aApp^.fConditionVariable.Broadcast;
+    finally
+     aApp^.fConditionVariableLock.Release;
+    end;
+   end;
+   APP_CMD_DONE_WINDOW:begin
+    aApp^.fConditionVariableLock.Acquire;
+    try
+     aApp^.fWindow:=nil;
+     aApp^.fConditionVariable.Broadcast;
+    finally
+     aApp^.fConditionVariableLock.Release;
+    end;
+   end;
+   APP_CMD_RESIZED:begin
+   end;
+   APP_CMD_REDRAW_NEEDED:begin
+   end;
+   APP_CMD_CONTENT_RECT_CHANGED:begin
+   end;
+   APP_CMD_GAINED_FOCUS:begin
+   end;
+   APP_CMD_LOST_FOCUS:begin
+   end;
+   APP_CMD_CONFIG_CHANGED:begin
+    AConfiguration_fromAssetManager(aApp^.fConfiguration,aApp^.fActivity^.assetManager);
+   end;
+   APP_CMD_LOW_MEMORY:begin
+   end;
+   APP_CMD_START:begin
+    aApp^.fConditionVariableLock.Acquire;
+    try
+     aApp^.fActivityState:=APP_CMD_START;
+     aApp^.fConditionVariable.Broadcast;
+    finally
+     aApp^.fConditionVariableLock.Release;
+    end;
+   end;
+   APP_CMD_RESUME:begin
+    aApp^.fConditionVariableLock.Acquire;
+    try
+     aApp^.fActivityState:=APP_CMD_RESUME;
+     aApp^.fConditionVariable.Broadcast;
+    finally
+     aApp^.fConditionVariableLock.Release;
+    end;
+   end;
+   APP_CMD_SAVE_STATE:begin
+    aApp^.FreeSavedState;
+   end;
+   APP_CMD_PAUSE:begin
+    aApp^.fConditionVariableLock.Acquire;
+    try
+     aApp^.fActivityState:=APP_CMD_PAUSE;
+     aApp^.fConditionVariable.Broadcast;
+    finally
+     aApp^.fConditionVariableLock.Release;
+    end;
+   end;
+   APP_CMD_STOP:begin
+    aApp^.fConditionVariableLock.Acquire;
+    try
+     aApp^.fActivityState:=APP_CMD_STOP;
+     aApp^.fConditionVariable.Broadcast;
+    finally
+     aApp^.fConditionVariableLock.Release;
+    end;
+   end;
+   APP_CMD_DESTROY:begin
+    TPasMPInterlocked.Write(aApp^.fDestroyRequested,true);
+   end;
+  end;
+  aApp^.ProcessCmd(Cmd);
+  case Cmd of
+   APP_CMD_INPUT_CHANGED:begin
+   end;
+   APP_CMD_INIT_WINDOW:begin
+   end;
+   APP_CMD_DONE_WINDOW:begin
+    aApp^.fConditionVariableLock.Acquire;
+    try
+     aApp^.fWindow:=nil;
+     aApp^.fConditionVariable.Broadcast;
+    finally
+     aApp^.fConditionVariableLock.Release;
+    end;
+   end;
+   APP_CMD_RESIZED:begin
+   end;
+   APP_CMD_REDRAW_NEEDED:begin
+   end;
+   APP_CMD_CONTENT_RECT_CHANGED:begin
+   end;
+   APP_CMD_GAINED_FOCUS:begin
+   end;
+   APP_CMD_LOST_FOCUS:begin
+   end;
+   APP_CMD_CONFIG_CHANGED:begin
+   end;
+   APP_CMD_LOW_MEMORY:begin
+   end;
+   APP_CMD_START:begin
+   end;
+   APP_CMD_RESUME:begin
+    aApp^.FreeSavedState;
+   end;
+   APP_CMD_SAVE_STATE:begin
+    aApp^.fConditionVariableLock.Acquire;
+    try
+     TPasMPInterlocked.Write(aApp^.fStateSaved,true);
+     aApp^.fConditionVariable.Broadcast;
+    finally
+     aApp^.fConditionVariableLock.Release;
+    end;
+   end;
+   APP_CMD_PAUSE:begin
+   end;
+   APP_CMD_STOP:begin
+   end;
+   APP_CMD_DESTROY:begin
+   end;
+  end;
+ end else begin
+  __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication','Pipe read error . . .');
+ end;
+end;
+
 
 constructor TAndroidAppThread.Create(const aAndroidApp:PAndroidApp);
 begin
  fAndroidApp:=aAndroidApp;
  FreeOnTerminate:=true;
- inherited Create(false):
+ inherited Create(false);
 end;
 
 procedure TAndroidAppThread.Execute;
@@ -7544,7 +7717,7 @@ begin
    ALooper_addFd(Looper,fAndroidApp^.fMsgPipe[0],TpvInt32(LOOPER_ID_MAIN),ALOOPER_EVENT_INPUT,nil,@fAndroidApp^.fCmdPollSource);
    fAndroidApp^.fLooper:=Looper;
 
-   fAndroidApp^.fApplication:=aAndroidApp^.fApplicationClass.Create;
+   fAndroidApp^.fApplication:=fAndroidApp^.fApplicationClass.Create;
    try
     fAndroidApp^.fApplication.Setup;
     fAndroidApp^.fConditionVariableLock.Acquire;
@@ -7578,7 +7751,7 @@ begin
  finally
   fAndroidApp^.fConditionVariableLock.Acquire;
   try
-   TPasMPInterlocked.Write(aAndroidApp^.fDestroyed,true);
+   TPasMPInterlocked.Write(fAndroidApp^.fDestroyed,true);
    fAndroidApp^.fConditionVariable.Broadcast;
   finally
    fAndroidApp^.fConditionVariableLock.Release;
@@ -7740,6 +7913,14 @@ begin
  end;
 end;
 
+procedure TAndroidApp.ProcessInputEvent(const aEvent:PAInputEvent);
+begin
+end;
+
+procedure TAndroidApp.ProcessCmd(const aCmd:TAppCmd);
+begin
+end;
+
 procedure Android_ANativeActivity_onStart(aActivity:PANativeActivity); cdecl;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -7788,11 +7969,11 @@ begin
  try
   try
    PAndroidApp(aActivity^.instance)^.fConditionVariableLock.Acquire;
-   try                                         f
+   try
     PAndroidApp(aActivity^.instance)^.fStateSaved:=false;
     PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_SAVE_STATE);
     while not PAndroidApp(aActivity^.instance)^.fStateSaved do begin
-     fConditionVariable.Wait(PAndroidApp(aActivity^.instance)^.fConditionVariableLock);
+     PAndroidApp(aActivity^.instance)^.fConditionVariable.Wait(PAndroidApp(aActivity^.instance)^.fConditionVariableLock);
     end;
     if assigned(PAndroidApp(aActivity^.instance)^.fSavedState) then begin
      result:=TPasMPInterlocked.Exchange(PAndroidApp(aActivity^.instance)^.fSavedState,nil);
@@ -8060,7 +8241,7 @@ begin
  end;
 end;
 
-procedure Android_ANativeActivity_onLowMemory(activity:PANativeActivity); cdecl;
+procedure Android_ANativeActivity_onLowMemory(aActivity:PANativeActivity); cdecl;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_ANativeActivity_onLowMemory . .');
@@ -8123,7 +8304,7 @@ begin
 
    aActivity^.instance:=LibCMalloc(SizeOf(TAndroidApp));
 
-   PAndroidApp(aActivity^.instance)^:=TAndroidApp.Create(aApplicationClass);
+   PAndroidApp(aActivity^.instance)^:=TAndroidApp.Create(aActivity,aApplicationClass,aSavedState,aSavedStateSize);
 
   except
    on e:Exception do begin

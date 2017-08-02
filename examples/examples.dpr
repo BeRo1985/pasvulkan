@@ -155,7 +155,7 @@ exports JNI_OnLoad name 'JNI_OnLoad',
         Java_org_libsdl_app_SDLActivity_nativeSetAssetManager name 'Java_org_libsdl_app_SDLActivity_nativeSetAssetManager',
         Java_org_libsdl_app_SDLActivity_nativeInit name 'Java_org_libsdl_app_SDLActivity_nativeInit';
 {$else}
-procedure ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedState:pointer;aSavedStateSize:cuint32); cdecl;
+procedure ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedState:pointer;aSavedStateSize:TpvUint32); cdecl;
 begin
  Android_ANativeActivity_onCreate(aActivity,aSavedState,aSavedStateSize,TExampleApplication);
 end;

@@ -165,6 +165,14 @@ type PPpvInt8=^PpvInt8;
      PpvSizeInt=^TpvSizeInt;
      TpvSizeInt=TpvPtrInt;
 
+     PPpvNativeUInt=^PpvNativeUInt;
+     PpvNativeUInt=^TpvNativeUInt;
+     TpvNativeUInt=TpvPtrUInt;
+
+     PPpvNativeInt=^PpvNativeInt;
+     PpvNativeInt=^TpvNativeInt;
+     TpvNativeInt=TpvPtrInt;
+
      PPpvSize=^PpvSizeUInt;
      PpvSize=^TpvSizeUInt;
      TpvSize=TpvPtrUInt;

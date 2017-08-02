@@ -1347,7 +1347,65 @@ const LibAndroidName='libandroid.so';
 
       ANATIVEACTIVITY_HIDE_SOFT_INPUT_IMPLICIT_ONLY=$0001;
       ANATIVEACTIVITY_HIDE_SOFT_INPUT_NOT_ALWAYS=$0002;
- 
+
+      ACONFIGURATION_ORIENTATION_ANY=$0000;
+      ACONFIGURATION_ORIENTATION_PORT=$0001;
+      ACONFIGURATION_ORIENTATION_LAND=$0002;
+      ACONFIGURATION_ORIENTATION_SQUARE=$0003;
+      ACONFIGURATION_TOUCHSCREEN_ANY=$0000;
+      ACONFIGURATION_TOUCHSCREEN_NOTOUCH=$0001;
+      ACONFIGURATION_TOUCHSCREEN_STYLUS=$0002;
+      ACONFIGURATION_TOUCHSCREEN_FINGER=$0003;
+      ACONFIGURATION_DENSITY_DEFAULT=0;
+      ACONFIGURATION_DENSITY_LOW=120;
+      ACONFIGURATION_DENSITY_MEDIUM=160;
+      ACONFIGURATION_DENSITY_HIGH=240;
+      ACONFIGURATION_DENSITY_NONE=$ffff;
+      ACONFIGURATION_KEYBOARD_ANY=$0000;
+      ACONFIGURATION_KEYBOARD_NOKEYS=$0001;
+      ACONFIGURATION_KEYBOARD_QWERTY=$0002;
+      ACONFIGURATION_KEYBOARD_12KEY=$0003;
+      ACONFIGURATION_NAVIGATION_ANY=$0000;
+      ACONFIGURATION_NAVIGATION_NONAV=$0001;
+      ACONFIGURATION_NAVIGATION_DPAD=$0002;
+      ACONFIGURATION_NAVIGATION_TRACKBALL=$0003;
+      ACONFIGURATION_NAVIGATION_WHEEL=$0004;
+      ACONFIGURATION_KEYSHIDDEN_ANY=$0000;
+      ACONFIGURATION_KEYSHIDDEN_NO=$0001;
+      ACONFIGURATION_KEYSHIDDEN_YES=$0002;
+      ACONFIGURATION_KEYSHIDDEN_SOFT=$0003;
+      ACONFIGURATION_NAVHIDDEN_ANY=$0000;
+      ACONFIGURATION_NAVHIDDEN_NO=$0001;
+      ACONFIGURATION_NAVHIDDEN_YES=$0002;
+      ACONFIGURATION_SCREENSIZE_ANY=$00;
+      ACONFIGURATION_SCREENSIZE_SMALL=$01;
+      ACONFIGURATION_SCREENSIZE_NORMAL=$02;
+      ACONFIGURATION_SCREENSIZE_LARGE=$03;
+      ACONFIGURATION_SCREENSIZE_XLARGE=$04;
+      ACONFIGURATION_SCREENLONG_ANY=$00;
+      ACONFIGURATION_SCREENLONG_NO=$1;
+      ACONFIGURATION_SCREENLONG_YES=$2;
+      ACONFIGURATION_UI_MODE_TYPE_ANY=$00;
+      ACONFIGURATION_UI_MODE_TYPE_NORMAL=$01;
+      ACONFIGURATION_UI_MODE_TYPE_DESK=$02;
+      ACONFIGURATION_UI_MODE_TYPE_CAR=$03;
+      ACONFIGURATION_UI_MODE_NIGHT_ANY=$00;
+      ACONFIGURATION_UI_MODE_NIGHT_NO=$1;
+      ACONFIGURATION_UI_MODE_NIGHT_YES=$2;
+      ACONFIGURATION_MCC=$0001;
+      ACONFIGURATION_MNC=$0002;
+      ACONFIGURATION_LOCALE=$0004;
+      ACONFIGURATION_TOUCHSCREEN=$0008;
+      ACONFIGURATION_KEYBOARD=$0010;
+      ACONFIGURATION_KEYBOARD_HIDDEN=$0020;
+      ACONFIGURATION_NAVIGATION=$0040;
+      ACONFIGURATION_ORIENTATION=$0080;
+      ACONFIGURATION_DENSITY=$0100;
+      ACONFIGURATION_SCREEN_SIZE=$0200;
+      ACONFIGURATION_VERSION=$0400;
+      ACONFIGURATION_SCREEN_LAYOUT=$0800;
+      ACONFIGURATION_UI_MODE=$1000;
+
 type android_LogPriority=cint;
 
      Pint=^cint;
@@ -1409,6 +1467,10 @@ type android_LogPriority=cint;
 
      PAAsset=^tAAsset;
      TAAsset=record
+     end;
+
+     PAConfiguration=^TAConfiguration;
+     TAConfiguration=record
      end;
 
      Poff_t=^coff_t;
@@ -1557,6 +1619,46 @@ procedure ANativeActivity_setWindowFormat(activity:PANativeActivity;format:cint3
 procedure ANativeActivity_setWindowFlags(activity:PANativeActivity;addFlags,removeFlags:cuint32); cdecl; external LibAndroidName name 'ANativeActivity_setWindowFlags';
 procedure ANativeActivity_showSoftInput(activity:PANativeActivity;flags:cuint32); cdecl; external LibAndroidName name 'ANativeActivity_showSoftInput';
 procedure ANativeActivity_hideSoftInput(activity:PANativeActivity;flags:cuint32); cdecl; external LibAndroidName name 'ANativeActivity_hideSoftInput';
+
+function AConfiguration_new:PAConfiguration; cdecl; external LibAndroidName;
+procedure AConfiguration_delete(config:PAConfiguration); cdecl; external LibAndroidName;
+procedure AConfiguration_fromAssetManager(out_:PAConfiguration;am:PAAssetManager); cdecl; external LibAndroidName;
+procedure AConfiguration_copy(dest,src:PAConfiguration); cdecl; external LibAndroidName;
+function AConfiguration_getMcc(config:PAConfiguration):cint32; cdecl; external LibAndroidName;
+procedure AConfiguration_setMcc(config:PAConfiguration;mcc:cint32); cdecl; external LibAndroidName;
+function AConfiguration_getMnc(config:PAConfiguration):cint32; cdecl; external LibAndroidName;
+procedure AConfiguration_setMnc(config:PAConfiguration;mnc:cint32); cdecl; external LibAndroidName;
+procedure AConfiguration_getLanguage(config:PAConfiguration;outLanguage:Pchar); cdecl; external LibAndroidName;
+procedure AConfiguration_setLanguage(config:PAConfiguration;language:Pchar); cdecl; external LibAndroidName;
+procedure AConfiguration_getCountry(config:PAConfiguration;outCountry:Pchar); cdecl; external LibAndroidName;
+procedure AConfiguration_setCountry(config:PAConfiguration;country:Pchar); cdecl; external LibAndroidName;
+function AConfiguration_getOrientation(config:PAConfiguration):cint32; cdecl; external LibAndroidName;
+procedure AConfiguration_setOrientation(config:PAConfiguration; orientation:cint32); cdecl; external LibAndroidName;
+function AConfiguration_getTouchscreen(config:PAConfiguration):cint32; cdecl; external LibAndroidName;
+procedure AConfiguration_setTouchscreen(config:PAConfiguration; touchscreen:cint32); cdecl; external LibAndroidName;
+function AConfiguration_getDensity(config:PAConfiguration):cint32; cdecl; external LibAndroidName;
+procedure AConfiguration_setDensity(config:PAConfiguration; density:cint32); cdecl; external LibAndroidName;
+function AConfiguration_getKeyboard(config:PAConfiguration):cint32; cdecl; external LibAndroidName;
+procedure AConfiguration_setKeyboard(config:PAConfiguration; keyboard:cint32); cdecl; external LibAndroidName;
+function AConfiguration_getNavigation(config:PAConfiguration):cint32; cdecl; external LibAndroidName;
+procedure AConfiguration_setNavigation(config:PAConfiguration; navigation:cint32); cdecl; external LibAndroidName;
+function AConfiguration_getKeysHidden(config:PAConfiguration):cint32; cdecl; external LibAndroidName;
+procedure AConfiguration_setKeysHidden(config:PAConfiguration; keysHidden:cint32); cdecl; external LibAndroidName;
+function AConfiguration_getNavHidden(config:PAConfiguration):cint32; cdecl; external LibAndroidName;
+procedure AConfiguration_setNavHidden(config:PAConfiguration; navHidden:cint32); cdecl; external LibAndroidName;
+function AConfiguration_getSdkVersion(config:PAConfiguration):cint32; cdecl; external LibAndroidName;
+procedure AConfiguration_setSdkVersion(config:PAConfiguration; sdkVersion:cint32); cdecl; external LibAndroidName;
+function AConfiguration_getScreenSize(config:PAConfiguration):cint32; cdecl; external LibAndroidName;
+procedure AConfiguration_setScreenSize(config:PAConfiguration; screenSize:cint32); cdecl; external LibAndroidName;
+function AConfiguration_getScreenLong(config:PAConfiguration):cint32; cdecl; external LibAndroidName;
+procedure AConfiguration_setScreenLong(config:PAConfiguration; screenLong:cint32); cdecl; external LibAndroidName;
+function AConfiguration_getUiModeType(config:PAConfiguration):cint32; cdecl; external LibAndroidName;
+procedure AConfiguration_setUiModeType(config:PAConfiguration; uiModeType:cint32); cdecl; external LibAndroidName;
+function AConfiguration_getUiModeNight(config:PAConfiguration):cint32; cdecl; external LibAndroidName;
+procedure AConfiguration_setUiModeNight(config:PAConfiguration; uiModeNight:cint32); cdecl; external LibAndroidName;
+function AConfiguration_diff(config1,config2:PAConfiguration):cint32; cdecl; external LibAndroidName;
+function AConfiguration_match(base,requested:PAConfiguration):cint32; cdecl; external LibAndroidName;
+function AConfiguration_isBetterThan(base,test,requested:PAConfiguration) :cint32; cdecl; external LibAndroidName;
 
 {$ifend}
 
