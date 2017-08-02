@@ -42,6 +42,7 @@ type TExampleApplication=class(TpvApplication)
       public
        constructor Create; override;
        destructor Destroy; override;
+       procedure Setup; override;
        procedure Start; override;
        procedure Stop; override;
        procedure Load; override;
@@ -53,7 +54,6 @@ type TExampleApplication=class(TpvApplication)
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        procedure Update(const aDeltaTime:TpvDouble); override;
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
-       class procedure Main; override;
       published
        property TextOverlay:TTextOverlay read fTextOverlay;
      end;
@@ -77,6 +77,23 @@ destructor TExampleApplication.Destroy;
 begin
  ExampleApplication:=nil;
  inherited Destroy;
+end;
+
+procedure TExampleApplication.Setup;
+begin
+ if Debugging then begin
+  VulkanDebugging:=true;
+  VulkanValidation:=true;
+ end;
+ Title:='SDL Vulkan Examples Application';
+ PathName:='SDLVulkanExamplesApplication';
+ StartScreen:=TScreenMainMenu;
+ VisibleMouseCursor:=true;
+ CatchMouse:=false;
+ HideSystemBars:=true;
+ AndroidSeparateMouseAndTouch:=false;
+ UseAudio:=true;
+ VSync:={$ifdef NoVSync}false{$else}true{$endif};
 end;
 
 procedure TExampleApplication.Start;
@@ -179,29 +196,6 @@ begin
   finally
    Stream.Free;
   end;
- end;
-end;
-
-class procedure TExampleApplication.Main;
-begin
- pvApplication:=TExampleApplication.Create;
- try
-  if pvApplication.Debugging then begin
-   pvApplication.VulkanDebugging:=true;
-   pvApplication.VulkanValidation:=true;
-  end;
-  pvApplication.Title:='SDL Vulkan Examples Application';
-  pvApplication.PathName:='SDLVulkanExamplesApplication';
-  pvApplication.StartScreen:=TScreenMainMenu;
-  pvApplication.VisibleMouseCursor:=true;
-  pvApplication.CatchMouse:=false;
-  pvApplication.HideSystemBars:=true;
-  pvApplication.AndroidSeparateMouseAndTouch:=false;
-  pvApplication.UseAudio:=true;
-  pvApplication.VSync:={$ifdef NoVSync}false{$else}true{$endif};
-  pvApplication.Run;
- finally
-  FreeAndNil(pvApplication);
  end;
 end;
 

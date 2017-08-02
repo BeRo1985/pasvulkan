@@ -474,6 +474,8 @@ type EpvApplication=class(Exception)
 
      TpvApplication=class;
 
+     TpvApplicationClass=class of TpvApplication;
+
      TpvApplicationRawByteString={$if declared(RawByteString)}RawByteString{$else}AnsiString{$ifend};
 
      TpvApplicationUnicodeString={$if declared(UnicodeString)}UnicodeString{$else}WideString{$ifend};
@@ -1218,6 +1220,8 @@ type EpvApplication=class(Exception)
 
        procedure Run;
 
+       procedure Setup; virtual;
+
        procedure Start; virtual;
 
        procedure Stop; virtual;
@@ -1403,7 +1407,7 @@ function AndroidGetDeviceName:TpvApplicationUnicodeString;
 function Android_JNI_GetEnv:PJNIEnv; cdecl;
 
 {$if not defined(PasVulkanUseSDL2)}
-procedure ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedState:pointer;aSavedStateSize:cuint32); cdecl;
+procedure Android_ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedState:pointer;aSavedStateSize:cuint32;const aApplicationClass:TpvApplicationClass);
 {$ifend}
 
 {$ifend}
@@ -7120,6 +7124,10 @@ begin
 
 end;
 
+procedure TpvApplication.Setup;
+begin
+end;
+
 procedure TpvApplication.Start;
 begin
 end;
@@ -7318,6 +7326,13 @@ end;
 
 class procedure TpvApplication.Main;
 begin
+ pvApplication:=self.Create;
+ try
+  pvApplication.Setup;
+  pvApplication.Run;
+ finally
+  FreeAndNil(pvApplication);
+ end;
 end;
 
 {$if defined(fpc) and defined(android)}
@@ -7386,10 +7401,10 @@ begin
 end;
 
 {$if not defined(PasVulkanUseSDL2)}
-procedure ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedState:pointer;aSavedStateSize:cuint32); cdecl;
+procedure Android_ANativeActivity_onCreate(aActivity:PANativeActivity;aSavedState:pointer;aSavedStateSize:cuint32;const aApplicationClass:TpvApplicationClass);
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
- __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering ANativeActivity_onCreate . . .');
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Android_ANativeActivity_onCreate . . .');
 {$ifend}
  AndroidActivity:=aActivity;
  AndroidJavaVM:=aActivity^.VM;
@@ -7399,8 +7414,9 @@ begin
  AndroidInternalDataPath:=aActivity^.internalDataPath;
  AndroidExternalDataPath:=aActivity^.externalDataPath;
  AndroidLibraryPath:=IncludeTrailingPathDelimiter(ExtractFilePath(aActivity^.internalDataPath))+'lib';
+
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
- __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving ANativeActivity_onCreate . . .');
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Android_ANativeActivity_onCreate . . .');
 {$ifend}
 end;
 {$ifend}
