@@ -948,10 +948,10 @@ begin
  fUnfocusedWindowHeaderFontShadowOffset:=TpvVector2.Create(2.0,2.0);
  fFocusedWindowHeaderFontShadowOffset:=TpvVector2.Create(2.0,2.0);
 
- fUnfocusedWindowHeaderFontShadowColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+ fUnfocusedWindowHeaderFontShadowColor:=TpvVector4.Create(0.0,0.0,0.0,0.3275);
  fFocusedWindowHeaderFontShadowColor:=TpvVector4.Create(0.0,0.0,0.0,0.5);
 
- fUnfocusedWindowHeaderFontColor:=TpvVector4.Create(0.5,0.5,0.5,1.0);
+ fUnfocusedWindowHeaderFontColor:=TpvVector4.Create(0.75,0.75,0.75,1.0);
  fFocusedWindowHeaderFontColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 
  fWindowHeaderHeight:=32;
