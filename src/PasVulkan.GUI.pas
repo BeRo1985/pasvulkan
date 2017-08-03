@@ -323,6 +323,8 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; virtual;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; virtual;
+       procedure AfterCreateSwapChain; virtual;
+       procedure BeforeDestroySwapChain; virtual;
        procedure Update; virtual;
        procedure Draw; virtual;
       public
@@ -397,6 +399,8 @@ type TpvGUIObject=class;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Update; override;
        procedure Draw; override;
+      public
+       property MousePosition:TpvVector2 read fMousePosition write fMousePosition;
       published
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property StandardTheme:TpvGUITheme read fStandardTheme;
@@ -1653,6 +1657,34 @@ begin
   end;
  end;
  result:=false;
+end;
+
+procedure TpvGUIWidget.AfterCreateSwapChain;
+var ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+begin
+ for ChildIndex:=fChildren.Count-1 downto 0 do begin
+  Child:=fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   ChildWidget.AfterCreateSwapChain;
+  end;
+ end;
+end;
+
+procedure TpvGUIWidget.BeforeDestroySwapChain;
+var ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+begin
+ for ChildIndex:=fChildren.Count-1 downto 0 do begin
+  Child:=fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   ChildWidget.BeforeDestroySwapChain;
+  end;
+ end;
 end;
 
 procedure TpvGUIWidget.Update;

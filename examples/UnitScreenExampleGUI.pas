@@ -287,6 +287,11 @@ begin
  fGUIInstance.CountBuffers:=pvApplication.CountSwapChainImages;
  fGUIInstance.Width:=fVulkanCanvas.Width;
  fGUIInstance.Height:=fVulkanCanvas.Height;
+ fGUIInstance.MousePosition:=TpvVector2.Create(fGUIInstance.Width*0.5,fGUIInstance.Height*0.5);
+
+ pvApplication.Input.SetCursorPosition(pvApplication.Width div 2,pvApplication.Height div 2);
+
+ fGUIInstance.AfterCreateSwapChain;
 
  fGUIInstance.PerformLayout;
 
@@ -294,6 +299,7 @@ end;
 
 procedure TScreenExampleGUI.BeforeDestroySwapChain;
 begin
+ fGUIInstance.BeforeDestroySwapChain;
  fVulkanCanvas.VulkanRenderPass:=nil;
  FreeAndNil(fVulkanRenderPass);
  inherited BeforeDestroySwapChain;
