@@ -297,7 +297,7 @@ const SDL2LibName={$if defined(Win32)}
       SDL_WINDOW_UTILITY=$00020000;      //**< window should be treated as a utility window */
       SDL_WINDOW_TOOLTIP=$00040000;      //**< window should be treated as a tooltip */
       SDL_WINDOW_POPUP_MENU=$00080000;      //**< window should be treated as a popup menu */
-    	SDL_WINDOW_VULKAN=$10000000;          //**< window usable with Vulkan *//* value matches Tizen's implementation */
+    	SDL_WINDOW_VULKAN=$00100000;          //**< window usable with Vulkan */
 
       SDL_WINDOWPOS_CENTERED_MASK=$2FFF0000;
 
