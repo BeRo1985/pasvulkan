@@ -72,7 +72,8 @@ uses
   UnitScreenExampleCube in 'UnitScreenExampleCube.pas',
   UnitScreenExampleDragon in 'UnitScreenExampleDragon.pas',
   UnitScreenExampleCanvas in 'UnitScreenExampleCanvas.pas',
-  UnitScreenExampleGUI in 'UnitScreenExampleGUI.pas';
+  UnitScreenExampleGUI in 'UnitScreenExampleGUI.pas',
+  PasVulkan.VectorPath in '..\src\PasVulkan.VectorPath.pas';
 
 // {$if defined(fpc) and defined(android)}
 
