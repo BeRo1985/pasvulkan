@@ -4086,10 +4086,10 @@ begin
    ty2:=Min((aSprite.TrimmedY+aSprite.TrimmedWidth),aSrc.Bottom);
    xf:=abs(aDest.Right-aDest.Left)/(aSrc.Right-aSrc.Left);
    yf:=abs(aDest.Bottom-aDest.Top)/(aSrc.Bottom-aSrc.Top);
-   TempDest.Left:=(aDest.Left+((tx1-aSrc.Left)*xf))-aSprite.OffsetX;
-   TempDest.Right:=(aDest.Right+((tx2-aSrc.Right)*xf))-aSprite.OffsetX;
-   TempDest.Top:=(aDest.Top+((ty1-aSrc.Top)*yf))-aSprite.OffsetY;
-   TempDest.Bottom:=(aDest.Bottom+((ty2-aSrc.Bottom)*yf))-aSprite.OffsetY;
+   TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
+   TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
+   TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
+   TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
 {  if aDest.Left<=aDest.Right then begin
     TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
     TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
@@ -4159,10 +4159,10 @@ begin
    ty2:=Min((aSprite.TrimmedY+aSprite.TrimmedHeight),aSrc.Bottom);
    xf:=abs(aDest.Right-aDest.Left)/(aSrc.Right-aSrc.Left);
    yf:=abs(aDest.Bottom-aDest.Top)/(aSrc.Bottom-aSrc.Top);
-   TempDest.Left:=(aDest.Left+((tx1-aSrc.Left)*xf))-aSprite.OffsetX;
-   TempDest.Right:=(aDest.Right+((tx2-aSrc.Right)*xf))-aSprite.OffsetX;
-   TempDest.Top:=(aDest.Top+((ty1-aSrc.Top)*yf))-aSprite.OffsetY;
-   TempDest.Bottom:=(aDest.Bottom+((ty2-aSrc.Bottom)*yf))-aSprite.OffsetY;
+   TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
+   TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
+   TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
+   TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
 {  if aDest.Left<=aDest.Right then begin
     TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
     TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
@@ -4279,7 +4279,8 @@ function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2
 begin
  DrawSprite(aSprite,
             TpvRect.CreateAbsolute(0.0,0.0,aSprite.Width,aSprite.Height),
-            TpvRect.CreateAbsolute(aPosition.x,aPosition.y,aPosition.x+aSprite.Width,aPosition.y+aSprite.Height));
+            TpvRect.CreateAbsolute(aPosition.x-(aSprite.OffsetX*aSprite.ScaleX),aPosition.y-(aSprite.OffsetY*aSprite.ScaleY),
+                                   (aPosition.x-(aSprite.OffsetX*aSprite.ScaleX))+(aSprite.Width*aSprite.ScaleX),(aPosition.y-(aSprite.OffsetY*aSprite.ScaleY))+(aSprite.Height*aSprite.ScaleY)));
  result:=self;
 end;
 

@@ -128,6 +128,8 @@ var Stream:TStream;
 begin
  inherited Show;
 
+ pvApplication.VisibleMouseCursor:=false;
+
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
                                                  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
@@ -184,6 +186,7 @@ begin
   FreeAndNil(fVulkanRenderSemaphores[Index]);
  end;
  FreeAndNil(fVulkanCommandPool);
+ pvApplication.VisibleMouseCursor:=true;
  inherited Hide;
 end;
 
@@ -333,7 +336,7 @@ begin
      fSelectedIndex:=0;
     end;
     KEYCODE_END:begin
-     fSelectedIndex:=0
+     fSelectedIndex:=0;
     end;
     KEYCODE_RETURN,KEYCODE_SPACE:begin
      if fSelectedIndex=0 then begin
@@ -439,12 +442,6 @@ begin
  fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateSwapChainImageIndex;
  fGUIInstance.DeltaTime:=aDeltaTime;
  fGUIInstance.Update;
-
-{fVulkanCanvas.Color:=TpvVector4.Create(IfThen(BUTTON_LEFT in fLastMouseButtons,1.0,0.0),
-                                        IfThen(BUTTON_RIGHT in fLastMouseButtons,1.0,0.0),
-                                        1.0,
-                                        1.0);
- fVulkanCanvas.DrawFilledCircle(fLastMousePosition,16.0);}
 
  fVulkanCanvas.Stop;
 

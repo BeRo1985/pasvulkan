@@ -749,6 +749,7 @@ procedure TpvGUITheme.Setup;
                                    const aRootY:TpvFloat;
                                    const aOffsetX:TpvFloat;
                                    const aOffsetY:TpvFloat;
+                                   const aShadow:TpvFloat;
                                    const aSVGPath:TpvRawByteString);
  var x,y,Index,InsideOutsideSign:TpvInt32;
      ImageData:array of TpvSpriteTextureTexel;
@@ -767,10 +768,18 @@ procedure TpvGUITheme.Setup;
     InverseScale:=1.0/aScale;
     for y:=0 to aHeight-1 do begin
      for x:=0 to aWidth-1 do begin
-      f:=VectorPath.GetSignedDistance((x+aRootX)*aScale,
-                                      (y+aRootY)*aScale,
-                                      InsideOutsideSign)*InverseScale;
-      c:=Mix(Mix(TpvVector4.Create(0.0,0.0,0.0,0.0),
+      f:=VectorPath.GetSignedDistance(x+(aRootX*InverseScale),
+                                      y+(aRootY*InverseScale),
+                                      InverseScale,
+                                      InsideOutsideSign);
+      if aShadow>0.0 then begin
+       c:=Mix(TpvVector4.Create(0.0,0.0,0.0,0.0),
+              TpvVector4.Create(0.0,0.0,0.0,0.5),
+              LinearStep(aShadow,0.0,f*InsideOutsideSign));
+      end else begin
+       c:=TpvVector4.Create(0.0,0.0,0.0,0.0);
+      end;
+      c:=Mix(Mix(c,
                  TpvVector4.Create(1.0,1.0,1.0,1.0),
                  LinearStep(1.0,-1.0,f*InsideOutsideSign)),
              TpvVector4.Create(0.0,0.0,0.0,1.0),
@@ -1157,11 +1166,12 @@ begin
  end;
 
  CreateMouseCursorSprite(fSpriteMouseCursorArrow,
-                         128,128,
-                         0.25,
-                         64.0,0.0,
+                         256,245,
+                         0.125,
                          0.0,0.0,
-                         'm 26.604893,2.3179921 '+
+                         8.0,8.0,
+                         16.0,
+                         'm 1.0,1.0 '+
                          '0,16.4402329 '+
                          '3.712311,-3.623922 '+
                          '2.12132,4.331029 '+
@@ -1170,7 +1180,7 @@ begin
                          '2.452777,-1.336875 '+
                          'l -2.099224,-4.496756 '+
                          '4.684582,0 '+
-                         'L 26.604893,2.3179921'+
+                         'L 1.0,1.0'+
                          'Z'
                         );
 

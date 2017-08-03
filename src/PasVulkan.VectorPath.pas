@@ -122,7 +122,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvDouble);
        procedure CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble);
        procedure Close;
-       function GetSignedDistance(const aX,aY:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
+       function GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
       published
        property Commands:TpvVectorPathCommandList read fCommands;
      end;
@@ -552,7 +552,7 @@ begin
  fCommands.Add(TpvVectorPathCommand.Create(pvvpctClose));
 end;
 
-function TpvVectorPath.GetSignedDistance(const aX,aY:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
+function TpvVectorPath.GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
 const CurveTessellationTolerance=0.25;
       CurveTessellationToleranceSquared=CurveTessellationTolerance*CurveTessellationTolerance;
       CurveRecursionLimit=16;
@@ -651,19 +651,22 @@ begin
   Command:=fCommands.Items[Index];
   case Command.fCommandType of
    pvvpctMoveTo:begin
-    StartX:=Command.x0;
-    StartY:=Command.y0;
-    LastX:=Command.x0;
-    LastY:=Command.y0;
+    StartX:=Command.x0*aScale;
+    StartY:=Command.y0*aScale;
+    LastX:=Command.x0*aScale;
+    LastY:=Command.y0*aScale;
    end;
    pvvpctLineTo:begin
-    DoLineTo(Command.x0,Command.y0);
+    DoLineTo(Command.x0*aScale,Command.y0*aScale);
    end;
    pvvpctQuadraticCurveTo:begin
-    DoQuadraticCurveTo(Command.x0,Command.y0,Command.x1,Command.y1);
+    DoQuadraticCurveTo(Command.x0*aScale,Command.y0*aScale,
+                       Command.x1*aScale,Command.y1*aScale);
    end;
    pvvpctCubicCurveTo:begin
-    DoCubicCurveTo(Command.x0,Command.y0,Command.x1,Command.y1,Command.x2,Command.y2);
+    DoCubicCurveTo(Command.x0*aScale,Command.y0*aScale,
+                   Command.x1*aScale,Command.y1*aScale,
+                   Command.x2*aScale,Command.y2*aScale);
    end;
    pvvpctClose:begin
     DoLineTo(StartX,StartY);
