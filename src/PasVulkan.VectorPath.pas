@@ -122,7 +122,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvDouble);
        procedure CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble);
        procedure Close;
-       function GetSignedDistance(const aX,aY:TpvDouble):TpvDouble;
+       function GetSignedDistance(const aX,aY:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
       published
        property Commands:TpvVectorPathCommandList read fCommands;
      end;
@@ -325,7 +325,6 @@ begin
  lmx:=0;
  lmy:=0;
  SrcPos:=1;
- inc(SrcPos);
  Command:=#0;
  LastCommand:=#0;
  while SrcPos<=SrcLen do begin
@@ -553,11 +552,11 @@ begin
  fCommands.Add(TpvVectorPathCommand.Create(pvvpctClose));
 end;
 
-function TpvVectorPath.GetSignedDistance(const aX,aY:TpvDouble):TpvDouble;
+function TpvVectorPath.GetSignedDistance(const aX,aY:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
 const CurveTessellationTolerance=0.25;
       CurveTessellationToleranceSquared=CurveTessellationTolerance*CurveTessellationTolerance;
       CurveRecursionLimit=16;
-var Index,InsideOutsideSign:TpvInt32;
+var Index:TpvInt32;
     Command:TpvVectorPathCommand;
     ResultDistance,StartX,StartY,LastX,LastY:TpvDouble;
  procedure LineDistance(const aPX,aPY,aAX,aAY,aBX,aBY:TpvDouble);
@@ -565,12 +564,17 @@ var Index,InsideOutsideSign:TpvInt32;
  begin
   pax:=aPX-aAX;
   pay:=aPY-aAY;
-  bax:=aBX-aBX;
-  bay:=aBY-aBY;
+  bax:=aBX-aAX;
+  bay:=aBY-aAY;
   if ((aAY>aPY)<>(aBY>aPY)) and (pax<(bax*(pay/bay))) then begin
-   InsideOutsideSign:=-InsideOutsideSign;
+   aInsideOutsideSign:=-aInsideOutsideSign;
   end;
-  t:=Min(Max(((pax*bax)+(pay*bay))/(sqr(bax)+sqr(bay)),0.0),1.0);
+  t:=sqr(bax)+sqr(bay);
+  if t>0.0 then begin
+   t:=Min(Max(((pax*bax)+(pay*bay))/t,0.0),1.0);
+  end else begin
+   t:=0.0;
+  end;
   ResultDistance:=Min(ResultDistance,sqr(pax-(bax*t))+sqr(pay-(bay*t)));
  end;
  procedure DoLineTo(const aToX,aToY:TpvDouble);
@@ -638,7 +642,7 @@ var Index,InsideOutsideSign:TpvInt32;
  end;
 begin
  ResultDistance:=Infinity;
- InsideOutsideSign:=1;
+ aInsideOutsideSign:=1;
  StartX:=0.0;
  StartY:=0.0;
  LastX:=0.0;

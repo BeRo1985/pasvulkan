@@ -197,6 +197,7 @@ type TpvGUIObject=class;
        fSpriteUnfocusedWindowShadowNinePatch:TpvSpriteNinePatch;
        fSpriteFocusedWindowShadow:TpvSprite;
        fSpriteFocusedWindowShadowNinePatch:TpvSpriteNinePatch;
+       fSpriteMouseCursorArrow:TpvSprite;
        fWindowHeaderHeight:TpvFloat;
        fWindowGripPaddingRight:TpvFloat;
        fWindowGripPaddingBottom:TpvFloat;
@@ -223,6 +224,7 @@ type TpvGUIObject=class;
        property SpriteFocusedWindowGripNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowGripNinePatch write fSpriteFocusedWindowGripNinePatch;
        property SpriteUnfocusedWindowShadowNinePatch:TpvSpriteNinePatch read fSpriteUnfocusedWindowShadowNinePatch write fSpriteUnfocusedWindowShadowNinePatch;
        property SpriteFocusedWindowShadowNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowShadowNinePatch write fSpriteFocusedWindowShadowNinePatch;
+       property SpriteMouseCursorArrow:TpvSprite read fSpriteMouseCursorArrow write fSpriteMouseCursorArrow;
       published
        property FontSize:TpvFloat read fFontSize write fFontSize;
        property UnfocusedWindowHeaderFontSize:TpvFloat read fUnfocusedWindowHeaderFontSize write fUnfocusedWindowHeaderFontSize;
@@ -373,6 +375,7 @@ type TpvGUIObject=class;
        fDragActive:boolean;
        fDragWidget:TpvGUIWidget;
        fWindow:TpvGUIWindow;
+       fMousePosition:TpvVector2;
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
        procedure SetUpdateBufferIndex(const aUpdateBufferIndex:TpvInt32);
        procedure SetDrawBufferIndex(const aDrawBufferIndex:TpvInt32);
@@ -460,7 +463,8 @@ type TpvGUIObject=class;
 
 implementation
 
-uses PasVulkan.Assets;
+uses PasVulkan.Assets,
+     PasVulkan.VectorPath;
 
 procedure TpvGUIObjectList.Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification);
 begin
@@ -737,8 +741,60 @@ procedure TpvGUITheme.Setup;
   d.y:=abs(p.y)-b.y;
   result:=(Min(Max(d.x,d.y),0.0)+sqrt(sqr(Max(0.0,d.x))+sqr(Max(0.0,d.y))))-r;
  end;
- procedure CreateWindowFillNinePatchSprite(var aSprite:TpvSprite;
-                                           var aSpriteNinePatch:TpvSpriteNinePatch;
+ procedure CreateMouseCursorSprite(out aSprite:TpvSprite;
+                                   const aWidth:TpvInt32;
+                                   const aHeight:TpvInt32;
+                                   const aScale:TpvFloat;
+                                   const aRootX:TpvFloat;
+                                   const aRootY:TpvFloat;
+                                   const aOffsetX:TpvFloat;
+                                   const aOffsetY:TpvFloat;
+                                   const aSVGPath:TpvRawByteString);
+ var x,y,Index,InsideOutsideSign:TpvInt32;
+     ImageData:array of TpvSpriteTextureTexel;
+     Color:TpvSpriteTextureTexel;
+     c:TpvVector4;
+     f:TpvFloat;
+     InverseScale:TpvDouble;
+     VectorPath:TpvVectorPath;
+ begin
+  VectorPath:=TpvVectorPath.CreateFromSVGPath(aSVGPath);
+  try
+   ImageData:=nil;
+   try
+    SetLength(ImageData,aWidth*aHeight);
+    Index:=0;
+    InverseScale:=1.0/aScale;
+    for y:=0 to aHeight-1 do begin
+     for x:=0 to aWidth-1 do begin
+      f:=VectorPath.GetSignedDistance((x+aRootX)*aScale,
+                                      (y+aRootY)*aScale,
+                                      InsideOutsideSign)*InverseScale;
+      c:=Mix(Mix(TpvVector4.Create(0.0,0.0,0.0,0.0),
+                 TpvVector4.Create(1.0,1.0,1.0,1.0),
+                 LinearStep(1.0,-1.0,f*InsideOutsideSign)),
+             TpvVector4.Create(0.0,0.0,0.0,1.0),
+             LinearStep(1.0,0.0,f*0.5));
+      Color.r:=Min(Max(round(c.r*255.0),0),255);
+      Color.g:=Min(Max(round(c.g*255.0),0),255);
+      Color.b:=Min(Max(round(c.b*255.0),0),255);
+      Color.a:=Min(Max(round(c.a*255.0),0),255);
+      ImageData[Index]:=Color;
+      inc(Index);
+     end;
+    end;
+    aSprite:=fSpriteAtlas.LoadRawSprite('',@ImageData[0],aWidth,aHeight,false);
+    aSprite.OffsetX:=aOffsetX;
+    aSprite.OffsetY:=aOffsetY;
+   finally
+    ImageData:=nil;
+   end;
+  finally
+   VectorPath.Free;
+  end;
+ end;
+ procedure CreateWindowFillNinePatchSprite(out aSprite:TpvSprite;
+                                           out aSpriteNinePatch:TpvSpriteNinePatch;
                                            const aWidth:TpvInt32;
                                            const aHeight:TpvInt32;
                                            const aRadius:TpvInt32;
@@ -788,8 +844,8 @@ procedure TpvGUITheme.Setup;
    ImageData:=nil;
   end;
  end;
- procedure CreateWindowHeaderNinePatchSprite(var aSprite:TpvSprite;
-                                             var aSpriteNinePatch:TpvSpriteNinePatch;
+ procedure CreateWindowHeaderNinePatchSprite(out aSprite:TpvSprite;
+                                             out aSpriteNinePatch:TpvSpriteNinePatch;
                                              const aWidth:TpvInt32;
                                              const aHeight:TpvInt32;
                                              const aRadius:TpvInt32;
@@ -842,8 +898,8 @@ procedure TpvGUITheme.Setup;
    ImageData:=nil;
   end;
  end;
- procedure CreateWindowGripNinePatchSprite(var aSprite:TpvSprite;
-                                           var aSpriteNinePatch:TpvSpriteNinePatch;
+ procedure CreateWindowGripNinePatchSprite(out aSprite:TpvSprite;
+                                           out aSpriteNinePatch:TpvSpriteNinePatch;
                                            const aWidth:TpvInt32;
                                            const aHeight:TpvInt32;
                                            const aRadius:TpvInt32;
@@ -900,8 +956,8 @@ procedure TpvGUITheme.Setup;
    ImageData:=nil;
   end;
  end;
- procedure CreateWindowShadowNinePatchSprite(var aSprite:TpvSprite;
-                                             var aSpriteNinePatch:TpvSpriteNinePatch;
+ procedure CreateWindowShadowNinePatchSprite(out aSprite:TpvSprite;
+                                             out aSpriteNinePatch:TpvSpriteNinePatch;
                                              const aWidth:TpvInt32;
                                              const aHeight:TpvInt32;
                                              const aRadius:TpvInt32;
@@ -1099,6 +1155,24 @@ begin
  finally
   Stream.Free;
  end;
+
+ CreateMouseCursorSprite(fSpriteMouseCursorArrow,
+                         128,128,
+                         0.25,
+                         64.0,0.0,
+                         0.0,0.0,
+                         'm 26.604893,2.3179921 '+
+                         '0,16.4402329 '+
+                         '3.712311,-3.623922 '+
+                         '2.12132,4.331029 '+
+                         'c 0.519598,1.171377 '+
+                         '3.220861,0.229524 '+
+                         '2.452777,-1.336875 '+
+                         'l -2.099224,-4.496756 '+
+                         '4.684582,0 '+
+                         'L 26.604893,2.3179921'+
+                         'Z'
+                        );
 
  fSpriteAtlas.MipMaps:=false;
 
@@ -1906,6 +1980,7 @@ var Index:TpvInt32;
 begin
  result:=false;
  DoUpdateCursor:=false;
+ fMousePosition:=aPointerEvent.Position;
  case aPointerEvent.PointerEventType of
   POINTEREVENT_DOWN,POINTEREVENT_UP:begin
    for Index:=0 to fCurrentFocusPath.Count-1 do begin
@@ -1985,6 +2060,7 @@ procedure TpvGUIInstance.Update;
 begin
  ClearReferenceCountedObjectList;
  inherited Update;
+ fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
 end;
 
 procedure TpvGUIInstance.Draw;
