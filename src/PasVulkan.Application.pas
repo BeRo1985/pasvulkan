@@ -7916,14 +7916,31 @@ begin
 end;
 
 procedure TAndroidApp.ProcessInputEvent(const aEvent:PAInputEvent);
-var EventType:TpvInt32;
+var EventType,EventSource,EventKeyCode,EventAction:TpvInt32;
 begin
  if assigned(aEvent) then begin
   EventType:=AInputEvent_getType(aEvent);
   case EventType of
    AINPUT_EVENT_TYPE_KEY:begin
+    EventKeyCode:=AKeyEvent_getKeyCode(aEvent);
+    EventAction:=AKeyEvent_getAction(aEvent);
+    if (EventKeyCode<>AKEYCODE_UNKNOWN) and
+       (EventAction in [AKEY_EVENT_ACTION_DOWN,
+                        AKEY_EVENT_ACTION_UP,
+                        AKEY_EVENT_ACTION_MULTIPLE]) then begin
+
+    end;
    end;
    AINPUT_EVENT_TYPE_MOTION:begin
+    EventSource:=AInputEvent_getSource(aEvent);
+    case EventSource of
+     AINPUT_SOURCE_JOYSTICK:begin
+     end;
+     AINPUT_SOURCE_TOUCHSCREEN:begin
+     end;
+     AINPUT_SOURCE_MOUSE:begin
+     end;
+    end;
    end;
   end;
  end;
