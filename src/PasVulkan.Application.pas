@@ -7436,9 +7436,9 @@ type PLooperID=^TLooperID;
       (
        APP_CMD_INPUT_CHANGED=1,
        APP_CMD_INIT_WINDOW,
-       APP_CMD_DONE_WINDOW,
-       APP_CMD_RESIZED,
-       APP_CMD_REDRAW_NEEDED,
+       APP_CMD_TERM_WINDOW,
+       APP_CMD_WINDOW_RESIZED,
+       APP_CMD_WINDOW_REDRAW_NEEDED,
        APP_CMD_CONTENT_RECT_CHANGED,
        APP_CMD_GAINED_FOCUS,
        APP_CMD_LOST_FOCUS,
@@ -7553,26 +7553,12 @@ begin
     end;
    end;
    APP_CMD_INIT_WINDOW:begin
-    aApp^.fConditionVariableLock.Acquire;
-    try
-     aApp^.fWindow:=aApp^.fPendingWindow;
-     aApp^.fConditionVariable.Broadcast;
-    finally
-     aApp^.fConditionVariableLock.Release;
-    end;
    end;
-   APP_CMD_DONE_WINDOW:begin
-    aApp^.fConditionVariableLock.Acquire;
-    try
-     aApp^.fWindow:=nil;
-     aApp^.fConditionVariable.Broadcast;
-    finally
-     aApp^.fConditionVariableLock.Release;
-    end;
+   APP_CMD_TERM_WINDOW:begin
    end;
-   APP_CMD_RESIZED:begin
+   APP_CMD_WINDOW_RESIZED:begin
    end;
-   APP_CMD_REDRAW_NEEDED:begin
+   APP_CMD_WINDOW_REDRAW_NEEDED:begin
    end;
    APP_CMD_CONTENT_RECT_CHANGED:begin
    end;
@@ -7586,9 +7572,61 @@ begin
    APP_CMD_LOW_MEMORY:begin
    end;
    APP_CMD_START:begin
+   end;
+   APP_CMD_RESUME:begin
+   end;
+   APP_CMD_SAVE_STATE:begin
+    aApp^.FreeSavedState;
+   end;
+   APP_CMD_PAUSE:begin
+   end;
+   APP_CMD_STOP:begin
+   end;
+   APP_CMD_DESTROY:begin
+    TPasMPInterlocked.Write(aApp^.fDestroyRequested,true);
+   end;
+  end;
+  aApp^.ProcessCmd(Cmd);
+  case Cmd of
+   APP_CMD_INPUT_CHANGED:begin
+   end;
+   APP_CMD_INIT_WINDOW:begin
+    aApp^.fConditionVariableLock.Acquire;
+    try
+     aApp^.fWindow:=aApp^.fPendingWindow;
+     aApp^.fConditionVariable.Broadcast;
+    finally
+     aApp^.fConditionVariableLock.Release;
+    end;
+   end;
+   APP_CMD_TERM_WINDOW:begin
+    aApp^.fConditionVariableLock.Acquire;
+    try
+     aApp^.fWindow:=nil;
+     aApp^.fConditionVariable.Broadcast;
+    finally
+     aApp^.fConditionVariableLock.Release;
+    end;
+   end;
+   APP_CMD_WINDOW_RESIZED:begin
+   end;
+   APP_CMD_WINDOW_REDRAW_NEEDED:begin
+   end;
+   APP_CMD_CONTENT_RECT_CHANGED:begin
+   end;
+   APP_CMD_GAINED_FOCUS:begin
+   end;
+   APP_CMD_LOST_FOCUS:begin
+   end;
+   APP_CMD_CONFIG_CHANGED:begin
+   end;
+   APP_CMD_LOW_MEMORY:begin
+   end;
+   APP_CMD_START:begin
     aApp^.fConditionVariableLock.Acquire;
     try
      aApp^.fActivityState:=APP_CMD_START;
+     aApp^.ProcessCmd(Cmd);
      aApp^.fConditionVariable.Broadcast;
     finally
      aApp^.fConditionVariableLock.Release;
@@ -7598,18 +7636,27 @@ begin
     aApp^.fConditionVariableLock.Acquire;
     try
      aApp^.fActivityState:=APP_CMD_RESUME;
+     aApp^.ProcessCmd(Cmd);
+     aApp^.fConditionVariable.Broadcast;
+    finally
+     aApp^.fConditionVariableLock.Release;
+    end;
+    aApp^.FreeSavedState;
+   end;
+   APP_CMD_SAVE_STATE:begin
+    aApp^.fConditionVariableLock.Acquire;
+    try
+     TPasMPInterlocked.Write(aApp^.fStateSaved,true);
      aApp^.fConditionVariable.Broadcast;
     finally
      aApp^.fConditionVariableLock.Release;
     end;
    end;
-   APP_CMD_SAVE_STATE:begin
-    aApp^.FreeSavedState;
-   end;
    APP_CMD_PAUSE:begin
     aApp^.fConditionVariableLock.Acquire;
     try
      aApp^.fActivityState:=APP_CMD_PAUSE;
+     aApp^.ProcessCmd(Cmd);
      aApp^.fConditionVariable.Broadcast;
     finally
      aApp^.fConditionVariableLock.Release;
@@ -7625,64 +7672,12 @@ begin
     end;
    end;
    APP_CMD_DESTROY:begin
-    TPasMPInterlocked.Write(aApp^.fDestroyRequested,true);
-   end;
-  end;
-  aApp^.ProcessCmd(Cmd);
-  case Cmd of
-   APP_CMD_INPUT_CHANGED:begin
-   end;
-   APP_CMD_INIT_WINDOW:begin
-   end;
-   APP_CMD_DONE_WINDOW:begin
-    aApp^.fConditionVariableLock.Acquire;
-    try
-     aApp^.fWindow:=nil;
-     aApp^.fConditionVariable.Broadcast;
-    finally
-     aApp^.fConditionVariableLock.Release;
-    end;
-   end;
-   APP_CMD_RESIZED:begin
-   end;
-   APP_CMD_REDRAW_NEEDED:begin
-   end;
-   APP_CMD_CONTENT_RECT_CHANGED:begin
-   end;
-   APP_CMD_GAINED_FOCUS:begin
-   end;
-   APP_CMD_LOST_FOCUS:begin
-   end;
-   APP_CMD_CONFIG_CHANGED:begin
-   end;
-   APP_CMD_LOW_MEMORY:begin
-   end;
-   APP_CMD_START:begin
-   end;
-   APP_CMD_RESUME:begin
-    aApp^.FreeSavedState;
-   end;
-   APP_CMD_SAVE_STATE:begin
-    aApp^.fConditionVariableLock.Acquire;
-    try
-     TPasMPInterlocked.Write(aApp^.fStateSaved,true);
-     aApp^.fConditionVariable.Broadcast;
-    finally
-     aApp^.fConditionVariableLock.Release;
-    end;
-   end;
-   APP_CMD_PAUSE:begin
-   end;
-   APP_CMD_STOP:begin
-   end;
-   APP_CMD_DESTROY:begin
    end;
   end;
  end else begin
   __android_log_write(ANDROID_LOG_ERROR,'PasVulkanApplication','Pipe read error . . .');
  end;
 end;
-
 
 constructor TAndroidAppThread.Create(const aAndroidApp:PAndroidApp);
 begin
@@ -7886,7 +7881,7 @@ begin
  fConditionVariableLock.Acquire;
  try
   if assigned(fPendingWindow) then begin
-   SendCmd(APP_CMD_DONE_WINDOW);
+   SendCmd(APP_CMD_TERM_WINDOW);
   end;
   fPendingWindow:=aWindow;
   if assigned(aWindow) then begin
@@ -7914,11 +7909,55 @@ begin
 end;
 
 procedure TAndroidApp.ProcessInputEvent(const aEvent:PAInputEvent);
+var EventType:TpvInt32;
 begin
+ if assigned(aEvent) then begin
+  EventType:=AInputEvent_getType(aEvent);
+  case EventType of
+   AINPUT_EVENT_TYPE_KEY:begin
+   end;
+   AINPUT_EVENT_TYPE_MOTION:begin
+   end;
+  end;
+ end;
 end;
 
 procedure TAndroidApp.ProcessCmd(const aCmd:TAppCmd);
 begin
+ case aCmd of
+  APP_CMD_INPUT_CHANGED:begin
+  end;
+  APP_CMD_INIT_WINDOW:begin
+  end;
+  APP_CMD_TERM_WINDOW:begin
+  end;
+  APP_CMD_WINDOW_RESIZED:begin
+  end;
+  APP_CMD_WINDOW_REDRAW_NEEDED:begin
+  end;
+  APP_CMD_CONTENT_RECT_CHANGED:begin
+  end;
+  APP_CMD_GAINED_FOCUS:begin
+  end;
+  APP_CMD_LOST_FOCUS:begin
+  end;
+  APP_CMD_CONFIG_CHANGED:begin
+  end;
+  APP_CMD_LOW_MEMORY:begin
+  end;
+  APP_CMD_START:begin
+  end;
+  APP_CMD_RESUME:begin
+  end;
+  APP_CMD_SAVE_STATE:begin
+  end;
+  APP_CMD_PAUSE:begin
+  end;
+  APP_CMD_STOP:begin
+  end;
+  APP_CMD_DESTROY:begin
+  end;
+ end;
 end;
 
 procedure Android_ANativeActivity_onStart(aActivity:PANativeActivity); cdecl;
@@ -8108,7 +8147,7 @@ begin
 {$ifend}
  try
   try
-   PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_RESIZED);
+   PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_WINDOW_RESIZED);
   except
    on e:Exception do begin
     __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
@@ -8128,7 +8167,7 @@ begin
 {$ifend}
  try
   try
-   PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_REDRAW_NEEDED);
+   PAndroidApp(aActivity^.instance)^.SendCmd(APP_CMD_WINDOW_REDRAW_NEEDED);
   except
    on e:Exception do begin
     __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(DumpExceptionCallStack(e))));
