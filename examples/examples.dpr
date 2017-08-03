@@ -37,6 +37,7 @@ uses
   PasVulkan.Collections in '..\src\PasVulkan.Collections.pas',
   PasVulkan.JSON in '..\src\PasVulkan.JSON.pas',
   PasVulkan.XML in '..\src\PasVulkan.XML.pas',
+  PasVulkan.VectorPath in '..\src\PasVulkan.VectorPath.pas',
   PasVulkan.TrueTypeFont in '..\src\PasVulkan.TrueTypeFont.pas',
   PasVulkan.Streams in '..\src\PasVulkan.Streams.pas',
   PasVulkan.Assets in '..\src\PasVulkan.Assets.pas',
@@ -72,8 +73,7 @@ uses
   UnitScreenExampleCube in 'UnitScreenExampleCube.pas',
   UnitScreenExampleDragon in 'UnitScreenExampleDragon.pas',
   UnitScreenExampleCanvas in 'UnitScreenExampleCanvas.pas',
-  UnitScreenExampleGUI in 'UnitScreenExampleGUI.pas',
-  PasVulkan.VectorPath in '..\src\PasVulkan.VectorPath.pas';
+  UnitScreenExampleGUI in 'UnitScreenExampleGUI.pas';
 
 // {$if defined(fpc) and defined(android)}
 

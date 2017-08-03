@@ -1940,7 +1940,6 @@ var StartPoint,LastPoint:TpvVector2;
  end;
  procedure StrokeCubicCurveTo(const aC0,aC1,aA0:TpvVector2);
   procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TpvDouble;const Level:TpvInt32);
-  const CaseTable:array[boolean,boolean] of TpvInt32=((0,1),(2,3));
   var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,dx,dy:TpvDouble;
       Point:TpvVector2;
   begin

@@ -112,7 +112,7 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      TpvVectorPath=class
       private
-       fCommandList:TpvVectorPathCommandList;
+       fCommands:TpvVectorPathCommandList;
       public
        constructor Create; reintroduce;
        constructor CreateFromSVGPath(const aCommands:TpvRawByteString);
@@ -122,8 +122,9 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvDouble);
        procedure CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble);
        procedure Close;
+       function GetSignedDistance(const aX,aY:TpvDouble):TpvDouble;
       published
-       property CommandList:TpvVectorPathCommandList read fCommandList;
+       property Commands:TpvVectorPathCommandList read fCommands;
      end;
 
 implementation
@@ -149,7 +150,7 @@ end;
 constructor TpvVectorPath.Create;
 begin
  inherited Create;
- fCommandList:=TpvVectorPathCommandList.Create(true);
+ fCommands:=TpvVectorPathCommandList.Create(true);
 end;
 
 constructor TpvVectorPath.CreateFromSVGPath(const aCommands:TpvRawByteString);
@@ -523,33 +524,149 @@ end;
 
 destructor TpvVectorPath.Destroy;
 begin
- FreeAndNil(fCommandList);
+ FreeAndNil(fCommands);
  inherited Destroy;
 end;
 
 procedure TpvVectorPath.MoveTo(const aX,aY:TpvDouble);
 begin
- fCommandList.Add(TpvVectorPathCommand.Create(pvvpctMoveTo,aX,aY));
+ fCommands.Add(TpvVectorPathCommand.Create(pvvpctMoveTo,aX,aY));
 end;
 
 procedure TpvVectorPath.LineTo(const aX,aY:TpvDouble);
 begin
- fCommandList.Add(TpvVectorPathCommand.Create(pvvpctLineTo,aX,aY));
+ fCommands.Add(TpvVectorPathCommand.Create(pvvpctLineTo,aX,aY));
 end;
 
 procedure TpvVectorPath.QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvDouble);
 begin
- fCommandList.Add(TpvVectorPathCommand.Create(pvvpctQuadraticCurveTo,aCX,aCY,aAX,aAY));
+ fCommands.Add(TpvVectorPathCommand.Create(pvvpctQuadraticCurveTo,aCX,aCY,aAX,aAY));
 end;
 
 procedure TpvVectorPath.CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble);
 begin
- fCommandList.Add(TpvVectorPathCommand.Create(pvvpctCubicCurveTo,aC0X,aC0Y,aC1X,aC1Y,aAX,aAY));
+ fCommands.Add(TpvVectorPathCommand.Create(pvvpctCubicCurveTo,aC0X,aC0Y,aC1X,aC1Y,aAX,aAY));
 end;
 
 procedure TpvVectorPath.Close;
 begin
- fCommandList.Add(TpvVectorPathCommand.Create(pvvpctClose));
+ fCommands.Add(TpvVectorPathCommand.Create(pvvpctClose));
+end;
+
+function TpvVectorPath.GetSignedDistance(const aX,aY:TpvDouble):TpvDouble;
+const CurveTessellationTolerance=0.25;
+      CurveTessellationToleranceSquared=CurveTessellationTolerance*CurveTessellationTolerance;
+      CurveRecursionLimit=16;
+var Index,InsideOutsideSign:TpvInt32;
+    Command:TpvVectorPathCommand;
+    ResultDistance,StartX,StartY,LastX,LastY:TpvDouble;
+ procedure LineDistance(const aPX,aPY,aAX,aAY,aBX,aBY:TpvDouble);
+ var pax,pay,bax,bay,t:TpvDouble;
+ begin
+  pax:=aPX-aAX;
+  pay:=aPY-aAY;
+  bax:=aBX-aBX;
+  bay:=aBY-aBY;
+  if ((aAY>aPY)<>(aBY>aPY)) and (pax<(bax*(pay/bay))) then begin
+   InsideOutsideSign:=-InsideOutsideSign;
+  end;
+  t:=Min(Max(((pax*bax)+(pay*bay))/(sqr(bax)+sqr(bay)),0.0),1.0);
+  ResultDistance:=Min(ResultDistance,sqr(pax-(bax*t))+sqr(pay-(bay*t)));
+ end;
+ procedure DoLineTo(const aToX,aToY:TpvDouble);
+ begin
+  LineDistance(aX,aY,LastX,LastY,aToX,aToY);
+  LastX:=aToX;
+  LastY:=aToY;
+ end;
+ procedure DoQuadraticCurveTo(const aC0X,aC0Y,aA0X,aA0Y:TpvDouble);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3:TpvDouble;const Level:TpvInt32);
+  var x12,y12,x23,y23,x123,y123,dx,dy:TpvDouble;
+  begin
+   x12:=(x1+x2)*0.5;
+   y12:=(y1+y2)*0.5;
+   x23:=(x2+x3)*0.5;
+   y23:=(y2+y3)*0.5;
+   x123:=(x12+x23)*0.5;
+   y123:=(y12+y23)*0.5;
+   dx:=x3-x1;
+   dy:=y3-y1;
+   if (Level>CurveRecursionLimit) or
+      ((Level>0) and
+       (sqr(((x2-x3)*dy)-((y2-y3)*dx))<((sqr(dx)+sqr(dy))*CurveTessellationToleranceSquared))) then begin
+    LineTo(x3,y3);
+   end else begin
+    Recursive(x1,y1,x12,y12,x123,y123,level+1);
+    Recursive(x123,y123,x23,y23,x3,y3,level+1);
+   end;
+  end;
+ begin
+  Recursive(LastX,LastY,aC0X,aC0Y,aA0X,aA0Y,0);
+  DoLineTo(aA0X,aA0Y);
+ end;
+ procedure DoCubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aA0X,aA0Y:TpvDouble);
+  procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TpvDouble;const Level:TpvInt32);
+  var x12,y12,x23,y23,x34,y34,x123,y123,x234,y234,x1234,y1234,dx,dy:TpvDouble;
+  begin
+   x12:=(x1+x2)*0.5;
+   y12:=(y1+y2)*0.5;
+   x23:=(x2+x3)*0.5;
+   y23:=(y2+y3)*0.5;
+   x34:=(x3+x4)*0.5;
+   y34:=(y3+y4)*0.5;
+   x123:=(x12+x23)*0.5;
+   y123:=(y12+y23)*0.5;
+   x234:=(x23+x34)*0.5;
+   y234:=(y23+y34)*0.5;
+   x1234:=(x123+x234)*0.5;
+   y1234:=(y123+y234)*0.5;
+   dx:=x4-x1;
+   dy:=y4-y1;
+   if (Level>CurveRecursionLimit) or
+      ((Level>0) and
+       (sqr(abs(((x2-x4)*dy)-((y2-y4)*dx))+
+            abs(((x3-x4)*dy)-((y3-y4)*dx)))<((sqr(dx)+sqr(dy))*CurveTessellationToleranceSquared))) then begin
+    DoLineTo(x4,y4);
+   end else begin
+    Recursive(x1,y1,x12,y12,x123,y123,x1234,y1234,Level+1);
+    Recursive(x1234,y1234,x234,y234,x34,y34,x4,y4,Level+1);
+   end;
+  end;
+ begin
+  Recursive(LastX,LastY,aC0X,aC0Y,aC1X,aC1Y,aA0X,aA0Y,0);
+  DoLineTo(aA0X,aA0Y);
+ end;
+begin
+ ResultDistance:=Infinity;
+ InsideOutsideSign:=1;
+ StartX:=0.0;
+ StartY:=0.0;
+ LastX:=0.0;
+ LastY:=0.0;
+ for Index:=0 to fCommands.Count-1 do begin
+  Command:=fCommands.Items[Index];
+  case Command.fCommandType of
+   pvvpctMoveTo:begin
+    StartX:=Command.x0;
+    StartY:=Command.y0;
+    LastX:=Command.x0;
+    LastY:=Command.y0;
+   end;
+   pvvpctLineTo:begin
+    DoLineTo(Command.x0,Command.y0);
+   end;
+   pvvpctQuadraticCurveTo:begin
+    DoQuadraticCurveTo(Command.x0,Command.y0,Command.x1,Command.y1);
+   end;
+   pvvpctCubicCurveTo:begin
+    DoCubicCurveTo(Command.x0,Command.y0,Command.x1,Command.y1,Command.x2,Command.y2);
+   end;
+   pvvpctClose:begin
+    DoLineTo(StartX,StartY);
+   end;
+  end;
+ end;
+ result:=sqrt(ResultDistance);
 end;
 
 end.

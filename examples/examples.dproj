@@ -215,6 +215,7 @@
         <DCCReference Include="..\src\PasVulkan.Collections.pas"/>
         <DCCReference Include="..\src\PasVulkan.JSON.pas"/>
         <DCCReference Include="..\src\PasVulkan.XML.pas"/>
+        <DCCReference Include="..\src\PasVulkan.VectorPath.pas"/>
         <DCCReference Include="..\src\PasVulkan.TrueTypeFont.pas"/>
         <DCCReference Include="..\src\PasVulkan.Streams.pas"/>
         <DCCReference Include="..\src\PasVulkan.Assets.pas"/>
@@ -251,7 +252,6 @@
         <DCCReference Include="UnitScreenExampleDragon.pas"/>
         <DCCReference Include="UnitScreenExampleCanvas.pas"/>
         <DCCReference Include="UnitScreenExampleGUI.pas"/>
-        <DCCReference Include="..\src\PasVulkan.VectorPath.pas"/>
         <None Include="..\src\PasVulkan.inc"/>
         <None Include="..\src\PasVulkan.Applicaton.SDL2.inc"/>
         <None Include="..\src\PasVulkanAssets.inc"/>
