@@ -7553,44 +7553,6 @@ begin
     end;
    end;
    APP_CMD_INIT_WINDOW:begin
-   end;
-   APP_CMD_TERM_WINDOW:begin
-   end;
-   APP_CMD_WINDOW_RESIZED:begin
-   end;
-   APP_CMD_WINDOW_REDRAW_NEEDED:begin
-   end;
-   APP_CMD_CONTENT_RECT_CHANGED:begin
-   end;
-   APP_CMD_GAINED_FOCUS:begin
-   end;
-   APP_CMD_LOST_FOCUS:begin
-   end;
-   APP_CMD_CONFIG_CHANGED:begin
-    AConfiguration_fromAssetManager(aApp^.fConfiguration,aApp^.fActivity^.assetManager);
-   end;
-   APP_CMD_LOW_MEMORY:begin
-   end;
-   APP_CMD_START:begin
-   end;
-   APP_CMD_RESUME:begin
-   end;
-   APP_CMD_SAVE_STATE:begin
-    aApp^.FreeSavedState;
-   end;
-   APP_CMD_PAUSE:begin
-   end;
-   APP_CMD_STOP:begin
-   end;
-   APP_CMD_DESTROY:begin
-    TPasMPInterlocked.Write(aApp^.fDestroyRequested,true);
-   end;
-  end;
-  aApp^.ProcessCmd(Cmd);
-  case Cmd of
-   APP_CMD_INPUT_CHANGED:begin
-   end;
-   APP_CMD_INIT_WINDOW:begin
     aApp^.fConditionVariableLock.Acquire;
     try
      aApp^.fWindow:=aApp^.fPendingWindow;
@@ -7619,6 +7581,7 @@ begin
    APP_CMD_LOST_FOCUS:begin
    end;
    APP_CMD_CONFIG_CHANGED:begin
+    AConfiguration_fromAssetManager(aApp^.fConfiguration,aApp^.fActivity^.assetManager);
    end;
    APP_CMD_LOW_MEMORY:begin
    end;
@@ -7641,16 +7604,9 @@ begin
     finally
      aApp^.fConditionVariableLock.Release;
     end;
-    aApp^.FreeSavedState;
    end;
    APP_CMD_SAVE_STATE:begin
-    aApp^.fConditionVariableLock.Acquire;
-    try
-     TPasMPInterlocked.Write(aApp^.fStateSaved,true);
-     aApp^.fConditionVariable.Broadcast;
-    finally
-     aApp^.fConditionVariableLock.Release;
-    end;
+    aApp^.FreeSavedState;
    end;
    APP_CMD_PAUSE:begin
     aApp^.fConditionVariableLock.Acquire;
@@ -7666,10 +7622,61 @@ begin
     aApp^.fConditionVariableLock.Acquire;
     try
      aApp^.fActivityState:=APP_CMD_STOP;
+     aApp^.ProcessCmd(Cmd);
      aApp^.fConditionVariable.Broadcast;
     finally
      aApp^.fConditionVariableLock.Release;
     end;
+   end;
+   APP_CMD_DESTROY:begin
+    TPasMPInterlocked.Write(aApp^.fDestroyRequested,true);
+   end;
+  end;
+  aApp^.ProcessCmd(Cmd);
+  case Cmd of
+   APP_CMD_INPUT_CHANGED:begin
+   end;
+   APP_CMD_INIT_WINDOW:begin
+   end;
+   APP_CMD_TERM_WINDOW:begin
+    aApp^.fConditionVariableLock.Acquire;
+    try
+     aApp^.fWindow:=nil;
+     aApp^.fConditionVariable.Broadcast;
+    finally
+     aApp^.fConditionVariableLock.Release;
+    end;
+   end;
+   APP_CMD_WINDOW_RESIZED:begin
+   end;
+   APP_CMD_WINDOW_REDRAW_NEEDED:begin
+   end;
+   APP_CMD_CONTENT_RECT_CHANGED:begin
+   end;
+   APP_CMD_GAINED_FOCUS:begin
+   end;
+   APP_CMD_LOST_FOCUS:begin
+   end;
+   APP_CMD_CONFIG_CHANGED:begin
+   end;
+   APP_CMD_LOW_MEMORY:begin
+   end;
+   APP_CMD_START:begin
+   end;
+   APP_CMD_RESUME:begin
+   end;
+   APP_CMD_SAVE_STATE:begin
+    aApp^.fConditionVariableLock.Acquire;
+    try
+     TPasMPInterlocked.Write(aApp^.fStateSaved,true);
+     aApp^.fConditionVariable.Broadcast;
+    finally
+     aApp^.fConditionVariableLock.Release;
+    end;
+   end;
+   APP_CMD_PAUSE:begin
+   end;
+   APP_CMD_STOP:begin
    end;
    APP_CMD_DESTROY:begin
    end;
