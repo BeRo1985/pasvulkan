@@ -4019,11 +4019,11 @@ begin
       inc(fPointerDownCount);
       PointerID:=Event^.tfinger.fingerId and $ffff;
       fMaxPointerID:=max(fMaxPointerID,PointerID+1);
-      fPointerX[PointerID]:=Event^.tfinger.x;
-      fPointerY[PointerID]:=Event^.tfinger.y;
+      fPointerX[PointerID]:=Event^.tfinger.x*pvApplication.fWidth;
+      fPointerY[PointerID]:=Event^.tfinger.y*pvApplication.fHeight;
       fPointerPressure[PointerID]:=Event^.tfinger.pressure;
-      fPointerDeltaX[PointerID]:=Event^.tfinger.dx;
-      fPointerDeltaY[PointerID]:=Event^.tfinger.dy;
+      fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
+      fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
       Include(fPointerDown[PointerID],BUTTON_LEFT);
       Include(fPointerJustDown[PointerID],BUTTON_LEFT);
       fJustTouched:=true;
@@ -4038,11 +4038,11 @@ begin
       end;
       PointerID:=Event^.tfinger.fingerId and $ffff;
       fMaxPointerID:=max(fMaxPointerID,PointerID+1);
-      fPointerX[PointerID]:=Event^.tfinger.x;
-      fPointerY[PointerID]:=Event^.tfinger.y;
+      fPointerX[PointerID]:=Event^.tfinger.x*pvApplication.fWidth;
+      fPointerY[PointerID]:=Event^.tfinger.y*pvApplication.fHeight;
       fPointerPressure[PointerID]:=Event^.tfinger.pressure;
-      fPointerDeltaX[PointerID]:=Event^.tfinger.dx;
-      fPointerDeltaY[PointerID]:=Event^.tfinger.dy;
+      fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
+      fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
       Exclude(fPointerDown[PointerID],BUTTON_LEFT);
       Exclude(fPointerJustDown[PointerID],BUTTON_LEFT);
       if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin

@@ -91,7 +91,7 @@ begin
  VisibleMouseCursor:=true;
  CatchMouse:=false;
  HideSystemBars:=true;
- AndroidSeparateMouseAndTouch:=false;
+ AndroidSeparateMouseAndTouch:=true;
  UseAudio:=true;
  VSync:={$ifdef NoVSync}false{$else}true{$endif};
 end;

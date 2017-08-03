@@ -22,6 +22,7 @@ interface
 
 uses SysUtils,
      Classes,
+     Math,
      UnitRegisteredExamplesList,
      Vulkan,
      PasVulkan.Types,
@@ -47,6 +48,7 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
        fGUILabel:TpvGUILabel;
        fGUIOtherWindow:TpvGUIWindow;
        fLastMousePosition:TpvVector2;
+       fLastMouseButtons:TpvApplicationInputPointerButtons;
        fReady:boolean;
        fSelectedIndex:TpvInt32;
        fStartY:TpvFloat;
@@ -112,6 +114,7 @@ begin
  fReady:=false;
  fTime:=0.48;
  fLastMousePosition:=TpvVector2.Null;
+ fLastMouseButtons:=[];
 end;
 
 destructor TScreenExampleGUI.Destroy;
@@ -384,13 +387,25 @@ begin
    end;
   end;
  end;
- fLastMousePosition:=aPointerEvent.Position;
+ case aPointerEvent.PointerEventType of
+  POINTEREVENT_DOWN:begin
+   Include(fLastMouseButtons,aPointerEvent.Button);
+   fLastMousePosition:=aPointerEvent.Position*fScreenToCanvasScale;
+  end;
+  POINTEREVENT_UP:begin
+   Exclude(fLastMouseButtons,aPointerEvent.Button);
+   fLastMousePosition:=aPointerEvent.Position*fScreenToCanvasScale;
+  end;
+  POINTEREVENT_MOTION:begin
+   fLastMousePosition:=aPointerEvent.Position*fScreenToCanvasScale;
+  end;
+ end;
 end;
 
 function TScreenExampleGUI.Scrolled(const aRelativeAmount:TpvVector2):boolean;
 begin
  if fReady then begin
-  result:=fGUIInstance.Scrolled(fLastMousePosition*fScreenToCanvasScale,aRelativeAmount);
+  result:=fGUIInstance.Scrolled(fLastMousePosition,aRelativeAmount);
  end else begin
   result:=false;
  end;
@@ -424,6 +439,12 @@ begin
  fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateSwapChainImageIndex;
  fGUIInstance.DeltaTime:=aDeltaTime;
  fGUIInstance.Update;
+
+{fVulkanCanvas.Color:=TpvVector4.Create(IfThen(BUTTON_LEFT in fLastMouseButtons,1.0,0.0),
+                                        IfThen(BUTTON_RIGHT in fLastMouseButtons,1.0,0.0),
+                                        1.0,
+                                        1.0);
+ fVulkanCanvas.DrawFilledCircle(fLastMousePosition,16.0);}
 
  fVulkanCanvas.Stop;
 

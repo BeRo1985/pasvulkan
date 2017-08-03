@@ -317,8 +317,6 @@ type TpvGUIObject=class;
        function PointerEnter:boolean; virtual;
        function PointerLeave:boolean; virtual;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
-       function KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
-       function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; virtual;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; virtual;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; virtual;
        procedure Update; virtual;
@@ -432,8 +430,6 @@ type TpvGUIObject=class;
        procedure Center;
        procedure PerformLayout; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
-       function KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Update; override;
@@ -453,6 +449,9 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Update; override;
        procedure Draw; override;
       published
@@ -1476,16 +1475,6 @@ begin
  result:=false;
 end;
 
-function TpvGUIWidget.KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
-end;
-
-function TpvGUIWidget.KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
-end;
-
 function TpvGUIWidget.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
@@ -2111,16 +2100,6 @@ begin
  result:=false;
 end;
 
-function TpvGUIWindow.KeyUp(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
-end;
-
-function TpvGUIWindow.KeyTyped(const aKeyCode:TpvInt32;const aKeyModifiers:TpvApplicationInputKeyModifiers):boolean;
-begin
- result:=false;
-end;
-
 function TpvGUIWindow.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 begin
  result:=inherited PointerEvent(aPointerEvent);
@@ -2289,6 +2268,21 @@ function TpvGUILabel.GetPreferredSize:TpvVector2;
 begin
  result:=Maximum(inherited GetPreferredSize,
                  Theme.fSansFont.TextSize(fCaption,FontSize)+TpvVector2.Create(0.0,0.0));
+end;
+
+function TpvGUILabel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=inherited KeyEvent(aKeyEvent);
+end;
+
+function TpvGUILabel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+begin
+ result:=inherited PointerEvent(aPointerEvent);
+end;
+
+function TpvGUILabel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+begin
+ result:=inherited Scrolled(aPosition,aRelativeAmount);
 end;
 
 procedure TpvGUILabel.Update;
