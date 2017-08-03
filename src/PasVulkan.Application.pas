@@ -984,6 +984,11 @@ type EpvApplication=class(Exception)
 
        fTerminated:boolean;
 
+{$if defined(fpc) and defined(android) and not defined(PasVulkanUseSDL2)}
+       fAndroidApp:TpvPointer;
+       fWaitForAndroidWindow:procedure(aAndroidApp:TpvPointer);
+{$ifend}
+
 {$if defined(PasVulkanUseSDL2)}
        fSDLWaveFormat:TSDL_AudioSpec;
 
@@ -1194,6 +1199,8 @@ type EpvApplication=class(Exception)
        procedure UpdateAudioHook;
 
        function IsVisibleToUser:boolean;
+
+       function WaitForReadyState:boolean;
 
       public
 
@@ -6436,6 +6443,15 @@ begin
 end;
 {$ifend}
 
+function TpvApplication.WaitForReadyState:boolean;
+begin
+{$if defined(PasVulkanUseSDL2)}
+ result:=true;
+{$else}
+ result:=false;
+{$ifend}
+end;
+
 procedure TpvApplication.ProcessMessages;
 var Index,Counter:TpvInt32;
     Joystick:TpvApplicationJoystick;
@@ -6911,217 +6927,221 @@ begin
 {$ifend}
  fCurrentHideSystemBars:=ord(fHideSystemBars);
 
+ if WaitForReadyState then begin
+
 {$if defined(PasVulkanUseSDL2)}
- if SDL_Init(SDL_INIT_VIDEO or SDL_INIT_EVENTS or SDL_INIT_TIMER)<0 then begin
-  raise EpvApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
- end;
+  if SDL_Init(SDL_INIT_VIDEO or SDL_INIT_EVENTS or SDL_INIT_TIMER)<0 then begin
+   raise EpvApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
+  end;
 {$else}
 {$ifend}
 
-{$ifdef Unix}
+{$if defined(Unix) and not defined(Android)}
  InstallSignalHandlers;
-{$endif}
+{$ifend}
 
 {$if defined(PasVulkanUseSDL2)}
- if SDL_GetCurrentDisplayMode(0,@fSDLDisplayMode)=0 then begin
-  fScreenWidth:=fSDLDisplayMode.w;
-  fScreenHeight:=fSDLDisplayMode.h;
- end else begin
+  if SDL_GetCurrentDisplayMode(0,@fSDLDisplayMode)=0 then begin
+   fScreenWidth:=fSDLDisplayMode.w;
+   fScreenHeight:=fSDLDisplayMode.h;
+  end else begin
+   fScreenWidth:=-1;
+   fScreenHeight:=-1;
+  end;
+{$else}
   fScreenWidth:=-1;
   fScreenHeight:=-1;
- end;
-{$else}
- fScreenWidth:=-1;
- fScreenHeight:=-1;
 {$ifend}
 
 {$if defined(PasVulkanUseSDL2)}
- fVideoFlags:=SDL_WINDOW_ALLOW_HIGHDPI;
- if fFullscreen then begin
+  fVideoFlags:=SDL_WINDOW_ALLOW_HIGHDPI;
+  if fFullscreen then begin
 {$ifndef Android}
-  if (fWidth=fScreenWidth) and (fHeight=fScreenHeight) then begin
-   fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN_DESKTOP;
-  end else begin
-   fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN;
-  end;
+   if (fWidth=fScreenWidth) and (fHeight=fScreenHeight) then begin
+    fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN_DESKTOP;
+   end else begin
+    fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN;
+   end;
 {$endif}
-  fCurrentFullscreen:=ord(true);
- end else begin
-  fCurrentFullscreen:=0;
- end;
+   fCurrentFullscreen:=ord(true);
+  end else begin
+   fCurrentFullscreen:=0;
+  end;
 {$ifndef Android}
- if fResizable then begin
-  fVideoFlags:=fVideoFlags or SDL_WINDOW_RESIZABLE;
- end;
+  if fResizable then begin
+   fVideoFlags:=fVideoFlags or SDL_WINDOW_RESIZABLE;
+  end;
 {$endif}
 
 {$if defined(fpc) and defined(android)}
- fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN or SDL_WINDOW_VULKAN;
- fFullscreen:=true;
- fCurrentFullscreen:=ord(true);
- fWidth:=fScreenWidth;
- fHeight:=fScreenHeight;
- __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('Window size: '+IntToStr(fWidth)+'x'+IntToStr(fHeight))));
+  fVideoFlags:=fVideoFlags or SDL_WINDOW_FULLSCREEN or SDL_WINDOW_VULKAN;
+  fFullscreen:=true;
+  fCurrentFullscreen:=ord(true);
+  fWidth:=fScreenWidth;
+  fHeight:=fScreenHeight;
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('Window size: '+IntToStr(fWidth)+'x'+IntToStr(fHeight))));
 {$ifend}
 
- fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(TpvApplicationRawByteString(fTitle)),
+  fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(TpvApplicationRawByteString(fTitle)),
 {$ifdef Android}
-                                  SDL_WINDOWPOS_CENTERED_MASK,
-                                  SDL_WINDOWPOS_CENTERED_MASK,
+                                   SDL_WINDOWPOS_CENTERED_MASK,
+                                   SDL_WINDOWPOS_CENTERED_MASK,
 {$else}
-                                  ((fScreenWidth-fWidth)+1) div 2,
-                                  ((fScreenHeight-fHeight)+1) div 2,
+                                   ((fScreenWidth-fWidth)+1) div 2,
+                                   ((fScreenHeight-fHeight)+1) div 2,
 {$endif}
-                                  fWidth,
-                                  fHeight,
-                                  SDL_WINDOW_SHOWN or fVideoFlags);
- if not assigned(fSurfaceWindow) then begin
-  raise EpvApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
- end;
+                                   fWidth,
+                                   fHeight,
+                                   SDL_WINDOW_SHOWN or fVideoFlags);
+  if not assigned(fSurfaceWindow) then begin
+   raise EpvApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
+  end;
 {$else}
 {$ifend}
 
- fCurrentWidth:=fWidth;
- fCurrentHeight:=fHeight;
+  fCurrentWidth:=fWidth;
+  fCurrentHeight:=fHeight;
 
- fCurrentVSync:=ord(fVSync);
+  fCurrentVSync:=ord(fVSync);
 
 {$if defined(PasVulkanUseSDL2)}
-{SDL_EventState(SDL_MOUSEMOTION,SDL_ENABLE);
- SDL_EventState(SDL_MOUSEBUTTONDOWN,SDL_ENABLE);
- SDL_EventState(SDL_MOUSEBUTTONUP,SDL_ENABLE);
- SDL_EventState(SDL_KEYDOWN,SDL_ENABLE);
- SDL_EventState(SDL_KEYUP,SDL_ENABLE);
- SDL_EventState(SDL_QUITEV,SDL_ENABLE);
- SDL_EventState(SDL_WINDOWEVENT,SDL_ENABLE);}
+ {SDL_EventState(SDL_MOUSEMOTION,SDL_ENABLE);
+  SDL_EventState(SDL_MOUSEBUTTONDOWN,SDL_ENABLE);
+  SDL_EventState(SDL_MOUSEBUTTONUP,SDL_ENABLE);
+  SDL_EventState(SDL_KEYDOWN,SDL_ENABLE);
+  SDL_EventState(SDL_KEYUP,SDL_ENABLE);
+  SDL_EventState(SDL_QUITEV,SDL_ENABLE);
+  SDL_EventState(SDL_WINDOWEVENT,SDL_ENABLE);}
 {$else}
 {$ifend}
 
- FillChar(fFrameTimesHistoryDeltaTimes,SizeOf(fFrameTimesHistoryDeltaTimes),#0);
- FillChar(fFrameTimesHistoryTimePoints,SizeOf(fFrameTimesHistoryTimePoints),#$ff);
- fFrameTimesHistoryReadIndex:=0;
- fFrameTimesHistoryWriteIndex:=0;
+  FillChar(fFrameTimesHistoryDeltaTimes,SizeOf(fFrameTimesHistoryDeltaTimes),#0);
+  FillChar(fFrameTimesHistoryTimePoints,SizeOf(fFrameTimesHistoryTimePoints),#$ff);
+  fFrameTimesHistoryReadIndex:=0;
+  fFrameTimesHistoryWriteIndex:=0;
 
- fFramesPerSecond:=0.0;
+  fFramesPerSecond:=0.0;
 
- fSkipNextDrawFrame:=false;
+  fSkipNextDrawFrame:=false;
 
- try
-
-  CreateVulkanInstance;
   try
 
-   Start;
+   CreateVulkanInstance;
    try
 
-    InitializeGraphics;
+    Start;
     try
 
-     InitializeAudio;
+     InitializeGraphics;
      try
 
-      Load;
+      InitializeAudio;
       try
 
-       fLifecycleListenerListCriticalSection.Acquire;
+       Load;
        try
-        for Index:=0 to fLifecycleListenerList.Count-1 do begin
-         if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Resume then begin
-          break;
+
+        fLifecycleListenerListCriticalSection.Acquire;
+        try
+         for Index:=0 to fLifecycleListenerList.Count-1 do begin
+          if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Resume then begin
+           break;
+          end;
          end;
+        finally
+         fLifecycleListenerListCriticalSection.Release;
         end;
-       finally
-        fLifecycleListenerListCriticalSection.Release;
-       end;
 
-       if assigned(fStartScreen) then begin
-        SetScreen(fStartScreen.Create);
-       end;
-       try
-
-        if assigned(fAudio) then begin
-{$if defined(PasVulkanUseSDL2)}
-         SDL_PauseAudio(0);
-{$else}
-{$ifend}
+        if assigned(fStartScreen) then begin
+         SetScreen(fStartScreen.Create);
         end;
         try
 
-         while not fTerminated do begin
-          ProcessMessages;
+         if assigned(fAudio) then begin
+{$if defined(PasVulkanUseSDL2)}
+          SDL_PauseAudio(0);
+{$else}
+{$ifend}
+         end;
+         try
+
+          while not fTerminated do begin
+           ProcessMessages;
+          end;
+
+         finally
+          if assigned(fAudio) then begin
+{$if defined(PasVulkanUseSDL2)}
+           SDL_PauseAudio(1);
+{$else}
+{$ifend}
+          end;
          end;
 
         finally
-         if assigned(fAudio) then begin
-{$if defined(PasVulkanUseSDL2)}
-          SDL_PauseAudio(1);
-{$else}
-{$ifend}
+
+         SetScreen(nil);
+
+         FreeAndNil(fNextScreen);
+         FreeAndNil(fScreen);
+
+        end;
+
+        fLifecycleListenerListCriticalSection.Acquire;
+        try
+         for Index:=0 to fLifecycleListenerList.Count-1 do begin
+          if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Pause then begin
+           break;
+          end;
          end;
+         for Index:=0 to fLifecycleListenerList.Count-1 do begin
+          if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Terminate then begin
+           break;
+          end;
+         end;
+        finally
+         fLifecycleListenerListCriticalSection.Release;
         end;
 
        finally
 
-        SetScreen(nil);
+        VulkanWaitIdle;
 
-        FreeAndNil(fNextScreen);
-        FreeAndNil(fScreen);
+        Unload;
 
-       end;
-
-       fLifecycleListenerListCriticalSection.Acquire;
-       try
-        for Index:=0 to fLifecycleListenerList.Count-1 do begin
-         if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Pause then begin
-          break;
-         end;
-        end;
-        for Index:=0 to fLifecycleListenerList.Count-1 do begin
-         if TpvApplicationLifecycleListener(fLifecycleListenerList[Index]).Terminate then begin
-          break;
-         end;
-        end;
-       finally
-        fLifecycleListenerListCriticalSection.Release;
        end;
 
       finally
-
-       VulkanWaitIdle;
-
-       Unload;
-
+       DeinitializeAudio;
       end;
 
      finally
-      DeinitializeAudio;
+      DeinitializeGraphics;
      end;
 
     finally
-     DeinitializeGraphics;
+
+     Stop;
+
     end;
 
    finally
-
-    Stop;
-
+    DestroyVulkanInstance;
    end;
 
   finally
-   DestroyVulkanInstance;
-  end;
-
- finally
 
 {$if defined(PasVulkanUseSDL2)}
-  if assigned(fSurfaceWindow) then begin
-   SDL_DestroyWindow(fSurfaceWindow);
-   fSurfaceWindow:=nil;
-  end;
+   if assigned(fSurfaceWindow) then begin
+    SDL_DestroyWindow(fSurfaceWindow);
+    fSurfaceWindow:=nil;
+   end;
 {$else}
 {$ifend}
 
-  SaveConfig;
+   SaveConfig;
+
+  end;
 
  end;
 
@@ -7686,6 +7706,24 @@ begin
  end;
 end;
 
+procedure WaitForAndroidWindow(aAndroidApp:TpvPointer);
+var OK:boolean;
+    Source:PAndroidPollSource;
+begin
+ repeat
+  OK:=false;
+  PAndroidApp(aAndroidApp)^.fConditionVariableLock.Acquire;
+  try
+   if assigned(PAndroidApp(aAndroidApp)^.fWindow) then begin
+    OK:=true;
+    break;
+   end;
+  finally
+   PAndroidApp(aAndroidApp)^.fConditionVariableLock.Release;
+  end;
+ until OK;
+end;
+
 constructor TAndroidAppThread.Create(const aAndroidApp:PAndroidApp);
 begin
  fAndroidApp:=aAndroidApp;
@@ -7721,6 +7759,8 @@ begin
 
    fAndroidApp^.fApplication:=fAndroidApp^.fApplicationClass.Create;
    try
+    fAndroidApp^.fApplication.fAndroidApp:=fAndroidApp;
+    fAndroidApp^.fApplication.fWaitForAndroidWindow:=WaitForAndroidWindow;
     fAndroidApp^.fApplication.Setup;
     fAndroidApp^.fConditionVariableLock.Acquire;
     try
@@ -7978,6 +8018,7 @@ begin
   APP_CMD_PAUSE:begin
   end;
   APP_CMD_STOP:begin
+   ANativeActivity_finish(fActivity);
   end;
   APP_CMD_DESTROY:begin
   end;
