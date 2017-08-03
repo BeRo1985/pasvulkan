@@ -986,7 +986,10 @@ type EpvApplication=class(Exception)
 
 {$if defined(fpc) and defined(android) and not defined(PasVulkanUseSDL2)}
        fAndroidApp:TpvPointer;
-       fWaitForAndroidWindow:procedure(aAndroidApp:TpvPointer);
+       fAndroidWindow:PANativeWindow;
+       fAndroidReady:TPasMPBool32;
+       fAndroidQuit:TPasMPBool32;
+       fAndroidAppProcessMessages:procedure(const aAndroidApp:TpvPointer;const aWait:boolean);
 {$ifend}
 
 {$if defined(PasVulkanUseSDL2)}
@@ -4007,8 +4010,8 @@ begin
       fPointerPressure[PointerID]:=Event^.tfinger.pressure;
       fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
       fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
-      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,[BUTTON_LEFT],KeyModifiers))) and assigned(fProcessor) then begin
-       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,[BUTTON_LEFT],KeyModifiers));
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers));
       end;
      end;
      SDL_FINGERDOWN:begin
@@ -6444,13 +6447,22 @@ end;
 {$ifend}
 
 function TpvApplication.WaitForReadyState:boolean;
-begin
 {$if defined(PasVulkanUseSDL2)}
+begin
  result:=true;
-{$else}
- result:=false;
-{$ifend}
 end;
+{$elseif defined(fpc) and defined(Android)}
+begin
+ while not ((fAndroidReady and assigned(PANativeWindow)) or fAndroidQuit) do begin
+  fAndroidAppProcessMessages(fAndroidApp,true);
+ end;
+ result:=fAndroidReady and not fAndroidQuit;
+end;
+{$else}
+begin
+ result:=false;
+end;
+{$ifend}
 
 procedure TpvApplication.ProcessMessages;
 var Index,Counter:TpvInt32;
@@ -7609,7 +7621,6 @@ begin
     aApp^.fConditionVariableLock.Acquire;
     try
      aApp^.fActivityState:=APP_CMD_START;
-     aApp^.ProcessCmd(Cmd);
      aApp^.fConditionVariable.Broadcast;
     finally
      aApp^.fConditionVariableLock.Release;
@@ -7619,7 +7630,6 @@ begin
     aApp^.fConditionVariableLock.Acquire;
     try
      aApp^.fActivityState:=APP_CMD_RESUME;
-     aApp^.ProcessCmd(Cmd);
      aApp^.fConditionVariable.Broadcast;
     finally
      aApp^.fConditionVariableLock.Release;
@@ -7632,7 +7642,6 @@ begin
     aApp^.fConditionVariableLock.Acquire;
     try
      aApp^.fActivityState:=APP_CMD_PAUSE;
-     aApp^.ProcessCmd(Cmd);
      aApp^.fConditionVariable.Broadcast;
     finally
      aApp^.fConditionVariableLock.Release;
@@ -7642,7 +7651,6 @@ begin
     aApp^.fConditionVariableLock.Acquire;
     try
      aApp^.fActivityState:=APP_CMD_STOP;
-     aApp^.ProcessCmd(Cmd);
      aApp^.fConditionVariable.Broadcast;
     finally
      aApp^.fConditionVariableLock.Release;
@@ -7706,22 +7714,17 @@ begin
  end;
 end;
 
-procedure WaitForAndroidWindow(aAndroidApp:TpvPointer);
-var OK:boolean;
+procedure AndroidAppProcessMessages(const aAndroidApp:TpvPointer;const aWait:boolean);
+var Events:TpvInt32;
     Source:PAndroidPollSource;
 begin
- repeat
-  OK:=false;
-  PAndroidApp(aAndroidApp)^.fConditionVariableLock.Acquire;
-  try
-   if assigned(PAndroidApp(aAndroidApp)^.fWindow) then begin
-    OK:=true;
-    break;
-   end;
-  finally
-   PAndroidApp(aAndroidApp)^.fConditionVariableLock.Release;
+ Events:=0;
+ Source:=nil;
+ while ALooper_pollAll(IfThen(aWait,-1,0),nil,@Events,@Source)>=0 do begin
+  if assigned(Source) then begin
+   Source^.fProcess(Source^.fApp,Source);
   end;
- until OK;
+ end;
 end;
 
 constructor TAndroidAppThread.Create(const aAndroidApp:PAndroidApp);
@@ -7760,7 +7763,10 @@ begin
    fAndroidApp^.fApplication:=fAndroidApp^.fApplicationClass.Create;
    try
     fAndroidApp^.fApplication.fAndroidApp:=fAndroidApp;
-    fAndroidApp^.fApplication.fWaitForAndroidWindow:=WaitForAndroidWindow;
+    fAndroidApp^.fApplication.fAndroidWindow:=nil;
+    fAndroidApp^.fApplication.fAndroidReady:=false;
+    fAndroidApp^.fApplication.fAndroidQuit:=false;
+    fAndroidApp^.fApplication.fAndroidAppProcessMessages:=AndroidAppProcessMessages;
     fAndroidApp^.fApplication.Setup;
     fAndroidApp^.fConditionVariableLock.Acquire;
     try
@@ -7992,8 +7998,16 @@ begin
   APP_CMD_INPUT_CHANGED:begin
   end;
   APP_CMD_INIT_WINDOW:begin
+   if assigned(fApplication) then begin
+    fApplication.fAndroidWindow:=fWindow;
+    fApplication.fAndroidReady:=true;
+   end;
   end;
   APP_CMD_TERM_WINDOW:begin
+   if assigned(fApplication) then begin
+    fApplication.fAndroidWindow:=nil;
+    fApplication.fAndroidReady:=false;
+   end;
   end;
   APP_CMD_WINDOW_RESIZED:begin
   end;
@@ -8018,9 +8032,15 @@ begin
   APP_CMD_PAUSE:begin
   end;
   APP_CMD_STOP:begin
+   if assigned(fApplication) then begin
+    fApplication.fAndroidQuit:=true;
+   end;
    ANativeActivity_finish(fActivity);
   end;
   APP_CMD_DESTROY:begin
+   if assigned(fApplication) then begin
+    fApplication.fAndroidQuit:=true;
+   end;
   end;
  end;
 end;
