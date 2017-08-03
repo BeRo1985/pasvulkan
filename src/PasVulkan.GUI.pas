@@ -178,6 +178,7 @@ type TpvGUIObject=class;
        fFocusedWindowHeaderFontShadowColor:TpvVector4;
        fUnfocusedWindowHeaderFontColor:TpvVector4;
        fFocusedWindowHeaderFontColor:TpvVector4;
+       fMipmappedSpriteAtlas:TpvSpriteAtlas;
        fSpriteAtlas:TpvSpriteAtlas;
        fSansFont:TpvFont;
        fMonoFont:TpvFont;
@@ -231,6 +232,7 @@ type TpvGUIObject=class;
        property FocusedWindowHeaderFontSize:TpvFloat read fFocusedWindowHeaderFontSize write fFocusedWindowHeaderFontSize;
        property UnfocusedWindowHeaderFontShadow:boolean read fUnfocusedWindowHeaderFontShadow write fUnfocusedWindowHeaderFontShadow;
        property FocusedWindowHeaderFontShadow:boolean read fFocusedWindowHeaderFontShadow write fFocusedWindowHeaderFontShadow;
+       property MipmappedSpriteAtlas:TpvSpriteAtlas read fMipmappedSpriteAtlas;
        property SpriteAtlas:TpvSpriteAtlas read fSpriteAtlas;
        property SpriteUnfocusedWindowFill:TpvSprite read fSpriteUnfocusedWindowFill write fSpriteUnfocusedWindowFill;
        property SpriteFocusedWindowFill:TpvSprite read fSpriteFocusedWindowFill write fSpriteFocusedWindowFill;
@@ -719,6 +721,7 @@ end;
 constructor TpvGUITheme.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
+ fMipmappedSpriteAtlas:=nil;
  fSpriteAtlas:=nil;
  fSansFont:=nil;
  fMonoFont:=nil;
@@ -730,6 +733,7 @@ begin
  FreeAndNil(fSansFont);
  FreeAndNil(fMonoFont);
  FreeAndNil(fSpriteAtlas);
+ FreeAndNil(fMipmappedSpriteAtlas);
  inherited Destroy;
 end;
 
@@ -744,17 +748,20 @@ procedure TpvGUITheme.Setup;
  procedure CreateMouseCursorSprite(out aSprite:TpvSprite;
                                    const aWidth:TpvInt32;
                                    const aHeight:TpvInt32;
+                                   const aDrawScale:TpvFloat;
                                    const aScale:TpvFloat;
                                    const aRootX:TpvFloat;
                                    const aRootY:TpvFloat;
                                    const aOffsetX:TpvFloat;
                                    const aOffsetY:TpvFloat;
                                    const aShadow:TpvFloat;
+                                   const aShadowX:TpvFloat;
+                                   const aShadowY:TpvFloat;
                                    const aSVGPath:TpvRawByteString);
  var x,y,Index,InsideOutsideSign:TpvInt32;
      ImageData:array of TpvSpriteTextureTexel;
      Color:TpvSpriteTextureTexel;
-     c:TpvVector4;
+     c,a:TpvVector4;
      f:TpvFloat;
      InverseScale:TpvDouble;
      VectorPath:TpvVectorPath;
@@ -765,25 +772,30 @@ procedure TpvGUITheme.Setup;
    try
     SetLength(ImageData,aWidth*aHeight);
     Index:=0;
-    InverseScale:=1.0/aScale;
     for y:=0 to aHeight-1 do begin
      for x:=0 to aWidth-1 do begin
-      f:=VectorPath.GetSignedDistance(x+(aRootX*InverseScale),
-                                      y+(aRootY*InverseScale),
-                                      InverseScale,
-                                      InsideOutsideSign);
-      if aShadow>0.0 then begin
-       c:=Mix(TpvVector4.Create(0.0,0.0,0.0,0.0),
-              TpvVector4.Create(0.0,0.0,0.0,0.5),
-              LinearStep(aShadow,0.0,f*InsideOutsideSign));
-      end else begin
-       c:=TpvVector4.Create(0.0,0.0,0.0,0.0);
-      end;
-      c:=Mix(Mix(c,
+      f:=VectorPath.GetSignedDistance(x+(aRootX*aScale),
+                                      y+(aRootY*aScale),
+                                      aScale,
+                                      InsideOutsideSign)*aDrawScale;
+      c:=Mix(TpvVector4.Create(0.0,0.0,0.0,0.0),
+             Mix(TpvVector4.Create(0.0,0.0,0.0,1.0),
                  TpvVector4.Create(1.0,1.0,1.0,1.0),
                  LinearStep(1.0,-1.0,f*InsideOutsideSign)),
-             TpvVector4.Create(0.0,0.0,0.0,1.0),
-             LinearStep(1.0,0.0,f*0.5));
+             LinearStep(2.0,0.0,f*InsideOutsideSign));
+      if aShadow>0.0 then begin
+       if not (IsZero(aShadowX) and IsZero(aShadowY)) then begin
+        f:=VectorPath.GetSignedDistance(x+((aRootX-aShadowX)*aScale),
+                                        y+((aRootY-aShadowY)*aScale),
+                                        aScale,
+                                        InsideOutsideSign)*aDrawScale;
+       end;
+       c:=Mix(Mix(TpvVector4.Create(0.0,0.0,0.0,0.0),
+                  TpvVector4.Create(0.0,0.0,0.0,0.5),
+                  LinearStep(aShadow,0.0,f*InsideOutsideSign)),
+              c,
+              c.a);
+      end;
       Color.r:=Min(Max(round(c.r*255.0),0),255);
       Color.g:=Min(Max(round(c.g*255.0),0),255);
       Color.b:=Min(Max(round(c.b*255.0),0),255);
@@ -792,9 +804,11 @@ procedure TpvGUITheme.Setup;
       inc(Index);
      end;
     end;
-    aSprite:=fSpriteAtlas.LoadRawSprite('',@ImageData[0],aWidth,aHeight,false);
+    aSprite:=fMipmappedSpriteAtlas.LoadRawSprite('',@ImageData[0],aWidth,aHeight,false);
     aSprite.OffsetX:=aOffsetX;
     aSprite.OffsetY:=aOffsetY;
+    aSprite.ScaleX:=aDrawScale;
+    aSprite.ScaleY:=aDrawScale;
    finally
     ImageData:=nil;
    end;
@@ -1043,6 +1057,8 @@ begin
  fWindowShadowWidth:=16;
  fWindowShadowHeight:=16;
 
+ fMipmappedSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice);
+
  fSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice);
 
  CreateWindowFillNinePatchSprite(fSpriteUnfocusedWindowFill,
@@ -1166,12 +1182,14 @@ begin
  end;
 
  CreateMouseCursorSprite(fSpriteMouseCursorArrow,
-                         256,245,
-                         0.125,
-                         0.0,0.0,
-                         8.0,8.0,
-                         16.0,
-                         'm 1.0,1.0 '+
+                         128,128,
+                         0.25,
+                         4.0,
+                         -4.0,-4.0,
+                         16.0,16.0,
+                         2.0,
+                         2.0,2.0,
+                         'm 0.0,0.0 '+
                          '0,16.4402329 '+
                          '3.712311,-3.623922 '+
                          '2.12132,4.331029 '+
@@ -1180,12 +1198,20 @@ begin
                          '2.452777,-1.336875 '+
                          'l -2.099224,-4.496756 '+
                          '4.684582,0 '+
-                         'L 1.0,1.0'+
+                         'L 0.0,0.0'+
                          'Z'
                         );
 
- fSpriteAtlas.MipMaps:=false;
+ fMipmappedSpriteAtlas.MipMaps:=true;
+ fMipmappedSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
+                              pvApplication.VulkanGraphicsCommandBuffers[0,0],
+                              pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                              pvApplication.VulkanDevice.TransferQueue,
+                              pvApplication.VulkanTransferCommandBuffers[0,0],
+                              pvApplication.VulkanTransferCommandBufferFences[0,0]);
 
+
+ fSpriteAtlas.MipMaps:=false;
  fSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
                      pvApplication.VulkanGraphicsCommandBuffers[0,0],
                      pvApplication.VulkanGraphicsCommandBufferFences[0,0],
