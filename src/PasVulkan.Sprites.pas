@@ -200,6 +200,8 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
        TrimmedY:TpvInt32;
        TrimmedWidth:TpvInt32;
        TrimmedHeight:TpvInt32;
+       OffsetX:TpvInt32;
+       OffsetY:TpvInt32;
        Rotated:boolean;
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -649,6 +651,8 @@ constructor TpvSprite.Create;
 begin
  inherited Create;
  Name:='';
+ OffsetX:=0;
+ OffsetY:=0;
 end;
 
 destructor TpvSprite.Destroy;

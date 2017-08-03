@@ -4086,10 +4086,10 @@ begin
    ty2:=Min((aSprite.TrimmedY+aSprite.TrimmedWidth),aSrc.Bottom);
    xf:=abs(aDest.Right-aDest.Left)/(aSrc.Right-aSrc.Left);
    yf:=abs(aDest.Bottom-aDest.Top)/(aSrc.Bottom-aSrc.Top);
-   TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
-   TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
-   TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
-   TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
+   TempDest.Left:=(aDest.Left+((tx1-aSrc.Left)*xf))-aSprite.OffsetX;
+   TempDest.Right:=(aDest.Right+((tx2-aSrc.Right)*xf))-aSprite.OffsetX;
+   TempDest.Top:=(aDest.Top+((ty1-aSrc.Top)*yf))-aSprite.OffsetY;
+   TempDest.Bottom:=(aDest.Bottom+((ty2-aSrc.Bottom)*yf))-aSprite.OffsetY;
 {  if aDest.Left<=aDest.Right then begin
     TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
     TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
@@ -4159,10 +4159,10 @@ begin
    ty2:=Min((aSprite.TrimmedY+aSprite.TrimmedHeight),aSrc.Bottom);
    xf:=abs(aDest.Right-aDest.Left)/(aSrc.Right-aSrc.Left);
    yf:=abs(aDest.Bottom-aDest.Top)/(aSrc.Bottom-aSrc.Top);
-   TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
-   TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
-   TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
-   TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
+   TempDest.Left:=(aDest.Left+((tx1-aSrc.Left)*xf))-aSprite.OffsetX;
+   TempDest.Right:=(aDest.Right+((tx2-aSrc.Right)*xf))-aSprite.OffsetX;
+   TempDest.Top:=(aDest.Top+((ty1-aSrc.Top)*yf))-aSprite.OffsetY;
+   TempDest.Bottom:=(aDest.Bottom+((ty2-aSrc.Bottom)*yf))-aSprite.OffsetY;
 {  if aDest.Left<=aDest.Right then begin
     TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
     TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
@@ -4264,7 +4264,7 @@ var OldMatrix:TpvMatrix4x4;
 begin
  OldMatrix:=fState.fModelMatrix;
  try
-  AroundPoint:=aDest.LeftTop+aOrigin;
+  AroundPoint:=aDest.LeftTop+aOrigin+TpvVector2.Create(aSprite.OffsetX,aSprite.OffsetY);
   fState.fModelMatrix:=((TpvMatrix4x4.CreateTranslation(-AroundPoint)*
                          TpvMatrix4x4.CreateRotateZ(aRotationAngle))*
                         TpvMatrix4x4.CreateTranslation(AroundPoint))*
