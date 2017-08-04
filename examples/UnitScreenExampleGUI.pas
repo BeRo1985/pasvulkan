@@ -444,7 +444,7 @@ begin
 
  fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
 
-{$if true}
+{$if false}
  fVulkanCanvas.Color:=TpvVector4.Create(IfThen(BUTTON_LEFT in fLastMouseButtons,1.0,0.0),
                                         IfThen(BUTTON_RIGHT in fLastMouseButtons,1.0,0.0),
                                         1.0,

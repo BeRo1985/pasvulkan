@@ -284,7 +284,7 @@ type TpvGUIObject=class;
        pvgcArrow,
        pvgcBeam,
        pvgcBusy,
-       pvgcCrosshair,
+       pvgcCross,
        pvgcEW,
        pvgcHelp,
        pvgcLink,
@@ -1433,7 +1433,7 @@ begin
 
  fTheme:=nil;
 
- fCursor:=pvgcBusy;
+ fCursor:=pvgcArrow;
 
  fPosition:=TpvVector2.Create(0.0,0.0);
 
@@ -2321,7 +2321,7 @@ begin
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorBusy,fMousePosition);
    fCanvas.Pop;
   end;
-  pvgcCrosshair:begin
+  pvgcCross:begin
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorCross,fMousePosition);
   end;
   pvgcEW:begin
