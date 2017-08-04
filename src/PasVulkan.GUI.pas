@@ -2315,7 +2315,7 @@ begin
   pvgcBusy:begin
    fCanvas.Push;
    fCanvas.ModelMatrix:=((TpvMatrix4x4.CreateTranslation(-fMousePosition)*
-                          TpvMatrix4x4.CreateRotateZ(fTime*TwoPI))*
+                          TpvMatrix4x4.CreateRotateZ(frac(fTime)*TwoPI))*
                          TpvMatrix4x4.CreateTranslation(fMousePosition))*
                          fCanvas.ModelMatrix;
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorBusy,fMousePosition);
