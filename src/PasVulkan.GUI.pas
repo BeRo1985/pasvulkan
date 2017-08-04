@@ -306,8 +306,24 @@ type TpvGUIObject=class;
        constructor Create(const aWidget:TpvGUIWidget); reintroduce;
      end;
 
+     PpvGUIWidgetFlag=^TpvGUIWidgetFlag;
+     TpvGUIWidgetFlag=
+      (
+       pvgwfEnabled,
+       pvgwfVisible,
+       pvgwfFocused,
+       pvgwfPointerFocused
+      );
+
+     PpvGUIWidgetFlags=^TpvGUIWidgetFlags;
+     TpvGUIWidgetFlags=set of TpvGUIWidgetFlag;
+
      TpvGUIWidget=class(TpvGUIObject)
+      public
+       const DefaultFlags=[pvgwfEnabled,
+                           pvgwfVisible];
       private
+      protected
        fCanvas:TpvCanvas;
        fLayout:TpvGUILayout;
        fTheme:TpvGUITheme;
@@ -318,12 +334,17 @@ type TpvGUIObject=class;
        fPositionProperty:TpvVector2Property;
        fSizeProperty:TpvVector2Property;
        fFixedSizeProperty:TpvVector2Property;
-       fVisible:boolean;
-       fEnabled:boolean;
-       fFocused:boolean;
-       fPointerFocused:boolean;
+       fWidgetFlags:TpvGUIWidgetFlags;
        fHint:TpvUTF8String;
        fFontSize:TpvFloat;
+       function GetEnabled:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetEnabled(const aEnabled:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetVisible(const aVisible:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetFocused:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetFocused(const aFocused:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetPointerFocused:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetPointerFocused(const aPointerFocused:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetLeft:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetLeft(const aLeft:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetTop:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -339,7 +360,6 @@ type TpvGUIObject=class;
        function GetAbsolutePosition:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function GetRecursiveVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function GetWindow:TpvGUIWindow;
-      protected
        procedure SetCanvas(const aCanvas:TpvCanvas); virtual;
        function GetTheme:TpvGUITheme; virtual;
        procedure SetTheme(const aTheme:TpvGUITheme); virtual;
@@ -378,11 +398,12 @@ type TpvGUIObject=class;
        property Position:TpvVector2Property read fPositionProperty;
        property Size:TpvVector2Property read fSizeProperty;
        property FixedSize:TpvVector2Property read fFixedSizeProperty;
-       property Visible:boolean read fVisible write fVisible;
+       property WidgetFlags:TpvGUIWidgetFlags read fWidgetFlags write fWidgetFlags;
+       property Enabled:boolean read GetEnabled write SetEnabled;
+       property Visible:boolean read GetVisible write SetVisible;
        property RecursiveVisible:boolean read GetRecursiveVisible;
-       property Enabled:boolean read fEnabled write fEnabled;
-       property Focused:boolean read fFocused write fFocused;
-       property PointerFocused:boolean read fPointerFocused write fPointerFocused;
+       property Focused:boolean read GetFocused write SetFocused;
+       property PointerFocused:boolean read GetPointerFocused write SetPointerFocused;
        property Left:TpvFloat read GetLeft write SetLeft;
        property Top:TpvFloat read GetTop write SetTop;
        property Width:TpvFloat read GetWidth write SetWidth;
@@ -467,33 +488,44 @@ type TpvGUIObject=class;
        pvgwmaSizeE
       );
 
-     PpvGUIWindowResizableDirection=^TpvGUIWindowResizableDirection;
-     TpvGUIWindowResizableDirection=
+     PpvGUIWindowFlag=^TpvGUIWindowFlag;
+     TpvGUIWindowFlag=
       (
-       pvgwrdNW,
-       pvgwrdNE,
-       pvgwrdSW,
-       pvgwrdSE,
-       pvgwrdN,
-       pvgwrdS,
-       pvgwrdW,
-       pvgwrdE
+       pvgwfModal,
+       pvgwfMovable,
+       pvgwfResizableNW,
+       pvgwfResizableNE,
+       pvgwfResizableSW,
+       pvgwfResizableSE,
+       pvgwfResizableN,
+       pvgwfResizableS,
+       pvgwfResizableW,
+       pvgwfResizableE
       );
 
-     PpvGUIWindowResizableDirections=^TpvGUIWindowResizableDirections;
-     TpvGUIWindowResizableDirections=set of TpvGUIWindowResizableDirection;
+     PpvGUIWindowFlags=^TpvGUIWindowFlags;
+     TpvGUIWindowFlags=set of TpvGUIWindowFlag;
 
      TpvGUIWindow=class(TpvGUIWidget)
       public
-       const AllResizableDirections=[pvgwrdNW,pvgwrdNE,pvgwrdSW,pvgwrdSE,pvgwrdN,pvgwrdS,pvgwrdW,pvgwrdE];
+       const DefaultFlags=[pvgwfMovable,
+                           pvgwfResizableNW,
+                           pvgwfResizableNE,
+                           pvgwfResizableSW,
+                           pvgwfResizableSE,
+                           pvgwfResizableN,
+                           pvgwfResizableS,
+                           pvgwfResizableW,
+                           pvgwfResizableE];
       private
+      protected
        fTitle:TpvUTF8String;
        fMouseAction:TpvGUIWindowMouseAction;
-       fModal:boolean;
-       fResizableDirections:TpvGUIWindowResizableDirections;
+       fWindowFlags:TpvGUIWindowFlags;
        fButtonPanel:TpvGUIWidget;
+       function GetModal:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetModal(const aModal:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetButtonPanel:TpvGUIWidget;
-      protected
        function GetPreferredSize:TpvVector2; override;
        procedure RefreshRelativePlacement; virtual;
       public
@@ -511,8 +543,8 @@ type TpvGUIObject=class;
        procedure Draw; override;
       published
        property Title:TpvUTF8String read fTitle write fTitle;
-       property Modal:boolean read fModal write fModal;
-       property ResizableDirections:TpvGUIWindowResizableDirections read fResizableDirections write fResizableDirections;
+       property WindowFlags:TpvGUIWindowFlags read fWindowFlags write fWindowFlags;
+       property Modal:boolean read GetModal write SetModal;
        property ButtonPanel:TpvGUIWidget read GetButtonPanel;
      end;
 
@@ -1471,13 +1503,7 @@ begin
 
  fFixedSizeProperty:=TpvVector2Property.Create(@fFixedSize);
 
- fVisible:=true;
-
- fEnabled:=true;
-
- fFocused:=false;
-
- fPointerFocused:=false;
+ fWidgetFlags:=TpvGUIWidget.DefaultFlags;
 
  fHint:='';
 
@@ -1546,6 +1572,62 @@ begin
    ChildWidget:=Child as TpvGUIWidget;
    ChildWidget.SetTheme(aTheme);
   end;
+ end;
+end;
+
+function TpvGUIWidget.GetEnabled:boolean;
+begin
+ result:=pvgwfEnabled in fWidgetFlags;
+end;
+
+procedure TpvGUIWidget.SetEnabled(const aEnabled:boolean);
+begin
+ if aEnabled then begin
+  Include(fWidgetFlags,pvgwfEnabled);
+ end else begin
+  Exclude(fWidgetFlags,pvgwfEnabled);
+ end;
+end;
+
+function TpvGUIWidget.GetVisible:boolean;
+begin
+ result:=pvgwfVisible in fWidgetFlags;
+end;
+
+procedure TpvGUIWidget.SetVisible(const aVisible:boolean);
+begin
+ if aVisible then begin
+  Include(fWidgetFlags,pvgwfVisible);
+ end else begin
+  Exclude(fWidgetFlags,pvgwfVisible);
+ end;
+end;
+
+function TpvGUIWidget.GetFocused:boolean;
+begin
+ result:=pvgwfFocused in fWidgetFlags;
+end;
+
+procedure TpvGUIWidget.SetFocused(const aFocused:boolean);
+begin
+ if aFocused then begin
+  Include(fWidgetFlags,pvgwfFocused);
+ end else begin
+  Exclude(fWidgetFlags,pvgwfFocused);
+ end;
+end;
+
+function TpvGUIWidget.GetPointerFocused:boolean;
+begin
+ result:=pvgwfPointerFocused in fWidgetFlags;
+end;
+
+procedure TpvGUIWidget.SetPointerFocused(const aPointerFocused:boolean);
+begin
+ if aPointerFocused then begin
+  Include(fWidgetFlags,pvgwfPointerFocused);
+ end else begin
+  Exclude(fWidgetFlags,pvgwfPointerFocused);
  end;
 end;
 
@@ -1765,25 +1847,25 @@ end;
 
 function TpvGUIWidget.Enter:boolean;
 begin
- fFocused:=true;
+ Include(fWidgetFlags,pvgwfFocused);
  result:=false;
 end;
 
 function TpvGUIWidget.Leave:boolean;
 begin
- fFocused:=false;
+ Exclude(fWidgetFlags,pvgwfFocused);
  result:=false;
 end;
 
 function TpvGUIWidget.PointerEnter:boolean;
 begin
- fPointerFocused:=true;
+ Include(fWidgetFlags,pvgwfPointerFocused);
  result:=false;
 end;
 
 function TpvGUIWidget.PointerLeave:boolean;
 begin
- fPointerFocused:=false;
+ Exclude(fWidgetFlags,pvgwfPointerFocused);
  result:=false;
 end;
 
@@ -1837,7 +1919,7 @@ begin
  end;
  if (aPointerEvent.PointerEventType=POINTEREVENT_DOWN) and
     (aPointerEvent.Button=BUTTON_LEFT) and not
-    fFocused then begin
+    (pvgwfFocused in fWidgetFlags) then begin
   RequestFocus;
  end;
  result:=false;
@@ -2267,7 +2349,7 @@ begin
     Current:=fCurrentFocusPath.Items[Index];
     if (Current<>self) and (Current is TpvGUIWindow) then begin
      CurrentWindow:=Current as TpvGUIWindow;
-     if CurrentWindow.Modal and not CurrentWindow.Contains(aPointerEvent.Position-CurrentWindow.AbsolutePosition) then begin
+     if (pvgwfModal in CurrentWindow.fWindowFlags) and not CurrentWindow.Contains(aPointerEvent.Position-CurrentWindow.AbsolutePosition) then begin
       exit;
      end;
     end;
@@ -2454,9 +2536,7 @@ begin
  inherited Create(aParent);
  fTitle:='Window';
  fMouseAction:=pvgwmaNone;
- fFocused:=false;
- fModal:=false;
- fResizableDirections:=TpvGUIWindow.AllResizableDirections;
+ fWindowFlags:=TpvGUIWindow.DefaultFlags;
  fButtonPanel:=nil;
 end;
 
@@ -2482,6 +2562,20 @@ procedure TpvGUIWindow.DisposeWindow;
 begin
  if assigned(fInstance) then begin
   fInstance.DisposeWindow(self);
+ end;
+end;
+
+function TpvGUIWindow.GetModal:boolean;
+begin
+ result:=pvgwfModal in fWindowFlags;
+end;
+
+procedure TpvGUIWindow.SetModal(const aModal:boolean);
+begin
+ if aModal then begin
+  Include(fWindowFlags,pvgwfModal);
+ end else begin
+  Exclude(fWindowFlags,pvgwfModal);
  end;
 end;
 
@@ -2565,47 +2659,48 @@ begin
    POINTEREVENT_DOWN:begin
     fMouseAction:=pvgwmaNone;
     fCursor:=pvgcArrow;
-    if (pvgwrdNW in fResizableDirections) and
+    if (pvgwfResizableNW in fWindowFlags) and
        (aPointerEvent.Position.x<Theme.fWindowResizeGripSize) and
        (aPointerEvent.Position.y<Theme.fWindowResizeGripSize) then begin
      fMouseAction:=pvgwmaSizeNW;
      fCursor:=pvgcNWSE;
-    end else if (pvgwrdNE in fResizableDirections) and
+    end else if (pvgwfResizableNE in fWindowFlags) and
                 (aPointerEvent.Position.x>(fSize.x-Theme.fWindowResizeGripSize)) and
                 (aPointerEvent.Position.y<Theme.fWindowResizeGripSize) then begin
      fMouseAction:=pvgwmaSizeNE;
      fCursor:=pvgcNESW;
-    end else if (pvgwrdSW in fResizableDirections) and
+    end else if (pvgwfResizableSW in fWindowFlags) and
                 (aPointerEvent.Position.x<Theme.fWindowResizeGripSize) and
                 (aPointerEvent.Position.y>(fSize.y-Theme.fWindowResizeGripSize)) then begin
      fMouseAction:=pvgwmaSizeSW;
      fCursor:=pvgcNESW;
-    end else if (pvgwrdSE in fResizableDirections) and
+    end else if (pvgwfResizableSE in fWindowFlags) and
                 (aPointerEvent.Position.x>(fSize.x-Theme.fWindowResizeGripSize)) and
                 (aPointerEvent.Position.y>(fSize.y-Theme.fWindowResizeGripSize)) then begin
      fMouseAction:=pvgwmaSizeSE;
      fCursor:=pvgcNWSE;
-    end else if (pvgwrdN in fResizableDirections) and
+    end else if (pvgwfResizableN in fWindowFlags) and
                 (aPointerEvent.Position.y<Theme.fWindowResizeGripSize) then begin
      fMouseAction:=pvgwmaSizeN;
      fCursor:=pvgcNS;
-    end else if (pvgwrdS in fResizableDirections) and
+    end else if (pvgwfResizableS in fWindowFlags) and
                 (aPointerEvent.Position.y>(fSize.y-Theme.fWindowResizeGripSize)) then begin
      fMouseAction:=pvgwmaSizeS;
      fCursor:=pvgcNS;
-    end else if (pvgwrdW in fResizableDirections) and
+    end else if (pvgwfResizableW in fWindowFlags) and
                 (aPointerEvent.Position.x<Theme.fWindowResizeGripSize) then begin
      fMouseAction:=pvgwmaSizeW;
      fCursor:=pvgcEW;
-    end else if (pvgwrdE in fResizableDirections) and
+    end else if (pvgwfResizableE in fWindowFlags) and
                 (aPointerEvent.Position.x>(fSize.x-Theme.fWindowResizeGripSize)) then begin
      fMouseAction:=pvgwmaSizeE;
      fCursor:=pvgcEW;
-    end else if aPointerEvent.Position.y<Theme.fWindowHeaderHeight then begin
+    end else if (pvgwfMovable in fWindowFlags) and
+                (aPointerEvent.Position.y<Theme.fWindowHeaderHeight) then begin
      fMouseAction:=pvgwmaMove;
      fCursor:=pvgcMove;
     end;
-    if not fFocused then begin
+    if not (pvgwfFocused in fWidgetFlags) then begin
      RequestFocus;
     end;
    end;
@@ -2616,32 +2711,32 @@ begin
    POINTEREVENT_MOTION:begin
     if fMouseAction=pvgwmaNone then begin
      fCursor:=pvgcArrow;
-     if (pvgwrdNW in fResizableDirections) and
+     if (pvgwfResizableNW in fWindowFlags) and
         (aPointerEvent.Position.x<Theme.fWindowResizeGripSize) and
         (aPointerEvent.Position.y<Theme.fWindowResizeGripSize) then begin
       fCursor:=pvgcNWSE;
-     end else if (pvgwrdNE in fResizableDirections) and
+     end else if (pvgwfResizableNE in fWindowFlags) and
                  (aPointerEvent.Position.x>(fSize.x-Theme.fWindowResizeGripSize)) and
                  (aPointerEvent.Position.y<Theme.fWindowResizeGripSize) then begin
       fCursor:=pvgcNESW;
-     end else if (pvgwrdSW in fResizableDirections) and
+     end else if (pvgwfResizableSW in fWindowFlags) and
                  (aPointerEvent.Position.x<Theme.fWindowResizeGripSize) and
                  (aPointerEvent.Position.y>(fSize.y-Theme.fWindowResizeGripSize)) then begin
       fCursor:=pvgcNESW;
-     end else if (pvgwrdSE in fResizableDirections) and
+     end else if (pvgwfResizableSE in fWindowFlags) and
                  (aPointerEvent.Position.x>(fSize.x-Theme.fWindowResizeGripSize)) and
                  (aPointerEvent.Position.y>(fSize.y-Theme.fWindowResizeGripSize)) then begin
       fCursor:=pvgcNWSE;
-     end else if (pvgwrdN in fResizableDirections) and
+     end else if (pvgwfResizableN in fWindowFlags) and
                  (aPointerEvent.Position.y<Theme.fWindowResizeGripSize) then begin
       fCursor:=pvgcNS;
-     end else if (pvgwrdS in fResizableDirections) and
+     end else if (pvgwfResizableS in fWindowFlags) and
                  (aPointerEvent.Position.y>(fSize.y-Theme.fWindowResizeGripSize)) then begin
       fCursor:=pvgcNS;
-     end else if (pvgwrdW in fResizableDirections) and
+     end else if (pvgwfResizableW in fWindowFlags) and
                  (aPointerEvent.Position.x<Theme.fWindowResizeGripSize) then begin
       fCursor:=pvgcEW;
-     end else if (pvgwrdE in fResizableDirections) and
+     end else if (pvgwfResizableE in fWindowFlags) and
                  (aPointerEvent.Position.x>(fSize.x-Theme.fWindowResizeGripSize)) then begin
       fCursor:=pvgcEW;
      end;
@@ -2741,7 +2836,7 @@ begin
    fCanvas.ClipRect:=LastClipRect;
   end;
 
-  if fFocused then begin
+  if pvgwfFocused in fWidgetFlags then begin
    fCanvas.DrawNinePatchSprite(Theme.fSpriteFocusedWindowFill,
                                Theme.fSpriteFocusedWindowFillNinePatch,
                                TpvVector2.Null,
@@ -2777,15 +2872,15 @@ begin
    LastModelMatrix:=fCanvas.ModelMatrix;
    try
     fCanvas.Font:=Theme.fSansFont;
-    fCanvas.FontSize:=IfThen(fFocused,Theme.fFocusedWindowHeaderFontSize,Theme.fUnfocusedWindowHeaderFontSize);
+    fCanvas.FontSize:=IfThen(pvgwfFocused in fWidgetFlags,Theme.fFocusedWindowHeaderFontSize,Theme.fUnfocusedWindowHeaderFontSize);
     fCanvas.TextHorizontalAlignment:=pvcthaCenter;
     fCanvas.TextVerticalAlignment:=pvctvaMiddle;
     NewModelMatrix:=TpvMatrix4x4.CreateTranslation(fSize.x*0.5,
                                                    Theme.fSpriteUnfocusedWindowHeader.Height*0.5)*
                     LastModelMatrix;
-    if (fFocused and Theme.fFocusedWindowHeaderFontShadow) or
-       ((not fFocused) and Theme.fUnfocusedWindowHeaderFontShadow) then begin
-     if fFocused then begin
+    if ((pvgwfFocused in fWidgetFlags) and Theme.fFocusedWindowHeaderFontShadow) or
+       ((not (pvgwfFocused in fWidgetFlags)) and Theme.fUnfocusedWindowHeaderFontShadow) then begin
+     if pvgwfFocused in fWidgetFlags then begin
       fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(Theme.fFocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
       fCanvas.Color:=Theme.fFocusedWindowHeaderFontShadowColor;
      end else begin
@@ -2795,7 +2890,7 @@ begin
      fCanvas.DrawText(fTitle);
     end;
     fCanvas.ModelMatrix:=NewModelMatrix;
-    if fFocused then begin
+    if pvgwfFocused in fWidgetFlags then begin
      fCanvas.Color:=Theme.fFocusedWindowHeaderFontColor;
     end else begin
      fCanvas.Color:=Theme.fUnfocusedWindowHeaderFontColor;
