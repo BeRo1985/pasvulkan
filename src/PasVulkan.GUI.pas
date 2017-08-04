@@ -200,6 +200,7 @@ type TpvGUIObject=class;
        fSpriteFocusedWindowShadowNinePatch:TpvSpriteNinePatch;
        fSpriteMouseCursorArrow:TpvSprite;
        fSpriteMouseCursorBeam:TpvSprite;
+       fSpriteMouseCursorBusy:TpvSprite;
        fWindowHeaderHeight:TpvFloat;
        fWindowGripPaddingRight:TpvFloat;
        fWindowGripPaddingBottom:TpvFloat;
@@ -228,6 +229,7 @@ type TpvGUIObject=class;
        property SpriteFocusedWindowShadowNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowShadowNinePatch write fSpriteFocusedWindowShadowNinePatch;
        property SpriteMouseCursorArrow:TpvSprite read fSpriteMouseCursorArrow write fSpriteMouseCursorArrow;
        property SpriteMouseCursorBeam:TpvSprite read fSpriteMouseCursorBeam write fSpriteMouseCursorBeam;
+       property SpriteMouseCursorBusy:TpvSprite read fSpriteMouseCursorBusy write fSpriteMouseCursorBusy;
       published
        property FontSize:TpvFloat read fFontSize write fFontSize;
        property UnfocusedWindowHeaderFontSize:TpvFloat read fUnfocusedWindowHeaderFontSize write fUnfocusedWindowHeaderFontSize;
@@ -391,6 +393,7 @@ type TpvGUIObject=class;
        fUpdateBufferIndex:TpvInt32;
        fDrawBufferIndex:TpvInt32;
        fDeltaTime:TpvDouble;
+       fTime:TpvDouble;
        fLastFocusPath:TpvGUIObjectList;
        fCurrentFocusPath:TpvGUIObjectList;
        fDragActive:boolean;
@@ -825,7 +828,7 @@ procedure TpvGUITheme.Setup;
       inc(Index);
      end;
     end;
-    aSprite:=fMipmappedSpriteAtlas.LoadRawSprite('',@ImageData[0],aWidth,aHeight,false);
+    aSprite:=fMipmappedSpriteAtlas.LoadRawSprite('',@ImageData[0],aWidth,aHeight,true);
     aSprite.OffsetX:=aOffsetX*aScale;
     aSprite.OffsetY:=aOffsetY*aScale;
     aSprite.ScaleX:=aDrawScale;
@@ -1236,6 +1239,22 @@ begin
                          'L 268.03125,30.5 L 268.5238,30.190641 L 268.96875,30.5 L 270.96875,30.5 C 271.26255,30.5 271.5,30.262552 271.5,29.96875 L 271.5,29.03125 '+
                          'C 271.5,28.737447 271.26256,28.5 270.96875,28.5 L 269.5,28.5 L 269.5,17.5 L 270.96875,17.5 C 271.26255,17.5 271.5,17.262553 271.5,16.96875 '+
                          'L 271.5,16.03125 C 271.5,15.737447 271.26256,15.5 270.96875,15.5 L 268.96875,15.5 L 268.5238,15.941942 L 268.03125,15.5 L 266.03125,15.5 z'
+                        );
+
+ CreateMouseCursorSprite(fSpriteMouseCursorBusy,
+                         64,64,
+                         0.5,
+                         0.125,
+                         0.0,0.0,
+                         296.999*0.5,296.999*0.5,
+                         2.0,
+                         8.0,8.0,
+                         'M250.923,296.999c5.627,0,10.19-4.563,10.19-10.19c0-5.628-4.563-10.19-10.19-10.19h-17.46l-0.001-31.302'+
+                         'c0-31.667-17.378-60.775-48.934-81.964c-3.926-2.636-6.364-8.327-6.364-14.852s2.438-12.217,6.366-14.854'+
+                         'c31.554-21.188,48.932-50.295,48.934-81.963V20.381h17.459c5.627,0,10.19-4.563,10.19-10.19S256.55,0,250.923,0H46.076'+
+                         'c-5.627,0-10.19,4.563-10.19,10.19s4.563,10.19,10.19,10.19h17.459v31.303c0,31.668,17.378,60.775,48.935,81.964'+
+                         'c3.925,2.636,6.363,8.326,6.363,14.853c0,6.526-2.438,12.217-6.364,14.854c-31.556,21.188-48.934,50.295-48.934,81.963v31.302'+
+                         'H46.076c-5.627,0-10.19,4.563-10.19,10.19c0,5.628,4.563,10.19,10.19,10.19H250.923z'
                         );
 
  fMipmappedSpriteAtlas.MipMaps:=true;
@@ -1808,6 +1827,8 @@ begin
 
  fDeltaTime:=0.0;
 
+ fTime:=0.0;
+
  fLastFocusPath:=TpvGUIObjectList.Create(false);
 
  fCurrentFocusPath:=TpvGUIObjectList.Create(false);
@@ -2168,7 +2189,13 @@ begin
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorBeam,fMousePosition);
   end;
   pvgcBusy:begin
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+   fCanvas.Push;
+   fCanvas.ModelMatrix:=((TpvMatrix4x4.CreateTranslation(-fMousePosition)*
+                          TpvMatrix4x4.CreateRotateZ(fTime*TwoPI))*
+                         TpvMatrix4x4.CreateTranslation(fMousePosition))*
+                         fCanvas.ModelMatrix;
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorBusy,fMousePosition);
+   fCanvas.Pop;
   end;
   pvgcCrosshair:begin
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
@@ -2204,6 +2231,7 @@ begin
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
   end;
  end;
+ fTime:=fTime+fDeltaTime;
 end;
 
 procedure TpvGUIInstance.Draw;
