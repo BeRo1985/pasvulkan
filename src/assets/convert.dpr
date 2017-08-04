@@ -154,6 +154,20 @@ begin
   ConvertFile('shaders/canvas/canvas_frag_texture.spv','CanvasFragmentTextureSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_atlas_texture.spv','CanvasFragmentAtlasTextureSPIRV');
   ConvertFile('shaders/canvas/canvas_vert.spv','CanvasVertexSPIRV');
+  ConvertFile('guicursors/arrow.png','GUICursorArrow');
+  ConvertFile('guicursors/beam.png','GUICursorBeam');
+  ConvertFile('guicursors/busy.png','GUICursorBusy');
+  ConvertFile('guicursors/cross.png','GUICursorCross');
+  ConvertFile('guicursors/ew.png','GUICursorEW');
+  ConvertFile('guicursors/help.png','GUICursorHelp');
+  ConvertFile('guicursors/link.png','GUICursorLink');
+  ConvertFile('guicursors/move.png','GUICursorMove');
+  ConvertFile('guicursors/nesw.png','GUICursorNESW');
+  ConvertFile('guicursors/ns.png','GUICursorNS');
+  ConvertFile('guicursors/nwse.png','GUICursorNWSE');
+  ConvertFile('guicursors/pen.png','GUICursorPen');
+  ConvertFile('guicursors/unavailable.png','GUICursorUnavailable');
+  ConvertFile('guicursors/up.png','GUICursorUp');
   StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanAssets.inc');
  finally
   StringList.Free;
