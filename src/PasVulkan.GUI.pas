@@ -2387,12 +2387,10 @@ begin
    if assigned(fDragWidget) then begin
     LocalPointerEvent:=aPointerEvent;
     LocalPointerEvent.PointerEventType:=POINTEREVENT_DRAG;
-    result:=PointerEvent(LocalPointerEvent);
-    if result then begin
-     exit;
-    end;
+    result:=inherited PointerEvent(LocalPointerEvent);
+   end else begin
+    result:=inherited PointerEvent(aPointerEvent);
    end;
-   result:=inherited PointerEvent(aPointerEvent);
    DoUpdateCursor:=true;
   end;
   POINTEREVENT_DRAG:begin
