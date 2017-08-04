@@ -201,6 +201,17 @@ type TpvGUIObject=class;
        fSpriteMouseCursorArrow:TpvSprite;
        fSpriteMouseCursorBeam:TpvSprite;
        fSpriteMouseCursorBusy:TpvSprite;
+       fSpriteMouseCursorCross:TpvSprite;
+       fSpriteMouseCursorEW:TpvSprite;
+       fSpriteMouseCursorHelp:TpvSprite;
+       fSpriteMouseCursorLink:TpvSprite;
+       fSpriteMouseCursorMove:TpvSprite;
+       fSpriteMouseCursorNESW:TpvSprite;
+       fSpriteMouseCursorNS:TpvSprite;
+       fSpriteMouseCursorNWSE:TpvSprite;
+       fSpriteMouseCursorPen:TpvSprite;
+       fSpriteMouseCursorUnavailable:TpvSprite;
+       fSpriteMouseCursorUp:TpvSprite;
        fWindowHeaderHeight:TpvFloat;
        fWindowGripPaddingRight:TpvFloat;
        fWindowGripPaddingBottom:TpvFloat;
@@ -230,6 +241,17 @@ type TpvGUIObject=class;
        property SpriteMouseCursorArrow:TpvSprite read fSpriteMouseCursorArrow write fSpriteMouseCursorArrow;
        property SpriteMouseCursorBeam:TpvSprite read fSpriteMouseCursorBeam write fSpriteMouseCursorBeam;
        property SpriteMouseCursorBusy:TpvSprite read fSpriteMouseCursorBusy write fSpriteMouseCursorBusy;
+       property SpriteMouseCursorCross:TpvSprite read fSpriteMouseCursorCross write fSpriteMouseCursorCross;
+       property SpriteMouseCursorEW:TpvSprite read fSpriteMouseCursorEW write fSpriteMouseCursorEW;
+       property SpriteMouseCursorHelp:TpvSprite read fSpriteMouseCursorHelp write fSpriteMouseCursorHelp;
+       property SpriteMouseCursorLink:TpvSprite read fSpriteMouseCursorLink write fSpriteMouseCursorLink;
+       property SpriteMouseCursorMove:TpvSprite read fSpriteMouseCursorMove write fSpriteMouseCursorMove;
+       property SpriteMouseCursorNESW:TpvSprite read fSpriteMouseCursorNESW write fSpriteMouseCursorNESW;
+       property SpriteMouseCursorNS:TpvSprite read fSpriteMouseCursorNS write fSpriteMouseCursorNS;
+       property SpriteMouseCursorNWSE:TpvSprite read fSpriteMouseCursorNWSE write fSpriteMouseCursorNWSE;
+       property SpriteMouseCursorPen:TpvSprite read fSpriteMouseCursorPen write fSpriteMouseCursorPen;
+       property SpriteMouseCursorUnavailable:TpvSprite read fSpriteMouseCursorUnavailable write fSpriteMouseCursorUnavailable;
+       property SpriteMouseCursorUp:TpvSprite read fSpriteMouseCursorUp write fSpriteMouseCursorUp;
       published
        property FontSize:TpvFloat read fFontSize write fFontSize;
        property UnfocusedWindowHeaderFontSize:TpvFloat read fUnfocusedWindowHeaderFontSize write fUnfocusedWindowHeaderFontSize;
@@ -490,7 +512,8 @@ type TpvGUIObject=class;
 implementation
 
 uses PasVulkan.Assets,
-     PasVulkan.VectorPath;
+     PasVulkan.VectorPath,
+     PasVulkan.Image.PNG;
 
 procedure TpvGUIObjectList.Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification);
 begin
@@ -770,6 +793,47 @@ procedure TpvGUITheme.Setup;
   result:=(Min(Max(d.x,d.y),0.0)+sqrt(sqr(Max(0.0,d.x))+sqr(Max(0.0,d.y))))-r;
  end;
  procedure CreateMouseCursorSprite(out aSprite:TpvSprite;
+                                   const aDrawScale:TpvFloat;
+                                   const aOffsetX:TpvFloat;
+                                   const aOffsetY:TpvFloat;
+                                   const aShadow:TpvFloat;
+                                   const aShadowX:TpvFloat;
+                                   const aShadowY:TpvFloat;
+                                   const aDataPointer:TpvPointer;
+                                   const aDataSize:TpvUInt32); overload;
+ var Index,ImageWidth,ImageHeight:TpvInt32;
+     ImageData:TpvPointer;
+     p8:PpvUInt8;
+     p16:PpvUInt16;
+     PNGPixelFormat:TpvPNGPixelFormat;
+ begin
+  ImageData:=nil;
+  try
+   PNGPixelFormat:=pvppfUnknown;
+   if LoadPNGImage(aDataPointer,aDataSize,ImageData,ImageWidth,ImageHeight,false,PNGPixelFormat) then begin
+    if PNGPixelFormat=pvppfR16G16B16A16 then begin
+     // Convert to R8G8B8A8 in-placve
+     p8:=ImageData;
+     p16:=ImageData;
+     for Index:=1 to ImageWidth*ImageHeight*4 do begin
+      p8^:=p16^ shr 8;
+      inc(p8);
+      inc(p16);
+     end;
+    end;
+    aSprite:=fMipmappedSpriteAtlas.LoadRawSprite('',ImageData,ImageWidth,ImageHeight,true);
+    aSprite.OffsetX:=aOffsetX;
+    aSprite.OffsetY:=aOffsetY;
+    aSprite.ScaleX:=aDrawScale;
+    aSprite.ScaleY:=aDrawScale;
+   end;
+  finally
+   if assigned(ImageData) then begin
+    FreeMem(ImageData);
+   end;
+  end;
+ end;
+ procedure CreateMouseCursorSprite(out aSprite:TpvSprite;
                                    const aWidth:TpvInt32;
                                    const aHeight:TpvInt32;
                                    const aDrawScale:TpvFloat;
@@ -781,7 +845,7 @@ procedure TpvGUITheme.Setup;
                                    const aShadow:TpvFloat;
                                    const aShadowX:TpvFloat;
                                    const aShadowY:TpvFloat;
-                                   const aSVGPath:TpvRawByteString);
+                                   const aSVGPath:TpvRawByteString); overload;
  var x,y,Index,InsideOutsideSign:TpvInt32;
      ImageData:array of TpvSpriteTextureTexel;
      Color:TpvSpriteTextureTexel;
@@ -1206,54 +1270,116 @@ begin
  end;
 
  CreateMouseCursorSprite(fSpriteMouseCursorArrow,
-                         128,128,
                          0.25,
-                         4.0,
-                         -4.0,-4.0,
-                         4.0,4.0,
-                         2.0,
-                         2.0,2.0,
-                         'm 0.0,0.0 '+
-                         '0,16.4402329 '+
-                         '3.712311,-3.623922 '+
-                         '2.12132,4.331029 '+
-                         'l 2.452777,-1.336875 '+
-                         'l -2.099224,-4.496756 '+
-                         '4.684582,0 '+
-                         'L 0.0,0.0'+
-                         'Z'
-                        );
+                         0.0,0.0,
+                         0.0,
+                         0.0,0.0,
+                         @GUICursorArrowData,
+                         GUICursorArrowDataSize);
 
-  CreateMouseCursorSprite(fSpriteMouseCursorBeam,
-                         128,128,
+ CreateMouseCursorSprite(fSpriteMouseCursorBeam,
                          0.25,
-                         4.0,
-                         266.03125-4.0,15.5-4.0,
-                         4.0+3.0,4.0+8.0,
-                         2.0,
-                         2.0,2.0,
-                         'M 266.03125,15.5 C 265.73745,15.5 265.5,15.737448 265.5,16.03125 L 265.5,16.96875 C 265.5,17.262553 265.73744,17.5 266.03125,17.5 '+
-                         'L 267.5,17.5 L 267.5,28.5 L 266.03125,28.5 C 265.73745,28.5 265.5,28.737447 265.5,29.03125 L 265.5,29.96875 C 265.5,30.262553 265.73744,30.499999 266.03125,30.5 '+
-                         'L 268.03125,30.5 L 268.5238,30.190641 L 268.96875,30.5 L 270.96875,30.5 C 271.26255,30.5 271.5,30.262552 271.5,29.96875 L 271.5,29.03125 '+
-                         'C 271.5,28.737447 271.26256,28.5 270.96875,28.5 L 269.5,28.5 L 269.5,17.5 L 270.96875,17.5 C 271.26255,17.5 271.5,17.262553 271.5,16.96875 '+
-                         'L 271.5,16.03125 C 271.5,15.737447 271.26256,15.5 270.96875,15.5 L 268.96875,15.5 L 268.5238,15.941942 L 268.03125,15.5 L 266.03125,15.5 z'
-                        );
+                         63.0,62.0,
+                         0.0,
+                         0.0,0.0,
+                         @GUICursorBeamData,
+                         GUICursorBeamDataSize);
 
  CreateMouseCursorSprite(fSpriteMouseCursorBusy,
-                         64,64,
                          0.5,
-                         0.125,
+                         32.0,32.0,
+                         0.0,
                          0.0,0.0,
-                         296.999*0.5,296.999*0.5,
-                         2.0,
-                         8.0,8.0,
-                         'M250.923,296.999c5.627,0,10.19-4.563,10.19-10.19c0-5.628-4.563-10.19-10.19-10.19h-17.46l-0.001-31.302'+
-                         'c0-31.667-17.378-60.775-48.934-81.964c-3.926-2.636-6.364-8.327-6.364-14.852s2.438-12.217,6.366-14.854'+
-                         'c31.554-21.188,48.932-50.295,48.934-81.963V20.381h17.459c5.627,0,10.19-4.563,10.19-10.19S256.55,0,250.923,0H46.076'+
-                         'c-5.627,0-10.19,4.563-10.19,10.19s4.563,10.19,10.19,10.19h17.459v31.303c0,31.668,17.378,60.775,48.935,81.964'+
-                         'c3.925,2.636,6.363,8.326,6.363,14.853c0,6.526-2.438,12.217-6.364,14.854c-31.556,21.188-48.934,50.295-48.934,81.963v31.302'+
-                         'H46.076c-5.627,0-10.19,4.563-10.19,10.19c0,5.628,4.563,10.19,10.19,10.19H250.923z'
-                        );
+                         @GUICursorBusyData,
+                         GUICursorBusyDataSize);
+
+ CreateMouseCursorSprite(fSpriteMouseCursorCross,
+                         0.25,
+                         63.0,63.0,
+                         0.0,
+                         0.0,0.0,
+                         @GUICursorCrossData,
+                         GUICursorCrossDataSize);
+
+ CreateMouseCursorSprite(fSpriteMouseCursorEW,
+                         0.25,
+                         47.0,19.0,
+                         0.0,
+                         0.0,0.0,
+                         @GUICursorEWData,
+                         GUICursorEWDataSize);
+
+ CreateMouseCursorSprite(fSpriteMouseCursorHelp,
+                         0.25,
+                         0.0,0.0,
+                         0.0,
+                         0.0,0.0,
+                         @GUICursorHelpData,
+                         GUICursorHelpDataSize);
+
+ CreateMouseCursorSprite(fSpriteMouseCursorLink,
+                         0.25,
+                         25.0,0.0,
+                         0.0,
+                         0.0,0.0,
+                         @GUICursorLinkData,
+                         GUICursorLinkDataSize);
+
+ CreateMouseCursorSprite(fSpriteMouseCursorMove,
+                         0.25,
+                         45.0,45.0,
+                         0.0,
+                         0.0,0.0,
+                         @GUICursorMoveData,
+                         GUICursorMoveDataSize);
+
+ CreateMouseCursorSprite(fSpriteMouseCursorNESW,
+                         0.25,
+                         32.0,32.0,
+                         0.0,
+                         0.0,0.0,
+                         @GUICursorNESWData,
+                         GUICursorNESWDataSize);
+
+ CreateMouseCursorSprite(fSpriteMouseCursorNS,
+                         0.25,
+                         19.0,45.0,
+                         0.0,
+                         0.0,0.0,
+                         @GUICursorNSData,
+                         GUICursorNSDataSize);
+
+ CreateMouseCursorSprite(fSpriteMouseCursorNWSE,
+                         0.25,
+                         32.0,32.0,
+                         0.0,
+                         0.0,0.0,
+                         @GUICursorNWSEData,
+                         GUICursorNWSEDataSize);
+
+ CreateMouseCursorSprite(fSpriteMouseCursorPen,
+                         0.25,
+                         0.0,0.0,
+                         0.0,
+                         0.0,0.0,
+                         @GUICursorPenData,
+                         GUICursorPenDataSize);
+
+ CreateMouseCursorSprite(fSpriteMouseCursorUnavailable,
+                         0.25,
+                         31.0,31.0,
+                         0.0,
+                         0.0,0.0,
+                         @GUICursorUnavailableData,
+                         GUICursorUnavailableDataSize);
+
+ CreateMouseCursorSprite(fSpriteMouseCursorUp,
+                         0.25,
+                         19.0,0.0,
+                         0.0,
+                         0.0,0.0,
+                         @GUICursorUpData,
+                         GUICursorUpDataSize);
 
  fMipmappedSpriteAtlas.MipMaps:=true;
  fMipmappedSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
@@ -1307,7 +1433,7 @@ begin
 
  fTheme:=nil;
 
- fCursor:=pvgcArrow;
+ fCursor:=pvgcBusy;
 
  fPosition:=TpvVector2.Create(0.0,0.0);
 
@@ -2196,37 +2322,37 @@ begin
    fCanvas.Pop;
   end;
   pvgcCrosshair:begin
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorCross,fMousePosition);
   end;
   pvgcEW:begin
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorEW,fMousePosition);
   end;
   pvgcHelp:begin
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorHelp,fMousePosition);
   end;
   pvgcLink:begin
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorLink,fMousePosition);
   end;
   pvgcMove:begin
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorMove,fMousePosition);
   end;
   pvgcNESW:begin
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorNESW,fMousePosition);
   end;
   pvgcNS:begin
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorNS,fMousePosition);
   end;
   pvgcNWSE:begin
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorNWSE,fMousePosition);
   end;
   pvgcPen:begin
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorPen,fMousePosition);
   end;
   pvgcUnavailable:begin
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorUnavailable,fMousePosition);
   end;
   pvgcUp:begin
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorUp,fMousePosition);
   end;
  end;
  fTime:=fTime+fDeltaTime;
