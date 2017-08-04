@@ -199,6 +199,7 @@ type TpvGUIObject=class;
        fSpriteFocusedWindowShadow:TpvSprite;
        fSpriteFocusedWindowShadowNinePatch:TpvSpriteNinePatch;
        fSpriteMouseCursorArrow:TpvSprite;
+       fSpriteMouseCursorBeam:TpvSprite;
        fWindowHeaderHeight:TpvFloat;
        fWindowGripPaddingRight:TpvFloat;
        fWindowGripPaddingBottom:TpvFloat;
@@ -226,6 +227,7 @@ type TpvGUIObject=class;
        property SpriteUnfocusedWindowShadowNinePatch:TpvSpriteNinePatch read fSpriteUnfocusedWindowShadowNinePatch write fSpriteUnfocusedWindowShadowNinePatch;
        property SpriteFocusedWindowShadowNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowShadowNinePatch write fSpriteFocusedWindowShadowNinePatch;
        property SpriteMouseCursorArrow:TpvSprite read fSpriteMouseCursorArrow write fSpriteMouseCursorArrow;
+       property SpriteMouseCursorBeam:TpvSprite read fSpriteMouseCursorBeam write fSpriteMouseCursorBeam;
       published
        property FontSize:TpvFloat read fFontSize write fFontSize;
        property UnfocusedWindowHeaderFontSize:TpvFloat read fUnfocusedWindowHeaderFontSize write fUnfocusedWindowHeaderFontSize;
@@ -251,10 +253,25 @@ type TpvGUIObject=class;
        property WindowShadowHeight:TpvFloat read fWindowShadowHeight write fWindowShadowHeight;
      end;
 
-     TpvGUICursor=class(TpvGUIObject)
-      protected
-      public
-     end;
+     PpvGUICursor=^TpvGUICursor;
+     TpvGUICursor=
+      (
+       pvgcNone,
+       pvgcArrow,
+       pvgcBeam,
+       pvgcBusy,
+       pvgcCrosshair,
+       pvgcEW,
+       pvgcHelp,
+       pvgcLink,
+       pvgcMove,
+       pvgcNESW,
+       pvgcNS,
+       pvgcNWSE,
+       pvgcPen,
+       pvgcUnavailable,
+       pvgcUp
+      );
 
      TpvGUIWidgetEnumerator=class(TEnumerator<TpvGUIWidget>)
       private
@@ -809,8 +826,8 @@ procedure TpvGUITheme.Setup;
      end;
     end;
     aSprite:=fMipmappedSpriteAtlas.LoadRawSprite('',@ImageData[0],aWidth,aHeight,false);
-    aSprite.OffsetX:=aOffsetX;
-    aSprite.OffsetY:=aOffsetY;
+    aSprite.OffsetX:=aOffsetX*aScale;
+    aSprite.OffsetY:=aOffsetY*aScale;
     aSprite.ScaleX:=aDrawScale;
     aSprite.ScaleY:=aDrawScale;
    finally
@@ -1190,7 +1207,7 @@ begin
                          0.25,
                          4.0,
                          -4.0,-4.0,
-                         16.0,16.0,
+                         4.0,4.0,
                          2.0,
                          2.0,2.0,
                          'm 0.0,0.0 '+
@@ -1204,6 +1221,21 @@ begin
                          '4.684582,0 '+
                          'L 0.0,0.0'+
                          'Z'
+                        );
+
+ CreateMouseCursorSprite(fSpriteMouseCursorBeam,
+                         128,128,
+                         0.25,
+                         4.0,
+                         266.03125-4.0,15.5-4.0,
+                         4.0+3.0,4.0+8.0,
+                         2.0,
+                         2.0,2.0,
+                         'M 266.03125,15.5 C 265.73745,15.5 265.5,15.737448 265.5,16.03125 L 265.5,16.96875 C 265.5,17.262553 265.73744,17.5 266.03125,17.5 '+
+                         'L 267.5,17.5 L 267.5,28.5 L 266.03125,28.5 C 265.73745,28.5 265.5,28.737447 265.5,29.03125 L 265.5,29.96875 C 265.5,30.262553 265.73744,30.499999 266.03125,30.5 '+
+                         'L 268.03125,30.5 L 268.5238,30.190641 L 268.96875,30.5 L 270.96875,30.5 C 271.26255,30.5 271.5,30.262552 271.5,29.96875 L 271.5,29.03125 '+
+                         'C 271.5,28.737447 271.26256,28.5 270.96875,28.5 L 269.5,28.5 L 269.5,17.5 L 270.96875,17.5 C 271.26255,17.5 271.5,17.262553 271.5,16.96875 '+
+                         'L 271.5,16.03125 C 271.5,15.737447 271.26256,15.5 270.96875,15.5 L 268.96875,15.5 L 268.5238,15.941942 L 268.03125,15.5 L 266.03125,15.5 z'
                         );
 
  fMipmappedSpriteAtlas.MipMaps:=true;
@@ -1258,7 +1290,7 @@ begin
 
  fTheme:=nil;
 
- fCursor:=nil;
+ fCursor:=pvgcArrow;
 
  fPosition:=TpvVector2.Create(0.0,0.0);
 
@@ -2128,7 +2160,50 @@ procedure TpvGUIInstance.Update;
 begin
  ClearReferenceCountedObjectList;
  inherited Update;
- fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+ case fCursor of
+  pvgcArrow:begin
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+  end;
+  pvgcBeam:begin
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorBeam,fMousePosition);
+  end;
+  pvgcBusy:begin
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+  end;
+  pvgcCrosshair:begin
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+  end;
+  pvgcEW:begin
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+  end;
+  pvgcHelp:begin
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+  end;
+  pvgcLink:begin
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+  end;
+  pvgcMove:begin
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+  end;
+  pvgcNESW:begin
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+  end;
+  pvgcNS:begin
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+  end;
+  pvgcNWSE:begin
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+  end;
+  pvgcPen:begin
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+  end;
+  pvgcUnavailable:begin
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+  end;
+  pvgcUp:begin
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+  end;
+ end;
 end;
 
 procedure TpvGUIInstance.Draw;

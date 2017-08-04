@@ -444,6 +444,17 @@ begin
 
  fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
 
+{$if true}
+ fVulkanCanvas.Color:=TpvVector4.Create(IfThen(BUTTON_LEFT in fLastMouseButtons,1.0,0.0),
+                                        IfThen(BUTTON_RIGHT in fLastMouseButtons,1.0,0.0),
+                                        1.0,
+                                        1.0);
+ fVulkanCanvas.DrawFilledCircle(fLastMousePosition,16.0);
+ fVulkanCanvas.Color:=TpvVector4.Create(0.5,1.0,0.5,1.0);
+ fVulkanCanvas.DrawFilledCircle(fLastMousePosition,4.0);
+ fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+{$ifend}
+
  fGUIInstance.DrawWidgetBounds:=false;
  fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateSwapChainImageIndex;
  fGUIInstance.DeltaTime:=aDeltaTime;
