@@ -199,6 +199,10 @@ function LoadJPEGImage(DataPointer:TpvPointer;DataSize:TpvUInt32;var ImageData:T
 
 function SaveJPEGImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;out aDestData:TpvPointer;out aDestDataSize:TpvUInt32;const aQuality:TpvInt32=99;const aFast:boolean=false;const aChromaSubsampling:TpvInt32=-1):boolean;
 
+function SaveJPEGImageAsStream(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aStream:TStream;const aQuality:TpvInt32=99;const aFast:boolean=false;const aChromaSubsampling:TpvInt32=-1):boolean;
+
+function SaveJPEGImageAsFile(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aFileName:string;const aQuality:TpvInt32=99;const aFast:boolean=false;const aChromaSubsampling:TpvInt32=-1):boolean;
+
 implementation
 
 {$ifndef HasSAR}
@@ -5384,6 +5388,31 @@ begin
   result:=aDestDataSize>0;
  finally
   JPEGEncoder.Free;
+ end;
+end;
+
+function SaveJPEGImageAsStream(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aStream:TStream;const aQuality:TpvInt32=99;const aFast:boolean=false;const aChromaSubsampling:TpvInt32=-1):boolean;
+var Data:TpvPointer;
+    DataSize:TpvUInt32;
+begin
+ result:=SaveJPEGImage(aImageData,aImageWidth,aImageHeight,Data,DataSize,aQuality,aFast,aChromaSubsampling);
+ if assigned(Data) then begin
+  try
+   aStream.Write(Data^,DataSize);
+  finally
+   FreeMem(Data);
+  end;
+ end;
+end;
+
+function SaveJPEGImageAsFile(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aFileName:string;const aQuality:TpvInt32=99;const aFast:boolean=false;const aChromaSubsampling:TpvInt32=-1):boolean;
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(aFileName,fmCreate);
+ try
+  result:=SaveJPEGImageAsStream(aImageData,aImageWidth,aImageHeight,FileStream,aQuality,aFast,aChromaSubsampling);
+ finally
+  FileStream.Free;
  end;
 end;
 

@@ -123,8 +123,7 @@ begin
 end;
 
 procedure TScreenExampleGUI.Show;
-var Stream:TStream;
-    Index:TpvInt32;
+var Index:TpvInt32;
 begin
  inherited Show;
 
@@ -431,13 +430,10 @@ end;
 procedure TScreenExampleGUI.Update(const aDeltaTime:TpvDouble);
 const BoolToInt:array[boolean] of TpvInt32=(0,1);
       Options:array[0..0] of string=('Back');
-var Index,SubIndex:TpvInt32;
+var Index:TpvInt32;
     cy:TpvFloat;
-    rbs:TpvUTF8String;
     s:string;
     IsSelected:boolean;
-    SrcRect:TpvRect;
-    DstRect:TpvRect;
 begin
  inherited Update(aDeltaTime);
 

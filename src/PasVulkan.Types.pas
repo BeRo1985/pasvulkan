@@ -339,7 +339,7 @@ type PPpvInt8=^PpvInt8;
         );
      end;
 
-     TpvObject=class(TPersistent);
+     TpvObject=class(TObject);
 
      TpvReferenceCountedObject=class;
 
@@ -351,7 +351,7 @@ type PPpvInt8=^PpvInt8;
       private
       protected
        fReferenceCounter:TpvInt32;
-       function QueryInterface({$ifdef FPC_HAS_CONSTREF}constref{$else}const{$endif}pGUID:TGUID;out pObject):TpvInt32; virtual; {$ifdef Windows}stdcall{$else}cdecl{$endif};
+       function QueryInterface({$ifdef FPC_HAS_CONSTREF}constref{$else}const{$endif}pGUID:TGUID;out pObject):{$ifdef fpc}TpvInt32{$else}HResult{$endif}; virtual; {$ifdef Windows}stdcall{$else}cdecl{$endif};
        function _AddRef:TpvInt32; virtual; {$ifdef Windows}stdcall{$else}cdecl{$endif};
        function _Release:TpvInt32; virtual; {$ifdef Windows}stdcall{$else}cdecl{$endif};
       public
@@ -1022,7 +1022,7 @@ begin
  end;
 end;
 
-function TpvReferenceCountedObject.QueryInterface({$ifdef FPC_HAS_CONSTREF}constref{$else}const{$endif}pGUID:TGUID;out pObject):TpvInt32;
+function TpvReferenceCountedObject.QueryInterface({$ifdef FPC_HAS_CONSTREF}constref{$else}const{$endif}pGUID:TGUID;out pObject):{$ifdef fpc}TpvInt32{$else}HResult{$endif};
 begin
  if GetInterface(pGUID,pObject) then begin
   result:=S_OK;
