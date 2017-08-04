@@ -1113,6 +1113,7 @@ procedure TpvGUITheme.Setup;
    ImageData:=nil;
   end;
  end;
+const CursorScale=0.18275;
 var Stream:TStream;
     TrueTypeFont:TpvTrueTypeFont;
 begin
@@ -1270,7 +1271,7 @@ begin
  end;
 
  CreateMouseCursorSprite(fSpriteMouseCursorArrow,
-                         0.25,
+                         CursorScale,
                          0.0,0.0,
                          0.0,
                          0.0,0.0,
@@ -1278,7 +1279,7 @@ begin
                          GUICursorArrowDataSize);
 
  CreateMouseCursorSprite(fSpriteMouseCursorBeam,
-                         0.25,
+                         CursorScale,
                          63.0,62.0,
                          0.0,
                          0.0,0.0,
@@ -1294,7 +1295,7 @@ begin
                          GUICursorBusyDataSize);
 
  CreateMouseCursorSprite(fSpriteMouseCursorCross,
-                         0.25,
+                         CursorScale,
                          63.0,63.0,
                          0.0,
                          0.0,0.0,
@@ -1302,15 +1303,15 @@ begin
                          GUICursorCrossDataSize);
 
  CreateMouseCursorSprite(fSpriteMouseCursorEW,
-                         0.25,
-                         47.0,19.0,
+                         CursorScale,
+                         53.0,21.0,
                          0.0,
                          0.0,0.0,
                          @GUICursorEWData,
                          GUICursorEWDataSize);
 
  CreateMouseCursorSprite(fSpriteMouseCursorHelp,
-                         0.25,
+                         CursorScale,
                          0.0,0.0,
                          0.0,
                          0.0,0.0,
@@ -1318,47 +1319,47 @@ begin
                          GUICursorHelpDataSize);
 
  CreateMouseCursorSprite(fSpriteMouseCursorLink,
-                         0.25,
-                         25.0,0.0,
+                         CursorScale,
+                         40.0,0.0,
                          0.0,
                          0.0,0.0,
                          @GUICursorLinkData,
                          GUICursorLinkDataSize);
 
  CreateMouseCursorSprite(fSpriteMouseCursorMove,
-                         0.25,
-                         45.0,45.0,
+                         CursorScale,
+                         54.0,53.0,
                          0.0,
                          0.0,0.0,
                          @GUICursorMoveData,
                          GUICursorMoveDataSize);
 
  CreateMouseCursorSprite(fSpriteMouseCursorNESW,
-                         0.25,
-                         32.0,32.0,
+                         CursorScale,
+                         43.0,30.0,
                          0.0,
                          0.0,0.0,
                          @GUICursorNESWData,
                          GUICursorNESWDataSize);
 
  CreateMouseCursorSprite(fSpriteMouseCursorNS,
-                         0.25,
-                         19.0,45.0,
+                         CursorScale,
+                         21.0,51.0,
                          0.0,
                          0.0,0.0,
                          @GUICursorNSData,
                          GUICursorNSDataSize);
 
  CreateMouseCursorSprite(fSpriteMouseCursorNWSE,
-                         0.25,
-                         32.0,32.0,
+                         CursorScale,
+                         40.0,40.0,
                          0.0,
                          0.0,0.0,
                          @GUICursorNWSEData,
                          GUICursorNWSEDataSize);
 
  CreateMouseCursorSprite(fSpriteMouseCursorPen,
-                         0.25,
+                         CursorScale,
                          0.0,0.0,
                          0.0,
                          0.0,0.0,
@@ -1366,16 +1367,16 @@ begin
                          GUICursorPenDataSize);
 
  CreateMouseCursorSprite(fSpriteMouseCursorUnavailable,
-                         0.25,
-                         31.0,31.0,
+                         CursorScale,
+                         48.0,48.0,
                          0.0,
                          0.0,0.0,
                          @GUICursorUnavailableData,
                          GUICursorUnavailableDataSize);
 
  CreateMouseCursorSprite(fSpriteMouseCursorUp,
-                         0.25,
-                         19.0,0.0,
+                         CursorScale,
+                         21.0,0.0,
                          0.0,
                          0.0,0.0,
                          @GUICursorUpData,
