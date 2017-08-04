@@ -2648,6 +2648,7 @@ begin
 end;
 
 function TpvGUIWindow.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var ClampedRelativePosition,MinimumSize,NewSize,NewPosition:TpvVector2;
 begin
  result:=inherited PointerEvent(aPointerEvent);
  if not result then begin
@@ -2739,61 +2740,118 @@ begin
     end;
    end;
    POINTEREVENT_DRAG:begin
+    MinimumSize:=TpvVector2.Create(Theme.fWindowGripWidth+Theme.fWindowResizeGripSize+32.0,
+                                   Max(Theme.fWindowHeaderHeight+Theme.fWindowGripHeight+Theme.fWindowResizeGripSize,32.0));
     case fMouseAction of
      pvgwmaMove:begin
-      fPosition:=fPosition+aPointerEvent.RelativePosition;
+      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+       ClampedRelativePosition:=Clamp(aPointerEvent.RelativePosition,-fPosition,(fParent as TpvGUIWidget).fSize-(fPosition+fSize));
+      end else begin
+       ClampedRelativePosition:=Maximum(aPointerEvent.RelativePosition,-fPosition);
+      end;
+      fPosition:=fPosition+ClampedRelativePosition;
       fCursor:=pvgcMove;
      end;
      pvgwmaSizeNW:begin
-      fPosition:=fPosition+aPointerEvent.RelativePosition;
-      fSize:=fSize-aPointerEvent.RelativePosition;
+      NewSize:=Maximum(fSize-aPointerEvent.RelativePosition,MinimumSize);
+      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+       ClampedRelativePosition:=Clamp(fPosition+(fSize-NewSize),TpvVector2.Null,(fParent as TpvGUIWidget).fSize-NewSize)-fPosition;
+      end else begin
+       ClampedRelativePosition:=Maximum(fPosition+(fSize-NewSize),TpvVector2.Null)-fPosition;
+      end;
+      fPosition:=fPosition+ClampedRelativePosition;
+      fSize:=fSize-ClampedRelativePosition;
       fCursor:=pvgcNWSE;
      end;
      pvgwmaSizeNE:begin
-      fPosition.y:=fPosition.y+aPointerEvent.RelativePosition.y;
-      fSize.x:=fSize.x+aPointerEvent.RelativePosition.x;
-      fSize.y:=fSize.y-aPointerEvent.RelativePosition.y;
+      NewSize:=Maximum(fSize+TpvVector2.Create(aPointerEvent.RelativePosition.x,
+                                               -aPointerEvent.RelativePosition.y),
+                       MinimumSize);
+      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+       ClampedRelativePosition.x:=Minimum(NewSize.x,(fParent as TpvGUIWidget).fSize.x-fPosition.x)-fSize.x;
+       ClampedRelativePosition.y:=Clamp(fPosition.y+(fSize.y-NewSize.y),0.0,(fParent as TpvGUIWidget).fSize.y-NewSize.y)-fPosition.y;
+      end else begin
+       ClampedRelativePosition.x:=NewSize.x-fSize.x;
+       ClampedRelativePosition.y:=Maximum(fPosition.y+(fSize.y-NewSize.y),0.0)-fPosition.y;
+      end;
+      fPosition.y:=fPosition.y+ClampedRelativePosition.y;
+      fSize.x:=fSize.x+ClampedRelativePosition.x;
+      fSize.y:=fSize.y-ClampedRelativePosition.y;
       fCursor:=pvgcNESW;
      end;
      pvgwmaSizeSW:begin
-      fPosition.x:=fPosition.x+aPointerEvent.RelativePosition.x;
-      fSize.x:=fSize.x-aPointerEvent.RelativePosition.x;
-      fSize.y:=fSize.y+aPointerEvent.RelativePosition.y;
+      NewSize:=Maximum(fSize+TpvVector2.Create(-aPointerEvent.RelativePosition.x,
+                                               aPointerEvent.RelativePosition.y),
+                       MinimumSize);
+      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+       ClampedRelativePosition.x:=Clamp(fPosition.x+(fSize.x-NewSize.x),0.0,(fParent as TpvGUIWidget).fSize.x-NewSize.x)-fPosition.x;
+       ClampedRelativePosition.y:=Minimum(NewSize.y,(fParent as TpvGUIWidget).fSize.y-fPosition.y)-fSize.y;
+      end else begin
+       ClampedRelativePosition.x:=Maximum(fPosition.x+(fSize.x-NewSize.x),0.0)-fPosition.x;
+       ClampedRelativePosition.y:=NewSize.y-fSize.y;
+      end;
+      fPosition.x:=fPosition.x+ClampedRelativePosition.x;
+      fSize.x:=fSize.x-ClampedRelativePosition.x;
+      fSize.y:=fSize.y+ClampedRelativePosition.y;
       fCursor:=pvgcNESW;
      end;
      pvgwmaSizeSE:begin
-      fSize:=fSize+aPointerEvent.RelativePosition;
+      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+       fSize:=Clamp(fSize+aPointerEvent.RelativePosition,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
+      end else begin
+       fSize:=Maximum(fSize+aPointerEvent.RelativePosition,MinimumSize);
+      end;
       fCursor:=pvgcNWSE;
      end;
      pvgwmaSizeN:begin
-      fPosition.y:=fPosition.y+aPointerEvent.RelativePosition.y;
-      fSize.y:=fSize.y-aPointerEvent.RelativePosition.y;
+      NewSize.y:=Maximum(fSize.y-aPointerEvent.RelativePosition.y,MinimumSize.y);
+      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+       ClampedRelativePosition.y:=Clamp(fPosition.y+(fSize.y-NewSize.y),0.0,(fParent as TpvGUIWidget).fSize.y-NewSize.y)-fPosition.y;
+      end else begin
+       ClampedRelativePosition.y:=Maximum(fPosition.y+(fSize.y-NewSize.y),0.0)-fPosition.y;
+      end;
+      fPosition.y:=fPosition.y+ClampedRelativePosition.y;
+      fSize.y:=fSize.y-ClampedRelativePosition.y;
       fCursor:=pvgcNS;
      end;
      pvgwmaSizeS:begin
-      fSize.y:=fSize.y+aPointerEvent.RelativePosition.y;
+      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+       fSize.y:=Clamp(fSize.y+aPointerEvent.RelativePosition.y,MinimumSize.y,(fParent as TpvGUIWidget).fSize.y-fPosition.y);
+      end else begin
+       fSize.y:=Maximum(fSize.y+aPointerEvent.RelativePosition.y,MinimumSize.y);
+      end;
       fCursor:=pvgcNS;
      end;
      pvgwmaSizeW:begin
-      fPosition.x:=fPosition.x+aPointerEvent.RelativePosition.x;
-      fSize.x:=fSize.x-aPointerEvent.RelativePosition.x;
+      NewSize.x:=Maximum(fSize.x-aPointerEvent.RelativePosition.x,MinimumSize.x);
+      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+       ClampedRelativePosition.x:=Clamp(fPosition.x+(fSize.x-NewSize.x),0.0,(fParent as TpvGUIWidget).fSize.x-NewSize.x)-fPosition.x;
+      end else begin
+       ClampedRelativePosition.x:=Maximum(fPosition.x+(fSize.x-NewSize.x),0.0)-fPosition.x;
+      end;
+      fPosition.x:=fPosition.x+ClampedRelativePosition.x;
+      fSize.x:=fSize.x-ClampedRelativePosition.x;
       fCursor:=pvgcEW;
      end;
      pvgwmaSizeE:begin
-      fSize.x:=fSize.x+aPointerEvent.RelativePosition.x;
+      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+       fSize.x:=Clamp(fSize.x+aPointerEvent.RelativePosition.x,MinimumSize.x,(fParent as TpvGUIWidget).fSize.x-fPosition.x);
+      end else begin
+       fSize.x:=Maximum(fSize.x+aPointerEvent.RelativePosition.x,MinimumSize.x);
+      end;
       fCursor:=pvgcEW;
      end;
      else begin
       fCursor:=pvgcArrow;
      end;
     end;
-    fSize:=Maximum(fSize,TpvVector2.Create(Theme.fWindowGripWidth+Theme.fWindowResizeGripSize+32.0,
-                                           Max(Theme.fWindowHeaderHeight+Theme.fWindowGripHeight+Theme.fWindowResizeGripSize,32.0)));
-{    if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+    if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+     fSize:=Clamp(fSize,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
      fPosition:=Clamp(fPosition,TpvVector2.Null,(fParent as TpvGUIWidget).fSize-fSize);
     end else begin
+     fSize:=Maximum(fSize,MinimumSize);
      fPosition:=Maximum(fPosition,TpvVector2.Null);
-    end;}
+    end;
    end;
   end;
  end;
