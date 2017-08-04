@@ -160,6 +160,7 @@ begin
 
  fGUILabel:=TpvGUILabel.Create(fGUIWindow);
  fGUILabel.Caption:='An example label';
+ fGUILabel.Cursor:=pvgcLink;
 
  fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIOtherWindow.Left:=550;
@@ -169,9 +170,11 @@ begin
 
  fGUILabel:=TpvGUILabel.Create(fGUIOtherWindow);
  fGUILabel.Caption:='An other example label';
+ fGUILabel.Cursor:=pvgcBusy;
 
  fGUILabel:=TpvGUILabel.Create(fGUIOtherWindow);
  fGUILabel.Caption:='An another example label';
+ fGUILabel.Cursor:=pvgcUnavailable;
 
 end;
 

@@ -2306,14 +2306,22 @@ procedure TpvGUIInstance.Update;
 begin
  ClearReferenceCountedObjectList;
  inherited Update;
+ fCanvas.BlendingMode:=pvcbmAlphaBlending;
  case fCursor of
   pvgcArrow:begin
+   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
   end;
   pvgcBeam:begin
+   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorBeam,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorBeam,fMousePosition);
   end;
   pvgcBusy:begin
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.Push;
    fCanvas.ModelMatrix:=((TpvMatrix4x4.CreateTranslation(-fMousePosition)*
                           TpvMatrix4x4.CreateRotateZ(frac(fTime)*TwoPI))*
@@ -2323,36 +2331,69 @@ begin
    fCanvas.Pop;
   end;
   pvgcCross:begin
+   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorCross,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorCross,fMousePosition);
   end;
   pvgcEW:begin
+   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorEW,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorEW,fMousePosition);
   end;
   pvgcHelp:begin
+   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorHelp,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorHelp,fMousePosition);
   end;
   pvgcLink:begin
+   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorLink,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorLink,fMousePosition);
   end;
   pvgcMove:begin
+   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorMove,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorMove,fMousePosition);
   end;
   pvgcNESW:begin
+   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorNESW,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorNESW,fMousePosition);
   end;
   pvgcNS:begin
+   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorNS,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorNS,fMousePosition);
   end;
   pvgcNWSE:begin
+   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorNWSE,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorNWSE,fMousePosition);
   end;
   pvgcPen:begin
+   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorPen,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorPen,fMousePosition);
   end;
   pvgcUnavailable:begin
+   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorUnavailable,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorUnavailable,fMousePosition);
   end;
   pvgcUp:begin
+   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorUp,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorUp,fMousePosition);
   end;
  end;
@@ -2479,12 +2520,15 @@ begin
   case aPointerEvent.PointerEventType of
    POINTEREVENT_DOWN:begin
     fMouseAction:=pvgwmaNone;
+    fCursor:=pvgcArrow;
     if (aPointerEvent.Position.y-fPosition.y)<Theme.fWindowHeaderHeight then begin
      fMouseAction:=pvgwmaMove;
+     fCursor:=pvgcMove;
     end else if ((aPointerEvent.Position.x-fPosition.x)>(fSize.x-(Theme.fWindowGripWidth+Theme.fWindowGripPaddingRight))) and
                 ((aPointerEvent.Position.y-fPosition.y)>(fSize.y-(Theme.fWindowGripHeight+Theme.fWindowGripPaddingBottom))) and
                 fResizable then begin
      fMouseAction:=pvgwmaSize;
+     fCursor:=pvgcNWSE;
     end;
     if not fFocused then begin
      RequestFocus;
@@ -2492,6 +2536,7 @@ begin
    end;
    POINTEREVENT_UP:begin
     fMouseAction:=pvgwmaNone;
+    fCursor:=pvgcArrow;
    end;
    POINTEREVENT_MOTION:begin
    end;
