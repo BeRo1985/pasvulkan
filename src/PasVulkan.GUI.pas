@@ -2321,6 +2321,14 @@ begin
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorBeam,fMousePosition);
   end;
   pvgcBusy:begin
+   fCanvas.Push;
+   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.ModelMatrix:=((TpvMatrix4x4.CreateTranslation(-(fMousePosition+TpvVector2.Create(2.0,2.0)))*
+                          TpvMatrix4x4.CreateRotateZ(frac(fTime)*TwoPI))*
+                         TpvMatrix4x4.CreateTranslation(fMousePosition+TpvVector2.Create(2.0,2.0)))*
+                         fCanvas.ModelMatrix;
+   fCanvas.DrawSprite(Theme.fSpriteMouseCursorBusy,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Pop;
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.Push;
    fCanvas.ModelMatrix:=((TpvMatrix4x4.CreateTranslation(-fMousePosition)*
@@ -2539,8 +2547,17 @@ begin
     fCursor:=pvgcArrow;
    end;
    POINTEREVENT_MOTION:begin
+    fCursor:=pvgcArrow;
+    if (aPointerEvent.Position.y-fPosition.y)<Theme.fWindowHeaderHeight then begin
+     fCursor:=pvgcMove;
+    end else if ((aPointerEvent.Position.x-fPosition.x)>(fSize.x-(Theme.fWindowGripWidth+Theme.fWindowGripPaddingRight))) and
+                ((aPointerEvent.Position.y-fPosition.y)>(fSize.y-(Theme.fWindowGripHeight+Theme.fWindowGripPaddingBottom))) and
+                fResizable then begin
+     fCursor:=pvgcNWSE;
+    end;
    end;
    POINTEREVENT_DRAG:begin
+    fCursor:=pvgcArrow;
     if (fMouseAction=pvgwmaMove) and (BUTTON_LEFT in aPointerEvent.Buttons) then begin
      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
       fPosition:=Clamp(fPosition+aPointerEvent.RelativePosition,
@@ -2550,11 +2567,13 @@ begin
       fPosition:=Maximum(fPosition+aPointerEvent.RelativePosition,
                          TpvVector2.Null);
      end;
+     fCursor:=pvgcMove;
     end;
     if (fMouseAction=pvgwmaSize) and (BUTTON_LEFT in aPointerEvent.Buttons) then begin
      fSize:=Maximum(TpvVector2.Create(Theme.fWindowGripWidth+Theme.fWindowGripPaddingRight+32.0,
                                       Max(Theme.fWindowHeaderHeight+Theme.fWindowGripHeight+Theme.fWindowGripPaddingBottom,32.0)),
                     fSize+aPointerEvent.RelativePosition);
+     fCursor:=pvgcNWSE;
     end;
    end;
   end;
