@@ -437,7 +437,6 @@ type TpvGUIObject=class;
        fTime:TpvDouble;
        fLastFocusPath:TpvGUIObjectList;
        fCurrentFocusPath:TpvGUIObjectList;
-       fDragActive:boolean;
        fDragWidget:TpvGUIWidget;
        fWindow:TpvGUIWindow;
        fMousePosition:TpvVector2;
@@ -2072,8 +2071,6 @@ begin
 
  fCurrentFocusPath:=TpvGUIObjectList.Create(false);
 
- fDragActive:=false;
-
  fDragWidget:=nil;
 
  fWindow:=nil;
@@ -2363,34 +2360,31 @@ begin
        if assigned(CurrentWidget) and (CurrentWidget<>self) then begin
         fDragWidget:=CurrentWidget;
         fDragWidget.IncRef;
-        fDragActive:=true;
        end else begin
-        fDragActive:=false;
+        TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
         UpdateFocus(nil);
        end;
       end;
       else begin
        TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
-       fDragActive:=false;
       end;
      end;
     end;
     POINTEREVENT_UP:begin
      CurrentWidget:=FindWidget(aPointerEvent.Position);
-     if fDragActive and assigned(fDragWidget) and (fDragWidget<>CurrentWidget) then begin
+     if assigned(fDragWidget) and (fDragWidget<>CurrentWidget) then begin
       LocalPointerEvent.PointerEventType:=POINTEREVENT_UP;
       LocalPointerEvent.Button:=BUTTON_LEFT;
       fDragWidget.PointerEvent(LocalPointerEvent);
      end;
      TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
-     fDragActive:=false;
     end;
    end;
    result:=inherited PointerEvent(aPointerEvent);
    DoUpdateCursor:=true;
   end;
   POINTEREVENT_MOTION:begin
-   if fDragActive then begin
+   if assigned(fDragWidget) then begin
     LocalPointerEvent:=aPointerEvent;
     LocalPointerEvent.PointerEventType:=POINTEREVENT_DRAG;
     result:=PointerEvent(LocalPointerEvent);
@@ -2406,11 +2400,15 @@ begin
   end;
  end;
  if DoUpdateCursor then begin
-  CurrentWidget:=FindWidget(aPointerEvent.Position);
-  if assigned(CurrentWidget) then begin
-   fVisibleCursor:=CurrentWidget.fCursor;
-  end else if not fDragActive then begin
-   fVisibleCursor:=fCursor;
+  if assigned(fDragWidget) then begin
+   fVisibleCursor:=fDragWidget.fCursor;
+  end else begin
+   CurrentWidget:=FindWidget(aPointerEvent.Position);
+   if assigned(CurrentWidget) then begin
+    fVisibleCursor:=CurrentWidget.fCursor;
+   end else begin
+    fVisibleCursor:=fCursor;
+   end;
   end;
  end;
 end;
