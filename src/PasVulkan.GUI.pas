@@ -214,8 +214,8 @@ type TpvGUIObject=class;
        fSpriteMouseCursorUp:TpvSprite;
        fWindowHeaderHeight:TpvFloat;
        fWindowResizeGripSize:TpvFloat;
-       fWindowGripWidth:TpvFloat;
-       fWindowGripHeight:TpvFloat;
+       fWindowMinimumWidth:TpvFloat;
+       fWindowMinimumHeight:TpvFloat;
        fWindowShadowWidth:TpvFloat;
        fWindowShadowHeight:TpvFloat;
       public
@@ -269,8 +269,8 @@ type TpvGUIObject=class;
        property SpriteFocusedWindowShadow:TpvSprite read fSpriteFocusedWindowShadow write fSpriteFocusedWindowShadow;
        property WindowHeaderHeight:TpvFloat read fWindowHeaderHeight write fWindowHeaderHeight;
        property WindowGripPaddingRight:TpvFloat read fWindowResizeGripSize write fWindowResizeGripSize;
-       property WindowGripWidth:TpvFloat read fWindowGripWidth write fWindowGripWidth;
-       property WindowGripHeight:TpvFloat read fWindowGripHeight write fWindowGripHeight;
+       property WindowMinimumWidth:TpvFloat read fWindowMinimumWidth write fWindowMinimumWidth;
+       property WindowMinimumHeight:TpvFloat read fWindowMinimumHeight write fWindowMinimumHeight;
        property WindowShadowWidth:TpvFloat read fWindowShadowWidth write fWindowShadowWidth;
        property WindowShadowHeight:TpvFloat read fWindowShadowHeight write fWindowShadowHeight;
      end;
@@ -1194,8 +1194,8 @@ begin
 
  fWindowResizeGripSize:=8;
 
- fWindowGripWidth:=16;
- fWindowGripHeight:=8;
+ fWindowMinimumWidth:=Max(fWindowHeaderHeight,fWindowResizeGripSize*2);
+ fWindowMinimumHeight:=Max(fWindowHeaderHeight,fWindowResizeGripSize*2);
 
  fWindowShadowWidth:=16;
  fWindowShadowHeight:=16;
@@ -2387,7 +2387,7 @@ begin
    if assigned(fDragWidget) then begin
     LocalPointerEvent:=aPointerEvent;
     LocalPointerEvent.PointerEventType:=POINTEREVENT_DRAG;
-    result:=inherited PointerEvent(LocalPointerEvent);
+    result:=fDragWidget.PointerEvent(LocalPointerEvent);
    end else begin
     result:=inherited PointerEvent(aPointerEvent);
    end;
@@ -2740,8 +2740,7 @@ begin
     end;
    end;
    POINTEREVENT_DRAG:begin
-    MinimumSize:=TpvVector2.Create(Theme.fWindowGripWidth+Theme.fWindowResizeGripSize+32.0,
-                                   Max(Theme.fWindowHeaderHeight+Theme.fWindowGripHeight+Theme.fWindowResizeGripSize,32.0));
+    MinimumSize:=TpvVector2.Create(Theme.fWindowMinimumWidth,Theme.fWindowMinimumHeight);
     case fMouseAction of
      pvgwmaMove:begin
       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
