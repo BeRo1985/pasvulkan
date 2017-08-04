@@ -491,6 +491,7 @@ type TpvGUIObject=class;
      TpvGUIWindowFlag=
       (
        pvgwfModal,
+       pvgwfHeader,
        pvgwfMovable,
        pvgwfResizableNW,
        pvgwfResizableNE,
@@ -507,7 +508,8 @@ type TpvGUIObject=class;
 
      TpvGUIWindow=class(TpvGUIWidget)
       public
-       const DefaultFlags=[pvgwfMovable,
+       const DefaultFlags=[pvgwfHeader,
+                           pvgwfMovable,
                            pvgwfResizableNW,
                            pvgwfResizableNE,
                            pvgwfResizableSW,
@@ -674,7 +676,7 @@ begin
  Size:=TpvVector2.Create(fMargin*2.0,fMargin*2.0);
  YOffset:=0;
  if (aWidget is TpvGUIWindow) and
-    (length((aWidget as TpvGUIWindow).fTitle)<>0) then begin
+    (pvgwfHeader in (aWidget as TpvGUIWindow).fWindowFlags) then begin
   case fOrientation of
    pvgloHorizontal:begin
     YOffset:=aWidget.Theme.WindowHeaderHeight;
@@ -757,7 +759,7 @@ begin
  Offset:=fMargin;
  YOffset:=0;
  if (aWidget is TpvGUIWindow) and
-    (length((aWidget as TpvGUIWindow).fTitle)<>0) then begin
+    (pvgwfHeader in (aWidget as TpvGUIWindow).fWindowFlags) then begin
   case fOrientation of
    pvgloHorizontal:begin
     YOffset:=aWidget.Theme.WindowHeaderHeight;
@@ -2921,7 +2923,7 @@ begin
    end;}
   end;
 
-  if length(fTitle)>0 then begin
+  if pvgwfHeader in fWindowFlags then begin
    LastModelMatrix:=fCanvas.ModelMatrix;
    try
     fCanvas.Font:=Theme.fSansFont;
