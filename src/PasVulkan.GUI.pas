@@ -213,8 +213,7 @@ type TpvGUIObject=class;
        fSpriteMouseCursorUnavailable:TpvSprite;
        fSpriteMouseCursorUp:TpvSprite;
        fWindowHeaderHeight:TpvFloat;
-       fWindowGripPaddingRight:TpvFloat;
-       fWindowGripPaddingBottom:TpvFloat;
+       fWindowResizeGripSize:TpvFloat;
        fWindowGripWidth:TpvFloat;
        fWindowGripHeight:TpvFloat;
        fWindowShadowWidth:TpvFloat;
@@ -269,8 +268,7 @@ type TpvGUIObject=class;
        property SpriteUnfocusedWindowShadow:TpvSprite read fSpriteUnfocusedWindowShadow write fSpriteUnfocusedWindowShadow;
        property SpriteFocusedWindowShadow:TpvSprite read fSpriteFocusedWindowShadow write fSpriteFocusedWindowShadow;
        property WindowHeaderHeight:TpvFloat read fWindowHeaderHeight write fWindowHeaderHeight;
-       property WindowGripPaddingRight:TpvFloat read fWindowGripPaddingRight write fWindowGripPaddingRight;
-       property WindowGripPaddingBottom:TpvFloat read fWindowGripPaddingBottom write fWindowGripPaddingBottom;
+       property WindowGripPaddingRight:TpvFloat read fWindowResizeGripSize write fWindowResizeGripSize;
        property WindowGripWidth:TpvFloat read fWindowGripWidth write fWindowGripWidth;
        property WindowGripHeight:TpvFloat read fWindowGripHeight write fWindowGripHeight;
        property WindowShadowWidth:TpvFloat read fWindowShadowWidth write fWindowShadowWidth;
@@ -422,6 +420,7 @@ type TpvGUIObject=class;
        fDragWidget:TpvGUIWidget;
        fWindow:TpvGUIWindow;
        fMousePosition:TpvVector2;
+       fVisibleCursor:TpvGUICursor;
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
        procedure SetUpdateBufferIndex(const aUpdateBufferIndex:TpvInt32);
        procedure SetDrawBufferIndex(const aDrawBufferIndex:TpvInt32);
@@ -458,15 +457,40 @@ type TpvGUIObject=class;
       (
        pvgwmaNone,
        pvgwmaMove,
-       pvgwmaSize
+       pvgwmaSizeNW,
+       pvgwmaSizeNE,
+       pvgwmaSizeSW,
+       pvgwmaSizeSE,
+       pvgwmaSizeN,
+       pvgwmaSizeS,
+       pvgwmaSizeW,
+       pvgwmaSizeE
       );
 
+     PpvGUIWindowResizableDirection=^TpvGUIWindowResizableDirection;
+     TpvGUIWindowResizableDirection=
+      (
+       pvgwrdNW,
+       pvgwrdNE,
+       pvgwrdSW,
+       pvgwrdSE,
+       pvgwrdN,
+       pvgwrdS,
+       pvgwrdW,
+       pvgwrdE
+      );
+
+     PpvGUIWindowResizableDirections=^TpvGUIWindowResizableDirections;
+     TpvGUIWindowResizableDirections=set of TpvGUIWindowResizableDirection;
+
      TpvGUIWindow=class(TpvGUIWidget)
+      public
+       const AllResizableDirections=[pvgwrdNW,pvgwrdNE,pvgwrdSW,pvgwrdSE,pvgwrdN,pvgwrdS,pvgwrdW,pvgwrdE];
       private
        fTitle:TpvUTF8String;
        fMouseAction:TpvGUIWindowMouseAction;
        fModal:boolean;
-       fResizable:boolean;
+       fResizableDirections:TpvGUIWindowResizableDirections;
        fButtonPanel:TpvGUIWidget;
        function GetButtonPanel:TpvGUIWidget;
       protected
@@ -488,7 +512,7 @@ type TpvGUIObject=class;
       published
        property Title:TpvUTF8String read fTitle write fTitle;
        property Modal:boolean read fModal write fModal;
-       property Resizable:boolean read fResizable write fResizable;
+       property ResizableDirections:TpvGUIWindowResizableDirections read fResizableDirections write fResizableDirections;
        property ButtonPanel:TpvGUIWidget read GetButtonPanel;
      end;
 
@@ -1137,8 +1161,7 @@ begin
 
  fWindowHeaderHeight:=32;
 
- fWindowGripPaddingRight:=4;
- fWindowGripPaddingBottom:=4;
+ fWindowResizeGripSize:=8;
 
  fWindowGripWidth:=16;
  fWindowGripHeight:=8;
@@ -1964,6 +1987,8 @@ begin
 
  fWindow:=nil;
 
+ fVisibleCursor:=pvgcArrow;
+
  SetCountBuffers(1);
 
 end;
@@ -2291,8 +2316,10 @@ begin
  end;
  if DoUpdateCursor then begin
   CurrentWidget:=FindWidget(aPointerEvent.Position);
-  if assigned(CurrentWidget) and (fCursor<>CurrentWidget.fCursor) then begin
-   fCursor:=CurrentWidget.fCursor;
+  if assigned(CurrentWidget) then begin
+   fVisibleCursor:=CurrentWidget.fCursor;
+  end else begin
+   fVisibleCursor:=fCursor;
   end;
  end;
 end;
@@ -2307,7 +2334,7 @@ begin
  ClearReferenceCountedObjectList;
  inherited Update;
  fCanvas.BlendingMode:=pvcbmAlphaBlending;
- case fCursor of
+ case fVisibleCursor of
   pvgcArrow:begin
    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition+TpvVector2.Create(2.0,2.0));
@@ -2420,7 +2447,7 @@ begin
  fMouseAction:=pvgwmaNone;
  fFocused:=false;
  fModal:=false;
- fResizable:=true;
+ fResizableDirections:=TpvGUIWindow.AllResizableDirections;
  fButtonPanel:=nil;
 end;
 
@@ -2529,14 +2556,45 @@ begin
    POINTEREVENT_DOWN:begin
     fMouseAction:=pvgwmaNone;
     fCursor:=pvgcArrow;
-    if (aPointerEvent.Position.y-fPosition.y)<Theme.fWindowHeaderHeight then begin
+    if (pvgwrdNW in fResizableDirections) and
+                ((aPointerEvent.Position.x-fPosition.x)<Theme.fWindowResizeGripSize) and
+                ((aPointerEvent.Position.y-fPosition.y)<Theme.fWindowResizeGripSize) then begin
+     fMouseAction:=pvgwmaSizeNW;
+     fCursor:=pvgcNWSE;
+    end else if (pvgwrdNE in fResizableDirections) and
+                ((aPointerEvent.Position.x-fPosition.x)>(fSize.x-Theme.fWindowResizeGripSize)) and
+                ((aPointerEvent.Position.y-fPosition.y)<Theme.fWindowResizeGripSize) then begin
+     fMouseAction:=pvgwmaSizeNE;
+     fCursor:=pvgcNESW;
+    end else if (pvgwrdSW in fResizableDirections) and
+                ((aPointerEvent.Position.x-fPosition.x)<Theme.fWindowResizeGripSize) and
+                ((aPointerEvent.Position.y-fPosition.y)>(fSize.y-Theme.fWindowResizeGripSize)) then begin
+     fMouseAction:=pvgwmaSizeSW;
+     fCursor:=pvgcNESW;
+    end else if (pvgwrdSE in fResizableDirections) and
+                ((aPointerEvent.Position.x-fPosition.x)>(fSize.x-Theme.fWindowResizeGripSize)) and
+                ((aPointerEvent.Position.y-fPosition.y)>(fSize.y-Theme.fWindowResizeGripSize)) then begin
+     fMouseAction:=pvgwmaSizeSE;
+     fCursor:=pvgcNWSE;
+    end else if (pvgwrdN in fResizableDirections) and
+                ((aPointerEvent.Position.y-fPosition.y)<Theme.fWindowResizeGripSize) then begin
+     fMouseAction:=pvgwmaSizeN;
+     fCursor:=pvgcNS;
+    end else if (pvgwrdS in fResizableDirections) and
+                ((aPointerEvent.Position.y-fPosition.y)>(fSize.y-Theme.fWindowResizeGripSize)) then begin
+     fMouseAction:=pvgwmaSizeS;
+     fCursor:=pvgcNS;
+    end else if (pvgwrdW in fResizableDirections) and
+                ((aPointerEvent.Position.x-fPosition.x)<Theme.fWindowResizeGripSize) then begin
+     fMouseAction:=pvgwmaSizeW;
+     fCursor:=pvgcEW;
+    end else if (pvgwrdE in fResizableDirections) and
+                ((aPointerEvent.Position.x-fPosition.x)>(fSize.x-Theme.fWindowResizeGripSize)) then begin
+     fMouseAction:=pvgwmaSizeE;
+     fCursor:=pvgcEW;
+    end else if (aPointerEvent.Position.y-fPosition.y)<Theme.fWindowHeaderHeight then begin
      fMouseAction:=pvgwmaMove;
      fCursor:=pvgcMove;
-    end else if ((aPointerEvent.Position.x-fPosition.x)>(fSize.x-(Theme.fWindowGripWidth+Theme.fWindowGripPaddingRight))) and
-                ((aPointerEvent.Position.y-fPosition.y)>(fSize.y-(Theme.fWindowGripHeight+Theme.fWindowGripPaddingBottom))) and
-                fResizable then begin
-     fMouseAction:=pvgwmaSize;
-     fCursor:=pvgcNWSE;
     end;
     if not fFocused then begin
      RequestFocus;
@@ -2548,32 +2606,91 @@ begin
    end;
    POINTEREVENT_MOTION:begin
     fCursor:=pvgcArrow;
-    if (aPointerEvent.Position.y-fPosition.y)<Theme.fWindowHeaderHeight then begin
-     fCursor:=pvgcMove;
-    end else if ((aPointerEvent.Position.x-fPosition.x)>(fSize.x-(Theme.fWindowGripWidth+Theme.fWindowGripPaddingRight))) and
-                ((aPointerEvent.Position.y-fPosition.y)>(fSize.y-(Theme.fWindowGripHeight+Theme.fWindowGripPaddingBottom))) and
-                fResizable then begin
+    if (pvgwrdNW in fResizableDirections) and
+                ((aPointerEvent.Position.x-fPosition.x)<Theme.fWindowResizeGripSize) and
+                ((aPointerEvent.Position.y-fPosition.y)<Theme.fWindowResizeGripSize) then begin
      fCursor:=pvgcNWSE;
+    end else if (pvgwrdNE in fResizableDirections) and
+                ((aPointerEvent.Position.x-fPosition.x)>(fSize.x-Theme.fWindowResizeGripSize)) and
+                ((aPointerEvent.Position.y-fPosition.y)<Theme.fWindowResizeGripSize) then begin
+     fCursor:=pvgcNESW;
+    end else if (pvgwrdSW in fResizableDirections) and
+                ((aPointerEvent.Position.x-fPosition.x)<Theme.fWindowResizeGripSize) and
+                ((aPointerEvent.Position.y-fPosition.y)>(fSize.y-Theme.fWindowResizeGripSize)) then begin
+     fCursor:=pvgcNESW;
+    end else if (pvgwrdSE in fResizableDirections) and
+                ((aPointerEvent.Position.x-fPosition.x)>(fSize.x-Theme.fWindowResizeGripSize)) and
+                ((aPointerEvent.Position.y-fPosition.y)>(fSize.y-Theme.fWindowResizeGripSize)) then begin
+     fCursor:=pvgcNWSE;
+    end else if (pvgwrdN in fResizableDirections) and
+                ((aPointerEvent.Position.y-fPosition.y)<Theme.fWindowResizeGripSize) then begin
+     fCursor:=pvgcNS;
+    end else if (pvgwrdS in fResizableDirections) and
+                ((aPointerEvent.Position.y-fPosition.y)>(fSize.y-Theme.fWindowResizeGripSize)) then begin
+     fCursor:=pvgcNS;
+    end else if (pvgwrdW in fResizableDirections) and
+                ((aPointerEvent.Position.x-fPosition.x)<Theme.fWindowResizeGripSize) then begin
+     fCursor:=pvgcEW;
+    end else if (pvgwrdE in fResizableDirections) and
+                ((aPointerEvent.Position.x-fPosition.x)>(fSize.x-Theme.fWindowResizeGripSize)) then begin
+     fCursor:=pvgcEW;
     end;
    end;
    POINTEREVENT_DRAG:begin
     fCursor:=pvgcArrow;
-    if (fMouseAction=pvgwmaMove) and (BUTTON_LEFT in aPointerEvent.Buttons) then begin
-     if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-      fPosition:=Clamp(fPosition+aPointerEvent.RelativePosition,
-                       TpvVector2.Null,
-                       (fParent as TpvGUIWidget).fSize-fSize);
-     end else begin
-      fPosition:=Maximum(fPosition+aPointerEvent.RelativePosition,
-                         TpvVector2.Null);
+    if BUTTON_LEFT in aPointerEvent.Buttons then begin
+     case fMouseAction of
+      pvgwmaMove:begin
+       fPosition:=fPosition+aPointerEvent.RelativePosition;
+       fCursor:=pvgcMove;
+      end;
+      pvgwmaSizeNW:begin
+       fPosition:=fPosition+aPointerEvent.RelativePosition;
+       fSize:=fSize-aPointerEvent.RelativePosition;
+       fCursor:=pvgcNWSE;
+      end;
+      pvgwmaSizeNE:begin
+       fPosition.y:=fPosition.y+aPointerEvent.RelativePosition.y;
+       fSize.x:=fSize.x+aPointerEvent.RelativePosition.x;
+       fSize.y:=fSize.y-aPointerEvent.RelativePosition.y;
+       fCursor:=pvgcNESW;
+      end;
+      pvgwmaSizeSW:begin
+       fPosition.x:=fPosition.x+aPointerEvent.RelativePosition.x;
+       fSize.x:=fSize.x-aPointerEvent.RelativePosition.x;
+       fSize.y:=fSize.y+aPointerEvent.RelativePosition.y;
+       fCursor:=pvgcNESW;
+      end;
+      pvgwmaSizeSE:begin
+       fSize:=fSize+aPointerEvent.RelativePosition;
+       fCursor:=pvgcNWSE;
+      end;
+      pvgwmaSizeN:begin
+       fPosition.y:=fPosition.y+aPointerEvent.RelativePosition.y;
+       fSize.y:=fSize.y-aPointerEvent.RelativePosition.y;
+       fCursor:=pvgcNS;
+      end;
+      pvgwmaSizeS:begin
+       fSize.y:=fSize.y+aPointerEvent.RelativePosition.y;
+       fCursor:=pvgcNS;
+      end;
+      pvgwmaSizeW:begin
+       fPosition.x:=fPosition.x+aPointerEvent.RelativePosition.x;
+       fSize.x:=fSize.x-aPointerEvent.RelativePosition.x;
+       fCursor:=pvgcEW;
+      end;
+      pvgwmaSizeE:begin
+       fSize.x:=fSize.x+aPointerEvent.RelativePosition.x;
+       fCursor:=pvgcEW;
+      end;
      end;
-     fCursor:=pvgcMove;
-    end;
-    if (fMouseAction=pvgwmaSize) and (BUTTON_LEFT in aPointerEvent.Buttons) then begin
-     fSize:=Maximum(TpvVector2.Create(Theme.fWindowGripWidth+Theme.fWindowGripPaddingRight+32.0,
-                                      Max(Theme.fWindowHeaderHeight+Theme.fWindowGripHeight+Theme.fWindowGripPaddingBottom,32.0)),
-                    fSize+aPointerEvent.RelativePosition);
-     fCursor:=pvgcNWSE;
+     fSize:=Maximum(fSize,TpvVector2.Create(Theme.fWindowGripWidth+Theme.fWindowResizeGripSize+32.0,
+                                            Max(Theme.fWindowHeaderHeight+Theme.fWindowGripHeight+Theme.fWindowResizeGripSize,32.0)));
+{    if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+      fPosition:=Clamp(fPosition,TpvVector2.Null,(fParent as TpvGUIWidget).fSize-fSize);
+     end else begin
+      fPosition:=Maximum(fPosition,TpvVector2.Null);
+     end;}
     end;
    end;
   end;
@@ -2622,12 +2739,12 @@ begin
                                Theme.fSpriteFocusedWindowHeaderNinePatch,
                                TpvVector2.Null,
                                TpvVector2.Create(fSize.x,Theme.fSpriteFocusedWindowHeader.Height));
-   if Resizable then begin
+{  if Resizable then begin
     fCanvas.DrawNinePatchSprite(Theme.fSpriteFocusedWindowGrip,
                                 Theme.fSpriteFocusedWindowGripNinePatch,
-                                TpvVector2.Create(fSize.x-(Theme.fSpriteFocusedWindowGrip.Width+Theme.fWindowGripPaddingRight),fSize.y-(Theme.fSpriteFocusedWindowGrip.Height+Theme.fWindowGripPaddingBottom)),
+                                TpvVector2.Create(fSize.x-(Theme.fSpriteFocusedWindowGrip.Width+Theme.fWindowResizeGripSize),fSize.y-(Theme.fSpriteFocusedWindowGrip.Height+Theme.fWindowGripPaddingBottom)),
                                 TpvVector2.Create(Theme.fSpriteFocusedWindowGrip.Width,Theme.fSpriteFocusedWindowGrip.Height));
-   end;
+   end;}
   end else begin
    fCanvas.DrawNinePatchSprite(Theme.fSpriteUnfocusedWindowFill,
                                Theme.fSpriteUnfocusedWindowFillNinePatch,
@@ -2637,12 +2754,12 @@ begin
                                Theme.fSpriteUnfocusedWindowHeaderNinePatch,
                                TpvVector2.Null,
                                TpvVector2.Create(fSize.x,Theme.fSpriteUnfocusedWindowHeader.Height));
-   if Resizable then begin
+{  if Resizable then begin
     fCanvas.DrawNinePatchSprite(Theme.fSpriteUnfocusedWindowGrip,
                                 Theme.fSpriteUnfocusedWindowGripNinePatch,
-                                TpvVector2.Create(fSize.x-(Theme.fSpriteUnfocusedWindowGrip.Width+Theme.fWindowGripPaddingRight),fSize.y-(Theme.fSpriteUnfocusedWindowGrip.Height+Theme.fWindowGripPaddingBottom)),
+                                TpvVector2.Create(fSize.x-(Theme.fSpriteUnfocusedWindowGrip.Width+Theme.fWindowResizeGripSize),fSize.y-(Theme.fSpriteUnfocusedWindowGrip.Height+Theme.fWindowGripPaddingBottom)),
                                 TpvVector2.Create(Theme.fSpriteUnfocusedWindowGrip.Width,Theme.fSpriteUnfocusedWindowGrip.Height));
-   end;
+   end;}
   end;
 
   if length(fTitle)>0 then begin
