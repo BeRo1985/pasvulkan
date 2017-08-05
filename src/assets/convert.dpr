@@ -168,6 +168,10 @@ begin
   ConvertFile('guicursors/pen.png','GUICursorPen');
   ConvertFile('guicursors/unavailable.png','GUICursorUnavailable');
   ConvertFile('guicursors/up.png','GUICursorUp');
+  ConvertFile('guitheme/unfocusedwindowfill.png','GUIThemeUnfocusedWindowFill');
+  ConvertFile('guitheme/focusedwindowfill.png','GUIThemeFocusedWindowFill');
+  ConvertFile('guitheme/unfocusedwindowheader.png','GUIThemeUnfocusedWindowHeader');
+  ConvertFile('guitheme/focusedwindowheader.png','GUIThemeFocusedWindowHeader');
   StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanAssets.inc');
  finally
   StringList.Free;

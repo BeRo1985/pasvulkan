@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.0//EN" "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
+<!-- Created with Berosh - Visit http://www.rosseaux.com/ for more info! -->
+<svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+  <defs id="defs1" />
+  <g id="root" transform="matrix(1,0,0,1,0,0)" style="opacity:1">
+    <rect id="rootbg" x="0" y="0" width="32" height="32" rx="0" ry="0" style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:none;visibility:visible;display:inline;overflow:visible" />
+    <g id="rootmc0layer1" transform="matrix(1,0,0,1,0,0)" style="opacity:1">
+      <rect id="rootmc0layer1o0RoundRect" transform="matrix(1,0,0,1,0,0)" x="0.5" y="0.5" width="31" height="31" rx="4" ry="4" style="opacity:1;fill:#2b2b2b;fill-opacity:0.9019607843;fill-rule:evenodd;clip-rule:nonzero;stroke:#151515;stroke-opacity:0.9019607843;stroke-width:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-linecap:butt;stroke-linejoin:bevel;stroke-miterlimit:4;visibility:visible;display:inline;overflow:visible" />
+    </g>
+  </g>
+</svg>

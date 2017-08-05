@@ -2894,8 +2894,8 @@ begin
   if pvgwfFocused in fWidgetFlags then begin
    fCanvas.DrawNinePatchSprite(Theme.fSpriteFocusedWindowFill,
                                Theme.fSpriteFocusedWindowFillNinePatch,
-                               TpvVector2.Null,
-                               fSize);
+                               TpvVector2.Create(0.0,Theme.fSpriteFocusedWindowHeader.Height),
+                               TpvVector2.Create(fSize.x,fSize.y-Theme.fSpriteFocusedWindowHeader.Height));
    fCanvas.DrawNinePatchSprite(Theme.fSpriteFocusedWindowHeader,
                                Theme.fSpriteFocusedWindowHeaderNinePatch,
                                TpvVector2.Null,
@@ -2909,8 +2909,8 @@ begin
   end else begin
    fCanvas.DrawNinePatchSprite(Theme.fSpriteUnfocusedWindowFill,
                                Theme.fSpriteUnfocusedWindowFillNinePatch,
-                               TpvVector2.Null,
-                               fSize);
+                               TpvVector2.Create(0.0,Theme.fSpriteUnfocusedWindowHeader.Height),
+                               TpvVector2.Create(fSize.x,fSize.y-Theme.fSpriteUnfocusedWindowHeader.Height));
    fCanvas.DrawNinePatchSprite(Theme.fSpriteUnfocusedWindowHeader,
                                Theme.fSpriteUnfocusedWindowHeaderNinePatch,
                                TpvVector2.Null,
