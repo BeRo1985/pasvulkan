@@ -179,6 +179,7 @@ type TpvGUIObject=class;
        fUnfocusedWindowHeaderFontColor:TpvVector4;
        fFocusedWindowHeaderFontColor:TpvVector4;
        fMipmappedSpriteAtlas:TpvSpriteAtlas;
+       fFontSpriteAtlas:TpvSpriteAtlas;
        fSpriteAtlas:TpvSpriteAtlas;
        fSansFont:TpvFont;
        fMonoFont:TpvFont;
@@ -258,6 +259,7 @@ type TpvGUIObject=class;
        property UnfocusedWindowHeaderFontShadow:boolean read fUnfocusedWindowHeaderFontShadow write fUnfocusedWindowHeaderFontShadow;
        property FocusedWindowHeaderFontShadow:boolean read fFocusedWindowHeaderFontShadow write fFocusedWindowHeaderFontShadow;
        property MipmappedSpriteAtlas:TpvSpriteAtlas read fMipmappedSpriteAtlas;
+       property FontSpriteAtlas:TpvSpriteAtlas read fFontSpriteAtlas;
        property SpriteAtlas:TpvSpriteAtlas read fSpriteAtlas;
        property SpriteUnfocusedWindowFill:TpvSprite read fSpriteUnfocusedWindowFill write fSpriteUnfocusedWindowFill;
        property SpriteFocusedWindowFill:TpvSprite read fSpriteFocusedWindowFill write fSpriteFocusedWindowFill;
@@ -826,6 +828,7 @@ constructor TpvGUISkin.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
  fMipmappedSpriteAtlas:=nil;
+ fFontSpriteAtlas:=nil;
  fSpriteAtlas:=nil;
  fSansFont:=nil;
  fMonoFont:=nil;
@@ -837,6 +840,7 @@ begin
  FreeAndNil(fSansFont);
  FreeAndNil(fMonoFont);
  FreeAndNil(fSpriteAtlas);
+ FreeAndNil(fFontSpriteAtlas);
  FreeAndNil(fMipmappedSpriteAtlas);
  inherited Destroy;
 end;
@@ -964,9 +968,11 @@ begin
  fWindowShadowWidth:=16;
  fWindowShadowHeight:=16;
 
- fMipmappedSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice);
+ fMipmappedSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,true);
 
- fSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice);
+ fFontSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,false);
+
+ fSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,true);
 
  CreateNinePatchSprite(fSpriteUnfocusedWindowFill,
                        fSpriteUnfocusedWindowFillNinePatch,
@@ -1011,7 +1017,7 @@ begin
    TrueTypeFont.Size:=-64;
    TrueTypeFont.Hinting:=false;
    fSansFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                             fSpriteAtlas,
+                                             fFontSpriteAtlas,
                                              TrueTypeFont,
                                              [TpvFontCodePointRange.Create(0,255)]);
   finally
@@ -1028,7 +1034,7 @@ begin
    TrueTypeFont.Size:=-64;
    TrueTypeFont.Hinting:=false;
    fMonoFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                             fSpriteAtlas,
+                                             fFontSpriteAtlas,
                                              TrueTypeFont,
                                              [TpvFontCodePointRange.Create(0,255)]);
   finally
@@ -1158,6 +1164,14 @@ begin
                               pvApplication.VulkanTransferCommandBuffers[0,0],
                               pvApplication.VulkanTransferCommandBufferFences[0,0]);
 
+
+ fFontSpriteAtlas.MipMaps:=false;
+ fFontSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
+                         pvApplication.VulkanGraphicsCommandBuffers[0,0],
+                         pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                         pvApplication.VulkanDevice.TransferQueue,
+                         pvApplication.VulkanTransferCommandBuffers[0,0],
+                         pvApplication.VulkanTransferCommandBufferFences[0,0]);
 
  fSpriteAtlas.MipMaps:=false;
  fSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,

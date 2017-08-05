@@ -152,6 +152,7 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
        fHeight:TpvInt32;
        fLayers:TpvInt32;
        fCountTexels:TpvInt64;
+       fSRGB:boolean;
        fUploaded:boolean;
        fDirty:boolean;
        fSpecialSizedArrayTexture:boolean;
@@ -159,7 +160,7 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
        fInverseWidth:TpvDouble;
        fInverseHeight:TpvDouble;
       public
-       constructor Create; reintroduce;
+       constructor Create(const aSRGB:boolean); reintroduce;
        destructor Destroy; override;
        procedure Resize(const aWidth,aHeight,aLayers:TpvInt32);
        procedure CopyIn(const aData;const aSrcWidth,aSrcHeight,aDestX,aDestY,aDestLayer:TpvInt32);
@@ -246,6 +247,7 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
        fCountArrayTextures:TpvInt32;
        fList:TList;
        fHashMap:TpvSpriteAtlasSpriteStringHashMap;
+       fSRGB:boolean;
        fIsUploaded:boolean;
        fMipMaps:boolean;
        fWidth:TpvInt32;
@@ -261,7 +263,7 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
                           var aImageData:TpvPointer;
                           var aImageWidth,aImageHeight:TpvInt32):boolean;
       public
-       constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
+       constructor Create(const aDevice:TpvVulkanDevice;const aSRGB:boolean=false); reintroduce;
        destructor Destroy; override;
        procedure Upload(const aGraphicsQueue:TpvVulkanQueue;
                         const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
@@ -477,7 +479,7 @@ begin
 
 end;
 
-constructor TpvSpriteAtlasArrayTexture.Create;
+constructor TpvSpriteAtlasArrayTexture.Create(const aSRGB:boolean);
 begin
  inherited Create;
  fTexels:=nil;
@@ -487,6 +489,7 @@ begin
  fHeight:=0;
  fLayers:=0;
  fCountTexels:=0;
+ fSRGB:=aSRGB;
  fUploaded:=false;
  fDirty:=true;
  fSpecialSizedArrayTexture:=false;
@@ -597,7 +600,7 @@ begin
                                               aTransferQueue,
                                               aTransferCommandBuffer,
                                               aTransferFence,
-                                              VK_FORMAT_R8G8B8A8_UNORM,
+                                              TVkFormat(TVkInt32(IfThen(fSRGB,TVkInt32(VK_FORMAT_R8G8B8A8_SRGB),TVkInt32(VK_FORMAT_R8G8B8A8_UNORM)))),
                                               VK_SAMPLE_COUNT_1_BIT,
                                               Max(1,fWidth),
                                               Max(1,fHeight),
@@ -674,13 +677,14 @@ begin
  Height:=aHeight;
 end;
 
-constructor TpvSpriteAtlas.Create(const aDevice:TpvVulkanDevice);
+constructor TpvSpriteAtlas.Create(const aDevice:TpvVulkanDevice;const aSRGB:boolean=false);
 begin
  fDevice:=aDevice;
  fArrayTextures:=nil;
  fCountArrayTextures:=0;
  fList:=TList.Create;
  fHashMap:=TpvSpriteAtlasSpriteStringHashMap.Create(nil);
+ fSRGB:=aSRGB; 
  fIsUploaded:=false;
  fMipMaps:=true;
  fWidth:=Min(VULKAN_SPRITEATLASTEXTURE_WIDTH,fDevice.PhysicalDevice.Properties.limits.maxImageDimension2D);
@@ -858,7 +862,7 @@ begin
    ImageData:=nil;
    try
     if LoadImage(MemoryStream.Memory,MemoryStream.Size,ImageData,ImageWidth,ImageHeight) then begin
-     SpriteAtlasArrayTexture:=TpvSpriteAtlasArrayTexture.Create;
+     SpriteAtlasArrayTexture:=TpvSpriteAtlasArrayTexture.Create(fSRGB);
      SpriteAtlasArrayTexture.Resize(ImageWidth,ImageHeight,1);
      if length(fArrayTextures)<(fCountArrayTextures+1) then begin
       SetLength(fArrayTextures,(fCountArrayTextures+1)*2);
@@ -1113,7 +1117,7 @@ begin
     if (Layer<0) or not (assigned(ArrayTexture) and assigned(Node)) then begin
      Layer:=0;
      SpecialSizedArrayTexture:=(fWidth<=TrimmedImageWidth) or (fHeight<=TrimmedImageHeight);
-     ArrayTexture:=TpvSpriteAtlasArrayTexture.Create;
+     ArrayTexture:=TpvSpriteAtlasArrayTexture.Create(fSRGB);
      ArrayTexture.fSpecialSizedArrayTexture:=SpecialSizedArrayTexture;
      ArrayTexture.Resize(Max(fWidth,TrimmedImageWidth),Max(fHeight,TrimmedImageHeight),1);
      if length(fArrayTextures)<(fCountArrayTextures+1) then begin

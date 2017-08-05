@@ -239,6 +239,7 @@ begin
                                                    0,
                                                    1,
                                                    true,
+                                                   true,
                                                    true);{}
 
 {Stream:=pvApplication.Assets.GetAssetStream('textures/box_albedo.png');

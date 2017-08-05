@@ -149,9 +149,9 @@ begin
                                  pvApplication.VulkanTransferCommandBufferFences[0,0],
                                  pvApplication.VulkanPipelineCache);
 
- fVulkanSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice);
+ fVulkanSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice,true);
 
- fVulkanFontSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice);
+ fVulkanFontSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice,false);
  fVulkanFontSpriteAtlas.MipMaps:=false;
 
  //Stream:=pvApplication.Assets.GetAssetStream('fonts/linbiolinum_r.otf');
@@ -238,6 +238,7 @@ begin
                                                      pvApplication.VulkanTransferCommandBuffers[0,0],
                                                      pvApplication.VulkanTransferCommandBufferFences[0,0],
                                                      Stream,
+                                                     true,
                                                      true);
  finally
   Stream.Free;

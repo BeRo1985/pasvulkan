@@ -168,7 +168,8 @@ begin
                                                    0,
                                                    1,
                                                    true,
-                                                   false);{}
+                                                   false,
+                                                   true);{}
  fBoxAlbedoTexture.WrapModeU:=vtwmRepeat;
  fBoxAlbedoTexture.WrapModeV:=vtwmRepeat;
  fBoxAlbedoTexture.WrapModeW:=vtwmRepeat;

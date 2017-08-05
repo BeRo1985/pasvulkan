@@ -37,16 +37,17 @@ layout(push_constant) uniform PushConstants {
 //   If the numeric format of a framebuffer attachment uses sRGB encoding, the R, G, and B destination color values 
 //   (after conversion from fixed-point to floating-point) are considered to be encoded for the sRGB color space and 
 //   hence are linearized prior to their use in blending. Each R, G, and B component is converted from nonlinear to 
-//   linear as described in the “KHR_DF_TRANSFER_SRGB” section of the Khronos Data Format Specification. If the format 
+//   linear as described in the "KHR_DF_TRANSFER_SRGB" section of the Khronos Data Format Specification. If the format 
 //   is not sRGB, no linearization is performed.
 //   If the numeric format of a framebuffer attachment uses sRGB encoding, then the final R, G and B values are converted 
 //   into the nonlinear sRGB representation before being written to the framebuffer attachment as described in the 
-//   “KHR_DF_TRANSFER_SRGB” section of the Khronos Data Format Specification.
+//   "KHR_DF_TRANSFER_SRGB" section of the Khronos Data Format Specification.
 //   If the framebuffer color attachment numeric format is not sRGB encoded then the resulting cscs values for R, G and B 
 //   are unmodified. The value of A is never sRGB encoded. That is, the alpha component is always stored in memory as linear.
-
-const float GAMMA = 2.2;
-const float INVERSE_GAMMA = 1.0 / GAMMA;
+// and:
+//   If the image format is sRGB, the color components are first converted as if they are UNORM, and then sRGB to linear 
+//   conversion is applied to the R, G, and B components as described in the "KHR_DF_TRANSFER_SRGB" section of the Khronos
+//   Data Format Specification. The A component, if present, is unchanged.
 
 // Define our own linearstep function for to map distance coverage, when we doing our calculations in the linear color space. 
 // Smoothstep's nonlinear response is actually doing some fake-gamma, so it ends up over-correcting when the output is already gamma-correct.
@@ -58,20 +59,6 @@ TEMPLATE_LINEARSTEP(float)
 TEMPLATE_LINEARSTEP(vec2)  
 TEMPLATE_LINEARSTEP(vec3)  
 TEMPLATE_LINEARSTEP(vec4)  
-
-#define TEMPLATE_convertSRGBToLinear(DATATYPE) \
-  DATATYPE convertSRGBToLinear(DATATYPE value){ \
-    return pow(value, DATATYPE(GAMMA)); \
-  }
-TEMPLATE_convertSRGBToLinear(float)  
-TEMPLATE_convertSRGBToLinear(vec3)  
-
-#define TEMPLATE_convertLinearToSRGB(DATATYPE) \
-  DATATYPE convertLinearToSRGB(DATATYPE value){ \
-    return pow(value, DATATYPE(INVERSE_GAMMA)); \
-  }
-TEMPLATE_convertLinearToSRGB(float)  
-TEMPLATE_convertLinearToSRGB(vec3)  
 
 vec4 blend(vec4 a, vec4 b){
   return mix(a, b, b.a); 
@@ -150,9 +137,7 @@ void main(void){
       break;
     }
     default:{
-      // sRGB textures must be converted to linear space
-      vec4 c = texture(uTexture, texCoord);
-      color = vec4(convertSRGBToLinear(c.rgb), c.a);
+      color = texture(uTexture, texCoord);
       break;
     }
   }
@@ -232,7 +217,5 @@ void main(void){
 #ifdef GUI_ELEMENTS
 
 #endif
-  vec4 o = color * (step(inClipRect.x, inPosition.x) * step(inClipRect.y, inPosition.y) * step(inPosition.x, inClipRect.z) * step(inPosition.y, inClipRect.w));
-  // Linear colors must be back converted to the non-linear sRGB space for writing into the framebuffer 
-  outFragColor = vec4(convertLinearToSRGB(o.rgb), o.a);
+  outFragColor = color * (step(inClipRect.x, inPosition.x) * step(inClipRect.y, inPosition.y) * step(inPosition.x, inClipRect.z) * step(inPosition.y, inClipRect.w));
 }
