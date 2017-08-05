@@ -1195,7 +1195,7 @@ procedure TpvGUISkin.Setup;
       inc(p16);
      end;
     end;
-    aSprite:=fMipmappedSpriteAtlas.LoadRawSprite('',ImageData,ImageWidth,ImageHeight,true);
+    aSprite:=fSpriteAtlas.LoadRawSprite('',ImageData,ImageWidth,ImageHeight,true);
     aSpriteNinePatch.Regions[0,0]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,0,0,aRadius,aRadius);
     aSpriteNinePatch.Regions[0,1]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aRadius,0,ImageWidth-(aRadius*2),aRadius);
     aSpriteNinePatch.Regions[0,2]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,ImageWidth-aRadius,0,aRadius,aRadius);
@@ -1238,8 +1238,8 @@ begin
 
  fWindowResizeGripSize:=8;
 
- fWindowMinimumWidth:=Max(fWindowHeaderHeight,fWindowResizeGripSize*2);
- fWindowMinimumHeight:=Max(fWindowHeaderHeight,fWindowResizeGripSize*2);
+ fWindowMinimumWidth:=Max(fWindowHeaderHeight+8,fWindowResizeGripSize*2);
+ fWindowMinimumHeight:=Max(fWindowHeaderHeight+8,fWindowResizeGripSize*2);
 
  fWindowShadowWidth:=16;
  fWindowShadowHeight:=16;
