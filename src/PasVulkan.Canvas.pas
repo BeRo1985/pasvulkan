@@ -1142,39 +1142,33 @@ begin
 end;
 
 function TpvCanvasState.GetColor:TpvVector4;
-const InverseGamma=1.0/2.2;
 begin
- result:=TpvVector4.Create(Pow(fColor.rgb,InverseGamma),fColor.a);
+ result:=TpvVector4.Create(ConvertLinearToSRGB(fColor.rgb),fColor.a);
 end;
 
 procedure TpvCanvasState.SetColor(const aColor:TpvVector4);
-const Gamma=2.2;
 begin
- fColor:=TpvVector4.Create(Pow(aColor.rgb,Gamma),aColor.a);
+ fColor:=TpvVector4.Create(ConvertSRGBToLinear(aColor.rgb),aColor.a);
 end;
 
 function TpvCanvasState.GetStartColor:TpvVector4;
-const InverseGamma=1.0/2.2;
 begin
- result:=TpvVector4.Create(Pow(fFillMatrix.Columns[2].rgb,InverseGamma),fFillMatrix.Columns[2].a);
+ result:=TpvVector4.Create(ConvertLinearToSRGB(fFillMatrix.Columns[2].rgb),fFillMatrix.Columns[2].a);
 end;
 
 procedure TpvCanvasState.SetStartColor(const aColor:TpvVector4);
-const Gamma=2.2;
 begin
- fFillMatrix.Columns[2]:=TpvVector4.Create(Pow(aColor.rgb,Gamma),aColor.a);
+ fFillMatrix.Columns[2]:=TpvVector4.Create(ConvertSRGBToLinear(aColor.rgb),aColor.a);
 end;
 
 function TpvCanvasState.GetStopColor:TpvVector4;
-const InverseGamma=1.0/2.2;
 begin
- result:=TpvVector4.Create(Pow(fFillMatrix.Columns[3].rgb,InverseGamma),fFillMatrix.Columns[3].a);
+ result:=TpvVector4.Create(ConvertLinearToSRGB(fFillMatrix.Columns[3].rgb),fFillMatrix.Columns[3].a);
 end;
 
 procedure TpvCanvasState.SetStopColor(const aColor:TpvVector4);
-const Gamma=2.2;
 begin
- fFillMatrix.Columns[3]:=TpvVector4.Create(Pow(aColor.rgb,Gamma),aColor.a);
+ fFillMatrix.Columns[3]:=TpvVector4.Create(ConvertSRGBToLinear(aColor.rgb),aColor.a);
 end;
 
 function TpvCanvasState.GetFillMatrix:TpvMatrix4x4;

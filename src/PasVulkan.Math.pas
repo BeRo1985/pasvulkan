@@ -1484,6 +1484,9 @@ function ConvertRGB32FToR11FG11FB10F(const r,g,b:TpvFloat):TpvUInt32; {$ifdef CA
 function PackTangentSpace(const Tangent,Bitangent,Normal:TpvVector3):TpvPackedTangentSpace;
 procedure UnpackTangentSpace(var PackedTangentSpace:TpvPackedTangentSpace;var Tangent,Bitangent,Normal:TpvVector3);
 
+function ConvertLinearToSRGB(const aColor:TpvVector3):TpvVector3;
+function ConvertSRGBToLinear(const aColor:TpvVector3):TpvVector3;
+
 implementation
 
 function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32;
@@ -15615,6 +15618,32 @@ begin
  Tangent.z:=sin(Latitude);
  Bitangent:=Vector3Norm(Vector3Cross(Normal,Tangent));
 end;{}
+
+function ConvertLinearToSRGB(const aColor:TpvVector3):TpvVector3;
+const InverseGamma=1.0/2.4;
+var ChannelIndex:TpvInt32;
+begin
+ for ChannelIndex:=0 to 2 do begin
+  if aColor[ChannelIndex]<0.0031308 then begin
+   result[ChannelIndex]:=aColor[ChannelIndex]*12.92;
+  end else begin
+   result[ChannelIndex]:=Power(aColor[ChannelIndex],InverseGamma)-0.055;
+  end;
+ end;
+end;
+
+function ConvertSRGBToLinear(const aColor:TpvVector3):TpvVector3;
+const Inverse12d92=1.0/12.92;
+var ChannelIndex:TpvInt32;
+begin
+ for ChannelIndex:=0 to 2 do begin
+  if aColor[ChannelIndex]<0.04045 then begin
+   result[ChannelIndex]:=aColor[ChannelIndex]*Inverse12d92;
+  end else begin
+   result[ChannelIndex]:=Power(aColor[ChannelIndex]+0.055,2.4);
+  end;
+ end;
+end;
 
 constructor TpvVector2Property.Create(AVector:PpvVector2);
 begin
