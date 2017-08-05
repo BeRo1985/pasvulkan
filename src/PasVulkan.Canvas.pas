@@ -252,12 +252,18 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fTexture:TObject;
        fAtlasTexture:TObject;
        fStrokePattern:TpvCanvasStrokePattern;
-       function GetColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetStartColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetStartColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetStopColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetStopColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetLinearColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetLinearColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetSRGBColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetSRGBColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetStartLinearColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetStartLinearColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetStartSRGBColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetStartSRGBColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetStopLinearColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetStopLinearColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetStopSRGBColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetStopSRGBColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
        function GetFillMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetFillMatrix(const aMatrix:TpvMatrix4x4); {$ifdef CAN_INLINE}inline;{$endif}
        procedure Reset;
@@ -266,9 +272,12 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        destructor Destroy; override;
        procedure Assign(aSource:TPersistent); override;
       public
-       property Color:TpvVector4 read GetColor write SetColor;
-       property StartColor:TpvVector4 read GetStartColor write SetStartColor;
-       property StopColor:TpvVector4 read GetStopColor write SetStopColor;
+       property LinearColor:TpvVector4 read GetLinearColor write SetLinearColor;
+       property SRGBColor:TpvVector4 read GetSRGBColor write SetSRGBColor;
+       property StartLinearColor:TpvVector4 read GetStartLinearColor write SetStartLinearColor;
+       property StartSRGBColor:TpvVector4 read GetStartSRGBColor write SetStartSRGBColor;
+       property StopLinearColor:TpvVector4 read GetStopLinearColor write SetStopLinearColor;
+       property StopSRGBColor:TpvVector4 read GetStopSRGBColor write SetStopSRGBColor;
        property ClipRect:TpvRect read fClipRect write fClipRect;
        property Scissor:TVkRect2D read fScissor write fScissor;
        property ProjectionMatrix:TpvMatrix4x4 read fProjectionMatrix write fProjectionMatrix;
@@ -584,12 +593,18 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure SetFillStyle(const aFillStyle:TpvCanvasFillStyle); {$ifdef CAN_INLINE}inline;{$endif}
        function GetFillWrapMode:TpvCanvasFillWrapMode; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetFillWrapMode(const aFillWrapMode:TpvCanvasFillWrapMode); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetStartColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetStartColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetStopColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetStopColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetLinearColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetLinearColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetSRGBColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetSRGBColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetStartLinearColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetStartLinearColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetStartSRGBColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetStartSRGBColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetStopLinearColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetStopLinearColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetStopSRGBColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetStopSRGBColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
        function GetProjectionMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetProjectionMatrix(const aProjectionMatrix:TpvMatrix4x4);
        function GetViewMatrix:TpvMatrix4x4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -709,9 +724,12 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       public
        property Viewport:PVkViewport read fPointerToViewport;
        property ClipRect:TpvRect read GetClipRect write SetClipRect;
-       property Color:TpvVector4 read GetColor write SetColor;
-       property StartColor:TpvVector4 read GetStartColor write SetStartColor;
-       property StopColor:TpvVector4 read GetStopColor write SetStopColor;
+       property LinearColor:TpvVector4 read GetLinearColor write SetLinearColor;
+       property SRGBColor:TpvVector4 read GetSRGBColor write SetSRGBColor;
+       property StartLinearColor:TpvVector4 read GetStartLinearColor write SetStartLinearColor;
+       property StartSRGBColor:TpvVector4 read GetStartSRGBColor write SetStartSRGBColor;
+       property StopLinearColor:TpvVector4 read GetStopLinearColor write SetStopLinearColor;
+       property StopSRGBColor:TpvVector4 read GetStopSRGBColor write SetStopSRGBColor;
        property ProjectionMatrix:TpvMatrix4x4 read GetProjectionMatrix write SetProjectionMatrix;
        property ViewMatrix:TpvMatrix4x4 read GetViewMatrix write SetViewMatrix;
        property ModelMatrix:TpvMatrix4x4 read GetModelMatrix write SetModelMatrix;
@@ -1141,32 +1159,62 @@ begin
  inherited Destroy;
 end;
 
-function TpvCanvasState.GetColor:TpvVector4;
+function TpvCanvasState.GetLinearColor:TpvVector4;
+begin
+ result:=fColor;
+end;
+
+procedure TpvCanvasState.SetLinearColor(const aColor:TpvVector4);
+begin
+ fColor:=aColor;
+end;
+
+function TpvCanvasState.GetSRGBColor:TpvVector4;
 begin
  result:=TpvVector4.Create(ConvertLinearToSRGB(fColor.rgb),fColor.a);
 end;
 
-procedure TpvCanvasState.SetColor(const aColor:TpvVector4);
+procedure TpvCanvasState.SetSRGBColor(const aColor:TpvVector4);
 begin
  fColor:=TpvVector4.Create(ConvertSRGBToLinear(aColor.rgb),aColor.a);
 end;
 
-function TpvCanvasState.GetStartColor:TpvVector4;
+function TpvCanvasState.GetStartLinearColor:TpvVector4;
+begin
+ result:=fFillMatrix.Columns[2];
+end;
+
+procedure TpvCanvasState.SetStartLinearColor(const aColor:TpvVector4);
+begin
+ fFillMatrix.Columns[2]:=aColor;
+end;
+
+function TpvCanvasState.GetStartSRGBColor:TpvVector4;
 begin
  result:=TpvVector4.Create(ConvertLinearToSRGB(fFillMatrix.Columns[2].rgb),fFillMatrix.Columns[2].a);
 end;
 
-procedure TpvCanvasState.SetStartColor(const aColor:TpvVector4);
+procedure TpvCanvasState.SetStartSRGBColor(const aColor:TpvVector4);
 begin
  fFillMatrix.Columns[2]:=TpvVector4.Create(ConvertSRGBToLinear(aColor.rgb),aColor.a);
 end;
 
-function TpvCanvasState.GetStopColor:TpvVector4;
+function TpvCanvasState.GetStopLinearColor:TpvVector4;
+begin
+ result:=fFillMatrix.Columns[3];
+end;
+
+procedure TpvCanvasState.SetStopLinearColor(const aColor:TpvVector4);
+begin
+ fFillMatrix.Columns[3]:=aColor;
+end;
+
+function TpvCanvasState.GetStopSRGBColor:TpvVector4;
 begin
  result:=TpvVector4.Create(ConvertLinearToSRGB(fFillMatrix.Columns[3].rgb),fFillMatrix.Columns[3].a);
 end;
 
-procedure TpvCanvasState.SetStopColor(const aColor:TpvVector4);
+procedure TpvCanvasState.SetStopSRGBColor(const aColor:TpvVector4);
 begin
  fFillMatrix.Columns[3]:=TpvVector4.Create(ConvertSRGBToLinear(aColor.rgb),aColor.a);
 end;
@@ -3433,39 +3481,75 @@ begin
  end;
 end;
 
-function TpvCanvas.GetColor:TpvVector4;
+function TpvCanvas.GetLinearColor:TpvVector4;
 begin
- result:=fState.GetColor;
+ result:=fState.GetLinearColor;
 end;
 
-procedure TpvCanvas.SetColor(const aColor:TpvVector4);
+procedure TpvCanvas.SetLinearColor(const aColor:TpvVector4);
 begin
- fState.SetColor(aColor);
+ fState.SetLinearColor(aColor);
 end;
 
-function TpvCanvas.GetStartColor:TpvVector4;
+function TpvCanvas.GetSRGBColor:TpvVector4;
 begin
- result:=fState.StartColor;
+ result:=fState.GetSRGBColor;
 end;
 
-procedure TpvCanvas.SetStartColor(const aColor:TpvVector4);
+procedure TpvCanvas.SetSRGBColor(const aColor:TpvVector4);
 begin
- if fState.StartColor<>aColor then begin
+ fState.SetSRGBColor(aColor);
+end;
+
+function TpvCanvas.GetStartLinearColor:TpvVector4;
+begin
+ result:=fState.StartLinearColor;
+end;
+
+procedure TpvCanvas.SetStartLinearColor(const aColor:TpvVector4);
+begin
+ if fState.StartLinearColor<>aColor then begin
   Flush;
-  fState.StartColor:=aColor;
+  fState.StartLinearColor:=aColor;
  end;
 end;
 
-function TpvCanvas.GetStopColor:TpvVector4;
+function TpvCanvas.GetStartSRGBColor:TpvVector4;
 begin
- result:=fState.StopColor;
+ result:=fState.StartSRGBColor;
 end;
 
-procedure TpvCanvas.SetStopColor(const aColor:TpvVector4);
+procedure TpvCanvas.SetStartSRGBColor(const aColor:TpvVector4);
 begin
- if fState.StopColor<>aColor then begin
+ if fState.StartSRGBColor<>aColor then begin
   Flush;
-  fState.StopColor:=aColor;
+  fState.StartSRGBColor:=aColor;
+ end;
+end;
+
+function TpvCanvas.GetStopLinearColor:TpvVector4;
+begin
+ result:=fState.StopLinearColor;
+end;
+
+procedure TpvCanvas.SetStopLinearColor(const aColor:TpvVector4);
+begin
+ if fState.StopLinearColor<>aColor then begin
+  Flush;
+  fState.StopLinearColor:=aColor;
+ end;
+end;
+
+function TpvCanvas.GetStopSRGBColor:TpvVector4;
+begin
+ result:=fState.StopSRGBColor;
+end;
+
+procedure TpvCanvas.SetStopSRGBColor(const aColor:TpvVector4);
+begin
+ if fState.StopSRGBColor<>aColor then begin
+  Flush;
+  fState.StopSRGBColor:=aColor;
  end;
 end;
 

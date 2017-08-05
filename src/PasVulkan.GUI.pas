@@ -1717,7 +1717,7 @@ begin
   if fInstance.fDrawWidgetBounds then begin
    fCanvas.Push;
    try
-    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+    fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
     fCanvas.LineWidth:=4.0;
     fCanvas.LineJoin:=pvcljRound;
     fCanvas.LineCap:=pvclcRound;
@@ -2151,27 +2151,27 @@ begin
  fCanvas.BlendingMode:=pvcbmAlphaBlending;
  case fVisibleCursor of
   pvgcArrow:begin
-   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorArrow,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorArrow,fMousePosition);
   end;
   pvgcBeam:begin
-   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorBeam,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorBeam,fMousePosition);
   end;
   pvgcBusy:begin
    fCanvas.Push;
-   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.ModelMatrix:=((TpvMatrix4x4.CreateTranslation(-(fMousePosition+TpvVector2.Create(2.0,2.0)))*
                           TpvMatrix4x4.CreateRotateZ(frac(fTime)*TwoPI))*
                          TpvMatrix4x4.CreateTranslation(fMousePosition+TpvVector2.Create(2.0,2.0)))*
                          fCanvas.ModelMatrix;
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorBusy,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Pop;
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.Push;
    fCanvas.ModelMatrix:=((TpvMatrix4x4.CreateTranslation(-fMousePosition)*
                           TpvMatrix4x4.CreateRotateZ(frac(fTime)*TwoPI))*
@@ -2181,69 +2181,69 @@ begin
    fCanvas.Pop;
   end;
   pvgcCross:begin
-   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorCross,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorCross,fMousePosition);
   end;
   pvgcEW:begin
-   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorEW,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorEW,fMousePosition);
   end;
   pvgcHelp:begin
-   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorHelp,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorHelp,fMousePosition);
   end;
   pvgcLink:begin
-   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorLink,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorLink,fMousePosition);
   end;
   pvgcMove:begin
-   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorMove,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorMove,fMousePosition);
   end;
   pvgcNESW:begin
-   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorNESW,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorNESW,fMousePosition);
   end;
   pvgcNS:begin
-   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorNS,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorNS,fMousePosition);
   end;
   pvgcNWSE:begin
-   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorNWSE,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorNWSE,fMousePosition);
   end;
   pvgcPen:begin
-   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorPen,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorPen,fMousePosition);
   end;
   pvgcUnavailable:begin
-   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorUnavailable,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorUnavailable,fMousePosition);
   end;
   pvgcUp:begin
-   fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorUp,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.DrawSprite(Skin.fSpriteMouseCursorUp,fMousePosition);
   end;
  end;
@@ -2597,7 +2597,7 @@ var LastClipRect,NewClipRect:TpvRect;
 begin
  fCanvas.Push;
  try
-  fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+  fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
   begin
    LastClipRect:=fCanvas.ClipRect;
    NewClipRect:=TpvRect.CreateAbsolute(LastClipRect.Left-Skin.fWindowShadowWidth,
@@ -2663,18 +2663,18 @@ begin
        ((not (pvgwfFocused in fWidgetFlags)) and Skin.fUnfocusedWindowHeaderFontShadow) then begin
      if pvgwfFocused in fWidgetFlags then begin
       fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(Skin.fFocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
-      fCanvas.Color:=Skin.fFocusedWindowHeaderFontShadowColor;
+      fCanvas.SRGBColor:=Skin.fFocusedWindowHeaderFontShadowColor;
      end else begin
       fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(Skin.fUnfocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
-      fCanvas.Color:=Skin.fUnfocusedWindowHeaderFontShadowColor;
+      fCanvas.SRGBColor:=Skin.fUnfocusedWindowHeaderFontShadowColor;
      end;
      fCanvas.DrawText(fTitle);
     end;
     fCanvas.ModelMatrix:=NewModelMatrix;
     if pvgwfFocused in fWidgetFlags then begin
-     fCanvas.Color:=Skin.fFocusedWindowHeaderFontColor;
+     fCanvas.SRGBColor:=Skin.fFocusedWindowHeaderFontColor;
     end else begin
-     fCanvas.Color:=Skin.fUnfocusedWindowHeaderFontColor;
+     fCanvas.SRGBColor:=Skin.fUnfocusedWindowHeaderFontColor;
     end;
     fCanvas.DrawText(fTitle);
    finally
@@ -2733,7 +2733,7 @@ begin
   fCanvas.FontSize:=FontSize;
   fCanvas.TextHorizontalAlignment:=pvcthaLeft;
   fCanvas.TextVerticalAlignment:=pvctvaTop;
-  fCanvas.Color:=Skin.fFocusedWindowHeaderFontColor;
+  fCanvas.SRGBColor:=Skin.fFocusedWindowHeaderFontColor;
   fCanvas.DrawText(fCaption);
  finally
   fCanvas.Pop;
