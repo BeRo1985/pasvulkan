@@ -12256,7 +12256,7 @@ begin
 
  fDevice.WaitIdle;
 
- if ImageFormat=VK_FORMAT_B8G8R8A8_SRGB then begin
+ if ImageFormat in [VK_FORMAT_R8G8B8A8_SRGB,VK_FORMAT_B8G8R8A8_SRGB] then begin
   DestColorFormat:=VK_FORMAT_R8G8B8A8_SRGB;
  end else begin
   DestColorFormat:=VK_FORMAT_R8G8B8A8_UNORM;
