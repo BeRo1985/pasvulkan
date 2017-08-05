@@ -1,0 +1,60 @@
+<movie>
+  <name value="" />
+  <matrix m0="1" m1="0" m2="0" m3="1" m4="0" m5="0" translatex="0" translatey="0" scalex="1" scaley="1" rotation="0" skewx="0" skewy="0" />
+  <alpha value="255" />
+  <z value="0" />
+  <offset x="0" y="0" />
+  <mask mode="none" />
+  <flags visible="true" locked="false" outline="false" />
+  <timeline />
+  <settings drawbackground="true" lastmovieclipid="2" lastmovieimageid="0" />
+  <rootmovieclip>
+    <name value="" />
+    <matrix m0="1" m1="0" m2="0" m3="1" m4="0" m5="0" translatex="0" translatey="0" scalex="1" scaley="1" rotation="0" skewx="0" skewy="0" />
+    <alpha value="255" />
+    <z value="0" />
+    <offset x="0" y="0" />
+    <mask mode="none" />
+    <flags visible="true" locked="false" outline="false" />
+    <timeline />
+    <id value="1" />
+    <settings offimage="false" gamma="1" looptime="-1" width="16" height="16" color="#ffffffff" />
+    <objects>
+      <ellipse>
+        <name value="" />
+        <matrix m0="1" m1="0" m2="0" m3="1" m4="8" m5="8" translatex="0" translatey="0" scalex="1" scaley="1" rotation="0" skewx="0" skewy="0" />
+        <alpha value="255" />
+        <z value="0" />
+        <offset x="0" y="0" />
+        <mask mode="none" />
+        <flags visible="true" locked="false" outline="false" />
+        <timeline />
+        <settings offimage="false" />
+        <stroke capmode="square" joinmode="miter" innerjoinmode="jag" width="1" fixedwidth="false" innermiterlimit="1.01" miterlimit="4" pattern="" patternstepsize="1" patternstart="0">
+          <fill mode="none" color="#e6ffffff" fillrule="nonzero" cliprule="nonzero" repeatmode="pad">
+            <image id="0" />
+            <matrix m0="0" m1="-1" m2="1" m3="0" m4="0" m5="8" translatex="0" translatey="0" scalex="1" scaley="1" rotation="0" skewx="0" skewy="0" />
+            <gradientfocusmatrix m0="1" m1="0" m2="0" m3="1" m4="0" m5="0" translatex="0" translatey="0" scalex="1" scaley="1" rotation="0" skewx="0" skewy="0" />
+            <gradient focusx="0" focusy="32" radius="32">
+              <item offset="0" color="#ff5c5c5c" />
+              <item offset="1" color="#ff1d1d1d" />
+            </gradient>
+            <pattern movieclipid="0" />
+          </fill>
+        </stroke>
+        <fill mode="radialgradient" color="#ffffffff" fillrule="evenodd" cliprule="nonzero" repeatmode="pad">
+          <image id="0" />
+          <matrix m0="2" m1="0" m2="0" m3="2" m4="0" m5="0" translatex="0" translatey="0" scalex="1" scaley="1" rotation="0" skewx="0" skewy="0" />
+          <gradientfocusmatrix m0="1" m1="0" m2="0" m3="1" m4="0" m5="0" translatex="0" translatey="0" scalex="1" scaley="1" rotation="0" skewx="0" skewy="0" />
+          <gradient focusx="0" focusy="0" radius="16">
+            <item offset="0.001953125" color="#80808080" />
+            <item offset="1" color="#00808080" />
+          </gradient>
+          <pattern movieclipid="0" />
+        </fill>
+        <center x="0" y="0" />
+        <radius x="8" y="8" />
+      </ellipse>
+    </objects>
+  </rootmovieclip>
+</movie>
