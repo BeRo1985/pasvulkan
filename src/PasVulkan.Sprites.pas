@@ -272,10 +272,10 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
        procedure Unload; virtual;
        function Uploaded:boolean; virtual;
        procedure ClearAll; virtual;
-       function LoadXML(const aTextureStream:TStream;const aStream:TStream;const aAutomaticTrim:boolean=true):boolean; virtual;
-       function LoadRawSprite(const Name:TpvRawByteString;ImageData:TpvPointer;ImageWidth,ImageHeight:TpvInt32;const aAutomaticTrim:boolean=true):TpvSprite; virtual;
-       function LoadSprite(const Name:TpvRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true):TpvSprite; virtual;
-       function LoadSprites(const Name:TpvRawByteString;Stream:TStream;SpriteWidth:TpvInt32=64;SpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true):TpvSprites; virtual;
+       function LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean; virtual;
+       function LoadRawSprite(const Name:TpvRawByteString;ImageData:TpvPointer;ImageWidth,ImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite; virtual;
+       function LoadSprite(const Name:TpvRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite; virtual;
+       function LoadSprites(const Name:TpvRawByteString;Stream:TStream;SpriteWidth:TpvInt32=64;SpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprites; virtual;
        property Device:TpvVulkanDevice read fDevice;
        property Count:TpvInt32 read GetCount;
        property Items[Index:TpvInt32]:TpvSprite read GetItem write SetItem;
@@ -835,7 +835,7 @@ begin
  end;
 end;
 
-function TpvSpriteAtlas.LoadXML(const aTextureStream:TStream;const aStream:TStream;const aAutomaticTrim:boolean=true):boolean;
+function TpvSpriteAtlas.LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean;
 var XML:TpvXML;
     MemoryStream:TMemoryStream;
     i,j:TpvInt32;
@@ -934,8 +934,8 @@ begin
  end;
 end;
 
-function TpvSpriteAtlas.LoadRawSprite(const Name:TpvRawByteString;ImageData:TpvPointer;ImageWidth,ImageHeight:TpvInt32;const aAutomaticTrim:boolean=true):TpvSprite;
-var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer:TpvInt32;
+function TpvSpriteAtlas.LoadRawSprite(const Name:TpvRawByteString;ImageData:TpvPointer;ImageWidth,ImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
+var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer,TotalPadding,PaddingIndex:TpvInt32;
     ArrayTexture:TpvSpriteAtlasArrayTexture;
     Node:PpvSpriteAtlasArrayTextureLayerRectNode;
     Sprite:TpvSprite;
@@ -949,6 +949,8 @@ begin
  result:=nil;
 
  try
+
+  TotalPadding:=aPadding shl 1;
 
   ArrayTexture:=nil;
 
@@ -1072,7 +1074,7 @@ begin
       for LayerIndex:=0 to ArrayTexture.fLayers-1 do begin
        if assigned(ArrayTexture.fLayerRootNodes[LayerIndex]) then begin
         // Including 2px texel bilinear interpolation protection border pixels
-        Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[LayerIndex],TrimmedImageWidth+4,TrimmedImageHeight+4,(TrimmedImageWidth+4)*(TrimmedImageHeight+4));
+        Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[LayerIndex],TrimmedImageWidth+TotalPadding,TrimmedImageHeight+TotalPadding,(TrimmedImageWidth+TotalPadding)*(TrimmedImageHeight+TotalPadding));
         if assigned(ArrayTexture) and assigned(Node) then begin
          Layer:=LayerIndex;
          break;
@@ -1093,13 +1095,13 @@ begin
     if (Layer<0) or not (assigned(ArrayTexture) and assigned(Node)) then begin
      for TextureIndex:=0 to fCountArrayTextures-1 do begin
       ArrayTexture:=fArrayTextures[TextureIndex];
-      if ((TrimmedImageWidth+4)<=ArrayTexture.fWidth) and
-         ((TrimmedImageHeight+4)<=ArrayTexture.fHeight) and
+      if ((TrimmedImageWidth+TotalPadding)<=ArrayTexture.fWidth) and
+         ((TrimmedImageHeight+TotalPadding)<=ArrayTexture.fHeight) and
          (ArrayTexture.fLayers<fMaximumCountArrayLayers) and
          not ArrayTexture.fSpecialSizedArrayTexture then begin
        LayerIndex:=ArrayTexture.fLayers;
        ArrayTexture.Resize(ArrayTexture.fWidth,ArrayTexture.fHeight,LayerIndex+1);
-       Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[LayerIndex],TrimmedImageWidth+4,TrimmedImageHeight+4,(TrimmedImageWidth+4)*(TrimmedImageHeight+4));
+       Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[LayerIndex],TrimmedImageWidth+TotalPadding,TrimmedImageHeight+TotalPadding,(TrimmedImageWidth+TotalPadding)*(TrimmedImageHeight+TotalPadding));
        if assigned(Node) then begin
         Layer:=LayerIndex;
        end;
@@ -1123,7 +1125,7 @@ begin
      if SpecialSizedArrayTexture then begin
       Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[Layer],TrimmedImageWidth,TrimmedImageHeight,TrimmedImageWidth*TrimmedImageHeight);
      end else begin
-      Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[Layer],TrimmedImageWidth+4,TrimmedImageHeight+4,(TrimmedImageWidth+4)*(TrimmedImageHeight+4));
+      Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[Layer],TrimmedImageWidth+TotalPadding,TrimmedImageHeight+TotalPadding,(TrimmedImageWidth+TotalPadding)*(TrimmedImageHeight+TotalPadding));
      end;
     end;
 
@@ -1155,8 +1157,8 @@ begin
        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TpvUInt32));
       end;
      end else begin
-      Sprite.x:=Node^.x+2;
-      Sprite.y:=Node^.y+2;
+      Sprite.x:=Node^.x+aPadding;
+      Sprite.y:=Node^.y+aPadding;
       Sprite.Width:=ImageWidth;
       Sprite.Height:=ImageHeight;
       Sprite.TrimmedX:=x0;
@@ -1172,33 +1174,29 @@ begin
        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TpvUInt32));
       end;
       begin
-       begin
-        sp:=TrimmedImageData;
-        dp:=TpvPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y-1,Layer));
-        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TpvUInt32));
-        dp:=TpvPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y-2,Layer));
+       sp:=TrimmedImageData;
+       for PaddingIndex:=-1 downto -aPadding do begin
+        dp:=TpvPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+PaddingIndex,Layer));
         Move(sp^,dp^,TrimmedImageWidth*SizeOf(TpvUInt32));
        end;
-       begin
-        sp:=TrimmedImageData;
-        inc(sp,(TrimmedImageHeight-1)*TrimmedImageWidth);
-        dp:=TpvPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+TrimmedImageHeight,Layer));
-        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TpvUInt32));
-        dp:=TpvPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+TrimmedImageHeight+1,Layer));
+       sp:=TrimmedImageData;
+       inc(sp,(TrimmedImageHeight-1)*TrimmedImageWidth);
+       for PaddingIndex:=0 to aPadding-1 do begin
+        dp:=TpvPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y+TrimmedImageHeight+PaddingIndex,Layer));
         Move(sp^,dp^,TrimmedImageWidth*SizeOf(TpvUInt32));
        end;
       end;
       for y:=-1 to TrimmedImageHeight do begin
        sp:=TpvPointer(ArrayTexture.GetTexelPointer(Sprite.x,Sprite.y,Layer));
-       dp:=TpvPointer(ArrayTexture.GetTexelPointer(Sprite.x-1,Sprite.y,Layer));
-       dp^:=sp^;
-       dp:=TpvPointer(ArrayTexture.GetTexelPointer(Sprite.x-2,Sprite.y,Layer));
-       dp^:=sp^;
+       for PaddingIndex:=-1 downto -aPadding do begin
+        dp:=TpvPointer(ArrayTexture.GetTexelPointer(Sprite.x+PaddingIndex,Sprite.y,Layer));
+        dp^:=sp^;
+       end;
        sp:=TpvPointer(ArrayTexture.GetTexelPointer(Sprite.x+(TrimmedImageWidth-1),Sprite.y,Layer));
-       dp:=TpvPointer(ArrayTexture.GetTexelPointer(Sprite.x+TrimmedImageWidth,Sprite.y,Layer));
-       dp^:=sp^;
-       dp:=TpvPointer(ArrayTexture.GetTexelPointer(Sprite.x+TrimmedImageWidth+1,Sprite.y,Layer));
-       dp^:=sp^;
+       for PaddingIndex:=0 to aPadding-1 do begin
+        dp:=TpvPointer(ArrayTexture.GetTexelPointer(Sprite.x+TrimmedImageWidth+PaddingIndex,Sprite.y,Layer));
+        dp^:=sp^;
+       end;
       end;
      end;
      ArrayTexture.Dirty:=true;
@@ -1226,7 +1224,7 @@ begin
 
 end;
 
-function TpvSpriteAtlas.LoadSprite(const Name:TpvRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true):TpvSprite;
+function TpvSpriteAtlas.LoadSprite(const Name:TpvRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
 var InputImageData,ImageData:TpvPointer;
     InputImageDataSize,ImageWidth,ImageHeight:TpvInt32;
 begin
@@ -1248,7 +1246,7 @@ begin
 
      if LoadImage(InputImageData,InputImageDataSize,ImageData,ImageWidth,ImageHeight) then begin
 
-      result:=LoadRawSprite(Name,ImageData,ImageWidth,ImageHeight,aAutomaticTrim);
+      result:=LoadRawSprite(Name,ImageData,ImageWidth,ImageHeight,aAutomaticTrim,aPadding);
 
      end else begin
       raise Exception.Create('Can''t load image');
@@ -1282,7 +1280,7 @@ begin
 
 end;
 
-function TpvSpriteAtlas.LoadSprites(const Name:TpvRawByteString;Stream:TStream;SpriteWidth:TpvInt32=64;SpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true):TpvSprites;
+function TpvSpriteAtlas.LoadSprites(const Name:TpvRawByteString;Stream:TStream;SpriteWidth:TpvInt32=64;SpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprites;
 var InputImageData,ImageData,SpriteData:TpvPointer;
     InputImageDataSize,ImageWidth,ImageHeight,Count,x,y,sy,sw,sh:TpvInt32;
     sp,dp:PpvUInt32;
@@ -1349,7 +1347,7 @@ begin
             inc(dp,SpriteWidth);
            end;
 
-           result[Count]:=LoadRawSprite(Name+TpvRawByteString(IntToStr(Count)),SpriteData,SpriteWidth,SpriteHeight,aAutomaticTrim);
+           result[Count]:=LoadRawSprite(Name+TpvRawByteString(IntToStr(Count)),SpriteData,SpriteWidth,SpriteHeight,aAutomaticTrim,aPadding);
 
            inc(Count);
 
