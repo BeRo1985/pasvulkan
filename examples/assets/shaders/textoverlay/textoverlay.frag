@@ -29,18 +29,8 @@ const float SQRT_0_DOT_5 = sqrt(0.5),
  
 void main(void){
   float center = textureLod(uSamplerFont, inUV, 0.0).r;
-  vec2 centerGradient = vec2(dFdx(center), dFdy(center));       
-  float centerGradientSquaredLength = dot(centerGradient, centerGradient);
-  if(centerGradientSquaredLength < 1e-4){
-    centerGradient = vec2(0.7071);
-  }else{
-    centerGradient *= inversesqrt(centerGradientSquaredLength);
-  }
-  vec2 Jdx = dFdx(inUV.xy), Jdy = dFdy(inUV.xy);
-  vec2 gradient = vec2((centerGradient.x * Jdx.x) + (centerGradient.y * Jdy.x),
-                       (centerGradient.x * Jdx.y) + (centerGradient.y * Jdy.y));
-  vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(gradient));
-  vec4 buv = inUV.xyxy + (vec2((Jdx + Jdy) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
+  vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
+  vec4 buv = inUV.xyxy + (vec2((dFdx(inUV.xy) + dFdy(inUV.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
   outFragColor = mix(inForegroundColor, 
                      inBackgroundColor, 
                      clamp((linearstep(width.x, width.y, center) + 

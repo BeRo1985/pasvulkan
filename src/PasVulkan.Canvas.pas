@@ -4196,6 +4196,10 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
+   if aRenderingMode=pvcrmFont then begin
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Right;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Top;
+   end;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
@@ -4204,6 +4208,10 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
+   if aRenderingMode=pvcrmFont then begin
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Right;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Bottom;
+   end;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
@@ -4212,6 +4220,10 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
+   if aRenderingMode=pvcrmFont then begin
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Left;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Top;
+   end;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
@@ -4220,6 +4232,10 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
+   if aRenderingMode=pvcrmFont then begin
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Right;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Bottom;
+   end;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
@@ -4287,6 +4303,10 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
+   if aRenderingMode=pvcrmFont then begin
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Left;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Top;
+   end;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
@@ -4295,6 +4315,10 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
+   if aRenderingMode=pvcrmFont then begin
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Right;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Top;
+   end;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
@@ -4303,6 +4327,10 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
+   if aRenderingMode=pvcrmFont then begin
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Right;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Bottom;
+   end;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
@@ -4311,6 +4339,10 @@ begin
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
+   if aRenderingMode=pvcrmFont then begin
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Left;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Bottom;
+   end;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
