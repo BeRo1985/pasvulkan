@@ -32,7 +32,7 @@
         <id value="3" />
         <settings offimage="false" gamma="1" looptime="-1" width="32" height="32" color="#00000000" />
         <objects>
-          <rect>
+          <shape>
             <name value="RoundRect" />
             <matrix m0="1" m1="0" m2="0" m3="1" m4="0" m5="0" translatex="0" translatey="0" scalex="1" scaley="1" rotation="0" skewx="0" skewy="0" />
             <alpha value="255" />
@@ -42,7 +42,7 @@
             <flags visible="true" locked="false" outline="false" />
             <timeline />
             <settings offimage="false" />
-            <stroke capmode="butt" joinmode="bevel" innerjoinmode="jag" width="1" fixedwidth="false" innermiterlimit="1.01" miterlimit="4" pattern="" patternstepsize="1" patternstart="0">
+            <stroke capmode="butt" joinmode="miter" innerjoinmode="bevel" width="1" fixedwidth="false" innermiterlimit="1.01" miterlimit="4" pattern="" patternstepsize="1" patternstart="0">
               <fill mode="color" color="#e6161616" fillrule="nonzero" cliprule="nonzero" repeatmode="pad">
                 <image id="0" />
                 <matrix m0="0" m1="-1" m2="1" m3="0" m4="0" m5="16" translatex="0" translatey="0" scalex="1" scaley="1" rotation="0" skewx="0" skewy="0" />
@@ -64,10 +64,17 @@
               </gradient>
               <pattern movieclipid="0" />
             </fill>
-            <position x="0.5" y="0.5" />
-            <size width="31" height="31" />
-            <round x="4" y="4" />
-          </rect>
+            <commands>
+              <moveto x="4.5" y="0.5" />
+              <lineto x="31.5" y="0.5" />
+              <lineto x="31.5" y="27.5" />
+              <cubiccubicto c1x="31.5" c1y="29.7091389993" c2x="29.7091389993" c2y="31.5" ax="27.5" ay="31.5" />
+              <lineto x="4.5" y="31.5" />
+              <cubiccubicto c1x="2.2908610007" c1y="31.5" c2x="0.5" c2y="29.7091389993" ax="0.5" ay="27.5" />
+              <lineto x="0.5" y="0.5" />
+              <close />
+            </commands>
+          </shape>
         </objects>
       </movieclip>
     </objects>

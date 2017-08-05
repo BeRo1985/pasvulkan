@@ -1170,6 +1170,48 @@ procedure TpvGUITheme.Setup;
    ImageData:=nil;
   end;
  end;
+ procedure CreateNinePatchSprite(out aSprite:TpvSprite;
+                                 out aSpriteNinePatch:TpvSpriteNinePatch;
+                                 const aRadius:TpvInt32;
+                                 const aDataPointer:TpvPointer;
+                                 const aDataSize:TpvUInt32);
+ var Index,ImageWidth,ImageHeight:TpvInt32;
+     ImageData:TpvPointer;
+     p8:PpvUInt8;
+     p16:PpvUInt16;
+     PNGPixelFormat:TpvPNGPixelFormat;
+ begin
+  ImageData:=nil;
+  try
+   PNGPixelFormat:=pvppfUnknown;
+   if LoadPNGImage(aDataPointer,aDataSize,ImageData,ImageWidth,ImageHeight,false,PNGPixelFormat) then begin
+    if PNGPixelFormat=pvppfR16G16B16A16 then begin
+     // Convert to R8G8B8A8 in-placve
+     p8:=ImageData;
+     p16:=ImageData;
+     for Index:=1 to ImageWidth*ImageHeight*4 do begin
+      p8^:=p16^ shr 8;
+      inc(p8);
+      inc(p16);
+     end;
+    end;
+    aSprite:=fMipmappedSpriteAtlas.LoadRawSprite('',ImageData,ImageWidth,ImageHeight,true);
+    aSpriteNinePatch.Regions[0,0]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,0,0,aRadius,aRadius);
+    aSpriteNinePatch.Regions[0,1]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aRadius,0,ImageWidth-(aRadius*2),aRadius);
+    aSpriteNinePatch.Regions[0,2]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,ImageWidth-aRadius,0,aRadius,aRadius);
+    aSpriteNinePatch.Regions[1,0]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,0,aRadius,aRadius,ImageHeight-(aRadius*2));
+    aSpriteNinePatch.Regions[1,1]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aRadius,aRadius,ImageWidth-(aRadius*2),ImageHeight-(aRadius*2));
+    aSpriteNinePatch.Regions[1,2]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,ImageWidth-aRadius,aRadius,aRadius,ImageHeight-(aRadius*2));
+    aSpriteNinePatch.Regions[2,0]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,0,ImageHeight-aRadius,aRadius,aRadius);
+    aSpriteNinePatch.Regions[2,1]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aRadius,ImageHeight-aRadius,ImageWidth-(aRadius*2),aRadius);
+    aSpriteNinePatch.Regions[2,2]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,ImageWidth-aRadius,ImageHeight-aRadius,aRadius,aRadius);
+   end;
+  finally
+   if assigned(ImageData) then begin
+    FreeMem(ImageData);
+   end;
+  end;
+ end;
 const CursorScale=0.18275;
 var Stream:TStream;
     TrueTypeFont:TpvTrueTypeFont;
@@ -1206,7 +1248,31 @@ begin
 
  fSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice);
 
- CreateWindowFillNinePatchSprite(fSpriteUnfocusedWindowFill,
+ CreateNinePatchSprite(fSpriteUnfocusedWindowFill,
+                       fSpriteUnfocusedWindowFillNinePatch,
+                       4,
+                       @GUIThemeUnfocusedWindowFillData,
+                       GUIThemeUnfocusedWindowFillDataSize);
+
+ CreateNinePatchSprite(fSpriteFocusedWindowFill,
+                       fSpriteFocusedWindowFillNinePatch,
+                       4,
+                       @GUIThemeFocusedWindowFillData,
+                       GUIThemeFocusedWindowFillDataSize);
+
+ CreateNinePatchSprite(fSpriteUnfocusedWindowHeader,
+                       fSpriteUnfocusedWindowHeaderNinePatch,
+                       4,
+                       @GUIThemeUnfocusedWindowHeaderData,
+                       GUIThemeUnfocusedWindowHeaderDataSize);
+
+ CreateNinePatchSprite(fSpriteFocusedWindowHeader,
+                       fSpriteFocusedWindowHeaderNinePatch,
+                       4,
+                       @GUIThemeFocusedWindowHeaderData,
+                       GUIThemeFocusedWindowHeaderDataSize);
+
+{CreateWindowFillNinePatchSprite(fSpriteUnfocusedWindowFill,
                                  fSpriteUnfocusedWindowFillNinePatch,
                                  32,
                                  32,
@@ -1275,6 +1341,7 @@ begin
                                  TpvVector4.Create(92.0,92.0,92.0,255.0)/255.0,
                                  TpvVector4.Create(29.0,29.0,29.0,0.0)/255.0,
                                  TpvVector4.Create(92.0,92.0,92.0,0.0)/255.0);
+ }
 
  CreateWindowShadowNinePatchSprite(fSpriteUnfocusedWindowShadow,
                                    fSpriteUnfocusedWindowShadowNinePatch,
@@ -1291,6 +1358,7 @@ begin
                                    16,
                                    TpvVector4.Create(0.0,0.0,0.0,64.0)/255.0,
                                    TpvVector4.Create(0.0,0.0,0.0,0.0)/255.0);
+
 
  Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansFontData,GUIStandardTrueTypeFontSansFontDataSize);
  try
