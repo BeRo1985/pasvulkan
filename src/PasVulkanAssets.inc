@@ -29701,8 +29701,8 @@ const GUICursorUpDataSize=309;
         $44,$ae,$42,$60,$82
        );
 
-const GUIThemeUnfocusedWindowFillDataSize=283;
-      GUIThemeUnfocusedWindowFillData:array[0..GUIThemeUnfocusedWindowFillDataSize-1] of byte=
+const GUISkinUnfocusedWindowFillDataSize=283;
+      GUISkinUnfocusedWindowFillData:array[0..GUISkinUnfocusedWindowFillDataSize-1] of byte=
        (
         $89,$50,$4e,$47,$0d,$0a,$1a,$0a,$00,$00,$00,$0d,$49,$48,$44,$52,
         $00,$00,$00,$20,$00,$00,$00,$20,$08,$06,$00,$00,$00,$73,$7a,$7a,
@@ -29724,8 +29724,8 @@ const GUIThemeUnfocusedWindowFillDataSize=283;
         $00,$00,$00,$49,$45,$4e,$44,$ae,$42,$60,$82
        );
 
-const GUIThemeFocusedWindowFillDataSize=280;
-      GUIThemeFocusedWindowFillData:array[0..GUIThemeFocusedWindowFillDataSize-1] of byte=
+const GUISkinFocusedWindowFillDataSize=280;
+      GUISkinFocusedWindowFillData:array[0..GUISkinFocusedWindowFillDataSize-1] of byte=
        (
         $89,$50,$4e,$47,$0d,$0a,$1a,$0a,$00,$00,$00,$0d,$49,$48,$44,$52,
         $00,$00,$00,$20,$00,$00,$00,$20,$08,$06,$00,$00,$00,$73,$7a,$7a,
@@ -29747,8 +29747,8 @@ const GUIThemeFocusedWindowFillDataSize=280;
         $49,$45,$4e,$44,$ae,$42,$60,$82
        );
 
-const GUIThemeUnfocusedWindowHeaderDataSize=534;
-      GUIThemeUnfocusedWindowHeaderData:array[0..GUIThemeUnfocusedWindowHeaderDataSize-1] of byte=
+const GUISkinUnfocusedWindowHeaderDataSize=534;
+      GUISkinUnfocusedWindowHeaderData:array[0..GUISkinUnfocusedWindowHeaderDataSize-1] of byte=
        (
         $89,$50,$4e,$47,$0d,$0a,$1a,$0a,$00,$00,$00,$0d,$49,$48,$44,$52,
         $00,$00,$00,$20,$00,$00,$00,$20,$08,$06,$00,$00,$00,$73,$7a,$7a,
@@ -29786,8 +29786,8 @@ const GUIThemeUnfocusedWindowHeaderDataSize=534;
         $4e,$44,$ae,$42,$60,$82
        );
 
-const GUIThemeFocusedWindowHeaderDataSize=535;
-      GUIThemeFocusedWindowHeaderData:array[0..GUIThemeFocusedWindowHeaderDataSize-1] of byte=
+const GUISkinFocusedWindowHeaderDataSize=535;
+      GUISkinFocusedWindowHeaderData:array[0..GUISkinFocusedWindowHeaderDataSize-1] of byte=
        (
         $89,$50,$4e,$47,$0d,$0a,$1a,$0a,$00,$00,$00,$0d,$49,$48,$44,$52,
         $00,$00,$00,$20,$00,$00,$00,$20,$08,$06,$00,$00,$00,$73,$7a,$7a,

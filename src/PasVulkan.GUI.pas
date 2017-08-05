@@ -164,7 +164,7 @@ type TpvGUIObject=class;
        property Spacing:TpvFloat read fSpacing write fSpacing;
      end;
 
-     TpvGUITheme=class(TpvGUIObject)
+     TpvGUISkin=class(TpvGUIObject)
       private
       protected
        fFontSize:TpvFloat;
@@ -326,7 +326,7 @@ type TpvGUIObject=class;
       protected
        fCanvas:TpvCanvas;
        fLayout:TpvGUILayout;
-       fTheme:TpvGUITheme;
+       fSkin:TpvGUISkin;
        fCursor:TpvGUICursor;
        fPosition:TpvVector2;
        fSize:TpvVector2;
@@ -361,8 +361,8 @@ type TpvGUIObject=class;
        function GetRecursiveVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function GetWindow:TpvGUIWindow;
        procedure SetCanvas(const aCanvas:TpvCanvas); virtual;
-       function GetTheme:TpvGUITheme; virtual;
-       procedure SetTheme(const aTheme:TpvGUITheme); virtual;
+       function GetSkin:TpvGUISkin; virtual;
+       procedure SetSkin(const aSkin:TpvGUISkin); virtual;
        function GetPreferredSize:TpvVector2; virtual;
        function GetFontSize:TpvFloat; virtual;
       public
@@ -393,7 +393,7 @@ type TpvGUIObject=class;
        property Window:TpvGUIWindow read GetWindow;
        property Canvas:TpvCanvas read fCanvas write SetCanvas;
        property Layout:TpvGUILayout read fLayout write fLayout;
-       property Theme:TpvGUITheme read GetTheme write SetTheme;
+       property Skin:TpvGUISkin read GetSkin write SetSkin;
        property Cursor:TpvGUICursor read fCursor write fCursor;
        property Position:TpvVector2Property read fPositionProperty;
        property Size:TpvVector2Property read fSizeProperty;
@@ -427,7 +427,7 @@ type TpvGUIObject=class;
      TpvGUIInstance=class(TpvGUIWidget)
       private
        fVulkanDevice:TpvVulkanDevice;
-       fStandardTheme:TpvGUITheme;
+       fStandardSkin:TpvGUISkin;
        fDrawWidgetBounds:boolean;
        fBuffers:TpvGUIInstanceBuffers;
        fCountBuffers:TpvInt32;
@@ -464,7 +464,7 @@ type TpvGUIObject=class;
        property MousePosition:TpvVector2 read fMousePosition write fMousePosition;
       published
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
-       property StandardTheme:TpvGUITheme read fStandardTheme;
+       property StandardSkin:TpvGUISkin read fStandardSkin;
        property DrawWidgetBounds:boolean read fDrawWidgetBounds write fDrawWidgetBounds;
        property CountBuffers:TpvInt32 read fCountBuffers write SetCountBuffers;
        property UpdateBufferIndex:TpvInt32 read fUpdateBufferIndex write fUpdateBufferIndex;
@@ -679,10 +679,10 @@ begin
     (pvgwfHeader in (aWidget as TpvGUIWindow).fWindowFlags) then begin
   case fOrientation of
    pvgloHorizontal:begin
-    YOffset:=aWidget.Theme.WindowHeaderHeight;
+    YOffset:=aWidget.Skin.WindowHeaderHeight;
    end;
    pvgloVertical:begin
-    Size.y:=Size.y+(aWidget.Theme.WindowHeaderHeight-(fMargin*0.5));
+    Size.y:=Size.y+(aWidget.Skin.WindowHeaderHeight-(fMargin*0.5));
    end;
   end;
  end;
@@ -762,11 +762,11 @@ begin
     (pvgwfHeader in (aWidget as TpvGUIWindow).fWindowFlags) then begin
   case fOrientation of
    pvgloHorizontal:begin
-    YOffset:=aWidget.Theme.WindowHeaderHeight;
+    YOffset:=aWidget.Skin.WindowHeaderHeight;
     ContainerSize.y:=ContainerSize.y-YOffset;
    end;
    pvgloVertical:begin
-    Offset:=Offset+(aWidget.Theme.WindowHeaderHeight-(fMargin*0.5));
+    Offset:=Offset+(aWidget.Skin.WindowHeaderHeight-(fMargin*0.5));
    end;
   end;
  end;
@@ -822,7 +822,7 @@ begin
  end;
 end;
 
-constructor TpvGUITheme.Create(const aParent:TpvGUIObject);
+constructor TpvGUISkin.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
  fMipmappedSpriteAtlas:=nil;
@@ -832,7 +832,7 @@ begin
  Setup;
 end;
 
-destructor TpvGUITheme.Destroy;
+destructor TpvGUISkin.Destroy;
 begin
  FreeAndNil(fSansFont);
  FreeAndNil(fMonoFont);
@@ -841,7 +841,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvGUITheme.Setup;
+procedure TpvGUISkin.Setup;
  function sdRoundBox(const p,b:TpvVector2;const r:TpvFloat):TpvFloat;
  var d:TpvVector2;
  begin
@@ -1251,26 +1251,26 @@ begin
  CreateNinePatchSprite(fSpriteUnfocusedWindowFill,
                        fSpriteUnfocusedWindowFillNinePatch,
                        4,
-                       @GUIThemeUnfocusedWindowFillData,
-                       GUIThemeUnfocusedWindowFillDataSize);
+                       @GUISkinUnfocusedWindowFillData,
+                       GUISkinUnfocusedWindowFillDataSize);
 
  CreateNinePatchSprite(fSpriteFocusedWindowFill,
                        fSpriteFocusedWindowFillNinePatch,
                        4,
-                       @GUIThemeFocusedWindowFillData,
-                       GUIThemeFocusedWindowFillDataSize);
+                       @GUISkinFocusedWindowFillData,
+                       GUISkinFocusedWindowFillDataSize);
 
  CreateNinePatchSprite(fSpriteUnfocusedWindowHeader,
                        fSpriteUnfocusedWindowHeaderNinePatch,
                        4,
-                       @GUIThemeUnfocusedWindowHeaderData,
-                       GUIThemeUnfocusedWindowHeaderDataSize);
+                       @GUISkinUnfocusedWindowHeaderData,
+                       GUISkinUnfocusedWindowHeaderDataSize);
 
  CreateNinePatchSprite(fSpriteFocusedWindowHeader,
                        fSpriteFocusedWindowHeaderNinePatch,
                        4,
-                       @GUIThemeFocusedWindowHeaderData,
-                       GUIThemeFocusedWindowHeaderDataSize);
+                       @GUISkinFocusedWindowHeaderData,
+                       GUISkinFocusedWindowHeaderDataSize);
 
 {CreateWindowFillNinePatchSprite(fSpriteUnfocusedWindowFill,
                                  fSpriteUnfocusedWindowFillNinePatch,
@@ -1556,7 +1556,7 @@ begin
 
  fLayout:=nil;
 
- fTheme:=nil;
+ fSkin:=nil;
 
  fCursor:=pvgcArrow;
 
@@ -1618,28 +1618,28 @@ begin
  end;
 end;
 
-function TpvGUIWidget.GetTheme:TpvGUITheme;
+function TpvGUIWidget.GetSkin:TpvGUISkin;
 begin
- if assigned(fTheme) then begin
-  result:=fTheme;
+ if assigned(fSkin) then begin
+  result:=fSkin;
  end else if assigned(fInstance) then begin
-  result:=fInstance.fStandardTheme;
+  result:=fInstance.fStandardSkin;
  end else begin
   result:=nil;
  end;
 end;
 
-procedure TpvGUIWidget.SetTheme(const aTheme:TpvGUITheme);
+procedure TpvGUIWidget.SetSkin(const aSkin:TpvGUISkin);
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
- fTheme:=aTheme;
+ fSkin:=aSkin;
  for ChildIndex:=0 to fChildren.Count-1 do begin
   Child:=fChildren.Items[ChildIndex];
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
-   ChildWidget.SetTheme(aTheme);
+   ChildWidget.SetSkin(aSkin);
   end;
  end;
 end;
@@ -1794,8 +1794,8 @@ end;
 
 function TpvGUIWidget.GetFontSize:TpvFloat;
 begin
- if assigned(Theme) and IsZero(fFontSize) then begin
-  result:=Theme.fFontSize;
+ if assigned(Skin) and IsZero(fFontSize) then begin
+  result:=Skin.fFontSize;
  end else begin
   result:=fFontSize;
  end;
@@ -2121,7 +2121,7 @@ begin
 
  fVulkanDevice:=aVulkanDevice;
 
- fStandardTheme:=TpvGUITheme.Create(self);
+ fStandardSkin:=TpvGUISkin.Create(self);
 
  fDrawWidgetBounds:=false;
 
@@ -2494,15 +2494,15 @@ begin
  case fVisibleCursor of
   pvgcArrow:begin
    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorArrow,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorArrow,fMousePosition);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorArrow,fMousePosition);
   end;
   pvgcBeam:begin
    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorBeam,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorBeam,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorBeam,fMousePosition);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorBeam,fMousePosition);
   end;
   pvgcBusy:begin
    fCanvas.Push;
@@ -2511,7 +2511,7 @@ begin
                           TpvMatrix4x4.CreateRotateZ(frac(fTime)*TwoPI))*
                          TpvMatrix4x4.CreateTranslation(fMousePosition+TpvVector2.Create(2.0,2.0)))*
                          fCanvas.ModelMatrix;
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorBusy,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorBusy,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Pop;
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
    fCanvas.Push;
@@ -2519,74 +2519,74 @@ begin
                           TpvMatrix4x4.CreateRotateZ(frac(fTime)*TwoPI))*
                          TpvMatrix4x4.CreateTranslation(fMousePosition))*
                          fCanvas.ModelMatrix;
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorBusy,fMousePosition);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorBusy,fMousePosition);
    fCanvas.Pop;
   end;
   pvgcCross:begin
    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorCross,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorCross,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorCross,fMousePosition);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorCross,fMousePosition);
   end;
   pvgcEW:begin
    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorEW,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorEW,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorEW,fMousePosition);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorEW,fMousePosition);
   end;
   pvgcHelp:begin
    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorHelp,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorHelp,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorHelp,fMousePosition);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorHelp,fMousePosition);
   end;
   pvgcLink:begin
    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorLink,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorLink,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorLink,fMousePosition);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorLink,fMousePosition);
   end;
   pvgcMove:begin
    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorMove,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorMove,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorMove,fMousePosition);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorMove,fMousePosition);
   end;
   pvgcNESW:begin
    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorNESW,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNESW,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorNESW,fMousePosition);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNESW,fMousePosition);
   end;
   pvgcNS:begin
    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorNS,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNS,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorNS,fMousePosition);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNS,fMousePosition);
   end;
   pvgcNWSE:begin
    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorNWSE,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNWSE,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorNWSE,fMousePosition);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNWSE,fMousePosition);
   end;
   pvgcPen:begin
    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorPen,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorPen,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorPen,fMousePosition);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorPen,fMousePosition);
   end;
   pvgcUnavailable:begin
    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorUnavailable,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorUnavailable,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorUnavailable,fMousePosition);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorUnavailable,fMousePosition);
   end;
   pvgcUp:begin
    fCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorUp,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorUp,fMousePosition+TpvVector2.Create(2.0,2.0));
    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Theme.fSpriteMouseCursorUp,fMousePosition);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorUp,fMousePosition);
   end;
  end;
  fTime:=fTime+fDeltaTime;
@@ -2660,12 +2660,12 @@ begin
   fButtonPanel.Visible:=false;
  end;
  result:=Maximum(inherited GetPreferredSize,
-                 Theme.fSansFont.TextSize(fTitle,
-                                          Max(Theme.fUnfocusedWindowHeaderFontSize,
-                                              Theme.fFocusedWindowHeaderFontSize))+
-                 TpvVector2.Create(Theme.fSansFont.TextWidth('====',
-                                                             Max(Theme.fUnfocusedWindowHeaderFontSize,
-                                                             Theme.fFocusedWindowHeaderFontSize)),
+                 Skin.fSansFont.TextSize(fTitle,
+                                          Max(Skin.fUnfocusedWindowHeaderFontSize,
+                                              Skin.fFocusedWindowHeaderFontSize))+
+                 TpvVector2.Create(Skin.fSansFont.TextWidth('====',
+                                                             Max(Skin.fUnfocusedWindowHeaderFontSize,
+                                                             Skin.fFocusedWindowHeaderFontSize)),
                                    0.0));
  if assigned(fButtonPanel) then begin
   fButtonPanel.Visible:=true;
@@ -2727,43 +2727,43 @@ begin
     fMouseAction:=pvgwmaNone;
     fCursor:=pvgcArrow;
     if (pvgwfResizableNW in fWindowFlags) and
-       (aPointerEvent.Position.x<Theme.fWindowResizeGripSize) and
-       (aPointerEvent.Position.y<Theme.fWindowResizeGripSize) then begin
+       (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
+       (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
      fMouseAction:=pvgwmaSizeNW;
      fCursor:=pvgcNWSE;
     end else if (pvgwfResizableNE in fWindowFlags) and
-                (aPointerEvent.Position.x>(fSize.x-Theme.fWindowResizeGripSize)) and
-                (aPointerEvent.Position.y<Theme.fWindowResizeGripSize) then begin
+                (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+                (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
      fMouseAction:=pvgwmaSizeNE;
      fCursor:=pvgcNESW;
     end else if (pvgwfResizableSW in fWindowFlags) and
-                (aPointerEvent.Position.x<Theme.fWindowResizeGripSize) and
-                (aPointerEvent.Position.y>(fSize.y-Theme.fWindowResizeGripSize)) then begin
+                (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
+                (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
      fMouseAction:=pvgwmaSizeSW;
      fCursor:=pvgcNESW;
     end else if (pvgwfResizableSE in fWindowFlags) and
-                (aPointerEvent.Position.x>(fSize.x-Theme.fWindowResizeGripSize)) and
-                (aPointerEvent.Position.y>(fSize.y-Theme.fWindowResizeGripSize)) then begin
+                (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+                (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
      fMouseAction:=pvgwmaSizeSE;
      fCursor:=pvgcNWSE;
     end else if (pvgwfResizableN in fWindowFlags) and
-                (aPointerEvent.Position.y<Theme.fWindowResizeGripSize) then begin
+                (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
      fMouseAction:=pvgwmaSizeN;
      fCursor:=pvgcNS;
     end else if (pvgwfResizableS in fWindowFlags) and
-                (aPointerEvent.Position.y>(fSize.y-Theme.fWindowResizeGripSize)) then begin
+                (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
      fMouseAction:=pvgwmaSizeS;
      fCursor:=pvgcNS;
     end else if (pvgwfResizableW in fWindowFlags) and
-                (aPointerEvent.Position.x<Theme.fWindowResizeGripSize) then begin
+                (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
      fMouseAction:=pvgwmaSizeW;
      fCursor:=pvgcEW;
     end else if (pvgwfResizableE in fWindowFlags) and
-                (aPointerEvent.Position.x>(fSize.x-Theme.fWindowResizeGripSize)) then begin
+                (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
      fMouseAction:=pvgwmaSizeE;
      fCursor:=pvgcEW;
     end else if (pvgwfMovable in fWindowFlags) and
-                (aPointerEvent.Position.y<Theme.fWindowHeaderHeight) then begin
+                (aPointerEvent.Position.y<Skin.fWindowHeaderHeight) then begin
      fMouseAction:=pvgwmaMove;
      fCursor:=pvgcMove;
     end;
@@ -2779,38 +2779,38 @@ begin
     if fMouseAction=pvgwmaNone then begin
      fCursor:=pvgcArrow;
      if (pvgwfResizableNW in fWindowFlags) and
-        (aPointerEvent.Position.x<Theme.fWindowResizeGripSize) and
-        (aPointerEvent.Position.y<Theme.fWindowResizeGripSize) then begin
+        (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
+        (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
       fCursor:=pvgcNWSE;
      end else if (pvgwfResizableNE in fWindowFlags) and
-                 (aPointerEvent.Position.x>(fSize.x-Theme.fWindowResizeGripSize)) and
-                 (aPointerEvent.Position.y<Theme.fWindowResizeGripSize) then begin
+                 (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+                 (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
       fCursor:=pvgcNESW;
      end else if (pvgwfResizableSW in fWindowFlags) and
-                 (aPointerEvent.Position.x<Theme.fWindowResizeGripSize) and
-                 (aPointerEvent.Position.y>(fSize.y-Theme.fWindowResizeGripSize)) then begin
+                 (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
+                 (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
       fCursor:=pvgcNESW;
      end else if (pvgwfResizableSE in fWindowFlags) and
-                 (aPointerEvent.Position.x>(fSize.x-Theme.fWindowResizeGripSize)) and
-                 (aPointerEvent.Position.y>(fSize.y-Theme.fWindowResizeGripSize)) then begin
+                 (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+                 (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
       fCursor:=pvgcNWSE;
      end else if (pvgwfResizableN in fWindowFlags) and
-                 (aPointerEvent.Position.y<Theme.fWindowResizeGripSize) then begin
+                 (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
       fCursor:=pvgcNS;
      end else if (pvgwfResizableS in fWindowFlags) and
-                 (aPointerEvent.Position.y>(fSize.y-Theme.fWindowResizeGripSize)) then begin
+                 (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
       fCursor:=pvgcNS;
      end else if (pvgwfResizableW in fWindowFlags) and
-                 (aPointerEvent.Position.x<Theme.fWindowResizeGripSize) then begin
+                 (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
       fCursor:=pvgcEW;
      end else if (pvgwfResizableE in fWindowFlags) and
-                 (aPointerEvent.Position.x>(fSize.x-Theme.fWindowResizeGripSize)) then begin
+                 (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
       fCursor:=pvgcEW;
      end;
     end;
    end;
    POINTEREVENT_DRAG:begin
-    MinimumSize:=TpvVector2.Create(Theme.fWindowMinimumWidth,Theme.fWindowMinimumHeight);
+    MinimumSize:=TpvVector2.Create(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
     case fMouseAction of
      pvgwmaMove:begin
       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
@@ -2942,81 +2942,81 @@ begin
   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
   begin
    LastClipRect:=fCanvas.ClipRect;
-   NewClipRect:=TpvRect.CreateAbsolute(LastClipRect.Left-Theme.fWindowShadowWidth,
-                                       LastClipRect.Top-Theme.fWindowShadowHeight,
-                                       LastClipRect.Right+Theme.fWindowShadowWidth,
-                                       LastClipRect.Bottom+Theme.fWindowShadowHeight);
+   NewClipRect:=TpvRect.CreateAbsolute(LastClipRect.Left-Skin.fWindowShadowWidth,
+                                       LastClipRect.Top-Skin.fWindowShadowHeight,
+                                       LastClipRect.Right+Skin.fWindowShadowWidth,
+                                       LastClipRect.Bottom+Skin.fWindowShadowHeight);
    if assigned(fParent) and
       (fParent is TpvGUIWidget) then begin
     NewClipRect:=TpvRect.CreateRelative((fParent as TpvGUIWidget).fPosition,
                                         (fParent as TpvGUIWidget).fSize).GetIntersection(NewClipRect);
    end;
    fCanvas.ClipRect:=NewClipRect;
-   fCanvas.DrawNinePatchSprite(Theme.fSpriteFocusedWindowShadow,
-                               Theme.fSpriteFocusedWindowShadowNinePatch,
-                               TpvVector2.Create(-Theme.fWindowShadowWidth,-Theme.fWindowShadowHeight),
-                               fSize+TpvVector2.Create(Theme.fWindowShadowWidth*2,Theme.fWindowShadowHeight*2));
+   fCanvas.DrawNinePatchSprite(Skin.fSpriteFocusedWindowShadow,
+                               Skin.fSpriteFocusedWindowShadowNinePatch,
+                               TpvVector2.Create(-Skin.fWindowShadowWidth,-Skin.fWindowShadowHeight),
+                               fSize+TpvVector2.Create(Skin.fWindowShadowWidth*2,Skin.fWindowShadowHeight*2));
    fCanvas.ClipRect:=LastClipRect;
   end;
 
   if pvgwfFocused in fWidgetFlags then begin
-   fCanvas.DrawNinePatchSprite(Theme.fSpriteFocusedWindowFill,
-                               Theme.fSpriteFocusedWindowFillNinePatch,
-                               TpvVector2.Create(0.0,Theme.fSpriteFocusedWindowHeader.Height),
-                               TpvVector2.Create(fSize.x,fSize.y-Theme.fSpriteFocusedWindowHeader.Height));
-   fCanvas.DrawNinePatchSprite(Theme.fSpriteFocusedWindowHeader,
-                               Theme.fSpriteFocusedWindowHeaderNinePatch,
+   fCanvas.DrawNinePatchSprite(Skin.fSpriteFocusedWindowFill,
+                               Skin.fSpriteFocusedWindowFillNinePatch,
+                               TpvVector2.Create(0.0,Skin.fSpriteFocusedWindowHeader.Height),
+                               TpvVector2.Create(fSize.x,fSize.y-Skin.fSpriteFocusedWindowHeader.Height));
+   fCanvas.DrawNinePatchSprite(Skin.fSpriteFocusedWindowHeader,
+                               Skin.fSpriteFocusedWindowHeaderNinePatch,
                                TpvVector2.Null,
-                               TpvVector2.Create(fSize.x,Theme.fSpriteFocusedWindowHeader.Height));
+                               TpvVector2.Create(fSize.x,Skin.fSpriteFocusedWindowHeader.Height));
 {  if Resizable then begin
-    fCanvas.DrawNinePatchSprite(Theme.fSpriteFocusedWindowGrip,
-                                Theme.fSpriteFocusedWindowGripNinePatch,
-                                TpvVector2.Create(fSize.x-(Theme.fSpriteFocusedWindowGrip.Width+Theme.fWindowResizeGripSize),fSize.y-(Theme.fSpriteFocusedWindowGrip.Height+Theme.fWindowGripPaddingBottom)),
-                                TpvVector2.Create(Theme.fSpriteFocusedWindowGrip.Width,Theme.fSpriteFocusedWindowGrip.Height));
+    fCanvas.DrawNinePatchSprite(Skin.fSpriteFocusedWindowGrip,
+                                Skin.fSpriteFocusedWindowGripNinePatch,
+                                TpvVector2.Create(fSize.x-(Skin.fSpriteFocusedWindowGrip.Width+Skin.fWindowResizeGripSize),fSize.y-(Skin.fSpriteFocusedWindowGrip.Height+Skin.fWindowGripPaddingBottom)),
+                                TpvVector2.Create(Skin.fSpriteFocusedWindowGrip.Width,Skin.fSpriteFocusedWindowGrip.Height));
    end;}
   end else begin
-   fCanvas.DrawNinePatchSprite(Theme.fSpriteUnfocusedWindowFill,
-                               Theme.fSpriteUnfocusedWindowFillNinePatch,
-                               TpvVector2.Create(0.0,Theme.fSpriteUnfocusedWindowHeader.Height),
-                               TpvVector2.Create(fSize.x,fSize.y-Theme.fSpriteUnfocusedWindowHeader.Height));
-   fCanvas.DrawNinePatchSprite(Theme.fSpriteUnfocusedWindowHeader,
-                               Theme.fSpriteUnfocusedWindowHeaderNinePatch,
+   fCanvas.DrawNinePatchSprite(Skin.fSpriteUnfocusedWindowFill,
+                               Skin.fSpriteUnfocusedWindowFillNinePatch,
+                               TpvVector2.Create(0.0,Skin.fSpriteUnfocusedWindowHeader.Height),
+                               TpvVector2.Create(fSize.x,fSize.y-Skin.fSpriteUnfocusedWindowHeader.Height));
+   fCanvas.DrawNinePatchSprite(Skin.fSpriteUnfocusedWindowHeader,
+                               Skin.fSpriteUnfocusedWindowHeaderNinePatch,
                                TpvVector2.Null,
-                               TpvVector2.Create(fSize.x,Theme.fSpriteUnfocusedWindowHeader.Height));
+                               TpvVector2.Create(fSize.x,Skin.fSpriteUnfocusedWindowHeader.Height));
 {  if Resizable then begin
-    fCanvas.DrawNinePatchSprite(Theme.fSpriteUnfocusedWindowGrip,
-                                Theme.fSpriteUnfocusedWindowGripNinePatch,
-                                TpvVector2.Create(fSize.x-(Theme.fSpriteUnfocusedWindowGrip.Width+Theme.fWindowResizeGripSize),fSize.y-(Theme.fSpriteUnfocusedWindowGrip.Height+Theme.fWindowGripPaddingBottom)),
-                                TpvVector2.Create(Theme.fSpriteUnfocusedWindowGrip.Width,Theme.fSpriteUnfocusedWindowGrip.Height));
+    fCanvas.DrawNinePatchSprite(Skin.fSpriteUnfocusedWindowGrip,
+                                Skin.fSpriteUnfocusedWindowGripNinePatch,
+                                TpvVector2.Create(fSize.x-(Skin.fSpriteUnfocusedWindowGrip.Width+Skin.fWindowResizeGripSize),fSize.y-(Skin.fSpriteUnfocusedWindowGrip.Height+Skin.fWindowGripPaddingBottom)),
+                                TpvVector2.Create(Skin.fSpriteUnfocusedWindowGrip.Width,Skin.fSpriteUnfocusedWindowGrip.Height));
    end;}
   end;
 
   if pvgwfHeader in fWindowFlags then begin
    LastModelMatrix:=fCanvas.ModelMatrix;
    try
-    fCanvas.Font:=Theme.fSansFont;
-    fCanvas.FontSize:=IfThen(pvgwfFocused in fWidgetFlags,Theme.fFocusedWindowHeaderFontSize,Theme.fUnfocusedWindowHeaderFontSize);
+    fCanvas.Font:=Skin.fSansFont;
+    fCanvas.FontSize:=IfThen(pvgwfFocused in fWidgetFlags,Skin.fFocusedWindowHeaderFontSize,Skin.fUnfocusedWindowHeaderFontSize);
     fCanvas.TextHorizontalAlignment:=pvcthaCenter;
     fCanvas.TextVerticalAlignment:=pvctvaMiddle;
     NewModelMatrix:=TpvMatrix4x4.CreateTranslation(fSize.x*0.5,
-                                                   Theme.fSpriteUnfocusedWindowHeader.Height*0.5)*
+                                                   Skin.fSpriteUnfocusedWindowHeader.Height*0.5)*
                     LastModelMatrix;
-    if ((pvgwfFocused in fWidgetFlags) and Theme.fFocusedWindowHeaderFontShadow) or
-       ((not (pvgwfFocused in fWidgetFlags)) and Theme.fUnfocusedWindowHeaderFontShadow) then begin
+    if ((pvgwfFocused in fWidgetFlags) and Skin.fFocusedWindowHeaderFontShadow) or
+       ((not (pvgwfFocused in fWidgetFlags)) and Skin.fUnfocusedWindowHeaderFontShadow) then begin
      if pvgwfFocused in fWidgetFlags then begin
-      fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(Theme.fFocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
-      fCanvas.Color:=Theme.fFocusedWindowHeaderFontShadowColor;
+      fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(Skin.fFocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
+      fCanvas.Color:=Skin.fFocusedWindowHeaderFontShadowColor;
      end else begin
-      fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(Theme.fUnfocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
-      fCanvas.Color:=Theme.fUnfocusedWindowHeaderFontShadowColor;
+      fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(Skin.fUnfocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
+      fCanvas.Color:=Skin.fUnfocusedWindowHeaderFontShadowColor;
      end;
      fCanvas.DrawText(fTitle);
     end;
     fCanvas.ModelMatrix:=NewModelMatrix;
     if pvgwfFocused in fWidgetFlags then begin
-     fCanvas.Color:=Theme.fFocusedWindowHeaderFontColor;
+     fCanvas.Color:=Skin.fFocusedWindowHeaderFontColor;
     end else begin
-     fCanvas.Color:=Theme.fUnfocusedWindowHeaderFontColor;
+     fCanvas.Color:=Skin.fUnfocusedWindowHeaderFontColor;
     end;
     fCanvas.DrawText(fTitle);
    finally
@@ -3049,7 +3049,7 @@ end;
 function TpvGUILabel.GetPreferredSize:TpvVector2;
 begin
  result:=Maximum(inherited GetPreferredSize,
-                 Theme.fSansFont.TextSize(fCaption,FontSize)+TpvVector2.Create(0.0,0.0));
+                 Skin.fSansFont.TextSize(fCaption,FontSize)+TpvVector2.Create(0.0,0.0));
 end;
 
 function TpvGUILabel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -3071,11 +3071,11 @@ procedure TpvGUILabel.Update;
 begin
  fCanvas.Push;
  try
-  fCanvas.Font:=Theme.fSansFont;
+  fCanvas.Font:=Skin.fSansFont;
   fCanvas.FontSize:=FontSize;
   fCanvas.TextHorizontalAlignment:=pvcthaLeft;
   fCanvas.TextVerticalAlignment:=pvctvaTop;
-  fCanvas.Color:=Theme.fFocusedWindowHeaderFontColor;
+  fCanvas.Color:=Skin.fFocusedWindowHeaderFontColor;
   fCanvas.DrawText(fCaption);
  finally
   fCanvas.Pop;
