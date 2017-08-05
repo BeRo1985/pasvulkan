@@ -172,6 +172,8 @@ begin
   ConvertFile('guiskin/focusedwindowfill.png','GUISkinFocusedWindowFill');
   ConvertFile('guiskin/unfocusedwindowheader.png','GUISkinUnfocusedWindowHeader');
   ConvertFile('guiskin/focusedwindowheader.png','GUISkinFocusedWindowHeader');
+  ConvertFile('guiskin/unfocusedwindowshadow.png','GUISkinUnfocusedWindowShadow');
+  ConvertFile('guiskin/focusedwindowshadow.png','GUISkinFocusedWindowShadow');
   StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanAssets.inc');
  finally
   StringList.Free;
