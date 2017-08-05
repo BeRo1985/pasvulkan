@@ -7598,24 +7598,40 @@ begin
   end;
 
   if FormatCount=0 then begin
+{$if defined(Android)}
+   if aSRGB then begin
+    result.Format:=VK_FORMAT_R8G8B8A8_SRGB;
+   end else begin
+    result.Format:=VK_FORMAT_R8G8B8A8_UNORM;
+   end;
+{$else}
    if aSRGB then begin
     result.Format:=VK_FORMAT_B8G8R8A8_SRGB;
    end else begin
     result.Format:=VK_FORMAT_B8G8R8A8_UNORM;
    end;
+{$ifend}
    result.ColorSpace:=VK_COLORSPACE_SRGB_NONLINEAR_KHR;
   end else if (FormatCount=1) and (SurfaceFormats[0].Format=VK_FORMAT_UNDEFINED) then begin
+{$if defined(Android)}
+   if aSRGB then begin
+    result.Format:=VK_FORMAT_R8G8B8A8_SRGB;
+   end else begin
+    result.Format:=VK_FORMAT_R8G8B8A8_UNORM;
+   end;
+{$else}
    if aSRGB then begin
     result.Format:=VK_FORMAT_B8G8R8A8_SRGB;
    end else begin
     result.Format:=VK_FORMAT_B8G8R8A8_UNORM;
    end;
+{$ifend}
    result.ColorSpace:=SurfaceFormats[0].colorSpace;
   end else begin
    BestIndex:=0;
    for Index:=0 to FormatCount-1 do begin
-    if (aSRGB and (SurfaceFormats[Index].format=VK_FORMAT_B8G8R8A8_SRGB)) or
-       ((not aSRGB) and (SurfaceFormats[Index].format=VK_FORMAT_B8G8R8A8_UNORM)) then begin
+    if (aSRGB and (SurfaceFormats[Index].format in [VK_FORMAT_R8G8B8A8_SRGB,VK_FORMAT_B8G8R8A8_SRGB])) or
+       ((not aSRGB) and (SurfaceFormats[Index].format in [VK_FORMAT_R8G8B8A8_UNORM,VK_FORMAT_B8G8R8A8_UNORM])) then begin
      BestIndex:=Index;
      break;
     end;
