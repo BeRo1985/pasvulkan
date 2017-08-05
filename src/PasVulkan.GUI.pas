@@ -961,8 +961,8 @@ begin
  fWindowMinimumWidth:=Max(fWindowHeaderHeight+8,fWindowResizeGripSize*2);
  fWindowMinimumHeight:=Max(fWindowHeaderHeight+8,fWindowResizeGripSize*2);
 
- fWindowShadowWidth:=4;
- fWindowShadowHeight:=4;
+ fWindowShadowWidth:=16;
+ fWindowShadowHeight:=16;
 
  fMipmappedSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice);
 
@@ -994,13 +994,13 @@ begin
 
  CreateNinePatchSprite(fSpriteUnfocusedWindowShadow,
                        fSpriteUnfocusedWindowShadowNinePatch,
-                       7,
+                       16,
                        @GUISkinUnfocusedWindowShadowData,
                        GUISkinUnfocusedWindowShadowDataSize);
 
  CreateNinePatchSprite(fSpriteFocusedWindowShadow,
                        fSpriteFocusedWindowShadowNinePatch,
-                       7,
+                       16,
                        @GUISkinFocusedWindowShadowData,
                        GUISkinFocusedWindowShadowDataSize);
 
