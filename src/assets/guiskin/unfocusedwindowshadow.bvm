@@ -18,7 +18,7 @@
     <flags visible="true" locked="false" outline="false" />
     <timeline />
     <id value="1" />
-    <settings offimage="false" gamma="1" looptime="-1" width="16" height="16" color="#ffffffff" />
+    <settings offimage="false" gamma="1" looptime="-1" width="16" height="16" color="#00ffffff" />
     <objects>
       <ellipse>
         <name value="" />
@@ -47,8 +47,8 @@
           <matrix m0="2" m1="0" m2="0" m3="2" m4="0" m5="0" translatex="0" translatey="0" scalex="1" scaley="1" rotation="0" skewx="0" skewy="0" />
           <gradientfocusmatrix m0="1" m1="0" m2="0" m3="1" m4="0" m5="0" translatex="0" translatey="0" scalex="1" scaley="1" rotation="0" skewx="0" skewy="0" />
           <gradient focusx="0" focusy="0" radius="16">
-            <item offset="0.001953125" color="#80808080" />
-            <item offset="1" color="#00808080" />
+            <item offset="0.001953125" color="#40000000" />
+            <item offset="1" color="#00000000" />
           </gradient>
           <pattern movieclipid="0" />
         </fill>

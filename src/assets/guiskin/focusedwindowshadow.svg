@@ -4,12 +4,12 @@
 <svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="16" height="16">
   <defs id="defs1">
     <radialGradient id="grad0" spreadMethod="pad" cx="0" cy="0" r="16" fx="0" fy="0" gradientUnits="userSpaceOnUse" gradientTransform="matrix(0.5,0,0,0.5,0,0)">
-      <stop id="grad0stop0" offset="0.001953125" style="stop-color:#808080;stop-opacity:0.5019607843;" />
-      <stop id="grad0stop1" offset="1" style="stop-color:#808080;stop-opacity:0;" />
+      <stop id="grad0stop0" offset="0.001953125" style="stop-color:#000000;stop-opacity:0.2509803922;" />
+      <stop id="grad0stop1" offset="1" style="stop-color:#000000;stop-opacity:0;" />
     </radialGradient>
   </defs>
   <g id="root" transform="matrix(1,0,0,1,0,0)" style="opacity:1">
-    <rect id="rootbg" x="0" y="0" width="16" height="16" rx="0" ry="0" style="opacity:1;fill:white;fill-opacity:1;stroke:none;visibility:visible;display:inline;overflow:visible" />
+    <rect id="rootbg" x="0" y="0" width="16" height="16" rx="0" ry="0" style="opacity:1;fill:#ffffff;fill-opacity:1;stroke:none;visibility:visible;display:inline;overflow:visible" />
     <ellipse id="rooto0" transform="matrix(1,0,0,1,8,8)" cx="0" cy="0" rx="8" ry="8" style="opacity:1;fill:url(#grad0);fill-opacity:1;fill-rule:evenodd;clip-rule:nonzero;stroke:none;stroke-width:1;stroke-dasharray:none;stroke-dashoffset:0;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:4;visibility:visible;display:inline;overflow:visible" />
   </g>
 </svg>

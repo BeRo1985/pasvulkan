@@ -1241,8 +1241,8 @@ begin
  fWindowMinimumWidth:=Max(fWindowHeaderHeight+8,fWindowResizeGripSize*2);
  fWindowMinimumHeight:=Max(fWindowHeaderHeight+8,fWindowResizeGripSize*2);
 
- fWindowShadowWidth:=16;
- fWindowShadowHeight:=16;
+ fWindowShadowWidth:=7;
+ fWindowShadowHeight:=7;
 
  fMipmappedSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice);
 
@@ -1271,6 +1271,18 @@ begin
                        4,
                        @GUISkinFocusedWindowHeaderData,
                        GUISkinFocusedWindowHeaderDataSize);
+
+ CreateNinePatchSprite(fSpriteUnfocusedWindowShadow,
+                       fSpriteUnfocusedWindowShadowNinePatch,
+                       7,
+                       @GUISkinUnfocusedWindowShadowData,
+                       GUISkinUnfocusedWindowShadowDataSize);
+
+ CreateNinePatchSprite(fSpriteFocusedWindowShadow,
+                       fSpriteFocusedWindowShadowNinePatch,
+                       7,
+                       @GUISkinFocusedWindowShadowData,
+                       GUISkinFocusedWindowShadowDataSize);
 
 {CreateWindowFillNinePatchSprite(fSpriteUnfocusedWindowFill,
                                  fSpriteUnfocusedWindowFillNinePatch,
@@ -1341,7 +1353,7 @@ begin
                                  TpvVector4.Create(92.0,92.0,92.0,255.0)/255.0,
                                  TpvVector4.Create(29.0,29.0,29.0,0.0)/255.0,
                                  TpvVector4.Create(92.0,92.0,92.0,0.0)/255.0);
- }
+
 
  CreateWindowShadowNinePatchSprite(fSpriteUnfocusedWindowShadow,
                                    fSpriteUnfocusedWindowShadowNinePatch,
@@ -1358,7 +1370,7 @@ begin
                                    16,
                                    TpvVector4.Create(0.0,0.0,0.0,64.0)/255.0,
                                    TpvVector4.Create(0.0,0.0,0.0,0.0)/255.0);
-
+ }
 
  Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansFontData,GUIStandardTrueTypeFontSansFontDataSize);
  try
