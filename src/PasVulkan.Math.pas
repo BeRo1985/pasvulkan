@@ -1347,6 +1347,11 @@ function Maximum(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}
 function Maximum(const a,b:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
 function Maximum(const a,b:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
 
+function Pow(const a,b:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Pow(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Pow(const a,b:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+function Pow(const a,b:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+
 function FaceForward(const N,I:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
 function FaceForward(const N,I:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 function FaceForward(const N,I:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -13512,6 +13517,32 @@ begin
  result.y:=Max(a.y,b.y);
  result.z:=Max(a.z,b.z);
  result.w:=Max(a.w,b.w);
+end;
+
+function Pow(const a,b:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result:=Power(a,b);
+end;
+
+function Pow(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result.x:=Power(a.x,b.x);
+ result.y:=Power(a.y,b.y);
+end;
+
+function Pow(const a,b:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result.x:=Power(a.x,b.x);
+ result.y:=Power(a.y,b.y);
+ result.z:=Power(a.z,b.z);
+end;
+
+function Pow(const a,b:TpvVector4):TpvVector4; overload; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result.x:=Power(a.x,b.x);
+ result.y:=Power(a.y,b.y);
+ result.z:=Power(a.z,b.z);
+ result.w:=Power(a.w,b.w);
 end;
 
 function FaceForward(const N,I:TpvScalar):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}

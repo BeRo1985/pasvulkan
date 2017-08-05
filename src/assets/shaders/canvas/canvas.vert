@@ -1,5 +1,8 @@
 #version 450 core
 
+// Copyright (C) 2017, Benjamin 'BeRo' Rosseaux (benjamin@rosseaux.de)
+// License: zlib 
+
 layout(location = 0) in vec2 inPosition; 
 layout(location = 1) in vec4 inColor;    
 layout(location = 2) in vec3 inTexCoord; 
@@ -13,7 +16,6 @@ layout(location = 2) out vec3 outTexCoord;
 layout(location = 3) flat out ivec4 outState;    
 layout(location = 4) out vec4 outClipRect; 
 layout(location = 5) out vec4 outMetaInfo; 
-layout(location = 6) flat out vec2 outBlendFactors; 
 
 layout(push_constant) uniform PushConstants {
   layout(offset = 0) mat4 transformMatrix;
@@ -28,28 +30,11 @@ void main(void){
   outPosition = inPosition;
   outColor = inColor;
   outTexCoord = inTexCoord;
-  outState = ivec4(uvec4((inState >> 2u) & 0x3u,
-                         (inState >> 4u) & 0xffu,                         
-                         (inState >> 12u) & 0xfu,                         
+  outState = ivec4(uvec4((inState >> 0u) & 0x3u,
+                         (inState >> 2u) & 0xffu,                         
+                         (inState >> 10u) & 0xfu,                         
                          0u));
   outClipRect = inClipRect;
   outMetaInfo = inMetaInfo;
-  switch(int((inState >> 0u) & 0x3u)){
-    case 1:{
-      // Alpha blending
-      outBlendFactors = vec2(1.0, 1.0);
-      break;
-    }
-    case 2:{
-      // Additive blending
-      outBlendFactors = vec2(0.0, 1.0);
-      break;
-    }
-    default:{
-      // No blending
-      outBlendFactors = vec2(1.0, 0.0);
-      break;
-    }
-  }  
   gl_Position = pushConstants.transformMatrix * vec4(inPosition, 0.0, 1.0);
 }

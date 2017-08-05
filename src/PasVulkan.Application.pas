@@ -5502,19 +5502,19 @@ begin
  DestroyVulkanSwapChain;
 
  fVulkanSwapChain:=TpvVulkanSwapChain.Create(fVulkanDevice,
-                                           fVulkanSurface,
-                                           fVulkanOldSwapChain,
-                                           fWidth,
-                                           fHeight,
-                                           IfThen(fVSync,MaxSwapChainImages,1),
-                                           1,
-                                           VK_FORMAT_UNDEFINED,
-                                           VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
-                                           TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT),
-                                           VK_SHARING_MODE_EXCLUSIVE,
-                                           nil,
-                                           VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-                                           TVkPresentModeKHR(integer(IfThen(fVSync,integer(VK_PRESENT_MODE_FIFO_KHR),integer(VK_PRESENT_MODE_IMMEDIATE_KHR)))));
+                                             fVulkanSurface,
+                                             fVulkanOldSwapChain,
+                                             fWidth,
+                                             fHeight,
+                                             IfThen(fVSync,MaxSwapChainImages,1),
+                                             1,
+                                             VK_FORMAT_UNDEFINED,
+                                             VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+                                             TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT),
+                                             VK_SHARING_MODE_EXCLUSIVE,
+                                             nil,
+                                             VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+                                             TVkPresentModeKHR(integer(IfThen(fVSync,integer(VK_PRESENT_MODE_FIFO_KHR),integer(VK_PRESENT_MODE_IMMEDIATE_KHR)))));
 
  fCountSwapChainImages:=fVulkanSwapChain.CountImages;
 

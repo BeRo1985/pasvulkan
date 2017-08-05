@@ -76,11 +76,10 @@ uses SysUtils,
      PasVulkan.Sprites,
      PasVulkan.Font;
 
-const pvcvsBlendingModeShift=0;
-      pvcvsRenderingModeShift=2;
-      pvcvsObjectModeShift=4;
-      pvcvsFillStyleShift=12;
-      pvcvsFillWrapModeShift=14;
+const pvcvsRenderingModeShift=0;
+      pvcvsObjectModeShift=2;
+      pvcvsFillStyleShift=10;
+      pvcvsFillWrapModeShift=12;
 
 type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      TpvCanvasRenderingMode=
@@ -253,6 +252,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fTexture:TObject;
        fAtlasTexture:TObject;
        fStrokePattern:TpvCanvasStrokePattern;
+       function GetColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
        function GetStartColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetStartColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
        function GetStopColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -265,7 +266,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        destructor Destroy; override;
        procedure Assign(aSource:TPersistent); override;
       public
-       property Color:TpvVector4 read fColor write fColor;
+       property Color:TpvVector4 read GetColor write SetColor;
        property StartColor:TpvVector4 read GetStartColor write SetStartColor;
        property StopColor:TpvVector4 read GetStopColor write SetStopColor;
        property ClipRect:TpvRect read fClipRect write fClipRect;
@@ -461,6 +462,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       Kind:TpvCanvasQueueItemKind;
       BufferIndex:TpvInt32;
       DescriptorIndex:TpvInt32;
+      BlendingMode:TpvCanvasBlendingMode;
       TextureMode:TpvInt32;
       StartVertexIndex:TpvInt32;
       StartIndexIndex:TpvInt32;
@@ -518,9 +520,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        class procedure Release(const aDevice:TpvVulkanDevice);
      end;
 
-     TpvCanvasVulkanPipelineLayouts=array[0..2] of TpvVulkanPipelineLayout;
+     TpvCanvasVulkanPipelineLayouts=array[TpvCanvasBlendingMode,0..2] of TpvVulkanPipelineLayout;
 
-     TpvCanvasVulkanGraphicsPipelines=array[0..2] of TpvVulkanGraphicsPipeline;
+     TpvCanvasVulkanGraphicsPipelines=array[TpvCanvasBlendingMode,0..2] of TpvVulkanGraphicsPipeline;
 
      TpvCanvas=class
       private
@@ -1139,24 +1141,40 @@ begin
  inherited Destroy;
 end;
 
-function TpvCanvasState.GetStartColor:TpvVector4;
+function TpvCanvasState.GetColor:TpvVector4;
+const InverseGamma=1.0/2.2;
 begin
- result:=fFillMatrix.Columns[2];
+ result:=TpvVector4.Create(Pow(fColor.rgb,InverseGamma),fColor.a);
+end;
+
+procedure TpvCanvasState.SetColor(const aColor:TpvVector4);
+const Gamma=2.2;
+begin
+ fColor:=TpvVector4.Create(Pow(aColor.rgb,Gamma),aColor.a);
+end;
+
+function TpvCanvasState.GetStartColor:TpvVector4;
+const InverseGamma=1.0/2.2;
+begin
+ result:=TpvVector4.Create(Pow(fFillMatrix.Columns[2].rgb,InverseGamma),fFillMatrix.Columns[2].a);
 end;
 
 procedure TpvCanvasState.SetStartColor(const aColor:TpvVector4);
+const Gamma=2.2;
 begin
- fFillMatrix.Columns[2]:=aColor;
+ fFillMatrix.Columns[2]:=TpvVector4.Create(Pow(aColor.rgb,Gamma),aColor.a);
 end;
 
 function TpvCanvasState.GetStopColor:TpvVector4;
+const InverseGamma=1.0/2.2;
 begin
- result:=fFillMatrix.Columns[3];
+ result:=TpvVector4.Create(Pow(fFillMatrix.Columns[3].rgb,InverseGamma),fFillMatrix.Columns[3].a);
 end;
 
 procedure TpvCanvasState.SetStopColor(const aColor:TpvVector4);
+const Gamma=2.2;
 begin
- fFillMatrix.Columns[3]:=aColor;
+ fFillMatrix.Columns[3]:=TpvVector4.Create(Pow(aColor.rgb,Gamma),aColor.a);
 end;
 
 function TpvCanvasState.GetFillMatrix:TpvMatrix4x4;
@@ -2979,9 +2997,11 @@ begin
 
  fVulkanRenderPass:=nil;
 
- for TextureModeIndex:=0 to 2 do begin
-  fVulkanPipelineLayouts[TextureModeIndex]:=nil;
-  fVulkanGraphicsPipelines[TextureModeIndex]:=nil;
+ for BlendingModeIndex:=Low(TpvCanvasBlendingMode) to High(TpvCanvasBlendingMode) do begin
+  for TextureModeIndex:=0 to 2 do begin
+   fVulkanPipelineLayouts[BlendingModeIndex,TextureModeIndex]:=nil;
+   fVulkanGraphicsPipelines[BlendingModeIndex,TextureModeIndex]:=nil;
+  end;
  end;
 
  SetCountBuffers(1);
@@ -3034,125 +3054,162 @@ end;
 
 procedure TpvCanvas.SetVulkanRenderPass(const aVulkanRenderPass:TpvVulkanRenderPass);
 var TextureModeIndex:TpvInt32;
+    BlendingModeIndex:TpvCanvasBlendingMode;
     VulkanPipelineLayout:TpvVulkanPipelineLayout;
     VulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
 begin
 
  if fVulkanRenderPass<>aVulkanRenderPass then begin
 
-  for TextureModeIndex:=0 to 2 do begin
-   FreeAndNil(fVulkanGraphicsPipelines[TextureModeIndex]);
-   FreeAndNil(fVulkanPipelineLayouts[TextureModeIndex]);
+  for BlendingModeIndex:=Low(TpvCanvasBlendingMode) to High(TpvCanvasBlendingMode) do begin
+   for TextureModeIndex:=0 to 2 do begin
+    FreeAndNil(fVulkanGraphicsPipelines[BlendingModeIndex,TextureModeIndex]);
+    FreeAndNil(fVulkanPipelineLayouts[BlendingModeIndex,TextureModeIndex]);
+   end;
   end;
 
   fVulkanRenderPass:=aVulkanRenderPass;
 
   if assigned(fVulkanRenderPass) then begin
 
-   for TextureModeIndex:=0 to 2 do begin
+   for BlendingModeIndex:=Low(TpvCanvasBlendingMode) to High(TpvCanvasBlendingMode) do begin
 
-    VulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
-    fVulkanPipelineLayouts[TextureModeIndex]:=VulkanPipelineLayout;
-    if TextureModeIndex<>0 then begin
-     VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout);
-    end else begin
-     VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetNoTextureLayout);
+    for TextureModeIndex:=0 to 2 do begin
+
+     VulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
+     fVulkanPipelineLayouts[BlendingModeIndex,TextureModeIndex]:=VulkanPipelineLayout;
+     if TextureModeIndex<>0 then begin
+      VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout);
+     end else begin
+      VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetNoTextureLayout);
+     end;
+     VulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
+                                               TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                               0,
+                                               SizeOf(TpvCanvasPushConstants));
+     VulkanPipelineLayout.Initialize;
+
+     VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fDevice,
+                                                              fPipelineCache,
+                                                              0,
+                                                              [],
+                                                              VulkanPipelineLayout,
+                                                              fVulkanRenderPass,
+                                                              0,
+                                                              nil,
+                                                              0);
+     fVulkanGraphicsPipelines[BlendingModeIndex,TextureModeIndex]:=VulkanGraphicsPipeline;
+
+     VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageVertex);
+
+     case TextureModeIndex of
+      1:begin
+       VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentTexture);
+      end;
+      2:begin
+       VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentAtlasTexture);
+      end;
+      else begin
+       VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentNoTexture);
+      end;
+     end;
+
+     VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+     VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvCanvasVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Position)));
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Color)));
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.TextureCoord)));
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32_UINT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.State)));
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.ClipRect)));
+     VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.MetaInfo)));
+
+     VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fWidth,fHeight,0.0,1.0);
+     VulkanGraphicsPipeline.ViewPortState.DynamicViewPorts:=true;
+
+     VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fWidth,fHeight);
+     VulkanGraphicsPipeline.ViewPortState.DynamicScissors:=true;
+
+     VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
+     VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+     VulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+     VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
+     VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
+     VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+     VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
+
+     VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+     VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
+     VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
+     VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
+     VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+     VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+     VulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
+     VulkanGraphicsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+     VulkanGraphicsPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+     VulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+     VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+     VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+     case BlendingModeIndex of
+      pvcbmNone:begin
+       VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                           VK_BLEND_FACTOR_ONE,
+                                                                           VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                           VK_BLEND_OP_ADD,
+                                                                           VK_BLEND_FACTOR_ONE,
+                                                                           VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                           VK_BLEND_OP_ADD,
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+      end;
+      pvcbmAlphaBlending:begin
+       VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                                           VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                           VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                           VK_BLEND_OP_ADD,
+                                                                           VK_BLEND_FACTOR_ONE,
+                                                                           VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                           VK_BLEND_OP_ADD,
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+      end;
+      else {pvcbmAdditiveBlending:}begin
+       VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
+                                                                           VK_BLEND_FACTOR_ONE,
+                                                                           VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                           VK_BLEND_OP_ADD,
+                                                                           VK_BLEND_FACTOR_ONE,
+                                                                           VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                           VK_BLEND_OP_ADD,
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                           TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+      end;
+     end;
+     VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=false;
+     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=false;
+     VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_ALWAYS;
+     VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+     VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
+
+     VulkanGraphicsPipeline.DynamicState.AddDynamicStates([VK_DYNAMIC_STATE_VIEWPORT,
+                                                           VK_DYNAMIC_STATE_SCISSOR]);
+
+     VulkanGraphicsPipeline.Initialize;
+
+     VulkanGraphicsPipeline.FreeMemory;
+
     end;
-    VulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
-                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
-                                              0,
-                                              SizeOf(TpvCanvasPushConstants));
-    VulkanPipelineLayout.Initialize;
-
-    VulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(fDevice,
-                                                             fPipelineCache,
-                                                             0,
-                                                             [],
-                                                             VulkanPipelineLayout,
-                                                             fVulkanRenderPass,
-                                                             0,
-                                                             nil,
-                                                             0);
-    fVulkanGraphicsPipelines[TextureModeIndex]:=VulkanGraphicsPipeline;
-
-    VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageVertex);
-
-    case TextureModeIndex of
-     1:begin
-      VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentTexture);
-     end;
-     2:begin
-      VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentAtlasTexture);
-     end;
-     else begin
-      VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentNoTexture);
-     end;
-    end;
-
-    VulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    VulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
-
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TpvCanvasVertex),VK_VERTEX_INPUT_RATE_VERTEX);
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Position)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R16G16B16A16_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.Color)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.TextureCoord)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32_UINT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.State)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.ClipRect)));
-    VulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(5,0,VK_FORMAT_R32G32B32A32_SFLOAT,TpvPtrUInt(TpvPointer(@PpvCanvasVertex(nil)^.MetaInfo)));
-
-    VulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,fWidth,fHeight,0.0,1.0);
-    VulkanGraphicsPipeline.ViewPortState.DynamicViewPorts:=true;
-
-    VulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,fWidth,fHeight);
-    VulkanGraphicsPipeline.ViewPortState.DynamicScissors:=true;
-
-    VulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
-    VulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
-    VulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
-    VulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_NONE);
-    VulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    VulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
-    VulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
-    VulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
-    VulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
-    VulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
-
-    VulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
-    VulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
-    VulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
-    VulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
-    VulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
-    VulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
-
-    VulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
-    VulkanGraphicsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
-    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[0]:=0.0;
-    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
-    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
-    VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
-    VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
-                                                                        VK_BLEND_FACTOR_ONE,
-                                                                        VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-                                                                        VK_BLEND_OP_ADD,
-                                                                        VK_BLEND_FACTOR_ONE,
-                                                                        VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-                                                                        VK_BLEND_OP_ADD,
-                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
-                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
-                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
-                                                                        TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
-    VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=false;
-    VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=false;
-    VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_ALWAYS;
-    VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
-    VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
-
-    VulkanGraphicsPipeline.DynamicState.AddDynamicStates([VK_DYNAMIC_STATE_VIEWPORT,
-                                                          VK_DYNAMIC_STATE_SCISSOR]);
-
-    VulkanGraphicsPipeline.Initialize;
-
-    VulkanGraphicsPipeline.FreeMemory;
 
    end;
 
@@ -3300,7 +3357,10 @@ end;
 
 procedure TpvCanvas.SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
 begin
- fState.fBlendingMode:=aBlendingMode;
+ if fState.fBlendingMode<>aBlendingMode then begin
+  Flush;
+  fState.fBlendingMode:=aBlendingMode;
+ end;
 end;
 
 function TpvCanvas.GetLineWidth:TpvFloat;
@@ -3381,12 +3441,12 @@ end;
 
 function TpvCanvas.GetColor:TpvVector4;
 begin
- result:=fState.fColor;
+ result:=fState.GetColor;
 end;
 
 procedure TpvCanvas.SetColor(const aColor:TpvVector4);
 begin
- fState.fColor:=aColor;
+ fState.SetColor(aColor);
 end;
 
 function TpvCanvas.GetStartColor:TpvVector4;
@@ -3516,8 +3576,7 @@ end;
 
 function TpvCanvas.GetVertexState:TpvUInt32;
 begin
- result:=(TpvUInt32(fState.fBlendingMode) shl pvcvsBlendingModeShift) or
-         (TpvUInt32(fInternalRenderingMode) shl pvcvsRenderingModeShift) or
+ result:=(TpvUInt32(fInternalRenderingMode) shl pvcvsRenderingModeShift) or
          (TpvUInt32(fState.fFillStyle) shl pvcvsFillStyleShift) or
          (TpvUInt32(fState.fFillWrapMode) shl pvcvsFillWrapModeShift);
 end;
@@ -3672,6 +3731,7 @@ begin
    QueueItem^.Kind:=pvcqikNormal;
    QueueItem^.BufferIndex:=CurrentVulkanBufferIndex;
    QueueItem^.DescriptorIndex:=DescriptorIndex;
+   QueueItem^.BlendingMode:=fState.fBlendingMode;
    if assigned(CurrentTexture) then begin
     if (CurrentTexture is TpvSpriteAtlasArrayTexture) or
        ((CurrentTexture is TpvVulkanTexture) and
@@ -3866,13 +3926,14 @@ end;
 procedure TpvCanvas.ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 var Index,DescriptorIndex,StartVertexIndex,TextureMode:TpvInt32;
+    BlendingMode:TpvCanvasBlendingMode;
     QueueItem:PpvCanvasQueueItem;
     OldQueueItemKind:TpvCanvasQueueItemKind;
     CurrentBuffer:PpvCanvasBuffer;
     VulkanVertexBuffer,VulkanIndexBuffer,OldVulkanVertexBuffer,OldVulkanIndexBuffer:TpvVulkanBuffer;
     OldScissor:TVkRect2D;
     TransformMatrix,FillMatrix:TpvMatrix4x4;
-    ForceUpdate:boolean;
+    ForceUpdate,ForceUpdatePushConstants:boolean;
 begin
 
  if assigned(fVulkanRenderPass) and
@@ -3896,6 +3957,10 @@ begin
    OldQueueItemKind:=pvcqikNone;
 
    ForceUpdate:=true;
+
+   ForceUpdatePushConstants:=true;
+
+   BlendingMode:=pvcbmAdditiveBlending;
 
    TextureMode:=-1;
 
@@ -3924,28 +3989,33 @@ begin
       end;
 
       if ForceUpdate or
+         (BlendingMode<>QueueItem^.BlendingMode) or
          (TextureMode<>QueueItem^.TextureMode) then begin
+       BlendingMode:=QueueItem^.BlendingMode;
        TextureMode:=QueueItem^.TextureMode;
-       aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[QueueItem^.TextureMode].Handle);
+       aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[QueueItem^.BlendingMode,QueueItem^.TextureMode].Handle);
        OldScissor.offset.x:=-$7fffffff;
        OldScissor.offset.y:=-$7fffffff;
        OldScissor.extent.Width:=$7fffffff;
        OldScissor.extent.Height:=$7fffffff;
        DescriptorIndex:=-1;
+       ForceUpdatePushConstants:=true;
       end;
 
       if ForceUpdate or
          (DescriptorIndex<>QueueItem^.DescriptorIndex) then begin
        DescriptorIndex:=QueueItem^.DescriptorIndex;
-       aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayouts[QueueItem^.TextureMode].Handle,0,1,@fVulkanDescriptorSets[DescriptorIndex].Handle,0,nil);
+       aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayouts[QueueItem^.BlendingMode,QueueItem^.TextureMode].Handle,0,1,@fVulkanDescriptorSets[DescriptorIndex].Handle,0,nil);
+       ForceUpdatePushConstants:=true;
       end;
 
       if ForceUpdate or
+         ForceUpdatePushConstants or
          (TransformMatrix<>QueueItem^.PushConstants.TransformMatrix) or
          (FillMatrix<>QueueItem^.PushConstants.FillMatrix) then begin
        TransformMatrix:=QueueItem^.PushConstants.TransformMatrix;
        FillMatrix:=QueueItem^.PushConstants.FillMatrix;
-       aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayouts[TextureMode].Handle,
+       aVulkanCommandBuffer.CmdPushConstants(fVulkanPipelineLayouts[BlendingMode,TextureMode].Handle,
                                              TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                              TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
                                              0,
@@ -3977,6 +4047,8 @@ begin
       aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
 
       ForceUpdate:=false;
+
+      ForceUpdatePushConstants:=false;
 
      end;
      pvcqikHook:begin
@@ -4019,6 +4091,7 @@ begin
       (fCurrentCountVertices>0)) and
      ({(fState.fFillStyle<>PeekState.fFillStyle) or
       (fState.fFillWrapMode<>PeekState.fFillWrapMode) or}
+      (fState.fBlendingMode<>PeekState.fBlendingMode) or
       (fState.fScissor.offset.x<>PeekState.fScissor.offset.x) or
       (fState.fScissor.offset.y<>PeekState.fScissor.offset.y) or
       (fState.fScissor.extent.width<>PeekState.fScissor.extent.width) or
