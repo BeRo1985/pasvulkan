@@ -150,6 +150,7 @@ begin
  try
   ConvertFile('fonts/notosans.ttf','GUIStandardTrueTypeFontSansFont');
   ConvertFile('fonts/notomono.ttf','GUIStandardTrueTypeFontMonoFont');
+  ConvertFile('shaders/canvas/canvas_frag_gui_no_texture.spv','CanvasFragmentGUINoTextureSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_no_texture.spv','CanvasFragmentNoTextureSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_texture.spv','CanvasFragmentTextureSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_atlas_texture.spv','CanvasFragmentAtlasTextureSPIRV');

@@ -63,6 +63,82 @@ TEMPLATE_LINEARSTEP(vec4)
 vec4 blend(vec4 a, vec4 b){
   return mix(a, b, b.a); 
 }           
+
+#ifdef GUI_ELEMENTS
+
+#define GUI_ELEMENT_WINDOW_HEADER 1
+#define GUI_ELEMENT_WINDOW_FILL 2
+#define GUI_ELEMENT_WINDOW_DROPSHADOW 3
+
+const float uWindowCornerRadius = 8.0;
+const float uWindowHeaderHeight = 32.0;
+const float uWindowHeaderCornerRadius = 4.0;
+const float uWindowDropShadowSize = 10.0;
+const float uButtonCornerRadius = 2.0;
+const float uTabBorderWidth = 0.75;
+const float uTabInnerMargin = 5.0;
+const float uTabMinButtonWidth = 20.0;
+const float uTabMaxButtonWidth = 160.0;
+const float uTabControlWidth = 20.0;
+const float uTabButtonHorizontalPadding = 10.0;
+const float uTabButtonVerticalPadding = 2.0; 
+
+#define MAKE_GRAY_COLOR(a, b) vec4(vec3(pow((a) / 255.0, 2.2)), (b) / 255.0)
+
+const vec4 uDropShadow = MAKE_GRAY_COLOR(0.0, 128.0);
+const vec4 uTransparent = MAKE_GRAY_COLOR(0.0, 0.0);
+const vec4 uBorderDark = MAKE_GRAY_COLOR(29.0, 255.0);
+const vec4 uBorderLight = MAKE_GRAY_COLOR(92.0, 255.0);
+const vec4 uBorderMedium = MAKE_GRAY_COLOR(35.0, 255.0);
+const vec4 uTextColor = MAKE_GRAY_COLOR(255.0, 160.0);
+const vec4 uDisabledTextColor = MAKE_GRAY_COLOR(255.0, 80.0);
+const vec4 uTextColorShadow = MAKE_GRAY_COLOR(0.0, 160.0);
+const vec4 uIconColor = MAKE_GRAY_COLOR(255.0, 160.0);
+
+const vec4 uFocusedButtonGradientTop = MAKE_GRAY_COLOR(64.0, 255.0);
+const vec4 uFocusedButtonGradientBottom = MAKE_GRAY_COLOR(48.0, 255.0);
+const vec4 uUnfocusedButtonGradientTop = MAKE_GRAY_COLOR(74.0, 255.0);
+const vec4 uUnfocusedButtonGradientBottom = MAKE_GRAY_COLOR(58.0, 255.0);
+const vec4 uPushedButtonGradientTop = MAKE_GRAY_COLOR(41.0, 255.0);
+const vec4 uPushedButtonGradientBottom = MAKE_GRAY_COLOR(29.0, 255.0);
+
+const vec4 uUnfocusedWindowFill = MAKE_GRAY_COLOR(43.0, 230.0);
+const vec4 uFocusedWindowFill = MAKE_GRAY_COLOR(45.0, 230.0);
+
+const vec4 uUnfocusedWindowFillBorder = MAKE_GRAY_COLOR(21.5, 230.0);
+const vec4 uFocusedWindowFillBorder = MAKE_GRAY_COLOR(22.5, 230.0);
+
+const vec4 uUnfocusedWindowTitle = MAKE_GRAY_COLOR(220.0, 160.0);
+const vec4 uFocusedWindowTitle = MAKE_GRAY_COLOR(255.0, 190.0);
+
+const vec4 uUnfocusedWindowHeaderGradientTop = MAKE_GRAY_COLOR(64.0, 255.0);
+const vec4 uUnfocusedWindowHeaderGradientBottom = MAKE_GRAY_COLOR(48.0, 255.0);
+
+const vec4 uFocusedWindowHeaderGradientTop = MAKE_GRAY_COLOR(74.0, 255.0);
+const vec4 uFocusedWindowHeaderGradientBottom = MAKE_GRAY_COLOR(58.0, 255.0);
+
+const vec4 uUnfocusedWindowHeaderBorderGradientTop = MAKE_GRAY_COLOR(54.0, 255.0);
+const vec4 uUnfocusedWindowHeaderBorderGradientBottom = MAKE_GRAY_COLOR(38.0, 255.0);
+
+const vec4 uFocusedWindowHeaderBorderGradientTop = MAKE_GRAY_COLOR(64.0, 255.0);
+const vec4 uFocusedWindowHeaderBorderGradientBottom = MAKE_GRAY_COLOR(48.0, 255.0);
+
+const vec4 uUnfocusedWindowHeaderSeperatorTop = MAKE_GRAY_COLOR(92.0, 255.0);
+const vec4 uUnfocusedWindowHeaderSeperatorBottom = MAKE_GRAY_COLOR(29.0, 255.0);
+
+const vec4 uFocusedWindowHeaderSeperatorTop = MAKE_GRAY_COLOR(92.0, 255.0);
+const vec4 uFocusedWindowHeaderSeperatorBottom = MAKE_GRAY_COLOR(29.0, 255.0);
+
+const vec4 uUnfocusedWindowDropShadow = MAKE_GRAY_COLOR(0.0, 128.0);
+const vec4 uFocusedWindowDropShadow = MAKE_GRAY_COLOR(0.0, 128.0);
+
+const float uUnfocusedWindowDropShadowSize = 16.0;
+const float uFocusedWindowDropShadowSize = 16.0;
+
+const vec4 uWindowPopup = MAKE_GRAY_COLOR(50.0, 255.0);
+const vec4 uWindowPopupTransparent = MAKE_GRAY_COLOR(50.0, 0.0); 
+
+#endif
                                   
 const float SQRT_0_DOT_5 = sqrt(0.5);
 
@@ -215,7 +291,78 @@ void main(void){
   }
 #endif
 #ifdef GUI_ELEMENTS
-
+  {    
+    vec2 size = inMetaInfo.zw;
+    color = vec4(0.0);
+    int guiElementIndex = inState.y;
+    vec2 p = inPosition.xy - inMetaInfo.xy;
+    float t = length(abs(dFdx(inPosition.xy)) + abs(dFdy(inPosition.xy))) * SQRT_0_DOT_5;   
+    float focused = ((guiElementIndex & 0x80) != 0) ? 1.0 : 0.0;
+    switch(guiElementIndex & 0x7f){
+      case GUI_ELEMENT_WINDOW_HEADER:{      
+        float d = sdRoundedRect(p - (size * 0.5), 
+                                size * 0.5, 
+                                mix(uWindowHeaderCornerRadius, 0.0, step(size.y * 0.5, p.y)));      
+        color = blend(blend(color,
+                            mix(mix(uUnfocusedWindowHeaderGradientTop, 
+                                    uFocusedWindowHeaderGradientTop, 
+                                    focused),
+                                mix(uUnfocusedWindowHeaderGradientBottom, 
+                                    uFocusedWindowHeaderGradientBottom, 
+                                    focused),
+                               linearstep(0.0, size.y, p.y)) * 
+                            vec2(1.0, linearstep(t, -t, d)).xxxy),
+                      mix(mix(uUnfocusedWindowHeaderBorderGradientTop, 
+                              uFocusedWindowHeaderBorderGradientTop, 
+                              focused),
+                          mix(uUnfocusedWindowHeaderBorderGradientBottom, 
+                              uFocusedWindowHeaderBorderGradientBottom, 
+                              focused),
+                          linearstep(0.0, size.y, p.y)) * 
+                      vec2(1.0, linearstep(t, -t, max(d, -(d + (t * 1.0))))).xxxy);
+        d = max(max(p.y, -(p.y + (t * 1.0))), ((abs(p.x - (size.x * 0.5)) - ((size.x * 0.5) - uWindowHeaderCornerRadius))));
+        color = blend(color,
+                      uUnfocusedWindowHeaderSeperatorTop * 
+                      vec2(1.0, linearstep(t, -t, d)).xxxy);
+        d = max(max(p.y - size.y, -((p.y - size.y) + (t * 1.0))), ((abs(p.x - (size.x * 0.5)) - (size.x * 0.5))));
+        color = blend(color,
+                      uUnfocusedWindowHeaderSeperatorBottom * 
+                      vec2(1.0, linearstep(t, -t, d)).xxxy);
+        break;
+      }
+      case GUI_ELEMENT_WINDOW_FILL:{
+        float d = sdRoundedRect(p - (size * 0.5), 
+                                size * 0.5, 
+                                mix(0.0, uWindowCornerRadius, step(size.y * 0.5, p.y)));      
+        color = blend(blend(color,
+                            mix(uUnfocusedWindowFill, 
+                                uFocusedWindowFill, 
+                                focused) * 
+                            vec2(1.0, linearstep(t, -t, d)).xxxy),
+                      mix(uUnfocusedWindowFillBorder, 
+                          uFocusedWindowFillBorder, 
+                          focused) * 
+                      vec2(1.0, linearstep(t, -t, max(d, -(d + (t * 0.5))))).xxxy);
+        break;
+      }
+      case GUI_ELEMENT_WINDOW_DROPSHADOW:{
+        float d = sdRoundedRect(p - (size * 0.5), 
+                                size * 0.5, 
+                                mix(uWindowHeaderCornerRadius, uWindowCornerRadius, step(size.y * 0.5, p.y)));      
+        color = blend(color,
+                      mix(uUnfocusedWindowDropShadow, 
+                          uFocusedWindowDropShadow, 
+                          focused) * 
+                      vec2(1.0, linearstep(mix(uUnfocusedWindowDropShadowSize, 
+                                               uFocusedWindowDropShadowSize, 
+                                               focused), 
+                                           0.0, 
+                                           d) * 
+                                           linearstep(-t * 2.0, 0.0, d)).xxxy);
+        break;
+      }
+    } 
+  }
 #endif
   outFragColor = color * (step(inClipRect.x, inPosition.x) * step(inClipRect.y, inPosition.y) * step(inPosition.x, inClipRect.z) * step(inPosition.y, inClipRect.w));
 }
