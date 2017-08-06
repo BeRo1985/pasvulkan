@@ -427,7 +427,7 @@ void main(void){
         vec2 o = p - (size * 0.5); 
         float d = max(length(p - (size * 0.5)) - length(size * 0.5),
                       -(length(p - (size * 0.5)) - length(size * 0.25))); 
-        float a = atan(o.y, o.x) + 3.14159 + inTexCoord.z;
+        float a = atan(o.y, o.x) - inTexCoord.z;
         color = blend(color,
                       vec4(mix(vec3(0.0), 
                                mix(vec3(0.0, 1.0, 1.0), 

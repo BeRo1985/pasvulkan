@@ -33,12 +33,11 @@ void main(void){
   vec4 buv = inUV.xyxy + (vec2((dFdx(inUV.xy) + dFdy(inUV.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
   outFragColor = mix(inForegroundColor, 
                      inBackgroundColor, 
-                     clamp((linearstep(width.x, width.y, center) + 
-                            dot(linearstep(width.xxxx, 
-                                           width.yyyy, 
-                                           vec4(textureLod(uSamplerFont, vec3(buv.xy, inUV.z), 0.0).r,
-                                                textureLod(uSamplerFont, vec3(buv.zw, inUV.z), 0.0).r,
-                                                textureLod(uSamplerFont, vec3(buv.xw, inUV.z), 0.0).r,
-                                                textureLod(uSamplerFont, vec3(buv.zy, inUV.z), 0.0).r)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0));
-  outFragColor.a = pow(outFragColor.a, 2.2);
+                     pow(clamp((linearstep(width.x, width.y, center) + 
+                                dot(linearstep(width.xxxx, 
+                                               width.yyyy, 
+                                               vec4(textureLod(uSamplerFont, vec3(buv.xy, inUV.z), 0.0).r,
+                                                    textureLod(uSamplerFont, vec3(buv.zw, inUV.z), 0.0).r,
+                                                    textureLod(uSamplerFont, vec3(buv.xw, inUV.z), 0.0).r,
+                                                    textureLod(uSamplerFont, vec3(buv.zy, inUV.z), 0.0).r)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0), 2.2));
 }

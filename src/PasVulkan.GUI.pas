@@ -1147,7 +1147,7 @@ begin
                            TpvVector2.Create(20.0,20.0),
                            TpvVector2.Create(-10.0,-10.0),
                            TpvVector2.Create(10.0,10.0),
-                           -frac(aInstance.fTime)*TwoPI);
+                           frac(aInstance.fTime)*TwoPI);
    end;
    pvgcCross:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_CROSS,
