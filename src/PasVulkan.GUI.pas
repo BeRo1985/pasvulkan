@@ -208,6 +208,7 @@ type TpvGUIObject=class;
        fFocusedWindowHeaderFontShadowColor:TpvVector4;
        fUnfocusedWindowHeaderFontColor:TpvVector4;
        fFocusedWindowHeaderFontColor:TpvVector4;
+       fLabelFontColor:TpvVector4;
        fWindowShadowWidth:TpvFloat;
        fWindowShadowHeight:TpvFloat;
       public
@@ -1059,6 +1060,8 @@ begin
  fUnfocusedWindowHeaderFontColor:=TpvVector4.Create(0.75,0.75,0.75,1.0);
  fFocusedWindowHeaderFontColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 
+ fLabelFontColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+
  fWindowHeaderHeight:=32;
 
  fWindowResizeGripSize:=8;
@@ -1246,7 +1249,9 @@ var LastClipRect,NewClipRect:TpvRect;
 begin
  aCanvas.Push;
  try
+
   aCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+
   begin
    LastClipRect:=aCanvas.ClipRect;
    NewClipRect:=TpvRect.CreateAbsolute(LastClipRect.Left-fWindowShadowWidth,
@@ -1269,20 +1274,19 @@ begin
   end;
 
   if pvgwfHeader in aWindow.fWindowFlags then begin
-
    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_HEADER,
-                         aWindow.Focused,
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aWindow.fSize.x,fWindowHeaderHeight),
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aWindow.fSize.x,fWindowHeaderHeight));
+                          aWindow.Focused,
+                          TpvVector2.Create(0.0,0.0),
+                          TpvVector2.Create(aWindow.fSize.x,fWindowHeaderHeight),
+                          TpvVector2.Create(0.0,0.0),
+                          TpvVector2.Create(aWindow.fSize.x,fWindowHeaderHeight));
 
    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
-                         aWindow.Focused,
-                         TpvVector2.Create(0.0,fWindowHeaderHeight-1),
-                         TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y),
-                         TpvVector2.Create(0.0,fWindowHeaderHeight-1),
-                         TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y));
+                          aWindow.Focused,
+                          TpvVector2.Create(0.0,fWindowHeaderHeight-1),
+                          TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y),
+                          TpvVector2.Create(0.0,fWindowHeaderHeight-1),
+                          TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y));
 
    LastModelMatrix:=aCanvas.ModelMatrix;
    try
@@ -1318,11 +1322,11 @@ begin
   end else begin
 
    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
-                         aWindow.Focused,
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y),
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y));
+                          aWindow.Focused,
+                          TpvVector2.Create(0.0,0.0),
+                          TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y),
+                          TpvVector2.Create(0.0,0.0),
+                          TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y));
 
   end;
 
@@ -1336,10 +1340,10 @@ begin
  aCanvas.Push;
  try
   aCanvas.Font:=fSansFont;
-  aCanvas.FontSize:=FontSize;
+  aCanvas.FontSize:=aLabel.FontSize;
   aCanvas.TextHorizontalAlignment:=pvcthaLeft;
   aCanvas.TextVerticalAlignment:=pvctvaTop;
-  aCanvas.SRGBColor:=fFocusedWindowHeaderFontColor;
+  aCanvas.SRGBColor:=fLabelFontColor;
   aCanvas.DrawText(aLabel.fCaption);
  finally
   aCanvas.Pop;

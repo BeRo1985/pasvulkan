@@ -40,4 +40,5 @@ void main(void){
                                                 textureLod(uSamplerFont, vec3(buv.zw, inUV.z), 0.0).r,
                                                 textureLod(uSamplerFont, vec3(buv.xw, inUV.z), 0.0).r,
                                                 textureLod(uSamplerFont, vec3(buv.zy, inUV.z), 0.0).r)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0));
+  outFragColor.a = pow(outFragColor.a, 2.2);
 }
