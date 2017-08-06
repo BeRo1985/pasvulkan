@@ -630,6 +630,8 @@ const GUI_ELEMENT_WINDOW_HEADER=1;
       GUI_ELEMENT_WINDOW_FILL=2;
       GUI_ELEMENT_WINDOW_DROPSHADOW=3;
       GUI_ELEMENT_WINDOW_MOUSE_ARROW=4;
+      GUI_ELEMENT_WINDOW_MOUSE_BEAM=5;
+      GUI_ELEMENT_WINDOW_MOUSE_BUSY=6;
 
 procedure TpvGUIObjectList.Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification);
 begin
@@ -1117,8 +1119,21 @@ begin
                            TpvVector2.Create(28.0,28.0));
    end;
    pvgcBeam:begin
+    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_BEAM,
+                           true,
+                           TpvVector2.Create(-28.0,-28.0),
+                           TpvVector2.Create(28.0,28.0),
+                           TpvVector2.Create(-14.0,-14.0),
+                           TpvVector2.Create(14.0,14.0));
    end;
    pvgcBusy:begin
+    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_BUSY,
+                           true,
+                           TpvVector2.Create(-20.0,-20.0),
+                           TpvVector2.Create(20.0,20.0),
+                           TpvVector2.Create(-10.0,-10.0),
+                           TpvVector2.Create(10.0,10.0),
+                           -frac(aInstance.fTime)*TwoPI);
    end;
    pvgcCross:begin
    end;

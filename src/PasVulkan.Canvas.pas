@@ -693,8 +693,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenter,aBounds:TpvVector2;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas; overload;
        function DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
-       function DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2):TpvCanvas; overload;
-       function DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMinX,aMinY,aMaxX,aMaxY,aMetaMinX,aMetaMinY,aMetaMaxX,aMetaMaxY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0):TpvCanvas; overload;
+       function DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMinX,aMinY,aMaxX,aMaxY,aMetaMinX,aMetaMinY,aMetaMaxX,aMetaMaxY:TpvFloat;const aMeta:TpvFloat=0.0):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
        function DrawShape(const aShape:TpvCanvasShape):TpvCanvas;
       public
@@ -4943,7 +4943,7 @@ begin
  result:=DrawTexturedRectangle(aTexture,TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY),aRotationAngle,aTextureArrayLayer);
 end;
 
-function TpvCanvas.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2):TpvCanvas;
+function TpvCanvas.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0):TpvCanvas;
 var Center,Bounds:TpvVector2;
     MetaInfo:TpvVector4;
     VertexColor:TpvHalfFloatVector4;
@@ -4969,28 +4969,28 @@ begin
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
  CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.Create(-Bounds.x,-Bounds.y));
  CanvasVertex^.Color:=VertexColor;
- CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.TextureCoord:=TpvVector3.Create(0.0,0.0,aMeta);
  CanvasVertex^.State:=VertexState;
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
  CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.Create(Bounds.x,-Bounds.y));
  CanvasVertex^.Color:=VertexColor;
- CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.TextureCoord:=TpvVector3.Create(0.0,0.0,aMeta);
  CanvasVertex^.State:=VertexState;
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
  CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.Create(Bounds.x,Bounds.y));
  CanvasVertex^.Color:=VertexColor;
- CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.TextureCoord:=TpvVector3.Create(0.0,0.0,aMeta);
  CanvasVertex^.State:=VertexState;
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
  CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.Create(-Bounds.x,Bounds.y));
  CanvasVertex^.Color:=VertexColor;
- CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.TextureCoord:=TpvVector3.Create(0.0,0.0,aMeta);
  CanvasVertex^.State:=VertexState;
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
@@ -5006,9 +5006,9 @@ begin
  result:=self;
 end;
 
-function TpvCanvas.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMinX,aMinY,aMaxX,aMaxY,aMetaMinX,aMetaMinY,aMetaMaxX,aMetaMaxY:TpvFloat):TpvCanvas;
+function TpvCanvas.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMinX,aMinY,aMaxX,aMaxY,aMetaMinX,aMetaMinY,aMetaMaxX,aMetaMaxY:TpvFloat;const aMeta:TpvFloat=0.0):TpvCanvas;
 begin
- result:=DrawGUIElement(aGUIElement,aFocused,TpvVector2.Create(aMinX,aMinY),TpvVector2.Create(aMaxX,aMaxY),TpvVector2.Create(aMetaMinX,aMetaMinY),TpvVector2.Create(aMetaMaxX,aMetaMaxY));
+ result:=DrawGUIElement(aGUIElement,aFocused,TpvVector2.Create(aMinX,aMinY),TpvVector2.Create(aMaxX,aMaxY),TpvVector2.Create(aMetaMinX,aMetaMinY),TpvVector2.Create(aMetaMaxX,aMetaMaxY),aMeta);
 end;
 
 function TpvCanvas.DrawShape(const aShape:TpvCanvasShape):TpvCanvas;
