@@ -499,6 +499,20 @@ void main(void){
         color = blend(color,
                       vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
+        break;
+      }
+      case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_UP:{
+        p -= (size * 0.5);
+        p = p.yx;                      
+        float d = sdRoundedRect(p, vec2(size.x * 0.375, size.y * 0.0625), 0.0); 
+        d = min(d, sdTriangle((size * 0.5) + vec2(-size.x * 0.25, size.y * 0.25),
+                              (size * 0.5) + vec2(-size.x * 0.25, -size.y * 0.25),   
+                              (size * 0.5) + vec2(-size.x * 0.5, size.y * 0.0),
+                              p + (size * 0.5)));     
+        color = blend(color,
+                      vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
+                      vec2(1.0, linearstep(t, -t, d)).xxxy);
+        break;
       }
     } 
   }

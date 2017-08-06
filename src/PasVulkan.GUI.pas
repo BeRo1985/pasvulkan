@@ -1203,6 +1203,12 @@ begin
    pvgcUnavailable:begin
    end;
    pvgcUp:begin
+    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_UP,
+                           true,
+                           TpvVector2.Create(-28.0,-28.0),
+                           TpvVector2.Create(28.0,28.0),
+                           TpvVector2.Create(-14.0,-14.0),
+                           TpvVector2.Create(14.0,14.0));
    end;
   end;
  finally
