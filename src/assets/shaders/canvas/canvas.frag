@@ -72,6 +72,7 @@ vec4 blend(vec4 a, vec4 b){
 #define GUI_ELEMENT_WINDOW_MOUSE_ARROW 4
 #define GUI_ELEMENT_WINDOW_MOUSE_BEAM 5
 #define GUI_ELEMENT_WINDOW_MOUSE_BUSY 6
+#define GUI_ELEMENT_WINDOW_MOUSE_CROSS 7
 
 const float uWindowCornerRadius = 8.0;
 const float uWindowHeaderHeight = 32.0;
@@ -416,6 +417,15 @@ void main(void){
                                    vec3(0.0, 0.125, 1.0), 
                                    (sin(a) * 0.5) + 0.5), 
                                linearstep(0.0, -(t * 2.0), d)), 1.0) * 
+                      vec2(1.0, linearstep(t, -t, d)).xxxy);
+        break;
+      }
+      case GUI_ELEMENT_WINDOW_MOUSE_CROSS:{
+        float d = sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.0625, size.y * 0.5), 0.0); 
+        d = min(d, sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.5, size.y * 0.0625), 0.0)); 
+        d = max(d, -sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.0625, size.y * 0.0625), 0.0)); 
+        color = blend(color,
+                      vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;
       }
