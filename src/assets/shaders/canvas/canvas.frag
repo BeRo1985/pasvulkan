@@ -481,6 +481,21 @@ void main(void){
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;
       }
+      case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_LINK:{
+        p += vec2(size.x * -0.5, size.y * -0.5);
+        float d = sdRoundedRect(p + vec2(size.x * 0.5, 0.0), vec2(size.x * 0.125, size.y * 0.5), length(size) * 0.1); 
+        d = min(d, sdRoundedRect(p + vec2(size.x * 0.25,  size.y * -0.25), vec2(size.x * 0.125, size.y * 0.5), length(size) * 0.1)); 
+        d = min(d, sdRoundedRect(p + vec2(size.x * 0.0,  size.y * -0.35), vec2(size.x * 0.125, size.y * 0.5), length(size) * 0.1)); 
+        d = min(d, sdRoundedRect(p + vec2(size.x * -0.25, size.y * -0.45), vec2(size.x * 0.125, size.y * 0.5), length(size) * 0.1)); 
+        d = min(d, sdRoundedRect(p + vec2(size.x * 0.125, size.y * -0.625), vec2(size.x * 0.525, size.y * 0.5), length(size) * 0.3)); 
+        p += vec2(size.x * 0.625, size.y * -0.625);
+        p.xy = vec2((p.x * SQRT_0_DOT_5) + (p.y * SQRT_0_DOT_5), (p.x * SQRT_0_DOT_5) - (p.y * SQRT_0_DOT_5));       
+        d = min(d, sdRoundedRect(p, vec2(size.x * 0.5, size.y * 0.15), length(size) * 0.1)); 
+        color = blend(color,
+                      vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
+                      vec2(1.0, linearstep(t, -t, d)).xxxy);
+        break;
+      }
       case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_MOVE:{
         p -= (size * 0.5);
         float d = sdRoundedRect(p, vec2(size.x * 0.375, size.y * 0.0625), 0.0); 
