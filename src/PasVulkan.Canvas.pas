@@ -251,6 +251,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fPath:TpvCanvasPath;
        fTexture:TObject;
        fAtlasTexture:TObject;
+       fGUIElementMode:boolean;
        fStrokePattern:TpvCanvasStrokePattern;
        function GetLinearColor:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetLinearColor(const aColor:TpvVector4); {$ifdef CAN_INLINE}inline;{$endif}
@@ -515,10 +516,12 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fDevice:TpvVulkanDevice;
        fReferenceCounter:TpvInt32;
        fCanvasVertexShaderModule:TpvVulkanShaderModule;
+       fCanvasFragmentGUINoTextureShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentNoTextureShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentTextureShaderModule:TpvVulkanShaderModule;
        fCanvasFragmentAtlasTextureShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineCanvasShaderStageVertex:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineCanvasShaderStageFragmentGUINoTexture:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentNoTexture:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentTexture:TpvVulkanPipelineShaderStage;
        fVulkanPipelineCanvasShaderStageFragmentAtlasTexture:TpvVulkanPipelineShaderStage;
@@ -529,9 +532,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        class procedure Release(const aDevice:TpvVulkanDevice);
      end;
 
-     TpvCanvasVulkanPipelineLayouts=array[TpvCanvasBlendingMode,0..2] of TpvVulkanPipelineLayout;
+     TpvCanvasVulkanPipelineLayouts=array[TpvCanvasBlendingMode,0..3] of TpvVulkanPipelineLayout;
 
-     TpvCanvasVulkanGraphicsPipelines=array[TpvCanvasBlendingMode,0..2] of TpvVulkanGraphicsPipeline;
+     TpvCanvasVulkanGraphicsPipelines=array[TpvCanvasBlendingMode,0..3] of TpvVulkanGraphicsPipeline;
 
      TpvCanvas=class
       private
@@ -545,6 +548,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fTransferFence:TpvVulkanFence;
        fPipelineCache:TpvVulkanPipelineCache;
        fVulkanDescriptorPools:TpvCanvasDescriptorPools;
+       fVulkanDescriptorSetGUINoTextureLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSetNoTextureLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSetTextureLayout:TpvVulkanDescriptorSetLayout;
        fVulkanDescriptorSets:TpvCanvasDescriptorSets;
@@ -577,6 +581,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure SetTexture(const aTexture:TObject);
        function GetAtlasTexture:TObject; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetAtlasTexture(const aTexture:TObject);
+       function GetGUIElementMode:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetGUIElementMode(const aGUIElementMode:boolean);
        function GetBlendingMode:TpvCanvasBlendingMode; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetBlendingMode(const aBlendingMode:TpvCanvasBlendingMode);
        function GetLineWidth:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -686,6 +692,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       public
        function DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenter,aBounds:TpvVector2;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas; overload;
        function DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+      public
+       function DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2):TpvCanvas; overload;
+       function DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMinX,aMinY,aMaxX,aMaxY,aMetaMinX,aMetaMinY,aMetaMaxX,aMetaMaxY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
        function DrawShape(const aShape:TpvCanvasShape):TpvCanvas;
       public
@@ -1272,6 +1281,7 @@ begin
  fPath.fCountCommands:=0;
  fTexture:=nil;
  fAtlasTexture:=nil;
+ fGUIElementMode:=false;
  fStrokePattern:=TpvCanvasStrokePattern.Empty;
 end;
 
@@ -1299,6 +1309,7 @@ begin
   fPath.Assign(TpvCanvasState(aSource).fPath);
   fTexture:=TpvCanvasState(aSource).fTexture;
   fAtlasTexture:=TpvCanvasState(aSource).fAtlasTexture;
+  fGUIElementMode:=TpvCanvasState(aSource).fGUIElementMode;
   fStrokePattern:=TpvCanvasState(aSource).fStrokePattern;
  end;
 end;
@@ -2885,6 +2896,13 @@ begin
   Stream.Free;
  end;
 
+ Stream:=TpvDataStream.Create(@CanvasFragmentGUINoTextureSPIRVData,CanvasFragmentGUINoTextureSPIRVDataSize);
+ try
+  fCanvasFragmentGUINoTextureShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
  Stream:=TpvDataStream.Create(@CanvasFragmentNoTextureSPIRVData,CanvasFragmentNoTextureSPIRVDataSize);
  try
   fCanvasFragmentNoTextureShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
@@ -2908,6 +2926,8 @@ begin
 
  fVulkanPipelineCanvasShaderStageVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fCanvasVertexShaderModule,'main');
 
+ fVulkanPipelineCanvasShaderStageFragmentGUINoTexture:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentGUINoTextureShaderModule,'main');
+
  fVulkanPipelineCanvasShaderStageFragmentNoTexture:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentNoTextureShaderModule,'main');
 
  fVulkanPipelineCanvasShaderStageFragmentTexture:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCanvasFragmentTextureShaderModule,'main');
@@ -2921,10 +2941,12 @@ destructor TpvCanvasCommon.Destroy;
 begin
  fDevice.CanvasCommon:=nil;
  FreeAndNil(fVulkanPipelineCanvasShaderStageVertex);
+ FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentGUINoTexture);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentNoTexture);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentTexture);
  FreeAndNil(fVulkanPipelineCanvasShaderStageFragmentAtlasTexture);
  FreeAndNil(fCanvasVertexShaderModule);
+ FreeAndNil(fCanvasFragmentGUINoTextureShaderModule);
  FreeAndNil(fCanvasFragmentNoTextureShaderModule);
  FreeAndNil(fCanvasFragmentTextureShaderModule);
  FreeAndNil(fCanvasFragmentAtlasTextureShaderModule);
@@ -3020,6 +3042,9 @@ begin
 
  fPointerToViewport:=@fViewport;
 
+ fVulkanDescriptorSetGUINoTextureLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
+ fVulkanDescriptorSetGUINoTextureLayout.Initialize;
+
  fVulkanDescriptorSetNoTextureLayout:=TpvVulkanDescriptorSetLayout.Create(fDevice);
  fVulkanDescriptorSetNoTextureLayout.Initialize;
 
@@ -3040,7 +3065,7 @@ begin
  fVulkanRenderPass:=nil;
 
  for BlendingModeIndex:=Low(TpvCanvasBlendingMode) to High(TpvCanvasBlendingMode) do begin
-  for TextureModeIndex:=0 to 2 do begin
+  for TextureModeIndex:=0 to 3 do begin
    fVulkanPipelineLayouts[BlendingModeIndex,TextureModeIndex]:=nil;
    fVulkanGraphicsPipelines[BlendingModeIndex,TextureModeIndex]:=nil;
   end;
@@ -3075,6 +3100,7 @@ begin
 
  FreeAndNil(fVulkanDescriptorSetTextureLayout);
  FreeAndNil(fVulkanDescriptorSetNoTextureLayout);
+ FreeAndNil(fVulkanDescriptorSetGUINoTextureLayout);
 
  for Index:=0 to fCountVulkanDescriptors-1 do begin
   FreeAndNil(fVulkanDescriptorPools[Index]);
@@ -3104,7 +3130,7 @@ begin
  if fVulkanRenderPass<>aVulkanRenderPass then begin
 
   for BlendingModeIndex:=Low(TpvCanvasBlendingMode) to High(TpvCanvasBlendingMode) do begin
-   for TextureModeIndex:=0 to 2 do begin
+   for TextureModeIndex:=0 to 3 do begin
     FreeAndNil(fVulkanGraphicsPipelines[BlendingModeIndex,TextureModeIndex]);
     FreeAndNil(fVulkanPipelineLayouts[BlendingModeIndex,TextureModeIndex]);
    end;
@@ -3116,14 +3142,20 @@ begin
 
    for BlendingModeIndex:=Low(TpvCanvasBlendingMode) to High(TpvCanvasBlendingMode) do begin
 
-    for TextureModeIndex:=0 to 2 do begin
+    for TextureModeIndex:=0 to 3 do begin
 
      VulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(fDevice);
      fVulkanPipelineLayouts[BlendingModeIndex,TextureModeIndex]:=VulkanPipelineLayout;
-     if TextureModeIndex<>0 then begin
+     case TextureModeIndex of
+      0:begin
+       VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetNoTextureLayout);
+      end;
+      1..2:begin
       VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetTextureLayout);
-     end else begin
-      VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetNoTextureLayout);
+      end;
+      else {3:}begin
+       VulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetGUINoTextureLayout);
+      end;
      end;
      VulkanPipelineLayout.AddPushConstantRange(TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or
                                                TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
@@ -3150,6 +3182,9 @@ begin
       end;
       2:begin
        VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentAtlasTexture);
+      end;
+      3:begin
+       VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentGUINoTexture);
       end;
       else begin
        VulkanGraphicsPipeline.AddStage(fCanvasCommon.fVulkanPipelineCanvasShaderStageFragmentNoTexture);
@@ -3346,6 +3381,19 @@ begin
  if fState.fAtlasTexture<>aTexture then begin
   Flush;
   fState.fAtlasTexture:=aTexture;
+ end;
+end;
+
+function TpvCanvas.GetGUIElementMode:boolean;
+begin
+ result:=fState.fGUIElementMode;
+end;
+
+procedure TpvCanvas.SetGUIElementMode(const aGUIElementMode:boolean);
+begin
+ if fState.fGUIElementMode<>aGUIElementMode then begin
+  Flush;
+  fState.fGUIElementMode:=aGUIElementMode;
  end;
 end;
 
@@ -3810,16 +3858,20 @@ begin
    QueueItem^.BufferIndex:=CurrentVulkanBufferIndex;
    QueueItem^.DescriptorIndex:=DescriptorIndex;
    QueueItem^.BlendingMode:=fState.fBlendingMode;
-   if assigned(CurrentTexture) then begin
-    if (CurrentTexture is TpvSpriteAtlasArrayTexture) or
-       ((CurrentTexture is TpvVulkanTexture) and
-        (TpvVulkanTexture(CurrentTexture).ImageViewType=VK_IMAGE_VIEW_TYPE_2D_ARRAY)) then begin
-     QueueItem^.TextureMode:=2;
-    end else begin
-     QueueItem^.TextureMode:=1;
-    end;
+   if fState.fGUIElementMode then begin
+    QueueItem^.TextureMode:=3;
    end else begin
-    QueueItem^.TextureMode:=0;
+    if assigned(CurrentTexture) then begin
+     if (CurrentTexture is TpvSpriteAtlasArrayTexture) or
+        ((CurrentTexture is TpvVulkanTexture) and
+         (TpvVulkanTexture(CurrentTexture).ImageViewType=VK_IMAGE_VIEW_TYPE_2D_ARRAY)) then begin
+      QueueItem^.TextureMode:=2;
+     end else begin
+      QueueItem^.TextureMode:=1;
+     end;
+    end else begin
+     QueueItem^.TextureMode:=0;
+    end;
    end;
    QueueItem^.StartVertexIndex:=fCurrentVulkanVertexBufferOffset;
    QueueItem^.StartIndexIndex:=fCurrentVulkanIndexBufferOffset;
@@ -4178,7 +4230,8 @@ begin
       (fState.fViewMatrix<>PeekState.fViewMatrix) or
       (fState.fFillMatrix<>PeekState.fFillMatrix) or
       (fState.fTexture<>PeekState.fTexture) or
-      (fState.fAtlasTexture<>PeekState.fAtlasTexture)) then begin
+      (fState.fAtlasTexture<>PeekState.fAtlasTexture) or
+      (fState.fGUIElementMode<>PeekState.fGUIElementMode)) then begin
    Flush;
   end;
   TpvCanvasState(TObject(TPasMPInterlocked.Exchange(TObject(fState),TObject(fStateStack.Extract)))).Free;
@@ -4228,6 +4281,7 @@ begin
   VertexColor.b:=fState.fColor.b;
   VertexColor.a:=fState.fColor.a;
   VertexState:=GetVertexState;
+  SetGUIElementMode(false);
   SetAtlasTexture(aSprite.ArrayTexture);
   EnsureSufficientReserveUsableSpace(4,6);
   if aSprite.Rotated then begin
@@ -4637,6 +4691,7 @@ var MetaInfo:TpvVector4;
     VertexState:TpvUInt32;
     CanvasVertex:PpvCanvasVertex;
 begin
+ SetGUIElementMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=pvcrmNormal;
  VertexColor.r:=fState.fColor.r;
@@ -4697,6 +4752,7 @@ var MetaInfo:TpvVector4;
     VertexState:TpvUInt32;
     CanvasVertex:PpvCanvasVertex;
 begin
+ SetGUIElementMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=pvcrmNormal;
  VertexColor.r:=fState.fColor.r;
@@ -4758,6 +4814,7 @@ var MetaInfo:TpvVector4;
     VertexState:TpvUInt32;
     CanvasVertex:PpvCanvasVertex;
 begin
+ SetGUIElementMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=pvcrmNormal;
  VertexColor.r:=fState.fColor.r;
@@ -4818,8 +4875,9 @@ var MetaInfo:TpvVector4;
     VertexState:TpvUInt32;
     CanvasVertex:PpvCanvasVertex;
     OldTexture:TObject;
-    LocaLModelMatrix:TpvMatrix4x4;
+    LocalModelMatrix:TpvMatrix4x4;
 begin
+ SetGUIElementMode(false);
  SetAtlasTexture(nil);
  OldTexture:=GetTexture;
  SetTexture(aTexture);
@@ -4885,6 +4943,74 @@ begin
  result:=DrawTexturedRectangle(aTexture,TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY),aRotationAngle,aTextureArrayLayer);
 end;
 
+function TpvCanvas.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2):TpvCanvas;
+var Center,Bounds:TpvVector2;
+    MetaInfo:TpvVector4;
+    VertexColor:TpvHalfFloatVector4;
+    VertexState:TpvUInt32;
+    CanvasVertex:PpvCanvasVertex;
+    OldTexture:TObject;
+begin
+ Center:=(aMin+aMax)*0.5;
+ Bounds:=(aMax-aMin)*0.5;
+ SetGUIElementMode(true);
+ SetAtlasTexture(nil);
+ OldTexture:=GetTexture;
+ SetTexture(nil);
+ fInternalRenderingMode:=pvcrmNormal;
+ VertexColor.r:=fState.fColor.r;
+ VertexColor.g:=fState.fColor.g;
+ VertexColor.b:=fState.fColor.b;
+ VertexColor.a:=fState.fColor.a;
+ MetaInfo.xy:=fState.fModelMatrix*aMetaMin;
+ MetaInfo.zw:=fState.fModelMatrix*aMetaMax;
+ VertexState:=(GetVertexState and not ($f shl pvcvsFillStyleShift)) or ((aGUIElement or ((ord(aFocused) and 1) shl 7)) shl pvcvsObjectModeShift);
+ EnsureSufficientReserveUsableSpace(4,6);
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
+ CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.Create(-Bounds.x,-Bounds.y));
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState;
+ CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
+ CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.Create(Bounds.x,-Bounds.y));
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState;
+ CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
+ CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.Create(Bounds.x,Bounds.y));
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState;
+ CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
+ CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.Create(-Bounds.x,Bounds.y));
+ CanvasVertex^.Color:=VertexColor;
+ CanvasVertex^.TextureCoord:=TpvVector3.Null;
+ CanvasVertex^.State:=VertexState;
+ CanvasVertex^.ClipRect:=fState.fClipRect;
+ CanvasVertex^.MetaInfo:=MetaInfo;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+3]:=fCurrentCountVertices+2;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+3;
+ fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+0;
+ inc(fCurrentCountVertices,4);
+ inc(fCurrentCountIndices,6);
+ SetTexture(OldTexture);
+ result:=self;
+end;
+
+function TpvCanvas.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMinX,aMinY,aMaxX,aMaxY,aMetaMinX,aMetaMinY,aMetaMaxX,aMetaMaxY:TpvFloat):TpvCanvas;
+begin
+ result:=DrawGUIElement(aGUIElement,aFocused,TpvVector2.Create(aMinX,aMinY),TpvVector2.Create(aMaxX,aMaxY),TpvVector2.Create(aMetaMinX,aMetaMinY),TpvVector2.Create(aMetaMaxX,aMetaMaxY));
+end;
+
 function TpvCanvas.DrawShape(const aShape:TpvCanvasShape):TpvCanvas;
 var CachePartIndex,VertexIndex,IndexIndex:TpvInt32;
     CachePart:PpvCanvasShapeCachePart;
@@ -4895,6 +5021,7 @@ var CachePartIndex,VertexIndex,IndexIndex:TpvInt32;
     ModelMatrixIsIdentity:boolean;
     OffsetMatrix:TpvMatrix3x3;
 begin
+ SetGUIElementMode(false);
  SetAtlasTexture(nil);
  fInternalRenderingMode:=pvcrmNormal;
  VertexColor.r:=fState.fColor.r;

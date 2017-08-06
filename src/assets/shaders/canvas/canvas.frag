@@ -292,10 +292,10 @@ void main(void){
 #endif
 #ifdef GUI_ELEMENTS
   {    
-    vec2 size = inMetaInfo.zw;
     color = vec4(0.0);
     int guiElementIndex = inState.y;
-    vec2 p = inPosition.xy - inMetaInfo.xy;
+    vec2 pa = inMetaInfo.xy, pb = inMetaInfo.zw, size = pb - pa;
+    vec2 p = inPosition.xy - pa;
     float t = length(abs(dFdx(inPosition.xy)) + abs(dFdy(inPosition.xy))) * SQRT_0_DOT_5;   
     float focused = ((guiElementIndex & 0x80) != 0) ? 1.0 : 0.0;
     switch(guiElementIndex & 0x7f){

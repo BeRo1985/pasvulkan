@@ -88,6 +88,8 @@ type TpvGUIObject=class;
 
      TpvGUIWindow=class;
 
+     TpvGUILabel=class;
+
      EpvGUIWidget=class(Exception);
 
      TpvGUIObjectList=class(TObjectList<TpvGUIObject>)
@@ -170,6 +172,68 @@ type TpvGUIObject=class;
        fFontSize:TpvFloat;
        fUnfocusedWindowHeaderFontSize:TpvFloat;
        fFocusedWindowHeaderFontSize:tpvFloat;
+       fFontSpriteAtlas:TpvSpriteAtlas;
+       fSansFont:TpvFont;
+       fMonoFont:TpvFont;
+       fWindowHeaderHeight:TpvFloat;
+       fWindowResizeGripSize:TpvFloat;
+       fWindowMinimumWidth:TpvFloat;
+       fWindowMinimumHeight:TpvFloat;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure Setup; virtual;
+       procedure DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance); virtual;
+       procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); virtual;
+       procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); virtual;
+      published
+       property FontSize:TpvFloat read fFontSize write fFontSize;
+       property UnfocusedWindowHeaderFontSize:TpvFloat read fUnfocusedWindowHeaderFontSize write fUnfocusedWindowHeaderFontSize;
+       property FocusedWindowHeaderFontSize:TpvFloat read fFocusedWindowHeaderFontSize write fFocusedWindowHeaderFontSize;
+       property FontSpriteAtlas:TpvSpriteAtlas read fFontSpriteAtlas;
+       property WindowHeaderHeight:TpvFloat read fWindowHeaderHeight write fWindowHeaderHeight;
+       property WindowResizeGripSize:TpvFloat read fWindowResizeGripSize write fWindowResizeGripSize;
+       property WindowMinimumWidth:TpvFloat read fWindowMinimumWidth write fWindowMinimumWidth;
+       property WindowMinimumHeight:TpvFloat read fWindowMinimumHeight write fWindowMinimumHeight;
+     end;
+
+     TpvGUIDefaultVectorBasedSkin=class(TpvGUISkin)
+      private
+      protected
+       fUnfocusedWindowHeaderFontShadow:boolean;
+       fFocusedWindowHeaderFontShadow:boolean;
+       fUnfocusedWindowHeaderFontShadowOffset:TpvVector2;
+       fFocusedWindowHeaderFontShadowOffset:TpvVector2;
+       fUnfocusedWindowHeaderFontShadowColor:TpvVector4;
+       fFocusedWindowHeaderFontShadowColor:TpvVector4;
+       fUnfocusedWindowHeaderFontColor:TpvVector4;
+       fFocusedWindowHeaderFontColor:TpvVector4;
+       fWindowShadowWidth:TpvFloat;
+       fWindowShadowHeight:TpvFloat;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure Setup; override;
+       procedure DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance); override;
+       procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); override;
+       procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); override;
+      public
+       property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
+       property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
+       property UnfocusedWindowHeaderFontShadowColor:TpvVector4 read fUnfocusedWindowHeaderFontShadowColor write fUnfocusedWindowHeaderFontShadowColor;
+       property FocusedWindowHeaderFontShadowColor:TpvVector4 read fFocusedWindowHeaderFontShadowColor write fFocusedWindowHeaderFontShadowColor;
+       property UnfocusedWindowHeaderFontColor:TpvVector4 read fUnfocusedWindowHeaderFontColor write fUnfocusedWindowHeaderFontColor;
+       property FocusedWindowHeaderFontColor:TpvVector4 read fFocusedWindowHeaderFontColor write fFocusedWindowHeaderFontColor;
+      published
+       property UnfocusedWindowHeaderFontShadow:boolean read fUnfocusedWindowHeaderFontShadow write fUnfocusedWindowHeaderFontShadow;
+       property FocusedWindowHeaderFontShadow:boolean read fFocusedWindowHeaderFontShadow write fFocusedWindowHeaderFontShadow;
+       property WindowShadowWidth:TpvFloat read fWindowShadowWidth write fWindowShadowWidth;
+       property WindowShadowHeight:TpvFloat read fWindowShadowHeight write fWindowShadowHeight;
+     end;
+
+{     TpvGUIDefaultVectorBasedSkin=class(TpvGUISkin)
+      private
+      protected
        fUnfocusedWindowHeaderFontShadow:boolean;
        fFocusedWindowHeaderFontShadow:boolean;
        fUnfocusedWindowHeaderFontShadowOffset:TpvVector2;
@@ -179,10 +243,7 @@ type TpvGUIObject=class;
        fUnfocusedWindowHeaderFontColor:TpvVector4;
        fFocusedWindowHeaderFontColor:TpvVector4;
        fMipmappedSpriteAtlas:TpvSpriteAtlas;
-       fFontSpriteAtlas:TpvSpriteAtlas;
        fSpriteAtlas:TpvSpriteAtlas;
-       fSansFont:TpvFont;
-       fMonoFont:TpvFont;
        fSpriteUnfocusedWindowFill:TpvSprite;
        fSpriteUnfocusedWindowFillNinePatch:TpvSpriteNinePatch;
        fSpriteFocusedWindowFill:TpvSprite;
@@ -213,16 +274,13 @@ type TpvGUIObject=class;
        fSpriteMouseCursorPen:TpvSprite;
        fSpriteMouseCursorUnavailable:TpvSprite;
        fSpriteMouseCursorUp:TpvSprite;
-       fWindowHeaderHeight:TpvFloat;
        fWindowResizeGripSize:TpvFloat;
-       fWindowMinimumWidth:TpvFloat;
-       fWindowMinimumHeight:TpvFloat;
        fWindowShadowWidth:TpvFloat;
        fWindowShadowHeight:TpvFloat;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       procedure Setup; virtual;
+       procedure Setup; override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -253,13 +311,9 @@ type TpvGUIObject=class;
        property SpriteMouseCursorUnavailable:TpvSprite read fSpriteMouseCursorUnavailable write fSpriteMouseCursorUnavailable;
        property SpriteMouseCursorUp:TpvSprite read fSpriteMouseCursorUp write fSpriteMouseCursorUp;
       published
-       property FontSize:TpvFloat read fFontSize write fFontSize;
-       property UnfocusedWindowHeaderFontSize:TpvFloat read fUnfocusedWindowHeaderFontSize write fUnfocusedWindowHeaderFontSize;
-       property FocusedWindowHeaderFontSize:TpvFloat read fFocusedWindowHeaderFontSize write fFocusedWindowHeaderFontSize;
        property UnfocusedWindowHeaderFontShadow:boolean read fUnfocusedWindowHeaderFontShadow write fUnfocusedWindowHeaderFontShadow;
        property FocusedWindowHeaderFontShadow:boolean read fFocusedWindowHeaderFontShadow write fFocusedWindowHeaderFontShadow;
        property MipmappedSpriteAtlas:TpvSpriteAtlas read fMipmappedSpriteAtlas;
-       property FontSpriteAtlas:TpvSpriteAtlas read fFontSpriteAtlas;
        property SpriteAtlas:TpvSpriteAtlas read fSpriteAtlas;
        property SpriteUnfocusedWindowFill:TpvSprite read fSpriteUnfocusedWindowFill write fSpriteUnfocusedWindowFill;
        property SpriteFocusedWindowFill:TpvSprite read fSpriteFocusedWindowFill write fSpriteFocusedWindowFill;
@@ -269,13 +323,11 @@ type TpvGUIObject=class;
        property SpriteFocusedWindowGrip:TpvSprite read fSpriteFocusedWindowGrip write fSpriteFocusedWindowGrip;
        property SpriteUnfocusedWindowShadow:TpvSprite read fSpriteUnfocusedWindowShadow write fSpriteUnfocusedWindowShadow;
        property SpriteFocusedWindowShadow:TpvSprite read fSpriteFocusedWindowShadow write fSpriteFocusedWindowShadow;
-       property WindowHeaderHeight:TpvFloat read fWindowHeaderHeight write fWindowHeaderHeight;
        property WindowGripPaddingRight:TpvFloat read fWindowResizeGripSize write fWindowResizeGripSize;
-       property WindowMinimumWidth:TpvFloat read fWindowMinimumWidth write fWindowMinimumWidth;
-       property WindowMinimumHeight:TpvFloat read fWindowMinimumHeight write fWindowMinimumHeight;
        property WindowShadowWidth:TpvFloat read fWindowShadowWidth write fWindowShadowWidth;
        property WindowShadowHeight:TpvFloat read fWindowShadowHeight write fWindowShadowHeight;
      end;
+}
 
      PpvGUICursor=^TpvGUICursor;
      TpvGUICursor=
@@ -574,6 +626,10 @@ uses PasVulkan.Assets,
      PasVulkan.VectorPath,
      PasVulkan.Image.PNG;
 
+const GUI_ELEMENT_WINDOW_HEADER=1;
+      GUI_ELEMENT_WINDOW_FILL=2;
+      GUI_ELEMENT_WINDOW_DROPSHADOW=3;
+
 procedure TpvGUIObjectList.Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification);
 begin
  if assigned(Value) then begin
@@ -825,6 +881,337 @@ begin
 end;
 
 constructor TpvGUISkin.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+ fFontSpriteAtlas:=nil;
+ fSansFont:=nil;
+ fMonoFont:=nil;
+ Setup;
+end;
+
+destructor TpvGUISkin.Destroy;
+begin
+ FreeAndNil(fSansFont);
+ FreeAndNil(fMonoFont);
+ FreeAndNil(fFontSpriteAtlas);
+ inherited Destroy;
+end;
+
+procedure TpvGUISkin.Setup;
+begin
+
+end;
+
+procedure TpvGUISkin.DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance);
+begin
+{fCanvas.BlendingMode:=pvcbmAlphaBlending;
+ case fVisibleCursor of
+  pvgcArrow:begin
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorArrow,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorArrow,fMousePosition);
+  end;
+  pvgcBeam:begin
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorBeam,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorBeam,fMousePosition);
+  end;
+  pvgcBusy:begin
+   fCanvas.Push;
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.ModelMatrix:=((TpvMatrix4x4.CreateTranslation(-(fMousePosition+TpvVector2.Create(2.0,2.0)))*
+                          TpvMatrix4x4.CreateRotateZ(frac(fTime)*TwoPI))*
+                         TpvMatrix4x4.CreateTranslation(fMousePosition+TpvVector2.Create(2.0,2.0)))*
+                         fCanvas.ModelMatrix;
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorBusy,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.Pop;
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.Push;
+   fCanvas.ModelMatrix:=((TpvMatrix4x4.CreateTranslation(-fMousePosition)*
+                          TpvMatrix4x4.CreateRotateZ(frac(fTime)*TwoPI))*
+                         TpvMatrix4x4.CreateTranslation(fMousePosition))*
+                         fCanvas.ModelMatrix;
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorBusy,fMousePosition);
+   fCanvas.Pop;
+  end;
+  pvgcCross:begin
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorCross,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorCross,fMousePosition);
+  end;
+  pvgcEW:begin
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorEW,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorEW,fMousePosition);
+  end;
+  pvgcHelp:begin
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorHelp,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorHelp,fMousePosition);
+  end;
+  pvgcLink:begin
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorLink,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorLink,fMousePosition);
+  end;
+  pvgcMove:begin
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorMove,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorMove,fMousePosition);
+  end;
+  pvgcNESW:begin
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNESW,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNESW,fMousePosition);
+  end;
+  pvgcNS:begin
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNS,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNS,fMousePosition);
+  end;
+  pvgcNWSE:begin
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNWSE,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNWSE,fMousePosition);
+  end;
+  pvgcPen:begin
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorPen,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorPen,fMousePosition);
+  end;
+  pvgcUnavailable:begin
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorUnavailable,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorUnavailable,fMousePosition);
+  end;
+  pvgcUp:begin
+   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorUp,fMousePosition+TpvVector2.Create(2.0,2.0));
+   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.DrawSprite(Skin.fSpriteMouseCursorUp,fMousePosition);
+  end;
+ end;}
+end;
+
+procedure TpvGUISkin.DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow);
+begin
+end;
+
+procedure TpvGUISkin.DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel);
+begin
+end;
+
+constructor TpvGUIDefaultVectorBasedSkin.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+end;
+
+destructor TpvGUIDefaultVectorBasedSkin.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.Setup;
+var Stream:TStream;
+    TrueTypeFont:TpvTrueTypeFont;
+begin
+
+ fFontSize:=-12;
+
+ fUnfocusedWindowHeaderFontSize:=-16;
+ fFocusedWindowHeaderFontSize:=-16;
+
+ fUnfocusedWindowHeaderFontShadow:=true;
+ fFocusedWindowHeaderFontShadow:=true;
+
+ fUnfocusedWindowHeaderFontShadowOffset:=TpvVector2.Create(2.0,2.0);
+ fFocusedWindowHeaderFontShadowOffset:=TpvVector2.Create(2.0,2.0);
+
+ fUnfocusedWindowHeaderFontShadowColor:=TpvVector4.Create(0.0,0.0,0.0,0.3275);
+ fFocusedWindowHeaderFontShadowColor:=TpvVector4.Create(0.0,0.0,0.0,0.5);
+
+ fUnfocusedWindowHeaderFontColor:=TpvVector4.Create(0.75,0.75,0.75,1.0);
+ fFocusedWindowHeaderFontColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+
+ fWindowHeaderHeight:=32;
+
+ fWindowResizeGripSize:=8;
+
+ fWindowMinimumWidth:=Max(fWindowHeaderHeight+8,fWindowResizeGripSize*2);
+ fWindowMinimumHeight:=Max(fWindowHeaderHeight+8,fWindowResizeGripSize*2);
+
+ fWindowShadowWidth:=16;
+ fWindowShadowHeight:=16;
+
+ fFontSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,false);
+
+ Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansFontData,GUIStandardTrueTypeFontSansFontDataSize);
+ try
+  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+  try
+   TrueTypeFont.Size:=-64;
+   TrueTypeFont.Hinting:=false;
+   fSansFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
+                                             fFontSpriteAtlas,
+                                             TrueTypeFont,
+                                             [TpvFontCodePointRange.Create(0,255)]);
+  finally
+   TrueTypeFont.Free;
+  end;
+ finally
+  Stream.Free;
+ end;
+
+ Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontMonoFontData,GUIStandardTrueTypeFontMonoFontDataSize);
+ try
+  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+  try
+   TrueTypeFont.Size:=-64;
+   TrueTypeFont.Hinting:=false;
+   fMonoFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
+                                             fFontSpriteAtlas,
+                                             TrueTypeFont,
+                                             [TpvFontCodePointRange.Create(0,255)]);
+  finally
+   TrueTypeFont.Free;
+  end;
+ finally
+  Stream.Free;
+ end;
+
+ fFontSpriteAtlas.MipMaps:=false;
+ fFontSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
+                         pvApplication.VulkanGraphicsCommandBuffers[0,0],
+                         pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                         pvApplication.VulkanDevice.TransferQueue,
+                         pvApplication.VulkanTransferCommandBuffers[0,0],
+                         pvApplication.VulkanTransferCommandBufferFences[0,0]);
+
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance);
+begin
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow);
+var LastClipRect,NewClipRect:TpvRect;
+    LastModelMatrix,NewModelMatrix:TpvMatrix4x4;
+begin
+ aCanvas.Push;
+ try
+  aCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+  begin
+   LastClipRect:=aCanvas.ClipRect;
+   NewClipRect:=TpvRect.CreateAbsolute(LastClipRect.Left-fWindowShadowWidth,
+                                       LastClipRect.Top-fWindowShadowHeight,
+                                       LastClipRect.Right+fWindowShadowWidth,
+                                       LastClipRect.Bottom+fWindowShadowHeight);
+   if assigned(fParent) and
+      (fParent is TpvGUIWidget) then begin
+    NewClipRect:=TpvRect.CreateRelative((fParent as TpvGUIWidget).fPosition,
+                                        (fParent as TpvGUIWidget).fSize).GetIntersection(NewClipRect);
+   end;
+   aCanvas.ClipRect:=NewClipRect;
+   aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_DROPSHADOW,
+                         aWindow.Focused,
+                         TpvVector2.Create(-fWindowShadowWidth,-fWindowShadowHeight),
+                         aWindow.fSize+TpvVector2.Create(fWindowShadowWidth*2,fWindowShadowHeight*2),
+                         TpvVector2.Create(0.0,0.0),
+                         aWindow.fSize);
+   aCanvas.ClipRect:=LastClipRect;
+  end;
+
+  if pvgwfHeader in aWindow.fWindowFlags then begin
+
+   aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_HEADER,
+                         aWindow.Focused,
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aWindow.fSize.x,fWindowHeaderHeight),
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aWindow.fSize.x,fWindowHeaderHeight));
+
+   aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
+                         aWindow.Focused,
+                         TpvVector2.Create(0.0,fWindowHeaderHeight-1),
+                         TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y),
+                         TpvVector2.Create(0.0,fWindowHeaderHeight-1),
+                         TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y));
+
+   LastModelMatrix:=aCanvas.ModelMatrix;
+   try
+    aCanvas.Font:=fSansFont;
+    aCanvas.FontSize:=IfThen(pvgwfFocused in aWindow.fWidgetFlags,fFocusedWindowHeaderFontSize,fUnfocusedWindowHeaderFontSize);
+    aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+    aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+    NewModelMatrix:=TpvMatrix4x4.CreateTranslation(aWindow.fSize.x*0.5,
+                                                   fWindowHeaderHeight*0.5)*
+                    LastModelMatrix;
+    if ((pvgwfFocused in aWindow.fWidgetFlags) and fFocusedWindowHeaderFontShadow) or
+       ((not (pvgwfFocused in aWindow.fWidgetFlags)) and fUnfocusedWindowHeaderFontShadow) then begin
+     if pvgwfFocused in aWindow.fWidgetFlags then begin
+      aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fFocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
+      aCanvas.SRGBColor:=fFocusedWindowHeaderFontShadowColor;
+     end else begin
+      aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fUnfocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
+      aCanvas.SRGBColor:=fUnfocusedWindowHeaderFontShadowColor;
+     end;
+     aCanvas.DrawText(aWindow.fTitle);
+    end;
+    aCanvas.ModelMatrix:=NewModelMatrix;
+    if pvgwfFocused in aWindow.fWidgetFlags then begin
+     aCanvas.SRGBColor:=fFocusedWindowHeaderFontColor;
+    end else begin
+     aCanvas.SRGBColor:=fUnfocusedWindowHeaderFontColor;
+    end;
+    aCanvas.DrawText(aWindow.fTitle);
+   finally
+    aCanvas.ModelMatrix:=LastModelMatrix;
+   end;
+
+  end else begin
+
+   aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
+                         aWindow.Focused,
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y),
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y));
+
+  end;
+
+ finally
+  aCanvas.Pop;
+ end;
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel);
+begin
+ aCanvas.Push;
+ try
+  aCanvas.Font:=fSansFont;
+  aCanvas.FontSize:=FontSize;
+  aCanvas.TextHorizontalAlignment:=pvcthaLeft;
+  aCanvas.TextVerticalAlignment:=pvctvaTop;
+  aCanvas.SRGBColor:=fFocusedWindowHeaderFontColor;
+  aCanvas.DrawText(aLabel.fCaption);
+ finally
+  aCanvas.Pop;
+ end;
+end;
+
+{constructor TpvGUISkin.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
  fMipmappedSpriteAtlas:=nil;
@@ -1182,7 +1569,7 @@ begin
                      pvApplication.VulkanTransferCommandBufferFences[0,0]);
 
 end;
-
+}
 
 constructor TpvGUIWidgetEnumerator.Create(const aWidget:TpvGUIWidget);
 begin
@@ -1779,7 +2166,7 @@ begin
 
  fVulkanDevice:=aVulkanDevice;
 
- fStandardSkin:=TpvGUISkin.Create(self);
+ fStandardSkin:=TpvGUIDefaultVectorBasedSkin.Create(self);
 
  fDrawWidgetBounds:=false;
 
@@ -2148,105 +2535,7 @@ procedure TpvGUIInstance.Update;
 begin
  ClearReferenceCountedObjectList;
  inherited Update;
- fCanvas.BlendingMode:=pvcbmAlphaBlending;
- case fVisibleCursor of
-  pvgcArrow:begin
-   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorArrow,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorArrow,fMousePosition);
-  end;
-  pvgcBeam:begin
-   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorBeam,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorBeam,fMousePosition);
-  end;
-  pvgcBusy:begin
-   fCanvas.Push;
-   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.ModelMatrix:=((TpvMatrix4x4.CreateTranslation(-(fMousePosition+TpvVector2.Create(2.0,2.0)))*
-                          TpvMatrix4x4.CreateRotateZ(frac(fTime)*TwoPI))*
-                         TpvMatrix4x4.CreateTranslation(fMousePosition+TpvVector2.Create(2.0,2.0)))*
-                         fCanvas.ModelMatrix;
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorBusy,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.Pop;
-   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.Push;
-   fCanvas.ModelMatrix:=((TpvMatrix4x4.CreateTranslation(-fMousePosition)*
-                          TpvMatrix4x4.CreateRotateZ(frac(fTime)*TwoPI))*
-                         TpvMatrix4x4.CreateTranslation(fMousePosition))*
-                         fCanvas.ModelMatrix;
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorBusy,fMousePosition);
-   fCanvas.Pop;
-  end;
-  pvgcCross:begin
-   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorCross,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorCross,fMousePosition);
-  end;
-  pvgcEW:begin
-   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorEW,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorEW,fMousePosition);
-  end;
-  pvgcHelp:begin
-   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorHelp,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorHelp,fMousePosition);
-  end;
-  pvgcLink:begin
-   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorLink,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorLink,fMousePosition);
-  end;
-  pvgcMove:begin
-   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorMove,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorMove,fMousePosition);
-  end;
-  pvgcNESW:begin
-   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNESW,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNESW,fMousePosition);
-  end;
-  pvgcNS:begin
-   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNS,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNS,fMousePosition);
-  end;
-  pvgcNWSE:begin
-   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNWSE,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorNWSE,fMousePosition);
-  end;
-  pvgcPen:begin
-   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorPen,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorPen,fMousePosition);
-  end;
-  pvgcUnavailable:begin
-   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorUnavailable,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorUnavailable,fMousePosition);
-  end;
-  pvgcUp:begin
-   fCanvas.LinearColor:=TpvVector4.Create(0.0,0.0,0.0,0.25);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorUp,fMousePosition+TpvVector2.Create(2.0,2.0));
-   fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-   fCanvas.DrawSprite(Skin.fSpriteMouseCursorUp,fMousePosition);
-  end;
- end;
+ Skin.DrawMouse(fCanvas,self);
  fTime:=fTime+fDeltaTime;
 end;
 
@@ -2592,99 +2881,8 @@ begin
 end;
 
 procedure TpvGUIWindow.Update;
-var LastClipRect,NewClipRect:TpvRect;
-    LastModelMatrix,NewModelMatrix:TpvMatrix4x4;
 begin
- fCanvas.Push;
- try
-  fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-  begin
-   LastClipRect:=fCanvas.ClipRect;
-   NewClipRect:=TpvRect.CreateAbsolute(LastClipRect.Left-Skin.fWindowShadowWidth,
-                                       LastClipRect.Top-Skin.fWindowShadowHeight,
-                                       LastClipRect.Right+Skin.fWindowShadowWidth,
-                                       LastClipRect.Bottom+Skin.fWindowShadowHeight);
-   if assigned(fParent) and
-      (fParent is TpvGUIWidget) then begin
-    NewClipRect:=TpvRect.CreateRelative((fParent as TpvGUIWidget).fPosition,
-                                        (fParent as TpvGUIWidget).fSize).GetIntersection(NewClipRect);
-   end;
-   fCanvas.ClipRect:=NewClipRect;
-   fCanvas.DrawNinePatchSprite(Skin.fSpriteFocusedWindowShadow,
-                               Skin.fSpriteFocusedWindowShadowNinePatch,
-                               TpvVector2.Create(-Skin.fWindowShadowWidth,-Skin.fWindowShadowHeight),
-                               fSize+TpvVector2.Create(Skin.fWindowShadowWidth*2,Skin.fWindowShadowHeight*2));
-   fCanvas.ClipRect:=LastClipRect;
-  end;
-
-  if pvgwfFocused in fWidgetFlags then begin
-   fCanvas.DrawNinePatchSprite(Skin.fSpriteFocusedWindowFill,
-                               Skin.fSpriteFocusedWindowFillNinePatch,
-                               TpvVector2.Create(0.0,Skin.fSpriteFocusedWindowHeader.Height),
-                               TpvVector2.Create(fSize.x,fSize.y-Skin.fSpriteFocusedWindowHeader.Height));
-   fCanvas.DrawNinePatchSprite(Skin.fSpriteFocusedWindowHeader,
-                               Skin.fSpriteFocusedWindowHeaderNinePatch,
-                               TpvVector2.Null,
-                               TpvVector2.Create(fSize.x,Skin.fSpriteFocusedWindowHeader.Height));
-{  if Resizable then begin
-    fCanvas.DrawNinePatchSprite(Skin.fSpriteFocusedWindowGrip,
-                                Skin.fSpriteFocusedWindowGripNinePatch,
-                                TpvVector2.Create(fSize.x-(Skin.fSpriteFocusedWindowGrip.Width+Skin.fWindowResizeGripSize),fSize.y-(Skin.fSpriteFocusedWindowGrip.Height+Skin.fWindowGripPaddingBottom)),
-                                TpvVector2.Create(Skin.fSpriteFocusedWindowGrip.Width,Skin.fSpriteFocusedWindowGrip.Height));
-   end;}
-  end else begin
-   fCanvas.DrawNinePatchSprite(Skin.fSpriteUnfocusedWindowFill,
-                               Skin.fSpriteUnfocusedWindowFillNinePatch,
-                               TpvVector2.Create(0.0,Skin.fSpriteUnfocusedWindowHeader.Height),
-                               TpvVector2.Create(fSize.x,fSize.y-Skin.fSpriteUnfocusedWindowHeader.Height));
-   fCanvas.DrawNinePatchSprite(Skin.fSpriteUnfocusedWindowHeader,
-                               Skin.fSpriteUnfocusedWindowHeaderNinePatch,
-                               TpvVector2.Null,
-                               TpvVector2.Create(fSize.x,Skin.fSpriteUnfocusedWindowHeader.Height));
-{  if Resizable then begin
-    fCanvas.DrawNinePatchSprite(Skin.fSpriteUnfocusedWindowGrip,
-                                Skin.fSpriteUnfocusedWindowGripNinePatch,
-                                TpvVector2.Create(fSize.x-(Skin.fSpriteUnfocusedWindowGrip.Width+Skin.fWindowResizeGripSize),fSize.y-(Skin.fSpriteUnfocusedWindowGrip.Height+Skin.fWindowGripPaddingBottom)),
-                                TpvVector2.Create(Skin.fSpriteUnfocusedWindowGrip.Width,Skin.fSpriteUnfocusedWindowGrip.Height));
-   end;}
-  end;
-
-  if pvgwfHeader in fWindowFlags then begin
-   LastModelMatrix:=fCanvas.ModelMatrix;
-   try
-    fCanvas.Font:=Skin.fSansFont;
-    fCanvas.FontSize:=IfThen(pvgwfFocused in fWidgetFlags,Skin.fFocusedWindowHeaderFontSize,Skin.fUnfocusedWindowHeaderFontSize);
-    fCanvas.TextHorizontalAlignment:=pvcthaCenter;
-    fCanvas.TextVerticalAlignment:=pvctvaMiddle;
-    NewModelMatrix:=TpvMatrix4x4.CreateTranslation(fSize.x*0.5,
-                                                   Skin.fSpriteUnfocusedWindowHeader.Height*0.5)*
-                    LastModelMatrix;
-    if ((pvgwfFocused in fWidgetFlags) and Skin.fFocusedWindowHeaderFontShadow) or
-       ((not (pvgwfFocused in fWidgetFlags)) and Skin.fUnfocusedWindowHeaderFontShadow) then begin
-     if pvgwfFocused in fWidgetFlags then begin
-      fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(Skin.fFocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
-      fCanvas.SRGBColor:=Skin.fFocusedWindowHeaderFontShadowColor;
-     end else begin
-      fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(Skin.fUnfocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
-      fCanvas.SRGBColor:=Skin.fUnfocusedWindowHeaderFontShadowColor;
-     end;
-     fCanvas.DrawText(fTitle);
-    end;
-    fCanvas.ModelMatrix:=NewModelMatrix;
-    if pvgwfFocused in fWidgetFlags then begin
-     fCanvas.SRGBColor:=Skin.fFocusedWindowHeaderFontColor;
-    end else begin
-     fCanvas.SRGBColor:=Skin.fUnfocusedWindowHeaderFontColor;
-    end;
-    fCanvas.DrawText(fTitle);
-   finally
-    fCanvas.ModelMatrix:=LastModelMatrix;
-   end;
-  end;
-
- finally
-  fCanvas.Pop;
- end;
+ Skin.DrawWindow(fCanvas,self);
  inherited Update;
 end;
 
@@ -2727,17 +2925,7 @@ end;
 
 procedure TpvGUILabel.Update;
 begin
- fCanvas.Push;
- try
-  fCanvas.Font:=Skin.fSansFont;
-  fCanvas.FontSize:=FontSize;
-  fCanvas.TextHorizontalAlignment:=pvcthaLeft;
-  fCanvas.TextVerticalAlignment:=pvctvaTop;
-  fCanvas.SRGBColor:=Skin.fFocusedWindowHeaderFontColor;
-  fCanvas.DrawText(fCaption);
- finally
-  fCanvas.Pop;
- end;
+ Skin.DrawLabel(fCanvas,self);
  inherited Update;
 end;
 
