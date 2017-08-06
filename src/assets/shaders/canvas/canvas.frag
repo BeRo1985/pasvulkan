@@ -236,7 +236,7 @@ void main(void){
                                                                     textureLod(uTexture, ADJUST_TEXCOORD(buv.zw), 0.0).w,
                                                                     textureLod(uTexture, ADJUST_TEXCOORD(buv.xw), 0.0).w,
                                                                     textureLod(uTexture, ADJUST_TEXCOORD(buv.zy), 0.0).w)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0));
-      color.a *= color.a;
+      color.a = pow(color.a, 2.2);
       break;
     }
     default:{
