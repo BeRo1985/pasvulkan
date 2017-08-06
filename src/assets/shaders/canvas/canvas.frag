@@ -388,7 +388,8 @@ void main(void){
                                            linearstep(-t * 2.0, 0.0, d)).xxxy);
         break;
       }
-      case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_ARROW:{
+      case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_ARROW:
+      case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_HELP:{
         float a = dot(p, normalize(vec2(-1.0, 0.0)));
         float b = dot(p, normalize(vec2(0.0, 1.0)));
         float c = dot(p, normalize(vec2(1.0, 1.0))) - (size.x * 0.5);
@@ -400,6 +401,11 @@ void main(void){
         d = min(d, max(max((e - (size.x * 0.1)), -(e - (size.x * -0.05))), -min(b - (size.y * 0.25), -a)));
         e = dot(p, normalize(vec2(0.25, 0.5)));
         d = max(d, e - (size.y * 0.8));
+        if(guiElementIndex == GUI_ELEMENT_WINDOW_MOUSE_CURSOR_HELP){
+          d = min(d, length(p + (size * vec2(-0.85, -0.75))) - (length(size) * 0.08));
+          d = min(d, max(length(p + (size * vec2(-0.75, -0.2))) - (length(size) * 0.25),
+                         -(length(p + (size * vec2(-0.55, -0.35))) - (length(size) * 0.2))));
+        }        
         color = blend(color,
                       vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);

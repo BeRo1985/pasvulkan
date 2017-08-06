@@ -1163,6 +1163,12 @@ begin
                            TpvVector2.Create(14.0,14.0));
    end;
    pvgcHelp:begin
+    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_HELP,
+                           true,
+                           TpvVector2.Null,
+                           TpvVector2.Create(56.0,28.0),
+                           TpvVector2.Null,
+                           TpvVector2.Create(28.0,28.0));
    end;
    pvgcLink:begin
    end;
