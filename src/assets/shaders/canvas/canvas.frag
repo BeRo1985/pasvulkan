@@ -408,7 +408,7 @@ void main(void){
                          -(length(p + (size * vec2(-0.55, -0.35))) - (length(size) * 0.2))));
         }        
         color = blend(color,
-                      vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
+                      vec4(vec3(mix(0.0, 1.0, linearstep(-1.0, -(1.0 + (t * 1.0)), d))), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;
       }
@@ -419,7 +419,7 @@ void main(void){
         d = max(d, -sdRoundedRect((p - (size * 0.5)) - vec2(0.0, size.y * 0.55), vec2(size.x * 0.03125, size.y * 0.125), 0.0)); 
         d = max(d, -sdRoundedRect((p - (size * 0.5)) + vec2(0.0, size.y * 0.55), vec2(size.x * 0.03125, size.y * 0.125), 0.0)); 
         color = blend(color,
-                      vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
+                      vec4(vec3(mix(0.0, 1.0, linearstep(-1.0, -(1.0 + (t * 1.0)), d))), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;
       }
@@ -442,7 +442,7 @@ void main(void){
         d = min(d, sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.5, size.y * 0.0625), 0.0)); 
         d = max(d, -sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.0625, size.y * 0.0625), 0.0)); 
         color = blend(color,
-                      vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
+                      vec4(vec3(mix(0.0, 1.0, linearstep(-1.0, -(1.0 + (t * 1.0)), d))), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;
       }
@@ -478,7 +478,7 @@ void main(void){
                               (size * 0.5) + vec2(size.x * 0.25, -size.y * 0.25),   
                               p + (size * 0.5)));     
         color = blend(color,
-                      vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
+                      vec4(vec3(mix(0.0, 1.0, linearstep(-1.0, -(1.0 + (t * 1.0)), d))), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;
       }
@@ -493,7 +493,7 @@ void main(void){
         p.xy = vec2((p.x * SQRT_0_DOT_5) + (p.y * SQRT_0_DOT_5), (p.x * SQRT_0_DOT_5) - (p.y * SQRT_0_DOT_5));       
         d = min(d, sdRoundedRect(p, vec2(size.x * 0.5, size.y * 0.15), length(size) * 0.1)); 
         color = blend(color,
-                      vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
+                      vec4(vec3(mix(0.0, 1.0, linearstep(-1.0, -(1.0 + (t * 1.0)), d))), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;
       }
@@ -519,7 +519,7 @@ void main(void){
                               (size * 0.5) + vec2(size.x * 0.25, -size.y * 0.25),   
                               p + (size * 0.5)));     
         color = blend(color,
-                      vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
+                      vec4(vec3(mix(0.0, 1.0, linearstep(-1.0, -(1.0 + (t * 1.0)), d))), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;
       }
@@ -528,24 +528,24 @@ void main(void){
         p.xy = vec2((p.x * SQRT_0_DOT_5) + (p.y * SQRT_0_DOT_5), (p.x * SQRT_0_DOT_5) - (p.y * SQRT_0_DOT_5)); 
         float d =  sdRoundedRect(p, vec2(size.x * 0.8, size.y * 0.15), size.x * mix(0.8, 0.2, linearstep(0.0, size.x * 0.5, p.x)));
         color = blend(color,
-                      vec4(mix(vec3(0.0), vec3(1.0), linearstep(0.0, -(t * 2.0), d)), 1.0) * 
+                      vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;    
       }
       case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_UNAVAILABLE:{
         p -= (size * 0.5);
-        p = p.yx;                      
-        float d = length(p) - length(size * 0.325);
         color = blend(color,
-                      vec4(mix(vec3(0.0), vec3(1.0), linearstep(0.0, -(t * 2.0), d)), 1.0) * 
-                      vec2(1.0, linearstep(t, -t, d)).xxxy);
-        d = max(length(p) - length(size * 0.5),
-                -(length(p) - length(size * 0.3))); 
-        p.xy = vec2((p.x * SQRT_0_DOT_5) - (p.y * SQRT_0_DOT_5), (p.x * SQRT_0_DOT_5) + (p.y * SQRT_0_DOT_5)); 
-        d = min(d, sdRoundedRect(p, vec2(size.x * 0.625, size.y * 0.175), 0.0));
-        color = blend(color,
-                      vec4(vec3(1.0, 0.0, 0.0), 1.0) * 
-                      vec2(1.0, linearstep(t, -t, d)).xxxy);
+                      vec4(mix(vec3(1.0, 0.0, 0.0), 
+                               vec3(1.0, 1.0, 1.0), 
+                               linearstep(-t, 
+                                          t, 
+                                          min(max(length(p) - length(size), -(length(p) - length(size * 0.3))),
+                                              sdRoundedRect(vec2((p.x * SQRT_0_DOT_5) - (p.y * SQRT_0_DOT_5), (p.x * SQRT_0_DOT_5) + (p.y * SQRT_0_DOT_5)),
+                                                            vec2(size.x * 0.625, size.y * 0.175), 0.0)))), 1.0) * 
+                      vec2(1.0, 
+                           linearstep(t, 
+                                      -t, 
+                                      length(p) - length(size * 0.5))).xxxy);
         break;
       }
       case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_UP:{
@@ -557,7 +557,7 @@ void main(void){
                               (size * 0.5) + vec2(-size.x * 0.5, size.y * 0.0),
                               p + (size * 0.5)));     
         color = blend(color,
-                      vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
+                      vec4(mix(vec3(0.0), vec3(1.0), linearstep(0.0, -(t * 2.0), d)), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;
       }

@@ -1128,17 +1128,17 @@ begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_ARROW,
                            true,
                            TpvVector2.Null,
-                           TpvVector2.Create(28.0,28.0),
+                           TpvVector2.Create(32.0,32.0),
                            TpvVector2.Null,
-                           TpvVector2.Create(28.0,28.0));
+                           TpvVector2.Create(32.0,32.0));
    end;
    pvgcBeam:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_BEAM,
                            true,
-                           TpvVector2.Create(-28.0,-28.0),
-                           TpvVector2.Create(28.0,28.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(14.0,14.0));
+                           TpvVector2.Create(-32.0,-32.0),
+                           TpvVector2.Create(32.0,32.0),
+                           TpvVector2.Create(-16.0,-16.0),
+                           TpvVector2.Create(16.0,16.0));
    end;
    pvgcBusy:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_BUSY,
@@ -1152,74 +1152,74 @@ begin
    pvgcCross:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_CROSS,
                            true,
-                           TpvVector2.Create(-28.0,-28.0),
-                           TpvVector2.Create(28.0,28.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(14.0,14.0));
+                           TpvVector2.Create(-32.0,-32.0),
+                           TpvVector2.Create(32.0,32.0),
+                           TpvVector2.Create(-16.0,-16.0),
+                           TpvVector2.Create(16.0,16.0));
    end;
    pvgcEW:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_EW,
                            true,
-                           TpvVector2.Create(-28.0,-28.0),
-                           TpvVector2.Create(28.0,28.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(14.0,14.0));
+                           TpvVector2.Create(-32.0,-32.0),
+                           TpvVector2.Create(32.0,32.0),
+                           TpvVector2.Create(-16.0,-16.0),
+                           TpvVector2.Create(16.0,16.0));
    end;
    pvgcHelp:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_HELP,
                            true,
                            TpvVector2.Null,
-                           TpvVector2.Create(56.0,28.0),
+                           TpvVector2.Create(64.0,64.0),
                            TpvVector2.Null,
-                           TpvVector2.Create(28.0,28.0));
+                           TpvVector2.Create(32.0,32.0));
    end;
    pvgcLink:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_LINK,
                            true,
-                           TpvVector2.Create(-28.0,-28.0),
-                           TpvVector2.Create(28.0,28.0),
+                           TpvVector2.Create(-32.0,-32.0),
+                           TpvVector2.Create(32.0,32.0),
                            TpvVector2.Null,
-                           TpvVector2.Create(14.0,14.0));
+                           TpvVector2.Create(16.0,16.0));
    end;
    pvgcMove:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_MOVE,
                            true,
-                           TpvVector2.Create(-28.0,-28.0),
-                           TpvVector2.Create(28.0,28.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(14.0,14.0));
+                           TpvVector2.Create(-32.0,-32.0),
+                           TpvVector2.Create(32.0,32.0),
+                           TpvVector2.Create(-16.0,-16.0),
+                           TpvVector2.Create(16.0,16.0));
    end;
    pvgcNESW:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NESW,
                            true,
-                           TpvVector2.Create(-28.0,-28.0),
-                           TpvVector2.Create(28.0,28.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(14.0,14.0));
+                           TpvVector2.Create(-32.0,-32.0),
+                           TpvVector2.Create(32.0,32.0),
+                           TpvVector2.Create(-16.0,-16.0),
+                           TpvVector2.Create(16.0,16.0));
    end;
    pvgcNS:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NS,
                            true,
-                           TpvVector2.Create(-28.0,-28.0),
-                           TpvVector2.Create(28.0,28.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(14.0,14.0));
+                           TpvVector2.Create(-32.0,-32.0),
+                           TpvVector2.Create(32.0,32.0),
+                           TpvVector2.Create(-16.0,-16.0),
+                           TpvVector2.Create(16.0,16.0));
    end;
    pvgcNWSE:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NWSE,
                            true,
-                           TpvVector2.Create(-28.0,-28.0),
-                           TpvVector2.Create(28.0,28.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(14.0,14.0));
+                           TpvVector2.Create(-32.0,-32.0),
+                           TpvVector2.Create(32.0,32.0),
+                           TpvVector2.Create(-16.0,-16.0),
+                           TpvVector2.Create(16.0,16.0));
    end;
    pvgcPen:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_PEN,
                            true,
-                           TpvVector2.Create(-28.0,-28.0),
-                           TpvVector2.Create(28.0,28.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(14.0,14.0));
+                           TpvVector2.Create(-32.0,-32.0),
+                           TpvVector2.Create(32.0,32.0),
+                           TpvVector2.Create(-16.0,-16.0),
+                           TpvVector2.Create(16.0,16.0));
    end;
    pvgcUnavailable:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_UNAVAILABLE,
@@ -1232,10 +1232,10 @@ begin
    pvgcUp:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_UP,
                            true,
-                           TpvVector2.Create(-28.0,-28.0),
-                           TpvVector2.Create(28.0,28.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(14.0,14.0));
+                           TpvVector2.Create(-32.0,-32.0),
+                           TpvVector2.Create(32.0,32.0),
+                           TpvVector2.Create(-16.0,-16.0),
+                           TpvVector2.Create(16.0,16.0));
    end;
   end;
  finally
