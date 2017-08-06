@@ -1274,19 +1274,20 @@ begin
   end;
 
   if pvgwfHeader in aWindow.fWindowFlags then begin
+
+   aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
+                          aWindow.Focused,
+                          TpvVector2.Create(0.0,fWindowHeaderHeight-2),
+                          TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y),
+                          TpvVector2.Create(0.0,fWindowHeaderHeight-2),
+                          TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y));
+
    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_HEADER,
                           aWindow.Focused,
                           TpvVector2.Create(0.0,0.0),
                           TpvVector2.Create(aWindow.fSize.x,fWindowHeaderHeight),
                           TpvVector2.Create(0.0,0.0),
                           TpvVector2.Create(aWindow.fSize.x,fWindowHeaderHeight));
-
-   aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
-                          aWindow.Focused,
-                          TpvVector2.Create(0.0,fWindowHeaderHeight-1),
-                          TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y),
-                          TpvVector2.Create(0.0,fWindowHeaderHeight-1),
-                          TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y));
 
    LastModelMatrix:=aCanvas.ModelMatrix;
    try
