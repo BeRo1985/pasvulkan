@@ -69,6 +69,7 @@ vec4 blend(vec4 a, vec4 b){
 #define GUI_ELEMENT_WINDOW_HEADER 1
 #define GUI_ELEMENT_WINDOW_FILL 2
 #define GUI_ELEMENT_WINDOW_DROPSHADOW 3
+#define GUI_ELEMENT_WINDOW_MOUSE_ARROW 4
 
 const float uWindowCornerRadius = 8.0;
 const float uWindowHeaderHeight = 32.0;
@@ -178,6 +179,18 @@ float sdRoundedRect(vec2 p, vec2 b, float r){
   vec2 d = abs(p) - b;
   return min(max(d.x, d.y), 0.0) + length(max(abs(p) - b, 0.0)) - r;
 }
+
+float sdTriangle(in vec2 p0, in vec2 p1, in vec2 p2, in vec2 p){  
+  vec2 e0 = p1 - p0, e1 = p2 - p1, e2 = p0 - p2,
+       v0 = p - p0, v1 = p - p1, v2 = p - p2,
+       pq0 = v0 - (e0 * clamp(dot(v0, e0) / dot(e0, e0), 0.0, 1.0)),
+       pq1 = v1 - (e1 * clamp(dot(v1, e1) / dot(e1, e1), 0.0, 1.0)),
+       pq2 = v2 - (e2 * clamp(dot(v2, e2) / dot(e2, e2), 0.0, 1.0)),
+       d = min(min(vec2(dot(pq0, pq0), (v0.x * e0.y) - (v0.y * e0.x)),  
+                   vec2(dot(pq1, pq1), (v1.x * e1.y) - (v1.y * e1.x))),  
+                   vec2(dot(pq2, pq2), (v2.x * e2.y) - (v2.y * e2.x)));  
+  return -sqrt(d.x) * sign(d.y);  
+}  
 #endif
 
 void main(void){
@@ -210,6 +223,7 @@ void main(void){
                                                                     textureLod(uTexture, ADJUST_TEXCOORD(buv.zw), 0.0).w,
                                                                     textureLod(uTexture, ADJUST_TEXCOORD(buv.xw), 0.0).w,
                                                                     textureLod(uTexture, ADJUST_TEXCOORD(buv.zy), 0.0).w)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0));
+      color.a = color.a * color.a;
       break;
     }
     default:{
@@ -359,6 +373,23 @@ void main(void){
                                            0.0, 
                                            d) * 
                                            linearstep(-t * 2.0, 0.0, d)).xxxy);
+        break;
+      }
+      case GUI_ELEMENT_WINDOW_MOUSE_ARROW:{
+        float a = dot(p, normalize(vec2(-1.0, 0.0)));
+        float b = dot(p, normalize(vec2(0.0, 1.0)));
+        float c = dot(p, normalize(vec2(1.0, 1.0))) - (size.x * 0.5);
+        float e = dot(p, normalize(vec2(-0.707, 0.707)));
+        float d = max(min(max(max(a, -b), c), 
+                          max(max(max(a, -b), b - (size.y * 0.5)), (-a) - (size.x * 0.707))),
+                          -e);
+        e = dot(p, normalize(vec2(-0.5, 0.25)));
+        d = min(d, max(max((e - (size.x * 0.1)), -(e - (size.x * -0.05))), -min(b - (size.y * 0.25), -a)));
+        e = dot(p, normalize(vec2(0.25, 0.5)));
+        d = max(d, e - (size.y * 0.8));
+        color = blend(color,
+                      vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
+                      vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;
       }
     } 

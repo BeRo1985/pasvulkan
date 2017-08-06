@@ -629,6 +629,7 @@ uses PasVulkan.Assets,
 const GUI_ELEMENT_WINDOW_HEADER=1;
       GUI_ELEMENT_WINDOW_FILL=2;
       GUI_ELEMENT_WINDOW_DROPSHADOW=3;
+      GUI_ELEMENT_WINDOW_MOUSE_ARROW=4;
 
 procedure TpvGUIObjectList.Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification);
 begin
@@ -1103,6 +1104,48 @@ end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance);
 begin
+ aCanvas.Push;
+ try
+  aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(aInstance.fMousePosition)*aCanvas.ModelMatrix;
+  case aInstance.fVisibleCursor of
+   pvgcArrow:begin
+    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_ARROW,
+                           true,
+                           TpvVector2.Null,
+                           TpvVector2.Create(28.0,28.0),
+                           TpvVector2.Null,
+                           TpvVector2.Create(28.0,28.0));
+   end;
+   pvgcBeam:begin
+   end;
+   pvgcBusy:begin
+   end;
+   pvgcCross:begin
+   end;
+   pvgcEW:begin
+   end;
+   pvgcHelp:begin
+   end;
+   pvgcLink:begin
+   end;
+   pvgcMove:begin
+   end;
+   pvgcNESW:begin
+   end;
+   pvgcNS:begin
+   end;
+   pvgcNWSE:begin
+   end;
+   pvgcPen:begin
+   end;
+   pvgcUnavailable:begin
+   end;
+   pvgcUp:begin
+   end;
+  end;
+ finally
+  aCanvas.Pop;
+ end;
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow);

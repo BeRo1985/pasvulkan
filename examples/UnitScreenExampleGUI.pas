@@ -127,7 +127,7 @@ var Index:TpvInt32;
 begin
  inherited Show;
 
-//pvApplication.VisibleMouseCursor:=false;
+ pvApplication.VisibleMouseCursor:=false;
 
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
