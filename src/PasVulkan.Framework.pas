@@ -17742,7 +17742,7 @@ constructor TpvVulkanTexture.CreateFromPNG(const aDevice:TpvVulkanDevice;
                                            const aMipMaps:boolean;
                                            const aSRGB:boolean);
 var Data,ImageData:TpvPointer;
-    DataSize,ImageWidth,ImageHeight,VulkanBytesPerPixel,x,y:TpvInt32;
+    DataSize,ImageWidth,ImageHeight,VulkanBytesPerPixel,x,y,Index:TpvInt32;
     PNGPixelFormat:TpvPNGPixelFormat;
     VulkanPixelFormat:TVkFormat;
     p:PVkUInt16;
@@ -17771,16 +17771,21 @@ begin
       if aSRGB then begin
        // Because VK_FORMAT_R16G16B16A16_SRGB doesn't exist (yet), . . .
        p:=@ImageData;
+       Index:=0;
        for y:=1 to ImageHeight do begin
         for x:=1 to ImageWidth do begin
-         v:=p^/65535.0;
-         if v<0.04045 then begin
-          v:=v/12.92;
-         end else begin
-          v:=Power((v+0.055)/1.055,2.4);
+         if (Index and 3)<>3 then begin
+          // Only convert the RGB color channels, but not the alpha channel
+          v:=p^/65535.0;
+          if v<0.04045 then begin
+           v:=v/12.92;
+          end else begin
+           v:=Power((v+0.055)/1.055,2.4);
+          end;
+          p^:=Min(Max(Round(v*65535.0),0),65535);
          end;
-         p^:=Min(Max(Round(v*65535.0),0),65535);
          inc(p);
+         inc(Index);
         end;
        end;
       end;
