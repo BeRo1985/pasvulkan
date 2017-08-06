@@ -630,20 +630,20 @@ uses PasVulkan.Assets,
 const GUI_ELEMENT_WINDOW_HEADER=1;
       GUI_ELEMENT_WINDOW_FILL=2;
       GUI_ELEMENT_WINDOW_DROPSHADOW=3;
-      GUI_ELEMENT_WINDOW_MOUSE_CURSOR_ARROW=4;
-      GUI_ELEMENT_WINDOW_MOUSE_CURSOR_BEAM=5;
-      GUI_ELEMENT_WINDOW_MOUSE_CURSOR_BUSY=6;
-      GUI_ELEMENT_WINDOW_MOUSE_CURSOR_CROSS=7;
-      GUI_ELEMENT_WINDOW_MOUSE_CURSOR_EW=8;
-      GUI_ELEMENT_WINDOW_MOUSE_CURSOR_HELP=9;
-      GUI_ELEMENT_WINDOW_MOUSE_CURSOR_LINK=10;
-      GUI_ELEMENT_WINDOW_MOUSE_CURSOR_MOVE=11;
-      GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NESW=12;
-      GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NS=13;
-      GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NWSE=14;
-      GUI_ELEMENT_WINDOW_MOUSE_CURSOR_PEN=15;
-      GUI_ELEMENT_WINDOW_MOUSE_CURSOR_UNAVAILABLE=16;
-      GUI_ELEMENT_WINDOW_MOUSE_CURSOR_UP=17;
+      GUI_ELEMENT_MOUSE_CURSOR_ARROW=4;
+      GUI_ELEMENT_MOUSE_CURSOR_BEAM=5;
+      GUI_ELEMENT_MOUSE_CURSOR_BUSY=6;
+      GUI_ELEMENT_MOUSE_CURSOR_CROSS=7;
+      GUI_ELEMENT_MOUSE_CURSOR_EW=8;
+      GUI_ELEMENT_MOUSE_CURSOR_HELP=9;
+      GUI_ELEMENT_MOUSE_CURSOR_LINK=10;
+      GUI_ELEMENT_MOUSE_CURSOR_MOVE=11;
+      GUI_ELEMENT_MOUSE_CURSOR_NESW=12;
+      GUI_ELEMENT_MOUSE_CURSOR_NS=13;
+      GUI_ELEMENT_MOUSE_CURSOR_NWSE=14;
+      GUI_ELEMENT_MOUSE_CURSOR_PEN=15;
+      GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE=16;
+      GUI_ELEMENT_MOUSE_CURSOR_UP=17;
 
 procedure TpvGUIObjectList.Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification);
 begin
@@ -1125,7 +1125,7 @@ begin
   aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(aInstance.fMousePosition)*aCanvas.ModelMatrix;
   case aInstance.fVisibleCursor of
    pvgcArrow:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_ARROW,
+    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_ARROW,
                            true,
                            TpvVector2.Null,
                            TpvVector2.Create(32.0,32.0),
@@ -1133,7 +1133,7 @@ begin
                            TpvVector2.Create(32.0,32.0));
    end;
    pvgcBeam:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_BEAM,
+    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BEAM,
                            true,
                            TpvVector2.Create(-32.0,-32.0),
                            TpvVector2.Create(32.0,32.0),
@@ -1141,7 +1141,7 @@ begin
                            TpvVector2.Create(16.0,16.0));
    end;
    pvgcBusy:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_BUSY,
+    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BUSY,
                            true,
                            TpvVector2.Create(-20.0,-20.0),
                            TpvVector2.Create(20.0,20.0),
@@ -1150,7 +1150,7 @@ begin
                            frac(aInstance.fTime)*TwoPI);
    end;
    pvgcCross:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_CROSS,
+    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_CROSS,
                            true,
                            TpvVector2.Create(-32.0,-32.0),
                            TpvVector2.Create(32.0,32.0),
@@ -1158,7 +1158,7 @@ begin
                            TpvVector2.Create(16.0,16.0));
    end;
    pvgcEW:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_EW,
+    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_EW,
                            true,
                            TpvVector2.Create(-32.0,-32.0),
                            TpvVector2.Create(32.0,32.0),
@@ -1166,7 +1166,7 @@ begin
                            TpvVector2.Create(16.0,16.0));
    end;
    pvgcHelp:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_HELP,
+    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_HELP,
                            true,
                            TpvVector2.Null,
                            TpvVector2.Create(64.0,64.0),
@@ -1174,7 +1174,7 @@ begin
                            TpvVector2.Create(32.0,32.0));
    end;
    pvgcLink:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_LINK,
+    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_LINK,
                            true,
                            TpvVector2.Create(-32.0,-32.0),
                            TpvVector2.Create(32.0,32.0),
@@ -1182,7 +1182,7 @@ begin
                            TpvVector2.Create(16.0,16.0));
    end;
    pvgcMove:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_MOVE,
+    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_MOVE,
                            true,
                            TpvVector2.Create(-32.0,-32.0),
                            TpvVector2.Create(32.0,32.0),
@@ -1190,7 +1190,7 @@ begin
                            TpvVector2.Create(16.0,16.0));
    end;
    pvgcNESW:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NESW,
+    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NESW,
                            true,
                            TpvVector2.Create(-32.0,-32.0),
                            TpvVector2.Create(32.0,32.0),
@@ -1198,7 +1198,7 @@ begin
                            TpvVector2.Create(16.0,16.0));
    end;
    pvgcNS:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NS,
+    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NS,
                            true,
                            TpvVector2.Create(-32.0,-32.0),
                            TpvVector2.Create(32.0,32.0),
@@ -1206,7 +1206,7 @@ begin
                            TpvVector2.Create(16.0,16.0));
    end;
    pvgcNWSE:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NWSE,
+    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NWSE,
                            true,
                            TpvVector2.Create(-32.0,-32.0),
                            TpvVector2.Create(32.0,32.0),
@@ -1214,7 +1214,7 @@ begin
                            TpvVector2.Create(16.0,16.0));
    end;
    pvgcPen:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_PEN,
+    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_PEN,
                            true,
                            TpvVector2.Create(-32.0,-32.0),
                            TpvVector2.Create(32.0,32.0),
@@ -1222,7 +1222,7 @@ begin
                            TpvVector2.Create(16.0,16.0));
    end;
    pvgcUnavailable:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_UNAVAILABLE,
+    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE,
                            true,
                            TpvVector2.Create(-20.0,-20.0),
                            TpvVector2.Create(20.0,20.0),
@@ -1230,7 +1230,7 @@ begin
                            TpvVector2.Create(10.0,10.0));
    end;
    pvgcUp:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_MOUSE_CURSOR_UP,
+    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UP,
                            true,
                            TpvVector2.Create(-32.0,-32.0),
                            TpvVector2.Create(32.0,32.0),
