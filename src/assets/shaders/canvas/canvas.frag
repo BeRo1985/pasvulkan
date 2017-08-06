@@ -328,34 +328,28 @@ void main(void){
     guiElementIndex &= 0x7f;
     switch(guiElementIndex){
       case GUI_ELEMENT_WINDOW_HEADER:{      
-        float d = sdRoundedRect(p - (size * 0.5), 
-                                size * 0.5, 
-                                mix(uWindowHeaderCornerRadius, 0.0, step(size.y * 0.5, p.y)));      
-        color = blend(blend(color,
-                            mix(mix(uUnfocusedWindowHeaderGradientTop, 
-                                    uFocusedWindowHeaderGradientTop, 
-                                    focused),
-                                mix(uUnfocusedWindowHeaderGradientBottom, 
-                                    uFocusedWindowHeaderGradientBottom, 
-                                    focused),
-                               linearstep(0.0, size.y, p.y)) * 
-                            vec2(1.0, linearstep(t, -t, d)).xxxy),
-                      mix(mix(uUnfocusedWindowHeaderBorderGradientTop, 
-                              uFocusedWindowHeaderBorderGradientTop, 
-                              focused),
-                          mix(uUnfocusedWindowHeaderBorderGradientBottom, 
-                              uFocusedWindowHeaderBorderGradientBottom, 
-                              focused),
-                          linearstep(0.0, size.y, p.y)) * 
-                      vec2(1.0, linearstep(t, -t, max(d, -(d + (t * 1.0))))).xxxy);
-        d = max(max(p.y, -(p.y + (t * 1.0))), ((abs(p.x - (size.x * 0.5)) - ((size.x * 0.5) - uWindowHeaderCornerRadius))));
-        color = blend(color,
-                      uUnfocusedWindowHeaderSeperatorTop * 
-                      vec2(1.0, linearstep(t, -t, d)).xxxy);
-        d = max(max(p.y - size.y, -((p.y - size.y) + (t * 1.0))), ((abs(p.x - (size.x * 0.5)) - (size.x * 0.5))));
-        color = blend(color,
-                      uUnfocusedWindowHeaderSeperatorBottom * 
-                      vec2(1.0, linearstep(t, -t, d)).xxxy);
+        float fy = linearstep(0.0, size.y, p.y),
+              cr = mix(uWindowHeaderCornerRadius, 0.0, step(size.y * 0.5, p.y)), 
+              d0 = sdRoundedRect(p - (size * 0.5), size * 0.5, cr),
+              d1 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(1.0), cr);      
+        color = blend(color, mix(mix(mix(mix(mix(uUnfocusedWindowHeaderGradientTop, 
+                                                 uFocusedWindowHeaderGradientTop, 
+                                                 focused),
+                                             mix(uUnfocusedWindowHeaderGradientBottom, 
+                                                 uFocusedWindowHeaderGradientBottom, 
+                                                 focused),
+                                             fy),
+                                       mix(mix(uUnfocusedWindowHeaderBorderGradientTop, 
+                                               uFocusedWindowHeaderBorderGradientTop, 
+                                               focused),
+                                           mix(uUnfocusedWindowHeaderBorderGradientBottom, 
+                                               uFocusedWindowHeaderBorderGradientBottom, 
+                                               focused),
+                                               fy),
+                                       linearstep(-t, t, d1)),
+                                     uUnfocusedWindowHeaderSeperatorTop, linearstep(1.0 + t, 0.0, p.y)),
+                                 uUnfocusedWindowHeaderSeperatorBottom, linearstep(size.y - (1.0 + t), size.y, p.y)) *
+                             vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
         break;
       }
       case GUI_ELEMENT_WINDOW_FILL:{
