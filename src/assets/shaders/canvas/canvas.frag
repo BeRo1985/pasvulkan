@@ -413,11 +413,11 @@ void main(void){
         break;
       }
       case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_BEAM:{
-        float d = sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.0625, size.y * 0.5), 0.0); 
-        d = min(d, sdRoundedRect((p - (size * 0.5)) + vec2(0.0, size.y * 0.4), vec2(size.x * 0.125, size.y * 0.0625), 0.0)); 
-        d = min(d, sdRoundedRect((p - (size * 0.5)) - vec2(0.0, size.y * 0.4), vec2(size.x * 0.125, size.y * 0.0625), 0.0)); 
-        d = max(d, -sdRoundedRect((p - (size * 0.5)) - vec2(0.0, size.y * 0.55), vec2(size.x * 0.03125, size.y * 0.125), 0.0)); 
-        d = max(d, -sdRoundedRect((p - (size * 0.5)) + vec2(0.0, size.y * 0.55), vec2(size.x * 0.03125, size.y * 0.125), 0.0)); 
+        float d = sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.08, size.y * 0.5), 0.0); 
+        d = min(d, sdRoundedRect((p - (size * 0.5)) + vec2(0.0, size.y * 0.4), vec2(size.x * 0.16, size.y * 0.09), 0.0)); 
+        d = min(d, sdRoundedRect((p - (size * 0.5)) - vec2(0.0, size.y * 0.4), vec2(size.x * 0.16, size.y * 0.08), 0.0)); 
+        d = max(d, -sdRoundedRect((p - (size * 0.5)) - vec2(0.0, size.y * 0.55), vec2(size.x * 0.025, size.y * 0.125), 0.0)); 
+        d = max(d, -sdRoundedRect((p - (size * 0.5)) + vec2(0.0, size.y * 0.55), vec2(size.x * 0.025, size.y * 0.125), 0.0)); 
         color = blend(color,
                       vec4(vec3(mix(0.0, 1.0, linearstep(-1.0, -(1.0 + (t * 1.0)), d))), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
@@ -468,7 +468,7 @@ void main(void){
             break;
           }                                        
         }               
-        float d = sdRoundedRect(p, vec2(size.x * 0.375, size.y * 0.0625), 0.0); 
+        float d = sdRoundedRect(p, vec2(size.x * 0.375, size.y * 0.08), 0.0); 
         d = min(d, sdTriangle((size * 0.5) + vec2(-size.x * 0.25, size.y * 0.25),
                               (size * 0.5) + vec2(-size.x * 0.25, -size.y * 0.25),   
                               (size * 0.5) + vec2(-size.x * 0.5, size.y * 0.0),
@@ -499,7 +499,7 @@ void main(void){
       }
       case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_MOVE:{
         p -= (size * 0.5);
-        float d = sdRoundedRect(p, vec2(size.x * 0.375, size.y * 0.0625), 0.0); 
+        float d = sdRoundedRect(p, vec2(size.x * 0.375, size.y * 0.08), 0.0); 
         d = min(d, sdTriangle((size * 0.5) + vec2(-size.x * 0.25, size.y * 0.25),
                               (size * 0.5) + vec2(-size.x * 0.25, -size.y * 0.25),   
                               (size * 0.5) + vec2(-size.x * 0.5, size.y * 0.0),
@@ -509,7 +509,7 @@ void main(void){
                               (size * 0.5) + vec2(size.x * 0.25, -size.y * 0.25),   
                               p + (size * 0.5)));     
         p = p.yx;                      
-        d = min(d, sdRoundedRect(p, vec2(size.x * 0.375, size.y * 0.0625), 0.0)); 
+        d = min(d, sdRoundedRect(p, vec2(size.x * 0.375, size.y * 0.08), 0.0)); 
         d = min(d, sdTriangle((size * 0.5) + vec2(-size.x * 0.25, size.y * 0.25),
                               (size * 0.5) + vec2(-size.x * 0.25, -size.y * 0.25),   
                               (size * 0.5) + vec2(-size.x * 0.5, size.y * 0.0),
