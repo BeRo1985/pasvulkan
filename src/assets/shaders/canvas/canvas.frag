@@ -69,10 +69,20 @@ vec4 blend(vec4 a, vec4 b){
 #define GUI_ELEMENT_WINDOW_HEADER 1
 #define GUI_ELEMENT_WINDOW_FILL 2
 #define GUI_ELEMENT_WINDOW_DROPSHADOW 3
-#define GUI_ELEMENT_WINDOW_MOUSE_ARROW 4
-#define GUI_ELEMENT_WINDOW_MOUSE_BEAM 5
-#define GUI_ELEMENT_WINDOW_MOUSE_BUSY 6
-#define GUI_ELEMENT_WINDOW_MOUSE_CROSS 7
+#define GUI_ELEMENT_WINDOW_MOUSE_CURSOR_ARROW 4
+#define GUI_ELEMENT_WINDOW_MOUSE_CURSOR_BEAM 5
+#define GUI_ELEMENT_WINDOW_MOUSE_CURSOR_BUSY 6
+#define GUI_ELEMENT_WINDOW_MOUSE_CURSOR_CROSS 7
+#define GUI_ELEMENT_WINDOW_MOUSE_CURSOR_EW 8
+#define GUI_ELEMENT_WINDOW_MOUSE_CURSOR_HELP 9
+#define GUI_ELEMENT_WINDOW_MOUSE_CURSOR_LINK 10
+#define GUI_ELEMENT_WINDOW_MOUSE_CURSOR_MOVE 11
+#define GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NESW 12
+#define GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NS 13
+#define GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NWSE 14
+#define GUI_ELEMENT_WINDOW_MOUSE_CURSOR_PEN 15
+#define GUI_ELEMENT_WINDOW_MOUSE_CURSOR_UNAVAILABLE 16
+#define GUI_ELEMENT_WINDOW_MOUSE_CURSOR_UP 17     
 
 const float uWindowCornerRadius = 8.0;
 const float uWindowHeaderHeight = 32.0;
@@ -314,7 +324,8 @@ void main(void){
     vec2 p = inPosition.xy - pa;
     float t = length(abs(dFdx(inPosition.xy)) + abs(dFdy(inPosition.xy))) * SQRT_0_DOT_5;   
     float focused = ((guiElementIndex & 0x80) != 0) ? 1.0 : 0.0;
-    switch(guiElementIndex & 0x7f){
+    guiElementIndex &= 0x7f;
+    switch(guiElementIndex){
       case GUI_ELEMENT_WINDOW_HEADER:{      
         float d = sdRoundedRect(p - (size * 0.5), 
                                 size * 0.5, 
@@ -377,7 +388,7 @@ void main(void){
                                            linearstep(-t * 2.0, 0.0, d)).xxxy);
         break;
       }
-      case GUI_ELEMENT_WINDOW_MOUSE_ARROW:{
+      case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_ARROW:{
         float a = dot(p, normalize(vec2(-1.0, 0.0)));
         float b = dot(p, normalize(vec2(0.0, 1.0)));
         float c = dot(p, normalize(vec2(1.0, 1.0))) - (size.x * 0.5);
@@ -394,7 +405,7 @@ void main(void){
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;
       }
-      case GUI_ELEMENT_WINDOW_MOUSE_BEAM:{
+      case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_BEAM:{
         float d = sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.0625, size.y * 0.5), 0.0); 
         d = min(d, sdRoundedRect((p - (size * 0.5)) + vec2(0.0, size.y * 0.4), vec2(size.x * 0.125, size.y * 0.0625), 0.0)); 
         d = min(d, sdRoundedRect((p - (size * 0.5)) - vec2(0.0, size.y * 0.4), vec2(size.x * 0.125, size.y * 0.0625), 0.0)); 
@@ -405,7 +416,7 @@ void main(void){
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;
       }
-      case GUI_ELEMENT_WINDOW_MOUSE_BUSY:{
+      case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_BUSY:{
         vec2 o = p - (size * 0.5); 
         float d = max(length(p - (size * 0.5)) - length(size * 0.5),
                       -(length(p - (size * 0.5)) - length(size * 0.25))); 
@@ -419,10 +430,46 @@ void main(void){
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;
       }
-      case GUI_ELEMENT_WINDOW_MOUSE_CROSS:{
+      case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_CROSS:{
         float d = sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.0625, size.y * 0.5), 0.0); 
         d = min(d, sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.5, size.y * 0.0625), 0.0)); 
         d = max(d, -sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.0625, size.y * 0.0625), 0.0)); 
+        color = blend(color,
+                      vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
+                      vec2(1.0, linearstep(t, -t, d)).xxxy);
+        break;
+      }
+      case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_EW:
+      case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NESW:
+      case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NS:
+      case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NWSE:{
+        p -= (size * 0.5);
+        switch(guiElementIndex){
+          case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_EW:{
+            break;
+          }                                        
+          case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NESW:{
+            p.xy = vec2((p.x * SQRT_0_DOT_5) - (p.y * SQRT_0_DOT_5), (p.x * SQRT_0_DOT_5) + (p.y * SQRT_0_DOT_5)); 
+            break;
+          }                                        
+          case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NS:{
+            p.xy = p.yx;
+            break;
+          }                                                
+          case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_NWSE:{
+            p.xy = vec2((p.x * SQRT_0_DOT_5) + (p.y * SQRT_0_DOT_5), (p.x * SQRT_0_DOT_5) - (p.y * SQRT_0_DOT_5)); 
+            break;
+          }                                        
+        }               
+        float d = sdRoundedRect(p, vec2(size.x * 0.375, size.y * 0.0625), 0.0); 
+        d = min(d, sdTriangle((size * 0.5) + vec2(-size.x * 0.25, size.y * 0.25),
+                              (size * 0.5) + vec2(-size.x * 0.25, -size.y * 0.25),   
+                              (size * 0.5) + vec2(-size.x * 0.5, size.y * 0.0),
+                              p + (size * 0.5)));     
+        d = min(d, sdTriangle((size * 0.5) + vec2(size.x * 0.25, size.y * 0.25),
+                              (size * 0.5) + vec2(size.x * 0.5, size.y * 0.0),
+                              (size * 0.5) + vec2(size.x * 0.25, -size.y * 0.25),   
+                              p + (size * 0.5)));     
         color = blend(color,
                       vec4(vec3(mix(0.0, 1.0, linearstep(0.0, -(t * 2.0), d))), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
