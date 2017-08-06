@@ -535,7 +535,7 @@ void main(void){
       case GUI_ELEMENT_WINDOW_MOUSE_CURSOR_UNAVAILABLE:{
         p -= (size * 0.5);
         p = p.yx;                      
-        float d = length(p) - length(size * 0.5);
+        float d = length(p) - length(size * 0.325);
         color = blend(color,
                       vec4(mix(vec3(0.0), vec3(1.0), linearstep(0.0, -(t * 2.0), d)), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
@@ -544,7 +544,7 @@ void main(void){
         p.xy = vec2((p.x * SQRT_0_DOT_5) - (p.y * SQRT_0_DOT_5), (p.x * SQRT_0_DOT_5) + (p.y * SQRT_0_DOT_5)); 
         d = min(d, sdRoundedRect(p, vec2(size.x * 0.625, size.y * 0.175), 0.0));
         color = blend(color,
-                      vec4(mix(vec3(0.125, 0.0, 0.0), vec3(1.0, 0.0, 0.0), linearstep(0.0, -(t * 2.0), d)), 1.0) * 
+                      vec4(vec3(1.0, 0.0, 0.0), 1.0) * 
                       vec2(1.0, linearstep(t, -t, d)).xxxy);
         break;
       }
