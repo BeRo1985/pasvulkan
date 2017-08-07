@@ -96,7 +96,7 @@ type TpvGUIObject=class;
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
 
-     TpvGUIOnChangeEvent=procedure(const aSender:TpvGUIObject;const aChanged:boolean) of object;
+     TpvGUIOnChange=procedure(const aSender:TpvGUIObject;const aChanged:boolean) of object;
 
      TpvGUIOnKeyEvent=function(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean of object;
 
@@ -576,7 +576,7 @@ type TpvGUIObject=class;
        fButtonGroup:TpvGUIButtonGroup;
        fCaption:TpvUTF8String;
        fOnClick:TpvGUIOnEvent;
-       fOnChanged:TpvGUIOnChangeEvent;
+       fOnChange:TpvGUIOnChange;
        procedure ProcessDown(const aPosition:TpvVector2);
        procedure ProcessUp(const aPosition:TpvVector2);
       protected
@@ -597,7 +597,7 @@ type TpvGUIObject=class;
        property Down:boolean read GetDown write SetDown;
        property Caption:TpvUTF8String read fCaption write fCaption;
        property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
-       property OnChanged:TpvGUIOnChangeEvent read fOnChanged write fOnChanged;
+       property OnChange:TpvGUIOnChange read fOnChange write fOnChange;
      end;
 
      TpvGUIRadioButton=class(TpvGUIButton)
@@ -2896,7 +2896,7 @@ begin
  fButtonGroup:=TpvGUIButtonGroup.Create(false);
  fCaption:='Button';
  fOnClick:=nil;
- fOnChanged:=nil;
+ fOnChange:=nil;
 end;
 
 destructor TpvGUIButton.Destroy;
@@ -2939,8 +2939,8 @@ begin
     if (ChildButton<>self) and
        ((ChildButton.fButtonFlags*[pvgbfRadioButton,pvgbfDown])=[pvgbfRadioButton,pvgbfDown]) then begin
      ChildButton.Down:=false;
-     if assigned(ChildButton.fOnChanged) then begin
-      ChildButton.fOnChanged(ChildButton,false);
+     if assigned(ChildButton.fOnChange) then begin
+      ChildButton.fOnChange(ChildButton,false);
      end;
     end;
    end;
@@ -2953,8 +2953,8 @@ begin
        (((Child as TpvGUIButton).fButtonFlags*[pvgbfRadioButton,pvgbfDown])=[pvgbfRadioButton,pvgbfDown]) then begin
      ChildButton:=Child as TpvGUIButton;
      ChildButton.Down:=false;
-     if assigned(ChildButton.fOnChanged) then begin
-      ChildButton.fOnChanged(ChildButton,false);
+     if assigned(ChildButton.fOnChange) then begin
+      ChildButton.fOnChange(ChildButton,false);
      end;
     end;
    end;
@@ -2970,8 +2970,8 @@ begin
        (((Child as TpvGUIButton).fButtonFlags*[pvgbfPopupButton,pvgbfDown])=[pvgbfPopupButton,pvgbfDown]) then begin
      ChildButton:=Child as TpvGUIButton;
      ChildButton.Down:=false;
-     if assigned(ChildButton.fOnChanged) then begin
-      ChildButton.fOnChanged(ChildButton,false);
+     if assigned(ChildButton.fOnChange) then begin
+      ChildButton.fOnChange(ChildButton,false);
      end;
     end;
    end;
@@ -2982,8 +2982,8 @@ begin
  end else begin
   Down:=true;
  end;
- if (OldDown<>Down) and assigned(OnChanged) then begin
-  OnChanged(self,Down);
+ if (OldDown<>Down) and assigned(OnChange) then begin
+  OnChange(self,Down);
  end;
 end;
 
@@ -2997,8 +2997,8 @@ begin
  if pvgbfNormalButton in fButtonFlags then begin
   Down:=false;
  end;
- if (OldDown<>Down) and assigned(OnChanged) then begin
-  OnChanged(self,Down);
+ if (OldDown<>Down) and assigned(OnChange) then begin
+  OnChange(self,Down);
  end;
 end;
 
