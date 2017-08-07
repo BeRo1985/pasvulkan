@@ -96,6 +96,8 @@ type TpvGUIObject=class;
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
 
+     TpvGUIOnChangeEvent=procedure(const aSender:TpvGUIObject;const aChanged:boolean) of object;
+
      TpvGUIObjectList=class(TObjectList<TpvGUIObject>)
       protected
        procedure Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification); override;
@@ -542,11 +544,15 @@ type TpvGUIObject=class;
      PpvGUIButtonFlags=^TpvGUIButtonFlags;
      TpvGUIButtonFlags=set of TpvGUIButtonFlag;
 
+     TpvGUIButtonGroup=class(TObjectList<TpvGUIButton>);
+
      TpvGUIButton=class(TpvGUIWidget)
       private
        fButtonFlags:TpvGUIButtonFlags;
+       fButtonGroup:TpvGUIButtonGroup;
        fCaption:TpvUTF8String;
        fOnClick:TpvGUIOnEvent;
+       fOnChanged:TpvGUIOnChangeEvent;
       protected
        function GetDown:boolean; inline;
        procedure SetDown(const aDown:boolean); inline;
@@ -561,9 +567,11 @@ type TpvGUIObject=class;
        procedure Draw; override;
       published
        property ButtonFlags:TpvGUIButtonFlags read fButtonFlags write fButtonFlags;
+       property ButtonGroup:TpvGUIButtonGroup read fButtonGroup;
        property Down:boolean read GetDown write SetDown;
        property Caption:TpvUTF8String read fCaption write fCaption;
        property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
+       property OnChanged:TpvGUIOnChangeEvent read fOnChanged write fOnChanged;
      end;
 
      TpvGUIRadioButton=class(TpvGUIButton)
@@ -2758,12 +2766,15 @@ constructor TpvGUIButton.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
  fButtonFlags:=[pvgbfNormalButton];
+ fButtonGroup:=TpvGUIButtonGroup.Create(false);
  fCaption:='Button';
  fOnClick:=nil;
+ fOnChanged:=nil;
 end;
 
 destructor TpvGUIButton.Destroy;
 begin
+ FreeAndNil(fButtonGroup);
  inherited Destroy;
 end;
 
@@ -2793,22 +2804,85 @@ begin
 end;
 
 function TpvGUIButton.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildButton:TpvGUIButton;
+    OldDown:boolean;
 begin
  result:=inherited PointerEvent(aPointerEvent);
  if Enabled and (aPointerEvent.Button=BUTTON_LEFT) and not result then begin
+  OldDown:=Down;
   case aPointerEvent.PointerEventType of
    POINTEREVENT_DOWN:begin
-    Down:=true;
+    if pvgbfRadioButton in fButtonFlags then begin
+     if assigned(fButtonGroup) and (fButtonGroup.Count>0) then begin
+      for ChildIndex:=0 to fButtonGroup.Count-1 do begin
+       ChildButton:=fButtonGroup.Items[ChildIndex];
+       if (ChildButton<>self) and
+          ((ChildButton.fButtonFlags*[pvgbfRadioButton,pvgbfDown])=[pvgbfRadioButton,pvgbfDown]) then begin
+        ChildButton.Down:=false;
+        if assigned(ChildButton.fOnChanged) then begin
+         ChildButton.fOnChanged(ChildButton,false);
+        end;
+       end;
+      end;
+     end else if assigned(fParent) then begin
+      for ChildIndex:=0 to fParent.fChildren.Count-1 do begin
+       Child:=fParent.fChildren.Items[ChildIndex];
+       if assigned(Child) and
+          (Child<>self) and
+          (Child is TpvGUIButton) and
+          (((Child as TpvGUIButton).fButtonFlags*[pvgbfRadioButton,pvgbfDown])=[pvgbfRadioButton,pvgbfDown]) then begin
+        ChildButton:=Child as TpvGUIButton;
+        ChildButton.Down:=false;
+        if assigned(ChildButton.fOnChanged) then begin
+         ChildButton.fOnChanged(ChildButton,false);
+        end;
+       end;
+      end;
+     end;
+    end;
+    if pvgbfPopupButton in fButtonFlags then begin
+     if assigned(fParent) then begin
+      for ChildIndex:=0 to fParent.fChildren.Count-1 do begin
+       Child:=fParent.fChildren.Items[ChildIndex];
+       if assigned(Child) and
+          (Child<>self) and
+          (Child is TpvGUIButton) and
+          (((Child as TpvGUIButton).fButtonFlags*[pvgbfPopupButton,pvgbfDown])=[pvgbfPopupButton,pvgbfDown]) then begin
+        ChildButton:=Child as TpvGUIButton;
+        ChildButton.Down:=false;
+        if assigned(ChildButton.fOnChanged) then begin
+         ChildButton.fOnChanged(ChildButton,false);
+        end;
+       end;
+      end;
+     end;
+    end;
+    if pvgbfToggleButton in fButtonFlags then begin
+     Down:=not Down;
+    end else begin
+     Down:=true;
+    end;
+    result:=true;
    end;
    POINTEREVENT_UP:begin
     if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
      fOnClick(self);
     end;
-    Down:=false;
+    if pvgbfNormalButton in fButtonFlags then begin
+     Down:=false;
+    end;
+    result:=true;
    end;
    POINTEREVENT_MOTION:begin
    end;
    POINTEREVENT_DRAG:begin
+   end;
+  end;
+  if result and (OldDown<>Down) then begin
+   if assigned(OnChanged) then begin
+    OnChanged(self,Down);
    end;
   end;
  end;
@@ -2833,7 +2907,7 @@ end;
 constructor TpvGUIRadioButton.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
- fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfRadioButton];
+ fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfNormalButton,pvgbfRadioButton];
 end;
 
 constructor TpvGUIToggleButton.Create(const aParent:TpvGUIObject);
