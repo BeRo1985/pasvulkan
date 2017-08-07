@@ -140,17 +140,17 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      PpvCanvasTextHorizontalAlignment=^TpvCanvasTextHorizontalAlignment;
      TpvCanvasTextHorizontalAlignment=
       (
-       pvcthaLeft,
+       pvcthaLeading,
        pvcthaCenter,
-       pvcthaRight
+       pvcthaTailing
       );
 
      ppvCanvasTextVerticalAlignment=^TpvCanvasTextVerticalAlignment;
      TpvCanvasTextVerticalAlignment=
       (
-       pvctvaTop,
+       pvctvaLeading,
        pvctvaMiddle,
-       pvctvaBottom
+       pvctvaTailing
       );
 
      PpvCanvasPathCommandType=^TpvCanvasPathCommandType;
@@ -1271,8 +1271,8 @@ begin
  fColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
  fFont:=nil;
  fFontSize:=-12;
- fTextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.pvcthaLeft;
- fTextVerticalAlignment:=TpvCanvasTextVerticalAlignment.pvctvaTop;
+ fTextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.pvcthaLeading;
+ fTextVerticalAlignment:=TpvCanvasTextVerticalAlignment.pvctvaLeading;
  fViewMatrix:=TpvMatrix4x4.Identity;
  fModelMatrix:=TpvMatrix4x4.Identity;
  fFillMatrix:=TpvMatrix4x4.Identity;
@@ -4646,38 +4646,38 @@ var Position,Size:TpvVector2;
 begin
  if assigned(fState.fFont) then begin
   Position:=aPosition;
-  if fState.fTextHorizontalAlignment<>pvcthaLeft then begin
-   if fState.fTextVerticalAlignment<>pvctvaTop then begin
+  if fState.fTextHorizontalAlignment<>pvcthaLeading then begin
+   if fState.fTextVerticalAlignment<>pvctvaLeading then begin
     Size:=TextSize(aText);
    end else begin
     Size:=TpvVector2.Create(TextWidth(aText),0.0);
    end;
   end else begin
-   if fState.fTextVerticalAlignment<>pvctvaTop then begin
+   if fState.fTextVerticalAlignment<>pvctvaLeading then begin
     Size:=TpvVector2.Create(0.0,TextHeight(aText));
    end else begin
     Size:=TpvVector2.Create(0.0,0.0);
    end;
   end;
   case fState.fTextHorizontalAlignment of
-   pvcthaLeft:begin
+   pvcthaLeading:begin
     // Do nothing
    end;
    pvcthaCenter:begin
     Position.x:=Position.x-(Size.x*0.5);
    end;
-   pvcthaRight:begin
+   pvcthaTailing:begin
     Position.x:=Position.x-Size.x;
    end;
   end;
   case fState.fTextVerticalAlignment of
-   pvctvaTop:begin
+   pvctvaLeading:begin
     // Do nothing
    end;
    pvctvaMiddle:begin
     Position.y:=Position.y-(Size.y*0.5);
    end;
-   pvctvaBottom:begin
+   pvctvaTailing:begin
     Position.y:=Position.y-Size.y;
    end;
   end;
