@@ -69,6 +69,11 @@ vec4 blend(vec4 a, vec4 b){
 #define GUI_ELEMENT_WINDOW_HEADER 1
 #define GUI_ELEMENT_WINDOW_FILL 2
 #define GUI_ELEMENT_WINDOW_DROPSHADOW 3
+#define GUI_ELEMENT_BUTTON_UNFOCUSED 4
+#define GUI_ELEMENT_BUTTON_FOCUSED 5
+#define GUI_ELEMENT_BUTTON_PUSHED 6
+#define GUI_ELEMENT_BUTTON_DISABLED 7
+#define GUI_ELEMENT_BUTTON_HOVERED 8
 #define GUI_ELEMENT_MOUSE_CURSOR_ARROW 64
 #define GUI_ELEMENT_MOUSE_CURSOR_BEAM 65
 #define GUI_ELEMENT_MOUSE_CURSOR_BUSY 66
@@ -99,6 +104,8 @@ const float uTabButtonVerticalPadding = 2.0;
 
 #define MAKE_GRAY_COLOR(a, b) vec4(vec3(pow((a) / 255.0, 2.2)), (b) / 255.0)
 
+#define MAKE_COLOR(r, g, b, a) vec4(vec3(pow(vec3(r, g, b) / 255.0, vec3(2.2))), (a) / 255.0)
+
 const vec4 uDropShadow = MAKE_GRAY_COLOR(0.0, 128.0);
 const vec4 uTransparent = MAKE_GRAY_COLOR(0.0, 0.0);
 const vec4 uBorderDark = MAKE_GRAY_COLOR(29.0, 255.0);
@@ -109,14 +116,16 @@ const vec4 uDisabledTextColor = MAKE_GRAY_COLOR(255.0, 80.0);
 const vec4 uTextColorShadow = MAKE_GRAY_COLOR(0.0, 160.0);
 const vec4 uIconColor = MAKE_GRAY_COLOR(255.0, 160.0);
 
-const vec4 uFocusedButtonGradientTop = MAKE_GRAY_COLOR(64.0, 255.0);
-const vec4 uFocusedButtonGradientBottom = MAKE_GRAY_COLOR(48.0, 255.0);
 const vec4 uUnfocusedButtonGradientTop = MAKE_GRAY_COLOR(74.0, 255.0);
 const vec4 uUnfocusedButtonGradientBottom = MAKE_GRAY_COLOR(58.0, 255.0);
-const vec4 uPushedButtonGradientTop = MAKE_GRAY_COLOR(41.0, 255.0);
-const vec4 uPushedButtonGradientBottom = MAKE_GRAY_COLOR(29.0, 255.0);
+const vec4 uFocusedButtonGradientTop = MAKE_GRAY_COLOR(64.0, 255.0);
+const vec4 uFocusedButtonGradientBottom = MAKE_GRAY_COLOR(48.0, 255.0);
+const vec4 uPushedButtonGradientTop = MAKE_GRAY_COLOR(32.0, 255.0);
+const vec4 uPushedButtonGradientBottom = MAKE_GRAY_COLOR(64.0, 255.0);
 const vec4 uDisabledButtonGradientTop = MAKE_GRAY_COLOR(96.0, 255.0);
 const vec4 uDisabledButtonGradientBottom = MAKE_GRAY_COLOR(64.0, 255.0);
+const vec4 uHoveredButtonGradientTop = MAKE_COLOR(128.0, 96.0, 48.0, 255.0);
+const vec4 uHoveredButtonGradientBottom = MAKE_COLOR(64.0, 48.0, 24.0, 255.0);
 
 const vec4 uUnfocusedWindowFill = MAKE_GRAY_COLOR(43.0, 254.0);
 const vec4 uFocusedWindowFill = MAKE_GRAY_COLOR(45.0, 254.0);
@@ -384,6 +393,75 @@ void main(void){
                                            0.0, 
                                            d) * 
                                            linearstep(-t * 2.0, 0.0, d)).xxxy);
+        break;
+      }
+      case GUI_ELEMENT_BUTTON_UNFOCUSED:
+      case GUI_ELEMENT_BUTTON_FOCUSED:
+      case GUI_ELEMENT_BUTTON_PUSHED:
+      case GUI_ELEMENT_BUTTON_DISABLED:
+      case GUI_ELEMENT_BUTTON_HOVERED:{
+        float d0 = sdRoundedRect(p - (size * 0.5), size * 0.5, uButtonCornerRadius),
+              d1 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(1.0), uButtonCornerRadius),      
+              d2 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(2.0), uButtonCornerRadius),      
+              d3 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(3.0), uButtonCornerRadius);      
+        vec4 gradientTop,
+             gradientBottom,
+             borderTowardsLight,
+             borderAwayFromLight;
+        switch(guiElementIndex){
+        	case GUI_ELEMENT_BUTTON_UNFOCUSED:{
+            gradientTop = uUnfocusedButtonGradientTop;
+            gradientBottom = uUnfocusedButtonGradientBottom;
+            borderTowardsLight = uBorderLight;
+            borderAwayFromLight = uBorderDark;
+          	break;
+          }
+        	case GUI_ELEMENT_BUTTON_FOCUSED:{
+            gradientTop = uFocusedButtonGradientTop;
+            gradientBottom = uFocusedButtonGradientBottom;
+            borderTowardsLight = uBorderLight;
+            borderAwayFromLight = uBorderDark;
+          	break;
+          }
+        	case GUI_ELEMENT_BUTTON_PUSHED:{
+            gradientTop = uPushedButtonGradientTop;
+            gradientBottom = uPushedButtonGradientBottom;
+            borderTowardsLight = uBorderDark;
+            borderAwayFromLight = uBorderLight;
+          	break;
+          }
+        	case GUI_ELEMENT_BUTTON_DISABLED:{
+            gradientTop = uDisabledButtonGradientTop;
+            gradientBottom = uDisabledButtonGradientBottom;
+            borderTowardsLight = uBorderLight;
+            borderAwayFromLight = uBorderDark;
+          	break;
+          }
+        	case GUI_ELEMENT_BUTTON_HOVERED:{
+            gradientTop = uHoveredButtonGradientTop;
+            gradientBottom = uHoveredButtonGradientBottom;
+            borderTowardsLight = uBorderLight;
+            borderAwayFromLight = uBorderDark;
+          	break;
+          }
+        }
+        color = blend(color, 
+                      mix(mix(mix(mix(gradientTop, 
+                                      gradientBottom, 
+                                      linearstep(0.0, size.y, p.y)),
+                                  mix(mix(borderTowardsLight, 
+                                          uBorderMedium, 
+                                          linearstep(0.0, t, p.y - 3.0)), 
+                                      borderAwayFromLight, 
+                                      linearstep(0.0, t, p.y - (size.y - 3.0))),
+                                  linearstep(-t, t, d3)),
+                              uBorderMedium, 
+                              linearstep(-t, t, d2)),
+                            mix(uBorderMedium,
+                                uBorderLight,
+                                linearstep(-t, t, p.y - (size.y - 1.0))), 
+                            linearstep(-t, t, d1)) *
+                      vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
         break;
       }
       case GUI_ELEMENT_MOUSE_CURSOR_ARROW:
