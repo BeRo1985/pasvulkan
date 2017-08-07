@@ -46,6 +46,7 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
        fGUIInstance:TpvGUIInstance;
        fGUIWindow:TpvGUIWindow;
        fGUILabel:TpvGUILabel;
+       fGUIButton:TpvGUIButton;
        fGUIOtherWindow:TpvGUIWindow;
        fLastMousePosition:TpvVector2;
        fLastMouseButtons:TpvApplicationInputPointerButtons;
@@ -160,6 +161,9 @@ begin
  fGUILabel:=TpvGUILabel.Create(fGUIWindow);
  fGUILabel.Caption:='An example label';
  fGUILabel.Cursor:=pvgcLink;
+
+ fGUIButton:=TpvGUIButton.Create(fGUIWindow);
+ fGUIButton.Caption:='An example Button';
 
  fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIOtherWindow.Left:=550;

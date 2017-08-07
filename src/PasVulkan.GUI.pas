@@ -90,7 +90,11 @@ type TpvGUIObject=class;
 
      TpvGUILabel=class;
 
+     TpvGUIButton=class;
+
      EpvGUIWidget=class(Exception);
+
+     TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
 
      TpvGUIObjectList=class(TObjectList<TpvGUIObject>)
       protected
@@ -186,6 +190,7 @@ type TpvGUIObject=class;
        procedure DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance); virtual;
        procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); virtual;
        procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); virtual;
+       procedure DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton); virtual;
       published
        property FontSize:TpvFloat read fFontSize write fFontSize;
        property UnfocusedWindowHeaderFontSize:TpvFloat read fUnfocusedWindowHeaderFontSize write fUnfocusedWindowHeaderFontSize;
@@ -218,6 +223,7 @@ type TpvGUIObject=class;
        procedure DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance); override;
        procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); override;
        procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); override;
+       procedure DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -521,6 +527,39 @@ type TpvGUIObject=class;
        procedure Draw; override;
       published
        property Caption:TpvUTF8String read fCaption write fCaption;
+     end;
+
+     PpvGUIButtonFlag=^TpvGUIButtonFlag;
+     TpvGUIButtonFlag=
+      (
+       pvgbfDown
+      );
+
+     PpvGUIButtonFlags=^TpvGUIButtonFlags;
+     TpvGUIButtonFlags=set of TpvGUIButtonFlag;
+
+     TpvGUIButton=class(TpvGUIWidget)
+      private
+       fButtonFlags:TpvGUIButtonFlags;
+       fCaption:TpvUTF8String;
+       fOnClick:TpvGUIOnEvent;
+      protected
+       function GetDown:boolean; inline;
+       procedure SetDown(const aDown:boolean); inline;
+       function GetPreferredSize:TpvVector2; override;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure Update; override;
+       procedure Draw; override;
+      published
+       property ButtonFlags:TpvGUIButtonFlags read fButtonFlags write fButtonFlags;
+       property Down:boolean read GetDown write SetDown;
+       property Caption:TpvUTF8String read fCaption write fCaption;
+       property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
      end;
 
 implementation
@@ -833,6 +872,10 @@ begin
 end;
 
 procedure TpvGUISkin.DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel);
+begin
+end;
+
+procedure TpvGUISkin.DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton);
 begin
 end;
 
@@ -1251,6 +1294,77 @@ begin
  aCanvas.TextVerticalAlignment:=pvctvaTop;
  aCanvas.SRGBColor:=fLabelFontColor;
  aCanvas.DrawText(aLabel.fCaption);
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton);
+begin
+
+ if not aButton.Enabled then begin
+
+  aCanvas.DrawGUIElement(GUI_ELEMENT_BUTTON_DISABLED,
+                         true,
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y),
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y));
+
+  aCanvas.Font:=fSansFont;
+  aCanvas.FontSize:=aButton.FontSize;
+  aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+  aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+  aCanvas.SRGBColor:=TpvVector4.Create(0.0,0.0,0.0,1.0);
+  aCanvas.DrawText(aButton.fCaption,aButton.fSize*0.5);
+
+ end else if aButton.Down then begin
+
+  aCanvas.DrawGUIElement(GUI_ELEMENT_BUTTON_PUSHED,
+                         true,
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y),
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y));
+
+  aCanvas.Font:=fSansFont;
+  aCanvas.FontSize:=aButton.FontSize;
+  aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+  aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+  aCanvas.SRGBColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+  aCanvas.DrawText(aButton.fCaption,aButton.fSize*0.5);
+
+ end else if aButton.Focused then begin
+
+  aCanvas.DrawGUIElement(GUI_ELEMENT_BUTTON_FOCUSED,
+                         true,
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y),
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y));
+
+  aCanvas.Font:=fSansFont;
+  aCanvas.FontSize:=aButton.FontSize;
+  aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+  aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+  aCanvas.SRGBColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+  aCanvas.DrawText(aButton.fCaption,aButton.fSize*0.5);
+
+ end else begin
+
+  aCanvas.DrawGUIElement(GUI_ELEMENT_BUTTON_UNFOCUSED,
+                         true,
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y),
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y));
+
+  aCanvas.Font:=fSansFont;
+  aCanvas.FontSize:=aButton.FontSize;
+  aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+  aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+  aCanvas.SRGBColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+  aCanvas.DrawText(aButton.fCaption,aButton.fSize*0.5);
+
+ end;
+
 end;
 
 constructor TpvGUIWidgetEnumerator.Create(const aWidget:TpvGUIWidget);
@@ -2616,5 +2730,80 @@ begin
  inherited Draw;
 end;
 
+constructor TpvGUIButton.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+ fButtonFlags:=[];
+ fCaption:='Button';
+ fOnClick:=nil;
+end;
+
+destructor TpvGUIButton.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TpvGUIButton.GetDown:boolean;
+begin
+ result:=pvgbfDown in fButtonFlags;
+end;
+
+procedure TpvGUIButton.SetDown(const aDown:boolean);
+begin
+ if aDown then begin
+  Include(fButtonFlags,pvgbfDown);
+ end else begin
+  Exclude(fButtonFlags,pvgbfDown);
+ end;
+end;
+
+function TpvGUIButton.GetPreferredSize:TpvVector2;
+begin
+ result:=Maximum(inherited GetPreferredSize,
+                 Skin.fSansFont.TextSize(fCaption,FontSize)+TpvVector2.Create(16.0,8.0));
+end;
+
+function TpvGUIButton.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=inherited KeyEvent(aKeyEvent);
+end;
+
+function TpvGUIButton.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+begin
+ result:=inherited PointerEvent(aPointerEvent);
+ if Enabled and (aPointerEvent.Button=BUTTON_LEFT) and not result then begin
+  case aPointerEvent.PointerEventType of
+   POINTEREVENT_DOWN:begin
+    Down:=true;
+   end;
+   POINTEREVENT_UP:begin
+    if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
+     fOnClick(self);
+    end;
+    Down:=false;
+   end;
+   POINTEREVENT_MOTION:begin
+   end;
+   POINTEREVENT_DRAG:begin
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIButton.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+begin
+ result:=inherited Scrolled(aPosition,aRelativeAmount);
+end;
+
+procedure TpvGUIButton.Update;
+begin
+ Skin.DrawButton(fCanvas,self);
+ inherited Update;
+end;
+
+procedure TpvGUIButton.Draw;
+begin
+ inherited Draw;
+end;
 
 end.
