@@ -416,6 +416,7 @@ type TpvGUIObject=class;
      TpvGUIInstance=class(TpvGUIWidget)
       private
        fVulkanDevice:TpvVulkanDevice;
+       fFontCodePointRanges:TpvFontCodePointRanges;
        fStandardSkin:TpvGUISkin;
        fDrawWidgetBounds:boolean;
        fBuffers:TpvGUIInstanceBuffers;
@@ -437,7 +438,8 @@ type TpvGUIObject=class;
        procedure CenterWindow(const aWindow:TpvGUIWindow);
        procedure MoveWindowToFront(const aWindow:TpvGUIWindow);
       public
-       constructor Create(const aVulkanDevice:TpvVulkanDevice); reintroduce;
+       constructor Create(const aVulkanDevice:TpvVulkanDevice;
+                          const aFontCodePointRanges:TpvFontCodePointRanges=[]); reintroduce;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -999,7 +1001,7 @@ begin
    fSansFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
                                              fFontSpriteAtlas,
                                              TrueTypeFont,
-                                             [TpvFontCodePointRange.Create(0,255)]);
+                                             fInstance.fFontCodePointRanges);
   finally
    TrueTypeFont.Free;
   end;
@@ -1016,7 +1018,7 @@ begin
    fSansBoldFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
                                                  fFontSpriteAtlas,
                                                  TrueTypeFont,
-                                                 [TpvFontCodePointRange.Create(0,255)]);
+                                                 fInstance.fFontCodePointRanges);
   finally
    TrueTypeFont.Free;
   end;
@@ -1033,7 +1035,7 @@ begin
    fSansBoldItalicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
                                                        fFontSpriteAtlas,
                                                        TrueTypeFont,
-                                                       [TpvFontCodePointRange.Create(0,255)]);
+                                                       fInstance.fFontCodePointRanges);
   finally
    TrueTypeFont.Free;
   end;
@@ -1050,7 +1052,7 @@ begin
    fSansItalicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
                                                    fFontSpriteAtlas,
                                                    TrueTypeFont,
-                                                   [TpvFontCodePointRange.Create(0,255)]);
+                                                   fInstance.fFontCodePointRanges);
   finally
    TrueTypeFont.Free;
   end;
@@ -1067,7 +1069,7 @@ begin
    fMonoFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
                                              fFontSpriteAtlas,
                                              TrueTypeFont,
-                                             [TpvFontCodePointRange.Create(0,255)]);
+                                             fInstance.fFontCodePointRanges);
   finally
    TrueTypeFont.Free;
   end;
@@ -2100,7 +2102,8 @@ begin
  end;
 end;
 
-constructor TpvGUIInstance.Create(const aVulkanDevice:TpvVulkanDevice);
+constructor TpvGUIInstance.Create(const aVulkanDevice:TpvVulkanDevice;
+                                  const aFontCodePointRanges:TpvFontCodePointRanges=[]);
 begin
 
  inherited Create(nil);
@@ -2108,6 +2111,14 @@ begin
  fInstance:=self;
 
  fVulkanDevice:=aVulkanDevice;
+
+ fFontCodePointRanges:=aFontCodePointRanges;
+
+ if length(fFontCodePointRanges)=0 then begin
+  SetLength(fFontCodePointRanges,2);
+  fFontCodePointRanges[0]:=TpvFontCodePointRange.Create(0,255);
+  fFontCodePointRanges[1]:=TpvFontCodePointRange.Create($2026,$2026);
+ end;
 
  fStandardSkin:=TpvGUIDefaultVectorBasedSkin.Create(self);
 
