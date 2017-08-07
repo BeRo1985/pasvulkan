@@ -532,6 +532,10 @@ type TpvGUIObject=class;
      PpvGUIButtonFlag=^TpvGUIButtonFlag;
      TpvGUIButtonFlag=
       (
+       pvgbfNormalButton,
+       pvgbfRadioButton,
+       pvgbfToggleButton,
+       pvgbfPopupButton,
        pvgbfDown
       );
 
@@ -560,6 +564,26 @@ type TpvGUIObject=class;
        property Down:boolean read GetDown write SetDown;
        property Caption:TpvUTF8String read fCaption write fCaption;
        property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
+     end;
+
+     TpvGUIRadioButton=class(TpvGUIButton)
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+     end;
+
+     TpvGUIToggleButton=class(TpvGUIButton)
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+     end;
+
+     TpvGUIPopupButton=class(TpvGUIButton)
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+     end;
+
+     TpvGUIToolButton=class(TpvGUIButton)
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
      end;
 
 implementation
@@ -2733,7 +2757,7 @@ end;
 constructor TpvGUIButton.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
- fButtonFlags:=[];
+ fButtonFlags:=[pvgbfNormalButton];
  fCaption:='Button';
  fOnClick:=nil;
 end;
@@ -2804,6 +2828,30 @@ end;
 procedure TpvGUIButton.Draw;
 begin
  inherited Draw;
+end;
+
+constructor TpvGUIRadioButton.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+ fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfRadioButton];
+end;
+
+constructor TpvGUIToggleButton.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+ fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfToggleButton];
+end;
+
+constructor TpvGUIPopupButton.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+ fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfToggleButton,pvgbfPopupButton];
+end;
+
+constructor TpvGUIToolButton.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+ fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfRadioButton,pvgbfToggleButton];
 end;
 
 end.
