@@ -162,6 +162,9 @@ begin
  fGUILabel.Caption:='An example label';
  fGUILabel.Cursor:=pvgcLink;
 
+ fGUIButton:=TpvGUIButton.Create(fGUIWindow.ButtonPanel);
+ fGUIButton.Caption:='X';
+
  fGUIButton:=TpvGUIButton.Create(fGUIWindow);
  fGUIButton.Caption:='An example button';
 

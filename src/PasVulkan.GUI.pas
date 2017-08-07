@@ -517,6 +517,7 @@ type TpvGUIObject=class;
        procedure SetModal(const aModal:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetButtonPanel:TpvGUIWidget;
        function GetPreferredSize:TpvVector2; override;
+       procedure RealignButtonPanel; virtual;
        procedure RefreshRelativePlacement; virtual;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -1355,9 +1356,15 @@ begin
     aCanvas.FontSize:=IfThen(pvgwfFocused in aWindow.fWidgetFlags,fFocusedWindowHeaderFontSize,fUnfocusedWindowHeaderFontSize);
     aCanvas.TextHorizontalAlignment:=pvcthaCenter;
     aCanvas.TextVerticalAlignment:=pvctvaMiddle;
-    NewModelMatrix:=TpvMatrix4x4.CreateTranslation(aWindow.fSize.x*0.5,
-                                                   fWindowHeaderHeight*0.5)*
-                    LastModelMatrix;
+    if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
+     NewModelMatrix:=TpvMatrix4x4.CreateTranslation(aWindow.fButtonPanel.Left*0.5,
+                                                    fWindowHeaderHeight*0.5)*
+                     LastModelMatrix;
+    end else begin
+     NewModelMatrix:=TpvMatrix4x4.CreateTranslation(aWindow.fSize.x*0.5,
+                                                    fWindowHeaderHeight*0.5)*
+                     LastModelMatrix;
+    end;
     if ((pvgwfFocused in aWindow.fWidgetFlags) and fFocusedWindowHeaderFontShadow) or
        ((not (pvgwfFocused in aWindow.fWidgetFlags)) and fUnfocusedWindowHeaderFontShadow) then begin
      if pvgwfFocused in aWindow.fWidgetFlags then begin
@@ -2545,6 +2552,10 @@ begin
 end;
 
 function TpvGUIWindow.GetPreferredSize:TpvVector2;
+var ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+    ButtonPanelPreferredSize:TpvVector2;
 begin
  if assigned(fButtonPanel) then begin
   fButtonPanel.Visible:=false;
@@ -2553,12 +2564,24 @@ begin
                  Skin.fSansBoldFont.TextSize(fTitle,
                                              Max(Skin.fUnfocusedWindowHeaderFontSize,
                                                  Skin.fFocusedWindowHeaderFontSize))+
-                 TpvVector2.Create(Skin.fSansBoldFont.TextWidth('====',
-                                                                Max(Skin.fUnfocusedWindowHeaderFontSize,
-                                                                Skin.fFocusedWindowHeaderFontSize)),
-                                   0.0));
+                 TpvVector2.Create(16.0*2.0,0.0));
+ if pvgwfHeader in fWindowFlags then begin
+  result.y:=Maximum(result.y,Skin.fWindowHeaderHeight);
+ end;
  if assigned(fButtonPanel) then begin
   fButtonPanel.Visible:=true;
+  for ChildIndex:=0 to fButtonPanel.fChildren.Count-1 do begin
+   Child:=fButtonPanel.fChildren.Items[ChildIndex];
+   if Child is TpvGUIWidget then begin
+    ChildWidget:=Child as TpvGUIWidget;
+    ChildWidget.FixedWidth:=22;
+    ChildWidget.FixedHeight:=22;
+    ChildWidget.FontSize:=-15;
+   end;
+  end;
+  ButtonPanelPreferredSize:=fButtonPanel.PreferredSize;
+  result.x:=result.x+(ButtonPanelPreferredSize.x+(5*2));
+  result.y:=Maximum(result.y,ButtonPanelPreferredSize.y);
  end;
 end;
 
@@ -2566,6 +2589,7 @@ procedure TpvGUIWindow.PerformLayout;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
+    ButtonPanelPreferredSize:TpvVector2;
 begin
  if assigned(fButtonPanel) then begin
   fButtonPanel.Visible:=false;
@@ -2580,13 +2604,21 @@ begin
     ChildWidget.FontSize:=-15;
    end;
   end;
-  fButtonPanel.Width:=Width;
-  fButtonPanel.Height:=22;
-  fButtonPanel.Left:=Width-(fButtonPanel.PreferredSize.x+5);
-  fButtonPanel.Top:=3;
+  ButtonPanelPreferredSize:=fButtonPanel.PreferredSize;
+  fButtonPanel.Width:=ButtonPanelPreferredSize.x;
+  fButtonPanel.Height:=ButtonPanelPreferredSize.y;
+  fButtonPanel.Left:=Width-(ButtonPanelPreferredSize.x+5);
+  fButtonPanel.Top:=(Skin.WindowHeaderHeight-ButtonPanelPreferredSize.y)*0.5;
   fButtonPanel.PerformLayout;
  end else begin
   inherited PerformLayout;
+ end;
+end;
+
+procedure TpvGUIWindow.RealignButtonPanel;
+begin
+ if assigned(fButtonPanel) then begin
+  fButtonPanel.Left:=fSize.x-(fButtonPanel.Width+5);
  end;
 end;
 
@@ -2813,6 +2845,7 @@ begin
       fSize:=Maximum(fSize,MinimumSize);
       fPosition:=Maximum(fPosition,TpvVector2.Null);
      end;
+     RealignButtonPanel;
     end;
    end;
   end;
