@@ -532,9 +532,9 @@ void main(void){
         break;
       }
       case GUI_ELEMENT_MOUSE_CURSOR_CROSS:{
-        float d = sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.0625, size.y * 0.5), 0.0); 
-        d = min(d, sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.5, size.y * 0.0625), 0.0)); 
-        d = max(d, -sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.0625, size.y * 0.0625), 0.0)); 
+        float d = sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.08, size.y * 0.5), 0.0); 
+        d = min(d, sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.5, size.y * 0.08), 0.0)); 
+        d = max(d, -sdRoundedRect(p - (size * 0.5), vec2(size.x * 0.08, size.y * 0.08), 0.0)); 
         if(focused > 0.5){ 
           color = blend(color,
                         vec4(vec3(mix(0.0, 1.0, linearstep(-1.0, -(1.0 + (t * 1.0)), d))), 1.0) * 
@@ -681,7 +681,7 @@ void main(void){
       case GUI_ELEMENT_MOUSE_CURSOR_UP:{
         p -= (size * 0.5);
         p = p.yx;                      
-        float d = sdRoundedRect(p, vec2(size.x * 0.375, size.y * 0.0625), 0.0); 
+        float d = sdRoundedRect(p, vec2(size.x * 0.375, size.y * 0.08), 0.0); 
         d = min(d, sdTriangle((size * 0.5) + vec2(-size.x * 0.25, size.y * 0.25),
                               (size * 0.5) + vec2(-size.x * 0.25, -size.y * 0.25),   
                               (size * 0.5) + vec2(-size.x * 0.5, size.y * 0.0),
