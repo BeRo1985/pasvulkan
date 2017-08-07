@@ -98,6 +98,12 @@ type TpvGUIObject=class;
 
      TpvGUIOnChangeEvent=procedure(const aSender:TpvGUIObject;const aChanged:boolean) of object;
 
+     TpvGUIOnKeyEvent=function(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean of object;
+
+     TpvGUIOnPointerEvent=function(const aSender:TpvGUIObject;const aPointerEvent:TpvApplicationInputPointerEvent):boolean of object;
+
+     TpvGUIOnScrolled=function(const aSender:TpvGUIObject;const aPosition,aRelativeAmount:TpvVector2):boolean of object;
+
      TpvGUIObjectList=class(TObjectList<TpvGUIObject>)
       protected
        procedure Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification); override;
@@ -285,7 +291,8 @@ type TpvGUIObject=class;
        pvgwfEnabled,
        pvgwfVisible,
        pvgwfFocused,
-       pvgwfPointerFocused
+       pvgwfPointerFocused,
+       pvgwfTabStop
       );
 
      PpvGUIWidgetFlags=^TpvGUIWidgetFlags;
@@ -310,6 +317,9 @@ type TpvGUIObject=class;
        fWidgetFlags:TpvGUIWidgetFlags;
        fHint:TpvUTF8String;
        fFontSize:TpvFloat;
+       fOnKeyEvent:TpvGUIOnKeyEvent;
+       fOnPointerEvent:TpvGUIOnPointerEvent;
+       fOnScrolled:TpvGUIOnScrolled;
        function GetEnabled:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetEnabled(const aEnabled:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -318,6 +328,8 @@ type TpvGUIObject=class;
        procedure SetFocused(const aFocused:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetPointerFocused:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetPointerFocused(const aPointerFocused:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetTabStop:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetTabStop(const aTabStop:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetLeft:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetLeft(const aLeft:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetTop:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -377,6 +389,7 @@ type TpvGUIObject=class;
        property RecursiveVisible:boolean read GetRecursiveVisible;
        property Focused:boolean read GetFocused write SetFocused;
        property PointerFocused:boolean read GetPointerFocused write SetPointerFocused;
+       property TabStop:boolean read GetTabStop write SetTabStop;
        property Left:TpvFloat read GetLeft write SetLeft;
        property Top:TpvFloat read GetTop write SetTop;
        property Width:TpvFloat read GetWidth write SetWidth;
@@ -385,6 +398,9 @@ type TpvGUIObject=class;
        property FixedHeight:TpvFloat read GetFixedHeight write SetFixedHeight;
        property Hint:TpvUTF8String read fHint write fHint;
        property FontSize:TpvFloat read GetFontSize write fFontSize;
+       property OnKeyEvent:TpvGUIOnKeyEvent read fOnKeyEvent write fOnKeyEvent;
+       property OnPointerEvent:TpvGUIOnPointerEvent read fOnPointerEvent write fOnPointerEvent;
+       property OnScrolled:TpvGUIOnScrolled read fOnScrolled write fOnScrolled;
      end;
 
      TpvGUIInstanceBufferReferenceCountedObjects=array of TpvReferenceCountedObject;
@@ -561,6 +577,8 @@ type TpvGUIObject=class;
        fCaption:TpvUTF8String;
        fOnClick:TpvGUIOnEvent;
        fOnChanged:TpvGUIOnChangeEvent;
+       procedure ProcessDown(const aPosition:TpvVector2);
+       procedure ProcessUp(const aPosition:TpvVector2);
       protected
        function GetDown:boolean; inline;
        procedure SetDown(const aDown:boolean); inline;
@@ -1516,6 +1534,12 @@ begin
 
  fFontSize:=0.0;
 
+ fOnKeyEvent:=nil;
+
+ fOnPointerEvent:=nil;
+
+ fOnScrolled:=niL;
+
 end;
 
 destructor TpvGUIWidget.Destroy;
@@ -1635,6 +1659,20 @@ begin
   Include(fWidgetFlags,pvgwfPointerFocused);
  end else begin
   Exclude(fWidgetFlags,pvgwfPointerFocused);
+ end;
+end;
+
+function TpvGUIWidget.GetTabStop:boolean;
+begin
+ result:=pvgwfTabStop in fWidgetFlags;
+end;
+
+procedure TpvGUIWidget.SetTabStop(const aTabStop:boolean);
+begin
+ if aTabStop then begin
+  Include(fWidgetFlags,pvgwfTabStop);
+ end else begin
+  Exclude(fWidgetFlags,pvgwfTabStop);
  end;
 end;
 
@@ -1878,7 +1916,7 @@ end;
 
 function TpvGUIWidget.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
- result:=false;
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
 end;
 
 function TpvGUIWidget.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
@@ -1888,48 +1926,51 @@ var ChildIndex:TpvInt32;
     ChildPointerEvent:TpvApplicationInputPointerEvent;
     PreviousContained,CurrentContained:boolean;
 begin
- ChildPointerEvent:=aPointerEvent;
- for ChildIndex:=fChildren.Count-1 downto 0 do begin
-  Child:=fChildren.Items[ChildIndex];
-  if Child is TpvGUIWidget then begin
-   ChildWidget:=Child as TpvGUIWidget;
-   if ChildWidget.Visible then begin
-    case aPointerEvent.PointerEventType of
-     POINTEREVENT_MOTION,POINTEREVENT_DRAG:begin
-      ChildPointerEvent.Position:=aPointerEvent.Position-ChildWidget.fPosition;
-      PreviousContained:=ChildWidget.Contains(ChildPointerEvent.Position-ChildPointerEvent.RelativePosition);
-      CurrentContained:=ChildWidget.Contains(ChildPointerEvent.Position);
-      if CurrentContained and not PreviousContained then begin
-       ChildWidget.PointerEnter;
-      end else if PreviousContained and not CurrentContained then begin
-       ChildWidget.PointerLeave;
-      end;
-      if PreviousContained or CurrentContained then begin
-       result:=ChildWidget.PointerEvent(ChildPointerEvent);
-       if result then begin
-        exit;
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+ if not result then begin
+  ChildPointerEvent:=aPointerEvent;
+  for ChildIndex:=fChildren.Count-1 downto 0 do begin
+   Child:=fChildren.Items[ChildIndex];
+   if Child is TpvGUIWidget then begin
+    ChildWidget:=Child as TpvGUIWidget;
+    if ChildWidget.Visible then begin
+     case aPointerEvent.PointerEventType of
+      POINTEREVENT_MOTION,POINTEREVENT_DRAG:begin
+       ChildPointerEvent.Position:=aPointerEvent.Position-ChildWidget.fPosition;
+       PreviousContained:=ChildWidget.Contains(ChildPointerEvent.Position-ChildPointerEvent.RelativePosition);
+       CurrentContained:=ChildWidget.Contains(ChildPointerEvent.Position);
+       if CurrentContained and not PreviousContained then begin
+        ChildWidget.PointerEnter;
+       end else if PreviousContained and not CurrentContained then begin
+        ChildWidget.PointerLeave;
+       end;
+       if PreviousContained or CurrentContained then begin
+        result:=ChildWidget.PointerEvent(ChildPointerEvent);
+        if result then begin
+         exit;
+        end;
        end;
       end;
-     end;
-     else begin
-      ChildPointerEvent.Position:=aPointerEvent.Position-ChildWidget.fPosition;
-      if ChildWidget.Contains(ChildPointerEvent.Position) then begin
-       result:=ChildWidget.PointerEvent(ChildPointerEvent);
-       if result then begin
-        exit;
+      else begin
+       ChildPointerEvent.Position:=aPointerEvent.Position-ChildWidget.fPosition;
+       if ChildWidget.Contains(ChildPointerEvent.Position) then begin
+        result:=ChildWidget.PointerEvent(ChildPointerEvent);
+        if result then begin
+         exit;
+        end;
        end;
       end;
      end;
     end;
    end;
   end;
+  if (aPointerEvent.PointerEventType=POINTEREVENT_DOWN) and
+     (aPointerEvent.Button=BUTTON_LEFT) and not
+     (pvgwfFocused in fWidgetFlags) then begin
+   RequestFocus;
+  end;
+  result:=false;
  end;
- if (aPointerEvent.PointerEventType=POINTEREVENT_DOWN) and
-    (aPointerEvent.Button=BUTTON_LEFT) and not
-    (pvgwfFocused in fWidgetFlags) then begin
-  RequestFocus;
- end;
- result:=false;
 end;
 
 function TpvGUIWidget.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
@@ -1938,22 +1979,24 @@ var ChildIndex:TpvInt32;
     ChildWidget:TpvGUIWidget;
     ChildPosition:TpvVector2;
 begin
- for ChildIndex:=fChildren.Count-1 downto 0 do begin
-  Child:=fChildren.Items[ChildIndex];
-  if Child is TpvGUIWidget then begin
-   ChildWidget:=Child as TpvGUIWidget;
-   if ChildWidget.Visible then begin
-    ChildPosition:=aPosition-ChildWidget.fPosition;
-    if ChildWidget.Contains(ChildPosition) then begin
-     result:=ChildWidget.Scrolled(ChildPosition,aRelativeAmount);
-     if result then begin
-      exit;
+ result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+ if not result then begin
+  for ChildIndex:=fChildren.Count-1 downto 0 do begin
+   Child:=fChildren.Items[ChildIndex];
+   if Child is TpvGUIWidget then begin
+    ChildWidget:=Child as TpvGUIWidget;
+    if ChildWidget.Visible then begin
+     ChildPosition:=aPosition-ChildWidget.fPosition;
+     if ChildWidget.Contains(ChildPosition) then begin
+      result:=ChildWidget.Scrolled(ChildPosition,aRelativeAmount);
+      if result then begin
+       exit;
+      end;
      end;
     end;
    end;
   end;
  end;
- result:=false;
 end;
 
 procedure TpvGUIWidget.AfterCreateSwapChain;
@@ -2322,15 +2365,17 @@ var Index:TpvInt32;
     Current:TpvGUIObject;
     CurrentWidget:TpvGUIWidget;
 begin
- result:=false;
- for Index:=0 to fCurrentFocusPath.Count-1 do begin
-  Current:=fCurrentFocusPath.Items[Index];
-  if (Current<>self) and (Current is TpvGUIWidget) then begin
-   CurrentWidget:=Current as TpvGUIWidget;
-   if CurrentWidget.Focused then begin
-    result:=CurrentWidget.KeyEvent(aKeyEvent);
-    if result then begin
-     exit;
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if not result then begin
+  for Index:=0 to fCurrentFocusPath.Count-1 do begin
+   Current:=fCurrentFocusPath.Items[Index];
+   if (Current<>self) and (Current is TpvGUIWidget) then begin
+    CurrentWidget:=Current as TpvGUIWidget;
+    if CurrentWidget.Focused then begin
+     result:=CurrentWidget.KeyEvent(aKeyEvent);
+     if result then begin
+      exit;
+     end;
     end;
    end;
   end;
@@ -2345,75 +2390,77 @@ var Index:TpvInt32;
     LocalPointerEvent:TpvApplicationInputPointerEvent;
     DoUpdateCursor:boolean;
 begin
- result:=false;
- DoUpdateCursor:=false;
- fMousePosition:=aPointerEvent.Position;
- case aPointerEvent.PointerEventType of
-  POINTEREVENT_DOWN,POINTEREVENT_UP:begin
-   for Index:=0 to fCurrentFocusPath.Count-1 do begin
-    Current:=fCurrentFocusPath.Items[Index];
-    if (Current<>self) and (Current is TpvGUIWindow) then begin
-     CurrentWindow:=Current as TpvGUIWindow;
-     if (pvgwfModal in CurrentWindow.fWindowFlags) and not CurrentWindow.Contains(aPointerEvent.Position-CurrentWindow.AbsolutePosition) then begin
-      exit;
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+ if not result then begin
+  DoUpdateCursor:=false;
+  fMousePosition:=aPointerEvent.Position;
+  case aPointerEvent.PointerEventType of
+   POINTEREVENT_DOWN,POINTEREVENT_UP:begin
+    for Index:=0 to fCurrentFocusPath.Count-1 do begin
+     Current:=fCurrentFocusPath.Items[Index];
+     if (Current<>self) and (Current is TpvGUIWindow) then begin
+      CurrentWindow:=Current as TpvGUIWindow;
+      if (pvgwfModal in CurrentWindow.fWindowFlags) and not CurrentWindow.Contains(aPointerEvent.Position-CurrentWindow.AbsolutePosition) then begin
+       exit;
+      end;
      end;
     end;
-   end;
-   case aPointerEvent.PointerEventType of
-    POINTEREVENT_DOWN:begin
-     case aPointerEvent.Button of
-      BUTTON_LEFT,BUTTON_RIGHT:begin
-       TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
-       CurrentWidget:=FindWidget(aPointerEvent.Position);
-       if assigned(CurrentWidget) and (CurrentWidget<>self) then begin
-        fDragWidget:=CurrentWidget;
-        fDragWidget.IncRef;
-       end else begin
+    case aPointerEvent.PointerEventType of
+     POINTEREVENT_DOWN:begin
+      case aPointerEvent.Button of
+       BUTTON_LEFT,BUTTON_RIGHT:begin
         TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
-        UpdateFocus(nil);
+        CurrentWidget:=FindWidget(aPointerEvent.Position);
+        if assigned(CurrentWidget) and (CurrentWidget<>self) then begin
+         fDragWidget:=CurrentWidget;
+         fDragWidget.IncRef;
+        end else begin
+         TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+         UpdateFocus(nil);
+        end;
+       end;
+       else begin
+        TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
        end;
       end;
-      else begin
-       TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+     end;
+     POINTEREVENT_UP:begin
+      CurrentWidget:=FindWidget(aPointerEvent.Position);
+      if assigned(fDragWidget) and (fDragWidget<>CurrentWidget) then begin
+       LocalPointerEvent.PointerEventType:=POINTEREVENT_UP;
+       LocalPointerEvent.Button:=BUTTON_LEFT;
+       fDragWidget.PointerEvent(LocalPointerEvent);
       end;
+      TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
      end;
     end;
-    POINTEREVENT_UP:begin
-     CurrentWidget:=FindWidget(aPointerEvent.Position);
-     if assigned(fDragWidget) and (fDragWidget<>CurrentWidget) then begin
-      LocalPointerEvent.PointerEventType:=POINTEREVENT_UP;
-      LocalPointerEvent.Button:=BUTTON_LEFT;
-      fDragWidget.PointerEvent(LocalPointerEvent);
-     end;
-     TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
-    end;
+    result:=inherited PointerEvent(aPointerEvent);
+    DoUpdateCursor:=true;
    end;
-   result:=inherited PointerEvent(aPointerEvent);
-   DoUpdateCursor:=true;
-  end;
-  POINTEREVENT_MOTION:begin
-   if assigned(fDragWidget) then begin
-    LocalPointerEvent:=aPointerEvent;
-    LocalPointerEvent.PointerEventType:=POINTEREVENT_DRAG;
-    result:=fDragWidget.PointerEvent(LocalPointerEvent);
-   end else begin
+   POINTEREVENT_MOTION:begin
+    if assigned(fDragWidget) then begin
+     LocalPointerEvent:=aPointerEvent;
+     LocalPointerEvent.PointerEventType:=POINTEREVENT_DRAG;
+     result:=fDragWidget.PointerEvent(LocalPointerEvent);
+    end else begin
+     result:=inherited PointerEvent(aPointerEvent);
+    end;
+    DoUpdateCursor:=true;
+   end;
+   POINTEREVENT_DRAG:begin
     result:=inherited PointerEvent(aPointerEvent);
    end;
-   DoUpdateCursor:=true;
   end;
-  POINTEREVENT_DRAG:begin
-   result:=inherited PointerEvent(aPointerEvent);
-  end;
- end;
- if DoUpdateCursor then begin
-  if assigned(fDragWidget) then begin
-   fVisibleCursor:=fDragWidget.fCursor;
-  end else begin
-   CurrentWidget:=FindWidget(aPointerEvent.Position);
-   if assigned(CurrentWidget) then begin
-    fVisibleCursor:=CurrentWidget.fCursor;
+  if DoUpdateCursor then begin
+   if assigned(fDragWidget) then begin
+    fVisibleCursor:=fDragWidget.fCursor;
    end else begin
-    fVisibleCursor:=fCursor;
+    CurrentWidget:=FindWidget(aPointerEvent.Position);
+    if assigned(CurrentWidget) then begin
+     fVisibleCursor:=CurrentWidget.fCursor;
+    end else begin
+     fVisibleCursor:=fCursor;
+    end;
    end;
   end;
  end;
@@ -2421,7 +2468,10 @@ end;
 
 function TpvGUIInstance.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
 begin
- result:=inherited Scrolled(aPosition,aRelativeAmount);
+ result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+ if not result then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+ end;
 end;
 
 procedure TpvGUIInstance.Update;
@@ -2554,223 +2604,229 @@ end;
 
 function TpvGUIWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
- result:=false;
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
 end;
 
 function TpvGUIWindow.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 var ClampedRelativePosition,MinimumSize,NewSize,NewPosition:TpvVector2;
 begin
- result:=inherited PointerEvent(aPointerEvent);
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
-  case aPointerEvent.PointerEventType of
-   POINTEREVENT_DOWN:begin
-    fMouseAction:=pvgwmaNone;
-    fCursor:=pvgcArrow;
-    if (pvgwfResizableNW in fWindowFlags) and
-       (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
-       (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-     fMouseAction:=pvgwmaSizeNW;
-     fCursor:=pvgcNWSE;
-    end else if (pvgwfResizableNE in fWindowFlags) and
-                (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
-                (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-     fMouseAction:=pvgwmaSizeNE;
-     fCursor:=pvgcNESW;
-    end else if (pvgwfResizableSW in fWindowFlags) and
-                (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
-                (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-     fMouseAction:=pvgwmaSizeSW;
-     fCursor:=pvgcNESW;
-    end else if (pvgwfResizableSE in fWindowFlags) and
-                (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
-                (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-     fMouseAction:=pvgwmaSizeSE;
-     fCursor:=pvgcNWSE;
-    end else if (pvgwfResizableN in fWindowFlags) and
-                (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-     fMouseAction:=pvgwmaSizeN;
-     fCursor:=pvgcNS;
-    end else if (pvgwfResizableS in fWindowFlags) and
-                (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-     fMouseAction:=pvgwmaSizeS;
-     fCursor:=pvgcNS;
-    end else if (pvgwfResizableW in fWindowFlags) and
-                (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
-     fMouseAction:=pvgwmaSizeW;
-     fCursor:=pvgcEW;
-    end else if (pvgwfResizableE in fWindowFlags) and
-                (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
-     fMouseAction:=pvgwmaSizeE;
-     fCursor:=pvgcEW;
-    end else if (pvgwfMovable in fWindowFlags) and
-                (aPointerEvent.Position.y<Skin.fWindowHeaderHeight) then begin
-     fMouseAction:=pvgwmaMove;
-     fCursor:=pvgcMove;
-    end;
-    if not (pvgwfFocused in fWidgetFlags) then begin
-     RequestFocus;
-    end;
-   end;
-   POINTEREVENT_UP:begin
-    fMouseAction:=pvgwmaNone;
-    fCursor:=pvgcArrow;
-   end;
-   POINTEREVENT_MOTION:begin
-    if fMouseAction=pvgwmaNone then begin
+  result:=inherited PointerEvent(aPointerEvent);
+  if not result then begin
+   case aPointerEvent.PointerEventType of
+    POINTEREVENT_DOWN:begin
+     fMouseAction:=pvgwmaNone;
      fCursor:=pvgcArrow;
      if (pvgwfResizableNW in fWindowFlags) and
         (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
         (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+      fMouseAction:=pvgwmaSizeNW;
       fCursor:=pvgcNWSE;
      end else if (pvgwfResizableNE in fWindowFlags) and
                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
                  (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+      fMouseAction:=pvgwmaSizeNE;
       fCursor:=pvgcNESW;
      end else if (pvgwfResizableSW in fWindowFlags) and
                  (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+      fMouseAction:=pvgwmaSizeSW;
       fCursor:=pvgcNESW;
      end else if (pvgwfResizableSE in fWindowFlags) and
                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+      fMouseAction:=pvgwmaSizeSE;
       fCursor:=pvgcNWSE;
      end else if (pvgwfResizableN in fWindowFlags) and
                  (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+      fMouseAction:=pvgwmaSizeN;
       fCursor:=pvgcNS;
      end else if (pvgwfResizableS in fWindowFlags) and
                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+      fMouseAction:=pvgwmaSizeS;
       fCursor:=pvgcNS;
      end else if (pvgwfResizableW in fWindowFlags) and
                  (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
+      fMouseAction:=pvgwmaSizeW;
       fCursor:=pvgcEW;
      end else if (pvgwfResizableE in fWindowFlags) and
                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
+      fMouseAction:=pvgwmaSizeE;
       fCursor:=pvgcEW;
-     end;
-    end;
-   end;
-   POINTEREVENT_DRAG:begin
-    MinimumSize:=TpvVector2.Create(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
-    case fMouseAction of
-     pvgwmaMove:begin
-      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-       ClampedRelativePosition:=Clamp(aPointerEvent.RelativePosition,-fPosition,(fParent as TpvGUIWidget).fSize-(fPosition+fSize));
-      end else begin
-       ClampedRelativePosition:=Maximum(aPointerEvent.RelativePosition,-fPosition);
-      end;
-      fPosition:=fPosition+ClampedRelativePosition;
+     end else if (pvgwfMovable in fWindowFlags) and
+                 (aPointerEvent.Position.y<Skin.fWindowHeaderHeight) then begin
+      fMouseAction:=pvgwmaMove;
       fCursor:=pvgcMove;
      end;
-     pvgwmaSizeNW:begin
-      NewSize:=Maximum(fSize-aPointerEvent.RelativePosition,MinimumSize);
-      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-       ClampedRelativePosition:=Clamp(fPosition+(fSize-NewSize),TpvVector2.Null,(fParent as TpvGUIWidget).fSize-NewSize)-fPosition;
-      end else begin
-       ClampedRelativePosition:=Maximum(fPosition+(fSize-NewSize),TpvVector2.Null)-fPosition;
-      end;
-      fPosition:=fPosition+ClampedRelativePosition;
-      fSize:=fSize-ClampedRelativePosition;
-      fCursor:=pvgcNWSE;
-     end;
-     pvgwmaSizeNE:begin
-      NewSize:=Maximum(fSize+TpvVector2.Create(aPointerEvent.RelativePosition.x,
-                                               -aPointerEvent.RelativePosition.y),
-                       MinimumSize);
-      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-       ClampedRelativePosition.x:=Minimum(NewSize.x,(fParent as TpvGUIWidget).fSize.x-fPosition.x)-fSize.x;
-       ClampedRelativePosition.y:=Clamp(fPosition.y+(fSize.y-NewSize.y),0.0,(fParent as TpvGUIWidget).fSize.y-NewSize.y)-fPosition.y;
-      end else begin
-       ClampedRelativePosition.x:=NewSize.x-fSize.x;
-       ClampedRelativePosition.y:=Maximum(fPosition.y+(fSize.y-NewSize.y),0.0)-fPosition.y;
-      end;
-      fPosition.y:=fPosition.y+ClampedRelativePosition.y;
-      fSize.x:=fSize.x+ClampedRelativePosition.x;
-      fSize.y:=fSize.y-ClampedRelativePosition.y;
-      fCursor:=pvgcNESW;
-     end;
-     pvgwmaSizeSW:begin
-      NewSize:=Maximum(fSize+TpvVector2.Create(-aPointerEvent.RelativePosition.x,
-                                               aPointerEvent.RelativePosition.y),
-                       MinimumSize);
-      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-       ClampedRelativePosition.x:=Clamp(fPosition.x+(fSize.x-NewSize.x),0.0,(fParent as TpvGUIWidget).fSize.x-NewSize.x)-fPosition.x;
-       ClampedRelativePosition.y:=Minimum(NewSize.y,(fParent as TpvGUIWidget).fSize.y-fPosition.y)-fSize.y;
-      end else begin
-       ClampedRelativePosition.x:=Maximum(fPosition.x+(fSize.x-NewSize.x),0.0)-fPosition.x;
-       ClampedRelativePosition.y:=NewSize.y-fSize.y;
-      end;
-      fPosition.x:=fPosition.x+ClampedRelativePosition.x;
-      fSize.x:=fSize.x-ClampedRelativePosition.x;
-      fSize.y:=fSize.y+ClampedRelativePosition.y;
-      fCursor:=pvgcNESW;
-     end;
-     pvgwmaSizeSE:begin
-      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-       fSize:=Clamp(fSize+aPointerEvent.RelativePosition,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
-      end else begin
-       fSize:=Maximum(fSize+aPointerEvent.RelativePosition,MinimumSize);
-      end;
-      fCursor:=pvgcNWSE;
-     end;
-     pvgwmaSizeN:begin
-      NewSize.y:=Maximum(fSize.y-aPointerEvent.RelativePosition.y,MinimumSize.y);
-      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-       ClampedRelativePosition.y:=Clamp(fPosition.y+(fSize.y-NewSize.y),0.0,(fParent as TpvGUIWidget).fSize.y-NewSize.y)-fPosition.y;
-      end else begin
-       ClampedRelativePosition.y:=Maximum(fPosition.y+(fSize.y-NewSize.y),0.0)-fPosition.y;
-      end;
-      fPosition.y:=fPosition.y+ClampedRelativePosition.y;
-      fSize.y:=fSize.y-ClampedRelativePosition.y;
-      fCursor:=pvgcNS;
-     end;
-     pvgwmaSizeS:begin
-      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-       fSize.y:=Clamp(fSize.y+aPointerEvent.RelativePosition.y,MinimumSize.y,(fParent as TpvGUIWidget).fSize.y-fPosition.y);
-      end else begin
-       fSize.y:=Maximum(fSize.y+aPointerEvent.RelativePosition.y,MinimumSize.y);
-      end;
-      fCursor:=pvgcNS;
-     end;
-     pvgwmaSizeW:begin
-      NewSize.x:=Maximum(fSize.x-aPointerEvent.RelativePosition.x,MinimumSize.x);
-      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-       ClampedRelativePosition.x:=Clamp(fPosition.x+(fSize.x-NewSize.x),0.0,(fParent as TpvGUIWidget).fSize.x-NewSize.x)-fPosition.x;
-      end else begin
-       ClampedRelativePosition.x:=Maximum(fPosition.x+(fSize.x-NewSize.x),0.0)-fPosition.x;
-      end;
-      fPosition.x:=fPosition.x+ClampedRelativePosition.x;
-      fSize.x:=fSize.x-ClampedRelativePosition.x;
-      fCursor:=pvgcEW;
-     end;
-     pvgwmaSizeE:begin
-      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-       fSize.x:=Clamp(fSize.x+aPointerEvent.RelativePosition.x,MinimumSize.x,(fParent as TpvGUIWidget).fSize.x-fPosition.x);
-      end else begin
-       fSize.x:=Maximum(fSize.x+aPointerEvent.RelativePosition.x,MinimumSize.x);
-      end;
-      fCursor:=pvgcEW;
-     end;
-     else begin
-      fCursor:=pvgcArrow;
+     if not (pvgwfFocused in fWidgetFlags) then begin
+      RequestFocus;
      end;
     end;
-    if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-     fSize:=Clamp(fSize,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
-     fPosition:=Clamp(fPosition,TpvVector2.Null,(fParent as TpvGUIWidget).fSize-fSize);
-    end else begin
-     fSize:=Maximum(fSize,MinimumSize);
-     fPosition:=Maximum(fPosition,TpvVector2.Null);
+    POINTEREVENT_UP:begin
+     fMouseAction:=pvgwmaNone;
+     fCursor:=pvgcArrow;
+    end;
+    POINTEREVENT_MOTION:begin
+     if fMouseAction=pvgwmaNone then begin
+      fCursor:=pvgcArrow;
+      if (pvgwfResizableNW in fWindowFlags) and
+         (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
+         (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+       fCursor:=pvgcNWSE;
+      end else if (pvgwfResizableNE in fWindowFlags) and
+                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+                  (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+       fCursor:=pvgcNESW;
+      end else if (pvgwfResizableSW in fWindowFlags) and
+                  (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
+                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+       fCursor:=pvgcNESW;
+      end else if (pvgwfResizableSE in fWindowFlags) and
+                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+       fCursor:=pvgcNWSE;
+      end else if (pvgwfResizableN in fWindowFlags) and
+                  (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+       fCursor:=pvgcNS;
+      end else if (pvgwfResizableS in fWindowFlags) and
+                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+       fCursor:=pvgcNS;
+      end else if (pvgwfResizableW in fWindowFlags) and
+                  (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
+       fCursor:=pvgcEW;
+      end else if (pvgwfResizableE in fWindowFlags) and
+                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
+       fCursor:=pvgcEW;
+      end;
+     end;
+    end;
+    POINTEREVENT_DRAG:begin
+     MinimumSize:=TpvVector2.Create(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
+     case fMouseAction of
+      pvgwmaMove:begin
+       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+        ClampedRelativePosition:=Clamp(aPointerEvent.RelativePosition,-fPosition,(fParent as TpvGUIWidget).fSize-(fPosition+fSize));
+       end else begin
+        ClampedRelativePosition:=Maximum(aPointerEvent.RelativePosition,-fPosition);
+       end;
+       fPosition:=fPosition+ClampedRelativePosition;
+       fCursor:=pvgcMove;
+      end;
+      pvgwmaSizeNW:begin
+       NewSize:=Maximum(fSize-aPointerEvent.RelativePosition,MinimumSize);
+       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+        ClampedRelativePosition:=Clamp(fPosition+(fSize-NewSize),TpvVector2.Null,(fParent as TpvGUIWidget).fSize-NewSize)-fPosition;
+       end else begin
+        ClampedRelativePosition:=Maximum(fPosition+(fSize-NewSize),TpvVector2.Null)-fPosition;
+       end;
+       fPosition:=fPosition+ClampedRelativePosition;
+       fSize:=fSize-ClampedRelativePosition;
+       fCursor:=pvgcNWSE;
+      end;
+      pvgwmaSizeNE:begin
+       NewSize:=Maximum(fSize+TpvVector2.Create(aPointerEvent.RelativePosition.x,
+                                                -aPointerEvent.RelativePosition.y),
+                        MinimumSize);
+       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+        ClampedRelativePosition.x:=Minimum(NewSize.x,(fParent as TpvGUIWidget).fSize.x-fPosition.x)-fSize.x;
+        ClampedRelativePosition.y:=Clamp(fPosition.y+(fSize.y-NewSize.y),0.0,(fParent as TpvGUIWidget).fSize.y-NewSize.y)-fPosition.y;
+       end else begin
+        ClampedRelativePosition.x:=NewSize.x-fSize.x;
+        ClampedRelativePosition.y:=Maximum(fPosition.y+(fSize.y-NewSize.y),0.0)-fPosition.y;
+       end;
+       fPosition.y:=fPosition.y+ClampedRelativePosition.y;
+       fSize.x:=fSize.x+ClampedRelativePosition.x;
+       fSize.y:=fSize.y-ClampedRelativePosition.y;
+       fCursor:=pvgcNESW;
+      end;
+      pvgwmaSizeSW:begin
+       NewSize:=Maximum(fSize+TpvVector2.Create(-aPointerEvent.RelativePosition.x,
+                                                aPointerEvent.RelativePosition.y),
+                        MinimumSize);
+       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+        ClampedRelativePosition.x:=Clamp(fPosition.x+(fSize.x-NewSize.x),0.0,(fParent as TpvGUIWidget).fSize.x-NewSize.x)-fPosition.x;
+        ClampedRelativePosition.y:=Minimum(NewSize.y,(fParent as TpvGUIWidget).fSize.y-fPosition.y)-fSize.y;
+       end else begin
+        ClampedRelativePosition.x:=Maximum(fPosition.x+(fSize.x-NewSize.x),0.0)-fPosition.x;
+        ClampedRelativePosition.y:=NewSize.y-fSize.y;
+       end;
+       fPosition.x:=fPosition.x+ClampedRelativePosition.x;
+       fSize.x:=fSize.x-ClampedRelativePosition.x;
+       fSize.y:=fSize.y+ClampedRelativePosition.y;
+       fCursor:=pvgcNESW;
+      end;
+      pvgwmaSizeSE:begin
+       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+        fSize:=Clamp(fSize+aPointerEvent.RelativePosition,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
+       end else begin
+        fSize:=Maximum(fSize+aPointerEvent.RelativePosition,MinimumSize);
+       end;
+       fCursor:=pvgcNWSE;
+      end;
+      pvgwmaSizeN:begin
+       NewSize.y:=Maximum(fSize.y-aPointerEvent.RelativePosition.y,MinimumSize.y);
+       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+        ClampedRelativePosition.y:=Clamp(fPosition.y+(fSize.y-NewSize.y),0.0,(fParent as TpvGUIWidget).fSize.y-NewSize.y)-fPosition.y;
+       end else begin
+        ClampedRelativePosition.y:=Maximum(fPosition.y+(fSize.y-NewSize.y),0.0)-fPosition.y;
+       end;
+       fPosition.y:=fPosition.y+ClampedRelativePosition.y;
+       fSize.y:=fSize.y-ClampedRelativePosition.y;
+       fCursor:=pvgcNS;
+      end;
+      pvgwmaSizeS:begin
+       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+        fSize.y:=Clamp(fSize.y+aPointerEvent.RelativePosition.y,MinimumSize.y,(fParent as TpvGUIWidget).fSize.y-fPosition.y);
+       end else begin
+        fSize.y:=Maximum(fSize.y+aPointerEvent.RelativePosition.y,MinimumSize.y);
+       end;
+       fCursor:=pvgcNS;
+      end;
+      pvgwmaSizeW:begin
+       NewSize.x:=Maximum(fSize.x-aPointerEvent.RelativePosition.x,MinimumSize.x);
+       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+        ClampedRelativePosition.x:=Clamp(fPosition.x+(fSize.x-NewSize.x),0.0,(fParent as TpvGUIWidget).fSize.x-NewSize.x)-fPosition.x;
+       end else begin
+        ClampedRelativePosition.x:=Maximum(fPosition.x+(fSize.x-NewSize.x),0.0)-fPosition.x;
+       end;
+       fPosition.x:=fPosition.x+ClampedRelativePosition.x;
+       fSize.x:=fSize.x-ClampedRelativePosition.x;
+       fCursor:=pvgcEW;
+      end;
+      pvgwmaSizeE:begin
+       if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+        fSize.x:=Clamp(fSize.x+aPointerEvent.RelativePosition.x,MinimumSize.x,(fParent as TpvGUIWidget).fSize.x-fPosition.x);
+       end else begin
+        fSize.x:=Maximum(fSize.x+aPointerEvent.RelativePosition.x,MinimumSize.x);
+       end;
+       fCursor:=pvgcEW;
+      end;
+      else begin
+       fCursor:=pvgcArrow;
+      end;
+     end;
+     if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+      fSize:=Clamp(fSize,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
+      fPosition:=Clamp(fPosition,TpvVector2.Null,(fParent as TpvGUIWidget).fSize-fSize);
+     end else begin
+      fSize:=Maximum(fSize,MinimumSize);
+      fPosition:=Maximum(fPosition,TpvVector2.Null);
+     end;
     end;
    end;
   end;
+  result:=true;
  end;
- result:=true;
 end;
 
 function TpvGUIWindow.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
 begin
- inherited Scrolled(aPosition,aRelativeAmount);
- result:=true;
+ result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+ if not result then begin
+  inherited Scrolled(aPosition,aRelativeAmount);
+  result:=true;
+ end;
 end;
 
 procedure TpvGUIWindow.Update;
@@ -2803,17 +2859,23 @@ end;
 
 function TpvGUILabel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
- result:=inherited KeyEvent(aKeyEvent);
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
 end;
 
 function TpvGUILabel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 begin
- result:=inherited PointerEvent(aPointerEvent);
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+ if not result then begin
+  result:=inherited PointerEvent(aPointerEvent);
+ end;
 end;
 
 function TpvGUILabel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
 begin
- result:=inherited Scrolled(aPosition,aRelativeAmount);
+ result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+ if not result then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+ end;
 end;
 
 procedure TpvGUILabel.Update;
@@ -2863,9 +2925,102 @@ begin
                  Skin.fSansBoldFont.TextSize(fCaption,FontSize)+TpvVector2.Create(20.0,10.0));
 end;
 
+procedure TpvGUIButton.ProcessDown(const aPosition:TpvVector2);
+var ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildButton:TpvGUIButton;
+    OldDown:boolean;
+begin
+ OldDown:=Down;
+ if pvgbfRadioButton in fButtonFlags then begin
+  if assigned(fButtonGroup) and (fButtonGroup.Count>0) then begin
+   for ChildIndex:=0 to fButtonGroup.Count-1 do begin
+    ChildButton:=fButtonGroup.Items[ChildIndex];
+    if (ChildButton<>self) and
+       ((ChildButton.fButtonFlags*[pvgbfRadioButton,pvgbfDown])=[pvgbfRadioButton,pvgbfDown]) then begin
+     ChildButton.Down:=false;
+     if assigned(ChildButton.fOnChanged) then begin
+      ChildButton.fOnChanged(ChildButton,false);
+     end;
+    end;
+   end;
+  end else if assigned(fParent) then begin
+   for ChildIndex:=0 to fParent.fChildren.Count-1 do begin
+    Child:=fParent.fChildren.Items[ChildIndex];
+    if assigned(Child) and
+       (Child<>self) and
+       (Child is TpvGUIButton) and
+       (((Child as TpvGUIButton).fButtonFlags*[pvgbfRadioButton,pvgbfDown])=[pvgbfRadioButton,pvgbfDown]) then begin
+     ChildButton:=Child as TpvGUIButton;
+     ChildButton.Down:=false;
+     if assigned(ChildButton.fOnChanged) then begin
+      ChildButton.fOnChanged(ChildButton,false);
+     end;
+    end;
+   end;
+  end;
+ end;
+ if pvgbfPopupButton in fButtonFlags then begin
+  if assigned(fParent) then begin
+   for ChildIndex:=0 to fParent.fChildren.Count-1 do begin
+    Child:=fParent.fChildren.Items[ChildIndex];
+    if assigned(Child) and
+       (Child<>self) and
+       (Child is TpvGUIButton) and
+       (((Child as TpvGUIButton).fButtonFlags*[pvgbfPopupButton,pvgbfDown])=[pvgbfPopupButton,pvgbfDown]) then begin
+     ChildButton:=Child as TpvGUIButton;
+     ChildButton.Down:=false;
+     if assigned(ChildButton.fOnChanged) then begin
+      ChildButton.fOnChanged(ChildButton,false);
+     end;
+    end;
+   end;
+  end;
+ end;
+ if pvgbfToggleButton in fButtonFlags then begin
+  Down:=not Down;
+ end else begin
+  Down:=true;
+ end;
+ if (OldDown<>Down) and assigned(OnChanged) then begin
+  OnChanged(self,Down);
+ end;
+end;
+
+procedure TpvGUIButton.ProcessUp(const aPosition:TpvVector2);
+var OldDown:boolean;
+begin
+ OldDown:=Down;
+ if assigned(fOnClick) and Contains(aPosition) then begin
+  fOnClick(self);
+ end;
+ if pvgbfNormalButton in fButtonFlags then begin
+  Down:=false;
+ end;
+ if (OldDown<>Down) and assigned(OnChanged) then begin
+  OnChanged(self,Down);
+ end;
+end;
+
 function TpvGUIButton.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
- result:=inherited KeyEvent(aKeyEvent);
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if Enabled and not result then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_SPACE:begin
+    case aKeyEvent.KeyEventType of
+     KEYEVENT_DOWN:begin
+      ProcessDown(fSize*0.5);
+     end;
+     KEYEVENT_UP:begin
+      ProcessUp(fSize*0.5);
+     end;
+     KEYEVENT_TYPED:begin
+     end;
+    end;
+   end;
+  end;
+ end;
 end;
 
 function TpvGUIButton.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
@@ -2874,80 +3029,23 @@ var ChildIndex:TpvInt32;
     ChildButton:TpvGUIButton;
     OldDown:boolean;
 begin
- result:=inherited PointerEvent(aPointerEvent);
- if Enabled and (aPointerEvent.Button=BUTTON_LEFT) and not result then begin
-  OldDown:=Down;
-  case aPointerEvent.PointerEventType of
-   POINTEREVENT_DOWN:begin
-    if pvgbfRadioButton in fButtonFlags then begin
-     if assigned(fButtonGroup) and (fButtonGroup.Count>0) then begin
-      for ChildIndex:=0 to fButtonGroup.Count-1 do begin
-       ChildButton:=fButtonGroup.Items[ChildIndex];
-       if (ChildButton<>self) and
-          ((ChildButton.fButtonFlags*[pvgbfRadioButton,pvgbfDown])=[pvgbfRadioButton,pvgbfDown]) then begin
-        ChildButton.Down:=false;
-        if assigned(ChildButton.fOnChanged) then begin
-         ChildButton.fOnChanged(ChildButton,false);
-        end;
-       end;
-      end;
-     end else if assigned(fParent) then begin
-      for ChildIndex:=0 to fParent.fChildren.Count-1 do begin
-       Child:=fParent.fChildren.Items[ChildIndex];
-       if assigned(Child) and
-          (Child<>self) and
-          (Child is TpvGUIButton) and
-          (((Child as TpvGUIButton).fButtonFlags*[pvgbfRadioButton,pvgbfDown])=[pvgbfRadioButton,pvgbfDown]) then begin
-        ChildButton:=Child as TpvGUIButton;
-        ChildButton.Down:=false;
-        if assigned(ChildButton.fOnChanged) then begin
-         ChildButton.fOnChanged(ChildButton,false);
-        end;
-       end;
-      end;
-     end;
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+ if not result then begin
+  result:=inherited PointerEvent(aPointerEvent);
+  if Enabled and (aPointerEvent.Button=BUTTON_LEFT) and not result then begin
+   case aPointerEvent.PointerEventType of
+    POINTEREVENT_DOWN:begin
+     ProcessDown(aPointerEvent.Position);
+     result:=true;
     end;
-    if pvgbfPopupButton in fButtonFlags then begin
-     if assigned(fParent) then begin
-      for ChildIndex:=0 to fParent.fChildren.Count-1 do begin
-       Child:=fParent.fChildren.Items[ChildIndex];
-       if assigned(Child) and
-          (Child<>self) and
-          (Child is TpvGUIButton) and
-          (((Child as TpvGUIButton).fButtonFlags*[pvgbfPopupButton,pvgbfDown])=[pvgbfPopupButton,pvgbfDown]) then begin
-        ChildButton:=Child as TpvGUIButton;
-        ChildButton.Down:=false;
-        if assigned(ChildButton.fOnChanged) then begin
-         ChildButton.fOnChanged(ChildButton,false);
-        end;
-       end;
-      end;
-     end;
+    POINTEREVENT_UP:begin
+     ProcessUp(aPointerEvent.Position);
+     result:=true;
     end;
-    if pvgbfToggleButton in fButtonFlags then begin
-     Down:=not Down;
-    end else begin
-     Down:=true;
+    POINTEREVENT_MOTION:begin
     end;
-    result:=true;
-   end;
-   POINTEREVENT_UP:begin
-    if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
-     fOnClick(self);
+    POINTEREVENT_DRAG:begin
     end;
-    if pvgbfNormalButton in fButtonFlags then begin
-     Down:=false;
-    end;
-    result:=true;
-   end;
-   POINTEREVENT_MOTION:begin
-   end;
-   POINTEREVENT_DRAG:begin
-   end;
-  end;
-  if result and (OldDown<>Down) then begin
-   if assigned(OnChanged) then begin
-    OnChanged(self,Down);
    end;
   end;
  end;
@@ -2955,7 +3053,10 @@ end;
 
 function TpvGUIButton.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
 begin
- result:=inherited Scrolled(aPosition,aRelativeAmount);
+ result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+ if not result then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+ end;
 end;
 
 procedure TpvGUIButton.Update;
