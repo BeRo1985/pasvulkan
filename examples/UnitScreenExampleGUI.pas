@@ -163,7 +163,14 @@ begin
  fGUILabel.Cursor:=pvgcLink;
 
  fGUIButton:=TpvGUIButton.Create(fGUIWindow);
- fGUIButton.Caption:='An example Button';
+ fGUIButton.Caption:='An example button';
+
+ fGUIButton:=TpvGUIToggleButton.Create(fGUIWindow);
+ fGUIButton.Caption:='An example toggle button';
+
+ fGUIButton:=TpvGUIButton.Create(fGUIWindow);
+ fGUIButton.Caption:='An example disabled button';
+ fGUIButton.Enabled:=false;
 
  fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIOtherWindow.Left:=550;
@@ -178,6 +185,18 @@ begin
  fGUILabel:=TpvGUILabel.Create(fGUIOtherWindow);
  fGUILabel.Caption:='An another example label';
  fGUILabel.Cursor:=pvgcUnavailable;
+
+ fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow);
+ fGUIButton.Caption:='An example radio button (0)';
+
+ fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow);
+ fGUIButton.Caption:='An example radio button (1)';
+
+ fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow);
+ fGUIButton.Caption:='An example radio button (2)';
+
+ fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow);
+ fGUIButton.Caption:='An example radio button (3)';
 
 end;
 

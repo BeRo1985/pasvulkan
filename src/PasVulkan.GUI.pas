@@ -1409,7 +1409,7 @@ begin
   aCanvas.FontSize:=aButton.FontSize;
   aCanvas.TextHorizontalAlignment:=pvcthaCenter;
   aCanvas.TextVerticalAlignment:=pvctvaMiddle;
-  aCanvas.SRGBColor:=TpvVector4.Create(0.0,0.0,0.0,1.0);
+  aCanvas.SRGBColor:=TpvVector4.Create(1.0,1.0,1.0,0.5);
   aCanvas.DrawText(aButton.fCaption,aButton.fSize*0.5);
 
  end else if aButton.Down then begin
@@ -2972,7 +2972,7 @@ end;
 constructor TpvGUIRadioButton.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
- fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfNormalButton,pvgbfRadioButton];
+ fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfRadioButton];
 end;
 
 constructor TpvGUIToggleButton.Create(const aParent:TpvGUIObject);
