@@ -1385,7 +1385,7 @@ end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel);
 begin
- aCanvas.Font:=fSansFont;
+ aCanvas.Font:=fSansBoldFont;
  aCanvas.FontSize:=aLabel.FontSize;
  aCanvas.TextHorizontalAlignment:=pvcthaLeft;
  aCanvas.TextVerticalAlignment:=pvctvaTop;
@@ -1405,7 +1405,7 @@ begin
                          TpvVector2.Create(0.0,0.0),
                          TpvVector2.Create(aButton.fSize.x,aButton.fSize.y));
 
-  aCanvas.Font:=fSansFont;
+  aCanvas.Font:=fSansBoldFont;
   aCanvas.FontSize:=aButton.FontSize;
   aCanvas.TextHorizontalAlignment:=pvcthaCenter;
   aCanvas.TextVerticalAlignment:=pvctvaMiddle;
@@ -1421,12 +1421,12 @@ begin
                          TpvVector2.Create(0.0,0.0),
                          TpvVector2.Create(aButton.fSize.x,aButton.fSize.y));
 
-  aCanvas.Font:=fSansFont;
+  aCanvas.Font:=fSansBoldFont;
   aCanvas.FontSize:=aButton.FontSize;
   aCanvas.TextHorizontalAlignment:=pvcthaCenter;
   aCanvas.TextVerticalAlignment:=pvctvaMiddle;
   aCanvas.SRGBColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-  aCanvas.DrawText(aButton.fCaption,aButton.fSize*0.5);
+  aCanvas.DrawText(aButton.fCaption,(aButton.fSize*0.5)+TpvVector2.Create(-0.5,-0.5));
 
  end else if aButton.Focused then begin
 
@@ -1437,7 +1437,7 @@ begin
                          TpvVector2.Create(0.0,0.0),
                          TpvVector2.Create(aButton.fSize.x,aButton.fSize.y));
 
-  aCanvas.Font:=fSansFont;
+  aCanvas.Font:=fSansBoldFont;
   aCanvas.FontSize:=aButton.FontSize;
   aCanvas.TextHorizontalAlignment:=pvcthaCenter;
   aCanvas.TextVerticalAlignment:=pvctvaMiddle;
@@ -1453,7 +1453,7 @@ begin
                          TpvVector2.Create(0.0,0.0),
                          TpvVector2.Create(aButton.fSize.x,aButton.fSize.y));
 
-  aCanvas.Font:=fSansFont;
+  aCanvas.Font:=fSansBoldFont;
   aCanvas.FontSize:=aButton.FontSize;
   aCanvas.TextHorizontalAlignment:=pvcthaCenter;
   aCanvas.TextVerticalAlignment:=pvctvaMiddle;
@@ -2798,7 +2798,7 @@ end;
 function TpvGUILabel.GetPreferredSize:TpvVector2;
 begin
  result:=Maximum(inherited GetPreferredSize,
-                 Skin.fSansFont.TextSize(fCaption,FontSize)+TpvVector2.Create(0.0,0.0));
+                 Skin.fSansBoldFont.TextSize(fCaption,FontSize)+TpvVector2.Create(0.0,0.0));
 end;
 
 function TpvGUILabel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -2860,7 +2860,7 @@ end;
 function TpvGUIButton.GetPreferredSize:TpvVector2;
 begin
  result:=Maximum(inherited GetPreferredSize,
-                 Skin.fSansFont.TextSize(fCaption,FontSize)+TpvVector2.Create(16.0,8.0));
+                 Skin.fSansBoldFont.TextSize(fCaption,FontSize)+TpvVector2.Create(20.0,10.0));
 end;
 
 function TpvGUIButton.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
