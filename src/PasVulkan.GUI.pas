@@ -232,104 +232,6 @@ type TpvGUIObject=class;
        property WindowShadowHeight:TpvFloat read fWindowShadowHeight write fWindowShadowHeight;
      end;
 
-{     TpvGUIDefaultVectorBasedSkin=class(TpvGUISkin)
-      private
-      protected
-       fUnfocusedWindowHeaderFontShadow:boolean;
-       fFocusedWindowHeaderFontShadow:boolean;
-       fUnfocusedWindowHeaderFontShadowOffset:TpvVector2;
-       fFocusedWindowHeaderFontShadowOffset:TpvVector2;
-       fUnfocusedWindowHeaderFontShadowColor:TpvVector4;
-       fFocusedWindowHeaderFontShadowColor:TpvVector4;
-       fUnfocusedWindowHeaderFontColor:TpvVector4;
-       fFocusedWindowHeaderFontColor:TpvVector4;
-       fMipmappedSpriteAtlas:TpvSpriteAtlas;
-       fSpriteAtlas:TpvSpriteAtlas;
-       fSpriteUnfocusedWindowFill:TpvSprite;
-       fSpriteUnfocusedWindowFillNinePatch:TpvSpriteNinePatch;
-       fSpriteFocusedWindowFill:TpvSprite;
-       fSpriteFocusedWindowFillNinePatch:TpvSpriteNinePatch;
-       fSpriteUnfocusedWindowHeader:TpvSprite;
-       fSpriteUnfocusedWindowHeaderNinePatch:TpvSpriteNinePatch;
-       fSpriteFocusedWindowHeader:TpvSprite;
-       fSpriteFocusedWindowHeaderNinePatch:TpvSpriteNinePatch;
-       fSpriteUnfocusedWindowGrip:TpvSprite;
-       fSpriteUnfocusedWindowGripNinePatch:TpvSpriteNinePatch;
-       fSpriteFocusedWindowGrip:TpvSprite;
-       fSpriteFocusedWindowGripNinePatch:TpvSpriteNinePatch;
-       fSpriteUnfocusedWindowShadow:TpvSprite;
-       fSpriteUnfocusedWindowShadowNinePatch:TpvSpriteNinePatch;
-       fSpriteFocusedWindowShadow:TpvSprite;
-       fSpriteFocusedWindowShadowNinePatch:TpvSpriteNinePatch;
-       fSpriteMouseCursorArrow:TpvSprite;
-       fSpriteMouseCursorBeam:TpvSprite;
-       fSpriteMouseCursorBusy:TpvSprite;
-       fSpriteMouseCursorCross:TpvSprite;
-       fSpriteMouseCursorEW:TpvSprite;
-       fSpriteMouseCursorHelp:TpvSprite;
-       fSpriteMouseCursorLink:TpvSprite;
-       fSpriteMouseCursorMove:TpvSprite;
-       fSpriteMouseCursorNESW:TpvSprite;
-       fSpriteMouseCursorNS:TpvSprite;
-       fSpriteMouseCursorNWSE:TpvSprite;
-       fSpriteMouseCursorPen:TpvSprite;
-       fSpriteMouseCursorUnavailable:TpvSprite;
-       fSpriteMouseCursorUp:TpvSprite;
-       fWindowResizeGripSize:TpvFloat;
-       fWindowShadowWidth:TpvFloat;
-       fWindowShadowHeight:TpvFloat;
-      public
-       constructor Create(const aParent:TpvGUIObject); override;
-       destructor Destroy; override;
-       procedure Setup; override;
-      public
-       property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
-       property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
-       property UnfocusedWindowHeaderFontShadowColor:TpvVector4 read fUnfocusedWindowHeaderFontShadowColor write fUnfocusedWindowHeaderFontShadowColor;
-       property FocusedWindowHeaderFontShadowColor:TpvVector4 read fFocusedWindowHeaderFontShadowColor write fFocusedWindowHeaderFontShadowColor;
-       property UnfocusedWindowHeaderFontColor:TpvVector4 read fUnfocusedWindowHeaderFontColor write fUnfocusedWindowHeaderFontColor;
-       property FocusedWindowHeaderFontColor:TpvVector4 read fFocusedWindowHeaderFontColor write fFocusedWindowHeaderFontColor;
-       property SpriteUnfocusedWindowFillNinePatch:TpvSpriteNinePatch read fSpriteUnfocusedWindowFillNinePatch write fSpriteUnfocusedWindowFillNinePatch;
-       property SpriteFocusedWindowFillNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowFillNinePatch write fSpriteFocusedWindowFillNinePatch;
-       property SpriteUnfocusedWindowHeaderNinePatch:TpvSpriteNinePatch read fSpriteUnfocusedWindowHeaderNinePatch write fSpriteUnfocusedWindowHeaderNinePatch;
-       property SpriteFocusedWindowHeaderNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowHeaderNinePatch write fSpriteFocusedWindowHeaderNinePatch;
-       property SpriteUnfocusedWindowGripNinePatch:TpvSpriteNinePatch read fSpriteUnfocusedWindowGripNinePatch write fSpriteUnfocusedWindowGripNinePatch;
-       property SpriteFocusedWindowGripNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowGripNinePatch write fSpriteFocusedWindowGripNinePatch;
-       property SpriteUnfocusedWindowShadowNinePatch:TpvSpriteNinePatch read fSpriteUnfocusedWindowShadowNinePatch write fSpriteUnfocusedWindowShadowNinePatch;
-       property SpriteFocusedWindowShadowNinePatch:TpvSpriteNinePatch read fSpriteFocusedWindowShadowNinePatch write fSpriteFocusedWindowShadowNinePatch;
-       property SpriteMouseCursorArrow:TpvSprite read fSpriteMouseCursorArrow write fSpriteMouseCursorArrow;
-       property SpriteMouseCursorBeam:TpvSprite read fSpriteMouseCursorBeam write fSpriteMouseCursorBeam;
-       property SpriteMouseCursorBusy:TpvSprite read fSpriteMouseCursorBusy write fSpriteMouseCursorBusy;
-       property SpriteMouseCursorCross:TpvSprite read fSpriteMouseCursorCross write fSpriteMouseCursorCross;
-       property SpriteMouseCursorEW:TpvSprite read fSpriteMouseCursorEW write fSpriteMouseCursorEW;
-       property SpriteMouseCursorHelp:TpvSprite read fSpriteMouseCursorHelp write fSpriteMouseCursorHelp;
-       property SpriteMouseCursorLink:TpvSprite read fSpriteMouseCursorLink write fSpriteMouseCursorLink;
-       property SpriteMouseCursorMove:TpvSprite read fSpriteMouseCursorMove write fSpriteMouseCursorMove;
-       property SpriteMouseCursorNESW:TpvSprite read fSpriteMouseCursorNESW write fSpriteMouseCursorNESW;
-       property SpriteMouseCursorNS:TpvSprite read fSpriteMouseCursorNS write fSpriteMouseCursorNS;
-       property SpriteMouseCursorNWSE:TpvSprite read fSpriteMouseCursorNWSE write fSpriteMouseCursorNWSE;
-       property SpriteMouseCursorPen:TpvSprite read fSpriteMouseCursorPen write fSpriteMouseCursorPen;
-       property SpriteMouseCursorUnavailable:TpvSprite read fSpriteMouseCursorUnavailable write fSpriteMouseCursorUnavailable;
-       property SpriteMouseCursorUp:TpvSprite read fSpriteMouseCursorUp write fSpriteMouseCursorUp;
-      published
-       property UnfocusedWindowHeaderFontShadow:boolean read fUnfocusedWindowHeaderFontShadow write fUnfocusedWindowHeaderFontShadow;
-       property FocusedWindowHeaderFontShadow:boolean read fFocusedWindowHeaderFontShadow write fFocusedWindowHeaderFontShadow;
-       property MipmappedSpriteAtlas:TpvSpriteAtlas read fMipmappedSpriteAtlas;
-       property SpriteAtlas:TpvSpriteAtlas read fSpriteAtlas;
-       property SpriteUnfocusedWindowFill:TpvSprite read fSpriteUnfocusedWindowFill write fSpriteUnfocusedWindowFill;
-       property SpriteFocusedWindowFill:TpvSprite read fSpriteFocusedWindowFill write fSpriteFocusedWindowFill;
-       property SpriteUnfocusedWindowHeader:TpvSprite read fSpriteUnfocusedWindowHeader write fSpriteUnfocusedWindowHeader;
-       property SpriteFocusedWindowHeader:TpvSprite read fSpriteFocusedWindowHeader write fSpriteFocusedWindowHeader;
-       property SpriteUnfocusedWindowGrip:TpvSprite read fSpriteUnfocusedWindowGrip write fSpriteUnfocusedWindowGrip;
-       property SpriteFocusedWindowGrip:TpvSprite read fSpriteFocusedWindowGrip write fSpriteFocusedWindowGrip;
-       property SpriteUnfocusedWindowShadow:TpvSprite read fSpriteUnfocusedWindowShadow write fSpriteUnfocusedWindowShadow;
-       property SpriteFocusedWindowShadow:TpvSprite read fSpriteFocusedWindowShadow write fSpriteFocusedWindowShadow;
-       property WindowGripPaddingRight:TpvFloat read fWindowResizeGripSize write fWindowResizeGripSize;
-       property WindowShadowWidth:TpvFloat read fWindowShadowWidth write fWindowShadowWidth;
-       property WindowShadowHeight:TpvFloat read fWindowShadowHeight write fWindowShadowHeight;
-     end;
-}
-
      PpvGUICursor=^TpvGUICursor;
      TpvGUICursor=
       (
@@ -1020,10 +922,11 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance);
+var LastModelMatrix:TpvMatrix4x4;
 begin
- aCanvas.Push;
+ LastModelMatrix:=aCanvas.ModelMatrix;
  try
-  aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(aInstance.fMousePosition)*aCanvas.ModelMatrix;
+  aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(aInstance.fMousePosition)*LastModelMatrix;
   case aInstance.fVisibleCursor of
    pvgcArrow:begin
     aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_ARROW,
@@ -1226,21 +1129,22 @@ begin
    end;
   end;
  finally
-  aCanvas.Pop;
+  aCanvas.ModelMatrix:=LastModelMatrix;
  end;
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow);
 var LastClipRect,NewClipRect:TpvRect;
     LastModelMatrix,NewModelMatrix:TpvMatrix4x4;
+    LastLinearColor:TpvVector4;
 begin
- aCanvas.Push;
+ LastLinearColor:=aCanvas.LinearColor;
  try
 
   aCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 
-  begin
-   LastClipRect:=aCanvas.ClipRect;
+  LastClipRect:=aCanvas.ClipRect;
+  try
    NewClipRect:=TpvRect.CreateAbsolute(LastClipRect.Left-fWindowShadowWidth,
                                        LastClipRect.Top-fWindowShadowHeight,
                                        LastClipRect.Right+fWindowShadowWidth,
@@ -1257,6 +1161,7 @@ begin
                          aWindow.fSize+TpvVector2.Create(fWindowShadowWidth*2,fWindowShadowHeight*2),
                          TpvVector2.Create(0.0,0.0),
                          aWindow.fSize);
+  finally
    aCanvas.ClipRect:=LastClipRect;
   end;
 
@@ -1319,384 +1224,19 @@ begin
   end;
 
  finally
-  aCanvas.Pop;
+  aCanvas.LinearColor:=LastLinearColor;
  end;
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel);
 begin
- aCanvas.Push;
- try
-  aCanvas.Font:=fSansFont;
-  aCanvas.FontSize:=aLabel.FontSize;
-  aCanvas.TextHorizontalAlignment:=pvcthaLeft;
-  aCanvas.TextVerticalAlignment:=pvctvaTop;
-  aCanvas.SRGBColor:=fLabelFontColor;
-  aCanvas.DrawText(aLabel.fCaption);
- finally
-  aCanvas.Pop;
- end;
+ aCanvas.Font:=fSansFont;
+ aCanvas.FontSize:=aLabel.FontSize;
+ aCanvas.TextHorizontalAlignment:=pvcthaLeft;
+ aCanvas.TextVerticalAlignment:=pvctvaTop;
+ aCanvas.SRGBColor:=fLabelFontColor;
+ aCanvas.DrawText(aLabel.fCaption);
 end;
-
-{constructor TpvGUISkin.Create(const aParent:TpvGUIObject);
-begin
- inherited Create(aParent);
- fMipmappedSpriteAtlas:=nil;
- fFontSpriteAtlas:=nil;
- fSpriteAtlas:=nil;
- fSansFont:=nil;
- fMonoFont:=nil;
- Setup;
-end;
-
-destructor TpvGUISkin.Destroy;
-begin
- FreeAndNil(fSansFont);
- FreeAndNil(fMonoFont);
- FreeAndNil(fSpriteAtlas);
- FreeAndNil(fFontSpriteAtlas);
- FreeAndNil(fMipmappedSpriteAtlas);
- inherited Destroy;
-end;
-
-procedure TpvGUISkin.Setup;
- function sdRoundBox(const p,b:TpvVector2;const r:TpvFloat):TpvFloat;
- var d:TpvVector2;
- begin
-  d.x:=abs(p.x)-b.x;
-  d.y:=abs(p.y)-b.y;
-  result:=(Min(Max(d.x,d.y),0.0)+sqrt(sqr(Max(0.0,d.x))+sqr(Max(0.0,d.y))))-r;
- end;
- procedure CreateMouseCursorSprite(out aSprite:TpvSprite;
-                                   const aDrawScale:TpvFloat;
-                                   const aOffsetX:TpvFloat;
-                                   const aOffsetY:TpvFloat;
-                                   const aShadow:TpvFloat;
-                                   const aShadowX:TpvFloat;
-                                   const aShadowY:TpvFloat;
-                                   const aDataPointer:TpvPointer;
-                                   const aDataSize:TpvUInt32); overload;
- var Index,ImageWidth,ImageHeight:TpvInt32;
-     ImageData:TpvPointer;
-     p8:PpvUInt8;
-     p16:PpvUInt16;
-     PNGPixelFormat:TpvPNGPixelFormat;
- begin
-  ImageData:=nil;
-  try
-   PNGPixelFormat:=pvppfUnknown;
-   if LoadPNGImage(aDataPointer,aDataSize,ImageData,ImageWidth,ImageHeight,false,PNGPixelFormat) then begin
-    if PNGPixelFormat=pvppfR16G16B16A16 then begin
-     // Convert to R8G8B8A8 in-placve
-     p8:=ImageData;
-     p16:=ImageData;
-     for Index:=1 to ImageWidth*ImageHeight*4 do begin
-      p8^:=p16^ shr 8;
-      inc(p8);
-      inc(p16);
-     end;
-    end;
-    aSprite:=fMipmappedSpriteAtlas.LoadRawSprite('',ImageData,ImageWidth,ImageHeight,true,8);
-    aSprite.OffsetX:=aOffsetX;
-    aSprite.OffsetY:=aOffsetY;
-    aSprite.ScaleX:=aDrawScale;
-    aSprite.ScaleY:=aDrawScale;
-   end;
-  finally
-   if assigned(ImageData) then begin
-    FreeMem(ImageData);
-   end;
-  end;
- end;
- procedure CreateNinePatchSprite(out aSprite:TpvSprite;
-                                 out aSpriteNinePatch:TpvSpriteNinePatch;
-                                 const aRadius:TpvInt32;
-                                 const aDataPointer:TpvPointer;
-                                 const aDataSize:TpvUInt32);
- var Index,ImageWidth,ImageHeight:TpvInt32;
-     ImageData:TpvPointer;
-     p8:PpvUInt8;
-     p16:PpvUInt16;
-     PNGPixelFormat:TpvPNGPixelFormat;
- begin
-  ImageData:=nil;
-  try
-   PNGPixelFormat:=pvppfUnknown;
-   if LoadPNGImage(aDataPointer,aDataSize,ImageData,ImageWidth,ImageHeight,false,PNGPixelFormat) then begin
-    if PNGPixelFormat=pvppfR16G16B16A16 then begin
-     // Convert to R8G8B8A8 in-placve
-     p8:=ImageData;
-     p16:=ImageData;
-     for Index:=1 to ImageWidth*ImageHeight*4 do begin
-      p8^:=p16^ shr 8;
-      inc(p8);
-      inc(p16);
-     end;
-    end;
-    aSprite:=fSpriteAtlas.LoadRawSprite('',ImageData,ImageWidth,ImageHeight,true,8);
-    aSpriteNinePatch.Regions[0,0]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,0,0,aRadius,aRadius);
-    aSpriteNinePatch.Regions[0,1]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aRadius,0,ImageWidth-(aRadius*2),aRadius);
-    aSpriteNinePatch.Regions[0,2]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,ImageWidth-aRadius,0,aRadius,aRadius);
-    aSpriteNinePatch.Regions[1,0]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,0,aRadius,aRadius,ImageHeight-(aRadius*2));
-    aSpriteNinePatch.Regions[1,1]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aRadius,aRadius,ImageWidth-(aRadius*2),ImageHeight-(aRadius*2));
-    aSpriteNinePatch.Regions[1,2]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,ImageWidth-aRadius,aRadius,aRadius,ImageHeight-(aRadius*2));
-    aSpriteNinePatch.Regions[2,0]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,0,ImageHeight-aRadius,aRadius,aRadius);
-    aSpriteNinePatch.Regions[2,1]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,aRadius,ImageHeight-aRadius,ImageWidth-(aRadius*2),aRadius);
-    aSpriteNinePatch.Regions[2,2]:=TpvSpriteNinePatchRegion.Create(pvsnprmStretch,ImageWidth-aRadius,ImageHeight-aRadius,aRadius,aRadius);
-   end;
-  finally
-   if assigned(ImageData) then begin
-    FreeMem(ImageData);
-   end;
-  end;
- end;
-const CursorScale=0.18275;
-var Stream:TStream;
-    TrueTypeFont:TpvTrueTypeFont;
-begin
-
- fFontSize:=-12;
-
- fUnfocusedWindowHeaderFontSize:=-16;
- fFocusedWindowHeaderFontSize:=-16;
-
- fUnfocusedWindowHeaderFontShadow:=true;
- fFocusedWindowHeaderFontShadow:=true;
-
- fUnfocusedWindowHeaderFontShadowOffset:=TpvVector2.Create(2.0,2.0);
- fFocusedWindowHeaderFontShadowOffset:=TpvVector2.Create(2.0,2.0);
-
- fUnfocusedWindowHeaderFontShadowColor:=TpvVector4.Create(0.0,0.0,0.0,0.3275);
- fFocusedWindowHeaderFontShadowColor:=TpvVector4.Create(0.0,0.0,0.0,0.5);
-
- fUnfocusedWindowHeaderFontColor:=TpvVector4.Create(0.75,0.75,0.75,1.0);
- fFocusedWindowHeaderFontColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-
- fWindowHeaderHeight:=32;
-
- fWindowResizeGripSize:=8;
-
- fWindowMinimumWidth:=Max(fWindowHeaderHeight+8,fWindowResizeGripSize*2);
- fWindowMinimumHeight:=Max(fWindowHeaderHeight+8,fWindowResizeGripSize*2);
-
- fWindowShadowWidth:=16;
- fWindowShadowHeight:=16;
-
- fMipmappedSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,true);
-
- fFontSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,false);
-
- fSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,true);
-
- CreateNinePatchSprite(fSpriteUnfocusedWindowFill,
-                       fSpriteUnfocusedWindowFillNinePatch,
-                       4,
-                       @GUISkinUnfocusedWindowFillData,
-                       GUISkinUnfocusedWindowFillDataSize);
-
- CreateNinePatchSprite(fSpriteFocusedWindowFill,
-                       fSpriteFocusedWindowFillNinePatch,
-                       4,
-                       @GUISkinFocusedWindowFillData,
-                       GUISkinFocusedWindowFillDataSize);
-
- CreateNinePatchSprite(fSpriteUnfocusedWindowHeader,
-                       fSpriteUnfocusedWindowHeaderNinePatch,
-                       4,
-                       @GUISkinUnfocusedWindowHeaderData,
-                       GUISkinUnfocusedWindowHeaderDataSize);
-
- CreateNinePatchSprite(fSpriteFocusedWindowHeader,
-                       fSpriteFocusedWindowHeaderNinePatch,
-                       4,
-                       @GUISkinFocusedWindowHeaderData,
-                       GUISkinFocusedWindowHeaderDataSize);
-
- CreateNinePatchSprite(fSpriteUnfocusedWindowShadow,
-                       fSpriteUnfocusedWindowShadowNinePatch,
-                       16,
-                       @GUISkinUnfocusedWindowShadowData,
-                       GUISkinUnfocusedWindowShadowDataSize);
-
- CreateNinePatchSprite(fSpriteFocusedWindowShadow,
-                       fSpriteFocusedWindowShadowNinePatch,
-                       16,
-                       @GUISkinFocusedWindowShadowData,
-                       GUISkinFocusedWindowShadowDataSize);
-
- Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansFontData,GUIStandardTrueTypeFontSansFontDataSize);
- try
-  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
-  try
-   TrueTypeFont.Size:=-64;
-   TrueTypeFont.Hinting:=false;
-   fSansFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                             fFontSpriteAtlas,
-                                             TrueTypeFont,
-                                             [TpvFontCodePointRange.Create(0,255)]);
-  finally
-   TrueTypeFont.Free;
-  end;
- finally
-  Stream.Free;
- end;
-
- Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontMonoFontData,GUIStandardTrueTypeFontMonoFontDataSize);
- try
-  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
-  try
-   TrueTypeFont.Size:=-64;
-   TrueTypeFont.Hinting:=false;
-   fMonoFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                             fFontSpriteAtlas,
-                                             TrueTypeFont,
-                                             [TpvFontCodePointRange.Create(0,255)]);
-  finally
-   TrueTypeFont.Free;
-  end;
- finally
-  Stream.Free;
- end;
-
- CreateMouseCursorSprite(fSpriteMouseCursorArrow,
-                         CursorScale,
-                         0.0,0.0,
-                         0.0,
-                         0.0,0.0,
-                         @GUICursorArrowData,
-                         GUICursorArrowDataSize);
-
- CreateMouseCursorSprite(fSpriteMouseCursorBeam,
-                         CursorScale,
-                         63.0,62.0,
-                         0.0,
-                         0.0,0.0,
-                         @GUICursorBeamData,
-                         GUICursorBeamDataSize);
-
- CreateMouseCursorSprite(fSpriteMouseCursorBusy,
-                         0.5,
-                         32.0,32.0,
-                         0.0,
-                         0.0,0.0,
-                         @GUICursorBusyData,
-                         GUICursorBusyDataSize);
-
- CreateMouseCursorSprite(fSpriteMouseCursorCross,
-                         CursorScale,
-                         63.0,63.0,
-                         0.0,
-                         0.0,0.0,
-                         @GUICursorCrossData,
-                         GUICursorCrossDataSize);
-
- CreateMouseCursorSprite(fSpriteMouseCursorEW,
-                         CursorScale,
-                         53.0,21.0,
-                         0.0,
-                         0.0,0.0,
-                         @GUICursorEWData,
-                         GUICursorEWDataSize);
-
- CreateMouseCursorSprite(fSpriteMouseCursorHelp,
-                         CursorScale,
-                         0.0,0.0,
-                         0.0,
-                         0.0,0.0,
-                         @GUICursorHelpData,
-                         GUICursorHelpDataSize);
-
- CreateMouseCursorSprite(fSpriteMouseCursorLink,
-                         CursorScale,
-                         40.0,0.0,
-                         0.0,
-                         0.0,0.0,
-                         @GUICursorLinkData,
-                         GUICursorLinkDataSize);
-
- CreateMouseCursorSprite(fSpriteMouseCursorMove,
-                         CursorScale,
-                         54.0,53.0,
-                         0.0,
-                         0.0,0.0,
-                         @GUICursorMoveData,
-                         GUICursorMoveDataSize);
-
- CreateMouseCursorSprite(fSpriteMouseCursorNESW,
-                         CursorScale,
-                         43.0,30.0,
-                         0.0,
-                         0.0,0.0,
-                         @GUICursorNESWData,
-                         GUICursorNESWDataSize);
-
- CreateMouseCursorSprite(fSpriteMouseCursorNS,
-                         CursorScale,
-                         21.0,51.0,
-                         0.0,
-                         0.0,0.0,
-                         @GUICursorNSData,
-                         GUICursorNSDataSize);
-
- CreateMouseCursorSprite(fSpriteMouseCursorNWSE,
-                         CursorScale,
-                         40.0,40.0,
-                         0.0,
-                         0.0,0.0,
-                         @GUICursorNWSEData,
-                         GUICursorNWSEDataSize);
-
- CreateMouseCursorSprite(fSpriteMouseCursorPen,
-                         CursorScale,
-                         0.0,0.0,
-                         0.0,
-                         0.0,0.0,
-                         @GUICursorPenData,
-                         GUICursorPenDataSize);
-
- CreateMouseCursorSprite(fSpriteMouseCursorUnavailable,
-                         CursorScale,
-                         48.0,48.0,
-                         0.0,
-                         0.0,0.0,
-                         @GUICursorUnavailableData,
-                         GUICursorUnavailableDataSize);
-
- CreateMouseCursorSprite(fSpriteMouseCursorUp,
-                         CursorScale,
-                         21.0,0.0,
-                         0.0,
-                         0.0,0.0,
-                         @GUICursorUpData,
-                         GUICursorUpDataSize);
-
- fMipmappedSpriteAtlas.MipMaps:=true;
- fMipmappedSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
-                              pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                              pvApplication.VulkanGraphicsCommandBufferFences[0,0],
-                              pvApplication.VulkanDevice.TransferQueue,
-                              pvApplication.VulkanTransferCommandBuffers[0,0],
-                              pvApplication.VulkanTransferCommandBufferFences[0,0]);
-
-
- fFontSpriteAtlas.MipMaps:=false;
- fFontSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
-                         pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                         pvApplication.VulkanGraphicsCommandBufferFences[0,0],
-                         pvApplication.VulkanDevice.TransferQueue,
-                         pvApplication.VulkanTransferCommandBuffers[0,0],
-                         pvApplication.VulkanTransferCommandBufferFences[0,0]);
-
- fSpriteAtlas.MipMaps:=false;
- fSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
-                     pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                     pvApplication.VulkanGraphicsCommandBufferFences[0,0],
-                     pvApplication.VulkanDevice.TransferQueue,
-                     pvApplication.VulkanTransferCommandBuffers[0,0],
-                     pvApplication.VulkanTransferCommandBufferFences[0,0]);
-
-end;
-}
 
 constructor TpvGUIWidgetEnumerator.Create(const aWidget:TpvGUIWidget);
 begin
