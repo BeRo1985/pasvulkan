@@ -180,6 +180,9 @@ type TpvGUIObject=class;
        fFocusedWindowHeaderFontSize:tpvFloat;
        fFontSpriteAtlas:TpvSpriteAtlas;
        fSansFont:TpvFont;
+       fSansBoldFont:TpvFont;
+       fSansBoldItalicFont:TpvFont;
+       fSansItalicFont:TpvFont;
        fMonoFont:TpvFont;
        fWindowHeaderHeight:TpvFloat;
        fWindowResizeGripSize:TpvFloat;
@@ -194,6 +197,11 @@ type TpvGUIObject=class;
        procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); virtual;
        procedure DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton); virtual;
       published
+       property SansFont:TpvFont read fSansFont write fSansFont;
+       property SansBoldFont:TpvFont read fSansBoldFont write fSansBoldFont;
+       property SansBoldItalicFont:TpvFont read fSansBoldItalicFont write fSansBoldItalicFont;
+       property SansItalicFont:TpvFont read fSansItalicFont write fSansItalicFont;
+       property MonoFont:TpvFont read fMonoFont write fMonoFont;
        property FontSize:TpvFloat read fFontSize write fFontSize;
        property UnfocusedWindowHeaderFontSize:TpvFloat read fUnfocusedWindowHeaderFontSize write fUnfocusedWindowHeaderFontSize;
        property FocusedWindowHeaderFontSize:TpvFloat read fFocusedWindowHeaderFontSize write fFocusedWindowHeaderFontSize;
@@ -878,6 +886,9 @@ begin
  inherited Create(aParent);
  fFontSpriteAtlas:=nil;
  fSansFont:=nil;
+ fSansBoldFont:=nil;
+ fSansBoldItalicFont:=nil;
+ fSansItalicFont:=nil;
  fMonoFont:=nil;
  Setup;
 end;
@@ -885,6 +896,9 @@ end;
 destructor TpvGUISkin.Destroy;
 begin
  FreeAndNil(fSansFont);
+ FreeAndNil(fSansBoldFont);
+ FreeAndNil(fSansBoldItalicFont);
+ FreeAndNil(fSansItalicFont);
  FreeAndNil(fMonoFont);
  FreeAndNil(fFontSpriteAtlas);
  inherited Destroy;
@@ -967,6 +981,57 @@ begin
                                              fFontSpriteAtlas,
                                              TrueTypeFont,
                                              [TpvFontCodePointRange.Create(0,255)]);
+  finally
+   TrueTypeFont.Free;
+  end;
+ finally
+  Stream.Free;
+ end;
+
+ Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansBoldFontData,GUIStandardTrueTypeFontSansBoldFontDataSize);
+ try
+  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+  try
+   TrueTypeFont.Size:=-64;
+   TrueTypeFont.Hinting:=false;
+   fSansBoldFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
+                                                 fFontSpriteAtlas,
+                                                 TrueTypeFont,
+                                                 [TpvFontCodePointRange.Create(0,255)]);
+  finally
+   TrueTypeFont.Free;
+  end;
+ finally
+  Stream.Free;
+ end;
+
+ Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansBoldItalicFontData,GUIStandardTrueTypeFontSansBoldItalicFontDataSize);
+ try
+  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+  try
+   TrueTypeFont.Size:=-64;
+   TrueTypeFont.Hinting:=false;
+   fSansBoldItalicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
+                                                       fFontSpriteAtlas,
+                                                       TrueTypeFont,
+                                                       [TpvFontCodePointRange.Create(0,255)]);
+  finally
+   TrueTypeFont.Free;
+  end;
+ finally
+  Stream.Free;
+ end;
+
+ Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansItalicFontData,GUIStandardTrueTypeFontSansItalicFontDataSize);
+ try
+  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+  try
+   TrueTypeFont.Size:=-64;
+   TrueTypeFont.Hinting:=false;
+   fSansItalicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
+                                                   fFontSpriteAtlas,
+                                                   TrueTypeFont,
+                                                   [TpvFontCodePointRange.Create(0,255)]);
   finally
    TrueTypeFont.Free;
   end;
@@ -1268,7 +1333,7 @@ begin
 
    LastModelMatrix:=aCanvas.ModelMatrix;
    try
-    aCanvas.Font:=fSansFont;
+    aCanvas.Font:=fSansBoldFont;
     aCanvas.FontSize:=IfThen(pvgwfFocused in aWindow.fWidgetFlags,fFocusedWindowHeaderFontSize,fUnfocusedWindowHeaderFontSize);
     aCanvas.TextHorizontalAlignment:=pvcthaCenter;
     aCanvas.TextVerticalAlignment:=pvctvaMiddle;
@@ -2435,12 +2500,12 @@ begin
   fButtonPanel.Visible:=false;
  end;
  result:=Maximum(inherited GetPreferredSize,
-                 Skin.fSansFont.TextSize(fTitle,
-                                          Max(Skin.fUnfocusedWindowHeaderFontSize,
-                                              Skin.fFocusedWindowHeaderFontSize))+
-                 TpvVector2.Create(Skin.fSansFont.TextWidth('====',
-                                                             Max(Skin.fUnfocusedWindowHeaderFontSize,
-                                                             Skin.fFocusedWindowHeaderFontSize)),
+                 Skin.fSansBoldFont.TextSize(fTitle,
+                                             Max(Skin.fUnfocusedWindowHeaderFontSize,
+                                                 Skin.fFocusedWindowHeaderFontSize))+
+                 TpvVector2.Create(Skin.fSansBoldFont.TextWidth('====',
+                                                                Max(Skin.fUnfocusedWindowHeaderFontSize,
+                                                                Skin.fFocusedWindowHeaderFontSize)),
                                    0.0));
  if assigned(fButtonPanel) then begin
   fButtonPanel.Visible:=true;
