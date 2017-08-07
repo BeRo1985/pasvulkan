@@ -210,8 +210,9 @@ type TpvGUIObject=class;
       private
       protected
        fFontSize:TpvFloat;
-       fUnfocusedWindowHeaderFontSize:TpvFloat;
-       fFocusedWindowHeaderFontSize:tpvFloat;
+       fWindowHeaderFontSize:tpvFloat;
+       fButtonFontSize:tpvFloat;
+       fLabelFontSize:tpvFloat;
        fFontSpriteAtlas:TpvSpriteAtlas;
        fSansFont:TpvFont;
        fSansBoldFont:TpvFont;
@@ -237,8 +238,9 @@ type TpvGUIObject=class;
        property SansItalicFont:TpvFont read fSansItalicFont write fSansItalicFont;
        property MonoFont:TpvFont read fMonoFont write fMonoFont;
        property FontSize:TpvFloat read fFontSize write fFontSize;
-       property UnfocusedWindowHeaderFontSize:TpvFloat read fUnfocusedWindowHeaderFontSize write fUnfocusedWindowHeaderFontSize;
-       property FocusedWindowHeaderFontSize:TpvFloat read fFocusedWindowHeaderFontSize write fFocusedWindowHeaderFontSize;
+       property WindowHeaderFontSize:TpvFloat read fWindowHeaderFontSize write fWindowHeaderFontSize;
+       property ButtonFontSize:tpvFloat read fButtonFontSize write fButtonFontSize;
+       property LabelFontSize:tpvFloat read fLabelFontSize write fLabelFontSize;
        property FontSpriteAtlas:TpvSpriteAtlas read fFontSpriteAtlas;
        property WindowHeaderHeight:TpvFloat read fWindowHeaderHeight write fWindowHeaderHeight;
        property WindowResizeGripSize:TpvFloat read fWindowResizeGripSize write fWindowResizeGripSize;
@@ -344,6 +346,7 @@ type TpvGUIObject=class;
        fFixedSizeProperty:TpvVector2Property;
        fWidgetFlags:TpvGUIWidgetFlags;
        fHint:TpvUTF8String;
+       fFont:TpvFont;
        fFontSize:TpvFloat;
        fTextHorizontalAlignment:TpvGUITextAlignment;
        fTextVerticalAlignment:TpvGUITextAlignment;
@@ -380,6 +383,7 @@ type TpvGUIObject=class;
        function GetSkin:TpvGUISkin; virtual;
        procedure SetSkin(const aSkin:TpvGUISkin); virtual;
        function GetPreferredSize:TpvVector2; virtual;
+       function GetFont:TpvFont; virtual;
        function GetFontSize:TpvFloat; virtual;
       protected
        property TextHorizontalAlignment:TpvGUITextAlignment read fTextHorizontalAlignment write fTextHorizontalAlignment;
@@ -432,6 +436,7 @@ type TpvGUIObject=class;
        property FixedWidth:TpvFloat read GetFixedWidth write SetFixedWidth;
        property FixedHeight:TpvFloat read GetFixedHeight write SetFixedHeight;
        property Hint:TpvUTF8String read fHint write fHint;
+       property Font:TpvFont read GetFont write fFont;
        property FontSize:TpvFloat read GetFontSize write fFontSize;
        property OnKeyEvent:TpvGUIOnKeyEvent read fOnKeyEvent write fOnKeyEvent;
        property OnPointerEvent:TpvGUIOnPointerEvent read fOnPointerEvent write fOnPointerEvent;
@@ -518,7 +523,6 @@ type TpvGUIObject=class;
       (
        pvgwfModal,
        pvgwfHeader,
-       pvgwfCenterTitle,
        pvgwfMovable,
        pvgwfResizableNW,
        pvgwfResizableNE,
@@ -574,6 +578,7 @@ type TpvGUIObject=class;
        property WindowFlags:TpvGUIWindowFlags read fWindowFlags write fWindowFlags;
        property Modal:boolean read GetModal write SetModal;
        property ButtonPanel:TpvGUIWidget read GetButtonPanel;
+       property TextHorizontalAlignment;
        property TextTruncation;
      end;
 
@@ -581,6 +586,7 @@ type TpvGUIObject=class;
       private
        fCaption:TpvUTF8String;
       protected
+       function GetFontSize:TpvFloat; override;
        function GetPreferredSize:TpvVector2; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -591,6 +597,7 @@ type TpvGUIObject=class;
        procedure Update; override;
        procedure Draw; override;
       published
+       property FontSize:TpvFloat read GetFontSize write fFontSize;
        property Caption:TpvUTF8String read fCaption write fCaption;
        property TextHorizontalAlignment;
        property TextVerticalAlignment;
@@ -624,6 +631,7 @@ type TpvGUIObject=class;
       protected
        function GetDown:boolean; inline;
        procedure SetDown(const aDown:boolean); inline;
+       function GetFontSize:TpvFloat; override;
        function GetPreferredSize:TpvVector2; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -634,6 +642,7 @@ type TpvGUIObject=class;
        procedure Update; override;
        procedure Draw; override;
       published
+       property FontSize:TpvFloat read GetFontSize write fFontSize;
        property ButtonFlags:TpvGUIButtonFlags read fButtonFlags write fButtonFlags;
        property ButtonGroup:TpvGUIButtonGroup read fButtonGroup;
        property Down:boolean read GetDown write SetDown;
@@ -1083,8 +1092,11 @@ begin
 
  fFontSize:=-12;
 
- fUnfocusedWindowHeaderFontSize:=-16;
- fFocusedWindowHeaderFontSize:=-16;
+ fWindowHeaderFontSize:=-16;
+
+ fButtonFontSize:=-12;
+
+ fLabelFontSize:=-12;
 
  fUnfocusedWindowHeaderFontShadow:=true;
  fFocusedWindowHeaderFontShadow:=true;
@@ -1424,6 +1436,7 @@ var LastClipRect,NewClipRect:TpvRect;
     LastModelMatrix,NewModelMatrix:TpvMatrix4x4;
     LastLinearColor:TpvVector4;
     Title:TpvRawByteString;
+    Offset:TpvVector2;
 begin
  LastLinearColor:=aCanvas.LinearColor;
  try
@@ -1475,39 +1488,40 @@ begin
 
    LastModelMatrix:=aCanvas.ModelMatrix;
    try
-    aCanvas.Font:=fSansBoldFont;
-    aCanvas.FontSize:=IfThen(pvgwfFocused in aWindow.fWidgetFlags,fFocusedWindowHeaderFontSize,fUnfocusedWindowHeaderFontSize);
-    if pvgwfCenterTitle in aWindow.fWindowFlags then begin
-     aCanvas.TextHorizontalAlignment:=pvcthaCenter;
-    end else begin
-     aCanvas.TextHorizontalAlignment:=pvcthaLeading;
-    end;
-    aCanvas.TextVerticalAlignment:=pvctvaMiddle;
-    if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
-     if pvgwfCenterTitle in aWindow.fWindowFlags then begin
-      NewModelMatrix:=TpvMatrix4x4.CreateTranslation(aWindow.fButtonPanel.Left*0.5,
-                                                     fWindowHeaderHeight*0.5)*
-                      LastModelMatrix;
-     end else begin
-      NewModelMatrix:=TpvMatrix4x4.CreateTranslation(8,
-                                                     fWindowHeaderHeight*0.5)*
-                      LastModelMatrix;
+    aCanvas.Font:=aWindow.Font;
+    aCanvas.FontSize:=fWindowHeaderFontSize;
+    case aWindow.TextHorizontalAlignment of
+     pvgtaLeading:begin
+      aCanvas.TextHorizontalAlignment:=pvcthaLeading;
+      Offset.x:=8;
      end;
+     pvgtaCenter:begin
+      aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+      if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
+       Offset.x:=aWindow.fButtonPanel.Left*0.5;
+      end else begin
+       Offset.x:=aWindow.fSize.x*0.5;
+      end;
+     end;
+     else {pvgtaTailing:}begin
+      aCanvas.TextHorizontalAlignment:=pvcthaTailing;
+      if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
+       Offset.x:=aWindow.fButtonPanel.Left-8;
+      end else begin
+       Offset.x:=aWindow.fSize.x-8;
+      end;
+     end;
+    end;
+    Offset.y:=fWindowHeaderHeight*0.5;
+    aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+    NewModelMatrix:=TpvMatrix4x4.CreateTranslation(Offset.x,Offset.y)*LastModelMatrix;
+    if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
      Title:=TpvGUITextUtils.TextTruncation(aWindow.fTitle,
                                            aWindow.fTextTruncation,
                                            aCanvas.Font,
                                            aCanvas.FontSize,
                                            aWindow.fButtonPanel.Left-16);
     end else begin
-     if pvgwfCenterTitle in aWindow.fWindowFlags then begin
-      NewModelMatrix:=TpvMatrix4x4.CreateTranslation(aWindow.fSize.x*0.5,
-                                                     fWindowHeaderHeight*0.5)*
-                       LastModelMatrix;
-     end else begin
-      NewModelMatrix:=TpvMatrix4x4.CreateTranslation(8,
-                                                     fWindowHeaderHeight*0.5)*
-                      LastModelMatrix;
-     end;
      Title:=TpvGUITextUtils.TextTruncation(aWindow.fTitle,
                                            aWindow.fTextTruncation,
                                            aCanvas.Font,
@@ -1560,12 +1574,12 @@ end;
 procedure TpvGUIDefaultVectorBasedSkin.DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel);
 var Offset:TpvVector2;
 begin
- aCanvas.Font:=fSansBoldFont;
+ aCanvas.Font:=aLabel.Font;
  aCanvas.FontSize:=aLabel.FontSize;
  case aLabel.TextHorizontalAlignment of
   pvgtaLeading:begin
    aCanvas.TextHorizontalAlignment:=pvcthaLeading;
-   Offset.x:=4;
+   Offset.x:=8;
   end;
   pvgtaCenter:begin
    aCanvas.TextHorizontalAlignment:=pvcthaCenter;
@@ -1573,13 +1587,13 @@ begin
   end;
   else {pvgtaTailing:}begin
    aCanvas.TextHorizontalAlignment:=pvcthaTailing;
-   Offset.x:=aLabel.fSize.x-4;
+   Offset.x:=aLabel.fSize.x-8;
   end;
  end;
  case aLabel.TextVerticalAlignment of
   pvgtaLeading:begin
    aCanvas.TextVerticalAlignment:=pvctvaLeading;
-   Offset.y:=4;
+   Offset.y:=8;
   end;
   pvgtaCenter:begin
    aCanvas.TextVerticalAlignment:=pvctvaMiddle;
@@ -1587,7 +1601,7 @@ begin
   end;
   else {pvgtaTailing:}begin
    aCanvas.TextVerticalAlignment:=pvctvaTailing;
-   Offset.y:=aLabel.fSize.y-4;
+   Offset.y:=aLabel.fSize.y-8;
   end;
  end;
  aCanvas.SRGBColor:=fLabelFontColor;
@@ -1595,7 +1609,7 @@ begin
                                                  aLabel.fTextTruncation,
                                                  aCanvas.Font,
                                                  aCanvas.FontSize,
-                                                 aLabel.fSize.x-8),
+                                                 aLabel.fSize.x-16),
                   Offset);
 
 
@@ -1643,12 +1657,12 @@ begin
 
  end;
 
- aCanvas.Font:=fSansBoldFont;
+ aCanvas.Font:=aButton.Font;
  aCanvas.FontSize:=aButton.FontSize;
  case aButton.TextHorizontalAlignment of
   pvgtaLeading:begin
    aCanvas.TextHorizontalAlignment:=pvcthaLeading;
-   Offset.x:=4;
+   Offset.x:=8;
   end;
   pvgtaCenter:begin
    aCanvas.TextHorizontalAlignment:=pvcthaCenter;
@@ -1656,13 +1670,13 @@ begin
   end;
   else {pvgtaTailing:}begin
    aCanvas.TextHorizontalAlignment:=pvcthaTailing;
-   Offset.x:=aButton.fSize.x-4;
+   Offset.x:=aButton.fSize.x-8;
   end;
  end;
  case aButton.TextVerticalAlignment of
   pvgtaLeading:begin
    aCanvas.TextVerticalAlignment:=pvctvaLeading;
-   Offset.y:=4;
+   Offset.y:=8;
   end;
   pvgtaCenter:begin
    aCanvas.TextVerticalAlignment:=pvctvaMiddle;
@@ -1670,7 +1684,7 @@ begin
   end;
   else {pvgtaTailing:}begin
    aCanvas.TextVerticalAlignment:=pvctvaTailing;
-   Offset.y:=aButton.fSize.y-4;
+   Offset.y:=aButton.fSize.y-8;
   end;
  end;
  aCanvas.SRGBColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
@@ -1678,7 +1692,7 @@ begin
                                                  aButton.fTextTruncation,
                                                  aCanvas.Font,
                                                  aCanvas.FontSize,
-                                                 aButton.fSize.x-8),
+                                                 aButton.fSize.x-16),
                   Offset+(TpvVector2.Create(-0.5,-0.5)*IfThen(aButton.Down,1,0)));
 
 end;
@@ -1732,6 +1746,8 @@ begin
  fWidgetFlags:=TpvGUIWidget.DefaultFlags;
 
  fHint:='';
+
+ fFont:=nil;
 
  fFontSize:=0.0;
 
@@ -1972,6 +1988,15 @@ begin
   result:=fLayout.GetPreferredSize(self);
  end else begin
   result:=fSize;
+ end;
+end;
+
+function TpvGUIWidget.GetFont:TpvFont;
+begin
+ if assigned(Skin) and not assigned(fFont) then begin
+  result:=Skin.fSansBoldFont;
+ end else begin
+  result:=fFont;
  end;
 end;
 
@@ -2710,6 +2735,8 @@ begin
  fMouseAction:=pvgwmaNone;
  fWindowFlags:=TpvGUIWindow.DefaultFlags;
  fButtonPanel:=nil;
+ fTextHorizontalAlignment:=pvgtaCenter;
+ fTextTruncation:=pvgttMiddle;
 end;
 
 destructor TpvGUIWindow.Destroy;
@@ -2770,10 +2797,9 @@ begin
   fButtonPanel.Visible:=false;
  end;
  result:=Maximum(inherited GetPreferredSize,
-                 Skin.fSansBoldFont.TextSize(fTitle,
-                                             Max(Skin.fUnfocusedWindowHeaderFontSize,
-                                                 Skin.fFocusedWindowHeaderFontSize))+
-                 TpvVector2.Create(16.0*2.0,0.0));
+                 Font.TextSize(fTitle,
+                               Skin.fWindowHeaderFontSize)+
+                 TpvVector2.Create(8.0*2.0,0.0));
  if pvgwfHeader in fWindowFlags then begin
   result.y:=Maximum(result.y,Skin.fWindowHeaderHeight);
  end;
@@ -2789,7 +2815,7 @@ begin
    end;
   end;
   ButtonPanelPreferredSize:=fButtonPanel.PreferredSize;
-  result.x:=result.x+(ButtonPanelPreferredSize.x+(5*2));
+  result.x:=result.x+(ButtonPanelPreferredSize.x+(8*2));
   result.y:=Maximum(result.y,ButtonPanelPreferredSize.y);
  end;
 end;
@@ -3089,10 +3115,19 @@ begin
  inherited Destroy;
 end;
 
+function TpvGUILabel.GetFontSize:TpvFloat;
+begin
+ if assigned(Skin) and IsZero(fFontSize) then begin
+  result:=Skin.fLabelFontSize;
+ end else begin
+  result:=fFontSize;
+ end;
+end;
+
 function TpvGUILabel.GetPreferredSize:TpvVector2;
 begin
  result:=Maximum(inherited GetPreferredSize,
-                 Skin.fSansBoldFont.TextSize(fCaption,FontSize)+TpvVector2.Create(0.0,0.0));
+                 Font.TextSize(fCaption,FontSize)+TpvVector2.Create(0.0,0.0));
 end;
 
 function TpvGUILabel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -3157,10 +3192,19 @@ begin
  end;
 end;
 
+function TpvGUIButton.GetFontSize:TpvFloat;
+begin
+ if assigned(Skin) and IsZero(fFontSize) then begin
+  result:=Skin.fButtonFontSize;
+ end else begin
+  result:=fFontSize;
+ end;
+end;
+
 function TpvGUIButton.GetPreferredSize:TpvVector2;
 begin
  result:=Maximum(inherited GetPreferredSize,
-                 Skin.fSansBoldFont.TextSize(fCaption,FontSize)+TpvVector2.Create(20.0,10.0));
+                 Font.TextSize(fCaption,FontSize)+TpvVector2.Create(20.0,10.0));
 end;
 
 procedure TpvGUIButton.ProcessDown(const aPosition:TpvVector2);
