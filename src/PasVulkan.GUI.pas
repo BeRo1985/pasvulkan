@@ -1169,9 +1169,9 @@ begin
 
    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
                           aWindow.Focused,
-                          TpvVector2.Create(0.0,fWindowHeaderHeight-2),
+                          TpvVector2.Create(0.0,fWindowHeaderHeight-8),
                           TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y),
-                          TpvVector2.Create(0.0,fWindowHeaderHeight-2),
+                          TpvVector2.Create(0.0,fWindowHeaderHeight-8),
                           TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y));
 
    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_HEADER,
@@ -1180,6 +1180,11 @@ begin
                           TpvVector2.Create(aWindow.fSize.x,fWindowHeaderHeight),
                           TpvVector2.Create(0.0,0.0),
                           TpvVector2.Create(aWindow.fSize.x,fWindowHeaderHeight));
+
+   LastClipRect:=aCanvas.ClipRect;
+   LastClipRect.LeftTop:=LastClipRect.LeftTop+TpvVector2.Create(1.0,1.0);
+   LastClipRect.RightBottom:=LastClipRect.RightBottom-TpvVector2.Create(1.0,1.0);
+   aCanvas.ClipRect:=LastClipRect;
 
    LastModelMatrix:=aCanvas.ModelMatrix;
    try
@@ -1220,6 +1225,11 @@ begin
                           TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y),
                           TpvVector2.Create(0.0,0.0),
                           TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y));
+
+   LastClipRect:=aCanvas.ClipRect;
+   LastClipRect.LeftTop:=LastClipRect.LeftTop+TpvVector2.Create(1.0,1.0);
+   LastClipRect.RightBottom:=LastClipRect.RightBottom-TpvVector2.Create(1.0,1.0);
+   aCanvas.ClipRect:=LastClipRect;
 
   end;
 

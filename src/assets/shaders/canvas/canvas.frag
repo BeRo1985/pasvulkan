@@ -84,9 +84,9 @@ vec4 blend(vec4 a, vec4 b){
 #define GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE 16
 #define GUI_ELEMENT_MOUSE_CURSOR_UP 17     
 
-const float uWindowCornerRadius = 8.0;
+const float uWindowCornerRadius = 2.0;
 const float uWindowHeaderHeight = 32.0;
-const float uWindowHeaderCornerRadius = 4.0;
+const float uWindowHeaderCornerRadius = 2.0;
 const float uWindowDropShadowSize = 10.0;
 const float uButtonCornerRadius = 2.0;
 const float uTabBorderWidth = 0.75;
@@ -354,7 +354,7 @@ void main(void){
         break;
       }
       case GUI_ELEMENT_WINDOW_FILL:{
-        float cr = mix(0.0, uWindowCornerRadius, step(size.y * 0.5, p.y)), 
+        float cr = uWindowCornerRadius, 
               d0 = sdRoundedRect(p - (size * 0.5), size * 0.5, cr),
               d1 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(1.0), cr);      
         color = blend(color, 
