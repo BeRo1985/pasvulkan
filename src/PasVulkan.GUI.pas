@@ -67,6 +67,7 @@ uses SysUtils,
      Math,
      Generics.Collections,
      PasMP,
+     PUCU,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Utils,
@@ -130,6 +131,24 @@ type TpvGUIObject=class;
        property ID:TpvUTF8String read fID write fID;
        property Tag:TpvPtrInt read fTag write fTag;
        property ReferenceCounter:TpvInt32 read fReferenceCounter write fReferenceCounter;
+     end;
+
+     PpvGUITextTruncation=^TpvGUITextTruncation;
+     TpvGUITextTruncation=
+      (
+       pvgttNone,
+       pvgttHead,
+       pvgttMiddle,
+       pvgttTail
+      );
+
+     TpvGUITextUtils=class
+      public
+       class function TextTruncation(const aText:TpvUTF8String;
+                                     const aTextTruncation:TpvGUITextTruncation;
+                                     const aFont:TpvFont;
+                                     const aFontSize:TVkFloat;
+                                     const aAvailableWidth:TVkFloat):TpvUTF8String; static;
      end;
 
      PpvGUILayoutAlignment=^TpvGUILayoutAlignment;
@@ -483,6 +502,7 @@ type TpvGUIObject=class;
       (
        pvgwfModal,
        pvgwfHeader,
+       pvgwfCenterTitle,
        pvgwfMovable,
        pvgwfResizableNW,
        pvgwfResizableNE,
@@ -515,11 +535,11 @@ type TpvGUIObject=class;
        fMouseAction:TpvGUIWindowMouseAction;
        fWindowFlags:TpvGUIWindowFlags;
        fButtonPanel:TpvGUIWidget;
+       fTextTruncation:TpvGUITextTruncation;
        function GetModal:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetModal(const aModal:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetButtonPanel:TpvGUIWidget;
        function GetPreferredSize:TpvVector2; override;
-       procedure RealignButtonPanel; virtual;
        procedure RefreshRelativePlacement; virtual;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -539,6 +559,7 @@ type TpvGUIObject=class;
        property WindowFlags:TpvGUIWindowFlags read fWindowFlags write fWindowFlags;
        property Modal:boolean read GetModal write SetModal;
        property ButtonPanel:TpvGUIWidget read GetButtonPanel;
+       property TextTruncation:TpvGUITextTruncation read fTextTruncation write fTextTruncation;
      end;
 
      TpvGUILabel=class(TpvGUIWidget)
@@ -651,6 +672,84 @@ const GUI_ELEMENT_WINDOW_HEADER=1;
       GUI_ELEMENT_MOUSE_CURSOR_PEN=75;
       GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE=76;
       GUI_ELEMENT_MOUSE_CURSOR_UP=77;
+
+class function TpvGUITextUtils.TextTruncation(const aText:TpvUTF8String;
+                                              const aTextTruncation:TpvGUITextTruncation;
+                                              const aFont:TpvFont;
+                                              const aFontSize:TVkFloat;
+                                              const aAvailableWidth:TVkFloat):TpvUTF8String;
+const Ellipsis:TpvRawByteString=TpvRawByteString(#$e2#$80#$a6);
+var ForwardIndex,BackwardIndex,Len:TpvInt32;
+    TextWidth:TVkFloat;
+    Text,ForwardTemporary,BackwardTemporary,Current:TpvUTF8String;
+begin
+ if aTextTruncation=pvgttNone then begin
+  result:=aText;
+ end else begin
+  TextWidth:=aFont.TextWidth(aText,aFontSize);
+  if TextWidth<=aAvailableWidth then begin
+   result:=aText;
+  end else begin
+   result:=Ellipsis;
+   Text:=PUCUUTF8Trim(aText);
+   Len:=length(Text);
+   case aTextTruncation of
+    pvgttHead:begin
+     BackwardIndex:=Len+1;
+     BackwardTemporary:='';
+     repeat
+      PUCUUTF8Dec(Text,BackwardIndex);
+      if BackwardIndex>=1 then begin
+       BackwardTemporary:=PUCUUTF32CharToUTF8(PUCUUTF8CodeUnitGetCharFallback(Text,BackwardIndex))+BackwardTemporary;
+       Current:=Ellipsis+PUCUUTF8TrimLeft(BackwardTemporary);
+       if aFont.TextWidth(Current,aFontSize)<=aAvailableWidth then begin
+        result:=Current;
+       end else begin
+        break;
+       end;
+      end else begin
+       break;
+      end;
+     until false;
+    end;
+    pvgttMiddle:begin
+     ForwardIndex:=1;
+     BackwardIndex:=Len+1;
+     ForwardTemporary:='';
+     BackwardTemporary:='';
+     repeat
+      PUCUUTF8Dec(Text,BackwardIndex);
+      if (ForwardIndex<=Len) and (BackwardIndex>=1) then begin
+       ForwardTemporary:=ForwardTemporary+PUCUUTF32CharToUTF8(PUCUUTF8CodeUnitGetCharAndIncFallback(Text,ForwardIndex));
+       BackwardTemporary:=PUCUUTF32CharToUTF8(PUCUUTF8CodeUnitGetCharFallback(Text,BackwardIndex))+BackwardTemporary;
+       Current:=PUCUUTF8TrimRight(ForwardTemporary)+Ellipsis+PUCUUTF8TrimLeft(BackwardTemporary);
+       if aFont.TextWidth(Current,aFontSize)<=aAvailableWidth then begin
+        result:=Current;
+       end else begin
+        break;
+       end;
+      end else begin
+       break;
+      end;
+     until false;
+    end;
+    pvgttTail:begin
+     ForwardIndex:=1;
+     ForwardTemporary:='';
+     while ForwardIndex<=Len do begin
+      ForwardTemporary:=ForwardTemporary+PUCUUTF32CharToUTF8(PUCUUTF8CodeUnitGetCharAndIncFallback(Text,ForwardIndex));
+      Current:=PUCUUTF8TrimRight(ForwardTemporary)+Ellipsis;
+      if aFont.TextWidth(Current,aFontSize)<=aAvailableWidth then begin
+       result:=Current;
+      end else begin
+       break;
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
 
 procedure TpvGUIObjectList.Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification);
 begin
@@ -1303,6 +1402,7 @@ procedure TpvGUIDefaultVectorBasedSkin.DrawWindow(const aCanvas:TpvCanvas;const 
 var LastClipRect,NewClipRect:TpvRect;
     LastModelMatrix,NewModelMatrix:TpvMatrix4x4;
     LastLinearColor:TpvVector4;
+    Title:TpvRawByteString;
 begin
  LastLinearColor:=aCanvas.LinearColor;
  try
@@ -1356,16 +1456,42 @@ begin
    try
     aCanvas.Font:=fSansBoldFont;
     aCanvas.FontSize:=IfThen(pvgwfFocused in aWindow.fWidgetFlags,fFocusedWindowHeaderFontSize,fUnfocusedWindowHeaderFontSize);
-    aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+    if pvgwfCenterTitle in aWindow.fWindowFlags then begin
+     aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+    end else begin
+     aCanvas.TextHorizontalAlignment:=pvcthaLeft;
+    end;
     aCanvas.TextVerticalAlignment:=pvctvaMiddle;
     if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
-     NewModelMatrix:=TpvMatrix4x4.CreateTranslation(aWindow.fButtonPanel.Left*0.5,
-                                                    fWindowHeaderHeight*0.5)*
-                     LastModelMatrix;
+     if pvgwfCenterTitle in aWindow.fWindowFlags then begin
+      NewModelMatrix:=TpvMatrix4x4.CreateTranslation(aWindow.fButtonPanel.Left*0.5,
+                                                     fWindowHeaderHeight*0.5)*
+                      LastModelMatrix;
+     end else begin
+      NewModelMatrix:=TpvMatrix4x4.CreateTranslation(8,
+                                                     fWindowHeaderHeight*0.5)*
+                      LastModelMatrix;
+     end;
+     Title:=TpvGUITextUtils.TextTruncation(aWindow.fTitle,
+                                           aWindow.fTextTruncation,
+                                           aCanvas.Font,
+                                           aCanvas.FontSize,
+                                           aWindow.fButtonPanel.Left-16);
     end else begin
-     NewModelMatrix:=TpvMatrix4x4.CreateTranslation(aWindow.fSize.x*0.5,
-                                                    fWindowHeaderHeight*0.5)*
-                     LastModelMatrix;
+     if pvgwfCenterTitle in aWindow.fWindowFlags then begin
+      NewModelMatrix:=TpvMatrix4x4.CreateTranslation(aWindow.fSize.x*0.5,
+                                                     fWindowHeaderHeight*0.5)*
+                       LastModelMatrix;
+     end else begin
+      NewModelMatrix:=TpvMatrix4x4.CreateTranslation(8,
+                                                     fWindowHeaderHeight*0.5)*
+                      LastModelMatrix;
+     end;
+     Title:=TpvGUITextUtils.TextTruncation(aWindow.fTitle,
+                                           aWindow.fTextTruncation,
+                                           aCanvas.Font,
+                                           aCanvas.FontSize,
+                                           aWindow.fSize.x-16);
     end;
     if ((pvgwfFocused in aWindow.fWidgetFlags) and fFocusedWindowHeaderFontShadow) or
        ((not (pvgwfFocused in aWindow.fWidgetFlags)) and fUnfocusedWindowHeaderFontShadow) then begin
@@ -1376,7 +1502,7 @@ begin
       aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fUnfocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
       aCanvas.SRGBColor:=fUnfocusedWindowHeaderFontShadowColor;
      end;
-     aCanvas.DrawText(aWindow.fTitle);
+     aCanvas.DrawText(Title);
     end;
     aCanvas.ModelMatrix:=NewModelMatrix;
     if pvgwfFocused in aWindow.fWidgetFlags then begin
@@ -1384,7 +1510,7 @@ begin
     end else begin
      aCanvas.SRGBColor:=fUnfocusedWindowHeaderFontColor;
     end;
-    aCanvas.DrawText(aWindow.fTitle);
+    aCanvas.DrawText(Title);
    finally
     aCanvas.ModelMatrix:=LastModelMatrix;
    end;
@@ -2512,6 +2638,7 @@ begin
  fMouseAction:=pvgwmaNone;
  fWindowFlags:=TpvGUIWindow.DefaultFlags;
  fButtonPanel:=nil;
+ fTextTruncation:=pvgttTail;
 end;
 
 destructor TpvGUIWindow.Destroy;
@@ -2626,13 +2753,6 @@ begin
  end;
 end;
 
-procedure TpvGUIWindow.RealignButtonPanel;
-begin
- if assigned(fButtonPanel) then begin
-  fButtonPanel.Left:=fSize.x-(fButtonPanel.Width+5);
- end;
-end;
-
 procedure TpvGUIWindow.RefreshRelativePlacement;
 begin
 
@@ -2651,12 +2771,13 @@ begin
 end;
 
 function TpvGUIWindow.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
-var ClampedRelativePosition,MinimumSize,NewSize,NewPosition:TpvVector2;
+var ClampedRelativePosition,MinimumSize,NewSize,NewPosition,OldSize:TpvVector2;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
   result:=inherited PointerEvent(aPointerEvent);
   if not result then begin
+   OldSize:=fSize;
    case aPointerEvent.PointerEventType of
     POINTEREVENT_DOWN:begin
      fMouseAction:=pvgwmaNone;
@@ -2856,7 +2977,9 @@ begin
       fSize:=Maximum(fSize,MinimumSize);
       fPosition:=Maximum(fPosition,TpvVector2.Null);
      end;
-     RealignButtonPanel;
+     if fSize<>OldSize then begin
+      PerformLayout;
+     end;
     end;
    end;
   end;
