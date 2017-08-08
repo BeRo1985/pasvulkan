@@ -268,7 +268,6 @@ type TpvGUIObject=class;
        fFocusedWindowHeaderFontShadowColor:TpvVector4;
        fUnfocusedWindowFontColor:TpvVector4;
        fFocusedWindowFontColor:TpvVector4;
-       fLabelFontColor:TpvVector4;
        fWindowShadowWidth:TpvFloat;
        fWindowShadowHeight:TpvFloat;
       public
