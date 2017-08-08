@@ -2548,6 +2548,9 @@ begin
   if fDragWidget=aGUIObject then begin
    TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
   end;
+  if fWindow=aGUIObject then begin
+   TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
+  end;
   if assigned(aGUIObject.fParent) and
      assigned(aGUIObject.fParent.fChildren) and
      aGUIObject.fParent.fChildren.Contains(aGUIObject) then begin
