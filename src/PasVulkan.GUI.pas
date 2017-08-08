@@ -548,6 +548,14 @@ type TpvGUIObject=class;
      PpvGUIWindowFlags=^TpvGUIWindowFlags;
      TpvGUIWindowFlags=set of TpvGUIWindowFlag;
 
+     PpvGUIWindowState=^TpvGUIWindowState;
+     TpvGUIWindowState=
+      (
+       pvgwsNormal,
+       pvgwsMinimized,
+       pvgwsMaximized
+      );
+
      TpvGUIWindow=class(TpvGUIWidget)
       public
        const DefaultFlags=[pvgwfHeader,
@@ -565,9 +573,13 @@ type TpvGUIObject=class;
        fTitle:TpvUTF8String;
        fMouseAction:TpvGUIWindowMouseAction;
        fWindowFlags:TpvGUIWindowFlags;
+       fWindowState:TpvGUIWindowState;
        fButtonPanel:TpvGUIWidget;
+       fSavedPosition:TpvVector2;
+       fSavedSize:TpvVector2;
        function GetModal:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetModal(const aModal:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetWindowState(const aWindowState:TpvGUIWindowState); {$ifdef CAN_INLINE}inline;{$endif}
        function GetButtonPanel:TpvGUIWidget;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
@@ -587,9 +599,12 @@ type TpvGUIObject=class;
        procedure Draw; override;
       public
        property FontColor;
+       property SavedPosition:TpvVector2 read fSavedPosition write fSavedPosition;
+       property SavedSize:TpvVector2 read fSavedSize write fSavedSize;
       published
        property Title:TpvUTF8String read fTitle write fTitle;
        property WindowFlags:TpvGUIWindowFlags read fWindowFlags write fWindowFlags;
+       property WindowState:TpvGUIWindowState read fWindowState write SetWindowState;
        property Modal:boolean read GetModal write SetModal;
        property ButtonPanel:TpvGUIWidget read GetButtonPanel;
        property Font;
@@ -2774,6 +2789,7 @@ begin
  fTitle:='Window';
  fMouseAction:=pvgwmaNone;
  fWindowFlags:=TpvGUIWindow.DefaultFlags;
+ fWindowState:=TpvGUIWindowState.pvgwsNormal;
  fButtonPanel:=nil;
  fTextHorizontalAlignment:=pvgtaCenter;
  fTextTruncation:=pvgttMiddle;
@@ -2815,6 +2831,32 @@ begin
   Include(fWindowFlags,pvgwfModal);
  end else begin
   Exclude(fWindowFlags,pvgwfModal);
+ end;
+end;
+
+procedure TpvGUIWindow.SetWindowState(const aWindowState:TpvGUIWindowState);
+begin
+ if fWindowState<>aWindowState then begin
+  case aWindowState of
+   pvgwsNormal:begin
+    fPosition:=fSavedPosition;
+    fSize:=fSavedSize;
+   end;
+   pvgwsMinimized:begin
+    fSavedPosition:=fPosition;
+    fSavedSize:=fSize;
+   end;
+   pvgwsMaximized:begin
+    fSavedPosition:=fPosition;
+    fSavedSize:=fSize;
+    fPosition:=TpvVector2.Null;
+    if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+     fSize:=(fParent as TpvGUIWidget).fSize;
+    end;
+   end;
+  end;
+  fWindowState:=aWindowState;
+  PerformLayout;
  end;
 end;
 
@@ -2928,43 +2970,52 @@ begin
     POINTEREVENT_DOWN:begin
      fMouseAction:=pvgwmaNone;
      fCursor:=pvgcArrow;
-     if (pvgwfResizableNW in fWindowFlags) and
+     if (fWindowState in [pvgwsNormal]) and
+        (pvgwfResizableNW in fWindowFlags) and
         (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
         (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
       fMouseAction:=pvgwmaSizeNW;
       fCursor:=pvgcNWSE;
-     end else if (pvgwfResizableNE in fWindowFlags) and
+     end else if (fWindowState in [pvgwsNormal]) and
+                 (pvgwfResizableNE in fWindowFlags) and
                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
                  (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
       fMouseAction:=pvgwmaSizeNE;
       fCursor:=pvgcNESW;
-     end else if (pvgwfResizableSW in fWindowFlags) and
+     end else if (fWindowState in [pvgwsNormal]) and
+                 (pvgwfResizableSW in fWindowFlags) and
                  (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
       fMouseAction:=pvgwmaSizeSW;
       fCursor:=pvgcNESW;
-     end else if (pvgwfResizableSE in fWindowFlags) and
+     end else if (fWindowState in [pvgwsNormal]) and
+                 (pvgwfResizableSE in fWindowFlags) and
                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
       fMouseAction:=pvgwmaSizeSE;
       fCursor:=pvgcNWSE;
-     end else if (pvgwfResizableN in fWindowFlags) and
+     end else if (fWindowState in [pvgwsNormal]) and
+                 (pvgwfResizableN in fWindowFlags) and
                  (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
       fMouseAction:=pvgwmaSizeN;
       fCursor:=pvgcNS;
-     end else if (pvgwfResizableS in fWindowFlags) and
+     end else if (fWindowState in [pvgwsNormal]) and
+                 (pvgwfResizableS in fWindowFlags) and
                  (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
       fMouseAction:=pvgwmaSizeS;
       fCursor:=pvgcNS;
-     end else if (pvgwfResizableW in fWindowFlags) and
+     end else if (fWindowState in [pvgwsNormal]) and
+                 (pvgwfResizableW in fWindowFlags) and
                  (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
       fMouseAction:=pvgwmaSizeW;
       fCursor:=pvgcEW;
-     end else if (pvgwfResizableE in fWindowFlags) and
+     end else if (fWindowState in [pvgwsNormal]) and
+                 (pvgwfResizableE in fWindowFlags) and
                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
       fMouseAction:=pvgwmaSizeE;
       fCursor:=pvgcEW;
-     end else if (pvgwfMovable in fWindowFlags) and
+     end else if (fWindowState in [pvgwsNormal,pvgwsMinimized]) and
+                 (pvgwfMovable in fWindowFlags) and
                  (aPointerEvent.Position.y<Skin.fWindowHeaderHeight) then begin
       fMouseAction:=pvgwmaMove;
       fCursor:=pvgcMove;
