@@ -225,6 +225,8 @@ type TpvGUIObject=class;
        fMonoFont:TpvFont;
        fWindowHeaderHeight:TpvFloat;
        fWindowResizeGripSize:TpvFloat;
+       fMinimizedWindowMinimumWidth:TpvFloat;
+       fMinimizedWindowMinimumHeight:TpvFloat;
        fWindowMinimumWidth:TpvFloat;
        fWindowMinimumHeight:TpvFloat;
       public
@@ -253,6 +255,8 @@ type TpvGUIObject=class;
        property FontSpriteAtlas:TpvSpriteAtlas read fFontSpriteAtlas;
        property WindowHeaderHeight:TpvFloat read fWindowHeaderHeight write fWindowHeaderHeight;
        property WindowResizeGripSize:TpvFloat read fWindowResizeGripSize write fWindowResizeGripSize;
+       property MinimizedWindowMinimumWidth:TpvFloat read fMinimizedWindowMinimumWidth write fMinimizedWindowMinimumWidth;
+       property MinimizedWindowMinimumHeight:TpvFloat read fMinimizedWindowMinimumHeight write fMinimizedWindowMinimumHeight;
        property WindowMinimumWidth:TpvFloat read fWindowMinimumWidth write fWindowMinimumWidth;
        property WindowMinimumHeight:TpvFloat read fWindowMinimumHeight write fWindowMinimumHeight;
      end;
@@ -392,6 +396,7 @@ type TpvGUIObject=class;
        function GetSkin:TpvGUISkin; virtual;
        procedure SetSkin(const aSkin:TpvGUISkin); virtual;
        function GetPreferredSize:TpvVector2; virtual;
+       function GetFixedSize:TpvVector2; virtual;
        function GetFont:TpvFont; virtual;
        function GetFontSize:TpvFloat; virtual;
        function GetFontColor:TpvVector4; virtual;
@@ -573,6 +578,7 @@ type TpvGUIObject=class;
        fTitle:TpvUTF8String;
        fMouseAction:TpvGUIWindowMouseAction;
        fWindowFlags:TpvGUIWindowFlags;
+       fLastWindowState:TpvGUIWindowState;
        fWindowState:TpvGUIWindowState;
        fButtonPanel:TpvGUIWidget;
        fSavedPosition:TpvVector2;
@@ -580,6 +586,7 @@ type TpvGUIObject=class;
        fMinimizationButton:TpvGUIButton;
        fMaximizationButton:TpvGUIButton;
        fCloseButton:TpvGUIButton;
+       function GetFixedSize:TpvVector2; override;
        function GetModal:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetModal(const aModal:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetWindowState(const aWindowState:TpvGUIWindowState); {$ifdef CAN_INLINE}inline;{$endif}
@@ -587,6 +594,7 @@ type TpvGUIObject=class;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
        procedure RefreshRelativePlacement; virtual;
+       procedure OnButtonClick(const aSender:TpvGUIObject); virtual;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -959,7 +967,7 @@ begin
      Size[Axis0]:=Size[Axis0]+fSpacing;
     end;
     ChildPreferredSize:=ChildWidget.PreferredSize;
-    ChildFixedSize:=ChildWidget.fFixedSize;
+    ChildFixedSize:=ChildWidget.GetFixedSize;
     if ChildFixedSize.x>0.0 then begin
      ChildTargetSize.x:=ChildFixedSize.x;
     end else begin
@@ -988,7 +996,7 @@ var Axis0,Axis1,ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
- FixedSize:=aWidget.fFixedSize;
+ FixedSize:=aWidget.GetFixedSize;
  if FixedSize.x>0.0 then begin
   ContainerSize.x:=FixedSize.x;
  end else begin
@@ -1033,7 +1041,7 @@ begin
      Offset:=Offset+fSpacing;
     end;
     ChildPreferredSize:=ChildWidget.PreferredSize;
-    ChildFixedSize:=ChildWidget.fFixedSize;
+    ChildFixedSize:=ChildWidget.GetFixedSize;
     if ChildFixedSize.x>0.0 then begin
      ChildTargetSize.x:=ChildFixedSize.x;
     end else begin
@@ -1165,6 +1173,9 @@ begin
  fWindowHeaderHeight:=32;
 
  fWindowResizeGripSize:=8;
+
+ fMinimizedWindowMinimumWidth:=Max(fWindowHeaderHeight,fWindowResizeGripSize*2);
+ fMinimizedWindowMinimumHeight:=Max(fWindowHeaderHeight,fWindowResizeGripSize*2);
 
  fWindowMinimumWidth:=Max(fWindowHeaderHeight+8,fWindowResizeGripSize*2);
  fWindowMinimumHeight:=Max(fWindowHeaderHeight+8,fWindowResizeGripSize*2);
@@ -2043,6 +2054,11 @@ begin
  end;
 end;
 
+function TpvGUIWidget.GetFixedSize:TpvVector2;
+begin
+ result:=fFixedSize;
+end;
+
 function TpvGUIWidget.GetFont:TpvFont;
 begin
  if assigned(Skin) and not assigned(fFont) then begin
@@ -2165,7 +2181,7 @@ begin
    if Child is TpvGUIWidget then begin
     ChildWidget:=Child as TpvGUIWidget;
     ChildWidgetPreferredSize:=ChildWidget.GetPreferredSize;
-    ChildWidgetFixedSize:=ChildWidget.fFixedSize;
+    ChildWidgetFixedSize:=ChildWidget.GetFixedSize;
     if ChildWidgetFixedSize.x>0.0 then begin
      ChildWidgetSize.x:=ChildWidgetFixedSize.x;
     end else begin
@@ -2795,6 +2811,7 @@ begin
  fTitle:='Window';
  fMouseAction:=pvgwmaNone;
  fWindowFlags:=TpvGUIWindow.DefaultFlags;
+ fLastWindowState:=TpvGUIWindowState.pvgwsNormal;
  fWindowState:=TpvGUIWindowState.pvgwsNormal;
  fButtonPanel:=nil;
  fMinimizationButton:=nil;
@@ -2822,10 +2839,29 @@ begin
  inherited BeforeDestruction;
 end;
 
+procedure TpvGUIWindow.OnButtonClick(const aSender:TpvGUIObject);
+begin
+ if aSender=fMinimizationButton then begin
+  if fWindowState=pvgwsMinimized then begin
+   WindowState:=pvgwsNormal;
+  end else begin
+   WindowState:=pvgwsMinimized;
+  end;
+ end else if aSender=fMaximizationButton then begin
+  if fWindowState=pvgwsMaximized then begin
+   WindowState:=pvgwsNormal;
+  end else begin
+   WindowState:=pvgwsMaximized;
+  end;
+ end else if aSender=fCloseButton then begin
+ end;
+end;
+
 procedure TpvGUIWindow.AddMinimizationButton;
 begin
  if not assigned(fMinimizationButton) then begin
   fMinimizationButton:=TpvGUIButton.Create(ButtonPanel);
+  fMinimizationButton.OnClick:=OnButtonClick;
   fMinimizationButton.fCaption:='_';
  end;
 end;
@@ -2834,6 +2870,7 @@ procedure TpvGUIWindow.AddMaximizationButton;
 begin
  if not assigned(fMaximizationButton) then begin
   fMaximizationButton:=TpvGUIButton.Create(ButtonPanel);
+  fMaximizationButton.OnClick:=OnButtonClick;
   fMaximizationButton.fCaption:='O';
  end;
 end;
@@ -2842,6 +2879,7 @@ procedure TpvGUIWindow.AddCloseButton;
 begin
  if not assigned(fCloseButton) then begin
   fCloseButton:=TpvGUIButton.Create(ButtonPanel);
+  fCloseButton.OnClick:=OnButtonClick;
   fCloseButton.fCaption:='X';
  end;
 end;
@@ -2868,26 +2906,46 @@ begin
 end;
 
 procedure TpvGUIWindow.SetWindowState(const aWindowState:TpvGUIWindowState);
+var MinimumSize:TpvVector2;
 begin
  if fWindowState<>aWindowState then begin
+  if fWindowState=pvgwsNormal then begin
+   fSavedPosition:=fPosition;
+   fSavedSize:=fSize;
+  end;
   case aWindowState of
    pvgwsNormal:begin
-    fPosition:=fSavedPosition;
+    if fWindowState=pvgwsMaximized then begin
+     fPosition:=fSavedPosition;
+    end;
     fSize:=fSavedSize;
    end;
    pvgwsMinimized:begin
-    fSavedPosition:=fPosition;
-    fSavedSize:=fSize;
+    fSize.y:=Skin.fWindowHeaderHeight;
    end;
    pvgwsMaximized:begin
-    fSavedPosition:=fPosition;
-    fSavedSize:=fSize;
     fPosition:=TpvVector2.Null;
     if assigned(fParent) and (fParent is TpvGUIWidget) then begin
      fSize:=(fParent as TpvGUIWidget).fSize;
     end;
    end;
   end;
+  if aWindowState=pvgwsMinimized then begin
+   MinimumSize:=TpvVector2.Create(Skin.fMinimizedWindowMinimumWidth,Skin.fMinimizedWindowMinimumHeight);
+  end else begin
+   MinimumSize:=TpvVector2.Create(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
+  end;
+  if assigned(fButtonPanel) then begin
+   MinimumSize.x:=Max(MinimumSize.x,fButtonPanel.Size.x+8);
+  end;
+  if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+   fSize:=Clamp(fSize,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
+   fPosition:=Clamp(fPosition,TpvVector2.Null,(fParent as TpvGUIWidget).fSize-fSize);
+  end else begin
+   fSize:=Maximum(fSize,MinimumSize);
+   fPosition:=Maximum(fPosition,TpvVector2.Null);
+  end;
+  fLastWindowState:=fWindowState;
   fWindowState:=aWindowState;
   PerformLayout;
  end;
@@ -2908,6 +2966,26 @@ begin
   result:=Skin.fWindowFontColor;
  end else begin
   result:=fFontColor;
+ end;
+end;
+
+function TpvGUIWindow.GetFixedSize:TpvVector2;
+begin
+ case fWindowState of
+  pvgwsMinimized:begin
+   result:=inherited GetFixedSize;
+   result.y:=Skin.fWindowHeaderHeight;
+  end;
+  pvgwsMaximized:begin
+   if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+    result:=(fParent as TpvGUIWidget).fSize;
+   end else begin
+    result:=inherited GetFixedSize;
+   end;
+  end;
+  else begin
+   result:=inherited GetFixedSize;
+  end;
  end;
 end;
 
@@ -2941,6 +3019,16 @@ begin
   ButtonPanelPreferredSize:=fButtonPanel.PreferredSize;
   result.x:=result.x+(ButtonPanelPreferredSize.x+(8*2));
   result.y:=Maximum(result.y,ButtonPanelPreferredSize.y);
+ end;
+ case fWindowState of
+  pvgwsMinimized:begin
+   result.y:=Skin.fWindowHeaderHeight;
+  end;
+  pvgwsMaximized:begin
+   if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+    result:=(fParent as TpvGUIWidget).fSize;
+   end;
+  end;
  end;
 end;
 
@@ -3047,9 +3135,13 @@ begin
                  (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
       fMouseAction:=pvgwmaSizeE;
       fCursor:=pvgcEW;
-     end else if (fWindowState in [pvgwsNormal,pvgwsMinimized]) and
-                 (pvgwfMovable in fWindowFlags) and
+     end else if (pvgwfMovable in fWindowFlags) and
                  (aPointerEvent.Position.y<Skin.fWindowHeaderHeight) then begin
+      if fWindowState=pvgwsMaximized then begin
+       fSavedPosition.x:=Max(0.0,aPointerEvent.Position.x-(fSavedSize.x*0.5));
+       fSavedPosition.y:=fPosition.y;
+       WindowState:=pvgwsNormal;
+      end;
       fMouseAction:=pvgwmaMove;
       fCursor:=pvgcMove;
      end;
@@ -3104,7 +3196,14 @@ begin
      end;
     end;
     POINTEREVENT_DRAG:begin
-     MinimumSize:=TpvVector2.Create(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
+     if WindowState=pvgwsMinimized then begin
+      MinimumSize:=TpvVector2.Create(Skin.fMinimizedWindowMinimumWidth,Skin.fMinimizedWindowMinimumHeight);
+     end else begin
+      MinimumSize:=TpvVector2.Create(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
+     end;
+     if assigned(fButtonPanel) then begin
+      MinimumSize.x:=Max(MinimumSize.x,fButtonPanel.Size.x+8);
+     end;
      case fMouseAction of
       pvgwmaMove:begin
        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
