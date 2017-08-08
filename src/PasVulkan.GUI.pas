@@ -336,6 +336,7 @@ type TpvGUIObject=class;
        pvgwfVisible,
        pvgwfFocused,
        pvgwfPointerFocused,
+       pvgwfWantAllKeys,
        pvgwfTabStop
       );
 
@@ -379,6 +380,8 @@ type TpvGUIObject=class;
        procedure SetPointerFocused(const aPointerFocused:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetTabStop:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetTabStop(const aTabStop:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetWantAllKeys:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetWantAllKeys(const aWantAllKeys:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetLeft:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetLeft(const aLeft:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetTop:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -417,7 +420,10 @@ type TpvGUIObject=class;
        procedure Release; virtual;
        function GetEnumerator:TpvGUIWidgetEnumerator;
        function Contains(const aPosition:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure GetTabList(const aList:TList);
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget;
+       function FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aForward,aCheckTabStop,aCheckParent:boolean):TpvGUIWidget; virtual;
+       function ProcessTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean; virtual;
        procedure PerformLayout; virtual;
        procedure RequestFocus; virtual;
        function Enter:boolean; virtual;
@@ -450,6 +456,7 @@ type TpvGUIObject=class;
        property Focused:boolean read GetFocused write SetFocused;
        property PointerFocused:boolean read GetPointerFocused write SetPointerFocused;
        property TabStop:boolean read GetTabStop write SetTabStop;
+       property WantAllKeys:boolean read GetWantAllKeys write SetWantAllKeys;
        property Left:TpvFloat read GetLeft write SetLeft;
        property Top:TpvFloat read GetTop write SetTop;
        property Width:TpvFloat read GetWidth write SetWidth;
@@ -1987,6 +1994,20 @@ begin
  end;
 end;
 
+function TpvGUIWidget.GetWantAllKeys:boolean;
+begin
+ result:=pvgwfWantAllKeys in fWidgetFlags;
+end;
+
+procedure TpvGUIWidget.SetWantAllKeys(const aWantAllKeys:boolean);
+begin
+ if aWantAllKeys then begin
+  Include(fWidgetFlags,pvgwfWantAllKeys);
+ end else begin
+  Exclude(fWidgetFlags,pvgwfWantAllKeys);
+ end;
+end;
+
 function TpvGUIWidget.GetLeft:TpvFloat;
 begin
  result:=fPosition.x;
@@ -2133,6 +2154,30 @@ begin
          (aPosition.y<fSize.y);
 end;
 
+procedure TpvGUIWidget.GetTabList(const aList:TList);
+var ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+begin
+ if (fWidgetFlags*[pvgwfVisible,pvgwfEnabled])=[pvgwfVisible,pvgwfEnabled] then begin
+  for ChildIndex:=0 to fChildren.Count-1 do begin
+   Child:=fChildren.Items[ChildIndex];
+   if assigned(Child) and (Child is TpvGUIWidget) then begin
+    ChildWidget:=Child as TpvGUIWidget;
+    if not ((self is TpvGUIWindow) and
+            (ChildWidget=(self as TpvGUIWindow).fButtonPanel)) then begin
+     if (ChildWidget.fWidgetFlags*[pvgwfVisible,pvgwfEnabled])=[pvgwfVisible,pvgwfEnabled] then begin
+      if ChildWidget.TabStop then begin
+       aList.Add(ChildWidget);
+      end;
+      ChildWidget.GetTabList(aList);
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
 function TpvGUIWidget.FindWidget(const aPosition:TpvVector2):TpvGUIWidget;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
@@ -2156,6 +2201,66 @@ begin
   result:=self;
  end else begin
   result:=nil;
+ end;
+end;
+
+function TpvGUIWidget.FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aForward,aCheckTabStop,aCheckParent:boolean):TpvGUIWidget;
+const Directions:array[boolean] of TpvInt32=(-1,1);
+var Count,Index,StartIndex:TpvInt32;
+    Widget:TpvGUIWidget;
+    List:TList;
+begin
+ result:=nil;
+ List:=TList.Create;
+ try
+  GetTabList(List);
+  Count:=List.Count;
+  if Count>0 then begin
+   Index:=List.IndexOf(aCurrentWidget);
+   if Index<0 then begin
+    if aForward then begin
+     Index:=0;
+    end else begin
+     Index:=Count-1;
+    end;
+   end;
+   StartIndex:=Index;
+   repeat
+    inc(Index,Directions[aForward]);
+    if Index<0 then begin
+     inc(Index,Count);
+    end else if Index>=Count then begin
+     dec(Index,Count);
+    end;
+    Widget:=List.Items[Index];
+    if (Widget<>aCurrentWidget) and
+       ((Widget.fWidgetFlags*[pvgwfVisible,pvgwfEnabled])=[pvgwfVisible,pvgwfEnabled]) and
+       (Widget.TabStop or not aCheckTabStop) and
+       ((Widget.fParent=self) or not aCheckParent) then begin
+     result:=Widget;
+     break;
+    end;
+   until Index=StartIndex;
+  end;
+ finally
+  List.Free;
+ end;
+end;
+
+function TpvGUIWidget.ProcessTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean;
+var CurrentWidget,ParentWidget:TpvGUIWidget;
+begin
+ result:=false;
+ if assigned(fInstance) then begin
+  ParentWidget:=aFromWidget.Window;
+  if assigned(ParentWidget) then begin
+   CurrentWidget:=ParentWidget.FindNextWidget(aFromWidget,not aToPrevious,true,false);
+   if assigned(CurrentWidget) and
+     (pvgwfTabStop in CurrentWidget.fWidgetFlags) then begin
+    fInstance.UpdateFocus(CurrentWidget);
+    result:=true;
+   end;
+  end;
  end;
 end;
 
@@ -2734,6 +2839,20 @@ var Index:TpvInt32;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if not result then begin
+  if (aKeyEvent.KeyEventType=KEYEVENT_DOWN) and (aKeyEvent.KeyCode=KEYCODE_TAB) then begin
+   if fCurrentFocusPath.Count>0 then begin
+    Current:=fCurrentFocusPath.Items[0];
+    if (Current<>self) and (Current is TpvGUIWidget) then begin
+     CurrentWidget:=Current as TpvGUIWidget;
+     if CurrentWidget.Focused then begin
+      result:=ProcessTab(CurrentWidget,KEYMODIFIER_SHIFT IN aKeyEvent.KeyModifiers);
+      if result then begin
+       exit;
+      end;
+     end;
+    end;
+   end;
+  end;
   for Index:=0 to fCurrentFocusPath.Count-1 do begin
    Current:=fCurrentFocusPath.Items[Index];
    if (Current<>self) and (Current is TpvGUIWidget) then begin
@@ -3512,6 +3631,7 @@ end;
 constructor TpvGUIButton.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
+ Include(fWidgetFlags,pvgwfTabStop);
  fButtonFlags:=[pvgbfNormalButton];
  fButtonGroup:=TpvGUIButtonGroup.Create(false);
  fCaption:='Button';
