@@ -157,13 +157,16 @@ begin
  fGUIWindow.Top:=200;
  fGUIWindow.Title:='An example window';
  fGUIWindow.Layout:=TpvGUIBoxLayout.Create(fGUIWindow,pvglaLeading,pvgloVertical,8.0,8.0);
+ fGUIWindow.AddMinimizationButton;
+ fGUIWindow.AddMaximizationButton;
+ fGUIWindow.AddCloseButton;
 
  fGUILabel:=TpvGUILabel.Create(fGUIWindow);
  fGUILabel.Caption:='An example label';
  fGUILabel.Cursor:=pvgcLink;
 
- fGUIButton:=TpvGUIButton.Create(fGUIWindow.ButtonPanel);
- fGUIButton.Caption:=TpvRawByteString(#$e2#$80#$a6);
+{fGUIButton:=TpvGUIButton.Create(fGUIWindow.ButtonPanel);
+ fGUIButton.Caption:=TpvRawByteString(#$e2#$80#$a6);}
 
  fGUIButton:=TpvGUIButton.Create(fGUIWindow);
  fGUIButton.Caption:='An example button';
@@ -180,6 +183,9 @@ begin
  fGUIOtherWindow.Top:=200;
  fGUIOtherWindow.Title:='An another example window';
  fGUIOtherWindow.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow,pvglaLeading,pvgloVertical,8.0,8.0);
+ fGUIOtherWindow.AddMinimizationButton;
+ fGUIOtherWindow.AddMaximizationButton;
+ fGUIOtherWindow.AddCloseButton;
 
  fGUILabel:=TpvGUILabel.Create(fGUIOtherWindow);
  fGUILabel.Caption:='An other example label';

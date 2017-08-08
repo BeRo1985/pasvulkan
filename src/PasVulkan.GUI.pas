@@ -577,6 +577,9 @@ type TpvGUIObject=class;
        fButtonPanel:TpvGUIWidget;
        fSavedPosition:TpvVector2;
        fSavedSize:TpvVector2;
+       fMinimizationButton:TpvGUIButton;
+       fMaximizationButton:TpvGUIButton;
+       fCloseButton:TpvGUIButton;
        function GetModal:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetModal(const aModal:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetWindowState(const aWindowState:TpvGUIWindowState); {$ifdef CAN_INLINE}inline;{$endif}
@@ -589,6 +592,9 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
+       procedure AddMinimizationButton;
+       procedure AddMaximizationButton;
+       procedure AddCloseButton;
        procedure DisposeWindow;
        procedure Center;
        procedure PerformLayout; override;
@@ -2791,6 +2797,9 @@ begin
  fWindowFlags:=TpvGUIWindow.DefaultFlags;
  fWindowState:=TpvGUIWindowState.pvgwsNormal;
  fButtonPanel:=nil;
+ fMinimizationButton:=nil;
+ fMaximizationButton:=nil;
+ fCloseButton:=nil;
  fTextHorizontalAlignment:=pvgtaCenter;
  fTextTruncation:=pvgttMiddle;
 end;
@@ -2811,6 +2820,30 @@ begin
   fInstance.DisposeWindow(self);
  end;
  inherited BeforeDestruction;
+end;
+
+procedure TpvGUIWindow.AddMinimizationButton;
+begin
+ if not assigned(fMinimizationButton) then begin
+  fMinimizationButton:=TpvGUIButton.Create(ButtonPanel);
+  fMinimizationButton.fCaption:='_';
+ end;
+end;
+
+procedure TpvGUIWindow.AddMaximizationButton;
+begin
+ if not assigned(fMaximizationButton) then begin
+  fMaximizationButton:=TpvGUIButton.Create(ButtonPanel);
+  fMaximizationButton.fCaption:='O';
+ end;
+end;
+
+procedure TpvGUIWindow.AddCloseButton;
+begin
+ if not assigned(fCloseButton) then begin
+  fCloseButton:=TpvGUIButton.Create(ButtonPanel);
+  fCloseButton.fCaption:='X';
+ end;
 end;
 
 procedure TpvGUIWindow.DisposeWindow;
@@ -2902,7 +2935,7 @@ begin
     ChildWidget:=Child as TpvGUIWidget;
     ChildWidget.FixedWidth:=22;
     ChildWidget.FixedHeight:=22;
-    ChildWidget.FontSize:=-15;
+    ChildWidget.FontSize:=-12;
    end;
   end;
   ButtonPanelPreferredSize:=fButtonPanel.PreferredSize;
@@ -2927,7 +2960,7 @@ begin
     ChildWidget:=Child as TpvGUIWidget;
     ChildWidget.FixedWidth:=22;
     ChildWidget.FixedHeight:=22;
-    ChildWidget.FontSize:=-15;
+    ChildWidget.FontSize:=-12;
    end;
   end;
   ButtonPanelPreferredSize:=fButtonPanel.PreferredSize;
