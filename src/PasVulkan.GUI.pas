@@ -420,7 +420,7 @@ type TpvGUIObject=class;
        procedure Release; virtual;
        function GetEnumerator:TpvGUIWidgetEnumerator;
        function Contains(const aPosition:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure GetTabList(const aList:TList);
+       procedure GetTabList(const aList:Classes.TList);
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget;
        function FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aForward,aCheckTabStop,aCheckParent:boolean):TpvGUIWidget; virtual;
        function ProcessTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean; virtual;
@@ -2154,7 +2154,7 @@ begin
          (aPosition.y<fSize.y);
 end;
 
-procedure TpvGUIWidget.GetTabList(const aList:TList);
+procedure TpvGUIWidget.GetTabList(const aList:Classes.TList);
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
@@ -2208,10 +2208,10 @@ function TpvGUIWidget.FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aFo
 const Directions:array[boolean] of TpvInt32=(-1,1);
 var Count,Index,StartIndex:TpvInt32;
     Widget:TpvGUIWidget;
-    List:TList;
+    List:Classes.TList;
 begin
  result:=nil;
- List:=TList.Create;
+ List:=Classes.TList.Create;
  try
   GetTabList(List);
   Count:=List.Count;
