@@ -2426,9 +2426,11 @@ begin
  fFontCodePointRanges:=aFontCodePointRanges;
 
  if length(fFontCodePointRanges)=0 then begin
-  SetLength(fFontCodePointRanges,2);
+  SetLength(fFontCodePointRanges,4);
   fFontCodePointRanges[0]:=TpvFontCodePointRange.Create(0,255);
   fFontCodePointRanges[1]:=TpvFontCodePointRange.Create($2026,$2026);
+  fFontCodePointRanges[2]:=TpvFontCodePointRange.Create($f136,$f136); // Window close
+  fFontCodePointRanges[3]:=TpvFontCodePointRange.Create($f1ea,$f1ec); // Window maximize, minimize, restore
  end;
 
  fStandardSkin:=TpvGUIDefaultVectorBasedSkin.Create(self);
