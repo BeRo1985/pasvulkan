@@ -48,6 +48,7 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
        fGUILabel:TpvGUILabel;
        fGUIButton:TpvGUIButton;
        fGUIOtherWindow:TpvGUIWindow;
+       fGUIYetOtherWindow:TpvGUIWindow;
        fLastMousePosition:TpvVector2;
        fLastMouseButtons:TpvApplicationInputPointerButtons;
        fReady:boolean;
@@ -206,6 +207,23 @@ begin
 
  fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow);
  fGUIButton.Caption:='An example radio button (3)';
+
+ fGUIYetOtherWindow:=TpvGUIWindow.Create(fGUIOtherWindow);
+ fGUIYetOtherWindow.Left:=550;
+ fGUIYetOtherWindow.Top:=200;
+ fGUIYetOtherWindow.Title:='A yet another example window';
+ fGUIYetOtherWindow.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow,pvglaLeading,pvgloVertical,8.0,8.0);
+ fGUIYetOtherWindow.AddMinimizationButton;
+ fGUIYetOtherWindow.AddMaximizationButton;
+ fGUIYetOtherWindow.AddCloseButton;
+
+ fGUILabel:=TpvGUILabel.Create(fGUIYetOtherWindow);
+ fGUILabel.Caption:='An other example label';
+ fGUILabel.Cursor:=pvgcBusy;
+
+ fGUILabel:=TpvGUILabel.Create(fGUIYetOtherWindow);
+ fGUILabel.Caption:='An another example label';
+ fGUILabel.Cursor:=pvgcUnavailable;
 
 end;
 

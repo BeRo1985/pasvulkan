@@ -1077,7 +1077,9 @@ begin
       end;
      end;
     end;
-    ChildWidget.fPosition:=Position;
+    if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
+     ChildWidget.fPosition:=Position;
+    end;
     ChildWidget.fSize:=ChildTargetSize;
     ChildWidget.PerformLayout;
     Offset:=Offset+ChildTargetSize[Axis0];
@@ -2957,12 +2959,17 @@ begin
 end;
 
 procedure TpvGUIWindow.SetWindowState(const aWindowState:TpvGUIWindowState);
-var MinimumSize:TpvVector2;
+var MinimumPosition,MinimumSize:TpvVector2;
 begin
  if fWindowState<>aWindowState then begin
   if fWindowState=pvgwsNormal then begin
    fSavedPosition:=fPosition;
    fSavedSize:=fSize;
+  end;
+  if assigned(fParent) and (fParent is TpvGUIWindow) and (pvgwfHeader in (fParent as TpvGUIWindow).fWindowFlags) then begin
+   MinimumPosition:=TpvVector2.Create(0.0,Skin.fWindowHeaderHeight);
+  end else begin
+   MinimumPosition:=TpvVector2.Null;
   end;
   case aWindowState of
    pvgwsNormal:begin
@@ -2975,7 +2982,7 @@ begin
     fSize.y:=Skin.fWindowHeaderHeight;
    end;
    pvgwsMaximized:begin
-    fPosition:=TpvVector2.Null;
+    fPosition:=MinimumPosition;
     if assigned(fParent) and (fParent is TpvGUIWidget) then begin
      fSize:=(fParent as TpvGUIWidget).fSize;
     end;
@@ -2991,10 +2998,10 @@ begin
   end;
   if assigned(fParent) and (fParent is TpvGUIWidget) then begin
    fSize:=Clamp(fSize,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
-   fPosition:=Clamp(fPosition,TpvVector2.Null,(fParent as TpvGUIWidget).fSize-fSize);
+   fPosition:=Clamp(fPosition,MinimumPosition,(fParent as TpvGUIWidget).fSize-fSize);
   end else begin
    fSize:=Maximum(fSize,MinimumSize);
-   fPosition:=Maximum(fPosition,TpvVector2.Null);
+   fPosition:=Maximum(fPosition,MinimumPosition);
   end;
   fLastWindowState:=fWindowState;
   fWindowState:=aWindowState;
@@ -3166,7 +3173,7 @@ begin
 end;
 
 function TpvGUIWindow.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
-var ClampedRelativePosition,MinimumSize,NewSize,NewPosition,OldSize:TpvVector2;
+var ClampedRelativePosition,MinimumPosition,MinimumSize,NewSize,NewPosition,OldSize:TpvVector2;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -3282,6 +3289,11 @@ begin
      end;
     end;
     POINTEREVENT_DRAG:begin
+     if assigned(fParent) and (fParent is TpvGUIWindow) and (pvgwfHeader in (fParent as TpvGUIWindow).fWindowFlags) then begin
+      MinimumPosition:=TpvVector2.Create(0.0,Skin.fWindowHeaderHeight);
+     end else begin
+      MinimumPosition:=TpvVector2.Null;
+     end;
      if WindowState=pvgwsMinimized then begin
       MinimumSize:=TpvVector2.Create(Skin.fMinimizedWindowMinimumWidth,Skin.fMinimizedWindowMinimumHeight);
      end else begin
@@ -3395,10 +3407,10 @@ begin
      end;
      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
       fSize:=Clamp(fSize,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
-      fPosition:=Clamp(fPosition,TpvVector2.Null,(fParent as TpvGUIWidget).fSize-fSize);
+      fPosition:=Clamp(fPosition,MinimumPosition,(fParent as TpvGUIWidget).fSize-fSize);
      end else begin
       fSize:=Maximum(fSize,MinimumSize);
-      fPosition:=Maximum(fPosition,TpvVector2.Null);
+      fPosition:=Maximum(fPosition,MinimumPosition);
      end;
      if fSize<>OldSize then begin
       PerformLayout;
