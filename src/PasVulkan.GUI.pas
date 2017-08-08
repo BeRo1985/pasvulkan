@@ -218,6 +218,7 @@ type TpvGUIObject=class;
        fButtonFontColor:TpvVector4;
        fLabelFontColor:TpvVector4;
        fFontSpriteAtlas:TpvSpriteAtlas;
+       fIconicFont:TpvFont;
        fSansFont:TpvFont;
        fSansBoldFont:TpvFont;
        fSansBoldItalicFont:TpvFont;
@@ -243,6 +244,7 @@ type TpvGUIObject=class;
        property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
        property LabelFontColor:TpvVector4 read fLabelFontColor write fLabelFontColor;
       published
+       property IconicFont:TpvFont read fIconicFont write fIconicFont;
        property SansFont:TpvFont read fSansFont write fSansFont;
        property SansBoldFont:TpvFont read fSansBoldFont write fSansBoldFont;
        property SansBoldItalicFont:TpvFont read fSansBoldItalicFont write fSansBoldItalicFont;
@@ -1089,6 +1091,7 @@ constructor TpvGUISkin.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
  fFontSpriteAtlas:=nil;
+ fIconicFont:=nil;
  fSansFont:=nil;
  fSansBoldFont:=nil;
  fSansBoldItalicFont:=nil;
@@ -1099,6 +1102,7 @@ end;
 
 destructor TpvGUISkin.Destroy;
 begin
+ FreeAndNil(fIconicFont);
  FreeAndNil(fSansFont);
  FreeAndNil(fSansBoldFont);
  FreeAndNil(fSansBoldItalicFont);
@@ -1186,6 +1190,23 @@ begin
  fWindowShadowHeight:=16;
 
  fFontSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,false);
+
+ Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontMaterialDesignIconicFontData,GUIStandardTrueTypeFontMaterialDesignIconicFontDataSize);
+ try
+  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+  try
+   TrueTypeFont.Size:=-64;
+   TrueTypeFont.Hinting:=false;
+   fIconicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
+                                               fFontSpriteAtlas,
+                                               TrueTypeFont,
+                                               fInstance.fFontCodePointRanges);
+  finally
+   TrueTypeFont.Free;
+  end;
+ finally
+  Stream.Free;
+ end;
 
  Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansFontData,GUIStandardTrueTypeFontSansFontDataSize);
  try
@@ -2888,8 +2909,9 @@ procedure TpvGUIWindow.AddMinimizationButton;
 begin
  if not assigned(fMinimizationButton) then begin
   fMinimizationButton:=TpvGUIButton.Create(ButtonPanel);
+  fMinimizationButton.Font:=Skin.IconicFont;
   fMinimizationButton.OnClick:=OnButtonClick;
-  fMinimizationButton.fCaption:='_';
+  fMinimizationButton.fCaption:=PUCUUTF32CharToUTF8($f1eb);
  end;
 end;
 
@@ -2897,8 +2919,9 @@ procedure TpvGUIWindow.AddMaximizationButton;
 begin
  if not assigned(fMaximizationButton) then begin
   fMaximizationButton:=TpvGUIButton.Create(ButtonPanel);
+  fMaximizationButton.Font:=Skin.IconicFont;
   fMaximizationButton.OnClick:=OnButtonClick;
-  fMaximizationButton.fCaption:='O';
+  fMaximizationButton.fCaption:=PUCUUTF32CharToUTF8($f1ea);
  end;
 end;
 
@@ -2906,8 +2929,9 @@ procedure TpvGUIWindow.AddCloseButton;
 begin
  if not assigned(fCloseButton) then begin
   fCloseButton:=TpvGUIButton.Create(ButtonPanel);
+  fCloseButton.Font:=Skin.IconicFont;
   fCloseButton.OnClick:=OnButtonClick;
-  fCloseButton.fCaption:='X';
+  fCloseButton.fCaption:=PUCUUTF32CharToUTF8($f136);
  end;
 end;
 
@@ -2974,6 +2998,41 @@ begin
   end;
   fLastWindowState:=fWindowState;
   fWindowState:=aWindowState;
+  case fWindowState of
+   pvgwsNormal:begin
+    if assigned(fMinimizationButton) then begin
+     fMinimizationButton.fCaption:=PUCUUTF32CharToUTF8($f1eb);
+    end;
+    if assigned(fMaximizationButton) then begin
+     fMaximizationButton.fCaption:=PUCUUTF32CharToUTF8($f1ea);
+    end;
+    if assigned(fCloseButton) then begin
+     fCloseButton.fCaption:=PUCUUTF32CharToUTF8($f136);
+    end;
+   end;
+   pvgwsMinimized:begin
+    if assigned(fMinimizationButton) then begin
+     fMinimizationButton.fCaption:=PUCUUTF32CharToUTF8($f1ec);
+    end;
+    if assigned(fMaximizationButton) then begin
+     fMaximizationButton.fCaption:=PUCUUTF32CharToUTF8($f1ea);
+    end;
+    if assigned(fCloseButton) then begin
+     fCloseButton.fCaption:=PUCUUTF32CharToUTF8($f136);
+    end;
+   end;
+   pvgwsMaximized:begin
+    if assigned(fMinimizationButton) then begin
+     fMinimizationButton.fCaption:=PUCUUTF32CharToUTF8($f1eb);
+    end;
+    if assigned(fMaximizationButton) then begin
+     fMaximizationButton.fCaption:=PUCUUTF32CharToUTF8($f1ec);
+    end;
+    if assigned(fCloseButton) then begin
+     fCloseButton.fCaption:=PUCUUTF32CharToUTF8($f136);
+    end;
+   end;
+  end;
   PerformLayout;
  end;
 end;
@@ -3040,7 +3099,7 @@ begin
     ChildWidget:=Child as TpvGUIWidget;
     ChildWidget.FixedWidth:=22;
     ChildWidget.FixedHeight:=22;
-    ChildWidget.FontSize:=-12;
+    ChildWidget.FontSize:=-15;
    end;
   end;
   ButtonPanelPreferredSize:=fButtonPanel.PreferredSize;
@@ -3075,7 +3134,7 @@ begin
     ChildWidget:=Child as TpvGUIWidget;
     ChildWidget.FixedWidth:=22;
     ChildWidget.FixedHeight:=22;
-    ChildWidget.FontSize:=-12;
+    ChildWidget.FontSize:=-15;
    end;
   end;
   ButtonPanelPreferredSize:=fButtonPanel.PreferredSize;
