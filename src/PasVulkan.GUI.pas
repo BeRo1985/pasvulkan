@@ -498,7 +498,7 @@ type TpvGUIObject=class;
        procedure MoveWindowToFront(const aWindow:TpvGUIWindow);
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice;
-                          const aFontCodePointRanges:TpvFontCodePointRanges=[]); reintroduce;
+                          const aFontCodePointRanges:TpvFontCodePointRanges=nil); reintroduce;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -2437,7 +2437,7 @@ begin
 end;
 
 constructor TpvGUIInstance.Create(const aVulkanDevice:TpvVulkanDevice;
-                                  const aFontCodePointRanges:TpvFontCodePointRanges=[]);
+                                  const aFontCodePointRanges:TpvFontCodePointRanges=nil);
 begin
 
  inherited Create(nil);
