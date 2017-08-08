@@ -3031,32 +3031,40 @@ begin
     POINTEREVENT_MOTION:begin
      if fMouseAction=pvgwmaNone then begin
       fCursor:=pvgcArrow;
-      if (pvgwfResizableNW in fWindowFlags) and
+      if (fWindowState in [pvgwsNormal]) and
+         (pvgwfResizableNW in fWindowFlags) and
          (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
          (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
        fCursor:=pvgcNWSE;
-      end else if (pvgwfResizableNE in fWindowFlags) and
+      end else if (fWindowState in [pvgwsNormal]) and
+                  (pvgwfResizableNE in fWindowFlags) and
                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
                   (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
        fCursor:=pvgcNESW;
-      end else if (pvgwfResizableSW in fWindowFlags) and
+      end else if (fWindowState in [pvgwsNormal]) and
+                  (pvgwfResizableSW in fWindowFlags) and
                   (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
        fCursor:=pvgcNESW;
-      end else if (pvgwfResizableSE in fWindowFlags) and
+      end else if (fWindowState in [pvgwsNormal]) and
+                  (pvgwfResizableSE in fWindowFlags) and
                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
        fCursor:=pvgcNWSE;
-      end else if (pvgwfResizableN in fWindowFlags) and
+      end else if (fWindowState in [pvgwsNormal]) and
+                  (pvgwfResizableN in fWindowFlags) and
                   (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
        fCursor:=pvgcNS;
-      end else if (pvgwfResizableS in fWindowFlags) and
+      end else if (fWindowState in [pvgwsNormal]) and
+                  (pvgwfResizableS in fWindowFlags) and
                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
        fCursor:=pvgcNS;
-      end else if (pvgwfResizableW in fWindowFlags) and
+      end else if (fWindowState in [pvgwsNormal]) and
+                  (pvgwfResizableW in fWindowFlags) and
                   (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
        fCursor:=pvgcEW;
-      end else if (pvgwfResizableE in fWindowFlags) and
+      end else if (fWindowState in [pvgwsNormal]) and
+                  (pvgwfResizableE in fWindowFlags) and
                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
        fCursor:=pvgcEW;
       end;
