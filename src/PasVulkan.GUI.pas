@@ -412,6 +412,7 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
+       procedure Release; virtual;
        function GetEnumerator:TpvGUIWidgetEnumerator;
        function Contains(const aPosition:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget;
@@ -499,6 +500,7 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
+       procedure ReleaseObject(const aGUIObject:TpvGUIObject);
        procedure ClearReferenceCountedObjectList;
        procedure AddReferenceCountedObjectForNextDraw(const aObject:TpvReferenceCountedObject);
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
@@ -2086,6 +2088,15 @@ begin
  end;
 end;
 
+procedure TpvGUIWidget.Release;
+begin
+ if assigned(fInstance) then begin
+  fInstance.ReleaseObject(self);
+ end else begin
+  DecRef;
+ end;
+end;
+
 function TpvGUIWidget.GetEnumerator:TpvGUIWidgetEnumerator;
 begin
  result:=TpvGUIWidgetEnumerator.Create(self);
@@ -2525,6 +2536,29 @@ begin
  fDrawBufferIndex:=aDrawBufferIndex;
 end;
 
+procedure TpvGUIInstance.ReleaseObject(const aGUIObject:TpvGUIObject);
+begin
+ if assigned(aGUIObject) then begin
+  if assigned(fLastFocusPath) and fLastFocusPath.Contains(aGUIObject) then begin
+   fLastFocusPath.Clear;
+  end;
+  if assigned(fCurrentFocusPath) and fCurrentFocusPath.Contains(aGUIObject) then begin
+   fCurrentFocusPath.Clear;
+  end;
+  if fDragWidget=aGUIObject then begin
+   TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+  end;
+  if assigned(aGUIObject.fParent) and
+     assigned(aGUIObject.fParent.fChildren) and
+     aGUIObject.fParent.fChildren.Contains(aGUIObject) then begin
+   aGUIObject.fParent.fChildren.Remove(aGUIObject);
+  end;
+  if assigned(fChildren) and fChildren.Contains(aGUIObject) then begin
+   fChildren.Remove(aGUIObject);
+  end;
+ end;
+end;
+
 procedure TpvGUIInstance.ClearReferenceCountedObjectList;
 var Index:TpvInt32;
     Buffer:PpvGUIInstanceBuffer;
@@ -2612,20 +2646,7 @@ end;
 
 procedure TpvGUIInstance.DisposeWindow(const aWindow:TpvGUIWindow);
 begin
- if assigned(aWindow) then begin
-  if assigned(fLastFocusPath) and fLastFocusPath.Contains(aWindow) then begin
-   fLastFocusPath.Clear;
-  end;
-  if assigned(fCurrentFocusPath) and fCurrentFocusPath.Contains(aWindow) then begin
-   fCurrentFocusPath.Clear;
-  end;
-  if fDragWidget=aWindow then begin
-   TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
-  end;
-  if assigned(fChildren) and fChildren.Contains(aWindow) then begin
-   fChildren.Remove(aWindow);
-  end;
- end;
+ ReleaseObject(aWindow);
 end;
 
 procedure TpvGUIInstance.CenterWindow(const aWindow:TpvGUIWindow);
@@ -2854,6 +2875,7 @@ begin
    WindowState:=pvgwsMaximized;
   end;
  end else if aSender=fCloseButton then begin
+  DisposeWindow;
  end;
 end;
 
