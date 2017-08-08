@@ -1463,14 +1463,14 @@ end;
 procedure TpvGUIDefaultVectorBasedSkin.DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow);
 var LastClipRect,NewClipRect:TpvRect;
     LastModelMatrix,NewModelMatrix:TpvMatrix4x4;
-    LastLinearColor:TpvVector4;
+    LastColor:TpvVector4;
     Title:TpvRawByteString;
     Offset:TpvVector2;
 begin
- LastLinearColor:=aCanvas.LinearColor;
+ LastColor:=aCanvas.Color;
  try
 
-  aCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+  aCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 
   LastClipRect:=aCanvas.ClipRect;
   try
@@ -1561,18 +1561,18 @@ begin
        ((not (pvgwfFocused in aWindow.fWidgetFlags)) and fUnfocusedWindowHeaderFontShadow) then begin
      if pvgwfFocused in aWindow.fWidgetFlags then begin
       aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fFocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
-      aCanvas.LinearColor:=fFocusedWindowHeaderFontShadowColor;
+      aCanvas.Color:=fFocusedWindowHeaderFontShadowColor;
      end else begin
       aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fUnfocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
-      aCanvas.LinearColor:=fUnfocusedWindowHeaderFontShadowColor;
+      aCanvas.Color:=fUnfocusedWindowHeaderFontShadowColor;
      end;
      aCanvas.DrawText(Title);
     end;
     aCanvas.ModelMatrix:=NewModelMatrix;
     if pvgwfFocused in aWindow.fWidgetFlags then begin
-     aCanvas.LinearColor:=fFocusedWindowFontColor;
+     aCanvas.Color:=fFocusedWindowFontColor;
     end else begin
-     aCanvas.LinearColor:=fUnfocusedWindowFontColor;
+     aCanvas.Color:=fUnfocusedWindowFontColor;
     end;
     aCanvas.DrawText(Title);
    finally
@@ -1596,7 +1596,7 @@ begin
   end;
 
  finally
-  aCanvas.LinearColor:=LastLinearColor;
+  aCanvas.Color:=LastColor;
  end;
 end;
 
@@ -1633,7 +1633,7 @@ begin
    Offset.y:=aLabel.fSize.y-8;
   end;
  end;
- aCanvas.LinearColor:=aLabel.FontColor;
+ aCanvas.Color:=aLabel.FontColor;
  aCanvas.DrawText(TpvGUITextUtils.TextTruncation(aLabel.fCaption,
                                                  aLabel.fTextTruncation,
                                                  aCanvas.Font,
@@ -1716,7 +1716,7 @@ begin
    Offset.y:=aButton.fSize.y-8;
   end;
  end;
- aCanvas.LinearColor:=aButton.FontColor;
+ aCanvas.Color:=aButton.FontColor;
  aCanvas.DrawText(TpvGUITextUtils.TextTruncation(aButton.fCaption,
                                                  aButton.fTextTruncation,
                                                  aCanvas.Font,
@@ -2312,7 +2312,7 @@ begin
   if fInstance.fDrawWidgetBounds then begin
    fCanvas.Push;
    try
-    fCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
     fCanvas.LineWidth:=4.0;
     fCanvas.LineJoin:=pvcljRound;
     fCanvas.LineCap:=pvclcRound;

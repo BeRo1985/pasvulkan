@@ -521,15 +521,15 @@ begin
  end;
  fVulkanCanvas.FillStyle:=pvcfsRadialGradient;
  fVulkanCanvas.FillWrapMode:=pvcfwmMirroredRepeat;
- fVulkanCanvas.StartSRGBColor:=TpvVector4.Create((sin((fTime*0.84)*pi*2.0)*0.5)+0.5,
-                                                 (cos((fTime*0.98)*pi*2.0)*0.5)+0.5,
-                                                 (sin((fTime*0.43)*pi*2.0)*0.5)+0.5,
-                                                 1.0);
- fVulkanCanvas.StopSRGBColor:=TpvVector4.Create((cos((fTime*0.57)*pi*2.0)*0.5)+0.5,
-                                                (sin((fTime*1.04)*pi*2.0)*0.5)+0.5,
-                                                (cos((fTime*0.79)*pi*2.0)*0.5)+0.5,
-                                                1.0);
- fVulkanCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+ fVulkanCanvas.StartColor:=ConvertSRGBToLinear(TpvVector4.Create((sin((fTime*0.84)*pi*2.0)*0.5)+0.5,
+                                                                 (cos((fTime*0.98)*pi*2.0)*0.5)+0.5,
+                                                                 (sin((fTime*0.43)*pi*2.0)*0.5)+0.5,
+                                                                 1.0));
+ fVulkanCanvas.StopColor:=ConvertSRGBToLinear(TpvVector4.Create((cos((fTime*0.57)*pi*2.0)*0.5)+0.5,
+                                                                (sin((fTime*1.04)*pi*2.0)*0.5)+0.5,
+                                                                (cos((fTime*0.79)*pi*2.0)*0.5)+0.5,
+                                                                1.0));
+ fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
  fVulkanCanvas.FillMatrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.125)+(fVulkanCanvas.Width*(cos(fTime*0.5)*0.08)),
                                                           -(fVulkanCanvas.Height-(fVulkanCanvas.Width*0.125))+(fVulkanCanvas.Height*(sin(fTime*2.0)*0.08)))*
                            TpvMatrix4x4.CreateScale(128.0/fVulkanCanvas.Width,
@@ -542,15 +542,15 @@ begin
   fVulkanCanvas.FillStyle:=pvcfsLinearGradient;
  end;
  fVulkanCanvas.FillWrapMode:=pvcfwmMirroredRepeat;
- fVulkanCanvas.StartSRGBColor:=TpvVector4.Create((sin((fTime*0.78)*pi*2.0)*0.5)+0.5,
-                                                 (cos((fTime*0.65)*pi*2.0)*0.5)+0.5,
-                                                 (sin((fTime*0.91)*pi*2.0)*0.5)+0.5,
-                                                 1.0);
- fVulkanCanvas.StopSRGBColor:=TpvVector4.Create((cos((fTime*0.78)*pi*2.0)*0.5)+0.5,
-                                                (sin((fTime*0.65)*pi*2.0)*0.5)+0.5,
-                                                (cos((fTime*0.91)*pi*2.0)*0.5)+0.5,
-                                                1.0);
- fVulkanCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+ fVulkanCanvas.StartColor:=ConvertSRGBToLinear(TpvVector4.Create((sin((fTime*0.78)*pi*2.0)*0.5)+0.5,
+                                                                 (cos((fTime*0.65)*pi*2.0)*0.5)+0.5,
+                                                                 (sin((fTime*0.91)*pi*2.0)*0.5)+0.5,
+                                                                 1.0));
+ fVulkanCanvas.StopColor:=ConvertSRGBToLinear(TpvVector4.Create((cos((fTime*0.78)*pi*2.0)*0.5)+0.5,
+                                                                (sin((fTime*0.65)*pi*2.0)*0.5)+0.5,
+                                                                (cos((fTime*0.91)*pi*2.0)*0.5)+0.5,
+                                                                1.0));
+ fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
  fVulkanCanvas.FillMatrix:=TpvMatrix4x4.CreateTranslation(-(fVulkanCanvas.Width*0.875)+(fVulkanCanvas.Width*(cos(fTime*0.5)*0.025)),
                                                           -(fVulkanCanvas.Height-(fVulkanCanvas.Width*0.125))+(fVulkanCanvas.Height*(sin(fTime*2.0)*0.025)))*
                            TpvMatrix4x4.CreateScale(Mix(16,64,(sin(fTime*pi*0.125)*0.5)+0.5)/fVulkanCanvas.Width,
@@ -563,7 +563,7 @@ begin
 
  fVulkanCanvas.BlendingMode:=pvcbmNone;
 
- fVulkanCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+ fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 
  SrcRect:=TpvRect.CreateAbsolute(0,0,fVulkanSpriteTest.Width,fVulkanSpriteTest.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteTest.Width)*0.5)+(cos(fTime*pi*2.0*0.1)*128.0);
@@ -583,7 +583,7 @@ begin
 
  fVulkanCanvas.BlendingMode:=pvcbmAdditiveBlending;
 
- fVulkanCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,0.5);
+ fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,0.5);
 
  SrcRect:=TpvRect.CreateAbsolute(0,0,fVulkanSpriteDancer0.Width,fVulkanSpriteDancer0.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteDancer0.Width)*0.5)+(cos(fTime*pi*1.7*0.1)*128.0);
@@ -594,7 +594,7 @@ begin
 
  fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
 
- fVulkanCanvas.LinearColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+ fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 
  SrcRect:=TpvRect.CreateAbsolute(0,0,fVulkanSpriteSmiley0.Width,fVulkanSpriteSmiley0.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteSmiley0.Width)*0.5)+(sin(fTime*pi*1.7*0.1)*128.0);
@@ -618,10 +618,10 @@ begin
 
  rbs:='This is an example text';
 
- fVulkanCanvas.SRGBColor:=TpvVector4.Create((sin((fTime*0.43)*pi*2.0)*0.5)+0.5,
-                                            (cos((fTime*0.29)*pi*2.0)*0.5)+0.5,
-                                            (sin((fTime*0.23)*pi*2.0)*0.5)+0.5,
-                                            (cos((fTime*0.17)*pi*2.0)*0.25)+0.75);
+ fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create((sin((fTime*0.43)*pi*2.0)*0.5)+0.5,
+                                                            (cos((fTime*0.29)*pi*2.0)*0.5)+0.5,
+                                                            (sin((fTime*0.23)*pi*2.0)*0.5)+0.5,
+                                                            (cos((fTime*0.17)*pi*2.0)*0.25)+0.75));
 
  fVulkanCanvas.Font:=fVulkanFont;
 
@@ -636,10 +636,10 @@ begin
                            TpvMatrix4x4.CreateRotateZ(cos(fTime*pi*2.0*0.9)*(45.0*DEG2RAD))*
                            TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.5,fVulkanCanvas.Height*0.5,0.0);
 
- fVulkanCanvas.SRGBColor:=TpvVector4.Create((cos((fTime*0.43)*pi*2.0)*0.5)+0.5,
-                                            (sin((fTime*0.29)*pi*2.0)*0.5)+0.5,
-                                            (cos((fTime*0.23)*pi*2.0)*0.5)+0.5,
-                                            (sin((fTime*0.17)*pi*2.0)*0.25)+0.75);
+ fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create((cos((fTime*0.43)*pi*2.0)*0.5)+0.5,
+                                                            (sin((fTime*0.29)*pi*2.0)*0.5)+0.5,
+                                                            (cos((fTime*0.23)*pi*2.0)*0.5)+0.5,
+                                                            (sin((fTime*0.17)*pi*2.0)*0.25)+0.75));
 
  fVulkanCanvas.DrawText(rbs,
                         ((fVulkanCanvas.Width-fVulkanCanvas.TextWidth(rbs))*0.5)+0.0,
@@ -684,17 +684,17 @@ begin
     0:begin
      case Index of
       0:begin
-       fVulkanCanvas.SRGBColor:=TpvVector4.Create(1.0,0.25,0.25,1.0);
+       fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(1.0,0.25,0.25,1.0));
        fVulkanCanvas.LineJoin:=pvcljRound;
        fVulkanCanvas.LineCap:=pvclcRound;
       end;
       1:begin
-       fVulkanCanvas.SRGBColor:=TpvVector4.Create(0.25,1.0,0.25,1.0);
+       fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(0.25,1.0,0.25,1.0));
        fVulkanCanvas.LineJoin:=pvcljMiter;
        fVulkanCanvas.LineCap:=pvclcButt;
       end;
       2:begin
-       fVulkanCanvas.SRGBColor:=TpvVector4.Create(0.25,0.25,1.0,1.0);
+       fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(0.25,0.25,1.0,1.0));
        fVulkanCanvas.LineJoin:=pvcljBevel;
        fVulkanCanvas.LineCap:=pvclcSquare;
       end;
@@ -703,17 +703,17 @@ begin
     else begin
      case Index of
       0:begin
-       fVulkanCanvas.SRGBColor:=TpvVector4.Create(0.25,1.0,0.25,1.0);
+       fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(0.25,1.0,0.25,1.0));
        fVulkanCanvas.LineJoin:=pvcljRound;
        fVulkanCanvas.LineCap:=pvclcRound;
       end;
       1:begin
-       fVulkanCanvas.SRGBColor:=TpvVector4.Create(0.25,0.25,1.0,1.0);
+       fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(0.25,0.25,1.0,1.0));
        fVulkanCanvas.LineJoin:=pvcljMiter;
        fVulkanCanvas.LineCap:=pvclcButt;
       end;
       2:begin
-       fVulkanCanvas.SRGBColor:=TpvVector4.Create(1.0,0.25,0.25,1.0);
+       fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(1.0,0.25,0.25,1.0));
        fVulkanCanvas.LineJoin:=pvcljBevel;
        fVulkanCanvas.LineCap:=pvclcSquare;
       end;
