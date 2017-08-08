@@ -211,8 +211,12 @@ type TpvGUIObject=class;
       protected
        fFontSize:TpvFloat;
        fWindowHeaderFontSize:tpvFloat;
-       fButtonFontSize:tpvFloat;
-       fLabelFontSize:tpvFloat;
+       fButtonFontSize:TpvFloat;
+       fLabelFontSize:TpvFloat;
+       fFontColor:TpvVector4;
+       fWindowFontColor:TpvVector4;
+       fButtonFontColor:TpvVector4;
+       fLabelFontColor:TpvVector4;
        fFontSpriteAtlas:TpvSpriteAtlas;
        fSansFont:TpvFont;
        fSansBoldFont:TpvFont;
@@ -231,6 +235,11 @@ type TpvGUIObject=class;
        procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); virtual;
        procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); virtual;
        procedure DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton); virtual;
+      public
+       property FontColor:TpvVector4 read fFontColor write fFontColor;
+       property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
+       property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
+       property LabelFontColor:TpvVector4 read fLabelFontColor write fLabelFontColor;
       published
        property SansFont:TpvFont read fSansFont write fSansFont;
        property SansBoldFont:TpvFont read fSansBoldFont write fSansBoldFont;
@@ -239,8 +248,8 @@ type TpvGUIObject=class;
        property MonoFont:TpvFont read fMonoFont write fMonoFont;
        property FontSize:TpvFloat read fFontSize write fFontSize;
        property WindowHeaderFontSize:TpvFloat read fWindowHeaderFontSize write fWindowHeaderFontSize;
-       property ButtonFontSize:tpvFloat read fButtonFontSize write fButtonFontSize;
-       property LabelFontSize:tpvFloat read fLabelFontSize write fLabelFontSize;
+       property ButtonFontSize:TpvFloat read fButtonFontSize write fButtonFontSize;
+       property LabelFontSize:TpvFloat read fLabelFontSize write fLabelFontSize;
        property FontSpriteAtlas:TpvSpriteAtlas read fFontSpriteAtlas;
        property WindowHeaderHeight:TpvFloat read fWindowHeaderHeight write fWindowHeaderHeight;
        property WindowResizeGripSize:TpvFloat read fWindowResizeGripSize write fWindowResizeGripSize;
@@ -257,8 +266,8 @@ type TpvGUIObject=class;
        fFocusedWindowHeaderFontShadowOffset:TpvVector2;
        fUnfocusedWindowHeaderFontShadowColor:TpvVector4;
        fFocusedWindowHeaderFontShadowColor:TpvVector4;
-       fUnfocusedWindowHeaderFontColor:TpvVector4;
-       fFocusedWindowHeaderFontColor:TpvVector4;
+       fUnfocusedWindowFontColor:TpvVector4;
+       fFocusedWindowFontColor:TpvVector4;
        fLabelFontColor:TpvVector4;
        fWindowShadowWidth:TpvFloat;
        fWindowShadowHeight:TpvFloat;
@@ -275,8 +284,8 @@ type TpvGUIObject=class;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
        property UnfocusedWindowHeaderFontShadowColor:TpvVector4 read fUnfocusedWindowHeaderFontShadowColor write fUnfocusedWindowHeaderFontShadowColor;
        property FocusedWindowHeaderFontShadowColor:TpvVector4 read fFocusedWindowHeaderFontShadowColor write fFocusedWindowHeaderFontShadowColor;
-       property UnfocusedWindowHeaderFontColor:TpvVector4 read fUnfocusedWindowHeaderFontColor write fUnfocusedWindowHeaderFontColor;
-       property FocusedWindowHeaderFontColor:TpvVector4 read fFocusedWindowHeaderFontColor write fFocusedWindowHeaderFontColor;
+       property UnfocusedWindowFontColor:TpvVector4 read fUnfocusedWindowFontColor write fUnfocusedWindowFontColor;
+       property FocusedWindowFontColor:TpvVector4 read fFocusedWindowFontColor write fFocusedWindowFontColor;
       published
        property UnfocusedWindowHeaderFontShadow:boolean read fUnfocusedWindowHeaderFontShadow write fUnfocusedWindowHeaderFontShadow;
        property FocusedWindowHeaderFontShadow:boolean read fFocusedWindowHeaderFontShadow write fFocusedWindowHeaderFontShadow;
@@ -348,6 +357,7 @@ type TpvGUIObject=class;
        fHint:TpvUTF8String;
        fFont:TpvFont;
        fFontSize:TpvFloat;
+       fFontColor:TpvVector4;
        fTextHorizontalAlignment:TpvGUITextAlignment;
        fTextVerticalAlignment:TpvGUITextAlignment;
        fTextTruncation:TpvGUITextTruncation;
@@ -385,10 +395,14 @@ type TpvGUIObject=class;
        function GetPreferredSize:TpvVector2; virtual;
        function GetFont:TpvFont; virtual;
        function GetFontSize:TpvFloat; virtual;
+       function GetFontColor:TpvVector4; virtual;
       protected
        property TextHorizontalAlignment:TpvGUITextAlignment read fTextHorizontalAlignment write fTextHorizontalAlignment;
        property TextVerticalAlignment:TpvGUITextAlignment read fTextVerticalAlignment write fTextVerticalAlignment;
        property TextTruncation:TpvGUITextTruncation read fTextTruncation write fTextTruncation;
+       property Font:TpvFont read GetFont write fFont;
+       property FontColor:TpvVector4 read GetFontColor write fFontColor;
+       property FontSize:TpvFloat read GetFontSize write fFontSize;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -436,8 +450,6 @@ type TpvGUIObject=class;
        property FixedWidth:TpvFloat read GetFixedWidth write SetFixedWidth;
        property FixedHeight:TpvFloat read GetFixedHeight write SetFixedHeight;
        property Hint:TpvUTF8String read fHint write fHint;
-       property Font:TpvFont read GetFont write fFont;
-       property FontSize:TpvFloat read GetFontSize write fFontSize;
        property OnKeyEvent:TpvGUIOnKeyEvent read fOnKeyEvent write fOnKeyEvent;
        property OnPointerEvent:TpvGUIOnPointerEvent read fOnPointerEvent write fOnPointerEvent;
        property OnScrolled:TpvGUIOnScrolled read fOnScrolled write fOnScrolled;
@@ -558,6 +570,7 @@ type TpvGUIObject=class;
        function GetModal:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetModal(const aModal:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetButtonPanel:TpvGUIWidget;
+       function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
        procedure RefreshRelativePlacement; virtual;
       public
@@ -573,11 +586,14 @@ type TpvGUIObject=class;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Update; override;
        procedure Draw; override;
+      public
+       property FontColor;
       published
        property Title:TpvUTF8String read fTitle write fTitle;
        property WindowFlags:TpvGUIWindowFlags read fWindowFlags write fWindowFlags;
        property Modal:boolean read GetModal write SetModal;
        property ButtonPanel:TpvGUIWidget read GetButtonPanel;
+       property Font;
        property TextHorizontalAlignment;
        property TextTruncation;
      end;
@@ -587,6 +603,7 @@ type TpvGUIObject=class;
        fCaption:TpvUTF8String;
       protected
        function GetFontSize:TpvFloat; override;
+       function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -596,8 +613,11 @@ type TpvGUIObject=class;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Update; override;
        procedure Draw; override;
+      public
+       property FontColor;
       published
-       property FontSize:TpvFloat read GetFontSize write fFontSize;
+       property Font;
+       property FontSize;
        property Caption:TpvUTF8String read fCaption write fCaption;
        property TextHorizontalAlignment;
        property TextVerticalAlignment;
@@ -632,6 +652,7 @@ type TpvGUIObject=class;
        function GetDown:boolean; inline;
        procedure SetDown(const aDown:boolean); inline;
        function GetFontSize:TpvFloat; override;
+       function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -641,8 +662,11 @@ type TpvGUIObject=class;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Update; override;
        procedure Draw; override;
+      public
+       property FontColor;
       published
-       property FontSize:TpvFloat read GetFontSize write fFontSize;
+       property Font;
+       property FontSize;
        property ButtonFlags:TpvGUIButtonFlags read fButtonFlags write fButtonFlags;
        property ButtonGroup:TpvGUIButtonGroup read fButtonGroup;
        property Down:boolean read GetDown write SetDown;
@@ -1098,19 +1122,25 @@ begin
 
  fLabelFontSize:=-12;
 
+ fFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,1.0));
+
+ fWindowFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,1.0));
+
+ fButtonFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,1.0));
+
+ fLabelFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,1.0));
+
  fUnfocusedWindowHeaderFontShadow:=true;
  fFocusedWindowHeaderFontShadow:=true;
 
  fUnfocusedWindowHeaderFontShadowOffset:=TpvVector2.Create(2.0,2.0);
  fFocusedWindowHeaderFontShadowOffset:=TpvVector2.Create(2.0,2.0);
 
- fUnfocusedWindowHeaderFontShadowColor:=TpvVector4.Create(0.0,0.0,0.0,0.3275);
- fFocusedWindowHeaderFontShadowColor:=TpvVector4.Create(0.0,0.0,0.0,0.5);
+ fUnfocusedWindowHeaderFontShadowColor:=ConvertSRGBToLinear(TpvVector4.Create(0.0,0.0,0.0,0.3275));
+ fFocusedWindowHeaderFontShadowColor:=ConvertSRGBToLinear(TpvVector4.Create(0.0,0.0,0.0,0.5));
 
- fUnfocusedWindowHeaderFontColor:=TpvVector4.Create(0.75,0.75,0.75,1.0);
- fFocusedWindowHeaderFontColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-
- fLabelFontColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+ fUnfocusedWindowFontColor:=ConvertSRGBToLinear(TpvVector4.Create(0.75,0.75,0.75,1.0));
+ fFocusedWindowFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,1.0));
 
  fWindowHeaderHeight:=32;
 
@@ -1532,18 +1562,18 @@ begin
        ((not (pvgwfFocused in aWindow.fWidgetFlags)) and fUnfocusedWindowHeaderFontShadow) then begin
      if pvgwfFocused in aWindow.fWidgetFlags then begin
       aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fFocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
-      aCanvas.SRGBColor:=fFocusedWindowHeaderFontShadowColor;
+      aCanvas.LinearColor:=fFocusedWindowHeaderFontShadowColor;
      end else begin
       aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fUnfocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
-      aCanvas.SRGBColor:=fUnfocusedWindowHeaderFontShadowColor;
+      aCanvas.LinearColor:=fUnfocusedWindowHeaderFontShadowColor;
      end;
      aCanvas.DrawText(Title);
     end;
     aCanvas.ModelMatrix:=NewModelMatrix;
     if pvgwfFocused in aWindow.fWidgetFlags then begin
-     aCanvas.SRGBColor:=fFocusedWindowHeaderFontColor;
+     aCanvas.LinearColor:=fFocusedWindowFontColor;
     end else begin
-     aCanvas.SRGBColor:=fUnfocusedWindowHeaderFontColor;
+     aCanvas.LinearColor:=fUnfocusedWindowFontColor;
     end;
     aCanvas.DrawText(Title);
    finally
@@ -1604,7 +1634,7 @@ begin
    Offset.y:=aLabel.fSize.y-8;
   end;
  end;
- aCanvas.SRGBColor:=fLabelFontColor;
+ aCanvas.LinearColor:=aLabel.FontColor;
  aCanvas.DrawText(TpvGUITextUtils.TextTruncation(aLabel.fCaption,
                                                  aLabel.fTextTruncation,
                                                  aCanvas.Font,
@@ -1687,7 +1717,7 @@ begin
    Offset.y:=aButton.fSize.y-8;
   end;
  end;
- aCanvas.SRGBColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+ aCanvas.LinearColor:=aButton.FontColor;
  aCanvas.DrawText(TpvGUITextUtils.TextTruncation(aButton.fCaption,
                                                  aButton.fTextTruncation,
                                                  aCanvas.Font,
@@ -1750,6 +1780,8 @@ begin
  fFont:=nil;
 
  fFontSize:=0.0;
+
+ fFontColor:=TpvVector4.Null;
 
  fTextHorizontalAlignment:=pvgtaCenter;
 
@@ -2006,6 +2038,15 @@ begin
   result:=Skin.fFontSize;
  end else begin
   result:=fFontSize;
+ end;
+end;
+
+function TpvGUIWidget.GetFontColor:TpvVector4;
+begin
+ if assigned(Skin) and IsZero(fFontColor.a) then begin
+  result:=Skin.fFontColor;
+ end else begin
+  result:=fFontColor;
  end;
 end;
 
@@ -2787,6 +2828,15 @@ begin
  result:=fButtonPanel;
 end;
 
+function TpvGUIWindow.GetFontColor:TpvVector4;
+begin
+ if assigned(Skin) and IsZero(fFontColor.a) then begin
+  result:=Skin.fWindowFontColor;
+ end else begin
+  result:=fFontColor;
+ end;
+end;
+
 function TpvGUIWindow.GetPreferredSize:TpvVector2;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
@@ -3124,6 +3174,15 @@ begin
  end;
 end;
 
+function TpvGUILabel.GetFontColor:TpvVector4;
+begin
+ if assigned(Skin) and IsZero(fFontColor.a) then begin
+  result:=Skin.fLabelFontColor;
+ end else begin
+  result:=fFontColor;
+ end;
+end;
+
 function TpvGUILabel.GetPreferredSize:TpvVector2;
 begin
  result:=Maximum(inherited GetPreferredSize,
@@ -3198,6 +3257,15 @@ begin
   result:=Skin.fButtonFontSize;
  end else begin
   result:=fFontSize;
+ end;
+end;
+
+function TpvGUIButton.GetFontColor:TpvVector4;
+begin
+ if assigned(Skin) and IsZero(fFontColor.a) then begin
+  result:=Skin.fButtonFontColor;
+ end else begin
+  result:=fFontColor;
  end;
 end;
 

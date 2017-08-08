@@ -1484,8 +1484,10 @@ function ConvertRGB32FToR11FG11FB10F(const r,g,b:TpvFloat):TpvUInt32; {$ifdef CA
 function PackTangentSpace(const Tangent,Bitangent,Normal:TpvVector3):TpvPackedTangentSpace;
 procedure UnpackTangentSpace(var PackedTangentSpace:TpvPackedTangentSpace;var Tangent,Bitangent,Normal:TpvVector3);
 
-function ConvertLinearToSRGB(const aColor:TpvVector3):TpvVector3;
-function ConvertSRGBToLinear(const aColor:TpvVector3):TpvVector3;
+function ConvertLinearToSRGB(const aColor:TpvVector3):TpvVector3; overload;
+function ConvertLinearToSRGB(const aColor:TpvVector4):TpvVector4; overload;
+function ConvertSRGBToLinear(const aColor:TpvVector3):TpvVector3; overload;
+function ConvertSRGBToLinear(const aColor:TpvVector4):TpvVector4; overload;
 
 implementation
 
@@ -15634,6 +15636,22 @@ begin
  end;
 end;
 
+function ConvertLinearToSRGB(const aColor:TpvVector4):TpvVector4;
+const InverseGamma=1.0/2.4;
+var ChannelIndex:TpvInt32;
+begin
+ for ChannelIndex:=0 to 2 do begin
+  if aColor[ChannelIndex]<0.0031308 then begin
+   result[ChannelIndex]:=aColor[ChannelIndex]*12.92;
+  end else if aColor[ChannelIndex]<1.0 then begin
+   result[ChannelIndex]:=Power(aColor[ChannelIndex],InverseGamma)-0.055;
+  end else begin
+   result[ChannelIndex]:=1.0;
+  end;
+ end;
+ result.a:=aColor.a;
+end;
+
 function ConvertSRGBToLinear(const aColor:TpvVector3):TpvVector3;
 const Inverse12d92=1.0/12.92;
 var ChannelIndex:TpvInt32;
@@ -15647,6 +15665,22 @@ begin
    result[ChannelIndex]:=1.0;
   end;
  end;
+end;
+
+function ConvertSRGBToLinear(const aColor:TpvVector4):TpvVector4;
+const Inverse12d92=1.0/12.92;
+var ChannelIndex:TpvInt32;
+begin
+ for ChannelIndex:=0 to 2 do begin
+  if aColor[ChannelIndex]<0.04045 then begin
+   result[ChannelIndex]:=aColor[ChannelIndex]*Inverse12d92;
+  end else if aColor[ChannelIndex]<1.0 then begin
+   result[ChannelIndex]:=Power(aColor[ChannelIndex]+0.055,2.4);
+  end else begin
+   result[ChannelIndex]:=1.0;
+  end;
+ end;
+ result.a:=aColor.a;
 end;
 
 constructor TpvVector2Property.Create(AVector:PpvVector2);
