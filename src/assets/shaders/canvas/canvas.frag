@@ -460,19 +460,19 @@ void main(void){
         break;
       }
       case GUI_ELEMENT_FOCUSED:{
-        float d = sdRoundedRect(p - (size * 0.5), size * 0.5, 0.0);      
+        float d0 = sdRoundedRect(p - (size * 0.5), size * 0.5, 0.0);      
+        float d1 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - 2.0, 0.0);      
         color = blend(color,
                       uFocused * 
-//                    vec2(1.0, linearstep(t, -t, max(d, -(d + 1.0)))).xxxy);
-                      vec2(1.0, pow(linearstep(2.0 + t, 0.0, d), 1.0) * linearstep(-(1.0 + t), 0.0, d)).xxxy);
+                      vec2(1.0, linearstep(t, -t, max(d0, -d1))).xxxy);
         break;
       }
       case GUI_ELEMENT_HOVERED:{
-        float d = sdRoundedRect(p - (size * 0.5), size * 0.5, 0.0);      
+        float d0 = sdRoundedRect(p - (size * 0.5), size * 0.5, 0.0);      
+        float d1 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - 2.0, 0.0);      
         color = blend(color,
                       uHovered * 
-//                    vec2(1.0, linearstep(t, -t, max(d, -(d + 1.0)))).xxxy);
-                      vec2(1.0, pow(linearstep(2.0 + t, 0.0, d), 1.0) * linearstep(-(1.0 + t), 0.0, d)).xxxy);
+                      vec2(1.0, linearstep(t, -t, max(d0, -d1))).xxxy);
         break;
       }
       case GUI_ELEMENT_MOUSE_CURSOR_ARROW:

@@ -235,6 +235,7 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure Setup; virtual;
+       procedure DrawFocus(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget); virtual;
        procedure DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance); virtual;
        procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); virtual;
        procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); virtual;
@@ -282,7 +283,7 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure Setup; override;
-       procedure DrawHintGlow(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget);
+       procedure DrawFocus(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget); override;
        procedure DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance); override;
        procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); override;
        procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); override;
@@ -341,7 +342,8 @@ type TpvGUIObject=class;
        pvgwfPointerFocused,
        pvgwfWantAllKeys,
        pvgwfTabStop,
-       pvgwfScissor
+       pvgwfScissor,
+       pvgwfDrawFocus
       );
 
      PpvGUIWidgetFlags=^TpvGUIWidgetFlags;
@@ -1139,6 +1141,10 @@ begin
 
 end;
 
+procedure TpvGUISkin.DrawFocus(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget);
+begin
+end;
+
 procedure TpvGUISkin.DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance);
 begin
 end;
@@ -1327,7 +1333,7 @@ begin
 
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawHintGlow(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget);
+procedure TpvGUIDefaultVectorBasedSkin.DrawFocus(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget);
 begin
 {if aWidget.PointerFocused then begin
   aCanvas.ClipRect:=aWidget.fParentClipRect;
@@ -1336,18 +1342,20 @@ begin
                          true,
                          TpvVector2.Create(-32.0,-32.0),
                          aWidget.fSize+TpvVector2.Create(32.0,32.0),
-                         TpvVector2.Create(-1.0,-1.0),
-                         TpvVector2.Create(aWidget.fSize.x+1,aWidget.fSize.y+1));
- end else if aWidget.Focused then begin
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aWidget.fSize.x,aWidget.fSize.y));
+ end else}if aWidget.Focused and
+             (fInstance.fCurrentFocusPath.Count>0) and
+             (fInstance.fCurrentFocusPath.Items[0]=aWidget) then begin
   aCanvas.ClipRect:=aWidget.fParentClipRect;
   aCanvas.ModelMatrix:=aWidget.fModelMatrix;
   aCanvas.DrawGUIElement(GUI_ELEMENT_FOCUSED,
                          true,
                          TpvVector2.Create(-32.0,-32.0),
                          aWidget.fSize+TpvVector2.Create(32.0,32.0),
-                         TpvVector2.Create(-1.0,-1.0),
-                         TpvVector2.Create(aWidget.fSize.x+1,aWidget.fSize.y+1));
- end;    }
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aWidget.fSize.x,aWidget.fSize.y));
+ end;
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance);
@@ -1686,8 +1694,6 @@ begin
   aCanvas.Color:=LastColor;
  end;
 
- DrawHintGlow(aCanvas,aWindow);
-
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel);
@@ -1823,8 +1829,6 @@ begin
                                                  aCanvas.FontSize,
                                                  aButton.fSize.x-(fSpacing*2.0)),
                   Offset+(TpvVector2.Create(-0.5,-0.5)*IfThen(aButton.Down,1,0)));
-
- DrawHintGlow(aCanvas,aButton);
 
 end;
 
@@ -2578,6 +2582,9 @@ begin
    end;
   end;
  end;
+ if pvgwfDrawFocus in fWidgetFlags then begin
+  Skin.DrawFocus(fCanvas,self);
+ end;
 end;
 
 procedure TpvGUIWidget.Draw;
@@ -3049,6 +3056,7 @@ begin
  fMouseAction:=pvgwmaNone;
  fWindowFlags:=TpvGUIWindow.DefaultFlags;
  Include(fWidgetFlags,pvgwfScissor);
+ Include(fWidgetFlags,pvgwfDrawFocus);
  fLastWindowState:=TpvGUIWindowState.pvgwsNormal;
  fWindowState:=TpvGUIWindowState.pvgwsNormal;
  fButtonPanel:=nil;
@@ -3103,6 +3111,7 @@ begin
   fMinimizationButton.Font:=Skin.IconicFont;
   fMinimizationButton.OnClick:=OnButtonClick;
   fMinimizationButton.fCaption:=PUCUUTF32CharToUTF8($f1eb);
+  fMinimizationButton.fWidgetFlags:=fMinimizationButton.fWidgetFlags-[pvgwfTabStop,pvgwfDrawFocus];
  end;
 end;
 
@@ -3113,6 +3122,7 @@ begin
   fMaximizationButton.Font:=Skin.IconicFont;
   fMaximizationButton.OnClick:=OnButtonClick;
   fMaximizationButton.fCaption:=PUCUUTF32CharToUTF8($f1ea);
+  fMaximizationButton.fWidgetFlags:=fMaximizationButton.fWidgetFlags-[pvgwfTabStop,pvgwfDrawFocus];
  end;
 end;
 
@@ -3123,6 +3133,7 @@ begin
   fCloseButton.Font:=Skin.IconicFont;
   fCloseButton.OnClick:=OnButtonClick;
   fCloseButton.fCaption:=PUCUUTF32CharToUTF8($f136);
+  fCloseButton.fWidgetFlags:=fCloseButton.fWidgetFlags-[pvgwfTabStop,pvgwfDrawFocus];
  end;
 end;
 
@@ -3427,9 +3438,10 @@ begin
       fMouseAction:=pvgwmaMove;
       fCursor:=pvgcMove;
      end;
-     if not (pvgwfFocused in fWidgetFlags) then begin
+{    if not (pvgwfFocused in fWidgetFlags) then begin
       RequestFocus;
-     end;
+     end;}
+     RequestFocus;
     end;
     POINTEREVENT_UP:begin
      fMouseAction:=pvgwmaNone;
@@ -3702,6 +3714,7 @@ constructor TpvGUIButton.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
  Include(fWidgetFlags,pvgwfTabStop);
+ Include(fWidgetFlags,pvgwfDrawFocus);
  fButtonFlags:=[pvgbfNormalButton];
  fButtonGroup:=TpvGUIButtonGroup.Create(false);
  fCaption:='Button';
