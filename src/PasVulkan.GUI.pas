@@ -697,11 +697,26 @@ type TpvGUIObject=class;
 
      TpvGUIButtonGroup=class(TObjectList<TpvGUIButton>);
 
+     PpvGUIButtonIconPosition=^TpvGUIButtonIconPosition;
+     TpvGUIButtonIconPosition=
+      (
+       pvgbipLeft,
+       pvgbipLeftCentered,
+       pvgbipRightCentered,
+       pvgbipRight
+      );
+
      TpvGUIButton=class(TpvGUIWidget)
       private
        fButtonFlags:TpvGUIButtonFlags;
        fButtonGroup:TpvGUIButtonGroup;
        fCaption:TpvUTF8String;
+       fIconPosition:TpvGUIButtonIconPosition;
+       fIcon:TObject;
+       fIconHeight:TpvFloat;
+       fIconText:TpvUTF8String;
+       fIconFont:TpvFont;
+       fIconFontSize:TpvFloat;
        fOnClick:TpvGUIOnEvent;
        fOnChange:TpvGUIOnChange;
        procedure ProcessDown(const aPosition:TpvVector2);
@@ -729,6 +744,12 @@ type TpvGUIObject=class;
        property ButtonGroup:TpvGUIButtonGroup read fButtonGroup;
        property Down:boolean read GetDown write SetDown;
        property Caption:TpvUTF8String read fCaption write fCaption;
+       property IconPosition:TpvGUIButtonIconPosition read fIconPosition write fIconPosition;
+       property Icon:TObject read fIcon write fIcon;
+       property IconHeight:TpvFloat read fIconHeight write fIconHeight;
+       property IconText:TpvUTF8String read fIconText write fIconText;
+       property IconFont:TpvFont read fIconFont write fIconFont;
+       property IconFontSize:TpvFloat read fIconFontSize write fIconFontSize;
        property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
        property OnChange:TpvGUIOnChange read fOnChange write fOnChange;
        property TextHorizontalAlignment;
@@ -1748,9 +1769,16 @@ begin
  end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton);
-var Offset:TpvVector2;
-    LastClipRect,NewClipRect:TpvRect;
+var Offset,TextOffset:TpvVector2;
+    TextSize,IconSize,TemporarySize:TpvVector2;
+    TextRect,IconRect:TpvRect;
 begin
+
+ if aButton.Down then begin
+  Offset:=TpvVector2.Create(-0.5,-0.5);
+ end else begin
+  Offset:=TpvVector2.Null;
+ end;
 
  aCanvas.ModelMatrix:=aButton.fModelMatrix;
  aCanvas.ClipRect:=aButton.fClipRect;
@@ -1793,34 +1821,112 @@ begin
 
  end;
 
+ TextSize:=aButton.Font.TextSize(aButton.fCaption,aButton.FontSize);
+
+ if (length(aButton.fIconText)>0) and assigned(aButton.fIconFont) then begin
+  IconSize:=aButton.fIconFont.TextSize(aButton.fIconText,aButton.fIconFontSize);
+ end else if assigned(aButton.fIcon) then begin
+  if aButton.fIcon is TpvSprite then begin
+   IconSize:=TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height);
+  end else if aButton.fIcon is TpvVulkanTexture then begin
+   IconSize:=TpvVector2.Create(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height);
+  end else begin
+   IconSize:=TpvVector2.Null;
+  end;
+  if aButton.fIconHeight>0.0 then begin
+   IconSize.x:=(IconSize.x*aButton.fIconHeight)/IconSize.y;
+   IconSize.y:=aButton.fIconHeight;
+  end;
+ end else begin
+  IconSize:=TpvVector2.Null;
+ end;
+
+ if IconSize.x>0.0 then begin
+
+  if length(aButton.fCaption)>0 then begin
+   IconSize.x:=IconSize.x+fSpacing;
+  end;
+  TemporarySize.x:=TextSize.x+IconSize.x;
+  TemporarySize.y:=Max(TextSize.y,IconSize.y);
+
+  case aButton.fIconPosition of
+   pvgbipLeft:begin
+    IconRect:=TpvRect.CreateRelative(TpvVector2.Create(fSpacing,(aButton.fSize.y-IconSize.y)*0.5),IconSize);
+    TextRect:=TpvRect.CreateRelative(TpvVector2.Create(fSpacing,0.0),aButton.fSize-TpvVector2.Create(fSpacing+IconSize.x,0.0));
+   end;
+   pvgbipLeftCentered:begin
+    IconRect:=TpvRect.CreateRelative(TpvVector2.Create((aButton.fSize.x-TemporarySize.x)*0.5,(aButton.fSize.y-IconSize.y)*0.5),IconSize);
+    TextRect:=TpvRect.CreateRelative(TpvVector2.Create(((aButton.fSize.x-TemporarySize.x)*0.5)+IconSize.x,0.0),TpvVector2.Create(TextSize.x,aButton.fSize.y));
+   end;
+   pvgbipRightCentered:begin
+    IconRect:=TpvRect.CreateRelative(TpvVector2.Create(((aButton.fSize.x-TemporarySize.x)*0.5)+TextSize.x,(aButton.fSize.y-IconSize.y)*0.5),IconSize);
+    TextRect:=TpvRect.CreateRelative(TpvVector2.Create((aButton.fSize.x-TemporarySize.x)*0.5,0.0),TpvVector2.Create(TextSize.x,aButton.fSize.y));
+   end;
+   else {pvgbipRight:}begin
+    IconRect:=TpvRect.CreateRelative(TpvVector2.Create(aButton.fSize.x-fSpacing,(aButton.fSize.y-IconSize.y)*0.5),IconSize);
+    TextRect:=TpvRect.CreateRelative(TpvVector2.Null,aButton.fSize-TpvVector2.Create(fSpacing+IconSize.x,0.0));
+   end;
+  end;
+
+ end else begin
+
+  TextRect:=TpvRect.CreateRelative(TpvVector2.Null,aButton.fSize);
+
+  IconRect:=TpvRect.CreateRelative(TpvVector2.Null,TpvVector2.Null);
+
+ end;
+
  aCanvas.Font:=aButton.Font;
  aCanvas.FontSize:=aButton.FontSize;
  case aButton.TextHorizontalAlignment of
   pvgtaLeading:begin
    aCanvas.TextHorizontalAlignment:=pvcthaLeading;
-   Offset.x:=fSpacing;
+   TextOffset.x:=fSpacing;
   end;
   pvgtaCenter:begin
    aCanvas.TextHorizontalAlignment:=pvcthaCenter;
-   Offset.x:=aButton.fSize.x*0.5;
+   TextOffset.x:=TextRect.Size.x*0.5;
   end;
   else {pvgtaTailing:}begin
    aCanvas.TextHorizontalAlignment:=pvcthaTailing;
-   Offset.x:=aButton.fSize.x-fSpacing;
+   TextOffset.x:=TextRect.Size.x-fSpacing;
   end;
  end;
  case aButton.TextVerticalAlignment of
   pvgtaLeading:begin
    aCanvas.TextVerticalAlignment:=pvctvaLeading;
-   Offset.y:=fSpacing;
+   TextOffset.y:=fSpacing;
   end;
   pvgtaCenter:begin
    aCanvas.TextVerticalAlignment:=pvctvaMiddle;
-   Offset.y:=aButton.fSize.y*0.5;
+   TextOffset.y:=TextRect.Size.y*0.5;
   end;
   else {pvgtaTailing:}begin
    aCanvas.TextVerticalAlignment:=pvctvaTailing;
-   Offset.y:=aButton.fSize.y-fSpacing;
+   TextOffset.y:=TextRect.Size.y-fSpacing;
+  end;
+ end;
+
+ if (length(aButton.fIconText)>0) and assigned(aButton.fIconFont) then begin
+  if aButton.Enabled then begin
+   aCanvas.Color:=aButton.FontColor;
+  end else begin
+   aCanvas.Color:=TpvVector4.Create(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
+  end;
+  aCanvas.Font:=aButton.fIconFont;
+  aCanvas.FontSize:=aButton.fIconFontSize;
+  aCanvas.DrawText(aButton.fIconText,IconRect.LeftTop);
+ end else if assigned(aButton.fIcon) then begin
+  if aButton.fIcon is TpvSprite then begin
+   aCanvas.DrawSprite(TpvSprite(aButton.fIcon),
+                      TpvRect.CreateRelative(TpvVector2.Null,
+                                             TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)),
+                      TpvRect.CreateRelative(Offset+IconRect.LeftTop,
+                                             TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)));
+  end else if aButton.fIcon is TpvVulkanTexture then begin
+   aCanvas.DrawTexturedRectangle(TpvVulkanTexture(aButton.fIcon),
+                                 Offset+IconRect.LeftTop+(TpvVector2.Create(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5),
+                                 TpvVector2.Create(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5);
   end;
  end;
  if aButton.Enabled then begin
@@ -1828,12 +1934,14 @@ begin
  end else begin
   aCanvas.Color:=TpvVector4.Create(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
  end;
+ aCanvas.Font:=aButton.Font;
+ aCanvas.FontSize:=aButton.FontSize;
  aCanvas.DrawText(TpvGUITextUtils.TextTruncation(aButton.fCaption,
                                                  aButton.fTextTruncation,
                                                  aCanvas.Font,
                                                  aCanvas.FontSize,
                                                  aButton.fSize.x-(fSpacing*2.0)),
-                  Offset+(TpvVector2.Create(-0.5,-0.5)*IfThen(aButton.Down,1,0)));
+                  Offset+TextOffset);
 
 end;
 
@@ -3760,6 +3868,12 @@ begin
  fButtonFlags:=[pvgbfNormalButton];
  fButtonGroup:=TpvGUIButtonGroup.Create(false);
  fCaption:='Button';
+ fIconPosition:=pvgbipLeft;
+ fIcon:=nil;
+ fIconHeight:=0.0;
+ fIconText:='';
+ fIconFont:=nil;
+ fIconFontSize:=FontSize;
  fOnClick:=nil;
  fOnChange:=nil;
 end;
@@ -3803,9 +3917,33 @@ begin
 end;
 
 function TpvGUIButton.GetPreferredSize:TpvVector2;
+var TextSize,IconSize,TemporarySize:TpvVector2;
 begin
+ TextSize:=Font.TextSize(fCaption,FontSize);
+ if (length(fIconText)>0) and assigned(fIconFont) then begin
+  IconSize:=fIconFont.TextSize(fIconText,fIconFontSize);
+ end else if assigned(fIcon) then begin
+  if fIcon is TpvSprite then begin
+   IconSize:=TpvVector2.Create(TpvSprite(fIcon).Width,TpvSprite(fIcon).Height);
+  end else if fIcon is TpvVulkanTexture then begin
+   IconSize:=TpvVector2.Create(TpvVulkanTexture(fIcon).Width,TpvVulkanTexture(fIcon).Height);
+  end else begin
+   IconSize:=TpvVector2.Null;
+  end;
+  if fIconHeight>0.0 then begin
+   IconSize.x:=(IconSize.x*fIconHeight)/IconSize.y;
+   IconSize.y:=fIconHeight;
+  end;
+ end else begin
+  IconSize:=TpvVector2.Null;
+ end;
+ if (length(fCaption)>0) and (IconSize.x>0.0) then begin
+  TextSize.x:=TextSize.x+Skin.fSpacing;
+ end;
+ TemporarySize.x:=TextSize.x+IconSize.x;
+ TemporarySize.y:=Max(TextSize.y,IconSize.y);
  result:=Maximum(inherited GetPreferredSize,
-                 Font.TextSize(fCaption,FontSize)+TpvVector2.Create(20.0,10.0));
+                 TemporarySize+TpvVector2.Create(20.0,10.0));
 end;
 
 procedure TpvGUIButton.ProcessDown(const aPosition:TpvVector2);
