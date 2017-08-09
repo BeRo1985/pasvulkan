@@ -510,6 +510,7 @@ type TpvGUIObject=class;
        fDragWidget:TpvGUIWidget;
        fWindow:TpvGUIWindow;
        fFocusedWidget:TpvGUIWidget;
+       fHoveredWidget:TpvGUIWidget;
        fMousePosition:TpvVector2;
        fVisibleCursor:TpvGUICursor;
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
@@ -518,6 +519,7 @@ type TpvGUIObject=class;
        procedure DisposeWindow(const aWindow:TpvGUIWindow);
        procedure CenterWindow(const aWindow:TpvGUIWindow);
        procedure MoveWindowToFront(const aWindow:TpvGUIWindow);
+       procedure FindHoveredWidget;
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice;
                           const aFontCodePointRanges:TpvFontCodePointRanges=nil); reintroduce;
@@ -544,6 +546,7 @@ type TpvGUIObject=class;
        property DrawBufferIndex:TpvInt32 read fDrawBufferIndex write fDrawBufferIndex;
        property DeltaTime:TpvDouble read fDeltaTime write fDeltaTime;
        property FocusedWidget:TpvGUIWidget read fFocusedWidget write UpdateFocus;
+       property HoveredWidget:TpvGUIWidget read fHoveredWidget;
      end;
 
      PpvGUIWindowMouseAction=^TpvGUIWindowMouseAction;
@@ -1337,24 +1340,26 @@ end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawFocus(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget);
 begin
-{if aWidget.PointerFocused then begin
-  aCanvas.ClipRect:=aWidget.fParentClipRect;
-  aCanvas.ModelMatrix:=aWidget.fModelMatrix;
-  aCanvas.DrawGUIElement(GUI_ELEMENT_HOVERED,
-                         true,
-                         TpvVector2.Create(-32.0,-32.0),
-                         aWidget.fSize+TpvVector2.Create(32.0,32.0),
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aWidget.fSize.x,aWidget.fSize.y));
- end else}if aWidget.Focused and assigned(fInstance) and (fInstance.FocusedWidget=aWidget) then begin
-  aCanvas.ClipRect:=aWidget.fParentClipRect;
-  aCanvas.ModelMatrix:=aWidget.fModelMatrix;
-  aCanvas.DrawGUIElement(GUI_ELEMENT_FOCUSED,
-                         true,
-                         TpvVector2.Create(-32.0,-32.0),
-                         aWidget.fSize+TpvVector2.Create(32.0,32.0),
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aWidget.fSize.x,aWidget.fSize.y));
+ if assigned(fInstance) then begin
+  if fInstance.fHoveredWidget=aWidget then begin
+   aCanvas.ClipRect:=aWidget.fParentClipRect;
+   aCanvas.ModelMatrix:=aWidget.fModelMatrix;
+   aCanvas.DrawGUIElement(GUI_ELEMENT_HOVERED,
+                          true,
+                          TpvVector2.Create(-32.0,-32.0),
+                          aWidget.fSize+TpvVector2.Create(32.0,32.0),
+                          TpvVector2.Create(0.0,0.0),
+                          TpvVector2.Create(aWidget.fSize.x,aWidget.fSize.y));
+  end else if fInstance.fFocusedWidget=aWidget then begin
+   aCanvas.ClipRect:=aWidget.fParentClipRect;
+   aCanvas.ModelMatrix:=aWidget.fModelMatrix;
+   aCanvas.DrawGUIElement(GUI_ELEMENT_FOCUSED,
+                          true,
+                          TpvVector2.Create(-32.0,-32.0),
+                          aWidget.fSize+TpvVector2.Create(32.0,32.0),
+                          TpvVector2.Create(0.0,0.0),
+                          TpvVector2.Create(aWidget.fSize.x,aWidget.fSize.y));
+  end;
  end;
 end;
 
@@ -2650,6 +2655,8 @@ begin
 
  fFocusedWidget:=nil;
 
+ fHoveredWidget:=nil;
+
  fVisibleCursor:=pvgcArrow;
 
  Include(fWidgetFlags,pvgwfScissor);
@@ -2718,6 +2725,7 @@ begin
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fFocusedWidget);
+ TpvReferenceCountedObject.DecRefOrFreeAndNil(fHoveredWidget);
  fLastFocusPath.Clear;
  fCurrentFocusPath.Clear;
  DecRefWithoutFree;
@@ -2751,6 +2759,9 @@ begin
   end;
   if fFocusedWidget=aGUIObject then begin
    TpvReferenceCountedObject.DecRefOrFreeAndNil(fFocusedWidget);
+  end;
+  if fHoveredWidget=aGUIObject then begin
+   TpvReferenceCountedObject.DecRefOrFreeAndNil(fHoveredWidget);
   end;
   if assigned(aGUIObject.fParent) and
      assigned(aGUIObject.fParent.fChildren) and
@@ -3037,6 +3048,19 @@ begin
  end;
 end;
 
+procedure TpvGUIInstance.FindHoveredWidget;
+var CurrentWidget:TpvGUIWidget;
+begin
+ CurrentWidget:=FindWidget(fMousePosition);
+ if fHoveredWidget<>CurrentWidget then begin
+  TpvReferenceCountedObject.DecRefOrFreeAndNil(fHoveredWidget);
+  fHoveredWidget:=CurrentWidget;
+  if assigned(fHoveredWidget) then begin
+   fHoveredWidget.IncRef;
+  end;
+ end;
+end;
+
 procedure TpvGUIInstance.Update;
 var LastModelMatrix:TpvMatrix4x4;
     LastClipRect:TpvRect;
@@ -3047,6 +3071,7 @@ begin
  try
   fModelMatrix:=LastModelMatrix;
   fClipRect:=LastClipRect.GetIntersection(TpvRect.CreateRelative(fPosition,fSize));
+  FindHoveredWidget;
   inherited Update;
   Skin.DrawMouse(fCanvas,self);
  finally
@@ -3068,7 +3093,7 @@ begin
  fMouseAction:=pvgwmaNone;
  fWindowFlags:=TpvGUIWindow.DefaultFlags;
  Include(fWidgetFlags,pvgwfScissor);
- Include(fWidgetFlags,pvgwfDrawFocus);
+//Include(fWidgetFlags,pvgwfDrawFocus);
  fLastWindowState:=TpvGUIWindowState.pvgwsNormal;
  fWindowState:=TpvGUIWindowState.pvgwsNormal;
  fButtonPanel:=nil;
@@ -3123,7 +3148,7 @@ begin
   fMinimizationButton.Font:=Skin.IconicFont;
   fMinimizationButton.OnClick:=OnButtonClick;
   fMinimizationButton.fCaption:=PUCUUTF32CharToUTF8($f1eb);
-  fMinimizationButton.fWidgetFlags:=fMinimizationButton.fWidgetFlags-[pvgwfTabStop,pvgwfDrawFocus];
+  fMinimizationButton.fWidgetFlags:=fMinimizationButton.fWidgetFlags-[pvgwfTabStop];
  end;
 end;
 
@@ -3134,7 +3159,7 @@ begin
   fMaximizationButton.Font:=Skin.IconicFont;
   fMaximizationButton.OnClick:=OnButtonClick;
   fMaximizationButton.fCaption:=PUCUUTF32CharToUTF8($f1ea);
-  fMaximizationButton.fWidgetFlags:=fMaximizationButton.fWidgetFlags-[pvgwfTabStop,pvgwfDrawFocus];
+  fMaximizationButton.fWidgetFlags:=fMaximizationButton.fWidgetFlags-[pvgwfTabStop];
  end;
 end;
 
@@ -3145,7 +3170,7 @@ begin
   fCloseButton.Font:=Skin.IconicFont;
   fCloseButton.OnClick:=OnButtonClick;
   fCloseButton.fCaption:=PUCUUTF32CharToUTF8($f136);
-  fCloseButton.fWidgetFlags:=fCloseButton.fWidgetFlags-[pvgwfTabStop,pvgwfDrawFocus];
+  fCloseButton.fWidgetFlags:=fCloseButton.fWidgetFlags-[pvgwfTabStop];
  end;
 end;
 
