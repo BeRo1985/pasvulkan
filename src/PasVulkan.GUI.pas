@@ -235,10 +235,20 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure Setup; virtual;
+      public
        procedure DrawFocus(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget); virtual;
+      public
        procedure DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance); virtual;
+      public
+       function GetWidgetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; virtual;
+      public
+       function GetWindowPreferredSize(const aWindow:TpvGUIWindow):TpvVector2; virtual;
        procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); virtual;
+      public
+       function GetLabelPreferredSize(const aLabel:TpvGUILabel):TpvVector2; virtual;
        procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); virtual;
+      public
+       function GetButtonPreferredSize(const aButton:TpvGUIButton):TpvVector2; virtual;
        procedure DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton); virtual;
       public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
@@ -283,10 +293,20 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure Setup; override;
+      public
        procedure DrawFocus(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget); override;
+      public
        procedure DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance); override;
+      public
+       function GetWidgetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
+      public
+       function GetWindowPreferredSize(const aWindow:TpvGUIWindow):TpvVector2; override;
        procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); override;
+      public
+       function GetLabelPreferredSize(const aLabel:TpvGUILabel):TpvVector2; override;
        procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); override;
+      public
+       function GetButtonPreferredSize(const aButton:TpvGUIButton):TpvVector2; override;
        procedure DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
@@ -410,6 +430,7 @@ type TpvGUIObject=class;
        procedure SetCanvas(const aCanvas:TpvCanvas); virtual;
        function GetSkin:TpvGUISkin; virtual;
        procedure SetSkin(const aSkin:TpvGUISkin); virtual;
+       function GetLayoutPreferredSize:TpvVector2; virtual;
        function GetPreferredSize:TpvVector2; virtual;
        function GetFixedSize:TpvVector2; virtual;
        function GetFont:TpvFont; virtual;
@@ -1175,12 +1196,32 @@ procedure TpvGUISkin.DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIIns
 begin
 end;
 
+function TpvGUISkin.GetWidgetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
+begin
+ result:=aWidget.GetLayoutPreferredSize;
+end;
+
+function TpvGUISkin.GetWindowPreferredSize(const aWindow:TpvGUIWindow):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aWindow);
+end;
+
 procedure TpvGUISkin.DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow);
 begin
 end;
 
+function TpvGUISkin.GetLabelPreferredSize(const aLabel:TpvGUILabel):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aLabel);
+end;
+
 procedure TpvGUISkin.DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel);
 begin
+end;
+
+function TpvGUISkin.GetButtonPreferredSize(const aButton:TpvGUIButton):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aButton);
 end;
 
 procedure TpvGUISkin.DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton);
@@ -1591,6 +1632,54 @@ begin
  end;
 end;
 
+function TpvGUIDefaultVectorBasedSkin.GetWidgetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
+begin
+ result:=inherited GetWidgetPreferredSize(aWidget);
+end;
+
+function TpvGUIDefaultVectorBasedSkin.GetWindowPreferredSize(const aWindow:TpvGUIWindow):TpvVector2;
+var ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+    ButtonPanelPreferredSize:TpvVector2;
+begin
+ if assigned(aWindow.fButtonPanel) then begin
+  aWindow.fButtonPanel.Visible:=false;
+ end;
+ result:=Maximum(GetWidgetPreferredSize(aWindow),
+                 aWindow.Font.TextSize(aWindow.fTitle,
+                                       fWindowHeaderFontSize)+
+                 TpvVector2.Create(fSpacing*2.0,0.0));
+ if pvgwfHeader in aWindow.fWindowFlags then begin
+  result.y:=Maximum(result.y,fWindowHeaderHeight);
+ end;
+ if assigned(aWindow.fButtonPanel) then begin
+  aWindow.fButtonPanel.Visible:=true;
+  for ChildIndex:=0 to aWindow.fButtonPanel.fChildren.Count-1 do begin
+   Child:=aWindow.fButtonPanel.fChildren.Items[ChildIndex];
+   if Child is TpvGUIWidget then begin
+    ChildWidget:=Child as TpvGUIWidget;
+    ChildWidget.FixedWidth:=22;
+    ChildWidget.FixedHeight:=22;
+    ChildWidget.FontSize:=-15;
+   end;
+  end;
+  ButtonPanelPreferredSize:=aWindow.fButtonPanel.PreferredSize;
+  result.x:=result.x+(ButtonPanelPreferredSize.x+(fSpacing*2.0));
+  result.y:=Maximum(result.y,ButtonPanelPreferredSize.y);
+ end;
+ case aWindow.fWindowState of
+  pvgwsMinimized:begin
+   result.y:=fWindowHeaderHeight;
+  end;
+  pvgwsMaximized:begin
+   if assigned(fParent) and (fParent is TpvGUIWidget) then begin
+    result:=(fParent as TpvGUIWidget).fSize;
+   end;
+  end;
+ end;
+end;
+
 procedure TpvGUIDefaultVectorBasedSkin.DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow);
 var LastClipRect,NewClipRect:TpvRect;
     LastModelMatrix,NewModelMatrix:TpvMatrix4x4;
@@ -1722,6 +1811,12 @@ begin
 
 end;
 
+function TpvGUIDefaultVectorBasedSkin.GetLabelPreferredSize(const aLabel:TpvGUILabel):TpvVector2;
+begin
+ result:=Maximum(GetWidgetPreferredSize(aLabel),
+                 aLabel.Font.TextSize(aLabel.fCaption,aLabel.FontSize)+TpvVector2.Create(0.0,0.0));
+end;
+
 procedure TpvGUIDefaultVectorBasedSkin.DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel);
 var Offset:TpvVector2;
 begin
@@ -1767,6 +1862,36 @@ begin
 
 
  end;
+
+function TpvGUIDefaultVectorBasedSkin.GetButtonPreferredSize(const aButton:TpvGUIButton):TpvVector2;
+var TextSize,IconSize,TemporarySize:TpvVector2;
+begin
+ TextSize:=aButton.Font.TextSize(aButton.fCaption,FontSize);
+ if (length(aButton.fIconText)>0) and assigned(aButton.fIconFont) then begin
+  IconSize:=aButton.fIconFont.TextSize(aButton.fIconText,aButton.fIconFontSize);
+ end else if assigned(aButton.fIcon) then begin
+  if aButton.fIcon is TpvSprite then begin
+   IconSize:=TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height);
+  end else if aButton.fIcon is TpvVulkanTexture then begin
+   IconSize:=TpvVector2.Create(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height);
+  end else begin
+   IconSize:=TpvVector2.Null;
+  end;
+  if aButton.fIconHeight>0.0 then begin
+   IconSize.x:=(IconSize.x*aButton.fIconHeight)/IconSize.y;
+   IconSize.y:=aButton.fIconHeight;
+  end;
+ end else begin
+  IconSize:=TpvVector2.Null;
+ end;
+ if (length(aButton.fCaption)>0) and (IconSize.x>0.0) then begin
+  TextSize.x:=TextSize.x+fSpacing;
+ end;
+ TemporarySize.x:=TextSize.x+IconSize.x;
+ TemporarySize.y:=Max(TextSize.y,IconSize.y);
+ result:=Maximum(GetWidgetPreferredSize(aButton),
+                 TemporarySize+TpvVector2.Create(20.0,10.0));
+end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton);
 var Offset,TextOffset:TpvVector2;
@@ -2246,13 +2371,18 @@ begin
  until false;
 end;
 
-function TpvGUIWidget.GetPreferredSize:TpvVector2;
+function TpvGUIWidget.GetLayoutPreferredSize:TpvVector2;
 begin
  if assigned(fLayout) then begin
   result:=fLayout.GetPreferredSize(self);
  end else begin
   result:=fSize;
  end;
+end;
+
+function TpvGUIWidget.GetPreferredSize:TpvVector2;
+begin
+ result:=Skin.GetWidgetPreferredSize(self);
 end;
 
 function TpvGUIWidget.GetFixedSize:TpvVector2;
@@ -3433,46 +3563,8 @@ begin
 end;
 
 function TpvGUIWindow.GetPreferredSize:TpvVector2;
-var ChildIndex:TpvInt32;
-    Child:TpvGUIObject;
-    ChildWidget:TpvGUIWidget;
-    ButtonPanelPreferredSize:TpvVector2;
 begin
- if assigned(fButtonPanel) then begin
-  fButtonPanel.Visible:=false;
- end;
- result:=Maximum(inherited GetPreferredSize,
-                 Font.TextSize(fTitle,
-                               Skin.fWindowHeaderFontSize)+
-                 TpvVector2.Create(Skin.fSpacing*2.0,0.0));
- if pvgwfHeader in fWindowFlags then begin
-  result.y:=Maximum(result.y,Skin.fWindowHeaderHeight);
- end;
- if assigned(fButtonPanel) then begin
-  fButtonPanel.Visible:=true;
-  for ChildIndex:=0 to fButtonPanel.fChildren.Count-1 do begin
-   Child:=fButtonPanel.fChildren.Items[ChildIndex];
-   if Child is TpvGUIWidget then begin
-    ChildWidget:=Child as TpvGUIWidget;
-    ChildWidget.FixedWidth:=22;
-    ChildWidget.FixedHeight:=22;
-    ChildWidget.FontSize:=-15;
-   end;
-  end;
-  ButtonPanelPreferredSize:=fButtonPanel.PreferredSize;
-  result.x:=result.x+(ButtonPanelPreferredSize.x+(Skin.fSpacing*2.0));
-  result.y:=Maximum(result.y,ButtonPanelPreferredSize.y);
- end;
- case fWindowState of
-  pvgwsMinimized:begin
-   result.y:=Skin.fWindowHeaderHeight;
-  end;
-  pvgwsMaximized:begin
-   if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-    result:=(fParent as TpvGUIWidget).fSize;
-   end;
-  end;
- end;
+ result:=Skin.GetWindowPreferredSize(self);
 end;
 
 procedure TpvGUIWindow.PerformLayout;
@@ -3824,8 +3916,7 @@ end;
 
 function TpvGUILabel.GetPreferredSize:TpvVector2;
 begin
- result:=Maximum(inherited GetPreferredSize,
-                 Font.TextSize(fCaption,FontSize)+TpvVector2.Create(0.0,0.0));
+ result:=Skin.GetLabelPreferredSize(self);
 end;
 
 function TpvGUILabel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -3917,33 +4008,8 @@ begin
 end;
 
 function TpvGUIButton.GetPreferredSize:TpvVector2;
-var TextSize,IconSize,TemporarySize:TpvVector2;
 begin
- TextSize:=Font.TextSize(fCaption,FontSize);
- if (length(fIconText)>0) and assigned(fIconFont) then begin
-  IconSize:=fIconFont.TextSize(fIconText,fIconFontSize);
- end else if assigned(fIcon) then begin
-  if fIcon is TpvSprite then begin
-   IconSize:=TpvVector2.Create(TpvSprite(fIcon).Width,TpvSprite(fIcon).Height);
-  end else if fIcon is TpvVulkanTexture then begin
-   IconSize:=TpvVector2.Create(TpvVulkanTexture(fIcon).Width,TpvVulkanTexture(fIcon).Height);
-  end else begin
-   IconSize:=TpvVector2.Null;
-  end;
-  if fIconHeight>0.0 then begin
-   IconSize.x:=(IconSize.x*fIconHeight)/IconSize.y;
-   IconSize.y:=fIconHeight;
-  end;
- end else begin
-  IconSize:=TpvVector2.Null;
- end;
- if (length(fCaption)>0) and (IconSize.x>0.0) then begin
-  TextSize.x:=TextSize.x+Skin.fSpacing;
- end;
- TemporarySize.x:=TextSize.x+IconSize.x;
- TemporarySize.y:=Max(TextSize.y,IconSize.y);
- result:=Maximum(inherited GetPreferredSize,
-                 TemporarySize+TpvVector2.Create(20.0,10.0));
+ result:=Skin.GetButtonPreferredSize(self);
 end;
 
 procedure TpvGUIButton.ProcessDown(const aPosition:TpvVector2);
