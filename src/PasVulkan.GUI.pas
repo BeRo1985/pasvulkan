@@ -509,6 +509,7 @@ type TpvGUIObject=class;
        fCurrentFocusPath:TpvGUIObjectList;
        fDragWidget:TpvGUIWidget;
        fWindow:TpvGUIWindow;
+       fFocused:TpvGUIWidget;
        fMousePosition:TpvVector2;
        fVisibleCursor:TpvGUICursor;
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
@@ -542,6 +543,7 @@ type TpvGUIObject=class;
        property UpdateBufferIndex:TpvInt32 read fUpdateBufferIndex write fUpdateBufferIndex;
        property DrawBufferIndex:TpvInt32 read fDrawBufferIndex write fDrawBufferIndex;
        property DeltaTime:TpvDouble read fDeltaTime write fDeltaTime;
+       property Focused:TpvGUIWidget read fFocused write UpdateFocus;
      end;
 
      PpvGUIWindowMouseAction=^TpvGUIWindowMouseAction;
@@ -1344,9 +1346,7 @@ begin
                          aWidget.fSize+TpvVector2.Create(32.0,32.0),
                          TpvVector2.Create(0.0,0.0),
                          TpvVector2.Create(aWidget.fSize.x,aWidget.fSize.y));
- end else}if aWidget.Focused and
-             (fInstance.fCurrentFocusPath.Count>0) and
-             (fInstance.fCurrentFocusPath.Items[0]=aWidget) then begin
+ end else}if aWidget.Focused and (fInstance.Focused=aWidget) then begin
   aCanvas.ClipRect:=aWidget.fParentClipRect;
   aCanvas.ModelMatrix:=aWidget.fModelMatrix;
   aCanvas.DrawGUIElement(GUI_ELEMENT_FOCUSED,
@@ -2648,6 +2648,8 @@ begin
 
  fWindow:=nil;
 
+ fFocused:=nil;
+
  fVisibleCursor:=pvgcArrow;
 
  Include(fWidgetFlags,pvgwfScissor);
@@ -2715,6 +2717,7 @@ procedure TpvGUIInstance.BeforeDestruction;
 begin
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
+ TpvReferenceCountedObject.DecRefOrFreeAndNil(fFocused);
  fLastFocusPath.Clear;
  fCurrentFocusPath.Clear;
  DecRefWithoutFree;
@@ -2745,6 +2748,9 @@ begin
   end;
   if fWindow=aGUIObject then begin
    TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
+  end;
+  if fFocused=aGUIObject then begin
+   TpvReferenceCountedObject.DecRefOrFreeAndNil(fFocused);
   end;
   if assigned(aGUIObject.fParent) and
      assigned(aGUIObject.fParent.fChildren) and
@@ -2797,6 +2803,12 @@ begin
  fCurrentFocusPath.Clear;
 
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
+
+ TpvReferenceCountedObject.DecRefOrFreeAndNil(fFocused);
+ fFocused:=aWidget;
+ if assigned(fFocused) then begin
+  fFocused.IncRef;
+ end;
 
  CurrentWidget:=aWidget;
  while assigned(CurrentWidget) do begin
