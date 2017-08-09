@@ -1191,13 +1191,13 @@ begin
 
  fLabelFontSize:=-12;
 
- fFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.75));
+ fFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
 
- fWindowFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.75));
+ fWindowFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
 
- fButtonFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.75));
+ fButtonFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
 
- fLabelFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.75));
+ fLabelFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
 
  fUnfocusedWindowHeaderFontShadow:=true;
  fFocusedWindowHeaderFontShadow:=true;
@@ -3138,6 +3138,11 @@ begin
   end;
  end else if aSender=fCloseButton then begin
   DisposeWindow;
+ end;
+ if assigned(fInstance) and
+    (aSender is TpvGUIWidget) and
+    ((aSender as TpvGUIWidget).Focused) then begin
+  fInstance.UpdateFocus(nil);
  end;
 end;
 
