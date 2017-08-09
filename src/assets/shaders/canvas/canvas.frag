@@ -73,7 +73,8 @@ vec4 blend(vec4 a, vec4 b){
 #define GUI_ELEMENT_BUTTON_FOCUSED 5
 #define GUI_ELEMENT_BUTTON_PUSHED 6
 #define GUI_ELEMENT_BUTTON_DISABLED 7
-#define GUI_ELEMENT_BUTTON_HOVERED 8
+#define GUI_ELEMENT_FOCUSED 8
+#define GUI_ELEMENT_HOVERED 9
 #define GUI_ELEMENT_MOUSE_CURSOR_ARROW 64
 #define GUI_ELEMENT_MOUSE_CURSOR_BEAM 65
 #define GUI_ELEMENT_MOUSE_CURSOR_BUSY 66
@@ -120,12 +121,14 @@ const vec4 uUnfocusedButtonGradientTop = MAKE_GRAY_COLOR(74.0, 255.0);
 const vec4 uUnfocusedButtonGradientBottom = MAKE_GRAY_COLOR(58.0, 255.0);
 const vec4 uFocusedButtonGradientTop = MAKE_GRAY_COLOR(64.0, 255.0);
 const vec4 uFocusedButtonGradientBottom = MAKE_GRAY_COLOR(48.0, 255.0);
-const vec4 uPushedButtonGradientTop = MAKE_GRAY_COLOR(32.0, 255.0);
-const vec4 uPushedButtonGradientBottom = MAKE_GRAY_COLOR(64.0, 255.0);
+const vec4 uPushedButtonGradientTop = MAKE_GRAY_COLOR(29.0, 255.0);
+const vec4 uPushedButtonGradientBottom = MAKE_GRAY_COLOR(41.0, 255.0);
 const vec4 uDisabledButtonGradientTop = MAKE_GRAY_COLOR(96.0, 255.0);
-const vec4 uDisabledButtonGradientBottom = MAKE_GRAY_COLOR(64.0, 255.0);
-const vec4 uHoveredButtonGradientTop = MAKE_COLOR(128.0, 96.0, 48.0, 255.0);
-const vec4 uHoveredButtonGradientBottom = MAKE_COLOR(64.0, 48.0, 24.0, 255.0);
+const vec4 uDisabledButtonGradientBottom = MAKE_GRAY_COLOR(74.0, 255.0);
+
+const vec4 uFocused = MAKE_COLOR(255.0, 192.0, 64.0, 255.0);
+
+const vec4 uHovered = MAKE_COLOR(64.0, 192.0, 255.0, 255.0);
 
 const vec4 uUnfocusedWindowFill = MAKE_GRAY_COLOR(43.0, 254.0);
 const vec4 uFocusedWindowFill = MAKE_GRAY_COLOR(45.0, 254.0);
@@ -398,8 +401,7 @@ void main(void){
       case GUI_ELEMENT_BUTTON_UNFOCUSED:
       case GUI_ELEMENT_BUTTON_FOCUSED:
       case GUI_ELEMENT_BUTTON_PUSHED:
-      case GUI_ELEMENT_BUTTON_DISABLED:
-      case GUI_ELEMENT_BUTTON_HOVERED:{
+      case GUI_ELEMENT_BUTTON_DISABLED:{
         float d0 = sdRoundedRect(p - (size * 0.5), size * 0.5, uButtonCornerRadius),
               d1 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(1.0), uButtonCornerRadius),      
               d2 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(2.0), uButtonCornerRadius),      
@@ -437,13 +439,6 @@ void main(void){
             borderAwayFromLight = uBorderDark;
           	break;
           }
-        	case GUI_ELEMENT_BUTTON_HOVERED:{
-            gradientTop = uHoveredButtonGradientTop;
-            gradientBottom = uHoveredButtonGradientBottom;
-            borderTowardsLight = uBorderLight;
-            borderAwayFromLight = uBorderDark;
-          	break;
-          }
         }
         color = blend(color, 
                       mix(mix(mix(mix(gradientTop, 
@@ -462,6 +457,22 @@ void main(void){
                                 linearstep(-t, t, p.y - (size.y - 1.0))), 
                             linearstep(-t, t, d1)) *
                       vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
+        break;
+      }
+      case GUI_ELEMENT_FOCUSED:{
+        float d = sdRoundedRect(p - (size * 0.5), size * 0.5, 0.0);      
+        color = blend(color,
+                      uFocused * 
+//                    vec2(1.0, linearstep(t, -t, max(d, -(d + 1.0)))).xxxy);
+                      vec2(1.0, pow(linearstep(2.0 + t, 0.0, d), 1.0) * linearstep(-(1.0 + t), 0.0, d)).xxxy);
+        break;
+      }
+      case GUI_ELEMENT_HOVERED:{
+        float d = sdRoundedRect(p - (size * 0.5), size * 0.5, 0.0);      
+        color = blend(color,
+                      uHovered * 
+//                    vec2(1.0, linearstep(t, -t, max(d, -(d + 1.0)))).xxxy);
+                      vec2(1.0, pow(linearstep(2.0 + t, 0.0, d), 1.0) * linearstep(-(1.0 + t), 0.0, d)).xxxy);
         break;
       }
       case GUI_ELEMENT_MOUSE_CURSOR_ARROW:

@@ -209,6 +209,7 @@ type TpvGUIObject=class;
      TpvGUISkin=class(TpvGUIObject)
       private
       protected
+       fSpacing:TpvFloat;
        fFontSize:TpvFloat;
        fWindowHeaderFontSize:tpvFloat;
        fButtonFontSize:TpvFloat;
@@ -250,6 +251,7 @@ type TpvGUIObject=class;
        property SansBoldItalicFont:TpvFont read fSansBoldItalicFont write fSansBoldItalicFont;
        property SansItalicFont:TpvFont read fSansItalicFont write fSansItalicFont;
        property MonoFont:TpvFont read fMonoFont write fMonoFont;
+       property Spacing:TpvFloat read fSpacing write fSpacing;
        property FontSize:TpvFloat read fFontSize write fFontSize;
        property WindowHeaderFontSize:TpvFloat read fWindowHeaderFontSize write fWindowHeaderFontSize;
        property ButtonFontSize:TpvFloat read fButtonFontSize write fButtonFontSize;
@@ -272,14 +274,15 @@ type TpvGUIObject=class;
        fFocusedWindowHeaderFontShadowOffset:TpvVector2;
        fUnfocusedWindowHeaderFontShadowColor:TpvVector4;
        fFocusedWindowHeaderFontShadowColor:TpvVector4;
-       fUnfocusedWindowFontColor:TpvVector4;
-       fFocusedWindowFontColor:TpvVector4;
+       fUnfocusedWindowHeaderFontColor:TpvVector4;
+       fFocusedWindowHeaderFontColor:TpvVector4;
        fWindowShadowWidth:TpvFloat;
        fWindowShadowHeight:TpvFloat;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure Setup; override;
+       procedure DrawHintGlow(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget);
        procedure DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance); override;
        procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); override;
        procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); override;
@@ -289,8 +292,8 @@ type TpvGUIObject=class;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
        property UnfocusedWindowHeaderFontShadowColor:TpvVector4 read fUnfocusedWindowHeaderFontShadowColor write fUnfocusedWindowHeaderFontShadowColor;
        property FocusedWindowHeaderFontShadowColor:TpvVector4 read fFocusedWindowHeaderFontShadowColor write fFocusedWindowHeaderFontShadowColor;
-       property UnfocusedWindowFontColor:TpvVector4 read fUnfocusedWindowFontColor write fUnfocusedWindowFontColor;
-       property FocusedWindowFontColor:TpvVector4 read fFocusedWindowFontColor write fFocusedWindowFontColor;
+       property UnfocusedWindowHeaderFontColor:TpvVector4 read fUnfocusedWindowHeaderFontColor write fUnfocusedWindowHeaderFontColor;
+       property FocusedWindowHeaderFontColor:TpvVector4 read fFocusedWindowHeaderFontColor write fFocusedWindowHeaderFontColor;
       published
        property UnfocusedWindowHeaderFontShadow:boolean read fUnfocusedWindowHeaderFontShadow write fUnfocusedWindowHeaderFontShadow;
        property FocusedWindowHeaderFontShadow:boolean read fFocusedWindowHeaderFontShadow write fFocusedWindowHeaderFontShadow;
@@ -337,7 +340,8 @@ type TpvGUIObject=class;
        pvgwfFocused,
        pvgwfPointerFocused,
        pvgwfWantAllKeys,
-       pvgwfTabStop
+       pvgwfTabStop,
+       pvgwfScissor
       );
 
      PpvGUIWidgetFlags=^TpvGUIWidgetFlags;
@@ -370,6 +374,9 @@ type TpvGUIObject=class;
        fOnKeyEvent:TpvGUIOnKeyEvent;
        fOnPointerEvent:TpvGUIOnPointerEvent;
        fOnScrolled:TpvGUIOnScrolled;
+       fParentClipRect:TpvRect;
+       fClipRect:TpvRect;
+       fModelMatrix:TpvMatrix4x4;
        function GetEnabled:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetEnabled(const aEnabled:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -397,6 +404,7 @@ type TpvGUIObject=class;
        function GetAbsolutePosition:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function GetRecursiveVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function GetWindow:TpvGUIWindow;
+       function GetScissorParent:TpvGUIWidget;
        procedure SetCanvas(const aCanvas:TpvCanvas); virtual;
        function GetSkin:TpvGUISkin; virtual;
        procedure SetSkin(const aSkin:TpvGUISkin); virtual;
@@ -440,8 +448,12 @@ type TpvGUIObject=class;
       public
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
        property PreferredSize:TpvVector2 read GetPreferredSize;
+       property ParentClipRect:TpvRect read fParentClipRect write fParentClipRect;
+       property ClipRect:TpvRect read fClipRect write fClipRect;
+       property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
       published
        property Window:TpvGUIWindow read GetWindow;
+       property ScissorParent:TpvGUIWidget read GetScissorParent;
        property Canvas:TpvCanvas read fCanvas write SetCanvas;
        property Layout:TpvGUILayout read fLayout write fLayout;
        property Skin:TpvGUISkin read GetSkin write SetSkin;
@@ -750,7 +762,8 @@ const GUI_ELEMENT_WINDOW_HEADER=1;
       GUI_ELEMENT_BUTTON_FOCUSED=5;
       GUI_ELEMENT_BUTTON_PUSHED=6;
       GUI_ELEMENT_BUTTON_DISABLED=7;
-      GUI_ELEMENT_BUTTON_HOVERED=8;
+      GUI_ELEMENT_FOCUSED=8;
+      GUI_ELEMENT_HOVERED=9;
       GUI_ELEMENT_MOUSE_CURSOR_ARROW=64;
       GUI_ELEMENT_MOUSE_CURSOR_BEAM=65;
       GUI_ELEMENT_MOUSE_CURSOR_BUSY=66;
@@ -1157,6 +1170,8 @@ var Stream:TStream;
     TrueTypeFont:TpvTrueTypeFont;
 begin
 
+ fSpacing:=4;
+
  fFontSize:=-12;
 
  fWindowHeaderFontSize:=-16;
@@ -1165,13 +1180,13 @@ begin
 
  fLabelFontSize:=-12;
 
- fFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,1.0));
+ fFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.75));
 
- fWindowFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,1.0));
+ fWindowFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.75));
 
- fButtonFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,1.0));
+ fButtonFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.75));
 
- fLabelFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,1.0));
+ fLabelFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.75));
 
  fUnfocusedWindowHeaderFontShadow:=true;
  fFocusedWindowHeaderFontShadow:=true;
@@ -1182,18 +1197,18 @@ begin
  fUnfocusedWindowHeaderFontShadowColor:=ConvertSRGBToLinear(TpvVector4.Create(0.0,0.0,0.0,0.3275));
  fFocusedWindowHeaderFontShadowColor:=ConvertSRGBToLinear(TpvVector4.Create(0.0,0.0,0.0,0.5));
 
- fUnfocusedWindowFontColor:=ConvertSRGBToLinear(TpvVector4.Create(0.75,0.75,0.75,1.0));
- fFocusedWindowFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,1.0));
+ fUnfocusedWindowHeaderFontColor:=ConvertSRGBToLinear(TpvVector4.Create(0.86,0.86,0.86,0.62));
+ fFocusedWindowHeaderFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.75));
 
  fWindowHeaderHeight:=32;
 
  fWindowResizeGripSize:=8;
 
- fMinimizedWindowMinimumWidth:=Max(fWindowHeaderHeight,fWindowResizeGripSize*2);
+ fMinimizedWindowMinimumWidth:=Max(fSpacing*2.0,fWindowResizeGripSize*2);
  fMinimizedWindowMinimumHeight:=Max(fWindowHeaderHeight,fWindowResizeGripSize*2);
 
- fWindowMinimumWidth:=Max(fWindowHeaderHeight+8,fWindowResizeGripSize*2);
- fWindowMinimumHeight:=Max(fWindowHeaderHeight+8,fWindowResizeGripSize*2);
+ fWindowMinimumWidth:=Max(fWindowHeaderHeight+(fSpacing*2.0),fWindowResizeGripSize*2);
+ fWindowMinimumHeight:=Max(fWindowHeaderHeight+(fSpacing*2.0),fWindowResizeGripSize*2);
 
  fWindowShadowWidth:=16;
  fWindowShadowHeight:=16;
@@ -1312,215 +1327,233 @@ begin
 
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance);
-var LastModelMatrix:TpvMatrix4x4;
+procedure TpvGUIDefaultVectorBasedSkin.DrawHintGlow(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget);
 begin
- LastModelMatrix:=aCanvas.ModelMatrix;
- try
-  aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(aInstance.fMousePosition)*LastModelMatrix;
-  case aInstance.fVisibleCursor of
-   pvgcArrow:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_ARROW,
-                           false,
-                           TpvVector2.Create(2.0,2.0),
-                           TpvVector2.Create(34.0,34.0),
-                           TpvVector2.Create(2.0,2.0),
-                           TpvVector2.Create(34.0,34.0));
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_ARROW,
-                           true,
-                           TpvVector2.Null,
-                           TpvVector2.Create(32.0,32.0),
-                           TpvVector2.Null,
-                           TpvVector2.Create(32.0,32.0));
-   end;
-   pvgcBeam:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BEAM,
-                           false,
-                           TpvVector2.Create(-30.0,-30.0),
-                           TpvVector2.Create(34.0,34.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(18.0,18.0));
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BEAM,
-                           true,
-                           TpvVector2.Create(-32.0,-32.0),
-                           TpvVector2.Create(32.0,32.0),
-                           TpvVector2.Create(-16.0,-16.0),
-                           TpvVector2.Create(16.0,16.0));
-   end;
-   pvgcBusy:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BUSY,
-                           false,
-                           TpvVector2.Create(-18.0,-18.0),
-                           TpvVector2.Create(22.0,22.0),
-                           TpvVector2.Create(-8.0,-8.0),
-                           TpvVector2.Create(12.0,12.0),
-                           frac(aInstance.fTime)*TwoPI);
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BUSY,
-                           true,
-                           TpvVector2.Create(-20.0,-20.0),
-                           TpvVector2.Create(20.0,20.0),
-                           TpvVector2.Create(-10.0,-10.0),
-                           TpvVector2.Create(10.0,10.0),
-                           frac(aInstance.fTime)*TwoPI);
-   end;
-   pvgcCross:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_CROSS,
-                           false,
-                           TpvVector2.Create(-30.0,-30.0),
-                           TpvVector2.Create(34.0,34.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(18.0,18.0));
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_CROSS,
-                           true,
-                           TpvVector2.Create(-32.0,-32.0),
-                           TpvVector2.Create(32.0,32.0),
-                           TpvVector2.Create(-16.0,-16.0),
-                           TpvVector2.Create(16.0,16.0));
-   end;
-   pvgcEW:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_EW,
-                           false,
-                           TpvVector2.Create(-30.0,-30.0),
-                           TpvVector2.Create(34.0,34.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(18.0,18.0));
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_EW,
-                           true,
-                           TpvVector2.Create(-32.0,-32.0),
-                           TpvVector2.Create(32.0,32.0),
-                           TpvVector2.Create(-16.0,-16.0),
-                           TpvVector2.Create(16.0,16.0));
-   end;
-   pvgcHelp:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_HELP,
-                           false,
-                           TpvVector2.Create(2.0,2.0),
-                           TpvVector2.Create(64.0,64.0),
-                           TpvVector2.Create(2.0,2.0),
-                           TpvVector2.Create(34.0,34.0));
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_HELP,
-                           true,
-                           TpvVector2.Null,
-                           TpvVector2.Create(64.0,64.0),
-                           TpvVector2.Null,
-                           TpvVector2.Create(32.0,32.0));
-   end;
-   pvgcLink:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_LINK,
-                           false,
-                           TpvVector2.Create(-30.0,-30.0),
-                           TpvVector2.Create(34.0,34.0),
-                           TpvVector2.Create(2.0,2.0),
-                           TpvVector2.Create(18.0,18.0));
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_LINK,
-                           true,
-                           TpvVector2.Create(-32.0,-32.0),
-                           TpvVector2.Create(32.0,32.0),
-                           TpvVector2.Null,
-                           TpvVector2.Create(16.0,16.0));
-   end;
-   pvgcMove:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_MOVE,
-                           false,
-                           TpvVector2.Create(-30.0,-30.0),
-                           TpvVector2.Create(34.0,34.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(18.0,18.0));
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_MOVE,
-                           true,
-                           TpvVector2.Create(-32.0,-32.0),
-                           TpvVector2.Create(32.0,32.0),
-                           TpvVector2.Create(-16.0,-16.0),
-                           TpvVector2.Create(16.0,16.0));
-   end;
-   pvgcNESW:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NESW,
-                           false,
-                           TpvVector2.Create(-30.0,-30.0),
-                           TpvVector2.Create(34.0,34.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(18.0,18.0));
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NESW,
-                           true,
-                           TpvVector2.Create(-32.0,-32.0),
-                           TpvVector2.Create(32.0,32.0),
-                           TpvVector2.Create(-16.0,-16.0),
-                           TpvVector2.Create(16.0,16.0));
-   end;
-   pvgcNS:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NS,
-                           false,
-                           TpvVector2.Create(-30.0,-30.0),
-                           TpvVector2.Create(34.0,34.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(18.0,18.0));
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NS,
-                           true,
-                           TpvVector2.Create(-32.0,-32.0),
-                           TpvVector2.Create(32.0,32.0),
-                           TpvVector2.Create(-16.0,-16.0),
-                           TpvVector2.Create(16.0,16.0));
-   end;
-   pvgcNWSE:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NWSE,
-                           false,
-                           TpvVector2.Create(-30.0,-30.0),
-                           TpvVector2.Create(34.0,34.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(18.0,18.0));
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NWSE,
-                           true,
-                           TpvVector2.Create(-32.0,-32.0),
-                           TpvVector2.Create(32.0,32.0),
-                           TpvVector2.Create(-16.0,-16.0),
-                           TpvVector2.Create(16.0,16.0));
-   end;
-   pvgcPen:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_PEN,
-                           false,
-                           TpvVector2.Create(-30.0,-30.0),
-                           TpvVector2.Create(34.0,34.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(18.0,18.0));
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_PEN,
-                           true,
-                           TpvVector2.Create(-32.0,-32.0),
-                           TpvVector2.Create(32.0,32.0),
-                           TpvVector2.Create(-16.0,-16.0),
-                           TpvVector2.Create(16.0,16.0));
-   end;
-   pvgcUnavailable:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE,
-                           false,
-                           TpvVector2.Create(-18.0,-18.0),
-                           TpvVector2.Create(22.0,22.0),
-                           TpvVector2.Create(-8.0,-8.0),
-                           TpvVector2.Create(12.0,12.0),
-                           frac(aInstance.fTime)*TwoPI);
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE,
-                           true,
-                           TpvVector2.Create(-20.0,-20.0),
-                           TpvVector2.Create(20.0,20.0),
-                           TpvVector2.Create(-10.0,-10.0),
-                           TpvVector2.Create(10.0,10.0));
-   end;
-   pvgcUp:begin
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UP,
-                           false,
-                           TpvVector2.Create(-30.0,-30.0),
-                           TpvVector2.Create(34.0,34.0),
-                           TpvVector2.Create(-14.0,-14.0),
-                           TpvVector2.Create(18.0,18.0));
-    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UP,
-                           true,
-                           TpvVector2.Create(-32.0,-32.0),
-                           TpvVector2.Create(32.0,32.0),
-                           TpvVector2.Create(-16.0,-16.0),
-                           TpvVector2.Create(16.0,16.0));
-   end;
+{if aWidget.PointerFocused then begin
+  aCanvas.ClipRect:=aWidget.fParentClipRect;
+  aCanvas.ModelMatrix:=aWidget.fModelMatrix;
+  aCanvas.DrawGUIElement(GUI_ELEMENT_HOVERED,
+                         true,
+                         TpvVector2.Create(-32.0,-32.0),
+                         aWidget.fSize+TpvVector2.Create(32.0,32.0),
+                         TpvVector2.Create(-1.0,-1.0),
+                         TpvVector2.Create(aWidget.fSize.x+1,aWidget.fSize.y+1));
+ end else if aWidget.Focused then begin
+  aCanvas.ClipRect:=aWidget.fParentClipRect;
+  aCanvas.ModelMatrix:=aWidget.fModelMatrix;
+  aCanvas.DrawGUIElement(GUI_ELEMENT_FOCUSED,
+                         true,
+                         TpvVector2.Create(-32.0,-32.0),
+                         aWidget.fSize+TpvVector2.Create(32.0,32.0),
+                         TpvVector2.Create(-1.0,-1.0),
+                         TpvVector2.Create(aWidget.fSize.x+1,aWidget.fSize.y+1));
+ end;    }
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance);
+begin
+ aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(aInstance.fMousePosition)*aInstance.fModelMatrix;
+ aCanvas.ClipRect:=aInstance.fClipRect;
+ case aInstance.fVisibleCursor of
+  pvgcArrow:begin
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_ARROW,
+                          false,
+                          TpvVector2.Create(2.0,2.0),
+                          TpvVector2.Create(34.0,34.0),
+                          TpvVector2.Create(2.0,2.0),
+                          TpvVector2.Create(34.0,34.0));
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_ARROW,
+                          true,
+                          TpvVector2.Null,
+                          TpvVector2.Create(32.0,32.0),
+                          TpvVector2.Null,
+                          TpvVector2.Create(32.0,32.0));
   end;
- finally
-  aCanvas.ModelMatrix:=LastModelMatrix;
+  pvgcBeam:begin
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BEAM,
+                          false,
+                          TpvVector2.Create(-30.0,-30.0),
+                          TpvVector2.Create(34.0,34.0),
+                          TpvVector2.Create(-14.0,-14.0),
+                          TpvVector2.Create(18.0,18.0));
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BEAM,
+                          true,
+                          TpvVector2.Create(-32.0,-32.0),
+                          TpvVector2.Create(32.0,32.0),
+                          TpvVector2.Create(-16.0,-16.0),
+                          TpvVector2.Create(16.0,16.0));
+  end;
+  pvgcBusy:begin
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BUSY,
+                          false,
+                          TpvVector2.Create(-18.0,-18.0),
+                          TpvVector2.Create(22.0,22.0),
+                          TpvVector2.Create(-8.0,-8.0),
+                          TpvVector2.Create(12.0,12.0),
+                          frac(aInstance.fTime)*TwoPI);
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BUSY,
+                          true,
+                          TpvVector2.Create(-20.0,-20.0),
+                          TpvVector2.Create(20.0,20.0),
+                          TpvVector2.Create(-10.0,-10.0),
+                          TpvVector2.Create(10.0,10.0),
+                          frac(aInstance.fTime)*TwoPI);
+  end;
+  pvgcCross:begin
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_CROSS,
+                          false,
+                          TpvVector2.Create(-30.0,-30.0),
+                          TpvVector2.Create(34.0,34.0),
+                          TpvVector2.Create(-14.0,-14.0),
+                          TpvVector2.Create(18.0,18.0));
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_CROSS,
+                          true,
+                          TpvVector2.Create(-32.0,-32.0),
+                          TpvVector2.Create(32.0,32.0),
+                          TpvVector2.Create(-16.0,-16.0),
+                          TpvVector2.Create(16.0,16.0));
+  end;
+  pvgcEW:begin
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_EW,
+                          false,
+                          TpvVector2.Create(-30.0,-30.0),
+                          TpvVector2.Create(34.0,34.0),
+                          TpvVector2.Create(-14.0,-14.0),
+                          TpvVector2.Create(18.0,18.0));
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_EW,
+                          true,
+                          TpvVector2.Create(-32.0,-32.0),
+                          TpvVector2.Create(32.0,32.0),
+                          TpvVector2.Create(-16.0,-16.0),
+                          TpvVector2.Create(16.0,16.0));
+  end;
+  pvgcHelp:begin
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_HELP,
+                          false,
+                          TpvVector2.Create(2.0,2.0),
+                          TpvVector2.Create(64.0,64.0),
+                          TpvVector2.Create(2.0,2.0),
+                          TpvVector2.Create(34.0,34.0));
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_HELP,
+                          true,
+                          TpvVector2.Null,
+                          TpvVector2.Create(64.0,64.0),
+                          TpvVector2.Null,
+                          TpvVector2.Create(32.0,32.0));
+  end;
+  pvgcLink:begin
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_LINK,
+                          false,
+                          TpvVector2.Create(-30.0,-30.0),
+                          TpvVector2.Create(34.0,34.0),
+                          TpvVector2.Create(2.0,2.0),
+                          TpvVector2.Create(18.0,18.0));
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_LINK,
+                          true,
+                          TpvVector2.Create(-32.0,-32.0),
+                          TpvVector2.Create(32.0,32.0),
+                          TpvVector2.Null,
+                          TpvVector2.Create(16.0,16.0));
+  end;
+  pvgcMove:begin
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_MOVE,
+                          false,
+                          TpvVector2.Create(-30.0,-30.0),
+                          TpvVector2.Create(34.0,34.0),
+                          TpvVector2.Create(-14.0,-14.0),
+                          TpvVector2.Create(18.0,18.0));
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_MOVE,
+                          true,
+                          TpvVector2.Create(-32.0,-32.0),
+                          TpvVector2.Create(32.0,32.0),
+                          TpvVector2.Create(-16.0,-16.0),
+                          TpvVector2.Create(16.0,16.0));
+  end;
+  pvgcNESW:begin
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NESW,
+                          false,
+                          TpvVector2.Create(-30.0,-30.0),
+                          TpvVector2.Create(34.0,34.0),
+                          TpvVector2.Create(-14.0,-14.0),
+                          TpvVector2.Create(18.0,18.0));
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NESW,
+                          true,
+                          TpvVector2.Create(-32.0,-32.0),
+                          TpvVector2.Create(32.0,32.0),
+                          TpvVector2.Create(-16.0,-16.0),
+                          TpvVector2.Create(16.0,16.0));
+  end;
+  pvgcNS:begin
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NS,
+                          false,
+                          TpvVector2.Create(-30.0,-30.0),
+                          TpvVector2.Create(34.0,34.0),
+                          TpvVector2.Create(-14.0,-14.0),
+                          TpvVector2.Create(18.0,18.0));
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NS,
+                          true,
+                          TpvVector2.Create(-32.0,-32.0),
+                          TpvVector2.Create(32.0,32.0),
+                          TpvVector2.Create(-16.0,-16.0),
+                          TpvVector2.Create(16.0,16.0));
+  end;
+  pvgcNWSE:begin
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NWSE,
+                          false,
+                          TpvVector2.Create(-30.0,-30.0),
+                          TpvVector2.Create(34.0,34.0),
+                          TpvVector2.Create(-14.0,-14.0),
+                          TpvVector2.Create(18.0,18.0));
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NWSE,
+                          true,
+                          TpvVector2.Create(-32.0,-32.0),
+                          TpvVector2.Create(32.0,32.0),
+                          TpvVector2.Create(-16.0,-16.0),
+                          TpvVector2.Create(16.0,16.0));
+  end;
+  pvgcPen:begin
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_PEN,
+                          false,
+                          TpvVector2.Create(-30.0,-30.0),
+                          TpvVector2.Create(34.0,34.0),
+                          TpvVector2.Create(-14.0,-14.0),
+                          TpvVector2.Create(18.0,18.0));
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_PEN,
+                          true,
+                          TpvVector2.Create(-32.0,-32.0),
+                          TpvVector2.Create(32.0,32.0),
+                          TpvVector2.Create(-16.0,-16.0),
+                          TpvVector2.Create(16.0,16.0));
+  end;
+  pvgcUnavailable:begin
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE,
+                          false,
+                          TpvVector2.Create(-18.0,-18.0),
+                          TpvVector2.Create(22.0,22.0),
+                          TpvVector2.Create(-8.0,-8.0),
+                          TpvVector2.Create(12.0,12.0),
+                          frac(aInstance.fTime)*TwoPI);
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE,
+                          true,
+                          TpvVector2.Create(-20.0,-20.0),
+                          TpvVector2.Create(20.0,20.0),
+                          TpvVector2.Create(-10.0,-10.0),
+                          TpvVector2.Create(10.0,10.0));
+  end;
+  pvgcUp:begin
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UP,
+                          false,
+                          TpvVector2.Create(-30.0,-30.0),
+                          TpvVector2.Create(34.0,34.0),
+                          TpvVector2.Create(-14.0,-14.0),
+                          TpvVector2.Create(18.0,18.0));
+   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UP,
+                          true,
+                          TpvVector2.Create(-32.0,-32.0),
+                          TpvVector2.Create(32.0,32.0),
+                          TpvVector2.Create(-16.0,-16.0),
+                          TpvVector2.Create(16.0,16.0));
+  end;
  end;
 end;
 
@@ -1534,37 +1567,27 @@ begin
  LastColor:=aCanvas.Color;
  try
 
+  aCanvas.ModelMatrix:=aWindow.fModelMatrix;
+
   aCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 
-  LastClipRect:=aCanvas.ClipRect;
-  try
-   NewClipRect:=TpvRect.CreateAbsolute(LastClipRect.Left-fWindowShadowWidth,
-                                       LastClipRect.Top-fWindowShadowHeight,
-                                       LastClipRect.Right+fWindowShadowWidth,
-                                       LastClipRect.Bottom+fWindowShadowHeight);
-   if assigned(fParent) and
-      (fParent is TpvGUIWidget) then begin
-    NewClipRect:=TpvRect.CreateRelative((fParent as TpvGUIWidget).fPosition,
-                                        (fParent as TpvGUIWidget).fSize).GetIntersection(NewClipRect);
-   end;
-   aCanvas.ClipRect:=NewClipRect;
-   aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_DROPSHADOW,
-                         aWindow.Focused,
-                         TpvVector2.Create(-fWindowShadowWidth,-fWindowShadowHeight),
-                         aWindow.fSize+TpvVector2.Create(fWindowShadowWidth*2,fWindowShadowHeight*2),
-                         TpvVector2.Create(0.0,0.0),
-                         aWindow.fSize);
-  finally
-   aCanvas.ClipRect:=LastClipRect;
-  end;
+  aCanvas.ClipRect:=aWindow.fParentClipRect;
+  aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_DROPSHADOW,
+                        aWindow.Focused,
+                        TpvVector2.Create(-fWindowShadowWidth,-fWindowShadowHeight),
+                        aWindow.fSize+TpvVector2.Create(fWindowShadowWidth*2,fWindowShadowHeight*2),
+                        TpvVector2.Create(0.0,0.0),
+                        aWindow.fSize);
+
+  aCanvas.ClipRect:=aWindow.fClipRect;
 
   if pvgwfHeader in aWindow.fWindowFlags then begin
 
    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
                           aWindow.Focused,
-                          TpvVector2.Create(0.0,fWindowHeaderHeight-8),
+                          TpvVector2.Create(0.0,fWindowHeaderHeight-fSpacing),
                           TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y),
-                          TpvVector2.Create(0.0,fWindowHeaderHeight-8),
+                          TpvVector2.Create(0.0,fWindowHeaderHeight-fSpacing),
                           TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y));
 
    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_HEADER,
@@ -1586,7 +1609,7 @@ begin
     case aWindow.TextHorizontalAlignment of
      pvgtaLeading:begin
       aCanvas.TextHorizontalAlignment:=pvcthaLeading;
-      Offset.x:=8;
+      Offset.x:=fSpacing;
      end;
      pvgtaCenter:begin
       aCanvas.TextHorizontalAlignment:=pvcthaCenter;
@@ -1599,9 +1622,9 @@ begin
      else {pvgtaTailing:}begin
       aCanvas.TextHorizontalAlignment:=pvcthaTailing;
       if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
-       Offset.x:=aWindow.fButtonPanel.Left-8;
+       Offset.x:=aWindow.fButtonPanel.Left-fSpacing;
       end else begin
-       Offset.x:=aWindow.fSize.x-8;
+       Offset.x:=aWindow.fSize.x-fSpacing;
       end;
      end;
     end;
@@ -1613,13 +1636,13 @@ begin
                                            aWindow.fTextTruncation,
                                            aCanvas.Font,
                                            aCanvas.FontSize,
-                                           aWindow.fButtonPanel.Left-16);
+                                           aWindow.fButtonPanel.Left-(fSpacing*2.0));
     end else begin
      Title:=TpvGUITextUtils.TextTruncation(aWindow.fTitle,
                                            aWindow.fTextTruncation,
                                            aCanvas.Font,
                                            aCanvas.FontSize,
-                                           aWindow.fSize.x-16);
+                                           aWindow.fSize.x-(fSpacing*2.0));
     end;
     if ((pvgwfFocused in aWindow.fWidgetFlags) and fFocusedWindowHeaderFontShadow) or
        ((not (pvgwfFocused in aWindow.fWidgetFlags)) and fUnfocusedWindowHeaderFontShadow) then begin
@@ -1634,9 +1657,9 @@ begin
     end;
     aCanvas.ModelMatrix:=NewModelMatrix;
     if pvgwfFocused in aWindow.fWidgetFlags then begin
-     aCanvas.Color:=fFocusedWindowFontColor;
+     aCanvas.Color:=fFocusedWindowHeaderFontColor;
     end else begin
-     aCanvas.Color:=fUnfocusedWindowFontColor;
+     aCanvas.Color:=fUnfocusedWindowHeaderFontColor;
     end;
     aCanvas.DrawText(Title);
    finally
@@ -1662,17 +1685,22 @@ begin
  finally
   aCanvas.Color:=LastColor;
  end;
+
+ DrawHintGlow(aCanvas,aWindow);
+
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel);
 var Offset:TpvVector2;
 begin
+ aCanvas.ModelMatrix:=aLabel.fModelMatrix;
+ aCanvas.ClipRect:=aLabel.fClipRect;
  aCanvas.Font:=aLabel.Font;
  aCanvas.FontSize:=aLabel.FontSize;
  case aLabel.TextHorizontalAlignment of
   pvgtaLeading:begin
    aCanvas.TextHorizontalAlignment:=pvcthaLeading;
-   Offset.x:=8;
+   Offset.x:=fSpacing;
   end;
   pvgtaCenter:begin
    aCanvas.TextHorizontalAlignment:=pvcthaCenter;
@@ -1680,13 +1708,13 @@ begin
   end;
   else {pvgtaTailing:}begin
    aCanvas.TextHorizontalAlignment:=pvcthaTailing;
-   Offset.x:=aLabel.fSize.x-8;
+   Offset.x:=aLabel.fSize.x-fSpacing;
   end;
  end;
  case aLabel.TextVerticalAlignment of
   pvgtaLeading:begin
    aCanvas.TextVerticalAlignment:=pvctvaLeading;
-   Offset.y:=8;
+   Offset.y:=fSpacing;
   end;
   pvgtaCenter:begin
    aCanvas.TextVerticalAlignment:=pvctvaMiddle;
@@ -1694,7 +1722,7 @@ begin
   end;
   else {pvgtaTailing:}begin
    aCanvas.TextVerticalAlignment:=pvctvaTailing;
-   Offset.y:=aLabel.fSize.y-8;
+   Offset.y:=aLabel.fSize.y-fSpacing;
   end;
  end;
  aCanvas.Color:=aLabel.FontColor;
@@ -1702,7 +1730,7 @@ begin
                                                  aLabel.fTextTruncation,
                                                  aCanvas.Font,
                                                  aCanvas.FontSize,
-                                                 aLabel.fSize.x-16),
+                                                 aLabel.fSize.x-(fSpacing*2.0)),
                   Offset);
 
 
@@ -1710,7 +1738,11 @@ begin
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton);
 var Offset:TpvVector2;
+    LastClipRect,NewClipRect:TpvRect;
 begin
+
+ aCanvas.ModelMatrix:=aButton.fModelMatrix;
+ aCanvas.ClipRect:=aButton.fClipRect;
 
  if not aButton.Enabled then begin
 
@@ -1755,7 +1787,7 @@ begin
  case aButton.TextHorizontalAlignment of
   pvgtaLeading:begin
    aCanvas.TextHorizontalAlignment:=pvcthaLeading;
-   Offset.x:=8;
+   Offset.x:=fSpacing;
   end;
   pvgtaCenter:begin
    aCanvas.TextHorizontalAlignment:=pvcthaCenter;
@@ -1763,13 +1795,13 @@ begin
   end;
   else {pvgtaTailing:}begin
    aCanvas.TextHorizontalAlignment:=pvcthaTailing;
-   Offset.x:=aButton.fSize.x-8;
+   Offset.x:=aButton.fSize.x-fSpacing;
   end;
  end;
  case aButton.TextVerticalAlignment of
   pvgtaLeading:begin
    aCanvas.TextVerticalAlignment:=pvctvaLeading;
-   Offset.y:=8;
+   Offset.y:=fSpacing;
   end;
   pvgtaCenter:begin
    aCanvas.TextVerticalAlignment:=pvctvaMiddle;
@@ -1777,16 +1809,22 @@ begin
   end;
   else {pvgtaTailing:}begin
    aCanvas.TextVerticalAlignment:=pvctvaTailing;
-   Offset.y:=aButton.fSize.y-8;
+   Offset.y:=aButton.fSize.y-fSpacing;
   end;
  end;
- aCanvas.Color:=aButton.FontColor;
+ if aButton.Enabled then begin
+  aCanvas.Color:=aButton.FontColor;
+ end else begin
+  aCanvas.Color:=TpvVector4.Create(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
+ end;
  aCanvas.DrawText(TpvGUITextUtils.TextTruncation(aButton.fCaption,
                                                  aButton.fTextTruncation,
                                                  aCanvas.Font,
                                                  aCanvas.FontSize,
-                                                 aButton.fSize.x-16),
+                                                 aButton.fSize.x-(fSpacing*2.0)),
                   Offset+(TpvVector2.Create(-0.5,-0.5)*IfThen(aButton.Down,1,0)));
+
+ DrawHintGlow(aCanvas,aButton);
 
 end;
 
@@ -2284,6 +2322,27 @@ begin
  raise EpvGUIWidget.Create('Could not find parent window');
 end;
 
+function TpvGUIWidget.GetScissorParent:TpvGUIWidget;
+var CurrentWidget:TpvGUIWidget;
+begin
+ result:=nil;
+ CurrentWidget:=self;
+ while assigned(CurrentWidget) do begin
+  if (CurrentWidget<>self) and
+     (pvgwfScissor in CurrentWidget.fWidgetFlags) then begin
+   result:=CurrentWidget;
+   exit;
+  end else begin
+   if assigned(CurrentWidget.Parent) and (CurrentWidget.Parent is TpvGUIWidget) then begin
+    CurrentWidget:=CurrentWidget.fParent as TpvGUIWidget;
+   end else begin
+    break;
+   end;
+  end;
+ end;
+ raise EpvGUIWidget.Create('Could not find scissor parent');
+end;
+
 procedure TpvGUIWidget.RequestFocus;
 var CurrentWidget:TpvGUIWidget;
 begin
@@ -2479,48 +2538,45 @@ procedure TpvGUIWidget.Update;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
-    BaseClipRect:TpvRect;
-    BaseModelMatrix:TpvMatrix4x4;
 begin
- BaseClipRect:=fCanvas.State.ClipRect;
- BaseModelMatrix:=fCanvas.ModelMatrix;
- try
-  if fInstance.fDrawWidgetBounds then begin
-   fCanvas.Push;
-   try
-    fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
-    fCanvas.LineWidth:=4.0;
-    fCanvas.LineJoin:=pvcljRound;
-    fCanvas.LineCap:=pvclcRound;
-    fCanvas.BeginPath;
-    fCanvas.MoveTo(0.0,0.0);
-    fCanvas.LineTo(Width,0.0);
-    fCanvas.LineTo(Width,Height);
-    fCanvas.LineTo(0.0,Height);
-    fCanvas.ClosePath;
-    fCanvas.Stroke;
-    fCanvas.EndPath;
-   finally
-    fCanvas.Pop;
+ if fInstance.fDrawWidgetBounds then begin
+  fCanvas.Push;
+  try
+   fCanvas.ModelMatrix:=fModelMatrix;
+   fCanvas.ClipRect:=fParentClipRect;
+   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.LineWidth:=4.0;
+   fCanvas.LineJoin:=pvcljRound;
+   fCanvas.LineCap:=pvclcRound;
+   fCanvas.BeginPath;
+   fCanvas.MoveTo(0.0,0.0);
+   fCanvas.LineTo(Width,0.0);
+   fCanvas.LineTo(Width,Height);
+   fCanvas.LineTo(0.0,Height);
+   fCanvas.ClosePath;
+   fCanvas.Stroke;
+   fCanvas.EndPath;
+  finally
+   fCanvas.Pop;
+  end;
+ end;
+ if pvgwfScissor in fWidgetFlags then begin
+  fParentClipRect:=fClipRect;
+ end;
+ for ChildIndex:=0 to fChildren.Count-1 do begin
+  Child:=fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   fInstance.AddReferenceCountedObjectForNextDraw(ChildWidget);
+   if ChildWidget.Visible then begin
+    ChildWidget.fParentClipRect:=fParentClipRect;
+    ChildWidget.fClipRect:=fClipRect.GetIntersection(TpvRect.CreateRelative(fModelMatrix*ChildWidget.fPosition,
+                                                                            ChildWidget.fSize));
+    ChildWidget.fModelMatrix:=TpvMatrix4x4.CreateTranslation(ChildWidget.Left,ChildWidget.Top)*fModelMatrix;
+    ChildWidget.fCanvas:=fCanvas;
+    ChildWidget.Update;
    end;
   end;
-  for ChildIndex:=0 to fChildren.Count-1 do begin
-   Child:=fChildren.Items[ChildIndex];
-   if Child is TpvGUIWidget then begin
-    ChildWidget:=Child as TpvGUIWidget;
-    fInstance.AddReferenceCountedObjectForNextDraw(ChildWidget);
-    if ChildWidget.Visible then begin
-     fCanvas.ClipRect:=BaseClipRect.GetIntersection(TpvRect.CreateRelative(BaseModelMatrix*ChildWidget.fPosition,
-                                                                           ChildWidget.fSize));
-     fCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(ChildWidget.Left,ChildWidget.Top)*BaseModelMatrix;
-     ChildWidget.fCanvas:=fCanvas;
-     ChildWidget.Update;
-    end;
-   end;
-  end;
- finally
-  fCanvas.ClipRect:=BaseClipRect;
-  fCanvas.ModelMatrix:=BaseModelMatrix;
  end;
 end;
 
@@ -2586,6 +2642,8 @@ begin
  fWindow:=nil;
 
  fVisibleCursor:=pvgcArrow;
+
+ Include(fWidgetFlags,pvgwfScissor);
 
  SetCountBuffers(1);
 
@@ -2961,10 +3019,21 @@ begin
 end;
 
 procedure TpvGUIInstance.Update;
+var LastModelMatrix:TpvMatrix4x4;
+    LastClipRect:TpvRect;
 begin
  ClearReferenceCountedObjectList;
- inherited Update;
- Skin.DrawMouse(fCanvas,self);
+ LastModelMatrix:=fCanvas.ModelMatrix;
+ LastClipRect:=fCanvas.ClipRect;
+ try
+  fModelMatrix:=LastModelMatrix;
+  fClipRect:=LastClipRect.GetIntersection(TpvRect.CreateRelative(fPosition,fSize));
+  inherited Update;
+  Skin.DrawMouse(fCanvas,self);
+ finally
+  fCanvas.ModelMatrix:=LastModelMatrix;
+  fCanvas.ClipRect:=LastClipRect;
+ end;
  fTime:=fTime+fDeltaTime;
 end;
 
@@ -2979,6 +3048,7 @@ begin
  fTitle:='Window';
  fMouseAction:=pvgwmaNone;
  fWindowFlags:=TpvGUIWindow.DefaultFlags;
+ Include(fWidgetFlags,pvgwfScissor);
  fLastWindowState:=TpvGUIWindowState.pvgwsNormal;
  fWindowState:=TpvGUIWindowState.pvgwsNormal;
  fButtonPanel:=nil;
@@ -3113,7 +3183,7 @@ begin
    MinimumSize:=TpvVector2.Create(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
   end;
   if assigned(fButtonPanel) then begin
-   MinimumSize.x:=Max(MinimumSize.x,fButtonPanel.Size.x+8);
+   MinimumSize.x:=Max(MinimumSize.x,fButtonPanel.Size.x+(Skin.fSpacing*2.0));
   end;
   if assigned(fParent) and (fParent is TpvGUIWidget) then begin
    fSize:=Clamp(fSize,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
@@ -3213,7 +3283,7 @@ begin
  result:=Maximum(inherited GetPreferredSize,
                  Font.TextSize(fTitle,
                                Skin.fWindowHeaderFontSize)+
-                 TpvVector2.Create(8.0*2.0,0.0));
+                 TpvVector2.Create(Skin.fSpacing*2.0,0.0));
  if pvgwfHeader in fWindowFlags then begin
   result.y:=Maximum(result.y,Skin.fWindowHeaderHeight);
  end;
@@ -3229,7 +3299,7 @@ begin
    end;
   end;
   ButtonPanelPreferredSize:=fButtonPanel.PreferredSize;
-  result.x:=result.x+(ButtonPanelPreferredSize.x+(8*2));
+  result.x:=result.x+(ButtonPanelPreferredSize.x+(Skin.fSpacing*2.0));
   result.y:=Maximum(result.y,ButtonPanelPreferredSize.y);
  end;
  case fWindowState of
@@ -3419,7 +3489,7 @@ begin
       MinimumSize:=TpvVector2.Create(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
      end;
      if assigned(fButtonPanel) then begin
-      MinimumSize.x:=Max(MinimumSize.x,fButtonPanel.Size.x+8);
+      MinimumSize.x:=Max(MinimumSize.x,fButtonPanel.Size.x+(Skin.fSpacing*2.0));
      end;
      case fMouseAction of
       pvgwmaMove:begin
