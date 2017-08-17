@@ -23,7 +23,7 @@
 uses
   {$if defined(fpc) and defined(Unix)}
   cthreads,
-  {$ifend }
+  {$ifend}
   SysUtils,
   Classes,
   PasDblStrUtils in '..\externals\pasdblstrutils\src\PasDblStrUtils.pas',

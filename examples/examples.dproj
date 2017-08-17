@@ -297,6 +297,7 @@
                 <Platform value="iOSDevice32">False</Platform>
                 <Platform value="iOSDevice64">False</Platform>
                 <Platform value="iOSSimulator">False</Platform>
+                <Platform value="Linux64">False</Platform>
                 <Platform value="OSX32">False</Platform>
                 <Platform value="Win32">True</Platform>
                 <Platform value="Win64">True</Platform>
@@ -308,13 +309,13 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector2Helper.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
+                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector2.Swizzle.Definitions.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector2.Swizzle.Definitions.inc" Configuration="Debug" Class="ProjectFile">
+                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector4.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
@@ -333,6 +334,12 @@
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\src\PasVulkan.inc" Configuration="Debug" Class="ProjectFile">
+                    <Platform Name="Win32">
+                        <RemoteDir>.\</RemoteDir>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector3.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
@@ -361,12 +368,6 @@
                     </Platform>
                 </DeployFile>
                 <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector3Helper.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
-                    <Platform Name="Win32">
-                        <RemoteDir>.\</RemoteDir>
-                        <Overwrite>true</Overwrite>
-                    </Platform>
-                </DeployFile>
-                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector3.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
@@ -412,7 +413,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector4.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
+                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector2Helper.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
