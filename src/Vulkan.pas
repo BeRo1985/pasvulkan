@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=58;
+      VK_HEADER_VERSION=61;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -394,7 +394,7 @@ const VK_NULL_HANDLE=0;
       VK_NV_WIN32_KEYED_MUTEX_EXTENSION_NAME='VK_NV_win32_keyed_mutex';
       VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_SPEC_VERSION=1;
       VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME='VK_KHR_get_physical_device_properties2';
-      VK_KHX_DEVICE_GROUP_SPEC_VERSION=1;
+      VK_KHX_DEVICE_GROUP_SPEC_VERSION=2;
       VK_KHX_DEVICE_GROUP_EXTENSION_NAME='VK_KHX_device_group';
       VK_EXT_VALIDATION_FLAGS_SPEC_VERSION=1;
       VK_EXT_VALIDATION_FLAGS_EXTENSION_NAME='VK_EXT_validation_flags';
@@ -508,8 +508,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTERNAL_FENCE_FD_EXTENSION_NAME='VK_KHR_external_fence_fd';
       VK_KHR_EXTENSION_117_SPEC_VERSION=0;
       VK_KHR_EXTENSION_117_EXTENSION_NAME='VK_KHR_extension_117';
-      VK_KHR_EXTENSION_118_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_118_EXTENSION_NAME='VK_KHR_extension_118';
+      VK_KHR_MAINTENANCE2_SPEC_VERSION=1;
+      VK_KHR_MAINTENANCE2_EXTENSION_NAME='VK_KHR_maintenance2';
       VK_KHR_EXTENSION_119_SPEC_VERSION=0;
       VK_KHR_EXTENSION_119_EXTENSION_NAME='VK_KHR_extension_119';
       VK_KHR_GET_SURFACE_CAPABILITIES_2_SPEC_VERSION=1;
@@ -548,28 +548,28 @@ const VK_NULL_HANDLE=0;
       VK_AMD_EXTENSION_136_EXTENSION_NAME='VK_AMD_extension_136';
       VK_AMD_MIXED_ATTACHMENT_SAMPLES_SPEC_VERSION=1;
       VK_AMD_MIXED_ATTACHMENT_SAMPLES_EXTENSION_NAME='VK_AMD_mixed_attachment_samples';
-      VK_AMD_EXTENSION_138_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_138_EXTENSION_NAME='VK_AMD_extension_138';
+      VK_AMD_SHADER_FRAGMENT_MASK_SPEC_VERSION=1;
+      VK_AMD_SHADER_FRAGMENT_MASK_EXTENSION_NAME='VK_AMD_shader_fragment_mask';
       VK_AMD_EXTENSION_139_SPEC_VERSION=0;
       VK_AMD_EXTENSION_139_EXTENSION_NAME='VK_AMD_extension_139';
       VK_AMD_EXTENSION_140_SPEC_VERSION=0;
       VK_AMD_EXTENSION_140_EXTENSION_NAME='VK_AMD_extension_140';
-      VK_AMD_EXTENSION_141_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_141_EXTENSION_NAME='VK_AMD_extension_141';
+      VK_EXT_SHADER_STENCIL_EXPORT_SPEC_VERSION=1;
+      VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME='VK_EXT_shader_stencil_export';
       VK_AMD_EXTENSION_142_SPEC_VERSION=0;
       VK_AMD_EXTENSION_142_EXTENSION_NAME='VK_AMD_extension_142';
       VK_AMD_EXTENSION_143_SPEC_VERSION=0;
       VK_AMD_EXTENSION_143_EXTENSION_NAME='VK_AMD_extension_143';
-      VK_AMD_EXTENSION_144_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_144_EXTENSION_NAME='VK_AMD_extension_144';
+      VK_EXT_SAMPLE_LOCATIONS_SPEC_VERSION=1;
+      VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME='VK_EXT_sample_locations';
       VK_KHR_RELAXED_BLOCK_LAYOUT_SPEC_VERSION=1;
       VK_KHR_RELAXED_BLOCK_LAYOUT_EXTENSION_NAME='VK_KHR_relaxed_block_layout';
       VK_KHR_extension_146_SPEC_VERSION=0;
       VK_KHR_extension_146_EXTENSION_NAME='VK_KHR_extension_146';
       VK_KHR_GET_MEMORY_REQUIREMENTS_2_SPEC_VERSION=1;
       VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME='VK_KHR_get_memory_requirements2';
-      VK_KHR_EXTENSION_148_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_148_EXTENSION_NAME='VK_EXT_extension_148';
+      VK_KHR_IMAGE_FORMAT_LIST_SPEC_VERSION=1;
+      VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME='VK_KHR_image_format_list';
       VK_EXT_BLEND_OPERATION_ADVANCED_SPEC_VERSION=2;
       VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME='VK_EXT_blend_operation_advanced';
       VK_NV_FRAGMENT_COVERAGE_TO_COLOR_SPEC_VERSION=1;
@@ -586,16 +586,16 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_155_EXTENSION_NAME='VK_NV_extension_155';
       VK_EXT_POST_DEPTH_COVERAGE_SPEC_VERSION=1;
       VK_EXT_POST_DEPTH_COVERAGE_EXTENSION_NAME='VK_EXT_post_depth_coverage';
-      VK_KHR_EXTENSION_157_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_157_EXTENSION_NAME='VK_KHR_extension_157';
-      VK_KHR_EXTENSION_158_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_158_EXTENSION_NAME='VK_KHR_extension_158';
+      VK_KHR_SAMPLER_YCBCR_CONVERSION_SPEC_VERSION=1;
+      VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME='VK_KHR_sampler_ycbcr_conversion';
+      VK_KHR_BIND_MEMORY_2_SPEC_VERSION=1;
+      VK_KHR_BIND_MEMORY_2_EXTENSION_NAME='VK_KHR_bind_memory2';
       VK_EXT_EXTENSION_159_SPEC_VERSION=0;
       VK_EXT_EXTENSION_159_EXTENSION_NAME='VK_EXT_extension_159';
       VK_EXT_EXTENSION_160_SPEC_VERSION=0;
       VK_EXT_EXTENSION_160_EXTENSION_NAME='VK_EXT_extension_160';
-      VK_EXT_EXTENSION_161_SPEC_VERSION=0;
-      VK_EXT_EXTENSION_161_EXTENSION_NAME='VK_EXT_extension_161';
+      VK_EXT_VALIDATION_CACHE_SPEC_VERSION=1;
+      VK_EXT_VALIDATION_CACHE_EXTENSION_NAME='VK_EXT_validation_cache';
       VK_EXT_EXTENSION_162_SPEC_VERSION=0;
       VK_EXT_EXTENSION_162_EXTENSION_NAME='VK_EXT_extension_162';
       VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_SPEC_VERSION=1;
@@ -610,6 +610,10 @@ const VK_NULL_HANDLE=0;
       VK_EXT_EXTENSION_167_EXTENSION_NAME='VK_NV_extension_167';
       VK_EXT_EXTENSION_168_SPEC_VERSION=0;
       VK_EXT_EXTENSION_168_EXTENSION_NAME='VK_NV_extension_168';
+      VK_KHR_EXTENSION_169_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_169_EXTENSION_NAME='VK_KHR_extension_169';
+      VK_EXT_EXTENSION_170_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_170_EXTENSION_NAME='VK_EXT_extension_170';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1033,6 +1037,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkPipelineCoverageModulationStateCreateFlagsNV=^TVkPipelineCoverageModulationStateCreateFlagsNV;
      TVkPipelineCoverageModulationStateCreateFlagsNV=TVkFlags;
 
+     PPVkValidationCacheCreateFlagsEXT=^PVkValidationCacheCreateFlagsEXT;
+     PVkValidationCacheCreateFlagsEXT=^TVkValidationCacheCreateFlagsEXT;
+     TVkValidationCacheCreateFlagsEXT=TVkFlags;
+
      PPVkInstance=^PVkInstance;
      PVkInstance=^TVkInstance;
      TVkInstance=TVkDispatchableHandle;
@@ -1145,6 +1153,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDescriptorUpdateTemplateKHR=^TVkDescriptorUpdateTemplateKHR;
      TVkDescriptorUpdateTemplateKHR=TVkNonDispatchableHandle;
 
+     PPVkSamplerYcbcrConversionKHR=^PVkSamplerYcbcrConversionKHR;
+     PVkSamplerYcbcrConversionKHR=^TVkSamplerYcbcrConversionKHR;
+     TVkSamplerYcbcrConversionKHR=TVkNonDispatchableHandle;
+
+     PPVkValidationCacheEXT=^PVkValidationCacheEXT;
+     PVkValidationCacheEXT=^TVkValidationCacheEXT;
+     TVkValidationCacheEXT=TVkNonDispatchableHandle;
+
      PPVkDisplayKHR=^PVkDisplayKHR;
      PVkDisplayKHR=^TVkDisplayKHR;
      TVkDisplayKHR=TVkNonDispatchableHandle;
@@ -1179,7 +1195,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL=7,                                   //< Optimal layout when image is used only as destination of transfer operations
        VK_IMAGE_LAYOUT_PREINITIALIZED=8,                                         //< Initial layout used when the data is populated by the CPU
        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR=1000001002,
-       VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR=1000111000
+       VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR=1000111000,
+       VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR=1000117000,
+       VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR=1000117001
       );
 
      PPVkAttachmentLoadOp=^PVkAttachmentLoadOp;
@@ -1757,7 +1775,41 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_FORMAT_PVRTC1_2BPP_SRGB_BLOCK_IMG=1000054004,
        VK_FORMAT_PVRTC1_4BPP_SRGB_BLOCK_IMG=1000054005,
        VK_FORMAT_PVRTC2_2BPP_SRGB_BLOCK_IMG=1000054006,
-       VK_FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG=1000054007
+       VK_FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG=1000054007,
+       VK_FORMAT_G8B8G8R8_422_UNORM_KHR=1000156000,
+       VK_FORMAT_B8G8R8G8_422_UNORM_KHR=1000156001,
+       VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM_KHR=1000156002,
+       VK_FORMAT_G8_B8R8_2PLANE_420_UNORM_KHR=1000156003,
+       VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM_KHR=1000156004,
+       VK_FORMAT_G8_B8R8_2PLANE_422_UNORM_KHR=1000156005,
+       VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM_KHR=1000156006,
+       VK_FORMAT_R10X6_UNORM_PACK16_KHR=1000156007,
+       VK_FORMAT_R10X6G10X6_UNORM_2PACK16_KHR=1000156008,
+       VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16_KHR=1000156009,
+       VK_FORMAT_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16_KHR=1000156010,
+       VK_FORMAT_B10X6G10X6R10X6G10X6_422_UNORM_4PACK16_KHR=1000156011,
+       VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16_KHR=1000156012,
+       VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16_KHR=1000156013,
+       VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16_KHR=1000156014,
+       VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16_KHR=1000156015,
+       VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16_KHR=1000156016,
+       VK_FORMAT_R12X4_UNORM_PACK16_KHR=1000156017,
+       VK_FORMAT_R12X4G12X4_UNORM_2PACK16_KHR=1000156018,
+       VK_FORMAT_R12X4G12X4B12X4A12X4_UNORM_4PACK16_KHR=1000156019,
+       VK_FORMAT_G12X4B12X4G12X4R12X4_422_UNORM_4PACK16_KHR=1000156020,
+       VK_FORMAT_B12X4G12X4R12X4G12X4_422_UNORM_4PACK16_KHR=1000156021,
+       VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16_KHR=1000156022,
+       VK_FORMAT_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16_KHR=1000156023,
+       VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16_KHR=1000156024,
+       VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16_KHR=1000156025,
+       VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16_KHR=1000156026,
+       VK_FORMAT_G16B16G16R16_422_UNORM_KHR=1000156027,
+       VK_FORMAT_B16G16R16G16_422_UNORM_KHR=1000156028,
+       VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM_KHR=1000156029,
+       VK_FORMAT_G16_B16R16_2PLANE_420_UNORM_KHR=1000156030,
+       VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM_KHR=1000156031,
+       VK_FORMAT_G16_B16R16_2PLANE_422_UNORM_KHR=1000156032,
+       VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM_KHR=1000156033
       );
 
      PPVkStructureType=^PVkStructureType;
@@ -1852,8 +1904,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2_KHR=1000059007,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2_KHR=1000059008,
        VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHX=1000060000,
-       VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHX=1000060001,
-       VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHX=1000060002,
        VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO_KHX=1000060003,
        VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO_KHX=1000060004,
        VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO_KHX=1000060005,
@@ -1864,6 +1914,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHX=1000060010,
        VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_INFO_KHX=1000060011,
        VK_STRUCTURE_TYPE_DEVICE_GROUP_SWAPCHAIN_CREATE_INFO_KHX=1000060012,
+       VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO_KHX=1000060013,
+       VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO_KHX=1000060014,
        VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT=1000061000,
        VK_STRUCTURE_TYPE_VI_SURFACE_CREATE_INFO_NN=1000062000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES_KHX=1000070000,
@@ -1904,6 +1956,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_DEVICE_GENERATED_COMMANDS_LIMITS_NVX=1000086004,
        VK_STRUCTURE_TYPE_DEVICE_GENERATED_COMMANDS_FEATURES_NVX=1000086005,
        VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_W_SCALING_STATE_CREATE_INFO_NV=1000087000,
+       VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_EXT=1000090000,
        VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES2_EXT=1000090000,
        VK_STRUCTURE_TYPE_DISPLAY_POWER_INFO_EXT=1000091000,
        VK_STRUCTURE_TYPE_DEVICE_EVENT_INFO_EXT=1000091001,
@@ -1924,6 +1977,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_FENCE_GET_WIN32_HANDLE_INFO_KHR=1000114002,
        VK_STRUCTURE_TYPE_IMPORT_FENCE_FD_INFO_KHR=1000115000,
        VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR=1000115001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES_KHR=1000117000,
+       VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO_KHR=1000117001,
+       VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO_KHR=1000117002,
+       VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO_KHR=1000117003,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR=1000119000,
        VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR=1000119001,
        VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR=1000119002,
@@ -1934,16 +1991,32 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR=1000127001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT=1000130000,
        VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT=1000130001,
+       VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT=1000143000,
+       VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT=1000143001,
+       VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT=1000143002,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT=1000143003,
+       VK_STRUCTURE_TYPE_MULTISAMPLE_PROPERTIES_EXT=1000143004,
        VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2_KHR=1000146000,
        VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2_KHR=1000146001,
        VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2_KHR=1000146002,
        VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2_KHR=1000146003,
        VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2_KHR=1000146004,
+       VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR=1000147000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT=1000148000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT=1000148001,
        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_ADVANCED_STATE_CREATE_INFO_EXT=1000148002,
        VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_TO_COLOR_STATE_CREATE_INFO_NV=1000149000,
-       VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_MODULATION_STATE_CREATE_INFO_NV=1000152000
+       VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_MODULATION_STATE_CREATE_INFO_NV=1000152000,
+       VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO_KHR=1000156000,
+       VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO_KHR=1000156001,
+       VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO_KHR=1000156002,
+       VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO_KHR=1000156003,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES_KHR=1000156004,
+       VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES_KHR=1000156005,
+       VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR=1000157000,
+       VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHR=1000157001,
+       VK_STRUCTURE_TYPE_VALIDATION_CACHE_CREATE_INFO_EXT=1000160000,
+       VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT=1000160001
       );
 
      PPVkSubpassContents=^PVkSubpassContents;
@@ -2002,7 +2075,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DYNAMIC_STATE_STENCIL_WRITE_MASK=7,
        VK_DYNAMIC_STATE_STENCIL_REFERENCE=8,
        VK_DYNAMIC_STATE_VIEWPORT_W_SCALING_NV=1000087000,
-       VK_DYNAMIC_STATE_DISCARD_RECTANGLE_EXT=1000099000
+       VK_DYNAMIC_STATE_DISCARD_RECTANGLE_EXT=1000099000,
+       VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT=1000143000
       );
 
      PPVkDescriptorUpdateTemplateTypeKHR=^PVkDescriptorUpdateTemplateTypeKHR;
@@ -2050,7 +2124,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT=1000011000,
        VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR=1000085000,
        VK_OBJECT_TYPE_OBJECT_TABLE_NVX=1000086000,
-       VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NVX=1000086001
+       VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NVX=1000086001,
+       VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR=1000156000,
+       VK_OBJECT_TYPE_VALIDATION_CACHE_EXT=1000160000
       );
 
      PPVkQueueFlagBits=^PVkQueueFlagBits;
@@ -2170,7 +2246,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT=$00000008,                             //< Allows image views to have different format than the base image
        VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT=$00000010,                            //< Allows creating image views with cube type from the created image
        VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR=$00000020,
-       VK_IMAGE_CREATE_BIND_SFR_BIT_KHX=$00000040
+       VK_IMAGE_CREATE_BIND_SFR_BIT_KHX=$00000040,
+       VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT_KHR=$00000080,
+       VK_IMAGE_CREATE_EXTENDED_USAGE_BIT_KHR=$00000100,
+       VK_IMAGE_CREATE_DISJOINT_BIT_KHR=$00000200,
+       VK_IMAGE_CREATE_ALIAS_BIT_KHR=$00000400,
+       VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT=$00001000
       );
 
      PPVkPipelineCreateFlagBits=^PVkPipelineCreateFlagBits;
@@ -2221,7 +2302,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_IMG=$00002000,
        VK_FORMAT_FEATURE_TRANSFER_SRC_BIT_KHR=$00004000,
        VK_FORMAT_FEATURE_TRANSFER_DST_BIT_KHR=$00008000,
-       VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_MINMAX_BIT_EXT=$00010000
+       VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_MINMAX_BIT_EXT=$00010000,
+       VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT_KHR=$00020000,
+       VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT_KHR=$00040000,
+       VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT_KHR=$00080000,
+       VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT_KHR=$00100000,
+       VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT_KHR=$00200000,
+       VK_FORMAT_FEATURE_DISJOINT_BIT_KHR=$00400000,
+       VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT_KHR=$00800000
       );
 
      PPVkQueryControlFlagBits=^PVkQueryControlFlagBits;
@@ -2274,7 +2362,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_ASPECT_COLOR_BIT=$00000001,
        VK_IMAGE_ASPECT_DEPTH_BIT=$00000002,
        VK_IMAGE_ASPECT_STENCIL_BIT=$00000004,
-       VK_IMAGE_ASPECT_METADATA_BIT=$00000008
+       VK_IMAGE_ASPECT_METADATA_BIT=$00000008,
+       VK_IMAGE_ASPECT_PLANE_0_BIT_KHR=$00000010,
+       VK_IMAGE_ASPECT_PLANE_1_BIT_KHR=$00000020,
+       VK_IMAGE_ASPECT_PLANE_2_BIT_KHR=$00000040
       );
 
      PPVkSparseImageFormatFlagBits=^PVkSparseImageFormatFlagBits;
@@ -2502,7 +2593,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_MODE_KHR_EXT=30,
        VK_DEBUG_REPORT_OBJECT_TYPE_OBJECT_TABLE_NVX_EXT=31,
        VK_DEBUG_REPORT_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NVX_EXT=32,
-       VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR_EXT=1000085000
+       VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT=33,
+       VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR_EXT=1000085000,
+       VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR_EXT=1000156000
       );
 
      PPVkRasterizationOrderAMD=^PVkRasterizationOrderAMD;
@@ -2757,6 +2850,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_SUBPASS_DESCRIPTION_PER_VIEW_POSITION_X_ONLY_BIT_NVX=$00000002
       );
 
+     PPVkPointClippingBehaviorKHR=^PVkPointClippingBehaviorKHR;
+     PVkPointClippingBehaviorKHR=^TVkPointClippingBehaviorKHR;
+     TVkPointClippingBehaviorKHR=
+      (
+       VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES_KHR=0,
+       VK_POINT_CLIPPING_BEHAVIOR_USER_CLIP_PLANES_ONLY_KHR=1
+      );
+
      PPVkSamplerReductionModeEXT=^PVkSamplerReductionModeEXT;
      PVkSamplerReductionModeEXT=^TVkSamplerReductionModeEXT;
      TVkSamplerReductionModeEXT=
@@ -2764,6 +2865,41 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE_EXT=0,
        VK_SAMPLER_REDUCTION_MODE_MIN_EXT=1,
        VK_SAMPLER_REDUCTION_MODE_MAX_EXT=2
+      );
+
+     PPVkTessellationDomainOriginKHR=^PVkTessellationDomainOriginKHR;
+     PVkTessellationDomainOriginKHR=^TVkTessellationDomainOriginKHR;
+     TVkTessellationDomainOriginKHR=
+      (
+       VK_TESSELLATION_DOMAIN_ORIGIN_UPPER_LEFT_KHR=0,
+       VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT_KHR=1
+      );
+
+     PPVkSamplerYcbcrModelConversionKHR=^PVkSamplerYcbcrModelConversionKHR;
+     PVkSamplerYcbcrModelConversionKHR=^TVkSamplerYcbcrModelConversionKHR;
+     TVkSamplerYcbcrModelConversionKHR=
+      (
+       VK_SAMPLER_YCBCR_MODEL_CONVERSION_RGB_IDENTITY_KHR=0,
+       VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_IDENTITY_KHR=1,                   //< just range expansion
+       VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_709_KHR=2,                        //< aka HD YUV
+       VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_601_KHR=3,                        //< aka SD YUV
+       VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_2020_KHR=4                        //< aka UHD YUV
+      );
+
+     PPVkSamplerYcbcrRangeKHR=^PVkSamplerYcbcrRangeKHR;
+     PVkSamplerYcbcrRangeKHR=^TVkSamplerYcbcrRangeKHR;
+     TVkSamplerYcbcrRangeKHR=
+      (
+       VK_SAMPLER_YCBCR_RANGE_ITU_FULL_KHR=0,                                    //< Luma 0..1 maps to 0..255, chroma -0.5..0.5 to 1..255 (clamped)
+       VK_SAMPLER_YCBCR_RANGE_ITU_NARROW_KHR=1                                   //< Luma 0..1 maps to 16..235, chroma -0.5..0.5 to 16..240
+      );
+
+     PPVkChromaLocationKHR=^PVkChromaLocationKHR;
+     PVkChromaLocationKHR=^TVkChromaLocationKHR;
+     TVkChromaLocationKHR=
+      (
+       VK_CHROMA_LOCATION_COSITED_EVEN_KHR=0,
+       VK_CHROMA_LOCATION_MIDPOINT_KHR=1
       );
 
      PPVkBlendOverlapEXT=^PVkBlendOverlapEXT;
@@ -2783,6 +2919,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_COVERAGE_MODULATION_MODE_RGB_NV=1,
        VK_COVERAGE_MODULATION_MODE_ALPHA_NV=2,
        VK_COVERAGE_MODULATION_MODE_RGBA_NV=3
+      );
+
+     PPVkValidationCacheHeaderVersionEXT=^PVkValidationCacheHeaderVersionEXT;
+     PVkValidationCacheHeaderVersionEXT=^TVkValidationCacheHeaderVersionEXT;
+     TVkValidationCacheHeaderVersionEXT=
+      (
+       VK_VALIDATION_CACHE_HEADER_VERSION_ONE_EXT=1
       );
 
      PPPFN_vkInternalAllocationNotification=^PPFN_vkInternalAllocationNotification;
@@ -7096,7 +7239,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES2_EXT
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_EXT
        pNext:PVkVoid;
        minImageCount:TVkUInt32;
        maxImageCount:TVkUInt32;
@@ -7214,48 +7357,72 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     PPVkBindBufferMemoryInfoKHX=^PVkBindBufferMemoryInfoKHX;
-     PVkBindBufferMemoryInfoKHX=^TVkBindBufferMemoryInfoKHX;
-     TVkBindBufferMemoryInfoKHX=record
+     PPVkBindBufferMemoryInfoKHR=^PVkBindBufferMemoryInfoKHR;
+     PVkBindBufferMemoryInfoKHR=^TVkBindBufferMemoryInfoKHR;
+     TVkBindBufferMemoryInfoKHR=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHX
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR
        pNext:PVkVoid;
        buffer:TVkBuffer;
        memory:TVkDeviceMemory;
        memoryOffset:TVkDeviceSize;
-       deviceIndexCount:TVkUInt32;
-       pDeviceIndices:PVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pBuffer:TVkBuffer;
                           const pMemory:TVkDeviceMemory;
-                          const pMemoryOffset:TVkDeviceSize;
-                          const pDeviceIndexCount:TVkUInt32;
+                          const pMemoryOffset:TVkDeviceSize);
+{$endif}
+     end;
+
+     PPVkBindBufferMemoryDeviceGroupInfoKHX=^PVkBindBufferMemoryDeviceGroupInfoKHX;
+     PVkBindBufferMemoryDeviceGroupInfoKHX=^TVkBindBufferMemoryDeviceGroupInfoKHX;
+     TVkBindBufferMemoryDeviceGroupInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO_KHX
+       pNext:PVkVoid;
+       deviceIndexCount:TVkUInt32;
+       pDeviceIndices:PVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pDeviceIndexCount:TVkUInt32;
                           const pPDeviceIndices:PVkUInt32);
 {$endif}
      end;
 
-     PPVkBindImageMemoryInfoKHX=^PVkBindImageMemoryInfoKHX;
-     PVkBindImageMemoryInfoKHX=^TVkBindImageMemoryInfoKHX;
-     TVkBindImageMemoryInfoKHX=record
+     PPVkBindImageMemoryInfoKHR=^PVkBindImageMemoryInfoKHR;
+     PVkBindImageMemoryInfoKHR=^TVkBindImageMemoryInfoKHR;
+     TVkBindImageMemoryInfoKHR=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHX
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHR
        pNext:PVkVoid;
        image:TVkImage;
        memory:TVkDeviceMemory;
        memoryOffset:TVkDeviceSize;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pImage:TVkImage;
+                          const pMemory:TVkDeviceMemory;
+                          const pMemoryOffset:TVkDeviceSize);
+{$endif}
+     end;
+
+     PPVkBindImageMemoryDeviceGroupInfoKHX=^PVkBindImageMemoryDeviceGroupInfoKHX;
+     PVkBindImageMemoryDeviceGroupInfoKHX=^TVkBindImageMemoryDeviceGroupInfoKHX;
+     TVkBindImageMemoryDeviceGroupInfoKHX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO_KHX
+       pNext:PVkVoid;
        deviceIndexCount:TVkUInt32;
        pDeviceIndices:PVkUInt32;
        SFRRectCount:TVkUInt32;
        pSFRRects:PVkRect2D;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pImage:TVkImage;
-                          const pMemory:TVkDeviceMemory;
-                          const pMemoryOffset:TVkDeviceSize;
-                          const pDeviceIndexCount:TVkUInt32;
+       constructor Create(const pDeviceIndexCount:TVkUInt32;
                           const pPDeviceIndices:PVkUInt32;
                           const pSFRRectCount:TVkUInt32;
                           const pPSFRRects:PVkRect2D);
@@ -7756,6 +7923,38 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkInputAttachmentAspectReferenceKHR=^PVkInputAttachmentAspectReferenceKHR;
+     PVkInputAttachmentAspectReferenceKHR=^TVkInputAttachmentAspectReferenceKHR;
+     TVkInputAttachmentAspectReferenceKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       subpass:TVkUInt32;
+       inputAttachmentIndex:TVkUInt32;
+       aspectMask:TVkImageAspectFlags;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSubpass:TVkUInt32;
+                          const pInputAttachmentIndex:TVkUInt32;
+                          const pAspectMask:TVkImageAspectFlags);
+{$endif}
+     end;
+
+     PPVkRenderPassInputAttachmentAspectCreateInfoKHR=^PVkRenderPassInputAttachmentAspectCreateInfoKHR;
+     PVkRenderPassInputAttachmentAspectCreateInfoKHR=^TVkRenderPassInputAttachmentAspectCreateInfoKHR;
+     TVkRenderPassInputAttachmentAspectCreateInfoKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO_KHR
+       pNext:PVkVoid;
+       aspectReferenceCount:TVkUInt32;
+       pAspectReferences:PVkInputAttachmentAspectReferenceKHR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pAspectReferenceCount:TVkUInt32;
+                          const pPAspectReferences:PVkInputAttachmentAspectReferenceKHR);
+{$endif}
+     end;
+
      PPVkPhysicalDeviceSurfaceInfo2KHR=^PVkPhysicalDeviceSurfaceInfo2KHR;
      PVkPhysicalDeviceSurfaceInfo2KHR=^TVkPhysicalDeviceSurfaceInfo2KHR;
      TVkPhysicalDeviceSurfaceInfo2KHR=record
@@ -7902,6 +8101,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkPhysicalDevicePointClippingPropertiesKHR=^PVkPhysicalDevicePointClippingPropertiesKHR;
+     PVkPhysicalDevicePointClippingPropertiesKHR=^TVkPhysicalDevicePointClippingPropertiesKHR;
+     TVkPhysicalDevicePointClippingPropertiesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES_KHR
+       pNext:PVkVoid;
+       pointClippingBehavior:TVkPointClippingBehaviorKHR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pPointClippingBehavior:TVkPointClippingBehaviorKHR);
+{$endif}
+     end;
+
      PPVkMemoryDedicatedRequirementsKHR=^PVkMemoryDedicatedRequirementsKHR;
      PVkMemoryDedicatedRequirementsKHR=^TVkMemoryDedicatedRequirementsKHR;
      TVkMemoryDedicatedRequirementsKHR=record
@@ -7931,6 +8144,132 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pImage:TVkImage;
                           const pBuffer:TVkBuffer);
+{$endif}
+     end;
+
+     PPVkImageViewUsageCreateInfoKHR=^PVkImageViewUsageCreateInfoKHR;
+     PVkImageViewUsageCreateInfoKHR=^TVkImageViewUsageCreateInfoKHR;
+     TVkImageViewUsageCreateInfoKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO_KHR
+       pNext:PVkVoid;
+       usage:TVkImageUsageFlags;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pUsage:TVkImageUsageFlags);
+{$endif}
+     end;
+
+     PPVkPipelineTessellationDomainOriginStateCreateInfoKHR=^PVkPipelineTessellationDomainOriginStateCreateInfoKHR;
+     PVkPipelineTessellationDomainOriginStateCreateInfoKHR=^TVkPipelineTessellationDomainOriginStateCreateInfoKHR;
+     TVkPipelineTessellationDomainOriginStateCreateInfoKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO_KHR
+       pNext:PVkVoid;
+       domainOrigin:TVkTessellationDomainOriginKHR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pDomainOrigin:TVkTessellationDomainOriginKHR);
+{$endif}
+     end;
+
+     PPVkSamplerYcbcrConversionInfoKHR=^PVkSamplerYcbcrConversionInfoKHR;
+     PVkSamplerYcbcrConversionInfoKHR=^TVkSamplerYcbcrConversionInfoKHR;
+     TVkSamplerYcbcrConversionInfoKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO_KHR
+       pNext:PVkVoid;
+       conversion:TVkSamplerYcbcrConversionKHR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pConversion:TVkSamplerYcbcrConversionKHR);
+{$endif}
+     end;
+
+     PPVkSamplerYcbcrConversionCreateInfoKHR=^PVkSamplerYcbcrConversionCreateInfoKHR;
+     PVkSamplerYcbcrConversionCreateInfoKHR=^TVkSamplerYcbcrConversionCreateInfoKHR;
+     TVkSamplerYcbcrConversionCreateInfoKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO_KHR
+       pNext:PVkVoid;
+       format:TVkFormat;
+       ycbcrModel:TVkSamplerYcbcrModelConversionKHR;
+       ycbcrRange:TVkSamplerYcbcrRangeKHR;
+       components:TVkComponentMapping;
+       xChromaOffset:TVkChromaLocationKHR;
+       yChromaOffset:TVkChromaLocationKHR;
+       chromaFilter:TVkFilter;
+       forceExplicitReconstruction:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFormat:TVkFormat;
+                          const pYcbcrModel:TVkSamplerYcbcrModelConversionKHR;
+                          const pYcbcrRange:TVkSamplerYcbcrRangeKHR;
+                          const pComponents:TVkComponentMapping;
+                          const pXChromaOffset:TVkChromaLocationKHR;
+                          const pYChromaOffset:TVkChromaLocationKHR;
+                          const pChromaFilter:TVkFilter;
+                          const pForceExplicitReconstruction:TVkBool32);
+{$endif}
+     end;
+
+     PPVkBindImagePlaneMemoryInfoKHR=^PVkBindImagePlaneMemoryInfoKHR;
+     PVkBindImagePlaneMemoryInfoKHR=^TVkBindImagePlaneMemoryInfoKHR;
+     TVkBindImagePlaneMemoryInfoKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO_KHR
+       pNext:PVkVoid;
+       planeAspect:TVkImageAspectFlagBits;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pPlaneAspect:TVkImageAspectFlagBits);
+{$endif}
+     end;
+
+     PPVkImagePlaneMemoryRequirementsInfoKHR=^PVkImagePlaneMemoryRequirementsInfoKHR;
+     PVkImagePlaneMemoryRequirementsInfoKHR=^TVkImagePlaneMemoryRequirementsInfoKHR;
+     TVkImagePlaneMemoryRequirementsInfoKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO_KHR
+       pNext:PVkVoid;
+       planeAspect:TVkImageAspectFlagBits;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pPlaneAspect:TVkImageAspectFlagBits);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceSamplerYcbcrConversionFeaturesKHR=^PVkPhysicalDeviceSamplerYcbcrConversionFeaturesKHR;
+     PVkPhysicalDeviceSamplerYcbcrConversionFeaturesKHR=^TVkPhysicalDeviceSamplerYcbcrConversionFeaturesKHR;
+     TVkPhysicalDeviceSamplerYcbcrConversionFeaturesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES_KHR
+       pNext:PVkVoid;
+       samplerYcbcrConversion:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSamplerYcbcrConversion:TVkBool32);
+{$endif}
+     end;
+
+     PPVkSamplerYcbcrConversionImageFormatPropertiesKHR=^PVkSamplerYcbcrConversionImageFormatPropertiesKHR;
+     PVkSamplerYcbcrConversionImageFormatPropertiesKHR=^TVkSamplerYcbcrConversionImageFormatPropertiesKHR;
+     TVkSamplerYcbcrConversionImageFormatPropertiesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES_KHR
+       pNext:PVkVoid;
+       combinedImageSamplerDescriptorCount:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pCombinedImageSamplerDescriptorCount:TVkUInt32);
 {$endif}
      end;
 
@@ -7979,6 +8318,140 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pFilterMinmaxSingleComponentFormats:TVkBool32;
                           const pFilterMinmaxImageComponentMapping:TVkBool32);
+{$endif}
+     end;
+
+     PPVkSampleLocationEXT=^PVkSampleLocationEXT;
+     PVkSampleLocationEXT=^TVkSampleLocationEXT;
+     TVkSampleLocationEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       x:TVkFloat;
+       y:TVkFloat;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pX:TVkFloat;
+                          const pY:TVkFloat);
+{$endif}
+     end;
+
+     PPVkSampleLocationsInfoEXT=^PVkSampleLocationsInfoEXT;
+     PVkSampleLocationsInfoEXT=^TVkSampleLocationsInfoEXT;
+     TVkSampleLocationsInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT
+       pNext:PVkVoid;
+       sampleLocationsPerPixel:TVkSampleCountFlagBits;
+       sampleLocationGridSize:TVkExtent2D;
+       sampleLocationsCount:TVkUInt32;
+       pSampleLocations:PVkSampleLocationEXT;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSampleLocationsPerPixel:TVkSampleCountFlagBits;
+                          const pSampleLocationGridSize:TVkExtent2D;
+                          const pSampleLocationsCount:TVkUInt32;
+                          const pPSampleLocations:PVkSampleLocationEXT);
+{$endif}
+     end;
+
+     PPVkAttachmentSampleLocationsEXT=^PVkAttachmentSampleLocationsEXT;
+     PVkAttachmentSampleLocationsEXT=^TVkAttachmentSampleLocationsEXT;
+     TVkAttachmentSampleLocationsEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       attachmentIndex:TVkUInt32;
+       sampleLocationsInfo:TVkSampleLocationsInfoEXT;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pAttachmentIndex:TVkUInt32;
+                          const pSampleLocationsInfo:TVkSampleLocationsInfoEXT);
+{$endif}
+     end;
+
+     PPVkSubpassSampleLocationsEXT=^PVkSubpassSampleLocationsEXT;
+     PVkSubpassSampleLocationsEXT=^TVkSubpassSampleLocationsEXT;
+     TVkSubpassSampleLocationsEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       subpassIndex:TVkUInt32;
+       sampleLocationsInfo:TVkSampleLocationsInfoEXT;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSubpassIndex:TVkUInt32;
+                          const pSampleLocationsInfo:TVkSampleLocationsInfoEXT);
+{$endif}
+     end;
+
+     PPVkRenderPassSampleLocationsBeginInfoEXT=^PVkRenderPassSampleLocationsBeginInfoEXT;
+     PVkRenderPassSampleLocationsBeginInfoEXT=^TVkRenderPassSampleLocationsBeginInfoEXT;
+     TVkRenderPassSampleLocationsBeginInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT
+       pNext:PVkVoid;
+       attachmentInitialSampleLocationsCount:TVkUInt32;
+       pAttachmentInitialSampleLocations:PVkAttachmentSampleLocationsEXT;
+       postSubpassSampleLocationsCount:TVkUInt32;
+       pSubpassSampleLocations:PVkSubpassSampleLocationsEXT;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pAttachmentInitialSampleLocationsCount:TVkUInt32;
+                          const pPAttachmentInitialSampleLocations:PVkAttachmentSampleLocationsEXT;
+                          const pPostSubpassSampleLocationsCount:TVkUInt32;
+                          const pPSubpassSampleLocations:PVkSubpassSampleLocationsEXT);
+{$endif}
+     end;
+
+     PPVkPipelineSampleLocationsStateCreateInfoEXT=^PVkPipelineSampleLocationsStateCreateInfoEXT;
+     PVkPipelineSampleLocationsStateCreateInfoEXT=^TVkPipelineSampleLocationsStateCreateInfoEXT;
+     TVkPipelineSampleLocationsStateCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT
+       pNext:PVkVoid;
+       sampleLocationsEnable:TVkBool32;
+       sampleLocationsInfo:TVkSampleLocationsInfoEXT;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSampleLocationsEnable:TVkBool32;
+                          const pSampleLocationsInfo:TVkSampleLocationsInfoEXT);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceSampleLocationsPropertiesEXT=^PVkPhysicalDeviceSampleLocationsPropertiesEXT;
+     PVkPhysicalDeviceSampleLocationsPropertiesEXT=^TVkPhysicalDeviceSampleLocationsPropertiesEXT;
+     TVkPhysicalDeviceSampleLocationsPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT
+       pNext:PVkVoid;
+       sampleLocationSampleCounts:TVkSampleCountFlags;
+       maxSampleLocationGridSize:TVkExtent2D;
+       sampleLocationCoordinateRange:array[0..1] of TVkFloat;
+       sampleLocationSubPixelBits:TVkUInt32;
+       variableSampleLocations:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pSampleLocationSampleCounts:TVkSampleCountFlags;
+                          const pMaxSampleLocationGridSize:TVkExtent2D;
+                          const pSampleLocationCoordinateRange:array of TVkFloat;
+                          const pSampleLocationSubPixelBits:TVkUInt32;
+                          const pVariableSampleLocations:TVkBool32);
+{$endif}
+     end;
+
+     PPVkMultisamplePropertiesEXT=^PVkMultisamplePropertiesEXT;
+     PVkMultisamplePropertiesEXT=^TVkMultisamplePropertiesEXT;
+     TVkMultisamplePropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MULTISAMPLE_PROPERTIES_EXT
+       pNext:PVkVoid;
+       maxSampleLocationGridSize:TVkExtent2D;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pMaxSampleLocationGridSize:TVkExtent2D);
 {$endif}
      end;
 
@@ -8071,6 +8544,54 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const pCoverageModulationTableEnable:TVkBool32;
                           const pCoverageModulationTableCount:TVkUInt32;
                           const pPCoverageModulationTable:PVkFloat);
+{$endif}
+     end;
+
+     PPVkImageFormatListCreateInfoKHR=^PVkImageFormatListCreateInfoKHR;
+     PVkImageFormatListCreateInfoKHR=^TVkImageFormatListCreateInfoKHR;
+     TVkImageFormatListCreateInfoKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR
+       pNext:PVkVoid;
+       viewFormatCount:TVkUInt32;
+       pViewFormats:PVkFormat;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pViewFormatCount:TVkUInt32;
+                          const pPViewFormats:PVkFormat);
+{$endif}
+     end;
+
+     PPVkValidationCacheCreateInfoEXT=^PVkValidationCacheCreateInfoEXT;
+     PVkValidationCacheCreateInfoEXT=^TVkValidationCacheCreateInfoEXT;
+     TVkValidationCacheCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_VALIDATION_CACHE_CREATE_INFO_EXT
+       pNext:PVkVoid; //< Pointer to next structure
+       flags:TVkValidationCacheCreateFlagsEXT; //< Reserved
+       initialDataSize:TVkSize; //< Size of initial data to populate cache, in bytes
+       pInitialData:PVkVoid; //< Initial data to populate cache
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFlags:TVkValidationCacheCreateFlagsEXT; //< Reserved
+                          const pInitialDataSize:TVkSize; //< Size of initial data to populate cache, in bytes
+                          const pPInitialData:PVkVoid); //< Initial data to populate cache
+{$endif}
+     end;
+
+     PPVkShaderModuleValidationCacheCreateInfoEXT=^PVkShaderModuleValidationCacheCreateInfoEXT;
+     PVkShaderModuleValidationCacheCreateInfoEXT=^TVkShaderModuleValidationCacheCreateInfoEXT;
+     TVkShaderModuleValidationCacheCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT
+       pNext:PVkVoid; //< Pointer to next structure
+       validationCache:TVkValidationCacheEXT; //< Validation cache handle
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pValidationCache:TVkValidationCacheEXT); //< Validation cache handle
 {$endif}
      end;
 
@@ -8558,9 +9079,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkGetDeviceGroupPeerMemoryFeaturesKHX=procedure(device:TVkDevice;heapIndex:TVkUInt32;localDeviceIndex:TVkUInt32;remoteDeviceIndex:TVkUInt32;pPeerMemoryFeatures:PVkPeerMemoryFeatureFlagsKHX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkBindBufferMemory2KHX=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindBufferMemoryInfoKHX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBindBufferMemory2KHR=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindBufferMemoryInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkBindImageMemory2KHX=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindImageMemoryInfoKHX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBindImageMemory2KHR=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindImageMemoryInfoKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCmdSetDeviceMaskKHX=procedure(commandBuffer:TVkCommandBuffer;deviceMask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -8602,6 +9123,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkCmdSetDiscardRectangleEXT=procedure(commandBuffer:TVkCommandBuffer;firstDiscardRectangle:TVkUInt32;discardRectangleCount:TVkUInt32;const pDiscardRectangles:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     TvkCmdSetSampleLocationsEXT=procedure(commandBuffer:TVkCommandBuffer;const pSampleLocationsInfo:PVkSampleLocationsInfoEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDeviceMultisamplePropertiesEXT=procedure(physicalDevice:TVkPhysicalDevice;samples:TVkSampleCountFlagBits;pMultisampleProperties:PVkMultisamplePropertiesEXT); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetPhysicalDeviceSurfaceCapabilities2KHR=function(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceCapabilities:PVkSurfaceCapabilities2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetPhysicalDeviceSurfaceFormats2KHR=function(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceFormatCount:PVkUInt32;pSurfaceFormats:PVkSurfaceFormat2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -8611,6 +9136,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkGetImageMemoryRequirements2KHR=procedure(device:TVkDevice;const pInfo:PVkImageMemoryRequirementsInfo2KHR;pMemoryRequirements:PVkMemoryRequirements2KHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetImageSparseMemoryRequirements2KHR=procedure(device:TVkDevice;const pInfo:PVkImageSparseMemoryRequirementsInfo2KHR;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements2KHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCreateSamplerYcbcrConversionKHR=function(device:TVkDevice;const pCreateInfo:PVkSamplerYcbcrConversionCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pYcbcrConversion:PVkSamplerYcbcrConversionKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkDestroySamplerYcbcrConversionKHR=procedure(device:TVkDevice;ycbcrConversion:TVkSamplerYcbcrConversionKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCreateValidationCacheEXT=function(device:TVkDevice;const pCreateInfo:PVkValidationCacheCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pValidationCache:PVkValidationCacheEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkDestroyValidationCacheEXT=procedure(device:TVkDevice;validationCache:TVkValidationCacheEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetValidationCacheDataEXT=function(device:TVkDevice;validationCache:TVkValidationCacheEXT;pDataSize:PVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkMergeValidationCachesEXT=function(device:TVkDevice;dstCache:TVkValidationCacheEXT;srcCacheCount:TVkUInt32;const pSrcCaches:PVkValidationCacheEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 
      PPVulkanCommands=^PVulkanCommands;
@@ -9100,9 +9637,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       GetDeviceGroupPeerMemoryFeaturesKHX:TvkGetDeviceGroupPeerMemoryFeaturesKHX;
 
-      BindBufferMemory2KHX:TvkBindBufferMemory2KHX;
+      BindBufferMemory2KHR:TvkBindBufferMemory2KHR;
 
-      BindImageMemory2KHX:TvkBindImageMemory2KHX;
+      BindImageMemory2KHR:TvkBindImageMemory2KHR;
 
       CmdSetDeviceMaskKHX:TvkCmdSetDeviceMaskKHX;
 
@@ -9144,6 +9681,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       CmdSetDiscardRectangleEXT:TvkCmdSetDiscardRectangleEXT;
 
+      CmdSetSampleLocationsEXT:TvkCmdSetSampleLocationsEXT;
+
+      GetPhysicalDeviceMultisamplePropertiesEXT:TvkGetPhysicalDeviceMultisamplePropertiesEXT;
+
       GetPhysicalDeviceSurfaceCapabilities2KHR:TvkGetPhysicalDeviceSurfaceCapabilities2KHR;
 
       GetPhysicalDeviceSurfaceFormats2KHR:TvkGetPhysicalDeviceSurfaceFormats2KHR;
@@ -9153,6 +9694,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       GetImageMemoryRequirements2KHR:TvkGetImageMemoryRequirements2KHR;
 
       GetImageSparseMemoryRequirements2KHR:TvkGetImageSparseMemoryRequirements2KHR;
+
+      CreateSamplerYcbcrConversionKHR:TvkCreateSamplerYcbcrConversionKHR;
+
+      DestroySamplerYcbcrConversionKHR:TvkDestroySamplerYcbcrConversionKHR;
+
+      CreateValidationCacheEXT:TvkCreateValidationCacheEXT;
+
+      DestroyValidationCacheEXT:TvkDestroyValidationCacheEXT;
+
+      GetValidationCacheDataEXT:TvkGetValidationCacheDataEXT;
+
+      MergeValidationCachesEXT:TvkMergeValidationCachesEXT;
 
      end;
 
@@ -9647,9 +10200,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure GetDeviceGroupPeerMemoryFeaturesKHX(device:TVkDevice;heapIndex:TVkUInt32;localDeviceIndex:TVkUInt32;remoteDeviceIndex:TVkUInt32;pPeerMemoryFeatures:PVkPeerMemoryFeatureFlagsKHX); virtual;
 
-       function BindBufferMemory2KHX(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindBufferMemoryInfoKHX):TVkResult; virtual;
+       function BindBufferMemory2KHR(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindBufferMemoryInfoKHR):TVkResult; virtual;
 
-       function BindImageMemory2KHX(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindImageMemoryInfoKHX):TVkResult; virtual;
+       function BindImageMemory2KHR(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindImageMemoryInfoKHR):TVkResult; virtual;
 
        procedure CmdSetDeviceMaskKHX(commandBuffer:TVkCommandBuffer;deviceMask:TVkUInt32); virtual;
 
@@ -9691,6 +10244,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure CmdSetDiscardRectangleEXT(commandBuffer:TVkCommandBuffer;firstDiscardRectangle:TVkUInt32;discardRectangleCount:TVkUInt32;const pDiscardRectangles:PVkRect2D); virtual;
 
+       procedure CmdSetSampleLocationsEXT(commandBuffer:TVkCommandBuffer;const pSampleLocationsInfo:PVkSampleLocationsInfoEXT); virtual;
+
+       procedure GetPhysicalDeviceMultisamplePropertiesEXT(physicalDevice:TVkPhysicalDevice;samples:TVkSampleCountFlagBits;pMultisampleProperties:PVkMultisamplePropertiesEXT); virtual;
+
        function GetPhysicalDeviceSurfaceCapabilities2KHR(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceCapabilities:PVkSurfaceCapabilities2KHR):TVkResult; virtual;
 
        function GetPhysicalDeviceSurfaceFormats2KHR(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceFormatCount:PVkUInt32;pSurfaceFormats:PVkSurfaceFormat2KHR):TVkResult; virtual;
@@ -9700,6 +10257,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        procedure GetImageMemoryRequirements2KHR(device:TVkDevice;const pInfo:PVkImageMemoryRequirementsInfo2KHR;pMemoryRequirements:PVkMemoryRequirements2KHR); virtual;
 
        procedure GetImageSparseMemoryRequirements2KHR(device:TVkDevice;const pInfo:PVkImageSparseMemoryRequirementsInfo2KHR;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements2KHR); virtual;
+
+       function CreateSamplerYcbcrConversionKHR(device:TVkDevice;const pCreateInfo:PVkSamplerYcbcrConversionCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pYcbcrConversion:PVkSamplerYcbcrConversionKHR):TVkResult; virtual;
+
+       procedure DestroySamplerYcbcrConversionKHR(device:TVkDevice;ycbcrConversion:TVkSamplerYcbcrConversionKHR;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       function CreateValidationCacheEXT(device:TVkDevice;const pCreateInfo:PVkValidationCacheCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pValidationCache:PVkValidationCacheEXT):TVkResult; virtual;
+
+       procedure DestroyValidationCacheEXT(device:TVkDevice;validationCache:TVkValidationCacheEXT;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       function GetValidationCacheDataEXT(device:TVkDevice;validationCache:TVkValidationCacheEXT;pDataSize:PVkSize;pData:PVkVoid):TVkResult; virtual;
+
+       function MergeValidationCachesEXT(device:TVkDevice;dstCache:TVkValidationCacheEXT;srcCacheCount:TVkUInt32;const pSrcCaches:PVkValidationCacheEXT):TVkResult; virtual;
 
        property Commands:TVulkanCommands read fCommands;
      end;
@@ -10192,9 +10761,9 @@ var LibVulkan:pointer=nil;
 
     vkGetDeviceGroupPeerMemoryFeaturesKHX:TvkGetDeviceGroupPeerMemoryFeaturesKHX=nil;
 
-    vkBindBufferMemory2KHX:TvkBindBufferMemory2KHX=nil;
+    vkBindBufferMemory2KHR:TvkBindBufferMemory2KHR=nil;
 
-    vkBindImageMemory2KHX:TvkBindImageMemory2KHX=nil;
+    vkBindImageMemory2KHR:TvkBindImageMemory2KHR=nil;
 
     vkCmdSetDeviceMaskKHX:TvkCmdSetDeviceMaskKHX=nil;
 
@@ -10236,6 +10805,10 @@ var LibVulkan:pointer=nil;
 
     vkCmdSetDiscardRectangleEXT:TvkCmdSetDiscardRectangleEXT=nil;
 
+    vkCmdSetSampleLocationsEXT:TvkCmdSetSampleLocationsEXT=nil;
+
+    vkGetPhysicalDeviceMultisamplePropertiesEXT:TvkGetPhysicalDeviceMultisamplePropertiesEXT=nil;
+
     vkGetPhysicalDeviceSurfaceCapabilities2KHR:TvkGetPhysicalDeviceSurfaceCapabilities2KHR=nil;
 
     vkGetPhysicalDeviceSurfaceFormats2KHR:TvkGetPhysicalDeviceSurfaceFormats2KHR=nil;
@@ -10245,6 +10818,18 @@ var LibVulkan:pointer=nil;
     vkGetImageMemoryRequirements2KHR:TvkGetImageMemoryRequirements2KHR=nil;
 
     vkGetImageSparseMemoryRequirements2KHR:TvkGetImageSparseMemoryRequirements2KHR=nil;
+
+    vkCreateSamplerYcbcrConversionKHR:TvkCreateSamplerYcbcrConversionKHR=nil;
+
+    vkDestroySamplerYcbcrConversionKHR:TvkDestroySamplerYcbcrConversionKHR=nil;
+
+    vkCreateValidationCacheEXT:TvkCreateValidationCacheEXT=nil;
+
+    vkDestroyValidationCacheEXT:TvkDestroyValidationCacheEXT=nil;
+
+    vkGetValidationCacheDataEXT:TvkGetValidationCacheDataEXT=nil;
+
+    vkMergeValidationCachesEXT:TvkMergeValidationCachesEXT=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -11286,13 +11871,13 @@ begin
    @vkGetDeviceGroupPeerMemoryFeaturesKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDeviceGroupPeerMemoryFeaturesKHX'));
    @vk.fCommands.GetDeviceGroupPeerMemoryFeaturesKHX:=addr(vkGetDeviceGroupPeerMemoryFeaturesKHX);
   end;
-  if not assigned(vkBindBufferMemory2KHX) then begin
-   @vkBindBufferMemory2KHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBindBufferMemory2KHX'));
-   @vk.fCommands.BindBufferMemory2KHX:=addr(vkBindBufferMemory2KHX);
+  if not assigned(vkBindBufferMemory2KHR) then begin
+   @vkBindBufferMemory2KHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBindBufferMemory2KHR'));
+   @vk.fCommands.BindBufferMemory2KHR:=addr(vkBindBufferMemory2KHR);
   end;
-  if not assigned(vkBindImageMemory2KHX) then begin
-   @vkBindImageMemory2KHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBindImageMemory2KHX'));
-   @vk.fCommands.BindImageMemory2KHX:=addr(vkBindImageMemory2KHX);
+  if not assigned(vkBindImageMemory2KHR) then begin
+   @vkBindImageMemory2KHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBindImageMemory2KHR'));
+   @vk.fCommands.BindImageMemory2KHR:=addr(vkBindImageMemory2KHR);
   end;
   if not assigned(vkCmdSetDeviceMaskKHX) then begin
    @vkCmdSetDeviceMaskKHX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetDeviceMaskKHX'));
@@ -11370,6 +11955,14 @@ begin
    @vkCmdSetDiscardRectangleEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetDiscardRectangleEXT'));
    @vk.fCommands.CmdSetDiscardRectangleEXT:=addr(vkCmdSetDiscardRectangleEXT);
   end;
+  if not assigned(vkCmdSetSampleLocationsEXT) then begin
+   @vkCmdSetSampleLocationsEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetSampleLocationsEXT'));
+   @vk.fCommands.CmdSetSampleLocationsEXT:=addr(vkCmdSetSampleLocationsEXT);
+  end;
+  if not assigned(vkGetPhysicalDeviceMultisamplePropertiesEXT) then begin
+   @vkGetPhysicalDeviceMultisamplePropertiesEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceMultisamplePropertiesEXT'));
+   @vk.fCommands.GetPhysicalDeviceMultisamplePropertiesEXT:=addr(vkGetPhysicalDeviceMultisamplePropertiesEXT);
+  end;
   if not assigned(vkGetPhysicalDeviceSurfaceCapabilities2KHR) then begin
    @vkGetPhysicalDeviceSurfaceCapabilities2KHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSurfaceCapabilities2KHR'));
    @vk.fCommands.GetPhysicalDeviceSurfaceCapabilities2KHR:=addr(vkGetPhysicalDeviceSurfaceCapabilities2KHR);
@@ -11389,6 +11982,30 @@ begin
   if not assigned(vkGetImageSparseMemoryRequirements2KHR) then begin
    @vkGetImageSparseMemoryRequirements2KHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetImageSparseMemoryRequirements2KHR'));
    @vk.fCommands.GetImageSparseMemoryRequirements2KHR:=addr(vkGetImageSparseMemoryRequirements2KHR);
+  end;
+  if not assigned(vkCreateSamplerYcbcrConversionKHR) then begin
+   @vkCreateSamplerYcbcrConversionKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateSamplerYcbcrConversionKHR'));
+   @vk.fCommands.CreateSamplerYcbcrConversionKHR:=addr(vkCreateSamplerYcbcrConversionKHR);
+  end;
+  if not assigned(vkDestroySamplerYcbcrConversionKHR) then begin
+   @vkDestroySamplerYcbcrConversionKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroySamplerYcbcrConversionKHR'));
+   @vk.fCommands.DestroySamplerYcbcrConversionKHR:=addr(vkDestroySamplerYcbcrConversionKHR);
+  end;
+  if not assigned(vkCreateValidationCacheEXT) then begin
+   @vkCreateValidationCacheEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateValidationCacheEXT'));
+   @vk.fCommands.CreateValidationCacheEXT:=addr(vkCreateValidationCacheEXT);
+  end;
+  if not assigned(vkDestroyValidationCacheEXT) then begin
+   @vkDestroyValidationCacheEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyValidationCacheEXT'));
+   @vk.fCommands.DestroyValidationCacheEXT:=addr(vkDestroyValidationCacheEXT);
+  end;
+  if not assigned(vkGetValidationCacheDataEXT) then begin
+   @vkGetValidationCacheDataEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetValidationCacheDataEXT'));
+   @vk.fCommands.GetValidationCacheDataEXT:=addr(vkGetValidationCacheDataEXT);
+  end;
+  if not assigned(vkMergeValidationCachesEXT) then begin
+   @vkMergeValidationCachesEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkMergeValidationCachesEXT'));
+   @vk.fCommands.MergeValidationCachesEXT:=addr(vkMergeValidationCachesEXT);
   end;
   result:=assigned(vkCreateInstance);
  end;
@@ -11661,8 +12278,8 @@ begin
   @InstanceCommands.GetPhysicalDeviceSurfaceCapabilities2EXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSurfaceCapabilities2EXT')));
   @InstanceCommands.EnumeratePhysicalDeviceGroupsKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkEnumeratePhysicalDeviceGroupsKHX')));
   @InstanceCommands.GetDeviceGroupPeerMemoryFeaturesKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetDeviceGroupPeerMemoryFeaturesKHX')));
-  @InstanceCommands.BindBufferMemory2KHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkBindBufferMemory2KHX')));
-  @InstanceCommands.BindImageMemory2KHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkBindImageMemory2KHX')));
+  @InstanceCommands.BindBufferMemory2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkBindBufferMemory2KHR')));
+  @InstanceCommands.BindImageMemory2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkBindImageMemory2KHR')));
   @InstanceCommands.CmdSetDeviceMaskKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetDeviceMaskKHX')));
   @InstanceCommands.GetDeviceGroupPresentCapabilitiesKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetDeviceGroupPresentCapabilitiesKHX')));
   @InstanceCommands.GetDeviceGroupSurfacePresentModesKHX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetDeviceGroupSurfacePresentModesKHX')));
@@ -11685,11 +12302,19 @@ begin
 {$endif}
   @InstanceCommands.CmdSetViewportWScalingNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetViewportWScalingNV')));
   @InstanceCommands.CmdSetDiscardRectangleEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetDiscardRectangleEXT')));
+  @InstanceCommands.CmdSetSampleLocationsEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetSampleLocationsEXT')));
+  @InstanceCommands.GetPhysicalDeviceMultisamplePropertiesEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceMultisamplePropertiesEXT')));
   @InstanceCommands.GetPhysicalDeviceSurfaceCapabilities2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSurfaceCapabilities2KHR')));
   @InstanceCommands.GetPhysicalDeviceSurfaceFormats2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSurfaceFormats2KHR')));
   @InstanceCommands.GetBufferMemoryRequirements2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetBufferMemoryRequirements2KHR')));
   @InstanceCommands.GetImageMemoryRequirements2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetImageMemoryRequirements2KHR')));
   @InstanceCommands.GetImageSparseMemoryRequirements2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetImageSparseMemoryRequirements2KHR')));
+  @InstanceCommands.CreateSamplerYcbcrConversionKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateSamplerYcbcrConversionKHR')));
+  @InstanceCommands.DestroySamplerYcbcrConversionKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroySamplerYcbcrConversionKHR')));
+  @InstanceCommands.CreateValidationCacheEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateValidationCacheEXT')));
+  @InstanceCommands.DestroyValidationCacheEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyValidationCacheEXT')));
+  @InstanceCommands.GetValidationCacheDataEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetValidationCacheDataEXT')));
+  @InstanceCommands.MergeValidationCachesEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkMergeValidationCachesEXT')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -11885,8 +12510,8 @@ begin
   @DeviceCommands.RegisterDisplayEventEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkRegisterDisplayEventEXT')));
   @DeviceCommands.GetSwapchainCounterEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetSwapchainCounterEXT')));
   @DeviceCommands.GetDeviceGroupPeerMemoryFeaturesKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetDeviceGroupPeerMemoryFeaturesKHX')));
-  @DeviceCommands.BindBufferMemory2KHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkBindBufferMemory2KHX')));
-  @DeviceCommands.BindImageMemory2KHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkBindImageMemory2KHX')));
+  @DeviceCommands.BindBufferMemory2KHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkBindBufferMemory2KHR')));
+  @DeviceCommands.BindImageMemory2KHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkBindImageMemory2KHR')));
   @DeviceCommands.CmdSetDeviceMaskKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetDeviceMaskKHX')));
   @DeviceCommands.GetDeviceGroupPresentCapabilitiesKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetDeviceGroupPresentCapabilitiesKHX')));
   @DeviceCommands.GetDeviceGroupSurfacePresentModesKHX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetDeviceGroupSurfacePresentModesKHX')));
@@ -11902,9 +12527,16 @@ begin
   @DeviceCommands.GetPastPresentationTimingGOOGLE:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetPastPresentationTimingGOOGLE')));
   @DeviceCommands.CmdSetViewportWScalingNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetViewportWScalingNV')));
   @DeviceCommands.CmdSetDiscardRectangleEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetDiscardRectangleEXT')));
+  @DeviceCommands.CmdSetSampleLocationsEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetSampleLocationsEXT')));
   @DeviceCommands.GetBufferMemoryRequirements2KHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetBufferMemoryRequirements2KHR')));
   @DeviceCommands.GetImageMemoryRequirements2KHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetImageMemoryRequirements2KHR')));
   @DeviceCommands.GetImageSparseMemoryRequirements2KHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetImageSparseMemoryRequirements2KHR')));
+  @DeviceCommands.CreateSamplerYcbcrConversionKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateSamplerYcbcrConversionKHR')));
+  @DeviceCommands.DestroySamplerYcbcrConversionKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkDestroySamplerYcbcrConversionKHR')));
+  @DeviceCommands.CreateValidationCacheEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateValidationCacheEXT')));
+  @DeviceCommands.DestroyValidationCacheEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkDestroyValidationCacheEXT')));
+  @DeviceCommands.GetValidationCacheDataEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetValidationCacheDataEXT')));
+  @DeviceCommands.MergeValidationCachesEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkMergeValidationCachesEXT')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -14875,7 +15507,7 @@ constructor TVkSurfaceCapabilities2EXT.Create(const pMinImageCount:TVkUInt32;
                                               const pSupportedUsageFlags:TVkImageUsageFlags;
                                               const pSupportedSurfaceCounters:TVkSurfaceCounterFlagsEXT);
 begin
- sType:=VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES2_EXT;
+ sType:=VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_EXT;
  pNext:=nil;
  minImageCount:=pMinImageCount;
  maxImageCount:=pMaxImageCount;
@@ -14946,34 +15578,44 @@ begin
  deviceMask:=pDeviceMask;
 end;
 
-constructor TVkBindBufferMemoryInfoKHX.Create(const pBuffer:TVkBuffer;
+constructor TVkBindBufferMemoryInfoKHR.Create(const pBuffer:TVkBuffer;
                                               const pMemory:TVkDeviceMemory;
-                                              const pMemoryOffset:TVkDeviceSize;
-                                              const pDeviceIndexCount:TVkUInt32;
-                                              const pPDeviceIndices:PVkUInt32);
+                                              const pMemoryOffset:TVkDeviceSize);
 begin
- sType:=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHX;
+ sType:=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR;
  pNext:=nil;
  buffer:=pBuffer;
  memory:=pMemory;
  memoryOffset:=pMemoryOffset;
+end;
+
+constructor TVkBindBufferMemoryDeviceGroupInfoKHX.Create(const pDeviceIndexCount:TVkUInt32;
+                                                         const pPDeviceIndices:PVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO_KHX;
+ pNext:=nil;
  deviceIndexCount:=pDeviceIndexCount;
  pDeviceIndices:=pPDeviceIndices;
 end;
 
-constructor TVkBindImageMemoryInfoKHX.Create(const pImage:TVkImage;
+constructor TVkBindImageMemoryInfoKHR.Create(const pImage:TVkImage;
                                              const pMemory:TVkDeviceMemory;
-                                             const pMemoryOffset:TVkDeviceSize;
-                                             const pDeviceIndexCount:TVkUInt32;
-                                             const pPDeviceIndices:PVkUInt32;
-                                             const pSFRRectCount:TVkUInt32;
-                                             const pPSFRRects:PVkRect2D);
+                                             const pMemoryOffset:TVkDeviceSize);
 begin
- sType:=VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHX;
+ sType:=VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHR;
  pNext:=nil;
  image:=pImage;
  memory:=pMemory;
  memoryOffset:=pMemoryOffset;
+end;
+
+constructor TVkBindImageMemoryDeviceGroupInfoKHX.Create(const pDeviceIndexCount:TVkUInt32;
+                                                        const pPDeviceIndices:PVkUInt32;
+                                                        const pSFRRectCount:TVkUInt32;
+                                                        const pPSFRRects:PVkRect2D);
+begin
+ sType:=VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO_KHX;
+ pNext:=nil;
  deviceIndexCount:=pDeviceIndexCount;
  pDeviceIndices:=pPDeviceIndices;
  SFRRectCount:=pSFRRectCount;
@@ -15286,6 +15928,24 @@ begin
  perViewPositionAllComponents:=pPerViewPositionAllComponents;
 end;
 
+constructor TVkInputAttachmentAspectReferenceKHR.Create(const pSubpass:TVkUInt32;
+                                                        const pInputAttachmentIndex:TVkUInt32;
+                                                        const pAspectMask:TVkImageAspectFlags);
+begin
+ subpass:=pSubpass;
+ inputAttachmentIndex:=pInputAttachmentIndex;
+ aspectMask:=pAspectMask;
+end;
+
+constructor TVkRenderPassInputAttachmentAspectCreateInfoKHR.Create(const pAspectReferenceCount:TVkUInt32;
+                                                                   const pPAspectReferences:PVkInputAttachmentAspectReferenceKHR);
+begin
+ sType:=VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO_KHR;
+ pNext:=nil;
+ aspectReferenceCount:=pAspectReferenceCount;
+ pAspectReferences:=pPAspectReferences;
+end;
+
 constructor TVkPhysicalDeviceSurfaceInfo2KHR.Create(const pSurface:TVkSurfaceKHR);
 begin
  sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
@@ -15362,6 +16022,13 @@ begin
  memoryRequirements:=pMemoryRequirements;
 end;
 
+constructor TVkPhysicalDevicePointClippingPropertiesKHR.Create(const pPointClippingBehavior:TVkPointClippingBehaviorKHR);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES_KHR;
+ pNext:=nil;
+ pointClippingBehavior:=pPointClippingBehavior;
+end;
+
 constructor TVkMemoryDedicatedRequirementsKHR.Create(const pPrefersDedicatedAllocation:TVkBool32;
                                                      const pRequiresDedicatedAllocation:TVkBool32);
 begin
@@ -15378,6 +16045,76 @@ begin
  pNext:=nil;
  image:=pImage;
  buffer:=pBuffer;
+end;
+
+constructor TVkImageViewUsageCreateInfoKHR.Create(const pUsage:TVkImageUsageFlags);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO_KHR;
+ pNext:=nil;
+ usage:=pUsage;
+end;
+
+constructor TVkPipelineTessellationDomainOriginStateCreateInfoKHR.Create(const pDomainOrigin:TVkTessellationDomainOriginKHR);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO_KHR;
+ pNext:=nil;
+ domainOrigin:=pDomainOrigin;
+end;
+
+constructor TVkSamplerYcbcrConversionInfoKHR.Create(const pConversion:TVkSamplerYcbcrConversionKHR);
+begin
+ sType:=VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO_KHR;
+ pNext:=nil;
+ conversion:=pConversion;
+end;
+
+constructor TVkSamplerYcbcrConversionCreateInfoKHR.Create(const pFormat:TVkFormat;
+                                                          const pYcbcrModel:TVkSamplerYcbcrModelConversionKHR;
+                                                          const pYcbcrRange:TVkSamplerYcbcrRangeKHR;
+                                                          const pComponents:TVkComponentMapping;
+                                                          const pXChromaOffset:TVkChromaLocationKHR;
+                                                          const pYChromaOffset:TVkChromaLocationKHR;
+                                                          const pChromaFilter:TVkFilter;
+                                                          const pForceExplicitReconstruction:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO_KHR;
+ pNext:=nil;
+ format:=pFormat;
+ ycbcrModel:=pYcbcrModel;
+ ycbcrRange:=pYcbcrRange;
+ components:=pComponents;
+ xChromaOffset:=pXChromaOffset;
+ yChromaOffset:=pYChromaOffset;
+ chromaFilter:=pChromaFilter;
+ forceExplicitReconstruction:=pForceExplicitReconstruction;
+end;
+
+constructor TVkBindImagePlaneMemoryInfoKHR.Create(const pPlaneAspect:TVkImageAspectFlagBits);
+begin
+ sType:=VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO_KHR;
+ pNext:=nil;
+ planeAspect:=pPlaneAspect;
+end;
+
+constructor TVkImagePlaneMemoryRequirementsInfoKHR.Create(const pPlaneAspect:TVkImageAspectFlagBits);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO_KHR;
+ pNext:=nil;
+ planeAspect:=pPlaneAspect;
+end;
+
+constructor TVkPhysicalDeviceSamplerYcbcrConversionFeaturesKHR.Create(const pSamplerYcbcrConversion:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES_KHR;
+ pNext:=nil;
+ samplerYcbcrConversion:=pSamplerYcbcrConversion;
+end;
+
+constructor TVkSamplerYcbcrConversionImageFormatPropertiesKHR.Create(const pCombinedImageSamplerDescriptorCount:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES_KHR;
+ pNext:=nil;
+ combinedImageSamplerDescriptorCount:=pCombinedImageSamplerDescriptorCount;
 end;
 
 constructor TVkTextureLODGatherFormatPropertiesAMD.Create(const pSupportsTextureGatherLODBiasAMD:TVkBool32);
@@ -15405,6 +16142,92 @@ begin
  pNext:=nil;
  filterMinmaxSingleComponentFormats:=pFilterMinmaxSingleComponentFormats;
  filterMinmaxImageComponentMapping:=pFilterMinmaxImageComponentMapping;
+end;
+
+constructor TVkSampleLocationEXT.Create(const pX:TVkFloat;
+                                        const pY:TVkFloat);
+begin
+ x:=pX;
+ y:=pY;
+end;
+
+constructor TVkSampleLocationsInfoEXT.Create(const pSampleLocationsPerPixel:TVkSampleCountFlagBits;
+                                             const pSampleLocationGridSize:TVkExtent2D;
+                                             const pSampleLocationsCount:TVkUInt32;
+                                             const pPSampleLocations:PVkSampleLocationEXT);
+begin
+ sType:=VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT;
+ pNext:=nil;
+ sampleLocationsPerPixel:=pSampleLocationsPerPixel;
+ sampleLocationGridSize:=pSampleLocationGridSize;
+ sampleLocationsCount:=pSampleLocationsCount;
+ pSampleLocations:=pPSampleLocations;
+end;
+
+constructor TVkAttachmentSampleLocationsEXT.Create(const pAttachmentIndex:TVkUInt32;
+                                                   const pSampleLocationsInfo:TVkSampleLocationsInfoEXT);
+begin
+ attachmentIndex:=pAttachmentIndex;
+ sampleLocationsInfo:=pSampleLocationsInfo;
+end;
+
+constructor TVkSubpassSampleLocationsEXT.Create(const pSubpassIndex:TVkUInt32;
+                                                const pSampleLocationsInfo:TVkSampleLocationsInfoEXT);
+begin
+ subpassIndex:=pSubpassIndex;
+ sampleLocationsInfo:=pSampleLocationsInfo;
+end;
+
+constructor TVkRenderPassSampleLocationsBeginInfoEXT.Create(const pAttachmentInitialSampleLocationsCount:TVkUInt32;
+                                                            const pPAttachmentInitialSampleLocations:PVkAttachmentSampleLocationsEXT;
+                                                            const pPostSubpassSampleLocationsCount:TVkUInt32;
+                                                            const pPSubpassSampleLocations:PVkSubpassSampleLocationsEXT);
+begin
+ sType:=VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT;
+ pNext:=nil;
+ attachmentInitialSampleLocationsCount:=pAttachmentInitialSampleLocationsCount;
+ pAttachmentInitialSampleLocations:=pPAttachmentInitialSampleLocations;
+ postSubpassSampleLocationsCount:=pPostSubpassSampleLocationsCount;
+ pSubpassSampleLocations:=pPSubpassSampleLocations;
+end;
+
+constructor TVkPipelineSampleLocationsStateCreateInfoEXT.Create(const pSampleLocationsEnable:TVkBool32;
+                                                                const pSampleLocationsInfo:TVkSampleLocationsInfoEXT);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT;
+ pNext:=nil;
+ sampleLocationsEnable:=pSampleLocationsEnable;
+ sampleLocationsInfo:=pSampleLocationsInfo;
+end;
+
+constructor TVkPhysicalDeviceSampleLocationsPropertiesEXT.Create(const pSampleLocationSampleCounts:TVkSampleCountFlags;
+                                                                 const pMaxSampleLocationGridSize:TVkExtent2D;
+                                                                 const pSampleLocationCoordinateRange:array of TVkFloat;
+                                                                 const pSampleLocationSubPixelBits:TVkUInt32;
+                                                                 const pVariableSampleLocations:TVkBool32);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TVkPhysicalDeviceSampleLocationsPropertiesEXT),#0);
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT;
+ pNext:=nil;
+ sampleLocationSampleCounts:=pSampleLocationSampleCounts;
+ maxSampleLocationGridSize:=pMaxSampleLocationGridSize;
+ ArrayItemCount:=length(pSampleLocationCoordinateRange);
+ if ArrayItemCount>length(sampleLocationCoordinateRange) then begin
+  ArrayItemCount:=length(sampleLocationCoordinateRange);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(pSampleLocationCoordinateRange[0],sampleLocationCoordinateRange[0],ArrayItemCount*SizeOf(TVkFloat));
+ end;
+ sampleLocationSubPixelBits:=pSampleLocationSubPixelBits;
+ variableSampleLocations:=pVariableSampleLocations;
+end;
+
+constructor TVkMultisamplePropertiesEXT.Create(const pMaxSampleLocationGridSize:TVkExtent2D);
+begin
+ sType:=VK_STRUCTURE_TYPE_MULTISAMPLE_PROPERTIES_EXT;
+ pNext:=nil;
+ maxSampleLocationGridSize:=pMaxSampleLocationGridSize;
 end;
 
 constructor TVkSamplerReductionModeCreateInfoEXT.Create(const pReductionMode:TVkSamplerReductionModeEXT);
@@ -15462,6 +16285,33 @@ begin
  coverageModulationTableEnable:=pCoverageModulationTableEnable;
  coverageModulationTableCount:=pCoverageModulationTableCount;
  pCoverageModulationTable:=pPCoverageModulationTable;
+end;
+
+constructor TVkImageFormatListCreateInfoKHR.Create(const pViewFormatCount:TVkUInt32;
+                                                   const pPViewFormats:PVkFormat);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR;
+ pNext:=nil;
+ viewFormatCount:=pViewFormatCount;
+ pViewFormats:=pPViewFormats;
+end;
+
+constructor TVkValidationCacheCreateInfoEXT.Create(const pFlags:TVkValidationCacheCreateFlagsEXT;
+                                                   const pInitialDataSize:TVkSize;
+                                                   const pPInitialData:PVkVoid);
+begin
+ sType:=VK_STRUCTURE_TYPE_VALIDATION_CACHE_CREATE_INFO_EXT;
+ pNext:=nil;
+ flags:=pFlags;
+ initialDataSize:=pInitialDataSize;
+ pInitialData:=pPInitialData;
+end;
+
+constructor TVkShaderModuleValidationCacheCreateInfoEXT.Create(const pValidationCache:TVkValidationCacheEXT);
+begin
+ sType:=VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT;
+ pNext:=nil;
+ validationCache:=pValidationCache;
 end;
 {$endif}
 
@@ -16632,14 +17482,14 @@ begin
  fCommands.GetDeviceGroupPeerMemoryFeaturesKHX(device,heapIndex,localDeviceIndex,remoteDeviceIndex,pPeerMemoryFeatures);
 end;
 
-function TVulkan.BindBufferMemory2KHX(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindBufferMemoryInfoKHX):TVkResult;
+function TVulkan.BindBufferMemory2KHR(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindBufferMemoryInfoKHR):TVkResult;
 begin
- result:=fCommands.BindBufferMemory2KHX(device,bindInfoCount,pBindInfos);
+ result:=fCommands.BindBufferMemory2KHR(device,bindInfoCount,pBindInfos);
 end;
 
-function TVulkan.BindImageMemory2KHX(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindImageMemoryInfoKHX):TVkResult;
+function TVulkan.BindImageMemory2KHR(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindImageMemoryInfoKHR):TVkResult;
 begin
- result:=fCommands.BindImageMemory2KHX(device,bindInfoCount,pBindInfos);
+ result:=fCommands.BindImageMemory2KHR(device,bindInfoCount,pBindInfos);
 end;
 
 procedure TVulkan.CmdSetDeviceMaskKHX(commandBuffer:TVkCommandBuffer;deviceMask:TVkUInt32);
@@ -16736,6 +17586,16 @@ begin
  fCommands.CmdSetDiscardRectangleEXT(commandBuffer,firstDiscardRectangle,discardRectangleCount,pDiscardRectangles);
 end;
 
+procedure TVulkan.CmdSetSampleLocationsEXT(commandBuffer:TVkCommandBuffer;const pSampleLocationsInfo:PVkSampleLocationsInfoEXT);
+begin
+ fCommands.CmdSetSampleLocationsEXT(commandBuffer,pSampleLocationsInfo);
+end;
+
+procedure TVulkan.GetPhysicalDeviceMultisamplePropertiesEXT(physicalDevice:TVkPhysicalDevice;samples:TVkSampleCountFlagBits;pMultisampleProperties:PVkMultisamplePropertiesEXT);
+begin
+ fCommands.GetPhysicalDeviceMultisamplePropertiesEXT(physicalDevice,samples,pMultisampleProperties);
+end;
+
 function TVulkan.GetPhysicalDeviceSurfaceCapabilities2KHR(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceCapabilities:PVkSurfaceCapabilities2KHR):TVkResult;
 begin
  result:=fCommands.GetPhysicalDeviceSurfaceCapabilities2KHR(physicalDevice,pSurfaceInfo,pSurfaceCapabilities);
@@ -16759,6 +17619,36 @@ end;
 procedure TVulkan.GetImageSparseMemoryRequirements2KHR(device:TVkDevice;const pInfo:PVkImageSparseMemoryRequirementsInfo2KHR;pSparseMemoryRequirementCount:PVkUInt32;pSparseMemoryRequirements:PVkSparseImageMemoryRequirements2KHR);
 begin
  fCommands.GetImageSparseMemoryRequirements2KHR(device,pInfo,pSparseMemoryRequirementCount,pSparseMemoryRequirements);
+end;
+
+function TVulkan.CreateSamplerYcbcrConversionKHR(device:TVkDevice;const pCreateInfo:PVkSamplerYcbcrConversionCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pYcbcrConversion:PVkSamplerYcbcrConversionKHR):TVkResult;
+begin
+ result:=fCommands.CreateSamplerYcbcrConversionKHR(device,pCreateInfo,pAllocator,pYcbcrConversion);
+end;
+
+procedure TVulkan.DestroySamplerYcbcrConversionKHR(device:TVkDevice;ycbcrConversion:TVkSamplerYcbcrConversionKHR;const pAllocator:PVkAllocationCallbacks);
+begin
+ fCommands.DestroySamplerYcbcrConversionKHR(device,ycbcrConversion,pAllocator);
+end;
+
+function TVulkan.CreateValidationCacheEXT(device:TVkDevice;const pCreateInfo:PVkValidationCacheCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pValidationCache:PVkValidationCacheEXT):TVkResult;
+begin
+ result:=fCommands.CreateValidationCacheEXT(device,pCreateInfo,pAllocator,pValidationCache);
+end;
+
+procedure TVulkan.DestroyValidationCacheEXT(device:TVkDevice;validationCache:TVkValidationCacheEXT;const pAllocator:PVkAllocationCallbacks);
+begin
+ fCommands.DestroyValidationCacheEXT(device,validationCache,pAllocator);
+end;
+
+function TVulkan.GetValidationCacheDataEXT(device:TVkDevice;validationCache:TVkValidationCacheEXT;pDataSize:PVkSize;pData:PVkVoid):TVkResult;
+begin
+ result:=fCommands.GetValidationCacheDataEXT(device,validationCache,pDataSize,pData);
+end;
+
+function TVulkan.MergeValidationCachesEXT(device:TVkDevice;dstCache:TVkValidationCacheEXT;srcCacheCount:TVkUInt32;const pSrcCaches:PVkValidationCacheEXT):TVkResult;
+begin
+ result:=fCommands.MergeValidationCachesEXT(device,dstCache,srcCacheCount,pSrcCaches);
 end;
 
 initialization

@@ -3084,7 +3084,7 @@ begin
 end;
 
 procedure ParseExtensionsTag(Tag:TXMLTag);
-var i,j:longint;
+var i,j,k:longint;
     ChildItem,ChildChildItem,ChildChildChildItem:TXMLItem;
     ChildTag,ChildChildTag,ChildChildChildTag:TXMLTag;
     Extension:TExtension;
@@ -3105,33 +3105,38 @@ begin
     Extension.Author:=ChildTag.GetParameter('author','');
     Extension.Contact:=ChildTag.GetParameter('contact','');
     Extension.Supported:=ChildTag.GetParameter('supported','');
-    ChildChildTag:=ChildTag.FindTag('require');
-    if assigned(ChildChildTag) then begin
-     for j:=0 to ChildChildTag.Items.Count-1 do begin
-      ChildChildChildItem:=ChildChildTag.Items[j];
-      if ChildChildChildItem is TXMLTag then begin
-       ChildChildChildTag:=TXMLTag(ChildChildChildItem);
-       if ChildChildChildTag.Name='enum' then begin
-        ExtensionEnum:=TExtensionEnum.Create;
-        Extension.Enums.Add(ExtensionEnum);
-        ExtensionEnum.Extension:=Extension;
-        ExtensionEnum.Name:=ChildChildChildTag.GetParameter('name','');
-        ExtensionEnum.Value:=ChildChildChildTag.GetParameter('value','');
-        ExtensionEnum.Offset:=StrToIntDef(ChildChildChildTag.GetParameter('offset','-1'),-1);
-        ExtensionEnum.BitPos:=StrToIntDef(ChildChildChildTag.GetParameter('bitpos','-1'),-1);
-        ExtensionEnum.Dir:=ChildChildChildTag.GetParameter('dir','');
-        ExtensionEnum.Extends:=ChildChildChildTag.GetParameter('extends','');
-        ExtensionEnums.AddObject(ExtensionEnum.Name,ExtensionEnum);
-       end else if ChildChildChildTag.Name='type' then begin
-        ExtensionType:=TExtensionType.Create;
-        Extension.Types.Add(ExtensionType);
-        ExtensionType.Name:=ChildChildChildTag.GetParameter('name','');
-        ExtensionTypes.AddObject(ExtensionType.Name,ExtensionType);
-       end else if ChildChildChildTag.Name='command' then begin
-        ExtensionCommand:=TExtensionCommand.Create;
-        Extension.Commands.Add(ExtensionCommand);
-        ExtensionCommand.Name:=ChildChildChildTag.GetParameter('name','');
-        ExtensionCommands.AddObject(ExtensionCommand.Name,ExtensionCommand);
+    for j:=0 to ChildTag.Items.Count-1 do begin
+     ChildChildItem:=ChildTag.Items[j];
+     if ChildChildItem is TXMLTag then begin
+      ChildChildTag:=TXMLTag(ChildChildItem);
+      if ChildChildTag.Name='require' then begin
+       for k:=0 to ChildChildTag.Items.Count-1 do begin
+        ChildChildChildItem:=ChildChildTag.Items[k];
+        if ChildChildChildItem is TXMLTag then begin
+         ChildChildChildTag:=TXMLTag(ChildChildChildItem);
+         if ChildChildChildTag.Name='enum' then begin
+          ExtensionEnum:=TExtensionEnum.Create;
+          Extension.Enums.Add(ExtensionEnum);
+          ExtensionEnum.Extension:=Extension;
+          ExtensionEnum.Name:=ChildChildChildTag.GetParameter('name','');
+          ExtensionEnum.Value:=ChildChildChildTag.GetParameter('value','');
+          ExtensionEnum.Offset:=StrToIntDef(ChildChildChildTag.GetParameter('offset','-1'),-1);
+          ExtensionEnum.BitPos:=StrToIntDef(ChildChildChildTag.GetParameter('bitpos','-1'),-1);
+          ExtensionEnum.Dir:=ChildChildChildTag.GetParameter('dir','');
+          ExtensionEnum.Extends:=ChildChildChildTag.GetParameter('extends','');
+          ExtensionEnums.AddObject(ExtensionEnum.Name,ExtensionEnum);
+         end else if ChildChildChildTag.Name='type' then begin
+          ExtensionType:=TExtensionType.Create;
+          Extension.Types.Add(ExtensionType);
+          ExtensionType.Name:=ChildChildChildTag.GetParameter('name','');
+          ExtensionTypes.AddObject(ExtensionType.Name,ExtensionType);
+         end else if ChildChildChildTag.Name='command' then begin
+          ExtensionCommand:=TExtensionCommand.Create;
+          Extension.Commands.Add(ExtensionCommand);
+          ExtensionCommand.Name:=ChildChildChildTag.GetParameter('name','');
+          ExtensionCommands.AddObject(ExtensionCommand.Name,ExtensionCommand);
+         end;
+        end;
        end;
       end;
      end;
@@ -4093,6 +4098,9 @@ begin
        ENumTypes.Add('       '+ValueItem^.Name+'='+ValueItem^.ValueStr);
       end;
      end;
+    end;
+    if CountValueItems=0 then begin
+     ENumTypes.Add('       T'+Name+'DummyValue=0');
     end;
     ENumTypes.Add('      );');
     ENumTypes.Add('');
