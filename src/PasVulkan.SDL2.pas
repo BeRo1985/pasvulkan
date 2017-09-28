@@ -150,6 +150,7 @@ uses {$if defined(Windows)}
       BaseUnix,
       Unix,
       UnixType,
+      dl,
       {$if not (defined(GP2X) or defined(Darwin) or defined(SkyOS) or defined(Android))}
        x,
        xlib,
@@ -161,6 +162,7 @@ uses {$if defined(Windows)}
      {$ifdef Android}
       PasVulkan.Android,
      {$endif}
+     Vulkan,
      SysUtils,Classes;
 
 const SDL2LibName={$if defined(Win32)}
@@ -297,7 +299,13 @@ const SDL2LibName={$if defined(Win32)}
       SDL_WINDOW_UTILITY=$00020000;      //**< window should be treated as a utility window */
       SDL_WINDOW_TOOLTIP=$00040000;      //**< window should be treated as a tooltip */
       SDL_WINDOW_POPUP_MENU=$00080000;      //**< window should be treated as a popup menu */
-    	SDL_WINDOW_VULKAN=$00100000;          //**< window usable with Vulkan */
+{$ifdef Android}
+      // PasVulkan uses on Android still a self-patched SDL 2.0.5 version
+    	SDL_WINDOW_VULKAN=$00100000;   //**< window usable with Vulkan */
+{$else}
+      // SDL 2.0.6
+    	SDL_WINDOW_VULKAN=$10000000;         //**< window usable with Vulkan */
+{$endif}
 
       SDL_WINDOWPOS_CENTERED_MASK=$2FFF0000;
 
@@ -1822,7 +1830,7 @@ function SDL_DestroyRenderer(renderer:PSDL_Renderer):TSDLInt32; cdecl; external 
 
 function SDL_GL_MakeCurrent(window:PSDL_Window;context:PSDL_GLContext):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
-function SDL_GL_CreateContext(windo:PSDL_Window):PSDL_GLContext; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GL_CreateContext(window:PSDL_Window):PSDL_GLContext; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_GL_DeleteContext(context:PSDL_GLContext); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_GL_SwapWindow(window:PSDL_Window):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 function SDL_GL_SetSwapInterval(interval:TSDLInt32):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
@@ -2011,9 +2019,103 @@ procedure SDL_AddHintCallback(name:PAnsichar;callback:TSDL_HintCallback;userdata
 procedure SDL_DelHintCallback(name:PAnsichar;callback:TSDL_HintCallback;userdata:pointer); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_ClearHints; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
+{$if defined(PasVulkanUseSDL2WithVulkanSupport)}
+{$if defined(PasVulkanUseSDL2WithStaticVulkanSupport)}
+function SDL_Vulkan_LoadLibrary(path:PAnsiChar):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_Vulkan_GetVkGetInstanceProcAddr:pointer; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_Vulkan_UnloadLibrary; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_Vulkan_GetInstanceExtensions(window:PSDL_Window;pCount:PSDLUInt32;names:pointer{PPAnsiChar}):boolean; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_Vulkan_CreateSurface(window:PSDL_Window;instance_:TVkInstance;surface:PVkSurfaceKHR):boolean; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+procedure SDL_Vulkan_GetDrawableSize(window:PSDL_Window;w,h:PSDLInt32); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+{$else}
+type TSDL_Vulkan_LoadLibrary=function(path:PAnsiChar):TSDLInt32; cdecl;
+     TSDL_Vulkan_GetVkGetInstanceProcAddr=function:pointer; cdecl;
+     TSDL_Vulkan_UnloadLibrary=procedure; cdecl;
+     TSDL_Vulkan_GetInstanceExtensions=function(window:PSDL_Window;pCount:PSDLUInt32;names:pointer{PPAnsiChar}):boolean; cdecl;
+     TSDL_Vulkan_CreateSurface=function(window:PSDL_Window;instance_:TVkInstance;surface:PVkSurfaceKHR):boolean; cdecl;
+     TSDL_Vulkan_GetDrawableSize=procedure(window:PSDL_Window;w,h:PSDLInt32); cdecl;
+
+var SDL_Vulkan_LoadLibrary:TSDL_Vulkan_LoadLibrary=nil;
+    SDL_Vulkan_GetVkGetInstanceProcAddr:TSDL_Vulkan_GetVkGetInstanceProcAddr=nil;
+    SDL_Vulkan_UnloadLibrary:TSDL_Vulkan_UnloadLibrary=nil;
+    SDL_Vulkan_GetInstanceExtensions:TSDL_Vulkan_GetInstanceExtensions=nil;
+    SDL_Vulkan_CreateSurface:TSDL_Vulkan_CreateSurface=nil;
+    SDL_Vulkan_GetDrawableSize:TSDL_Vulkan_GetDrawableSize=nil;
+
+{$define PasVulkanUseDynamicSDL2}
+
+{$ifend}
+{$ifend}
+
+{$ifdef PasVulkanUseDynamicSDL2}
+var SDL_Library:pointer=nil;
+{$endif}
+
+procedure SDL_GetVersion(out Version:TSDL_Version); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_GetRevision:PAnsiChar; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+
 procedure SDL_VERSION(out Version:TSDL_Version);
 
 implementation
+
+{$ifdef PasVulkanUseDynamicSDL2}
+function sdl2LoadLibrary(const LibraryName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+{$ifdef Windows}
+ result:={%H-}pointer(LoadLibrary(PChar(LibraryName)));
+{$else}
+{$ifdef Unix}
+ result:=dlopen(PChar(LibraryName),RTLD_NOW or RTLD_LAZY);
+{$else}
+ result:=nil;
+{$endif}
+{$endif}
+end;
+
+function sdl2FreeLibrary(LibraryHandle:pointer):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+ result:=assigned(LibraryHandle);
+ if result then begin
+{$ifdef Windows}
+  result:=FreeLibrary({%H-}HMODULE(LibraryHandle));
+{$else}
+{$ifdef Unix}
+  result:=dlclose(LibraryHandle)=0;
+{$else}
+  result:=false;
+{$endif}
+{$endif}
+ end;
+end;
+
+function sdl2GetProcAddress(LibraryHandle:pointer;const ProcName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}
+begin
+{$ifdef Windows}
+ result:=GetProcAddress({%H-}HMODULE(LibraryHandle),PChar(ProcName));
+{$else}
+{$ifdef Unix}
+ result:=dlsym(LibraryHandle,PChar(ProcName));
+{$else}
+ result:=nil;
+{$endif}
+{$endif}
+end;
+
+function LoadSDL2Library(const LibraryName:string=SDL2LibName):boolean;
+begin
+ SDL_Library:=sdl2LoadLibrary(LibraryName);
+ result:=assigned(SDL_Library);
+ if result then begin
+  SDL_Vulkan_LoadLibrary:=sdl2GetProcAddress(SDL_Library,'SDL_Vulkan_LoadLibrary');
+  SDL_Vulkan_GetVkGetInstanceProcAddr:=sdl2GetProcAddress(SDL_Library,'SDL_Vulkan_GetVkGetInstanceProcAddr');
+  SDL_Vulkan_UnloadLibrary:=sdl2GetProcAddress(SDL_Library,'SDL_Vulkan_UnloadLibrary');
+  SDL_Vulkan_GetInstanceExtensions:=sdl2GetProcAddress(SDL_Library,'SDL_Vulkan_GetInstanceExtensions');
+  SDL_Vulkan_CreateSurface:=sdl2GetProcAddress(SDL_Library,'SDL_Vulkan_CreateSurface');
+  SDL_Vulkan_GetDrawableSize:=sdl2GetProcAddress(SDL_Library,'SDL_Vulkan_GetDrawableSize');
+ end;
+end;
+
+{$endif}
 
 function SDL_BUTTON(Button:TSDLInt32):TSDLInt32;
 begin
@@ -2027,5 +2129,13 @@ begin
  Version.patch:=SDL_PATCHLEVEL;
 end;
 
+{$ifdef PasVulkanUseDynamicSDL2}
+initialization
+ LoadSDL2Library;
+finalization
+ if assigned(SDL_Library) then begin
+  sdl2FreeLibrary(SDL_Library);
+ end;
+{$endif}
 end.
 

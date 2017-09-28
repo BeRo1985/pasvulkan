@@ -1,7 +1,7 @@
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                        Version 2017-07-22-08-04-0000                       *
+ *                        Version 2017-09-28-04-36-0000                       *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -690,6 +690,7 @@ type EpvVulkanException=class(Exception);
       protected
       public
        constructor Create(const aInstance:TpvVulkanInstance;const aSurfaceCreateInfo:TpvVulkanSurfaceCreateInfo);
+       constructor CreateHandle(const aInstance:TpvVulkanInstance;const aSurfaceHandle:TVkSurfaceKHR);
 {$if defined(Android)}
        constructor CreateAndroid(const aInstance:TpvVulkanInstance;const aWindow:PVkAndroidANativeWindow);
 {$ifend}
@@ -7023,7 +7024,7 @@ begin
 { if fAvailableExtensionNames.IndexOf('VK_LAYER_LUNARG_standard_validation')>=0 then begin
    fEnabledExtensionNames.Add(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
    fEnabledLayerNames.Add('VK_LAYER_LUNARG_standard_validation');
-  end;{}
+  end;}
  end;
 
 end;
@@ -7726,6 +7727,19 @@ begin
    HandleResultCode(VK_ERROR_INCOMPATIBLE_DRIVER);
   end;
  end;
+
+end;
+
+constructor TpvVulkanSurface.CreateHandle(const aInstance:TpvVulkanInstance;const aSurfaceHandle:TVkSurfaceKHR);
+begin
+
+ inherited Create;
+
+ fInstance:=aInstance;
+
+ fSurfaceHandle:=aSurfaceHandle;
+
+ FillChar(fSurfaceCreateInfo,SizeOf(TpvVulkanSurfaceCreateInfo),#0);
 
 end;
 

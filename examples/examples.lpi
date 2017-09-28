@@ -25,7 +25,7 @@
         <FormatVersion Value="1"/>
       </local>
     </RunParams>
-    <Units Count="58">
+    <Units Count="60">
       <Unit0>
         <Filename Value="examples.dpr"/>
         <IsPartOfProject Value="True"/>
@@ -258,6 +258,14 @@
         <Filename Value="UnitScreenExampleGUI.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit57>
+      <Unit58>
+        <Filename Value="..\externals\pucu\src\PUCU.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit58>
+      <Unit59>
+        <Filename Value="..\externals\pasdblstrutils\src\PasDblStrUtils.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit59>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -268,11 +276,15 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir);..\src"/>
-      <OtherUnitFiles Value="..\src"/>
+      <OtherUnitFiles Value="..\src;..\externals\pucu\src;..\externals\pasdblstrutils\src"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Conditionals Value="if ((TargetOS='linux') or (TargetOS='freebsd') or (TargetOS='unix')) and not (TargetOS='android') then begin
  CustomOptions += ' -dMir -dWayland -dXCB -dXLIB';
+end;
+
+if TargetOS&lt;>'android' then begin
+ CustomOptions += ' -dPasVulkanUseSDL2WithVulkanSupport';
 end;
 
  CustomOptions += ' -dPasVulkanPasMP -dPasVulkanUseSDL2';

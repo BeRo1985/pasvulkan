@@ -10873,7 +10873,7 @@ end;
 function vkLoadLibrary(const LibraryName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}
 begin
 {$ifdef Windows}
- result:=pointer(LoadLibrary(PChar(LibraryName)));
+ result:={%H-}pointer(LoadLibrary(PChar(LibraryName)));
 {$else}
 {$ifdef Unix}
  result:=dlopen(PChar(LibraryName),RTLD_NOW or RTLD_LAZY);
@@ -10888,7 +10888,7 @@ begin
  result:=assigned(LibraryHandle);
  if result then begin
 {$ifdef Windows}
-  result:=FreeLibrary(HMODULE(LibraryHandle));
+  result:=FreeLibrary({%H-}HMODULE(LibraryHandle));
 {$else}
 {$ifdef Unix}
   result:=dlclose(LibraryHandle)=0;
@@ -10902,7 +10902,7 @@ end;
 function vkGetProcAddress(LibraryHandle:pointer;const ProcName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}
 begin
 {$ifdef Windows}
- result:=GetProcAddress(HMODULE(LibraryHandle),PChar(ProcName));
+ result:=GetProcAddress({%H-}HMODULE(LibraryHandle),PChar(ProcName));
 {$else}
 {$ifdef Unix}
  result:=dlsym(LibraryHandle,PChar(ProcName));

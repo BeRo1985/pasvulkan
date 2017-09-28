@@ -13,7 +13,7 @@ if [ -z "$BITS" ]; then
   fi
 fi
 
-DEFINES=" -dRELEASE -dPasVulkanPasMP -dPasVulkanUseSDL2 -dXLIB -dXCB -dWayland -dMir "
+DEFINES=" -dRELEASE -dPasVulkanPasMP -dPasVulkanUseSDL2 -dPasVulkanUseSDL2WithVulkanSupport -dXLIB -dXCB -dWayland -dMir "
 STATICLINK="n"
 
 while [ $# -gt 0 ]; do

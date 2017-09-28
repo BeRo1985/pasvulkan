@@ -978,6 +978,14 @@ type EpvApplication=class(Exception)
        fUseAudio:boolean;
        fBlocking:boolean;
 
+{$if defined(PasVulkanUseSDL2)}
+       fSDLVersion:TSDL_Version;
+
+{$if defined(PasVulkanUseSDL2WithVulkanSupport)}
+       fSDLVersionWithVulkanSupport:boolean;
+{$ifend}
+{$ifend}
+
        fDebugging:boolean;
 
        fActive:boolean;
@@ -5246,54 +5254,77 @@ end;
 
 procedure TpvApplication.CreateVulkanInstance;
 {$if defined(PasVulkanUseSDL2)}
+type TExtensions=array of PAnsiChar;
 var i:TpvInt32;
     SDL_SysWMinfo:TSDL_SysWMinfo;
+    CountExtensions:TSDLInt32;
+    Extensions:TExtensions;
 begin
  if not assigned(fVulkanInstance) then begin
   SDL_VERSION(SDL_SysWMinfo.version);
-  if SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0 then begin
+  if {$if defined(PasVulkanUseSDL2WithVulkanSupport)}fSDLVersionWithVulkanSupport or{$ifend}
+     (SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0) then begin
    fVulkanInstance:=TpvVulkanInstance.Create(TpvVulkanCharString(Title),Version,
-                                           'PasVulkanApplication',$0100,
-                                           VK_API_VERSION_1_0,false,nil);
+                                             'PasVulkanApplication',$0100,
+                                              VK_API_VERSION_1_0,false,nil);
    for i:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
     VulkanDebugLn('Layer: '+fVulkanInstance.AvailableLayerNames[i]);
    end;
    for i:=0 to fVulkanInstance.AvailableExtensionNames.Count-1 do begin
     VulkanDebugLn('Extension: '+fVulkanInstance.AvailableExtensionNames[i]);
    end;
-   fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_SURFACE_EXTENSION_NAME);
-   case SDL_SysWMinfo.subsystem of
-{$if defined(Android)}
-    SDL_SYSWM_ANDROID:begin
-     fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
+{$if defined(PasVulkanUseSDL2WithVulkanSupport)}
+   if fSDLVersionWithVulkanSupport then begin
+    if not SDL_Vulkan_GetInstanceExtensions(fSurfaceWindow,@CountExtensions,nil) then begin
+     raise EpvVulkanException.Create('Vulkan initialization failure at SDL_Vulkan_GetInstanceExtensions: '+String(SDL_GetError));
     end;
+    Extensions:=nil;
+    try
+     SetLength(Extensions,CountExtensions);
+     if not SDL_Vulkan_GetInstanceExtensions(fSurfaceWindow,@CountExtensions,@Extensions[0]) then begin
+      raise EpvVulkanException.Create('Vulkan initialization failure at SDL_Vulkan_GetInstanceExtensions: '+String(SDL_GetError));
+     end;
+     for i:=0 to CountExtensions-1 do begin
+      fVulkanInstance.EnabledExtensionNames.Add(Extensions[i]);
+     end;
+    finally
+     Extensions:=nil;
+    end;
+   end else{$ifend} begin
+    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_SURFACE_EXTENSION_NAME);
+    case SDL_SysWMinfo.subsystem of
+{$if defined(Android)}
+     SDL_SYSWM_ANDROID:begin
+      fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
+     end;
 {$ifend}
 {$if defined(Mir) and defined(Unix)}
-    SDL_SYSWM_MIR:begin
-     fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_MIR_SURFACE_EXTENSION_NAME);
-    end;
+     SDL_SYSWM_MIR:begin
+      fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_MIR_SURFACE_EXTENSION_NAME);
+     end;
 {$ifend}
 {$if defined(Wayland) and defined(Unix)}
-    SDL_SYSWM_WAYLAND:begin
-     fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
-    end;
+     SDL_SYSWM_WAYLAND:begin
+      fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
+     end;
 {$ifend}
 {$if defined(Windows)}
-    SDL_SYSWM_WINDOWS:begin
-     fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-    end;
+     SDL_SYSWM_WINDOWS:begin
+      fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+     end;
 {$ifend}
 {$if (defined(XLIB) or defined(XCB)) and defined(Unix)}
-    SDL_SYSWM_X11:begin
+     SDL_SYSWM_X11:begin
 {$if defined(XLIB) and defined(Unix)}
-     fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
+      fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
 {$elseif defined(XCB) and defined(Unix)}
-     fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
+      fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
 {$ifend}
-    end;
+     end;
 {$ifend}
-    else begin
-     raise EpvVulkanException.Create('Vulkan initialization failure');
+     else begin
+      raise EpvVulkanException.Create('Vulkan initialization failure');
+     end;
     end;
    end;
    if fVulkanDebugging and
@@ -5403,73 +5434,85 @@ procedure TpvApplication.CreateVulkanSurface;
 {$if defined(PasVulkanUseSDL2)}
 var SDL_SysWMinfo:TSDL_SysWMinfo;
     VulkanSurfaceCreateInfo:TpvVulkanSurfaceCreateInfo;
+{$if defined(PasVulkanUseSDL2WithVulkanSupport)}
+    VulkanSurface:TVkSurfaceKHR;
+{$ifend}
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.AllocateVulkanSurface');
 {$ifend}
  if not assigned(fVulkanSurface) then begin
-  SDL_VERSION(SDL_SysWMinfo.version);
-  if SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0 then begin
-   FillChar(VulkanSurfaceCreateInfo,SizeOf(TpvVulkanSurfaceCreateInfo),#0);
-   case SDL_SysWMinfo.subsystem of
+{$if defined(PasVulkanUseSDL2WithVulkanSupport)}if fSDLVersionWithVulkanSupport then begin
+   if not SDL_Vulkan_CreateSurface(fSurfaceWindow,fVulkanInstance.Handle,@VulkanSurface) then begin
+    raise EpvVulkanException.Create('Vulkan initialization failure at SDL_Vulkan_CreateSurface: '+String(SDL_GetError));
+   end;
+   fVulkanSurface:=TpvVulkanSurface.CreateHandle(fVulkanInstance,VulkanSurface);
+  end else{$ifend} begin
+   SDL_VERSION(SDL_SysWMinfo.version);
+   if SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0 then begin
+    FillChar(VulkanSurfaceCreateInfo,SizeOf(TpvVulkanSurfaceCreateInfo),#0);
+    case SDL_SysWMinfo.subsystem of
 {$if defined(Android)}
-    SDL_SYSWM_ANDROID:begin
+     SDL_SYSWM_ANDROID:begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
-     __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanApplication',PAnsiChar('Got native window 0x'+IntToHex(PtrUInt(SDL_SysWMinfo.Window),SizeOf(PtrUInt)*2)));
+      __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanApplication',PAnsiChar('Got native window 0x'+IntToHex(PtrUInt(SDL_SysWMinfo.Window),SizeOf(PtrUInt)*2)));
 {$ifend}
-     VulkanSurfaceCreateInfo.Android.sType:=VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
-     VulkanSurfaceCreateInfo.Android.window:=SDL_SysWMinfo.Window;
-    end;
+      VulkanSurfaceCreateInfo.Android.sType:=VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
+      VulkanSurfaceCreateInfo.Android.window:=SDL_SysWMinfo.Window;
+     end;
 {$ifend}
 {$if defined(Mir) and defined(Unix)}
-    SDL_SYSWM_MIR:begin
-     VulkanSurfaceCreateInfo.Mir.sType:=VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR;
-     VulkanSurfaceCreateInfo.Mir.connection:=SDL_SysWMinfo.Mir.Connection;
-     VulkanSurfaceCreateInfo.Mir.mirSurface:=SDL_SysWMinfo.Mir.Surface;
-    end;
+     SDL_SYSWM_MIR:begin
+      VulkanSurfaceCreateInfo.Mir.sType:=VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR;
+      VulkanSurfaceCreateInfo.Mir.connection:=SDL_SysWMinfo.Mir.Connection;
+      VulkanSurfaceCreateInfo.Mir.mirSurface:=SDL_SysWMinfo.Mir.Surface;
+     end;
 {$ifend}
 {$if defined(Wayland) and defined(Unix)}
-    SDL_SYSWM_WAYLAND:begin
-     VulkanSurfaceCreateInfo.Wayland.sType:=VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR;
-     VulkanSurfaceCreateInfo.Wayland.display:=SDL_SysWMinfo.Wayland.Display;
-     VulkanSurfaceCreateInfo.Wayland.surface:=SDL_SysWMinfo.Wayland.surface;
-    end;
+     SDL_SYSWM_WAYLAND:begin
+      VulkanSurfaceCreateInfo.Wayland.sType:=VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR;
+      VulkanSurfaceCreateInfo.Wayland.display:=SDL_SysWMinfo.Wayland.Display;
+      VulkanSurfaceCreateInfo.Wayland.surface:=SDL_SysWMinfo.Wayland.surface;
+     end;
 {$ifend}
 {$if defined(Windows)}
-    SDL_SYSWM_WINDOWS:begin
-     VulkanSurfaceCreateInfo.Win32.sType:=VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-     VulkanSurfaceCreateInfo.Win32.hwnd_:=SDL_SysWMinfo.Window;
-    end;
+     SDL_SYSWM_WINDOWS:begin
+      VulkanSurfaceCreateInfo.Win32.sType:=VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+      VulkanSurfaceCreateInfo.Win32.hwnd_:=SDL_SysWMinfo.Window;
+     end;
 {$ifend}
 {$if defined(XLIB) and defined(Unix)}
-    SDL_SYSWM_X11:begin
-     VulkanSurfaceCreateInfo.XLIB.sType:=VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
-     VulkanSurfaceCreateInfo.XLIB.Dpy:=SDL_SysWMinfo.X11.Display;
-     VulkanSurfaceCreateInfo.XLIB.Window:=SDL_SysWMinfo.X11.Window;
-    end;
+     SDL_SYSWM_X11:begin
+      VulkanSurfaceCreateInfo.XLIB.sType:=VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+      VulkanSurfaceCreateInfo.XLIB.Dpy:=SDL_SysWMinfo.X11.Display;
+      VulkanSurfaceCreateInfo.XLIB.Window:=SDL_SysWMinfo.X11.Window;
+     end;
 {$ifend}
 {$if (defined(XCB) and not defined(XLIB)) and defined(Unix)}
-    SDL_SYSWM_X11:begin
-     raise EpvVulkanException.Create('Vulkan initialization failure');
-     exit;
-    end;
+     SDL_SYSWM_X11:begin
+      raise EpvVulkanException.Create('Vulkan initialization failure');
+      exit;
+     end;
 {$ifend}
-    else begin
-     raise EpvVulkanException.Create('Vulkan initialization failure');
-     exit;
+     else begin
+      raise EpvVulkanException.Create('Vulkan initialization failure');
+      exit;
+     end;
     end;
-   end;
 
-   fVulkanSurface:=TpvVulkanSurface.Create(fVulkanInstance,VulkanSurfaceCreateInfo);
+    fVulkanSurface:=TpvVulkanSurface.Create(fVulkanInstance,VulkanSurfaceCreateInfo);
 
-   if not assigned(fVulkanDevice) then begin
-    CreateVulkanDevice(fVulkanSurface);
-    if not assigned(fVulkanDevice) then begin
-     raise EpvVulkanSurfaceException.Create('Device does not support surface');
-    end;
    end;
 
   end;
+
+  if assigned(fVulkanSurface) and not assigned(fVulkanDevice) then begin
+   CreateVulkanDevice(fVulkanSurface);
+   if not assigned(fVulkanDevice) then begin
+    raise EpvVulkanSurfaceException.Create('Device does not support surface');
+   end;
+  end;
+
  end;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.AllocateVulkanSurface');
@@ -6630,6 +6673,11 @@ begin
       SDL_WINDOWEVENT_RESIZED:begin
        fWidth:=fEvent.SDLEvent.window.Data1;
        fHeight:=fEvent.SDLEvent.window.Data2;
+{$if defined(PasVulkanUseSDL2) and defined(PasVulkanUseSDL2WithVulkanSupport)}
+       if fSDLVersionWithVulkanSupport then begin
+        SDL_Vulkan_GetDrawableSize(fSurfaceWindow,@fWidth,@fHeight);
+       end;
+{$ifend}
        fCurrentWidth:=fWidth;
        fCurrentHeight:=fHeight;
        if fGraphicsReady then begin
@@ -6924,6 +6972,23 @@ begin
  ReadConfig;
 
 {$if defined(PasVulkanUseSDL2)}
+ SDL_GetVersion(fSDLVersion);
+
+{$if defined(PasVulkanUseSDL2WithVulkanSupport)}
+ fSDLVersionWithVulkanSupport:=(fSDLVersion.Major>=3) or
+                               ((fSDLVersion.Major=2) and
+                                (((fSDLVersion.Minor=0) and (fSDLVersion.Patch>=6)) or
+                                 (fSDLVersion.Minor>=1)
+                                )
+                               );
+
+ if fSDLVersionWithVulkanSupport then begin
+  SDL_Vulkan_LoadLibrary(VK_DEFAULT_LIB_NAME);
+ end;
+{$ifend}
+{$ifend}
+
+{$if defined(PasVulkanUseSDL2)}
  if fAndroidSeparateMouseAndTouch then begin
   SDL_SetHint(SDL_HINT_ANDROID_SEPARATE_MOUSE_AND_TOUCH,'1');
  end else begin
@@ -6970,6 +7035,11 @@ begin
 
 {$if defined(PasVulkanUseSDL2)}
   fVideoFlags:=SDL_WINDOW_ALLOW_HIGHDPI;
+{$if defined(PasVulkanUseSDL2WithVulkanSupport)}
+  if fSDLVersionWithVulkanSupport then begin
+   fVideoFlags:=fVideoFlags or SDL_WINDOW_VULKAN;
+  end;
+{$ifend}
   if fFullscreen then begin
 {$ifndef Android}
    if (fWidth=fScreenWidth) and (fHeight=fScreenHeight) then begin
@@ -7012,6 +7082,12 @@ begin
    raise EpvApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
   end;
 {$else}
+{$ifend}
+
+{$if defined(PasVulkanUseSDL2) and defined(PasVulkanUseSDL2WithVulkanSupport)}
+  if fSDLVersionWithVulkanSupport then begin
+   SDL_Vulkan_GetDrawableSize(fSurfaceWindow,@fWidth,@fHeight);
+  end;
 {$ifend}
 
   fCurrentWidth:=fWidth;
@@ -7159,6 +7235,12 @@ begin
   end;
 
  end;
+
+{$if defined(PasVulkanUseSDL2) and defined(PasVulkanUseSDL2WithVulkanSupport)}
+ if fSDLVersionWithVulkanSupport then begin
+  SDL_Vulkan_UnloadLibrary;
+ end;
+{$ifend}
 
 end;
 
