@@ -3571,6 +3571,8 @@ begin
         TypeDefinition^.Define:='MoltenVK_MacOS';
        end else if (pos('MVK',Name)>0) or (pos('MOLTENVK',UpperCase(Name))>0) then begin
         TypeDefinition^.Define:='MoltenVK';
+       end else if (pos('ANDROID',Name)>0) or (pos('Android',Name)>0) then begin
+        TypeDefinition^.Define:='Android';
        end;
        SetLength(TypeDefinition^.Members,ChildTag.Items.Count);
        TypeDefinition^.CountMembers:=0;
@@ -4217,7 +4219,7 @@ begin
          Define:='MoltenVK_MacOS';
         end else if (pos('MVK',ParamType)>0) or (pos('MOLTENVK',UpperCase(ParamType))>0) then begin
          Define:='MoltenVK';
-        end else if (ParamType='ANativeWindow') or (pos('Android',ParamType)>0) then begin
+        end else if (ParamType='ANativeWindow') or (pos('Android',ParamType)>0) or (pos('ANDROID',ParamType)>0) then begin
          Define:='Android';
         end;
        end;
@@ -4790,7 +4792,7 @@ begin
    OutputPAS.Add('function vkLoadLibrary(const LibraryName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('begin');
    OutputPAS.Add('{$ifdef Windows}');
-   OutputPAS.Add(' result:=pointer(LoadLibrary(PChar(LibraryName)));');
+   OutputPAS.Add(' result:={%H-}pointer(LoadLibrary(PChar(LibraryName)));');
    OutputPAS.Add('{$else}');
    OutputPAS.Add('{$ifdef Unix}');
    OutputPAS.Add(' result:=dlopen(PChar(LibraryName),RTLD_NOW or RTLD_LAZY);');
@@ -4805,7 +4807,7 @@ begin
    OutputPAS.Add(' result:=assigned(LibraryHandle);');
    OutputPAS.Add(' if result then begin');
    OutputPAS.Add('{$ifdef Windows}');
-   OutputPAS.Add('  result:=FreeLibrary(HMODULE(LibraryHandle));');
+   OutputPAS.Add('  result:=FreeLibrary({%H-}HMODULE(LibraryHandle));');
    OutputPAS.Add('{$else}');
    OutputPAS.Add('{$ifdef Unix}');
    OutputPAS.Add('  result:=dlclose(LibraryHandle)=0;');
@@ -4819,7 +4821,7 @@ begin
    OutputPAS.Add('function vkGetProcAddress(LibraryHandle:pointer;const ProcName:string):pointer; {$ifdef CAN_INLINE}inline;{$endif}');
    OutputPAS.Add('begin');
    OutputPAS.Add('{$ifdef Windows}');
-   OutputPAS.Add(' result:=GetProcAddress(HMODULE(LibraryHandle),PChar(ProcName));');
+   OutputPAS.Add(' result:=GetProcAddress({%H-}HMODULE(LibraryHandle),PChar(ProcName));');
    OutputPAS.Add('{$else}');
    OutputPAS.Add('{$ifdef Unix}');
    OutputPAS.Add(' result:=dlsym(LibraryHandle,PChar(ProcName));');

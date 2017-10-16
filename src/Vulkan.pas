@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=61;
+      VK_HEADER_VERSION=63;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -293,7 +293,7 @@ const VK_NULL_HANDLE=0;
       VK_KHR_ANDROID_SURFACE_EXTENSION_NAME='VK_KHR_android_surface';
       VK_KHR_WIN32_SURFACE_SPEC_VERSION=6;
       VK_KHR_WIN32_SURFACE_EXTENSION_NAME='VK_KHR_win32_surface';
-      VK_ANDROID_NATIVE_BUFFER_SPEC_VERSION=4;
+      VK_ANDROID_NATIVE_BUFFER_SPEC_VERSION=5;
       VK_ANDROID_NATIVE_BUFFER_NUMBER=11;
       VK_ANDROID_NATIVE_BUFFER_NAME='VK_ANDROID_native_buffer';
       VK_EXT_DEBUG_REPORT_SPEC_VERSION=8;
@@ -366,8 +366,8 @@ const VK_NULL_HANDLE=0;
       VK_AMD_EXTENSION_45_EXTENSION_NAME='VK_AMD_extension_45';
       VK_AMD_EXTENSION_46_SPEC_VERSION=0;
       VK_AMD_EXTENSION_46_EXTENSION_NAME='VK_AMD_extension_46';
-      VK_AMD_EXTENSION_47_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_47_EXTENSION_NAME='VK_AMD_extension_47';
+      VK_AMD_SHADER_IMAGE_LOAD_STORE_LOD_SPEC_VERSION=1;
+      VK_AMD_SHADER_IMAGE_LOAD_STORE_LOD_EXTENSION_NAME='VK_AMD_shader_image_load_store_lod';
       VK_NVX_EXTENSION_48_SPEC_VERSION=0;
       VK_NVX_EXTENSION_48_EXTENSION_NAME='VK_NVX_extension_48';
       VK_GOOGLE_EXTENSION_49_SPEC_VERSION=0;
@@ -614,6 +614,22 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_169_EXTENSION_NAME='VK_KHR_extension_169';
       VK_EXT_EXTENSION_170_SPEC_VERSION=0;
       VK_EXT_EXTENSION_170_EXTENSION_NAME='VK_EXT_extension_170';
+      VK_QCOM_extension_171_SPEC_VERSION=0;
+      VK_QCOM_extension_171_EXTENSION_NAME='VK_QCOM_extension_171';
+      VK_QCOM_extension_172_SPEC_VERSION=0;
+      VK_QCOM_extension_172_EXTENSION_NAME='VK_QCOM_extension_172';
+      VK_QCOM_extension_173_SPEC_VERSION=0;
+      VK_QCOM_extension_173_EXTENSION_NAME='VK_QCOM_extension_173';
+      VK_QCOM_extension_174_SPEC_VERSION=0;
+      VK_QCOM_extension_174_EXTENSION_NAME='VK_QCOM_extension_174';
+      VK_EXT_GLOBAL_PRIORITY_SPEC_VERSION=1;
+      VK_EXT_GLOBAL_PRIORITY_EXTENSION_NAME='VK_EXT_global_priority';
+      VK_KHR_EXTENSION_176_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_176_EXTENSION_NAME='VK_KHR_extension_176';
+      VK_KHR_EXTENSION_177_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_177_EXTENSION_NAME='VK_KHR_extension_177';
+      VK_KHR_EXTENSION_178_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_178_EXTENSION_NAME='VK_KHR_extension_178';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1876,6 +1892,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR=1000007000,
        VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR=1000008000,
        VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR=1000009000,
+       VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID=1000010000,
        VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT=1000011000,
        VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT=1000011000,
        VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD=1000018000,
@@ -2016,7 +2033,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR=1000157000,
        VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHR=1000157001,
        VK_STRUCTURE_TYPE_VALIDATION_CACHE_CREATE_INFO_EXT=1000160000,
-       VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT=1000160001
+       VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT=1000160001,
+       VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT=1000174000
       );
 
      PPVkSubpassContents=^PVkSubpassContents;
@@ -2031,6 +2049,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkResult=^TVkResult;
      TVkResult=
       (
+       VK_ERROR_NOT_PERMITTED_EXT=-1000174001,
        VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR=-1000072003,
        VK_ERROR_OUT_OF_POOL_MEMORY_KHR=-1000069000,
        VK_ERROR_INVALID_SHADER_NV=-1000012000,
@@ -2928,6 +2947,16 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_VALIDATION_CACHE_HEADER_VERSION_ONE_EXT=1
       );
 
+     PPVkQueueGlobalPriorityEXT=^PVkQueueGlobalPriorityEXT;
+     PVkQueueGlobalPriorityEXT=^TVkQueueGlobalPriorityEXT;
+     TVkQueueGlobalPriorityEXT=
+      (
+       VK_QUEUE_GLOBAL_PRIORITY_LOW=128,
+       VK_QUEUE_GLOBAL_PRIORITY_MEDIUM=256,
+       VK_QUEUE_GLOBAL_PRIORITY_HIGH=512,
+       VK_QUEUE_GLOBAL_PRIORITY_REALTIME=1024
+      );
+
      PPPFN_vkInternalAllocationNotification=^PPFN_vkInternalAllocationNotification;
      PPFN_vkInternalAllocationNotification=^TPFN_vkInternalAllocationNotification;
      TPFN_vkInternalAllocationNotification=procedure(pUserData:PVkVoid;size:TVkSize;allocationType:TVkInternalAllocationType;allocationScope:TVkSystemAllocationScope); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -3049,20 +3078,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pOffset:TVkOffset2D;
                           const pExtent:TVkExtent2D);
-{$endif}
-     end;
-
-     PPVkRect3D=^PVkRect3D;
-     PVkRect3D=^TVkRect3D;
-     TVkRect3D=record
-{$ifdef HAS_ADVANCED_RECORDS}
-      public
-{$endif}
-       offset:TVkOffset3D;
-       extent:TVkExtent3D;
-{$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const pOffset:TVkOffset3D;
-                          const pExtent:TVkExtent3D);
 {$endif}
      end;
 
@@ -8394,12 +8409,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        attachmentInitialSampleLocationsCount:TVkUInt32;
        pAttachmentInitialSampleLocations:PVkAttachmentSampleLocationsEXT;
        postSubpassSampleLocationsCount:TVkUInt32;
-       pSubpassSampleLocations:PVkSubpassSampleLocationsEXT;
+       pPostSubpassSampleLocations:PVkSubpassSampleLocationsEXT;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pAttachmentInitialSampleLocationsCount:TVkUInt32;
                           const pPAttachmentInitialSampleLocations:PVkAttachmentSampleLocationsEXT;
                           const pPostSubpassSampleLocationsCount:TVkUInt32;
-                          const pPSubpassSampleLocations:PVkSubpassSampleLocationsEXT);
+                          const pPPostSubpassSampleLocations:PVkSubpassSampleLocationsEXT);
 {$endif}
      end;
 
@@ -8592,6 +8607,42 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        validationCache:TVkValidationCacheEXT; //< Validation cache handle
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pValidationCache:TVkValidationCacheEXT); //< Validation cache handle
+{$endif}
+     end;
+
+{$ifdef Android}
+     PPVkNativeBufferANDROID=^PVkNativeBufferANDROID;
+     PVkNativeBufferANDROID=^TVkNativeBufferANDROID;
+     TVkNativeBufferANDROID=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID
+       pNext:PVkVoid;
+       handle:PVkVoid;
+       stride:TVkInt32;
+       format:TVkInt32;
+       usage:TVkInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pHandle:PVkVoid;
+                          const pStride:TVkInt32;
+                          const pFormat:TVkInt32;
+                          const pUsage:TVkInt32);
+{$endif}
+     end;
+{$endif}
+
+     PPVkDeviceQueueGlobalPriorityCreateInfoEXT=^PVkDeviceQueueGlobalPriorityCreateInfoEXT;
+     PVkDeviceQueueGlobalPriorityCreateInfoEXT=^TVkDeviceQueueGlobalPriorityCreateInfoEXT;
+     TVkDeviceQueueGlobalPriorityCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT
+       pNext:PVkVoid; //< Pointer to next structure
+       globalPriority:TVkQueueGlobalPriorityEXT;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pGlobalPriority:TVkQueueGlobalPriorityEXT);
 {$endif}
      end;
 
@@ -9148,6 +9199,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkGetValidationCacheDataEXT=function(device:TVkDevice;validationCache:TVkValidationCacheEXT;pDataSize:PVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkMergeValidationCachesEXT=function(device:TVkDevice;dstCache:TVkValidationCacheEXT;srcCacheCount:TVkUInt32;const pSrcCaches:PVkValidationCacheEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetSwapchainGrallocUsageANDROID=function(device:TVkDevice;format:TVkFormat;imageUsage:TVkImageUsageFlags;grallocUsage:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkAcquireImageANDROID=function(device:TVkDevice;image:TVkImage;nativeFenceFd:TVkInt32;semaphore:TVkSemaphore;fence:TVkFence):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkQueueSignalReleaseImageANDROID=function(queue:TVkQueue;waitSemaphoreCount:TVkUInt32;const pWaitSemaphores:PVkSemaphore;image:TVkImage;pNativeFenceFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 
      PPVulkanCommands=^PVulkanCommands;
@@ -9706,6 +9763,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       GetValidationCacheDataEXT:TvkGetValidationCacheDataEXT;
 
       MergeValidationCachesEXT:TvkMergeValidationCachesEXT;
+
+      GetSwapchainGrallocUsageANDROID:TvkGetSwapchainGrallocUsageANDROID;
+
+      AcquireImageANDROID:TvkAcquireImageANDROID;
+
+      QueueSignalReleaseImageANDROID:TvkQueueSignalReleaseImageANDROID;
 
      end;
 
@@ -10270,6 +10333,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function MergeValidationCachesEXT(device:TVkDevice;dstCache:TVkValidationCacheEXT;srcCacheCount:TVkUInt32;const pSrcCaches:PVkValidationCacheEXT):TVkResult; virtual;
 
+       function GetSwapchainGrallocUsageANDROID(device:TVkDevice;format:TVkFormat;imageUsage:TVkImageUsageFlags;grallocUsage:PVkInt32):TVkResult; virtual;
+
+       function AcquireImageANDROID(device:TVkDevice;image:TVkImage;nativeFenceFd:TVkInt32;semaphore:TVkSemaphore;fence:TVkFence):TVkResult; virtual;
+
+       function QueueSignalReleaseImageANDROID(queue:TVkQueue;waitSemaphoreCount:TVkUInt32;const pWaitSemaphores:PVkSemaphore;image:TVkImage;pNativeFenceFd:PVkInt32):TVkResult; virtual;
+
        property Commands:TVulkanCommands read fCommands;
      end;
 
@@ -10830,6 +10899,12 @@ var LibVulkan:pointer=nil;
     vkGetValidationCacheDataEXT:TvkGetValidationCacheDataEXT=nil;
 
     vkMergeValidationCachesEXT:TvkMergeValidationCachesEXT=nil;
+
+    vkGetSwapchainGrallocUsageANDROID:TvkGetSwapchainGrallocUsageANDROID=nil;
+
+    vkAcquireImageANDROID:TvkAcquireImageANDROID=nil;
+
+    vkQueueSignalReleaseImageANDROID:TvkQueueSignalReleaseImageANDROID=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -12007,6 +12082,18 @@ begin
    @vkMergeValidationCachesEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkMergeValidationCachesEXT'));
    @vk.fCommands.MergeValidationCachesEXT:=addr(vkMergeValidationCachesEXT);
   end;
+  if not assigned(vkGetSwapchainGrallocUsageANDROID) then begin
+   @vkGetSwapchainGrallocUsageANDROID:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetSwapchainGrallocUsageANDROID'));
+   @vk.fCommands.GetSwapchainGrallocUsageANDROID:=addr(vkGetSwapchainGrallocUsageANDROID);
+  end;
+  if not assigned(vkAcquireImageANDROID) then begin
+   @vkAcquireImageANDROID:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkAcquireImageANDROID'));
+   @vk.fCommands.AcquireImageANDROID:=addr(vkAcquireImageANDROID);
+  end;
+  if not assigned(vkQueueSignalReleaseImageANDROID) then begin
+   @vkQueueSignalReleaseImageANDROID:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkQueueSignalReleaseImageANDROID'));
+   @vk.fCommands.QueueSignalReleaseImageANDROID:=addr(vkQueueSignalReleaseImageANDROID);
+  end;
   result:=assigned(vkCreateInstance);
  end;
 end;
@@ -12315,6 +12402,9 @@ begin
   @InstanceCommands.DestroyValidationCacheEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyValidationCacheEXT')));
   @InstanceCommands.GetValidationCacheDataEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetValidationCacheDataEXT')));
   @InstanceCommands.MergeValidationCachesEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkMergeValidationCachesEXT')));
+  @InstanceCommands.GetSwapchainGrallocUsageANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetSwapchainGrallocUsageANDROID')));
+  @InstanceCommands.AcquireImageANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkAcquireImageANDROID')));
+  @InstanceCommands.QueueSignalReleaseImageANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkQueueSignalReleaseImageANDROID')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -12537,6 +12627,9 @@ begin
   @DeviceCommands.DestroyValidationCacheEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkDestroyValidationCacheEXT')));
   @DeviceCommands.GetValidationCacheDataEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetValidationCacheDataEXT')));
   @DeviceCommands.MergeValidationCachesEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkMergeValidationCachesEXT')));
+  @DeviceCommands.GetSwapchainGrallocUsageANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetSwapchainGrallocUsageANDROID')));
+  @DeviceCommands.AcquireImageANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkAcquireImageANDROID')));
+  @DeviceCommands.QueueSignalReleaseImageANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkQueueSignalReleaseImageANDROID')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -12591,13 +12684,6 @@ end;
 
 constructor TVkRect2D.Create(const pOffset:TVkOffset2D;
                              const pExtent:TVkExtent2D);
-begin
- offset:=pOffset;
- extent:=pExtent;
-end;
-
-constructor TVkRect3D.Create(const pOffset:TVkOffset3D;
-                             const pExtent:TVkExtent3D);
 begin
  offset:=pOffset;
  extent:=pExtent;
@@ -16181,14 +16267,14 @@ end;
 constructor TVkRenderPassSampleLocationsBeginInfoEXT.Create(const pAttachmentInitialSampleLocationsCount:TVkUInt32;
                                                             const pPAttachmentInitialSampleLocations:PVkAttachmentSampleLocationsEXT;
                                                             const pPostSubpassSampleLocationsCount:TVkUInt32;
-                                                            const pPSubpassSampleLocations:PVkSubpassSampleLocationsEXT);
+                                                            const pPPostSubpassSampleLocations:PVkSubpassSampleLocationsEXT);
 begin
  sType:=VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT;
  pNext:=nil;
  attachmentInitialSampleLocationsCount:=pAttachmentInitialSampleLocationsCount;
  pAttachmentInitialSampleLocations:=pPAttachmentInitialSampleLocations;
  postSubpassSampleLocationsCount:=pPostSubpassSampleLocationsCount;
- pSubpassSampleLocations:=pPSubpassSampleLocations;
+ pPostSubpassSampleLocations:=pPPostSubpassSampleLocations;
 end;
 
 constructor TVkPipelineSampleLocationsStateCreateInfoEXT.Create(const pSampleLocationsEnable:TVkBool32;
@@ -16312,6 +16398,28 @@ begin
  sType:=VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT;
  pNext:=nil;
  validationCache:=pValidationCache;
+end;
+
+{$ifdef Android}
+constructor TVkNativeBufferANDROID.Create(const pHandle:PVkVoid;
+                                          const pStride:TVkInt32;
+                                          const pFormat:TVkInt32;
+                                          const pUsage:TVkInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID;
+ pNext:=nil;
+ handle:=pHandle;
+ stride:=pStride;
+ format:=pFormat;
+ usage:=pUsage;
+end;
+{$endif}
+
+constructor TVkDeviceQueueGlobalPriorityCreateInfoEXT.Create(const pGlobalPriority:TVkQueueGlobalPriorityEXT);
+begin
+ sType:=VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT;
+ pNext:=nil;
+ globalPriority:=pGlobalPriority;
 end;
 {$endif}
 
@@ -17649,6 +17757,21 @@ end;
 function TVulkan.MergeValidationCachesEXT(device:TVkDevice;dstCache:TVkValidationCacheEXT;srcCacheCount:TVkUInt32;const pSrcCaches:PVkValidationCacheEXT):TVkResult;
 begin
  result:=fCommands.MergeValidationCachesEXT(device,dstCache,srcCacheCount,pSrcCaches);
+end;
+
+function TVulkan.GetSwapchainGrallocUsageANDROID(device:TVkDevice;format:TVkFormat;imageUsage:TVkImageUsageFlags;grallocUsage:PVkInt32):TVkResult;
+begin
+ result:=fCommands.GetSwapchainGrallocUsageANDROID(device,format,imageUsage,grallocUsage);
+end;
+
+function TVulkan.AcquireImageANDROID(device:TVkDevice;image:TVkImage;nativeFenceFd:TVkInt32;semaphore:TVkSemaphore;fence:TVkFence):TVkResult;
+begin
+ result:=fCommands.AcquireImageANDROID(device,image,nativeFenceFd,semaphore,fence);
+end;
+
+function TVulkan.QueueSignalReleaseImageANDROID(queue:TVkQueue;waitSemaphoreCount:TVkUInt32;const pWaitSemaphores:PVkSemaphore;image:TVkImage;pNativeFenceFd:PVkInt32):TVkResult;
+begin
+ result:=fCommands.QueueSignalReleaseImageANDROID(queue,waitSemaphoreCount,pWaitSemaphores,image,pNativeFenceFd);
 end;
 
 initialization
