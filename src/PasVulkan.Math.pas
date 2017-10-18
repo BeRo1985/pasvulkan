@@ -4356,7 +4356,14 @@ end;
 class operator TpvQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3;
 {$if defined(cpu386) or defined(cpux64)}
 const Mask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
 
  // q = a
  // v = b
@@ -4429,6 +4436,11 @@ asm
  movss dword ptr [result+8],xmm2
 //movups dqword ptr [result],xmm1
 
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
+
 end;
 {$else}
 var t:TpvVector3;
@@ -4451,7 +4463,14 @@ class operator TpvQuaternion.Multiply({$ifdef fpc}constref{$else}const{$endif} a
 {$if defined(cpu386) or defined(cpux64)}
 const AndMask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
       OrMask:array[0..3] of TpvUInt32=($00000000,$00000000,$00000000,$3f800000);
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
 
  // q = a
  // v = b
@@ -4523,6 +4542,11 @@ asm
  orps xmm1,xmm4 // xmm1 = xmm1.xyz1
 
  movups dqword ptr [result],xmm1
+
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 
 end;
 {$else}
@@ -8245,7 +8269,15 @@ end;
 
 class operator TpvMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
+
  movups xmm0,dqword ptr [a+0]
  movups xmm1,dqword ptr [a+16]
  movups xmm2,dqword ptr [a+32]
@@ -8262,6 +8294,12 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
+
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
+
 end;
 {$else}
 begin
@@ -8325,7 +8363,14 @@ end;
 
 class operator TpvMatrix4x4.Add({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -8343,6 +8388,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 end;
 {$else}
 begin
@@ -8367,7 +8416,14 @@ end;
 
 class operator TpvMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
  movups xmm0,dqword ptr [a+0]
  movups xmm1,dqword ptr [a+16]
  movups xmm2,dqword ptr [a+32]
@@ -8384,6 +8440,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 end;
 {$else}
 begin
@@ -8447,7 +8507,14 @@ end;
 
 class operator TpvMatrix4x4.Subtract({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4): TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -8465,6 +8532,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 end;
 {$else}
 begin
@@ -8489,7 +8560,15 @@ end;
 
 class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a,b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
+
  movups xmm0,dqword ptr [b+0]
  movups xmm1,dqword ptr [b+16]
  movups xmm2,dqword ptr [b+32]
@@ -8550,6 +8629,11 @@ asm
  addps xmm6,xmm7
  addps xmm4,xmm6
  movups dqword ptr [result+48],xmm4
+
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 
 end;
 {$else}
@@ -8614,7 +8698,14 @@ end;
 
 class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -8632,6 +8723,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 end;
 {$else}
 begin
@@ -8670,7 +8765,14 @@ class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:
 {$if defined(cpu386) or defined(cpux64)}
 const Mask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
       cOne:array[0..3] of TpvScalar=(0.0,0.0,0.0,1.0);
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
  xorps xmm2,xmm2
  movss xmm0,dword ptr [b+0]
  movss xmm1,dword ptr [b+4]
@@ -8718,6 +8820,10 @@ asm
  movss dword ptr [result+4],xmm1
  movss dword ptr [result+8],xmm2
 //movups dqword ptr [result],xmm0
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 end;
 {$else}
 begin
@@ -8731,7 +8837,14 @@ class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:
 {$if defined(cpu386) or defined(cpux64)}
 const Mask:array[0..3] of TpvUInt32=($ffffffff,$ffffffff,$ffffffff,$00000000);
       cOne:array[0..3] of TpvScalar=(0.0,0.0,0.0,1.0);
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
  xorps xmm2,xmm2
  movss xmm0,dword ptr [a+0]
  movss xmm1,dword ptr [a+4]
@@ -8775,6 +8888,10 @@ asm
  movss dword ptr [result+4],xmm1
  movss dword ptr [result+8],xmm2
 //movups dqword ptr [result],xmm0
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 end;
 {$else}
 begin
@@ -8786,7 +8903,14 @@ end;
 
 class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4;{$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4;
 {$if defined(cpu386) or defined(cpux64)}
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
  movups xmm0,dqword ptr [b]     // d c b a
  movaps xmm1,xmm0               // d c b a
  movaps xmm2,xmm0               // d c b a
@@ -8807,6 +8931,10 @@ asm
  addps xmm2,xmm3
  addps xmm0,xmm2
  movups dqword ptr [result],xmm0
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 end;
 {$else}
 begin
@@ -8819,7 +8947,14 @@ end;
 
 class operator TpvMatrix4x4.Multiply({$ifdef fpc}constref{$else}const{$endif} a:TpvVector4;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvVector4;
 {$if defined(cpu386) or defined(cpux64)}
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
  movups xmm0,dqword ptr [a]     // d c b a
  movaps xmm1,xmm0               // d c b a
  movaps xmm2,xmm0               // d c b a
@@ -8836,6 +8971,10 @@ asm
  addps xmm2,xmm3
  addps xmm0,xmm2
  movups dqword ptr [result],xmm0
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 end;
 {$else}
 begin
@@ -8903,7 +9042,14 @@ end;
 
 class operator TpvMatrix4x4.Divide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -8921,6 +9067,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 end;
 {$else}
 begin
@@ -8989,7 +9139,14 @@ end;
 
 class operator TpvMatrix4x4.IntDivide({$ifdef fpc}constref{$else}const{$endif} a:TpvScalar;{$ifdef fpc}constref{$else}const{$endif} b:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
  movss xmm0,dword ptr [a]
  shufps xmm0,xmm0,$00
  movaps xmm1,xmm0
@@ -9007,6 +9164,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 end;
 {$else}
 begin
@@ -9091,7 +9252,14 @@ end;
 
 class operator TpvMatrix4x4.Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvMatrix4x4):TpvMatrix4x4;
 {$if defined(cpu386) or defined(cpux64)}
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
  xorps xmm0,xmm0
  xorps xmm1,xmm1
  xorps xmm2,xmm2
@@ -9108,6 +9276,10 @@ asm
  movups dqword ptr [result+16],xmm1
  movups dqword ptr [result+32],xmm2
  movups dqword ptr [result+48],xmm3
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 end;
 {$else}
 begin
@@ -9220,7 +9392,14 @@ asm
  movss dword ptr [result],xmm5
 end;
 {$elseif defined(cpux64)}
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
 {$ifdef Windows}
  movups xmm0,dqword ptr [rcx+32]
  movups xmm1,dqword ptr [rcx+48]
@@ -9269,6 +9448,10 @@ asm
  shufps xmm6,xmm6,$01
  addss xmm5,xmm6
  movss dword ptr [result],xmm5
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 end;
 {$else}
 begin
@@ -9471,7 +9654,14 @@ asm
  mov esp,ecx
 end;
 {$elseif defined(cpux64)}
+{$ifdef Windows}
+var StackSave0,StackSave1:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave0],xmm6
+ movups dqword ptr [StackSave1],xmm7
+{$endif}
  mov r9,rsp
  mov r8,$fffffffffffffff0
  and rsp,r8
@@ -9651,6 +9841,10 @@ asm
  movups dqword ptr [result+32],xmm6
  movups dqword ptr [result+48],xmm5
  mov rsp,r9
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave0]
+ movups xmm7,dqword ptr [StackSave1]
+{$endif}
 end;
 {$else}
 var t0,t4,t8,t12,d:TpvScalar;
@@ -9707,7 +9901,13 @@ asm
  movups dqword ptr [result+48],xmm6
 end;
 {$elseif defined(cpux64)}
+{$ifdef Windows}
+var StackSave:array[0..3] of single;
+{$endif}
 asm
+{$ifdef Windows}
+ movups dqword ptr [StackSave],xmm6
+{$endif}
 {$ifdef Windows}
  movups xmm0,dqword ptr [rcx+0]
  movups xmm4,dqword ptr [rcx+16]
@@ -9735,6 +9935,9 @@ asm
  movups dqword ptr [result+16],xmm4
  movups dqword ptr [result+32],xmm1
  movups dqword ptr [result+48],xmm6
+{$ifdef Windows}
+ movups xmm6,dqword ptr [StackSave]
+{$endif}
 end;
 {$else}
 begin

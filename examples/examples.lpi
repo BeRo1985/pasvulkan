@@ -310,6 +310,11 @@ end;
 //  UnitPath += ';win';
 //  IncPath += ';win';
 //end;"/>
+    <Parsing>
+      <SyntaxOptions>
+        <SyntaxMode Value="Delphi"/>
+      </SyntaxOptions>
+    </Parsing>
     <CodeGeneration>
       <TargetCPU Value="x86_64"/>
     </CodeGeneration>
