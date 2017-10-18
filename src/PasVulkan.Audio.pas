@@ -127,10 +127,10 @@ const SampleFixUp=1024;
       WorldUnitsToSoundUnits=WorldUnitsToMeters;
 
 {     DopplerFactor=1.0;
-      DopplerVelocity=2200.0;{}
+      DopplerVelocity=2200.0;}
 
       DopplerFactor=WorldUnitsToSoundUnits;
-      DopplerVelocity=1.0;{}
+      DopplerVelocity=1.0;
 
       SpeedOfSoundAir=343.3;
       SpeedOfSoundUnderwater=1522.0; //(1484+1560)*0.5;
@@ -1089,9 +1089,9 @@ begin
  end else begin
   ConeVolume:=1.0;
   ConeHF:=1.0;
- end;{}
+ end;}
 
- SpatializationVolume:=Attenuation{*ConeVolume{};
+ SpatializationVolume:=Attenuation{*ConeVolume};
  if SpatializationVolume<0.0 then begin
   SpatializationVolume:=0.0;
  end else if SpatializationVolume>1.0 then begin

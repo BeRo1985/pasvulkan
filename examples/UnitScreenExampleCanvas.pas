@@ -759,6 +759,11 @@ begin
  fVulkanCanvas.Stop;
 
  ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,ExampleApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Canvas');
+
+ Str(fTime*1.0:1:3,s);
+ ExampleApplication.TextOverlay.AddText(0.0,ExampleApplication.TextOverlay.FontCharHeight*4.0,1.0,toaLeft,TpvApplicationRawByteString('Time: '+String(s)+' ms'));
+
+ ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,ExampleApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Canvas');
  fStartY:=pvApplication.Height-((((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize)*1.25)-(4*FontSize));
  cy:=fStartY;
  for Index:=0 to 0 do begin
