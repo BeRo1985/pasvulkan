@@ -325,7 +325,7 @@ end;
     </Linking>
   </CompilerOptions>
   <Debugging>
-    <Exceptions Count="6">
+    <Exceptions Count="7">
       <Item1>
         <Name Value="EAbort"/>
       </Item1>
@@ -344,6 +344,9 @@ end;
       <Item6>
         <Name Value="EpvVulkanPipelineCacheException"/>
       </Item6>
+      <Item7>
+        <Name Value="EpvVulkanResultException"/>
+      </Item7>
     </Exceptions>
   </Debugging>
 </CONFIG>
