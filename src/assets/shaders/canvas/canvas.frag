@@ -75,6 +75,9 @@ vec4 blend(vec4 a, vec4 b){
 #define GUI_ELEMENT_BUTTON_DISABLED 7
 #define GUI_ELEMENT_FOCUSED 8
 #define GUI_ELEMENT_HOVERED 9
+#define GUI_ELEMENT_BOX_UNFOCUSED 10
+#define GUI_ELEMENT_BOX_FOCUSED 11
+#define GUI_ELEMENT_BOX_DISABLED 12  
 #define GUI_ELEMENT_MOUSE_CURSOR_ARROW 64
 #define GUI_ELEMENT_MOUSE_CURSOR_BEAM 65
 #define GUI_ELEMENT_MOUSE_CURSOR_BUSY 66
@@ -125,6 +128,13 @@ const vec4 uPushedButtonGradientTop = MAKE_GRAY_COLOR(29.0, 255.0);
 const vec4 uPushedButtonGradientBottom = MAKE_GRAY_COLOR(41.0, 255.0);
 const vec4 uDisabledButtonGradientTop = MAKE_GRAY_COLOR(96.0, 255.0);
 const vec4 uDisabledButtonGradientBottom = MAKE_GRAY_COLOR(74.0, 255.0);
+
+const vec4 uUnfocusedBoxGradientTop = MAKE_GRAY_COLOR(74.0, 255.0);
+const vec4 uUnfocusedBoxGradientBottom = MAKE_GRAY_COLOR(70.0, 255.0);
+const vec4 uFocusedBoxGradientTop = MAKE_GRAY_COLOR(64.0, 255.0);
+const vec4 uFocusedBoxGradientBottom = MAKE_GRAY_COLOR(68.0, 255.0);
+const vec4 uDisabledBoxGradientTop = MAKE_GRAY_COLOR(94.0, 255.0);
+const vec4 uDisabledBoxGradientBottom = MAKE_GRAY_COLOR(98.0, 255.0);   
 
 const vec4 uFocused = MAKE_COLOR(255.0, 192.0, 64.0, 255.0);
 
@@ -441,7 +451,11 @@ void main(void){
           }
         }
         color = blend(color, 
-                      mix(mix(mix(mix(gradientTop, 
+                      mix(mix(mix(mix((guiElementIndex == GUI_ELEMENT_BUTTON_PUSHED) ?
+                                        mix(gradientTop * 0.5f,
+                                            gradientTop,  
+                                            linearstep(0.0, 6.0, p.y)) :
+                                        gradientTop,
                                       gradientBottom, 
                                       linearstep(0.0, size.y, p.y)),
                                   mix(mix(borderTowardsLight, 
@@ -473,6 +487,61 @@ void main(void){
         color = blend(color,
                       uHovered * 
                       vec2(1.0, linearstep(t, -t, max(d0, -d1))).xxxy);
+        break;
+      }
+      case GUI_ELEMENT_BOX_UNFOCUSED:  
+      case GUI_ELEMENT_BOX_FOCUSED:
+      case GUI_ELEMENT_BOX_DISABLED:{
+        float d0 = sdRoundedRect(p - (size * 0.5), size * 0.5, uButtonCornerRadius),
+              d1 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(0.5), uButtonCornerRadius),      
+              d2 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(1.0), uButtonCornerRadius),      
+              d3 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(2.0), uButtonCornerRadius);      
+        vec4 gradientTop,
+             gradientBottom,
+             borderTowardsLight,
+             borderAwayFromLight;
+        switch(guiElementIndex){
+        	case GUI_ELEMENT_BOX_UNFOCUSED:{
+            gradientTop = uUnfocusedBoxGradientTop;
+            gradientBottom = uUnfocusedBoxGradientBottom;
+            borderTowardsLight = uBorderDark; 
+            borderAwayFromLight = uBorderMedium;
+          	break;
+          }
+        	case GUI_ELEMENT_BOX_FOCUSED:{
+            gradientTop = uFocusedBoxGradientTop;
+            gradientBottom = uFocusedBoxGradientBottom;
+            borderTowardsLight = uBorderDark; 
+            borderAwayFromLight = uBorderMedium;
+          	break;
+          }
+        	case GUI_ELEMENT_BOX_DISABLED:{
+            gradientTop = uDisabledBoxGradientTop;
+            gradientBottom = uDisabledBoxGradientBottom;
+            borderTowardsLight = uBorderDark; 
+            borderAwayFromLight = uBorderMedium;
+          	break;
+          }
+        }
+        color = blend(color, 
+                      mix(mix(mix(mix(mix(gradientTop * 0.5f,
+                                          gradientTop,  
+                                          linearstep(0.0, 6.0, p.y)),
+                                      gradientBottom, 
+                                      linearstep(0.0, size.y, p.y)),
+                                  mix(mix(borderTowardsLight, 
+                                          uBorderMedium, 
+                                          linearstep(0.0, t, p.y - 3.0)), 
+                                      borderAwayFromLight, 
+                                      linearstep(0.0, t, p.y - (size.y - 3.0))),
+                                  linearstep(-t, t, d3)),
+                              uBorderMedium, 
+                              linearstep(-t, t, d2)),
+                            mix(uBorderMedium,
+                                uBorderLight,
+                                linearstep(-t, t, p.y - (size.y - 1.0))), 
+                            linearstep(-t, t, d1)) *
+                      vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
         break;
       }
       case GUI_ELEMENT_MOUSE_CURSOR_ARROW:
