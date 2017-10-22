@@ -6850,6 +6850,9 @@ begin
 
  if fCurrentFullScreen<>ord(fFullScreen) then begin
   fCurrentFullScreen:=ord(fFullScreen);
+  if fVulkanRecreationKind=vavrkNone then begin
+   fVulkanRecreationKind:=vavrkSwapChain;
+  end;
 {$if defined(PasVulkanUseSDL2)}
   if fFullScreen then begin
    SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);

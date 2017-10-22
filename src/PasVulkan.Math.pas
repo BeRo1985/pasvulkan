@@ -1106,7 +1106,7 @@ type PpvScalar=^TpvScalar;
         );
      end;
 
-     TpvRectArray=array of TpvRect:
+     TpvRectArray=array of TpvRect;
 
      PpvAABB2D=^TpvAABB2D;
      TpvAABB2D=TpvRect;
