@@ -481,6 +481,11 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasDescriptorSets=array of TpvVulkanDescriptorSet;
 
+     PpvCanvasTextGlyphRect=^TpvCanvasTextGlyphRect;
+     TpvCanvasTextGlyphRect=TpvRect;
+
+     TpvCanvasTextGlyphRects=TpvRectArray;
+
      PpvCanvasBuffer=^TpvCanvasBuffer;
      TpvCanvasBuffer=record
       fSpinLock:TpvInt32;
@@ -664,6 +669,12 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function TextHeight(const aText:TpvUTF8String):TpvFloat;
        function TextSize(const aText:TpvUTF8String):TpvVector2;
        function TextRowHeight(const aPercent:TpvFloat):TpvFloat;
+       procedure TextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;var aTextGlyphRects:TpvCanvasTextGlyphRects;out aCountTextGlyphRects:TpvInt32); overload;
+       procedure TextGlyphRects(const aText:TpvUTF8String;const aX,aY:TpvFloat;var aTextGlyphRects:TpvCanvasTextGlyphRects;out aCountTextGlyphRects:TpvInt32); overload;
+       procedure TextGlyphRects(const aText:TpvUTF8String;var aTextGlyphRects:TpvCanvasTextGlyphRects;out aCountTextGlyphRects:TpvInt32); overload;
+       function TextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2):TpvCanvasTextGlyphRects; overload;
+       function TextGlyphRects(const aText:TpvUTF8String;const aX,aY:TpvFloat):TpvCanvasTextGlyphRects; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function TextGlyphRects(const aText:TpvUTF8String):TpvCanvasTextGlyphRects; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2):TpvCanvas; overload;
        function DrawText(const aText:TpvUTF8String;const aX,aY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawText(const aText:TpvUTF8String):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -4551,10 +4562,86 @@ end;
 function TpvCanvas.TextRowHeight(const aPercent:TpvFloat):TpvFloat;
 begin
  if assigned(fState.fFont) then begin
-  result:=fState.fFont.RowHeight(aPercent);
+  result:=fState.fFont.RowHeight(aPercent)*fState.fFont.GetScaleFactor(aPercent);
  end else begin
   result:=0.0;
  end;
+end;
+
+procedure TpvCanvas.TextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;var aTextGlyphRects:TpvCanvasTextGlyphRects;out aCountTextGlyphRects:TpvInt32);
+var Position,Size:TpvVector2;
+begin
+ if assigned(fState.fFont) then begin
+  Position:=aPosition;
+  if fState.fTextHorizontalAlignment<>pvcthaLeading then begin
+   if fState.fTextVerticalAlignment<>pvctvaLeading then begin
+    Size:=TextSize(aText);
+   end else begin
+    Size:=TpvVector2.Create(TextWidth(aText),0.0);
+   end;
+  end else begin
+   if fState.fTextVerticalAlignment<>pvctvaLeading then begin
+    Size:=TpvVector2.Create(0.0,TextHeight(aText));
+   end else begin
+    Size:=TpvVector2.Create(0.0,0.0);
+   end;
+  end;
+  case fState.fTextHorizontalAlignment of
+   pvcthaLeading:begin
+    // Do nothing
+   end;
+   pvcthaCenter:begin
+    Position.x:=Position.x-(Size.x*0.5);
+   end;
+   pvcthaTailing:begin
+    Position.x:=Position.x-Size.x;
+   end;
+  end;
+  case fState.fTextVerticalAlignment of
+   pvctvaLeading:begin
+    // Do nothing
+   end;
+   pvctvaMiddle:begin
+    Position.y:=Position.y-(Size.y*0.5);
+   end;
+   pvctvaTailing:begin
+    Position.y:=Position.y-Size.y;
+   end;
+  end;
+  fState.fFont.GetTextGlyphRects(aText,Position,fState.fFontSize,aTextGlyphRects,aCountTextGlyphRects);
+ end;
+end;
+
+procedure TpvCanvas.TextGlyphRects(const aText:TpvUTF8String;const aX,aY:TpvFloat;var aTextGlyphRects:TpvCanvasTextGlyphRects;out aCountTextGlyphRects:TpvInt32);
+begin
+ TextGlyphRects(aText,TpvVector2.Create(aX,aY),aTextGlyphRects,aCountTextGlyphRects);
+end;
+
+procedure TpvCanvas.TextGlyphRects(const aText:TpvUTF8String;var aTextGlyphRects:TpvCanvasTextGlyphRects;out aCountTextGlyphRects:TpvInt32);
+begin
+ TextGlyphRects(aText,TpvVector2.Null,aTextGlyphRects,aCountTextGlyphRects);
+end;
+
+function TpvCanvas.TextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2):TpvCanvasTextGlyphRects;
+var CountTextGlyphRects:TpvInt32;
+begin
+ result:=nil;
+ CountTextGlyphRects:=0;
+ try
+  TextGlyphRects(aText,aPosition,result,CountTextGlyphRects);
+ finally
+  SetLength(result,CountTextGlyphRects);
+ end;
+end;
+
+function TpvCanvas.TextGlyphRects(const aText:TpvUTF8String;const aX,aY:TpvFloat):TpvCanvasTextGlyphRects;
+begin
+ result:=TextGlyphRects(aText,TpvVector2.Create(aX,aY));
+end;
+
+function TpvCanvas.TextGlyphRects(const aText:TpvUTF8String):TpvCanvasTextGlyphRects;
+begin
+ result:=TextGlyphRects(aText,TpvVector2.Null);
 end;
 
 function TpvCanvas.DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2):TpvCanvas;
@@ -4891,7 +4978,7 @@ begin
  VertexColor.a:=fState.fColor.a;
  MetaInfo.xy:=fState.fModelMatrix*aMetaMin;
  MetaInfo.zw:=fState.fModelMatrix*aMetaMax;
- VertexState:=(GetVertexState and not ($f shl pvcvsFillStyleShift)) or ((aGUIElement or ((ord(aFocused) and 1) shl 7)) shl pvcvsObjectModeShift);
+ VertexState:=(GetVertexState and not ($f shl pvcvsFillStyleShift)) or ((TpvUInt32(aGUIElement) or (TpvUInt32(ord(aFocused) and 1) shl 7)) shl pvcvsObjectModeShift);
  EnsureSufficientReserveUsableSpace(4,6);
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
  CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.Create(-Bounds.x,-Bounds.y));

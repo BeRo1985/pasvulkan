@@ -196,6 +196,7 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        function TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
        function TextSize(const aText:TpvUTF8String;const aSize:TpvFloat):TpvVector2;
        function RowHeight(const Percent:TpvFloat):TpvFloat;
+       procedure GetTextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aRects:TpvRectArray;out aCountRects:TpvInt32);
        procedure Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat);
       published
        property BaseSize:TpvFloat read fBaseSize;
@@ -2776,6 +2777,56 @@ end;
 function TpvFont.RowHeight(const Percent:TpvFloat):TpvFloat;
 begin
  result:=fUnitsPerEm*(Percent*0.01);
+end;
+
+procedure TpvFont.GetTextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aRects:TpvRectArray;out aCountRects:TpvInt32);
+var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
+    x,y,ScaleFactor,RescaleFactor:TpvFloat;
+    Int64Value:TpvInt64;
+    KerningPair:PpvFontKerningPair;
+    Glyph:PpvFontGlyph;
+    Dest:TpvRect;
+begin
+ aCountRects:=0;
+ x:=0.0;
+ y:=0.0;
+ ScaleFactor:=GetScaleFactor(aSize);
+ RescaleFactor:=ScaleFactor*fInverseBaseScaleFactor;
+ TextIndex:=1;
+ LastGlyph:=-1;
+ while TextIndex<=length(aText) do begin
+  CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
+  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
+   CurrentGlyph:=Int64Value;
+   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+    if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
+     KerningPair:=@fKerningPairs[Int64Value];
+     x:=x+KerningPair^.Horizontal;
+     y:=y+KerningPair^.Vertical;
+    end;
+    Glyph:=@fGlyphs[CurrentGlyph];
+    if LastGlyph<0 then begin
+     x:=x+Glyph^.LeftSideBearing;
+     y:=y+Glyph^.TopSideBearing;
+    end;
+    Dest.Left:=aPosition.x+(x*ScaleFactor)+(Glyph^.OffsetX*RescaleFactor);
+    Dest.Top:=aPosition.y+(y*ScaleFactor)+(Glyph^.OffsetY*RescaleFactor);
+    Dest.Right:=aPosition.x+(x*ScaleFactor)+((Glyph^.OffsetX+Glyph^.Width)*RescaleFactor);
+    Dest.Bottom:=aPosition.y+(y*ScaleFactor)+((Glyph^.OffsetY+Glyph^.Height)*RescaleFactor);
+    if length(aRects)<=aCountRects then begin
+     SetLength(aRects,(aCountRects+1)*2);
+    end;
+    aRects[aCountRects]:=Dest;
+    inc(aCountRects);
+    x:=x+Glyph^.AdvanceWidth;
+    y:=y+Glyph^.AdvanceHeight;
+   end;
+  end else begin
+   CurrentGlyph:=0;
+  end;
+  LastGlyph:=CurrentGlyph;
+ end;
 end;
 
 procedure TpvFont.Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat);
