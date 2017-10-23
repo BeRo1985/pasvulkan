@@ -2294,7 +2294,7 @@ begin
     (aTextEdit.fTextSelectionStart<=(aTextEdit.fCountTextGlyphRects+1)) and
     (aTextEdit.fTextSelectionEnd>0) and
     (aTextEdit.fTextSelectionEnd<=(aTextEdit.fCountTextGlyphRects+1)) then begin
-  aCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,1.0);
+  aCanvas.Color:=TpvVector4.Create(0.016275,0.016275,0.016275,1.0);
   StartIndex:=Min(aTextEdit.fTextSelectionStart,aTextEdit.fTextSelectionEnd)-1;
   EndIndex:=Max(aTextEdit.fTextSelectionStart,aTextEdit.fTextSelectionEnd)-1;
   if StartIndex>=aTextEdit.fCountTextGlyphRects then begin
@@ -2307,8 +2307,8 @@ begin
   end else begin
    SelectionRect.Right:=aTextEdit.fTextGlyphRects[EndIndex].Left+1.0;
   end;
-  SelectionRect.Top:=Offset.y+TextRect.Top;
-  SelectionRect.Bottom:=Offset.y+TextRect.Bottom;
+  SelectionRect.Top:=(Offset.y+TextRect.Top)+2;
+  SelectionRect.Bottom:=(Offset.y+TextRect.Bottom)-2;
   aCanvas.DrawFilledRectangle((SelectionRect.LeftTop+SelectionRect.RightBottom)*0.5,
                               (SelectionRect.RightBottom-SelectionRect.LeftTop)*0.5);
  end;
@@ -4614,24 +4614,44 @@ begin
       result:=true;
      end;
      KEYCODE_BACKSPACE:begin
-      Position:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
-      if (Position>1) and (Position<=(length(fText)+1)) then begin
-       OtherPosition:=Position;
-       PUCUUTF8Dec(fText,OtherPosition);
-       if (OtherPosition>0) and (OtherPosition<=length(fText)) and (OtherPosition<Position) then begin
-        Delete(fText,OtherPosition,Position-OtherPosition);
-        dec(fTextCursorPositionIndex);
+      if (fTextSelectionStart>0) and
+         (fTextSelectionEnd>0) then begin
+       Position:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
+       OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
+       Delete(fText,Position,OtherPosition-Position);
+       fTextCursorPositionIndex:=Position;
+       fTextSelectionStart:=0;
+       fTextSelectionEnd:=0;
+      end else begin
+       Position:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
+       if (Position>1) and (Position<=(length(fText)+1)) then begin
+        OtherPosition:=Position;
+        PUCUUTF8Dec(fText,OtherPosition);
+        if (OtherPosition>0) and (OtherPosition<=length(fText)) and (OtherPosition<Position) then begin
+         Delete(fText,OtherPosition,Position-OtherPosition);
+         dec(fTextCursorPositionIndex);
+        end;
        end;
       end;
       result:=true;
      end;
      KEYCODE_DELETE:begin
-      Position:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
-      if (Position>0) and (Position<=length(fText)) then begin
-       OtherPosition:=Position;
-       PUCUUTF8Inc(fText,OtherPosition);
-       if (OtherPosition>1) and (OtherPosition<=(length(fText)+1)) and (Position<OtherPosition) then begin
-        Delete(fText,Position,OtherPosition-Position);
+      if (fTextSelectionStart>0) and
+         (fTextSelectionEnd>0) then begin
+       Position:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
+       OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
+       Delete(fText,Position,OtherPosition-Position);
+       fTextCursorPositionIndex:=Position;
+       fTextSelectionStart:=0;
+       fTextSelectionEnd:=0;
+      end else begin
+       Position:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
+       if (Position>0) and (Position<=length(fText)) then begin
+        OtherPosition:=Position;
+        PUCUUTF8Inc(fText,OtherPosition);
+        if (OtherPosition>1) and (OtherPosition<=(length(fText)+1)) and (Position<OtherPosition) then begin
+         Delete(fText,Position,OtherPosition-Position);
+        end;
        end;
       end;
       result:=true;
