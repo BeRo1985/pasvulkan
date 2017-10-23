@@ -814,6 +814,8 @@ type TpvGUIObject=class;
        fTextOffset:TpvFloat;
        fTextCursorPositionOffset:TpvInt32;
        fTextCursorPositionIndex:TpvInt32;
+       fTextSelectionStart:TpvInt32;
+       fTextSelectionEnd:TpvInt32;
        fMinimumWidth:TpvFloat;
        fMinimumHeight:TpvFloat;
       protected
@@ -2140,9 +2142,9 @@ end;
 procedure TpvGUIDefaultVectorBasedSkin.DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit);
 var Offset,TextOffset:TpvVector2;
     TextSize,IconSize,TemporarySize:TpvVector2;
-    TextRect,IconRect,TextClipRect:TpvRect;
+    TextRect,IconRect,TextClipRect,SelectionRect:TpvRect;
     TextCursorPositionIndex,
-    PreviousCursorPosition,NextCursorPosition:TpvInt32;
+    PreviousCursorPosition,NextCursorPosition,StartIndex,EndIndex:TpvInt32;
     PreviousCursorX,NextCursorX:TpvFloat;
 begin
 
@@ -2286,6 +2288,29 @@ begin
  if (aTextEdit.fCountTextGlyphRects>16) and
     ((length(aTextEdit.fTextGlyphRects) shl 1)>=aTextEdit.fCountTextGlyphRects) then begin
   SetLength(aTextEdit.fTextGlyphRects,aTextEdit.fCountTextGlyphRects);
+ end;
+
+ if (aTextEdit.fTextSelectionStart>0) and
+    (aTextEdit.fTextSelectionStart<=(aTextEdit.fCountTextGlyphRects+1)) and
+    (aTextEdit.fTextSelectionEnd>0) and
+    (aTextEdit.fTextSelectionEnd<=(aTextEdit.fCountTextGlyphRects+1)) then begin
+  aCanvas.Color:=TpvVector4.Create(0.0,0.0,0.0,1.0);
+  StartIndex:=Min(aTextEdit.fTextSelectionStart,aTextEdit.fTextSelectionEnd)-1;
+  EndIndex:=Max(aTextEdit.fTextSelectionStart,aTextEdit.fTextSelectionEnd)-1;
+  if StartIndex>=aTextEdit.fCountTextGlyphRects then begin
+   SelectionRect.Left:=aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right+1.0;
+  end else begin
+   SelectionRect.Left:=aTextEdit.fTextGlyphRects[StartIndex].Left+1.0;
+  end;
+  if EndIndex>=aTextEdit.fCountTextGlyphRects then begin
+   SelectionRect.Right:=aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right+1.0;
+  end else begin
+   SelectionRect.Right:=aTextEdit.fTextGlyphRects[EndIndex].Left+1.0;
+  end;
+  SelectionRect.Top:=Offset.y+TextRect.Top;
+  SelectionRect.Bottom:=Offset.y+TextRect.Bottom;
+  aCanvas.DrawFilledRectangle((SelectionRect.LeftTop+SelectionRect.RightBottom)*0.5,
+                              (SelectionRect.RightBottom-SelectionRect.LeftTop)*0.5);
  end;
 
  if aTextEdit.Enabled then begin
@@ -4457,6 +4482,10 @@ begin
 
  fTextCursorPositionIndex:=1;
 
+ fTextSelectionStart:=0;
+
+ fTextSelectionEnd:=0;
+
  fMinimumWidth:=0.0;
 
  fMinimumHeight:=0.0;
@@ -4529,19 +4558,59 @@ begin
    KEYEVENT_TYPED:begin
     case aKeyEvent.KeyCode of
      KEYCODE_LEFT:begin
-      fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),PUCUUTF8Length(fText)+1);
+      if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
+       if fTextSelectionStart<1 then begin
+        fTextSelectionStart:=fTextCursorPositionIndex;
+       end;
+       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),PUCUUTF8Length(fText)+1);
+       fTextSelectionEnd:=fTextCursorPositionIndex;
+      end else begin
+       fTextSelectionStart:=0;
+       fTextSelectionEnd:=0;
+       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),PUCUUTF8Length(fText)+1);
+      end;
       result:=true;
      end;
      KEYCODE_RIGHT:begin
-      fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),PUCUUTF8Length(fText)+1);
+      if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
+       if fTextSelectionStart<1 then begin
+        fTextSelectionStart:=fTextCursorPositionIndex;
+       end;
+       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),PUCUUTF8Length(fText)+1);
+       fTextSelectionEnd:=fTextCursorPositionIndex;
+      end else begin
+       fTextSelectionStart:=0;
+       fTextSelectionEnd:=0;
+       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),PUCUUTF8Length(fText)+1);
+      end;
       result:=true;
      end;
      KEYCODE_HOME:begin
-      fTextCursorPositionIndex:=1;
+      if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
+       if fTextSelectionStart<1 then begin
+        fTextSelectionStart:=fTextCursorPositionIndex;
+       end;
+       fTextCursorPositionIndex:=1;
+       fTextSelectionEnd:=fTextCursorPositionIndex;
+      end else begin
+       fTextSelectionStart:=0;
+       fTextSelectionEnd:=0;
+       fTextCursorPositionIndex:=1;
+      end;
       result:=true;
      end;
      KEYCODE_END:begin
-      fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
+      if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
+       if fTextSelectionStart<1 then begin
+        fTextSelectionStart:=fTextCursorPositionIndex;
+       end;
+       fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
+       fTextSelectionEnd:=fTextCursorPositionIndex;
+      end else begin
+       fTextSelectionStart:=0;
+       fTextSelectionEnd:=0;
+       fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
+      end;
       result:=true;
      end;
      KEYCODE_BACKSPACE:begin
