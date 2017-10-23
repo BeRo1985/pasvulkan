@@ -4597,7 +4597,21 @@ end;
 
 procedure TpvGUITextEdit.SetText(const aText:TpvUTF8String);
 begin
+
  fText:=aText;
+
+ fCountTextGlyphRects:=0;
+
+ fTextOffset:=0.0;
+
+ fTextCursorPositionOffset:=0;
+
+ fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
+
+ fTextSelectionStart:=0;
+
+ fTextSelectionEnd:=0;
+
 end;
 
 function TpvGUITextEdit.Enter:boolean;
