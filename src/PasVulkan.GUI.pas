@@ -811,6 +811,8 @@ type TpvGUIObject=class;
        fText:TpvUTF8String;
        fTextGlyphRects:TpvCanvasTextGlyphRects;
        fCountTextGlyphRects:TpvInt32;
+       fTextOffset:TpvFloat;
+       fTextCursorPositionOffset:TpvInt32;
        fTextCursorPositionIndex:TpvInt32;
        fMinimumWidth:TpvFloat;
        fMinimumHeight:TpvFloat;
@@ -2138,8 +2140,10 @@ end;
 procedure TpvGUIDefaultVectorBasedSkin.DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit);
 var Offset,TextOffset:TpvVector2;
     TextSize,IconSize,TemporarySize:TpvVector2;
-    TextRect,IconRect:TpvRect;
-    TextCursorPositionIndex:TpvInt32;
+    TextRect,IconRect,TextClipRect:TpvRect;
+    TextCursorPositionIndex,
+    PreviousCursorPosition,NextCursorPosition:TpvInt32;
+    PreviousCursorX,NextCursorX:TpvFloat;
 begin
 
  Offset:=TpvVector2.Null;
@@ -2234,15 +2238,51 @@ begin
   end;
  end;  }
 
- aCanvas.ClipRect:=TpvRect.CreateAbsolute(aTextEdit.fClipRect.Left+2,
-                                          aTextEdit.fClipRect.Top+2,
-                                          aTextEdit.fClipRect.Right-2,
-                                          aTextEdit.fClipRect.Bottom-2);
+ TextClipRect:=TpvRect.CreateAbsolute(aTextEdit.fClipRect.Left+2,
+                                      aTextEdit.fClipRect.Top+2,
+                                      aTextEdit.fClipRect.Right-2,
+                                      aTextEdit.fClipRect.Bottom-2);
+
+ aCanvas.ClipRect:=TextClipRect;
+
+ TextClipRect.LeftTop:=TextClipRect.LeftTop-aTextEdit.fClipRect.LeftTop;
+ TextClipRect.RightBottom:=TextClipRect.RightBottom-aTextEdit.fClipRect.LeftTop;
 
  aCanvas.Font:=aTextEdit.Font;
  aCanvas.FontSize:=aTextEdit.FontSize;
 
+ TextOffset.x:=TextOffset.x+aTextEdit.fTextOffset;
+
  aCanvas.TextGlyphRects(aTextEdit.fText,Offset+TextRect.LeftTop+TextOffset,aTextEdit.fTextGlyphRects,aTextEdit.fCountTextGlyphRects);
+
+ if aTextEdit.fCountTextGlyphRects>0 then begin
+
+  PreviousCursorPosition:=Min(Max(aTextEdit.fTextCursorPositionIndex-1,1),aTextEdit.fCountTextGlyphRects+1);
+  NextCursorPosition:=Min(Max(aTextEdit.fTextCursorPositionIndex+1,1),aTextEdit.fCountTextGlyphRects+1);
+  if PreviousCursorPosition>aTextEdit.fCountTextGlyphRects then begin
+   PreviousCursorX:=aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right;
+  end else begin
+   PreviousCursorX:=aTextEdit.fTextGlyphRects[PreviousCursorPosition-1].Left;
+  end;
+  if NextCursorPosition>aTextEdit.fCountTextGlyphRects then begin
+   NextCursorX:=aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right;
+  end else begin
+   NextCursorX:=aTextEdit.fTextGlyphRects[NextCursorPosition-1].Left;
+  end;
+
+  if NextCursorX>(TextRect.Right-2.0) then begin
+   aTextEdit.fTextOffset:=aTextEdit.fTextOffset-((NextCursorX-(TextRect.Right-2.0))+1.0);
+   TextOffset.x:=TextOffset.x-((NextCursorX-(TextRect.Right-2.0))+1.0);
+  end;
+  if PreviousCursorX<TextRect.Left then begin
+   aTextEdit.fTextOffset:=aTextEdit.fTextOffset+((TextRect.Left-PreviousCursorX)+1.0);
+   TextOffset.x:=TextOffset.x+((TextRect.Left-PreviousCursorX)+1.0);
+  end;
+
+ end;
+
+ aCanvas.TextGlyphRects(aTextEdit.fText,Offset+TextRect.LeftTop+TextOffset,aTextEdit.fTextGlyphRects,aTextEdit.fCountTextGlyphRects);
+
  if (aTextEdit.fCountTextGlyphRects>16) and
     ((length(aTextEdit.fTextGlyphRects) shl 1)>=aTextEdit.fCountTextGlyphRects) then begin
   SetLength(aTextEdit.fTextGlyphRects,aTextEdit.fCountTextGlyphRects);
@@ -4411,6 +4451,10 @@ begin
 
  fCountTextGlyphRects:=0;
 
+ fTextOffset:=0.0;
+
+ fTextCursorPositionOffset:=0;
+
  fTextCursorPositionIndex:=1;
 
  fMinimumWidth:=0.0;
@@ -4485,11 +4529,11 @@ begin
    KEYEVENT_TYPED:begin
     case aKeyEvent.KeyCode of
      KEYCODE_LEFT:begin
-      fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),length(fText)+1);
+      fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),PUCUUTF8Length(fText)+1);
       result:=true;
      end;
      KEYCODE_RIGHT:begin
-      fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),length(fText)+1);
+      fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),PUCUUTF8Length(fText)+1);
       result:=true;
      end;
      KEYCODE_HOME:begin
@@ -4497,7 +4541,7 @@ begin
       result:=true;
      end;
      KEYCODE_END:begin
-      fTextCursorPositionIndex:=length(fText)+1;
+      fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
       result:=true;
      end;
      KEYCODE_BACKSPACE:begin
