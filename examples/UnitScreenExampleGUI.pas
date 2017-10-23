@@ -47,6 +47,7 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
        fGUIWindow:TpvGUIWindow;
        fGUILabel:TpvGUILabel;
        fGUIButton:TpvGUIButton;
+       fGUITextEdit:TpvGUITextEdit;
        fGUIOtherWindow:TpvGUIWindow;
        fGUIYetOtherWindow:TpvGUIWindow;
        fLastMousePosition:TpvVector2;
@@ -178,6 +179,13 @@ begin
  fGUIButton:=TpvGUIButton.Create(fGUIWindow);
  fGUIButton.Caption:='An example disabled button';
  fGUIButton.Enabled:=false;
+
+ fGUITextEdit:=TpvGUITextEdit.Create(fGUIWindow);
+ fGUITextEdit.Text:='An example text';
+ fGUITextEdit.TextHorizontalAlignment:=TpvGUITextAlignment.pvgtaLeading;
+ fGUITextEdit.MinimumWidth:=320;
+ fGUITextEdit.MinimumHeight:=32;
+ fGUITextEdit.Enabled:=true;
 
  fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIOtherWindow.Left:=550;

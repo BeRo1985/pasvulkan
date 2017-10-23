@@ -93,6 +93,8 @@ type TpvGUIObject=class;
 
      TpvGUIButton=class;
 
+     TpvGUITextEdit=class;
+
      EpvGUIWidget=class(Exception);
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
@@ -251,6 +253,9 @@ type TpvGUIObject=class;
        function GetButtonPreferredSize(const aButton:TpvGUIButton):TpvVector2; virtual;
        procedure DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton); virtual;
       public
+       function GetTextEditPreferredSize(const aTextEdit:TpvGUITextEdit):TpvVector2; virtual;
+       procedure DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit); virtual;
+      public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
        property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
@@ -308,6 +313,9 @@ type TpvGUIObject=class;
       public
        function GetButtonPreferredSize(const aButton:TpvGUIButton):TpvVector2; override;
        procedure DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton); override;
+      public
+       function GetTextEditPreferredSize(const aTextEdit:TpvGUITextEdit):TpvVector2; override;
+       procedure DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -798,6 +806,41 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
      end;
 
+     TpvGUITextEdit=class(TpvGUIWidget)
+      private
+       fText:TpvUTF8String;
+       fTextGlyphRects:TpvCanvasTextGlyphRects;
+       fCountTextGlyphRects:TpvInt32;
+       fTextCursorPositionIndex:TpvInt32;
+       fMinimumWidth:TpvFloat;
+       fMinimumHeight:TpvFloat;
+      protected
+       function GetFontSize:TpvFloat; override;
+       function GetFontColor:TpvVector4; override;
+       function GetPreferredSize:TpvVector2; override;
+       function GetText:TpvUTF8String; virtual;
+       procedure SetText(const aText:TpvUTF8String); virtual;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       function Enter:boolean; override;
+       function Leave:boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure Update; override;
+       procedure Draw; override;
+      published
+       property Font;
+       property FontSize;
+       property Text:TpvUTF8String read GetText write SetText;
+       property MinimumWidth:TpvFloat read fMinimumWidth write fMinimumWidth;
+       property MinimumHeight:TpvFloat read fMinimumHeight write fMinimumHeight;
+       property TextHorizontalAlignment;
+       property TextVerticalAlignment;
+       property TextTruncation;
+     end;
+
 implementation
 
 uses PasVulkan.Assets,
@@ -1228,6 +1271,15 @@ begin
 end;
 
 procedure TpvGUISkin.DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton);
+begin
+end;
+
+function TpvGUISkin.GetTextEditPreferredSize(const aTextEdit:TpvGUITextEdit):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aTextEdit);
+end;
+
+procedure TpvGUISkin.DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit);
 begin
 end;
 
@@ -2069,7 +2121,164 @@ begin
                                                  aCanvas.Font,
                                                  aCanvas.FontSize,
                                                  aButton.fSize.x-(fSpacing*2.0)),
-                  Offset+TextOffset);
+                  Offset+TextRect.LeftTop+TextOffset);
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.GetTextEditPreferredSize(const aTextEdit:TpvGUITextEdit):TpvVector2;
+var TextSize:TpvVector2;
+begin
+ TextSize.x:=4*2;
+ TextSize.y:=(aTextEdit.Font.RowHeight(100)*aTextEdit.Font.GetScaleFactor(aTextEdit.GetFontSize))+(4*2);
+ result:=Maximum(GetWidgetPreferredSize(aTextEdit),
+                 Maximum(TextSize,
+                         TpvVector2.Create(aTextEdit.fMinimumWidth,aTextEdit.fMinimumHeight)));
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit);
+var Offset,TextOffset:TpvVector2;
+    TextSize,IconSize,TemporarySize:TpvVector2;
+    TextRect,IconRect:TpvRect;
+    TextCursorPositionIndex:TpvInt32;
+begin
+
+ Offset:=TpvVector2.Null;
+
+ aCanvas.ModelMatrix:=aTextEdit.fModelMatrix;
+ aCanvas.ClipRect:=aTextEdit.fClipRect;
+
+ if not aTextEdit.Enabled then begin
+
+  aCanvas.DrawGUIElement(GUI_ELEMENT_BOX_DISABLED,
+                         true,
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aTextEdit.fSize.x,aTextEdit.fSize.y),
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aTextEdit.fSize.x,aTextEdit.fSize.y));
+
+ end else if aTextEdit.Focused then begin
+
+  aCanvas.DrawGUIElement(GUI_ELEMENT_BOX_FOCUSED,
+                         true,
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aTextEdit.fSize.x,aTextEdit.fSize.y),
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aTextEdit.fSize.x,aTextEdit.fSize.y));
+
+ end else begin
+
+  aCanvas.DrawGUIElement(GUI_ELEMENT_BOX_UNFOCUSED,
+                         true,
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aTextEdit.fSize.x,aTextEdit.fSize.y),
+                         TpvVector2.Create(0.0,0.0),
+                         TpvVector2.Create(aTextEdit.fSize.x,aTextEdit.fSize.y));
+
+ end;
+
+ TextRect:=TpvRect.CreateRelative(TpvVector2.Create(2.0,2.0),aTextEdit.fSize-TpvVector2.Create(4.0,4.0));
+
+ IconRect:=TpvRect.CreateRelative(TpvVector2.Null,TpvVector2.Null);
+
+ aCanvas.Font:=aTextEdit.Font;
+ aCanvas.FontSize:=aTextEdit.FontSize;
+ case aTextEdit.TextHorizontalAlignment of
+  pvgtaLeading:begin
+   aCanvas.TextHorizontalAlignment:=pvcthaLeading;
+   TextOffset.x:=fSpacing;
+  end;
+  pvgtaCenter:begin
+   aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+   TextOffset.x:=TextRect.Size.x*0.5;
+  end;
+  else {pvgtaTailing:}begin
+   aCanvas.TextHorizontalAlignment:=pvcthaTailing;
+   TextOffset.x:=TextRect.Size.x-fSpacing;
+  end;
+ end;
+ case aTextEdit.TextVerticalAlignment of
+  pvgtaLeading:begin
+   aCanvas.TextVerticalAlignment:=pvctvaLeading;
+   TextOffset.y:=fSpacing;
+  end;
+  pvgtaCenter:begin
+   aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+   TextOffset.y:=TextRect.Size.y*0.5;
+  end;
+  else {pvgtaTailing:}begin
+   aCanvas.TextVerticalAlignment:=pvctvaTailing;
+   TextOffset.y:=TextRect.Size.y-fSpacing;
+  end;
+ end;
+
+{if (length(aTextEdit.fIconText)>0) and assigned(aButton.fIconFont) then begin
+  if aButton.Enabled then begin
+   aCanvas.Color:=aButton.FontColor;
+  end else begin
+   aCanvas.Color:=TpvVector4.Create(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
+  end;
+  aCanvas.Font:=aButton.fIconFont;
+  aCanvas.FontSize:=aButton.fIconFontSize;
+  aCanvas.DrawText(aButton.fIconText,IconRect.LeftTop);
+ end else if assigned(aButton.fIcon) then begin
+  if aButton.fIcon is TpvSprite then begin
+   aCanvas.DrawSprite(TpvSprite(aButton.fIcon),
+                      TpvRect.CreateRelative(TpvVector2.Null,
+                                             TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)),
+                      TpvRect.CreateRelative(Offset+IconRect.LeftTop,
+                                             TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)));
+  end else if aButton.fIcon is TpvVulkanTexture then begin
+   aCanvas.DrawTexturedRectangle(TpvVulkanTexture(aButton.fIcon),
+                                 Offset+IconRect.LeftTop+(TpvVector2.Create(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5),
+                                 TpvVector2.Create(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5);
+  end;
+ end;  }
+
+ aCanvas.ClipRect:=TpvRect.CreateAbsolute(aTextEdit.fClipRect.Left+2,
+                                          aTextEdit.fClipRect.Top+2,
+                                          aTextEdit.fClipRect.Right-2,
+                                          aTextEdit.fClipRect.Bottom-2);
+
+ aCanvas.Font:=aTextEdit.Font;
+ aCanvas.FontSize:=aTextEdit.FontSize;
+
+ aCanvas.TextGlyphRects(aTextEdit.fText,Offset+TextRect.LeftTop+TextOffset,aTextEdit.fTextGlyphRects,aTextEdit.fCountTextGlyphRects);
+ if (aTextEdit.fCountTextGlyphRects>16) and
+    ((length(aTextEdit.fTextGlyphRects) shl 1)>=aTextEdit.fCountTextGlyphRects) then begin
+  SetLength(aTextEdit.fTextGlyphRects,aTextEdit.fCountTextGlyphRects);
+ end;
+
+ if aTextEdit.Enabled then begin
+  aCanvas.Color:=aTextEdit.FontColor;
+ end else begin
+  aCanvas.Color:=TpvVector4.Create(aTextEdit.FontColor.rgb,aTextEdit.FontColor.a*0.25);
+ end;
+
+ aCanvas.DrawText(aTextEdit.fText,Offset+TextRect.LeftTop+TextOffset);
+
+ if aTextEdit.Enabled and
+    aTextEdit.Focused and
+    (frac(fInstance.fTime)<0.5) then begin
+  if aTextEdit.fCountTextGlyphRects>0 then begin
+   TextCursorPositionIndex:=Min(Max(aTextEdit.fTextCursorPositionIndex,1),aTextEdit.fCountTextGlyphRects+1);
+   if TextCursorPositionIndex>aTextEdit.fCountTextGlyphRects then begin
+    aCanvas.DrawFilledRectangle(TpvVector2.Create(aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right+0.5,
+                                                  Offset.y+TextRect.Top+(TextRect.Size.y*0.5)),
+                                TpvVector2.Create(1.0,
+                                                  (aCanvas.TextRowHeight(100.0)*0.5)));
+   end else begin
+    aCanvas.DrawFilledRectangle(TpvVector2.Create(aTextEdit.fTextGlyphRects[TextCursorPositionIndex-1].Left,
+                                                  Offset.y+TextRect.Top+(TextRect.Size.y*0.5)),
+                                TpvVector2.Create(1.0,
+                                                  (aCanvas.TextRowHeight(100.0)*0.5)));
+   end;
+  end else begin
+   aCanvas.DrawFilledRectangle(TpvVector2.Create(Offset.x+TextRect.Left+TextOffset.x,
+                                                 Offset.y+TextRect.Top+(TextRect.Size.y*0.5)),
+                               TpvVector2.Create(1.0,
+                                                 (aCanvas.TextRowHeight(100.0)*0.5)));
+  end;
+ end;
 
 end;
 
@@ -4182,6 +4391,184 @@ constructor TpvGUIToolButton.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
  fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfRadioButton,pvgbfToggleButton];
+end;
+
+constructor TpvGUITextEdit.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ Include(fWidgetFlags,pvgwfTabStop);
+ Include(fWidgetFlags,pvgwfDrawFocus);
+
+ fTextHorizontalAlignment:=pvgtaLeading;
+
+ fTextVerticalAlignment:=pvgtaCenter;
+
+ fText:='';
+
+ fTextGlyphRects:=nil;
+
+ fCountTextGlyphRects:=0;
+
+ fTextCursorPositionIndex:=1;
+
+ fMinimumWidth:=0.0;
+
+ fMinimumHeight:=0.0;
+
+end;
+
+destructor TpvGUITextEdit.Destroy;
+begin
+
+ fTextGlyphRects:=nil;
+
+ inherited Destroy;
+end;
+
+function TpvGUITextEdit.GetFontSize:TpvFloat;
+begin
+ if assigned(Skin) and IsZero(fFontSize) then begin
+  result:=Skin.fButtonFontSize;
+ end else begin
+  result:=fFontSize;
+ end;
+end;
+
+function TpvGUITextEdit.GetFontColor:TpvVector4;
+begin
+ if assigned(Skin) and IsZero(fFontColor.a) then begin
+  result:=Skin.fButtonFontColor;
+ end else begin
+  result:=fFontColor;
+ end;
+end;
+
+function TpvGUITextEdit.GetPreferredSize:TpvVector2;
+begin
+ result:=Skin.GetTextEditPreferredSize(self);
+end;
+
+function TpvGUITextEdit.GetText:TpvUTF8String;
+begin
+ result:=fText;
+end;
+
+procedure TpvGUITextEdit.SetText(const aText:TpvUTF8String);
+begin
+ fText:=aText;
+end;
+
+function TpvGUITextEdit.Enter:boolean;
+begin
+ result:=inherited Enter;
+ pvApplication.Input.StartTextInput;
+end;
+
+function TpvGUITextEdit.Leave:boolean;
+begin
+ pvApplication.Input.StopTextInput;
+ result:=inherited Leave;
+end;
+
+function TpvGUITextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+var Position,OtherPosition:TpvInt32;
+begin
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if Enabled and not result then begin
+  case aKeyEvent.KeyEventType of
+   KEYEVENT_DOWN:begin
+   end;
+   KEYEVENT_UP:begin
+   end;
+   KEYEVENT_TYPED:begin
+    case aKeyEvent.KeyCode of
+     KEYCODE_LEFT:begin
+      fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),length(fText)+1);
+      result:=true;
+     end;
+     KEYCODE_RIGHT:begin
+      fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),length(fText)+1);
+      result:=true;
+     end;
+     KEYCODE_HOME:begin
+      fTextCursorPositionIndex:=1;
+      result:=true;
+     end;
+     KEYCODE_END:begin
+      fTextCursorPositionIndex:=length(fText)+1;
+      result:=true;
+     end;
+     KEYCODE_BACKSPACE:begin
+      Position:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
+      if (Position>1) and (Position<=(length(fText)+1)) then begin
+       OtherPosition:=Position;
+       PUCUUTF8Dec(fText,OtherPosition);
+       if (OtherPosition>0) and (OtherPosition<=length(fText)) and (OtherPosition<Position) then begin
+        Delete(fText,OtherPosition,Position-OtherPosition);
+        dec(fTextCursorPositionIndex);
+       end;
+      end;
+      result:=true;
+     end;
+     KEYCODE_DELETE:begin
+      Position:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
+      if (Position>0) and (Position<=length(fText)) then begin
+       OtherPosition:=Position;
+       PUCUUTF8Inc(fText,OtherPosition);
+       if (OtherPosition>1) and (OtherPosition<=(length(fText)+1)) and (Position<OtherPosition) then begin
+        Delete(fText,Position,OtherPosition-Position);
+       end;
+      end;
+      result:=true;
+     end;
+    end;
+   end;
+   KEYEVENT_UNICODE:begin
+    Insert(PUCUUTF32CharToUTF8(aKeyEvent.KeyCode),
+           fText,
+           PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1));
+    inc(fTextCursorPositionIndex);
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUITextEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+begin
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+ if not result then begin
+  result:=inherited PointerEvent(aPointerEvent);
+  if not result then begin
+   case aPointerEvent.PointerEventType of
+    POINTEREVENT_DOWN:begin
+     RequestFocus;
+     result:=true;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUITextEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+begin
+ result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+ if not result then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+ end;
+end;
+
+procedure TpvGUITextEdit.Update;
+begin
+ Skin.DrawTextEdit(fCanvas,self);
+ inherited Update;
+end;
+
+procedure TpvGUITextEdit.Draw;
+begin
+ inherited Draw;
 end;
 
 end.
