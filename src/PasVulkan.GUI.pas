@@ -381,8 +381,7 @@ type TpvGUIObject=class;
      TpvGUIWidget=class(TpvGUIObject)
       public
        const DefaultFlags=[pvgwfEnabled,
-                           pvgwfVisible,
-                           pvgwfDraggable];
+                           pvgwfVisible];
       private
       protected
        fCanvas:TpvCanvas;
@@ -473,6 +472,7 @@ type TpvGUIObject=class;
        function Leave:boolean; virtual;
        function PointerEnter:boolean; virtual;
        function PointerLeave:boolean; virtual;
+       function DragEvent(const aPosition:TpvVector2):boolean; virtual;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; virtual;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; virtual;
@@ -670,6 +670,7 @@ type TpvGUIObject=class;
        procedure DisposeWindow;
        procedure Center;
        procedure PerformLayout; override;
+       function DragEvent(const aPosition:TpvVector2):boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -2975,6 +2976,11 @@ begin
  result:=false;
 end;
 
+function TpvGUIWidget.DragEvent(const aPosition:TpvVector2):boolean;
+begin
+ result:=false;
+end;
+
 function TpvGUIWidget.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
@@ -3530,7 +3536,10 @@ begin
        BUTTON_LEFT,BUTTON_RIGHT:begin
         TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
         CurrentWidget:=FindWidget(aPointerEvent.Position);
-        if assigned(CurrentWidget) and (CurrentWidget<>self) and CurrentWidget.Draggable then begin
+        if assigned(CurrentWidget) and
+           (CurrentWidget<>self) and
+           CurrentWidget.Draggable and
+           CurrentWidget.DragEvent(aPointerEvent.Position-CurrentWidget.AbsolutePosition) then begin
          fDragWidget:=CurrentWidget;
          fDragWidget.IncRef;
         end else begin
@@ -3545,7 +3554,7 @@ begin
      end;
      POINTEREVENT_UP:begin
       CurrentWidget:=FindWidget(aPointerEvent.Position);
-      if assigned(fDragWidget) and (fDragWidget<>CurrentWidget) and fDragWidget.Draggable then begin
+      if assigned(fDragWidget) and (fDragWidget<>CurrentWidget) then begin
        LocalPointerEvent.PointerEventType:=POINTEREVENT_UP;
        LocalPointerEvent.Button:=BUTTON_LEFT;
        fDragWidget.PointerEvent(LocalPointerEvent);
@@ -3634,20 +3643,34 @@ end;
 constructor TpvGUIWindow.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
+
  fTitle:='Window';
+
  fMouseAction:=pvgwmaNone;
+
  fWindowFlags:=TpvGUIWindow.DefaultFlags;
+
  Include(fWidgetFlags,pvgwfScissor);
 //Include(fWidgetFlags,pvgwfDrawFocus);
+ Include(fWidgetFlags,pvgwfDraggable);
+
  fLastWindowState:=TpvGUIWindowState.pvgwsNormal;
+
  fWindowState:=TpvGUIWindowState.pvgwsNormal;
+
  fButtonPanel:=nil;
+
  fMinimizationButton:=nil;
+
  fMaximizationButton:=nil;
+
  fCloseButton:=nil;
+
  fTextHorizontalAlignment:=pvgtaCenter;
+
  fTextTruncation:=pvgttMiddle;
-end;
+
+ end;
 
 destructor TpvGUIWindow.Destroy;
 begin
@@ -3914,6 +3937,11 @@ begin
  if assigned(fInstance) then begin
   fInstance.CenterWindow(self);
  end;
+end;
+
+function TpvGUIWindow.DragEvent(const aPosition:TpvVector2):boolean;
+begin
+ result:=true;
 end;
 
 function TpvGUIWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -4509,8 +4537,6 @@ begin
 
  Include(fWidgetFlags,pvgwfTabStop);
  Include(fWidgetFlags,pvgwfDrawFocus);
-
- Exclude(fWidgetFlags,pvgwfDraggable);
 
  fTextHorizontalAlignment:=pvgtaLeading;
 
