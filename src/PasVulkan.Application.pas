@@ -6814,6 +6814,9 @@ begin
      end;
      if OK then begin
       if fNativeKeyRepeat then begin
+       if fEvent.SDLEvent.key.repeat_=0 then begin
+        fInput.AddEvent(fEvent);
+       end;
        fEvent.SDLEvent.type_:=SDL_KEYTYPED;
        fInput.AddEvent(fEvent);
       end else if fEvent.SDLEvent.key.repeat_=0 then begin
