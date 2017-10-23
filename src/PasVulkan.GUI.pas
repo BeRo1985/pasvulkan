@@ -4687,6 +4687,54 @@ begin
       end;
       result:=true;
      end;
+     KEYCODE_C:begin
+      if (KEYMODIFIER_CTRL in aKeyEvent.KeyModifiers) and
+         (fTextSelectionStart>0) and
+         (fTextSelectionEnd>0) then begin
+       Position:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
+       OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
+       pvApplication.Clipboard.SetText(Copy(fText,Position,OtherPosition-Position));
+       fTextCursorPositionIndex:=Position;
+       result:=true;
+      end;
+     end;
+     KEYCODE_V:begin
+      if KEYMODIFIER_CTRL in aKeyEvent.KeyModifiers then begin
+       if (fTextSelectionStart>0) and
+          (fTextSelectionEnd>0) then begin
+        Position:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
+        OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
+        Delete(fText,Position,OtherPosition-Position);
+        fTextCursorPositionIndex:=Position;
+        fTextSelectionStart:=0;
+        fTextSelectionEnd:=0;
+       end;
+       if pvApplication.Clipboard.HasText then begin
+        TemporaryText:=pvApplication.Clipboard.GetText;
+        if length(TemporaryText)>0 then begin
+         Insert(TemporaryText,
+                fText,
+                PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1));
+         inc(fTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
+        end;
+       end;
+       result:=true;
+      end;
+     end;
+     KEYCODE_X:begin
+      if (KEYMODIFIER_CTRL in aKeyEvent.KeyModifiers) and
+         (fTextSelectionStart>0) and
+         (fTextSelectionEnd>0) then begin
+       Position:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
+       OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
+       pvApplication.Clipboard.SetText(Copy(fText,Position,OtherPosition-Position));
+       Delete(fText,Position,OtherPosition-Position);
+       fTextCursorPositionIndex:=Position;
+       fTextSelectionStart:=0;
+       fTextSelectionEnd:=0;
+       result:=true;
+      end;
+     end;
     end;
    end;
    KEYEVENT_UNICODE:begin
