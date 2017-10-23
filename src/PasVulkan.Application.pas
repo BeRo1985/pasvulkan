@@ -1018,6 +1018,7 @@ type EpvApplication=class(Exception)
        fKeyRepeatTimeAccumulator:TpvApplicationHighResolutionTime;
        fKeyRepeatInterval:TpvApplicationHighResolutionTime;
        fKeyRepeatInitialInterval:TpvApplicationHighResolutionTime;
+       fNativeKeyRepeat:boolean;
 
        fScreenWidth:TpvInt32;
        fScreenHeight:TpvInt32;
@@ -4929,6 +4930,7 @@ begin
  fKeyRepeatTimeAccumulator:=0;
  fKeyRepeatInterval:=fHighResolutionTimer.MillisecondInterval*100;
  fKeyRepeatInitialInterval:=fHighResolutionTimer.MillisecondInterval*400;
+ fNativeKeyRepeat:=true;
 
  fCurrentWidth:=-1;
  fCurrentHeight:=-1;
@@ -6635,10 +6637,12 @@ begin
 
 {$if defined(PasVulkanUseSDL2)}
   if fLastPressedKeyEvent.SDLEvent.type_<>0 then begin
-   dec(fKeyRepeatTimeAccumulator,fDeltaTime);
-   while fKeyRepeatTimeAccumulator<0 do begin
-    inc(fKeyRepeatTimeAccumulator,fKeyRepeatInterval);
-    fInput.AddEvent(fLastPressedKeyEvent);
+   if fKeyRepeatTimeAccumulator>0 then begin
+    dec(fKeyRepeatTimeAccumulator,fDeltaTime);
+    while fKeyRepeatTimeAccumulator<0 do begin
+     inc(fKeyRepeatTimeAccumulator,fKeyRepeatInterval);
+     fInput.AddEvent(fLastPressedKeyEvent);
+    end;
    end;
   end;
 
@@ -6809,7 +6813,10 @@ begin
       end;
      end;
      if OK then begin
-      if fEvent.SDLEvent.key.repeat_=0 then begin
+      if fNativeKeyRepeat then begin
+       fEvent.SDLEvent.type_:=SDL_KEYTYPED;
+       fInput.AddEvent(fEvent);
+      end else if fEvent.SDLEvent.key.repeat_=0 then begin
        fInput.AddEvent(fEvent);
        fEvent.SDLEvent.type_:=SDL_KEYTYPED;
        fInput.AddEvent(fEvent);

@@ -374,7 +374,7 @@ begin
     KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
      pvApplication.NextScreen:=TScreenMainMenu.Create;
     end;
-    KEYCODE_UP:begin
+{   KEYCODE_UP:begin
      if fSelectedIndex<=0 then begin
       fSelectedIndex:=0;
      end else begin
@@ -403,7 +403,7 @@ begin
     end;
     KEYCODE_END:begin
      fSelectedIndex:=0;
-    end;
+    end;}
     KEYCODE_RETURN,KEYCODE_SPACE:begin
      if fSelectedIndex=0 then begin
       pvApplication.NextScreen:=TScreenMainMenu.Create;
