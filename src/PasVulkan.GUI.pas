@@ -4711,6 +4711,13 @@ begin
       end;
       result:=true;
      end;
+     KEYCODE_A:begin
+      if KEYMODIFIER_CTRL in aKeyEvent.KeyModifiers then begin
+       fTextSelectionStart:=1;
+       fTextSelectionEnd:=PUCUUTF8Length(fText)+1;
+       result:=true;
+      end;
+     end;
      KEYCODE_C:begin
       if (KEYMODIFIER_CTRL in aKeyEvent.KeyModifiers) and
          (fTextSelectionStart>0) and
