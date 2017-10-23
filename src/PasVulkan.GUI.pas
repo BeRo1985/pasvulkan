@@ -4758,6 +4758,7 @@ begin
 end;
 
 function TpvGUITextEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var Index:TpvInt32;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -4765,6 +4766,19 @@ begin
   if not result then begin
    case aPointerEvent.PointerEventType of
     POINTEREVENT_DOWN:begin
+     fTextCursorPositionIndex:=1;
+     if fCountTextGlyphRects>0 then begin
+      if aPointerEvent.Position.x>=fTextGlyphRects[fCountTextGlyphRects-1].Right then begin
+       fTextCursorPositionIndex:=fCountTextGlyphRects+1;
+      end else begin
+       for Index:=fCountTextGlyphRects-1 downto 0 do begin
+        if aPointerEvent.Position.x>=fTextGlyphRects[Index].Left then begin
+         fTextCursorPositionIndex:=Index+1;
+         break;
+        end;
+       end;
+      end;
+     end;
      RequestFocus;
      result:=true;
     end;
