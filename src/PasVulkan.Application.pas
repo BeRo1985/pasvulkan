@@ -80,6 +80,7 @@ uses {$if defined(Unix)}
      SyncObjs,
      Math,
      PasMP,
+     PUCU,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Math,
@@ -526,7 +527,8 @@ type EpvApplication=class(Exception)
       (
        KEYEVENT_DOWN,
        KEYEVENT_UP,
-       KEYEVENT_TYPED
+       KEYEVENT_TYPED,
+       KEYEVENT_UNICODE
       );
 
      PpvApplicationInputKeyModifier=^TpvApplicationInputKeyModifier;
@@ -645,7 +647,8 @@ type EpvApplication=class(Exception)
        fFreeEvents:PpvApplicationInputProcessorQueueEvent;
        fCurrentEventTime:TpvInt64;
        function NewEvent:PpvApplicationInputProcessorQueueEvent;
-       procedure PushEvent(Event:PpvApplicationInputProcessorQueueEvent);
+       procedure FreeEvent(const aEvent:PpvApplicationInputProcessorQueueEvent);
+       procedure PushEvent(const aEvent:PpvApplicationInputProcessorQueueEvent);
       public
        constructor Create; override;
        destructor Destroy; override;
@@ -792,6 +795,8 @@ type EpvApplication=class(Exception)
        function IsKeyJustPressed(const aKeyCode:TpvInt32):boolean;
        function GetKeyName(const aKeyCode:TpvInt32):TpvApplicationRawByteString;
        function GetKeyModifiers:TpvApplicationInputKeyModifiers;
+       procedure StartTextInput;
+       procedure StopTextInput;
        procedure GetTextInput(const aCallback:TpvApplicationInputTextInputCallback;const aTitle,aText:TpvApplicationRawByteString;const aPlaceholder:TpvApplicationRawByteString='');
        procedure SetOnscreenKeyboardVisible(const aVisible:boolean);
        procedure Vibrate(const aMilliseconds:TpvInt32); overload;
@@ -2128,12 +2133,14 @@ begin
  CurrentEvent:=fQueuedEvents;
  while assigned(CurrentEvent) do begin
   NextEvent:=CurrentEvent^.Next;
+  Finalize(CurrentEvent^);
   FreeMem(CurrentEvent);
   CurrentEvent:=NextEvent;
  end;
  CurrentEvent:=fFreeEvents;
  while assigned(CurrentEvent) do begin
   NextEvent:=CurrentEvent^.Next;
+  Finalize(CurrentEvent^);
   FreeMem(CurrentEvent);
   CurrentEvent:=NextEvent;
  end;
@@ -2152,18 +2159,27 @@ begin
   GetMem(result,SizeOf(TpvApplicationInputProcessorQueueEvent));
   FillChar(result^,SizeOf(TpvApplicationInputProcessorQueueEvent),AnsiChar(#0));
  end;
+ Initialize(result^);
  result^.Time:=pvApplication.fHighResolutionTimer.GetTime;
 end;
 
-procedure TpvApplicationInputProcessorQueue.PushEvent(Event:PpvApplicationInputProcessorQueueEvent);
+procedure TpvApplicationInputProcessorQueue.FreeEvent(const aEvent:PpvApplicationInputProcessorQueueEvent);
+begin
+ if assigned(aEvent) then begin
+  Finalize(aEvent^);
+  FreeMem(aEvent);
+ end;
+end;
+
+procedure TpvApplicationInputProcessorQueue.PushEvent(const aEvent:PpvApplicationInputProcessorQueueEvent);
 begin
  if assigned(fLastQueuedEvent) then begin
-  fLastQueuedEvent^.Next:=Event;
+  fLastQueuedEvent^.Next:=aEvent;
  end else begin
-  fQueuedEvents:=Event;
+  fQueuedEvents:=aEvent;
  end;
- fLastQueuedEvent:=Event;
- Event^.Next:=nil;
+ fLastQueuedEvent:=aEvent;
+ aEvent^.Next:=nil;
 end;
 
 procedure TpvApplicationInputProcessorQueue.SetProcessor(aProcessor:TpvApplicationInputProcessor);
@@ -2205,18 +2221,8 @@ begin
     end;
    end;
   end;
+  FreeEvent(CurrentEvent);
   CurrentEvent:=NextEvent;
- end;
- fCriticalSection.Acquire;
- try
-  if assigned(fLastQueuedEvent) then begin
-   fLastQueuedEvent^.Next:=Events;
-  end else begin
-   fQueuedEvents:=Events;
-  end;
-  fLastQueuedEvent:=LastQueuedEvent;
- finally
-  fCriticalSection.Release;
  end;
 end;
 
@@ -3886,7 +3892,7 @@ end;
 
 procedure TpvApplicationInput.ProcessEvents;
 {$if defined(PasVulkanUseSDL2)}
-var Index,PointerID,KeyCode:TpvInt32;
+var Index,PointerID,KeyCode,Position:TpvInt32;
     KeyModifiers:TpvApplicationInputKeyModifiers;
     Event:PSDL_Event;
     OK:boolean;
@@ -3924,6 +3930,23 @@ begin
        SDL_KEYTYPED:begin
         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_TYPED,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_TYPED,KeyCode,KeyModifiers));
+        end;
+       end;
+      end;
+     end;
+     SDL_TEXTINPUT:begin
+      KeyModifiers:=[];
+      Position:=0;
+      while Position<length(Event^.tedit.text) do begin
+       KeyCode:=PUCUUTF8PtrCodeUnitGetCharAndIncFallback(PAnsiChar(TpvPointer(@Event^.tedit.text[0])),length(Event^.tedit.text),Position);
+       case KeyCode of
+        0:begin
+         break;
+        end;
+        else begin
+         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_UNICODE,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_UNICODE,KeyCode,KeyModifiers));
+         end;
         end;
        end;
       end;
@@ -4308,6 +4331,20 @@ begin
  result:=TranslateSDLKeyModifier(SDL_GetModState);
 {$else}
  result:=[];
+{$ifend}
+end;
+
+procedure TpvApplicationInput.StartTextInput;
+begin
+{$if defined(PasVulkanUseSDL2)}
+ SDL_StartTextInput;
+{$ifend}
+end;
+
+procedure TpvApplicationInput.StopTextInput;
+begin
+{$if defined(PasVulkanUseSDL2)}
+ SDL_StopTextInput;
 {$ifend}
 end;
 
@@ -5285,7 +5322,7 @@ begin
       raise EpvVulkanException.Create('Vulkan initialization failure at SDL_Vulkan_GetInstanceExtensions: '+String(SDL_GetError));
      end;
      for i:=0 to CountExtensions-1 do begin
-      fVulkanInstance.EnabledExtensionNames.Add(Extensions[i]);
+      fVulkanInstance.EnabledExtensionNames.Add(String(Extensions[i]));
      end;
     finally
      Extensions:=nil;
