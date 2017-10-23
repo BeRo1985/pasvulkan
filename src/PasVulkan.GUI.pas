@@ -813,6 +813,7 @@ type TpvGUIObject=class;
 
      TpvGUITextEdit=class(TpvGUIWidget)
       private
+       fEditable:boolean;
        fText:TpvUTF8String;
        fTextGlyphRects:TpvCanvasTextGlyphRects;
        fCountTextGlyphRects:TpvInt32;
@@ -829,6 +830,8 @@ type TpvGUIObject=class;
        function GetFontSize:TpvFloat; override;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
+       function GetEditable:boolean;
+       procedure SetEditable(const aEditable:boolean);
        function GetText:TpvUTF8String; virtual;
        procedure SetText(const aText:TpvUTF8String); virtual;
       public
@@ -844,6 +847,7 @@ type TpvGUIObject=class;
       published
        property Font;
        property FontSize;
+       property Editable:boolean read GetEditable write SetEditable;
        property Text:TpvUTF8String read GetText write SetText;
        property MinimumWidth:TpvFloat read fMinimumWidth write fMinimumWidth;
        property MinimumHeight:TpvFloat read fMinimumHeight write fMinimumHeight;
@@ -4512,6 +4516,8 @@ begin
 
  fTextVerticalAlignment:=pvgtaCenter;
 
+ SetEditable(true);
+
  fText:='';
 
  fTextGlyphRects:=nil;
@@ -4567,6 +4573,21 @@ end;
 function TpvGUITextEdit.GetPreferredSize:TpvVector2;
 begin
  result:=Skin.GetTextEditPreferredSize(self);
+end;
+
+function TpvGUITextEdit.GetEditable:boolean;
+begin
+ result:=fEditable;
+end;
+
+procedure TpvGUITextEdit.SetEditable(const aEditable:boolean);
+begin
+ fEditable:=aEditable;
+ if fEditable then begin
+  fCursor:=pvgcBeam;
+ end else begin
+  fCursor:=pvgcArrow;
+ end;
 end;
 
 function TpvGUITextEdit.GetText:TpvUTF8String;
@@ -4888,6 +4909,11 @@ begin
        end;
       end;
       fTextSelectionEnd:=fTextCursorPositionIndex;
+     end;
+     if not fEditable then begin
+      fCursor:=pvgcArrow;
+     end else begin
+      fCursor:=pvgcBeam;
      end;
      result:=true;
     end;
