@@ -685,9 +685,11 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function DrawFilledCircle(const aCenterX,aCenterY,aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawFilledRectangle(const aCenter,aBounds:TpvVector2):TpvCanvas; overload;
        function DrawFilledRectangle(const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawFilledRectangle(const aRect:TpvRect):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
        function DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenter,aBounds:TpvVector2;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas; overload;
        function DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
        function DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0):TpvCanvas; overload;
        function DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMinX,aMinY,aMaxX,aMaxY,aMetaMinX,aMetaMinY,aMetaMaxX,aMetaMaxY:TpvFloat;const aMeta:TpvFloat=0.0):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -716,10 +718,13 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function Circle(const aCenterX,aCenterY,aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Rectangle(const aCenter,aBounds:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Rectangle(const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Rectangle(const aRect:TpvRect):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function RoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function RoundedRectangle(const aCenterX,aCenterY,aBoundX,aBoundY,aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function RoundedRectangle(const aRect:TpvRect;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function RoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function RoundedRectangle(const aCenterX,aCenterY,aBoundX,aBoundY,aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function RoundedRectangle(const aRect:TpvRect;const aRadius:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
        function Stroke:TpvCanvas;
        function Fill:TpvCanvas;
@@ -4883,6 +4888,11 @@ begin
  result:=DrawFilledRectangle(TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY));
 end;
 
+function TpvCanvas.DrawFilledRectangle(const aRect:TpvRect):TpvCanvas;
+begin
+ result:=DrawFilledRectangle(aRect.Offset+(aRect.Size*0.5),aRect.Size*0.5);
+end;
+
 function TpvCanvas.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenter,aBounds:TpvVector2;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas;
 var MetaInfo:TpvVector4;
     VertexColor:TpvHalfFloatVector4;
@@ -4955,6 +4965,11 @@ end;
 function TpvCanvas.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas;
 begin
  result:=DrawTexturedRectangle(aTexture,TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY),aRotationAngle,aTextureArrayLayer);
+end;
+
+function TpvCanvas.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas;
+begin
+ result:=DrawTexturedRectangle(aTexture,aRect.Offset+(aRect.Size*0.5),aRect.Size*0.5,aRotationAngle,aTextureArrayLayer);
 end;
 
 function TpvCanvas.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0):TpvCanvas;
@@ -5216,6 +5231,12 @@ begin
  result:=self;
 end;
 
+function TpvCanvas.Rectangle(const aRect:TpvRect):TpvCanvas;
+begin
+ fState.fPath.Rectangle(aRect.Offset+(aRect.Size*0.5),aRect.Size*0.5);
+ result:=self;
+end;
+
 function TpvCanvas.RoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvas;
 begin
  fState.fPath.RoundedRectangle(aCenter,aBounds,aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight);
@@ -5228,6 +5249,12 @@ begin
  result:=self;
 end;
 
+function TpvCanvas.RoundedRectangle(const aRect:TpvRect;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvas;
+begin
+ fState.fPath.RoundedRectangle(aRect.Offset+(aRect.Size*0.5),aRect.Size*0.5,aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight);
+ result:=self;
+end;
+
 function TpvCanvas.RoundedRectangle(const aCenter,aBounds:TpvVector2;const aRadius:TpvFloat):TpvCanvas;
 begin
  fState.fPath.RoundedRectangle(aCenter,aBounds,aRadius);
@@ -5237,6 +5264,12 @@ end;
 function TpvCanvas.RoundedRectangle(const aCenterX,aCenterY,aBoundX,aBoundY,aRadius:TpvFloat):TpvCanvas;
 begin
  fState.fPath.RoundedRectangle(TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY),aRadius);
+ result:=self;
+end;
+
+function TpvCanvas.RoundedRectangle(const aRect:TpvRect;const aRadius:TpvFloat):TpvCanvas;
+begin
+ fState.fPath.RoundedRectangle(aRect.Offset+(aRect.Size*0.5),aRect.Size*0.5,aRadius,aRadius,aRadius,aRadius);
  result:=self;
 end;
 
