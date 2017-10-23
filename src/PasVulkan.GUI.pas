@@ -4659,6 +4659,15 @@ begin
     end;
    end;
    KEYEVENT_UNICODE:begin
+    if (fTextSelectionStart>0) and
+       (fTextSelectionEnd>0) then begin
+     Position:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
+     OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
+     Delete(fText,Position,OtherPosition-Position);
+     fTextCursorPositionIndex:=Position;
+     fTextSelectionStart:=0;
+     fTextSelectionEnd:=0;
+    end;
     Insert(PUCUUTF32CharToUTF8(aKeyEvent.KeyCode),
            fText,
            PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1));
