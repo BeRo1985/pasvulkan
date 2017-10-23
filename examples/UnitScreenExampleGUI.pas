@@ -181,7 +181,7 @@ begin
  fGUIButton.Enabled:=false;
 
  fGUITextEdit:=TpvGUITextEdit.Create(fGUIWindow);
- fGUITextEdit.Text:='An example text';
+ fGUITextEdit.Text:='An example text edit';
  fGUITextEdit.TextHorizontalAlignment:=TpvGUITextAlignment.pvgtaLeading;
  fGUITextEdit.MinimumWidth:=320;
  fGUITextEdit.MinimumHeight:=32;

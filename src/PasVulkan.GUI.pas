@@ -3442,7 +3442,7 @@ var Index:TpvInt32;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if not result then begin
-  if (aKeyEvent.KeyEventType=KEYEVENT_DOWN) and (aKeyEvent.KeyCode=KEYCODE_TAB) then begin
+  if (aKeyEvent.KeyEventType=KEYEVENT_TYPED) and (aKeyEvent.KeyCode=KEYCODE_TAB) then begin
    if fCurrentFocusPath.Count>0 then begin
     Current:=fCurrentFocusPath.Items[0];
     if (Current<>self) and (Current is TpvGUIWidget) then begin
