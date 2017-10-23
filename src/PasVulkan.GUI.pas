@@ -823,6 +823,8 @@ type TpvGUIObject=class;
        fTextSelectionEnd:TpvInt32;
        fMinimumWidth:TpvFloat;
        fMinimumHeight:TpvFloat;
+       fOnClick:TpvGUIOnEvent;
+       fOnChange:TpvGUIOnEvent;
       protected
        function GetFontSize:TpvFloat; override;
        function GetFontColor:TpvVector4; override;
@@ -845,6 +847,8 @@ type TpvGUIObject=class;
        property Text:TpvUTF8String read GetText write SetText;
        property MinimumWidth:TpvFloat read fMinimumWidth write fMinimumWidth;
        property MinimumHeight:TpvFloat read fMinimumHeight write fMinimumHeight;
+       property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property TextHorizontalAlignment;
        property TextVerticalAlignment;
        property TextTruncation;
@@ -4252,20 +4256,34 @@ end;
 
 constructor TpvGUIButton.Create(const aParent:TpvGUIObject);
 begin
+
  inherited Create(aParent);
+
  Include(fWidgetFlags,pvgwfTabStop);
  Include(fWidgetFlags,pvgwfDrawFocus);
+
  fButtonFlags:=[pvgbfNormalButton];
+
  fButtonGroup:=TpvGUIButtonGroup.Create(false);
+
  fCaption:='Button';
+
  fIconPosition:=pvgbipLeft;
+
  fIcon:=nil;
+
  fIconHeight:=0.0;
+
  fIconText:='';
+
  fIconFont:=nil;
+
  fIconFontSize:=FontSize;
+
  fOnClick:=nil;
+
  fOnChange:=nil;
+
 end;
 
 destructor TpvGUIButton.Destroy;
@@ -4514,6 +4532,10 @@ begin
 
  fMinimumHeight:=0.0;
 
+ fOnClick:=nil;
+
+ fOnChange:=nil;
+
 end;
 
 destructor TpvGUITextEdit.Destroy;
@@ -4647,6 +4669,9 @@ begin
        fTextCursorPositionIndex:=Position;
        fTextSelectionStart:=0;
        fTextSelectionEnd:=0;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
       end else begin
        Position:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
        if (Position>1) and (Position<=(length(fText)+1)) then begin
@@ -4655,6 +4680,9 @@ begin
         if (OtherPosition>0) and (OtherPosition<=length(fText)) and (OtherPosition<Position) then begin
          Delete(fText,OtherPosition,Position-OtherPosition);
          dec(fTextCursorPositionIndex);
+         if assigned(fOnChange) then begin
+          fOnChange(self);
+         end;
         end;
        end;
       end;
@@ -4685,6 +4713,9 @@ begin
               fText,
               PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1));
       end;
+      if assigned(fOnChange) then begin
+       fOnChange(self);
+      end;
       result:=true;
      end;
      KEYCODE_DELETE:begin
@@ -4699,6 +4730,9 @@ begin
        fTextCursorPositionIndex:=Position;
        fTextSelectionStart:=0;
        fTextSelectionEnd:=0;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
       end else begin
        Position:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
        if (Position>0) and (Position<=length(fText)) then begin
@@ -4706,6 +4740,9 @@ begin
         PUCUUTF8Inc(fText,OtherPosition);
         if (OtherPosition>1) and (OtherPosition<=(length(fText)+1)) and (Position<OtherPosition) then begin
          Delete(fText,Position,OtherPosition-Position);
+         if assigned(fOnChange) then begin
+          fOnChange(self);
+         end;
         end;
        end;
       end;
@@ -4726,6 +4763,9 @@ begin
        OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
        pvApplication.Clipboard.SetText(Copy(fText,Position,OtherPosition-Position));
        fTextCursorPositionIndex:=Position;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
        result:=true;
       end;
      end;
@@ -4749,6 +4789,9 @@ begin
          inc(fTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
         end;
        end;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
        result:=true;
       end;
      end;
@@ -4763,6 +4806,9 @@ begin
        fTextCursorPositionIndex:=Position;
        fTextSelectionStart:=0;
        fTextSelectionEnd:=0;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
        result:=true;
       end;
      end;
@@ -4782,6 +4828,9 @@ begin
            fText,
            PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1));
     inc(fTextCursorPositionIndex);
+    if assigned(fOnChange) then begin
+     fOnChange(self);
+    end;
     result:=true;
    end;
   end;
@@ -4814,6 +4863,11 @@ begin
      end;
      RequestFocus;
      result:=true;
+    end;
+    POINTEREVENT_UP:begin
+     if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
+      fOnClick(self);
+     end;
     end;
     POINTEREVENT_MOTION:begin
      if BUTTON_LEFT in aPointerEvent.Buttons then begin
