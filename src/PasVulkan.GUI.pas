@@ -366,6 +366,7 @@ type TpvGUIObject=class;
       (
        pvgwfEnabled,
        pvgwfVisible,
+       pvgwfDraggable,
        pvgwfFocused,
        pvgwfPointerFocused,
        pvgwfWantAllKeys,
@@ -380,7 +381,8 @@ type TpvGUIObject=class;
      TpvGUIWidget=class(TpvGUIObject)
       public
        const DefaultFlags=[pvgwfEnabled,
-                           pvgwfVisible];
+                           pvgwfVisible,
+                           pvgwfDraggable];
       private
       protected
        fCanvas:TpvCanvas;
@@ -411,6 +413,8 @@ type TpvGUIObject=class;
        procedure SetEnabled(const aEnabled:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetVisible(const aVisible:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetDraggable:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetDraggable(const aDraggable:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetFocused:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetFocused(const aFocused:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetPointerFocused:boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -495,6 +499,7 @@ type TpvGUIObject=class;
        property WidgetFlags:TpvGUIWidgetFlags read fWidgetFlags write fWidgetFlags;
        property Enabled:boolean read GetEnabled write SetEnabled;
        property Visible:boolean read GetVisible write SetVisible;
+       property Draggable:boolean read GetDraggable write SetDraggable;
        property RecursiveVisible:boolean read GetRecursiveVisible;
        property Focused:boolean read GetFocused write SetFocused;
        property PointerFocused:boolean read GetPointerFocused write SetPointerFocused;
@@ -2512,6 +2517,20 @@ begin
  end;
 end;
 
+function TpvGUIWidget.GetDraggable:boolean;
+begin
+ result:=pvgwfDraggable in fWidgetFlags;
+end;
+
+procedure TpvGUIWidget.SetDraggable(const aDraggable:boolean);
+begin
+ if aDraggable then begin
+  Include(fWidgetFlags,pvgwfDraggable);
+ end else begin
+  Exclude(fWidgetFlags,pvgwfDraggable);
+ end;
+end;
+
 function TpvGUIWidget.GetFocused:boolean;
 begin
  result:=pvgwfFocused in fWidgetFlags;
@@ -3503,7 +3522,7 @@ begin
        BUTTON_LEFT,BUTTON_RIGHT:begin
         TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
         CurrentWidget:=FindWidget(aPointerEvent.Position);
-        if assigned(CurrentWidget) and (CurrentWidget<>self) then begin
+        if assigned(CurrentWidget) and (CurrentWidget<>self) and CurrentWidget.Draggable then begin
          fDragWidget:=CurrentWidget;
          fDragWidget.IncRef;
         end else begin
@@ -3518,7 +3537,7 @@ begin
      end;
      POINTEREVENT_UP:begin
       CurrentWidget:=FindWidget(aPointerEvent.Position);
-      if assigned(fDragWidget) and (fDragWidget<>CurrentWidget) then begin
+      if assigned(fDragWidget) and (fDragWidget<>CurrentWidget) and fDragWidget.Draggable then begin
        LocalPointerEvent.PointerEventType:=POINTEREVENT_UP;
        LocalPointerEvent.Button:=BUTTON_LEFT;
        fDragWidget.PointerEvent(LocalPointerEvent);
@@ -4469,6 +4488,8 @@ begin
  Include(fWidgetFlags,pvgwfTabStop);
  Include(fWidgetFlags,pvgwfDrawFocus);
 
+ Exclude(fWidgetFlags,pvgwfDraggable);
+
  fTextHorizontalAlignment:=pvgtaLeading;
 
  fTextVerticalAlignment:=pvgtaCenter;
@@ -4769,6 +4790,8 @@ begin
   if not result then begin
    case aPointerEvent.PointerEventType of
     POINTEREVENT_DOWN:begin
+     fTextSelectionStart:=0;
+     fTextSelectionEnd:=0;
      fTextCursorPositionIndex:=1;
      if fCountTextGlyphRects>0 then begin
       if aPointerEvent.Position.x>=fTextGlyphRects[fCountTextGlyphRects-1].Right then begin
@@ -4783,6 +4806,28 @@ begin
       end;
      end;
      RequestFocus;
+     result:=true;
+    end;
+    POINTEREVENT_MOTION:begin
+     if BUTTON_LEFT in aPointerEvent.Buttons then begin
+      if fTextSelectionStart<1 then begin
+       fTextSelectionStart:=fTextCursorPositionIndex;
+      end;
+      fTextCursorPositionIndex:=1;
+      if fCountTextGlyphRects>0 then begin
+       if aPointerEvent.Position.x>=fTextGlyphRects[fCountTextGlyphRects-1].Right then begin
+        fTextCursorPositionIndex:=fCountTextGlyphRects+1;
+       end else begin
+        for Index:=fCountTextGlyphRects-1 downto 0 do begin
+         if aPointerEvent.Position.x>=fTextGlyphRects[Index].Left then begin
+          fTextCursorPositionIndex:=Index+1;
+          break;
+         end;
+        end;
+       end;
+      end;
+      fTextSelectionEnd:=fTextCursorPositionIndex;
+     end;
      result:=true;
     end;
    end;

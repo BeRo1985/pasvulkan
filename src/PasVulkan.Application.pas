@@ -3958,9 +3958,21 @@ begin
       fMouseY:=Event^.motion.y;
       fMouseDeltaX:=Event^.motion.xrel;
       fMouseDeltaY:=Event^.motion.yrel;
-      OK:=pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,TpvVector2.Create(Event^.motion.x,Event^.motion.y),TpvVector2.Create(Event^.motion.xrel,Event^.motion.yrel),ord(fMouseDown<>[]) and 1,0,fMouseDown,KeyModifiers));
+      OK:=pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,
+                                                                            TpvVector2.Create(Event^.motion.x,Event^.motion.y),
+                                                                            TpvVector2.Create(Event^.motion.xrel,Event^.motion.yrel),
+                                                                            ord(fMouseDown<>[]) and 1,
+                                                                            0,
+                                                                            fMouseDown,
+                                                                            KeyModifiers));
       if assigned(fProcessor) and not OK then begin
-       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,TpvVector2.Create(Event^.motion.x,Event^.motion.y),TpvVector2.Create(Event^.motion.xrel,Event^.motion.yrel),ord(fMouseDown<>[]) and 1,0,fMouseDown,KeyModifiers));
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,
+                                                                      TpvVector2.Create(Event^.motion.x,Event^.motion.y),
+                                                                      TpvVector2.Create(Event^.motion.xrel,Event^.motion.yrel),
+                                                                      ord(fMouseDown<>[]) and 1,
+                                                                      0,
+                                                                      fMouseDown,
+                                                                      KeyModifiers));
       end;
      end;
      SDL_MOUSEBUTTONDOWN:begin
