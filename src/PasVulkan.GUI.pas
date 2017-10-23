@@ -4547,6 +4547,7 @@ end;
 
 function TpvGUITextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 var Position,OtherPosition:TpvInt32;
+    TemporaryText:TpvUTF8String;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -4635,11 +4636,41 @@ begin
       end;
       result:=true;
      end;
+     KEYCODE_INSERT:begin
+      if (fTextSelectionStart>0) and
+         (fTextSelectionEnd>0) then begin
+       Position:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
+       OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
+       Delete(fText,Position,OtherPosition-Position);
+       fTextCursorPositionIndex:=Position;
+       fTextSelectionStart:=0;
+       fTextSelectionEnd:=0;
+      end;
+      if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
+       if pvApplication.Clipboard.HasText then begin
+        TemporaryText:=pvApplication.Clipboard.GetText;
+        if length(TemporaryText)>0 then begin
+         Insert(TemporaryText,
+                fText,
+                PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1));
+         inc(fTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
+        end;
+       end;
+      end else begin
+       Insert(#32,
+              fText,
+              PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1));
+      end;
+      result:=true;
+     end;
      KEYCODE_DELETE:begin
       if (fTextSelectionStart>0) and
          (fTextSelectionEnd>0) then begin
        Position:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
        OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
+       if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
+        pvApplication.Clipboard.SetText(Copy(fText,Position,OtherPosition-Position));
+       end;
        Delete(fText,Position,OtherPosition-Position);
        fTextCursorPositionIndex:=Position;
        fTextSelectionStart:=0;
