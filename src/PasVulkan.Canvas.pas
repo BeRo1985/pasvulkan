@@ -4890,7 +4890,9 @@ end;
 
 function TpvCanvas.DrawFilledRectangle(const aRect:TpvRect):TpvCanvas;
 begin
+{$ifdef fpc}{$push}{$optimization off}{$endif}
  result:=DrawFilledRectangle(aRect.Offset+(aRect.Size*0.5),aRect.Size*0.5);
+{$ifdef fpc}{$pop}{$endif}
 end;
 
 function TpvCanvas.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenter,aBounds:TpvVector2;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas;
@@ -4969,7 +4971,9 @@ end;
 
 function TpvCanvas.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas;
 begin
+{$ifdef fpc}{$push}{$optimization off}{$endif}
  result:=DrawTexturedRectangle(aTexture,aRect.Offset+(aRect.Size*0.5),aRect.Size*0.5,aRotationAngle,aTextureArrayLayer);
+{$ifdef fpc}{$pop}{$endif}
 end;
 
 function TpvCanvas.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0):TpvCanvas;
@@ -5233,7 +5237,9 @@ end;
 
 function TpvCanvas.Rectangle(const aRect:TpvRect):TpvCanvas;
 begin
+{$ifdef fpc}{$push}{$optimization off}{$endif}
  fState.fPath.Rectangle(aRect.Offset+(aRect.Size*0.5),aRect.Size*0.5);
+{$ifdef fpc}{$pop}{$endif}
  result:=self;
 end;
 
@@ -5251,7 +5257,9 @@ end;
 
 function TpvCanvas.RoundedRectangle(const aRect:TpvRect;const aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvas;
 begin
+{$ifdef fpc}{$push}{$optimization off}{$endif}
  fState.fPath.RoundedRectangle(aRect.Offset+(aRect.Size*0.5),aRect.Size*0.5,aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight);
+{$ifdef fpc}{$pop}{$endif}
  result:=self;
 end;
 
