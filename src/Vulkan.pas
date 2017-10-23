@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=63;
+      VK_HEADER_VERSION=64;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -296,7 +296,7 @@ const VK_NULL_HANDLE=0;
       VK_ANDROID_NATIVE_BUFFER_SPEC_VERSION=5;
       VK_ANDROID_NATIVE_BUFFER_NUMBER=11;
       VK_ANDROID_NATIVE_BUFFER_NAME='VK_ANDROID_native_buffer';
-      VK_EXT_DEBUG_REPORT_SPEC_VERSION=8;
+      VK_EXT_DEBUG_REPORT_SPEC_VERSION=9;
       VK_EXT_DEBUG_REPORT_EXTENSION_NAME='VK_EXT_debug_report';
       VK_NV_GLSL_SHADER_SPEC_VERSION=1;
       VK_NV_GLSL_SHADER_EXTENSION_NAME='VK_NV_glsl_shader';
@@ -358,8 +358,8 @@ const VK_NULL_HANDLE=0;
       VK_AMD_EXTENSION_41_EXTENSION_NAME='VK_AMD_extension_41';
       VK_AMD_TEXTURE_GATHER_BIAS_LOD_SPEC_VERSION=1;
       VK_AMD_TEXTURE_GATHER_BIAS_LOD_EXTENSION_NAME='VK_AMD_texture_gather_bias_lod';
-      VK_AMD_EXTENSION_43_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_43_EXTENSION_NAME='VK_AMD_extension_43';
+      VK_AMD_SHADER_INFO_SPEC_VERSION=1;
+      VK_AMD_SHADER_INFO_EXTENSION_NAME='VK_AMD_shader_info';
       VK_AMD_EXTENSION_44_SPEC_VERSION=0;
       VK_AMD_EXTENSION_44_EXTENSION_NAME='VK_AMD_extension_44';
       VK_AMD_EXTENSION_45_SPEC_VERSION=0;
@@ -630,6 +630,30 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_177_EXTENSION_NAME='VK_KHR_extension_177';
       VK_KHR_EXTENSION_178_SPEC_VERSION=0;
       VK_KHR_EXTENSION_178_EXTENSION_NAME='VK_KHR_extension_178';
+      VK_KHR_EXTENSION_179_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_179_EXTENSION_NAME='VK_AMD_extension_179';
+      VK_KHR_EXTENSION_180_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_180_EXTENSION_NAME='VK_AMD_extension_180';
+      VK_KHR_EXTENSION_181_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_181_EXTENSION_NAME='VK_AMD_extension_181';
+      VK_KHR_EXTENSION_182_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_182_EXTENSION_NAME='VK_AMD_extension_182';
+      VK_KHR_EXTENSION_183_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_183_EXTENSION_NAME='VK_AMD_extension_183';
+      VK_KHR_EXTENSION_184_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_184_EXTENSION_NAME='VK_AMD_extension_184';
+      VK_KHR_EXTENSION_185_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_185_EXTENSION_NAME='VK_AMD_extension_185';
+      VK_KHR_EXTENSION_186_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_186_EXTENSION_NAME='VK_AMD_extension_186';
+      VK_KHR_EXTENSION_187_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_187_EXTENSION_NAME='VK_AMD_extension_187';
+      VK_KHR_EXTENSION_188_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_188_EXTENSION_NAME='VK_AMD_extension_188';
+      VK_KHR_EXTENSION_189_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_189_EXTENSION_NAME='VK_AMD_extension_189';
+      VK_KHR_EXTENSION_190_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_190_EXTENSION_NAME='VK_AMD_extension_190';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -2945,6 +2969,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkValidationCacheHeaderVersionEXT=
       (
        VK_VALIDATION_CACHE_HEADER_VERSION_ONE_EXT=1
+      );
+
+     PPVkShaderInfoTypeAMD=^PVkShaderInfoTypeAMD;
+     PVkShaderInfoTypeAMD=^TVkShaderInfoTypeAMD;
+     TVkShaderInfoTypeAMD=
+      (
+       VK_SHADER_INFO_TYPE_STATISTICS_AMD=0,
+       VK_SHADER_INFO_TYPE_BINARY_AMD=1,
+       VK_SHADER_INFO_TYPE_DISASSEMBLY_AMD=2
       );
 
      PPVkQueueGlobalPriorityEXT=^PVkQueueGlobalPriorityEXT;
@@ -8632,6 +8665,50 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      end;
 {$endif}
 
+     PPVkShaderResourceUsageAMD=^PVkShaderResourceUsageAMD;
+     PVkShaderResourceUsageAMD=^TVkShaderResourceUsageAMD;
+     TVkShaderResourceUsageAMD=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       numUsedVgprs:TVkUInt32;
+       numUsedSgprs:TVkUInt32;
+       ldsSizePerLocalWorkGroup:TVkUInt32;
+       ldsUsageSizeInBytes:TVkSize;
+       scratchMemUsageInBytes:TVkSize;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pNumUsedVgprs:TVkUInt32;
+                          const pNumUsedSgprs:TVkUInt32;
+                          const pLdsSizePerLocalWorkGroup:TVkUInt32;
+                          const pLdsUsageSizeInBytes:TVkSize;
+                          const pScratchMemUsageInBytes:TVkSize);
+{$endif}
+     end;
+
+     PPVkShaderStatisticsInfoAMD=^PVkShaderStatisticsInfoAMD;
+     PVkShaderStatisticsInfoAMD=^TVkShaderStatisticsInfoAMD;
+     TVkShaderStatisticsInfoAMD=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       shaderStageMask:TVkShaderStageFlags;
+       resourceUsage:TVkShaderResourceUsageAMD;
+       numPhysicalVgprs:TVkUInt32;
+       numPhysicalSgprs:TVkUInt32;
+       numAvailableVgprs:TVkUInt32;
+       numAvailableSgprs:TVkUInt32;
+       computeWorkGroupSize:array[0..2] of TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pShaderStageMask:TVkShaderStageFlags;
+                          const pResourceUsage:TVkShaderResourceUsageAMD;
+                          const pNumPhysicalVgprs:TVkUInt32;
+                          const pNumPhysicalSgprs:TVkUInt32;
+                          const pNumAvailableVgprs:TVkUInt32;
+                          const pNumAvailableSgprs:TVkUInt32;
+                          const pComputeWorkGroupSize:array of TVkUInt32);
+{$endif}
+     end;
+
      PPVkDeviceQueueGlobalPriorityCreateInfoEXT=^PVkDeviceQueueGlobalPriorityCreateInfoEXT;
      PVkDeviceQueueGlobalPriorityCreateInfoEXT=^TVkDeviceQueueGlobalPriorityCreateInfoEXT;
      TVkDeviceQueueGlobalPriorityCreateInfoEXT=record
@@ -9206,6 +9283,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkQueueSignalReleaseImageANDROID=function(queue:TVkQueue;waitSemaphoreCount:TVkUInt32;const pWaitSemaphores:PVkSemaphore;image:TVkImage;pNativeFenceFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     TvkGetShaderInfoAMD=function(device:TVkDevice;pipeline:TVkPipeline;shaderStage:TVkShaderStageFlagBits;infoType:TVkShaderInfoTypeAMD;pInfoSize:PVkSize;pInfo:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
 
      PPVulkanCommands=^PVulkanCommands;
      PVulkanCommands=^TVulkanCommands;
@@ -9769,6 +9848,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       AcquireImageANDROID:TvkAcquireImageANDROID;
 
       QueueSignalReleaseImageANDROID:TvkQueueSignalReleaseImageANDROID;
+
+      GetShaderInfoAMD:TvkGetShaderInfoAMD;
 
      end;
 
@@ -10339,6 +10420,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function QueueSignalReleaseImageANDROID(queue:TVkQueue;waitSemaphoreCount:TVkUInt32;const pWaitSemaphores:PVkSemaphore;image:TVkImage;pNativeFenceFd:PVkInt32):TVkResult; virtual;
 
+       function GetShaderInfoAMD(device:TVkDevice;pipeline:TVkPipeline;shaderStage:TVkShaderStageFlagBits;infoType:TVkShaderInfoTypeAMD;pInfoSize:PVkSize;pInfo:PVkVoid):TVkResult; virtual;
+
        property Commands:TVulkanCommands read fCommands;
      end;
 
@@ -10905,6 +10988,8 @@ var LibVulkan:pointer=nil;
     vkAcquireImageANDROID:TvkAcquireImageANDROID=nil;
 
     vkQueueSignalReleaseImageANDROID:TvkQueueSignalReleaseImageANDROID=nil;
+
+    vkGetShaderInfoAMD:TvkGetShaderInfoAMD=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -12094,6 +12179,10 @@ begin
    @vkQueueSignalReleaseImageANDROID:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkQueueSignalReleaseImageANDROID'));
    @vk.fCommands.QueueSignalReleaseImageANDROID:=addr(vkQueueSignalReleaseImageANDROID);
   end;
+  if not assigned(vkGetShaderInfoAMD) then begin
+   @vkGetShaderInfoAMD:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetShaderInfoAMD'));
+   @vk.fCommands.GetShaderInfoAMD:=addr(vkGetShaderInfoAMD);
+  end;
   result:=assigned(vkCreateInstance);
  end;
 end;
@@ -12405,6 +12494,7 @@ begin
   @InstanceCommands.GetSwapchainGrallocUsageANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetSwapchainGrallocUsageANDROID')));
   @InstanceCommands.AcquireImageANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkAcquireImageANDROID')));
   @InstanceCommands.QueueSignalReleaseImageANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkQueueSignalReleaseImageANDROID')));
+  @InstanceCommands.GetShaderInfoAMD:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetShaderInfoAMD')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -12630,6 +12720,7 @@ begin
   @DeviceCommands.GetSwapchainGrallocUsageANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetSwapchainGrallocUsageANDROID')));
   @DeviceCommands.AcquireImageANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkAcquireImageANDROID')));
   @DeviceCommands.QueueSignalReleaseImageANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkQueueSignalReleaseImageANDROID')));
+  @DeviceCommands.GetShaderInfoAMD:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetShaderInfoAMD')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -16415,6 +16506,44 @@ begin
 end;
 {$endif}
 
+constructor TVkShaderResourceUsageAMD.Create(const pNumUsedVgprs:TVkUInt32;
+                                             const pNumUsedSgprs:TVkUInt32;
+                                             const pLdsSizePerLocalWorkGroup:TVkUInt32;
+                                             const pLdsUsageSizeInBytes:TVkSize;
+                                             const pScratchMemUsageInBytes:TVkSize);
+begin
+ numUsedVgprs:=pNumUsedVgprs;
+ numUsedSgprs:=pNumUsedSgprs;
+ ldsSizePerLocalWorkGroup:=pLdsSizePerLocalWorkGroup;
+ ldsUsageSizeInBytes:=pLdsUsageSizeInBytes;
+ scratchMemUsageInBytes:=pScratchMemUsageInBytes;
+end;
+
+constructor TVkShaderStatisticsInfoAMD.Create(const pShaderStageMask:TVkShaderStageFlags;
+                                              const pResourceUsage:TVkShaderResourceUsageAMD;
+                                              const pNumPhysicalVgprs:TVkUInt32;
+                                              const pNumPhysicalSgprs:TVkUInt32;
+                                              const pNumAvailableVgprs:TVkUInt32;
+                                              const pNumAvailableSgprs:TVkUInt32;
+                                              const pComputeWorkGroupSize:array of TVkUInt32);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TVkShaderStatisticsInfoAMD),#0);
+ shaderStageMask:=pShaderStageMask;
+ resourceUsage:=pResourceUsage;
+ numPhysicalVgprs:=pNumPhysicalVgprs;
+ numPhysicalSgprs:=pNumPhysicalSgprs;
+ numAvailableVgprs:=pNumAvailableVgprs;
+ numAvailableSgprs:=pNumAvailableSgprs;
+ ArrayItemCount:=length(pComputeWorkGroupSize);
+ if ArrayItemCount>length(computeWorkGroupSize) then begin
+  ArrayItemCount:=length(computeWorkGroupSize);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(pComputeWorkGroupSize[0],computeWorkGroupSize[0],ArrayItemCount*SizeOf(TVkUInt32));
+ end;
+end;
+
 constructor TVkDeviceQueueGlobalPriorityCreateInfoEXT.Create(const pGlobalPriority:TVkQueueGlobalPriorityEXT);
 begin
  sType:=VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT;
@@ -17772,6 +17901,11 @@ end;
 function TVulkan.QueueSignalReleaseImageANDROID(queue:TVkQueue;waitSemaphoreCount:TVkUInt32;const pWaitSemaphores:PVkSemaphore;image:TVkImage;pNativeFenceFd:PVkInt32):TVkResult;
 begin
  result:=fCommands.QueueSignalReleaseImageANDROID(queue,waitSemaphoreCount,pWaitSemaphores,image,pNativeFenceFd);
+end;
+
+function TVulkan.GetShaderInfoAMD(device:TVkDevice;pipeline:TVkPipeline;shaderStage:TVkShaderStageFlagBits;infoType:TVkShaderInfoTypeAMD;pInfoSize:PVkSize;pInfo:PVkVoid):TVkResult;
+begin
+ result:=fCommands.GetShaderInfoAMD(device,pipeline,shaderStage,infoType,pInfoSize,pInfo);
 end;
 
 initialization
