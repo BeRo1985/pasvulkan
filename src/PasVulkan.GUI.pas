@@ -2298,12 +2298,14 @@ begin
   StartIndex:=Min(aTextEdit.fTextSelectionStart,aTextEdit.fTextSelectionEnd)-1;
   EndIndex:=Max(aTextEdit.fTextSelectionStart,aTextEdit.fTextSelectionEnd)-1;
   if StartIndex>=aTextEdit.fCountTextGlyphRects then begin
-   SelectionRect.Left:=aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right+1.0;
+   SelectionRect.Left:=Maximum(aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right,
+                               Offset.x+TextRect.Left+TextOffset.x+aCanvas.TextWidth(aTextEdit.fText))+1.0;
   end else begin
    SelectionRect.Left:=aTextEdit.fTextGlyphRects[StartIndex].Left+1.0;
   end;
   if EndIndex>=aTextEdit.fCountTextGlyphRects then begin
-   SelectionRect.Right:=aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right+1.0;
+   SelectionRect.Right:=Maximum(aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right,
+                                Offset.x+TextRect.Left+TextOffset.x+aCanvas.TextWidth(aTextEdit.fText))+1.0;
   end else begin
    SelectionRect.Right:=aTextEdit.fTextGlyphRects[EndIndex].Left+1.0;
   end;
@@ -2327,7 +2329,8 @@ begin
   if aTextEdit.fCountTextGlyphRects>0 then begin
    TextCursorPositionIndex:=Min(Max(aTextEdit.fTextCursorPositionIndex,1),aTextEdit.fCountTextGlyphRects+1);
    if TextCursorPositionIndex>aTextEdit.fCountTextGlyphRects then begin
-    aCanvas.DrawFilledRectangle(TpvVector2.Create(aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right+0.5,
+    aCanvas.DrawFilledRectangle(TpvVector2.Create(Max(aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right,
+                                                      Offset.x+TextRect.Left+TextOffset.x+aCanvas.TextWidth(aTextEdit.fText))+0.5,
                                                   Offset.y+TextRect.Top+(TextRect.Size.y*0.5)),
                                 TpvVector2.Create(1.0,
                                                   (aCanvas.TextRowHeight(100.0)*0.5)));
