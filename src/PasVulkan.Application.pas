@@ -6839,6 +6839,9 @@ begin
       end;
      end;
     end;
+    SDL_TEXTINPUT:begin
+     fInput.AddEvent(fEvent);
+    end;
     SDL_MOUSEMOTION:begin
      fInput.AddEvent(fEvent);
     end;
