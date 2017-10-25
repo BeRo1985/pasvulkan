@@ -3394,7 +3394,7 @@ end;
 procedure TpvCanvas.SetClipRect(const aClipRect:TVkRect2D);
 begin
  fState.fClipRect.LeftTop:=TpvVector2.Create(aClipRect.offset.x,aClipRect.offset.y);
- fState.fClipRect.RightBottom:=TpvVector2.Create(aClipRect.offset.x+TpvFloat(aClipRect.extent.width),aClipRect.offset.y+TpvFloat(aClipRect.extent.height));
+ fState.fClipRect.RightBottom:=TpvVector2.Create(aClipRect.offset.x+(aClipRect.extent.width+0.0),aClipRect.offset.y+(aClipRect.extent.height+0.0));
 end;
 
 procedure TpvCanvas.SetClipRect(const aClipRect:TpvRect);
