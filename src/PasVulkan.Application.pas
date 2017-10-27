@@ -1,4 +1,3 @@
-
 (******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
@@ -6534,8 +6533,9 @@ const FullScreenFocusActiveFlags=SDL_WINDOW_SHOWN or SDL_WINDOW_INPUT_FOCUS {sor
 var WindowFlags:TSDLUInt32;
 begin
  WindowFlags:=SDL_GetWindowFlags(fSurfaceWindow);
- result:=(fCurrentFullScreen=0) or
-         ((WindowFlags and FullScreenFocusActiveFlags)=FullScreenFocusActiveFlags);
+ result:=((fCurrentFullScreen=0) or
+          ((WindowFlags and FullScreenFocusActiveFlags)=FullScreenFocusActiveFlags)) and
+         ((WindowFlags and SDL_WINDOW_MINIMIZED)=0);
 end;
 {$else}
 begin
