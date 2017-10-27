@@ -92,20 +92,31 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
 
      TpvFontCodePointRanges=array of TpvFontCodePointRange;
 
+     PpvFontGlyphSideBearings=^TpvFontGlyphSideBearings;
+     TpvFontGlyphSideBearings=packed record
+      case TpvInt32 of
+       0:(
+        Left:TpvFloat;
+        Top:TpvFloat;
+        Right:TpvFloat;
+        Bottom:TpvFloat;
+       );
+       1:(
+        LeftTop:TpvVector2;
+        RightBottom:TpvVector2;
+       );
+       2:(
+        Rect:TpvRect;
+       );
+     end;
+
      PpvFontGlyph=^TpvFontGlyph;
      TpvFontGlyph=record
-      AdvanceWidth:TpvFloat;
-      AdvanceHeight:TpvFloat;
-      LeftSideBearing:TpvFloat;
-      RightSideBearing:TpvFloat;
-      TopSideBearing:TpvFloat;
-      BottomSideBearing:TpvFloat;
-      BoundsMinX:TpvFloat;
-      BoundsMinY:TpvFloat;
-      BoundsMaxX:TpvFloat;
-      BoundsMaxY:TpvFloat;
-      OffsetX:TpvFloat;
-      OffsetY:TpvFloat;
+      Advance:TpvVector2;
+      Bounds:TpvRect;
+      SideBearings:TpvFontGlyphSideBearings;
+      Offset:TpvVector2;
+      Size:TpvVector2;
       Width:TpvInt32;
       Height:TpvInt32;
       Sprite:TpvSprite;
@@ -132,6 +143,8 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
      end;
 
      TpvFontKerningPairs=array of TpvFontKerningPair;
+
+     TpvFontKerningPairVectors=array of TpvVector2;
 
      PpvFontDistanceFieldPixel=^TpvFontDistanceFieldPixel;
      TpvFontDistanceFieldPixel=packed record
@@ -182,6 +195,7 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        fGlyphs:TpvFontGlyphs;
        fCodePointGlyphPairs:TpvFontCodePointGlyphPairs;
        fKerningPairs:TpvFontKerningPairs;
+       fKerningPairVectors:TpvFontKerningPairVectors;
        fCodePointToGlyphHashMap:TpvFontInt64HashMap;
        fKerningPairHashMap:TpvFontInt64HashMap;
        fDistanceFieldJobs:TpvFontDistanceFieldJobs;
@@ -2253,6 +2267,8 @@ begin
 
  fKerningPairs:=nil;
 
+ fKerningPairVectors:=nil;
+
  fCodePointToGlyphHashMap:=TpvFontInt64HashMap.Create(-1);
 
  fKerningPairHashMap:=TpvFontInt64HashMap.Create(-1);
@@ -2392,16 +2408,16 @@ begin
 
        TTFGlyphIndex:=Int64Value;
 
-       Glyph^.AdvanceWidth:=aTrueTypeFont.GetGlyphAdvanceWidth(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
-       Glyph^.AdvanceHeight:=aTrueTypeFont.GetGlyphAdvanceHeight(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
-       Glyph^.LeftSideBearing:=aTrueTypeFont.GetGlyphLeftSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
-       Glyph^.RightSideBearing:=aTrueTypeFont.GetGlyphRightSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
-       Glyph^.TopSideBearing:=aTrueTypeFont.GetGlyphTopSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
-       Glyph^.BottomSideBearing:=aTrueTypeFont.GetGlyphBottomSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
-       Glyph^.BoundsMinX:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.XMin*GlyphMetaDataScaleFactor;
-       Glyph^.BoundsMinY:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.YMin*GlyphMetaDataScaleFactor;
-       Glyph^.BoundsMaxX:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.XMax*GlyphMetaDataScaleFactor;
-       Glyph^.BoundsMaxY:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.YMax*GlyphMetaDataScaleFactor;
+       Glyph^.Advance.x:=aTrueTypeFont.GetGlyphAdvanceWidth(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
+       Glyph^.Advance.y:=aTrueTypeFont.GetGlyphAdvanceHeight(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
+       Glyph^.SideBearings.Left:=aTrueTypeFont.GetGlyphLeftSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
+       Glyph^.SideBearings.Top:=aTrueTypeFont.GetGlyphTopSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
+       Glyph^.SideBearings.Right:=aTrueTypeFont.GetGlyphRightSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
+       Glyph^.SideBearings.Bottom:=aTrueTypeFont.GetGlyphBottomSideBearing(TTFGlyphIndex)*GlyphMetaDataScaleFactor;
+       Glyph^.Bounds.Left:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.XMin*GlyphMetaDataScaleFactor;
+       Glyph^.Bounds.Top:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.YMin*GlyphMetaDataScaleFactor;
+       Glyph^.Bounds.Right:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.XMax*GlyphMetaDataScaleFactor;
+       Glyph^.Bounds.Bottom:=aTrueTypeFont.Glyphs[TTFGlyphIndex].Bounds.YMax*GlyphMetaDataScaleFactor;
 
        GlyphBuffer.Points:=nil;
        PolygonBuffers[GlyphIndex].Commands:=nil;
@@ -2424,10 +2440,13 @@ begin
 
         aTrueTypeFont.GetPolygonBufferBounds(PolygonBuffers[GlyphIndex],x0,y0,x1,y1);
 
-        Glyph^.OffsetX:=(x0*GlyphRasterizationScaleFactor)-(VulkanFontDistanceFieldSpreadValue*2.0);
-        Glyph^.OffsetY:=(y0*GlyphRasterizationScaleFactor)-(VulkanFontDistanceFieldSpreadValue*2.0);
+        Glyph^.Offset.x:=(x0*GlyphRasterizationScaleFactor)-(VulkanFontDistanceFieldSpreadValue*2.0);
+        Glyph^.Offset.y:=(y0*GlyphRasterizationScaleFactor)-(VulkanFontDistanceFieldSpreadValue*2.0);
+
         Glyph^.Width:=Max(1,ceil(((x1-x0)*GlyphRasterizationScaleFactor)+(VulkanFontDistanceFieldSpreadValue*4.0)));
         Glyph^.Height:=Max(1,ceil(((y1-y0)*GlyphRasterizationScaleFactor)+(VulkanFontDistanceFieldSpreadValue*4.0)));
+
+        Glyph^.Size:=TpvVector2.Create(Glyph^.Width,Glyph^.Height);
 
        finally
         GlyphBuffer.Points:=nil;
@@ -2450,8 +2469,8 @@ begin
        for GlyphIndex:=0 to CountGlyphs-1 do begin
         Glyph:=@fGlyphs[GlyphIndex];
         GlyphDistanceField:=@GlyphDistanceFields[GlyphIndex];
-        GlyphDistanceField^.OffsetX:=-Glyph^.OffsetX;
-        GlyphDistanceField^.OffsetY:=-Glyph^.OffsetY;
+        GlyphDistanceField^.OffsetX:=-Glyph^.Offset.x;
+        GlyphDistanceField^.OffsetY:=-Glyph^.Offset.y;
         GlyphDistanceField^.Width:=Max(1,Glyph^.Width);
         GlyphDistanceField^.Height:=Max(1,Glyph^.Height);
         GlyphDistanceField^.Pixels:=nil;
@@ -2515,6 +2534,7 @@ begin
 
    // Convert kerning pair lookup data
    fKerningPairs:=nil;
+   fKerningPairVectors:=nil;
    CountKerningPairs:=0;
    try
     KerningPairHashMap:=TpvFontInt64HashMap.Create(-1);
@@ -2553,8 +2573,10 @@ begin
     if length(fKerningPairs)>1 then begin
      UntypedDirectIntroSort(@fKerningPairs[0],0,length(fKerningPairs)-1,SizeOf(TpvFontKerningPair),CompareVulkanFontKerningPairs);
     end;
+    SetLength(fKerningPairVectors,CountKerningPairs);
     for KerningPairIndex:=0 to length(fKerningPairs)-1 do begin
      KerningPair:=@fKerningPairs[KerningPairIndex];
+     fKerningPairVectors[KerningPairIndex]:=TpvVector2.Create(KerningPair^.Horizontal,KerningPair^.Vertical);
      KerningPairDoubleIndex:=CombineTwoUInt32IntoOneUInt64(KerningPair^.Left,KerningPair^.Right);
      fKerningPairHashMap.Add(KerningPairDoubleIndex,KerningPairIndex);
     end;
@@ -2578,6 +2600,8 @@ begin
  fCodePointGlyphPairs:=nil;
 
  fKerningPairs:=nil;
+
+ fKerningPairVectors:=nil;
 
  fCodePointToGlyphHashMap.Free;
 
@@ -2647,13 +2671,13 @@ begin
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
     if LastGlyph<0 then begin
-     result:=result+Glyph^.LeftSideBearing;
+     result:=result+Glyph^.SideBearings.Left;
     end;
-    NewWidth:=result+(Glyph^.BoundsMaxX-Glyph^.BoundsMinX);
+    NewWidth:=result+(Glyph^.Bounds.Right-Glyph^.Bounds.Left);
     if Width<NewWidth then begin
      Width:=NewWidth;
     end;
-    result:=result+Glyph^.AdvanceWidth;
+    result:=result+Glyph^.Advance.x;
    end;
   end else begin
    CurrentGlyph:=0;
@@ -2691,13 +2715,13 @@ begin
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
     if LastGlyph<0 then begin
-     result:=result+Glyph^.TopSideBearing;
+     result:=result+Glyph^.SideBearings.Top;
     end;
-    NewHeight:=result+(Glyph^.BoundsMaxY-Glyph^.BoundsMinY);
+    NewHeight:=result+(Glyph^.Bounds.Bottom-Glyph^.Bounds.Top);
     if Height<NewHeight then begin
      Height:=NewHeight;
     end;
-    result:=result+Glyph^.AdvanceHeight;
+    result:=result+Glyph^.Advance.y;
    end;
   end else begin
    CurrentGlyph:=0;
@@ -2716,15 +2740,12 @@ end;
 function TpvFont.TextSize(const aText:TpvUTF8String;const aSize:TpvFloat):TpvVector2;
 var TextIndex,CurrentGlyph,LastGlyph:TpvInt32;
     CurrentCodePoint:TpvUInt32;
-    Width,NewWidth,Height,NewHeight:TpvFloat;
+    Size:TpvVector2;
     Int64Value:TpvInt64;
     Glyph:PpvFontGlyph;
-    KerningPair:PpvFontKerningPair;
 begin
- result.x:=0.0;
- result.y:=0.0;
- Width:=0.0;
- Height:=0.0;
+ result:=TpvVector2.Null;
+ Size:=TpvVector2.Null;
  TextIndex:=1;
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
@@ -2734,25 +2755,14 @@ begin
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
-     KerningPair:=@fKerningPairs[Int64Value];
-     result.x:=result.x+KerningPair^.Horizontal;
-     result.y:=result.y+KerningPair^.Vertical;
+     result:=result+fKerningPairVectors[Int64Value];
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
     if LastGlyph<0 then begin
-     result.x:=result.x+Glyph^.LeftSideBearing;
-     result.y:=result.y+Glyph^.TopSideBearing;
+     result:=result+Glyph^.SideBearings.LeftTop;
     end;
-    NewWidth:=result.x+(Glyph^.BoundsMaxX-Glyph^.BoundsMinX);
-    if Width<NewWidth then begin
-     Width:=NewWidth;
-    end;
-    NewHeight:=result.y+(Glyph^.BoundsMaxY-Glyph^.BoundsMinY);
-    if Height<NewHeight then begin
-     Height:=NewHeight;
-    end;
-    result.x:=result.x+Glyph^.AdvanceWidth;
-    result.y:=result.y+Glyph^.AdvanceHeight;
+    Size:=Maximum(Size,result+(Glyph^.Bounds.RightBottom-Glyph^.Bounds.LeftTop));
+    result:=result+Glyph^.Advance;
    end;
   end else begin
    CurrentGlyph:=0;
@@ -2762,16 +2772,10 @@ begin
  if result.x=0 then begin
   result.x:=fMaxX-fMinX;
  end;
- if result.x<Width then begin
-  result.x:=Width;
- end;
  if result.y=0 then begin
   result.y:=fMaxY-fMinY;
  end;
- if result.y<Height then begin
-  result.y:=Height;
- end;
- result:=result*GetScaleFactor(aSize);
+ result:=Maximum(result,Size)*GetScaleFactor(aSize);
 end;
 
 function TpvFont.RowHeight(const Percent:TpvFloat):TpvFloat;
@@ -2781,15 +2785,13 @@ end;
 
 procedure TpvFont.GetTextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aRects:TpvRectArray;out aCountRects:TpvInt32);
 var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
-    x,y,ScaleFactor,RescaleFactor:TpvFloat;
+    ScaleFactor,RescaleFactor:TpvFloat;
     Int64Value:TpvInt64;
-    KerningPair:PpvFontKerningPair;
     Glyph:PpvFontGlyph;
-    Dest:TpvRect;
+    Position:TpvVector2;
 begin
  aCountRects:=0;
- x:=0.0;
- y:=0.0;
+ Position:=TpvVector2.Null;
  ScaleFactor:=GetScaleFactor(aSize);
  RescaleFactor:=ScaleFactor*fInverseBaseScaleFactor;
  TextIndex:=1;
@@ -2801,26 +2803,19 @@ begin
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
-     KerningPair:=@fKerningPairs[Int64Value];
-     x:=x+KerningPair^.Horizontal;
-     y:=y+KerningPair^.Vertical;
+     Position:=Position+fKerningPairVectors[Int64Value];
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
     if LastGlyph<0 then begin
-     x:=x+Glyph^.LeftSideBearing;
-     y:=y+Glyph^.TopSideBearing;
+     Position:=Position+Glyph^.SideBearings.LeftTop;
     end;
-    Dest.Left:=aPosition.x+(x*ScaleFactor)+(Glyph^.OffsetX*RescaleFactor);
-    Dest.Top:=aPosition.y+(y*ScaleFactor)+(Glyph^.OffsetY*RescaleFactor);
-    Dest.Right:=aPosition.x+(x*ScaleFactor)+((Glyph^.OffsetX+Glyph^.Width)*RescaleFactor);
-    Dest.Bottom:=aPosition.y+(y*ScaleFactor)+((Glyph^.OffsetY+Glyph^.Height)*RescaleFactor);
     if length(aRects)<=aCountRects then begin
      SetLength(aRects,(aCountRects+1)*2);
     end;
-    aRects[aCountRects]:=Dest;
+    aRects[aCountRects]:=TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
+                                                Glyph^.Size*RescaleFactor);
     inc(aCountRects);
-    x:=x+Glyph^.AdvanceWidth;
-    y:=y+Glyph^.AdvanceHeight;
+    Position:=Position+Glyph^.Advance;
    end;
   end else begin
    CurrentGlyph:=0;
@@ -2831,14 +2826,12 @@ end;
 
 procedure TpvFont.Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat);
 var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
-    x,y,ScaleFactor,RescaleFactor:TpvFloat;
+    ScaleFactor,RescaleFactor:TpvFloat;
     Int64Value:TpvInt64;
-    KerningPair:PpvFontKerningPair;
     Glyph:PpvFontGlyph;
-    Src,Dest:TpvRect;
+    Position:TpvVector2;
 begin
- x:=0.0;
- y:=0.0;
+ Position:=TpvVector2.Null;
  ScaleFactor:=GetScaleFactor(aSize);
  RescaleFactor:=ScaleFactor*fInverseBaseScaleFactor;
  TextIndex:=1;
@@ -2850,26 +2843,18 @@ begin
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
-     KerningPair:=@fKerningPairs[Int64Value];
-     x:=x+KerningPair^.Horizontal;
-     y:=y+KerningPair^.Vertical;
+     Position:=Position+fKerningPairVectors[Int64Value];
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
     if LastGlyph<0 then begin
-     x:=x+Glyph^.LeftSideBearing;
-     y:=y+Glyph^.TopSideBearing;
+     Position:=Position+Glyph^.SideBearings.LeftTop;
     end;
-    Src.Left:=0.0;
-    Src.Top:=0.0;
-    Src.Right:=Src.Left+Glyph^.Width;
-    Src.Bottom:=Src.Top+Glyph^.Height;
-    Dest.Left:=aPosition.x+(x*ScaleFactor)+(Glyph^.OffsetX*RescaleFactor);
-    Dest.Top:=aPosition.y+(y*ScaleFactor)+(Glyph^.OffsetY*RescaleFactor);
-    Dest.Right:=aPosition.x+(x*ScaleFactor)+((Glyph^.OffsetX+Glyph^.Width)*RescaleFactor);
-    Dest.Bottom:=aPosition.y+(y*ScaleFactor)+((Glyph^.OffsetY+Glyph^.Height)*RescaleFactor);
-    TpvCanvas(aCanvas).DrawFontGlyphSprite(Glyph^.Sprite,Src,Dest);
-    x:=x+Glyph^.AdvanceWidth;
-    y:=y+Glyph^.AdvanceHeight;
+    TpvCanvas(aCanvas).DrawFontGlyphSprite(Glyph^.Sprite,
+                                           TpvRect.CreateRelative(TpvVector2.Null,
+                                                                  Glyph^.Size),
+                                           TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
+                                                                  Glyph^.Size*RescaleFactor));
+    Position:=Position+Glyph^.Advance;
    end;
   end else begin
    CurrentGlyph:=0;
