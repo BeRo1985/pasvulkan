@@ -97,6 +97,12 @@ type TpvGUIObject=class;
 
      TpvGUIMenuItem=class;
 
+     TpvGUIMenu=class;
+
+     TpvGUIPopupMenu=class;
+
+     TpvGUIMainMenu=class;
+
      EpvGUIWidget=class(Exception);
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
@@ -258,8 +264,8 @@ type TpvGUIObject=class;
        function GetTextEditPreferredSize(const aTextEdit:TpvGUITextEdit):TpvVector2; virtual;
        procedure DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit); virtual;
       public
-       function GetMenuItemPreferredSize(const aMenuItem:TpvGUIMenuItem):TpvVector2; virtual;
-       procedure DrawMenuItem(const aCanvas:TpvCanvas;const aMenuItem:TpvGUIMenuItem); virtual;
+       function GetMenuPreferredSize(const aMenu:TpvGUIMenu):TpvVector2; virtual;
+       procedure DrawMenu(const aCanvas:TpvCanvas;const aMenu:TpvGUIMenu); virtual;
       public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
@@ -322,8 +328,8 @@ type TpvGUIObject=class;
        function GetTextEditPreferredSize(const aTextEdit:TpvGUITextEdit):TpvVector2; override;
        procedure DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit); override;
       public
-       function GetMenuItemPreferredSize(const aMenuItem:TpvGUIMenuItem):TpvVector2; virtual;
-       procedure DrawMenuItem(const aCanvas:TpvCanvas;const aMenuItem:TpvGUIMenuItem); virtual;
+       function GetMenuPreferredSize(const aMenu:TpvGUIMenu):TpvVector2; override;
+       procedure DrawMenu(const aCanvas:TpvCanvas;const aMenu:TpvGUIMenu); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -867,10 +873,32 @@ type TpvGUIObject=class;
        property TextTruncation;
      end;
 
-     TpvGUIMenuItem=class(TpvGUIWidget)
+     TpvGUIMenuItem=class(TpvGUIObject)
       private
        fCaption:TpvUTF8String;
        fShortcutHint:TpvUTF8String;
+       fIcon:TObject;
+       fIconHeight:TpvFloat;
+       fIconText:TpvUTF8String;
+       fIconFont:TpvFont;
+       fIconFontSize:TpvFloat;
+       fOnClick:TpvGUIOnEvent;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+      published
+       property Caption:TpvUTF8String read fCaption write fCaption;
+       property ShortcutHint:TpvUTF8String read fShortcutHint write fShortcutHint;
+       property Icon:TObject read fIcon write fIcon;
+       property IconHeight:TpvFloat read fIconHeight write fIconHeight;
+       property IconText:TpvUTF8String read fIconText write fIconText;
+       property IconFont:TpvFont read fIconFont write fIconFont;
+       property IconFontSize:TpvFloat read fIconFontSize write fIconFontSize;
+       property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
+     end;
+
+     TpvGUIMenu=class(TpvGUIWidget)
+      private
        function GetFontSize:TpvFloat; override;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
@@ -885,11 +913,6 @@ type TpvGUIObject=class;
        procedure Update; override;
        procedure Draw; override;
       published
-       property Caption:TpvUTF8String read fCaption write fCaption;
-       property ShortcutHint:TpvUTF8String read fShortcutHint write fShortcutHint;
-     end;
-
-     TpvGUIMenu=class(TpvGUIMenuItem)
      end;
 
      TpvGUIPopupMenu=class(TpvGUIMenu)
@@ -1340,12 +1363,12 @@ procedure TpvGUISkin.DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUI
 begin
 end;
 
-function TpvGUISkin.GetMenuItemPreferredSize(const aMenuItem:TpvGUIMenuItem):TpvVector2;
+function TpvGUISkin.GetMenuPreferredSize(const aMenu:TpvGUIMenu):TpvVector2;
 begin
- result:=GetWidgetPreferredSize(aMenuItem);
+ result:=GetWidgetPreferredSize(aMenu);
 end;
 
-procedure TpvGUISkin.DrawMenuItem(const aCanvas:TpvCanvas;const aMenuItem:TpvGUIMenuItem);
+procedure TpvGUISkin.DrawMenu(const aCanvas:TpvCanvas;const aMenu:TpvGUIMenu);
 begin
 end;
 
@@ -2412,12 +2435,12 @@ begin
 
 end;
 
-function TpvGUIDefaultVectorBasedSkin.GetMenuItemPreferredSize(const aMenuItem:TpvGUIMenuItem):TpvVector2;
+function TpvGUIDefaultVectorBasedSkin.GetMenuPreferredSize(const aMenu:TpvGUIMenu):TpvVector2;
 begin
- result:=GetWidgetPreferredSize(aMenuItem);
+ result:=GetWidgetPreferredSize(aMenu);
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawMenuItem(const aCanvas:TpvCanvas;const aMenuItem:TpvGUIMenuItem);
+procedure TpvGUIDefaultVectorBasedSkin.DrawMenu(const aCanvas:TpvCanvas;const aMenu:TpvGUIMenu);
 begin
 end;
 
@@ -5044,14 +5067,21 @@ begin
 
  inherited Create(aParent);
 
- Exclude(fWidgetFlags,pvgwfVisible);
-
- Include(fWidgetFlags,pvgwfTabStop);
-
  fCaption:='';
+
  fShortcutHint:='';
 
- fLayout:=TpvGUIBoxLayout.Create(self,pvglaMiddle,pvgloVertical,0.0,4.0);
+ fIcon:=nil;
+
+ fIconHeight:=0.0;
+
+ fIconText:='';
+
+ fIconFont:=nil;
+
+ fIconFontSize:=0.0;
+
+ fOnClick:=nil;
 
 end;
 
@@ -5062,17 +5092,37 @@ begin
 
 end;
 
-function TpvGUIMenuItem.Enter:boolean;
+constructor TpvGUIMenu.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ Exclude(fWidgetFlags,pvgwfVisible);
+
+ Include(fWidgetFlags,pvgwfTabStop);
+
+ fLayout:=TpvGUIBoxLayout.Create(self,pvglaMiddle,pvgloVertical,0.0,4.0);
+
+end;
+
+destructor TpvGUIMenu.Destroy;
+begin
+
+ inherited Destroy;
+
+end;
+
+function TpvGUIMenu.Enter:boolean;
 begin
  result:=inherited Enter;
 end;
 
-function TpvGUIMenuItem.Leave:boolean;
+function TpvGUIMenu.Leave:boolean;
 begin
  result:=inherited Leave;
 end;
 
-function TpvGUIMenuItem.GetFontSize:TpvFloat;
+function TpvGUIMenu.GetFontSize:TpvFloat;
 begin
  if assigned(Skin) and IsZero(fFontSize) then begin
   result:=Skin.fButtonFontSize;
@@ -5081,7 +5131,7 @@ begin
  end;
 end;
 
-function TpvGUIMenuItem.GetFontColor:TpvVector4;
+function TpvGUIMenu.GetFontColor:TpvVector4;
 begin
  if assigned(Skin) and IsZero(fFontColor.a) then begin
   result:=Skin.fButtonFontColor;
@@ -5090,12 +5140,12 @@ begin
  end;
 end;
 
-function TpvGUIMenuItem.GetPreferredSize:TpvVector2;
+function TpvGUIMenu.GetPreferredSize:TpvVector2;
 begin
- result:=Skin.GetMenuItemPreferredSize(self);
+ result:=Skin.GetMenuPreferredSize(self);
 end;
 
-function TpvGUIMenuItem.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+function TpvGUIMenu.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 var Position,OtherPosition:TpvInt32;
     TemporaryText:TpvUTF8String;
 begin
@@ -5122,7 +5172,7 @@ begin
  end;
 end;
 
-function TpvGUIMenuItem.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+function TpvGUIMenu.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 var Index:TpvInt32;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -5138,7 +5188,7 @@ begin
  end;
 end;
 
-function TpvGUIMenuItem.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+function TpvGUIMenu.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
@@ -5146,12 +5196,12 @@ begin
  end;
 end;
 
-procedure TpvGUIMenuItem.Update;
+procedure TpvGUIMenu.Update;
 begin
  inherited Update;
 end;
 
-procedure TpvGUIMenuItem.Draw;
+procedure TpvGUIMenu.Draw;
 begin
  inherited Draw;
 end;
