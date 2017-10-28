@@ -652,33 +652,33 @@ begin
    Command:=@PolygonBuffer.Commands[CommandIndex];
    case Command^.CommandType of
     pvTTF_PolygonCommandType_MoveTo:begin
-     VectorPath.MoveTo(Command^.Points[0].x*Scale,
-                       Command^.Points[0].y*Scale);
+     VectorPath.MoveTo(Command^.Points[0].x,
+                       Command^.Points[0].y);
     end;
     pvTTF_PolygonCommandType_LineTo:begin
-     VectorPath.LineTo(Command^.Points[0].x*Scale,
-                       Command^.Points[0].y*Scale);
+     VectorPath.LineTo(Command^.Points[0].x,
+                       Command^.Points[0].y);
     end;
     pvTTF_PolygonCommandType_QuadraticCurveTo:begin
-     VectorPath.QuadraticCurveTo(Command^.Points[0].x*Scale,
-                                 Command^.Points[0].y*Scale,
-                                 Command^.Points[1].x*Scale,
-                                 Command^.Points[1].y*Scale);
+     VectorPath.QuadraticCurveTo(Command^.Points[0].x,
+                                 Command^.Points[0].y,
+                                 Command^.Points[1].x,
+                                 Command^.Points[1].y);
     end;
     pvTTF_PolygonCommandType_CubicCurveTo:begin
-     VectorPath.CubicCurveTo(Command^.Points[0].x*Scale,
-                             Command^.Points[0].y*Scale,
-                             Command^.Points[1].x*Scale,
-                             Command^.Points[1].y*Scale,
-                             Command^.Points[2].x*Scale,
-                             Command^.Points[2].y*Scale);
+     VectorPath.CubicCurveTo(Command^.Points[0].x,
+                             Command^.Points[0].y,
+                             Command^.Points[1].x,
+                             Command^.Points[1].y,
+                             Command^.Points[2].x,
+                             Command^.Points[2].y);
     end;
     pvTTF_PolygonCommandType_Close:begin
      VectorPath.Close;
     end;
    end;
   end;
-  TpvDistanceField2DGenerator.Generate(DistanceField,VectorPath);
+  TpvDistanceField2DGenerator.Generate(DistanceField,VectorPath,Scale);
  finally
   VectorPath.Free;
  end;

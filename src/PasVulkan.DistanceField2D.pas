@@ -225,6 +225,7 @@ type PpvDistanceField2DPixel=^TpvDistanceField2DPixel;
       private
        fPointInPolygonPathSegments:TpvDistanceField2DPointInPolygonPathSegments;
        fVectorPath:TpvVectorPath;
+       fScale:TpvDouble;
        fDistanceField:PpvDistanceField2D;
        fMultiChannel:boolean;
        fShape:TpvDistanceField2DShape;
@@ -284,8 +285,8 @@ type PpvDistanceField2DPixel=^TpvDistanceField2DPixel;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       procedure Execute(var aDistanceField:TpvDistanceField2D;const aVectorPath:TpvVectorPath;const aMultiChannel:boolean=false);
-       class procedure Generate(var aDistanceField:TpvDistanceField2D;const aVectorPath:TpvVectorPath;const aMultiChannel:boolean=false); static;
+       procedure Execute(var aDistanceField:TpvDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aMultiChannel:boolean=false);
+       class procedure Generate(var aDistanceField:TpvDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aMultiChannel:boolean=false); static;
      end;
 
 implementation
@@ -1216,7 +1217,9 @@ var CommandIndex:TpvInt32;
     Command:TpvVectorPathCommand;
     Contour:PpvDistanceField2DPathContour;
     StartPoint,LastPoint,ControlPoint,OtherControlPoint,Point:TpvDistanceField2DDoublePrecisionPoint;
+    Scale:TpvDouble;
 begin
+ Scale:=fScale*DistanceField2DRasterizerToScreenScale;
  fShape.Contours:=nil;
  fShape.CountContours:=0;
  try
@@ -1238,23 +1241,23 @@ begin
       end;
       Contour:=@fShape.Contours[fShape.CountContours];
       inc(fShape.CountContours);
-      LastPoint.x:=(Command.x0*DistanceField2DRasterizerToScreenScale)+fDistanceField^.OffsetX;
-      LastPoint.y:=(Command.y0*DistanceField2DRasterizerToScreenScale)+fDistanceField^.OffsetY;
+      LastPoint.x:=(Command.x0*Scale)+fDistanceField^.OffsetX;
+      LastPoint.y:=(Command.y0*Scale)+fDistanceField^.OffsetY;
       StartPoint:=LastPoint;
      end;
      pvvpctLineTo:begin
-      Point.x:=(Command.x0*DistanceField2DRasterizerToScreenScale)+fDistanceField^.OffsetX;
-      Point.y:=(Command.y0*DistanceField2DRasterizerToScreenScale)+fDistanceField^.OffsetY;
+      Point.x:=(Command.x0*Scale)+fDistanceField^.OffsetX;
+      Point.y:=(Command.y0*Scale)+fDistanceField^.OffsetY;
       if assigned(Contour) and not (SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) then begin
        AddLineToPathSegmentArray(Contour^,[LastPoint,Point]);
       end;
       LastPoint:=Point;
      end;
      pvvpctQuadraticCurveTo:begin
-      ControlPoint.x:=(Command.x0*DistanceField2DRasterizerToScreenScale)+fDistanceField^.OffsetX;
-      ControlPoint.y:=(Command.y0*DistanceField2DRasterizerToScreenScale)+fDistanceField^.OffsetY;
-      Point.x:=(Command.x1*DistanceField2DRasterizerToScreenScale)+fDistanceField^.OffsetX;
-      Point.y:=(Command.y1*DistanceField2DRasterizerToScreenScale)+fDistanceField^.OffsetY;
+      ControlPoint.x:=(Command.x0*Scale)+fDistanceField^.OffsetX;
+      ControlPoint.y:=(Command.y0*Scale)+fDistanceField^.OffsetY;
+      Point.x:=(Command.x1*Scale)+fDistanceField^.OffsetX;
+      Point.y:=(Command.y1*Scale)+fDistanceField^.OffsetY;
       if assigned(Contour) and not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
                                     (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y))) then begin
        if DoSubdivideCurvesIntoLines then begin
@@ -1266,12 +1269,12 @@ begin
       LastPoint:=Point;
      end;
      pvvpctCubicCurveTo:begin
-      ControlPoint.x:=(Command.x0*DistanceField2DRasterizerToScreenScale)+fDistanceField^.OffsetX;
-      ControlPoint.y:=(Command.y0*DistanceField2DRasterizerToScreenScale)+fDistanceField^.OffsetY;
-      OtherControlPoint.x:=(Command.x1*DistanceField2DRasterizerToScreenScale)+fDistanceField^.OffsetX;
-      OtherControlPoint.y:=(Command.y1*DistanceField2DRasterizerToScreenScale)+fDistanceField^.OffsetY;
-      Point.x:=(Command.x2*DistanceField2DRasterizerToScreenScale)+fDistanceField^.OffsetX;
-      Point.y:=(Command.y2*DistanceField2DRasterizerToScreenScale)+fDistanceField^.OffsetY;
+      ControlPoint.x:=(Command.x0*Scale)+fDistanceField^.OffsetX;
+      ControlPoint.y:=(Command.y0*Scale)+fDistanceField^.OffsetY;
+      OtherControlPoint.x:=(Command.x1*Scale)+fDistanceField^.OffsetX;
+      OtherControlPoint.y:=(Command.y1*Scale)+fDistanceField^.OffsetY;
+      Point.x:=(Command.x2*Scale)+fDistanceField^.OffsetX;
+      Point.y:=(Command.y2*Scale)+fDistanceField^.OffsetY;
       if assigned(Contour) and not ((SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) and
                                     (SameValue(LastPoint.x,OtherControlPoint.x) and SameValue(LastPoint.y,OtherControlPoint.y)) and
                                     (SameValue(LastPoint.x,ControlPoint.x) and SameValue(LastPoint.y,ControlPoint.y))) then begin
@@ -1279,7 +1282,7 @@ begin
         AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
        end else begin
         AddCubicBezierCurveAsSubdividedLinesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
-//       AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
+//      AddCubicBezierCurveAsSubdividedQuadraticBezierCurvesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,OtherControlPoint,Point]);
        end;
       end;
       LastPoint:=Point;
@@ -2000,7 +2003,7 @@ begin
 
 end;
 
-procedure TpvDistanceField2DGenerator.Execute(var aDistanceField:TpvDistanceField2D;const aVectorPath:TpvVectorPath;const aMultiChannel:boolean=false);
+procedure TpvDistanceField2DGenerator.Execute(var aDistanceField:TpvDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aMultiChannel:boolean=false);
 var TryIteration:TpvInt32;
     PasMPInstance:TPasMP;
 begin
@@ -2010,6 +2013,8 @@ begin
  fDistanceField:=@aDistanceField;
 
  fVectorPath:=aVectorPath;
+
+ fScale:=aScale;
 
  fMultiChannel:=aMultiChannel;
 
@@ -2071,12 +2076,12 @@ begin
 
 end;
 
-class procedure TpvDistanceField2DGenerator.Generate(var aDistanceField:TpvDistanceField2D;const aVectorPath:TpvVectorPath;const aMultiChannel:boolean=false);
+class procedure TpvDistanceField2DGenerator.Generate(var aDistanceField:TpvDistanceField2D;const aVectorPath:TpvVectorPath;const aScale:TpvDouble=1.0;const aMultiChannel:boolean=false);
 var Generator:TpvDistanceField2DGenerator;
 begin
  Generator:=TpvDistanceField2DGenerator.Create;
  try
-  Generator.Execute(aDistanceField,aVectorPath,aMultiChannel);
+  Generator.Execute(aDistanceField,aVectorPath,aScale,aMultiChannel);
  finally
   Generator.Free;
  end;
