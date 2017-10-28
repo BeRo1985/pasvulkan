@@ -644,7 +644,6 @@ procedure TpvFont.GenerateSignedDistanceField(var DistanceField:TpvDistanceField
 const Scale=1.0/256.0;
 var CommandIndex:TpvInt32;
     Command:PpvTrueTypeFontPolygonCommand;
-    DataGenerator:TpvDistanceField2DGenerator;
     VectorPath:TpvVectorPath;
 begin
  VectorPath:=TpvVectorPath.Create;
@@ -679,12 +678,7 @@ begin
     end;
    end;
   end;
-  DataGenerator:=TpvDistanceField2DGenerator.Create;
-  try
-   DataGenerator.DoIt(DistanceField,VectorPath);
-  finally
-   DataGenerator.Free;
-  end;
+  TpvDistanceField2DGenerator.Generate(DistanceField,VectorPath);
  finally
   VectorPath.Free;
  end;

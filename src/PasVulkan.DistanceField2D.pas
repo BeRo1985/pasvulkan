@@ -284,7 +284,8 @@ type PpvDistanceField2DPixel=^TpvDistanceField2DPixel;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       procedure DoIt(var aDistanceField:TpvDistanceField2D;const aVectorPath:TpvVectorPath;const aMultiChannel:boolean=false);
+       procedure Execute(var aDistanceField:TpvDistanceField2D;const aVectorPath:TpvVectorPath;const aMultiChannel:boolean=false);
+       class procedure Generate(var aDistanceField:TpvDistanceField2D;const aVectorPath:TpvVectorPath;const aMultiChannel:boolean=false); static;
      end;
 
 implementation
@@ -1999,7 +2000,7 @@ begin
 
 end;
 
-procedure TpvDistanceField2DGenerator.DoIt(var aDistanceField:TpvDistanceField2D;const aVectorPath:TpvVectorPath;const aMultiChannel:boolean=false);
+procedure TpvDistanceField2DGenerator.Execute(var aDistanceField:TpvDistanceField2D;const aVectorPath:TpvVectorPath;const aMultiChannel:boolean=false);
 var TryIteration:TpvInt32;
     PasMPInstance:TPasMP;
 begin
@@ -2068,6 +2069,17 @@ begin
 
  end;
 
+end;
+
+class procedure TpvDistanceField2DGenerator.Generate(var aDistanceField:TpvDistanceField2D;const aVectorPath:TpvVectorPath;const aMultiChannel:boolean=false);
+var Generator:TpvDistanceField2DGenerator;
+begin
+ Generator:=TpvDistanceField2DGenerator.Create;
+ try
+  Generator.Execute(aDistanceField,aVectorPath,aMultiChannel);
+ finally
+  Generator.Free;
+ end;
 end;
 
 end.
