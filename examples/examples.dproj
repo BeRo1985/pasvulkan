@@ -227,7 +227,7 @@
         <DCCReference Include="..\src\PasVulkan.Framework.pas"/>
         <DCCReference Include="..\src\PasVulkan.Sprites.pas"/>
         <DCCReference Include="..\src\PasVulkan.Canvas.pas"/>
-        <DCCReference Include="..\src\PasVulkan.DistanceField2D.pas"/>
+        <DCCReference Include="..\src\PasVulkan.SignedDistanceField2D.pas"/>
         <DCCReference Include="..\src\PasVulkan.Font.pas"/>
         <DCCReference Include="..\src\PasVulkan.Android.pas"/>
         <DCCReference Include="..\src\PasVulkan.SDL2.pas"/>

@@ -49,7 +49,7 @@ uses
   PasVulkan.Framework in '..\src\PasVulkan.Framework.pas',
   PasVulkan.Sprites in '..\src\PasVulkan.Sprites.pas',
   PasVulkan.Canvas in '..\src\PasVulkan.Canvas.pas',
-  PasVulkan.DistanceField2D in '..\src\PasVulkan.DistanceField2D.pas',
+  PasVulkan.SignedDistanceField2D in '..\src\PasVulkan.SignedDistanceField2D.pas',
   PasVulkan.Font in '..\src\PasVulkan.Font.pas',
   PasVulkan.Android in '..\src\PasVulkan.Android.pas',
   PasVulkan.SDL2 in '..\src\PasVulkan.SDL2.pas',
