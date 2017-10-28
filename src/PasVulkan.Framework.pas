@@ -98,7 +98,7 @@ var VulkanMinimumMemoryChunkSize:TVkDeviceSize=TVkDeviceSize(1) shl 24; // 16 MB
 const VULKAN_SPRITEATLASTEXTURE_WIDTH=2048;
       VULKAN_SPRITEATLASTEXTURE_HEIGHT=2048;
 
-      VulkanFontDistanceFieldSpreadValue=4;
+      VulkanDistanceField2DSpreadValue=4;
 
 type EpvVulkanException=class(Exception);
 

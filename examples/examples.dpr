@@ -23,7 +23,7 @@
 uses
   {$if defined(fpc) and defined(Unix)}
   cthreads,
-  {$ifend}
+  {$ifend }
   SysUtils,
   Classes,
   PasDblStrUtils in '..\externals\pasdblstrutils\src\PasDblStrUtils.pas',
@@ -49,6 +49,7 @@ uses
   PasVulkan.Framework in '..\src\PasVulkan.Framework.pas',
   PasVulkan.Sprites in '..\src\PasVulkan.Sprites.pas',
   PasVulkan.Canvas in '..\src\PasVulkan.Canvas.pas',
+  PasVulkan.DistanceField2D in '..\src\PasVulkan.DistanceField2D.pas',
   PasVulkan.Font in '..\src\PasVulkan.Font.pas',
   PasVulkan.Android in '..\src\PasVulkan.Android.pas',
   PasVulkan.SDL2 in '..\src\PasVulkan.SDL2.pas',

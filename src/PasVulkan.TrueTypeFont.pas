@@ -534,11 +534,11 @@ type EpvTrueTypeFont=class(Exception);
 
      TpvTrueTypeFontPolygonCommandType=
       (
-       pvTTF_PolygonCommandType_MOVETO,
-       pvTTF_PolygonCommandType_LINETO,
-       pvTTF_PolygonCommandType_QUADRATICCURVETO,
-       pvTTF_PolygonCommandType_CUBICCURVETO,
-       pvTTF_PolygonCommandType_CLOSE
+       pvTTF_PolygonCommandType_MoveTo,
+       pvTTF_PolygonCommandType_LineTo,
+       pvTTF_PolygonCommandType_QuadraticCurveTo,
+       pvTTF_PolygonCommandType_CubicCurveTo,
+       pvTTF_PolygonCommandType_Close
       );
 
      TpvTrueTypeFontPolygonCommandPoint=packed record
@@ -6377,7 +6377,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
     SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
-   Command^.CommandType:=pvTTF_PolygonCommandType_MOVETO;
+   Command^.CommandType:=pvTTF_PolygonCommandType_MoveTo;
    Command^.Points[0].x:=aX*CFFScaleFactor;
    Command^.Points[0].y:=aY*CFFScaleFactor;
    GlyphMinX:=Min(GlyphMinX,aX);
@@ -6396,7 +6396,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
     SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
-   Command^.CommandType:=pvTTF_PolygonCommandType_LINETO;
+   Command^.CommandType:=pvTTF_PolygonCommandType_LineTo;
    Command^.Points[0].x:=aX*CFFScaleFactor;
    Command^.Points[0].y:=aY*CFFScaleFactor;
    GlyphMinX:=Min(GlyphMinX,aX);
@@ -6417,7 +6417,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
     SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
-   Command^.CommandType:=pvTTF_PolygonCommandType_CUBICCURVETO;
+   Command^.CommandType:=pvTTF_PolygonCommandType_CubicCurveTo;
    Command^.Points[0].x:=aC0X*CFFScaleFactor;
    Command^.Points[0].y:=aC0Y*CFFScaleFactor;
    Command^.Points[1].x:=aC1X*CFFScaleFactor;
@@ -6447,7 +6447,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
     SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
-   Command^.CommandType:=pvTTF_PolygonCommandType_CLOSE;
+   Command^.CommandType:=pvTTF_PolygonCommandType_Close;
   end;
   function Execute(const CodePosition,CodeSize:TpvInt32):TpvInt32;
   var Position,UntilExcludingPosition,CodeIndex:TpvInt32;
@@ -10055,7 +10055,7 @@ begin
    if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
     SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
    end;
-   PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_MOVETO;
+   PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_MoveTo;
    PolygonBuffer.Commands[CommandIndex].Points[0].x:=fx;
    PolygonBuffer.Commands[CommandIndex].Points[0].y:=fy;
    for j:=StartPointIndex+1 to GlyphBuffer.EndPointIndices[i] do begin
@@ -10069,7 +10069,7 @@ begin
       if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
        SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
       end;
-      PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_LINETO;
+      PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_LineTo;
       PolygonBuffer.Commands[CommandIndex].Points[0].x:=x;
       PolygonBuffer.Commands[CommandIndex].Points[0].y:=y;
      end else begin
@@ -10084,7 +10084,7 @@ begin
       if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
        SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
       end;
-      PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QUADRATICCURVETO;
+      PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QuadraticCurveTo;
       PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
       PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
       PolygonBuffer.Commands[CommandIndex].Points[1].x:=x;
@@ -10097,7 +10097,7 @@ begin
       if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
        SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
       end;
-      PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QUADRATICCURVETO;
+      PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QuadraticCurveTo;
       PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
       PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
       PolygonBuffer.Commands[CommandIndex].Points[1].x:=MiddleX;
@@ -10114,7 +10114,7 @@ begin
      if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
       SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
      end;
-     PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_LINETO;
+     PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_LineTo;
      PolygonBuffer.Commands[CommandIndex].Points[0].x:=fx;
      PolygonBuffer.Commands[CommandIndex].Points[0].y:=fy;
     end else begin
@@ -10123,7 +10123,7 @@ begin
      if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
       SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
      end;
-     PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QUADRATICCURVETO;
+     PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QuadraticCurveTo;
      PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
      PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
      PolygonBuffer.Commands[CommandIndex].Points[1].x:=fx;
@@ -10133,7 +10133,7 @@ begin
     if not OnCurve then begin
      CommandIndex:=length(PolygonBuffer.Commands);
      SetLength(PolygonBuffer.Commands,CommandIndex+1);
-     PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QUADRATICCURVETO;
+     PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QuadraticCurveTo;
      PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
      PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
      PolygonBuffer.Commands[CommandIndex].Points[1].x:=lx;
@@ -10148,7 +10148,7 @@ begin
  if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
   SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
  end;
- PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_CLOSE;
+ PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_Close;
  PolygonBuffer.CountCommands:=CommandCount;
 end;
 
@@ -10178,21 +10178,21 @@ begin
     Command:=@PolygonBuffer.Commands[BaseIndex+CommandIndex];
     Command^:=Glyph^.PostScriptPolygon.Commands[CommandIndex];
     case Command^.CommandType of
-     pvTTF_PolygonCommandType_MOVETO:begin
+     pvTTF_PolygonCommandType_MoveTo:begin
       Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
       Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
      end;
-     pvTTF_PolygonCommandType_LINETO:begin
+     pvTTF_PolygonCommandType_LineTo:begin
       Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
       Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
      end;
-     pvTTF_PolygonCommandType_QUADRATICCURVETO:begin
+     pvTTF_PolygonCommandType_QuadraticCurveTo:begin
       Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
       Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
       Command^.Points[1].x:=FloatScale(Command^.Points[1].x);
       Command^.Points[1].y:=FloatScale(Command^.Points[1].y);
      end;
-     pvTTF_PolygonCommandType_CUBICCURVETO:begin
+     pvTTF_PolygonCommandType_CubicCurveTo:begin
       Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
       Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
       Command^.Points[1].x:=FloatScale(Command^.Points[1].x);
@@ -10200,7 +10200,7 @@ begin
       Command^.Points[2].x:=FloatScale(Command^.Points[2].x);
       Command^.Points[2].y:=FloatScale(Command^.Points[2].y);
      end;
-     pvTTF_PolygonCommandType_CLOSE:begin
+     pvTTF_PolygonCommandType_Close:begin
      end;
     end;
    end;
@@ -10540,21 +10540,21 @@ begin
  fPolygonBuffer.CountCommands:=0;
  for CommandIndex:=0 to PolygonBuffer.CountCommands-1 do begin
   case PolygonBuffer.Commands[CommandIndex].CommandType of
-   pvTTF_PolygonCommandType_MOVETO,pvTTF_PolygonCommandType_LINETO:begin
+   pvTTF_PolygonCommandType_MoveTo,pvTTF_PolygonCommandType_LineTo:begin
     PointAt(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y);
    end;
-   pvTTF_PolygonCommandType_QUADRATICCURVETO:begin
+   pvTTF_PolygonCommandType_QuadraticCurveTo:begin
     QuadraticCurveTo(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y,
                      PolygonBuffer.Commands[CommandIndex].Points[1].x,PolygonBuffer.Commands[CommandIndex].Points[1].y,
                      Tolerance,MaxLevel);
    end;
-   pvTTF_PolygonCommandType_CUBICCURVETO:begin
+   pvTTF_PolygonCommandType_CubicCurveTo:begin
     CubicCurveTo(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y,
                  PolygonBuffer.Commands[CommandIndex].Points[1].x,PolygonBuffer.Commands[CommandIndex].Points[1].y,
                  PolygonBuffer.Commands[CommandIndex].Points[2].x,PolygonBuffer.Commands[CommandIndex].Points[2].y,
                  Tolerance,MaxLevel);
    end;
-   pvTTF_PolygonCommandType_CLOSE:begin
+   pvTTF_PolygonCommandType_Close:begin
    end;
   end;
  end;
@@ -10567,22 +10567,22 @@ begin
   fPolygonBuffer.CountCommands:=0;
   for CommandIndex:=0 to PolygonBuffer.CountCommands-1 do begin
    case PolygonBuffer.Commands[CommandIndex].CommandType of
-    pvTTF_PolygonCommandType_MOVETO:begin
+    pvTTF_PolygonCommandType_MoveTo:begin
      Rasterizer.MoveTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
                        round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y));
     end;
-    pvTTF_PolygonCommandType_LINETO:begin
+    pvTTF_PolygonCommandType_LineTo:begin
      Rasterizer.LineTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
                        round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y));
     end;
-    pvTTF_PolygonCommandType_QUADRATICCURVETO:begin
+    pvTTF_PolygonCommandType_QuadraticCurveTo:begin
      Rasterizer.QuadraticCurveTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
                                  round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y),
                                  round(x+PolygonBuffer.Commands[CommandIndex].Points[1].x),
                                  round(y+PolygonBuffer.Commands[CommandIndex].Points[1].y),
                                  Tolerance,MaxLevel);
     end;
-    pvTTF_PolygonCommandType_CUBICCURVETO:begin
+    pvTTF_PolygonCommandType_CubicCurveTo:begin
      Rasterizer.CubicCurveTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
                              round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y),
                              round(x+PolygonBuffer.Commands[CommandIndex].Points[1].x),
@@ -10591,7 +10591,7 @@ begin
                              round(y+PolygonBuffer.Commands[CommandIndex].Points[2].y),
                              Tolerance,MaxLevel);
     end;
-    pvTTF_PolygonCommandType_CLOSE:begin
+    pvTTF_PolygonCommandType_Close:begin
      Rasterizer.Close;
     end;
    end;

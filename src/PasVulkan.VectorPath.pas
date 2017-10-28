@@ -110,9 +110,18 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
 
      TpvVectorPathCommandList=class(TObjectList<TpvVectorPathCommand>);
 
+     PpvVectorPathFillRule=^TpvVectorPathFillRule;
+     TpvVectorPathFillRule=
+      (
+       pvvpfrNonZero,
+       pvvpfrEvenOdd
+      );
+
      TpvVectorPath=class
       private
        fCommands:TpvVectorPathCommandList;
+       fSize:TpvVector2;
+       fFillRule:TpvVectorPathFillRule;
       public
        constructor Create; reintroduce;
        constructor CreateFromSVGPath(const aCommands:TpvRawByteString);
@@ -123,7 +132,9 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
        procedure CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble);
        procedure Close;
        function GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
+       property Size:TpvVector2 read fSize write fSize;
       published
+       property FillRule:TpvVectorPathFillRule read fFillRule write fFillRule;
        property Commands:TpvVectorPathCommandList read fCommands;
      end;
 
@@ -151,6 +162,8 @@ constructor TpvVectorPath.Create;
 begin
  inherited Create;
  fCommands:=TpvVectorPathCommandList.Create(true);
+ fSize:=TpvVector2.Null;
+ fFillRule:=pvvpfrEvenOdd;
 end;
 
 constructor TpvVectorPath.CreateFromSVGPath(const aCommands:TpvRawByteString);
