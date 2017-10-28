@@ -85,7 +85,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      TpvCanvasRenderingMode=
       (
        pvcrmNormal=0,
-       pvcrmFont=1
+       pvcrmSignedDistanceField=1
       );
 
      PpvCanvasBlendingMode=^TpvCanvasBlendingMode;
@@ -656,7 +656,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
       private
        function DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aRenderingMode:TpvCanvasRenderingMode):TpvCanvas; overload;
       public
-       function DrawFontGlyphSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas;
+       function DrawSignedDistanceFieldSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas;
       public
        function DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas; overload;
        function DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotationAngle:TpvFloat):TpvCanvas; overload;
@@ -4428,9 +4428,9 @@ begin
  result:=self;
 end;
 
-function TpvCanvas.DrawFontGlyphSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas;
+function TpvCanvas.DrawSignedDistanceFieldSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas;
 begin
- result:=DrawSprite(aSprite,aSrc,aDest,pvcrmFont);
+ result:=DrawSprite(aSprite,aSrc,aDest,pvcrmSignedDistanceField);
 end;
 
 function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas;

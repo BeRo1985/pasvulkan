@@ -901,7 +901,7 @@ begin
     if LastGlyph<0 then begin
      Position:=Position+Glyph^.SideBearings.LeftTop;
     end;
-    TpvCanvas(aCanvas).DrawFontGlyphSprite(Glyph^.Sprite,
+    TpvCanvas(aCanvas).DrawSignedDistanceFieldSprite(Glyph^.Sprite,
                                            TpvRect.CreateRelative(TpvVector2.Null,
                                                                   Glyph^.Size),
                                            TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
