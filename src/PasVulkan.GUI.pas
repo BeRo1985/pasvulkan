@@ -2241,8 +2241,8 @@ begin
                       TpvRect.CreateRelative(Offset+IconRect.LeftTop,IconRect.Size));
   end else if aButton.fIcon is TpvVulkanTexture then begin
    aCanvas.DrawTexturedRectangle(TpvVulkanTexture(aButton.fIcon),
-                                 Offset+IconRect.LeftTop+(TpvVector2.Create(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5),
-                                 TpvVector2.Create(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5);
+                                 Offset+IconRect.LeftTop+((IconRect.RightBottom-IconRect.LeftTop)*0.5),
+                                 (IconRect.RightBottom-IconRect.LeftTop)*0.5);
   end;
  end;
  if aButton.Enabled then begin
