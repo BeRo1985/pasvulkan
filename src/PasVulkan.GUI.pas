@@ -143,6 +143,16 @@ type TpvGUIObject=class;
        property ReferenceCounter:TpvInt32 read fReferenceCounter write fReferenceCounter;
      end;
 
+     TpvGUIObjectHolder=class(TpvGUIObject)
+      private
+       fHoldedObject:TObject;
+      public
+       constructor Create(const aParent:TpvGUIObject;const aHoldedObject:TObject=nil); reintroduce; virtual;
+       destructor Destroy; override;
+      published
+       property HoldedObject:TObject read fHoldedObject write fHoldedObject;
+     end;
+
      PpvGUITextAlignment=^TpvGUITextAlignment;
      TpvGUITextAlignment=
       (
@@ -1131,6 +1141,21 @@ begin
   fParent.fChildren.Extract(self);
  end;
  inherited BeforeDestruction;
+end;
+
+constructor TpvGUIObjectHolder.Create(const aParent:TpvGUIObject;const aHoldedObject:TObject=nil);
+begin
+ inherited Create(aParent);
+ fHoldedObject:=aHoldedObject;
+end;
+
+destructor TpvGUIObjectHolder.Destroy;
+begin
+ try
+  inherited Destroy;
+ finally
+  FreeAndNil(fHoldedObject);
+ end;
 end;
 
 function TpvGUILayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;

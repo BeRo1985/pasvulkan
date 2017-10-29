@@ -500,7 +500,6 @@ begin
         GlyphDistanceFieldJob^.OffsetY:=-Glyph^.Offset.y;
         GlyphDistanceFieldJob^.MultiChannel:=false;
         GlyphDistanceFieldJob^.PolygonBuffer:=PolygonBuffers[GlyphIndex];
-//      GenerateSignedDistanceField(GlyphDistanceField^,false,PolygonBuffers[GlyphIndex],pvTTF_PolygonWindingRule_NONZERO);
        end;
 
        if CountGlyphs>0 then begin
