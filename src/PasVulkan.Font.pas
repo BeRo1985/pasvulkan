@@ -151,6 +151,8 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
      PpvFontSignedDistanceFieldJob=^TpvFontSignedDistanceFieldJob;
      TpvFontSignedDistanceFieldJob=record
       DistanceField:PpvSignedDistanceField2D;
+      OffsetX:TpvDouble;
+      OffsetY:TpvDouble;
       MultiChannel:boolean;
       PolygonBuffer:TpvTrueTypeFontPolygonBuffer;
      end;
@@ -183,7 +185,7 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        fCodePointToGlyphHashMap:TpvFontInt64HashMap;
        fKerningPairHashMap:TpvFontInt64HashMap;
        fSignedDistanceFieldJobs:TpvFontSignedDistanceFieldJobs;
-       procedure GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32);
+       procedure GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aOffsetX,aOffsetY:TpvDouble;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32);
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TVkPointer;const FromIndex,ToIndex:TPasMPNativeInt);
       public
        constructor Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0); reintroduce;
@@ -488,14 +490,14 @@ begin
        for GlyphIndex:=0 to CountGlyphs-1 do begin
         Glyph:=@fGlyphs[GlyphIndex];
         GlyphDistanceField:=@GlyphDistanceFields[GlyphIndex];
-        GlyphDistanceField^.OffsetX:=-Glyph^.Offset.x;
-        GlyphDistanceField^.OffsetY:=-Glyph^.Offset.y;
         GlyphDistanceField^.Width:=Max(1,Glyph^.Width);
         GlyphDistanceField^.Height:=Max(1,Glyph^.Height);
         GlyphDistanceField^.Pixels:=nil;
         SetLength(GlyphDistanceField^.Pixels,GlyphDistanceField^.Width*GlyphDistanceField^.Height);
         GlyphDistanceFieldJob:=@fSignedDistanceFieldJobs[GlyphIndex];
         GlyphDistanceFieldJob^.DistanceField:=GlyphDistanceField;
+        GlyphDistanceFieldJob^.OffsetX:=-Glyph^.Offset.x;
+        GlyphDistanceFieldJob^.OffsetY:=-Glyph^.Offset.y;
         GlyphDistanceFieldJob^.MultiChannel:=false;
         GlyphDistanceFieldJob^.PolygonBuffer:=PolygonBuffers[GlyphIndex];
 //      GenerateSignedDistanceField(GlyphDistanceField^,false,PolygonBuffers[GlyphIndex],pvTTF_PolygonWindingRule_NONZERO);
@@ -641,7 +643,7 @@ begin
  end;
 end;
 
-procedure TpvFont.GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32);
+procedure TpvFont.GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aOffsetX,aOffsetY:TpvDouble;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32);
 const Scale=1.0/256.0;
 var CommandIndex:TpvInt32;
     Command:PpvTrueTypeFontPolygonCommand;
@@ -684,7 +686,7 @@ begin
     end;
    end;
   end;
-  TpvSignedDistanceField2DGenerator.Generate(aSignedDistanceField,VectorPath,Scale);
+  TpvSignedDistanceField2DGenerator.Generate(aSignedDistanceField,VectorPath,Scale,aOffsetX,aOffsetY);
  finally
   VectorPath.Free;
  end;
@@ -697,7 +699,7 @@ begin
  Index:=FromIndex;
  while Index<=ToIndex do begin
   JobData:=@fSignedDistanceFieldJobs[Index];
-  GenerateSignedDistanceField(JobData^.DistanceField^,JobData^.MultiChannel,JobData^.PolygonBuffer,pvTTF_PolygonWindingRule_NONZERO);
+  GenerateSignedDistanceField(JobData^.DistanceField^,JobData^.OffsetX,JobData^.OffsetY,JobData^.MultiChannel,JobData^.PolygonBuffer,pvTTF_PolygonWindingRule_NONZERO);
   inc(Index);
  end;
 end;

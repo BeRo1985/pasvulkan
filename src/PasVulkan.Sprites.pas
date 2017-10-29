@@ -1299,12 +1299,10 @@ var SignedDistanceField:TpvSignedDistanceField2D;
 begin
  SignedDistanceField.Pixels:=nil;
  try
-  SignedDistanceField.OffsetX:=aOffsetX;
-  SignedDistanceField.OffsetY:=aOffsetY;
   SignedDistanceField.Width:=aImageWidth;
   SignedDistanceField.Height:=aImageHeight;
   SetLength(SignedDistanceField.Pixels,aImageWidth*aImageHeight);
-  TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,aVectorPath,aScale);
+  TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,aVectorPath,aScale,aOffsetX,aOffsetY);
   result:=LoadRawSprite(aName,@SignedDistanceField.Pixels[0],aImageWidth,aImageHeight,aAutomaticTrim,aPadding);
   result.SignedDistanceField:=true;
  finally
