@@ -532,6 +532,7 @@ begin
                                                    Glyph^.Width,
                                                    Glyph^.Height,
                                                    false);
+         Glyph^.Sprite.SignedDistanceField:=true;
         end;
        end;
 
@@ -901,11 +902,11 @@ begin
     if LastGlyph<0 then begin
      Position:=Position+Glyph^.SideBearings.LeftTop;
     end;
-    TpvCanvas(aCanvas).DrawSignedDistanceFieldSprite(Glyph^.Sprite,
-                                           TpvRect.CreateRelative(TpvVector2.Null,
-                                                                  Glyph^.Size),
-                                           TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
-                                                                  Glyph^.Size*RescaleFactor));
+    TpvCanvas(aCanvas).DrawSprite(Glyph^.Sprite,
+                                  TpvRect.CreateRelative(TpvVector2.Null,
+                                                         Glyph^.Size),
+                                  TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
+                                                         Glyph^.Size*RescaleFactor));
     Position:=Position+Glyph^.Advance;
    end;
   end else begin

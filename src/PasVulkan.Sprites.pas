@@ -188,26 +188,59 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
 
      TpvSpriteAtlasArrayTextures=array of TpvSpriteAtlasArrayTexture;
 
+     PpvSpriteFlag=^TpvSpriteFlag;
+     TpvSpriteFlag=
+      (
+       pvsfSignedDistanceField,
+       pvsfRotated
+      );
+
+     PpvSpriteFlags=^TpvSpriteFlags;
+     TpvSpriteFlags=set of TpvSpriteFlag;
+
      TpvSprite=class
+      private
+       fName:TpvRawByteString;
+       fFlags:TpvSpriteFlags;
+       fArrayTexture:TpvSpriteAtlasArrayTexture;
+       fX:TpvInt32;
+       fY:TpvInt32;
+       fLayer:TpvInt32;
+       fWidth:TpvInt32;
+       fHeight:TpvInt32;
+       fTrimmedX:TpvInt32;
+       fTrimmedY:TpvInt32;
+       fTrimmedWidth:TpvInt32;
+       fTrimmedHeight:TpvInt32;
+       fOffsetX:TpvFloat;
+       fOffsetY:TpvFloat;
+       fScaleX:TpvFloat;
+       fScaleY:TpvFloat;
+       function GetSignedDistanceField:boolean; inline;
+       procedure SetSignedDistanceField(const aSignedDistanceField:boolean); inline;
+       function GetRotated:boolean; inline;
+       procedure SetRotated(const aRotated:boolean); inline;
       public
-       Name:TpvRawByteString;
-       ArrayTexture:TpvSpriteAtlasArrayTexture;
-       x:TpvInt32;
-       y:TpvInt32;
-       Layer:TpvInt32;
-       Width:TpvInt32;
-       Height:TpvInt32;
-       TrimmedX:TpvInt32;
-       TrimmedY:TpvInt32;
-       TrimmedWidth:TpvInt32;
-       TrimmedHeight:TpvInt32;
-       OffsetX:TpvFloat;
-       OffsetY:TpvFloat;
-       ScaleX:TpvFloat;
-       ScaleY:TpvFloat;
-       Rotated:boolean;
        constructor Create; reintroduce;
        destructor Destroy; override;
+      published
+       property Name:TpvRawByteString read fName write fName;
+       property ArrayTexture:TpvSpriteAtlasArrayTexture read fArrayTexture write fArrayTexture;
+       property x:TpvInt32 read fX write fX;
+       property y:TpvInt32 read fY write fY;
+       property Layer:TpvInt32 read fLayer write fLayer;
+       property Width:TpvInt32 read fWidth write fWidth;
+       property Height:TpvInt32 read fHeight write fHeight;
+       property TrimmedX:TpvInt32 read fTrimmedX write fTrimmedX;
+       property TrimmedY:TpvInt32 read fTrimmedY write fTrimmedY;
+       property TrimmedWidth:TpvInt32 read fTrimmedWidth write fTrimmedWidth;
+       property TrimmedHeight:TpvInt32 read fTrimmedHeight write fTrimmedHeight;
+       property OffsetX:TpvFloat read fOffsetX write fOffsetX;
+       property OffsetY:TpvFloat read fOffsetY write fOffsetY;
+       property ScaleX:TpvFloat read fScaleX write fScaleX;
+       property ScaleY:TpvFloat read fScaleY write fScaleY;
+       property SignedDistanceField:boolean read GetSignedDistanceField write SetSignedDistanceField;
+       property Rotated:boolean read GetRotated write SetRotated;
      end;
 
      TpvSprites=array of TpvSprite;
@@ -666,6 +699,34 @@ destructor TpvSprite.Destroy;
 begin
  Name:='';
  inherited Destroy;
+end;
+
+function TpvSprite.GetSignedDistanceField:boolean;
+begin
+ result:=pvsfSignedDistanceField in fFlags;
+end;
+
+procedure TpvSprite.SetSignedDistanceField(const aSignedDistanceField:boolean);
+begin
+ if aSignedDistanceField then begin
+  Include(fFlags,pvsfSignedDistanceField);
+ end else begin
+  Exclude(fFlags,pvsfSignedDistanceField);
+ end;
+end;
+
+function TpvSprite.GetRotated:boolean;
+begin
+ result:=pvsfRotated in fFlags;
+end;
+
+procedure TpvSprite.SetRotated(const aRotated:boolean);
+begin
+ if aRotated then begin
+  Include(fFlags,pvsfRotated);
+ end else begin
+  Exclude(fFlags,pvsfRotated);
+ end;
 end;
 
 constructor TpvSpriteNinePatchRegion.Create(const aMode:TpvSpriteNinePatchRegionMode;const aLeft,aTop,aWidth,aHeight:TpvInt32);

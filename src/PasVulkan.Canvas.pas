@@ -653,10 +653,6 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function Pop:TpvCanvas;
       public
        function Hook(const aHook:TpvCanvasHook;const aData:TpvPointer):TpvCanvas; overload;
-      private
-       function DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aRenderingMode:TpvCanvasRenderingMode):TpvCanvas; overload;
-      public
-       function DrawSignedDistanceFieldSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas;
       public
        function DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas; overload;
        function DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotationAngle:TpvFloat):TpvCanvas; overload;
@@ -4199,7 +4195,7 @@ begin
  result:=self;
 end;
 
-function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aRenderingMode:TpvCanvasRenderingMode):TpvCanvas;
+function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas;
 const MinA=1.0/65536.0;
 var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     TempDest,TempSrc:TpvRect;
@@ -4211,7 +4207,11 @@ begin
     (((aSrc.Right>=aSprite.TrimmedX) and (aSrc.Bottom>=aSprite.TrimmedY)) and
     (((not aSprite.Rotated) and (((aSprite.TrimmedX+aSprite.TrimmedWidth)>=aSrc.Left) and ((aSprite.TrimmedY+aSprite.TrimmedHeight)>=aSrc.Top))) or
      (aSprite.Rotated and (((aSprite.TrimmedX+aSprite.TrimmedHeight)>=aSrc.Left) and ((aSprite.TrimmedY+aSprite.TrimmedWidth)>=aSrc.Top))))) then begin
-  fInternalRenderingMode:=aRenderingMode;
+  if aSprite.SignedDistanceField then begin
+   fInternalRenderingMode:=pvcrmSignedDistanceField;
+  end else begin
+   fInternalRenderingMode:=pvcrmNormal;
+  end;
   VertexColor.r:=fState.fColor.r;
   VertexColor.g:=fState.fColor.g;
   VertexColor.b:=fState.fColor.b;
@@ -4428,16 +4428,6 @@ begin
  result:=self;
 end;
 
-function TpvCanvas.DrawSignedDistanceFieldSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas;
-begin
- result:=DrawSprite(aSprite,aSrc,aDest,pvcrmSignedDistanceField);
-end;
-
-function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas;
-begin
- result:=DrawSprite(aSprite,aSrc,aDest,pvcrmNormal);
-end;
-
 function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect;const aOrigin:TpvVector2;const aRotationAngle:TpvFloat):TpvCanvas;
 var OldMatrix:TpvMatrix4x4;
     AroundPoint:TpvVector2;
@@ -4449,7 +4439,7 @@ begin
                          TpvMatrix4x4.CreateRotateZ(aRotationAngle))*
                         TpvMatrix4x4.CreateTranslation(AroundPoint))*
                         fState.fModelMatrix;
-  result:=DrawSprite(aSprite,aSrc,aDest,pvcrmNormal);
+  result:=DrawSprite(aSprite,aSrc,aDest);
  finally
   fState.fModelMatrix:=OldMatrix;
  end;
