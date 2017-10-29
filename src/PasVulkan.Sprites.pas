@@ -71,6 +71,7 @@ uses SysUtils,
      PasVulkan.Collections,
      PasVulkan.Framework,
      PasVulkan.XML,
+     PasVulkan.VectorPath,
      PasVulkan.Image.BMP,
      PasVulkan.Image.JPEG,
      PasVulkan.Image.PNG,
@@ -307,10 +308,12 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
        procedure Unload; virtual;
        function Uploaded:boolean; virtual;
        procedure ClearAll; virtual;
-       function LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean; virtual;
-       function LoadRawSprite(const Name:TpvRawByteString;ImageData:TpvPointer;ImageWidth,ImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite; virtual;
-       function LoadSprite(const Name:TpvRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite; virtual;
-       function LoadSprites(const Name:TpvRawByteString;Stream:TStream;SpriteWidth:TpvInt32=64;SpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprites; virtual;
+       function LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean;
+       function LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
+       function LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite; overload;
+       function LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite; overload;
+       function LoadSprite(const aName:TpvRawByteString;aStream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
+       function LoadSprites(const aName:TpvRawByteString;aStream:TStream;aSpriteWidth:TpvInt32=64;aSpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprites;
        property Device:TpvVulkanDevice read fDevice;
        property Count:TpvInt32 read GetCount;
        property Items[Index:TpvInt32]:TpvSprite read GetItem write SetItem;
@@ -323,6 +326,8 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
      end;
 
 implementation
+
+uses PasVulkan.SignedDistanceField2D;
 
 const MipMapLevels:array[boolean] of TpvInt32=(1,-1);
 
@@ -999,7 +1004,7 @@ begin
  end;
 end;
 
-function TpvSpriteAtlas.LoadRawSprite(const Name:TpvRawByteString;ImageData:TpvPointer;ImageWidth,ImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
+function TpvSpriteAtlas.LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
 var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer,TotalPadding,PaddingIndex:TpvInt32;
     ArrayTexture:TpvSpriteAtlasArrayTexture;
     Node:PpvSpriteAtlasArrayTextureLayerRectNode;
@@ -1023,22 +1028,22 @@ begin
 
   Layer:=-1;
 
-  if assigned(ImageData) and (ImageWidth>0) and (ImageHeight>0) then begin
+  if assigned(aImageData) and (aImageWidth>0) and (aImageHeight>0) then begin
 
    x0:=0;
    y0:=0;
-   x1:=ImageWidth;
-   y1:=ImageHeight;
+   x1:=aImageWidth;
+   y1:=aImageHeight;
 
    if aAutomaticTrim then begin
 
     // Trim input
 
-    for x:=0 to ImageWidth-1 do begin
+    for x:=0 to aImageWidth-1 do begin
      OK:=true;
-     for y:=0 to ImageHeight-1 do begin
-      sp:=ImageData;
-      inc(sp,(y*ImageWidth)+x);
+     for y:=0 to aImageHeight-1 do begin
+      sp:=aImageData;
+      inc(sp,(y*aImageWidth)+x);
       if (sp^ and $ff000000)<>0 then begin
        OK:=false;
        break;
@@ -1051,10 +1056,10 @@ begin
      end;
     end;
 
-    sp:=ImageData;
-    for y:=0 to ImageHeight-1 do begin
+    sp:=aImageData;
+    for y:=0 to aImageHeight-1 do begin
      OK:=true;
-     for x:=0 to ImageWidth-1 do begin
+     for x:=0 to aImageWidth-1 do begin
       if (sp^ and $ff000000)<>0 then begin
        OK:=false;
        break;
@@ -1068,11 +1073,11 @@ begin
      end;
     end;
 
-    for x:=ImageWidth-1 downto 0 do begin
+    for x:=aImageWidth-1 downto 0 do begin
      OK:=true;
-     for y:=0 to ImageHeight-1 do begin
-      sp:=ImageData;
-      inc(sp,(y*ImageWidth)+x);
+     for y:=0 to aImageHeight-1 do begin
+      sp:=aImageData;
+      inc(sp,(y*aImageWidth)+x);
       if (sp^ and $ff000000)<>0 then begin
        OK:=false;
        break;
@@ -1085,11 +1090,11 @@ begin
      end;
     end;
 
-    for y:=ImageHeight-1 downto 0 do begin
+    for y:=aImageHeight-1 downto 0 do begin
      OK:=true;
-     sp:=ImageData;
-     inc(sp,y*ImageWidth);
-     for x:=0 to ImageWidth-1 do begin
+     sp:=aImageData;
+     inc(sp,y*aImageWidth);
+     for x:=0 to aImageWidth-1 do begin
       if (sp^ and $ff000000)<>0 then begin
        OK:=false;
        break;
@@ -1109,14 +1114,14 @@ begin
 
    try
 
-    if (x0<x1) and (y0<y1) and not ((x0=0) and (y0=0) and (x1=ImageWidth) and (y1=ImageHeight)) then begin
+    if (x0<x1) and (y0<y1) and not ((x0=0) and (y0=0) and (x1=aImageWidth) and (y1=aImageHeight)) then begin
      TrimmedImageWidth:=x1-x0;
      TrimmedImageHeight:=y1-y0;
      GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt32));
      dp:=TrimmedImageData;
      for y:=y0 to y1-1 do begin
-      sp:=ImageData;
-      inc(sp,(y*ImageWidth)+x0);
+      sp:=aImageData;
+      inc(sp,(y*aImageWidth)+x0);
       for x:=x0 to x1-1 do begin
        dp^:=sp^;
        inc(sp);
@@ -1124,10 +1129,10 @@ begin
       end;
      end;
     end else begin
-     TrimmedImageWidth:=ImageWidth;
-     TrimmedImageHeight:=ImageHeight;
+     TrimmedImageWidth:=aImageWidth;
+     TrimmedImageHeight:=aImageHeight;
      GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt32));
-     Move(ImageData^,TrimmedImageData^,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt32));
+     Move(aImageData^,TrimmedImageData^,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt32));
      x0:=0;
      y0:=0;
     end;
@@ -1203,12 +1208,12 @@ begin
     begin
      Sprite:=TpvSprite.Create;
      Sprite.ArrayTexture:=ArrayTexture;
-     Sprite.Name:=Name;
+     Sprite.Name:=aName;
      if SpecialSizedArrayTexture then begin
       Sprite.x:=Node^.x;
       Sprite.y:=Node^.y;
-      Sprite.Width:=ImageWidth;
-      Sprite.Height:=ImageHeight;
+      Sprite.Width:=aImageWidth;
+      Sprite.Height:=aImageHeight;
       Sprite.TrimmedX:=x0;
       Sprite.TrimmedY:=y0;
       Sprite.TrimmedWidth:=TrimmedImageWidth;
@@ -1224,8 +1229,8 @@ begin
      end else begin
       Sprite.x:=Node^.x+aPadding;
       Sprite.y:=Node^.y+aPadding;
-      Sprite.Width:=ImageWidth;
-      Sprite.Height:=ImageHeight;
+      Sprite.Width:=aImageWidth;
+      Sprite.Height:=aImageHeight;
       Sprite.TrimmedX:=x0;
       Sprite.TrimmedY:=y0;
       Sprite.TrimmedWidth:=TrimmedImageWidth;
@@ -1289,29 +1294,58 @@ begin
 
 end;
 
-function TpvSpriteAtlas.LoadSprite(const Name:TpvRawByteString;Stream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
+function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
+var SignedDistanceField:TpvSignedDistanceField2D;
+begin
+ SignedDistanceField.Pixels:=nil;
+ try
+  SignedDistanceField.OffsetX:=0.0;
+  SignedDistanceField.OffsetY:=0.0;
+  SignedDistanceField.Width:=aImageWidth;
+  SignedDistanceField.Height:=aImageHeight;
+  SetLength(SignedDistanceField.Pixels,aImageWidth*aImageHeight);
+  TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,aVectorPath,aScale);
+  result:=LoadRawSprite(aName,@SignedDistanceField.Pixels[0],aImageWidth,aImageHeight,aAutomaticTrim,aPadding);
+  result.SignedDistanceField:=true;
+ finally
+  SignedDistanceField.Pixels:=nil;
+ end;
+end;
+
+function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
+var VectorPath:TpvVectorPath;
+begin
+ VectorPath:=TpvVectorPath.CreateFromSVGPath(aSVGPath);
+ try
+  result:=LoadSignedDistanceFieldSprite(aName,VectorPath,aImageWidth,aImageHeight,aScale,aAutomaticTrim,aPadding);
+ finally
+  VectorPath.Free;
+ end;
+end;
+
+function TpvSpriteAtlas.LoadSprite(const aName:TpvRawByteString;aStream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
 var InputImageData,ImageData:TpvPointer;
     InputImageDataSize,ImageWidth,ImageHeight:TpvInt32;
 begin
 
  result:=nil;
 
- if assigned(Stream) then begin
+ if assigned(aStream) then begin
 
   try
 
-   InputImageDataSize:=Stream.Size;
+   InputImageDataSize:=aStream.Size;
    GetMem(InputImageData,InputImageDataSize);
    try
 
-    Stream.Seek(0,soBeginning);
-    Stream.Read(InputImageData^,InputImageDataSize);
+    aStream.Seek(0,soBeginning);
+    aStream.Read(InputImageData^,InputImageDataSize);
     ImageData:=nil;
     try
 
      if LoadImage(InputImageData,InputImageDataSize,ImageData,ImageWidth,ImageHeight) then begin
 
-      result:=LoadRawSprite(Name,ImageData,ImageWidth,ImageHeight,aAutomaticTrim,aPadding);
+      result:=LoadRawSprite(aName,ImageData,ImageWidth,ImageHeight,aAutomaticTrim,aPadding);
 
      end else begin
       raise Exception.Create('Can''t load image');
@@ -1345,32 +1379,32 @@ begin
 
 end;
 
-function TpvSpriteAtlas.LoadSprites(const Name:TpvRawByteString;Stream:TStream;SpriteWidth:TpvInt32=64;SpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprites;
+function TpvSpriteAtlas.LoadSprites(const aName:TpvRawByteString;aStream:TStream;aSpriteWidth:TpvInt32=64;aSpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprites;
 var InputImageData,ImageData,SpriteData:TpvPointer;
     InputImageDataSize,ImageWidth,ImageHeight,Count,x,y,sy,sw,sh:TpvInt32;
     sp,dp:PpvUInt32;
 begin
  result:=nil;
 
- if assigned(Stream) and (SpriteWidth>0) and (SpriteHeight>0) then begin
+ if assigned(aStream) and (aSpriteWidth>0) and (aSpriteHeight>0) then begin
 
   try
 
-   InputImageDataSize:=Stream.Size;
+   InputImageDataSize:=aStream.Size;
    GetMem(InputImageData,InputImageDataSize);
    try
 
-    Stream.Seek(0,soBeginning);
-    Stream.Read(InputImageData^,InputImageDataSize);
+    aStream.Seek(0,soBeginning);
+    aStream.Read(InputImageData^,InputImageDataSize);
     ImageData:=nil;
     try
 
      if LoadImage(InputImageData,InputImageDataSize,ImageData,ImageWidth,ImageHeight) then begin
 
-      GetMem(SpriteData,(SpriteWidth*SpriteHeight)*SizeOf(TpvUInt32));
+      GetMem(SpriteData,(aSpriteWidth*aSpriteHeight)*SizeOf(TpvUInt32));
       try
 
-       Count:=((ImageWidth+(SpriteWidth-1)) div SpriteWidth)*((ImageHeight+(SpriteHeight-1)) div SpriteHeight);
+       Count:=((ImageWidth+(aSpriteWidth-1)) div aSpriteWidth)*((ImageHeight+(aSpriteHeight-1)) div aSpriteHeight);
        SetLength(result,Count);
 
        Count:=0;
@@ -1381,8 +1415,8 @@ begin
         sh:=ImageHeight-y;
         if sh<0 then begin
          sh:=0;
-        end else if sh>SpriteHeight then begin
-         sh:=SpriteHeight;
+        end else if sh>aSpriteHeight then begin
+         sh:=aSpriteHeight;
         end;
 
         if sh>0 then begin
@@ -1390,13 +1424,13 @@ begin
          x:=0;
          while x<ImageWidth do begin
 
-          FillChar(SpriteData^,(SpriteWidth*SpriteHeight)*SizeOf(TpvUInt32),AnsiChar(#0));
+          FillChar(SpriteData^,(aSpriteWidth*aSpriteHeight)*SizeOf(TpvUInt32),AnsiChar(#0));
 
           sw:=ImageWidth-x;
           if sw<0 then begin
            sw:=0;
-          end else if sw>SpriteWidth then begin
-           sw:=SpriteWidth;
+          end else if sw>aSpriteWidth then begin
+           sw:=aSpriteWidth;
           end;
 
           if sw>0 then begin
@@ -1409,10 +1443,10 @@ begin
            for sy:=0 to sh-1 do begin
             Move(sp^,dp^,sw*SizeOf(TpvUInt32));
             inc(sp,ImageWidth);
-            inc(dp,SpriteWidth);
+            inc(dp,aSpriteWidth);
            end;
 
-           result[Count]:=LoadRawSprite(Name+TpvRawByteString(IntToStr(Count)),SpriteData,SpriteWidth,SpriteHeight,aAutomaticTrim,aPadding);
+           result[Count]:=LoadRawSprite(aName+TpvRawByteString(IntToStr(Count)),SpriteData,aSpriteWidth,aSpriteHeight,aAutomaticTrim,aPadding);
 
            inc(Count);
 
@@ -1422,7 +1456,7 @@ begin
 
           end;
 
-          inc(x,SpriteWidth);
+          inc(x,aSpriteWidth);
          end;
 
         end else begin
@@ -1431,7 +1465,7 @@ begin
 
         end;
 
-        inc(y,SpriteHeight);
+        inc(y,aSpriteHeight);
        end;
 
        SetLength(result,Count);
