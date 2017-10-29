@@ -228,7 +228,7 @@ type TpvGUIObject=class;
        fWindowFontColor:TpvVector4;
        fButtonFontColor:TpvVector4;
        fLabelFontColor:TpvVector4;
-       fFontSpriteAtlas:TpvSpriteAtlas;
+       fSignedDistanceFieldSpriteAtlas:TpvSpriteAtlas;
        fSansFont:TpvFont;
        fSansBoldFont:TpvFont;
        fSansBoldItalicFont:TpvFont;
@@ -289,7 +289,7 @@ type TpvGUIObject=class;
        property WindowHeaderFontSize:TpvFloat read fWindowHeaderFontSize write fWindowHeaderFontSize;
        property ButtonFontSize:TpvFloat read fButtonFontSize write fButtonFontSize;
        property LabelFontSize:TpvFloat read fLabelFontSize write fLabelFontSize;
-       property FontSpriteAtlas:TpvSpriteAtlas read fFontSpriteAtlas;
+       property SignedDistanceFieldSpriteAtlas:TpvSpriteAtlas read fSignedDistanceFieldSpriteAtlas;
        property WindowHeaderHeight:TpvFloat read fWindowHeaderHeight write fWindowHeaderHeight;
        property WindowResizeGripSize:TpvFloat read fWindowResizeGripSize write fWindowResizeGripSize;
        property MinimizedWindowMinimumWidth:TpvFloat read fMinimizedWindowMinimumWidth write fMinimizedWindowMinimumWidth;
@@ -1323,7 +1323,7 @@ end;
 constructor TpvGUISkin.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
- fFontSpriteAtlas:=nil;
+ fSignedDistanceFieldSpriteAtlas:=nil;
  fSansFont:=nil;
  fSansBoldFont:=nil;
  fSansBoldItalicFont:=nil;
@@ -1343,7 +1343,7 @@ begin
  FreeAndNil(fSansBoldItalicFont);
  FreeAndNil(fSansItalicFont);
  FreeAndNil(fMonoFont);
- FreeAndNil(fFontSpriteAtlas);
+ FreeAndNil(fSignedDistanceFieldSpriteAtlas);
  inherited Destroy;
 end;
 
@@ -1477,7 +1477,7 @@ begin
  fWindowShadowWidth:=16;
  fWindowShadowHeight:=16;
 
- fFontSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,false);
+ fSignedDistanceFieldSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,false);
 
  Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansFontData,GUIStandardTrueTypeFontSansFontDataSize);
  try
@@ -1486,7 +1486,7 @@ begin
    TrueTypeFont.Size:=-64;
    TrueTypeFont.Hinting:=false;
    fSansFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                             fFontSpriteAtlas,
+                                             fSignedDistanceFieldSpriteAtlas,
                                              TrueTypeFont,
                                              fInstance.fFontCodePointRanges);
   finally
@@ -1503,7 +1503,7 @@ begin
    TrueTypeFont.Size:=-64;
    TrueTypeFont.Hinting:=false;
    fSansBoldFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                                 fFontSpriteAtlas,
+                                                 fSignedDistanceFieldSpriteAtlas,
                                                  TrueTypeFont,
                                                  fInstance.fFontCodePointRanges);
   finally
@@ -1520,7 +1520,7 @@ begin
    TrueTypeFont.Size:=-64;
    TrueTypeFont.Hinting:=false;
    fSansBoldItalicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                                       fFontSpriteAtlas,
+                                                       fSignedDistanceFieldSpriteAtlas,
                                                        TrueTypeFont,
                                                        fInstance.fFontCodePointRanges);
   finally
@@ -1537,7 +1537,7 @@ begin
    TrueTypeFont.Size:=-64;
    TrueTypeFont.Hinting:=false;
    fSansItalicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                                   fFontSpriteAtlas,
+                                                   fSignedDistanceFieldSpriteAtlas,
                                                    TrueTypeFont,
                                                    fInstance.fFontCodePointRanges);
   finally
@@ -1554,7 +1554,7 @@ begin
    TrueTypeFont.Size:=-64;
    TrueTypeFont.Hinting:=false;
    fMonoFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                             fFontSpriteAtlas,
+                                             fSignedDistanceFieldSpriteAtlas,
                                              TrueTypeFont,
                                              fInstance.fFontCodePointRanges);
   finally
@@ -1566,37 +1566,37 @@ begin
 
  fWindowButtonIconHeight:=14.0;
 
- fIconWindowClose:=fFontSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowClose',
-                                                                  'M461.029 419.2l-164.571-163.2 164.571-163.2-41.143-41.143-164.571 163.2-163.2-163.2-41.143 41.143 163.2 163.2-163.2 163.2 41.143 41.143 163.2-163.2 164.571 163.2z',
-                                                                  48,
-                                                                  48,
-                                                                  48.0/512.0);
+ fIconWindowClose:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowClose',
+                                                                                 'M461.029 419.2l-164.571-163.2 164.571-163.2-41.143-41.143-164.571 163.2-163.2-163.2-41.143 41.143 163.2 163.2-163.2 163.2 41.143 41.143 163.2-163.2 164.571 163.2z',
+                                                                                 48,
+                                                                                 48,
+                                                                                 48.0/512.0);
 
- fIconWindowRestore:=fFontSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowRestore',
-                                                                    'M61.714 353.143h97.143v98.286h292.571v-292.571h-97.143v-98.286h-292.571v292.571zm292.571 0v-146.286h49.143v195.429h-195.429v-49.143h146.286zm-243.429-97.143v-146.286h194.286v146.286h-194.286z',
-                                                                    48,
-                                                                    48,
-                                                                    48.0/512.0);
+ fIconWindowRestore:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowRestore',
+                                                                                   'M61.714 353.143h97.143v98.286h292.571v-292.571h-97.143v-98.286h-292.571v292.571zm292.571 0v-146.286h49.143v195.429h-195.429v-49.143h146.286zm-243.429-97.143v-146.286h194.286v146.286h-194.286z',
+                                                                                   48,
+                                                                                   48,
+                                                                                   48.0/512.0);
 
- fIconWindowMinimize:=fFontSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowMinimize',
-                                                                     'M450.286 321.143h-389.714v98.286h389.714v-98.286z',
-                                                                     48,
-                                                                     48,
-                                                                     48.0/512.0);
+ fIconWindowMinimize:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowMinimize',
+                                                                                    'M450.286 321.143h-389.714v98.286h389.714v-98.286z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/512.0);
 
- fIconWindowMaximize:=fFontSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowMaximize',
-                                                                     'M61.714 451.429h389.714v-390.857h-389.714v390.857zm49.143-98.286v-243.429h292.571v243.429h-292.571z',
-                                                                     48,
-                                                                     48,
-                                                                     48.0/512.0);
+ fIconWindowMaximize:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowMaximize',
+                                                                                    'M61.714 451.429h389.714v-390.857h-389.714v390.857zm49.143-98.286v-243.429h292.571v243.429h-292.571z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/512.0);
 
- fFontSpriteAtlas.MipMaps:=false;
- fFontSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
-                         pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                         pvApplication.VulkanGraphicsCommandBufferFences[0,0],
-                         pvApplication.VulkanDevice.TransferQueue,
-                         pvApplication.VulkanTransferCommandBuffers[0,0],
-                         pvApplication.VulkanTransferCommandBufferFences[0,0]);
+ fSignedDistanceFieldSpriteAtlas.MipMaps:=false;
+ fSignedDistanceFieldSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
+                                        pvApplication.VulkanGraphicsCommandBuffers[0,0],
+                                        pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                        pvApplication.VulkanDevice.TransferQueue,
+                                        pvApplication.VulkanTransferCommandBuffers[0,0],
+                                        pvApplication.VulkanTransferCommandBufferFences[0,0]);
 
 end;
 

@@ -175,40 +175,37 @@ var i,SrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
   end;
  end;
  function GetFloat:TpvDouble;
- var s:TpvRawByteString;
+ var StartPos:TpvInt32;
  begin
   SkipBlank;
-  s:='';
+  StartPos:=SrcPos;
   if (SrcPos<=SrcLen) and (Src[SrcPos] in ['-','+']) then begin
-   s:=s+Src[SrcPos];
    inc(SrcPos);
   end;
   while (SrcPos<=SrcLen) and (Src[SrcPos] in ['0'..'9']) do begin
-   s:=s+Src[SrcPos];
    inc(SrcPos);
   end;
   if (SrcPos<=SrcLen) and (Src[SrcPos] in ['.']) then begin
-   s:=s+Src[SrcPos];
    inc(SrcPos);
    while (SrcPos<=SrcLen) and (Src[SrcPos] in ['0'..'9']) do begin
-    s:=s+Src[SrcPos];
     inc(SrcPos);
    end;
   end;
   if (SrcPos<=SrcLen) and (Src[SrcPos] in ['e','E']) then begin
-   s:=s+Src[SrcPos];
    inc(SrcPos);
    if (SrcPos<=SrcLen) and (Src[SrcPos] in ['-','+']) then begin
-    s:=s+Src[SrcPos];
     inc(SrcPos);
    end;
    while (SrcPos<=SrcLen) and (Src[SrcPos] in ['0'..'9']) do begin
-    s:=s+Src[SrcPos];
     inc(SrcPos);
    end;
   end;
+  if StartPos<SrcPos then begin
+   result:=ConvertStringToDouble(TpvRawByteString(copy(String(Src),StartPos,SrcPos-StartPos)),rmNearest,nil,-1);
+  end else begin
+   result:=0.0;
+  end;
   SkipBlank;
-  result:=ConvertStringToDouble(s,rmNearest,nil,-1);
  end;
  function GetInt:TpvInt32;
  var s:TpvRawByteString;
