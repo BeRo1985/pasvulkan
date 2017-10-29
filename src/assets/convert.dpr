@@ -148,7 +148,6 @@ end;
 begin
  StringList:=TStringList.Create;
  try
-  ConvertFile('fonts/materialdesigniconicfont.ttf','GUIStandardTrueTypeFontMaterialDesignIconicFont');
   ConvertFile('fonts/notosans.ttf','GUIStandardTrueTypeFontSansFont');
   ConvertFile('fonts/notosansbold.ttf','GUIStandardTrueTypeFontSansBoldFont');
   ConvertFile('fonts/notosansbolditalic.ttf','GUIStandardTrueTypeFontSansBoldItalicFont');

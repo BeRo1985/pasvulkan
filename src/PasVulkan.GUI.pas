@@ -229,7 +229,6 @@ type TpvGUIObject=class;
        fButtonFontColor:TpvVector4;
        fLabelFontColor:TpvVector4;
        fFontSpriteAtlas:TpvSpriteAtlas;
-       fIconicFont:TpvFont;
        fSansFont:TpvFont;
        fSansBoldFont:TpvFont;
        fSansBoldItalicFont:TpvFont;
@@ -241,6 +240,11 @@ type TpvGUIObject=class;
        fMinimizedWindowMinimumHeight:TpvFloat;
        fWindowMinimumWidth:TpvFloat;
        fWindowMinimumHeight:TpvFloat;
+       fWindowButtonIconHeight:TpvFloat;
+       fIconWindowClose:TObject;
+       fIconWindowRestore:TObject;
+       fIconWindowMinimize:TObject;
+       fIconWindowMaximize:TObject;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -275,7 +279,6 @@ type TpvGUIObject=class;
        property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
        property LabelFontColor:TpvVector4 read fLabelFontColor write fLabelFontColor;
       published
-       property IconicFont:TpvFont read fIconicFont write fIconicFont;
        property SansFont:TpvFont read fSansFont write fSansFont;
        property SansBoldFont:TpvFont read fSansBoldFont write fSansBoldFont;
        property SansBoldItalicFont:TpvFont read fSansBoldItalicFont write fSansBoldItalicFont;
@@ -293,6 +296,10 @@ type TpvGUIObject=class;
        property MinimizedWindowMinimumHeight:TpvFloat read fMinimizedWindowMinimumHeight write fMinimizedWindowMinimumHeight;
        property WindowMinimumWidth:TpvFloat read fWindowMinimumWidth write fWindowMinimumWidth;
        property WindowMinimumHeight:TpvFloat read fWindowMinimumHeight write fWindowMinimumHeight;
+       property IconWindowClose:TObject read fIconWindowClose write fIconWindowClose;
+       property IconWindowRestore:TObject read fIconWindowRestore write fIconWindowRestore;
+       property IconWindowMinimize:TObject read fIconWindowMinimize write fIconWindowMinimize;
+       property IconWindowMaximize:TObject read fIconWindowMaximize write fIconWindowMaximize;
      end;
 
      TpvGUIDefaultVectorBasedSkin=class(TpvGUISkin)
@@ -769,9 +776,6 @@ type TpvGUIObject=class;
        fIconPosition:TpvGUIButtonIconPosition;
        fIcon:TObject;
        fIconHeight:TpvFloat;
-       fIconText:TpvUTF8String;
-       fIconFont:TpvFont;
-       fIconFontSize:TpvFloat;
        fOnClick:TpvGUIOnEvent;
        fOnChange:TpvGUIOnChange;
        procedure ProcessDown(const aPosition:TpvVector2);
@@ -802,9 +806,6 @@ type TpvGUIObject=class;
        property IconPosition:TpvGUIButtonIconPosition read fIconPosition write fIconPosition;
        property Icon:TObject read fIcon write fIcon;
        property IconHeight:TpvFloat read fIconHeight write fIconHeight;
-       property IconText:TpvUTF8String read fIconText write fIconText;
-       property IconFont:TpvFont read fIconFont write fIconFont;
-       property IconFontSize:TpvFloat read fIconFontSize write fIconFontSize;
        property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
        property OnChange:TpvGUIOnChange read fOnChange write fOnChange;
        property TextHorizontalAlignment;
@@ -1323,18 +1324,20 @@ constructor TpvGUISkin.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
  fFontSpriteAtlas:=nil;
- fIconicFont:=nil;
  fSansFont:=nil;
  fSansBoldFont:=nil;
  fSansBoldItalicFont:=nil;
  fSansItalicFont:=nil;
  fMonoFont:=nil;
+ fIconWindowClose:=nil;
+ fIconWindowRestore:=nil;
+ fIconWindowMinimize:=nil;
+ fIconWindowMaximize:=nil;
  Setup;
 end;
 
 destructor TpvGUISkin.Destroy;
 begin
- FreeAndNil(fIconicFont);
  FreeAndNil(fSansFont);
  FreeAndNil(fSansBoldFont);
  FreeAndNil(fSansBoldItalicFont);
@@ -1476,23 +1479,6 @@ begin
 
  fFontSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,false);
 
- Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontMaterialDesignIconicFontData,GUIStandardTrueTypeFontMaterialDesignIconicFontDataSize);
- try
-  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
-  try
-   TrueTypeFont.Size:=-64;
-   TrueTypeFont.Hinting:=false;
-   fIconicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                               fFontSpriteAtlas,
-                                               TrueTypeFont,
-                                               fInstance.fFontCodePointRanges);
-  finally
-   TrueTypeFont.Free;
-  end;
- finally
-  Stream.Free;
- end;
-
  Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansFontData,GUIStandardTrueTypeFontSansFontDataSize);
  try
   TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
@@ -1577,6 +1563,32 @@ begin
  finally
   Stream.Free;
  end;
+
+ fWindowButtonIconHeight:=14.0;
+
+ fIconWindowClose:=fFontSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowClose',
+                                                                  'M461.029 419.2l-164.571-163.2 164.571-163.2-41.143-41.143-164.571 163.2-163.2-163.2-41.143 41.143 163.2 163.2-163.2 163.2 41.143 41.143 163.2-163.2 164.571 163.2z',
+                                                                  48,
+                                                                  48,
+                                                                  48.0/512.0);
+
+ fIconWindowRestore:=fFontSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowRestore',
+                                                                    'M61.714 353.143h97.143v98.286h292.571v-292.571h-97.143v-98.286h-292.571v292.571zm292.571 0v-146.286h49.143v195.429h-195.429v-49.143h146.286zm-243.429-97.143v-146.286h194.286v146.286h-194.286z',
+                                                                    48,
+                                                                    48,
+                                                                    48.0/512.0);
+
+ fIconWindowMinimize:=fFontSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowMinimize',
+                                                                     'M450.286 321.143h-389.714v98.286h389.714v-98.286z',
+                                                                     48,
+                                                                     48,
+                                                                     48.0/512.0);
+
+ fIconWindowMaximize:=fFontSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowMaximize',
+                                                                     'M61.714 451.429h389.714v-390.857h-389.714v390.857zm49.143-98.286v-243.429h292.571v243.429h-292.571z',
+                                                                     48,
+                                                                     48,
+                                                                     48.0/512.0);
 
  fFontSpriteAtlas.MipMaps:=false;
  fFontSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
@@ -2055,9 +2067,7 @@ function TpvGUIDefaultVectorBasedSkin.GetButtonPreferredSize(const aButton:TpvGU
 var TextSize,IconSize,TemporarySize:TpvVector2;
 begin
  TextSize:=aButton.Font.TextSize(aButton.fCaption,FontSize);
- if (length(aButton.fIconText)>0) and assigned(aButton.fIconFont) then begin
-  IconSize:=aButton.fIconFont.TextSize(aButton.fIconText,aButton.fIconFontSize);
- end else if assigned(aButton.fIcon) then begin
+ if assigned(aButton.fIcon) then begin
   if aButton.fIcon is TpvSprite then begin
    IconSize:=TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height);
   end else if aButton.fIcon is TpvVulkanTexture then begin
@@ -2136,9 +2146,7 @@ begin
 
  TextSize:=aButton.Font.TextSize(aButton.fCaption,aButton.FontSize);
 
- if (length(aButton.fIconText)>0) and assigned(aButton.fIconFont) then begin
-  IconSize:=aButton.fIconFont.TextSize(aButton.fIconText,aButton.fIconFontSize);
- end else if assigned(aButton.fIcon) then begin
+ if assigned(aButton.fIcon) then begin
   if aButton.fIcon is TpvSprite then begin
    IconSize:=TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height);
   end else if aButton.fIcon is TpvVulkanTexture then begin
@@ -2220,22 +2228,17 @@ begin
   end;
  end;
 
- if (length(aButton.fIconText)>0) and assigned(aButton.fIconFont) then begin
+ if assigned(aButton.fIcon) then begin
   if aButton.Enabled then begin
    aCanvas.Color:=aButton.FontColor;
   end else begin
    aCanvas.Color:=TpvVector4.Create(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
   end;
-  aCanvas.Font:=aButton.fIconFont;
-  aCanvas.FontSize:=aButton.fIconFontSize;
-  aCanvas.DrawText(aButton.fIconText,IconRect.LeftTop);
- end else if assigned(aButton.fIcon) then begin
   if aButton.fIcon is TpvSprite then begin
    aCanvas.DrawSprite(TpvSprite(aButton.fIcon),
                       TpvRect.CreateRelative(TpvVector2.Null,
                                              TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)),
-                      TpvRect.CreateRelative(Offset+IconRect.LeftTop,
-                                             TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)));
+                      TpvRect.CreateRelative(Offset+IconRect.LeftTop,IconRect.Size));
   end else if aButton.fIcon is TpvVulkanTexture then begin
    aCanvas.DrawTexturedRectangle(TpvVulkanTexture(aButton.fIcon),
                                  Offset+IconRect.LeftTop+(TpvVector2.Create(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5),
@@ -3306,11 +3309,9 @@ begin
  fFontCodePointRanges:=aFontCodePointRanges;
 
  if length(fFontCodePointRanges)=0 then begin
-  SetLength(fFontCodePointRanges,4);
+  SetLength(fFontCodePointRanges,2);
   fFontCodePointRanges[0]:=TpvFontCodePointRange.Create(0,255);
   fFontCodePointRanges[1]:=TpvFontCodePointRange.Create($2026,$2026);
-  fFontCodePointRanges[2]:=TpvFontCodePointRange.Create($f136,$f136); // Window close
-  fFontCodePointRanges[3]:=TpvFontCodePointRange.Create($f1ea,$f1ec); // Window maximize, minimize, restore
  end;
 
  fStandardSkin:=TpvGUIDefaultVectorBasedSkin.Create(self);
@@ -3851,9 +3852,10 @@ procedure TpvGUIWindow.AddMinimizationButton;
 begin
  if not assigned(fMinimizationButton) then begin
   fMinimizationButton:=TpvGUIButton.Create(ButtonPanel);
-  fMinimizationButton.Font:=Skin.IconicFont;
+  fMinimizationButton.fIcon:=Skin.fIconWindowMinimize;
+  fMinimizationButton.fIconHeight:=Skin.fWindowButtonIconHeight;
+  fMinimizationButton.fCaption:='';
   fMinimizationButton.OnClick:=OnButtonClick;
-  fMinimizationButton.fCaption:=PUCUUTF32CharToUTF8($f1eb);
   fMinimizationButton.fWidgetFlags:=fMinimizationButton.fWidgetFlags-[pvgwfTabStop];
  end;
 end;
@@ -3862,9 +3864,10 @@ procedure TpvGUIWindow.AddMaximizationButton;
 begin
  if not assigned(fMaximizationButton) then begin
   fMaximizationButton:=TpvGUIButton.Create(ButtonPanel);
-  fMaximizationButton.Font:=Skin.IconicFont;
+  fMaximizationButton.fIcon:=Skin.fIconWindowMaximize;
+  fMaximizationButton.fIconHeight:=Skin.fWindowButtonIconHeight;
+  fMaximizationButton.fCaption:='';
   fMaximizationButton.OnClick:=OnButtonClick;
-  fMaximizationButton.fCaption:=PUCUUTF32CharToUTF8($f1ea);
   fMaximizationButton.fWidgetFlags:=fMaximizationButton.fWidgetFlags-[pvgwfTabStop];
  end;
 end;
@@ -3873,9 +3876,10 @@ procedure TpvGUIWindow.AddCloseButton;
 begin
  if not assigned(fCloseButton) then begin
   fCloseButton:=TpvGUIButton.Create(ButtonPanel);
-  fCloseButton.Font:=Skin.IconicFont;
+  fCloseButton.fIcon:=Skin.fIconWindowClose;
+  fCloseButton.fIconHeight:=Skin.fWindowButtonIconHeight;
+  fCloseButton.fCaption:='';
   fCloseButton.OnClick:=OnButtonClick;
-  fCloseButton.fCaption:=PUCUUTF32CharToUTF8($f136);
   fCloseButton.fWidgetFlags:=fCloseButton.fWidgetFlags-[pvgwfTabStop];
  end;
 end;
@@ -3951,35 +3955,35 @@ begin
   case fWindowState of
    pvgwsNormal:begin
     if assigned(fMinimizationButton) then begin
-     fMinimizationButton.fCaption:=PUCUUTF32CharToUTF8($f1eb);
+     fMinimizationButton.fIcon:=Skin.fIconWindowMinimize;
     end;
     if assigned(fMaximizationButton) then begin
-     fMaximizationButton.fCaption:=PUCUUTF32CharToUTF8($f1ea);
+     fMaximizationButton.fIcon:=Skin.fIconWindowMaximize;
     end;
     if assigned(fCloseButton) then begin
-     fCloseButton.fCaption:=PUCUUTF32CharToUTF8($f136);
+     fCloseButton.fIcon:=Skin.fIconWindowClose;
     end;
    end;
    pvgwsMinimized:begin
     if assigned(fMinimizationButton) then begin
-     fMinimizationButton.fCaption:=PUCUUTF32CharToUTF8($f1ec);
+     fMinimizationButton.fIcon:=Skin.fIconWindowRestore;
     end;
     if assigned(fMaximizationButton) then begin
-     fMaximizationButton.fCaption:=PUCUUTF32CharToUTF8($f1ea);
+     fMaximizationButton.fIcon:=Skin.fIconWindowMaximize;
     end;
     if assigned(fCloseButton) then begin
-     fCloseButton.fCaption:=PUCUUTF32CharToUTF8($f136);
+     fCloseButton.fIcon:=Skin.fIconWindowClose;
     end;
    end;
    pvgwsMaximized:begin
     if assigned(fMinimizationButton) then begin
-     fMinimizationButton.fCaption:=PUCUUTF32CharToUTF8($f1eb);
+     fMinimizationButton.fIcon:=Skin.fIconWindowMinimize;
     end;
     if assigned(fMaximizationButton) then begin
-     fMaximizationButton.fCaption:=PUCUUTF32CharToUTF8($f1ec);
+     fMaximizationButton.fIcon:=Skin.fIconWindowRestore;
     end;
     if assigned(fCloseButton) then begin
-     fCloseButton.fCaption:=PUCUUTF32CharToUTF8($f136);
+     fCloseButton.fIcon:=Skin.fIconWindowClose;
     end;
    end;
   end;
@@ -4438,12 +4442,6 @@ begin
  fIcon:=nil;
 
  fIconHeight:=0.0;
-
- fIconText:='';
-
- fIconFont:=nil;
-
- fIconFontSize:=FontSize;
 
  fOnClick:=nil;
 
