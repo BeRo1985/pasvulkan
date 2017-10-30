@@ -97,7 +97,7 @@ begin
  HideSystemBars:=true;
  AndroidSeparateMouseAndTouch:=true;
  UseAudio:=true;
- VSync:={$ifdef NoVSync}false{$else}true{$endif};
+ PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.PRESENT_MODE_NO_VSYNC{$else}TpvApplicationPresentMode.PRESENT_MODE_VSYNC{$endif};
 end;
 
 procedure TExampleApplication.Start;

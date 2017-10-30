@@ -915,18 +915,37 @@ type EpvApplication=class(Exception)
 
      TpvApplicationCommandBufferFences=array of array of TpvVulkanFence;
 
-     PpvApplicationVulkanRecreationKind=^TpvApplicationVulkanRecreationKind;
-     TpvApplicationVulkanRecreationKind=
-      (
-       vavrkNone,
-       vavrkSwapChain,
-       vavrkSurface,
-       vavrkDevice
-      );
-
      TpvApplicationOnEvent=function(const aVulkanApplication:TpvApplication;const aEvent:TpvApplicationEvent):boolean of object;
 
+     PpvApplicationPresentMode=^TpvApplicationPresentMode;
+     TpvApplicationPresentMode=
+      (
+       PRESENT_MODE_IMMEDIATE=0,
+       PRESENT_MODE_MAILBOX=1,
+       PRESENT_MODE_FIFO=2,
+       PRESENT_MODE_FIFO_RELAXED=3,
+       PRESENT_MODE_NO_VSYNC=PRESENT_MODE_IMMEDIATE,
+       PRESENT_MODE_GREEDY_VSYNC=PRESENT_MODE_MAILBOX,
+       PRESENT_MODE_VSYNC=PRESENT_MODE_FIFO
+      );
+
      TpvApplication=class
+      private
+       type //PpvApplicationVulkanRecreationKind=^TpvApplicationVulkanRecreationKind;
+            TpvApplicationVulkanRecreationKind=
+             (
+              pvavrkNone,
+              pvavrkSwapChain,
+              pvavrkSurface,
+              pvavrkDevice
+             );
+       const PresentModeToVulkanPresentMode:array[PRESENT_MODE_IMMEDIATE..PRESENT_MODE_FIFO_RELAXED] of TVkPresentModeKHR=
+              (
+               VK_PRESENT_MODE_IMMEDIATE_KHR,
+               VK_PRESENT_MODE_MAILBOX_KHR,
+               VK_PRESENT_MODE_FIFO_KHR,
+               VK_PRESENT_MODE_FIFO_RELAXED_KHR
+              );
       private
 
        fTitle:string;
@@ -964,7 +983,7 @@ type EpvApplication=class(Exception)
        fCurrentWidth:TpvInt32;
        fCurrentHeight:TpvInt32;
        fCurrentFullscreen:TpvInt32;
-       fCurrentVSync:TpvInt32;
+       fCurrentPresentMode:TpvInt32;
        fCurrentVisibleMouseCursor:TpvInt32;
        fCurrentCatchMouse:TpvInt32;
        fCurrentHideSystemBars:TpvInt32;
@@ -973,7 +992,7 @@ type EpvApplication=class(Exception)
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fFullscreen:boolean;
-       fVSync:boolean;
+       fPresentMode:TpvApplicationPresentMode;
        fResizable:boolean;
        fVisibleMouseCursor:boolean;
        fCatchMouse:boolean;
@@ -1116,6 +1135,8 @@ type EpvApplication=class(Exception)
 
        fCountSwapChainImages:TpvInt32;
 
+       fDesiredCountSwapChainImages:TpvInt32;
+
        fUpdateSwapChainImageIndex:TpvInt32;
 
        fDrawSwapChainImageIndex:TpvInt32;
@@ -1167,6 +1188,8 @@ type EpvApplication=class(Exception)
        fVulkanDrawToPresentImageBarrierCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
 
        fVulkanDrawToPresentImageBarrierCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+
+       procedure SetDesiredCountSwapChainImages(const aDesiredCountSwapChainImages:TpvInt32);
 
        procedure InitializeGraphics;
        procedure DeinitializeGraphics;
@@ -1313,7 +1336,7 @@ type EpvApplication=class(Exception)
 
        property Fullscreen:boolean read fFullscreen write fFullscreen;
 
-       property VSync:boolean read fVSync write fVSync;
+       property PresentMode:TpvApplicationPresentMode read fPresentMode write fPresentMode;
 
        property Resizable:boolean read fResizable write fResizable;
 
@@ -1399,6 +1422,8 @@ type EpvApplication=class(Exception)
        property UpdateFrameCounter:TpvInt64 read fUpdateFrameCounter;
 
        property DrawFrameCounter:TpvInt64 read fDrawFrameCounter;
+
+       property DesiredCountSwapChainImages:TpvInt32 read fDesiredCountSwapChainImages write SetDesiredCountSwapChainImages;
 
        property CountSwapChainImages:TpvInt32 read fCountSwapChainImages;
 
@@ -4950,7 +4975,7 @@ begin
  fCurrentWidth:=-1;
  fCurrentHeight:=-1;
  fCurrentFullscreen:=-1;
- fCurrentVSync:=-1;
+ fCurrentPresentMode:=High(TpvInt32);
  fCurrentVisibleMouseCursor:=-1;
  fCurrentCatchMouse:=-1;
  fCurrentHideSystemBars:=-1;
@@ -4959,7 +4984,7 @@ begin
  fWidth:=1280;
  fHeight:=720;
  fFullscreen:=false;
- fVSync:=false;
+ fPresentMode:=PRESENT_MODE_IMMEDIATE;
  fResizable:=true;
  fVisibleMouseCursor:=false;
  fCatchMouse:=false;
@@ -5019,7 +5044,7 @@ begin
  fVulkanTransferCommandBuffers:=nil;
  fVulkanTransferCommandBufferFences:=nil;
 
- fVulkanRecreationKind:=vavrkNone;
+ fVulkanRecreationKind:=pvavrkNone;
 
  fVulkanSwapChain:=nil;
 
@@ -5046,6 +5071,8 @@ begin
  fUpdateFrameCounter:=0;
 
  fDrawFrameCounter:=0;
+
+ SetDesiredCountSwapChainImages(3);
 
  fCountSwapChainImages:=1;
 
@@ -5090,7 +5117,7 @@ begin
  fPasMPInstance:=nil;
 
  pvApplication:=nil;
- 
+
  inherited Destroy;
 end;
 
@@ -5131,6 +5158,17 @@ begin
   end;
  end;
 {$ifend}
+end;
+
+procedure TpvApplication.SetDesiredCountSwapChainImages(const aDesiredCountSwapChainImages:TpvInt32);
+begin
+ if aDesiredCountSwapChainImages<1 then begin
+  fDesiredCountSwapChainImages:=1;
+ end else if aDesiredCountSwapChainImages>MaxSwapChainImages then begin
+  fDesiredCountSwapChainImages:=MaxSwapChainImages;
+ end else begin
+  fDesiredCountSwapChainImages:=aDesiredCountSwapChainImages;
+ end;
 end;
 
 procedure TpvApplication.VulkanDebugLn(const What:string);
@@ -5605,7 +5643,7 @@ begin
                                              fVulkanOldSwapChain,
                                              fWidth,
                                              fHeight,
-                                             IfThen(fVSync,MaxSwapChainImages,1),
+                                             IfThen(fPresentMode<>PRESENT_MODE_IMMEDIATE,fDesiredCountSwapChainImages,1),
                                              1,
                                              VK_FORMAT_UNDEFINED,
                                              VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
@@ -5613,7 +5651,7 @@ begin
                                              VK_SHARING_MODE_EXCLUSIVE,
                                              nil,
                                              VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-                                             TVkPresentModeKHR(integer(IfThen(fVSync,integer(VK_PRESENT_MODE_FIFO_KHR),integer(VK_PRESENT_MODE_IMMEDIATE_KHR)))),
+                                             PresentModeToVulkanPresentMode[fPresentMode],
                                              true,
                                              TVkSurfaceTransformFlagsKHR($ffffffff),
                                              true);
@@ -6014,10 +6052,10 @@ begin
  result:=false;
 
  if not assigned(fVulkanSwapChain) then begin
-  fVulkanRecreationKind:=vavrkSurface;
+  fVulkanRecreationKind:=pvavrkSurface;
  end;
 
- if fVulkanRecreationKind=vavrkNone then begin
+ if fVulkanRecreationKind=pvavrkNone then begin
 
   if fVulkanPresentCompleteFencesReady[fRealUsedDrawSwapChainImageIndex] then begin
    if fVulkanPresentCompleteFences[fRealUsedDrawSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
@@ -6045,10 +6083,9 @@ begin
 
   if (fVulkanSwapChain.Width<>Width) or
      (fVulkanSwapChain.Height<>Height) or
-     ((fVSync and (fVulkanSwapChain.PresentMode<>VK_PRESENT_MODE_FIFO_KHR)) or
-      ((not fVSync) and (fVulkanSwapChain.PresentMode<>VK_PRESENT_MODE_IMMEDIATE_KHR))) then begin
-   if fVulkanRecreationKind<vavrkSwapChain then begin
-    fVulkanRecreationKind:=vavrkSwapChain;
+     (fVulkanSwapChain.PresentMode<>PresentModeToVulkanPresentMode[fPresentMode]) then begin
+   if fVulkanRecreationKind<pvavrkSwapChain then begin
+    fVulkanRecreationKind:=pvavrkSwapChain;
    end;
    VulkanDebugLn('New surface dimension size and/or vertical synchronization setting detected!');
   end else begin
@@ -6066,8 +6103,8 @@ begin
       fRealUsedDrawSwapChainImageIndex:=fVulkanSwapChain.CurrentImageIndex;
      end;
      VK_SUBOPTIMAL_KHR:begin
-      if fVulkanRecreationKind<vavrkSwapChain then begin
-       fVulkanRecreationKind:=vavrkSwapChain;
+      if fVulkanRecreationKind<pvavrkSwapChain then begin
+       fVulkanRecreationKind:=pvavrkSwapChain;
       end;
       VulkanDebugLn('Suboptimal surface detected!');
      end;
@@ -6079,15 +6116,15 @@ begin
     on VulkanResultException:EpvVulkanResultException do begin
      case VulkanResultException.ResultCode of
       VK_ERROR_SURFACE_LOST_KHR:begin
-       if fVulkanRecreationKind<vavrkSurface then begin
-        fVulkanRecreationKind:=vavrkSurface;
+       if fVulkanRecreationKind<pvavrkSurface then begin
+        fVulkanRecreationKind:=pvavrkSurface;
        end;
        VulkanDebugLn(VulkanResultException.ClassName+': '+VulkanResultException.Message);
       end;
       VK_ERROR_OUT_OF_DATE_KHR,
       VK_SUBOPTIMAL_KHR:begin
-       if fVulkanRecreationKind<vavrkSwapChain then begin
-        fVulkanRecreationKind:=vavrkSwapChain;
+       if fVulkanRecreationKind<pvavrkSwapChain then begin
+        fVulkanRecreationKind:=pvavrkSwapChain;
        end;
        VulkanDebugLn(VulkanResultException.ClassName+': '+VulkanResultException.Message);
       end;
@@ -6101,7 +6138,7 @@ begin
 
  end;
 
- if fVulkanRecreationKind in [vavrkSwapChain,vavrkSurface] then begin
+ if fVulkanRecreationKind in [pvavrkSwapChain,pvavrkSurface] then begin
 
   for ImageIndex:=0 to fCountSwapChainImages-1 do begin
    if fVulkanPresentCompleteFencesReady[ImageIndex] then begin
@@ -6118,7 +6155,7 @@ begin
 
   fVulkanDevice.WaitIdle;
 
-  if fVulkanRecreationKind=vavrkSurface then begin
+  if fVulkanRecreationKind=pvavrkSurface then begin
    VulkanDebugLn('Recreating vulkan surface... ');
   end else begin
    VulkanDebugLn('Recreating vulkan swap chain... ');
@@ -6138,7 +6175,7 @@ begin
    DestroyVulkanFrameBuffers;
    DestroyVulkanRenderPass;
    DestroyVulkanSwapChain;
-   if fVulkanRecreationKind=vavrkSurface then begin
+   if fVulkanRecreationKind=pvavrkSurface then begin
     DestroyVulkanSurface;
     CreateVulkanSurface;
    end;
@@ -6151,13 +6188,13 @@ begin
   finally
    FreeAndNil(fVulkanOldSwapChain);
   end;
-  if fVulkanRecreationKind=vavrkSurface then begin
+  if fVulkanRecreationKind=pvavrkSurface then begin
    VulkanDebugLn('Recreated vulkan surface... ');
   end else begin
    VulkanDebugLn('Recreated vulkan swap chain... ');
   end;
 
-  fVulkanRecreationKind:=vavrkNone;
+  fVulkanRecreationKind:=pvavrkNone;
 
   fVulkanWaitSemaphore:=nil;
   fVulkanWaitFence:=nil;
@@ -6232,8 +6269,8 @@ begin
     result:=true;
    end;
    VK_SUBOPTIMAL_KHR:begin
-    if fVulkanRecreationKind<vavrkSwapChain then begin
-     fVulkanRecreationKind:=vavrkSwapChain;
+    if fVulkanRecreationKind<pvavrkSwapChain then begin
+     fVulkanRecreationKind:=pvavrkSwapChain;
     end;
    end;
   end;
@@ -6241,14 +6278,14 @@ begin
   on VulkanResultException:EpvVulkanResultException do begin
    case VulkanResultException.ResultCode of
     VK_ERROR_SURFACE_LOST_KHR:begin
-     if fVulkanRecreationKind<vavrkSurface then begin
-      fVulkanRecreationKind:=vavrkSurface;
+     if fVulkanRecreationKind<pvavrkSurface then begin
+      fVulkanRecreationKind:=pvavrkSurface;
      end;
     end;
     VK_ERROR_OUT_OF_DATE_KHR,
     VK_SUBOPTIMAL_KHR:begin
-     if fVulkanRecreationKind<vavrkSwapChain then begin
-      fVulkanRecreationKind:=vavrkSwapChain;
+     if fVulkanRecreationKind<pvavrkSwapChain then begin
+      fVulkanRecreationKind:=pvavrkSwapChain;
      end;
     end;
     else begin
@@ -6634,10 +6671,10 @@ begin
   fNextScreen:=nil;
  end;
 
- if (fCurrentWidth<>fWidth) or (fCurrentHeight<>fHeight) or (fCurrentVSync<>ord(fVSync)) then begin
+ if (fCurrentWidth<>fWidth) or (fCurrentHeight<>fHeight) or (fCurrentPresentMode<>TpvInt32(fPresentMode)) then begin
   fCurrentWidth:=fWidth;
   fCurrentHeight:=fHeight;
-  fCurrentVSync:=ord(fVSync);
+  fCurrentPresentMode:=TpvInt32(fPresentMode);
   if not fFullscreen then begin
 {$if defined(PasVulkanUseSDL2)}
    SDL_SetWindowSize(fSurfaceWindow,fWidth,fHeight);
@@ -6748,8 +6785,8 @@ begin
        if fGraphicsReady then begin
         VulkanDebugLn('New surface dimension size detected!');
 {$if true}
-        if fVulkanRecreationKind<vavrkSwapChain then begin
-         fVulkanRecreationKind:=vavrkSwapChain;
+        if fVulkanRecreationKind<pvavrkSwapChain then begin
+         fVulkanRecreationKind:=pvavrkSwapChain;
         end;
 {$else}
         DeinitializeGraphics;
@@ -6924,8 +6961,8 @@ begin
 
  if fCurrentFullScreen<>ord(fFullScreen) then begin
   fCurrentFullScreen:=ord(fFullScreen);
-  if fVulkanRecreationKind=vavrkNone then begin
-   fVulkanRecreationKind:=vavrkSwapChain;
+  if fVulkanRecreationKind=pvavrkNone then begin
+   fVulkanRecreationKind:=pvavrkSwapChain;
   end;
 {$if defined(PasVulkanUseSDL2)}
   if fFullScreen then begin
@@ -7170,7 +7207,7 @@ begin
   fCurrentWidth:=fWidth;
   fCurrentHeight:=fHeight;
 
-  fCurrentVSync:=ord(fVSync);
+  fCurrentPresentMode:=TpvInt32(fPresentMode);
 
 {$if defined(PasVulkanUseSDL2)}
  {SDL_EventState(SDL_MOUSEMOTION,SDL_ENABLE);
