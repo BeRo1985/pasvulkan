@@ -1286,15 +1286,13 @@ begin
 end;
 
 procedure TpvGUIRootLayout.PerformLayout(const aWidget:TpvGUIWidget);
-const Axis0=1;
-      Axis1=0;
 var ChildIndex:TpvInt32;
     Offset,YOffset:TpvFloat;
     FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
     Position:TpvVector2;
     First:boolean;
     Child:TpvGUIObject;
-    ChildWidget:TpvGUIWidget;
+    ChildWidget,LastVisibleChildWidget:TpvGUIWidget;
 begin
  FixedSize:=aWidget.GetFixedSize;
  if FixedSize.x>0.0 then begin
@@ -1322,12 +1320,14 @@ begin
   end;
  end;
  ContainerSize.y:=ContainerSize.y-YOffset;
+ LastVisibleChildWidget:=nil;
  First:=true;
  for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
   Child:=aWidget.fChildren.Items[ChildIndex];
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
+    LastVisibleChildWidget:=ChildWidget;
     if not First then begin
      Offset:=Offset+fSpacing;
     end;
@@ -1344,22 +1344,25 @@ begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
     Position:=TpvVector2.Create(0,YOffset);
-    Position[Axis0]:=Offset;
-    Position[Axis1]:=Position[Axis1]+fMargin;
-    if ChildFixedSize[Axis1]>0.0 then begin
-     ChildTargetSize[Axis1]:=ChildFixedSize[Axis1];
+    Position.x:=Position.x+fMargin;
+    Position.y:=Offset;
+    if ChildFixedSize.y>0.0 then begin
+     ChildTargetSize.x:=ChildFixedSize.x;
     end else begin
-     ChildTargetSize[Axis1]:=ContainerSize[Axis1]-(fMargin*2.0);
+     ChildTargetSize.x:=ContainerSize.x-(fMargin*2.0);
     end;
     if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
      ChildWidget.fPosition:=Position;
     end;
     ChildWidget.fSize:=ChildTargetSize;
     ChildWidget.PerformLayout;
-    Offset:=Offset+ChildTargetSize[Axis0];
+    Offset:=Offset+ChildTargetSize.y;
     First:=false;
    end;
   end;
+ end;
+ if assigned(LastVisibleChildWidget) then begin
+  LastVisibleChildWidget.Height:=ContainerSize.y-(LastVisibleChildWidget.Top+(fMargin*2.0));
  end;
 end;
 
@@ -1433,47 +1436,12 @@ end;
 
 function TpvGUIBoxLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
 var Axis0,Axis1,ChildIndex:TpvInt32;
-    YOffset:TpvFloat;
     Size,ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
     First:boolean;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
  Size:=TpvVector2.Create(fMargin*2.0,fMargin*2.0);
- YOffset:=0;
- if aWidget is TpvGUIInstance then begin
-  if assigned((aWidget as TpvGUIInstance).fMenu) then begin
-   case fOrientation of
-    pvgloHorizontal:begin
-     YOffset:=YOffset+aWidget.Skin.WindowMenuHeight;
-    end;
-    pvgloVertical:begin
-     Size.y:=Size.y+aWidget.Skin.WindowMenuHeight;
-    end;
-   end;
-  end;
- end else if aWidget is TpvGUIWindow then begin
-  if pvgwfHeader in (aWidget as TpvGUIWindow).fWindowFlags then begin
-   case fOrientation of
-    pvgloHorizontal:begin
-     YOffset:=aWidget.Skin.WindowHeaderHeight;
-    end;
-    pvgloVertical:begin
-     Size.y:=Size.y+(aWidget.Skin.WindowHeaderHeight-(fMargin*0.5));
-    end;
-   end;
-  end;
-  if assigned((aWidget as TpvGUIWindow).fMenu) then begin
-   case fOrientation of
-    pvgloHorizontal:begin
-     YOffset:=YOffset+aWidget.Skin.WindowMenuHeight;
-    end;
-    pvgloVertical:begin
-     Size.y:=Size.y+aWidget.Skin.WindowMenuHeight;
-    end;
-   end;
-  end;
- end;
  case fOrientation of
   pvgloHorizontal:begin
    Axis0:=0;
@@ -1511,12 +1479,12 @@ begin
    end;
   end;
  end;
- result:=Size+TpvVector2.Create(0.0,YOffset);
+ result:=Size;
 end;
 
 procedure TpvGUIBoxLayout.PerformLayout(const aWidget:TpvGUIWidget);
 var Axis0,Axis1,ChildIndex:TpvInt32;
-    Offset,YOffset:TpvFloat;
+    Offset:TpvFloat;
     FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
     Position:TpvVector2;
     First:boolean;
@@ -1545,41 +1513,6 @@ begin
   end;
  end;
  Offset:=fMargin;
- YOffset:=0;
- if aWidget is TpvGUIInstance then begin
-  if assigned((aWidget as TpvGUIInstance).fMenu) then begin
-   case fOrientation of
-    pvgloHorizontal:begin
-     YOffset:=YOffset+aWidget.Skin.WindowMenuHeight;
-    end;
-    pvgloVertical:begin
-     Offset:=Offset+aWidget.Skin.WindowMenuHeight;
-    end;
-   end;
-  end;
- end else if aWidget is TpvGUIWindow then begin
-  if pvgwfHeader in (aWidget as TpvGUIWindow).fWindowFlags then begin
-   case fOrientation of
-    pvgloHorizontal:begin
-     YOffset:=aWidget.Skin.WindowHeaderHeight;
-    end;
-    pvgloVertical:begin
-     Offset:=Offset+(aWidget.Skin.WindowHeaderHeight-(fMargin*0.5));
-    end;
-   end;
-  end;
-  if assigned((aWidget as TpvGUIWindow).fMenu) then begin
-   case fOrientation of
-    pvgloHorizontal:begin
-     YOffset:=YOffset+aWidget.Skin.WindowMenuHeight;
-    end;
-    pvgloVertical:begin
-     Offset:=Offset+aWidget.Skin.WindowMenuHeight;
-    end;
-   end;
-  end;
- end;
- ContainerSize.y:=ContainerSize.y-YOffset;
  First:=true;
  for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
   Child:=aWidget.fChildren.Items[ChildIndex];
@@ -1601,7 +1534,7 @@ begin
     end else begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
-    Position:=TpvVector2.Create(0,YOffset);
+    Position:=TpvVector2.Null;
     Position[Axis0]:=Offset;
     case fAlignment of
      pvglaLeading:begin
