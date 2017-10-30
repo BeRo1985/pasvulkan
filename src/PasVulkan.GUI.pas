@@ -615,6 +615,7 @@ type TpvGUIObject=class;
        fCurrentFocusPath:TpvGUIObjectList;
        fDragWidget:TpvGUIWidget;
        fWindow:TpvGUIWindow;
+       fContent:TpvGUIWidget;
        fMenu:TpvGUIWindowMenu;
        fFocusedWidget:TpvGUIWidget;
        fHoveredWidget:TpvGUIWidget;
@@ -656,6 +657,7 @@ type TpvGUIObject=class;
        property DeltaTime:TpvDouble read fDeltaTime write fDeltaTime;
        property FocusedWidget:TpvGUIWidget read fFocusedWidget write UpdateFocus;
        property HoveredWidget:TpvGUIWidget read fHoveredWidget;
+       property Content:TpvGUIWidget read fContent;
        property Menu:TpvGUIWindowMenu read fMenu write fMenu;
      end;
 
@@ -1298,7 +1300,7 @@ var ChildIndex:TpvInt32;
     Offset,YOffset:TpvFloat;
     FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
     Position:TpvVector2;
-    First:boolean;
+    IsInstance,First:boolean;
     Child:TpvGUIObject;
     ChildWidget,LastVisibleChildWidget:TpvGUIWidget;
 begin
@@ -1315,7 +1317,8 @@ begin
  end;
  Offset:=fMargin;
  YOffset:=0;
- if aWidget is TpvGUIInstance then begin
+ IsInstance:=aWidget is TpvGUIInstance;
+ if IsInstance then begin
   if assigned((aWidget as TpvGUIInstance).fMenu) then begin
    Offset:=Offset+aWidget.Skin.WindowMenuHeight;
   end;
@@ -1335,10 +1338,6 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
-    LastVisibleChildWidget:=ChildWidget;
-    if not First then begin
-     Offset:=Offset+fSpacing;
-    end;
     ChildPreferredSize:=ChildWidget.PreferredSize;
     ChildFixedSize:=ChildWidget.GetFixedSize;
     if ChildFixedSize.x>0.0 then begin
@@ -1351,21 +1350,29 @@ begin
     end else begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
-    Position:=TpvVector2.Create(0,YOffset);
-    Position.x:=Position.x+fMargin;
-    Position.y:=Offset;
-    if ChildFixedSize.y>0.0 then begin
-     ChildTargetSize.x:=ChildFixedSize.x;
+    if IsInstance and (ChildWidget is TpvGUIWindow) then begin
+     ChildWidget.fSize:=ChildTargetSize;
     end else begin
-     ChildTargetSize.x:=ContainerSize.x-(fMargin*2.0);
+     if not First then begin
+      Offset:=Offset+fSpacing;
+     end;
+     Position:=TpvVector2.Create(0,YOffset);
+     Position.x:=Position.x+fMargin;
+     Position.y:=Offset;
+     if ChildFixedSize.y>0.0 then begin
+      ChildTargetSize.x:=ChildFixedSize.x;
+     end else begin
+      ChildTargetSize.x:=ContainerSize.x-(fMargin*2.0);
+     end;
+     if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
+      ChildWidget.fPosition:=Position;
+     end;
+     ChildWidget.fSize:=ChildTargetSize;
+     Offset:=Offset+ChildTargetSize.y;
+     First:=false;
+     LastVisibleChildWidget:=ChildWidget;
     end;
-    if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
-     ChildWidget.fPosition:=Position;
-    end;
-    ChildWidget.fSize:=ChildTargetSize;
     ChildWidget.PerformLayout;
-    Offset:=Offset+ChildTargetSize.y;
-    First:=false;
    end;
   end;
  end;
@@ -3729,6 +3736,10 @@ begin
  fDragWidget:=nil;
 
  fWindow:=nil;
+
+ fLayout:=TpvGUIRootLayout.Create(self);
+
+ fContent:=TpvGUIWidget.Create(self);
 
  fMenu:=nil;
 
