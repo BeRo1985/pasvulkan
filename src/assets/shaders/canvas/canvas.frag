@@ -78,6 +78,8 @@ vec4 blend(vec4 a, vec4 b){
 #define GUI_ELEMENT_BOX_UNFOCUSED 10
 #define GUI_ELEMENT_BOX_FOCUSED 11
 #define GUI_ELEMENT_BOX_DISABLED 12  
+#define GUI_ELEMENT_PANEL_ENABLED 13
+#define GUI_ELEMENT_PANEL_DISABLED 14
 #define GUI_ELEMENT_MOUSE_CURSOR_ARROW 64
 #define GUI_ELEMENT_MOUSE_CURSOR_BEAM 65
 #define GUI_ELEMENT_MOUSE_CURSOR_BUSY 66
@@ -135,6 +137,11 @@ const vec4 uFocusedBoxGradientTop = MAKE_GRAY_COLOR(64.0, 255.0);
 const vec4 uFocusedBoxGradientBottom = MAKE_GRAY_COLOR(68.0, 255.0);
 const vec4 uDisabledBoxGradientTop = MAKE_GRAY_COLOR(94.0, 255.0);
 const vec4 uDisabledBoxGradientBottom = MAKE_GRAY_COLOR(98.0, 255.0);   
+
+const vec4 uEnabledPanelGradientTop = MAKE_GRAY_COLOR(58.0, 255.0);
+const vec4 uEnabledPanelGradientBottom = MAKE_GRAY_COLOR(54.0, 255.0);
+const vec4 uDisabledPanelGradientTop = MAKE_GRAY_COLOR(96.0, 255.0);
+const vec4 uDisabledPanelGradientBottom = MAKE_GRAY_COLOR(74.0, 255.0);
 
 const vec4 uFocused = MAKE_COLOR(255.0, 192.0, 64.0, 255.0);
 
@@ -544,6 +551,51 @@ void main(void){
                       vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
         break;
       }
+      case GUI_ELEMENT_PANEL_ENABLED:
+      case GUI_ELEMENT_PANEL_DISABLED:{
+        float d0 = sdRoundedRect(p - (size * 0.5), size * 0.5, uButtonCornerRadius),
+              d1 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(1.0), uButtonCornerRadius),      
+              d2 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(2.0), uButtonCornerRadius),      
+              d3 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(3.0), uButtonCornerRadius);      
+        vec4 gradientTop,
+             gradientBottom,
+             borderTowardsLight,
+             borderAwayFromLight;
+        switch(guiElementIndex){
+        	case GUI_ELEMENT_PANEL_ENABLED:{
+            gradientTop = uEnabledPanelGradientTop;
+            gradientBottom = uEnabledPanelGradientBottom;
+            borderTowardsLight = uBorderLight;
+            borderAwayFromLight = uBorderDark;
+          	break;
+          }
+        	case GUI_ELEMENT_PANEL_DISABLED:{
+            gradientTop = uDisabledPanelGradientTop;
+            gradientBottom = uDisabledPanelGradientBottom;
+            borderTowardsLight = uBorderLight;
+            borderAwayFromLight = uBorderDark;
+          	break;
+          }
+        }
+        color = blend(color, 
+                      mix(mix(mix(mix(gradientTop,
+                                      gradientBottom, 
+                                      linearstep(0.0, size.y, p.y)),
+                                  mix(mix(borderTowardsLight, 
+                                          uBorderMedium, 
+                                          linearstep(0.0, t, p.y - 3.0)), 
+                                      borderAwayFromLight, 
+                                      linearstep(0.0, t, p.y - (size.y - 3.0))),
+                                  linearstep(-t, t, d3)),
+                              uBorderMedium, 
+                              linearstep(-t, t, d2)),
+                            mix(uBorderMedium,
+                                uBorderLight,
+                                linearstep(-t, t, p.y - (size.y - 1.0))), 
+                            linearstep(-t, t, d1)) *
+                      vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
+        break;
+      }      
       case GUI_ELEMENT_MOUSE_CURSOR_ARROW:
       case GUI_ELEMENT_MOUSE_CURSOR_HELP:{
         float a = dot(p, normalize(vec2(-1.0, 0.0)));

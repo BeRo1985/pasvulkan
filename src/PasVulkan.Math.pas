@@ -1076,6 +1076,7 @@ type PpvScalar=^TpvScalar;
        constructor CreateRelative(const aLeftTop,aSize:TpvVector2); overload;
        function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function GetIntersection(const WithAABB:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
+       function Touched(const aPosition:TpvVector2;Threshold:TpvScalar=EPSILON):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        property Width:TpvFloat read GetWidth write SetWidth;
        property Height:TpvFloat read GetHeight write SetHeight;
        property Size:TpvVector2 read GetSize write SetSize;
@@ -13550,6 +13551,12 @@ begin
  result.Min.y:=Math.Max(Min.y,WithAABB.Min.y);
  result.Max.x:=Math.Min(Max.x,WithAABB.Max.x);
  result.Max.y:=Math.Min(Max.y,WithAABB.Max.y);
+end;
+
+function TpvRect.Touched(const aPosition:TpvVector2;Threshold:TpvScalar=EPSILON):boolean;
+begin
+ result:=((aPosition.x>=(Min.x-Threshold)) and (aPosition.x<=(Max.x+Threshold))) and
+         ((aPosition.y>=(Min.y-Threshold)) and (aPosition.y<=(Max.y+Threshold)));
 end;
 
 function TpvRect.GetWidth:TpvFloat;

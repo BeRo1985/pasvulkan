@@ -127,6 +127,8 @@ end;
 
 procedure TScreenExampleGUI.Show;
 var Index:TpvInt32;
+    WindowMenu:TpvGUIWindowMenu;
+    MenuItem:TpvGUIMenuItem;
 begin
  inherited Show;
 
@@ -162,6 +164,21 @@ begin
  fGUIWindow.AddMinimizationButton;
  fGUIWindow.AddMaximizationButton;
  fGUIWindow.AddCloseButton;
+
+ WindowMenu:=fGUIWindow.AddMenu;
+
+ MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
+ MenuItem.Caption:='File';
+
+ MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
+ MenuItem.Caption:='Edit';
+ MenuItem.Enabled:=false;
+
+ MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
+ MenuItem.Caption:='Settings';
+
+ MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
+ MenuItem.Caption:='Help';
 
  fGUILabel:=TpvGUILabel.Create(fGUIWindow);
  fGUILabel.Caption:='An example label';
