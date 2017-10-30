@@ -215,15 +215,23 @@ type TpvGUIObject=class;
                           const aMargin:TpvFloat=0.0;
                           const aSpacing:TpvFloat=0.0); reintroduce; virtual;
        destructor Destroy; override;
+      published
        property Margin:TpvFloat read fMargin write fMargin;
        property Spacing:TpvFloat read fSpacing write fSpacing;
      end;
 
      TpvGUIFillLayout=class(TpvGUILayout)
+      private
+       fMargin:TpvFloat;
       protected
        function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
        procedure PerformLayout(const aWidget:TpvGUIWidget); override;
       public
+       constructor Create(const aParent:TpvGUIObject;
+                          const aMargin:TpvFloat=0.0); reintroduce; virtual;
+       destructor Destroy; override;
+      published
+       property Margin:TpvFloat read fMargin write fMargin;
      end;
 
      TpvGUIBoxLayout=class(TpvGUILayout)
@@ -1366,6 +1374,18 @@ begin
  end;
 end;
 
+constructor TpvGUIFillLayout.Create(const aParent:TpvGUIObject;
+                                    const aMargin:TpvFloat=0.0);
+begin
+ inherited Create(aParent);
+ fMargin:=aMargin;
+end;
+
+destructor TpvGUIFillLayout.Destroy;
+begin
+ inherited Destroy;
+end;
+
 function TpvGUIFillLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
 begin
  result:=aWidget.fSize;
@@ -1407,9 +1427,9 @@ begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
     if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
-     ChildWidget.fPosition:=TpvVector2.Null;
+     ChildWidget.fPosition:=TpvVector2.Create(fMargin,fMargin);
     end;
-    ChildWidget.fSize:=ChildTargetSize;
+    ChildWidget.fSize:=ChildTargetSize-(TpvVector2.Create(fMargin,fMargin)*2.0);
     ChildWidget.PerformLayout;
    end;
   end;
