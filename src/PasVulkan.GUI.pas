@@ -2606,6 +2606,7 @@ procedure TpvGUIDefaultVectorBasedSkin.DrawWindowMenu(const aCanvas:TpvCanvas;co
 var Index,Element:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
+    Offset:TpvVector2;
 begin
 
  ProcessWindowMenuItems(aWindowMenu);
@@ -2633,12 +2634,15 @@ begin
 
    MenuItem:=TpvGUIMenuItem(Child);
 
+   Offset:=TpvVector2.Null;
+
    if aWindowMenu.Enabled and MenuItem.Enabled then begin
 
     aCanvas.Color:=aWindowMenu.FontColor;
 
     if aWindowMenu.fSelectedMenuItem=MenuItem then begin
      Element:=GUI_ELEMENT_BUTTON_PUSHED;
+     Offset:=TpvVector2.Create(-1.0,-1.0);
     end else if aWindowMenu.Focused and (aWindowMenu.fFocusedMenuItem=MenuItem) then begin
      Element:=GUI_ELEMENT_BUTTON_FOCUSED;
     end else begin
@@ -2660,7 +2664,7 @@ begin
                           MenuItem.fRect.LeftTop,
                           MenuItem.fRect.RightBottom);
 
-   aCanvas.DrawText(MenuItem.fCaption,(MenuItem.fRect.LeftTop+MenuItem.fRect.RightBottom)*0.5);
+   aCanvas.DrawText(MenuItem.fCaption,((MenuItem.fRect.LeftTop+MenuItem.fRect.RightBottom)*0.5)+Offset);
 
    if aWindowMenu.PointerFocused and (aWindowMenu.fHoveredMenuItem=MenuItem) then begin
 
