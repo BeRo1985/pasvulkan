@@ -1132,6 +1132,8 @@ type EpvApplication=class(Exception)
 
        fVulkanOldSwapChain:TpvVulkanSwapChain;
 
+       fVulkanRecycleOldSwapChain:boolean;
+
        fVulkanWaitFences:array[0..MaxSwapChainImages-1] of TpvVulkanFence;
 
        fVulkanWaitFencesReady:array[0..MaxSwapChainImages-1] of boolean;
@@ -1373,6 +1375,8 @@ type EpvApplication=class(Exception)
        property VulkanTransferCommandBufferFences:TpvApplicationCommandBufferFences read fVulkanTransferCommandBufferFences;
 
        property VulkanSwapChain:TpvVulkanSwapChain read fVulkanSwapChain;
+
+       property VulkanRecycleOldSwapChain:boolean read fVulkanRecycleOldSwapChain write fVulkanRecycleOldSwapChain;
 
        property VulkanDepthImageFormat:TVkFormat read fVulkanDepthImageFormat;
 
@@ -5021,6 +5025,8 @@ begin
 
  fVulkanOldSwapChain:=nil;
 
+ fVulkanRecycleOldSwapChain:=false;
+
  fScreen:=nil;
 
  fNextScreen:=nil;
@@ -6117,11 +6123,17 @@ begin
   end else begin
    VulkanDebugLn('Recreating vulkan swap chain... ');
   end;
-  fVulkanOldSwapChain:=fVulkanSwapChain;
+  if fVulkanRecycleOldSwapChain then begin
+   fVulkanOldSwapChain:=fVulkanSwapChain;
+  end else begin
+   fVulkanOldSwapChain:=nil;
+  end;
   try
    VulkanWaitIdle;
    BeforeDestroySwapChain;
-   fVulkanSwapChain:=nil;
+   if fVulkanRecycleOldSwapChain then begin
+    fVulkanSwapChain:=nil;
+   end;
    DestroyVulkanCommandBuffers;
    DestroyVulkanFrameBuffers;
    DestroyVulkanRenderPass;
