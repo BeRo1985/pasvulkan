@@ -2849,7 +2849,7 @@ begin
 
     if aWindowMenu.fSelectedMenuItem=MenuItem then begin
      Element:=GUI_ELEMENT_BUTTON_PUSHED;
-     Offset:=TpvVector2.Create(-1.0,-1.0);
+     Offset:=TpvVector2.Create(-0.5,-0.5);
     end else if aWindowMenu.Focused and (aWindowMenu.fFocusedMenuItem=MenuItem) then begin
      Element:=GUI_ELEMENT_BUTTON_FOCUSED;
     end else begin
