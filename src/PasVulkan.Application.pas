@@ -1132,7 +1132,7 @@ type EpvApplication=class(Exception)
 
        fVulkanOldSwapChain:TpvVulkanSwapChain;
 
-       fVulkanRecycleOldSwapChain:boolean;
+       fVulkanTransferInflightCommandsFromOldSwapChain:boolean;
 
        fVulkanWaitFences:array[0..MaxSwapChainImages-1] of TpvVulkanFence;
 
@@ -1376,7 +1376,7 @@ type EpvApplication=class(Exception)
 
        property VulkanSwapChain:TpvVulkanSwapChain read fVulkanSwapChain;
 
-       property VulkanRecycleOldSwapChain:boolean read fVulkanRecycleOldSwapChain write fVulkanRecycleOldSwapChain;
+       property VulkanTransferInflightCommandsFromOldSwapChain:boolean read fVulkanTransferInflightCommandsFromOldSwapChain write fVulkanTransferInflightCommandsFromOldSwapChain;
 
        property VulkanDepthImageFormat:TVkFormat read fVulkanDepthImageFormat;
 
@@ -5025,7 +5025,7 @@ begin
 
  fVulkanOldSwapChain:=nil;
 
- fVulkanRecycleOldSwapChain:=false;
+ fVulkanTransferInflightCommandsFromOldSwapChain:=false;
 
  fScreen:=nil;
 
@@ -6123,7 +6123,7 @@ begin
   end else begin
    VulkanDebugLn('Recreating vulkan swap chain... ');
   end;
-  if fVulkanRecycleOldSwapChain then begin
+  if fVulkanTransferInflightCommandsFromOldSwapChain then begin
    fVulkanOldSwapChain:=fVulkanSwapChain;
   end else begin
    fVulkanOldSwapChain:=nil;
@@ -6131,7 +6131,7 @@ begin
   try
    VulkanWaitIdle;
    BeforeDestroySwapChain;
-   if fVulkanRecycleOldSwapChain then begin
+   if fVulkanTransferInflightCommandsFromOldSwapChain then begin
     fVulkanSwapChain:=nil;
    end;
    DestroyVulkanCommandBuffers;
