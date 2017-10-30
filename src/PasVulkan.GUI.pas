@@ -2117,7 +2117,7 @@ function TpvGUIDefaultVectorBasedSkin.GetWindowPreferredSize(const aWindow:TpvGU
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
-    ButtonPanelPreferredSize:TpvVector2;
+    TextSize:TpvVector2;
 begin
  if assigned(aWindow.fButtonPanel) then begin
   aWindow.fButtonPanel.Visible:=false;
@@ -2125,10 +2125,11 @@ begin
  if assigned(aWindow.fMenu) then begin
   aWindow.fMenu.Visible:=false;
  end;
+ TextSize:=aWindow.Font.TextSize(aWindow.fTitle,
+                                 fWindowHeaderFontSize)+
+           TpvVector2.Create(fSpacing*2.0,0.0);
  result:=Maximum(GetWidgetPreferredSize(aWindow),
-                 aWindow.Font.TextSize(aWindow.fTitle,
-                                       fWindowHeaderFontSize)+
-                 TpvVector2.Create(fSpacing*2.0,0.0));
+                 TextSize);
  if pvgwfHeader in aWindow.fWindowFlags then begin
   result.y:=Maximum(result.y,fWindowHeaderHeight);
  end;
@@ -2143,9 +2144,8 @@ begin
     ChildWidget.FontSize:=-15;
    end;
   end;
-  ButtonPanelPreferredSize:=aWindow.fButtonPanel.PreferredSize;
-  result.x:=result.x+(ButtonPanelPreferredSize.x+(fSpacing*2.0));
-  result.y:=Maximum(result.y,ButtonPanelPreferredSize.y);
+  result:=Maximum(result,aWindow.fButtonPanel.PreferredSize+
+                         TpvVector2.Create(TextSize.x+(fSpacing*2.0),0.0));
  end;
  if assigned(aWindow.fMenu) then begin
   aWindow.fMenu.Visible:=true;
