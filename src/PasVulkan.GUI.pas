@@ -203,6 +203,29 @@ type TpvGUIObject=class;
       public
      end;
 
+     TpvGUIRootLayout=class(TpvGUILayout)
+      private
+       fMargin:TpvFloat;
+       fSpacing:TpvFloat;
+      protected
+       function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
+       procedure PerformLayout(const aWidget:TpvGUIWidget); override;
+      public
+       constructor Create(const aParent:TpvGUIObject;
+                          const aMargin:TpvFloat=0.0;
+                          const aSpacing:TpvFloat=0.0); reintroduce; virtual;
+       destructor Destroy; override;
+       property Margin:TpvFloat read fMargin write fMargin;
+       property Spacing:TpvFloat read fSpacing write fSpacing;
+     end;
+
+     TpvGUIFillLayout=class(TpvGUILayout)
+      protected
+       function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
+       procedure PerformLayout(const aWidget:TpvGUIWidget); override;
+      public
+     end;
+
      TpvGUIBoxLayout=class(TpvGUILayout)
       private
        fAlignment:TpvGUILayoutAlignment;
@@ -504,7 +527,7 @@ type TpvGUIObject=class;
        function GetEnumerator:TpvGUIWidgetEnumerator;
        function Contains(const aPosition:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure GetTabList(const aList:Classes.TList);
-       function FindWidget(const aPosition:TpvVector2):TpvGUIWidget;
+       function FindWidget(const aPosition:TpvVector2):TpvGUIWidget; virtual;
        function FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aForward,aCheckTabStop,aCheckParent:boolean):TpvGUIWidget; virtual;
        function ProcessTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean; virtual;
        procedure PerformLayout; virtual;
@@ -584,6 +607,7 @@ type TpvGUIObject=class;
        fCurrentFocusPath:TpvGUIObjectList;
        fDragWidget:TpvGUIWidget;
        fWindow:TpvGUIWindow;
+       fMenu:TpvGUIWindowMenu;
        fFocusedWidget:TpvGUIWidget;
        fHoveredWidget:TpvGUIWidget;
        fMousePosition:TpvVector2;
@@ -605,6 +629,8 @@ type TpvGUIObject=class;
        procedure ClearReferenceCountedObjectList;
        procedure AddReferenceCountedObjectForNextDraw(const aObject:TpvReferenceCountedObject);
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
+       function AddMenu:TpvGUIWindowMenu;
+       procedure PerformLayout; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -622,6 +648,7 @@ type TpvGUIObject=class;
        property DeltaTime:TpvDouble read fDeltaTime write fDeltaTime;
        property FocusedWidget:TpvGUIWidget read fFocusedWidget write UpdateFocus;
        property HoveredWidget:TpvGUIWidget read fHoveredWidget;
+       property Menu:TpvGUIWindowMenu read fMenu write fMenu;
      end;
 
      PpvGUIWindowMouseAction=^TpvGUIWindowMouseAction;
@@ -644,7 +671,6 @@ type TpvGUIObject=class;
       (
        pvgwfModal,
        pvgwfHeader,
-       pvgwfMenu,
        pvgwfMovable,
        pvgwfResizableNW,
        pvgwfResizableNE,
@@ -688,6 +714,7 @@ type TpvGUIObject=class;
        fWindowState:TpvGUIWindowState;
        fMenu:TpvGUIWindowMenu;
        fButtonPanel:TpvGUIWidget;
+       fContent:TpvGUIWidget;
        fSavedPosition:TpvVector2;
        fSavedSize:TpvVector2;
        fMinimizationButton:TpvGUIButton;
@@ -713,6 +740,7 @@ type TpvGUIObject=class;
        function AddMenu:TpvGUIWindowMenu;
        procedure DisposeWindow;
        procedure Center;
+       function FindWidget(const aPosition:TpvVector2):TpvGUIWidget; override;
        procedure PerformLayout; override;
        function DragEvent(const aPosition:TpvVector2):boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
@@ -730,6 +758,7 @@ type TpvGUIObject=class;
        property WindowState:TpvGUIWindowState read fWindowState write SetWindowState;
        property Modal:boolean read GetModal write SetModal;
        property ButtonPanel:TpvGUIWidget read GetButtonPanel;
+       property Content:TpvGUIWidget read fContent;
        property Menu:TpvGUIWindowMenu read fMenu;
        property Font;
        property TextHorizontalAlignment;
@@ -1188,6 +1217,202 @@ begin
 
 end;
 
+constructor TpvGUIRootLayout.Create(const aParent:TpvGUIObject;
+                                    const aMargin:TpvFloat=0.0;
+                                    const aSpacing:TpvFloat=0.0);
+begin
+ inherited Create(aParent);
+ fMargin:=aMargin;
+ fSpacing:=aSpacing;
+end;
+
+destructor TpvGUIRootLayout.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TpvGUIRootLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
+const Axis0=1;
+      Axis1=0;
+var ChildIndex:TpvInt32;
+    YOffset:TpvFloat;
+    Size,ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
+    First:boolean;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+begin
+ Size:=TpvVector2.Create(fMargin*2.0,fMargin*2.0);
+ YOffset:=0;
+ if aWidget is TpvGUIInstance then begin
+  if assigned((aWidget as TpvGUIInstance).fMenu) then begin
+   Size.y:=Size.y+aWidget.Skin.WindowMenuHeight;
+  end;
+ end else if aWidget is TpvGUIWindow then begin
+  if pvgwfHeader in (aWidget as TpvGUIWindow).fWindowFlags then begin
+   Size.y:=Size.y+(aWidget.Skin.WindowHeaderHeight-(fMargin*0.5));
+  end;
+  if assigned((aWidget as TpvGUIWindow).fMenu) then begin
+   Size.y:=Size.y+aWidget.Skin.WindowMenuHeight;
+  end;
+ end;
+ First:=true;
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    if not First then begin
+     Size[Axis0]:=Size[Axis0]+fSpacing;
+    end;
+    ChildPreferredSize:=ChildWidget.PreferredSize;
+    ChildFixedSize:=ChildWidget.GetFixedSize;
+    if ChildFixedSize.x>0.0 then begin
+     ChildTargetSize.x:=ChildFixedSize.x;
+    end else begin
+     ChildTargetSize.x:=ChildPreferredSize.x;
+    end;
+    if ChildFixedSize.y>0.0 then begin
+     ChildTargetSize.y:=ChildFixedSize.y;
+    end else begin
+     ChildTargetSize.y:=ChildPreferredSize.y;
+    end;
+    Size[Axis0]:=Size[Axis0]+ChildTargetSize[Axis0];
+    Size[Axis1]:=Max(Size[Axis1],ChildTargetSize[Axis1]+(fMargin*2.0));
+    First:=false;
+   end;
+  end;
+ end;
+ result:=Size+TpvVector2.Create(0.0,YOffset);
+end;
+
+procedure TpvGUIRootLayout.PerformLayout(const aWidget:TpvGUIWidget);
+const Axis0=1;
+      Axis1=0;
+var ChildIndex:TpvInt32;
+    Offset,YOffset:TpvFloat;
+    FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
+    Position:TpvVector2;
+    First:boolean;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+begin
+ FixedSize:=aWidget.GetFixedSize;
+ if FixedSize.x>0.0 then begin
+  ContainerSize.x:=FixedSize.x;
+ end else begin
+  ContainerSize.x:=aWidget.Width;
+ end;
+ if FixedSize.y>0.0 then begin
+  ContainerSize.y:=FixedSize.y;
+ end else begin
+  ContainerSize.y:=aWidget.Height;
+ end;
+ Offset:=fMargin;
+ YOffset:=0;
+ if aWidget is TpvGUIInstance then begin
+  if assigned((aWidget as TpvGUIInstance).fMenu) then begin
+   Offset:=Offset+aWidget.Skin.WindowMenuHeight;
+  end;
+ end else if aWidget is TpvGUIWindow then begin
+  if pvgwfHeader in (aWidget as TpvGUIWindow).fWindowFlags then begin
+   Offset:=Offset+(aWidget.Skin.WindowHeaderHeight-(fMargin*0.5));
+  end;
+  if assigned((aWidget as TpvGUIWindow).fMenu) then begin
+   Offset:=Offset+aWidget.Skin.WindowMenuHeight;
+  end;
+ end;
+ ContainerSize.y:=ContainerSize.y-YOffset;
+ First:=true;
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    if not First then begin
+     Offset:=Offset+fSpacing;
+    end;
+    ChildPreferredSize:=ChildWidget.PreferredSize;
+    ChildFixedSize:=ChildWidget.GetFixedSize;
+    if ChildFixedSize.x>0.0 then begin
+     ChildTargetSize.x:=ChildFixedSize.x;
+    end else begin
+     ChildTargetSize.x:=ChildPreferredSize.x;
+    end;
+    if ChildFixedSize.y>0.0 then begin
+     ChildTargetSize.y:=ChildFixedSize.y;
+    end else begin
+     ChildTargetSize.y:=ChildPreferredSize.y;
+    end;
+    Position:=TpvVector2.Create(0,YOffset);
+    Position[Axis0]:=Offset;
+    Position[Axis1]:=Position[Axis1]+fMargin;
+    if ChildFixedSize[Axis1]>0.0 then begin
+     ChildTargetSize[Axis1]:=ChildFixedSize[Axis1];
+    end else begin
+     ChildTargetSize[Axis1]:=ContainerSize[Axis1]-(fMargin*2.0);
+    end;
+    if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
+     ChildWidget.fPosition:=Position;
+    end;
+    ChildWidget.fSize:=ChildTargetSize;
+    ChildWidget.PerformLayout;
+    Offset:=Offset+ChildTargetSize[Axis0];
+    First:=false;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIFillLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
+begin
+ result:=aWidget.fSize;
+end;
+
+procedure TpvGUIFillLayout.PerformLayout(const aWidget:TpvGUIWidget);
+var ChildIndex:TpvInt32;
+    FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
+    First:boolean;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+begin
+ FixedSize:=aWidget.GetFixedSize;
+ if FixedSize.x>0.0 then begin
+  ContainerSize.x:=FixedSize.x;
+ end else begin
+  ContainerSize.x:=aWidget.Width;
+ end;
+ if FixedSize.y>0.0 then begin
+  ContainerSize.y:=FixedSize.y;
+ end else begin
+  ContainerSize.y:=aWidget.Height;
+ end;
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    ChildPreferredSize:=ChildWidget.PreferredSize;
+    ChildFixedSize:=ChildWidget.GetFixedSize;
+    if ChildFixedSize.x>0.0 then begin
+     ChildTargetSize.x:=ChildFixedSize.x;
+    end else begin
+     ChildTargetSize.x:=ChildPreferredSize.x;
+    end;
+    if ChildFixedSize.y>0.0 then begin
+     ChildTargetSize.y:=ChildFixedSize.y;
+    end else begin
+     ChildTargetSize.y:=ChildPreferredSize.y;
+    end;
+    if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
+     ChildWidget.fPosition:=TpvVector2.Null;
+    end;
+    ChildWidget.fSize:=ChildTargetSize;
+    ChildWidget.PerformLayout;
+   end;
+  end;
+ end;
+end;
+
 constructor TpvGUIBoxLayout.Create(const aParent:TpvGUIObject;
                                    const aAlignment:TpvGUILayoutAlignment=pvglaMiddle;
                                    const aOrientation:TpvGUILayoutOrientation=pvgloHorizontal;
@@ -1216,7 +1441,18 @@ var Axis0,Axis1,ChildIndex:TpvInt32;
 begin
  Size:=TpvVector2.Create(fMargin*2.0,fMargin*2.0);
  YOffset:=0;
- if aWidget is TpvGUIWindow then begin
+ if aWidget is TpvGUIInstance then begin
+  if assigned((aWidget as TpvGUIInstance).fMenu) then begin
+   case fOrientation of
+    pvgloHorizontal:begin
+     YOffset:=YOffset+aWidget.Skin.WindowMenuHeight;
+    end;
+    pvgloVertical:begin
+     Size.y:=Size.y+aWidget.Skin.WindowMenuHeight;
+    end;
+   end;
+  end;
+ end else if aWidget is TpvGUIWindow then begin
   if pvgwfHeader in (aWidget as TpvGUIWindow).fWindowFlags then begin
    case fOrientation of
     pvgloHorizontal:begin
@@ -1227,7 +1463,7 @@ begin
     end;
    end;
   end;
-  if pvgwfMenu in (aWidget as TpvGUIWindow).fWindowFlags then begin
+  if assigned((aWidget as TpvGUIWindow).fMenu) then begin
    case fOrientation of
     pvgloHorizontal:begin
      YOffset:=YOffset+aWidget.Skin.WindowMenuHeight;
@@ -1310,7 +1546,18 @@ begin
  end;
  Offset:=fMargin;
  YOffset:=0;
- if aWidget is TpvGUIWindow then begin
+ if aWidget is TpvGUIInstance then begin
+  if assigned((aWidget as TpvGUIInstance).fMenu) then begin
+   case fOrientation of
+    pvgloHorizontal:begin
+     YOffset:=YOffset+aWidget.Skin.WindowMenuHeight;
+    end;
+    pvgloVertical:begin
+     Offset:=Offset+aWidget.Skin.WindowMenuHeight;
+    end;
+   end;
+  end;
+ end else if aWidget is TpvGUIWindow then begin
   if pvgwfHeader in (aWidget as TpvGUIWindow).fWindowFlags then begin
    case fOrientation of
     pvgloHorizontal:begin
@@ -1321,7 +1568,7 @@ begin
     end;
    end;
   end;
-  if pvgwfMenu in (aWidget as TpvGUIWindow).fWindowFlags then begin
+  if assigned((aWidget as TpvGUIWindow).fMenu) then begin
    case fOrientation of
     pvgloHorizontal:begin
      YOffset:=YOffset+aWidget.Skin.WindowMenuHeight;
@@ -3530,6 +3777,8 @@ begin
 
  fWindow:=nil;
 
+ fMenu:=nil;
+
  fFocusedWidget:=nil;
 
  fHoveredWidget:=nil;
@@ -3797,6 +4046,36 @@ begin
  end;
 end;
 
+function TpvGUIInstance.AddMenu:TpvGUIWindowMenu;
+begin
+ if not assigned(fMenu) then begin
+  fMenu:=TpvGUIWindowMenu.Create(self);
+ end;
+ result:=fMenu;
+end;
+
+procedure TpvGUIInstance.PerformLayout;
+var ChildPreferredSize:TpvVector2;
+begin
+
+ if assigned(fMenu) then begin
+  fMenu.Visible:=false;
+ end;
+
+ inherited PerformLayout;
+
+ if assigned(fMenu) then begin
+  fMenu.Visible:=true;
+  ChildPreferredSize:=fMenu.PreferredSize;
+  fMenu.Width:=Width;
+  fMenu.Height:=ChildPreferredSize.y;
+  fMenu.Left:=0.0;
+  fMenu.Top:=0.0;
+  fMenu.PerformLayout;
+ end;
+
+end;
+
 function TpvGUIInstance.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 var Index:TpvInt32;
     Current:TpvGUIObject;
@@ -3984,9 +4263,13 @@ begin
 
  fWindowState:=TpvGUIWindowState.pvgwsNormal;
 
+ fLayout:=TpvGUIRootLayout.Create(self);
+
  fMenu:=nil;
 
  fButtonPanel:=nil;
+
+ fContent:=TpvGUIWidget.Create(self);
 
  fMinimizationButton:=nil;
 
@@ -4082,7 +4365,6 @@ function TpvGUIWindow.AddMenu:TpvGUIWindowMenu;
 begin
  if not assigned(fMenu) then begin
   fMenu:=TpvGUIWindowMenu.Create(self);
-  Include(fWindowFlags,pvgwfMenu);
  end;
  result:=fMenu;
 end;
@@ -4116,10 +4398,18 @@ begin
    fSavedPosition:=fPosition;
    fSavedSize:=fSize;
   end;
-  if assigned(fParent) and (fParent is TpvGUIWindow) and (pvgwfHeader in (fParent as TpvGUIWindow).fWindowFlags) then begin
-   MinimumPosition:=TpvVector2.Create(0.0,Skin.fWindowHeaderHeight);
-  end else begin
-   MinimumPosition:=TpvVector2.Null;
+  MinimumPosition:=TpvVector2.Null;
+  if assigned(fParent) and (fParent is TpvGUIWindow) then begin
+   if pvgwfHeader in (fParent as TpvGUIWindow).fWindowFlags then begin
+    MinimumPosition.y:=MinimumPosition.y+Skin.fWindowHeaderHeight;
+   end;
+   if assigned((fParent as TpvGUIWindow).fMenu) then begin
+    MinimumPosition.y:=MinimumPosition.y+Skin.fWindowMenuHeight;
+   end;
+  end else if assigned(fParent) and (fParent is TpvGUIInstance) then begin
+   if assigned((fParent as TpvGUIInstance).fMenu) then begin
+    MinimumPosition.y:=MinimumPosition.y+Skin.fWindowMenuHeight;
+   end;
   end;
   case aWindowState of
    pvgwsNormal:begin
@@ -4237,6 +4527,58 @@ begin
  result:=Skin.GetWindowPreferredSize(self);
 end;
 
+function TpvGUIWindow.FindWidget(const aPosition:TpvVector2):TpvGUIWidget;
+begin
+ if fWindowState=pvgwsNormal then begin
+  if (fWindowState in [pvgwsNormal]) and
+     (pvgwfResizableNW in fWindowFlags) and
+     (aPosition.x<Skin.fWindowResizeGripSize) and
+     (aPosition.y<Skin.fWindowResizeGripSize) then begin
+   result:=self;
+   exit;
+  end else if (fWindowState in [pvgwsNormal]) and
+              (pvgwfResizableNE in fWindowFlags) and
+              (aPosition.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+              (aPosition.y<Skin.fWindowResizeGripSize) then begin
+   result:=self;
+   exit;
+  end else if (fWindowState in [pvgwsNormal]) and
+              (pvgwfResizableSW in fWindowFlags) and
+              (aPosition.x<Skin.fWindowResizeGripSize) and
+              (aPosition.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+   result:=self;
+   exit;
+  end else if (fWindowState in [pvgwsNormal]) and
+              (pvgwfResizableSE in fWindowFlags) and
+              (aPosition.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+              (aPosition.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+   result:=self;
+   exit;
+  end else if (fWindowState in [pvgwsNormal]) and
+              (pvgwfResizableN in fWindowFlags) and
+              (aPosition.y<Skin.fWindowResizeGripSize) then begin
+   result:=self;
+   exit;
+  end else if (fWindowState in [pvgwsNormal]) and
+              (pvgwfResizableS in fWindowFlags) and
+              (aPosition.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+   result:=self;
+   exit;
+  end else if (fWindowState in [pvgwsNormal]) and
+              (pvgwfResizableW in fWindowFlags) and
+              (aPosition.x<Skin.fWindowResizeGripSize) then begin
+   result:=self;
+   exit;
+  end else if (fWindowState in [pvgwsNormal]) and
+              (pvgwfResizableE in fWindowFlags) and
+              (aPosition.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
+   result:=self;
+   exit;
+  end;
+ end;
+ result:=inherited FindWidget(aPosition);
+end;
+
 procedure TpvGUIWindow.PerformLayout;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
@@ -4309,10 +4651,55 @@ end;
 
 function TpvGUIWindow.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 var ClampedRelativePosition,MinimumPosition,MinimumSize,NewSize,NewPosition,OldSize:TpvVector2;
+    OK:boolean;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
-  result:=inherited PointerEvent(aPointerEvent);
+  OK:=false;
+  if fWindowState=pvgwsNormal then begin
+   if (fWindowState in [pvgwsNormal]) and
+      (pvgwfResizableNW in fWindowFlags) and
+      (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
+      (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+    OK:=true;
+   end else if (fWindowState in [pvgwsNormal]) and
+               (pvgwfResizableNE in fWindowFlags) and
+               (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+               (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+    OK:=true;
+   end else if (fWindowState in [pvgwsNormal]) and
+               (pvgwfResizableSW in fWindowFlags) and
+               (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
+               (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+    OK:=true;
+   end else if (fWindowState in [pvgwsNormal]) and
+               (pvgwfResizableSE in fWindowFlags) and
+               (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
+               (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+    OK:=true;
+   end else if (fWindowState in [pvgwsNormal]) and
+               (pvgwfResizableN in fWindowFlags) and
+               (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
+    OK:=true;
+   end else if (fWindowState in [pvgwsNormal]) and
+               (pvgwfResizableS in fWindowFlags) and
+               (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
+    OK:=true;
+   end else if (fWindowState in [pvgwsNormal]) and
+               (pvgwfResizableW in fWindowFlags) and
+               (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
+    OK:=true;
+   end else if (fWindowState in [pvgwsNormal]) and
+               (pvgwfResizableE in fWindowFlags) and
+               (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
+    OK:=true;
+   end;
+  end;
+  if OK then begin
+   result:=false;
+  end else begin
+   result:=inherited PointerEvent(aPointerEvent);
+  end;
   if not result then begin
    OldSize:=fSize;
    case aPointerEvent.PointerEventType of

@@ -156,48 +156,67 @@ begin
  fGUIInstance:=TpvGUIInstance.Create(pvApplication.VulkanDevice);
  fGUIInstance.Canvas:=fVulkanCanvas;
 
+ begin
+  WindowMenu:=fGUIInstance.AddMenu;
+
+  MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
+  MenuItem.Caption:='File';
+
+  MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
+  MenuItem.Caption:='Edit';
+  MenuItem.Enabled:=false;
+
+  MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
+  MenuItem.Caption:='Settings';
+
+  MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
+  MenuItem.Caption:='Help';
+ end;
+
  fGUIWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIWindow.Left:=50;
  fGUIWindow.Top:=200;
  fGUIWindow.Title:='An example window';
- fGUIWindow.Layout:=TpvGUIBoxLayout.Create(fGUIWindow,pvglaLeading,pvgloVertical,8.0,8.0);
+ fGUIWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIWindow.Content,pvglaLeading,pvgloVertical,8.0,8.0);
  fGUIWindow.AddMinimizationButton;
  fGUIWindow.AddMaximizationButton;
  fGUIWindow.AddCloseButton;
 
- WindowMenu:=fGUIWindow.AddMenu;
+ begin
+  WindowMenu:=fGUIWindow.AddMenu;
 
- MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
- MenuItem.Caption:='File';
+  MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
+  MenuItem.Caption:='File';
 
- MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
- MenuItem.Caption:='Edit';
- MenuItem.Enabled:=false;
+  MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
+  MenuItem.Caption:='Edit';
+  MenuItem.Enabled:=false;
 
- MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
- MenuItem.Caption:='Settings';
+  MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
+  MenuItem.Caption:='Settings';
 
- MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
- MenuItem.Caption:='Help';
+  MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
+  MenuItem.Caption:='Help';
+ end;
 
- fGUILabel:=TpvGUILabel.Create(fGUIWindow);
+ fGUILabel:=TpvGUILabel.Create(fGUIWindow.Content);
  fGUILabel.Caption:='An example label';
  fGUILabel.Cursor:=pvgcLink;
 
 {fGUIButton:=TpvGUIButton.Create(fGUIWindow.ButtonPanel);
  fGUIButton.Caption:=TpvRawByteString(#$e2#$80#$a6);}
 
- fGUIButton:=TpvGUIButton.Create(fGUIWindow);
+ fGUIButton:=TpvGUIButton.Create(fGUIWindow.Content);
  fGUIButton.Caption:='An example button';
 
- fGUIButton:=TpvGUIToggleButton.Create(fGUIWindow);
+ fGUIButton:=TpvGUIToggleButton.Create(fGUIWindow.Content);
  fGUIButton.Caption:='An example toggle button';
 
- fGUIButton:=TpvGUIButton.Create(fGUIWindow);
+ fGUIButton:=TpvGUIButton.Create(fGUIWindow.Content);
  fGUIButton.Caption:='An example disabled button';
  fGUIButton.Enabled:=false;
 
- fGUITextEdit:=TpvGUITextEdit.Create(fGUIWindow);
+ fGUITextEdit:=TpvGUITextEdit.Create(fGUIWindow.Content);
  fGUITextEdit.Text:='An example text edit';
  fGUITextEdit.TextHorizontalAlignment:=TpvGUITextAlignment.pvgtaLeading;
  fGUITextEdit.MinimumWidth:=320;
@@ -208,45 +227,45 @@ begin
  fGUIOtherWindow.Left:=550;
  fGUIOtherWindow.Top:=200;
  fGUIOtherWindow.Title:='An another example window';
- fGUIOtherWindow.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow,pvglaLeading,pvgloVertical,8.0,8.0);
+ fGUIOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,pvglaLeading,pvgloVertical,8.0,8.0);
  fGUIOtherWindow.AddMinimizationButton;
  fGUIOtherWindow.AddMaximizationButton;
  fGUIOtherWindow.AddCloseButton;
 
- fGUILabel:=TpvGUILabel.Create(fGUIOtherWindow);
+ fGUILabel:=TpvGUILabel.Create(fGUIOtherWindow.Content);
  fGUILabel.Caption:='An other example label';
  fGUILabel.Cursor:=pvgcBusy;
 
- fGUILabel:=TpvGUILabel.Create(fGUIOtherWindow);
+ fGUILabel:=TpvGUILabel.Create(fGUIOtherWindow.Content);
  fGUILabel.Caption:='An another example label';
  fGUILabel.Cursor:=pvgcUnavailable;
 
- fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow);
+ fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow.Content);
  fGUIButton.Caption:='An example radio button (0)';
 
- fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow);
+ fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow.Content);
  fGUIButton.Caption:='An example radio button (1)';
 
- fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow);
+ fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow.Content);
  fGUIButton.Caption:='An example radio button (2)';
 
- fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow);
+ fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow.Content);
  fGUIButton.Caption:='An example radio button (3)';
 
- fGUIYetOtherWindow:=TpvGUIWindow.Create(fGUIOtherWindow);
+ fGUIYetOtherWindow:=TpvGUIWindow.Create(fGUIOtherWindow.Content);
  fGUIYetOtherWindow.Left:=550;
  fGUIYetOtherWindow.Top:=200;
  fGUIYetOtherWindow.Title:='A yet another example window';
- fGUIYetOtherWindow.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow,pvglaLeading,pvgloVertical,8.0,8.0);
+ fGUIYetOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,pvglaLeading,pvgloVertical,8.0,8.0);
  fGUIYetOtherWindow.AddMinimizationButton;
  fGUIYetOtherWindow.AddMaximizationButton;
  fGUIYetOtherWindow.AddCloseButton;
 
- fGUILabel:=TpvGUILabel.Create(fGUIYetOtherWindow);
+ fGUILabel:=TpvGUILabel.Create(fGUIYetOtherWindow.Content);
  fGUILabel.Caption:='An other example label';
  fGUILabel.Cursor:=pvgcBusy;
 
- fGUILabel:=TpvGUILabel.Create(fGUIYetOtherWindow);
+ fGUILabel:=TpvGUILabel.Create(fGUIYetOtherWindow.Content);
  fGUILabel.Caption:='An another example label';
  fGUILabel.Cursor:=pvgcUnavailable;
 
