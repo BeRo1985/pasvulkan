@@ -237,14 +237,6 @@ float sdTriangle(in vec2 p0, in vec2 p1, in vec2 p2, in vec2 p){
 }  
 #endif
 
-vec2 safeNormalize(vec2 v){
-  float l = length(v); 
-  if(l > 0.0){
-    v /= l;
-  }
-  return v;
-}
-
 void main(void){
   vec4 color;
 #if (FILLTYPE == FILLTYPE_NO_TEXTURE) || (FILLTYPE == FILLTYPE_TEXTURE)
@@ -269,10 +261,16 @@ void main(void){
 #ifdef SIMPLE_SIGNED_DISTANCE_FIELD_WIDTH_CALCULATION
       vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
 #else
-      // Based on: https://www.essentialmath.com/blog/?p=151
+      // Based on: https://www.essentialmath.com/blog/?p=151 but with Adreno issue compensation, which likes to drop tiles on division by zero
       const float NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 / 8.0; 
-      vec2 centerGradient = safeNormalize(vec2(dFdx(center), dFdy(center))),
-           Juv = texCoord.xy * textureSize(uTexture, 0).xy,       
+      vec2 centerGradient = vec2(dFdx(center), dFdy(center));
+      float centerGradientSquaredLength = dot(centerGradient, centerGradient);
+      if(centerGradientSquaredLength < 1e-4){
+        centerGradient = vec2(SQRT_0_DOT_5); 
+      }else{
+        centerGradient *= inversesqrt(centerGradientSquaredLength); 
+      }
+      vec2 Juv = texCoord.xy * textureSize(uTexture, 0).xy,       
            Jdx = dFdx(Juv), 
            Jdy = dFdy(Juv),
            jacobianGradient = vec2((centerGradient.x * Jdx.x) + (centerGradient.y * Jdy.x), 
