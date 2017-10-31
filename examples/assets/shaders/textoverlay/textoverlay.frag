@@ -29,7 +29,25 @@ const float SQRT_0_DOT_5 = sqrt(0.5),
  
 void main(void){
   float center = textureLod(uSamplerFont, inUV, 0.0).r;
+#ifdef SIMPLE_SIGNED_DISTANCE_FIELD_WIDTH_CALCULATION
   vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
+#else
+  // Based on: https://www.essentialmath.com/blog/?p=151 but with Adreno issue compensation, which likes to drop tiles on division by zero
+  const float NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 / 32.0; 
+  vec2 centerGradient = vec2(dFdx(center), dFdy(center));
+  float centerGradientSquaredLength = dot(centerGradient, centerGradient);
+  if(centerGradientSquaredLength < 1e-4){
+    centerGradient = vec2(SQRT_0_DOT_5); 
+  }else{
+    centerGradient *= inversesqrt(centerGradientSquaredLength); 
+  }
+  vec2 Juv = inUV.xy * textureSize(uSamplerFont, 0).xy,       
+       Jdx = dFdx(Juv), 
+       Jdy = dFdy(Juv),
+       jacobianGradient = vec2((centerGradient.x * Jdx.x) + (centerGradient.y * Jdy.x), 
+                               (centerGradient.x * Jdx.y) + (centerGradient.y * Jdy.y));
+  vec2 width = vec2(0.5) + (vec2(-1.0, 1.0) * min(length(jacobianGradient) * NORMALIZATION_THICKNESS_SCALE, 0.5));
+#endif
   vec4 buv = inUV.xyxy + (vec2((dFdx(inUV.xy) + dFdy(inUV.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
   outFragColor = mix(inBackgroundColor, 
                      inForegroundColor,                      
