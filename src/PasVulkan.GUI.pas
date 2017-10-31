@@ -1861,25 +1861,41 @@ begin
                                                                                  'M461.029 419.2l-164.571-163.2 164.571-163.2-41.143-41.143-164.571 163.2-163.2-163.2-41.143 41.143 163.2 163.2-163.2 163.2 41.143 41.143 163.2-163.2 164.571 163.2z',
                                                                                  48,
                                                                                  48,
-                                                                                 48.0/512.0);
+                                                                                 48.0/512.0,
+                                                                                 0.0,
+                                                                                 0.0,
+                                                                                 false,
+                                                                                 8);
 
  fIconWindowRestore:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowRestore',
                                                                                    'M61.714 353.143h97.143v98.286h292.571v-292.571h-97.143v-98.286h-292.571v292.571zm292.571 0v-146.286h49.143v195.429h-195.429v-49.143h146.286zm-243.429-97.143v-146.286h194.286v146.286h-194.286z',
                                                                                    48,
                                                                                    48,
-                                                                                   48.0/512.0);
+                                                                                   48.0/512.0,
+                                                                                   0.0,
+                                                                                   0.0,
+                                                                                   false,
+                                                                                   8);
 
  fIconWindowMinimize:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowMinimize',
                                                                                     'M450.286 321.143h-389.714v98.286h389.714v-98.286z',
                                                                                     48,
                                                                                     48,
-                                                                                    48.0/512.0);
+                                                                                    48.0/512.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    false,
+                                                                                    8);
 
  fIconWindowMaximize:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowMaximize',
                                                                                     'M61.714 451.429h389.714v-390.857h-389.714v390.857zm49.143-98.286v-243.429h292.571v243.429h-292.571z',
                                                                                     48,
                                                                                     48,
-                                                                                    48.0/512.0);
+                                                                                    48.0/512.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    false,
+                                                                                    8);
 
  fSignedDistanceFieldSpriteAtlas.MipMaps:=false;
  fSignedDistanceFieldSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,

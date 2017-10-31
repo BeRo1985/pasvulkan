@@ -532,7 +532,8 @@ begin
                                                    @GlyphDistanceFields[OtherGlyphIndex].Pixels[0],
                                                    Glyph^.Width,
                                                    Glyph^.Height,
-                                                   false);
+                                                   false,
+                                                   8);
          Glyph^.Sprite.SignedDistanceField:=true;
         end;
        end;

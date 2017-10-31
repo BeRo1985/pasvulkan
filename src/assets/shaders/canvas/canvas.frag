@@ -258,7 +258,18 @@ void main(void){
     case 1:{
       const float HALF_BY_SQRT_TWO = 0.5 / sqrt(2.0), ONE_BY_THREE = 1.0 / 3.0;     
       float center = textureLod(uTexture, texCoord, 0.0).w;
+#ifdef SIMPLE_SIGNED_DISTANCE_FIELD_WIDTH_CALCULATION
       vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
+#else
+      const float SCALE = 1.0 / 4.0; // 1.0 / PasVulkan.Framework.VulkanDistanceField2DSpreadValue 
+      vec2 centerGradient = normalize(vec2(dFdx(center), dFdy(center))),
+           Juv = texCoord.xy * (textureSize(uTexture, 0).xy * SCALE),       
+           Jdx = dFdx(Juv), 
+           Jdy = dFdy(Juv),
+           jacobianGradient = vec2((centerGradient.x * Jdx.x) + (centerGradient.y * Jdy.x), 
+                                   (centerGradient.x * Jdx.y) + (centerGradient.y * Jdy.y));
+      vec2 width = vec2(0.5) + ((vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * 0.5) * length(jacobianGradient));
+#endif
       vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
       color = vec4(vec3(1.0), clamp((linearstep(width.x, width.y, center) + 
                                                 dot(linearstep(width.xxxx, 

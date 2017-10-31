@@ -1144,7 +1144,10 @@ begin
       for LayerIndex:=0 to ArrayTexture.fLayers-1 do begin
        if assigned(ArrayTexture.fLayerRootNodes[LayerIndex]) then begin
         // Including 2px texel bilinear interpolation protection border pixels
-        Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[LayerIndex],TrimmedImageWidth+TotalPadding,TrimmedImageHeight+TotalPadding,(TrimmedImageWidth+TotalPadding)*(TrimmedImageHeight+TotalPadding));
+        Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[LayerIndex],
+                                    TrimmedImageWidth+TotalPadding,
+                                    TrimmedImageHeight+TotalPadding,
+                                    (TrimmedImageWidth+TotalPadding)*(TrimmedImageHeight+TotalPadding));
         if assigned(ArrayTexture) and assigned(Node) then begin
          Layer:=LayerIndex;
          break;
@@ -1171,7 +1174,10 @@ begin
          not ArrayTexture.fSpecialSizedArrayTexture then begin
        LayerIndex:=ArrayTexture.fLayers;
        ArrayTexture.Resize(ArrayTexture.fWidth,ArrayTexture.fHeight,LayerIndex+1);
-       Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[LayerIndex],TrimmedImageWidth+TotalPadding,TrimmedImageHeight+TotalPadding,(TrimmedImageWidth+TotalPadding)*(TrimmedImageHeight+TotalPadding));
+       Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[LayerIndex],
+                                   TrimmedImageWidth+TotalPadding,
+                                   TrimmedImageHeight+TotalPadding,
+                                   (TrimmedImageWidth+TotalPadding)*(TrimmedImageHeight+TotalPadding));
        if assigned(Node) then begin
         Layer:=LayerIndex;
        end;
@@ -1193,9 +1199,15 @@ begin
      inc(fCountArrayTextures);
      ArrayTexture.Dirty:=true;
      if SpecialSizedArrayTexture then begin
-      Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[Layer],TrimmedImageWidth,TrimmedImageHeight,TrimmedImageWidth*TrimmedImageHeight);
+      Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[Layer],
+                                  TrimmedImageWidth,
+                                  TrimmedImageHeight,
+                                  TrimmedImageWidth*TrimmedImageHeight);
      end else begin
-      Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[Layer],TrimmedImageWidth+TotalPadding,TrimmedImageHeight+TotalPadding,(TrimmedImageWidth+TotalPadding)*(TrimmedImageHeight+TotalPadding));
+      Node:=InsertTextureRectNode(ArrayTexture.fLayerRootNodes[Layer],
+                                  TrimmedImageWidth+TotalPadding,
+                                  TrimmedImageHeight+TotalPadding,
+                                  (TrimmedImageWidth+TotalPadding)*(TrimmedImageHeight+TotalPadding));
      end;
     end;
 
@@ -1208,6 +1220,7 @@ begin
     begin
      Sprite:=TpvSprite.Create;
      Sprite.ArrayTexture:=ArrayTexture;
+     Sprite.Layer:=Layer;
      Sprite.Name:=aName;
      if SpecialSizedArrayTexture then begin
       Sprite.x:=Node^.x;
