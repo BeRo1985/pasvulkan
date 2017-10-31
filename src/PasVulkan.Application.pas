@@ -7181,20 +7181,35 @@ begin
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('Window size: '+IntToStr(fWidth)+'x'+IntToStr(fHeight))));
 {$ifend}
 
-  fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(TpvApplicationRawByteString(fTitle)),
+{$if defined(PasVulkanUseSDL2WithVulkanSupport)}
+  repeat
+{$ifend}
+   fSurfaceWindow:=SDL_CreateWindow(PAnsiChar(TpvApplicationRawByteString(fTitle)),
 {$ifdef Android}
-                                   SDL_WINDOWPOS_CENTERED_MASK,
-                                   SDL_WINDOWPOS_CENTERED_MASK,
+                                    SDL_WINDOWPOS_CENTERED_MASK,
+                                    SDL_WINDOWPOS_CENTERED_MASK,
 {$else}
-                                   ((fScreenWidth-fWidth)+1) div 2,
-                                   ((fScreenHeight-fHeight)+1) div 2,
+                                    ((fScreenWidth-fWidth)+1) div 2,
+                                    ((fScreenHeight-fHeight)+1) div 2,
 {$endif}
-                                   fWidth,
-                                   fHeight,
-                                   SDL_WINDOW_SHOWN or fVideoFlags);
-  if not assigned(fSurfaceWindow) then begin
-   raise EpvApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
-  end;
+                                    fWidth,
+                                    fHeight,
+                                    SDL_WINDOW_SHOWN or fVideoFlags);
+   if not assigned(fSurfaceWindow) then begin
+{$if defined(PasVulkanUseSDL2WithVulkanSupport)}
+    // For faulty SDL2 >= 2.0.6 builds with corrupt or missing builtin Vulkan support
+    if fSDLVersionWithVulkanSupport then begin
+     fSDLVersionWithVulkanSupport:=false;
+     fVideoFlags:=fVideoFlags and not SDL_WINDOW_VULKAN;
+     continue;
+    end;
+{$ifend}
+    raise EpvApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
+   end;
+{$if defined(PasVulkanUseSDL2WithVulkanSupport)}
+   break;
+  until false;
+{$ifend}
 {$else}
 {$ifend}
 
