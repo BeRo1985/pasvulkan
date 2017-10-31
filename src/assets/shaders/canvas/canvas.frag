@@ -237,6 +237,14 @@ float sdTriangle(in vec2 p0, in vec2 p1, in vec2 p2, in vec2 p){
 }  
 #endif
 
+vec2 safeNormalize(vec2 v){
+  float l = length(v); 
+  if(l > 0.0){
+    v /= l;
+  }
+  return v;
+}
+
 void main(void){
   vec4 color;
 #if (FILLTYPE == FILLTYPE_NO_TEXTURE) || (FILLTYPE == FILLTYPE_TEXTURE)
@@ -261,14 +269,15 @@ void main(void){
 #ifdef SIMPLE_SIGNED_DISTANCE_FIELD_WIDTH_CALCULATION
       vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
 #else
-      const float SCALE = 1.0 / 4.0; // 1.0 / PasVulkan.Framework.VulkanDistanceField2DSpreadValue 
-      vec2 centerGradient = normalize(vec2(dFdx(center), dFdy(center))),
-           Juv = texCoord.xy * (textureSize(uTexture, 0).xy * SCALE),       
+      // Based on: https://www.essentialmath.com/blog/?p=151
+      const float NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 / 8.0; 
+      vec2 centerGradient = safeNormalize(vec2(dFdx(center), dFdy(center))),
+           Juv = texCoord.xy * textureSize(uTexture, 0).xy,       
            Jdx = dFdx(Juv), 
            Jdy = dFdy(Juv),
            jacobianGradient = vec2((centerGradient.x * Jdx.x) + (centerGradient.y * Jdy.x), 
                                    (centerGradient.x * Jdx.y) + (centerGradient.y * Jdy.y));
-      vec2 width = vec2(0.5) + ((vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * 0.5) * length(jacobianGradient));
+      vec2 width = vec2(0.5) + (vec2(-1.0, 1.0) * min(length(jacobianGradient) * NORMALIZATION_THICKNESS_SCALE, 0.5));
 #endif
       vec4 buv = texCoord.xyxy + (vec2((dFdx(texCoord.xy) + dFdy(texCoord.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
       color = vec4(vec3(1.0), clamp((linearstep(width.x, width.y, center) + 
