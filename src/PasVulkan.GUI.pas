@@ -6441,6 +6441,11 @@ begin
        if assigned(fFocusedMenuItem.OnClick) then begin
         fFocusedMenuItem.OnClick(fFocusedMenuItem);
        end;
+       if not assigned(fSelectedMenuItem.Menu) then begin
+        if fInstance.fPopupMenuStack.Count>0 then begin
+         (fInstance.fPopupMenuStack[0] as TpvGUIPopupMenu).Deactivate;
+        end;
+       end;
       end;
      end;
     end;
@@ -6574,6 +6579,11 @@ begin
     if assigned(fSelectedMenuItem) then begin
      if fSelectedMenuItem.Enabled and assigned(fSelectedMenuItem.fOnClick) then begin
       fSelectedMenuItem.fOnClick(fSelectedMenuItem);
+     end;
+     if fSelectedMenuItem.Enabled and not assigned(fSelectedMenuItem.Menu) then begin
+      if fInstance.fPopupMenuStack.Count>0 then begin
+       (fInstance.fPopupMenuStack[0] as TpvGUIPopupMenu).Deactivate;
+      end;
      end;
      fSelectedMenuItem:=nil;
     end;
