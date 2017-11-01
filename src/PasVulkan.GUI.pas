@@ -6417,11 +6417,13 @@ begin
       fSelectedMenuItem:=nil;
       if assigned(fFocusedMenuItem) then begin
        fSelectedMenuItem:=fFocusedMenuItem;
-       if assigned(fFocusedMenuItem.Menu) then begin
-        fFocusedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(fFocusedMenuItem.fRect.Left,fSize.y));
-       end;
-       if assigned(fFocusedMenuItem.OnClick) then begin
-        fFocusedMenuItem.OnClick(fFocusedMenuItem);
+       if fFocusedMenuItem.Enabled then begin
+        if assigned(fFocusedMenuItem.Menu) then begin
+         fFocusedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(fFocusedMenuItem.fRect.Left,fSize.y));
+        end;
+        if assigned(fFocusedMenuItem.OnClick) then begin
+         fFocusedMenuItem.OnClick(fFocusedMenuItem);
+        end;
        end;
       end;
      end;
@@ -6536,8 +6538,8 @@ begin
         fSelectedMenuItem:=MenuItem;
         fFocusedMenuItem:=MenuItem;
         fHoveredMenuItem:=MenuItem;
-        if assigned(fSelectedMenuItem.Menu) then begin
-         fSelectedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(MenuItem.fRect.Left,fSize.y));
+        if fSelectedMenuItem.Enabled and assigned(fSelectedMenuItem.Menu) then begin
+         fSelectedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(fSelectedMenuItem.fRect.Left,fSize.y));
         end;
         break;
        end;
@@ -6556,7 +6558,7 @@ begin
     end;
     POINTEREVENT_UP:begin
      if assigned(fSelectedMenuItem) then begin
-      if assigned(fSelectedMenuItem.fOnClick) then begin
+      if fSelectedMenuItem.Enabled and assigned(fSelectedMenuItem.fOnClick) then begin
        fSelectedMenuItem.fOnClick(fSelectedMenuItem);
       end;
       fSelectedMenuItem:=nil;
