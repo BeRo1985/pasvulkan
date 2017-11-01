@@ -998,6 +998,7 @@ type TpvGUIObject=class;
        fIcon:TObject;
        fIconHeight:TpvFloat;
        fRect:TpvRect;
+       fOpenRect:TpvRect;
        fOnClick:TpvGUIOnEvent;
        function GetEnabled:boolean; inline;
        procedure SetEnabled(const aEnabled:boolean); inline;
@@ -1026,6 +1027,7 @@ type TpvGUIObject=class;
        fPosition:TpvVector2;
        fPositionProperty:TpvVector2Property;
        fSize:TpvVector2;
+       fHasSubMenus:boolean;
        fReleaseOnDeactivation:boolean;
        fSelectedMenuItem:TpvGUIMenuItem;
        fFocusedMenuItem:TpvGUIMenuItem;
@@ -2862,6 +2864,8 @@ begin
 
  result:=TpvVector2.Null;
 
+ aPopupMenu.fHasSubMenus:=false;
+
  YOffset:=2.0+fSpacing;
 
  for Index:=0 to aPopupMenu.Children.Count-1 do begin
@@ -2875,6 +2879,11 @@ begin
 
    if length(MenuItem.fShortcutHint)>0 then begin
     MenuItemWidth:=MenuItemWidth+(fSpacing*4.0)+aPopupMenu.Font.TextWidth(MenuItem.fShortcutHint,aPopupMenu.FontSize);
+   end;
+
+   if assigned(MenuItem.Menu) then begin
+    MenuItemWidth:=MenuItemWidth+fSpacing+aPopupMenu.Font.TextWidth('>',aPopupMenu.FontSize);
+    aPopupMenu.fHasSubMenus:=true;
    end;
 
    MenuItemWidth:=MenuItemWidth+((12.0+fSpacing)*2.0);
@@ -2907,12 +2916,20 @@ begin
      MenuItemHeight:=Maximum(MenuItemHeight,aPopupMenu.Font.TextHeight(MenuItem.fShortcutHint,aPopupMenu.FontSize));
     end;
 
+    if assigned(MenuItem.Menu) then begin
+     MenuItemHeight:=Maximum(MenuItemHeight,aPopupMenu.Font.TextHeight('>',aPopupMenu.FontSize));
+    end;
+
     MenuItemHeight:=MenuItemHeight+((4.0+fSpacing)*2.0);
 
     MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(2.0+fSpacing,YOffset),
                                            TpvVector2.Create(result.x-(2.0+fSpacing),YOffset+MenuItemHeight));
 
    end;
+
+   MenuItem.fOpenRect:=MenuItem.fRect;
+   MenuItem.fOpenRect.Top:=MenuItem.fOpenRect.Top-fSpacing;
+   MenuItem.fOpenRect.Bottom:=MenuItem.fOpenRect.Bottom-fSpacing;
 
    YOffset:=YOffset+MenuItemHeight+fSpacing;
 
@@ -3010,9 +3027,18 @@ begin
     XOffset:=MenuItem.fRect.Left+(6.0+fSpacing);
     aCanvas.DrawText(MenuItem.fCaption,TpvVector2.Create(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
 
+    XOffset:=MenuItem.fRect.Right-(6.0+fSpacing);
+
+    if aPopupMenu.fHasSubMenus then begin
+     if assigned(MenuItem.Menu) then begin
+      aCanvas.TextHorizontalAlignment:=pvcthaTailing;
+      aCanvas.DrawText('>',TpvVector2.Create(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
+     end;
+     XOffset:=XOffset-(aCanvas.TextWidth('>')+fSpacing);
+    end;
+
     if length(MenuItem.fShortcutHint)>0 then begin
      aCanvas.TextHorizontalAlignment:=pvcthaTailing;
-     XOffset:=MenuItem.fRect.Right-(6.0+fSpacing);
      aCanvas.DrawText(MenuItem.fShortcutHint,TpvVector2.Create(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
     end;
 
@@ -3064,6 +3090,8 @@ begin
 
    MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(XOffset,4.0),
                                           TpvVector2.Create(XOffset+MenuItemWidth,aWindowMenu.fSize.y-4.0));
+
+   MenuItem.fOpenRect:=MenuItem.fRect;
 
    XOffset:=XOffset+MenuItemWidth+fSpacing;
 
@@ -6481,7 +6509,7 @@ begin
       if fFocusedMenuItem.Enabled and fFocusedMenuItem.Selectable then begin
        if assigned(fFocusedMenuItem.Menu) then begin
         fSelectedMenuItem:=fFocusedMenuItem;
-        fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,fFocusedMenuItem.fRect.Top));
+        fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,fFocusedMenuItem.fOpenRect.Top));
         fFocusedMenuItem.Menu.FocusFirstMenuItem;
         if assigned(fFocusedMenuItem.OnClick) then begin
          fFocusedMenuItem.OnClick(fFocusedMenuItem);
@@ -6497,7 +6525,7 @@ begin
       fSelectedMenuItem:=fFocusedMenuItem;
       if fFocusedMenuItem.Enabled and fFocusedMenuItem.Selectable then begin
        if assigned(fFocusedMenuItem.Menu) then begin
-        fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,fFocusedMenuItem.fRect.Top));
+        fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,fFocusedMenuItem.fOpenRect.Top));
         fFocusedMenuItem.Menu.FocusFirstMenuItem;
        end;
        if assigned(fFocusedMenuItem.OnClick) then begin
@@ -6667,7 +6695,7 @@ begin
        fFocusedMenuItem:=MenuItem;
        fHoveredMenuItem:=MenuItem;
        if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.Menu) then begin
-        fSelectedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,fFocusedMenuItem.fRect.Top));
+        fSelectedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,fFocusedMenuItem.fOpenRect.Top));
        end;
        break;
       end;
@@ -6826,7 +6854,7 @@ begin
        fSelectedMenuItem:=fFocusedMenuItem;
        if fFocusedMenuItem.Enabled and fFocusedMenuItem.Selectable then begin
         if assigned(fFocusedMenuItem.Menu) then begin
-         fFocusedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(fFocusedMenuItem.fRect.Left,fSize.y));
+         fFocusedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(fFocusedMenuItem.fOpenRect.Left,fSize.y));
          fFocusedMenuItem.Menu.FocusFirstMenuItem;
         end;
         if assigned(fFocusedMenuItem.OnClick) then begin
@@ -6949,7 +6977,7 @@ begin
         fFocusedMenuItem:=MenuItem;
         fHoveredMenuItem:=MenuItem;
         if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.Menu) then begin
-         fSelectedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(fSelectedMenuItem.fRect.Left,fSize.y));
+         fSelectedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(fSelectedMenuItem.fOpenRect.Left,fSize.y));
         end;
         break;
        end;
