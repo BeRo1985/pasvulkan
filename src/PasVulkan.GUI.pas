@@ -1025,11 +1025,11 @@ type TpvGUIObject=class;
        fPositionProperty:TpvVector2Property;
        fSize:TpvVector2;
        fReleaseOnDeactivation:boolean;
-       fActivated:boolean;
        fSelectedMenuItem:TpvGUIMenuItem;
        fFocusedMenuItem:TpvGUIMenuItem;
        fHoveredMenuItem:TpvGUIMenuItem;
        procedure ReleaseOnDeactivationIfNeeded;
+       function GetActivated:boolean;
       protected
        function GetSkin:TpvGUISkin; virtual;
        procedure SetSkin(const aSkin:TpvGUISkin); virtual;
@@ -1040,7 +1040,9 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure Activate(const aPosition:TpvVector2);
+       procedure FocusFirstMenuItem;
        procedure Deactivate;
+       procedure DeactivateWindowMenu;
        procedure DeactivateSubmenus;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
@@ -1049,6 +1051,7 @@ type TpvGUIObject=class;
       public
        property FontColor:TpvVector4 read GetFontColor write fFontColor;
       published
+       property Activated:boolean read GetActivated;
        property Skin:TpvGUISkin read GetSkin write SetSkin;
        property Font:TpvFont read GetFont write fFont;
        property FontSize:TpvFloat read GetFontSize write fFontSize;
@@ -6229,8 +6232,6 @@ begin
 
  fReleaseOnDeactivation:=false;
 
- fActivated:=false;
-
 end;
 
 destructor TpvGUIPopupMenu.Destroy;
@@ -6301,89 +6302,87 @@ begin
  end;
 end;
 
+function TpvGUIPopupMenu.GetActivated:boolean;
+begin
+ result:=fInstance.fPopupMenuStack.Contains(self);
+end;
+
 procedure TpvGUIPopupMenu.Activate(const aPosition:TpvVector2);
+var Index:TpvInt32;
+    ParentPopupMenu:TpvGUIPopupMenu;
+begin
+
+ fPosition:=aPosition;
+
+ if not fInstance.fPopupMenuStack.Contains(self) then begin
+
+  if not assigned(fParent) then begin
+   fInstance.fPopupMenuStack.Clear;
+  end else if fInstance.fPopupMenuStack.Count>0 then begin
+   if fParent is TpvGUIPopupMenu then begin
+    ParentPopupMenu:=fParent as TpvGUIPopupMenu;
+   end else if (fParent is TpvGUIMenuItem) and
+               assigned((fParent as TpvGUIMenuItem).fParent) and
+               ((fParent as TpvGUIMenuItem).fParent is TpvGUIPopupMenu) then begin
+    ParentPopupMenu:=(fParent as TpvGUIMenuItem).fParent as TpvGUIPopupMenu;
+   end else begin
+    ParentPopupMenu:=nil;
+   end;
+   if assigned(ParentPopupMenu) then begin
+    Index:=fInstance.fPopupMenuStack.IndexOf(ParentPopupMenu);
+   end else begin
+    Index:=-1;
+   end;
+   if Index>=0 then begin
+    while (Index+1)<fInstance.fPopupMenuStack.Count do begin
+     fInstance.fPopupMenuStack.Delete(fInstance.fPopupMenuStack.Count-1);
+    end;
+   end else begin
+    fInstance.fPopupMenuStack.Clear;
+   end;
+  end;
+
+  fSelectedMenuItem:=nil;
+  fFocusedMenuItem:=nil;
+  fHoveredMenuItem:=nil;
+
+  fInstance.fPopupMenuStack.Add(self);
+
+ end;
+
+end;
+
+procedure TpvGUIPopupMenu.FocusFirstMenuItem;
 var Index:TpvInt32;
     ParentPopupMenu:TpvGUIPopupMenu;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
 begin
-
- fPosition:=aPosition;
-
- if not fActivated then begin
-
-  if not fInstance.fPopupMenuStack.Contains(self) then begin
-
-   if not assigned(fParent) then begin
-    for Index:=Instance.fPopupMenuStack.Count-1 downto 0 do begin
-     (fInstance.fPopupMenuStack[Index] as TpvGUIPopupMenu).fActivated:=false;
-     fInstance.fPopupMenuStack.Delete(Index);
-    end;
-   end else if fInstance.fPopupMenuStack.Count>0 then begin
-    if fParent is TpvGUIPopupMenu then begin
-     ParentPopupMenu:=fParent as TpvGUIPopupMenu;
-    end else if (fParent is TpvGUIMenuItem) and
-                assigned((fParent as TpvGUIMenuItem).fParent) and
-                ((fParent as TpvGUIMenuItem).fParent is TpvGUIPopupMenu) then begin
-     ParentPopupMenu:=(fParent as TpvGUIMenuItem).fParent as TpvGUIPopupMenu;
-    end else begin
-     ParentPopupMenu:=nil;
-    end;
-    if assigned(ParentPopupMenu) then begin
-     Index:=fInstance.fPopupMenuStack.IndexOf(ParentPopupMenu);
-    end else begin
-     Index:=-1;
-    end;
-    if Index>=0 then begin
-     while (Index+1)<fInstance.fPopupMenuStack.Count do begin
-      fInstance.fPopupMenuStack.Delete(fInstance.fPopupMenuStack.Count-1);
-     end;
-    end else begin
-     for Index:=Instance.fPopupMenuStack.Count-1 downto 0 do begin
-      (fInstance.fPopupMenuStack[Index] as TpvGUIPopupMenu).fActivated:=false;
-      fInstance.fPopupMenuStack.Delete(Index);
-     end;
-    end;
-   end;
-
-   fInstance.fPopupMenuStack.Add(self);
-
+ fSelectedMenuItem:=nil;
+ for Index:=0 to fChildren.Count-1 do begin
+  Child:=fChildren[Index];
+  if Child is TpvGUIMenuItem then begin
+   MenuItem:=TpvGUIMenuItem(Child);
+   fFocusedMenuItem:=MenuItem;
+   fHoveredMenuItem:=MenuItem;
+   break;
   end;
-
-  fSelectedMenuItem:=nil;
-  for Index:=0 to fChildren.Count-1 do begin
-   Child:=fChildren[Index];
-   if Child is TpvGUIMenuItem then begin
-    MenuItem:=TpvGUIMenuItem(Child);
-    fFocusedMenuItem:=MenuItem;
-    fHoveredMenuItem:=MenuItem;
-    break;
-   end;
-  end;
-
-  fActivated:=true;
-
  end;
 end;
 
 procedure TpvGUIPopupMenu.Deactivate;
 var Index:TpvInt32;
 begin
- if fActivated then begin
-  fActivated:=false;
+ if fInstance.fPopupMenuStack.Contains(self) then begin
   IncRef;
   try
    Index:=fInstance.fPopupMenuStack.IndexOf(self);
    if Index>=0 then begin
     while Index<fInstance.fPopupMenuStack.Count do begin
-     (fInstance.fPopupMenuStack[fInstance.fPopupMenuStack.Count-1] as TpvGUIPopupMenu).fActivated:=false;
      fInstance.fPopupMenuStack.Delete(fInstance.fPopupMenuStack.Count-1);
     end;
    end else begin
-    for Index:=Instance.fPopupMenuStack.Count-1 downto 0 do begin
-     (fInstance.fPopupMenuStack[Index] as TpvGUIPopupMenu).fActivated:=false;
-     fInstance.fPopupMenuStack.Delete(Index);
-    end;
+    fInstance.fPopupMenuStack.Clear;
    end;
   finally
    DecRef;
@@ -6391,23 +6390,31 @@ begin
  end;
 end;
 
+procedure TpvGUIPopupMenu.DeactivateWindowMenu;
+begin
+ if assigned(fParent) and
+    (fParent is TpvGUIMenuItem) and
+    assigned(fParent.fParent) and
+    (fParent.fParent is TpvGUIWindowMenu) then begin
+  (fParent.fParent as TpvGUIWindowMenu).fSelectedMenuItem:=nil;
+  (fParent.fParent as TpvGUIWindowMenu).fFocusedMenuItem:=nil;
+  (fParent.fParent as TpvGUIWindowMenu).fHoveredMenuItem:=nil;
+ end;
+end;
+
 procedure TpvGUIPopupMenu.DeactivateSubmenus;
 var Index:TpvInt32;
 begin
- if fActivated then begin
+ if fInstance.fPopupMenuStack.Contains(self) then begin
   IncRef;
   try
    Index:=fInstance.fPopupMenuStack.IndexOf(self);
    if Index>=0 then begin
     while (Index+1)<fInstance.fPopupMenuStack.Count do begin
-     (fInstance.fPopupMenuStack[fInstance.fPopupMenuStack.Count-1] as TpvGUIPopupMenu).fActivated:=false;
      fInstance.fPopupMenuStack.Delete(fInstance.fPopupMenuStack.Count-1);
     end;
    end else begin
-    for Index:=Instance.fPopupMenuStack.Count-1 downto 0 do begin
-     (fInstance.fPopupMenuStack[Index] as TpvGUIPopupMenu).fActivated:=false;
-     fInstance.fPopupMenuStack.Delete(Index);
-    end;
+    fInstance.fPopupMenuStack.Clear;
    end;
   finally
    DecRef;
@@ -6436,6 +6443,7 @@ begin
        if assigned(fFocusedMenuItem.Menu) then begin
         fSelectedMenuItem:=fFocusedMenuItem;
         fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,0.0));
+        fFocusedMenuItem.Menu.FocusFirstMenuItem;
         if assigned(fFocusedMenuItem.OnClick) then begin
          fFocusedMenuItem.OnClick(fFocusedMenuItem);
         end;
@@ -6451,12 +6459,14 @@ begin
       if fFocusedMenuItem.Enabled then begin
        if assigned(fFocusedMenuItem.Menu) then begin
         fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,0.0));
+        fFocusedMenuItem.Menu.FocusFirstMenuItem;
        end;
        if assigned(fFocusedMenuItem.OnClick) then begin
         fFocusedMenuItem.OnClick(fFocusedMenuItem);
        end;
        if not assigned(fSelectedMenuItem.Menu) then begin
         if fInstance.fPopupMenuStack.Count>0 then begin
+         (fInstance.fPopupMenuStack[0] as TpvGUIPopupMenu).DeactivateWindowMenu;
          (fInstance.fPopupMenuStack[0] as TpvGUIPopupMenu).Deactivate;
         end;
        end;
@@ -6485,18 +6495,52 @@ begin
      Deactivate;
     end;
     KEYCODE_UP:begin
-     for Index:=0 to fChildren.Count-1 do begin
-      Child:=fChildren[Index];
-      if (Child is TpvGUIMenuItem) and (Child=fFocusedMenuItem) then begin
-       if Index=0 then begin
-        if assigned(fParent) and
-           (fParent is TpvGUIMenuItem) and
-           assigned(fParent.fParent) and
-           (fParent.fParent is TpvGUIWindowMenu) then begin
-         Deactivate;
+     if assigned(fFocusedMenuItem) then begin
+      for Index:=0 to fChildren.Count-1 do begin
+       Child:=fChildren[Index];
+       if (Child is TpvGUIMenuItem) and (Child=fFocusedMenuItem) then begin
+        if Index=0 then begin
+         if assigned(fParent) and
+            (fParent is TpvGUIMenuItem) and
+            assigned(fParent.fParent) and
+            (fParent.fParent is TpvGUIWindowMenu) then begin
+          Deactivate;
+         end;
+        end else begin
+         for OtherIndex:=Index-1 downto 0 do begin
+          Child:=fChildren[OtherIndex];
+          if Child is TpvGUIMenuItem then begin
+           MenuItem:=TpvGUIMenuItem(Child);
+           if MenuItem.Enabled then begin
+            fSelectedMenuItem:=nil;
+            fFocusedMenuItem:=MenuItem;
+            fHoveredMenuItem:=MenuItem;
+            break;
+           end;
+          end;
+         end;
         end;
-       end else begin
-        for OtherIndex:=Index-1 downto 0 do begin
+        break;
+       end;
+      end;
+     end else begin
+      for Index:=0 to fChildren.Count-1 do begin
+       Child:=fChildren[Index];
+       if Child is TpvGUIMenuItem then begin
+        MenuItem:=TpvGUIMenuItem(Child);
+        fFocusedMenuItem:=MenuItem;
+        fHoveredMenuItem:=MenuItem;
+        break;
+       end;
+      end;
+     end;
+    end;
+    KEYCODE_DOWN:begin
+     if assigned(fFocusedMenuItem) then begin
+      for Index:=0 to fChildren.Count-1 do begin
+       Child:=fChildren[Index];
+       if (Child is TpvGUIMenuItem) and (Child=fFocusedMenuItem) then begin
+        for OtherIndex:=Index+1 to fChildren.Count-1 do begin
          Child:=fChildren[OtherIndex];
          if Child is TpvGUIMenuItem then begin
           MenuItem:=TpvGUIMenuItem(Child);
@@ -6508,28 +6552,18 @@ begin
           end;
          end;
         end;
+        break;
        end;
-       break;
       end;
-     end;
-    end;
-    KEYCODE_DOWN:begin
-     for Index:=0 to fChildren.Count-1 do begin
-      Child:=fChildren[Index];
-      if (Child is TpvGUIMenuItem) and (Child=fFocusedMenuItem) then begin
-       for OtherIndex:=Index+1 to fChildren.Count-1 do begin
-        Child:=fChildren[OtherIndex];
-        if Child is TpvGUIMenuItem then begin
-         MenuItem:=TpvGUIMenuItem(Child);
-         if MenuItem.Enabled then begin
-          fSelectedMenuItem:=nil;
-          fFocusedMenuItem:=MenuItem;
-          fHoveredMenuItem:=MenuItem;
-          break;
-         end;
-        end;
+     end else begin
+      for Index:=0 to fChildren.Count-1 do begin
+       Child:=fChildren[Index];
+       if Child is TpvGUIMenuItem then begin
+        MenuItem:=TpvGUIMenuItem(Child);
+        fFocusedMenuItem:=MenuItem;
+        fHoveredMenuItem:=MenuItem;
+        break;
        end;
-       break;
       end;
      end;
     end;
@@ -6562,6 +6596,9 @@ begin
   end;
   KEYEVENT_UNICODE:begin
    result:=true;
+  end;
+  else begin
+   result:=false;
   end;
  end;
 end;
@@ -6613,6 +6650,7 @@ begin
      end;
      if fSelectedMenuItem.Enabled and not assigned(fSelectedMenuItem.Menu) then begin
       if fInstance.fPopupMenuStack.Count>0 then begin
+       (fInstance.fPopupMenuStack[0] as TpvGUIPopupMenu).DeactivateWindowMenu;
        (fInstance.fPopupMenuStack[0] as TpvGUIPopupMenu).Deactivate;
       end;
      end;
@@ -6746,6 +6784,7 @@ begin
        if fFocusedMenuItem.Enabled then begin
         if assigned(fFocusedMenuItem.Menu) then begin
          fFocusedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(fFocusedMenuItem.fRect.Left,fSize.y));
+         fFocusedMenuItem.Menu.FocusFirstMenuItem;
         end;
         if assigned(fFocusedMenuItem.OnClick) then begin
          fFocusedMenuItem.OnClick(fFocusedMenuItem);
