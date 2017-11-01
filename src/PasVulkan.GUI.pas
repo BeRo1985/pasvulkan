@@ -1039,8 +1039,9 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       procedure Activate(const aPosition:TpvVector2); virtual;
-       procedure Deactivate; virtual;
+       procedure Activate(const aPosition:TpvVector2);
+       procedure Deactivate;
+       procedure DeactivateSubmenus;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
@@ -6377,15 +6378,208 @@ begin
  end;
 end;
 
-function TpvGUIPopupMenu.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+procedure TpvGUIPopupMenu.DeactivateSubmenus;
+var Index:TpvInt32;
 begin
- result:=false;
+ if fActivated then begin
+  IncRef;
+  try
+   Index:=fInstance.fPopupMenuStack.IndexOf(self);
+   if Index>=0 then begin
+    while (Index+1)<fInstance.fPopupMenuStack.Count do begin
+     (fInstance.fPopupMenuStack[fInstance.fPopupMenuStack.Count-1] as TpvGUIPopupMenu).fActivated:=false;
+     fInstance.fPopupMenuStack.Delete(fInstance.fPopupMenuStack.Count-1);
+    end;
+   end else begin
+    for Index:=Instance.fPopupMenuStack.Count-1 downto 0 do begin
+     (fInstance.fPopupMenuStack[Index] as TpvGUIPopupMenu).fActivated:=false;
+     fInstance.fPopupMenuStack.Delete(Index);
+    end;
+   end;
+  finally
+   DecRef;
+  end;
+ end;
+end;
+
+function TpvGUIPopupMenu.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+var Index,OtherIndex:TpvInt32;
+    Child:TpvGUIObject;
+    MenuItem:TpvGUIMenuItem;
+begin
+ case aKeyEvent.KeyEventType of
+  KEYEVENT_DOWN:begin
+   result:=true;
+  end;
+  KEYEVENT_UP:begin
+   result:=true;
+  end;
+  KEYEVENT_TYPED:begin
+   case aKeyEvent.KeyCode of
+    KEYCODE_DOWN,KEYCODE_SPACE,KEYCODE_RETURN:begin
+     DeactivateSubmenus;
+     fSelectedMenuItem:=nil;
+     if assigned(fFocusedMenuItem) then begin
+      fSelectedMenuItem:=fFocusedMenuItem;
+      if fFocusedMenuItem.Enabled then begin
+       if assigned(fFocusedMenuItem.Menu) then begin
+        fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,0.0));
+       end;
+       if assigned(fFocusedMenuItem.OnClick) then begin
+        fFocusedMenuItem.OnClick(fFocusedMenuItem);
+       end;
+      end;
+     end;
+    end;
+    KEYCODE_ESCAPE:begin
+     fSelectedMenuItem:=nil;
+     for Index:=0 to fChildren.Count-1 do begin
+      Child:=fChildren[Index];
+      if Child is TpvGUIMenuItem then begin
+       MenuItem:=TpvGUIMenuItem(Child);
+       fFocusedMenuItem:=MenuItem;
+       fHoveredMenuItem:=MenuItem;
+       break;
+      end;
+     end;
+    end;
+    KEYCODE_LEFT:begin
+     for Index:=0 to fChildren.Count-1 do begin
+      Child:=fChildren[Index];
+      if (Child is TpvGUIMenuItem) and (Child=fFocusedMenuItem) then begin
+       for OtherIndex:=Index-1 downto 0 do begin
+        Child:=fChildren[OtherIndex];
+        if Child is TpvGUIMenuItem then begin
+         MenuItem:=TpvGUIMenuItem(Child);
+         if MenuItem.Enabled then begin
+          fSelectedMenuItem:=nil;
+          fFocusedMenuItem:=MenuItem;
+          fHoveredMenuItem:=MenuItem;
+          break;
+         end;
+        end;
+       end;
+       break;
+      end;
+     end;
+    end;
+    KEYCODE_RIGHT:begin
+     for Index:=0 to fChildren.Count-1 do begin
+      Child:=fChildren[Index];
+      if (Child is TpvGUIMenuItem) and (Child=fFocusedMenuItem) then begin
+       for OtherIndex:=Index+1 to fChildren.Count-1 do begin
+        Child:=fChildren[OtherIndex];
+        if Child is TpvGUIMenuItem then begin
+         MenuItem:=TpvGUIMenuItem(Child);
+         if MenuItem.Enabled then begin
+          fSelectedMenuItem:=nil;
+          fFocusedMenuItem:=MenuItem;
+          fHoveredMenuItem:=MenuItem;
+          break;
+         end;
+        end;
+       end;
+       break;
+      end;
+     end;
+    end;
+    KEYCODE_HOME:begin
+     for Index:=0 to fChildren.Count-1 do begin
+      Child:=fChildren[Index];
+      if Child is TpvGUIMenuItem then begin
+       MenuItem:=TpvGUIMenuItem(Child);
+       fSelectedMenuItem:=nil;
+       fFocusedMenuItem:=MenuItem;
+       fHoveredMenuItem:=MenuItem;
+       break;
+      end;
+     end;
+    end;
+    KEYCODE_END:begin
+     for Index:=fChildren.Count-1 downto 0 do begin
+      Child:=fChildren[Index];
+      if Child is TpvGUIMenuItem then begin
+       MenuItem:=TpvGUIMenuItem(Child);
+       fSelectedMenuItem:=nil;
+       fFocusedMenuItem:=MenuItem;
+       fHoveredMenuItem:=MenuItem;
+       break;
+      end;
+     end;
+    end;
+   end;
+   result:=true;
+  end;
+  KEYEVENT_UNICODE:begin
+   result:=true;
+  end;
+ end;
 end;
 
 function TpvGUIPopupMenu.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var Index:TpvInt32;
+    Child:TpvGUIObject;
+    MenuItem:TpvGUIMenuItem;
 begin
+ fHoveredMenuItem:=nil;
  result:=TpvRect.CreateRelative(fPosition,fSize).Touched(aPointerEvent.Position);
  if result then begin
+  case aPointerEvent.PointerEventType of
+   POINTEREVENT_DOWN:begin
+    DeactivateSubmenus;
+    fSelectedMenuItem:=nil;
+    fFocusedMenuItem:=nil;
+    fHoveredMenuItem:=nil;
+    for Index:=0 to fChildren.Count-1 do begin
+     Child:=fChildren[Index];
+     if Child is TpvGUIMenuItem then begin
+      MenuItem:=TpvGUIMenuItem(Child);
+      if MenuItem.fRect.Touched(aPointerEvent.Position-fPosition) then begin
+       fSelectedMenuItem:=MenuItem;
+       fFocusedMenuItem:=MenuItem;
+       fHoveredMenuItem:=MenuItem;
+       if fSelectedMenuItem.Enabled and assigned(fSelectedMenuItem.Menu) then begin
+        fSelectedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,0.0));
+       end;
+       break;
+      end;
+     end;
+    end;
+    if not assigned(fFocusedMenuItem) then begin
+     for Index:=0 to fChildren.Count-1 do begin
+      Child:=fChildren[Index];
+      if Child is TpvGUIMenuItem then begin
+       fFocusedMenuItem:=TpvGUIMenuItem(Child);
+       break;
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+   POINTEREVENT_UP:begin
+    if assigned(fSelectedMenuItem) then begin
+     if fSelectedMenuItem.Enabled and assigned(fSelectedMenuItem.fOnClick) then begin
+      fSelectedMenuItem.fOnClick(fSelectedMenuItem);
+     end;
+     fSelectedMenuItem:=nil;
+    end;
+    result:=true;
+   end;
+   POINTEREVENT_MOTION:begin
+    fHoveredMenuItem:=nil;
+    for Index:=0 to fChildren.Count-1 do begin
+     Child:=fChildren[Index];
+     if Child is TpvGUIMenuItem then begin
+      MenuItem:=TpvGUIMenuItem(Child);
+      if MenuItem.fRect.Touched(aPointerEvent.Position-fPosition) then begin
+       fHoveredMenuItem:=MenuItem;
+       break;
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+  end;
  end;
 end;
 

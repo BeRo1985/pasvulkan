@@ -193,6 +193,7 @@ begin
   PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
   MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
   MenuItem.Caption:='Open';
+  TpvGUIMenuItem.Create(TpvGUIPopupMenu.Create(MenuItem)).Caption:='Test';
   MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
   MenuItem.Caption:='Save';
 
