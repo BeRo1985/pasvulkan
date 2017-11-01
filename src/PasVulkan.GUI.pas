@@ -4482,9 +4482,25 @@ begin
 end;
 
 procedure TpvGUIInstance.FindHoveredWidget;
-var CurrentWidget:TpvGUIWidget;
+var Index:TpvInt32;
+    CurrentWidget:TpvGUIWidget;
+    IsOnPopupMenu:boolean;
 begin
- CurrentWidget:=FindWidget(fMousePosition);
+ IsOnPopupMenu:=false;
+ if fPopupMenuStack.Count>0 then begin
+  for Index:=fPopupMenuStack.Count-1 downto 0 do begin
+   if TpvRect.CreateRelative((fPopupMenuStack[Index] as TpvGUIPopupMenu).fPosition,
+                             (fPopupMenuStack[Index] as TpvGUIPopupMenu).fSize).Touched(fMousePosition) then begin
+    IsOnPopupMenu:=true;
+    break;
+   end;
+  end;
+ end;
+ if IsOnPopupMenu then begin
+  CurrentWidget:=nil;
+ end else begin
+  CurrentWidget:=FindWidget(fMousePosition);
+ end;
  if fHoveredWidget<>CurrentWidget then begin
   TpvReferenceCountedObject.DecRefOrFreeAndNil(fHoveredWidget);
   fHoveredWidget:=CurrentWidget;
@@ -6361,11 +6377,15 @@ end;
 function TpvGUIPopupMenu.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 begin
  result:=TpvRect.CreateRelative(fPosition,fSize).Touched(aPointerEvent.Position);
+ if result then begin
+ end;
 end;
 
 function TpvGUIPopupMenu.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
 begin
  result:=TpvRect.CreateRelative(fPosition,fSize).Touched(aPosition);
+ if result then begin
+ end;
 end;
 
 procedure TpvGUIPopupMenu.Draw(const aCanvas:TpvCanvas);
