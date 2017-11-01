@@ -2915,7 +2915,7 @@ begin
     aPopupMenu.fHasSubMenus:=true;
    end;
 
-   MenuItemWidth:=MenuItemWidth+((12.0+fSpacing)*2.0);
+   MenuItemWidth:=MenuItemWidth+((10.0+fSpacing)*2.0);
 
    result.x:=Maximum(result.x,MenuItemWidth);
 
@@ -2964,7 +2964,7 @@ begin
      MenuItemHeight:=Maximum(MenuItemHeight,fSpacing+IconSize.y);
     end;
 
-    MenuItemHeight:=MenuItemHeight+8.0;
+    MenuItemHeight:=MenuItemHeight+10.0;
 
     MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(2.0+fSpacing,YOffset),
                                            TpvVector2.Create(result.x-(2.0+fSpacing),YOffset+MenuItemHeight));
@@ -3067,7 +3067,7 @@ begin
 
     aCanvas.TextHorizontalAlignment:=pvcthaLeading;
 
-    XOffset:=MenuItem.fRect.Left+(6.0+fSpacing);
+    XOffset:=MenuItem.fRect.Left+(4.0+fSpacing);
 
     if assigned(MenuItem.fIcon) then begin
 
@@ -3102,7 +3102,7 @@ begin
     aCanvas.TextVerticalAlignment:=pvctvaMiddle;
     aCanvas.DrawText(MenuItem.fCaption,TpvVector2.Create(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
 
-    XOffset:=MenuItem.fRect.Right-(6.0+fSpacing);
+    XOffset:=MenuItem.fRect.Right-(4.0+fSpacing);
 
     if aPopupMenu.fHasSubMenus then begin
      if assigned(MenuItem.Menu) then begin
