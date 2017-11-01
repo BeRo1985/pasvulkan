@@ -1028,7 +1028,6 @@ type TpvGUIObject=class;
        fSelectedMenuItem:TpvGUIMenuItem;
        fFocusedMenuItem:TpvGUIMenuItem;
        fHoveredMenuItem:TpvGUIMenuItem;
-       procedure ReleaseOnDeactivationIfNeeded;
        function GetActivated:boolean;
       protected
        function GetSkin:TpvGUISkin; virtual;
@@ -6295,13 +6294,6 @@ begin
  end;
 end;
 
-procedure TpvGUIPopupMenu.ReleaseOnDeactivationIfNeeded;
-begin
- if fReleaseOnDeactivation then begin
-  fInstance.ReleaseObject(self);
- end;
-end;
-
 function TpvGUIPopupMenu.GetActivated:boolean;
 begin
  result:=fInstance.fPopupMenuStack.Contains(self);
@@ -6386,6 +6378,9 @@ begin
    end;
   finally
    DecRef;
+  end;
+  if fReleaseOnDeactivation then begin
+   fInstance.ReleaseObject(self);
   end;
  end;
 end;
