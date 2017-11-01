@@ -1937,6 +1937,7 @@ begin
                                                                                  48.0/512.0,
                                                                                  0.0,
                                                                                  0.0,
+                                                                                 pvvpfrNonZero,
                                                                                  false,
                                                                                  8);
 
@@ -1947,6 +1948,7 @@ begin
                                                                                    48.0/512.0,
                                                                                    0.0,
                                                                                    0.0,
+                                                                                   pvvpfrNonZero,
                                                                                    false,
                                                                                    8);
 
@@ -1957,6 +1959,7 @@ begin
                                                                                     48.0/512.0,
                                                                                     0.0,
                                                                                     0.0,
+                                                                                    pvvpfrNonZero,
                                                                                     false,
                                                                                     8);
 
@@ -1967,6 +1970,7 @@ begin
                                                                                     48.0/512.0,
                                                                                     0.0,
                                                                                     0.0,
+                                                                                    pvvpfrNonZero,
                                                                                     false,
                                                                                     8);
 
