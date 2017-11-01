@@ -2860,6 +2860,7 @@ var Index,Element:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
     YOffset,MenuItemWidth,MenuItemHeight:TpvFloat;
+    IconSize:TpvVector2;
 begin
 
  result:=TpvVector2.Null;
@@ -2879,6 +2880,21 @@ begin
 
    if length(MenuItem.fShortcutHint)>0 then begin
     MenuItemWidth:=MenuItemWidth+(fSpacing*4.0)+aPopupMenu.Font.TextWidth(MenuItem.fShortcutHint,aPopupMenu.FontSize);
+   end;
+
+   if assigned(MenuItem.fIcon) then begin
+    if MenuItem.fIcon is TpvSprite then begin
+     IconSize:=TpvVector2.Create(TpvSprite(MenuItem.fIcon).Width,TpvSprite(MenuItem.fIcon).Height);
+    end else if MenuItem.fIcon is TpvVulkanTexture then begin
+     IconSize:=TpvVector2.Create(TpvVulkanTexture(MenuItem.fIcon).Width,TpvVulkanTexture(MenuItem.fIcon).Height);
+    end else begin
+     IconSize:=TpvVector2.Null;
+    end;
+    if MenuItem.fIconHeight>0.0 then begin
+     IconSize.x:=(IconSize.x*MenuItem.fIconHeight)/IconSize.y;
+     IconSize.y:=MenuItem.fIconHeight;
+    end;
+    MenuItemWidth:=MenuItemWidth+fSpacing+IconSize.x;
    end;
 
    if assigned(MenuItem.Menu) then begin
@@ -2920,6 +2936,21 @@ begin
      MenuItemHeight:=Maximum(MenuItemHeight,aPopupMenu.Font.TextHeight('>',aPopupMenu.FontSize));
     end;
 
+    if assigned(MenuItem.fIcon) then begin
+     if MenuItem.fIcon is TpvSprite then begin
+      IconSize:=TpvVector2.Create(TpvSprite(MenuItem.fIcon).Width,TpvSprite(MenuItem.fIcon).Height);
+     end else if MenuItem.fIcon is TpvVulkanTexture then begin
+      IconSize:=TpvVector2.Create(TpvVulkanTexture(MenuItem.fIcon).Width,TpvVulkanTexture(MenuItem.fIcon).Height);
+     end else begin
+      IconSize:=TpvVector2.Null;
+     end;
+     if MenuItem.fIconHeight>0.0 then begin
+      IconSize.x:=(IconSize.x*MenuItem.fIconHeight)/IconSize.y;
+      IconSize.y:=MenuItem.fIconHeight;
+     end;
+     MenuItemHeight:=Maximum(MenuItemHeight,fSpacing+IconSize.y);
+    end;
+
     MenuItemHeight:=MenuItemHeight+((4.0+fSpacing)*2.0);
 
     MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(2.0+fSpacing,YOffset),
@@ -2952,7 +2983,7 @@ procedure TpvGUIDefaultVectorBasedSkin.DrawPopupMenu(const aCanvas:TpvCanvas;con
 var Index,Element:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
-    Offset:TpvVector2;
+    Offset,IconSize:TpvVector2;
     XOffset:TpvFloat;
 begin
 
@@ -3023,8 +3054,39 @@ begin
 
     aCanvas.TextHorizontalAlignment:=pvcthaLeading;
 
-    aCanvas.TextVerticalAlignment:=pvctvaMiddle;
     XOffset:=MenuItem.fRect.Left+(6.0+fSpacing);
+
+    if assigned(MenuItem.fIcon) then begin
+
+     if MenuItem.fIcon is TpvSprite then begin
+      IconSize:=TpvVector2.Create(TpvSprite(MenuItem.fIcon).Width,TpvSprite(MenuItem.fIcon).Height);
+     end else if MenuItem.fIcon is TpvVulkanTexture then begin
+      IconSize:=TpvVector2.Create(TpvVulkanTexture(MenuItem.fIcon).Width,TpvVulkanTexture(MenuItem.fIcon).Height);
+     end else begin
+      IconSize:=TpvVector2.Null;
+     end;
+     if MenuItem.fIconHeight>0.0 then begin
+      IconSize.x:=(IconSize.x*MenuItem.fIconHeight)/IconSize.y;
+      IconSize.y:=MenuItem.fIconHeight;
+     end;
+
+     if MenuItem.fIcon is TpvSprite then begin
+      aCanvas.DrawSprite(TpvSprite(MenuItem.fIcon),
+                         TpvRect.CreateRelative(TpvVector2.Null,
+                                                TpvVector2.Create(TpvSprite(MenuItem.fIcon).Width,TpvSprite(MenuItem.fIcon).Height)),
+                         TpvRect.CreateRelative(TpvVector2.Create(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-IconSize.y)*0.5)))+Offset,
+                                                IconSize));
+     end else if MenuItem.fIcon is TpvVulkanTexture then begin
+      aCanvas.DrawTexturedRectangle(TpvVulkanTexture(MenuItem.fIcon),
+                                    TpvVector2.Create(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-IconSize.y)*0.5)))+Offset,
+                                    IconSize);
+     end;
+
+     XOffset:=XOffset+IconSize.x+fSpacing;
+
+    end;
+
+    aCanvas.TextVerticalAlignment:=pvctvaMiddle;
     aCanvas.DrawText(MenuItem.fCaption,TpvVector2.Create(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
 
     XOffset:=MenuItem.fRect.Right-(6.0+fSpacing);
