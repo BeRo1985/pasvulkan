@@ -4370,16 +4370,21 @@ var Index:TpvInt32;
     CurrentWindow:TpvGUIWindow;
     CurrentWidget:TpvGUIWidget;
     LocalPointerEvent:TpvApplicationInputPointerEvent;
-    DoUpdateCursor:boolean;
+    DoUpdateCursor,IsCursorOnMenu:boolean;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
   DoUpdateCursor:=false;
+  IsCursorOnMenu:=false;
   fMousePosition:=aPointerEvent.Position;
-  for Index:=fPopupMenuStack.Count-1 downto 0 do begin
-   result:=(fPopupMenuStack[Index] as TpvGUIPopupMenu).PointerEvent(aPointerEvent);
-   if result then begin
-    break;
+  if not assigned(fDragWidget) then begin
+   for Index:=fPopupMenuStack.Count-1 downto 0 do begin
+    result:=(fPopupMenuStack[Index] as TpvGUIPopupMenu).PointerEvent(aPointerEvent);
+    if result then begin
+     IsCursorOnMenu:=true;
+     DoUpdateCursor:=true;
+     break;
+    end;
    end;
   end;
   if not result then begin
@@ -4453,6 +4458,8 @@ begin
   if DoUpdateCursor then begin
    if assigned(fDragWidget) then begin
     fVisibleCursor:=fDragWidget.fCursor;
+   end else if IsCursorOnMenu then begin
+    fVisibleCursor:=pvgcArrow;
    end else begin
     CurrentWidget:=FindWidget(aPointerEvent.Position);
     if assigned(CurrentWidget) then begin
