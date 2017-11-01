@@ -6429,7 +6429,21 @@ begin
   end;
   KEYEVENT_TYPED:begin
    case aKeyEvent.KeyCode of
-    KEYCODE_RIGHT,KEYCODE_SPACE,KEYCODE_RETURN:begin
+    KEYCODE_RIGHT:begin
+     fSelectedMenuItem:=nil;
+     if assigned(fFocusedMenuItem) then begin
+      if fFocusedMenuItem.Enabled then begin
+       if assigned(fFocusedMenuItem.Menu) then begin
+        fSelectedMenuItem:=fFocusedMenuItem;
+        fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,0.0));
+        if assigned(fFocusedMenuItem.OnClick) then begin
+         fFocusedMenuItem.OnClick(fFocusedMenuItem);
+        end;
+       end;
+      end;
+     end;
+    end;
+    KEYCODE_SPACE,KEYCODE_RETURN:begin
      DeactivateSubmenus;
      fSelectedMenuItem:=nil;
      if assigned(fFocusedMenuItem) then begin
@@ -6449,7 +6463,15 @@ begin
       end;
      end;
     end;
-    KEYCODE_LEFT,KEYCODE_ESCAPE:begin
+    KEYCODE_LEFT:begin
+     if assigned(fParent) and
+        (fParent is TpvGUIMenuItem) and
+         assigned(fParent.fParent) and
+        (fParent.fParent is TpvGUIPopupMenu) then begin
+      Deactivate;
+     end;
+    end;
+    KEYCODE_ESCAPE:begin
      fSelectedMenuItem:=nil;
      for Index:=0 to fChildren.Count-1 do begin
       Child:=fChildren[Index];
@@ -6466,15 +6488,24 @@ begin
      for Index:=0 to fChildren.Count-1 do begin
       Child:=fChildren[Index];
       if (Child is TpvGUIMenuItem) and (Child=fFocusedMenuItem) then begin
-       for OtherIndex:=Index-1 downto 0 do begin
-        Child:=fChildren[OtherIndex];
-        if Child is TpvGUIMenuItem then begin
-         MenuItem:=TpvGUIMenuItem(Child);
-         if MenuItem.Enabled then begin
-          fSelectedMenuItem:=nil;
-          fFocusedMenuItem:=MenuItem;
-          fHoveredMenuItem:=MenuItem;
-          break;
+       if Index=0 then begin
+        if assigned(fParent) and
+           (fParent is TpvGUIMenuItem) and
+           assigned(fParent.fParent) and
+           (fParent.fParent is TpvGUIWindowMenu) then begin
+         Deactivate;
+        end;
+       end else begin
+        for OtherIndex:=Index-1 downto 0 do begin
+         Child:=fChildren[OtherIndex];
+         if Child is TpvGUIMenuItem then begin
+          MenuItem:=TpvGUIMenuItem(Child);
+          if MenuItem.Enabled then begin
+           fSelectedMenuItem:=nil;
+           fFocusedMenuItem:=MenuItem;
+           fHoveredMenuItem:=MenuItem;
+           break;
+          end;
          end;
         end;
        end;
