@@ -811,7 +811,8 @@ type TpvGUIObject=class;
        procedure Update; override;
        procedure Draw; override;
       published
-       property ParentWidget:TpvGUIWidget read fParentWidget write fParentWidget;
+       property ParentWidget:TpvGUIWidget read fParentWidget;
+       property ParentHolder:TpvGUIHolder read fParentHolder;
        property AnchorSide:TpvGUIPopupAnchorSide read fAnchorSide write fAnchorSide;
        property AnchorPosition:TpvVector2Property read fAnchorPositionProperty;
        property AnchorOffset:TpvVector2Property read fAnchorOffsetProperty;
@@ -4100,7 +4101,7 @@ begin
      if assigned(Current) then begin
       if Current is TpvGUIPopup then begin
        PopupWidget:=Current as TpvGUIPopup;
-       if (PopupWidget.fParentHolder=aWindow) and (Index<BaseIndex) then begin
+       if (PopupWidget.ParentHolder=aWindow) and (Index<BaseIndex) then begin
         MoveWindowToFront(PopupWidget);
         Changed:=true;
         break;
