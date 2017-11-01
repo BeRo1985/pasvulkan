@@ -212,10 +212,30 @@ begin
 
   PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
   MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='New';
+  MenuItem.ShortcutHint:='Ctrl-N';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='-';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
   MenuItem.Caption:='Open';
+  MenuItem.ShortcutHint:='Ctrl-O';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Open recent';
+  MenuItem.ShortcutHint:='Shift-Ctrl-O';
   TpvGUIMenuItem.Create(TpvGUIPopupMenu.Create(MenuItem)).Caption:='Test';
   MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='-';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
   MenuItem.Caption:='Save';
+  MenuItem.ShortcutHint:='Ctrl-S';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Save as';
+  MenuItem.ShortcutHint:='Shift-Ctrl-S';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='-';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Exit';
+  MenuItem.ShortcutHint:='Alt+F4';
 
   MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
   MenuItem.Caption:='Edit';

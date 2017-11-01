@@ -1001,12 +1001,14 @@ type TpvGUIObject=class;
        fOnClick:TpvGUIOnEvent;
        function GetEnabled:boolean; inline;
        procedure SetEnabled(const aEnabled:boolean); inline;
+       function GetSelectable:boolean; inline;
        function GetMenu:TpvGUIPopupMenu;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
       published
        property Enabled:boolean read GetEnabled write SetEnabled;
+       property Selectable:boolean read GetSelectable;
        property Caption:TpvUTF8String read fCaption write fCaption;
        property ShortcutHint:TpvUTF8String read fShortcutHint write fShortcutHint;
        property Icon:TObject read fIcon write fIcon;
@@ -2869,7 +2871,13 @@ begin
 
    MenuItem:=TpvGUIMenuItem(Child);
 
-   MenuItemWidth:=((12.0+fSpacing)*2)+aPopupMenu.Font.TextWidth(MenuItem.fCaption,aPopupMenu.FontSize);
+   MenuItemWidth:=aPopupMenu.Font.TextWidth(MenuItem.fCaption,aPopupMenu.FontSize);
+
+   if length(MenuItem.fShortcutHint)>0 then begin
+    MenuItemWidth:=MenuItemWidth+(fSpacing*4.0)+aPopupMenu.Font.TextWidth(MenuItem.fShortcutHint,aPopupMenu.FontSize);
+   end;
+
+   MenuItemWidth:=MenuItemWidth+((12.0+fSpacing)*2.0);
 
    result.x:=Maximum(result.x,MenuItemWidth);
 
@@ -2884,10 +2892,27 @@ begin
 
    MenuItem:=TpvGUIMenuItem(Child);
 
-   MenuItemHeight:=((4.0+fSpacing)*2)+aPopupMenu.Font.TextHeight(MenuItem.fCaption,aPopupMenu.FontSize);
+   if MenuItem.fCaption='-' then begin
 
-   MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(2.0+fSpacing,YOffset),
-                                          TpvVector2.Create(result.x-(2.0+fSpacing),YOffset+MenuItemHeight));
+    MenuItemHeight:=fSpacing;
+
+    MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(2.0+fSpacing,YOffset),
+                                           TpvVector2.Create(result.x-(2.0+fSpacing),YOffset+MenuItemHeight));
+
+   end else begin
+
+    MenuItemHeight:=aPopupMenu.Font.TextHeight(MenuItem.fCaption,aPopupMenu.FontSize);
+
+    if length(MenuItem.fShortcutHint)>0 then begin
+     MenuItemHeight:=Maximum(MenuItemHeight,aPopupMenu.Font.TextHeight(MenuItem.fShortcutHint,aPopupMenu.FontSize));
+    end;
+
+    MenuItemHeight:=MenuItemHeight+((4.0+fSpacing)*2.0);
+
+    MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(2.0+fSpacing,YOffset),
+                                           TpvVector2.Create(result.x-(2.0+fSpacing),YOffset+MenuItemHeight));
+
+   end;
 
    YOffset:=YOffset+MenuItemHeight+fSpacing;
 
@@ -2911,6 +2936,7 @@ var Index,Element:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
     Offset:TpvVector2;
+    XOffset:TpvFloat;
 begin
 
  ProcessPopupMenuItems(aPopupMenu);
@@ -2937,9 +2963,6 @@ begin
  aCanvas.Font:=aPopupMenu.Font;
  aCanvas.FontSize:=aPopupMenu.FontSize;
 
- aCanvas.TextHorizontalAlignment:=pvcthaCenter;
- aCanvas.TextVerticalAlignment:=pvctvaMiddle;
-
  for Index:=0 to aPopupMenu.Children.Count-1 do begin
 
   Child:=aPopupMenu.Children[Index];
@@ -2953,7 +2976,9 @@ begin
 
     aCanvas.Color:=aPopupMenu.FontColor;
 
-    if aPopupMenu.fSelectedMenuItem=MenuItem then begin
+    if MenuItem.fCaption='-' then begin
+     Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
+    end else if aPopupMenu.fSelectedMenuItem=MenuItem then begin
      Element:=GUI_ELEMENT_BUTTON_PUSHED;
      Offset:=TpvVector2.Create(-0.5,-0.5);
     end else if aPopupMenu.fFocusedMenuItem=MenuItem then begin
@@ -2977,25 +3002,39 @@ begin
                           MenuItem.fRect.LeftTop,
                           MenuItem.fRect.RightBottom);
 
-   aCanvas.DrawText(MenuItem.fCaption,((MenuItem.fRect.LeftTop+MenuItem.fRect.RightBottom)*0.5)+Offset);
+   if MenuItem.fCaption<>'-' then begin
 
-   if aPopupMenu.fHoveredMenuItem=MenuItem then begin
+    aCanvas.TextHorizontalAlignment:=pvcthaLeading;
 
-    aCanvas.DrawGUIElement(GUI_ELEMENT_HOVERED,
-                           true,
-                           MenuItem.fRect.LeftTop,
-                           MenuItem.fRect.RightBottom,
-                           MenuItem.fRect.LeftTop,
-                           MenuItem.fRect.RightBottom);
+    aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+    XOffset:=MenuItem.fRect.Left+(6.0+fSpacing);
+    aCanvas.DrawText(MenuItem.fCaption,TpvVector2.Create(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
 
-   end else if aPopupMenu.fFocusedMenuItem=MenuItem then begin
+    if length(MenuItem.fShortcutHint)>0 then begin
+     aCanvas.TextHorizontalAlignment:=pvcthaTailing;
+     XOffset:=MenuItem.fRect.Right-(6.0+fSpacing);
+     aCanvas.DrawText(MenuItem.fShortcutHint,TpvVector2.Create(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
+    end;
 
-    aCanvas.DrawGUIElement(GUI_ELEMENT_FOCUSED,
-                           true,
-                           MenuItem.fRect.LeftTop,
-                           MenuItem.fRect.RightBottom,
-                           MenuItem.fRect.LeftTop,
-                           MenuItem.fRect.RightBottom);
+    if aPopupMenu.fHoveredMenuItem=MenuItem then begin
+
+     aCanvas.DrawGUIElement(GUI_ELEMENT_HOVERED,
+                            true,
+                            MenuItem.fRect.LeftTop,
+                            MenuItem.fRect.RightBottom,
+                            MenuItem.fRect.LeftTop,
+                            MenuItem.fRect.RightBottom);
+
+    end else if aPopupMenu.fFocusedMenuItem=MenuItem then begin
+
+     aCanvas.DrawGUIElement(GUI_ELEMENT_FOCUSED,
+                            true,
+                            MenuItem.fRect.LeftTop,
+                            MenuItem.fRect.RightBottom,
+                            MenuItem.fRect.LeftTop,
+                            MenuItem.fRect.RightBottom);
+
+    end;
 
    end;
 
@@ -6193,6 +6232,11 @@ begin
  end;
 end;
 
+function TpvGUIMenuItem.GetSelectable:boolean;
+begin
+ result:=fCaption<>'-';
+end;
+
 function TpvGUIMenuItem.GetMenu:TpvGUIPopupMenu;
 var Index:TpvInt32;
     Child:TpvGUIObject;
@@ -6434,10 +6478,10 @@ begin
     KEYCODE_RIGHT:begin
      fSelectedMenuItem:=nil;
      if assigned(fFocusedMenuItem) then begin
-      if fFocusedMenuItem.Enabled then begin
+      if fFocusedMenuItem.Enabled and fFocusedMenuItem.Selectable then begin
        if assigned(fFocusedMenuItem.Menu) then begin
         fSelectedMenuItem:=fFocusedMenuItem;
-        fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,0.0));
+        fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,fFocusedMenuItem.fRect.Top));
         fFocusedMenuItem.Menu.FocusFirstMenuItem;
         if assigned(fFocusedMenuItem.OnClick) then begin
          fFocusedMenuItem.OnClick(fFocusedMenuItem);
@@ -6451,9 +6495,9 @@ begin
      fSelectedMenuItem:=nil;
      if assigned(fFocusedMenuItem) then begin
       fSelectedMenuItem:=fFocusedMenuItem;
-      if fFocusedMenuItem.Enabled then begin
+      if fFocusedMenuItem.Enabled and fFocusedMenuItem.Selectable then begin
        if assigned(fFocusedMenuItem.Menu) then begin
-        fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,0.0));
+        fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,fFocusedMenuItem.fRect.Top));
         fFocusedMenuItem.Menu.FocusFirstMenuItem;
        end;
        if assigned(fFocusedMenuItem.OnClick) then begin
@@ -6506,7 +6550,7 @@ begin
           Child:=fChildren[OtherIndex];
           if Child is TpvGUIMenuItem then begin
            MenuItem:=TpvGUIMenuItem(Child);
-           if MenuItem.Enabled then begin
+           if MenuItem.Enabled and MenuItem.Selectable then begin
             fSelectedMenuItem:=nil;
             fFocusedMenuItem:=MenuItem;
             fHoveredMenuItem:=MenuItem;
@@ -6539,7 +6583,7 @@ begin
          Child:=fChildren[OtherIndex];
          if Child is TpvGUIMenuItem then begin
           MenuItem:=TpvGUIMenuItem(Child);
-          if MenuItem.Enabled then begin
+          if MenuItem.Enabled and MenuItem.Selectable then begin
            fSelectedMenuItem:=nil;
            fFocusedMenuItem:=MenuItem;
            fHoveredMenuItem:=MenuItem;
@@ -6616,12 +6660,14 @@ begin
      Child:=fChildren[Index];
      if Child is TpvGUIMenuItem then begin
       MenuItem:=TpvGUIMenuItem(Child);
-      if MenuItem.fRect.Touched(aPointerEvent.Position-fPosition) then begin
+      if MenuItem.Enabled and
+         MenuItem.Selectable and
+         MenuItem.fRect.Touched(aPointerEvent.Position-fPosition) then begin
        fSelectedMenuItem:=MenuItem;
        fFocusedMenuItem:=MenuItem;
        fHoveredMenuItem:=MenuItem;
-       if fSelectedMenuItem.Enabled and assigned(fSelectedMenuItem.Menu) then begin
-        fSelectedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,0.0));
+       if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.Menu) then begin
+        fSelectedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,fFocusedMenuItem.fRect.Top));
        end;
        break;
       end;
@@ -6640,10 +6686,10 @@ begin
    end;
    POINTEREVENT_UP:begin
     if assigned(fSelectedMenuItem) then begin
-     if fSelectedMenuItem.Enabled and assigned(fSelectedMenuItem.fOnClick) then begin
+     if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.fOnClick) then begin
       fSelectedMenuItem.fOnClick(fSelectedMenuItem);
      end;
-     if fSelectedMenuItem.Enabled and not assigned(fSelectedMenuItem.Menu) then begin
+     if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and not assigned(fSelectedMenuItem.Menu) then begin
       if fInstance.fPopupMenuStack.Count>0 then begin
        (fInstance.fPopupMenuStack[0] as TpvGUIPopupMenu).DeactivateWindowMenu;
        (fInstance.fPopupMenuStack[0] as TpvGUIPopupMenu).Deactivate;
@@ -6659,7 +6705,9 @@ begin
      Child:=fChildren[Index];
      if Child is TpvGUIMenuItem then begin
       MenuItem:=TpvGUIMenuItem(Child);
-      if MenuItem.fRect.Touched(aPointerEvent.Position-fPosition) then begin
+      if MenuItem.Enabled and
+         MenuItem.Selectable and
+         MenuItem.fRect.Touched(aPointerEvent.Position-fPosition) then begin
        fHoveredMenuItem:=MenuItem;
        break;
       end;
@@ -6776,7 +6824,7 @@ begin
       fSelectedMenuItem:=nil;
       if assigned(fFocusedMenuItem) then begin
        fSelectedMenuItem:=fFocusedMenuItem;
-       if fFocusedMenuItem.Enabled then begin
+       if fFocusedMenuItem.Enabled and fFocusedMenuItem.Selectable then begin
         if assigned(fFocusedMenuItem.Menu) then begin
          fFocusedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(fFocusedMenuItem.fRect.Left,fSize.y));
          fFocusedMenuItem.Menu.FocusFirstMenuItem;
@@ -6807,7 +6855,7 @@ begin
          Child:=fChildren[OtherIndex];
          if Child is TpvGUIMenuItem then begin
           MenuItem:=TpvGUIMenuItem(Child);
-          if MenuItem.Enabled then begin
+          if MenuItem.Enabled and MenuItem.Selectable then begin
            fSelectedMenuItem:=nil;
            fFocusedMenuItem:=MenuItem;
            fHoveredMenuItem:=MenuItem;
@@ -6827,7 +6875,7 @@ begin
          Child:=fChildren[OtherIndex];
          if Child is TpvGUIMenuItem then begin
           MenuItem:=TpvGUIMenuItem(Child);
-          if MenuItem.Enabled then begin
+          if MenuItem.Enabled and MenuItem.Selectable then begin
            fSelectedMenuItem:=nil;
            fFocusedMenuItem:=MenuItem;
            fHoveredMenuItem:=MenuItem;
@@ -6894,11 +6942,13 @@ begin
       Child:=fChildren[Index];
       if Child is TpvGUIMenuItem then begin
        MenuItem:=TpvGUIMenuItem(Child);
-       if MenuItem.fRect.Touched(aPointerEvent.Position) then begin
+       if MenuItem.Enabled and
+          MenuItem.Selectable and
+          MenuItem.fRect.Touched(aPointerEvent.Position) then begin
         fSelectedMenuItem:=MenuItem;
         fFocusedMenuItem:=MenuItem;
         fHoveredMenuItem:=MenuItem;
-        if fSelectedMenuItem.Enabled and assigned(fSelectedMenuItem.Menu) then begin
+        if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.Menu) then begin
          fSelectedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(fSelectedMenuItem.fRect.Left,fSize.y));
         end;
         break;
@@ -6918,7 +6968,7 @@ begin
     end;
     POINTEREVENT_UP:begin
      if assigned(fSelectedMenuItem) then begin
-      if fSelectedMenuItem.Enabled and assigned(fSelectedMenuItem.fOnClick) then begin
+      if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.fOnClick) then begin
        fSelectedMenuItem.fOnClick(fSelectedMenuItem);
       end;
       fSelectedMenuItem:=nil;
@@ -6931,7 +6981,9 @@ begin
       Child:=fChildren[Index];
       if Child is TpvGUIMenuItem then begin
        MenuItem:=TpvGUIMenuItem(Child);
-       if MenuItem.fRect.Touched(aPointerEvent.Position) then begin
+       if MenuItem.Enabled and
+          MenuItem.Selectable and
+          MenuItem.fRect.Touched(aPointerEvent.Position) then begin
         fHoveredMenuItem:=MenuItem;
         break;
        end;
