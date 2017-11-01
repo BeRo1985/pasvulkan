@@ -164,15 +164,35 @@ begin
   MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
   MenuItem.Caption:='File';
 
+  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Open';
+  TpvGUIMenuItem.Create(TpvGUIPopupMenu.Create(MenuItem)).Caption:='Test';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Save';
+
   MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
   MenuItem.Caption:='Edit';
   MenuItem.Enabled:=false;
 
+  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Undo';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Redo';
+
   MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
   MenuItem.Caption:='Settings';
 
+  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Audio';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Video';
+
   MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
   MenuItem.Caption:='Help';
+
  end;
 
  fGUIWindow:=TpvGUIWindow.Create(fGUIInstance);
