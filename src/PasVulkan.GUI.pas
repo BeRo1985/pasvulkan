@@ -284,6 +284,7 @@ type TpvGUIObject=class;
        fWindowMinimumWidth:TpvFloat;
        fWindowMinimumHeight:TpvFloat;
        fWindowButtonIconHeight:TpvFloat;
+       fPopupAnchorHeight:TpvFloat;
        fIconWindowClose:TObject;
        fIconWindowRestore:TObject;
        fIconWindowMinimize:TObject;
@@ -340,6 +341,7 @@ type TpvGUIObject=class;
        property MinimizedWindowMinimumHeight:TpvFloat read fMinimizedWindowMinimumHeight write fMinimizedWindowMinimumHeight;
        property WindowMinimumWidth:TpvFloat read fWindowMinimumWidth write fWindowMinimumWidth;
        property WindowMinimumHeight:TpvFloat read fWindowMinimumHeight write fWindowMinimumHeight;
+       property PopupAnchorHeight:TpvFloat read fPopupAnchorHeight write fPopupAnchorHeight;
        property IconWindowClose:TObject read fIconWindowClose write fIconWindowClose;
        property IconWindowRestore:TObject read fIconWindowRestore write fIconWindowRestore;
        property IconWindowMinimize:TObject read fIconWindowMinimize write fIconWindowMinimize;
@@ -460,6 +462,7 @@ type TpvGUIObject=class;
        fCanvas:TpvCanvas;
        fLayout:TpvGUILayout;
        fSkin:TpvGUISkin;
+       fPopups:TpvGUIObjectList;
        fCursor:TpvGUICursor;
        fPosition:TpvVector2;
        fSize:TpvVector2;
@@ -600,7 +603,13 @@ type TpvGUIObject=class;
 
      TpvGUIInstanceBuffers=array of TpvGUIInstanceBuffer;
 
-     TpvGUIInstance=class(TpvGUIWidget)
+     TpvGUIHolder=class(TpvGUIWidget)
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+     end;
+
+     TpvGUIInstance=class(TpvGUIHolder)
       private
        fVulkanDevice:TpvVulkanDevice;
        fFontCodePointRanges:TpvFontCodePointRanges;
@@ -704,7 +713,7 @@ type TpvGUIObject=class;
        pvgwsMaximized
       );
 
-     TpvGUIWindow=class(TpvGUIWidget)
+     TpvGUIWindow=class(TpvGUIHolder)
       public
        const DefaultFlags=[pvgwfHeader,
                            pvgwfMovable,
@@ -738,7 +747,6 @@ type TpvGUIObject=class;
        function GetButtonPanel:TpvGUIWidget;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
-       procedure RefreshRelativePlacement; virtual;
        procedure OnButtonClick(const aSender:TpvGUIObject); virtual;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -774,6 +782,39 @@ type TpvGUIObject=class;
        property Font;
        property TextHorizontalAlignment;
        property TextTruncation;
+     end;
+
+     PpvGUIPopupSide=^TpvGUIPopupAnchorSide;
+     TpvGUIPopupAnchorSide=
+      (
+       pvgpasNone,
+       pvgpasLeft,
+       pvgpasRight,
+       pvgpasTop,
+       pvgpasBottom
+      );
+
+     TpvGUIPopup=class(TpvGUIWindow)
+      private
+       fParentWidget:TpvGUIWidget;
+       fParentHolder:TpvGUIHolder;
+       fAnchorSide:TpvGUIPopupAnchorSide;
+       fAnchorPosition:TpvVector2;
+       fAnchorPositionProperty:TpvVector2Property;
+       fAnchorOffset:TpvVector2;
+       fAnchorOffsetProperty:TpvVector2Property;
+       fAnchorSideOffset:TpvVector2;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure PerformLayout; override;
+       procedure Update; override;
+       procedure Draw; override;
+      published
+       property ParentWidget:TpvGUIWidget read fParentWidget write fParentWidget;
+       property AnchorSide:TpvGUIPopupAnchorSide read fAnchorSide write fAnchorSide;
+       property AnchorPosition:TpvVector2Property read fAnchorPositionProperty;
+       property AnchorOffset:TpvVector2Property read fAnchorOffsetProperty;
      end;
 
      TpvGUILabel=class(TpvGUIWidget)
@@ -1767,6 +1808,8 @@ begin
 
  fWindowShadowWidth:=16;
  fWindowShadowHeight:=16;
+
+ fPopupAnchorHeight:=0.0;
 
  fSignedDistanceFieldSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,false);
 
@@ -2996,12 +3039,31 @@ begin
 
  fOnPointerEvent:=nil;
 
- fOnScrolled:=niL;
+ fOnScrolled:=nil;
+
+ fPopups:=TpvGUIObjectList.Create(true);
 
 end;
 
 destructor TpvGUIWidget.Destroy;
+var Index:TpvInt32;
+    Popup:TpvGUIPopup;
 begin
+
+ try
+  for Index:=fPopups.Count-1 downto 0 do begin
+   Popup:=fPopups[Index] as TpvGUIPopup;
+   try
+    Popup.fParentWidget:=nil;
+    Popup.fParentHolder:=nil;
+    fInstance.ReleaseObject(Popup);
+   finally
+    fPopups.Delete(Index);
+   end;
+  end;
+ finally
+  FreeAndNil(fPopups);
+ end;
 
  FreeAndNil(fPositionProperty);
 
@@ -3726,6 +3788,16 @@ begin
  end;
 end;
 
+constructor TpvGUIHolder.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+end;
+
+destructor TpvGUIHolder.Destroy;
+begin
+ inherited Destroy;
+end;
+
 constructor TpvGUIInstance.Create(const aVulkanDevice:TpvVulkanDevice;
                                   const aFontCodePointRanges:TpvFontCodePointRanges=nil);
 begin
@@ -4006,7 +4078,7 @@ procedure TpvGUIInstance.MoveWindowToFront(const aWindow:TpvGUIWindow);
 var Index,BaseIndex:TpvInt32;
     Changed:boolean;
     Current:TpvGUIObject;
-//  PopupWidget:TpvGUIPopup;
+    PopupWidget:TpvGUIPopup;
 begin
  if assigned(aWindow) then begin
   Index:=fChildren.IndexOf(aWindow);
@@ -4026,14 +4098,14 @@ begin
     for Index:=0 to fChildren.Count-1 do begin
      Current:=fChildren[Index];
      if assigned(Current) then begin
-{     if Current is TpvGUIPopup then begin
+      if Current is TpvGUIPopup then begin
        PopupWidget:=Current as TpvGUIPopup;
-       if (PopupWidget.ParentWindow=aWindow) and (Index<BaseIndex) then begin
+       if (PopupWidget.fParentHolder=aWindow) and (Index<BaseIndex) then begin
         MoveWindowToFront(PopupWidget);
         Changed:=true;
         break;
        end;
-      end;}
+      end;
      end;
     end;
    until not Changed;
@@ -4628,11 +4700,6 @@ begin
 
 end;
 
-procedure TpvGUIWindow.RefreshRelativePlacement;
-begin
-
-end;
-
 procedure TpvGUIWindow.Center;
 begin
  if assigned(fInstance) then begin
@@ -4975,6 +5042,122 @@ begin
 end;
 
 procedure TpvGUIWindow.Draw;
+begin
+ inherited Draw;
+end;
+
+constructor TpvGUIPopup.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent.fInstance);
+
+ fWindowFlags:=fWindowFlags-[pvgwfHeader,
+                             pvgwfMovable,
+                             pvgwfResizableNW,
+                             pvgwfResizableNE,
+                             pvgwfResizableSW,
+                             pvgwfResizableSE,
+                             pvgwfResizableN,
+                             pvgwfResizableS,
+                             pvgwfResizableW,
+                             pvgwfResizableE];
+
+ if aParent is TpvGUIWidget then begin
+  fParentWidget:=aParent as TpvGUIWidget;
+ end else begin
+  fParentWidget:=nil;
+ end;
+
+ if aParent is TpvGUIHolder then begin
+  fParentHolder:=aParent as TpvGUIHolder;
+ end else begin
+  fParentHolder:=nil;
+ end;
+
+ if not assigned(fParentHolder) then begin
+  if assigned(fParentWidget) then begin
+   fParentHolder:=fParentWidget.GetWindow;
+  end;
+  if not assigned(fParentHolder) then begin
+   fParentHolder:=fInstance;
+  end;
+ end;
+
+ if assigned(fParentWidget) then begin
+  fParentWidget.fPopups.Add(self);
+ end;
+
+ fAnchorSide:=pvgpasNone;
+
+ fAnchorPosition:=TpvVector2.Null;
+
+ fAnchorPositionProperty:=TpvVector2Property.Create(@fAnchorPosition);
+
+ fAnchorOffset:=TpvVector2.Null;
+
+ fAnchorOffsetProperty:=TpvVector2Property.Create(@fAnchorOffset);
+
+ fAnchorSideOffset:=TpvVector2.Null;
+
+end;
+
+destructor TpvGUIPopup.Destroy;
+var Widget:TpvGUIWidget;
+begin
+ Widget:=fParentWidget;
+ fParentHolder:=nil;
+ fParentWidget:=nil;
+ if assigned(Widget) then begin
+  Widget.fPopups.Remove(self);
+ end;
+ FreeAndNil(fAnchorPositionProperty);
+ FreeAndNil(fAnchorOffsetProperty);
+ inherited Destroy;
+end;
+
+procedure TpvGUIPopup.PerformLayout;
+begin
+ inherited PerformLayout;
+end;
+
+procedure TpvGUIPopup.Update;
+begin
+
+ if not Visible then begin
+  exit;
+ end;
+
+ if not RecursiveVisible then begin
+  Visible:=false;
+  exit;
+ end;
+
+ if assigned(fParentWidget) then begin
+  case fAnchorSide of
+   pvgpasLeft:begin
+    fAnchorSideOffset:=TpvVector2.Create(-fSize.x,0.0);
+   end;
+   pvgpasRight:begin
+    fAnchorSideOffset:=TpvVector2.Create(fParentWidget.fSize.x,0.0);
+   end;
+   pvgpasTop:begin
+    fAnchorSideOffset:=TpvVector2.Create(0.0,-fSize.y);
+   end;
+   pvgpasBottom:begin
+    fAnchorSideOffset:=TpvVector2.Create(0.0,fParentWidget.fSize.y);
+   end;
+   else {pvgpasNone:}begin
+    fAnchorSideOffset:=TpvVector2.Null;
+   end;
+  end;
+  fPosition:=fParentWidget.AbsolutePosition+fAnchorPosition+fAnchorOffset+fAnchorSideOffset;
+ end;
+
+ inherited Update;
+
+end;
+
+procedure TpvGUIPopup.Draw;
 begin
  inherited Draw;
 end;

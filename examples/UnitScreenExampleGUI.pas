@@ -129,6 +129,7 @@ procedure TScreenExampleGUI.Show;
 var Index:TpvInt32;
     WindowMenu:TpvGUIWindowMenu;
     MenuItem:TpvGUIMenuItem;
+    Popup:TpvGUIPopup;
 begin
  inherited Show;
 
@@ -222,6 +223,10 @@ begin
  fGUITextEdit.MinimumWidth:=320;
  fGUITextEdit.MinimumHeight:=32;
  fGUITextEdit.Enabled:=true;
+
+ Popup:=TpvGUIPopup.Create(fGUITextEdit);
+ Popup.FixedSize.Vector:=TpvVector2.Create(160,100);
+ Popup.AnchorSide:=pvgpasBottom;
 
  fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIOtherWindow.Left:=550;
