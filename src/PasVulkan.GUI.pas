@@ -2964,7 +2964,7 @@ begin
      MenuItemHeight:=Maximum(MenuItemHeight,fSpacing+IconSize.y);
     end;
 
-    MenuItemHeight:=MenuItemHeight+((4.0+fSpacing)*2.0);
+    MenuItemHeight:=MenuItemHeight+8.0;
 
     MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(2.0+fSpacing,YOffset),
                                            TpvVector2.Create(result.x-(2.0+fSpacing),YOffset+MenuItemHeight));
