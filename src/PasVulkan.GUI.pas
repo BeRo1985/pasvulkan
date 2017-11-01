@@ -1041,6 +1041,9 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure Activate(const aPosition:TpvVector2); virtual;
        procedure Deactivate; virtual;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
        procedure Draw(const aCanvas:TpvCanvas);
       published
        property Skin:TpvGUISkin read GetSkin write SetSkin;
@@ -4326,28 +4329,33 @@ var Index:TpvInt32;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if not result then begin
-  if (aKeyEvent.KeyEventType=KEYEVENT_TYPED) and (aKeyEvent.KeyCode=KEYCODE_TAB) then begin
-   if fCurrentFocusPath.Count>0 then begin
-    Current:=fCurrentFocusPath.Items[0];
-    if (Current<>self) and (Current is TpvGUIWidget) then begin
-     CurrentWidget:=Current as TpvGUIWidget;
-     if CurrentWidget.Focused then begin
-      result:=ProcessTab(CurrentWidget,KEYMODIFIER_SHIFT IN aKeyEvent.KeyModifiers);
-      if result then begin
-       exit;
+  if fPopupMenuStack.Count>0 then begin
+   result:=(fPopupMenuStack[fPopupMenuStack.Count-1] as TpvGUIPopupMenu).KeyEvent(aKeyEvent);
+  end;
+  if not result then begin
+   if (aKeyEvent.KeyEventType=KEYEVENT_TYPED) and (aKeyEvent.KeyCode=KEYCODE_TAB) then begin
+    if fCurrentFocusPath.Count>0 then begin
+     Current:=fCurrentFocusPath.Items[0];
+     if (Current<>self) and (Current is TpvGUIWidget) then begin
+      CurrentWidget:=Current as TpvGUIWidget;
+      if CurrentWidget.Focused then begin
+       result:=ProcessTab(CurrentWidget,KEYMODIFIER_SHIFT IN aKeyEvent.KeyModifiers);
+       if result then begin
+        exit;
+       end;
       end;
      end;
     end;
    end;
-  end;
-  for Index:=0 to fCurrentFocusPath.Count-1 do begin
-   Current:=fCurrentFocusPath.Items[Index];
-   if (Current<>self) and (Current is TpvGUIWidget) then begin
-    CurrentWidget:=Current as TpvGUIWidget;
-    if CurrentWidget.Focused then begin
-     result:=CurrentWidget.KeyEvent(aKeyEvent);
-     if result then begin
-      exit;
+   for Index:=0 to fCurrentFocusPath.Count-1 do begin
+    Current:=fCurrentFocusPath.Items[Index];
+    if (Current<>self) and (Current is TpvGUIWidget) then begin
+     CurrentWidget:=Current as TpvGUIWidget;
+     if CurrentWidget.Focused then begin
+      result:=CurrentWidget.KeyEvent(aKeyEvent);
+      if result then begin
+       exit;
+      end;
      end;
     end;
    end;
@@ -4367,70 +4375,78 @@ begin
  if not result then begin
   DoUpdateCursor:=false;
   fMousePosition:=aPointerEvent.Position;
-  case aPointerEvent.PointerEventType of
-   POINTEREVENT_DOWN,POINTEREVENT_UP:begin
-    for Index:=0 to fCurrentFocusPath.Count-1 do begin
-     Current:=fCurrentFocusPath.Items[Index];
-     if (Current<>self) and (Current is TpvGUIWindow) then begin
-      CurrentWindow:=Current as TpvGUIWindow;
-      if (pvgwfModal in CurrentWindow.fWindowFlags) and not CurrentWindow.Contains(aPointerEvent.Position-CurrentWindow.AbsolutePosition) then begin
-       exit;
+  for Index:=fPopupMenuStack.Count-1 downto 0 do begin
+   result:=(fPopupMenuStack[Index] as TpvGUIPopupMenu).PointerEvent(aPointerEvent);
+   if result then begin
+    break;
+   end;
+  end;
+  if not result then begin
+   case aPointerEvent.PointerEventType of
+    POINTEREVENT_DOWN,POINTEREVENT_UP:begin
+     for Index:=0 to fCurrentFocusPath.Count-1 do begin
+      Current:=fCurrentFocusPath.Items[Index];
+      if (Current<>self) and (Current is TpvGUIWindow) then begin
+       CurrentWindow:=Current as TpvGUIWindow;
+       if (pvgwfModal in CurrentWindow.fWindowFlags) and not CurrentWindow.Contains(aPointerEvent.Position-CurrentWindow.AbsolutePosition) then begin
+        exit;
+       end;
       end;
      end;
-    end;
-    case aPointerEvent.PointerEventType of
-     POINTEREVENT_DOWN:begin
-      case aPointerEvent.Button of
-       BUTTON_LEFT,BUTTON_RIGHT:begin
-        TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
-        CurrentWidget:=FindWidget(aPointerEvent.Position);
-        if assigned(CurrentWidget) and
-           (CurrentWidget<>self) and
-           CurrentWidget.Draggable and
-           CurrentWidget.DragEvent(aPointerEvent.Position-CurrentWidget.AbsolutePosition) then begin
-         fDragWidget:=CurrentWidget;
-         fDragWidget.IncRef;
-        end else begin
+     case aPointerEvent.PointerEventType of
+      POINTEREVENT_DOWN:begin
+       case aPointerEvent.Button of
+        BUTTON_LEFT,BUTTON_RIGHT:begin
          TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
-         UpdateFocus(nil);
+         CurrentWidget:=FindWidget(aPointerEvent.Position);
+         if assigned(CurrentWidget) and
+            (CurrentWidget<>self) and
+            CurrentWidget.Draggable and
+            CurrentWidget.DragEvent(aPointerEvent.Position-CurrentWidget.AbsolutePosition) then begin
+          fDragWidget:=CurrentWidget;
+          fDragWidget.IncRef;
+         end else begin
+          TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+          UpdateFocus(nil);
+         end;
+        end;
+        else begin
+         TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
         end;
        end;
-       else begin
-        TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+      end;
+      POINTEREVENT_UP:begin
+       CurrentWidget:=FindWidget(aPointerEvent.Position);
+       if assigned(CurrentWidget) and CurrentWidget.HasParent(fDragWidget) then begin
+        CurrentWidget:=fDragWidget;
        end;
+       if assigned(fDragWidget) and (fDragWidget<>CurrentWidget) then begin
+        LocalPointerEvent:=aPointerEvent;
+        LocalPointerEvent.PointerEventType:=POINTEREVENT_UP;
+        LocalPointerEvent.Button:=BUTTON_LEFT;
+        LocalPointerEvent.Position:=LocalPointerEvent.Position-fDragWidget.AbsolutePosition;
+        fDragWidget.PointerEvent(LocalPointerEvent);
+       end;
+       TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
       end;
      end;
-     POINTEREVENT_UP:begin
-      CurrentWidget:=FindWidget(aPointerEvent.Position);
-      if assigned(CurrentWidget) and CurrentWidget.HasParent(fDragWidget) then begin
-       CurrentWidget:=fDragWidget;
-      end;
-      if assigned(fDragWidget) and (fDragWidget<>CurrentWidget) then begin
-       LocalPointerEvent:=aPointerEvent;
-       LocalPointerEvent.PointerEventType:=POINTEREVENT_UP;
-       LocalPointerEvent.Button:=BUTTON_LEFT;
-       LocalPointerEvent.Position:=LocalPointerEvent.Position-fDragWidget.AbsolutePosition;
-       fDragWidget.PointerEvent(LocalPointerEvent);
-      end;
-      TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
-     end;
+     result:=inherited PointerEvent(aPointerEvent);
+     DoUpdateCursor:=true;
     end;
-    result:=inherited PointerEvent(aPointerEvent);
-    DoUpdateCursor:=true;
-   end;
-   POINTEREVENT_MOTION:begin
-    if assigned(fDragWidget) then begin
-     LocalPointerEvent:=aPointerEvent;
-     LocalPointerEvent.PointerEventType:=POINTEREVENT_DRAG;
-     LocalPointerEvent.Position:=LocalPointerEvent.Position-fDragWidget.AbsolutePosition;
-     result:=fDragWidget.PointerEvent(LocalPointerEvent);
-    end else begin
+    POINTEREVENT_MOTION:begin
+     if assigned(fDragWidget) then begin
+      LocalPointerEvent:=aPointerEvent;
+      LocalPointerEvent.PointerEventType:=POINTEREVENT_DRAG;
+      LocalPointerEvent.Position:=LocalPointerEvent.Position-fDragWidget.AbsolutePosition;
+      result:=fDragWidget.PointerEvent(LocalPointerEvent);
+     end else begin
+      result:=inherited PointerEvent(aPointerEvent);
+     end;
+     DoUpdateCursor:=true;
+    end;
+    POINTEREVENT_DRAG:begin
      result:=inherited PointerEvent(aPointerEvent);
     end;
-    DoUpdateCursor:=true;
-   end;
-   POINTEREVENT_DRAG:begin
-    result:=inherited PointerEvent(aPointerEvent);
    end;
   end;
   if DoUpdateCursor then begin
@@ -4449,10 +4465,19 @@ begin
 end;
 
 function TpvGUIInstance.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+var Index:TpvInt32;
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
-  result:=inherited Scrolled(aPosition,aRelativeAmount);
+  for Index:=fPopupMenuStack.Count-1 downto 0 do begin
+   result:=(fPopupMenuStack[Index] as TpvGUIPopupMenu).Scrolled(aPosition,aRelativeAmount);
+   if result then begin
+    break;
+   end;
+  end;
+  if not result then begin
+   result:=inherited Scrolled(aPosition,aRelativeAmount);
+  end;
  end;
 end;
 
@@ -6326,6 +6351,21 @@ begin
    DecRef;
   end;
  end;
+end;
+
+function TpvGUIPopupMenu.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUIPopupMenu.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+begin
+ result:=TpvRect.CreateRelative(fPosition,fSize).Touched(aPointerEvent.Position);
+end;
+
+function TpvGUIPopupMenu.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+begin
+ result:=TpvRect.CreateRelative(fPosition,fSize).Touched(aPosition);
 end;
 
 procedure TpvGUIPopupMenu.Draw(const aCanvas:TpvCanvas);
