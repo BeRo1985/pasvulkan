@@ -2862,7 +2862,7 @@ begin
 
    MenuItem:=TpvGUIMenuItem(Child);
 
-   MenuItemWidth:=((16.0+fSpacing)*2)+aPopupMenu.Font.TextWidth(MenuItem.fCaption,aPopupMenu.FontSize);
+   MenuItemWidth:=((12.0+fSpacing)*2)+aPopupMenu.Font.TextWidth(MenuItem.fCaption,aPopupMenu.FontSize);
 
    result.x:=Maximum(result.x,MenuItemWidth);
 
@@ -2879,12 +2879,12 @@ begin
 
    MenuItemHeight:=((4.0+fSpacing)*2)+aPopupMenu.Font.TextHeight(MenuItem.fCaption,aPopupMenu.FontSize);
 
-   MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(2.0+fSpacing+4.0,YOffset+4.0),
-                                          TpvVector2.Create(result.x-(2.0+fSpacing+4.0),YOffset+4.0+MenuItemHeight));
+   MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(2.0+fSpacing,YOffset),
+                                          TpvVector2.Create(result.x-(2.0+fSpacing),YOffset+MenuItemHeight));
 
    YOffset:=YOffset+MenuItemHeight+fSpacing;
 
-   result.y:=Maximum(result.y,YOffset+2.0+fSpacing);
+   result.y:=Maximum(result.y,YOffset+2.0);
 
   end;
 
@@ -2909,9 +2909,18 @@ begin
  ProcessPopupMenuItems(aPopupMenu);
 
  aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(aPopupMenu.fPosition);
+
+ aCanvas.ClipRect:=aPopupMenu.fInstance.fClipRect;
+ aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_DROPSHADOW,
+                        true,
+                        TpvVector2.Create(-fWindowShadowWidth,-fWindowShadowHeight),
+                        aPopupMenu.fSize+TpvVector2.Create(fWindowShadowWidth*2,fWindowShadowHeight*2),
+                        TpvVector2.Create(0.0,0.0),
+                        aPopupMenu.fSize);
+
  aCanvas.ClipRect:=TpvRect.CreateRelative(aPopupMenu.fPosition,aPopupMenu.fSize);
 
- aCanvas.DrawGUIElement(GUI_ELEMENT_PANEL_ENABLED,
+ aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
                         true,
                         TpvVector2.Create(0.0,0.0),
                         TpvVector2.Create(aPopupMenu.fSize.x,aPopupMenu.fSize.y),
