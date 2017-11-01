@@ -621,7 +621,7 @@ type TpvGUIObject=class;
        fDrawBufferIndex:TpvInt32;
        fDeltaTime:TpvDouble;
        fTime:TpvDouble;
-       fCurrentPopupMenuStack:TpvGUIObjectList;
+       fPopupMenuStack:TpvGUIObjectList;
        fLastFocusPath:TpvGUIObjectList;
        fCurrentFocusPath:TpvGUIObjectList;
        fDragWidget:TpvGUIWidget;
@@ -1026,6 +1026,9 @@ type TpvGUIObject=class;
        fSize:TpvVector2;
        fReleaseOnDeactivation:boolean;
        fActivated:boolean;
+       fSelectedMenuItem:TpvGUIMenuItem;
+       fFocusedMenuItem:TpvGUIMenuItem;
+       fHoveredMenuItem:TpvGUIMenuItem;
        procedure ReleaseOnDeactivationIfNeeded;
       protected
        function GetSkin:TpvGUISkin; virtual;
@@ -2859,14 +2862,13 @@ begin
 
    MenuItem:=TpvGUIMenuItem(Child);
 
-   MenuItemWidth:=((4.0+fSpacing)*2)+aPopupMenu.Font.TextWidth(MenuItem.fCaption,aPopupMenu.FontSize);
+   MenuItemWidth:=((16.0+fSpacing)*2)+aPopupMenu.Font.TextWidth(MenuItem.fCaption,aPopupMenu.FontSize);
 
    result.x:=Maximum(result.x,MenuItemWidth);
 
   end;
 
  end;
-
 
  for Index:=0 to aPopupMenu.Children.Count-1 do begin
 
@@ -2877,12 +2879,12 @@ begin
 
    MenuItemHeight:=((4.0+fSpacing)*2)+aPopupMenu.Font.TextHeight(MenuItem.fCaption,aPopupMenu.FontSize);
 
-   MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(0.0,YOffset+4.0),
-                                          TpvVector2.Create(result.x-4.0,MenuItemHeight));
+   MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(2.0+fSpacing+4.0,YOffset+4.0),
+                                          TpvVector2.Create(result.x-(2.0+fSpacing+4.0),YOffset+4.0+MenuItemHeight));
 
    YOffset:=YOffset+MenuItemHeight+fSpacing;
 
-   result.y:=Maximum(result.y,YOffset);
+   result.y:=Maximum(result.y,YOffset+2.0+fSpacing);
 
   end;
 
@@ -2898,8 +2900,93 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawPopupMenu(const aCanvas:TpvCanvas;const aPopupMenu:TpvGUIPopupMenu);
+var Index,Element:TpvInt32;
+    Child:TpvGUIObject;
+    MenuItem:TpvGUIMenuItem;
+    Offset:TpvVector2;
 begin
+
  ProcessPopupMenuItems(aPopupMenu);
+
+ aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(aPopupMenu.fPosition);
+ aCanvas.ClipRect:=TpvRect.CreateRelative(aPopupMenu.fPosition,aPopupMenu.fSize);
+
+ aCanvas.DrawGUIElement(GUI_ELEMENT_PANEL_ENABLED,
+                        true,
+                        TpvVector2.Create(0.0,0.0),
+                        TpvVector2.Create(aPopupMenu.fSize.x,aPopupMenu.fSize.y),
+                        TpvVector2.Create(0.0,0.0),
+                        TpvVector2.Create(aPopupMenu.fSize.x,aPopupMenu.fSize.y));
+
+ aCanvas.Font:=aPopupMenu.Font;
+ aCanvas.FontSize:=aPopupMenu.FontSize;
+
+ aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+ aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+
+ for Index:=0 to aPopupMenu.Children.Count-1 do begin
+
+  Child:=aPopupMenu.Children[Index];
+  if Child is TpvGUIMenuItem then begin
+
+   MenuItem:=TpvGUIMenuItem(Child);
+
+   Offset:=TpvVector2.Null;
+
+   if MenuItem.Enabled then begin
+
+    aCanvas.Color:=aPopupMenu.FontColor;
+
+    if aPopupMenu.fSelectedMenuItem=MenuItem then begin
+     Element:=GUI_ELEMENT_BUTTON_PUSHED;
+     Offset:=TpvVector2.Create(-0.5,-0.5);
+    end else if aPopupMenu.fFocusedMenuItem=MenuItem then begin
+     Element:=GUI_ELEMENT_BUTTON_FOCUSED;
+    end else begin
+     Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
+    end;
+
+   end else begin
+
+    aCanvas.Color:=TpvVector4.Create(aPopupMenu.FontColor.rgb,aPopupMenu.FontColor.a*0.25);
+
+    Element:=GUI_ELEMENT_BUTTON_DISABLED;
+
+   end;
+
+   aCanvas.DrawGUIElement(Element,
+                          true,
+                          MenuItem.fRect.LeftTop,
+                          MenuItem.fRect.RightBottom,
+                          MenuItem.fRect.LeftTop,
+                          MenuItem.fRect.RightBottom);
+
+   aCanvas.DrawText(MenuItem.fCaption,((MenuItem.fRect.LeftTop+MenuItem.fRect.RightBottom)*0.5)+Offset);
+
+   if aPopupMenu.fHoveredMenuItem=MenuItem then begin
+
+    aCanvas.DrawGUIElement(GUI_ELEMENT_HOVERED,
+                           true,
+                           MenuItem.fRect.LeftTop,
+                           MenuItem.fRect.RightBottom,
+                           MenuItem.fRect.LeftTop,
+                           MenuItem.fRect.RightBottom);
+
+   end else if aPopupMenu.fFocusedMenuItem=MenuItem then begin
+
+    aCanvas.DrawGUIElement(GUI_ELEMENT_FOCUSED,
+                           true,
+                           MenuItem.fRect.LeftTop,
+                           MenuItem.fRect.RightBottom,
+                           MenuItem.fRect.LeftTop,
+                           MenuItem.fRect.RightBottom);
+
+   end;
+
+  end;
+
+ end;
+
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.ProcessWindowMenuItems(const aWindowMenu:TpvGUIWindowMenu);
@@ -2950,7 +3037,13 @@ begin
  aCanvas.ModelMatrix:=aWindowMenu.fModelMatrix;
  aCanvas.ClipRect:=aWindowMenu.fClipRect;
 
- aCanvas.DrawGUIElement(GUI_ELEMENT_PANEL_ENABLED,
+ if aWindowMenu.Enabled then begin
+  Element:=GUI_ELEMENT_PANEL_ENABLED;
+ end else begin
+  Element:=GUI_ELEMENT_PANEL_DISABLED;
+ end;
+
+ aCanvas.DrawGUIElement(Element,
                         true,
                         TpvVector2.Create(0.0,0.0),
                         TpvVector2.Create(aWindowMenu.fSize.x,aWindowMenu.fSize.y),
@@ -3889,7 +3982,7 @@ begin
 
  fTime:=0.0;
 
- fCurrentPopupMenuStack:=TpvGUIObjectList.Create(false);
+ fPopupMenuStack:=TpvGUIObjectList.Create(false);
 
  fLastFocusPath:=TpvGUIObjectList.Create(false);
 
@@ -3922,7 +4015,7 @@ begin
 
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
 
- FreeAndNil(fCurrentPopupMenuStack);
+ FreeAndNil(fPopupMenuStack);
 
  FreeAndNil(fLastFocusPath);
 
@@ -3980,7 +4073,7 @@ begin
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fFocusedWidget);
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fHoveredWidget);
- fCurrentPopupMenuStack.Clear;
+ fPopupMenuStack.Clear;
  fLastFocusPath.Clear;
  fCurrentFocusPath.Clear;
  DecRefWithoutFree;
@@ -4000,8 +4093,8 @@ end;
 procedure TpvGUIInstance.ReleaseObject(const aGUIObject:TpvGUIObject);
 begin
  if assigned(aGUIObject) then begin
-  if assigned(fCurrentPopupMenuStack) and fCurrentPopupMenuStack.Contains(aGUIObject) then begin
-   fCurrentPopupMenuStack.Clear;
+  if assigned(fPopupMenuStack) and fPopupMenuStack.Contains(aGUIObject) then begin
+   fPopupMenuStack.Clear;
   end;
   if assigned(fLastFocusPath) and fLastFocusPath.Contains(aGUIObject) then begin
    fLastFocusPath.Clear;
@@ -4067,7 +4160,14 @@ var CurrentIndex:TpvInt32;
     CurrentWidget:TpvGUIWidget;
 begin
 
- fCurrentPopupMenuStack.Clear;
+ if fPopupMenuStack.Count>0 then begin
+  if (fPopupMenuStack[0].fParent<>aWidget) and
+     ((not assigned(fPopupMenuStack[0].fParent)) or
+      (not (fPopupMenuStack[0].fParent is TpvGUIMenuItem)) or
+      ((fPopupMenuStack[0].fParent.fParent<>aWidget))) then begin
+   (fPopupMenuStack[0] as TpvGUIPopupMenu).Deactivate;
+  end;
+ end;
 
  TpvSwap<TpvGUIObjectList>.Swap(fCurrentFocusPath,fLastFocusPath);
 
@@ -4374,8 +4474,8 @@ begin
   fClipRect:=LastClipRect.GetIntersection(TpvRect.CreateRelative(fPosition,fSize));
   FindHoveredWidget;
   inherited Update;
-  for Index:=0 to fCurrentPopupMenuStack.Count-1 do begin
-   PopupMenu:=fCurrentPopupMenuStack[Index] as TpvGUIPopupMenu;
+  for Index:=0 to fPopupMenuStack.Count-1 do begin
+   PopupMenu:=fPopupMenuStack[Index] as TpvGUIPopupMenu;
    fInstance.AddReferenceCountedObjectForNextDraw(PopupMenu);
    PopupMenu.Draw(fCanvas);
   end;
@@ -6050,6 +6150,12 @@ constructor TpvGUIPopupMenu.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
 
+ fSelectedMenuItem:=nil;
+
+ fFocusedMenuItem:=nil;
+
+ fHoveredMenuItem:=nil;
+
  fSkin:=nil;
 
  fFont:=nil;
@@ -6105,7 +6211,7 @@ end;
 function TpvGUIPopupMenu.GetFont:TpvFont;
 begin
  if assigned(Skin) and not assigned(fFont) then begin
-  result:=Skin.fSansFont;
+  result:=Skin.fSansBoldFont;
  end else begin
   result:=fFont;
  end;
@@ -6145,35 +6251,41 @@ begin
 
  if not fActivated then begin
 
-  if not fInstance.fCurrentPopupMenuStack.Contains(self) then begin
+  if not fInstance.fPopupMenuStack.Contains(self) then begin
 
    if not assigned(fParent) then begin
-    fInstance.fCurrentPopupMenuStack.Clear;
-   end else if fInstance.fCurrentPopupMenuStack.Count>0 then begin
+    for Index:=Instance.fPopupMenuStack.Count-1 downto 0 do begin
+     (fInstance.fPopupMenuStack[Index] as TpvGUIPopupMenu).fActivated:=false;
+     fInstance.fPopupMenuStack.Delete(Index);
+    end;
+   end else if fInstance.fPopupMenuStack.Count>0 then begin
     if fParent is TpvGUIPopupMenu then begin
      ParentPopupMenu:=fParent as TpvGUIPopupMenu;
     end else if (fParent is TpvGUIMenuItem) and
-                assigned((fParent as TpvGUIMenuItem).fParent) or
+                assigned((fParent as TpvGUIMenuItem).fParent) and
                 ((fParent as TpvGUIMenuItem).fParent is TpvGUIPopupMenu) then begin
      ParentPopupMenu:=(fParent as TpvGUIMenuItem).fParent as TpvGUIPopupMenu;
     end else begin
      ParentPopupMenu:=nil;
     end;
     if assigned(ParentPopupMenu) then begin
-     Index:=fInstance.fCurrentPopupMenuStack.IndexOf(ParentPopupMenu);
+     Index:=fInstance.fPopupMenuStack.IndexOf(ParentPopupMenu);
     end else begin
      Index:=-1;
     end;
     if Index>=0 then begin
-     while (Index+1)<fInstance.fCurrentPopupMenuStack.Count do begin
-      fInstance.fCurrentPopupMenuStack.Delete(fInstance.fCurrentPopupMenuStack.Count-1);
+     while (Index+1)<fInstance.fPopupMenuStack.Count do begin
+      fInstance.fPopupMenuStack.Delete(fInstance.fPopupMenuStack.Count-1);
      end;
     end else begin
-     fInstance.fCurrentPopupMenuStack.Clear;
+     for Index:=Instance.fPopupMenuStack.Count-1 downto 0 do begin
+      (fInstance.fPopupMenuStack[Index] as TpvGUIPopupMenu).fActivated:=false;
+      fInstance.fPopupMenuStack.Delete(Index);
+     end;
     end;
    end;
 
-   fInstance.fCurrentPopupMenuStack.Add(self);
+   fInstance.fPopupMenuStack.Add(self);
 
   end;
 
@@ -6189,13 +6301,17 @@ begin
   fActivated:=false;
   IncRef;
   try
-   Index:=fInstance.fCurrentPopupMenuStack.IndexOf(self);
+   Index:=fInstance.fPopupMenuStack.IndexOf(self);
    if Index>=0 then begin
-    while Index<fInstance.fCurrentPopupMenuStack.Count do begin
-     fInstance.fCurrentPopupMenuStack.Delete(fInstance.fCurrentPopupMenuStack.Count-1);
+    while Index<fInstance.fPopupMenuStack.Count do begin
+     (fInstance.fPopupMenuStack[fInstance.fPopupMenuStack.Count-1] as TpvGUIPopupMenu).fActivated:=false;
+     fInstance.fPopupMenuStack.Delete(fInstance.fPopupMenuStack.Count-1);
     end;
    end else begin
-    fInstance.fCurrentPopupMenuStack.Clear;
+    for Index:=Instance.fPopupMenuStack.Count-1 downto 0 do begin
+     (fInstance.fPopupMenuStack[Index] as TpvGUIPopupMenu).fActivated:=false;
+     fInstance.fPopupMenuStack.Delete(Index);
+    end;
    end;
   finally
    DecRef;
@@ -6302,6 +6418,7 @@ begin
       if assigned(fFocusedMenuItem) then begin
        fSelectedMenuItem:=fFocusedMenuItem;
        if assigned(fFocusedMenuItem.Menu) then begin
+        fFocusedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(fFocusedMenuItem.fRect.Left,fSize.y));
        end;
        if assigned(fFocusedMenuItem.OnClick) then begin
         fFocusedMenuItem.OnClick(fFocusedMenuItem);
@@ -6420,6 +6537,7 @@ begin
         fFocusedMenuItem:=MenuItem;
         fHoveredMenuItem:=MenuItem;
         if assigned(fSelectedMenuItem.Menu) then begin
+         fSelectedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(MenuItem.fRect.Left,fSize.y));
         end;
         break;
        end;

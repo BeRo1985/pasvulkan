@@ -129,6 +129,7 @@ procedure TScreenExampleGUI.Show;
 var Index:TpvInt32;
     WindowMenu:TpvGUIWindowMenu;
     MenuItem:TpvGUIMenuItem;
+    PopupMenu:TpvGUIPopupMenu;
     Popup:TpvGUIPopup;
 begin
  inherited Show;
@@ -189,12 +190,30 @@ begin
   MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
   MenuItem.Caption:='File';
 
+  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Open';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Save';
+
   MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
   MenuItem.Caption:='Edit';
   MenuItem.Enabled:=false;
 
+  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Undo';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Redo';
+
   MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
   MenuItem.Caption:='Settings';
+
+  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Audio';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Video';
 
   MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
   MenuItem.Caption:='Help';
@@ -224,9 +243,9 @@ begin
  fGUITextEdit.MinimumHeight:=32;
  fGUITextEdit.Enabled:=true;
 
- Popup:=TpvGUIPopup.Create(fGUITextEdit);
+{Popup:=TpvGUIPopup.Create(fGUITextEdit);
  Popup.FixedSize.Vector:=TpvVector2.Create(160,100);
- Popup.AnchorSide:=pvgpasBottom;
+ Popup.AnchorSide:=pvgpasBottom;}
 
  fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIOtherWindow.Left:=550;
