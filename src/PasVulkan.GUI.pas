@@ -6304,6 +6304,8 @@ end;
 procedure TpvGUIPopupMenu.Activate(const aPosition:TpvVector2);
 var Index:TpvInt32;
     ParentPopupMenu:TpvGUIPopupMenu;
+    Child:TpvGUIObject;
+    MenuItem:TpvGUIMenuItem;
 begin
 
  fPosition:=aPosition;
@@ -6346,6 +6348,17 @@ begin
 
    fInstance.fPopupMenuStack.Add(self);
 
+  end;
+
+  fSelectedMenuItem:=nil;
+  for Index:=0 to fChildren.Count-1 do begin
+   Child:=fChildren[Index];
+   if Child is TpvGUIMenuItem then begin
+    MenuItem:=TpvGUIMenuItem(Child);
+    fFocusedMenuItem:=MenuItem;
+    fHoveredMenuItem:=MenuItem;
+    break;
+   end;
   end;
 
   fActivated:=true;
@@ -6416,7 +6429,7 @@ begin
   end;
   KEYEVENT_TYPED:begin
    case aKeyEvent.KeyCode of
-    KEYCODE_DOWN,KEYCODE_SPACE,KEYCODE_RETURN:begin
+    KEYCODE_RIGHT,KEYCODE_SPACE,KEYCODE_RETURN:begin
      DeactivateSubmenus;
      fSelectedMenuItem:=nil;
      if assigned(fFocusedMenuItem) then begin
@@ -6431,7 +6444,7 @@ begin
       end;
      end;
     end;
-    KEYCODE_ESCAPE:begin
+    KEYCODE_LEFT,KEYCODE_ESCAPE:begin
      fSelectedMenuItem:=nil;
      for Index:=0 to fChildren.Count-1 do begin
       Child:=fChildren[Index];
@@ -6442,8 +6455,9 @@ begin
        break;
       end;
      end;
+     Deactivate;
     end;
-    KEYCODE_LEFT:begin
+    KEYCODE_UP:begin
      for Index:=0 to fChildren.Count-1 do begin
       Child:=fChildren[Index];
       if (Child is TpvGUIMenuItem) and (Child=fFocusedMenuItem) then begin
@@ -6463,7 +6477,7 @@ begin
       end;
      end;
     end;
-    KEYCODE_RIGHT:begin
+    KEYCODE_DOWN:begin
      for Index:=0 to fChildren.Count-1 do begin
       Child:=fChildren[Index];
       if (Child is TpvGUIMenuItem) and (Child=fFocusedMenuItem) then begin
