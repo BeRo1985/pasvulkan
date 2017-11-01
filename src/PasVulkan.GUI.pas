@@ -1045,10 +1045,11 @@ type TpvGUIObject=class;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
        procedure Draw(const aCanvas:TpvCanvas);
+      public
+       property FontColor:TpvVector4 read GetFontColor write fFontColor;
       published
        property Skin:TpvGUISkin read GetSkin write SetSkin;
        property Font:TpvFont read GetFont write fFont;
-       property FontColor:TpvVector4 read GetFontColor write fFontColor;
        property FontSize:TpvFloat read GetFontSize write fFontSize;
        property Position:TpvVector2Property read fPositionProperty;
        property ReleaseOnDeactivation:boolean read fReleaseOnDeactivation write fReleaseOnDeactivation;
