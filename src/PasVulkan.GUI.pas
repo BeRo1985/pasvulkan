@@ -950,14 +950,12 @@ type TpvGUIObject=class;
        fPopupMenu:TpvGUIPopupMenu;
        fOnClick:TpvGUIOnEvent;
        fOnChange:TpvGUIOnEvent;
-       procedure CutText;
-       procedure CopyText;
-       procedure PasteText;
-       procedure DeleteText;
        procedure PopupMenuOnCutClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnCopyClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnPasteClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnDeleteClick(const aSender:TpvGUIObject);
+       procedure PopupMenuOnSelectAllClick(const aSender:TpvGUIObject);
+       procedure PopupMenuOnSelectNoneClick(const aSender:TpvGUIObject);
       protected
        function GetFontSize:TpvFloat; override;
        function GetFontColor:TpvVector4; override;
@@ -971,6 +969,12 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        function Enter:boolean; override;
        function Leave:boolean; override;
+       procedure CutSelectedText;
+       procedure CopySelectedText;
+       procedure PasteText;
+       procedure DeleteSelectedText;
+       procedure SelectAll;
+       procedure SelectNone;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -5870,6 +5874,18 @@ begin
  MenuItem.ShortcutHint:='Del';
  MenuItem.OnClick:=PopupMenuOnDeleteClick;
 
+ MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
+ MenuItem.Caption:='-';
+
+ MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
+ MenuItem.Caption:='Select all';
+ MenuItem.ShortcutHint:='Ctrl+A';
+ MenuItem.OnClick:=PopupMenuOnSelectAllClick;
+
+ MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
+ MenuItem.Caption:='Select none';
+ MenuItem.OnClick:=PopupMenuOnSelectNoneClick;
+
  fTextHorizontalAlignment:=pvgtaLeading;
 
  fTextVerticalAlignment:=pvgtaCenter;
@@ -5985,7 +6001,7 @@ begin
  result:=inherited Leave;
 end;
 
-procedure TpvGUITextEdit.CutText;
+procedure TpvGUITextEdit.CutSelectedText;
 var CurrentPosition,OtherPosition:TpvInt32;
 begin
  if (fTextSelectionStart>0) and
@@ -6003,7 +6019,7 @@ begin
  end;
 end;
 
-procedure TpvGUITextEdit.CopyText;
+procedure TpvGUITextEdit.CopySelectedText;
 var CurrentPosition,OtherPosition:TpvInt32;
 begin
  if (fTextSelectionStart>0) and
@@ -6038,7 +6054,7 @@ begin
  end;
 end;
 
-procedure TpvGUITextEdit.DeleteText;
+procedure TpvGUITextEdit.DeleteSelectedText;
 var CurrentPosition,OtherPosition:TpvInt32;
 begin
  if (fTextSelectionStart>0) and
@@ -6055,14 +6071,26 @@ begin
  end;
 end;
 
+procedure TpvGUITextEdit.SelectAll;
+begin
+ fTextSelectionStart:=1;
+ fTextSelectionEnd:=PUCUUTF8Length(Text)+1;
+end;
+
+procedure TpvGUITextEdit.SelectNone;
+begin
+ fTextSelectionStart:=0;
+ fTextSelectionEnd:=0;
+end;
+
 procedure TpvGUITextEdit.PopupMenuOnCutClick(const aSender:TpvGUIObject);
 begin
- CutText;
+ CutSelectedText;
 end;
 
 procedure TpvGUITextEdit.PopupMenuOnCopyClick(const aSender:TpvGUIObject);
 begin
- CopyText;
+ CopySelectedText;
 end;
 
 procedure TpvGUITextEdit.PopupMenuOnPasteClick(const aSender:TpvGUIObject);
@@ -6072,7 +6100,17 @@ end;
 
 procedure TpvGUITextEdit.PopupMenuOnDeleteClick(const aSender:TpvGUIObject);
 begin
- DeleteText;
+ DeleteSelectedText;
+end;
+
+procedure TpvGUITextEdit.PopupMenuOnSelectAllClick(const aSender:TpvGUIObject);
+begin
+ SelectAll;
+end;
+
+procedure TpvGUITextEdit.PopupMenuOnSelectNoneClick(const aSender:TpvGUIObject);
+begin
+ SelectNone;
 end;
 
 function TpvGUITextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
