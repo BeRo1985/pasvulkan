@@ -338,7 +338,17 @@ begin
  fGUIButton.Caption:='An example popup menu button';
  fGUIButton.Enabled:=true;
  TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu).Caption:='Test 1';
- TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu).Caption:='Test 2';
+ MenuItem:=TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu);
+ MenuItem.Caption:='Test 2';
+ PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
+ TpvGUIMenuItem.Create(PopupMenu).Caption:='Test A';
+ TpvGUIMenuItem.Create(PopupMenu).Caption:='Test B';
+ MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+ MenuItem.Caption:='Test C';
+ PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
+ TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 1';
+ TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 2';
+ TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 3';
  TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu).Caption:='Test 3';
 
  fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);

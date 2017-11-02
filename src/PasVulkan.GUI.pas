@@ -2779,10 +2779,11 @@ begin
   ChevronIcon:=nil;
  end;
 
+ ButtonOffset:=TpvVector2.Null;
+
  if assigned(ChevronIcon) then begin
   ChevronIconSize.x:=(ChevronIcon.Width*fIconChevronHeight)/ChevronIcon.Height;
   ChevronIconSize.y:=fIconChevronHeight;
-  ButtonOffset:=TpvVector2.Null;
   ButtonSize.x:=ButtonSize.x-(ChevronIconSize.x+fSpacing);
   if (aButton is TpvGUIPopupButton) and
      (TpvGUIPopupButton(aButton).fPopup.fAnchorSide=pvgpasLeft) then begin
@@ -6177,6 +6178,7 @@ begin
  fPopup.Visible:=aDown;
  if aDown then begin
   fPopup.PerformLayout;
+  fPopup.RequestFocus;
  end;
 end;
 
