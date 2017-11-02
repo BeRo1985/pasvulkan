@@ -2763,10 +2763,10 @@ begin
   if (aButton is TpvGUIPopupButton) and
      (TpvGUIPopupButton(aButton).fPopup.fAnchorSide=pvgpasLeft) then begin
    ButtonOffset.x:=ChevronIconSize.x;
-   ChevronIconRect:=TpvRect.CreateRelative(TpvVector2.Create(fSpacing,(((aButton.fSize.y-ChevronIconSize.y)*0.5)))+Offset,
+   ChevronIconRect:=TpvRect.CreateRelative(TpvVector2.Create(fSpacing*1.5,(((aButton.fSize.y-ChevronIconSize.y)*0.5)))+Offset,
                                            ChevronIconSize);
   end else begin
-   ChevronIconRect:=TpvRect.CreateRelative(TpvVector2.Create(aButton.fSize.x-(ChevronIconSize.x+fSpacing),(((aButton.fSize.y-ChevronIconSize.y)*0.5)))+Offset,
+   ChevronIconRect:=TpvRect.CreateRelative(TpvVector2.Create(aButton.fSize.x-(ChevronIconSize.x+(fSpacing*2.0)),(((aButton.fSize.y-ChevronIconSize.y)*0.5)))+Offset,
                                            ChevronIconSize);
   end;
  end else begin
