@@ -287,6 +287,8 @@ type TpvGUIObject=class;
        fIconWindowRestore:TObject;
        fIconWindowMinimize:TObject;
        fIconWindowMaximize:TObject;
+       fIconMenuRight:TObject;
+       fIconMenuRightHeight:TpvFloat;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -344,6 +346,8 @@ type TpvGUIObject=class;
        property IconWindowRestore:TObject read fIconWindowRestore write fIconWindowRestore;
        property IconWindowMinimize:TObject read fIconWindowMinimize write fIconWindowMinimize;
        property IconWindowMaximize:TObject read fIconWindowMaximize write fIconWindowMaximize;
+       property IconMenuRight:TObject read fIconMenuRight write fIconMenuRight;
+       property IconMenuRightHeight:TpvFloat read fIconMenuRightHeight write fIconMenuRightHeight;
      end;
 
      TpvGUIDefaultVectorBasedSkin=class(TpvGUISkin)
@@ -1693,6 +1697,7 @@ begin
  fIconWindowRestore:=nil;
  fIconWindowMinimize:=nil;
  fIconWindowMaximize:=nil;
+ fIconMenuRight:=nil;
  Setup;
 end;
 
@@ -1920,7 +1925,8 @@ begin
    fMonoFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
                                              fSignedDistanceFieldSpriteAtlas,
                                              TrueTypeFont,
-                                             fInstance.fFontCodePointRanges);
+                                             fInstance.fFontCodePointRanges,
+                                             2);
   finally
    TrueTypeFont.Free;
   end;
@@ -1939,7 +1945,7 @@ begin
                                                                                  0.0,
                                                                                  pvvpfrNonZero,
                                                                                  false,
-                                                                                 8);
+                                                                                 2);
 
  fIconWindowRestore:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowRestore',
                                                                                    'M61.714 353.143h97.143v98.286h292.571v-292.571h-97.143v-98.286h-292.571v292.571zm292.571 0v-146.286h49.143v195.429h-195.429v-49.143h146.286zm-243.429-97.143v-146.286h194.286v146.286h-194.286z',
@@ -1950,7 +1956,7 @@ begin
                                                                                    0.0,
                                                                                    pvvpfrNonZero,
                                                                                    false,
-                                                                                   8);
+                                                                                   2);
 
  fIconWindowMinimize:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowMinimize',
                                                                                     'M450.286 321.143h-389.714v98.286h389.714v-98.286z',
@@ -1961,7 +1967,7 @@ begin
                                                                                     0.0,
                                                                                     pvvpfrNonZero,
                                                                                     false,
-                                                                                    8);
+                                                                                    2);
 
  fIconWindowMaximize:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowMaximize',
                                                                                     'M61.714 451.429h389.714v-390.857h-389.714v390.857zm49.143-98.286v-243.429h292.571v243.429h-292.571z',
@@ -1972,7 +1978,20 @@ begin
                                                                                     0.0,
                                                                                     pvvpfrNonZero,
                                                                                     false,
-                                                                                    8);
+                                                                                    2);
+
+ fIconMenuRight:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconMenuRight',
+                                                                               'M6,2 l12,10 l-12,10 v-20 z',
+                                                                               48,
+                                                                               48,
+                                                                               48.0/24.0,
+                                                                               0.0,
+                                                                               0.0,
+                                                                               pvvpfrNonZero,
+                                                                               false,
+                                                                               2);
+
+ fIconMenuRightHeight:=12.0;
 
  fSignedDistanceFieldSpriteAtlas.MipMaps:=false;
  fSignedDistanceFieldSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
@@ -2915,7 +2934,7 @@ begin
    end;
 
    if assigned(MenuItem.Menu) then begin
-    MenuItemWidth:=MenuItemWidth+fSpacing+aPopupMenu.Font.TextWidth('>',aPopupMenu.FontSize);
+    MenuItemWidth:=MenuItemWidth+fSpacing+((TpvSprite(fIconMenuRight).Width*fIconMenuRightHeight)/TpvSprite(fIconMenuRight).Height);
     aPopupMenu.fHasSubMenus:=true;
    end;
 
@@ -2950,7 +2969,7 @@ begin
     end;
 
     if assigned(MenuItem.Menu) then begin
-     MenuItemHeight:=Maximum(MenuItemHeight,aPopupMenu.Font.TextHeight('>',aPopupMenu.FontSize));
+     MenuItemHeight:=Maximum(MenuItemHeight,fIconMenuRightHeight);
     end;
 
     if assigned(MenuItem.fIcon) then begin
@@ -3001,7 +3020,7 @@ var Index,Element:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
     Offset,IconSize:TpvVector2;
-    XOffset:TpvFloat;
+    XOffset,SpriteWidth:TpvFloat;
 begin
 
  ProcessPopupMenuItems(aPopupMenu);
@@ -3109,11 +3128,16 @@ begin
     XOffset:=MenuItem.fRect.Right-(4.0+fSpacing);
 
     if aPopupMenu.fHasSubMenus then begin
+     SpriteWidth:=(TpvSprite(fIconMenuRight).Width*fIconMenuRightHeight)/TpvSprite(fIconMenuRight).Height;
+     XOffset:=XOffset-SpriteWidth;
      if assigned(MenuItem.Menu) then begin
-      aCanvas.TextHorizontalAlignment:=pvcthaTailing;
-      aCanvas.DrawText('>',TpvVector2.Create(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
+      aCanvas.DrawSprite(TpvSprite(fIconMenuRight),
+                         TpvRect.CreateRelative(TpvVector2.Null,
+                                                TpvVector2.Create(TpvSprite(fIconMenuRight).Width,TpvSprite(fIconMenuRight).Height)),
+                         TpvRect.CreateRelative(TpvVector2.Create(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-fIconMenuRightHeight)*0.5)))+Offset,
+                                                TpvVector2.Create(SpriteWidth,fIconMenuRightHeight)));
      end;
-     XOffset:=XOffset-(aCanvas.TextWidth('>')+fSpacing);
+     XOffset:=XOffset-fSpacing;
     end;
 
     if length(MenuItem.fShortcutHint)>0 then begin
