@@ -963,6 +963,18 @@ type TpvGUIObject=class;
        property Popup:TpvGUIPopup read fPopup;
      end;
 
+     TpvGUIPopupMenuButton=class(TpvGUIButton)
+      private
+       fPopupMenu:TpvGUIPopupMenu;
+      protected
+       procedure SetDown(const aDown:boolean); override;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       procedure Update; override;
+      published
+       property PopupMenu:TpvGUIPopupMenu read fPopupMenu;
+     end;
+
      TpvGUIToolButton=class(TpvGUIButton)
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -2665,6 +2677,12 @@ begin
     ChevronIcon:=nil;
    end;
   end;
+ end else if aButton is TpvGUIPopupMenuButton then begin
+  if aButton.Down then begin
+   ChevronIcon:=TpvSprite(fIconChevronUp);
+  end else begin
+   ChevronIcon:=TpvSprite(fIconChevronDown);
+  end;
  end else begin
   ChevronIcon:=nil;
  end;
@@ -2750,6 +2768,12 @@ begin
    pvgpasNone:begin
     ChevronIcon:=nil;
    end;
+  end;
+ end else if aButton is TpvGUIPopupMenuButton then begin
+  if aButton.Down then begin
+   ChevronIcon:=TpvSprite(fIconChevronUp);
+  end else begin
+   ChevronIcon:=TpvSprite(fIconChevronDown);
   end;
  end else begin
   ChevronIcon:=nil;
@@ -2931,7 +2955,7 @@ begin
                                                  ButtonSize.x-(fSpacing*2.0)),
                   ButtonOffset+Offset+TextRect.LeftTop+TextOffset);
 
- if aButton is TpvGUIPopupButton then begin
+ if assigned(ChevronIcon) then begin
   aCanvas.DrawSprite(ChevronIcon,
                      TpvRect.CreateRelative(TpvVector2.Null,
                                             TpvVector2.Create(ChevronIcon.Width,ChevronIcon.Height)),
@@ -6154,6 +6178,35 @@ begin
  if aDown then begin
   fPopup.PerformLayout;
  end;
+end;
+
+constructor TpvGUIPopupMenuButton.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfToggleButton,pvgbfPopupButton];
+
+ fPopupMenu:=TpvGUIPopupMenu.Create(self);
+
+end;
+
+procedure TpvGUIPopupMenuButton.SetDown(const aDown:boolean);
+begin
+ inherited SetDown(aDown);
+ if aDown then begin
+  fPopupMenu.Activate(AbsolutePosition+TpvVector2.Create(0.0,fSize.y));
+ end else begin
+  fPopupMenu.Deactivate;
+ end;
+end;
+
+procedure TpvGUIPopupMenuButton.Update;
+begin
+ if not fPopupMenu.Activated then begin
+  inherited SetDown(false);
+ end;
+ inherited Update;
 end;
 
 constructor TpvGUIToolButton.Create(const aParent:TpvGUIObject);

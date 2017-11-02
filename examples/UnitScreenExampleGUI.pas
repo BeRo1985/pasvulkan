@@ -334,15 +334,12 @@ begin
  fGUILabel.Caption:='An another example label';
  fGUILabel.Cursor:=pvgcUnavailable;
 
- fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
- fGUIButton.Caption:='An example popup button';
+ fGUIButton:=TpvGUIPopupMenuButton.Create(fGUIYetOtherWindow.Content);
+ fGUIButton.Caption:='An example popup menu button';
  fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasLeft;
-
- fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
- fGUIButton.Caption:='An example popup button';
- fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasRight;
+ TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu).Caption:='Test 1';
+ TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu).Caption:='Test 2';
+ TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu).Caption:='Test 3';
 
  fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
  fGUIButton.Caption:='An example popup button';
@@ -353,6 +350,16 @@ begin
  fGUIButton.Caption:='An example popup button';
  fGUIButton.Enabled:=true;
  TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasBottom;
+
+ fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
+ fGUIButton.Caption:='An example popup button';
+ fGUIButton.Enabled:=true;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasLeft;
+
+ fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
+ fGUIButton.Caption:='An example popup button';
+ fGUIButton.Enabled:=true;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasRight;
 
 end;
 
