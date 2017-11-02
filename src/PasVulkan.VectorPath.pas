@@ -249,13 +249,13 @@ var i,SrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
    sin_th:=sin(x_axis_rotation*deg2rad);
    cos_th:=cos(x_axis_rotation*deg2rad);
    a00:=cos_th*rx;
-   a01:=-sin_th*ry;
+   a01:=(-sin_th)*ry;
    a10:=sin_th*rx;
    a11:=cos_th*ry;
    th_half:=0.5*(th1-th0);
-   t:=(8/3)*sin(th_half*0.5)*sin(th_half*0.5)/sin(th_half);
-   x1:=xc+cos(th0)-(t*sin(th0));
-   y1:=yc+sin(th0)+(t*cos(th0));
+   t:=(8.0/3.0)*sin(th_half*0.5)*sin(th_half*0.5)/sin(th_half);
+   x1:=(xc+cos(th0))-(t*sin(th0));
+   y1:=(yc+sin(th0))+(t*cos(th0));
    x3:=xc+cos(th1);
    y3:=yc+sin(th1);
    x2:=x3+(t*sin(th1));
@@ -265,34 +265,37 @@ var i,SrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
                 (a00*x3)+(a01*y3),(a10*x3)+(a11*y3));
   end;
  begin
-  if (abs(rx)<1e-14) or (abs(ry)<1e-14) then exit;
+  if (abs(rx)<1e-14) or (abs(ry)<1e-14) then begin
+   LineTo(x,y);
+   exit;
+  end;
   sin_th:=sin(x_axis_rotation*deg2rad);
   cos_th:=cos(x_axis_rotation*deg2rad);
   dx:=(lx-x)*0.5;
   dy:=(ly-y)*0.5;
   dx1:=(cos_th*dx)+(sin_th*dy);
-  dy1:=(-sin_th*dx)+(cos_th*dy);
-  Pr1:=rx*rx;
-  Pr2:=ry*ry;
-  Px:=dx1*dx1;
-  Py:=dy1*dy1;
+  dy1:=(cos_th*dy)-(sin_th*dx);
+  Pr1:=sqr(rx);
+  Pr2:=sqr(ry);
+  Px:=sqr(dx1);
+  Py:=sqr(dy1);
   check:=(Px/Pr1)+(Py/Pr2);
-  if check>1 then begin
+  if check>1.0 then begin
    rx:=rx*sqrt(check);
    ry:=ry*sqrt(check);
   end;
   a00:=cos_th/rx;
   a01:=sin_th/rx;
-  a10:=-sin_th/ry;
+  a10:=(-sin_th)/ry;
   a11:=cos_th/ry;
   x0:=(a00*lx)+(a01*ly);
   y0:=(a10*lx)+(a11*ly);
   x1:=(a00*x)+(a01*y);
   y1:=(a10*x)+(a11*y);
-  d:=((x1-x0)*(x1-x0))+((y1-y0)*(y1-y0));
-  sfactor_sq:=(1/d)-0.25;
-  if sfactor_sq<0 then begin
-   sfactor_sq:=0;
+  d:=sqr(x1-x0)+sqr(y1-y0);
+  sfactor_sq:=(1.0/d)-0.25;
+  if sfactor_sq<0.0 then begin
+   sfactor_sq:=0.0;
   end;
   sfactor:=sqrt(sfactor_sq);
   if sweep_flag=large_arc_flag then begin
@@ -303,14 +306,18 @@ var i,SrcPos,SrcLen,large_arc_flag,sweep_flag:TpvInt32;
   th0:=arctan2(y0-yc,x0-xc);
   th1:=arctan2(y1-yc,x1-xc);
   th_arc:=th1-th0;
-  if (th_arc<0) and (sweep_flag<>0) then begin
-   th_arc:=th_arc+(2*pi);
-  end else if (th_arc>0) and (sweep_flag=0) then begin
-   th_arc:=th_arc-(2*pi);
+  if (th_arc<0.0) and (sweep_flag<>0) then begin
+   th_arc:=th_arc+TwoPI;
+  end else if (th_arc>0.0) and (sweep_flag=0) then begin
+   th_arc:=th_arc-TwoPI;
   end;
   n_segs:=ceil(abs(th_arc/((pi*0.5)+0.001)));
   for i:=0 to n_segs-1 do begin
-   ProcessSegment(xc,yc,th0+((i*th_arc)/n_segs),th0+(((i+1)*th_arc)/n_segs),rx,ry,x_axis_rotation);
+   ProcessSegment(xc,yc,
+                  th0+((i*th_arc)/n_segs),
+                  th0+(((i+1)*th_arc)/n_segs),
+                  rx,ry,
+                  x_axis_rotation);
   end;
   if n_segs=0 then begin
    LineTo(x,y);

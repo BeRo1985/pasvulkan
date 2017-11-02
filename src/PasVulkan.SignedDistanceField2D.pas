@@ -720,7 +720,9 @@ function TpvSignedDistanceField2DGenerator.AddQuadraticBezierCurveAsSubdividedLi
 var LastPoint:TpvSignedDistanceField2DDoublePrecisionPoint;
  procedure LineToPointAt(const Point:TpvSignedDistanceField2DDoublePrecisionPoint);
  begin
-  AddLineToPathSegmentArray(Contour,[LastPoint,Point]);
+  if not (SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) then begin
+   AddLineToPathSegmentArray(Contour,[LastPoint,Point]);
+  end;
   LastPoint:=Point;
  end;
  procedure Recursive(const x1,y1,x2,y2,x3,y3:TpvDouble;const Level:TpvInt32);
@@ -770,7 +772,9 @@ var LastPoint:TpvSignedDistanceField2DDoublePrecisionPoint;
  end;
  procedure LineTo(const p:TpvSignedDistanceField2DDoublePrecisionPoint);
  begin
-  AddLineToPathSegmentArray(Contour,[LastPoint,p]);
+  if not (SameValue(LastPoint.x,p.x) and SameValue(LastPoint.y,p.y)) then begin
+   AddLineToPathSegmentArray(Contour,[LastPoint,p]);
+  end;
   LastPoint:=p;
  end;
  procedure CurveTo(const p0,p1:TpvSignedDistanceField2DDoublePrecisionPoint);
@@ -980,7 +984,9 @@ function TpvSignedDistanceField2DGenerator.AddCubicBezierCurveAsSubdividedLinesT
 var LastPoint:TpvSignedDistanceField2DDoublePrecisionPoint;
  procedure LineToPointAt(const Point:TpvSignedDistanceField2DDoublePrecisionPoint);
  begin
-  AddLineToPathSegmentArray(Contour,[LastPoint,Point]);
+  if not (SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) then begin
+   AddLineToPathSegmentArray(Contour,[LastPoint,Point]);
+  end;
   LastPoint:=Point;
  end;
  procedure Recursive(const x1,y1,x2,y2,x3,y3,x4,y4:TpvDouble;const Level:TpvInt32);
@@ -1818,14 +1824,16 @@ var ContourIndex,PathSegmentIndex,CountPathSegments:TpvInt32;
  var Index:TpvInt32;
      PointInPolygonPathSegment:PpvSignedDistanceField2DPointInPolygonPathSegment;
  begin
-  Index:=CountPathSegments;
-  inc(CountPathSegments);
-  if length(fPointInPolygonPathSegments)<CountPathSegments then begin
-   SetLength(fPointInPolygonPathSegments,CountPathSegments*2);
+  if not (SameValue(p0.x,p1.x) and SameValue(p0.y,p1.y)) then begin
+   Index:=CountPathSegments;
+   inc(CountPathSegments);
+   if length(fPointInPolygonPathSegments)<CountPathSegments then begin
+    SetLength(fPointInPolygonPathSegments,CountPathSegments*2);
+   end;
+   PointInPolygonPathSegment:=@fPointInPolygonPathSegments[Index];
+   PointInPolygonPathSegment^.Points[0]:=p0;
+   PointInPolygonPathSegment^.Points[1]:=p1;
   end;
-  PointInPolygonPathSegment:=@fPointInPolygonPathSegments[Index];
-  PointInPolygonPathSegment^.Points[0]:=p0;
-  PointInPolygonPathSegment^.Points[1]:=p1;
  end;
  procedure AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(const p0,p1,p2:TpvSignedDistanceField2DDoublePrecisionPoint);
  var LastPoint:TpvSignedDistanceField2DDoublePrecisionPoint;
