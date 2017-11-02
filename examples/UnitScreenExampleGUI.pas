@@ -290,7 +290,7 @@ begin
 
  fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIOtherWindow.Left:=550;
- fGUIOtherWindow.Top:=200;
+ fGUIOtherWindow.Top:=100;
  fGUIOtherWindow.Title:='An another example window';
  fGUIOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,pvglaLeading,pvgloVertical,8.0,8.0);
  fGUIOtherWindow.AddMinimizationButton;
@@ -333,6 +333,26 @@ begin
  fGUILabel:=TpvGUILabel.Create(fGUIYetOtherWindow.Content);
  fGUILabel.Caption:='An another example label';
  fGUILabel.Cursor:=pvgcUnavailable;
+
+ fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
+ fGUIButton.Caption:='An example popup button';
+ fGUIButton.Enabled:=true;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasLeft;
+
+ fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
+ fGUIButton.Caption:='An example popup button';
+ fGUIButton.Enabled:=true;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasRight;
+
+ fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
+ fGUIButton.Caption:='An example popup button';
+ fGUIButton.Enabled:=true;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasTop;
+
+ fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
+ fGUIButton.Caption:='An example popup button';
+ fGUIButton.Enabled:=true;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasBottom;
 
 end;
 

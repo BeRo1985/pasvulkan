@@ -294,6 +294,11 @@ type TpvGUIObject=class;
        fIconContentDelete:TObject;
        fIconSelectAll:TObject;
        fIconSelectNone:TObject;
+       fIconChevronLeft:TObject;
+       fIconChevronRight:TObject;
+       fIconChevronUp:TObject;
+       fIconChevronDown:TObject;
+       fIconChevronHeight:TpvFloat;
        fIconPopupMenuHeight:TpvFloat;
        fIconMenuRightHeight:TpvFloat;
       public
@@ -360,6 +365,11 @@ type TpvGUIObject=class;
        property IconContentDelete:TObject read fIconContentDelete write fIconContentDelete;
        property IconSelectAll:TObject read fIconSelectAll write fIconSelectAll;
        property IconSelectNone:TObject read fIconSelectNone write fIconSelectNone;
+       property IconChevronLeft:TObject read fIconChevronLeft write fIconChevronLeft;
+       property IconChevronRight:TObject read fIconChevronRight write fIconChevronRight;
+       property IconChevronUp:TObject read fIconChevronUp write fIconChevronUp;
+       property IconChevronDown:TObject read fIconChevronDown write fIconChevronDown;
+       property IconChevronHeight:TpvFloat read fIconChevronHeight write fIconChevronHeight;
        property IconPopupMenuHeight:TpvFloat read fIconPopupMenuHeight write fIconPopupMenuHeight;
        property IconMenuRightHeight:TpvFloat read fIconMenuRightHeight write fIconMenuRightHeight;
      end;
@@ -901,7 +911,7 @@ type TpvGUIObject=class;
        procedure ProcessUp(const aPosition:TpvVector2);
       protected
        function GetDown:boolean; inline;
-       procedure SetDown(const aDown:boolean); inline;
+       procedure SetDown(const aDown:boolean); virtual;
        function GetFontSize:TpvFloat; override;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
@@ -943,8 +953,14 @@ type TpvGUIObject=class;
      end;
 
      TpvGUIPopupButton=class(TpvGUIButton)
+      private
+       fPopup:TpvGUIPopup;
+      protected
+       procedure SetDown(const aDown:boolean); override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
+      published
+       property Popup:TpvGUIPopup read fPopup;
      end;
 
      TpvGUIToolButton=class(TpvGUIButton)
@@ -1718,6 +1734,10 @@ begin
  fIconContentDelete:=nil;
  fIconSelectAll:=nil;
  fIconSelectNone:=nil;
+ fIconChevronLeft:=nil;
+ fIconChevronRight:=nil;
+ fIconChevronUp:=nil;
+ fIconChevronDown:=nil;
  Setup;
 end;
 
@@ -2076,6 +2096,52 @@ begin
                                                                                 pvvpfrNonZero,
                                                                                 false,
                                                                                 2);
+
+ fIconChevronLeft:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconChevronLeft',
+                                                                                 'M17.558 18.87 10.688 12 17.558 5.115 15.442 3 6.442 12 15.442 21 17.558 18.87Z',
+                                                                                 48,
+                                                                                 48,
+                                                                                 48.0/24.0,
+                                                                                 0.0,
+                                                                                 0.0,
+                                                                                 pvvpfrNonZero,
+                                                                                 false,
+                                                                                 2);
+
+ fIconChevronRight:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconChevronRight',
+                                                                                  'M6.443 18.87 13.313 12 6.443 5.115 8.558 3 17.558 12 8.558 21 6.443 18.87Z',
+                                                                                  48,
+                                                                                  48,
+                                                                                  48.0/24.0,
+                                                                                  0.0,
+                                                                                  0.0,
+                                                                                  pvvpfrNonZero,
+                                                                                  false,
+                                                                                  2);
+
+ fIconChevronUp:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconChevronUp',
+                                                                               'M5.115 17.558 12 10.688 18.885 17.558 21 15.442 12 6.442 3 15.442 5.115 17.558Z',
+                                                                               48,
+                                                                               48,
+                                                                               48.0/24.0,
+                                                                               0.0,
+                                                                               0.0,
+                                                                               pvvpfrNonZero,
+                                                                               false,
+                                                                               2);
+
+ fIconChevronDown:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconChevronDown',
+                                                                                 'M5.115 6.435 12 13.32 18.885 6.435 21 8.565 12 17.565 3 8.565 5.115 6.435Z',
+                                                                                 48,
+                                                                                 48,
+                                                                                 48.0/24.0,
+                                                                                 0.0,
+                                                                                 0.0,
+                                                                                 pvvpfrNonZero,
+                                                                                 false,
+                                                                                 2);
+
+ fIconChevronHeight:=14.0;
 
  fIconPopupMenuHeight:=14.0;
 
@@ -2561,9 +2627,47 @@ begin
  end;
 
 function TpvGUIDefaultVectorBasedSkin.GetButtonPreferredSize(const aButton:TpvGUIButton):TpvVector2;
-var TextSize,IconSize,TemporarySize:TpvVector2;
+var TextSize,IconSize,TemporarySize,ChevronIconSize:TpvVector2;
+    ChevronIcon:TpvSprite;
 begin
  TextSize:=aButton.Font.TextSize(aButton.fCaption,FontSize);
+ if aButton is TpvGUIPopupButton then begin
+  case TpvGUIPopupButton(aButton).fPopup.fAnchorSide of
+   pvgpasLeft:begin
+    if aButton.Down then begin
+     ChevronIcon:=TpvSprite(fIconChevronRight);
+    end else begin
+     ChevronIcon:=TpvSprite(fIconChevronLeft);
+    end;
+   end;
+   pvgpasRight:begin
+    if aButton.Down then begin
+     ChevronIcon:=TpvSprite(fIconChevronLeft);
+    end else begin
+     ChevronIcon:=TpvSprite(fIconChevronRight);
+    end;
+   end;
+   pvgpasTop:begin
+    if aButton.Down then begin
+     ChevronIcon:=TpvSprite(fIconChevronDown);
+    end else begin
+     ChevronIcon:=TpvSprite(fIconChevronUp);
+    end;
+   end;
+   pvgpasBottom:begin
+    if aButton.Down then begin
+     ChevronIcon:=TpvSprite(fIconChevronUp);
+    end else begin
+     ChevronIcon:=TpvSprite(fIconChevronDown);
+    end;
+   end;
+   pvgpasNone:begin
+    ChevronIcon:=nil;
+   end;
+  end;
+ end else begin
+  ChevronIcon:=nil;
+ end;
  if assigned(aButton.fIcon) then begin
   if aButton.fIcon is TpvSprite then begin
    IconSize:=TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height);
@@ -2579,25 +2683,96 @@ begin
  end else begin
   IconSize:=TpvVector2.Null;
  end;
+ if assigned(ChevronIcon) then begin
+  ChevronIconSize.x:=(ChevronIcon.Width*fIconChevronHeight)/ChevronIcon.Height;
+  if (length(aButton.fCaption)>0) or (IconSize.x>0.0) then begin
+   ChevronIconSize.x:=ChevronIconSize.x+fSpacing;
+  end;
+  ChevronIconSize.y:=fIconChevronHeight;
+ end else begin
+  ChevronIconSize:=TpvVector2.Null;
+ end;
  if (length(aButton.fCaption)>0) and (IconSize.x>0.0) then begin
   TextSize.x:=TextSize.x+fSpacing;
  end;
- TemporarySize.x:=TextSize.x+IconSize.x;
- TemporarySize.y:=Max(TextSize.y,IconSize.y);
+ TemporarySize.x:=TextSize.x+IconSize.x+ChevronIconSize.x;
+ TemporarySize.y:=Max(TextSize.y,Maximum(IconSize.y,ChevronIconSize.y));
  result:=Maximum(GetWidgetPreferredSize(aButton),
                  TemporarySize+TpvVector2.Create(20.0,10.0));
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton);
 var Offset,TextOffset:TpvVector2;
-    TextSize,IconSize,TemporarySize:TpvVector2;
-    TextRect,IconRect:TpvRect;
+    TextSize,IconSize,TemporarySize,ChevronIconSize,ButtonSize,ButtonOffset:TpvVector2;
+    TextRect,IconRect,ChevronIconRect:TpvRect;
+    SpriteWidth:TpvFloat;
+    ChevronIcon:TpvSprite;
 begin
 
  if aButton.Down then begin
   Offset:=TpvVector2.Create(-0.5,-0.5);
  end else begin
   Offset:=TpvVector2.Null;
+ end;
+
+ ButtonSize:=aButton.fSize;
+
+ if aButton is TpvGUIPopupButton then begin
+  case TpvGUIPopupButton(aButton).fPopup.fAnchorSide of
+   pvgpasLeft:begin
+    if aButton.Down then begin
+     ChevronIcon:=TpvSprite(fIconChevronRight);
+    end else begin
+     ChevronIcon:=TpvSprite(fIconChevronLeft);
+    end;
+   end;
+   pvgpasRight:begin
+    if aButton.Down then begin
+     ChevronIcon:=TpvSprite(fIconChevronLeft);
+    end else begin
+     ChevronIcon:=TpvSprite(fIconChevronRight);
+    end;
+   end;
+   pvgpasTop:begin
+    if aButton.Down then begin
+     ChevronIcon:=TpvSprite(fIconChevronDown);
+    end else begin
+     ChevronIcon:=TpvSprite(fIconChevronUp);
+    end;
+   end;
+   pvgpasBottom:begin
+    if aButton.Down then begin
+     ChevronIcon:=TpvSprite(fIconChevronUp);
+    end else begin
+     ChevronIcon:=TpvSprite(fIconChevronDown);
+    end;
+   end;
+   pvgpasNone:begin
+    ChevronIcon:=nil;
+   end;
+  end;
+ end else begin
+  ChevronIcon:=nil;
+ end;
+
+ if assigned(ChevronIcon) then begin
+  ChevronIconSize.x:=(ChevronIcon.Width*fIconChevronHeight)/ChevronIcon.Height;
+  ChevronIconSize.y:=fIconChevronHeight;
+  ButtonOffset:=TpvVector2.Null;
+  ButtonSize.x:=ButtonSize.x-(ChevronIconSize.x+fSpacing);
+  if (aButton is TpvGUIPopupButton) and
+     (TpvGUIPopupButton(aButton).fPopup.fAnchorSide=pvgpasLeft) then begin
+   ButtonOffset.x:=ChevronIconSize.x;
+   ChevronIconRect:=TpvRect.CreateRelative(TpvVector2.Create(fSpacing,(((aButton.fSize.y-ChevronIconSize.y)*0.5)))+Offset,
+                                           ChevronIconSize);
+  end else begin
+   ChevronIconRect:=TpvRect.CreateRelative(TpvVector2.Create(aButton.fSize.x-(ChevronIconSize.x+fSpacing),(((aButton.fSize.y-ChevronIconSize.y)*0.5)))+Offset,
+                                           ChevronIconSize);
+  end;
+ end else begin
+  ChevronIconSize:=TpvVector2.Null;
+  ChevronIconRect:=TpvRect.CreateRelative(TpvVector2.Null,
+                                          TpvVector2.Null);
  end;
 
  aCanvas.ModelMatrix:=aButton.fModelMatrix;
@@ -2664,31 +2839,31 @@ begin
   if length(aButton.fCaption)>0 then begin
    IconSize.x:=IconSize.x+fSpacing;
   end;
-  TemporarySize.x:=TextSize.x+IconSize.x;
-  TemporarySize.y:=Max(TextSize.y,IconSize.y);
+  TemporarySize.x:=TextSize.x+IconSize.x+ChevronIconSize.x;
+  TemporarySize.y:=Max(TextSize.y,Max(IconSize.y,ChevronIconSize.y));
 
   case aButton.fIconPosition of
    pvgbipLeft:begin
-    IconRect:=TpvRect.CreateRelative(TpvVector2.Create(fSpacing,(aButton.fSize.y-IconSize.y)*0.5),IconSize);
-    TextRect:=TpvRect.CreateRelative(TpvVector2.Create(fSpacing,0.0),aButton.fSize-TpvVector2.Create(fSpacing+IconSize.x,0.0));
+    IconRect:=TpvRect.CreateRelative(TpvVector2.Create(fSpacing,(ButtonSize.y-IconSize.y)*0.5),IconSize);
+    TextRect:=TpvRect.CreateRelative(TpvVector2.Create(fSpacing,0.0),ButtonSize-TpvVector2.Create(fSpacing+IconSize.x,0.0));
    end;
    pvgbipLeftCentered:begin
-    IconRect:=TpvRect.CreateRelative(TpvVector2.Create((aButton.fSize.x-TemporarySize.x)*0.5,(aButton.fSize.y-IconSize.y)*0.5),IconSize);
-    TextRect:=TpvRect.CreateRelative(TpvVector2.Create(((aButton.fSize.x-TemporarySize.x)*0.5)+IconSize.x,0.0),TpvVector2.Create(TextSize.x,aButton.fSize.y));
+    IconRect:=TpvRect.CreateRelative(TpvVector2.Create((ButtonSize.x-TemporarySize.x)*0.5,(ButtonSize.y-IconSize.y)*0.5),IconSize);
+    TextRect:=TpvRect.CreateRelative(TpvVector2.Create(((ButtonSize.x-TemporarySize.x)*0.5)+IconSize.x,0.0),TpvVector2.Create(TextSize.x,ButtonSize.y));
    end;
    pvgbipRightCentered:begin
-    IconRect:=TpvRect.CreateRelative(TpvVector2.Create(((aButton.fSize.x-TemporarySize.x)*0.5)+TextSize.x,(aButton.fSize.y-IconSize.y)*0.5),IconSize);
-    TextRect:=TpvRect.CreateRelative(TpvVector2.Create((aButton.fSize.x-TemporarySize.x)*0.5,0.0),TpvVector2.Create(TextSize.x,aButton.fSize.y));
+    IconRect:=TpvRect.CreateRelative(TpvVector2.Create(((ButtonSize.x-TemporarySize.x)*0.5)+TextSize.x,(ButtonSize.y-IconSize.y)*0.5),IconSize);
+    TextRect:=TpvRect.CreateRelative(TpvVector2.Create((ButtonSize.x-TemporarySize.x)*0.5,0.0),TpvVector2.Create(TextSize.x,ButtonSize.y));
    end;
    else {pvgbipRight:}begin
-    IconRect:=TpvRect.CreateRelative(TpvVector2.Create(aButton.fSize.x-fSpacing,(aButton.fSize.y-IconSize.y)*0.5),IconSize);
-    TextRect:=TpvRect.CreateRelative(TpvVector2.Null,aButton.fSize-TpvVector2.Create(fSpacing+IconSize.x,0.0));
+    IconRect:=TpvRect.CreateRelative(TpvVector2.Create(ButtonSize.x-fSpacing,(ButtonSize.y-IconSize.y)*0.5),IconSize);
+    TextRect:=TpvRect.CreateRelative(TpvVector2.Null,ButtonSize-TpvVector2.Create(fSpacing+IconSize.x,0.0));
    end;
   end;
 
  end else begin
 
-  TextRect:=TpvRect.CreateRelative(TpvVector2.Null,aButton.fSize);
+  TextRect:=TpvRect.CreateRelative(TpvVector2.Null,ButtonSize);
 
   IconRect:=TpvRect.CreateRelative(TpvVector2.Null,TpvVector2.Null);
 
@@ -2735,10 +2910,10 @@ begin
    aCanvas.DrawSprite(TpvSprite(aButton.fIcon),
                       TpvRect.CreateRelative(TpvVector2.Null,
                                              TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)),
-                      TpvRect.CreateRelative(Offset+IconRect.LeftTop,IconRect.Size));
+                      TpvRect.CreateRelative(ButtonOffset+Offset+IconRect.LeftTop,IconRect.Size));
   end else if aButton.fIcon is TpvVulkanTexture then begin
    aCanvas.DrawTexturedRectangle(TpvVulkanTexture(aButton.fIcon),
-                                 Offset+IconRect.LeftTop+((IconRect.RightBottom-IconRect.LeftTop)*0.5),
+                                 ButtonOffset+Offset+IconRect.LeftTop+((IconRect.RightBottom-IconRect.LeftTop)*0.5),
                                  (IconRect.RightBottom-IconRect.LeftTop)*0.5);
   end;
  end;
@@ -2753,8 +2928,16 @@ begin
                                                  aButton.fTextTruncation,
                                                  aCanvas.Font,
                                                  aCanvas.FontSize,
-                                                 aButton.fSize.x-(fSpacing*2.0)),
-                  Offset+TextRect.LeftTop+TextOffset);
+                                                 ButtonSize.x-(fSpacing*2.0)),
+                  ButtonOffset+Offset+TextRect.LeftTop+TextOffset);
+
+ if aButton is TpvGUIPopupButton then begin
+  aCanvas.DrawSprite(ChevronIcon,
+                     TpvRect.CreateRelative(TpvVector2.Null,
+                                            TpvVector2.Create(ChevronIcon.Width,ChevronIcon.Height)),
+                     ChevronIconRect);
+ end;
+
 
 end;
 
@@ -5949,8 +6132,28 @@ end;
 
 constructor TpvGUIPopupButton.Create(const aParent:TpvGUIObject);
 begin
+
  inherited Create(aParent);
+
  fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfToggleButton,pvgbfPopupButton];
+
+ fPopup:=TpvGUIPopup.Create(self);
+ fPopup.Visible:=false;
+ fPopup.AnchorSide:=pvgpasBottom;
+ fPopup.fSize.x:=160;
+ fPopup.fSize.y:=80;
+ fPopup.fFixedSize.x:=160;
+ fPopup.fFixedSize.y:=80;
+
+end;
+
+procedure TpvGUIPopupButton.SetDown(const aDown:boolean);
+begin
+ inherited SetDown(aDown);
+ fPopup.Visible:=aDown;
+ if aDown then begin
+  fPopup.PerformLayout;
+ end;
 end;
 
 constructor TpvGUIToolButton.Create(const aParent:TpvGUIObject);
