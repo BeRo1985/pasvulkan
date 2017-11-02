@@ -541,6 +541,7 @@ type TpvGUIObject=class;
        function GetAbsolutePosition:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function GetRecursiveVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function GetWindow:TpvGUIWindow;
+       function GetLastParentWindow:TpvGUIWindow;
        function GetScissorParent:TpvGUIWidget;
        procedure SetCanvas(const aCanvas:TpvCanvas); virtual;
        function GetSkin:TpvGUISkin; virtual;
@@ -4134,7 +4135,23 @@ begin
    end;
   end;
  end;
- raise EpvGUIWidget.Create('Could not find parent window');
+end;
+
+function TpvGUIWidget.GetLastParentWindow:TpvGUIWindow;
+var CurrentWidget:TpvGUIWidget;
+begin
+ result:=nil;
+ CurrentWidget:=self;
+ while assigned(CurrentWidget) do begin
+  if CurrentWidget is TpvGUIWindow then begin
+   result:=CurrentWidget as TpvGUIWindow;
+  end;
+  if assigned(CurrentWidget.Parent) and (CurrentWidget.Parent is TpvGUIWidget) then begin
+   CurrentWidget:=CurrentWidget.fParent as TpvGUIWidget;
+  end else begin
+   break;
+  end;
+ end;
 end;
 
 function TpvGUIWidget.GetScissorParent:TpvGUIWidget;
@@ -4749,7 +4766,7 @@ begin
      if assigned(Current) then begin
       if Current is TpvGUIPopup then begin
        PopupWidget:=Current as TpvGUIPopup;
-       if (PopupWidget.ParentHolder=aWindow) and (Index<BaseIndex) then begin
+       if (PopupWidget.ParentHolder.GetLastParentWindow=aWindow) and (Index<BaseIndex) then begin
         MoveWindowToFront(PopupWidget);
         Changed:=true;
         break;
