@@ -1011,6 +1011,7 @@ type TpvGUIObject=class;
      PpvGUICheckBoxFlag=^TpvGUICheckBoxFlag;
      TpvGUICheckBoxFlag=
       (
+       pvgcbfRadioCheckBox,
        pvgcbfPushed,
        pvgcbfChecked
       );
@@ -1018,12 +1019,14 @@ type TpvGUIObject=class;
      PpvGUICheckBoxFlags=^TpvGUICheckBoxFlags;
      TpvGUICheckBoxFlags=set of TpvGUICheckBoxFlag;
 
+     TpvGUICheckBoxGroup=class(TObjectList<TpvGUICheckBox>);
+
      TpvGUICheckBox=class(TpvGUIWidget)
       private
        fCheckBoxFlags:TpvGUICheckBoxFlags;
+       fCheckBoxGroup:TpvGUICheckBoxGroup;
        fCaption:TpvUTF8String;
-       fOnClick:TpvGUIOnEvent;
-       fOnChange:TpvGUIOnEvent;
+       fOnChange:TpvGUIOnChange;
        function GetPushed:boolean; inline;
        procedure SetPushed(const aPushed:boolean); inline;
        function GetChecked:boolean; inline;
@@ -1051,8 +1054,12 @@ type TpvGUIObject=class;
        property Pushed:boolean read GetPushed write SetPushed;
        property Checked:boolean read GetChecked write SetChecked;
        property Caption:TpvUTF8String read fCaption write fCaption;
-       property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
-       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
+       property OnChange:TpvGUIOnChange read fOnChange write fOnChange;
+     end;
+
+     TpvGUIRadioCheckBox=class(TpvGUICheckBox)
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
      end;
 
      TpvGUITextEdit=class(TpvGUIWidget)
@@ -2793,7 +2800,7 @@ begin
      ChevronIcon:=TpvSprite(fIconChevronDown);
     end;
    end;
-   pvgpasNone:begin
+   else {pvgpasNone:}begin
     ChevronIcon:=nil;
    end;
   end;
@@ -2891,7 +2898,7 @@ begin
      ChevronIcon:=TpvSprite(fIconChevronDown);
     end;
    end;
-   pvgpasNone:begin
+   else {pvgpasNone:}begin
     ChevronIcon:=nil;
    end;
   end;
@@ -6479,9 +6486,9 @@ begin
 
  fCheckBoxFlags:=[];
 
- fCaption:='';
+ fCheckBoxGroup:=TpvGUICheckBoxGroup.Create(false);
 
- fOnClick:=nil;
+ fCaption:='';
 
  fOnChange:=nil;
 
@@ -6489,6 +6496,7 @@ end;
 
 destructor TpvGUICheckBox.Destroy;
 begin
+ FreeAndNil(fCheckBoxGroup);
  inherited Destroy;
 end;
 
@@ -6512,15 +6520,49 @@ begin
 end;
 
 procedure TpvGUICheckBox.SetChecked(const aChecked:boolean);
+var ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildCheckBox:TpvGUICheckBox;
 begin
  if (pvgcbfChecked in fCheckBoxFlags)<>aChecked then begin
   if aChecked then begin
    Include(fCheckBoxFlags,pvgcbfChecked);
+   if pvgcbfRadioCheckBox in fCheckBoxFlags then begin
+    if assigned(fCheckBoxGroup) and (fCheckBoxGroup.Count>0) then begin
+     for ChildIndex:=0 to fCheckBoxGroup.Count-1 do begin
+      ChildCheckBox:=fCheckBoxGroup.Items[ChildIndex];
+      if (ChildCheckBox<>self) and
+         ((ChildCheckBox.fCheckBoxFlags*[pvgcbfRadioCheckBox,pvgcbfChecked])=[pvgcbfRadioCheckBox,pvgcbfChecked]) then begin
+       Exclude(ChildCheckBox.fCheckBoxFlags,pvgcbfChecked);
+       if assigned(ChildCheckBox.fOnChange) then begin
+        ChildCheckBox.fOnChange(ChildCheckBox,false);
+       end;
+      end;
+     end;
+    end else if assigned(fParent) then begin
+     for ChildIndex:=0 to fParent.fChildren.Count-1 do begin
+      Child:=fParent.fChildren.Items[ChildIndex];
+      if assigned(Child) and
+         (Child<>self) and
+         (Child is TpvGUICheckBox) and
+         (((Child as TpvGUICheckBox).fCheckBoxFlags*[pvgcbfRadioCheckBox,pvgcbfChecked])=[pvgcbfRadioCheckBox,pvgcbfChecked]) then begin
+       ChildCheckBox:=Child as TpvGUICheckBox;
+       Exclude(ChildCheckBox.fCheckBoxFlags,pvgcbfChecked);
+       if assigned(ChildCheckBox.fOnChange) then begin
+        ChildCheckBox.fOnChange(ChildCheckBox,false);
+       end;
+      end;
+     end;
+    end;
+   end;
+   if assigned(fOnChange) then begin
+    fOnChange(self,true);
+   end;
   end else begin
    Exclude(fCheckBoxFlags,pvgcbfChecked);
-  end;
-  if assigned(fOnChange) then begin
-   fOnChange(self);
+   if assigned(fOnChange) then begin
+    fOnChange(self,false);
+   end;
   end;
  end;
 end;
@@ -6612,6 +6654,12 @@ end;
 procedure TpvGUICheckBox.Draw;
 begin
  inherited Draw;
+end;
+
+constructor TpvGUIRadioCheckBox.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+ Include(fCheckBoxFlags,pvgcbfRadioCheckBox);
 end;
 
 constructor TpvGUITextEdit.Create(const aParent:TpvGUIObject);
