@@ -93,6 +93,8 @@ type TpvGUIObject=class;
 
      TpvGUIButton=class;
 
+     TpvGUICheckBox=class;
+
      TpvGUITextEdit=class;
 
      TpvGUIMenuItem=class;
@@ -263,11 +265,19 @@ type TpvGUIObject=class;
        fFontSize:TpvFloat;
        fWindowHeaderFontSize:tpvFloat;
        fButtonFontSize:TpvFloat;
+       fTextEditFontSize:TpvFloat;
        fLabelFontSize:TpvFloat;
+       fPopupMenuFontSize:TpvFloat;
+       fWindowMenuFontSize:TpvFloat;
+       fCheckBoxFontSize:TpvFloat;
        fFontColor:TpvVector4;
        fWindowFontColor:TpvVector4;
        fButtonFontColor:TpvVector4;
+       fTextEditFontColor:TpvVector4;
        fLabelFontColor:TpvVector4;
+       fPopupMenuFontColor:TpvVector4;
+       fWindowMenuFontColor:TpvVector4;
+       fCheckBoxFontColor:TpvVector4;
        fSignedDistanceFieldSpriteAtlas:TpvSpriteAtlas;
        fSansFont:TpvFont;
        fSansBoldFont:TpvFont;
@@ -298,6 +308,7 @@ type TpvGUIObject=class;
        fIconChevronRight:TObject;
        fIconChevronUp:TObject;
        fIconChevronDown:TObject;
+       fIconCheck:TObject;
        fIconChevronHeight:TpvFloat;
        fIconPopupMenuHeight:TpvFloat;
        fIconMenuRightHeight:TpvFloat;
@@ -321,6 +332,9 @@ type TpvGUIObject=class;
        function GetButtonPreferredSize(const aButton:TpvGUIButton):TpvVector2; virtual;
        procedure DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton); virtual;
       public
+       function GetCheckBoxPreferredSize(const aCheckBox:TpvGUICheckBox):TpvVector2; virtual;
+       procedure DrawCheckBox(const aCanvas:TpvCanvas;const aCheckBox:TpvGUICheckBox); virtual;
+      public
        function GetTextEditPreferredSize(const aTextEdit:TpvGUITextEdit):TpvVector2; virtual;
        procedure DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit); virtual;
       public
@@ -333,7 +347,11 @@ type TpvGUIObject=class;
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
        property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
+       property TextEditFontColor:TpvVector4 read fTextEditFontColor write fTextEditFontColor;
        property LabelFontColor:TpvVector4 read fLabelFontColor write fLabelFontColor;
+       property PopupMenuFontColor:TpvVector4 read fPopupMenuFontColor write fPopupMenuFontColor;
+       property WindowMenuFontColor:TpvVector4 read fWindowMenuFontColor write fWindowMenuFontColor;
+       property CheckBoxFontColor:TpvVector4 read fCheckBoxFontColor write fCheckBoxFontColor;
       published
        property SansFont:TpvFont read fSansFont write fSansFont;
        property SansBoldFont:TpvFont read fSansBoldFont write fSansBoldFont;
@@ -344,7 +362,11 @@ type TpvGUIObject=class;
        property FontSize:TpvFloat read fFontSize write fFontSize;
        property WindowHeaderFontSize:TpvFloat read fWindowHeaderFontSize write fWindowHeaderFontSize;
        property ButtonFontSize:TpvFloat read fButtonFontSize write fButtonFontSize;
+       property TextEditFontSize:TpvFloat read fTextEditFontSize write fTextEditFontSize;
        property LabelFontSize:TpvFloat read fLabelFontSize write fLabelFontSize;
+       property PopupMenuFontSize:TpvFloat read fPopupMenuFontSize write fPopupMenuFontSize;
+       property WindowMenuFontSize:TpvFloat read fWindowMenuFontSize write fWindowMenuFontSize;
+       property CheckBoxFontSize:TpvFloat read fCheckBoxFontSize write fCheckBoxFontSize;
        property SignedDistanceFieldSpriteAtlas:TpvSpriteAtlas read fSignedDistanceFieldSpriteAtlas;
        property WindowMenuHeight:TpvFloat read fWindowMenuHeight write fWindowMenuHeight;
        property WindowHeaderHeight:TpvFloat read fWindowHeaderHeight write fWindowHeaderHeight;
@@ -369,6 +391,7 @@ type TpvGUIObject=class;
        property IconChevronRight:TObject read fIconChevronRight write fIconChevronRight;
        property IconChevronUp:TObject read fIconChevronUp write fIconChevronUp;
        property IconChevronDown:TObject read fIconChevronDown write fIconChevronDown;
+       property IconCheck:TObject read fIconCheck write fIconCheck;
        property IconChevronHeight:TpvFloat read fIconChevronHeight write fIconChevronHeight;
        property IconPopupMenuHeight:TpvFloat read fIconPopupMenuHeight write fIconPopupMenuHeight;
        property IconMenuRightHeight:TpvFloat read fIconMenuRightHeight write fIconMenuRightHeight;
@@ -376,6 +399,7 @@ type TpvGUIObject=class;
 
      TpvGUIDefaultVectorBasedSkin=class(TpvGUISkin)
       private
+       const fCheckBoxSize:TpvVector2=(x:20.0;y:20.0);
       protected
        fUnfocusedWindowHeaderFontShadow:boolean;
        fFocusedWindowHeaderFontShadow:boolean;
@@ -406,6 +430,9 @@ type TpvGUIObject=class;
       public
        function GetButtonPreferredSize(const aButton:TpvGUIButton):TpvVector2; override;
        procedure DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton); override;
+      public
+       function GetCheckBoxPreferredSize(const aCheckBox:TpvGUICheckBox):TpvVector2; override;
+       procedure DrawCheckBox(const aCanvas:TpvCanvas;const aCheckBox:TpvGUICheckBox); override;
       public
        function GetTextEditPreferredSize(const aTextEdit:TpvGUITextEdit):TpvVector2; override;
        procedure DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit); override;
@@ -979,6 +1006,53 @@ type TpvGUIObject=class;
      TpvGUIToolButton=class(TpvGUIButton)
       public
        constructor Create(const aParent:TpvGUIObject); override;
+     end;
+
+     PpvGUICheckBoxFlag=^TpvGUICheckBoxFlag;
+     TpvGUICheckBoxFlag=
+      (
+       pvgcbfPushed,
+       pvgcbfChecked
+      );
+
+     PpvGUICheckBoxFlags=^TpvGUICheckBoxFlags;
+     TpvGUICheckBoxFlags=set of TpvGUICheckBoxFlag;
+
+     TpvGUICheckBox=class(TpvGUIWidget)
+      private
+       fCheckBoxFlags:TpvGUICheckBoxFlags;
+       fCaption:TpvUTF8String;
+       fOnClick:TpvGUIOnEvent;
+       fOnChange:TpvGUIOnEvent;
+       function GetPushed:boolean; inline;
+       procedure SetPushed(const aPushed:boolean); inline;
+       function GetChecked:boolean; inline;
+       procedure SetChecked(const aChecked:boolean);
+      protected
+       function GetFontSize:TpvFloat; override;
+       function GetFontColor:TpvVector4; override;
+       function GetPreferredSize:TpvVector2; override;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure Update; override;
+       procedure Draw; override;
+      public
+       property FontColor;
+      published
+       property Font;
+       property FontSize;
+       property TextHorizontalAlignment;
+       property TextVerticalAlignment;
+       property TextTruncation;
+       property Pushed:boolean read GetPushed write SetPushed;
+       property Checked:boolean read GetChecked write SetChecked;
+       property Caption:TpvUTF8String read fCaption write fCaption;
+       property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
 
      TpvGUITextEdit=class(TpvGUIWidget)
@@ -1751,6 +1825,7 @@ begin
  fIconChevronRight:=nil;
  fIconChevronUp:=nil;
  fIconChevronDown:=nil;
+ fIconCheck:=nil;
  Setup;
 end;
 
@@ -1810,6 +1885,15 @@ procedure TpvGUISkin.DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButt
 begin
 end;
 
+function TpvGUISkin.GetCheckBoxPreferredSize(const aCheckBox:TpvGUICheckBox):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aCheckBox);
+end;
+
+procedure TpvGUISkin.DrawCheckBox(const aCanvas:TpvCanvas;const aCheckBox:TpvGUICheckBox);
+begin
+end;
+
 function TpvGUISkin.GetTextEditPreferredSize(const aTextEdit:TpvGUITextEdit):TpvVector2;
 begin
  result:=GetWidgetPreferredSize(aTextEdit);
@@ -1860,7 +1944,15 @@ begin
 
  fButtonFontSize:=-12;
 
+ fTextEditFontSize:=-12;
+
  fLabelFontSize:=-12;
+
+ fPopupMenuFontSize:=-12;
+
+ fWindowMenuFontSize:=-12;
+
+ fCheckBoxFontSize:=-12;
 
  fFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
 
@@ -1868,7 +1960,15 @@ begin
 
  fButtonFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
 
+ fTextEditFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
+
  fLabelFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
+
+ fPopupMenuFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
+
+ fWindowMenuFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
+
+ fCheckBoxFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
 
  fUnfocusedWindowHeaderFontShadow:=true;
  fFocusedWindowHeaderFontShadow:=true;
@@ -2153,6 +2253,17 @@ begin
                                                                                  pvvpfrNonZero,
                                                                                  false,
                                                                                  2);
+
+ fIconCheck:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconCheck',
+                                                                           'M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z',
+                                                                           48,
+                                                                           48,
+                                                                           48.0/24.0,
+                                                                           0.0,
+                                                                           0.0,
+                                                                           pvvpfrNonZero,
+                                                                           false,
+                                                                           2);
 
  fIconChevronHeight:=14.0;
 
@@ -2591,6 +2702,12 @@ function TpvGUIDefaultVectorBasedSkin.GetLabelPreferredSize(const aLabel:TpvGUIL
 begin
  result:=Maximum(GetWidgetPreferredSize(aLabel),
                  aLabel.Font.TextSize(aLabel.fCaption,aLabel.FontSize)+TpvVector2.Create(0.0,0.0));
+ if aLabel.fFixedSize.x>0.0 then begin
+  result.x:=aLabel.fFixedSize.x;
+ end;
+ if aLabel.fFixedSize.y>0.0 then begin
+  result.y:=aLabel.fFixedSize.y;
+ end;
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel);
@@ -2603,7 +2720,7 @@ begin
  case aLabel.TextHorizontalAlignment of
   pvgtaLeading:begin
    aCanvas.TextHorizontalAlignment:=pvcthaLeading;
-   Offset.x:=fSpacing;
+   Offset.x:=0.0;
   end;
   pvgtaCenter:begin
    aCanvas.TextHorizontalAlignment:=pvcthaCenter;
@@ -2611,13 +2728,13 @@ begin
   end;
   else {pvgtaTailing:}begin
    aCanvas.TextHorizontalAlignment:=pvcthaTailing;
-   Offset.x:=aLabel.fSize.x-fSpacing;
+   Offset.x:=aLabel.fSize.x;
   end;
  end;
  case aLabel.TextVerticalAlignment of
   pvgtaLeading:begin
    aCanvas.TextVerticalAlignment:=pvctvaLeading;
-   Offset.y:=fSpacing;
+   Offset.y:=0.0;
   end;
   pvgtaCenter:begin
    aCanvas.TextVerticalAlignment:=pvctvaMiddle;
@@ -2625,19 +2742,21 @@ begin
   end;
   else {pvgtaTailing:}begin
    aCanvas.TextVerticalAlignment:=pvctvaTailing;
-   Offset.y:=aLabel.fSize.y-fSpacing;
+   Offset.y:=aLabel.fSize.y;
   end;
  end;
- aCanvas.Color:=aLabel.FontColor;
+ if aLabel.Enabled then begin
+  aCanvas.Color:=aLabel.FontColor;
+ end else begin
+  aCanvas.Color:=TpvVector4.Create(aLabel.FontColor.rgb,aLabel.FontColor.a*0.25);
+ end;
  aCanvas.DrawText(TpvGUITextUtils.TextTruncation(aLabel.fCaption,
                                                  aLabel.fTextTruncation,
                                                  aCanvas.Font,
                                                  aCanvas.FontSize,
-                                                 aLabel.fSize.x-(fSpacing*2.0)),
+                                                 aLabel.fSize.x),
                   Offset);
-
-
- end;
+end;
 
 function TpvGUIDefaultVectorBasedSkin.GetButtonPreferredSize(const aButton:TpvGUIButton):TpvVector2;
 var TextSize,IconSize,TemporarySize,ChevronIconSize:TpvVector2;
@@ -2718,6 +2837,12 @@ begin
  TemporarySize.y:=Max(TextSize.y,Maximum(IconSize.y,ChevronIconSize.y));
  result:=Maximum(GetWidgetPreferredSize(aButton),
                  TemporarySize+TpvVector2.Create(20.0,10.0));
+ if aButton.fFixedSize.x>0.0 then begin
+  result.x:=aButton.fFixedSize.x;
+ end;
+ if aButton.fFixedSize.y>0.0 then begin
+  result.y:=aButton.fFixedSize.y;
+ end;
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton);
@@ -2967,14 +3092,118 @@ begin
 
 end;
 
+function TpvGUIDefaultVectorBasedSkin.GetCheckBoxPreferredSize(const aCheckBox:TpvGUICheckBox):TpvVector2;
+begin
+ result:=Maximum(Maximum(GetWidgetPreferredSize(aCheckBox),
+                         aCheckBox.Font.TextSize(aCheckBox.fCaption,aCheckBox.FontSize)+
+                         TpvVector2.Create(fCheckBoxSize.x+fSpacing,0.0)),
+                 fCheckBoxSize);
+ if aCheckBox.fFixedSize.x>0.0 then begin
+  result.x:=aCheckBox.fFixedSize.x;
+ end;
+ if aCheckBox.fFixedSize.y>0.0 then begin
+  result.y:=aCheckBox.fFixedSize.y;
+ end;
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawCheckBox(const aCanvas:TpvCanvas;const aCheckBox:TpvGUICheckBox);
+var Element:TpvInt32;
+    Offset:TpvVector2;
+begin
+
+ aCanvas.ModelMatrix:=aCheckBox.fModelMatrix;
+ aCanvas.ClipRect:=aCheckBox.fClipRect;
+
+ if aCheckBox.Enabled then begin
+  aCanvas.Color:=aCheckBox.FontColor;
+ end else begin
+  aCanvas.Color:=TpvVector4.Create(aCheckBox.FontColor.rgb,aCheckBox.FontColor.a*0.25);
+ end;
+
+ if not aCheckBox.Enabled then begin
+
+  Element:=GUI_ELEMENT_BOX_DISABLED;
+
+ end else if aCheckBox.Focused then begin
+
+  Element:=GUI_ELEMENT_BOX_FOCUSED;
+
+ end else begin
+
+  Element:=GUI_ELEMENT_BOX_UNFOCUSED;
+
+ end;
+
+ Offset:=TpvVector2.Create(0.0,(aCheckBox.fSize.y-fCheckBoxSize.y)*0.5);
+
+ aCanvas.DrawGUIElement(Element,
+                        aCheckBox.Focused,
+                        Offset,
+                        Offset+fCheckBoxSize,
+                        Offset,
+                        Offset+fCheckBoxSize);
+
+ if aCheckBox.Checked then begin
+
+  aCanvas.DrawSprite(TpvSprite(fIconCheck),
+                     TpvRect.CreateRelative(0.0,0.0,TpvSprite(fIconCheck).Width,TpvSprite(fIconCheck).Height),
+                     TpvRect.CreateRelative(Offset,fCheckBoxSize));
+
+ end;
+
+ aCanvas.Font:=aCheckBox.Font;
+ aCanvas.FontSize:=aCheckBox.FontSize;
+ case aCheckBox.TextHorizontalAlignment of
+  pvgtaLeading:begin
+   aCanvas.TextHorizontalAlignment:=pvcthaLeading;
+   Offset.x:=fCheckBoxSize.x+fSpacing;
+  end;
+  pvgtaCenter:begin
+   aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+   Offset.x:=(fCheckBoxSize.x+fSpacing)+((aCheckBox.fSize.x-(fCheckBoxSize.x+fSpacing))*0.5);
+  end;
+  else {pvgtaTailing:}begin
+   aCanvas.TextHorizontalAlignment:=pvcthaTailing;
+   Offset.x:=(fCheckBoxSize.x+fSpacing)+(aCheckBox.fSize.x-(fCheckBoxSize.x+fSpacing));
+  end;
+ end;
+ case aCheckBox.TextVerticalAlignment of
+  pvgtaLeading:begin
+   aCanvas.TextVerticalAlignment:=pvctvaLeading;
+   Offset.y:=0.0;
+  end;
+  pvgtaCenter:begin
+   aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+   Offset.y:=aCheckBox.fSize.y*0.5;
+  end;
+  else {pvgtaTailing:}begin
+   aCanvas.TextVerticalAlignment:=pvctvaTailing;
+   Offset.y:=aCheckBox.fSize.y;
+  end;
+ end;
+ aCanvas.DrawText(TpvGUITextUtils.TextTruncation(aCheckBox.fCaption,
+                                                 aCheckBox.fTextTruncation,
+                                                 aCanvas.Font,
+                                                 aCanvas.FontSize,
+                                                 aCheckBox.fSize.x-(fCheckBoxSize.x+fSpacing)),
+                  Offset);
+
+end;
+
 function TpvGUIDefaultVectorBasedSkin.GetTextEditPreferredSize(const aTextEdit:TpvGUITextEdit):TpvVector2;
 var TextSize:TpvVector2;
 begin
  TextSize.x:=4*2;
- TextSize.y:=(aTextEdit.Font.RowHeight(100)*aTextEdit.Font.GetScaleFactor(aTextEdit.GetFontSize))+(4*2);
+ TextSize.y:=(aTextEdit.Font.RowHeight(100,aTextEdit.GetFontSize))+(4*2);
  result:=Maximum(GetWidgetPreferredSize(aTextEdit),
                  Maximum(TextSize,
                          TpvVector2.Create(aTextEdit.fMinimumWidth,aTextEdit.fMinimumHeight)));
+ if aTextEdit.fFixedSize.x>0.0 then begin
+  result.x:=aTextEdit.fFixedSize.x;
+ end;
+ if aTextEdit.fFixedSize.y>0.0 then begin
+  result.y:=aTextEdit.fFixedSize.y;
+ end;
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit);
@@ -3506,6 +3735,12 @@ begin
  ProcessWindowMenuItems(aWindowMenu);
  result:=Maximum(GetWidgetPreferredSize(aWindowMenu),
                  TpvVector2.Create(0.0,fWindowMenuHeight));
+ if aWindowMenu.fFixedSize.x>0.0 then begin
+  result.x:=aWindowMenu.fFixedSize.x;
+ end;
+ if aWindowMenu.fFixedSize.y>0.0 then begin
+  result.y:=aWindowMenu.fFixedSize.y;
+ end;
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawWindowMenu(const aCanvas:TpvCanvas;const aWindowMenu:TpvGUIWindowMenu);
@@ -6234,6 +6469,151 @@ begin
  fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfRadioButton,pvgbfToggleButton];
 end;
 
+constructor TpvGUICheckBox.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ Include(fWidgetFlags,pvgwfTabStop);
+ Include(fWidgetFlags,pvgwfDrawFocus);
+
+ fCheckBoxFlags:=[];
+
+ fCaption:='';
+
+ fOnClick:=nil;
+
+ fOnChange:=nil;
+
+end;
+
+destructor TpvGUICheckBox.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TpvGUICheckBox.GetPushed:boolean;
+begin
+ result:=pvgcbfPushed in fCheckBoxFlags;
+end;
+
+procedure TpvGUICheckBox.SetPushed(const aPushed:boolean);
+begin
+ if aPushed then begin
+  Include(fCheckBoxFlags,pvgcbfPushed);
+ end else begin
+  Exclude(fCheckBoxFlags,pvgcbfPushed);
+ end;
+end;
+
+function TpvGUICheckBox.GetChecked:boolean;
+begin
+ result:=pvgcbfChecked in fCheckBoxFlags;
+end;
+
+procedure TpvGUICheckBox.SetChecked(const aChecked:boolean);
+begin
+ if (pvgcbfChecked in fCheckBoxFlags)<>aChecked then begin
+  if aChecked then begin
+   Include(fCheckBoxFlags,pvgcbfChecked);
+  end else begin
+   Exclude(fCheckBoxFlags,pvgcbfChecked);
+  end;
+  if assigned(fOnChange) then begin
+   fOnChange(self);
+  end;
+ end;
+end;
+
+function TpvGUICheckBox.GetFontSize:TpvFloat;
+begin
+ if assigned(Skin) and IsZero(fFontSize) then begin
+  result:=Skin.fCheckBoxFontSize;
+ end else begin
+  result:=fFontSize;
+ end;
+end;
+
+function TpvGUICheckBox.GetFontColor:TpvVector4;
+begin
+ if assigned(Skin) and IsZero(fFontColor.a) then begin
+  result:=Skin.fCheckBoxFontColor;
+ end else begin
+  result:=fFontColor;
+ end;
+end;
+
+function TpvGUICheckBox.GetPreferredSize:TpvVector2;
+begin
+ result:=Skin.GetCheckBoxPreferredSize(self);
+end;
+
+function TpvGUICheckBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if Enabled and not result then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_SPACE,KEYCODE_RETURN:begin
+    case aKeyEvent.KeyEventType of
+     KEYEVENT_TYPED:begin
+      SetChecked(not GetChecked);
+     end;
+    end;
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUICheckBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+begin
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+ if not result then begin
+  result:=inherited PointerEvent(aPointerEvent);
+  if Enabled and not result then begin
+   case aPointerEvent.PointerEventType of
+    POINTEREVENT_DOWN:begin
+     case aPointerEvent.Button of
+      BUTTON_LEFT:begin
+       SetChecked(not GetChecked);
+      end;
+      BUTTON_MIDDLE:begin
+      end;
+      BUTTON_RIGHT:begin
+      end;
+     end;
+    end;
+    POINTEREVENT_UP:begin
+    end;
+    POINTEREVENT_MOTION:begin
+    end;
+    POINTEREVENT_DRAG:begin
+    end;
+   end;
+   result:=true;
+  end;
+ end;
+end;
+
+function TpvGUICheckBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+begin
+ result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+ if not result then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+ end;
+end;
+
+procedure TpvGUICheckBox.Update;
+begin
+ Skin.DrawCheckBox(fCanvas,self);
+ inherited Update;
+end;
+
+procedure TpvGUICheckBox.Draw;
+begin
+ inherited Draw;
+end;
+
 constructor TpvGUITextEdit.Create(const aParent:TpvGUIObject);
 var MenuItem:TpvGUIMenuItem;
 begin
@@ -6333,7 +6713,7 @@ end;
 function TpvGUITextEdit.GetFontSize:TpvFloat;
 begin
  if assigned(Skin) and IsZero(fFontSize) then begin
-  result:=Skin.fButtonFontSize;
+  result:=Skin.fTextEditFontSize;
  end else begin
   result:=fFontSize;
  end;
@@ -6342,7 +6722,7 @@ end;
 function TpvGUITextEdit.GetFontColor:TpvVector4;
 begin
  if assigned(Skin) and IsZero(fFontColor.a) then begin
-  result:=Skin.fButtonFontColor;
+  result:=Skin.fTextEditFontColor;
  end else begin
   result:=fFontColor;
  end;
@@ -7013,7 +7393,7 @@ end;
 function TpvGUIPopupMenu.GetFontSize:TpvFloat;
 begin
  if assigned(Skin) and IsZero(fFontSize) then begin
-  result:=Skin.fFontSize;
+  result:=Skin.fPopupMenuFontSize;
  end else begin
   result:=fFontSize;
  end;
@@ -7022,7 +7402,7 @@ end;
 function TpvGUIPopupMenu.GetFontColor:TpvVector4;
 begin
  if assigned(Skin) and IsZero(fFontColor.a) then begin
-  result:=Skin.fFontColor;
+  result:=Skin.fPopupMenuFontColor;
  end else begin
   result:=fFontColor;
  end;
@@ -7474,7 +7854,7 @@ end;
 function TpvGUIWindowMenu.GetFontSize:TpvFloat;
 begin
  if assigned(Skin) and IsZero(fFontSize) then begin
-  result:=Skin.fButtonFontSize;
+  result:=Skin.fWindowMenuFontSize;
  end else begin
   result:=fFontSize;
  end;
@@ -7483,7 +7863,7 @@ end;
 function TpvGUIWindowMenu.GetFontColor:TpvVector4;
 begin
  if assigned(Skin) and IsZero(fFontColor.a) then begin
-  result:=Skin.fButtonFontColor;
+  result:=Skin.fWindowMenuFontColor;
  end else begin
   result:=fFontColor;
  end;

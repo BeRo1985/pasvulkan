@@ -4557,7 +4557,7 @@ end;
 function TpvCanvas.TextRowHeight(const aPercent:TpvFloat):TpvFloat;
 begin
  if assigned(fState.fFont) then begin
-  result:=fState.fFont.RowHeight(aPercent)*fState.fFont.GetScaleFactor(fState.fFontSize);
+  result:=fState.fFont.RowHeight(aPercent,fState.fFontSize);
  end else begin
   result:=0.0;
  end;

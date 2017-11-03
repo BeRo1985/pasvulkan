@@ -195,7 +195,7 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        function TextWidth(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
        function TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
        function TextSize(const aText:TpvUTF8String;const aSize:TpvFloat):TpvVector2;
-       function RowHeight(const Percent:TpvFloat):TpvFloat;
+       function RowHeight(const aPercent:TpvFloat;const aSize:TpvFloat):TpvFloat;
        procedure GetTextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aRects:TpvRectArray;out aCountRects:TpvInt32);
        procedure Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat);
       published
@@ -833,9 +833,12 @@ begin
  result:=Maximum(result,Size)*GetScaleFactor(aSize);
 end;
 
-function TpvFont.RowHeight(const Percent:TpvFloat):TpvFloat;
+function TpvFont.RowHeight(const aPercent:TpvFloat;const aSize:TpvFloat):TpvFloat;
 begin
- result:=fUnitsPerEm*(Percent*0.01);
+ result:=fUnitsPerEm*(aPercent*0.01);
+ if not IsZero(aSize) then begin
+  result:=result*GetScaleFactor(aSize);
+ end;
 end;
 
 procedure TpvFont.GetTextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aRects:TpvRectArray;out aCountRects:TpvInt32);

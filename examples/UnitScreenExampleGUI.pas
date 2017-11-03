@@ -305,6 +305,8 @@ begin
  fGUILabel.Caption:='An another example label';
  fGUILabel.Cursor:=pvgcUnavailable;
 
+ TpvGUICheckBox.Create(fGUIOtherWindow.Content).Caption:='An example check box';
+
  fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow.Content);
  fGUIButton.Caption:='An example radio button (0)';
 
