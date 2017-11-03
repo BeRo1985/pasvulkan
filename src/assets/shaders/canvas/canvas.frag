@@ -78,8 +78,11 @@ vec4 blend(vec4 a, vec4 b){
 #define GUI_ELEMENT_BOX_UNFOCUSED 10
 #define GUI_ELEMENT_BOX_FOCUSED 11
 #define GUI_ELEMENT_BOX_DISABLED 12  
-#define GUI_ELEMENT_PANEL_ENABLED 13
-#define GUI_ELEMENT_PANEL_DISABLED 14
+#define GUI_ELEMENT_BOX_DARK_UNFOCUSED 13
+#define GUI_ELEMENT_BOX_DARK_FOCUSED 14
+#define GUI_ELEMENT_BOX_DARK_DISABLED 15  
+#define GUI_ELEMENT_PANEL_ENABLED 16
+#define GUI_ELEMENT_PANEL_DISABLED 17
 #define GUI_ELEMENT_MOUSE_CURSOR_ARROW 64
 #define GUI_ELEMENT_MOUSE_CURSOR_BEAM 65
 #define GUI_ELEMENT_MOUSE_CURSOR_BUSY 66
@@ -137,6 +140,12 @@ const vec4 uFocusedBoxGradientTop = MAKE_GRAY_COLOR(64.0, 255.0);
 const vec4 uFocusedBoxGradientBottom = MAKE_GRAY_COLOR(68.0, 255.0);
 const vec4 uDisabledBoxGradientTop = MAKE_GRAY_COLOR(94.0, 255.0);
 const vec4 uDisabledBoxGradientBottom = MAKE_GRAY_COLOR(98.0, 255.0);   
+const vec4 uUnfocusedBoxDarkGradientTop = MAKE_GRAY_COLOR(42.0, 255.0);
+const vec4 uUnfocusedBoxDarkGradientBottom = MAKE_GRAY_COLOR(40.0, 255.0);
+const vec4 uFocusedBoxDarkGradientTop = MAKE_GRAY_COLOR(38.0, 255.0);
+const vec4 uFocusedBoxDarkGradientBottom = MAKE_GRAY_COLOR(32.0, 255.0);
+const vec4 uDisabledBoxDarkGradientTop = MAKE_GRAY_COLOR(94.0, 255.0);
+const vec4 uDisabledBoxDarkGradientBottom = MAKE_GRAY_COLOR(98.0, 255.0);
 
 const vec4 uEnabledPanelGradientTop = MAKE_GRAY_COLOR(58.0, 255.0);
 const vec4 uEnabledPanelGradientBottom = MAKE_GRAY_COLOR(54.0, 255.0);
@@ -516,7 +525,10 @@ void main(void){
       }
       case GUI_ELEMENT_BOX_UNFOCUSED:  
       case GUI_ELEMENT_BOX_FOCUSED:
-      case GUI_ELEMENT_BOX_DISABLED:{
+      case GUI_ELEMENT_BOX_DISABLED:
+      case GUI_ELEMENT_BOX_DARK_UNFOCUSED:  
+      case GUI_ELEMENT_BOX_DARK_FOCUSED:
+      case GUI_ELEMENT_BOX_DARK_DISABLED:{
         float d0 = sdRoundedRect(p - (size * 0.5), size * 0.5, uButtonCornerRadius),
               d1 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(0.5), uButtonCornerRadius),      
               d2 = sdRoundedRect(p - (size * 0.5), (size * 0.5) - vec2(1.0), uButtonCornerRadius),      
@@ -543,6 +555,27 @@ void main(void){
         	case GUI_ELEMENT_BOX_DISABLED:{
             gradientTop = uDisabledBoxGradientTop;
             gradientBottom = uDisabledBoxGradientBottom;
+            borderTowardsLight = uBorderDark; 
+            borderAwayFromLight = uBorderMedium;
+          	break;
+          }
+        	case GUI_ELEMENT_BOX_DARK_UNFOCUSED:{
+            gradientTop = uUnfocusedBoxDarkGradientTop;
+            gradientBottom = uUnfocusedBoxDarkGradientBottom;
+            borderTowardsLight = uBorderDark; 
+            borderAwayFromLight = uBorderMedium;
+          	break;
+          }
+        	case GUI_ELEMENT_BOX_DARK_FOCUSED:{
+            gradientTop = uFocusedBoxDarkGradientTop;
+            gradientBottom = uFocusedBoxDarkGradientBottom;
+            borderTowardsLight = uBorderDark; 
+            borderAwayFromLight = uBorderMedium;
+          	break;
+          }
+        	case GUI_ELEMENT_BOX_DARK_DISABLED:{
+            gradientTop = uDisabledBoxDarkGradientTop;
+            gradientBottom = uDisabledBoxDarkGradientBottom;
             borderTowardsLight = uBorderDark; 
             borderAwayFromLight = uBorderMedium;
           	break;
