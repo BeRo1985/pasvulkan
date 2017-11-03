@@ -5099,17 +5099,20 @@ begin
      end;
     end;
    end;
-   for Index:=0 to fCurrentFocusPath.Count-1 do begin
+   Index:=0;
+   while Index<fCurrentFocusPath.Count do begin
+    // must be a while-loop, not an for-loop, because fCurrentFocusPath can be changed while going through this list
     Current:=fCurrentFocusPath.Items[Index];
     if (Current<>self) and (Current is TpvGUIWidget) then begin
      CurrentWidget:=Current as TpvGUIWidget;
      if CurrentWidget.Focused then begin
       result:=CurrentWidget.KeyEvent(aKeyEvent);
       if result then begin
-       exit;
+       break;
       end;
      end;
     end;
+    inc(Index);
    end;
   end;
  end;
@@ -6362,7 +6365,7 @@ begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
   case aKeyEvent.KeyCode of
-   KEYCODE_SPACE:begin
+   KEYCODE_SPACE,KEYCODE_RETURN:begin
     case aKeyEvent.KeyEventType of
      KEYEVENT_DOWN:begin
       ProcessDown(fSize*0.5);
@@ -6373,6 +6376,7 @@ begin
      KEYEVENT_TYPED:begin
      end;
     end;
+    result:=true;
    end;
   end;
  end;
