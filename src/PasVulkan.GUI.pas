@@ -4238,7 +4238,7 @@ end;
 function TpvGUIWidget.GetFont:TpvFont;
 begin
  if assigned(Skin) and not assigned(fFont) then begin
-  result:=Skin.fSansBoldFont;
+  result:=Skin.fSansFont;
  end else begin
   result:=fFont;
  end;
@@ -7476,7 +7476,7 @@ end;
 function TpvGUIPopupMenu.GetFont:TpvFont;
 begin
  if assigned(Skin) and not assigned(fFont) then begin
-  result:=Skin.fSansBoldFont;
+  result:=Skin.fSansFont;
  end else begin
   result:=fFont;
  end;
