@@ -309,6 +309,7 @@ type TpvGUIObject=class;
        fIconChevronUp:TObject;
        fIconChevronDown:TObject;
        fIconCheck:TObject;
+       fIconRoundCheck:TObject;
        fIconChevronHeight:TpvFloat;
        fIconPopupMenuHeight:TpvFloat;
        fIconMenuRightHeight:TpvFloat;
@@ -392,6 +393,7 @@ type TpvGUIObject=class;
        property IconChevronUp:TObject read fIconChevronUp write fIconChevronUp;
        property IconChevronDown:TObject read fIconChevronDown write fIconChevronDown;
        property IconCheck:TObject read fIconCheck write fIconCheck;
+       property IconRoundCheck:TObject read fIconRoundCheck write fIconRoundCheck;
        property IconChevronHeight:TpvFloat read fIconChevronHeight write fIconChevronHeight;
        property IconPopupMenuHeight:TpvFloat read fIconPopupMenuHeight write fIconPopupMenuHeight;
        property IconMenuRightHeight:TpvFloat read fIconMenuRightHeight write fIconMenuRightHeight;
@@ -2272,6 +2274,17 @@ begin
                                                                            false,
                                                                            2);
 
+ fIconRoundCheck:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconRoundCheck',
+                                                                                'M12 4A8 8 0 0 0 4 12 8 8 0 0 0 12 20 8 8 0 0 0 20 12 8 8 0 0 0 12 4Z',
+                                                                                48,
+                                                                                48,
+                                                                                48.0/24.0,
+                                                                                0.0,
+                                                                                0.0,
+                                                                                pvvpfrNonZero,
+                                                                                false,
+                                                                                2);
+
  fIconChevronHeight:=14.0;
 
  fIconPopupMenuHeight:=14.0;
@@ -3116,6 +3129,7 @@ end;
 procedure TpvGUIDefaultVectorBasedSkin.DrawCheckBox(const aCanvas:TpvCanvas;const aCheckBox:TpvGUICheckBox);
 var Element:TpvInt32;
     Offset:TpvVector2;
+    Icon:TpvSprite;
 begin
 
  aCanvas.ModelMatrix:=aCheckBox.fModelMatrix;
@@ -3152,8 +3166,14 @@ begin
 
  if aCheckBox.Checked then begin
 
-  aCanvas.DrawSprite(TpvSprite(fIconCheck),
-                     TpvRect.CreateRelative(0.0,0.0,TpvSprite(fIconCheck).Width,TpvSprite(fIconCheck).Height),
+  if pvgcbfRadioCheckBox in aCheckBox.fCheckBoxFlags then begin
+   Icon:=TpvSprite(fIconRoundCheck);
+  end else begin
+   Icon:=TpvSprite(fIconCheck);
+  end;
+
+  aCanvas.DrawSprite(Icon,
+                     TpvRect.CreateRelative(0.0,0.0,Icon.Width,Icon.Height),
                      TpvRect.CreateRelative(Offset,fCheckBoxSize));
 
  end;
