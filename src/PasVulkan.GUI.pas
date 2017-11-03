@@ -270,6 +270,7 @@ type TpvGUIObject=class;
        fPopupMenuFontSize:TpvFloat;
        fWindowMenuFontSize:TpvFloat;
        fCheckBoxFontSize:TpvFloat;
+       fCheckBoxSize:TpvVector2;
        fFontColor:TpvVector4;
        fWindowFontColor:TpvVector4;
        fButtonFontColor:TpvVector4;
@@ -400,8 +401,6 @@ type TpvGUIObject=class;
      end;
 
      TpvGUIDefaultVectorBasedSkin=class(TpvGUISkin)
-      private
-       const fCheckBoxSize:TpvVector2=(x:20.0;y:20.0);
       protected
        fUnfocusedWindowHeaderFontShadow:boolean;
        fFocusedWindowHeaderFontShadow:boolean;
@@ -578,6 +577,7 @@ type TpvGUIObject=class;
        function GetLayoutPreferredSize:TpvVector2; virtual;
        function GetPreferredSize:TpvVector2; virtual;
        function GetFixedSize:TpvVector2; virtual;
+       function GetHighlightRect:TpvRect; virtual;
        function GetFont:TpvFont; virtual;
        function GetFontSize:TpvFloat; virtual;
        function GetFontColor:TpvVector4; virtual;
@@ -617,6 +617,7 @@ type TpvGUIObject=class;
       public
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
        property PreferredSize:TpvVector2 read GetPreferredSize;
+       property HighlightRect:TpvRect read GetHighlightRect;
        property ParentClipRect:TpvRect read fParentClipRect write fParentClipRect;
        property ClipRect:TpvRect read fClipRect write fClipRect;
        property ModelMatrix:TpvMatrix4x4 read fModelMatrix write fModelMatrix;
@@ -1034,6 +1035,7 @@ type TpvGUIObject=class;
        function GetChecked:boolean; inline;
        procedure SetChecked(const aChecked:boolean);
       protected
+       function GetHighlightRect:TpvRect; override;
        function GetFontSize:TpvFloat; override;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
@@ -1966,6 +1968,8 @@ begin
 
  fCheckBoxFontSize:=-12;
 
+ fCheckBoxSize:=TpvVector2.Create(20.0,20.0);
+
  fFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
 
  fWindowFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
@@ -2305,8 +2309,10 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawFocus(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget);
+var Rect:TpvRect;
 begin
  if assigned(fInstance) then begin
+  Rect:=aWidget.HighlightRect;
   if fInstance.fHoveredWidget=aWidget then begin
    aCanvas.ClipRect:=aWidget.fParentClipRect;
    aCanvas.ModelMatrix:=aWidget.fModelMatrix;
@@ -2315,7 +2321,7 @@ begin
                           TpvVector2.Create(-32.0,-32.0),
                           aWidget.fSize+TpvVector2.Create(32.0,32.0),
                           TpvVector2.Create(0.0,0.0),
-                          TpvVector2.Create(aWidget.fSize.x,aWidget.fSize.y));
+                          Rect.Size);
   end else if fInstance.fFocusedWidget=aWidget then begin
    aCanvas.ClipRect:=aWidget.fParentClipRect;
    aCanvas.ModelMatrix:=aWidget.fModelMatrix;
@@ -2324,7 +2330,7 @@ begin
                           TpvVector2.Create(-32.0,-32.0),
                           aWidget.fSize+TpvVector2.Create(32.0,32.0),
                           TpvVector2.Create(0.0,0.0),
-                          TpvVector2.Create(aWidget.fSize.x,aWidget.fSize.y));
+                          Rect.Size);
   end;
  end;
 end;
@@ -4222,6 +4228,11 @@ end;
 function TpvGUIWidget.GetFixedSize:TpvVector2;
 begin
  result:=fFixedSize;
+end;
+
+function TpvGUIWidget.GetHighlightRect:TpvRect;
+begin
+ result:=TpvRect.CreateRelative(TpvVector2.Null,fSize);
 end;
 
 function TpvGUIWidget.GetFont:TpvFont;
@@ -6592,6 +6603,12 @@ begin
    end;
   end;
  end;
+end;
+
+function TpvGUICheckBox.GetHighlightRect:TpvRect;
+begin
+ result:=inherited GetHighlightRect;
+ result.Size:=Skin.fCheckBoxSize;
 end;
 
 function TpvGUICheckBox.GetFontSize:TpvFloat;
