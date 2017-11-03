@@ -290,7 +290,7 @@ begin
 
  fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIOtherWindow.Left:=550;
- fGUIOtherWindow.Top:=100;
+ fGUIOtherWindow.Top:=50;
  fGUIOtherWindow.Title:='An another example window';
  fGUIOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,pvglaLeading,pvgloVertical,8.0,8.0);
  fGUIOtherWindow.AddMinimizationButton;
@@ -306,6 +306,10 @@ begin
  fGUILabel.Cursor:=pvgcUnavailable;
 
  TpvGUICheckBox.Create(fGUIOtherWindow.Content).Caption:='An example check box';
+
+ TpvGUIRadioCheckBox.Create(fGUIOtherWindow.Content).Caption:='An example radio check box (0)';
+
+ TpvGUIRadioCheckBox.Create(fGUIOtherWindow.Content).Caption:='An example radio check box (1)';
 
  fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow.Content);
  fGUIButton.Caption:='An example radio button (0)';
