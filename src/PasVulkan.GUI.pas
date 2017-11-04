@@ -6642,7 +6642,11 @@ begin
    KEYCODE_SPACE,KEYCODE_RETURN:begin
     case aKeyEvent.KeyEventType of
      KEYEVENT_TYPED:begin
-      SetChecked(not GetChecked);
+      if pvgcbfRadioCheckBox in fCheckBoxFlags then begin
+       SetChecked(true);
+      end else begin
+       SetChecked(not GetChecked);
+      end;
      end;
     end;
     result:=true;
@@ -6661,7 +6665,11 @@ begin
     POINTEREVENT_DOWN:begin
      case aPointerEvent.Button of
       BUTTON_LEFT:begin
-       SetChecked(not GetChecked);
+       if pvgcbfRadioCheckBox in fCheckBoxFlags then begin
+        SetChecked(true);
+       end else begin
+        SetChecked(not GetChecked);
+       end;
       end;
       BUTTON_MIDDLE:begin
       end;
