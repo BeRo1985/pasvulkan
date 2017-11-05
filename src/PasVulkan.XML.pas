@@ -332,7 +332,7 @@ begin
 end;
 
 procedure TpvXMLClassList.ClearWithFree;
-var Counter:TpvUInt16;
+var Counter:TpvInt32;
 begin
  for Counter:=0 to InternalCount-1 do begin
   if assigned(InternalList^[Counter]) then begin

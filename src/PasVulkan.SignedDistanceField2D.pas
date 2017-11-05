@@ -669,16 +669,18 @@ var PathSegment:PpvSignedDistanceField2DPathSegment;
 begin
  Assert(length(Points)=2);
  result:=Contour.CountPathSegments;
- inc(Contour.CountPathSegments);
- if length(Contour.PathSegments)<=Contour.CountPathSegments then begin
-  SetLength(Contour.PathSegments,Contour.CountPathSegments*2);
+ if not (SameValue(Points[0].x,Points[1].x) and SameValue(Points[0].y,Points[1].y)) then begin
+  inc(Contour.CountPathSegments);
+  if length(Contour.PathSegments)<=Contour.CountPathSegments then begin
+   SetLength(Contour.PathSegments,Contour.CountPathSegments*2);
+  end;
+  PathSegment:=@Contour.PathSegments[result];
+  PathSegment^.Type_:=pvsdf2DpstLine;
+  PathSegment^.Color:=pvsdf2DpscBlack;
+  PathSegment^.Points[0]:=Points[0];
+  PathSegment^.Points[1]:=Points[1];
+  InitializePathSegment(PathSegment^);
  end;
- PathSegment:=@Contour.PathSegments[result];
- PathSegment^.Type_:=pvsdf2DpstLine;
- PathSegment^.Color:=pvsdf2DpscBlack;
- PathSegment^.Points[0]:=Points[0];
- PathSegment^.Points[1]:=Points[1];
- InitializePathSegment(PathSegment^);
 end;
 
 function TpvSignedDistanceField2DGenerator.AddQuadraticBezierCurveToPathSegmentArray(var Contour:TpvSignedDistanceField2DPathContour;const Points:array of TpvSignedDistanceField2DDoublePrecisionPoint):TpvInt32;
@@ -1269,6 +1271,7 @@ begin
        if DoSubdivideCurvesIntoLines then begin
         AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,Point]);
        end else begin
+//      AddQuadraticBezierCurveAsSubdividedLinesToPathSegmentArray(Contour^,[LastPoint,ControlPoint,Point]);
         AddQuadraticBezierCurveToPathSegmentArray(Contour^,[LastPoint,ControlPoint,Point]);
        end;
       end;
@@ -1918,6 +1921,10 @@ begin
  result:=0;
  for Index:=0 to length(fPointInPolygonPathSegments)-1 do begin
   PointInPolygonPathSegment:=@fPointInPolygonPathSegments[Index];
+  if SameValue(PointInPolygonPathSegment^.Points[0].x,PointInPolygonPathSegment^.Points[1].x) and
+     SameValue(PointInPolygonPathSegment^.Points[0].y,PointInPolygonPathSegment^.Points[1].y) then begin
+   continue;
+  end;
   y0:=PointInPolygonPathSegment^.Points[0].y-Point.y;
   y1:=PointInPolygonPathSegment^.Points[1].y-Point.y;
   if y0<0.0 then begin

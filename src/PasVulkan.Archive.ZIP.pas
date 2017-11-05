@@ -272,6 +272,7 @@ type EpvArchiveZIP=class(Exception);
        property RequiresZIP64:boolean read fRequiresZIP64 write fRequiresZIP64;
       public
        constructor Create(aCollection:TCollection); override;
+       destructor Destroy; override;
        procedure Assign(aSource:TPersistent); override;
        procedure LoadFromStream(const aStream:TStream);
        procedure LoadFromFile(const aFileName:string);
@@ -422,6 +423,13 @@ begin
  fDateTime:=Now;
  fRequiresZIP64:=false;
  fAttributes:=0;
+ fStream:=nil;
+end;
+
+destructor TpvArchiveZIPFileEntry.Destroy;
+begin
+ FreeAndNil(fStream);
+ inherited Destroy;
 end;
 
 procedure TpvArchiveZIPFileEntry.Assign(aSource:TPersistent);
@@ -436,7 +444,14 @@ begin
   fRequiresZIP64:=Source.fRequiresZIP64;
   fOS:=Source.fOS;
   fSize:=Source.fSize;
-  fStream:=Source.fStream;
+  if assigned(Source.fStream) then begin
+   fStream:=TMemoryStream.Create;
+   Source.fStream.Seek(0,soBeginning);
+   fStream.CopyFrom(Source.fStream,Source.fStream.Size);
+   fStream.Seek(0,soBeginning);
+  end else begin
+   FreeAndNil(fStream);
+  end;
   fSourceArchive:=Source.fSourceArchive;
   fCompressionLevel:=Source.fCompressionLevel;
  end else begin

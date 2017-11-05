@@ -328,6 +328,8 @@ var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     GlyphDistanceFields:TpvSignedDistanceField2DArray;
     PasMPInstance:TPasMP;
     GlyphDistanceFieldJob:PpvFontSignedDistanceFieldJob;
+    UniqueID:string;
+    GUID:TGUID;
 begin
 
  Create(aDevice,aSpriteAtlas,aTrueTypeFont.TargetPPI,aTrueTypeFont.Size);
@@ -524,11 +526,17 @@ begin
         IndirectIntroSort(@SortedGlyphs[0],0,length(SortedGlyphs)-1,CompareVulkanFontGlyphsByArea);
        end;
 
+       CreateGUID(GUID);
+
+       UniqueID:=StringReplace(aTrueTypeFont.FullName,' ','_',[rfReplaceAll])+'_'+
+                 StringReplace(Copy(GUIDToString(GUID),2,36),'-','',[rfReplaceAll])+
+                 IntToHex(TPvUInt64(TpvPtrUInt(self)),SizeOf(TpvPtrUInt) shl 1);
+
        for GlyphIndex:=0 to length(SortedGlyphs)-1 do begin
         Glyph:=SortedGlyphs[GlyphIndex];
         if (Glyph^.Width>0) and (Glyph^.Height>0) then begin
          OtherGlyphIndex:={%H-}((TpvPtrUInt(TpvPointer(Glyph))-TpvPtrUInt(TpvPointer(@fGlyphs[0])))) div SizeOf(TpvFontGlyph);
-         Glyph^.Sprite:=aSpriteAtlas.LoadRawSprite(TpvRawByteString(String('glyph'+IntToStr(OtherGlyphIndex))),
+         Glyph^.Sprite:=aSpriteAtlas.LoadRawSprite(TpvRawByteString(String(UniqueID+IntToHex(TPvUInt64(TpvPtrUInt(Glyph)),SizeOf(TpvPtrUInt) shl 1)+'_glyph'+IntToStr(OtherGlyphIndex))),
                                                    @GlyphDistanceFields[OtherGlyphIndex].Pixels[0],
                                                    Glyph^.Width,
                                                    Glyph^.Height,

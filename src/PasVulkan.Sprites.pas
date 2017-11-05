@@ -331,7 +331,9 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
 
 implementation
 
-uses PasVulkan.SignedDistanceField2D;
+uses PasDblStrUtils,
+     PasVulkan.Archive.ZIP,
+     PasVulkan.SignedDistanceField2D;
 
 const MipMapLevels:array[boolean] of TpvInt32=(1,-1);
 
@@ -1543,8 +1545,135 @@ begin
 end;
 
 procedure TpvSpriteAtlas.SaveToStream(const aStream:TStream);
+var Archive:TpvArchiveZIP;
+    Entry:TpvArchiveZIPFileEntry;
+    XML:TpvXML;
+    XMLRoot:TpvXMLTag;
+    XMLSubTag:TpvXMLTag;
+    Index,SubIndex,SubSubIndex:TpvSizeInt;
+    ArrayTexture:TpvSpriteAtlasArrayTexture;
+    Sprite:TpvSprite;
 begin
+ Archive:=TpvArchiveZIP.Create;
+ try
 
+  Entry:=Archive.FileEntries.AddEntry('sprites.xml');
+  try
+
+   XML:=TpvXML.Create;
+   try
+
+    XMLRoot:=TpvXMLTag.Create;
+    try
+     XMLRoot.Name:='root';
+     XMLRoot.AddParameter('width',TpvRawByteString(IntToStr(fWidth)));
+     XMLRoot.AddParameter('height',TpvRawByteString(IntToStr(fHeight)));
+     XMLRoot.AddParameter('maximumcountarraylayers',TpvRawByteString(IntToStr(fMaximumCountArrayLayers)));
+     XMLRoot.AddParameter('mipmaps',TpvRawByteString(IntToStr(ord(fMipMaps) and 1)));
+     XMLRoot.AddParameter('srgb',TpvRawByteString(IntToStr(ord(fSRGB) and 1)));
+     XMLRoot.AddParameter('countarraytextures',TpvRawByteString(IntToStr(fCountArrayTextures)));
+    finally
+     XML.Root.Add(XMLRoot);
+    end;
+
+    for Index:=0 to fCountArrayTextures-1 do begin
+     ArrayTexture:=fArrayTextures[Index];
+     if assigned(ArrayTexture) then begin
+      XMLSubTag:=TpvXMLTag.Create;
+      try
+       XMLSubTag.Name:='arraytexture';
+       XMLSubTag.AddParameter('id',TpvRawByteString(IntToStr(Index)));
+       XMLSubTag.AddParameter('width',TpvRawByteString(IntToStr(ArrayTexture.fWidth)));
+       XMLSubTag.AddParameter('height',TpvRawByteString(IntToStr(ArrayTexture.fHeight)));
+       XMLSubTag.AddParameter('layers',TpvRawByteString(IntToStr(ArrayTexture.fLayers)));
+       XMLSubTag.AddParameter('counttexels',TpvRawByteString(IntToStr(ArrayTexture.fCountTexels)));
+       XMLSubTag.AddParameter('srgb',TpvRawByteString(IntToStr(ord(ArrayTexture.fSRGB) and 1)));
+       XMLSubTag.AddParameter('specialsizedarraytexture',TpvRawByteString(IntToStr(ord(ArrayTexture.fSpecialSizedArrayTexture) and 1)));
+      finally
+       XMLRoot.Add(XMLSubTag);
+      end;
+     end;
+    end;
+
+    for Index:=0 to fList.Count-1 do begin
+     Sprite:=fList[Index];
+     if assigned(Sprite) then begin
+      XMLSubTag:=TpvXMLTag.Create;
+      try
+       XMLSubTag.Name:='sprite';
+       XMLSubTag.AddParameter('id',IntToStr(Index));
+       XMLSubTag.AddParameter('name',Sprite.fName);
+       SubSubIndex:=0;
+       for SubIndex:=0 to fCountArrayTextures-1 do begin
+        if Sprite.fArrayTexture=fArrayTextures[SubIndex] then begin
+         SubSubIndex:=SubIndex;
+         break;
+        end;
+       end;
+       XMLSubTag.AddParameter('arraytexture',TpvRawByteString(IntToStr(SubSubIndex)));
+       if pvsfSignedDistanceField in Sprite.fFlags then begin
+        XMLSubTag.AddParameter('signeddistancefield','1');
+       end else begin
+        XMLSubTag.AddParameter('signeddistancefield','0');
+       end;
+       if pvsfRotated in Sprite.fFlags then begin
+        XMLSubTag.AddParameter('rotated','1');
+       end else begin
+        XMLSubTag.AddParameter('rotated','0');
+       end;
+       XMLSubTag.AddParameter('x',TpvRawByteString(IntToStr(Sprite.fX)));
+       XMLSubTag.AddParameter('y',TpvRawByteString(IntToStr(Sprite.fY)));
+       XMLSubTag.AddParameter('layer',TpvRawByteString(IntToStr(Sprite.fLayer)));
+       XMLSubTag.AddParameter('width',TpvRawByteString(IntToStr(Sprite.fWidth)));
+       XMLSubTag.AddParameter('height',TpvRawByteString(IntToStr(Sprite.fHeight)));
+       XMLSubTag.AddParameter('trimmedx',TpvRawByteString(IntToStr(Sprite.fTrimmedX)));
+       XMLSubTag.AddParameter('trimmedy',TpvRawByteString(IntToStr(Sprite.fTrimmedY)));
+       XMLSubTag.AddParameter('trimmedwidth',TpvRawByteString(IntToStr(Sprite.fTrimmedWidth)));
+       XMLSubTag.AddParameter('trimmedheight',TpvRawByteString(IntToStr(Sprite.fTrimmedHeight)));
+       XMLSubTag.AddParameter('offsetx',TpvRawByteString(PasDblStrUtils.ConvertDoubleToString(Sprite.fOffsetX)));
+       XMLSubTag.AddParameter('offsety',TpvRawByteString(PasDblStrUtils.ConvertDoubleToString(Sprite.fOffsetY)));
+       XMLSubTag.AddParameter('scalex',TpvRawByteString(PasDblStrUtils.ConvertDoubleToString(Sprite.fScaleX)));
+       XMLSubTag.AddParameter('scaley',TpvRawByteString(PasDblStrUtils.ConvertDoubleToString(Sprite.fScaleY)));
+      finally
+       XMLRoot.Add(XMLSubTag);
+      end;
+     end;
+    end;
+
+    Entry.Stream:=TMemoryStream.Create;
+    XML.Write(Entry.Stream);
+
+   finally
+    XML.Free;
+   end;
+
+  finally
+   Entry.CompressionLevel:=5;
+  end;
+
+  for Index:=0 to fCountArrayTextures-1 do begin
+   ArrayTexture:=fArrayTextures[Index];
+   if assigned(ArrayTexture) then begin
+    for SubIndex:=0 to ArrayTexture.fLayers-1 do begin
+     Entry:=Archive.FileEntries.AddEntry(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png');
+     try
+      Entry.Stream:=TMemoryStream.Create;
+      SavePNGImageAsStream(ArrayTexture.GetTexelPointer(0,0,Index),
+                           ArrayTexture.fWidth,
+                           ArrayTexture.fHeight,
+                           Entry.Stream,
+                           pvppfR8G8B8A8);
+     finally
+      Entry.CompressionLevel:=0;
+     end;
+    end;
+   end;
+  end;
+
+  Archive.SaveToStream(aStream);
+ finally
+  Archive.Free;
+ end;
 end;
 
 procedure TpvSpriteAtlas.SaveToFile(const aFileName:string);

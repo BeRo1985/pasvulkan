@@ -2306,6 +2306,8 @@ begin
                                         pvApplication.VulkanTransferCommandBuffers[0,0],
                                         pvApplication.VulkanTransferCommandBufferFences[0,0]);
 
+//SignedDistanceFieldSpriteAtlas.SaveToFile('testbla.zip');
+
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawFocus(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget);
