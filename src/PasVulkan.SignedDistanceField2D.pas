@@ -1242,6 +1242,9 @@ begin
     case Command.CommandType of
      pvvpctMoveTo:begin
       if assigned(Contour) then begin
+       if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
+        AddLineToPathSegmentArray(Contour^,[LastPoint,StartPoint]);
+       end;
        SetLength(Contour^.PathSegments,Contour^.CountPathSegments);
       end;
       if length(fShape.Contours)<(fShape.CountContours+1) then begin
@@ -1254,6 +1257,13 @@ begin
       StartPoint:=LastPoint;
      end;
      pvvpctLineTo:begin
+      if not assigned(Contour) then begin
+       if length(fShape.Contours)<(fShape.CountContours+1) then begin
+        SetLength(fShape.Contours,(fShape.CountContours+1)*2);
+       end;
+       Contour:=@fShape.Contours[fShape.CountContours];
+       inc(fShape.CountContours);
+      end;
       Point.x:=(Command.x0*Scale)+fOffsetX;
       Point.y:=(Command.y0*Scale)+fOffsetY;
       if assigned(Contour) and not (SameValue(LastPoint.x,Point.x) and SameValue(LastPoint.y,Point.y)) then begin
@@ -1262,6 +1272,13 @@ begin
       LastPoint:=Point;
      end;
      pvvpctQuadraticCurveTo:begin
+      if not assigned(Contour) then begin
+       if length(fShape.Contours)<(fShape.CountContours+1) then begin
+        SetLength(fShape.Contours,(fShape.CountContours+1)*2);
+       end;
+       Contour:=@fShape.Contours[fShape.CountContours];
+       inc(fShape.CountContours);
+      end;
       ControlPoint.x:=(Command.x0*Scale)+fOffsetX;
       ControlPoint.y:=(Command.y0*Scale)+fOffsetY;
       Point.x:=(Command.x1*Scale)+fOffsetX;
@@ -1278,6 +1295,13 @@ begin
       LastPoint:=Point;
      end;
      pvvpctCubicCurveTo:begin
+      if not assigned(Contour) then begin
+       if length(fShape.Contours)<(fShape.CountContours+1) then begin
+        SetLength(fShape.Contours,(fShape.CountContours+1)*2);
+       end;
+       Contour:=@fShape.Contours[fShape.CountContours];
+       inc(fShape.CountContours);
+      end;
       ControlPoint.x:=(Command.x0*Scale)+fOffsetX;
       ControlPoint.y:=(Command.y0*Scale)+fOffsetY;
       OtherControlPoint.x:=(Command.x1*Scale)+fOffsetX;
