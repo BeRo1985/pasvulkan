@@ -163,7 +163,8 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
     TransparentColor:array of TpvUInt16;
     i,rx,ry,y{,BitsPerPixel,ImageLineWidth,ImageSize},StartPass,EndPass,d:TpvInt32;
     idata,DecompressPtr:TpvPointer;
-    idatasize,idatacapacity,idataexpandedsize,LineFilter:TpvUInt32;
+    idatasize,idatacapacity,LineFilter:TpvUInt32;
+    idataexpandedsize:TpvSizeUInt;
     idataexpanded:TpvPointer;
  procedure RaiseError;
  begin
@@ -1160,8 +1161,9 @@ const PNGHeaderTemplate:TPNGHeader=
  end;
 var PNGHeader:PPNGHeader;
     PNGFooter:PPNGFooter;
-    CRC32ChecksumValue,ImageDataSize,RowSize,IDATDataSize,LineIndex,Index,ByteWidth,
+    CRC32ChecksumValue,ImageDataSize,RowSize,LineIndex,Index,ByteWidth,
     InByteIndex,OutByteIndex,FakeEntropy,LineFilterIndex,BestFakeEntropy,BestLineFilterIndex:TpvUInt32;
+    IDATDataSize:TpvSizeUInt;
     ImageData,IDATData:TpvPointer;
 begin
  result:=false;

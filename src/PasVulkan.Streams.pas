@@ -342,12 +342,12 @@ begin
  Source:=@Buffer;
  if assigned(Source) then begin
   while Count>0 do begin
-   BytesToWrite:=fStreamBufferSize-(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
+   BytesToWrite:=fStreamBufferSize-TpvPtrInt(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
    if BytesToWrite<=0 then begin
     Flush;
     inc(fStreamBufferPosition,fStreamBufferSize);
     ReadBufferFromFile;
-    BytesToWrite:=fStreamBufferSize-(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
+    BytesToWrite:=fStreamBufferSize-TpvPtrInt(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
    end;
    if BytesToWrite>Count then begin
     BytesToWrite:=Count;
@@ -362,7 +362,7 @@ begin
     inc(Source,BytesToWrite);
     inc(fStreamBufferPointer,BytesToWrite);
     inc(result,BytesToWrite);
-    CurrentPosition:=fStreamBufferPosition+(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
+    CurrentPosition:=fStreamBufferPosition+TpvPtrInt(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
     if fWrappedStreamSize<CurrentPosition then begin
      fWrappedStreamSize:=CurrentPosition;
     end;
@@ -374,7 +374,7 @@ end;
 function TpvSimpleBufferedStream.Seek(Offset:TpvInt32;Origin:TpvUInt16):TpvInt32;
 var CurrentPosition,Delta:TpvInt64;
 begin
- CurrentPosition:=fStreamBufferPosition+(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
+ CurrentPosition:=fStreamBufferPosition+TpvPtrInt(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
  if (Origin=soFromCurrent) and (Offset=0) then begin
   result:=CurrentPosition;
  end else begin
@@ -404,7 +404,7 @@ begin
    ReadBufferFromFile;
    fStreamBufferPointer:=@fStreamBuffer[Delta];
   end;
-  result:=fStreamBufferPosition+(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
+  result:=fStreamBufferPosition+TpvPtrInt(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
   if fWrappedStreamSize<result then begin
    fWrappedStreamSize:=result;
   end;
@@ -414,7 +414,7 @@ end;
 function TpvSimpleBufferedStream.Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64;
 var CurrentPosition,Delta:TpvInt64;
 begin
- CurrentPosition:=fStreamBufferPosition+(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
+ CurrentPosition:=fStreamBufferPosition+TpvPtrInt(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
  if (Origin=soCurrent) and (Offset=0) then begin
   result:=CurrentPosition;
  end else begin
@@ -444,7 +444,7 @@ begin
    ReadBufferFromFile;
    fStreamBufferPointer:=@fStreamBuffer[Delta];
   end;
-  result:=fStreamBufferPosition+(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
+  result:=fStreamBufferPosition+TpvPtrInt(TpvPtrUInt(fStreamBufferPointer)-TpvPtrUInt(fStreamBuffer));
   if fWrappedStreamSize<result then begin
    fWrappedStreamSize:=result;
   end;

@@ -76,9 +76,9 @@ type PpvDeflateMode=^TpvDeflateMode;
        pvdmSlow
       );
 
-function DoDeflate(const aInData:TpvPointer;const aInLen:TpvUInt32;var aDestData:TpvPointer;var aDestLen:TpvUInt32;const aMode:TpvDeflateMode;const aWithHeader:boolean):boolean;
+function DoDeflate(const aInData:TpvPointer;const aInLen:TpvSizeUInt;var aDestData:TpvPointer;var aDestLen:TpvSizeUInt;const aMode:TpvDeflateMode;const aWithHeader:boolean):boolean;
 
-function DoInflate(InData:TpvPointer;InLen:TpvUInt32;var DestData:TpvPointer;var DestLen:TpvUInt32;ParseHeader:boolean):boolean;
+function DoInflate(InData:TpvPointer;InLen:TpvSizeUInt;var DestData:TpvPointer;var DestLen:TpvSizeUInt;ParseHeader:boolean):boolean;
 
 implementation
 
@@ -166,7 +166,7 @@ begin
  end;
 end;
 
-function DoDeflate(const aInData:TpvPointer;const aInLen:TpvUInt32;var aDestData:TpvPointer;var aDestLen:TpvUInt32;const aMode:TpvDeflateMode;const aWithHeader:boolean):boolean;
+function DoDeflate(const aInData:TpvPointer;const aInLen:TpvSizeUInt;var aDestData:TpvPointer;var aDestLen:TpvSizeUInt;const aMode:TpvDeflateMode;const aWithHeader:boolean):boolean;
 const HashBits=16;
       HashSize=1 shl HashBits;
       HashMask=HashSize-1;
@@ -292,11 +292,12 @@ var OutputBits,CountOutputBits:TpvUInt32;
   DoOutputBits(0,7); // Close block
   DoOutputBits(0,7); // Make sure all bits are flushed
  end;
- function Adler32(const aData:TpvPointer;const aLength:TpvUInt32):TpvUInt32;
+ function Adler32(const aData:TpvPointer;const aLength:TpvSizeUInt):TpvUInt32;
  const Base=65521;
        MaximumCountAtOnce=5552;
  var Buf:PpvRawByteChar;
-     Remain,s1,s2,ToDo,Index:TpvUInt32;
+     Remain,ToDo,Index:TpvSizeUInt;
+     s1,s2:TpvUInt32;
  begin
   s1:=1;
   s2:=0;
@@ -482,7 +483,7 @@ begin
  end;
 end;
 
-function DoInflate(InData:TpvPointer;InLen:TpvUInt32;var DestData:TpvPointer;var DestLen:TpvUInt32;ParseHeader:boolean):boolean;
+function DoInflate(InData:TpvPointer;InLen:TpvSizeUInt;var DestData:TpvPointer;var DestLen:TpvSizeUInt;ParseHeader:boolean):boolean;
 const CLCIndex:array[0..18] of TpvUInt8=(16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15);
 type pword=^TpvUInt16;
      PTree=^TTree;
@@ -521,11 +522,12 @@ var Tag,BitCount,DestSize:TpvUInt32;
    TpvPtrUInt(Dest):=TpvPtrUInt(DestData)+j;
   end;
  end;
- function Adler32(data:TpvPointer;length:TpvUInt32):TpvUInt32;
+ function Adler32(data:TpvPointer;length:TpvSizeUInt):TpvUInt32;
  const BASE=65521;
        NMAX=5552;
  var buf:PpvRawByteChar;
-     s1,s2,k,i:TpvUInt32;
+     s1,s2:TpvUInt32;
+     k,i:TpvSizeUInt;
  begin
   s1:=1;
   s2:=0;

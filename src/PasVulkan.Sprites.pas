@@ -314,6 +314,10 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
        function LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=pvvpfrNonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite; overload;
        function LoadSprite(const aName:TpvRawByteString;aStream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
        function LoadSprites(const aName:TpvRawByteString;aStream:TStream;aSpriteWidth:TpvInt32=64;aSpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprites;
+       procedure LoadFromStream(const aStream:TStream);
+       procedure LoadFromFile(const aFileName:string);
+       procedure SaveToStream(const aStream:TStream);
+       procedure SaveToFile(const aFileName:string);
        property Device:TpvVulkanDevice read fDevice;
        property Count:TpvInt32 read GetCount;
        property Items[Index:TpvInt32]:TpvSprite read GetItem write SetItem;
@@ -1520,6 +1524,38 @@ begin
 
  end;
 
+end;
+
+procedure TpvSpriteAtlas.LoadFromStream(const aStream:TStream);
+begin
+
+end;
+
+procedure TpvSpriteAtlas.LoadFromFile(const aFileName:string);
+var Stream:TStream;
+begin
+ Stream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  LoadFromStream(Stream);
+ finally
+  Stream.Free;
+ end;
+end;
+
+procedure TpvSpriteAtlas.SaveToStream(const aStream:TStream);
+begin
+
+end;
+
+procedure TpvSpriteAtlas.SaveToFile(const aFileName:string);
+var Stream:TStream;
+begin
+ Stream:=TFileStream.Create(aFileName,fmCreate);
+ try
+  SaveToStream(Stream);
+ finally
+  Stream.Free;
+ end;
 end;
 
 end.
