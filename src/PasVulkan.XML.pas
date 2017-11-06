@@ -210,10 +210,13 @@ type EpvXML=class(Exception);
        procedure SetText(AText:TpvRawByteString);
      end;
 
+     TpvXMLTagParameterHashMap=TpvStringHashMap<TpvXMLParameter>;
+
      TpvXMLTag=class(TpvXMLItem)
       public
        Name:TpvRawByteString;
        Parameter:array of TpvXMLParameter;
+       ParameterHashMap:TpvXMLTagParameterHashMap;
        IsAloneTag:boolean;
        constructor Create; override;
        destructor Destroy; override;
@@ -954,11 +957,13 @@ begin
  inherited Create;
  Name:='';
  Parameter:=nil;
+ ParameterHashMap:=TpvXMLTagParameterHashMap.Create(nil);
 end;
 
 destructor TpvXMLTag.Destroy;
 begin
  Clear;
+ FreeAndNil(ParameterHashMap);
  inherited Destroy;
 end;
 
@@ -966,6 +971,7 @@ procedure TpvXMLTag.Clear;
 var Counter:TpvInt32;
 begin
  inherited Clear;
+ ParameterHashMap.Clear;
  for Counter:=0 to length(Parameter)-1 do begin
   Parameter[Counter].Free;
  end;
@@ -990,27 +996,19 @@ begin
 end;
 
 function TpvXMLTag.FindParameter(ParameterName:TpvRawByteString):TpvXMLParameter;
-var i:TpvInt32;
 begin
- for i:=0 to length(Parameter)-1 do begin
-  if Parameter[i].Name=ParameterName then begin
-   result:=Parameter[i];
-   exit;
-  end;
- end;
- result:=nil;
+ result:=ParameterHashMap[ParameterName];
 end;
 
 function TpvXMLTag.GetParameter(ParameterName:TpvRawByteString;default:TpvRawByteString=''):TpvRawByteString;
-var i:TpvInt32;
+var Parameter:TpvXMLParameter;
 begin
- for i:=0 to length(Parameter)-1 do begin
-  if Parameter[i].Name=ParameterName then begin
-   result:=Parameter[i].Value;
-   exit;
-  end;
+ Parameter:=FindParameter(ParameterName);
+ if assigned(Parameter) then begin
+  result:=Parameter.Value;
+ end else begin
+  result:=Default;
  end;
- result:=default;
 end;
 
 function TpvXMLTag.AddParameter(AParameter:TpvXMLParameter):boolean;
@@ -1020,6 +1018,7 @@ begin
   Index:=length(Parameter);
   SetLength(Parameter,Index+1);
   Parameter[Index]:=AParameter;
+  ParameterHashMap.Add(AParameter.Name,AParameter);
   result:=true;
  except
   result:=false;
@@ -1051,6 +1050,7 @@ begin
    Parameter[Counter]:=Parameter[Counter+1];
   end;
   SetLength(Parameter,length(Parameter)-1);
+  ParameterHashMap.Delete(AParameter.Name);
   AParameter.Free;
   result:=true;
  end;
