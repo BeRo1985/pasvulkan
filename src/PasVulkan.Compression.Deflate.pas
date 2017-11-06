@@ -512,64 +512,71 @@ end;
 
 function DoInflate(InData:TpvPointer;InLen:TpvSizeUInt;var DestData:TpvPointer;var DestLen:TpvSizeUInt;ParseHeader:boolean):boolean;
 {$if defined(fpc) and defined(Android)}
-const OutChunkSize=4096;
+const OutChunkSize=65536;
 var d_stream:z_stream;
     r:TpvInt32;
     Allocated,Have:TpvSizeUInt;
-    OutChunk:pointer;
 begin
+ result:=false;
  DestLen:=0;
  Allocated:=0;
  DestData:=nil;
- GetMem(OutChunk,OutChunkSize);
- try
-  FillChar(d_stream,SizeOf(z_stream),AnsiChar(#0));
-  d_stream.next_in:=InData;
-  d_stream.avail_in:=InLen;
-  if ParseHeader then begin
-   r:=inflateInit(d_stream);
-  end else begin
-   r:=inflateInit2(d_stream,-15{MAX_WBITS});
-  end;
-  if r<>Z_OK then begin
-   FreeMem(DestData);
-   DestData:=nil;
-   result:=false;
-   exit;
-  end;
-  repeat
-   repeat
-    d_stream.next_out:=OutChunk;
-    d_stream.avail_out:=OutChunkSize;
-    r:=Inflate(d_stream,Z_NO_FLUSH);
-    if r<Z_OK then begin
-     InflateEnd(d_stream);
-     FreeMem(DestData);
-     DestData:=nil;
-     result:=false;
-     exit;
-    end;
-    Have:=OutChunkSize-d_stream.avail_out;
-    if Have>0 then begin
-     if Allocated<(DestLen+Have) then begin
-      Allocated:=(DestLen+Have) shl 1;
-      if assigned(DestData) then begin
-       ReallocMem(DestData,Allocated);
-      end else begin
-       GetMem(DestData,Allocated);
-      end;
-     end;
-     Move(OutChunk^,PpvUInt8Array(DestData)^[DestLen],Have);
-     inc(DestLen,Have);
-    end;
-   until d_stream.avail_out<>0;
-  until r=Z_STREAM_END;
-  ReallocMem(DestData,DestLen);
-  InflateEnd(d_stream);
- finally
-  FreeMem(OutChunk);
+ FillChar(d_stream,SizeOf(z_stream),AnsiChar(#0));
+ d_stream.next_in:=InData;
+ d_stream.avail_in:=InLen;
+ if ParseHeader then begin
+  r:=inflateInit(d_stream);
+ end else begin
+  r:=inflateInit2(d_stream,-15{MAX_WBITS});
  end;
- result:=true;
+ try
+  if r=Z_OK then begin
+   try
+    Allocated:=RoundUpToPowerOfTwo(InLen);
+    if Allocated<OutChunkSize then begin
+     Allocated:=OutChunkSize;
+    end;
+    GetMem(DestData,Allocated);
+    repeat
+     repeat
+      if Allocated<(DestLen+OutChunkSize) then begin
+       Allocated:=RoundUpToPowerOfTwo(DestLen+OutChunkSize);
+       if assigned(DestData) then begin
+        ReallocMem(DestData,Allocated);
+       end else begin
+        GetMem(DestData,Allocated);
+       end;
+      end;
+      d_stream.next_out:=@PpvUInt8Array(DestData)^[DestLen];
+      d_stream.avail_out:=OutChunkSize;
+      r:=Inflate(d_stream,Z_NO_FLUSH);
+      if r<Z_OK then begin
+       break;
+      end;
+      if d_stream.avail_out<OutChunkSize then begin
+       inc(DestLen,OutChunkSize-d_stream.avail_out);
+      end;
+     until d_stream.avail_out<>0;
+    until (r<Z_OK) or (r=Z_STREAM_END);
+   finally
+    InflateEnd(d_stream);
+   end;
+  end;
+ finally
+  if (r=Z_OK) or (r=Z_STREAM_END) then begin
+   if assigned(DestData) then begin
+    ReallocMem(DestData,DestLen);
+   end else begin
+    DestLen:=0;
+   end;
+   result:=true;
+  end else begin
+   if assigned(DestData) then begin
+    FreeMem(DestData);
+   end;
+   DestData:=nil;
+  end;
+ enD;
 end;
 {$else}
 const CLCIndex:array[0..18] of TpvUInt8=(16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15);
