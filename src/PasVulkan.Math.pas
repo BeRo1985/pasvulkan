@@ -396,6 +396,8 @@ type PpvScalar=^TpvScalar;
       Latitude:TpvScalar;
      end;
 
+     TpvVector2Array=array of TpvVector2;
+
      TpvVector3Array=array of TpvVector3;
 
      PpvVector3s=^TpvVector3s;

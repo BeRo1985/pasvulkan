@@ -76,7 +76,8 @@ uses
   UnitScreenExampleCube in 'UnitScreenExampleCube.pas',
   UnitScreenExampleDragon in 'UnitScreenExampleDragon.pas',
   UnitScreenExampleCanvas in 'UnitScreenExampleCanvas.pas',
-  UnitScreenExampleGUI in 'UnitScreenExampleGUI.pas';
+  UnitScreenExampleGUI in 'UnitScreenExampleGUI.pas',
+  PasVulkan.ConvexHullGenerator2D in '..\src\PasVulkan.ConvexHullGenerator2D.pas';
 
 // {$if defined(fpc) and defined(android)}
 

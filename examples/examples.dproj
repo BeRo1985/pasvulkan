@@ -255,6 +255,7 @@
         <DCCReference Include="UnitScreenExampleDragon.pas"/>
         <DCCReference Include="UnitScreenExampleCanvas.pas"/>
         <DCCReference Include="UnitScreenExampleGUI.pas"/>
+        <DCCReference Include="..\src\PasVulkan.ConvexHullGenerator2D.pas"/>
         <None Include="..\src\PasVulkan.inc"/>
         <None Include="..\src\PasVulkan.Applicaton.SDL2.inc"/>
         <None Include="..\src\PasVulkanAssets.inc"/>
