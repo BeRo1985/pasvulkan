@@ -79,14 +79,15 @@ type PpvDeflateMode=^TpvDeflateMode;
 
 function DoDeflate(const aInData:TpvPointer;const aInLen:TpvSizeUInt;var aDestData:TpvPointer;var aDestLen:TpvSizeUInt;const aMode:TpvDeflateMode;const aWithHeader:boolean):boolean;
 
-function DoInflate(InData:TpvPointer;InLen:TpvSizeUInt;var DestData:TpvPointer;var DestLen:TpvSizeUInt;ParseHeader:boolean):boolean;
+function DoInflate(const aInData:TpvPointer;aInLen:TpvSizeUInt;var aDestData:TpvPointer;var aDestLen:TpvSizeUInt;const aParseHeader:boolean):boolean;
 
 implementation
 
-{$if defined(fpc) and defined(Android)}
+{$if defined(fpc) and (defined(Linux) or defined(Android))}
 uses zlib;
 {$ifend}
 
+{$if not (defined(fpc) and (defined(Linux) or defined(Android)))}
 const LengthCodes:array[0..28,0..3] of TpvUInt32=
        ( // Code, ExtraBits, Min, Max
         (257,0,3,3),
@@ -170,8 +171,84 @@ begin
   end;
  end;
 end;
+{$ifend}
 
 function DoDeflate(const aInData:TpvPointer;const aInLen:TpvSizeUInt;var aDestData:TpvPointer;var aDestLen:TpvSizeUInt;const aMode:TpvDeflateMode;const aWithHeader:boolean):boolean;
+{$if defined(fpc) and (defined(Linux) or defined(Android))}
+const OutChunkSize=65536;
+var d_stream:z_stream;
+    r,Level:TpvInt32;
+    Allocated,Have:TpvSizeUInt;
+begin
+ result:=false;
+ aDestLen:=0;
+ Allocated:=0;
+ aDestData:=nil;
+ FillChar(d_stream,SizeOf(z_stream),AnsiChar(#0));
+ case aMode of
+  pvdmVeryFast:begin
+   Level:=1;
+  end;
+  pvdmFast:begin
+   Level:=5;
+  end;
+  pvdmMedium:begin
+   Level:=-1;
+  end;
+  pvdmSlow:begin
+   Level:=9;
+  end;
+  else begin
+   Level:=9;
+  end;
+ end;
+ if aWithHeader then begin
+  r:=deflateInit(d_stream,Level);
+ end else begin
+  r:=deflateInit2(d_stream,Level,Z_DEFLATED,-15{MAX_WBITS},9{Z_MEM_LEVEL},Z_DEFAULT_STRATEGY);
+ end;
+ try
+  if r=Z_OK then begin
+   try
+    d_stream.next_in:=aInData;
+    d_stream.avail_in:=aInLen;
+    Allocated:=deflateBound(d_stream,aInLen);
+    if Allocated<RoundUpToPowerOfTwo(aInLen) then begin
+     Allocated:=RoundUpToPowerOfTwo(aInLen);
+    end;
+    if Allocated<OutChunkSize then begin
+     Allocated:=OutChunkSize;
+    end;
+    GetMem(aDestData,Allocated);
+    d_stream.next_out:=aDestData;
+    d_stream.avail_out:=Allocated;
+    r:=deflate(d_stream,Z_FINISH);
+    aDestLen:=d_stream.total_out;
+   finally
+    if r=Z_STREAM_END then begin
+     r:=deflateEnd(d_stream);
+    end else begin
+     deflateEnd(d_stream);
+    end;
+   end;
+  end;
+ finally
+  if (r=Z_OK) or (r=Z_STREAM_END) then begin
+   if assigned(aDestData) then begin
+    ReallocMem(aDestData,aDestLen);
+   end else begin
+    aDestLen:=0;
+   end;
+   result:=true;
+  end else begin
+   if assigned(aDestData) then begin
+    FreeMem(aDestData);
+   end;
+   aDestData:=nil;
+  end;
+ end;
+end;
+{$else}
 const HashBits=16;
       HashSize=1 shl HashBits;
       HashMask=HashSize-1;
@@ -360,6 +437,7 @@ begin
    end;
    else begin
     MaxSteps:=128;
+    SkipStrength:=32;
    end;
   end;
   OutputBits:=0;
@@ -509,22 +587,23 @@ begin
   end;
  end;
 end;
+{$ifend}
 
-function DoInflate(InData:TpvPointer;InLen:TpvSizeUInt;var DestData:TpvPointer;var DestLen:TpvSizeUInt;ParseHeader:boolean):boolean;
-{$if defined(fpc) and defined(Android)}
+function DoInflate(const aInData:TpvPointer;aInLen:TpvSizeUInt;var aDestData:TpvPointer;var aDestLen:TpvSizeUInt;const aParseHeader:boolean):boolean;
+{$if defined(fpc) and (defined(Linux) or defined(Android))}
 const OutChunkSize=65536;
 var d_stream:z_stream;
     r:TpvInt32;
     Allocated,Have:TpvSizeUInt;
 begin
  result:=false;
- DestLen:=0;
+ aDestLen:=0;
  Allocated:=0;
- DestData:=nil;
+ aDestData:=nil;
  FillChar(d_stream,SizeOf(z_stream),AnsiChar(#0));
- d_stream.next_in:=InData;
- d_stream.avail_in:=InLen;
- if ParseHeader then begin
+ d_stream.next_in:=aInData;
+ d_stream.avail_in:=aInLen;
+ if aParseHeader then begin
   r:=inflateInit(d_stream);
  end else begin
   r:=inflateInit2(d_stream,-15{MAX_WBITS});
@@ -532,51 +611,55 @@ begin
  try
   if r=Z_OK then begin
    try
-    Allocated:=RoundUpToPowerOfTwo(InLen);
+    Allocated:=RoundUpToPowerOfTwo(aInLen);
     if Allocated<OutChunkSize then begin
      Allocated:=OutChunkSize;
     end;
-    GetMem(DestData,Allocated);
+    GetMem(aDestData,Allocated);
     repeat
      repeat
-      if Allocated<(DestLen+OutChunkSize) then begin
-       Allocated:=RoundUpToPowerOfTwo(DestLen+OutChunkSize);
-       if assigned(DestData) then begin
-        ReallocMem(DestData,Allocated);
+      if Allocated<(aDestLen+OutChunkSize) then begin
+       Allocated:=RoundUpToPowerOfTwo(aDestLen+OutChunkSize);
+       if assigned(aDestData) then begin
+        ReallocMem(aDestData,Allocated);
        end else begin
-        GetMem(DestData,Allocated);
+        GetMem(aDestData,Allocated);
        end;
       end;
-      d_stream.next_out:=@PpvUInt8Array(DestData)^[DestLen];
+      d_stream.next_out:=@PpvUInt8Array(aDestData)^[aDestLen];
       d_stream.avail_out:=OutChunkSize;
       r:=Inflate(d_stream,Z_NO_FLUSH);
       if r<Z_OK then begin
        break;
       end;
       if d_stream.avail_out<OutChunkSize then begin
-       inc(DestLen,OutChunkSize-d_stream.avail_out);
+       inc(aDestLen,OutChunkSize-d_stream.avail_out);
       end;
      until d_stream.avail_out<>0;
     until (r<Z_OK) or (r=Z_STREAM_END);
    finally
-    InflateEnd(d_stream);
+    if r=Z_STREAM_END then begin
+     r:=InflateEnd(d_stream);
+    end else begin
+     InflateEnd(d_stream);
+    end;
    end;
   end;
  finally
   if (r=Z_OK) or (r=Z_STREAM_END) then begin
-   if assigned(DestData) then begin
-    ReallocMem(DestData,DestLen);
+   if assigned(aDestData) then begin
+    ReallocMem(aDestData,aDestLen);
    end else begin
-    DestLen:=0;
+    aDestLen:=0;
    end;
    result:=true;
   end else begin
-   if assigned(DestData) then begin
-    FreeMem(DestData);
+   if assigned(aDestData) then begin
+    FreeMem(aDestData);
    end;
-   DestData:=nil;
+   aDestData:=nil;
   end;
- enD;
+ end;
 end;
 {$else}
 const CLCIndex:array[0..18] of TpvUInt8=(16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15);
@@ -605,16 +688,16 @@ var Tag,BitCount,DestSize:TpvUInt32;
  procedure IncSize(length:TpvUInt32);
  var j:TpvUInt32;
  begin
-  if (DestLen+length)>=DestSize then begin
+  if (aDestLen+length)>=DestSize then begin
    if DestSize=0 then begin
     DestSize:=1;
    end;
-   while (DestLen+length)>=DestSize do begin
+   while (aDestLen+length)>=DestSize do begin
     inc(DestSize,DestSize);
    end;
-   j:=TpvPtrUInt(Dest)-TpvPtrUInt(DestData);
-   ReAllocMem(DestData,DestSize);
-   TpvPtrUInt(Dest):=TpvPtrUInt(DestData)+j;
+   j:=TpvPtrUInt(Dest)-TpvPtrUInt(aDestData);
+   ReAllocMem(aDestData,DestSize);
+   TpvPtrUInt(Dest):=TpvPtrUInt(aDestData)+j;
   end;
  end;
  function Adler32(data:TpvPointer;length:TpvSizeUInt):TpvUInt32;
@@ -838,7 +921,7 @@ var Tag,BitCount,DestSize:TpvUInt32;
     IncSize(1);
     Dest^:=TpvRawByteChar(TpvUInt8(Symbol));
     inc(Dest);
-    inc(DestLen);
+    inc(aDestLen);
    end else begin
     dec(Symbol,257);
     Length:=ReadBits(LengthBits^[Symbol],LengthBase^[Symbol]);
@@ -849,7 +932,7 @@ var Tag,BitCount,DestSize:TpvUInt32;
      Dest[i]:=Dest[i-Offset];
     end;
     inc(Dest,Length);
-    inc(DestLen,Length);
+    inc(aDestLen,Length);
    end;
   end;
  end;
@@ -870,7 +953,7 @@ var Tag,BitCount,DestSize:TpvUInt32;
    inc(Dest,Length);
   end;
   BitCount:=0;
-  inc(DestLen,Length);
+  inc(aDestLen,Length);
   result:=true;
  end;
  function InflateFixedBlock:boolean;
@@ -917,30 +1000,30 @@ var Tag,BitCount,DestSize:TpvUInt32;
      a32:TpvUInt32;
  begin
   result:=false;
-  Source:=InData;
+  Source:=aInData;
   cmf:=TpvUInt8(Source[0]);
   flg:=TpvUInt8(Source[1]);
   if ((((cmf shl 8)+flg) mod 31)<>0) or ((cmf and $f)<>8) or ((cmf shr 4)>7) or ((flg and $20)<>0) then begin
    exit;
   end;
-  a32:=(TpvUInt8(Source[InLen-4]) shl 24) or (TpvUInt8(Source[InLen-3]) shl 16) or (TpvUInt8(Source[InLen-2]) shl 8) or (TpvUInt8(Source[InLen-1]) shl 0);
+  a32:=(TpvUInt8(Source[aInLen-4]) shl 24) or (TpvUInt8(Source[aInLen-3]) shl 16) or (TpvUInt8(Source[aInLen-2]) shl 8) or (TpvUInt8(Source[aInLen-1]) shl 0);
   inc(Source,2);
-  dec(InLen,6);
-  SourceEnd:=@Source[InLen];
+  dec(aInLen,6);
+  SourceEnd:=@Source[aInLen];
   result:=Uncompress;
   if not result then begin
    exit;
   end;
-  result:=Adler32(DestData,DestLen)=a32;
+  result:=Adler32(aDestData,aDestLen)=a32;
  end;
  function UncompressDirect:boolean;
  begin
-  Source:=InData;
-  SourceEnd:=@Source[InLen];
+  Source:=aInData;
+  SourceEnd:=@Source[aInLen];
   result:=Uncompress;
  end;
 begin
- DestData:=nil;
+ aDestData:=nil;
  LengthBits:=nil;
  DistanceBits:=nil;
  LengthBase:=nil;
@@ -977,20 +1060,20 @@ begin
     LengthBase^[28]:=258;
    end;
    begin
-    GetMem(DestData,4096);
+    GetMem(aDestData,4096);
     DestSize:=4096;
-    Dest:=DestData;
-    DestLen:=0;
-    if ParseHeader then begin
+    Dest:=aDestData;
+    aDestLen:=0;
+    if aParseHeader then begin
      result:=UncompressZLIB;
     end else begin
      result:=UncompressDirect;
     end;
     if result then begin
-     ReAllocMem(DestData,DestLen);
-    end else if assigned(DestData) then begin
-     FreeMem(DestData);
-     DestData:=nil;
+     ReAllocMem(aDestData,aDestLen);
+    end else if assigned(aDestData) then begin
+     FreeMem(aDestData);
+     aDestData:=nil;
     end;
    end;
   finally
@@ -1025,6 +1108,8 @@ begin
 end;
 {$ifend}
 
+{$if not (defined(fpc) and (defined(Linux) or defined(Android)))}
 initialization
  InitializeLookUpTables;
+{$ifend}
 end.
