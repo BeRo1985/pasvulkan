@@ -660,6 +660,7 @@ var CodePointIndex,BitmapCodePointIndex:TpvUInt32;
     Glyph:PpvFontGlyph;
     CodePointGlyphPair:PpvFontCodePointGlyphPair;
     KerningPair:PpvFontKerningPair;
+    KerningPairDoubleIndex:TpvUInt64;
 begin
 
  XML:=TpvXML.Create;
@@ -755,6 +756,24 @@ begin
    end;
   finally
    SetLength(fCodePointGlyphPairs,CountCodePointGlyphPairs);
+  end;
+
+  for XMLKerningPairTag in XMLRootTag.FindTags('kerningpair') do begin
+   KerningPairIndex:=StrToInt(String(XMLKerningPairTag.GetParameter('id')));
+   if (KerningPairIndex<0) or (KerningPairIndex>=length(fKerningPairs)) then begin
+    raise EpvFont.Create('Kerning pair index out of range');
+   end;
+   KerningPair:=@fKerningPairs[KerningPairIndex];
+   KerningPair^.Left:=StrToInt(String(XMLKerningPairTag.GetParameter('left')));
+   KerningPair^.Right:=StrToInt(String(XMLKerningPairTag.GetParameter('right')));
+   KerningPair^.Horizontal:=StrToInt(String(XMLKerningPairTag.GetParameter('horizontal')));
+   KerningPair^.Vertical:=StrToInt(String(XMLKerningPairTag.GetParameter('vertical')));
+   fKerningPairVectors[KerningPairIndex]:=TpvVector2.Create(KerningPair^.Horizontal,KerningPair^.Vertical);
+   KerningPairDoubleIndex:=CombineTwoUInt32IntoOneUInt64(KerningPair^.Left,KerningPair^.Right);
+   if fKerningPairHashMap.ExistKey(KerningPairDoubleIndex) then begin
+    raise EpvFont.Create('Duplicate kerning pair');
+   end;
+   fKerningPairHashMap.Add(KerningPairDoubleIndex,KerningPairIndex);
   end;
 
  finally
