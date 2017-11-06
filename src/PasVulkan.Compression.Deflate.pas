@@ -64,6 +64,7 @@ interface
 uses SysUtils,
      Classes,
      Math,
+     PasVulkan.Math,
      PasVulkan.Types;
 
 type PpvDeflateMode=^TpvDeflateMode;
@@ -81,6 +82,10 @@ function DoDeflate(const aInData:TpvPointer;const aInLen:TpvSizeUInt;var aDestDa
 function DoInflate(InData:TpvPointer;InLen:TpvSizeUInt;var DestData:TpvPointer;var DestLen:TpvSizeUInt;ParseHeader:boolean):boolean;
 
 implementation
+
+{$if defined(fpc) and defined(Android)}
+uses zlib;
+{$ifend}
 
 const LengthCodes:array[0..28,0..3] of TpvUInt32=
        ( // Code, ExtraBits, Min, Max
@@ -506,6 +511,67 @@ begin
 end;
 
 function DoInflate(InData:TpvPointer;InLen:TpvSizeUInt;var DestData:TpvPointer;var DestLen:TpvSizeUInt;ParseHeader:boolean):boolean;
+{$if defined(fpc) and defined(Android)}
+const OutChunkSize=4096;
+var d_stream:z_stream;
+    r:TpvInt32;
+    Allocated,Have:TpvSizeUInt;
+    OutChunk:pointer;
+begin
+ DestLen:=0;
+ Allocated:=0;
+ DestData:=nil;
+ GetMem(OutChunk,OutChunkSize);
+ try
+  FillChar(d_stream,SizeOf(z_stream),AnsiChar(#0));
+  d_stream.next_in:=InData;
+  d_stream.avail_in:=InLen;
+  if ParseHeader then begin
+   r:=inflateInit(d_stream);
+  end else begin
+   r:=inflateInit2(d_stream,-15{MAX_WBITS});
+  end;
+  if r<>Z_OK then begin
+   FreeMem(DestData);
+   DestData:=nil;
+   result:=false;
+   exit;
+  end;
+  repeat
+   repeat
+    d_stream.next_out:=OutChunk;
+    d_stream.avail_out:=OutChunkSize;
+    r:=Inflate(d_stream,Z_NO_FLUSH);
+    if r<Z_OK then begin
+     InflateEnd(d_stream);
+     FreeMem(DestData);
+     DestData:=nil;
+     result:=false;
+     exit;
+    end;
+    Have:=OutChunkSize-d_stream.avail_out;
+    if Have>0 then begin
+     if Allocated<(DestLen+Have) then begin
+      Allocated:=(DestLen+Have) shl 1;
+      if assigned(DestData) then begin
+       ReallocMem(DestData,Allocated);
+      end else begin
+       GetMem(DestData,Allocated);
+      end;
+     end;
+     Move(OutChunk^,PpvUInt8Array(DestData)^[DestLen],Have);
+     inc(DestLen,Have);
+    end;
+   until d_stream.avail_out<>0;
+  until r=Z_STREAM_END;
+  ReallocMem(DestData,DestLen);
+  InflateEnd(d_stream);
+ finally
+  FreeMem(OutChunk);
+ end;
+ result:=true;
+end;
+{$else}
 const CLCIndex:array[0..18] of TpvUInt8=(16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15);
 type pword=^TpvUInt16;
      PTree=^TTree;
@@ -950,6 +1016,7 @@ begin
   result:=false;
  end;
 end;
+{$ifend}
 
 initialization
  InitializeLookUpTables;
