@@ -221,6 +221,7 @@
         <DCCReference Include="..\src\PasVulkan.Assets.pas"/>
         <DCCReference Include="..\src\PasVulkan.Compression.Deflate.pas"/>
         <DCCReference Include="..\src\PasVulkan.Archive.ZIP.pas"/>
+        <DCCReference Include="..\src\PasVulkan.Image.PNG.ExternalLibrary.pas"/>
         <DCCReference Include="..\src\PasVulkan.Image.PNG.pas"/>
         <DCCReference Include="..\src\PasVulkan.Image.BMP.pas"/>
         <DCCReference Include="..\src\PasVulkan.Image.JPEG.pas"/>

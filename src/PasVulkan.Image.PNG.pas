@@ -87,6 +87,8 @@ function SavePNGImageAsFile(const aImageData:TpvPointer;const aImageWidth,aImage
 
 implementation
 
+uses PasVulkan.Image.PNG.ExternalLibrary;
+
 function CRC32(const aData:TpvPointer;const aLength:TpvUInt32):TpvUInt32;
 const CRC32Table:array[0..15] of TpvUInt32=($00000000,$1db71064,$3b6e20c8,$26d930ac,$76dc4190,
                                             $6b6b51f4,$4db26158,$5005713c,$edb88320,$f00f9344,
@@ -111,7 +113,238 @@ begin
  end;
 end;
 
+{$if defined(fpc) and defined(Android)}
+type POwnStream=^TOwnStream;
+     TOwnStream=record
+      Data:pointer;
+     end;
+
+procedure PNGReadData(png_ptr:png_structp;OutData:png_bytep;Bytes:png_size_t); cdecl;
+var p:POwnStream;
+begin
+ p:=png_get_io_ptr(png_ptr);
+ Move(p^.Data^,OutData^,Bytes);
+ inc(p^.Data,Bytes);
+end;
+{$ifend}
+
 function LoadPNGImage(DataPointer:TpvPointer;DataSize:TpvUInt32;var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32;const HeaderOnly:boolean;var PixelFormat:TpvPNGPixelFormat):boolean;
+{$if defined(fpc) and defined(Android)}
+const kPngSignatureLength=8;
+var png_ptr:png_structp;
+    info_ptr:png_infop;
+    Stream:TOwnStream;
+    Width,Height,BytesPerRow:TpvUInt32;
+    BitDepth,ColorType,x,y,NumPasses,Pass:TpvInt32;
+    Row,Src,Dst:PpvUInt8;
+    Src16,Dst16:PpvUInt16;
+    color:png_colorp;
+    Value:byte;
+begin
+
+ result:=false;
+
+ if png_sig_cmp(DataPointer,0,8)<>0 then begin
+  exit;
+ end;
+
+ png_ptr:=png_create_read_struct(PNG_LIBPNG_VER_STRING,nil,nil,nil);
+ if not assigned(png_ptr) then begin
+  exit;
+ end;
+
+ info_Ptr:=png_create_info_struct(png_Ptr);
+ if not assigned(info_ptr) then begin
+  png_destroy_read_struct(@png_Ptr,nil,nil);
+  exit;
+ end;
+
+ Stream.Data:=@PAnsiChar(DataPointer)[0];
+
+ png_set_read_fn(png_ptr,@Stream,PNGReadData);
+
+//png_set_sig_bytes(png_ptr,kPngSignatureLength);
+
+ png_read_info(png_ptr,info_ptr);
+
+ Width:=0;
+ Height:=0;
+ BitDepth:=0;
+ ColorType:=-1;
+ if png_get_IHDR(png_ptr,info_ptr,@Width,@Height,@BitDepth,@ColorType,nil,nil,nil)<>1 then begin
+  png_destroy_read_struct(@png_Ptr,nil,nil);
+  exit;
+ end;
+
+ ImageWidth:=Width;
+ ImageHeight:=Height;
+
+ if ColorType in [PNG_COLOR_TYPE_GRAY,
+                  PNG_COLOR_TYPE_GRAY_ALPHA,
+                  PNG_COLOR_TYPE_PALETTE,
+                  PNG_COLOR_TYPE_RGB,
+                  PNG_COLOR_TYPE_RGBA] then begin
+  png_set_packing(png_ptr);
+  if (ColorType=PNG_COLOR_TYPE_PALETTE) or
+     ((ColorType=PNG_COLOR_TYPE_GRAY) and (BitDepth<8)) or
+     (png_get_valid(png_ptr,info_ptr,PNG_INFO_tRNS)=PNG_INFO_tRNS) then begin
+   png_set_expand(png_ptr);
+  end;
+  png_set_gray_to_rgb(png_ptr);
+  png_set_filler(png_ptr,$ff,PNG_FILLER_AFTER);
+  png_read_update_info(png_ptr,info_ptr);
+  if png_get_IHDR(png_ptr,info_ptr,@Width,@Height,@BitDepth,@ColorType,nil,nil,nil)<>1 then begin
+   png_destroy_read_struct(@png_Ptr,nil,nil);
+   exit;
+  end;
+  case BitDepth of
+   16:begin
+    PixelFormat:=pvppfR16G16B16A16;
+   end;
+   else begin
+    PixelFormat:=pvppfR8G8B8A8;
+   end;
+  end;
+  if not HeaderOnly then begin
+   case BitDepth of
+    16:begin
+     GetMem(ImageData,ImageWidth*ImageHeight*8);
+    end;
+    else begin
+     GetMem(ImageData,ImageWidth*ImageHeight*4);
+    end;
+   end;
+   BytesPerRow:=png_get_rowbytes(png_ptr,info_ptr);
+   GetMem(Row,BytesPerRow*2);
+   NumPasses:=png_set_interlace_handling(png_ptr);
+   for Pass:=1 to NumPasses do begin
+    case ColorType of
+     PNG_COLOR_TYPE_GRAY:begin
+      case BitDepth of
+       8:begin
+        Dst:=ImageData;
+        for y:=0 to ImageHeight-1 do begin
+         png_read_row(png_ptr,pointer(Row),nil);
+         Src:=Row;
+         for x:=0 to ImageWidth-1 do begin
+          Value:=Src^;
+          inc(Src);
+          Dst^:=Value;
+          inc(Dst);
+          Dst^:=Value;
+          inc(Dst);
+          Dst^:=Value;
+          inc(Dst);
+          Dst^:=$ff;
+          inc(Dst);
+         end;
+        end;
+       end;
+       16:begin
+        Dst16:=ImageData;
+        for y:=0 to ImageHeight-1 do begin
+         png_read_row(png_ptr,pointer(Row),nil);
+         Src16:=pointer(Row);
+         for x:=0 to ImageWidth-1 do begin
+          Value:=Src16^;
+          inc(Src16);
+          Dst16^:=Value;
+          inc(Dst16);
+          Dst16^:=Value;
+          inc(Dst16);
+          Dst16^:=Value;
+          inc(Dst16);
+          Dst16^:=$ffff;
+          inc(Dst16);
+         end;
+        end;
+       end;
+       else begin
+        png_destroy_read_struct(@png_Ptr,nil,nil);
+        exit;
+       end;
+      end;
+     end;
+     PNG_COLOR_TYPE_GRAY_ALPHA:begin
+      Dst:=ImageData;
+      for y:=0 to ImageHeight-1 do begin
+       png_read_row(png_ptr,pointer(Row),nil);
+       Src:=Row;
+       for x:=0 to ImageWidth-1 do begin
+        Dst^:=Src^;
+        inc(Dst);
+        Dst^:=Src^;
+        inc(Dst);
+        Dst^:=Src^;
+        inc(Dst);
+        inc(Src);
+        Dst^:=Src^;
+        inc(Dst);
+        inc(Src);
+       end;
+      end;
+     end;
+     PNG_COLOR_TYPE_PALETTE:begin
+      Dst:=ImageData;
+      for y:=0 to ImageHeight-1 do begin
+       png_read_row(png_ptr,pointer(Row),nil);
+       Src:=Row;
+       for x:=0 to ImageWidth-1 do begin
+        color:=info_ptr^.palette;
+        inc(color,Src^);
+        inc(Src);
+        Dst^:=color^.red;
+        inc(Dst);
+        Dst^:=color^.green;
+        inc(Dst);
+        Dst^:=color^.blue;
+        inc(Dst);
+        Dst^:=$ff;
+        inc(Dst);
+       end;
+      end;
+     end;
+     PNG_COLOR_TYPE_RGB,PNG_COLOR_TYPE_RGBA:begin
+      case BitDepth of
+       8:begin
+        Dst:=ImageData;
+        for y:=0 to ImageHeight-1 do begin
+         png_read_row(png_ptr,pointer(Row),nil);
+         Src:=Row;
+         Move(Src^,Dst^,ImageWidth*4);
+         inc(Dst,ImageWidth*4);
+        end;
+       end;
+       16:begin
+        Dst:=ImageData;
+        for y:=0 to ImageHeight-1 do begin
+         png_read_row(png_ptr,pointer(Row),nil);
+         Src:=pointer(Row);
+         Move(Src^,Dst^,ImageWidth*8);
+         inc(Dst,ImageWidth*8);
+        end;
+       end;
+       else begin
+        png_destroy_read_struct(@png_Ptr,nil,nil);
+        exit;
+       end;
+      end;
+     end;
+    end;
+   end;
+   FreeMem(Row);
+   png_read_end(png_ptr,info_ptr);
+  end;
+ end else begin
+  png_destroy_read_struct(@png_Ptr,nil,nil);
+  exit;
+ end;
+
+ png_destroy_read_struct(@png_Ptr,nil,nil);
+
+ result:=true;
+end;
+{$else}
 type TBitsUsed=array[0..7] of TpvUInt32;
      PByteArray=^TByteArray;
      TByteArray=array[0..65535] of TpvUInt8;
@@ -1020,6 +1253,7 @@ begin
   result:=false;
  end;
 end;
+{$ifend}
 
 function SavePNGImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;out aDestData:TpvPointer;out aDestDataSize:TpvUInt32;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8;const aFast:boolean=false):boolean;
 type PPNGHeader=^TPNGHeader;

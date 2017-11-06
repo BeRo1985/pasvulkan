@@ -43,6 +43,7 @@ uses
   PasVulkan.Assets in '..\src\PasVulkan.Assets.pas',
   PasVulkan.Compression.Deflate in '..\src\PasVulkan.Compression.Deflate.pas',
   PasVulkan.Archive.ZIP in '..\src\PasVulkan.Archive.ZIP.pas',
+  PasVulkan.Image.PNG.ExternalLibrary in '..\src\PasVulkan.Image.PNG.ExternalLibrary.pas',
   PasVulkan.Image.PNG in '..\src\PasVulkan.Image.PNG.pas',
   PasVulkan.Image.BMP in '..\src\PasVulkan.Image.BMP.pas',
   PasVulkan.Image.JPEG in '..\src\PasVulkan.Image.JPEG.pas',
