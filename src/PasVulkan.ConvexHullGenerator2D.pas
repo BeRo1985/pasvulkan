@@ -68,13 +68,13 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math;
 
-type TConvexHull2DPixels=array of boolean;
+type TpvConvexHull2DPixels=array of boolean;
 
-procedure GetConvexHull2D(const Pixels:TConvexHull2DPixels;
+procedure GetConvexHull2D(const Pixels:TpvConvexHull2DPixels;
                           const Width,Height:TpvInt32;
                           out ConvexHullVertices:TpvVector2Array;
                           CountVertices:TpvInt32;
-                          var CenterX,CenterY,CenterRadius:TpvFloat;
+                          out CenterX,CenterY,CenterRadius:TpvFloat;
                           const BorderExtendX:TpvFloat=1.0;
                           const BorderExtendY:TpvFloat=1.0;
                           const ConvexHullMode:TpvInt32=0);
@@ -721,16 +721,16 @@ begin
  SetLength(result,Count);
 end;
 
-procedure GetConvexHull2D(const Pixels:TConvexHull2DPixels;
+procedure GetConvexHull2D(const Pixels:TpvConvexHull2DPixels;
                           const Width,Height:TpvInt32;
                           out ConvexHullVertices:TpvVector2Array;
                           CountVertices:TpvInt32;
-                          var CenterX,CenterY,CenterRadius:TpvFloat;
+                          out CenterX,CenterY,CenterRadius:TpvFloat;
                           const BorderExtendX:TpvFloat=1.0;
                           const BorderExtendY:TpvFloat=1.0;
                           const ConvexHullMode:TpvInt32=0);
 var SpriteW,SpriteH,rx1,ry1,rx2,ry2,x,y,x1,x2,y1,y2,c,c2,i:TpvInt32;
-    SpriteBitmap,SpriteBitmap2:TConvexHull2DPixels;
+    SpriteBitmap,SpriteBitmap2:TpvConvexHull2DPixels;
     WorkVertices,HullVertices:TpvVector2Array;
     b:boolean;
     cx,cy,cr,r:TpvFloat;

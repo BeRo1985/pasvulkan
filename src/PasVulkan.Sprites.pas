@@ -202,6 +202,8 @@ type EpvSpriteAtlas=class(Exception);
      PpvSpriteFlags=^TpvSpriteFlags;
      TpvSpriteFlags=set of TpvSpriteFlag;
 
+     TpvSpriteTrimmedHullVectors=TpvVector2Array;
+
      TpvSprite=class
       private
        fName:TpvRawByteString;
@@ -220,6 +222,7 @@ type EpvSpriteAtlas=class(Exception);
        fOffsetY:TpvFloat;
        fScaleX:TpvFloat;
        fScaleY:TpvFloat;
+       fTrimmedHullVectors:TpvSpriteTrimmedHullVectors;
        function GetSignedDistanceField:boolean; inline;
        procedure SetSignedDistanceField(const aSignedDistanceField:boolean); inline;
        function GetRotated:boolean; inline;
@@ -227,6 +230,7 @@ type EpvSpriteAtlas=class(Exception);
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
+       property TrimmedHullVectors:TpvSpriteTrimmedHullVectors read fTrimmedHullVectors write fTrimmedHullVectors;
       published
        property Name:TpvRawByteString read fName write fName;
        property ArrayTexture:TpvSpriteAtlasArrayTexture read fArrayTexture write fArrayTexture;
@@ -314,11 +318,11 @@ type EpvSpriteAtlas=class(Exception);
        function Uploaded:boolean; virtual;
        procedure ClearAll; virtual;
        function LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean;
-       function LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
-       function LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite; overload;
-       function LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=pvvpfrNonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite; overload;
-       function LoadSprite(const aName:TpvRawByteString;aStream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
-       function LoadSprites(const aName:TpvRawByteString;aStream:TStream;aSpriteWidth:TpvInt32=64;aSpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprites;
+       function LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
+       function LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite; overload;
+       function LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=pvvpfrNonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite; overload;
+       function LoadSprite(const aName:TpvRawByteString;aStream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
+       function LoadSprites(const aName:TpvRawByteString;aStream:TStream;aSpriteWidth:TpvInt32=64;aSpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprites;
        procedure LoadFromStream(const aStream:TStream);
        procedure LoadFromFile(const aFileName:string);
        procedure SaveToStream(const aStream:TStream);
@@ -338,7 +342,8 @@ implementation
 
 uses PasDblStrUtils,
      PasVulkan.Archive.ZIP,
-     PasVulkan.SignedDistanceField2D;
+     PasVulkan.SignedDistanceField2D,
+     PasVulkan.ConvexHullGenerator2D;
 
 const MipMapLevels:array[boolean] of TpvInt32=(1,-1);
 
@@ -709,10 +714,12 @@ begin
  OffsetY:=0.0;
  ScaleX:=1.0;
  ScaleY:=1.0;
+ fTrimmedHullVectors:=nil;
 end;
 
 destructor TpvSprite.Destroy;
 begin
+ fTrimmedHullVectors:=nil;
  Name:='';
  inherited Destroy;
 end;
@@ -1015,7 +1022,7 @@ begin
  end;
 end;
 
-function TpvSpriteAtlas.LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
+function TpvSpriteAtlas.LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
 var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer,TotalPadding,PaddingIndex:TpvInt32;
     ArrayTexture:TpvSpriteAtlasArrayTexture;
     Node:PpvSpriteAtlasArrayTextureLayerRectNode;
@@ -1025,9 +1032,14 @@ var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer,TotalPadding,PaddingIndex:TpvI
     TrimmedImageData:TpvPointer;
     TrimmedImageWidth:TpvInt32;
     TrimmedImageHeight:TpvInt32;
+    ConvexHull2DPixels:TpvConvexHull2DPixels;
+    TrimmedHullVectors:TpvSpriteTrimmedHullVectors;
+    CenterX,CenterY,CenterRadius:TpvFloat;
 begin
 
  result:=nil;
+
+ TrimmedHullVectors:=nil;
 
  try
 
@@ -1126,6 +1138,12 @@ begin
    try
 
     if (x0<x1) and (y0<y1) and not ((x0=0) and (y0=0) and (x1=aImageWidth) and (y1=aImageHeight)) then begin
+     if aTrimPadding>0 then begin
+      x0:=Max(0,x0-aTrimPadding);
+      y0:=Max(0,y0-aTrimPadding);
+      x1:=Min(aImageWidth,x1+aTrimPadding);
+      y1:=Min(aImageHeight,y1+aTrimPadding);
+     end;
      TrimmedImageWidth:=x1-x0;
      TrimmedImageHeight:=y1-y0;
      GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt32));
@@ -1146,6 +1164,33 @@ begin
      Move(aImageData^,TrimmedImageData^,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt32));
      x0:=0;
      y0:=0;
+    end;
+
+    if aAutomaticTrim and ((TrimmedImageWidth*TrimmedImageHeight)>0) then begin
+     ConvexHull2DPixels:=nil;
+     try
+      SetLength(ConvexHull2DPixels,TrimmedImageWidth*TrimmedImageHeight);
+      for y:=0 to TrimmedImageHeight-1 do begin
+       for x:=0 to TrimmedImageWidth-1 do begin
+        sp:=TrimmedImageData;
+        inc(sp,(y*TrimmedImageWidth)+x);
+        ConvexHull2DPixels[(y*TrimmedImageWidth)+x]:=(sp^ and $ff000000)<>0;
+       end;
+      end;
+      GetConvexHull2D(ConvexHull2DPixels,
+                      TrimmedImageWidth,
+                      TrimmedImageHeight,
+                      TrimmedHullVectors,
+                      8,
+                      CenterX,
+                      CenterY,
+                      CenterRadius,
+                      1.0,//Max(1.0,aPadding*0.5),
+                      1.0,//Max(1.0,aPadding*0.5),
+                      2);
+     finally
+      ConvexHull2DPixels:=nil;
+     end;
     end;
 
     // Get free texture area
@@ -1234,14 +1279,15 @@ begin
      Sprite.Layer:=Layer;
      Sprite.Name:=aName;
      if SpecialSizedArrayTexture then begin
-      Sprite.x:=Node^.x;
-      Sprite.y:=Node^.y;
-      Sprite.Width:=aImageWidth;
-      Sprite.Height:=aImageHeight;
-      Sprite.TrimmedX:=x0;
-      Sprite.TrimmedY:=y0;
-      Sprite.TrimmedWidth:=TrimmedImageWidth;
-      Sprite.TrimmedHeight:=TrimmedImageHeight;
+      Sprite.fX:=Node^.x;
+      Sprite.fY:=Node^.y;
+      Sprite.fWidth:=aImageWidth;
+      Sprite.fHeight:=aImageHeight;
+      Sprite.fTrimmedX:=x0;
+      Sprite.fTrimmedY:=y0;
+      Sprite.fTrimmedWidth:=TrimmedImageWidth;
+      Sprite.fTrimmedHeight:=TrimmedImageHeight;
+      Sprite.fTrimmedHullVectors:=TrimmedHullVectors;
       Sprite.Rotated:=false;
       AddSprite(Sprite);
       for y:=0 to TrimmedImageHeight-1 do begin
@@ -1251,14 +1297,15 @@ begin
        Move(sp^,dp^,TrimmedImageWidth*SizeOf(TpvUInt32));
       end;
      end else begin
-      Sprite.x:=Node^.x+aPadding;
-      Sprite.y:=Node^.y+aPadding;
-      Sprite.Width:=aImageWidth;
-      Sprite.Height:=aImageHeight;
-      Sprite.TrimmedX:=x0;
-      Sprite.TrimmedY:=y0;
-      Sprite.TrimmedWidth:=TrimmedImageWidth;
-      Sprite.TrimmedHeight:=TrimmedImageHeight;
+      Sprite.fX:=Node^.x+aPadding;
+      Sprite.fY:=Node^.y+aPadding;
+      Sprite.fWidth:=aImageWidth;
+      Sprite.fHeight:=aImageHeight;
+      Sprite.fTrimmedX:=x0;
+      Sprite.fTrimmedY:=y0;
+      Sprite.fTrimmedWidth:=TrimmedImageWidth;
+      Sprite.fTrimmedHeight:=TrimmedImageHeight;
+      Sprite.fTrimmedHullVectors:=TrimmedHullVectors;
       Sprite.Rotated:=false;
       AddSprite(Sprite);
       for y:=0 to TrimmedImageHeight-1 do begin
@@ -1314,11 +1361,13 @@ begin
 
  finally
 
+  TrimmedHullVectors:=nil;
+
  end;
 
 end;
 
-function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
+function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
 var SignedDistanceField:TpvSignedDistanceField2D;
 begin
  SignedDistanceField.Pixels:=nil;
@@ -1327,26 +1376,26 @@ begin
   SignedDistanceField.Height:=aImageHeight;
   SetLength(SignedDistanceField.Pixels,aImageWidth*aImageHeight);
   TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,aVectorPath,aScale,aOffsetX,aOffsetY);
-  result:=LoadRawSprite(aName,@SignedDistanceField.Pixels[0],aImageWidth,aImageHeight,aAutomaticTrim,aPadding);
+  result:=LoadRawSprite(aName,@SignedDistanceField.Pixels[0],aImageWidth,aImageHeight,aAutomaticTrim,aPadding,aTrimPadding);
   result.SignedDistanceField:=true;
  finally
   SignedDistanceField.Pixels:=nil;
  end;
 end;
 
-function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=pvvpfrNonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
+function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=pvvpfrNonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
 var VectorPath:TpvVectorPath;
 begin
  VectorPath:=TpvVectorPath.CreateFromSVGPath(aSVGPath);
  try
   VectorPath.FillRule:=aVectorPathFillRule;
-  result:=LoadSignedDistanceFieldSprite(aName,VectorPath,aImageWidth,aImageHeight,aScale,aOffsetX,aOffsetY,aAutomaticTrim,aPadding);
+  result:=LoadSignedDistanceFieldSprite(aName,VectorPath,aImageWidth,aImageHeight,aScale,aOffsetX,aOffsetY,aAutomaticTrim,aPadding,aTrimPadding);
  finally
   VectorPath.Free;
  end;
 end;
 
-function TpvSpriteAtlas.LoadSprite(const aName:TpvRawByteString;aStream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprite;
+function TpvSpriteAtlas.LoadSprite(const aName:TpvRawByteString;aStream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
 var InputImageData,ImageData:TpvPointer;
     InputImageDataSize,ImageWidth,ImageHeight:TpvInt32;
 begin
@@ -1368,7 +1417,7 @@ begin
 
      if LoadImage(InputImageData,InputImageDataSize,ImageData,ImageWidth,ImageHeight) then begin
 
-      result:=LoadRawSprite(aName,ImageData,ImageWidth,ImageHeight,aAutomaticTrim,aPadding);
+      result:=LoadRawSprite(aName,ImageData,ImageWidth,ImageHeight,aAutomaticTrim,aPadding,aTrimPadding);
 
      end else begin
       raise EpvSpriteAtlas.Create('Can''t load image');
@@ -1402,7 +1451,7 @@ begin
 
 end;
 
-function TpvSpriteAtlas.LoadSprites(const aName:TpvRawByteString;aStream:TStream;aSpriteWidth:TpvInt32=64;aSpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2):TpvSprites;
+function TpvSpriteAtlas.LoadSprites(const aName:TpvRawByteString;aStream:TStream;aSpriteWidth:TpvInt32=64;aSpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprites;
 var InputImageData,ImageData,SpriteData:TpvPointer;
     InputImageDataSize,ImageWidth,ImageHeight,Count,x,y,sy,sw,sh:TpvInt32;
     sp,dp:PpvUInt32;
@@ -1469,7 +1518,7 @@ begin
             inc(dp,aSpriteWidth);
            end;
 
-           result[Count]:=LoadRawSprite(aName+TpvRawByteString(IntToStr(Count)),SpriteData,aSpriteWidth,aSpriteHeight,aAutomaticTrim,aPadding);
+           result[Count]:=LoadRawSprite(aName+TpvRawByteString(IntToStr(Count)),SpriteData,aSpriteWidth,aSpriteHeight,aAutomaticTrim,aPadding,aTrimPadding);
 
            inc(Count);
 
@@ -1599,7 +1648,7 @@ var Archive:TpvArchiveZIP;
  end;
 var FileGUID:TGUID;
     ui8:TpvUInt8;
-    WidthValue,HeightValue,LayersValue,CountSprites:TpvInt32;
+    WidthValue,HeightValue,LayersValue,CountSprites,CountTrimmedHullVectors:TpvInt32;
 begin
 
  Unload;
@@ -1703,6 +1752,17 @@ begin
       Sprite.fOffsetY:=ReadFloat;
       Sprite.fScaleX:=ReadFloat;
       Sprite.fScaleY:=ReadFloat;
+      Sprite.fTrimmedHullVectors:=nil;
+      if (ui8 and 4)<>0 then begin
+       CountTrimmedHullVectors:=ReadInt32;
+       if CountTrimmedHullVectors>0 then begin
+        SetLength(Sprite.fTrimmedHullVectors,CountTrimmedHullVectors);
+        for SubIndex:=0 to CountTrimmedHullVectors-1 do begin
+         Sprite.fTrimmedHullVectors[SubIndex].x:=ReadFloat;
+         Sprite.fTrimmedHullVectors[SubIndex].y:=ReadFloat;
+        end;
+       end;
+      end;
      finally
       AddSprite(Sprite);
      end;
@@ -1900,7 +1960,8 @@ begin
        end;
        WriteInt32(SubSubIndex);
        WriteUInt8((TpvUInt8(ord(pvsfSignedDistanceField in Sprite.fFlags) and 1) shl 0) or
-                  (TpvUInt8(ord(pvsfRotated in Sprite.fFlags) and 1) shl 1));
+                  (TpvUInt8(ord(pvsfRotated in Sprite.fFlags) and 1) shl 1) or
+                  (TpvUInt8(ord(length(Sprite.fTrimmedHullVectors)>0) and 1) shl 2));
        WriteInt32(Sprite.fX);
        WriteInt32(Sprite.fY);
        WriteInt32(Sprite.fLayer);
@@ -1914,6 +1975,13 @@ begin
        WriteFloat(Sprite.fOffsetY);
        WriteFloat(Sprite.fScaleX);
        WriteFloat(Sprite.fScaleY);
+       if length(Sprite.fTrimmedHullVectors)>0 then begin
+        WriteInt32(length(Sprite.fTrimmedHullVectors));
+        for SubIndex:=0 to length(Sprite.fTrimmedHullVectors)-1 do begin
+         WriteFloat(Sprite.fTrimmedHullVectors[SubIndex].x);
+         WriteFloat(Sprite.fTrimmedHullVectors[SubIndex].y);
+        end;
+       end;
       end;
      end;
 

@@ -194,7 +194,7 @@ type EpvFont=class(Exception);
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TVkPointer;const FromIndex,ToIndex:TPasMPNativeInt);
       public
        constructor Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0); reintroduce;
-       constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aPadding:TpvInt32=2);
+       constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1);
        constructor CreateFromStream(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aStream:TStream);
        constructor CreateFromFile(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aFileName:string);
        destructor Destroy; override;
@@ -311,7 +311,7 @@ begin
 
 end;
 
-constructor TpvFont.CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aPadding:TpvInt32=2);
+constructor TpvFont.CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1);
 const GlyphMetaDataScaleFactor=1.0;
       GlyphRasterizationScaleFactor=1.0/256.0;
 var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
@@ -553,8 +553,9 @@ begin
                                                    @GlyphDistanceFields[OtherGlyphIndex].Pixels[0],
                                                    Glyph^.Width,
                                                    Glyph^.Height,
-                                                   false,
-                                                   aPadding);
+                                                   true,
+                                                   aPadding,
+                                                   aTrimPadding);
          Glyph^.Sprite.SignedDistanceField:=true;
         end;
        end;
