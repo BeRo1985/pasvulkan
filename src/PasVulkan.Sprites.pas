@@ -1922,7 +1922,7 @@ begin
     end;
 
    finally
-    Entry.CompressionLevel:=5;
+    Entry.CompressionLevel:=4;
    end;
 
   finally
@@ -1939,7 +1939,8 @@ begin
                            ArrayTexture.fWidth,
                            ArrayTexture.fHeight,
                            Entry.Stream,
-                           pvppfR8G8B8A8);
+                           pvppfR8G8B8A8,
+                           false);
      finally
       Entry.CompressionLevel:=0;
      end;

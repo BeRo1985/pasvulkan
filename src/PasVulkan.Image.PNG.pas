@@ -79,11 +79,11 @@ type EpvLoadPNGImage=class(Exception);
 
 function LoadPNGImage(DataPointer:TpvPointer;DataSize:TpvUInt32;var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32;const HeaderOnly:boolean;var PixelFormat:TpvPNGPixelFormat):boolean;
 
-function SavePNGImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;out aDestData:TpvPointer;out aDestDataSize:TpvUInt32;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8):boolean;
+function SavePNGImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;out aDestData:TpvPointer;out aDestDataSize:TpvUInt32;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8;const aFast:boolean=false):boolean;
 
-function SavePNGImageAsStream(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aStream:TStream;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8):boolean;
+function SavePNGImageAsStream(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aStream:TStream;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8;const aFast:boolean=false):boolean;
 
-function SavePNGImageAsFile(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aFileName:string;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8):boolean;
+function SavePNGImageAsFile(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aFileName:string;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8;const aFast:boolean=false):boolean;
 
 implementation
 
@@ -1021,7 +1021,7 @@ begin
  end;
 end;
 
-function SavePNGImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;out aDestData:TpvPointer;out aDestDataSize:TpvUInt32;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8):boolean;
+function SavePNGImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;out aDestData:TpvPointer;out aDestDataSize:TpvUInt32;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8;const aFast:boolean=false):boolean;
 type PPNGHeader=^TPNGHeader;
      TPNGHeader=packed record
       PNGSignature:array[0..7] of TpvUInt8;
@@ -1207,7 +1207,11 @@ begin
    inc(InByteIndex,RowSize);
    inc(OutByteIndex,RowSize+1);
   end;
-  DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,pvdmMedium,true);
+  if aFast then begin
+   DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,pvdmVeryFast,true);
+  end else begin
+   DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,pvdmMedium,true);
+  end;
   if assigned(IDATData) then begin
    try
     if assigned(ImageData) then begin
@@ -1266,11 +1270,11 @@ begin
  end;
 end;
 
-function SavePNGImageAsStream(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aStream:TStream;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8):boolean;
+function SavePNGImageAsStream(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aStream:TStream;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8;const aFast:boolean=false):boolean;
 var Data:TpvPointer;
     DataSize:TpvUInt32;
 begin
- result:=SavePNGImage(aImageData,aImageWidth,aImageHeight,Data,DataSize,aImagePixelFormat);
+ result:=SavePNGImage(aImageData,aImageWidth,aImageHeight,Data,DataSize,aImagePixelFormat,aFast);
  if assigned(Data) then begin
   try
    aStream.Write(Data^,DataSize);
@@ -1280,12 +1284,12 @@ begin
  end;
 end;
 
-function SavePNGImageAsFile(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aFileName:string;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8):boolean;
+function SavePNGImageAsFile(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aFileName:string;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8;const aFast:boolean=false):boolean;
 var FileStream:TFileStream;
 begin
  FileStream:=TFileStream.Create(aFileName,fmCreate);
  try
-  result:=SavePNGImageAsStream(aImageData,aImageWidth,aImageHeight,FileStream,aImagePixelFormat);
+  result:=SavePNGImageAsStream(aImageData,aImageWidth,aImageHeight,FileStream,aImagePixelFormat,aFast);
  finally
   FileStream.Free;
  end;
