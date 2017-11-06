@@ -192,6 +192,8 @@ type EpvFont=class(Exception);
       public
        constructor Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0); reintroduce;
        constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aPadding:TpvInt32=2);
+       constructor CreateFromStream(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aStream:TStream);
+       constructor CreateFromFile(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aFileName:string);
        destructor Destroy; override;
        procedure LoadFromStream(const aStream:TStream);
        procedure LoadFromFile(const aFileName:string);
@@ -628,6 +630,18 @@ begin
 
  end;
 
+end;
+
+constructor TpvFont.CreateFromStream(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aStream:TStream);
+begin
+ Create(aDevice,aSpriteAtlas);
+ LoadFromStream(aStream);
+end;
+
+constructor TpvFont.CreateFromFile(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aFileName:string);
+begin
+ Create(aDevice,aSpriteAtlas);
+ LoadFromFile(aFileName);
 end;
 
 destructor TpvFont.Destroy;
