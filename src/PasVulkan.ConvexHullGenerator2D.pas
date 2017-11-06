@@ -68,7 +68,7 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math;
 
-type TConvexHull2DPixels=array of array of boolean;
+type TConvexHull2DPixels=array of boolean;
 
 procedure GetConvexHull2D(const Pixels:TConvexHull2DPixels;
                           const Width,Height:TpvInt32;
@@ -751,13 +751,11 @@ begin
    SpriteH:=Height;
 
    // Initialize arrays
-   SetLength(SpriteBitmap,SpriteH,SpriteW);
-   SetLength(SpriteBitmap2,SpriteH,SpriteW);
-   for y:=0 to SpriteH-1 do begin
-    for x:=0 to SpriteW-1 do begin
-     SpriteBitmap[y,x]:=Pixels[y,x];
-     SpriteBitmap2[y,x]:=false;
-    end;
+   SetLength(SpriteBitmap,SpriteW*SpriteH);
+   SetLength(SpriteBitmap2,SpriteW*SpriteH);
+   for x:=0 to (SpriteW*SpriteH)-1 do begin
+    SpriteBitmap[x]:=Pixels[x];
+    SpriteBitmap2[x]:=false;
    end;
 
    // Content size detection
@@ -767,7 +765,7 @@ begin
    ry2:=-1;
    for y:=0 to SpriteH-1 do begin
     for x:=0 to SpriteW-1 do begin
-     if SpriteBitmap[y,x] then begin
+     if SpriteBitmap[(y*SpriteW)+x] then begin
       rx1:=min(rx1,x);
       ry1:=min(ry1,y);
       rx2:=max(rx2,x);
@@ -808,45 +806,45 @@ begin
       x1:=SpriteW+1;
       x2:=-1;
       for x:=0 to SpriteW-1 do begin
-       if SpriteBitmap[y,x] then begin
+       if SpriteBitmap[(y*SpriteW)+x] then begin
         x1:=min(x1,x);
         x2:=max(x2,x);
        end;
       end;
       for x:=0 to SpriteW-1 do begin
-       SpriteBitmap2[y,x]:=(x=x1) or (x=x2);
+       SpriteBitmap2[(y*SpriteW)+x]:=(x=x1) or (x=x2);
       end;
      end;
      for x:=0 to SpriteW-1 do begin
       y1:=SpriteH+1;
       y2:=-1;
       for y:=0 to SpriteH-1 do begin
-       if SpriteBitmap[y,x] then begin
+       if SpriteBitmap[(y*SpriteW)+x] then begin
         y1:=min(y1,y);
         y2:=max(y2,y);
        end;
       end;
       for y:=0 to SpriteH-1 do begin
-       SpriteBitmap2[y,x]:=SpriteBitmap2[y,x] or ((y=y1) or (y=y2));
+       SpriteBitmap2[(y*SpriteW)+x]:=SpriteBitmap2[(y*SpriteW)+x] or ((y=y1) or (y=y2));
       end;
      end;
 
      // Reduce the count of points
      for y:=0 to SpriteH-1 do begin
       for x:=0 to SpriteW-1 do begin
-       b:=SpriteBitmap2[y,x];
+       b:=SpriteBitmap2[(y*SpriteW)+x];
        if b then begin
-        if ((x>0) and SpriteBitmap2[y,x-1]) and (((x+1)<SpriteW) and SpriteBitmap2[y,x+1]) then begin
+        if ((x>0) and SpriteBitmap2[(y*SpriteW)+(x-1)]) and (((x+1)<SpriteW) and SpriteBitmap2[(y*SpriteW)+(x+1)]) then begin
          b:=false;
-        end else if ((y>0) and SpriteBitmap2[y-1,x]) and (((y+1)<SpriteH) and SpriteBitmap2[y+1,x]) then begin
+        end else if ((y>0) and SpriteBitmap2[((y-1)*SpriteW)+x]) and (((y+1)<SpriteH) and SpriteBitmap2[((y+1)*SpriteW)+x]) then begin
          b:=false;
-        end else if (((x>0) and (y>0)) and SpriteBitmap2[y-1,x-1]) and ((((x+1)<SpriteW) and ((y+1)<SpriteH)) and SpriteBitmap2[y+1,x+1]) then begin
+        end else if (((x>0) and (y>0)) and SpriteBitmap2[((y-1)*SpriteW)+(x-1)]) and ((((x+1)<SpriteW) and ((y+1)<SpriteH)) and SpriteBitmap2[((y+1)*SpriteW)+(x+1)]) then begin
          b:=false;
-        end else if ((((x+1)<SpriteW) and (y>0)) and SpriteBitmap2[y-1,x+1]) and (((x>0) and ((y+1)<SpriteH)) and SpriteBitmap2[y+1,x-1]) then begin
+        end else if ((((x+1)<SpriteW) and (y>0)) and SpriteBitmap2[((y-1)*SpriteW)+(x+1)]) and (((x>0) and ((y+1)<SpriteH)) and SpriteBitmap2[((y+1)*SpriteW)+(x-1)]) then begin
          b:=false;
         end;
        end;
-       SpriteBitmap[y,x]:=b;
+       SpriteBitmap[(y*SpriteW)+x]:=b;
       end;
      end;
 
@@ -855,14 +853,14 @@ begin
      i:=-1;
      for y:=0 to SpriteH-1 do begin
       for x:=0 to SpriteW-1 do begin
-       if SpriteBitmap[y,x] then begin
+       if SpriteBitmap[(y*SpriteW)+x] then begin
         i:=y;
         inc(c);
         break;
        end;
       end;
       for x:=SpriteW-1 downto 0 do begin
-       if SpriteBitmap[y,x] then begin
+       if SpriteBitmap[(y*SpriteW)+x] then begin
         i:=y;
         inc(c);
         break;
@@ -873,7 +871,7 @@ begin
      c:=0;
      for y:=0 to SpriteH-1 do begin
       for x:=0 to SpriteW-1 do begin
-       if SpriteBitmap[y,x] then begin
+       if SpriteBitmap[(y*SpriteW)+x] then begin
         WorkVertices[c].x:=x;
         WorkVertices[c].y:=y;
         inc(c);
@@ -881,7 +879,7 @@ begin
        end;
       end;
       for x:=SpriteW-1 downto 0 do begin
-       if SpriteBitmap[y,x] then begin
+       if SpriteBitmap[(y*SpriteW)+x] then begin
         WorkVertices[c].x:=x+BorderExtendX;
         WorkVertices[c].y:=y;
         inc(c);
@@ -890,7 +888,7 @@ begin
       end;
       if (y=i) and (BorderExtendY<>0.0) then begin
        for x:=0 to SpriteW-1 do begin
-        if SpriteBitmap[y,x] then begin
+        if SpriteBitmap[(y*SpriteW)+x] then begin
          WorkVertices[c].x:=x;
          WorkVertices[c].y:=y+BorderExtendY;
          inc(c);
@@ -898,7 +896,7 @@ begin
         end;
        end;
        for x:=SpriteW-1 downto 0 do begin
-        if SpriteBitmap[y,x] then begin
+        if SpriteBitmap[(y*SpriteW)+x] then begin
          WorkVertices[c].x:=x+BorderExtendX;
          WorkVertices[c].y:=y+BorderExtendY;
          inc(c);
