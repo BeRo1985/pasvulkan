@@ -169,7 +169,7 @@ begin
 
   if FileExists(LocalStorageFile) and
      FileExists(LocalStoragePath+'example_canvas_font_spriteatlas.zip') and
-     FileExists(LocalStoragePath+'example_canvas_font.xml') and
+     FileExists(LocalStoragePath+'example_canvas_font.dat') and
      FileExists(LocalStoragePath+'example_canvas_spriteatlas.zip') then begin
 
    FileStream:=TFileStream.Create(LocalStorageFile,fmOpenRead or fmShareDenyWrite);
@@ -205,7 +205,7 @@ begin
     TrueTypeFont.Hinting:=false;
     fVulkanFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,fVulkanFontSpriteAtlas,TrueTypeFont,[TpvFontCodePointRange.Create(0,255)]);
     if length(LocalStoragePath)>0 then begin
-     fVulkanFont.SaveToFile(LocalStoragePath+'example_canvas_font.xml');
+     fVulkanFont.SaveToFile(LocalStoragePath+'example_canvas_font.dat');
     end;
    finally
     TrueTypeFont.Free;
@@ -277,7 +277,7 @@ begin
 
   fVulkanFontSpriteAtlas.LoadFromFile(LocalStoragePath+'example_canvas_font_spriteatlas.zip');
 
-  fVulkanFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fVulkanFontSpriteAtlas,LocalStoragePath+'example_canvas_font.xml');
+  fVulkanFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fVulkanFontSpriteAtlas,LocalStoragePath+'example_canvas_font.dat');
 
   fVulkanSpriteAtlas.LoadFromFile(LocalStoragePath+'example_canvas_spriteatlas.zip');
 

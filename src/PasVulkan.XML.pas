@@ -68,7 +68,8 @@ uses SysUtils,
      Vulkan,
      PasVulkan.Types,
      PasVulkan.Math,
-     PasVulkan.Collections;
+     PasVulkan.Collections,
+     PasVulkan.Streams;
 
 const XMLMaxListSize=2147483647 div SizeOf(TpvPointer);
 
@@ -1998,13 +1999,20 @@ begin
 end;
 
 function TpvXML.Read(Stream:TStream):boolean;
+var BufferedStream:TStream;
 begin
- result:=Parse(Stream);
+ BufferedStream:=TpvSimpleBufferedStream.Create(Stream,false,4096);
+ try
+  result:=Parse(BufferedStream);
+ finally
+  BufferedStream.Free;
+ end;
 end;
 
 function TpvXML.Write(Stream:TStream;IdentSize:TpvInt32=2):boolean;
 var IdentLevel:TpvInt32;
     Errors:boolean;
+    BufferedStream:TStream;
  procedure Process(Item:TpvXMLItem;DoIndent:boolean);
  var Line:TpvRawByteString;
      Counter:TpvInt32;
@@ -2012,7 +2020,7 @@ var IdentLevel:TpvInt32;
   procedure WriteLineEx(Line:TpvRawByteString);
   begin
    if length(Line)>0 then begin
-    if Stream.Write(Line[1],length(Line))<>length(Line) then begin
+    if BufferedStream.Write(Line[1],length(Line))<>length(Line) then begin
      Errors:=true;
     end;
    end;
@@ -2023,7 +2031,7 @@ var IdentLevel:TpvInt32;
     Line:=Line+#10;
    end;
    if length(Line)>0 then begin
-    if Stream.Write(Line[1],length(Line))<>length(Line) then begin
+    if BufferedStream.Write(Line[1],length(Line))<>length(Line) then begin
      Errors:=true;
     end;
    end;
@@ -2164,7 +2172,12 @@ begin
   TMemoryStream(Stream).Clear;
  end;
  Errors:=false;
- Process(Root,FormatIndent);
+ BufferedStream:=TpvSimpleBufferedStream.Create(Stream,false,4096);
+ try
+  Process(Root,FormatIndent);
+ finally
+  BufferedStream.Free;
+ end;
  result:=not Errors;
 end;
 

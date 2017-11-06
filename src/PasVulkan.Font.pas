@@ -75,7 +75,8 @@ uses SysUtils,
      PasVulkan.VectorPath,
      PasVulkan.SignedDistanceField2D,
      PasVulkan.TrueTypeFont,
-     PasVulkan.Sprites;
+     PasVulkan.Sprites,
+     PasVulkan.Streams;
 
 type EpvFont=class(Exception);
 
@@ -164,6 +165,8 @@ type EpvFont=class(Exception);
      TpvFontInt64HashMap=class(TpvHashMap<TpvInt64,TpvInt64>);
 
      TpvFont=class
+      private
+       const FileFormatGUID:TGUID='{0DB9E897-9E36-493C-9747-C8A84B150CDD}';
       private
        fDevice:TpvVulkanDevice;
        fSpriteAtlas:TpvSpriteAtlas;
@@ -669,40 +672,101 @@ end;
 procedure TpvFont.LoadFromStream(const aStream:TStream);
 var CodePointIndex,BitmapCodePointIndex:TpvUInt32;
     GlyphIndex,CodePointGlyphPairIndex,CountCodePointGlyphPairs,KerningPairIndex:TpvSizeInt;
-    XML:TpvXML;
-    XMLRootTag,XMLGlyphTag,XMLCodePointTag,XMLKerningPairTag:TpvXMLTag;
     Glyph:PpvFontGlyph;
     CodePointGlyphPair:PpvFontCodePointGlyphPair;
     KerningPair:PpvFontKerningPair;
     KerningPairDoubleIndex:TpvUInt64;
+    BufferedStream:TpvSimpleBufferedStream;
+ function ReadUInt8:TpvUInt8;
+ begin
+  BufferedStream.ReadBuffer(result,SizeOf(TpvUInt8));
+ end;
+ function ReadUInt16:TpvUInt16;
+ begin
+  result:=ReadUInt8;
+  result:=result or (TpvUInt16(ReadUInt8) shl 8);
+ end;
+ function ReadUInt32:TpvUInt32;
+ begin
+  result:=ReadUInt8;
+  result:=result or (TpvUInt32(ReadUInt8) shl 8);
+  result:=result or (TpvUInt32(ReadUInt8) shl 16);
+  result:=result or (TpvUInt32(ReadUInt8) shl 24);
+ end;
+ function ReadInt32:TpvInt32;
+ begin
+  result:=ReadUInt32;
+ end;
+ function ReadUInt64:TpvUInt64;
+ begin
+  result:=ReadUInt8;
+  result:=result or (TpvUInt64(ReadUInt8) shl 8);
+  result:=result or (TpvUInt64(ReadUInt8) shl 16);
+  result:=result or (TpvUInt64(ReadUInt8) shl 24);
+  result:=result or (TpvUInt64(ReadUInt8) shl 32);
+  result:=result or (TpvUInt64(ReadUInt8) shl 40);
+  result:=result or (TpvUInt64(ReadUInt8) shl 48);
+  result:=result or (TpvUInt64(ReadUInt8) shl 56);
+ end;
+ function ReadInt64:TpvInt64;
+ begin
+  result:=ReadUInt64;
+ end;
+ function ReadFloat:TpvFloat;
+ begin
+  PpvUInt32(TpvPointer(@result))^:=ReadUInt32;
+ end;
+ function ReadDouble:TpvDouble;
+ begin
+  PpvUInt64(TpvPointer(@result))^:=ReadUInt64;
+ end;
+ function ReadString:TpvRawByteString;
+ begin
+  result:='';
+  SetLength(result,ReadInt32);
+  if length(result)>0 then begin
+   BufferedStream.ReadBuffer(result[1],length(result));
+  end;
+ end;
+var FileGUID:TGUID;
 begin
 
- XML:=TpvXML.Create;
+ BufferedStream:=TpvSimpleBufferedStream.Create(aStream,false,4096);
  try
 
-  XML.LoadFromStream(aStream);
+  BufferedStream.Seek(0,soBeginning);
 
-  XMLRootTag:=XML.Root.FindTag('font');
+  FileGUID.D1:=ReadUInt32;
+  FileGUID.D2:=ReadUInt16;
+  FileGUID.D3:=ReadUInt16;
+  FileGUID.D4[0]:=ReadUInt8;
+  FileGUID.D4[1]:=ReadUInt8;
+  FileGUID.D4[2]:=ReadUInt8;
+  FileGUID.D4[3]:=ReadUInt8;
+  FileGUID.D4[4]:=ReadUInt8;
+  FileGUID.D4[5]:=ReadUInt8;
+  FileGUID.D4[6]:=ReadUInt8;
+  FileGUID.D4[7]:=ReadUInt8;
 
-  if not assigned(XMLRootTag) then begin
-   raise EpvFont.Create('Missing root tag');
+  if not CompareMem(@TpvFont.FileFormatGUID,@FileGUID,SizeOf(TGUID)) then begin
+   raise EpvFont.Create('Mismatch file format GUID');
   end;
 
-  fTargetPPI:=StrToInt(String(XMLRootTag.GetParameter('targetppi')));
-  fUnitsPerEm:=StrToInt(String(XMLRootTag.GetParameter('unitsperem')));
-  fBaseScaleFactor:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('basescalefactor')));
-  fInverseBaseScaleFactor:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('inversebasescalefactor')));
-  fBaseSize:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('basesize')));
-  fInverseBaseSize:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('inversebasesize')));
-  fMinX:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('minx')));
-  fMinY:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('miny')));
-  fMaxX:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('maxx')));
-  fMaxY:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('maxy')));
-  fMinimumCodePoint:=StrToInt(String(XMLRootTag.GetParameter('minimumcodepoint')));
-  fMaximumCodePoint:=StrToInt(String(XMLRootTag.GetParameter('maximumcodepoint')));
-  SetLength(fGlyphs,StrToInt(String(XMLRootTag.GetParameter('countglyphs'))));
-  SetLength(fCodePointGlyphPairs,StrToInt(String(XMLRootTag.GetParameter('countcodepoints'))));
-  SetLength(fKerningPairs,StrToInt(String(XMLRootTag.GetParameter('countkerningpairs'))));
+  fTargetPPI:=ReadInt32;
+  fUnitsPerEm:=ReadInt32;
+  fBaseScaleFactor:=ReadFloat;
+  fInverseBaseScaleFactor:=ReadFloat;
+  fBaseSize:=ReadFloat;
+  fInverseBaseSize:=ReadFloat;
+  fMinX:=ReadFloat;
+  fMinY:=ReadFloat;
+  fMaxX:=ReadFloat;
+  fMaxY:=ReadFloat;
+  fMinimumCodePoint:=ReadUInt32;
+  fMaximumCodePoint:=ReadUInt32;
+  SetLength(fGlyphs,ReadInt32);
+  SetLength(fCodePointGlyphPairs,ReadInt32);
+  SetLength(fKerningPairs,ReadInt32);
   SetLength(fKerningPairVectors,length(fKerningPairs));
 
   SetLength(fCodePointBitmap,((fMaximumCodePoint-fMinimumCodePoint)+32) shr 5);
@@ -717,74 +781,56 @@ begin
 
   FillChar(fKerningPairVectors[0],length(fKerningPairVectors)*SizeOf(TpvVector2),#0);
 
-  for XMLGlyphTag in XMLRootTag.FindTags('glyph') do begin
-   GlyphIndex:=StrToInt(String(XMLGlyphTag.GetParameter('id')));
-   if (GlyphIndex<0) or (GlyphIndex>=length(fGlyphs)) then begin
-    raise EpvFont.Create('Glyph index out of range');
-   end;
+  for GlyphIndex:=0 to length(fGlyphs)-1 do begin
    Glyph:=@fGlyphs[GlyphIndex];
-   Glyph^.Advance.x:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('advancex')));
-   Glyph^.Advance.y:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('advancey')));
-   Glyph^.Bounds.Left:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('boundsleft')));
-   Glyph^.Bounds.Top:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('boundstop')));
-   Glyph^.Bounds.Right:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('boundsright')));
-   Glyph^.Bounds.Bottom:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('boundsbottom')));
-   Glyph^.SideBearings.Left:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('sidebearingsleft')));
-   Glyph^.SideBearings.Top:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('sidebearingstop')));
-   Glyph^.SideBearings.Right:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('sidebearingsright')));
-   Glyph^.SideBearings.Bottom:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('sidebearingsbottom')));
-   Glyph^.Offset.x:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('offsetx')));
-   Glyph^.Offset.y:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('offsety')));
-   Glyph^.Size.x:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('sizex')));
-   Glyph^.Size.y:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('sizey')));
-   Glyph^.Width:=StrToInt(String(XMLGlyphTag.GetParameter('width')));
-   Glyph^.Height:=StrToInt(String(XMLGlyphTag.GetParameter('height')));
-   Glyph^.Sprite:=fSpriteAtlas.Sprites[TpvRawByteString(XMLGlyphTag.GetParameter('sprite'))];
+   Glyph^.Advance.x:=ReadFloat;
+   Glyph^.Advance.y:=ReadFloat;
+   Glyph^.Bounds.Left:=ReadFloat;
+   Glyph^.Bounds.Top:=ReadFloat;
+   Glyph^.Bounds.Right:=ReadFloat;
+   Glyph^.Bounds.Bottom:=ReadFloat;
+   Glyph^.SideBearings.Left:=ReadFloat;
+   Glyph^.SideBearings.Top:=ReadFloat;
+   Glyph^.SideBearings.Right:=ReadFloat;
+   Glyph^.SideBearings.Bottom:=ReadFloat;
+   Glyph^.Offset.x:=ReadFloat;
+   Glyph^.Offset.y:=ReadFloat;
+   Glyph^.Size.x:=ReadFloat;
+   Glyph^.Size.y:=ReadFloat;
+   Glyph^.Width:=ReadInt32;
+   Glyph^.Height:=ReadInt32;
+   Glyph^.Sprite:=fSpriteAtlas.Sprites[ReadString];
    if not assigned(Glyph^.Sprite) then begin
     raise EpvFont.Create('Missing glyph sprite');
    end;
   end;
 
-  CountCodePointGlyphPairs:=0;
-  try
-   for XMLCodePointTag in XMLRootTag.FindTags('codepoint') do begin
-    CodePointIndex:=StrToInt(String(XMLCodePointTag.GetParameter('id')));
-    if (CodePointIndex<fMinimumCodePoint) or (CodePointIndex>fMaximumCodePoint) then begin
-     raise EpvFont.Create('Code point index out of range');
-    end;
-    BitmapCodePointIndex:=CodePointIndex-fMinimumCodePoint;
-    if (fCodePointBitmap[BitmapCodePointIndex shr 5] and (TpvUInt32(1) shl (BitmapCodePointIndex and 31)))<>0 then begin
-     raise EpvFont.Create('Duplicate code point');
-    end;
-    fCodePointBitmap[BitmapCodePointIndex shr 5]:=fCodePointBitmap[BitmapCodePointIndex shr 5] or (TpvUInt32(1) shl (BitmapCodePointIndex and 31));
-    GlyphIndex:=StrToInt(String(XMLCodePointTag.GetParameter('glyph')));
-    if (GlyphIndex<0) or (GlyphIndex>=length(fGlyphs)) then begin
-     raise EpvFont.Create('Glyph index out of range');
-    end;
-    fCodePointToGlyphHashMap.Add(CodePointIndex,GlyphIndex);
-    CodePointGlyphPairIndex:=CountCodePointGlyphPairs;
-    inc(CountCodePointGlyphPairs);
-    if length(fCodePointGlyphPairs)<CountCodePointGlyphPairs then begin
-     SetLength(fCodePointGlyphPairs,CountCodePointGlyphPairs*2);
-    end;
-    CodePointGlyphPair:=@fCodePointGlyphPairs[CodePointGlyphPairIndex];
-    CodePointGlyphPair^.CodePoint:=CodePointIndex;
-    CodePointGlyphPair^.Glyph:=GlyphIndex;
+  for CodePointGlyphPairIndex:=0 to length(fCodePointGlyphPairs)-1 do begin
+   CodePointIndex:=ReadInt32;
+   if (CodePointIndex<fMinimumCodePoint) or (CodePointIndex>fMaximumCodePoint) then begin
+    raise EpvFont.Create('Code point index out of range');
    end;
-  finally
-   SetLength(fCodePointGlyphPairs,CountCodePointGlyphPairs);
+   BitmapCodePointIndex:=CodePointIndex-fMinimumCodePoint;
+   if (fCodePointBitmap[BitmapCodePointIndex shr 5] and (TpvUInt32(1) shl (BitmapCodePointIndex and 31)))<>0 then begin
+    raise EpvFont.Create('Duplicate code point');
+   end;
+   fCodePointBitmap[BitmapCodePointIndex shr 5]:=fCodePointBitmap[BitmapCodePointIndex shr 5] or (TpvUInt32(1) shl (BitmapCodePointIndex and 31));
+   GlyphIndex:=ReadInt32;
+   if (GlyphIndex<0) or (GlyphIndex>=length(fGlyphs)) then begin
+    raise EpvFont.Create('Glyph index out of range');
+   end;
+   fCodePointToGlyphHashMap.Add(CodePointIndex,GlyphIndex);
+   CodePointGlyphPair:=@fCodePointGlyphPairs[CodePointGlyphPairIndex];
+   CodePointGlyphPair^.CodePoint:=CodePointIndex;
+   CodePointGlyphPair^.Glyph:=GlyphIndex;
   end;
 
-  for XMLKerningPairTag in XMLRootTag.FindTags('kerningpair') do begin
-   KerningPairIndex:=StrToInt(String(XMLKerningPairTag.GetParameter('id')));
-   if (KerningPairIndex<0) or (KerningPairIndex>=length(fKerningPairs)) then begin
-    raise EpvFont.Create('Kerning pair index out of range');
-   end;
+  for KerningPairIndex:=0 to length(fKerningPairVectors)-1 do begin
    KerningPair:=@fKerningPairs[KerningPairIndex];
-   KerningPair^.Left:=StrToInt(String(XMLKerningPairTag.GetParameter('left')));
-   KerningPair^.Right:=StrToInt(String(XMLKerningPairTag.GetParameter('right')));
-   KerningPair^.Horizontal:=StrToInt(String(XMLKerningPairTag.GetParameter('horizontal')));
-   KerningPair^.Vertical:=StrToInt(String(XMLKerningPairTag.GetParameter('vertical')));
+   KerningPair^.Left:=ReadInt32;
+   KerningPair^.Right:=ReadInt32;
+   KerningPair^.Horizontal:=ReadInt32;
+   KerningPair^.Vertical:=ReadInt32;
    fKerningPairVectors[KerningPairIndex]:=TpvVector2.Create(KerningPair^.Horizontal,KerningPair^.Vertical);
    KerningPairDoubleIndex:=CombineTwoUInt32IntoOneUInt64(KerningPair^.Left,KerningPair^.Right);
    if fKerningPairHashMap.ExistKey(KerningPairDoubleIndex) then begin
@@ -794,7 +840,7 @@ begin
   end;
 
  finally
-  XML.Free;
+  BufferedStream.Free;
  end;
 
 end;
@@ -811,109 +857,136 @@ begin
 end;
 
 procedure TpvFont.SaveToStream(const aStream:TStream);
-var CodePointIndex,BitmapCodePointIndex:TpvUInt32;
-    GlyphIndex,KerningPairIndex:TpvSizeInt;
-    XML:TpvXML;
-    XMLRootTag,XMLGlyphTag,XMLCodePointTag,XMLKerningPairTag:TpvXMLTag;
+var GlyphIndex,CodePointGlyphPairIndex,KerningPairIndex:TpvSizeInt;
     Glyph:PpvFontGlyph;
     KerningPair:PpvFontKerningPair;
+    BufferedStream:TpvSimpleBufferedStream;
+ procedure WriteUInt8(const aValue:TpvUInt8);
+ begin
+  BufferedStream.WriteBuffer(aValue,SizeOf(TpvUInt8));
+ end;
+ procedure WriteUInt16(const aValue:TpvUInt16);
+ begin
+  WriteUInt8(TpVUInt8(aValue shr 0));
+  WriteUInt8(TpVUInt8(aValue shr 8));
+ end;
+ procedure WriteUInt32(const aValue:TpvUInt32);
+ begin
+  WriteUInt8(TpVUInt8(aValue shr 0));
+  WriteUInt8(TpVUInt8(aValue shr 8));
+  WriteUInt8(TpVUInt8(aValue shr 16));
+  WriteUInt8(TpVUInt8(aValue shr 24));
+ end;
+ procedure WriteInt32(const aValue:TpvInt32);
+ begin
+  WriteUInt32(aValue);
+ end;
+ procedure WriteUInt64(const aValue:TpvUInt64);
+ begin
+  WriteUInt8(TpVUInt8(aValue shr 0));
+  WriteUInt8(TpVUInt8(aValue shr 8));
+  WriteUInt8(TpVUInt8(aValue shr 16));
+  WriteUInt8(TpVUInt8(aValue shr 24));
+  WriteUInt8(TpVUInt8(aValue shr 32));
+  WriteUInt8(TpVUInt8(aValue shr 40));
+  WriteUInt8(TpVUInt8(aValue shr 48));
+  WriteUInt8(TpVUInt8(aValue shr 56));
+ end;
+ procedure WriteInt64(const aValue:TpvInt64);
+ begin
+  WriteUInt64(aValue);
+ end;
+ procedure WriteFloat(const aValue:TpvFloat);
+ begin
+  WriteUInt32(PpvUInt32(TpvPointer(@aValue))^);
+ end;
+ procedure WriteDouble(const aValue:TpvDouble);
+ begin
+  WriteUInt64(PpvUInt64(TpvPointer(@aValue))^);
+ end;
+ procedure WriteString(const aValue:TpvRawByteString);
+ begin
+  WriteInt32(length(aValue));
+  if length(aValue)>0 then begin
+   BufferedStream.WriteBuffer(aValue[1],length(aValue));
+  end;
+ end;
 begin
 
- XML:=TpvXML.Create;
+ BufferedStream:=TpvSimpleBufferedStream.Create(aStream,false,4096);
  try
 
-  XMLRootTag:=TpvXMLTag.Create;
-  try
+  WriteUInt32(TpvFont.FileFormatGUID.D1);
+  WriteUInt16(TpvFont.FileFormatGUID.D2);
+  WriteUInt16(TpvFont.FileFormatGUID.D3);
+  WriteUInt8(TpvFont.FileFormatGUID.D4[0]);
+  WriteUInt8(TpvFont.FileFormatGUID.D4[1]);
+  WriteUInt8(TpvFont.FileFormatGUID.D4[2]);
+  WriteUInt8(TpvFont.FileFormatGUID.D4[3]);
+  WriteUInt8(TpvFont.FileFormatGUID.D4[4]);
+  WriteUInt8(TpvFont.FileFormatGUID.D4[5]);
+  WriteUInt8(TpvFont.FileFormatGUID.D4[6]);
+  WriteUInt8(TpvFont.FileFormatGUID.D4[7]);
 
-   XMLRootTag.Name:='font';
+  WriteInt32(fTargetPPI);
+  WriteInt32(fUnitsPerEm);
+  WriteFloat(fBaseScaleFactor);
+  WriteFloat(fInverseBaseScaleFactor);
+  WriteFloat(fBaseSize);
+  WriteFloat(fInverseBaseSize);
+  WriteFloat(fMinX);
+  WriteFloat(fMinY);
+  WriteFloat(fMaxX);
+  WriteFloat(fMaxY);
+  WriteUInt32(fMinimumCodePoint);
+  WriteUInt32(fMaximumCodePoint);
+  WriteInt32(length(fGlyphs));
+  WriteInt32(length(fCodePointGlyphPairs));
+  WriteInt32(length(fKerningPairs));
 
-   XMLRootTag.AddParameter('targetppi',TpvRawByteString(IntToStr(fTargetPPI)));
-   XMLRootTag.AddParameter('unitsperem',TpvRawByteString(IntToStr(fUnitsPerEm)));
-   XMLRootTag.AddParameter('basescalefactor',TpvRawByteString(ConvertDoubleToString(fBaseScaleFactor)));
-   XMLRootTag.AddParameter('inversebasescalefactor',TpvRawByteString(ConvertDoubleToString(fInverseBaseScaleFactor)));
-   XMLRootTag.AddParameter('basesize',TpvRawByteString(ConvertDoubleToString(fBaseSize)));
-   XMLRootTag.AddParameter('inversebasesize',TpvRawByteString(ConvertDoubleToString(fInverseBaseSize)));
-   XMLRootTag.AddParameter('minx',TpvRawByteString(ConvertDoubleToString(fMinX)));
-   XMLRootTag.AddParameter('miny',TpvRawByteString(ConvertDoubleToString(fMinY)));
-   XMLRootTag.AddParameter('maxx',TpvRawByteString(ConvertDoubleToString(fMaxX)));
-   XMLRootTag.AddParameter('maxy',TpvRawByteString(ConvertDoubleToString(fMaxY)));
-   XMLRootTag.AddParameter('minimumcodepoint',TpvRawByteString(IntToStr(fMinimumCodePoint)));
-   XMLRootTag.AddParameter('maximumcodepoint',TpvRawByteString(IntToStr(fMaximumCodePoint)));
-   XMLRootTag.AddParameter('countglyphs',TpvRawByteString(IntToStr(length(fGlyphs))));
-   XMLRootTag.AddParameter('countcodepoints',TpvRawByteString(IntToStr(length(fCodePointGlyphPairs))));
-   XMLRootTag.AddParameter('countkerningpairs',TpvRawByteString(IntToStr(length(fKerningPairs))));
-
-   for GlyphIndex:=0 to length(fGlyphs)-1 do begin
-    Glyph:=@fGlyphs[GlyphIndex];
-    XMLGlyphTag:=TpvXMLTag.Create;
-    try
-     XMLGlyphTag.Name:='glyph';
-     XMLGlyphTag.AddParameter('id',TpvRawByteString(IntToStr(GlyphIndex)));
-     XMLGlyphTag.AddParameter('advancex',TpvRawByteString(ConvertDoubleToString(Glyph^.Advance.x)));
-     XMLGlyphTag.AddParameter('advancey',TpvRawByteString(ConvertDoubleToString(Glyph^.Advance.y)));
-     XMLGlyphTag.AddParameter('boundsleft',TpvRawByteString(ConvertDoubleToString(Glyph^.Bounds.Left)));
-     XMLGlyphTag.AddParameter('boundstop',TpvRawByteString(ConvertDoubleToString(Glyph^.Bounds.Top)));
-     XMLGlyphTag.AddParameter('boundsright',TpvRawByteString(ConvertDoubleToString(Glyph^.Bounds.Right)));
-     XMLGlyphTag.AddParameter('boundsbottom',TpvRawByteString(ConvertDoubleToString(Glyph^.Bounds.Bottom)));
-     XMLGlyphTag.AddParameter('sidebearingsleft',TpvRawByteString(ConvertDoubleToString(Glyph^.SideBearings.Left)));
-     XMLGlyphTag.AddParameter('sidebearingstop',TpvRawByteString(ConvertDoubleToString(Glyph^.SideBearings.Top)));
-     XMLGlyphTag.AddParameter('sidebearingsright',TpvRawByteString(ConvertDoubleToString(Glyph^.SideBearings.Right)));
-     XMLGlyphTag.AddParameter('sidebearingsbottom',TpvRawByteString(ConvertDoubleToString(Glyph^.SideBearings.Bottom)));
-     XMLGlyphTag.AddParameter('offsetx',TpvRawByteString(ConvertDoubleToString(Glyph^.Offset.x)));
-     XMLGlyphTag.AddParameter('offsety',TpvRawByteString(ConvertDoubleToString(Glyph^.Offset.y)));
-     XMLGlyphTag.AddParameter('sizex',TpvRawByteString(ConvertDoubleToString(Glyph^.Size.x)));
-     XMLGlyphTag.AddParameter('sizey',TpvRawByteString(ConvertDoubleToString(Glyph^.Size.y)));
-     XMLGlyphTag.AddParameter('width',TpvRawByteString(IntToStr(Glyph^.Width)));
-     XMLGlyphTag.AddParameter('height',TpvRawByteString(IntToStr(Glyph^.Height)));
-     if assigned(Glyph^.Sprite) then begin
-      XMLGlyphTag.AddParameter('sprite',TpvRawByteString(Glyph^.Sprite.Name));
-     end else begin
-      XMLGlyphTag.AddParameter('sprite','');
-     end;
-    finally
-     XMLRootTag.Add(XMLGlyphTag);
-    end;
+  for GlyphIndex:=0 to length(fGlyphs)-1 do begin
+   Glyph:=@fGlyphs[GlyphIndex];
+   WriteFloat(Glyph^.Advance.x);
+   WriteFloat(Glyph^.Advance.y);
+   WriteFloat(Glyph^.Bounds.Left);
+   WriteFloat(Glyph^.Bounds.Top);
+   WriteFloat(Glyph^.Bounds.Right);
+   WriteFloat(Glyph^.Bounds.Bottom);
+   WriteFloat(Glyph^.SideBearings.Left);
+   WriteFloat(Glyph^.SideBearings.Top);
+   WriteFloat(Glyph^.SideBearings.Right);
+   WriteFloat(Glyph^.SideBearings.Bottom);
+   WriteFloat(Glyph^.Offset.x);
+   WriteFloat(Glyph^.Offset.y);
+   WriteFloat(Glyph^.Size.x);
+   WriteFloat(Glyph^.Size.y);
+   WriteInt32(Glyph^.Width);
+   WriteInt32(Glyph^.Height);
+   if assigned(Glyph^.Sprite) then begin
+    WriteString(TpvRawByteString(Glyph^.Sprite.Name));
+   end else begin
+    WriteString('');
    end;
-
-   for CodePointIndex:=fMinimumCodePoint to fMaximumCodePoint do begin
-    BitmapCodePointIndex:=CodePointIndex-fMinimumCodePoint;
-    if (fCodePointBitmap[BitmapCodePointIndex shr 5] and (TpvUInt32(1) shl (BitmapCodePointIndex and 31)))<>0 then begin
-     XMLCodePointTag:=TpvXMLTag.Create;
-     try
-      XMLCodePointTag.Name:='codepoint';
-      XMLCodePointTag.AddParameter('id',TpvRawByteString(IntToStr(CodePointIndex)));
-      XMLCodePointTag.AddParameter('glyph',TpvRawByteString(IntToStr(fCodePointToGlyphHashMap[CodePointIndex])));
-     finally
-      XMLRootTag.Add(XMLCodePointTag);
-     end;
-    end;
-   end;
-
-   for KerningPairIndex:=0 to length(fKerningPairs)-1 do begin
-    KerningPair:=@fKerningPairs[KerningPairIndex];
-    XMLKerningPairTag:=TpvXMLTag.Create;
-    try
-     XMLKerningPairTag.Name:='kerningpair';
-     XMLKerningPairTag.AddParameter('id',TpvRawByteString(IntToStr(KerningPairIndex)));
-     XMLKerningPairTag.AddParameter('left',TpvRawByteString(IntToStr(KerningPair^.Left)));
-     XMLKerningPairTag.AddParameter('right',TpvRawByteString(IntToStr(KerningPair^.Right)));
-     XMLKerningPairTag.AddParameter('horizontal',TpvRawByteString(IntToStr(KerningPair^.Horizontal)));
-     XMLKerningPairTag.AddParameter('vertical',TpvRawByteString(IntToStr(KerningPair^.Vertical)));
-    finally
-     XMLRootTag.Add(XMLKerningPairTag);
-    end;
-   end;
-
-  finally
-   XML.Root.Add(XMLRootTag);
   end;
 
-  XML.SaveToStream(aStream);
+  for CodePointGlyphPairIndex:=0 to length(fCodePointGlyphPairs)-1 do begin
+   WriteUInt32(fCodePointGlyphPairs[CodePointGlyphPairIndex].CodePoint);
+   WriteUInt32(fCodePointGlyphPairs[CodePointGlyphPairIndex].Glyph);
+  end;
+
+  for KerningPairIndex:=0 to length(fKerningPairs)-1 do begin
+   KerningPair:=@fKerningPairs[KerningPairIndex];
+   WriteInt32(KerningPair^.Left);
+   WriteInt32(KerningPair^.Right);
+   WriteInt32(KerningPair^.Horizontal);
+   WriteInt32(KerningPair^.Vertical);
+  end;
 
  finally
-  XML.Free;
- end;
 
+  BufferedStream.Free;
+
+ end;
 
 end;
 
