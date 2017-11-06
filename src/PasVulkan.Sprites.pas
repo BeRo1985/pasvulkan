@@ -1593,6 +1593,8 @@ begin
    fSRGB:=StrToInt(String(XMLRoot.GetParameter('srgb')))<>0;
    fCountArrayTextures:=StrToInt(String(XMLRoot.GetParameter('countarraytextures')));
 
+   SetLength(fArrayTextures,fCountArrayTextures);
+
    for Index:=0 to fCountArrayTextures-1 do begin
     fArrayTextures[Index]:=TpvSpriteAtlasArrayTexture.Create(fSRGB);
    end;
@@ -1615,6 +1617,7 @@ begin
       end;
       ArrayTexture.fSRGB:=StrToInt(String(XMLSubTag.GetParameter('srgb')))<>0;
       ArrayTexture.fSpecialSizedArrayTexture:=true; //StrToInt(String(XMLSubTag.GetParameter('specialsizedarraytexture')))<>0;
+      ArrayTexture.fDirty:=true;
      end;
     end;
    end;
@@ -1631,7 +1634,7 @@ begin
        if (SubIndex<0) or (SubIndex>=fCountArrayTextures) then begin
         raise EpvSpriteAtlas.Create('Sprite array texture index out of range');
        end;
-       Sprite.fArrayTexture:=fArrayTextures[Index];
+       Sprite.fArrayTexture:=fArrayTextures[SubIndex];
        Sprite.fFlags:=[];
        if StrToInt(String(XMLSubTag.GetParameter('signeddistancefield')))<>0 then begin
         Include(Sprite.fFlags,pvsfSignedDistanceField);
@@ -1695,7 +1698,10 @@ begin
            inc(p16);
           end;
          end;
-         Move(ImageData^,ArrayTexture.GetTexelPointer(0,0,SubIndex)^,ImageWidth*ImageHeight*4);
+         ArrayTexture.fLayerRootNodes[SubIndex].FreeArea:=0;
+         ArrayTexture.fLayerRootNodes[SubIndex].ContentWidth:=ImageWidth;
+         ArrayTexture.fLayerRootNodes[SubIndex].ContentHeight:=ImageHeight;
+         ArrayTexture.CopyIn(ImageData^,ImageWidth,ImageHeight,0,0,SubIndex);
         end else begin
          raise EpvSpriteAtlas.Create(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png has wrong size');
         end;

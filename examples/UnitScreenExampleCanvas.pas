@@ -123,10 +123,15 @@ begin
 end;
 
 procedure TScreenExampleCanvas.Show;
+const CacheVersionGUID:TGUID='{3FD02F86-3E4D-4544-8C64-B855E2C1E6CF}';
 var Stream:TStream;
     Index,x,y:TpvInt32;
     RawSprite:pointer;
     TrueTypeFont:TpvTrueTypeFont;
+    RecreateCacheFiles:boolean;
+    LocalStoragePath,LocalStorageFile:string;
+    FileStream:TFileStream;
+    LocalStorageCacheVersionGUID:TGUID;
 begin
  inherited Show;
 
@@ -154,64 +159,133 @@ begin
  fVulkanFontSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice,false);
  fVulkanFontSpriteAtlas.MipMaps:=false;
 
- //Stream:=pvApplication.Assets.GetAssetStream('fonts/linbiolinum_r.otf');
- //Stream:=pvApplication.Assets.GetAssetStream('fonts/notosans.ttf');
- Stream:=pvApplication.Assets.GetAssetStream('fonts/vera.ttf');
- try
-  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
-  try
-   TrueTypeFont.Size:=-64;
-   TrueTypeFont.Hinting:=false;
-   fVulkanFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,fVulkanFontSpriteAtlas,TrueTypeFont,[TpvFontCodePointRange.Create(0,255)]);
-  finally
-   TrueTypeFont.Free;
-  end;
- finally
-  Stream.Free;
- end;
+ RecreateCacheFiles:=true;
 
- GetMem(RawSprite,256*256*4);
- try
-  FillChar(RawSprite^,256*256*4,#$ff);
-  Index:=0;
-  for y:=0 to 255 do begin
-   for x:=0 to 255 do begin
-    if (x in [0,255]) or (y in [0,255]) then begin
-     TVKUInt8(PpvVulkanRawByteChar(RawSprite)[Index+0]):=0;
-     TVKUInt8(PpvVulkanRawByteChar(RawSprite)[Index+1]):=0;
-     TVKUInt8(PpvVulkanRawByteChar(RawSprite)[Index+2]):=0;
-    end else begin
-     TVKUInt8(PpvVulkanRawByteChar(RawSprite)[Index+0]):=x;
-     TVKUInt8(PpvVulkanRawByteChar(RawSprite)[Index+1]):=y;
-     TVKUInt8(PpvVulkanRawByteChar(RawSprite)[Index+2]):=(x*y) shr 8;
-    end;
-    inc(Index,4);
+ if pvApplication.Files.IsLocalStorageAvailable then begin
+
+  LocalStoragePath:=IncludeTrailingPathDelimiter(pvApplication.Files.GetLocalStoragePath);
+
+  LocalStorageFile:=LocalStoragePath+'example_canvas_cache_version.dat';
+
+  if FileExists(LocalStorageFile) and
+     FileExists(LocalStoragePath+'example_canvas_font_spriteatlas.zip') and
+     FileExists(LocalStoragePath+'example_canvas_font.xml') and
+     FileExists(LocalStoragePath+'example_canvas_spriteatlas.zip') then begin
+
+   FileStream:=TFileStream.Create(LocalStorageFile,fmOpenRead or fmShareDenyWrite);
+   try
+    FileStream.Read(LocalStorageCacheVersionGUID,SizeOf(TGUID));
+   finally
+    FileStream.Free;
    end;
+
+   if CompareMem(@LocalStorageCacheVersionGUID,@CacheVersionGUID,SizeOf(TGUID)) then begin
+
+    RecreateCacheFiles:=false;
+
+   end;
+
   end;
-  fVulkanSpriteTest:=fVulkanSpriteAtlas.LoadRawSprite('test',RawSprite,256,256);
- finally
-  FreeMem(RawSprite);
+
+ end else begin
+
+  LocalStoragePath:='';
+
  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('sprites/smiley0.png');
- try
-  fVulkanSpriteSmiley0:=fVulkanSpriteAtlas.LoadSprite('smiley0',Stream);
- finally
-  Stream.Free;
- end;
+ if RecreateCacheFiles then begin
 
- Stream:=pvApplication.Assets.GetAssetStream('sprites/appicon.png');
- try
-  fVulkanSpriteAppIcon:=fVulkanSpriteAtlas.LoadSprite('appicon',Stream);
- finally
-  Stream.Free;
- end;
+  //Stream:=pvApplication.Assets.GetAssetStream('fonts/linbiolinum_r.otf');
+  //Stream:=pvApplication.Assets.GetAssetStream('fonts/notosans.ttf');
+  Stream:=pvApplication.Assets.GetAssetStream('fonts/vera.ttf');
+  try
+   TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+   try
+    TrueTypeFont.Size:=-64;
+    TrueTypeFont.Hinting:=false;
+    fVulkanFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,fVulkanFontSpriteAtlas,TrueTypeFont,[TpvFontCodePointRange.Create(0,255)]);
+    if length(LocalStoragePath)>0 then begin
+     fVulkanFont.SaveToFile(LocalStoragePath+'example_canvas_font.xml');
+    end;
+   finally
+    TrueTypeFont.Free;
+   end;
+  finally
+   Stream.Free;
+  end;
 
- Stream:=pvApplication.Assets.GetAssetStream('sprites/dancer0.png');
- try
-  fVulkanSpriteDancer0:=fVulkanSpriteAtlas.LoadSprite('dancer0',Stream);
- finally
-  Stream.Free;
+  GetMem(RawSprite,256*256*4);
+  try
+   FillChar(RawSprite^,256*256*4,#$ff);
+   Index:=0;
+   for y:=0 to 255 do begin
+    for x:=0 to 255 do begin
+     if (x in [0,255]) or (y in [0,255]) then begin
+      TVKUInt8(PpvVulkanRawByteChar(RawSprite)[Index+0]):=0;
+      TVKUInt8(PpvVulkanRawByteChar(RawSprite)[Index+1]):=0;
+      TVKUInt8(PpvVulkanRawByteChar(RawSprite)[Index+2]):=0;
+     end else begin
+      TVKUInt8(PpvVulkanRawByteChar(RawSprite)[Index+0]):=x;
+      TVKUInt8(PpvVulkanRawByteChar(RawSprite)[Index+1]):=y;
+      TVKUInt8(PpvVulkanRawByteChar(RawSprite)[Index+2]):=(x*y) shr 8;
+     end;
+     inc(Index,4);
+    end;
+   end;
+   fVulkanSpriteTest:=fVulkanSpriteAtlas.LoadRawSprite('test',RawSprite,256,256);
+  finally
+   FreeMem(RawSprite);
+  end;
+
+  Stream:=pvApplication.Assets.GetAssetStream('sprites/smiley0.png');
+  try
+   fVulkanSpriteSmiley0:=fVulkanSpriteAtlas.LoadSprite('smiley0',Stream);
+  finally
+   Stream.Free;
+  end;
+
+  Stream:=pvApplication.Assets.GetAssetStream('sprites/appicon.png');
+  try
+   fVulkanSpriteAppIcon:=fVulkanSpriteAtlas.LoadSprite('appicon',Stream);
+  finally
+   Stream.Free;
+  end;
+
+  Stream:=pvApplication.Assets.GetAssetStream('sprites/dancer0.png');
+  try
+   fVulkanSpriteDancer0:=fVulkanSpriteAtlas.LoadSprite('dancer0',Stream);
+  finally
+   Stream.Free;
+  end;
+
+  if length(LocalStoragePath)>0 then begin
+
+   fVulkanFontSpriteAtlas.SaveToFile(LocalStoragePath+'example_canvas_font_spriteatlas.zip');
+
+   fVulkanSpriteAtlas.SaveToFile(LocalStoragePath+'example_canvas_spriteatlas.zip');
+
+   FileStream:=TFileStream.Create(LocalStoragePath+'example_canvas_cache_version.dat',fmCreate);
+   try
+    FileStream.Write(CacheVersionGUID,SizeOf(TGUID));
+   finally
+    FileStream.Free;
+   end;
+
+  end;
+
+ end else begin
+
+  fVulkanFontSpriteAtlas.LoadFromFile(LocalStoragePath+'example_canvas_font_spriteatlas.zip');
+
+  fVulkanFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fVulkanFontSpriteAtlas,LocalStoragePath+'example_canvas_font.xml');
+
+  fVulkanSpriteAtlas.LoadFromFile(LocalStoragePath+'example_canvas_spriteatlas.zip');
+
+  fVulkanSpriteTest:=fVulkanSpriteAtlas.Sprites['test'];
+  fVulkanSpriteSmiley0:=fVulkanSpriteAtlas.Sprites['smiley0'];
+  fVulkanSpriteAppIcon:=fVulkanSpriteAtlas.Sprites['appicon'];
+  fVulkanSpriteDancer0:=fVulkanSpriteAtlas.Sprites['dancer0'];
+
  end;
 
  fVulkanFontSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,

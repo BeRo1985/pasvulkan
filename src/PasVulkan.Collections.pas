@@ -52,6 +52,8 @@
 unit PasVulkan.Collections;
 {$i PasVulkan.inc}
 
+{$define ExtraStringHashMap}
+
 interface
 
 uses SysUtils,
@@ -1972,7 +1974,7 @@ begin
  SetLength(OldEntityToCellIndex,0);
 end;
 
-function TpvStringHashMap<TpvHashMapValue>.Add(const Key:TpvHashMapKey;Value:TpvHashMapValue):PHashMapEntity;
+function TpvStringHashMap<TpvHashMapValue>.Add(const Key:TpvHashMapKey;const Value:TpvHashMapValue):PHashMapEntity;
 var Entity:TpvInt32;
     Cell:TpvUInt32;
 begin
@@ -2000,7 +2002,7 @@ begin
  end;
 end;
 
-function TpvStringHashMap<TpvHashMapValue>.Get(const Key:TpvHashMapKey;CreateIfNotExist:boolean=false):PHashMapEntity;
+function TpvStringHashMap<TpvHashMapValue>.Get(const Key:TpvHashMapKey;const CreateIfNotExist:boolean=false):PHashMapEntity;
 var Entity:TpvInt32;
     Cell:TpvUInt32;
     Value:TpvHashMapValue;

@@ -2593,7 +2593,7 @@ end;
 destructor TpvArchiveZIP.Destroy;
 begin
  FreeAndNil(fEntries);
- FreeAndNil(fStream);
+ //FreeAndNil(fStream);
  inherited Destroy;
 end;
 

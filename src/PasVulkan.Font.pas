@@ -740,6 +740,9 @@ begin
    Glyph^.Width:=StrToInt(String(XMLGlyphTag.GetParameter('width')));
    Glyph^.Height:=StrToInt(String(XMLGlyphTag.GetParameter('height')));
    Glyph^.Sprite:=fSpriteAtlas.Sprites[TpvRawByteString(XMLGlyphTag.GetParameter('sprite'))];
+   if not assigned(Glyph^.Sprite) then begin
+    raise EpvFont.Create('Missing glyph sprite');
+   end;
   end;
 
   CountCodePointGlyphPairs:=0;
