@@ -1304,11 +1304,11 @@ type PpvScalar=^TpvScalar;
        property a:TpvScalar read GetA write SetA;
      end;
 
-function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32; overload; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
-function RoundUpToPowerOfTwo(x:TpvUInt64):TpvUInt64; overload; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function RoundUpToPowerOfTwo64(x:TpvUInt64):TpvUInt64; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 
-function IntLog2(x:TpvUInt32):TpvUInt32; overload; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
-function IntLog2(x:TpvUInt64):TpvUInt32; overload; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function IntLog2(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function IntLog264(x:TpvUInt64):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 
 function Modulo(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function ModuloPos(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1507,7 +1507,7 @@ begin
  result:=x+1;
 end;
 
-function RoundUpToPowerOfTwo(x:TpvUInt64):TpvUInt64;
+function RoundUpToPowerOfTwo64(x:TpvUInt64):TpvUInt64;
 begin
  dec(x);
  x:=x or (x shr 1);
@@ -1565,7 +1565,7 @@ begin
 end;
 {$ifend}
 
-function IntLog2(x:TpvUInt64):TpvUInt32; {$if defined(fpc)}{$ifdef CAN_INLINE}inline;{$endif}
+function IntLog264(x:TpvUInt64):TpvUInt32; {$if defined(fpc)}{$ifdef CAN_INLINE}inline;{$endif}
 begin
  if x<>0 then begin
   result:=BSRQWord(x);
