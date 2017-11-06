@@ -1829,7 +1829,7 @@ begin
     end;
 
     Entry.Stream:=TMemoryStream.Create;
-    XML.Write(Entry.Stream);
+    XML.SaveToStream(Entry.Stream);
 
    finally
     XML.Free;
