@@ -2308,6 +2308,8 @@ begin
 
  //SignedDistanceFieldSpriteAtlas.SaveToFile('testbla.zip');
 
+ //fSansFont.SaveToFile('testfont.xml');
+
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawFocus(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget);

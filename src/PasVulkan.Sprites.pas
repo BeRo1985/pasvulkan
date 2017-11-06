@@ -1580,7 +1580,7 @@ begin
     Stream.Free;
    end;
 
-   XMLRoot:=XML.Root.FindTag('root');
+   XMLRoot:=XML.Root.FindTag('spriteatlas');
 
    if not assigned(XMLRoot) then begin
     raise EpvSpriteAtlas.Create('Missing root tag inside sprites.xml');
@@ -1753,7 +1753,7 @@ begin
 
     XMLRoot:=TpvXMLTag.Create;
     try
-     XMLRoot.Name:='root';
+     XMLRoot.Name:='spriteatlas';
      XMLRoot.AddParameter('width',TpvRawByteString(IntToStr(fWidth)));
      XMLRoot.AddParameter('height',TpvRawByteString(IntToStr(fHeight)));
      XMLRoot.AddParameter('maximumcountarraylayers',TpvRawByteString(IntToStr(fMaximumCountArrayLayers)));
@@ -1818,10 +1818,10 @@ begin
        XMLSubTag.AddParameter('trimmedy',TpvRawByteString(IntToStr(Sprite.fTrimmedY)));
        XMLSubTag.AddParameter('trimmedwidth',TpvRawByteString(IntToStr(Sprite.fTrimmedWidth)));
        XMLSubTag.AddParameter('trimmedheight',TpvRawByteString(IntToStr(Sprite.fTrimmedHeight)));
-       XMLSubTag.AddParameter('offsetx',TpvRawByteString(PasDblStrUtils.ConvertDoubleToString(Sprite.fOffsetX)));
-       XMLSubTag.AddParameter('offsety',TpvRawByteString(PasDblStrUtils.ConvertDoubleToString(Sprite.fOffsetY)));
-       XMLSubTag.AddParameter('scalex',TpvRawByteString(PasDblStrUtils.ConvertDoubleToString(Sprite.fScaleX)));
-       XMLSubTag.AddParameter('scaley',TpvRawByteString(PasDblStrUtils.ConvertDoubleToString(Sprite.fScaleY)));
+       XMLSubTag.AddParameter('offsetx',TpvRawByteString(ConvertDoubleToString(Sprite.fOffsetX)));
+       XMLSubTag.AddParameter('offsety',TpvRawByteString(ConvertDoubleToString(Sprite.fOffsetY)));
+       XMLSubTag.AddParameter('scalex',TpvRawByteString(ConvertDoubleToString(Sprite.fScaleX)));
+       XMLSubTag.AddParameter('scaley',TpvRawByteString(ConvertDoubleToString(Sprite.fScaleY)));
       finally
        XMLRoot.Add(XMLSubTag);
       end;
