@@ -77,7 +77,9 @@ uses SysUtils,
      PasVulkan.Image.PNG,
      PasVulkan.Image.TGA;
 
-type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
+type EpvSpriteAtlas=class(Exception);
+
+     PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
      TpvSpriteTextureTexel=packed record
       r:TpvUInt8;
       g:TpvUInt8;
@@ -290,8 +292,8 @@ type PpvSpriteTextureTexel=^TpvSpriteTextureTexel;
        function GetCount:TpvInt32;
        function GetItem(Index:TpvInt32):TpvSprite;
        procedure SetItem(Index:TpvInt32;Item:TpvSprite);
-       function GetSprite(const Name:TpvRawByteString):TpvSprite;
-       procedure AddSprite(Sprite:TpvSprite);
+       function GetSprite(const aName:TpvRawByteString):TpvSprite;
+       procedure AddSprite(const aSprite:TpvSprite);
        function LoadImage(const aDataPointer:TpvPointer;
                           const aDataSize:TVkSizeInt;
                           var aImageData:TpvPointer;
@@ -853,15 +855,15 @@ begin
  fList.Items[Index]:=TpvPointer(Item);
 end;
 
-function TpvSpriteAtlas.GetSprite(const Name:TpvRawByteString):TpvSprite;
+function TpvSpriteAtlas.GetSprite(const aName:TpvRawByteString):TpvSprite;
 begin
- result:=fHashMap[Name];
+ result:=fHashMap[aName];
 end;
 
-procedure TpvSpriteAtlas.AddSprite(Sprite:TpvSprite);
+procedure TpvSpriteAtlas.AddSprite(const aSprite:TpvSprite);
 begin
- fHashMap.Add(Sprite.Name,Sprite);
- fList.Add(Sprite);
+ fHashMap.Add(aSprite.Name,aSprite);
+ fList.Add(aSprite);
 end;
 
 function TpvSpriteAtlas.LoadImage(const aDataPointer:TpvPointer;
@@ -1220,7 +1222,7 @@ begin
     Assert((Layer>=0) and (assigned(ArrayTexture) and assigned(Node)));
 
     if not ((Layer>=0) and (assigned(ArrayTexture) and assigned(Node))) then begin
-     raise Exception.Create('Can''t load raw sprite');
+     raise EpvSpriteAtlas.Create('Can''t load raw sprite');
     end;
 
     begin
@@ -1303,7 +1305,7 @@ begin
 
   end else begin
 
-   raise Exception.Create('Can''t load sprite');
+   raise EpvSpriteAtlas.Create('Can''t load sprite');
 
   end;
 
@@ -1366,7 +1368,7 @@ begin
       result:=LoadRawSprite(aName,ImageData,ImageWidth,ImageHeight,aAutomaticTrim,aPadding);
 
      end else begin
-      raise Exception.Create('Can''t load image');
+      raise EpvSpriteAtlas.Create('Can''t load image');
      end;
 
     finally
@@ -1391,7 +1393,7 @@ begin
 
  end else begin
 
-  raise Exception.Create('Can''t load sprite');
+  raise EpvSpriteAtlas.Create('Can''t load sprite');
 
  end;
 
@@ -1496,7 +1498,7 @@ begin
 
      end else begin
 
-      raise Exception.Create('Can''t load image');
+      raise EpvSpriteAtlas.Create('Can''t load image');
 
      end;
 
@@ -1522,16 +1524,202 @@ begin
 
  end else begin
 
-  raise Exception.Create('Can''t load sprites');
+  raise EpvSpriteAtlas.Create('Can''t load sprites');
 
  end;
 
 end;
 
 procedure TpvSpriteAtlas.LoadFromStream(const aStream:TStream);
+var Archive:TpvArchiveZIP;
+    Stream:TMemoryStream;
+    Entry:TpvArchiveZIPEntry;
+    XML:TpvXML;
+    XMLRoot:TpvXMLTag;
+    XMLSubItem:TpvXMLItem;
+    XMLSubTag:TpvXMLTag;
+    Index,SubIndex,SubSubIndex:TpvSizeInt;
+    ArrayTexture:TpvSpriteAtlasArrayTexture;
+    Sprite:TpvSprite;
+    ImageData:TpvPointer;
+    ImageWidth,ImageHeight:TpvInt32;
+    PNGPixelFormat:TpvPNGPixelFormat;
+    p8:PpvUInt8;
+    p16:PpvUInt16;
 begin
 
+ Unload;
+
+ for Index:=0 to fCountArrayTextures-1 do begin
+  FreeAndNil(fArrayTextures[Index]);
+ end;
+
+ fArrayTextures:=nil;
+
+ ClearAll;
+
+ Archive:=TpvArchiveZIP.Create;
+ try
+
+  Archive.LoadFromStream(aStream);
+
+  Entry:=Archive.Entries.Find('sprites.xml');
+
+  if not assigned(Entry) then begin
+   raise EpvSpriteAtlas.Create('Missing sprites.xml');
+  end;
+
+  XML:=TpvXML.Create;
+  try
+
+   Stream:=TMemoryStream.Create;
+   try
+    Entry.SaveToStream(Stream);
+    XML.LoadFromStream(Stream);
+   finally
+    Stream.Free;
+   end;
+
+   XMLRoot:=XML.Root.FindTag('root');
+
+   if not assigned(XMLRoot) then begin
+    raise EpvSpriteAtlas.Create('Missing root tag inside sprites.xml');
+   end;
+
+   fWidth:=StrToInt(String(XMLRoot.GetParameter('width')));
+   fHeight:=StrToInt(String(XMLRoot.GetParameter('height')));
+   fMaximumCountArrayLayers:=StrToInt(String(XMLRoot.GetParameter('maximumcountarraylayers')));
+   fMipMaps:=StrToInt(String(XMLRoot.GetParameter('mipmaps')))<>0;
+   fSRGB:=StrToInt(String(XMLRoot.GetParameter('srgb')))<>0;
+   fCountArrayTextures:=StrToInt(String(XMLRoot.GetParameter('countarraytextures')));
+
+   for Index:=0 to fCountArrayTextures-1 do begin
+    fArrayTextures[Index]:=TpvSpriteAtlasArrayTexture.Create(fSRGB);
+   end;
+
+   for Index:=0 to XMLRoot.Items.Count-1 do begin
+    XMLSubItem:=XMLRoot.Items[Index];
+    if assigned(XMLSubItem) and (XMLSubItem is TpvXMLTag) then begin
+     XMLSubTag:=XMLSubItem as TpvXMLTag;
+     if XMLSubTag.Name='arraytexture' then begin
+      SubIndex:=StrToInt(String(XMLSubTag.GetParameter('id')));
+      if (SubIndex<0) or (SubIndex>=fCountArrayTextures) then begin
+       raise EpvSpriteAtlas.Create('Array texture ID index out of range');
+      end;
+      ArrayTexture:=fArrayTextures[Index];
+      ArrayTexture.Resize(StrToInt(String(XMLSubTag.GetParameter('width'))),
+                          StrToInt(String(XMLSubTag.GetParameter('height'))),
+                          StrToInt(String(XMLSubTag.GetParameter('layers'))));
+      if ArrayTexture.fCountTexels<>StrToInt(String(XMLSubTag.GetParameter('counttexels'))) then begin
+       raise EpvSpriteAtlas.Create('Array texture count of texels mismatch');
+      end;
+      ArrayTexture.fSRGB:=StrToInt(String(XMLSubTag.GetParameter('srgb')))<>0;
+      ArrayTexture.fSpecialSizedArrayTexture:=true; //StrToInt(String(XMLSubTag.GetParameter('specialsizedarraytexture')))<>0;
+     end;
+    end;
+   end;
+
+   for Index:=0 to XMLRoot.Items.Count-1 do begin
+    XMLSubItem:=XMLRoot.Items[Index];
+    if assigned(XMLSubItem) and (XMLSubItem is TpvXMLTag) then begin
+     XMLSubTag:=XMLSubItem as TpvXMLTag;
+     if XMLSubTag.Name='sprite' then begin
+      Sprite:=TpvSprite.Create;
+      try
+       Sprite.fName:=TpvRawByteString(XMLSubTag.GetParameter('name'));
+       SubIndex:=StrToInt(String(XMLSubTag.GetParameter('arraytexture')));
+       if (SubIndex<0) or (SubIndex>=fCountArrayTextures) then begin
+        raise EpvSpriteAtlas.Create('Sprite array texture index out of range');
+       end;
+       Sprite.fArrayTexture:=fArrayTextures[Index];
+       Sprite.fFlags:=[];
+       if StrToInt(String(XMLSubTag.GetParameter('signeddistancefield')))<>0 then begin
+        Include(Sprite.fFlags,pvsfSignedDistanceField);
+       end;
+       if StrToInt(String(XMLSubTag.GetParameter('rotated')))<>0 then begin
+        Include(Sprite.fFlags,pvsfRotated);
+       end;
+       Sprite.fX:=StrToInt(String(XMLSubTag.GetParameter('x')));
+       Sprite.fY:=StrToInt(String(XMLSubTag.GetParameter('y')));
+       Sprite.fLayer:=StrToInt(String(XMLSubTag.GetParameter('layer')));
+       Sprite.fWidth:=StrToInt(String(XMLSubTag.GetParameter('width')));
+       Sprite.fHeight:=StrToInt(String(XMLSubTag.GetParameter('height')));
+       Sprite.fTrimmedX:=StrToInt(String(XMLSubTag.GetParameter('trimmedx')));
+       Sprite.fTrimmedY:=StrToInt(String(XMLSubTag.GetParameter('trimmedy')));
+       Sprite.fTrimmedWidth:=StrToInt(String(XMLSubTag.GetParameter('trimmedwidth')));
+       Sprite.fTrimmedHeight:=StrToInt(String(XMLSubTag.GetParameter('trimmedheight')));
+       Sprite.fOffsetX:=ConvertStringToDouble(TpvRawByteString(XMLSubTag.GetParameter('offsetx')),rmNearest);
+       Sprite.fOffsetY:=ConvertStringToDouble(TpvRawByteString(XMLSubTag.GetParameter('offsety')),rmNearest);
+       Sprite.fScaleX:=ConvertStringToDouble(TpvRawByteString(XMLSubTag.GetParameter('scalex')),rmNearest);
+       Sprite.fScaleY:=ConvertStringToDouble(TpvRawByteString(XMLSubTag.GetParameter('scaley')),rmNearest);
+      finally
+       AddSprite(Sprite);
+      end;
+     end;
+    end;
+   end;
+
+  finally
+   XML.Free;
+  end;
+
+  for Index:=0 to fCountArrayTextures-1 do begin
+   ArrayTexture:=fArrayTextures[Index];
+   if assigned(ArrayTexture) then begin
+    for SubIndex:=0 to ArrayTexture.fLayers-1 do begin
+     Entry:=Archive.Entries.Find(TpvRawByteString(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png'));
+     if not assigned(Entry) then begin
+      raise EpvSpriteAtlas.Create('Missing '+IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png');
+     end;
+     Stream:=TMemoryStream.Create;
+     try
+      Entry.SaveToStream(Stream);
+      ImageData:=nil;
+      try
+       if LoadPNGImage(TMemoryStream(Stream).Memory,
+                       TMemoryStream(Stream).Size,
+                       ImageData,
+                       ImageWidth,
+                       ImageHeight,
+                       false,
+                       PNGPixelFormat) then begin
+        if (ImageWidth=ArrayTexture.fWidth) and
+           (ImageHeight=ArrayTexture.fHeight) then begin
+         if PNGPixelFormat=pvppfR16G16B16A16 then begin
+          // Convert to R8G8B8A8 in-placve
+          p8:=ImageData;
+          p16:=ImageData;
+          for SubSubIndex:=1 to ImageWidth*ImageHeight*4 do begin
+           p8^:=p16^ shr 8;
+           inc(p8);
+           inc(p16);
+          end;
+         end;
+         Move(ImageData^,ArrayTexture.GetTexelPointer(0,0,SubIndex)^,ImageWidth*ImageHeight*4);
+        end else begin
+         raise EpvSpriteAtlas.Create(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png has wrong size');
+        end;
+       end else begin
+        raise EpvSpriteAtlas.Create('Corrupt '+IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png');
+       end;
+      finally
+       if assigned(ImageData) then begin
+        FreeMem(ImageData);
+       end;
+      end;
+     finally
+      Stream.Free;
+     end;
+    end;
+   end;
+  end;
+
+ finally
+  Archive.Free;
+ end;
+
 end;
+
 
 procedure TpvSpriteAtlas.LoadFromFile(const aFileName:string);
 var Stream:TStream;
@@ -1554,6 +1742,7 @@ var Archive:TpvArchiveZIP;
     ArrayTexture:TpvSpriteAtlasArrayTexture;
     Sprite:TpvSprite;
 begin
+
  Archive:=TpvArchiveZIP.Create;
  try
 
@@ -1655,7 +1844,7 @@ begin
    ArrayTexture:=fArrayTextures[Index];
    if assigned(ArrayTexture) then begin
     for SubIndex:=0 to ArrayTexture.fLayers-1 do begin
-     Entry:=Archive.Entries.Add(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png');
+     Entry:=Archive.Entries.Add(TpvRawByteString(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png'));
      try
       Entry.Stream:=TMemoryStream.Create;
       SavePNGImageAsStream(ArrayTexture.GetTexelPointer(0,0,Index),
@@ -1671,9 +1860,11 @@ begin
   end;
 
   Archive.SaveToStream(aStream);
+
  finally
   Archive.Free;
  end;
+
 end;
 
 procedure TpvSpriteAtlas.SaveToFile(const aFileName:string);

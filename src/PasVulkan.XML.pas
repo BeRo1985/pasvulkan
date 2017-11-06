@@ -72,7 +72,9 @@ uses SysUtils,
 
 const XMLMaxListSize=2147483647 div SizeOf(TpvPointer);
 
-type TpvXMLClass=class
+type EpvXML=class(Exception);
+
+     TpvXMLClass=class
       public
        Previous,Next:TpvXMLClass;
        Core:TpvPointer;
@@ -268,6 +270,7 @@ type TpvXMLClass=class
       private
        function ReadXMLText:TpvRawByteString;
        procedure WriteXMLText(Text:TpvRawByteString);
+    function Read(Stream: TStream): boolean;
       public
        Root:TpvXMLItem;
        AutomaticAloneTagDetection:boolean;
@@ -277,8 +280,11 @@ type TpvXMLClass=class
        destructor Destroy; override;
        procedure Assign(From:TpvXML);
        function Parse(Stream:TStream):boolean;
-       function Read(Stream:TStream):boolean;
        function Write(Stream:TStream;IdentSize:TpvInt32=2):boolean;
+       procedure LoadFromStream(const aStream:TStream);
+       procedure LoadFromFile(const aFileName:string);
+       procedure SaveToStream(const aStream:TStream);
+       procedure SaveToFile(const aFileName:string);
        property Text:TpvRawByteString read ReadXMLText write WriteXMLText;
      end;
 
@@ -2159,6 +2165,43 @@ begin
    Stream.Seek(0,soFromBeginning);
   end;
   Parse(Stream);
+ finally
+  Stream.Free;
+ end;
+end;
+
+
+procedure TpvXML.LoadFromStream(const aStream:TStream);
+begin
+ if not Parse(aStream) then begin
+  raise EpvXML.Create('XML parsing error');
+ end;
+end;
+
+procedure TpvXML.LoadFromFile(const aFileName:string);
+var Stream:TStream;
+begin
+ Stream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  LoadFromStream(Stream);
+ finally
+  Stream.Free;
+ end;
+end;
+
+procedure TpvXML.SaveToStream(const aStream:TStream);
+begin
+ if not Write(aStream) then begin
+  raise EpvXML.Create('XML writing error');
+ end;
+end;
+
+procedure TpvXML.SaveToFile(const aFileName:string);
+var Stream:TStream;
+begin
+ Stream:=TFileStream.Create(aFileName,fmCreate);
+ try
+  SaveToStream(Stream);
  finally
   Stream.Free;
  end;

@@ -2800,7 +2800,9 @@ procedure TpvArchiveZIP.SaveToStream(const aStream:TStream);
      FreeList^[NextFree]:=Node;
     end;
    end;
-   if NextFree<=TABLESIZE then TableFull:=false;
+   if NextFree<=TABLESIZE then begin
+    TableFull:=false;
+   end;
   end;
 
   procedure TableAdd(Prefix:TpvUInt16;Suffix:TpvUInt8);
@@ -2816,7 +2818,9 @@ procedure TpvArchiveZIP.SaveToStream(const aStream:TStream);
      CodeTable^[Prefix].Child:=FreeNode;
     end else begin
      Prefix:=CodeTable^[Prefix].Child;
-     while CodeTable^[Prefix].Sibling<>-1 do Prefix:=CodeTable^[Prefix].Sibling;
+     while CodeTable^[Prefix].Sibling<>-1 do begin
+      Prefix:=CodeTable^[Prefix].Sibling;
+     end;
      CodeTable^[Prefix].Sibling:=FreeNode;
     end;
    end;
@@ -2841,7 +2845,9 @@ procedure TpvArchiveZIP.SaveToStream(const aStream:TStream);
       result:=true;
       break;
      end;
-     if Sibling=-1 then break;
+     if Sibling=-1 then begin
+      break;
+     end;
      TempChild:=Sibling;
     end;
    end;
@@ -2867,7 +2873,9 @@ procedure TpvArchiveZIP.SaveToStream(const aStream:TStream);
     Mask:=$0001;
     repeat
      Agent:=0;
-     if (Code and Mask)<>0 then inc(Agent);
+     if (Code and Mask)<>0 then begin
+      inc(Agent);
+     end;
      Mask:=Mask shl 1;
      Agent:=Agent shl LocalBitsUsed;
      inc(LocalBitsUsed);
@@ -2937,9 +2945,13 @@ procedure TpvArchiveZIP.SaveToStream(const aStream:TStream);
     with CodeTable^[Counter] do begin
      Child:=-1;
      Sibling:=-1;
-     if Counter<=255 then Suffix:=Counter;
+     if Counter<=255 then begin
+      Suffix:=Counter;
+     end;
     end;
-    if Counter>=FIRSTENTRY then FreeList^[Counter]:=Counter;
+    if Counter>=FIRSTENTRY then begin
+     FreeList^[Counter]:=Counter;
+    end;
    end;
    NextFree:=FIRSTENTRY;
    TableFull:=false;
