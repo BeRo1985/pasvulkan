@@ -1720,7 +1720,6 @@ begin
 
 end;
 
-
 procedure TpvSpriteAtlas.LoadFromFile(const aFileName:string);
 var Stream:TStream;
 begin
