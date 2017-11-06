@@ -4201,6 +4201,9 @@ var tx1,ty1,tx2,ty2,xf,yf,sX0,sY0,sX1,sY1:TpvFloat;
     TempDest,TempSrc:TpvRect;
     VertexColor:TpvHalfFloatVector4;
     VertexState:TpvUInt32;
+    Index:TpvInt32;
+    TemporaryVector:PpvVector2;
+    TrimmedOffsetVector,OffsetVector,ScaleTemporaryVector,OtherScaleTemporaryVector:TpvVector2;
 begin
  if ((fState.fBlendingMode=pvcbmNone) or (abs(fState.fColor.a)>MinA)) and
     //ClipCheck(aDest.Left,aDest.Top,aDest.Right,aDest.Bottom) and
@@ -4219,7 +4222,6 @@ begin
   VertexState:=GetVertexState;
   SetGUIElementMode(false);
   SetAtlasTexture(aSprite.ArrayTexture);
-  EnsureSufficientReserveUsableSpace(4,6);
   if aSprite.Rotated then begin
    tx1:=Max(aSprite.TrimmedX,aSrc.Left);
    ty1:=Max(aSprite.TrimmedY,aSrc.Top);
@@ -4253,6 +4255,7 @@ begin
    sY0:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
    sX1:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
    sY1:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
+   EnsureSufficientReserveUsableSpace(4,6);
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
@@ -4314,115 +4317,145 @@ begin
    inc(fCurrentCountVertices);
    inc(fCurrentCountIndices,6);
   end else begin
-   tx1:=Max(aSprite.TrimmedX,aSrc.Left);
-   ty1:=Max(aSprite.TrimmedY,aSrc.Top);
-   tx2:=Min((aSprite.TrimmedX+aSprite.TrimmedWidth),aSrc.Right);
-   ty2:=Min((aSprite.TrimmedY+aSprite.TrimmedHeight),aSrc.Bottom);
    xf:=abs(aDest.Right-aDest.Left)/(aSrc.Right-aSrc.Left);
    yf:=abs(aDest.Bottom-aDest.Top)/(aSrc.Bottom-aSrc.Top);
-   TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
-   TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
-   TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
-   TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
-{  if aDest.Left<=aDest.Right then begin
+   if (length(aSprite.TrimmedHullVectors)>2) and
+      SameValue(aSrc.Left,0.0) and
+      SameValue(aSrc.Top,0.0) and
+      SameValue(aSrc.Right,aSprite.Width) and
+      SameValue(aSrc.Bottom,aSprite.Height) then begin
+    EnsureSufficientReserveUsableSpace(length(aSprite.TrimmedHullVectors),(length(aSprite.TrimmedHullVectors)-2)*3);
+    OffsetVector:=TpvVector2.Create(aSprite.x,aSprite.y);
+    TrimmedOffsetVector:=TpvVector2.Create(aSprite.TrimmedX,aSprite.TrimmedY);
+    ScaleTemporaryVector:=TpvVector2.Create(xf,yf);
+    OtherScaleTemporaryVector:=TpvVector2.Create(TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth,
+                                                 TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight);
+    for Index:=2 to length(aSprite.TrimmedHullVectors)-1 do begin
+     fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices;
+     fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+(Index-1);
+     fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+Index;
+     inc(fCurrentCountIndices,3);
+    end;
+    for Index:=0 to length(aSprite.TrimmedHullVectors)-1 do begin
+     TemporaryVector:=@aSprite.TrimmedHullVectors[Index];
+     fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=fState.fModelMatrix*(aDest.LeftTop+(((TemporaryVector^+TrimmedOffsetVector)-aSrc.LeftTop)*ScaleTemporaryVector));
+     fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord:=TpvVector3.Create((TemporaryVector^+OffsetVector)*OtherScaleTemporaryVector,aSprite.Layer);
+     fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo:=TpvVector4.Null;
+     fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
+     fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
+     fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
+     inc(fCurrentCountVertices);
+    end;
+   end else begin
+    tx1:=Max(aSprite.TrimmedX,aSrc.Left);
+    ty1:=Max(aSprite.TrimmedY,aSrc.Top);
+    tx2:=Min((aSprite.TrimmedX+aSprite.TrimmedWidth),aSrc.Right);
+    ty2:=Min((aSprite.TrimmedY+aSprite.TrimmedHeight),aSrc.Bottom);
     TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
     TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
-   end else begin
-    TempDest.Left:=aDest.Left+((tx2-aSrc.Right)*xf);
-    TempDest.Right:=aDest.Right+((tx1-aSrc.Left)*xf);
-   end;
-   if aDest.Top<=aDest.Bottom then begin
     TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
     TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
-   end else begin
-    TempDest.Top:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
-    TempDest.Bottom:=aDest.Top+((ty1-aSrc.Top)*yf);
-   end;}
-   TempSrc.Left:=(tx1-aSprite.TrimmedX)+aSprite.x;
-   TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
-   TempSrc.Right:=TempSrc.Left+(tx2-tx1);
-   TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
-   if fState.fModelMatrix=TpvMatrix4x4.Identity then begin
-    if TempDest.Left<fState.fClipRect.LeftTop.x then begin
-     TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fState.fClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-     TempDest.Left:=fState.fClipRect.LeftTop.x;
+{   if aDest.Left<=aDest.Right then begin
+     TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
+     TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
+    end else begin
+     TempDest.Left:=aDest.Left+((tx2-aSrc.Right)*xf);
+     TempDest.Right:=aDest.Right+((tx1-aSrc.Left)*xf);
     end;
-    if TempDest.Top<fState.fClipRect.LeftTop.y then begin
-     TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fState.fClipRect.LeftTop.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-     TempDest.Top:=fState.fClipRect.LeftTop.y;
+    if aDest.Top<=aDest.Bottom then begin
+     TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
+     TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
+    end else begin
+     TempDest.Top:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
+     TempDest.Bottom:=aDest.Top+((ty1-aSrc.Top)*yf);
+    end;}
+    TempSrc.Left:=(tx1-aSprite.TrimmedX)+aSprite.x;
+    TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
+    TempSrc.Right:=TempSrc.Left+(tx2-tx1);
+    TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
+    if fState.fModelMatrix=TpvMatrix4x4.Identity then begin
+     if TempDest.Left<fState.fClipRect.LeftTop.x then begin
+      TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fState.fClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+      TempDest.Left:=fState.fClipRect.LeftTop.x;
+     end;
+     if TempDest.Top<fState.fClipRect.LeftTop.y then begin
+      TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fState.fClipRect.LeftTop.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+      TempDest.Top:=fState.fClipRect.LeftTop.y;
+     end;
+     if TempDest.Right>fState.fClipRect.RightBottom.x then begin
+      TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fState.fClipRect.RightBottom.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
+      TempDest.Right:=fState.fClipRect.RightBottom.x;
+     end;
+     if TempDest.Bottom>fState.fClipRect.RightBottom.y then begin
+      TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fState.fClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
+      TempDest.Bottom:=fState.fClipRect.RightBottom.y;
+     end;
     end;
-    if TempDest.Right>fState.fClipRect.RightBottom.x then begin
-     TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fState.fClipRect.RightBottom.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-     TempDest.Right:=fState.fClipRect.RightBottom.x;
-    end;
-    if TempDest.Bottom>fState.fClipRect.RightBottom.y then begin
-     TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fState.fClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-     TempDest.Bottom:=fState.fClipRect.RightBottom.y;
-    end;
+    sX0:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
+    sY0:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
+    sX1:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
+    sY1:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
+    EnsureSufficientReserveUsableSpace(4,6);
+    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
+    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
+    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
+    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+3]:=fCurrentCountVertices+0;
+    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+2;
+    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+3;
+    inc(fCurrentCountIndices,6);
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=fState.fModelMatrix*TpvVector2.Create(TempDest.Left,TempDest.Top);
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo:=TpvVector4.Null;
+ {  if aRenderingMode=pvcrmFont then begin
+     fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Left;
+     fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Top;
+    end;}
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
+    inc(fCurrentCountVertices);
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=fState.fModelMatrix*TpvVector2.Create(TempDest.Right,TempDest.Top);
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo:=TpvVector4.Null;
+ {  if aRenderingMode=pvcrmFont then begin
+     fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Right;
+     fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Top;
+    end;}
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
+    inc(fCurrentCountVertices);
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=fState.fModelMatrix*TpvVector2.Create(TempDest.Right,TempDest.Bottom);
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo:=TpvVector4.Null;
+ {  if aRenderingMode=pvcrmFont then begin
+     fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Right;
+     fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Bottom;
+    end;}
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
+    inc(fCurrentCountVertices);
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=fState.fModelMatrix*TpvVector2.Create(TempDest.Left,TempDest.Bottom);
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo:=TpvVector4.Null;
+ {  if aRenderingMode=pvcrmFont then begin
+     fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Left;
+     fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Bottom;
+    end;}
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
+    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
+    inc(fCurrentCountVertices);
    end;
-   sX0:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
-   sY0:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
-   sX1:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
-   sY1:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
-   fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices+0;
-   fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+1;
-   fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+2;
-   fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+3]:=fCurrentCountVertices+0;
-   fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+4]:=fCurrentCountVertices+2;
-   fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+5]:=fCurrentCountVertices+3;
-   inc(fCurrentCountIndices,6);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=fState.fModelMatrix*TpvVector2.Create(TempDest.Left,TempDest.Top);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo:=TpvVector4.Null;
-{  if aRenderingMode=pvcrmFont then begin
-    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Left;
-    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Top;
-   end;}
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
-   inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=fState.fModelMatrix*TpvVector2.Create(TempDest.Right,TempDest.Top);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo:=TpvVector4.Null;
-{  if aRenderingMode=pvcrmFont then begin
-    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Right;
-    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Top;
-   end;}
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
-   inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=fState.fModelMatrix*TpvVector2.Create(TempDest.Right,TempDest.Bottom);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo:=TpvVector4.Null;
-{  if aRenderingMode=pvcrmFont then begin
-    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Right;
-    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Bottom;
-   end;}
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
-   inc(fCurrentCountVertices);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=fState.fModelMatrix*TpvVector2.Create(TempDest.Left,TempDest.Bottom);
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.x:=sX0;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.y:=sY1;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord.z:=aSprite.Layer;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo:=TpvVector4.Null;
-{  if aRenderingMode=pvcrmFont then begin
-    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.x:=TempSrc.Left;
-    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo.y:=TempSrc.Bottom;
-   end;}
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
-   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
-   inc(fCurrentCountVertices);
   end;
  end;
  result:=self;
