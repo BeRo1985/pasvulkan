@@ -335,12 +335,7 @@ procedure TpvXMLClassList.ClearWithFree;
 var Counter:TpvInt32;
 begin
  for Counter:=0 to InternalCount-1 do begin
-  if assigned(InternalList^[Counter]) then begin
-   try
-    InternalList^[Counter].Destroy;
-   except
-   end;
-  end;
+  FreeAndNil(InternalList^[Counter]);
  end;
  SetCount(0);
 end;
@@ -706,7 +701,7 @@ procedure TpvXMLClassLinkedList.RemoveClass(Item:TpvXMLClass);
 begin
  if assigned(Item) then begin
   Remove(Item);
-  Item.Destroy;
+  Item.Free;
  end;
 end;
 
@@ -751,7 +746,7 @@ end;
 
 destructor TpvXMLItem.Destroy;
 begin
- Items.Destroy;
+ Items.Free;
  inherited Destroy;
 end;
 
@@ -1007,23 +1002,20 @@ function TpvXMLTag.RemoveParameter(AParameter:TpvXMLParameter):boolean;
 var Found,Counter:TpvInt32;
 begin
  result:=false;
- try
-  Found:=-1;
-  for Counter:=0 to length(Parameter)-1 do begin
-   if Parameter[Counter]=AParameter then begin
-    Found:=Counter;
-    break;
-   end;
+ Found:=-1;
+ for Counter:=0 to length(Parameter)-1 do begin
+  if Parameter[Counter]=AParameter then begin
+   Found:=Counter;
+   break;
   end;
-  if Found>=0 then begin
-   for Counter:=Found to length(Parameter)-2 do begin
-    Parameter[Counter]:=Parameter[Counter+1];
-   end;
-   SetLength(Parameter,length(Parameter)-1);
-   AParameter.Destroy;
-   result:=true;
+ end;
+ if Found>=0 then begin
+  for Counter:=Found to length(Parameter)-2 do begin
+   Parameter[Counter]:=Parameter[Counter+1];
   end;
- except
+  SetLength(Parameter,length(Parameter)-1);
+  AParameter.Free;
+  result:=true;
  end;
 end;
 
@@ -1326,12 +1318,12 @@ var Errors:boolean;
   SetLength(result,i);
  end;
 
- function ExpectToken(const S:TpvRawByteString):boolean; overload;
+ function ExpectToken(const s:TpvRawByteString):boolean; overload;
  var i:TpvInt32;
  begin
   result:=true;
-  for i:=1 to length(S) do begin
-   if S[i]<>CurrentChar then begin
+  for i:=1 to length(s) do begin
+   if s[i]<>CurrentChar then begin
     result:=false;
     break;
    end;
@@ -1425,16 +1417,16 @@ var Errors:boolean;
      Value:=TpvUInt8(CurrentChar)-ord('0');
     end;
     'A'..'F':begin
-     Value:=TpvUInt8(CurrentChar)-ord('A')+$a;
+     Value:=(TpvUInt8(CurrentChar)-ord('A'))+$a;
     end;
     'a'..'f':begin
-     Value:=TpvUInt8(CurrentChar)-ord('a')+$a;
+     Value:=(TpvUInt8(CurrentChar)-ord('a'))+$a;
     end;
     else begin
      break;
     end;
    end;
-   result:=(result*16)+Value;
+   result:=(result shl 4) or Value;
    NextChar;
   end;
   if Negitive then begin
@@ -1465,7 +1457,7 @@ var Errors:boolean;
       if CurrentChar=';' then begin
        NextChar;
 {$ifdef XMLUnicode}
-       c:=widechar(word(Value));
+       c:=WideChar(TpvUInt16(Value));
 {$else}
        c:=TpvRawByteChar(TpvUInt8(Value));
 {$endif}
@@ -1525,7 +1517,7 @@ var Errors:boolean;
      SetLength(result,RoundUpToPowerOfTwo(i+1));
     end;
 {$ifdef XMLUnicode}
-    result[i]:=widechar(wc);
+    result[i]:=WideChar(wc);
 {$else}
     result[i]:=TpvRawByteChar(wc);
 {$endif}
@@ -1539,7 +1531,7 @@ var Errors:boolean;
      SetLength(result,RoundUpToPowerOfTwo(i+1));
     end;
 {$ifdef XMLUnicode}
-    result[i]:=widechar(word(TpvUInt8(CurrentChar)+0));
+    result[i]:=WideChar(TpvUInt16(TpvUInt8(CurrentChar)+0));
 {$else}
     result[i]:=CurrentChar;
 {$endif}
@@ -1632,7 +1624,7 @@ var Errors:boolean;
       if (i+1)>length(Text) then begin
        SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
       end;
-      Text[i]:=widechar(word(wc));
+      Text[i]:=WideChar(TpvUInt16(wc));
      end else if wc<=$dfff then begin
       inc(i);
       if (i+1)>length(Text) then begin
@@ -1644,7 +1636,7 @@ var Errors:boolean;
       if (i+1)>length(Text) then begin
        SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
       end;
-      Text[i]:=widechar(word(wc));
+      Text[i]:=WideChar(TpvUInt16(wc));
      end else if wc<=$ffff then begin
       inc(i);
       if (i+1)>length(Text) then begin
@@ -1657,12 +1649,12 @@ var Errors:boolean;
       if (i+1)>length(Text) then begin
        SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
       end;
-      Text[i]:=widechar(word((wc shr 10) or $d800));
+      Text[i]:=WideChar(TpvUInt16((wc shr 10) or $d800));
       inc(i);
       if (i+1)>length(Text) then begin
        SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
       end;
-      Text[i]:=widechar(word((wc and $3ff) or $dc00));
+      Text[i]:=WideChar(TpvUInt16((wc and $3ff) or $dc00));
      end else begin
       inc(i);
       if (i+1)>length(Text) then begin
@@ -1699,7 +1691,7 @@ var Errors:boolean;
      if (i+1)>length(Text) then begin
       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
      end;
-     Text[i]:=widechar(word(TpvUInt8(CurrentChar)+0));
+     Text[i]:=WideChar(TpvUInt16(TpvUInt8(CurrentChar)+0));
 {$else}
      wc:=ord(CurrentChar);
      if wc<$80 then begin
@@ -1727,7 +1719,7 @@ var Errors:boolean;
      if (i+1)>length(Text) then begin
       SetLength(Text,VulkanRoundUpToPowerOfTwo(i+1));
      end;
-     Text[i]:=widechar(word(TpvUInt8(CurrentChar)+0));
+     Text[i]:=WideChar(TpvUInt16(TpvUInt8(CurrentChar)+0));
 {$else}
      wc:=ord(CurrentChar);
      if wc<$80 then begin
@@ -1907,7 +1899,7 @@ var Errors:boolean;
    NextChar;
 
    if (ParentItem<>Root) and (ParentItem is TpvXMLTag) and (XMLTag.Name='/'+TpvXMLTag(ParentItem).Name) then begin
-    XMLTag.Destroy;
+    XMLTag.Free;
     FinishLevel:=true;
     Closed:=true;
    end else begin
@@ -2143,27 +2135,33 @@ function TpvXML.ReadXMLText:TpvRawByteString;
 var Stream:TMemoryStream;
 begin
  Stream:=TMemoryStream.Create;
- Write(Stream);
- if Stream.Size>0 then begin
-  SetLength(result,Stream.Size);
-  Stream.Seek(0,soFromBeginning);
-  Stream.Read(result[1],Stream.Size);
- end else begin
-  result:='';
+ try
+  Write(Stream);
+  if Stream.Size>0 then begin
+   SetLength(result,Stream.Size);
+   Stream.Seek(0,soFromBeginning);
+   Stream.Read(result[1],Stream.Size);
+  end else begin
+   result:='';
+  end;
+ finally
+  Stream.Free;
  end;
- Stream.Destroy;
 end;
 
 procedure TpvXML.WriteXMLText(Text:TpvRawByteString);
 var Stream:TMemoryStream;
 begin
  Stream:=TMemoryStream.Create;
- if length(Text)>0 then begin
-  Stream.Write(Text[1],length(Text));
-  Stream.Seek(0,soFromBeginning);
+ try
+  if length(Text)>0 then begin
+   Stream.Write(Text[1],length(Text));
+   Stream.Seek(0,soFromBeginning);
+  end;
+  Parse(Stream);
+ finally
+  Stream.Free;
  end;
- Parse(Stream);
- Stream.Destroy;
 end;
 
 initialization

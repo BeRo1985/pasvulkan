@@ -66,6 +66,7 @@ uses SysUtils,
      Classes,
      Math,
      PasVulkan.Types,
+     PasVulkan.Collections,
      PasVulkan.Compression.Deflate;
 
 type EpvArchiveZIP=class(Exception);
@@ -252,7 +253,7 @@ type EpvArchiveZIP=class(Exception);
 
      TpvArchiveZIP=class;
 
-     TpvArchiveZIPFileEntry=class(TCollectionItem)
+     TpvArchiveZIPEntry=class(TCollectionItem)
       private
        fFileName:TpvRawByteString;
        fAttributes:TpvUInt32;
@@ -265,6 +266,7 @@ type EpvArchiveZIP=class(Exception);
        fSourceArchive:TpvArchiveZIP;
        fCompressionLevel:TpvArchiveZIPCompressionLevel;
        fLocalFileHeader:TpvArchiveZIPLocalFileHeader;
+       procedure SetFileName(const aFileName:TpvRawByteString);
        function GetDirectory:boolean;
        function GetLink:boolean;
       protected
@@ -283,7 +285,7 @@ type EpvArchiveZIP=class(Exception);
        property Directory:boolean read GetDirectory;
        property Link:boolean read GetLink;
       published
-       property FileName:TpvRawByteString read fFileName write fFileName;
+       property FileName:TpvRawByteString read fFileName write SetFileName;
        property Attributes:TpvUInt32 read fAttributes write fAttributes;
        property DateTime:TDateTime read fDateTime write fDateTime;
        property OS:TpvArchiveZIPOS read fOS write fOS;
@@ -291,30 +293,36 @@ type EpvArchiveZIP=class(Exception);
        property CompressionLevel:TpvArchiveZIPCompressionLevel read fCompressionLevel write fCompressionLevel;
      end;
 
-     TpvArchiveZIPFileEntries=class(TCollection)
+     TpvArchiveZIPEntriesFileNameHashMap=TpvStringHashMap<TpvArchiveZIPEntry>;
+
+     TpvArchiveZIPEntries=class(TCollection)
       private
-       function GetEntry(const aIndex:TpvSizeInt):TpvArchiveZIPFileEntry;
-       procedure SetEntry(const aIndex:TpvSizeInt;const aEntry:TpvArchiveZIPFileEntry);
+       fFileNameHashMap:TpvArchiveZIPEntriesFileNameHashMap;
+       function GetEntry(const aIndex:TpvSizeInt):TpvArchiveZIPEntry;
+       procedure SetEntry(const aIndex:TpvSizeInt;const aEntry:TpvArchiveZIPEntry);
       public
-       function AddEntry(const aFileName:TpvRawByteString):TpvArchiveZIPFileEntry;
-       function FindEntry(const aFileName:TpvRawByteString):TpvArchiveZIPFileEntry;
-       property Entries[const aIndex:TpvSizeInt]:TpvArchiveZIPFileEntry read GetEntry write SetEntry; default;
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+       function Add(const aFileName:TpvRawByteString):TpvArchiveZIPEntry; reintroduce;
+       function Find(const aFileName:TpvRawByteString):TpvArchiveZIPEntry; reintroduce;
+       property Entries[const aIndex:TpvSizeInt]:TpvArchiveZIPEntry read GetEntry write SetEntry; default;
      end;
 
      TpvArchiveZIP=class
       private
-       fFileEntries:TpvArchiveZIPFileEntries;
+       fEntries:TpvArchiveZIPEntries;
        fStream:TStream;
       public
        constructor Create;
        destructor Destroy; override;
+       class function CorrectPath(const aFileName:TpvRawByteString):TpvRawByteString; static;
        procedure Clear;
        procedure LoadFromStream(const aStream:TStream);
        procedure LoadFromFile(const aFileName:string);
        procedure SaveToStream(const aStream:TStream);
        procedure SaveToFile(const aFileName:string);
       published
-       property FileEntries:TpvArchiveZIPFileEntries read fFileEntries;
+       property Entries:TpvArchiveZIPEntries read fEntries;
      end;
 
 implementation
@@ -414,9 +422,10 @@ begin
  result:=not fState;
 end;
 
-constructor TpvArchiveZIPFileEntry.Create(aCollection:TCollection);
+constructor TpvArchiveZIPEntry.Create(aCollection:TCollection);
 begin
  inherited Create(aCollection);
+ fFileName:='';
  fOS:=pvazoFAT;
 //fOS:={$if defined(Unix) or defined(Posix)}pvazoUNIX{$else}pvazoFAT{$ifend};
  fCompressionLevel:=0;
@@ -426,18 +435,39 @@ begin
  fStream:=nil;
 end;
 
-destructor TpvArchiveZIPFileEntry.Destroy;
+destructor TpvArchiveZIPEntry.Destroy;
 begin
+ if (Collection is TpvArchiveZIPEntries) and
+    (length(fFileName)>0) then begin
+  (Collection as TpvArchiveZIPEntries).fFileNameHashMap.Delete(fFileName);
+ end;
  FreeAndNil(fStream);
  inherited Destroy;
 end;
 
-procedure TpvArchiveZIPFileEntry.Assign(aSource:TPersistent);
-var Source:TpvArchiveZIPFileEntry;
+procedure TpvArchiveZIPEntry.SetFileName(const aFileName:TpvRawByteString);
+var NewFileName:TpvRawByteString;
 begin
- if assigned(aSource) and (aSource is TpvArchiveZIPFileEntry) then begin
-  Source:=aSource as TpvArchiveZIPFileEntry;
-  fFileName:=Source.fFileName;
+ NewFileName:=TpvArchiveZIP.CorrectPath(aFileName);
+ if fFileName<>NewFileName then begin
+  if (Collection is TpvArchiveZIPEntries) and
+     (length(fFileName)>0) then begin
+   (Collection as TpvArchiveZIPEntries).fFileNameHashMap.Delete(fFileName);
+  end;
+  fFileName:=NewFileName;
+  if (Collection is TpvArchiveZIPEntries) and
+     (length(fFileName)>0) then begin
+   (Collection as TpvArchiveZIPEntries).fFileNameHashMap.Add(fFileName,self);
+  end;
+ end;
+end;
+
+procedure TpvArchiveZIPEntry.Assign(aSource:TPersistent);
+var Source:TpvArchiveZIPEntry;
+begin
+ if assigned(aSource) and (aSource is TpvArchiveZIPEntry) then begin
+  Source:=aSource as TpvArchiveZIPEntry;
+  SetFileName(Source.fFileName);
   fAttributes:=Source.fAttributes;
   fDateTime:=Source.fDateTime;
   fHeaderPosition:=Source.fHeaderPosition;
@@ -459,7 +489,7 @@ begin
  end;
 end;
 
-function TpvArchiveZIPFileEntry.GetDirectory:boolean;
+function TpvArchiveZIPEntry.GetDirectory:boolean;
 begin
  result:=((Attributes=0) and (length(fFileName)>0) and (fFileName[length(fFileName)-1]='/')) or
          ((Attributes<>0) and
@@ -467,14 +497,14 @@ begin
             ((fOS=pvazoUNIX) and ((fAttributes and $f000)=$4000))));
 end;
 
-function TpvArchiveZIPFileEntry.GetLink:boolean;
+function TpvArchiveZIPEntry.GetLink:boolean;
 begin
  result:=(Attributes<>0) and
          ((((fOS=pvazoFAT) and ((fAttributes and faSymLink)<>0))) or
            ((fOS=pvazoUNIX) and ((fAttributes and $f000)=$a000)));
 end;
 
-procedure TpvArchiveZIPFileEntry.LoadFromStream(const aStream:TStream);
+procedure TpvArchiveZIPEntry.LoadFromStream(const aStream:TStream);
 begin
  FreeAndNil(fStream);
  fStream:=TMemoryStream.Create;
@@ -484,7 +514,7 @@ begin
  fSourceArchive:=nil;
 end;
 
-procedure TpvArchiveZIPFileEntry.LoadFromFile(const aFileName:string);
+procedure TpvArchiveZIPEntry.LoadFromFile(const aFileName:string);
 var Stream:TStream;
 begin
  Stream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
@@ -495,7 +525,7 @@ begin
  end;
 end;
 
-procedure TpvArchiveZIPFileEntry.SaveToStream(const aStream:TStream);
+procedure TpvArchiveZIPEntry.SaveToStream(const aStream:TStream);
 var LocalFileHeader:TpvArchiveZIPLocalFileHeader;
     BitBuffer,OriginalCRC:TpvUInt32;
     BitsInBitBuffer,FilePosition,InputBufferPosition,SlideWindowPosition:TpvSizeInt;
@@ -2508,7 +2538,7 @@ begin
 
 end;
 
-procedure TpvArchiveZIPFileEntry.SaveToFile(const aFileName:string);
+procedure TpvArchiveZIPEntry.SaveToFile(const aFileName:string);
 var Stream:TStream;
 begin
  Stream:=TFileStream.Create(aFileName,fmCreate);
@@ -2519,54 +2549,71 @@ begin
  end;
 end;
 
-function TpvArchiveZIPFileEntries.GetEntry(const aIndex:TpvSizeInt):TpvArchiveZIPFileEntry;
+constructor TpvArchiveZIPEntries.Create;
 begin
- result:=inherited Items[aIndex] as TpvArchiveZIPFileEntry;
+ inherited Create(TpvArchiveZIPEntry);
+ fFileNameHashMap:=TpvArchiveZIPEntriesFileNameHashMap.Create(nil);
 end;
 
-procedure TpvArchiveZIPFileEntries.SetEntry(const aIndex:TpvSizeInt;const aEntry:TpvArchiveZIPFileEntry);
+destructor TpvArchiveZIPEntries.Destroy;
+begin
+ Clear;
+ FreeAndNil(fFileNameHashMap);
+ inherited Destroy;
+end;
+
+function TpvArchiveZIPEntries.GetEntry(const aIndex:TpvSizeInt):TpvArchiveZIPEntry;
+begin
+ result:=inherited Items[aIndex] as TpvArchiveZIPEntry;
+end;
+
+procedure TpvArchiveZIPEntries.SetEntry(const aIndex:TpvSizeInt;const aEntry:TpvArchiveZIPEntry);
 begin
  inherited Items[aIndex]:=aEntry;
 end;
 
-function TpvArchiveZIPFileEntries.AddEntry(const aFileName:TpvRawByteString):TpvArchiveZIPFileEntry;
+function TpvArchiveZIPEntries.Add(const aFileName:TpvRawByteString):TpvArchiveZIPEntry;
 begin
- result:=TpvArchiveZIPFileEntry.Create(self);
- result.fFileName:=TpvRawByteString(StringReplace(String(aFileName),'\','/',[rfReplaceAll]));
+ result:=TpvArchiveZIPEntry.Create(self);
+ result.SetFileName(aFileName);
 end;
 
-function TpvArchiveZIPFileEntries.FindEntry(const aFileName:TpvRawByteString):TpvArchiveZIPFileEntry;
-var Item:TCollectionItem;
-    FileName:TpvRawByteString;
+function TpvArchiveZIPEntries.Find(const aFileName:TpvRawByteString):TpvArchiveZIPEntry;
 begin
- FileName:=TpvRawByteString(StringReplace(String(aFileName),'\','/',[rfReplaceAll]));
- for Item in self do begin
-  result:=Item as TpvArchiveZIPFileEntry;
-  if result.fFileName=aFileName then begin
-   exit;
-  end;
- end;
- result:=nil;
+ result:=fFileNameHashMap[TpvArchiveZIP.CorrectPath(aFileName)];
 end;
 
 constructor TpvArchiveZIP.Create;
 begin
  inherited Create;
- fFileEntries:=TpvArchiveZIPFileEntries.Create(TpvArchiveZIPFileEntry);
+ fEntries:=TpvArchiveZIPEntries.Create;
  fStream:=nil;
 end;
 
 destructor TpvArchiveZIP.Destroy;
 begin
- FreeAndNil(fFileEntries);
+ FreeAndNil(fEntries);
  FreeAndNil(fStream);
  inherited Destroy;
+end;
+
+class function TpvArchiveZIP.CorrectPath(const aFileName:TpvRawByteString):TpvRawByteString;
+var Index:TpvSizeInt;
+begin
+ result:=aFileName;
+ for Index:=1 to length(result) do begin
+  case result[Index] of
+   '\':begin
+    result[Index]:='/';
+   end;
+  end;
+ end;
 end;
 
 procedure TpvArchiveZIP.Clear;
 begin
  FreeAndNil(fStream);
- fFileEntries.Clear;
+ fEntries.Clear;
 end;
 
 procedure TpvArchiveZIP.LoadFromStream(const aStream:TStream);
@@ -2577,7 +2624,7 @@ var LocalFileHeader:TpvArchiveZIPLocalFileHeader;
     Index,Count,FileCount:TpvSizeInt;
     FileName:TpvRawByteString;
     OK:boolean;
-    FileEntry:TpvArchiveZIPFileEntry;
+    FileEntry:TpvArchiveZIPEntry;
 begin
 
  Clear;
@@ -2640,7 +2687,7 @@ begin
    fStream.Seek(CentralFileHeader.ExtraFieldLength+CentralFileHeader.FileCommentLength,soFromCurrent);
 
    if length(FileName)>0 then begin
-    FileEntry:=fFileEntries.AddEntry(FileName);
+    FileEntry:=fEntries.Add(FileName);
     FileEntry.fHeaderPosition:=CentralFileHeader.LocalFileHeaderOffset;
     FileEntry.fSourceArchive:=self;
    end;
@@ -2916,7 +2963,7 @@ var LocalFileHeader:TpvArchiveZIPLocalFileHeader;
     EndCentralFileHeader:TpvArchiveZIPEndCentralFileHeader;
     Counter:TpvSizeInt;
     CompressedStream:TStream;
-    LocalFile:TpvArchiveZIPFileEntry;
+    LocalFile:TpvArchiveZIPEntry;
     Entries:TpvSizeInt;
     StartDiskOffset:TpvInt64;
     CentralFileDirectorySize:TpvInt64;
@@ -2926,7 +2973,7 @@ var LocalFileHeader:TpvArchiveZIPLocalFileHeader;
     DestLen:TpvSizeUInt;
 begin
 
- if fFileEntries.Count=0 then begin
+ if fEntries.Count=0 then begin
   exit;
  end;
 
@@ -2936,8 +2983,8 @@ begin
   (aStream as TFileStream).Size:=0;
  end;
 
- for Counter:=0 to fFileEntries.Count-1 do begin
-  LocalFile:=fFileEntries[Counter];
+ for Counter:=0 to fEntries.Count-1 do begin
+  LocalFile:=fEntries[Counter];
   if assigned(LocalFile) then begin
    CompressedStream:=TMemoryStream.Create;
    try
@@ -3026,8 +3073,8 @@ begin
  Entries:=0;
  StartDiskOffset:=aStream.Position;
  CentralFileDirectorySize:=0;
- for Counter:=0 to fFileEntries.Count-1 do begin
-  LocalFile:=fFileEntries[Counter];
+ for Counter:=0 to fEntries.Count-1 do begin
+  LocalFile:=fEntries[Counter];
   if assigned(LocalFile) then begin
    FillChar(CentralFileHeader,SizeOf(TpvArchiveZIPCentralFileHeader),#0);
    CentralFileHeader.Signature:=TpvArchiveZIPHeaderSignatures.CentralFileHeaderSignature;

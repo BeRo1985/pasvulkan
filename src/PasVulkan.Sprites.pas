@@ -1546,7 +1546,7 @@ end;
 
 procedure TpvSpriteAtlas.SaveToStream(const aStream:TStream);
 var Archive:TpvArchiveZIP;
-    Entry:TpvArchiveZIPFileEntry;
+    Entry:TpvArchiveZIPEntry;
     XML:TpvXML;
     XMLRoot:TpvXMLTag;
     XMLSubTag:TpvXMLTag;
@@ -1557,7 +1557,7 @@ begin
  Archive:=TpvArchiveZIP.Create;
  try
 
-  Entry:=Archive.FileEntries.AddEntry('sprites.xml');
+  Entry:=Archive.Entries.Add('sprites.xml');
   try
 
    XML:=TpvXML.Create;
@@ -1655,7 +1655,7 @@ begin
    ArrayTexture:=fArrayTextures[Index];
    if assigned(ArrayTexture) then begin
     for SubIndex:=0 to ArrayTexture.fLayers-1 do begin
-     Entry:=Archive.FileEntries.AddEntry(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png');
+     Entry:=Archive.Entries.Add(IntToStr(Index)+'_'+IntToStr(SubIndex)+'.png');
      try
       Entry.Stream:=TMemoryStream.Create;
       SavePNGImageAsStream(ArrayTexture.GetTexelPointer(0,0,Index),

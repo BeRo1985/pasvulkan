@@ -1304,9 +1304,11 @@ type PpvScalar=^TpvScalar;
        property a:TpvScalar read GetA write SetA;
      end;
 
-function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32; overload; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function RoundUpToPowerOfTwo(x:TpvUInt64):TpvUInt64; overload; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 
-function IntLog2(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function IntLog2(x:TpvUInt32):TpvUInt32; overload; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function IntLog2(x:TpvUInt64):TpvUInt32; overload; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 
 function Modulo(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function ModuloPos(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1505,7 +1507,19 @@ begin
  result:=x+1;
 end;
 
-function IntLog2(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}
+function RoundUpToPowerOfTwo(x:TpvUInt64):TpvUInt64;
+begin
+ dec(x);
+ x:=x or (x shr 1);
+ x:=x or (x shr 2);
+ x:=x or (x shr 4);
+ x:=x or (x shr 8);
+ x:=x or (x shr 16);
+ x:=x or (x shr 32);
+ result:=x+1;
+end;
+
+function IntLog2(x:TpvUInt32):TpvUInt32; {$if defined(fpc)}{$ifdef CAN_INLINE}inline;{$endif}
 begin
  if x<>0 then begin
   result:=BSRWord(x);
@@ -1513,24 +1527,26 @@ begin
   result:=0;
  end;
 end;
-{$else}
-{$ifdef cpu386}
+{$elseif defined(cpu386)}
 asm
  test eax,eax
  jz @Done
  bsr eax,eax
  @Done:
-end;{$else}{$ifdef cpux86_64}
+end;
+{$elseif defined(cpux86_64)}
 asm
-{$ifdef Windows}
- mov eax,ecx
-{$else}
- mov eax,edi
+{$ifndef fpc}
+ .NOFRAME
 {$endif}
- test eax,eax
- jz @Done
- bsr eax,eax
- @Done:
+{$ifdef Windows}
+ bsr eax,ecx
+{$else}
+ bsr eax,edi
+{$endif}
+ jnz @Done
+ xor eax,eax
+@Done:
 end;
 {$else}
 begin
@@ -1540,16 +1556,68 @@ begin
  x:=x or (x shr 8);
  x:=x or (x shr 16);
  x:=x shr 1;
- x:=x-((x shr 1) and $55555555);
+ dec(x,(x shr 1) and $55555555);
  x:=((x shr 2) and $33333333)+(x and $33333333);
  x:=((x shr 4)+x) and $0f0f0f0f;
- x:=x+(x shr 8);
- x:=x+(x shr 16);
+ inc(x,x shr 8);
+ inc(x,x shr 16);
  result:=x and $3f;
 end;
+{$ifend}
+
+function IntLog2(x:TpvUInt64):TpvUInt32; {$if defined(fpc)}{$ifdef CAN_INLINE}inline;{$endif}
+begin
+ if x<>0 then begin
+  result:=BSRQWord(x);
+ end else begin
+  result:=0;
+ end;
+end;
+{$elseif defined(cpu386)}
+asm
+ bsr eax,dword ptr [x+4]
+ jz @LowPart
+ add eax,32
+ jmp @Done
+@LowPart:
+ xor ecx,ecx
+ bsr eax,dword ptr [x+0]
+ jnz @Done
+ xor eax,eax
+@Done:
+end;
+{$elseif defined(cpux86_64)}
+asm
+{$ifndef fpc}
+ .NOFRAME
 {$endif}
+{$ifdef Windows}
+ bsr rax,rcx
+{$else}
+ bsr rax,rdi
 {$endif}
-{$endif}
+ jnz @Done
+ xor eax,eax
+@Done:
+end;
+{$else}
+begin
+ x:=x or (x shr 1);
+ x:=x or (x shr 2);
+ x:=x or (x shr 4);
+ x:=x or (x shr 8);
+ x:=x or (x shr 16);
+ x:=x or (x shr 32);
+ x:=x shr 1;
+ dec(x,(x shr 1) and $5555555555555555);
+ x:=((x shr 2) and $3333333333333333)+(x and $3333333333333333);
+ x:=((x shr 4)+x) and $0f0f0f0f0f0f0f0f;
+ inc(x,x shr 8);
+ inc(x,x shr 16);
+ inc(x,x shr 32);
+ result:=x and $7f;
+end;
+{$ifend}
 
 function Modulo(x,y:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
