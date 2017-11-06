@@ -654,10 +654,11 @@ end;
 
 procedure TpvFont.LoadFromStream(const aStream:TStream);
 var CodePointIndex,BitmapCodePointIndex:TpvUInt32;
-    GlyphIndex,KerningPairIndex:TpvSizeInt;
+    GlyphIndex,CodePointGlyphPairIndex,CountCodePointGlyphPairs,KerningPairIndex:TpvSizeInt;
     XML:TpvXML;
     XMLRootTag,XMLGlyphTag,XMLCodePointTag,XMLKerningPairTag:TpvXMLTag;
     Glyph:PpvFontGlyph;
+    CodePointGlyphPair:PpvFontCodePointGlyphPair;
     KerningPair:PpvFontKerningPair;
 begin
 
@@ -685,6 +686,7 @@ begin
   fMinimumCodePoint:=StrToInt(String(XMLRootTag.GetParameter('minimumcodepoint')));
   fMaximumCodePoint:=StrToInt(String(XMLRootTag.GetParameter('maximumcodepoint')));
   SetLength(fGlyphs,StrToInt(String(XMLRootTag.GetParameter('countglyphs'))));
+  SetLength(fCodePointGlyphPairs,StrToInt(String(XMLRootTag.GetParameter('countcodepoints'))));
   SetLength(fKerningPairs,StrToInt(String(XMLRootTag.GetParameter('countkerningpairs'))));
   SetLength(fKerningPairVectors,length(fKerningPairs));
 
@@ -693,6 +695,8 @@ begin
   FillChar(fCodePointBitmap[0],length(fCodePointBitmap)*SizeOf(TpvUInt32),#0);
 
   FillChar(fGlyphs[0],length(fGlyphs)*SizeOf(TpvFontGlyph),#0);
+
+  FillChar(fCodePointGlyphPairs[0],length(fCodePointGlyphPairs)*SizeOf(TpvFontCodePointGlyphPair),#0);
 
   FillChar(fKerningPairs[0],length(fKerningPairs)*SizeOf(TpvFontKerningPair),#0);
 
@@ -721,6 +725,36 @@ begin
    Glyph^.Width:=StrToInt(String(XMLGlyphTag.GetParameter('width')));
    Glyph^.Height:=StrToInt(String(XMLGlyphTag.GetParameter('height')));
    Glyph^.Sprite:=fSpriteAtlas.Sprites[TpvRawByteString(XMLGlyphTag.GetParameter('sprite'))];
+  end;
+
+  CountCodePointGlyphPairs:=0;
+  try
+   for XMLCodePointTag in XMLRootTag.FindTags('codepoint') do begin
+    CodePointIndex:=StrToInt(String(XMLCodePointTag.GetParameter('id')));
+    if (CodePointIndex<fMinimumCodePoint) or (CodePointIndex>fMaximumCodePoint) then begin
+     raise EpvFont.Create('Code point index out of range');
+    end;
+    BitmapCodePointIndex:=CodePointIndex-fMinimumCodePoint;
+    if (fCodePointBitmap[BitmapCodePointIndex shr 5] and (TpvUInt32(1) shl (BitmapCodePointIndex and 31)))<>0 then begin
+     raise EpvFont.Create('Duplicate code point');
+    end;
+    fCodePointBitmap[BitmapCodePointIndex shr 5]:=fCodePointBitmap[BitmapCodePointIndex shr 5] or (TpvUInt32(1) shl (BitmapCodePointIndex and 31));
+    GlyphIndex:=StrToInt(String(XMLCodePointTag.GetParameter('glyph')));
+    if (GlyphIndex<0) or (GlyphIndex>=length(fGlyphs)) then begin
+     raise EpvFont.Create('Glyph index out of range');
+    end;
+    fCodePointToGlyphHashMap.Add(CodePointIndex,GlyphIndex);
+    CodePointGlyphPairIndex:=CountCodePointGlyphPairs;
+    inc(CountCodePointGlyphPairs);
+    if length(fCodePointGlyphPairs)<CountCodePointGlyphPairs then begin
+     SetLength(fCodePointGlyphPairs,CountCodePointGlyphPairs*2);
+    end;
+    CodePointGlyphPair:=@fCodePointGlyphPairs[CodePointGlyphPairIndex];
+    CodePointGlyphPair^.CodePoint:=CodePointIndex;
+    CodePointGlyphPair^.Glyph:=GlyphIndex;
+   end;
+  finally
+   SetLength(fCodePointGlyphPairs,CountCodePointGlyphPairs);
   end;
 
  finally
@@ -770,6 +804,7 @@ begin
    XMLRootTag.AddParameter('minimumcodepoint',TpvRawByteString(IntToStr(fMinimumCodePoint)));
    XMLRootTag.AddParameter('maximumcodepoint',TpvRawByteString(IntToStr(fMaximumCodePoint)));
    XMLRootTag.AddParameter('countglyphs',TpvRawByteString(IntToStr(length(fGlyphs))));
+   XMLRootTag.AddParameter('countcodepoints',TpvRawByteString(IntToStr(length(fCodePointGlyphPairs))));
    XMLRootTag.AddParameter('countkerningpairs',TpvRawByteString(IntToStr(length(fKerningPairs))));
 
    for GlyphIndex:=0 to length(fGlyphs)-1 do begin
