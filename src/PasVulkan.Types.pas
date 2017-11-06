@@ -71,6 +71,10 @@ type PPpvInt8=^PpvInt8;
      PpvUInt8=^TpvUInt8;
      TpvUInt8={$ifdef fpc}UInt8{$else}byte{$endif};
 
+     PPpvUInt8Array=^PpvUInt8Array;
+     PpvUInt8Array=^TpvUInt8Array;
+     TpvUInt8Array=array[0..65535] of TpvUInt8;
+
      PPpvInt16=^PpvInt16;
      PpvInt16=^TpvInt16;
      TpvInt16={$ifdef fpc}Int16{$else}smallint{$endif};

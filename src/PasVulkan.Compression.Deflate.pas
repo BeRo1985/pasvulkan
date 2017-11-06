@@ -322,7 +322,7 @@ var OutputBits,CountOutputBits:TpvUInt32;
  end;
 var CurrentPointer,EndPointer,EndSearchPointer,Head,CurrentPossibleMatch:PpvUInt8;
     BestMatchDistance,BestMatchLength,MatchLength,MaximumMatchLength,CheckSum,Step,MaxSteps,
-    Difference:TpvUInt32;
+    Difference,Offset,SkipStrength,UnsuccessfulFindMatchAttempts:TpvUInt32;
     HashTable:PHashTable;
     ChainTable:PChainTable;
     HashTableItem:PPpvUInt8;
@@ -339,9 +339,19 @@ begin
   case aMode of
    pvdmVeryFast:begin
     MaxSteps:=1;
+    SkipStrength:=7;
+   end;
+   pvdmFast:begin
+    MaxSteps:=128;
+    SkipStrength:=7;
+   end;
+   pvdmMedium:begin
+    MaxSteps:=128;
+    SkipStrength:=32;
    end;
    pvdmSlow:begin
     MaxSteps:=MaxOffset;
+    SkipStrength:=32;
    end;
    else begin
     MaxSteps:=128;
@@ -364,6 +374,7 @@ begin
      CurrentPointer:=aInData;
      EndPointer:={%H-}TpvPointer(TpvPtrUInt(TpvPtrUInt(CurrentPointer)+TpvPtrUInt(aInLen)));
      EndSearchPointer:={%H-}TpvPointer(TpvPtrUInt((TpvPtrUInt(CurrentPointer)+TpvPtrUInt(aInLen))-TpvPtrUInt(TpvInt64(Max(TpvInt64(MinMatch),TpvInt64(SizeOf(TpvUInt32)))))));
+     UnsuccessfulFindMatchAttempts:=TpvUInt32(1) shl SkipStrength;
      while {%H-}TpvPtrUInt(CurrentPointer)<{%H-}TpvPtrUInt(EndSearchPointer) do begin
       HashTableItem:=@HashTable[((((PpvUInt32(TpvPointer(CurrentPointer))^ and TpvUInt32({$if defined(FPC_BIG_ENDIAN)}$ffffff00{$else}$00ffffff{$ifend}){$if defined(FPC_BIG_ENDIAN)}shr 8{$ifend}))*TpvUInt32($1e35a7bd)) shr HashShift) and HashMask];
       Head:=HashTableItem^;
@@ -412,7 +423,18 @@ begin
       if (BestMatchDistance>0) and (BestMatchLength>1) then begin
        DoOutputCopy(BestMatchDistance,BestMatchLength);
       end else begin
-       DoOutputLiteral(CurrentPointer^);
+       if SkipStrength>31 then begin
+        DoOutputLiteral(CurrentPointer^);
+       end else begin
+        Step:=UnsuccessfulFindMatchAttempts shr SkipStrength;
+        Offset:=0;
+        while (Offset<Step) and (({%H-}TpvPtrUInt(CurrentPointer)+Offset)<{%H-}TpvPtrUInt(EndSearchPointer)) do begin
+         DoOutputLiteral(PpvUInt8Array(CurrentPointer)^[Offset]);
+         inc(Offset);
+        end;
+        BestMatchLength:=Offset;
+        inc(UnsuccessfulFindMatchAttempts,ord(UnsuccessfulFindMatchAttempts<TpvUInt32($ffffffff)) and 1);
+       end;
       end;
       HashTableItem^:=CurrentPointer;
       ChainTable^[({%H-}TpvPtrUInt(CurrentPointer)-{%H-}TpvPtrUInt(aInData)) and WindowMask]:=Head;
