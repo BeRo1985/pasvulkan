@@ -77,7 +77,9 @@ uses SysUtils,
      PasVulkan.TrueTypeFont,
      PasVulkan.Sprites;
 
-type TpvFontCodePointBitmap=array of TpvUInt32;
+type EpvFont=class(Exception);
+
+     TpvFontCodePointBitmap=array of TpvUInt32;
 
      PpvFontCharacterRange=^TpvFontCharacterRange;
      TpvFontCharacterRange=set of AnsiChar;
@@ -191,6 +193,8 @@ type TpvFontCodePointBitmap=array of TpvUInt32;
        constructor Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0); reintroduce;
        constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aPadding:TpvInt32=2);
        destructor Destroy; override;
+       procedure LoadFromStream(const aStream:TStream);
+       procedure LoadFromFile(const aFileName:string);
        procedure SaveToStream(const aStream:TStream);
        procedure SaveToFile(const aFileName:string);
        function GetScaleFactor(const aSize:TpvFloat):TpvFloat;
@@ -646,6 +650,94 @@ begin
  fSignedDistanceFieldJobs:=nil;
 
  inherited Destroy;
+end;
+
+procedure TpvFont.LoadFromStream(const aStream:TStream);
+var CodePointIndex,BitmapCodePointIndex:TpvUInt32;
+    GlyphIndex,KerningPairIndex:TpvSizeInt;
+    XML:TpvXML;
+    XMLRootTag,XMLGlyphTag,XMLCodePointTag,XMLKerningPairTag:TpvXMLTag;
+    Glyph:PpvFontGlyph;
+    KerningPair:PpvFontKerningPair;
+begin
+
+ XML:=TpvXML.Create;
+ try
+
+  XML.LoadFromStream(aStream);
+
+  XMLRootTag:=XML.Root.FindTag('font');
+
+  if not assigned(XMLRootTag) then begin
+   raise EpvFont.Create('Missing root tag');
+  end;
+
+  fTargetPPI:=StrToInt(String(XMLRootTag.GetParameter('targetppi')));
+  fUnitsPerEm:=StrToInt(String(XMLRootTag.GetParameter('unitsperem')));
+  fBaseScaleFactor:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('basescalefactor')));
+  fInverseBaseScaleFactor:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('inversebasescalefactor')));
+  fBaseSize:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('basesize')));
+  fInverseBaseSize:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('inversebasesize')));
+  fMinX:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('minx')));
+  fMinY:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('miny')));
+  fMaxX:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('maxx')));
+  fMaxY:=ConvertStringToDouble(TpvRawByteString(XMLRootTag.GetParameter('maxy')));
+  fMinimumCodePoint:=StrToInt(String(XMLRootTag.GetParameter('minimumcodepoint')));
+  fMaximumCodePoint:=StrToInt(String(XMLRootTag.GetParameter('maximumcodepoint')));
+  SetLength(fGlyphs,StrToInt(String(XMLRootTag.GetParameter('countglyphs'))));
+  SetLength(fKerningPairs,StrToInt(String(XMLRootTag.GetParameter('countkerningpairs'))));
+  SetLength(fKerningPairVectors,length(fKerningPairs));
+
+  SetLength(fCodePointBitmap,((fMaximumCodePoint-fMinimumCodePoint)+32) shr 5);
+
+  FillChar(fCodePointBitmap[0],length(fCodePointBitmap)*SizeOf(TpvUInt32),#0);
+
+  FillChar(fGlyphs[0],length(fGlyphs)*SizeOf(TpvFontGlyph),#0);
+
+  FillChar(fKerningPairs[0],length(fKerningPairs)*SizeOf(TpvFontKerningPair),#0);
+
+  FillChar(fKerningPairVectors[0],length(fKerningPairVectors)*SizeOf(TpvVector2),#0);
+
+  for XMLGlyphTag in XMLRootTag.FindTags('glyph') do begin
+   GlyphIndex:=StrToInt(String(XMLGlyphTag.GetParameter('id')));
+   if (GlyphIndex<0) or (GlyphIndex>=length(fGlyphs)) then begin
+    raise EpvFont.Create('Glyph index out of range');
+   end;
+   Glyph:=@fGlyphs[GlyphIndex];
+   Glyph^.Advance.x:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('advancex')));
+   Glyph^.Advance.y:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('advancey')));
+   Glyph^.Bounds.Left:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('boundsleft')));
+   Glyph^.Bounds.Top:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('boundstop')));
+   Glyph^.Bounds.Right:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('boundsright')));
+   Glyph^.Bounds.Bottom:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('boundsbottom')));
+   Glyph^.SideBearings.Left:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('sidebearingsleft')));
+   Glyph^.SideBearings.Top:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('sidebearingstop')));
+   Glyph^.SideBearings.Right:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('sidebearingsright')));
+   Glyph^.SideBearings.Bottom:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('sidebearingsbottom')));
+   Glyph^.Offset.x:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('offsetx')));
+   Glyph^.Offset.y:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('offsety')));
+   Glyph^.Size.x:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('sizex')));
+   Glyph^.Size.y:=ConvertStringToDouble(TpvRawByteString(XMLGlyphTag.GetParameter('sizey')));
+   Glyph^.Width:=StrToInt(String(XMLGlyphTag.GetParameter('width')));
+   Glyph^.Height:=StrToInt(String(XMLGlyphTag.GetParameter('height')));
+   Glyph^.Sprite:=fSpriteAtlas.Sprites[TpvRawByteString(XMLGlyphTag.GetParameter('sprite'))];
+  end;
+
+ finally
+  XML.Free;
+ end;
+
+end;
+
+procedure TpvFont.LoadFromFile(const aFileName:string);
+var Stream:TStream;
+begin
+ Stream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  LoadFromStream(Stream);
+ finally
+  Stream.Free;
+ end;
 end;
 
 procedure TpvFont.SaveToStream(const aStream:TStream);

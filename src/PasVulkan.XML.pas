@@ -164,6 +164,8 @@ type EpvXML=class(Exception);
 
      TpvXMLTag=class;
 
+     TpvXMLTags=array of TpvXMLTag;
+
      TpvXMLItem=class(TpvXMLClass)
       public
        Items:TpvXMLItemList;
@@ -173,6 +175,7 @@ type EpvXML=class(Exception);
        procedure Add(Item:TpvXMLItem);
        procedure Assign(From:TpvXMLItem); virtual;
        function FindTag(const TagName:TpvRawByteString):TpvXMLTag;
+       function FindTags(const TagName:TpvRawByteString):TpvXMLTags;
      end;
 
      TpvXMLItemList=class(TpvXMLClassList)
@@ -184,6 +187,7 @@ type EpvXML=class(Exception);
        destructor Destroy; override;
        function NewClass:TpvXMLItem;
        function FindTag(const TagName:TpvRawByteString):TpvXMLTag;
+       function FindTags(const TagName:TpvRawByteString):TpvXMLTags;
        property Item[Index:TpvInt32]:TpvXMLItem read GetItem write SetItem; default;
        property Items[Index:TpvInt32]:TpvXMLItem read GetItem write SetItem;
      end;
@@ -804,6 +808,11 @@ begin
  result:=Items.FindTag(TagName);
 end;
 
+function TpvXMLItem.FindTags(const TagName:TpvRawByteString):TpvXMLTags;
+begin
+ result:=Items.FindTags(TagName);
+end;
+
 constructor TpvXMLItemList.Create;
 begin
  inherited Create;
@@ -845,6 +854,28 @@ begin
    result:=TpvXMLTag(Item);
    break;
   end;
+ end;
+end;
+
+function TpvXMLItemList.FindTags(const TagName:TpvRawByteString):TpvXMLTags;
+var i,j:TpvInt32;
+    Item:TpvXMLItem;
+begin
+ result:=nil;
+ j:=0;
+ try
+  for i:=0 to Count-1 do begin
+   Item:=TpvXMLItem(inherited Items[i]);
+   if (assigned(Item) and (Item is TpvXMLTag)) and (TpvXMLTag(Item).Name=TagName) then begin
+    if length(result)<(j+1) then begin
+     SetLength(result,(j+1)*2);
+    end;
+    result[j]:=Item as TpvXMLTag;
+    inc(j);
+   end;
+  end;
+ finally
+  SetLength(result,j);
  end;
 end;
 
