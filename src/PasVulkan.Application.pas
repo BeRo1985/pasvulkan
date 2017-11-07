@@ -7310,57 +7310,98 @@ begin
  AndroidGetAbsolutePath:=AndroidEnv^.GetMethodID(AndroidEnv,AndroidFileClass,'getAbsolutePath','()Ljava/lang/String;');
 
  AndroidFile:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidActivity,AndroidGetCacheDir);
- AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
  try
-  fCacheDataPath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
-  if length(fCacheDataPath)=0 then begin
+  AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
+  if assigned(AndroidPath) then begin
+   try
+    fCacheDataPath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
+    if length(fCacheDataPath)=0 then begin
+     fCacheDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'cache');
+     if not DirectoryExists(fCacheDataPath) then begin
+      CreateDir(fCacheDataPath);
+     end;
+    end;
+   finally
+    FreeJString(AndroidEnv,AndroidPath);
+   end;
+  end else begin
    fCacheDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'cache');
    if not DirectoryExists(fCacheDataPath) then begin
     CreateDir(fCacheDataPath);
    end;
   end;
  finally
-  FreeJString(AndroidEnv,AndroidPath);
+  AndroidEnv^.DeleteLocalRef(AndroidEnv,AndroidFile);
  end;
 
  AndroidFile:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidActivity,AndroidGetNoBackupFilesDir);
- AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
  try
-  fLocalDataPath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
-  if length(fLocalDataPath)=0 then begin
+  AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
+  if assigned(AndroidPath) then begin
+   try
+    fLocalDataPath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
+    if length(fLocalDataPath)=0 then begin
+     fLocalDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'local');
+     if not DirectoryExists(fLocalDataPath) then begin
+      CreateDir(fLocalDataPath);
+     end;
+    end;
+   finally
+    FreeJString(AndroidEnv,AndroidPath);
+   end;
+  end else begin
    fLocalDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'local');
    if not DirectoryExists(fLocalDataPath) then begin
     CreateDir(fLocalDataPath);
    end;
   end;
  finally
-  FreeJString(AndroidEnv,AndroidPath);
+  AndroidEnv^.DeleteLocalRef(AndroidEnv,AndroidFile);
  end;
 
  AndroidFile:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidActivity,AndroidGetFilesDir);
- AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
  try
-  fRoamingDataPath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
-  if length(fRoamingDataPath)=0 then begin
+  AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
+  if assigned(AndroidPath) then begin
+   try
+    fRoamingDataPath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
+    if length(fRoamingDataPath)=0 then begin
+     fRoamingDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'local');
+     if not DirectoryExists(fRoamingDataPath) then begin
+      CreateDir(fRoamingDataPath);
+     end;
+    end;
+   finally
+    FreeJString(AndroidEnv,AndroidPath);
+   end;
+  end else begin
    fRoamingDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'local');
    if not DirectoryExists(fRoamingDataPath) then begin
     CreateDir(fRoamingDataPath);
    end;
   end;
  finally
-  FreeJString(AndroidEnv,AndroidPath);
+  AndroidEnv^.DeleteLocalRef(AndroidEnv,AndroidFile);
  end;
 
  AndroidNull:=nil;
  AndroidFile:=AndroidEnv^.CallObjectMethodA(AndroidEnv,AndroidActivity,AndroidGetExternalFilesDir,@AndroidNull);
- AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
  try
-  fExternalStoragePath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
-  if length(fExternalStoragePath)=0 then begin
+  AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
+  if assigned(AndroidPath) then begin
+   try
+    fExternalStoragePath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
+    if length(fExternalStoragePath)=0 then begin
+     fExternalStoragePath:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('EXTERNAL_STORAGE'));
+    end;
+   finally
+    FreeJString(AndroidEnv,AndroidPath);
+   end;
+  end else begin
    fExternalStoragePath:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('EXTERNAL_STORAGE'));
   end;
  finally
-  FreeJString(AndroidEnv,AndroidPath);
+  AndroidEnv^.DeleteLocalRef(AndroidEnv,AndroidFile);
  end;
 
 {$elseif (defined(Windows) or defined(Linux) or defined(Unix)) and not defined(Android)}
