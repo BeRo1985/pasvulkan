@@ -129,9 +129,9 @@ var Stream:TStream;
     RawSprite:pointer;
     TrueTypeFont:TpvTrueTypeFont;
     RecreateCacheFiles:boolean;
-    LocalStoragePath,LocalStorageFile:string;
+    CacheStoragePath,CacheStorageFile:string;
     FileStream:TFileStream;
-    LocalStorageCacheVersionGUID:TGUID;
+    CacheStorageCacheVersionGUID:TGUID;
 begin
  inherited Show;
 
@@ -161,25 +161,25 @@ begin
 
  RecreateCacheFiles:=true;
 
- if pvApplication.Files.IsLocalStorageAvailable then begin
+ if pvApplication.Files.IsCacheStorageAvailable then begin
 
-  LocalStoragePath:=IncludeTrailingPathDelimiter(pvApplication.Files.GetLocalStoragePath);
+  CacheStoragePath:=IncludeTrailingPathDelimiter(pvApplication.Files.GetCacheStoragePath);
 
-  LocalStorageFile:=LocalStoragePath+'example_canvas_cache_version.dat';
+  CacheStorageFile:=CacheStoragePath+'example_canvas_cache_version.dat';
 
-  if FileExists(LocalStorageFile) and
-     FileExists(LocalStoragePath+'example_canvas_font_spriteatlas.zip') and
-     FileExists(LocalStoragePath+'example_canvas_font.dat') and
-     FileExists(LocalStoragePath+'example_canvas_spriteatlas.zip') then begin
+  if FileExists(CacheStorageFile) and
+     FileExists(CacheStoragePath+'example_canvas_font_spriteatlas.zip') and
+     FileExists(CacheStoragePath+'example_canvas_font.dat') and
+     FileExists(CacheStoragePath+'example_canvas_spriteatlas.zip') then begin
 
-   FileStream:=TFileStream.Create(LocalStorageFile,fmOpenRead or fmShareDenyWrite);
+   FileStream:=TFileStream.Create(CacheStorageFile,fmOpenRead or fmShareDenyWrite);
    try
-    FileStream.Read(LocalStorageCacheVersionGUID,SizeOf(TGUID));
+    FileStream.Read(CacheStorageCacheVersionGUID,SizeOf(TGUID));
    finally
     FileStream.Free;
    end;
 
-   if CompareMem(@LocalStorageCacheVersionGUID,@CacheVersionGUID,SizeOf(TGUID)) then begin
+   if CompareMem(@CacheStorageCacheVersionGUID,@CacheVersionGUID,SizeOf(TGUID)) then begin
 
     RecreateCacheFiles:=false;
 
@@ -189,7 +189,7 @@ begin
 
  end else begin
 
-  LocalStoragePath:='';
+  CacheStoragePath:='';
 
  end;
 
@@ -204,8 +204,8 @@ begin
     TrueTypeFont.Size:=-64;
     TrueTypeFont.Hinting:=false;
     fVulkanFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,fVulkanFontSpriteAtlas,TrueTypeFont,[TpvFontCodePointRange.Create(0,255)]);
-    if length(LocalStoragePath)>0 then begin
-     fVulkanFont.SaveToFile(LocalStoragePath+'example_canvas_font.dat');
+    if length(CacheStoragePath)>0 then begin
+     fVulkanFont.SaveToFile(CacheStoragePath+'example_canvas_font.dat');
     end;
    finally
     TrueTypeFont.Free;
@@ -258,13 +258,13 @@ begin
    Stream.Free;
   end;
 
-  if length(LocalStoragePath)>0 then begin
+  if length(CacheStoragePath)>0 then begin
 
-   fVulkanFontSpriteAtlas.SaveToFile(LocalStoragePath+'example_canvas_font_spriteatlas.zip');
+   fVulkanFontSpriteAtlas.SaveToFile(CacheStoragePath+'example_canvas_font_spriteatlas.zip');
 
-   fVulkanSpriteAtlas.SaveToFile(LocalStoragePath+'example_canvas_spriteatlas.zip');
+   fVulkanSpriteAtlas.SaveToFile(CacheStoragePath+'example_canvas_spriteatlas.zip');
 
-   FileStream:=TFileStream.Create(LocalStoragePath+'example_canvas_cache_version.dat',fmCreate);
+   FileStream:=TFileStream.Create(CacheStoragePath+'example_canvas_cache_version.dat',fmCreate);
    try
     FileStream.Write(CacheVersionGUID,SizeOf(TGUID));
    finally
@@ -275,11 +275,11 @@ begin
 
  end else begin
 
-  fVulkanFontSpriteAtlas.LoadFromFile(LocalStoragePath+'example_canvas_font_spriteatlas.zip');
+  fVulkanFontSpriteAtlas.LoadFromFile(CacheStoragePath+'example_canvas_font_spriteatlas.zip');
 
-  fVulkanFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fVulkanFontSpriteAtlas,LocalStoragePath+'example_canvas_font.dat');
+  fVulkanFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fVulkanFontSpriteAtlas,CacheStoragePath+'example_canvas_font.dat');
 
-  fVulkanSpriteAtlas.LoadFromFile(LocalStoragePath+'example_canvas_spriteatlas.zip');
+  fVulkanSpriteAtlas.LoadFromFile(CacheStoragePath+'example_canvas_spriteatlas.zip');
 
   fVulkanSpriteTest:=fVulkanSpriteAtlas.Sprites['test'];
   fVulkanSpriteSmiley0:=fVulkanSpriteAtlas.Sprites['smiley0'];

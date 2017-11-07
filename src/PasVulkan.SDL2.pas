@@ -2019,6 +2019,11 @@ procedure SDL_AddHintCallback(name:PAnsichar;callback:TSDL_HintCallback;userdata
 procedure SDL_DelHintCallback(name:PAnsichar;callback:TSDL_HintCallback;userdata:pointer); cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 procedure SDL_ClearHints; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
 
+{$if defined(Android)}
+function SDL_AndroidGetJNIEnv:pointer; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+function SDL_AndroidGetActivity:pointer; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};
+{$ifend}
+
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
 {$if defined(PasVulkanUseSDL2WithStaticVulkanSupport)}
 function SDL_Vulkan_LoadLibrary(path:PAnsiChar):TSDLInt32; cdecl; external {$ifndef staticlink}SDL2LibName{$endif};

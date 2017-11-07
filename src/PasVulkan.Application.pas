@@ -890,9 +890,11 @@ type EpvApplication=class(Exception)
       public
        constructor Create(const aVulkanApplication:TpvApplication);
        destructor Destroy; override;
+       function GetCacheStoragePath:string;
        function GetLocalStoragePath:string;
        function GetRoamingStoragePath:string;
        function GetExternalStoragePath:string;
+       function IsCacheStorageAvailable:boolean;
        function IsLocalStorageAvailable:boolean;
        function IsRoamingStorageAvailable:boolean;
        function IsExternalStorageAvailable:boolean;
@@ -953,8 +955,12 @@ type EpvApplication=class(Exception)
 
        fPathName:string;
 
+       fCacheDataPath:string;
+
        fLocalDataPath:string;
+
        fRoamingDataPath:string;
+
        fExternalStoragePath:string;
 
        fPasMPInstance:TPasMP;
@@ -1502,6 +1508,78 @@ end;
 {$ifend}
 
 {$ifdef unix}
+
+function GetAppDataCachePath(Postfix:TpvApplicationRawByteString):TpvApplicationRawByteString;
+{$ifdef darwin}
+var TruePath:TpvApplicationRawByteString;
+{$endif}
+begin
+{$ifdef darwin}
+{$ifdef darwinsandbox}
+ if DirectoryExists(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'Library')+'Containers') then begin
+  if length(Postfix)>0 then begin
+   TruePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'Library')+'Containers')+Postfix;
+   if not DirectoryExists(TruePath) then begin
+    CreateDir(TruePath);
+   end;
+   result:=TruePath;
+  end else begin
+   result:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'Library')+'Containers';
+  end;
+ end else{$endif} begin
+  if length(Postfix)>0 then begin
+   result:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'.'+Postfix;
+   if not DirectoryExists(result) then begin
+    TruePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME'))+'Library')+'Engine Support')+Postfix;
+    if not DirectoryExists(TruePath) then begin
+     CreateDir(TruePath);
+    end;
+    if DirectoryExists(TruePath) then begin
+     fpSymLink(PAnsiChar(TruePath),PAnsiChar(result));
+    end else begin
+     TruePath:=result;
+    end;
+    if not DirectoryExists(result) then begin
+     CreateDir(result);
+    end;
+   end;
+  end else begin
+   result:=GetEnvironmentVariable('HOME');
+   if DirectoryExists(result) then begin
+    TruePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(result)+'Library')+'Application Support';
+    if DirectoryExists(TruePath) then begin
+     result:=TruePath;
+    end;
+   end;
+  end;
+ end;
+ result:=IncludeTrailingPathDelimiter(result)+'cache';
+ if not DirectoryExists(result) then begin
+  CreateDir(result);
+ end;
+{$else}
+ result:=GetEnvironmentVariable('XDG_CACHE_HOME');
+ if (length(result)=0) or not DirectoryExists(result) then begin
+  result:=GetEnvironmentVariable('HOME');
+  if not DirectoryExists(result) then begin
+   CreateDir(result);
+  end;
+  result:=IncludeTrailingPathDelimiter(result)+'.cache';
+  if not DirectoryExists(result) then begin
+   CreateDir(result);
+  end;
+ end;
+ if length(Postfix)>0 then begin
+  result:=IncludeTrailingPathDelimiter(result)+Postfix;
+  if not DirectoryExists(result) then begin
+   CreateDir(result);
+  end;
+ end;
+ result:=IncludeTrailingPathDelimiter(result);
+{$endif}
+ result:=IncludeTrailingPathDelimiter(result);
+end;
+
 function GetAppDataLocalPath(Postfix:TpvApplicationRawByteString):TpvApplicationRawByteString;
 {$ifdef darwin}
 var TruePath:TpvApplicationRawByteString;
@@ -1546,24 +1624,33 @@ begin
    end;
   end;
  end;
- result:=IncludeTrailingPathDelimiter(result);
-{$else}
- result:=GetEnvironmentVariable('HOME');
- if not DirectoryExists(result) then begin
-  CreateDir(result);
- end;
- if length(Postfix)>0 then begin
-  result:=IncludeTrailingPathDelimiter(result)+'.'+Postfix;
-  if not DirectoryExists(result) then begin
-   CreateDir(result);
-  end;
- end;
- result:=IncludeTrailingPathDelimiter(result);
-{$endif}
  result:=IncludeTrailingPathDelimiter(result)+'local';
  if not DirectoryExists(result) then begin
   CreateDir(result);
  end;
+{$else}
+ result:=GetEnvironmentVariable('XDG_DATA_HOME');
+ if (length(result)=0) or not DirectoryExists(result) then begin
+  result:=GetEnvironmentVariable('HOME');
+  if not DirectoryExists(result) then begin
+   CreateDir(result);
+  end;
+  result:=IncludeTrailingPathDelimiter(result)+'.local';
+  if not DirectoryExists(result) then begin
+   CreateDir(result);
+  end;
+  result:=IncludeTrailingPathDelimiter(result)+'share';
+  if not DirectoryExists(result) then begin
+   CreateDir(result);
+  end;
+ end;
+ if length(Postfix)>0 then begin
+  result:=IncludeTrailingPathDelimiter(result)+Postfix;
+  if not DirectoryExists(result) then begin
+   CreateDir(result);
+  end;
+ end;
+{$endif}
  result:=IncludeTrailingPathDelimiter(result);
 end;
 
@@ -1611,24 +1698,29 @@ begin
    end;
   end;
  end;
- result:=IncludeTrailingPathDelimiter(result);
-{$else}
- result:=GetEnvironmentVariable('HOME');
- if not DirectoryExists(result) then begin
-  CreateDir(result);
- end;
- if length(Postfix)>0 then begin
-  result:=IncludeTrailingPathDelimiter(result)+'.'+Postfix;
-  if not DirectoryExists(result) then begin
-   CreateDir(result);
-  end;
- end;
- result:=IncludeTrailingPathDelimiter(result);
-{$endif}
  result:=IncludeTrailingPathDelimiter(result)+'roaming';
  if not DirectoryExists(result) then begin
   CreateDir(result);
  end;
+{$else}
+ result:=GetEnvironmentVariable('XDG_CONFIG_HOME');
+ if (length(result)=0) or not DirectoryExists(result) then begin
+  result:=GetEnvironmentVariable('HOME');
+  if not DirectoryExists(result) then begin
+   CreateDir(result);
+  end;
+  result:=IncludeTrailingPathDelimiter(result)+'.config';
+  if not DirectoryExists(result) then begin
+   CreateDir(result);
+  end;
+ end;
+ if length(Postfix)>0 then begin
+  result:=IncludeTrailingPathDelimiter(result)+Postfix;
+  if not DirectoryExists(result) then begin
+   CreateDir(result);
+  end;
+ end;
+{$endif}
  result:=IncludeTrailingPathDelimiter(result);
 end;
 {$else}
@@ -1656,6 +1748,120 @@ begin
  end else begin
   result:='';
  end;
+end;
+
+function GetAppDataCachePath(Postfix:string):string;
+type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TpvInt32;nToken:Windows.THandle;dwFlags:TpvInt32;lpszPath:PWideChar):hresult; stdcall;
+     TSHGetKnownFolderPath=function(const rfid:TGUID;dwFlags:DWord;hToken:THandle;out ppszPath:PWideChar):HResult; stdcall;
+const LocalLowGUID:TGUID='{A520A1A4-1780-4FF6-BD18-167343C5AF16}';
+      CSIDL_LOCALAPPDATA=$001c;
+var SHGetFolderPath:TSHGetFolderPath;
+    SHGetKnownFolderPath:TSHGetKnownFolderPath;
+    FilePath:PWideChar;
+    LibHandle:Windows.THandle;
+    Reg:TRegistry;
+begin
+ result:='';
+ try
+  // First try over the SHELL32.DLL from Windows >= Vista
+  LibHandle:=LoadLibrary('SHELL32.DLL');
+  if LibHandle<>0 then begin
+   try
+    SHGetKnownFolderPath:=GetProcAddress(LibHandle,'SHGetKnownFolderPath');
+    FilePath:=nil;
+    if assigned(SHGetKnownFolderPath) and
+       (SHGetKnownFolderPath(LocalLowGUID,0,0,FilePath)>=0) then begin
+     result:=String(WideString(FilePath));
+    end;
+   finally
+    FreeLibrary(LibHandle);
+   end;
+  end;
+  if length(result)=0 then begin
+   // Other try over the SHFOLDER.DLL from MSIE >= 5.0 on Win9x or from Windows >= 2000
+   LibHandle:=LoadLibrary('SHFOLDER.DLL');
+   if LibHandle<>0 then begin
+    try
+     SHGetFolderPath:=GetProcAddress(LibHandle,'SHGetFolderPathW');
+     GetMem(FilePath,4096*2);
+     FillChar(FilePath^,4096*2,ansichar(#0));
+     try
+      if SHGetFolderPath(0,CSIDL_LOCALAPPDATA,0,0,FilePath)=0 then begin
+       result:=String(WideString(FilePath));
+       if (length(result)>0) and DirectoryExists(ExpandFileName(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(result)+'..')+'LocalLow')) then begin
+        result:=ExpandFileName(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(result)+'..')+'LocalLow');
+       end;
+      end;
+     finally
+      FreeMem(FilePath);
+     end;
+    finally
+     FreeLibrary(LibHandle);
+    end;
+   end;
+  end;
+ except
+  result:='';
+ end;
+ if length(result)=0 then begin
+  // Other try over the %localappdata% enviroment variable
+  result:=String(GetEnvironmentVariable('localappdata'));
+  if length(result)=0 then begin
+   try
+    // Again ather try over the windows registry
+    Reg:=TRegistry.Create;
+    try
+     Reg.RootKey:=HKEY_CURRENT_USER;
+     if Reg.OpenKeyReadOnly('Volatile Environment') then begin
+      try
+       try
+        result:=Reg.ReadString('LOCALAPPDATA');
+        if (length(result)>0) and DirectoryExists(ExpandFileName(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(result)+'..')+'LocalLow')) then begin
+         result:=ExpandFileName(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(result)+'..')+'LocalLow');
+        end;
+       except
+        result:='';
+       end;
+      finally
+       Reg.CloseKey;
+      end;
+     end;
+    finally
+     Reg.Free;
+    end;
+   except
+    result:='';
+   end;
+   if length(result)=0 then begin
+    // Fallback for Win9x without SHFOLDER.DLL from MSIE >= 5.0
+    result:=String(GetEnvironmentVariable('windir'));
+    if length(result)>0 then begin
+     // For german Win9x installations
+     result:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(String(result))+'Lokale Einstellungen')+'Anwendungsdaten';
+     if not DirectoryExists(String(result)) then begin
+      // For all other language Win9x installations
+      result:=IncludeTrailingPathDelimiter(String(result))+'Local Settings';
+      if not DirectoryExists(String(result)) then begin
+       result:=IncludeTrailingPathDelimiter(String(result))+'Engine Data';
+       if not DirectoryExists(String(result)) then begin
+        CreateDir(String(result));
+       end;
+      end;
+     end;
+    end else begin
+     // Oops!!! So use simply our own program directory then!
+     result:=ExtractFilePath(ParamStr(0));
+    end;
+   end;
+  end;
+ end;
+ if length(Postfix)>0 then begin
+  result:=String(IncludeTrailingPathDelimiter(String(result))+String(Postfix));
+  if not DirectoryExists(String(result)) then begin
+   CreateDir(String(result));
+  end;
+ end;
+ result:=IncludeTrailingPathDelimiter(String(result));
 end;
 
 function GetAppDataLocalPath(Postfix:string):string;
@@ -4779,6 +4985,15 @@ begin
  inherited Destroy;
 end;
 
+function TpvApplicationFiles.GetCacheStoragePath:string;
+begin
+ if length(fVulkanApplication.fCacheDataPath)>0 then begin
+  result:=IncludeTrailingPathDelimiter(fVulkanApplication.fCacheDataPath);
+ end else begin
+  result:='';
+ end;
+end;
+
 function TpvApplicationFiles.GetLocalStoragePath:string;
 begin
  if length(fVulkanApplication.fLocalDataPath)>0 then begin
@@ -4804,6 +5019,11 @@ begin
  end else begin
   result:='';
  end;
+end;
+
+function TpvApplicationFiles.IsCacheStorageAvailable:boolean;
+begin
+ result:=length(fVulkanApplication.fCacheDataPath)>0;
 end;
 
 function TpvApplicationFiles.IsLocalStorageAvailable:boolean;
@@ -4923,6 +5143,8 @@ begin
  fVersion:=$0100;
 
  fPathName:='PasVulkanApplication';
+
+ fCacheDataPath:='';
 
  fLocalDataPath:='';
 
@@ -7057,18 +7279,94 @@ end;
 
 procedure TpvApplication.Run;
 var Index:TpvInt32;
+{$if defined(Android)}
+    AndroidEnv:PJNIEnv;
+    AndroidActivity,AndroidFile,AndroidNull:jobject;
+    AndroidGetCacheDir,AndroidGetFilesDir,AndroidGetNoBackupFilesDir,
+    AndroidGetExternalFilesDir,AndroidGetAbsolutePath:jmethodID;
+    AndroidActivityClass,AndroidFileClass:jclass;
+    AndroidPath:jstring;
+{$ifend}
 begin
  VulkanDisableFloatingPointExceptions;
 
 {$if defined(Android)}
 
- fLocalDataPath:=IncludeTrailingPathDelimiter(GetAppConfigDir(false));
+ AndroidEnv:=SDL_AndroidGetJNIEnv;
 
- fRoamingDataPath:=IncludeTrailingPathDelimiter(GetAppConfigDir(false));
+ AndroidActivity:=SDL_AndroidGetActivity;
 
- fExternalStoragePath:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('EXTERNAL_STORAGE'));
+ AndroidActivityClass:=AndroidEnv^.GetObjectClass(AndroidEnv,AndroidActivity);
+
+ AndroidGetCacheDir:=AndroidEnv^.GetMethodID(AndroidEnv,AndroidActivityClass,'getCacheDir','()Ljava/io/File;');
+
+ AndroidGetFilesDir:=AndroidEnv^.GetMethodID(AndroidEnv,AndroidActivityClass,'getFilesDir','()Ljava/io/File;');
+
+ AndroidGetNoBackupFilesDir:=AndroidEnv^.GetMethodID(AndroidEnv,AndroidActivityClass,'getNoBackupFilesDir','()Ljava/io/File;');
+
+ AndroidGetExternalFilesDir:=AndroidEnv^.GetMethodID(AndroidEnv,AndroidActivityClass,'getExternalFilesDir','(Ljava/lang/String;)Ljava/io/File;');
+
+ AndroidFileClass:=AndroidEnv^.FindClass(AndroidEnv,'java/io/File');
+ AndroidGetAbsolutePath:=AndroidEnv^.GetMethodID(AndroidEnv,AndroidFileClass,'getAbsolutePath','()Ljava/lang/String;');
+
+ AndroidFile:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidActivity,AndroidGetCacheDir);
+ AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
+ try
+  fCacheDataPath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
+  if length(fCacheDataPath)=0 then begin
+   fCacheDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'cache');
+   if not DirectoryExists(fCacheDataPath) then begin
+    CreateDir(fCacheDataPath);
+   end;
+  end;
+ finally
+  FreeJString(AndroidEnv,AndroidPath);
+ end;
+
+ AndroidFile:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidActivity,AndroidGetNoBackupFilesDir);
+ AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
+ try
+  fLocalDataPath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
+  if length(fLocalDataPath)=0 then begin
+   fLocalDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'local');
+   if not DirectoryExists(fLocalDataPath) then begin
+    CreateDir(fLocalDataPath);
+   end;
+  end;
+ finally
+  FreeJString(AndroidEnv,AndroidPath);
+ end;
+
+ AndroidFile:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidActivity,AndroidGetFilesDir);
+ AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
+ try
+  fRoamingDataPath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
+  if length(fRoamingDataPath)=0 then begin
+   fRoamingDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'local');
+   if not DirectoryExists(fRoamingDataPath) then begin
+    CreateDir(fRoamingDataPath);
+   end;
+  end;
+ finally
+  FreeJString(AndroidEnv,AndroidPath);
+ end;
+
+ AndroidNull:=nil;
+ AndroidFile:=AndroidEnv^.CallObjectMethodA(AndroidEnv,AndroidActivity,AndroidGetExternalFilesDir,@AndroidNull);
+ AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
+ try
+  fExternalStoragePath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
+  if length(fExternalStoragePath)=0 then begin
+   fExternalStoragePath:=IncludeTrailingPathDelimiter(GetEnvironmentVariable('EXTERNAL_STORAGE'));
+  end;
+ finally
+  FreeJString(AndroidEnv,AndroidPath);
+ end;
 
 {$elseif (defined(Windows) or defined(Linux) or defined(Unix)) and not defined(Android)}
+
+ fCacheDataPath:=GetAppDataCachePath(fPathName);
+
  fLocalDataPath:=GetAppDataLocalPath(fPathName);
 
  fRoamingDataPath:=GetAppDataRoamingPath(fPathName);
@@ -7081,7 +7379,7 @@ begin
 
 {$ifend}
 
- fVulkanPipelineCacheFileName:=IncludeTrailingPathDelimiter(fLocalDataPath)+'vulkan_pipeline_cache.bin';
+ fVulkanPipelineCacheFileName:=IncludeTrailingPathDelimiter(fCacheDataPath)+'vulkan_pipeline_cache.bin';
 
  ReadConfig;
 

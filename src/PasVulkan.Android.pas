@@ -361,6 +361,8 @@ const JNI_FALSE=0;
  *)
 type va_list=pointer;
 
+     TJavaUnicodeString={$if declared(UnicodeString)}UnicodeString{$else}WideString{$ifend};
+
      jboolean=byte;        // unsigned 8 bits
      jbyte=shortint;       // signed 8 bits
      jchar=word;           // unsigned 16 bits
@@ -1669,6 +1671,14 @@ function AConfiguration_diff(config1,config2:PAConfiguration):cint32; cdecl; ext
 function AConfiguration_match(base,requested:PAConfiguration):cint32; cdecl; external LibAndroidName;
 function AConfiguration_isBetterThan(base,test,requested:PAConfiguration) :cint32; cdecl; external LibAndroidName;
 
+function JStringToString(const aEnv:PJNIEnv;const aStr:JString):TJavaUnicodeString;
+function StringToJString(const aEnv:PJNIEnv;const aStr:TJavaUnicodeString):JString;
+procedure FreeJString(const aEnv:PJNIEnv;const aStr:JString);
+
+function GetHandleField(const aEnv:PJNIEnv;const aObj:jobject):jfieldID;
+function GetHandle(const aEnv:PJNIEnv;const aObj:jobject):pointer;
+procedure SetHandle(const aEnv:PJNIEnv;const aObj:jobject;const aPointer:pointer);
+
 {$ifend}
 
 implementation
@@ -1700,6 +1710,63 @@ procedure LOGW(const Text:PAnsiChar;const Tag:PAnsiChar='');
 begin
  __android_log_write(ANDROID_LOG_FATAL,Tag,text);
 end;
+
+function JStringToString(const aEnv:PJNIEnv;const aStr:JString):TJavaUnicodeString;
+var Len:Int32;
+    IsCopy:JBoolean;
+    Chars:PJChar;
+begin
+ result:='';
+ if assigned(aStr) then begin
+  Len:=aEnv^.GetStringLength(aEnv,aStr);
+  if Len>0 then begin
+   IsCopy:=0;
+   Chars:=aEnv^.GetStringChars(aEnv,aStr,@IsCopy);
+   if assigned(Chars) then begin
+    try
+     SetLength(result,Len);
+     Move(Chars^,result[1],Len*SizeOf(WideChar));
+    finally
+     aEnv^.ReleaseStringChars(aEnv,aStr,Chars);
+    end;
+   end;
+  end;
+ end;
+end;
+
+function StringToJString(const aEnv:PJNIEnv;const aStr:TJavaUnicodeString):JString;
+var l:jsize;
+begin
+//__android_log_write(ANDROID_LOG_DEBUG,'PasAndroidApplication',PAnsiChar(AnsiString('StringToJString Before: '+aStr)));
+ l:=length(aStr);
+ if l>0 then begin
+  result:=aEnv^.NewString(aEnv,@aStr[1],l);
+ end else begin
+  result:=aEnv^.NewString(aEnv,nil,0);
+ end;
+//__android_log_write(ANDROID_LOG_DEBUG,'PasAndroidApplication',PAnsiChar(AnsiString('StringToJString After: '+aStr)));
+end;
+
+procedure FreeJString(const aEnv:PJNIEnv;const aStr:JString);
+begin
+ aEnv^.DeleteLocalRef(aEnv,aStr);
+end;
+
+function GetHandleField(const aEnv:PJNIEnv;const aObj:jobject):jfieldID;
+begin
+ result:=aEnv^.GetFieldID(aEnv,aEnv^.GetObjectClass(aEnv,aObj),'nativeHandle','J');
+end;
+
+function GetHandle(const aEnv:PJNIEnv;const aObj:jobject):pointer;
+begin
+ result:=pointer(PtrUInt(jlong(aEnv^.GetLongField(aEnv,aObj,GetHandleField(aEnv,aObj)))));
+end;
+
+procedure SetHandle(const aEnv:PJNIEnv;const aObj:jobject;const aPointer:pointer);
+begin
+ aEnv^.SetLongField(aEnv,aObj,GetHandleField(aEnv,aObj),jlong(PtrUInt(pointer(aPointer))));
+end;
+
 {$ifend}
 
 end.
