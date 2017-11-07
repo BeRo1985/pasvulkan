@@ -293,6 +293,7 @@ type EpvSpriteAtlas=class(Exception);
        fSRGB:boolean;
        fIsUploaded:boolean;
        fMipMaps:boolean;
+       fUseConvexHullTrimming:boolean;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fMaximumCountArrayLayers:TpvInt32;
@@ -333,6 +334,7 @@ type EpvSpriteAtlas=class(Exception);
        property Sprites[const Name:TpvRawByteString]:TpvSprite read GetSprite; default;
       published
        property MipMaps:boolean read fMipMaps write fMipMaps;
+       property UseConvexHullTrimming:boolean read fUseConvexHullTrimming write fUseConvexHullTrimming;
        property Width:TpvInt32 read fWidth write fWidth;
        property Height:TpvInt32 read fHeight write fHeight;
        property MaximumCountArrayLayers:TpvInt32 read fMaximumCountArrayLayers write fMaximumCountArrayLayers;
@@ -771,6 +773,7 @@ begin
  fSRGB:=aSRGB; 
  fIsUploaded:=false;
  fMipMaps:=true;
+ fUseConvexHullTrimming:=false;
  fWidth:=Min(VULKAN_SPRITEATLASTEXTURE_WIDTH,fDevice.PhysicalDevice.Properties.limits.maxImageDimension2D);
  fHeight:=Min(VULKAN_SPRITEATLASTEXTURE_HEIGHT,fDevice.PhysicalDevice.Properties.limits.maxImageDimension2D);
  fMaximumCountArrayLayers:=fDevice.PhysicalDevice.Properties.limits.maxImageArrayLayers;
@@ -1166,7 +1169,7 @@ begin
      y0:=0;
     end;
 
-    if aAutomaticTrim and ((TrimmedImageWidth*TrimmedImageHeight)>0) then begin
+    if aAutomaticTrim and fUseConvexHullTrimming and ((TrimmedImageWidth*TrimmedImageHeight)>0) then begin
      ConvexHull2DPixels:=nil;
      try
       SetLength(ConvexHull2DPixels,TrimmedImageWidth*TrimmedImageHeight);
@@ -1701,6 +1704,7 @@ begin
     ui8:=ReadUInt8;
     fMipMaps:=(ui8 and 1)<>0;
     fSRGB:=(ui8 and 2)<>0;
+    fUseConvexHullTrimming:=(ui8 and 4)<>0;
     fCountArrayTextures:=ReadInt32;
     CountSprites:=ReadInt32;
 
@@ -1934,7 +1938,8 @@ begin
      WriteInt32(fHeight);
      WriteInt32(fMaximumCountArrayLayers);
      WriteUInt8((TpvUInt8(ord(fMipMaps) and 1) shl 0) or
-                (TpvUInt8(ord(fsRGB) and 1) shl 1));
+                (TpvUInt8(ord(fsRGB) and 1) shl 1) or
+                (TpvUInt8(ord(fUseConvexHullTrimming) and 1) shl 2));
      WriteInt32(fCountArrayTextures);
      WriteInt32(fList.Count);
 
