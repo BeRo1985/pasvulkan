@@ -311,7 +311,7 @@ type EpvSpriteAtlas=class(Exception);
        function Uploaded:boolean; virtual;
        procedure ClearAll; virtual;
        function LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean;
-       function LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
+       function LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aDepth16Bit:boolean=false):TpvSprite;
        function LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite; overload;
        function LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=pvvpfrNonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite; overload;
        function LoadSprite(const aName:TpvRawByteString;aStream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
@@ -460,58 +460,86 @@ procedure TpvSpriteTexture.Upload(const aDevice:TpvVulkanDevice;
                                   const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                   const aTransferFence:TpvVulkanFence;
                                   const aMipMaps:boolean);
-var BytesPerPixel:TpvInt32;
+type PPixel16Bit=^TPixel16Bit;
+     TPixel16Bit=packed record
+      r,g,b,a:TpvUInt16;
+     end;
+const Div16Bit=1.0/65536.0;
+var BytesPerPixel,Index:TpvInt32;
     Format:TVkFormat;
+    UploadPixels:pointer;
+    s16,d16:PPixel16Bit;
+    c:TpvVector4;
 begin
 
  if not fUploaded then begin
 
   FreeAndNil(fTexture);
 
-  if fDepth16Bit then begin
-   if fSRGB then begin
-    Format:=VK_FORMAT_R16G16B16A16_UNORM;
-    // TODO: Implement manual sRGB converting
-   end else begin
-    Format:=VK_FORMAT_R16G16B16A16_UNORM;
-   end;
-   BytesPerPixel:=16;
-  end else begin
-   if fSRGB then begin
-    Format:=VK_FORMAT_R8G8B8A8_SRGB;
-   end else begin
-    Format:=VK_FORMAT_R8G8B8A8_UNORM;
-   end;
-   BytesPerPixel:=8;
-  end;
+  UploadPixels:=fPixels;
+  try
 
-  fTexture:=TpvVulkanTexture.CreateFromMemory(aDevice,
-                                              aGraphicsQueue,
-                                              aGraphicsCommandBuffer,
-                                              aGraphicsFence,
-                                              aTransferQueue,
-                                              aTransferCommandBuffer,
-                                              aTransferFence,
-                                              Format,
-                                              VK_SAMPLE_COUNT_1_BIT,
-                                              Max(1,fWidth),
-                                              Max(1,fHeight),
-                                              0,
-                                              0,
-                                              1,
-                                              MipMapLevels[aMipMaps],
-                                              [vtufTransferDst,vtufSampled],
-                                              fPixels,
-                                              fWidth*fHeight*SizeOf(TpvUInt8)*BytesPerPixel,
-                                              false,
-                                              false,
-                                              1,
-                                              true);
-  fTexture.WrapModeU:=vtwmClampToBorder;
-  fTexture.WrapModeV:=vtwmClampToBorder;
-  fTexture.WrapModeW:=vtwmClampToBorder;
-  fTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-  fTexture.UpdateSampler;
+   if fDepth16Bit then begin
+    BytesPerPixel:=16;
+    if fSRGB then begin
+     Format:=VK_FORMAT_R16G16B16A16_UNORM;
+     GetMem(UploadPixels,fWidth*fHeight*BytesPerPixel);
+     s16:=fPixels;
+     d16:=UploadPixels;
+     for Index:=1 to fWidth*fHeight do begin
+      c:=ConvertSRGBToLinear(TpvVector4.Create(s16^.r,s16^.g,s16^.g,s16^.b)*Div16Bit);
+      d16^.r:=Min(Max(round(Clamp(c.r,0.0,1.0)*65536.0),0),65535);
+      d16^.g:=Min(Max(round(Clamp(c.g,0.0,1.0)*65536.0),0),65535);
+      d16^.b:=Min(Max(round(Clamp(c.b,0.0,1.0)*65536.0),0),65535);
+      d16^.a:=Min(Max(round(Clamp(c.a,0.0,1.0)*65536.0),0),65535);
+      inc(s16);
+      inc(d16);
+     end;
+    end else begin
+     Format:=VK_FORMAT_R16G16B16A16_UNORM;
+    end;
+   end else begin
+    BytesPerPixel:=8;
+    if fSRGB then begin
+     Format:=VK_FORMAT_R8G8B8A8_SRGB;
+    end else begin
+     Format:=VK_FORMAT_R8G8B8A8_UNORM;
+    end;
+   end;
+
+   fTexture:=TpvVulkanTexture.CreateFromMemory(aDevice,
+                                               aGraphicsQueue,
+                                               aGraphicsCommandBuffer,
+                                               aGraphicsFence,
+                                               aTransferQueue,
+                                               aTransferCommandBuffer,
+                                               aTransferFence,
+                                               Format,
+                                               VK_SAMPLE_COUNT_1_BIT,
+                                               Max(1,fWidth),
+                                               Max(1,fHeight),
+                                               0,
+                                               0,
+                                               1,
+                                               MipMapLevels[aMipMaps],
+                                               [vtufTransferDst,vtufSampled],
+                                               UploadPixels,
+                                               fWidth*fHeight*BytesPerPixel,
+                                               false,
+                                               false,
+                                               1,
+                                               true);
+   fTexture.WrapModeU:=vtwmClampToBorder;
+   fTexture.WrapModeV:=vtwmClampToBorder;
+   fTexture.WrapModeW:=vtwmClampToBorder;
+   fTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+   fTexture.UpdateSampler;
+
+  finally
+   if UploadPixels<>fPixels then begin
+    FreeMem(UploadPixels);
+   end;
+  end;
 
   fUploaded:=true;
 
@@ -648,61 +676,91 @@ procedure TpvSpriteAtlasArrayTexture.Upload(const aDevice:TpvVulkanDevice;
                                             const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                                             const aTransferFence:TpvVulkanFence;
                                             const aMipMaps:boolean);
-var Format:TVkFormat;
+type PPixel16Bit=^TPixel16Bit;
+     TPixel16Bit=packed record
+      r,g,b,a:TpvUInt16;
+     end;
+const Div16Bit=1.0/65536.0;
+var BytesPerPixel,Index:TpvInt32;
+    Format:TVkFormat;
+    UploadPixels:pointer;
+    s16,d16:PPixel16Bit;
+    c:TpvVector4;
 begin
 
  if not fUploaded then begin
 
   FreeAndNil(fTexture);
 
-  if fDepth16Bit then begin
-   if fSRGB then begin
-    Format:=VK_FORMAT_R16G16B16A16_UNORM;
-    // TODO: Implement manual sRGB converting
+  UploadPixels:=@fTexels[0];
+  try
+
+   if fDepth16Bit then begin
+    if fSRGB then begin
+     Format:=VK_FORMAT_R16G16B16A16_UNORM;
+     GetMem(UploadPixels,fCountTexels*fBytesPerPixel);
+     s16:=@fTexels[0];
+     d16:=UploadPixels;
+     for Index:=1 to fCountTexels do begin
+      c:=ConvertSRGBToLinear(TpvVector4.Create(s16^.r,s16^.g,s16^.g,s16^.b)*Div16Bit);
+      d16^.r:=Min(Max(round(Clamp(c.r,0.0,1.0)*65536.0),0),65535);
+      d16^.g:=Min(Max(round(Clamp(c.g,0.0,1.0)*65536.0),0),65535);
+      d16^.b:=Min(Max(round(Clamp(c.b,0.0,1.0)*65536.0),0),65535);
+      d16^.a:=Min(Max(round(Clamp(c.a,0.0,1.0)*65536.0),0),65535);
+      inc(s16);
+      inc(d16);
+     end;
+    end else begin
+     Format:=VK_FORMAT_R16G16B16A16_UNORM;
+    end;
+    BytesPerPixel:=16;
    end else begin
-    Format:=VK_FORMAT_R16G16B16A16_UNORM;
+    if fSRGB then begin
+     Format:=VK_FORMAT_R8G8B8A8_SRGB;
+    end else begin
+     Format:=VK_FORMAT_R8G8B8A8_UNORM;
+    end;
+    BytesPerPixel:=8;
    end;
-  end else begin
-   if fSRGB then begin
-    Format:=VK_FORMAT_R8G8B8A8_SRGB;
-   end else begin
-    Format:=VK_FORMAT_R8G8B8A8_UNORM;
+
+   fTexture:=TpvVulkanTexture.CreateFromMemory(aDevice,
+                                               aGraphicsQueue,
+                                               aGraphicsCommandBuffer,
+                                               aGraphicsFence,
+                                               aTransferQueue,
+                                               aTransferCommandBuffer,
+                                               aTransferFence,
+                                               Format,
+                                               VK_SAMPLE_COUNT_1_BIT,
+                                               Max(1,fWidth),
+                                               Max(1,fHeight),
+                                               0,
+                                               Max(1,fLayers),
+                                               1,
+                                               MipMapLevels[aMipMaps],
+                                               [vtufTransferDst,vtufSampled],
+                                               UploadPixels,
+                                               fCountTexels*fBytesPerPixel,
+                                               false,
+                                               false,
+                                               1,
+                                               true);
+
+   fTexture.WrapModeU:=vtwmClampToBorder;
+   fTexture.WrapModeV:=vtwmClampToBorder;
+   fTexture.WrapModeW:=vtwmClampToBorder;
+   fTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+   fTexture.UpdateSampler;
+
+  finally
+   if UploadPixels<>@fTexels[0] then begin
+    FreeMem(UploadPixels);
    end;
   end;
-
-  fTexture:=TpvVulkanTexture.CreateFromMemory(aDevice,
-                                              aGraphicsQueue,
-                                              aGraphicsCommandBuffer,
-                                              aGraphicsFence,
-                                              aTransferQueue,
-                                              aTransferCommandBuffer,
-                                              aTransferFence,
-                                              Format,
-                                              VK_SAMPLE_COUNT_1_BIT,
-                                              Max(1,fWidth),
-                                              Max(1,fHeight),
-                                              0,
-                                              Max(1,fLayers),
-                                              1,
-                                              MipMapLevels[aMipMaps],
-                                              [vtufTransferDst,vtufSampled],
-                                              @fTexels[0],
-                                              fCountTexels*fBytesPerPixel,
-                                              false,
-                                              false,
-                                              1,
-                                              true);
-
-  fTexture.WrapModeU:=vtwmClampToBorder;
-  fTexture.WrapModeV:=vtwmClampToBorder;
-  fTexture.WrapModeW:=vtwmClampToBorder;
-  fTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-  fTexture.UpdateSampler;
 
   fUploaded:=true;
 
  end;
-
 end;
 
 procedure TpvSpriteAtlasArrayTexture.Unload;
@@ -1069,15 +1127,17 @@ begin
  end;
 end;
 
-function TpvSpriteAtlas.LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
-var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer,TotalPadding,PaddingIndex:TpvInt32;
+function TpvSpriteAtlas.LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aDepth16Bit:boolean=false):TpvSprite;
+var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer,TotalPadding,PaddingIndex,Index:TpvInt32;
     ArrayTexture:TpvSpriteAtlasArrayTexture;
     Node:PpvSpriteAtlasArrayTextureLayerRectNode;
     Sprite:TpvSprite;
     sp,dp:PpvUInt32;
     sp16,dp16:PpvUInt64;
+    p8:PpvUInt8;
+    p16:PpvUInt16;
     OK,SpecialSizedArrayTexture:boolean;
-    TrimmedImageData:TpvPointer;
+    WorkImageData,TrimmedImageData:TpvPointer;
     TrimmedImageWidth:TpvInt32;
     TrimmedImageHeight:TpvInt32;
     ConvexHull2DPixels:TpvConvexHull2DPixels;
@@ -1101,210 +1161,241 @@ begin
 
   if assigned(aImageData) and (aImageWidth>0) and (aImageHeight>0) then begin
 
-   x0:=0;
-   y0:=0;
-   x1:=aImageWidth;
-   y1:=aImageHeight;
+   WorkImageData:=aImageData;
+   try
 
-   if aAutomaticTrim then begin
-
-    // Trim input
-    if fDepth16Bit then begin
-
-     for x:=0 to aImageWidth-1 do begin
-      OK:=true;
-      for y:=0 to aImageHeight-1 do begin
-       sp16:=aImageData;
-       inc(sp16,(y*aImageWidth)+x);
-       if ((sp16^ shr 56) and $ff)<>0 then begin
-        OK:=false;
-        break;
-       end;
-      end;
-      if OK then begin
-       x0:=x;
-      end else begin
-       break;
-      end;
+    if aDepth16Bit and not fDepth16Bit then begin
+     // Convert to R8G8B8A8
+     GetMem(WorkImageData,aImageWidth*aImageHeight*4);
+     p8:=WorkImageData;
+     p16:=aImageData;
+     for Index:=1 to aImageWidth*aImageHeight*4 do begin
+      p8^:=p16^ shr 8;
+      inc(p8);
+      inc(p16);
      end;
+    end else if fDepth16Bit and not aDepth16Bit then begin
+     // Convert to R16G1B16A16
+     GetMem(WorkImageData,aImageWidth*aImageHeight*8);
+     p8:=aImageData;
+     p16:=WorkImageData;
+     for Index:=1 to aImageWidth*aImageHeight*4 do begin
+      p16^:=p8^ or (TpvUInt16(p8^) shl 8);
+      inc(p8);
+      inc(p16);
+     end;
+    end;
 
-     sp16:=aImageData;
-     for y:=0 to aImageHeight-1 do begin
-      OK:=true;
+    x0:=0;
+    y0:=0;
+    x1:=aImageWidth;
+    y1:=aImageHeight;
+
+    if aAutomaticTrim then begin
+
+     // Trim input
+     if fDepth16Bit then begin
+
       for x:=0 to aImageWidth-1 do begin
-       if ((sp16^ shr 56) and $ff)<>0 then begin
-        OK:=false;
+       OK:=true;
+       for y:=0 to aImageHeight-1 do begin
+        sp16:=WorkImageData;
+        inc(sp16,(y*aImageWidth)+x);
+        if ((sp16^ shr 56) and $ff)<>0 then begin
+         OK:=false;
+         break;
+        end;
+       end;
+       if OK then begin
+        x0:=x;
+       end else begin
         break;
        end;
-       inc(sp16);
       end;
-      if OK then begin
-       y0:=y;
-      end else begin
-       break;
-      end;
-     end;
 
-     for x:=aImageWidth-1 downto 0 do begin
-      OK:=true;
+      sp16:=WorkImageData;
       for y:=0 to aImageHeight-1 do begin
-       sp16:=aImageData;
-       inc(sp16,(y*aImageWidth)+x);
-       if ((sp16^ shr 56) and $ff)<>0 then begin
-        OK:=false;
+       OK:=true;
+       for x:=0 to aImageWidth-1 do begin
+        if ((sp16^ shr 56) and $ff)<>0 then begin
+         OK:=false;
+         break;
+        end;
+        inc(sp16);
+       end;
+       if OK then begin
+        y0:=y;
+       end else begin
         break;
        end;
       end;
-      if OK then begin
-       x1:=x+1;
-      end else begin
-       break;
-      end;
-     end;
 
-     for y:=aImageHeight-1 downto 0 do begin
-      OK:=true;
-      sp16:=aImageData;
-      inc(sp16,y*aImageWidth);
+      for x:=aImageWidth-1 downto 0 do begin
+       OK:=true;
+       for y:=0 to aImageHeight-1 do begin
+        sp16:=WorkImageData;
+        inc(sp16,(y*aImageWidth)+x);
+        if ((sp16^ shr 56) and $ff)<>0 then begin
+         OK:=false;
+         break;
+        end;
+       end;
+       if OK then begin
+        x1:=x+1;
+       end else begin
+        break;
+       end;
+      end;
+
+      for y:=aImageHeight-1 downto 0 do begin
+       OK:=true;
+       sp16:=WorkImageData;
+       inc(sp16,y*aImageWidth);
+       for x:=0 to aImageWidth-1 do begin
+        if ((sp16^ shr 56) and $ff)<>0 then begin
+         OK:=false;
+         break;
+        end;
+        inc(sp16);
+       end;
+       if OK then begin
+        y1:=y+1;
+       end else begin
+        break;
+       end;
+      end;
+
+     end else begin
+
       for x:=0 to aImageWidth-1 do begin
-       if ((sp16^ shr 56) and $ff)<>0 then begin
-        OK:=false;
+       OK:=true;
+       for y:=0 to aImageHeight-1 do begin
+        sp:=WorkImageData;
+        inc(sp,(y*aImageWidth)+x);
+        if (sp^ and $ff000000)<>0 then begin
+         OK:=false;
+         break;
+        end;
+       end;
+       if OK then begin
+        x0:=x;
+       end else begin
         break;
        end;
-       inc(sp16);
       end;
-      if OK then begin
-       y1:=y+1;
-      end else begin
-       break;
-      end;
-     end;
 
-    end else begin
-
-     for x:=0 to aImageWidth-1 do begin
-      OK:=true;
+      sp:=WorkImageData;
       for y:=0 to aImageHeight-1 do begin
-       sp:=aImageData;
-       inc(sp,(y*aImageWidth)+x);
-       if (sp^ and $ff000000)<>0 then begin
-        OK:=false;
+       OK:=true;
+       for x:=0 to aImageWidth-1 do begin
+        if (sp^ and $ff000000)<>0 then begin
+         OK:=false;
+         break;
+        end;
+        inc(sp);
+       end;
+       if OK then begin
+        y0:=y;
+       end else begin
         break;
        end;
       end;
-      if OK then begin
-       x0:=x;
-      end else begin
-       break;
-      end;
-     end;
 
-     sp:=aImageData;
-     for y:=0 to aImageHeight-1 do begin
-      OK:=true;
-      for x:=0 to aImageWidth-1 do begin
-       if (sp^ and $ff000000)<>0 then begin
-        OK:=false;
+      for x:=aImageWidth-1 downto 0 do begin
+       OK:=true;
+       for y:=0 to aImageHeight-1 do begin
+        sp:=WorkImageData;
+        inc(sp,(y*aImageWidth)+x);
+        if (sp^ and $ff000000)<>0 then begin
+         OK:=false;
+         break;
+        end;
+       end;
+       if OK then begin
+        x1:=x+1;
+       end else begin
         break;
        end;
-       inc(sp);
       end;
-      if OK then begin
-       y0:=y;
-      end else begin
-       break;
-      end;
-     end;
 
-     for x:=aImageWidth-1 downto 0 do begin
-      OK:=true;
-      for y:=0 to aImageHeight-1 do begin
-       sp:=aImageData;
-       inc(sp,(y*aImageWidth)+x);
-       if (sp^ and $ff000000)<>0 then begin
-        OK:=false;
+      for y:=aImageHeight-1 downto 0 do begin
+       OK:=true;
+       sp:=WorkImageData;
+       inc(sp,y*aImageWidth);
+       for x:=0 to aImageWidth-1 do begin
+        if (sp^ and $ff000000)<>0 then begin
+         OK:=false;
+         break;
+        end;
+        inc(sp);
+       end;
+       if OK then begin
+        y1:=y+1;
+       end else begin
         break;
        end;
       end;
-      if OK then begin
-       x1:=x+1;
-      end else begin
-       break;
-      end;
-     end;
 
-     for y:=aImageHeight-1 downto 0 do begin
-      OK:=true;
-      sp:=aImageData;
-      inc(sp,y*aImageWidth);
-      for x:=0 to aImageWidth-1 do begin
-       if (sp^ and $ff000000)<>0 then begin
-        OK:=false;
-        break;
-       end;
-       inc(sp);
-      end;
-      if OK then begin
-       y1:=y+1;
-      end else begin
-       break;
-      end;
      end;
 
     end;
 
-   end;
+    TrimmedImageData:=nil;
 
-   TrimmedImageData:=nil;
+    try
 
-   try
-
-    if (x0<x1) and (y0<y1) and not ((x0=0) and (y0=0) and (x1=aImageWidth) and (y1=aImageHeight)) then begin
-     if aTrimPadding>0 then begin
-      x0:=Max(0,x0-aTrimPadding);
-      y0:=Max(0,y0-aTrimPadding);
-      x1:=Min(aImageWidth,x1+aTrimPadding);
-      y1:=Min(aImageHeight,y1+aTrimPadding);
-     end;
-     TrimmedImageWidth:=x1-x0;
-     TrimmedImageHeight:=y1-y0;
-     if fDepth16Bit then begin
-      GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt64));
-      dp16:=TrimmedImageData;
-      for y:=y0 to y1-1 do begin
-       sp16:=aImageData;
-       inc(sp16,(y*aImageWidth)+x0);
-       for x:=x0 to x1-1 do begin
-        dp16^:=sp16^;
-        inc(sp16);
-        inc(dp16);
+     if (x0<x1) and (y0<y1) and not ((x0=0) and (y0=0) and (x1=aImageWidth) and (y1=aImageHeight)) then begin
+      if aTrimPadding>0 then begin
+       x0:=Max(0,x0-aTrimPadding);
+       y0:=Max(0,y0-aTrimPadding);
+       x1:=Min(aImageWidth,x1+aTrimPadding);
+       y1:=Min(aImageHeight,y1+aTrimPadding);
+      end;
+      TrimmedImageWidth:=x1-x0;
+      TrimmedImageHeight:=y1-y0;
+      if fDepth16Bit then begin
+       GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt64));
+       dp16:=TrimmedImageData;
+       for y:=y0 to y1-1 do begin
+        sp16:=WorkImageData;
+        inc(sp16,(y*aImageWidth)+x0);
+        for x:=x0 to x1-1 do begin
+         dp16^:=sp16^;
+         inc(sp16);
+         inc(dp16);
+        end;
+       end;
+      end else begin
+       GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt32));
+       dp:=TrimmedImageData;
+       for y:=y0 to y1-1 do begin
+        sp:=WorkImageData;
+        inc(sp,(y*aImageWidth)+x0);
+        for x:=x0 to x1-1 do begin
+         dp^:=sp^;
+         inc(sp);
+         inc(dp);
+        end;
        end;
       end;
      end else begin
-      GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt32));
-      dp:=TrimmedImageData;
-      for y:=y0 to y1-1 do begin
-       sp:=aImageData;
-       inc(sp,(y*aImageWidth)+x0);
-       for x:=x0 to x1-1 do begin
-        dp^:=sp^;
-        inc(sp);
-        inc(dp);
-       end;
+      TrimmedImageWidth:=aImageWidth;
+      TrimmedImageHeight:=aImageHeight;
+      if fDepth16Bit then begin
+       GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt64));
+       Move(WorkImageData^,TrimmedImageData^,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt64));
+      end else begin
+       GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt32));
+       Move(WorkImageData^,TrimmedImageData^,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt32));
       end;
+      x0:=0;
+      y0:=0;
      end;
-    end else begin
-     TrimmedImageWidth:=aImageWidth;
-     TrimmedImageHeight:=aImageHeight;
-     if fDepth16Bit then begin
-      GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt64));
-      Move(aImageData^,TrimmedImageData^,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt64));
-     end else begin
-      GetMem(TrimmedImageData,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt32));
-      Move(aImageData^,TrimmedImageData^,TrimmedImageWidth*TrimmedImageHeight*SizeOf(TpvUInt32));
+
+    finally
+     if WorkImageData<>aImageData then begin
+      FreeMem(WorkImageData);
      end;
-     x0:=0;
-     y0:=0;
     end;
 
     if aAutomaticTrim and fUseConvexHullTrimming and ((TrimmedImageWidth*TrimmedImageHeight)>0) then begin
