@@ -955,11 +955,11 @@ type EpvApplication=class(Exception)
 
        fPathName:string;
 
-       fCacheDataPath:string;
+       fCacheStoragePath:string;
 
-       fLocalDataPath:string;
+       fLocalStoragePath:string;
 
-       fRoamingDataPath:string;
+       fRoamingStoragePath:string;
 
        fExternalStoragePath:string;
 
@@ -1509,7 +1509,7 @@ end;
 
 {$ifdef unix}
 
-function GetAppDataCachePath(Postfix:TpvApplicationRawByteString):TpvApplicationRawByteString;
+function GetAppDataCacheStoragePath(Postfix:TpvApplicationRawByteString):TpvApplicationRawByteString;
 {$ifdef darwin}
 var TruePath:TpvApplicationRawByteString;
 {$endif}
@@ -1580,7 +1580,7 @@ begin
  result:=IncludeTrailingPathDelimiter(result);
 end;
 
-function GetAppDataLocalPath(Postfix:TpvApplicationRawByteString):TpvApplicationRawByteString;
+function GetAppDataLocalStoragePath(Postfix:TpvApplicationRawByteString):TpvApplicationRawByteString;
 {$ifdef darwin}
 var TruePath:TpvApplicationRawByteString;
 {$endif}
@@ -1654,7 +1654,7 @@ begin
  result:=IncludeTrailingPathDelimiter(result);
 end;
 
-function GetAppDataRoamingPath(Postfix:TpvApplicationRawByteString):TpvApplicationRawByteString;
+function GetAppDataRoamingStoragePath(Postfix:TpvApplicationRawByteString):TpvApplicationRawByteString;
 {$ifdef darwin}
 var TruePath:TpvApplicationRawByteString;
 {$endif}
@@ -1750,7 +1750,7 @@ begin
  end;
 end;
 
-function GetAppDataCachePath(Postfix:string):string;
+function GetAppDataCacheStoragePath(Postfix:string):string;
 type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TpvInt32;nToken:Windows.THandle;dwFlags:TpvInt32;lpszPath:PWideChar):hresult; stdcall;
      TSHGetKnownFolderPath=function(const rfid:TGUID;dwFlags:DWord;hToken:THandle;out ppszPath:PWideChar):HResult; stdcall;
 const LocalLowGUID:TGUID='{A520A1A4-1780-4FF6-BD18-167343C5AF16}';
@@ -1864,7 +1864,7 @@ begin
  result:=IncludeTrailingPathDelimiter(String(result));
 end;
 
-function GetAppDataLocalPath(Postfix:string):string;
+function GetAppDataLocalStoragePath(Postfix:string):string;
 type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TpvInt32;nToken:Windows.THandle;dwFlags:TpvInt32;lpszPath:PWideChar):hresult; stdcall;
 const CSIDL_LOCALAPPDATA=$001c;
 var SHGetFolderPath:TSHGetFolderPath;
@@ -1953,7 +1953,7 @@ begin
  result:=IncludeTrailingPathDelimiter(String(result));
 end;
 
-function GetAppDataRoamingPath(Postfix:string):string;
+function GetAppDataRoamingStoragePath(Postfix:string):string;
 type TSHGetFolderPath=function(hwndOwner:hwnd;nFolder:TpvInt32;nToken:Windows.THandle;dwFlags:TpvInt32;lpszPath:PWideChar):hresult; stdcall;
 const CSIDL_APPDATA=$001a;
 var SHGetFolderPath:TSHGetFolderPath;
@@ -4987,8 +4987,8 @@ end;
 
 function TpvApplicationFiles.GetCacheStoragePath:string;
 begin
- if length(fVulkanApplication.fCacheDataPath)>0 then begin
-  result:=IncludeTrailingPathDelimiter(fVulkanApplication.fCacheDataPath);
+ if length(fVulkanApplication.fCacheStoragePath)>0 then begin
+  result:=IncludeTrailingPathDelimiter(fVulkanApplication.fCacheStoragePath);
  end else begin
   result:='';
  end;
@@ -4996,8 +4996,8 @@ end;
 
 function TpvApplicationFiles.GetLocalStoragePath:string;
 begin
- if length(fVulkanApplication.fLocalDataPath)>0 then begin
-  result:=IncludeTrailingPathDelimiter(fVulkanApplication.fLocalDataPath);
+ if length(fVulkanApplication.fLocalStoragePath)>0 then begin
+  result:=IncludeTrailingPathDelimiter(fVulkanApplication.fLocalStoragePath);
  end else begin
   result:='';
  end;
@@ -5005,8 +5005,8 @@ end;
 
 function TpvApplicationFiles.GetRoamingStoragePath:string;
 begin
- if length(fVulkanApplication.fRoamingDataPath)>0 then begin
-  result:=IncludeTrailingPathDelimiter(fVulkanApplication.fRoamingDataPath);
+ if length(fVulkanApplication.fRoamingStoragePath)>0 then begin
+  result:=IncludeTrailingPathDelimiter(fVulkanApplication.fRoamingStoragePath);
  end else begin
   result:='';
  end;
@@ -5023,17 +5023,17 @@ end;
 
 function TpvApplicationFiles.IsCacheStorageAvailable:boolean;
 begin
- result:=length(fVulkanApplication.fCacheDataPath)>0;
+ result:=length(fVulkanApplication.fCacheStoragePath)>0;
 end;
 
 function TpvApplicationFiles.IsLocalStorageAvailable:boolean;
 begin
- result:=length(fVulkanApplication.fLocalDataPath)>0;
+ result:=length(fVulkanApplication.fLocalStoragePath)>0;
 end;
 
 function TpvApplicationFiles.IsRoamingStorageAvailable:boolean;
 begin
- result:=length(fVulkanApplication.fRoamingDataPath)>0;
+ result:=length(fVulkanApplication.fRoamingStoragePath)>0;
 end;
 
 function TpvApplicationFiles.IsExternalStorageAvailable:boolean;
@@ -5144,11 +5144,11 @@ begin
 
  fPathName:='PasVulkanApplication';
 
- fCacheDataPath:='';
+ fCacheStoragePath:='';
 
- fLocalDataPath:='';
+ fLocalStoragePath:='';
 
- fRoamingDataPath:='';
+ fRoamingStoragePath:='';
 
  fExternalStoragePath:='';
 
@@ -7314,20 +7314,20 @@ begin
   AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
   if assigned(AndroidPath) then begin
    try
-    fCacheDataPath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
-    if length(fCacheDataPath)=0 then begin
-     fCacheDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'cache');
-     if not DirectoryExists(fCacheDataPath) then begin
-      CreateDir(fCacheDataPath);
+    fCacheStoragePath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
+    if length(fCacheStoragePath)=0 then begin
+     fCacheStoragePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'cache');
+     if not DirectoryExists(fCacheStoragePath) then begin
+      CreateDir(fCacheStoragePath);
      end;
     end;
    finally
     FreeJString(AndroidEnv,AndroidPath);
    end;
   end else begin
-   fCacheDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'cache');
-   if not DirectoryExists(fCacheDataPath) then begin
-    CreateDir(fCacheDataPath);
+   fCacheStoragePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'cache');
+   if not DirectoryExists(fCacheStoragePath) then begin
+    CreateDir(fCacheStoragePath);
    end;
   end;
  finally
@@ -7339,20 +7339,20 @@ begin
   AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
   if assigned(AndroidPath) then begin
    try
-    fLocalDataPath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
-    if length(fLocalDataPath)=0 then begin
-     fLocalDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'local');
-     if not DirectoryExists(fLocalDataPath) then begin
-      CreateDir(fLocalDataPath);
+    fLocalStoragePath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
+    if length(fLocalStoragePath)=0 then begin
+     fLocalStoragePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'local');
+     if not DirectoryExists(fLocalStoragePath) then begin
+      CreateDir(fLocalStoragePath);
      end;
     end;
    finally
     FreeJString(AndroidEnv,AndroidPath);
    end;
   end else begin
-   fLocalDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'local');
-   if not DirectoryExists(fLocalDataPath) then begin
-    CreateDir(fLocalDataPath);
+   fLocalStoragePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'local');
+   if not DirectoryExists(fLocalStoragePath) then begin
+    CreateDir(fLocalStoragePath);
    end;
   end;
  finally
@@ -7364,20 +7364,20 @@ begin
   AndroidPath:=AndroidEnv^.CallObjectMethod(AndroidEnv,AndroidFile,AndroidGetAbsolutePath);
   if assigned(AndroidPath) then begin
    try
-    fRoamingDataPath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
-    if length(fRoamingDataPath)=0 then begin
-     fRoamingDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'local');
-     if not DirectoryExists(fRoamingDataPath) then begin
-      CreateDir(fRoamingDataPath);
+    fRoamingStoragePath:=IncludeTrailingPathDelimiter(JStringToString(AndroidEnv,AndroidPath));
+    if length(fRoamingStoragePath)=0 then begin
+     fRoamingStoragePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'local');
+     if not DirectoryExists(fRoamingStoragePath) then begin
+      CreateDir(fRoamingStoragePath);
      end;
     end;
    finally
     FreeJString(AndroidEnv,AndroidPath);
    end;
   end else begin
-   fRoamingDataPath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'local');
-   if not DirectoryExists(fRoamingDataPath) then begin
-    CreateDir(fRoamingDataPath);
+   fRoamingStoragePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(GetAppConfigDir(false))+'local');
+   if not DirectoryExists(fRoamingStoragePath) then begin
+    CreateDir(fRoamingStoragePath);
    end;
   end;
  finally
@@ -7404,13 +7404,20 @@ begin
   AndroidEnv^.DeleteLocalRef(AndroidEnv,AndroidFile);
  end;
 
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar('Cache storage data path: '+fCacheStoragePath));
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar('Local storage data path: '+fLocalStoragePath));
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar('Roaming storage data path: '+fRoamingStoragePath));
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar('External storage data path: '+fExternalStoragePath));
+{$ifend}
+
 {$elseif (defined(Windows) or defined(Linux) or defined(Unix)) and not defined(Android)}
 
- fCacheDataPath:=GetAppDataCachePath(fPathName);
+ fCacheStoragePath:=GetAppDataCacheStoragePath(fPathName);
 
- fLocalDataPath:=GetAppDataLocalPath(fPathName);
+ fLocalStoragePath:=GetAppDataLocalStoragePath(fPathName);
 
- fRoamingDataPath:=GetAppDataRoamingPath(fPathName);
+ fRoamingStoragePath:=GetAppDataRoamingStoragePath(fPathName);
 
 {$if defined(Windows)}
  fExternalStoragePath:='C:\';
@@ -7418,9 +7425,16 @@ begin
  fExternalStoragePath:='/';
 {$ifend}
 
+{$if not defined(Release)}
+ Log(LOG_VERBOSE,'PasVulkanApplication','Cache storage data path: '+fCacheStoragePath);
+ Log(LOG_VERBOSE,'PasVulkanApplication','Local storage data path: '+fLocalStoragePath);
+ Log(LOG_VERBOSE,'PasVulkanApplication','Roaming storage data path: '+fRoamingStoragePath);
+ Log(LOG_VERBOSE,'PasVulkanApplication','External storage data path: '+fExternalStoragePath);
 {$ifend}
 
- fVulkanPipelineCacheFileName:=IncludeTrailingPathDelimiter(fCacheDataPath)+'vulkan_pipeline_cache.bin';
+{$ifend}
+
+ fVulkanPipelineCacheFileName:=IncludeTrailingPathDelimiter(fCacheStoragePath)+'vulkan_pipeline_cache.bin';
 
  ReadConfig;
 
