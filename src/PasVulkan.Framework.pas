@@ -1511,7 +1511,21 @@ type EpvVulkanException=class(Exception);
                            const aFence:TpvVulkanFence=nil;
                            const aBeginAndExecuteCommandBuffer:boolean=false;
                            const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                           const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
+                           const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED)); overload;
+       procedure SetLayout(const aAspectMask:TVkImageAspectFlags;
+                           const aOldImageLayout:TVkImageLayout;
+                           const aNewImageLayout:TVkImageLayout;
+                           const aSrcAccessFlags:TVkAccessFlags;
+                           const aDstAccessFlags:TVkAccessFlags;
+                           const aSrcPipelineStageFlags:TVkPipelineStageFlags;
+                           const aDstPipelineStageFlags:TVkPipelineStageFlags;
+                           const aRange:PVkImageSubresourceRange;
+                           const aCommandBuffer:TpvVulkanCommandBuffer;
+                           const aQueue:TpvVulkanQueue=nil;
+                           const aFence:TpvVulkanFence=nil;
+                           const aBeginAndExecuteCommandBuffer:boolean=false;
+                           const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                           const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED)); overload;
       published
        property Device:TpvVulkanDevice read fDevice;
        property Handle:TVkImage read fImageHandle;
@@ -2832,6 +2846,8 @@ function VulkanErrorToString(const ErrorCode:TVkResult):TpvVulkanCharString;
 
 function StringListToVulkanCharStringArray(const StringList:TStringList):TpvVulkanCharStringArray;
 
+function VulkanAccessFlagsToPipelineStages(const aAccessFlags:TVkAccessFlags;const aDefaultPipelineStageFlags:TVkPipelineStageFlags=TVkPipelineStageFlags(0)):TVkPipelineStageFlags;
+
 procedure VulkanSetImageLayout(const aImage:TVkImage;
                                const aAspectMask:TVkImageAspectFlags;
                                const aOldImageLayout:TVkImageLayout;
@@ -2842,7 +2858,23 @@ procedure VulkanSetImageLayout(const aImage:TVkImage;
                                const aFence:TpvVulkanFence=nil;
                                const aBeginAndExecuteCommandBuffer:boolean=false;
                                const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                               const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
+                               const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED)); overload;
+
+procedure VulkanSetImageLayout(const aImage:TVkImage;
+                               const aAspectMask:TVkImageAspectFlags;
+                               const aOldImageLayout:TVkImageLayout;
+                               const aNewImageLayout:TVkImageLayout;
+                               const aSrcAccessFlags:TVkAccessFlags;
+                               const aDstAccessFlags:TVkAccessFlags;
+                               const aSrcPipelineStageFlags:TVkPipelineStageFlags;
+                               const aDstPipelineStageFlags:TVkPipelineStageFlags;
+                               const aRange:PVkImageSubresourceRange;
+                               const aCommandBuffer:TpvVulkanCommandBuffer;
+                               const aQueue:TpvVulkanQueue=nil;
+                               const aFence:TpvVulkanFence=nil;
+                               const aBeginAndExecuteCommandBuffer:boolean=false;
+                               const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                               const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED)); overload;
 
 procedure VulkanDisableFloatingPointExceptions;
 
@@ -5693,6 +5725,53 @@ begin
  end;
 end;
 
+function VulkanAccessFlagsToPipelineStages(const aAccessFlags:TVkAccessFlags;const aDefaultPipelineStageFlags:TVkPipelineStageFlags=TVkPipelineStageFlags(0)):TVkPipelineStageFlags;
+begin
+ result:=TVkPipelineStageFlags(0);
+ if (aAccessFlags and TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT))<>0 then begin
+  result:=result or TVkPipelineStageFlags(VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
+ end;
+ if (aAccessFlags and (TVkAccessFlags(VK_ACCESS_INDEX_READ_BIT) or
+                       TVkAccessFlags(VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT)))<>0 then begin
+  result:=result or TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+ end;
+ if (aAccessFlags and (TVkAccessFlags(VK_ACCESS_UNIFORM_READ_BIT) or
+                       TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or
+                       TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT)))<>0 then begin
+  result:=result or
+          TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+          TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+          TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+          TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
+          TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+          TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+ end;
+ if (aAccessFlags and TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT))<>0 then begin
+  result:=result or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+ end;
+ if (aAccessFlags and (TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                       TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT)))<>0 then begin
+  result:=result or TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+ end;
+ if (aAccessFlags and (TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT) or
+                       TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)))<>0 then begin
+  result:=result or
+          TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+          TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
+ end;
+ if (aAccessFlags and (TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT) or
+                       TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT)))<>0 then begin
+  result:=result or TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
+ end;
+ if (aAccessFlags and (TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT) or
+                       TVkAccessFlags(VK_ACCESS_MEMORY_WRITE_BIT)))<>0 then begin
+  // N/A
+ end;
+ if result=TVkPipelineStageFlags(0) then begin
+  result:=aDefaultPipelineStageFlags;
+ end;
+end;
+
 procedure VulkanSetImageLayout(const aImage:TVkImage;
                                const aAspectMask:TVkImageAspectFlags;
                                const aOldImageLayout:TVkImageLayout;
@@ -5705,7 +5784,7 @@ procedure VulkanSetImageLayout(const aImage:TVkImage;
                                const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
                                const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
 var ImageMemoryBarrier:TVkImageMemoryBarrier;
-    SrcStages,DestStages:TVkPipelineStageFlags;
+    SrcPipelineStageFlags,DstPipelineStageFlags:TVkPipelineStageFlags;
 begin
 
  if aBeginAndExecuteCommandBuffer then begin
@@ -5781,13 +5860,10 @@ begin
   VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:begin
   end;
   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:begin
-   if aOldImageLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then begin
-    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_WRITE_BIT);
-   end;
    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
   end;
   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:begin
-   ImageMemoryBarrier.srcAccessMask:=ImageMemoryBarrier.srcAccessMask or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
+// ImageMemoryBarrier.srcAccessMask:=ImageMemoryBarrier.srcAccessMask or TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_TRANSFER_READ_BIT);
   end;
   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:begin
@@ -5796,25 +5872,89 @@ begin
   VK_IMAGE_LAYOUT_PREINITIALIZED:begin
   end;
   VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:begin
-   if aOldImageLayout=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL then begin
-    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-   end;
    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
   end;
  end;
 
  if aOldImageLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR then begin
-  SrcStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-  DestStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+  SrcPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+  DstPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
  end else if aNewImageLayout=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR then begin
-  SrcStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-  DestStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+  if aOldImageLayout=VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL then begin
+   SrcPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT);
+  end else begin
+   SrcPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+  end;
+  DstPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
  end else begin
-  SrcStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
-  DestStages:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+  SrcPipelineStageFlags:=VulkanAccessFlagsToPipelineStages(ImageMemoryBarrier.srcAccessMask,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
+  DstPipelineStageFlags:=VulkanAccessFlagsToPipelineStages(ImageMemoryBarrier.dstAccessMask,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
  end;
 
- aCommandBuffer.CmdPipelineBarrier(SrcStages,DestStages,0,0,nil,0,nil,1,@ImageMemoryBarrier);
+ aCommandBuffer.CmdPipelineBarrier(SrcPipelineStageFlags,
+                                   DstPipelineStageFlags,
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarrier);
+
+ if aBeginAndExecuteCommandBuffer then begin
+  aCommandBuffer.EndRecording;
+  aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),nil,nil,aFence,true);
+ end;
+
+end;
+
+procedure VulkanSetImageLayout(const aImage:TVkImage;
+                               const aAspectMask:TVkImageAspectFlags;
+                               const aOldImageLayout:TVkImageLayout;
+                               const aNewImageLayout:TVkImageLayout;
+                               const aSrcAccessFlags:TVkAccessFlags;
+                               const aDstAccessFlags:TVkAccessFlags;
+                               const aSrcPipelineStageFlags:TVkPipelineStageFlags;
+                               const aDstPipelineStageFlags:TVkPipelineStageFlags;
+                               const aRange:PVkImageSubresourceRange;
+                               const aCommandBuffer:TpvVulkanCommandBuffer;
+                               const aQueue:TpvVulkanQueue=nil;
+                               const aFence:TpvVulkanFence=nil;
+                               const aBeginAndExecuteCommandBuffer:boolean=false;
+                               const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                               const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED)); overload;
+var ImageMemoryBarrier:TVkImageMemoryBarrier;
+begin
+
+ if aBeginAndExecuteCommandBuffer then begin
+  aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  aCommandBuffer.BeginRecording;
+ end;
+
+ FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+ ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+ ImageMemoryBarrier.oldLayout:=aOldImageLayout;
+ ImageMemoryBarrier.newLayout:=aNewImageLayout;
+ ImageMemoryBarrier.srcQueueFamilyIndex:=aSrcQueueFamilyIndex;
+ ImageMemoryBarrier.dstQueueFamilyIndex:=aDstQueueFamilyIndex;
+ ImageMemoryBarrier.image:=aImage;
+
+ if assigned(aRange) then begin
+  ImageMemoryBarrier.subresourceRange:=aRange^;
+ end else begin
+  ImageMemoryBarrier.subresourceRange.aspectMask:=aAspectMask;
+  ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+  ImageMemoryBarrier.subresourceRange.levelCount:=1;
+  ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+  ImageMemoryBarrier.subresourceRange.layerCount:=1;
+ end;
+
+ ImageMemoryBarrier.srcAccessMask:=aSrcAccessFlags;
+ ImageMemoryBarrier.dstAccessMask:=aDstAccessFlags;
+
+ aCommandBuffer.CmdPipelineBarrier(aSrcPipelineStageFlags,
+                                   aDstPipelineStageFlags,
+                                   0,
+                                   0,nil,
+                                   0,nil,
+                                   1,@ImageMemoryBarrier);
 
  if aBeginAndExecuteCommandBuffer then begin
   aCommandBuffer.EndRecording;
@@ -10727,7 +10867,7 @@ end;
 procedure TpvVulkanCommandBuffer.MetaCmdMemoryBarrier(const aSrcStageMask,aDstStageMask:TVkPipelineStageFlags;const aSrcAccessMask,aDstAccessMask:TVkAccessFlags);
 var MemoryBarrier:TVkMemoryBarrier;
 begin
- MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;;
+ MemoryBarrier.sType:=VK_STRUCTURE_TYPE_MEMORY_BARRIER;
  MemoryBarrier.pNext:=nil;
  MemoryBarrier.srcAccessMask:=aSrcAccessMask;
  MemoryBarrier.dstAccessMask:=aDstAccessMask;
@@ -11455,6 +11595,39 @@ begin
                       aDstQueueFamilyIndex);
 end;
 
+procedure TpvVulkanImage.SetLayout(const aAspectMask:TVkImageAspectFlags;
+                                   const aOldImageLayout:TVkImageLayout;
+                                   const aNewImageLayout:TVkImageLayout;
+                                   const aSrcAccessFlags:TVkAccessFlags;
+                                   const aDstAccessFlags:TVkAccessFlags;
+                                   const aSrcPipelineStageFlags:TVkPipelineStageFlags;
+                                   const aDstPipelineStageFlags:TVkPipelineStageFlags;
+                                   const aRange:PVkImageSubresourceRange;
+                                   const aCommandBuffer:TpvVulkanCommandBuffer;
+                                   const aQueue:TpvVulkanQueue=nil;
+                                   const aFence:TpvVulkanFence=nil;
+                                   const aBeginAndExecuteCommandBuffer:boolean=false;
+                                   const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                                   const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED)); overload;
+begin
+ VulkanSetImageLayout(fImageHandle,
+                      aAspectMask,
+                      aOldImageLayout,
+                      aNewImageLayout,
+                      aSrcAccessFlags,
+                      aDstAccessFlags,
+                      aSrcPipelineStageFlags,
+                      aDstPipelineStageFlags,
+                      aRange,
+                      aCommandBuffer,
+                      aQueue,
+                      aFence,
+                      aBeginAndExecuteCommandBuffer,
+                      aSrcQueueFamilyIndex,
+                      aDstQueueFamilyIndex);
+end;
+
+
 constructor TpvVulkanImageView.Create(const aDevice:TpvVulkanDevice;
                                       const aImageView:TVkImageView;
                                       const aImage:TpvVulkanImage=nil);
@@ -11615,35 +11788,70 @@ begin
    fImage.SetLayout(AspectMask,
                     VK_IMAGE_LAYOUT_UNDEFINED,
                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    TVkAccessFlags(0),
+                    TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT),
+                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
+                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                     nil,
                     aGraphicsCommandBuffer,
                     aGraphicsQueue,
                     aGraphicsCommandBufferFence,
                     true);
   end else begin
-   fImage.SetLayout(AspectMask,
-                    VK_IMAGE_LAYOUT_UNDEFINED,
-                    ImageLayout,
-                    nil,
-                    aGraphicsCommandBuffer,
-                    aGraphicsQueue,
-                    aGraphicsCommandBufferFence,
-                    true);
+   case ImageLayout of
+    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
+     fImage.SetLayout(AspectMask,
+                      VK_IMAGE_LAYOUT_UNDEFINED,
+                      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                      TVkAccessFlags(0),
+                      TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                      nil,
+                      aGraphicsCommandBuffer,
+                      aGraphicsQueue,
+                      aGraphicsCommandBufferFence,
+                      true);
+    end;
+    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:begin
+     fImage.SetLayout(AspectMask,
+                      VK_IMAGE_LAYOUT_UNDEFINED,
+                      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                      TVkAccessFlags(0),
+                      TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
+                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                      TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
+                      nil,
+                      aGraphicsCommandBuffer,
+                      aGraphicsQueue,
+                      aGraphicsCommandBufferFence,
+                      true);
+    end;
+    else begin
+     raise EpvVulkanException.Create('Invalid frame buffer attachment');
+    end;
+   end;
   end;
           
   fImageView:=TpvVulkanImageView.Create(fDevice,
-                                      fImage,
-                                      VK_IMAGE_VIEW_TYPE_2D,
-                                      fFormat,
-                                      VK_COMPONENT_SWIZZLE_IDENTITY,
-                                      VK_COMPONENT_SWIZZLE_IDENTITY,
-                                      VK_COMPONENT_SWIZZLE_IDENTITY,
-                                      VK_COMPONENT_SWIZZLE_IDENTITY,
-                                      AspectMask,
-                                      0,
-                                      1,
-                                      0,
-                                      1);
+                                        fImage,
+                                        VK_IMAGE_VIEW_TYPE_2D,
+                                        fFormat,
+                                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                                        VK_COMPONENT_SWIZZLE_IDENTITY,
+                                        AspectMask,
+                                        0,
+                                        1,
+                                        0,
+                                        1);
 
   fImage.fImageView:=fImageView;
 
@@ -12902,6 +13110,10 @@ begin
     ColorAttachmentImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                    VK_IMAGE_LAYOUT_UNDEFINED,
                                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                   TVkAccessFlags(0),
+                                   TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                    nil,
                                    aPresentCommandBuffer,
                                    aPresentQueue,
@@ -18809,7 +19021,7 @@ begin
      ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
      ImageMemoryBarrier.subresourceRange.layerCount:=Max(1,fTotalCountArrayLayers);
      aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                                0,
                                                0,
                                                nil,
@@ -18832,8 +19044,8 @@ begin
      BufferMemoryBarrier.buffer:=StagingBuffer.fBufferHandle;
      BufferMemoryBarrier.offset:=StagingBuffer.Memory.fOffset;
      BufferMemoryBarrier.size:=aDataSize;
-     aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+     aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_HOST_BIT),
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                                0,
                                                0,
                                                nil,
@@ -18957,8 +19169,8 @@ begin
        ImageMemoryBarrier.subresourceRange.levelCount:=1;
        ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
        ImageMemoryBarrier.subresourceRange.layerCount:=Max(1,fTotalCountArrayLayers);
-       aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+       aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
                                                  0,
                                                  0,
                                                  nil,
@@ -19024,8 +19236,13 @@ begin
      ImageMemoryBarrier.subresourceRange.levelCount:=fCountStorageLevels;
      ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
      ImageMemoryBarrier.subresourceRange.layerCount:=Max(1,fTotalCountArrayLayers);
-     aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+     aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                                0,
                                                0,
                                                nil,
@@ -19068,7 +19285,12 @@ begin
   aGraphicsCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
   aGraphicsCommandBuffer.BeginRecording;
   aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
                                             0,
                                             0,
                                             nil,

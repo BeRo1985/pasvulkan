@@ -23,7 +23,8 @@
 uses
   {$if defined(fpc) and defined(Unix)}
   cthreads,
-  {$ifend }
+  BaseUnix,
+  {$ifend}
   SysUtils,
   Classes,
   PasDblStrUtils in '..\externals\pasdblstrutils\src\PasDblStrUtils.pas',
@@ -188,6 +189,10 @@ begin
 {$endif}
 {$if defined(PasVulkanUseSDL2)}
  SDL_Quit;
+{$ifend}
+{$if defined(fpc) and defined(Linux)}
+ // Workaround for a segv-exception-issue with closed-source NVidia drivers on Linux at program exit
+ fpkill(fpgetpid,9);
 {$ifend}
 {$ifend}
 end.

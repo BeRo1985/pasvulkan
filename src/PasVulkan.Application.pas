@@ -6024,6 +6024,10 @@ begin
    ColorAttachmentImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                   VK_IMAGE_LAYOUT_UNDEFINED,
                                   VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                                  TVkAccessFlags(0),
+                                  TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                   nil,
                                   VulkanPresentCommandBuffers[0,0],
                                   fVulkanDevice.PresentQueue,
@@ -6031,18 +6035,18 @@ begin
                                   true);
 
    ColorAttachmentImageView:=TpvVulkanImageView.Create(fVulkanDevice,
-                                                     ColorAttachmentImage,
-                                                     VK_IMAGE_VIEW_TYPE_2D,
-                                                     fVulkanSwapChain.ImageFormat,
-                                                     VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                     VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                     VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                     VK_COMPONENT_SWIZZLE_IDENTITY,
-                                                     TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                     0,
-                                                     1,
-                                                     0,
-                                                     1);
+                                                       ColorAttachmentImage,
+                                                       VK_IMAGE_VIEW_TYPE_2D,
+                                                       fVulkanSwapChain.ImageFormat,
+                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                       VK_COMPONENT_SWIZZLE_IDENTITY,
+                                                       TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
+                                                       0,
+                                                       1,
+                                                       0,
+                                                       1);
 
    ColorAttachmentImage.ImageView:=ColorAttachmentImageView;
    ColorAttachmentImageView.Image:=ColorAttachmentImage;
@@ -6065,13 +6069,13 @@ begin
  end;
 
  fVulkanDepthFrameBufferAttachment:=TpvVulkanFrameBufferAttachment.Create(fVulkanDevice,
-                                                                        fVulkanDevice.GraphicsQueue,
-                                                                        VulkanGraphicsCommandBuffers[0,0],
-                                                                        VulkanGraphicsCommandBufferFences[0,0],
-                                                                        fVulkanSwapChain.Width,
-                                                                        fVulkanSwapChain.Height,
-                                                                        fVulkanDepthImageFormat,
-                                                                        TVkBufferUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT));
+                                                                          fVulkanDevice.GraphicsQueue,
+                                                                          VulkanGraphicsCommandBuffers[0,0],
+                                                                          VulkanGraphicsCommandBufferFences[0,0],
+                                                                          fVulkanSwapChain.Width,
+                                                                          fVulkanSwapChain.Height,
+                                                                          fVulkanDepthImageFormat,
+                                                                          TVkBufferUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT));
 
  SetLength(fVulkanFrameBuffers,fVulkanSwapChain.CountImages);
  for Index:=0 to fVulkanSwapChain.CountImages-1 do begin
