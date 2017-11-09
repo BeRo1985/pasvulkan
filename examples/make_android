@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./make_arm32_android
+./make_arm32_android $@
 
 cd android
 

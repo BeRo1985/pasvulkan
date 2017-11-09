@@ -1,6 +1,9 @@
 #!/bin/bash
 
+FLAGS=""
 DEFINES=" -dPasVulkanPasMP -dPasVulkanUseSDL2 "
+
+DEBUG="n"
 
 while [ $# -gt 0 ]; do
 
@@ -10,14 +13,13 @@ while [ $# -gt 0 ]; do
       -h|--help)
         echo "PasVulkan examples make_arm_android script"
         echo "  Usage: ./make_arm_android [options]"
-        echo "Options: [none]"
+        echo "Options: -d|--debug           Compile as debug build"
         exit 0
         ;;
-      -b|--bits)
-        BITS="$2"
-        shift
+     -d|--debug)
+        DEBUG="y"
         ;;
-      *)
+     *)
         echo "Unknown option \"$1\", ignoring . . ."   
         ;;
   esac
@@ -25,6 +27,13 @@ while [ $# -gt 0 ]; do
   shift
  
 done
+
+if [ "$DEBUG" == "y" ]; then
+  FLAGS+=" -g -gl -gw3 "
+  DEFINES+=" -dDEBUG "
+else
+  DEFINES+=" -dRELEASE "
+fi
 
 rm -f ./*.ppu >/dev/null 2>/dev/null
 rm -f ./*.a >/dev/null 2>/dev/null
@@ -35,7 +44,7 @@ rm -f ./../src/*.o >/dev/null 2>/dev/null
 
 cp ./../libs/sdl20androidarm32/libSDL2.so libSDL2.so >/dev/null 2>/dev/null
 cp ./../libs/libpngandroid/obj/local/armeabi-v7a/libpng.a libpng.a >/dev/null 2>/dev/null
-ppcrossarm -Tandroid -Sd -B -CpARMv7A -CfVFPv3 -OpARMv7a -OoFastMath -O1 -XX -Xs -CX -Cg -g -gl -gw3 "-olibmain.so" $DEFINES examples.dpr
+ppcrossarm -Tandroid -Sd -B -CpARMv7A -CfVFPv3 -OpARMv7a -OoFastMath -O1 -XX -Xs -CX -Cg "-olibmain.so" $DEFINES $FLAGS examples.dpr
 rm -f ./android/app/src/main/jniLibs/armeabi-v7a/libmain.so  >/dev/null 2>/dev/null
 cp libmain.so ./android/app/src/main/jniLibs/armeabi-v7a/libmain.so  >/dev/null 2>/dev/null
 rm -f libpng.a >/dev/null 2>/dev/null

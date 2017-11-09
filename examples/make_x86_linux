@@ -13,8 +13,10 @@ if [ -z "$BITS" ]; then
   fi
 fi
 
-DEFINES=" -dRELEASE -dPasVulkanPasMP -dPasVulkanUseSDL2 -dPasVulkanUseSDL2WithVulkanSupport -dXLIB -dXCB -dWayland -dMir "
+FLAGS=""
+DEFINES=" -dPasVulkanPasMP -dPasVulkanUseSDL2 -dPasVulkanUseSDL2WithVulkanSupport -dXLIB -dXCB -dWayland -dMir "
 STATICLINK="n"
+DEBUG="n"
 
 while [ $# -gt 0 ]; do
 
@@ -26,6 +28,7 @@ while [ $# -gt 0 ]; do
         echo "  Usage: ./make_x86_linux [options]"
         echo "Options: -b|--bits [32/64]    Select target bitness "
         echo "         -s|--static-link     Enable static linking"
+        echo "         -d|--debug           Compile as debug build"
         exit 0
         ;;
       -b|--bits)
@@ -35,6 +38,9 @@ while [ $# -gt 0 ]; do
       -s|--static-link)
         DEFINES+=" -dSTATICLINK "
         STATICLINK="y"
+        ;;
+      -d|--debug)
+        DEBUG="y"
         ;;
       *)
         echo "Unknown option \"$1\", ignoring . . ."   
@@ -52,6 +58,13 @@ rm -f ./../src/*.ppu >/dev/null 2>/dev/null
 rm -f ./../src/*.a >/dev/null 2>/dev/null
 rm -f ./../src/*.o >/dev/null 2>/dev/null
 
+if [ "$DEBUG" == "y" ]; then
+  FLAGS+=" -g -gl "
+  DEFINES+=" -dDEBUG "
+else
+  DEFINES+=" -dRELEASE "
+fi
+
 if [ "$BITS" == "32" ]; then
 
   if [ "$STATICLINK" == "y" ]; then
@@ -62,13 +75,18 @@ if [ "$BITS" == "32" ]; then
   else
     fpcbin="ppc386"
   fi
-  outname="-oexamples_x86_32_fpc_linux_release_"
+  outname="-oexamples_x86_32_fpc_linux_"
+  if [ "$DEBUG" == "y" ]; then
+    outname+="debug_"
+  else
+    outname+="release_"
+  fi
   if [ "$STATICLINK" == "y" ]; then
     outname+="statically_linked"
   else
     outname+="dynamically_linked"
   fi
-  $fpcbin -Pi386 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -dc_int64 -B -b -g -gl -O- -O1 $outname -Cg- examples.dpr
+  $fpcbin -Pi386 -Tlinux -Sd -dUseCThreads -dSDL -dSDL20 $DEFINES -dc_int64 -B -b -O- -O1 $FLAGS $outname -Cg- examples.dpr
 
 elif [ "$BITS" == "64" ]; then
 
@@ -80,7 +98,12 @@ elif [ "$BITS" == "64" ]; then
   else
     fpcbin="ppcx64"
   fi
-  outname="-oexamples_x86_64_fpc_linux_release_"
+  outname="-oexamples_x86_64_fpc_linux_"
+  if [ "$DEBUG" == "y" ]; then
+    outname+="debug_"
+  else
+    outname+="release_"
+  fi
   if [ "$STATICLINK" == "y" ]; then
     outname+="statically_linked"
   else
