@@ -11608,7 +11608,7 @@ procedure TpvVulkanImage.SetLayout(const aAspectMask:TVkImageAspectFlags;
                                    const aFence:TpvVulkanFence=nil;
                                    const aBeginAndExecuteCommandBuffer:boolean=false;
                                    const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
-                                   const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED)); overload;
+                                   const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED));
 begin
  VulkanSetImageLayout(fImageHandle,
                       aAspectMask,
