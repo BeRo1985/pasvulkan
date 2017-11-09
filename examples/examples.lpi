@@ -327,6 +327,7 @@ end;
 //  IncPath += ';win';
 //end;"/>
     <Parsing>
+      <Style Value="1"/>
       <SyntaxOptions>
         <SyntaxMode Value="Delphi"/>
       </SyntaxOptions>
@@ -339,6 +340,9 @@ end;
         <UseExternalDbgSyms Value="True"/>
       </Debugging>
     </Linking>
+    <Other>
+      <CustomOptions Value="-dDEBUG"/>
+    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="7">

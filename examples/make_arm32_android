@@ -35,7 +35,7 @@ rm -f ./../src/*.o >/dev/null 2>/dev/null
 
 cp ./../libs/sdl20androidarm32/libSDL2.so libSDL2.so >/dev/null 2>/dev/null
 cp ./../libs/libpngandroid/obj/local/armeabi-v7a/libpng.a libpng.a >/dev/null 2>/dev/null
-ppcrossarm -Tandroid -Sd -B -CpARMv7A -CfVFPv3 -OpARMv7a -OoFastMath -O3 -XX -Xs -CX -Cg "-olibmain.so" $DEFINES examples.dpr
+ppcrossarm -Tandroid -Sd -B -CpARMv7A -CfVFPv3 -OpARMv7a -OoFastMath -O1 -XX -Xs -CX -Cg -g -gl -gw3 "-olibmain.so" $DEFINES examples.dpr
 rm -f ./android/app/src/main/jniLibs/armeabi-v7a/libmain.so  >/dev/null 2>/dev/null
 cp libmain.so ./android/app/src/main/jniLibs/armeabi-v7a/libmain.so  >/dev/null 2>/dev/null
 rm -f libpng.a >/dev/null 2>/dev/null
