@@ -1,0 +1,51 @@
+#!/bin/bash
+
+DEFINES=" -dPasVulkanPasMP -dPasVulkanUseSDL2 "
+
+while [ $# -gt 0 ]; do
+
+  key="$1"
+
+  case $key in
+      -h|--help)
+        echo "PasVulkan examples make_arm_android script"
+        echo "  Usage: ./make_arm_android [options]"
+        echo "Options: [none]"
+        exit 0
+        ;;
+      -b|--bits)
+        BITS="$2"
+        shift
+        ;;
+      *)
+        echo "Unknown option \"$1\", ignoring . . ."   
+        ;;
+  esac
+
+  shift
+ 
+done
+
+rm -f ./*.ppu >/dev/null 2>/dev/null
+rm -f ./*.a >/dev/null 2>/dev/null
+rm -f ./*.o >/dev/null 2>/dev/null
+rm -f ./../src/*.ppu >/dev/null 2>/dev/null
+rm -f ./../src/*.a >/dev/null 2>/dev/null
+rm -f ./../src/*.o >/dev/null 2>/dev/null
+
+cp ./../libs/sdl20androidarm32/libSDL2.so libSDL2.so >/dev/null 2>/dev/null
+cp ./../libs/libpngandroid/obj/local/armeabi-v7a/libpng.a libpng.a >/dev/null 2>/dev/null
+ppcrossarm -Tandroid -Sd -B -CpARMv7A -CfVFPv3 -OpARMv7a -OoFastMath -O3 -XX -Xs -CX -Cg "-olibmain.so" $DEFINES examples.dpr
+rm -f ./android/app/src/main/jniLibs/armeabi-v7a/libmain.so  >/dev/null 2>/dev/null
+cp libmain.so ./android/app/src/main/jniLibs/armeabi-v7a/libmain.so  >/dev/null 2>/dev/null
+rm -f libpng.a >/dev/null 2>/dev/null
+rm -f libSDL2.so >/dev/null 2>/dev/null
+
+rm -f ./*.ppu >/dev/null 2>/dev/null
+rm -f ./*.a >/dev/null 2>/dev/null
+rm -f ./*.o >/dev/null 2>/dev/null
+rm -f ./../src/*.ppu >/dev/null 2>/dev/null
+rm -f ./../src/*.a >/dev/null 2>/dev/null
+rm -f ./../src/*.o >/dev/null 2>/dev/null
+
+
