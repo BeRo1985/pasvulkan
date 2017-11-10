@@ -33,7 +33,7 @@ void main(void){
   vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
 #else
   // Based on: https://www.essentialmath.com/blog/?p=151 but with Adreno issue compensation, which likes to drop tiles on division by zero
-  const float NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 / 32.0; 
+  const float NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 / 8.0; 
   vec2 centerGradient = vec2(dFdx(center), dFdy(center));
   float centerGradientSquaredLength = dot(centerGradient, centerGradient);
   if(centerGradientSquaredLength < 1e-4){
@@ -51,11 +51,11 @@ void main(void){
   vec4 buv = inUV.xyxy + (vec2((dFdx(inUV.xy) + dFdy(inUV.xy)) * HALF_BY_SQRT_TWO).xyxy * vec2(-1.0, 1.0).xxyy);
   outFragColor = mix(inBackgroundColor, 
                      inForegroundColor,                      
-                     pow(1.0 - clamp((linearstep(width.x, width.y, center) + 
-                                      dot(linearstep(width.xxxx, 
-                                                     width.yyyy, 
-                                                     vec4(textureLod(uSamplerFont, vec3(buv.xy, inUV.z), 0.0).r,
-                                                          textureLod(uSamplerFont, vec3(buv.zw, inUV.z), 0.0).r,
-                                                          textureLod(uSamplerFont, vec3(buv.xw, inUV.z), 0.0).r,
-                                                          textureLod(uSamplerFont, vec3(buv.zy, inUV.z), 0.0).r)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0), 2.2));
+                     pow(clamp((linearstep(width.x, width.y, center) + 
+                                dot(linearstep(width.xxxx, 
+                                               width.yyyy, 
+                                               vec4(textureLod(uSamplerFont, vec3(buv.xy, inUV.z), 0.0).r,
+                                                    textureLod(uSamplerFont, vec3(buv.zw, inUV.z), 0.0).r,
+                                                    textureLod(uSamplerFont, vec3(buv.xw, inUV.z), 0.0).r,
+                                                    textureLod(uSamplerFont, vec3(buv.zy, inUV.z), 0.0).r)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0), 2.2));
 }

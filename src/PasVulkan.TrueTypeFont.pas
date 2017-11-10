@@ -65,9 +65,11 @@ uses SysUtils,
      Classes,
      Math,
      PUCU,
+     PasMP,
      Vulkan,
      PasVulkan.Types,
-     PasVulkan.Collections;
+     PasVulkan.Collections,
+     PasVulkan.VectorPath;
 
 const pvTTF_PID_Apple=0;
       pvTTF_PID_Macintosh=1;
@@ -565,9 +567,11 @@ type EpvTrueTypeFont=class(Exception);
      TpvTrueTypeFontPolygonBuffer=record
       Commands:TpvTrueTypeFontPolygonCommands;
       CountCommands:TpvInt32;
+      procedure ConvertToVectorPath(const aVectorPath:TpvVectorPath;const aFillRule:TpvInt32=pvTTF_PolygonWindingRule_NONZERO);
      end;
 
      TpvTrueTypeFontPolygonBuffers=array of TpvTrueTypeFontPolygonBuffer;
+
      PpvTrueTypeFontGlyph=^TpvTrueTypeFontGlyph;
      TpvTrueTypeFontGlyph=record
       Bounds:TpvTrueTypeFontGlyphBounds;
@@ -712,6 +716,23 @@ type EpvTrueTypeFont=class(Exception);
        property Font:TpvTrueTypeFont read fFont;
      end;
 
+     PpvTrueTypeFontSignedDistanceFieldJob=^TpvTrueTypeFontSignedDistanceFieldJob;
+     TpvTrueTypeFontSignedDistanceFieldJob=record
+      PolygonBuffer:TpvTrueTypeFontPolygonBuffer;
+      Destination:TpvPointer;
+      Width:TpvInt32;
+      Height:TpvInt32;
+      BoundsX0:TpvDouble;
+      BoundsY0:TpvDouble;
+      BoundsX1:TpvDouble;
+      BoundsY1:TpvDouble;
+     end;
+
+     TpvTrueTypeFontSignedDistanceFieldJobs=array of TpvTrueTypeFontSignedDistanceFieldJob;
+
+     PpvTrueTypeFontSignedDistanceFieldJobArray=^TpvTrueTypeFontSignedDistanceFieldJobArray;
+     TpvTrueTypeFontSignedDistanceFieldJobArray=array[0..65535] of TpvTrueTypeFontSignedDistanceFieldJob;
+
      TpvTrueTypeFont=class
       private
        fGlyphBuffer:TpvTrueTypeFontGlyphBuffer;
@@ -798,6 +819,7 @@ type EpvTrueTypeFont=class(Exception);
        function LoadGASP:TpvInt32;
        function LoadGlyphData(GlyphIndex:TpvInt32):TpvInt32;
        procedure SetSize(NewSize:TpvInt32);
+       procedure GenerateSimpleLinearSignedDistanceFieldTextureArrayParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TpvPointer;const FromIndex,ToIndex:TPasMPNativeInt);
       public
        constructor Create(const Stream:TStream;const TargetPPI:TpvInt32=96;const ForceSelector:boolean=false;const PlatformID:TpvUInt16=pvTTF_PID_Microsoft;const SpecificID:TpvUInt16=pvTTF_SID_MS_UNICODE_CS;const LanguageID:TpvUInt16=pvTTF_LID_MS_USEnglish;const CollectionIndex:TpvInt32=0);
        destructor Destroy; override;
@@ -832,6 +854,10 @@ type EpvTrueTypeFont=class(Exception);
        procedure FillTextPolygonBuffer(var PolygonBuffer:TpvTrueTypeFontPolygonBuffer;const Text:TpvUTF8String;const StartX:TpvInt32=0;const StartY:TpvInt32=0);
        procedure GetPolygonBufferBounds(const PolygonBuffer:TpvTrueTypeFontPolygonBuffer;out x0,y0,x1,y1:TpvDouble;const Tolerance:TpvInt32=2;const MaxLevel:TpvInt32=32);
        procedure DrawPolygonBuffer(Rasterizer:TpvTrueTypeFontRasterizer;const PolygonBuffer:TpvTrueTypeFontPolygonBuffer;x,y:TpvInt32;Tolerance:TpvInt32=2;MaxLevel:TpvInt32=32);
+       procedure GenerateSimpleLinearSignedDistanceFieldTextureArray(const aDestinationData:TpvPointer;
+                                                                     const aTextureArrayWidth:TpvInt32;
+                                                                     const aTextureArrayHeight:TpvInt32;
+                                                                     const aTextureArrayDepth:TpvInt32);
        property TargetPPI:TpvInt32 read fTargetPPI;
        property Glyphs:TpvTrueTypeFontGlyphs read fGlyphs;
        property CountGlyphs:TpvInt32 read fCountGlyphs;
@@ -858,7 +884,9 @@ type EpvTrueTypeFont=class(Exception);
 
 implementation
 
-uses PasVulkan.Utils;
+uses PasVulkan.Utils,
+     PasVulkan.Framework,
+     PasVulkan.SignedDistanceField2D;
 
 const PixelBits=8;
       PixelFactor=1 shl PixelBits;
@@ -2927,6 +2955,47 @@ end;
 function IsBitSet(const ByteValue,Bit:TpvUInt8):boolean;
 begin
  result:=(ByteValue and (1 shl Bit))<>0;
+end;
+
+procedure TpvTrueTypeFontPolygonBuffer.ConvertToVectorPath(const aVectorPath:TpvVectorPath;const aFillRule:TpvInt32=pvTTF_PolygonWindingRule_NONZERO);
+var CommandIndex:TpvInt32;
+    Command:PpvTrueTypeFontPolygonCommand;
+begin
+ if aFillRule=pvTTF_PolygonWindingRule_NONZERO then begin
+  aVectorPath.FillRule:=pvvpfrNonZero;
+ end else begin
+  aVectorPath.FillRule:=pvvpfrEvenOdd;
+ end;
+ for CommandIndex:=0 to CountCommands-1 do begin
+  Command:=@Commands[CommandIndex];
+  case Command^.CommandType of
+   pvTTF_PolygonCommandType_MoveTo:begin
+    aVectorPath.MoveTo(Command^.Points[0].x,
+                       Command^.Points[0].y);
+   end;
+   pvTTF_PolygonCommandType_LineTo:begin
+    aVectorPath.LineTo(Command^.Points[0].x,
+                       Command^.Points[0].y);
+   end;
+   pvTTF_PolygonCommandType_QuadraticCurveTo:begin
+    aVectorPath.QuadraticCurveTo(Command^.Points[0].x,
+                                 Command^.Points[0].y,
+                                 Command^.Points[1].x,
+                                 Command^.Points[1].y);
+   end;
+   pvTTF_PolygonCommandType_CubicCurveTo:begin
+    aVectorPath.CubicCurveTo(Command^.Points[0].x,
+                             Command^.Points[0].y,
+                             Command^.Points[1].x,
+                             Command^.Points[1].y,
+                             Command^.Points[2].x,
+                             Command^.Points[2].y);
+   end;
+   pvTTF_PolygonCommandType_Close:begin
+    aVectorPath.Close;
+   end;
+  end;
+ end;
 end;
 
 constructor TpvTrueTypeFontByteCodeInterpreter.Create(AFont:TpvTrueTypeFont);
@@ -10597,6 +10666,212 @@ begin
    end;
   end;
  end;
+end;
+
+procedure TpvTrueTypeFont.GenerateSimpleLinearSignedDistanceFieldTextureArrayParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TpvPointer;const FromIndex,ToIndex:TPasMPNativeInt);
+const Scale=1.0/256.0;
+var Index:TPasMPNativeInt;
+    x,y,p,w,h,fx,fy,v,xo,yo:TpvInt32;
+    JobData:PpvTrueTypeFontSignedDistanceFieldJob;
+    x0,y0,x1,y1,ox,oy:TpvDouble;
+    VectorPath:TpvVectorPath;
+    SignedDistanceField:TpvSignedDistanceField2D;
+begin
+
+ SignedDistanceField.Pixels:=nil;
+
+ try
+
+  Index:=FromIndex;
+
+  while Index<=ToIndex do begin
+
+   JobData:=@PpvTrueTypeFontSignedDistanceFieldJobArray(Data)^[Index];
+
+   GetPolygonBufferBounds(JobData^.PolygonBuffer,x0,y0,x1,y1);
+
+   ox:=(x0*Scale)-(VulkanDistanceField2DSpreadValue*2.0);
+   oy:=(y0*Scale)-(VulkanDistanceField2DSpreadValue*2.0);
+
+   w:=Max(1,ceil(((x1-x0)*Scale)+(VulkanDistanceField2DSpreadValue*4.0)));
+   h:=Max(1,ceil(((y1-y0)*Scale)+(VulkanDistanceField2DSpreadValue*4.0)));
+
+   SignedDistanceField.Width:=w;
+   SignedDistanceField.Height:=h;
+   SignedDistanceField.Pixels:=nil;
+   SetLength(SignedDistanceField.Pixels,SignedDistanceField.Width*SignedDistanceField.Height);
+
+   VectorPath:=TpvVectorPath.Create;
+   try
+
+    JobData^.PolygonBuffer.ConvertToVectorPath(VectorPath);
+
+    TpvSignedDistanceField2DGenerator.Generate(SignedDistanceField,
+                                               VectorPath,
+                                               Scale,
+                                               -ox,
+                                               -oy);
+
+   finally
+    VectorPath.Free;
+   end;
+
+   xo:=round(((JobData^.Width-((JobData^.BoundsX0+JobData^.BoundsX1)*Scale))*0.5)+ox);
+   yo:=round(((JobData^.Height-((JobData^.BoundsY0+JobData^.BoundsY1)*Scale))*0.5)+oy);
+
+   p:=0;
+   for y:=0 to JobData^.Height-1 do begin
+    for x:=0 to JobData^.Width-1 do begin
+     fx:=Min(Max(x-xo,0),SignedDistanceField.Width-1);
+     fy:=Min(Max(y-yo,0),SignedDistanceField.Height-1);
+     if (fx>=0) and (fx<SignedDistanceField.Width) and
+        (fy>=0) and (fy<SignedDistanceField.Height) then begin
+      v:=SignedDistanceField.Pixels[(fy*SignedDistanceField.Width)+fx].a;
+     end else begin
+      v:=128;
+     end;
+     PpvUInt8Array(JobData^.Destination)^[p]:=v;
+     inc(p);
+    end;
+   end;
+
+   inc(Index);
+
+  end;
+
+ finally
+
+  SignedDistanceField.Pixels:=nil;
+
+ end;
+
+end;
+
+procedure TpvTrueTypeFont.GenerateSimpleLinearSignedDistanceFieldTextureArray(const aDestinationData:TpvPointer;
+                                                                              const aTextureArrayWidth:TpvInt32;
+                                                                              const aTextureArrayHeight:TpvInt32;
+                                                                              const aTextureArrayDepth:TpvInt32);
+const Scale=1.0/256.0;
+var Index,TTFGlyphIndex,x,y:TpvInt32;
+    PolygonBuffers:TpvTrueTypeFontPolygonBuffers;
+    PolygonBuffer:TpvTrueTypeFontPolygonBuffer;
+    GlyphBuffer:TpvTrueTypeFontGlyphBuffer;
+    SignedDistanceFieldJobs:TpvTrueTypeFontSignedDistanceFieldJobs;
+    SignedDistanceFieldJob:PpvTrueTypeFontSignedDistanceFieldJob;
+    PasMPInstance:TPasMP;
+    x0,y0,x1,y1:TpvDouble;
+    mx0,my0,mx1,my1:TpvDouble;
+begin
+
+ PasMPInstance:=TPasMP.GetGlobalInstance;
+
+ FillChar(aDestinationData^,aTextureArrayWidth*aTextureArrayHeight*aTextureArrayDepth,$80);
+
+ Hinting:=false;
+
+ y:=aTextureArrayHeight;
+ for Index:=0 to aTextureArrayDepth-1 do begin
+  x:=aTextureArrayHeight;
+  repeat
+   Size:=-x;
+   TTFGlyphIndex:=GetGlyphIndex(Index);
+   if TTFGlyphIndex>=0 then begin
+    ResetPolygonBuffer(PolygonBuffer);
+    if IsPostScriptGlyph(TTFGlyphIndex) then begin
+     FillPostScriptPolygonBuffer(PolygonBuffer,TTFGlyphIndex);
+     end else begin
+     ResetGlyphBuffer(GlyphBuffer);
+     FillGlyphBuffer(GlyphBuffer,TTFGlyphIndex);
+     FillPolygonBuffer(PolygonBuffer,GlyphBuffer);
+    end;
+    GetPolygonBufferBounds(PolygonBuffer,x0,y0,x1,y1);
+    x0:=x0*Scale;
+    y0:=y0*Scale;
+    x1:=x1*Scale;
+    y1:=y1*Scale;
+    if ((x1-x0)<=aTextureArrayWidth) and
+       ((y1-y0)<=aTextureArrayHeight) and
+       (x1<=aTextureArrayWidth) and
+       (y1<=aTextureArrayHeight) then begin
+     break;
+    end else if x>2 then begin
+     dec(x);
+    end else begin
+     break;
+    end;
+   end else begin
+    break;
+   end;
+  until false;
+  y:=Min(y,x);
+ end;
+
+ Size:=-y;
+
+ mx0:=MaxDouble;
+ my0:=MaxDouble;
+ mx1:=-MaxDouble;
+ my1:=-MaxDouble;
+
+ PolygonBuffers:=nil;
+ try
+
+  SetLength(PolygonBuffers,aTextureArrayDepth);
+
+  for Index:=0 to aTextureArrayDepth-1 do begin
+
+   TTFGlyphIndex:=GetGlyphIndex(Index);
+   if TTFGlyphIndex>=0 then begin
+
+    if IsPostScriptGlyph(TTFGlyphIndex) then begin
+
+     FillPostScriptPolygonBuffer(PolygonBuffers[Index],TTFGlyphIndex);
+
+    end else begin
+
+     ResetGlyphBuffer(GlyphBuffer);
+     FillGlyphBuffer(GlyphBuffer,TTFGlyphIndex);
+
+     FillPolygonBuffer(PolygonBuffers[Index],GlyphBuffer);
+
+    end;
+
+    GetPolygonBufferBounds(PolygonBuffers[Index],x0,y0,x1,y1);
+
+    mx0:=Min(mx0,x0);
+    my0:=Min(my0,y0);
+    mx1:=Max(mx1,x1);
+    my1:=Max(my1,y1);
+
+   end;
+
+  end;
+
+  SignedDistanceFieldJobs:=nil;
+  try
+   SetLength(SignedDistanceFieldJobs,aTextureArrayDepth);
+   for Index:=0 to aTextureArrayDepth-1 do begin
+    SignedDistanceFieldJob:=@SignedDistanceFieldJobs[Index];
+    SignedDistanceFieldJob^.PolygonBuffer:=PolygonBuffers[Index];
+    SignedDistanceFieldJob^.Destination:=@PpvUInt8Array(aDestinationData)^[(aTextureArrayWidth*aTextureArrayHeight)*Index];
+    SignedDistanceFieldJob^.Width:=aTextureArrayWidth;
+    SignedDistanceFieldJob^.Height:=aTextureArrayHeight;
+    SignedDistanceFieldJob^.BoundsX0:=mx0;
+    SignedDistanceFieldJob^.BoundsY0:=my0;
+    SignedDistanceFieldJob^.BoundsX1:=mx1;
+    SignedDistanceFieldJob^.BoundsY1:=my1;
+   end;
+   if CountGlyphs>0 then begin
+    PasMPInstance.Invoke(PasMPInstance.ParallelFor(@SignedDistanceFieldJobs[0],0,aTextureArrayDepth-1,GenerateSimpleLinearSignedDistanceFieldTextureArrayParallelForJobFunction,1,10,nil,0));
+   end;
+  finally
+   SignedDistanceFieldJobs:=nil;
+  end;
+
+ finally
+  PolygonBuffers:=nil;
+ end;
+
 end;
 
 end.

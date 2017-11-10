@@ -227,6 +227,7 @@
         <DCCReference Include="..\src\PasVulkan.Image.JPEG.pas"/>
         <DCCReference Include="..\src\PasVulkan.Image.TGA.pas"/>
         <DCCReference Include="..\src\PasVulkan.Framework.pas"/>
+        <DCCReference Include="..\src\PasVulkan.ConvexHullGenerator2D.pas"/>
         <DCCReference Include="..\src\PasVulkan.Sprites.pas"/>
         <DCCReference Include="..\src\PasVulkan.Canvas.pas"/>
         <DCCReference Include="..\src\PasVulkan.SignedDistanceField2D.pas"/>
@@ -245,7 +246,6 @@
         <DCCReference Include="UnitExampleApplication.pas"/>
         <DCCReference Include="UnitTextOverlay.pas"/>
         <DCCReference Include="UnitModel.pas"/>
-        <DCCReference Include="UnitSDFFont.pas"/>
         <DCCReference Include="UnitScreenBlank.pas"/>
         <DCCReference Include="UnitScreenMainMenu.pas"/>
         <DCCReference Include="UnitScreenExit.pas"/>
@@ -255,7 +255,6 @@
         <DCCReference Include="UnitScreenExampleDragon.pas"/>
         <DCCReference Include="UnitScreenExampleCanvas.pas"/>
         <DCCReference Include="UnitScreenExampleGUI.pas"/>
-        <DCCReference Include="..\src\PasVulkan.ConvexHullGenerator2D.pas"/>
         <None Include="..\src\PasVulkan.inc"/>
         <None Include="..\src\PasVulkan.Applicaton.SDL2.inc"/>
         <None Include="..\src\PasVulkanAssets.inc"/>
@@ -319,7 +318,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector4.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
+                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector2Helper.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
@@ -365,15 +364,15 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="DelphiOutput\Win32\Debug\examples.exe" Configuration="Debug" Class="ProjectOutput">
-                    <Platform Name="Win32">
-                        <RemoteName>examples.exe</RemoteName>
-                        <Overwrite>true</Overwrite>
-                    </Platform>
-                </DeployFile>
                 <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector3Helper.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="DelphiOutput\Win32\Debug\examples.exe" Configuration="Debug" Class="ProjectOutput">
+                    <Platform Name="Win32">
+                        <RemoteName>examples.exe</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
@@ -417,7 +416,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector2Helper.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
+                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector4.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>

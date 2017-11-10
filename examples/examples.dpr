@@ -50,6 +50,7 @@ uses
   PasVulkan.Image.JPEG in '..\src\PasVulkan.Image.JPEG.pas',
   PasVulkan.Image.TGA in '..\src\PasVulkan.Image.TGA.pas',
   PasVulkan.Framework in '..\src\PasVulkan.Framework.pas',
+  PasVulkan.ConvexHullGenerator2D in '..\src\PasVulkan.ConvexHullGenerator2D.pas',
   PasVulkan.Sprites in '..\src\PasVulkan.Sprites.pas',
   PasVulkan.Canvas in '..\src\PasVulkan.Canvas.pas',
   PasVulkan.SignedDistanceField2D in '..\src\PasVulkan.SignedDistanceField2D.pas',
@@ -68,7 +69,6 @@ uses
   UnitExampleApplication in 'UnitExampleApplication.pas',
   UnitTextOverlay in 'UnitTextOverlay.pas',
   UnitModel in 'UnitModel.pas',
-  UnitSDFFont in 'UnitSDFFont.pas',
   UnitScreenBlank in 'UnitScreenBlank.pas',
   UnitScreenMainMenu in 'UnitScreenMainMenu.pas',
   UnitScreenExit in 'UnitScreenExit.pas',
@@ -77,8 +77,7 @@ uses
   UnitScreenExampleCube in 'UnitScreenExampleCube.pas',
   UnitScreenExampleDragon in 'UnitScreenExampleDragon.pas',
   UnitScreenExampleCanvas in 'UnitScreenExampleCanvas.pas',
-  UnitScreenExampleGUI in 'UnitScreenExampleGUI.pas',
-  PasVulkan.ConvexHullGenerator2D in '..\src\PasVulkan.ConvexHullGenerator2D.pas';
+  UnitScreenExampleGUI in 'UnitScreenExampleGUI.pas';
 
 // {$if defined(fpc) and defined(android)}
 

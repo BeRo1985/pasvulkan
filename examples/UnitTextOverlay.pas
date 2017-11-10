@@ -28,7 +28,10 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
-     PasVulkan.Application;
+     PasVulkan.Application,
+     PasVulkan.Streams,
+     PasVulkan.TrueTypeFont,
+     PasVulkan.Font;
 
 const TextOverlayBufferCharSize=65536;
 
@@ -119,7 +122,7 @@ type PTextOverlayBufferCharVertex=^TTextOverlayBufferCharVertex;
 
 implementation
 
-uses UnitSDFFont;
+uses PasVulkan.Assets;
 
 constructor TTextOverlay.Create;
 var Index:TpvInt32;
@@ -151,8 +154,14 @@ begin
 end;
 
 procedure TTextOverlay.Load;
+const SDFFontWidth=32;
+      SDFFontHeight=64;
+      SDFFontDepth=256;
+type TSDFFontData=array of TpvUInt8;
 var Stream:TStream;
     Index:TpvInt32;
+    TrueTypeFont:TpvTrueTypeFont;
+    SDFFontData:TSDFFontData;
 begin
 
  if not fLoaded then begin
@@ -189,33 +198,57 @@ begin
 
   fVulkanRenderPass:=nil;
 
-  fFontTexture:=TpvVulkanTexture.CreateFromMemory(pvApplication.VulkanDevice,
-                                                  pvApplication.VulkanDevice.GraphicsQueue,
-                                                  pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                                                  pvApplication.VulkanGraphicsCommandBufferFences[0,0],
-                                                  pvApplication.VulkanDevice.TransferQueue,
-                                                  pvApplication.VulkanTransferCommandBuffers[0,0],
-                                                  pvApplication.VulkanTransferCommandBufferFences[0,0],
-                                                  VK_FORMAT_R8_UNORM,
-                                                  VK_SAMPLE_COUNT_1_BIT,
-                                                  SDFFontWidth,
-                                                  SDFFontHeight,
-                                                  0,
-                                                  SDFFontDepth,
-                                                  1,
-                                                  1,
-                                                  [vtufTransferDst,vtufSampled],
-                                                  @SDFFontData,
-                                                  SizeOf(SDFFontData),
-                                                  false,
-                                                  false,
-                                                  0,
-                                                  false);
-  fFontTexture.WrapModeU:=vtwmClampToBorder;
-  fFontTexture.WrapModeV:=vtwmClampToBorder;
-  fFontTexture.WrapModeW:=vtwmClampToBorder;
-  fFontTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-  fFontTexture.UpdateSampler;
+  SDFFontData:=nil;
+  try
+
+   SetLength(SDFFontData,SDFFontWidth*SDFFontHeight*SDFFontDepth);
+
+   Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontMonoFontData,GUIStandardTrueTypeFontMonoFontDataSize);
+   try
+    TrueTypeFont:=TpvTrueTypeFont.Create(Stream);
+    try
+     TrueTypeFont.GenerateSimpleLinearSignedDistanceFieldTextureArray(@SDFFontData[0],
+                                                                      SDFFontWidth,
+                                                                      SDFFontHeight,
+                                                                      SDFFontDepth);
+    finally
+     TrueTypeFont.Free;
+    end;
+   finally
+    Stream.Free;
+   end;
+
+   fFontTexture:=TpvVulkanTexture.CreateFromMemory(pvApplication.VulkanDevice,
+                                                   pvApplication.VulkanDevice.GraphicsQueue,
+                                                   pvApplication.VulkanGraphicsCommandBuffers[0,0],
+                                                   pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                                   pvApplication.VulkanDevice.TransferQueue,
+                                                   pvApplication.VulkanTransferCommandBuffers[0,0],
+                                                   pvApplication.VulkanTransferCommandBufferFences[0,0],
+                                                   VK_FORMAT_R8_UNORM,
+                                                   VK_SAMPLE_COUNT_1_BIT,
+                                                   SDFFontWidth,
+                                                   SDFFontHeight,
+                                                   0,
+                                                   SDFFontDepth,
+                                                   1,
+                                                   1,
+                                                   [vtufTransferDst,vtufSampled],
+                                                   @SDFFontData[0],
+                                                   length(SDFFontData),
+                                                   false,
+                                                   false,
+                                                   0,
+                                                   false);
+   fFontTexture.WrapModeU:=vtwmClampToBorder;
+   fFontTexture.WrapModeV:=vtwmClampToBorder;
+   fFontTexture.WrapModeW:=vtwmClampToBorder;
+   fFontTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+   fFontTexture.UpdateSampler;
+
+  finally
+   SDFFontData:=nil;
+  end;
 
   for Index:=0 to MaxSwapChainImages-1 do begin
    fVulkanVertexBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
@@ -485,7 +518,7 @@ begin
  fInvHeight:=1.0/pvApplication.Height;
 
  if assigned(fVulkanUniformBuffer) then begin
-  fUniformBuffer.uThreshold:=(SDFFontSpreadScale/sqrt(sqr(fFontCharWidth)+sqr(fFontCharHeight)))*1.0;
+  fUniformBuffer.uThreshold:=1.0;//(SDFFontSpreadScale/sqrt(sqr(fFontCharWidth)+sqr(fFontCharHeight)))*1.0;
   fVulkanUniformBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
                                   pvApplication.VulkanTransferCommandBuffers[0,0],
                                   pvApplication.VulkanTransferCommandBufferFences[0,0],
