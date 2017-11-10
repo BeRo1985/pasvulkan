@@ -6,10 +6,13 @@ android {
     defaultConfig {
         applicationId "com.bero.demos.pasvulkanexamples"
         minSdkVersion 24
-        targetSdkVersion 26
+        targetSdkVersion 24
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters "armeabi-v7a"
+        }
     }
     buildTypes {
         release {
