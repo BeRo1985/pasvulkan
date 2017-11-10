@@ -10760,7 +10760,7 @@ var Index,TTFGlyphIndex,x,y:TpvInt32;
     SignedDistanceFieldJob:PpvTrueTypeFontSignedDistanceFieldJob;
     PasMPInstance:TPasMP;
     x0,y0,x1,y1:TpvDouble;
-    mx0,my0,mx1,my1:TpvDouble;
+    BoundsX0,BoundsY0,BoundsX1,BoundsY1:TpvDouble;
 begin
 
  PasMPInstance:=TPasMP.GetGlobalInstance;
@@ -10808,10 +10808,10 @@ begin
 
  Size:=-y;
 
- mx0:=MaxDouble;
- my0:=MaxDouble;
- mx1:=-MaxDouble;
- my1:=-MaxDouble;
+ BoundsX0:=MaxDouble;
+ BoundsY0:=MaxDouble;
+ BoundsX1:=-MaxDouble;
+ BoundsY1:=-MaxDouble;
 
  PolygonBuffers:=nil;
  try
@@ -10838,10 +10838,10 @@ begin
 
     GetPolygonBufferBounds(PolygonBuffers[Index],x0,y0,x1,y1);
 
-    mx0:=Min(mx0,x0);
-    my0:=Min(my0,y0);
-    mx1:=Max(mx1,x1);
-    my1:=Max(my1,y1);
+    BoundsX0:=Min(BoundsX0,x0);
+    BoundsY0:=Min(BoundsY0,y0);
+    BoundsX1:=Max(BoundsX1,x1);
+    BoundsY1:=Max(BoundsY1,y1);
 
    end;
 
@@ -10856,12 +10856,12 @@ begin
     SignedDistanceFieldJob^.Destination:=@PpvUInt8Array(aDestinationData)^[(aTextureArrayWidth*aTextureArrayHeight)*Index];
     SignedDistanceFieldJob^.Width:=aTextureArrayWidth;
     SignedDistanceFieldJob^.Height:=aTextureArrayHeight;
-    SignedDistanceFieldJob^.BoundsX0:=mx0;
-    SignedDistanceFieldJob^.BoundsY0:=my0;
-    SignedDistanceFieldJob^.BoundsX1:=mx1;
-    SignedDistanceFieldJob^.BoundsY1:=my1;
+    SignedDistanceFieldJob^.BoundsX0:=BoundsX0;
+    SignedDistanceFieldJob^.BoundsY0:=BoundsY0;
+    SignedDistanceFieldJob^.BoundsX1:=BoundsX1;
+    SignedDistanceFieldJob^.BoundsY1:=BoundsY1;
    end;
-   if CountGlyphs>0 then begin
+   if aTextureArrayDepth>0 then begin
     PasMPInstance.Invoke(PasMPInstance.ParallelFor(@SignedDistanceFieldJobs[0],0,aTextureArrayDepth-1,GenerateSimpleLinearSignedDistanceFieldTextureArrayParallelForJobFunction,1,10,nil,0));
    end;
   finally
