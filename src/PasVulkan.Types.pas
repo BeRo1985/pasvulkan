@@ -122,6 +122,8 @@ type PPpvInt8=^PpvInt8;
      PpvFloat=^TpvFloat;
      TpvFloat=Single;
 
+     TpvFloats=array of TpvFloat;
+
      PPpvDouble=^PpvDouble;
      PpvDouble=^TpvDouble;
      TpvDouble=Double;
