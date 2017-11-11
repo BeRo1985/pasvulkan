@@ -299,7 +299,7 @@ begin
  fGUIOtherWindow.AddCloseButton;
 
  Panel:=TPvGUIPanel.Create(fGUIOtherWindow.Content);
- Panel.Layout:=TpvGUIGridLayout.Create(Panel,pvglaMiddle,pvglaMiddle,pvgloHorizontal,2,0.0,64.0,8.0);
+ Panel.Layout:=TpvGUIGridLayout.Create(Panel,pvglaLeading,pvglaMiddle,pvgloHorizontal,4,0.0,8.0,8.0);
 
  fGUILabel:=TpvGUILabel.Create(Panel);
  fGUILabel.Caption:='An other example label';
@@ -309,8 +309,13 @@ begin
  fGUILabel.Caption:='An another example label';
  fGUILabel.Cursor:=pvgcUnavailable;
 
- Panel:=TPvGUIPanel.Create(fGUIOtherWindow.Content);
- Panel.Layout:=TpvGUIGridLayout.Create(Panel,pvglaMiddle,pvglaMiddle,pvgloHorizontal,4,0.0,8.0,8.0);
+ fGUILabel:=TpvGUILabel.Create(Panel);
+ fGUILabel.Caption:='Yet another example label';
+ fGUILabel.Cursor:=pvgcPen;
+
+ fGUILabel:=TpvGUILabel.Create(Panel);
+ fGUILabel.Caption:='Again another example label';
+ fGUILabel.Cursor:=pvgcLink;
 
  TpvGUICheckBox.Create(Panel).Caption:='Check box';
 
