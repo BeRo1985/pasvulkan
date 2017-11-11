@@ -294,14 +294,16 @@ type TpvGUIObject=class;
        fMargin:TpvFloat;
        fSpacing:TpvVector2;
        fSpacingProperty:TpvVector2Property;
+       fGrid:array[0..1] of TpvFloats;
+       fGridDimensions:array[0..1] of TpvInt32;
        function GetColumnAlignment:TpvGUILayoutAlignment;
        procedure SetColumnAlignment(const aAlignment:TpvGUILayoutAlignment);
        function GetRowAlignment:TpvGUILayoutAlignment;
        procedure SetRowAlignment(const aAlignment:TpvGUILayoutAlignment);
        procedure SetResolution(const aResolution:TpvInt32);
        function GetAlignment(const aAxisIndex,aItemIndex:TpvInt32):TpvGUILayoutAlignment;
+       procedure ComputeLayout(const aWidget:TpvGUIWidget);
       protected
-       procedure ComputeLayout(const aWidget:TpvGUIWidget;out aGrid:array of TpvFloats);
        function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
        procedure PerformLayout(const aWidget:TpvGUIWidget); override;
       public
@@ -2117,7 +2119,7 @@ begin
  end;
 end;
 
-procedure TpvGUIGridLayout.ComputeLayout(const aWidget:TpvGUIWidget;out aGrid:array of TpvFloats);
+procedure TpvGUIGridLayout.ComputeLayout(const aWidget:TpvGUIWidget);
 var Axis0,Axis1,VisibleChildren,ChildIndex,i0,i1:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
@@ -2144,24 +2146,34 @@ begin
   end;
  end;
 
- SetLength(aGrid[Axis0],fResolution);
- SetLength(aGrid[Axis1],(VisibleChildren+(fResolution-1)) div fResolution);
+ fGridDimensions[Axis0]:=fResolution;
+ fGridDimensions[Axis1]:=(VisibleChildren+(fResolution-1)) div fResolution;
 
- for i0:=0 to length(aGrid[Axis0])-1 do begin
-  aGrid[Axis0,i0]:=0.0;
+ i0:=RoundUpToPowerOfTwo(fGridDimensions[Axis0]);
+ if length(fGrid[Axis0])<>i0 then begin
+  SetLength(fGrid[Axis0],i0);
  end;
 
- for i1:=0 to length(aGrid[Axis1])-1 do begin
-  aGrid[Axis1,i1]:=0.0;
+ i1:=RoundUpToPowerOfTwo(fGridDimensions[Axis1]);
+ if length(fGrid[Axis1])<>i1 then begin
+  SetLength(fGrid[Axis1],i1);
+ end;
+
+ for i0:=0 to fGridDimensions[Axis0]-1 do begin
+  fGrid[Axis0,i0]:=0.0;
+ end;
+
+ for i1:=0 to fGridDimensions[Axis1]-1 do begin
+  fGrid[Axis1,i1]:=0.0;
  end;
 
  ChildIndex:=0;
 
- for i1:=0 to length(aGrid[Axis1])-1 do begin
+ for i1:=0 to fGridDimensions[Axis1]-1 do begin
 
   ChildWidget:=nil;
 
-  for i0:=0 to length(aGrid[Axis0])-1 do begin
+  for i0:=0 to fGridDimensions[Axis0]-1 do begin
 
    repeat
     Child:=nil;
@@ -2197,8 +2209,8 @@ begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
 
-    aGrid[Axis0,i0]:=Max(aGrid[Axis0,i0],ChildTargetSize[Axis0]);
-    aGrid[Axis1,i1]:=Max(aGrid[Axis1,i1],ChildTargetSize[Axis1]);
+    fGrid[Axis0,i0]:=Max(fGrid[Axis0,i0],ChildTargetSize[Axis0]);
+    fGrid[Axis1,i1]:=Max(fGrid[Axis1,i1],ChildTargetSize[Axis1]);
 
    end else begin
     break;
@@ -2215,23 +2227,21 @@ begin
 end;
 
 function TpvGUIGridLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
-var Grid:array[0..1] of TpvFloats;
-    Index:TpvInt32;
+var Index:TpvInt32;
 begin
- ComputeLayout(aWidget,Grid);
- result:=TpvVector2.Create((fMargin*2.0)+(Max(length(Grid[0])-1,0)*fSpacing.x),
-                           (fMargin*2.0)+(Max(length(Grid[1])-1,0)*fSpacing.y));
- for Index:=0 to length(Grid[0])-1 do begin
-  result.x:=result.x+Grid[0,Index];
+ ComputeLayout(aWidget);
+ result:=TpvVector2.Create((fMargin*2.0)+(Max(fGridDimensions[0]-1,0)*fSpacing.x),
+                           (fMargin*2.0)+(Max(fGridDimensions[1]-1,0)*fSpacing.y));
+ for Index:=0 to fGridDimensions[0]-1 do begin
+  result.x:=result.x+fGrid[0,Index];
  end;
- for Index:=0 to length(Grid[1])-1 do begin
-  result.y:=result.y+Grid[1,Index];
+ for Index:=0 to fGridDimensions[1]-1 do begin
+  result.y:=result.y+fGrid[1,Index];
  end;
 end;
 
 procedure TpvGUIGridLayout.PerformLayout(const aWidget:TpvGUIWidget);
-var Grid:array[0..1] of TpvFloats;
-    Index0,Index1,Index2,Axis0,Axis1,ChildIndex,
+var Index0,Index1,Index2,Axis0,Axis1,ChildIndex,
     AxisIndex,ItemIndex:TpvInt32;
     FixedSize,ContainerSize,GridSize,Start,Position,
     ChildPreferredSize,ChildFixedSize,ChildTargetSize,ChildPosition:TpvVector2;
@@ -2253,19 +2263,19 @@ begin
   ContainerSize.y:=aWidget.Height;
  end;
 
- ComputeLayout(aWidget,Grid);
+ ComputeLayout(aWidget);
 
  for Index0:=0 to 1 do begin
   GridSize[Index0]:=2.0*fMargin;
-  for Index1:=0 to length(Grid[Index0])-1 do begin
-   GridSize[Index0]:=GridSize[Index0]+Grid[Index0,Index1];
+  for Index1:=0 to fGridDimensions[Index0]-1 do begin
+   GridSize[Index0]:=GridSize[Index0]+fGrid[Index0,Index1];
   end;
-  GridSize[Index0]:=GridSize[Index0]+(Max(length(Grid[Index0])-1,0)*fSpacing[Index0]);
-  if (length(Grid[Index0])>0) and (GridSize[Index0]<ContainerSize[Index0]) then begin
+  GridSize[Index0]:=GridSize[Index0]+(Max(fGridDimensions[Index0]-1,0)*fSpacing[Index0]);
+  if (fGridDimensions[Index0]>0) and (GridSize[Index0]<ContainerSize[Index0]) then begin
    Gap:=ContainerSize[Index0]-GridSize[Index0];
-   SpreadedGap:=Gap/length(Grid[Index0]);
-   for Index1:=0 to length(Grid[Index0])-1 do begin
-    Grid[Index0,Index1]:=Grid[Index0,Index1]+SpreadedGap;
+   SpreadedGap:=Gap/fGridDimensions[Index0];
+   for Index1:=0 to fGridDimensions[Index0]-1 do begin
+    fGrid[Index0,Index1]:=fGrid[Index0,Index1]+SpreadedGap;
    end;
   end;
  end;
@@ -2284,13 +2294,13 @@ begin
 
  ChildIndex:=0;
 
- for Index1:=0 to length(Grid[Axis1])-1 do begin
+ for Index1:=0 to fGridDimensions[Axis1]-1 do begin
 
   Position[Axis0]:=Start[Axis0];
 
   ChildWidget:=nil;
 
-  for Index0:=0 to length(Grid[Axis0])-1 do begin
+  for Index0:=0 to fGridDimensions[Axis0]-1 do begin
 
    repeat
     Child:=nil;
@@ -2344,16 +2354,16 @@ begin
       pvglaLeading:begin
       end;
       pvglaMiddle:begin
-       ChildPosition[AxisIndex]:=ChildPosition[AxisIndex]+((Grid[AxisIndex,ItemIndex]-ChildTargetSize[AxisIndex])*0.5);
+       ChildPosition[AxisIndex]:=ChildPosition[AxisIndex]+((fGrid[AxisIndex,ItemIndex]-ChildTargetSize[AxisIndex])*0.5);
       end;
       pvglaTailing:begin
-       ChildPosition[AxisIndex]:=ChildPosition[AxisIndex]+(Grid[AxisIndex,ItemIndex]-ChildTargetSize[AxisIndex]);
+       ChildPosition[AxisIndex]:=ChildPosition[AxisIndex]+(fGrid[AxisIndex,ItemIndex]-ChildTargetSize[AxisIndex]);
       end;
       else {pvglaFill:}begin
        if ChildFixedSize[AxisIndex]>0.0 then begin
         ChildTargetSize[AxisIndex]:=ChildFixedSize[AxisIndex];
        end else begin
-        ChildTargetSize[AxisIndex]:=Grid[AxisIndex,ItemIndex];
+        ChildTargetSize[AxisIndex]:=fGrid[AxisIndex,ItemIndex];
        end;
       end;
      end;
@@ -2366,7 +2376,7 @@ begin
 
     ChildWidget.PerformLayout;
 
-    Position[Axis0]:=Position[Axis0]+(Grid[Axis0,Index0]+fSpacing[Axis0]);
+    Position[Axis0]:=Position[Axis0]+(fGrid[Axis0,Index0]+fSpacing[Axis0]);
 
    end else begin
 
@@ -2377,7 +2387,7 @@ begin
   end;
 
   if assigned(ChildWidget) then begin
-   Position[Axis1]:=Position[Axis1]+(Grid[Axis1,Index1]+fSpacing[Axis1]);
+   Position[Axis1]:=Position[Axis1]+(fGrid[Axis1,Index1]+fSpacing[Axis1]);
   end else begin
    break;
   end;

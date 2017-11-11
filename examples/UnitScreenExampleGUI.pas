@@ -130,7 +130,7 @@ var Index:TpvInt32;
     WindowMenu:TpvGUIWindowMenu;
     MenuItem:TpvGUIMenuItem;
     PopupMenu:TpvGUIPopupMenu;
-    Popup:TpvGUIPopup;
+//    Popup:TpvGUIPopup;
     Panel:TPvGUIPanel;
 begin
  inherited Show;
