@@ -2086,6 +2086,8 @@ begin
         end;
        end;
        else {2:}begin
+        InitializeDistances;
+        ConvertShape(true);
         ConvertToPointInPolygonPathSegments;
        end;
       end;
