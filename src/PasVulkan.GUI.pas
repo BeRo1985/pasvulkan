@@ -103,6 +103,8 @@ type TpvGUIObject=class;
 
      TpvGUIWindowMenu=class;
 
+     TpvGUIPanel=class;
+
      EpvGUIWidget=class(Exception);
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
@@ -708,7 +710,7 @@ type TpvGUIObject=class;
        fCurrentFocusPath:TpvGUIObjectList;
        fDragWidget:TpvGUIWidget;
        fWindow:TpvGUIWindow;
-       fContent:TpvGUIWidget;
+       fContent:TpvGUIPanel;
        fMenu:TpvGUIWindowMenu;
        fFocusedWidget:TpvGUIWidget;
        fHoveredWidget:TpvGUIWidget;
@@ -750,7 +752,7 @@ type TpvGUIObject=class;
        property DeltaTime:TpvDouble read fDeltaTime write fDeltaTime;
        property FocusedWidget:TpvGUIWidget read fFocusedWidget write UpdateFocus;
        property HoveredWidget:TpvGUIWidget read fHoveredWidget;
-       property Content:TpvGUIWidget read fContent;
+       property Content:TpvGUIPanel read fContent;
        property Menu:TpvGUIWindowMenu read fMenu write fMenu;
      end;
 
@@ -816,8 +818,8 @@ type TpvGUIObject=class;
        fLastWindowState:TpvGUIWindowState;
        fWindowState:TpvGUIWindowState;
        fMenu:TpvGUIWindowMenu;
-       fButtonPanel:TpvGUIWidget;
-       fContent:TpvGUIWidget;
+       fButtonPanel:TpvGUIPanel;
+       fContent:TpvGUIPanel;
        fSavedPosition:TpvVector2;
        fSavedSize:TpvVector2;
        fMinimizationButton:TpvGUIButton;
@@ -827,7 +829,7 @@ type TpvGUIObject=class;
        function GetModal:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetModal(const aModal:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetWindowState(const aWindowState:TpvGUIWindowState); {$ifdef CAN_INLINE}inline;{$endif}
-       function GetButtonPanel:TpvGUIWidget;
+       function GetButtonPanel:TpvGUIPanel;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
        procedure OnButtonClick(const aSender:TpvGUIObject); virtual;
@@ -859,8 +861,8 @@ type TpvGUIObject=class;
        property WindowFlags:TpvGUIWindowFlags read fWindowFlags write fWindowFlags;
        property WindowState:TpvGUIWindowState read fWindowState write SetWindowState;
        property Modal:boolean read GetModal write SetModal;
-       property ButtonPanel:TpvGUIWidget read GetButtonPanel;
-       property Content:TpvGUIWidget read fContent;
+       property ButtonPanel:TpvGUIPanel read GetButtonPanel;
+       property Content:TpvGUIPanel read fContent;
        property Menu:TpvGUIWindowMenu read fMenu;
        property Font;
        property TextHorizontalAlignment;
@@ -900,6 +902,8 @@ type TpvGUIObject=class;
        property AnchorPosition:TpvVector2Property read fAnchorPositionProperty;
        property AnchorOffset:TpvVector2Property read fAnchorOffsetProperty;
      end;
+
+     TpvGUIPanel=class(TpvGUIWidget);
 
      TpvGUILabel=class(TpvGUIWidget)
       private
@@ -4953,7 +4957,7 @@ begin
 
  fLayout:=TpvGUIRootLayout.Create(self);
 
- fContent:=TpvGUIWidget.Create(self);
+ fContent:=TpvGUIPanel.Create(self);
 
  fMenu:=nil;
 
@@ -5523,7 +5527,7 @@ begin
 
  fButtonPanel:=nil;
 
- fContent:=TpvGUIWidget.Create(self);
+ fContent:=TpvGUIPanel.Create(self);
 
  fMinimizationButton:=nil;
 
@@ -5738,10 +5742,10 @@ begin
  end;
 end;
 
-function TpvGUIWindow.GetButtonPanel:TpvGUIWidget;
+function TpvGUIWindow.GetButtonPanel:TpvGUIPanel;
 begin
  if not assigned(fButtonPanel) then begin
-  fButtonPanel:=TpvGUIWidget.Create(self);
+  fButtonPanel:=TpvGUIPanel.Create(self);
   fButtonPanel.fLayout:=TpvGUIBoxLayout.Create(fButtonPanel,pvglaMiddle,pvgloHorizontal,0.0,4.0);
  end;
  result:=fButtonPanel;
