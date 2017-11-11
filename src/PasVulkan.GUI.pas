@@ -258,6 +258,29 @@ type TpvGUIObject=class;
        property Spacing:TpvFloat read fSpacing write fSpacing;
      end;
 
+     TpvGUIGroupLayout=class(TpvGUILayout)
+      private
+       fMargin:TpvFloat;
+       fSpacing:TpvFloat;
+       fGroupSpacing:TpvFloat;
+       fGroupIdent:TpvFloat;
+      protected
+       function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
+       procedure PerformLayout(const aWidget:TpvGUIWidget); override;
+      public
+       constructor Create(const aParent:TpvGUIObject;
+                          const aMargin:TpvFloat=15.0;
+                          const aSpacing:TpvFloat=6.0;
+                          const aGroupSpacing:TpvFloat=14.0;
+                          const aGroupIndent:TpvFloat=20.0); reintroduce; virtual;
+       destructor Destroy; override;
+      published
+       property Margin:TpvFloat read fMargin write fMargin;
+       property Spacing:TpvFloat read fSpacing write fSpacing;
+       property GroupSpacing:TpvFloat read fGroupSpacing write fGroupSpacing;
+       property GroupIdent:TpvFloat read fGroupIdent write fGroupIdent;
+     end;
+
      TpvGUISkin=class(TpvGUIObject)
       private
       protected
@@ -1813,6 +1836,146 @@ begin
    end;
   end;
  end;
+end;
+
+constructor TpvGUIGroupLayout.Create(const aParent:TpvGUIObject;
+                                     const aMargin:TpvFloat=15.0;
+                                     const aSpacing:TpvFloat=6.0;
+                                     const aGroupSpacing:TpvFloat=14.0;
+                                     const aGroupIndent:TpvFloat=20.0);
+begin
+
+ inherited Create(aParent);
+
+ fMargin:=aMargin;
+
+ fSpacing:=aSpacing;
+
+ fGroupSpacing:=aGroupSpacing;
+
+ fGroupIdent:=aGroupIndent;
+
+end;
+
+destructor TpvGUIGroupLayout.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TpvGUIGroupLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
+var ChildIndex:TpvInt32;
+    ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
+    First,Indent,IndentCurrent:boolean;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+    ChildLabel:TpVGUILabel;
+begin
+ result:=TpvVector2.Create(fMargin*2.0,fMargin);
+ First:=true;
+ Indent:=false;
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    if ChildWidget is TpvGUILabel then begin
+     ChildLabel:=ChildWidget as TpvGUILabel;
+    end else begin
+     ChildLabel:=nil;
+    end;
+    if First then begin
+     First:=false;
+    end else begin
+     if assigned(ChildLabel) then begin
+      result.y:=result.y+fGroupSpacing;
+     end else begin
+      result.y:=result.y+fSpacing;
+     end;
+    end;
+    ChildPreferredSize:=ChildWidget.GetPreferredSize;
+    ChildFixedSize:=ChildWidget.GetFixedSize;
+    if ChildFixedSize.x>0.0 then begin
+     ChildTargetSize.x:=ChildFixedSize.x;
+    end else begin
+     ChildTargetSize.x:=ChildPreferredSize.x;
+    end;
+    if ChildFixedSize.y>0.0 then begin
+     ChildTargetSize.y:=ChildFixedSize.y;
+    end else begin
+     ChildTargetSize.y:=ChildPreferredSize.y;
+    end;
+    IndentCurrent:=Indent and not assigned(ChildLabel);
+    result.x:=Max(result.x,ChildTargetSize.x+(2.0*fMargin)+((ord(IndentCurrent) and 1)*fGroupIdent));
+    result.y:=result.y+ChildTargetSize.y;
+    if assigned(ChildLabel) then begin
+     Indent:=length(ChildLabel.Caption)>0;
+    end
+   end;
+  end;
+ end;
+ result.y:=result.y+fMargin;
+end;
+
+procedure TpvGUIGroupLayout.PerformLayout(const aWidget:TpvGUIWidget);
+var ChildIndex:TpvInt32;
+    Size,ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
+    AvailableWidth:TpvFloat;
+    First,Indent,IndentCurrent:boolean;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+    ChildLabel:TpVGUILabel;
+begin
+ Size:=TpvVector2.Create(fMargin*2.0,fMargin);
+ if aWidget.GetFixedWidth>0.0 then begin
+  AvailableWidth:=aWidget.GetFixedWidth-(fMargin*2.0);
+ end else begin
+  AvailableWidth:=aWidget.Width-(fMargin*2.0);
+ end;
+ First:=true;
+ Indent:=false;
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    if ChildWidget is TpvGUILabel then begin
+     ChildLabel:=ChildWidget as TpvGUILabel;
+    end else begin
+     ChildLabel:=nil;
+    end;
+    if First then begin
+     First:=false;
+    end else begin
+     if assigned(ChildLabel) then begin
+      Size.y:=Size.y+fGroupSpacing;
+     end else begin
+      Size.y:=Size.y+fSpacing;
+     end;
+    end;
+    IndentCurrent:=Indent and not assigned(ChildLabel);
+    ChildPreferredSize:=TpvVector2.Create(AvailableWidth-((ord(IndentCurrent) and 1)*fGroupIdent),ChildWidget.GetPreferredSize.y);
+    ChildFixedSize:=ChildWidget.GetFixedSize;
+    if ChildFixedSize.x>0.0 then begin
+     ChildTargetSize.x:=ChildFixedSize.x;
+    end else begin
+     ChildTargetSize.x:=ChildPreferredSize.x;
+    end;
+    if ChildFixedSize.y>0.0 then begin
+     ChildTargetSize.y:=ChildFixedSize.y;
+    end else begin
+     ChildTargetSize.y:=ChildPreferredSize.y;
+    end;
+    ChildWidget.fPosition:=TpvVector2.Create(fMargin+((ord(IndentCurrent) and 1)*fGroupIdent),Size.y);
+    ChildWidget.fSize:=ChildTargetSize;
+    ChildWidget.PerformLayout;
+    Size.y:=Size.y+ChildTargetSize.y;
+    if assigned(ChildLabel) then begin
+     Indent:=length(ChildLabel.Caption)>0;
+    end
+   end;
+  end;
+ end;
+ Size.y:=Size.y+fMargin;
 end;
 
 constructor TpvGUISkin.Create(const aParent:TpvGUIObject);
