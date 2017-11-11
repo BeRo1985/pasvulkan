@@ -3,6 +3,13 @@
 // Copyright (C) 2017, Benjamin 'BeRo' Rosseaux (benjamin@rosseaux.de)
 // License: zlib 
 
+// The PasVulkan canvas is designed for frame buffers and textures, which contains values in linear color space and not
+// in the sRGB color space, for correct linear space blending, so keep it in mind, while you are reading this code.
+
+// and therefore, you should use sRGB framebuffer and texture Vulkan TVkFormat formats, if you are using sRGB textures, 
+// and sRGB displays, because the GPU itself does the sRGB=>linear (at texel fetches) and linear=>sRGB (at pixel writes)
+// conversions then.  
+
 #define FILLTYPE_NO_TEXTURE 0
 #define FILLTYPE_TEXTURE 1
 #define FILLTYPE_ATLAS_TEXTURE 2
@@ -271,7 +278,7 @@ void main(void){
       vec2 width = vec2(0.5) + (vec2(-SQRT_0_DOT_5, SQRT_0_DOT_5) * length(vec2(dFdx(center), dFdy(center))));
 #else
       // Based on: https://www.essentialmath.com/blog/?p=151 but with Adreno issue compensation, which likes to drop tiles on division by zero
-      const float NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 / 8.0; 
+      const float NORMALIZATION_THICKNESS_SCALE = SQRT_0_DOT_5 * (0.5 / 4.0); 
       vec2 centerGradient = vec2(dFdx(center), dFdy(center));
       float centerGradientSquaredLength = dot(centerGradient, centerGradient);
       if(centerGradientSquaredLength < 1e-4){
@@ -294,7 +301,7 @@ void main(void){
                                                                     textureLod(uTexture, ADJUST_TEXCOORD(buv.zw), 0.0).w,
                                                                     textureLod(uTexture, ADJUST_TEXCOORD(buv.xw), 0.0).w,
                                                                     textureLod(uTexture, ADJUST_TEXCOORD(buv.zy), 0.0).w)), vec4(0.5))) * ONE_BY_THREE, 0.0, 1.0));
-      color.a = pow(color.a, 2.2);
+      //color.a = pow(color.a, 2.2);
       break;
     }
     default:{
