@@ -2118,12 +2118,12 @@ begin
 end;
 
 procedure TpvGUIGridLayout.ComputeLayout(const aWidget:TpvGUIWidget;out aGrid:array of TpvFloats);
-var Axis0,Axis1,CountChildren,VisibleChildren,ChildIndex,i0,i1:TpvInt32;
+var Axis0,Axis1,VisibleChildren,ChildIndex,i0,i1:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
-    Dimensions:array[0..1] of TpvInt32;
     ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
 begin
+
  if fOrientation=pvgloHorizontal then begin
   Axis0:=0;
   Axis1:=1;
@@ -2131,8 +2131,9 @@ begin
   Axis0:=1;
   Axis1:=0;
  end;
- CountChildren:=aWidget.Children.Count;
+
  VisibleChildren:=0;
+
  for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
   Child:=aWidget.fChildren.Items[ChildIndex];
   if Child is TpvGUIWidget then begin
@@ -2142,14 +2143,26 @@ begin
    end;
   end;
  end;
- Dimensions[Axis0]:=fResolution;
- Dimensions[Axis1]:=(VisibleChildren+(fResolution-1)) div fResolution;
- SetLength(aGrid[Axis0],Dimensions[Axis0]);
- SetLength(aGrid[Axis1],Dimensions[Axis1]);
+
+ SetLength(aGrid[Axis0],fResolution);
+ SetLength(aGrid[Axis1],(VisibleChildren+(fResolution-1)) div fResolution);
+
+ for i0:=0 to length(aGrid[Axis0])-1 do begin
+  aGrid[Axis0,i0]:=0.0;
+ end;
+
+ for i1:=0 to length(aGrid[Axis1])-1 do begin
+  aGrid[Axis1,i1]:=0.0;
+ end;
+
  ChildIndex:=0;
- for i1:=0 to Dimensions[Axis1]-1 do begin
+
+ for i1:=0 to length(aGrid[Axis1])-1 do begin
+
   ChildWidget:=nil;
-  for i0:=0 to Dimensions[Axis0]-1 do begin
+
+  for i0:=0 to length(aGrid[Axis0])-1 do begin
+
    repeat
     Child:=nil;
     ChildWidget:=nil;
@@ -2165,29 +2178,40 @@ begin
      end;
     end;
    until false;
+
    if assigned(ChildWidget) then begin
-    ChildPreferredSize:=ChildWidget.GetPreferredSize.y;
+
+    ChildPreferredSize:=ChildWidget.GetPreferredSize;
+
     ChildFixedSize:=ChildWidget.GetFixedSize;
+
     if ChildFixedSize.x>0.0 then begin
      ChildTargetSize.x:=ChildFixedSize.x;
     end else begin
      ChildTargetSize.x:=ChildPreferredSize.x;
     end;
+
     if ChildFixedSize.y>0.0 then begin
      ChildTargetSize.y:=ChildFixedSize.y;
     end else begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
+
     aGrid[Axis0,i0]:=Max(aGrid[Axis0,i0],ChildTargetSize[Axis0]);
     aGrid[Axis1,i1]:=Max(aGrid[Axis1,i1],ChildTargetSize[Axis1]);
+
    end else begin
     break;
    end;
+
   end;
+
   if not assigned(ChildWidget) then begin
    break;
   end;
+
  end;
+
 end;
 
 function TpvGUIGridLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
@@ -2207,12 +2231,11 @@ end;
 
 procedure TpvGUIGridLayout.PerformLayout(const aWidget:TpvGUIWidget);
 var Grid:array[0..1] of TpvFloats;
-    Index0,Index1,Index2,Axis0,Axis1,ChildIndex,CountChildren,
+    Index0,Index1,Index2,Axis0,Axis1,ChildIndex,
     AxisIndex,ItemIndex:TpvInt32;
     FixedSize,ContainerSize,GridSize,Start,Position,
     ChildPreferredSize,ChildFixedSize,ChildTargetSize,ChildPosition:TpvVector2;
-    Dimensions:array[0..1] of TpvInt32;
-    Gap,g,Rest:TpvFloat;
+    Gap,SpreadedGap:TpvFloat;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
     Alignment:TpvGUILayoutAlignment;
@@ -2232,9 +2255,6 @@ begin
 
  ComputeLayout(aWidget,Grid);
 
- Dimensions[0]:=length(Grid[0]);
- Dimensions[1]:=length(Grid[1]);
-
  for Index0:=0 to 1 do begin
   GridSize[Index0]:=2.0*fMargin;
   for Index1:=0 to length(Grid[Index0])-1 do begin
@@ -2243,16 +2263,9 @@ begin
   GridSize[Index0]:=GridSize[Index0]+(Max(length(Grid[Index0])-1,0)*fSpacing[Index0]);
   if (length(Grid[Index0])>0) and (GridSize[Index0]<ContainerSize[Index0]) then begin
    Gap:=ContainerSize[Index0]-GridSize[Index0];
-   g:=floor(Gap/length(Grid[Index0]));
-   Rest:=Gap-(g*length(Grid[Index0]));
+   SpreadedGap:=Gap/length(Grid[Index0]);
    for Index1:=0 to length(Grid[Index0])-1 do begin
-    Grid[Index0,Index1]:=Grid[Index0,Index1]+g;
-   end;
-   for Index1:=0 to length(Grid[Index0])-1 do begin
-    if Rest>0.0 then begin
-     Grid[Index0,Index1]:=Grid[Index0,Index1]+1;
-     Rest:=Rest-1.0;
-    end;
+    Grid[Index0,Index1]:=Grid[Index0,Index1]+SpreadedGap;
    end;
   end;
  end;
@@ -2267,15 +2280,13 @@ begin
 
  Start:=TpvVector2.Create(fMargin,fMargin);
 
- CountChildren:=aWidget.Children.Count;
-
  Position:=Start;
 
  ChildIndex:=0;
 
  for Index1:=0 to length(Grid[Axis1])-1 do begin
 
-  Position[Axis1]:=Grid[Axis1,Index1];
+  Position[Axis0]:=Start[Axis0];
 
   ChildWidget:=nil;
 
@@ -2299,7 +2310,7 @@ begin
 
    if assigned(ChildWidget) then begin
 
-    ChildPreferredSize:=ChildWidget.GetPreferredSize.y;
+    ChildPreferredSize:=ChildWidget.GetPreferredSize;
 
     ChildFixedSize:=ChildWidget.GetFixedSize;
 
@@ -2346,6 +2357,7 @@ begin
        end;
       end;
      end;
+
     end;
 
     ChildWidget.fPosition:=ChildPosition;

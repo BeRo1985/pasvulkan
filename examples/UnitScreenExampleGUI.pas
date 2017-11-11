@@ -131,6 +131,7 @@ var Index:TpvInt32;
     MenuItem:TpvGUIMenuItem;
     PopupMenu:TpvGUIPopupMenu;
     Popup:TpvGUIPopup;
+    Panel:TPvGUIPanel;
 begin
  inherited Show;
 
@@ -297,31 +298,39 @@ begin
  fGUIOtherWindow.AddMaximizationButton;
  fGUIOtherWindow.AddCloseButton;
 
- fGUILabel:=TpvGUILabel.Create(fGUIOtherWindow.Content);
+ Panel:=TPvGUIPanel.Create(fGUIOtherWindow.Content);
+ Panel.Layout:=TpvGUIGridLayout.Create(Panel,pvglaMiddle,pvglaMiddle,pvgloHorizontal,2,0.0,64.0,8.0);
+
+ fGUILabel:=TpvGUILabel.Create(Panel);
  fGUILabel.Caption:='An other example label';
  fGUILabel.Cursor:=pvgcBusy;
 
- fGUILabel:=TpvGUILabel.Create(fGUIOtherWindow.Content);
+ fGUILabel:=TpvGUILabel.Create(Panel);
  fGUILabel.Caption:='An another example label';
  fGUILabel.Cursor:=pvgcUnavailable;
 
- TpvGUICheckBox.Create(fGUIOtherWindow.Content).Caption:='An example check box';
+ Panel:=TPvGUIPanel.Create(fGUIOtherWindow.Content);
+ Panel.Layout:=TpvGUIGridLayout.Create(Panel,pvglaMiddle,pvglaMiddle,pvgloHorizontal,4,0.0,8.0,8.0);
 
- TpvGUIRadioCheckBox.Create(fGUIOtherWindow.Content).Caption:='An example radio check box (0)';
+ TpvGUICheckBox.Create(Panel).Caption:='Check box';
 
- TpvGUIRadioCheckBox.Create(fGUIOtherWindow.Content).Caption:='An example radio check box (1)';
+ TpvGUIRadioCheckBox.Create(Panel).Caption:='Radio check box (0)';
 
- fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow.Content);
- fGUIButton.Caption:='An example radio button (0)';
+ TpvGUIRadioCheckBox.Create(Panel).Caption:='Radio check box (1)';
 
- fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow.Content);
- fGUIButton.Caption:='An example radio button (1)';
+ TpvGUIRadioCheckBox.Create(Panel).Caption:='Radio check box (2)';
 
- fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow.Content);
- fGUIButton.Caption:='An example radio button (2)';
+ fGUIButton:=TpvGUIRadioButton.Create(Panel);
+ fGUIButton.Caption:='Radio button (0)';
 
- fGUIButton:=TpvGUIRadioButton.Create(fGUIOtherWindow.Content);
- fGUIButton.Caption:='An example radio button (3)';
+ fGUIButton:=TpvGUIRadioButton.Create(Panel);
+ fGUIButton.Caption:='Radio button (1)';
+
+ fGUIButton:=TpvGUIRadioButton.Create(Panel);
+ fGUIButton.Caption:='Radio button (2)';
+
+ fGUIButton:=TpvGUIRadioButton.Create(Panel);
+ fGUIButton.Caption:='Radio button (3)';
 
  fGUIYetOtherWindow:=TpvGUIWindow.Create(fGUIOtherWindow.Content);
  fGUIYetOtherWindow.Left:=550;
