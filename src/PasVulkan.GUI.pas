@@ -287,10 +287,10 @@ type TpvGUIObject=class;
 
      TpvGUIGridLayout=class(TpvGUILayout)
       private
+       fResolution:TpvInt32;
        fDefaultAlignments:array[0..1] of TpvGUILayoutAlignment;
        fAlignments:array[0..1] of TpvGUILayoutAlignments;
        fOrientation:TpvGUILayoutOrientation;
-       fResolution:TpvInt32;
        fMargin:TpvFloat;
        fSpacing:TpvVector2;
        fSpacingProperty:TpvVector2Property;
@@ -306,10 +306,10 @@ type TpvGUIObject=class;
        procedure PerformLayout(const aWidget:TpvGUIWidget); override;
       public
        constructor Create(const aParent:TpvGUIObject;
+                          const aResolution:TpvInt32=2;
                           const aColumnAlignment:TpvGUILayoutAlignment=pvglaMiddle;
                           const aRowAlignment:TpvGUILayoutAlignment=pvglaMiddle;
                           const aOrientation:TpvGUILayoutOrientation=pvgloHorizontal;
-                          const aResolution:TpvInt32=2;
                           const aMargin:TpvFloat=0.0;
                           const aHorizontalSpacing:TpvFloat=0.0;
                           const aVerticalSpacing:TpvFloat=0.0); reintroduce; virtual;
@@ -317,10 +317,10 @@ type TpvGUIObject=class;
        procedure SetColumnAlignments(const aAlignments:array of TpvGUILayoutAlignment);
        procedure SetRowAlignments(const aAlignments:array of TpvGUILayoutAlignment);
       published
+       property Resolution:TpvInt32 read fResolution write SetResolution;
        property RowAlignment:TpvGUILayoutAlignment read GetRowAlignment write SetRowAlignment;
        property ColumnAlignment:TpvGUILayoutAlignment read GetColumnAlignment write SetColumnAlignment;
        property Orientation:TpvGUILayoutOrientation read fOrientation write fOrientation;
-       property Resolution:TpvInt32 read fResolution write SetResolution;
        property Margin:TpvFloat read fMargin write fMargin;
        property Spacing:TpvVector2Property read fSpacingProperty;
      end;
@@ -2025,10 +2025,10 @@ begin
 end;
 
 constructor TpvGUIGridLayout.Create(const aParent:TpvGUIObject;
+                                    const aResolution:TpvInt32=2;
                                     const aColumnAlignment:TpvGUILayoutAlignment=pvglaMiddle;
                                     const aRowAlignment:TpvGUILayoutAlignment=pvglaMiddle;
                                     const aOrientation:TpvGUILayoutOrientation=pvgloHorizontal;
-                                    const aResolution:TpvInt32=2;
                                     const aMargin:TpvFloat=0.0;
                                     const aHorizontalSpacing:TpvFloat=0.0;
                                     const aVerticalSpacing:TpvFloat=0.0);

@@ -299,7 +299,7 @@ begin
  fGUIOtherWindow.AddCloseButton;
 
  Panel:=TPvGUIPanel.Create(fGUIOtherWindow.Content);
- Panel.Layout:=TpvGUIGridLayout.Create(Panel,pvglaLeading,pvglaMiddle,pvgloHorizontal,4,0.0,8.0,8.0);
+ Panel.Layout:=TpvGUIGridLayout.Create(Panel,4,pvglaLeading,pvglaMiddle,pvgloHorizontal,0.0,8.0,8.0);
 
  fGUILabel:=TpvGUILabel.Create(Panel);
  fGUILabel.Caption:='An other example label';
