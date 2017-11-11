@@ -2207,7 +2207,7 @@ end;
 
 procedure TpvGUIGridLayout.PerformLayout(const aWidget:TpvGUIWidget);
 var Grid:array[0..1] of TpvFloats;
-    Index,SubIndex,SubSubIndex,Axis0,Axis1,ChildIndex,CountChildren,
+    Index0,Index1,Index2,Axis0,Axis1,ChildIndex,CountChildren,
     AxisIndex,ItemIndex:TpvInt32;
     FixedSize,ContainerSize,GridSize,Start,Position,
     ChildPreferredSize,ChildFixedSize,ChildTargetSize,ChildPosition:TpvVector2;
@@ -2235,22 +2235,22 @@ begin
  Dimensions[0]:=length(Grid[0]);
  Dimensions[1]:=length(Grid[1]);
 
- for Index:=0 to 1 do begin
-  GridSize[Index]:=2.0*fMargin;
-  for SubIndex:=0 to length(Grid[Index])-1 do begin
-   GridSize[Index]:=GridSize[Index]+Grid[Index,SubIndex];
+ for Index0:=0 to 1 do begin
+  GridSize[Index0]:=2.0*fMargin;
+  for Index1:=0 to length(Grid[Index0])-1 do begin
+   GridSize[Index0]:=GridSize[Index0]+Grid[Index0,Index1];
   end;
-  GridSize[Index]:=GridSize[Index]+(Max(length(Grid[Index])-1,0)*fSpacing[Index]);
-  if (length(Grid[Index])>0) and (GridSize[Index]<ContainerSize[Index]) then begin
-   Gap:=ContainerSize[Index]-GridSize[Index];
-   g:=floor(Gap/length(Grid[Index]));
-   Rest:=Gap-(g*length(Grid[Index]));
-   for SubIndex:=0 to length(Grid[Index])-1 do begin
-    Grid[Index,SubIndex]:=Grid[Index,SubIndex]+g;
+  GridSize[Index0]:=GridSize[Index0]+(Max(length(Grid[Index0])-1,0)*fSpacing[Index0]);
+  if (length(Grid[Index0])>0) and (GridSize[Index0]<ContainerSize[Index0]) then begin
+   Gap:=ContainerSize[Index0]-GridSize[Index0];
+   g:=floor(Gap/length(Grid[Index0]));
+   Rest:=Gap-(g*length(Grid[Index0]));
+   for Index1:=0 to length(Grid[Index0])-1 do begin
+    Grid[Index0,Index1]:=Grid[Index0,Index1]+g;
    end;
-   for SubIndex:=0 to length(Grid[Index])-1 do begin
+   for Index1:=0 to length(Grid[Index0])-1 do begin
     if Rest>0.0 then begin
-     Grid[Index,SubIndex]:=Grid[Index,SubIndex]+1;
+     Grid[Index0,Index1]:=Grid[Index0,Index1]+1;
      Rest:=Rest-1.0;
     end;
    end;
@@ -2273,13 +2273,13 @@ begin
 
  ChildIndex:=0;
 
- for Index:=0 to length(Grid[Axis1])-1 do begin
+ for Index1:=0 to length(Grid[Axis1])-1 do begin
 
-  Position[Axis1]:=Grid[Axis1,Index];
+  Position[Axis1]:=Grid[Axis1,Index1];
 
   ChildWidget:=nil;
 
-  for SubIndex:=0 to length(Grid[Axis0])-1 do begin
+  for Index0:=0 to length(Grid[Axis0])-1 do begin
 
    repeat
     Child:=nil;
@@ -2317,14 +2317,14 @@ begin
 
     ChildPosition:=Position;
 
-    for SubSubIndex:=0 to 1 do begin
+    for Index2:=0 to 1 do begin
 
-     AxisIndex:=(Axis0+SubSubIndex) and 1;
+     AxisIndex:=(Axis0+Index2) and 1;
 
      if AxisIndex=0 then begin
-      ItemIndex:=SubIndex;
+      ItemIndex:=Index0;
      end else begin
-      ItemIndex:=Index;
+      ItemIndex:=Index1;
      end;
 
      Alignment:=GetAlignment(AxisIndex,ItemIndex);
@@ -2354,7 +2354,7 @@ begin
 
     ChildWidget.PerformLayout;
 
-    Position[Axis0]:=Position[Axis0]+(Grid[Axis0,SubIndex]+fSpacing[Axis0]);
+    Position[Axis0]:=Position[Axis0]+(Grid[Axis0,Index0]+fSpacing[Axis0]);
 
    end else begin
 
@@ -2365,7 +2365,7 @@ begin
   end;
 
   if assigned(ChildWidget) then begin
-   Position[Axis1]:=Position[Axis1]+(Grid[Axis1,Index]+fSpacing[Axis1]);
+   Position[Axis1]:=Position[Axis1]+(Grid[Axis1,Index1]+fSpacing[Axis1]);
   end else begin
    break;
   end;
