@@ -321,8 +321,8 @@ type EpvSpriteAtlas=class(Exception);
        function LoadSprites(const aName:TpvRawByteString;aStream:TStream;aSpriteWidth:TpvInt32=64;aSpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprites;
        procedure LoadFromStream(const aStream:TStream);
        procedure LoadFromFile(const aFileName:string);
-       procedure SaveToStream(const aStream:TStream);
-       procedure SaveToFile(const aFileName:string);
+       procedure SaveToStream(const aStream:TStream;const aFast:boolean=false);
+       procedure SaveToFile(const aFileName:string;const aFast:boolean=false);
        property Device:TpvVulkanDevice read fDevice;
        property Count:TpvInt32 read GetCount;
        property Items[Index:TpvInt32]:TpvSprite read GetItem write SetItem;
@@ -2163,7 +2163,7 @@ begin
  end;
 end;
 
-procedure TpvSpriteAtlas.SaveToStream(const aStream:TStream);
+procedure TpvSpriteAtlas.SaveToStream(const aStream:TStream;const aFast:boolean=false);
 var Archive:TpvArchiveZIP;
     Entry:TpvArchiveZIPEntry;
     Index,SubIndex,SubSubIndex:TpvSizeInt;
@@ -2307,7 +2307,11 @@ begin
     end;
 
    finally
-    Entry.CompressionLevel:=4;
+    if aFast then begin
+     Entry.CompressionLevel:=2;
+    end else begin
+     Entry.CompressionLevel:=4;
+    end;
    end;
 
   finally
@@ -2326,14 +2330,14 @@ begin
                             ArrayTexture.fHeight,
                             Entry.Stream,
                             pvppfR16G16B16A16,
-                            false);
+                            aFast);
       end else begin
        SavePNGImageAsStream(ArrayTexture.GetTexelPointer(0,0,Index),
                             ArrayTexture.fWidth,
                             ArrayTexture.fHeight,
                             Entry.Stream,
                             pvppfR8G8B8A8,
-                            false);
+                            aFast);
       end;
      finally
       Entry.CompressionLevel:=0;
@@ -2350,12 +2354,12 @@ begin
 
 end;
 
-procedure TpvSpriteAtlas.SaveToFile(const aFileName:string);
+procedure TpvSpriteAtlas.SaveToFile(const aFileName:string;const aFast:boolean=false);
 var Stream:TStream;
 begin
  Stream:=TFileStream.Create(aFileName,fmCreate);
  try
-  SaveToStream(Stream);
+  SaveToStream(Stream,aFast);
  finally
   Stream.Free;
  end;

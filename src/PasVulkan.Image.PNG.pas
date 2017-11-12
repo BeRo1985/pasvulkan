@@ -1422,19 +1422,21 @@ begin
   for LineIndex:=1 to aImageHeight do begin
    BestFakeEntropy:=$ffffffff;
    BestLineFilterIndex:=0;
-   for LineFilterIndex:=0 to 4 do begin
-    if (LineIndex>1) or (LineFilterIndex in [0,1]) then begin
-     ProcessLineFilter(@PBytes(aImageData)^[InByteIndex],@PBytes(ImageData)^[OutByteIndex],RowSize,ByteWidth,LineFilterIndex);
-     FakeEntropy:=0;
-     for Index:=0 to RowSize do begin
-      inc(FakeEntropy,PBytes(ImageData)^[OutByteIndex+Index]);
+   if not aFast then begin
+    for LineFilterIndex:=0 to 4 do begin
+     if (LineIndex>1) or (LineFilterIndex in [0,1]) then begin
+      ProcessLineFilter(@PBytes(aImageData)^[InByteIndex],@PBytes(ImageData)^[OutByteIndex],RowSize,ByteWidth,LineFilterIndex);
+      FakeEntropy:=0;
+      for Index:=0 to RowSize do begin
+       inc(FakeEntropy,PBytes(ImageData)^[OutByteIndex+Index]);
+      end;
+      if BestFakeEntropy>FakeEntropy then begin
+       BestFakeEntropy:=FakeEntropy;
+       BestLineFilterIndex:=LineFilterIndex;
+      end;
+     end else begin
+      break;
      end;
-     if BestFakeEntropy>FakeEntropy then begin
-      BestFakeEntropy:=FakeEntropy;
-      BestLineFilterIndex:=LineFilterIndex;
-     end;
-    end else begin
-     break;
     end;
    end;
    ProcessLineFilter(@PBytes(aImageData)^[InByteIndex],@PBytes(ImageData)^[OutByteIndex],RowSize,ByteWidth,BestLineFilterIndex);

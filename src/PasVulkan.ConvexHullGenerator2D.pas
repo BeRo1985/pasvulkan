@@ -679,17 +679,20 @@ begin
    AB.y:=pB^.y-pA^.y;
    MidPoint.x:=(pA^.x+pB^.x)*0.25;
    MidPoint.y:=(pA^.y+pB^.y)*0.25;
-   if PointHullIntersection(OriginalPoints,CenterPoint) then begin
-{   inc(Count);
+   if PointHullIntersection(OriginalPoints,MidPoint) then begin
+    inc(Count);
     SetLength(result,Count);
     for OtherOtherIndex:=Count-1 downto Index+2 do begin
      result[OtherOtherIndex]:=result[OtherOtherIndex-1];
     end;
     result[Index+1].x:=MidPoint.x;
     result[Index+1].y:=MidPoint.y;
-    inc(Index);}
+    inc(Index);
+    OK:=true;
    end;
-{  First:=0;
+   pA:=@result[Index+0];
+   pB:=@result[Index+1];
+   First:=0;
    Last:=0;
    BestDistance:=0;
    for OtherIndex:=0 to length(OriginalPoints)-2 do begin
@@ -714,7 +717,7 @@ begin
     end;
     result[Index+1].x:=BestHitPoint.x;
     result[Index+1].y:=BestHitPoint.y;
-   end;}
+   end;
    inc(Index);
   end;
  end;
@@ -729,11 +732,11 @@ procedure GetConvexHull2D(const Pixels:TpvConvexHull2DPixels;
                           const BorderExtendX:TpvFloat=1.0;
                           const BorderExtendY:TpvFloat=1.0;
                           const ConvexHullMode:TpvInt32=0);
-var SpriteW,SpriteH,rx1,ry1,rx2,ry2,x,y,x1,x2,y1,y2,c,c2,i:TpvInt32;
+var SpriteW,SpriteH,rx1,ry1,rx2,ry2,x,y,x1,x2,y1,y2,c,c2,i,j,k,n,p:TpvInt32;
     SpriteBitmap,SpriteBitmap2:TpvConvexHull2DPixels;
-    WorkVertices,HullVertices:TpvVector2Array;
-    b:boolean;
-    cx,cy,cr,r:TpvFloat;
+    WorkVertices,HullVertices,OriginalHullVertices:TpvVector2Array;
+    b,OK:boolean;
+    cx,cy,cr,r,d:TpvFloat;
 begin
  ConvexHullVertices:=nil;
  CenterX:=0.0;
@@ -743,6 +746,7 @@ begin
  SpriteBitmap2:=nil;
  WorkVertices:=nil;
  HullVertices:=nil;
+ OriginalHullVertices:=nil;
  if (Width>0) and (Height>0) then begin
   try
 
@@ -924,29 +928,103 @@ begin
     if CountVertices<4 then begin
      CountVertices:=4;
     end;
+    OriginalHullVertices:=copy(HullVertices);
     c2:=length(FixNoLastPoint(HullVertices));
     if c2>CountVertices then begin
-     if (CountVertices<=17) and (c>17) then begin
-      HullVertices:=GenerateConvexHull(SortPoints(FixNoLastPoint(RamerDouglasPeucker(FixOrder(HullVertices),1))));
-      HullVertices:=GenerateConvexHull(SortPoints(FixNoLastPoint(VisvalingamWhyattModified(FixOrder(HullVertices),4,17))));
-      c2:=length(FixNoLastPoint(HullVertices));
-     end;
-     if (CountVertices<=50) and (c>50) then begin
-      HullVertices:=GenerateConvexHull(SortPoints(FixNoLastPoint(VisvalingamWhyatt(FixOrder(HullVertices),51))));
-     end;
-     c2:=length(FixNoLastPoint(HullVertices));
-     if c2>CountVertices then begin
-      if CountVertices<12 then begin
-       HullVertices:=FindOptimalPolygon(FixNoLastPoint(HullVertices),CountVertices,r);
-      end else begin
-       HullVertices:=GenerateConvexHull(SortPoints(FixNoLastPoint(VisvalingamWhyatt(FixOrder(HullVertices),CountVertices+1))));
+     if CountVertices<12 then begin
+
+      HullVertices:=FindOptimalPolygon(FixNoLastPoint(HullVertices),CountVertices,r);
+
+      for i:=0 to length(HullVertices)-1 do begin
+       if HullVertices[i].x<cx then begin
+        HullVertices[i].x:=floor(HullVertices[i].x);
+       end else if HullVertices[i].x>cx then begin
+        HullVertices[i].x:=ceil(HullVertices[i].x);
+       end;
+       if HullVertices[i].y<cy then begin
+        HullVertices[i].y:=floor(HullVertices[i].y);
+       end else if HullVertices[i].y>cy then begin
+        HullVertices[i].y:=ceil(HullVertices[i].y);
+       end;
       end;
+
+      HullVertices:=GenerateConvexHull(SortPoints(FixNoLastPoint(HullVertices)));
+
+     end else begin
+
+      if (CountVertices<=17) and (c>17) then begin
+       HullVertices:=GenerateConvexHull(SortPoints(FixNoLastPoint(RamerDouglasPeucker(FixOrder(HullVertices),1))));
+       HullVertices:=GenerateConvexHull(SortPoints(FixNoLastPoint(VisvalingamWhyattModified(FixOrder(HullVertices),4,17))));
+       c2:=length(FixNoLastPoint(HullVertices));
+      end;
+      if (CountVertices<=50) and (c>50) then begin
+       HullVertices:=GenerateConvexHull(SortPoints(FixNoLastPoint(VisvalingamWhyatt(FixOrder(HullVertices),51))));
+      end;
+      c2:=length(FixNoLastPoint(HullVertices));
+      if c2>CountVertices then begin
+       if CountVertices<12 then begin
+        HullVertices:=FindOptimalPolygon(FixNoLastPoint(HullVertices),CountVertices,r);
+       end else begin
+        HullVertices:=GenerateConvexHull(SortPoints(FixNoLastPoint(VisvalingamWhyatt(FixOrder(HullVertices),CountVertices+1))));
+       end;
+      end;
+
+      for i:=0 to length(HullVertices)-1 do begin
+       if HullVertices[i].x<cx then begin
+        HullVertices[i].x:=floor(HullVertices[i].x);
+       end else if HullVertices[i].x>cx then begin
+        HullVertices[i].x:=ceil(HullVertices[i].x);
+       end;
+       if HullVertices[i].y<cy then begin
+        HullVertices[i].y:=floor(HullVertices[i].y);
+       end else if HullVertices[i].y>cy then begin
+        HullVertices[i].y:=ceil(HullVertices[i].y);
+       end;
+      end;
+
+      HullVertices:=GenerateConvexHull(SortPoints(FixNoLastPoint(HullVertices)));
+
+      for c:=0 to length(OriginalHullVertices)-1 do begin
+       OK:=true;
+       for i:=0 to length(OriginalHullVertices)-1 do begin
+        n:=0;
+        p:=0;
+        for j:=0 to length(HullVertices)-1 do begin
+         if SameValue(HullVertices[j].x,OriginalHullVertices[i].x) and
+            SameValue(HullVertices[j].y,OriginalHullVertices[i].y) then begin
+          OK:=true;
+          break;
+         end;
+         k:=j+1;
+         if j>=length(HullVertices) then begin
+          k:=0;
+         end;
+         d:=((OriginalHullVertices[i].x-HullVertices[j].x)*(HullVertices[k].y-HullVertices[j].y))-
+            ((OriginalHullVertices[i].y-HullVertices[j].y)*(HullVertices[k].x-HullVertices[j].x));
+         if d<0.0 then begin
+          inc(n);
+         end else if d>0.0 then begin
+          inc(p);
+         end;
+         if (p>0) and (n>0) then begin
+          OK:=false;
+          break;
+         end;
+        end;
+        if not OK then begin
+         SetLength(HullVertices,length(HullVertices)+1);
+         HullVertices[length(HullVertices)-1]:=OriginalHullVertices[i];
+         HullVertices:=GenerateConvexHull(SortPoints(FixNoLastPoint(HullVertices)));
+         break;
+        end;
+       end;
+       if OK then begin
+        break;
+       end;
+      end;
+
      end;
-     for i:=0 to length(HullVertices)-1 do begin
-      HullVertices[i].x:=round(HullVertices[i].x);
-      HullVertices[i].y:=round(HullVertices[i].y);
-     end;
-     HullVertices:=GenerateConvexHull(SortPoints(FixNoLastPoint(HullVertices)));
+
     end;
     ConvexHullVertices:=FixNoLastPoint(FixOrder(HullVertices));
     CenterX:=cx;

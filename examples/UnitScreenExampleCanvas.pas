@@ -155,11 +155,11 @@ begin
                                  pvApplication.VulkanPipelineCache);
 
  fVulkanSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice,true);
- fVulkanSpriteAtlas.UseConvexHullTrimming:=true;
+ fVulkanSpriteAtlas.UseConvexHullTrimming:=false;
 
  fVulkanFontSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice,false);
  fVulkanFontSpriteAtlas.MipMaps:=false;
- fVulkanFontSpriteAtlas.UseConvexHullTrimming:=true;
+ fVulkanFontSpriteAtlas.UseConvexHullTrimming:=false;
 
  RecreateCacheFiles:=true;
 
@@ -172,7 +172,7 @@ begin
   if FileExists(CacheStorageFile) and
      FileExists(CacheStoragePath+'example_canvas_font_spriteatlas.zip') and
      FileExists(CacheStoragePath+'example_canvas_font.dat') and
-     FileExists(CacheStoragePath+'example_canvas_spriteatlas.zip') {and false} then begin
+     FileExists(CacheStoragePath+'example_canvas_spriteatlas.zip') then begin
 
    FileStream:=TFileStream.Create(CacheStorageFile,fmOpenRead or fmShareDenyWrite);
    try
@@ -268,9 +268,9 @@ begin
 
   if length(CacheStoragePath)>0 then begin
 
-   fVulkanFontSpriteAtlas.SaveToFile(CacheStoragePath+'example_canvas_font_spriteatlas.zip');
+   fVulkanFontSpriteAtlas.SaveToFile(CacheStoragePath+'example_canvas_font_spriteatlas.zip',true);
 
-   fVulkanSpriteAtlas.SaveToFile(CacheStoragePath+'example_canvas_spriteatlas.zip');
+   fVulkanSpriteAtlas.SaveToFile(CacheStoragePath+'example_canvas_spriteatlas.zip',true);
 
    FileStream:=TFileStream.Create(CacheStoragePath+'example_canvas_cache_version.dat',fmCreate);
    try

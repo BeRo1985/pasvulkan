@@ -2597,7 +2597,7 @@ begin
  fPopupAnchorHeight:=0.0;
 
  fSignedDistanceFieldSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,false);
- fSignedDistanceFieldSpriteAtlas.UseConvexHullTrimming:=true;
+ fSignedDistanceFieldSpriteAtlas.UseConvexHullTrimming:=false;
 
  Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansFontData,GUIStandardTrueTypeFontSansFontDataSize);
  try

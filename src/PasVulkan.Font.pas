@@ -195,7 +195,7 @@ type EpvFont=class(Exception);
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TVkPointer;const FromIndex,ToIndex:TPasMPNativeInt);
       public
        constructor Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0); reintroduce;
-       constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1);
+       constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aConvexHullTrimming:boolean=false);
        constructor CreateFromStream(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aStream:TStream);
        constructor CreateFromFile(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aFileName:string);
        destructor Destroy; override;
@@ -313,7 +313,7 @@ begin
 
 end;
 
-constructor TpvFont.CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1);
+constructor TpvFont.CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aConvexHullTrimming:boolean=false);
 const GlyphMetaDataScaleFactor=1.0;
       GlyphRasterizationScaleFactor=1.0/256.0;
 var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
@@ -519,7 +519,7 @@ begin
          SetLength(GlyphDistanceField^.Pixels,GlyphDistanceField^.Width*GlyphDistanceField^.Height);
          GlyphDistanceFieldJob:=@fSignedDistanceFieldJobs[GlyphIndex];
          GlyphDistanceFieldJob^.DistanceField:=GlyphDistanceField;
-         if aAutomaticTrim then begin
+         if aAutomaticTrim and aConvexHullTrimming then begin
           GlyphDistanceFieldJob^.TrimmedHullVectors:=@GlyphTrimmedHullVectors[GlyphIndex];
          end else begin
           GlyphDistanceFieldJob^.TrimmedHullVectors:=nil;
