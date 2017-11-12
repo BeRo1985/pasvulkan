@@ -2265,17 +2265,17 @@ begin
 
  ComputeLayout(aWidget);
 
- for Index0:=0 to 1 do begin
-  GridSize[Index0]:=2.0*fMargin;
-  for Index1:=0 to fGridDimensions[Index0]-1 do begin
-   GridSize[Index0]:=GridSize[Index0]+fGrid[Index0,Index1];
+ for AxisIndex:=0 to 1 do begin
+  GridSize[AxisIndex]:=2.0*fMargin;
+  for ItemIndex:=0 to fGridDimensions[AxisIndex]-1 do begin
+   GridSize[AxisIndex]:=GridSize[AxisIndex]+fGrid[AxisIndex,ItemIndex];
   end;
-  GridSize[Index0]:=GridSize[Index0]+(Max(fGridDimensions[Index0]-1,0)*fSpacing[Index0]);
-  if (fGridDimensions[Index0]>0) and (GridSize[Index0]<ContainerSize[Index0]) then begin
-   Gap:=ContainerSize[Index0]-GridSize[Index0];
-   SpreadedGap:=Gap/fGridDimensions[Index0];
-   for Index1:=0 to fGridDimensions[Index0]-1 do begin
-    fGrid[Index0,Index1]:=fGrid[Index0,Index1]+SpreadedGap;
+  GridSize[AxisIndex]:=GridSize[AxisIndex]+(Max(fGridDimensions[AxisIndex]-1,0)*fSpacing[AxisIndex]);
+  if (fGridDimensions[AxisIndex]>0) and (GridSize[AxisIndex]<ContainerSize[AxisIndex]) then begin
+   Gap:=ContainerSize[AxisIndex]-GridSize[AxisIndex];
+   SpreadedGap:=Gap/fGridDimensions[AxisIndex];
+   for ItemIndex:=0 to fGridDimensions[AxisIndex]-1 do begin
+    fGrid[AxisIndex,ItemIndex]:=fGrid[AxisIndex,ItemIndex]+SpreadedGap;
    end;
   end;
  end;
