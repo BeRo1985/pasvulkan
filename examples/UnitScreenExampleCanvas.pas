@@ -123,7 +123,7 @@ begin
 end;
 
 procedure TScreenExampleCanvas.Show;
-const CacheVersionGUID:TGUID='{8100D874-3B61-4CBB-AB99-FE7758E55558}';
+const CacheVersionGUID:TGUID='{69E4A9FE-B5E9-4C5C-8808-81C7B0BEA5FA}';
 var Stream:TStream;
     Index,x,y:TpvInt32;
     RawSprite:pointer;
@@ -155,9 +155,11 @@ begin
                                  pvApplication.VulkanPipelineCache);
 
  fVulkanSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice,true);
+ fVulkanSpriteAtlas.UseConvexHullTrimming:=true;
 
  fVulkanFontSpriteAtlas:=TpvSpriteAtlas.Create(pvApplication.VulkanDevice,false);
  fVulkanFontSpriteAtlas.MipMaps:=false;
+ fVulkanFontSpriteAtlas.UseConvexHullTrimming:=true;
 
  RecreateCacheFiles:=true;
 
@@ -170,7 +172,7 @@ begin
   if FileExists(CacheStorageFile) and
      FileExists(CacheStoragePath+'example_canvas_font_spriteatlas.zip') and
      FileExists(CacheStoragePath+'example_canvas_font.dat') and
-     FileExists(CacheStoragePath+'example_canvas_spriteatlas.zip') then begin
+     FileExists(CacheStoragePath+'example_canvas_spriteatlas.zip') {and false} then begin
 
    FileStream:=TFileStream.Create(CacheStorageFile,fmOpenRead or fmShareDenyWrite);
    try
@@ -203,7 +205,13 @@ begin
    try
     TrueTypeFont.Size:=-64;
     TrueTypeFont.Hinting:=false;
-    fVulkanFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,fVulkanFontSpriteAtlas,TrueTypeFont,[TpvFontCodePointRange.Create(0,255)]);
+    fVulkanFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
+                                                fVulkanFontSpriteAtlas,
+                                                TrueTypeFont,
+                                                [TpvFontCodePointRange.Create(0,255)],
+                                                true,
+                                                2,
+                                                1);
     if length(CacheStoragePath)>0 then begin
      fVulkanFont.SaveToFile(CacheStoragePath+'example_canvas_font.dat');
     end;
@@ -232,28 +240,28 @@ begin
      inc(Index,4);
     end;
    end;
-   fVulkanSpriteTest:=fVulkanSpriteAtlas.LoadRawSprite('test',RawSprite,256,256);
+   fVulkanSpriteTest:=fVulkanSpriteAtlas.LoadRawSprite('test',RawSprite,256,256,true,2,1);
   finally
    FreeMem(RawSprite);
   end;
 
   Stream:=pvApplication.Assets.GetAssetStream('sprites/smiley0.png');
   try
-   fVulkanSpriteSmiley0:=fVulkanSpriteAtlas.LoadSprite('smiley0',Stream);
+   fVulkanSpriteSmiley0:=fVulkanSpriteAtlas.LoadSprite('smiley0',Stream,true,2,1);
   finally
    Stream.Free;
   end;
 
   Stream:=pvApplication.Assets.GetAssetStream('sprites/appicon.png');
   try
-   fVulkanSpriteAppIcon:=fVulkanSpriteAtlas.LoadSprite('appicon',Stream);
+   fVulkanSpriteAppIcon:=fVulkanSpriteAtlas.LoadSprite('appicon',Stream,true,2,1);
   finally
    Stream.Free;
   end;
 
   Stream:=pvApplication.Assets.GetAssetStream('sprites/dancer0.png');
   try
-   fVulkanSpriteDancer0:=fVulkanSpriteAtlas.LoadSprite('dancer0',Stream);
+   fVulkanSpriteDancer0:=fVulkanSpriteAtlas.LoadSprite('dancer0',Stream,true,2,1);
   finally
    Stream.Free;
   end;

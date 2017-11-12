@@ -154,6 +154,7 @@ type EpvFont=class(Exception);
      PpvFontSignedDistanceFieldJob=^TpvFontSignedDistanceFieldJob;
      TpvFontSignedDistanceFieldJob=record
       DistanceField:PpvSignedDistanceField2D;
+      TrimmedHullVectors:PpvSpriteTrimmedHullVectors;
       OffsetX:TpvDouble;
       OffsetY:TpvDouble;
       MultiChannel:boolean;
@@ -190,11 +191,11 @@ type EpvFont=class(Exception);
        fCodePointToGlyphHashMap:TpvFontInt64HashMap;
        fKerningPairHashMap:TpvFontInt64HashMap;
        fSignedDistanceFieldJobs:TpvFontSignedDistanceFieldJobs;
-       procedure GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aOffsetX,aOffsetY:TpvDouble;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32);
+       procedure GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors;const aOffsetX,aOffsetY:TpvDouble;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32);
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TVkPointer;const FromIndex,ToIndex:TPasMPNativeInt);
       public
        constructor Create(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTargetPPI:TpvInt32=72;const aBaseSize:TpvFloat=12.0); reintroduce;
-       constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1);
+       constructor CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1);
        constructor CreateFromStream(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aStream:TStream);
        constructor CreateFromFile(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aFileName:string);
        destructor Destroy; override;
@@ -218,7 +219,8 @@ implementation
 uses PasDblStrUtils,
      PasVulkan.XML,
      PasVulkan.Utils,
-     PasVulkan.Canvas;
+     PasVulkan.Canvas,
+     PasVulkan.ConvexHullGenerator2D;
 
 constructor TpvFontCodePointRange.Create(const aFromCodePoint,aToCodePoint:TpvUInt32);
 begin
@@ -311,7 +313,7 @@ begin
 
 end;
 
-constructor TpvFont.CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1);
+constructor TpvFont.CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1);
 const GlyphMetaDataScaleFactor=1.0;
       GlyphRasterizationScaleFactor=1.0/256.0;
 var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
@@ -339,6 +341,7 @@ var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     KerningPair:PpvFontKerningPair;
     GlyphDistanceField:PpvSignedDistanceField2D;
     GlyphDistanceFields:TpvSignedDistanceField2DArray;
+    GlyphTrimmedHullVectors:TpvSpriteTrimmedHullVectorsArray;
     PasMPInstance:TPasMP;
     GlyphDistanceFieldJob:PpvFontSignedDistanceFieldJob;
     UniqueID:string;
@@ -496,72 +499,88 @@ begin
 
       SetLength(GlyphDistanceFields,CountGlyphs);
 
-      fSignedDistanceFieldJobs:=nil;
+      GlyphTrimmedHullVectors:=nil;
       try
+       SetLength(GlyphTrimmedHullVectors,CountGlyphs);
 
-       SetLength(fSignedDistanceFieldJobs,CountGlyphs);
-
-       // Rasterize glyph signed distance field sprites
-       for GlyphIndex:=0 to CountGlyphs-1 do begin
-        Glyph:=@fGlyphs[GlyphIndex];
-        GlyphDistanceField:=@GlyphDistanceFields[GlyphIndex];
-        GlyphDistanceField^.Width:=Max(1,Glyph^.Width);
-        GlyphDistanceField^.Height:=Max(1,Glyph^.Height);
-        GlyphDistanceField^.Pixels:=nil;
-        SetLength(GlyphDistanceField^.Pixels,GlyphDistanceField^.Width*GlyphDistanceField^.Height);
-        GlyphDistanceFieldJob:=@fSignedDistanceFieldJobs[GlyphIndex];
-        GlyphDistanceFieldJob^.DistanceField:=GlyphDistanceField;
-        GlyphDistanceFieldJob^.OffsetX:=-Glyph^.Offset.x;
-        GlyphDistanceFieldJob^.OffsetY:=-Glyph^.Offset.y;
-        GlyphDistanceFieldJob^.MultiChannel:=false;
-        GlyphDistanceFieldJob^.PolygonBuffer:=PolygonBuffers[GlyphIndex];
-       end;
-
-       if CountGlyphs>0 then begin
-        PasMPInstance.Invoke(PasMPInstance.ParallelFor(@fSignedDistanceFieldJobs[0],0,CountGlyphs-1,GenerateSignedDistanceFieldParallelForJobFunction,1,10,nil,0));
-       end;
-
-      finally
        fSignedDistanceFieldJobs:=nil;
-      end;
+       try
 
-      // Insert glyph signed distance field sprites by sorted area size order
-      SortedGlyphs:=nil;
-      try
+        SetLength(fSignedDistanceFieldJobs,CountGlyphs);
 
-       SetLength(SortedGlyphs,length(fGlyphs));
-
-       for GlyphIndex:=0 to length(fGlyphs)-1 do begin
-        SortedGlyphs[GlyphIndex]:=@fGlyphs[GlyphIndex];
-       end;
-
-       if length(SortedGlyphs)>1 then begin
-        IndirectIntroSort(@SortedGlyphs[0],0,length(SortedGlyphs)-1,CompareVulkanFontGlyphsByArea);
-       end;
-
-       CreateGUID(GUID);
-
-       UniqueID:=StringReplace(String(aTrueTypeFont.FullName),' ','_',[rfReplaceAll])+'_'+
-                 StringReplace(Copy(GUIDToString(GUID),2,36),'-','',[rfReplaceAll])+
-                 IntToHex(TPvUInt64(TpvPtrUInt(self)),SizeOf(TpvPtrUInt) shl 1);
-
-       for GlyphIndex:=0 to length(SortedGlyphs)-1 do begin
-        Glyph:=SortedGlyphs[GlyphIndex];
-        if (Glyph^.Width>0) and (Glyph^.Height>0) then begin
-         OtherGlyphIndex:={%H-}((TpvPtrUInt(TpvPointer(Glyph))-TpvPtrUInt(TpvPointer(@fGlyphs[0])))) div SizeOf(TpvFontGlyph);
-         Glyph^.Sprite:=aSpriteAtlas.LoadRawSprite(TpvRawByteString(String(UniqueID+IntToHex(TPvUInt64(TpvPtrUInt(Glyph)),SizeOf(TpvPtrUInt) shl 1)+'_glyph'+IntToStr(OtherGlyphIndex))),
-                                                   @GlyphDistanceFields[OtherGlyphIndex].Pixels[0],
-                                                   Glyph^.Width,
-                                                   Glyph^.Height,
-                                                   false,
-                                                   aPadding,
-                                                   aTrimPadding);
-         Glyph^.Sprite.SignedDistanceField:=true;
+        // Rasterize glyph signed distance field sprites
+        for GlyphIndex:=0 to CountGlyphs-1 do begin
+         GlyphTrimmedHullVectors[GlyphIndex]:=nil;
+         Glyph:=@fGlyphs[GlyphIndex];
+         GlyphDistanceField:=@GlyphDistanceFields[GlyphIndex];
+         GlyphDistanceField^.Width:=Max(1,Glyph^.Width);
+         GlyphDistanceField^.Height:=Max(1,Glyph^.Height);
+         GlyphDistanceField^.Pixels:=nil;
+         SetLength(GlyphDistanceField^.Pixels,GlyphDistanceField^.Width*GlyphDistanceField^.Height);
+         GlyphDistanceFieldJob:=@fSignedDistanceFieldJobs[GlyphIndex];
+         GlyphDistanceFieldJob^.DistanceField:=GlyphDistanceField;
+         if aAutomaticTrim then begin
+          GlyphDistanceFieldJob^.TrimmedHullVectors:=@GlyphTrimmedHullVectors[GlyphIndex];
+         end else begin
+          GlyphDistanceFieldJob^.TrimmedHullVectors:=nil;
+         end;
+         GlyphDistanceFieldJob^.OffsetX:=-Glyph^.Offset.x;
+         GlyphDistanceFieldJob^.OffsetY:=-Glyph^.Offset.y;
+         GlyphDistanceFieldJob^.MultiChannel:=false;
+         GlyphDistanceFieldJob^.PolygonBuffer:=PolygonBuffers[GlyphIndex];
         end;
+
+        if CountGlyphs>0 then begin
+         PasMPInstance.Invoke(PasMPInstance.ParallelFor(@fSignedDistanceFieldJobs[0],0,CountGlyphs-1,GenerateSignedDistanceFieldParallelForJobFunction,1,10,nil,0));
+        end;
+
+       finally
+        fSignedDistanceFieldJobs:=nil;
+       end;
+
+       // Insert glyph signed distance field sprites by sorted area size order
+       SortedGlyphs:=nil;
+       try
+
+        SetLength(SortedGlyphs,length(fGlyphs));
+
+        for GlyphIndex:=0 to length(fGlyphs)-1 do begin
+         SortedGlyphs[GlyphIndex]:=@fGlyphs[GlyphIndex];
+        end;
+
+        if length(SortedGlyphs)>1 then begin
+         IndirectIntroSort(@SortedGlyphs[0],0,length(SortedGlyphs)-1,CompareVulkanFontGlyphsByArea);
+        end;
+
+        CreateGUID(GUID);
+
+        UniqueID:=StringReplace(String(aTrueTypeFont.FullName),' ','_',[rfReplaceAll])+'_'+
+                  StringReplace(Copy(GUIDToString(GUID),2,36),'-','',[rfReplaceAll])+
+                  IntToHex(TPvUInt64(TpvPtrUInt(self)),SizeOf(TpvPtrUInt) shl 1);
+
+        for GlyphIndex:=0 to length(SortedGlyphs)-1 do begin
+         Glyph:=SortedGlyphs[GlyphIndex];
+         if (Glyph^.Width>0) and (Glyph^.Height>0) then begin
+          OtherGlyphIndex:={%H-}((TpvPtrUInt(TpvPointer(Glyph))-TpvPtrUInt(TpvPointer(@fGlyphs[0])))) div SizeOf(TpvFontGlyph);
+          Glyph^.Sprite:=aSpriteAtlas.LoadRawSprite(TpvRawByteString(String(UniqueID+IntToHex(TPvUInt64(TpvPtrUInt(Glyph)),SizeOf(TpvPtrUInt) shl 1)+'_glyph'+IntToStr(OtherGlyphIndex))),
+                                                    @GlyphDistanceFields[OtherGlyphIndex].Pixels[0],
+                                                    Glyph^.Width,
+                                                    Glyph^.Height,
+                                                    aAutomaticTrim,
+                                                    aPadding,
+                                                    aTrimPadding,
+                                                    false,
+                                                    @GlyphTrimmedHullVectors[OtherGlyphIndex]);
+          Glyph^.Sprite.SignedDistanceField:=true;
+         end;
+        end;
+
+       finally
+        SortedGlyphs:=nil;
        end;
 
       finally
-       SortedGlyphs:=nil;
+       GlyphTrimmedHullVectors:=nil;
       end;
 
      finally
@@ -1011,11 +1030,13 @@ begin
  end;
 end;
 
-procedure TpvFont.GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aOffsetX,aOffsetY:TpvDouble;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32);
+procedure TpvFont.GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors;const aOffsetX,aOffsetY:TpvDouble;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32);
 const Scale=1.0/256.0;
-var CommandIndex:TpvInt32;
+var CommandIndex,x,y:TpvInt32;
     Command:PpvTrueTypeFontPolygonCommand;
     VectorPath:TpvVectorPath;
+    ConvexHull2DPixels:TpvConvexHull2DPixels;
+    CenterX,CenterY,CenterRadius:TpvFloat;
 begin
  VectorPath:=TpvVectorPath.Create;
  try
@@ -1055,6 +1076,30 @@ begin
    end;
   end;
   TpvSignedDistanceField2DGenerator.Generate(aSignedDistanceField,VectorPath,Scale,aOffsetX,aOffsetY);
+  if assigned(aTrimmedHullVectors) then begin
+   ConvexHull2DPixels:=nil;
+   try
+    SetLength(ConvexHull2DPixels,aSignedDistanceField.Width*aSignedDistanceField.Height);
+    for y:=0 to aSignedDistanceField.Height-1 do begin
+     for x:=0 to aSignedDistanceField.Width-1 do begin
+      ConvexHull2DPixels[(y*aSignedDistanceField.Width)+x]:=aSignedDistanceField.Pixels[(y*aSignedDistanceField.Width)+x].a<>0;
+     end;
+    end;
+    GetConvexHull2D(ConvexHull2DPixels,
+                    aSignedDistanceField.Width,
+                    aSignedDistanceField.Height,
+                    aTrimmedHullVectors^,
+                    8,
+                    CenterX,
+                    CenterY,
+                    CenterRadius,
+                    1.0,//Max(1.0,aPadding*0.5),
+                    1.0,//Max(1.0,aPadding*0.5),
+                    2);
+   finally
+    ConvexHull2DPixels:=nil;
+   end;
+  end;
  finally
   VectorPath.Free;
  end;
@@ -1067,7 +1112,13 @@ begin
  Index:=FromIndex;
  while Index<=ToIndex do begin
   JobData:=@fSignedDistanceFieldJobs[Index];
-  GenerateSignedDistanceField(JobData^.DistanceField^,JobData^.OffsetX,JobData^.OffsetY,JobData^.MultiChannel,JobData^.PolygonBuffer,pvTTF_PolygonWindingRule_NONZERO);
+  GenerateSignedDistanceField(JobData^.DistanceField^,
+                              JobData^.TrimmedHullVectors,
+                              JobData^.OffsetX,
+                              JobData^.OffsetY,
+                              JobData^.MultiChannel,
+                              JobData^.PolygonBuffer,
+                              pvTTF_PolygonWindingRule_NONZERO);
   inc(Index);
  end;
 end;

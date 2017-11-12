@@ -193,7 +193,10 @@ type EpvSpriteAtlas=class(Exception);
      PpvSpriteFlags=^TpvSpriteFlags;
      TpvSpriteFlags=set of TpvSpriteFlag;
 
+     PpvSpriteTrimmedHullVectors=^TpvSpriteTrimmedHullVectors;
      TpvSpriteTrimmedHullVectors=TpvVector2Array;
+
+     TpvSpriteTrimmedHullVectorsArray=array of TpvSpriteTrimmedHullVectors;
 
      TpvSprite=class
       private
@@ -311,7 +314,7 @@ type EpvSpriteAtlas=class(Exception);
        function Uploaded:boolean; virtual;
        procedure ClearAll; virtual;
        function LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean;
-       function LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aDepth16Bit:boolean=false):TpvSprite;
+       function LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aDepth16Bit:boolean=false;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors=nil):TpvSprite;
        function LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite; overload;
        function LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=pvvpfrNonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite; overload;
        function LoadSprite(const aName:TpvRawByteString;aStream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
@@ -1127,7 +1130,7 @@ begin
  end;
 end;
 
-function TpvSpriteAtlas.LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aDepth16Bit:boolean=false):TpvSprite;
+function TpvSpriteAtlas.LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aDepth16Bit:boolean=false;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors=nil):TpvSprite;
 var x,y,x0,y0,x1,y1,TextureIndex,LayerIndex,Layer,TotalPadding,PaddingIndex,Index:TpvInt32;
     ArrayTexture:TpvSpriteAtlasArrayTexture;
     Node:PpvSpriteAtlasArrayTextureLayerRectNode;
@@ -1398,40 +1401,47 @@ begin
      end;
     end;
 
-    if aAutomaticTrim and fUseConvexHullTrimming and ((TrimmedImageWidth*TrimmedImageHeight)>0) then begin
-     ConvexHull2DPixels:=nil;
-     try
-      SetLength(ConvexHull2DPixels,TrimmedImageWidth*TrimmedImageHeight);
-      if fDepth16Bit then begin
-       for y:=0 to TrimmedImageHeight-1 do begin
-        for x:=0 to TrimmedImageWidth-1 do begin
-         sp16:=TrimmedImageData;
-         inc(sp16,(y*TrimmedImageWidth)+x);
-         ConvexHull2DPixels[(y*TrimmedImageWidth)+x]:=((sp16^ shr 56) and $ff)<>0;
-        end;
-       end;
-      end else begin
-       for y:=0 to TrimmedImageHeight-1 do begin
-        for x:=0 to TrimmedImageWidth-1 do begin
-         sp:=TrimmedImageData;
-         inc(sp,(y*TrimmedImageWidth)+x);
-         ConvexHull2DPixels[(y*TrimmedImageWidth)+x]:=(sp^ and $ff000000)<>0;
-        end;
-       end;
+    if fUseConvexHullTrimming and ((TrimmedImageWidth*TrimmedImageHeight)>0) then begin
+     if assigned(aTrimmedHullVectors) then begin
+      TrimmedHullVectors:=copy(aTrimmedHullVectors^);
+      for x:=0 to length(TrimmedHullVectors)-1 do begin
+       TrimmedHullVectors[x].xy:=TrimmedHullVectors[x].xy-TpvVector2.Create(x0,y0);
       end;
-      GetConvexHull2D(ConvexHull2DPixels,
-                      TrimmedImageWidth,
-                      TrimmedImageHeight,
-                      TrimmedHullVectors,
-                      8,
-                      CenterX,
-                      CenterY,
-                      CenterRadius,
-                      1.0,//Max(1.0,aPadding*0.5),
-                      1.0,//Max(1.0,aPadding*0.5),
-                      2);
-     finally
+     end else if aAutomaticTrim then begin
       ConvexHull2DPixels:=nil;
+      try
+       SetLength(ConvexHull2DPixels,TrimmedImageWidth*TrimmedImageHeight);
+       if fDepth16Bit then begin
+        for y:=0 to TrimmedImageHeight-1 do begin
+         for x:=0 to TrimmedImageWidth-1 do begin
+          sp16:=TrimmedImageData;
+          inc(sp16,(y*TrimmedImageWidth)+x);
+          ConvexHull2DPixels[(y*TrimmedImageWidth)+x]:=((sp16^ shr 56) and $ff)<>0;
+         end;
+        end;
+       end else begin
+        for y:=0 to TrimmedImageHeight-1 do begin
+         for x:=0 to TrimmedImageWidth-1 do begin
+          sp:=TrimmedImageData;
+          inc(sp,(y*TrimmedImageWidth)+x);
+          ConvexHull2DPixels[(y*TrimmedImageWidth)+x]:=(sp^ and $ff000000)<>0;
+         end;
+        end;
+       end;
+       GetConvexHull2D(ConvexHull2DPixels,
+                       TrimmedImageWidth,
+                       TrimmedImageHeight,
+                       TrimmedHullVectors,
+                       8,
+                       CenterX,
+                       CenterY,
+                       CenterRadius,
+                       1.0,//Max(1.0,aPadding*0.5),
+                       1.0,//Max(1.0,aPadding*0.5),
+                       2);
+      finally
+       ConvexHull2DPixels:=nil;
+      end;
      end;
     end;
 

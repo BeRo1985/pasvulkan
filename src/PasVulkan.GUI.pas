@@ -2597,6 +2597,7 @@ begin
  fPopupAnchorHeight:=0.0;
 
  fSignedDistanceFieldSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,false);
+ fSignedDistanceFieldSpriteAtlas.UseConvexHullTrimming:=true;
 
  Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansFontData,GUIStandardTrueTypeFontSansFontDataSize);
  try
@@ -2607,7 +2608,10 @@ begin
    fSansFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
                                              fSignedDistanceFieldSpriteAtlas,
                                              TrueTypeFont,
-                                             fInstance.fFontCodePointRanges);
+                                             fInstance.fFontCodePointRanges,
+                                             true,
+                                             2,
+                                             1);
   finally
    TrueTypeFont.Free;
   end;
@@ -2624,7 +2628,10 @@ begin
    fSansBoldFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
                                                  fSignedDistanceFieldSpriteAtlas,
                                                  TrueTypeFont,
-                                                 fInstance.fFontCodePointRanges);
+                                                 fInstance.fFontCodePointRanges,
+                                                 true,
+                                                 2,
+                                                 1);
   finally
    TrueTypeFont.Free;
   end;
@@ -2641,7 +2648,10 @@ begin
    fSansBoldItalicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
                                                        fSignedDistanceFieldSpriteAtlas,
                                                        TrueTypeFont,
-                                                       fInstance.fFontCodePointRanges);
+                                                       fInstance.fFontCodePointRanges,
+                                                       true,
+                                                       2,
+                                                       1);
   finally
    TrueTypeFont.Free;
   end;
@@ -2658,7 +2668,10 @@ begin
    fSansItalicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
                                                    fSignedDistanceFieldSpriteAtlas,
                                                    TrueTypeFont,
-                                                   fInstance.fFontCodePointRanges);
+                                                   fInstance.fFontCodePointRanges,
+                                                   true,
+                                                   2,
+                                                   1);
   finally
    TrueTypeFont.Free;
   end;
@@ -2676,7 +2689,9 @@ begin
                                              fSignedDistanceFieldSpriteAtlas,
                                              TrueTypeFont,
                                              fInstance.fFontCodePointRanges,
-                                             2);
+                                             true,
+                                             2,
+                                             1);
   finally
    TrueTypeFont.Free;
   end;
@@ -2694,7 +2709,7 @@ begin
                                                                                  0.0,
                                                                                  0.0,
                                                                                  pvvpfrNonZero,
-                                                                                 false,
+                                                                                 true,
                                                                                  2,
                                                                                  1);
 
@@ -2706,7 +2721,7 @@ begin
                                                                                    0.0,
                                                                                    0.0,
                                                                                    pvvpfrNonZero,
-                                                                                   false,
+                                                                                   true,
                                                                                    2,
                                                                                    1);
 
@@ -2718,7 +2733,7 @@ begin
                                                                                     0.0,
                                                                                     0.0,
                                                                                     pvvpfrNonZero,
-                                                                                    false,
+                                                                                    true,
                                                                                     2,
                                                                                     1);
 
@@ -2730,7 +2745,7 @@ begin
                                                                                     0.0,
                                                                                     0.0,
                                                                                     pvvpfrNonZero,
-                                                                                    false,
+                                                                                    true,
                                                                                     2,
                                                                                     1);
 
@@ -2742,7 +2757,7 @@ begin
                                                                                0.0,
                                                                                0.0,
                                                                                pvvpfrNonZero,
-                                                                               false,
+                                                                               true,
                                                                                2,
                                                                                1);
 
@@ -2754,7 +2769,7 @@ begin
                                                                                 0.0,
                                                                                 0.0,
                                                                                 pvvpfrNonZero,
-                                                                                false,
+                                                                                true,
                                                                                 2,
                                                                                 1);
 
@@ -2766,7 +2781,7 @@ begin
                                                                                  0.0,
                                                                                  0.0,
                                                                                  pvvpfrNonZero,
-                                                                                 false,
+                                                                                 true,
                                                                                  2,
                                                                                  1);
 
@@ -2778,7 +2793,7 @@ begin
                                                                                   0.0,
                                                                                   0.0,
                                                                                   pvvpfrNonZero,
-                                                                                  false,
+                                                                                  true,
                                                                                   2,
                                                                                   1);
 
@@ -2790,7 +2805,7 @@ begin
                                                                                    0.0,
                                                                                    0.0,
                                                                                    pvvpfrNonZero,
-                                                                                   false,
+                                                                                   true,
                                                                                    2,
                                                                                    1);
 
@@ -2802,7 +2817,7 @@ begin
                                                                                0.0,
                                                                                0.0,
                                                                                pvvpfrNonZero,
-                                                                               false,
+                                                                               true,
                                                                                2,
                                                                                1);
 
@@ -2814,7 +2829,7 @@ begin
                                                                                 0.0,
                                                                                 0.0,
                                                                                 pvvpfrNonZero,
-                                                                                false,
+                                                                                true,
                                                                                 2,
                                                                                 1);
 
@@ -2826,7 +2841,7 @@ begin
                                                                                  0.0,
                                                                                  0.0,
                                                                                  pvvpfrNonZero,
-                                                                                 false,
+                                                                                 true,
                                                                                  2,
                                                                                  1);
 
@@ -2838,7 +2853,7 @@ begin
                                                                                   0.0,
                                                                                   0.0,
                                                                                   pvvpfrNonZero,
-                                                                                  false,
+                                                                                  true,
                                                                                   2,
                                                                                   1);
 
@@ -2850,7 +2865,7 @@ begin
                                                                                0.0,
                                                                                0.0,
                                                                                pvvpfrNonZero,
-                                                                               false,
+                                                                               true,
                                                                                2,
                                                                                1);
 
@@ -2862,7 +2877,7 @@ begin
                                                                                  0.0,
                                                                                  0.0,
                                                                                  pvvpfrNonZero,
-                                                                                 false,
+                                                                                 true,
                                                                                  2,
                                                                                  1);
 
@@ -2874,7 +2889,7 @@ begin
                                                                            0.0,
                                                                            0.0,
                                                                            pvvpfrNonZero,
-                                                                           false,
+                                                                           true,
                                                                            2,
                                                                            1);
 
@@ -2886,7 +2901,7 @@ begin
                                                                                 0.0,
                                                                                 0.0,
                                                                                 pvvpfrNonZero,
-                                                                                false,
+                                                                                true,
                                                                                 2,
                                                                                 1);
 
