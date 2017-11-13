@@ -67,6 +67,17 @@ uses SysUtils,
 
 type TpvDynamicArray<T>=class
       private
+       type TValueEnumerator=record
+             private
+              fDynamicArray:TpvDynamicArray<T>;
+              fIndex:TpvSizeInt;
+              function GetCurrent:T; inline;
+             public
+              constructor Create(const aDynamicArray:TpvDynamicArray<T>);
+              function MoveNext:boolean; inline;
+              property Current:T read GetCurrent;
+            end;
+      private
        fItems:array of T;
        fCount:TpvSizeInt;
        fAllocated:TpvSizeInt;
@@ -82,6 +93,7 @@ type TpvDynamicArray<T>=class
        procedure Insert(const pIndex:TpvSizeInt;const pItem:T);
        procedure Delete(const pIndex:TpvSizeInt);
        procedure Exchange(const pIndex,pWithIndex:TpvSizeInt); inline;
+       function GetEnumerator:TValueEnumerator;
        function Memory:pointer; inline;
        property Count:TpvSizeInt read fCount write SetCount;
        property Allocated:TpvSizeInt read fAllocated;
@@ -124,6 +136,17 @@ type TpvDynamicArray<T>=class
 
      TpvObjectGenericList<T:class>=class
       private
+       type TValueEnumerator=record
+             private
+              fObjectList:TpvObjectGenericList<T>;
+              fIndex:TpvSizeInt;
+              function GetCurrent:T; inline;
+             public
+              constructor Create(const aObjectList:TpvObjectGenericList<T>);
+              function MoveNext:boolean; inline;
+              property Current:T read GetCurrent;
+            end;
+      private
        fItems:array of T;
        fCount:TpvSizeInt;
        fAllocated:TpvSizeInt;
@@ -141,6 +164,7 @@ type TpvDynamicArray<T>=class
        procedure Delete(const pIndex:TpvSizeInt);
        procedure Remove(const pItem:T);
        procedure Exchange(const pIndex,pWithIndex:TpvSizeInt);
+       function GetEnumerator:TValueEnumerator;
        property Count:TpvSizeInt read fCount write SetCount;
        property Allocated:TpvSizeInt read fAllocated;
        property Items[const pIndex:TpvSizeInt]:T read GetItem write SetItem; default;
@@ -150,6 +174,17 @@ type TpvDynamicArray<T>=class
      TpvObjectList=TpvObjectGenericList<TObject>;
 
      TpvGenericList<T>=class
+      private
+       type TValueEnumerator=record
+             private
+              fGenericList:TpvGenericList<T>;
+              fIndex:TpvSizeInt;
+              function GetCurrent:T; inline;
+             public
+              constructor Create(const aGenericList:TpvGenericList<T>);
+              function MoveNext:boolean; inline;
+              property Current:T read GetCurrent;
+            end;
       private
        fItems:array of T;
        fCount:TpvSizeInt;
@@ -170,6 +205,7 @@ type TpvDynamicArray<T>=class
        procedure Delete(const pIndex:TpvSizeInt);
        procedure Remove(const pItem:T);
        procedure Exchange(const pIndex,pWithIndex:TpvSizeInt);
+       function GetEnumerator:TValueEnumerator;
        procedure Sort;
        property Count:TpvSizeInt read fCount write SetCount;
        property Allocated:TpvSizeInt read fAllocated;
@@ -315,6 +351,23 @@ implementation
 uses Generics.Defaults,
      PasVulkan.Utils;
 
+constructor TpvDynamicArray<T>.TValueEnumerator.Create(const aDynamicArray:TpvDynamicArray<T>);
+begin
+ fDynamicArray:=aDynamicArray;
+ fIndex:=-1;
+end;
+
+function TpvDynamicArray<T>.TValueEnumerator.MoveNext:boolean;
+begin
+ inc(fIndex);
+ result:=fIndex<fDynamicArray.fCount;
+end;
+
+function TpvDynamicArray<T>.TValueEnumerator.GetCurrent:T;
+begin
+ result:=fDynamicArray.fItems[fIndex];
+end;
+
 constructor TpvDynamicArray<T>.Create;
 begin
  fItems:=nil;
@@ -427,6 +480,11 @@ end;
 function TpvDynamicArray<T>.Memory:pointer;
 begin
  result:=@fItems[0];
+end;
+
+function TpvDynamicArray<T>.GetEnumerator:TpvDynamicArray<T>.TValueEnumerator;
+begin
+ result:=TValueEnumerator.Create(self);
 end;
 
 constructor TpvBaseList.Create(const pItemSize:TpvSizeInt);
@@ -861,6 +919,23 @@ begin
  end;
 end;
 
+constructor TpvObjectGenericList<T>.TValueEnumerator.Create(const aObjectList:TpvObjectGenericList<T>);
+begin
+ fObjectList:=aObjectList;
+ fIndex:=-1;
+end;
+
+function TpvObjectGenericList<T>.TValueEnumerator.MoveNext:boolean;
+begin
+ inc(fIndex);
+ result:=fIndex<fObjectList.fCount;
+end;
+
+function TpvObjectGenericList<T>.TValueEnumerator.GetCurrent:T;
+begin
+ result:=fObjectList.fItems[fIndex];
+end;
+
 constructor TpvObjectGenericList<T>.Create;
 begin
  inherited Create;
@@ -1016,6 +1091,28 @@ begin
  Temporary:=fItems[pIndex];
  fItems[pIndex]:=fItems[pWithIndex];
  fItems[pWithIndex]:=Temporary;
+end;
+
+function TpvObjectGenericList<T>.GetEnumerator:TpvObjectGenericList<T>.TValueEnumerator;
+begin
+ result:=TValueEnumerator.Create(self);
+end;
+
+constructor TpvGenericList<T>.TValueEnumerator.Create(const aGenericList:TpvGenericList<T>);
+begin
+ fGenericList:=aGenericList;
+ fIndex:=-1;
+end;
+
+function TpvGenericList<T>.TValueEnumerator.MoveNext:boolean;
+begin
+ inc(fIndex);
+ result:=fIndex<fGenericList.fCount;
+end;
+
+function TpvGenericList<T>.TValueEnumerator.GetCurrent:T;
+begin
+ result:=fGenericList.fItems[fIndex];
 end;
 
 constructor TpvGenericList<T>.Create;
@@ -1246,6 +1343,11 @@ begin
  fItems[pIndex]:=fItems[pWithIndex];
  fItems[pWithIndex]:=Temporary;
  fSorted:=false;
+end;
+
+function TpvGenericList<T>.GetEnumerator:TpvGenericList<T>.TValueEnumerator;
+begin
+ result:=TValueEnumerator.Create(self);
 end;
 
 procedure TpvGenericList<T>.Sort;
