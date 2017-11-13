@@ -285,21 +285,28 @@ type TpvGUIObject=class;
        property GroupIdent:TpvFloat read fGroupIdent write fGroupIdent;
      end;
 
+     TpvGUIGridLayoutAlignments=class(TpvGenericList<TpvGUILayoutAlignment>)
+      public
+       procedure SetAlignments(const aAlignments:array of TpvGUILayoutAlignment);
+     end;
+
      TpvGUIGridLayout=class(TpvGUILayout)
       private
        fResolution:TpvInt32;
        fDefaultAlignments:array[0..1] of TpvGUILayoutAlignment;
-       fAlignments:array[0..1] of TpvGUILayoutAlignments;
+       fAlignments:array[0..1] of TpvGUIGridLayoutAlignments;
        fOrientation:TpvGUILayoutOrientation;
        fMargin:TpvFloat;
        fSpacing:TpvVector2;
        fSpacingProperty:TpvVector2Property;
        fGrid:array[0..1] of TpvFloats;
        fGridDimensions:array[0..1] of TpvInt32;
-       function GetColumnAlignment:TpvGUILayoutAlignment;
-       procedure SetColumnAlignment(const aAlignment:TpvGUILayoutAlignment);
-       function GetRowAlignment:TpvGUILayoutAlignment;
-       procedure SetRowAlignment(const aAlignment:TpvGUILayoutAlignment);
+       function GetColumnAlignments:TpvGUIGridLayoutAlignments; inline;
+       function GetRowAlignments:TpvGUIGridLayoutAlignments; inline;
+       function GetColumnAlignment:TpvGUILayoutAlignment; inline;
+       procedure SetColumnAlignment(const aAlignment:TpvGUILayoutAlignment); inline;
+       function GetRowAlignment:TpvGUILayoutAlignment; inline;
+       procedure SetRowAlignment(const aAlignment:TpvGUILayoutAlignment); inline;
        procedure SetResolution(const aResolution:TpvInt32);
        function GetAlignment(const aAxisIndex,aItemIndex:TpvInt32):TpvGUILayoutAlignment;
        procedure ComputeLayout(const aWidget:TpvGUIWidget);
@@ -316,12 +323,12 @@ type TpvGUIObject=class;
                           const aHorizontalSpacing:TpvFloat=0.0;
                           const aVerticalSpacing:TpvFloat=0.0); reintroduce; virtual;
        destructor Destroy; override;
-       procedure SetColumnAlignments(const aAlignments:array of TpvGUILayoutAlignment);
-       procedure SetRowAlignments(const aAlignments:array of TpvGUILayoutAlignment);
       published
        property Resolution:TpvInt32 read fResolution write SetResolution;
-       property RowAlignment:TpvGUILayoutAlignment read GetRowAlignment write SetRowAlignment;
+       property ColumnAlignments:TpvGUIGridLayoutAlignments read GetColumnAlignments;
+       property RowAlignments:TpvGUIGridLayoutAlignments read GetRowAlignments;
        property ColumnAlignment:TpvGUILayoutAlignment read GetColumnAlignment write SetColumnAlignment;
+       property RowAlignment:TpvGUILayoutAlignment read GetRowAlignment write SetRowAlignment;
        property Orientation:TpvGUILayoutOrientation read fOrientation write fOrientation;
        property Margin:TpvFloat read fMargin write fMargin;
        property Spacing:TpvVector2Property read fSpacingProperty;
@@ -2112,6 +2119,15 @@ begin
  Size.y:=Size.y+fMargin;
 end;
 
+procedure TpvGUIGridLayoutAlignments.SetAlignments(const aAlignments:array of TpvGUILayoutAlignment);
+var Index:TpvSizeInt;
+begin
+ Count:=length(aAlignments);
+ for Index:=0 to length(aAlignments)-1 do begin
+  Items[Index]:=aAlignments[Index];
+ end;
+end;
+
 constructor TpvGUIGridLayout.Create(const aParent:TpvGUIObject;
                                     const aResolution:TpvInt32=2;
                                     const aColumnAlignment:TpvGUILayoutAlignment=pvglaMiddle;
@@ -2138,19 +2154,31 @@ begin
 
  fSpacing:=TpvVector2.Create(aHorizontalSpacing,aVerticalSpacing);
 
- Initialize(fAlignments);
+ fAlignments[0]:=TpvGUIGridLayoutAlignments.Create;
+ fAlignments[1]:=TpvGUIGridLayoutAlignments.Create;
 
 end;
 
 destructor TpvGUIGridLayout.Destroy;
 begin
 
- Finalize(fAlignments);
+ FreeAndNil(fAlignments[0]);
+ FreeAndNil(fAlignments[1]);
 
  FreeAndNil(fSpacingProperty);
 
  inherited Destroy;
 
+end;
+
+function TpvGUIGridLayout.GetColumnAlignments:TpvGUIGridLayoutAlignments;
+begin
+ result:=fAlignments[0];
+end;
+
+function TpvGUIGridLayout.GetRowAlignments:TpvGUIGridLayoutAlignments;
+begin
+ result:=fAlignments[1];
 end;
 
 function TpvGUIGridLayout.GetColumnAlignment:TpvGUILayoutAlignment;
@@ -2182,26 +2210,10 @@ function TpvGUIGridLayout.GetAlignment(const aAxisIndex,aItemIndex:TpvInt32):Tpv
 var AxisIndex:TpvInt32;
 begin
  AxisIndex:=aAxisIndex and 1;
- if (aItemIndex>=0) and (aItemIndex<length(fAlignments[AxisIndex])) then begin
-  result:=fAlignments[AxisIndex,aItemIndex];
+ if (aItemIndex>=0) and (aItemIndex<fAlignments[AxisIndex].Count) then begin
+  result:=fAlignments[AxisIndex][aItemIndex];
  end else begin
   result:=fDefaultAlignments[AxisIndex];
- end;
-end;
-
-procedure TpvGUIGridLayout.SetColumnAlignments(const aAlignments:array of TpvGUILayoutAlignment);
-begin
- SetLength(fAlignments[0],length(aAlignments));
- if length(aAlignments)>0 then begin
-  Move(aAlignments[0],fAlignments[0,0],length(aAlignments)*SizeOf(TpvGUILayoutAlignment));
- end;
-end;
-
-procedure TpvGUIGridLayout.SetRowAlignments(const aAlignments:array of TpvGUILayoutAlignment);
-begin
- SetLength(fAlignments[1],length(aAlignments));
- if length(aAlignments)>0 then begin
-  Move(aAlignments[1],fAlignments[1,0],length(aAlignments)*SizeOf(TpvGUILayoutAlignment));
  end;
 end;
 
