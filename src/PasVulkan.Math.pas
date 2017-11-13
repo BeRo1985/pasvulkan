@@ -1308,6 +1308,7 @@ type PpvScalar=^TpvScalar;
 
 function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 function RoundUpToPowerOfTwo64(x:TpvUInt64):TpvUInt64; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
+function RoundUpToPowerOfTwoSizeUInt(x:TpvSizeUInt):TpvSizeUInt; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 
 function IntLog2(x:TpvUInt32):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
 function IntLog264(x:TpvUInt64):TpvUInt32; {$ifdef fpc}{$ifdef CAN_INLINE}inline;{$endif}{$endif}
@@ -1518,6 +1519,20 @@ begin
  x:=x or (x shr 8);
  x:=x or (x shr 16);
  x:=x or (x shr 32);
+ result:=x+1;
+end;
+
+function RoundUpToPowerOfTwoSizeUInt(x:TpvSizeUInt):TpvSizeUInt;
+begin
+ dec(x);
+ x:=x or (x shr 1);
+ x:=x or (x shr 2);
+ x:=x or (x shr 4);
+ x:=x or (x shr 8);
+ x:=x or (x shr 16);
+{$ifdef CPU64}
+ x:=x or (x shr 32);
+{$endif}
  result:=x+1;
 end;
 
