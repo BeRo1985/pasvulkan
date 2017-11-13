@@ -2650,6 +2650,8 @@ begin
          end;
         end;
        end;
+      end else begin
+       raise EpvGUIAdvancedGridLayout.Create('Unregistered widget');
       end;
      end;
     end;
@@ -2780,6 +2782,8 @@ begin
       end;
       fPositions[ChildIndex][AxisIndex]:=ChildPosition;
       fSizes[ChildIndex][AxisIndex]:=TargetSize;
+     end else begin
+      raise EpvGUIAdvancedGridLayout.Create('Unregistered widget');
      end;
     end;
    end;
