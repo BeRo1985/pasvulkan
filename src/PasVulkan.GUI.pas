@@ -391,6 +391,10 @@ type TpvGUIObject=class;
        fColumns:TpvGUIAdvancedGridLayoutColumnRows;
        fGrid:array[0..1] of TpvFloats;
        fGridDimensions:array[0..1] of TpvInt32;
+       fPositions:TpvVector2Array;
+       fSizes:TpvVector2Array;
+       fFixedSizes:TpvVector2Array;
+       fTargetSizes:TpvVector2Array;
        procedure ComputeLayout(const aWidget:TpvGUIWidget);
       protected
        function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
@@ -2531,10 +2535,26 @@ begin
 
  fMargin:=aMargin;
 
+ fPositions:=nil;
+
+ fSizes:=nil;
+
+ fFixedSizes:=nil;
+
+ fTargetSizes:=nil;
+
 end;
 
 destructor TpvGUIAdvancedGridLayout.Destroy;
 begin
+
+ fPositions:=nil;
+
+ fSizes:=nil;
+
+ fFixedSizes:=nil;
+
+ fTargetSizes:=nil;
 
  FreeAndNil(fAnchors);
 
@@ -2670,8 +2690,115 @@ begin
 end;
 
 procedure TpvGUIAdvancedGridLayout.PerformLayout(const aWidget:TpvGUIWidget);
+var AxisIndex,Index,ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+    Anchor:TpvGUIAdvancedGridLayoutAnchor;
+    AnchorEntity:TpvGUIAdvancedGridLayoutAnchors.PpvHashMapEntity;
+    CurrentSize,TotalStretch,Factor,ChildPosition,CellSize,
+    TargetSize:TpvFloat;
+    ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
 begin
- // TODO
+
+ ComputeLayout(aWidget);
+
+ if length(fPositions)<>aWidget.fChildren.Count then begin
+  SetLength(fPositions,aWidget.fChildren.Count);
+ end;
+
+ if length(fSizes)<>aWidget.fChildren.Count then begin
+  SetLength(fSizes,aWidget.fChildren.Count);
+ end;
+
+ if length(fFixedSizes)<>aWidget.fChildren.Count then begin
+  SetLength(fFixedSizes,aWidget.fChildren.Count);
+ end;
+
+ if length(fTargetSizes)<>aWidget.fChildren.Count then begin
+  SetLength(fTargetSizes,aWidget.fChildren.Count);
+ end;
+
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    ChildPreferredSize:=ChildWidget.GetPreferredSize;
+    ChildFixedSize:=ChildWidget.GetFixedSize;
+    if ChildFixedSize.x>0.0 then begin
+     ChildTargetSize.x:=ChildFixedSize.x;
+    end else begin
+     ChildTargetSize.x:=ChildPreferredSize.x;
+    end;
+    if ChildFixedSize.y>0.0 then begin
+     ChildTargetSize.y:=ChildFixedSize.y;
+    end else begin
+     ChildTargetSize.y:=ChildPreferredSize.y;
+    end;
+    fFixedSizes[ChildIndex]:=ChildFixedSize;
+    fTargetSizes[ChildIndex]:=ChildTargetSize;
+   end;
+  end;
+ end;
+
+ for AxisIndex:=0 to 1 do begin
+
+  if fGridDimensions[AxisIndex]>0 then begin
+   fGrid[AxisIndex,0]:=fGrid[AxisIndex,0]+fMargin;
+   for Index:=1 to fGridDimensions[AxisIndex]-1 do begin
+    fGrid[AxisIndex,Index]:=fGrid[AxisIndex,Index]+fGrid[AxisIndex,Index-1];
+   end;
+  end;
+
+  for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+   Child:=aWidget.fChildren.Items[ChildIndex];
+   if Child is TpvGUIWidget then begin
+    ChildWidget:=Child as TpvGUIWidget;
+    if ChildWidget.Visible then begin
+     AnchorEntity:=fAnchors.Get(ChildWidget,false);
+     if assigned(AnchorEntity) then begin
+      Anchor:=AnchorEntity^.Value;
+      ChildPosition:=fGrid[AxisIndex,Anchor.Position.Axis[AxisIndex]];
+      CellSize:=fGrid[AxisIndex,Anchor.Position.Axis[AxisIndex]+Anchor.Size.Axis[AxisIndex]]-ChildPosition;
+      TargetSize:=fTargetSizes[ChildIndex][AxisIndex];
+      case Anchor.Alignment.Axis[AxisIndex] of
+       pvglaLeading:begin
+       end;
+       pvglaMiddle:begin
+        ChildPosition:=ChildPosition+((ChildPosition-TargetSize)*0.5);
+       end;
+       pvglaTailing:begin
+        ChildPosition:=ChildPosition+(ChildPosition-TargetSize);
+       end;
+       pvglaFill:begin
+        if fFixedSizes[ChildIndex][AxisIndex]>0.0 then begin
+         TargetSize:=fFixedSizes[ChildIndex][AxisIndex];
+        end else begin
+         TargetSize:=CellSize;
+        end;
+       end;
+      end;
+      fPositions[ChildIndex][AxisIndex]:=ChildPosition;
+      fSizes[ChildIndex][AxisIndex]:=TargetSize;
+     end;
+    end;
+   end;
+  end;
+
+ end;
+
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    ChildWidget.fPosition:=fPositions[ChildIndex];
+    ChildWidget.fSize:=fSizes[ChildIndex];
+    ChildWidget.PerformLayout;
+   end;
+  end;
+ end;
+
 end;
 
 constructor TpvGUISkin.Create(const aParent:TpvGUIObject);
