@@ -198,9 +198,9 @@ begin
 
  fGUIWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIWindow.Left:=50;
- fGUIWindow.Top:=200;
+ fGUIWindow.Top:=475;
  fGUIWindow.Title:='An example window';
- fGUIWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIWindow.Content,pvglaLeading,pvgloVertical,8.0,8.0);
+ fGUIWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIWindow.Content,pvglaFill,pvgloVertical,8.0,8.0);
  fGUIWindow.AddMinimizationButton;
  fGUIWindow.AddMaximizationButton;
  fGUIWindow.AddCloseButton;
@@ -261,20 +261,23 @@ begin
   MenuItem.Caption:='Help';
  end;
 
- fGUILabel:=TpvGUILabel.Create(fGUIWindow.Content);
+ Panel:=TPvGUIPanel.Create(fGUIWindow.Content);
+ Panel.Layout:=TpvGUIGridLayout.Create(Panel,4,pvglaLeading,pvglaMiddle,pvgloHorizontal,0.0,8.0,8.0);
+
+ fGUILabel:=TpvGUILabel.Create(Panel);
  fGUILabel.Caption:='An example label';
  fGUILabel.Cursor:=pvgcLink;
 
 {fGUIButton:=TpvGUIButton.Create(fGUIWindow.ButtonPanel);
  fGUIButton.Caption:=TpvRawByteString(#$e2#$80#$a6);}
 
- fGUIButton:=TpvGUIButton.Create(fGUIWindow.Content);
+ fGUIButton:=TpvGUIButton.Create(Panel);
  fGUIButton.Caption:='An example button';
 
- fGUIButton:=TpvGUIToggleButton.Create(fGUIWindow.Content);
+ fGUIButton:=TpvGUIToggleButton.Create(Panel);
  fGUIButton.Caption:='An example toggle button';
 
- fGUIButton:=TpvGUIButton.Create(fGUIWindow.Content);
+ fGUIButton:=TpvGUIButton.Create(Panel);
  fGUIButton.Caption:='An example disabled button';
  fGUIButton.Enabled:=false;
 

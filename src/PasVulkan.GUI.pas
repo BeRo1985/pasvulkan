@@ -327,6 +327,85 @@ type TpvGUIObject=class;
        property Spacing:TpvVector2Property read fSpacingProperty;
      end;
 
+     PpvGUIAdvancedGridLayoutAnchorVector=^TpvGUIAdvancedGridLayoutAnchorVector;
+     TpvGUIAdvancedGridLayoutAnchorVector=record
+      case boolean of
+       false:(
+        x,y:TpvUInt8;
+       );
+       true:(
+        Axis:array[0..1] of TpvUInt8;
+       );
+     end;
+
+     PpvGUIAdvancedGridLayoutAnchorAlignmentVector=^TpvGUIAdvancedGridLayoutAnchorAlignmentVector;
+     TpvGUIAdvancedGridLayoutAnchorAlignmentVector=record
+      case boolean of
+       false:(
+        x,y:TpvGUILayoutAlignment;
+       );
+       true:(
+        Axis:array[0..1] of TpvGUILayoutAlignment;
+       );
+     end;
+
+     PpvGUIAdvancedGridLayoutAnchor=^TpvGUIAdvancedGridLayoutAnchor;
+     TpvGUIAdvancedGridLayoutAnchor=record
+      public
+       class function CreateNull:TpvGUIAdvancedGridLayoutAnchor; static; inline;
+       constructor Create(const aX,aY:TpvUInt8;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill); overload;
+       constructor Create(const aX,aY:TpvUInt8;const aWidth:TpvUInt8=1;const aHeight:TpvUInt8=1;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill); overload;
+       case boolean of
+        false:(
+         Position:TpvGUIAdvancedGridLayoutAnchorVector;
+         Size:TpvGUIAdvancedGridLayoutAnchorVector;
+         Alignment:TpvGUIAdvancedGridLayoutAnchorAlignmentVector;
+        );
+        true:(
+         Padding:TpvUInt64;
+        );
+     end;
+
+     TpvGUIAdvancedGridLayoutAnchors=class(TpvHashMap<TpvGUIWidget,TpvGUIAdvancedGridLayoutAnchor>);
+
+     TpvGUIAdvancedGridLayoutColumnRow=class
+      private
+       fSize:TpvFloat;
+       fStretch:TpvFloat;
+      public
+       constructor Create(const aSize:TpvFloat;const aStretch:TpvFloat=0.0);
+      published
+       property Size:TpvFloat read fSize write fSize;
+       property Stretch:TpvFloat read fStretch write fStretch;
+     end;
+
+     TpvGUIAdvancedGridLayoutColumnRows=class(TpvObjectGenericList<TpvGUIAdvancedGridLayoutColumnRow>);
+
+     EpvGUIAdvancedGridLayout=class(Exception);
+
+     TpvGUIAdvancedGridLayout=class(TpvGUILayout)
+      private
+       fMargin:TpvFloat;
+       fAnchors:TpvGUIAdvancedGridLayoutAnchors;
+       fRows:TpvGUIAdvancedGridLayoutColumnRows;
+       fColumns:TpvGUIAdvancedGridLayoutColumnRows;
+       fGrid:array[0..1] of TpvFloats;
+       fGridDimensions:array[0..1] of TpvInt32;
+       procedure ComputeLayout(const aWidget:TpvGUIWidget);
+      protected
+       function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
+       procedure PerformLayout(const aWidget:TpvGUIWidget); override;
+      public
+       constructor Create(const aParent:TpvGUIObject;
+                          const aMargin:TpvFloat=0.0); reintroduce; virtual;
+       destructor Destroy; override;
+      published
+       property Margin:TpvFloat read fMargin write fMargin;
+       property Anchors:TpvGUIAdvancedGridLayoutAnchors read fAnchors;
+       property Rows:TpvGUIAdvancedGridLayoutColumnRows read fRows;
+       property Columns:TpvGUIAdvancedGridLayoutColumnRows read fColumns;
+     end;
+
      TpvGUISkin=class(TpvGUIObject)
       private
       protected
@@ -2394,6 +2473,205 @@ begin
 
  end;
 
+end;
+
+class function TpvGUIAdvancedGridLayoutAnchor.CreateNull:TpvGUIAdvancedGridLayoutAnchor;
+begin
+{$if false}
+ result.Position.x:=0;
+ result.Position.y:=0;
+ result.Size.x:=0;
+ result.Size.y:=0;
+ result.Alignment.x:=pvglaLeading;
+ result.Alignment.y:=pvglaLeading;
+{$else}
+ result.Padding:=0;
+{$ifend}
+end;
+
+constructor TpvGUIAdvancedGridLayoutAnchor.Create(const aX,aY:TpvUInt8;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill);
+begin
+ Position.x:=aX;
+ Position.y:=aY;
+ Size.x:=1;
+ Size.y:=1;
+ Alignment.x:=aHorizontalAlignment;
+ Alignment.y:=aVerticalAlignment;
+end;
+
+constructor TpvGUIAdvancedGridLayoutAnchor.Create(const aX,aY:TpvUInt8;const aWidth:TpvUInt8=1;const aHeight:TpvUInt8=1;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill);
+begin
+ Position.x:=aX;
+ Position.y:=aY;
+ Size.x:=aWidth;
+ Size.y:=aHeight;
+ Alignment.x:=aHorizontalAlignment;
+ Alignment.y:=aVerticalAlignment;
+end;
+
+constructor TpvGUIAdvancedGridLayoutColumnRow.Create(const aSize:TpvFloat;const aStretch:TpvFloat=0.0);
+begin
+ inherited Create;
+ fSize:=aSize;
+ fStretch:=aStretch;
+end;
+
+constructor TpvGUIAdvancedGridLayout.Create(const aParent:TpvGUIObject;const aMargin:TpvFloat);
+begin
+
+ inherited Create(aParent);
+
+ fAnchors:=TpvGUIAdvancedGridLayoutAnchors.Create(TpvGUIAdvancedGridLayoutAnchor.CreateNull);
+
+ fRows:=TpvGUIAdvancedGridLayoutColumnRows.Create;
+ fRows.OwnObjects:=true;
+
+ fColumns:=TpvGUIAdvancedGridLayoutColumnRows.Create;
+ fColumns.OwnObjects:=true;
+
+ fMargin:=aMargin;
+
+end;
+
+destructor TpvGUIAdvancedGridLayout.Destroy;
+begin
+
+ FreeAndNil(fAnchors);
+
+ FreeAndNil(fRows);
+
+ FreeAndNil(fColumns);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvGUIAdvancedGridLayout.ComputeLayout(const aWidget:TpvGUIWidget);
+var AxisIndex,PhaseIndex,ChildIndex,Index:TpvInt32;
+    FixedSize,ContainerSize:TpvVector2;
+    ColumnRows:TpvGUIAdvancedGridLayoutColumnRows;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+    Anchor:TpvGUIAdvancedGridLayoutAnchor;
+    AnchorEntity:TpvGUIAdvancedGridLayoutAnchors.PpvHashMapEntity;
+    ChildPreferredSize,ChildFixedSize,ChildTargetSize,
+    CurrentSize,TotalStretch,Factor:TpvFloat;
+begin
+
+ FixedSize:=aWidget.GetFixedSize;
+
+ if FixedSize.x>0.0 then begin
+  ContainerSize.x:=FixedSize.x;
+ end else begin
+  ContainerSize.x:=aWidget.Width;
+ end;
+
+ if FixedSize.y>0.0 then begin
+  ContainerSize.y:=FixedSize.y;
+ end else begin
+  ContainerSize.y:=aWidget.Height;
+ end;
+
+ ContainerSize:=ContainerSize-TpvVector2.Create(fMargin*2.0,fMargin*2.0);
+
+ for AxisIndex:=0 to 1 do begin
+
+  if AxisIndex=0 then begin
+   ColumnRows:=fColumns;
+  end else begin
+   ColumnRows:=fRows;
+  end;
+
+  fGridDimensions[AxisIndex]:=ColumnRows.Count;
+
+  SetLength(fGrid[AxisIndex],fGridDimensions[AxisIndex]);
+
+  for Index:=0 to fGridDimensions[AxisIndex]-1 do begin
+   fGrid[AxisIndex,Index]:=ColumnRows[AxisIndex].fSize;
+  end;
+
+  for PhaseIndex:=0 to 1 do begin
+
+   for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+    Child:=aWidget.fChildren.Items[ChildIndex];
+    if Child is TpvGUIWidget then begin
+     ChildWidget:=Child as TpvGUIWidget;
+     if ChildWidget.Visible then begin
+      AnchorEntity:=fAnchors.Get(ChildWidget,false);
+      if assigned(AnchorEntity) then begin
+       Anchor:=AnchorEntity^.Value;
+       if (Anchor.Size.Axis[AxisIndex]=1)=(PhaseIndex=0) then begin
+        ChildPreferredSize:=ChildWidget.GetPreferredSize[AxisIndex];
+        ChildFixedSize:=ChildWidget.GetFixedSize[AxisIndex];
+        if ChildFixedSize>0.0 then begin
+         ChildTargetSize:=ChildFixedSize;
+        end else begin
+         ChildTargetSize:=ChildPreferredSize;
+        end;
+        if (Anchor.Position.Axis[AxisIndex]+Anchor.Size.Axis[AxisIndex])>ColumnRows.Count then begin
+         raise EpvGUIAdvancedGridLayout.Create('A widget is out of bounds');
+        end;
+        CurrentSize:=0.0;
+        TotalStretch:=0.0;
+        for Index:=Anchor.Position.Axis[AxisIndex] to (Anchor.Position.Axis[AxisIndex]+Anchor.Size.Axis[AxisIndex])-1 do begin
+         if SameValue(ColumnRows[Index].Size,0.0) and (Anchor.Size.Axis[AxisIndex]=1) then begin
+          fGrid[AxisIndex,Index]:=Max(fGrid[AxisIndex,Index],ChildTargetSize);
+         end;
+         CurrentSize:=CurrentSize+fGrid[AxisIndex,Index];
+         TotalStretch:=TotalStretch+ColumnRows[Index].fStretch;
+        end;
+        if ChildTargetSize>CurrentSize then begin
+         if SameValue(TotalStretch,0.0) then begin
+          raise EpvGUIAdvancedGridLayout.Create('No space left to place widget');
+         end;
+         Factor:=(ChildTargetSize-CurrentSize)/TotalStretch;
+         for Index:=Anchor.Position.Axis[AxisIndex] to (Anchor.Position.Axis[AxisIndex]+Anchor.Size.Axis[AxisIndex])-1 do begin
+          fGrid[AxisIndex,Index]:=fGrid[AxisIndex,Index]+(ColumnRows[Index].fStretch*Factor);
+         end;
+        end;
+       end;
+      end;
+     end;
+    end;
+   end;
+
+  end;
+
+  CurrentSize:=0.0;
+  TotalStretch:=0.0;
+  for Index:=0 to ColumnRows.Count-1 do begin
+   CurrentSize:=CurrentSize+fGrid[AxisIndex,Index];
+   TotalStretch:=TotalStretch+ColumnRows[Index].fStretch;
+  end;
+
+  if (CurrentSize<ContainerSize[AxisIndex]) and (TotalStretch>0.0) then begin
+
+   Factor:=(ContainerSize[AxisIndex]-CurrentSize)/TotalStretch;
+   for Index:=0 to ColumnRows.Count-1 do begin
+    fGrid[AxisIndex,Index]:=fGrid[AxisIndex,Index]+(ColumnRows[Index].fStretch*Factor);
+   end;
+
+  end;
+
+ end;
+
+end;
+
+function TpvGUIAdvancedGridLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
+var AxisIndex,Index:TpvInt32;
+begin
+ ComputeLayout(aWidget);
+ result:=TpvVector2.Create(fMargin*2.0,fMargin*2.0);
+ for AxisIndex:=0 to 1 do begin
+  for Index:=0 to fGridDimensions[AxisIndex]-1 do begin
+   result[AxisIndex]:=result[AxisIndex]+fGrid[AxisIndex,Index];
+  end;
+ end;
+end;
+
+procedure TpvGUIAdvancedGridLayout.PerformLayout(const aWidget:TpvGUIWidget);
+begin
+ // TODO
 end;
 
 constructor TpvGUISkin.Create(const aParent:TpvGUIObject);
