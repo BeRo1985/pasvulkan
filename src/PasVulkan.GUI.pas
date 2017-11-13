@@ -379,7 +379,10 @@ type TpvGUIObject=class;
        property Stretch:TpvFloat read fStretch write fStretch;
      end;
 
-     TpvGUIAdvancedGridLayoutColumnRows=class(TpvObjectGenericList<TpvGUIAdvancedGridLayoutColumnRow>);
+     TpvGUIAdvancedGridLayoutColumnRows=class(TpvObjectGenericList<TpvGUIAdvancedGridLayoutColumnRow>)
+      public
+       function Add(const aSize:TpvFloat;const aStretch:TpvFloat=0.0):TpvSizeInt; reintroduce;
+     end;
 
      EpvGUIAdvancedGridLayout=class(Exception);
 
@@ -2518,6 +2521,11 @@ begin
  inherited Create;
  fSize:=aSize;
  fStretch:=aStretch;
+end;
+
+function TpvGUIAdvancedGridLayoutColumnRows.Add(const aSize:TpvFloat;const aStretch:TpvFloat=0.0):TpvSizeInt;
+begin
+ result:=inherited Add(TpvGUIAdvancedGridLayoutColumnRow.Create(aSize,aStretch));
 end;
 
 constructor TpvGUIAdvancedGridLayout.Create(const aParent:TpvGUIObject;const aMargin:TpvFloat);
