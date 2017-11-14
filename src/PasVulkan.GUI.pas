@@ -3041,7 +3041,7 @@ var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
  var ChildIndex:TpvInt32;
      Child:TpvGUIObject;
      ChildWidget:TpvGUIWidget;
-     MinPosition,MaxPosition,MaxHeight,Gap:TpvFloat;
+     MinPosition,MaxPosition,MaxHeight,Difference:TpvFloat;
  begin
   if RowFromChildIndex<=RowToChildIndex then begin
 
@@ -3076,27 +3076,37 @@ var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
 
    case fAlignment of
     pgflaLeading:begin
+     Difference:=fMargin-MinPosition;
+     for ChildIndex:=RowFromChildIndex to RowToChildIndex do begin
+     Child:=aWidget.fChildren.Items[ChildIndex];
+      if Child is TpvGUIWidget then begin
+       ChildWidget:=Child as TpvGUIWidget;
+       if ChildWidget.Visible then begin
+        ChildWidget.fPosition[Axis0]:=ChildWidget.fPosition[Axis0]+Difference;
+       end;
+      end;
+     end;
     end;
     pgflaMiddle:begin
-     Gap:=((ContainerSize[Axis0]-(MaxPosition-MinPosition))*0.5)-MinPosition;
+     Difference:=((ContainerSize[Axis0]-(MaxPosition-MinPosition))*0.5)-MinPosition;
      for ChildIndex:=RowFromChildIndex to RowToChildIndex do begin
       Child:=aWidget.fChildren.Items[ChildIndex];
       if Child is TpvGUIWidget then begin
        ChildWidget:=Child as TpvGUIWidget;
        if ChildWidget.Visible then begin
-        ChildWidget.fPosition[Axis0]:=ChildWidget.fPosition[Axis0]+Gap;
+        ChildWidget.fPosition[Axis0]:=ChildWidget.fPosition[Axis0]+Difference;
        end;
       end;
      end;
     end;
     pgflaTailing:begin
-     Gap:=((ContainerSize[Axis0]-(MaxPosition-MinPosition)))-MinPosition;
+     Difference:=((ContainerSize[Axis0]-(fMargin+(MaxPosition-MinPosition))))-MinPosition;
      for ChildIndex:=RowFromChildIndex to RowToChildIndex do begin
-      Child:=aWidget.fChildren.Items[ChildIndex];
+     Child:=aWidget.fChildren.Items[ChildIndex];
       if Child is TpvGUIWidget then begin
        ChildWidget:=Child as TpvGUIWidget;
        if ChildWidget.Visible then begin
-        ChildWidget.fPosition[Axis0]:=ChildWidget.fPosition[Axis0]+Gap;
+        ChildWidget.fPosition[Axis0]:=ChildWidget.fPosition[Axis0]+Difference;
        end;
       end;
      end;
@@ -3136,6 +3146,10 @@ begin
 
  Position:=TpvVector2.Create(fMargin,fMargin);
 
+ if fDirection<>pgfldLeftToRight then begin
+  Position[Axis0]:=ContainerSize[Axis0]-fMargin;
+ end;
+
  First:=true;
 
  for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
@@ -3143,9 +3157,6 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
-    if not First then begin
-     Position[Axis0]:=Position[Axis0]+fSpacing[Axis0];
-    end;
     ChildPreferredSize:=ChildWidget.PreferredSize;
     ChildFixedSize:=ChildWidget.GetFixedSize;
     if ChildFixedSize.x>0.0 then begin
@@ -3158,18 +3169,38 @@ begin
     end else begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
-    if (not First) and
-       ((Position[Axis0]+ChildTargetSize[Axis0])>=(ContainerSize[Axis0]-fMargin)) then begin
-     RowToChildIndex:=ChildIndex-1;
-     FlushRow;
-     RowFromChildIndex:=ChildIndex;
-     Position[Axis0]:=fMargin;
-     Position[Axis1]:=Position[Axis1]+fSpacing[Axis1]+MaxAxis1;
-     MaxAxis1:=0.0;
+    if fDirection=pgfldLeftToRight then begin
+     if not First then begin
+      Position[Axis0]:=Position[Axis0]+fSpacing[Axis0];
+      if (Position[Axis0]+ChildTargetSize[Axis0])>=(ContainerSize[Axis0]-fMargin) then begin
+       RowToChildIndex:=ChildIndex-1;
+       FlushRow;
+       RowFromChildIndex:=ChildIndex;
+       Position[Axis0]:=fMargin;
+       Position[Axis1]:=Position[Axis1]+fSpacing[Axis1]+MaxAxis1;
+       MaxAxis1:=0.0;
+      end;
+     end;
+     ChildWidget.fPosition:=Position;
+     ChildWidget.fSize:=ChildTargetSize;
+     Position[Axis0]:=Position[Axis0]+ChildTargetSize[Axis0];
+    end else begin
+     if not First then begin
+      Position[Axis0]:=Position[Axis0]-fSpacing[Axis0];
+     end;
+     Position[Axis0]:=Position[Axis0]-ChildTargetSize[Axis0];
+     if (not First) and
+        (Position[Axis0]<fMargin) then begin
+      RowToChildIndex:=ChildIndex-1;
+      FlushRow;
+      RowFromChildIndex:=ChildIndex;
+      Position[Axis0]:=(ContainerSize[Axis0]-fMargin)-ChildTargetSize[Axis0];
+      Position[Axis1]:=Position[Axis1]+fSpacing[Axis1]+MaxAxis1;
+      MaxAxis1:=0.0;
+     end;
+     ChildWidget.fPosition:=Position;
+     ChildWidget.fSize:=ChildTargetSize;
     end;
-    ChildWidget.fPosition:=Position;
-    ChildWidget.fSize:=ChildTargetSize;
-    Position[Axis0]:=Position[Axis0]+ChildTargetSize[Axis0];
     MaxAxis1:=Max(MaxAxis1,ChildTargetSize[Axis1]);
     RowToChildIndex:=ChildIndex;
     First:=false;
