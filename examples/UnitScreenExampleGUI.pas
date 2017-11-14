@@ -340,11 +340,21 @@ begin
  fGUIButton:=TpvGUIRadioButton.Create(Panel);
  fGUIButton.Caption:='Radio button (3)';
 
- fGUIYetOtherWindow:=TpvGUIWindow.Create(fGUIOtherWindow.Content);
+ fGUIYetOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIYetOtherWindow.Left:=550;
  fGUIYetOtherWindow.Top:=200;
  fGUIYetOtherWindow.Title:='A yet another example window';
- fGUIYetOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,pvglaLeading,pvgloVertical,8.0,8.0);
+//fGUIYetOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,pvglaLeading,pvgloVertical,8.0,8.0);
+ fGUIYetOtherWindow.Content.Layout:=TpvGUIFlowLayout.Create(fGUIOtherWindow.Content,
+                                                            pvgloHorizontal,
+                                                            8.0,
+                                                            320.0,
+                                                            0.0,
+                                                            4.0,
+                                                            4.0,
+                                                            pgfldLeftToRight,
+                                                            pgflaCenter,
+                                                            false);
  fGUIYetOtherWindow.AddMinimizationButton;
  fGUIYetOtherWindow.AddMaximizationButton;
  fGUIYetOtherWindow.AddCloseButton;
@@ -358,7 +368,7 @@ begin
  fGUILabel.Cursor:=pvgcUnavailable;
 
  fGUIButton:=TpvGUIPopupMenuButton.Create(fGUIYetOtherWindow.Content);
- fGUIButton.Caption:='An example popup menu button';
+ fGUIButton.Caption:='Popup menu';
  fGUIButton.Enabled:=true;
  TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu).Caption:='Test 1';
  MenuItem:=TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu);
@@ -375,22 +385,22 @@ begin
  TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu).Caption:='Test 3';
 
  fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
- fGUIButton.Caption:='An example popup button';
+ fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
  TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasTop;
 
  fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
- fGUIButton.Caption:='An example popup button';
+ fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
  TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasBottom;
 
  fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
- fGUIButton.Caption:='An example popup button';
+ fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
  TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasLeft;
 
  fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
- fGUIButton.Caption:='An example popup button';
+ fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
  TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasRight;
 

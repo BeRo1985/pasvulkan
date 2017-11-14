@@ -307,11 +307,11 @@ type TpvGUIObject=class;
                pvgglfStretchHorizontal,
                pvgglfStretchVertical
               );
-              AxisOrientationAxes:array[TpvGUILayoutOrientation,0..1] of TpvInt32=
-               (
-                (0,1), // pvgloHorizontal
-                (1,0)  // pvgloVertical
-               );
+             AxisOrientationAxes:array[TpvGUILayoutOrientation,0..1] of TpvInt32=
+              (
+               (0,1), // pvgloHorizontal
+               (1,0)  // pvgloVertical
+              );
       private
        fFlags:TpvGUIGridLayoutFlags;
        fResolution:TpvInt32;
@@ -441,6 +441,65 @@ type TpvGUIObject=class;
        property Anchors:TpvGUIAdvancedGridLayoutAnchors read fAnchors;
        property Rows:TpvGUIAdvancedGridLayoutColumnRows read fRows;
        property Columns:TpvGUIAdvancedGridLayoutColumnRows read fColumns;
+     end;
+
+     PpvGUIFlowLayoutDirection=^TpvGUIFlowLayoutDirection;
+     TpvGUIFlowLayoutDirection=
+      (
+       pgfldLeftToRight,
+       pgfldRightToLeft
+      );
+
+     PpvGUIFlowLayoutAlignment=^TpvGUIFlowLayoutAlignment;
+     TpvGUIFlowLayoutAlignment=
+      (
+       pgflaLeading,
+       pgflaLeft,
+       pgflaCenter,
+       pgflaRight,
+       pgflaTrailing
+      );
+
+     TpvGUIFlowLayout=class(TpvGUILayout)
+      private
+       const AxisOrientationAxes:array[TpvGUILayoutOrientation,0..1] of TpvInt32=
+              (
+               (0,1), // pvgloHorizontal
+               (1,0)  // pvgloVertical
+              );
+      private
+       fOrientation:TpvGUILayoutOrientation;
+       fMargin:TpvFloat;
+       fDesignedSize:TpvVector2;
+       fDesignedSizeProperty:TpvVector2Property;
+       fSpacing:TpvVector2;
+       fSpacingProperty:TpvVector2Property;
+       fDirection:TpvGUIFlowLayoutDirection;
+       fAlignment:TpvGUIFlowLayoutAlignment;
+       fAlignmentOnBaseLine:boolean;
+      protected
+       function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
+       procedure PerformLayout(const aWidget:TpvGUIWidget); override;
+      public
+       constructor Create(const aParent:TpvGUIObject;
+                          const aOrientation:TpvGUILayoutOrientation=pvgloHorizontal;
+                          const aMargin:TpvFloat=0.0;
+                          const aDesignedWidth:TpvFloat=0.0;
+                          const aDesignedHeight:TpvFloat=0.0;
+                          const aHorizontalSpacing:TpvFloat=4.0;
+                          const aVerticalSpacing:TpvFloat=4.0;
+                          const aDirection:TpvGUIFlowLayoutDirection=pgfldLeftToRight;
+                          const aAlignment:TpvGUIFlowLayoutAlignment=pgflaCenter;
+                          const aAlignmentOnBaseLine:boolean=false); reintroduce; virtual;
+       destructor Destroy; override;
+      published
+       property Orientation:TpvGUILayoutOrientation read fOrientation write fOrientation;
+       property Margin:TpvFloat read fMargin write fMargin;
+       property DesignedSize:TpvVector2Property read fDesignedSizeProperty;
+       property Spacing:TpvVector2Property read fSpacingProperty;
+       property Direction:TpvGUIFlowLayoutDirection read fDirection write fDirection;
+       property Alignment:TpvGUIFlowLayoutAlignment read fAlignment write fAlignment;
+       property AlignmentOnBaseLine:boolean read fAlignmentOnBaseLine write fAlignmentOnBaseLine;
      end;
 
      TpvGUISkin=class(TpvGUIObject)
@@ -2835,6 +2894,235 @@ begin
    if ChildWidget.Visible then begin
     ChildWidget.fPosition:=fPositions[ChildIndex];
     ChildWidget.fSize:=fSizes[ChildIndex];
+    ChildWidget.PerformLayout;
+   end;
+  end;
+ end;
+
+end;
+
+constructor TpvGUIFlowLayout.Create(const aParent:TpvGUIObject;
+                                    const aOrientation:TpvGUILayoutOrientation=pvgloHorizontal;
+                                    const aMargin:TpvFloat=0.0;
+                                    const aDesignedWidth:TpvFloat=0.0;
+                                    const aDesignedHeight:TpvFloat=0.0;
+                                    const aHorizontalSpacing:TpvFloat=4.0;
+                                    const aVerticalSpacing:TpvFloat=4.0;
+                                    const aDirection:TpvGUIFlowLayoutDirection=pgfldLeftToRight;
+                                    const aAlignment:TpvGUIFlowLayoutAlignment=pgflaCenter;
+                                    const aAlignmentOnBaseLine:boolean=false);
+begin
+
+ inherited Create(aParent);
+
+ fDesignedSizeProperty:=TpvVector2Property.Create(@fDesignedSize);
+
+ fSpacingProperty:=TpvVector2Property.Create(@fSpacing);
+
+ fOrientation:=aOrientation;
+
+ fMargin:=aMargin;
+
+ fDesignedSize:=TpvVector2.Create(aDesignedWidth,aDesignedHeight);
+
+ fSpacing:=TpvVector2.Create(aHorizontalSpacing,aVerticalSpacing);
+
+ fDirection:=aDirection;
+
+ fAlignment:=aAlignment;
+
+ fAlignmentOnBaseLine:=aAlignmentOnBaseLine;
+
+end;
+
+destructor TpvGUIFlowLayout.Destroy;
+begin
+
+ FreeAndNil(fSpacingProperty);
+
+ FreeAndNil(fDesignedSizeProperty);
+
+ inherited Destroy;
+
+end;
+
+function TpvGUIFlowLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
+var Axis0,Axis1,ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+    First:boolean;
+    FixedSize,ContainerSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
+    Position:TpvVector2;
+    MaxAxis1:TpvFloat;
+begin
+
+ Axis0:=AxisOrientationAxes[fOrientation,0];
+ Axis1:=AxisOrientationAxes[fOrientation,1];
+
+ FixedSize:=aWidget.GetFixedSize;
+
+ if FixedSize.x>0.0 then begin
+  ContainerSize.x:=FixedSize.x;
+ end else if fDesignedSize.x>0.0 then begin
+  ContainerSize.x:=fDesignedSize.x;
+ end else begin
+  ContainerSize.x:=aWidget.Width;
+ end;
+
+ if FixedSize.y>0.0 then begin
+  ContainerSize.y:=FixedSize.y;
+ end else if fDesignedSize.y>0.0 then begin
+  ContainerSize.y:=fDesignedSize.y;
+ end else begin
+  ContainerSize.y:=aWidget.Height;
+ end;
+
+ result:=TpvVector2.Null;
+
+ Position:=TpvVector2.Create(fMargin,fMargin);
+
+ MaxAxis1:=0.0;
+
+ First:=true;
+
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    if not First then begin
+     Position[Axis0]:=Position[Axis0]+fSpacing[Axis0];
+    end;
+    ChildPreferredSize:=ChildWidget.PreferredSize;
+    ChildFixedSize:=ChildWidget.GetFixedSize;
+    if ChildFixedSize.x>0.0 then begin
+     ChildTargetSize.x:=ChildFixedSize.x;
+    end else begin
+     ChildTargetSize.x:=ChildPreferredSize.x;
+    end;
+    if ChildFixedSize.y>0.0 then begin
+     ChildTargetSize.y:=ChildFixedSize.y;
+    end else begin
+     ChildTargetSize.y:=ChildPreferredSize.y;
+    end;
+    if (not First) and
+       ((Position[Axis0]+ChildTargetSize[Axis0])>=(ContainerSize[Axis0]-fMargin)) then begin
+     Position[Axis0]:=fMargin;
+     Position[Axis1]:=Position[Axis1]+fSpacing[Axis1]+MaxAxis1;
+     MaxAxis1:=0.0;
+    end;
+    Position[Axis0]:=Position[Axis0]+ChildTargetSize[Axis0];
+    MaxAxis1:=Max(MaxAxis1,ChildTargetSize[Axis1]);
+    result[Axis0]:=Max(result[Axis0],Position[Axis0]+ChildTargetSize[Axis0]);
+    result[Axis1]:=Max(result[Axis1],Position[Axis1]+ChildTargetSize[Axis1]);
+    First:=false;
+   end;
+  end;
+ end;
+
+ result:=result+TpvVector2.Create(fMargin*2.0,fMargin*2.0);
+
+ if FixedSize.x>0.0 then begin
+  result.x:=FixedSize.x;
+ end else if fDesignedSize.x>0.0 then begin
+  result.x:=fDesignedSize.x;
+ end;
+
+ if FixedSize.y>0.0 then begin
+  result.y:=FixedSize.y;
+ end else if fDesignedSize.y>0.0 then begin
+  result.y:=fDesignedSize.y;
+ end;
+
+end;
+
+procedure TpvGUIFlowLayout.PerformLayout(const aWidget:TpvGUIWidget);
+var RowFromChildIndex,RowToChildIndex:TpvInt32;
+    ContainerSize:TpvVector2;
+ procedure FlushRow;
+ begin
+  if RowFromChildIndex<RowToChildIndex then begin
+
+  end;
+ end;
+var Axis0,Axis1,ChildIndex:TpvInt32;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+    First:boolean;
+    FixedSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
+    Position:TpvVector2;
+    MaxAxis1:TpvFloat;
+begin
+
+ Axis0:=AxisOrientationAxes[fOrientation,0];
+ Axis1:=AxisOrientationAxes[fOrientation,1];
+
+ FixedSize:=aWidget.GetFixedSize;
+
+ if FixedSize.x>0.0 then begin
+  ContainerSize.x:=FixedSize.x;
+ end else begin
+  ContainerSize.x:=aWidget.Width;
+ end;
+
+ if FixedSize.y>0.0 then begin
+  ContainerSize.y:=FixedSize.y;
+ end else begin
+  ContainerSize.y:=aWidget.Height;
+ end;
+
+ RowFromChildIndex:=0;
+ RowToChildIndex:=-1;
+
+ Position:=TpvVector2.Create(fMargin,fMargin);
+
+ First:=true;
+
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    if not First then begin
+     Position[Axis0]:=Position[Axis0]+fSpacing[Axis0];
+    end;
+    ChildPreferredSize:=ChildWidget.PreferredSize;
+    ChildFixedSize:=ChildWidget.GetFixedSize;
+    if ChildFixedSize.x>0.0 then begin
+     ChildTargetSize.x:=ChildFixedSize.x;
+    end else begin
+     ChildTargetSize.x:=ChildPreferredSize.x;
+    end;
+    if ChildFixedSize.y>0.0 then begin
+     ChildTargetSize.y:=ChildFixedSize.y;
+    end else begin
+     ChildTargetSize.y:=ChildPreferredSize.y;
+    end;
+    if (not First) and
+       ((Position[Axis0]+ChildTargetSize[Axis0])>=(ContainerSize[Axis0]-fMargin)) then begin
+     RowToChildIndex:=ChildIndex-1;
+     FlushRow;
+     RowFromChildIndex:=ChildIndex;
+     Position[Axis0]:=fMargin;
+     Position[Axis1]:=Position[Axis1]+fSpacing[Axis1]+MaxAxis1;
+     MaxAxis1:=0.0;
+    end;
+    ChildWidget.fPosition:=Position;
+    ChildWidget.fSize:=ChildTargetSize;
+    Position[Axis0]:=Position[Axis0]+ChildTargetSize[Axis0];
+    MaxAxis1:=Max(MaxAxis1,ChildTargetSize[Axis1]);
+    First:=false;
+   end;
+  end;
+ end;
+
+ FlushRow;
+
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
     ChildWidget.PerformLayout;
    end;
   end;
