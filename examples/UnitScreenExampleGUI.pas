@@ -200,7 +200,7 @@ begin
  fGUIWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIWindow.Left:=50;
  fGUIWindow.Top:=475;
- fGUIWindow.Title:='An example window';
+ fGUIWindow.Title:='Window with GridLayout';
  fGUIWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIWindow.Content,pvglaFill,pvgloVertical,8.0,8.0);
  fGUIWindow.AddMinimizationButton;
  fGUIWindow.AddMaximizationButton;
@@ -296,7 +296,7 @@ begin
  fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIOtherWindow.Left:=550;
  fGUIOtherWindow.Top:=50;
- fGUIOtherWindow.Title:='An another example window';
+ fGUIOtherWindow.Title:='Window with BoxLayout';
  fGUIOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,pvglaLeading,pvgloVertical,8.0,8.0);
  fGUIOtherWindow.AddMinimizationButton;
  fGUIOtherWindow.AddMaximizationButton;
@@ -344,7 +344,7 @@ begin
  fGUIYetOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIYetOtherWindow.Left:=550;
  fGUIYetOtherWindow.Top:=200;
- fGUIYetOtherWindow.Title:='A yet another example window';
+ fGUIYetOtherWindow.Title:='Window with FlowLayout';
 //fGUIYetOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,pvglaLeading,pvgloVertical,8.0,8.0);
  fGUIYetOtherWindow.Content.Layout:=TpvGUIFlowLayout.Create(fGUIOtherWindow.Content,
                                                             pvgloHorizontal,
@@ -409,10 +409,14 @@ begin
  Window:=TpvGUIWindow.Create(fGUIInstance);
  Window.Left:=150;
  Window.Top:=200;
- Window.Title:='A yet another example window';
+ Window.Title:='Window with AdvancedGridLayout';
  Window.Content.Layout:=TpvGUIAdvancedGridLayout.Create(Window.Content,8.0);
+ TpvGUIAdvancedGridLayout(Window.Content.Layout).Rows.Add(50.0,0.0);
  TpvGUIAdvancedGridLayout(Window.Content.Layout).Rows.Add(1.0,1.0);
+ TpvGUIAdvancedGridLayout(Window.Content.Layout).Rows.Add(50.0,0.0);
+ TpvGUIAdvancedGridLayout(Window.Content.Layout).Columns.Add(100.0,0.0);
  TpvGUIAdvancedGridLayout(Window.Content.Layout).Columns.Add(1.0,1.0);
+ TpvGUIAdvancedGridLayout(Window.Content.Layout).Columns.Add(100.0,0.0);
  Window.AddMinimizationButton;
  Window.AddMaximizationButton;
  Window.AddCloseButton;
@@ -420,8 +424,32 @@ begin
  fGUIButton:=TpvGUIPopupButton.Create(Window.Content);
  fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasLeft;
+ TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,0,1,1,2.0,2.0,2.0,2.0);
+
+ fGUIButton:=TpvGUIPopupButton.Create(Window.Content);
+ fGUIButton.Caption:='Popup';
+ fGUIButton.Enabled:=true;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasTop;
+ TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,0,1,1,2.0,2.0,2.0,2.0);
+
+ fGUIButton:=TpvGUIPopupButton.Create(Window.Content);
+ fGUIButton.Caption:='Popup';
+ fGUIButton.Enabled:=true;
  TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasRight;
- TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,0);
+ TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(2,0,1,1,2.0,2.0,2.0,2.0);
+
+ fGUIButton:=TpvGUIPopupButton.Create(Window.Content);
+ fGUIButton.Caption:='Popup';
+ fGUIButton.Enabled:=true;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasRight;
+ TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,3,1,2.0,2.0,2.0,2.0);
+
+ fGUIButton:=TpvGUIPopupButton.Create(Window.Content);
+ fGUIButton.Caption:='Popup';
+ fGUIButton.Enabled:=true;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasBottom;
+ TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,2,2,1,2.0,2.0,2.0,2.0);
 
 end;
 

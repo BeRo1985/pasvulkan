@@ -383,7 +383,7 @@ type TpvGUIObject=class;
      TpvGUIAdvancedGridLayoutAnchor=record
       public
        class function CreateNull:TpvGUIAdvancedGridLayoutAnchor; static; inline;
-       constructor Create(const aX,aY:TpvUInt8;const aWidth,aHeight:TpvUInt8;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill); overload;
+       constructor Create(const aX,aY:TpvUInt8;const aWidth,aHeight:TpvUInt8;const aPaddingLeft:TpvFloat=0.0;const aPaddingTop:TpvFloat=0.0;const aPaddingRight:TpvFloat=0.0;const aPaddingBottom:TpvFloat=0.0;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill); overload;
        constructor Create(const aX,aY:TpvUInt8;const aHorizontalAlignment,aVerticalAlignment:TpvGUILayoutAlignment); overload;
        constructor Create(const aX,aY:TpvUInt8); overload;
        case boolean of
@@ -391,9 +391,7 @@ type TpvGUIObject=class;
          Position:TpvGUIAdvancedGridLayoutAnchorVector;
          Size:TpvGUIAdvancedGridLayoutAnchorVector;
          Alignment:TpvGUIAdvancedGridLayoutAnchorAlignmentVector;
-        );
-        true:(
-         Padding:TpvUInt64;
+         Padding:array[0..1,0..1] of TVkFloat;
         );
      end;
 
@@ -2598,12 +2596,13 @@ begin
  result.Size.y:=0;
  result.Alignment.x:=pvglaLeading;
  result.Alignment.y:=pvglaLeading;
+ result.Padding:=0.0;
 {$else}
- result.Padding:=0;
+ FillChar(result,SizeOf(TpvGUIAdvancedGridLayoutAnchor),#0);
 {$ifend}
 end;
 
-constructor TpvGUIAdvancedGridLayoutAnchor.Create(const aX,aY:TpvUInt8;const aWidth,aHeight:TpvUInt8;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill);
+constructor TpvGUIAdvancedGridLayoutAnchor.Create(const aX,aY:TpvUInt8;const aWidth,aHeight:TpvUInt8;const aPaddingLeft:TpvFloat=0.0;const aPaddingTop:TpvFloat=0.0;const aPaddingRight:TpvFloat=0.0;const aPaddingBottom:TpvFloat=0.0;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill);
 begin
  Position.x:=aX;
  Position.y:=aY;
@@ -2611,6 +2610,10 @@ begin
  Size.y:=aHeight;
  Alignment.x:=aHorizontalAlignment;
  Alignment.y:=aVerticalAlignment;
+ Padding[0,0]:=aPaddingLeft;
+ Padding[0,1]:=aPaddingRight;
+ Padding[1,0]:=aPaddingTop;
+ Padding[1,1]:=aPaddingBottom;
 end;
 
 constructor TpvGUIAdvancedGridLayoutAnchor.Create(const aX,aY:TpvUInt8;const aHorizontalAlignment,aVerticalAlignment:TpvGUILayoutAlignment);
@@ -2621,6 +2624,10 @@ begin
  Size.y:=1;
  Alignment.x:=aHorizontalAlignment;
  Alignment.y:=aVerticalAlignment;
+ Padding[0,0]:=0.0;
+ Padding[0,1]:=0.0;
+ Padding[1,0]:=0.0;
+ Padding[1,1]:=0.0;
 end;
 
 constructor TpvGUIAdvancedGridLayoutAnchor.Create(const aX,aY:TpvUInt8);
@@ -2631,6 +2638,10 @@ begin
  Size.y:=1;
  Alignment.x:=pvglaFill;
  Alignment.y:=pvglaFill;
+ Padding[0,0]:=0.0;
+ Padding[0,1]:=0.0;
+ Padding[1,0]:=0.0;
+ Padding[1,1]:=0.0;
 end;
 
 constructor TpvGUIAdvancedGridLayoutColumnRow.Create(const aSize:TpvFloat;const aStretch:TpvFloat=0.0);
@@ -2753,6 +2764,7 @@ begin
         end else begin
          ChildTargetSize:=ChildPreferredSize;
         end;
+        ChildTargetSize:=ChildTargetSize+(Anchor.Padding[AxisIndex,0]+Anchor.Padding[AxisIndex,1]);
         if (Anchor.Position.Axis[AxisIndex]+Anchor.Size.Axis[AxisIndex])>ColumnRows.Count then begin
          raise EpvGUIAdvancedGridLayout.Create('A widget is out of bounds');
         end;
@@ -2893,8 +2905,8 @@ begin
      AnchorEntity:=fAnchors.Get(ChildWidget,false);
      if assigned(AnchorEntity) then begin
       Anchor:=AnchorEntity^.Value;
-      ChildPosition:=GetGrid(AxisIndex,Anchor.Position.Axis[AxisIndex]);
-      CellSize:=GetGrid(AxisIndex,Anchor.Position.Axis[AxisIndex]+Anchor.Size.Axis[AxisIndex])-ChildPosition;
+      ChildPosition:=GetGrid(AxisIndex,Anchor.Position.Axis[AxisIndex])+Anchor.Padding[AxisIndex,0];
+      CellSize:=(GetGrid(AxisIndex,Anchor.Position.Axis[AxisIndex]+Anchor.Size.Axis[AxisIndex])-Anchor.Padding[AxisIndex,1])-ChildPosition;
       TargetSize:=fTargetSizes[ChildIndex][AxisIndex];
       case Anchor.Alignment.Axis[AxisIndex] of
        pvglaLeading:begin
