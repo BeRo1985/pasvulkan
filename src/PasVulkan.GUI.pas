@@ -3037,15 +3037,48 @@ begin
 end;
 
 procedure TpvGUIFlowLayout.PerformLayout(const aWidget:TpvGUIWidget);
-var RowFromChildIndex,RowToChildIndex:TpvInt32;
+var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
     ContainerSize:TpvVector2;
  procedure FlushRow;
+ var ChildIndex:TpvInt32;
+     Child:TpvGUIObject;
+     ChildWidget:TpvGUIWidget;
+     MinPosition,MaxPosition,MaxHeight:TpvFloat;
  begin
   if RowFromChildIndex<RowToChildIndex then begin
 
+   MinPosition:=MaxSingle;
+   MaxPosition:=-MaxSingle;
+
+   MaxHeight:=0.0;
+
+   for ChildIndex:=RowFromChildIndex to RowToChildIndex do begin
+    Child:=aWidget.fChildren.Items[ChildIndex];
+    if Child is TpvGUIWidget then begin
+     ChildWidget:=Child as TpvGUIWidget;
+     if ChildWidget.Visible then begin
+      MinPosition:=Min(MinPosition,ChildWidget.fPosition[Axis0]);
+      MaxPosition:=Max(MaxPosition,ChildWidget.fPosition[Axis0]);
+      MaxHeight:=Max(MaxHeight,ChildWidget.fSize[Axis1]);
+     end;
+    end;
+   end;
+
+   if fAlignmentOnBaseLine then begin
+    for ChildIndex:=RowFromChildIndex to RowToChildIndex do begin
+     Child:=aWidget.fChildren.Items[ChildIndex];
+     if Child is TpvGUIWidget then begin
+      ChildWidget:=Child as TpvGUIWidget;
+      if ChildWidget.Visible then begin
+       ChildWidget.fPosition[Axis1]:=ChildWidget.fPosition[Axis1]+((MaxHeight-ChildWidget.fSize[Axis1])*0.5);
+      end;
+     end;
+    end;
+   end;
+
   end;
  end;
-var Axis0,Axis1,ChildIndex:TpvInt32;
+var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
     First:boolean;
