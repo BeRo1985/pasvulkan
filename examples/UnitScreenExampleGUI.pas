@@ -355,7 +355,7 @@ begin
                                                             pgfldLeftToRight,
                                                             pgflaMiddle,
                                                             pgflaMiddle,
-                                                            false);
+                                                            true);
  fGUIYetOtherWindow.AddMinimizationButton;
  fGUIYetOtherWindow.AddMaximizationButton;
  fGUIYetOtherWindow.AddCloseButton;
