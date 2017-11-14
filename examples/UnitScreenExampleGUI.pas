@@ -131,7 +131,8 @@ var Index:TpvInt32;
     MenuItem:TpvGUIMenuItem;
     PopupMenu:TpvGUIPopupMenu;
 //    Popup:TpvGUIPopup;
-    Panel:TPvGUIPanel;
+    Panel:TpvGUIPanel;
+    Window:TpvGUIWindow;
 begin
  inherited Show;
 
@@ -404,6 +405,23 @@ begin
  fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
  TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasRight;
+
+ Window:=TpvGUIWindow.Create(fGUIInstance);
+ Window.Left:=150;
+ Window.Top:=200;
+ Window.Title:='A yet another example window';
+ Window.Content.Layout:=TpvGUIAdvancedGridLayout.Create(Window.Content,8.0);
+ TpvGUIAdvancedGridLayout(Window.Content.Layout).Rows.Add(1.0,1.0);
+ TpvGUIAdvancedGridLayout(Window.Content.Layout).Columns.Add(1.0,1.0);
+ Window.AddMinimizationButton;
+ Window.AddMaximizationButton;
+ Window.AddCloseButton;
+
+ fGUIButton:=TpvGUIPopupButton.Create(Window.Content);
+ fGUIButton.Caption:='Popup';
+ fGUIButton.Enabled:=true;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasRight;
+ TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,0);
 
 end;
 

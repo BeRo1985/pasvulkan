@@ -576,6 +576,7 @@ type TpvGUIObject=class;
        procedure DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance); virtual;
       public
        function GetWidgetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; virtual;
+       function GetWidgetLayoutPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; virtual;
       public
        function GetWindowPreferredSize(const aWindow:TpvGUIWindow):TpvVector2; virtual;
        procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); virtual;
@@ -674,6 +675,7 @@ type TpvGUIObject=class;
        procedure DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance); override;
       public
        function GetWidgetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
+       function GetWidgetLayoutPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
       public
        function GetWindowPreferredSize(const aWindow:TpvGUIWindow):TpvVector2; override;
        procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); override;
@@ -826,7 +828,8 @@ type TpvGUIObject=class;
        procedure SetCanvas(const aCanvas:TpvCanvas); virtual;
        function GetSkin:TpvGUISkin; virtual;
        procedure SetSkin(const aSkin:TpvGUISkin); virtual;
-       function GetLayoutPreferredSize:TpvVector2; virtual;
+       function GetWidgetPreferredSize:TpvVector2; virtual;
+       function GetWidgetLayoutPreferredSize:TpvVector2; virtual;
        function GetPreferredSize:TpvVector2; virtual;
        function GetFixedSize:TpvVector2; virtual;
        function GetHighlightRect:TpvRect; virtual;
@@ -2814,6 +2817,14 @@ begin
 end;
 
 procedure TpvGUIAdvancedGridLayout.PerformLayout(const aWidget:TpvGUIWidget);
+ function GetGrid(const aAxisIndex,aItemIndex:TpvInt32):TpvFloat;
+ begin
+  if aItemIndex>0 then begin
+   result:=fGrid[aAxisIndex,aItemIndex-1];
+  end else begin
+   result:=fMargin;
+  end;
+ end;
 var AxisIndex,Index,ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
@@ -2882,8 +2893,8 @@ begin
      AnchorEntity:=fAnchors.Get(ChildWidget,false);
      if assigned(AnchorEntity) then begin
       Anchor:=AnchorEntity^.Value;
-      ChildPosition:=fGrid[AxisIndex,Anchor.Position.Axis[AxisIndex]];
-      CellSize:=fGrid[AxisIndex,Anchor.Position.Axis[AxisIndex]+Anchor.Size.Axis[AxisIndex]]-ChildPosition;
+      ChildPosition:=GetGrid(AxisIndex,Anchor.Position.Axis[AxisIndex]);
+      CellSize:=GetGrid(AxisIndex,Anchor.Position.Axis[AxisIndex]+Anchor.Size.Axis[AxisIndex])-ChildPosition;
       TargetSize:=fTargetSizes[ChildIndex][AxisIndex];
       case Anchor.Alignment.Axis[AxisIndex] of
        pvglaLeading:begin
@@ -3385,7 +3396,12 @@ end;
 
 function TpvGUISkin.GetWidgetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
 begin
- result:=aWidget.GetLayoutPreferredSize;
+ result:=aWidget.GetWidgetPreferredSize;
+end;
+
+function TpvGUISkin.GetWidgetLayoutPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
+begin
+ result:=aWidget.GetWidgetLayoutPreferredSize;
 end;
 
 function TpvGUISkin.GetWindowPreferredSize(const aWindow:TpvGUIWindow):TpvVector2;
@@ -4099,6 +4115,11 @@ begin
  result:=inherited GetWidgetPreferredSize(aWidget);
 end;
 
+function TpvGUIDefaultVectorBasedSkin.GetWidgetLayoutPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
+begin
+ result:=inherited GetWidgetLayoutPreferredSize(aWidget);
+end;
+
 function TpvGUIDefaultVectorBasedSkin.GetWindowPreferredSize(const aWindow:TpvGUIWindow):TpvVector2;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
@@ -4114,7 +4135,7 @@ begin
  TextSize:=aWindow.Font.TextSize(aWindow.fTitle,
                                  fWindowHeaderFontSize)+
            TpvVector2.Create(fSpacing*2.0,0.0);
- result:=Maximum(GetWidgetPreferredSize(aWindow),
+ result:=Maximum(GetWidgetLayoutPreferredSize(aWindow),
                  TextSize);
  if pvgwfHeader in aWindow.fWindowFlags then begin
   result.y:=Maximum(result.y,fWindowHeaderHeight);
@@ -4281,7 +4302,7 @@ end;
 
 function TpvGUIDefaultVectorBasedSkin.GetLabelPreferredSize(const aLabel:TpvGUILabel):TpvVector2;
 begin
- result:=Maximum(GetWidgetPreferredSize(aLabel),
+ result:=Maximum(GetWidgetLayoutPreferredSize(aLabel),
                  aLabel.Font.TextSize(aLabel.fCaption,aLabel.FontSize)+TpvVector2.Create(0.0,0.0));
  if aLabel.fFixedSize.x>0.0 then begin
   result.x:=aLabel.fFixedSize.x;
@@ -4416,7 +4437,7 @@ begin
  end;
  TemporarySize.x:=TextSize.x+IconSize.x+ChevronIconSize.x;
  TemporarySize.y:=Max(TextSize.y,Maximum(IconSize.y,ChevronIconSize.y));
- result:=Maximum(GetWidgetPreferredSize(aButton),
+ result:=Maximum(GetWidgetLayoutPreferredSize(aButton),
                  TemporarySize+TpvVector2.Create(20.0,10.0));
  if aButton.fFixedSize.x>0.0 then begin
   result.x:=aButton.fFixedSize.x;
@@ -4675,7 +4696,7 @@ end;
 
 function TpvGUIDefaultVectorBasedSkin.GetCheckBoxPreferredSize(const aCheckBox:TpvGUICheckBox):TpvVector2;
 begin
- result:=Maximum(Maximum(GetWidgetPreferredSize(aCheckBox),
+ result:=Maximum(Maximum(GetWidgetLayoutPreferredSize(aCheckBox),
                          aCheckBox.Font.TextSize(aCheckBox.fCaption,aCheckBox.FontSize)+
                          TpvVector2.Create(fCheckBoxSize.x+fSpacing,0.0)),
                  fCheckBoxSize);
@@ -4783,7 +4804,7 @@ var TextSize:TpvVector2;
 begin
  TextSize.x:=4*2;
  TextSize.y:=(aTextEdit.Font.RowHeight(100,aTextEdit.GetFontSize))+(4*2);
- result:=Maximum(GetWidgetPreferredSize(aTextEdit),
+ result:=Maximum(GetWidgetLayoutPreferredSize(aTextEdit),
                  Maximum(TextSize,
                          TpvVector2.Create(aTextEdit.fMinimumWidth,aTextEdit.fMinimumHeight)));
  if aTextEdit.fFixedSize.x>0.0 then begin
@@ -5321,7 +5342,7 @@ end;
 function TpvGUIDefaultVectorBasedSkin.GetWindowMenuPreferredSize(const aWindowMenu:TpvGUIWindowMenu):TpvVector2;
 begin
  ProcessWindowMenuItems(aWindowMenu);
- result:=Maximum(GetWidgetPreferredSize(aWindowMenu),
+ result:=Maximum(GetWidgetLayoutPreferredSize(aWindowMenu),
                  TpvVector2.Create(0.0,fWindowMenuHeight));
  if aWindowMenu.fFixedSize.x>0.0 then begin
   result.x:=aWindowMenu.fFixedSize.x;
@@ -5763,12 +5784,21 @@ begin
  until false;
 end;
 
-function TpvGUIWidget.GetLayoutPreferredSize:TpvVector2;
+function TpvGUIWidget.GetWidgetPreferredSize:TpvVector2;
 begin
  if assigned(fLayout) then begin
   result:=fLayout.GetPreferredSize(self);
  end else begin
   result:=fSize;
+ end;
+end;
+
+function TpvGUIWidget.GetWidgetLayoutPreferredSize:TpvVector2;
+begin
+ if assigned(fLayout) then begin
+  result:=fLayout.GetPreferredSize(self);
+ end else begin
+  result:=TpvVector2.Null;
  end;
 end;
 
