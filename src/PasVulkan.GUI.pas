@@ -383,8 +383,9 @@ type TpvGUIObject=class;
      TpvGUIAdvancedGridLayoutAnchor=record
       public
        class function CreateNull:TpvGUIAdvancedGridLayoutAnchor; static; inline;
-       constructor Create(const aX,aY:TpvUInt8;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill); overload;
-       constructor Create(const aX,aY:TpvUInt8;const aWidth:TpvUInt8=1;const aHeight:TpvUInt8=1;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill); overload;
+       constructor Create(const aX,aY:TpvUInt8;const aWidth,aHeight:TpvUInt8;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill); overload;
+       constructor Create(const aX,aY:TpvUInt8;const aHorizontalAlignment,aVerticalAlignment:TpvGUILayoutAlignment); overload;
+       constructor Create(const aX,aY:TpvUInt8); overload;
        case boolean of
         false:(
          Position:TpvGUIAdvancedGridLayoutAnchorVector;
@@ -2599,7 +2600,17 @@ begin
 {$ifend}
 end;
 
-constructor TpvGUIAdvancedGridLayoutAnchor.Create(const aX,aY:TpvUInt8;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill);
+constructor TpvGUIAdvancedGridLayoutAnchor.Create(const aX,aY:TpvUInt8;const aWidth,aHeight:TpvUInt8;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill);
+begin
+ Position.x:=aX;
+ Position.y:=aY;
+ Size.x:=aWidth;
+ Size.y:=aHeight;
+ Alignment.x:=aHorizontalAlignment;
+ Alignment.y:=aVerticalAlignment;
+end;
+
+constructor TpvGUIAdvancedGridLayoutAnchor.Create(const aX,aY:TpvUInt8;const aHorizontalAlignment,aVerticalAlignment:TpvGUILayoutAlignment);
 begin
  Position.x:=aX;
  Position.y:=aY;
@@ -2609,14 +2620,14 @@ begin
  Alignment.y:=aVerticalAlignment;
 end;
 
-constructor TpvGUIAdvancedGridLayoutAnchor.Create(const aX,aY:TpvUInt8;const aWidth:TpvUInt8=1;const aHeight:TpvUInt8=1;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill);
+constructor TpvGUIAdvancedGridLayoutAnchor.Create(const aX,aY:TpvUInt8);
 begin
  Position.x:=aX;
  Position.y:=aY;
- Size.x:=aWidth;
- Size.y:=aHeight;
- Alignment.x:=aHorizontalAlignment;
- Alignment.y:=aVerticalAlignment;
+ Size.x:=1;
+ Size.y:=1;
+ Alignment.x:=pvglaFill;
+ Alignment.y:=pvglaFill;
 end;
 
 constructor TpvGUIAdvancedGridLayoutColumnRow.Create(const aSize:TpvFloat;const aStretch:TpvFloat=0.0);
@@ -2718,7 +2729,7 @@ begin
   SetLength(fGrid[AxisIndex],fGridDimensions[AxisIndex]);
 
   for Index:=0 to fGridDimensions[AxisIndex]-1 do begin
-   fGrid[AxisIndex,Index]:=ColumnRows[AxisIndex].fSize;
+   fGrid[AxisIndex,Index]:=ColumnRows[Index].fSize;
   end;
 
   for PhaseIndex:=0 to 1 do begin
@@ -3183,6 +3194,8 @@ begin
 
  RowFromChildIndex:=0;
  RowToChildIndex:=-1;
+
+ MaxAxis1:=0.0;
 
  Position:=TpvVector2.Create(fMargin,fMargin);
 
