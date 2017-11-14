@@ -290,8 +290,30 @@ type TpvGUIObject=class;
        procedure SetAlignments(const aAlignments:array of TpvGUILayoutAlignment);
      end;
 
+     PpvGUIGridLayoutFlag=^TpvGUIGridLayoutFlag;
+     TpvGUIGridLayoutFlag=
+      (
+       pvgglfStretchHorizontal,
+       pvgglfStretchVertical
+      );
+
+     PpvGUIGridLayoutFlags=^TpvGUIGridLayoutFlags;
+     TpvGUIGridLayoutFlags=set of TpvGUIGridLayoutFlag;
+
      TpvGUIGridLayout=class(TpvGUILayout)
       private
+       const AxisStretchFlags:array[0..1] of TpvGUIGridLayoutFlag=
+              (
+               pvgglfStretchHorizontal,
+               pvgglfStretchVertical
+              );
+              AxisOrientationAxes:array[TpvGUILayoutOrientation,0..1] of TpvInt32=
+               (
+                (0,1), // pvgloHorizontal
+                (1,0)  // pvgloVertical
+               );
+      private
+       fFlags:TpvGUIGridLayoutFlags;
        fResolution:TpvInt32;
        fDefaultAlignments:array[0..1] of TpvGUILayoutAlignment;
        fAlignments:array[0..1] of TpvGUIGridLayoutAlignments;
@@ -324,6 +346,7 @@ type TpvGUIObject=class;
                           const aVerticalSpacing:TpvFloat=0.0); reintroduce; virtual;
        destructor Destroy; override;
       published
+       property Flags:TpvGUIGridLayoutFlags read fFlags write fFlags;
        property Resolution:TpvInt32 read fResolution write SetResolution;
        property ColumnAlignments:TpvGUIGridLayoutAlignments read GetColumnAlignments;
        property RowAlignments:TpvGUIGridLayoutAlignments read GetRowAlignments;
@@ -2140,6 +2163,8 @@ begin
 
  inherited Create(aParent);
 
+ fFlags:=[pvgglfStretchHorizontal,pvgglfStretchVertical];
+
  fSpacingProperty:=TpvVector2Property.Create(@fSpacing);
 
  SetColumnAlignment(aColumnAlignment);
@@ -2224,13 +2249,8 @@ var Axis0,Axis1,VisibleChildren,ChildIndex,i0,i1:TpvInt32;
     ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
 begin
 
- if fOrientation=pvgloHorizontal then begin
-  Axis0:=0;
-  Axis1:=1;
- end else begin
-  Axis0:=1;
-  Axis1:=0;
- end;
+ Axis0:=TpvGUIGridLayout.AxisOrientationAxes[fOrientation,0];
+ Axis1:=TpvGUIGridLayout.AxisOrientationAxes[fOrientation,1];
 
  VisibleChildren:=0;
 
@@ -2364,27 +2384,24 @@ begin
  ComputeLayout(aWidget);
 
  for AxisIndex:=0 to 1 do begin
-  GridSize[AxisIndex]:=2.0*fMargin;
-  for ItemIndex:=0 to fGridDimensions[AxisIndex]-1 do begin
-   GridSize[AxisIndex]:=GridSize[AxisIndex]+fGrid[AxisIndex,ItemIndex];
-  end;
-  GridSize[AxisIndex]:=GridSize[AxisIndex]+(Max(fGridDimensions[AxisIndex]-1,0)*fSpacing[AxisIndex]);
-  if (fGridDimensions[AxisIndex]>0) and (GridSize[AxisIndex]<ContainerSize[AxisIndex]) then begin
-   Gap:=ContainerSize[AxisIndex]-GridSize[AxisIndex];
-   SpreadedGap:=Gap/fGridDimensions[AxisIndex];
+  if TpvGUIGridLayout.AxisStretchFlags[AxisIndex] in fFlags then begin
+   GridSize[AxisIndex]:=2.0*fMargin;
    for ItemIndex:=0 to fGridDimensions[AxisIndex]-1 do begin
-    fGrid[AxisIndex,ItemIndex]:=fGrid[AxisIndex,ItemIndex]+SpreadedGap;
+    GridSize[AxisIndex]:=GridSize[AxisIndex]+fGrid[AxisIndex,ItemIndex];
+   end;
+   GridSize[AxisIndex]:=GridSize[AxisIndex]+(Max(fGridDimensions[AxisIndex]-1,0)*fSpacing[AxisIndex]);
+   if (fGridDimensions[AxisIndex]>0) and (GridSize[AxisIndex]<ContainerSize[AxisIndex]) then begin
+    Gap:=ContainerSize[AxisIndex]-GridSize[AxisIndex];
+    SpreadedGap:=Gap/fGridDimensions[AxisIndex];
+    for ItemIndex:=0 to fGridDimensions[AxisIndex]-1 do begin
+     fGrid[AxisIndex,ItemIndex]:=fGrid[AxisIndex,ItemIndex]+SpreadedGap;
+    end;
    end;
   end;
  end;
 
- if fOrientation=pvgloHorizontal then begin
-  Axis0:=0;
-  Axis1:=1;
- end else begin
-  Axis0:=1;
-  Axis1:=0;
- end;
+ Axis0:=TpvGUIGridLayout.AxisOrientationAxes[fOrientation,0];
+ Axis1:=TpvGUIGridLayout.AxisOrientationAxes[fOrientation,1];
 
  Start:=TpvVector2.Create(fMargin,fMargin);
 
