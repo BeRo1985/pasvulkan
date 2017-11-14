@@ -458,6 +458,9 @@ type TpvGUIObject=class;
        pgflaTailing
       );
 
+     PpvGUIFlowLayoutAlignments=^TpvGUIFlowLayoutAlignments;
+     TpvGUIFlowLayoutAlignments=array[0..1] of TpvGUIFlowLayoutAlignment;
+
      TpvGUIFlowLayout=class(TpvGUILayout)
       private
        const AxisOrientationAxes:array[TpvGUILayoutOrientation,0..1] of TpvInt32=
@@ -473,8 +476,12 @@ type TpvGUIObject=class;
        fSpacing:TpvVector2;
        fSpacingProperty:TpvVector2Property;
        fDirection:TpvGUIFlowLayoutDirection;
-       fAlignment:TpvGUIFlowLayoutAlignment;
+       fAlignments:TpvGUIFlowLayoutAlignments;
        fAlignmentOnBaseLine:boolean;
+       function GetHorizontalAlignment:TpvGUIFlowLayoutAlignment; inline;
+       procedure SetHorizontalAlignment(const aHorizontalAlignment:TpvGUIFlowLayoutAlignment); inline;
+       function GetVerticalAlignment:TpvGUIFlowLayoutAlignment; inline;
+       procedure SetVerticalAlignment(const aVerticalAlignment:TpvGUIFlowLayoutAlignment); inline;
       protected
        function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
        procedure PerformLayout(const aWidget:TpvGUIWidget); override;
@@ -487,7 +494,8 @@ type TpvGUIObject=class;
                           const aHorizontalSpacing:TpvFloat=4.0;
                           const aVerticalSpacing:TpvFloat=4.0;
                           const aDirection:TpvGUIFlowLayoutDirection=pgfldLeftToRight;
-                          const aAlignment:TpvGUIFlowLayoutAlignment=pgflaMiddle;
+                          const aHorizontalAlignment:TpvGUIFlowLayoutAlignment=pgflaLeading;
+                          const aVerticalAlignment:TpvGUIFlowLayoutAlignment=pgflaLeading;
                           const aAlignmentOnBaseLine:boolean=false); reintroduce; virtual;
        destructor Destroy; override;
       published
@@ -496,7 +504,8 @@ type TpvGUIObject=class;
        property DesignedSize:TpvVector2Property read fDesignedSizeProperty;
        property Spacing:TpvVector2Property read fSpacingProperty;
        property Direction:TpvGUIFlowLayoutDirection read fDirection write fDirection;
-       property Alignment:TpvGUIFlowLayoutAlignment read fAlignment write fAlignment;
+       property HorizontalAlignment:TpvGUIFlowLayoutAlignment read GetHorizontalAlignment write SetHorizontalAlignment;
+       property VerticalAlignment:TpvGUIFlowLayoutAlignment read GetVerticalAlignment write SetVerticalAlignment;
        property AlignmentOnBaseLine:boolean read fAlignmentOnBaseLine write fAlignmentOnBaseLine;
      end;
 
@@ -2907,7 +2916,8 @@ constructor TpvGUIFlowLayout.Create(const aParent:TpvGUIObject;
                                     const aHorizontalSpacing:TpvFloat=4.0;
                                     const aVerticalSpacing:TpvFloat=4.0;
                                     const aDirection:TpvGUIFlowLayoutDirection=pgfldLeftToRight;
-                                    const aAlignment:TpvGUIFlowLayoutAlignment=pgflaMiddle;
+                                    const aHorizontalAlignment:TpvGUIFlowLayoutAlignment=pgflaLeading;
+                                    const aVerticalAlignment:TpvGUIFlowLayoutAlignment=pgflaLeading;
                                     const aAlignmentOnBaseLine:boolean=false);
 begin
 
@@ -2927,7 +2937,9 @@ begin
 
  fDirection:=aDirection;
 
- fAlignment:=aAlignment;
+ fAlignments[0]:=aHorizontalAlignment;
+
+ fAlignments[1]:=aVerticalAlignment;
 
  fAlignmentOnBaseLine:=aAlignmentOnBaseLine;
 
@@ -2942,6 +2954,26 @@ begin
 
  inherited Destroy;
 
+end;
+
+function TpvGUIFlowLayout.GetHorizontalAlignment:TpvGUIFlowLayoutAlignment;
+begin
+ result:=fAlignments[0];
+end;
+
+procedure TpvGUIFlowLayout.SetHorizontalAlignment(const aHorizontalAlignment:TpvGUIFlowLayoutAlignment);
+begin
+ fAlignments[0]:=aHorizontalAlignment;
+end;
+
+function TpvGUIFlowLayout.GetVerticalAlignment:TpvGUIFlowLayoutAlignment;
+begin
+ result:=fAlignments[1];
+end;
+
+procedure TpvGUIFlowLayout.SetVerticalAlignment(const aVerticalAlignment:TpvGUIFlowLayoutAlignment);
+begin
+ fAlignments[1]:=aVerticalAlignment;
 end;
 
 function TpvGUIFlowLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
@@ -3074,11 +3106,11 @@ var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
     end;
    end;
 
-   case fAlignment of
+   case fAlignments[Axis0] of
     pgflaLeading:begin
      Difference:=fMargin-MinPosition;
      for ChildIndex:=RowFromChildIndex to RowToChildIndex do begin
-     Child:=aWidget.fChildren.Items[ChildIndex];
+      Child:=aWidget.fChildren.Items[ChildIndex];
       if Child is TpvGUIWidget then begin
        ChildWidget:=Child as TpvGUIWidget;
        if ChildWidget.Visible then begin
@@ -3102,7 +3134,7 @@ var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
     pgflaTailing:begin
      Difference:=((ContainerSize[Axis0]-(fMargin+(MaxPosition-MinPosition))))-MinPosition;
      for ChildIndex:=RowFromChildIndex to RowToChildIndex do begin
-     Child:=aWidget.fChildren.Items[ChildIndex];
+      Child:=aWidget.fChildren.Items[ChildIndex];
       if Child is TpvGUIWidget then begin
        ChildWidget:=Child as TpvGUIWidget;
        if ChildWidget.Visible then begin
@@ -3121,7 +3153,7 @@ var ChildIndex:TpvInt32;
     First:boolean;
     FixedSize,ChildPreferredSize,ChildFixedSize,ChildTargetSize,
     Position:TpvVector2;
-    MaxAxis1:TpvFloat;
+    MaxAxis1,MinPosition,MaxPosition,MaxHeight,Difference:TpvFloat;
 begin
 
  Axis0:=AxisOrientationAxes[fOrientation,0];
@@ -3209,6 +3241,62 @@ begin
  end;
 
  FlushRow;
+
+ MinPosition:=MaxSingle;
+ MaxPosition:=-MaxSingle;
+
+ MaxHeight:=0.0;
+
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    MinPosition:=Min(MinPosition,ChildWidget.fPosition[Axis1]);
+    MaxPosition:=Max(MaxPosition,ChildWidget.fPosition[Axis1]+ChildWidget.fSize[Axis1]);
+    MaxHeight:=Max(MaxHeight,ChildWidget.fSize[Axis0]);
+   end;
+  end;
+ end;
+
+ case fAlignments[Axis1] of
+  pgflaLeading:begin
+   Difference:=fMargin-MinPosition;
+   for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+    Child:=aWidget.fChildren.Items[ChildIndex];
+    if Child is TpvGUIWidget then begin
+     ChildWidget:=Child as TpvGUIWidget;
+     if ChildWidget.Visible then begin
+      ChildWidget.fPosition[Axis1]:=ChildWidget.fPosition[Axis1]+Difference;
+     end;
+    end;
+   end;
+  end;
+  pgflaMiddle:begin
+   Difference:=((ContainerSize[Axis1]-(MaxPosition-MinPosition))*0.5)-MinPosition;
+   for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+    Child:=aWidget.fChildren.Items[ChildIndex];
+    if Child is TpvGUIWidget then begin
+     ChildWidget:=Child as TpvGUIWidget;
+     if ChildWidget.Visible then begin
+      ChildWidget.fPosition[Axis1]:=ChildWidget.fPosition[Axis1]+Difference;
+     end;
+    end;
+   end;
+  end;
+  pgflaTailing:begin
+   Difference:=((ContainerSize[Axis1]-(fMargin+(MaxPosition-MinPosition))))-MinPosition;
+   for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+    Child:=aWidget.fChildren.Items[ChildIndex];
+    if Child is TpvGUIWidget then begin
+     ChildWidget:=Child as TpvGUIWidget;
+     if ChildWidget.Visible then begin
+      ChildWidget.fPosition[Axis1]:=ChildWidget.fPosition[Axis1]+Difference;
+     end;
+    end;
+   end;
+  end;
+ end;
 
  for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
   Child:=aWidget.fChildren.Items[ChildIndex];

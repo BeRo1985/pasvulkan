@@ -354,6 +354,7 @@ begin
                                                             4.0,
                                                             pgfldLeftToRight,
                                                             pgflaMiddle,
+                                                            pgflaMiddle,
                                                             false);
  fGUIYetOtherWindow.AddMinimizationButton;
  fGUIYetOtherWindow.AddMaximizationButton;
