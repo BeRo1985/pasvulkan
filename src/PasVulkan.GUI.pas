@@ -1846,12 +1846,20 @@ begin
      First:=false;
      LastVisibleChildWidget:=ChildWidget;
     end;
-    ChildWidget.PerformLayout;
    end;
   end;
  end;
  if assigned(LastVisibleChildWidget) then begin
   LastVisibleChildWidget.Height:=ContainerSize.y-(LastVisibleChildWidget.Top+(fMargin*2.0));
+ end;
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    ChildWidget.PerformLayout;
+   end;
+  end;
  end;
 end;
 
