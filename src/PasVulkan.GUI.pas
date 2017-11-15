@@ -1831,7 +1831,7 @@ begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
     if IsInstance and (ChildWidget is TpvGUIWindow) then begin
-     ChildWidget.Size.Vector:=ChildTargetSize;
+     ChildWidget.fSize:=ChildTargetSize;
     end else begin
      if not First then begin
       Offset:=Offset+fSpacing;
@@ -1845,9 +1845,9 @@ begin
       ChildTargetSize.x:=ContainerSize.x-(fMargin*2.0);
      end;
      if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
-      ChildWidget.Position.Vector:=Position;
+      ChildWidget.fPosition:=Position;
      end;
-     ChildWidget.Size.Vector:=ChildTargetSize;
+     ChildWidget.fSize:=ChildTargetSize;
      Offset:=Offset+ChildTargetSize.y;
      First:=false;
      LastVisibleChildWidget:=ChildWidget;
@@ -1922,9 +1922,9 @@ begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
     if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
-     ChildWidget.Position.Vector:=TpvVector2.Create(fMargin,fMargin);
+     ChildWidget.fPosition:=TpvVector2.Create(fMargin,fMargin);
     end;
-    ChildWidget.Size.Vector:=ChildTargetSize-(TpvVector2.Create(fMargin,fMargin)*2.0);
+    ChildWidget.fSize:=ChildTargetSize-(TpvVector2.Create(fMargin,fMargin)*2.0);
     ChildWidget.PerformLayout;
    end;
   end;
@@ -2071,9 +2071,9 @@ begin
      end;
     end;
     if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
-     ChildWidget.Position.Vector:=Position;
+     ChildWidget.fPosition:=Position;
     end;
-    ChildWidget.Size.Vector:=ChildTargetSize;
+    ChildWidget.fSize:=ChildTargetSize;
     ChildWidget.PerformLayout;
     Offset:=Offset+ChildTargetSize[Axis0];
     First:=false;
@@ -2209,8 +2209,8 @@ begin
     end else begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
-    ChildWidget.Position.Vector:=TpvVector2.Create(fMargin+((ord(IndentCurrent) and 1)*fGroupIdent),Size.y);
-    ChildWidget.Size.Vector:=ChildTargetSize;
+    ChildWidget.fPosition:=TpvVector2.Create(fMargin+((ord(IndentCurrent) and 1)*fGroupIdent),Size.y);
+    ChildWidget.fSize:=ChildTargetSize;
     ChildWidget.PerformLayout;
     Size.y:=Size.y+ChildTargetSize.y;
     if assigned(ChildLabel) then begin
@@ -2565,9 +2565,9 @@ begin
 
     end;
 
-    ChildWidget.Position.Vector:=ChildPosition;
+    ChildWidget.fPosition:=ChildPosition;
 
-    ChildWidget.Size.Vector:=ChildTargetSize;
+    ChildWidget.fSize:=ChildTargetSize;
 
     ChildWidget.PerformLayout;
 
@@ -2945,8 +2945,8 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
-    ChildWidget.Position.Vector:=fPositions[ChildIndex];
-    ChildWidget.Size.Vector:=fSizes[ChildIndex];
+    ChildWidget.fPosition:=fPositions[ChildIndex];
+    ChildWidget.fSize:=fSizes[ChildIndex];
     ChildWidget.PerformLayout;
    end;
   end;
@@ -3367,8 +3367,8 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
-    ChildWidget.Position.Vector:=fPositions[ChildIndex];
-    ChildWidget.Size.Vector:=fSizes[ChildIndex];
+    ChildWidget.fPosition:=fPositions[ChildIndex];
+    ChildWidget.fSize:=fSizes[ChildIndex];
     ChildWidget.PerformLayout;
    end;
   end;
@@ -6114,7 +6114,7 @@ begin
     end else begin
      ChildWidgetSize.y:=ChildWidgetPreferredSize.y;
     end;
-    ChildWidget.Size.Vector:=ChildWidgetSize;
+    ChildWidget.fSize:=ChildWidgetSize;
     ChildWidget.PerformLayout;
    end;
   end;
@@ -6625,10 +6625,10 @@ procedure TpvGUIInstance.CenterWindow(const aWindow:TpvGUIWindow);
 begin
  if assigned(aWindow) then begin
   if aWindow.fSize=TpvVector2.Null then begin
-   aWindow.Size.Vector:=aWindow.PreferredSize;
+   aWindow.fSize:=aWindow.PreferredSize;
    aWindow.PerformLayout;
   end;
-  aWindow.Position.Vector:=(fSize-aWindow.fSize)*0.5;
+  aWindow.fPosition:=(fSize-aWindow.fSize)*0.5;
  end;
 end;
 
@@ -8092,8 +8092,8 @@ begin
  fPopup:=TpvGUIPopup.Create(self);
  fPopup.Visible:=false;
  fPopup.AnchorSide:=pvgpasBottom;
- fPopup.Size.Vector:=TpvVector2.Create(160,80);
- fPopup.FixedSize.Vector:=TpvVector2.Create(160,80);
+ fPopup.fSize:=TpvVector2.Create(160,80);
+ fPopup.fFixedSize:=TpvVector2.Create(160,80);
 
 end;
 
