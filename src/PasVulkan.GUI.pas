@@ -808,6 +808,8 @@ type TpvGUIObject=class;
        procedure SetTabStop(const aTabStop:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetWantAllKeys:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetWantAllKeys(const aWantAllKeys:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       procedure PositionOnChange(const aSender:TObject); virtual;
+       procedure SizeOnChange(const aSender:TObject); virtual;
        function GetLeft:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetLeft(const aLeft:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetTop:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1122,6 +1124,7 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
+       procedure UpdatePosition;
        procedure PerformLayout; override;
        procedure Update; override;
        procedure Draw; override;
@@ -1244,6 +1247,8 @@ type TpvGUIObject=class;
       private
        fPopup:TpvGUIPopup;
       protected
+       procedure PositionOnChange(const aSender:TObject); override;
+       procedure SizeOnChange(const aSender:TObject); override;
        procedure SetDown(const aDown:boolean); override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -5522,8 +5527,10 @@ begin
  fFixedSize:=TpvVector2.Create(-1.0,-1.0);
 
  fPositionProperty:=TpvVector2Property.Create(@fPosition);
+ fPositionProperty.OnChange:=PositionOnChange;
 
  fSizeProperty:=TpvVector2Property.Create(@fSize);
+ fSizeProperty.OnChange:=SizeOnChange;
 
  fFixedSizeProperty:=TpvVector2Property.Create(@fFixedSize);
 
@@ -5734,6 +5741,14 @@ begin
  end;
 end;
 
+procedure TpvGUIWidget.PositionOnChange(const aSender:TObject);
+begin
+end;
+
+procedure TpvGUIWidget.SizeOnChange(const aSender:TObject);
+begin
+end;
+
 function TpvGUIWidget.GetLeft:TpvFloat;
 begin
  result:=fPosition.x;
@@ -5741,7 +5756,7 @@ end;
 
 procedure TpvGUIWidget.SetLeft(const aLeft:TpvFloat);
 begin
- fPosition.x:=aLeft;
+ Position.x:=aLeft;
 end;
 
 function TpvGUIWidget.GetTop:TpvFloat;
@@ -5751,7 +5766,7 @@ end;
 
 procedure TpvGUIWidget.SetTop(const aTop:TpvFloat);
 begin
- fPosition.y:=aTop;
+ Position.y:=aTop;
 end;
 
 function TpvGUIWidget.GetWidth:TpvFloat;
@@ -5761,7 +5776,7 @@ end;
 
 procedure TpvGUIWidget.SetWidth(const aWidth:TpvFloat);
 begin
- fSize.x:=aWidth;
+ Size.x:=aWidth;
 end;
 
 function TpvGUIWidget.GetHeight:TpvFloat;
@@ -5771,7 +5786,7 @@ end;
 
 procedure TpvGUIWidget.SetHeight(const aHeight:TpvFloat);
 begin
- fSize.y:=aHeight;
+ Size.y:=aHeight;
 end;
 
 function TpvGUIWidget.GetFixedWidth:TpvFloat;
@@ -7732,18 +7747,8 @@ begin
  inherited PerformLayout;
 end;
 
-procedure TpvGUIPopup.Update;
+procedure TpvGUIPopup.UpdatePosition;
 begin
-
- if not Visible then begin
-  exit;
- end;
-
- if not RecursiveVisible then begin
-  Visible:=false;
-  exit;
- end;
-
  if assigned(fParentWidget) then begin
   case fAnchorSide of
    pvgpasLeft:begin
@@ -7762,8 +7767,23 @@ begin
     fAnchorSideOffset:=TpvVector2.Null;
    end;
   end;
-  fPosition:=fParentWidget.AbsolutePosition+fAnchorPosition+fAnchorOffset+fAnchorSideOffset;
+  Position.Vector:=fParentWidget.AbsolutePosition+fAnchorPosition+fAnchorOffset+fAnchorSideOffset;
  end;
+end;
+
+procedure TpvGUIPopup.Update;
+begin
+
+ if not Visible then begin
+  exit;
+ end;
+
+ if not RecursiveVisible then begin
+  Visible:=false;
+  exit;
+ end;
+
+ UpdatePosition;
 
  inherited Update;
 
@@ -8086,7 +8106,24 @@ procedure TpvGUIPopupButton.PerformLayout;
 begin
  inherited PerformLayout;
  if assigned(fPopup) and fPopup.Visible then begin
+  fPopup.UpdatePosition;
   fPopup.PerformLayout;
+ end;
+end;
+
+procedure TpvGUIPopupButton.PositionOnChange(const aSender:TObject);
+begin
+ inherited PositionOnChange(aSender);
+ if assigned(fPopup) and fPopup.Visible then begin
+  fPopup.UpdatePosition;
+ end;
+end;
+
+procedure TpvGUIPopupButton.SizeOnChange(const aSender:TObject);
+begin
+ inherited SizeOnChange(aSender);
+ if assigned(fPopup) and fPopup.Visible then begin
+  fPopup.UpdatePosition;
  end;
 end;
 
@@ -8095,6 +8132,7 @@ begin
  inherited SetDown(aDown);
  fPopup.Visible:=aDown;
  if aDown then begin
+  fPopup.UpdatePosition;
   fPopup.PerformLayout;
   fPopup.RequestFocus;
  end;
