@@ -1126,18 +1126,22 @@ type PpvScalar=^TpvScalar;
 
      Mat4=TpvMatrix4x4;
 
+     TpvMathPropertyOnChange=procedure(const aSender:TObject) of object;
+
      TpvVector2Property=class(TPersistent)
       private
        fVector:PpvVector2;
+       fOnChange:TpvMathPropertyOnChange;
        function GetX:TpvScalar;
        function GetY:TpvScalar;
        function GetVector:TpvVector2;
-       procedure SetX(const pNewValue:TpvScalar);
-       procedure SetY(const pNewValue:TpvScalar);
-       procedure SetVector(const pNewVector:TpvVector2);
+       procedure SetX(const aNewValue:TpvScalar);
+       procedure SetY(const aNewValue:TpvScalar);
+       procedure SetVector(const aNewVector:TpvVector2);
       public
-       constructor Create(AVector:PpvVector2);
+       constructor Create(const aVector:PpvVector2);
        destructor Destroy; override;
+       property OnChange:TpvMathPropertyOnChange read fOnChange write fOnChange;
        property Vector:TpvVector2 read GetVector write SetVector;
       published
        property x:TpvScalar read GetX write SetX;
@@ -1147,17 +1151,19 @@ type PpvScalar=^TpvScalar;
      TpvVector3Property=class(TPersistent)
       private
        fVector:PpvVector3;
+       fOnChange:TpvMathPropertyOnChange;
        function GetX:TpvScalar;
        function GetY:TpvScalar;
        function GetZ:TpvScalar;
        function GetVector:TpvVector3;
-       procedure SetX(const pNewValue:TpvScalar);
-       procedure SetY(const pNewValue:TpvScalar);
-       procedure SetZ(const pNewValue:TpvScalar);
-       procedure SetVector(const pNewVector:TpvVector3);
+       procedure SetX(const aNewValue:TpvScalar);
+       procedure SetY(const aNewValue:TpvScalar);
+       procedure SetZ(const aNewValue:TpvScalar);
+       procedure SetVector(const aNewVector:TpvVector3);
       public
-       constructor Create(AVector:PpvVector3);
+       constructor Create(const aVector:PpvVector3);
        destructor Destroy; override;
+       property OnChange:TpvMathPropertyOnChange read fOnChange write fOnChange;
        property Vector:TpvVector3 read GetVector write SetVector;
       published
        property x:TpvScalar read GetX write SetX;
@@ -1168,19 +1174,21 @@ type PpvScalar=^TpvScalar;
      TpvVector4Property=class(TPersistent)
       private
        fVector:PpvVector4;
+       fOnChange:TpvMathPropertyOnChange;
        function GetX:TpvScalar;
        function GetY:TpvScalar;
        function GetZ:TpvScalar;
        function GetW:TpvScalar;
        function GetVector:TpvVector4;
-       procedure SetX(const pNewValue:TpvScalar);
-       procedure SetY(const pNewValue:TpvScalar);
-       procedure SetZ(const pNewValue:TpvScalar);
-       procedure SetW(const pNewValue:TpvScalar);
-       procedure SetVector(const pNewVector:TpvVector4);
+       procedure SetX(const aNewValue:TpvScalar);
+       procedure SetY(const aNewValue:TpvScalar);
+       procedure SetZ(const aNewValue:TpvScalar);
+       procedure SetW(const aNewValue:TpvScalar);
+       procedure SetVector(const aNewVector:TpvVector4);
       public
-       constructor Create(AVector:PpvVector4);
+       constructor Create(const aVector:PpvVector4);
        destructor Destroy; override;
+       property OnChange:TpvMathPropertyOnChange read fOnChange write fOnChange;
        property Vector:TpvVector4 read GetVector write SetVector;
       published
        property x:TpvScalar read GetX write SetX;
@@ -1192,19 +1200,21 @@ type PpvScalar=^TpvScalar;
      TpvQuaternionProperty=class(TPersistent)
       private
        fQuaternion:PpvQuaternion;
+       fOnChange:TpvMathPropertyOnChange;
        function GetX:TpvScalar;
        function GetY:TpvScalar;
        function GetZ:TpvScalar;
        function GetW:TpvScalar;
        function GetQuaternion:TpvQuaternion;
-       procedure SetX(const pNewValue:TpvScalar);
-       procedure SetY(const pNewValue:TpvScalar);
-       procedure SetZ(const pNewValue:TpvScalar);
-       procedure SetW(const pNewValue:TpvScalar);
-       procedure SetQuaternion(const NewQuaternion:TpvQuaternion);
+       procedure SetX(const aNewValue:TpvScalar);
+       procedure SetY(const aNewValue:TpvScalar);
+       procedure SetZ(const aNewValue:TpvScalar);
+       procedure SetW(const aNewValue:TpvScalar);
+       procedure SetQuaternion(const aNewQuaternion:TpvQuaternion);
       public
-       constructor Create(AQuaternion:PpvQuaternion);
+       constructor Create(const AQuaternion:PpvQuaternion);
        destructor Destroy; override;
+       property OnChange:TpvMathPropertyOnChange read fOnChange write fOnChange;
        property Quaternion:TpvQuaternion read GetQuaternion write SetQuaternion;
       published
        property x:TpvScalar read GetX write SetX;
@@ -1216,13 +1226,15 @@ type PpvScalar=^TpvScalar;
      TpvAngleProperty=class(TPersistent)
       private
        fRadianAngle:PpvScalar;
+       fOnChange:TpvMathPropertyOnChange;
        function GetAngle:TpvScalar;
        function GetRadianAngle:TpvScalar;
-       procedure SetAngle(const pNewValue:TpvScalar);
-       procedure SetRadianAngle(const pNewValue:TpvScalar);
+       procedure SetAngle(const aNewValue:TpvScalar);
+       procedure SetRadianAngle(const aNewValue:TpvScalar);
       public
-       constructor Create(ARadianAngle:PpvScalar);
+       constructor Create(const aRadianAngle:PpvScalar);
        destructor Destroy; override;
+       property OnChange:TpvMathPropertyOnChange read fOnChange write fOnChange;
        property RadianAngle:TpvScalar read GetRadianAngle write SetRadianAngle;
       published
        property Angle:TpvScalar read GetAngle write SetAngle;
@@ -1231,6 +1243,7 @@ type PpvScalar=^TpvScalar;
      TpvRotation3DProperty=class(TPersistent)
       private
        fQuaternion:PpvQuaternion;
+       fOnChange:TpvMathPropertyOnChange;
        function GetX:TpvScalar;
        function GetY:TpvScalar;
        function GetZ:TpvScalar;
@@ -1239,17 +1252,18 @@ type PpvScalar=^TpvScalar;
        function GetYaw:TpvScalar;
        function GetRoll:TpvScalar;
        function GetQuaternion:TpvQuaternion;
-       procedure SetX(const pNewValue:TpvScalar);
-       procedure SetY(const pNewValue:TpvScalar);
-       procedure SetZ(const pNewValue:TpvScalar);
-       procedure SetW(const pNewValue:TpvScalar);
-       procedure SetPitch(const pNewValue:TpvScalar);
-       procedure SetYaw(const pNewValue:TpvScalar);
-       procedure SetRoll(const pNewValue:TpvScalar);
-       procedure SetQuaternion(const NewQuaternion:TpvQuaternion);
+       procedure SetX(const aNewValue:TpvScalar);
+       procedure SetY(const aNewValue:TpvScalar);
+       procedure SetZ(const aNewValue:TpvScalar);
+       procedure SetW(const aNewValue:TpvScalar);
+       procedure SetPitch(const aNewValue:TpvScalar);
+       procedure SetYaw(const aNewValue:TpvScalar);
+       procedure SetRoll(const aNewValue:TpvScalar);
+       procedure SetQuaternion(const aNewQuaternion:TpvQuaternion);
       public
-       constructor Create(AQuaternion:PpvQuaternion);
+       constructor Create(const AQuaternion:PpvQuaternion);
        destructor Destroy; override;
+       property OnChange:TpvMathPropertyOnChange read fOnChange write fOnChange;
        property x:TpvScalar read GetX write SetX;
        property y:TpvScalar read GetY write SetY;
        property z:TpvScalar read GetZ write SetZ;
@@ -1264,17 +1278,19 @@ type PpvScalar=^TpvScalar;
      TpvColorRGBProperty=class(TPersistent)
       private
        fVector:PpvVector3;
+       fOnChange:TpvMathPropertyOnChange;
        function GetR:TpvScalar;
        function GetG:TpvScalar;
        function GetB:TpvScalar;
        function GetVector:TpvVector3;
-       procedure SetR(const pNewValue:TpvScalar);
-       procedure SetG(const pNewValue:TpvScalar);
-       procedure SetB(const pNewValue:TpvScalar);
-       procedure SetVector(const pNewVector:TpvVector3);
+       procedure SetR(const aNewValue:TpvScalar);
+       procedure SetG(const aNewValue:TpvScalar);
+       procedure SetB(const aNewValue:TpvScalar);
+       procedure SetVector(const aNewVector:TpvVector3);
       public
-       constructor Create(AVector:PpvVector3);
+       constructor Create(const aVector:PpvVector3);
        destructor Destroy; override;
+       property OnChange:TpvMathPropertyOnChange read fOnChange write fOnChange;
        property Vector:TpvVector3 read GetVector write SetVector;
       published
        property r:TpvScalar read GetR write SetR;
@@ -1285,19 +1301,21 @@ type PpvScalar=^TpvScalar;
      TpvColorRGBAProperty=class(TPersistent)
       private
        fVector:PpvVector4;
+       fOnChange:TpvMathPropertyOnChange;
        function GetR:TpvScalar;
        function GetG:TpvScalar;
        function GetB:TpvScalar;
        function GetA:TpvScalar;
        function GetVector:TpvVector4;
-       procedure SetR(const pNewValue:TpvScalar);
-       procedure SetG(const pNewValue:TpvScalar);
-       procedure SetB(const pNewValue:TpvScalar);
-       procedure SetA(const pNewValue:TpvScalar);
-       procedure SetVector(const pNewVector:TpvVector4);
+       procedure SetR(const aNewValue:TpvScalar);
+       procedure SetG(const aNewValue:TpvScalar);
+       procedure SetB(const aNewValue:TpvScalar);
+       procedure SetA(const aNewValue:TpvScalar);
+       procedure SetVector(const aNewVector:TpvVector4);
       public
-       constructor Create(AVector:PpvVector4);
+       constructor Create(const aVector:PpvVector4);
        destructor Destroy; override;
+       property OnChange:TpvMathPropertyOnChange read fOnChange write fOnChange;
        property Vector:TpvVector4 read GetVector write SetVector;
       published
        property r:TpvScalar read GetR write SetR;
@@ -1489,8 +1507,8 @@ function Float32ToFloat10(const pValue:TpvFloat):TpvUInt32;
 function ConvertRGB32FToRGB9E5(r,g,b:TpvFloat):TpvUInt32;
 function ConvertRGB32FToR11FG11FB10F(const r,g,b:TpvFloat):TpvUInt32; {$ifdef CAN_INLINE}inline;{$endif}
 
-function PackTangentSpace(const Tangent,Bitangent,Normal:TpvVector3):TpvPackedTangentSpace;
-procedure UnpackTangentSpace(var PackedTangentSpace:TpvPackedTangentSpace;var Tangent,Bitangent,Normal:TpvVector3);
+function PackTangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvPackedTangentSpace;
+procedure UnpackTangentSpace(const aPackedTangentSpace:TpvPackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
 
 function ConvertLinearToSRGB(const aColor:TpvVector3):TpvVector3; overload;
 function ConvertLinearToSRGB(const aColor:TpvVector4):TpvVector4; overload;
@@ -15867,10 +15885,10 @@ begin
  result:=(Float32ToFloat11(r) and $7ff) or ((Float32ToFloat11(g) and $7ff) shl 11) or ((Float32ToFloat10(b) and $3ff) shl 22);
 end;
 
-function PackTangentSpace(const Tangent,Bitangent,Normal:TpvVector3):TpvPackedTangentSpace;
+function PackTangentSpace(const aTangent,aBitangent,aNormal:TpvVector3):TpvPackedTangentSpace;
 var q:TpvQuaternion;
 begin
- q:=TpvMatrix3x3.Create(Tangent,Bitangent,Normal).ToQTangent;
+ q:=TpvMatrix3x3.Create(aTangent,aBitangent,aNormal).ToQTangent;
  result.x:=Min(Max((round(q.x*127)+128),0),255);
  result.y:=Min(Max((round(q.y*127)+128),0),255);
  result.z:=Min(Max((round(q.z*127)+128),0),255);
@@ -15878,44 +15896,44 @@ begin
 end;
 {
 begin
-result.x:=Min(Max((round((ArcSin(Normal.z)/PI)*127)+128),0),255);
- result.y:=Min(Max((round((ArcTan2(Normal.y,Normal.x)/PI)*127)+128),0),255);
- result.z:=Min(Max((round((ArcSin(Tangent.z)/PI)*127)+128),0),255);
- result.w:=Min(Max((round((ArcTan2(Tangent.y,Tangent.x)/PI)*127)+128),0),255);
+ result.x:=Min(Max((round((ArcSin(aNormal.z)/PI)*127)+128),0),255);
+ result.y:=Min(Max((round((ArcTan2(aNormal.y,aNormal.x)/PI)*127)+128),0),255);
+ result.z:=Min(Max((round((ArcSin(aTangent.z)/PI)*127)+128),0),255);
+ result.w:=Min(Max((round((ArcTan2(aTangent.y,aTangent.x)/PI)*127)+128),0),255);
 end;{}
 
-procedure UnpackTangentSpace(var PackedTangentSpace:TpvPackedTangentSpace;var Tangent,Bitangent,Normal:TpvVector3);
+procedure UnpackTangentSpace(const aPackedTangentSpace:TpvPackedTangentSpace;out aTangent,aBitangent,aNormal:TpvVector3);
 var q:TpvQuaternion;
     m:TpvMatrix3x3;
 begin
- q.x:=(PackedTangentSpace.x-128)/127;
- q.y:=(PackedTangentSpace.y-128)/127;
- q.z:=(PackedTangentSpace.z-128)/127;
- q.w:=(PackedTangentSpace.w-128)/127;
+ q.x:=(aPackedTangentSpace.x-128)/127;
+ q.y:=(aPackedTangentSpace.y-128)/127;
+ q.z:=(aPackedTangentSpace.z-128)/127;
+ q.w:=(aPackedTangentSpace.w-128)/127;
  m:=TpvMatrix3x3.CreateFromQTangent(q);
- Tangent.x:=m[0,0];
- Tangent.y:=m[0,1];
- Tangent.z:=m[0,2];
- Bitangent.x:=m[1,0];
- Bitangent.y:=m[1,1];
- Bitangent.z:=m[1,2];
- Normal.x:=m[2,0];
- Normal.y:=m[2,1];
- Normal.z:=m[2,2];
+ aTangent.x:=m[0,0];
+ aTangent.y:=m[0,1];
+ aTangent.z:=m[0,2];
+ aBitangent.x:=m[1,0];
+ aBitangent.y:=m[1,1];
+ aBitangent.z:=m[1,2];
+ aNormal.x:=m[2,0];
+ aNormal.y:=m[2,1];
+ aNormal.z:=m[2,2];
 end;
 {var Latitude,Longitude:single;
 begin
- Latitude:=((PackedTangentSpace.x-128)/127)*PI;
- Longitude:=((PackedTangentSpace.y-128)/127)*PI;
- Normal.x:=cos(Latitude)*cos(Longitude);
- Normal.y:=cos(Latitude)*sin(Longitude);
- Normal.z:=sin(Latitude);
- Latitude:=((PackedTangentSpace.z-128)/127)*PI;
- Longitude:=((PackedTangentSpace.w-128)/127)*PI;
- Tangent.x:=cos(Latitude)*cos(Longitude);
- Tangent.y:=cos(Latitude)*sin(Longitude);
- Tangent.z:=sin(Latitude);
- Bitangent:=Vector3Norm(Vector3Cross(Normal,Tangent));
+ Latitude:=((aPackedTangentSpace.x-128)/127)*PI;
+ Longitude:=((aPackedTangentSpace.y-128)/127)*PI;
+ aNormal.x:=cos(Latitude)*cos(Longitude);
+ aNormal.y:=cos(Latitude)*sin(Longitude);
+ aNormal.z:=sin(Latitude);
+ Latitude:=((aPackedTangentSpace.z-128)/127)*PI;
+ Longitude:=((aPackedTangentSpace.w-128)/127)*PI;
+ aTangent.x:=cos(Latitude)*cos(Longitude);
+ aTangent.y:=cos(Latitude)*sin(Longitude);
+ aTangent.z:=sin(Latitude);
+ aBitangent:=Vector3Norm(Vector3Cross(aNormal,aTangent));
 end;{}
 
 function ConvertLinearToSRGB(const aColor:TpvVector3):TpvVector3;
@@ -15980,10 +15998,11 @@ begin
  result.a:=aColor.a;
 end;
 
-constructor TpvVector2Property.Create(AVector:PpvVector2);
+constructor TpvVector2Property.Create(const aVector:PpvVector2);
 begin
  inherited Create;
- fVector:=AVector;
+ fVector:=aVector;
+ fOnChange:=nil;
 end;
 
 destructor TpvVector2Property.Destroy;
@@ -16006,25 +16025,41 @@ begin
  result:=fVector^;
 end;
 
-procedure TpvVector2Property.SetX(const pNewValue:TpvScalar);
+procedure TpvVector2Property.SetX(const aNewValue:TpvScalar);
 begin
- fVector^.x:=pNewValue;
+ if assigned(fOnChange) and (fVector^.x<>aNewValue) then begin
+  fVector^.x:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.x:=aNewValue;
+ end;
 end;
 
-procedure TpvVector2Property.SetY(const pNewValue:TpvScalar);
+procedure TpvVector2Property.SetY(const aNewValue:TpvScalar);
 begin
- fVector^.y:=pNewValue;
+ if assigned(fOnChange) and (fVector^.y<>aNewValue) then begin
+  fVector^.y:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.y:=aNewValue;
+ end;
 end;
 
-procedure TpvVector2Property.SetVector(const pNewVector:TpvVector2);
+procedure TpvVector2Property.SetVector(const aNewVector:TpvVector2);
 begin
- fVector^:=pNewVector;
+ if assigned(fOnChange) and ((fVector^.x<>aNewVector.x) or (fVector^.y<>aNewVector.y)) then begin
+  fVector^:=aNewVector;
+  fOnChange(self);
+ end else begin
+  fVector^:=aNewVector;
+ end;
 end;
 
-constructor TpvVector3Property.Create(AVector:PpvVector3);
+constructor TpvVector3Property.Create(const aVector:PpvVector3);
 begin
  inherited Create;
- fVector:=AVector;
+ fVector:=aVector;
+ fOnChange:=nil;
 end;
 
 destructor TpvVector3Property.Destroy;
@@ -16052,30 +16087,51 @@ begin
  result:=fVector^;
 end;
 
-procedure TpvVector3Property.SetX(const pNewValue:TpvScalar);
+procedure TpvVector3Property.SetX(const aNewValue:TpvScalar);
 begin
- fVector^.x:=pNewValue;
+ if assigned(fOnChange) and (fVector^.x<>aNewValue) then begin
+  fVector^.x:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.x:=aNewValue;
+ end;
 end;
 
-procedure TpvVector3Property.SetY(const pNewValue:TpvScalar);
+procedure TpvVector3Property.SetY(const aNewValue:TpvScalar);
 begin
- fVector^.y:=pNewValue;
+ if assigned(fOnChange) and (fVector^.y<>aNewValue) then begin
+  fVector^.y:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.y:=aNewValue;
+ end;
 end;
 
-procedure TpvVector3Property.SetZ(const pNewValue:TpvScalar);
+procedure TpvVector3Property.SetZ(const aNewValue:TpvScalar);
 begin
- fVector^.z:=pNewValue;
+ if assigned(fOnChange) and (fVector^.z<>aNewValue) then begin
+  fVector^.z:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.z:=aNewValue;
+ end;
 end;
 
-procedure TpvVector3Property.SetVector(const pNewVector:TpvVector3);
+procedure TpvVector3Property.SetVector(const aNewVector:TpvVector3);
 begin
- fVector^:=pNewVector;
+ if assigned(fOnChange) and ((fVector^.x<>aNewVector.x) or (fVector^.y<>aNewVector.y) or (fVector^.z<>aNewVector.z)) then begin
+  fVector^:=aNewVector;
+  fOnChange(self);
+ end else begin
+  fVector^:=aNewVector;
+ end;
 end;
 
-constructor TpvVector4Property.Create(AVector:PpvVector4);
+constructor TpvVector4Property.Create(const aVector:PpvVector4);
 begin
  inherited Create;
- fVector:=AVector;
+ fVector:=aVector;
+ fOnChange:=nil;
 end;
 
 destructor TpvVector4Property.Destroy;
@@ -16108,35 +16164,61 @@ begin
  result:=fVector^;
 end;
 
-procedure TpvVector4Property.SetX(const pNewValue:TpvScalar);
+procedure TpvVector4Property.SetX(const aNewValue:TpvScalar);
 begin
- fVector^.x:=pNewValue;
+ if assigned(fOnChange) and (fVector^.x<>aNewValue) then begin
+  fVector^.x:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.x:=aNewValue;
+ end;
 end;
 
-procedure TpvVector4Property.SetY(const pNewValue:TpvScalar);
+procedure TpvVector4Property.SetY(const aNewValue:TpvScalar);
 begin
- fVector^.y:=pNewValue;
+ if assigned(fOnChange) and (fVector^.y<>aNewValue) then begin
+  fVector^.y:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.y:=aNewValue;
+ end;
 end;
 
-procedure TpvVector4Property.SetZ(const pNewValue:TpvScalar);
+procedure TpvVector4Property.SetZ(const aNewValue:TpvScalar);
 begin
- fVector^.z:=pNewValue;
+ if assigned(fOnChange) and (fVector^.z<>aNewValue) then begin
+  fVector^.z:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.z:=aNewValue;
+ end;
 end;
 
-procedure TpvVector4Property.SetW(const pNewValue:TpvScalar);
+procedure TpvVector4Property.SetW(const aNewValue:TpvScalar);
 begin
- fVector^.w:=pNewValue;
+ if assigned(fOnChange) and (fVector^.w<>aNewValue) then begin
+  fVector^.w:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.w:=aNewValue;
+ end;
 end;
 
-procedure TpvVector4Property.SetVector(const pNewVector:TpvVector4);
+procedure TpvVector4Property.SetVector(const aNewVector:TpvVector4);
 begin
- fVector^:=pNewVector;
+ if assigned(fOnChange) and ((fVector^.x<>aNewVector.x) or (fVector^.y<>aNewVector.y) or (fVector^.z<>aNewVector.z) or (fVector^.w<>aNewVector.w)) then begin
+  fVector^:=aNewVector;
+  fOnChange(self);
+ end else begin
+  fVector^:=aNewVector;
+ end;
 end;
 
-constructor TpvQuaternionProperty.Create(AQuaternion:PpvQuaternion);
+constructor TpvQuaternionProperty.Create(const AQuaternion:PpvQuaternion);
 begin
  inherited Create;
  fQuaternion:=AQuaternion;
+ fOnChange:=nil;
 end;
 
 destructor TpvQuaternionProperty.Destroy;
@@ -16169,35 +16251,61 @@ begin
  result:=fQuaternion^;
 end;
 
-procedure TpvQuaternionProperty.SetX(const pNewValue:TpvScalar);
+procedure TpvQuaternionProperty.SetX(const aNewValue:TpvScalar);
 begin
- fQuaternion^.x:=pNewValue;
+ if assigned(fOnChange) and (fQuaternion^.x<>aNewValue) then begin
+  fQuaternion^.x:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fQuaternion^.x:=aNewValue;
+ end;
 end;
 
-procedure TpvQuaternionProperty.SetY(const pNewValue:TpvScalar);
+procedure TpvQuaternionProperty.SetY(const aNewValue:TpvScalar);
 begin
- fQuaternion^.y:=pNewValue;
+ if assigned(fOnChange) and (fQuaternion^.y<>aNewValue) then begin
+  fQuaternion^.y:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fQuaternion^.y:=aNewValue;
+ end;
 end;
 
-procedure TpvQuaternionProperty.SetZ(const pNewValue:TpvScalar);
+procedure TpvQuaternionProperty.SetZ(const aNewValue:TpvScalar);
 begin
- fQuaternion^.z:=pNewValue;
+ if assigned(fOnChange) and (fQuaternion^.z<>aNewValue) then begin
+  fQuaternion^.z:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fQuaternion^.z:=aNewValue;
+ end;
 end;
 
-procedure TpvQuaternionProperty.SetW(const pNewValue:TpvScalar);
+procedure TpvQuaternionProperty.SetW(const aNewValue:TpvScalar);
 begin
- fQuaternion^.w:=pNewValue;
+ if assigned(fOnChange) and (fQuaternion^.w<>aNewValue) then begin
+  fQuaternion^.w:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fQuaternion^.w:=aNewValue;
+ end;
 end;
 
-procedure TpvQuaternionProperty.SetQuaternion(const NewQuaternion:TpvQuaternion);
+procedure TpvQuaternionProperty.SetQuaternion(const aNewQuaternion:TpvQuaternion);
 begin
- fQuaternion^:=NewQuaternion;
+ if assigned(fOnChange) and ((fQuaternion^.x<>aNewQuaternion.x) or (fQuaternion^.y<>aNewQuaternion.y) or (fQuaternion^.z<>aNewQuaternion.z) or (fQuaternion^.w<>aNewQuaternion.w)) then begin
+  fQuaternion^:=aNewQuaternion;
+  fOnChange(self);
+ end else begin
+  fQuaternion^:=aNewQuaternion;
+ end;
 end;
 
-constructor TpvAngleProperty.Create(ARadianAngle:PpvScalar);
+constructor TpvAngleProperty.Create(const aRadianAngle:PpvScalar);
 begin
  inherited Create;
- fRadianAngle:=ARadianAngle;
+ fRadianAngle:=aRadianAngle;
+ fOnChange:=nil;
 end;
 
 destructor TpvAngleProperty.Destroy;
@@ -16215,20 +16323,26 @@ begin
  result:=fRadianAngle^;
 end;
 
-procedure TpvAngleProperty.SetAngle(const pNewValue:TpvScalar);
+procedure TpvAngleProperty.SetAngle(const aNewValue:TpvScalar);
 begin
- fRadianAngle^:=pNewValue*DEG2RAD;
+ SetRadianAngle(aNewValue*DEG2RAD);
 end;
 
-procedure TpvAngleProperty.SetRadianAngle(const pNewValue:TpvScalar);
+procedure TpvAngleProperty.SetRadianAngle(const aNewValue:TpvScalar);
 begin
- fRadianAngle^:=pNewValue;
+ if assigned(fOnChange) and (fRadianAngle^<>aNewValue) then begin
+  fRadianAngle^:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fRadianAngle^:=aNewValue;
+ end;
 end;
 
-constructor TpvRotation3DProperty.Create(AQuaternion:PpvQuaternion);
+constructor TpvRotation3DProperty.Create(const AQuaternion:PpvQuaternion);
 begin
  inherited Create;
  fQuaternion:=AQuaternion;
+ fOnChange:=nil;
 end;
 
 destructor TpvRotation3DProperty.Destroy;
@@ -16276,59 +16390,85 @@ begin
  result:=fQuaternion^;
 end;
 
-procedure TpvRotation3DProperty.SetX(const pNewValue:TpvScalar);
+procedure TpvRotation3DProperty.SetX(const aNewValue:TpvScalar);
 begin
- fQuaternion^.x:=pNewValue;
+ if assigned(fOnChange) and (fQuaternion^.x<>aNewValue) then begin
+  fQuaternion^.x:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fQuaternion^.x:=aNewValue;
+ end;
 end;
 
-procedure TpvRotation3DProperty.SetY(const pNewValue:TpvScalar);
+procedure TpvRotation3DProperty.SetY(const aNewValue:TpvScalar);
 begin
- fQuaternion^.y:=pNewValue;
+ if assigned(fOnChange) and (fQuaternion^.y<>aNewValue) then begin
+  fQuaternion^.y:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fQuaternion^.y:=aNewValue;
+ end;
 end;
 
-procedure TpvRotation3DProperty.SetZ(const pNewValue:TpvScalar);
+procedure TpvRotation3DProperty.SetZ(const aNewValue:TpvScalar);
 begin
- fQuaternion^.z:=pNewValue;
+ if assigned(fOnChange) and (fQuaternion^.z<>aNewValue) then begin
+  fQuaternion^.z:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fQuaternion^.z:=aNewValue;
+ end;
 end;
 
-procedure TpvRotation3DProperty.SetW(const pNewValue:TpvScalar);
+procedure TpvRotation3DProperty.SetW(const aNewValue:TpvScalar);
 begin
- fQuaternion^.w:=pNewValue;
+ if assigned(fOnChange) and (fQuaternion^.w<>aNewValue) then begin
+  fQuaternion^.w:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fQuaternion^.w:=aNewValue;
+ end;
 end;
 
-procedure TpvRotation3DProperty.SetPitch(const pNewValue:TpvScalar);
+procedure TpvRotation3DProperty.SetPitch(const aNewValue:TpvScalar);
 var Angles:TpvVector3;
 begin
  Angles:=fQuaternion^.Normalize.ToEuler;
- Angles.Pitch:=pNewValue*DEG2RAD;
- fQuaternion^:=TpvQuaternion.CreateFromEuler(Angles);
+ Angles.Pitch:=aNewValue*DEG2RAD;
+ SetQuaternion(TpvQuaternion.CreateFromEuler(Angles));
 end;
 
-procedure TpvRotation3DProperty.SetYaw(const pNewValue:TpvScalar);
+procedure TpvRotation3DProperty.SetYaw(const aNewValue:TpvScalar);
 var Angles:TpvVector3;
 begin
  Angles:=fQuaternion^.Normalize.ToEuler;
- Angles.Yaw:=pNewValue*DEG2RAD;
- fQuaternion^:=TpvQuaternion.CreateFromEuler(Angles);
+ Angles.Yaw:=aNewValue*DEG2RAD;
+ SetQuaternion(TpvQuaternion.CreateFromEuler(Angles));
 end;
 
-procedure TpvRotation3DProperty.SetRoll(const pNewValue:TpvScalar);
+procedure TpvRotation3DProperty.SetRoll(const aNewValue:TpvScalar);
 var Angles:TpvVector3;
 begin
  Angles:=fQuaternion^.Normalize.ToEuler;
- Angles.Roll:=pNewValue*DEG2RAD;
- fQuaternion^:=TpvQuaternion.CreateFromEuler(Angles);
+ Angles.Roll:=aNewValue*DEG2RAD;
+ SetQuaternion(TpvQuaternion.CreateFromEuler(Angles));
 end;
 
-procedure TpvRotation3DProperty.SetQuaternion(const NewQuaternion:TpvQuaternion);
+procedure TpvRotation3DProperty.SetQuaternion(const aNewQuaternion:TpvQuaternion);
 begin
- fQuaternion^:=NewQuaternion;
+ if assigned(fOnChange) and ((fQuaternion^.x<>aNewQuaternion.x) or (fQuaternion^.y<>aNewQuaternion.y) or (fQuaternion^.z<>aNewQuaternion.z) or (fQuaternion^.w<>aNewQuaternion.w)) then begin
+  fQuaternion^:=aNewQuaternion;
+  fOnChange(self);
+ end else begin
+  fQuaternion^:=aNewQuaternion;
+ end;
 end;
 
-constructor TpvColorRGBProperty.Create(AVector:PpvVector3);
+constructor TpvColorRGBProperty.Create(const aVector:PpvVector3);
 begin
  inherited Create;
- fVector:=AVector;
+ fVector:=aVector;
+ fOnChange:=nil;
 end;
 
 destructor TpvColorRGBProperty.Destroy;
@@ -16356,30 +16496,51 @@ begin
  result:=fVector^;
 end;
 
-procedure TpvColorRGBProperty.SetR(const pNewValue:TpvScalar);
+procedure TpvColorRGBProperty.SetR(const aNewValue:TpvScalar);
 begin
- fVector^.r:=pNewValue;
+ if assigned(fOnChange) and (fVector^.r<>aNewValue) then begin
+  fVector^.r:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.r:=aNewValue;
+ end;
 end;
 
-procedure TpvColorRGBProperty.SetG(const pNewValue:TpvScalar);
+procedure TpvColorRGBProperty.SetG(const aNewValue:TpvScalar);
 begin
- fVector^.g:=pNewValue;
+ if assigned(fOnChange) and (fVector^.g<>aNewValue) then begin
+  fVector^.g:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.g:=aNewValue;
+ end;
 end;
 
-procedure TpvColorRGBProperty.SetB(const pNewValue:TpvScalar);
+procedure TpvColorRGBProperty.SetB(const aNewValue:TpvScalar);
 begin
- fVector^.b:=pNewValue;
+ if assigned(fOnChange) and (fVector^.b<>aNewValue) then begin
+  fVector^.b:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.b:=aNewValue;
+ end;
 end;
 
-procedure TpvColorRGBProperty.SetVector(const pNewVector:TpvVector3);
+procedure TpvColorRGBProperty.SetVector(const aNewVector:TpvVector3);
 begin
- fVector^:=pNewVector;
+ if assigned(fOnChange) and ((fVector^.r<>aNewVector.r) or (fVector^.g<>aNewVector.g) or (fVector^.b<>aNewVector.b)) then begin
+  fVector^:=aNewVector;
+  fOnChange(self);
+ end else begin
+  fVector^:=aNewVector;
+ end;
 end;
 
-constructor TpvColorRGBAProperty.Create(AVector:PpvVector4);
+constructor TpvColorRGBAProperty.Create(const aVector:PpvVector4);
 begin
  inherited Create;
- fVector:=AVector;
+ fVector:=aVector;
+ fOnChange:=nil;
 end;
 
 destructor TpvColorRGBAProperty.Destroy;
@@ -16412,29 +16573,54 @@ begin
  result:=fVector^;
 end;
 
-procedure TpvColorRGBAProperty.SetR(const pNewValue:TpvScalar);
+procedure TpvColorRGBAProperty.SetR(const aNewValue:TpvScalar);
 begin
- fVector^.r:=pNewValue;
+ if assigned(fOnChange) and (fVector^.r<>aNewValue) then begin
+  fVector^.r:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.r:=aNewValue;
+ end;
 end;
 
-procedure TpvColorRGBAProperty.SetG(const pNewValue:TpvScalar);
+procedure TpvColorRGBAProperty.SetG(const aNewValue:TpvScalar);
 begin
- fVector^.g:=pNewValue;
+ if assigned(fOnChange) and (fVector^.g<>aNewValue) then begin
+  fVector^.g:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.g:=aNewValue;
+ end;
 end;
 
-procedure TpvColorRGBAProperty.SetB(const pNewValue:TpvScalar);
+procedure TpvColorRGBAProperty.SetB(const aNewValue:TpvScalar);
 begin
- fVector^.b:=pNewValue;
+ if assigned(fOnChange) and (fVector^.b<>aNewValue) then begin
+  fVector^.b:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.b:=aNewValue;
+ end;
 end;
 
-procedure TpvColorRGBAProperty.SetA(const pNewValue:TpvScalar);
+procedure TpvColorRGBAProperty.SetA(const aNewValue:TpvScalar);
 begin
- fVector^.a:=pNewValue;
+ if assigned(fOnChange) and (fVector^.a<>aNewValue) then begin
+  fVector^.a:=aNewValue;
+  fOnChange(self);
+ end else begin
+  fVector^.a:=aNewValue;
+ end;
 end;
 
-procedure TpvColorRGBAProperty.SetVector(const pNewVector:TpvVector4);
+procedure TpvColorRGBAProperty.SetVector(const aNewVector:TpvVector4);
 begin
- fVector^:=pNewVector;
+ if assigned(fOnChange) and ((fVector^.r<>aNewVector.r) or (fVector^.g<>aNewVector.g) or (fVector^.b<>aNewVector.b) or (fVector^.a<>aNewVector.a)) then begin
+  fVector^:=aNewVector;
+  fOnChange(self);
+ end else begin
+  fVector^:=aNewVector;
+ end;
 end;
 
 initialization
