@@ -1245,6 +1245,7 @@ type TpvGUIObject=class;
        procedure SetDown(const aDown:boolean); override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
+       procedure PerformLayout; override;
       published
        property Popup:TpvGUIPopup read fPopup;
      end;
@@ -8061,6 +8062,14 @@ begin
  fPopup.fFixedSize.x:=160;
  fPopup.fFixedSize.y:=80;
 
+end;
+
+procedure TpvGUIPopupButton.PerformLayout;
+begin
+ inherited PerformLayout;
+ if assigned(fPopup) and fPopup.Visible then begin
+  fPopup.PerformLayout;
+ end;
 end;
 
 procedure TpvGUIPopupButton.SetDown(const aDown:boolean);
