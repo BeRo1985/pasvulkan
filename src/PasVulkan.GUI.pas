@@ -477,6 +477,8 @@ type TpvGUIObject=class;
        fDirection:TpvGUIFlowLayoutDirection;
        fAlignments:TpvGUIFlowLayoutAlignments;
        fAlignmentOnBaseLine:boolean;
+       fPositions:TpvVector2Array;
+       fSizes:TpvVector2Array;
        function GetHorizontalAlignment:TpvGUIFlowLayoutAlignment; inline;
        procedure SetHorizontalAlignment(const aHorizontalAlignment:TpvGUIFlowLayoutAlignment); inline;
        function GetVerticalAlignment:TpvGUIFlowLayoutAlignment; inline;
@@ -1828,7 +1830,7 @@ begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
     if IsInstance and (ChildWidget is TpvGUIWindow) then begin
-     ChildWidget.fSize:=ChildTargetSize;
+     ChildWidget.Size.Vector:=ChildTargetSize;
     end else begin
      if not First then begin
       Offset:=Offset+fSpacing;
@@ -1842,9 +1844,9 @@ begin
       ChildTargetSize.x:=ContainerSize.x-(fMargin*2.0);
      end;
      if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
-      ChildWidget.fPosition:=Position;
+      ChildWidget.Position.Vector:=Position;
      end;
-     ChildWidget.fSize:=ChildTargetSize;
+     ChildWidget.Size.Vector:=ChildTargetSize;
      Offset:=Offset+ChildTargetSize.y;
      First:=false;
      LastVisibleChildWidget:=ChildWidget;
@@ -1919,9 +1921,9 @@ begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
     if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
-     ChildWidget.fPosition:=TpvVector2.Create(fMargin,fMargin);
+     ChildWidget.Position.Vector:=TpvVector2.Create(fMargin,fMargin);
     end;
-    ChildWidget.fSize:=ChildTargetSize-(TpvVector2.Create(fMargin,fMargin)*2.0);
+    ChildWidget.Size.Vector:=ChildTargetSize-(TpvVector2.Create(fMargin,fMargin)*2.0);
     ChildWidget.PerformLayout;
    end;
   end;
@@ -2068,9 +2070,9 @@ begin
      end;
     end;
     if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
-     ChildWidget.fPosition:=Position;
+     ChildWidget.Position.Vector:=Position;
     end;
-    ChildWidget.fSize:=ChildTargetSize;
+    ChildWidget.Size.Vector:=ChildTargetSize;
     ChildWidget.PerformLayout;
     Offset:=Offset+ChildTargetSize[Axis0];
     First:=false;
@@ -2206,8 +2208,8 @@ begin
     end else begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
-    ChildWidget.fPosition:=TpvVector2.Create(fMargin+((ord(IndentCurrent) and 1)*fGroupIdent),Size.y);
-    ChildWidget.fSize:=ChildTargetSize;
+    ChildWidget.Position.Vector:=TpvVector2.Create(fMargin+((ord(IndentCurrent) and 1)*fGroupIdent),Size.y);
+    ChildWidget.Size.Vector:=ChildTargetSize;
     ChildWidget.PerformLayout;
     Size.y:=Size.y+ChildTargetSize.y;
     if assigned(ChildLabel) then begin
@@ -2562,9 +2564,9 @@ begin
 
     end;
 
-    ChildWidget.fPosition:=ChildPosition;
+    ChildWidget.Position.Vector:=ChildPosition;
 
-    ChildWidget.fSize:=ChildTargetSize;
+    ChildWidget.Size.Vector:=ChildTargetSize;
 
     ChildWidget.PerformLayout;
 
@@ -2942,8 +2944,8 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
-    ChildWidget.fPosition:=fPositions[ChildIndex];
-    ChildWidget.fSize:=fSizes[ChildIndex];
+    ChildWidget.Position.Vector:=fPositions[ChildIndex];
+    ChildWidget.Size.Vector:=fSizes[ChildIndex];
     ChildWidget.PerformLayout;
    end;
   end;
@@ -2986,10 +2988,18 @@ begin
 
  fAlignmentOnBaseLine:=aAlignmentOnBaseLine;
 
+ fPositions:=nil;
+
+ fSizes:=nil;
+
 end;
 
 destructor TpvGUIFlowLayout.Destroy;
 begin
+
+ fPositions:=nil;
+
+ fSizes:=nil;
 
  FreeAndNil(fSpacingProperty);
 
@@ -3130,9 +3140,9 @@ var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
     if Child is TpvGUIWidget then begin
      ChildWidget:=Child as TpvGUIWidget;
      if ChildWidget.Visible then begin
-      MinPosition:=Min(MinPosition,ChildWidget.fPosition[Axis0]);
-      MaxPosition:=Max(MaxPosition,ChildWidget.fPosition[Axis0]+ChildWidget.fSize[Axis0]);
-      MaxHeight:=Max(MaxHeight,ChildWidget.fSize[Axis1]);
+      MinPosition:=Min(MinPosition,fPositions[ChildIndex][Axis0]);
+      MaxPosition:=Max(MaxPosition,fPositions[ChildIndex][Axis0]+fSizes[ChildIndex][Axis0]);
+      MaxHeight:=Max(MaxHeight,fSizes[ChildIndex][Axis1]);
      end;
     end;
    end;
@@ -3143,7 +3153,7 @@ var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
      if Child is TpvGUIWidget then begin
       ChildWidget:=Child as TpvGUIWidget;
       if ChildWidget.Visible then begin
-       ChildWidget.fPosition[Axis1]:=ChildWidget.fPosition[Axis1]+((MaxHeight-ChildWidget.fSize[Axis1])*0.5);
+       fPositions[ChildIndex][Axis1]:=fPositions[ChildIndex][Axis1]+((MaxHeight-fSizes[ChildIndex][Axis1])*0.5);
       end;
      end;
     end;
@@ -3157,7 +3167,7 @@ var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
       if Child is TpvGUIWidget then begin
        ChildWidget:=Child as TpvGUIWidget;
        if ChildWidget.Visible then begin
-        ChildWidget.fPosition[Axis0]:=ChildWidget.fPosition[Axis0]+Difference;
+        fPositions[ChildIndex][Axis0]:=fPositions[ChildIndex][Axis0]+Difference;
        end;
       end;
      end;
@@ -3169,7 +3179,7 @@ var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
       if Child is TpvGUIWidget then begin
        ChildWidget:=Child as TpvGUIWidget;
        if ChildWidget.Visible then begin
-        ChildWidget.fPosition[Axis0]:=ChildWidget.fPosition[Axis0]+Difference;
+        fPositions[ChildIndex][Axis0]:=fPositions[ChildIndex][Axis0]+Difference;
        end;
       end;
      end;
@@ -3181,7 +3191,7 @@ var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
       if Child is TpvGUIWidget then begin
        ChildWidget:=Child as TpvGUIWidget;
        if ChildWidget.Visible then begin
-        ChildWidget.fPosition[Axis0]:=ChildWidget.fPosition[Axis0]+Difference;
+        fPositions[ChildIndex][Axis0]:=fPositions[ChildIndex][Axis0]+Difference;
        end;
       end;
      end;
@@ -3214,6 +3224,14 @@ begin
   ContainerSize.y:=FixedSize.y;
  end else begin
   ContainerSize.y:=aWidget.Height;
+ end;
+
+ if length(fPositions)<>aWidget.fChildren.Count then begin
+  SetLength(fPositions,aWidget.fChildren.Count);
+ end;
+
+ if length(fSizes)<>aWidget.fChildren.Count then begin
+  SetLength(fSizes,aWidget.fChildren.Count);
  end;
 
  RowFromChildIndex:=0;
@@ -3258,8 +3276,8 @@ begin
        MaxAxis1:=0.0;
       end;
      end;
-     ChildWidget.fPosition:=Position;
-     ChildWidget.fSize:=ChildTargetSize;
+     fPositions[ChildIndex]:=Position;
+     fSizes[ChildIndex]:=ChildTargetSize;
      Position[Axis0]:=Position[Axis0]+ChildTargetSize[Axis0];
     end else begin
      if not First then begin
@@ -3275,8 +3293,8 @@ begin
       Position[Axis1]:=Position[Axis1]+fSpacing[Axis1]+MaxAxis1;
       MaxAxis1:=0.0;
      end;
-     ChildWidget.fPosition:=Position;
-     ChildWidget.fSize:=ChildTargetSize;
+     fPositions[ChildIndex]:=Position;
+     fSizes[ChildIndex]:=ChildTargetSize;
     end;
     MaxAxis1:=Max(MaxAxis1,ChildTargetSize[Axis1]);
     RowToChildIndex:=ChildIndex;
@@ -3297,9 +3315,9 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
-    MinPosition:=Min(MinPosition,ChildWidget.fPosition[Axis1]);
-    MaxPosition:=Max(MaxPosition,ChildWidget.fPosition[Axis1]+ChildWidget.fSize[Axis1]);
-    MaxHeight:=Max(MaxHeight,ChildWidget.fSize[Axis0]);
+    MinPosition:=Min(MinPosition,fPositions[ChildIndex][Axis1]);
+    MaxPosition:=Max(MaxPosition,fPositions[ChildIndex][Axis1]+fSizes[ChildIndex][Axis1]);
+    MaxHeight:=Max(MaxHeight,fSizes[ChildIndex][Axis0]);
    end;
   end;
  end;
@@ -3312,7 +3330,7 @@ begin
     if Child is TpvGUIWidget then begin
      ChildWidget:=Child as TpvGUIWidget;
      if ChildWidget.Visible then begin
-      ChildWidget.fPosition[Axis1]:=ChildWidget.fPosition[Axis1]+Difference;
+      fPositions[ChildIndex][Axis1]:=fPositions[ChildIndex][Axis1]+Difference;
      end;
     end;
    end;
@@ -3324,7 +3342,7 @@ begin
     if Child is TpvGUIWidget then begin
      ChildWidget:=Child as TpvGUIWidget;
      if ChildWidget.Visible then begin
-      ChildWidget.fPosition[Axis1]:=ChildWidget.fPosition[Axis1]+Difference;
+      fPositions[ChildIndex][Axis1]:=fPositions[ChildIndex][Axis1]+Difference;
      end;
     end;
    end;
@@ -3336,7 +3354,7 @@ begin
     if Child is TpvGUIWidget then begin
      ChildWidget:=Child as TpvGUIWidget;
      if ChildWidget.Visible then begin
-      ChildWidget.fPosition[Axis1]:=ChildWidget.fPosition[Axis1]+Difference;
+      fPositions[ChildIndex][Axis1]:=fPositions[ChildIndex][Axis1]+Difference;
      end;
     end;
    end;
@@ -3348,6 +3366,8 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
+    ChildWidget.Position.Vector:=fPositions[ChildIndex];
+    ChildWidget.Size.Vector:=fSizes[ChildIndex];
     ChildWidget.PerformLayout;
    end;
   end;
@@ -6093,7 +6113,7 @@ begin
     end else begin
      ChildWidgetSize.y:=ChildWidgetPreferredSize.y;
     end;
-    ChildWidget.fSize:=ChildWidgetSize;
+    ChildWidget.Size.Vector:=ChildWidgetSize;
     ChildWidget.PerformLayout;
    end;
   end;
@@ -6604,10 +6624,10 @@ procedure TpvGUIInstance.CenterWindow(const aWindow:TpvGUIWindow);
 begin
  if assigned(aWindow) then begin
   if aWindow.fSize=TpvVector2.Null then begin
-   aWindow.fSize:=aWindow.PreferredSize;
+   aWindow.Size.Vector:=aWindow.PreferredSize;
    aWindow.PerformLayout;
   end;
-  aWindow.fPosition:=(fSize-aWindow.fSize)*0.5;
+  aWindow.Position.Vector:=(fSize-aWindow.fSize)*0.5;
  end;
 end;
 
@@ -7602,11 +7622,11 @@ begin
       end;
      end;
      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-      fSize:=Clamp(fSize,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
-      fPosition:=Clamp(fPosition,MinimumPosition,(fParent as TpvGUIWidget).fSize-fSize);
+      Size.Vector:=Clamp(fSize,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
+      Position.Vector:=Clamp(fPosition,MinimumPosition,(fParent as TpvGUIWidget).fSize-fSize);
      end else begin
-      fSize:=Maximum(fSize,MinimumSize);
-      fPosition:=Maximum(fPosition,MinimumPosition);
+      Size.Vector:=Maximum(fSize,MinimumSize);
+      Position.Vector:=Maximum(fPosition,MinimumPosition);
      end;
      if fSize<>OldSize then begin
       PerformLayout;
@@ -8057,10 +8077,8 @@ begin
  fPopup:=TpvGUIPopup.Create(self);
  fPopup.Visible:=false;
  fPopup.AnchorSide:=pvgpasBottom;
- fPopup.fSize.x:=160;
- fPopup.fSize.y:=80;
- fPopup.fFixedSize.x:=160;
- fPopup.fFixedSize.y:=80;
+ fPopup.Size.Vector:=TpvVector2.Create(160,80);
+ fPopup.FixedSize.Vector:=TpvVector2.Create(160,80);
 
 end;
 
