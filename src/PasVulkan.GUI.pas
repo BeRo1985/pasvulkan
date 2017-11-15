@@ -808,8 +808,6 @@ type TpvGUIObject=class;
        procedure SetTabStop(const aTabStop:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetWantAllKeys:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetWantAllKeys(const aWantAllKeys:boolean); {$ifdef CAN_INLINE}inline;{$endif}
-       procedure PositionOnChange(const aSender:TObject); virtual;
-       procedure SizeOnChange(const aSender:TObject); virtual;
        function GetLeft:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetLeft(const aLeft:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetTop:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1247,8 +1245,6 @@ type TpvGUIObject=class;
       private
        fPopup:TpvGUIPopup;
       protected
-       procedure PositionOnChange(const aSender:TObject); override;
-       procedure SizeOnChange(const aSender:TObject); override;
        procedure SetDown(const aDown:boolean); override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -5527,10 +5523,8 @@ begin
  fFixedSize:=TpvVector2.Create(-1.0,-1.0);
 
  fPositionProperty:=TpvVector2Property.Create(@fPosition);
- fPositionProperty.OnChange:=PositionOnChange;
 
  fSizeProperty:=TpvVector2Property.Create(@fSize);
- fSizeProperty.OnChange:=SizeOnChange;
 
  fFixedSizeProperty:=TpvVector2Property.Create(@fFixedSize);
 
@@ -5739,14 +5733,6 @@ begin
  end else begin
   Exclude(fWidgetFlags,pvgwfWantAllKeys);
  end;
-end;
-
-procedure TpvGUIWidget.PositionOnChange(const aSender:TObject);
-begin
-end;
-
-procedure TpvGUIWidget.SizeOnChange(const aSender:TObject);
-begin
 end;
 
 function TpvGUIWidget.GetLeft:TpvFloat;
@@ -6917,9 +6903,18 @@ procedure TpvGUIInstance.Update;
 var Index:TpvInt32;
     LastModelMatrix:TpvMatrix4x4;
     LastClipRect:TpvRect;
+    Popup:TpvGUIPopup;
     PopupMenu:TpvGUIPopupMenu;
 begin
  ClearReferenceCountedObjectList;
+ for Index:=0 to fChildren.Count-1 do begin
+  if fChildren[Index] is TpvGUIPopup then begin
+   Popup:=fChildren[Index] as TpvGUIPopup;
+   if Popup.RecursiveVisible then begin
+    Popup.UpdatePosition;
+   end;
+  end;
+ end;
  LastModelMatrix:=fCanvas.ModelMatrix;
  LastClipRect:=fCanvas.ClipRect;
  try
@@ -8108,22 +8103,6 @@ begin
  if assigned(fPopup) and fPopup.Visible then begin
   fPopup.UpdatePosition;
   fPopup.PerformLayout;
- end;
-end;
-
-procedure TpvGUIPopupButton.PositionOnChange(const aSender:TObject);
-begin
- inherited PositionOnChange(aSender);
- if assigned(fPopup) and fPopup.Visible then begin
-  fPopup.UpdatePosition;
- end;
-end;
-
-procedure TpvGUIPopupButton.SizeOnChange(const aSender:TObject);
-begin
- inherited SizeOnChange(aSender);
- if assigned(fPopup) and fPopup.Visible then begin
-  fPopup.UpdatePosition;
  end;
 end;
 
