@@ -156,7 +156,8 @@ const CubeVertices:array[0..23] of TVertex=
        );
 
       CubeIndices:array[0..35] of TpvInt32=
-       ( 0, 1, 2,
+       ( // Left
+         0, 1, 2,
          0, 2, 3,
 
          // Right

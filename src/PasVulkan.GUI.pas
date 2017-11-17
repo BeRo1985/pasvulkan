@@ -936,6 +936,7 @@ type TpvGUIObject=class;
        fDeltaTime:TpvDouble;
        fTime:TpvDouble;
        fPopupMenuStack:TpvGUIObjectList;
+       fModalWindowStack:TpvGUIObjectList;
        fLastFocusPath:TpvGUIObjectList;
        fCurrentFocusPath:TpvGUIObjectList;
        fDragWidget:TpvGUIWidget;
@@ -6375,6 +6376,8 @@ begin
 
  fPopupMenuStack:=TpvGUIObjectList.Create(false);
 
+ fModalWindowStack:=TpvGUIObjectList.Create(false);
+
  fLastFocusPath:=TpvGUIObjectList.Create(false);
 
  fCurrentFocusPath:=TpvGUIObjectList.Create(false);
@@ -6407,6 +6410,8 @@ begin
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
 
  FreeAndNil(fPopupMenuStack);
+
+ FreeAndNil(fModalWindowStack);
 
  FreeAndNil(fLastFocusPath);
 
@@ -6465,6 +6470,7 @@ begin
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fFocusedWidget);
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fHoveredWidget);
  fPopupMenuStack.Clear;
+ fModalWindowStack.Clear;
  fLastFocusPath.Clear;
  fCurrentFocusPath.Clear;
  DecRefWithoutFree;
@@ -6486,6 +6492,9 @@ begin
  if assigned(aGUIObject) then begin
   if assigned(fPopupMenuStack) and fPopupMenuStack.Contains(aGUIObject) then begin
    fPopupMenuStack.Clear;
+  end;
+  if assigned(fModalWindowStack) and fModalWindowStack.Contains(aGUIObject) then begin
+   fModalWindowStack.Clear;
   end;
   if assigned(fLastFocusPath) and fLastFocusPath.Contains(aGUIObject) then begin
    fLastFocusPath.Clear;
@@ -6558,6 +6567,11 @@ begin
       ((fPopupMenuStack[0].fParent.fParent<>aWidget))) then begin
    (fPopupMenuStack[0] as TpvGUIPopupMenu).Deactivate;
   end;
+ end;
+
+ if (fModalWindowStack.Count>0) and
+    (aWidget.GetWindow<>fModalWindowStack[fModalWindowStack.Count-1]) then begin
+  exit;
  end;
 
  TpvSwap<TpvGUIObjectList>.Swap(fCurrentFocusPath,fLastFocusPath);
@@ -6771,6 +6785,13 @@ begin
   if not result then begin
    case aPointerEvent.PointerEventType of
     POINTEREVENT_DOWN,POINTEREVENT_UP:begin
+     if (fModalWindowStack.Count>0) and
+        (fModalWindowStack[fModalWindowStack.Count-1] is TpvGUIWindow) then begin
+      CurrentWindow:=fModalWindowStack[fModalWindowStack.Count-1] as TpvGUIWindow;
+      if not CurrentWindow.Contains(aPointerEvent.Position-CurrentWindow.AbsolutePosition) then begin
+       exit;
+      end;
+     end;
      for Index:=0 to fCurrentFocusPath.Count-1 do begin
       Current:=fCurrentFocusPath.Items[Index];
       if (Current<>self) and (Current is TpvGUIWindow) then begin
@@ -6889,6 +6910,12 @@ begin
   CurrentWidget:=nil;
  end else begin
   CurrentWidget:=FindWidget(fMousePosition);
+  if assigned(CurrentWidget) and
+     (fModalWindowStack.Count>0) and
+     (fModalWindowStack[fModalWindowStack.Count-1] is TpvGUIWindow) and
+     (CurrentWidget.GetWindow<>(fModalWindowStack[fModalWindowStack.Count-1] as TpvGUIWindow)) then begin
+   CurrentWidget:=nil;
+  end;
  end;
  if fHoveredWidget<>CurrentWidget then begin
   TpvReferenceCountedObject.DecRefOrFreeAndNil(fHoveredWidget);
@@ -6980,6 +7007,7 @@ begin
 
 destructor TpvGUIWindow.Destroy;
 begin
+ SetModal(false);
  inherited Destroy;
 end;
 
@@ -7078,10 +7106,14 @@ end;
 
 procedure TpvGUIWindow.SetModal(const aModal:boolean);
 begin
- if aModal then begin
-  Include(fWindowFlags,pvgwfModal);
- end else begin
-  Exclude(fWindowFlags,pvgwfModal);
+ if aModal<>(pvgwfModal in fWindowFlags) then begin
+  if aModal then begin
+   Include(fWindowFlags,pvgwfModal);
+   fInstance.fModalWindowStack.Add(self);
+  end else begin
+   fInstance.fModalWindowStack.Remove(self);
+   Exclude(fWindowFlags,pvgwfModal);
+  end;
  end;
 end;
 
