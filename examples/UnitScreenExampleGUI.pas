@@ -56,6 +56,7 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
        fSelectedIndex:TpvInt32;
        fStartY:TpvFloat;
        fTime:TpvDouble;
+       procedure Button0OnClick(const aSender:TpvGUIObject);
       public
 
        constructor Create; override;
@@ -125,6 +126,13 @@ begin
  inherited Destroy;
 end;
 
+procedure TScreenExampleGUI.Button0OnClick(const aSender:TpvGUIObject);
+begin
+
+ TpvGUIMessageDialog.Create(fGUIInstance,'Question','Do you like this GUI?',['Yes','No'],fGUIInstance.Skin.IconDialogQuestion);
+
+end;
+
 procedure TScreenExampleGUI.Show;
 var Index:TpvInt32;
     WindowMenu:TpvGUIWindowMenu;
@@ -134,6 +142,7 @@ var Index:TpvInt32;
     Panel:TpvGUIPanel;
     Window:TpvGUIWindow;
 begin
+
  inherited Show;
 
  pvApplication.VisibleMouseCursor:=false;
@@ -159,6 +168,9 @@ begin
 
  fGUIInstance:=TpvGUIInstance.Create(pvApplication.VulkanDevice);
  fGUIInstance.Canvas:=fVulkanCanvas;
+
+ fGUIInstance.Width:=pvApplication.Width;
+ fGUIInstance.Height:=pvApplication.Height;
 
  begin
   WindowMenu:=fGUIInstance.AddMenu;
@@ -274,6 +286,7 @@ begin
 
  fGUIButton:=TpvGUIButton.Create(Panel);
  fGUIButton.Caption:='An example button';
+ fGUIButton.OnClick:=Button0OnClick;
 
  fGUIButton:=TpvGUIToggleButton.Create(Panel);
  fGUIButton.Caption:='An example toggle button';

@@ -89,6 +89,14 @@ type TpvGUIObject=class;
 
      TpvGUIWindow=class;
 
+     TpvGUIModalWindow=class;
+
+     TpvGUIMessageDialog=class;
+
+     TpvGUIPopup=class;
+
+     TpvGUIImage=class;
+
      TpvGUILabel=class;
 
      TpvGUIButton=class;
@@ -563,6 +571,11 @@ type TpvGUIObject=class;
        fIconChevronDown:TObject;
        fIconCheck:TObject;
        fIconRoundCheck:TObject;
+       fIconDialogAlert:TObject;
+       fIconDialogError:TObject;
+       fIconDialogInformation:TObject;
+       fIconDialogQuestion:TObject;
+       fIconDialogWarning:TObject;
        fIconChevronHeight:TpvFloat;
        fIconPopupMenuHeight:TpvFloat;
        fIconMenuRightHeight:TpvFloat;
@@ -580,6 +593,9 @@ type TpvGUIObject=class;
       public
        function GetWindowPreferredSize(const aWindow:TpvGUIWindow):TpvVector2; virtual;
        procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); virtual;
+      public
+       function GetImagePreferredSize(const aImage:TpvGUIImage):TpvVector2; virtual;
+       procedure DrawImage(const aCanvas:TpvCanvas;const aImage:TpvGUIImage); virtual;
       public
        function GetLabelPreferredSize(const aLabel:TpvGUILabel):TpvVector2; virtual;
        procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); virtual;
@@ -648,6 +664,11 @@ type TpvGUIObject=class;
        property IconChevronDown:TObject read fIconChevronDown write fIconChevronDown;
        property IconCheck:TObject read fIconCheck write fIconCheck;
        property IconRoundCheck:TObject read fIconRoundCheck write fIconRoundCheck;
+       property IconAlert:TObject read fIconDialogAlert write fIconDialogAlert;
+       property IconDialogError:TObject read fIconDialogError write fIconDialogError;
+       property IconDialogInformation:TObject read fIconDialogInformation write fIconDialogInformation;
+       property IconDialogQuestion:TObject read fIconDialogQuestion write fIconDialogQuestion;
+       property IconDialogWarning:TObject read fIconDialogWarning write fIconDialogWarning;
        property IconChevronHeight:TpvFloat read fIconChevronHeight write fIconChevronHeight;
        property IconPopupMenuHeight:TpvFloat read fIconPopupMenuHeight write fIconPopupMenuHeight;
        property IconMenuRightHeight:TpvFloat read fIconMenuRightHeight write fIconMenuRightHeight;
@@ -679,6 +700,9 @@ type TpvGUIObject=class;
       public
        function GetWindowPreferredSize(const aWindow:TpvGUIWindow):TpvVector2; override;
        procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); override;
+      public
+       function GetImagePreferredSize(const aImage:TpvGUIImage):TpvVector2; override;
+       procedure DrawImage(const aCanvas:TpvCanvas;const aImage:TpvGUIImage); override;
       public
        function GetLabelPreferredSize(const aLabel:TpvGUILabel):TpvVector2; override;
        procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); override;
@@ -855,8 +879,11 @@ type TpvGUIObject=class;
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget; virtual;
        function FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aForward,aCheckTabStop,aCheckParent:boolean):TpvGUIWidget; virtual;
        function ProcessTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean; virtual;
+       procedure SetSizeToPreferredSize; virtual;
        procedure PerformLayout; virtual;
        procedure RequestFocus; virtual;
+       procedure Show; virtual;
+       procedure Hide; virtual;
        function Enter:boolean; virtual;
        function Leave:boolean; virtual;
        function PointerEnter:boolean; virtual;
@@ -1058,12 +1085,12 @@ type TpvGUIObject=class;
        fCloseButton:TpvGUIButton;
        function GetFixedSize:TpvVector2; override;
        function GetModal:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetModal(const aModal:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetModal(const aModal:boolean);
        procedure SetWindowState(const aWindowState:TpvGUIWindowState); {$ifdef CAN_INLINE}inline;{$endif}
        function GetButtonPanel:TpvGUIPanel;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
-       procedure OnButtonClick(const aSender:TpvGUIObject); virtual;
+       procedure OnWindowHeaderButtonClick(const aSender:TpvGUIObject); virtual;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -1098,6 +1125,66 @@ type TpvGUIObject=class;
        property Font;
        property TextHorizontalAlignment;
        property TextTruncation;
+     end;
+
+     TpvGUIModalWindow=class(TpvGUIWindow)
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+     end;
+
+     PpvGUIMessageDialogButton=^TpvGUIMessageDialogButton;
+     TpvGUIMessageDialogButton=record
+      private
+       fID:TpvInt32;
+       fCaption:TpvUTF8String;
+       fIcon:TObject;
+       fIconHeight:TpvFloat;
+       fButton:TpvGUIButton;
+      public
+       constructor Create(const aID:TpvInt32;
+                          const aCaption:TpvUTF8String;
+                          const aIcon:TObject=nil;
+                          const aIconHeight:TpvFloat=0);
+       property ID:TpvInt32 read fID write fID;
+       property Caption:TpvUTF8String read fCaption write fCaption;
+       property Icon:TObject read fIcon write fIcon;
+     end;
+
+     TpvGUIMessageDialogButtons=array of TpvGUIMessageDialogButton;
+
+     TpvGUIMessageDialogOnButtonClick=procedure(const aSender:TpvGUIObject;const aID:TpvInt32) of object;
+
+     TpvGUIMessageDialog=class(TpvGUIModalWindow)
+      private
+       fMessagePanel:TpvGUIPanel;
+       fMessageImage:TpvGUIImage;
+       fMessageLabel:TpvGUILabel;
+       fMessageDialogButtonPanel:TpvGUIPanel;
+       fButtons:TpvGUIMessageDialogButtons;
+       fOnButtonClick:TpvGUIMessageDialogOnButtonClick;
+       procedure MessageDialogOnButtonClick(const aSender:TpvGUIObject);
+      public
+       constructor Create(const aParent:TpvGUIObject;
+                          const aTitle:TpvUTF8String;
+                          const aMessage:TpvUTF8String;
+                          const aButtons:array of TpvGUIMessageDialogButton;
+                          const aIcon:TObject=nil;
+                          const aIconHeight:TpvFloat=36); reintroduce; overload;
+       constructor Create(const aParent:TpvGUIObject;
+                          const aTitle:TpvUTF8String;
+                          const aMessage:TpvUTF8String;
+                          const aButtons:array of TpvUTF8String;
+                          const aIcon:TObject=nil;
+                          const aIconHeight:TpvFloat=36); reintroduce; overload;
+       constructor Create(const aParent:TpvGUIObject;
+                          const aTitle:TpvUTF8String;
+                          const aMessage:TpvUTF8String;
+                          const aIcon:TObject=nil;
+                          const aIconHeight:TpvFloat=36); reintroduce; overload;
+       destructor Destroy; override;
+      published
+       property OnButtonClick:TpvGUIMessageDialogOnButtonClick read fOnButtonClick write fOnButtonClick;
      end;
 
      PpvGUIPopupSide=^TpvGUIPopupAnchorSide;
@@ -1136,6 +1223,20 @@ type TpvGUIObject=class;
      end;
 
      TpvGUIPanel=class(TpvGUIWidget);
+
+     TpvGUIImage=class(TpvGUIWidget)
+      private
+       fImage:TObject;
+      protected
+       function GetPreferredSize:TpvVector2; override;
+      public
+       constructor Create(const aParent:TpvGUIObject;const aImage:TObject); reintroduce;
+       destructor Destroy; override;
+       procedure Update; override;
+       procedure Draw; override;
+      published
+       property Image:TObject read fImage write fImage;
+     end;
 
      TpvGUILabel=class(TpvGUIWidget)
       private
@@ -3448,6 +3549,15 @@ procedure TpvGUISkin.DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWind
 begin
 end;
 
+function TpvGUISkin.GetImagePreferredSize(const aImage:TpvGUIImage):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aImage);
+end;
+
+procedure TpvGUISkin.DrawImage(const aCanvas:TpvCanvas;const aImage:TpvGUIImage);
+begin
+end;
+
 function TpvGUISkin.GetLabelPreferredSize(const aLabel:TpvGUILabel):TpvVector2;
 begin
  result:=GetWidgetPreferredSize(aLabel);
@@ -3891,6 +4001,66 @@ begin
                                                                                 2,
                                                                                 1);
 
+ fIconDialogAlert:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogAlert',
+                                                                                 'M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z',
+                                                                                 48,
+                                                                                 48,
+                                                                                 48.0/24.0,
+                                                                                 0.0,
+                                                                                 0.0,
+                                                                                 pvvpfrNonZero,
+                                                                                 true,
+                                                                                 2,
+                                                                                 1);
+
+ fIconDialogError:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogError',
+                                                                                 'M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z',
+                                                                                 48,
+                                                                                 48,
+                                                                                 48.0/24.0,
+                                                                                 0.0,
+                                                                                 0.0,
+                                                                                 pvvpfrNonZero,
+                                                                                 true,
+                                                                                 2,
+                                                                                 1);
+
+ fIconDialogInformation:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogInformation',
+                                                                                       'M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z',
+                                                                                       48,
+                                                                                       48,
+                                                                                       48.0/24.0,
+                                                                                       0.0,
+                                                                                       0.0,
+                                                                                       pvvpfrNonZero,
+                                                                                       true,
+                                                                                       2,
+                                                                                       1);
+
+ fIconDialogQuestion:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogQuestion',
+                                                                                    'M15.07,11.25L14.17,12.17C13.45,12.89 13,13.5 13,15H11V14.5C11,13.39 11.45,12.39 12.17,11.67L13.41,10.41C13.78,10.05'+' 14,9.55 14,9C14,7.89 13.1,7 12,7A2,2 0 0,0 10,9H8A4,4 0 0,1 12,5A4,4 0 0,1 16,9C16,9.88 15.64,10.67 15.07,11.25M13,19H11V17H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12C22,6.47 17.5,2 12,2Z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    pvvpfrNonZero,
+                                                                                    true,
+                                                                                    2,
+                                                                                    1);
+
+ fIconDialogWarning:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogWarning',
+                                                                                   'M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z',
+                                                                                   48,
+                                                                                   48,
+                                                                                   48.0/24.0,
+                                                                                   0.0,
+                                                                                   0.0,
+                                                                                   pvvpfrNonZero,
+                                                                                   true,
+                                                                                   2,
+                                                                                   1);
+
  fIconChevronHeight:=14.0;
 
  fIconPopupMenuHeight:=14.0;
@@ -4333,6 +4503,55 @@ begin
   aCanvas.Color:=LastColor;
  end;
 
+end;
+
+function TpvGUIDefaultVectorBasedSkin.GetImagePreferredSize(const aImage:TpvGUIImage):TpvVector2;
+var ImageSize:TpvVector2;
+begin
+ if assigned(aImage.fImage) then begin
+  if aImage.fImage is TpvSprite then begin
+   ImageSize:=TpvVector2.Create(TpvSprite(aImage.fImage).Width,TpvSprite(aImage.fImage).Height);
+  end else if aImage.fImage is TpvVulkanTexture then begin
+   ImageSize:=TpvVector2.Create(TpvVulkanTexture(aImage.fImage).Width,TpvVulkanTexture(aImage.fImage).Height);
+  end else begin
+   ImageSize:=TpvVector2.Null;
+  end;
+ end else begin
+  ImageSize:=TpvVector2.Null;
+ end;
+ if aImage.fFixedSize.x>0.0 then begin
+  if aImage.fFixedSize.y>0.0 then begin
+   result.x:=aImage.fFixedSize.x;
+   result.y:=aImage.fFixedSize.y;
+  end else begin
+   result.x:=ImageSize.x;
+   result.y:=(ImageSize.y*aImage.fFixedSize.x)/ImageSize.x;
+  end;
+ end else begin
+  if aImage.fFixedSize.y>0.0 then begin
+   result.x:=(ImageSize.x*aImage.fFixedSize.y)/ImageSize.y;
+   result.y:=aImage.fFixedSize.y;
+  end else begin
+   result:=ImageSize;
+  end;
+ end;
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawImage(const aCanvas:TpvCanvas;const aImage:TpvGUIImage);
+begin
+ aCanvas.ModelMatrix:=aImage.fModelMatrix;
+ aCanvas.ClipRect:=aImage.fClipRect;
+ if assigned(aImage.fImage) then begin
+  if aImage.fImage is TpvSprite then begin
+   aCanvas.DrawSprite(TpvSprite(aImage.fImage),
+                      TpvRect.CreateRelative(TpvVector2.Null,
+                                             TpvVector2.Create(TpvSprite(aImage.fImage).Width,TpvSprite(aImage.fImage).Height)),
+                      TpvRect.CreateRelative(TpvVector2.Null,aImage.fSize));
+  end else if aImage.fImage is TpvVulkanTexture then begin
+   aCanvas.DrawTexturedRectangle(TpvVulkanTexture(aImage.fImage),
+                                 TpvRect.CreateRelative(TpvVector2.Null,aImage.fSize));
+  end;
+ end;
 end;
 
 function TpvGUIDefaultVectorBasedSkin.GetLabelPreferredSize(const aLabel:TpvGUILabel):TpvVector2;
@@ -5519,7 +5738,7 @@ begin
 
  fPosition:=TpvVector2.Create(0.0,0.0);
 
- fSize:=TpvVector2.Create(1.0,1.0);
+ fSize:=TpvVector2.Create(0.0,0.0);
 
  fFixedSize:=TpvVector2.Create(-1.0,-1.0);
 
@@ -6090,6 +6309,16 @@ begin
  end;
 end;
 
+procedure TpvGUIWidget.SetSizeToPreferredSize;
+var NewSize:TpvVector2;
+begin
+ NewSize:=GetPreferredSize;
+ if fSize<>NewSize then begin
+  fSize:=NewSize;
+  PerformLayout;
+ end;
+end;
+
 procedure TpvGUIWidget.PerformLayout;
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
@@ -6119,6 +6348,20 @@ begin
     ChildWidget.PerformLayout;
    end;
   end;
+ end;
+end;
+
+procedure TpvGUIWidget.Show;
+begin
+ if not (pvgwfVisible in fWidgetFlags) then begin
+  SetVisible(true);
+ end;
+end;
+
+procedure TpvGUIWidget.Hide;
+begin
+ if pvgwfVisible in fWidgetFlags then begin
+  SetVisible(false);
  end;
 end;
 
@@ -6411,11 +6654,11 @@ begin
 
  FreeAndNil(fPopupMenuStack);
 
- FreeAndNil(fModalWindowStack);
-
  FreeAndNil(fLastFocusPath);
 
  FreeAndNil(fCurrentFocusPath);
+
+ FreeAndNil(fModalWindowStack);
 
  SetCountBuffers(0);
 
@@ -7024,7 +7267,7 @@ begin
  inherited BeforeDestruction;
 end;
 
-procedure TpvGUIWindow.OnButtonClick(const aSender:TpvGUIObject);
+procedure TpvGUIWindow.OnWindowHeaderButtonClick(const aSender:TpvGUIObject);
 begin
  if aSender=fMinimizationButton then begin
   if fWindowState=pvgwsMinimized then begin
@@ -7055,7 +7298,7 @@ begin
   fMinimizationButton.fIcon:=Skin.fIconWindowMinimize;
   fMinimizationButton.fIconHeight:=Skin.fWindowButtonIconHeight;
   fMinimizationButton.fCaption:='';
-  fMinimizationButton.OnClick:=OnButtonClick;
+  fMinimizationButton.OnClick:=OnWindowHeaderButtonClick;
   fMinimizationButton.fWidgetFlags:=fMinimizationButton.fWidgetFlags-[pvgwfTabStop];
  end;
 end;
@@ -7067,7 +7310,7 @@ begin
   fMaximizationButton.fIcon:=Skin.fIconWindowMaximize;
   fMaximizationButton.fIconHeight:=Skin.fWindowButtonIconHeight;
   fMaximizationButton.fCaption:='';
-  fMaximizationButton.OnClick:=OnButtonClick;
+  fMaximizationButton.OnClick:=OnWindowHeaderButtonClick;
   fMaximizationButton.fWidgetFlags:=fMaximizationButton.fWidgetFlags-[pvgwfTabStop];
  end;
 end;
@@ -7079,7 +7322,7 @@ begin
   fCloseButton.fIcon:=Skin.fIconWindowClose;
   fCloseButton.fIconHeight:=Skin.fWindowButtonIconHeight;
   fCloseButton.fCaption:='';
-  fCloseButton.OnClick:=OnButtonClick;
+  fCloseButton.OnClick:=OnWindowHeaderButtonClick;
   fCloseButton.fWidgetFlags:=fCloseButton.fWidgetFlags-[pvgwfTabStop];
  end;
 end;
@@ -7109,9 +7352,13 @@ begin
  if aModal<>(pvgwfModal in fWindowFlags) then begin
   if aModal then begin
    Include(fWindowFlags,pvgwfModal);
-   fInstance.fModalWindowStack.Add(self);
+   if assigned(fInstance) and assigned(fInstance.fModalWindowStack) then begin
+    fInstance.fModalWindowStack.Add(self);
+   end;
   end else begin
-   fInstance.fModalWindowStack.Remove(self);
+   if assigned(fInstance) and assigned(fInstance.fModalWindowStack) then begin
+    fInstance.fModalWindowStack.Remove(self);
+   end;
    Exclude(fWindowFlags,pvgwfModal);
   end;
  end;
@@ -7700,6 +7947,178 @@ begin
  inherited Draw;
 end;
 
+constructor TpvGUIModalWindow.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+ SetModal(true);
+end;
+
+destructor TpvGUIModalWindow.Destroy;
+begin
+ SetModal(false);
+ inherited Destroy;
+end;
+
+constructor TpvGUIMessageDialogButton.Create(const aID:TpvInt32;
+                                             const aCaption:TpvUTF8String;
+                                             const aIcon:TObject=nil;
+                                             const aIconHeight:TpvFloat=0);
+begin
+ fID:=aID;
+ fCaption:=aCaption;
+ fIcon:=aIcon;
+ fIconHeight:=aIconHeight;
+ fButton:=nil;
+end;
+
+constructor TpvGUIMessageDialog.Create(const aParent:TpvGUIObject;
+                                       const aTitle:TpvUTF8String;
+                                       const aMessage:TpvUTF8String;
+                                       const aButtons:array of TpvGUIMessageDialogButton;
+                                       const aIcon:TObject=nil;
+                                       const aIconHeight:TpvFloat=36);
+var Index:TpvSizeInt;
+    MessageDialogButton:PpvGUIMessageDialogButton;
+begin
+
+ inherited Create(aParent);
+
+ fOnButtonClick:=nil;
+
+ fWindowFlags:=fWindowFlags-[pvgwfResizableNW,
+                             pvgwfResizableNE,
+                             pvgwfResizableSW,
+                             pvgwfResizableSE,
+                             pvgwfResizableN,
+                             pvgwfResizableS,
+                             pvgwfResizableW,
+                             pvgwfResizableE];
+
+ fTitle:=aTitle;
+
+ fContent.fLayout:=TpvGUIBoxLayout.Create(fContent,
+                                          pvglaMiddle,
+                                          pvgloVertical,
+                                          10,
+                                          10);
+
+ fMessagePanel:=TpvGUIPanel.Create(fContent);
+ fMessagePanel.fLayout:=TpvGUIBoxLayout.Create(fMessagePanel,
+                                               pvglaMiddle,
+                                               pvgloHorizontal,
+                                               15,
+                                               10);
+
+ if assigned(aIcon) then begin
+  fMessageImage:=TpvGUIImage.Create(fMessagePanel,aIcon);
+  fMessageImage.FixedHeight:=aIconHeight;
+ end;
+
+ fMessageLabel:=TpvGUILabel.Create(fMessagePanel);
+ fMessageLabel.fCaption:=aMessage;
+
+ fMessageDialogButtonPanel:=TpvGUIPanel.Create(fContent);
+ fMessageDialogButtonPanel.fLayout:=TpvGUIBoxLayout.Create(fMessageDialogButtonPanel,
+                                                           pvglaMiddle,
+                                                           pvgloHorizontal,
+                                                           0,
+                                                           10);
+
+ if length(aButtons)=0 then begin
+
+  SetLength(fButtons,1);
+  fButtons[0]:=TpvGUIMessageDialogButton.Create(0,'OK');
+
+ end else begin
+
+  SetLength(fButtons,length(aButtons));
+
+ end;
+
+ for Index:=0 to length(fButtons)-1 do begin
+
+  fButtons[Index]:=aButtons[Index];
+
+  MessageDialogButton:=@fButtons[Index];
+
+  MessageDialogButton^.fButton:=TpvGUIButton.Create(fMessageDialogButtonPanel);
+  MessageDialogButton^.fButton.fCaption:=MessageDialogButton^.fCaption;
+  MessageDialogButton^.fButton.fIconPosition:=pvgbipLeft;
+  MessageDialogButton^.fButton.fIcon:=MessageDialogButton^.fIcon;
+  MessageDialogButton^.fButton.fIconHeight:=MessageDialogButton^.fIconHeight;
+  MessageDialogButton^.fButton.OnClick:=MessageDialogOnButtonClick;
+
+ end;
+
+ fSize:=TpvVector2.Null;
+
+ Center;
+
+end;
+
+constructor TpvGUIMessageDialog.Create(const aParent:TpvGUIObject;
+                                       const aTitle:TpvUTF8String;
+                                       const aMessage:TpvUTF8String;
+                                       const aButtons:array of TpvUTF8String;
+                                       const aIcon:TObject=nil;
+                                       const aIconHeight:TpvFloat=36);
+var Index:TpvSizeInt;
+    MessageDialogButtons:TpvGUIMessageDialogButtons;
+begin
+ MessageDialogButtons:=nil;
+ try
+  SetLength(MessageDialogButtons,length(aButtons));
+  for Index:=0 to length(aButtons)-1 do begin
+   MessageDialogButtons[Index]:=TpvGUIMessageDialogButton.Create(Index,aButtons[Index]);
+  end;
+  Create(aParent,
+         aTitle,
+         aMessage,
+         MessageDialogButtons,
+         aIcon,
+         aIconHeight);
+ finally
+  MessageDialogButtons:=nil;
+ end;
+end;
+
+constructor TpvGUIMessageDialog.Create(const aParent:TpvGUIObject;
+                                       const aTitle:TpvUTF8String;
+                                       const aMessage:TpvUTF8String;
+                                       const aIcon:TObject=nil;
+                                       const aIconHeight:TpvFloat=36);
+var MessageDialogButtons:TpvGUIMessageDialogButtons;
+begin
+ MessageDialogButtons:=nil;
+ Create(aParent,
+        aTitle,
+        aMessage,
+        MessageDialogButtons,
+        aIcon,
+        aIconHeight);
+end;
+
+destructor TpvGUIMessageDialog.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvGUIMessageDialog.MessageDialogOnButtonClick(const aSender:TpvGUIObject);
+var Index:TpvSizeInt;
+    MessageDialogButton:PpvGUIMessageDialogButton;
+begin
+ for Index:=0 to length(fButtons) do begin
+  MessageDialogButton:=@fButtons[Index];
+  if MessageDialogButton^.fButton=aSender then begin
+   if assigned(fOnButtonClick) then begin
+    fOnButtonClick(self,MessageDialogButton^.fID);
+   end;
+   break;
+  end;
+ end;
+ DisposeWindow;
+end;
+
 constructor TpvGUIPopup.Create(const aParent:TpvGUIObject);
 begin
 
@@ -7817,6 +8236,33 @@ begin
 end;
 
 procedure TpvGUIPopup.Draw;
+begin
+ inherited Draw;
+end;
+
+constructor TpvGUIImage.Create(const aParent:TpvGUIObject;const aImage:TObject);
+begin
+ inherited Create(aParent);
+ fImage:=aImage;
+end;
+
+destructor TpvGUIImage.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TpvGUIImage.GetPreferredSize:TpvVector2;
+begin
+ result:=Skin.GetImagePreferredSize(self);
+end;
+
+procedure TpvGUIImage.Update;
+begin
+ Skin.DrawImage(fCanvas,self);
+ inherited Update;
+end;
+
+procedure TpvGUIImage.Draw;
 begin
  inherited Draw;
 end;
