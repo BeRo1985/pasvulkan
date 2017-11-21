@@ -539,6 +539,7 @@ type TpvGUIObject=class;
        fPopupMenuFontColor:TpvVector4;
        fWindowMenuFontColor:TpvVector4;
        fCheckBoxFontColor:TpvVector4;
+       fImageSignedDistanceFieldColor:TpvVector4;
        fSignedDistanceFieldSpriteAtlas:TpvSpriteAtlas;
        fSansFont:TpvFont;
        fSansBoldFont:TpvFont;
@@ -623,6 +624,7 @@ type TpvGUIObject=class;
        property PopupMenuFontColor:TpvVector4 read fPopupMenuFontColor write fPopupMenuFontColor;
        property WindowMenuFontColor:TpvVector4 read fWindowMenuFontColor write fWindowMenuFontColor;
        property CheckBoxFontColor:TpvVector4 read fCheckBoxFontColor write fCheckBoxFontColor;
+       property ImageSignedDistanceFieldColor:TpvVector4 read fImageSignedDistanceFieldColor write fImageSignedDistanceFieldColor;
       published
        property SansFont:TpvFont read fSansFont write fSansFont;
        property SansBoldFont:TpvFont read fSansBoldFont write fSansBoldFont;
@@ -3663,6 +3665,8 @@ begin
 
  fCheckBoxFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
 
+ fImageSignedDistanceFieldColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
+
  fUnfocusedWindowHeaderFontShadow:=true;
  fFocusedWindowHeaderFontShadow:=true;
 
@@ -4543,6 +4547,7 @@ begin
  aCanvas.ClipRect:=aImage.fClipRect;
  if assigned(aImage.fImage) then begin
   if aImage.fImage is TpvSprite then begin
+   aCanvas.Color:=fImageSignedDistanceFieldColor;
    aCanvas.DrawSprite(TpvSprite(aImage.fImage),
                       TpvRect.CreateRelative(TpvVector2.Null,
                                              TpvVector2.Create(TpvSprite(aImage.fImage).Width,TpvSprite(aImage.fImage).Height)),
