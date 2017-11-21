@@ -8059,6 +8059,12 @@ begin
 
  Center;
 
+ if length(fButtons)>0 then begin
+  fButtons[0].fButton.RequestFocus;
+ end else begin
+  RequestFocus;
+ end;
+
 end;
 
 constructor TpvGUIMessageDialog.Create(const aParent:TpvGUIObject;
