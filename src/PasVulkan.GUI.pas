@@ -677,6 +677,9 @@ type TpvGUIObject=class;
      end;
 
      TpvGUIDefaultVectorBasedSkin=class(TpvGUISkin)
+      private
+       const ButtonHorizontalBorderSpacing=10.0;
+             ButtonIconSpacing=8.0;
       protected
        fUnfocusedWindowHeaderFontShadow:boolean;
        fFocusedWindowHeaderFontShadow:boolean;
@@ -3629,7 +3632,7 @@ var Stream:TStream;
     TrueTypeFont:TpvTrueTypeFont;
 begin
 
- fSpacing:=4;
+ fSpacing:=4.0;
 
  fFontSize:=-12;
 
@@ -4685,19 +4688,19 @@ begin
  if assigned(ChevronIcon) then begin
   ChevronIconSize.x:=(ChevronIcon.Width*fIconChevronHeight)/ChevronIcon.Height;
   if (length(aButton.fCaption)>0) or (IconSize.x>0.0) then begin
-   ChevronIconSize.x:=ChevronIconSize.x+fSpacing;
+   ChevronIconSize.x:=ChevronIconSize.x+ButtonIconSpacing;
   end;
   ChevronIconSize.y:=fIconChevronHeight;
  end else begin
   ChevronIconSize:=TpvVector2.Null;
  end;
  if (length(aButton.fCaption)>0) and (IconSize.x>0.0) then begin
-  TextSize.x:=TextSize.x+fSpacing;
+  TextSize.x:=TextSize.x+ButtonIconSpacing;
  end;
  TemporarySize.x:=TextSize.x+IconSize.x+ChevronIconSize.x;
  TemporarySize.y:=Max(TextSize.y,Maximum(IconSize.y,ChevronIconSize.y));
  result:=Maximum(GetWidgetLayoutPreferredSize(aButton),
-                 TemporarySize+TpvVector2.Create(20.0,10.0));
+                 TemporarySize+TpvVector2.Create(ButtonHorizontalBorderSpacing*2.0,10.0));
  if aButton.fFixedSize.x>0.0 then begin
   result.x:=aButton.fFixedSize.x;
  end;
@@ -4708,8 +4711,8 @@ end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton);
 var Offset,TextOffset:TpvVector2;
-    TextSize,IconSize,TemporarySize,ChevronIconSize,ButtonSize,ButtonOffset:TpvVector2;
-    TextRect,IconRect,ChevronIconRect:TpvRect;
+    TextSize,IconSize,TemporarySize,ChevronIconSize:TpvVector2;
+    ButtonRect,TextRect,IconRect,ChevronIconRect:TpvRect;
     SpriteWidth:TpvFloat;
     ChevronIcon:TpvSprite;
 begin
@@ -4720,7 +4723,8 @@ begin
   Offset:=TpvVector2.Null;
  end;
 
- ButtonSize:=aButton.fSize;
+ ButtonRect:=TpvRect.CreateRelative(TpvVector2.Create(ButtonHorizontalBorderSpacing,0.0),
+                                    aButton.fSize-TpvVector2.Create(ButtonHorizontalBorderSpacing*2.0,0.0));
 
  if aButton is TpvGUIPopupButton then begin
   case TpvGUIPopupButton(aButton).fPopup.fAnchorSide of
@@ -4766,20 +4770,20 @@ begin
   ChevronIcon:=nil;
  end;
 
- ButtonOffset:=TpvVector2.Null;
-
  if assigned(ChevronIcon) then begin
   ChevronIconSize.x:=(ChevronIcon.Width*fIconChevronHeight)/ChevronIcon.Height;
   ChevronIconSize.y:=fIconChevronHeight;
-  ButtonSize.x:=ButtonSize.x-(ChevronIconSize.x+fSpacing);
   if (aButton is TpvGUIPopupButton) and
      (TpvGUIPopupButton(aButton).fPopup.fAnchorSide=pvgpasLeft) then begin
-   ButtonOffset.x:=ChevronIconSize.x;
-   ChevronIconRect:=TpvRect.CreateRelative(TpvVector2.Create(fSpacing*1.5,(((aButton.fSize.y-ChevronIconSize.y)*0.5)))+Offset,
+   ChevronIconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.Create(0.0,
+                                                                                (((ButtonRect.Height-ChevronIconSize.y)*0.5)))+Offset,
                                            ChevronIconSize);
+   ButtonRect.Left:=ButtonRect.Left+(ChevronIconSize.x+ButtonIconSpacing);
   end else begin
-   ChevronIconRect:=TpvRect.CreateRelative(TpvVector2.Create(aButton.fSize.x-(ChevronIconSize.x+(fSpacing*2.0)),(((aButton.fSize.y-ChevronIconSize.y)*0.5)))+Offset,
+   ChevronIconRect:=TpvRect.CreateRelative(TpvVector2.Create(ButtonRect.Right-ChevronIconSize.x,
+                                                             ButtonRect.Top+(((ButtonRect.Height-ChevronIconSize.y)*0.5)))+Offset,
                                            ChevronIconSize);
+   ButtonRect.Right:=ButtonRect.Right-(ChevronIconSize.x+ButtonIconSpacing);
   end;
  end else begin
   ChevronIconSize:=TpvVector2.Null;
@@ -4849,33 +4853,53 @@ begin
  if IconSize.x>0.0 then begin
 
   if length(aButton.fCaption)>0 then begin
-   IconSize.x:=IconSize.x+fSpacing;
-  end;
-  TemporarySize.x:=TextSize.x+IconSize.x+ChevronIconSize.x;
-  TemporarySize.y:=Max(TextSize.y,Max(IconSize.y,ChevronIconSize.y));
 
-  case aButton.fIconPosition of
-   pvgbipLeft:begin
-    IconRect:=TpvRect.CreateRelative(TpvVector2.Create(fSpacing,(ButtonSize.y-IconSize.y)*0.5),IconSize);
-    TextRect:=TpvRect.CreateRelative(TpvVector2.Create(fSpacing,0.0),ButtonSize-TpvVector2.Create(fSpacing+IconSize.x,0.0));
+   TemporarySize.x:=TextSize.x+IconSize.x+ButtonIconSpacing;
+   TemporarySize.y:=Max(TextSize.y,Max(IconSize.y,ChevronIconSize.y));
+
+   case aButton.fIconPosition of
+    pvgbipLeft:begin
+     IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.Create(0.0,
+                                                                           (ButtonRect.Height-IconSize.y)*0.5),
+                                      IconSize);
+     TextRect:=TpvRect.CreateAbsolute(ButtonRect.LeftTop+TpvVector2.Create(IconSize.x+ButtonIconSpacing,0.0),
+                                      ButtonRect.RightBottom);
+    end;
+    pvgbipLeftCentered:begin
+     IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.Create((ButtonRect.Width-TemporarySize.x)*0.5,
+                                                                           (ButtonRect.Height-IconSize.y)*0.5),
+                                      IconSize);
+     TextRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.Create(((ButtonRect.Width-TemporarySize.x)*0.5)+IconSize.x+ButtonIconSpacing,
+                                                                           0.0),
+                                      TpvVector2.Create(TextSize.x,ButtonRect.Height));
+    end;
+    pvgbipRightCentered:begin
+     IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.Create(((ButtonRect.Width-TemporarySize.x)*0.5)+TextSize.x+ButtonIconSpacing,
+                                                                           (ButtonRect.Height-IconSize.y)*0.5),
+                                      IconSize);
+     TextRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.Create((ButtonRect.Width-TemporarySize.x)*0.5,0.0),
+                                      TpvVector2.Create(TextSize.x,ButtonRect.Height));
+    end;
+    else {pvgbipRight:}begin
+     IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.Create(ButtonRect.Width-IconSize.x,
+                                                                           (ButtonRect.Height-IconSize.y)*0.5),
+                                      IconSize);
+     TextRect:=TpvRect.CreateRelative(ButtonRect.LeftTop,
+                                      ButtonRect.Size-TpvVector2.Create(IconSize.x+ButtonIconSpacing,0.0));
+    end;
    end;
-   pvgbipLeftCentered:begin
-    IconRect:=TpvRect.CreateRelative(TpvVector2.Create((ButtonSize.x-TemporarySize.x)*0.5,(ButtonSize.y-IconSize.y)*0.5),IconSize);
-    TextRect:=TpvRect.CreateRelative(TpvVector2.Create(((ButtonSize.x-TemporarySize.x)*0.5)+IconSize.x,0.0),TpvVector2.Create(TextSize.x,ButtonSize.y));
-   end;
-   pvgbipRightCentered:begin
-    IconRect:=TpvRect.CreateRelative(TpvVector2.Create(((ButtonSize.x-TemporarySize.x)*0.5)+TextSize.x,(ButtonSize.y-IconSize.y)*0.5),IconSize);
-    TextRect:=TpvRect.CreateRelative(TpvVector2.Create((ButtonSize.x-TemporarySize.x)*0.5,0.0),TpvVector2.Create(TextSize.x,ButtonSize.y));
-   end;
-   else {pvgbipRight:}begin
-    IconRect:=TpvRect.CreateRelative(TpvVector2.Create(ButtonSize.x-fSpacing,(ButtonSize.y-IconSize.y)*0.5),IconSize);
-    TextRect:=TpvRect.CreateRelative(TpvVector2.Null,ButtonSize-TpvVector2.Create(fSpacing+IconSize.x,0.0));
-   end;
+
+  end else begin
+
+   IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+((ButtonRect.Size-IconSize)*0.5),IconSize);
+
+   TextRect:=TpvRect.CreateRelative(TpvVector2.Null,TpvVector2.Null);
+
   end;
 
  end else begin
 
-  TextRect:=TpvRect.CreateRelative(TpvVector2.Null,ButtonSize);
+  TextRect:=ButtonRect;
 
   IconRect:=TpvRect.CreateRelative(TpvVector2.Null,TpvVector2.Null);
 
@@ -4922,10 +4946,10 @@ begin
    aCanvas.DrawSprite(TpvSprite(aButton.fIcon),
                       TpvRect.CreateRelative(TpvVector2.Null,
                                              TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)),
-                      TpvRect.CreateRelative(ButtonOffset+Offset+IconRect.LeftTop,IconRect.Size));
+                      TpvRect.CreateRelative(Offset+IconRect.LeftTop,IconRect.Size));
   end else if aButton.fIcon is TpvVulkanTexture then begin
    aCanvas.DrawTexturedRectangle(TpvVulkanTexture(aButton.fIcon),
-                                 ButtonOffset+Offset+IconRect.LeftTop+((IconRect.RightBottom-IconRect.LeftTop)*0.5),
+                                 Offset+IconRect.LeftTop+((IconRect.RightBottom-IconRect.LeftTop)*0.5),
                                  (IconRect.RightBottom-IconRect.LeftTop)*0.5);
   end;
  end;
@@ -4940,8 +4964,8 @@ begin
                                                  aButton.fTextTruncation,
                                                  aCanvas.Font,
                                                  aCanvas.FontSize,
-                                                 ButtonSize.x-(fSpacing*2.0)),
-                  ButtonOffset+Offset+TextRect.LeftTop+TextOffset);
+                                                 ButtonRect.Width+(ButtonHorizontalBorderSpacing*2.0)),
+                  Offset+TextRect.LeftTop+TextOffset);
 
  if assigned(ChevronIcon) then begin
   aCanvas.DrawSprite(ChevronIcon,
@@ -8048,7 +8072,7 @@ begin
 
   MessageDialogButton^.fButton:=TpvGUIButton.Create(fMessageDialogButtonPanel);
   MessageDialogButton^.fButton.fCaption:=MessageDialogButton^.fCaption;
-  MessageDialogButton^.fButton.fIconPosition:=pvgbipLeft;
+  MessageDialogButton^.fButton.fIconPosition:=pvgbipLeftCentered;
   MessageDialogButton^.fButton.fIcon:=MessageDialogButton^.fIcon;
   MessageDialogButton^.fButton.fIconHeight:=MessageDialogButton^.fIconHeight;
   MessageDialogButton^.fButton.OnClick:=MessageDialogOnButtonClick;
@@ -8358,7 +8382,7 @@ begin
 
  fCaption:='Button';
 
- fIconPosition:=pvgbipLeft;
+ fIconPosition:=pvgbipLeftCentered;
 
  fIcon:=nil;
 
