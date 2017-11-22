@@ -1099,9 +1099,10 @@ type TpvGUIObject=class;
        fMaximizationButton:TpvGUIButton;
        fCloseButton:TpvGUIButton;
        function GetFixedSize:TpvVector2; override;
+       procedure SetWindowFlags(const aWindowFlags:TpvGUIWindowFlags);
+       procedure SetWindowState(const aWindowState:TpvGUIWindowState);
        function GetModal:boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetModal(const aModal:boolean);
-       procedure SetWindowState(const aWindowState:TpvGUIWindowState); {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetModal(const aModal:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetButtonPanel:TpvGUIPanel;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
@@ -1131,7 +1132,7 @@ type TpvGUIObject=class;
        property SavedSize:TpvVector2 read fSavedSize write fSavedSize;
       published
        property Title:TpvUTF8String read fTitle write fTitle;
-       property WindowFlags:TpvGUIWindowFlags read fWindowFlags write fWindowFlags;
+       property WindowFlags:TpvGUIWindowFlags read fWindowFlags write SetWindowFlags;
        property WindowState:TpvGUIWindowState read fWindowState write SetWindowState;
        property Modal:boolean read GetModal write SetModal;
        property ButtonPanel:TpvGUIPanel read GetButtonPanel;
@@ -7367,7 +7368,6 @@ begin
 
 destructor TpvGUIWindow.Destroy;
 begin
- SetModal(false);
  inherited Destroy;
 end;
 
@@ -7459,26 +7459,20 @@ begin
  end;
 end;
 
-function TpvGUIWindow.GetModal:boolean;
+procedure TpvGUIWindow.SetWindowFlags(const aWindowFlags:TpvGUIWindowFlags);
 begin
- result:=pvgwfModal in fWindowFlags;
-end;
-
-procedure TpvGUIWindow.SetModal(const aModal:boolean);
-begin
- if aModal<>(pvgwfModal in fWindowFlags) then begin
-  if aModal then begin
-   Include(fWindowFlags,pvgwfModal);
-   if assigned(fInstance) and assigned(fInstance.fModalWindowStack) then begin
+ if ((pvgwfModal in fWindowFlags)<>(pvgwfModal in aWindowFlags)) and
+    assigned(fInstance) and
+    assigned(fInstance.fModalWindowStack) then begin
+  if pvgwfModal in aWindowFlags then begin
+   if fInstance.fModalWindowStack.IndexOf(self)<0 then begin
     fInstance.fModalWindowStack.Add(self);
    end;
   end else begin
-   if assigned(fInstance) and assigned(fInstance.fModalWindowStack) then begin
-    fInstance.fModalWindowStack.Remove(self);
-   end;
-   Exclude(fWindowFlags,pvgwfModal);
+   fInstance.fModalWindowStack.Remove(self);
   end;
  end;
+ fWindowFlags:=aWindowFlags;
 end;
 
 procedure TpvGUIWindow.SetWindowState(const aWindowState:TpvGUIWindowState);
@@ -7572,6 +7566,20 @@ begin
    end;
   end;
   PerformLayout;
+ end;
+end;
+
+function TpvGUIWindow.GetModal:boolean;
+begin
+ result:=pvgwfModal in fWindowFlags;
+end;
+
+procedure TpvGUIWindow.SetModal(const aModal:boolean);
+begin
+ if aModal then begin
+  SetWindowFlags(fWindowFlags+[pvgwfModal]);
+ end else begin
+  SetWindowFlags(fWindowFlags-[pvgwfModal]);
  end;
 end;
 
@@ -8072,7 +8080,6 @@ end;
 
 destructor TpvGUIModalWindow.Destroy;
 begin
- SetModal(false);
  inherited Destroy;
 end;
 
