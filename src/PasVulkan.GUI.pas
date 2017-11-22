@@ -89,8 +89,6 @@ type TpvGUIObject=class;
 
      TpvGUIWindow=class;
 
-     TpvGUIModalWindow=class;
-
      TpvGUIMessageDialog=class;
 
      TpvGUIPopup=class;
@@ -1143,12 +1141,6 @@ type TpvGUIObject=class;
        property TextTruncation;
      end;
 
-     TpvGUIModalWindow=class(TpvGUIWindow)
-      public
-       constructor Create(const aParent:TpvGUIObject); override;
-       destructor Destroy; override;
-     end;
-
      PpvGUIMessageDialogButton=^TpvGUIMessageDialogButton;
      TpvGUIMessageDialogButton=record
       private
@@ -1173,7 +1165,7 @@ type TpvGUIObject=class;
 
      TpvGUIMessageDialogOnButtonClick=procedure(const aSender:TpvGUIObject;const aID:TpvInt32) of object;
 
-     TpvGUIMessageDialog=class(TpvGUIModalWindow)
+     TpvGUIMessageDialog=class(TpvGUIWindow)
       private
        fMessagePanel:TpvGUIPanel;
        fMessageImage:TpvGUIImage;
@@ -8072,17 +8064,6 @@ begin
  inherited Draw;
 end;
 
-constructor TpvGUIModalWindow.Create(const aParent:TpvGUIObject);
-begin
- inherited Create(aParent);
- SetModal(true);
-end;
-
-destructor TpvGUIModalWindow.Destroy;
-begin
- inherited Destroy;
-end;
-
 constructor TpvGUIMessageDialogButton.Create(const aID:TpvInt32;
                                              const aCaption:TpvUTF8String;
                                              const aKeyCode:TpvInt32=KEYCODE_UNKNOWN;
@@ -8111,14 +8092,14 @@ begin
 
  fOnButtonClick:=nil;
 
- fWindowFlags:=fWindowFlags-[pvgwfResizableNW,
-                             pvgwfResizableNE,
-                             pvgwfResizableSW,
-                             pvgwfResizableSE,
-                             pvgwfResizableN,
-                             pvgwfResizableS,
-                             pvgwfResizableW,
-                             pvgwfResizableE];
+ SetWindowFlags((fWindowFlags-[pvgwfResizableNW,
+                               pvgwfResizableNE,
+                               pvgwfResizableSW,
+                               pvgwfResizableSE,
+                               pvgwfResizableN,
+                               pvgwfResizableS,
+                               pvgwfResizableW,
+                               pvgwfResizableE])+[pvgwfModal]);
 
  fTitle:=aTitle;
 
