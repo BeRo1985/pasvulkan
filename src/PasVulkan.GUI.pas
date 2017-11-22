@@ -787,6 +787,7 @@ type TpvGUIObject=class;
        pvgwfDraggable,
        pvgwfFocused,
        pvgwfPointerFocused,
+       pvgwfKeyPreview,
        pvgwfWantAllKeys,
        pvgwfTabStop,
        pvgwfScissor,
@@ -839,6 +840,8 @@ type TpvGUIObject=class;
        procedure SetPointerFocused(const aPointerFocused:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetTabStop:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetTabStop(const aTabStop:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetKeyPreview:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetKeyPreview(const aKeyPreview:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetWantAllKeys:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetWantAllKeys(const aWantAllKeys:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetLeft:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -930,6 +933,7 @@ type TpvGUIObject=class;
        property Focused:boolean read GetFocused write SetFocused;
        property PointerFocused:boolean read GetPointerFocused write SetPointerFocused;
        property TabStop:boolean read GetTabStop write SetTabStop;
+       property KeyPreview:boolean read GetKeyPreview write SetKeyPreview;
        property WantAllKeys:boolean read GetWantAllKeys write SetWantAllKeys;
        property Left:TpvFloat read GetLeft write SetLeft;
        property Top:TpvFloat read GetTop write SetTop;
@@ -6009,6 +6013,20 @@ begin
  end;
 end;
 
+function TpvGUIWidget.GetKeyPreview:boolean;
+begin
+ result:=pvgwfKeyPreview in fWidgetFlags;
+end;
+
+procedure TpvGUIWidget.SetKeyPreview(const aKeyPreview:boolean);
+begin
+ if aKeyPreview then begin
+  Include(fWidgetFlags,pvgwfKeyPreview);
+ end else begin
+  Exclude(fWidgetFlags,pvgwfKeyPreview);
+ end;
+end;
+
 function TpvGUIWidget.GetWantAllKeys:boolean;
 begin
  result:=pvgwfWantAllKeys in fWidgetFlags;
@@ -6899,7 +6917,11 @@ begin
 
  CurrentWidget:=aWidget;
  while assigned(CurrentWidget) do begin
-  fCurrentFocusPath.Add(CurrentWidget);
+  if fCurrentFocusPath.Count=0 then begin
+   fCurrentFocusPath.Add(CurrentWidget);
+  end else begin
+   fCurrentFocusPath.Insert(0,CurrentWidget);
+  end;
   if CurrentWidget is TpvGUIWindow then begin
    TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
    fWindow:=CurrentWidget as TpvGUIWindow;
@@ -7039,7 +7061,7 @@ begin
   if not result then begin
    if (aKeyEvent.KeyEventType=KEYEVENT_TYPED) and (aKeyEvent.KeyCode=KEYCODE_TAB) then begin
     if fCurrentFocusPath.Count>0 then begin
-     Current:=fCurrentFocusPath.Items[0];
+     Current:=fCurrentFocusPath.Items[fCurrentFocusPath.Count-1];
      if (Current<>self) and (Current is TpvGUIWidget) then begin
       CurrentWidget:=Current as TpvGUIWidget;
       if CurrentWidget.Focused then begin
@@ -7051,20 +7073,41 @@ begin
      end;
     end;
    end;
-   Index:=0;
-   while Index<fCurrentFocusPath.Count do begin
-    // must be a while-loop, not an for-loop, because fCurrentFocusPath can be changed while going through this list
-    Current:=fCurrentFocusPath.Items[Index];
-    if (Current<>self) and (Current is TpvGUIWidget) then begin
-     CurrentWidget:=Current as TpvGUIWidget;
-     if CurrentWidget.Focused then begin
-      result:=CurrentWidget.KeyEvent(aKeyEvent);
-      if result then begin
-       break;
+   begin
+    // KeyPreview pass
+    Index:=0;
+    while Index<fCurrentFocusPath.Count do begin
+     // must be a while-loop, not an for-loop, because fCurrentFocusPath can be changed while going through this list
+     Current:=fCurrentFocusPath.Items[Index];
+     if (Current<>self) and (Current is TpvGUIWidget) then begin
+      CurrentWidget:=Current as TpvGUIWidget;
+      if CurrentWidget.KeyPreview then begin
+       result:=CurrentWidget.KeyEvent(aKeyEvent);
+       if result then begin
+        exit;
+       end;
       end;
      end;
+     inc(Index);
     end;
-    inc(Index);
+   end;
+   begin
+    // Normal pass
+    Index:=fCurrentFocusPath.Count-1;
+    while (Index>=0) and (Index<fCurrentFocusPath.Count) do begin
+     // must be a while-loop, not an for-loop, because fCurrentFocusPath can be changed while going through this list
+     Current:=fCurrentFocusPath.Items[Index];
+     if (Current<>self) and (Current is TpvGUIWidget) then begin
+      CurrentWidget:=Current as TpvGUIWidget;
+      if CurrentWidget.Focused then begin
+       result:=CurrentWidget.KeyEvent(aKeyEvent);
+       if result then begin
+        exit;
+       end;
+      end;
+     end;
+     dec(Index);
+    end;
    end;
   end;
  end;
@@ -7101,15 +7144,6 @@ begin
       CurrentWindow:=fModalWindowStack[fModalWindowStack.Count-1] as TpvGUIWindow;
       if not CurrentWindow.Contains(aPointerEvent.Position-CurrentWindow.AbsolutePosition) then begin
        exit;
-      end;
-     end;
-     for Index:=0 to fCurrentFocusPath.Count-1 do begin
-      Current:=fCurrentFocusPath.Items[Index];
-      if (Current<>self) and (Current is TpvGUIWindow) then begin
-       CurrentWindow:=Current as TpvGUIWindow;
-       if (pvgwfModal in CurrentWindow.fWindowFlags) and not CurrentWindow.Contains(aPointerEvent.Position-CurrentWindow.AbsolutePosition) then begin
-        exit;
-       end;
       end;
      end;
      case aPointerEvent.PointerEventType of
