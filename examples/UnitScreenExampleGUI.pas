@@ -132,8 +132,8 @@ begin
  TpvGUIMessageDialog.Create(fGUIInstance,
                             'Question',
                             'Do you like this GUI?',
-                            [TpvGUIMessageDialogButton.Create(0,'Yes',fGUIInstance.Skin.IconThumbUp),
-                             TpvGUIMessageDialogButton.Create(1,'No',fGUIInstance.Skin.IconThumbDown)],
+                            [TpvGUIMessageDialogButton.Create(0,'Yes',KEYCODE_Y,fGUIInstance.Skin.IconThumbUp,24.0),
+                             TpvGUIMessageDialogButton.Create(1,'No',KEYCODE_N,fGUIInstance.Skin.IconThumbDown,24.0)],
                             fGUIInstance.Skin.IconDialogQuestion);
 
 end;

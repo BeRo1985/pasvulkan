@@ -1149,10 +1149,12 @@ type TpvGUIObject=class;
        fCaption:TpvUTF8String;
        fIcon:TObject;
        fIconHeight:TpvFloat;
+       fKeyCode:TpvInt32;
        fButton:TpvGUIButton;
       public
        constructor Create(const aID:TpvInt32;
                           const aCaption:TpvUTF8String;
+                          const aKeyCode:TpvInt32=KEYCODE_UNKNOWN;
                           const aIcon:TObject=nil;
                           const aIconHeight:TpvFloat=24.0);
        property ID:TpvInt32 read fID write fID;
@@ -1192,6 +1194,7 @@ type TpvGUIObject=class;
                           const aIcon:TObject=nil;
                           const aIconHeight:TpvFloat=36.0); reintroduce; overload;
        destructor Destroy; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
       published
        property OnButtonClick:TpvGUIMessageDialogOnButtonClick read fOnButtonClick write fOnButtonClick;
      end;
@@ -8026,6 +8029,7 @@ end;
 
 constructor TpvGUIMessageDialogButton.Create(const aID:TpvInt32;
                                              const aCaption:TpvUTF8String;
+                                             const aKeyCode:TpvInt32=KEYCODE_UNKNOWN;
                                              const aIcon:TObject=nil;
                                              const aIconHeight:TpvFloat=24.0);
 begin
@@ -8033,6 +8037,7 @@ begin
  fCaption:=aCaption;
  fIcon:=aIcon;
  fIconHeight:=aIconHeight;
+ fKeyCode:=aKeyCode;
  fButton:=nil;
 end;
 
@@ -8092,7 +8097,7 @@ begin
  if length(aButtons)=0 then begin
 
   SetLength(fButtons,1);
-  fButtons[0]:=TpvGUIMessageDialogButton.Create(0,'OK');
+  fButtons[0]:=TpvGUIMessageDialogButton.Create(0,'OK',KEYCODE_RETURN);
 
  end else begin
 
@@ -8172,6 +8177,26 @@ end;
 destructor TpvGUIMessageDialog.Destroy;
 begin
  inherited Destroy;
+end;
+
+function TpvGUIMessageDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+var Index:TpvSizeInt;
+    MessageDialogButton:PpvGUIMessageDialogButton;
+begin
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if (aKeyEvent.KeyEventType=KEYEVENT_TYPED) and not result then begin
+  for Index:=0 to length(fButtons) do begin
+   MessageDialogButton:=@fButtons[Index];
+   if MessageDialogButton^.fKeyCode=aKeyEvent.KeyCode then begin
+    if assigned(fOnButtonClick) then begin
+     fOnButtonClick(self,MessageDialogButton^.fID);
+    end;
+    result:=true;
+    DisposeWindow;
+    break;
+   end;
+  end;
+ end;
 end;
 
 procedure TpvGUIMessageDialog.MessageDialogOnButtonClick(const aSender:TpvGUIObject);
