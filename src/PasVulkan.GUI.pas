@@ -9147,21 +9147,21 @@ end;
 
 procedure TpvGUITextEdit.CutSelectedText;
 var CurrentPosition,OtherPosition:TpvInt32;
-    TempText:TpvUTF8String;
+    TemporaryUncheckedText:TpvUTF8String;
 begin
  if (fTextSelectionStart>0) and
     (fTextSelectionEnd>0) then begin
   CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
   OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
   pvApplication.Clipboard.SetText(Copy(fText,CurrentPosition,OtherPosition-CurrentPosition));
-  TempText:=fText;
-  Delete(TempText,CurrentPosition,OtherPosition-CurrentPosition);
-  if CheckText(TempText) then begin
+  TemporaryUncheckedText:=fText;
+  Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+  if CheckText(TemporaryUncheckedText) then begin
    fTextCursorPositionIndex:=CurrentPosition;
    fTextSelectionStart:=0;
    fTextSelectionEnd:=0;
-   if TempText<>fText then begin
-    fText:=TempText;
+   if fText<>TemporaryUncheckedText then begin
+    fText:=TemporaryUncheckedText;
     if assigned(fOnChange) then begin
      fOnChange(self);
     end;
@@ -9182,38 +9182,38 @@ begin
 end;
 
 procedure TpvGUITextEdit.PasteText;
-var CurrentPosition,OtherPosition,TempTextCursorPositionIndex,
-    TempTextSelectionStart,TempTextSelectionEnd:TpvInt32;
-    TempText,TemporaryText:TpvUTF8String;
+var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
+    TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
+    TemporaryUncheckedText,TemporaryText:TpvUTF8String;
 begin
- TempText:=fText;
- TempTextCursorPositionIndex:=fTextCursorPositionIndex;
- TempTextSelectionStart:=fTextSelectionStart;
- TempTextSelectionEnd:=fTextSelectionEnd;
- if (fTextSelectionStart>0) and
-    (fTextSelectionEnd>0) then begin
-  CurrentPosition:=PUCUUTF8GetCodeUnit(TempText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
-  OtherPosition:=PUCUUTF8GetCodeUnit(TempText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-  Delete(TempText,CurrentPosition,OtherPosition-CurrentPosition);
-  TempTextCursorPositionIndex:=CurrentPosition;
-  TempTextSelectionStart:=0;
-  TempTextSelectionEnd:=0;
+ TemporaryUncheckedText:=fText;
+ TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
+ TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
+ TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
+ if (TemporaryUncheckedTextSelectionStart>0) and
+    (TemporaryUncheckedTextSelectionEnd>0) then begin
+  CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+  OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+  Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+  TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
+  TemporaryUncheckedTextSelectionStart:=0;
+  TemporaryUncheckedTextSelectionEnd:=0;
  end;
  if pvApplication.Clipboard.HasText then begin
   TemporaryText:=pvApplication.Clipboard.GetText;
   if length(TemporaryText)>0 then begin
    Insert(TemporaryText,
-          TempText,
-          PUCUUTF8GetCodeUnit(TempText,TempTextCursorPositionIndex-1));
-   inc(TempTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
+          TemporaryUncheckedText,
+          PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
+   inc(TemporaryUncheckedTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
   end;
  end;
- if CheckText(TempText) then begin
-  fTextCursorPositionIndex:=TempTextCursorPositionIndex;
-  fTextSelectionStart:=TempTextSelectionStart;
-  fTextSelectionEnd:=TempTextSelectionEnd;
-  if TempText<>fText then begin
-   fText:=TempText;
+ if CheckText(TemporaryUncheckedText) then begin
+  fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
+  fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
+  fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
+  if fText<>TemporaryUncheckedText then begin
+   fText:=TemporaryUncheckedText;
    if assigned(fOnChange) then begin
     fOnChange(self);
    end;
@@ -9223,20 +9223,20 @@ end;
 
 procedure TpvGUITextEdit.DeleteSelectedText;
 var CurrentPosition,OtherPosition:TpvInt32;
-    TempText:TpvUTF8String;
+    TemporaryUncheckedText:TpvUTF8String;
 begin
  if (fTextSelectionStart>0) and
     (fTextSelectionEnd>0) then begin
   CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
   OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-  TempText:=fText;
-  Delete(TempText,CurrentPosition,OtherPosition-CurrentPosition);
-  if CheckText(TempText) then begin
+  TemporaryUncheckedText:=fText;
+  Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+  if CheckText(TemporaryUncheckedText) then begin
    fTextCursorPositionIndex:=CurrentPosition;
    fTextSelectionStart:=0;
    fTextSelectionEnd:=0;
-   if TempText<>fText then begin
-    fText:=TempText;
+   if fText<>TemporaryUncheckedText then begin
+    fText:=TemporaryUncheckedText;
     if assigned(fOnChange) then begin
      fOnChange(self);
     end;
@@ -9288,9 +9288,9 @@ begin
 end;
 
 function TpvGUITextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-var CurrentPosition,OtherPosition,TempTextCursorPositionIndex,
-    TempTextSelectionStart,TempTextSelectionEnd:TpvInt32;
-    TemporaryText,TempText:TpvUTF8String;
+var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
+    TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
+    TemporaryText,TemporaryUncheckedText:TpvUTF8String;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -9375,14 +9375,14 @@ begin
          (fTextSelectionEnd>0) then begin
        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
        OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-       TempText:=fText;
-       Delete(TempText,CurrentPosition,OtherPosition-CurrentPosition);
-       if CheckText(TempText) then begin
+       TemporaryUncheckedText:=fText;
+       Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+       if CheckText(TemporaryUncheckedText) then begin
         fTextCursorPositionIndex:=CurrentPosition;
         fTextSelectionStart:=0;
         fTextSelectionEnd:=0;
-        if TempText<>fText then begin
-         fText:=TempText;
+        if fText<>TemporaryUncheckedText then begin
+         fText:=TemporaryUncheckedText;
          if assigned(fOnChange) then begin
           fOnChange(self);
          end;
@@ -9394,10 +9394,16 @@ begin
         OtherPosition:=CurrentPosition;
         PUCUUTF8Dec(fText,OtherPosition);
         if (OtherPosition>0) and (OtherPosition<=length(fText)) and (OtherPosition<CurrentPosition) then begin
-         Delete(fText,OtherPosition,CurrentPosition-OtherPosition);
-         dec(fTextCursorPositionIndex);
-         if assigned(fOnChange) then begin
-          fOnChange(self);
+         TemporaryUncheckedText:=fText;
+         Delete(TemporaryUncheckedText,OtherPosition,CurrentPosition-OtherPosition);
+         if CheckText(TemporaryUncheckedText) then begin
+          dec(fTextCursorPositionIndex);
+          if fText<>TemporaryUncheckedText then begin
+           fText:=TemporaryUncheckedText;
+           if assigned(fOnChange) then begin
+            fOnChange(self);
+           end;
+          end;
          end;
         end;
        end;
@@ -9405,40 +9411,40 @@ begin
       result:=true;
      end;
      KEYCODE_INSERT:begin
-      TempText:=fText;
-      TempTextCursorPositionIndex:=fTextCursorPositionIndex;
-      TempTextSelectionStart:=fTextSelectionStart;
-      TempTextSelectionEnd:=fTextSelectionEnd;
-      if (fTextSelectionStart>0) and
-         (fTextSelectionEnd>0) then begin
-       CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
-       OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-       Delete(TempText,CurrentPosition,OtherPosition-CurrentPosition);
-       TempTextCursorPositionIndex:=CurrentPosition;
-       TempTextSelectionStart:=0;
-       TempTextSelectionEnd:=0;
+      TemporaryUncheckedText:=fText;
+      TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
+      TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
+      TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
+      if (TemporaryUncheckedTextSelectionStart>0) and
+         (TemporaryUncheckedTextSelectionEnd>0) then begin
+       CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+       OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+       Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+       TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
+       TemporaryUncheckedTextSelectionStart:=0;
+       TemporaryUncheckedTextSelectionEnd:=0;
       end;
       if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
        if pvApplication.Clipboard.HasText then begin
         TemporaryText:=pvApplication.Clipboard.GetText;
         if length(TemporaryText)>0 then begin
          Insert(TemporaryText,
-                TempText,
-                PUCUUTF8GetCodeUnit(TempText,TempTextCursorPositionIndex-1));
-         inc(TempTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
+                TemporaryUncheckedText,
+                PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
+         inc(TemporaryUncheckedTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
         end;
        end;
       end else begin
        Insert(#32,
-              TempText,
-              PUCUUTF8GetCodeUnit(TempText,TempTextCursorPositionIndex-1));
+              TemporaryUncheckedText,
+              PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
       end;
-      if CheckText(TempText) then begin
-       fTextCursorPositionIndex:=TempTextCursorPositionIndex;
-       fTextSelectionStart:=TempTextSelectionStart;
-       fTextSelectionEnd:=TempTextSelectionEnd;
-       if TempText<>fText then begin
-        fText:=TempText;
+      if CheckText(TemporaryUncheckedText) then begin
+       fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
+       fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
+       fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
+       if fText<>TemporaryUncheckedText then begin
+        fText:=TemporaryUncheckedText;
         if assigned(fOnChange) then begin
          fOnChange(self);
         end;
@@ -9460,10 +9466,10 @@ begin
         OtherPosition:=CurrentPosition;
         PUCUUTF8Inc(fText,OtherPosition);
         if (OtherPosition>1) and (OtherPosition<=(length(fText)+1)) and (CurrentPosition<OtherPosition) then begin
-         TempText:=fText;
-         Delete(TempText,CurrentPosition,OtherPosition-CurrentPosition);
-         if TempText<>fText then begin
-          fText:=TempText;
+         TemporaryUncheckedText:=fText;
+         Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+         if (fText<>TemporaryUncheckedText) and CheckText(TemporaryUncheckedText) then begin
+          fText:=TemporaryUncheckedText;
           if assigned(fOnChange) then begin
            fOnChange(self);
           end;
@@ -9501,29 +9507,29 @@ begin
     end;
    end;
    KEYEVENT_UNICODE:begin
-    TempText:=fText;
-    TempTextCursorPositionIndex:=fTextCursorPositionIndex;
-    TempTextSelectionStart:=fTextSelectionStart;
-    TempTextSelectionEnd:=fTextSelectionEnd;
-    if (fTextSelectionStart>0) and
-       (fTextSelectionEnd>0) then begin
-     CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
-     OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-     Delete(TempText,CurrentPosition,OtherPosition-CurrentPosition);
-     TempTextCursorPositionIndex:=CurrentPosition;
-     TempTextSelectionStart:=0;
-     TempTextSelectionEnd:=0;
+    TemporaryUncheckedText:=fText;
+    TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
+    TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
+    TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
+    if (TemporaryUncheckedTextSelectionStart>0) and
+       (TemporaryUncheckedTextSelectionEnd>0) then begin
+     CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+     OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+     Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+     TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
+     TemporaryUncheckedTextSelectionStart:=0;
+     TemporaryUncheckedTextSelectionEnd:=0;
     end;
     Insert(PUCUUTF32CharToUTF8(aKeyEvent.KeyCode),
-           TempText,
-           PUCUUTF8GetCodeUnit(TempText,TempTextCursorPositionIndex-1));
-    inc(TempTextCursorPositionIndex);
-    if CheckText(TempText) then begin
-     fTextCursorPositionIndex:=TempTextCursorPositionIndex;
-     fTextSelectionStart:=TempTextSelectionStart;
-     fTextSelectionEnd:=TempTextSelectionEnd;
-     if TempText<>fText then begin
-      fText:=TempText;
+           TemporaryUncheckedText,
+           PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
+    inc(TemporaryUncheckedTextCursorPositionIndex);
+    if CheckText(TemporaryUncheckedText) then begin
+     fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
+     fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
+     fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
+     if fText<>TemporaryUncheckedText then begin
+      fText:=TemporaryUncheckedText;
       if assigned(fOnChange) then begin
        fOnChange(self);
       end;
