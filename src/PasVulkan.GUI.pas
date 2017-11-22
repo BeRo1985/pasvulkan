@@ -578,6 +578,7 @@ type TpvGUIObject=class;
        fIconDialogError:TObject;
        fIconDialogInformation:TObject;
        fIconDialogQuestion:TObject;
+       fIconDialogStop:TObject;
        fIconDialogWarning:TObject;
        fIconChevronHeight:TpvFloat;
        fIconPopupMenuHeight:TpvFloat;
@@ -674,6 +675,7 @@ type TpvGUIObject=class;
        property IconDialogError:TObject read fIconDialogError write fIconDialogError;
        property IconDialogInformation:TObject read fIconDialogInformation write fIconDialogInformation;
        property IconDialogQuestion:TObject read fIconDialogQuestion write fIconDialogQuestion;
+       property IconDialogStop:TObject read fIconDialogStop write fIconDialogStop;
        property IconDialogWarning:TObject read fIconDialogWarning write fIconDialogWarning;
        property IconChevronHeight:TpvFloat read fIconChevronHeight write fIconChevronHeight;
        property IconPopupMenuHeight:TpvFloat read fIconPopupMenuHeight write fIconPopupMenuHeight;
@@ -3526,6 +3528,7 @@ begin
  fIconDialogError:=nil;
  fIconDialogInformation:=nil;
  fIconDialogQuestion:=nil;
+ fIconDialogStop:=nil;
  fIconDialogWarning:=nil;
  Setup;
 end;
@@ -4098,6 +4101,18 @@ begin
                                                                                     true,
                                                                                     2,
                                                                                     1);
+
+ fIconDialogStop:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogStop',
+                                                                                'M12,0A12,12 0 0,1 24,12A12,12 0 0,1 12,24A12,12 0 0,1 0,12A12,12 0 0,1 12,0M12,2A10,10 0 0,0 2,12C2,14.4 2.85,16.6 4.26,18.33L18.33,4.26C16.6,2.85 14.4,2 12,2M12,22A10,10 0 0,0 22,12C22,9.6 21.15,7.4 19.74,5.67L5.67,19.74C7.4,21.15 9.6,22 12,22Z',
+                                                                                48,
+                                                                                48,
+                                                                                48.0/24.0,
+                                                                                0.0,
+                                                                                0.0,
+                                                                                pvvpfrNonZero,
+                                                                                true,
+                                                                                2,
+                                                                                1);
 
  fIconDialogWarning:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogWarning',
                                                                                    'M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z',
