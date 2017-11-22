@@ -1515,7 +1515,10 @@ type PSDLInt8=^TSDLInt8;
       type_:TSDLUInt32;
       timeStamp:TSDLUInt32;
       windowID:TSDLUInt32;
-      x,y:TSDLInt32;
+      which:TSDLUInt32;
+      x:TSDLInt32;
+      y:TSDLInt32;
+      Direction:TSDLInt32;
      end;
 
      TSDL_JoyAxisEvent=record

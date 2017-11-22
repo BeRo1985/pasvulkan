@@ -1518,6 +1518,7 @@ type TpvGUIObject=class;
        procedure SetValue(const aValue:TpvInt64);
        function CheckText(const aText:TpvUTF8String):boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -9819,6 +9820,28 @@ begin
    end;
   end;
  end;
+end;
+
+function TpvGUIIntegerEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+var TemporaryValue,Step:TpvInt64;
+    v:TpvFloat;
+begin
+ result:=false;
+ if not result then begin
+  TemporaryValue:=GetValue;
+  v:=aRelativeAmount.x+aRelativeAmount.y;
+  if v<0.0 then begin
+   Step:=floor(v);
+  end else begin
+   Step:=ceil(v);
+  end;
+  if ((Step>0) and ((TemporaryValue+Step)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+     ((Step<0) and ((TemporaryValue+Step)>=fMinValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+   SetValue(TemporaryValue+Step);
+  end;
+  result:=true;
+ end;
+ //  result:=inherited Scrolled(aPosition,aRelativeAmount);
 end;
 
 constructor TpvGUIMenuItem.Create(const aParent:TpvGUIObject);
