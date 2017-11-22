@@ -9763,9 +9763,18 @@ begin
 end;
 
 procedure TpvGUIIntegerEdit.SetValue(const aValue:TpvInt64);
+var OldText:TpvUTF8String;
 begin
+ OldText:=fText;
  fText:=IntToStr(aValue);
- ApplyMinMaxValueBounds;
+ if OldText<>fText then begin
+  ApplyMinMaxValueBounds;
+  if OldText<>fText then begin
+   if assigned(fOnChange) then begin
+    fOnChange(self);
+   end;
+  end;
+ end;
 end;
 
 function TpvGUIIntegerEdit.CheckText(const aText:TpvUTF8String):boolean;
@@ -9826,7 +9835,7 @@ function TpvGUIIntegerEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
- result:=false;
+ result:=inherited Scrolled(aPosition,aRelativeAmount);
  if not result then begin
   TemporaryValue:=GetValue;
   v:=aRelativeAmount.x+aRelativeAmount.y;
@@ -9841,7 +9850,6 @@ begin
   end;
   result:=true;
  end;
- //  result:=inherited Scrolled(aPosition,aRelativeAmount);
 end;
 
 constructor TpvGUIMenuItem.Create(const aParent:TpvGUIObject);
