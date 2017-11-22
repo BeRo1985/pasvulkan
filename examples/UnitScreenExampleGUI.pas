@@ -132,8 +132,8 @@ begin
  TpvGUIMessageDialog.Create(fGUIInstance,
                             'Question',
                             'Do you like this GUI?',
-                            [TpvGUIMessageDialogButton.Create(0,'Yes',KEYCODE_Y,fGUIInstance.Skin.IconThumbUp,24.0),
-                             TpvGUIMessageDialogButton.Create(1,'No',KEYCODE_N,fGUIInstance.Skin.IconThumbDown,24.0)],
+                            [TpvGUIMessageDialogButton.Create(0,'Yes',KEYCODE_RETURN,fGUIInstance.Skin.IconThumbUp,24.0),
+                             TpvGUIMessageDialogButton.Create(1,'No',KEYCODE_ESCAPE,fGUIInstance.Skin.IconThumbDown,24.0)],
                             fGUIInstance.Skin.IconDialogQuestion);
 
 end;
@@ -607,7 +607,7 @@ begin
  if fReady and not fGUIInstance.KeyEvent(aKeyEvent) then begin
   if aKeyEvent.KeyEventType=KEYEVENT_DOWN then begin
    case aKeyEvent.KeyCode of
-    KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
+    KEYCODE_AC_BACK{,KEYCODE_ESCAPE}:begin
      pvApplication.NextScreen:=TScreenMainMenu.Create;
     end;
 {   KEYCODE_UP:begin

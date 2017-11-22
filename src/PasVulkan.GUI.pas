@@ -8124,11 +8124,13 @@ begin
 
  Center;
 
- if length(fButtons)>0 then begin
+{if length(fButtons)>0 then begin
   fButtons[0].fButton.RequestFocus;
  end else begin
   RequestFocus;
- end;
+ end;}
+
+ RequestFocus;
 
 end;
 
