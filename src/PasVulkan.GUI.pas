@@ -1438,6 +1438,8 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
      end;
 
+     TpvGUITextEditOnCheckText=function(const aText:TpvUTF8String):boolean of object;
+
      TpvGUITextEdit=class(TpvGUIWidget)
       private
        fEditable:boolean;
@@ -1454,6 +1456,7 @@ type TpvGUIObject=class;
        fPopupMenu:TpvGUIPopupMenu;
        fOnClick:TpvGUIOnEvent;
        fOnChange:TpvGUIOnEvent;
+       fOnCheckText:TpvGUITextEditOnCheckText;
        procedure PopupMenuOnCutClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnCopyClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnPasteClick(const aSender:TpvGUIObject);
@@ -1494,6 +1497,7 @@ type TpvGUIObject=class;
        property MinimumHeight:TpvFloat read fMinimumHeight write fMinimumHeight;
        property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
+       property OnCheckText:TpvGUITextEditOnCheckText read fOnCheckText write fOnCheckText;
        property TextHorizontalAlignment;
        property TextVerticalAlignment;
        property TextTruncation;
@@ -9051,6 +9055,8 @@ begin
 
  fOnChange:=nil;
 
+ fOnCheckText:=nil;
+
 end;
 
 destructor TpvGUITextEdit.Destroy;
@@ -9102,7 +9108,11 @@ end;
 
 function TpvGUITextEdit.CheckText(const aText:TpvUTF8String):boolean;
 begin
- result:=true;
+ if assigned(fOnCheckText) then begin
+  result:=fOnCheckText(aText);
+ end else begin
+  result:=true;
+ end;
 end;
 
 function TpvGUITextEdit.GetText:TpvUTF8String;
