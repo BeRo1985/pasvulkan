@@ -1466,6 +1466,7 @@ type TpvGUIObject=class;
        function GetPreferredSize:TpvVector2; override;
        function GetEditable:boolean;
        procedure SetEditable(const aEditable:boolean);
+       function CheckText(const aText:TpvUTF8String):boolean; virtual;
        function GetText:TpvUTF8String; virtual;
        procedure SetText(const aText:TpvUTF8String); virtual;
       public
@@ -9099,6 +9100,11 @@ begin
  end;
 end;
 
+function TpvGUITextEdit.CheckText(const aText:TpvUTF8String):boolean;
+begin
+ result:=true;
+end;
+
 function TpvGUITextEdit.GetText:TpvUTF8String;
 begin
  result:=fText;
@@ -9107,19 +9113,23 @@ end;
 procedure TpvGUITextEdit.SetText(const aText:TpvUTF8String);
 begin
 
- fText:=aText;
+ if CheckText(aText) then begin
 
- fCountTextGlyphRects:=0;
+  fText:=aText;
 
- fTextOffset:=0.0;
+  fCountTextGlyphRects:=0;
 
- fTextCursorPositionOffset:=0;
+  fTextOffset:=0.0;
 
- fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
+  fTextCursorPositionOffset:=0;
 
- fTextSelectionStart:=0;
+  fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
 
- fTextSelectionEnd:=0;
+  fTextSelectionStart:=0;
+
+  fTextSelectionEnd:=0;
+
+ end;
 
 end;
 
@@ -9137,18 +9147,25 @@ end;
 
 procedure TpvGUITextEdit.CutSelectedText;
 var CurrentPosition,OtherPosition:TpvInt32;
+    TempText:TpvUTF8String;
 begin
  if (fTextSelectionStart>0) and
     (fTextSelectionEnd>0) then begin
   CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
   OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
   pvApplication.Clipboard.SetText(Copy(fText,CurrentPosition,OtherPosition-CurrentPosition));
-  Delete(fText,CurrentPosition,OtherPosition-CurrentPosition);
-  fTextCursorPositionIndex:=CurrentPosition;
-  fTextSelectionStart:=0;
-  fTextSelectionEnd:=0;
-  if assigned(fOnChange) then begin
-   fOnChange(self);
+  TempText:=fText;
+  Delete(TempText,CurrentPosition,OtherPosition-CurrentPosition);
+  if CheckText(TempText) then begin
+   fTextCursorPositionIndex:=CurrentPosition;
+   fTextSelectionStart:=0;
+   fTextSelectionEnd:=0;
+   if TempText<>fText then begin
+    fText:=TempText;
+    if assigned(fOnChange) then begin
+     fOnChange(self);
+    end;
+   end;
   end;
  end;
 end;
@@ -9165,42 +9182,65 @@ begin
 end;
 
 procedure TpvGUITextEdit.PasteText;
-var CurrentPosition,OtherPosition:TpvInt32;
-    TemporaryText:TpvUTF8String;
+var CurrentPosition,OtherPosition,TempTextCursorPositionIndex,
+    TempTextSelectionStart,TempTextSelectionEnd:TpvInt32;
+    TempText,TemporaryText:TpvUTF8String;
 begin
+ TempText:=fText;
+ TempTextCursorPositionIndex:=fTextCursorPositionIndex;
+ TempTextSelectionStart:=fTextSelectionStart;
+ TempTextSelectionEnd:=fTextSelectionEnd;
  if (fTextSelectionStart>0) and
     (fTextSelectionEnd>0) then begin
-  CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
-  OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-  Delete(fText,CurrentPosition,OtherPosition-CurrentPosition);
-  fTextCursorPositionIndex:=CurrentPosition;
-  fTextSelectionStart:=0;
-  fTextSelectionEnd:=0;
+  CurrentPosition:=PUCUUTF8GetCodeUnit(TempText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
+  OtherPosition:=PUCUUTF8GetCodeUnit(TempText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
+  Delete(TempText,CurrentPosition,OtherPosition-CurrentPosition);
+  TempTextCursorPositionIndex:=CurrentPosition;
+  TempTextSelectionStart:=0;
+  TempTextSelectionEnd:=0;
  end;
  if pvApplication.Clipboard.HasText then begin
   TemporaryText:=pvApplication.Clipboard.GetText;
   if length(TemporaryText)>0 then begin
    Insert(TemporaryText,
-          fText,
-          PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1));
-   inc(fTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
+          TempText,
+          PUCUUTF8GetCodeUnit(TempText,TempTextCursorPositionIndex-1));
+   inc(TempTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
+  end;
+ end;
+ if CheckText(TempText) then begin
+  fTextCursorPositionIndex:=TempTextCursorPositionIndex;
+  fTextSelectionStart:=TempTextSelectionStart;
+  fTextSelectionEnd:=TempTextSelectionEnd;
+  if TempText<>fText then begin
+   fText:=TempText;
+   if assigned(fOnChange) then begin
+    fOnChange(self);
+   end;
   end;
  end;
 end;
 
 procedure TpvGUITextEdit.DeleteSelectedText;
 var CurrentPosition,OtherPosition:TpvInt32;
+    TempText:TpvUTF8String;
 begin
  if (fTextSelectionStart>0) and
     (fTextSelectionEnd>0) then begin
   CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
   OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-  Delete(fText,CurrentPosition,OtherPosition-CurrentPosition);
-  fTextCursorPositionIndex:=CurrentPosition;
-  fTextSelectionStart:=0;
-  fTextSelectionEnd:=0;
-  if assigned(fOnChange) then begin
-   fOnChange(self);
+  TempText:=fText;
+  Delete(TempText,CurrentPosition,OtherPosition-CurrentPosition);
+  if CheckText(TempText) then begin
+   fTextCursorPositionIndex:=CurrentPosition;
+   fTextSelectionStart:=0;
+   fTextSelectionEnd:=0;
+   if TempText<>fText then begin
+    fText:=TempText;
+    if assigned(fOnChange) then begin
+     fOnChange(self);
+    end;
+   end;
   end;
  end;
 end;
@@ -9248,8 +9288,9 @@ begin
 end;
 
 function TpvGUITextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
-var CurrentPosition,OtherPosition:TpvInt32;
-    TemporaryText:TpvUTF8String;
+var CurrentPosition,OtherPosition,TempTextCursorPositionIndex,
+    TempTextSelectionStart,TempTextSelectionEnd:TpvInt32;
+    TemporaryText,TempText:TpvUTF8String;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -9334,12 +9375,18 @@ begin
          (fTextSelectionEnd>0) then begin
        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
        OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-       Delete(fText,CurrentPosition,OtherPosition-CurrentPosition);
-       fTextCursorPositionIndex:=CurrentPosition;
-       fTextSelectionStart:=0;
-       fTextSelectionEnd:=0;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
+       TempText:=fText;
+       Delete(TempText,CurrentPosition,OtherPosition-CurrentPosition);
+       if CheckText(TempText) then begin
+        fTextCursorPositionIndex:=CurrentPosition;
+        fTextSelectionStart:=0;
+        fTextSelectionEnd:=0;
+        if TempText<>fText then begin
+         fText:=TempText;
+         if assigned(fOnChange) then begin
+          fOnChange(self);
+         end;
+        end;
        end;
       end else begin
        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
@@ -9358,49 +9405,54 @@ begin
       result:=true;
      end;
      KEYCODE_INSERT:begin
+      TempText:=fText;
+      TempTextCursorPositionIndex:=fTextCursorPositionIndex;
+      TempTextSelectionStart:=fTextSelectionStart;
+      TempTextSelectionEnd:=fTextSelectionEnd;
       if (fTextSelectionStart>0) and
          (fTextSelectionEnd>0) then begin
        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
        OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-       Delete(fText,CurrentPosition,OtherPosition-CurrentPosition);
-       fTextCursorPositionIndex:=CurrentPosition;
-       fTextSelectionStart:=0;
-       fTextSelectionEnd:=0;
+       Delete(TempText,CurrentPosition,OtherPosition-CurrentPosition);
+       TempTextCursorPositionIndex:=CurrentPosition;
+       TempTextSelectionStart:=0;
+       TempTextSelectionEnd:=0;
       end;
       if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
        if pvApplication.Clipboard.HasText then begin
         TemporaryText:=pvApplication.Clipboard.GetText;
         if length(TemporaryText)>0 then begin
          Insert(TemporaryText,
-                fText,
-                PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1));
-         inc(fTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
+                TempText,
+                PUCUUTF8GetCodeUnit(TempText,TempTextCursorPositionIndex-1));
+         inc(TempTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
         end;
        end;
       end else begin
        Insert(#32,
-              fText,
-              PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1));
+              TempText,
+              PUCUUTF8GetCodeUnit(TempText,TempTextCursorPositionIndex-1));
       end;
-      if assigned(fOnChange) then begin
-       fOnChange(self);
+      if CheckText(TempText) then begin
+       fTextCursorPositionIndex:=TempTextCursorPositionIndex;
+       fTextSelectionStart:=TempTextSelectionStart;
+       fTextSelectionEnd:=TempTextSelectionEnd;
+       if TempText<>fText then begin
+        fText:=TempText;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
+        end;
+       end;
       end;
       result:=true;
      end;
      KEYCODE_DELETE:begin
       if (fTextSelectionStart>0) and
          (fTextSelectionEnd>0) then begin
-       CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
-       OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
        if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
-        pvApplication.Clipboard.SetText(Copy(fText,CurrentPosition,OtherPosition-CurrentPosition));
-       end;
-       Delete(fText,CurrentPosition,OtherPosition-CurrentPosition);
-       fTextCursorPositionIndex:=CurrentPosition;
-       fTextSelectionStart:=0;
-       fTextSelectionEnd:=0;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
+        CutSelectedText;
+       end else begin
+        DeleteSelectedText;
        end;
       end else begin
        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
@@ -9408,9 +9460,13 @@ begin
         OtherPosition:=CurrentPosition;
         PUCUUTF8Inc(fText,OtherPosition);
         if (OtherPosition>1) and (OtherPosition<=(length(fText)+1)) and (CurrentPosition<OtherPosition) then begin
-         Delete(fText,CurrentPosition,OtherPosition-CurrentPosition);
-         if assigned(fOnChange) then begin
-          fOnChange(self);
+         TempText:=fText;
+         Delete(TempText,CurrentPosition,OtherPosition-CurrentPosition);
+         if TempText<>fText then begin
+          fText:=TempText;
+          if assigned(fOnChange) then begin
+           fOnChange(self);
+          end;
          end;
         end;
        end;
@@ -9425,80 +9481,53 @@ begin
       end;
      end;
      KEYCODE_C:begin
-      if (KEYMODIFIER_CTRL in aKeyEvent.KeyModifiers) and
-         (fTextSelectionStart>0) and
-         (fTextSelectionEnd>0) then begin
-       CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
-       OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-       pvApplication.Clipboard.SetText(Copy(fText,CurrentPosition,OtherPosition-CurrentPosition));
-       fTextCursorPositionIndex:=CurrentPosition;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
-       end;
+      if KEYMODIFIER_CTRL in aKeyEvent.KeyModifiers then begin
+       CopySelectedText;
        result:=true;
       end;
      end;
      KEYCODE_V:begin
       if KEYMODIFIER_CTRL in aKeyEvent.KeyModifiers then begin
-       if (fTextSelectionStart>0) and
-          (fTextSelectionEnd>0) then begin
-        CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
-        OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-        Delete(fText,CurrentPosition,OtherPosition-CurrentPosition);
-        fTextCursorPositionIndex:=CurrentPosition;
-        fTextSelectionStart:=0;
-        fTextSelectionEnd:=0;
-       end;
-       if pvApplication.Clipboard.HasText then begin
-        TemporaryText:=pvApplication.Clipboard.GetText;
-        if length(TemporaryText)>0 then begin
-         Insert(TemporaryText,
-                fText,
-                PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1));
-         inc(fTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
-        end;
-       end;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
-       end;
+       PasteText;
        result:=true;
       end;
      end;
      KEYCODE_X:begin
-      if (KEYMODIFIER_CTRL in aKeyEvent.KeyModifiers) and
-         (fTextSelectionStart>0) and
-         (fTextSelectionEnd>0) then begin
-       CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
-       OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-       pvApplication.Clipboard.SetText(Copy(fText,CurrentPosition,OtherPosition-CurrentPosition));
-       Delete(fText,CurrentPosition,OtherPosition-CurrentPosition);
-       fTextCursorPositionIndex:=CurrentPosition;
-       fTextSelectionStart:=0;
-       fTextSelectionEnd:=0;
-       if assigned(fOnChange) then begin
-        fOnChange(self);
-       end;
+      if KEYMODIFIER_CTRL in aKeyEvent.KeyModifiers then begin
+       CutSelectedText;
        result:=true;
       end;
      end;
     end;
    end;
    KEYEVENT_UNICODE:begin
+    TempText:=fText;
+    TempTextCursorPositionIndex:=fTextCursorPositionIndex;
+    TempTextSelectionStart:=fTextSelectionStart;
+    TempTextSelectionEnd:=fTextSelectionEnd;
     if (fTextSelectionStart>0) and
        (fTextSelectionEnd>0) then begin
      CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
      OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-     Delete(fText,CurrentPosition,OtherPosition-CurrentPosition);
-     fTextCursorPositionIndex:=CurrentPosition;
-     fTextSelectionStart:=0;
-     fTextSelectionEnd:=0;
+     Delete(TempText,CurrentPosition,OtherPosition-CurrentPosition);
+     TempTextCursorPositionIndex:=CurrentPosition;
+     TempTextSelectionStart:=0;
+     TempTextSelectionEnd:=0;
     end;
     Insert(PUCUUTF32CharToUTF8(aKeyEvent.KeyCode),
-           fText,
-           PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1));
-    inc(fTextCursorPositionIndex);
-    if assigned(fOnChange) then begin
-     fOnChange(self);
+           TempText,
+           PUCUUTF8GetCodeUnit(TempText,TempTextCursorPositionIndex-1));
+    inc(TempTextCursorPositionIndex);
+    if CheckText(TempText) then begin
+     fTextCursorPositionIndex:=TempTextCursorPositionIndex;
+     fTextSelectionStart:=TempTextSelectionStart;
+     fTextSelectionEnd:=TempTextSelectionEnd;
+     if TempText<>fText then begin
+      fText:=TempText;
+      if assigned(fOnChange) then begin
+       fOnChange(self);
+      end;
+     end;
     end;
     result:=true;
    end;
