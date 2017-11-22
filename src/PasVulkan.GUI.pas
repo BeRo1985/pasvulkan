@@ -572,6 +572,8 @@ type TpvGUIObject=class;
        fIconChevronDown:TObject;
        fIconCheck:TObject;
        fIconRoundCheck:TObject;
+       fIconThumbUp:TObject;
+       fIconThumbDown:TObject;
        fIconDialogAlert:TObject;
        fIconDialogError:TObject;
        fIconDialogInformation:TObject;
@@ -666,7 +668,9 @@ type TpvGUIObject=class;
        property IconChevronDown:TObject read fIconChevronDown write fIconChevronDown;
        property IconCheck:TObject read fIconCheck write fIconCheck;
        property IconRoundCheck:TObject read fIconRoundCheck write fIconRoundCheck;
-       property IconAlert:TObject read fIconDialogAlert write fIconDialogAlert;
+       property IconThumbUp:TObject read fIconThumbUp write fIconThumbUp;
+       property IconThumbDown:TObject read fIconThumbDown write fIconThumbDown;
+       property IconDialogAlert:TObject read fIconDialogAlert write fIconDialogAlert;
        property IconDialogError:TObject read fIconDialogError write fIconDialogError;
        property IconDialogInformation:TObject read fIconDialogInformation write fIconDialogInformation;
        property IconDialogQuestion:TObject read fIconDialogQuestion write fIconDialogQuestion;
@@ -1150,7 +1154,7 @@ type TpvGUIObject=class;
        constructor Create(const aID:TpvInt32;
                           const aCaption:TpvUTF8String;
                           const aIcon:TObject=nil;
-                          const aIconHeight:TpvFloat=0);
+                          const aIconHeight:TpvFloat=24.0);
        property ID:TpvInt32 read fID write fID;
        property Caption:TpvUTF8String read fCaption write fCaption;
        property Icon:TObject read fIcon write fIcon;
@@ -1175,18 +1179,18 @@ type TpvGUIObject=class;
                           const aMessage:TpvUTF8String;
                           const aButtons:array of TpvGUIMessageDialogButton;
                           const aIcon:TObject=nil;
-                          const aIconHeight:TpvFloat=36); reintroduce; overload;
+                          const aIconHeight:TpvFloat=36.0); reintroduce; overload;
        constructor Create(const aParent:TpvGUIObject;
                           const aTitle:TpvUTF8String;
                           const aMessage:TpvUTF8String;
                           const aButtons:array of TpvUTF8String;
                           const aIcon:TObject=nil;
-                          const aIconHeight:TpvFloat=36); reintroduce; overload;
+                          const aIconHeight:TpvFloat=36.0); reintroduce; overload;
        constructor Create(const aParent:TpvGUIObject;
                           const aTitle:TpvUTF8String;
                           const aMessage:TpvUTF8String;
                           const aIcon:TObject=nil;
-                          const aIconHeight:TpvFloat=36); reintroduce; overload;
+                          const aIconHeight:TpvFloat=36.0); reintroduce; overload;
        destructor Destroy; override;
       published
        property OnButtonClick:TpvGUIMessageDialogOnButtonClick read fOnButtonClick write fOnButtonClick;
@@ -3508,6 +3512,14 @@ begin
  fIconChevronUp:=nil;
  fIconChevronDown:=nil;
  fIconCheck:=nil;
+ fIconRoundCheck:=nil;
+ fIconThumbUp:=nil;
+ fIconThumbDown:=nil;
+ fIconDialogAlert:=nil;
+ fIconDialogError:=nil;
+ fIconDialogInformation:=nil;
+ fIconDialogQuestion:=nil;
+ fIconDialogWarning:=nil;
  Setup;
 end;
 
@@ -4007,6 +4019,30 @@ begin
                                                                                 true,
                                                                                 2,
                                                                                 1);
+
+ fIconThumbUp:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconThumbUp',
+                                                                             'M23,10C23,8.89 22.1,8 21,8H14.68L15.64,3.43C15.66,3.33 15.67,3.22 15.67,3.11C15.67,2.7 15.5,2.32 15.23,2.05L14.17,1L7.59,7.58C7.22,7.95 7,8.45 7,9V19A2,2'+' 0 0,0 9,21H18C18.83,21 19.54,20.5 19.84,19.78L22.86,12.73C22.95,12.5 23,12.26 23,12V10.08L23,10M1,21H5V9H1V21Z',
+                                                                             48,
+                                                                             48,
+                                                                             48.0/24.0,
+                                                                             0.0,
+                                                                             0.0,
+                                                                             pvvpfrNonZero,
+                                                                             true,
+                                                                             2,
+                                                                             1);
+
+ fIconThumbDown:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconThumbDown',
+                                                                               'M19,15H23V3H19M15,3H6C5.17,3 4.46,3.5 4.16,4.22L1.14,11.27C1.05,11.5 1,11.74 1,12V13.91L1,14A2,2 0 0,0 3,16H9.31L8.36,20.57C8.34,20.67 8.33,20.77 8.33,20.88C8.33,21.3 8.5,21.67'+' 8.77,21.94L9.83,23L16.41,16.41C16.78,16.05 17,15.55 17,15V5C17,3.89 16.1,3 15,3Z',
+                                                                               48,
+                                                                               48,
+                                                                               48.0/24.0,
+                                                                               0.0,
+                                                                               0.0,
+                                                                               pvvpfrNonZero,
+                                                                               true,
+                                                                               2,
+                                                                               1);
 
  fIconDialogAlert:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogAlert',
                                                                                  'M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z',
@@ -7991,7 +8027,7 @@ end;
 constructor TpvGUIMessageDialogButton.Create(const aID:TpvInt32;
                                              const aCaption:TpvUTF8String;
                                              const aIcon:TObject=nil;
-                                             const aIconHeight:TpvFloat=0);
+                                             const aIconHeight:TpvFloat=24.0);
 begin
  fID:=aID;
  fCaption:=aCaption;
@@ -8005,7 +8041,7 @@ constructor TpvGUIMessageDialog.Create(const aParent:TpvGUIObject;
                                        const aMessage:TpvUTF8String;
                                        const aButtons:array of TpvGUIMessageDialogButton;
                                        const aIcon:TObject=nil;
-                                       const aIconHeight:TpvFloat=36);
+                                       const aIconHeight:TpvFloat=36.0);
 var Index:TpvSizeInt;
     MessageDialogButton:PpvGUIMessageDialogButton;
 begin
@@ -8096,7 +8132,7 @@ constructor TpvGUIMessageDialog.Create(const aParent:TpvGUIObject;
                                        const aMessage:TpvUTF8String;
                                        const aButtons:array of TpvUTF8String;
                                        const aIcon:TObject=nil;
-                                       const aIconHeight:TpvFloat=36);
+                                       const aIconHeight:TpvFloat=36.0);
 var Index:TpvSizeInt;
     MessageDialogButtons:TpvGUIMessageDialogButtons;
 begin
@@ -8121,7 +8157,7 @@ constructor TpvGUIMessageDialog.Create(const aParent:TpvGUIObject;
                                        const aTitle:TpvUTF8String;
                                        const aMessage:TpvUTF8String;
                                        const aIcon:TObject=nil;
-                                       const aIconHeight:TpvFloat=36);
+                                       const aIconHeight:TpvFloat=36.0);
 var MessageDialogButtons:TpvGUIMessageDialogButtons;
 begin
  MessageDialogButtons:=nil;

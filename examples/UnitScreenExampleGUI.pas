@@ -129,7 +129,12 @@ end;
 procedure TScreenExampleGUI.Button0OnClick(const aSender:TpvGUIObject);
 begin
 
- TpvGUIMessageDialog.Create(fGUIInstance,'Question','Do you like this GUI?',['Yes','No'],fGUIInstance.Skin.IconDialogQuestion);
+ TpvGUIMessageDialog.Create(fGUIInstance,
+                            'Question',
+                            'Do you like this GUI?',
+                            [TpvGUIMessageDialogButton.Create(0,'Yes',fGUIInstance.Skin.IconThumbUp),
+                             TpvGUIMessageDialogButton.Create(1,'No',fGUIInstance.Skin.IconThumbDown)],
+                            fGUIInstance.Skin.IconDialogQuestion);
 
 end;
 
