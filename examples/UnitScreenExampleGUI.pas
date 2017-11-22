@@ -146,6 +146,7 @@ var Index:TpvInt32;
 //    Popup:TpvGUIPopup;
     Panel:TpvGUIPanel;
     Window:TpvGUIWindow;
+    IntegerEdit:TpvGUIIntegerEdit;
 begin
 
  inherited Show;
@@ -216,7 +217,7 @@ begin
 
  fGUIWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIWindow.Left:=50;
- fGUIWindow.Top:=475;
+ fGUIWindow.Top:=400;
  fGUIWindow.Title:='Window with GridLayout';
  fGUIWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIWindow.Content,pvglaFill,pvgloVertical,8.0,8.0);
  fGUIWindow.AddMinimizationButton;
@@ -306,6 +307,13 @@ begin
  fGUITextEdit.MinimumWidth:=320;
  fGUITextEdit.MinimumHeight:=32;
  fGUITextEdit.Enabled:=true;
+
+ IntegerEdit:=TpvGUIIntegerEdit.Create(fGUIWindow.Content);
+ IntegerEdit.Value:=1337;
+ IntegerEdit.TextHorizontalAlignment:=TpvGUITextAlignment.pvgtaLeading;
+ IntegerEdit.MinimumWidth:=320;
+ IntegerEdit.MinimumHeight:=32;
+ IntegerEdit.Enabled:=true;
 
 {Popup:=TpvGUIPopup.Create(fGUITextEdit);
  Popup.FixedSize.Vector:=TpvVector2.Create(160,100);

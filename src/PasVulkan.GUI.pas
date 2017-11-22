@@ -1469,6 +1469,7 @@ type TpvGUIObject=class;
        function GetPreferredSize:TpvVector2; override;
        function GetEditable:boolean;
        procedure SetEditable(const aEditable:boolean);
+       procedure UpdateText; virtual;
        function CheckText(const aText:TpvUTF8String):boolean; virtual;
        function GetText:TpvUTF8String; virtual;
        procedure SetText(const aText:TpvUTF8String); virtual;
@@ -1501,6 +1502,31 @@ type TpvGUIObject=class;
        property TextHorizontalAlignment;
        property TextVerticalAlignment;
        property TextTruncation;
+     end;
+
+     TpvGUIIntegerEdit=class(TpvGUITextEdit)
+      private
+       fMinValue:TpvInt64;
+       fMaxValue:TpvInt64;
+       fSmallStep:TpvInt64;
+       fLargeStep:TpvInt64;
+       procedure UpdateText; override;
+       procedure ApplyMinMaxValueBounds;
+       procedure SetMinValue(const aMinValue:TpvInt64);
+       procedure SetMaxValue(const aMaxValue:TpvInt64);
+       function GetValue:TpvInt64;
+       procedure SetValue(const aValue:TpvInt64);
+       function CheckText(const aText:TpvUTF8String):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+      published
+       property MinValue:TpvInt64 read fMinValue write SetMinValue;
+       property MaxValue:TpvInt64 read fMaxValue write SetMaxValue;
+       property SmallStep:TpvInt64 read fSmallStep write fSmallStep;
+       property LargeStep:TpvInt64 read fLargeStep write fLargeStep;
+       property Value:TpvInt64 read GetValue write SetValue;
      end;
 
      PpvGUIMenuItemFlag=^TpvGUIMenuItemFlag;
@@ -9106,6 +9132,10 @@ begin
  end;
 end;
 
+procedure TpvGUITextEdit.UpdateText;
+begin
+end;
+
 function TpvGUITextEdit.CheckText(const aText:TpvUTF8String):boolean;
 begin
  if assigned(fOnCheckText) then begin
@@ -9125,7 +9155,17 @@ begin
 
  if CheckText(aText) then begin
 
-  fText:=aText;
+  if fText<>aText then begin
+
+   fText:=aText;
+
+   UpdateText;
+
+  end else begin
+
+   fText:=aText;
+
+  end;
 
   fCountTextGlyphRects:=0;
 
@@ -9172,6 +9212,7 @@ begin
    fTextSelectionEnd:=0;
    if fText<>TemporaryUncheckedText then begin
     fText:=TemporaryUncheckedText;
+    UpdateText;
     if assigned(fOnChange) then begin
      fOnChange(self);
     end;
@@ -9224,6 +9265,7 @@ begin
   fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
   if fText<>TemporaryUncheckedText then begin
    fText:=TemporaryUncheckedText;
+   UpdateText;
    if assigned(fOnChange) then begin
     fOnChange(self);
    end;
@@ -9247,6 +9289,7 @@ begin
    fTextSelectionEnd:=0;
    if fText<>TemporaryUncheckedText then begin
     fText:=TemporaryUncheckedText;
+    UpdateText;
     if assigned(fOnChange) then begin
      fOnChange(self);
     end;
@@ -9393,6 +9436,7 @@ begin
         fTextSelectionEnd:=0;
         if fText<>TemporaryUncheckedText then begin
          fText:=TemporaryUncheckedText;
+         UpdateText;
          if assigned(fOnChange) then begin
           fOnChange(self);
          end;
@@ -9410,6 +9454,7 @@ begin
           dec(fTextCursorPositionIndex);
           if fText<>TemporaryUncheckedText then begin
            fText:=TemporaryUncheckedText;
+           UpdateText;
            if assigned(fOnChange) then begin
             fOnChange(self);
            end;
@@ -9455,6 +9500,7 @@ begin
        fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
        if fText<>TemporaryUncheckedText then begin
         fText:=TemporaryUncheckedText;
+        UpdateText;
         if assigned(fOnChange) then begin
          fOnChange(self);
         end;
@@ -9480,6 +9526,7 @@ begin
          Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
          if (fText<>TemporaryUncheckedText) and CheckText(TemporaryUncheckedText) then begin
           fText:=TemporaryUncheckedText;
+          UpdateText;
           if assigned(fOnChange) then begin
            fOnChange(self);
           end;
@@ -9540,6 +9587,7 @@ begin
      fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
      if fText<>TemporaryUncheckedText then begin
       fText:=TemporaryUncheckedText;
+      UpdateText;
       if assigned(fOnChange) then begin
        fOnChange(self);
       end;
@@ -9656,6 +9704,121 @@ end;
 procedure TpvGUITextEdit.Draw;
 begin
  inherited Draw;
+end;
+
+constructor TpvGUIIntegerEdit.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ fMinValue:=Low(TpvInt64);
+
+ fMaxValue:=High(TpvInt64);
+
+ fSmallStep:=1;
+
+ fLargeStep:=10;
+
+ SetValue(0);
+
+end;
+
+destructor TpvGUIIntegerEdit.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvGUIIntegerEdit.UpdateText;
+begin
+ inherited UpdateText;
+ ApplyMinMaxValueBounds;
+end;
+
+procedure TpvGUIIntegerEdit.ApplyMinMaxValueBounds;
+var OldValue,TemporaryValue:TpvInt64;
+begin
+ OldValue:=GetValue;
+ TemporaryValue:=Min(Max(OldValue,fMinValue),fMaxValue);
+ if OldValue<>TemporaryValue then begin
+  SetValue(TemporaryValue);
+ end;
+end;
+
+procedure TpvGUIIntegerEdit.SetMinValue(const aMinValue:TpvInt64);
+begin
+ fMinValue:=aMinValue;
+ ApplyMinMaxValueBounds;
+end;
+
+procedure TpvGUIIntegerEdit.SetMaxValue(const aMaxValue:TpvInt64);
+begin
+ fMaxValue:=aMaxValue;
+ ApplyMinMaxValueBounds;
+end;
+
+function TpvGUIIntegerEdit.GetValue:TpvInt64;
+begin
+ result:=StrToInt64Def(fText,0);
+end;
+
+procedure TpvGUIIntegerEdit.SetValue(const aValue:TpvInt64);
+begin
+ fText:=IntToStr(aValue);
+ ApplyMinMaxValueBounds;
+end;
+
+function TpvGUIIntegerEdit.CheckText(const aText:TpvUTF8String):boolean;
+begin
+ result:=true;
+ if length(aText)>0 then begin
+  try
+   StrToInt64(aText);
+  except
+   result:=false;
+  end;
+ end;
+end;
+
+function TpvGUIIntegerEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+var TemporaryValue:TpvInt64;
+begin
+ result:=inherited KeyEvent(aKeyEvent);
+ if not result then begin
+  case aKeyEvent.KeyEventType of
+   KEYEVENT_TYPED:begin
+    case aKeyEvent.KeyCode of
+     KEYCODE_UP:begin
+      TemporaryValue:=GetValue;
+      if ((TemporaryValue+fSmallStep)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
+       SetValue(TemporaryValue+fSmallStep);
+      end;
+      result:=true;
+     end;
+     KEYCODE_DOWN:begin
+      TemporaryValue:=GetValue;
+      if ((TemporaryValue-fSmallStep)>=fMinValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
+       SetValue(TemporaryValue-fSmallStep);
+      end;
+      result:=true;
+     end;
+     KEYCODE_PAGEUP:begin
+      TemporaryValue:=GetValue;
+      if ((TemporaryValue+fLargeStep)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
+       SetValue(TemporaryValue+fLargeStep);
+      end;
+      result:=true;
+     end;
+     KEYCODE_PAGEDOWN:begin
+      TemporaryValue:=GetValue;
+      if ((TemporaryValue-fLargeStep)>=fMinValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
+       SetValue(TemporaryValue-fLargeStep);
+      end;
+      result:=true;
+     end;
+    end;
+   end;
+  end;
+ end;
 end;
 
 constructor TpvGUIMenuItem.Create(const aParent:TpvGUIObject);
