@@ -9945,7 +9945,7 @@ begin
   case aPointerEvent.PointerEventType of
    POINTEREVENT_DRAG:begin
     TemporaryValue:=GetValue;
-    v:=aPointerEvent.RelativePosition.x+aPointerEvent.RelativePosition.y;
+    v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
     if v<0.0 then begin
      Step:=floor(v);
     end else begin
@@ -10134,7 +10134,7 @@ begin
   case aPointerEvent.PointerEventType of
    POINTEREVENT_DRAG:begin
     TemporaryValue:=GetValue;
-    v:=aPointerEvent.RelativePosition.x+aPointerEvent.RelativePosition.y;
+    v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
     if v<0.0 then begin
      Step:=floor(v);
     end else begin
