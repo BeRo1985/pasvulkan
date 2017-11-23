@@ -147,6 +147,7 @@ var Index:TpvInt32;
     Panel:TpvGUIPanel;
     Window:TpvGUIWindow;
     IntegerEdit:TpvGUIIntegerEdit;
+    FloatEdit:TpvGUIFloatEdit;
 begin
 
  inherited Show;
@@ -314,6 +315,13 @@ begin
  IntegerEdit.MinimumWidth:=320;
  IntegerEdit.MinimumHeight:=32;
  IntegerEdit.Enabled:=true;
+
+ FloatEdit:=TpvGUIFloatEdit.Create(fGUIWindow.Content);
+ FloatEdit.Value:=PI;
+ FloatEdit.TextHorizontalAlignment:=TpvGUITextAlignment.pvgtaLeading;
+ FloatEdit.MinimumWidth:=320;
+ FloatEdit.MinimumHeight:=32;
+ FloatEdit.Enabled:=true;
 
 {Popup:=TpvGUIPopup.Create(fGUITextEdit);
  Popup.FixedSize.Vector:=TpvVector2.Create(160,100);

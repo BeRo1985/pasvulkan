@@ -1538,6 +1538,37 @@ type TpvGUIObject=class;
        property Spinnable;
      end;
 
+     TpvGUIFloatEdit=class(TpvGUITextEdit)
+      private
+       fMinValue:TpvDouble;
+       fMaxValue:TpvDouble;
+       fSmallStep:TpvDouble;
+       fLargeStep:TpvDouble;
+       fDigits:TpvInt32;
+       procedure UpdateText; override;
+       procedure ApplyMinMaxValueBounds;
+       procedure SetMinValue(const aMinValue:TpvDouble);
+       procedure SetMaxValue(const aMaxValue:TpvDouble);
+       function GetValue:TpvDouble;
+       procedure SetValue(const aValue:TpvDouble);
+       function CheckText(const aText:TpvUTF8String):boolean; override;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       function DragEvent(const aPosition:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+      published
+       property MinValue:TpvDouble read fMinValue write SetMinValue;
+       property MaxValue:TpvDouble read fMaxValue write SetMaxValue;
+       property SmallStep:TpvDouble read fSmallStep write fSmallStep;
+       property LargeStep:TpvDouble read fLargeStep write fLargeStep;
+       property Digits:TpvInt32 read fDigits write fDigits;
+       property Value:TpvDouble read GetValue write SetValue;
+       property Spinnable;
+     end;
+
      PpvGUIMenuItemFlag=^TpvGUIMenuItemFlag;
      TpvGUIMenuItemFlag=
       (
@@ -1642,7 +1673,8 @@ type TpvGUIObject=class;
 
 implementation
 
-uses PasVulkan.Assets,
+uses PasDblStrUtils,
+     PasVulkan.Assets,
      PasVulkan.VectorPath,
      PasVulkan.Image.PNG;
 
@@ -5246,7 +5278,9 @@ begin
 
  end;
 
- if (aTextEdit is TpvGUIIntegerEdit) and aTextEdit.fSpinnable then begin
+ if ((aTextEdit is TpvGUIIntegerEdit) or
+     (aTextEdit is TpvGUIFloatEdit)) and
+     aTextEdit.fSpinnable then begin
 
   IconSprite:=TpvSprite(fIconArrowUpDown);
 
@@ -9929,6 +9963,195 @@ end;
 
 function TpvGUIIntegerEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
 var TemporaryValue,Step:TpvInt64;
+    v:TpvFloat;
+begin
+ result:=inherited Scrolled(aPosition,aRelativeAmount);
+ if not result then begin
+  TemporaryValue:=GetValue;
+  v:=aRelativeAmount.x+aRelativeAmount.y;
+  if v<0.0 then begin
+   Step:=floor(v);
+  end else begin
+   Step:=ceil(v);
+  end;
+  if ((Step>0) and ((TemporaryValue+Step)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+     ((Step<0) and ((TemporaryValue+Step)>=fMinValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+   SetValue(TemporaryValue+Step);
+  end;
+  result:=true;
+ end;
+end;
+
+constructor TpvGUIFloatEdit.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ fWidgetFlags:=fWidgetFlags+[pvgwfDraggable];
+
+ fMinValue:=-MaxDouble;
+
+ fMaxValue:=MaxDouble;
+
+ fSmallStep:=1.0;
+
+ fLargeStep:=10.0;
+
+ SetValue(0.0);
+
+ fDigits:=-1;
+
+ Spinnable:=true;
+
+end;
+
+destructor TpvGUIFloatEdit.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvGUIFloatEdit.UpdateText;
+begin
+ inherited UpdateText;
+ ApplyMinMaxValueBounds;
+end;
+
+procedure TpvGUIFloatEdit.ApplyMinMaxValueBounds;
+var OldValue,TemporaryValue:TpvDouble;
+begin
+ OldValue:=GetValue;
+ TemporaryValue:=Min(Max(OldValue,fMinValue),fMaxValue);
+ if OldValue<>TemporaryValue then begin
+  SetValue(TemporaryValue);
+ end;
+end;
+
+procedure TpvGUIFloatEdit.SetMinValue(const aMinValue:TpvDouble);
+begin
+ fMinValue:=aMinValue;
+ ApplyMinMaxValueBounds;
+end;
+
+procedure TpvGUIFloatEdit.SetMaxValue(const aMaxValue:TpvDouble);
+begin
+ fMaxValue:=aMaxValue;
+ ApplyMinMaxValueBounds;
+end;
+
+function TpvGUIFloatEdit.GetValue:TpvDouble;
+var OK:TPasDblStrUtilsBoolean;
+begin
+ if length(fText)=0 then begin
+  result:=0.0;
+ end else begin
+  OK:=false;
+  result:=PasDblStrUtils.ConvertStringToDouble(fText,rmNearest,@OK,fDigits);
+  if not OK then begin
+   result:=0.0;
+  end;
+ end;
+end;
+
+procedure TpvGUIFloatEdit.SetValue(const aValue:TpvDouble);
+var OldText:TpvUTF8String;
+begin
+ OldText:=fText;
+ fText:=PasDblStrUtils.ConvertDoubleToString(aValue,omStandard,fDigits);
+ if OldText<>fText then begin
+  ApplyMinMaxValueBounds;
+  if OldText<>fText then begin
+   if assigned(fOnChange) then begin
+    fOnChange(self);
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIFloatEdit.CheckText(const aText:TpvUTF8String):boolean;
+var OK:TPasDblStrUtilsBoolean;
+begin
+ result:=true;
+ if length(aText)>0 then begin
+  OK:=false;
+  PasDblStrUtils.ConvertStringToDouble(aText,rmNearest,@OK,fDigits);
+  result:=OK;
+ end;
+end;
+
+function TpvGUIFloatEdit.DragEvent(const aPosition:TpvVector2):boolean;
+begin
+ result:=fSpinnable and fDragRect.Touched(aPosition);
+end;
+
+function TpvGUIFloatEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+var TemporaryValue:TpvDouble;
+begin
+ result:=inherited KeyEvent(aKeyEvent);
+ if not result then begin
+  case aKeyEvent.KeyEventType of
+   KEYEVENT_TYPED:begin
+    case aKeyEvent.KeyCode of
+     KEYCODE_UP:begin
+      TemporaryValue:=GetValue;
+      if ((TemporaryValue+fSmallStep)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
+       SetValue(TemporaryValue+fSmallStep);
+      end;
+      result:=true;
+     end;
+     KEYCODE_DOWN:begin
+      TemporaryValue:=GetValue;
+      if ((TemporaryValue-fSmallStep)>=fMinValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
+       SetValue(TemporaryValue-fSmallStep);
+      end;
+      result:=true;
+     end;
+     KEYCODE_PAGEUP:begin
+      TemporaryValue:=GetValue;
+      if ((TemporaryValue+fLargeStep)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
+       SetValue(TemporaryValue+fLargeStep);
+      end;
+      result:=true;
+     end;
+     KEYCODE_PAGEDOWN:begin
+      TemporaryValue:=GetValue;
+      if ((TemporaryValue-fLargeStep)>=fMinValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
+       SetValue(TemporaryValue-fLargeStep);
+      end;
+      result:=true;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIFloatEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var TemporaryValue,Step:TpvDouble;
+    v:TpvFloat;
+begin
+ result:=inherited PointerEvent(aPointerEvent);
+ if not result then begin
+  case aPointerEvent.PointerEventType of
+   POINTEREVENT_DRAG:begin
+    TemporaryValue:=GetValue;
+    v:=aPointerEvent.RelativePosition.x+aPointerEvent.RelativePosition.y;
+    if v<0.0 then begin
+     Step:=floor(v);
+    end else begin
+     Step:=ceil(v);
+    end;
+    if ((Step>0) and ((TemporaryValue+Step)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+       ((Step<0) and ((TemporaryValue+Step)>=fMinValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+     SetValue(TemporaryValue+Step);
+    end;
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIFloatEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+var TemporaryValue,Step:TpvDouble;
     v:TpvFloat;
 begin
  result:=inherited Scrolled(aPosition,aRelativeAmount);
