@@ -578,6 +578,7 @@ type TpvGUIObject=class;
        fIconDialogQuestion:TObject;
        fIconDialogStop:TObject;
        fIconDialogWarning:TObject;
+       fIconArrowUpDown:TObject;
        fIconChevronHeight:TpvFloat;
        fIconPopupMenuHeight:TpvFloat;
        fIconMenuRightHeight:TpvFloat;
@@ -675,6 +676,7 @@ type TpvGUIObject=class;
        property IconDialogQuestion:TObject read fIconDialogQuestion write fIconDialogQuestion;
        property IconDialogStop:TObject read fIconDialogStop write fIconDialogStop;
        property IconDialogWarning:TObject read fIconDialogWarning write fIconDialogWarning;
+       property IconArrowUpDown:TObject read fIconArrowUpDown write fIconArrowUpDown;
        property IconChevronHeight:TpvFloat read fIconChevronHeight write fIconChevronHeight;
        property IconPopupMenuHeight:TpvFloat read fIconPopupMenuHeight write fIconPopupMenuHeight;
        property IconMenuRightHeight:TpvFloat read fIconMenuRightHeight write fIconMenuRightHeight;
@@ -1443,6 +1445,7 @@ type TpvGUIObject=class;
      TpvGUITextEdit=class(TpvGUIWidget)
       private
        fEditable:boolean;
+       fSpinnable:boolean;
        fText:TpvUTF8String;
        fTextGlyphRects:TpvCanvasTextGlyphRects;
        fCountTextGlyphRects:TpvInt32;
@@ -1453,6 +1456,7 @@ type TpvGUIObject=class;
        fTextSelectionEnd:TpvInt32;
        fMinimumWidth:TpvFloat;
        fMinimumHeight:TpvFloat;
+       fDragRect:TpvRect;
        fPopupMenu:TpvGUIPopupMenu;
        fOnClick:TpvGUIOnEvent;
        fOnChange:TpvGUIOnEvent;
@@ -1463,6 +1467,7 @@ type TpvGUIObject=class;
        procedure PopupMenuOnDeleteClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnSelectAllClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnSelectNoneClick(const aSender:TpvGUIObject);
+       property Spinnable:boolean read fSpinnable write fSpinnable;
       protected
        function GetFontSize:TpvFloat; override;
        function GetFontColor:TpvVector4; override;
@@ -1517,17 +1522,20 @@ type TpvGUIObject=class;
        function GetValue:TpvInt64;
        procedure SetValue(const aValue:TpvInt64);
        function CheckText(const aText:TpvUTF8String):boolean; override;
-       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
-       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
+       function DragEvent(const aPosition:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
       published
        property MinValue:TpvInt64 read fMinValue write SetMinValue;
        property MaxValue:TpvInt64 read fMaxValue write SetMaxValue;
        property SmallStep:TpvInt64 read fSmallStep write fSmallStep;
        property LargeStep:TpvInt64 read fLargeStep write fLargeStep;
        property Value:TpvInt64 read GetValue write SetValue;
+       property Spinnable;
      end;
 
      PpvGUIMenuItemFlag=^TpvGUIMenuItemFlag;
@@ -3555,6 +3563,7 @@ begin
  fIconDialogQuestion:=nil;
  fIconDialogStop:=nil;
  fIconDialogWarning:=nil;
+ fIconArrowUpDown:=nil;
  Setup;
 end;
 
@@ -4128,7 +4137,7 @@ begin
                                                                                     1);
 
  fIconDialogStop:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogStop',
-                                                                                'M12,0A12,12 0 0,1 24,12A12,12 0 0,1 12,24A12,12 0 0,1 0,12A12,12 0 0,1 12,0M12,2A10,10 0 0,0 2,12C2,14.4 2.85,16.6 4.26,18.33L18.33,4.26C16.6,2.85 14.4,2 12,2M12,22A10,10 0 0,0 22,12C22,9.6 21.15,7.4 19.74,5.67L5.67,19.74C7.4,21.15 9.6,22 12,22Z',
+                                                                                'M12 1.2A10.8 10.8 0 0 1 22.8 12 10.8 10.8 0 0 1 12 22.8 10.8 10.8 0 0 1 1.2 12 10.8 10.8 0 0 1 12 1.2M12 3A9 9 0 0 0 3 12'+'C3 14.16 3.765 16.14 5.034 17.697L17.697 5.034C16.14 3.765 14.16 3 12 3M12 21A9 9 0 0 0 21 12C21 9.84 20.235 7.86 18.966 6.303L6.303 18.966C7.86 20.235 9.84 21 12 21Z',
                                                                                 48,
                                                                                 48,
                                                                                 48.0/24.0,
@@ -4151,6 +4160,18 @@ begin
                                                                                    2,
                                                                                    1);
 
+ fIconArrowUpDown:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconArrowUpDown',
+                                                                                 'M4 10l8-8 8 8h-16zM4 14l8 8 8-8h-16z',
+                                                                                 48,
+                                                                                 48,
+                                                                                 48.0/24.0,
+                                                                                 0.0,
+                                                                                 0.0,
+                                                                                 pvvpfrNonZero,
+                                                                                 true,
+                                                                                 2,
+                                                                                 1);
+
  fIconChevronHeight:=14.0;
 
  fIconPopupMenuHeight:=14.0;
@@ -4165,7 +4186,7 @@ begin
                                         pvApplication.VulkanTransferCommandBuffers[0,0],
                                         pvApplication.VulkanTransferCommandBufferFences[0,0]);
 
- //SignedDistanceFieldSpriteAtlas.SaveToFile('testbla.zip');
+// SignedDistanceFieldSpriteAtlas.SaveToFile('testbla.zip');
 
  //fSansFont.SaveToFile('testfont.xml');
 
@@ -5188,6 +5209,7 @@ var Offset,TextOffset:TpvVector2;
     TextCursorPositionIndex,
     PreviousCursorPosition,NextCursorPosition,StartIndex,EndIndex:TpvInt32;
     PreviousCursorX,NextCursorX:TpvFloat;
+    IconSprite:TpvSprite;
 begin
 
  Offset:=TpvVector2.Null;
@@ -5224,9 +5246,34 @@ begin
 
  end;
 
- TextRect:=TpvRect.CreateRelative(TpvVector2.Create(2.0,2.0),aTextEdit.fSize-TpvVector2.Create(4.0,4.0));
+ if (aTextEdit is TpvGUIIntegerEdit) and aTextEdit.fSpinnable then begin
 
- IconRect:=TpvRect.CreateRelative(TpvVector2.Null,TpvVector2.Null);
+  IconSprite:=TpvSprite(fIconArrowUpDown);
+
+  IconSize:=TpvVector2.Create(IconSprite.Width*(aTextEdit.fSize.y-16.0)/IconSprite.Height,
+                              aTextEdit.fSize.y-16.0);
+
+  IconRect:=TpvRect.CreateRelative(TpvVector2.Create(aTextEdit.fSize.x-(IconSize.x+4.0),
+                                                     (aTextEdit.fSize.y-IconSize.y)*0.5),
+                                   IconSize);
+
+  TextRect:=TpvRect.CreateRelative(TpvVector2.Create(2.0,2.0),
+                                   aTextEdit.fSize-TpvVector2.Create(IconSize.x+8.0,4.0));
+
+ end else begin
+
+  IconSize:=TpvVector2.Null;
+
+  IconSprite:=nil;
+
+  IconRect:=TpvRect.CreateRelative(TpvVector2.Null,TpvVector2.Null);
+
+  TextRect:=TpvRect.CreateRelative(TpvVector2.Create(2.0,2.0),
+                                   aTextEdit.fSize-TpvVector2.Create(4.0,4.0));
+
+ end;
+
+ aTextEdit.fDragRect:=IconRect;
 
  aCanvas.Font:=aTextEdit.Font;
  aCanvas.FontSize:=aTextEdit.FontSize;
@@ -5388,6 +5435,13 @@ begin
                                TpvVector2.Create(1.0,
                                                  (aCanvas.TextRowHeight(100.0)*0.5)));
   end;
+ end;
+
+ if assigned(IconSprite) then begin
+  aCanvas.DrawSprite(IconSprite,
+                     TpvRect.CreateRelative(TpvVector2.Null,
+                                            TpvVector2.Create(IconSprite.Width,IconSprite.Height)),
+                     IconRect);
  end;
 
 end;
@@ -9058,6 +9112,8 @@ begin
 
  SetEditable(true);
 
+ fSpinnable:=false;
+
  fText:='';
 
  fTextGlyphRects:=nil;
@@ -9077,6 +9133,8 @@ begin
  fMinimumWidth:=0.0;
 
  fMinimumHeight:=0.0;
+
+ fDragRect:=TpvRect.CreateRelative(TpvVector2.Null,TpvVector2.Null);
 
  fOnClick:=nil;
 
@@ -9679,7 +9737,11 @@ begin
      if not fEditable then begin
       fCursor:=pvgcArrow;
      end else begin
-      fCursor:=pvgcBeam;
+      if fSpinnable and fDragRect.Touched(aPointerEvent.Position) then begin
+       fCursor:=pvgcNS;
+      end else begin
+       fCursor:=pvgcBeam;
+      end;
      end;
      result:=true;
     end;
@@ -9712,6 +9774,8 @@ begin
 
  inherited Create(aParent);
 
+ fWidgetFlags:=fWidgetFlags+[pvgwfDraggable];
+
  fMinValue:=Low(TpvInt64);
 
  fMaxValue:=High(TpvInt64);
@@ -9721,6 +9785,8 @@ begin
  fLargeStep:=10;
 
  SetValue(0);
+
+ Spinnable:=true;
 
 end;
 
@@ -9789,6 +9855,11 @@ begin
  end;
 end;
 
+function TpvGUIIntegerEdit.DragEvent(const aPosition:TpvVector2):boolean;
+begin
+ result:=fSpinnable and fDragRect.Touched(aPosition);
+end;
+
 function TpvGUIIntegerEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 var TemporaryValue:TpvInt64;
 begin
@@ -9826,6 +9897,31 @@ begin
       result:=true;
      end;
     end;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIIntegerEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var TemporaryValue,Step:TpvInt64;
+    v:TpvFloat;
+begin
+ result:=inherited PointerEvent(aPointerEvent);
+ if not result then begin
+  case aPointerEvent.PointerEventType of
+   POINTEREVENT_DRAG:begin
+    TemporaryValue:=GetValue;
+    v:=aPointerEvent.RelativePosition.x+aPointerEvent.RelativePosition.y;
+    if v<0.0 then begin
+     Step:=floor(v);
+    end else begin
+     Step:=ceil(v);
+    end;
+    if ((Step>0) and ((TemporaryValue+Step)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+       ((Step<0) and ((TemporaryValue+Step)>=fMinValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+     SetValue(TemporaryValue+Step);
+    end;
+    result:=true;
    end;
   end;
  end;
