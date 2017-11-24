@@ -10068,13 +10068,76 @@ begin
 end;
 
 function TpvGUIFloatEdit.CheckText(const aText:TpvUTF8String):boolean;
-var OK:TPasDblStrUtilsBoolean;
+type TCharSet=set of AnsiChar;
+var Index,Len:TpvSizeInt;
+    DigitCharSet:TCharSet;
 begin
  result:=true;
  if length(aText)>0 then begin
-  OK:=false;
-  PasDblStrUtils.ConvertStringToDouble(aText,rmNearest,@OK,fDigits);
-  result:=OK;
+  result:=false;
+  Len:=length(aText);
+  if Len=0 then begin
+   result:=true;
+   exit;
+  end;
+  Index:=1;
+  if (Index<=Len) and (aText[Index] in ['-','+']) then begin
+   inc(Index);
+   if Index>Len then begin
+    result:=true;
+    exit;
+   end;
+  end;
+  if ((Index+1)<=Len) and (aText[Index]='0') and (aText[Index+1] in ['b','B','o','O','x','X']) then begin
+   case aText[Index+1] of
+    'b','B':begin
+     DigitCharSet:=['0'..'1'];
+    end;
+    'o','O':begin
+     DigitCharSet:=['0'..'7'];
+    end;
+    else {'x','X':}begin
+     DigitCharSet:=['0'..'9','a'..'f','A'..'F'];
+    end;
+   end;
+   inc(Index,2);
+   if Index>Len then begin
+    result:=true;
+    exit;
+   end;
+  end else begin
+   DigitCharSet:=['0'..'9'];
+  end;
+  if aText[Index] in DigitCharSet then begin
+   repeat
+    inc(Index);
+   until (Index>Len) or not (aText[Index] in DigitCharSet);
+   if (Index<=Len) and (aText[Index]='.') then begin
+    inc(Index);
+    if (Index<=Len) and (aText[Index] in DigitCharSet) then begin
+     repeat
+      inc(Index);
+     until (Index>Len) or not (aText[Index] in DigitCharSet);
+    end else if Index<=Len then begin
+     exit;
+    end;
+   end;
+   if (Index<=Len) and (aText[Index] in ['e','E','p','P']) then begin
+    inc(Index);
+    if (Index<=Len) and (aText[Index] in ['-','+']) then begin
+     inc(Index);
+    end;
+    if (Index<=Len) and (aText[Index] in ['0'..'9']) then begin
+     repeat
+      inc(Index);
+     until (Index>Len) or not (aText[Index] in ['0'..'9']);
+    end;
+   end;
+   if Index<=Len then begin
+    exit;
+   end;
+   result:=true;
+  end;
  end;
 end;
 
