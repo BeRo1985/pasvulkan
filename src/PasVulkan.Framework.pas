@@ -9600,8 +9600,8 @@ begin
 end;
 
 procedure TpvVulkanDeviceMemoryChunk.Defragment;
-var CountChunkBlocks:TpvSizeInt;
-    ChunkBlocks:TpvVulkanDeviceMemoryChunkBlockArray;
+var CountChunkBlocks,CountDefragmentedChunkBlocks,Index:TpvSizeInt;
+    ChunkBlocks,DefragmentedChunkBlocks:TpvVulkanDeviceMemoryChunkBlockArray;
     Node:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     ChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
     FromOffset,ToOffset,MinimumOffset:TVkDeviceSize;
@@ -9633,78 +9633,110 @@ begin
 
  try
 
-  ChunkBlocks:=nil;
+  CountDefragmentedChunkBlocks:=0;
+
+  DefragmentedChunkBlocks:=nil;
   try
 
-   CountChunkBlocks:=0;
-   Node:=fOffsetRedBlackTree.LeftMost;
-   while assigned(Node) do begin
-    inc(CountChunkBlocks);
-    Node:=Node.Successor;
-   end;
+   ChunkBlocks:=nil;
+   try
 
-   SetLength(ChunkBlocks,CountChunkBlocks);
+    CountChunkBlocks:=0;
+    Node:=fOffsetRedBlackTree.LeftMost;
+    while assigned(Node) do begin
+     inc(CountChunkBlocks);
+     Node:=Node.Successor;
+    end;
 
-   CountChunkBlocks:=0;
-   Node:=fOffsetRedBlackTree.LeftMost;
-   while assigned(Node) do begin
-    ChunkBlocks[CountChunkBlocks]:=Node.fValue;
-    inc(CountChunkBlocks);
-    Node:=Node.Successor;
-   end;
+    SetLength(ChunkBlocks,CountChunkBlocks);
 
-   MinimumOffset:=0;
+    SetLength(DefragmentedChunkBlocks,CountChunkBlocks);
 
-   for ChunkBlock in ChunkBlocks do begin
+    CountChunkBlocks:=0;
+    Node:=fOffsetRedBlackTree.LeftMost;
+    while assigned(Node) do begin
+     ChunkBlocks[CountChunkBlocks]:=Node.fValue;
+     inc(CountChunkBlocks);
+     Node:=Node.Successor;
+    end;
 
-    if (ChunkBlock.fSize>0) and
-       ChunkBlock.CanBeDefragmented then begin
+    MinimumOffset:=0;
 
-     FromOffset:=ChunkBlock.fOffset;
+    for ChunkBlock in ChunkBlocks do begin
 
-     ToOffset:=FromOffset;
+     if (ChunkBlock.fSize>0) and
+        ChunkBlock.CanBeDefragmented then begin
 
-     // TODO
+      FromOffset:=ChunkBlock.fOffset;
 
-     if FromOffset>ToOffset then begin
+      ToOffset:=FromOffset;
 
-      fOffsetRedBlackTree.Delete(FromOffset);
-      try
+      // TODO
 
-       Move(PpvUInt8Array(Memory)^[FromOffset],
-            PpvUInt8Array(Memory)^[ToOffset],
-            ChunkBlock.fSize);
+      if FromOffset>ToOffset then begin
 
-       if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
-        FillChar(PpvUInt8Array(Memory)^[ToOffset+ChunkBlock.fSize],
-                 FromOffset-(ToOffset+ChunkBlock.fSize),
-                 #0);
-       end;
+       fOffsetRedBlackTree.Delete(FromOffset);
+       try
 
-      finally
+        Move(PpvUInt8Array(Memory)^[FromOffset],
+             PpvUInt8Array(Memory)^[ToOffset],
+             ChunkBlock.fSize);
 
-       ChunkBlock.fOffset:=ToOffset;
+        if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
+         FillChar(PpvUInt8Array(Memory)^[ToOffset+ChunkBlock.fSize],
+                  FromOffset-(ToOffset+ChunkBlock.fSize),
+                  #0);
 
-       fOffsetRedBlackTree.Insert(ToOffset,ChunkBlock);
+        end;
 
-       if assigned(ChunkBlock.fOnDefragmented) then begin
-        ChunkBlock.fOnDefragmented(ChunkBlock);
+       finally
+
+        ChunkBlock.fOffset:=ToOffset;
+
+        fOffsetRedBlackTree.Insert(ToOffset,ChunkBlock);
+
+        DefragmentedChunkBlocks[CountDefragmentedChunkBlocks]:=ChunkBlock;
+        inc(CountDefragmentedChunkBlocks);
+
        end;
 
       end;
 
      end;
 
+     MinimumOffset:=ChunkBlock.fOffset+ChunkBlock.fSize;
+
+     // TODO
+
     end;
 
-    MinimumOffset:=ChunkBlock.fOffset+ChunkBlock.fSize;
+   finally
+    ChunkBlocks:=nil;
+   end;
 
-    // TODO
+   if CountDefragmentedChunkBlocks>0 then begin
+
+    if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0 then begin
+
+     InvalidateMappedMemory;
+
+     FlushMappedMemory;
+
+    end;
+
+    for Index:=0 to CountDefragmentedChunkBlocks-1 do begin
+     ChunkBlock:=DefragmentedChunkBlocks[Index];
+     if assigned(ChunkBlock.fOnDefragmented) then begin
+      ChunkBlock.fOnDefragmented(ChunkBlock);
+     end;
+    end;
 
    end;
 
   finally
-   ChunkBlocks:=nil;
+
+   DefragmentedChunkBlocks:=nil;
+
   end;
 
  finally
