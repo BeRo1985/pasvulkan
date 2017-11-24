@@ -923,6 +923,7 @@ type EpvVulkanException=class(Exception);
        fMemoryChunk:TpvVulkanDeviceMemoryChunk;
        fOffset:TVkDeviceSize;
        fSize:TVkDeviceSize;
+       fAlignment:TVkDeviceSize;
        fAllocationType:TpvVulkanDeviceMemoryAllocationType;
        fOffsetRedBlackTreeNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
        fSizeRedBlackTreeNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
@@ -931,17 +932,20 @@ type EpvVulkanException=class(Exception);
        constructor Create(const aMemoryChunk:TpvVulkanDeviceMemoryChunk;
                           const aOffset:TVkDeviceSize;
                           const aSize:TVkDeviceSize;
+                          const aAlignment:TVkDeviceSize;
                           const aAllocationType:TpvVulkanDeviceMemoryAllocationType;
                           const aOnDefragmented:TpvVulkanDeviceMemoryChunkBlockOnDefragmented=nil);
        destructor Destroy; override;
        procedure Update(const aOffset:TVkDeviceSize;
                         const aSize:TVkDeviceSize;
+                        const aAlignment:TVkDeviceSize;
                         const aAllocationType:TpvVulkanDeviceMemoryAllocationType);
        function CanBeDefragmented:boolean;
       published
        property MemoryChunk:TpvVulkanDeviceMemoryChunk read fMemoryChunk;
        property Offset:TVkDeviceSize read fOffset;
        property Size:TVkDeviceSize read fSize;
+       property Alignment:TVkDeviceSize read fAlignment write fAlignment;
        property AllocationType:TpvVulkanDeviceMemoryAllocationType read fAllocationType;
        property OnDefragmented:TpvVulkanDeviceMemoryChunkBlockOnDefragmented read fOnDefragmented write fOnDefragmented;
      end;
@@ -8817,6 +8821,7 @@ end;
 constructor TpvVulkanDeviceMemoryChunkBlock.Create(const aMemoryChunk:TpvVulkanDeviceMemoryChunk;
                                                    const aOffset:TVkDeviceSize;
                                                    const aSize:TVkDeviceSize;
+                                                   const aAlignment:TVkDeviceSize;
                                                    const aAllocationType:TpvVulkanDeviceMemoryAllocationType;
                                                    const aOnDefragmented:TpvVulkanDeviceMemoryChunkBlockOnDefragmented=nil);
 begin
@@ -8824,6 +8829,7 @@ begin
  fMemoryChunk:=aMemoryChunk;
  fOffset:=aOffset;
  fSize:=aSize;
+ fAlignment:=aAlignment;
  fAllocationType:=aAllocationType;
  fOffsetRedBlackTreeNode:=fMemoryChunk.fOffsetRedBlackTree.Insert(aOffset,self);
  if fAllocationType=vdmatFree then begin
@@ -8843,6 +8849,7 @@ end;
 
 procedure TpvVulkanDeviceMemoryChunkBlock.Update(const aOffset:TVkDeviceSize;
                                                  const aSize:TVkDeviceSize;
+                                                 const aAlignment:TVkDeviceSize;
                                                  const aAllocationType:TpvVulkanDeviceMemoryAllocationType);
 begin
  if fOffset<>aOffset then begin
@@ -8859,6 +8866,7 @@ begin
  end;
  fOffset:=aOffset;
  fSize:=aSize;
+ fAlignment:=aAlignment;
  fAllocationType:=aAllocationType;
 end;
 
@@ -9035,7 +9043,7 @@ begin
  fOffsetRedBlackTree:=TpvVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
  fSizeRedBlackTree:=TpvVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
 
- TpvVulkanDeviceMemoryChunkBlock.Create(self,0,BestWantedChunkSize,vdmatFree);
+ TpvVulkanDeviceMemoryChunkBlock.Create(self,0,BestWantedChunkSize,1,vdmatFree);
 
  fLock:=TCriticalSection.Create;
 
@@ -9224,6 +9232,11 @@ begin
      PayloadEndOffset:=PayloadBeginOffset+aSize;
 
      OtherNode:=Node.fValue.fOffsetRedBlackTreeNode.Predecessor;
+     while assigned(OtherNode) and
+           assigned(OtherNode.fValue) and
+           (OtherNode.fValue.fAllocationType=vdmatFree) do begin
+      OtherNode:=OtherNode.Value.fOffsetRedBlackTreeNode.Predecessor;
+     end;
      if assigned(OtherNode) and
         assigned(OtherNode.fValue) and
         ((OtherNode.fValue.fAllocationType<>vdmatFree) and
@@ -9245,6 +9258,11 @@ begin
 
      if not TryAgain then begin
       OtherNode:=Node.fValue.fOffsetRedBlackTreeNode.Successor;
+      while assigned(OtherNode) and
+            assigned(OtherNode.fValue) and
+            (OtherNode.fValue.fAllocationType=vdmatFree) do begin
+       OtherNode:=OtherNode.Value.fOffsetRedBlackTreeNode.Successor;
+      end;
       if assigned(OtherNode) and
          assigned(OtherNode.fValue) and
          ((OtherNode.fValue.fAllocationType<>vdmatFree) and
@@ -9280,14 +9298,14 @@ begin
     if (PayloadBeginOffset<PayloadEndOffset) and
        (PayloadEndOffset<=MemoryChunkBlockEndOffset) then begin
 
-     MemoryChunkBlock.Update(PayloadBeginOffset,PayloadEndOffset-PayloadBeginOffset,aAllocationType);
+     MemoryChunkBlock.Update(PayloadBeginOffset,PayloadEndOffset-PayloadBeginOffset,Alignment,aAllocationType);
 
      if MemoryChunkBlockBeginOffset<PayloadBeginOffset then begin
-      TpvVulkanDeviceMemoryChunkBlock.Create(self,MemoryChunkBlockBeginOffset,PayloadBeginOffset-MemoryChunkBlockBeginOffset,vdmatFree);
+      TpvVulkanDeviceMemoryChunkBlock.Create(self,MemoryChunkBlockBeginOffset,PayloadBeginOffset-MemoryChunkBlockBeginOffset,1,vdmatFree);
      end;
 
      if PayloadEndOffset<MemoryChunkBlockEndOffset then begin
-      TpvVulkanDeviceMemoryChunkBlock.Create(self,PayloadEndOffset,MemoryChunkBlockEndOffset-PayloadEndOffset,vdmatFree);
+      TpvVulkanDeviceMemoryChunkBlock.Create(self,PayloadEndOffset,MemoryChunkBlockEndOffset-PayloadEndOffset,1,vdmatFree);
      end;
 
      aOffset:=PayloadBeginOffset;
@@ -9335,11 +9353,11 @@ begin
        OtherMemoryChunkBlock:=OtherNode.fValue;
        if OtherMemoryChunkBlock.fAllocationType=vdmatFree then begin
         if (MemoryChunkBlock.fOffset+aSize)<(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
-         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAllocationType);
-         OtherMemoryChunkBlock.Update(MemoryChunkBlock.fOffset+aSize,(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-(MemoryChunkBlock.fOffset+aSize),vdmatFree);
+         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAlignment,MemoryChunkBlock.fAllocationType);
+         OtherMemoryChunkBlock.Update(MemoryChunkBlock.fOffset+aSize,(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-(MemoryChunkBlock.fOffset+aSize),1,vdmatFree);
          result:=true;
         end else if (MemoryChunkBlock.fOffset+aSize)=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
-         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAllocationType);
+         MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAlignment,MemoryChunkBlock.fAllocationType);
          OtherMemoryChunkBlock.Free;
          result:=true;
         end;
@@ -9353,14 +9371,14 @@ begin
        OtherMemoryChunkBlock:=OtherNode.fValue;
        TempOffset:=MemoryChunkBlock.fOffset+aSize;
        TempSize:=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-TempOffset;
-       MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAllocationType);
-       OtherMemoryChunkBlock.Update(TempOffset,TempSize,vdmatFree);
+       MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAlignment,MemoryChunkBlock.fAllocationType);
+       OtherMemoryChunkBlock.Update(TempOffset,TempSize,1,vdmatFree);
        result:=true;
       end else begin
        TempOffset:=MemoryChunkBlock.fOffset+aSize;
        TempSize:=(MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize)-TempOffset;
-       MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAllocationType);
-       TpvVulkanDeviceMemoryChunkBlock.Create(self,TempOffset,TempSize,vdmatFree);
+       MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAlignment,MemoryChunkBlock.fAllocationType);
+       TpvVulkanDeviceMemoryChunkBlock.Create(self,TempOffset,TempSize,1,vdmatFree);
        result:=true;
       end;
      end;
@@ -9405,7 +9423,7 @@ begin
       TempOffset:=OtherMemoryChunkBlock.fOffset;
       TempSize:=(MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize)-TempOffset;
       MemoryChunkBlock.Free;
-      OtherMemoryChunkBlock.Update(TempOffset,TempSize,vdmatFree);
+      OtherMemoryChunkBlock.Update(TempOffset,TempSize,1,vdmatFree);
       MemoryChunkBlock:=OtherMemoryChunkBlock;
       Node:=OtherNode;
       continue;
@@ -9418,13 +9436,13 @@ begin
       TempOffset:=MemoryChunkBlock.fOffset;
       TempSize:=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-TempOffset;
       OtherMemoryChunkBlock.Free;
-      MemoryChunkBlock.Update(TempOffset,TempSize,vdmatFree);
+      MemoryChunkBlock.Update(TempOffset,TempSize,1,vdmatFree);
       continue;
      end;
 
      if MemoryChunkBlock.fAllocationType<>vdmatFree then begin
       // Mark block as free
-      MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,MemoryChunkBlock.fSize,vdmatFree);
+      MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,MemoryChunkBlock.fSize,1,vdmatFree);
      end;
      break;
 
@@ -9599,21 +9617,26 @@ begin
 end;
 
 procedure TpvVulkanDeviceMemoryChunk.Defragment;
-var CountChunkBlocks,CountDefragmentedChunkBlocks,Index:TpvSizeInt;
-    ChunkBlocks,DefragmentedChunkBlocks:TpvVulkanDeviceMemoryChunkBlockArray;
-    Node:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+var CountChunkBlocks,CountDefragmentedChunkBlocks,Index,OtherIndex:TpvSizeInt;
+    ChunkBlocks,DefragmentedChunkBlocks,FreeChunkBlocks:TpvVulkanDeviceMemoryChunkBlockArray;
+    Node,NextNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     ChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
-    FromOffset,ToOffset,MinimumOffset:TVkDeviceSize;
-    BufferImageGranularity,BufferImageGranularityInvertedMask:TVkDeviceSize;
+    FromOffset,ToOffset,MinimumOffset,NextOffset,LastEndOffset,
+    BufferImageGranularity,BufferImageGranularityInvertedMask,
+    Alignment:TVkDeviceSize;
     Memory:TvkPointer;
     DoNeedUnmapMemory:boolean;
+    LastAllocationType:TpvVulkanDeviceMemoryAllocationType;
 begin
 
+ // Defragmenting works only on host visible chunks, check for it
  if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))=0 then begin
   exit;
  end;
 
  Memory:=fMemory;
+
+ // Map the mapped memory, if needed (if it is not mapped, yet)
 
  if not assigned(Memory) then begin
 
@@ -9633,130 +9656,252 @@ begin
 
  try
 
-  CountDefragmentedChunkBlocks:=0;
+  FreeChunkBlocks:=nil;
 
-  DefragmentedChunkBlocks:=nil;
   try
 
-   ChunkBlocks:=nil;
+   CountDefragmentedChunkBlocks:=0;
+
+   DefragmentedChunkBlocks:=nil;
+
    try
 
-    CountChunkBlocks:=0;
-    Node:=fOffsetRedBlackTree.LeftMost;
-    while assigned(Node) do begin
-     ChunkBlock:=Node.fValue;
-     if ChunkBlock.AllocationType<>vdmatFree then begin
-      inc(CountChunkBlocks);
+    ChunkBlocks:=nil;
+    try
+
+     // Collect all free chunk blocks
+
+     CountChunkBlocks:=0;
+     Node:=fOffsetRedBlackTree.LeftMost;
+     while assigned(Node) do begin
+      ChunkBlock:=Node.fValue;
+      if ChunkBlock.AllocationType=vdmatFree then begin
+       inc(CountChunkBlocks);
+      end;
+      Node:=Node.Successor;
      end;
-     Node:=Node.Successor;
-    end;
 
-    SetLength(ChunkBlocks,CountChunkBlocks);
+     SetLength(FreeChunkBlocks,CountChunkBlocks);
 
-    SetLength(DefragmentedChunkBlocks,CountChunkBlocks);
-
-    CountChunkBlocks:=0;
-    Node:=fOffsetRedBlackTree.LeftMost;
-    while assigned(Node) do begin
-     ChunkBlock:=Node.fValue;
-     if ChunkBlock.AllocationType<>vdmatFree then begin
-      ChunkBlocks[CountChunkBlocks]:=ChunkBlock;
-      inc(CountChunkBlocks);
+     CountChunkBlocks:=0;
+     Node:=fOffsetRedBlackTree.LeftMost;
+     while assigned(Node) do begin
+      ChunkBlock:=Node.fValue;
+      if ChunkBlock.AllocationType=vdmatFree then begin
+       FreeChunkBlocks[CountChunkBlocks]:=ChunkBlock;
+       inc(CountChunkBlocks);
+      end;
+      Node:=Node.Successor;
      end;
-     Node:=Node.Successor;
-    end;
 
-    if CountChunkBlocks>0 then begin
+     // Collect all non-free chunk blocks
 
-     BufferImageGranularity:=Max(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
+     CountChunkBlocks:=0;
+     Node:=fOffsetRedBlackTree.LeftMost;
+     while assigned(Node) do begin
+      ChunkBlock:=Node.fValue;
+      if ChunkBlock.AllocationType<>vdmatFree then begin
+       inc(CountChunkBlocks);
+      end;
+      Node:=Node.Successor;
+     end;
 
-     BufferImageGranularityInvertedMask:=not (BufferImageGranularity-1);
+     SetLength(ChunkBlocks,CountChunkBlocks);
 
-     MinimumOffset:=0;
+     SetLength(DefragmentedChunkBlocks,CountChunkBlocks);
 
-     for ChunkBlock in ChunkBlocks do begin
+     CountChunkBlocks:=0;
+     Node:=fOffsetRedBlackTree.LeftMost;
+     while assigned(Node) do begin
+      ChunkBlock:=Node.fValue;
+      if ChunkBlock.AllocationType<>vdmatFree then begin
+       ChunkBlocks[CountChunkBlocks]:=ChunkBlock;
+       inc(CountChunkBlocks);
+      end;
+      Node:=Node.Successor;
+     end;
 
-      if (ChunkBlock.fSize>0) and
-         ChunkBlock.CanBeDefragmented then begin
+     if CountChunkBlocks>0 then begin
 
-       FromOffset:=ChunkBlock.fOffset;
+      // Initialize BufferImageGranularity values
 
-       ToOffset:=FromOffset;
+      BufferImageGranularity:=Max(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
 
-       // TODO
+      BufferImageGranularityInvertedMask:=not (BufferImageGranularity-1);
 
-       if FromOffset>ToOffset then begin
+      // Initialize start values
 
-        fOffsetRedBlackTree.Delete(FromOffset);
-        try
+      MinimumOffset:=0;
 
-         Move(PpvUInt8Array(Memory)^[FromOffset],
-              PpvUInt8Array(Memory)^[ToOffset],
-              ChunkBlock.fSize);
+      LastEndOffset:=0;
 
-         if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
-          FillChar(PpvUInt8Array(Memory)^[ToOffset+ChunkBlock.fSize],
-                   FromOffset-(ToOffset+ChunkBlock.fSize),
-                   #0);
+      LastAllocationType:=vdmatFree;
 
+      // Go through all non-free chunk blocks
+      for Index:=0 to CountChunkBlocks-1 do begin
+
+       ChunkBlock:=ChunkBlocks[Index];
+
+       // Check if we can defragment this chunk block
+       if (ChunkBlock.fSize>0) and
+          ChunkBlock.CanBeDefragmented then begin
+
+        // Setup values
+
+        FromOffset:=ChunkBlock.fOffset;
+
+        ToOffset:=MinimumOffset;
+
+        Alignment:=ChunkBlock.fAlignment;
+
+        // Adjust alignment for the BufferImageGranularity satisfaction, if needed
+        if (Index>0) and
+           (BufferImageGranularity>1) and
+           ((LastAllocationType<>vdmatFree) and
+            (((LastAllocationType in [vdmatUnknown,vdmatBuffer])<>(ChunkBlock.AllocationType in [vdmatUnknown,vdmatBuffer])) or
+             ((LastAllocationType in [vdmatImageLinear,vdmatImageOptimal])<>(ChunkBlock.AllocationType in [vdmatImageLinear,vdmatImageOptimal])))) and
+           ((ToOffset and BufferImageGranularityInvertedMask)=(LastEndOffset and BufferImageGranularityInvertedMask)) and
+           (Alignment<BufferImageGranularity) then begin
+         Alignment:=BufferImageGranularity;
+        end;
+
+        // Apply alignment to the new chunk block offset, if needed
+        if (Alignment>1) and ((ToOffset and (Alignment-1))<>0) then begin
+         inc(ToOffset,Alignment-(ToOffset and (Alignment-1)));
+        end;
+
+        if ToOffset<FromOffset then begin
+
+         // Delete (old) chunk blocks
+         if length(FreeChunkBlocks)>0 then begin
+          try
+           for OtherIndex:=0 to length(FreeChunkBlocks)-1 do begin
+            FreeChunkBlocks[OtherIndex].Free;
+           end;
+          finally
+           FreeChunkBlocks:=nil;
+          end;
          end;
 
-        finally
+         // Delete old chunk block offset from red-black-tree
+         fOffsetRedBlackTree.Delete(FromOffset);
 
-         ChunkBlock.fOffset:=ToOffset;
+         try
 
-         fOffsetRedBlackTree.Insert(ToOffset,ChunkBlock);
+          Move(PpvUInt8Array(Memory)^[FromOffset],
+               PpvUInt8Array(Memory)^[ToOffset],
+               ChunkBlock.fSize);
 
-         DefragmentedChunkBlocks[CountDefragmentedChunkBlocks]:=ChunkBlock;
-         inc(CountDefragmentedChunkBlocks);
+          if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
+           FillChar(PpvUInt8Array(Memory)^[ToOffset+ChunkBlock.fSize],
+                    FromOffset-(ToOffset+ChunkBlock.fSize),
+                    #0);
+
+          end;
+
+         finally
+
+          // Update chunk block offset with the new chunk block offset
+          ChunkBlock.fOffset:=ToOffset;
+
+          // Insert new chunk block offset into red-black-tree
+          fOffsetRedBlackTree.Insert(ToOffset,ChunkBlock);
+
+          // Add chunk block offset to the defragmented chunk block list
+          DefragmentedChunkBlocks[CountDefragmentedChunkBlocks]:=ChunkBlock;
+          inc(CountDefragmentedChunkBlocks);
+
+         end;
 
         end;
 
        end;
 
+       // Remember some values for the possible next chunk block
+
+       MinimumOffset:=ChunkBlock.fOffset+ChunkBlock.fSize;
+
+       LastEndOffset:=(ChunkBlock.fOffset+ChunkBlock.fSize)-1;
+
+       LastAllocationType:=ChunkBlock.AllocationType;
+
       end;
 
-      MinimumOffset:=ChunkBlock.fOffset+ChunkBlock.fSize;
+     end;
 
-      // TODO
+    finally
+     ChunkBlocks:=nil;
+    end;
 
+    if CountDefragmentedChunkBlocks>0 then begin
+
+     // Delete (old) chunk blocks
+     if length(FreeChunkBlocks)>0 then begin
+      try
+       for OtherIndex:=0 to length(FreeChunkBlocks)-1 do begin
+        FreeChunkBlocks[OtherIndex].Free;
+       end;
+      finally
+       FreeChunkBlocks:=nil;
+      end;
+     end;
+
+     // Recreate (new) free chunk blocks
+     for Index:=0 to CountChunkBlocks-1 do begin
+      ChunkBlock:=ChunkBlocks[Index];
+      FromOffset:=ChunkBlock.fOffset+ChunkBlock.fSize;
+      if (Index+1)<CountChunkBlocks then begin
+       ToOffset:=ChunkBlocks[Index+1].fOffset;
+      end else begin
+       ToOffset:=fSize;
+      end;
+      if (Index=0) and (ChunkBlock.fOffset>0) then begin
+       TpvVulkanDeviceMemoryChunkBlock.Create(self,
+                                              0,
+                                              ChunkBlock.fOffset,
+                                              1,
+                                              vdmatFree);
+      end;
+      if FromOffset<ToOffset then begin
+       TpvVulkanDeviceMemoryChunkBlock.Create(self,
+                                              FromOffset,
+                                              ToOffset-FromOffset,
+                                              1,
+                                              vdmatFree);
+      end;
+     end;
+
+     // Flush and invalidate mapped memory, if needed
+     if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0 then begin
+      InvalidateMappedMemory;
+      FlushMappedMemory;
+     end;
+
+     // Trigger OnDefragmented event hooks, if there are any
+     for Index:=0 to CountDefragmentedChunkBlocks-1 do begin
+      ChunkBlock:=DefragmentedChunkBlocks[Index];
+      if assigned(ChunkBlock.fOnDefragmented) then begin
+       ChunkBlock.fOnDefragmented(ChunkBlock);
+      end;
      end;
 
     end;
 
    finally
-    ChunkBlocks:=nil;
-   end;
-
-   if CountDefragmentedChunkBlocks>0 then begin
-
-    if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))=0 then begin
-
-     InvalidateMappedMemory;
-
-     FlushMappedMemory;
-
-    end;
-
-    for Index:=0 to CountDefragmentedChunkBlocks-1 do begin
-     ChunkBlock:=DefragmentedChunkBlocks[Index];
-     if assigned(ChunkBlock.fOnDefragmented) then begin
-      ChunkBlock.fOnDefragmented(ChunkBlock);
-     end;
-    end;
-
+    DefragmentedChunkBlocks:=nil;
    end;
 
   finally
-
-   DefragmentedChunkBlocks:=nil;
-
+   FreeChunkBlocks:=nil;
   end;
 
  finally
+
+  // Unmap the mapped memory, if needed
   if DoNeedUnmapMemory then begin
    UnmapMemory;
   end;
+
  end;
 
 end;
