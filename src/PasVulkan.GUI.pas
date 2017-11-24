@@ -4510,8 +4510,14 @@ begin
    result.y:=fWindowHeaderHeight;
   end;
   pvgwsMaximized:begin
-   if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-    result:=(fParent as TpvGUIWidget).fSize;
+   if assigned(fParent) then begin
+    if fParent is TpvGUIInstance then begin
+     result:=(fParent as TpvGUIInstance).fContent.fSize;
+    end else if fParent is TpvGUIWindow then begin
+     result:=(fParent as TpvGUIWindow).fContent.fSize;
+    end else if fParent is TpvGUIWidget then begin
+     result:=(fParent as TpvGUIWidget).fSize;
+    end;
    end;
   end;
  end;
@@ -7620,8 +7626,14 @@ begin
    end;
    pvgwsMaximized:begin
     fPosition:=MinimumPosition;
-    if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-     fSize:=(fParent as TpvGUIWidget).fSize;
+    if assigned(fParent) then begin
+     if fParent is TpvGUIInstance then begin
+      fSize:=(fParent as TpvGUIInstance).fContent.fSize;
+     end else if fParent is TpvGUIWindow then begin
+      fSize:=(fParent as TpvGUIWindow).fContent.fSize;
+     end else if fParent is TpvGUIWidget then begin
+      fSize:=(fParent as TpvGUIWidget).fSize;
+     end;
     end;
    end;
   end;
@@ -7721,8 +7733,16 @@ begin
    result.y:=Skin.fWindowHeaderHeight;
   end;
   pvgwsMaximized:begin
-   if assigned(fParent) and (fParent is TpvGUIWidget) then begin
-    result:=(fParent as TpvGUIWidget).fSize;
+   if assigned(fParent) then begin
+    if fParent is TpvGUIInstance then begin
+     result:=(fParent as TpvGUIInstance).fContent.fSize;
+    end else if fParent is TpvGUIWindow then begin
+     result:=(fParent as TpvGUIWindow).fContent.fSize;
+    end else if fParent is TpvGUIWidget then begin
+     result:=(fParent as TpvGUIWidget).fSize;
+    end else begin
+     result:=inherited GetFixedSize;
+    end;
    end else begin
     result:=inherited GetFixedSize;
    end;
