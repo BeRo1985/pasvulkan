@@ -9858,8 +9858,81 @@ begin
 end;
 
 function TpvGUIIntegerEdit.GetValue:TpvInt64;
+type TCharSet=set of AnsiChar;
+var Index,Len,Base,Sign:TpvSizeInt;
+    DigitCharSet:TCharSet;
 begin
- result:=StrToInt64Def(fText,0);
+ result:=0;
+ if length(fText)>0 then begin
+  Len:=length(fText);
+  if Len=0 then begin
+   exit;
+  end;
+  Index:=1;
+  Sign:=1;
+  if (Index<=Len) and (fText[Index] in ['-','+']) then begin
+   if fText[Index]='-' then begin
+    Sign:=-1;
+   end;
+   inc(Index);
+   if Index>Len then begin
+    exit;
+   end;
+  end;
+  if (Index<=Len) and (fText[Index]='$') then begin
+   inc(Index);
+   if Index>Len then begin
+    exit;
+   end;
+   DigitCharSet:=['0'..'9','a'..'f','A'..'F'];
+   Base:=16;
+  end else if ((Index+1)<=Len) and (fText[Index]='0') and (fText[Index+1] in ['b','B','o','O','x','X']) then begin
+   case fText[Index+1] of
+    'b','B':begin
+     DigitCharSet:=['0'..'1'];
+     Base:=2;
+    end;
+    'o','O':begin
+     DigitCharSet:=['0'..'7'];
+     Base:=8;
+    end;
+    else {'x','X':}begin
+     DigitCharSet:=['0'..'9','a'..'f','A'..'F'];
+     Base:=16;
+    end;
+   end;
+   inc(Index,2);
+   if Index>Len then begin
+    exit;
+   end;
+  end else begin
+   DigitCharSet:=['0'..'9'];
+   Base:=10;
+  end;
+  if fText[Index] in DigitCharSet then begin
+   repeat
+    case fText[Index] of
+     '0'..'9':begin
+      result:=(result*Base)+((ord(fText[Index])-ord('0'))*Sign);
+     end;
+     'a'..'f':begin
+      result:=(result*Base)+(((ord(fText[Index])-ord('a'))+$a)*Sign);
+     end;
+     'A'..'F':begin
+      result:=(result*Base)+(((ord(fText[Index])-ord('A'))+$a)*Sign);
+     end;
+     else begin
+      break;
+     end;
+    end;
+    inc(Index);
+   until (Index>Len) or not (fText[Index] in DigitCharSet);
+   if Index<=Len then begin
+    result:=0;
+    exit;
+   end;
+  end;
+ end;
 end;
 
 procedure TpvGUIIntegerEdit.SetValue(const aValue:TpvInt64);
@@ -9878,13 +9951,61 @@ begin
 end;
 
 function TpvGUIIntegerEdit.CheckText(const aText:TpvUTF8String):boolean;
+type TCharSet=set of AnsiChar;
+var Index,Len:TpvSizeInt;
+    DigitCharSet:TCharSet;
 begin
  result:=true;
  if length(aText)>0 then begin
-  try
-   StrToInt64(aText);
-  except
-   result:=false;
+  result:=false;
+  Len:=length(aText);
+  if Len=0 then begin
+   result:=true;
+   exit;
+  end;
+  Index:=1;
+  if (Index<=Len) and (aText[Index] in ['-','+']) then begin
+   inc(Index);
+   if Index>Len then begin
+    result:=true;
+    exit;
+   end;
+  end;
+  if (Index<=Len) and (aText[Index]='$') then begin
+   inc(Index);
+   if Index>Len then begin
+    result:=true;
+    exit;
+   end;
+   DigitCharSet:=['0'..'9','a'..'f','A'..'F'];
+  end else if ((Index+1)<=Len) and (aText[Index]='0') and (aText[Index+1] in ['b','B','o','O','x','X']) then begin
+   case aText[Index+1] of
+    'b','B':begin
+     DigitCharSet:=['0'..'1'];
+    end;
+    'o','O':begin
+     DigitCharSet:=['0'..'7'];
+    end;
+    else {'x','X':}begin
+     DigitCharSet:=['0'..'9','a'..'f','A'..'F'];
+    end;
+   end;
+   inc(Index,2);
+   if Index>Len then begin
+    result:=true;
+    exit;
+   end;
+  end else begin
+   DigitCharSet:=['0'..'9'];
+  end;
+  if aText[Index] in DigitCharSet then begin
+   repeat
+    inc(Index);
+   until (Index>Len) or not (aText[Index] in DigitCharSet);
+   if Index<=Len then begin
+    exit;
+   end;
+   result:=true;
   end;
  end;
 end;
