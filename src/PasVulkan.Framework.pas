@@ -8868,6 +8868,9 @@ begin
  fSize:=aSize;
  fAlignment:=aAlignment;
  fAllocationType:=aAllocationType;
+ if fAllocationType=vdmatFree then begin
+  fOnDefragmented:=nil;
+ end;
 end;
 
 function TpvVulkanDeviceMemoryChunkBlock.CanBeDefragmented:boolean;
