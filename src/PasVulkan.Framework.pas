@@ -9668,18 +9668,27 @@ begin
 
      if FromOffset>ToOffset then begin
 
-      Move(PpvUInt8Array(Memory)^[FromOffset],
-           PpvUInt8Array(Memory)^[ToOffset],
-           ChunkBlock.fSize);
+      fOffsetRedBlackTree.Delete(FromOffset);
+      try
 
-      if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
-       FillChar(PpvUInt8Array(Memory)^[ToOffset+ChunkBlock.fSize],
-                FromOffset-(ToOffset+ChunkBlock.fSize),
-                #0);
-      end;
+       Move(PpvUInt8Array(Memory)^[FromOffset],
+            PpvUInt8Array(Memory)^[ToOffset],
+            ChunkBlock.fSize);
 
-      if assigned(ChunkBlock.fOnDefragmented) then begin
-       ChunkBlock.fOnDefragmented(ChunkBlock);
+       if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
+        FillChar(PpvUInt8Array(Memory)^[ToOffset+ChunkBlock.fSize],
+                 FromOffset-(ToOffset+ChunkBlock.fSize),
+                 #0);
+       end;
+
+      finally
+
+       fOffsetRedBlackTree.Insert(ToOffset,ChunkBlock);
+
+       if assigned(ChunkBlock.fOnDefragmented) then begin
+        ChunkBlock.fOnDefragmented(ChunkBlock);
+       end;
+
       end;
 
      end;
