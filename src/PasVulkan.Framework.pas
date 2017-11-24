@@ -916,6 +916,8 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDeviceMemoryChunk=class;
 
+     TpvVulkanDeviceMemoryChunkBlockOnDefragmented=procedure(const aChunkBlock:TpvVulkanDeviceMemoryChunkBlock) of object;
+
      TpvVulkanDeviceMemoryChunkBlock=class(TpvVulkanObject)
       private
        fMemoryChunk:TpvVulkanDeviceMemoryChunk;
@@ -924,12 +926,15 @@ type EpvVulkanException=class(Exception);
        fAllocationType:TpvVulkanDeviceMemoryAllocationType;
        fOffsetRedBlackTreeNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
        fSizeRedBlackTreeNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+       fOnDefragmented:TpvVulkanDeviceMemoryChunkBlockOnDefragmented;
       public
        constructor Create(const aMemoryChunk:TpvVulkanDeviceMemoryChunk;
                           const aOffset:TVkDeviceSize;
                           const aSize:TVkDeviceSize;
-                          const aAllocationType:TpvVulkanDeviceMemoryAllocationType);
+                          const aAllocationType:TpvVulkanDeviceMemoryAllocationType;
+                          const aOnDefragmented:TpvVulkanDeviceMemoryChunkBlockOnDefragmented=nil);
        destructor Destroy; override;
+       function CanBeDefragmented:boolean;
        procedure Update(const aOffset:TVkDeviceSize;
                         const aSize:TVkDeviceSize;
                         const aAllocationType:TpvVulkanDeviceMemoryAllocationType);
@@ -938,7 +943,10 @@ type EpvVulkanException=class(Exception);
        property Offset:TVkDeviceSize read fOffset;
        property Size:TVkDeviceSize read fSize;
        property AllocationType:TpvVulkanDeviceMemoryAllocationType read fAllocationType;
+       property OnDefragmented:TpvVulkanDeviceMemoryChunkBlockOnDefragmented read fOnDefragmented write fOnDefragmented;
      end;
+
+     TpvVulkanDeviceMemoryChunkBlockArray=array of TpvVulkanDeviceMemoryChunkBlock;
 
      PpvVulkanDeviceMemoryManagerChunkList=^TpvVulkanDeviceMemoryManagerChunkList;
      PpvVulkanDeviceMemoryManagerChunkLists=^TpvVulkanDeviceMemoryManagerChunkLists;
@@ -964,6 +972,7 @@ type EpvVulkanException=class(Exception);
        fMemoryHeapFlags:TVkMemoryHeapFlags;
        fMemoryHandle:TVkDeviceMemory;
        fMemory:PVkVoid;
+       procedure Defragment;
       public
        constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
                           const aMemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
@@ -8808,7 +8817,8 @@ end;
 constructor TpvVulkanDeviceMemoryChunkBlock.Create(const aMemoryChunk:TpvVulkanDeviceMemoryChunk;
                                                    const aOffset:TVkDeviceSize;
                                                    const aSize:TVkDeviceSize;
-                                                   const aAllocationType:TpvVulkanDeviceMemoryAllocationType);
+                                                   const aAllocationType:TpvVulkanDeviceMemoryAllocationType;
+                                                   const aOnDefragmented:TpvVulkanDeviceMemoryChunkBlockOnDefragmented=nil);
 begin
  inherited Create;
  fMemoryChunk:=aMemoryChunk;
@@ -8819,6 +8829,7 @@ begin
  if fAllocationType=vdmatFree then begin
   fSizeRedBlackTreeNode:=fMemoryChunk.fSizeRedBlackTree.Insert(aSize,self);
  end;
+ fOnDefragmented:=aOnDefragmented;
 end;
 
 destructor TpvVulkanDeviceMemoryChunkBlock.Destroy;
@@ -8828,6 +8839,14 @@ begin
   fMemoryChunk.fSizeRedBlackTree.Remove(fSizeRedBlackTreeNode);
  end;
  inherited Destroy;
+end;
+
+function TpvVulkanDeviceMemoryChunkBlock.CanBeDefragmented:boolean;
+begin
+ result:=(fMemoryChunk.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0;
+ if result then begin
+  result:=assigned(fOnDefragmented);
+ end;
 end;
 
 procedure TpvVulkanDeviceMemoryChunkBlock.Update(const aOffset:TVkDeviceSize;
@@ -9580,6 +9599,111 @@ begin
  end;
 end;
 
+procedure TpvVulkanDeviceMemoryChunk.Defragment;
+var CountChunkBlocks:TpvSizeInt;
+    ChunkBlocks:TpvVulkanDeviceMemoryChunkBlockArray;
+    Node:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+    ChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
+    FromOffset,ToOffset,MinimumOffset:TVkDeviceSize;
+    Memory:TvkPointer;
+    DoNeedUnmapMemory:boolean;
+begin
+
+ if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))=0 then begin
+  exit;
+ end;
+
+ Memory:=fMemory;
+
+ if not assigned(Memory) then begin
+
+  Memory:=MapMemory(0,fSize);
+
+  if assigned(Memory) then begin
+   DoNeedUnmapMemory:=true;
+  end else begin
+   exit;
+  end;
+
+ end else begin
+
+  DoNeedUnmapMemory:=false;
+
+ end;
+
+ try
+
+  ChunkBlocks:=nil;
+  try
+
+   CountChunkBlocks:=0;
+   Node:=fOffsetRedBlackTree.LeftMost;
+   while assigned(Node) do begin
+    inc(CountChunkBlocks);
+    Node:=Node.Successor;
+   end;
+
+   SetLength(ChunkBlocks,CountChunkBlocks);
+
+   CountChunkBlocks:=0;
+   Node:=fOffsetRedBlackTree.LeftMost;
+   while assigned(Node) do begin
+    ChunkBlocks[CountChunkBlocks]:=Node.fValue;
+    inc(CountChunkBlocks);
+    Node:=Node.Successor;
+   end;
+
+   MinimumOffset:=0;
+
+   for ChunkBlock in ChunkBlocks do begin
+
+    if (ChunkBlock.fSize>0) and
+       ChunkBlock.CanBeDefragmented then begin
+
+     FromOffset:=ChunkBlock.fOffset;
+
+     ToOffset:=FromOffset;
+
+     // TODO
+
+     if FromOffset>ToOffset then begin
+
+      Move(PpvUInt8Array(Memory)^[FromOffset],
+           PpvUInt8Array(Memory)^[ToOffset],
+           ChunkBlock.fSize);
+
+      if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
+       FillChar(PpvUInt8Array(Memory)^[ToOffset+ChunkBlock.fSize],
+                FromOffset-(ToOffset+ChunkBlock.fSize),
+                #0);
+      end;
+
+      if assigned(ChunkBlock.fOnDefragmented) then begin
+       ChunkBlock.fOnDefragmented(ChunkBlock);
+      end;
+
+     end;
+
+    end;
+
+    MinimumOffset:=ChunkBlock.fOffset+ChunkBlock.fSize;
+
+    // TODO
+
+   end;
+
+  finally
+   ChunkBlocks:=nil;
+  end;
+
+ finally
+  if DoNeedUnmapMemory then begin
+   UnmapMemory;
+  end;
+ end;
+
+end;
+
 constructor TpvVulkanDeviceMemoryBlock.Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
                                               const aMemoryChunk:TpvVulkanDeviceMemoryChunk;
                                               const aOffset:TVkDeviceSize;
@@ -10017,17 +10141,17 @@ begin
      ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))=0)) then begin
 
   StagingBuffer:=TpvVulkanBuffer.Create(fDevice,
-                                      aDataSize,
-                                      TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
-                                      VK_SHARING_MODE_EXCLUSIVE,
-                                      nil,
-                                      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
-                                      0,
-                                      0,
-                                      0,
-                                      0,
-                                      0,
-                                      [vbfOwnSingleMemoryChunk]);
+                                        aDataSize,
+                                        TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_SRC_BIT),
+                                        VK_SHARING_MODE_EXCLUSIVE,
+                                        nil,
+                                        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT),
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        0,
+                                        [vbfOwnSingleMemoryChunk]);
   try
 
    p:=StagingBuffer.Memory.MapMemory;
