@@ -1030,6 +1030,7 @@ type EpvVulkanException=class(Exception);
        fSize:TVkDeviceSize;
        fPreviousMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fNextMemoryBlock:TpvVulkanDeviceMemoryBlock;
+       function GetMemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
       public
        constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
                           const aMemoryChunk:TpvVulkanDeviceMemoryChunk;
@@ -1046,6 +1047,7 @@ type EpvVulkanException=class(Exception);
       published
        property MemoryManager:TpvVulkanDeviceMemoryManager read fMemoryManager;
        property MemoryChunk:TpvVulkanDeviceMemoryChunk read fMemoryChunk;
+       property MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock read GetMemoryChunkBlock;
        property Offset:TVkDeviceSize read fOffset;
        property Size:TVkDeviceSize read fSize;
      end;
@@ -9142,6 +9144,7 @@ var Node,OtherNode,LastNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     Direction:TpvInt32;
     TryAgain:boolean;
 begin
+
  result:=false;
 
  if aSize>0 then begin
@@ -9951,6 +9954,17 @@ begin
   fMemoryManager.fLastMemoryBlock:=fPreviousMemoryBlock;
  end;
  inherited Destroy;
+end;
+
+function TpvVulkanDeviceMemoryBlock.GetMemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
+var Node:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
+begin
+ Node:=fMemoryChunk.fOffsetRedBlackTree.Find(fOffset);
+ if assigned(Node) then begin
+  result:=Node.fValue;
+ end else begin
+  result:=nil;
+ end;
 end;
 
 function TpvVulkanDeviceMemoryBlock.MapMemory(const aOffset:TVkDeviceSize=0;const aSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
