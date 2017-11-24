@@ -9604,6 +9604,7 @@ var CountChunkBlocks,CountDefragmentedChunkBlocks,Index:TpvSizeInt;
     Node:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
     ChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
     FromOffset,ToOffset,MinimumOffset:TVkDeviceSize;
+    BufferImageGranularity,BufferImageGranularityInvertedMask:TVkDeviceSize;
     Memory:TvkPointer;
     DoNeedUnmapMemory:boolean;
 begin
@@ -9643,7 +9644,10 @@ begin
     CountChunkBlocks:=0;
     Node:=fOffsetRedBlackTree.LeftMost;
     while assigned(Node) do begin
-     inc(CountChunkBlocks);
+     ChunkBlock:=Node.fValue;
+     if ChunkBlock.AllocationType<>vdmatFree then begin
+      inc(CountChunkBlocks);
+     end;
      Node:=Node.Successor;
     end;
 
@@ -9654,58 +9658,69 @@ begin
     CountChunkBlocks:=0;
     Node:=fOffsetRedBlackTree.LeftMost;
     while assigned(Node) do begin
-     ChunkBlocks[CountChunkBlocks]:=Node.fValue;
-     inc(CountChunkBlocks);
+     ChunkBlock:=Node.fValue;
+     if ChunkBlock.AllocationType<>vdmatFree then begin
+      ChunkBlocks[CountChunkBlocks]:=ChunkBlock;
+      inc(CountChunkBlocks);
+     end;
      Node:=Node.Successor;
     end;
 
-    MinimumOffset:=0;
+    if CountChunkBlocks>0 then begin
 
-    for ChunkBlock in ChunkBlocks do begin
+     BufferImageGranularity:=Max(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
 
-     if (ChunkBlock.fSize>0) and
-        ChunkBlock.CanBeDefragmented then begin
+     BufferImageGranularityInvertedMask:=not (BufferImageGranularity-1);
 
-      FromOffset:=ChunkBlock.fOffset;
+     MinimumOffset:=0;
 
-      ToOffset:=FromOffset;
+     for ChunkBlock in ChunkBlocks do begin
 
-      // TODO
+      if (ChunkBlock.fSize>0) and
+         ChunkBlock.CanBeDefragmented then begin
 
-      if FromOffset>ToOffset then begin
+       FromOffset:=ChunkBlock.fOffset;
 
-       fOffsetRedBlackTree.Delete(FromOffset);
-       try
+       ToOffset:=FromOffset;
 
-        Move(PpvUInt8Array(Memory)^[FromOffset],
-             PpvUInt8Array(Memory)^[ToOffset],
-             ChunkBlock.fSize);
+       // TODO
 
-        if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
-         FillChar(PpvUInt8Array(Memory)^[ToOffset+ChunkBlock.fSize],
-                  FromOffset-(ToOffset+ChunkBlock.fSize),
-                  #0);
+       if FromOffset>ToOffset then begin
+
+        fOffsetRedBlackTree.Delete(FromOffset);
+        try
+
+         Move(PpvUInt8Array(Memory)^[FromOffset],
+              PpvUInt8Array(Memory)^[ToOffset],
+              ChunkBlock.fSize);
+
+         if (ToOffset+ChunkBlock.fSize)<FromOffset then begin
+          FillChar(PpvUInt8Array(Memory)^[ToOffset+ChunkBlock.fSize],
+                   FromOffset-(ToOffset+ChunkBlock.fSize),
+                   #0);
+
+         end;
+
+        finally
+
+         ChunkBlock.fOffset:=ToOffset;
+
+         fOffsetRedBlackTree.Insert(ToOffset,ChunkBlock);
+
+         DefragmentedChunkBlocks[CountDefragmentedChunkBlocks]:=ChunkBlock;
+         inc(CountDefragmentedChunkBlocks);
 
         end;
-
-       finally
-
-        ChunkBlock.fOffset:=ToOffset;
-
-        fOffsetRedBlackTree.Insert(ToOffset,ChunkBlock);
-
-        DefragmentedChunkBlocks[CountDefragmentedChunkBlocks]:=ChunkBlock;
-        inc(CountDefragmentedChunkBlocks);
 
        end;
 
       end;
 
+      MinimumOffset:=ChunkBlock.fOffset+ChunkBlock.fSize;
+
+      // TODO
+
      end;
-
-     MinimumOffset:=ChunkBlock.fOffset+ChunkBlock.fSize;
-
-     // TODO
 
     end;
 
