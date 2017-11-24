@@ -934,10 +934,10 @@ type EpvVulkanException=class(Exception);
                           const aAllocationType:TpvVulkanDeviceMemoryAllocationType;
                           const aOnDefragmented:TpvVulkanDeviceMemoryChunkBlockOnDefragmented=nil);
        destructor Destroy; override;
-       function CanBeDefragmented:boolean;
        procedure Update(const aOffset:TVkDeviceSize;
                         const aSize:TVkDeviceSize;
                         const aAllocationType:TpvVulkanDeviceMemoryAllocationType);
+       function CanBeDefragmented:boolean;
       published
        property MemoryChunk:TpvVulkanDeviceMemoryChunk read fMemoryChunk;
        property Offset:TVkDeviceSize read fOffset;
@@ -8841,14 +8841,6 @@ begin
  inherited Destroy;
 end;
 
-function TpvVulkanDeviceMemoryChunkBlock.CanBeDefragmented:boolean;
-begin
- result:=(fMemoryChunk.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0;
- if result then begin
-  result:=assigned(fOnDefragmented);
- end;
-end;
-
 procedure TpvVulkanDeviceMemoryChunkBlock.Update(const aOffset:TVkDeviceSize;
                                                  const aSize:TVkDeviceSize;
                                                  const aAllocationType:TpvVulkanDeviceMemoryAllocationType);
@@ -8868,7 +8860,14 @@ begin
  fOffset:=aOffset;
  fSize:=aSize;
  fAllocationType:=aAllocationType;
- inherited Destroy;
+end;
+
+function TpvVulkanDeviceMemoryChunkBlock.CanBeDefragmented:boolean;
+begin
+ result:=(fMemoryChunk.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0;
+ if result then begin
+  result:=assigned(fOnDefragmented);
+ end;
 end;
 
 constructor TpvVulkanDeviceMemoryChunk.Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
@@ -9481,7 +9480,7 @@ begin
  if vdmcfPersistentMapped in fMemoryChunkFlags then begin
   if assigned(fMemory) then begin
    // Do nothing in this case
-  end else begin 
+  end else begin
    raise EpvVulkanException.Create('Persistent mapped memory is not mapped?');
   end;
  end else begin
