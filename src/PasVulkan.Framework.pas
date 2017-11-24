@@ -1033,6 +1033,7 @@ type EpvVulkanException=class(Exception);
        fSize:TVkDeviceSize;
        fPreviousMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fNextMemoryBlock:TpvVulkanDeviceMemoryBlock;
+       fAssociatedObject:TObject;
        fOnDefragmented:TpvVulkanDeviceMemoryBlockOnDefragmented;
       public
        constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
@@ -1054,6 +1055,7 @@ type EpvVulkanException=class(Exception);
        property MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock read fMemoryChunkBlock;
        property Offset:TVkDeviceSize read fOffset;
        property Size:TVkDeviceSize read fSize;
+       property AssociatedObject:TObject read fAssociatedObject write fAssociatedObject;
        property OnDefragmented:TpvVulkanDeviceMemoryBlockOnDefragmented read fOnDefragmented write fOnDefragmented;
      end;
 
@@ -9981,6 +9983,8 @@ begin
 
  fOnDefragmented:=nil;
 
+ fAssociatedObject:=nil;
+
  fMemoryManager:=aMemoryManager;
 
  fMemoryChunk:=aMemoryChunk;
@@ -10371,6 +10375,8 @@ begin
                                                            aMemoryAvoidHeapFlags,
                                                            vdmatBuffer);
 
+  fMemoryBlock.fAssociatedObject:=self;
+
   Bind;
 
   fMemoryPropertyFlags:=fMemoryBlock.fMemoryChunk.fMemoryPropertyFlags;
@@ -10387,6 +10393,7 @@ begin
   end;
 
   if assigned(fMemoryBlock) then begin
+   fMemoryBlock.fAssociatedObject:=nil;
    fDevice.fMemoryManager.FreeMemoryBlock(fMemoryBlock);
    fMemoryBlock:=nil;
   end;
@@ -10406,6 +10413,7 @@ begin
   fBufferHandle:=VK_NULL_HANDLE;
  end;
  if assigned(fMemoryBlock) then begin
+  fMemoryBlock.fAssociatedObject:=nil;
   fDevice.fMemoryManager.FreeMemoryBlock(fMemoryBlock);
   fMemoryBlock:=nil;
  end;
@@ -12200,6 +12208,8 @@ begin
    raise EpvVulkanMemoryAllocationException.Create('Memory for frame buffer attachment couldn''t be allocated!');
   end;
 
+  fMemoryBlock.fAssociatedObject:=self;
+
   HandleResultCode(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,fImage.fImageHandle,fMemoryBlock.fMemoryChunk.fMemoryHandle,fMemoryBlock.fOffset));
 
   if (aUsage and TVkBufferUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))<>0 then begin
@@ -12280,6 +12290,7 @@ begin
   FreeAndNil(fImage);
 
   if assigned(fMemoryBlock) then begin
+   fMemoryBlock.fAssociatedObject:=nil;
    fDevice.fMemoryManager.FreeMemoryBlock(fMemoryBlock);
    fMemoryBlock:=nil;
   end;
@@ -12328,6 +12339,7 @@ begin
   FreeAndNil(fImage);
 
   if assigned(fMemoryBlock) then begin
+   fMemoryBlock.fAssociatedObject:=nil;
    fDevice.fMemoryManager.FreeMemoryBlock(fMemoryBlock);
    fMemoryBlock:=nil;
   end;
@@ -16931,6 +16943,8 @@ begin
   raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
  end;
 
+ fMemoryBlock.fAssociatedObject:=self;
+
  HandleResultCode(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,
                                                         fImage.fImageHandle,
                                                         fMemoryBlock.fMemoryChunk.fMemoryHandle,
@@ -18909,6 +18923,7 @@ begin
  FreeAndNil(fSampler);
  FreeAndNil(fImageView);
  if assigned(fMemoryBlock) then begin
+  fMemoryBlock.fAssociatedObject:=nil;
   fDevice.fMemoryManager.FreeMemoryBlock(fMemoryBlock);
   fMemoryBlock:=nil;
  end;
