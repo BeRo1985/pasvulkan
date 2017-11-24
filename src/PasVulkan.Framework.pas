@@ -9683,6 +9683,8 @@ begin
 
       finally
 
+       ChunkBlock.fOffset:=ToOffset;
+
        fOffsetRedBlackTree.Insert(ToOffset,ChunkBlock);
 
        if assigned(ChunkBlock.fOnDefragmented) then begin
