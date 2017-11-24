@@ -918,8 +918,6 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDeviceMemoryBlock=class;
 
-     TpvVulkanDeviceMemoryChunkBlockOnDefragmented=procedure(const aChunkBlock:TpvVulkanDeviceMemoryChunkBlock) of object;
-
      TpvVulkanDeviceMemoryChunkBlock=class(TpvVulkanObject)
       private
        fMemoryChunk:TpvVulkanDeviceMemoryChunk;
@@ -930,15 +928,13 @@ type EpvVulkanException=class(Exception);
        fOffsetRedBlackTreeNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
        fSizeRedBlackTreeNode:TpvVulkanDeviceMemoryChunkBlockRedBlackTreeNode;
        fMemoryBlock:TpvVulkanDeviceMemoryBlock;
-       fOnDefragmented:TpvVulkanDeviceMemoryChunkBlockOnDefragmented;
       public
        constructor Create(const aMemoryChunk:TpvVulkanDeviceMemoryChunk;
                           const aOffset:TVkDeviceSize;
                           const aSize:TVkDeviceSize;
                           const aAlignment:TVkDeviceSize;
                           const aAllocationType:TpvVulkanDeviceMemoryAllocationType;
-                          const aMemoryBlock:TpvVulkanDeviceMemoryBlock=nil;
-                          const aOnDefragmented:TpvVulkanDeviceMemoryChunkBlockOnDefragmented=nil);
+                          const aMemoryBlock:TpvVulkanDeviceMemoryBlock=nil);
        destructor Destroy; override;
        procedure Update(const aOffset:TVkDeviceSize;
                         const aSize:TVkDeviceSize;
@@ -952,7 +948,6 @@ type EpvVulkanException=class(Exception);
        property Alignment:TVkDeviceSize read fAlignment write fAlignment;
        property AllocationType:TpvVulkanDeviceMemoryAllocationType read fAllocationType;
        property MemoryBlock:TpvVulkanDeviceMemoryBlock read fMemoryBlock write fMemoryBlock;
-       property OnDefragmented:TpvVulkanDeviceMemoryChunkBlockOnDefragmented read fOnDefragmented write fOnDefragmented;
      end;
 
      TpvVulkanDeviceMemoryChunkBlockArray=array of TpvVulkanDeviceMemoryChunkBlock;
@@ -1027,6 +1022,8 @@ type EpvVulkanException=class(Exception);
      PpvVulkanDeviceMemoryBlockFlags=^TpvVulkanDeviceMemoryBlockFlags;
      TpvVulkanDeviceMemoryBlockFlags=set of TpvVulkanDeviceMemoryBlockFlag;
 
+     TpvVulkanDeviceMemoryBlockOnDefragmented=procedure(const aMemoryBlock:TpvVulkanDeviceMemoryBlock) of object;
+
      TpvVulkanDeviceMemoryBlock=class(TpvVulkanObject)
       private
        fMemoryManager:TpvVulkanDeviceMemoryManager;
@@ -1036,6 +1033,7 @@ type EpvVulkanException=class(Exception);
        fSize:TVkDeviceSize;
        fPreviousMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fNextMemoryBlock:TpvVulkanDeviceMemoryBlock;
+       fOnDefragmented:TpvVulkanDeviceMemoryBlockOnDefragmented;
       public
        constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
                           const aMemoryChunk:TpvVulkanDeviceMemoryChunk;
@@ -1056,6 +1054,7 @@ type EpvVulkanException=class(Exception);
        property MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock read fMemoryChunkBlock;
        property Offset:TVkDeviceSize read fOffset;
        property Size:TVkDeviceSize read fSize;
+       property OnDefragmented:TpvVulkanDeviceMemoryBlockOnDefragmented read fOnDefragmented write fOnDefragmented;
      end;
 
      TpvVulkanDeviceMemoryManagerChunkList=record
@@ -8854,8 +8853,7 @@ constructor TpvVulkanDeviceMemoryChunkBlock.Create(const aMemoryChunk:TpvVulkanD
                                                    const aSize:TVkDeviceSize;
                                                    const aAlignment:TVkDeviceSize;
                                                    const aAllocationType:TpvVulkanDeviceMemoryAllocationType;
-                                                   const aMemoryBlock:TpvVulkanDeviceMemoryBlock=nil;
-                                                   const aOnDefragmented:TpvVulkanDeviceMemoryChunkBlockOnDefragmented=nil);
+                                                   const aMemoryBlock:TpvVulkanDeviceMemoryBlock=nil);
 begin
  inherited Create;
  fMemoryChunk:=aMemoryChunk;
@@ -8872,7 +8870,6 @@ begin
   fMemoryBlock.fMemoryChunk:=fMemoryChunk;
   fMemoryBlock.fMemoryChunkBlock:=self;
  end;
- fOnDefragmented:=aOnDefragmented;
 end;
 
 destructor TpvVulkanDeviceMemoryChunkBlock.Destroy;
@@ -8924,16 +8921,14 @@ begin
    end;
    fMemoryBlock:=nil;
   end;
-  fOnDefragmented:=nil;
  end;
 end;
 
 function TpvVulkanDeviceMemoryChunkBlock.CanBeDefragmented:boolean;
 begin
- result:=(fMemoryChunk.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0;
- if result then begin
-  result:=assigned(fOnDefragmented);
- end;
+ result:=((fMemoryChunk.fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0) and
+         assigned(fMemoryBlock) and
+         assigned(fMemoryBlock.fOnDefragmented);
 end;
 
 constructor TpvVulkanDeviceMemoryChunk.Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
@@ -9867,6 +9862,11 @@ begin
           // Update chunk block offset with the new chunk block offset
           ChunkBlock.fOffset:=ToOffset;
 
+          // Update memory block offset with the new chunk block offset
+          if assigned(ChunkBlock.fMemoryBlock) then begin
+           ChunkBlock.fMemoryBlock.fOffset:=ToOffset;
+          end;
+
           // Insert new chunk block offset into red-black-tree
           fOffsetRedBlackTree.Insert(ToOffset,ChunkBlock);
 
@@ -9943,8 +9943,9 @@ begin
      // Trigger OnDefragmented event hooks, if there are any
      for Index:=0 to CountDefragmentedChunkBlocks-1 do begin
       ChunkBlock:=DefragmentedChunkBlocks[Index];
-      if assigned(ChunkBlock.fOnDefragmented) then begin
-       ChunkBlock.fOnDefragmented(ChunkBlock);
+      if assigned(ChunkBlock.fMemoryBlock) and
+         assigned(ChunkBlock.fMemoryBlock.fOnDefragmented) then begin
+       ChunkBlock.fMemoryBlock.fOnDefragmented(ChunkBlock.fMemoryBlock);
       end;
      end;
 
@@ -9977,6 +9978,8 @@ constructor TpvVulkanDeviceMemoryBlock.Create(const aMemoryManager:TpvVulkanDevi
 begin
 
  inherited Create;
+
+ fOnDefragmented:=nil;
 
  fMemoryManager:=aMemoryManager;
 
