@@ -976,6 +976,7 @@ type EpvVulkanException=class(Exception);
        fMemoryHeapFlags:TVkMemoryHeapFlags;
        fMemoryHandle:TVkDeviceMemory;
        fMemory:PVkVoid;
+       procedure Defragment;
       public
        constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
                           const aMemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
@@ -999,7 +1000,6 @@ type EpvVulkanException=class(Exception);
        procedure FlushMappedMemoryRange(const aBase:TpvPointer;const aSize:TVkDeviceSize);
        procedure InvalidateMappedMemory;
        procedure InvalidateMappedMemoryRange(const aBase:TpvPointer;const aSize:TVkDeviceSize);
-       procedure Defragment;
        property Memory:PVkVoid read fMemory;
       published
        property MemoryManager:TpvVulkanDeviceMemoryManager read fMemoryManager;
@@ -1081,7 +1081,29 @@ type EpvVulkanException=class(Exception);
                                     const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                     const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType):TpvVulkanDeviceMemoryBlock;
        function FreeMemoryBlock(const aMemoryBlock:TpvVulkanDeviceMemoryBlock):boolean;
+
+       (* Warning! This function is not correct according to Vulkan specification, therefore use it
+       ** at your own risk. The reason for this is that Vulkan does not guarantee that the memory
+       ** requirements (size, alignment, requirements, and so on) for a new buffer or image remain
+       ** consistent, i.e. it can also be different for subsequent calls with the same parameters.
+       ** It can really happen on some platforms (especially in connection with images/textures).
+       **
+       ** This function can also be very time-consuming, so you should not call it too often (such as
+       ** with any frame or after resource creation/destruction). Instead, you can only call the
+       ** function at special cases (e. g. when reloading a game level, or when you just destroy many
+       ** objects).
+       **
+       ** This function works by moving blocks to different offsets in order to optimize memory usage
+       ** inside memory chunks. Only blocks, that have a non-nil OnDefragmented event hook on the
+       ** with-it-associated chunk block, can be moved. All other blocks are considered non-movable
+       ** in this call. And in the OnDefragment event hooks, you have to recreate the respective image,
+       ** buffer, etc. yourself (in other words: you have to destroy and recreate it).
+       **
+       ** And only host visible memory chunks are defragmentable with this function!
+       **
+       **)
        procedure Defragment;
+
      end;
 
      TpvVulkanQueueFamilyIndices=array of TpvUInt32;
