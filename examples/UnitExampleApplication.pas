@@ -98,7 +98,7 @@ begin
  AndroidSeparateMouseAndTouch:=true;
  UseAudio:=true;
 //PresentMode:=TpvApplicationPresentMode.PRESENT_MODE_MAILBOX;
- PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.PRESENT_MODE_NO_VSYNC{$else}TpvApplicationPresentMode.PRESENT_MODE_VSYNC{$endif};
+ PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.PRESENT_MODE_MAILBOX{TpvApplicationPresentMode.PRESENT_MODE_NO_VSYNC}{$else}TpvApplicationPresentMode.PRESENT_MODE_VSYNC{$endif};
 end;
 
 procedure TExampleApplication.Start;
