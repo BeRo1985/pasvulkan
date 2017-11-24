@@ -976,7 +976,6 @@ type EpvVulkanException=class(Exception);
        fMemoryHeapFlags:TVkMemoryHeapFlags;
        fMemoryHandle:TVkDeviceMemory;
        fMemory:PVkVoid;
-       procedure Defragment;
       public
        constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
                           const aMemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
@@ -1000,6 +999,7 @@ type EpvVulkanException=class(Exception);
        procedure FlushMappedMemoryRange(const aBase:TpvPointer;const aSize:TVkDeviceSize);
        procedure InvalidateMappedMemory;
        procedure InvalidateMappedMemoryRange(const aBase:TpvPointer;const aSize:TVkDeviceSize);
+       procedure Defragment;
        property Memory:PVkVoid read fMemory;
       published
        property MemoryManager:TpvVulkanDeviceMemoryManager read fMemoryManager;
@@ -1079,6 +1079,7 @@ type EpvVulkanException=class(Exception);
                                     const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
                                     const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType):TpvVulkanDeviceMemoryBlock;
        function FreeMemoryBlock(const aMemoryBlock:TpvVulkanDeviceMemoryBlock):boolean;
+       procedure Defragment;
      end;
 
      TpvVulkanQueueFamilyIndices=array of TpvUInt32;
@@ -10203,6 +10204,19 @@ begin
    end;
   finally
    fLock.Release;
+  end;
+ end;
+end;
+
+procedure TpvVulkanDeviceMemoryManager.Defragment;
+var MemoryChunk:TpvVulkanDeviceMemoryChunk;
+begin
+ MemoryChunk:=fMemoryChunkList.First;
+ while assigned(MemoryChunk) do begin
+  try
+   MemoryChunk.Defragment;
+  finally
+   MemoryChunk:=MemoryChunk.fNextMemoryChunk;
   end;
  end;
 end;
