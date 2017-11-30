@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=65;
+      VK_HEADER_VERSION=66;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -270,7 +270,8 @@ const VK_NULL_HANDLE=0;
       VK_TRUE=1;
       VK_FALSE=0;
       VK_QUEUE_FAMILY_IGNORED=TVkUInt32($ffffffff);
-      VK_QUEUE_FAMILY_EXTERNAL_KHR=0;
+      VK_QUEUE_FAMILY_EXTERNAL_KHR=TVkUInt32($fffffffe);
+      VK_QUEUE_FAMILY_FOREIGN_EXT=TVkUInt32($fffffffd);
       VK_SUBPASS_EXTERNAL=TVkUInt32($ffffffff);
       VK_MAX_DEVICE_GROUP_SIZE_KHX=32;
       VK_KHR_SURFACE_SPEC_VERSION=25;
@@ -524,10 +525,10 @@ const VK_NULL_HANDLE=0;
       VK_MVK_MACOS_SURFACE_EXTENSION_NAME='VK_MVK_macos_surface';
       VK_MVK_MOLTENVK_SPEC_VERSION=0;
       VK_MVK_MOLTENVK_EXTENSION_NAME='VK_MVK_moltenvk';
-      VK_MESA_EXTENSION_126_SPEC_VERSION=0;
-      VK_MESA_EXTENSION_126_EXTENSION_NAME='VK_MESA_extension_126';
-      VK_MESA_EXTENSION_127_SPEC_VERSION=0;
-      VK_MESA_EXTENSION_127_EXTENSION_NAME='VK_MESA_extension_127';
+      VK_EXT_EXTERNAL_MEMORY_DMA_BUF_SPEC_VERSION=1;
+      VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME='VK_EXT_external_memory_dma_buf';
+      VK_EXT_QUEUE_FAMILY_FOREIGN_SPEC_VERSION=1;
+      VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME='VK_EXT_queue_family_foreign';
       VK_KHR_DEDICATED_ALLOCATION_SPEC_VERSION=3;
       VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME='VK_KHR_dedicated_allocation';
       VK_KHR_EXTENSION_129_SPEC_VERSION=0;
@@ -622,7 +623,7 @@ const VK_NULL_HANDLE=0;
       VK_QCOM_extension_173_EXTENSION_NAME='VK_QCOM_extension_173';
       VK_QCOM_extension_174_SPEC_VERSION=0;
       VK_QCOM_extension_174_EXTENSION_NAME='VK_QCOM_extension_174';
-      VK_EXT_GLOBAL_PRIORITY_SPEC_VERSION=1;
+      VK_EXT_GLOBAL_PRIORITY_SPEC_VERSION=2;
       VK_EXT_GLOBAL_PRIORITY_EXTENSION_NAME='VK_EXT_global_priority';
       VK_KHR_EXTENSION_176_SPEC_VERSION=0;
       VK_KHR_EXTENSION_176_EXTENSION_NAME='VK_KHR_extension_176';
@@ -630,8 +631,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_177_EXTENSION_NAME='VK_KHR_extension_177';
       VK_KHR_EXTENSION_178_SPEC_VERSION=0;
       VK_KHR_EXTENSION_178_EXTENSION_NAME='VK_KHR_extension_178';
-      VK_KHR_EXTENSION_179_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_179_EXTENSION_NAME='VK_AMD_extension_179';
+      VK_EXT_EXTERNAL_MEMORY_HOST_SPEC_VERSION=1;
+      VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME='VK_EXT_external_memory_host';
       VK_KHR_EXTENSION_180_SPEC_VERSION=0;
       VK_KHR_EXTENSION_180_EXTENSION_NAME='VK_AMD_extension_180';
       VK_KHR_EXTENSION_181_SPEC_VERSION=0;
@@ -654,6 +655,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_189_EXTENSION_NAME='VK_AMD_extension_189';
       VK_KHR_EXTENSION_190_SPEC_VERSION=0;
       VK_KHR_EXTENSION_190_EXTENSION_NAME='VK_AMD_extension_190';
+      VK_NV_EXTENSION_191_SPEC_VERSION=0;
+      VK_NV_EXTENSION_191_EXTENSION_NAME='VK_NV_extension_191';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -2058,7 +2061,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHR=1000157001,
        VK_STRUCTURE_TYPE_VALIDATION_CACHE_CREATE_INFO_EXT=1000160000,
        VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT=1000160001,
-       VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT=1000174000
+       VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT=1000174000,
+       VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT=1000178000,
+       VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT=1000178001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT=1000178002
       );
 
      PPVkSubpassContents=^PVkSubpassContents;
@@ -2736,7 +2742,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT_KHR=$00000008,
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_KMT_BIT_KHR=$00000010,
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT_KHR=$00000020,
-       VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT_KHR=$00000040
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_RESOURCE_BIT_KHR=$00000040,
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT=$00000080,
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT=$00000100,
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT=$00000200
       );
 
      PPVkExternalMemoryFeatureFlagBitsKHR=^PVkExternalMemoryFeatureFlagBitsKHR;
@@ -2984,10 +2993,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkQueueGlobalPriorityEXT=^TVkQueueGlobalPriorityEXT;
      TVkQueueGlobalPriorityEXT=
       (
-       VK_QUEUE_GLOBAL_PRIORITY_LOW=128,
-       VK_QUEUE_GLOBAL_PRIORITY_MEDIUM=256,
-       VK_QUEUE_GLOBAL_PRIORITY_HIGH=512,
-       VK_QUEUE_GLOBAL_PRIORITY_REALTIME=1024
+       VK_QUEUE_GLOBAL_PRIORITY_LOW_EXT=128,
+       VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT=256,
+       VK_QUEUE_GLOBAL_PRIORITY_HIGH_EXT=512,
+       VK_QUEUE_GLOBAL_PRIORITY_REALTIME_EXT=1024
       );
 
      PPPFN_vkInternalAllocationNotification=^PPFN_vkInternalAllocationNotification;
@@ -8723,6 +8732,50 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkImportMemoryHostPointerInfoEXT=^PVkImportMemoryHostPointerInfoEXT;
+     PVkImportMemoryHostPointerInfoEXT=^TVkImportMemoryHostPointerInfoEXT;
+     TVkImportMemoryHostPointerInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT
+       pNext:PVkVoid;
+       handleType:TVkExternalMemoryHandleTypeFlagBitsKHR;
+       pHostPointer:PVkVoid;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pHandleType:TVkExternalMemoryHandleTypeFlagBitsKHR;
+                          const pPHostPointer:PVkVoid);
+{$endif}
+     end;
+
+     PPVkMemoryHostPointerPropertiesEXT=^PVkMemoryHostPointerPropertiesEXT;
+     PVkMemoryHostPointerPropertiesEXT=^TVkMemoryHostPointerPropertiesEXT;
+     TVkMemoryHostPointerPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT
+       pNext:PVkVoid;
+       memoryTypeBits:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pMemoryTypeBits:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceExternalMemoryHostPropertiesEXT=^PVkPhysicalDeviceExternalMemoryHostPropertiesEXT;
+     PVkPhysicalDeviceExternalMemoryHostPropertiesEXT=^TVkPhysicalDeviceExternalMemoryHostPropertiesEXT;
+     TVkPhysicalDeviceExternalMemoryHostPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT
+       pNext:PVkVoid;
+       minImportedHostPointerAlignment:TVkDeviceSize;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pMinImportedHostPointerAlignment:TVkDeviceSize);
+{$endif}
+     end;
+
      TvkCreateInstance=function(const pCreateInfo:PVkInstanceCreateInfo;const pAllocator:PVkAllocationCallbacks;pInstance:PVkInstance):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkDestroyInstance=procedure(instance:TVkInstance;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -9284,6 +9337,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkQueueSignalReleaseImageANDROID=function(queue:TVkQueue;waitSemaphoreCount:TVkUInt32;const pWaitSemaphores:PVkSemaphore;image:TVkImage;pNativeFenceFd:PVkInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetShaderInfoAMD=function(device:TVkDevice;pipeline:TVkPipeline;shaderStage:TVkShaderStageFlagBits;infoType:TVkShaderInfoTypeAMD;pInfoSize:PVkSize;pInfo:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetMemoryHostPointerPropertiesEXT=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBitsKHR;const pHostPointer:PVkVoid;pMemoryHostPointerProperties:PVkMemoryHostPointerPropertiesEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 
      PPVulkanCommands=^PVulkanCommands;
@@ -9850,6 +9905,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       QueueSignalReleaseImageANDROID:TvkQueueSignalReleaseImageANDROID;
 
       GetShaderInfoAMD:TvkGetShaderInfoAMD;
+
+      GetMemoryHostPointerPropertiesEXT:TvkGetMemoryHostPointerPropertiesEXT;
 
      end;
 
@@ -10422,6 +10479,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function GetShaderInfoAMD(device:TVkDevice;pipeline:TVkPipeline;shaderStage:TVkShaderStageFlagBits;infoType:TVkShaderInfoTypeAMD;pInfoSize:PVkSize;pInfo:PVkVoid):TVkResult; virtual;
 
+       function GetMemoryHostPointerPropertiesEXT(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBitsKHR;const pHostPointer:PVkVoid;pMemoryHostPointerProperties:PVkMemoryHostPointerPropertiesEXT):TVkResult; virtual;
+
        property Commands:TVulkanCommands read fCommands;
      end;
 
@@ -10990,6 +11049,8 @@ var LibVulkan:pointer=nil;
     vkQueueSignalReleaseImageANDROID:TvkQueueSignalReleaseImageANDROID=nil;
 
     vkGetShaderInfoAMD:TvkGetShaderInfoAMD=nil;
+
+    vkGetMemoryHostPointerPropertiesEXT:TvkGetMemoryHostPointerPropertiesEXT=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -12183,6 +12244,10 @@ begin
    @vkGetShaderInfoAMD:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetShaderInfoAMD'));
    @vk.fCommands.GetShaderInfoAMD:=addr(vkGetShaderInfoAMD);
   end;
+  if not assigned(vkGetMemoryHostPointerPropertiesEXT) then begin
+   @vkGetMemoryHostPointerPropertiesEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetMemoryHostPointerPropertiesEXT'));
+   @vk.fCommands.GetMemoryHostPointerPropertiesEXT:=addr(vkGetMemoryHostPointerPropertiesEXT);
+  end;
   result:=assigned(vkCreateInstance);
  end;
 end;
@@ -12495,6 +12560,7 @@ begin
   @InstanceCommands.AcquireImageANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkAcquireImageANDROID')));
   @InstanceCommands.QueueSignalReleaseImageANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkQueueSignalReleaseImageANDROID')));
   @InstanceCommands.GetShaderInfoAMD:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetShaderInfoAMD')));
+  @InstanceCommands.GetMemoryHostPointerPropertiesEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetMemoryHostPointerPropertiesEXT')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -12721,6 +12787,7 @@ begin
   @DeviceCommands.AcquireImageANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkAcquireImageANDROID')));
   @DeviceCommands.QueueSignalReleaseImageANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkQueueSignalReleaseImageANDROID')));
   @DeviceCommands.GetShaderInfoAMD:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetShaderInfoAMD')));
+  @DeviceCommands.GetMemoryHostPointerPropertiesEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetMemoryHostPointerPropertiesEXT')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -16550,6 +16617,29 @@ begin
  pNext:=nil;
  globalPriority:=pGlobalPriority;
 end;
+
+constructor TVkImportMemoryHostPointerInfoEXT.Create(const pHandleType:TVkExternalMemoryHandleTypeFlagBitsKHR;
+                                                     const pPHostPointer:PVkVoid);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT;
+ pNext:=nil;
+ handleType:=pHandleType;
+ pHostPointer:=pPHostPointer;
+end;
+
+constructor TVkMemoryHostPointerPropertiesEXT.Create(const pMemoryTypeBits:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT;
+ pNext:=nil;
+ memoryTypeBits:=pMemoryTypeBits;
+end;
+
+constructor TVkPhysicalDeviceExternalMemoryHostPropertiesEXT.Create(const pMinImportedHostPointerAlignment:TVkDeviceSize);
+begin
+ sType:=VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT;
+ pNext:=nil;
+ minImportedHostPointerAlignment:=pMinImportedHostPointerAlignment;
+end;
 {$endif}
 
 constructor TVulkan.Create;
@@ -17906,6 +17996,11 @@ end;
 function TVulkan.GetShaderInfoAMD(device:TVkDevice;pipeline:TVkPipeline;shaderStage:TVkShaderStageFlagBits;infoType:TVkShaderInfoTypeAMD;pInfoSize:PVkSize;pInfo:PVkVoid):TVkResult;
 begin
  result:=fCommands.GetShaderInfoAMD(device,pipeline,shaderStage,infoType,pInfoSize,pInfo);
+end;
+
+function TVulkan.GetMemoryHostPointerPropertiesEXT(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBitsKHR;const pHostPointer:PVkVoid;pMemoryHostPointerProperties:PVkMemoryHostPointerPropertiesEXT):TVkResult;
+begin
+ result:=fCommands.GetMemoryHostPointerPropertiesEXT(device,handleType,pHostPointer,pMemoryHostPointerProperties);
 end;
 
 initialization

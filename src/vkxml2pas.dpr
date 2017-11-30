@@ -3948,8 +3948,16 @@ begin
        Value:=ChildTag.GetParameter('value','');
        if Value='(~0U)' then begin
         ValueItem^.ValueStr:='TVkUInt32($ffffffff)';
+       end else if Value='(~0U-1)' then begin
+        ValueItem^.ValueStr:='TVkUInt32($fffffffe)';
+       end else if Value='(~0U-2)' then begin
+        ValueItem^.ValueStr:='TVkUInt32($fffffffd)';
        end else if Value='(~0ULL)' then begin
         ValueItem^.ValueStr:='TVkUInt64($ffffffffffffffff)';
+       end else if Value='(~0ULL-1)' then begin
+        ValueItem^.ValueStr:='TVkUInt64($fffffffffffffffe)';
+       end else if Value='(~0ULL-2)' then begin
+        ValueItem^.ValueStr:='TVkUInt64($fffffffffffffffd)';
        end else if (length(Value)>0) and ((pos('.',Value)>0) or ((pos('f',Value)=length(Value)) and (pos('x',Value)=0))) then begin
         ValueItem^.ValueStr:=StringReplace(Value,'f','',[]);
        end else if length(Value)>0 then begin
