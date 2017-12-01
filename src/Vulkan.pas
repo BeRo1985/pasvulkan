@@ -8768,7 +8768,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT
        pNext:PVkVoid;
        minImportedHostPointerAlignment:TVkDeviceSize;
 {$ifdef HAS_ADVANCED_RECORDS}
@@ -16636,7 +16636,7 @@ end;
 
 constructor TVkPhysicalDeviceExternalMemoryHostPropertiesEXT.Create(const pMinImportedHostPointerAlignment:TVkDeviceSize);
 begin
- sType:=VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT;
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT;
  pNext:=nil;
  minImportedHostPointerAlignment:=pMinImportedHostPointerAlignment;
 end;
