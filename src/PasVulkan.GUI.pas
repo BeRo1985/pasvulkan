@@ -1715,11 +1715,14 @@ type TpvGUIObject=class;
        procedure SetButtonSize(const aButtonSize:TpvFloat);
        procedure SetSliderButtonSize(const aSliderButtonSize:TpvFloat);
        function GetPreferredSize:TpvVector2; override;
+       function GetSliderButtonRect:TpvRect;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        function Enter:boolean; override;
        function Leave:boolean; override;
+       function PointerEnter:boolean; override;
+       function PointerLeave:boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -6125,34 +6128,7 @@ begin
   end;
  end;
 
- case aScrollBar.fOrientation of
-  pvgsboHorizontal:begin
-   if aScrollBar.fMinimumValue<aScrollBar.fMaximumValue then begin
-    Rect:=TpvRect.CreateRelative(TpvVector2.Create(aScrollBar.fButtonSize+
-                                                   ((aScrollBar.fSize.x-((aScrollBar.fButtonSize*2.0)+aScrollBar.fSliderButtonSize))*
-                                                    ((aScrollBar.fValue-aScrollBar.fMinimumValue)/(aScrollBar.fMaximumValue-aScrollBar.fMinimumValue))),
-                                                   0.0),
-                                 TpvVector2.Create(aScrollBar.fSliderButtonSize,aScrollBar.fSize.y));
-   end else begin
-    Rect:=TpvRect.CreateRelative(TpvVector2.Create(aScrollBar.fButtonSize,0.0),
-                                 TpvVector2.Create(aScrollBar.fSliderButtonSize,aScrollBar.fSize.y));
-   end;
-  end;
-  else {pvgsboVertical:}begin
-   if aScrollBar.fMinimumValue<aScrollBar.fMaximumValue then begin
-    Rect:=TpvRect.CreateRelative(TpvVector2.Create(0.0,
-                                                   aScrollBar.fButtonSize+
-                                                    ((aScrollBar.fSize.y-((aScrollBar.fButtonSize*2.0)+aScrollBar.fSliderButtonSize))*
-                                                     ((aScrollBar.fValue-aScrollBar.fMinimumValue)/(aScrollBar.fMaximumValue-aScrollBar.fMinimumValue)))),
-                                 TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSliderButtonSize));
-   end else begin
-    Rect:=TpvRect.CreateRelative(TpvVector2.Create(0.0,aScrollBar.fButtonSize),
-                                 TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSliderButtonSize));
-   end;
-  end;
- end;
- Rect.LeftTop:=Rect.LeftTop+TpvVector2.Create(1.0,1.0);
- Rect.RightBottom:=Rect.RightBottom-TpvVector2.Create(1.0,1.0);
+ Rect:=aScrollBar.GetSliderButtonRect;
  if aScrollBar.Enabled then begin
   if aScrollBar.fPushedSubWidget=pvgsbswSliderButton then begin
    Element:=GUI_ELEMENT_BUTTON_PUSHED;
@@ -11556,6 +11532,38 @@ begin
  result:=Skin.GetScrollBarPreferredSize(self);
 end;
 
+function TpvGUIScrollBar.GetSliderButtonRect:TpvRect;
+begin
+ case fOrientation of
+  pvgsboHorizontal:begin
+   if fMinimumValue<fMaximumValue then begin
+    result:=TpvRect.CreateRelative(TpvVector2.Create(fButtonSize+
+                                                     ((fSize.x-((fButtonSize*2.0)+fSliderButtonSize))*
+                                                      ((fValue-fMinimumValue)/(fMaximumValue-fMinimumValue))),
+                                                     0.0),
+                                   TpvVector2.Create(fSliderButtonSize,fSize.y));
+   end else begin
+    result:=TpvRect.CreateRelative(TpvVector2.Create(fButtonSize,0.0),
+                                   TpvVector2.Create(fSliderButtonSize,fSize.y));
+   end;
+  end;
+  else {pvgsboVertical:}begin
+   if fMinimumValue<fMaximumValue then begin
+    result:=TpvRect.CreateRelative(TpvVector2.Create(0.0,
+                                                     fButtonSize+
+                                                      ((fSize.y-((fButtonSize*2.0)+fSliderButtonSize))*
+                                                       ((fValue-fMinimumValue)/(fMaximumValue-fMinimumValue)))),
+                                   TpvVector2.Create(fSize.x,fSliderButtonSize));
+   end else begin
+    result:=TpvRect.CreateRelative(TpvVector2.Create(0.0,fButtonSize),
+                                   TpvVector2.Create(fSize.x,fSliderButtonSize));
+   end;
+  end;
+ end;
+ result.LeftTop:=result.LeftTop+TpvVector2.Create(1.0,1.0);
+ result.RightBottom:=result.RightBottom-TpvVector2.Create(1.0,1.0);
+end;
+
 function TpvGUIScrollBar.Enter:boolean;
 begin
  result:=inherited Enter;
@@ -11563,7 +11571,19 @@ end;
 
 function TpvGUIScrollBar.Leave:boolean;
 begin
+ fPushedSubWidget:=pvgsbswNone;
  result:=inherited Leave;
+end;
+
+function TpvGUIScrollBar.PointerEnter:boolean;
+begin
+ result:=inherited PointerEnter;
+end;
+
+function TpvGUIScrollBar.PointerLeave:boolean;
+begin
+ fPushedSubWidget:=pvgsbswNone;
+ result:=inherited PointerLeave;
 end;
 
 function TpvGUIScrollBar.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -11640,6 +11660,7 @@ begin
 end;
 
 function TpvGUIScrollBar.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var Step:TpvInt64;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -11660,6 +11681,9 @@ begin
        end else if aPointerEvent.Position.x>=(Width-fButtonSize) then begin
         fFocusedSubWidget:=pvgsbswIncButton;
         fPushedSubWidget:=pvgsbswIncButton;
+       end else if GetSliderButtonRect.Touched(aPointerEvent.Position) then begin
+        fFocusedSubWidget:=pvgsbswSliderButton;
+        fPushedSubWidget:=pvgsbswSliderButton;
        end;
       end;
       else {pvgsboVertical:}begin
@@ -11669,6 +11693,9 @@ begin
        end else if aPointerEvent.Position.y>=(Height-fButtonSize) then begin
         fFocusedSubWidget:=pvgsbswIncButton;
         fPushedSubWidget:=pvgsbswIncButton;
+       end else if GetSliderButtonRect.Touched(aPointerEvent.Position) then begin
+        fFocusedSubWidget:=pvgsbswSliderButton;
+        fPushedSubWidget:=pvgsbswSliderButton;
        end;
       end;
      end;
@@ -11676,6 +11703,23 @@ begin
     end;
     POINTEREVENT_UP:begin
      fPushedSubWidget:=pvgsbswNone;
+     result:=true;
+    end;
+    POINTEREVENT_MOTION:begin
+     if fPushedSubWidget=pvgsbswSliderButton then begin
+      case fOrientation of
+       pvgsboHorizontal:begin
+        Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+fSliderButtonSize))));
+       end;
+       else {pvgsboVertical:}begin
+        Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+fSliderButtonSize))));
+       end;
+      end;
+      if ((Step>0) and ((fValue+Step)<=fMaximumValue) and not (fValue>(fValue+Step))) or
+         ((Step<0) and ((fValue+Step)>=fMinimumValue) and not (fValue<(fValue+Step))) then begin
+       SetValue(fValue+Step);
+      end;
+     end;
      result:=true;
     end;
    end;
