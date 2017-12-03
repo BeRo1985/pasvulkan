@@ -442,7 +442,10 @@ begin
  TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasRight;
 
  ScrollBar:=TpvGUIScrollBar.Create(fGUIYetOtherWindow.Content);
+ ScrollBar.Orientation:=pvgsboHorizontal;
 
+ ScrollBar:=TpvGUIScrollBar.Create(fGUIYetOtherWindow.Content);
+ ScrollBar.Orientation:=pvgsboVertical;
 
  Window:=TpvGUIWindow.Create(fGUIInstance);
  Window.Left:=150;

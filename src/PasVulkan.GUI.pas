@@ -6024,10 +6024,10 @@ begin
  end;
  case aScrollBar.fOrientation of
   pvgsboHorizontal:begin
-   Offset:=TpvVector2.Create(aScrollBar.fButtonSize-1.0,0.0);
+   Offset:=TpvVector2.Create(aScrollBar.fButtonSize-2.0,0.0);
   end;
   else {pvgsboVertical:}begin
-   Offset:=TpvVector2.Create(0.0,aScrollBar.fButtonSize-1.0);
+   Offset:=TpvVector2.Create(0.0,aScrollBar.fButtonSize-2.0);
   end;
  end;
  aCanvas.DrawGUIElement(Element,
@@ -6075,7 +6075,7 @@ begin
    aCanvas.DrawSprite(Sprite,
                       TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
                       TpvRect.CreateAbsolute(TpvVector2.Create(5.0,(aScrollBar.fSize.y-aScrollBar.fButtonSize)+5.0),
-                                             TpvVector2.Create(aScrollBar.fSize.y-5.0,aScrollBar.fSize.y-5.0)));
+                                             TpvVector2.Create(aScrollBar.fSize.x-5.0,aScrollBar.fSize.y-5.0)));
   end;
  end;
 
@@ -6123,12 +6123,22 @@ begin
 
  case aScrollBar.fOrientation of
   pvgsboHorizontal:begin
-   Rect:=TpvRect.CreateRelative(TpvVector2.Create(aScrollBar.fButtonSize+((aScrollBar.fSize.x-((aScrollBar.fButtonSize*2.0)+aScrollBar.fSliderButtonSize))*(aScrollBar.fValue-aScrollBar.fMinimumValue)*(aScrollBar.fMaximumValue-aScrollBar.fMinimumValue)),0.0),
-                                TpvVector2.Create(aScrollBar.fSliderButtonSize,aScrollBar.fSize.y));
+   if aScrollBar.fMinimumValue<aScrollBar.fMaximumValue then begin
+    Rect:=TpvRect.CreateRelative(TpvVector2.Create(aScrollBar.fButtonSize+((aScrollBar.fSize.x-((aScrollBar.fButtonSize*2.0)+aScrollBar.fSliderButtonSize))*(aScrollBar.fValue-aScrollBar.fMinimumValue)*(aScrollBar.fMaximumValue-aScrollBar.fMinimumValue)),0.0),
+                                 TpvVector2.Create(aScrollBar.fSliderButtonSize,aScrollBar.fSize.y));
+   end else begin
+    Rect:=TpvRect.CreateRelative(TpvVector2.Create(aScrollBar.fButtonSize,0.0),
+                                 TpvVector2.Create(aScrollBar.fSliderButtonSize,aScrollBar.fSize.y));
+   end;
   end;
   else {pvgsboVertical:}begin
-   Rect:=TpvRect.CreateRelative(TpvVector2.Create(0.0,aScrollBar.fButtonSize+((aScrollBar.fSize.y-((aScrollBar.fButtonSize*2.0)+aScrollBar.fSliderButtonSize))*(aScrollBar.fValue-aScrollBar.fMinimumValue)*(aScrollBar.fMaximumValue-aScrollBar.fMinimumValue))),
-                                TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSliderButtonSize));
+   if aScrollBar.fMinimumValue<aScrollBar.fMaximumValue then begin
+    Rect:=TpvRect.CreateRelative(TpvVector2.Create(0.0,aScrollBar.fButtonSize+((aScrollBar.fSize.y-((aScrollBar.fButtonSize*2.0)+aScrollBar.fSliderButtonSize))*(aScrollBar.fValue-aScrollBar.fMinimumValue)*(aScrollBar.fMaximumValue-aScrollBar.fMinimumValue))),
+                                 TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSliderButtonSize));
+   end else begin
+    Rect:=TpvRect.CreateRelative(TpvVector2.Create(0.0,aScrollBar.fButtonSize),
+                                 TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSliderButtonSize));
+   end;
   end;
  end;
  Rect.LeftTop:=Rect.LeftTop+TpvVector2.Create(1.0,1.0);
