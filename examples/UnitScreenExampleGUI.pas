@@ -149,6 +149,7 @@ var Index:TpvInt32;
     IntegerEdit:TpvGUIIntegerEdit;
     FloatEdit:TpvGUIFloatEdit;
     ScrollBar:TpvGUIScrollBar;
+    Slider:TpvGUISlider;
 begin
 
  inherited Show;
@@ -377,7 +378,7 @@ begin
  fGUIButton.Caption:='Radio button (3)';
 
  fGUIYetOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
- fGUIYetOtherWindow.Left:=550;
+ fGUIYetOtherWindow.Left:=750;
  fGUIYetOtherWindow.Top:=200;
  fGUIYetOtherWindow.Title:='Window with FlowLayout';
 //fGUIYetOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,pvglaLeading,pvgloVertical,8.0,8.0);
@@ -450,6 +451,14 @@ begin
  ScrollBar.Orientation:=pvgsboVertical;
  ScrollBar.SliderButtonSize:=24.0;
  ScrollBar.FixedHeight:=128.0;
+
+ Slider:=TpvGUISlider.Create(fGUIYetOtherWindow.Content);
+ Slider.Orientation:=pvgsoHorizontal;
+ Slider.FixedWidth:=256.0;
+
+ Slider:=TpvGUISlider.Create(fGUIYetOtherWindow.Content);
+ Slider.Orientation:=pvgsoVertical;
+ Slider.FixedHeight:=128.0;
 
  Window:=TpvGUIWindow.Create(fGUIInstance);
  Window.Left:=150;
