@@ -1789,6 +1789,8 @@ type TpvGUIObject=class;
        fOnChange:TpvGUIOnEvent;
        fFocusedSubWidget:TpvGUIScrollBarSubWidget;
        fPushedSubWidget:TpvGUIScrollBarSubWidget;
+       fStepSize:TpvInt64;
+       fTimeAccumulator:TpvDouble;
        procedure SetOrientation(const aOrientation:TpvGUIScrollBarOrientation);
        procedure SetMinimumValue(const aMinimumValue:TpvInt64);
        procedure SetMaximumValue(const aMaximumValue:TpvInt64);
@@ -10368,6 +10370,8 @@ begin
       TemporaryValue:=GetValue;
       if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
        SetValue(TemporaryValue+fSmallStep);
+      end else begin
+       SetValue(fMaximumValue);
       end;
       result:=true;
      end;
@@ -10375,6 +10379,8 @@ begin
       TemporaryValue:=GetValue;
       if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
        SetValue(TemporaryValue-fSmallStep);
+      end else begin
+       SetValue(fMinimumValue);
       end;
       result:=true;
      end;
@@ -10382,6 +10388,8 @@ begin
       TemporaryValue:=GetValue;
       if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
        SetValue(TemporaryValue+fLargeStep);
+      end else begin
+       SetValue(fMaximumValue);
       end;
       result:=true;
      end;
@@ -10389,6 +10397,8 @@ begin
       TemporaryValue:=GetValue;
       if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
        SetValue(TemporaryValue-fLargeStep);
+      end else begin
+       SetValue(fMinimumValue);
       end;
       result:=true;
      end;
@@ -10416,6 +10426,10 @@ begin
     if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
        ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
      SetValue(TemporaryValue+Step);
+    end else if Step<0 then begin
+     SetValue(fMinimumValue);
+    end else if Step>0 then begin
+     SetValue(fMaximumValue);
     end;
     result:=true;
    end;
@@ -10439,6 +10453,10 @@ begin
   if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
      ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
    SetValue(TemporaryValue+Step);
+  end else if Step<0 then begin
+   SetValue(fMinimumValue);
+  end else if Step>0 then begin
+   SetValue(fMaximumValue);
   end;
   result:=true;
  end;
@@ -10620,6 +10638,8 @@ begin
       TemporaryValue:=GetValue;
       if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
        SetValue(TemporaryValue+fSmallStep);
+      end else begin
+       SetValue(fMaximumValue);
       end;
       result:=true;
      end;
@@ -10627,6 +10647,8 @@ begin
       TemporaryValue:=GetValue;
       if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
        SetValue(TemporaryValue-fSmallStep);
+      end else begin
+       SetValue(fMinimumValue);
       end;
       result:=true;
      end;
@@ -10634,6 +10656,8 @@ begin
       TemporaryValue:=GetValue;
       if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
        SetValue(TemporaryValue+fLargeStep);
+      end else begin
+       SetValue(fMaximumValue);
       end;
       result:=true;
      end;
@@ -10641,6 +10665,8 @@ begin
       TemporaryValue:=GetValue;
       if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
        SetValue(TemporaryValue-fLargeStep);
+      end else begin
+       SetValue(fMinimumValue);
       end;
       result:=true;
      end;
@@ -10668,6 +10694,10 @@ begin
     if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
        ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
      SetValue(TemporaryValue+Step);
+    end else if Step<0 then begin
+     SetValue(fMinimumValue);
+    end else if Step>0 then begin
+     SetValue(fMaximumValue);
     end;
     result:=true;
    end;
@@ -10691,6 +10721,10 @@ begin
   if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
      ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
    SetValue(TemporaryValue+Step);
+  end else if Step<0 then begin
+   SetValue(fMinimumValue);
+  end else if Step>0 then begin
+   SetValue(fMaximumValue);
   end;
   result:=true;
  end;
@@ -11551,6 +11585,10 @@ begin
 
  fPushedSubWidget:=pvgsbswNone;
 
+ fStepSize:=0;
+
+ fTimeAccumulator:=-1.0;
+
 end;
 
 destructor TpvGUIScrollBar.Destroy;
@@ -11654,6 +11692,7 @@ end;
 function TpvGUIScrollBar.Leave:boolean;
 begin
  fPushedSubWidget:=pvgsbswNone;
+ fStepSize:=0;
  result:=inherited Leave;
 end;
 
@@ -11805,6 +11844,7 @@ begin
         end else begin
          SetValue(fMinimumValue);
         end;
+        fStepSize:=-fSmallStep;
        end;
        pvgsbswIncButton:begin
         if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
@@ -11812,6 +11852,8 @@ begin
         end else begin
          SetValue(fMaximumValue);
         end;
+        fStepSize:=fSmallStep;
+        fTimeAccumulator:=0.5;
        end;
       end;
      end;
@@ -11819,10 +11861,21 @@ begin
     end;
     POINTEREVENT_UP:begin
      fPushedSubWidget:=pvgsbswNone;
+     fStepSize:=0;
      result:=true;
     end;
     POINTEREVENT_MOTION:begin
      if fPushedSubWidget=pvgsbswSliderButton then begin
+{$if false}
+      case fOrientation of
+       pvgsboHorizontal:begin
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
+       end;
+       else {pvgsboVertical:}begin
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
+       end;
+      end;
+{$else}
       case fOrientation of
        pvgsboHorizontal:begin
         Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+fSliderButtonSize))));
@@ -11834,7 +11887,12 @@ begin
       if ((Step>0) and ((fValue+Step)<=fMaximumValue) and not (fValue>(fValue+Step))) or
          ((Step<0) and ((fValue+Step)>=fMinimumValue) and not (fValue<(fValue+Step))) then begin
        SetValue(fValue+Step);
+      end else if Step<0 then begin
+       SetValue(fMinimumValue);
+      end else if Step>0 then begin
+       SetValue(fMaximumValue);
       end;
+{$ifend}
      end;
      result:=true;
     end;
@@ -11859,6 +11917,10 @@ begin
   if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
      ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
    SetValue(TemporaryValue+Step);
+  end else if Step<0 then begin
+   SetValue(fMinimumValue);
+  end else if Step>0 then begin
+   SetValue(fMaximumValue);
   end;
   result:=true;
  end;
@@ -11866,6 +11928,20 @@ end;
 
 procedure TpvGUIScrollBar.Update;
 begin
+ if fStepSize<>0 then begin
+  fTimeAccumulator:=fTimeAccumulator-fInstance.fDeltaTime;
+  if fTimeAccumulator<0.0 then begin
+   fTimeAccumulator:=fTimeAccumulator+0.1;
+   if ((fStepSize>0) and ((fValue+fStepSize)<=fMaximumValue) and not (fValue>(fValue+fStepSize))) or
+      ((fStepSize<0) and ((fValue+fStepSize)>=fMinimumValue) and not (fValue<(fValue+fStepSize))) then begin
+    SetValue(fValue+fStepSize);
+   end else if fStepSize<0 then begin
+    SetValue(fMinimumValue);
+   end else if fStepSize>0 then begin
+    SetValue(fMaximumValue);
+   end;
+  end;
+ end;
  Skin.DrawScrollBar(fCanvas,self);
  inherited Update;
 end;
