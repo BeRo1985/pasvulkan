@@ -109,6 +109,8 @@ type TpvGUIObject=class;
 
      TpvGUIWindowMenu=class;
 
+     TpvGUIScrollBar=class;
+
      TpvGUIPanel=class;
 
      EpvGUIWidget=class(Exception);
@@ -618,6 +620,9 @@ type TpvGUIObject=class;
        function GetWindowMenuPreferredSize(const aWindowMenu:TpvGUIWindowMenu):TpvVector2; virtual;
        procedure DrawWindowMenu(const aCanvas:TpvCanvas;const aWindowMenu:TpvGUIWindowMenu); virtual;
       public
+       function GetScrollBarPreferredSize(const aScrollBar:TpvGUIScrollBar):TpvVector2; virtual;
+       procedure DrawScrollBar(const aCanvas:TpvCanvas;const aScrollBar:TpvGUIScrollBar); virtual;
+      public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
        property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
@@ -736,6 +741,9 @@ type TpvGUIObject=class;
       public
        function GetWindowMenuPreferredSize(const aWindowMenu:TpvGUIWindowMenu):TpvVector2; override;
        procedure DrawWindowMenu(const aCanvas:TpvCanvas;const aWindowMenu:TpvGUIWindowMenu); override;
+      public
+       function GetScrollBarPreferredSize(const aScrollBar:TpvGUIScrollBar):TpvVector2; override;
+       procedure DrawScrollBar(const aCanvas:TpvCanvas;const aScrollBar:TpvGUIScrollBar); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -1669,6 +1677,59 @@ type TpvGUIObject=class;
        procedure Update; override;
        procedure Draw; override;
       published
+     end;
+
+     PpvGUIScrollBarOrientation=^TpvGUIScrollBarOrientation;
+     TpvGUIScrollBarOrientation=
+      (
+       pvgsboHorizontal,
+       pvgsboVertical
+      );
+
+     PpvGUIScrollBarSubWidget=^TpvGUIScrollBarSubWidget;
+     TpvGUIScrollBarSubWidget=
+      (
+       pvgsbswNone,
+       pvgsbswDecButton,
+       pvgsbswIncButton,
+       pvgsbswSliderButton
+      );
+
+     TpvGUIScrollBar=class(TpvGUIWidget)
+      private
+       fOrientation:TpvGUIScrollBarOrientation;
+       fMinimumValue:TpvInt64;
+       fMaximumValue:TpvInt64;
+       fValue:TpvInt64;
+       fButtonSize:TpvFloat;
+       fOnChange:TpvGUIOnEvent;
+       fFocusedSubWidget:TpvGUIScrollBarSubWidget;
+       fHoveredSubWidget:TpvGUIScrollBarSubWidget;
+       procedure SetOrientation(const aOrientation:TpvGUIScrollBarOrientation);
+       procedure SetMinimumValue(const aMinimumValue:TpvInt64);
+       procedure SetMaximumValue(const aMaximumValue:TpvInt64);
+       procedure SetValue(const aValue:TpvInt64);
+       procedure SetButtonSize(const aButtonSize:TpvFloat);
+       function GetPreferredSize:TpvVector2; override;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       function Enter:boolean; override;
+       function Leave:boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure Update; override;
+       procedure Draw; override;
+      published
+       property Orientation:TpvGUIScrollBarOrientation read fOrientation write SetOrientation;
+       property MinimumValue:TpvInt64 read fMinimumValue write SetMinimumValue;
+       property MaximumValue:TpvInt64 read fMaximumValue write SetMaximumValue;
+       property Value:TpvInt64 read fValue write SetValue;
+       property ButtonSize:TpvFloat read fButtonSize write SetButtonSize;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
+       property FocusedSubWidget:TpvGUIScrollBarSubWidget read fFocusedSubWidget;
+       property HoveredSubWidget:TpvGUIScrollBarSubWidget read fHoveredSubWidget;
      end;
 
 implementation
@@ -3703,6 +3764,16 @@ end;
 
 procedure TpvGUISkin.DrawWindowMenu(const aCanvas:TpvCanvas;const aWindowMenu:TpvGUIWindowMenu);
 begin
+end;
+
+function TpvGUISkin.GetScrollBarPreferredSize(const aScrollBar:TpvGUIScrollBar):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aScrollBar);
+end;
+
+procedure TpvGUISkin.DrawScrollBar(const aCanvas:TpvCanvas;const aScrollBar:TpvGUIScrollBar);
+begin
+
 end;
 
 constructor TpvGUIDefaultVectorBasedSkin.Create(const aParent:TpvGUIObject);
@@ -5905,6 +5976,48 @@ begin
   end;
 
  end;
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.GetScrollBarPreferredSize(const aScrollBar:TpvGUIScrollBar):TpvVector2;
+begin
+ case aScrollBar.fOrientation of
+  pvgsboHorizontal:begin
+   result:=TpvVector2.Create((aScrollBar.ButtonSize*2.0)+128,aScrollBar.ButtonSize);
+  end;
+  else {pvgsboVertical:}begin
+   result:=TpvVector2.Create(aScrollBar.ButtonSize,(aScrollBar.ButtonSize*2.0)+128);
+  end;
+ end;
+ result:=Maximum(GetWidgetLayoutPreferredSize(aScrollBar),
+                 result);
+ if aScrollBar.fFixedSize.x>0.0 then begin
+  result.x:=aScrollBar.fFixedSize.x;
+ end;
+ if aScrollBar.fFixedSize.y>0.0 then begin
+  result.y:=aScrollBar.fFixedSize.y;
+ end;
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawScrollBar(const aCanvas:TpvCanvas;const aScrollBar:TpvGUIScrollBar);
+var Element:TpvInt32;
+begin
+
+ aCanvas.ModelMatrix:=aScrollBar.fModelMatrix;
+ aCanvas.ClipRect:=aScrollBar.fClipRect;
+
+ if aScrollBar.Enabled then begin
+  Element:=GUI_ELEMENT_PANEL_ENABLED;
+ end else begin
+  Element:=GUI_ELEMENT_PANEL_DISABLED;
+ end;
+
+ aCanvas.DrawGUIElement(Element,
+                        true,
+                        TpvVector2.Create(0.0,0.0),
+                        TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y),
+                        TpvVector2.Create(0.0,0.0),
+                        TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y));
 
 end;
 
@@ -9959,7 +10072,7 @@ procedure TpvGUIIntegerEdit.SetValue(const aValue:TpvInt64);
 var OldText:TpvUTF8String;
 begin
  OldText:=fText;
- fText:=IntToStr(aValue);
+ fText:=TpvUTF8String(IntToStr(aValue));
  if OldText<>fText then begin
   ApplyMinMaxValueBounds;
   if OldText<>fText then begin
@@ -11194,6 +11307,120 @@ begin
 end;
 
 procedure TpvGUIWindowMenu.Draw;
+begin
+ inherited Draw;
+end;
+
+constructor TpvGUIScrollBar.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ fOrientation:=pvgsboHorizontal;
+
+ fMinimumValue:=0;
+
+ fMaximumValue:=100;
+
+ fValue:=0;
+
+ fButtonSize:=32;
+
+ fOnChange:=nil;
+
+ fFocusedSubWidget:=pvgsbswNone;
+
+ fHoveredSubWidget:=pvgsbswNone;
+
+end;
+
+destructor TpvGUIScrollBar.Destroy;
+begin
+
+ inherited Destroy;
+
+end;
+
+procedure TpvGUIScrollBar.SetOrientation(const aOrientation:TpvGUIScrollBarOrientation);
+begin
+ if fOrientation<>aOrientation then begin
+  fOrientation:=aOrientation;
+ end;
+end;
+
+procedure TpvGUIScrollBar.SetMinimumValue(const aMinimumValue:TpvInt64);
+begin
+ if fMinimumValue<>aMinimumValue then begin
+  fMinimumValue:=aMinimumValue;
+  SetValue(Max(fMinimumValue,fValue));
+ end;
+end;
+
+procedure TpvGUIScrollBar.SetMaximumValue(const aMaximumValue:TpvInt64);
+begin
+ if fMaximumValue<>aMaximumValue then begin
+  fMaximumValue:=aMaximumValue;
+  SetValue(Max(fMaximumValue,fValue));
+ end;
+end;
+
+procedure TpvGUIScrollBar.SetValue(const aValue:TpvInt64);
+begin
+ if fValue<>aValue then begin
+  fValue:=aValue;
+  if assigned(fOnChange) then begin
+   fOnChange(self);
+  end;
+ end;
+end;
+
+procedure TpvGUIScrollBar.SetButtonSize(const aButtonSize:TpvFloat);
+begin
+ if fButtonSize<>aButtonSize then begin
+  fButtonSize:=aButtonSize;
+ end;
+end;
+
+function TpvGUIScrollBar.GetPreferredSize:TpvVector2;
+begin
+ result:=Skin.GetScrollBarPreferredSize(self);
+end;
+
+function TpvGUIScrollBar.Enter:boolean;
+begin
+ result:=inherited Enter;
+end;
+
+function TpvGUIScrollBar.Leave:boolean;
+begin
+ result:=inherited Leave;
+end;
+
+function TpvGUIScrollBar.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=inherited KeyEvent(aKeyEvent);
+end;
+
+function TpvGUIScrollBar.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+begin
+ result:=inherited PointerEvent(aPointerEvent);
+end;
+
+function TpvGUIScrollBar.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+begin
+ result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+ if not result then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+ end;
+end;
+
+procedure TpvGUIScrollBar.Update;
+begin
+ Skin.DrawScrollBar(fCanvas,self);
+ inherited Update;
+end;
+
+procedure TpvGUIScrollBar.Draw;
 begin
  inherited Draw;
 end;

@@ -148,6 +148,7 @@ var Index:TpvInt32;
     Window:TpvGUIWindow;
     IntegerEdit:TpvGUIIntegerEdit;
     FloatEdit:TpvGUIFloatEdit;
+    ScrollBar:TpvGUIScrollBar;
 begin
 
  inherited Show;
@@ -439,6 +440,9 @@ begin
  fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
  TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasRight;
+
+ ScrollBar:=TpvGUIScrollBar.Create(fGUIYetOtherWindow.Content);
+
 
  Window:=TpvGUIWindow.Create(fGUIInstance);
  Window.Left:=150;
