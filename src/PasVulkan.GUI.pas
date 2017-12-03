@@ -11825,17 +11825,41 @@ begin
       end;
      end;
      if fSliderPushed then begin
-      case fOrientation of
+(*    case fOrientation of
        pvgsboHorizontal:begin
         SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
        end;
        else {pvgsboVertical:}begin
         SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
        end;
-      end;
+      end;*)
       fFocusedSubWidget:=pvgsbswSliderButton;
       fPushedSubWidget:=pvgsbswSliderButton;
-      fSliderPushed:=false;
+      case fOrientation of
+       pvgsboHorizontal:begin
+        if aPointerEvent.Position.x<GetSliderButtonRect.Left then begin
+         fStepSize:=-fLargeStep;
+        end else begin
+         fStepSize:=fLargeStep;
+        end;
+       end;
+       else {pvgsboVertical:}begin
+        if aPointerEvent.Position.y<GetSliderButtonRect.Top then begin
+         fStepSize:=-fLargeStep;
+        end else begin
+         fStepSize:=fLargeStep;
+        end;
+       end;
+       if ((fStepSize>0) and ((fValue+fStepSize)<=fMaximumValue) and not (fValue>(fValue+fStepSize))) or
+          ((fStepSize<0) and ((fValue+fStepSize)>=fMinimumValue) and not (fValue<(fValue+fStepSize))) then begin
+        SetValue(fValue+fStepSize);
+       end else if fStepSize<0 then begin
+        SetValue(fMinimumValue);
+       end else if fStepSize>0 then begin
+        SetValue(fMaximumValue);
+       end;
+       fTimeAccumulator:=0.5;
+      end;
      end else begin
       case fPushedSubWidget of
        pvgsbswDecButton:begin
@@ -11861,11 +11885,12 @@ begin
     end;
     POINTEREVENT_UP:begin
      fPushedSubWidget:=pvgsbswNone;
+     fSliderPushed:=false;
      fStepSize:=0;
      result:=true;
     end;
     POINTEREVENT_MOTION:begin
-     if fPushedSubWidget=pvgsbswSliderButton then begin
+     if (fPushedSubWidget=pvgsbswSliderButton) and not fSliderPushed then begin
 {$if false}
       case fOrientation of
        pvgsboHorizontal:begin
