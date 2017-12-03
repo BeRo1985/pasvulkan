@@ -17002,7 +17002,9 @@ begin
         aMipMapSizeStored,
         aSwapEndianness,
         aSwapEndiannessTexels,
-        aDDSStructure);
+        aDDSStructure,
+        nil,
+        true);
 
  fUsage:=vtufSampled;
  fImageLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -17038,7 +17040,6 @@ begin
                                        Max(1,fCountStorageLevels),
                                        0,
                                        Max(1,fTotalCountArrayLayers));
-
 
  if assigned(fSampler) then begin
   fDescriptorImageInfo.sampler:=fSampler.fSamplerHandle;
