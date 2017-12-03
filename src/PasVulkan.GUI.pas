@@ -1853,8 +1853,6 @@ type TpvGUIObject=class;
      TpvGUISliderSubWidget=
       (
        pvgsswNone,
-       pvgsswDecButton,
-       pvgsswIncButton,
        pvgsswSliderButton
       );
 
@@ -11823,7 +11821,7 @@ begin
 
  fStepSize:=0;
 
- fTimeAccumulator:=0.0;
+ fTimeAccumulator:=MaxDouble;
 
 end;
 
@@ -12040,7 +12038,7 @@ begin
      fPushedSubWidget:=pvgsbswNone;
      fSliderPushed:=false;
      fStepSize:=0;
-     fTimeAccumulator:=0.0;
+     fTimeAccumulator:=MaxDouble;
      case fOrientation of
       pvgsboHorizontal:begin
        if aPointerEvent.Position.x<fButtonSize then begin
@@ -12098,15 +12096,15 @@ begin
          fStepSize:=fLargeStep;
         end;
        end;
-       if ((fStepSize>0) and ((fValue+fStepSize)<=fMaximumValue) and not (fValue>(fValue+fStepSize))) or
-          ((fStepSize<0) and ((fValue+fStepSize)>=fMinimumValue) and not (fValue<(fValue+fStepSize))) then begin
-        SetValue(fValue+fStepSize);
-       end else if fStepSize<0 then begin
-        SetValue(fMinimumValue);
-       end else if fStepSize>0 then begin
-        SetValue(fMaximumValue);
-       end;
-       fTimeAccumulator:=0.5;
+      end;
+      fTimeAccumulator:=0.5;
+      if ((fStepSize>0) and ((fValue+fStepSize)<=fMaximumValue) and not (fValue>(fValue+fStepSize))) or
+         ((fStepSize<0) and ((fValue+fStepSize)>=fMinimumValue) and not (fValue<(fValue+fStepSize))) then begin
+       SetValue(fValue+fStepSize);
+      end else if fStepSize<0 then begin
+       SetValue(fMinimumValue);
+      end else if fStepSize>0 then begin
+       SetValue(fMaximumValue);
       end;
      end else begin
       case fPushedSubWidget of
@@ -12117,6 +12115,7 @@ begin
          SetValue(fMinimumValue);
         end;
         fStepSize:=-fSmallStep;
+        fTimeAccumulator:=0.5;
        end;
        pvgsbswIncButton:begin
         if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
@@ -12289,7 +12288,7 @@ begin
 
  fStepSize:=0;
 
- fTimeAccumulator:=0.0;
+ fTimeAccumulator:=MaxDouble;
 
 end;
 
@@ -12504,7 +12503,7 @@ begin
      fPushedSubWidget:=pvgsswNone;
      fSliderPushed:=false;
      fStepSize:=0;
-     fTimeAccumulator:=0.0;
+     fTimeAccumulator:=MaxDouble;
      case fOrientation of
       pvgsoHorizontal:begin
        if GetSliderButtonRect.Touched(aPointerEvent.Position) then begin
@@ -12550,36 +12549,16 @@ begin
          fStepSize:=fLargeStep;
         end;
        end;
-       if ((fStepSize>0) and ((fValue+fStepSize)<=fMaximumValue) and not (fValue>(fValue+fStepSize))) or
-          ((fStepSize<0) and ((fValue+fStepSize)>=fMinimumValue) and not (fValue<(fValue+fStepSize))) then begin
-        SetValue(fValue+fStepSize);
-       end else if fStepSize<0 then begin
-        SetValue(fMinimumValue);
-       end else if fStepSize>0 then begin
-        SetValue(fMaximumValue);
-       end;
-       fTimeAccumulator:=0.5;
       end;
-     end else begin
-      case fPushedSubWidget of
-       pvgsswDecButton:begin
-        if ((fValue-fSmallStep)>=fMinimumValue) and not (fValue<(fValue-fSmallStep)) then begin
-         SetValue(fValue-fSmallStep);
-        end else begin
-         SetValue(fMinimumValue);
-        end;
-        fStepSize:=-fSmallStep;
-       end;
-       pvgsswIncButton:begin
-        if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
-         SetValue(fValue+fSmallStep);
-        end else begin
-         SetValue(fMaximumValue);
-        end;
-        fStepSize:=fSmallStep;
-        fTimeAccumulator:=0.5;
-       end;
+      if ((fStepSize>0) and ((fValue+fStepSize)<=fMaximumValue) and not (fValue>(fValue+fStepSize))) or
+         ((fStepSize<0) and ((fValue+fStepSize)>=fMinimumValue) and not (fValue<(fValue+fStepSize))) then begin
+       SetValue(fValue+fStepSize);
+      end else if fStepSize<0 then begin
+       SetValue(fMinimumValue);
+      end else if fStepSize>0 then begin
+       SetValue(fMaximumValue);
       end;
+      fTimeAccumulator:=0.5;
      end;
      result:=true;
     end;
