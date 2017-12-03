@@ -11587,7 +11587,7 @@ begin
 
  fStepSize:=0;
 
- fTimeAccumulator:=-1.0;
+ fTimeAccumulator:=0.0;
 
 end;
 
@@ -11693,6 +11693,7 @@ function TpvGUIScrollBar.Leave:boolean;
 begin
  fPushedSubWidget:=pvgsbswNone;
  fStepSize:=0;
+ fSliderPushed:=false;
  result:=inherited Leave;
 end;
 
@@ -11794,6 +11795,9 @@ begin
      end;
      fFocusedSubWidget:=pvgsbswNone;
      fPushedSubWidget:=pvgsbswNone;
+     fSliderPushed:=false;
+     fStepSize:=0;
+     fTimeAccumulator:=0.0;
      case fOrientation of
       pvgsboHorizontal:begin
        if aPointerEvent.Position.x<fButtonSize then begin
@@ -11824,7 +11828,7 @@ begin
        end;
       end;
      end;
-     if fSliderPushed then begin
+     if fPushedSubWidget=pvgsbswSliderButton then begin
 (*    case fOrientation of
        pvgsboHorizontal:begin
         SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
@@ -11833,6 +11837,7 @@ begin
         SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
        end;
       end;*)
+     end else if fSliderPushed then begin
       fFocusedSubWidget:=pvgsbswSliderButton;
       fPushedSubWidget:=pvgsbswSliderButton;
       case fOrientation of

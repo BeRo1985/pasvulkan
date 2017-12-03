@@ -24,6 +24,8 @@ uses
   {$if defined(fpc) and defined(Unix)}
   cthreads,
   BaseUnix,
+  {$elseif defined(Windows)}
+  Windows,
   {$ifend}
   SysUtils,
   Classes,
@@ -173,8 +175,20 @@ exports ANativeActivity_onCreate name 'ANativeActivity_onCreate';
 function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
 {$ifend}
 
+{$if defined(Windows)}
+function AttachConsole(dwProcessId:DWord):Bool; stdcall; external 'kernel32.dll';
+
+const ATTACH_PARENT_PROCESS=DWORD(-1);
+{$ifend}
+
 {$if not (defined(fpc) and defined(android))}
 begin
+{$if defined(Windows) and not defined(Release)}
+ // Workaround for a random-console-missing-issue with Delphi 10.2 Tokyo
+ if (GetStdHandle(STD_OUTPUT_HANDLE)=0) and not AttachConsole(ATTACH_PARENT_PROCESS) then begin
+  AllocConsole;
+ end;
+{$ifend}
 {$if defined(PasVulkanUseSDL2)}
  SDLMain;
 {$else}
