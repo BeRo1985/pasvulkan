@@ -193,6 +193,8 @@ type TpvGUIObject=class;
 
      TpvGUISlider=class;
 
+     TpvGUIProgressBar=class;
+
      TpvGUIPanel=class;
 
      EpvGUIWidget=class(Exception);
@@ -712,6 +714,9 @@ type TpvGUIObject=class;
        function GetSliderPreferredSize(const aSlider:TpvGUISlider):TpvVector2; virtual;
        procedure DrawSlider(const aCanvas:TpvCanvas;const aSlider:TpvGUISlider); virtual;
       public
+       function GetProgressBarPreferredSize(const aProgressBar:TpvGUIProgressBar):TpvVector2; virtual;
+       procedure DrawProgressBar(const aCanvas:TpvCanvas;const aProgressBar:TpvGUIProgressBar); virtual;
+      public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
        property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
@@ -840,6 +845,9 @@ type TpvGUIObject=class;
       public
        function GetSliderPreferredSize(const aSlider:TpvGUISlider):TpvVector2; override;
        procedure DrawSlider(const aCanvas:TpvCanvas;const aSlider:TpvGUISlider); override;
+      public
+       function GetProgressBarPreferredSize(const aProgressBar:TpvGUIProgressBar):TpvVector2; override;
+       procedure DrawProgressBar(const aCanvas:TpvCanvas;const aProgressBar:TpvGUIProgressBar); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -1908,6 +1916,38 @@ type TpvGUIObject=class;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property FocusedSubWidget:TpvGUISliderSubWidget read fFocusedSubWidget;
        property PushedSubWidget:TpvGUISliderSubWidget read fPushedSubWidget;
+     end;
+
+     PpvGUIProgressBarOrientation=^TpvGUIProgressBarOrientation;
+     TpvGUIProgressBarOrientation=
+      (
+       pvgpboHorizontal,
+       pvgpboVertical
+      );
+
+     TpvGUIProgressBar=class(TpvGUIWidget)
+      private
+       fOrientation:TpvGUIProgressBarOrientation;
+       fMinimumValue:TpvInt64;
+       fMaximumValue:TpvInt64;
+       fValue:TpvInt64;
+       fOnChange:TpvGUIOnEvent;
+       procedure SetOrientation(const aOrientation:TpvGUIProgressBarOrientation);
+       procedure SetMinimumValue(const aMinimumValue:TpvInt64);
+       procedure SetMaximumValue(const aMaximumValue:TpvInt64);
+       procedure SetValue(const aValue:TpvInt64);
+       function GetPreferredSize:TpvVector2; override;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure Update; override;
+       procedure Draw; override;
+      published
+       property Orientation:TpvGUIProgressBarOrientation read fOrientation write SetOrientation;
+       property MinimumValue:TpvInt64 read fMinimumValue write SetMinimumValue;
+       property MaximumValue:TpvInt64 read fMaximumValue write SetMaximumValue;
+       property Value:TpvInt64 read fValue write SetValue;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
 
 implementation
@@ -3964,6 +4004,16 @@ begin
 end;
 
 procedure TpvGUISkin.DrawSlider(const aCanvas:TpvCanvas;const aSlider:TpvGUISlider);
+begin
+
+end;
+
+function TpvGUISkin.GetProgressBarPreferredSize(const aProgressBar:TpvGUIProgressBar):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aProgressBar);
+end;
+
+procedure TpvGUISkin.DrawProgressBar(const aCanvas:TpvCanvas;const aProgressBar:TpvGUIProgressBar);
 begin
 
 end;
@@ -6464,6 +6514,95 @@ begin
                         Rect.RightBottom,
                         Rect.LeftTop,
                         Rect.RightBottom);
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.GetProgressBarPreferredSize(const aProgressBar:TpvGUIProgressBar):TpvVector2;
+begin
+ case aProgressBar.fOrientation of
+  pvgpboHorizontal:begin
+   result:=TpvVector2.Create(100,24);
+  end;
+  else {pvgpboVertical:}begin
+   result:=TpvVector2.Create(24,100);
+  end;
+ end;
+ result:=Maximum(GetWidgetLayoutPreferredSize(aProgressBar),
+                 result);
+ if aProgressBar.fFixedSize.x>0.0 then begin
+  result.x:=aProgressBar.fFixedSize.x;
+ end;
+ if aProgressBar.fFixedSize.y>0.0 then begin
+  result.y:=aProgressBar.fFixedSize.y;
+ end;
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawProgressBar(const aCanvas:TpvCanvas;const aProgressBar:TpvGUIProgressBar);
+const IconSpacer=0.0;
+var Element:TpvInt32;
+    Offset,Scale:TpvVector2;
+    Sprite:TpvSprite;
+    Rect:TpvRect;
+begin
+
+ aCanvas.ModelMatrix:=aProgressBar.fModelMatrix;
+ aCanvas.ClipRect:=aProgressBar.fClipRect;
+
+ if aProgressBar.Enabled then begin
+  if aProgressBar.Focused then begin
+   Element:=GUI_ELEMENT_BOX_DARK_FOCUSED;
+  end else begin
+   Element:=GUI_ELEMENT_BOX_DARK_UNFOCUSED;
+  end;
+ end else begin
+  Element:=GUI_ELEMENT_BOX_DARK_DISABLED;
+ end;
+ case aProgressBar.fOrientation of
+  pvgpboHorizontal:begin
+   Offset:=TpvVector2.Create(0.0,0.0);
+  end;
+  else {pvgpboVertical:}begin
+   Offset:=TpvVector2.Create(0.0,0.0);
+  end;
+ end;
+ aCanvas.DrawGUIElement(Element,
+                        true,
+                        Offset,
+                        TpvVector2.Create(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
+                        Offset,
+                        TpvVector2.Create(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset);
+
+ if aProgressBar.Enabled then begin
+  if aProgressBar.Focused then begin
+   Element:=GUI_ELEMENT_BOX_FOCUSED;
+  end else begin
+   Element:=GUI_ELEMENT_BOX_UNFOCUSED;
+  end;
+ end else begin
+  Element:=GUI_ELEMENT_BOX_DISABLED;
+ end;
+ case aProgressBar.fOrientation of
+  pvgpboHorizontal:begin
+   Offset:=TpvVector2.Create(2.0,2.0);
+   Scale:=TpvVector2.Create((aProgressBar.fValue-aProgressBar.fMinimumValue)/(aProgressBar.fMaximumValue-aProgressBar.fMinimumValue),1.0);
+   aCanvas.DrawGUIElement(Element,
+                          true,
+                          Offset,
+                          Offset+((TpvVector2.Create(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale),
+                          Offset,
+                          Offset+((TpvVector2.Create(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale));
+  end;
+  else {pvgpboVertical:}begin
+   Offset:=TpvVector2.Create(2.0,2.0);
+   Scale:=TpvVector2.Create(1.0,1.0-((aProgressBar.fValue-aProgressBar.fMinimumValue)/(aProgressBar.fMaximumValue-aProgressBar.fMinimumValue)));
+   aCanvas.DrawGUIElement(Element,
+                          true,
+                          Offset+(TpvVector2.Create(0.0,aProgressBar.fSize.y-(Offset.y*2.0))*Scale),
+                          TpvVector2.Create(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
+                          Offset+(TpvVector2.Create(0.0,aProgressBar.fSize.y-(Offset.y*2.0))*Scale),
+                          TpvVector2.Create(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset);
+  end;
+ end;
 
 end;
 
@@ -12673,6 +12812,81 @@ begin
 end;
 
 procedure TpvGUISlider.Draw;
+begin
+ inherited Draw;
+end;
+
+constructor TpvGUIProgressBar.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ fOrientation:=pvgpboHorizontal;
+
+ fMinimumValue:=0;
+
+ fMaximumValue:=100;
+
+ fValue:=0;
+
+ fOnChange:=nil;
+
+end;
+
+destructor TpvGUIProgressBar.Destroy;
+begin
+
+ inherited Destroy;
+
+end;
+
+procedure TpvGUIProgressBar.SetOrientation(const aOrientation:TpvGUIProgressBarOrientation);
+begin
+ if fOrientation<>aOrientation then begin
+  fOrientation:=aOrientation;
+ end;
+end;
+
+procedure TpvGUIProgressBar.SetMinimumValue(const aMinimumValue:TpvInt64);
+begin
+ if fMinimumValue<>aMinimumValue then begin
+  fMinimumValue:=aMinimumValue;
+  SetValue(fValue);
+ end;
+end;
+
+procedure TpvGUIProgressBar.SetMaximumValue(const aMaximumValue:TpvInt64);
+begin
+ if fMaximumValue<>aMaximumValue then begin
+  fMaximumValue:=aMaximumValue;
+  SetValue(fValue);
+ end;
+end;
+
+procedure TpvGUIProgressBar.SetValue(const aValue:TpvInt64);
+var NewValue:TpvInt64;
+begin
+ NewValue:=Min(Max(aValue,fMinimumValue),fMaximumValue);
+ if fValue<>NewValue then begin
+  fValue:=NewValue;
+  if assigned(fOnChange) then begin
+   fOnChange(self);
+  end;
+ end;
+end;
+
+function TpvGUIProgressBar.GetPreferredSize:TpvVector2;
+begin
+ result:=Skin.GetProgressBarPreferredSize(self);
+end;
+
+procedure TpvGUIProgressBar.Update;
+begin
+ Skin.DrawProgressBar(fCanvas,self);
+ inherited Update;
+end;
+
+procedure TpvGUIProgressBar.Draw;
 begin
  inherited Draw;
 end;

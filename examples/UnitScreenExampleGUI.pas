@@ -50,6 +50,8 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
        fGUITextEdit:TpvGUITextEdit;
        fGUIOtherWindow:TpvGUIWindow;
        fGUIYetOtherWindow:TpvGUIWindow;
+       fGUIProgressBar0:TpvGUIProgressBar;
+       fGUIProgressBar1:TpvGUIProgressBar;
        fLastMousePosition:TpvVector2;
        fLastMouseButtons:TpvApplicationInputPointerButtons;
        fReady:boolean;
@@ -385,7 +387,7 @@ begin
  fGUIYetOtherWindow.Content.Layout:=TpvGUIFlowLayout.Create(fGUIOtherWindow.Content,
                                                             pvgloHorizontal,
                                                             8.0,
-                                                            320.0,
+                                                            300.0,
                                                             0.0,
                                                             4.0,
                                                             4.0,
@@ -447,6 +449,17 @@ begin
  //ScrollBar.SliderButtonSize:=64.0;
  ScrollBar.FixedWidth:=256.0;
 
+ Slider:=TpvGUISlider.Create(fGUIYetOtherWindow.Content);
+ Slider.Orientation:=pvgsoHorizontal;
+ Slider.FixedWidth:=256.0;
+
+ fGUIProgressBar0:=TpvGUIProgressBar.Create(fGUIYetOtherWindow.Content);
+ fGUIProgressBar0.Orientation:=pvgpboHorizontal;
+ fGUIProgressBar0.MinimumValue:=0;
+ fGUIProgressBar0.MaximumValue:=100;
+ fGUIProgressBar0.Value:=75;
+ fGUIProgressBar0.FixedWidth:=256.0;
+
  ScrollBar:=TpvGUIScrollBar.Create(fGUIYetOtherWindow.Content);
  ScrollBar.Orientation:=pvgsboVertical;
  //ScrollBar.SliderButtonSize:=24.0;
@@ -454,12 +467,15 @@ begin
  ScrollBar.FixedHeight:=128.0;
 
  Slider:=TpvGUISlider.Create(fGUIYetOtherWindow.Content);
- Slider.Orientation:=pvgsoHorizontal;
- Slider.FixedWidth:=256.0;
-
- Slider:=TpvGUISlider.Create(fGUIYetOtherWindow.Content);
  Slider.Orientation:=pvgsoVertical;
  Slider.FixedHeight:=128.0;
+
+ fGUIProgressBar1:=TpvGUIProgressBar.Create(fGUIYetOtherWindow.Content);
+ fGUIProgressBar1.Orientation:=pvgpboVertical;
+ fGUIProgressBar1.MinimumValue:=0;
+ fGUIProgressBar1.MaximumValue:=100;
+ fGUIProgressBar1.Value:=25;
+ fGUIProgressBar1.FixedHeight:=64.0;
 
  Window:=TpvGUIWindow.Create(fGUIInstance);
  Window.Left:=150;
@@ -784,6 +800,10 @@ begin
  fVulkanCanvas.DrawFilledCircle(fLastMousePosition,4.0);
  fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 {$ifend}
+
+ fGUIProgressBar0.Value:=round(fGUIProgressBar0.MinimumValue+((fGUIProgressBar0.MaximumValue-fGUIProgressBar0.MinimumValue)*frac(fTime)));
+
+ fGUIProgressBar1.Value:=round(fGUIProgressBar1.MinimumValue+((fGUIProgressBar1.MaximumValue-fGUIProgressBar1.MinimumValue)*frac(fTime)));
 
  fGUIInstance.DrawWidgetBounds:=false;
  fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateSwapChainImageIndex;
