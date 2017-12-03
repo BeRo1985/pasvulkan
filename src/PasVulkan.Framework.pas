@@ -2849,7 +2849,8 @@ type EpvVulkanException=class(Exception);
                         const aSwapEndianness:boolean=false;
                         const aSwapEndiannessTexels:TpvInt32=0;
                         const aDDSStructure:boolean=true;
-                        const aStagingBuffer:TpvVulkanBuffer=nil);
+                        const aStagingBuffer:TpvVulkanBuffer=nil;
+                        const aCommandBufferResetAndExecute:boolean=true);
        procedure UpdateSampler;
        property DescriptorImageInfo:TVkDescriptorImageInfo read fDescriptorImageInfo;
       published
@@ -19422,7 +19423,8 @@ procedure TpvVulkanTexture.Upload(const aGraphicsQueue:TpvVulkanQueue;
                                   const aSwapEndianness:boolean=false;
                                   const aSwapEndiannessTexels:TpvInt32=0;
                                   const aDDSStructure:boolean=true;
-                                  const aStagingBuffer:TpvVulkanBuffer=nil);
+                                  const aStagingBuffer:TpvVulkanBuffer=nil;
+                                  const aCommandBufferResetAndExecute:boolean=true);
 type PpvUInt8Array=^TpvUInt8Array;
      TpvUInt8Array=array[0..65535] of TpvUInt8;
 var BufferImageCopyArraySize,MipMapLevelIndex,MipMapWidth,MipMapHeight,MipMapDepth,
@@ -19437,7 +19439,7 @@ var BufferImageCopyArraySize,MipMapLevelIndex,MipMapWidth,MipMapHeight,MipMapDep
     ImageBlit:TVkImageBlit;
 begin
 
- if assigned(aData) then begin
+ if assigned(aData) or assigned(aStagingBuffer) then begin
 
   if fSampleCount<>VK_SAMPLE_COUNT_1_BIT then begin
    raise EpvVulkanTextureException.Create('Sample count must be 1 bit');
@@ -19459,36 +19461,44 @@ begin
                                          0,
                                          [vbfOwnSingleMemoryChunk]);
   end;
+
   try
 
-   if (not aDDSStructure) and (aSwapEndianness and (aSwapEndiannessTexels in [2,4,8])) then begin
-    SwapEndianness(aData,
-                   aDataSize,
-                   fFormat,
-                   fWidth,
-                   fHeight,
-                   fDepth,
-                   fCountDataLevels,
-                   fTotalCountArrayLayers,
-                   aMipMapSizeStored,
-                   aSwapEndianness,
-                   aSwapEndiannessTexels,
-                   aDDSStructure);
-   end;
+   if assigned(aData) then begin
 
-   StagingBuffer.UploadData(aTransferQueue,
-                            aTransferCommandBuffer,
-                            aTransferFence,
-                            aData^,
-                            0,
-                            aDataSize,
-                            vbutsbmNo);
+    if (not aDDSStructure) and (aSwapEndianness and (aSwapEndiannessTexels in [2,4,8])) then begin
+     SwapEndianness(aData,
+                    aDataSize,
+                    fFormat,
+                    fWidth,
+                    fHeight,
+                    fDepth,
+                    fCountDataLevels,
+                    fTotalCountArrayLayers,
+                    aMipMapSizeStored,
+                    aSwapEndianness,
+                    aSwapEndiannessTexels,
+                    aDDSStructure);
+    end;
+
+    StagingBuffer.UploadData(aTransferQueue,
+                             aTransferCommandBuffer,
+                             aTransferFence,
+                             aData^,
+                             0,
+                             aDataSize,
+                             vbutsbmNo);
+
+   end;
 
    BufferImageCopyArray:=nil;
    try
 
-    aGraphicsCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-    aGraphicsCommandBuffer.BeginRecording;
+    if aCommandBufferResetAndExecute then begin
+     aGraphicsCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+     aGraphicsCommandBuffer.BeginRecording;
+    end;
+
     try
 
      FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
@@ -19738,8 +19748,12 @@ begin
                                                @ImageMemoryBarrier);
 
     finally
-     aGraphicsCommandBuffer.EndRecording;
-     aGraphicsCommandBuffer.Execute(aGraphicsQueue,0,nil,nil,aGraphicsFence,true);
+
+     if aCommandBufferResetAndExecute then begin
+      aGraphicsCommandBuffer.EndRecording;
+      aGraphicsCommandBuffer.Execute(aGraphicsQueue,0,nil,nil,aGraphicsFence,true);
+     end;
+
     end;
 
    finally
@@ -19768,24 +19782,37 @@ begin
   ImageMemoryBarrier.subresourceRange.levelCount:=fCountStorageLevels;
   ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
   ImageMemoryBarrier.subresourceRange.layerCount:=Max(1,fTotalCountArrayLayers);
-  aGraphicsCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-  aGraphicsCommandBuffer.BeginRecording;
-  aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
-                                            0,
-                                            0,
-                                            nil,
-                                            0,
-                                            nil,
-                                            1,
-                                            @ImageMemoryBarrier);
-  aGraphicsCommandBuffer.EndRecording;
-  aGraphicsCommandBuffer.Execute(aGraphicsQueue,0,nil,nil,aGraphicsFence,true);
+
+  if aCommandBufferResetAndExecute then begin
+   aGraphicsCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+   aGraphicsCommandBuffer.BeginRecording;
+  end;
+
+  try
+
+   aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
+                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                             0,
+                                             0,
+                                             nil,
+                                             0,
+                                             nil,
+                                             1,
+                                             @ImageMemoryBarrier);
+
+  finally
+
+   if aCommandBufferResetAndExecute then begin
+    aGraphicsCommandBuffer.EndRecording;
+    aGraphicsCommandBuffer.Execute(aGraphicsQueue,0,nil,nil,aGraphicsFence,true);
+   end;
+
+  end;
 
  end;
 
