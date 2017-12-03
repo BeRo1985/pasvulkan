@@ -1702,14 +1702,16 @@ type TpvGUIObject=class;
        fMaximumValue:TpvInt64;
        fValue:TpvInt64;
        fButtonSize:TpvFloat;
+       fSliderButtonSize:TpvFloat;
        fOnChange:TpvGUIOnEvent;
        fFocusedSubWidget:TpvGUIScrollBarSubWidget;
-       fHoveredSubWidget:TpvGUIScrollBarSubWidget;
+       fPushedSubWidget:TpvGUIScrollBarSubWidget;
        procedure SetOrientation(const aOrientation:TpvGUIScrollBarOrientation);
        procedure SetMinimumValue(const aMinimumValue:TpvInt64);
        procedure SetMaximumValue(const aMaximumValue:TpvInt64);
        procedure SetValue(const aValue:TpvInt64);
        procedure SetButtonSize(const aButtonSize:TpvFloat);
+       procedure SetSliderButtonSize(const aSliderButtonSize:TpvFloat);
        function GetPreferredSize:TpvVector2; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -1727,9 +1729,10 @@ type TpvGUIObject=class;
        property MaximumValue:TpvInt64 read fMaximumValue write SetMaximumValue;
        property Value:TpvInt64 read fValue write SetValue;
        property ButtonSize:TpvFloat read fButtonSize write SetButtonSize;
+       property SliderButtonSize:TpvFloat read fSliderButtonSize write SetSliderButtonSize;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property FocusedSubWidget:TpvGUIScrollBarSubWidget read fFocusedSubWidget;
-       property HoveredSubWidget:TpvGUIScrollBarSubWidget read fHoveredSubWidget;
+       property PushedSubWidget:TpvGUIScrollBarSubWidget read fPushedSubWidget;
      end;
 
 implementation
@@ -6001,23 +6004,152 @@ end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawScrollBar(const aCanvas:TpvCanvas;const aScrollBar:TpvGUIScrollBar);
 var Element:TpvInt32;
+    Offset:TpvVector2;
+    Sprite:TpvSprite;
+    Rect:TpvRect;
 begin
 
  aCanvas.ModelMatrix:=aScrollBar.fModelMatrix;
  aCanvas.ClipRect:=aScrollBar.fClipRect;
 
- if aScrollBar.Enabled then begin
-  Element:=GUI_ELEMENT_PANEL_ENABLED;
- end else begin
-  Element:=GUI_ELEMENT_PANEL_DISABLED;
- end;
 
+ if aScrollBar.Enabled then begin
+  if aScrollBar.Focused then begin
+   Element:=GUI_ELEMENT_BOX_DARK_FOCUSED;
+  end else begin
+   Element:=GUI_ELEMENT_BOX_DARK_UNFOCUSED;
+  end;
+ end else begin
+  Element:=GUI_ELEMENT_BOX_DARK_DISABLED;
+ end;
+ case aScrollBar.fOrientation of
+  pvgsboHorizontal:begin
+   Offset:=TpvVector2.Create(aScrollBar.fButtonSize-1.0,0.0);
+  end;
+  else {pvgsboVertical:}begin
+   Offset:=TpvVector2.Create(0.0,aScrollBar.fButtonSize-1.0);
+  end;
+ end;
  aCanvas.DrawGUIElement(Element,
                         true,
-                        TpvVector2.Create(0.0,0.0),
-                        TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y),
-                        TpvVector2.Create(0.0,0.0),
-                        TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y));
+                        Offset,
+                        TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset,
+                        Offset,
+                        TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset);
+
+ if aScrollBar.Enabled then begin
+  aCanvas.Color:=aScrollBar.FontColor;
+  if aScrollBar.fPushedSubWidget=pvgsbswDecButton then begin
+   Element:=GUI_ELEMENT_BUTTON_PUSHED;
+  end else if aScrollBar.Focused and (aScrollBar.fFocusedSubWidget=pvgsbswDecButton) then begin
+   Element:=GUI_ELEMENT_BUTTON_FOCUSED;
+  end else begin
+   Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
+  end;
+ end else begin
+  Element:=GUI_ELEMENT_BUTTON_DISABLED;
+  aCanvas.Color:=TpvVector4.Create(aScrollBar.FontColor.rgb,aScrollBar.FontColor.a*0.25);
+ end;
+ case aScrollBar.fOrientation of
+  pvgsboHorizontal:begin
+   aCanvas.DrawGUIElement(Element,
+                          true,
+                          TpvVector2.Create(0.0,0.0),
+                          TpvVector2.Create(aScrollBar.fButtonSize,aScrollBar.fSize.y),
+                          TpvVector2.Create(0.0,0.0),
+                          TpvVector2.Create(aScrollBar.fButtonSize,aScrollBar.fSize.y));
+   Sprite:=TpvSprite(fIconChevronLeft);
+   aCanvas.DrawSprite(Sprite,
+                      TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
+                      TpvRect.CreateAbsolute(TpvVector2.Create(5.0,5.0),
+                                             TpvVector2.Create(aScrollBar.fButtonSize-5.0,aScrollBar.fSize.y-5.0)));
+  end;
+  else {pvgsboVertical:}begin
+   aCanvas.DrawGUIElement(Element,
+                          true,
+                          TpvVector2.Create(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
+                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y),
+                          TpvVector2.Create(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
+                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y));
+   Sprite:=TpvSprite(fIconChevronDown);
+   aCanvas.DrawSprite(Sprite,
+                      TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
+                      TpvRect.CreateAbsolute(TpvVector2.Create(5.0,(aScrollBar.fSize.y-aScrollBar.fButtonSize)+5.0),
+                                             TpvVector2.Create(aScrollBar.fSize.y-5.0,aScrollBar.fSize.y-5.0)));
+  end;
+ end;
+
+ if aScrollBar.Enabled then begin
+  aCanvas.Color:=aScrollBar.FontColor;
+  if aScrollBar.fPushedSubWidget=pvgsbswIncButton then begin
+   Element:=GUI_ELEMENT_BUTTON_PUSHED;
+  end else if aScrollBar.Focused and (aScrollBar.fFocusedSubWidget=pvgsbswIncButton) then begin
+   Element:=GUI_ELEMENT_BUTTON_FOCUSED;
+  end else begin
+   Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
+  end;
+ end else begin
+  Element:=GUI_ELEMENT_BUTTON_DISABLED;
+  aCanvas.Color:=TpvVector4.Create(aScrollBar.FontColor.rgb,aScrollBar.FontColor.a*0.25);
+ end;
+ case aScrollBar.fOrientation of
+  pvgsboHorizontal:begin
+   aCanvas.DrawGUIElement(Element,
+                          true,
+                          TpvVector2.Create(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
+                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y),
+                          TpvVector2.Create(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
+                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y));
+   Sprite:=TpvSprite(fIconChevronRight);
+   aCanvas.DrawSprite(Sprite,
+                      TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
+                      TpvRect.CreateAbsolute(TpvVector2.Create((aScrollBar.fSize.x-aScrollBar.fButtonSize)+5.0,5.0),
+                                             TpvVector2.Create(aScrollBar.fSize.x-5.0,aScrollBar.fSize.y-5.0)));
+  end;
+  else {pvgsboVertical:}begin
+   aCanvas.DrawGUIElement(Element,
+                          true,
+                          TpvVector2.Create(0.0,0.0),
+                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fButtonSize),
+                          TpvVector2.Create(0.0,0.0),
+                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fButtonSize));
+   Sprite:=TpvSprite(fIconChevronUp);
+   aCanvas.DrawSprite(Sprite,
+                      TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
+                      TpvRect.CreateAbsolute(TpvVector2.Create(5.0,5.0),
+                                             TpvVector2.Create(aScrollBar.fSize.x-5.0,aScrollBar.fButtonSize-5.0)));
+  end;
+ end;
+
+ case aScrollBar.fOrientation of
+  pvgsboHorizontal:begin
+   Rect:=TpvRect.CreateRelative(TpvVector2.Create(aScrollBar.fButtonSize+((aScrollBar.fSize.x-((aScrollBar.fButtonSize*2.0)+aScrollBar.fSliderButtonSize))*(aScrollBar.fValue-aScrollBar.fMinimumValue)*(aScrollBar.fMaximumValue-aScrollBar.fMinimumValue)),0.0),
+                                TpvVector2.Create(aScrollBar.fSliderButtonSize,aScrollBar.fSize.y));
+  end;
+  else {pvgsboVertical:}begin
+   Rect:=TpvRect.CreateRelative(TpvVector2.Create(0.0,aScrollBar.fButtonSize+((aScrollBar.fSize.y-((aScrollBar.fButtonSize*2.0)+aScrollBar.fSliderButtonSize))*(aScrollBar.fValue-aScrollBar.fMinimumValue)*(aScrollBar.fMaximumValue-aScrollBar.fMinimumValue))),
+                                TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSliderButtonSize));
+  end;
+ end;
+ Rect.LeftTop:=Rect.LeftTop+TpvVector2.Create(1.0,1.0);
+ Rect.RightBottom:=Rect.RightBottom-TpvVector2.Create(1.0,1.0);
+ if aScrollBar.Enabled then begin
+  if aScrollBar.fPushedSubWidget=pvgsbswSliderButton then begin
+   Element:=GUI_ELEMENT_BUTTON_PUSHED;
+  end else if aScrollBar.Focused and (aScrollBar.fFocusedSubWidget=pvgsbswSliderButton) then begin
+   Element:=GUI_ELEMENT_BUTTON_FOCUSED;
+  end else begin
+   Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
+  end;
+ end else begin
+  Element:=GUI_ELEMENT_BUTTON_DISABLED;
+ end;
+ aCanvas.DrawGUIElement(Element,
+                        true,
+                        Rect.LeftTop,
+                        Rect.RightBottom,
+                        Rect.LeftTop,
+                        Rect.RightBottom);
 
 end;
 
@@ -11316,6 +11448,9 @@ begin
 
  inherited Create(aParent);
 
+ Include(fWidgetFlags,pvgwfTabStop);
+ Include(fWidgetFlags,pvgwfDrawFocus);
+
  fOrientation:=pvgsboHorizontal;
 
  fMinimumValue:=0;
@@ -11324,13 +11459,15 @@ begin
 
  fValue:=0;
 
- fButtonSize:=32;
+ fButtonSize:=24;
+
+ fSliderButtonSize:=24;
 
  fOnChange:=nil;
 
  fFocusedSubWidget:=pvgsbswNone;
 
- fHoveredSubWidget:=pvgsbswNone;
+ fPushedSubWidget:=pvgsbswNone;
 
 end;
 
@@ -11378,6 +11515,13 @@ procedure TpvGUIScrollBar.SetButtonSize(const aButtonSize:TpvFloat);
 begin
  if fButtonSize<>aButtonSize then begin
   fButtonSize:=aButtonSize;
+ end;
+end;
+
+procedure TpvGUIScrollBar.SetSliderButtonSize(const aSliderButtonSize:TpvFloat);
+begin
+ if fSliderButtonSize<>aSliderButtonSize then begin
+  fSliderButtonSize:=aSliderButtonSize;
  end;
 end;
 
