@@ -444,12 +444,13 @@ begin
 
  ScrollBar:=TpvGUIScrollBar.Create(fGUIYetOtherWindow.Content);
  ScrollBar.Orientation:=pvgsboHorizontal;
- ScrollBar.SliderButtonSize:=64.0;
+ //ScrollBar.SliderButtonSize:=64.0;
  ScrollBar.FixedWidth:=256.0;
 
  ScrollBar:=TpvGUIScrollBar.Create(fGUIYetOtherWindow.Content);
  ScrollBar.Orientation:=pvgsboVertical;
- ScrollBar.SliderButtonSize:=24.0;
+ //ScrollBar.SliderButtonSize:=24.0;
+ ScrollBar.MaximumValue:=2;
  ScrollBar.FixedHeight:=128.0;
 
  Slider:=TpvGUISlider.Create(fGUIYetOtherWindow.Content);
