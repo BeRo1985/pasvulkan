@@ -1519,14 +1519,14 @@ type TpvGUIObject=class;
 
      TpvGUIIntegerEdit=class(TpvGUITextEdit)
       private
-       fMinValue:TpvInt64;
-       fMaxValue:TpvInt64;
+       fMinimumValue:TpvInt64;
+       fMaximumValue:TpvInt64;
        fSmallStep:TpvInt64;
        fLargeStep:TpvInt64;
        procedure UpdateText; override;
        procedure ApplyMinMaxValueBounds;
-       procedure SetMinValue(const aMinValue:TpvInt64);
-       procedure SetMaxValue(const aMaxValue:TpvInt64);
+       procedure SetMinimumValue(const aMinimumValue:TpvInt64);
+       procedure SetMaximumValue(const aMaximumValue:TpvInt64);
        function GetValue:TpvInt64;
        procedure SetValue(const aValue:TpvInt64);
        function CheckText(const aText:TpvUTF8String):boolean; override;
@@ -1538,8 +1538,8 @@ type TpvGUIObject=class;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
       published
-       property MinValue:TpvInt64 read fMinValue write SetMinValue;
-       property MaxValue:TpvInt64 read fMaxValue write SetMaxValue;
+       property MinimumValue:TpvInt64 read fMinimumValue write SetMinimumValue;
+       property MaximumValue:TpvInt64 read fMaximumValue write SetMaximumValue;
        property SmallStep:TpvInt64 read fSmallStep write fSmallStep;
        property LargeStep:TpvInt64 read fLargeStep write fLargeStep;
        property Value:TpvInt64 read GetValue write SetValue;
@@ -1548,15 +1548,15 @@ type TpvGUIObject=class;
 
      TpvGUIFloatEdit=class(TpvGUITextEdit)
       private
-       fMinValue:TpvDouble;
-       fMaxValue:TpvDouble;
+       fMinimumValue:TpvDouble;
+       fMaximumValue:TpvDouble;
        fSmallStep:TpvDouble;
        fLargeStep:TpvDouble;
        fDigits:TpvInt32;
        procedure UpdateText; override;
        procedure ApplyMinMaxValueBounds;
-       procedure SetMinValue(const aMinValue:TpvDouble);
-       procedure SetMaxValue(const aMaxValue:TpvDouble);
+       procedure SetMinimumValue(const aMinimumValue:TpvDouble);
+       procedure SetMaximumValue(const aMaximumValue:TpvDouble);
        function GetValue:TpvDouble;
        procedure SetValue(const aValue:TpvDouble);
        function CheckText(const aText:TpvUTF8String):boolean; override;
@@ -1568,8 +1568,8 @@ type TpvGUIObject=class;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
       published
-       property MinValue:TpvDouble read fMinValue write SetMinValue;
-       property MaxValue:TpvDouble read fMaxValue write SetMaxValue;
+       property MinimumValue:TpvDouble read fMinimumValue write SetMinimumValue;
+       property MaximumValue:TpvDouble read fMaximumValue write SetMaximumValue;
        property SmallStep:TpvDouble read fSmallStep write fSmallStep;
        property LargeStep:TpvDouble read fLargeStep write fLargeStep;
        property Digits:TpvInt32 read fDigits write fDigits;
@@ -1701,6 +1701,8 @@ type TpvGUIObject=class;
        fMinimumValue:TpvInt64;
        fMaximumValue:TpvInt64;
        fValue:TpvInt64;
+       fSmallStep:TpvInt64;
+       fLargeStep:TpvInt64;
        fButtonSize:TpvFloat;
        fSliderButtonSize:TpvFloat;
        fOnChange:TpvGUIOnEvent;
@@ -1728,6 +1730,8 @@ type TpvGUIObject=class;
        property MinimumValue:TpvInt64 read fMinimumValue write SetMinimumValue;
        property MaximumValue:TpvInt64 read fMaximumValue write SetMaximumValue;
        property Value:TpvInt64 read fValue write SetValue;
+       property SmallStep:TpvInt64 read fSmallStep write fSmallStep;
+       property LargeStep:TpvInt64 read fLargeStep write fLargeStep;
        property ButtonSize:TpvFloat read fButtonSize write SetButtonSize;
        property SliderButtonSize:TpvFloat read fSliderButtonSize write SetSliderButtonSize;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
@@ -6124,7 +6128,10 @@ begin
  case aScrollBar.fOrientation of
   pvgsboHorizontal:begin
    if aScrollBar.fMinimumValue<aScrollBar.fMaximumValue then begin
-    Rect:=TpvRect.CreateRelative(TpvVector2.Create(aScrollBar.fButtonSize+((aScrollBar.fSize.x-((aScrollBar.fButtonSize*2.0)+aScrollBar.fSliderButtonSize))*(aScrollBar.fValue-aScrollBar.fMinimumValue)*(aScrollBar.fMaximumValue-aScrollBar.fMinimumValue)),0.0),
+    Rect:=TpvRect.CreateRelative(TpvVector2.Create(aScrollBar.fButtonSize+
+                                                   ((aScrollBar.fSize.x-((aScrollBar.fButtonSize*2.0)+aScrollBar.fSliderButtonSize))*
+                                                    ((aScrollBar.fValue-aScrollBar.fMinimumValue)/(aScrollBar.fMaximumValue-aScrollBar.fMinimumValue))),
+                                                   0.0),
                                  TpvVector2.Create(aScrollBar.fSliderButtonSize,aScrollBar.fSize.y));
    end else begin
     Rect:=TpvRect.CreateRelative(TpvVector2.Create(aScrollBar.fButtonSize,0.0),
@@ -6133,7 +6140,10 @@ begin
   end;
   else {pvgsboVertical:}begin
    if aScrollBar.fMinimumValue<aScrollBar.fMaximumValue then begin
-    Rect:=TpvRect.CreateRelative(TpvVector2.Create(0.0,aScrollBar.fButtonSize+((aScrollBar.fSize.y-((aScrollBar.fButtonSize*2.0)+aScrollBar.fSliderButtonSize))*(aScrollBar.fValue-aScrollBar.fMinimumValue)*(aScrollBar.fMaximumValue-aScrollBar.fMinimumValue))),
+    Rect:=TpvRect.CreateRelative(TpvVector2.Create(0.0,
+                                                   aScrollBar.fButtonSize+
+                                                    ((aScrollBar.fSize.y-((aScrollBar.fButtonSize*2.0)+aScrollBar.fSliderButtonSize))*
+                                                     ((aScrollBar.fValue-aScrollBar.fMinimumValue)/(aScrollBar.fMaximumValue-aScrollBar.fMinimumValue)))),
                                  TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSliderButtonSize));
    end else begin
     Rect:=TpvRect.CreateRelative(TpvVector2.Create(0.0,aScrollBar.fButtonSize),
@@ -10085,9 +10095,9 @@ begin
 
  fWidgetFlags:=fWidgetFlags+[pvgwfDraggable];
 
- fMinValue:=Low(TpvInt64);
+ fMinimumValue:=Low(TpvInt64);
 
- fMaxValue:=High(TpvInt64);
+ fMaximumValue:=High(TpvInt64);
 
  fSmallStep:=1;
 
@@ -10114,21 +10124,21 @@ procedure TpvGUIIntegerEdit.ApplyMinMaxValueBounds;
 var OldValue,TemporaryValue:TpvInt64;
 begin
  OldValue:=GetValue;
- TemporaryValue:=Min(Max(OldValue,fMinValue),fMaxValue);
+ TemporaryValue:=Min(Max(OldValue,fMinimumValue),fMaximumValue);
  if OldValue<>TemporaryValue then begin
   SetValue(TemporaryValue);
  end;
 end;
 
-procedure TpvGUIIntegerEdit.SetMinValue(const aMinValue:TpvInt64);
+procedure TpvGUIIntegerEdit.SetMinimumValue(const aMinimumValue:TpvInt64);
 begin
- fMinValue:=aMinValue;
+ fMinimumValue:=aMinimumValue;
  ApplyMinMaxValueBounds;
 end;
 
-procedure TpvGUIIntegerEdit.SetMaxValue(const aMaxValue:TpvInt64);
+procedure TpvGUIIntegerEdit.SetMaximumValue(const aMaximumValue:TpvInt64);
 begin
- fMaxValue:=aMaxValue;
+ fMaximumValue:=aMaximumValue;
  ApplyMinMaxValueBounds;
 end;
 
@@ -10300,28 +10310,28 @@ begin
     case aKeyEvent.KeyCode of
      KEYCODE_UP:begin
       TemporaryValue:=GetValue;
-      if ((TemporaryValue+fSmallStep)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
+      if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
        SetValue(TemporaryValue+fSmallStep);
       end;
       result:=true;
      end;
      KEYCODE_DOWN:begin
       TemporaryValue:=GetValue;
-      if ((TemporaryValue-fSmallStep)>=fMinValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
+      if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
        SetValue(TemporaryValue-fSmallStep);
       end;
       result:=true;
      end;
      KEYCODE_PAGEUP:begin
       TemporaryValue:=GetValue;
-      if ((TemporaryValue+fLargeStep)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
+      if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
        SetValue(TemporaryValue+fLargeStep);
       end;
       result:=true;
      end;
      KEYCODE_PAGEDOWN:begin
       TemporaryValue:=GetValue;
-      if ((TemporaryValue-fLargeStep)>=fMinValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
+      if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
        SetValue(TemporaryValue-fLargeStep);
       end;
       result:=true;
@@ -10347,8 +10357,8 @@ begin
     end else begin
      Step:=ceil(v);
     end;
-    if ((Step>0) and ((TemporaryValue+Step)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-       ((Step<0) and ((TemporaryValue+Step)>=fMinValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+    if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+       ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
      SetValue(TemporaryValue+Step);
     end;
     result:=true;
@@ -10370,8 +10380,8 @@ begin
   end else begin
    Step:=ceil(v);
   end;
-  if ((Step>0) and ((TemporaryValue+Step)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-     ((Step<0) and ((TemporaryValue+Step)>=fMinValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+  if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+     ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
    SetValue(TemporaryValue+Step);
   end;
   result:=true;
@@ -10385,9 +10395,9 @@ begin
 
  fWidgetFlags:=fWidgetFlags+[pvgwfDraggable];
 
- fMinValue:=-MaxDouble;
+ fMinimumValue:=-MaxDouble;
 
- fMaxValue:=MaxDouble;
+ fMaximumValue:=MaxDouble;
 
  fSmallStep:=1.0;
 
@@ -10416,21 +10426,21 @@ procedure TpvGUIFloatEdit.ApplyMinMaxValueBounds;
 var OldValue,TemporaryValue:TpvDouble;
 begin
  OldValue:=GetValue;
- TemporaryValue:=Min(Max(OldValue,fMinValue),fMaxValue);
+ TemporaryValue:=Min(Max(OldValue,fMinimumValue),fMaximumValue);
  if OldValue<>TemporaryValue then begin
   SetValue(TemporaryValue);
  end;
 end;
 
-procedure TpvGUIFloatEdit.SetMinValue(const aMinValue:TpvDouble);
+procedure TpvGUIFloatEdit.SetMinimumValue(const aMinimumValue:TpvDouble);
 begin
- fMinValue:=aMinValue;
+ fMinimumValue:=aMinimumValue;
  ApplyMinMaxValueBounds;
 end;
 
-procedure TpvGUIFloatEdit.SetMaxValue(const aMaxValue:TpvDouble);
+procedure TpvGUIFloatEdit.SetMaximumValue(const aMaximumValue:TpvDouble);
 begin
- fMaxValue:=aMaxValue;
+ fMaximumValue:=aMaximumValue;
  ApplyMinMaxValueBounds;
 end;
 
@@ -10552,28 +10562,28 @@ begin
     case aKeyEvent.KeyCode of
      KEYCODE_UP:begin
       TemporaryValue:=GetValue;
-      if ((TemporaryValue+fSmallStep)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
+      if ((TemporaryValue+fSmallStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fSmallStep)) then begin
        SetValue(TemporaryValue+fSmallStep);
       end;
       result:=true;
      end;
      KEYCODE_DOWN:begin
       TemporaryValue:=GetValue;
-      if ((TemporaryValue-fSmallStep)>=fMinValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
+      if ((TemporaryValue-fSmallStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fSmallStep)) then begin
        SetValue(TemporaryValue-fSmallStep);
       end;
       result:=true;
      end;
      KEYCODE_PAGEUP:begin
       TemporaryValue:=GetValue;
-      if ((TemporaryValue+fLargeStep)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
+      if ((TemporaryValue+fLargeStep)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+fLargeStep)) then begin
        SetValue(TemporaryValue+fLargeStep);
       end;
       result:=true;
      end;
      KEYCODE_PAGEDOWN:begin
       TemporaryValue:=GetValue;
-      if ((TemporaryValue-fLargeStep)>=fMinValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
+      if ((TemporaryValue-fLargeStep)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue-fLargeStep)) then begin
        SetValue(TemporaryValue-fLargeStep);
       end;
       result:=true;
@@ -10599,8 +10609,8 @@ begin
     end else begin
      Step:=ceil(v);
     end;
-    if ((Step>0) and ((TemporaryValue+Step)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-       ((Step<0) and ((TemporaryValue+Step)>=fMinValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+    if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+       ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
      SetValue(TemporaryValue+Step);
     end;
     result:=true;
@@ -10622,8 +10632,8 @@ begin
   end else begin
    Step:=ceil(v);
   end;
-  if ((Step>0) and ((TemporaryValue+Step)<=fMaxValue) and not (TemporaryValue>(TemporaryValue+Step))) or
-     ((Step<0) and ((TemporaryValue+Step)>=fMinValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+  if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+     ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
    SetValue(TemporaryValue+Step);
   end;
   result:=true;
@@ -11469,6 +11479,10 @@ begin
 
  fValue:=0;
 
+ fSmallStep:=1;
+
+ fLargeStep:=10;
+
  fButtonSize:=24;
 
  fSliderButtonSize:=24;
@@ -11499,7 +11513,7 @@ procedure TpvGUIScrollBar.SetMinimumValue(const aMinimumValue:TpvInt64);
 begin
  if fMinimumValue<>aMinimumValue then begin
   fMinimumValue:=aMinimumValue;
-  SetValue(Max(fMinimumValue,fValue));
+  SetValue(fValue);
  end;
 end;
 
@@ -11507,14 +11521,16 @@ procedure TpvGUIScrollBar.SetMaximumValue(const aMaximumValue:TpvInt64);
 begin
  if fMaximumValue<>aMaximumValue then begin
   fMaximumValue:=aMaximumValue;
-  SetValue(Max(fMaximumValue,fValue));
+  SetValue(fValue);
  end;
 end;
 
 procedure TpvGUIScrollBar.SetValue(const aValue:TpvInt64);
+var NewValue:TpvInt64;
 begin
- if fValue<>aValue then begin
-  fValue:=aValue;
+ NewValue:=Min(Max(aValue,fMinimumValue),fMaximumValue);
+ if fValue<>NewValue then begin
+  fValue:=NewValue;
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;
@@ -11552,19 +11568,116 @@ end;
 
 function TpvGUIScrollBar.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
- result:=inherited KeyEvent(aKeyEvent);
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if Enabled and not result then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_LEFT,KEYCODE_UP:begin
+    case aKeyEvent.KeyEventType of
+     KEYEVENT_TYPED:begin
+      if ((fValue-fSmallStep)>=fMinimumValue) and not (fValue<(fValue-fSmallStep)) then begin
+       SetValue(fValue-fSmallStep);
+      end else begin
+       SetValue(fMinimumValue);
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_RIGHT,KEYCODE_DOWN:begin
+    case aKeyEvent.KeyEventType of
+     KEYEVENT_TYPED:begin
+      if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
+       SetValue(fValue+fSmallStep);
+      end else begin
+       SetValue(fMaximumValue);
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_PAGEDOWN:begin
+    case aKeyEvent.KeyEventType of
+     KEYEVENT_TYPED:begin
+      if ((fValue+fLargeStep)<=fMaximumValue) and not (fValue>(fValue+fLargeStep)) then begin
+       SetValue(fValue+fLargeStep);
+      end else begin
+       SetValue(fMaximumValue);
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_PAGEUP:begin
+    case aKeyEvent.KeyEventType of
+     KEYEVENT_TYPED:begin
+      if ((fValue-fLargeStep)>=fMinimumValue) and not (fValue<(fValue-fLargeStep)) then begin
+       SetValue(fValue-fLargeStep);
+      end else begin
+       SetValue(fMinimumValue);
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_HOME:begin
+    case aKeyEvent.KeyEventType of
+     KEYEVENT_TYPED:begin
+      SetValue(fMinimumValue);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_END:begin
+    case aKeyEvent.KeyEventType of
+     KEYEVENT_TYPED:begin
+      SetValue(fMaximumValue);
+     end;
+    end;
+    result:=true;
+   end;
+  end;
+ end;
 end;
 
 function TpvGUIScrollBar.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 begin
- result:=inherited PointerEvent(aPointerEvent);
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+ if not result then begin
+  result:=inherited PointerEvent(aPointerEvent);
+  if not result then begin
+   case aPointerEvent.PointerEventType of
+    POINTEREVENT_DOWN:begin
+     if not Focused then begin
+      RequestFocus;
+     end;
+     result:=true;
+    end;
+    POINTEREVENT_UP:begin
+     result:=true;
+    end;
+   end;
+  end;
+ end;
 end;
 
 function TpvGUIScrollBar.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+var TemporaryValue,Step:TpvInt64;
+    v:TpvFloat;
 begin
- result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+ result:=inherited Scrolled(aPosition,aRelativeAmount);
  if not result then begin
-  result:=inherited Scrolled(aPosition,aRelativeAmount);
+  TemporaryValue:=Value;
+  v:=aRelativeAmount.x+aRelativeAmount.y;
+  if v<0.0 then begin
+   Step:=floor(v);
+  end else begin
+   Step:=ceil(v);
+  end;
+  if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
+     ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
+   SetValue(TemporaryValue+Step);
+  end;
+  result:=true;
  end;
 end;
 
