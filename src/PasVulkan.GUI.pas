@@ -1705,6 +1705,7 @@ type TpvGUIObject=class;
        fLargeStep:TpvInt64;
        fButtonSize:TpvFloat;
        fSliderButtonSize:TpvFloat;
+       fSliderPushed:boolean;
        fOnChange:TpvGUIOnEvent;
        fFocusedSubWidget:TpvGUIScrollBarSubWidget;
        fPushedSubWidget:TpvGUIScrollBarSubWidget;
@@ -6019,9 +6020,8 @@ begin
  aCanvas.ModelMatrix:=aScrollBar.fModelMatrix;
  aCanvas.ClipRect:=aScrollBar.fClipRect;
 
-
  if aScrollBar.Enabled then begin
-  if aScrollBar.Focused then begin
+  if aScrollBar.Focused xor (aScrollBar.fPushedSubWidget=pvgsbswSliderButton) then begin
    Element:=GUI_ELEMENT_BOX_DARK_FOCUSED;
   end else begin
    Element:=GUI_ELEMENT_BOX_DARK_UNFOCUSED;
@@ -11463,6 +11463,8 @@ begin
 
  fSliderButtonSize:=24;
 
+ fSliderPushed:=false;
+
  fOnChange:=nil;
 
  fFocusedSubWidget:=pvgsbswNone;
@@ -11572,6 +11574,7 @@ end;
 function TpvGUIScrollBar.Leave:boolean;
 begin
  fPushedSubWidget:=pvgsbswNone;
+ fSliderPushed:=false;
  result:=inherited Leave;
 end;
 
@@ -11583,6 +11586,7 @@ end;
 function TpvGUIScrollBar.PointerLeave:boolean;
 begin
  fPushedSubWidget:=pvgsbswNone;
+ fSliderPushed:=false;
  result:=inherited PointerLeave;
 end;
 
@@ -11684,6 +11688,8 @@ begin
        end else if GetSliderButtonRect.Touched(aPointerEvent.Position) then begin
         fFocusedSubWidget:=pvgsbswSliderButton;
         fPushedSubWidget:=pvgsbswSliderButton;
+       end else begin
+        fSliderPushed:=true;
        end;
       end;
       else {pvgsboVertical:}begin
@@ -11696,12 +11702,27 @@ begin
        end else if GetSliderButtonRect.Touched(aPointerEvent.Position) then begin
         fFocusedSubWidget:=pvgsbswSliderButton;
         fPushedSubWidget:=pvgsbswSliderButton;
+       end else begin
+        fSliderPushed:=true;
        end;
       end;
+     end;
+     if fSliderPushed then begin
+      case fOrientation of
+       pvgsboHorizontal:begin
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
+       end;
+       else {pvgsboVertical:}begin
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
+       end;
+      end;
+      fFocusedSubWidget:=pvgsbswSliderButton;
+      fPushedSubWidget:=pvgsbswSliderButton;
      end;
      result:=true;
     end;
     POINTEREVENT_UP:begin
+     fSliderPushed:=false;
      fPushedSubWidget:=pvgsbswNone;
      result:=true;
     end;
