@@ -1806,6 +1806,7 @@ type TpvGUIObject=class;
        function Leave:boolean; override;
        function PointerEnter:boolean; override;
        function PointerLeave:boolean; override;
+       function DragEvent(const aPosition:TpvVector2):boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -11560,6 +11561,7 @@ begin
 
  Include(fWidgetFlags,pvgwfTabStop);
  Include(fWidgetFlags,pvgwfDrawFocus);
+ Include(fWidgetFlags,pvgwfDraggable);
 
  fOrientation:=pvgsboHorizontal;
 
@@ -11704,8 +11706,15 @@ end;
 
 function TpvGUIScrollBar.PointerLeave:boolean;
 begin
- fPushedSubWidget:=pvgsbswNone;
+ if assigned(fInstance) and (fInstance.fDragWidget<>self) then begin
+  fPushedSubWidget:=pvgsbswNone;
+ end;
  result:=inherited PointerLeave;
+end;
+
+function TpvGUIScrollBar.DragEvent(const aPosition:TpvVector2):boolean;
+begin
+ result:=GetSliderButtonRect.Touched(aPosition);
 end;
 
 function TpvGUIScrollBar.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -11713,7 +11722,7 @@ begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
   case aKeyEvent.KeyCode of
-   KEYCODE_LEFT,KEYCODE_UP:begin
+   KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
     case aKeyEvent.KeyEventType of
      KEYEVENT_TYPED:begin
       if ((fValue-fSmallStep)>=fMinimumValue) and not (fValue<(fValue-fSmallStep)) then begin
@@ -11725,7 +11734,7 @@ begin
     end;
     result:=true;
    end;
-   KEYCODE_RIGHT,KEYCODE_DOWN:begin
+   KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
     case aKeyEvent.KeyEventType of
      KEYEVENT_TYPED:begin
       if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
@@ -11924,6 +11933,36 @@ begin
       end;
 {$ifend}
      end;
+     result:=true;
+    end;
+    POINTEREVENT_DRAG:begin
+{$if true}
+     case fOrientation of
+      pvgsboHorizontal:begin
+       SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
+      end;
+      else {pvgsboVertical:}begin
+       SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
+      end;
+     end;
+{$else}
+     case fOrientation of
+      pvgsboHorizontal:begin
+       Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+fSliderButtonSize))));
+      end;
+      else {pvgsboVertical:}begin
+       Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+fSliderButtonSize))));
+      end;
+     end;
+     if ((Step>0) and ((fValue+Step)<=fMaximumValue) and not (fValue>(fValue+Step))) or
+        ((Step<0) and ((fValue+Step)>=fMinimumValue) and not (fValue<(fValue+Step))) then begin
+      SetValue(fValue+Step);
+     end else if Step<0 then begin
+      SetValue(fMinimumValue);
+     end else if Step>0 then begin
+      SetValue(fMaximumValue);
+     end;
+{$ifend}
      result:=true;
     end;
    end;
