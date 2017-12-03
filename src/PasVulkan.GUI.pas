@@ -6071,15 +6071,15 @@ begin
   else {pvgsboVertical:}begin
    aCanvas.DrawGUIElement(Element,
                           true,
-                          TpvVector2.Create(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
-                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y),
-                          TpvVector2.Create(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
-                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y));
-   Sprite:=TpvSprite(fIconChevronDown);
+                          TpvVector2.Create(0.0,0.0),
+                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fButtonSize),
+                          TpvVector2.Create(0.0,0.0),
+                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fButtonSize));
+   Sprite:=TpvSprite(fIconChevronUp);
    aCanvas.DrawSprite(Sprite,
                       TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                      TpvRect.CreateAbsolute(TpvVector2.Create(5.0,(aScrollBar.fSize.y-aScrollBar.fButtonSize)+5.0),
-                                             TpvVector2.Create(aScrollBar.fSize.x-5.0,aScrollBar.fSize.y-5.0)));
+                      TpvRect.CreateAbsolute(TpvVector2.Create(5.0,5.0),
+                                             TpvVector2.Create(aScrollBar.fSize.x-5.0,aScrollBar.fButtonSize-5.0)));
   end;
  end;
 
@@ -6113,15 +6113,15 @@ begin
   else {pvgsboVertical:}begin
    aCanvas.DrawGUIElement(Element,
                           true,
-                          TpvVector2.Create(0.0,0.0),
-                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fButtonSize),
-                          TpvVector2.Create(0.0,0.0),
-                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fButtonSize));
-   Sprite:=TpvSprite(fIconChevronUp);
+                          TpvVector2.Create(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
+                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y),
+                          TpvVector2.Create(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
+                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y));
+   Sprite:=TpvSprite(fIconChevronDown);
    aCanvas.DrawSprite(Sprite,
                       TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                      TpvRect.CreateAbsolute(TpvVector2.Create(5.0,5.0),
-                                             TpvVector2.Create(aScrollBar.fSize.x-5.0,aScrollBar.fButtonSize-5.0)));
+                      TpvRect.CreateAbsolute(TpvVector2.Create(5.0,(aScrollBar.fSize.y-aScrollBar.fButtonSize)+5.0),
+                                             TpvVector2.Create(aScrollBar.fSize.x-5.0,aScrollBar.fSize.y-5.0)));
   end;
  end;
 
@@ -11651,21 +11651,31 @@ begin
       RequestFocus;
      end;
      fFocusedSubWidget:=pvgsbswNone;
+     fPushedSubWidget:=pvgsbswNone;
      case fOrientation of
       pvgsboHorizontal:begin
        if aPointerEvent.Position.x<fButtonSize then begin
         fFocusedSubWidget:=pvgsbswDecButton;
+        fPushedSubWidget:=pvgsbswDecButton;
        end else if aPointerEvent.Position.x>=(Width-fButtonSize) then begin
         fFocusedSubWidget:=pvgsbswIncButton;
+        fPushedSubWidget:=pvgsbswIncButton;
        end;
       end;
       else {pvgsboVertical:}begin
+       if aPointerEvent.Position.y<fButtonSize then begin
+        fFocusedSubWidget:=pvgsbswDecButton;
+        fPushedSubWidget:=pvgsbswDecButton;
+       end else if aPointerEvent.Position.y>=(Height-fButtonSize) then begin
+        fFocusedSubWidget:=pvgsbswIncButton;
+        fPushedSubWidget:=pvgsbswIncButton;
+       end;
       end;
      end;
-
      result:=true;
     end;
     POINTEREVENT_UP:begin
+     fPushedSubWidget:=pvgsbswNone;
      result:=true;
     end;
    end;
