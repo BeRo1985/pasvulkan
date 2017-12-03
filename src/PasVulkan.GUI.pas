@@ -12009,33 +12009,33 @@ begin
      result:=true;
     end;
     POINTEREVENT_DRAG:begin
-{$if true}
-     case fOrientation of
-      pvgsboHorizontal:begin
-       SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
+     if GetSliderButtonRect.Touched(aPointerEvent.Position) then begin
+      case fOrientation of
+       pvgsboHorizontal:begin
+        Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+fSliderButtonSize))));
+       end;
+       else {pvgsboVertical:}begin
+        Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+fSliderButtonSize))));
+       end;
       end;
-      else {pvgsboVertical:}begin
-       SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
+      if ((Step>0) and ((fValue+Step)<=fMaximumValue) and not (fValue>(fValue+Step))) or
+         ((Step<0) and ((fValue+Step)>=fMinimumValue) and not (fValue<(fValue+Step))) then begin
+       SetValue(fValue+Step);
+      end else if Step<0 then begin
+       SetValue(fMinimumValue);
+      end else if Step>0 then begin
+       SetValue(fMaximumValue);
+      end;
+     end else begin
+      case fOrientation of
+       pvgsboHorizontal:begin
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
+       end;
+       else {pvgsboVertical:}begin
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
+       end;
       end;
      end;
-{$else}
-     case fOrientation of
-      pvgsboHorizontal:begin
-       Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+fSliderButtonSize))));
-      end;
-      else {pvgsboVertical:}begin
-       Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+fSliderButtonSize))));
-      end;
-     end;
-     if ((Step>0) and ((fValue+Step)<=fMaximumValue) and not (fValue>(fValue+Step))) or
-        ((Step<0) and ((fValue+Step)>=fMinimumValue) and not (fValue<(fValue+Step))) then begin
-      SetValue(fValue+Step);
-     end else if Step<0 then begin
-      SetValue(fMinimumValue);
-     end else if Step>0 then begin
-      SetValue(fMaximumValue);
-     end;
-{$ifend}
      result:=true;
     end;
    end;
