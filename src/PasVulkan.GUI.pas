@@ -11650,6 +11650,19 @@ begin
      if not Focused then begin
       RequestFocus;
      end;
+     fFocusedSubWidget:=pvgsbswNone;
+     case fOrientation of
+      pvgsboHorizontal:begin
+       if aPointerEvent.Position.x<fButtonSize then begin
+        fFocusedSubWidget:=pvgsbswDecButton;
+       end else if aPointerEvent.Position.x>=(Width-fButtonSize) then begin
+        fFocusedSubWidget:=pvgsbswIncButton;
+       end;
+      end;
+      else {pvgsboVertical:}begin
+      end;
+     end;
+
      result:=true;
     end;
     POINTEREVENT_UP:begin
@@ -11667,7 +11680,7 @@ begin
  result:=inherited Scrolled(aPosition,aRelativeAmount);
  if not result then begin
   TemporaryValue:=Value;
-  v:=aRelativeAmount.x+aRelativeAmount.y;
+  v:=aRelativeAmount.x-aRelativeAmount.y;
   if v<0.0 then begin
    Step:=floor(v);
   end else begin
