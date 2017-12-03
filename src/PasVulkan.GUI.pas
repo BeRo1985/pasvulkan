@@ -650,6 +650,10 @@ type TpvGUIObject=class;
        fIconChevronRight:TObject;
        fIconChevronUp:TObject;
        fIconChevronDown:TObject;
+       fIconDirectionArrowLeft:TObject;
+       fIconDirectionArrowRight:TObject;
+       fIconDirectionArrowUp:TObject;
+       fIconDirectionArrowDown:TObject;
        fIconCheck:TObject;
        fIconRoundCheck:TObject;
        fIconThumbUp:TObject;
@@ -751,6 +755,10 @@ type TpvGUIObject=class;
        property IconChevronRight:TObject read fIconChevronRight write fIconChevronRight;
        property IconChevronUp:TObject read fIconChevronUp write fIconChevronUp;
        property IconChevronDown:TObject read fIconChevronDown write fIconChevronDown;
+       property IconDirectionArrowLeft:TObject read fIconDirectionArrowLeft write fIconDirectionArrowLeft;
+       property IconDirectionArrowRight:TObject read fIconDirectionArrowRight write fIconDirectionArrowRight;
+       property IconDirectionArrowUp:TObject read fIconDirectionArrowUp write fIconDirectionArrowUp;
+       property IconDirectionArrowDown:TObject read fIconDirectionArrowDown write fIconDirectionArrowDown;
        property IconCheck:TObject read fIconCheck write fIconCheck;
        property IconRoundCheck:TObject read fIconRoundCheck write fIconRoundCheck;
        property IconThumbUp:TObject read fIconThumbUp write fIconThumbUp;
@@ -3740,6 +3748,10 @@ begin
  fIconChevronRight:=nil;
  fIconChevronUp:=nil;
  fIconChevronDown:=nil;
+ fIconDirectionArrowLeft:=nil;
+ fIconDirectionArrowRight:=nil;
+ fIconDirectionArrowUp:=nil;
+ fIconDirectionArrowDown:=nil;
  fIconCheck:=nil;
  fIconRoundCheck:=nil;
  fIconThumbUp:=nil;
@@ -4236,6 +4248,66 @@ begin
                                                                                  true,
                                                                                  2,
                                                                                  1);
+
+ fIconCheck:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconCheck',
+                                                                           'M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z',
+                                                                           48,
+                                                                           48,
+                                                                           48.0/24.0,
+                                                                           0.0,
+                                                                           0.0,
+                                                                           pvvpfrNonZero,
+                                                                           true,
+                                                                           2,
+                                                                           1);
+
+ fIconDirectionArrowLeft:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDirectionArrowLeft',
+                                                                                        'M14,7L9,12L14,17V7Z',
+                                                                                        48,
+                                                                                        48,
+                                                                                        48.0/24.0,
+                                                                                        0.0,
+                                                                                        0.0,
+                                                                                        pvvpfrNonZero,
+                                                                                        true,
+                                                                                        2,
+                                                                                        1);
+
+ fIconDirectionArrowRight:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDirectionArrowRight',
+                                                                                         'M10,17L15,12L10,7V17Z',
+                                                                                         48,
+                                                                                         48,
+                                                                                         48.0/24.0,
+                                                                                         0.0,
+                                                                                         0.0,
+                                                                                         pvvpfrNonZero,
+                                                                                         true,
+                                                                                         2,
+                                                                                         1);
+
+ fIconDirectionArrowUp:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDirectionArrowUp',
+                                                                                      'M7,15L12,10L17,15H7Z',
+                                                                                      48,
+                                                                                      48,
+                                                                                      48.0/24.0,
+                                                                                      0.0,
+                                                                                      0.0,
+                                                                                      pvvpfrNonZero,
+                                                                                      true,
+                                                                                      2,
+                                                                                      1);
+
+ fIconDirectionArrowDown:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDirectionArrowDown',
+                                                                                        'M7,10L12,15L17,10H7Z',
+                                                                                        48,
+                                                                                        48,
+                                                                                        48.0/24.0,
+                                                                                        0.0,
+                                                                                        0.0,
+                                                                                        pvvpfrNonZero,
+                                                                                        true,
+                                                                                        2,
+                                                                                        1);
 
  fIconCheck:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconCheck',
                                                                            'M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z',
@@ -6094,6 +6166,7 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawScrollBar(const aCanvas:TpvCanvas;const aScrollBar:TpvGUIScrollBar);
+const IconSpacer=0.0;
 var Element:TpvInt32;
     Offset:TpvVector2;
     Sprite:TpvSprite;
@@ -6148,11 +6221,11 @@ begin
                           TpvVector2.Create(aScrollBar.fButtonSize,aScrollBar.fSize.y),
                           TpvVector2.Create(0.0,0.0),
                           TpvVector2.Create(aScrollBar.fButtonSize,aScrollBar.fSize.y));
-   Sprite:=TpvSprite(fIconChevronLeft);
+   Sprite:=TpvSprite(fIconDirectionArrowLeft);
    aCanvas.DrawSprite(Sprite,
                       TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                      TpvRect.CreateAbsolute(TpvVector2.Create(5.0,5.0),
-                                             TpvVector2.Create(aScrollBar.fButtonSize-5.0,aScrollBar.fSize.y-5.0)));
+                      TpvRect.CreateAbsolute(TpvVector2.Create(IconSpacer,IconSpacer),
+                                             TpvVector2.Create(aScrollBar.fButtonSize-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
   end;
   else {pvgsboVertical:}begin
    aCanvas.DrawGUIElement(Element,
@@ -6161,11 +6234,11 @@ begin
                           TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fButtonSize),
                           TpvVector2.Create(0.0,0.0),
                           TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fButtonSize));
-   Sprite:=TpvSprite(fIconChevronUp);
+   Sprite:=TpvSprite(fIconDirectionArrowUp);
    aCanvas.DrawSprite(Sprite,
                       TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                      TpvRect.CreateAbsolute(TpvVector2.Create(5.0,5.0),
-                                             TpvVector2.Create(aScrollBar.fSize.x-5.0,aScrollBar.fButtonSize-5.0)));
+                      TpvRect.CreateAbsolute(TpvVector2.Create(IconSpacer,IconSpacer),
+                                             TpvVector2.Create(aScrollBar.fSize.x-IconSpacer,aScrollBar.fButtonSize-IconSpacer)));
   end;
  end;
 
@@ -6190,11 +6263,11 @@ begin
                           TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y),
                           TpvVector2.Create(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
                           TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y));
-   Sprite:=TpvSprite(fIconChevronRight);
+   Sprite:=TpvSprite(fIconDirectionArrowRight);
    aCanvas.DrawSprite(Sprite,
                       TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                      TpvRect.CreateAbsolute(TpvVector2.Create((aScrollBar.fSize.x-aScrollBar.fButtonSize)+5.0,5.0),
-                                             TpvVector2.Create(aScrollBar.fSize.x-5.0,aScrollBar.fSize.y-5.0)));
+                      TpvRect.CreateAbsolute(TpvVector2.Create((aScrollBar.fSize.x-aScrollBar.fButtonSize)+IconSpacer,IconSpacer),
+                                             TpvVector2.Create(aScrollBar.fSize.x-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
   end;
   else {pvgsboVertical:}begin
    aCanvas.DrawGUIElement(Element,
@@ -6203,11 +6276,11 @@ begin
                           TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y),
                           TpvVector2.Create(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
                           TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y));
-   Sprite:=TpvSprite(fIconChevronDown);
+   Sprite:=TpvSprite(fIconDirectionArrowDown);
    aCanvas.DrawSprite(Sprite,
                       TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                      TpvRect.CreateAbsolute(TpvVector2.Create(5.0,(aScrollBar.fSize.y-aScrollBar.fButtonSize)+5.0),
-                                             TpvVector2.Create(aScrollBar.fSize.x-5.0,aScrollBar.fSize.y-5.0)));
+                      TpvRect.CreateAbsolute(TpvVector2.Create(IconSpacer,(aScrollBar.fSize.y-aScrollBar.fButtonSize)+IconSpacer),
+                                             TpvVector2.Create(aScrollBar.fSize.x-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
   end;
  end;
 
