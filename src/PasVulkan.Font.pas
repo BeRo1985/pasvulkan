@@ -165,9 +165,11 @@ type EpvFont=class(Exception);
 
      TpvFontInt64HashMap=class(TpvHashMap<TpvInt64,TpvInt64>);
 
-     TpvFontCodePointToGlyphSubMap=array of TpvInt32;
+     PpvFontCodePointToGlyphSubMap=^TpvFontCodePointToGlyphSubMap;
+     TpvFontCodePointToGlyphSubMap=array[0..1023] of TpvInt32; // 4kb
 
-     TpvFontCodePointToGlyphMap=array of TpvFontCodePointToGlyphSubMap;
+     PpvFontCodePointToGlyphMap=^TpvFontCodePointToGlyphMap;
+     TpvFontCodePointToGlyphMap=array[0..16383] of PpvFontCodePointToGlyphSubMap; // 64kb on 32-bit targets and 128kb on 64-bit targets
 
      TpvFont=class
       private
@@ -310,7 +312,7 @@ begin
 
  fKerningPairVectors:=nil;
 
- fCodePointToGlyphMap:=nil;
+ FillChar(fCodePointToGlyphMap,SizeOf(TpvFontCodePointToGlyphMap),#0);
 
  fCodePointToGlyphHashMap:=TpvFontInt64HashMap.Create(-1);
 
@@ -326,7 +328,8 @@ const GlyphMetaDataScaleFactor=1.0;
 var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     CodePointGlyphPairIndex,CountCodePointGlyphPairs,
     TrueTypeFontKerningIndex,TrueTypeFontKerningPairIndex,
-    KerningPairIndex,CountKerningPairs:TpvInt32;
+    KerningPairIndex,CountKerningPairs,
+    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
     x0,y0,x1,y1:TpvDouble;
     KerningPairDoubleIndex:TpvUInt64;
     Int64Value:TpvInt64;
@@ -417,14 +420,15 @@ begin
            TTFGlyphToGlyphHashMap.Add(TTFGlyphIndex,GlyphIndex);
            GlyphToTTFGlyphHashMap.Add(GlyphIndex,TTFGlyphIndex);
           end;
-          if length(fCodePointToGlyphMap)<=(CodePointIndex shr 8) then begin
-           SetLength(fCodePointToGlyphMap,((CodePointIndex shr 8)+1)*2);
+          CodePointMapMainIndex:=CodePointIndex shr 12;
+          CodePointMapSubIndex:=CodePointIndex and $3ff;
+          if CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap) then begin
+           if not assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
+            GetMem(fCodePointToGlyphMap[CodePointMapMainIndex],SizeOf(TpvFontCodePointToGlyphSubMap));
+            FillChar(fCodePointToGlyphMap[CodePointMapMainIndex]^,SizeOf(TpvFontCodePointToGlyphSubMap),$ff);
+           end;
+           fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex]:=GlyphIndex;
           end;
-          if length(fCodePointToGlyphMap[CodePointIndex shr 8])=0 then begin
-           SetLength(fCodePointToGlyphMap[CodePointIndex shr 8],256);
-           FillChar(fCodePointToGlyphMap[CodePointIndex shr 8][0],256*SizeOf(TpvInt32),$ff);
-          end;
-          fCodePointToGlyphMap[CodePointIndex shr 8][CodePointIndex and $ff]:=GlyphIndex;
           fCodePointToGlyphHashMap.Add(CodePointIndex,GlyphIndex);
           CodePointGlyphPairIndex:=CountCodePointGlyphPairs;
           inc(CountCodePointGlyphPairs);
@@ -683,6 +687,7 @@ begin
 end;
 
 destructor TpvFont.Destroy;
+var Index:TpvInt32;
 begin
 
  fCodePointBitmap:=nil;
@@ -695,7 +700,12 @@ begin
 
  fKerningPairVectors:=nil;
 
- fCodePointToGlyphMap:=nil;
+ for Index:=Low(TpvFontCodePointToGlyphMap) to High(TpvFontCodePointToGlyphMap) do begin
+  if assigned(fCodePointToGlyphMap[Index]) then begin
+   FreeMem(fCodePointToGlyphMap[Index]);
+   fCodePointToGlyphMap[Index]:=nil;
+  end;
+ end;
 
  fCodePointToGlyphHashMap.Free;
 
@@ -708,7 +718,8 @@ end;
 
 procedure TpvFont.LoadFromStream(const aStream:TStream);
 var CodePointIndex,BitmapCodePointIndex:TpvUInt32;
-    GlyphIndex,CodePointGlyphPairIndex,CountCodePointGlyphPairs,KerningPairIndex:TpvSizeInt;
+    GlyphIndex,CodePointGlyphPairIndex,CountCodePointGlyphPairs,KerningPairIndex,
+    CodePointMapMainIndex,CodePointMapSubIndex:TpvSizeInt;
     Glyph:PpvFontGlyph;
     CodePointGlyphPair:PpvFontCodePointGlyphPair;
     KerningPair:PpvFontKerningPair;
@@ -856,14 +867,15 @@ begin
    if (GlyphIndex<0) or (GlyphIndex>=length(fGlyphs)) then begin
     raise EpvFont.Create('Glyph index out of range');
    end;
-   if length(fCodePointToGlyphMap)<=(CodePointIndex shr 8) then begin
-    SetLength(fCodePointToGlyphMap,((CodePointIndex shr 8)+1)*2);
+   CodePointMapMainIndex:=CodePointIndex shr 12;
+   CodePointMapSubIndex:=CodePointIndex and $3ff;
+   if CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap) then begin
+    if not assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
+     GetMem(fCodePointToGlyphMap[CodePointMapMainIndex],SizeOf(TpvFontCodePointToGlyphSubMap));
+     FillChar(fCodePointToGlyphMap[CodePointMapMainIndex]^,SizeOf(TpvFontCodePointToGlyphSubMap),$ff);
+    end;
+    fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex]:=GlyphIndex;
    end;
-   if length(fCodePointToGlyphMap[CodePointIndex shr 8])=0 then begin
-    SetLength(fCodePointToGlyphMap[CodePointIndex shr 8],256);
-    FillChar(fCodePointToGlyphMap[CodePointIndex shr 8][0],256*SizeOf(TpvInt32),$ff);
-   end;
-   fCodePointToGlyphMap[CodePointIndex shr 8][CodePointIndex and $ff]:=GlyphIndex;
    fCodePointToGlyphHashMap.Add(CodePointIndex,GlyphIndex);
    CodePointGlyphPair:=@fCodePointGlyphPairs[CodePointGlyphPairIndex];
    CodePointGlyphPair^.CodePoint:=CodePointIndex;
@@ -1149,7 +1161,8 @@ begin
 end;
 
 function TpvFont.TextWidth(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
-var TextIndex,CurrentGlyph,LastGlyph:TpvInt32;
+var TextIndex,CurrentGlyph,LastGlyph,
+    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
     CurrentCodePoint:TpvUInt32;
     Width,NewWidth:TpvFloat;
     Int64Value:TpvInt64;
@@ -1161,9 +1174,11 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  if ((CurrentCodePoint shr 8)<length(fCodePointToGlyphMap)) and
-     ((CurrentCodePoint and $ff)<length(fCodePointToGlyphMap[CurrentCodePoint shr 8])) then begin
-   CurrentGlyph:=fCodePointToGlyphMap[CurrentCodePoint shr 8][CurrentCodePoint and $ff];
+  CodePointMapMainIndex:=CurrentCodePoint shr 12;
+  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
+  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
+     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) then begin
+   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
   end else begin
@@ -1201,7 +1216,8 @@ begin
 end;
 
 function TpvFont.TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
-var TextIndex,CurrentGlyph,LastGlyph:TpvInt32;
+var TextIndex,CurrentGlyph,LastGlyph,
+    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
     CurrentCodePoint:TpvUInt32;
     Height,NewHeight:TpvFloat;
     Int64Value:TpvInt64;
@@ -1213,9 +1229,11 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  if ((CurrentCodePoint shr 8)<length(fCodePointToGlyphMap)) and
-     ((CurrentCodePoint and $ff)<length(fCodePointToGlyphMap[CurrentCodePoint shr 8])) then begin
-   CurrentGlyph:=fCodePointToGlyphMap[CurrentCodePoint shr 8][CurrentCodePoint and $ff];
+  CodePointMapMainIndex:=CurrentCodePoint shr 12;
+  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
+  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
+     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) then begin
+   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
   end else begin
@@ -1253,7 +1271,8 @@ begin
 end;
 
 function TpvFont.TextSize(const aText:TpvUTF8String;const aSize:TpvFloat):TpvVector2;
-var TextIndex,CurrentGlyph,LastGlyph:TpvInt32;
+var TextIndex,CurrentGlyph,LastGlyph,
+    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
     CurrentCodePoint:TpvUInt32;
     Size:TpvVector2;
     Int64Value:TpvInt64;
@@ -1265,9 +1284,11 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  if ((CurrentCodePoint shr 8)<length(fCodePointToGlyphMap)) and
-     ((CurrentCodePoint and $ff)<length(fCodePointToGlyphMap[CurrentCodePoint shr 8])) then begin
-   CurrentGlyph:=fCodePointToGlyphMap[CurrentCodePoint shr 8][CurrentCodePoint and $ff];
+  CodePointMapMainIndex:=CurrentCodePoint shr 12;
+  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
+  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
+     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) then begin
+   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
   end else begin
@@ -1310,7 +1331,8 @@ begin
 end;
 
 procedure TpvFont.GetTextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aRects:TpvRectArray;out aCountRects:TpvInt32);
-var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
+var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph,
+    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
     ScaleFactor,RescaleFactor:TpvFloat;
     Int64Value:TpvInt64;
     Glyph:PpvFontGlyph;
@@ -1324,9 +1346,11 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  if ((CurrentCodePoint shr 8)<length(fCodePointToGlyphMap)) and
-     ((CurrentCodePoint and $ff)<length(fCodePointToGlyphMap[CurrentCodePoint shr 8])) then begin
-   CurrentGlyph:=fCodePointToGlyphMap[CurrentCodePoint shr 8][CurrentCodePoint and $ff];
+  CodePointMapMainIndex:=CurrentCodePoint shr 12;
+  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
+  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
+     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) then begin
+   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
   end else begin
@@ -1359,7 +1383,8 @@ begin
 end;
 
 procedure TpvFont.Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat);
-var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph:TpvInt32;
+var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph,
+    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
     ScaleFactor,RescaleFactor:TpvFloat;
     Int64Value:TpvInt64;
     Glyph:PpvFontGlyph;
@@ -1372,9 +1397,11 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  if ((CurrentCodePoint shr 8)<length(fCodePointToGlyphMap)) and
-     ((CurrentCodePoint and $ff)<length(fCodePointToGlyphMap[CurrentCodePoint shr 8])) then begin
-   CurrentGlyph:=fCodePointToGlyphMap[CurrentCodePoint shr 8][CurrentCodePoint and $ff];
+  CodePointMapMainIndex:=CurrentCodePoint shr 12;
+  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
+  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
+     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) then begin
+   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
   end else begin
