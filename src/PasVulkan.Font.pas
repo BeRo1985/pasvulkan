@@ -165,6 +165,10 @@ type EpvFont=class(Exception);
 
      TpvFontInt64HashMap=class(TpvHashMap<TpvInt64,TpvInt64>);
 
+     TpvFontCodePointToGlyphSubMap=array of TpvInt32;
+
+     TpvFontCodePointToGlyphMap=array of TpvFontCodePointToGlyphSubMap;
+
      TpvFont=class
       private
        const FileFormatGUID:TGUID='{0DB9E897-9E36-493C-9747-C8A84B150CDD}';
@@ -188,6 +192,7 @@ type EpvFont=class(Exception);
        fCodePointGlyphPairs:TpvFontCodePointGlyphPairs;
        fKerningPairs:TpvFontKerningPairs;
        fKerningPairVectors:TpvFontKerningPairVectors;
+       fCodePointToGlyphMap:TpvFontCodePointToGlyphMap;
        fCodePointToGlyphHashMap:TpvFontInt64HashMap;
        fKerningPairHashMap:TpvFontInt64HashMap;
        fSignedDistanceFieldJobs:TpvFontSignedDistanceFieldJobs;
@@ -305,6 +310,8 @@ begin
 
  fKerningPairVectors:=nil;
 
+ fCodePointToGlyphMap:=nil;
+
  fCodePointToGlyphHashMap:=TpvFontInt64HashMap.Create(-1);
 
  fKerningPairHashMap:=TpvFontInt64HashMap.Create(-1);
@@ -410,6 +417,14 @@ begin
            TTFGlyphToGlyphHashMap.Add(TTFGlyphIndex,GlyphIndex);
            GlyphToTTFGlyphHashMap.Add(GlyphIndex,TTFGlyphIndex);
           end;
+          if length(fCodePointToGlyphMap)<=(CodePointIndex shr 8) then begin
+           SetLength(fCodePointToGlyphMap,((CodePointIndex shr 8)+1)*2);
+          end;
+          if length(fCodePointToGlyphMap[CodePointIndex shr 8])=0 then begin
+           SetLength(fCodePointToGlyphMap[CodePointIndex shr 8],256);
+           FillChar(fCodePointToGlyphMap[CodePointIndex shr 8][0],256*SizeOf(TpvInt32),$ff);
+          end;
+          fCodePointToGlyphMap[CodePointIndex shr 8][CodePointIndex and $ff]:=GlyphIndex;
           fCodePointToGlyphHashMap.Add(CodePointIndex,GlyphIndex);
           CodePointGlyphPairIndex:=CountCodePointGlyphPairs;
           inc(CountCodePointGlyphPairs);
@@ -680,6 +695,8 @@ begin
 
  fKerningPairVectors:=nil;
 
+ fCodePointToGlyphMap:=nil;
+
  fCodePointToGlyphHashMap.Free;
 
  fKerningPairHashMap.Free;
@@ -839,6 +856,14 @@ begin
    if (GlyphIndex<0) or (GlyphIndex>=length(fGlyphs)) then begin
     raise EpvFont.Create('Glyph index out of range');
    end;
+   if length(fCodePointToGlyphMap)<=(CodePointIndex shr 8) then begin
+    SetLength(fCodePointToGlyphMap,((CodePointIndex shr 8)+1)*2);
+   end;
+   if length(fCodePointToGlyphMap[CodePointIndex shr 8])=0 then begin
+    SetLength(fCodePointToGlyphMap[CodePointIndex shr 8],256);
+    FillChar(fCodePointToGlyphMap[CodePointIndex shr 8][0],256*SizeOf(TpvInt32),$ff);
+   end;
+   fCodePointToGlyphMap[CodePointIndex shr 8][CodePointIndex and $ff]:=GlyphIndex;
    fCodePointToGlyphHashMap.Add(CodePointIndex,GlyphIndex);
    CodePointGlyphPair:=@fCodePointGlyphPairs[CodePointGlyphPairIndex];
    CodePointGlyphPair^.CodePoint:=CodePointIndex;
@@ -1136,10 +1161,18 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
+  if ((CurrentCodePoint shr 8)<length(fCodePointToGlyphMap)) and
+     ((CurrentCodePoint and $ff)<length(fCodePointToGlyphMap[CurrentCodePoint shr 8])) then begin
+   CurrentGlyph:=fCodePointToGlyphMap[CurrentCodePoint shr 8][CurrentCodePoint and $ff];
+  end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
+  end else begin
+   CurrentGlyph:=-1;
+  end;
+  if CurrentGlyph>=0 then begin
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+       (length(fKerningPairs)>0) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
      result:=result+fKerningPairs[Int64Value].Horizontal;
     end;
@@ -1180,10 +1213,18 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
+  if ((CurrentCodePoint shr 8)<length(fCodePointToGlyphMap)) and
+     ((CurrentCodePoint and $ff)<length(fCodePointToGlyphMap[CurrentCodePoint shr 8])) then begin
+   CurrentGlyph:=fCodePointToGlyphMap[CurrentCodePoint shr 8][CurrentCodePoint and $ff];
+  end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
+  end else begin
+   CurrentGlyph:=-1;
+  end;
+  if CurrentGlyph>=0 then begin
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+       (length(fKerningPairs)>0) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
      result:=result+fKerningPairs[Int64Value].Vertical;
     end;
@@ -1224,10 +1265,18 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
+  if ((CurrentCodePoint shr 8)<length(fCodePointToGlyphMap)) and
+     ((CurrentCodePoint and $ff)<length(fCodePointToGlyphMap[CurrentCodePoint shr 8])) then begin
+   CurrentGlyph:=fCodePointToGlyphMap[CurrentCodePoint shr 8][CurrentCodePoint and $ff];
+  end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
+  end else begin
+   CurrentGlyph:=-1;
+  end;
+  if CurrentGlyph>=0 then begin
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+       (length(fKerningPairs)>0) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
      result:=result+fKerningPairVectors[Int64Value];
     end;
@@ -1275,10 +1324,18 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
+  if ((CurrentCodePoint shr 8)<length(fCodePointToGlyphMap)) and
+     ((CurrentCodePoint and $ff)<length(fCodePointToGlyphMap[CurrentCodePoint shr 8])) then begin
+   CurrentGlyph:=fCodePointToGlyphMap[CurrentCodePoint shr 8][CurrentCodePoint and $ff];
+  end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
+  end else begin
+   CurrentGlyph:=-1;
+  end;
+  if CurrentGlyph>=0 then begin
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+       (length(fKerningPairs)>0) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
      Position:=Position+fKerningPairVectors[Int64Value];
     end;
@@ -1315,10 +1372,18 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
+  if ((CurrentCodePoint shr 8)<length(fCodePointToGlyphMap)) and
+     ((CurrentCodePoint and $ff)<length(fCodePointToGlyphMap[CurrentCodePoint shr 8])) then begin
+   CurrentGlyph:=fCodePointToGlyphMap[CurrentCodePoint shr 8][CurrentCodePoint and $ff];
+  end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
+  end else begin
+   CurrentGlyph:=-1;
+  end;
+  if CurrentGlyph>=0 then begin
    if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+       (length(fKerningPairs)>0) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
      Position:=Position+fKerningPairVectors[Int64Value];
     end;
