@@ -1796,7 +1796,7 @@ type TpvGUIObject=class;
        pvgsbswNone,
        pvgsbswDecButton,
        pvgsbswIncButton,
-       pvgsbswSliderButton
+       pvgsbswThumbButton
       );
 
      TpvGUIScrollBar=class(TpvGUIWidget)
@@ -1808,23 +1808,23 @@ type TpvGUIObject=class;
        fSmallStep:TpvInt64;
        fLargeStep:TpvInt64;
        fButtonSize:TpvFloat;
-       fSliderButtonSize:TpvFloat;
+       fThumbButtonSize:TpvFloat;
        fSliderPushed:boolean;
        fOnChange:TpvGUIOnEvent;
        fFocusedSubWidget:TpvGUIScrollBarSubWidget;
        fPushedSubWidget:TpvGUIScrollBarSubWidget;
        fStepSize:TpvInt64;
        fTimeAccumulator:TpvDouble;
-       fCachedSliderButtonSize:TpvFloat;
+       fCachedThumbButtonSize:TpvFloat;
        procedure SetOrientation(const aOrientation:TpvGUIScrollBarOrientation);
        procedure SetMinimumValue(const aMinimumValue:TpvInt64);
        procedure SetMaximumValue(const aMaximumValue:TpvInt64);
        procedure SetValue(const aValue:TpvInt64);
        procedure SetButtonSize(const aButtonSize:TpvFloat);
-       function GetSliderButtonSize:TpvFloat;
-       procedure SetSliderButtonSize(const aSliderButtonSize:TpvFloat);
+       function GetThumbButtonSize:TpvFloat;
+       procedure SetThumbButtonSize(const aThumbButtonSize:TpvFloat);
        function GetPreferredSize:TpvVector2; override;
-       function GetSliderButtonRect:TpvRect;
+       function GetThumbButtonRect:TpvRect;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -1847,7 +1847,7 @@ type TpvGUIObject=class;
        property SmallStep:TpvInt64 read fSmallStep write fSmallStep;
        property LargeStep:TpvInt64 read fLargeStep write fLargeStep;
        property ButtonSize:TpvFloat read fButtonSize write SetButtonSize;
-       property SliderButtonSize:TpvFloat read GetSliderButtonSize write SetSliderButtonSize;
+       property ThumbButtonSize:TpvFloat read GetThumbButtonSize write SetThumbButtonSize;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property FocusedSubWidget:TpvGUIScrollBarSubWidget read fFocusedSubWidget;
        property PushedSubWidget:TpvGUIScrollBarSubWidget read fPushedSubWidget;
@@ -1864,7 +1864,7 @@ type TpvGUIObject=class;
      TpvGUISliderSubWidget=
       (
        pvgsswNone,
-       pvgsswSliderButton
+       pvgsswThumbButton
       );
 
      TpvGUISlider=class(TpvGUIWidget)
@@ -1876,7 +1876,7 @@ type TpvGUIObject=class;
        fSmallStep:TpvInt64;
        fLargeStep:TpvInt64;
        fButtonSize:TpvFloat;
-       fSliderButtonSize:TpvFloat;
+       fThumbButtonSize:TpvFloat;
        fSliderPushed:boolean;
        fOnChange:TpvGUIOnEvent;
        fFocusedSubWidget:TpvGUISliderSubWidget;
@@ -1888,9 +1888,9 @@ type TpvGUIObject=class;
        procedure SetMaximumValue(const aMaximumValue:TpvInt64);
        procedure SetValue(const aValue:TpvInt64);
        procedure SetButtonSize(const aButtonSize:TpvFloat);
-       procedure SetSliderButtonSize(const aSliderButtonSize:TpvFloat);
+       procedure SetThumbButtonSize(const aThumbButtonSize:TpvFloat);
        function GetPreferredSize:TpvVector2; override;
-       function GetSliderButtonRect:TpvRect;
+       function GetThumbButtonRect:TpvRect;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -1912,7 +1912,7 @@ type TpvGUIObject=class;
        property SmallStep:TpvInt64 read fSmallStep write fSmallStep;
        property LargeStep:TpvInt64 read fLargeStep write fLargeStep;
        property ButtonSize:TpvFloat read fButtonSize write SetButtonSize;
-       property SliderButtonSize:TpvFloat read fSliderButtonSize write SetSliderButtonSize;
+       property ThumbButtonSize:TpvFloat read fThumbButtonSize write SetThumbButtonSize;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property FocusedSubWidget:TpvGUISliderSubWidget read fFocusedSubWidget;
        property PushedSubWidget:TpvGUISliderSubWidget read fPushedSubWidget;
@@ -6374,7 +6374,7 @@ begin
  aCanvas.ClipRect:=aScrollBar.fClipRect;
 
  if aScrollBar.Enabled then begin
-  if aScrollBar.Focused xor (aScrollBar.fPushedSubWidget=pvgsbswSliderButton) then begin
+  if aScrollBar.Focused xor (aScrollBar.fPushedSubWidget=pvgsbswThumbButton) then begin
    Element:=GUI_ELEMENT_BOX_DARK_FOCUSED;
   end else begin
    Element:=GUI_ELEMENT_BOX_DARK_UNFOCUSED;
@@ -6396,6 +6396,25 @@ begin
                         TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset,
                         Offset,
                         TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset);
+
+ Rect:=aScrollBar.GetThumbButtonRect;
+ if aScrollBar.Enabled then begin
+  if aScrollBar.fPushedSubWidget=pvgsbswThumbButton then begin
+   Element:=GUI_ELEMENT_BUTTON_PUSHED;
+  end else if aScrollBar.Focused and (aScrollBar.fFocusedSubWidget=pvgsbswThumbButton) then begin
+   Element:=GUI_ELEMENT_BUTTON_FOCUSED;
+  end else begin
+   Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
+  end;
+ end else begin
+  Element:=GUI_ELEMENT_BUTTON_DISABLED;
+ end;
+ aCanvas.DrawGUIElement(Element,
+                        true,
+                        Rect.LeftTop,
+                        Rect.RightBottom,
+                        Rect.LeftTop,
+                        Rect.RightBottom);
 
  if aScrollBar.Enabled then begin
   aCanvas.Color:=aScrollBar.FontColor;
@@ -6481,25 +6500,6 @@ begin
   end;
  end;
 
- Rect:=aScrollBar.GetSliderButtonRect;
- if aScrollBar.Enabled then begin
-  if aScrollBar.fPushedSubWidget=pvgsbswSliderButton then begin
-   Element:=GUI_ELEMENT_BUTTON_PUSHED;
-  end else if aScrollBar.Focused and (aScrollBar.fFocusedSubWidget=pvgsbswSliderButton) then begin
-   Element:=GUI_ELEMENT_BUTTON_FOCUSED;
-  end else begin
-   Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
-  end;
- end else begin
-  Element:=GUI_ELEMENT_BUTTON_DISABLED;
- end;
- aCanvas.DrawGUIElement(Element,
-                        true,
-                        Rect.LeftTop,
-                        Rect.RightBottom,
-                        Rect.LeftTop,
-                        Rect.RightBottom);
-
 end;
 
 function TpvGUIDefaultVectorBasedSkin.GetSliderPreferredSize(const aSlider:TpvGUISlider):TpvVector2;
@@ -6534,7 +6534,7 @@ begin
  aCanvas.ClipRect:=aSlider.fClipRect;
 
  if aSlider.Enabled then begin
-  if aSlider.Focused xor (aSlider.fPushedSubWidget=pvgsswSliderButton) then begin
+  if aSlider.Focused xor (aSlider.fPushedSubWidget=pvgsswThumbButton) then begin
    Element:=GUI_ELEMENT_BOX_DARK_FOCUSED;
   end else begin
    Element:=GUI_ELEMENT_BOX_DARK_UNFOCUSED;
@@ -6557,11 +6557,11 @@ begin
                         Offset,
                         TpvVector2.Create(aSlider.fSize.x,aSlider.fSize.y)-Offset);
 
- Rect:=aSlider.GetSliderButtonRect;
+ Rect:=aSlider.GetThumbButtonRect;
  if aSlider.Enabled then begin
-  if aSlider.fPushedSubWidget=pvgsswSliderButton then begin
+  if aSlider.fPushedSubWidget=pvgsswThumbButton then begin
    Element:=GUI_ELEMENT_BUTTON_PUSHED;
-  end else if aSlider.Focused and (aSlider.fFocusedSubWidget=pvgsswSliderButton) then begin
+  end else if aSlider.Focused and (aSlider.fFocusedSubWidget=pvgsswThumbButton) then begin
    Element:=GUI_ELEMENT_BUTTON_FOCUSED;
   end else begin
    Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
@@ -12012,7 +12012,7 @@ begin
 
  fButtonSize:=24;
 
- fSliderButtonSize:=0;
+ fThumbButtonSize:=0;
 
  fSliderPushed:=false;
 
@@ -12026,7 +12026,7 @@ begin
 
  fTimeAccumulator:=MaxDouble;
 
- fCachedSliderButtonSize:=-1.0;
+ fCachedThumbButtonSize:=-1.0;
 
 end;
 
@@ -12041,7 +12041,7 @@ procedure TpvGUIScrollBar.SetOrientation(const aOrientation:TpvGUIScrollBarOrien
 begin
  if fOrientation<>aOrientation then begin
   fOrientation:=aOrientation;
-  fCachedSliderButtonSize:=-1.0;
+  fCachedThumbButtonSize:=-1.0;
  end;
 end;
 
@@ -12049,7 +12049,7 @@ procedure TpvGUIScrollBar.SetMinimumValue(const aMinimumValue:TpvInt64);
 begin
  if fMinimumValue<>aMinimumValue then begin
   fMinimumValue:=aMinimumValue;
-  fCachedSliderButtonSize:=-1.0;
+  fCachedThumbButtonSize:=-1.0;
   SetValue(fValue);
  end;
 end;
@@ -12058,7 +12058,7 @@ procedure TpvGUIScrollBar.SetMaximumValue(const aMaximumValue:TpvInt64);
 begin
  if fMaximumValue<>aMaximumValue then begin
   fMaximumValue:=aMaximumValue;
-  fCachedSliderButtonSize:=-1.0;
+  fCachedThumbButtonSize:=-1.0;
   SetValue(fValue);
  end;
 end;
@@ -12079,74 +12079,75 @@ procedure TpvGUIScrollBar.SetButtonSize(const aButtonSize:TpvFloat);
 begin
  if fButtonSize<>aButtonSize then begin
   fButtonSize:=aButtonSize;
-  fCachedSliderButtonSize:=-1.0;
+  fCachedThumbButtonSize:=-1.0;
  end;
 end;
 
-function TpvGUIScrollBar.GetSliderButtonSize:TpvFloat;
+function TpvGUIScrollBar.GetThumbButtonSize:TpvFloat;
+var RangeSize:TpvDouble;
 begin
- if fSliderButtonSize>0.0 then begin
-  result:=fSliderButtonSize;
+ if fThumbButtonSize>0.0 then begin
+  result:=fThumbButtonSize;
  end else begin
-  if fCachedSliderButtonSize>0.0 then begin
-   result:=fCachedSliderButtonSize;
-  end else begin
+  if fCachedThumbButtonSize<EPSILON then begin
    case fOrientation of
     pvgsboHorizontal:begin
-     result:=Width;
+     RangeSize:=Width;
     end;
     else {pvgsbVertical:}begin
-     result:=Height;
+     RangeSize:=Height;
     end;
    end;
-   result:=Max(Max(24.0,fButtonSize),result-(fButtonSize*2.0));
-   if fMinimumValue<fMaximumValue then begin
-    result:=Min(Max(result/Max(fMaximumValue-fMinimumValue,1),Max(24.0,fButtonSize)),result);
-   end;
-   fCachedSliderButtonSize:=result;
+   fCachedThumbButtonSize:=Max(Max(24,fButtonSize),
+                               Min((RangeSize-(fButtonSize*2.0))*0.5,
+                                   (RangeSize-(fButtonSize*2.0))*
+                                   (Max(1,RangeSize)/Max(1,fMaximumValue-fMinimumValue))
+                                  )
+                               );
   end;
+  result:=fCachedThumbButtonSize;
  end;
 end;
 
-procedure TpvGUIScrollBar.SetSliderButtonSize(const aSliderButtonSize:TpvFloat);
+procedure TpvGUIScrollBar.SetThumbButtonSize(const aThumbButtonSize:TpvFloat);
 begin
- if fSliderButtonSize<>aSliderButtonSize then begin
-  fSliderButtonSize:=aSliderButtonSize;
-  fCachedSliderButtonSize:=-1.0;
+ if fThumbButtonSize<>aThumbButtonSize then begin
+  fThumbButtonSize:=aThumbButtonSize;
+  fCachedThumbButtonSize:=-1.0;
  end;
 end;
 
 function TpvGUIScrollBar.GetPreferredSize:TpvVector2;
 begin
- fCachedSliderButtonSize:=-1.0;
+ fCachedThumbButtonSize:=-1.0;
  result:=Skin.GetScrollBarPreferredSize(self);
 end;
 
-function TpvGUIScrollBar.GetSliderButtonRect:TpvRect;
+function TpvGUIScrollBar.GetThumbButtonRect:TpvRect;
 begin
  case fOrientation of
   pvgsboHorizontal:begin
    if fMinimumValue<fMaximumValue then begin
     result:=TpvRect.CreateRelative(TpvVector2.Create(fButtonSize+
-                                                     ((fSize.x-((fButtonSize*2.0)+SliderButtonSize))*
+                                                     ((fSize.x-((fButtonSize*2.0)+ThumbButtonSize))*
                                                       ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue))),
                                                      0.0),
-                                   TpvVector2.Create(SliderButtonSize,fSize.y));
+                                   TpvVector2.Create(ThumbButtonSize,fSize.y));
    end else begin
     result:=TpvRect.CreateRelative(TpvVector2.Create(fButtonSize,0.0),
-                                   TpvVector2.Create(SliderButtonSize,fSize.y));
+                                   TpvVector2.Create(ThumbButtonSize,fSize.y));
    end;
   end;
   else {pvgsboVertical:}begin
    if fMinimumValue<fMaximumValue then begin
     result:=TpvRect.CreateRelative(TpvVector2.Create(0.0,
                                                      fButtonSize+
-                                                      ((fSize.y-((fButtonSize*2.0)+SliderButtonSize))*
+                                                      ((fSize.y-((fButtonSize*2.0)+ThumbButtonSize))*
                                                        ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue)))),
-                                   TpvVector2.Create(fSize.x,SliderButtonSize));
+                                   TpvVector2.Create(fSize.x,ThumbButtonSize));
    end else begin
     result:=TpvRect.CreateRelative(TpvVector2.Create(0.0,fButtonSize),
-                                   TpvVector2.Create(fSize.x,SliderButtonSize));
+                                   TpvVector2.Create(fSize.x,ThumbButtonSize));
    end;
   end;
  end;
@@ -12182,7 +12183,7 @@ end;
 
 function TpvGUIScrollBar.DragEvent(const aPosition:TpvVector2):boolean;
 begin
- result:=GetSliderButtonRect.Touched(aPosition);
+ result:=GetThumbButtonRect.Touched(aPosition);
 end;
 
 function TpvGUIScrollBar.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -12283,9 +12284,9 @@ begin
        end else if aPointerEvent.Position.x>=(Width-fButtonSize) then begin
         fFocusedSubWidget:=pvgsbswIncButton;
         fPushedSubWidget:=pvgsbswIncButton;
-       end else if GetSliderButtonRect.Touched(aPointerEvent.Position) then begin
-        fFocusedSubWidget:=pvgsbswSliderButton;
-        fPushedSubWidget:=pvgsbswSliderButton;
+       end else if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
+        fFocusedSubWidget:=pvgsbswThumbButton;
+        fPushedSubWidget:=pvgsbswThumbButton;
        end else begin
         fSliderPushed:=true;
        end;
@@ -12297,36 +12298,36 @@ begin
        end else if aPointerEvent.Position.y>=(Height-fButtonSize) then begin
         fFocusedSubWidget:=pvgsbswIncButton;
         fPushedSubWidget:=pvgsbswIncButton;
-       end else if GetSliderButtonRect.Touched(aPointerEvent.Position) then begin
-        fFocusedSubWidget:=pvgsbswSliderButton;
-        fPushedSubWidget:=pvgsbswSliderButton;
+       end else if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
+        fFocusedSubWidget:=pvgsbswThumbButton;
+        fPushedSubWidget:=pvgsbswThumbButton;
        end else begin
         fSliderPushed:=true;
        end;
       end;
      end;
-     if fPushedSubWidget=pvgsbswSliderButton then begin
+     if fPushedSubWidget=pvgsbswThumbButton then begin
 (*    case fOrientation of
        pvgsboHorizontal:begin
-        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(SliderButtonSize*0.5)))*(Max(1,fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(SliderButtonSize*1.0)))))));
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(ThumbButtonSize*0.5)))*(Max(1,fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
        end;
        else {pvgsboVertical:}begin
-        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(SliderButtonSize*0.5)))*(Max(1,fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(SliderButtonSize*1.0)))))));
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(ThumbButtonSize*0.5)))*(Max(1,fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
        end;
       end;*)
      end else if fSliderPushed then begin
-      fFocusedSubWidget:=pvgsbswSliderButton;
-      fPushedSubWidget:=pvgsbswSliderButton;
+      fFocusedSubWidget:=pvgsbswThumbButton;
+      fPushedSubWidget:=pvgsbswThumbButton;
       case fOrientation of
        pvgsboHorizontal:begin
-        if aPointerEvent.Position.x<GetSliderButtonRect.Left then begin
+        if aPointerEvent.Position.x<GetThumbButtonRect.Left then begin
          fStepSize:=-fLargeStep;
         end else begin
          fStepSize:=fLargeStep;
         end;
        end;
        else {pvgsboVertical:}begin
-        if aPointerEvent.Position.y<GetSliderButtonRect.Top then begin
+        if aPointerEvent.Position.y<GetThumbButtonRect.Top then begin
          fStepSize:=-fLargeStep;
         end else begin
          fStepSize:=fLargeStep;
@@ -12379,26 +12380,26 @@ begin
 {$if true}
      case fOrientation of
       pvgsboHorizontal:begin
-       SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(SliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+(SliderButtonSize*1.0)))))));
+       SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(ThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
       end;
       else {pvgsboVertical:}begin
-       SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(SliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+(SliderButtonSize*1.0)))))));
+       SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(ThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
       end;
      end;
 {$else}
      case fOrientation of
       pvgsboHorizontal:begin
-       if (aPointerEvent.Position.x>=GetSliderButtonRect.Left) and
-          (aPointerEvent.Position.x<=GetSliderButtonRect.Right) then begin
-        Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+SliderButtonSize))));
+       if (aPointerEvent.Position.x>=GetThumbButtonRect.Left) and
+          (aPointerEvent.Position.x<=GetThumbButtonRect.Right) then begin
+        Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+ThumbButtonSize))));
        end else begin
         Step:=0;
        end;
       end;
       else {pvgsboVertical:}begin
-       if (aPointerEvent.Position.y>=GetSliderButtonRect.Top) and
-          (aPointerEvent.Position.y<=GetSliderButtonRect.Bottom) then begin
-        Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+SliderButtonSize))));
+       if (aPointerEvent.Position.y>=GetThumbButtonRect.Top) and
+          (aPointerEvent.Position.y<=GetThumbButtonRect.Bottom) then begin
+        Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+ThumbButtonSize))));
        end else begin
         Step:=0;
        end;
@@ -12447,7 +12448,7 @@ end;
 
 procedure TpvGUIScrollBar.PerformLayout;
 begin
- fCachedSliderButtonSize:=-1.0;
+ fCachedThumbButtonSize:=-1.0;
  inherited PerformLayout;
 end;
 
@@ -12499,7 +12500,7 @@ begin
 
  fButtonSize:=24;
 
- fSliderButtonSize:=16;
+ fThumbButtonSize:=16;
 
  fSliderPushed:=false;
 
@@ -12564,10 +12565,10 @@ begin
  end;
 end;
 
-procedure TpvGUISlider.SetSliderButtonSize(const aSliderButtonSize:TpvFloat);
+procedure TpvGUISlider.SetThumbButtonSize(const aThumbButtonSize:TpvFloat);
 begin
- if fSliderButtonSize<>aSliderButtonSize then begin
-  fSliderButtonSize:=aSliderButtonSize;
+ if fThumbButtonSize<>aThumbButtonSize then begin
+  fThumbButtonSize:=aThumbButtonSize;
  end;
 end;
 
@@ -12576,29 +12577,29 @@ begin
  result:=Skin.GetSliderPreferredSize(self);
 end;
 
-function TpvGUISlider.GetSliderButtonRect:TpvRect;
+function TpvGUISlider.GetThumbButtonRect:TpvRect;
 begin
  case fOrientation of
   pvgsoHorizontal:begin
    if fMinimumValue<fMaximumValue then begin
-    result:=TpvRect.CreateRelative(TpvVector2.Create(((fSize.x-fSliderButtonSize)*
+    result:=TpvRect.CreateRelative(TpvVector2.Create(((fSize.x-fThumbButtonSize)*
                                                       ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue))),
                                                      0.0),
-                                   TpvVector2.Create(fSliderButtonSize,fSize.y));
+                                   TpvVector2.Create(fThumbButtonSize,fSize.y));
    end else begin
     result:=TpvRect.CreateRelative(TpvVector2.Create(fButtonSize,0.0),
-                                   TpvVector2.Create(fSliderButtonSize,fSize.y));
+                                   TpvVector2.Create(fThumbButtonSize,fSize.y));
    end;
   end;
   else {pvgsoVertical:}begin
    if fMinimumValue<fMaximumValue then begin
     result:=TpvRect.CreateRelative(TpvVector2.Create(0.0,
-                                                     ((fSize.y-fSliderButtonSize)*
+                                                     ((fSize.y-fThumbButtonSize)*
                                                        ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue)))),
-                                   TpvVector2.Create(fSize.x,fSliderButtonSize));
+                                   TpvVector2.Create(fSize.x,fThumbButtonSize));
    end else begin
     result:=TpvRect.CreateRelative(TpvVector2.Create(0.0,fButtonSize),
-                                   TpvVector2.Create(fSize.x,fSliderButtonSize));
+                                   TpvVector2.Create(fSize.x,fThumbButtonSize));
    end;
   end;
  end;
@@ -12634,7 +12635,7 @@ end;
 
 function TpvGUISlider.DragEvent(const aPosition:TpvVector2):boolean;
 begin
- result:=GetSliderButtonRect.Touched(aPosition);
+ result:=GetThumbButtonRect.Touched(aPosition);
 end;
 
 function TpvGUISlider.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -12729,44 +12730,44 @@ begin
      fTimeAccumulator:=MaxDouble;
      case fOrientation of
       pvgsoHorizontal:begin
-       if GetSliderButtonRect.Touched(aPointerEvent.Position) then begin
-        fFocusedSubWidget:=pvgsswSliderButton;
-        fPushedSubWidget:=pvgsswSliderButton;
+       if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
+        fFocusedSubWidget:=pvgsswThumbButton;
+        fPushedSubWidget:=pvgsswThumbButton;
        end else begin
         fSliderPushed:=true;
        end;
       end;
       else {pvgsoVertical:}begin
-       if GetSliderButtonRect.Touched(aPointerEvent.Position) then begin
-        fFocusedSubWidget:=pvgsswSliderButton;
-        fPushedSubWidget:=pvgsswSliderButton;
+       if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
+        fFocusedSubWidget:=pvgsswThumbButton;
+        fPushedSubWidget:=pvgsswThumbButton;
        end else begin
         fSliderPushed:=true;
        end;
       end;
      end;
-     if fPushedSubWidget=pvgsswSliderButton then begin
+     if fPushedSubWidget=pvgsswThumbButton then begin
 (*    case fOrientation of
        pvgsoHorizontal:begin
-        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(fThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+(fThumbButtonSize*1.0)))))));
        end;
        else {pvgsoVertical:}begin
-        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(fThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+(fThumbButtonSize*1.0)))))));
        end;
       end;*)
      end else if fSliderPushed then begin
-      fFocusedSubWidget:=pvgsswSliderButton;
-      fPushedSubWidget:=pvgsswSliderButton;
+      fFocusedSubWidget:=pvgsswThumbButton;
+      fPushedSubWidget:=pvgsswThumbButton;
       case fOrientation of
        pvgsoHorizontal:begin
-        if aPointerEvent.Position.x<GetSliderButtonRect.Left then begin
+        if aPointerEvent.Position.x<GetThumbButtonRect.Left then begin
          fStepSize:=-fLargeStep;
         end else begin
          fStepSize:=fLargeStep;
         end;
        end;
        else {pvgsoVertical:}begin
-        if aPointerEvent.Position.y<GetSliderButtonRect.Top then begin
+        if aPointerEvent.Position.y<GetThumbButtonRect.Top then begin
          fStepSize:=-fLargeStep;
         end else begin
          fStepSize:=fLargeStep;
@@ -12798,19 +12799,19 @@ begin
 {$if true}
      case fOrientation of
       pvgsoHorizontal:begin
-       SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fSliderButtonSize*0.5))*((fMaximumValue-fMinimumValue)/Max(1,Width-(fSliderButtonSize*1.0))))));
+       SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fThumbButtonSize*0.5))*((fMaximumValue-fMinimumValue)/Max(1,Width-(fThumbButtonSize*1.0))))));
       end;
       else {pvgsoVertical:}begin
-       SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fSliderButtonSize*0.5))*((fMaximumValue-fMinimumValue)/Max(1,Height-(fSliderButtonSize*1.0))))));
+       SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fThumbButtonSize*0.5))*((fMaximumValue-fMinimumValue)/Max(1,Height-(fThumbButtonSize*1.0))))));
       end;
      end;
 {$else}
      case fOrientation of
       pvgsoHorizontal:begin
-       Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/Max(1,Width-SliderButtonSize)));
+       Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/Max(1,Width-ThumbButtonSize)));
       end;
       else {pvgsoVertical:}begin
-       Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/Max(1,Height-SliderButtonSize)));
+       Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/Max(1,Height-ThumbButtonSize)));
       end;
      end;
      if ((Step>0) and ((fValue+Step)<=fMaximumValue) and not (fValue>(fValue+Step))) or
