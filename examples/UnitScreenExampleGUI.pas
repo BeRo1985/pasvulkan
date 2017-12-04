@@ -382,7 +382,7 @@ begin
 
  fGUIYetOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIYetOtherWindow.Left:=750;
- fGUIYetOtherWindow.Top:=400;
+ fGUIYetOtherWindow.Top:=350;
  fGUIYetOtherWindow.Title:='Window with FillLayout and ScrollPanel';
  fGUIYetOtherWindow.Content.Layout:=TpvGUIFillLayout.Create(fGUIOtherWindow.Content,0.0);
  fGUIYetOtherWindow.AddMinimizationButton;
