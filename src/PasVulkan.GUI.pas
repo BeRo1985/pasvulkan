@@ -1950,6 +1950,40 @@ type TpvGUIObject=class;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
 
+     PpvGUIScrollPanelScrollDirection=^TpvGUIScrollPanelScrollDirection;
+     TpvGUIScrollPanelScrollDirection=
+      (
+       pvgspsdfOff,
+       pvgspsdfOn,
+       pvgspsdfAuto
+      );
+
+     TpvGUIScrollPanel=class(TpvGUIWidget)
+      private
+       fHorizontalScrollDirection:TpvGUIScrollPanelScrollDirection;
+       fVerticalScrollDirection:TpvGUIScrollPanelScrollDirection;
+       fHorizontalScrollBar:TpvGUIScrollBar;
+       fVerticalScrollBar:TpvGUIScrollBar;
+       fContent:TpvGUIPanel;
+       procedure SetHorizontalScrollDirection(const aHorizontalScrollDirection:TpvGUIScrollPanelScrollDirection);
+       procedure SetVerticalScrollDirection(const aVerticalScrollDirection:TpvGUIScrollPanelScrollDirection);
+       function GetPreferredSize:TpvVector2; override;
+       procedure HorizontalScrollBarOnChange(const aSender:TpvGUIObject);
+       procedure VerticalScrollBarOnChange(const aSender:TpvGUIObject);
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure PerformLayout; override;
+       procedure Update; override;
+       procedure Draw; override;
+      published
+       property HorizontalScrollDirection:TpvGUIScrollPanelScrollDirection read fHorizontalScrollDirection write SetHorizontalScrollDirection;
+       property VerticalScrollDirection:TpvGUIScrollPanelScrollDirection read fVerticalScrollDirection write SetVerticalScrollDirection;
+       property HorizontalScrollBar:TpvGUIScrollBar read fHorizontalScrollBar;
+       property VerticalScrollBar:TpvGUIScrollBar read fVerticalScrollBar;
+       property Content:TpvGUIPanel read fContent;
+     end;
+
 implementation
 
 uses PasDblStrUtils,
@@ -2346,8 +2380,34 @@ begin
 end;
 
 function TpvGUIFillLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
+var ChildIndex:TpvInt32;
+    Size,ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
 begin
- result:=aWidget.fSize;
+ Size:=TpvVector2.Null;
+ for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
+  Child:=aWidget.fChildren.Items[ChildIndex];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=Child as TpvGUIWidget;
+   if ChildWidget.Visible then begin
+    ChildPreferredSize:=ChildWidget.PreferredSize;
+    ChildFixedSize:=ChildWidget.GetFixedSize;
+    if ChildFixedSize.x>0.0 then begin
+     ChildTargetSize.x:=ChildFixedSize.x;
+    end else begin
+     ChildTargetSize.x:=ChildPreferredSize.x;
+    end;
+    if ChildFixedSize.y>0.0 then begin
+     ChildTargetSize.y:=ChildFixedSize.y;
+    end else begin
+     ChildTargetSize.y:=ChildPreferredSize.y;
+    end;
+    Size:=Maximum(Size,ChildTargetSize);
+   end;
+  end;
+ end;
+ result:=Size+TpvVector2.Create(fMargin*2.0,fMargin*2.0);
 end;
 
 procedure TpvGUIFillLayout.PerformLayout(const aWidget:TpvGUIWidget);
@@ -2388,7 +2448,7 @@ begin
     if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
      ChildWidget.fPosition:=TpvVector2.Create(fMargin,fMargin);
     end;
-    ChildWidget.fSize:=ChildTargetSize-(TpvVector2.Create(fMargin,fMargin)*2.0);
+    ChildWidget.fSize:=ContainerSize-(TpvVector2.Create(fMargin,fMargin)*2.0);
     ChildWidget.PerformLayout;
    end;
   end;
@@ -12039,7 +12099,9 @@ begin
     end;
    end;
    result:=Max(Max(24.0,fButtonSize),result-(fButtonSize*2.0));
-   result:=Min(Max(result/Max(fMaximumValue-fMinimumValue,1),Max(24.0,fButtonSize)),result*0.5);
+   if fMinimumValue<fMaximumValue then begin
+    result:=Min(Max(result/Max(fMaximumValue-fMinimumValue,1),Max(24.0,fButtonSize)),result);
+   end;
    fCachedSliderButtonSize:=result;
   end;
  end;
@@ -12066,7 +12128,7 @@ begin
    if fMinimumValue<fMaximumValue then begin
     result:=TpvRect.CreateRelative(TpvVector2.Create(fButtonSize+
                                                      ((fSize.x-((fButtonSize*2.0)+SliderButtonSize))*
-                                                      ((fValue-fMinimumValue)/(fMaximumValue-fMinimumValue))),
+                                                      ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue))),
                                                      0.0),
                                    TpvVector2.Create(SliderButtonSize,fSize.y));
    end else begin
@@ -12079,7 +12141,7 @@ begin
     result:=TpvRect.CreateRelative(TpvVector2.Create(0.0,
                                                      fButtonSize+
                                                       ((fSize.y-((fButtonSize*2.0)+SliderButtonSize))*
-                                                       ((fValue-fMinimumValue)/(fMaximumValue-fMinimumValue)))),
+                                                       ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue)))),
                                    TpvVector2.Create(fSize.x,SliderButtonSize));
    end else begin
     result:=TpvRect.CreateRelative(TpvVector2.Create(0.0,fButtonSize),
@@ -12245,10 +12307,10 @@ begin
      if fPushedSubWidget=pvgsbswSliderButton then begin
 (*    case fOrientation of
        pvgsboHorizontal:begin
-        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(SliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(SliderButtonSize*1.0)))))));
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(SliderButtonSize*0.5)))*(Max(1,fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(SliderButtonSize*1.0)))))));
        end;
        else {pvgsboVertical:}begin
-        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(SliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(SliderButtonSize*1.0)))))));
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(SliderButtonSize*0.5)))*(Max(1,fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(SliderButtonSize*1.0)))))));
        end;
       end;*)
      end else if fSliderPushed then begin
@@ -12316,10 +12378,10 @@ begin
 {$if true}
      case fOrientation of
       pvgsboHorizontal:begin
-       SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(SliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(SliderButtonSize*1.0)))))));
+       SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(SliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+(SliderButtonSize*1.0)))))));
       end;
       else {pvgsboVertical:}begin
-       SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(SliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(SliderButtonSize*1.0)))))));
+       SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(SliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+(SliderButtonSize*1.0)))))));
       end;
      end;
 {$else}
@@ -12327,7 +12389,7 @@ begin
       pvgsboHorizontal:begin
        if (aPointerEvent.Position.x>=GetSliderButtonRect.Left) and
           (aPointerEvent.Position.x<=GetSliderButtonRect.Right) then begin
-        Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+SliderButtonSize))));
+        Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+SliderButtonSize))));
        end else begin
         Step:=0;
        end;
@@ -12335,7 +12397,7 @@ begin
       else {pvgsboVertical:}begin
        if (aPointerEvent.Position.y>=GetSliderButtonRect.Top) and
           (aPointerEvent.Position.y<=GetSliderButtonRect.Bottom) then begin
-        Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+SliderButtonSize))));
+        Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+SliderButtonSize))));
        end else begin
         Step:=0;
        end;
@@ -12519,7 +12581,7 @@ begin
   pvgsoHorizontal:begin
    if fMinimumValue<fMaximumValue then begin
     result:=TpvRect.CreateRelative(TpvVector2.Create(((fSize.x-fSliderButtonSize)*
-                                                      ((fValue-fMinimumValue)/(fMaximumValue-fMinimumValue))),
+                                                      ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue))),
                                                      0.0),
                                    TpvVector2.Create(fSliderButtonSize,fSize.y));
    end else begin
@@ -12531,7 +12593,7 @@ begin
    if fMinimumValue<fMaximumValue then begin
     result:=TpvRect.CreateRelative(TpvVector2.Create(0.0,
                                                      ((fSize.y-fSliderButtonSize)*
-                                                       ((fValue-fMinimumValue)/(fMaximumValue-fMinimumValue)))),
+                                                       ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue)))),
                                    TpvVector2.Create(fSize.x,fSliderButtonSize));
    end else begin
     result:=TpvRect.CreateRelative(TpvVector2.Create(0.0,fButtonSize),
@@ -12685,10 +12747,10 @@ begin
      if fPushedSubWidget=pvgsswSliderButton then begin
 (*    case fOrientation of
        pvgsoHorizontal:begin
-        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
        end;
        else {pvgsoVertical:}begin
-        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(fSliderButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+(fSliderButtonSize*1.0)))))));
        end;
       end;*)
      end else if fSliderPushed then begin
@@ -12735,19 +12797,19 @@ begin
 {$if true}
      case fOrientation of
       pvgsoHorizontal:begin
-       SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fSliderButtonSize*0.5))*((fMaximumValue-fMinimumValue)/(Width-(fSliderButtonSize*1.0))))));
+       SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fSliderButtonSize*0.5))*((fMaximumValue-fMinimumValue)/Max(1,Width-(fSliderButtonSize*1.0))))));
       end;
       else {pvgsoVertical:}begin
-       SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fSliderButtonSize*0.5))*((fMaximumValue-fMinimumValue)/(Height-(fSliderButtonSize*1.0))))));
+       SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fSliderButtonSize*0.5))*((fMaximumValue-fMinimumValue)/Max(1,Height-(fSliderButtonSize*1.0))))));
       end;
      end;
 {$else}
      case fOrientation of
       pvgsoHorizontal:begin
-       Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/(Width-SliderButtonSize)));
+       Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/Max(1,Width-SliderButtonSize)));
       end;
       else {pvgsoVertical:}begin
-       Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/(Height-SliderButtonSize)));
+       Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/Max(1,Height-SliderButtonSize)));
       end;
      end;
      if ((Step>0) and ((fValue+Step)<=fMaximumValue) and not (fValue>(fValue+Step))) or
@@ -12887,6 +12949,167 @@ begin
 end;
 
 procedure TpvGUIProgressBar.Draw;
+begin
+ inherited Draw;
+end;
+
+constructor TpvGUIScrollPanel.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ fHorizontalScrollDirection:=TpvGUIScrollPanelScrollDirection.pvgspsdfAuto;
+
+ fVerticalScrollDirection:=TpvGUIScrollPanelScrollDirection.pvgspsdfAuto;
+
+ fContent:=TpvGUIPanel.Create(self);
+
+ fContent.Layout:=TpvGUIBoxLayout.Create(fContent,pvglaMiddle,pvgloHorizontal,0.0,4.0);
+
+ fHorizontalScrollBar:=TpvGUIScrollBar.Create(self);
+ fHorizontalScrollBar.Orientation:=pvgsboHorizontal;
+ fHorizontalScrollBar.OnChange:=HorizontalScrollBarOnChange;
+
+ fVerticalScrollBar:=TpvGUIScrollBar.Create(self);
+ fVerticalScrollBar.Orientation:=pvgsboVertical;
+ fVerticalScrollBar.OnChange:=VerticalScrollBarOnChange;
+
+end;
+
+destructor TpvGUIScrollPanel.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvGUIScrollPanel.SetHorizontalScrollDirection(const aHorizontalScrollDirection:TpvGUIScrollPanelScrollDirection);
+begin
+ if fHorizontalScrollDirection<>aHorizontalScrollDirection then begin
+  fHorizontalScrollDirection:=aHorizontalScrollDirection;
+  PerformLayout;
+ end;
+end;
+
+procedure TpvGUIScrollPanel.SetVerticalScrollDirection(const aVerticalScrollDirection:TpvGUIScrollPanelScrollDirection);
+begin
+ if fVerticalScrollDirection<>aVerticalScrollDirection then begin
+  fVerticalScrollDirection:=aVerticalScrollDirection;
+  PerformLayout;
+ end;
+end;
+
+function TpvGUIScrollPanel.GetPreferredSize:TpvVector2;
+var ContentPreferredSize,
+    HorizontalScrollBarPreferredSize,
+    VerticalScrollBarPreferredSize:TpvVector2;
+begin
+
+ ContentPreferredSize:=fContent.GetPreferredSize;
+
+ HorizontalScrollBarPreferredSize:=fHorizontalScrollBar.GetPreferredSize;
+
+ VerticalScrollBarPreferredSize:=fVerticalScrollBar.GetPreferredSize;
+
+ result:=ContentPreferredSize;
+
+ if fHorizontalScrollDirection=pvgspsdfOn then begin
+  //result.x:=Max(result.x,HorizontalScrollBarPreferredSize.x);
+  result.y:=result.y+HorizontalScrollBarPreferredSize.y;
+ end;
+
+ if fVerticalScrollDirection=pvgspsdfOn then begin
+  result.x:=result.x+VerticalScrollBarPreferredSize.x;
+  //result.y:=Max(result.y,VerticalScrollBarPreferredSize.y);
+ end;
+
+end;
+
+procedure TpvGUIScrollPanel.PerformLayout;
+var ContentPreferredSize,
+    HorizontalScrollBarPreferredSize,
+    VerticalScrollBarPreferredSize,
+    AvailiableSize:TpvVector2;
+begin
+
+ AvailiableSize:=fSize;
+
+ ContentPreferredSize:=fContent.GetPreferredSize;
+
+ HorizontalScrollBarPreferredSize:=fHorizontalScrollBar.GetPreferredSize;
+
+ VerticalScrollBarPreferredSize:=fVerticalScrollBar.GetPreferredSize;
+
+ if (fHorizontalScrollDirection=pvgspsdfOn) or
+    ((fHorizontalScrollDirection=pvgspsdfAuto) and (ContentPreferredSize.x>AvailiableSize.x)) then begin
+  fHorizontalScrollBar.Visible:=true;
+ end else begin
+  fHorizontalScrollBar.Visible:=false;
+ end;
+
+ if (fVerticalScrollDirection=pvgspsdfOn) or
+    ((fVerticalScrollDirection=pvgspsdfAuto) and (ContentPreferredSize.y>AvailiableSize.y)) then begin
+  fVerticalScrollBar.Visible:=true;
+ end else begin
+  fVerticalScrollBar.Visible:=false;
+ end;
+
+ if fHorizontalScrollBar.Visible then begin
+  fHorizontalScrollBar.fPosition:=TpvVector2.Create(0.0,AvailiableSize.y-HorizontalScrollBarPreferredSize.y);
+  if fVerticalScrollBar.Visible then begin
+   fHorizontalScrollBar.fSize:=TpvVector2.Create(AvailiableSize.x-VerticalScrollBarPreferredSize.x,HorizontalScrollBarPreferredSize.y);
+  end else begin
+   fHorizontalScrollBar.fSize:=TpvVector2.Create(AvailiableSize.x,HorizontalScrollBarPreferredSize.y);
+  end;
+  fHorizontalScrollBar.PerformLayout;
+ end;
+
+ if fVerticalScrollBar.Visible then begin
+  fVerticalScrollBar.fPosition:=TpvVector2.Create(AvailiableSize.x-VerticalScrollBarPreferredSize.x,0.0);
+  if fHorizontalScrollBar.Visible then begin
+   fVerticalScrollBar.fSize:=TpvVector2.Create(VerticalScrollBarPreferredSize.x,AvailiableSize.y-HorizontalScrollBarPreferredSize.y);
+  end else begin
+   fVerticalScrollBar.fSize:=TpvVector2.Create(VerticalScrollBarPreferredSize.x,AvailiableSize.y);
+  end;
+  fVerticalScrollBar.PerformLayout;
+ end;
+
+ if fHorizontalScrollBar.Visible then begin
+  AvailiableSize.y:=AvailiableSize.y-HorizontalScrollBarPreferredSize.y;
+ end;
+ if fVerticalScrollBar.Visible then begin
+  AvailiableSize.x:=AvailiableSize.x-VerticalScrollBarPreferredSize.x;
+ end;
+
+ fHorizontalScrollBar.MinimumValue:=0;
+ fHorizontalScrollBar.MaximumValue:=Max(0,ceil(ContentPreferredSize.x-AvailiableSize.x));
+
+ fVerticalScrollBar.MinimumValue:=0;
+ fVerticalScrollBar.MaximumValue:=Max(0,ceil(ContentPreferredSize.y-AvailiableSize.y));
+
+ fContent.fPosition:=TpvVector2.Create(-fHorizontalScrollBar.Value,
+                                       -fVerticalScrollBar.Value);
+ fContent.fSize:=ContentPreferredSize;
+ fContent.PerformLayout;
+
+end;
+
+procedure TpvGUIScrollPanel.HorizontalScrollBarOnChange(const aSender:TpvGUIObject);
+begin
+ fContent.fPosition:=TpvVector2.Create(-fHorizontalScrollBar.Value,
+                                       -fVerticalScrollBar.Value);
+end;
+
+procedure TpvGUIScrollPanel.VerticalScrollBarOnChange(const aSender:TpvGUIObject);
+begin
+ fContent.fPosition:=TpvVector2.Create(-fHorizontalScrollBar.Value,
+                                       -fVerticalScrollBar.Value);
+end;
+
+procedure TpvGUIScrollPanel.Update;
+begin
+ inherited Update;
+end;
+
+procedure TpvGUIScrollPanel.Draw;
 begin
  inherited Draw;
 end;

@@ -152,6 +152,7 @@ var Index:TpvInt32;
     FloatEdit:TpvGUIFloatEdit;
     ScrollBar:TpvGUIScrollBar;
     Slider:TpvGUISlider;
+    ScrollPanel:TpvGUIScrollPanel;
 begin
 
  inherited Show;
@@ -378,6 +379,23 @@ begin
 
  fGUIButton:=TpvGUIRadioButton.Create(Panel);
  fGUIButton.Caption:='Radio button (3)';
+
+ fGUIYetOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
+ fGUIYetOtherWindow.Left:=750;
+ fGUIYetOtherWindow.Top:=400;
+ fGUIYetOtherWindow.Title:='Window with FillLayout and ScrollPanel';
+ fGUIYetOtherWindow.Content.Layout:=TpvGUIFillLayout.Create(fGUIOtherWindow.Content,0.0);
+ fGUIYetOtherWindow.AddMinimizationButton;
+ fGUIYetOtherWindow.AddMaximizationButton;
+ fGUIYetOtherWindow.AddCloseButton;
+
+ ScrollPanel:=TpvGUIScrollPanel.Create(fGUIYetOtherWindow.Content);
+ ScrollPanel.Content.Layout:=TpvGUIBoxLayout.Create(ScrollPanel.Content,pvglaLeading,pvgloVertical,8.0,8.0);
+
+ fGUIButton:=TpvGUIToggleButton.Create(ScrollPanel.Content);
+ fGUIButton.Caption:='Toggle button';
+ fGUIButton.FixedWidth:=480;
+ fGUIButton.FixedHeight:=240;
 
  fGUIYetOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIYetOtherWindow.Left:=750;
