@@ -12964,6 +12964,7 @@ begin
  fVerticalScrollDirection:=TpvGUIScrollPanelScrollDirection.pvgspsdfAuto;
 
  fClipContentPanel:=TpvGUIPanel.Create(self);
+ Include(fClipContentPanel.fWidgetFlags,pvgwfScissor);
 
  fContent:=TpvGUIPanel.Create(fClipContentPanel);
 
