@@ -13100,6 +13100,14 @@ begin
 
  end;
 
+ if not fHorizontalScrollBar.Visible then begin
+  fHorizontalScrollBar.Value:=0;
+ end;
+
+ if not fVerticalScrollBar.Visible then begin
+  fVerticalScrollBar.Value:=0;
+ end;
+
  fHorizontalScrollBar.MinimumValue:=0;
  fHorizontalScrollBar.MaximumValue:=Max(0,ceil(ContentPreferredSize.x-AvailiableSize.x));
 
