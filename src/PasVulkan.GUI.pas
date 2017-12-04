@@ -1964,6 +1964,7 @@ type TpvGUIObject=class;
        fVerticalScrollDirection:TpvGUIScrollPanelScrollDirection;
        fHorizontalScrollBar:TpvGUIScrollBar;
        fVerticalScrollBar:TpvGUIScrollBar;
+       fClipContentPanel:TpvGUIPanel;
        fContent:TpvGUIPanel;
        procedure SetHorizontalScrollDirection(const aHorizontalScrollDirection:TpvGUIScrollPanelScrollDirection);
        procedure SetVerticalScrollDirection(const aVerticalScrollDirection:TpvGUIScrollPanelScrollDirection);
@@ -12962,7 +12963,9 @@ begin
 
  fVerticalScrollDirection:=TpvGUIScrollPanelScrollDirection.pvgspsdfAuto;
 
- fContent:=TpvGUIPanel.Create(self);
+ fClipContentPanel:=TpvGUIPanel.Create(self);
+
+ fContent:=TpvGUIPanel.Create(fClipContentPanel);
 
  fContent.Layout:=TpvGUIBoxLayout.Create(fContent,pvglaMiddle,pvgloHorizontal,0.0,4.0);
 
@@ -13024,7 +13027,8 @@ begin
 end;
 
 procedure TpvGUIScrollPanel.PerformLayout;
-var ContentPreferredSize,
+var Index,OldState,NewState:TpvInt32;
+    ContentPreferredSize,
     HorizontalScrollBarPreferredSize,
     VerticalScrollBarPreferredSize,
     AvailiableSize:TpvVector2;
@@ -13038,45 +13042,60 @@ begin
 
  VerticalScrollBarPreferredSize:=fVerticalScrollBar.GetPreferredSize;
 
- if (fHorizontalScrollDirection=pvgspsdfOn) or
-    ((fHorizontalScrollDirection=pvgspsdfAuto) and (ContentPreferredSize.x>AvailiableSize.x)) then begin
-  fHorizontalScrollBar.Visible:=true;
- end else begin
-  fHorizontalScrollBar.Visible:=false;
- end;
+ NewState:=0;
 
- if (fVerticalScrollDirection=pvgspsdfOn) or
-    ((fVerticalScrollDirection=pvgspsdfAuto) and (ContentPreferredSize.y>AvailiableSize.y)) then begin
-  fVerticalScrollBar.Visible:=true;
- end else begin
-  fVerticalScrollBar.Visible:=false;
- end;
+ for Index:=0 to 2 do begin
 
- if fHorizontalScrollBar.Visible then begin
-  fHorizontalScrollBar.fPosition:=TpvVector2.Create(0.0,AvailiableSize.y-HorizontalScrollBarPreferredSize.y);
-  if fVerticalScrollBar.Visible then begin
-   fHorizontalScrollBar.fSize:=TpvVector2.Create(AvailiableSize.x-VerticalScrollBarPreferredSize.x,HorizontalScrollBarPreferredSize.y);
+  OldState:=NewState;
+
+  if (fHorizontalScrollDirection=pvgspsdfOn) or
+     ((fHorizontalScrollDirection=pvgspsdfAuto) and (ContentPreferredSize.x>AvailiableSize.x)) then begin
+   fHorizontalScrollBar.Visible:=true;
+   NewState:=NewState or 1;
   end else begin
-   fHorizontalScrollBar.fSize:=TpvVector2.Create(AvailiableSize.x,HorizontalScrollBarPreferredSize.y);
+   fHorizontalScrollBar.Visible:=false;
   end;
-  fHorizontalScrollBar.PerformLayout;
- end;
 
- if fVerticalScrollBar.Visible then begin
-  fVerticalScrollBar.fPosition:=TpvVector2.Create(AvailiableSize.x-VerticalScrollBarPreferredSize.x,0.0);
+  if (fVerticalScrollDirection=pvgspsdfOn) or
+     ((fVerticalScrollDirection=pvgspsdfAuto) and (ContentPreferredSize.y>AvailiableSize.y)) then begin
+   fVerticalScrollBar.Visible:=true;
+   NewState:=NewState or 2;
+  end else begin
+   fVerticalScrollBar.Visible:=false;
+  end;
+
   if fHorizontalScrollBar.Visible then begin
-   fVerticalScrollBar.fSize:=TpvVector2.Create(VerticalScrollBarPreferredSize.x,AvailiableSize.y-HorizontalScrollBarPreferredSize.y);
-  end else begin
-   fVerticalScrollBar.fSize:=TpvVector2.Create(VerticalScrollBarPreferredSize.x,AvailiableSize.y);
+   fHorizontalScrollBar.fPosition:=TpvVector2.Create(0.0,fSize.y-HorizontalScrollBarPreferredSize.y);
+   if fVerticalScrollBar.Visible then begin
+    fHorizontalScrollBar.fSize:=TpvVector2.Create(fSize.x-VerticalScrollBarPreferredSize.x,HorizontalScrollBarPreferredSize.y);
+   end else begin
+    fHorizontalScrollBar.fSize:=TpvVector2.Create(fSize.x,HorizontalScrollBarPreferredSize.y);
+   end;
+   fHorizontalScrollBar.PerformLayout;
   end;
-  fVerticalScrollBar.PerformLayout;
- end;
 
- if fHorizontalScrollBar.Visible then begin
-  AvailiableSize.y:=AvailiableSize.y-HorizontalScrollBarPreferredSize.y;
- end;
- if fVerticalScrollBar.Visible then begin
-  AvailiableSize.x:=AvailiableSize.x-VerticalScrollBarPreferredSize.x;
+  if fVerticalScrollBar.Visible then begin
+   fVerticalScrollBar.fPosition:=TpvVector2.Create(fSize.x-VerticalScrollBarPreferredSize.x,0.0);
+   if fHorizontalScrollBar.Visible then begin
+    fVerticalScrollBar.fSize:=TpvVector2.Create(VerticalScrollBarPreferredSize.x,fSize.y-HorizontalScrollBarPreferredSize.y);
+   end else begin
+    fVerticalScrollBar.fSize:=TpvVector2.Create(VerticalScrollBarPreferredSize.x,fSize.y);
+   end;
+   fVerticalScrollBar.PerformLayout;
+  end;
+
+  if ((NewState and 1)<>0) and ((OldState and 1)=0) then begin
+   AvailiableSize.y:=AvailiableSize.y-HorizontalScrollBarPreferredSize.y;
+  end;
+
+  if ((NewState and 2)<>0) and ((OldState and 2)=0) then begin
+   AvailiableSize.x:=AvailiableSize.x-VerticalScrollBarPreferredSize.x;
+  end;
+
+  if NewState=OldState then begin
+   break;
+  end;
+
  end;
 
  fHorizontalScrollBar.MinimumValue:=0;
@@ -13084,6 +13103,9 @@ begin
 
  fVerticalScrollBar.MinimumValue:=0;
  fVerticalScrollBar.MaximumValue:=Max(0,ceil(ContentPreferredSize.y-AvailiableSize.y));
+
+ fClipContentPanel.fPosition:=TpvVector2.Null;
+ fClipContentPanel.fSize:=AvailiableSize;
 
  fContent.fPosition:=TpvVector2.Create(-fHorizontalScrollBar.Value,
                                        -fVerticalScrollBar.Value);
