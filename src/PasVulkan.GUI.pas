@@ -1118,6 +1118,8 @@ type TpvGUIObject=class;
       private
       protected
        fTitle:TpvUTF8String;
+       fCachedTitle:TpvUTF8String;
+       fCachedTitleInvalidated:boolean;
        fMouseAction:TpvGUIWindowMouseAction;
        fWindowFlags:TpvGUIWindowFlags;
        fLastWindowState:TpvGUIWindowState;
@@ -1138,6 +1140,7 @@ type TpvGUIObject=class;
        function GetButtonPanel:TpvGUIPanel;
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
+       procedure SetTitle(const aTitle:TpvUTF8STring);
        procedure OnWindowHeaderButtonClick(const aSender:TpvGUIObject); virtual;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -1163,7 +1166,7 @@ type TpvGUIObject=class;
        property SavedPosition:TpvVector2 read fSavedPosition write fSavedPosition;
        property SavedSize:TpvVector2 read fSavedSize write fSavedSize;
       published
-       property Title:TpvUTF8String read fTitle write fTitle;
+       property Title:TpvUTF8String read fTitle write SetTitle;
        property WindowFlags:TpvGUIWindowFlags read fWindowFlags write SetWindowFlags;
        property WindowState:TpvGUIWindowState read fWindowState write SetWindowState;
        property Modal:boolean read GetModal write SetModal;
@@ -4951,18 +4954,20 @@ begin
     Offset.y:=fWindowHeaderHeight*0.5;
     aCanvas.TextVerticalAlignment:=pvctvaMiddle;
     NewModelMatrix:=TpvMatrix4x4.CreateTranslation(Offset.x,Offset.y)*LastModelMatrix;
-    if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
-     Title:=TpvGUITextUtils.TextTruncation(aWindow.fTitle,
-                                           aWindow.fTextTruncation,
-                                           aCanvas.Font,
-                                           aCanvas.FontSize,
-                                           aWindow.fButtonPanel.Left-(fSpacing*2.0));
-    end else begin
-     Title:=TpvGUITextUtils.TextTruncation(aWindow.fTitle,
-                                           aWindow.fTextTruncation,
-                                           aCanvas.Font,
-                                           aCanvas.FontSize,
-                                           aWindow.fSize.x-(fSpacing*2.0));
+    if aWindow.fCachedTitleInvalidated then begin
+     if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
+      aWindow.fCachedTitle:=TpvGUITextUtils.TextTruncation(aWindow.fTitle,
+                                                           aWindow.fTextTruncation,
+                                                           aCanvas.Font,
+                                                           aCanvas.FontSize,
+                                                           aWindow.fButtonPanel.Left-(fSpacing*2.0));
+     end else begin
+      aWindow.fCachedTitle:=TpvGUITextUtils.TextTruncation(aWindow.fTitle,
+                                                           aWindow.fTextTruncation,
+                                                           aCanvas.Font,
+                                                           aCanvas.FontSize,
+                                                           aWindow.fSize.x-(fSpacing*2.0));
+     end;
     end;
     if ((pvgwfFocused in aWindow.fWidgetFlags) and fFocusedWindowHeaderFontShadow) or
        ((not (pvgwfFocused in aWindow.fWidgetFlags)) and fUnfocusedWindowHeaderFontShadow) then begin
@@ -4973,7 +4978,7 @@ begin
       aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fUnfocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
       aCanvas.Color:=fUnfocusedWindowHeaderFontShadowColor;
      end;
-     aCanvas.DrawText(Title);
+     aCanvas.DrawText(aWindow.fCachedTitle);
     end;
     aCanvas.ModelMatrix:=NewModelMatrix;
     if pvgwfFocused in aWindow.fWidgetFlags then begin
@@ -4981,10 +4986,12 @@ begin
     end else begin
      aCanvas.Color:=fUnfocusedWindowHeaderFontColor;
     end;
-    aCanvas.DrawText(Title);
+    aCanvas.DrawText(aWindow.fCachedTitle);
    finally
     aCanvas.ModelMatrix:=LastModelMatrix;
    end;
+
+   aWindow.fCachedTitleInvalidated:=false;
 
   end else begin
 
@@ -8131,6 +8138,10 @@ begin
 
  fTitle:='Window';
 
+ fCachedTitle:='';
+
+ fCachedTitleInvalidated:=true;
+
  fMouseAction:=pvgwmaNone;
 
  fWindowFlags:=TpvGUIWindow.DefaultFlags;
@@ -8179,6 +8190,14 @@ begin
   fInstance.DisposeWindow(self);
  end;
  inherited BeforeDestruction;
+end;
+
+procedure TpvGUIWindow.SetTitle(const aTitle:TpvUTF8String);
+begin
+ if fTitle<>aTitle then begin
+  fTitle:=aTitle;
+  fCachedTitleInvalidated:=true;
+ end;
 end;
 
 procedure TpvGUIWindow.OnWindowHeaderButtonClick(const aSender:TpvGUIObject);
@@ -8495,6 +8514,8 @@ var ChildIndex:TpvInt32;
     ChildWidget:TpvGUIWidget;
     ChildPreferredSize:TpvVector2;
 begin
+
+ fCachedTitleInvalidated:=true;
 
  if assigned(fButtonPanel) then begin
   fButtonPanel.Visible:=false;
