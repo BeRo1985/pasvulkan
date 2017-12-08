@@ -4208,8 +4208,10 @@ begin
  if ((fState.fBlendingMode=pvcbmNone) or (abs(fState.fColor.a)>MinA)) and
     //ClipCheck(aDest.Left,aDest.Top,aDest.Right,aDest.Bottom) and
     (((aSrc.Right>=aSprite.TrimmedX) and (aSrc.Bottom>=aSprite.TrimmedY)) and
-    (((not aSprite.Rotated) and (((aSprite.TrimmedX+aSprite.TrimmedWidth)>=aSrc.Left) and ((aSprite.TrimmedY+aSprite.TrimmedHeight)>=aSrc.Top))) or
-     (aSprite.Rotated and (((aSprite.TrimmedX+aSprite.TrimmedHeight)>=aSrc.Left) and ((aSprite.TrimmedY+aSprite.TrimmedWidth)>=aSrc.Top))))) then begin
+    (((not aSprite.Rotated) and (((aSprite.TrimmedX+aSprite.TrimmedWidth)>=aSrc.Left) and
+      ((aSprite.TrimmedY+aSprite.TrimmedHeight)>=aSrc.Top))) or
+     (aSprite.Rotated and (((aSprite.TrimmedX+aSprite.TrimmedHeight)>=aSrc.Left) and
+      ((aSprite.TrimmedY+aSprite.TrimmedWidth)>=aSrc.Top))))) then begin
   if aSprite.SignedDistanceField then begin
    fInternalRenderingMode:=pvcrmSignedDistanceField;
   end else begin
@@ -4373,7 +4375,7 @@ begin
     TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
     TempSrc.Right:=TempSrc.Left+(tx2-tx1);
     TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
-    if fState.fModelMatrix=TpvMatrix4x4.Identity then begin
+{   if fState.fModelMatrix=TpvMatrix4x4.Identity then begin
      if TempDest.Left<fState.fClipRect.LeftTop.x then begin
       TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fState.fClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
       TempDest.Left:=fState.fClipRect.LeftTop.x;
@@ -4390,7 +4392,7 @@ begin
       TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fState.fClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
       TempDest.Bottom:=fState.fClipRect.RightBottom.y;
      end;
-    end;
+    end;}
     sX0:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
     sY0:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
     sX1:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
