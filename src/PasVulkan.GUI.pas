@@ -1289,10 +1289,17 @@ type TpvGUIObject=class;
      TpvGUILabel=class(TpvGUIWidget)
       private
        fCaption:TpvUTF8String;
+       fCachedCaption:TpvUTF8String;
+       fCachedCaptionInvalidated:boolean;
       protected
+       function GetFont:TpvFont; override;
+       procedure SetFont(const aFont:TpvFont);
        function GetFontSize:TpvFloat; override;
+       procedure SetFontSize(const aFontSize:TpvFloat);
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
+       procedure SetTextTruncation(const aTextTruncation:TpvGUITextTruncation);
+       procedure SetCaption(const aCaption:TpvUTF8String);
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -1304,12 +1311,12 @@ type TpvGUIObject=class;
       public
        property FontColor;
       published
-       property Font;
-       property FontSize;
-       property Caption:TpvUTF8String read fCaption write fCaption;
+       property Font read GetFont write SetFont;
+       property FontSize read GetFontSize write SetFontSize;
+       property Caption:TpvUTF8String read fCaption write SetCaption;
        property TextHorizontalAlignment;
        property TextVerticalAlignment;
-       property TextTruncation;
+       property TextTruncation write SetTextTruncation;
      end;
 
      PpvGUIButtonFlag=^TpvGUIButtonFlag;
@@ -5117,11 +5124,15 @@ begin
  end else begin
   aCanvas.Color:=TpvVector4.Create(aLabel.FontColor.rgb,aLabel.FontColor.a*0.25);
  end;
- aCanvas.DrawText(TpvGUITextUtils.TextTruncation(aLabel.fCaption,
-                                                 aLabel.fTextTruncation,
-                                                 aCanvas.Font,
-                                                 aCanvas.FontSize,
-                                                 aLabel.fSize.x),
+ if aLabel.fCachedCaptionInvalidated then begin
+  aLabel.fCachedCaptionInvalidated:=false;
+  aLabel.fCachedCaption:=TpvGUITextUtils.TextTruncation(aLabel.fCaption,
+                                                        aLabel.fTextTruncation,
+                                                        aCanvas.Font,
+                                                        aCanvas.FontSize,
+                                                        aLabel.fSize.x);
+ end;
+ aCanvas.DrawText(aLabel.fCachedCaption,
                   Offset);
 end;
 
@@ -9246,11 +9257,26 @@ constructor TpvGUILabel.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
  fCaption:='Label';
+ fCachedCaption:='';
+ fCachedCaptionInvalidated:=true;
 end;
 
 destructor TpvGUILabel.Destroy;
 begin
  inherited Destroy;
+end;
+
+function TpvGUILabel.GetFont:TpvFont;
+begin
+ result:=inherited GetFont;
+end;
+
+procedure TpvGUILabel.SetFont(const aFont:TpvFont);
+begin
+ if fFont<>aFont then begin
+  fFont:=aFont;
+  fCachedCaptionInvalidated:=true;
+ end;
 end;
 
 function TpvGUILabel.GetFontSize:TpvFloat;
@@ -9259,6 +9285,14 @@ begin
   result:=Skin.fLabelFontSize;
  end else begin
   result:=fFontSize;
+ end;
+end;
+
+procedure TpvGUILabel.SetFontSize(const aFontSize:TpvFloat);
+begin
+ if fFontSize<>aFontSize then begin
+  fFontSize:=aFontSize;
+  fCachedCaptionInvalidated:=true;
  end;
 end;
 
@@ -9274,6 +9308,22 @@ end;
 function TpvGUILabel.GetPreferredSize:TpvVector2;
 begin
  result:=Skin.GetLabelPreferredSize(self);
+end;
+
+procedure TpvGUILabel.SetTextTruncation(const aTextTruncation:TpvGUITextTruncation);
+begin
+ if fTextTruncation<>aTextTruncation then begin
+  fTextTruncation:=aTextTruncation;
+  fCachedCaptionInvalidated:=true;
+ end;
+end;
+
+procedure TpvGUILabel.SetCaption(const aCaption:TpvUTF8String);
+begin
+ if fCaption<>aCaption then begin
+  fCaption:=aCaption;
+  fCachedCaptionInvalidated:=true;
+ end;
 end;
 
 function TpvGUILabel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
