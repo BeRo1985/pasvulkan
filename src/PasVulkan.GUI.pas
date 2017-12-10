@@ -1348,6 +1348,8 @@ type TpvGUIObject=class;
        fButtonFlags:TpvGUIButtonFlags;
        fButtonGroup:TpvGUIButtonGroup;
        fCaption:TpvUTF8String;
+       fCachedCaption:TpvUTF8String;
+       fCachedCaptionInvalidated:boolean;
        fIconPosition:TpvGUIButtonIconPosition;
        fIcon:TObject;
        fIconHeight:TpvFloat;
@@ -1358,7 +1360,10 @@ type TpvGUIObject=class;
       protected
        function GetDown:boolean; inline;
        procedure SetDown(const aDown:boolean); virtual;
+       procedure SetCaption(const aCaption:TpvUTF8String);
+       procedure SetFont(const aFont:TpvFont);
        function GetFontSize:TpvFloat; override;
+       procedure SetFontSize(const aFontSize:TpvFloat);
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
       public
@@ -1367,17 +1372,18 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure PerformLayout; override;
        procedure Update; override;
        procedure Draw; override;
       public
        property FontColor;
       published
-       property Font;
-       property FontSize;
+       property Font write SetFont;
+       property FontSize write SetFontSize;
        property ButtonFlags:TpvGUIButtonFlags read fButtonFlags write fButtonFlags;
        property ButtonGroup:TpvGUIButtonGroup read fButtonGroup;
        property Down:boolean read GetDown write SetDown;
-       property Caption:TpvUTF8String read fCaption write fCaption;
+       property Caption:TpvUTF8String read fCaption write SetCaption;
        property IconPosition:TpvGUIButtonIconPosition read fIconPosition write fIconPosition;
        property Icon:TObject read fIcon write fIcon;
        property IconHeight:TpvFloat read fIconHeight write fIconHeight;
@@ -5474,13 +5480,16 @@ begin
  end;
  aCanvas.Font:=aButton.Font;
  aCanvas.FontSize:=aButton.FontSize;
- aCanvas.DrawText(TpvGUITextUtils.TextTruncation(aButton.fCaption,
-                                                 aButton.fTextTruncation,
-                                                 aCanvas.Font,
-                                                 aCanvas.FontSize,
-                                                 ButtonRect.Width+(ButtonHorizontalBorderSpacing*2.0)),
+ if aButton.fCachedCaptionInvalidated then begin
+  aButton.fCachedCaptionInvalidated:=false;
+  aButton.fCachedCaption:=TpvGUITextUtils.TextTruncation(aButton.fCaption,
+                                                         aButton.fTextTruncation,
+                                                         aCanvas.Font,
+                                                         aCanvas.FontSize,
+                                                         ButtonRect.Width+(ButtonHorizontalBorderSpacing*2.0))
+ end;
+ aCanvas.DrawText(aButton.fCachedCaption,
                   Offset+TextRect.LeftTop+TextOffset);
-
  if assigned(ChevronIcon) then begin
   aCanvas.DrawSprite(ChevronIcon,
                      TpvRect.CreateRelative(TpvVector2.Null,
@@ -9372,6 +9381,10 @@ begin
 
  fCaption:='Button';
 
+ fCachedCaption:='';
+
+ fCachedCaptionInvalidated:=true;
+
  fIconPosition:=pvgbipLeftCentered;
 
  fIcon:=nil;
@@ -9404,12 +9417,36 @@ begin
  end;
 end;
 
+procedure TpvGUIButton.SetCaption(const aCaption:TpvUTF8String);
+begin
+ if fCaption<>aCaption then begin
+  fCaption:=aCaption;
+  fCachedCaptionInvalidated:=true;
+ end;
+end;
+
+procedure TpvGUIButton.SetFont(const aFont:TpvFont);
+begin
+ if fFont<>aFont then begin
+  fFont:=aFont;
+  fCachedCaptionInvalidated:=true;
+ end;
+end;
+
 function TpvGUIButton.GetFontSize:TpvFloat;
 begin
  if assigned(Skin) and IsZero(fFontSize) then begin
   result:=Skin.fButtonFontSize;
  end else begin
   result:=fFontSize;
+ end;
+end;
+
+procedure TpvGUIButton.SetFontSize(const aFontSize:TpvFloat);
+begin
+ if fFontSize<>aFontSize then begin
+  fFontSize:=aFontSize;
+  fCachedCaptionInvalidated:=true;
  end;
 end;
 
@@ -9560,6 +9597,12 @@ begin
  if not result then begin
   result:=inherited Scrolled(aPosition,aRelativeAmount);
  end;
+end;
+
+procedure TpvGUIButton.PerformLayout;
+begin
+ fCachedCaptionInvalidated:=true;
+ inherited PerformLayout;
 end;
 
 procedure TpvGUIButton.Update;
