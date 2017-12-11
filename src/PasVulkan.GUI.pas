@@ -2166,7 +2166,7 @@ var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
- Size:=TpvVector2.Create(fMargin*2.0,fMargin*2.0);
+ Size:=TpvVector2.InlineableCreate(fMargin*2.0,fMargin*2.0);
  YOffset:=0;
  if aWidget is TpvGUIInstance then begin
   if assigned((aWidget as TpvGUIInstance).fMenu) then begin
@@ -2207,7 +2207,7 @@ begin
    end;
   end;
  end;
- result:=Size+TpvVector2.Create(0.0,YOffset);
+ result:=Size+TpvVector2.InlineableCreate(0.0,YOffset);
 end;
 
 procedure TpvGUIRootLayout.PerformLayout(const aWidget:TpvGUIWidget);
@@ -2271,7 +2271,7 @@ begin
      if not First then begin
       Offset:=Offset+fSpacing;
      end;
-     Position:=TpvVector2.Create(0,YOffset);
+     Position:=TpvVector2.InlineableCreate(0,YOffset);
      Position.x:=Position.x+fMargin;
      Position.y:=Offset;
      if ChildFixedSize.y>0.0 then begin
@@ -2344,7 +2344,7 @@ begin
    end;
   end;
  end;
- result:=Size+TpvVector2.Create(fMargin*2.0,fMargin*2.0);
+ result:=Size+TpvVector2.InlineableCreate(fMargin*2.0,fMargin*2.0);
 end;
 
 procedure TpvGUIFillLayout.PerformLayout(const aWidget:TpvGUIWidget);
@@ -2383,9 +2383,9 @@ begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
     if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
-     ChildWidget.fPosition:=TpvVector2.Create(fMargin,fMargin);
+     ChildWidget.fPosition:=TpvVector2.InlineableCreate(fMargin,fMargin);
     end;
-    ChildWidget.fSize:=ContainerSize-(TpvVector2.Create(fMargin,fMargin)*2.0);
+    ChildWidget.fSize:=ContainerSize-(TpvVector2.InlineableCreate(fMargin,fMargin)*2.0);
     ChildWidget.PerformLayout;
    end;
   end;
@@ -2417,7 +2417,7 @@ var Axis0,Axis1,ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
- Size:=TpvVector2.Create(fMargin*2.0,fMargin*2.0);
+ Size:=TpvVector2.InlineableCreate(fMargin*2.0,fMargin*2.0);
  case fOrientation of
   pvgloHorizontal:begin
    Axis0:=0;
@@ -2575,7 +2575,7 @@ var ChildIndex:TpvInt32;
     ChildWidget:TpvGUIWidget;
     ChildLabel:TpVGUILabel;
 begin
- result:=TpvVector2.Create(fMargin*2.0,fMargin);
+ result:=TpvVector2.InlineableCreate(fMargin*2.0,fMargin);
  First:=true;
  Indent:=false;
  for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
@@ -2630,7 +2630,7 @@ var ChildIndex:TpvInt32;
     ChildWidget:TpvGUIWidget;
     ChildLabel:TpVGUILabel;
 begin
- Size:=TpvVector2.Create(fMargin*2.0,fMargin);
+ Size:=TpvVector2.InlineableCreate(fMargin*2.0,fMargin);
  if aWidget.GetFixedWidth>0.0 then begin
   AvailableWidth:=aWidget.GetFixedWidth-(fMargin*2.0);
  end else begin
@@ -2658,7 +2658,7 @@ begin
      end;
     end;
     IndentCurrent:=Indent and not assigned(ChildLabel);
-    ChildPreferredSize:=TpvVector2.Create(AvailableWidth-((ord(IndentCurrent) and 1)*fGroupIdent),ChildWidget.GetPreferredSize.y);
+    ChildPreferredSize:=TpvVector2.InlineableCreate(AvailableWidth-((ord(IndentCurrent) and 1)*fGroupIdent),ChildWidget.GetPreferredSize.y);
     ChildFixedSize:=ChildWidget.GetFixedSize;
     if ChildFixedSize.x>0.0 then begin
      ChildTargetSize.x:=ChildFixedSize.x;
@@ -2670,7 +2670,7 @@ begin
     end else begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
-    ChildWidget.fPosition:=TpvVector2.Create(fMargin+((ord(IndentCurrent) and 1)*fGroupIdent),Size.y);
+    ChildWidget.fPosition:=TpvVector2.InlineableCreate(fMargin+((ord(IndentCurrent) and 1)*fGroupIdent),Size.y);
     ChildWidget.fSize:=ChildTargetSize;
     ChildWidget.PerformLayout;
     Size.y:=Size.y+ChildTargetSize.y;
@@ -2718,7 +2718,7 @@ begin
 
  fMargin:=aMargin;
 
- fSpacing:=TpvVector2.Create(aHorizontalSpacing,aVerticalSpacing);
+ fSpacing:=TpvVector2.InlineableCreate(aHorizontalSpacing,aVerticalSpacing);
 
  fAlignments[0]:=TpvGUIGridLayoutAlignments.Create;
  fAlignments[1]:=TpvGUIGridLayoutAlignments.Create;
@@ -2889,8 +2889,8 @@ function TpvGUIGridLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector
 var Index:TpvInt32;
 begin
  ComputeLayout(aWidget);
- result:=TpvVector2.Create((fMargin*2.0)+(Max(fGridDimensions[0]-1,0)*fSpacing.x),
-                           (fMargin*2.0)+(Max(fGridDimensions[1]-1,0)*fSpacing.y));
+ result:=TpvVector2.InlineableCreate((fMargin*2.0)+(Max(fGridDimensions[0]-1,0)*fSpacing.x),
+                                     (fMargin*2.0)+(Max(fGridDimensions[1]-1,0)*fSpacing.y));
  for Index:=0 to fGridDimensions[0]-1 do begin
   result.x:=result.x+fGrid[0,Index];
  end;
@@ -2944,7 +2944,7 @@ begin
  Axis0:=TpvGUIGridLayout.AxisOrientationAxes[fOrientation,0];
  Axis1:=TpvGUIGridLayout.AxisOrientationAxes[fOrientation,1];
 
- Start:=TpvVector2.Create(fMargin,fMargin);
+ Start:=TpvVector2.InlineableCreate(fMargin,fMargin);
 
  Position:=Start;
 
@@ -3193,7 +3193,7 @@ begin
   ContainerSize.y:=aWidget.Height;
  end;
 
- ContainerSize:=ContainerSize-TpvVector2.Create(fMargin*2.0,fMargin*2.0);
+ ContainerSize:=ContainerSize-TpvVector2.InlineableCreate(fMargin*2.0,fMargin*2.0);
 
  for AxisIndex:=0 to 1 do begin
 
@@ -3285,7 +3285,7 @@ function TpvGUIAdvancedGridLayout.GetPreferredSize(const aWidget:TpvGUIWidget):T
 var AxisIndex,Index:TpvInt32;
 begin
  ComputeLayout(aWidget);
- result:=TpvVector2.Create(fMargin*2.0,fMargin*2.0);
+ result:=TpvVector2.InlineableCreate(fMargin*2.0,fMargin*2.0);
  for AxisIndex:=0 to 1 do begin
   for Index:=0 to fGridDimensions[AxisIndex]-1 do begin
    result[AxisIndex]:=result[AxisIndex]+fGrid[AxisIndex,Index];
@@ -3438,9 +3438,9 @@ begin
 
  fMargin:=aMargin;
 
- fDesignedSize:=TpvVector2.Create(aDesignedWidth,aDesignedHeight);
+ fDesignedSize:=TpvVector2.InlineableCreate(aDesignedWidth,aDesignedHeight);
 
- fSpacing:=TpvVector2.Create(aHorizontalSpacing,aVerticalSpacing);
+ fSpacing:=TpvVector2.InlineableCreate(aHorizontalSpacing,aVerticalSpacing);
 
  fDirection:=aDirection;
 
@@ -3524,7 +3524,7 @@ begin
 
  result:=TpvVector2.Null;
 
- Position:=TpvVector2.Create(fMargin,fMargin);
+ Position:=TpvVector2.InlineableCreate(fMargin,fMargin);
 
  MaxAxis1:=0.0;
 
@@ -3565,7 +3565,7 @@ begin
   end;
  end;
 
- result:=result+TpvVector2.Create(fMargin*2.0,fMargin*2.0);
+ result:=result+TpvVector2.InlineableCreate(fMargin*2.0,fMargin*2.0);
 
  if FixedSize.x>0.0 then begin
   result.x:=FixedSize.x;
@@ -3701,7 +3701,7 @@ begin
 
  MaxAxis1:=0.0;
 
- Position:=TpvVector2.Create(fMargin,fMargin);
+ Position:=TpvVector2.InlineableCreate(fMargin,fMargin);
 
  if fDirection<>pgfldLeftToRight then begin
   Position[Axis0]:=ContainerSize[Axis0]-fMargin;
@@ -4048,37 +4048,37 @@ begin
 
  fCheckBoxFontSize:=-12;
 
- fCheckBoxSize:=TpvVector2.Create(20.0,20.0);
+ fCheckBoxSize:=TpvVector2.InlineableCreate(20.0,20.0);
 
- fFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
+ fFontColor:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(1.0,1.0,1.0,0.5));
 
- fWindowFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
+ fWindowFontColor:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(1.0,1.0,1.0,0.5));
 
- fButtonFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
+ fButtonFontColor:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(1.0,1.0,1.0,0.5));
 
- fTextEditFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
+ fTextEditFontColor:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(1.0,1.0,1.0,0.5));
 
- fLabelFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
+ fLabelFontColor:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(1.0,1.0,1.0,0.5));
 
- fPopupMenuFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
+ fPopupMenuFontColor:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(1.0,1.0,1.0,0.5));
 
- fWindowMenuFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
+ fWindowMenuFontColor:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(1.0,1.0,1.0,0.5));
 
- fCheckBoxFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
+ fCheckBoxFontColor:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(1.0,1.0,1.0,0.5));
 
- fImageSignedDistanceFieldColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.5));
+ fImageSignedDistanceFieldColor:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(1.0,1.0,1.0,0.5));
 
  fUnfocusedWindowHeaderFontShadow:=true;
  fFocusedWindowHeaderFontShadow:=true;
 
- fUnfocusedWindowHeaderFontShadowOffset:=TpvVector2.Create(2.0,2.0);
- fFocusedWindowHeaderFontShadowOffset:=TpvVector2.Create(2.0,2.0);
+ fUnfocusedWindowHeaderFontShadowOffset:=TpvVector2.InlineableCreate(2.0,2.0);
+ fFocusedWindowHeaderFontShadowOffset:=TpvVector2.InlineableCreate(2.0,2.0);
 
- fUnfocusedWindowHeaderFontShadowColor:=ConvertSRGBToLinear(TpvVector4.Create(0.0,0.0,0.0,0.3275));
- fFocusedWindowHeaderFontShadowColor:=ConvertSRGBToLinear(TpvVector4.Create(0.0,0.0,0.0,0.5));
+ fUnfocusedWindowHeaderFontShadowColor:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(0.0,0.0,0.0,0.3275));
+ fFocusedWindowHeaderFontShadowColor:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(0.0,0.0,0.0,0.5));
 
- fUnfocusedWindowHeaderFontColor:=ConvertSRGBToLinear(TpvVector4.Create(0.86,0.86,0.86,0.62));
- fFocusedWindowHeaderFontColor:=ConvertSRGBToLinear(TpvVector4.Create(1.0,1.0,1.0,0.75));
+ fUnfocusedWindowHeaderFontColor:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(0.86,0.86,0.86,0.62));
+ fFocusedWindowHeaderFontColor:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(1.0,1.0,1.0,0.75));
 
  fWindowMenuHeight:=36;
 
@@ -4604,18 +4604,18 @@ begin
    aCanvas.ModelMatrix:=aWidget.fModelMatrix;
    aCanvas.DrawGUIElement(GUI_ELEMENT_HOVERED,
                           true,
-                          TpvVector2.Create(-32.0,-32.0),
-                          aWidget.fSize+TpvVector2.Create(32.0,32.0),
-                          TpvVector2.Create(0.0,0.0),
+                          TpvVector2.InlineableCreate(-32.0,-32.0),
+                          aWidget.fSize+TpvVector2.InlineableCreate(32.0,32.0),
+                          TpvVector2.InlineableCreate(0.0,0.0),
                           Rect.Size);
   end else if fInstance.fFocusedWidget=aWidget then begin
    aCanvas.ClipRect:=aWidget.fParentClipRect;
    aCanvas.ModelMatrix:=aWidget.fModelMatrix;
    aCanvas.DrawGUIElement(GUI_ELEMENT_FOCUSED,
                           true,
-                          TpvVector2.Create(-32.0,-32.0),
-                          aWidget.fSize+TpvVector2.Create(32.0,32.0),
-                          TpvVector2.Create(0.0,0.0),
+                          TpvVector2.InlineableCreate(-32.0,-32.0),
+                          aWidget.fSize+TpvVector2.InlineableCreate(32.0,32.0),
+                          TpvVector2.InlineableCreate(0.0,0.0),
                           Rect.Size);
   end;
  end;
@@ -4629,201 +4629,201 @@ begin
   pvgcArrow:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_ARROW,
                           false,
-                          TpvVector2.Create(2.0,2.0),
-                          TpvVector2.Create(34.0,34.0),
-                          TpvVector2.Create(2.0,2.0),
-                          TpvVector2.Create(34.0,34.0));
+                          TpvVector2.InlineableCreate(2.0,2.0),
+                          TpvVector2.InlineableCreate(34.0,34.0),
+                          TpvVector2.InlineableCreate(2.0,2.0),
+                          TpvVector2.InlineableCreate(34.0,34.0));
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_ARROW,
                           true,
                           TpvVector2.Null,
-                          TpvVector2.Create(32.0,32.0),
+                          TpvVector2.InlineableCreate(32.0,32.0),
                           TpvVector2.Null,
-                          TpvVector2.Create(32.0,32.0));
+                          TpvVector2.InlineableCreate(32.0,32.0));
   end;
   pvgcBeam:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BEAM,
                           false,
-                          TpvVector2.Create(-30.0,-30.0),
-                          TpvVector2.Create(34.0,34.0),
-                          TpvVector2.Create(-14.0,-14.0),
-                          TpvVector2.Create(18.0,18.0));
+                          TpvVector2.InlineableCreate(-30.0,-30.0),
+                          TpvVector2.InlineableCreate(34.0,34.0),
+                          TpvVector2.InlineableCreate(-14.0,-14.0),
+                          TpvVector2.InlineableCreate(18.0,18.0));
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BEAM,
                           true,
-                          TpvVector2.Create(-32.0,-32.0),
-                          TpvVector2.Create(32.0,32.0),
-                          TpvVector2.Create(-16.0,-16.0),
-                          TpvVector2.Create(16.0,16.0));
+                          TpvVector2.InlineableCreate(-32.0,-32.0),
+                          TpvVector2.InlineableCreate(32.0,32.0),
+                          TpvVector2.InlineableCreate(-16.0,-16.0),
+                          TpvVector2.InlineableCreate(16.0,16.0));
   end;
   pvgcBusy:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BUSY,
                           false,
-                          TpvVector2.Create(-18.0,-18.0),
-                          TpvVector2.Create(22.0,22.0),
-                          TpvVector2.Create(-8.0,-8.0),
-                          TpvVector2.Create(12.0,12.0),
+                          TpvVector2.InlineableCreate(-18.0,-18.0),
+                          TpvVector2.InlineableCreate(22.0,22.0),
+                          TpvVector2.InlineableCreate(-8.0,-8.0),
+                          TpvVector2.InlineableCreate(12.0,12.0),
                           frac(aInstance.fTime)*TwoPI);
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BUSY,
                           true,
-                          TpvVector2.Create(-20.0,-20.0),
-                          TpvVector2.Create(20.0,20.0),
-                          TpvVector2.Create(-10.0,-10.0),
-                          TpvVector2.Create(10.0,10.0),
+                          TpvVector2.InlineableCreate(-20.0,-20.0),
+                          TpvVector2.InlineableCreate(20.0,20.0),
+                          TpvVector2.InlineableCreate(-10.0,-10.0),
+                          TpvVector2.InlineableCreate(10.0,10.0),
                           frac(aInstance.fTime)*TwoPI);
   end;
   pvgcCross:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_CROSS,
                           false,
-                          TpvVector2.Create(-30.0,-30.0),
-                          TpvVector2.Create(34.0,34.0),
-                          TpvVector2.Create(-14.0,-14.0),
-                          TpvVector2.Create(18.0,18.0));
+                          TpvVector2.InlineableCreate(-30.0,-30.0),
+                          TpvVector2.InlineableCreate(34.0,34.0),
+                          TpvVector2.InlineableCreate(-14.0,-14.0),
+                          TpvVector2.InlineableCreate(18.0,18.0));
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_CROSS,
                           true,
-                          TpvVector2.Create(-32.0,-32.0),
-                          TpvVector2.Create(32.0,32.0),
-                          TpvVector2.Create(-16.0,-16.0),
-                          TpvVector2.Create(16.0,16.0));
+                          TpvVector2.InlineableCreate(-32.0,-32.0),
+                          TpvVector2.InlineableCreate(32.0,32.0),
+                          TpvVector2.InlineableCreate(-16.0,-16.0),
+                          TpvVector2.InlineableCreate(16.0,16.0));
   end;
   pvgcEW:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_EW,
                           false,
-                          TpvVector2.Create(-30.0,-30.0),
-                          TpvVector2.Create(34.0,34.0),
-                          TpvVector2.Create(-14.0,-14.0),
-                          TpvVector2.Create(18.0,18.0));
+                          TpvVector2.InlineableCreate(-30.0,-30.0),
+                          TpvVector2.InlineableCreate(34.0,34.0),
+                          TpvVector2.InlineableCreate(-14.0,-14.0),
+                          TpvVector2.InlineableCreate(18.0,18.0));
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_EW,
                           true,
-                          TpvVector2.Create(-32.0,-32.0),
-                          TpvVector2.Create(32.0,32.0),
-                          TpvVector2.Create(-16.0,-16.0),
-                          TpvVector2.Create(16.0,16.0));
+                          TpvVector2.InlineableCreate(-32.0,-32.0),
+                          TpvVector2.InlineableCreate(32.0,32.0),
+                          TpvVector2.InlineableCreate(-16.0,-16.0),
+                          TpvVector2.InlineableCreate(16.0,16.0));
   end;
   pvgcHelp:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_HELP,
                           false,
-                          TpvVector2.Create(2.0,2.0),
-                          TpvVector2.Create(64.0,64.0),
-                          TpvVector2.Create(2.0,2.0),
-                          TpvVector2.Create(34.0,34.0));
+                          TpvVector2.InlineableCreate(2.0,2.0),
+                          TpvVector2.InlineableCreate(64.0,64.0),
+                          TpvVector2.InlineableCreate(2.0,2.0),
+                          TpvVector2.InlineableCreate(34.0,34.0));
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_HELP,
                           true,
                           TpvVector2.Null,
-                          TpvVector2.Create(64.0,64.0),
+                          TpvVector2.InlineableCreate(64.0,64.0),
                           TpvVector2.Null,
-                          TpvVector2.Create(32.0,32.0));
+                          TpvVector2.InlineableCreate(32.0,32.0));
   end;
   pvgcLink:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_LINK,
                           false,
-                          TpvVector2.Create(-30.0,-30.0),
-                          TpvVector2.Create(34.0,34.0),
-                          TpvVector2.Create(2.0,2.0),
-                          TpvVector2.Create(18.0,18.0));
+                          TpvVector2.InlineableCreate(-30.0,-30.0),
+                          TpvVector2.InlineableCreate(34.0,34.0),
+                          TpvVector2.InlineableCreate(2.0,2.0),
+                          TpvVector2.InlineableCreate(18.0,18.0));
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_LINK,
                           true,
-                          TpvVector2.Create(-32.0,-32.0),
-                          TpvVector2.Create(32.0,32.0),
+                          TpvVector2.InlineableCreate(-32.0,-32.0),
+                          TpvVector2.InlineableCreate(32.0,32.0),
                           TpvVector2.Null,
-                          TpvVector2.Create(16.0,16.0));
+                          TpvVector2.InlineableCreate(16.0,16.0));
   end;
   pvgcMove:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_MOVE,
                           false,
-                          TpvVector2.Create(-30.0,-30.0),
-                          TpvVector2.Create(34.0,34.0),
-                          TpvVector2.Create(-14.0,-14.0),
-                          TpvVector2.Create(18.0,18.0));
+                          TpvVector2.InlineableCreate(-30.0,-30.0),
+                          TpvVector2.InlineableCreate(34.0,34.0),
+                          TpvVector2.InlineableCreate(-14.0,-14.0),
+                          TpvVector2.InlineableCreate(18.0,18.0));
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_MOVE,
                           true,
-                          TpvVector2.Create(-32.0,-32.0),
-                          TpvVector2.Create(32.0,32.0),
-                          TpvVector2.Create(-16.0,-16.0),
-                          TpvVector2.Create(16.0,16.0));
+                          TpvVector2.InlineableCreate(-32.0,-32.0),
+                          TpvVector2.InlineableCreate(32.0,32.0),
+                          TpvVector2.InlineableCreate(-16.0,-16.0),
+                          TpvVector2.InlineableCreate(16.0,16.0));
   end;
   pvgcNESW:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NESW,
                           false,
-                          TpvVector2.Create(-30.0,-30.0),
-                          TpvVector2.Create(34.0,34.0),
-                          TpvVector2.Create(-14.0,-14.0),
-                          TpvVector2.Create(18.0,18.0));
+                          TpvVector2.InlineableCreate(-30.0,-30.0),
+                          TpvVector2.InlineableCreate(34.0,34.0),
+                          TpvVector2.InlineableCreate(-14.0,-14.0),
+                          TpvVector2.InlineableCreate(18.0,18.0));
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NESW,
                           true,
-                          TpvVector2.Create(-32.0,-32.0),
-                          TpvVector2.Create(32.0,32.0),
-                          TpvVector2.Create(-16.0,-16.0),
-                          TpvVector2.Create(16.0,16.0));
+                          TpvVector2.InlineableCreate(-32.0,-32.0),
+                          TpvVector2.InlineableCreate(32.0,32.0),
+                          TpvVector2.InlineableCreate(-16.0,-16.0),
+                          TpvVector2.InlineableCreate(16.0,16.0));
   end;
   pvgcNS:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NS,
                           false,
-                          TpvVector2.Create(-30.0,-30.0),
-                          TpvVector2.Create(34.0,34.0),
-                          TpvVector2.Create(-14.0,-14.0),
-                          TpvVector2.Create(18.0,18.0));
+                          TpvVector2.InlineableCreate(-30.0,-30.0),
+                          TpvVector2.InlineableCreate(34.0,34.0),
+                          TpvVector2.InlineableCreate(-14.0,-14.0),
+                          TpvVector2.InlineableCreate(18.0,18.0));
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NS,
                           true,
-                          TpvVector2.Create(-32.0,-32.0),
-                          TpvVector2.Create(32.0,32.0),
-                          TpvVector2.Create(-16.0,-16.0),
-                          TpvVector2.Create(16.0,16.0));
+                          TpvVector2.InlineableCreate(-32.0,-32.0),
+                          TpvVector2.InlineableCreate(32.0,32.0),
+                          TpvVector2.InlineableCreate(-16.0,-16.0),
+                          TpvVector2.InlineableCreate(16.0,16.0));
   end;
   pvgcNWSE:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NWSE,
                           false,
-                          TpvVector2.Create(-30.0,-30.0),
-                          TpvVector2.Create(34.0,34.0),
-                          TpvVector2.Create(-14.0,-14.0),
-                          TpvVector2.Create(18.0,18.0));
+                          TpvVector2.InlineableCreate(-30.0,-30.0),
+                          TpvVector2.InlineableCreate(34.0,34.0),
+                          TpvVector2.InlineableCreate(-14.0,-14.0),
+                          TpvVector2.InlineableCreate(18.0,18.0));
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NWSE,
                           true,
-                          TpvVector2.Create(-32.0,-32.0),
-                          TpvVector2.Create(32.0,32.0),
-                          TpvVector2.Create(-16.0,-16.0),
-                          TpvVector2.Create(16.0,16.0));
+                          TpvVector2.InlineableCreate(-32.0,-32.0),
+                          TpvVector2.InlineableCreate(32.0,32.0),
+                          TpvVector2.InlineableCreate(-16.0,-16.0),
+                          TpvVector2.InlineableCreate(16.0,16.0));
   end;
   pvgcPen:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_PEN,
                           false,
-                          TpvVector2.Create(-30.0,-30.0),
-                          TpvVector2.Create(34.0,34.0),
-                          TpvVector2.Create(-14.0,-14.0),
-                          TpvVector2.Create(18.0,18.0));
+                          TpvVector2.InlineableCreate(-30.0,-30.0),
+                          TpvVector2.InlineableCreate(34.0,34.0),
+                          TpvVector2.InlineableCreate(-14.0,-14.0),
+                          TpvVector2.InlineableCreate(18.0,18.0));
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_PEN,
                           true,
-                          TpvVector2.Create(-32.0,-32.0),
-                          TpvVector2.Create(32.0,32.0),
-                          TpvVector2.Create(-16.0,-16.0),
-                          TpvVector2.Create(16.0,16.0));
+                          TpvVector2.InlineableCreate(-32.0,-32.0),
+                          TpvVector2.InlineableCreate(32.0,32.0),
+                          TpvVector2.InlineableCreate(-16.0,-16.0),
+                          TpvVector2.InlineableCreate(16.0,16.0));
   end;
   pvgcUnavailable:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE,
                           false,
-                          TpvVector2.Create(-18.0,-18.0),
-                          TpvVector2.Create(22.0,22.0),
-                          TpvVector2.Create(-8.0,-8.0),
-                          TpvVector2.Create(12.0,12.0),
+                          TpvVector2.InlineableCreate(-18.0,-18.0),
+                          TpvVector2.InlineableCreate(22.0,22.0),
+                          TpvVector2.InlineableCreate(-8.0,-8.0),
+                          TpvVector2.InlineableCreate(12.0,12.0),
                           frac(aInstance.fTime)*TwoPI);
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE,
                           true,
-                          TpvVector2.Create(-20.0,-20.0),
-                          TpvVector2.Create(20.0,20.0),
-                          TpvVector2.Create(-10.0,-10.0),
-                          TpvVector2.Create(10.0,10.0));
+                          TpvVector2.InlineableCreate(-20.0,-20.0),
+                          TpvVector2.InlineableCreate(20.0,20.0),
+                          TpvVector2.InlineableCreate(-10.0,-10.0),
+                          TpvVector2.InlineableCreate(10.0,10.0));
   end;
   pvgcUp:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UP,
                           false,
-                          TpvVector2.Create(-30.0,-30.0),
-                          TpvVector2.Create(34.0,34.0),
-                          TpvVector2.Create(-14.0,-14.0),
-                          TpvVector2.Create(18.0,18.0));
+                          TpvVector2.InlineableCreate(-30.0,-30.0),
+                          TpvVector2.InlineableCreate(34.0,34.0),
+                          TpvVector2.InlineableCreate(-14.0,-14.0),
+                          TpvVector2.InlineableCreate(18.0,18.0));
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UP,
                           true,
-                          TpvVector2.Create(-32.0,-32.0),
-                          TpvVector2.Create(32.0,32.0),
-                          TpvVector2.Create(-16.0,-16.0),
-                          TpvVector2.Create(16.0,16.0));
+                          TpvVector2.InlineableCreate(-32.0,-32.0),
+                          TpvVector2.InlineableCreate(32.0,32.0),
+                          TpvVector2.InlineableCreate(-16.0,-16.0),
+                          TpvVector2.InlineableCreate(16.0,16.0));
   end;
  end;
 end;
@@ -4852,7 +4852,7 @@ begin
  end;
  TextSize:=aWindow.Font.TextSize(aWindow.fTitle,
                                  fWindowHeaderFontSize)+
-           TpvVector2.Create(fSpacing*2.0,0.0);
+           TpvVector2.InlineableCreate(fSpacing*2.0,0.0);
  result:=Maximum(GetWidgetLayoutPreferredSize(aWindow),
                  TextSize);
  if pvgwfHeader in aWindow.fWindowFlags then begin
@@ -4870,7 +4870,7 @@ begin
    end;
   end;
   result:=Maximum(result,aWindow.fButtonPanel.PreferredSize+
-                         TpvVector2.Create(TextSize.x+(fSpacing*2.0),0.0));
+                         TpvVector2.InlineableCreate(TextSize.x+(fSpacing*2.0),0.0));
  end;
  if assigned(aWindow.fMenu) then begin
   aWindow.fMenu.Visible:=true;
@@ -4905,14 +4905,14 @@ begin
 
   aCanvas.ModelMatrix:=aWindow.fModelMatrix;
 
-  aCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+  aCanvas.Color:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
 
   aCanvas.ClipRect:=aWindow.fParentClipRect;
   aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_DROPSHADOW,
                         aWindow.Focused,
-                        TpvVector2.Create(-fWindowShadowWidth,-fWindowShadowHeight),
-                        aWindow.fSize+TpvVector2.Create(fWindowShadowWidth*2,fWindowShadowHeight*2),
-                        TpvVector2.Create(0.0,0.0),
+                        TpvVector2.InlineableCreate(-fWindowShadowWidth,-fWindowShadowHeight),
+                        aWindow.fSize+TpvVector2.InlineableCreate(fWindowShadowWidth*2,fWindowShadowHeight*2),
+                        TpvVector2.InlineableCreate(0.0,0.0),
                         aWindow.fSize);
 
   aCanvas.ClipRect:=aWindow.fClipRect;
@@ -4921,21 +4921,21 @@ begin
 
    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
                           aWindow.Focused,
-                          TpvVector2.Create(0.0,fWindowHeaderHeight-fSpacing),
-                          TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y),
-                          TpvVector2.Create(0.0,fWindowHeaderHeight-fSpacing),
-                          TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y));
+                          TpvVector2.InlineableCreate(0.0,fWindowHeaderHeight-fSpacing),
+                          TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y),
+                          TpvVector2.InlineableCreate(0.0,fWindowHeaderHeight-fSpacing),
+                          TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y));
 
    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_HEADER,
                           aWindow.Focused,
-                          TpvVector2.Create(0.0,0.0),
-                          TpvVector2.Create(aWindow.fSize.x,fWindowHeaderHeight),
-                          TpvVector2.Create(0.0,0.0),
-                          TpvVector2.Create(aWindow.fSize.x,fWindowHeaderHeight));
+                          TpvVector2.InlineableCreate(0.0,0.0),
+                          TpvVector2.InlineableCreate(aWindow.fSize.x,fWindowHeaderHeight),
+                          TpvVector2.InlineableCreate(0.0,0.0),
+                          TpvVector2.InlineableCreate(aWindow.fSize.x,fWindowHeaderHeight));
 
    LastClipRect:=aCanvas.ClipRect;
-   LastClipRect.LeftTop:=LastClipRect.LeftTop+TpvVector2.Create(1.0,1.0);
-   LastClipRect.RightBottom:=LastClipRect.RightBottom-TpvVector2.Create(1.0,1.0);
+   LastClipRect.LeftTop:=LastClipRect.LeftTop+TpvVector2.InlineableCreate(1.0,1.0);
+   LastClipRect.RightBottom:=LastClipRect.RightBottom-TpvVector2.InlineableCreate(1.0,1.0);
    aCanvas.ClipRect:=LastClipRect;
 
    LastModelMatrix:=aCanvas.ModelMatrix;
@@ -5010,14 +5010,14 @@ begin
 
    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
                           aWindow.Focused,
-                          TpvVector2.Create(0.0,0.0),
-                          TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y),
-                          TpvVector2.Create(0.0,0.0),
-                          TpvVector2.Create(aWindow.fSize.x,aWindow.fSize.y));
+                          TpvVector2.InlineableCreate(0.0,0.0),
+                          TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y),
+                          TpvVector2.InlineableCreate(0.0,0.0),
+                          TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y));
 
    LastClipRect:=aCanvas.ClipRect;
-   LastClipRect.LeftTop:=LastClipRect.LeftTop+TpvVector2.Create(1.0,1.0);
-   LastClipRect.RightBottom:=LastClipRect.RightBottom-TpvVector2.Create(1.0,1.0);
+   LastClipRect.LeftTop:=LastClipRect.LeftTop+TpvVector2.InlineableCreate(1.0,1.0);
+   LastClipRect.RightBottom:=LastClipRect.RightBottom-TpvVector2.InlineableCreate(1.0,1.0);
    aCanvas.ClipRect:=LastClipRect;
 
   end;
@@ -5033,9 +5033,9 @@ var ImageSize:TpvVector2;
 begin
  if assigned(aImage.fImage) then begin
   if aImage.fImage is TpvSprite then begin
-   ImageSize:=TpvVector2.Create(TpvSprite(aImage.fImage).Width,TpvSprite(aImage.fImage).Height);
+   ImageSize:=TpvVector2.InlineableCreate(TpvSprite(aImage.fImage).Width,TpvSprite(aImage.fImage).Height);
   end else if aImage.fImage is TpvVulkanTexture then begin
-   ImageSize:=TpvVector2.Create(TpvVulkanTexture(aImage.fImage).Width,TpvVulkanTexture(aImage.fImage).Height);
+   ImageSize:=TpvVector2.InlineableCreate(TpvVulkanTexture(aImage.fImage).Width,TpvVulkanTexture(aImage.fImage).Height);
   end else begin
    ImageSize:=TpvVector2.Null;
   end;
@@ -5069,7 +5069,7 @@ begin
    aCanvas.Color:=fImageSignedDistanceFieldColor;
    aCanvas.DrawSprite(TpvSprite(aImage.fImage),
                       TpvRect.CreateRelative(TpvVector2.Null,
-                                             TpvVector2.Create(TpvSprite(aImage.fImage).Width,TpvSprite(aImage.fImage).Height)),
+                                             TpvVector2.InlineableCreate(TpvSprite(aImage.fImage).Width,TpvSprite(aImage.fImage).Height)),
                       TpvRect.CreateRelative(TpvVector2.Null,aImage.fSize));
   end else if aImage.fImage is TpvVulkanTexture then begin
    aCanvas.DrawTexturedRectangle(TpvVulkanTexture(aImage.fImage),
@@ -5081,7 +5081,7 @@ end;
 function TpvGUIDefaultVectorBasedSkin.GetLabelPreferredSize(const aLabel:TpvGUILabel):TpvVector2;
 begin
  result:=Maximum(GetWidgetLayoutPreferredSize(aLabel),
-                 aLabel.Font.TextSize(aLabel.fCaption,aLabel.FontSize)+TpvVector2.Create(0.0,0.0));
+                 aLabel.Font.TextSize(aLabel.fCaption,aLabel.FontSize)+TpvVector2.InlineableCreate(0.0,0.0));
  if aLabel.fFixedSize.x>0.0 then begin
   result.x:=aLabel.fFixedSize.x;
  end;
@@ -5128,7 +5128,7 @@ begin
  if aLabel.Enabled then begin
   aCanvas.Color:=aLabel.FontColor;
  end else begin
-  aCanvas.Color:=TpvVector4.Create(aLabel.FontColor.rgb,aLabel.FontColor.a*0.25);
+  aCanvas.Color:=TpvVector4.InlineableCreate(aLabel.FontColor.rgb,aLabel.FontColor.a*0.25);
  end;
  if aLabel.fCachedCaptionInvalidated then begin
   aLabel.fCachedCaptionInvalidated:=false;
@@ -5192,9 +5192,9 @@ begin
  end;
  if assigned(aButton.fIcon) then begin
   if aButton.fIcon is TpvSprite then begin
-   IconSize:=TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height);
+   IconSize:=TpvVector2.InlineableCreate(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height);
   end else if aButton.fIcon is TpvVulkanTexture then begin
-   IconSize:=TpvVector2.Create(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height);
+   IconSize:=TpvVector2.InlineableCreate(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height);
   end else begin
    IconSize:=TpvVector2.Null;
   end;
@@ -5220,7 +5220,7 @@ begin
  TemporarySize.x:=TextSize.x+IconSize.x+ChevronIconSize.x;
  TemporarySize.y:=Max(TextSize.y,Maximum(IconSize.y,ChevronIconSize.y));
  result:=Maximum(GetWidgetLayoutPreferredSize(aButton),
-                 TemporarySize+TpvVector2.Create(ButtonHorizontalBorderSpacing*2.0,10.0));
+                 TemporarySize+TpvVector2.InlineableCreate(ButtonHorizontalBorderSpacing*2.0,10.0));
  if aButton.fFixedSize.x>0.0 then begin
   result.x:=aButton.fFixedSize.x;
  end;
@@ -5238,13 +5238,13 @@ var Offset,TextOffset:TpvVector2;
 begin
 
  if aButton.Down then begin
-  Offset:=TpvVector2.Create(-0.5,-0.5);
+  Offset:=TpvVector2.InlineableCreate(-0.5,-0.5);
  end else begin
   Offset:=TpvVector2.Null;
  end;
 
- ButtonRect:=TpvRect.CreateRelative(TpvVector2.Create(ButtonHorizontalBorderSpacing,0.0),
-                                    aButton.fSize-TpvVector2.Create(ButtonHorizontalBorderSpacing*2.0,0.0));
+ ButtonRect:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(ButtonHorizontalBorderSpacing,0.0),
+                                    aButton.fSize-TpvVector2.InlineableCreate(ButtonHorizontalBorderSpacing*2.0,0.0));
 
  if aButton is TpvGUIPopupButton then begin
   case TpvGUIPopupButton(aButton).fPopup.fAnchorSide of
@@ -5295,13 +5295,13 @@ begin
   ChevronIconSize.y:=fIconChevronHeight;
   if (aButton is TpvGUIPopupButton) and
      (TpvGUIPopupButton(aButton).fPopup.fAnchorSide=pvgpasLeft) then begin
-   ChevronIconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.Create(0.0,
-                                                                                (((ButtonRect.Height-ChevronIconSize.y)*0.5)))+Offset,
+   ChevronIconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.InlineableCreate(0.0,
+                                                                                          (((ButtonRect.Height-ChevronIconSize.y)*0.5)))+Offset,
                                            ChevronIconSize);
    ButtonRect.Left:=ButtonRect.Left+(ChevronIconSize.x+ButtonIconSpacing);
   end else begin
-   ChevronIconRect:=TpvRect.CreateRelative(TpvVector2.Create(ButtonRect.Right-ChevronIconSize.x,
-                                                             ButtonRect.Top+(((ButtonRect.Height-ChevronIconSize.y)*0.5)))+Offset,
+   ChevronIconRect:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(ButtonRect.Right-ChevronIconSize.x,
+                                                                       ButtonRect.Top+(((ButtonRect.Height-ChevronIconSize.y)*0.5)))+Offset,
                                            ChevronIconSize);
    ButtonRect.Right:=ButtonRect.Right-(ChevronIconSize.x+ButtonIconSpacing);
   end;
@@ -5318,37 +5318,37 @@ begin
 
   aCanvas.DrawGUIElement(GUI_ELEMENT_BUTTON_DISABLED,
                          true,
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y),
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y));
+                         TpvVector2.InlineableCreate(0.0,0.0),
+                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
+                         TpvVector2.InlineableCreate(0.0,0.0),
+                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
 
  end else if aButton.Down then begin
 
   aCanvas.DrawGUIElement(GUI_ELEMENT_BUTTON_PUSHED,
                          true,
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y),
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y));
+                         TpvVector2.InlineableCreate(0.0,0.0),
+                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
+                         TpvVector2.InlineableCreate(0.0,0.0),
+                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
 
  end else if aButton.Focused then begin
 
   aCanvas.DrawGUIElement(GUI_ELEMENT_BUTTON_FOCUSED,
                          true,
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y),
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y));
+                         TpvVector2.InlineableCreate(0.0,0.0),
+                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
+                         TpvVector2.InlineableCreate(0.0,0.0),
+                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
 
  end else begin
 
   aCanvas.DrawGUIElement(GUI_ELEMENT_BUTTON_UNFOCUSED,
                          true,
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y),
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aButton.fSize.x,aButton.fSize.y));
+                         TpvVector2.InlineableCreate(0.0,0.0),
+                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
+                         TpvVector2.InlineableCreate(0.0,0.0),
+                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
 
  end;
 
@@ -5356,9 +5356,9 @@ begin
 
  if assigned(aButton.fIcon) then begin
   if aButton.fIcon is TpvSprite then begin
-   IconSize:=TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height);
+   IconSize:=TpvVector2.InlineableCreate(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height);
   end else if aButton.fIcon is TpvVulkanTexture then begin
-   IconSize:=TpvVector2.Create(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height);
+   IconSize:=TpvVector2.InlineableCreate(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height);
   end else begin
    IconSize:=TpvVector2.Null;
   end;
@@ -5379,33 +5379,33 @@ begin
 
    case aButton.fIconPosition of
     pvgbipLeft:begin
-     IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.Create(0.0,
-                                                                           (ButtonRect.Height-IconSize.y)*0.5),
+     IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.InlineableCreate(0.0,
+                                                                                     (ButtonRect.Height-IconSize.y)*0.5),
                                       IconSize);
-     TextRect:=TpvRect.CreateAbsolute(ButtonRect.LeftTop+TpvVector2.Create(IconSize.x+ButtonIconSpacing,0.0),
+     TextRect:=TpvRect.CreateAbsolute(ButtonRect.LeftTop+TpvVector2.InlineableCreate(IconSize.x+ButtonIconSpacing,0.0),
                                       ButtonRect.RightBottom);
     end;
     pvgbipLeftCentered:begin
-     IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.Create((ButtonRect.Width-TemporarySize.x)*0.5,
-                                                                           (ButtonRect.Height-IconSize.y)*0.5),
+     IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.InlineableCreate((ButtonRect.Width-TemporarySize.x)*0.5,
+                                                                                     (ButtonRect.Height-IconSize.y)*0.5),
                                       IconSize);
-     TextRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.Create(((ButtonRect.Width-TemporarySize.x)*0.5)+IconSize.x+ButtonIconSpacing,
-                                                                           0.0),
-                                      TpvVector2.Create(TextSize.x,ButtonRect.Height));
+     TextRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.InlineableCreate(((ButtonRect.Width-TemporarySize.x)*0.5)+IconSize.x+ButtonIconSpacing,
+                                                                                     0.0),
+                                      TpvVector2.InlineableCreate(TextSize.x,ButtonRect.Height));
     end;
     pvgbipRightCentered:begin
-     IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.Create(((ButtonRect.Width-TemporarySize.x)*0.5)+TextSize.x+ButtonIconSpacing,
-                                                                           (ButtonRect.Height-IconSize.y)*0.5),
+     IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.InlineableCreate(((ButtonRect.Width-TemporarySize.x)*0.5)+TextSize.x+ButtonIconSpacing,
+                                                                                     (ButtonRect.Height-IconSize.y)*0.5),
                                       IconSize);
-     TextRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.Create((ButtonRect.Width-TemporarySize.x)*0.5,0.0),
-                                      TpvVector2.Create(TextSize.x,ButtonRect.Height));
+     TextRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.InlineableCreate((ButtonRect.Width-TemporarySize.x)*0.5,0.0),
+                                      TpvVector2.InlineableCreate(TextSize.x,ButtonRect.Height));
     end;
     else {pvgbipRight:}begin
-     IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.Create(ButtonRect.Width-IconSize.x,
-                                                                           (ButtonRect.Height-IconSize.y)*0.5),
+     IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.InlineableCreate(ButtonRect.Width-IconSize.x,
+                                                                                     (ButtonRect.Height-IconSize.y)*0.5),
                                       IconSize);
      TextRect:=TpvRect.CreateRelative(ButtonRect.LeftTop,
-                                      ButtonRect.Size-TpvVector2.Create(IconSize.x+ButtonIconSpacing,0.0));
+                                      ButtonRect.Size-TpvVector2.InlineableCreate(IconSize.x+ButtonIconSpacing,0.0));
     end;
    end;
 
@@ -5460,12 +5460,12 @@ begin
   if aButton.Enabled then begin
    aCanvas.Color:=aButton.FontColor;
   end else begin
-   aCanvas.Color:=TpvVector4.Create(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
+   aCanvas.Color:=TpvVector4.InlineableCreate(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
   end;
   if aButton.fIcon is TpvSprite then begin
    aCanvas.DrawSprite(TpvSprite(aButton.fIcon),
                       TpvRect.CreateRelative(TpvVector2.Null,
-                                             TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)),
+                                             TpvVector2.InlineableCreate(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)),
                       TpvRect.CreateRelative(Offset+IconRect.LeftTop,IconRect.Size));
   end else if aButton.fIcon is TpvVulkanTexture then begin
    aCanvas.DrawTexturedRectangle(TpvVulkanTexture(aButton.fIcon),
@@ -5476,7 +5476,7 @@ begin
  if aButton.Enabled then begin
   aCanvas.Color:=aButton.FontColor;
  end else begin
-  aCanvas.Color:=TpvVector4.Create(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
+  aCanvas.Color:=TpvVector4.InlineableCreate(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
  end;
  aCanvas.Font:=aButton.Font;
  aCanvas.FontSize:=aButton.FontSize;
@@ -5493,7 +5493,7 @@ begin
  if assigned(ChevronIcon) then begin
   aCanvas.DrawSprite(ChevronIcon,
                      TpvRect.CreateRelative(TpvVector2.Null,
-                                            TpvVector2.Create(ChevronIcon.Width,ChevronIcon.Height)),
+                                            TpvVector2.InlineableCreate(ChevronIcon.Width,ChevronIcon.Height)),
                      ChevronIconRect);
  end;
 
@@ -5504,7 +5504,7 @@ function TpvGUIDefaultVectorBasedSkin.GetCheckBoxPreferredSize(const aCheckBox:T
 begin
  result:=Maximum(Maximum(GetWidgetLayoutPreferredSize(aCheckBox),
                          aCheckBox.Font.TextSize(aCheckBox.fCaption,aCheckBox.FontSize)+
-                         TpvVector2.Create(fCheckBoxSize.x+fSpacing,0.0)),
+                         TpvVector2.InlineableCreate(fCheckBoxSize.x+fSpacing,0.0)),
                  fCheckBoxSize);
  if aCheckBox.fFixedSize.x>0.0 then begin
   result.x:=aCheckBox.fFixedSize.x;
@@ -5526,7 +5526,7 @@ begin
  if aCheckBox.Enabled then begin
   aCanvas.Color:=aCheckBox.FontColor;
  end else begin
-  aCanvas.Color:=TpvVector4.Create(aCheckBox.FontColor.rgb,aCheckBox.FontColor.a*0.25);
+  aCanvas.Color:=TpvVector4.InlineableCreate(aCheckBox.FontColor.rgb,aCheckBox.FontColor.a*0.25);
  end;
 
  if not aCheckBox.Enabled then begin
@@ -5543,7 +5543,7 @@ begin
 
  end;
 
- Offset:=TpvVector2.Create(0.0,(aCheckBox.fSize.y-fCheckBoxSize.y)*0.5);
+ Offset:=TpvVector2.InlineableCreate(0.0,(aCheckBox.fSize.y-fCheckBoxSize.y)*0.5);
 
  aCanvas.DrawGUIElement(Element,
                         aCheckBox.Focused,
@@ -5612,7 +5612,7 @@ begin
  TextSize.y:=(aTextEdit.Font.RowHeight(100,aTextEdit.GetFontSize))+(4*2);
  result:=Maximum(GetWidgetLayoutPreferredSize(aTextEdit),
                  Maximum(TextSize,
-                         TpvVector2.Create(aTextEdit.fMinimumWidth,aTextEdit.fMinimumHeight)));
+                         TpvVector2.InlineableCreate(aTextEdit.fMinimumWidth,aTextEdit.fMinimumHeight)));
  if aTextEdit.fFixedSize.x>0.0 then begin
   result.x:=aTextEdit.fFixedSize.x;
  end;
@@ -5640,28 +5640,28 @@ begin
 
   aCanvas.DrawGUIElement(GUI_ELEMENT_BOX_DISABLED,
                          true,
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aTextEdit.fSize.x,aTextEdit.fSize.y),
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aTextEdit.fSize.x,aTextEdit.fSize.y));
+                         TpvVector2.InlineableCreate(0.0,0.0),
+                         TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y),
+                         TpvVector2.InlineableCreate(0.0,0.0),
+                         TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y));
 
  end else if aTextEdit.Focused then begin
 
   aCanvas.DrawGUIElement(GUI_ELEMENT_BOX_FOCUSED,
                          true,
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aTextEdit.fSize.x,aTextEdit.fSize.y),
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aTextEdit.fSize.x,aTextEdit.fSize.y));
+                         TpvVector2.InlineableCreate(0.0,0.0),
+                         TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y),
+                         TpvVector2.InlineableCreate(0.0,0.0),
+                         TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y));
 
  end else begin
 
   aCanvas.DrawGUIElement(GUI_ELEMENT_BOX_UNFOCUSED,
                          true,
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aTextEdit.fSize.x,aTextEdit.fSize.y),
-                         TpvVector2.Create(0.0,0.0),
-                         TpvVector2.Create(aTextEdit.fSize.x,aTextEdit.fSize.y));
+                         TpvVector2.InlineableCreate(0.0,0.0),
+                         TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y),
+                         TpvVector2.InlineableCreate(0.0,0.0),
+                         TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y));
 
  end;
 
@@ -5671,15 +5671,15 @@ begin
 
   IconSprite:=TpvSprite(fIconArrowUpDown);
 
-  IconSize:=TpvVector2.Create(IconSprite.Width*(aTextEdit.fSize.y-16.0)/IconSprite.Height,
+  IconSize:=TpvVector2.InlineableCreate(IconSprite.Width*(aTextEdit.fSize.y-16.0)/IconSprite.Height,
                               aTextEdit.fSize.y-16.0);
 
-  IconRect:=TpvRect.CreateRelative(TpvVector2.Create(aTextEdit.fSize.x-(IconSize.x+4.0),
-                                                     (aTextEdit.fSize.y-IconSize.y)*0.5),
+  IconRect:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(aTextEdit.fSize.x-(IconSize.x+4.0),
+                                                               (aTextEdit.fSize.y-IconSize.y)*0.5),
                                    IconSize);
 
-  TextRect:=TpvRect.CreateRelative(TpvVector2.Create(2.0,2.0),
-                                   aTextEdit.fSize-TpvVector2.Create(IconSize.x+8.0,4.0));
+  TextRect:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(2.0,2.0),
+                                   aTextEdit.fSize-TpvVector2.InlineableCreate(IconSize.x+8.0,4.0));
 
  end else begin
 
@@ -5689,8 +5689,8 @@ begin
 
   IconRect:=TpvRect.CreateRelative(TpvVector2.Null,TpvVector2.Null);
 
-  TextRect:=TpvRect.CreateRelative(TpvVector2.Create(2.0,2.0),
-                                   aTextEdit.fSize-TpvVector2.Create(4.0,4.0));
+  TextRect:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(2.0,2.0),
+                                   aTextEdit.fSize-TpvVector2.InlineableCreate(4.0,4.0));
 
  end;
 
@@ -5731,7 +5731,7 @@ begin
   if aButton.Enabled then begin
    aCanvas.Color:=aButton.FontColor;
   end else begin
-   aCanvas.Color:=TpvVector4.Create(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
+   aCanvas.Color:=TpvVector4.InlineableCreate(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
   end;
   aCanvas.Font:=aButton.fIconFont;
   aCanvas.FontSize:=aButton.fIconFontSize;
@@ -5740,13 +5740,13 @@ begin
   if aButton.fIcon is TpvSprite then begin
    aCanvas.DrawSprite(TpvSprite(aButton.fIcon),
                       TpvRect.CreateRelative(TpvVector2.Null,
-                                             TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)),
+                                             TpvVector2.InlineableCreate(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)),
                       TpvRect.CreateRelative(Offset+IconRect.LeftTop,
-                                             TpvVector2.Create(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)));
+                                             TpvVector2.InlineableCreate(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)));
   end else if aButton.fIcon is TpvVulkanTexture then begin
    aCanvas.DrawTexturedRectangle(TpvVulkanTexture(aButton.fIcon),
-                                 Offset+IconRect.LeftTop+(TpvVector2.Create(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5),
-                                 TpvVector2.Create(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5);
+                                 Offset+IconRect.LeftTop+(TpvVector2.InlineableCreate(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5),
+                                 TpvVector2.InlineableCreate(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5);
   end;
  end;  }
 
@@ -5804,7 +5804,7 @@ begin
     (aTextEdit.fTextSelectionStart<=(aTextEdit.fCountTextGlyphRects+1)) and
     (aTextEdit.fTextSelectionEnd>0) and
     (aTextEdit.fTextSelectionEnd<=(aTextEdit.fCountTextGlyphRects+1)) then begin
-  aCanvas.Color:=TpvVector4.Create(0.016275,0.016275,0.016275,1.0);
+  aCanvas.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
   StartIndex:=Min(aTextEdit.fTextSelectionStart,aTextEdit.fTextSelectionEnd)-1;
   EndIndex:=Max(aTextEdit.fTextSelectionStart,aTextEdit.fTextSelectionEnd)-1;
   if StartIndex>=aTextEdit.fCountTextGlyphRects then begin
@@ -5828,7 +5828,7 @@ begin
  if aTextEdit.Enabled then begin
   aCanvas.Color:=aTextEdit.FontColor;
  end else begin
-  aCanvas.Color:=TpvVector4.Create(aTextEdit.FontColor.rgb,aTextEdit.FontColor.a*0.25);
+  aCanvas.Color:=TpvVector4.InlineableCreate(aTextEdit.FontColor.rgb,aTextEdit.FontColor.a*0.25);
  end;
 
  aCanvas.DrawText(aTextEdit.fText,Offset+TextRect.LeftTop+TextOffset);
@@ -5839,29 +5839,29 @@ begin
   if aTextEdit.fCountTextGlyphRects>0 then begin
    TextCursorPositionIndex:=Min(Max(aTextEdit.fTextCursorPositionIndex,1),aTextEdit.fCountTextGlyphRects+1);
    if TextCursorPositionIndex>aTextEdit.fCountTextGlyphRects then begin
-    aCanvas.DrawFilledRectangle(TpvVector2.Create(Max(aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right,
-                                                      Offset.x+TextRect.Left+TextOffset.x+aCanvas.TextWidth(aTextEdit.fText))+0.5,
+    aCanvas.DrawFilledRectangle(TpvVector2.InlineableCreate(Max(aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right,
+                                                            Offset.x+TextRect.Left+TextOffset.x+aCanvas.TextWidth(aTextEdit.fText))+0.5,
                                                   Offset.y+TextRect.Top+(TextRect.Size.y*0.5)),
-                                TpvVector2.Create(1.0,
-                                                  (aCanvas.TextRowHeight(100.0)*0.5)));
+                                TpvVector2.InlineableCreate(1.0,
+                                                            (aCanvas.TextRowHeight(100.0)*0.5)));
    end else begin
-    aCanvas.DrawFilledRectangle(TpvVector2.Create(aTextEdit.fTextGlyphRects[TextCursorPositionIndex-1].Left,
-                                                  Offset.y+TextRect.Top+(TextRect.Size.y*0.5)),
-                                TpvVector2.Create(1.0,
-                                                  (aCanvas.TextRowHeight(100.0)*0.5)));
+    aCanvas.DrawFilledRectangle(TpvVector2.InlineableCreate(aTextEdit.fTextGlyphRects[TextCursorPositionIndex-1].Left,
+                                                            Offset.y+TextRect.Top+(TextRect.Size.y*0.5)),
+                                TpvVector2.InlineableCreate(1.0,
+                                                            (aCanvas.TextRowHeight(100.0)*0.5)));
    end;
   end else begin
-   aCanvas.DrawFilledRectangle(TpvVector2.Create(Offset.x+TextRect.Left+TextOffset.x,
-                                                 Offset.y+TextRect.Top+(TextRect.Size.y*0.5)),
-                               TpvVector2.Create(1.0,
-                                                 (aCanvas.TextRowHeight(100.0)*0.5)));
+   aCanvas.DrawFilledRectangle(TpvVector2.InlineableCreate(Offset.x+TextRect.Left+TextOffset.x,
+                                                           Offset.y+TextRect.Top+(TextRect.Size.y*0.5)),
+                               TpvVector2.InlineableCreate(1.0,
+                                                           (aCanvas.TextRowHeight(100.0)*0.5)));
   end;
  end;
 
  if assigned(IconSprite) then begin
   aCanvas.DrawSprite(IconSprite,
                      TpvRect.CreateRelative(TpvVector2.Null,
-                                            TpvVector2.Create(IconSprite.Width,IconSprite.Height)),
+                                            TpvVector2.InlineableCreate(IconSprite.Width,IconSprite.Height)),
                      IconRect);
  end;
 
@@ -5896,9 +5896,9 @@ begin
 
    if assigned(MenuItem.fIcon) then begin
     if MenuItem.fIcon is TpvSprite then begin
-     IconSize:=TpvVector2.Create(TpvSprite(MenuItem.fIcon).Width,TpvSprite(MenuItem.fIcon).Height);
+     IconSize:=TpvVector2.InlineableCreate(TpvSprite(MenuItem.fIcon).Width,TpvSprite(MenuItem.fIcon).Height);
     end else if MenuItem.fIcon is TpvVulkanTexture then begin
-     IconSize:=TpvVector2.Create(TpvVulkanTexture(MenuItem.fIcon).Width,TpvVulkanTexture(MenuItem.fIcon).Height);
+     IconSize:=TpvVector2.InlineableCreate(TpvVulkanTexture(MenuItem.fIcon).Width,TpvVulkanTexture(MenuItem.fIcon).Height);
     end else begin
      IconSize:=TpvVector2.Null;
     end;
@@ -5933,8 +5933,8 @@ begin
 
     MenuItemHeight:=fSpacing;
 
-    MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(2.0+fSpacing,YOffset),
-                                           TpvVector2.Create(result.x-(2.0+fSpacing),YOffset+MenuItemHeight));
+    MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(2.0+fSpacing,YOffset),
+                                           TpvVector2.InlineableCreate(result.x-(2.0+fSpacing),YOffset+MenuItemHeight));
 
    end else begin
 
@@ -5950,9 +5950,9 @@ begin
 
     if assigned(MenuItem.fIcon) then begin
      if MenuItem.fIcon is TpvSprite then begin
-      IconSize:=TpvVector2.Create(TpvSprite(MenuItem.fIcon).Width,TpvSprite(MenuItem.fIcon).Height);
+      IconSize:=TpvVector2.InlineableCreate(TpvSprite(MenuItem.fIcon).Width,TpvSprite(MenuItem.fIcon).Height);
      end else if MenuItem.fIcon is TpvVulkanTexture then begin
-      IconSize:=TpvVector2.Create(TpvVulkanTexture(MenuItem.fIcon).Width,TpvVulkanTexture(MenuItem.fIcon).Height);
+      IconSize:=TpvVector2.InlineableCreate(TpvVulkanTexture(MenuItem.fIcon).Width,TpvVulkanTexture(MenuItem.fIcon).Height);
      end else begin
       IconSize:=TpvVector2.Null;
      end;
@@ -5965,8 +5965,8 @@ begin
 
     MenuItemHeight:=MenuItemHeight+10.0;
 
-    MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(2.0+fSpacing,YOffset),
-                                           TpvVector2.Create(result.x-(2.0+fSpacing),YOffset+MenuItemHeight));
+    MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(2.0+fSpacing,YOffset),
+                                           TpvVector2.InlineableCreate(result.x-(2.0+fSpacing),YOffset+MenuItemHeight));
 
    end;
 
@@ -6006,19 +6006,19 @@ begin
  aCanvas.ClipRect:=aPopupMenu.fInstance.fClipRect;
  aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_DROPSHADOW,
                         true,
-                        TpvVector2.Create(-fWindowShadowWidth,-fWindowShadowHeight),
-                        aPopupMenu.fSize+TpvVector2.Create(fWindowShadowWidth*2,fWindowShadowHeight*2),
-                        TpvVector2.Create(0.0,0.0),
+                        TpvVector2.InlineableCreate(-fWindowShadowWidth,-fWindowShadowHeight),
+                        aPopupMenu.fSize+TpvVector2.InlineableCreate(fWindowShadowWidth*2,fWindowShadowHeight*2),
+                        TpvVector2.InlineableCreate(0.0,0.0),
                         aPopupMenu.fSize);
 
  aCanvas.ClipRect:=TpvRect.CreateRelative(aPopupMenu.fPosition,aPopupMenu.fSize);
 
  aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
                         true,
-                        TpvVector2.Create(0.0,0.0),
-                        TpvVector2.Create(aPopupMenu.fSize.x,aPopupMenu.fSize.y),
-                        TpvVector2.Create(0.0,0.0),
-                        TpvVector2.Create(aPopupMenu.fSize.x,aPopupMenu.fSize.y));
+                        TpvVector2.InlineableCreate(0.0,0.0),
+                        TpvVector2.InlineableCreate(aPopupMenu.fSize.x,aPopupMenu.fSize.y),
+                        TpvVector2.InlineableCreate(0.0,0.0),
+                        TpvVector2.InlineableCreate(aPopupMenu.fSize.x,aPopupMenu.fSize.y));
 
  aCanvas.Font:=aPopupMenu.Font;
  aCanvas.FontSize:=aPopupMenu.FontSize;
@@ -6040,7 +6040,7 @@ begin
      Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
     end else if aPopupMenu.fSelectedMenuItem=MenuItem then begin
      Element:=GUI_ELEMENT_BUTTON_PUSHED;
-     Offset:=TpvVector2.Create(-0.5,-0.5);
+     Offset:=TpvVector2.InlineableCreate(-0.5,-0.5);
     end else if aPopupMenu.fFocusedMenuItem=MenuItem then begin
      Element:=GUI_ELEMENT_BUTTON_FOCUSED;
     end else begin
@@ -6049,7 +6049,7 @@ begin
 
    end else begin
 
-    aCanvas.Color:=TpvVector4.Create(aPopupMenu.FontColor.rgb,aPopupMenu.FontColor.a*0.25);
+    aCanvas.Color:=TpvVector4.InlineableCreate(aPopupMenu.FontColor.rgb,aPopupMenu.FontColor.a*0.25);
 
     Element:=GUI_ELEMENT_BUTTON_DISABLED;
 
@@ -6071,9 +6071,9 @@ begin
     if assigned(MenuItem.fIcon) then begin
 
      if MenuItem.fIcon is TpvSprite then begin
-      IconSize:=TpvVector2.Create(TpvSprite(MenuItem.fIcon).Width,TpvSprite(MenuItem.fIcon).Height);
+      IconSize:=TpvVector2.InlineableCreate(TpvSprite(MenuItem.fIcon).Width,TpvSprite(MenuItem.fIcon).Height);
      end else if MenuItem.fIcon is TpvVulkanTexture then begin
-      IconSize:=TpvVector2.Create(TpvVulkanTexture(MenuItem.fIcon).Width,TpvVulkanTexture(MenuItem.fIcon).Height);
+      IconSize:=TpvVector2.InlineableCreate(TpvVulkanTexture(MenuItem.fIcon).Width,TpvVulkanTexture(MenuItem.fIcon).Height);
      end else begin
       IconSize:=TpvVector2.Null;
      end;
@@ -6085,12 +6085,12 @@ begin
      if MenuItem.fIcon is TpvSprite then begin
       aCanvas.DrawSprite(TpvSprite(MenuItem.fIcon),
                          TpvRect.CreateRelative(TpvVector2.Null,
-                                                TpvVector2.Create(TpvSprite(MenuItem.fIcon).Width,TpvSprite(MenuItem.fIcon).Height)),
-                         TpvRect.CreateRelative(TpvVector2.Create(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-IconSize.y)*0.5)))+Offset,
+                                                TpvVector2.InlineableCreate(TpvSprite(MenuItem.fIcon).Width,TpvSprite(MenuItem.fIcon).Height)),
+                         TpvRect.CreateRelative(TpvVector2.InlineableCreate(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-IconSize.y)*0.5)))+Offset,
                                                 IconSize));
      end else if MenuItem.fIcon is TpvVulkanTexture then begin
       aCanvas.DrawTexturedRectangle(TpvVulkanTexture(MenuItem.fIcon),
-                                    TpvVector2.Create(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-IconSize.y)*0.5)))+Offset,
+                                    TpvVector2.InlineableCreate(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-IconSize.y)*0.5)))+Offset,
                                     IconSize);
      end;
 
@@ -6099,7 +6099,7 @@ begin
     end;
 
     aCanvas.TextVerticalAlignment:=pvctvaMiddle;
-    aCanvas.DrawText(MenuItem.fCaption,TpvVector2.Create(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
+    aCanvas.DrawText(MenuItem.fCaption,TpvVector2.InlineableCreate(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
 
     XOffset:=MenuItem.fRect.Right-(4.0+fSpacing);
 
@@ -6109,16 +6109,16 @@ begin
      if assigned(MenuItem.Menu) then begin
       aCanvas.DrawSprite(TpvSprite(fIconMenuRight),
                          TpvRect.CreateRelative(TpvVector2.Null,
-                                                TpvVector2.Create(TpvSprite(fIconMenuRight).Width,TpvSprite(fIconMenuRight).Height)),
-                         TpvRect.CreateRelative(TpvVector2.Create(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-fIconMenuRightHeight)*0.5)))+Offset,
-                                                TpvVector2.Create(SpriteWidth,fIconMenuRightHeight)));
+                                                TpvVector2.InlineableCreate(TpvSprite(fIconMenuRight).Width,TpvSprite(fIconMenuRight).Height)),
+                         TpvRect.CreateRelative(TpvVector2.InlineableCreate(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-fIconMenuRightHeight)*0.5)))+Offset,
+                                                TpvVector2.InlineableCreate(SpriteWidth,fIconMenuRightHeight)));
      end;
      XOffset:=XOffset-fSpacing;
     end;
 
     if length(MenuItem.fShortcutHint)>0 then begin
      aCanvas.TextHorizontalAlignment:=pvcthaTailing;
-     aCanvas.DrawText(MenuItem.fShortcutHint,TpvVector2.Create(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
+     aCanvas.DrawText(MenuItem.fShortcutHint,TpvVector2.InlineableCreate(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
     end;
 
     if aPopupMenu.fHoveredMenuItem=MenuItem then begin
@@ -6167,8 +6167,8 @@ begin
 
    MenuItemWidth:=((4.0+fSpacing)*2)+aWindowMenu.Font.TextWidth(MenuItem.fCaption,aWindowMenu.FontSize);
 
-   MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.Create(XOffset,4.0),
-                                          TpvVector2.Create(XOffset+MenuItemWidth,aWindowMenu.fSize.y-4.0));
+   MenuItem.fRect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(XOffset,4.0),
+                                          TpvVector2.InlineableCreate(XOffset+MenuItemWidth,aWindowMenu.fSize.y-4.0));
 
    MenuItem.fOpenRect:=MenuItem.fRect;
 
@@ -6184,7 +6184,7 @@ function TpvGUIDefaultVectorBasedSkin.GetWindowMenuPreferredSize(const aWindowMe
 begin
  ProcessWindowMenuItems(aWindowMenu);
  result:=Maximum(GetWidgetLayoutPreferredSize(aWindowMenu),
-                 TpvVector2.Create(0.0,fWindowMenuHeight));
+                 TpvVector2.InlineableCreate(0.0,fWindowMenuHeight));
  if aWindowMenu.fFixedSize.x>0.0 then begin
   result.x:=aWindowMenu.fFixedSize.x;
  end;
@@ -6213,10 +6213,10 @@ begin
 
  aCanvas.DrawGUIElement(Element,
                         true,
-                        TpvVector2.Create(0.0,0.0),
-                        TpvVector2.Create(aWindowMenu.fSize.x,aWindowMenu.fSize.y),
-                        TpvVector2.Create(0.0,0.0),
-                        TpvVector2.Create(aWindowMenu.fSize.x,aWindowMenu.fSize.y));
+                        TpvVector2.InlineableCreate(0.0,0.0),
+                        TpvVector2.InlineableCreate(aWindowMenu.fSize.x,aWindowMenu.fSize.y),
+                        TpvVector2.InlineableCreate(0.0,0.0),
+                        TpvVector2.InlineableCreate(aWindowMenu.fSize.x,aWindowMenu.fSize.y));
 
  aCanvas.Font:=aWindowMenu.Font;
  aCanvas.FontSize:=aWindowMenu.FontSize;
@@ -6239,7 +6239,7 @@ begin
 
     if aWindowMenu.fSelectedMenuItem=MenuItem then begin
      Element:=GUI_ELEMENT_BUTTON_PUSHED;
-     Offset:=TpvVector2.Create(-0.5,-0.5);
+     Offset:=TpvVector2.InlineableCreate(-0.5,-0.5);
     end else if aWindowMenu.Focused and (aWindowMenu.fFocusedMenuItem=MenuItem) then begin
      Element:=GUI_ELEMENT_BUTTON_FOCUSED;
     end else begin
@@ -6248,7 +6248,7 @@ begin
 
    end else begin
 
-    aCanvas.Color:=TpvVector4.Create(aWindowMenu.FontColor.rgb,aWindowMenu.FontColor.a*0.25);
+    aCanvas.Color:=TpvVector4.InlineableCreate(aWindowMenu.FontColor.rgb,aWindowMenu.FontColor.a*0.25);
 
     Element:=GUI_ELEMENT_BUTTON_DISABLED;
 
@@ -6293,10 +6293,10 @@ function TpvGUIDefaultVectorBasedSkin.GetScrollBarPreferredSize(const aScrollBar
 begin
  case aScrollBar.fOrientation of
   pvgsboHorizontal:begin
-   result:=TpvVector2.Create((aScrollBar.ButtonSize*2.0)+128,aScrollBar.ButtonSize);
+   result:=TpvVector2.InlineableCreate((aScrollBar.ButtonSize*2.0)+128,aScrollBar.ButtonSize);
   end;
   else {pvgsboVertical:}begin
-   result:=TpvVector2.Create(aScrollBar.ButtonSize,(aScrollBar.ButtonSize*2.0)+128);
+   result:=TpvVector2.InlineableCreate(aScrollBar.ButtonSize,(aScrollBar.ButtonSize*2.0)+128);
   end;
  end;
  result:=Maximum(GetWidgetLayoutPreferredSize(aScrollBar),
@@ -6331,18 +6331,18 @@ begin
  end;
  case aScrollBar.fOrientation of
   pvgsboHorizontal:begin
-   Offset:=TpvVector2.Create(aScrollBar.fButtonSize-2.0,0.0);
+   Offset:=TpvVector2.InlineableCreate(aScrollBar.fButtonSize-2.0,0.0);
   end;
   else {pvgsboVertical:}begin
-   Offset:=TpvVector2.Create(0.0,aScrollBar.fButtonSize-2.0);
+   Offset:=TpvVector2.InlineableCreate(0.0,aScrollBar.fButtonSize-2.0);
   end;
  end;
  aCanvas.DrawGUIElement(Element,
                         true,
                         Offset,
-                        TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset,
+                        TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset,
                         Offset,
-                        TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset);
+                        TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset);
 
  Rect:=aScrollBar.GetThumbButtonRect;
  if aScrollBar.Enabled then begin
@@ -6374,34 +6374,34 @@ begin
   end;
  end else begin
   Element:=GUI_ELEMENT_BUTTON_DISABLED;
-  aCanvas.Color:=TpvVector4.Create(aScrollBar.FontColor.rgb,aScrollBar.FontColor.a*0.25);
+  aCanvas.Color:=TpvVector4.InlineableCreate(aScrollBar.FontColor.rgb,aScrollBar.FontColor.a*0.25);
  end;
  case aScrollBar.fOrientation of
   pvgsboHorizontal:begin
    aCanvas.DrawGUIElement(Element,
                           true,
-                          TpvVector2.Create(0.0,0.0),
-                          TpvVector2.Create(aScrollBar.fButtonSize,aScrollBar.fSize.y),
-                          TpvVector2.Create(0.0,0.0),
-                          TpvVector2.Create(aScrollBar.fButtonSize,aScrollBar.fSize.y));
+                          TpvVector2.InlineableCreate(0.0,0.0),
+                          TpvVector2.InlineableCreate(aScrollBar.fButtonSize,aScrollBar.fSize.y),
+                          TpvVector2.InlineableCreate(0.0,0.0),
+                          TpvVector2.InlineableCreate(aScrollBar.fButtonSize,aScrollBar.fSize.y));
    Sprite:=TpvSprite(fIconDirectionArrowLeft);
    aCanvas.DrawSprite(Sprite,
                       TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                      TpvRect.CreateAbsolute(TpvVector2.Create(IconSpacer,IconSpacer),
-                                             TpvVector2.Create(aScrollBar.fButtonSize-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
+                      TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(IconSpacer,IconSpacer),
+                                             TpvVector2.InlineableCreate(aScrollBar.fButtonSize-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
   end;
   else {pvgsboVertical:}begin
    aCanvas.DrawGUIElement(Element,
                           true,
-                          TpvVector2.Create(0.0,0.0),
-                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fButtonSize),
-                          TpvVector2.Create(0.0,0.0),
-                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fButtonSize));
+                          TpvVector2.InlineableCreate(0.0,0.0),
+                          TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fButtonSize),
+                          TpvVector2.InlineableCreate(0.0,0.0),
+                          TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fButtonSize));
    Sprite:=TpvSprite(fIconDirectionArrowUp);
    aCanvas.DrawSprite(Sprite,
                       TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                      TpvRect.CreateAbsolute(TpvVector2.Create(IconSpacer,IconSpacer),
-                                             TpvVector2.Create(aScrollBar.fSize.x-IconSpacer,aScrollBar.fButtonSize-IconSpacer)));
+                      TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(IconSpacer,IconSpacer),
+                                             TpvVector2.InlineableCreate(aScrollBar.fSize.x-IconSpacer,aScrollBar.fButtonSize-IconSpacer)));
   end;
  end;
 
@@ -6416,34 +6416,34 @@ begin
   end;
  end else begin
   Element:=GUI_ELEMENT_BUTTON_DISABLED;
-  aCanvas.Color:=TpvVector4.Create(aScrollBar.FontColor.rgb,aScrollBar.FontColor.a*0.25);
+  aCanvas.Color:=TpvVector4.InlineableCreate(aScrollBar.FontColor.rgb,aScrollBar.FontColor.a*0.25);
  end;
  case aScrollBar.fOrientation of
   pvgsboHorizontal:begin
    aCanvas.DrawGUIElement(Element,
                           true,
-                          TpvVector2.Create(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
-                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y),
-                          TpvVector2.Create(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
-                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y));
+                          TpvVector2.InlineableCreate(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
+                          TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y),
+                          TpvVector2.InlineableCreate(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
+                          TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y));
    Sprite:=TpvSprite(fIconDirectionArrowRight);
    aCanvas.DrawSprite(Sprite,
                       TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                      TpvRect.CreateAbsolute(TpvVector2.Create((aScrollBar.fSize.x-aScrollBar.fButtonSize)+IconSpacer,IconSpacer),
-                                             TpvVector2.Create(aScrollBar.fSize.x-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
+                      TpvRect.CreateAbsolute(TpvVector2.InlineableCreate((aScrollBar.fSize.x-aScrollBar.fButtonSize)+IconSpacer,IconSpacer),
+                                             TpvVector2.InlineableCreate(aScrollBar.fSize.x-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
   end;
   else {pvgsboVertical:}begin
    aCanvas.DrawGUIElement(Element,
                           true,
-                          TpvVector2.Create(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
-                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y),
-                          TpvVector2.Create(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
-                          TpvVector2.Create(aScrollBar.fSize.x,aScrollBar.fSize.y));
+                          TpvVector2.InlineableCreate(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
+                          TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y),
+                          TpvVector2.InlineableCreate(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
+                          TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y));
    Sprite:=TpvSprite(fIconDirectionArrowDown);
    aCanvas.DrawSprite(Sprite,
                       TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                      TpvRect.CreateAbsolute(TpvVector2.Create(IconSpacer,(aScrollBar.fSize.y-aScrollBar.fButtonSize)+IconSpacer),
-                                             TpvVector2.Create(aScrollBar.fSize.x-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
+                      TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(IconSpacer,(aScrollBar.fSize.y-aScrollBar.fButtonSize)+IconSpacer),
+                                             TpvVector2.InlineableCreate(aScrollBar.fSize.x-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
   end;
  end;
 
@@ -6453,10 +6453,10 @@ function TpvGUIDefaultVectorBasedSkin.GetSliderPreferredSize(const aSlider:TpvGU
 begin
  case aSlider.fOrientation of
   pvgsoHorizontal:begin
-   result:=TpvVector2.Create((aSlider.ButtonSize*2.0)+128,aSlider.ButtonSize);
+   result:=TpvVector2.InlineableCreate((aSlider.ButtonSize*2.0)+128,aSlider.ButtonSize);
   end;
   else {pvgsoVertical:}begin
-   result:=TpvVector2.Create(aSlider.ButtonSize,(aSlider.ButtonSize*2.0)+128);
+   result:=TpvVector2.InlineableCreate(aSlider.ButtonSize,(aSlider.ButtonSize*2.0)+128);
   end;
  end;
  result:=Maximum(GetWidgetLayoutPreferredSize(aSlider),
@@ -6491,18 +6491,18 @@ begin
  end;
  case aSlider.fOrientation of
   pvgsoHorizontal:begin
-   Offset:=TpvVector2.Create(0.0,6.0);
+   Offset:=TpvVector2.InlineableCreate(0.0,6.0);
   end;
   else {pvgsoVertical:}begin
-   Offset:=TpvVector2.Create(6.0,0.0);
+   Offset:=TpvVector2.InlineableCreate(6.0,0.0);
   end;
  end;
  aCanvas.DrawGUIElement(Element,
                         true,
                         Offset,
-                        TpvVector2.Create(aSlider.fSize.x,aSlider.fSize.y)-Offset,
+                        TpvVector2.InlineableCreate(aSlider.fSize.x,aSlider.fSize.y)-Offset,
                         Offset,
-                        TpvVector2.Create(aSlider.fSize.x,aSlider.fSize.y)-Offset);
+                        TpvVector2.InlineableCreate(aSlider.fSize.x,aSlider.fSize.y)-Offset);
 
  Rect:=aSlider.GetThumbButtonRect;
  if aSlider.Enabled then begin
@@ -6529,10 +6529,10 @@ function TpvGUIDefaultVectorBasedSkin.GetProgressBarPreferredSize(const aProgres
 begin
  case aProgressBar.fOrientation of
   pvgpboHorizontal:begin
-   result:=TpvVector2.Create(100,24);
+   result:=TpvVector2.InlineableCreate(100,24);
   end;
   else {pvgpboVertical:}begin
-   result:=TpvVector2.Create(24,100);
+   result:=TpvVector2.InlineableCreate(24,100);
   end;
  end;
  result:=Maximum(GetWidgetLayoutPreferredSize(aProgressBar),
@@ -6567,18 +6567,18 @@ begin
  end;
  case aProgressBar.fOrientation of
   pvgpboHorizontal:begin
-   Offset:=TpvVector2.Create(0.0,0.0);
+   Offset:=TpvVector2.InlineableCreate(0.0,0.0);
   end;
   else {pvgpboVertical:}begin
-   Offset:=TpvVector2.Create(0.0,0.0);
+   Offset:=TpvVector2.InlineableCreate(0.0,0.0);
   end;
  end;
  aCanvas.DrawGUIElement(Element,
                         true,
                         Offset,
-                        TpvVector2.Create(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
+                        TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
                         Offset,
-                        TpvVector2.Create(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset);
+                        TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset);
 
  if aProgressBar.Enabled then begin
   if aProgressBar.Focused then begin
@@ -6591,24 +6591,24 @@ begin
  end;
  case aProgressBar.fOrientation of
   pvgpboHorizontal:begin
-   Offset:=TpvVector2.Create(2.0,2.0);
-   Scale:=TpvVector2.Create((aProgressBar.fValue-aProgressBar.fMinimumValue)/(aProgressBar.fMaximumValue-aProgressBar.fMinimumValue),1.0);
+   Offset:=TpvVector2.InlineableCreate(2.0,2.0);
+   Scale:=TpvVector2.InlineableCreate((aProgressBar.fValue-aProgressBar.fMinimumValue)/(aProgressBar.fMaximumValue-aProgressBar.fMinimumValue),1.0);
    aCanvas.DrawGUIElement(Element,
                           true,
                           Offset,
-                          Offset+((TpvVector2.Create(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale),
+                          Offset+((TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale),
                           Offset,
-                          Offset+((TpvVector2.Create(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale));
+                          Offset+((TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale));
   end;
   else {pvgpboVertical:}begin
-   Offset:=TpvVector2.Create(2.0,2.0);
-   Scale:=TpvVector2.Create(1.0,1.0-((aProgressBar.fValue-aProgressBar.fMinimumValue)/(aProgressBar.fMaximumValue-aProgressBar.fMinimumValue)));
+   Offset:=TpvVector2.InlineableCreate(2.0,2.0);
+   Scale:=TpvVector2.InlineableCreate(1.0,1.0-((aProgressBar.fValue-aProgressBar.fMinimumValue)/(aProgressBar.fMaximumValue-aProgressBar.fMinimumValue)));
    aCanvas.DrawGUIElement(Element,
                           true,
-                          Offset+(TpvVector2.Create(0.0,aProgressBar.fSize.y-(Offset.y*2.0))*Scale),
-                          TpvVector2.Create(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
-                          Offset+(TpvVector2.Create(0.0,aProgressBar.fSize.y-(Offset.y*2.0))*Scale),
-                          TpvVector2.Create(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset);
+                          Offset+(TpvVector2.InlineableCreate(0.0,aProgressBar.fSize.y-(Offset.y*2.0))*Scale),
+                          TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
+                          Offset+(TpvVector2.InlineableCreate(0.0,aProgressBar.fSize.y-(Offset.y*2.0))*Scale),
+                          TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset);
   end;
  end;
 
@@ -6648,11 +6648,11 @@ begin
 
  fCursor:=pvgcArrow;
 
- fPosition:=TpvVector2.Create(0.0,0.0);
+ fPosition:=TpvVector2.InlineableCreate(0.0,0.0);
 
- fSize:=TpvVector2.Create(0.0,0.0);
+ fSize:=TpvVector2.InlineableCreate(0.0,0.0);
 
- fFixedSize:=TpvVector2.Create(-1.0,-1.0);
+ fFixedSize:=TpvVector2.InlineableCreate(-1.0,-1.0);
 
  fPositionProperty:=TpvVector2Property.Create(@fPosition);
 
@@ -7443,7 +7443,7 @@ begin
   try
    fCanvas.ModelMatrix:=fModelMatrix;
    fCanvas.ClipRect:=fParentClipRect;
-   fCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+   fCanvas.Color:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
    fCanvas.LineWidth:=4.0;
    fCanvas.LineJoin:=pvcljRound;
    fCanvas.LineCap:=pvclcRound;
@@ -8356,9 +8356,9 @@ begin
    end;
   end;
   if aWindowState=pvgwsMinimized then begin
-   MinimumSize:=TpvVector2.Create(Skin.fMinimizedWindowMinimumWidth,Skin.fMinimizedWindowMinimumHeight);
+   MinimumSize:=TpvVector2.InlineableCreate(Skin.fMinimizedWindowMinimumWidth,Skin.fMinimizedWindowMinimumHeight);
   end else begin
-   MinimumSize:=TpvVector2.Create(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
+   MinimumSize:=TpvVector2.InlineableCreate(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
   end;
   if assigned(fButtonPanel) then begin
    MinimumSize.x:=Max(MinimumSize.x,fButtonPanel.Size.x+(Skin.fSpacing*2.0));
@@ -8771,14 +8771,14 @@ begin
     end;
     POINTEREVENT_DRAG:begin
      if assigned(fParent) and (fParent is TpvGUIWindow) and (pvgwfHeader in (fParent as TpvGUIWindow).fWindowFlags) then begin
-      MinimumPosition:=TpvVector2.Create(0.0,Skin.fWindowHeaderHeight);
+      MinimumPosition:=TpvVector2.InlineableCreate(0.0,Skin.fWindowHeaderHeight);
      end else begin
       MinimumPosition:=TpvVector2.Null;
      end;
      if WindowState=pvgwsMinimized then begin
-      MinimumSize:=TpvVector2.Create(Skin.fMinimizedWindowMinimumWidth,Skin.fMinimizedWindowMinimumHeight);
+      MinimumSize:=TpvVector2.InlineableCreate(Skin.fMinimizedWindowMinimumWidth,Skin.fMinimizedWindowMinimumHeight);
      end else begin
-      MinimumSize:=TpvVector2.Create(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
+      MinimumSize:=TpvVector2.InlineableCreate(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
      end;
      if assigned(fButtonPanel) then begin
       MinimumSize.x:=Max(MinimumSize.x,fButtonPanel.Size.x+(Skin.fSpacing*2.0));
@@ -8806,7 +8806,7 @@ begin
        fCursor:=pvgcNWSE;
       end;
       pvgwmaSizeNE:begin
-       NewSize:=Maximum(fSize+TpvVector2.Create(aPointerEvent.RelativePosition.x,
+       NewSize:=Maximum(fSize+TpvVector2.InlineableCreate(aPointerEvent.RelativePosition.x,
                                                 -aPointerEvent.RelativePosition.y),
                         MinimumSize);
        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
@@ -8822,7 +8822,7 @@ begin
        fCursor:=pvgcNESW;
       end;
       pvgwmaSizeSW:begin
-       NewSize:=Maximum(fSize+TpvVector2.Create(-aPointerEvent.RelativePosition.x,
+       NewSize:=Maximum(fSize+TpvVector2.InlineableCreate(-aPointerEvent.RelativePosition.x,
                                                 aPointerEvent.RelativePosition.y),
                         MinimumSize);
        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
@@ -9193,16 +9193,16 @@ begin
  if assigned(fParentWidget) then begin
   case fAnchorSide of
    pvgpasLeft:begin
-    fAnchorSideOffset:=TpvVector2.Create(-fSize.x,0.0);
+    fAnchorSideOffset:=TpvVector2.InlineableCreate(-fSize.x,0.0);
    end;
    pvgpasRight:begin
-    fAnchorSideOffset:=TpvVector2.Create(fParentWidget.fSize.x,0.0);
+    fAnchorSideOffset:=TpvVector2.InlineableCreate(fParentWidget.fSize.x,0.0);
    end;
    pvgpasTop:begin
-    fAnchorSideOffset:=TpvVector2.Create(0.0,-fSize.y);
+    fAnchorSideOffset:=TpvVector2.InlineableCreate(0.0,-fSize.y);
    end;
    pvgpasBottom:begin
-    fAnchorSideOffset:=TpvVector2.Create(0.0,fParentWidget.fSize.y);
+    fAnchorSideOffset:=TpvVector2.InlineableCreate(0.0,fParentWidget.fSize.y);
    end;
    else {pvgpasNone:}begin
     fAnchorSideOffset:=TpvVector2.Null;
@@ -9638,8 +9638,8 @@ begin
  fPopup:=TpvGUIPopup.Create(self);
  fPopup.Visible:=false;
  fPopup.AnchorSide:=pvgpasBottom;
- fPopup.fSize:=TpvVector2.Create(160,80);
- fPopup.fFixedSize:=TpvVector2.Create(160,80);
+ fPopup.fSize:=TpvVector2.InlineableCreate(160,80);
+ fPopup.fFixedSize:=TpvVector2.InlineableCreate(160,80);
 
 end;
 
@@ -9678,7 +9678,7 @@ procedure TpvGUIPopupMenuButton.SetDown(const aDown:boolean);
 begin
  inherited SetDown(aDown);
  if aDown then begin
-  fPopupMenu.Activate(AbsolutePosition+TpvVector2.Create(0.0,fSize.y));
+  fPopupMenu.Activate(AbsolutePosition+TpvVector2.InlineableCreate(0.0,fSize.y));
  end else begin
   fPopupMenu.Deactivate;
  end;
@@ -11489,7 +11489,7 @@ begin
       if fFocusedMenuItem.Enabled and fFocusedMenuItem.Selectable then begin
        if assigned(fFocusedMenuItem.Menu) then begin
         fSelectedMenuItem:=fFocusedMenuItem;
-        fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,fFocusedMenuItem.fOpenRect.Top));
+        fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.InlineableCreate(fSize.x,fFocusedMenuItem.fOpenRect.Top));
         fFocusedMenuItem.Menu.FocusFirstMenuItem;
         if assigned(fFocusedMenuItem.OnClick) then begin
          fFocusedMenuItem.OnClick(fFocusedMenuItem);
@@ -11505,7 +11505,7 @@ begin
       fSelectedMenuItem:=fFocusedMenuItem;
       if fFocusedMenuItem.Enabled and fFocusedMenuItem.Selectable then begin
        if assigned(fFocusedMenuItem.Menu) then begin
-        fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,fFocusedMenuItem.fOpenRect.Top));
+        fFocusedMenuItem.Menu.Activate(fPosition+TpvVector2.InlineableCreate(fSize.x,fFocusedMenuItem.fOpenRect.Top));
         fFocusedMenuItem.Menu.FocusFirstMenuItem;
        end;
        if assigned(fFocusedMenuItem.OnClick) then begin
@@ -11675,7 +11675,7 @@ begin
        fFocusedMenuItem:=MenuItem;
        fHoveredMenuItem:=MenuItem;
        if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.Menu) then begin
-        fSelectedMenuItem.Menu.Activate(fPosition+TpvVector2.Create(fSize.x,fFocusedMenuItem.fOpenRect.Top));
+        fSelectedMenuItem.Menu.Activate(fPosition+TpvVector2.InlineableCreate(fSize.x,fFocusedMenuItem.fOpenRect.Top));
        end;
        break;
       end;
@@ -11834,7 +11834,7 @@ begin
        fSelectedMenuItem:=fFocusedMenuItem;
        if fFocusedMenuItem.Enabled and fFocusedMenuItem.Selectable then begin
         if assigned(fFocusedMenuItem.Menu) then begin
-         fFocusedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(fFocusedMenuItem.fOpenRect.Left,fSize.y));
+         fFocusedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.InlineableCreate(fFocusedMenuItem.fOpenRect.Left,fSize.y));
          fFocusedMenuItem.Menu.FocusFirstMenuItem;
         end;
         if assigned(fFocusedMenuItem.OnClick) then begin
@@ -11957,7 +11957,7 @@ begin
         fFocusedMenuItem:=MenuItem;
         fHoveredMenuItem:=MenuItem;
         if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.Menu) then begin
-         fSelectedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.Create(fSelectedMenuItem.fOpenRect.Left,fSize.y));
+         fSelectedMenuItem.Menu.Activate(AbsolutePosition+TpvVector2.InlineableCreate(fSelectedMenuItem.fOpenRect.Left,fSize.y));
         end;
         break;
        end;
@@ -12162,31 +12162,31 @@ begin
  case fOrientation of
   pvgsboHorizontal:begin
    if fMinimumValue<fMaximumValue then begin
-    result:=TpvRect.CreateRelative(TpvVector2.Create(fButtonSize+
-                                                     ((fSize.x-((fButtonSize*2.0)+ThumbButtonSize))*
-                                                      ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue))),
-                                                     0.0),
-                                   TpvVector2.Create(ThumbButtonSize,fSize.y));
+    result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(fButtonSize+
+                                                               ((fSize.x-((fButtonSize*2.0)+ThumbButtonSize))*
+                                                               ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue))),
+                                                               0.0),
+                                   TpvVector2.InlineableCreate(ThumbButtonSize,fSize.y));
    end else begin
-    result:=TpvRect.CreateRelative(TpvVector2.Create(fButtonSize,0.0),
-                                   TpvVector2.Create(ThumbButtonSize,fSize.y));
+    result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(fButtonSize,0.0),
+                                   TpvVector2.InlineableCreate(ThumbButtonSize,fSize.y));
    end;
   end;
   else {pvgsboVertical:}begin
    if fMinimumValue<fMaximumValue then begin
-    result:=TpvRect.CreateRelative(TpvVector2.Create(0.0,
-                                                     fButtonSize+
-                                                      ((fSize.y-((fButtonSize*2.0)+ThumbButtonSize))*
-                                                       ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue)))),
-                                   TpvVector2.Create(fSize.x,ThumbButtonSize));
+    result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(0.0,
+                                                               fButtonSize+
+                                                                ((fSize.y-((fButtonSize*2.0)+ThumbButtonSize))*
+                                                                 ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue)))),
+                                   TpvVector2.InlineableCreate(fSize.x,ThumbButtonSize));
    end else begin
-    result:=TpvRect.CreateRelative(TpvVector2.Create(0.0,fButtonSize),
-                                   TpvVector2.Create(fSize.x,ThumbButtonSize));
+    result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(0.0,fButtonSize),
+                                   TpvVector2.InlineableCreate(fSize.x,ThumbButtonSize));
    end;
   end;
  end;
- result.LeftTop:=result.LeftTop+TpvVector2.Create(1.0,1.0);
- result.RightBottom:=result.RightBottom-TpvVector2.Create(1.0,1.0);
+ result.LeftTop:=result.LeftTop+TpvVector2.InlineableCreate(1.0,1.0);
+ result.RightBottom:=result.RightBottom-TpvVector2.InlineableCreate(1.0,1.0);
 end;
 
 function TpvGUIScrollBar.Enter:boolean;
@@ -12616,29 +12616,29 @@ begin
  case fOrientation of
   pvgsoHorizontal:begin
    if fMinimumValue<fMaximumValue then begin
-    result:=TpvRect.CreateRelative(TpvVector2.Create(((fSize.x-fThumbButtonSize)*
-                                                      ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue))),
-                                                     0.0),
-                                   TpvVector2.Create(fThumbButtonSize,fSize.y));
+    result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(((fSize.x-fThumbButtonSize)*
+                                                                ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue))),
+                                                               0.0),
+                                   TpvVector2.InlineableCreate(fThumbButtonSize,fSize.y));
    end else begin
-    result:=TpvRect.CreateRelative(TpvVector2.Create(fButtonSize,0.0),
-                                   TpvVector2.Create(fThumbButtonSize,fSize.y));
+    result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(fButtonSize,0.0),
+                                   TpvVector2.InlineableCreate(fThumbButtonSize,fSize.y));
    end;
   end;
   else {pvgsoVertical:}begin
    if fMinimumValue<fMaximumValue then begin
-    result:=TpvRect.CreateRelative(TpvVector2.Create(0.0,
-                                                     ((fSize.y-fThumbButtonSize)*
-                                                       ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue)))),
-                                   TpvVector2.Create(fSize.x,fThumbButtonSize));
+    result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(0.0,
+                                                               ((fSize.y-fThumbButtonSize)*
+                                                                 ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue)))),
+                                   TpvVector2.InlineableCreate(fSize.x,fThumbButtonSize));
    end else begin
-    result:=TpvRect.CreateRelative(TpvVector2.Create(0.0,fButtonSize),
-                                   TpvVector2.Create(fSize.x,fThumbButtonSize));
+    result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(0.0,fButtonSize),
+                                   TpvVector2.InlineableCreate(fSize.x,fThumbButtonSize));
    end;
   end;
  end;
-{result.LeftTop:=result.LeftTop+TpvVector2.Create(1.0,1.0);
- result.RightBottom:=result.RightBottom-TpvVector2.Create(1.0,1.0);}
+{result.LeftTop:=result.LeftTop+TpvVector2.InlineableCreate(1.0,1.0);
+ result.RightBottom:=result.RightBottom-TpvVector2.InlineableCreate(1.0,1.0);}
 end;
 
 function TpvGUISlider.Enter:boolean;
@@ -13101,21 +13101,21 @@ begin
   end;
 
   if fHorizontalScrollBar.Visible then begin
-   fHorizontalScrollBar.fPosition:=TpvVector2.Create(0.0,fSize.y-HorizontalScrollBarPreferredSize.y);
+   fHorizontalScrollBar.fPosition:=TpvVector2.InlineableCreate(0.0,fSize.y-HorizontalScrollBarPreferredSize.y);
    if fVerticalScrollBar.Visible then begin
-    fHorizontalScrollBar.fSize:=TpvVector2.Create(fSize.x-VerticalScrollBarPreferredSize.x,HorizontalScrollBarPreferredSize.y);
+    fHorizontalScrollBar.fSize:=TpvVector2.InlineableCreate(fSize.x-VerticalScrollBarPreferredSize.x,HorizontalScrollBarPreferredSize.y);
    end else begin
-    fHorizontalScrollBar.fSize:=TpvVector2.Create(fSize.x,HorizontalScrollBarPreferredSize.y);
+    fHorizontalScrollBar.fSize:=TpvVector2.InlineableCreate(fSize.x,HorizontalScrollBarPreferredSize.y);
    end;
    fHorizontalScrollBar.PerformLayout;
   end;
 
   if fVerticalScrollBar.Visible then begin
-   fVerticalScrollBar.fPosition:=TpvVector2.Create(fSize.x-VerticalScrollBarPreferredSize.x,0.0);
+   fVerticalScrollBar.fPosition:=TpvVector2.InlineableCreate(fSize.x-VerticalScrollBarPreferredSize.x,0.0);
    if fHorizontalScrollBar.Visible then begin
-    fVerticalScrollBar.fSize:=TpvVector2.Create(VerticalScrollBarPreferredSize.x,fSize.y-HorizontalScrollBarPreferredSize.y);
+    fVerticalScrollBar.fSize:=TpvVector2.InlineableCreate(VerticalScrollBarPreferredSize.x,fSize.y-HorizontalScrollBarPreferredSize.y);
    end else begin
-    fVerticalScrollBar.fSize:=TpvVector2.Create(VerticalScrollBarPreferredSize.x,fSize.y);
+    fVerticalScrollBar.fSize:=TpvVector2.InlineableCreate(VerticalScrollBarPreferredSize.x,fSize.y);
    end;
    fVerticalScrollBar.PerformLayout;
   end;
@@ -13151,8 +13151,8 @@ begin
  fClipContentPanel.fPosition:=TpvVector2.Null;
  fClipContentPanel.fSize:=AvailiableSize;
 
- fContent.fPosition:=TpvVector2.Create(-fHorizontalScrollBar.Value,
-                                       -fVerticalScrollBar.Value);
+ fContent.fPosition:=TpvVector2.InlineableCreate(-fHorizontalScrollBar.Value,
+                                                 -fVerticalScrollBar.Value);
  fContent.fSize:=ContentPreferredSize;
  fContent.PerformLayout;
 
@@ -13160,14 +13160,14 @@ end;
 
 procedure TpvGUIScrollPanel.HorizontalScrollBarOnChange(const aSender:TpvGUIObject);
 begin
- fContent.fPosition:=TpvVector2.Create(-fHorizontalScrollBar.Value,
-                                       -fVerticalScrollBar.Value);
+ fContent.fPosition:=TpvVector2.InlineableCreate(-fHorizontalScrollBar.Value,
+                                                 -fVerticalScrollBar.Value);
 end;
 
 procedure TpvGUIScrollPanel.VerticalScrollBarOnChange(const aSender:TpvGUIObject);
 begin
- fContent.fPosition:=TpvVector2.Create(-fHorizontalScrollBar.Value,
-                                       -fVerticalScrollBar.Value);
+ fContent.fPosition:=TpvVector2.InlineableCreate(-fHorizontalScrollBar.Value,
+                                                 -fVerticalScrollBar.Value);
 end;
 
 procedure TpvGUIScrollPanel.Update;

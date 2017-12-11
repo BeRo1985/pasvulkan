@@ -152,8 +152,7 @@ type EpvSpriteAtlas=class(Exception);
        fSpecialSizedArrayTexture:boolean;
        fBytesPerPixel:TpvInt32;
        fLayerRootNodes:TPVulkanSpriteAtlasArrayTextureLayerRectNodes;
-       fInverseWidth:TpvDouble;
-       fInverseHeight:TpvDouble;
+       fInverseSize:TpvVector2;
       public
        constructor Create(const aSRGB,aDepth16Bit:boolean); reintroduce;
        destructor Destroy; override;
@@ -169,6 +168,7 @@ type EpvSpriteAtlas=class(Exception);
                         const aTransferFence:TpvVulkanFence;
                         const aMipMaps:boolean);
        procedure Unload;
+       property InverseSize:TpvVector2 read fInverseSize;
       published
        property Texture:TpvVulkanTexture read fTexture;
        property Width:TpvInt32 read fWidth;
@@ -177,8 +177,6 @@ type EpvSpriteAtlas=class(Exception);
        property CountTexels:TpvInt64 read fCountTexels;
        property Uploaded:boolean read fUploaded;
        property Dirty:boolean read fDirty write fDirty;
-       property InverseWidth:TpvDouble read fInverseWidth;
-       property InverseHeight:TpvDouble read fInverseHeight;
      end;
 
      TpvSpriteAtlasArrayTextures=array of TpvSpriteAtlasArrayTexture;
@@ -217,6 +215,11 @@ type EpvSpriteAtlas=class(Exception);
        fScaleX:TpvFloat;
        fScaleY:TpvFloat;
        fTrimmedHullVectors:TpvSpriteTrimmedHullVectors;
+       fTrimmedOffset:TpvVector2;
+       fTrimmedSize:TpvVector2;
+       fTrimmedRect:TpvRect;
+       fOffset:TpvVector2;
+       fSize:TpvVector2;
        function GetSignedDistanceField:boolean; inline;
        procedure SetSignedDistanceField(const aSignedDistanceField:boolean); inline;
        function GetRotated:boolean; inline;
@@ -224,7 +227,13 @@ type EpvSpriteAtlas=class(Exception);
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
+       procedure Update;
        property TrimmedHullVectors:TpvSpriteTrimmedHullVectors read fTrimmedHullVectors write fTrimmedHullVectors;
+       property TrimmedOffset:TpvVector2 read fTrimmedOffset;
+       property TrimmedSize:TpvVector2 read fTrimmedSize;
+       property TrimmedRect:TpvRect read fTrimmedRect;
+       property Offset:TpvVector2 read fOffset;
+       property Size:TpvVector2 read fSize;
       published
        property Name:TpvRawByteString read fName write fName;
        property ArrayTexture:TpvSpriteAtlasArrayTexture read fArrayTexture write fArrayTexture;
@@ -490,7 +499,7 @@ begin
      s16:=fPixels;
      d16:=UploadPixels;
      for Index:=1 to fWidth*fHeight do begin
-      c:=ConvertSRGBToLinear(TpvVector4.Create(s16^.r,s16^.g,s16^.g,s16^.b)*Div16Bit);
+      c:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(s16^.r,s16^.g,s16^.g,s16^.b)*Div16Bit);
       d16^.r:=Min(Max(round(Clamp(c.r,0.0,1.0)*65536.0),0),65535);
       d16^.g:=Min(Max(round(Clamp(c.g,0.0,1.0)*65536.0),0),65535);
       d16^.b:=Min(Max(round(Clamp(c.b,0.0,1.0)*65536.0),0),65535);
@@ -644,8 +653,7 @@ begin
     fLayerRootNodes[LayerIndex]^.Height:=fHeight;
     fLayerRootNodes[LayerIndex]^.FreeArea:=fWidth*fHeight;
    end;
-   fInverseWidth:=1.0/fWidth;
-   fInverseHeight:=1.0/fHeight;
+   fInverseSize:=TpvVector2.InlineableCreate(1.0/fWidth,1.0/fHeight);
   finally
    OldTexels:=nil;
   end;
@@ -705,7 +713,7 @@ begin
      s16:=@fTexels[0];
      d16:=UploadPixels;
      for Index:=1 to fCountTexels do begin
-      c:=ConvertSRGBToLinear(TpvVector4.Create(s16^.r,s16^.g,s16^.g,s16^.b)*Div16Bit);
+      c:=ConvertSRGBToLinear(TpvVector4.InlineableCreate(s16^.r,s16^.g,s16^.g,s16^.b)*Div16Bit);
       d16^.r:=Min(Max(round(Clamp(c.r,0.0,1.0)*65536.0),0),65535);
       d16^.g:=Min(Max(round(Clamp(c.g,0.0,1.0)*65536.0),0),65535);
       d16^.b:=Min(Max(round(Clamp(c.b,0.0,1.0)*65536.0),0),65535);
@@ -790,6 +798,19 @@ begin
  fTrimmedHullVectors:=nil;
  Name:='';
  inherited Destroy;
+end;
+
+procedure TpvSprite.Update;
+begin
+ fTrimmedOffset:=TpvVector2.InlineableCreate(fTrimmedX,fTrimmedY);
+ if Rotated then begin
+  fTrimmedSize:=TpvVector2.InlineableCreate(fTrimmedHeight,fTrimmedWidth);
+ end else begin
+  fTrimmedSize:=TpvVector2.InlineableCreate(fTrimmedWidth,fTrimmedHeight);
+ end;
+ fTrimmedRect:=TpvRect.CreateRelative(fTrimmedOffset,fTrimmedSize);
+ fOffset:=TpvVector2.InlineableCreate(x,y);
+ fSize:=TpvVector2.InlineableCreate(fWidth,fHeight);
 end;
 
 function TpvSprite.GetSignedDistanceField:boolean;
@@ -1110,6 +1131,7 @@ begin
              Sprite.TrimmedWidth:=StrToIntDef(String(XMLChildrenTag.GetParameter('w','0')),0);
              Sprite.TrimmedHeight:=StrToIntDef(String(XMLChildrenTag.GetParameter('h','0')),0);
              Sprite.Rotated:=XMLChildrenTag.GetParameter('r','n')='y';
+             Sprite.Update;
              AddSprite(Sprite);
             end;
            end;
@@ -1405,7 +1427,7 @@ begin
      if assigned(aTrimmedHullVectors) then begin
       TrimmedHullVectors:=copy(aTrimmedHullVectors^);
       for x:=0 to length(TrimmedHullVectors)-1 do begin
-       TrimmedHullVectors[x].xy:=TrimmedHullVectors[x].xy-TpvVector2.Create(x0,y0);
+       TrimmedHullVectors[x].xy:=TrimmedHullVectors[x].xy-TpvVector2.InlineableCreate(x0,y0);
       end;
      end else if aAutomaticTrim then begin
       ConvexHull2DPixels:=nil;
@@ -1645,6 +1667,8 @@ begin
     end;
 
    end;
+
+   Sprite.Update;
 
    result:=Sprite;
 
@@ -2060,6 +2084,7 @@ begin
         end;
        end;
       end;
+      Sprite.Update;
      finally
       AddSprite(Sprite);
      end;

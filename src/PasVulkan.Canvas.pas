@@ -1020,7 +1020,7 @@ begin
  Command^.CommandType:=pcpctArcTo;
  Command^.Points[0]:=aP0;
  Command^.Points[1]:=aP1;
- Command^.Points[2]:=TpvVector2.Create(aRadius,aRadius);
+ Command^.Points[2]:=TpvVector2.InlineableCreate(aRadius,aRadius);
  result:=self;
 end;
 
@@ -1055,7 +1055,7 @@ begin
  for SubdivisionIndex:=0 to CountSubdivisions-1 do begin
   SinCos(Mix(aAngle0,aAngle1,SubdivisionIndex/CountSubdivisions),Normal.y,Normal.x);
   Current:=aCenter+(Normal*aRadius);
-  Tangent:=TpvVector2.Create(-Normal.y,Normal.x)*aRadius*Kappa;
+  Tangent:=TpvVector2.InlineableCreate(-Normal.y,Normal.x)*aRadius*Kappa;
   if SubdivisionIndex=0 then begin
    MoveTo(Current);
   end else begin
@@ -1070,34 +1070,34 @@ end;
 function TpvCanvasPath.Ellipse(const aCenter,aRadius:TpvVector2):TpvCanvasPath;
 const ARC_MAGIC=0.5522847498; // 4/3 * (1-cos 45°)/sin 45° = 4/3 * (sqrt(2) - 1)
 begin
- MoveTo(TpvVector2.Create(aCenter.x+aRadius.x,aCenter.y));
- CubicCurveTo(TpvVector2.Create(aCenter.x+aRadius.x,aCenter.y-(aRadius.y*ARC_MAGIC)),
-              TpvVector2.Create(aCenter.x+(aRadius.x*ARC_MAGIC),aCenter.y-aRadius.y),
-              TpvVector2.Create(aCenter.x,aCenter.y-aRadius.y));
- CubicCurveTo(TpvVector2.Create(aCenter.x-(aRadius.x*ARC_MAGIC),aCenter.y-aRadius.y),
-              TpvVector2.Create(aCenter.x-aRadius.x,aCenter.y-(aRadius.y*ARC_MAGIC)),
-              TpvVector2.Create(aCenter.x-aRadius.x,aCenter.y));
- CubicCurveTo(TpvVector2.Create(aCenter.x-aRadius.x,aCenter.y+(aRadius.y*ARC_MAGIC)),
-              TpvVector2.Create(aCenter.x-(aRadius.x*ARC_MAGIC),aCenter.y+aRadius.y),
-              TpvVector2.Create(aCenter.x,aCenter.y+aRadius.y));
- CubicCurveTo(TpvVector2.Create(aCenter.x+(aRadius.x*ARC_MAGIC),aCenter.y+aRadius.y),
-              TpvVector2.Create(aCenter.x+aRadius.x,aCenter.y+(aRadius.y*ARC_MAGIC)),
-              TpvVector2.Create(aCenter.x+aRadius.x,aCenter.y));
+ MoveTo(TpvVector2.InlineableCreate(aCenter.x+aRadius.x,aCenter.y));
+ CubicCurveTo(TpvVector2.InlineableCreate(aCenter.x+aRadius.x,aCenter.y-(aRadius.y*ARC_MAGIC)),
+              TpvVector2.InlineableCreate(aCenter.x+(aRadius.x*ARC_MAGIC),aCenter.y-aRadius.y),
+              TpvVector2.InlineableCreate(aCenter.x,aCenter.y-aRadius.y));
+ CubicCurveTo(TpvVector2.InlineableCreate(aCenter.x-(aRadius.x*ARC_MAGIC),aCenter.y-aRadius.y),
+              TpvVector2.InlineableCreate(aCenter.x-aRadius.x,aCenter.y-(aRadius.y*ARC_MAGIC)),
+              TpvVector2.InlineableCreate(aCenter.x-aRadius.x,aCenter.y));
+ CubicCurveTo(TpvVector2.InlineableCreate(aCenter.x-aRadius.x,aCenter.y+(aRadius.y*ARC_MAGIC)),
+              TpvVector2.InlineableCreate(aCenter.x-(aRadius.x*ARC_MAGIC),aCenter.y+aRadius.y),
+              TpvVector2.InlineableCreate(aCenter.x,aCenter.y+aRadius.y));
+ CubicCurveTo(TpvVector2.InlineableCreate(aCenter.x+(aRadius.x*ARC_MAGIC),aCenter.y+aRadius.y),
+              TpvVector2.InlineableCreate(aCenter.x+aRadius.x,aCenter.y+(aRadius.y*ARC_MAGIC)),
+              TpvVector2.InlineableCreate(aCenter.x+aRadius.x,aCenter.y));
  ClosePath;
  result:=self;
 end;
 
 function TpvCanvasPath.Circle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvasPath;
 begin
- result:=Ellipse(aCenter,TpvVector2.Create(aRadius,aRadius));
+ result:=Ellipse(aCenter,TpvVector2.InlineableCreate(aRadius,aRadius));
 end;
 
 function TpvCanvasPath.Rectangle(const aCenter,aBounds:TpvVector2):TpvCanvasPath;
 begin
- MoveTo(TpvVector2.Create(aCenter.x-aBounds.x,aCenter.y-aBounds.y));
- LineTo(TpvVector2.Create(aCenter.x+aBounds.x,aCenter.y-aBounds.y));
- LineTo(TpvVector2.Create(aCenter.x+aBounds.x,aCenter.y+aBounds.y));
- LineTo(TpvVector2.Create(aCenter.x-aBounds.x,aCenter.y+aBounds.y));
+ MoveTo(TpvVector2.InlineableCreate(aCenter.x-aBounds.x,aCenter.y-aBounds.y));
+ LineTo(TpvVector2.InlineableCreate(aCenter.x+aBounds.x,aCenter.y-aBounds.y));
+ LineTo(TpvVector2.InlineableCreate(aCenter.x+aBounds.x,aCenter.y+aBounds.y));
+ LineTo(TpvVector2.InlineableCreate(aCenter.x-aBounds.x,aCenter.y+aBounds.y));
  ClosePath;
  result:=self;
 end;
@@ -1110,39 +1110,39 @@ begin
     IsZero(aRadiusTopRight) and
     IsZero(aRadiusBottomLeft) and
     IsZero(aRadiusBottomRight) then begin
-  MoveTo(TpvVector2.Create(aCenter.x-aBounds.x,aCenter.y-aBounds.y));
-  LineTo(TpvVector2.Create(aCenter.x+aBounds.x,aCenter.y-aBounds.y));
-  LineTo(TpvVector2.Create(aCenter.x+aBounds.x,aCenter.y+aBounds.y));
-  LineTo(TpvVector2.Create(aCenter.x-aBounds.x,aCenter.y+aBounds.y));
+  MoveTo(TpvVector2.InlineableCreate(aCenter.x-aBounds.x,aCenter.y-aBounds.y));
+  LineTo(TpvVector2.InlineableCreate(aCenter.x+aBounds.x,aCenter.y-aBounds.y));
+  LineTo(TpvVector2.InlineableCreate(aCenter.x+aBounds.x,aCenter.y+aBounds.y));
+  LineTo(TpvVector2.InlineableCreate(aCenter.x-aBounds.x,aCenter.y+aBounds.y));
   ClosePath;
  end else begin
   Offset:=aCenter-aBounds;
   Size:=aBounds*2.0;
-  TopLeft:=TpvVector2.Create(Min(ABounds.x,aRadiusTopLeft)*Sign(Size.x),
-                             Min(ABounds.y,aRadiusTopLeft)*Sign(Size.y));
-  TopRight:=TpvVector2.Create(Min(ABounds.x,aRadiusTopRight)*Sign(Size.x),
-                              Min(ABounds.y,aRadiusTopRight)*Sign(Size.y));
-  BottomLeft:=TpvVector2.Create(Min(ABounds.x,aRadiusBottomLeft)*Sign(Size.x),
-                                Min(ABounds.y,aRadiusBottomLeft)*Sign(Size.y));
-  BottomRight:=TpvVector2.Create(Min(ABounds.x,aRadiusBottomRight)*Sign(Size.x),
-                                 Min(ABounds.y,aRadiusBottomRight)*Sign(Size.y));
-  MoveTo(Offset+TpvVector2.Create(0.0,TopLeft.y));
-  LineTo(Offset+TpvVector2.Create(0.0,Size.y-BottomLeft.y));
-  CubicCurveTo(Offset+TpvVector2.Create(0.0,Size.y-(BottomLeft.y*(1.0-ARC_MAGIC))),
-               Offset+TpvVector2.Create(BottomLeft.x*(1.0-ARC_MAGIC),Size.y),
-               Offset+TpvVector2.Create(BottomLeft.x,Size.y));
-  LineTo(Offset+TpvVector2.Create(Size.x-BottomRight.x,Size.y));
-  CubicCurveTo(Offset+TpvVector2.Create(Size.x-(BottomRight.x*(1.0-ARC_MAGIC)),Size.y),
-               Offset+TpvVector2.Create(Size.x,Size.y-(BottomRight.y*(1.0-ARC_MAGIC))),
-               Offset+TpvVector2.Create(Size.x,Size.y-BottomRight.y));
-  LineTo(Offset+TpvVector2.Create(Size.x,TopRight.y));
-  CubicCurveTo(Offset+TpvVector2.Create(Size.x,TopRight.y*(1.0-ARC_MAGIC)),
-               Offset+TpvVector2.Create(Size.x-(TopRight.x*(1.0-ARC_MAGIC)),0.0),
-               Offset+TpvVector2.Create(Size.x-TopRight.x,0.0));
-  LineTo(Offset+TpvVector2.Create(TopLeft.y,0.0));
-  CubicCurveTo(Offset+TpvVector2.Create(TopLeft.x*(1.0-ARC_MAGIC),0.0),
-               Offset+TpvVector2.Create(0.0,TopLeft.y*(1.0-ARC_MAGIC)),
-               Offset+TpvVector2.Create(0.0,TopLeft.y));
+  TopLeft:=TpvVector2.InlineableCreate(Min(ABounds.x,aRadiusTopLeft)*Sign(Size.x),
+                                       Min(ABounds.y,aRadiusTopLeft)*Sign(Size.y));
+  TopRight:=TpvVector2.InlineableCreate(Min(ABounds.x,aRadiusTopRight)*Sign(Size.x),
+                                        Min(ABounds.y,aRadiusTopRight)*Sign(Size.y));
+  BottomLeft:=TpvVector2.InlineableCreate(Min(ABounds.x,aRadiusBottomLeft)*Sign(Size.x),
+                                          Min(ABounds.y,aRadiusBottomLeft)*Sign(Size.y));
+  BottomRight:=TpvVector2.InlineableCreate(Min(ABounds.x,aRadiusBottomRight)*Sign(Size.x),
+                                           Min(ABounds.y,aRadiusBottomRight)*Sign(Size.y));
+  MoveTo(Offset+TpvVector2.InlineableCreate(0.0,TopLeft.y));
+  LineTo(Offset+TpvVector2.InlineableCreate(0.0,Size.y-BottomLeft.y));
+  CubicCurveTo(Offset+TpvVector2.InlineableCreate(0.0,Size.y-(BottomLeft.y*(1.0-ARC_MAGIC))),
+               Offset+TpvVector2.InlineableCreate(BottomLeft.x*(1.0-ARC_MAGIC),Size.y),
+               Offset+TpvVector2.InlineableCreate(BottomLeft.x,Size.y));
+  LineTo(Offset+TpvVector2.InlineableCreate(Size.x-BottomRight.x,Size.y));
+  CubicCurveTo(Offset+TpvVector2.InlineableCreate(Size.x-(BottomRight.x*(1.0-ARC_MAGIC)),Size.y),
+               Offset+TpvVector2.InlineableCreate(Size.x,Size.y-(BottomRight.y*(1.0-ARC_MAGIC))),
+               Offset+TpvVector2.InlineableCreate(Size.x,Size.y-BottomRight.y));
+  LineTo(Offset+TpvVector2.InlineableCreate(Size.x,TopRight.y));
+  CubicCurveTo(Offset+TpvVector2.InlineableCreate(Size.x,TopRight.y*(1.0-ARC_MAGIC)),
+               Offset+TpvVector2.InlineableCreate(Size.x-(TopRight.x*(1.0-ARC_MAGIC)),0.0),
+               Offset+TpvVector2.InlineableCreate(Size.x-TopRight.x,0.0));
+  LineTo(Offset+TpvVector2.InlineableCreate(TopLeft.y,0.0));
+  CubicCurveTo(Offset+TpvVector2.InlineableCreate(TopLeft.x*(1.0-ARC_MAGIC),0.0),
+               Offset+TpvVector2.InlineableCreate(0.0,TopLeft.y*(1.0-ARC_MAGIC)),
+               Offset+TpvVector2.InlineableCreate(0.0,TopLeft.y));
   ClosePath;
  end;
  result:=self;
@@ -1239,7 +1239,7 @@ begin
  fFillRule:=TpvCanvasFillRule.pvcfrEvenOdd;
  fFillStyle:=TpvCanvasFillStyle.pvcfsColor;
  fFillWrapMode:=TpvCanvasFillWrapMode.pvcfwmNone;
- fColor:=TpvVector4.Create(1.0,1.0,1.0,1.0);
+ fColor:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
  fFont:=nil;
  fFontSize:=-12;
  fTextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.pvcthaLeading;
@@ -1508,7 +1508,7 @@ var StartPoint,LastPoint:TpvVector2;
    begin
     // An arc inside three triangles
     Radius:=p0.DistanceTo(Center);
-    MetaInfo:=TpvVector4.Create(Center.x,Center.y,Radius,-1.0);
+    MetaInfo:=TpvVector4.InlineableCreate(Center.x,Center.y,Radius,-1.0);
     Radius:=Radius+1.0; // Add some headroom to the radius
     Normal:=(Center-NextPointInLine).Normalize*Radius;
     BeginPart(5,9);
@@ -1602,20 +1602,20 @@ var StartPoint,LastPoint:TpvVector2;
     end;
     BeginPart(CountVerticesToAdd,CountIndicesToAdd);
     begin
-     ip0at0:=AddVertex(p0+t0,pcvvaomLineEdge,TpvVector4.Create(Width,l0,Width,s0),TpvVector2.Null);
-     ip0st0:=AddVertex(p0-t0,pcvvaomLineEdge,TpvVector4.Create(-Width,l0,Width,s0),TpvVector2.Null);
-     ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s0),TpvVector2.Null);
-     ip1st0:=AddVertex(p1-t0,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s0),TpvVector2.Null);
+     ip0at0:=AddVertex(p0+t0,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,l0,Width,s0),TpvVector2.Null);
+     ip0st0:=AddVertex(p0-t0,pcvvaomLineEdge,TpvVector4.InlineableCreate(-Width,l0,Width,s0),TpvVector2.Null);
+     ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,0.0,Width,s0),TpvVector2.Null);
+     ip1st0:=AddVertex(p1-t0,pcvvaomLineEdge,TpvVector4.InlineableCreate(-Width,0.0,Width,s0),TpvVector2.Null);
      AddIndex(ip0at0);
      AddIndex(ip0st0);
      AddIndex(ip1at0);
      AddIndex(ip0st0);
      AddIndex(ip1at0);
      AddIndex(ip1st0);
-     ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s2),TpvVector2.Null);
-     ip2at2:=AddVertex(p2+t2,pcvvaomLineEdge,TpvVector4.Create(Width,l2,Width,s2),TpvVector2.Null);
-     ip1st2:=AddVertex(p1-t2,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s2),TpvVector2.Null);
-     ip2st2:=AddVertex(p2-t2,pcvvaomLineEdge,TpvVector4.Create(-Width,l2,Width,s2),TpvVector2.Null);
+     ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,0.0,Width,s2),TpvVector2.Null);
+     ip2at2:=AddVertex(p2+t2,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,l2,Width,s2),TpvVector2.Null);
+     ip1st2:=AddVertex(p1-t2,pcvvaomLineEdge,TpvVector4.InlineableCreate(-Width,0.0,Width,s2),TpvVector2.Null);
+     ip2st2:=AddVertex(p2-t2,pcvvaomLineEdge,TpvVector4.InlineableCreate(-Width,l2,Width,s2),TpvVector2.Null);
      AddIndex(ip2at2);
      AddIndex(ip1st2);
      AddIndex(ip1at2);
@@ -1628,19 +1628,19 @@ var StartPoint,LastPoint:TpvVector2;
       end;
       1:begin
        // Bevel join
-       ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(0.0,0.0,Width,Width),TpvVector2.Null);
-       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width),TpvVector2.Null);
-       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width),TpvVector2.Null);
+       ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.InlineableCreate(0.0,0.0,Width,Width),TpvVector2.Null);
+       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,Width,Width,Width),TpvVector2.Null);
+       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,Width,Width,Width),TpvVector2.Null);
        AddIndex(ip1);
        AddIndex(ip1at0);
        AddIndex(ip1at2);
       end;
       2:begin
        // Miter join
-       ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(0.0,0.0,Width,Width),TpvVector2.Null);
-       iIntersectionPoint:=AddVertex(IntersectionPoint,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),TpvVector2.Null);
-       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),TpvVector2.Null);
-       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),TpvVector2.Null);
+       ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.InlineableCreate(0.0,0.0,Width,Width),TpvVector2.Null);
+       iIntersectionPoint:=AddVertex(IntersectionPoint,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,0.0,Width,Width),TpvVector2.Null);
+       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,0.0,Width,Width),TpvVector2.Null);
+       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,0.0,Width,Width),TpvVector2.Null);
        AddIndex(ip1at0);
        AddIndex(ip1);
        AddIndex(iIntersectionPoint);
@@ -1678,20 +1678,20 @@ var StartPoint,LastPoint:TpvVector2;
     end;
     BeginPart(CountVerticesToAdd,CountIndicesToAdd);
     begin
-     ip0at0:=AddVertex(p0+t0,pcvvaomLineEdge,TpvVector4.Create(Width,l0,Width,s0),TpvVector2.Null);
-     ip0st0:=AddVertex(p0-t0,pcvvaomLineEdge,TpvVector4.Create(-Width,l0,Width,s0),TpvVector2.Null);
-     ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s0),TpvVector2.Null);
-     ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s0),TpvVector2.Null);
+     ip0at0:=AddVertex(p0+t0,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,l0,Width,s0),TpvVector2.Null);
+     ip0st0:=AddVertex(p0-t0,pcvvaomLineEdge,TpvVector4.InlineableCreate(-Width,l0,Width,s0),TpvVector2.Null);
+     ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.InlineableCreate(-Width,0.0,Width,s0),TpvVector2.Null);
+     ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,0.0,Width,s0),TpvVector2.Null);
      AddIndex(ip0at0);
      AddIndex(ip0st0);
      AddIndex(ip1sAnchor);
      AddIndex(ip0at0);
      AddIndex(ip1sAnchor);
      AddIndex(ip1at0);
-     ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,s2),TpvVector2.Null);
-     ip2at2:=AddVertex(p2+t2,pcvvaomLineEdge,TpvVector4.Create(Width,l2,Width,s2),TpvVector2.Null);
-     ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,s2),TpvVector2.Null);
-     ip2st2:=AddVertex(p2-t2,pcvvaomLineEdge,TpvVector4.Create(-Width,l2,Width,s2),TpvVector2.Null);
+     ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.InlineableCreate(-Width,0.0,Width,s2),TpvVector2.Null);
+     ip2at2:=AddVertex(p2+t2,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,l2,Width,s2),TpvVector2.Null);
+     ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,0.0,Width,s2),TpvVector2.Null);
+     ip2st2:=AddVertex(p2-t2,pcvvaomLineEdge,TpvVector4.InlineableCreate(-Width,l2,Width,s2),TpvVector2.Null);
      AddIndex(ip2at2);
      AddIndex(ip1sAnchor);
      AddIndex(ip1at2);
@@ -1701,10 +1701,10 @@ var StartPoint,LastPoint:TpvVector2;
      case LineJoinCase of
       0:begin
        // Round join
-       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),TpvVector2.Null);
-       ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(0.0,0.0,Width,Width),TpvVector2.Null);
-       ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width),TpvVector2.Null);
-       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),TpvVector2.Null);
+       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,0.0,Width,Width),TpvVector2.Null);
+       ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.InlineableCreate(0.0,0.0,Width,Width),TpvVector2.Null);
+       ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.InlineableCreate(-Width,0.0,Width,Width),TpvVector2.Null);
+       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,0.0,Width,Width),TpvVector2.Null);
        AddIndex(ip1at0);
        AddIndex(ip1);
        AddIndex(ip1sAnchor);
@@ -1714,19 +1714,19 @@ var StartPoint,LastPoint:TpvVector2;
       end;
       1:begin
        // Bevel join
-       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width),TpvVector2.Null);
-       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width),TpvVector2.Null);
-       ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width),TpvVector2.Null);
+       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,Width,Width,Width),TpvVector2.Null);
+       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,Width,Width,Width),TpvVector2.Null);
+       ip1sAnchor:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.InlineableCreate(-Width,0.0,Width,Width),TpvVector2.Null);
        AddIndex(ip1at0);
        AddIndex(ip1at2);
        AddIndex(ip1sAnchor);
       end;
       2:begin
        // Miter join
-       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),TpvVector2.Null);
-       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),TpvVector2.Null);
-       iCenter:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width),TpvVector2.Null);
-       iIntersectionPoint:=AddVertex(IntersectionPoint,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),TpvVector2.Null);
+       ip1at0:=AddVertex(p1+t0,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,0.0,Width,Width),TpvVector2.Null);
+       ip1at2:=AddVertex(p1+t2,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,0.0,Width,Width),TpvVector2.Null);
+       iCenter:=AddVertex(p1-Anchor,pcvvaomLineEdge,TpvVector4.InlineableCreate(-Width,0.0,Width,Width),TpvVector2.Null);
+       iIntersectionPoint:=AddVertex(IntersectionPoint,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,0.0,Width,Width),TpvVector2.Null);
        AddIndex(ip1at0);
        AddIndex(iCenter);
        AddIndex(iIntersectionPoint);
@@ -1748,10 +1748,10 @@ var StartPoint,LastPoint:TpvVector2;
   var ip0,ip0d,ip1d,ip1:TpvInt32;
   begin
    BeginPart(4,6);
-   ip0:=AddVertex(p0,pcvvaomLineEdge,TpvVector4.Create(-Width,0.0,Width,Width),TpvVector2.Null);
-   ip0d:=AddVertex(p0+d,pcvvaomLineEdge,TpvVector4.Create(-Width,Width,Width,Width),TpvVector2.Null);
-   ip1d:=AddVertex(p1+d,pcvvaomLineEdge,TpvVector4.Create(Width,Width,Width,Width),TpvVector2.Null);
-   ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.Create(Width,0.0,Width,Width),TpvVector2.Null);
+   ip0:=AddVertex(p0,pcvvaomLineEdge,TpvVector4.InlineableCreate(-Width,0.0,Width,Width),TpvVector2.Null);
+   ip0d:=AddVertex(p0+d,pcvvaomLineEdge,TpvVector4.InlineableCreate(-Width,Width,Width,Width),TpvVector2.Null);
+   ip1d:=AddVertex(p1+d,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,Width,Width,Width),TpvVector2.Null);
+   ip1:=AddVertex(p1,pcvvaomLineEdge,TpvVector4.InlineableCreate(Width,0.0,Width,Width),TpvVector2.Null);
    AddIndex(ip0);
    AddIndex(ip0d);
    AddIndex(ip1d);
@@ -1767,7 +1767,7 @@ var StartPoint,LastPoint:TpvVector2;
   begin
    // An "inhalfcircle" inside an one single triangle
    Radius:=p0.DistanceTo(Center);
-   MetaInfo:=TpvVector4.Create(Center.x,Center.y,Radius,-1.0);
+   MetaInfo:=TpvVector4.InlineableCreate(Center.x,Center.y,Radius,-1.0);
    Radius:=Radius+1.0; // Add some headroom to the radius
    BeginPart(3,3);
    AddIndex(AddVertex(Center+((p0-Center).Normalize*Radius*Sqrt2),pcvvaomRoundLineCapCircle,MetaInfo,TpvVector2.Null));
@@ -2033,12 +2033,12 @@ var StartPoint,LastPoint:TpvVector2;
     StrokeLineTo(aP1);
    end else begin
     if ((d01.y*d21.x)-(d01.x*d21.y))>0.0 then begin
-     Center:=aP1+TpvVector2.Create((d01.x*d)+(d01.y*aRadius),(d01.y*d)-(d01.x*aRadius));
+     Center:=aP1+TpvVector2.InlineableCreate((d01.x*d)+(d01.y*aRadius),(d01.y*d)-(d01.x*aRadius));
      Angle0:=ArcTan2(d01.x,-d01.y);
      Angle1:=ArcTan2(-d21.x,d21.y);
      Direction:=CW;
     end else begin
-     Center:=aP1+TpvVector2.Create((d01.x*d)-(d01.y*aRadius),(d01.y*d)+(d01.x*aRadius));
+     Center:=aP1+TpvVector2.InlineableCreate((d01.x*d)-(d01.y*aRadius),(d01.y*d)+(d01.x*aRadius));
      Angle0:=ArcTan2(-d01.x,d01.y);
      Angle1:=ArcTan2(d21.x,-d21.y);
      Direction:=CCW;
@@ -2069,7 +2069,7 @@ var StartPoint,LastPoint:TpvVector2;
     for SubdivisionIndex:=0 to CountSubdivisions-1 do begin
      SinCos(Mix(Angle0,Angle1,SubdivisionIndex/CountSubdivisions),Normal.y,Normal.x);
      Current:=Center+(Normal*aRadius);
-     Tangent:=TpvVector2.Create(-Normal.y,Normal.x)*aRadius*Kappa;
+     Tangent:=TpvVector2.InlineableCreate(-Normal.y,Normal.x)*aRadius*Kappa;
      if SubdivisionIndex=0 then begin
       StrokeLineTo(Current);
      end else begin
@@ -2351,12 +2351,12 @@ var CommandIndex,LastLinePoint:TpvInt32;
     FillLineTo(aP1);
    end else begin
     if ((d01.y*d21.x)-(d01.x*d21.y))>0.0 then begin
-     Center:=aP1+TpvVector2.Create((d01.x*d)+(d01.y*aRadius),(d01.y*d)-(d01.x*aRadius));
+     Center:=aP1+TpvVector2.InlineableCreate((d01.x*d)+(d01.y*aRadius),(d01.y*d)-(d01.x*aRadius));
      Angle0:=ArcTan2(d01.x,-d01.y);
      Angle1:=ArcTan2(-d21.x,d21.y);
      Direction:=CW;
     end else begin
-     Center:=aP1+TpvVector2.Create((d01.x*d)-(d01.y*aRadius),(d01.y*d)+(d01.x*aRadius));
+     Center:=aP1+TpvVector2.InlineableCreate((d01.x*d)-(d01.y*aRadius),(d01.y*d)+(d01.x*aRadius));
      Angle0:=ArcTan2(-d01.x,d01.y);
      Angle1:=ArcTan2(d21.x,-d21.y);
      Direction:=CCW;
@@ -2387,7 +2387,7 @@ var CommandIndex,LastLinePoint:TpvInt32;
     for SubdivisionIndex:=0 to CountSubdivisions-1 do begin
      SinCos(Mix(Angle0,Angle1,SubdivisionIndex/CountSubdivisions),Normal.y,Normal.x);
      Current:=Center+(Normal*aRadius);
-     Tangent:=TpvVector2.Create(-Normal.y,Normal.x)*aRadius*Kappa;
+     Tangent:=TpvVector2.InlineableCreate(-Normal.y,Normal.x)*aRadius*Kappa;
      if SubdivisionIndex=0 then begin
       FillLineTo(Current);
      end else begin
@@ -2736,18 +2736,18 @@ var CommandIndex,LastLinePoint:TpvInt32;
          CurrentSegment:=@fCacheSegments[CurrentSegmentIndex];
          BeginPart(4,6);
          if a0^.y<a1^.y then begin
-          i0:=AddVertex(TpvVector2.Create(a0^.x,a0^.y),0,TpvVector4.Null,TpvVector2.Null);
-          i1:=AddVertex(TpvVector2.Create(a1^.x,a1^.y),0,TpvVector4.Null,TpvVector2.Null);
+          i0:=AddVertex(TpvVector2.InlineableCreate(a0^.x,a0^.y),0,TpvVector4.Null,TpvVector2.Null);
+          i1:=AddVertex(TpvVector2.InlineableCreate(a1^.x,a1^.y),0,TpvVector4.Null,TpvVector2.Null);
          end else begin
-          i0:=AddVertex(TpvVector2.Create(a1^.x,a1^.y),0,TpvVector4.Null,TpvVector2.Null);
-          i1:=AddVertex(TpvVector2.Create(a0^.x,a0^.y),0,TpvVector4.Null,TpvVector2.Null);
+          i0:=AddVertex(TpvVector2.InlineableCreate(a1^.x,a1^.y),0,TpvVector4.Null,TpvVector2.Null);
+          i1:=AddVertex(TpvVector2.InlineableCreate(a0^.x,a0^.y),0,TpvVector4.Null,TpvVector2.Null);
          end;
          if b0^.y<b1^.y then begin
-          i2:=AddVertex(TpvVector2.Create(b1^.x,b1^.y),0,TpvVector4.Null,TpvVector2.Null);
-          i3:=AddVertex(TpvVector2.Create(b0^.x,b0^.y),0,TpvVector4.Null,TpvVector2.Null);
+          i2:=AddVertex(TpvVector2.InlineableCreate(b1^.x,b1^.y),0,TpvVector4.Null,TpvVector2.Null);
+          i3:=AddVertex(TpvVector2.InlineableCreate(b0^.x,b0^.y),0,TpvVector4.Null,TpvVector2.Null);
          end else begin
-          i2:=AddVertex(TpvVector2.Create(b0^.x,b0^.y),0,TpvVector4.Null,TpvVector2.Null);
-          i3:=AddVertex(TpvVector2.Create(b1^.x,b1^.y),0,TpvVector4.Null,TpvVector2.Null);
+          i2:=AddVertex(TpvVector2.InlineableCreate(b0^.x,b0^.y),0,TpvVector4.Null,TpvVector2.Null);
+          i3:=AddVertex(TpvVector2.InlineableCreate(b1^.x,b1^.y),0,TpvVector4.Null,TpvVector2.Null);
          end;
          AddIndex(i0);
          AddIndex(i1);
@@ -3403,8 +3403,8 @@ end;
 
 procedure TpvCanvas.SetClipRect(const aClipRect:TVkRect2D);
 begin
- fState.fClipRect.LeftTop:=TpvVector2.Create(aClipRect.offset.x,aClipRect.offset.y);
- fState.fClipRect.RightBottom:=TpvVector2.Create(aClipRect.offset.x+(aClipRect.extent.width+0.0),aClipRect.offset.y+(aClipRect.extent.height+0.0));
+ fState.fClipRect.LeftTop:=TpvVector2.InlineableCreate(aClipRect.offset.x,aClipRect.offset.y);
+ fState.fClipRect.RightBottom:=TpvVector2.InlineableCreate(aClipRect.offset.x+(aClipRect.extent.width+0.0),aClipRect.offset.y+(aClipRect.extent.height+0.0));
 end;
 
 procedure TpvCanvas.SetClipRect(const aClipRect:TpvRect);
@@ -3414,8 +3414,8 @@ end;
 
 procedure TpvCanvas.SetClipRect(const aLeft,aTop,aWidth,aHeight:TpvInt32);
 begin
- fState.fClipRect.LeftTop:=TpvVector2.Create(aLeft,aTop);
- fState.fClipRect.RightBottom:=TpvVector2.Create(aLeft+aWidth,aTop+aHeight);
+ fState.fClipRect.LeftTop:=TpvVector2.InlineableCreate(aLeft,aTop);
+ fState.fClipRect.RightBottom:=TpvVector2.InlineableCreate(aLeft+aWidth,aTop+aHeight);
 end;
 
 function TpvCanvas.GetBlendingMode:TpvCanvasBlendingMode;
@@ -4235,31 +4235,31 @@ end;
 
 function TpvCanvas.DrawSprite(const aSprite:TpvSprite;const aSrc,aDest:TpvRect):TpvCanvas;
 const MinA=1.0/65536.0;
-      iX:array[0..3] of TpvInt32=(0,1,1,0);
-      iY:array[0..3] of TpvInt32=(0,0,1,1);
-      aX:array[0..3] of TpvInt32=(1,1,0,0);
-      aY:array[0..3] of TpvInt32=(0,1,1,0);
-var tx1,ty1,tx2,ty2,xf,yf,pX,pY:TpvFloat;
-    TempDest,TempSrc:TpvRect;
-    sX,sY:array[0..1] of TpvFloat;
+      SrcRectPositionComponents:array[boolean,0..1,0..3] of TpvInt32=(((0,2,2,0),
+                                                                       (1,1,3,3)),
+                                                                      ((2,2,0,0),
+                                                                       (1,3,3,1)));
+      DestRectPositionComponents:array[0..1,0..3] of TpvInt32=((0,2,2,0),
+                                                               (1,1,3,3));
+var IntersectedRect,DestRect,SrcRect:TpvRect;
     VertexColor:TpvHalfFloatVector4;
     VertexState:TpvUInt32;
     Index:TpvInt32;
     TemporaryVector:PpvVector2;
-    TrimmedOffsetVector,OffsetVector,ScaleTemporaryVector,OtherScaleTemporaryVector:TpvVector2;
+    ScaleTemporaryVector:TpvVector2;
     Vertex:PpvCanvasVertex;
     VertexIndex:PpvUInt32;
+    SpriteAtlasArrayTexture:TpvSpriteAtlasArrayTexture;
 begin
 
  result:=self;
 
- if (fState.fBlendingMode<>pvcbmNone) and
-    (abs(fState.fColor.a)<MinA) then begin
-  exit;
- end;
-
- if (aSrc.Right<aSprite.TrimmedX) or
-    (aSrc.Bottom<aSprite.TrimmedY) then begin
+ if ((fState.fBlendingMode<>pvcbmNone) and
+     (abs(fState.fColor.a)<MinA)) or
+    (aSrc.Right<aSprite.TrimmedOffset.x) or
+    (aSrc.Bottom<aSprite.TrimmedOffset.y) or
+    (aSprite.TrimmedRect.Right<aSrc.Left) or
+    (aSprite.TrimmedRect.Bottom<aSrc.Top) then begin
   exit;
  end;
 
@@ -4280,259 +4280,85 @@ begin
 
  SetAtlasTexture(aSprite.ArrayTexture);
 
- if aSprite.Rotated then begin
+ SpriteAtlasArrayTexture:=TpvSpriteAtlasArrayTexture(fState.fAtlasTexture);
 
-  tx2:=aSprite.TrimmedX+aSprite.TrimmedHeight;
-  ty2:=aSprite.TrimmedY+aSprite.TrimmedWidth;
+ if (length(aSprite.TrimmedHullVectors)>2) and
+    (not aSprite.Rotated) and
+    SameValue(aSrc.Left,0.0) and
+    SameValue(aSrc.Top,0.0) and
+    SameValue(aSrc.Right,aSprite.Width) and
+    SameValue(aSrc.Bottom,aSprite.Height) then begin
 
-  if (tx2<aSrc.Left) or (ty2<aSrc.Top) then begin
-   exit;
+  EnsureSufficientReserveUsableSpace(length(aSprite.TrimmedHullVectors),(length(aSprite.TrimmedHullVectors)-2)*3);
+
+  for Index:=2 to length(aSprite.TrimmedHullVectors)-1 do begin
+   fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices;
+   fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+(Index-1);
+   fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+Index;
+   inc(fCurrentCountIndices,3);
   end;
 
-  tx1:=Max(aSprite.TrimmedX,aSrc.Left);
-  ty1:=Max(aSprite.TrimmedY,aSrc.Top);
+  ScaleTemporaryVector:=aDest.Size/aSrc.Size;
 
-  tx2:=Min(tx2,aSrc.Right);
-  ty2:=Min(ty2,aSrc.Bottom);
-
-  xf:=abs(aDest.Right-aDest.Left)/(aSrc.Right-aSrc.Left);
-  yf:=abs(aDest.Bottom-aDest.Top)/(aSrc.Bottom-aSrc.Top);
-
-  TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
-  TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
-  TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
-  TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
-
-{ if aDest.Left<=aDest.Right then begin
-   TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
-   TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
-  end else begin
-   TempDest.Left:=aDest.Left+((tx2-aSrc.Right)*xf);
-   TempDest.Right:=aDest.Right+((tx1-aSrc.Left)*xf);
-  end;
-  if aDest.Top<=aDest.Bottom then begin
-   TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
-   TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
-  end else begin
-   TempDest.Top:=aDest.Top+((ty2-aSrc.Bottom)*yf);
-   TempDest.Bottom:=aDest.Bottom+((ty1-aSrc.Top)*yf);
-  end;}
-
-  TempSrc.Left:=(tx1-aSprite.TrimmedX)+aSprite.x;
-  TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
-  TempSrc.Right:=TempSrc.Left+(ty2-ty1);
-  TempSrc.Bottom:=TempSrc.Top+(tx2-tx1);
-
-  sX[0]:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
-  sY[0]:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
-  sX[1]:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
-  sY[1]:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
-
-  EnsureSufficientReserveUsableSpace(4,6);
-
-  VertexIndex:=@fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices];
-  inc(fCurrentCountIndices,6);
-
-  VertexIndex^:=fCurrentCountVertices+0;
-  inc(VertexIndex);
-  VertexIndex^:=fCurrentCountVertices+1;
-  inc(VertexIndex);
-  VertexIndex^:=fCurrentCountVertices+2;
-  inc(VertexIndex);
-  VertexIndex^:=fCurrentCountVertices+0;
-  inc(VertexIndex);
-  VertexIndex^:=fCurrentCountVertices+2;
-  inc(VertexIndex);
-  VertexIndex^:=fCurrentCountVertices+3;
-  inc(VertexIndex);
-
-  for Index:=0 to 3 do begin
-   case Index of
-    0:begin
-     pX:=TempDest.Left;
-     pY:=TempDest.Top;
-    end;
-    1:begin
-     pX:=TempDest.Right;
-     pY:=TempDest.Top;
-    end;
-    2:begin
-     pX:=TempDest.Right;
-     pY:=TempDest.Bottom;
-    end;
-    else begin
-     pX:=TempDest.Left;
-     pY:=TempDest.Bottom;
-    end;
-   end;
-   Vertex^.Position:=fState.fModelMatrix*TpvVector2.Create(pX,pY);
-   Vertex^.Color:=VertexColor;
-   Vertex^.TextureCoord.x:=sX[aX[Index]];
-   Vertex^.TextureCoord.y:=sY[aY[Index]];
-   Vertex^.TextureCoord.z:=aSprite.Layer;
-   Vertex^.State:=VertexState;
-   Vertex^.ClipRect:=fState.fClipRect;
-{  PpvInt64(pointer(@Vertex^.MetaInfo.x))^:=0;
-   PpvInt64(pointer(@Vertex^.MetaInfo.z))^:=0;}
-   inc(Vertex);
+  for Index:=0 to length(aSprite.TrimmedHullVectors)-1 do begin
+   TemporaryVector:=@aSprite.TrimmedHullVectors[Index];
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=fState.fModelMatrix*(aDest.LeftTop+(((TemporaryVector^+aSprite.TrimmedOffset)-aSrc.LeftTop)*ScaleTemporaryVector));
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord:=TpvVector3.InlineableCreate((TemporaryVector^+aSprite.Offset)*SpriteAtlasArrayTexture.InverseSize,aSprite.Layer);
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo:=TpvVector4.Null;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
+   fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
+   inc(fCurrentCountVertices);
   end;
 
- end else begin
+  exit;
+ end;
 
-  tx2:=aSprite.TrimmedX+aSprite.TrimmedWidth;
-  ty2:=aSprite.TrimmedY+aSprite.TrimmedHeight;
+ IntersectedRect:=aSprite.TrimmedRect.GetIntersection(aSrc);
 
-  if (tx2<aSrc.Left) or (ty2<aSrc.Top) then begin
-   exit;
-  end;
+{$if true}
+ DestRect.Vector4:=aDest.Vector4+((IntersectedRect.Vector4-aSrc.Vector4)*(aDest.Size/aSrc.Size).xyxy);
+{$else}
+ ScaleTemporaryVector:=aDest.Size/aSrc.Size;
+ DestRect.LeftTop:=aDest.LeftTop+((TempRect.LeftTop-aSrc.LeftTop)*ScaleTemporaryVector);
+ DestRect.RightBottom:=aDest.RightBottom+((TempRect.RightBottom-aSrc.RightBottom)*ScaleTemporaryVector);
+{$ifend}
 
-  xf:=abs(aDest.Right-aDest.Left)/(aSrc.Right-aSrc.Left);
-  yf:=abs(aDest.Bottom-aDest.Top)/(aSrc.Bottom-aSrc.Top);
+ SrcRect.LeftTop:=(IntersectedRect.LeftTop-aSprite.TrimmedOffset)+aSprite.Offset;
+ SrcRect.RightBottom:=SrcRect.LeftTop+IntersectedRect.Size;
 
-  if (length(aSprite.TrimmedHullVectors)>2) and
-     SameValue(aSrc.Left,0.0) and
-     SameValue(aSrc.Top,0.0) and
-     SameValue(aSrc.Right,aSprite.Width) and
-     SameValue(aSrc.Bottom,aSprite.Height) then begin
+ EnsureSufficientReserveUsableSpace(4,6);
 
-   EnsureSufficientReserveUsableSpace(length(aSprite.TrimmedHullVectors),(length(aSprite.TrimmedHullVectors)-2)*3);
+ VertexIndex:=@fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices];
+ inc(fCurrentCountIndices,6);
 
-   OffsetVector:=TpvVector2.Create(aSprite.x,aSprite.y);
+ VertexIndex^:=fCurrentCountVertices+0;
+ inc(VertexIndex);
+ VertexIndex^:=fCurrentCountVertices+1;
+ inc(VertexIndex);
+ VertexIndex^:=fCurrentCountVertices+2;
+ inc(VertexIndex);
+ VertexIndex^:=fCurrentCountVertices+0;
+ inc(VertexIndex);
+ VertexIndex^:=fCurrentCountVertices+2;
+ inc(VertexIndex);
+ VertexIndex^:=fCurrentCountVertices+3;
+ inc(VertexIndex);
+ Vertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices];
+ inc(fCurrentCountVertices,4);
 
-   TrimmedOffsetVector:=TpvVector2.Create(aSprite.TrimmedX,aSprite.TrimmedY);
-
-   ScaleTemporaryVector:=TpvVector2.Create(xf,yf);
-
-   OtherScaleTemporaryVector:=TpvVector2.Create(TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth,
-                                                TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight);
-
-   for Index:=2 to length(aSprite.TrimmedHullVectors)-1 do begin
-    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+0]:=fCurrentCountVertices;
-    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+1]:=fCurrentCountVertices+(Index-1);
-    fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices+2]:=fCurrentCountVertices+Index;
-    inc(fCurrentCountIndices,3);
-   end;
-
-   for Index:=0 to length(aSprite.TrimmedHullVectors)-1 do begin
-    TemporaryVector:=@aSprite.TrimmedHullVectors[Index];
-    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Position:=fState.fModelMatrix*(aDest.LeftTop+(((TemporaryVector^+TrimmedOffsetVector)-aSrc.LeftTop)*ScaleTemporaryVector));
-    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].TextureCoord:=TpvVector3.Create((TemporaryVector^+OffsetVector)*OtherScaleTemporaryVector,aSprite.Layer);
-    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].MetaInfo:=TpvVector4.Null;
-    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].Color:=VertexColor;
-    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].State:=VertexState;
-    fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices].ClipRect:=fState.fClipRect;
-    inc(fCurrentCountVertices);
-   end;
-
-  end else begin
-
-   tx1:=Max(aSprite.TrimmedX,aSrc.Left);
-   ty1:=Max(aSprite.TrimmedY,aSrc.Top);
-   tx2:=Min(tx2,aSrc.Right);
-   ty2:=Min(ty2,aSrc.Bottom);
-
-   TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
-   TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
-   TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
-   TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
-
-{  if aDest.Left<=aDest.Right then begin
-    TempDest.Left:=aDest.Left+((tx1-aSrc.Left)*xf);
-    TempDest.Right:=aDest.Right+((tx2-aSrc.Right)*xf);
-   end else begin
-    TempDest.Left:=aDest.Left+((tx2-aSrc.Right)*xf);
-    TempDest.Right:=aDest.Right+((tx1-aSrc.Left)*xf);
-   end;
-   if aDest.Top<=aDest.Bottom then begin
-    TempDest.Top:=aDest.Top+((ty1-aSrc.Top)*yf);
-    TempDest.Bottom:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
-   end else begin
-    TempDest.Top:=aDest.Bottom+((ty2-aSrc.Bottom)*yf);
-    TempDest.Bottom:=aDest.Top+((ty1-aSrc.Top)*yf);
-   end;}
-
-   TempSrc.Left:=(tx1-aSprite.TrimmedX)+aSprite.x;
-   TempSrc.Top:=(ty1-aSprite.TrimmedY)+aSprite.y;
-   TempSrc.Right:=TempSrc.Left+(tx2-tx1);
-   TempSrc.Bottom:=TempSrc.Top+(ty2-ty1);
-
-{  if fState.fModelMatrix=TpvMatrix4x4.Identity then begin
-    if TempDest.Left<fState.fClipRect.LeftTop.x then begin
-     TempSrc.Left:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fState.fClipRect.LeftTop.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-     TempDest.Left:=fState.fClipRect.LeftTop.x;
-    end;
-    if TempDest.Top<fState.fClipRect.LeftTop.y then begin
-     TempSrc.Top:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fState.fClipRect.LeftTop.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-     TempDest.Top:=fState.fClipRect.LeftTop.y;
-    end;
-    if TempDest.Right>fState.fClipRect.RightBottom.x then begin
-     TempSrc.Right:=TempSrc.Left+((TempSrc.Right-TempSrc.Left)*((fState.fClipRect.RightBottom.x-TempDest.Left)/(TempDest.Right-TempDest.Left)));
-     TempDest.Right:=fState.fClipRect.RightBottom.x;
-    end;
-    if TempDest.Bottom>fState.fClipRect.RightBottom.y then begin
-     TempSrc.Bottom:=TempSrc.Top+((TempSrc.Bottom-TempSrc.Top)*((fState.fClipRect.RightBottom.y-TempDest.Top)/(TempDest.Bottom-TempDest.Top)));
-     TempDest.Bottom:=fState.fClipRect.RightBottom.y;
-    end;
-   end;}
-
-   sX[0]:=TempSrc.Left*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
-   sY[0]:=TempSrc.Top*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
-   sX[1]:=TempSrc.Right*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseWidth;
-   sY[1]:=TempSrc.Bottom*TpvSpriteAtlasArrayTexture(fState.fAtlasTexture).InverseHeight;
-
-   EnsureSufficientReserveUsableSpace(4,6);
-
-   VertexIndex:=@fCurrentDestinationIndexBufferPointer^[fCurrentCountIndices];
-   inc(fCurrentCountIndices,6);
-
-   VertexIndex^:=fCurrentCountVertices+0;
-   inc(VertexIndex);
-   VertexIndex^:=fCurrentCountVertices+1;
-   inc(VertexIndex);
-   VertexIndex^:=fCurrentCountVertices+2;
-   inc(VertexIndex);
-   VertexIndex^:=fCurrentCountVertices+0;
-   inc(VertexIndex);
-   VertexIndex^:=fCurrentCountVertices+2;
-   inc(VertexIndex);
-   VertexIndex^:=fCurrentCountVertices+3;
-   inc(VertexIndex);
-   Vertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices];
-   inc(fCurrentCountVertices,4);
-
-   for Index:=0 to 3 do begin
-    case Index of
-     0:begin
-      pX:=TempDest.Left;
-      pY:=TempDest.Top;
-     end;
-     1:begin
-      pX:=TempDest.Right;
-      pY:=TempDest.Top;
-     end;
-     2:begin
-      pX:=TempDest.Right;
-      pY:=TempDest.Bottom;
-     end;
-     else begin
-      pX:=TempDest.Left;
-      pY:=TempDest.Bottom;
-     end;
-    end;
-    Vertex^.Position:=fState.fModelMatrix*TpvVector2.Create(pX,pY);
-    Vertex^.Color:=VertexColor;
-    Vertex^.TextureCoord.x:=sX[iX[Index]];
-    Vertex^.TextureCoord.y:=sY[iY[Index]];
-    Vertex^.TextureCoord.z:=aSprite.Layer;
-    Vertex^.State:=VertexState;
-    Vertex^.ClipRect:=fState.fClipRect;
-{   PpvInt64(pointer(@Vertex^.MetaInfo.x))^:=0;
-    PpvInt64(pointer(@Vertex^.MetaInfo.z))^:=0;}
-    inc(Vertex);
-
-   end;
-
-  end;
+ for Index:=0 to 3 do begin
+  Vertex^.Position:=fState.fModelMatrix*TpvVector2.InlineableCreate(DestRect.Components[DestRectPositionComponents[0,Index]],
+                                                                    DestRect.Components[DestRectPositionComponents[1,Index]]);
+  Vertex^.Color:=VertexColor;
+  Vertex^.TextureCoord:=TpvVector3.InlineableCreate(TpvVector2.InlineableCreate(SrcRect.Components[SrcRectPositionComponents[aSprite.Rotated,0,Index]],
+                                                                                SrcRect.Components[SrcRectPositionComponents[aSprite.Rotated,1,Index]])*SpriteAtlasArrayTexture.InverseSize,
+                                                    aSprite.Layer);
+  Vertex^.State:=VertexState;
+  Vertex^.ClipRect:=fState.fClipRect;
+{ PpvInt64(pointer(@Vertex^.MetaInfo.x))^:=0;
+  PpvInt64(pointer(@Vertex^.MetaInfo.z))^:=0;}
+  inc(Vertex);
 
  end;
 
@@ -4544,7 +4370,7 @@ var OldMatrix:TpvMatrix4x4;
 begin
  OldMatrix:=fState.fModelMatrix;
  try
-  AroundPoint:=aDest.LeftTop+aOrigin+TpvVector2.Create(aSprite.OffsetX,aSprite.OffsetY);
+  AroundPoint:=aDest.LeftTop+aOrigin+TpvVector2.InlineableCreate(aSprite.OffsetX,aSprite.OffsetY);
   fState.fModelMatrix:=((TpvMatrix4x4.CreateTranslation(-AroundPoint)*
                          TpvMatrix4x4.CreateRotateZ(aRotationAngle))*
                         TpvMatrix4x4.CreateTranslation(AroundPoint))*
@@ -4567,7 +4393,7 @@ end;
 function TpvCanvas.DrawSprite(const aSprite:TpvSprite):TpvCanvas;
 begin
  DrawSprite(aSprite,
-            TpvVector2.Create(0.0,0.0));
+            TpvVector2.InlineableCreate(0.0,0.0));
  result:=self;
 end;
 
@@ -4660,7 +4486,7 @@ begin
  if assigned(fState.fFont) then begin
   result:=fState.fFont.TextSize(aText,fState.fFontSize);
  end else begin
-  result:=TpvVector2.Create(0.0,0.0);
+  result:=TpvVector2.InlineableCreate(0.0,0.0);
  end;
 end;
 
@@ -4682,13 +4508,13 @@ begin
    if fState.fTextVerticalAlignment<>pvctvaLeading then begin
     Size:=TextSize(aText);
    end else begin
-    Size:=TpvVector2.Create(TextWidth(aText),0.0);
+    Size:=TpvVector2.InlineableCreate(TextWidth(aText),0.0);
    end;
   end else begin
    if fState.fTextVerticalAlignment<>pvctvaLeading then begin
-    Size:=TpvVector2.Create(0.0,TextHeight(aText));
+    Size:=TpvVector2.InlineableCreate(0.0,TextHeight(aText));
    end else begin
-    Size:=TpvVector2.Create(0.0,0.0);
+    Size:=TpvVector2.InlineableCreate(0.0,0.0);
    end;
   end;
   case fState.fTextHorizontalAlignment of
@@ -4719,7 +4545,7 @@ end;
 
 procedure TpvCanvas.TextGlyphRects(const aText:TpvUTF8String;const aX,aY:TpvFloat;var aTextGlyphRects:TpvCanvasTextGlyphRects;out aCountTextGlyphRects:TpvInt32);
 begin
- TextGlyphRects(aText,TpvVector2.Create(aX,aY),aTextGlyphRects,aCountTextGlyphRects);
+ TextGlyphRects(aText,TpvVector2.InlineableCreate(aX,aY),aTextGlyphRects,aCountTextGlyphRects);
 end;
 
 procedure TpvCanvas.TextGlyphRects(const aText:TpvUTF8String;var aTextGlyphRects:TpvCanvasTextGlyphRects;out aCountTextGlyphRects:TpvInt32);
@@ -4741,7 +4567,7 @@ end;
 
 function TpvCanvas.TextGlyphRects(const aText:TpvUTF8String;const aX,aY:TpvFloat):TpvCanvasTextGlyphRects;
 begin
- result:=TextGlyphRects(aText,TpvVector2.Create(aX,aY));
+ result:=TextGlyphRects(aText,TpvVector2.InlineableCreate(aX,aY));
 end;
 
 function TpvCanvas.TextGlyphRects(const aText:TpvUTF8String):TpvCanvasTextGlyphRects;
@@ -4758,13 +4584,13 @@ begin
    if fState.fTextVerticalAlignment<>pvctvaLeading then begin
     Size:=TextSize(aText);
    end else begin
-    Size:=TpvVector2.Create(TextWidth(aText),0.0);
+    Size:=TpvVector2.InlineableCreate(TextWidth(aText),0.0);
    end;
   end else begin
    if fState.fTextVerticalAlignment<>pvctvaLeading then begin
-    Size:=TpvVector2.Create(0.0,TextHeight(aText));
+    Size:=TpvVector2.InlineableCreate(0.0,TextHeight(aText));
    end else begin
-    Size:=TpvVector2.Create(0.0,0.0);
+    Size:=TpvVector2.InlineableCreate(0.0,0.0);
    end;
   end;
   case fState.fTextHorizontalAlignment of
@@ -4796,12 +4622,12 @@ end;
 
 function TpvCanvas.DrawText(const aText:TpvUTF8String;const aX,aY:TpvFloat):TpvCanvas;
 begin
- result:=DrawText(aText,TpvVector2.Create(aX,aY));
+ result:=DrawText(aText,TpvVector2.InlineableCreate(aX,aY));
 end;
 
 function TpvCanvas.DrawText(const aText:TpvUTF8String):TpvCanvas;
 begin
- result:=DrawText(aText,TpvVector2.Create(0.0,0.0));
+ result:=DrawText(aText,TpvVector2.InlineableCreate(0.0,0.0));
 end;
 
 function TpvCanvas.DrawFilledEllipse(const aCenter,aRadius:TpvVector2):TpvCanvas;
@@ -4822,28 +4648,28 @@ begin
  VertexState:=GetVertexState;
  EnsureSufficientReserveUsableSpace(4,6);
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
- CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.Create(-aRadius.x,-aRadius.y));
+ CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(-aRadius.x,-aRadius.y));
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomEllipse and $ff) shl pvcvsObjectModeShift);
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
- CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.Create(aRadius.x,-aRadius.y));
+ CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(aRadius.x,-aRadius.y));
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomEllipse and $ff) shl pvcvsObjectModeShift);
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
- CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.Create(aRadius.x,aRadius.y));
+ CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(aRadius.x,aRadius.y));
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomEllipse and $ff) shl pvcvsObjectModeShift);
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
- CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.Create(-aRadius.x,aRadius.y));
+ CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(-aRadius.x,aRadius.y));
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomEllipse and $ff) shl pvcvsObjectModeShift);
@@ -4862,7 +4688,7 @@ end;
 
 function TpvCanvas.DrawFilledEllipse(const aCenterX,aCenterY,aRadiusX,aRadiusY:TpvFloat):TpvCanvas;
 begin
- result:=DrawFilledEllipse(TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aRadiusX,aRadiusY));
+ result:=DrawFilledEllipse(TpvVector2.InlineableCreate(aCenterX,aCenterY),TpvVector2.InlineableCreate(aRadiusX,aRadiusY));
 end;
 
 function TpvCanvas.DrawFilledCircle(const aCenter:TpvVector2;const aRadius:TpvFloat):TpvCanvas;
@@ -4884,28 +4710,28 @@ begin
  VertexState:=GetVertexState;
  EnsureSufficientReserveUsableSpace(4,6);
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
- CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.Create(-aRadius,-aRadius));
+ CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(-aRadius,-aRadius));
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomCircle and $ff) shl pvcvsObjectModeShift);
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
- CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.Create(aRadius,-aRadius));
+ CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(aRadius,-aRadius));
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomCircle and $ff) shl pvcvsObjectModeShift);
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
- CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.Create(aRadius,aRadius));
+ CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(aRadius,aRadius));
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomCircle and $ff) shl pvcvsObjectModeShift);
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
- CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.Create(-aRadius,aRadius));
+ CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(-aRadius,aRadius));
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomCircle and $ff) shl pvcvsObjectModeShift);
@@ -4924,7 +4750,7 @@ end;
 
 function TpvCanvas.DrawFilledCircle(const aCenterX,aCenterY,aRadius:TpvFloat):TpvCanvas;
 begin
- result:=DrawFilledCircle(TpvVector2.Create(aCenterX,aCenterY),aRadius);
+ result:=DrawFilledCircle(TpvVector2.InlineableCreate(aCenterX,aCenterY),aRadius);
 end;
 
 function TpvCanvas.DrawFilledRectangle(const aCenter,aBounds:TpvVector2):TpvCanvas;
@@ -4945,28 +4771,28 @@ begin
  VertexState:=GetVertexState;
  EnsureSufficientReserveUsableSpace(4,6);
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
- CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.Create(-aBounds.x,-aBounds.y));
+ CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(-aBounds.x,-aBounds.y));
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomRectangle and $ff) shl pvcvsObjectModeShift);
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
- CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.Create(aBounds.x,-aBounds.y));
+ CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(aBounds.x,-aBounds.y));
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomRectangle and $ff) shl pvcvsObjectModeShift);
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
- CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.Create(aBounds.x,aBounds.y));
+ CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(aBounds.x,aBounds.y));
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomRectangle and $ff) shl pvcvsObjectModeShift);
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
- CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.Create(-aBounds.x,aBounds.y));
+ CanvasVertex^.Position:=fState.fModelMatrix*(aCenter+TpvVector2.InlineableCreate(-aBounds.x,aBounds.y));
  CanvasVertex^.Color:=VertexColor;
  CanvasVertex^.TextureCoord:=TpvVector3.Null;
  CanvasVertex^.State:=VertexState or ((pcvvaomRectangle and $ff) shl pvcvsObjectModeShift);
@@ -4985,7 +4811,7 @@ end;
 
 function TpvCanvas.DrawFilledRectangle(const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat):TpvCanvas;
 begin
- result:=DrawFilledRectangle(TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY));
+ result:=DrawFilledRectangle(TpvVector2.InlineableCreate(aCenterX,aCenterY),TpvVector2.InlineableCreate(aBoundX,aBoundY));
 end;
 
 function TpvCanvas.DrawFilledRectangle(const aRect:TpvRect):TpvCanvas;
@@ -5023,30 +4849,30 @@ begin
  VertexState:=GetVertexState and not ($f shl pvcvsFillStyleShift);
  EnsureSufficientReserveUsableSpace(4,6);
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
- CanvasVertex^.Position:=LocalModelMatrix*(aCenter+TpvVector2.Create(-aBounds.x,-aBounds.y));
+ CanvasVertex^.Position:=LocalModelMatrix*(aCenter+TpvVector2.InlineableCreate(-aBounds.x,-aBounds.y));
  CanvasVertex^.Color:=VertexColor;
- CanvasVertex^.TextureCoord:=TpvVector3.Create(0.0,0.0,aTextureArrayLayer);
+ CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(0.0,0.0,aTextureArrayLayer);
  CanvasVertex^.State:=VertexState or ((pcvvaomSolid and $ff) shl pvcvsObjectModeShift);
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
- CanvasVertex^.Position:=LocalModelMatrix*(aCenter+TpvVector2.Create(aBounds.x,-aBounds.y));
+ CanvasVertex^.Position:=LocalModelMatrix*(aCenter+TpvVector2.InlineableCreate(aBounds.x,-aBounds.y));
  CanvasVertex^.Color:=VertexColor;
- CanvasVertex^.TextureCoord:=TpvVector3.Create(1.0,0.0,aTextureArrayLayer);
+ CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(1.0,0.0,aTextureArrayLayer);
  CanvasVertex^.State:=VertexState or ((pcvvaomSolid and $ff) shl pvcvsObjectModeShift);
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
- CanvasVertex^.Position:=LocalModelMatrix*(aCenter+TpvVector2.Create(aBounds.x,aBounds.y));
+ CanvasVertex^.Position:=LocalModelMatrix*(aCenter+TpvVector2.InlineableCreate(aBounds.x,aBounds.y));
  CanvasVertex^.Color:=VertexColor;
- CanvasVertex^.TextureCoord:=TpvVector3.Create(1.0,1.0,aTextureArrayLayer);
+ CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(1.0,1.0,aTextureArrayLayer);
  CanvasVertex^.State:=VertexState or ((pcvvaomSolid and $ff) shl pvcvsObjectModeShift);
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
- CanvasVertex^.Position:=LocalModelMatrix*(aCenter+TpvVector2.Create(-aBounds.x,aBounds.y));
+ CanvasVertex^.Position:=LocalModelMatrix*(aCenter+TpvVector2.InlineableCreate(-aBounds.x,aBounds.y));
  CanvasVertex^.Color:=VertexColor;
- CanvasVertex^.TextureCoord:=TpvVector3.Create(0.0,1.0,aTextureArrayLayer);
+ CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(0.0,1.0,aTextureArrayLayer);
  CanvasVertex^.State:=VertexState or ((pcvvaomSolid and $ff) shl pvcvsObjectModeShift);
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
@@ -5064,7 +4890,7 @@ end;
 
 function TpvCanvas.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas;
 begin
- result:=DrawTexturedRectangle(aTexture,TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY),aRotationAngle,aTextureArrayLayer);
+ result:=DrawTexturedRectangle(aTexture,TpvVector2.InlineableCreate(aCenterX,aCenterY),TpvVector2.InlineableCreate(aBoundX,aBoundY),aRotationAngle,aTextureArrayLayer);
 end;
 
 function TpvCanvas.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0):TpvCanvas;
@@ -5096,30 +4922,30 @@ begin
  VertexState:=(GetVertexState and not ($f shl pvcvsFillStyleShift)) or ((TpvUInt32(aGUIElement) or (TpvUInt32(ord(aFocused) and 1) shl 7)) shl pvcvsObjectModeShift);
  EnsureSufficientReserveUsableSpace(4,6);
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+0];
- CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.Create(-Bounds.x,-Bounds.y));
+ CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.InlineableCreate(-Bounds.x,-Bounds.y));
  CanvasVertex^.Color:=VertexColor;
- CanvasVertex^.TextureCoord:=TpvVector3.Create(0.0,0.0,aMeta);
+ CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(0.0,0.0,aMeta);
  CanvasVertex^.State:=VertexState;
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+1];
- CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.Create(Bounds.x,-Bounds.y));
+ CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.InlineableCreate(Bounds.x,-Bounds.y));
  CanvasVertex^.Color:=VertexColor;
- CanvasVertex^.TextureCoord:=TpvVector3.Create(0.0,0.0,aMeta);
+ CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(0.0,0.0,aMeta);
  CanvasVertex^.State:=VertexState;
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+2];
- CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.Create(Bounds.x,Bounds.y));
+ CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.InlineableCreate(Bounds.x,Bounds.y));
  CanvasVertex^.Color:=VertexColor;
- CanvasVertex^.TextureCoord:=TpvVector3.Create(0.0,0.0,aMeta);
+ CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(0.0,0.0,aMeta);
  CanvasVertex^.State:=VertexState;
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
  CanvasVertex:=@fCurrentDestinationVertexBufferPointer^[fCurrentCountVertices+3];
- CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.Create(-Bounds.x,Bounds.y));
+ CanvasVertex^.Position:=fState.fModelMatrix*(Center+TpvVector2.InlineableCreate(-Bounds.x,Bounds.y));
  CanvasVertex^.Color:=VertexColor;
- CanvasVertex^.TextureCoord:=TpvVector3.Create(0.0,0.0,aMeta);
+ CanvasVertex^.TextureCoord:=TpvVector3.InlineableCreate(0.0,0.0,aMeta);
  CanvasVertex^.State:=VertexState;
  CanvasVertex^.ClipRect:=fState.fClipRect;
  CanvasVertex^.MetaInfo:=MetaInfo;
@@ -5137,7 +4963,7 @@ end;
 
 function TpvCanvas.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMinX,aMinY,aMaxX,aMaxY,aMetaMinX,aMetaMinY,aMetaMaxX,aMetaMaxY:TpvFloat;const aMeta:TpvFloat=0.0):TpvCanvas;
 begin
- result:=DrawGUIElement(aGUIElement,aFocused,TpvVector2.Create(aMinX,aMinY),TpvVector2.Create(aMaxX,aMaxY),TpvVector2.Create(aMetaMinX,aMetaMinY),TpvVector2.Create(aMetaMaxX,aMetaMaxY),aMeta);
+ result:=DrawGUIElement(aGUIElement,aFocused,TpvVector2.InlineableCreate(aMinX,aMinY),TpvVector2.InlineableCreate(aMaxX,aMaxY),TpvVector2.InlineableCreate(aMetaMinX,aMetaMinY),TpvVector2.InlineableCreate(aMetaMaxX,aMetaMaxY),aMeta);
 end;
 
 function TpvCanvas.DrawShape(const aShape:TpvCanvasShape):TpvCanvas;
@@ -5231,7 +5057,7 @@ end;
 
 function TpvCanvas.MoveTo(const aX,aY:TpvFloat):TpvCanvas;
 begin
- fState.fPath.MoveTo(TpvVector2.Create(aX,aY));
+ fState.fPath.MoveTo(TpvVector2.InlineableCreate(aX,aY));
  result:=self;
 end;
 
@@ -5243,7 +5069,7 @@ end;
 
 function TpvCanvas.LineTo(const aX,aY:TpvFloat):TpvCanvas;
 begin
- fState.fPath.LineTo(TpvVector2.Create(aX,aY));
+ fState.fPath.LineTo(TpvVector2.InlineableCreate(aX,aY));
  result:=self;
 end;
 
@@ -5255,7 +5081,7 @@ end;
 
 function TpvCanvas.QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvFloat):TpvCanvas;
 begin
- fState.fPath.QuadraticCurveTo(TpvVector2.Create(aCX,aCY),TpvVector2.Create(aAX,aAY));
+ fState.fPath.QuadraticCurveTo(TpvVector2.InlineableCreate(aCX,aCY),TpvVector2.InlineableCreate(aAX,aAY));
  result:=self;
 end;
 
@@ -5267,7 +5093,7 @@ end;
 
 function TpvCanvas.CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvFloat):TpvCanvas;
 begin
- fState.fPath.CubicCurveTo(TpvVector2.Create(aC0X,aC0Y),TpvVector2.Create(aC1X,aC1Y),TpvVector2.Create(aAX,aAY));
+ fState.fPath.CubicCurveTo(TpvVector2.InlineableCreate(aC0X,aC0Y),TpvVector2.InlineableCreate(aC1X,aC1Y),TpvVector2.InlineableCreate(aAX,aAY));
  result:=self;
 end;
 
@@ -5279,7 +5105,7 @@ end;
 
 function TpvCanvas.ArcTo(const aP0X,aP0Y,aP1X,aP1Y,aRadius:TpvFloat):TpvCanvas;
 begin
- fState.fPath.ArcTo(TpvVector2.Create(aP0X,aP0Y),TpvVector2.Create(aP1X,aP1Y),aRadius);
+ fState.fPath.ArcTo(TpvVector2.InlineableCreate(aP0X,aP0Y),TpvVector2.InlineableCreate(aP1X,aP1Y),aRadius);
  result:=self;
 end;
 
@@ -5291,7 +5117,7 @@ end;
 
 function TpvCanvas.Arc(const aCenterX,aCenterY,aRadius,aAngle0,aAngle1:TpvFloat;const aClockwise:boolean):TpvCanvas;
 begin
- fState.fPath.Arc(TpvVector2.Create(aCenterX,aCenterY),aRadius,aAngle0,aAngle1,aClockwise);
+ fState.fPath.Arc(TpvVector2.InlineableCreate(aCenterX,aCenterY),aRadius,aAngle0,aAngle1,aClockwise);
  result:=self;
 end;
 
@@ -5303,7 +5129,7 @@ end;
 
 function TpvCanvas.Ellipse(const aCenterX,aCenterY,aRadiusX,aRadiusY:TpvFloat):TpvCanvas;
 begin
- fState.fPath.Ellipse(TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aRadiusX,aRadiusY));
+ fState.fPath.Ellipse(TpvVector2.InlineableCreate(aCenterX,aCenterY),TpvVector2.InlineableCreate(aRadiusX,aRadiusY));
  result:=self;
 end;
 
@@ -5315,7 +5141,7 @@ end;
 
 function TpvCanvas.Circle(const aCenterX,aCenterY,aRadius:TpvFloat):TpvCanvas;
 begin
- fState.fPath.Circle(TpvVector2.Create(aCenterX,aCenterY),aRadius);
+ fState.fPath.Circle(TpvVector2.InlineableCreate(aCenterX,aCenterY),aRadius);
  result:=self;
 end;
 
@@ -5327,7 +5153,7 @@ end;
 
 function TpvCanvas.Rectangle(const aCenterX,aCenterY,aBoundX,aBoundY:TpvFloat):TpvCanvas;
 begin
- fState.fPath.Rectangle(TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY));
+ fState.fPath.Rectangle(TpvVector2.InlineableCreate(aCenterX,aCenterY),TpvVector2.InlineableCreate(aBoundX,aBoundY));
  result:=self;
 end;
 
@@ -5345,7 +5171,7 @@ end;
 
 function TpvCanvas.RoundedRectangle(const aCenterX,aCenterY,aBoundX,aBoundY,aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight:TpvFloat):TpvCanvas;
 begin
- fState.fPath.RoundedRectangle(TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY),aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight);
+ fState.fPath.RoundedRectangle(TpvVector2.InlineableCreate(aCenterX,aCenterY),TpvVector2.InlineableCreate(aBoundX,aBoundY),aRadiusTopLeft,aRadiusTopRight,aRadiusBottomLeft,aRadiusBottomRight);
  result:=self;
 end;
 
@@ -5363,7 +5189,7 @@ end;
 
 function TpvCanvas.RoundedRectangle(const aCenterX,aCenterY,aBoundX,aBoundY,aRadius:TpvFloat):TpvCanvas;
 begin
- fState.fPath.RoundedRectangle(TpvVector2.Create(aCenterX,aCenterY),TpvVector2.Create(aBoundX,aBoundY),aRadius);
+ fState.fPath.RoundedRectangle(TpvVector2.InlineableCreate(aCenterX,aCenterY),TpvVector2.InlineableCreate(aBoundX,aBoundY),aRadius);
  result:=self;
 end;
 

@@ -132,6 +132,8 @@ type PpvScalar=^TpvScalar;
       public
        constructor Create(const pX:TpvScalar); overload;
        constructor Create(const pX,pY:TpvScalar); overload;
+       class function InlineableCreate(const pX:TpvScalar):TpvVector2; overload; inline; static;
+       class function InlineableCreate(const pX,pY:TpvScalar):TpvVector2; overload; inline; static;
        class operator Implicit(const a:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -190,6 +192,9 @@ type PpvScalar=^TpvScalar;
        constructor Create(const pX:TpvScalar); overload;
        constructor Create(const pX,pY,pZ:TpvScalar); overload;
        constructor Create(const pXY:TpvVector2;const pZ:TpvScalar=0.0); overload;
+       class function InlineableCreate(const pX:TpvScalar):TpvVector3; overload; inline; static;
+       class function InlineableCreate(const pX,pY,pZ:TpvScalar):TpvVector3; overload; inline; static;
+       class function InlineableCreate(const pXY:TpvVector2;const pZ:TpvScalar=0.0):TpvVector3; overload; inline; static;
        class operator Implicit(const a:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -256,6 +261,10 @@ type PpvScalar=^TpvScalar;
        constructor Create(const pX,pY,pZ,pW:TpvScalar); overload;
        constructor Create(const pXY:TpvVector2;const pZ:TpvScalar=0.0;const pW:TpvScalar=1.0); overload;
        constructor Create(const pXYZ:TpvVector3;const pW:TpvScalar=1.0); overload;
+       class function InlineableCreate(const pX:TpvScalar):TpvVector4; overload; inline; static;
+       class function InlineableCreate(const pX,pY,pZ,pW:TpvScalar):TpvVector4; overload; inline; static;
+       class function InlineableCreate(const pXY:TpvVector2;const pZ:TpvScalar=0.0;const pW:TpvScalar=0.0):TpvVector4; overload; inline; static;
+       class function InlineableCreate(const pXYZ:TpvVector3;const pW:TpvScalar=0.0):TpvVector4; overload; inline; static;
        class operator Implicit(const a:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvVector4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1107,6 +1116,15 @@ type PpvScalar=^TpvScalar;
         4:(
          Offset:TpvVector2;
         );
+        5:(
+         Vector4:TpvVector4;
+        );
+        6:(
+         AxisComponents:array[0..1,0..1] of TpvFloat;
+        );
+        7:(
+         Components:array[0..3] of TpvFloat;
+        );
      end;
 
      TpvRectArray=array of TpvRect;
@@ -1899,6 +1917,18 @@ begin
  y:=pY;
 end;
 
+class function TpvVector2.InlineableCreate(const pX:TpvScalar):TpvVector2;
+begin
+ result.x:=pX;
+ result.y:=pX;
+end;
+
+class function TpvVector2.InlineableCreate(const pX,pY:TpvScalar):TpvVector2;
+begin
+ result.x:=pX;
+ result.y:=pY;
+end;
+
 class operator TpvVector2.Implicit(const a:TpvScalar):TpvVector2;
 begin
  result.x:=a;
@@ -2175,9 +2205,28 @@ end;
 
 constructor TpvVector3.Create(const pXY:TpvVector2;const pZ:TpvScalar=0.0);
 begin
- x:=pXY.x;
- y:=pXY.y;
+ Vector2:=pXY;
  z:=pZ;
+end;
+
+class function TpvVector3.InlineableCreate(const pX:TpvScalar):TpvVector3;
+begin
+ result.x:=pX;
+ result.y:=pX;
+ result.z:=pX;
+end;
+
+class function TpvVector3.InlineableCreate(const pX,pY,pZ:TpvScalar):TpvVector3;
+begin
+ result.x:=pX;
+ result.y:=pY;
+ result.z:=pZ;
+end;
+
+class function TpvVector3.InlineableCreate(const pXY:TpvVector2;const pZ:TpvScalar=0.0):TpvVector3;
+begin
+ result.Vector2:=pXY;
+ result.z:=pZ;
 end;
 
 class operator TpvVector3.Implicit(const a:TpvScalar):TpvVector3;
@@ -3177,6 +3226,35 @@ begin
  y:=pXYZ.y;
  z:=pXYZ.z;
  w:=pW;
+end;
+
+class function TpvVector4.InlineableCreate(const pX:TpvScalar):TpvVector4;
+begin
+ result.x:=pX;
+ result.y:=pX;
+ result.z:=pX;
+ result.w:=pX;
+end;
+
+class function TpvVector4.InlineableCreate(const pX,pY,pZ,pW:TpvScalar):TpvVector4;
+begin
+ result.x:=pX;
+ result.y:=pY;
+ result.z:=pZ;
+ result.w:=pW;
+end;
+
+class function TpvVector4.InlineableCreate(const pXY:TpvVector2;const pZ:TpvScalar=0.0;const pW:TpvScalar=0.0):TpvVector4;
+begin
+ result.Vector2:=pXY;
+ result.z:=pZ;
+ result.w:=pW;
+end;
+
+class function TpvVector4.InlineableCreate(const pXYZ:TpvVector3;const pW:TpvScalar=0.0):TpvVector4;
+begin
+ result.Vector3:=pXYZ;
+ result.w:=pW;
 end;
 
 class operator TpvVector4.Implicit(const a:TpvScalar):TpvVector4;
