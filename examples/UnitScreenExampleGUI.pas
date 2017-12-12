@@ -678,7 +678,7 @@ function TScreenExampleGUI.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent)
 begin
  result:=false;
  if fReady and not fGUIInstance.KeyEvent(aKeyEvent) then begin
-  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.DOWN then begin
+  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
    case aKeyEvent.KeyCode of
     KEYCODE_AC_BACK{,KEYCODE_ESCAPE}:begin
      pvApplication.NextScreen:=TScreenMainMenu.Create;
@@ -735,7 +735,7 @@ begin
   LocalPointerEvent.RelativePosition:=LocalPointerEvent.RelativePosition*fScreenToCanvasScale;
   if not fGUIInstance.PointerEvent(LocalPointerEvent) then begin
    case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.DOWN:begin
+    TpvApplicationInputPointerEventType.Down:begin
      fSelectedIndex:=-1;
      cy:=fStartY;
      for Index:=0 to 0 do begin
@@ -748,9 +748,9 @@ begin
       cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
      end;
     end;
-    TpvApplicationInputPointerEventType.UP:begin
+    TpvApplicationInputPointerEventType.Up:begin
     end;
-    TpvApplicationInputPointerEventType.MOTION:begin
+    TpvApplicationInputPointerEventType.Motion:begin
      fSelectedIndex:=-1;
      cy:=fStartY;
      for Index:=0 to 0 do begin
@@ -760,21 +760,21 @@ begin
       cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
      end;
     end;
-    TpvApplicationInputPointerEventType.DRAG:begin
+    TpvApplicationInputPointerEventType.Drag:begin
     end;
    end;
   end;
  end;
  case aPointerEvent.PointerEventType of
-  TpvApplicationInputPointerEventType.DOWN:begin
+  TpvApplicationInputPointerEventType.Down:begin
    Include(fLastMouseButtons,aPointerEvent.Button);
    fLastMousePosition:=aPointerEvent.Position*fScreenToCanvasScale;
   end;
-  TpvApplicationInputPointerEventType.UP:begin
+  TpvApplicationInputPointerEventType.Up:begin
    Exclude(fLastMouseButtons,aPointerEvent.Button);
    fLastMousePosition:=aPointerEvent.Position*fScreenToCanvasScale;
   end;
-  TpvApplicationInputPointerEventType.MOTION:begin
+  TpvApplicationInputPointerEventType.Motion:begin
    fLastMousePosition:=aPointerEvent.Position*fScreenToCanvasScale;
   end;
  end;
@@ -811,8 +811,8 @@ begin
  fVulkanCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
 
 {$if false}
- fVulkanCanvas.Color:=TpvVector4.Create(IfThen(TpvApplicationInputPointerButton.LEFT in fLastMouseButtons,1.0,0.0),
-                                        IfThen(TpvApplicationInputPointerButton.RIGHT in fLastMouseButtons,1.0,0.0),
+ fVulkanCanvas.Color:=TpvVector4.Create(IfThen(TpvApplicationInputPointerButton.Left in fLastMouseButtons,1.0,0.0),
+                                        IfThen(TpvApplicationInputPointerButton.Right in fLastMouseButtons,1.0,0.0),
                                         1.0,
                                         1.0);
  fVulkanCanvas.DrawFilledCircle(fLastMousePosition,16.0);

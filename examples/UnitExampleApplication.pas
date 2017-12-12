@@ -153,7 +153,7 @@ end;
 function TExampleApplication.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=inherited KeyEvent(aKeyEvent);
- if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.DOWN then begin
+ if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down then begin
   case aKeyEvent.KeyCode of
    KEYCODE_F10:begin
     fMakeScreenshotJPEG:=true;

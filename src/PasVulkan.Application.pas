@@ -524,10 +524,10 @@ type EpvApplication=class(Exception)
      PpvApplicationInputKeyEventType=^TpvApplicationInputKeyEventType;
      TpvApplicationInputKeyEventType=
       (
-       DOWN,
-       UP,
-       TYPED,
-       UNICODE
+       Down,
+       Up,
+       Typed,
+       Unicode
       );
 
      PpvApplicationInputKeyModifier=^TpvApplicationInputKeyModifier;
@@ -568,18 +568,18 @@ type EpvApplication=class(Exception)
      PpvApplicationInputPointerEventType=^TpvApplicationInputPointerEventType;
      TpvApplicationInputPointerEventType=
       (
-       DOWN,
-       UP,
-       MOTION,
-       DRAG
+       Down,
+       Up,
+       Motion,
+       Drag
       );
 
      PpvApplicationInputPointerButton=^TpvApplicationInputPointerButton;
      TpvApplicationInputPointerButton=
       (
-       LEFT,
-       MIDDLE,
-       RIGHT
+       Left,
+       Middle,
+       Right
       );
 
      PpvApplicationInputPointerButtons=^TpvApplicationInputPointerButtons;
@@ -785,8 +785,8 @@ type EpvApplication=class(Exception)
        function GetPointerY(const aPointerID:TpvInt32=0):TpvFloat;
        function GetPointerDeltaY(const aPointerID:TpvInt32=0):TpvFloat;
        function GetPointerPressure(const aPointerID:TpvInt32=0):TpvFloat;
-       function IsPointerTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[TpvApplicationInputPointerButton.LEFT,TpvApplicationInputPointerButton.MIDDLE,TpvApplicationInputPointerButton.RIGHT]):boolean;
-       function IsPointerJustTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[TpvApplicationInputPointerButton.LEFT,TpvApplicationInputPointerButton.MIDDLE,TpvApplicationInputPointerButton.RIGHT]):boolean;
+       function IsPointerTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[TpvApplicationInputPointerButton.Left,TpvApplicationInputPointerButton.Middle,TpvApplicationInputPointerButton.Right]):boolean;
+       function IsPointerJustTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[TpvApplicationInputPointerButton.Left,TpvApplicationInputPointerButton.Middle,TpvApplicationInputPointerButton.Right]):boolean;
        function IsTouched:boolean;
        function JustTouched:boolean;
        function IsButtonPressed(const aButton:TpvApplicationInputPointerButton):boolean;
@@ -4148,8 +4148,8 @@ begin
         fKeyDown[KeyCode and $ffff]:=true;
         inc(fKeyDownCount);
         fJustKeyDown[KeyCode and $ffff]:=true;
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.DOWN,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.DOWN,KeyCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KeyCode,KeyModifiers));
         end;
        end;
        SDL_KEYUP:begin
@@ -4158,13 +4158,13 @@ begin
          dec(fKeyDownCount);
         end;
         fJustKeyDown[KeyCode and $ffff]:=false;
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.UP,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.UP,KeyCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KeyCode,KeyModifiers));
         end;
        end;
        SDL_KEYTYPED:begin
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.TYPED,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.TYPED,KeyCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KeyCode,KeyModifiers));
         end;
        end;
       end;
@@ -4179,8 +4179,8 @@ begin
          break;
         end;
         else begin
-         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.UNICODE,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.UNICODE,KeyCode,KeyModifiers));
+         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Unicode,KeyCode,KeyModifiers));
          end;
         end;
        end;
@@ -4192,7 +4192,7 @@ begin
       fMouseY:=Event^.motion.y;
       fMouseDeltaX:=Event^.motion.xrel;
       fMouseDeltaY:=Event^.motion.yrel;
-      OK:=pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.MOTION,
+      OK:=pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,
                                                                             TpvVector2.Create(Event^.motion.x,Event^.motion.y),
                                                                             TpvVector2.Create(Event^.motion.xrel,Event^.motion.yrel),
                                                                             ord(fMouseDown<>[]) and 1,
@@ -4200,7 +4200,7 @@ begin
                                                                             fMouseDown,
                                                                             KeyModifiers));
       if assigned(fProcessor) and not OK then begin
-       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.MOTION,
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,
                                                                       TpvVector2.Create(Event^.motion.x,Event^.motion.y),
                                                                       TpvVector2.Create(Event^.motion.xrel,Event^.motion.yrel),
                                                                       ord(fMouseDown<>[]) and 1,
@@ -4218,27 +4218,27 @@ begin
       fMouseY:=Event^.button.y;
       case Event^.button.button of
        SDL_BUTTON_LEFT:begin
-        Include(fMouseDown,TpvApplicationInputPointerButton.LEFT);
-        Include(fMouseJustDown,TpvApplicationInputPointerButton.LEFT);
+        Include(fMouseDown,TpvApplicationInputPointerButton.Left);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.Left);
         fJustTouched:=true;
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.LEFT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.LEFT,fMouseDown,KeyModifiers));
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_RIGHT:begin
-        Include(fMouseDown,TpvApplicationInputPointerButton.RIGHT);
-        Include(fMouseJustDown,TpvApplicationInputPointerButton.RIGHT);
+        Include(fMouseDown,TpvApplicationInputPointerButton.Right);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.Right);
         fJustTouched:=true;
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.RIGHT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.RIGHT,fMouseDown,KeyModifiers));
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_MIDDLE:begin
-        Include(fMouseDown,TpvApplicationInputPointerButton.MIDDLE);
-        Include(fMouseJustDown,TpvApplicationInputPointerButton.MIDDLE);
+        Include(fMouseDown,TpvApplicationInputPointerButton.Middle);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.Middle);
         fJustTouched:=true;
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.MIDDLE,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.MIDDLE,fMouseDown,KeyModifiers));
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers));
         end;
        end;
       end;
@@ -4252,24 +4252,24 @@ begin
       fMouseY:=Event^.button.y;
       case Event^.button.button of
        SDL_BUTTON_LEFT:begin
-        Exclude(fMouseDown,TpvApplicationInputPointerButton.LEFT);
-        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.LEFT);
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.LEFT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.LEFT,fMouseDown,KeyModifiers));
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.Left);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.Left);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Left,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_RIGHT:begin
-        Exclude(fMouseDown,TpvApplicationInputPointerButton.RIGHT);
-        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.RIGHT);
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.RIGHT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.RIGHT,fMouseDown,KeyModifiers));
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.Right);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.Right);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Right,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_MIDDLE:begin
-        Exclude(fMouseDown,TpvApplicationInputPointerButton.MIDDLE);
-        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.MIDDLE);
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.MIDDLE,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.MIDDLE,fMouseDown,KeyModifiers));
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.Middle);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.Middle);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.Middle,fMouseDown,KeyModifiers));
         end;
        end;
       end;
@@ -4288,8 +4288,8 @@ begin
       fPointerPressure[PointerID]:=Event^.tfinger.pressure;
       fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
       fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
-      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.MOTION,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
-       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.MOTION,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers));
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Motion,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers));
       end;
      end;
      SDL_FINGERDOWN:begin
@@ -4302,11 +4302,11 @@ begin
       fPointerPressure[PointerID]:=Event^.tfinger.pressure;
       fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
       fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
-      Include(fPointerDown[PointerID],TpvApplicationInputPointerButton.LEFT);
-      Include(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.LEFT);
+      Include(fPointerDown[PointerID],TpvApplicationInputPointerButton.Left);
+      Include(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.Left);
       fJustTouched:=true;
-      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.LEFT,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
-       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.LEFT,fPointerDown[PointerID],KeyModifiers));
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Down,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers));
       end;
      end;
      SDL_FINGERUP:begin
@@ -4321,10 +4321,10 @@ begin
       fPointerPressure[PointerID]:=Event^.tfinger.pressure;
       fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
       fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
-      Exclude(fPointerDown[PointerID],TpvApplicationInputPointerButton.LEFT);
-      Exclude(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.LEFT);
-      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.LEFT,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
-       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.LEFT,fPointerDown[PointerID],KeyModifiers));
+      Exclude(fPointerDown[PointerID],TpvApplicationInputPointerButton.Left);
+      Exclude(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.Left);
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.Up,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.Left,fPointerDown[PointerID],KeyModifiers));
       end;
      end;
     end;
@@ -4461,7 +4461,7 @@ begin
  end;
 end;
 
-function TpvApplicationInput.IsPointerTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[TpvApplicationInputPointerButton.LEFT,TpvApplicationInputPointerButton.MIDDLE,TpvApplicationInputPointerButton.RIGHT]):boolean;
+function TpvApplicationInput.IsPointerTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[TpvApplicationInputPointerButton.Left,TpvApplicationInputPointerButton.Middle,TpvApplicationInputPointerButton.Right]):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4477,7 +4477,7 @@ begin
  end;
 end;
 
-function TpvApplicationInput.IsPointerJustTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[TpvApplicationInputPointerButton.LEFT,TpvApplicationInputPointerButton.MIDDLE,TpvApplicationInputPointerButton.RIGHT]):boolean;
+function TpvApplicationInput.IsPointerJustTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[TpvApplicationInputPointerButton.Left,TpvApplicationInputPointerButton.Middle,TpvApplicationInputPointerButton.Right]):boolean;
 begin
  fCriticalSection.Acquire;
  try

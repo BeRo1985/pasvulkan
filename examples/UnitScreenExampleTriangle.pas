@@ -440,7 +440,7 @@ end;
 function TScreenExampleTriangle.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=false;
- if fReady and (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.DOWN) then begin
+ if fReady and (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Down) then begin
   case aKeyEvent.KeyCode of
    KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
     pvApplication.NextScreen:=TScreenMainMenu.Create;
@@ -491,7 +491,7 @@ begin
  result:=false;
  if fReady then begin
   case aPointerEvent.PointerEventType of
-   TpvApplicationInputPointerEventType.DOWN:begin
+   TpvApplicationInputPointerEventType.Down:begin
     fSelectedIndex:=-1;
     cy:=fStartY;
     for Index:=0 to 0 do begin
@@ -504,9 +504,9 @@ begin
      cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
     end;
    end;
-   TpvApplicationInputPointerEventType.UP:begin
+   TpvApplicationInputPointerEventType.Up:begin
    end;
-   TpvApplicationInputPointerEventType.MOTION:begin
+   TpvApplicationInputPointerEventType.Motion:begin
     fSelectedIndex:=-1;
     cy:=fStartY;
     for Index:=0 to 0 do begin
@@ -516,7 +516,7 @@ begin
      cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
     end;
    end;
-   TpvApplicationInputPointerEventType.DRAG:begin
+   TpvApplicationInputPointerEventType.Drag:begin
    end;
   end;
  end;

@@ -7341,7 +7341,7 @@ begin
     ChildWidget:=Child as TpvGUIWidget;
     if ChildWidget.Visible then begin
      case aPointerEvent.PointerEventType of
-      TpvApplicationInputPointerEventType.MOTION,TpvApplicationInputPointerEventType.DRAG:begin
+      TpvApplicationInputPointerEventType.Motion,TpvApplicationInputPointerEventType.Drag:begin
        ChildPointerEvent.Position:=aPointerEvent.Position-ChildWidget.fPosition;
        PreviousContained:=ChildWidget.Contains(ChildPointerEvent.Position-ChildPointerEvent.RelativePosition);
        CurrentContained:=ChildWidget.Contains(ChildPointerEvent.Position);
@@ -7370,8 +7370,8 @@ begin
     end;
    end;
   end;
-  if (aPointerEvent.PointerEventType=TpvApplicationInputPointerEventType.DOWN) and
-     (aPointerEvent.Button=TpvApplicationInputPointerButton.LEFT) and not
+  if (aPointerEvent.PointerEventType=TpvApplicationInputPointerEventType.Down) and
+     (aPointerEvent.Button=TpvApplicationInputPointerButton.Left) and not
      (TpvGUIWidgetFlag.Focused in fWidgetFlags) then begin
    RequestFocus;
   end;
@@ -7899,7 +7899,7 @@ begin
    result:=(fPopupMenuStack[fPopupMenuStack.Count-1] as TpvGUIPopupMenu).KeyEvent(aKeyEvent);
   end;
   if not result then begin
-   if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.TYPED) and (aKeyEvent.KeyCode=KEYCODE_TAB) then begin
+   if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and (aKeyEvent.KeyCode=KEYCODE_TAB) then begin
     if fCurrentFocusPath.Count>0 then begin
      Current:=fCurrentFocusPath.Items[fCurrentFocusPath.Count-1];
      if (Current<>self) and (Current is TpvGUIWidget) then begin
@@ -7978,7 +7978,7 @@ begin
   end;
   if not result then begin
    case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.DOWN,TpvApplicationInputPointerEventType.UP:begin
+    TpvApplicationInputPointerEventType.Down,TpvApplicationInputPointerEventType.Up:begin
      if (fModalWindowStack.Count>0) and
         (fModalWindowStack[fModalWindowStack.Count-1] is TpvGUIWindow) then begin
       CurrentWindow:=fModalWindowStack[fModalWindowStack.Count-1] as TpvGUIWindow;
@@ -7987,9 +7987,9 @@ begin
       end;
      end;
      case aPointerEvent.PointerEventType of
-      TpvApplicationInputPointerEventType.DOWN:begin
+      TpvApplicationInputPointerEventType.Down:begin
        case aPointerEvent.Button of
-        TpvApplicationInputPointerButton.LEFT,TpvApplicationInputPointerButton.RIGHT:begin
+        TpvApplicationInputPointerButton.Left,TpvApplicationInputPointerButton.Right:begin
          TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
          CurrentWidget:=FindWidget(aPointerEvent.Position);
          if assigned(CurrentWidget) and
@@ -8008,15 +8008,15 @@ begin
         end;
        end;
       end;
-      TpvApplicationInputPointerEventType.UP:begin
+      TpvApplicationInputPointerEventType.Up:begin
        CurrentWidget:=FindWidget(aPointerEvent.Position);
        if assigned(CurrentWidget) and CurrentWidget.HasParent(fDragWidget) then begin
         CurrentWidget:=fDragWidget;
        end;
        if assigned(fDragWidget) and (fDragWidget<>CurrentWidget) then begin
         LocalPointerEvent:=aPointerEvent;
-        LocalPointerEvent.PointerEventType:=TpvApplicationInputPointerEventType.UP;
-        LocalPointerEvent.Button:=TpvApplicationInputPointerButton.LEFT;
+        LocalPointerEvent.PointerEventType:=TpvApplicationInputPointerEventType.Up;
+        LocalPointerEvent.Button:=TpvApplicationInputPointerButton.Left;
         LocalPointerEvent.Position:=LocalPointerEvent.Position-fDragWidget.AbsolutePosition;
         fDragWidget.PointerEvent(LocalPointerEvent);
        end;
@@ -8026,10 +8026,10 @@ begin
      result:=inherited PointerEvent(aPointerEvent);
      DoUpdateCursor:=true;
     end;
-    TpvApplicationInputPointerEventType.MOTION:begin
+    TpvApplicationInputPointerEventType.Motion:begin
      if assigned(fDragWidget) then begin
       LocalPointerEvent:=aPointerEvent;
-      LocalPointerEvent.PointerEventType:=TpvApplicationInputPointerEventType.DRAG;
+      LocalPointerEvent.PointerEventType:=TpvApplicationInputPointerEventType.Drag;
       LocalPointerEvent.Position:=LocalPointerEvent.Position-fDragWidget.AbsolutePosition;
       result:=fDragWidget.PointerEvent(LocalPointerEvent);
      end else begin
@@ -8037,7 +8037,7 @@ begin
      end;
      DoUpdateCursor:=true;
     end;
-    TpvApplicationInputPointerEventType.DRAG:begin
+    TpvApplicationInputPointerEventType.Drag:begin
      result:=inherited PointerEvent(aPointerEvent);
     end;
    end;
@@ -8602,7 +8602,7 @@ begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
   OK:=false;
-  if (aPointerEvent.PointerEventType=TpvApplicationInputPointerEventType.DRAG) or
+  if (aPointerEvent.PointerEventType=TpvApplicationInputPointerEventType.Drag) or
      (fMouseAction<>TpvGUIWindowMouseAction.None) then begin
    OK:=true;
   end else if (fWindowState=TpvGUIWindowState.Normal) and
@@ -8656,7 +8656,7 @@ begin
   if not result then begin
    OldSize:=fSize;
    case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.DOWN:begin
+    TpvApplicationInputPointerEventType.Down:begin
      fMouseAction:=TpvGUIWindowMouseAction.None;
      fCursor:=TpvGUICursor.Arrow;
      if (aPointerEvent.Position.x>=0) and
@@ -8723,11 +8723,11 @@ begin
       RequestFocus;
      end;}
     end;
-    TpvApplicationInputPointerEventType.UP:begin
+    TpvApplicationInputPointerEventType.Up:begin
      fMouseAction:=TpvGUIWindowMouseAction.None;
      fCursor:=TpvGUICursor.Arrow;
     end;
-    TpvApplicationInputPointerEventType.MOTION:begin
+    TpvApplicationInputPointerEventType.Motion:begin
      if fMouseAction=TpvGUIWindowMouseAction.None then begin
       fCursor:=TpvGUICursor.Arrow;
       if (fWindowState in [TpvGUIWindowState.Normal]) and
@@ -8769,7 +8769,7 @@ begin
       end;
      end;
     end;
-    TpvApplicationInputPointerEventType.DRAG:begin
+    TpvApplicationInputPointerEventType.Drag:begin
      if assigned(fParent) and (fParent is TpvGUIWindow) and (TpvGUIWindowFlag.Header in (fParent as TpvGUIWindow).fWindowFlags) then begin
       MinimumPosition:=TpvVector2.InlineableCreate(0.0,Skin.fWindowHeaderHeight);
      end else begin
@@ -9083,7 +9083,7 @@ var Index:TpvSizeInt;
     MessageDialogButton:PpvGUIMessageDialogButton;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.TYPED) and not result then begin
+ if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
   for Index:=0 to length(fButtons) do begin
    MessageDialogButton:=@fButtons[Index];
    if MessageDialogButton^.fKeyCode=aKeyEvent.KeyCode then begin
@@ -9548,13 +9548,13 @@ begin
   case aKeyEvent.KeyCode of
    KEYCODE_SPACE,KEYCODE_RETURN:begin
     case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.DOWN:begin
+     TpvApplicationInputKeyEventType.Down:begin
       ProcessDown(fSize*0.5);
      end;
-     TpvApplicationInputKeyEventType.UP:begin
+     TpvApplicationInputKeyEventType.Up:begin
       ProcessUp(fSize*0.5);
      end;
-     TpvApplicationInputKeyEventType.TYPED:begin
+     TpvApplicationInputKeyEventType.Typed:begin
      end;
     end;
     result:=true;
@@ -9572,19 +9572,19 @@ begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
   result:=inherited PointerEvent(aPointerEvent);
-  if Enabled and (aPointerEvent.Button=TpvApplicationInputPointerButton.LEFT) and not result then begin
+  if Enabled and (aPointerEvent.Button=TpvApplicationInputPointerButton.Left) and not result then begin
    case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.DOWN:begin
+    TpvApplicationInputPointerEventType.Down:begin
      ProcessDown(aPointerEvent.Position);
      result:=true;
     end;
-    TpvApplicationInputPointerEventType.UP:begin
+    TpvApplicationInputPointerEventType.Up:begin
      ProcessUp(aPointerEvent.Position);
      result:=true;
     end;
-    TpvApplicationInputPointerEventType.MOTION:begin
+    TpvApplicationInputPointerEventType.Motion:begin
     end;
-    TpvApplicationInputPointerEventType.DRAG:begin
+    TpvApplicationInputPointerEventType.Drag:begin
     end;
    end;
   end;
@@ -9825,7 +9825,7 @@ begin
   case aKeyEvent.KeyCode of
    KEYCODE_SPACE,KEYCODE_RETURN:begin
     case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.TYPED:begin
+     TpvApplicationInputKeyEventType.Typed:begin
       if TpvGUICheckBoxFlag.RadioCheckBox in fCheckBoxFlags then begin
        SetChecked(true);
       end else begin
@@ -9846,26 +9846,26 @@ begin
   result:=inherited PointerEvent(aPointerEvent);
   if Enabled and not result then begin
    case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.DOWN:begin
+    TpvApplicationInputPointerEventType.Down:begin
      case aPointerEvent.Button of
-      TpvApplicationInputPointerButton.LEFT:begin
+      TpvApplicationInputPointerButton.Left:begin
        if TpvGUICheckBoxFlag.RadioCheckBox in fCheckBoxFlags then begin
         SetChecked(true);
        end else begin
         SetChecked(not GetChecked);
        end;
       end;
-      TpvApplicationInputPointerButton.MIDDLE:begin
+      TpvApplicationInputPointerButton.Middle:begin
       end;
-      TpvApplicationInputPointerButton.RIGHT:begin
+      TpvApplicationInputPointerButton.Right:begin
       end;
      end;
     end;
-    TpvApplicationInputPointerEventType.UP:begin
+    TpvApplicationInputPointerEventType.Up:begin
     end;
-    TpvApplicationInputPointerEventType.MOTION:begin
+    TpvApplicationInputPointerEventType.Motion:begin
     end;
-    TpvApplicationInputPointerEventType.DRAG:begin
+    TpvApplicationInputPointerEventType.Drag:begin
     end;
    end;
    result:=true;
@@ -10254,14 +10254,14 @@ begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
   case aKeyEvent.KeyEventType of
-   TpvApplicationInputKeyEventType.DOWN:begin
+   TpvApplicationInputKeyEventType.Down:begin
     case aKeyEvent.KeyCode of
      KEYCODE_APPLICATION:begin
       result:=true;
      end;
     end;
    end;
-   TpvApplicationInputKeyEventType.UP:begin
+   TpvApplicationInputKeyEventType.Up:begin
     case aKeyEvent.KeyCode of
      KEYCODE_APPLICATION:begin
       if assigned(fPopupMenu) then begin
@@ -10271,7 +10271,7 @@ begin
      end;
     end;
    end;
-   TpvApplicationInputKeyEventType.TYPED:begin
+   TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
      KEYCODE_LEFT:begin
       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
@@ -10469,7 +10469,7 @@ begin
      end;
     end;
    end;
-   TpvApplicationInputKeyEventType.UNICODE:begin
+   TpvApplicationInputKeyEventType.Unicode:begin
     TemporaryUncheckedText:=fText;
     TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
     TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
@@ -10513,9 +10513,9 @@ begin
   result:=inherited PointerEvent(aPointerEvent);
   if not result then begin
    case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.DOWN:begin
+    TpvApplicationInputPointerEventType.Down:begin
      case aPointerEvent.Button of
-      TpvApplicationInputPointerButton.LEFT:begin
+      TpvApplicationInputPointerButton.Left:begin
        fTextSelectionStart:=0;
        fTextSelectionEnd:=0;
        fTextCursorPositionIndex:=1;
@@ -10533,27 +10533,27 @@ begin
        end;
        RequestFocus;
       end;
-      TpvApplicationInputPointerButton.MIDDLE:begin
+      TpvApplicationInputPointerButton.Middle:begin
        RequestFocus;
       end;
-      TpvApplicationInputPointerButton.RIGHT:begin
+      TpvApplicationInputPointerButton.Right:begin
        RequestFocus;
       end;
      end;
      result:=true;
     end;
-    TpvApplicationInputPointerEventType.UP:begin
+    TpvApplicationInputPointerEventType.Up:begin
      case aPointerEvent.Button of
-      TpvApplicationInputPointerButton.LEFT:begin
+      TpvApplicationInputPointerButton.Left:begin
        if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
         fOnClick(self);
        end;
        RequestFocus;
       end;
-      TpvApplicationInputPointerButton.MIDDLE:begin
+      TpvApplicationInputPointerButton.Middle:begin
        RequestFocus;
       end;
-      TpvApplicationInputPointerButton.RIGHT:begin
+      TpvApplicationInputPointerButton.Right:begin
        RequestFocus;
        if assigned(fPopupMenu) then begin
         fPopupMenu.Activate(AbsolutePosition+aPointerEvent.Position);
@@ -10561,8 +10561,8 @@ begin
       end;
      end;
     end;
-    TpvApplicationInputPointerEventType.MOTION:begin
-     if TpvApplicationInputPointerButton.LEFT in aPointerEvent.Buttons then begin
+    TpvApplicationInputPointerEventType.Motion:begin
+     if TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons then begin
       if fTextSelectionStart<1 then begin
        fTextSelectionStart:=fTextCursorPositionIndex;
       end;
@@ -10834,7 +10834,7 @@ begin
  result:=inherited KeyEvent(aKeyEvent);
  if not result then begin
   case aKeyEvent.KeyEventType of
-   TpvApplicationInputKeyEventType.TYPED:begin
+   TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
      KEYCODE_UP:begin
       TemporaryValue:=GetValue;
@@ -10885,7 +10885,7 @@ begin
  result:=inherited PointerEvent(aPointerEvent);
  if not result then begin
   case aPointerEvent.PointerEventType of
-   TpvApplicationInputPointerEventType.DRAG:begin
+   TpvApplicationInputPointerEventType.Drag:begin
     TemporaryValue:=GetValue;
     v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
     if v<0.0 then begin
@@ -11102,7 +11102,7 @@ begin
  result:=inherited KeyEvent(aKeyEvent);
  if not result then begin
   case aKeyEvent.KeyEventType of
-   TpvApplicationInputKeyEventType.TYPED:begin
+   TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
      KEYCODE_UP:begin
       TemporaryValue:=GetValue;
@@ -11153,7 +11153,7 @@ begin
  result:=inherited PointerEvent(aPointerEvent);
  if not result then begin
   case aPointerEvent.PointerEventType of
-   TpvApplicationInputPointerEventType.DRAG:begin
+   TpvApplicationInputPointerEventType.Drag:begin
     TemporaryValue:=GetValue;
     v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
     if v<0.0 then begin
@@ -11475,13 +11475,13 @@ var Index,OtherIndex:TpvInt32;
     MenuItem:TpvGUIMenuItem;
 begin
  case aKeyEvent.KeyEventType of
-  TpvApplicationInputKeyEventType.DOWN:begin
+  TpvApplicationInputKeyEventType.Down:begin
    result:=true;
   end;
-  TpvApplicationInputKeyEventType.UP:begin
+  TpvApplicationInputKeyEventType.Up:begin
    result:=true;
   end;
-  TpvApplicationInputKeyEventType.TYPED:begin
+  TpvApplicationInputKeyEventType.Typed:begin
    case aKeyEvent.KeyCode of
     KEYCODE_RIGHT:begin
      fSelectedMenuItem:=nil;
@@ -11641,7 +11641,7 @@ begin
    end;
    result:=true;
   end;
-  TpvApplicationInputKeyEventType.UNICODE:begin
+  TpvApplicationInputKeyEventType.Unicode:begin
    result:=true;
   end;
   else begin
@@ -11659,7 +11659,7 @@ begin
  result:=TpvRect.CreateRelative(fPosition,fSize).Touched(aPointerEvent.Position);
  if result then begin
   case aPointerEvent.PointerEventType of
-   TpvApplicationInputPointerEventType.DOWN:begin
+   TpvApplicationInputPointerEventType.Down:begin
     DeactivateSubmenus;
     fSelectedMenuItem:=nil;
     fFocusedMenuItem:=nil;
@@ -11692,7 +11692,7 @@ begin
     end;
     result:=true;
    end;
-   TpvApplicationInputPointerEventType.UP:begin
+   TpvApplicationInputPointerEventType.Up:begin
     if assigned(fSelectedMenuItem) then begin
      if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.fOnClick) then begin
       fSelectedMenuItem.fOnClick(fSelectedMenuItem);
@@ -11707,7 +11707,7 @@ begin
     end;
     result:=true;
    end;
-   TpvApplicationInputPointerEventType.MOTION:begin
+   TpvApplicationInputPointerEventType.Motion:begin
     fHoveredMenuItem:=nil;
     for Index:=0 to fChildren.Count-1 do begin
      Child:=fChildren[Index];
@@ -11820,13 +11820,13 @@ begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
   case aKeyEvent.KeyEventType of
-   TpvApplicationInputKeyEventType.DOWN:begin
+   TpvApplicationInputKeyEventType.Down:begin
     result:=true;
    end;
-   TpvApplicationInputKeyEventType.UP:begin
+   TpvApplicationInputKeyEventType.Up:begin
     result:=true;
    end;
-   TpvApplicationInputKeyEventType.TYPED:begin
+   TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
      KEYCODE_DOWN,KEYCODE_SPACE,KEYCODE_RETURN:begin
       fSelectedMenuItem:=nil;
@@ -11922,7 +11922,7 @@ begin
     end;
     result:=true;
    end;
-   TpvApplicationInputKeyEventType.UNICODE:begin
+   TpvApplicationInputKeyEventType.Unicode:begin
     result:=true;
    end;
   end;
@@ -11939,7 +11939,7 @@ begin
   result:=inherited PointerEvent(aPointerEvent);
   if not result then begin
    case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.DOWN:begin
+    TpvApplicationInputPointerEventType.Down:begin
      if not Focused then begin
       RequestFocus;
      end;
@@ -11974,7 +11974,7 @@ begin
      end;
      result:=true;
     end;
-    TpvApplicationInputPointerEventType.UP:begin
+    TpvApplicationInputPointerEventType.Up:begin
      if assigned(fSelectedMenuItem) then begin
       if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.fOnClick) then begin
        fSelectedMenuItem.fOnClick(fSelectedMenuItem);
@@ -11983,7 +11983,7 @@ begin
      end;
      result:=true;
     end;
-    TpvApplicationInputPointerEventType.MOTION:begin
+    TpvApplicationInputPointerEventType.Motion:begin
      fHoveredMenuItem:=nil;
      for Index:=0 to fChildren.Count-1 do begin
       Child:=fChildren[Index];
@@ -12227,7 +12227,7 @@ begin
   case aKeyEvent.KeyCode of
    KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
     case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.TYPED:begin
+     TpvApplicationInputKeyEventType.Typed:begin
       if ((fValue-fSmallStep)>=fMinimumValue) and not (fValue<(fValue-fSmallStep)) then begin
        SetValue(fValue-fSmallStep);
       end else begin
@@ -12239,7 +12239,7 @@ begin
    end;
    KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
     case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.TYPED:begin
+     TpvApplicationInputKeyEventType.Typed:begin
       if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
        SetValue(fValue+fSmallStep);
       end else begin
@@ -12251,7 +12251,7 @@ begin
    end;
    KEYCODE_PAGEDOWN:begin
     case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.TYPED:begin
+     TpvApplicationInputKeyEventType.Typed:begin
       if ((fValue+fLargeStep)<=fMaximumValue) and not (fValue>(fValue+fLargeStep)) then begin
        SetValue(fValue+fLargeStep);
       end else begin
@@ -12263,7 +12263,7 @@ begin
    end;
    KEYCODE_PAGEUP:begin
     case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.TYPED:begin
+     TpvApplicationInputKeyEventType.Typed:begin
       if ((fValue-fLargeStep)>=fMinimumValue) and not (fValue<(fValue-fLargeStep)) then begin
        SetValue(fValue-fLargeStep);
       end else begin
@@ -12275,7 +12275,7 @@ begin
    end;
    KEYCODE_HOME:begin
     case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.TYPED:begin
+     TpvApplicationInputKeyEventType.Typed:begin
       SetValue(fMinimumValue);
      end;
     end;
@@ -12283,7 +12283,7 @@ begin
    end;
    KEYCODE_END:begin
     case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.TYPED:begin
+     TpvApplicationInputKeyEventType.Typed:begin
       SetValue(fMaximumValue);
      end;
     end;
@@ -12301,7 +12301,7 @@ begin
   result:=inherited PointerEvent(aPointerEvent);
   if not result then begin
    case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.DOWN:begin
+    TpvApplicationInputPointerEventType.Down:begin
      if not Focused then begin
       RequestFocus;
      end;
@@ -12401,16 +12401,16 @@ begin
      end;
      result:=true;
     end;
-    TpvApplicationInputPointerEventType.UP:begin
+    TpvApplicationInputPointerEventType.Up:begin
      fPushedSubWidget:=TpvGUIScrollBarSubWidget.None;
      fSliderPushed:=false;
      fStepSize:=0;
      result:=true;
     end;
-    TpvApplicationInputPointerEventType.MOTION:begin
+    TpvApplicationInputPointerEventType.Motion:begin
      result:=true;
     end;
-    TpvApplicationInputPointerEventType.DRAG:begin
+    TpvApplicationInputPointerEventType.Drag:begin
 {$if true}
      case fOrientation of
       TpvGUIScrollBarOrientation.Horizontal:begin
@@ -12679,7 +12679,7 @@ begin
   case aKeyEvent.KeyCode of
    KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
     case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.TYPED:begin
+     TpvApplicationInputKeyEventType.Typed:begin
       if ((fValue-fSmallStep)>=fMinimumValue) and not (fValue<(fValue-fSmallStep)) then begin
        SetValue(fValue-fSmallStep);
       end else begin
@@ -12691,7 +12691,7 @@ begin
    end;
    KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
     case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.TYPED:begin
+     TpvApplicationInputKeyEventType.Typed:begin
       if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
        SetValue(fValue+fSmallStep);
       end else begin
@@ -12703,7 +12703,7 @@ begin
    end;
    KEYCODE_PAGEDOWN:begin
     case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.TYPED:begin
+     TpvApplicationInputKeyEventType.Typed:begin
       if ((fValue+fLargeStep)<=fMaximumValue) and not (fValue>(fValue+fLargeStep)) then begin
        SetValue(fValue+fLargeStep);
       end else begin
@@ -12715,7 +12715,7 @@ begin
    end;
    KEYCODE_PAGEUP:begin
     case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.TYPED:begin
+     TpvApplicationInputKeyEventType.Typed:begin
       if ((fValue-fLargeStep)>=fMinimumValue) and not (fValue<(fValue-fLargeStep)) then begin
        SetValue(fValue-fLargeStep);
       end else begin
@@ -12727,7 +12727,7 @@ begin
    end;
    KEYCODE_HOME:begin
     case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.TYPED:begin
+     TpvApplicationInputKeyEventType.Typed:begin
       SetValue(fMinimumValue);
      end;
     end;
@@ -12735,7 +12735,7 @@ begin
    end;
    KEYCODE_END:begin
     case aKeyEvent.KeyEventType of
-     TpvApplicationInputKeyEventType.TYPED:begin
+     TpvApplicationInputKeyEventType.Typed:begin
       SetValue(fMaximumValue);
      end;
     end;
@@ -12753,7 +12753,7 @@ begin
   result:=inherited PointerEvent(aPointerEvent);
   if not result then begin
    case aPointerEvent.PointerEventType of
-    TpvApplicationInputPointerEventType.DOWN:begin
+    TpvApplicationInputPointerEventType.Down:begin
      if not Focused then begin
       RequestFocus;
      end;
@@ -12820,16 +12820,16 @@ begin
      end;
      result:=true;
     end;
-    TpvApplicationInputPointerEventType.UP:begin
+    TpvApplicationInputPointerEventType.Up:begin
      fPushedSubWidget:=TpvGUISliderSubWidget.None;
      fSliderPushed:=false;
      fStepSize:=0;
      result:=true;
     end;
-    TpvApplicationInputPointerEventType.MOTION:begin
+    TpvApplicationInputPointerEventType.Motion:begin
      result:=true;
     end;
-    TpvApplicationInputPointerEventType.DRAG:begin
+    TpvApplicationInputPointerEventType.Drag:begin
 {$if true}
      case fOrientation of
       TpvGUISliderOrientation.Horizontal:begin
