@@ -97,8 +97,8 @@ begin
  HideSystemBars:=true;
  AndroidSeparateMouseAndTouch:=true;
  UseAudio:=true;
-//PresentMode:=TpvApplicationPresentMode.PRESENT_MODE_MAILBOX;
- PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.PRESENT_MODE_MAILBOX{TpvApplicationPresentMode.PRESENT_MODE_NO_VSYNC}{$else}TpvApplicationPresentMode.PRESENT_MODE_VSYNC{$endif};
+//PresentMode:=TpvApplicationPresentMode.Mailbox;
+ PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.Mailbox{TpvApplicationPresentMode.NoVSync}{$else}TpvApplicationPresentMode.VSync{$endif};
 end;
 
 procedure TExampleApplication.Start;
@@ -153,7 +153,7 @@ end;
 function TExampleApplication.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=inherited KeyEvent(aKeyEvent);
- if aKeyEvent.KeyEventType=KEYEVENT_DOWN then begin
+ if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.DOWN then begin
   case aKeyEvent.KeyCode of
    KEYCODE_F10:begin
     fMakeScreenshotJPEG:=true;

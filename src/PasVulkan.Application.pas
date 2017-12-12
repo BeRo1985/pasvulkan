@@ -524,31 +524,31 @@ type EpvApplication=class(Exception)
      PpvApplicationInputKeyEventType=^TpvApplicationInputKeyEventType;
      TpvApplicationInputKeyEventType=
       (
-       KEYEVENT_DOWN,
-       KEYEVENT_UP,
-       KEYEVENT_TYPED,
-       KEYEVENT_UNICODE
+       DOWN,
+       UP,
+       TYPED,
+       UNICODE
       );
 
      PpvApplicationInputKeyModifier=^TpvApplicationInputKeyModifier;
      TpvApplicationInputKeyModifier=
       (
-       KEYMODIFIER_LSHIFT,
-       KEYMODIFIER_RSHIFT,
-       KEYMODIFIER_LCTRL,
-       KEYMODIFIER_RCTRL,
-       KEYMODIFIER_LALT,
-       KEYMODIFIER_RALT,
-       KEYMODIFIER_LMETA,
-       KEYMODIFIER_RMETA,
-       KEYMODIFIER_NUM,
-       KEYMODIFIER_CAPS,
-       KEYMODIFIER_MODE,
-       KEYMODIFIER_RESERVED,
-       KEYMODIFIER_CTRL,
-       KEYMODIFIER_SHIFT,
-       KEYMODIFIER_ALT,
-       KEYMODIFIER_META
+       LSHIFT,
+       RSHIFT,
+       LCTRL,
+       RCTRL,
+       LALT,
+       RALT,
+       LMETA,
+       RMETA,
+       NUM,
+       CAPS,
+       MODE,
+       RESERVED,
+       CTRL,
+       SHIFT,
+       ALT,
+       META
       );
 
      PpvApplicationInputKeyModifiers=^TpvApplicationInputKeyModifiers;
@@ -568,18 +568,18 @@ type EpvApplication=class(Exception)
      PpvApplicationInputPointerEventType=^TpvApplicationInputPointerEventType;
      TpvApplicationInputPointerEventType=
       (
-       POINTEREVENT_DOWN,
-       POINTEREVENT_UP,
-       POINTEREVENT_MOTION,
-       POINTEREVENT_DRAG
+       DOWN,
+       UP,
+       MOTION,
+       DRAG
       );
 
      PpvApplicationInputPointerButton=^TpvApplicationInputPointerButton;
      TpvApplicationInputPointerButton=
       (
-       BUTTON_LEFT,
-       BUTTON_MIDDLE,
-       BUTTON_RIGHT
+       LEFT,
+       MIDDLE,
+       RIGHT
       );
 
      PpvApplicationInputPointerButtons=^TpvApplicationInputPointerButtons;
@@ -785,8 +785,8 @@ type EpvApplication=class(Exception)
        function GetPointerY(const aPointerID:TpvInt32=0):TpvFloat;
        function GetPointerDeltaY(const aPointerID:TpvInt32=0):TpvFloat;
        function GetPointerPressure(const aPointerID:TpvInt32=0):TpvFloat;
-       function IsPointerTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[BUTTON_LEFT,BUTTON_MIDDLE,BUTTON_RIGHT]):boolean;
-       function IsPointerJustTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[BUTTON_LEFT,BUTTON_MIDDLE,BUTTON_RIGHT]):boolean;
+       function IsPointerTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[TpvApplicationInputPointerButton.LEFT,TpvApplicationInputPointerButton.MIDDLE,TpvApplicationInputPointerButton.RIGHT]):boolean;
+       function IsPointerJustTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[TpvApplicationInputPointerButton.LEFT,TpvApplicationInputPointerButton.MIDDLE,TpvApplicationInputPointerButton.RIGHT]):boolean;
        function IsTouched:boolean;
        function JustTouched:boolean;
        function IsButtonPressed(const aButton:TpvApplicationInputPointerButton):boolean;
@@ -922,13 +922,13 @@ type EpvApplication=class(Exception)
      PpvApplicationPresentMode=^TpvApplicationPresentMode;
      TpvApplicationPresentMode=
       (
-       PRESENT_MODE_IMMEDIATE=0,
-       PRESENT_MODE_MAILBOX=1,
-       PRESENT_MODE_FIFO=2,
-       PRESENT_MODE_FIFO_RELAXED=3,
-       PRESENT_MODE_NO_VSYNC=PRESENT_MODE_IMMEDIATE,
-       PRESENT_MODE_GREEDY_VSYNC=PRESENT_MODE_MAILBOX,
-       PRESENT_MODE_VSYNC=PRESENT_MODE_FIFO
+       Immediate=0,
+       Mailbox=1,
+       FIFO=2,
+       FIFORelaxed=3,
+       NoVSync={$ifdef fpc}0{$else}TpvApplicationPresentMode.Immediate{$endif},
+       GreedyVSync={$ifdef fpc}1{$else}TpvApplicationPresentMode.Mailbox{$endif},
+       Vsync={$ifdef fpc}2{$else}TpvApplicationPresentMode.FIFO{$endif}
       );
 
      TpvApplication=class
@@ -936,12 +936,12 @@ type EpvApplication=class(Exception)
        type //PpvApplicationVulkanRecreationKind=^TpvApplicationVulkanRecreationKind;
             TpvApplicationVulkanRecreationKind=
              (
-              pvavrkNone,
-              pvavrkSwapChain,
-              pvavrkSurface,
-              pvavrkDevice
+              None,
+              SwapChain,
+              Surface,
+              Device
              );
-       const PresentModeToVulkanPresentMode:array[PRESENT_MODE_IMMEDIATE..PRESENT_MODE_FIFO_RELAXED] of TVkPresentModeKHR=
+       const PresentModeToVulkanPresentMode:array[TpvApplicationPresentMode.Immediate..TpvApplicationPresentMode.FIFORelaxed] of TVkPresentModeKHR=
               (
                VK_PRESENT_MODE_IMMEDIATE_KHR,
                VK_PRESENT_MODE_MAILBOX_KHR,
@@ -4065,47 +4065,47 @@ function TpvApplicationInput.TranslateSDLKeyModifier(const aKeyModifier:TpvInt32
 begin
  result:=[];
  if (aKeyModifier and PasVulkan.SDL2.KMOD_LSHIFT)<>0 then begin
-  Include(result,KEYMODIFIER_LSHIFT);
+  Include(result,TpvApplicationInputKeyModifier.LSHIFT);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_RSHIFT)<>0 then begin
-  Include(result,KEYMODIFIER_RSHIFT);
-  Include(result,KEYMODIFIER_SHIFT);
+  Include(result,TpvApplicationInputKeyModifier.RSHIFT);
+  Include(result,TpvApplicationInputKeyModifier.SHIFT);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_LCTRL)<>0 then begin
-  Include(result,KEYMODIFIER_LCTRL);
-  Include(result,KEYMODIFIER_CTRL);
+  Include(result,TpvApplicationInputKeyModifier.LCTRL);
+  Include(result,TpvApplicationInputKeyModifier.CTRL);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_RCTRL)<>0 then begin
-  Include(result,KEYMODIFIER_RCTRL);
-  Include(result,KEYMODIFIER_CTRL);
+  Include(result,TpvApplicationInputKeyModifier.RCTRL);
+  Include(result,TpvApplicationInputKeyModifier.CTRL);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_LALT)<>0 then begin
-  Include(result,KEYMODIFIER_LALT);
-  Include(result,KEYMODIFIER_ALT);
+  Include(result,TpvApplicationInputKeyModifier.LALT);
+  Include(result,TpvApplicationInputKeyModifier.ALT);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_RALT)<>0 then begin
-  Include(result,KEYMODIFIER_RALT);
-  Include(result,KEYMODIFIER_ALT);
+  Include(result,TpvApplicationInputKeyModifier.RALT);
+  Include(result,TpvApplicationInputKeyModifier.ALT);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_LMETA)<>0 then begin
-  Include(result,KEYMODIFIER_LMETA);
-  Include(result,KEYMODIFIER_META);
+  Include(result,TpvApplicationInputKeyModifier.LMETA);
+  Include(result,TpvApplicationInputKeyModifier.META);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_RMETA)<>0 then begin
-  Include(result,KEYMODIFIER_RMETA);
-  Include(result,KEYMODIFIER_META);
+  Include(result,TpvApplicationInputKeyModifier.RMETA);
+  Include(result,TpvApplicationInputKeyModifier.META);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_NUM)<>0 then begin
-  Include(result,KEYMODIFIER_NUM);
+  Include(result,TpvApplicationInputKeyModifier.NUM);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_CAPS)<>0 then begin
-  Include(result,KEYMODIFIER_CAPS);
+  Include(result,TpvApplicationInputKeyModifier.CAPS);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_MODE)<>0 then begin
-  Include(result,KEYMODIFIER_MODE);
+  Include(result,TpvApplicationInputKeyModifier.MODE);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_RESERVED)<>0 then begin
-  Include(result,KEYMODIFIER_RESERVED);
+  Include(result,TpvApplicationInputKeyModifier.RESERVED);
  end;
 end;
 
@@ -4148,8 +4148,8 @@ begin
         fKeyDown[KeyCode and $ffff]:=true;
         inc(fKeyDownCount);
         fJustKeyDown[KeyCode and $ffff]:=true;
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_DOWN,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_DOWN,KeyCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.DOWN,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.DOWN,KeyCode,KeyModifiers));
         end;
        end;
        SDL_KEYUP:begin
@@ -4158,13 +4158,13 @@ begin
          dec(fKeyDownCount);
         end;
         fJustKeyDown[KeyCode and $ffff]:=false;
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_UP,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_UP,KeyCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.UP,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.UP,KeyCode,KeyModifiers));
         end;
        end;
        SDL_KEYTYPED:begin
-        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_TYPED,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_TYPED,KeyCode,KeyModifiers));
+        if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.TYPED,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.TYPED,KeyCode,KeyModifiers));
         end;
        end;
       end;
@@ -4179,8 +4179,8 @@ begin
          break;
         end;
         else begin
-         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_UNICODE,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
-          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(KEYEVENT_UNICODE,KeyCode,KeyModifiers));
+         if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.UNICODE,KeyCode,KeyModifiers))) and assigned(fProcessor) then begin
+          fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.UNICODE,KeyCode,KeyModifiers));
          end;
         end;
        end;
@@ -4192,7 +4192,7 @@ begin
       fMouseY:=Event^.motion.y;
       fMouseDeltaX:=Event^.motion.xrel;
       fMouseDeltaY:=Event^.motion.yrel;
-      OK:=pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,
+      OK:=pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.MOTION,
                                                                             TpvVector2.Create(Event^.motion.x,Event^.motion.y),
                                                                             TpvVector2.Create(Event^.motion.xrel,Event^.motion.yrel),
                                                                             ord(fMouseDown<>[]) and 1,
@@ -4200,7 +4200,7 @@ begin
                                                                             fMouseDown,
                                                                             KeyModifiers));
       if assigned(fProcessor) and not OK then begin
-       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.MOTION,
                                                                       TpvVector2.Create(Event^.motion.x,Event^.motion.y),
                                                                       TpvVector2.Create(Event^.motion.xrel,Event^.motion.yrel),
                                                                       ord(fMouseDown<>[]) and 1,
@@ -4218,27 +4218,27 @@ begin
       fMouseY:=Event^.button.y;
       case Event^.button.button of
        SDL_BUTTON_LEFT:begin
-        Include(fMouseDown,BUTTON_LEFT);
-        Include(fMouseJustDown,BUTTON_LEFT);
+        Include(fMouseDown,TpvApplicationInputPointerButton.LEFT);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.LEFT);
         fJustTouched:=true;
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT,fMouseDown,KeyModifiers));
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.LEFT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.LEFT,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_RIGHT:begin
-        Include(fMouseDown,BUTTON_RIGHT);
-        Include(fMouseJustDown,BUTTON_RIGHT);
+        Include(fMouseDown,TpvApplicationInputPointerButton.RIGHT);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.RIGHT);
         fJustTouched:=true;
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT,fMouseDown,KeyModifiers));
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.RIGHT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.RIGHT,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_MIDDLE:begin
-        Include(fMouseDown,BUTTON_MIDDLE);
-        Include(fMouseJustDown,BUTTON_MIDDLE);
+        Include(fMouseDown,TpvApplicationInputPointerButton.MIDDLE);
+        Include(fMouseJustDown,TpvApplicationInputPointerButton.MIDDLE);
         fJustTouched:=true;
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE,fMouseDown,KeyModifiers));
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.MIDDLE,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.MIDDLE,fMouseDown,KeyModifiers));
         end;
        end;
       end;
@@ -4252,24 +4252,24 @@ begin
       fMouseY:=Event^.button.y;
       case Event^.button.button of
        SDL_BUTTON_LEFT:begin
-        Exclude(fMouseDown,BUTTON_LEFT);
-        Exclude(fMouseJustDown,BUTTON_LEFT);
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_LEFT,fMouseDown,KeyModifiers));
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.LEFT);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.LEFT);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.LEFT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.LEFT,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_RIGHT:begin
-        Exclude(fMouseDown,BUTTON_RIGHT);
-        Exclude(fMouseJustDown,BUTTON_RIGHT);
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_RIGHT,fMouseDown,KeyModifiers));
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.RIGHT);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.RIGHT);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.RIGHT,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.RIGHT,fMouseDown,KeyModifiers));
         end;
        end;
        SDL_BUTTON_MIDDLE:begin
-        Exclude(fMouseDown,BUTTON_MIDDLE);
-        Exclude(fMouseJustDown,BUTTON_MIDDLE);
-        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
-         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,BUTTON_MIDDLE,fMouseDown,KeyModifiers));
+        Exclude(fMouseDown,TpvApplicationInputPointerButton.MIDDLE);
+        Exclude(fMouseJustDown,TpvApplicationInputPointerButton.MIDDLE);
+        if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.MIDDLE,fMouseDown,KeyModifiers))) and assigned(fProcessor) then begin
+         fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(Event^.motion.x,Event^.motion.y),1.0,0,TpvApplicationInputPointerButton.MIDDLE,fMouseDown,KeyModifiers));
         end;
        end;
       end;
@@ -4288,8 +4288,8 @@ begin
       fPointerPressure[PointerID]:=Event^.tfinger.pressure;
       fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
       fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
-      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
-       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_MOTION,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers));
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.MOTION,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.MOTION,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),TpvVector2.Create(fPointerDeltaX[PointerID],fPointerDeltaY[PointerID]),fPointerPressure[PointerID],PointerID+1,fPointerDown[PointerID],KeyModifiers));
       end;
      end;
      SDL_FINGERDOWN:begin
@@ -4302,11 +4302,11 @@ begin
       fPointerPressure[PointerID]:=Event^.tfinger.pressure;
       fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
       fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
-      Include(fPointerDown[PointerID],BUTTON_LEFT);
-      Include(fPointerJustDown[PointerID],BUTTON_LEFT);
+      Include(fPointerDown[PointerID],TpvApplicationInputPointerButton.LEFT);
+      Include(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.LEFT);
       fJustTouched:=true;
-      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
-       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_DOWN,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT,fPointerDown[PointerID],KeyModifiers));
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.LEFT,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.DOWN,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.LEFT,fPointerDown[PointerID],KeyModifiers));
       end;
      end;
      SDL_FINGERUP:begin
@@ -4321,10 +4321,10 @@ begin
       fPointerPressure[PointerID]:=Event^.tfinger.pressure;
       fPointerDeltaX[PointerID]:=Event^.tfinger.dx*pvApplication.fWidth;
       fPointerDeltaY[PointerID]:=Event^.tfinger.dy*pvApplication.fHeight;
-      Exclude(fPointerDown[PointerID],BUTTON_LEFT);
-      Exclude(fPointerJustDown[PointerID],BUTTON_LEFT);
-      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
-       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(POINTEREVENT_UP,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,BUTTON_LEFT,fPointerDown[PointerID],KeyModifiers));
+      Exclude(fPointerDown[PointerID],TpvApplicationInputPointerButton.LEFT);
+      Exclude(fPointerJustDown[PointerID],TpvApplicationInputPointerButton.LEFT);
+      if (not pvApplication.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.LEFT,fPointerDown[PointerID],KeyModifiers))) and assigned(fProcessor) then begin
+       fProcessor.PointerEvent(TpvApplicationInputPointerEvent.Create(TpvApplicationInputPointerEventType.UP,TpvVector2.Create(fPointerX[PointerID],fPointerY[PointerID]),fPointerPressure[PointerID],PointerID+1,TpvApplicationInputPointerButton.LEFT,fPointerDown[PointerID],KeyModifiers));
       end;
      end;
     end;
@@ -4461,7 +4461,7 @@ begin
  end;
 end;
 
-function TpvApplicationInput.IsPointerTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[BUTTON_LEFT,BUTTON_MIDDLE,BUTTON_RIGHT]):boolean;
+function TpvApplicationInput.IsPointerTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[TpvApplicationInputPointerButton.LEFT,TpvApplicationInputPointerButton.MIDDLE,TpvApplicationInputPointerButton.RIGHT]):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -4477,7 +4477,7 @@ begin
  end;
 end;
 
-function TpvApplicationInput.IsPointerJustTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[BUTTON_LEFT,BUTTON_MIDDLE,BUTTON_RIGHT]):boolean;
+function TpvApplicationInput.IsPointerJustTouched(const aPointerID:TpvInt32=0;const aButtonMask:TpvApplicationInputPointerButtons=[TpvApplicationInputPointerButton.LEFT,TpvApplicationInputPointerButton.MIDDLE,TpvApplicationInputPointerButton.RIGHT]):boolean;
 begin
  fCriticalSection.Acquire;
  try
@@ -5206,7 +5206,7 @@ begin
  fWidth:=1280;
  fHeight:=720;
  fFullscreen:=false;
- fPresentMode:=PRESENT_MODE_IMMEDIATE;
+ fPresentMode:=TpvApplicationPresentMode.Immediate;
  fResizable:=true;
  fVisibleMouseCursor:=false;
  fCatchMouse:=false;
@@ -5266,7 +5266,7 @@ begin
  fVulkanTransferCommandBuffers:=nil;
  fVulkanTransferCommandBufferFences:=nil;
 
- fVulkanRecreationKind:=pvavrkNone;
+ fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.None;
 
  fVulkanSwapChain:=nil;
 
@@ -5865,7 +5865,7 @@ begin
                                              fVulkanOldSwapChain,
                                              fWidth,
                                              fHeight,
-                                             IfThen(fPresentMode<>PRESENT_MODE_IMMEDIATE,fDesiredCountSwapChainImages,1),
+                                             IfThen(fPresentMode<>TpvApplicationPresentMode.Immediate,fDesiredCountSwapChainImages,1),
                                              1,
                                              VK_FORMAT_UNDEFINED,
                                              VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
@@ -6278,10 +6278,10 @@ begin
  result:=false;
 
  if not assigned(fVulkanSwapChain) then begin
-  fVulkanRecreationKind:=pvavrkSurface;
+  fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.Surface;
  end;
 
- if fVulkanRecreationKind=pvavrkNone then begin
+ if fVulkanRecreationKind=TpvApplicationVulkanRecreationKind.None then begin
 
   if fVulkanPresentCompleteFencesReady[fRealUsedDrawSwapChainImageIndex] then begin
    if fVulkanPresentCompleteFences[fRealUsedDrawSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
@@ -6310,8 +6310,8 @@ begin
   if (fVulkanSwapChain.Width<>Width) or
      (fVulkanSwapChain.Height<>Height) or
      (fVulkanSwapChain.PresentMode<>PresentModeToVulkanPresentMode[fPresentMode]) then begin
-   if fVulkanRecreationKind<pvavrkSwapChain then begin
-    fVulkanRecreationKind:=pvavrkSwapChain;
+   if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.SwapChain then begin
+    fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.SwapChain;
    end;
    VulkanDebugLn('New surface dimension size and/or vertical synchronization setting detected!');
   end else begin
@@ -6329,8 +6329,8 @@ begin
       fRealUsedDrawSwapChainImageIndex:=fVulkanSwapChain.CurrentImageIndex;
      end;
      VK_SUBOPTIMAL_KHR:begin
-      if fVulkanRecreationKind<pvavrkSwapChain then begin
-       fVulkanRecreationKind:=pvavrkSwapChain;
+      if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.SwapChain then begin
+       fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.SwapChain;
       end;
       VulkanDebugLn('Suboptimal surface detected!');
      end;
@@ -6342,15 +6342,15 @@ begin
     on VulkanResultException:EpvVulkanResultException do begin
      case VulkanResultException.ResultCode of
       VK_ERROR_SURFACE_LOST_KHR:begin
-       if fVulkanRecreationKind<pvavrkSurface then begin
-        fVulkanRecreationKind:=pvavrkSurface;
+       if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.Surface then begin
+        fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.Surface;
        end;
        VulkanDebugLn(VulkanResultException.ClassName+': '+VulkanResultException.Message);
       end;
       VK_ERROR_OUT_OF_DATE_KHR,
       VK_SUBOPTIMAL_KHR:begin
-       if fVulkanRecreationKind<pvavrkSwapChain then begin
-        fVulkanRecreationKind:=pvavrkSwapChain;
+       if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.SwapChain then begin
+        fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.SwapChain;
        end;
        VulkanDebugLn(VulkanResultException.ClassName+': '+VulkanResultException.Message);
       end;
@@ -6364,7 +6364,7 @@ begin
 
  end;
 
- if fVulkanRecreationKind in [pvavrkSwapChain,pvavrkSurface] then begin
+ if fVulkanRecreationKind in [TpvApplicationVulkanRecreationKind.SwapChain,TpvApplicationVulkanRecreationKind.Surface] then begin
 
   for ImageIndex:=0 to fCountSwapChainImages-1 do begin
    if fVulkanPresentCompleteFencesReady[ImageIndex] then begin
@@ -6381,7 +6381,7 @@ begin
 
   fVulkanDevice.WaitIdle;
 
-  if fVulkanRecreationKind=pvavrkSurface then begin
+  if fVulkanRecreationKind=TpvApplicationVulkanRecreationKind.Surface then begin
    VulkanDebugLn('Recreating vulkan surface... ');
   end else begin
    VulkanDebugLn('Recreating vulkan swap chain... ');
@@ -6401,7 +6401,7 @@ begin
    DestroyVulkanFrameBuffers;
    DestroyVulkanRenderPass;
    DestroyVulkanSwapChain;
-   if fVulkanRecreationKind=pvavrkSurface then begin
+   if fVulkanRecreationKind=TpvApplicationVulkanRecreationKind.Surface then begin
     DestroyVulkanSurface;
     CreateVulkanSurface;
    end;
@@ -6414,13 +6414,13 @@ begin
   finally
    FreeAndNil(fVulkanOldSwapChain);
   end;
-  if fVulkanRecreationKind=pvavrkSurface then begin
+  if fVulkanRecreationKind=TpvApplicationVulkanRecreationKind.Surface then begin
    VulkanDebugLn('Recreated vulkan surface... ');
   end else begin
    VulkanDebugLn('Recreated vulkan swap chain... ');
   end;
 
-  fVulkanRecreationKind:=pvavrkNone;
+  fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.None;
 
   fVulkanWaitSemaphore:=nil;
   fVulkanWaitFence:=nil;
@@ -6495,8 +6495,8 @@ begin
     result:=true;
    end;
    VK_SUBOPTIMAL_KHR:begin
-    if fVulkanRecreationKind<pvavrkSwapChain then begin
-     fVulkanRecreationKind:=pvavrkSwapChain;
+    if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.SwapChain then begin
+     fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.SwapChain;
     end;
    end;
   end;
@@ -6504,14 +6504,14 @@ begin
   on VulkanResultException:EpvVulkanResultException do begin
    case VulkanResultException.ResultCode of
     VK_ERROR_SURFACE_LOST_KHR:begin
-     if fVulkanRecreationKind<pvavrkSurface then begin
-      fVulkanRecreationKind:=pvavrkSurface;
+     if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.Surface then begin
+      fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.Surface;
      end;
     end;
     VK_ERROR_OUT_OF_DATE_KHR,
     VK_SUBOPTIMAL_KHR:begin
-     if fVulkanRecreationKind<pvavrkSwapChain then begin
-      fVulkanRecreationKind:=pvavrkSwapChain;
+     if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.SwapChain then begin
+      fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.SwapChain;
      end;
     end;
     else begin
@@ -7011,8 +7011,8 @@ begin
        if fGraphicsReady then begin
         VulkanDebugLn('New surface dimension size detected!');
 {$if true}
-        if fVulkanRecreationKind<pvavrkSwapChain then begin
-         fVulkanRecreationKind:=pvavrkSwapChain;
+        if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.SwapChain then begin
+         fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.SwapChain;
         end;
 {$else}
         DeinitializeGraphics;
@@ -7187,8 +7187,8 @@ begin
 
  if fCurrentFullScreen<>ord(fFullScreen) then begin
   fCurrentFullScreen:=ord(fFullScreen);
-  if fVulkanRecreationKind=pvavrkNone then begin
-   fVulkanRecreationKind:=pvavrkSwapChain;
+  if fVulkanRecreationKind=TpvApplicationVulkanRecreationKind.None then begin
+   fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.SwapChain;
   end;
 {$if defined(PasVulkanUseSDL2)}
   if fFullScreen then begin

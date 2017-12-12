@@ -1108,7 +1108,7 @@ begin
                                 fVertices[0],
                                 0,
                                 fCountVertices*SizeOf(TVulkanModelVertex),
-                                vbutsbmYes);
+                                TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
    fIndexBuffers[0]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                             fCountIndices*SizeOf(TVulkanModelIndex),
@@ -1123,7 +1123,7 @@ begin
                                fIndices[0],
                                0,
                                fCountIndices*SizeOf(TVulkanModelIndex),
-                               vbutsbmYes);
+                               TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
   end else begin
 
@@ -1205,7 +1205,7 @@ begin
                                             TemporaryVertices[0],
                                             0,
                                             CountTemporaryVertices*SizeOf(TVulkanModelVertex),
-                                            vbutsbmYes);
+                                            TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
      fIndexBuffers[BufferIndex]:=TpvVulkanBuffer.Create(fVulkanDevice,
                                                         fBufferSizes[BufferIndex]*SizeOf(TVulkanModelIndex),
@@ -1220,7 +1220,7 @@ begin
                                            TemporaryIndices[0],
                                            0,
                                            fBufferSizes[BufferIndex]*SizeOf(TVulkanModelIndex),
-                                           vbutsbmYes);
+                                           TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
 
      inc(CurrentIndex,ToDoCount);

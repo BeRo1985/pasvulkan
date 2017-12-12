@@ -1305,7 +1305,7 @@ function TpvXML.Parse(Stream:TStream):boolean;
 const NameCanBeginWithCharSet:set of TpvRawByteChar=['A'..'Z','a'..'z','_'];
       NameCanContainCharSet:set of TpvRawByteChar=['A'..'Z','a'..'z','0'..'9','.',':','_','-'];
       BlankCharSet:set of TpvRawByteChar=[#0..#$20];//[#$9,#$A,#$D,#$20];
-type TEncoding=(etASCII,etUTF8,etUTF16);
+type TEncoding=(ASCII,UTF8,UTF16);
 var Errors:boolean;
     CurrentChar:TpvRawByteChar;
     StreamEOF:boolean;
@@ -1533,7 +1533,7 @@ var Errors:boolean;
   SkipBlank;
   i:=0;
   while (CurrentChar<>TerminateChar) and not IsEOFOrErrors do begin
-   if (Encoding=etUTF8) and (ord(CurrentChar)>=$80) then begin
+   if (Encoding=TEncoding.UTF8) and (ord(CurrentChar)>=$80) then begin
     wc:=ord(CurrentChar) and $3f;
     if (wc and $20)<>0 then begin
      NextChar;
@@ -1639,7 +1639,7 @@ var Errors:boolean;
    Text:='';
    SetLength(Text,16);
    while (CurrentChar<>'<') and not IsEOFOrErrors do begin
-    if (Encoding=etUTF8) and (ord(CurrentChar)>=$80) then begin
+    if (Encoding=TEncoding.UTF8) and (ord(CurrentChar)>=$80) then begin
      wc:=ord(CurrentChar) and $3f;
      if (wc and $20)<>0 then begin
       NextChar;
@@ -1813,11 +1813,11 @@ var Errors:boolean;
    if XMLProcessTag.Name='xml' then begin
     EncodingName:=TpvRawByteString(UpperCase(String(XMLProcessTag.GetParameter('encoding','ascii'))));
     if EncodingName='UTF-8' then begin
-     Encoding:=etUTF8;
+     Encoding:=TEncoding.UTF8;
     end else if EncodingName='UTF-16' then begin
-     Encoding:=etUTF16;
+     Encoding:=TEncoding.UTF16;
     end else begin
-     Encoding:=etASCII;
+     Encoding:=TEncoding.ASCII;
     end;
    end;
   end;
@@ -1984,7 +1984,7 @@ var Errors:boolean;
   end;
  end;
 begin
- Encoding:=etASCII;
+ Encoding:=TEncoding.ASCII;
  Errors:=false;
  CurrentChar:=#0;
  Root.Clear;

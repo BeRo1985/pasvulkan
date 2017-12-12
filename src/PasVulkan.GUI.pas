@@ -171,19 +171,19 @@ type TpvGUIObject=class;
      PpvGUITextAlignment=^TpvGUITextAlignment;
      TpvGUITextAlignment=
       (
-       pvgtaLeading,
-       pvgtaMiddle,
-       pvgtaCenter=pvgtaMiddle,
-       pvgtaTailing
+       Leading=0,
+       Middle=1,
+       Center={$ifdef fpc}1{$else}TpvGUITextAlignment.Middle{$endif},
+       Tailing=2
       );
 
      PpvGUITextTruncation=^TpvGUITextTruncation;
      TpvGUITextTruncation=
       (
-       pvgttNone,
-       pvgttHead,
-       pvgttMiddle,
-       pvgttTail
+       None,
+       Head,
+       Middle,
+       Tail
       );
 
      TpvGUITextUtils=class
@@ -198,10 +198,10 @@ type TpvGUIObject=class;
      PpvGUILayoutAlignment=^TpvGUILayoutAlignment;
      TpvGUILayoutAlignment=
       (
-       pvglaLeading,
-       pvglaMiddle,
-       pvglaTailing,
-       pvglaFill
+       Leading,
+       Middle,
+       Tailing,
+       Fill
       );
 
      TpvGUILayoutAlignments=array of TpvGUILayoutAlignment;
@@ -209,8 +209,8 @@ type TpvGUIObject=class;
      PpvGUILayoutOrientation=^TpvGUILayoutOrientation;
      TpvGUILayoutOrientation=
       (
-       pvgloHorizontal,
-       pvgloVertical
+       Horizontal,
+       Vertical
       );
 
      TpvGUILayout=class(TpvGUIObject)
@@ -262,8 +262,8 @@ type TpvGUIObject=class;
        procedure PerformLayout(const aWidget:TpvGUIWidget); override;
       public
        constructor Create(const aParent:TpvGUIObject;
-                          const aAlignment:TpvGUILayoutAlignment=pvglaMiddle;
-                          const aOrientation:TpvGUILayoutOrientation=pvgloHorizontal;
+                          const aAlignment:TpvGUILayoutAlignment=TpvGUILayoutAlignment.Middle;
+                          const aOrientation:TpvGUILayoutOrientation=TpvGUILayoutOrientation.Horizontal;
                           const aMargin:TpvFloat=0.0;
                           const aSpacing:TpvFloat=0.0); reintroduce; virtual;
        destructor Destroy; override;
@@ -305,8 +305,8 @@ type TpvGUIObject=class;
      PpvGUIGridLayoutFlag=^TpvGUIGridLayoutFlag;
      TpvGUIGridLayoutFlag=
       (
-       pvgglfStretchHorizontal,
-       pvgglfStretchVertical
+       StretchHorizontal,
+       StretchVertical
       );
 
      PpvGUIGridLayoutFlags=^TpvGUIGridLayoutFlags;
@@ -316,13 +316,13 @@ type TpvGUIObject=class;
       private
        const AxisStretchFlags:array[0..1] of TpvGUIGridLayoutFlag=
               (
-               pvgglfStretchHorizontal,
-               pvgglfStretchVertical
+               TpvGUIGridLayoutFlag.StretchHorizontal,
+               TpvGUIGridLayoutFlag.StretchVertical
               );
              AxisOrientationAxes:array[TpvGUILayoutOrientation,0..1] of TpvInt32=
               (
-               (0,1), // pvgloHorizontal
-               (1,0)  // pvgloVertical
+               (0,1), // TpvGUILayoutOrientation.Horizontal
+               (1,0)  // TpvGUILayoutOrientation.Vertical
               );
       private
        fFlags:TpvGUIGridLayoutFlags;
@@ -350,9 +350,9 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject;
                           const aResolution:TpvInt32=2;
-                          const aColumnAlignment:TpvGUILayoutAlignment=pvglaMiddle;
-                          const aRowAlignment:TpvGUILayoutAlignment=pvglaMiddle;
-                          const aOrientation:TpvGUILayoutOrientation=pvgloHorizontal;
+                          const aColumnAlignment:TpvGUILayoutAlignment=TpvGUILayoutAlignment.Middle;
+                          const aRowAlignment:TpvGUILayoutAlignment=TpvGUILayoutAlignment.Middle;
+                          const aOrientation:TpvGUILayoutOrientation=TpvGUILayoutOrientation.Horizontal;
                           const aMargin:TpvFloat=0.0;
                           const aHorizontalSpacing:TpvFloat=0.0;
                           const aVerticalSpacing:TpvFloat=0.0); reintroduce; virtual;
@@ -395,7 +395,7 @@ type TpvGUIObject=class;
      TpvGUIAdvancedGridLayoutAnchor=record
       public
        class function CreateNull:TpvGUIAdvancedGridLayoutAnchor; static; inline;
-       constructor Create(const aX,aY:TpvUInt8;const aWidth,aHeight:TpvUInt8;const aPaddingLeft:TpvFloat=0.0;const aPaddingTop:TpvFloat=0.0;const aPaddingRight:TpvFloat=0.0;const aPaddingBottom:TpvFloat=0.0;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill); overload;
+       constructor Create(const aX,aY:TpvUInt8;const aWidth,aHeight:TpvUInt8;const aPaddingLeft:TpvFloat=0.0;const aPaddingTop:TpvFloat=0.0;const aPaddingRight:TpvFloat=0.0;const aPaddingBottom:TpvFloat=0.0;const aHorizontalAlignment:TpvGUILayoutAlignment=TpvGUILayoutAlignment.Fill;const aVerticalAlignment:TpvGUILayoutAlignment=TpvGUILayoutAlignment.Fill); overload;
        constructor Create(const aX,aY:TpvUInt8;const aHorizontalAlignment,aVerticalAlignment:TpvGUILayoutAlignment); overload;
        constructor Create(const aX,aY:TpvUInt8); overload;
        case boolean of
@@ -457,16 +457,16 @@ type TpvGUIObject=class;
      PpvGUIFlowLayoutDirection=^TpvGUIFlowLayoutDirection;
      TpvGUIFlowLayoutDirection=
       (
-       pgfldLeftToRight,
-       pgfldRightToLeft
+       LeftToRight,
+       RightToLeft
       );
 
      PpvGUIFlowLayoutAlignment=^TpvGUIFlowLayoutAlignment;
      TpvGUIFlowLayoutAlignment=
       (
-       pgflaLeading,
-       pgflaMiddle,
-       pgflaTailing
+       Leading,
+       Middle,
+       Tailing
       );
 
      PpvGUIFlowLayoutAlignments=^TpvGUIFlowLayoutAlignments;
@@ -476,8 +476,8 @@ type TpvGUIObject=class;
       private
        const AxisOrientationAxes:array[TpvGUILayoutOrientation,0..1] of TpvInt32=
               (
-               (0,1), // pvgloHorizontal
-               (1,0)  // pvgloVertical
+               (0,1), // TpvGUILayoutOrientation.Horizontal
+               (1,0)  // TpvGUILayoutOrientation.Vertical
               );
       private
        fOrientation:TpvGUILayoutOrientation;
@@ -500,15 +500,15 @@ type TpvGUIObject=class;
        procedure PerformLayout(const aWidget:TpvGUIWidget); override;
       public
        constructor Create(const aParent:TpvGUIObject;
-                          const aOrientation:TpvGUILayoutOrientation=pvgloHorizontal;
+                          const aOrientation:TpvGUILayoutOrientation=TpvGUILayoutOrientation.Horizontal;
                           const aMargin:TpvFloat=0.0;
                           const aDesignedWidth:TpvFloat=0.0;
                           const aDesignedHeight:TpvFloat=0.0;
                           const aHorizontalSpacing:TpvFloat=4.0;
                           const aVerticalSpacing:TpvFloat=4.0;
-                          const aDirection:TpvGUIFlowLayoutDirection=pgfldLeftToRight;
-                          const aHorizontalAlignment:TpvGUIFlowLayoutAlignment=pgflaLeading;
-                          const aVerticalAlignment:TpvGUIFlowLayoutAlignment=pgflaLeading;
+                          const aDirection:TpvGUIFlowLayoutDirection=TpvGUIFlowLayoutDirection.LeftToRight;
+                          const aHorizontalAlignment:TpvGUIFlowLayoutAlignment=TpvGUIFlowLayoutAlignment.Leading;
+                          const aVerticalAlignment:TpvGUIFlowLayoutAlignment=TpvGUIFlowLayoutAlignment.Leading;
                           const aAlignmentOnBaseLine:boolean=false); reintroduce; virtual;
        destructor Destroy; override;
       published
@@ -785,21 +785,21 @@ type TpvGUIObject=class;
      PpvGUICursor=^TpvGUICursor;
      TpvGUICursor=
       (
-       pvgcNone,
-       pvgcArrow,
-       pvgcBeam,
-       pvgcBusy,
-       pvgcCross,
-       pvgcEW,
-       pvgcHelp,
-       pvgcLink,
-       pvgcMove,
-       pvgcNESW,
-       pvgcNS,
-       pvgcNWSE,
-       pvgcPen,
-       pvgcUnavailable,
-       pvgcUp
+       None,
+       Arrow,
+       Beam,
+       Busy,
+       Cross,
+       EW,
+       Help,
+       Link,
+       Move,
+       NESW,
+       NS,
+       NWSE,
+       Pen,
+       Unavailable,
+       Up
       );
 
      TpvGUIWidgetEnumerator=class(TEnumerator<TpvGUIWidget>)
@@ -816,16 +816,16 @@ type TpvGUIObject=class;
      PpvGUIWidgetFlag=^TpvGUIWidgetFlag;
      TpvGUIWidgetFlag=
       (
-       pvgwfEnabled,
-       pvgwfVisible,
-       pvgwfDraggable,
-       pvgwfFocused,
-       pvgwfPointerFocused,
-       pvgwfKeyPreview,
-       pvgwfWantAllKeys,
-       pvgwfTabStop,
-       pvgwfScissor,
-       pvgwfDrawFocus
+       Enabled,
+       Visible,
+       Draggable,
+       Focused,
+       PointerFocused,
+       KeyPreview,
+       WantAllKeys,
+       TabStop,
+       Scissor,
+       DrawFocus
       );
 
      PpvGUIWidgetFlags=^TpvGUIWidgetFlags;
@@ -833,8 +833,8 @@ type TpvGUIObject=class;
 
      TpvGUIWidget=class(TpvGUIObject)
       public
-       const DefaultFlags=[pvgwfEnabled,
-                           pvgwfVisible];
+       const DefaultFlags=[TpvGUIWidgetFlag.Enabled,
+                           TpvGUIWidgetFlag.Visible];
       private
       protected
        fCanvas:TpvCanvas;
@@ -1064,32 +1064,32 @@ type TpvGUIObject=class;
      PpvGUIWindowMouseAction=^TpvGUIWindowMouseAction;
      TpvGUIWindowMouseAction=
       (
-       pvgwmaNone,
-       pvgwmaMove,
-       pvgwmaSizeNW,
-       pvgwmaSizeNE,
-       pvgwmaSizeSW,
-       pvgwmaSizeSE,
-       pvgwmaSizeN,
-       pvgwmaSizeS,
-       pvgwmaSizeW,
-       pvgwmaSizeE
+       None,
+       Move,
+       SizeNW,
+       SizeNE,
+       SizeSW,
+       SizeSE,
+       SizeN,
+       SizeS,
+       SizeW,
+       SizeE
       );
 
      PpvGUIWindowFlag=^TpvGUIWindowFlag;
      TpvGUIWindowFlag=
       (
-       pvgwfModal,
-       pvgwfHeader,
-       pvgwfMovable,
-       pvgwfResizableNW,
-       pvgwfResizableNE,
-       pvgwfResizableSW,
-       pvgwfResizableSE,
-       pvgwfResizableN,
-       pvgwfResizableS,
-       pvgwfResizableW,
-       pvgwfResizableE
+       Modal,
+       Header,
+       Movable,
+       ResizableNW,
+       ResizableNE,
+       ResizableSW,
+       ResizableSE,
+       ResizableN,
+       ResizableS,
+       ResizableW,
+       ResizableE
       );
 
      PpvGUIWindowFlags=^TpvGUIWindowFlags;
@@ -1098,23 +1098,23 @@ type TpvGUIObject=class;
      PpvGUIWindowState=^TpvGUIWindowState;
      TpvGUIWindowState=
       (
-       pvgwsNormal,
-       pvgwsMinimized,
-       pvgwsMaximized
+       Normal,
+       Minimized,
+       Maximized
       );
 
      TpvGUIWindow=class(TpvGUIHolder)
       public
-       const DefaultFlags=[pvgwfHeader,
-                           pvgwfMovable,
-                           pvgwfResizableNW,
-                           pvgwfResizableNE,
-                           pvgwfResizableSW,
-                           pvgwfResizableSE,
-                           pvgwfResizableN,
-                           pvgwfResizableS,
-                           pvgwfResizableW,
-                           pvgwfResizableE];
+       const DefaultFlags=[TpvGUIWindowFlag.Header,
+                           TpvGUIWindowFlag.Movable,
+                           TpvGUIWindowFlag.ResizableNW,
+                           TpvGUIWindowFlag.ResizableNE,
+                           TpvGUIWindowFlag.ResizableSW,
+                           TpvGUIWindowFlag.ResizableSE,
+                           TpvGUIWindowFlag.ResizableN,
+                           TpvGUIWindowFlag.ResizableS,
+                           TpvGUIWindowFlag.ResizableW,
+                           TpvGUIWindowFlag.ResizableE];
       private
       protected
        fTitle:TpvUTF8String;
@@ -1238,11 +1238,11 @@ type TpvGUIObject=class;
      PpvGUIPopupSide=^TpvGUIPopupAnchorSide;
      TpvGUIPopupAnchorSide=
       (
-       pvgpasNone,
-       pvgpasLeft,
-       pvgpasRight,
-       pvgpasTop,
-       pvgpasBottom
+       None,
+       Left,
+       Right,
+       Top,
+       Bottom
       );
 
      TpvGUIPopup=class(TpvGUIWindow)
@@ -1322,11 +1322,11 @@ type TpvGUIObject=class;
      PpvGUIButtonFlag=^TpvGUIButtonFlag;
      TpvGUIButtonFlag=
       (
-       pvgbfNormalButton,
-       pvgbfRadioButton,
-       pvgbfToggleButton,
-       pvgbfPopupButton,
-       pvgbfDown
+       NormalButton,
+       RadioButton,
+       ToggleButton,
+       PopupButton,
+       Down
       );
 
      PpvGUIButtonFlags=^TpvGUIButtonFlags;
@@ -1337,10 +1337,10 @@ type TpvGUIObject=class;
      PpvGUIButtonIconPosition=^TpvGUIButtonIconPosition;
      TpvGUIButtonIconPosition=
       (
-       pvgbipLeft,
-       pvgbipLeftCentered,
-       pvgbipRightCentered,
-       pvgbipRight
+       Left,
+       LeftCentered,
+       RightCentered,
+       Right
       );
 
      TpvGUIButton=class(TpvGUIWidget)
@@ -1436,9 +1436,9 @@ type TpvGUIObject=class;
      PpvGUICheckBoxFlag=^TpvGUICheckBoxFlag;
      TpvGUICheckBoxFlag=
       (
-       pvgcbfRadioCheckBox,
-       pvgcbfPushed,
-       pvgcbfChecked
+       RadioCheckBox,
+       Pushed,
+       Checked
       );
 
      PpvGUICheckBoxFlags=^TpvGUICheckBoxFlags;
@@ -1620,7 +1620,7 @@ type TpvGUIObject=class;
      PpvGUIMenuItemFlag=^TpvGUIMenuItemFlag;
      TpvGUIMenuItemFlag=
       (
-       pvgmifEnabled
+       Enabled
       );
 
      PpvGUIMenuItemFlags=^TpvGUIMenuItemFlags;
@@ -1722,17 +1722,17 @@ type TpvGUIObject=class;
      PpvGUIScrollBarOrientation=^TpvGUIScrollBarOrientation;
      TpvGUIScrollBarOrientation=
       (
-       pvgsboHorizontal,
-       pvgsboVertical
+       Horizontal,
+       Vertical
       );
 
      PpvGUIScrollBarSubWidget=^TpvGUIScrollBarSubWidget;
      TpvGUIScrollBarSubWidget=
       (
-       pvgsbswNone,
-       pvgsbswDecButton,
-       pvgsbswIncButton,
-       pvgsbswThumbButton
+       None,
+       DecButton,
+       IncButton,
+       ThumbButton
       );
 
      TpvGUIScrollBar=class(TpvGUIWidget)
@@ -1792,15 +1792,15 @@ type TpvGUIObject=class;
      PpvGUISliderOrientation=^TpvGUISliderOrientation;
      TpvGUISliderOrientation=
       (
-       pvgsoHorizontal,
-       pvgsoVertical
+       Horizontal,
+       Vertical
       );
 
      PpvGUISliderSubWidget=^TpvGUISliderSubWidget;
      TpvGUISliderSubWidget=
       (
-       pvgsswNone,
-       pvgsswThumbButton
+       None,
+       ThumbButton
       );
 
      TpvGUISlider=class(TpvGUIWidget)
@@ -1857,8 +1857,8 @@ type TpvGUIObject=class;
      PpvGUIProgressBarOrientation=^TpvGUIProgressBarOrientation;
      TpvGUIProgressBarOrientation=
       (
-       pvgpboHorizontal,
-       pvgpboVertical
+       Horizontal,
+       Vertical
       );
 
      TpvGUIProgressBar=class(TpvGUIWidget)
@@ -1889,9 +1889,9 @@ type TpvGUIObject=class;
      PpvGUIScrollPanelScrollDirection=^TpvGUIScrollPanelScrollDirection;
      TpvGUIScrollPanelScrollDirection=
       (
-       pvgspsdfOff,
-       pvgspsdfOn,
-       pvgspsdfAuto
+       Off,
+       On,
+       Auto
       );
 
      TpvGUIScrollPanel=class(TpvGUIWidget)
@@ -1970,7 +1970,7 @@ var ForwardIndex,BackwardIndex,Len:TpvInt32;
     TextWidth:TVkFloat;
     Text,ForwardTemporary,BackwardTemporary,Current:TpvUTF8String;
 begin
- if aTextTruncation=pvgttNone then begin
+ if aTextTruncation=TpvGUITextTruncation.None then begin
   result:=aText;
  end else begin
   TextWidth:=aFont.TextWidth(aText,aFontSize);
@@ -1981,7 +1981,7 @@ begin
    Text:=PUCUUTF8Trim(aText);
    Len:=length(Text);
    case aTextTruncation of
-    pvgttHead:begin
+    TpvGUITextTruncation.Head:begin
      BackwardIndex:=Len+1;
      BackwardTemporary:='';
      repeat
@@ -1999,7 +1999,7 @@ begin
       end;
      until false;
     end;
-    pvgttMiddle:begin
+    TpvGUITextTruncation.Middle:begin
      ForwardIndex:=1;
      BackwardIndex:=Len+1;
      ForwardTemporary:='';
@@ -2020,7 +2020,7 @@ begin
       end;
      until false;
     end;
-    pvgttTail:begin
+    TpvGUITextTruncation.Tail:begin
      ForwardIndex:=1;
      ForwardTemporary:='';
      while ForwardIndex<=Len do begin
@@ -2173,7 +2173,7 @@ begin
    Size.y:=Size.y+aWidget.Skin.WindowMenuHeight;
   end;
  end else if aWidget is TpvGUIWindow then begin
-  if pvgwfHeader in (aWidget as TpvGUIWindow).fWindowFlags then begin
+  if TpvGUIWindowFlag.Header in (aWidget as TpvGUIWindow).fWindowFlags then begin
    Size.y:=Size.y+(aWidget.Skin.WindowHeaderHeight-(fMargin*0.5));
   end;
   if assigned((aWidget as TpvGUIWindow).fMenu) then begin
@@ -2238,7 +2238,7 @@ begin
    Offset:=Offset+aWidget.Skin.WindowMenuHeight;
   end;
  end else if aWidget is TpvGUIWindow then begin
-  if pvgwfHeader in (aWidget as TpvGUIWindow).fWindowFlags then begin
+  if TpvGUIWindowFlag.Header in (aWidget as TpvGUIWindow).fWindowFlags then begin
    Offset:=Offset+(aWidget.Skin.WindowHeaderHeight-(fMargin*0.5));
   end;
   if assigned((aWidget as TpvGUIWindow).fMenu) then begin
@@ -2279,7 +2279,7 @@ begin
      end else begin
       ChildTargetSize.x:=ContainerSize.x-(fMargin*2.0);
      end;
-     if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
+     if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=TpvGUIWindowState.Maximized)) then begin
       ChildWidget.fPosition:=Position;
      end;
      ChildWidget.fSize:=ChildTargetSize;
@@ -2382,7 +2382,7 @@ begin
     end else begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
-    if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
+    if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=TpvGUIWindowState.Maximized)) then begin
      ChildWidget.fPosition:=TpvVector2.InlineableCreate(fMargin,fMargin);
     end;
     ChildWidget.fSize:=ContainerSize-(TpvVector2.InlineableCreate(fMargin,fMargin)*2.0);
@@ -2393,8 +2393,8 @@ begin
 end;
 
 constructor TpvGUIBoxLayout.Create(const aParent:TpvGUIObject;
-                                   const aAlignment:TpvGUILayoutAlignment=pvglaMiddle;
-                                   const aOrientation:TpvGUILayoutOrientation=pvgloHorizontal;
+                                   const aAlignment:TpvGUILayoutAlignment=TpvGUILayoutAlignment.Middle;
+                                   const aOrientation:TpvGUILayoutOrientation=TpvGUILayoutOrientation.Horizontal;
                                    const aMargin:TpvFloat=0.0;
                                    const aSpacing:TpvFloat=0.0);
 begin
@@ -2419,7 +2419,7 @@ var Axis0,Axis1,ChildIndex:TpvInt32;
 begin
  Size:=TpvVector2.InlineableCreate(fMargin*2.0,fMargin*2.0);
  case fOrientation of
-  pvgloHorizontal:begin
+  TpvGUILayoutOrientation.Horizontal:begin
    Axis0:=0;
    Axis1:=1;
   end;
@@ -2479,7 +2479,7 @@ begin
   ContainerSize.y:=aWidget.Height;
  end;
  case fOrientation of
-  pvgloHorizontal:begin
+  TpvGUILayoutOrientation.Horizontal:begin
    Axis0:=0;
    Axis1:=1;
   end;
@@ -2513,16 +2513,16 @@ begin
     Position:=TpvVector2.Null;
     Position[Axis0]:=Offset;
     case fAlignment of
-     pvglaLeading:begin
+     TpvGUILayoutAlignment.Leading:begin
       Position[Axis1]:=Position[Axis1]+fMargin;
      end;
-     pvglaMiddle:begin
+     TpvGUILayoutAlignment.Middle:begin
       Position[Axis1]:=Position[Axis1]+((ContainerSize[Axis1]-ChildTargetSize[Axis1])*0.5);
      end;
-     pvglaTailing:begin
+     TpvGUILayoutAlignment.Tailing:begin
       Position[Axis1]:=Position[Axis1]+((ContainerSize[Axis1]-ChildTargetSize[Axis1])-(fMargin*2.0));
      end;
-     else {pvglaFill:}begin
+     else {TpvGUILayoutAlignment.Fill:}begin
       Position[Axis1]:=Position[Axis1]+fMargin;
       if ChildFixedSize[Axis1]>0.0 then begin
        ChildTargetSize[Axis1]:=ChildFixedSize[Axis1];
@@ -2531,7 +2531,7 @@ begin
       end;
      end;
     end;
-    if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=pvgwsMaximized)) then begin
+    if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=TpvGUIWindowState.Maximized)) then begin
      ChildWidget.fPosition:=Position;
     end;
     ChildWidget.fSize:=ChildTargetSize;
@@ -2694,9 +2694,9 @@ end;
 
 constructor TpvGUIGridLayout.Create(const aParent:TpvGUIObject;
                                     const aResolution:TpvInt32=2;
-                                    const aColumnAlignment:TpvGUILayoutAlignment=pvglaMiddle;
-                                    const aRowAlignment:TpvGUILayoutAlignment=pvglaMiddle;
-                                    const aOrientation:TpvGUILayoutOrientation=pvgloHorizontal;
+                                    const aColumnAlignment:TpvGUILayoutAlignment=TpvGUILayoutAlignment.Middle;
+                                    const aRowAlignment:TpvGUILayoutAlignment=TpvGUILayoutAlignment.Middle;
+                                    const aOrientation:TpvGUILayoutOrientation=TpvGUILayoutOrientation.Horizontal;
                                     const aMargin:TpvFloat=0.0;
                                     const aHorizontalSpacing:TpvFloat=0.0;
                                     const aVerticalSpacing:TpvFloat=0.0);
@@ -2704,7 +2704,7 @@ begin
 
  inherited Create(aParent);
 
- fFlags:=[pvgglfStretchHorizontal,pvgglfStretchVertical];
+ fFlags:=[TpvGUIGridLayoutFlag.StretchHorizontal,TpvGUIGridLayoutFlag.StretchVertical];
 
  fSpacingProperty:=TpvVector2Property.Create(@fSpacing);
 
@@ -3007,15 +3007,15 @@ begin
      Alignment:=GetAlignment(AxisIndex,ItemIndex);
 
      case Alignment of
-      pvglaLeading:begin
+      TpvGUILayoutAlignment.Leading:begin
       end;
-      pvglaMiddle:begin
+      TpvGUILayoutAlignment.Middle:begin
        ChildPosition[AxisIndex]:=ChildPosition[AxisIndex]+((fGrid[AxisIndex,ItemIndex]-ChildTargetSize[AxisIndex])*0.5);
       end;
-      pvglaTailing:begin
+      TpvGUILayoutAlignment.Tailing:begin
        ChildPosition[AxisIndex]:=ChildPosition[AxisIndex]+(fGrid[AxisIndex,ItemIndex]-ChildTargetSize[AxisIndex]);
       end;
-      else {pvglaFill:}begin
+      else {TpvGUILayoutAlignment.Fill:}begin
        if ChildFixedSize[AxisIndex]>0.0 then begin
         ChildTargetSize[AxisIndex]:=ChildFixedSize[AxisIndex];
        end else begin
@@ -3059,15 +3059,15 @@ begin
  result.Position.y:=0;
  result.Size.x:=0;
  result.Size.y:=0;
- result.Alignment.x:=pvglaLeading;
- result.Alignment.y:=pvglaLeading;
+ result.Alignment.x:=TpvGUILayoutAlignment.Leading;
+ result.Alignment.y:=TpvGUILayoutAlignment.Leading;
  result.Padding:=0.0;
 {$else}
  FillChar(result,SizeOf(TpvGUIAdvancedGridLayoutAnchor),#0);
 {$ifend}
 end;
 
-constructor TpvGUIAdvancedGridLayoutAnchor.Create(const aX,aY:TpvUInt8;const aWidth,aHeight:TpvUInt8;const aPaddingLeft:TpvFloat=0.0;const aPaddingTop:TpvFloat=0.0;const aPaddingRight:TpvFloat=0.0;const aPaddingBottom:TpvFloat=0.0;const aHorizontalAlignment:TpvGUILayoutAlignment=pvglaFill;const aVerticalAlignment:TpvGUILayoutAlignment=pvglaFill);
+constructor TpvGUIAdvancedGridLayoutAnchor.Create(const aX,aY:TpvUInt8;const aWidth,aHeight:TpvUInt8;const aPaddingLeft:TpvFloat=0.0;const aPaddingTop:TpvFloat=0.0;const aPaddingRight:TpvFloat=0.0;const aPaddingBottom:TpvFloat=0.0;const aHorizontalAlignment:TpvGUILayoutAlignment=TpvGUILayoutAlignment.Fill;const aVerticalAlignment:TpvGUILayoutAlignment=TpvGUILayoutAlignment.Fill);
 begin
  Position.x:=aX;
  Position.y:=aY;
@@ -3101,8 +3101,8 @@ begin
  Position.y:=aY;
  Size.x:=1;
  Size.y:=1;
- Alignment.x:=pvglaFill;
- Alignment.y:=pvglaFill;
+ Alignment.x:=TpvGUILayoutAlignment.Fill;
+ Alignment.y:=TpvGUILayoutAlignment.Fill;
  Padding[0,0]:=0.0;
  Padding[0,1]:=0.0;
  Padding[1,0]:=0.0;
@@ -3374,15 +3374,15 @@ begin
       CellSize:=(GetGrid(AxisIndex,Anchor.Position.Axis[AxisIndex]+Anchor.Size.Axis[AxisIndex])-Anchor.Padding[AxisIndex,1])-ChildPosition;
       TargetSize:=fTargetSizes[ChildIndex][AxisIndex];
       case Anchor.Alignment.Axis[AxisIndex] of
-       pvglaLeading:begin
+       TpvGUILayoutAlignment.Leading:begin
        end;
-       pvglaMiddle:begin
+       TpvGUILayoutAlignment.Middle:begin
         ChildPosition:=ChildPosition+((ChildPosition-TargetSize)*0.5);
        end;
-       pvglaTailing:begin
+       TpvGUILayoutAlignment.Tailing:begin
         ChildPosition:=ChildPosition+(ChildPosition-TargetSize);
        end;
-       pvglaFill:begin
+       TpvGUILayoutAlignment.Fill:begin
         if fFixedSizes[ChildIndex][AxisIndex]>0.0 then begin
          TargetSize:=fFixedSizes[ChildIndex][AxisIndex];
         end else begin
@@ -3416,15 +3416,15 @@ begin
 end;
 
 constructor TpvGUIFlowLayout.Create(const aParent:TpvGUIObject;
-                                    const aOrientation:TpvGUILayoutOrientation=pvgloHorizontal;
+                                    const aOrientation:TpvGUILayoutOrientation=TpvGUILayoutOrientation.Horizontal;
                                     const aMargin:TpvFloat=0.0;
                                     const aDesignedWidth:TpvFloat=0.0;
                                     const aDesignedHeight:TpvFloat=0.0;
                                     const aHorizontalSpacing:TpvFloat=4.0;
                                     const aVerticalSpacing:TpvFloat=4.0;
-                                    const aDirection:TpvGUIFlowLayoutDirection=pgfldLeftToRight;
-                                    const aHorizontalAlignment:TpvGUIFlowLayoutAlignment=pgflaLeading;
-                                    const aVerticalAlignment:TpvGUIFlowLayoutAlignment=pgflaLeading;
+                                    const aDirection:TpvGUIFlowLayoutDirection=TpvGUIFlowLayoutDirection.LeftToRight;
+                                    const aHorizontalAlignment:TpvGUIFlowLayoutAlignment=TpvGUIFlowLayoutAlignment.Leading;
+                                    const aVerticalAlignment:TpvGUIFlowLayoutAlignment=TpvGUIFlowLayoutAlignment.Leading;
                                     const aAlignmentOnBaseLine:boolean=false);
 begin
 
@@ -3622,7 +3622,7 @@ var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
    end;
 
    case fAlignments[Axis0] of
-    pgflaLeading:begin
+    TpvGUIFlowLayoutAlignment.Leading:begin
      Difference:=fMargin-MinPosition;
      for ChildIndex:=RowFromChildIndex to RowToChildIndex do begin
       Child:=aWidget.fChildren.Items[ChildIndex];
@@ -3634,7 +3634,7 @@ var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
       end;
      end;
     end;
-    pgflaMiddle:begin
+    TpvGUIFlowLayoutAlignment.Middle:begin
      Difference:=((ContainerSize[Axis0]-(MaxPosition-MinPosition))*0.5)-MinPosition;
      for ChildIndex:=RowFromChildIndex to RowToChildIndex do begin
       Child:=aWidget.fChildren.Items[ChildIndex];
@@ -3646,7 +3646,7 @@ var Axis0,Axis1,RowFromChildIndex,RowToChildIndex:TpvInt32;
       end;
      end;
     end;
-    pgflaTailing:begin
+    TpvGUIFlowLayoutAlignment.Tailing:begin
      Difference:=((ContainerSize[Axis0]-(fMargin+(MaxPosition-MinPosition))))-MinPosition;
      for ChildIndex:=RowFromChildIndex to RowToChildIndex do begin
       Child:=aWidget.fChildren.Items[ChildIndex];
@@ -3703,7 +3703,7 @@ begin
 
  Position:=TpvVector2.InlineableCreate(fMargin,fMargin);
 
- if fDirection<>pgfldLeftToRight then begin
+ if fDirection<>TpvGUIFlowLayoutDirection.LeftToRight then begin
   Position[Axis0]:=ContainerSize[Axis0]-fMargin;
  end;
 
@@ -3726,7 +3726,7 @@ begin
     end else begin
      ChildTargetSize.y:=ChildPreferredSize.y;
     end;
-    if fDirection=pgfldLeftToRight then begin
+    if fDirection=TpvGUIFlowLayoutDirection.LeftToRight then begin
      if not First then begin
       Position[Axis0]:=Position[Axis0]+fSpacing[Axis0];
       if (Position[Axis0]+ChildTargetSize[Axis0])>=(ContainerSize[Axis0]-fMargin) then begin
@@ -3785,7 +3785,7 @@ begin
  end;
 
  case fAlignments[Axis1] of
-  pgflaLeading:begin
+  TpvGUIFlowLayoutAlignment.Leading:begin
    Difference:=fMargin-MinPosition;
    for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
     Child:=aWidget.fChildren.Items[ChildIndex];
@@ -3797,7 +3797,7 @@ begin
     end;
    end;
   end;
-  pgflaMiddle:begin
+  TpvGUIFlowLayoutAlignment.Middle:begin
    Difference:=((ContainerSize[Axis1]-(MaxPosition-MinPosition))*0.5)-MinPosition;
    for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
     Child:=aWidget.fChildren.Items[ChildIndex];
@@ -3809,7 +3809,7 @@ begin
     end;
    end;
   end;
-  pgflaTailing:begin
+  TpvGUIFlowLayoutAlignment.Tailing:begin
    Difference:=((ContainerSize[Axis1]-(fMargin+(MaxPosition-MinPosition))))-MinPosition;
    for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
     Child:=aWidget.fChildren.Items[ChildIndex];
@@ -4209,7 +4209,7 @@ begin
                                                                                  48.0/512.0,
                                                                                  0.0,
                                                                                  0.0,
-                                                                                 pvvpfrNonZero,
+                                                                                 TpvVectorPathFillRule.NonZero,
                                                                                  true,
                                                                                  2,
                                                                                  1);
@@ -4221,7 +4221,7 @@ begin
                                                                                    48.0/512.0,
                                                                                    0.0,
                                                                                    0.0,
-                                                                                   pvvpfrNonZero,
+                                                                                   TpvVectorPathFillRule.NonZero,
                                                                                    true,
                                                                                    2,
                                                                                    1);
@@ -4233,7 +4233,7 @@ begin
                                                                                     48.0/512.0,
                                                                                     0.0,
                                                                                     0.0,
-                                                                                    pvvpfrNonZero,
+                                                                                    TpvVectorPathFillRule.NonZero,
                                                                                     true,
                                                                                     2,
                                                                                     1);
@@ -4245,7 +4245,7 @@ begin
                                                                                     48.0/512.0,
                                                                                     0.0,
                                                                                     0.0,
-                                                                                    pvvpfrNonZero,
+                                                                                    TpvVectorPathFillRule.NonZero,
                                                                                     true,
                                                                                     2,
                                                                                     1);
@@ -4257,7 +4257,7 @@ begin
                                                                                96.0/24.0,
                                                                                0.0,
                                                                                0.0,
-                                                                               pvvpfrNonZero,
+                                                                               TpvVectorPathFillRule.NonZero,
                                                                                true,
                                                                                2,
                                                                                1);
@@ -4269,7 +4269,7 @@ begin
                                                                                 96.0/24.0,
                                                                                 0.0,
                                                                                 0.0,
-                                                                                pvvpfrNonZero,
+                                                                                TpvVectorPathFillRule.NonZero,
                                                                                 true,
                                                                                 2,
                                                                                 1);
@@ -4281,7 +4281,7 @@ begin
                                                                                  96.0/24.0,
                                                                                  0.0,
                                                                                  0.0,
-                                                                                 pvvpfrNonZero,
+                                                                                 TpvVectorPathFillRule.NonZero,
                                                                                  true,
                                                                                  2,
                                                                                  1);
@@ -4293,7 +4293,7 @@ begin
                                                                                   96.0/24.0,
                                                                                   0.0,
                                                                                   0.0,
-                                                                                  pvvpfrNonZero,
+                                                                                  TpvVectorPathFillRule.NonZero,
                                                                                   true,
                                                                                   2,
                                                                                   1);
@@ -4305,7 +4305,7 @@ begin
                                                                                    96.0/24.0,
                                                                                    0.0,
                                                                                    0.0,
-                                                                                   pvvpfrNonZero,
+                                                                                   TpvVectorPathFillRule.NonZero,
                                                                                    true,
                                                                                    2,
                                                                                    1);
@@ -4317,7 +4317,7 @@ begin
                                                                                96.0/24.0,
                                                                                0.0,
                                                                                0.0,
-                                                                               pvvpfrNonZero,
+                                                                               TpvVectorPathFillRule.NonZero,
                                                                                true,
                                                                                2,
                                                                                1);
@@ -4329,7 +4329,7 @@ begin
                                                                                 96.0/24.0,
                                                                                 0.0,
                                                                                 0.0,
-                                                                                pvvpfrNonZero,
+                                                                                TpvVectorPathFillRule.NonZero,
                                                                                 true,
                                                                                 2,
                                                                                 1);
@@ -4341,7 +4341,7 @@ begin
                                                                                  48.0/24.0,
                                                                                  0.0,
                                                                                  0.0,
-                                                                                 pvvpfrNonZero,
+                                                                                 TpvVectorPathFillRule.NonZero,
                                                                                  true,
                                                                                  2,
                                                                                  1);
@@ -4353,7 +4353,7 @@ begin
                                                                                   48.0/24.0,
                                                                                   0.0,
                                                                                   0.0,
-                                                                                  pvvpfrNonZero,
+                                                                                  TpvVectorPathFillRule.NonZero,
                                                                                   true,
                                                                                   2,
                                                                                   1);
@@ -4365,7 +4365,7 @@ begin
                                                                                48.0/24.0,
                                                                                0.0,
                                                                                0.0,
-                                                                               pvvpfrNonZero,
+                                                                               TpvVectorPathFillRule.NonZero,
                                                                                true,
                                                                                2,
                                                                                1);
@@ -4377,7 +4377,7 @@ begin
                                                                                  48.0/24.0,
                                                                                  0.0,
                                                                                  0.0,
-                                                                                 pvvpfrNonZero,
+                                                                                 TpvVectorPathFillRule.NonZero,
                                                                                  true,
                                                                                  2,
                                                                                  1);
@@ -4389,7 +4389,7 @@ begin
                                                                            48.0/24.0,
                                                                            0.0,
                                                                            0.0,
-                                                                           pvvpfrNonZero,
+                                                                           TpvVectorPathFillRule.NonZero,
                                                                            true,
                                                                            2,
                                                                            1);
@@ -4401,7 +4401,7 @@ begin
                                                                                         48.0/24.0,
                                                                                         0.0,
                                                                                         0.0,
-                                                                                        pvvpfrNonZero,
+                                                                                        TpvVectorPathFillRule.NonZero,
                                                                                         true,
                                                                                         2,
                                                                                         1);
@@ -4413,7 +4413,7 @@ begin
                                                                                          48.0/24.0,
                                                                                          0.0,
                                                                                          0.0,
-                                                                                         pvvpfrNonZero,
+                                                                                         TpvVectorPathFillRule.NonZero,
                                                                                          true,
                                                                                          2,
                                                                                          1);
@@ -4425,7 +4425,7 @@ begin
                                                                                       48.0/24.0,
                                                                                       0.0,
                                                                                       0.0,
-                                                                                      pvvpfrNonZero,
+                                                                                      TpvVectorPathFillRule.NonZero,
                                                                                       true,
                                                                                       2,
                                                                                       1);
@@ -4437,7 +4437,7 @@ begin
                                                                                         48.0/24.0,
                                                                                         0.0,
                                                                                         0.0,
-                                                                                        pvvpfrNonZero,
+                                                                                        TpvVectorPathFillRule.NonZero,
                                                                                         true,
                                                                                         2,
                                                                                         1);
@@ -4449,7 +4449,7 @@ begin
                                                                            48.0/24.0,
                                                                            0.0,
                                                                            0.0,
-                                                                           pvvpfrNonZero,
+                                                                           TpvVectorPathFillRule.NonZero,
                                                                            true,
                                                                            2,
                                                                            1);
@@ -4461,7 +4461,7 @@ begin
                                                                                 48.0/24.0,
                                                                                 0.0,
                                                                                 0.0,
-                                                                                pvvpfrNonZero,
+                                                                                TpvVectorPathFillRule.NonZero,
                                                                                 true,
                                                                                 2,
                                                                                 1);
@@ -4473,7 +4473,7 @@ begin
                                                                              48.0/24.0,
                                                                              0.0,
                                                                              0.0,
-                                                                             pvvpfrNonZero,
+                                                                             TpvVectorPathFillRule.NonZero,
                                                                              true,
                                                                              2,
                                                                              1);
@@ -4485,7 +4485,7 @@ begin
                                                                                48.0/24.0,
                                                                                0.0,
                                                                                0.0,
-                                                                               pvvpfrNonZero,
+                                                                               TpvVectorPathFillRule.NonZero,
                                                                                true,
                                                                                2,
                                                                                1);
@@ -4497,7 +4497,7 @@ begin
                                                                                  48.0/24.0,
                                                                                  0.0,
                                                                                  0.0,
-                                                                                 pvvpfrNonZero,
+                                                                                 TpvVectorPathFillRule.NonZero,
                                                                                  true,
                                                                                  2,
                                                                                  1);
@@ -4509,7 +4509,7 @@ begin
                                                                                  48.0/24.0,
                                                                                  0.0,
                                                                                  0.0,
-                                                                                 pvvpfrNonZero,
+                                                                                 TpvVectorPathFillRule.NonZero,
                                                                                  true,
                                                                                  2,
                                                                                  1);
@@ -4521,7 +4521,7 @@ begin
                                                                                        48.0/24.0,
                                                                                        0.0,
                                                                                        0.0,
-                                                                                       pvvpfrNonZero,
+                                                                                       TpvVectorPathFillRule.NonZero,
                                                                                        true,
                                                                                        2,
                                                                                        1);
@@ -4533,7 +4533,7 @@ begin
                                                                                     48.0/24.0,
                                                                                     0.0,
                                                                                     0.0,
-                                                                                    pvvpfrNonZero,
+                                                                                    TpvVectorPathFillRule.NonZero,
                                                                                     true,
                                                                                     2,
                                                                                     1);
@@ -4545,7 +4545,7 @@ begin
                                                                                 48.0/24.0,
                                                                                 0.0,
                                                                                 0.0,
-                                                                                pvvpfrNonZero,
+                                                                                TpvVectorPathFillRule.NonZero,
                                                                                 true,
                                                                                 2,
                                                                                 1);
@@ -4557,7 +4557,7 @@ begin
                                                                                    48.0/24.0,
                                                                                    0.0,
                                                                                    0.0,
-                                                                                   pvvpfrNonZero,
+                                                                                   TpvVectorPathFillRule.NonZero,
                                                                                    true,
                                                                                    2,
                                                                                    1);
@@ -4569,7 +4569,7 @@ begin
                                                                                  48.0/24.0,
                                                                                  0.0,
                                                                                  0.0,
-                                                                                 pvvpfrNonZero,
+                                                                                 TpvVectorPathFillRule.NonZero,
                                                                                  true,
                                                                                  2,
                                                                                  1);
@@ -4626,7 +4626,7 @@ begin
  aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(aInstance.fMousePosition)*aInstance.fModelMatrix;
  aCanvas.ClipRect:=aInstance.fClipRect;
  case aInstance.fVisibleCursor of
-  pvgcArrow:begin
+  TpvGUICursor.Arrow:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_ARROW,
                           false,
                           TpvVector2.InlineableCreate(2.0,2.0),
@@ -4640,7 +4640,7 @@ begin
                           TpvVector2.Null,
                           TpvVector2.InlineableCreate(32.0,32.0));
   end;
-  pvgcBeam:begin
+  TpvGUICursor.Beam:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BEAM,
                           false,
                           TpvVector2.InlineableCreate(-30.0,-30.0),
@@ -4654,7 +4654,7 @@ begin
                           TpvVector2.InlineableCreate(-16.0,-16.0),
                           TpvVector2.InlineableCreate(16.0,16.0));
   end;
-  pvgcBusy:begin
+  TpvGUICursor.Busy:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BUSY,
                           false,
                           TpvVector2.InlineableCreate(-18.0,-18.0),
@@ -4670,7 +4670,7 @@ begin
                           TpvVector2.InlineableCreate(10.0,10.0),
                           frac(aInstance.fTime)*TwoPI);
   end;
-  pvgcCross:begin
+  TpvGUICursor.Cross:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_CROSS,
                           false,
                           TpvVector2.InlineableCreate(-30.0,-30.0),
@@ -4684,7 +4684,7 @@ begin
                           TpvVector2.InlineableCreate(-16.0,-16.0),
                           TpvVector2.InlineableCreate(16.0,16.0));
   end;
-  pvgcEW:begin
+  TpvGUICursor.EW:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_EW,
                           false,
                           TpvVector2.InlineableCreate(-30.0,-30.0),
@@ -4698,7 +4698,7 @@ begin
                           TpvVector2.InlineableCreate(-16.0,-16.0),
                           TpvVector2.InlineableCreate(16.0,16.0));
   end;
-  pvgcHelp:begin
+  TpvGUICursor.Help:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_HELP,
                           false,
                           TpvVector2.InlineableCreate(2.0,2.0),
@@ -4712,7 +4712,7 @@ begin
                           TpvVector2.Null,
                           TpvVector2.InlineableCreate(32.0,32.0));
   end;
-  pvgcLink:begin
+  TpvGUICursor.Link:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_LINK,
                           false,
                           TpvVector2.InlineableCreate(-30.0,-30.0),
@@ -4726,7 +4726,7 @@ begin
                           TpvVector2.Null,
                           TpvVector2.InlineableCreate(16.0,16.0));
   end;
-  pvgcMove:begin
+  TpvGUICursor.Move:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_MOVE,
                           false,
                           TpvVector2.InlineableCreate(-30.0,-30.0),
@@ -4740,7 +4740,7 @@ begin
                           TpvVector2.InlineableCreate(-16.0,-16.0),
                           TpvVector2.InlineableCreate(16.0,16.0));
   end;
-  pvgcNESW:begin
+  TpvGUICursor.NESW:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NESW,
                           false,
                           TpvVector2.InlineableCreate(-30.0,-30.0),
@@ -4754,7 +4754,7 @@ begin
                           TpvVector2.InlineableCreate(-16.0,-16.0),
                           TpvVector2.InlineableCreate(16.0,16.0));
   end;
-  pvgcNS:begin
+  TpvGUICursor.NS:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NS,
                           false,
                           TpvVector2.InlineableCreate(-30.0,-30.0),
@@ -4768,7 +4768,7 @@ begin
                           TpvVector2.InlineableCreate(-16.0,-16.0),
                           TpvVector2.InlineableCreate(16.0,16.0));
   end;
-  pvgcNWSE:begin
+  TpvGUICursor.NWSE:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NWSE,
                           false,
                           TpvVector2.InlineableCreate(-30.0,-30.0),
@@ -4782,7 +4782,7 @@ begin
                           TpvVector2.InlineableCreate(-16.0,-16.0),
                           TpvVector2.InlineableCreate(16.0,16.0));
   end;
-  pvgcPen:begin
+  TpvGUICursor.Pen:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_PEN,
                           false,
                           TpvVector2.InlineableCreate(-30.0,-30.0),
@@ -4796,7 +4796,7 @@ begin
                           TpvVector2.InlineableCreate(-16.0,-16.0),
                           TpvVector2.InlineableCreate(16.0,16.0));
   end;
-  pvgcUnavailable:begin
+  TpvGUICursor.Unavailable:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE,
                           false,
                           TpvVector2.InlineableCreate(-18.0,-18.0),
@@ -4811,7 +4811,7 @@ begin
                           TpvVector2.InlineableCreate(-10.0,-10.0),
                           TpvVector2.InlineableCreate(10.0,10.0));
   end;
-  pvgcUp:begin
+  TpvGUICursor.Up:begin
    aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UP,
                           false,
                           TpvVector2.InlineableCreate(-30.0,-30.0),
@@ -4855,7 +4855,7 @@ begin
            TpvVector2.InlineableCreate(fSpacing*2.0,0.0);
  result:=Maximum(GetWidgetLayoutPreferredSize(aWindow),
                  TextSize);
- if pvgwfHeader in aWindow.fWindowFlags then begin
+ if TpvGUIWindowFlag.Header in aWindow.fWindowFlags then begin
   result.y:=Maximum(result.y,fWindowHeaderHeight);
  end;
  if assigned(aWindow.fButtonPanel) then begin
@@ -4876,10 +4876,10 @@ begin
   aWindow.fMenu.Visible:=true;
  end;
  case aWindow.fWindowState of
-  pvgwsMinimized:begin
+  TpvGUIWindowState.Minimized:begin
    result.y:=fWindowHeaderHeight;
   end;
-  pvgwsMaximized:begin
+  TpvGUIWindowState.Maximized:begin
    if assigned(fParent) then begin
     if fParent is TpvGUIInstance then begin
      result:=(fParent as TpvGUIInstance).fContent.fSize;
@@ -4917,7 +4917,7 @@ begin
 
   aCanvas.ClipRect:=aWindow.fClipRect;
 
-  if pvgwfHeader in aWindow.fWindowFlags then begin
+  if TpvGUIWindowFlag.Header in aWindow.fWindowFlags then begin
 
    aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
                           aWindow.Focused,
@@ -4943,20 +4943,20 @@ begin
     aCanvas.Font:=aWindow.Font;
     aCanvas.FontSize:=fWindowHeaderFontSize;
     case aWindow.TextHorizontalAlignment of
-     pvgtaLeading:begin
-      aCanvas.TextHorizontalAlignment:=pvcthaLeading;
+     TpvGUITextAlignment.Leading:begin
+      aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
       Offset.x:=fSpacing;
      end;
-     pvgtaCenter:begin
-      aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+     TpvGUITextAlignment.Center:begin
+      aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
       if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
        Offset.x:=aWindow.fButtonPanel.Left*0.5;
       end else begin
        Offset.x:=aWindow.fSize.x*0.5;
       end;
      end;
-     else {pvgtaTailing:}begin
-      aCanvas.TextHorizontalAlignment:=pvcthaTailing;
+     else {TpvGUITextAlignment.Tailing:}begin
+      aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
       if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
        Offset.x:=aWindow.fButtonPanel.Left-fSpacing;
       end else begin
@@ -4965,7 +4965,7 @@ begin
      end;
     end;
     Offset.y:=fWindowHeaderHeight*0.5;
-    aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+    aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
     NewModelMatrix:=TpvMatrix4x4.CreateTranslation(Offset.x,Offset.y)*LastModelMatrix;
     if aWindow.fCachedTitleInvalidated then begin
      if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
@@ -4982,9 +4982,9 @@ begin
                                                            aWindow.fSize.x-(fSpacing*2.0));
      end;
     end;
-    if ((pvgwfFocused in aWindow.fWidgetFlags) and fFocusedWindowHeaderFontShadow) or
-       ((not (pvgwfFocused in aWindow.fWidgetFlags)) and fUnfocusedWindowHeaderFontShadow) then begin
-     if pvgwfFocused in aWindow.fWidgetFlags then begin
+    if ((TpvGUIWidgetFlag.Focused in aWindow.fWidgetFlags) and fFocusedWindowHeaderFontShadow) or
+       ((not (TpvGUIWidgetFlag.Focused in aWindow.fWidgetFlags)) and fUnfocusedWindowHeaderFontShadow) then begin
+     if TpvGUIWidgetFlag.Focused in aWindow.fWidgetFlags then begin
       aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fFocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
       aCanvas.Color:=fFocusedWindowHeaderFontShadowColor;
      end else begin
@@ -4994,7 +4994,7 @@ begin
      aCanvas.DrawText(aWindow.fCachedTitle);
     end;
     aCanvas.ModelMatrix:=NewModelMatrix;
-    if pvgwfFocused in aWindow.fWidgetFlags then begin
+    if TpvGUIWidgetFlag.Focused in aWindow.fWidgetFlags then begin
      aCanvas.Color:=fFocusedWindowHeaderFontColor;
     end else begin
      aCanvas.Color:=fUnfocusedWindowHeaderFontColor;
@@ -5098,30 +5098,30 @@ begin
  aCanvas.Font:=aLabel.Font;
  aCanvas.FontSize:=aLabel.FontSize;
  case aLabel.TextHorizontalAlignment of
-  pvgtaLeading:begin
-   aCanvas.TextHorizontalAlignment:=pvcthaLeading;
+  TpvGUITextAlignment.Leading:begin
+   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
    Offset.x:=0.0;
   end;
-  pvgtaCenter:begin
-   aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+  TpvGUITextAlignment.Center:begin
+   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
    Offset.x:=aLabel.fSize.x*0.5;
   end;
-  else {pvgtaTailing:}begin
-   aCanvas.TextHorizontalAlignment:=pvcthaTailing;
+  else {TpvGUITextAlignment.Tailing:}begin
+   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
    Offset.x:=aLabel.fSize.x;
   end;
  end;
  case aLabel.TextVerticalAlignment of
-  pvgtaLeading:begin
-   aCanvas.TextVerticalAlignment:=pvctvaLeading;
+  TpvGUITextAlignment.Leading:begin
+   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
    Offset.y:=0.0;
   end;
-  pvgtaCenter:begin
-   aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+  TpvGUITextAlignment.Center:begin
+   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
    Offset.y:=aLabel.fSize.y*0.5;
   end;
-  else {pvgtaTailing:}begin
-   aCanvas.TextVerticalAlignment:=pvctvaTailing;
+  else {TpvGUITextAlignment.Tailing:}begin
+   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Tailing;
    Offset.y:=aLabel.fSize.y;
   end;
  end;
@@ -5149,35 +5149,35 @@ begin
  TextSize:=aButton.Font.TextSize(aButton.fCaption,FontSize);
  if aButton is TpvGUIPopupButton then begin
   case TpvGUIPopupButton(aButton).fPopup.fAnchorSide of
-   pvgpasLeft:begin
+   TpvGUIPopupAnchorSide.Left:begin
     if aButton.Down then begin
      ChevronIcon:=TpvSprite(fIconChevronRight);
     end else begin
      ChevronIcon:=TpvSprite(fIconChevronLeft);
     end;
    end;
-   pvgpasRight:begin
+   TpvGUIPopupAnchorSide.Right:begin
     if aButton.Down then begin
      ChevronIcon:=TpvSprite(fIconChevronLeft);
     end else begin
      ChevronIcon:=TpvSprite(fIconChevronRight);
     end;
    end;
-   pvgpasTop:begin
+   TpvGUIPopupAnchorSide.Top:begin
     if aButton.Down then begin
      ChevronIcon:=TpvSprite(fIconChevronDown);
     end else begin
      ChevronIcon:=TpvSprite(fIconChevronUp);
     end;
    end;
-   pvgpasBottom:begin
+   TpvGUIPopupAnchorSide.Bottom:begin
     if aButton.Down then begin
      ChevronIcon:=TpvSprite(fIconChevronUp);
     end else begin
      ChevronIcon:=TpvSprite(fIconChevronDown);
     end;
    end;
-   else {pvgpasNone:}begin
+   else {TpvGUIPopupAnchorSide.None:}begin
     ChevronIcon:=nil;
    end;
   end;
@@ -5248,35 +5248,35 @@ begin
 
  if aButton is TpvGUIPopupButton then begin
   case TpvGUIPopupButton(aButton).fPopup.fAnchorSide of
-   pvgpasLeft:begin
+   TpvGUIPopupAnchorSide.Left:begin
     if aButton.Down then begin
      ChevronIcon:=TpvSprite(fIconChevronRight);
     end else begin
      ChevronIcon:=TpvSprite(fIconChevronLeft);
     end;
    end;
-   pvgpasRight:begin
+   TpvGUIPopupAnchorSide.Right:begin
     if aButton.Down then begin
      ChevronIcon:=TpvSprite(fIconChevronLeft);
     end else begin
      ChevronIcon:=TpvSprite(fIconChevronRight);
     end;
    end;
-   pvgpasTop:begin
+   TpvGUIPopupAnchorSide.Top:begin
     if aButton.Down then begin
      ChevronIcon:=TpvSprite(fIconChevronDown);
     end else begin
      ChevronIcon:=TpvSprite(fIconChevronUp);
     end;
    end;
-   pvgpasBottom:begin
+   TpvGUIPopupAnchorSide.Bottom:begin
     if aButton.Down then begin
      ChevronIcon:=TpvSprite(fIconChevronUp);
     end else begin
      ChevronIcon:=TpvSprite(fIconChevronDown);
     end;
    end;
-   else {pvgpasNone:}begin
+   else {TpvGUIPopupAnchorSide.None:}begin
     ChevronIcon:=nil;
    end;
   end;
@@ -5294,7 +5294,7 @@ begin
   ChevronIconSize.x:=(ChevronIcon.Width*fIconChevronHeight)/ChevronIcon.Height;
   ChevronIconSize.y:=fIconChevronHeight;
   if (aButton is TpvGUIPopupButton) and
-     (TpvGUIPopupButton(aButton).fPopup.fAnchorSide=pvgpasLeft) then begin
+     (TpvGUIPopupButton(aButton).fPopup.fAnchorSide=TpvGUIPopupAnchorSide.Left) then begin
    ChevronIconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.InlineableCreate(0.0,
                                                                                           (((ButtonRect.Height-ChevronIconSize.y)*0.5)))+Offset,
                                            ChevronIconSize);
@@ -5378,14 +5378,14 @@ begin
    TemporarySize.y:=Max(TextSize.y,Max(IconSize.y,ChevronIconSize.y));
 
    case aButton.fIconPosition of
-    pvgbipLeft:begin
+    TpvGUIButtonIconPosition.Left:begin
      IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.InlineableCreate(0.0,
                                                                                      (ButtonRect.Height-IconSize.y)*0.5),
                                       IconSize);
      TextRect:=TpvRect.CreateAbsolute(ButtonRect.LeftTop+TpvVector2.InlineableCreate(IconSize.x+ButtonIconSpacing,0.0),
                                       ButtonRect.RightBottom);
     end;
-    pvgbipLeftCentered:begin
+    TpvGUIButtonIconPosition.LeftCentered:begin
      IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.InlineableCreate((ButtonRect.Width-TemporarySize.x)*0.5,
                                                                                      (ButtonRect.Height-IconSize.y)*0.5),
                                       IconSize);
@@ -5393,14 +5393,14 @@ begin
                                                                                      0.0),
                                       TpvVector2.InlineableCreate(TextSize.x,ButtonRect.Height));
     end;
-    pvgbipRightCentered:begin
+    TpvGUIButtonIconPosition.RightCentered:begin
      IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.InlineableCreate(((ButtonRect.Width-TemporarySize.x)*0.5)+TextSize.x+ButtonIconSpacing,
                                                                                      (ButtonRect.Height-IconSize.y)*0.5),
                                       IconSize);
      TextRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.InlineableCreate((ButtonRect.Width-TemporarySize.x)*0.5,0.0),
                                       TpvVector2.InlineableCreate(TextSize.x,ButtonRect.Height));
     end;
-    else {pvgbipRight:}begin
+    else {TpvGUIButtonIconPosition.Right:}begin
      IconRect:=TpvRect.CreateRelative(ButtonRect.LeftTop+TpvVector2.InlineableCreate(ButtonRect.Width-IconSize.x,
                                                                                      (ButtonRect.Height-IconSize.y)*0.5),
                                       IconSize);
@@ -5428,30 +5428,30 @@ begin
  aCanvas.Font:=aButton.Font;
  aCanvas.FontSize:=aButton.FontSize;
  case aButton.TextHorizontalAlignment of
-  pvgtaLeading:begin
-   aCanvas.TextHorizontalAlignment:=pvcthaLeading;
+  TpvGUITextAlignment.Leading:begin
+   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
    TextOffset.x:=fSpacing;
   end;
-  pvgtaCenter:begin
-   aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+  TpvGUITextAlignment.Center:begin
+   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
    TextOffset.x:=TextRect.Size.x*0.5;
   end;
-  else {pvgtaTailing:}begin
-   aCanvas.TextHorizontalAlignment:=pvcthaTailing;
+  else {TpvGUITextAlignment.Tailing:}begin
+   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
    TextOffset.x:=TextRect.Size.x-fSpacing;
   end;
  end;
  case aButton.TextVerticalAlignment of
-  pvgtaLeading:begin
-   aCanvas.TextVerticalAlignment:=pvctvaLeading;
+  TpvGUITextAlignment.Leading:begin
+   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
    TextOffset.y:=fSpacing;
   end;
-  pvgtaCenter:begin
-   aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+  TpvGUITextAlignment.Center:begin
+   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
    TextOffset.y:=TextRect.Size.y*0.5;
   end;
-  else {pvgtaTailing:}begin
-   aCanvas.TextVerticalAlignment:=pvctvaTailing;
+  else {TpvGUITextAlignment.Tailing:}begin
+   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Tailing;
    TextOffset.y:=TextRect.Size.y-fSpacing;
   end;
  end;
@@ -5554,7 +5554,7 @@ begin
 
  if aCheckBox.Checked then begin
 
-  if pvgcbfRadioCheckBox in aCheckBox.fCheckBoxFlags then begin
+  if TpvGUICheckBoxFlag.RadioCheckBox in aCheckBox.fCheckBoxFlags then begin
    Icon:=TpvSprite(fIconRoundCheck);
   end else begin
    Icon:=TpvSprite(fIconCheck);
@@ -5569,30 +5569,30 @@ begin
  aCanvas.Font:=aCheckBox.Font;
  aCanvas.FontSize:=aCheckBox.FontSize;
  case aCheckBox.TextHorizontalAlignment of
-  pvgtaLeading:begin
-   aCanvas.TextHorizontalAlignment:=pvcthaLeading;
+  TpvGUITextAlignment.Leading:begin
+   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
    Offset.x:=fCheckBoxSize.x+fSpacing;
   end;
-  pvgtaCenter:begin
-   aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+  TpvGUITextAlignment.Center:begin
+   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
    Offset.x:=(fCheckBoxSize.x+fSpacing)+((aCheckBox.fSize.x-(fCheckBoxSize.x+fSpacing))*0.5);
   end;
-  else {pvgtaTailing:}begin
-   aCanvas.TextHorizontalAlignment:=pvcthaTailing;
+  else {TpvGUITextAlignment.Tailing:}begin
+   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
    Offset.x:=(fCheckBoxSize.x+fSpacing)+(aCheckBox.fSize.x-(fCheckBoxSize.x+fSpacing));
   end;
  end;
  case aCheckBox.TextVerticalAlignment of
-  pvgtaLeading:begin
-   aCanvas.TextVerticalAlignment:=pvctvaLeading;
+  TpvGUITextAlignment.Leading:begin
+   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
    Offset.y:=0.0;
   end;
-  pvgtaCenter:begin
-   aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+  TpvGUITextAlignment.Center:begin
+   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
    Offset.y:=aCheckBox.fSize.y*0.5;
   end;
-  else {pvgtaTailing:}begin
-   aCanvas.TextVerticalAlignment:=pvctvaTailing;
+  else {TpvGUITextAlignment.Tailing:}begin
+   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Tailing;
    Offset.y:=aCheckBox.fSize.y;
   end;
  end;
@@ -5699,30 +5699,30 @@ begin
  aCanvas.Font:=aTextEdit.Font;
  aCanvas.FontSize:=aTextEdit.FontSize;
  case aTextEdit.TextHorizontalAlignment of
-  pvgtaLeading:begin
-   aCanvas.TextHorizontalAlignment:=pvcthaLeading;
+  TpvGUITextAlignment.Leading:begin
+   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
    TextOffset.x:=fSpacing;
   end;
-  pvgtaCenter:begin
-   aCanvas.TextHorizontalAlignment:=pvcthaCenter;
+  TpvGUITextAlignment.Center:begin
+   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
    TextOffset.x:=TextRect.Size.x*0.5;
   end;
-  else {pvgtaTailing:}begin
-   aCanvas.TextHorizontalAlignment:=pvcthaTailing;
+  else {TpvGUITextAlignment.Tailing:}begin
+   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
    TextOffset.x:=TextRect.Size.x-fSpacing;
   end;
  end;
  case aTextEdit.TextVerticalAlignment of
-  pvgtaLeading:begin
-   aCanvas.TextVerticalAlignment:=pvctvaLeading;
+  TpvGUITextAlignment.Leading:begin
+   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
    TextOffset.y:=fSpacing;
   end;
-  pvgtaCenter:begin
-   aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+  TpvGUITextAlignment.Center:begin
+   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
    TextOffset.y:=TextRect.Size.y*0.5;
   end;
-  else {pvgtaTailing:}begin
-   aCanvas.TextVerticalAlignment:=pvctvaTailing;
+  else {TpvGUITextAlignment.Tailing:}begin
+   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Tailing;
    TextOffset.y:=TextRect.Size.y-fSpacing;
   end;
  end;
@@ -6064,7 +6064,7 @@ begin
 
    if MenuItem.fCaption<>'-' then begin
 
-    aCanvas.TextHorizontalAlignment:=pvcthaLeading;
+    aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
 
     XOffset:=MenuItem.fRect.Left+(4.0+fSpacing);
 
@@ -6098,7 +6098,7 @@ begin
 
     end;
 
-    aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+    aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
     aCanvas.DrawText(MenuItem.fCaption,TpvVector2.InlineableCreate(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
 
     XOffset:=MenuItem.fRect.Right-(4.0+fSpacing);
@@ -6117,7 +6117,7 @@ begin
     end;
 
     if length(MenuItem.fShortcutHint)>0 then begin
-     aCanvas.TextHorizontalAlignment:=pvcthaTailing;
+     aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
      aCanvas.DrawText(MenuItem.fShortcutHint,TpvVector2.InlineableCreate(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
     end;
 
@@ -6221,8 +6221,8 @@ begin
  aCanvas.Font:=aWindowMenu.Font;
  aCanvas.FontSize:=aWindowMenu.FontSize;
 
- aCanvas.TextHorizontalAlignment:=pvcthaCenter;
- aCanvas.TextVerticalAlignment:=pvctvaMiddle;
+ aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
+ aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
 
  for Index:=0 to aWindowMenu.Children.Count-1 do begin
 
@@ -6292,10 +6292,10 @@ end;
 function TpvGUIDefaultVectorBasedSkin.GetScrollBarPreferredSize(const aScrollBar:TpvGUIScrollBar):TpvVector2;
 begin
  case aScrollBar.fOrientation of
-  pvgsboHorizontal:begin
+  TpvGUIScrollBarOrientation.Horizontal:begin
    result:=TpvVector2.InlineableCreate((aScrollBar.ButtonSize*2.0)+128,aScrollBar.ButtonSize);
   end;
-  else {pvgsboVertical:}begin
+  else {TpvGUIScrollBarOrientation.Vertical:}begin
    result:=TpvVector2.InlineableCreate(aScrollBar.ButtonSize,(aScrollBar.ButtonSize*2.0)+128);
   end;
  end;
@@ -6321,7 +6321,7 @@ begin
  aCanvas.ClipRect:=aScrollBar.fClipRect;
 
  if aScrollBar.Enabled then begin
-  if aScrollBar.Focused xor (aScrollBar.fPushedSubWidget=pvgsbswThumbButton) then begin
+  if aScrollBar.Focused xor (aScrollBar.fPushedSubWidget=TpvGUIScrollBarSubWidget.ThumbButton) then begin
    Element:=GUI_ELEMENT_BOX_DARK_FOCUSED;
   end else begin
    Element:=GUI_ELEMENT_BOX_DARK_UNFOCUSED;
@@ -6330,10 +6330,10 @@ begin
   Element:=GUI_ELEMENT_BOX_DARK_DISABLED;
  end;
  case aScrollBar.fOrientation of
-  pvgsboHorizontal:begin
+  TpvGUIScrollBarOrientation.Horizontal:begin
    Offset:=TpvVector2.InlineableCreate(aScrollBar.fButtonSize-2.0,0.0);
   end;
-  else {pvgsboVertical:}begin
+  else {TpvGUIScrollBarOrientation.Vertical:}begin
    Offset:=TpvVector2.InlineableCreate(0.0,aScrollBar.fButtonSize-2.0);
   end;
  end;
@@ -6346,9 +6346,9 @@ begin
 
  Rect:=aScrollBar.GetThumbButtonRect;
  if aScrollBar.Enabled then begin
-  if aScrollBar.fPushedSubWidget=pvgsbswThumbButton then begin
+  if aScrollBar.fPushedSubWidget=TpvGUIScrollBarSubWidget.ThumbButton then begin
    Element:=GUI_ELEMENT_BUTTON_PUSHED;
-  end else if aScrollBar.Focused and (aScrollBar.fFocusedSubWidget=pvgsbswThumbButton) then begin
+  end else if aScrollBar.Focused and (aScrollBar.fFocusedSubWidget=TpvGUIScrollBarSubWidget.ThumbButton) then begin
    Element:=GUI_ELEMENT_BUTTON_FOCUSED;
   end else begin
    Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
@@ -6365,9 +6365,9 @@ begin
 
  if aScrollBar.Enabled then begin
   aCanvas.Color:=aScrollBar.FontColor;
-  if aScrollBar.fPushedSubWidget=pvgsbswDecButton then begin
+  if aScrollBar.fPushedSubWidget=TpvGUIScrollBarSubWidget.DecButton then begin
    Element:=GUI_ELEMENT_BUTTON_PUSHED;
-  end else if aScrollBar.Focused and (aScrollBar.fFocusedSubWidget=pvgsbswDecButton) then begin
+  end else if aScrollBar.Focused and (aScrollBar.fFocusedSubWidget=TpvGUIScrollBarSubWidget.DecButton) then begin
    Element:=GUI_ELEMENT_BUTTON_FOCUSED;
   end else begin
    Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
@@ -6377,7 +6377,7 @@ begin
   aCanvas.Color:=TpvVector4.InlineableCreate(aScrollBar.FontColor.rgb,aScrollBar.FontColor.a*0.25);
  end;
  case aScrollBar.fOrientation of
-  pvgsboHorizontal:begin
+  TpvGUIScrollBarOrientation.Horizontal:begin
    aCanvas.DrawGUIElement(Element,
                           true,
                           TpvVector2.InlineableCreate(0.0,0.0),
@@ -6390,7 +6390,7 @@ begin
                       TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(IconSpacer,IconSpacer),
                                              TpvVector2.InlineableCreate(aScrollBar.fButtonSize-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
   end;
-  else {pvgsboVertical:}begin
+  else {TpvGUIScrollBarOrientation.Vertical:}begin
    aCanvas.DrawGUIElement(Element,
                           true,
                           TpvVector2.InlineableCreate(0.0,0.0),
@@ -6407,9 +6407,9 @@ begin
 
  if aScrollBar.Enabled then begin
   aCanvas.Color:=aScrollBar.FontColor;
-  if aScrollBar.fPushedSubWidget=pvgsbswIncButton then begin
+  if aScrollBar.fPushedSubWidget=TpvGUIScrollBarSubWidget.IncButton then begin
    Element:=GUI_ELEMENT_BUTTON_PUSHED;
-  end else if aScrollBar.Focused and (aScrollBar.fFocusedSubWidget=pvgsbswIncButton) then begin
+  end else if aScrollBar.Focused and (aScrollBar.fFocusedSubWidget=TpvGUIScrollBarSubWidget.IncButton) then begin
    Element:=GUI_ELEMENT_BUTTON_FOCUSED;
   end else begin
    Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
@@ -6419,7 +6419,7 @@ begin
   aCanvas.Color:=TpvVector4.InlineableCreate(aScrollBar.FontColor.rgb,aScrollBar.FontColor.a*0.25);
  end;
  case aScrollBar.fOrientation of
-  pvgsboHorizontal:begin
+  TpvGUIScrollBarOrientation.Horizontal:begin
    aCanvas.DrawGUIElement(Element,
                           true,
                           TpvVector2.InlineableCreate(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
@@ -6432,7 +6432,7 @@ begin
                       TpvRect.CreateAbsolute(TpvVector2.InlineableCreate((aScrollBar.fSize.x-aScrollBar.fButtonSize)+IconSpacer,IconSpacer),
                                              TpvVector2.InlineableCreate(aScrollBar.fSize.x-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
   end;
-  else {pvgsboVertical:}begin
+  else {TpvGUIScrollBarOrientation.Vertical:}begin
    aCanvas.DrawGUIElement(Element,
                           true,
                           TpvVector2.InlineableCreate(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
@@ -6452,10 +6452,10 @@ end;
 function TpvGUIDefaultVectorBasedSkin.GetSliderPreferredSize(const aSlider:TpvGUISlider):TpvVector2;
 begin
  case aSlider.fOrientation of
-  pvgsoHorizontal:begin
+  TpvGUISliderOrientation.Horizontal:begin
    result:=TpvVector2.InlineableCreate((aSlider.ButtonSize*2.0)+128,aSlider.ButtonSize);
   end;
-  else {pvgsoVertical:}begin
+  else {TpvGUISliderOrientation.Vertical:}begin
    result:=TpvVector2.InlineableCreate(aSlider.ButtonSize,(aSlider.ButtonSize*2.0)+128);
   end;
  end;
@@ -6481,7 +6481,7 @@ begin
  aCanvas.ClipRect:=aSlider.fClipRect;
 
  if aSlider.Enabled then begin
-  if aSlider.Focused xor (aSlider.fPushedSubWidget=pvgsswThumbButton) then begin
+  if aSlider.Focused xor (aSlider.fPushedSubWidget=TpvGUISliderSubWidget.ThumbButton) then begin
    Element:=GUI_ELEMENT_BOX_DARK_FOCUSED;
   end else begin
    Element:=GUI_ELEMENT_BOX_DARK_UNFOCUSED;
@@ -6490,10 +6490,10 @@ begin
   Element:=GUI_ELEMENT_BOX_DARK_DISABLED;
  end;
  case aSlider.fOrientation of
-  pvgsoHorizontal:begin
+  TpvGUISliderOrientation.Horizontal:begin
    Offset:=TpvVector2.InlineableCreate(0.0,6.0);
   end;
-  else {pvgsoVertical:}begin
+  else {TpvGUISliderOrientation.Vertical:}begin
    Offset:=TpvVector2.InlineableCreate(6.0,0.0);
   end;
  end;
@@ -6506,9 +6506,9 @@ begin
 
  Rect:=aSlider.GetThumbButtonRect;
  if aSlider.Enabled then begin
-  if aSlider.fPushedSubWidget=pvgsswThumbButton then begin
+  if aSlider.fPushedSubWidget=TpvGUISliderSubWidget.ThumbButton then begin
    Element:=GUI_ELEMENT_BUTTON_PUSHED;
-  end else if aSlider.Focused and (aSlider.fFocusedSubWidget=pvgsswThumbButton) then begin
+  end else if aSlider.Focused and (aSlider.fFocusedSubWidget=TpvGUISliderSubWidget.ThumbButton) then begin
    Element:=GUI_ELEMENT_BUTTON_FOCUSED;
   end else begin
    Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
@@ -6528,10 +6528,10 @@ end;
 function TpvGUIDefaultVectorBasedSkin.GetProgressBarPreferredSize(const aProgressBar:TpvGUIProgressBar):TpvVector2;
 begin
  case aProgressBar.fOrientation of
-  pvgpboHorizontal:begin
+  TpvGUIProgressBarOrientation.Horizontal:begin
    result:=TpvVector2.InlineableCreate(100,24);
   end;
-  else {pvgpboVertical:}begin
+  else {TpvGUIProgressBarOrientation.Vertical:}begin
    result:=TpvVector2.InlineableCreate(24,100);
   end;
  end;
@@ -6566,10 +6566,10 @@ begin
   Element:=GUI_ELEMENT_BOX_DARK_DISABLED;
  end;
  case aProgressBar.fOrientation of
-  pvgpboHorizontal:begin
+  TpvGUIProgressBarOrientation.Horizontal:begin
    Offset:=TpvVector2.InlineableCreate(0.0,0.0);
   end;
-  else {pvgpboVertical:}begin
+  else {TpvGUIProgressBarOrientation.Vertical:}begin
    Offset:=TpvVector2.InlineableCreate(0.0,0.0);
   end;
  end;
@@ -6590,7 +6590,7 @@ begin
   Element:=GUI_ELEMENT_BOX_DISABLED;
  end;
  case aProgressBar.fOrientation of
-  pvgpboHorizontal:begin
+  TpvGUIProgressBarOrientation.Horizontal:begin
    Offset:=TpvVector2.InlineableCreate(2.0,2.0);
    Scale:=TpvVector2.InlineableCreate((aProgressBar.fValue-aProgressBar.fMinimumValue)/(aProgressBar.fMaximumValue-aProgressBar.fMinimumValue),1.0);
    aCanvas.DrawGUIElement(Element,
@@ -6600,7 +6600,7 @@ begin
                           Offset,
                           Offset+((TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale));
   end;
-  else {pvgpboVertical:}begin
+  else {TpvGUIProgressBarOrientation.Vertical:}begin
    Offset:=TpvVector2.InlineableCreate(2.0,2.0);
    Scale:=TpvVector2.InlineableCreate(1.0,1.0-((aProgressBar.fValue-aProgressBar.fMinimumValue)/(aProgressBar.fMaximumValue-aProgressBar.fMinimumValue)));
    aCanvas.DrawGUIElement(Element,
@@ -6646,7 +6646,7 @@ begin
 
  fSkin:=nil;
 
- fCursor:=pvgcArrow;
+ fCursor:=TpvGUICursor.Arrow;
 
  fPosition:=TpvVector2.InlineableCreate(0.0,0.0);
 
@@ -6670,11 +6670,11 @@ begin
 
  fFontColor:=TpvVector4.Null;
 
- fTextHorizontalAlignment:=pvgtaCenter;
+ fTextHorizontalAlignment:=TpvGUITextAlignment.Center;
 
- fTextVerticalAlignment:=pvgtaMiddle;
+ fTextVerticalAlignment:=TpvGUITextAlignment.Middle;
 
- fTextTruncation:=pvgttNone;
+ fTextTruncation:=TpvGUITextTruncation.None;
 
  fOnKeyEvent:=nil;
 
@@ -6771,113 +6771,113 @@ end;
 
 function TpvGUIWidget.GetEnabled:boolean;
 begin
- result:=pvgwfEnabled in fWidgetFlags;
+ result:=TpvGUIWidgetFlag.Enabled in fWidgetFlags;
 end;
 
 procedure TpvGUIWidget.SetEnabled(const aEnabled:boolean);
 begin
  if aEnabled then begin
-  Include(fWidgetFlags,pvgwfEnabled);
+  Include(fWidgetFlags,TpvGUIWidgetFlag.Enabled);
  end else begin
-  Exclude(fWidgetFlags,pvgwfEnabled);
+  Exclude(fWidgetFlags,TpvGUIWidgetFlag.Enabled);
  end;
 end;
 
 function TpvGUIWidget.GetVisible:boolean;
 begin
- result:=pvgwfVisible in fWidgetFlags;
+ result:=TpvGUIWidgetFlag.Visible in fWidgetFlags;
 end;
 
 procedure TpvGUIWidget.SetVisible(const aVisible:boolean);
 begin
  if aVisible then begin
-  Include(fWidgetFlags,pvgwfVisible);
+  Include(fWidgetFlags,TpvGUIWidgetFlag.Visible);
  end else begin
-  Exclude(fWidgetFlags,pvgwfVisible);
+  Exclude(fWidgetFlags,TpvGUIWidgetFlag.Visible);
  end;
 end;
 
 function TpvGUIWidget.GetDraggable:boolean;
 begin
- result:=pvgwfDraggable in fWidgetFlags;
+ result:=TpvGUIWidgetFlag.Draggable in fWidgetFlags;
 end;
 
 procedure TpvGUIWidget.SetDraggable(const aDraggable:boolean);
 begin
  if aDraggable then begin
-  Include(fWidgetFlags,pvgwfDraggable);
+  Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
  end else begin
-  Exclude(fWidgetFlags,pvgwfDraggable);
+  Exclude(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
  end;
 end;
 
 function TpvGUIWidget.GetFocused:boolean;
 begin
- result:=pvgwfFocused in fWidgetFlags;
+ result:=TpvGUIWidgetFlag.Focused in fWidgetFlags;
 end;
 
 procedure TpvGUIWidget.SetFocused(const aFocused:boolean);
 begin
  if aFocused then begin
-  Include(fWidgetFlags,pvgwfFocused);
+  Include(fWidgetFlags,TpvGUIWidgetFlag.Focused);
  end else begin
-  Exclude(fWidgetFlags,pvgwfFocused);
+  Exclude(fWidgetFlags,TpvGUIWidgetFlag.Focused);
  end;
 end;
 
 function TpvGUIWidget.GetPointerFocused:boolean;
 begin
- result:=pvgwfPointerFocused in fWidgetFlags;
+ result:=TpvGUIWidgetFlag.PointerFocused in fWidgetFlags;
 end;
 
 procedure TpvGUIWidget.SetPointerFocused(const aPointerFocused:boolean);
 begin
  if aPointerFocused then begin
-  Include(fWidgetFlags,pvgwfPointerFocused);
+  Include(fWidgetFlags,TpvGUIWidgetFlag.PointerFocused);
  end else begin
-  Exclude(fWidgetFlags,pvgwfPointerFocused);
+  Exclude(fWidgetFlags,TpvGUIWidgetFlag.PointerFocused);
  end;
 end;
 
 function TpvGUIWidget.GetTabStop:boolean;
 begin
- result:=pvgwfTabStop in fWidgetFlags;
+ result:=TpvGUIWidgetFlag.TabStop in fWidgetFlags;
 end;
 
 procedure TpvGUIWidget.SetTabStop(const aTabStop:boolean);
 begin
  if aTabStop then begin
-  Include(fWidgetFlags,pvgwfTabStop);
+  Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
  end else begin
-  Exclude(fWidgetFlags,pvgwfTabStop);
+  Exclude(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
  end;
 end;
 
 function TpvGUIWidget.GetKeyPreview:boolean;
 begin
- result:=pvgwfKeyPreview in fWidgetFlags;
+ result:=TpvGUIWidgetFlag.KeyPreview in fWidgetFlags;
 end;
 
 procedure TpvGUIWidget.SetKeyPreview(const aKeyPreview:boolean);
 begin
  if aKeyPreview then begin
-  Include(fWidgetFlags,pvgwfKeyPreview);
+  Include(fWidgetFlags,TpvGUIWidgetFlag.KeyPreview);
  end else begin
-  Exclude(fWidgetFlags,pvgwfKeyPreview);
+  Exclude(fWidgetFlags,TpvGUIWidgetFlag.KeyPreview);
  end;
 end;
 
 function TpvGUIWidget.GetWantAllKeys:boolean;
 begin
- result:=pvgwfWantAllKeys in fWidgetFlags;
+ result:=TpvGUIWidgetFlag.WantAllKeys in fWidgetFlags;
 end;
 
 procedure TpvGUIWidget.SetWantAllKeys(const aWantAllKeys:boolean);
 begin
  if aWantAllKeys then begin
-  Include(fWidgetFlags,pvgwfWantAllKeys);
+  Include(fWidgetFlags,TpvGUIWidgetFlag.WantAllKeys);
  end else begin
-  Exclude(fWidgetFlags,pvgwfWantAllKeys);
+  Exclude(fWidgetFlags,TpvGUIWidgetFlag.WantAllKeys);
  end;
 end;
 
@@ -7051,14 +7051,14 @@ var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
- if (fWidgetFlags*[pvgwfVisible,pvgwfEnabled])=[pvgwfVisible,pvgwfEnabled] then begin
+ if (fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
   for ChildIndex:=0 to fChildren.Count-1 do begin
    Child:=fChildren.Items[ChildIndex];
    if assigned(Child) and (Child is TpvGUIWidget) then begin
     ChildWidget:=Child as TpvGUIWidget;
     if not ((self is TpvGUIWindow) and
             (ChildWidget=(self as TpvGUIWindow).fButtonPanel)) then begin
-     if (ChildWidget.fWidgetFlags*[pvgwfVisible,pvgwfEnabled])=[pvgwfVisible,pvgwfEnabled] then begin
+     if (ChildWidget.fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled] then begin
       if ChildWidget.TabStop then begin
        aList.Add(ChildWidget);
       end;
@@ -7126,7 +7126,7 @@ begin
     end;
     Widget:=List.Items[Index];
     if (Widget<>aCurrentWidget) and
-       ((Widget.fWidgetFlags*[pvgwfVisible,pvgwfEnabled])=[pvgwfVisible,pvgwfEnabled]) and
+       ((Widget.fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled]) and
        (Widget.TabStop or not aCheckTabStop) and
        ((Widget.fParent=self) or not aCheckParent) then begin
      result:=Widget;
@@ -7148,7 +7148,7 @@ begin
   if assigned(ParentWidget) then begin
    CurrentWidget:=ParentWidget.FindNextWidget(aFromWidget,not aToPrevious,true,false);
    if assigned(CurrentWidget) and
-     (pvgwfTabStop in CurrentWidget.fWidgetFlags) then begin
+     (TpvGUIWidgetFlag.TabStop in CurrentWidget.fWidgetFlags) then begin
     fInstance.UpdateFocus(CurrentWidget);
     result:=true;
    end;
@@ -7199,7 +7199,7 @@ begin
  CurrentWidget:=self;
  while assigned(CurrentWidget) do begin
   if (CurrentWidget<>self) and
-     (pvgwfScissor in CurrentWidget.fWidgetFlags) then begin
+     (TpvGUIWidgetFlag.Scissor in CurrentWidget.fWidgetFlags) then begin
    result:=CurrentWidget;
    exit;
   end else begin
@@ -7279,39 +7279,39 @@ end;
 
 procedure TpvGUIWidget.Show;
 begin
- if not (pvgwfVisible in fWidgetFlags) then begin
+ if not (TpvGUIWidgetFlag.Visible in fWidgetFlags) then begin
   SetVisible(true);
  end;
 end;
 
 procedure TpvGUIWidget.Hide;
 begin
- if pvgwfVisible in fWidgetFlags then begin
+ if TpvGUIWidgetFlag.Visible in fWidgetFlags then begin
   SetVisible(false);
  end;
 end;
 
 function TpvGUIWidget.Enter:boolean;
 begin
- Include(fWidgetFlags,pvgwfFocused);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.Focused);
  result:=false;
 end;
 
 function TpvGUIWidget.Leave:boolean;
 begin
- Exclude(fWidgetFlags,pvgwfFocused);
+ Exclude(fWidgetFlags,TpvGUIWidgetFlag.Focused);
  result:=false;
 end;
 
 function TpvGUIWidget.PointerEnter:boolean;
 begin
- Include(fWidgetFlags,pvgwfPointerFocused);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.PointerFocused);
  result:=false;
 end;
 
 function TpvGUIWidget.PointerLeave:boolean;
 begin
- Exclude(fWidgetFlags,pvgwfPointerFocused);
+ Exclude(fWidgetFlags,TpvGUIWidgetFlag.PointerFocused);
  result:=false;
 end;
 
@@ -7341,7 +7341,7 @@ begin
     ChildWidget:=Child as TpvGUIWidget;
     if ChildWidget.Visible then begin
      case aPointerEvent.PointerEventType of
-      POINTEREVENT_MOTION,POINTEREVENT_DRAG:begin
+      TpvApplicationInputPointerEventType.MOTION,TpvApplicationInputPointerEventType.DRAG:begin
        ChildPointerEvent.Position:=aPointerEvent.Position-ChildWidget.fPosition;
        PreviousContained:=ChildWidget.Contains(ChildPointerEvent.Position-ChildPointerEvent.RelativePosition);
        CurrentContained:=ChildWidget.Contains(ChildPointerEvent.Position);
@@ -7370,9 +7370,9 @@ begin
     end;
    end;
   end;
-  if (aPointerEvent.PointerEventType=POINTEREVENT_DOWN) and
-     (aPointerEvent.Button=BUTTON_LEFT) and not
-     (pvgwfFocused in fWidgetFlags) then begin
+  if (aPointerEvent.PointerEventType=TpvApplicationInputPointerEventType.DOWN) and
+     (aPointerEvent.Button=TpvApplicationInputPointerButton.LEFT) and not
+     (TpvGUIWidgetFlag.Focused in fWidgetFlags) then begin
    RequestFocus;
   end;
   result:=false;
@@ -7445,8 +7445,8 @@ begin
    fCanvas.ClipRect:=fParentClipRect;
    fCanvas.Color:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
    fCanvas.LineWidth:=4.0;
-   fCanvas.LineJoin:=pvcljRound;
-   fCanvas.LineCap:=pvclcRound;
+   fCanvas.LineJoin:=TpvCanvasLineJoin.Round;
+   fCanvas.LineCap:=TpvCanvasLineCap.Round;
    fCanvas.BeginPath;
    fCanvas.MoveTo(0.0,0.0);
    fCanvas.LineTo(Width,0.0);
@@ -7459,7 +7459,7 @@ begin
    fCanvas.Pop;
   end;
  end;
- if pvgwfScissor in fWidgetFlags then begin
+ if TpvGUIWidgetFlag.Scissor in fWidgetFlags then begin
   fParentClipRect:=fClipRect;
  end;
  for ChildIndex:=0 to fChildren.Count-1 do begin
@@ -7477,7 +7477,7 @@ begin
    end;
   end;
  end;
- if pvgwfDrawFocus in fWidgetFlags then begin
+ if TpvGUIWidgetFlag.DrawFocus in fWidgetFlags then begin
   Skin.DrawFocus(fCanvas,self);
  end;
 end;
@@ -7565,9 +7565,9 @@ begin
 
  fHoveredWidget:=nil;
 
- fVisibleCursor:=pvgcArrow;
+ fVisibleCursor:=TpvGUICursor.Arrow;
 
- Include(fWidgetFlags,pvgwfScissor);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.Scissor);
 
  SetCountBuffers(1);
 
@@ -7899,13 +7899,13 @@ begin
    result:=(fPopupMenuStack[fPopupMenuStack.Count-1] as TpvGUIPopupMenu).KeyEvent(aKeyEvent);
   end;
   if not result then begin
-   if (aKeyEvent.KeyEventType=KEYEVENT_TYPED) and (aKeyEvent.KeyCode=KEYCODE_TAB) then begin
+   if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.TYPED) and (aKeyEvent.KeyCode=KEYCODE_TAB) then begin
     if fCurrentFocusPath.Count>0 then begin
      Current:=fCurrentFocusPath.Items[fCurrentFocusPath.Count-1];
      if (Current<>self) and (Current is TpvGUIWidget) then begin
       CurrentWidget:=Current as TpvGUIWidget;
       if CurrentWidget.Focused then begin
-       result:=ProcessTab(CurrentWidget,KEYMODIFIER_SHIFT IN aKeyEvent.KeyModifiers);
+       result:=ProcessTab(CurrentWidget,TpvApplicationInputKeyModifier.SHIFT IN aKeyEvent.KeyModifiers);
        if result then begin
         exit;
        end;
@@ -7978,7 +7978,7 @@ begin
   end;
   if not result then begin
    case aPointerEvent.PointerEventType of
-    POINTEREVENT_DOWN,POINTEREVENT_UP:begin
+    TpvApplicationInputPointerEventType.DOWN,TpvApplicationInputPointerEventType.UP:begin
      if (fModalWindowStack.Count>0) and
         (fModalWindowStack[fModalWindowStack.Count-1] is TpvGUIWindow) then begin
       CurrentWindow:=fModalWindowStack[fModalWindowStack.Count-1] as TpvGUIWindow;
@@ -7987,9 +7987,9 @@ begin
       end;
      end;
      case aPointerEvent.PointerEventType of
-      POINTEREVENT_DOWN:begin
+      TpvApplicationInputPointerEventType.DOWN:begin
        case aPointerEvent.Button of
-        BUTTON_LEFT,BUTTON_RIGHT:begin
+        TpvApplicationInputPointerButton.LEFT,TpvApplicationInputPointerButton.RIGHT:begin
          TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
          CurrentWidget:=FindWidget(aPointerEvent.Position);
          if assigned(CurrentWidget) and
@@ -8008,15 +8008,15 @@ begin
         end;
        end;
       end;
-      POINTEREVENT_UP:begin
+      TpvApplicationInputPointerEventType.UP:begin
        CurrentWidget:=FindWidget(aPointerEvent.Position);
        if assigned(CurrentWidget) and CurrentWidget.HasParent(fDragWidget) then begin
         CurrentWidget:=fDragWidget;
        end;
        if assigned(fDragWidget) and (fDragWidget<>CurrentWidget) then begin
         LocalPointerEvent:=aPointerEvent;
-        LocalPointerEvent.PointerEventType:=POINTEREVENT_UP;
-        LocalPointerEvent.Button:=BUTTON_LEFT;
+        LocalPointerEvent.PointerEventType:=TpvApplicationInputPointerEventType.UP;
+        LocalPointerEvent.Button:=TpvApplicationInputPointerButton.LEFT;
         LocalPointerEvent.Position:=LocalPointerEvent.Position-fDragWidget.AbsolutePosition;
         fDragWidget.PointerEvent(LocalPointerEvent);
        end;
@@ -8026,10 +8026,10 @@ begin
      result:=inherited PointerEvent(aPointerEvent);
      DoUpdateCursor:=true;
     end;
-    POINTEREVENT_MOTION:begin
+    TpvApplicationInputPointerEventType.MOTION:begin
      if assigned(fDragWidget) then begin
       LocalPointerEvent:=aPointerEvent;
-      LocalPointerEvent.PointerEventType:=POINTEREVENT_DRAG;
+      LocalPointerEvent.PointerEventType:=TpvApplicationInputPointerEventType.DRAG;
       LocalPointerEvent.Position:=LocalPointerEvent.Position-fDragWidget.AbsolutePosition;
       result:=fDragWidget.PointerEvent(LocalPointerEvent);
      end else begin
@@ -8037,7 +8037,7 @@ begin
      end;
      DoUpdateCursor:=true;
     end;
-    POINTEREVENT_DRAG:begin
+    TpvApplicationInputPointerEventType.DRAG:begin
      result:=inherited PointerEvent(aPointerEvent);
     end;
    end;
@@ -8046,7 +8046,7 @@ begin
    if assigned(fDragWidget) then begin
     fVisibleCursor:=fDragWidget.fCursor;
    end else if IsCursorOnMenu then begin
-    fVisibleCursor:=pvgcArrow;
+    fVisibleCursor:=TpvGUICursor.Arrow;
    end else begin
     CurrentWidget:=FindWidget(aPointerEvent.Position);
     if assigned(CurrentWidget) then begin
@@ -8162,17 +8162,17 @@ begin
 
  fCachedTitleInvalidated:=true;
 
- fMouseAction:=pvgwmaNone;
+ fMouseAction:=TpvGUIWindowMouseAction.None;
 
  fWindowFlags:=TpvGUIWindow.DefaultFlags;
 
- Include(fWidgetFlags,pvgwfScissor);
-//Include(fWidgetFlags,pvgwfDrawFocus);
- Include(fWidgetFlags,pvgwfDraggable);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.Scissor);
+//Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
 
- fLastWindowState:=TpvGUIWindowState.pvgwsNormal;
+ fLastWindowState:=TpvGUIWindowState.Normal;
 
- fWindowState:=TpvGUIWindowState.pvgwsNormal;
+ fWindowState:=TpvGUIWindowState.Normal;
 
  fLayout:=TpvGUIRootLayout.Create(self);
 
@@ -8188,9 +8188,9 @@ begin
 
  fCloseButton:=nil;
 
- fTextHorizontalAlignment:=pvgtaCenter;
+ fTextHorizontalAlignment:=TpvGUITextAlignment.Center;
 
- fTextTruncation:=pvgttMiddle;
+ fTextTruncation:=TpvGUITextTruncation.Middle;
 
  end;
 
@@ -8223,16 +8223,16 @@ end;
 procedure TpvGUIWindow.OnWindowHeaderButtonClick(const aSender:TpvGUIObject);
 begin
  if aSender=fMinimizationButton then begin
-  if fWindowState=pvgwsMinimized then begin
-   WindowState:=pvgwsNormal;
+  if fWindowState=TpvGUIWindowState.Minimized then begin
+   WindowState:=TpvGUIWindowState.Normal;
   end else begin
-   WindowState:=pvgwsMinimized;
+   WindowState:=TpvGUIWindowState.Minimized;
   end;
  end else if aSender=fMaximizationButton then begin
-  if fWindowState=pvgwsMaximized then begin
-   WindowState:=pvgwsNormal;
+  if fWindowState=TpvGUIWindowState.Maximized then begin
+   WindowState:=TpvGUIWindowState.Normal;
   end else begin
-   WindowState:=pvgwsMaximized;
+   WindowState:=TpvGUIWindowState.Maximized;
   end;
  end else if aSender=fCloseButton then begin
   DisposeWindow;
@@ -8252,7 +8252,7 @@ begin
   fMinimizationButton.fIconHeight:=Skin.fWindowButtonIconHeight;
   fMinimizationButton.fCaption:='';
   fMinimizationButton.OnClick:=OnWindowHeaderButtonClick;
-  fMinimizationButton.fWidgetFlags:=fMinimizationButton.fWidgetFlags-[pvgwfTabStop];
+  fMinimizationButton.fWidgetFlags:=fMinimizationButton.fWidgetFlags-[TpvGUIWidgetFlag.TabStop];
  end;
 end;
 
@@ -8264,7 +8264,7 @@ begin
   fMaximizationButton.fIconHeight:=Skin.fWindowButtonIconHeight;
   fMaximizationButton.fCaption:='';
   fMaximizationButton.OnClick:=OnWindowHeaderButtonClick;
-  fMaximizationButton.fWidgetFlags:=fMaximizationButton.fWidgetFlags-[pvgwfTabStop];
+  fMaximizationButton.fWidgetFlags:=fMaximizationButton.fWidgetFlags-[TpvGUIWidgetFlag.TabStop];
  end;
 end;
 
@@ -8276,7 +8276,7 @@ begin
   fCloseButton.fIconHeight:=Skin.fWindowButtonIconHeight;
   fCloseButton.fCaption:='';
   fCloseButton.OnClick:=OnWindowHeaderButtonClick;
-  fCloseButton.fWidgetFlags:=fCloseButton.fWidgetFlags-[pvgwfTabStop];
+  fCloseButton.fWidgetFlags:=fCloseButton.fWidgetFlags-[TpvGUIWidgetFlag.TabStop];
  end;
 end;
 
@@ -8297,10 +8297,10 @@ end;
 
 procedure TpvGUIWindow.SetWindowFlags(const aWindowFlags:TpvGUIWindowFlags);
 begin
- if ((pvgwfModal in fWindowFlags)<>(pvgwfModal in aWindowFlags)) and
+ if ((TpvGUIWindowFlag.Modal in fWindowFlags)<>(TpvGUIWindowFlag.Modal in aWindowFlags)) and
     assigned(fInstance) and
     assigned(fInstance.fModalWindowStack) then begin
-  if pvgwfModal in aWindowFlags then begin
+  if TpvGUIWindowFlag.Modal in aWindowFlags then begin
    if fInstance.fModalWindowStack.IndexOf(self)<0 then begin
     fInstance.fModalWindowStack.Add(self);
    end;
@@ -8315,13 +8315,13 @@ procedure TpvGUIWindow.SetWindowState(const aWindowState:TpvGUIWindowState);
 var MinimumPosition,MinimumSize:TpvVector2;
 begin
  if fWindowState<>aWindowState then begin
-  if fWindowState=pvgwsNormal then begin
+  if fWindowState=TpvGUIWindowState.Normal then begin
    fSavedPosition:=fPosition;
    fSavedSize:=fSize;
   end;
   MinimumPosition:=TpvVector2.Null;
   if assigned(fParent) and (fParent is TpvGUIWindow) then begin
-   if pvgwfHeader in (fParent as TpvGUIWindow).fWindowFlags then begin
+   if TpvGUIWindowFlag.Header in (fParent as TpvGUIWindow).fWindowFlags then begin
     MinimumPosition.y:=MinimumPosition.y+Skin.fWindowHeaderHeight;
    end;
    if assigned((fParent as TpvGUIWindow).fMenu) then begin
@@ -8333,16 +8333,16 @@ begin
    end;
   end;
   case aWindowState of
-   pvgwsNormal:begin
-    if fWindowState=pvgwsMaximized then begin
+   TpvGUIWindowState.Normal:begin
+    if fWindowState=TpvGUIWindowState.Maximized then begin
      fPosition:=fSavedPosition;
     end;
     fSize:=fSavedSize;
    end;
-   pvgwsMinimized:begin
+   TpvGUIWindowState.Minimized:begin
     fSize.y:=Skin.fWindowHeaderHeight;
    end;
-   pvgwsMaximized:begin
+   TpvGUIWindowState.Maximized:begin
     fPosition:=MinimumPosition;
     if assigned(fParent) then begin
      if fParent is TpvGUIInstance then begin
@@ -8355,7 +8355,7 @@ begin
     end;
    end;
   end;
-  if aWindowState=pvgwsMinimized then begin
+  if aWindowState=TpvGUIWindowState.Minimized then begin
    MinimumSize:=TpvVector2.InlineableCreate(Skin.fMinimizedWindowMinimumWidth,Skin.fMinimizedWindowMinimumHeight);
   end else begin
    MinimumSize:=TpvVector2.InlineableCreate(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
@@ -8373,7 +8373,7 @@ begin
   fLastWindowState:=fWindowState;
   fWindowState:=aWindowState;
   case fWindowState of
-   pvgwsNormal:begin
+   TpvGUIWindowState.Normal:begin
     if assigned(fMinimizationButton) then begin
      fMinimizationButton.fIcon:=Skin.fIconWindowMinimize;
     end;
@@ -8384,7 +8384,7 @@ begin
      fCloseButton.fIcon:=Skin.fIconWindowClose;
     end;
    end;
-   pvgwsMinimized:begin
+   TpvGUIWindowState.Minimized:begin
     if assigned(fMinimizationButton) then begin
      fMinimizationButton.fIcon:=Skin.fIconWindowRestore;
     end;
@@ -8395,7 +8395,7 @@ begin
      fCloseButton.fIcon:=Skin.fIconWindowClose;
     end;
    end;
-   pvgwsMaximized:begin
+   TpvGUIWindowState.Maximized:begin
     if assigned(fMinimizationButton) then begin
      fMinimizationButton.fIcon:=Skin.fIconWindowMinimize;
     end;
@@ -8413,15 +8413,15 @@ end;
 
 function TpvGUIWindow.GetModal:boolean;
 begin
- result:=pvgwfModal in fWindowFlags;
+ result:=TpvGUIWindowFlag.Modal in fWindowFlags;
 end;
 
 procedure TpvGUIWindow.SetModal(const aModal:boolean);
 begin
  if aModal then begin
-  SetWindowFlags(fWindowFlags+[pvgwfModal]);
+  SetWindowFlags(fWindowFlags+[TpvGUIWindowFlag.Modal]);
  end else begin
-  SetWindowFlags(fWindowFlags-[pvgwfModal]);
+  SetWindowFlags(fWindowFlags-[TpvGUIWindowFlag.Modal]);
  end;
 end;
 
@@ -8429,7 +8429,7 @@ function TpvGUIWindow.GetButtonPanel:TpvGUIPanel;
 begin
  if not assigned(fButtonPanel) then begin
   fButtonPanel:=TpvGUIPanel.Create(self);
-  fButtonPanel.fLayout:=TpvGUIBoxLayout.Create(fButtonPanel,pvglaMiddle,pvgloHorizontal,0.0,4.0);
+  fButtonPanel.fLayout:=TpvGUIBoxLayout.Create(fButtonPanel,TpvGUILayoutAlignment.Middle,TpvGUILayoutOrientation.Horizontal,0.0,4.0);
  end;
  result:=fButtonPanel;
 end;
@@ -8446,11 +8446,11 @@ end;
 function TpvGUIWindow.GetFixedSize:TpvVector2;
 begin
  case fWindowState of
-  pvgwsMinimized:begin
+  TpvGUIWindowState.Minimized:begin
    result:=inherited GetFixedSize;
    result.y:=Skin.fWindowHeaderHeight;
   end;
-  pvgwsMaximized:begin
+  TpvGUIWindowState.Maximized:begin
    if assigned(fParent) then begin
     if fParent is TpvGUIInstance then begin
      result:=(fParent as TpvGUIInstance).fContent.fSize;
@@ -8478,48 +8478,48 @@ end;
 
 function TpvGUIWindow.FindWidget(const aPosition:TpvVector2):TpvGUIWidget;
 begin
- if fWindowState=pvgwsNormal then begin
-  if (fWindowState in [pvgwsNormal]) and
-     (pvgwfResizableNW in fWindowFlags) and
+ if fWindowState=TpvGUIWindowState.Normal then begin
+  if (fWindowState in [TpvGUIWindowState.Normal]) and
+     (TpvGUIWindowFlag.ResizableNW in fWindowFlags) and
      (aPosition.x<Skin.fWindowResizeGripSize) and
      (aPosition.y<Skin.fWindowResizeGripSize) then begin
    result:=self;
    exit;
-  end else if (fWindowState in [pvgwsNormal]) and
-              (pvgwfResizableNE in fWindowFlags) and
+  end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+              (TpvGUIWindowFlag.ResizableNE in fWindowFlags) and
               (aPosition.x>(fSize.x-Skin.fWindowResizeGripSize)) and
               (aPosition.y<Skin.fWindowResizeGripSize) then begin
    result:=self;
    exit;
-  end else if (fWindowState in [pvgwsNormal]) and
-              (pvgwfResizableSW in fWindowFlags) and
+  end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+              (TpvGUIWindowFlag.ResizableSW in fWindowFlags) and
               (aPosition.x<Skin.fWindowResizeGripSize) and
               (aPosition.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
    result:=self;
    exit;
-  end else if (fWindowState in [pvgwsNormal]) and
-              (pvgwfResizableSE in fWindowFlags) and
+  end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+              (TpvGUIWindowFlag.ResizableSE in fWindowFlags) and
               (aPosition.x>(fSize.x-Skin.fWindowResizeGripSize)) and
               (aPosition.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
    result:=self;
    exit;
-  end else if (fWindowState in [pvgwsNormal]) and
-              (pvgwfResizableN in fWindowFlags) and
+  end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+              (TpvGUIWindowFlag.ResizableN in fWindowFlags) and
               (aPosition.y<Skin.fWindowResizeGripSize) then begin
    result:=self;
    exit;
-  end else if (fWindowState in [pvgwsNormal]) and
-              (pvgwfResizableS in fWindowFlags) and
+  end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+              (TpvGUIWindowFlag.ResizableS in fWindowFlags) and
               (aPosition.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
    result:=self;
    exit;
-  end else if (fWindowState in [pvgwsNormal]) and
-              (pvgwfResizableW in fWindowFlags) and
+  end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+              (TpvGUIWindowFlag.ResizableW in fWindowFlags) and
               (aPosition.x<Skin.fWindowResizeGripSize) then begin
    result:=self;
    exit;
-  end else if (fWindowState in [pvgwsNormal]) and
-              (pvgwfResizableE in fWindowFlags) and
+  end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+              (TpvGUIWindowFlag.ResizableE in fWindowFlags) and
               (aPosition.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
    result:=self;
    exit;
@@ -8602,48 +8602,48 @@ begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
   OK:=false;
-  if (aPointerEvent.PointerEventType=POINTEREVENT_DRAG) or
-     (fMouseAction<>pvgwmaNone) then begin
+  if (aPointerEvent.PointerEventType=TpvApplicationInputPointerEventType.DRAG) or
+     (fMouseAction<>TpvGUIWindowMouseAction.None) then begin
    OK:=true;
-  end else if (fWindowState=pvgwsNormal) and
+  end else if (fWindowState=TpvGUIWindowState.Normal) and
               (aPointerEvent.Position.x>=0) and
               (aPointerEvent.Position.y>=0) and
               (aPointerEvent.Position.x<fSize.x) and
               (aPointerEvent.Position.y<fSize.y) then begin
-   if (fWindowState in [pvgwsNormal]) and
-      (pvgwfResizableNW in fWindowFlags) and
+   if (fWindowState in [TpvGUIWindowState.Normal]) and
+      (TpvGUIWindowFlag.ResizableNW in fWindowFlags) and
       (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
       (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
     OK:=true;
-   end else if (fWindowState in [pvgwsNormal]) and
-               (pvgwfResizableNE in fWindowFlags) and
+   end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+               (TpvGUIWindowFlag.ResizableNE in fWindowFlags) and
                (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
                (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
     OK:=true;
-   end else if (fWindowState in [pvgwsNormal]) and
-               (pvgwfResizableSW in fWindowFlags) and
+   end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+               (TpvGUIWindowFlag.ResizableSW in fWindowFlags) and
                (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
                (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
     OK:=true;
-   end else if (fWindowState in [pvgwsNormal]) and
-               (pvgwfResizableSE in fWindowFlags) and
+   end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+               (TpvGUIWindowFlag.ResizableSE in fWindowFlags) and
                (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
                (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
     OK:=true;
-   end else if (fWindowState in [pvgwsNormal]) and
-               (pvgwfResizableN in fWindowFlags) and
+   end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+               (TpvGUIWindowFlag.ResizableN in fWindowFlags) and
                (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
     OK:=true;
-   end else if (fWindowState in [pvgwsNormal]) and
-               (pvgwfResizableS in fWindowFlags) and
+   end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+               (TpvGUIWindowFlag.ResizableS in fWindowFlags) and
                (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
     OK:=true;
-   end else if (fWindowState in [pvgwsNormal]) and
-               (pvgwfResizableW in fWindowFlags) and
+   end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+               (TpvGUIWindowFlag.ResizableW in fWindowFlags) and
                (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
     OK:=true;
-   end else if (fWindowState in [pvgwsNormal]) and
-               (pvgwfResizableE in fWindowFlags) and
+   end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+               (TpvGUIWindowFlag.ResizableE in fWindowFlags) and
                (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
     OK:=true;
    end;
@@ -8656,126 +8656,126 @@ begin
   if not result then begin
    OldSize:=fSize;
    case aPointerEvent.PointerEventType of
-    POINTEREVENT_DOWN:begin
-     fMouseAction:=pvgwmaNone;
-     fCursor:=pvgcArrow;
+    TpvApplicationInputPointerEventType.DOWN:begin
+     fMouseAction:=TpvGUIWindowMouseAction.None;
+     fCursor:=TpvGUICursor.Arrow;
      if (aPointerEvent.Position.x>=0) and
         (aPointerEvent.Position.y>=0) and
         (aPointerEvent.Position.x<fSize.x) and
         (aPointerEvent.Position.y<fSize.y) then begin
-      if (fWindowState in [pvgwsNormal]) and
-         (pvgwfResizableNW in fWindowFlags) and
+      if (fWindowState in [TpvGUIWindowState.Normal]) and
+         (TpvGUIWindowFlag.ResizableNW in fWindowFlags) and
          (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
          (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-       fMouseAction:=pvgwmaSizeNW;
-       fCursor:=pvgcNWSE;
-      end else if (fWindowState in [pvgwsNormal]) and
-                  (pvgwfResizableNE in fWindowFlags) and
+       fMouseAction:=TpvGUIWindowMouseAction.SizeNW;
+       fCursor:=TpvGUICursor.NWSE;
+      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                  (TpvGUIWindowFlag.ResizableNE in fWindowFlags) and
                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
                   (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-       fMouseAction:=pvgwmaSizeNE;
-       fCursor:=pvgcNESW;
-      end else if (fWindowState in [pvgwsNormal]) and
-                  (pvgwfResizableSW in fWindowFlags) and
+       fMouseAction:=TpvGUIWindowMouseAction.SizeNE;
+       fCursor:=TpvGUICursor.NESW;
+      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                  (TpvGUIWindowFlag.ResizableSW in fWindowFlags) and
                   (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-       fMouseAction:=pvgwmaSizeSW;
-       fCursor:=pvgcNESW;
-      end else if (fWindowState in [pvgwsNormal]) and
-                  (pvgwfResizableSE in fWindowFlags) and
+       fMouseAction:=TpvGUIWindowMouseAction.SizeSW;
+       fCursor:=TpvGUICursor.NESW;
+      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                  (TpvGUIWindowFlag.ResizableSE in fWindowFlags) and
                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-       fMouseAction:=pvgwmaSizeSE;
-       fCursor:=pvgcNWSE;
-      end else if (fWindowState in [pvgwsNormal]) and
-                  (pvgwfResizableN in fWindowFlags) and
+       fMouseAction:=TpvGUIWindowMouseAction.SizeSE;
+       fCursor:=TpvGUICursor.NWSE;
+      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                  (TpvGUIWindowFlag.ResizableN in fWindowFlags) and
                   (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-       fMouseAction:=pvgwmaSizeN;
-       fCursor:=pvgcNS;
-      end else if (fWindowState in [pvgwsNormal]) and
-                  (pvgwfResizableS in fWindowFlags) and
+       fMouseAction:=TpvGUIWindowMouseAction.SizeN;
+       fCursor:=TpvGUICursor.NS;
+      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                  (TpvGUIWindowFlag.ResizableS in fWindowFlags) and
                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-       fMouseAction:=pvgwmaSizeS;
-       fCursor:=pvgcNS;
-      end else if (fWindowState in [pvgwsNormal]) and
-                  (pvgwfResizableW in fWindowFlags) and
+       fMouseAction:=TpvGUIWindowMouseAction.SizeS;
+       fCursor:=TpvGUICursor.NS;
+      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                  (TpvGUIWindowFlag.ResizableW in fWindowFlags) and
                   (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
-       fMouseAction:=pvgwmaSizeW;
-       fCursor:=pvgcEW;
-      end else if (fWindowState in [pvgwsNormal]) and
-                  (pvgwfResizableE in fWindowFlags) and
+       fMouseAction:=TpvGUIWindowMouseAction.SizeW;
+       fCursor:=TpvGUICursor.EW;
+      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                  (TpvGUIWindowFlag.ResizableE in fWindowFlags) and
                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
-       fMouseAction:=pvgwmaSizeE;
-       fCursor:=pvgcEW;
-      end else if (pvgwfMovable in fWindowFlags) and
+       fMouseAction:=TpvGUIWindowMouseAction.SizeE;
+       fCursor:=TpvGUICursor.EW;
+      end else if (TpvGUIWindowFlag.Movable in fWindowFlags) and
                   (aPointerEvent.Position.y<Skin.fWindowHeaderHeight) then begin
-       if fWindowState=pvgwsMaximized then begin
+       if fWindowState=TpvGUIWindowState.Maximized then begin
         fSavedPosition.x:=Max(0.0,aPointerEvent.Position.x-(fSavedSize.x*0.5));
         fSavedPosition.y:=fPosition.y;
-        WindowState:=pvgwsNormal;
+        WindowState:=TpvGUIWindowState.Normal;
        end;
-       fMouseAction:=pvgwmaMove;
-       fCursor:=pvgcMove;
+       fMouseAction:=TpvGUIWindowMouseAction.Move;
+       fCursor:=TpvGUICursor.Move;
       end;
       RequestFocus;
      end;
-{    if not (pvgwfFocused in fWidgetFlags) then begin
+{    if not (TpvGUIWidgetFlag.Focused in fWidgetFlags) then begin
       RequestFocus;
      end;}
     end;
-    POINTEREVENT_UP:begin
-     fMouseAction:=pvgwmaNone;
-     fCursor:=pvgcArrow;
+    TpvApplicationInputPointerEventType.UP:begin
+     fMouseAction:=TpvGUIWindowMouseAction.None;
+     fCursor:=TpvGUICursor.Arrow;
     end;
-    POINTEREVENT_MOTION:begin
-     if fMouseAction=pvgwmaNone then begin
-      fCursor:=pvgcArrow;
-      if (fWindowState in [pvgwsNormal]) and
-         (pvgwfResizableNW in fWindowFlags) and
+    TpvApplicationInputPointerEventType.MOTION:begin
+     if fMouseAction=TpvGUIWindowMouseAction.None then begin
+      fCursor:=TpvGUICursor.Arrow;
+      if (fWindowState in [TpvGUIWindowState.Normal]) and
+         (TpvGUIWindowFlag.ResizableNW in fWindowFlags) and
          (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
          (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-       fCursor:=pvgcNWSE;
-      end else if (fWindowState in [pvgwsNormal]) and
-                  (pvgwfResizableNE in fWindowFlags) and
+       fCursor:=TpvGUICursor.NWSE;
+      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                  (TpvGUIWindowFlag.ResizableNE in fWindowFlags) and
                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
                   (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-       fCursor:=pvgcNESW;
-      end else if (fWindowState in [pvgwsNormal]) and
-                  (pvgwfResizableSW in fWindowFlags) and
+       fCursor:=TpvGUICursor.NESW;
+      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                  (TpvGUIWindowFlag.ResizableSW in fWindowFlags) and
                   (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) and
                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-       fCursor:=pvgcNESW;
-      end else if (fWindowState in [pvgwsNormal]) and
-                  (pvgwfResizableSE in fWindowFlags) and
+       fCursor:=TpvGUICursor.NESW;
+      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                  (TpvGUIWindowFlag.ResizableSE in fWindowFlags) and
                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) and
                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-       fCursor:=pvgcNWSE;
-      end else if (fWindowState in [pvgwsNormal]) and
-                  (pvgwfResizableN in fWindowFlags) and
+       fCursor:=TpvGUICursor.NWSE;
+      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                  (TpvGUIWindowFlag.ResizableN in fWindowFlags) and
                   (aPointerEvent.Position.y<Skin.fWindowResizeGripSize) then begin
-       fCursor:=pvgcNS;
-      end else if (fWindowState in [pvgwsNormal]) and
-                  (pvgwfResizableS in fWindowFlags) and
+       fCursor:=TpvGUICursor.NS;
+      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                  (TpvGUIWindowFlag.ResizableS in fWindowFlags) and
                   (aPointerEvent.Position.y>(fSize.y-Skin.fWindowResizeGripSize)) then begin
-       fCursor:=pvgcNS;
-      end else if (fWindowState in [pvgwsNormal]) and
-                  (pvgwfResizableW in fWindowFlags) and
+       fCursor:=TpvGUICursor.NS;
+      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                  (TpvGUIWindowFlag.ResizableW in fWindowFlags) and
                   (aPointerEvent.Position.x<Skin.fWindowResizeGripSize) then begin
-       fCursor:=pvgcEW;
-      end else if (fWindowState in [pvgwsNormal]) and
-                  (pvgwfResizableE in fWindowFlags) and
+       fCursor:=TpvGUICursor.EW;
+      end else if (fWindowState in [TpvGUIWindowState.Normal]) and
+                  (TpvGUIWindowFlag.ResizableE in fWindowFlags) and
                   (aPointerEvent.Position.x>(fSize.x-Skin.fWindowResizeGripSize)) then begin
-       fCursor:=pvgcEW;
+       fCursor:=TpvGUICursor.EW;
       end;
      end;
     end;
-    POINTEREVENT_DRAG:begin
-     if assigned(fParent) and (fParent is TpvGUIWindow) and (pvgwfHeader in (fParent as TpvGUIWindow).fWindowFlags) then begin
+    TpvApplicationInputPointerEventType.DRAG:begin
+     if assigned(fParent) and (fParent is TpvGUIWindow) and (TpvGUIWindowFlag.Header in (fParent as TpvGUIWindow).fWindowFlags) then begin
       MinimumPosition:=TpvVector2.InlineableCreate(0.0,Skin.fWindowHeaderHeight);
      end else begin
       MinimumPosition:=TpvVector2.Null;
      end;
-     if WindowState=pvgwsMinimized then begin
+     if WindowState=TpvGUIWindowState.Minimized then begin
       MinimumSize:=TpvVector2.InlineableCreate(Skin.fMinimizedWindowMinimumWidth,Skin.fMinimizedWindowMinimumHeight);
      end else begin
       MinimumSize:=TpvVector2.InlineableCreate(Skin.fWindowMinimumWidth,Skin.fWindowMinimumHeight);
@@ -8785,16 +8785,16 @@ begin
      end;
      //writeln(aPointerEvent.RelativePosition.x:1:8,' ',aPointerEvent.RelativePosition.y:1:8,' ',int32(fMouseAction),' ',TpvPtrUInt(self));
      case fMouseAction of
-      pvgwmaMove:begin
+      TpvGUIWindowMouseAction.Move:begin
        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
         ClampedRelativePosition:=Clamp(aPointerEvent.RelativePosition,-fPosition,(fParent as TpvGUIWidget).fSize-(fPosition+fSize));
        end else begin
         ClampedRelativePosition:=Maximum(aPointerEvent.RelativePosition,-fPosition);
        end;
        fPosition:=fPosition+ClampedRelativePosition;
-       fCursor:=pvgcMove;
+       fCursor:=TpvGUICursor.Move;
       end;
-      pvgwmaSizeNW:begin
+      TpvGUIWindowMouseAction.SizeNW:begin
        NewSize:=Maximum(fSize-aPointerEvent.RelativePosition,MinimumSize);
        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
         ClampedRelativePosition:=Clamp(fPosition+(fSize-NewSize),TpvVector2.Null,(fParent as TpvGUIWidget).fSize-NewSize)-fPosition;
@@ -8803,9 +8803,9 @@ begin
        end;
        fPosition:=fPosition+ClampedRelativePosition;
        fSize:=fSize-ClampedRelativePosition;
-       fCursor:=pvgcNWSE;
+       fCursor:=TpvGUICursor.NWSE;
       end;
-      pvgwmaSizeNE:begin
+      TpvGUIWindowMouseAction.SizeNE:begin
        NewSize:=Maximum(fSize+TpvVector2.InlineableCreate(aPointerEvent.RelativePosition.x,
                                                 -aPointerEvent.RelativePosition.y),
                         MinimumSize);
@@ -8819,9 +8819,9 @@ begin
        fPosition.y:=fPosition.y+ClampedRelativePosition.y;
        fSize.x:=fSize.x+ClampedRelativePosition.x;
        fSize.y:=fSize.y-ClampedRelativePosition.y;
-       fCursor:=pvgcNESW;
+       fCursor:=TpvGUICursor.NESW;
       end;
-      pvgwmaSizeSW:begin
+      TpvGUIWindowMouseAction.SizeSW:begin
        NewSize:=Maximum(fSize+TpvVector2.InlineableCreate(-aPointerEvent.RelativePosition.x,
                                                 aPointerEvent.RelativePosition.y),
                         MinimumSize);
@@ -8835,17 +8835,17 @@ begin
        fPosition.x:=fPosition.x+ClampedRelativePosition.x;
        fSize.x:=fSize.x-ClampedRelativePosition.x;
        fSize.y:=fSize.y+ClampedRelativePosition.y;
-       fCursor:=pvgcNESW;
+       fCursor:=TpvGUICursor.NESW;
       end;
-      pvgwmaSizeSE:begin
+      TpvGUIWindowMouseAction.SizeSE:begin
        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
         fSize:=Clamp(fSize+aPointerEvent.RelativePosition,MinimumSize,(fParent as TpvGUIWidget).fSize-fPosition);
        end else begin
         fSize:=Maximum(fSize+aPointerEvent.RelativePosition,MinimumSize);
        end;
-       fCursor:=pvgcNWSE;
+       fCursor:=TpvGUICursor.NWSE;
       end;
-      pvgwmaSizeN:begin
+      TpvGUIWindowMouseAction.SizeN:begin
        NewSize.y:=Maximum(fSize.y-aPointerEvent.RelativePosition.y,MinimumSize.y);
        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
         ClampedRelativePosition.y:=Clamp(fPosition.y+(fSize.y-NewSize.y),0.0,(fParent as TpvGUIWidget).fSize.y-NewSize.y)-fPosition.y;
@@ -8854,17 +8854,17 @@ begin
        end;
        fPosition.y:=fPosition.y+ClampedRelativePosition.y;
        fSize.y:=fSize.y-ClampedRelativePosition.y;
-       fCursor:=pvgcNS;
+       fCursor:=TpvGUICursor.NS;
       end;
-      pvgwmaSizeS:begin
+      TpvGUIWindowMouseAction.SizeS:begin
        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
         fSize.y:=Clamp(fSize.y+aPointerEvent.RelativePosition.y,MinimumSize.y,(fParent as TpvGUIWidget).fSize.y-fPosition.y);
        end else begin
         fSize.y:=Maximum(fSize.y+aPointerEvent.RelativePosition.y,MinimumSize.y);
        end;
-       fCursor:=pvgcNS;
+       fCursor:=TpvGUICursor.NS;
       end;
-      pvgwmaSizeW:begin
+      TpvGUIWindowMouseAction.SizeW:begin
        NewSize.x:=Maximum(fSize.x-aPointerEvent.RelativePosition.x,MinimumSize.x);
        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
         ClampedRelativePosition.x:=Clamp(fPosition.x+(fSize.x-NewSize.x),0.0,(fParent as TpvGUIWidget).fSize.x-NewSize.x)-fPosition.x;
@@ -8873,18 +8873,18 @@ begin
        end;
        fPosition.x:=fPosition.x+ClampedRelativePosition.x;
        fSize.x:=fSize.x-ClampedRelativePosition.x;
-       fCursor:=pvgcEW;
+       fCursor:=TpvGUICursor.EW;
       end;
-      pvgwmaSizeE:begin
+      TpvGUIWindowMouseAction.SizeE:begin
        if assigned(fParent) and (fParent is TpvGUIWidget) then begin
         fSize.x:=Clamp(fSize.x+aPointerEvent.RelativePosition.x,MinimumSize.x,(fParent as TpvGUIWidget).fSize.x-fPosition.x);
        end else begin
         fSize.x:=Maximum(fSize.x+aPointerEvent.RelativePosition.x,MinimumSize.x);
        end;
-       fCursor:=pvgcEW;
+       fCursor:=TpvGUICursor.EW;
       end;
       else begin
-       fCursor:=pvgcArrow;
+       fCursor:=TpvGUICursor.Arrow;
       end;
      end;
      if assigned(fParent) and (fParent is TpvGUIWidget) then begin
@@ -8952,27 +8952,27 @@ begin
 
  fOnButtonClick:=nil;
 
- SetWindowFlags((fWindowFlags-[pvgwfResizableNW,
-                               pvgwfResizableNE,
-                               pvgwfResizableSW,
-                               pvgwfResizableSE,
-                               pvgwfResizableN,
-                               pvgwfResizableS,
-                               pvgwfResizableW,
-                               pvgwfResizableE])+[pvgwfModal]);
+ SetWindowFlags((fWindowFlags-[TpvGUIWindowFlag.ResizableNW,
+                               TpvGUIWindowFlag.ResizableNE,
+                               TpvGUIWindowFlag.ResizableSW,
+                               TpvGUIWindowFlag.ResizableSE,
+                               TpvGUIWindowFlag.ResizableN,
+                               TpvGUIWindowFlag.ResizableS,
+                               TpvGUIWindowFlag.ResizableW,
+                               TpvGUIWindowFlag.ResizableE])+[TpvGUIWindowFlag.Modal]);
 
  fTitle:=aTitle;
 
  fContent.fLayout:=TpvGUIBoxLayout.Create(fContent,
-                                          pvglaMiddle,
-                                          pvgloVertical,
+                                          TpvGUILayoutAlignment.Middle,
+                                          TpvGUILayoutOrientation.Vertical,
                                           10,
                                           10);
 
  fMessagePanel:=TpvGUIPanel.Create(fContent);
  fMessagePanel.fLayout:=TpvGUIBoxLayout.Create(fMessagePanel,
-                                               pvglaMiddle,
-                                               pvgloHorizontal,
+                                               TpvGUILayoutAlignment.Middle,
+                                               TpvGUILayoutOrientation.Horizontal,
                                                15,
                                                10);
 
@@ -8986,8 +8986,8 @@ begin
 
  fMessageDialogButtonPanel:=TpvGUIPanel.Create(fContent);
  fMessageDialogButtonPanel.fLayout:=TpvGUIBoxLayout.Create(fMessageDialogButtonPanel,
-                                                           pvglaMiddle,
-                                                           pvgloHorizontal,
+                                                           TpvGUILayoutAlignment.Middle,
+                                                           TpvGUILayoutOrientation.Horizontal,
                                                            0,
                                                            10);
 
@@ -9010,7 +9010,7 @@ begin
 
   MessageDialogButton^.fButton:=TpvGUIButton.Create(fMessageDialogButtonPanel);
   MessageDialogButton^.fButton.fCaption:=MessageDialogButton^.fCaption;
-  MessageDialogButton^.fButton.fIconPosition:=pvgbipLeftCentered;
+  MessageDialogButton^.fButton.fIconPosition:=TpvGUIButtonIconPosition.LeftCentered;
   MessageDialogButton^.fButton.fIcon:=MessageDialogButton^.fIcon;
   MessageDialogButton^.fButton.fIconHeight:=MessageDialogButton^.fIconHeight;
   MessageDialogButton^.fButton.OnClick:=MessageDialogOnButtonClick;
@@ -9083,7 +9083,7 @@ var Index:TpvSizeInt;
     MessageDialogButton:PpvGUIMessageDialogButton;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if (aKeyEvent.KeyEventType=KEYEVENT_TYPED) and not result then begin
+ if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.TYPED) and not result then begin
   for Index:=0 to length(fButtons) do begin
    MessageDialogButton:=@fButtons[Index];
    if MessageDialogButton^.fKeyCode=aKeyEvent.KeyCode then begin
@@ -9119,16 +9119,16 @@ begin
 
  inherited Create(aParent.fInstance);
 
- fWindowFlags:=fWindowFlags-[pvgwfHeader,
-                             pvgwfMovable,
-                             pvgwfResizableNW,
-                             pvgwfResizableNE,
-                             pvgwfResizableSW,
-                             pvgwfResizableSE,
-                             pvgwfResizableN,
-                             pvgwfResizableS,
-                             pvgwfResizableW,
-                             pvgwfResizableE];
+ fWindowFlags:=fWindowFlags-[TpvGUIWindowFlag.Header,
+                             TpvGUIWindowFlag.Movable,
+                             TpvGUIWindowFlag.ResizableNW,
+                             TpvGUIWindowFlag.ResizableNE,
+                             TpvGUIWindowFlag.ResizableSW,
+                             TpvGUIWindowFlag.ResizableSE,
+                             TpvGUIWindowFlag.ResizableN,
+                             TpvGUIWindowFlag.ResizableS,
+                             TpvGUIWindowFlag.ResizableW,
+                             TpvGUIWindowFlag.ResizableE];
 
  if aParent is TpvGUIWidget then begin
   fParentWidget:=aParent as TpvGUIWidget;
@@ -9155,7 +9155,7 @@ begin
   fParentWidget.fPopups.Add(self);
  end;
 
- fAnchorSide:=pvgpasNone;
+ fAnchorSide:=TpvGUIPopupAnchorSide.None;
 
  fAnchorPosition:=TpvVector2.Null;
 
@@ -9192,19 +9192,19 @@ procedure TpvGUIPopup.UpdatePosition;
 begin
  if assigned(fParentWidget) then begin
   case fAnchorSide of
-   pvgpasLeft:begin
+   TpvGUIPopupAnchorSide.Left:begin
     fAnchorSideOffset:=TpvVector2.InlineableCreate(-fSize.x,0.0);
    end;
-   pvgpasRight:begin
+   TpvGUIPopupAnchorSide.Right:begin
     fAnchorSideOffset:=TpvVector2.InlineableCreate(fParentWidget.fSize.x,0.0);
    end;
-   pvgpasTop:begin
+   TpvGUIPopupAnchorSide.Top:begin
     fAnchorSideOffset:=TpvVector2.InlineableCreate(0.0,-fSize.y);
    end;
-   pvgpasBottom:begin
+   TpvGUIPopupAnchorSide.Bottom:begin
     fAnchorSideOffset:=TpvVector2.InlineableCreate(0.0,fParentWidget.fSize.y);
    end;
-   else {pvgpasNone:}begin
+   else {TpvGUIPopupAnchorSide.None:}begin
     fAnchorSideOffset:=TpvVector2.Null;
    end;
   end;
@@ -9372,10 +9372,10 @@ begin
 
  inherited Create(aParent);
 
- Include(fWidgetFlags,pvgwfTabStop);
- Include(fWidgetFlags,pvgwfDrawFocus);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
 
- fButtonFlags:=[pvgbfNormalButton];
+ fButtonFlags:=[TpvGUIButtonFlag.NormalButton];
 
  fButtonGroup:=TpvGUIButtonGroup.Create(false);
 
@@ -9385,7 +9385,7 @@ begin
 
  fCachedCaptionInvalidated:=true;
 
- fIconPosition:=pvgbipLeftCentered;
+ fIconPosition:=TpvGUIButtonIconPosition.LeftCentered;
 
  fIcon:=nil;
 
@@ -9405,15 +9405,15 @@ end;
 
 function TpvGUIButton.GetDown:boolean;
 begin
- result:=pvgbfDown in fButtonFlags;
+ result:=TpvGUIButtonFlag.Down in fButtonFlags;
 end;
 
 procedure TpvGUIButton.SetDown(const aDown:boolean);
 begin
  if aDown then begin
-  Include(fButtonFlags,pvgbfDown);
+  Include(fButtonFlags,TpvGUIButtonFlag.Down);
  end else begin
-  Exclude(fButtonFlags,pvgbfDown);
+  Exclude(fButtonFlags,TpvGUIButtonFlag.Down);
  end;
 end;
 
@@ -9471,12 +9471,12 @@ var ChildIndex:TpvInt32;
     OldDown:boolean;
 begin
  OldDown:=Down;
- if pvgbfRadioButton in fButtonFlags then begin
+ if TpvGUIButtonFlag.RadioButton in fButtonFlags then begin
   if assigned(fButtonGroup) and (fButtonGroup.Count>0) then begin
    for ChildIndex:=0 to fButtonGroup.Count-1 do begin
     ChildButton:=fButtonGroup.Items[ChildIndex];
     if (ChildButton<>self) and
-       ((ChildButton.fButtonFlags*[pvgbfRadioButton,pvgbfDown])=[pvgbfRadioButton,pvgbfDown]) then begin
+       ((ChildButton.fButtonFlags*[TpvGUIButtonFlag.RadioButton,TpvGUIButtonFlag.Down])=[TpvGUIButtonFlag.RadioButton,TpvGUIButtonFlag.Down]) then begin
      ChildButton.Down:=false;
      if assigned(ChildButton.fOnChange) then begin
       ChildButton.fOnChange(ChildButton,false);
@@ -9489,7 +9489,7 @@ begin
     if assigned(Child) and
        (Child<>self) and
        (Child is TpvGUIButton) and
-       (((Child as TpvGUIButton).fButtonFlags*[pvgbfRadioButton,pvgbfDown])=[pvgbfRadioButton,pvgbfDown]) then begin
+       (((Child as TpvGUIButton).fButtonFlags*[TpvGUIButtonFlag.RadioButton,TpvGUIButtonFlag.Down])=[TpvGUIButtonFlag.RadioButton,TpvGUIButtonFlag.Down]) then begin
      ChildButton:=Child as TpvGUIButton;
      ChildButton.Down:=false;
      if assigned(ChildButton.fOnChange) then begin
@@ -9499,14 +9499,14 @@ begin
    end;
   end;
  end;
- if pvgbfPopupButton in fButtonFlags then begin
+ if TpvGUIButtonFlag.PopupButton in fButtonFlags then begin
   if assigned(fParent) then begin
    for ChildIndex:=0 to fParent.fChildren.Count-1 do begin
     Child:=fParent.fChildren.Items[ChildIndex];
     if assigned(Child) and
        (Child<>self) and
        (Child is TpvGUIButton) and
-       (((Child as TpvGUIButton).fButtonFlags*[pvgbfPopupButton,pvgbfDown])=[pvgbfPopupButton,pvgbfDown]) then begin
+       (((Child as TpvGUIButton).fButtonFlags*[TpvGUIButtonFlag.PopupButton,TpvGUIButtonFlag.Down])=[TpvGUIButtonFlag.PopupButton,TpvGUIButtonFlag.Down]) then begin
      ChildButton:=Child as TpvGUIButton;
      ChildButton.Down:=false;
      if assigned(ChildButton.fOnChange) then begin
@@ -9516,7 +9516,7 @@ begin
    end;
   end;
  end;
- if pvgbfToggleButton in fButtonFlags then begin
+ if TpvGUIButtonFlag.ToggleButton in fButtonFlags then begin
   Down:=not Down;
  end else begin
   Down:=true;
@@ -9533,7 +9533,7 @@ begin
  if assigned(fOnClick) and Contains(aPosition) then begin
   fOnClick(self);
  end;
- if pvgbfNormalButton in fButtonFlags then begin
+ if TpvGUIButtonFlag.NormalButton in fButtonFlags then begin
   Down:=false;
  end;
  if (OldDown<>Down) and assigned(OnChange) then begin
@@ -9548,13 +9548,13 @@ begin
   case aKeyEvent.KeyCode of
    KEYCODE_SPACE,KEYCODE_RETURN:begin
     case aKeyEvent.KeyEventType of
-     KEYEVENT_DOWN:begin
+     TpvApplicationInputKeyEventType.DOWN:begin
       ProcessDown(fSize*0.5);
      end;
-     KEYEVENT_UP:begin
+     TpvApplicationInputKeyEventType.UP:begin
       ProcessUp(fSize*0.5);
      end;
-     KEYEVENT_TYPED:begin
+     TpvApplicationInputKeyEventType.TYPED:begin
      end;
     end;
     result:=true;
@@ -9572,19 +9572,19 @@ begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
   result:=inherited PointerEvent(aPointerEvent);
-  if Enabled and (aPointerEvent.Button=BUTTON_LEFT) and not result then begin
+  if Enabled and (aPointerEvent.Button=TpvApplicationInputPointerButton.LEFT) and not result then begin
    case aPointerEvent.PointerEventType of
-    POINTEREVENT_DOWN:begin
+    TpvApplicationInputPointerEventType.DOWN:begin
      ProcessDown(aPointerEvent.Position);
      result:=true;
     end;
-    POINTEREVENT_UP:begin
+    TpvApplicationInputPointerEventType.UP:begin
      ProcessUp(aPointerEvent.Position);
      result:=true;
     end;
-    POINTEREVENT_MOTION:begin
+    TpvApplicationInputPointerEventType.MOTION:begin
     end;
-    POINTEREVENT_DRAG:begin
+    TpvApplicationInputPointerEventType.DRAG:begin
     end;
    end;
   end;
@@ -9619,13 +9619,13 @@ end;
 constructor TpvGUIRadioButton.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
- fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfRadioButton];
+ fButtonFlags:=(fButtonFlags-[TpvGUIButtonFlag.NormalButton])+[TpvGUIButtonFlag.RadioButton];
 end;
 
 constructor TpvGUIToggleButton.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
- fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfToggleButton];
+ fButtonFlags:=(fButtonFlags-[TpvGUIButtonFlag.NormalButton])+[TpvGUIButtonFlag.ToggleButton];
 end;
 
 constructor TpvGUIPopupButton.Create(const aParent:TpvGUIObject);
@@ -9633,11 +9633,11 @@ begin
 
  inherited Create(aParent);
 
- fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfToggleButton,pvgbfPopupButton];
+ fButtonFlags:=(fButtonFlags-[TpvGUIButtonFlag.NormalButton])+[TpvGUIButtonFlag.ToggleButton,TpvGUIButtonFlag.PopupButton];
 
  fPopup:=TpvGUIPopup.Create(self);
  fPopup.Visible:=false;
- fPopup.AnchorSide:=pvgpasBottom;
+ fPopup.AnchorSide:=TpvGUIPopupAnchorSide.Bottom;
  fPopup.fSize:=TpvVector2.InlineableCreate(160,80);
  fPopup.fFixedSize:=TpvVector2.InlineableCreate(160,80);
 
@@ -9668,7 +9668,7 @@ begin
 
  inherited Create(aParent);
 
- fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfToggleButton,pvgbfPopupButton];
+ fButtonFlags:=(fButtonFlags-[TpvGUIButtonFlag.NormalButton])+[TpvGUIButtonFlag.ToggleButton,TpvGUIButtonFlag.PopupButton];
 
  fPopupMenu:=TpvGUIPopupMenu.Create(self);
 
@@ -9695,7 +9695,7 @@ end;
 constructor TpvGUIToolButton.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
- fButtonFlags:=(fButtonFlags-[pvgbfNormalButton])+[pvgbfRadioButton,pvgbfToggleButton];
+ fButtonFlags:=(fButtonFlags-[TpvGUIButtonFlag.NormalButton])+[TpvGUIButtonFlag.RadioButton,TpvGUIButtonFlag.ToggleButton];
 end;
 
 constructor TpvGUICheckBox.Create(const aParent:TpvGUIObject);
@@ -9703,8 +9703,8 @@ begin
 
  inherited Create(aParent);
 
- Include(fWidgetFlags,pvgwfTabStop);
- Include(fWidgetFlags,pvgwfDrawFocus);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
 
  fCheckBoxFlags:=[];
 
@@ -9724,21 +9724,21 @@ end;
 
 function TpvGUICheckBox.GetPushed:boolean;
 begin
- result:=pvgcbfPushed in fCheckBoxFlags;
+ result:=TpvGUICheckBoxFlag.Pushed in fCheckBoxFlags;
 end;
 
 procedure TpvGUICheckBox.SetPushed(const aPushed:boolean);
 begin
  if aPushed then begin
-  Include(fCheckBoxFlags,pvgcbfPushed);
+  Include(fCheckBoxFlags,TpvGUICheckBoxFlag.Pushed);
  end else begin
-  Exclude(fCheckBoxFlags,pvgcbfPushed);
+  Exclude(fCheckBoxFlags,TpvGUICheckBoxFlag.Pushed);
  end;
 end;
 
 function TpvGUICheckBox.GetChecked:boolean;
 begin
- result:=pvgcbfChecked in fCheckBoxFlags;
+ result:=TpvGUICheckBoxFlag.Checked in fCheckBoxFlags;
 end;
 
 procedure TpvGUICheckBox.SetChecked(const aChecked:boolean);
@@ -9746,16 +9746,16 @@ var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildCheckBox:TpvGUICheckBox;
 begin
- if (pvgcbfChecked in fCheckBoxFlags)<>aChecked then begin
+ if (TpvGUICheckBoxFlag.Checked in fCheckBoxFlags)<>aChecked then begin
   if aChecked then begin
-   Include(fCheckBoxFlags,pvgcbfChecked);
-   if pvgcbfRadioCheckBox in fCheckBoxFlags then begin
+   Include(fCheckBoxFlags,TpvGUICheckBoxFlag.Checked);
+   if TpvGUICheckBoxFlag.RadioCheckBox in fCheckBoxFlags then begin
     if assigned(fCheckBoxGroup) and (fCheckBoxGroup.Count>0) then begin
      for ChildIndex:=0 to fCheckBoxGroup.Count-1 do begin
       ChildCheckBox:=fCheckBoxGroup.Items[ChildIndex];
       if (ChildCheckBox<>self) and
-         ((ChildCheckBox.fCheckBoxFlags*[pvgcbfRadioCheckBox,pvgcbfChecked])=[pvgcbfRadioCheckBox,pvgcbfChecked]) then begin
-       Exclude(ChildCheckBox.fCheckBoxFlags,pvgcbfChecked);
+         ((ChildCheckBox.fCheckBoxFlags*[TpvGUICheckBoxFlag.RadioCheckBox,TpvGUICheckBoxFlag.Checked])=[TpvGUICheckBoxFlag.RadioCheckBox,TpvGUICheckBoxFlag.Checked]) then begin
+       Exclude(ChildCheckBox.fCheckBoxFlags,TpvGUICheckBoxFlag.Checked);
        if assigned(ChildCheckBox.fOnChange) then begin
         ChildCheckBox.fOnChange(ChildCheckBox,false);
        end;
@@ -9767,9 +9767,9 @@ begin
       if assigned(Child) and
          (Child<>self) and
          (Child is TpvGUICheckBox) and
-         (((Child as TpvGUICheckBox).fCheckBoxFlags*[pvgcbfRadioCheckBox,pvgcbfChecked])=[pvgcbfRadioCheckBox,pvgcbfChecked]) then begin
+         (((Child as TpvGUICheckBox).fCheckBoxFlags*[TpvGUICheckBoxFlag.RadioCheckBox,TpvGUICheckBoxFlag.Checked])=[TpvGUICheckBoxFlag.RadioCheckBox,TpvGUICheckBoxFlag.Checked]) then begin
        ChildCheckBox:=Child as TpvGUICheckBox;
-       Exclude(ChildCheckBox.fCheckBoxFlags,pvgcbfChecked);
+       Exclude(ChildCheckBox.fCheckBoxFlags,TpvGUICheckBoxFlag.Checked);
        if assigned(ChildCheckBox.fOnChange) then begin
         ChildCheckBox.fOnChange(ChildCheckBox,false);
        end;
@@ -9781,7 +9781,7 @@ begin
     fOnChange(self,true);
    end;
   end else begin
-   Exclude(fCheckBoxFlags,pvgcbfChecked);
+   Exclude(fCheckBoxFlags,TpvGUICheckBoxFlag.Checked);
    if assigned(fOnChange) then begin
     fOnChange(self,false);
    end;
@@ -9825,8 +9825,8 @@ begin
   case aKeyEvent.KeyCode of
    KEYCODE_SPACE,KEYCODE_RETURN:begin
     case aKeyEvent.KeyEventType of
-     KEYEVENT_TYPED:begin
-      if pvgcbfRadioCheckBox in fCheckBoxFlags then begin
+     TpvApplicationInputKeyEventType.TYPED:begin
+      if TpvGUICheckBoxFlag.RadioCheckBox in fCheckBoxFlags then begin
        SetChecked(true);
       end else begin
        SetChecked(not GetChecked);
@@ -9846,26 +9846,26 @@ begin
   result:=inherited PointerEvent(aPointerEvent);
   if Enabled and not result then begin
    case aPointerEvent.PointerEventType of
-    POINTEREVENT_DOWN:begin
+    TpvApplicationInputPointerEventType.DOWN:begin
      case aPointerEvent.Button of
-      BUTTON_LEFT:begin
-       if pvgcbfRadioCheckBox in fCheckBoxFlags then begin
+      TpvApplicationInputPointerButton.LEFT:begin
+       if TpvGUICheckBoxFlag.RadioCheckBox in fCheckBoxFlags then begin
         SetChecked(true);
        end else begin
         SetChecked(not GetChecked);
        end;
       end;
-      BUTTON_MIDDLE:begin
+      TpvApplicationInputPointerButton.MIDDLE:begin
       end;
-      BUTTON_RIGHT:begin
+      TpvApplicationInputPointerButton.RIGHT:begin
       end;
      end;
     end;
-    POINTEREVENT_UP:begin
+    TpvApplicationInputPointerEventType.UP:begin
     end;
-    POINTEREVENT_MOTION:begin
+    TpvApplicationInputPointerEventType.MOTION:begin
     end;
-    POINTEREVENT_DRAG:begin
+    TpvApplicationInputPointerEventType.DRAG:begin
     end;
    end;
    result:=true;
@@ -9895,7 +9895,7 @@ end;
 constructor TpvGUIRadioCheckBox.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
- Include(fCheckBoxFlags,pvgcbfRadioCheckBox);
+ Include(fCheckBoxFlags,TpvGUICheckBoxFlag.RadioCheckBox);
 end;
 
 constructor TpvGUITextEdit.Create(const aParent:TpvGUIObject);
@@ -9904,8 +9904,8 @@ begin
 
  inherited Create(aParent);
 
- Include(fWidgetFlags,pvgwfTabStop);
- Include(fWidgetFlags,pvgwfDrawFocus);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
 
  fPopupMenu:=TpvGUIPopupMenu.Create(self);
 
@@ -9953,9 +9953,9 @@ begin
  MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
  MenuItem.OnClick:=PopupMenuOnSelectNoneClick;
 
- fTextHorizontalAlignment:=pvgtaLeading;
+ fTextHorizontalAlignment:=TpvGUITextAlignment.Leading;
 
- fTextVerticalAlignment:=pvgtaCenter;
+ fTextVerticalAlignment:=TpvGUITextAlignment.Center;
 
  SetEditable(true);
 
@@ -10032,9 +10032,9 @@ procedure TpvGUITextEdit.SetEditable(const aEditable:boolean);
 begin
  fEditable:=aEditable;
  if fEditable then begin
-  fCursor:=pvgcBeam;
+  fCursor:=TpvGUICursor.Beam;
  end else begin
-  fCursor:=pvgcArrow;
+  fCursor:=TpvGUICursor.Arrow;
  end;
 end;
 
@@ -10254,14 +10254,14 @@ begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
   case aKeyEvent.KeyEventType of
-   KEYEVENT_DOWN:begin
+   TpvApplicationInputKeyEventType.DOWN:begin
     case aKeyEvent.KeyCode of
      KEYCODE_APPLICATION:begin
       result:=true;
      end;
     end;
    end;
-   KEYEVENT_UP:begin
+   TpvApplicationInputKeyEventType.UP:begin
     case aKeyEvent.KeyCode of
      KEYCODE_APPLICATION:begin
       if assigned(fPopupMenu) then begin
@@ -10271,10 +10271,10 @@ begin
      end;
     end;
    end;
-   KEYEVENT_TYPED:begin
+   TpvApplicationInputKeyEventType.TYPED:begin
     case aKeyEvent.KeyCode of
      KEYCODE_LEFT:begin
-      if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
+      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
        if fTextSelectionStart<1 then begin
         fTextSelectionStart:=fTextCursorPositionIndex;
        end;
@@ -10288,7 +10288,7 @@ begin
       result:=true;
      end;
      KEYCODE_RIGHT:begin
-      if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
+      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
        if fTextSelectionStart<1 then begin
         fTextSelectionStart:=fTextCursorPositionIndex;
        end;
@@ -10302,7 +10302,7 @@ begin
       result:=true;
      end;
      KEYCODE_HOME:begin
-      if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
+      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
        if fTextSelectionStart<1 then begin
         fTextSelectionStart:=fTextCursorPositionIndex;
        end;
@@ -10316,7 +10316,7 @@ begin
       result:=true;
      end;
      KEYCODE_END:begin
-      if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
+      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
        if fTextSelectionStart<1 then begin
         fTextSelectionStart:=fTextCursorPositionIndex;
        end;
@@ -10385,7 +10385,7 @@ begin
        TemporaryUncheckedTextSelectionStart:=0;
        TemporaryUncheckedTextSelectionEnd:=0;
       end;
-      if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
+      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
        if pvApplication.Clipboard.HasText then begin
         TemporaryText:=pvApplication.Clipboard.GetText;
         if length(TemporaryText)>0 then begin
@@ -10417,7 +10417,7 @@ begin
      KEYCODE_DELETE:begin
       if (fTextSelectionStart>0) and
          (fTextSelectionEnd>0) then begin
-       if KEYMODIFIER_SHIFT in aKeyEvent.KeyModifiers then begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
         CutSelectedText;
        end else begin
         DeleteSelectedText;
@@ -10443,33 +10443,33 @@ begin
       result:=true;
      end;
      KEYCODE_A:begin
-      if KEYMODIFIER_CTRL in aKeyEvent.KeyModifiers then begin
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
        fTextSelectionStart:=1;
        fTextSelectionEnd:=PUCUUTF8Length(fText)+1;
        result:=true;
       end;
      end;
      KEYCODE_C:begin
-      if KEYMODIFIER_CTRL in aKeyEvent.KeyModifiers then begin
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
        CopySelectedText;
        result:=true;
       end;
      end;
      KEYCODE_V:begin
-      if KEYMODIFIER_CTRL in aKeyEvent.KeyModifiers then begin
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
        PasteText;
        result:=true;
       end;
      end;
      KEYCODE_X:begin
-      if KEYMODIFIER_CTRL in aKeyEvent.KeyModifiers then begin
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
        CutSelectedText;
        result:=true;
       end;
      end;
     end;
    end;
-   KEYEVENT_UNICODE:begin
+   TpvApplicationInputKeyEventType.UNICODE:begin
     TemporaryUncheckedText:=fText;
     TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
     TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
@@ -10513,9 +10513,9 @@ begin
   result:=inherited PointerEvent(aPointerEvent);
   if not result then begin
    case aPointerEvent.PointerEventType of
-    POINTEREVENT_DOWN:begin
+    TpvApplicationInputPointerEventType.DOWN:begin
      case aPointerEvent.Button of
-      BUTTON_LEFT:begin
+      TpvApplicationInputPointerButton.LEFT:begin
        fTextSelectionStart:=0;
        fTextSelectionEnd:=0;
        fTextCursorPositionIndex:=1;
@@ -10533,27 +10533,27 @@ begin
        end;
        RequestFocus;
       end;
-      BUTTON_MIDDLE:begin
+      TpvApplicationInputPointerButton.MIDDLE:begin
        RequestFocus;
       end;
-      BUTTON_RIGHT:begin
+      TpvApplicationInputPointerButton.RIGHT:begin
        RequestFocus;
       end;
      end;
      result:=true;
     end;
-    POINTEREVENT_UP:begin
+    TpvApplicationInputPointerEventType.UP:begin
      case aPointerEvent.Button of
-      BUTTON_LEFT:begin
+      TpvApplicationInputPointerButton.LEFT:begin
        if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
         fOnClick(self);
        end;
        RequestFocus;
       end;
-      BUTTON_MIDDLE:begin
+      TpvApplicationInputPointerButton.MIDDLE:begin
        RequestFocus;
       end;
-      BUTTON_RIGHT:begin
+      TpvApplicationInputPointerButton.RIGHT:begin
        RequestFocus;
        if assigned(fPopupMenu) then begin
         fPopupMenu.Activate(AbsolutePosition+aPointerEvent.Position);
@@ -10561,8 +10561,8 @@ begin
       end;
      end;
     end;
-    POINTEREVENT_MOTION:begin
-     if BUTTON_LEFT in aPointerEvent.Buttons then begin
+    TpvApplicationInputPointerEventType.MOTION:begin
+     if TpvApplicationInputPointerButton.LEFT in aPointerEvent.Buttons then begin
       if fTextSelectionStart<1 then begin
        fTextSelectionStart:=fTextCursorPositionIndex;
       end;
@@ -10582,12 +10582,12 @@ begin
       fTextSelectionEnd:=fTextCursorPositionIndex;
      end;
      if not fEditable then begin
-      fCursor:=pvgcArrow;
+      fCursor:=TpvGUICursor.Arrow;
      end else begin
       if fSpinnable and fDragRect.Touched(aPointerEvent.Position) then begin
-       fCursor:=pvgcNS;
+       fCursor:=TpvGUICursor.NS;
       end else begin
-       fCursor:=pvgcBeam;
+       fCursor:=TpvGUICursor.Beam;
       end;
      end;
      result:=true;
@@ -10621,7 +10621,7 @@ begin
 
  inherited Create(aParent);
 
- fWidgetFlags:=fWidgetFlags+[pvgwfDraggable];
+ fWidgetFlags:=fWidgetFlags+[TpvGUIWidgetFlag.Draggable];
 
  fMinimumValue:=Low(TpvInt64);
 
@@ -10834,7 +10834,7 @@ begin
  result:=inherited KeyEvent(aKeyEvent);
  if not result then begin
   case aKeyEvent.KeyEventType of
-   KEYEVENT_TYPED:begin
+   TpvApplicationInputKeyEventType.TYPED:begin
     case aKeyEvent.KeyCode of
      KEYCODE_UP:begin
       TemporaryValue:=GetValue;
@@ -10885,7 +10885,7 @@ begin
  result:=inherited PointerEvent(aPointerEvent);
  if not result then begin
   case aPointerEvent.PointerEventType of
-   POINTEREVENT_DRAG:begin
+   TpvApplicationInputPointerEventType.DRAG:begin
     TemporaryValue:=GetValue;
     v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
     if v<0.0 then begin
@@ -10937,7 +10937,7 @@ begin
 
  inherited Create(aParent);
 
- fWidgetFlags:=fWidgetFlags+[pvgwfDraggable];
+ fWidgetFlags:=fWidgetFlags+[TpvGUIWidgetFlag.Draggable];
 
  fMinimumValue:=-MaxDouble;
 
@@ -11102,7 +11102,7 @@ begin
  result:=inherited KeyEvent(aKeyEvent);
  if not result then begin
   case aKeyEvent.KeyEventType of
-   KEYEVENT_TYPED:begin
+   TpvApplicationInputKeyEventType.TYPED:begin
     case aKeyEvent.KeyCode of
      KEYCODE_UP:begin
       TemporaryValue:=GetValue;
@@ -11153,7 +11153,7 @@ begin
  result:=inherited PointerEvent(aPointerEvent);
  if not result then begin
   case aPointerEvent.PointerEventType of
-   POINTEREVENT_DRAG:begin
+   TpvApplicationInputPointerEventType.DRAG:begin
     TemporaryValue:=GetValue;
     v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
     if v<0.0 then begin
@@ -11205,7 +11205,7 @@ begin
 
  inherited Create(aParent);
 
- fFlags:=[pvgmifEnabled];
+ fFlags:=[TpvGUIMenuItemFlag.Enabled];
 
  fCaption:='';
 
@@ -11228,15 +11228,15 @@ end;
 
 function TpvGUIMenuItem.GetEnabled:boolean;
 begin
- result:=pvgmifEnabled in fFlags;
+ result:=TpvGUIMenuItemFlag.Enabled in fFlags;
 end;
 
 procedure TpvGUIMenuItem.SetEnabled(const aEnabled:boolean);
 begin
  if aEnabled then begin
-  Include(fFlags,pvgmifEnabled);
+  Include(fFlags,TpvGUIMenuItemFlag.Enabled);
  end else begin
-  Exclude(fFlags,pvgmifEnabled);
+  Exclude(fFlags,TpvGUIMenuItemFlag.Enabled);
  end;
 end;
 
@@ -11475,13 +11475,13 @@ var Index,OtherIndex:TpvInt32;
     MenuItem:TpvGUIMenuItem;
 begin
  case aKeyEvent.KeyEventType of
-  KEYEVENT_DOWN:begin
+  TpvApplicationInputKeyEventType.DOWN:begin
    result:=true;
   end;
-  KEYEVENT_UP:begin
+  TpvApplicationInputKeyEventType.UP:begin
    result:=true;
   end;
-  KEYEVENT_TYPED:begin
+  TpvApplicationInputKeyEventType.TYPED:begin
    case aKeyEvent.KeyCode of
     KEYCODE_RIGHT:begin
      fSelectedMenuItem:=nil;
@@ -11641,7 +11641,7 @@ begin
    end;
    result:=true;
   end;
-  KEYEVENT_UNICODE:begin
+  TpvApplicationInputKeyEventType.UNICODE:begin
    result:=true;
   end;
   else begin
@@ -11659,7 +11659,7 @@ begin
  result:=TpvRect.CreateRelative(fPosition,fSize).Touched(aPointerEvent.Position);
  if result then begin
   case aPointerEvent.PointerEventType of
-   POINTEREVENT_DOWN:begin
+   TpvApplicationInputPointerEventType.DOWN:begin
     DeactivateSubmenus;
     fSelectedMenuItem:=nil;
     fFocusedMenuItem:=nil;
@@ -11692,7 +11692,7 @@ begin
     end;
     result:=true;
    end;
-   POINTEREVENT_UP:begin
+   TpvApplicationInputPointerEventType.UP:begin
     if assigned(fSelectedMenuItem) then begin
      if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.fOnClick) then begin
       fSelectedMenuItem.fOnClick(fSelectedMenuItem);
@@ -11707,7 +11707,7 @@ begin
     end;
     result:=true;
    end;
-   POINTEREVENT_MOTION:begin
+   TpvApplicationInputPointerEventType.MOTION:begin
     fHoveredMenuItem:=nil;
     for Index:=0 to fChildren.Count-1 do begin
      Child:=fChildren[Index];
@@ -11750,11 +11750,11 @@ begin
 
  fHoveredMenuItem:=nil;
 
- Exclude(fWidgetFlags,pvgwfVisible);
+ Exclude(fWidgetFlags,TpvGUIWidgetFlag.Visible);
 
- Include(fWidgetFlags,pvgwfTabStop);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
 
- fLayout:=TpvGUIBoxLayout.Create(self,pvglaMiddle,pvgloVertical,0.0,4.0);
+ fLayout:=TpvGUIBoxLayout.Create(self,TpvGUILayoutAlignment.Middle,TpvGUILayoutOrientation.Vertical,0.0,4.0);
 
 end;
 
@@ -11820,13 +11820,13 @@ begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
   case aKeyEvent.KeyEventType of
-   KEYEVENT_DOWN:begin
+   TpvApplicationInputKeyEventType.DOWN:begin
     result:=true;
    end;
-   KEYEVENT_UP:begin
+   TpvApplicationInputKeyEventType.UP:begin
     result:=true;
    end;
-   KEYEVENT_TYPED:begin
+   TpvApplicationInputKeyEventType.TYPED:begin
     case aKeyEvent.KeyCode of
      KEYCODE_DOWN,KEYCODE_SPACE,KEYCODE_RETURN:begin
       fSelectedMenuItem:=nil;
@@ -11922,7 +11922,7 @@ begin
     end;
     result:=true;
    end;
-   KEYEVENT_UNICODE:begin
+   TpvApplicationInputKeyEventType.UNICODE:begin
     result:=true;
    end;
   end;
@@ -11939,7 +11939,7 @@ begin
   result:=inherited PointerEvent(aPointerEvent);
   if not result then begin
    case aPointerEvent.PointerEventType of
-    POINTEREVENT_DOWN:begin
+    TpvApplicationInputPointerEventType.DOWN:begin
      if not Focused then begin
       RequestFocus;
      end;
@@ -11974,7 +11974,7 @@ begin
      end;
      result:=true;
     end;
-    POINTEREVENT_UP:begin
+    TpvApplicationInputPointerEventType.UP:begin
      if assigned(fSelectedMenuItem) then begin
       if fSelectedMenuItem.Enabled and fSelectedMenuItem.Selectable and assigned(fSelectedMenuItem.fOnClick) then begin
        fSelectedMenuItem.fOnClick(fSelectedMenuItem);
@@ -11983,7 +11983,7 @@ begin
      end;
      result:=true;
     end;
-    POINTEREVENT_MOTION:begin
+    TpvApplicationInputPointerEventType.MOTION:begin
      fHoveredMenuItem:=nil;
      for Index:=0 to fChildren.Count-1 do begin
       Child:=fChildren[Index];
@@ -12028,11 +12028,11 @@ begin
 
  inherited Create(aParent);
 
- Include(fWidgetFlags,pvgwfTabStop);
- Include(fWidgetFlags,pvgwfDrawFocus);
- Include(fWidgetFlags,pvgwfDraggable);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
 
- fOrientation:=pvgsboHorizontal;
+ fOrientation:=TpvGUIScrollBarOrientation.Horizontal;
 
  fMinimumValue:=0;
 
@@ -12052,9 +12052,9 @@ begin
 
  fOnChange:=nil;
 
- fFocusedSubWidget:=pvgsbswNone;
+ fFocusedSubWidget:=TpvGUIScrollBarSubWidget.None;
 
- fPushedSubWidget:=pvgsbswNone;
+ fPushedSubWidget:=TpvGUIScrollBarSubWidget.None;
 
  fStepSize:=0;
 
@@ -12125,7 +12125,7 @@ begin
  end else begin
   if fCachedThumbButtonSize<EPSILON then begin
    case fOrientation of
-    pvgsboHorizontal:begin
+    TpvGUIScrollBarOrientation.Horizontal:begin
      RangeSize:=Width;
     end;
     else {pvgsbVertical:}begin
@@ -12160,7 +12160,7 @@ end;
 function TpvGUIScrollBar.GetThumbButtonRect:TpvRect;
 begin
  case fOrientation of
-  pvgsboHorizontal:begin
+  TpvGUIScrollBarOrientation.Horizontal:begin
    if fMinimumValue<fMaximumValue then begin
     result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(fButtonSize+
                                                                ((fSize.x-((fButtonSize*2.0)+ThumbButtonSize))*
@@ -12172,7 +12172,7 @@ begin
                                    TpvVector2.InlineableCreate(ThumbButtonSize,fSize.y));
    end;
   end;
-  else {pvgsboVertical:}begin
+  else {TpvGUIScrollBarOrientation.Vertical:}begin
    if fMinimumValue<fMaximumValue then begin
     result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(0.0,
                                                                fButtonSize+
@@ -12196,7 +12196,7 @@ end;
 
 function TpvGUIScrollBar.Leave:boolean;
 begin
- fPushedSubWidget:=pvgsbswNone;
+ fPushedSubWidget:=TpvGUIScrollBarSubWidget.None;
  fStepSize:=0;
  fSliderPushed:=false;
  result:=inherited Leave;
@@ -12210,7 +12210,7 @@ end;
 function TpvGUIScrollBar.PointerLeave:boolean;
 begin
  if assigned(fInstance) and (fInstance.fDragWidget<>self) then begin
-  fPushedSubWidget:=pvgsbswNone;
+  fPushedSubWidget:=TpvGUIScrollBarSubWidget.None;
  end;
  result:=inherited PointerLeave;
 end;
@@ -12227,7 +12227,7 @@ begin
   case aKeyEvent.KeyCode of
    KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
     case aKeyEvent.KeyEventType of
-     KEYEVENT_TYPED:begin
+     TpvApplicationInputKeyEventType.TYPED:begin
       if ((fValue-fSmallStep)>=fMinimumValue) and not (fValue<(fValue-fSmallStep)) then begin
        SetValue(fValue-fSmallStep);
       end else begin
@@ -12239,7 +12239,7 @@ begin
    end;
    KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
     case aKeyEvent.KeyEventType of
-     KEYEVENT_TYPED:begin
+     TpvApplicationInputKeyEventType.TYPED:begin
       if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
        SetValue(fValue+fSmallStep);
       end else begin
@@ -12251,7 +12251,7 @@ begin
    end;
    KEYCODE_PAGEDOWN:begin
     case aKeyEvent.KeyEventType of
-     KEYEVENT_TYPED:begin
+     TpvApplicationInputKeyEventType.TYPED:begin
       if ((fValue+fLargeStep)<=fMaximumValue) and not (fValue>(fValue+fLargeStep)) then begin
        SetValue(fValue+fLargeStep);
       end else begin
@@ -12263,7 +12263,7 @@ begin
    end;
    KEYCODE_PAGEUP:begin
     case aKeyEvent.KeyEventType of
-     KEYEVENT_TYPED:begin
+     TpvApplicationInputKeyEventType.TYPED:begin
       if ((fValue-fLargeStep)>=fMinimumValue) and not (fValue<(fValue-fLargeStep)) then begin
        SetValue(fValue-fLargeStep);
       end else begin
@@ -12275,7 +12275,7 @@ begin
    end;
    KEYCODE_HOME:begin
     case aKeyEvent.KeyEventType of
-     KEYEVENT_TYPED:begin
+     TpvApplicationInputKeyEventType.TYPED:begin
       SetValue(fMinimumValue);
      end;
     end;
@@ -12283,7 +12283,7 @@ begin
    end;
    KEYCODE_END:begin
     case aKeyEvent.KeyEventType of
-     KEYEVENT_TYPED:begin
+     TpvApplicationInputKeyEventType.TYPED:begin
       SetValue(fMaximumValue);
      end;
     end;
@@ -12301,66 +12301,66 @@ begin
   result:=inherited PointerEvent(aPointerEvent);
   if not result then begin
    case aPointerEvent.PointerEventType of
-    POINTEREVENT_DOWN:begin
+    TpvApplicationInputPointerEventType.DOWN:begin
      if not Focused then begin
       RequestFocus;
      end;
-     fFocusedSubWidget:=pvgsbswNone;
-     fPushedSubWidget:=pvgsbswNone;
+     fFocusedSubWidget:=TpvGUIScrollBarSubWidget.None;
+     fPushedSubWidget:=TpvGUIScrollBarSubWidget.None;
      fSliderPushed:=false;
      fStepSize:=0;
      fTimeAccumulator:=MaxDouble;
      case fOrientation of
-      pvgsboHorizontal:begin
+      TpvGUIScrollBarOrientation.Horizontal:begin
        if aPointerEvent.Position.x<fButtonSize then begin
-        fFocusedSubWidget:=pvgsbswDecButton;
-        fPushedSubWidget:=pvgsbswDecButton;
+        fFocusedSubWidget:=TpvGUIScrollBarSubWidget.DecButton;
+        fPushedSubWidget:=TpvGUIScrollBarSubWidget.DecButton;
        end else if aPointerEvent.Position.x>=(Width-fButtonSize) then begin
-        fFocusedSubWidget:=pvgsbswIncButton;
-        fPushedSubWidget:=pvgsbswIncButton;
+        fFocusedSubWidget:=TpvGUIScrollBarSubWidget.IncButton;
+        fPushedSubWidget:=TpvGUIScrollBarSubWidget.IncButton;
        end else if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
-        fFocusedSubWidget:=pvgsbswThumbButton;
-        fPushedSubWidget:=pvgsbswThumbButton;
+        fFocusedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
+        fPushedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
        end else begin
         fSliderPushed:=true;
        end;
       end;
-      else {pvgsboVertical:}begin
+      else {TpvGUIScrollBarOrientation.Vertical:}begin
        if aPointerEvent.Position.y<fButtonSize then begin
-        fFocusedSubWidget:=pvgsbswDecButton;
-        fPushedSubWidget:=pvgsbswDecButton;
+        fFocusedSubWidget:=TpvGUIScrollBarSubWidget.DecButton;
+        fPushedSubWidget:=TpvGUIScrollBarSubWidget.DecButton;
        end else if aPointerEvent.Position.y>=(Height-fButtonSize) then begin
-        fFocusedSubWidget:=pvgsbswIncButton;
-        fPushedSubWidget:=pvgsbswIncButton;
+        fFocusedSubWidget:=TpvGUIScrollBarSubWidget.IncButton;
+        fPushedSubWidget:=TpvGUIScrollBarSubWidget.IncButton;
        end else if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
-        fFocusedSubWidget:=pvgsbswThumbButton;
-        fPushedSubWidget:=pvgsbswThumbButton;
+        fFocusedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
+        fPushedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
        end else begin
         fSliderPushed:=true;
        end;
       end;
      end;
-     if fPushedSubWidget=pvgsbswThumbButton then begin
+     if fPushedSubWidget=TpvGUIScrollBarSubWidget.ThumbButton then begin
 (*    case fOrientation of
-       pvgsboHorizontal:begin
+       TpvGUIScrollBarOrientation.Horizontal:begin
         SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(ThumbButtonSize*0.5)))*(Max(1,fMaximumValue-fMinimumValue)/(Width-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
        end;
-       else {pvgsboVertical:}begin
+       else {TpvGUIScrollBarOrientation.Vertical:}begin
         SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(ThumbButtonSize*0.5)))*(Max(1,fMaximumValue-fMinimumValue)/(Height-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
        end;
       end;*)
      end else if fSliderPushed then begin
-      fFocusedSubWidget:=pvgsbswThumbButton;
-      fPushedSubWidget:=pvgsbswThumbButton;
+      fFocusedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
+      fPushedSubWidget:=TpvGUIScrollBarSubWidget.ThumbButton;
       case fOrientation of
-       pvgsboHorizontal:begin
+       TpvGUIScrollBarOrientation.Horizontal:begin
         if aPointerEvent.Position.x<GetThumbButtonRect.Left then begin
          fStepSize:=-fLargeStep;
         end else begin
          fStepSize:=fLargeStep;
         end;
        end;
-       else {pvgsboVertical:}begin
+       else {TpvGUIScrollBarOrientation.Vertical:}begin
         if aPointerEvent.Position.y<GetThumbButtonRect.Top then begin
          fStepSize:=-fLargeStep;
         end else begin
@@ -12379,7 +12379,7 @@ begin
       end;
      end else begin
       case fPushedSubWidget of
-       pvgsbswDecButton:begin
+       TpvGUIScrollBarSubWidget.DecButton:begin
         if ((fValue-fSmallStep)>=fMinimumValue) and not (fValue<(fValue-fSmallStep)) then begin
          SetValue(fValue-fSmallStep);
         end else begin
@@ -12388,7 +12388,7 @@ begin
         fStepSize:=-fSmallStep;
         fTimeAccumulator:=0.5;
        end;
-       pvgsbswIncButton:begin
+       TpvGUIScrollBarSubWidget.IncButton:begin
         if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
          SetValue(fValue+fSmallStep);
         end else begin
@@ -12401,28 +12401,28 @@ begin
      end;
      result:=true;
     end;
-    POINTEREVENT_UP:begin
-     fPushedSubWidget:=pvgsbswNone;
+    TpvApplicationInputPointerEventType.UP:begin
+     fPushedSubWidget:=TpvGUIScrollBarSubWidget.None;
      fSliderPushed:=false;
      fStepSize:=0;
      result:=true;
     end;
-    POINTEREVENT_MOTION:begin
+    TpvApplicationInputPointerEventType.MOTION:begin
      result:=true;
     end;
-    POINTEREVENT_DRAG:begin
+    TpvApplicationInputPointerEventType.DRAG:begin
 {$if true}
      case fOrientation of
-      pvgsboHorizontal:begin
+      TpvGUIScrollBarOrientation.Horizontal:begin
        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(ThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
       end;
-      else {pvgsboVertical:}begin
+      else {TpvGUIScrollBarOrientation.Vertical:}begin
        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(ThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
       end;
      end;
 {$else}
      case fOrientation of
-      pvgsboHorizontal:begin
+      TpvGUIScrollBarOrientation.Horizontal:begin
        if (aPointerEvent.Position.x>=GetThumbButtonRect.Left) and
           (aPointerEvent.Position.x<=GetThumbButtonRect.Right) then begin
         Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+ThumbButtonSize))));
@@ -12430,7 +12430,7 @@ begin
         Step:=0;
        end;
       end;
-      else {pvgsboVertical:}begin
+      else {TpvGUIScrollBarOrientation.Vertical:}begin
        if (aPointerEvent.Position.y>=GetThumbButtonRect.Top) and
           (aPointerEvent.Position.y<=GetThumbButtonRect.Bottom) then begin
         Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+ThumbButtonSize))));
@@ -12516,11 +12516,11 @@ begin
 
  inherited Create(aParent);
 
- Include(fWidgetFlags,pvgwfTabStop);
- Include(fWidgetFlags,pvgwfDrawFocus);
- Include(fWidgetFlags,pvgwfDraggable);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
 
- fOrientation:=pvgsoHorizontal;
+ fOrientation:=TpvGUISliderOrientation.Horizontal;
 
  fMinimumValue:=0;
 
@@ -12540,9 +12540,9 @@ begin
 
  fOnChange:=nil;
 
- fFocusedSubWidget:=pvgsswNone;
+ fFocusedSubWidget:=TpvGUISliderSubWidget.None;
 
- fPushedSubWidget:=pvgsswNone;
+ fPushedSubWidget:=TpvGUISliderSubWidget.None;
 
  fStepSize:=0;
 
@@ -12614,7 +12614,7 @@ end;
 function TpvGUISlider.GetThumbButtonRect:TpvRect;
 begin
  case fOrientation of
-  pvgsoHorizontal:begin
+  TpvGUISliderOrientation.Horizontal:begin
    if fMinimumValue<fMaximumValue then begin
     result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(((fSize.x-fThumbButtonSize)*
                                                                 ((fValue-fMinimumValue)/Max(1,fMaximumValue-fMinimumValue))),
@@ -12625,7 +12625,7 @@ begin
                                    TpvVector2.InlineableCreate(fThumbButtonSize,fSize.y));
    end;
   end;
-  else {pvgsoVertical:}begin
+  else {TpvGUISliderOrientation.Vertical:}begin
    if fMinimumValue<fMaximumValue then begin
     result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(0.0,
                                                                ((fSize.y-fThumbButtonSize)*
@@ -12648,7 +12648,7 @@ end;
 
 function TpvGUISlider.Leave:boolean;
 begin
- fPushedSubWidget:=pvgsswNone;
+ fPushedSubWidget:=TpvGUISliderSubWidget.None;
  fStepSize:=0;
  fSliderPushed:=false;
  result:=inherited Leave;
@@ -12662,7 +12662,7 @@ end;
 function TpvGUISlider.PointerLeave:boolean;
 begin
  if assigned(fInstance) and (fInstance.fDragWidget<>self) then begin
-  fPushedSubWidget:=pvgsswNone;
+  fPushedSubWidget:=TpvGUISliderSubWidget.None;
  end;
  result:=inherited PointerLeave;
 end;
@@ -12679,7 +12679,7 @@ begin
   case aKeyEvent.KeyCode of
    KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
     case aKeyEvent.KeyEventType of
-     KEYEVENT_TYPED:begin
+     TpvApplicationInputKeyEventType.TYPED:begin
       if ((fValue-fSmallStep)>=fMinimumValue) and not (fValue<(fValue-fSmallStep)) then begin
        SetValue(fValue-fSmallStep);
       end else begin
@@ -12691,7 +12691,7 @@ begin
    end;
    KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
     case aKeyEvent.KeyEventType of
-     KEYEVENT_TYPED:begin
+     TpvApplicationInputKeyEventType.TYPED:begin
       if ((fValue+fSmallStep)<=fMaximumValue) and not (fValue>(fValue+fSmallStep)) then begin
        SetValue(fValue+fSmallStep);
       end else begin
@@ -12703,7 +12703,7 @@ begin
    end;
    KEYCODE_PAGEDOWN:begin
     case aKeyEvent.KeyEventType of
-     KEYEVENT_TYPED:begin
+     TpvApplicationInputKeyEventType.TYPED:begin
       if ((fValue+fLargeStep)<=fMaximumValue) and not (fValue>(fValue+fLargeStep)) then begin
        SetValue(fValue+fLargeStep);
       end else begin
@@ -12715,7 +12715,7 @@ begin
    end;
    KEYCODE_PAGEUP:begin
     case aKeyEvent.KeyEventType of
-     KEYEVENT_TYPED:begin
+     TpvApplicationInputKeyEventType.TYPED:begin
       if ((fValue-fLargeStep)>=fMinimumValue) and not (fValue<(fValue-fLargeStep)) then begin
        SetValue(fValue-fLargeStep);
       end else begin
@@ -12727,7 +12727,7 @@ begin
    end;
    KEYCODE_HOME:begin
     case aKeyEvent.KeyEventType of
-     KEYEVENT_TYPED:begin
+     TpvApplicationInputKeyEventType.TYPED:begin
       SetValue(fMinimumValue);
      end;
     end;
@@ -12735,7 +12735,7 @@ begin
    end;
    KEYCODE_END:begin
     case aKeyEvent.KeyEventType of
-     KEYEVENT_TYPED:begin
+     TpvApplicationInputKeyEventType.TYPED:begin
       SetValue(fMaximumValue);
      end;
     end;
@@ -12753,54 +12753,54 @@ begin
   result:=inherited PointerEvent(aPointerEvent);
   if not result then begin
    case aPointerEvent.PointerEventType of
-    POINTEREVENT_DOWN:begin
+    TpvApplicationInputPointerEventType.DOWN:begin
      if not Focused then begin
       RequestFocus;
      end;
-     fFocusedSubWidget:=pvgsswNone;
-     fPushedSubWidget:=pvgsswNone;
+     fFocusedSubWidget:=TpvGUISliderSubWidget.None;
+     fPushedSubWidget:=TpvGUISliderSubWidget.None;
      fSliderPushed:=false;
      fStepSize:=0;
      fTimeAccumulator:=MaxDouble;
      case fOrientation of
-      pvgsoHorizontal:begin
+      TpvGUISliderOrientation.Horizontal:begin
        if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
-        fFocusedSubWidget:=pvgsswThumbButton;
-        fPushedSubWidget:=pvgsswThumbButton;
+        fFocusedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
+        fPushedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
        end else begin
         fSliderPushed:=true;
        end;
       end;
-      else {pvgsoVertical:}begin
+      else {TpvGUISliderOrientation.Vertical:}begin
        if GetThumbButtonRect.Touched(aPointerEvent.Position) then begin
-        fFocusedSubWidget:=pvgsswThumbButton;
-        fPushedSubWidget:=pvgsswThumbButton;
+        fFocusedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
+        fPushedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
        end else begin
         fSliderPushed:=true;
        end;
       end;
      end;
-     if fPushedSubWidget=pvgsswThumbButton then begin
+     if fPushedSubWidget=TpvGUISliderSubWidget.ThumbButton then begin
 (*    case fOrientation of
-       pvgsoHorizontal:begin
+       TpvGUISliderOrientation.Horizontal:begin
         SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(fThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+(fThumbButtonSize*1.0)))))));
        end;
-       else {pvgsoVertical:}begin
+       else {TpvGUISliderOrientation.Vertical:}begin
         SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(fThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+(fThumbButtonSize*1.0)))))));
        end;
       end;*)
      end else if fSliderPushed then begin
-      fFocusedSubWidget:=pvgsswThumbButton;
-      fPushedSubWidget:=pvgsswThumbButton;
+      fFocusedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
+      fPushedSubWidget:=TpvGUISliderSubWidget.ThumbButton;
       case fOrientation of
-       pvgsoHorizontal:begin
+       TpvGUISliderOrientation.Horizontal:begin
         if aPointerEvent.Position.x<GetThumbButtonRect.Left then begin
          fStepSize:=-fLargeStep;
         end else begin
          fStepSize:=fLargeStep;
         end;
        end;
-       else {pvgsoVertical:}begin
+       else {TpvGUISliderOrientation.Vertical:}begin
         if aPointerEvent.Position.y<GetThumbButtonRect.Top then begin
          fStepSize:=-fLargeStep;
         end else begin
@@ -12820,31 +12820,31 @@ begin
      end;
      result:=true;
     end;
-    POINTEREVENT_UP:begin
-     fPushedSubWidget:=pvgsswNone;
+    TpvApplicationInputPointerEventType.UP:begin
+     fPushedSubWidget:=TpvGUISliderSubWidget.None;
      fSliderPushed:=false;
      fStepSize:=0;
      result:=true;
     end;
-    POINTEREVENT_MOTION:begin
+    TpvApplicationInputPointerEventType.MOTION:begin
      result:=true;
     end;
-    POINTEREVENT_DRAG:begin
+    TpvApplicationInputPointerEventType.DRAG:begin
 {$if true}
      case fOrientation of
-      pvgsoHorizontal:begin
+      TpvGUISliderOrientation.Horizontal:begin
        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fThumbButtonSize*0.5))*((fMaximumValue-fMinimumValue)/Max(1,Width-(fThumbButtonSize*1.0))))));
       end;
-      else {pvgsoVertical:}begin
+      else {TpvGUISliderOrientation.Vertical:}begin
        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fThumbButtonSize*0.5))*((fMaximumValue-fMinimumValue)/Max(1,Height-(fThumbButtonSize*1.0))))));
       end;
      end;
 {$else}
      case fOrientation of
-      pvgsoHorizontal:begin
+      TpvGUISliderOrientation.Horizontal:begin
        Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/Max(1,Width-ThumbButtonSize)));
       end;
-      else {pvgsoVertical:}begin
+      else {TpvGUISliderOrientation.Vertical:}begin
        Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/Max(1,Height-ThumbButtonSize)));
       end;
      end;
@@ -12919,7 +12919,7 @@ begin
 
  inherited Create(aParent);
 
- fOrientation:=pvgpboHorizontal;
+ fOrientation:=TpvGUIProgressBarOrientation.Horizontal;
 
  fMinimumValue:=0;
 
@@ -12994,23 +12994,23 @@ begin
 
  inherited Create(aParent);
 
- fHorizontalScrollDirection:=TpvGUIScrollPanelScrollDirection.pvgspsdfAuto;
+ fHorizontalScrollDirection:=TpvGUIScrollPanelScrollDirection.Auto;
 
- fVerticalScrollDirection:=TpvGUIScrollPanelScrollDirection.pvgspsdfAuto;
+ fVerticalScrollDirection:=TpvGUIScrollPanelScrollDirection.Auto;
 
  fClipContentPanel:=TpvGUIPanel.Create(self);
- Include(fClipContentPanel.fWidgetFlags,pvgwfScissor);
+ Include(fClipContentPanel.fWidgetFlags,TpvGUIWidgetFlag.Scissor);
 
  fContent:=TpvGUIPanel.Create(fClipContentPanel);
 
- fContent.Layout:=TpvGUIBoxLayout.Create(fContent,pvglaMiddle,pvgloHorizontal,0.0,4.0);
+ fContent.Layout:=TpvGUIBoxLayout.Create(fContent,TpvGUILayoutAlignment.Middle,TpvGUILayoutOrientation.Horizontal,0.0,4.0);
 
  fHorizontalScrollBar:=TpvGUIScrollBar.Create(self);
- fHorizontalScrollBar.Orientation:=pvgsboHorizontal;
+ fHorizontalScrollBar.Orientation:=TpvGUIScrollBarOrientation.Horizontal;
  fHorizontalScrollBar.OnChange:=HorizontalScrollBarOnChange;
 
  fVerticalScrollBar:=TpvGUIScrollBar.Create(self);
- fVerticalScrollBar.Orientation:=pvgsboVertical;
+ fVerticalScrollBar.Orientation:=TpvGUIScrollBarOrientation.Vertical;
  fVerticalScrollBar.OnChange:=VerticalScrollBarOnChange;
 
 end;
@@ -13050,12 +13050,12 @@ begin
 
  result:=ContentPreferredSize;
 
- if fHorizontalScrollDirection=pvgspsdfOn then begin
+ if fHorizontalScrollDirection=TpvGUIScrollPanelScrollDirection.On then begin
   //result.x:=Max(result.x,HorizontalScrollBarPreferredSize.x);
   result.y:=result.y+HorizontalScrollBarPreferredSize.y;
  end;
 
- if fVerticalScrollDirection=pvgspsdfOn then begin
+ if fVerticalScrollDirection=TpvGUIScrollPanelScrollDirection.On then begin
   result.x:=result.x+VerticalScrollBarPreferredSize.x;
   //result.y:=Max(result.y,VerticalScrollBarPreferredSize.y);
  end;
@@ -13084,16 +13084,16 @@ begin
 
   OldState:=NewState;
 
-  if (fHorizontalScrollDirection=pvgspsdfOn) or
-     ((fHorizontalScrollDirection=pvgspsdfAuto) and (ContentPreferredSize.x>AvailiableSize.x)) then begin
+  if (fHorizontalScrollDirection=TpvGUIScrollPanelScrollDirection.On) or
+     ((fHorizontalScrollDirection=TpvGUIScrollPanelScrollDirection.Auto) and (ContentPreferredSize.x>AvailiableSize.x)) then begin
    fHorizontalScrollBar.Visible:=true;
    NewState:=NewState or 1;
   end else begin
    fHorizontalScrollBar.Visible:=false;
   end;
 
-  if (fVerticalScrollDirection=pvgspsdfOn) or
-     ((fVerticalScrollDirection=pvgspsdfAuto) and (ContentPreferredSize.y>AvailiableSize.y)) then begin
+  if (fVerticalScrollDirection=TpvGUIScrollPanelScrollDirection.On) or
+     ((fVerticalScrollDirection=TpvGUIScrollPanelScrollDirection.Auto) and (ContentPreferredSize.y>AvailiableSize.y)) then begin
    fVerticalScrollBar.Visible:=true;
    NewState:=NewState or 2;
   end else begin

@@ -128,11 +128,11 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanFormatSizeFlag=
       (
-       vfsfPacked,
-       vfsfCompressed,
-       vfsfPalettized,
-       vfsfDepth,
-       vfsfStencil
+       PackedFormat,
+       CompressedFormat,
+       PalettizedFormat,
+       DepthFormat,
+       StencilFormat
       );
 
      TpvVulkanFormatSizeFlags=set of TpvVulkanFormatSizeFlag;
@@ -621,62 +621,62 @@ type EpvVulkanException=class(Exception);
      PpvVulkanSurfacePlatform=^TpvVulkanSurfacePlatform;
      TpvVulkanSurfacePlatform=
       (
-       vspUnknown,
-       vspAndroid,
-       vspMir,
-       vspWayland,
-       vspWin32,
-       vspXCB,
-       vspXLIB,
-       vspMolkenVK_IOS,
-       vspMolkenVK_MacOS
+       Unknown,
+       Android,
+       Mir,
+       pWayland,
+       Win32,
+       XCB,
+       XLIB,
+       MolkenVK_IOS,
+       MolkenVK_MacOS
       );
 
      PpvVulkanSurfaceCreateInfo=^TpvVulkanSurfaceCreateInfo;
      TpvVulkanSurfaceCreateInfo=record
       case TpvVulkanSurfacePlatform of
-       vspUnknown:(
+       TpvVulkanSurfacePlatform.Unknown:(
         sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_*_SURFACE_CREATE_INFO_KHR
         aNext:PVkVoid; //< TpvPointer to next structure
         flags:TVkFlags; //< Reserved
        );
 {$if defined(Android) and defined(Unix)}
-       vspAndroid:(
+       TpvVulkanSurfacePlatform.Android:(
         Android:TVkAndroidSurfaceCreateInfoKHR;
        );
 {$ifend}
 {$if defined(Mir) and defined(Unix)}
-       vspMir:(
+       TpvVulkanSurfacePlatform.Mir:(
         Mir:TVkMirSurfaceCreateInfoKHR;
        );
 {$ifend}
 {$if defined(Wayland) and defined(Unix)}
-       vspWayland:(
+       TpvVulkanSurfacePlatform.Wayland:(
         Wayland:TVkWaylandSurfaceCreateInfoKHR;
        );
 {$ifend}
 {$if defined(Windows)}
-       vspWin32:(
+       TpvVulkanSurfacePlatform.Win32:(
         Win32:TVkWin32SurfaceCreateInfoKHR;
        );
 {$ifend}
 {$if defined(XCB) and defined(Unix)}
-       vspXCB:(
+       TpvVulkanSurfacePlatform.XCB:(
         XCB:TVkXCBSurfaceCreateInfoKHR;
        );
 {$ifend}
 {$if defined(XLIB) and defined(Unix)}
-       vspXLIB:(
+       TpvVulkanSurfacePlatform.XLIB:(
         XLIB:TVkXLIBSurfaceCreateInfoKHR;
        );
 {$ifend}
 {$if defined(MoltenVK_IOS) and defined(Darwin)}
-       vspMolkenVK_IOS:(
+       TpvVulkanSurfacePlatform.MolkenVK_IOS:(
         MolkenVK_IOS:TVkIOSSurfaceCreateInfoMVK;
        );
 {$ifend}
 {$if defined(MoltenVK_MacOS) and defined(Darwin)}
-       vspMolkenVK_MacOS:(
+       TpvVulkanSurfacePlatform.MolkenVK_MacOS:(
         MolkenVK_MacOS:TVkMacOSSurfaceCreateInfoMVK;
        );
 {$ifend}
@@ -838,17 +838,17 @@ type EpvVulkanException=class(Exception);
      PpvVulkanDeviceMemoryAllocationType=^TpvVulkanDeviceMemoryAllocationType;
      TpvVulkanDeviceMemoryAllocationType=
       (
-       vdmatFree,
-       vdmatUnknown,
-       vdmatBuffer,
-       vdmatImageLinear,
-       vdmatImageOptimal
+       Free,
+       Unknown,
+       Buffer,
+       ImageLinear,
+       ImageOptimal
       );
 
      PpvVulkanDeviceMemoryChunkFlag=^TpvVulkanDeviceMemoryChunkFlag;
      TpvVulkanDeviceMemoryChunkFlag=
       (
-       vdmcfPersistentMapped
+       PersistentMapped
       );
 
      PpvVulkanDeviceMemoryChunkFlags=^TpvVulkanDeviceMemoryChunkFlags;
@@ -1015,8 +1015,8 @@ type EpvVulkanException=class(Exception);
      PpvVulkanDeviceMemoryBlockFlag=^TpvVulkanDeviceMemoryBlockFlag;
      TpvVulkanDeviceMemoryBlockFlag=
       (
-       vdmbfOwnSingleMemoryChunk,
-       vdmbfPersistentMapped
+       OwnSingleMemoryChunk,
+       PersistentMapped
       );
 
      PpvVulkanDeviceMemoryBlockFlags=^TpvVulkanDeviceMemoryBlockFlags;
@@ -1121,16 +1121,16 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanBufferUseTemporaryStagingBufferMode=
       (
-       vbutsbmAutomatic,
-       vbutsbmYes,
-       vbutsbmNo
+       Automatic,
+       Yes,
+       No
       );
 
      PpvVulkanBufferFlag=^TpvVulkanBufferFlag;
      TpvVulkanBufferFlag=
       (
-       vbfOwnSingleMemoryChunk,
-       vbfPersistentMapped
+       OwnSingleMemoryChunk,
+       PersistentMapped
       );
 
      PpvVulkanBufferFlags=^TpvVulkanBufferFlags;
@@ -1169,7 +1169,7 @@ type EpvVulkanException=class(Exception);
                             const aData;
                             const aDataOffset:TVkDeviceSize;
                             const aDataSize:TVkDeviceSize;
-                            const aUseTemporaryStagingBufferMode:TpvVulkanBufferUseTemporaryStagingBufferMode=vbutsbmAutomatic);
+                            const aUseTemporaryStagingBufferMode:TpvVulkanBufferUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
        procedure UpdateData(const aData;
                             const aDataOffset:TVkDeviceSize;
                             const aDataSize:TVkDeviceSize);
@@ -2620,41 +2620,42 @@ type EpvVulkanException=class(Exception);
        property DynamicState:TpvVulkanPipelineDynamicState read GetDynamicState;
      end;
 
+     PpvVulkanTextureUsageFlag=^TpvVulkanTextureUsageFlag;
      TpvVulkanTextureUsageFlag=
       (
-       vtufUndefined,
-       vtufGeneral,
-       vtufTransferSrc,
-       vtufTransferDst,
-       vtufSampled,
-       vtufStorage,
-       vtufColorAttachment,
-       vtufPresentation
+       Undefined,
+       General,
+       TransferSrc,
+       TransferDst,
+       Sampled,
+       Storage,
+       ColorAttachment,
+       Presentation
       );
 
      TpvVulkanTextureUsageFlags=set of TpvVulkanTextureUsageFlag;
 
      TpvVulkanTextureWrapMode=
       (
-       vtwmRepeat,
-       vtwmMirroredRepeat,
-       vtwmClampToEdge,
-       vtwmClampToBorder,
-       vtwmMirrorClampToEdge
+       WrappedRepeat,
+       MirroredRepeat,
+       ClampToEdge,
+       ClampToBorder,
+       MirrorClampToEdge
       );
 
      TpvVulkanTextureFilterMode=
       (
-       vtfmNearest,
-       vtfmLinear,
-       vtfmBilinear
+       Nearest,
+       Linear,
+       Bilinear
       );
 
      TpvVulkanTextureDefaultType=
       (
-       vtdtCheckerboard,
-       vtdtPyramids,
-       vtdtCircles
+       Checkerboard,
+       Pyramids,
+       Circles
       );
 
      TpvVulkanTexture=class(TpvVulkanObject)
@@ -4945,7 +4946,7 @@ function VulkanGetFormatSize(const aFormat:TVkFormat):TpvVulkanFormatSize;
 begin
  case aFormat of
   VK_FORMAT_R4G4_UNORM_PACK8:begin
-   result.Flags:=[vfsfPacked];
+   result.Flags:=[TpvVulkanFormatSizeFlag.PackedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=1*8;
    result.BlockWidth:=1;
@@ -4953,7 +4954,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_R4G4B4A4_UNORM_PACK16,VK_FORMAT_B4G4R4A4_UNORM_PACK16,VK_FORMAT_R5G6B5_UNORM_PACK16,VK_FORMAT_B5G6R5_UNORM_PACK16,VK_FORMAT_R5G5B5A1_UNORM_PACK16,VK_FORMAT_B5G5R5A1_UNORM_PACK16,VK_FORMAT_A1R5G5B5_UNORM_PACK16:begin
-   result.Flags:=[vfsfPacked];
+   result.Flags:=[TpvVulkanFormatSizeFlag.PackedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=2*8;
    result.BlockWidth:=1;
@@ -4994,7 +4995,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_A8B8G8R8_UNORM_PACK32,VK_FORMAT_A8B8G8R8_SNORM_PACK32,VK_FORMAT_A8B8G8R8_USCALED_PACK32,VK_FORMAT_A8B8G8R8_SSCALED_PACK32,VK_FORMAT_A8B8G8R8_UINT_PACK32,VK_FORMAT_A8B8G8R8_SINT_PACK32,VK_FORMAT_A8B8G8R8_SRGB_PACK32:begin
-   result.Flags:=[vfsfPacked];
+   result.Flags:=[TpvVulkanFormatSizeFlag.PackedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=4*8;
    result.BlockWidth:=1;
@@ -5002,7 +5003,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_A2R10G10B10_UNORM_PACK32,VK_FORMAT_A2R10G10B10_SNORM_PACK32,VK_FORMAT_A2R10G10B10_USCALED_PACK32,VK_FORMAT_A2R10G10B10_SSCALED_PACK32,VK_FORMAT_A2R10G10B10_UINT_PACK32,VK_FORMAT_A2R10G10B10_SINT_PACK32,VK_FORMAT_A2B10G10R10_UNORM_PACK32,VK_FORMAT_A2B10G10R10_SNORM_PACK32,VK_FORMAT_A2B10G10R10_USCALED_PACK32,VK_FORMAT_A2B10G10R10_SSCALED_PACK32,VK_FORMAT_A2B10G10R10_UINT_PACK32,VK_FORMAT_A2B10G10R10_SINT_PACK32:begin
-   result.Flags:=[vfsfPacked];
+   result.Flags:=[TpvVulkanFormatSizeFlag.PackedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=4*8;
    result.BlockWidth:=1;
@@ -5106,7 +5107,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_B10G11R11_UFLOAT_PACK32,VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:begin
-   result.Flags:=[vfsfPacked];
+   result.Flags:=[TpvVulkanFormatSizeFlag.PackedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=4*8;
    result.BlockWidth:=1;
@@ -5114,7 +5115,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_D16_UNORM:begin
-   result.Flags:=[vfsfDepth];
+   result.Flags:=[TpvVulkanFormatSizeFlag.DepthFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=2*8;
    result.BlockWidth:=1;
@@ -5122,7 +5123,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_X8_D24_UNORM_PACK32:begin
-   result.Flags:=[vfsfPacked,vfsfDepth];
+   result.Flags:=[TpvVulkanFormatSizeFlag.PackedFormat,TpvVulkanFormatSizeFlag.DepthFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=4*8;
    result.BlockWidth:=1;
@@ -5130,7 +5131,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_D32_SFLOAT:begin
-   result.Flags:=[vfsfDepth];
+   result.Flags:=[TpvVulkanFormatSizeFlag.DepthFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=4*8;
    result.BlockWidth:=1;
@@ -5138,7 +5139,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_S8_UINT:begin
-   result.Flags:=[vfsfStencil];
+   result.Flags:=[TpvVulkanFormatSizeFlag.StencilFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=1*8;
    result.BlockWidth:=1;
@@ -5146,7 +5147,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_D16_UNORM_S8_UINT:begin
-   result.Flags:=[vfsfDepth,vfsfStencil];
+   result.Flags:=[TpvVulkanFormatSizeFlag.DepthFormat,TpvVulkanFormatSizeFlag.StencilFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=3*8;
    result.BlockWidth:=1;
@@ -5154,7 +5155,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_D24_UNORM_S8_UINT:begin
-   result.Flags:=[vfsfDepth,vfsfStencil];
+   result.Flags:=[TpvVulkanFormatSizeFlag.DepthFormat,TpvVulkanFormatSizeFlag.StencilFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=4*8;
    result.BlockWidth:=1;
@@ -5162,7 +5163,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_D32_SFLOAT_S8_UINT:begin
-   result.Flags:=[vfsfDepth,vfsfStencil];
+   result.Flags:=[TpvVulkanFormatSizeFlag.DepthFormat,TpvVulkanFormatSizeFlag.StencilFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=8*8;
    result.BlockWidth:=1;
@@ -5170,7 +5171,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_BC1_RGB_UNORM_BLOCK,VK_FORMAT_BC1_RGB_SRGB_BLOCK,VK_FORMAT_BC1_RGBA_UNORM_BLOCK,VK_FORMAT_BC1_RGBA_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=8*8;
    result.BlockWidth:=4;
@@ -5178,7 +5179,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_BC2_UNORM_BLOCK,VK_FORMAT_BC2_SRGB_BLOCK,VK_FORMAT_BC3_UNORM_BLOCK,VK_FORMAT_BC3_SRGB_BLOCK,VK_FORMAT_BC4_UNORM_BLOCK,VK_FORMAT_BC4_SNORM_BLOCK,VK_FORMAT_BC5_UNORM_BLOCK,VK_FORMAT_BC5_SNORM_BLOCK,VK_FORMAT_BC6H_UFLOAT_BLOCK,VK_FORMAT_BC6H_SFLOAT_BLOCK,VK_FORMAT_BC7_UNORM_BLOCK,VK_FORMAT_BC7_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=4;
@@ -5186,7 +5187,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK,VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK,VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK,VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=8*8;
    result.BlockWidth:=4;
@@ -5194,7 +5195,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK,VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK,VK_FORMAT_EAC_R11_UNORM_BLOCK,VK_FORMAT_EAC_R11_SNORM_BLOCK,VK_FORMAT_EAC_R11G11_UNORM_BLOCK,VK_FORMAT_EAC_R11G11_SNORM_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=4;
@@ -5202,7 +5203,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ASTC_4x4_UNORM_BLOCK,VK_FORMAT_ASTC_4x4_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=4;
@@ -5210,7 +5211,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ASTC_5x4_UNORM_BLOCK,VK_FORMAT_ASTC_5x4_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=5;
@@ -5218,7 +5219,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ASTC_5x5_UNORM_BLOCK,VK_FORMAT_ASTC_5x5_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=5;
@@ -5226,7 +5227,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ASTC_6x5_UNORM_BLOCK,VK_FORMAT_ASTC_6x5_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=6;
@@ -5234,7 +5235,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ASTC_6x6_UNORM_BLOCK,VK_FORMAT_ASTC_6x6_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=6;
@@ -5242,7 +5243,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ASTC_8x5_UNORM_BLOCK,VK_FORMAT_ASTC_8x5_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=8;
@@ -5250,7 +5251,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ASTC_8x6_UNORM_BLOCK,VK_FORMAT_ASTC_8x6_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=8;
@@ -5258,7 +5259,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ASTC_8x8_UNORM_BLOCK,VK_FORMAT_ASTC_8x8_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=8;
@@ -5266,7 +5267,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ASTC_10x5_UNORM_BLOCK,VK_FORMAT_ASTC_10x5_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=10;
@@ -5274,7 +5275,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ASTC_10x6_UNORM_BLOCK,VK_FORMAT_ASTC_10x6_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=10;
@@ -5282,7 +5283,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ASTC_10x8_UNORM_BLOCK,VK_FORMAT_ASTC_10x8_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=10;
@@ -5290,7 +5291,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ASTC_10x10_UNORM_BLOCK,VK_FORMAT_ASTC_10x10_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=10;
@@ -5298,7 +5299,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ASTC_12x10_UNORM_BLOCK,VK_FORMAT_ASTC_12x10_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=12;
@@ -5306,7 +5307,7 @@ begin
    result.BlockDepth:=1;
   end;
   VK_FORMAT_ASTC_12x12_UNORM_BLOCK,VK_FORMAT_ASTC_12x12_SRGB_BLOCK:begin
-   result.Flags:=[vfsfCompressed];
+   result.Flags:=[TpvVulkanFormatSizeFlag.CompressedFormat];
    result.PaletteSizeInBits:=0;
    result.BlockSizeInBits:=16*8;
    result.BlockWidth:=12;
@@ -8905,7 +8906,7 @@ begin
  fAlignment:=aAlignment;
  fAllocationType:=aAllocationType;
  fOffsetRedBlackTreeNode:=fMemoryChunk.fOffsetRedBlackTree.Insert(aOffset,self);
- if fAllocationType=vdmatFree then begin
+ if fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
   fSizeRedBlackTreeNode:=fMemoryChunk.fSizeRedBlackTree.Insert(aSize,self);
  end;
  fMemoryBlock:=aMemoryBlock;
@@ -8918,7 +8919,7 @@ end;
 destructor TpvVulkanDeviceMemoryChunkBlock.Destroy;
 begin
  fMemoryChunk.fOffsetRedBlackTree.Remove(fOffsetRedBlackTreeNode);
- if fAllocationType=vdmatFree then begin
+ if fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
   fMemoryChunk.fSizeRedBlackTree.Remove(fSizeRedBlackTreeNode);
  end;
  if assigned(fMemoryBlock) then begin
@@ -8942,11 +8943,11 @@ begin
   fMemoryChunk.fOffsetRedBlackTree.Remove(fOffsetRedBlackTreeNode);
   fOffsetRedBlackTreeNode:=fMemoryChunk.fOffsetRedBlackTree.Insert(aOffset,self);
  end;
- if ((fAllocationType=vdmatFree)<>(aAllocationType=vdmatFree)) or (fSize<>aSize) then begin
-  if fAllocationType=vdmatFree then begin
+ if ((fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free)<>(aAllocationType=TpvVulkanDeviceMemoryAllocationType.Free)) or (fSize<>aSize) then begin
+  if fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
    fMemoryChunk.fSizeRedBlackTree.Remove(fSizeRedBlackTreeNode);
   end;
-  if aAllocationType=vdmatFree then begin
+  if aAllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
    fSizeRedBlackTreeNode:=fMemoryChunk.fSizeRedBlackTree.Insert(aSize,self);
   end;
  end;
@@ -8954,7 +8955,7 @@ begin
  fSize:=aSize;
  fAlignment:=aAlignment;
  fAllocationType:=aAllocationType;
- if fAllocationType=vdmatFree then begin
+ if fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
   if assigned(fMemoryBlock) then begin
    if fMemoryBlock.fMemoryChunk=fMemoryChunk then begin
     fMemoryBlock.fMemoryChunk:=nil;
@@ -9139,7 +9140,7 @@ begin
  fOffsetRedBlackTree:=TpvVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
  fSizeRedBlackTree:=TpvVulkanDeviceMemoryChunkBlockRedBlackTree.Create;
 
- TpvVulkanDeviceMemoryChunkBlock.Create(self,0,BestWantedChunkSize,1,vdmatFree);
+ TpvVulkanDeviceMemoryChunkBlock.Create(self,0,BestWantedChunkSize,1,TpvVulkanDeviceMemoryAllocationType.Free);
 
  fLock:=TCriticalSection.Create;
 
@@ -9153,7 +9154,7 @@ begin
  fMemoryChunkList^.First:=self;
  fPreviousMemoryChunk:=nil;
 
- if vdmcfPersistentMapped in fMemoryChunkFlags then begin
+ if TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in fMemoryChunkFlags then begin
   fLock.Acquire;
   try
    if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
@@ -9179,7 +9180,7 @@ end;
 destructor TpvVulkanDeviceMemoryChunk.Destroy;
 begin
 
- if (vdmcfPersistentMapped in fMemoryChunkFlags) and
+ if (TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in fMemoryChunkFlags) and
     assigned(fMemory) and
     ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0) then begin
   fLock.Acquire;
@@ -9333,14 +9334,14 @@ begin
      OtherNode:=Node.fValue.fOffsetRedBlackTreeNode.Predecessor;
      while assigned(OtherNode) and
            assigned(OtherNode.fValue) and
-           (OtherNode.fValue.fAllocationType=vdmatFree) do begin
+           (OtherNode.fValue.fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free) do begin
       OtherNode:=OtherNode.Value.fOffsetRedBlackTreeNode.Predecessor;
      end;
      if assigned(OtherNode) and
         assigned(OtherNode.fValue) and
-        ((OtherNode.fValue.fAllocationType<>vdmatFree) and
-         (((OtherNode.fValue.fAllocationType in [vdmatUnknown,vdmatBuffer])<>(aAllocationType in [vdmatUnknown,vdmatBuffer])) or
-          ((OtherNode.fValue.fAllocationType in [vdmatImageLinear,vdmatImageOptimal])<>(aAllocationType in [vdmatImageLinear,vdmatImageOptimal])))) then begin
+        ((OtherNode.fValue.fAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free) and
+         (((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])) or
+          ((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal])))) then begin
       if (PayloadBeginOffset and BufferImageGranularityInvertedMask)=((OtherNode.fValue.fOffset+(OtherNode.fValue.fSize-1)) and BufferImageGranularityInvertedMask) then begin
        if LastNode=Node then begin
         LastNode:=nil;
@@ -9359,14 +9360,14 @@ begin
       OtherNode:=Node.fValue.fOffsetRedBlackTreeNode.Successor;
       while assigned(OtherNode) and
             assigned(OtherNode.fValue) and
-            (OtherNode.fValue.fAllocationType=vdmatFree) do begin
+            (OtherNode.fValue.fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free) do begin
        OtherNode:=OtherNode.Value.fOffsetRedBlackTreeNode.Successor;
       end;
       if assigned(OtherNode) and
          assigned(OtherNode.fValue) and
-         ((OtherNode.fValue.fAllocationType<>vdmatFree) and
-          (((OtherNode.fValue.fAllocationType in [vdmatUnknown,vdmatBuffer])<>(aAllocationType in [vdmatUnknown,vdmatBuffer])) or
-           ((OtherNode.fValue.fAllocationType in [vdmatImageLinear,vdmatImageOptimal])<>(aAllocationType in [vdmatImageLinear,vdmatImageOptimal])))) then begin
+         ((OtherNode.fValue.fAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free) and
+          (((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])) or
+           ((OtherNode.fValue.fAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal])<>(aAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal])))) then begin
        if ((PayloadEndOffset-1) and BufferImageGranularityInvertedMask)=(OtherNode.fValue.fOffset and BufferImageGranularityInvertedMask) then begin
         LastNode:=nil;
         Node:=Node.Successor;
@@ -9402,11 +9403,11 @@ begin
      aChunkBlock:=MemoryChunkBlock;
 
      if MemoryChunkBlockBeginOffset<PayloadBeginOffset then begin
-      TpvVulkanDeviceMemoryChunkBlock.Create(self,MemoryChunkBlockBeginOffset,PayloadBeginOffset-MemoryChunkBlockBeginOffset,1,vdmatFree);
+      TpvVulkanDeviceMemoryChunkBlock.Create(self,MemoryChunkBlockBeginOffset,PayloadBeginOffset-MemoryChunkBlockBeginOffset,1,TpvVulkanDeviceMemoryAllocationType.Free);
      end;
 
      if PayloadEndOffset<MemoryChunkBlockEndOffset then begin
-      TpvVulkanDeviceMemoryChunkBlock.Create(self,PayloadEndOffset,MemoryChunkBlockEndOffset-PayloadEndOffset,1,vdmatFree);
+      TpvVulkanDeviceMemoryChunkBlock.Create(self,PayloadEndOffset,MemoryChunkBlockEndOffset-PayloadEndOffset,1,TpvVulkanDeviceMemoryAllocationType.Free);
      end;
 
      aOffset:=PayloadBeginOffset;
@@ -9440,7 +9441,7 @@ begin
   Node:=fOffsetRedBlackTree.Find(aOffset);
   if assigned(Node) then begin
    MemoryChunkBlock:=Node.fValue;
-   if MemoryChunkBlock.fAllocationType<>vdmatFree then begin
+   if MemoryChunkBlock.fAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free then begin
     dec(fUsed,MemoryChunkBlock.Size);
     if aSize=0 then begin
      result:=FreeMemory(aOffset);
@@ -9452,10 +9453,10 @@ begin
       if assigned(OtherNode) and
          (MemoryChunkBlock.fOffsetRedBlackTreeNode<>OtherNode) then begin
        OtherMemoryChunkBlock:=OtherNode.fValue;
-       if OtherMemoryChunkBlock.fAllocationType=vdmatFree then begin
+       if OtherMemoryChunkBlock.fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
         if (MemoryChunkBlock.fOffset+aSize)<(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
          MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAlignment,MemoryChunkBlock.fAllocationType);
-         OtherMemoryChunkBlock.Update(MemoryChunkBlock.fOffset+aSize,(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-(MemoryChunkBlock.fOffset+aSize),1,vdmatFree);
+         OtherMemoryChunkBlock.Update(MemoryChunkBlock.fOffset+aSize,(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-(MemoryChunkBlock.fOffset+aSize),1,TpvVulkanDeviceMemoryAllocationType.Free);
          result:=true;
         end else if (MemoryChunkBlock.fOffset+aSize)=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize) then begin
          MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAlignment,MemoryChunkBlock.fAllocationType);
@@ -9468,18 +9469,18 @@ begin
       OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Successor;
       if assigned(OtherNode) and
          (MemoryChunkBlock.fOffsetRedBlackTreeNode<>OtherNode) and
-         (OtherNode.fValue.fAllocationType=vdmatFree) then begin
+         (OtherNode.fValue.fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free) then begin
        OtherMemoryChunkBlock:=OtherNode.fValue;
        TempOffset:=MemoryChunkBlock.fOffset+aSize;
        TempSize:=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-TempOffset;
        MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAlignment,MemoryChunkBlock.fAllocationType);
-       OtherMemoryChunkBlock.Update(TempOffset,TempSize,1,vdmatFree);
+       OtherMemoryChunkBlock.Update(TempOffset,TempSize,1,TpvVulkanDeviceMemoryAllocationType.Free);
        result:=true;
       end else begin
        TempOffset:=MemoryChunkBlock.fOffset+aSize;
        TempSize:=(MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize)-TempOffset;
        MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,aSize,MemoryChunkBlock.fAlignment,MemoryChunkBlock.fAllocationType);
-       TpvVulkanDeviceMemoryChunkBlock.Create(self,TempOffset,TempSize,1,vdmatFree);
+       TpvVulkanDeviceMemoryChunkBlock.Create(self,TempOffset,TempSize,1,TpvVulkanDeviceMemoryAllocationType.Free);
        result:=true;
       end;
      end;
@@ -9510,7 +9511,7 @@ begin
   if assigned(Node) then begin
 
    MemoryChunkBlock:=Node.fValue;
-   if MemoryChunkBlock.fAllocationType<>vdmatFree then begin
+   if MemoryChunkBlock.fAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free then begin
 
     dec(fUsed,MemoryChunkBlock.fSize);
 
@@ -9519,12 +9520,12 @@ begin
 
      // Coalescing previous free block with current block
      OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Predecessor;
-     if assigned(OtherNode) and (OtherNode.fValue.fAllocationType=vdmatFree) then begin
+     if assigned(OtherNode) and (OtherNode.fValue.fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free) then begin
       OtherMemoryChunkBlock:=OtherNode.fValue;
       TempOffset:=OtherMemoryChunkBlock.fOffset;
       TempSize:=(MemoryChunkBlock.fOffset+MemoryChunkBlock.fSize)-TempOffset;
       MemoryChunkBlock.Free;
-      OtherMemoryChunkBlock.Update(TempOffset,TempSize,1,vdmatFree);
+      OtherMemoryChunkBlock.Update(TempOffset,TempSize,1,TpvVulkanDeviceMemoryAllocationType.Free);
       MemoryChunkBlock:=OtherMemoryChunkBlock;
       Node:=OtherNode;
       continue;
@@ -9532,18 +9533,18 @@ begin
 
      // Coalescing current block with next free block
      OtherNode:=MemoryChunkBlock.fOffsetRedBlackTreeNode.Successor;
-     if assigned(OtherNode) and (OtherNode.fValue.fAllocationType=vdmatFree) then begin
+     if assigned(OtherNode) and (OtherNode.fValue.fAllocationType=TpvVulkanDeviceMemoryAllocationType.Free) then begin
       OtherMemoryChunkBlock:=OtherNode.fValue;
       TempOffset:=MemoryChunkBlock.fOffset;
       TempSize:=(OtherMemoryChunkBlock.fOffset+OtherMemoryChunkBlock.fSize)-TempOffset;
       OtherMemoryChunkBlock.Free;
-      MemoryChunkBlock.Update(TempOffset,TempSize,1,vdmatFree);
+      MemoryChunkBlock.Update(TempOffset,TempSize,1,TpvVulkanDeviceMemoryAllocationType.Free);
       continue;
      end;
 
-     if MemoryChunkBlock.fAllocationType<>vdmatFree then begin
+     if MemoryChunkBlock.fAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free then begin
       // Mark block as free
-      MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,MemoryChunkBlock.fSize,1,vdmatFree);
+      MemoryChunkBlock.Update(MemoryChunkBlock.fOffset,MemoryChunkBlock.fSize,1,TpvVulkanDeviceMemoryAllocationType.Free);
      end;
      break;
 
@@ -9563,7 +9564,7 @@ end;
 function TpvVulkanDeviceMemoryChunk.MapMemory(const aOffset:TVkDeviceSize=0;const aSize:TVkDeviceSize=TVkDeviceSize(VK_WHOLE_SIZE)):PVkVoid;
 begin
  result:=nil;
- if vdmcfPersistentMapped in fMemoryChunkFlags then begin
+ if TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in fMemoryChunkFlags then begin
   if (fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))<>0 then begin
    if assigned(fMemory) then begin
     result:=TpvPointer(TpvPtrUInt(TpvPtrUInt(fMemory)+TpvPtrUInt(aOffset)));
@@ -9596,7 +9597,7 @@ end;
 
 procedure TpvVulkanDeviceMemoryChunk.UnmapMemory;
 begin
- if vdmcfPersistentMapped in fMemoryChunkFlags then begin
+ if TpvVulkanDeviceMemoryChunkFlag.PersistentMapped in fMemoryChunkFlags then begin
   if assigned(fMemory) then begin
    // Do nothing in this case
   end else begin
@@ -9776,7 +9777,7 @@ begin
      Node:=fOffsetRedBlackTree.LeftMost;
      while assigned(Node) do begin
       ChunkBlock:=Node.fValue;
-      if ChunkBlock.AllocationType=vdmatFree then begin
+      if ChunkBlock.AllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
        inc(CountChunkBlocks);
       end;
       Node:=Node.Successor;
@@ -9788,7 +9789,7 @@ begin
      Node:=fOffsetRedBlackTree.LeftMost;
      while assigned(Node) do begin
       ChunkBlock:=Node.fValue;
-      if ChunkBlock.AllocationType=vdmatFree then begin
+      if ChunkBlock.AllocationType=TpvVulkanDeviceMemoryAllocationType.Free then begin
        FreeChunkBlocks[CountChunkBlocks]:=ChunkBlock;
        inc(CountChunkBlocks);
       end;
@@ -9801,7 +9802,7 @@ begin
      Node:=fOffsetRedBlackTree.LeftMost;
      while assigned(Node) do begin
       ChunkBlock:=Node.fValue;
-      if ChunkBlock.AllocationType<>vdmatFree then begin
+      if ChunkBlock.AllocationType<>TpvVulkanDeviceMemoryAllocationType.Free then begin
        inc(CountChunkBlocks);
       end;
       Node:=Node.Successor;
@@ -9815,7 +9816,7 @@ begin
      Node:=fOffsetRedBlackTree.LeftMost;
      while assigned(Node) do begin
       ChunkBlock:=Node.fValue;
-      if ChunkBlock.AllocationType<>vdmatFree then begin
+      if ChunkBlock.AllocationType<>TpvVulkanDeviceMemoryAllocationType.Free then begin
        ChunkBlocks[CountChunkBlocks]:=ChunkBlock;
        inc(CountChunkBlocks);
       end;
@@ -9836,7 +9837,7 @@ begin
 
       LastEndOffset:=0;
 
-      LastAllocationType:=vdmatFree;
+      LastAllocationType:=TpvVulkanDeviceMemoryAllocationType.Free;
 
       // Go through all non-free chunk blocks
       for Index:=0 to CountChunkBlocks-1 do begin
@@ -9858,9 +9859,9 @@ begin
         // Adjust alignment for the BufferImageGranularity satisfaction, if needed
         if (Index>0) and
            (BufferImageGranularity>1) and
-           ((LastAllocationType<>vdmatFree) and
-            (((LastAllocationType in [vdmatUnknown,vdmatBuffer])<>(ChunkBlock.AllocationType in [vdmatUnknown,vdmatBuffer])) or
-             ((LastAllocationType in [vdmatImageLinear,vdmatImageOptimal])<>(ChunkBlock.AllocationType in [vdmatImageLinear,vdmatImageOptimal])))) and
+           ((LastAllocationType<>TpvVulkanDeviceMemoryAllocationType.Free) and
+            (((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])<>(ChunkBlock.AllocationType in [TpvVulkanDeviceMemoryAllocationType.Unknown,TpvVulkanDeviceMemoryAllocationType.Buffer])) or
+             ((LastAllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal])<>(ChunkBlock.AllocationType in [TpvVulkanDeviceMemoryAllocationType.ImageLinear,TpvVulkanDeviceMemoryAllocationType.ImageOptimal])))) and
            ((ToOffset and BufferImageGranularityInvertedMask)=(LastEndOffset and BufferImageGranularityInvertedMask)) and
            (Alignment<BufferImageGranularity) then begin
          Alignment:=BufferImageGranularity;
@@ -9966,14 +9967,14 @@ begin
                                               0,
                                               ChunkBlock.fOffset,
                                               1,
-                                              vdmatFree);
+                                              TpvVulkanDeviceMemoryAllocationType.Free);
       end;
       if FromOffset<ToOffset then begin
        TpvVulkanDeviceMemoryChunkBlock.Create(self,
                                               FromOffset,
                                               ToOffset-FromOffset,
                                               1,
-                                              vdmatFree);
+                                              TpvVulkanDeviceMemoryAllocationType.Free);
       end;
      end;
 
@@ -10182,11 +10183,11 @@ begin
  end;
 
  MemoryChunkFlags:=[];
- if vdmbfPersistentMapped in aMemoryBlockFlags then begin
-  Include(MemoryChunkFlags,vdmcfPersistentMapped);
+ if TpvVulkanDeviceMemoryBlockFlag.PersistentMapped in aMemoryBlockFlags then begin
+  Include(MemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.PersistentMapped);
  end;
 
- if vdmbfOwnSingleMemoryChunk in aMemoryBlockFlags then begin
+ if TpvVulkanDeviceMemoryBlockFlag.OwnSingleMemoryChunk in aMemoryBlockFlags then begin
 
   // New allocated device memory blocks are always perfectly aligned already, so set Alignment here to 1 
   Alignment:=1;
@@ -10257,7 +10258,7 @@ begin
         ((MemoryChunk.fMemoryHeapFlags and HeapFlags)=HeapFlags) and
         ((aMemoryAvoidHeapFlags=0) or ((MemoryChunk.fMemoryHeapFlags and aMemoryAvoidHeapFlags)=0)) and
         ((MemoryChunk.fSize-MemoryChunk.fUsed)>=aMemoryBlockSize) and
-        ((MemoryChunk.fMemoryChunkFlags*[vdmcfPersistentMapped])=(MemoryChunkFlags*[vdmcfPersistentMapped])) then begin
+        ((MemoryChunk.fMemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped])=(MemoryChunkFlags*[TpvVulkanDeviceMemoryChunkFlag.PersistentMapped])) then begin
       if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
        result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
        break;
@@ -10397,11 +10398,11 @@ begin
   fDevice.Commands.GetBufferMemoryRequirements(fDevice.fDeviceHandle,fBufferHandle,@fMemoryRequirements);
 
   MemoryBlockFlags:=[];
-  if vbfOwnSingleMemoryChunk in fBufferFlags then begin
-   Include(MemoryBlockFlags,vdmbfOwnSingleMemoryChunk);
+  if TpvVulkanBufferFlag.OwnSingleMemoryChunk in fBufferFlags then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.OwnSingleMemoryChunk);
   end;
-  if vbfPersistentMapped in fBufferFlags then begin
-   Include(MemoryBlockFlags,vdmbfPersistentMapped);
+  if TpvVulkanBufferFlag.PersistentMapped in fBufferFlags then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PersistentMapped);
   end;
 
   fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
@@ -10414,7 +10415,7 @@ begin
                                                            aMemoryRequiredHeapFlags,
                                                            aMemoryPreferredHeapFlags,
                                                            aMemoryAvoidHeapFlags,
-                                                           vdmatBuffer);
+                                                           TpvVulkanDeviceMemoryAllocationType.Buffer);
 
   fMemoryBlock.fAssociatedObject:=self;
 
@@ -10473,14 +10474,14 @@ procedure TpvVulkanBuffer.UploadData(const aTransferQueue:TpvVulkanQueue;
                                      const aData;
                                      const aDataOffset:TVkDeviceSize;
                                      const aDataSize:TVkDeviceSize;
-                                     const aUseTemporaryStagingBufferMode:TpvVulkanBufferUseTemporaryStagingBufferMode=vbutsbmAutomatic);
+                                     const aUseTemporaryStagingBufferMode:TpvVulkanBufferUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic);
 var StagingBuffer:TpvVulkanBuffer;
     p:TpvPointer;
     VkBufferCopy:TVkBufferCopy;
 begin
 
- if (aUseTemporaryStagingBufferMode=vbutsbmYes) or
-    ((aUseTemporaryStagingBufferMode=vbutsbmAutomatic) and
+ if (aUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Yes) or
+    ((aUseTemporaryStagingBufferMode=TpvVulkanBufferUseTemporaryStagingBufferMode.Automatic) and
      ((fMemoryPropertyFlags and TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))=0)) then begin
 
   StagingBuffer:=TpvVulkanBuffer.Create(fDevice,
@@ -10494,7 +10495,7 @@ begin
                                         0,
                                         0,
                                         0,
-                                        [vbfOwnSingleMemoryChunk]);
+                                        [TpvVulkanBufferFlag.OwnSingleMemoryChunk]);
   try
 
    p:=StagingBuffer.Memory.MapMemory;
@@ -12244,7 +12245,7 @@ begin
                                                            0,
                                                            0,
                                                            0,
-                                                           vdmatImageOptimal);
+                                                           TpvVulkanDeviceMemoryAllocationType.ImageOptimal);
   if not assigned(fMemoryBlock) then begin
    raise EpvVulkanMemoryAllocationException.Create('Memory for frame buffer attachment couldn''t be allocated!');
   end;
@@ -13019,9 +13020,9 @@ begin
                                                                 0,
                                                                 0,
                                                                 0,
-                                                                vdmatImageOptimal);
+                                                                TpvVulkanDeviceMemoryAllocationType.ImageOptimal);
   end else begin
-   FirstMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([vdmbfPersistentMapped],
+   FirstMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([TpvVulkanDeviceMemoryBlockFlag.PersistentMapped],
                                                                 MemoryRequirements.size,
                                                                 MemoryRequirements.alignment,
                                                                 MemoryRequirements.memoryTypeBits,
@@ -13031,7 +13032,7 @@ begin
                                                                 0,
                                                                 0,
                                                                 0,
-                                                                vdmatImageLinear);
+                                                                TpvVulkanDeviceMemoryAllocationType.ImageLinear);
   end;
 
   try
@@ -13068,7 +13069,7 @@ begin
 
      fDevice.fDeviceVulkan.GetImageMemoryRequirements(fDevice.fDeviceHandle,SecondImage.fImageHandle,@MemoryRequirements);
 
-     SecondMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([vdmbfPersistentMapped],
+     SecondMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([TpvVulkanDeviceMemoryBlockFlag.PersistentMapped],
                                                                    MemoryRequirements.size,
                                                                    MemoryRequirements.alignment,
                                                                    MemoryRequirements.memoryTypeBits,
@@ -13078,7 +13079,7 @@ begin
                                                                    0,
                                                                    0,
                                                                    0,
-                                                                   vdmatImageLinear);
+                                                                   TpvVulkanDeviceMemoryAllocationType.ImageLinear);
 
     end else begin
 
@@ -13406,7 +13407,7 @@ begin
   SwapChainScreenshot.Data:=nil;
   GetScreenshot(SwapChainScreenshot,aSwapChainImage);
   if length(SwapChainScreenshot.Data)>0 then begin
-   SavePNGImage(@SwapChainScreenshot.Data[0],SwapChainScreenshot.Width,SwapChainScreenshot.Height,PNGData,PNGDataSize,pvppfR8G8B8A8);
+   SavePNGImage(@SwapChainScreenshot.Data[0],SwapChainScreenshot.Width,SwapChainScreenshot.Height,PNGData,PNGDataSize,TpvPNGPixelFormat.R8G8B8A8);
    if assigned(PNGData) then begin
     try
      aStream.Seek(0,soBeginning);
@@ -16836,15 +16837,15 @@ begin
 
  fSampleCount:=VK_SAMPLE_COUNT_1_BIT;
 
- fUsage:=vtufUndefined;
+ fUsage:=TpvVulkanTextureUsageFlag.Undefined;
 
  fUsageFlags:=[];
 
- fWrapModeU:=vtwmRepeat;
- fWrapModeV:=vtwmRepeat;
- fWrapModeW:=vtwmRepeat;
+ fWrapModeU:=TpvVulkanTextureWrapMode.WrappedRepeat;
+ fWrapModeV:=TpvVulkanTextureWrapMode.WrappedRepeat;
+ fWrapModeW:=TpvVulkanTextureWrapMode.WrappedRepeat;
 
- fFilterMode:=vtfmNearest;
+ fFilterMode:=TpvVulkanTextureFilterMode.Nearest;
 
  fBorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
 
@@ -16878,15 +16879,15 @@ begin
 
  FormatProperties:=fDevice.fPhysicalDevice.GetFormatProperties(aFormat);
 
- if (vtufSampled in aUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))=0) then begin
+ if (TpvVulkanTextureUsageFlag.Sampled in aUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))=0) then begin
   raise EpvVulkanTextureException.Create('Texture format '+IntToStr(TpvInt32(aFormat))+' can''t be sampled');
  end;
 
- if (vtufColorAttachment in aUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))=0) then begin
+ if (TpvVulkanTextureUsageFlag.ColorAttachment in aUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))=0) then begin
   raise EpvVulkanTextureException.Create('Texture format '+IntToStr(TpvInt32(aFormat))+' can''t be rendered to');
  end;
 
- if (vtufStorage in aUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))=0) then begin
+ if (TpvVulkanTextureUsageFlag.Storage in aUsageFlags) and ((FormatProperties.optimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))=0) then begin
   raise EpvVulkanTextureException.Create('Texture format '+IntToStr(TpvInt32(aFormat))+' can''t be used for storage');
  end;
 
@@ -16907,34 +16908,34 @@ begin
  fCountArrayLayers:=aCountArrayLayers;
  fCountMipMaps:=aCountMipMaps;
  fSampleCount:=aSampleCount;
- fUsage:=vtufUndefined;
+ fUsage:=TpvVulkanTextureUsageFlag.Undefined;
  fUsageFlags:=aUsageFlags;
- fWrapModeU:=vtwmRepeat;
- fWrapModeV:=vtwmRepeat;
- fWrapModeW:=vtwmRepeat;
+ fWrapModeU:=TpvVulkanTextureWrapMode.WrappedRepeat;
+ fWrapModeV:=TpvVulkanTextureWrapMode.WrappedRepeat;
+ fWrapModeW:=TpvVulkanTextureWrapMode.WrappedRepeat;
  if fCountStorageLevels>1 then begin
-  fFilterMode:=vtfmBilinear;
+  fFilterMode:=TpvVulkanTextureFilterMode.Bilinear;
  end else begin
-  fFilterMode:=vtfmLinear;
+  fFilterMode:=TpvVulkanTextureFilterMode.Linear;
  end;
  fBorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
  fMaxAnisotropy:=1.0;
  fFormat:=aFormat;
 
  Usage:=0;
- if (vtufTransferDst in fUsageFlags) or assigned(aData) then begin
+ if (TpvVulkanTextureUsageFlag.TransferDst in fUsageFlags) or assigned(aData) then begin
   Usage:=Usage or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT);
  end;
- if (vtufTransferSrc in fUsageFlags) or (assigned(aData) and (aCountMipMaps<0)) then begin
+ if (TpvVulkanTextureUsageFlag.TransferSrc in fUsageFlags) or (assigned(aData) and (aCountMipMaps<0)) then begin
   Usage:=Usage or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
  end;
- if vtufSampled in fUsageFlags then begin
+ if TpvVulkanTextureUsageFlag.Sampled in fUsageFlags then begin
   Usage:=Usage or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT);
  end;
- if vtufColorAttachment in fUsageFlags then begin
+ if TpvVulkanTextureUsageFlag.ColorAttachment in fUsageFlags then begin
   Usage:=Usage or TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
  end;
- if vtufStorage in fUsageFlags then begin
+ if TpvVulkanTextureUsageFlag.Storage in fUsageFlags then begin
   Usage:=Usage or TVkImageUsageFlags(VK_IMAGE_USAGE_STORAGE_BIT);
  end;
 
@@ -16979,7 +16980,7 @@ begin
                                                           0,
                                                           0,
                                                           0,
-                                                          vdmatImageOptimal);
+                                                          TpvVulkanDeviceMemoryAllocationType.ImageOptimal);
  if not assigned(fMemoryBlock) then begin
   raise EpvVulkanMemoryAllocationException.Create('Memory for texture couldn''t be allocated!');
  end;
@@ -17006,7 +17007,7 @@ begin
         nil,
         true);
 
- fUsage:=vtufSampled;
+ fUsage:=TpvVulkanTextureUsageFlag.Sampled;
  fImageLayout:=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
  if aDepth>0 then begin
@@ -17244,7 +17245,7 @@ begin
                    IfThen(NumberOfArrayElements=1,0,NumberOfArrayElements),
                    NumberOfFaces,
                    NumberOfMipMapLevels,
-                   [vtufSampled],
+                   [TpvVulkanTextureUsageFlag.Sampled],
                    Data,
                    DataSize,
                    true,
@@ -18047,7 +18048,7 @@ begin
                    IfThen(ImageArrayElements=1,0,ImageArrayElements),
                    ImageFaces,
                    ImageMipMaps,
-                   [vtufTransferDst,vtufSampled],
+                   [TpvVulkanTextureUsageFlag.TransferDst,TpvVulkanTextureUsageFlag.Sampled],
                    Data,
                    DataSize,
                    false,
@@ -18347,7 +18348,7 @@ begin
                     0,
                     1,
                     MipMapLevels[aMipMaps],
-                    [vtufTransferDst,vtufSampled],
+                    [TpvVulkanTextureUsageFlag.TransferDst,TpvVulkanTextureUsageFlag.Sampled],
                     ImageData,
                     ImageWidth*ImageHeight*SizeOf(TpvFloat)*4,
                     false,
@@ -18403,7 +18404,7 @@ begin
                      0,
                      1,
                      MipMapLevels[aMipMaps],
-                     [vtufTransferDst,vtufSampled],
+                     [TpvVulkanTextureUsageFlag.TransferDst,TpvVulkanTextureUsageFlag.Sampled],
                      ImageData,
                      ImageWidth*ImageHeight*SizeOf(TpvUInt8)*4,
                      false,
@@ -18450,14 +18451,14 @@ begin
   ImageWidth:=0;
   ImageHeight:=0;
   try
-   PNGPixelFormat:=pvppfUnknown;
+   PNGPixelFormat:=TpvPNGPixelFormat.Unknown;
    if LoadPNGImage(Data,DataSize,ImageData,ImageWidth,ImageHeight,false,PNGPixelFormat) then begin
     case PNGPixelFormat of
-     pvppfR8G8B8A8:begin
+     TpvPNGPixelFormat.R8G8B8A8:begin
       VulkanPixelFormat:=TVkFormat(TVkInt32(IfThen(aSRGB,TVkInt32(VK_FORMAT_R8G8B8A8_SRGB),TVkInt32(VK_FORMAT_R8G8B8A8_UNORM))));
       VulkanBytesPerPixel:=4;
      end;
-     pvppfR16G16B16A16:begin
+     TpvPNGPixelFormat.R16G16B16A16:begin
       VulkanPixelFormat:=VK_FORMAT_R16G16B16A16_UNORM;
       VulkanBytesPerPixel:=8;
       if aSRGB then begin
@@ -18503,7 +18504,7 @@ begin
                      0,
                      1,
                      MipMapLevels[aMipMaps],
-                     [vtufTransferDst,vtufSampled],
+                     [TpvVulkanTextureUsageFlag.TransferDst,TpvVulkanTextureUsageFlag.Sampled],
                      ImageData,
                      ImageWidth*ImageHeight*VulkanBytesPerPixel,
                      false,
@@ -18562,7 +18563,7 @@ begin
                      0,
                      1,
                      MipMapLevels[aMipMaps],
-                     [vtufTransferDst,vtufSampled],
+                     [TpvVulkanTextureUsageFlag.TransferDst,TpvVulkanTextureUsageFlag.Sampled],
                      ImageData,
                      ImageWidth*ImageHeight*SizeOf(TpvUInt8)*4,
                      false,
@@ -18621,7 +18622,7 @@ begin
                      0,
                      1,
                      MipMapLevels[aMipMaps],
-                     [vtufTransferDst,vtufSampled],
+                     [TpvVulkanTextureUsageFlag.TransferDst,TpvVulkanTextureUsageFlag.Sampled],
                      ImageData,
                      ImageWidth*ImageHeight*SizeOf(TpvUInt8)*4,
                      false,
@@ -18788,7 +18789,7 @@ begin
   SetLength(Data,DataSize);
 
   case aDefaultType of
-   vtdtCheckerboard:begin
+   TpvVulkanTextureDefaultType.Checkerboard:begin
     for LayerIndex:=0 to (Max(1,aDepth)*Max(1,aCountArrayLayers)*Max(1,aCountFaces))-1 do begin
      for y:=0 to aHeight-1 do begin
       for x:=0 to aWidth-1 do begin
@@ -18823,7 +18824,7 @@ begin
      end;
     end;
    end;
-   vtdtPyramids:begin
+   TpvVulkanTextureDefaultType.Pyramids:begin
     for LayerIndex:=0 to (Max(1,aDepth)*Max(1,aCountArrayLayers)*Max(1,aCountFaces))-1 do begin
      for y:=0 to aHeight-1 do begin
       for x:=0 to aWidth-1 do begin
@@ -18938,7 +18939,7 @@ begin
                    aCountArrayLayers,
                    aCountFaces,
                    CountMipMaps,
-                   [vtufTransferDst,vtufSampled],
+                   [TpvVulkanTextureUsageFlag.TransferDst,TpvVulkanTextureUsageFlag.Sampled],
                    @Data[0],
                    DataSize,
                    false,
@@ -19460,7 +19461,7 @@ begin
                                          0,
                                          0,
                                          0,
-                                         [vbfOwnSingleMemoryChunk]);
+                                         [TpvVulkanBufferFlag.OwnSingleMemoryChunk]);
   end;
 
   try
@@ -19488,7 +19489,7 @@ begin
                              aData^,
                              0,
                              aDataSize,
-                             vbutsbmNo);
+                             TpvVulkanBufferUseTemporaryStagingBufferMode.No);
 
    end;
 
@@ -19830,70 +19831,70 @@ var MagFilter:TVkFilter;
 begin
  FreeAndNil(fSampler);
  case fFilterMode of
-  vtfmNearest:begin
+  TpvVulkanTextureFilterMode.Nearest:begin
    MagFilter:=VK_FILTER_NEAREST;
    MinFilter:=VK_FILTER_NEAREST;
    MipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
   end;
-  vtfmLinear:begin
+  TpvVulkanTextureFilterMode.Linear:begin
    MagFilter:=VK_FILTER_LINEAR;
    MinFilter:=VK_FILTER_LINEAR;
    MipmapMode:=VK_SAMPLER_MIPMAP_MODE_NEAREST;
   end;
-  else {vtfmBilinear:}begin
+  else {TpvVulkanTextureFilterMode.Bilinear:}begin
    MagFilter:=VK_FILTER_LINEAR;
    MinFilter:=VK_FILTER_LINEAR;
    MipmapMode:=VK_SAMPLER_MIPMAP_MODE_LINEAR;
   end;
  end;
  case fWrapModeU of
-  vtwmRepeat:begin
+  TpvVulkanTextureWrapMode.WrappedRepeat:begin
    AddressModeU:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
   end;
-  vtwmMirroredRepeat:begin
+  TpvVulkanTextureWrapMode.MirroredRepeat:begin
    AddressModeU:=VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
   end;
-  vtwmClampToEdge:begin
+  TpvVulkanTextureWrapMode.ClampToEdge:begin
    AddressModeU:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
   end;
-  vtwmClampToBorder:begin
+  TpvVulkanTextureWrapMode.ClampToBorder:begin
    AddressModeU:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
   end;
-  else {vtwmMirrorClampToEdge:}begin
+  else {TpvVulkanTextureWrapMode.MirrorClampToEdge:}begin
    AddressModeU:=VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
   end;
  end;
  case fWrapModeV of
-  vtwmRepeat:begin
+  TpvVulkanTextureWrapMode.WrappedRepeat:begin
    AddressModeV:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
   end;
-  vtwmMirroredRepeat:begin
+  TpvVulkanTextureWrapMode.MirroredRepeat:begin
    AddressModeV:=VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
   end;
-  vtwmClampToEdge:begin
+  TpvVulkanTextureWrapMode.ClampToEdge:begin
    AddressModeV:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
   end;
-  vtwmClampToBorder:begin
+  TpvVulkanTextureWrapMode.ClampToBorder:begin
    AddressModeV:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
   end;
-  else {vtwmMirrorClampToEdge:}begin
+  else {TpvVulkanTextureWrapMode.MirrorClampToEdge:}begin
    AddressModeV:=VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
   end;
  end;
  case fWrapModeW of
-  vtwmRepeat:begin
+  TpvVulkanTextureWrapMode.WrappedRepeat:begin
    AddressModeW:=VK_SAMPLER_ADDRESS_MODE_REPEAT;
   end;
-  vtwmMirroredRepeat:begin
+  TpvVulkanTextureWrapMode.MirroredRepeat:begin
    AddressModeW:=VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
   end;
-  vtwmClampToEdge:begin
+  TpvVulkanTextureWrapMode.ClampToEdge:begin
    AddressModeW:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
   end;
-  vtwmClampToBorder:begin
+  TpvVulkanTextureWrapMode.ClampToBorder:begin
    AddressModeW:=VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
   end;
-  else {vtwmMirrorClampToEdge:}begin
+  else {TpvVulkanTextureWrapMode.MirrorClampToEdge:}begin
    AddressModeW:=VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
   end;
  end;

@@ -84,84 +84,84 @@ const pvcvsRenderingModeShift=0;
 type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      TpvCanvasRenderingMode=
       (
-       pvcrmNormal=0,
-       pvcrmSignedDistanceField=1
+       Normal=0,
+       SignedDistanceField=1
       );
 
      PpvCanvasBlendingMode=^TpvCanvasBlendingMode;
      TpvCanvasBlendingMode=
       (
-       pvcbmNone=0,
-       pvcbmAlphaBlending=1,
-       pvcbmAdditiveBlending=2
+       None=0,
+       AlphaBlending=1,
+       AdditiveBlending=2
       );
 
      PpvCanvasLineJoin=^TpvCanvasLineJoin;
      TpvCanvasLineJoin=
       (
-       pvcljBevel,
-       pvcljMiter,
-       pvcljRound
+       Bevel,
+       Miter,
+       Round
       );
 
      PpvCanvasLineCap=^TpvCanvasLineCap;
      TpvCanvasLineCap=
       (
-       pvclcButt,
-       pvclcSquare,
-       pvclcRound
+       Butt,
+       Square,
+       Round
       );
 
      PpvCanvasFillRule=^TpvCanvasFillRule;
      TpvCanvasFillRule=
       (
-       pvcfrDoNotMatter, // for pure raw speed, where is no guarantee winding fill rule correctness of triangulation
-       pvcfrNonZero,
-       pvcfrEvenOdd
+       DoNotMatter, // for pure raw speed, where is no guarantee winding fill rule correctness of triangulation
+       NonZero,
+       EvenOdd
       );
 
      PpvCanvasFillStyle=^TpvCanvasFillStyle;
      TpvCanvasFillStyle=
       (
-       pvcfsColor=0,
-       pvcfsImage=1,
-       pvcfsLinearGradient=2,
-       pvcfsRadialGradient=3
+       Color=0,
+       Image=1,
+       LinearGradient=2,
+       RadialGradient=3
       );
 
      PpvCanvasFillWrapMode=^TpvCanvasFillWrapMode;
      TpvCanvasFillWrapMode=
       (
-       pvcfwmNone=0,
-       pvcfwmRepeat=1,
-       pvcfwmMirroredRepeat=2
+       None=0,
+       WrappedRepeat=1,
+       MirroredRepeat=2
       );
 
      PpvCanvasTextHorizontalAlignment=^TpvCanvasTextHorizontalAlignment;
      TpvCanvasTextHorizontalAlignment=
       (
-       pvcthaLeading,
-       pvcthaCenter,
-       pvcthaTailing
+       Leading,
+       Center,
+       Tailing
       );
 
      ppvCanvasTextVerticalAlignment=^TpvCanvasTextVerticalAlignment;
      TpvCanvasTextVerticalAlignment=
       (
-       pvctvaLeading,
-       pvctvaMiddle,
-       pvctvaTailing
+       Leading,
+       Middle,
+       Tailing
       );
 
      PpvCanvasPathCommandType=^TpvCanvasPathCommandType;
      TpvCanvasPathCommandType=
       (
-       pcpctMoveTo,
-       pcpctLineTo,
-       pcpctQuadraticCurveTo,
-       pcpctCubicCurveTo,
-       pcpctArcTo,
-       pcpctClose
+       MoveTo,
+       LineTo,
+       QuadraticCurveTo,
+       CubicCurveTo,
+       ArcTo,
+       Close
       );
 
      PpvCanvasPathCommandPoints=^TpvCanvasPathCommandPoints;
@@ -447,9 +447,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasQueueItemKind=
       (
-       pvcqikNone,
-       pvcqikNormal,
-       pvcqikHook
+       None,
+       Normal,
+       Hook
       );
 
      PpvCanvasPushConstants=^TpvCanvasPushConstants;
@@ -970,7 +970,7 @@ function TpvCanvasPath.ClosePath:TpvCanvasPath;
 var Command:PpvCanvasPathCommand;
 begin
  Command:=NewCommand;
- Command^.CommandType:=pcpctClose;
+ Command^.CommandType:=TpvCanvasPathCommandType.Close;
  result:=self;
 end;
 
@@ -978,7 +978,7 @@ function TpvCanvasPath.MoveTo(const aP0:TpvVector2):TpvCanvasPath;
 var Command:PpvCanvasPathCommand;
 begin
  Command:=NewCommand;
- Command^.CommandType:=pcpctMoveTo;
+ Command^.CommandType:=TpvCanvasPathCommandType.MoveTo;
  Command^.Points[0]:=aP0;
  result:=self;
 end;
@@ -987,7 +987,7 @@ function TpvCanvasPath.LineTo(const aP0:TpvVector2):TpvCanvasPath;
 var Command:PpvCanvasPathCommand;
 begin
  Command:=NewCommand;
- Command^.CommandType:=pcpctLineTo;
+ Command^.CommandType:=TpvCanvasPathCommandType.LineTo;
  Command^.Points[0]:=aP0;
  result:=self;
 end;
@@ -996,7 +996,7 @@ function TpvCanvasPath.QuadraticCurveTo(const aC0,aA0:TpvVector2):TpvCanvasPath;
 var Command:PpvCanvasPathCommand;
 begin
  Command:=NewCommand;
- Command^.CommandType:=pcpctQuadraticCurveTo;
+ Command^.CommandType:=TpvCanvasPathCommandType.QuadraticCurveTo;
  Command^.Points[0]:=aC0;
  Command^.Points[1]:=aA0;
  result:=self;
@@ -1006,7 +1006,7 @@ function TpvCanvasPath.CubicCurveTo(const aC0,aC1,aA0:TpvVector2):TpvCanvasPath;
 var Command:PpvCanvasPathCommand;
 begin
  Command:=NewCommand;
- Command^.CommandType:=pcpctCubicCurveTo;
+ Command^.CommandType:=TpvCanvasPathCommandType.CubicCurveTo;
  Command^.Points[0]:=aC0;
  Command^.Points[1]:=aC1;
  Command^.Points[2]:=aA0;
@@ -1017,7 +1017,7 @@ function TpvCanvasPath.ArcTo(const aP0,aP1:TpvVector2;const aRadius:TpvFloat):Tp
 var Command:PpvCanvasPathCommand;
 begin
  Command:=NewCommand;
- Command^.CommandType:=pcpctArcTo;
+ Command^.CommandType:=TpvCanvasPathCommandType.ArcTo;
  Command^.Points[0]:=aP0;
  Command^.Points[1]:=aP1;
  Command^.Points[2]:=TpvVector2.InlineableCreate(aRadius,aRadius);
@@ -1231,19 +1231,19 @@ end;
 
 procedure TpvCanvasState.Reset;
 begin
- fBlendingMode:=pvcbmAlphaBlending;
+ fBlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
  fLineWidth:=1.0;
  fMiterLimit:=3.0;
- fLineJoin:=TpvCanvasLineJoin.pvcljRound;
- fLineCap:=TpvCanvasLineCap.pvclcRound;
- fFillRule:=TpvCanvasFillRule.pvcfrEvenOdd;
- fFillStyle:=TpvCanvasFillStyle.pvcfsColor;
- fFillWrapMode:=TpvCanvasFillWrapMode.pvcfwmNone;
+ fLineJoin:=TpvCanvasLineJoin.Round;
+ fLineCap:=TpvCanvasLineCap.Round;
+ fFillRule:=TpvCanvasFillRule.EvenOdd;
+ fFillStyle:=TpvCanvasFillStyle.Color;
+ fFillWrapMode:=TpvCanvasFillWrapMode.None;
  fColor:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
  fFont:=nil;
  fFontSize:=-12;
- fTextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.pvcthaLeading;
- fTextVerticalAlignment:=TpvCanvasTextVerticalAlignment.pvctvaLeading;
+ fTextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+ fTextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
  fViewMatrix:=TpvMatrix4x4.Identity;
  fModelMatrix:=TpvMatrix4x4.Identity;
  fFillMatrix:=TpvMatrix4x4.Identity;
@@ -1560,7 +1560,7 @@ var StartPoint,LastPoint:TpvVector2;
    end;
    v2:=p2-t2;
    v3:=p2+t2;
-   if Closed or (aState.fLineCap<>pvclcButt) then begin
+   if Closed or (aState.fLineCap<>TpvCanvasLineCap.Butt) then begin
     l0:=0.0;
     l2:=0.0;
     s0:=Width;
@@ -1587,13 +1587,13 @@ var StartPoint,LastPoint:TpvVector2;
     // This case deserves more attention to avoid redraw, currently works by overdrawing large parts.
     CountVerticesToAdd:=8;
     CountIndicesToAdd:=12;
-    if LineJoin=pvcljRound then begin
+    if LineJoin=TpvCanvasLineJoin.Round then begin
      LineJoinCase:=0;
-    end else if (LineJoin=pvcljBevel) or ((LineJoin=pvcljMiter) and (dd>=MiterLimit)) then begin
+    end else if (LineJoin=TpvCanvasLineJoin.Bevel) or ((LineJoin=TpvCanvasLineJoin.Miter) and (dd>=MiterLimit)) then begin
      LineJoinCase:=1;
      inc(CountVerticesToAdd,3);
      inc(CountIndicesToAdd,3);
-    end else if (LineJoin=pvcljMiter) and (dd<MiterLimit) and DoIntersect then begin
+    end else if (LineJoin=TpvCanvasLineJoin.Miter) and (dd<MiterLimit) and DoIntersect then begin
      LineJoinCase:=2;
      inc(CountVerticesToAdd,4);
      inc(CountIndicesToAdd,6);
@@ -1661,15 +1661,15 @@ var StartPoint,LastPoint:TpvVector2;
    end else begin
     CountVerticesToAdd:=8;
     CountIndicesToAdd:=12;
-    if LineJoin=pvcljRound then begin
+    if LineJoin=TpvCanvasLineJoin.Round then begin
      LineJoinCase:=0;
      inc(CountVerticesToAdd,4);
      inc(CountIndicesToAdd,6);
-    end else if (LineJoin=pvcljBevel) or ((LineJoin=pvcljMiter) and (dd>=MiterLimit)) then begin
+    end else if (LineJoin=TpvCanvasLineJoin.Bevel) or ((LineJoin=TpvCanvasLineJoin.Miter) and (dd>=MiterLimit)) then begin
      LineJoinCase:=1;
      inc(CountVerticesToAdd,3);
      inc(CountIndicesToAdd,3);
-    end else if (LineJoin=pvcljMiter) and (dd<MiterLimit) and DoIntersect then begin
+    end else if (LineJoin=TpvCanvasLineJoin.Miter) and (dd<MiterLimit) and DoIntersect then begin
      LineJoinCase:=2;
      inc(CountVerticesToAdd,4);
      inc(CountIndicesToAdd,6);
@@ -1792,7 +1792,7 @@ var StartPoint,LastPoint:TpvVector2;
      TriangulateSegment(aLinePoints[0].Position,
                         aLinePoints[0].Position.Lerp(aLinePoints[1].Position,0.5),
                         aLinePoints[1].Position,
-                        pvcljBevel,
+                        TpvCanvasLineJoin.Bevel,
                         aState.fMiterLimit,
                         true,
                         true);
@@ -1823,11 +1823,11 @@ var StartPoint,LastPoint:TpvVector2;
     end;
     if not Closed then begin
      case aState.fLineCap of
-      pvclcRound:begin
+      TpvCanvasLineCap.Round:begin
        AddRoundCap(aLinePoints[0].Position,v0,v1,aLinePoints[1].Position);
        AddRoundCap(aLinePoints[aCountLinePoints-1].Position,v2,v3,aLinePoints[aCountLinePoints-2].Position);
       end;
-      pvclcSquare:begin
+      TpvCanvasLineCap.Square:begin
        AddSquareCap(v0,
                     v1,
                     (aLinePoints[0].Position-aLinePoints[1].Position).Normalize*aLinePoints[0].Position.DistanceTo(v0));
@@ -2096,22 +2096,22 @@ begin
  for CommandIndex:=0 to aPath.fCountCommands-1 do begin
   Command:=@aPath.fCommands[CommandIndex];
   case Command^.CommandType of
-   pcpctMoveTo:begin
+   TpvCanvasPathCommandType.MoveTo:begin
     StrokeMoveTo(Command.Points[0]);
    end;
-   pcpctLineTo:begin
+   TpvCanvasPathCommandType.LineTo:begin
     StrokeLineTo(Command.Points[0]);
    end;
-   pcpctQuadraticCurveTo:begin
+   TpvCanvasPathCommandType.QuadraticCurveTo:begin
     StrokeQuadraticCurveTo(Command.Points[0],Command.Points[1]);
    end;
-   pcpctCubicCurveTo:begin
+   TpvCanvasPathCommandType.CubicCurveTo:begin
     StrokeCubicCurveTo(Command.Points[0],Command.Points[1],Command.Points[2]);
    end;
-   pcpctArcTo:begin
+   TpvCanvasPathCommandType.ArcTo:begin
     StrokeArcTo(Command.Points[0],Command.Points[1],Command.Points[2].x);
    end;
-   pcpctClose:begin
+   TpvCanvasPathCommandType.Close:begin
     StrokeClose;
    end;
   end;
@@ -2724,10 +2724,10 @@ var CommandIndex,LastLinePoint:TpvInt32;
          dec(Winding);
         end;
         case aState.fFillRule of
-         pvcfrNonZero:begin
+         TpvCanvasFillRule.NonZero:begin
           Visible:=Winding<>0;
          end;
-         else {pvcfrEvenOdd:}begin
+         else {TpvCanvasFillRule.EvenOdd:}begin
           Visible:=(Winding and 1)<>0;
          end;
         end;
@@ -2826,22 +2826,22 @@ begin
  for CommandIndex:=0 to aPath.fCountCommands-1 do begin
   Command:=@aPath.fCommands[CommandIndex];
   case Command^.CommandType of
-   pcpctMoveTo:begin
+   TpvCanvasPathCommandType.MoveTo:begin
     FillMoveTo(Command.Points[0]);
    end;
-   pcpctLineTo:begin
+   TpvCanvasPathCommandType.LineTo:begin
     FillLineTo(Command.Points[0]);
    end;
-   pcpctQuadraticCurveTo:begin
+   TpvCanvasPathCommandType.QuadraticCurveTo:begin
     FillQuadraticCurveTo(Command.Points[0],Command.Points[1]);
    end;
-   pcpctCubicCurveTo:begin
+   TpvCanvasPathCommandType.CubicCurveTo:begin
     FillCubicCurveTo(Command.Points[0],Command.Points[1],Command.Points[2]);
    end;
-   pcpctArcTo:begin
+   TpvCanvasPathCommandType.ArcTo:begin
     FillArcTo(Command.Points[0],Command.Points[1],Command.Points[2].x);
    end;
-   pcpctClose:begin
+   TpvCanvasPathCommandType.Close:begin
     FillClose;
    end;
   end;
@@ -3211,7 +3211,7 @@ begin
      VulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
      VulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
      case BlendingModeIndex of
-      pvcbmNone:begin
+      TpvCanvasBlendingMode.None:begin
        VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
                                                                            VK_BLEND_FACTOR_ONE,
                                                                            VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
@@ -3224,7 +3224,7 @@ begin
                                                                            TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                                            TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
       end;
-      pvcbmAlphaBlending:begin
+      TpvCanvasBlendingMode.AlphaBlending:begin
        VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
                                                                            VK_BLEND_FACTOR_SRC_ALPHA,
                                                                            VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
@@ -3824,7 +3824,7 @@ begin
     SetLength(fCurrentFillBuffer^.fQueueItems,fCurrentFillBuffer^.fCountQueueItems*2);
    end;
    QueueItem:=@fCurrentFillBuffer^.fQueueItems[QueueItemIndex];
-   QueueItem^.Kind:=pvcqikNormal;
+   QueueItem^.Kind:=TpvCanvasQueueItemKind.Normal;
    QueueItem^.BufferIndex:=CurrentVulkanBufferIndex;
    QueueItem^.DescriptorIndex:=DescriptorIndex;
    QueueItem^.BlendingMode:=fState.fBlendingMode;
@@ -3970,7 +3970,7 @@ begin
                                            0,
                                            0,
                                            0,
-                                           [vbfPersistentMapped]
+                                           [TpvVulkanBufferFlag.PersistentMapped]
                                           );
       CurrentBuffer^.fVulkanVertexBuffers[Index]:=VulkanBuffer;
      end;
@@ -3981,7 +3981,7 @@ begin
                               CurrentBuffer^.fVertexBuffers[Index,0],
                               0,
                               CurrentBuffer^.fVertexBufferSizes[Index],
-                              vbutsbmNo);
+                              TpvVulkanBufferUseTemporaryStagingBufferMode.No);
      end;
     end;
     if CurrentBuffer^.fIndexBufferSizes[Index]>0 then begin
@@ -3998,7 +3998,7 @@ begin
                                            0,
                                            0,
                                            0,
-                                           [vbfPersistentMapped]
+                                           [TpvVulkanBufferFlag.PersistentMapped]
                                           );
       CurrentBuffer^.fVulkanIndexBuffers[Index]:=VulkanBuffer;
      end;
@@ -4009,7 +4009,7 @@ begin
                               CurrentBuffer^.fIndexBuffers[Index,0],
                               0,
                               CurrentBuffer^.fIndexBufferSizes[Index],
-                              vbutsbmNo);
+                              TpvVulkanBufferUseTemporaryStagingBufferMode.No);
      end;
     end;
    end;
@@ -4054,13 +4054,13 @@ begin
 
    FillMatrix:=TpvMatrix4x4.Null;
 
-   OldQueueItemKind:=pvcqikNone;
+   OldQueueItemKind:=TpvCanvasQueueItemKind.None;
 
    ForceUpdate:=true;
 
    ForceUpdatePushConstants:=true;
 
-   BlendingMode:=pvcbmAdditiveBlending;
+   BlendingMode:=TpvCanvasBlendingMode.AdditiveBlending;
 
    TextureMode:=-1;
 
@@ -4078,7 +4078,8 @@ begin
     end;
 
     case QueueItem^.Kind of
-     pvcqikNormal:begin
+
+     TpvCanvasQueueItemKind.Normal:begin
 
       VulkanVertexBuffer:=CurrentBuffer^.fVulkanVertexBuffers[QueueItem^.BufferIndex];
 
@@ -4151,15 +4152,18 @@ begin
       ForceUpdatePushConstants:=false;
 
      end;
-     pvcqikHook:begin
+
+     TpvCanvasQueueItemKind.Hook:begin
       if assigned(QueueItem^.Hook) then begin
        QueueItem^.Hook(QueueItem^.HookData);
       end;
       ForceUpdate:=true;
      end;
-     else {pvcqikNone:}begin
+
+     else {TpvCanvasQueueItemKind.None:}begin
       ForceUpdate:=true;
      end;
+
     end;
 
    end;
@@ -4225,7 +4229,7 @@ begin
    SetLength(fCurrentFillBuffer^.fQueueItems,fCurrentFillBuffer^.fCountQueueItems*2);
   end;
   QueueItem:=@fCurrentFillBuffer^.fQueueItems[QueueItemIndex];
-  QueueItem^.Kind:=pvcqikHook;
+  QueueItem^.Kind:=TpvCanvasQueueItemKind.Hook;
   QueueItem^.Hook:=aHook;
   QueueItem^.HookData:=aData;
 
@@ -4254,7 +4258,7 @@ begin
 
  result:=self;
 
- if ((fState.fBlendingMode<>pvcbmNone) and
+ if ((fState.fBlendingMode<>TpvCanvasBlendingMode.None) and
      (abs(fState.fColor.a)<MinA)) or
     (aSrc.Right<aSprite.TrimmedOffset.x) or
     (aSrc.Bottom<aSprite.TrimmedOffset.y) or
@@ -4264,9 +4268,9 @@ begin
  end;
 
  if aSprite.SignedDistanceField then begin
-  fInternalRenderingMode:=pvcrmSignedDistanceField;
+  fInternalRenderingMode:=TpvCanvasRenderingMode.SignedDistanceField;
  end else begin
-  fInternalRenderingMode:=pvcrmNormal;
+  fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  end;
 
  VertexColor.r:=fState.fColor.r;
@@ -4439,10 +4443,10 @@ begin
     end;
    end;
    case NinePatchRegion^.Mode of
-    pvsnprmStretch:begin
+    TpvSpriteNinePatchRegionMode.Stretch:begin
      DrawSprite(aSprite,SrcRect,DestRect);
     end;
-    else {pvsnprmTile:}begin
+    else {TpvSpriteNinePatchRegionMode.Tile:}begin
      y:=DestRect.Top;
      while y<DestRect.Bottom do begin
       StepY:=Max(1e-4,Min(DestRect.Bottom-y,NinePatchRegion^.Height));
@@ -4504,38 +4508,38 @@ var Position,Size:TpvVector2;
 begin
  if assigned(fState.fFont) then begin
   Position:=aPosition;
-  if fState.fTextHorizontalAlignment<>pvcthaLeading then begin
-   if fState.fTextVerticalAlignment<>pvctvaLeading then begin
+  if fState.fTextHorizontalAlignment<>TpvCanvasTextHorizontalAlignment.Leading then begin
+   if fState.fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
     Size:=TextSize(aText);
    end else begin
     Size:=TpvVector2.InlineableCreate(TextWidth(aText),0.0);
    end;
   end else begin
-   if fState.fTextVerticalAlignment<>pvctvaLeading then begin
+   if fState.fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
     Size:=TpvVector2.InlineableCreate(0.0,TextHeight(aText));
    end else begin
     Size:=TpvVector2.InlineableCreate(0.0,0.0);
    end;
   end;
   case fState.fTextHorizontalAlignment of
-   pvcthaLeading:begin
+   TpvCanvasTextHorizontalAlignment.Leading:begin
     // Do nothing
    end;
-   pvcthaCenter:begin
+   TpvCanvasTextHorizontalAlignment.Center:begin
     Position.x:=Position.x-(Size.x*0.5);
    end;
-   pvcthaTailing:begin
+   TpvCanvasTextHorizontalAlignment.Tailing:begin
     Position.x:=Position.x-Size.x;
    end;
   end;
   case fState.fTextVerticalAlignment of
-   pvctvaLeading:begin
+   TpvCanvasTextVerticalAlignment.Leading:begin
     // Do nothing
    end;
-   pvctvaMiddle:begin
+   TpvCanvasTextVerticalAlignment.Middle:begin
     Position.y:=Position.y-(Size.y*0.5);
    end;
-   pvctvaTailing:begin
+   TpvCanvasTextVerticalAlignment.Tailing:begin
     Position.y:=Position.y-Size.y;
    end;
   end;
@@ -4580,38 +4584,38 @@ var Position,Size:TpvVector2;
 begin
  if assigned(fState.fFont) then begin
   Position:=aPosition;
-  if fState.fTextHorizontalAlignment<>pvcthaLeading then begin
-   if fState.fTextVerticalAlignment<>pvctvaLeading then begin
+  if fState.fTextHorizontalAlignment<>TpvCanvasTextHorizontalAlignment.Leading then begin
+   if fState.fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
     Size:=TextSize(aText);
    end else begin
     Size:=TpvVector2.InlineableCreate(TextWidth(aText),0.0);
    end;
   end else begin
-   if fState.fTextVerticalAlignment<>pvctvaLeading then begin
+   if fState.fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
     Size:=TpvVector2.InlineableCreate(0.0,TextHeight(aText));
    end else begin
     Size:=TpvVector2.InlineableCreate(0.0,0.0);
    end;
   end;
   case fState.fTextHorizontalAlignment of
-   pvcthaLeading:begin
+   TpvCanvasTextHorizontalAlignment.Leading:begin
     // Do nothing
    end;
-   pvcthaCenter:begin
+   TpvCanvasTextHorizontalAlignment.Center:begin
     Position.x:=Position.x-(Size.x*0.5);
    end;
-   pvcthaTailing:begin
+   TpvCanvasTextHorizontalAlignment.Tailing:begin
     Position.x:=Position.x-Size.x;
    end;
   end;
   case fState.fTextVerticalAlignment of
-   pvctvaLeading:begin
+   TpvCanvasTextVerticalAlignment.Leading:begin
     // Do nothing
    end;
-   pvctvaMiddle:begin
+   TpvCanvasTextVerticalAlignment.Middle:begin
     Position.y:=Position.y-(Size.y*0.5);
    end;
-   pvctvaTailing:begin
+   TpvCanvasTextVerticalAlignment.Tailing:begin
     Position.y:=Position.y-Size.y;
    end;
   end;
@@ -4638,7 +4642,7 @@ var MetaInfo:TpvVector4;
 begin
  SetGUIElementMode(false);
  SetAtlasTexture(nil);
- fInternalRenderingMode:=pvcrmNormal;
+ fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
  VertexColor.g:=fState.fColor.g;
  VertexColor.b:=fState.fColor.b;
@@ -4699,7 +4703,7 @@ var MetaInfo:TpvVector4;
 begin
  SetGUIElementMode(false);
  SetAtlasTexture(nil);
- fInternalRenderingMode:=pvcrmNormal;
+ fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
  VertexColor.g:=fState.fColor.g;
  VertexColor.b:=fState.fColor.b;
@@ -4761,7 +4765,7 @@ var MetaInfo:TpvVector4;
 begin
  SetGUIElementMode(false);
  SetAtlasTexture(nil);
- fInternalRenderingMode:=pvcrmNormal;
+ fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
  VertexColor.g:=fState.fColor.g;
  VertexColor.b:=fState.fColor.b;
@@ -4831,7 +4835,7 @@ begin
  SetAtlasTexture(nil);
  OldTexture:=GetTexture;
  SetTexture(aTexture);
- fInternalRenderingMode:=pvcrmNormal;
+ fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
  VertexColor.g:=fState.fColor.g;
  VertexColor.b:=fState.fColor.b;
@@ -4912,7 +4916,7 @@ begin
  SetAtlasTexture(nil);
  OldTexture:=GetTexture;
  SetTexture(nil);
- fInternalRenderingMode:=pvcrmNormal;
+ fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
  VertexColor.g:=fState.fColor.g;
  VertexColor.b:=fState.fColor.b;
@@ -4978,7 +4982,7 @@ var CachePartIndex,VertexIndex,IndexIndex:TpvInt32;
 begin
  SetGUIElementMode(false);
  SetAtlasTexture(nil);
- fInternalRenderingMode:=pvcrmNormal;
+ fInternalRenderingMode:=TpvCanvasRenderingMode.Normal;
  VertexColor.r:=fState.fColor.r;
  VertexColor.g:=fState.fColor.g;
  VertexColor.b:=fState.fColor.b;

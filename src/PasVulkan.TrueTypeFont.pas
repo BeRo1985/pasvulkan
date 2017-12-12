@@ -534,13 +534,14 @@ type EpvTrueTypeFont=class(Exception);
       Size:TpvInt32;
      end;
 
+     PpvTrueTypeFontPolygonCommandType=^TpvTrueTypeFontPolygonCommandType;
      TpvTrueTypeFontPolygonCommandType=
       (
-       pvTTF_PolygonCommandType_MoveTo,
-       pvTTF_PolygonCommandType_LineTo,
-       pvTTF_PolygonCommandType_QuadraticCurveTo,
-       pvTTF_PolygonCommandType_CubicCurveTo,
-       pvTTF_PolygonCommandType_Close
+       MoveTo,
+       LineTo,
+       QuadraticCurveTo,
+       CubicCurveTo,
+       Close
       );
 
      TpvTrueTypeFontPolygonCommandPoint=packed record
@@ -2962,28 +2963,28 @@ var CommandIndex:TpvInt32;
     Command:PpvTrueTypeFontPolygonCommand;
 begin
  if aFillRule=pvTTF_PolygonWindingRule_NONZERO then begin
-  aVectorPath.FillRule:=pvvpfrNonZero;
+  aVectorPath.FillRule:=TpvVectorPathFillRule.NonZero;
  end else begin
-  aVectorPath.FillRule:=pvvpfrEvenOdd;
+  aVectorPath.FillRule:=TpvVectorPathFillRule.EvenOdd;
  end;
  for CommandIndex:=0 to CountCommands-1 do begin
   Command:=@Commands[CommandIndex];
   case Command^.CommandType of
-   pvTTF_PolygonCommandType_MoveTo:begin
+   TpvTrueTypeFontPolygonCommandType.MoveTo:begin
     aVectorPath.MoveTo(Command^.Points[0].x,
                        Command^.Points[0].y);
    end;
-   pvTTF_PolygonCommandType_LineTo:begin
+   TpvTrueTypeFontPolygonCommandType.LineTo:begin
     aVectorPath.LineTo(Command^.Points[0].x,
                        Command^.Points[0].y);
    end;
-   pvTTF_PolygonCommandType_QuadraticCurveTo:begin
+   TpvTrueTypeFontPolygonCommandType.QuadraticCurveTo:begin
     aVectorPath.QuadraticCurveTo(Command^.Points[0].x,
                                  Command^.Points[0].y,
                                  Command^.Points[1].x,
                                  Command^.Points[1].y);
    end;
-   pvTTF_PolygonCommandType_CubicCurveTo:begin
+   TpvTrueTypeFontPolygonCommandType.CubicCurveTo:begin
     aVectorPath.CubicCurveTo(Command^.Points[0].x,
                              Command^.Points[0].y,
                              Command^.Points[1].x,
@@ -2991,7 +2992,7 @@ begin
                              Command^.Points[2].x,
                              Command^.Points[2].y);
    end;
-   pvTTF_PolygonCommandType_Close:begin
+   TpvTrueTypeFontPolygonCommandType.Close:begin
     aVectorPath.Close;
    end;
   end;
@@ -6077,16 +6078,16 @@ type PIndexDataItem=^TIndexDataItem;
      PNumberKind=^TNumberKind;
      TNumberKind=
       (
-       nkFLOAT,
-       nkINT
+       FLOAT,
+       INT
       );
      PNumber=^TNumber;
      TNumber=record
       case Kind:TNumberKind of
-       nkFLOAT:(
+       TNumberKind.FLOAT:(
         FloatValue:TpvDouble;
        );
-       nkINT:(
+       TNumberKind.INT:(
         IntegerValue:TpvInt64;
        );
      end;
@@ -6259,7 +6260,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
        if length(Operands)<(CountOperands+1) then begin
         SetLength(Operands,(CountOperands+1)*2);
        end;
-       Operands[CountOperands].Kind:=nkINT;
+       Operands[CountOperands].Kind:=TNumberKind.INT;
        Operands[CountOperands].IntegerValue:=ToWORD(fFontData[Position],fFontData[Position+1]);
        inc(CountOperands);
        inc(Position,SizeOf(TpvUInt16));
@@ -6272,7 +6273,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
        if length(Operands)<(CountOperands+1) then begin
         SetLength(Operands,(CountOperands+1)*2);
        end;
-       Operands[CountOperands].Kind:=nkINT;
+       Operands[CountOperands].Kind:=TNumberKind.INT;
        Operands[CountOperands].IntegerValue:=ToLONGWORD(fFontData[Position],fFontData[Position+1],fFontData[Position+2],fFontData[Position+3]);
        inc(CountOperands);
        inc(Position,SizeOf(TpvUInt32));
@@ -6300,7 +6301,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
        if length(Operands)<(CountOperands+1) then begin
         SetLength(Operands,(CountOperands+1)*2);
        end;
-       Operands[CountOperands].Kind:=nkFLOAT;
+       Operands[CountOperands].Kind:=TNumberKind.FLOAT;
        Val(FloatString,Operands[CountOperands].FloatValue,Code);
        inc(CountOperands);
       end;
@@ -6308,7 +6309,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
        if length(Operands)<(CountOperands+1) then begin
         SetLength(Operands,(CountOperands+1)*2);
        end;
-       Operands[CountOperands].Kind:=nkINT;
+       Operands[CountOperands].Kind:=TNumberKind.INT;
        Operands[CountOperands].IntegerValue:=Op-139;
        inc(CountOperands);
       end;
@@ -6320,7 +6321,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
        if length(Operands)<(CountOperands+1) then begin
         SetLength(Operands,(CountOperands+1)*2);
        end;
-       Operands[CountOperands].Kind:=nkINT;
+       Operands[CountOperands].Kind:=TNumberKind.INT;
        Operands[CountOperands].IntegerValue:=(((Op-247) shl 8)+fFontData[Position])+108;
        inc(CountOperands);
        inc(Position,SizeOf(TpvUInt8));
@@ -6333,7 +6334,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
        if length(Operands)<(CountOperands+1) then begin
         SetLength(Operands,(CountOperands+1)*2);
        end;
-       Operands[CountOperands].Kind:=nkINT;
+       Operands[CountOperands].Kind:=TNumberKind.INT;
        Operands[CountOperands].IntegerValue:=((-((Op-251)*256))-fFontData[Position])-108;
        inc(CountOperands);
        inc(Position,SizeOf(TpvUInt8));
@@ -6446,7 +6447,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
     SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
-   Command^.CommandType:=pvTTF_PolygonCommandType_MoveTo;
+   Command^.CommandType:=TpvTrueTypeFontPolygonCommandType.MoveTo;
    Command^.Points[0].x:=aX*CFFScaleFactor;
    Command^.Points[0].y:=aY*CFFScaleFactor;
    GlyphMinX:=Min(GlyphMinX,aX);
@@ -6465,7 +6466,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
     SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
-   Command^.CommandType:=pvTTF_PolygonCommandType_LineTo;
+   Command^.CommandType:=TpvTrueTypeFontPolygonCommandType.LineTo;
    Command^.Points[0].x:=aX*CFFScaleFactor;
    Command^.Points[0].y:=aY*CFFScaleFactor;
    GlyphMinX:=Min(GlyphMinX,aX);
@@ -6486,7 +6487,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
     SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
-   Command^.CommandType:=pvTTF_PolygonCommandType_CubicCurveTo;
+   Command^.CommandType:=TpvTrueTypeFontPolygonCommandType.CubicCurveTo;
    Command^.Points[0].x:=aC0X*CFFScaleFactor;
    Command^.Points[0].y:=aC0Y*CFFScaleFactor;
    Command^.Points[1].x:=aC1X*CFFScaleFactor;
@@ -6516,7 +6517,7 @@ var Position,Tag,CheckSum,Offset,Size,EndOffset:TpvUInt32;
     SetLength(Glyph.PostScriptPolygon.Commands,Glyph.PostScriptPolygon.CountCommands*2);
    end;
    Command:=@Glyph.PostScriptPolygon.Commands[CommandIndex];
-   Command^.CommandType:=pvTTF_PolygonCommandType_Close;
+   Command^.CommandType:=TpvTrueTypeFontPolygonCommandType.Close;
   end;
   function Execute(const CodePosition,CodeSize:TpvInt32):TpvInt32;
   var Position,UntilExcludingPosition,CodeIndex:TpvInt32;
@@ -7089,7 +7090,7 @@ begin
          result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        if DictEntry^.Operands[0].Kind=nkINT then begin
+        if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
          TopDictCharStringType:=DictEntry^.Operands[0].IntegerValue;
         end else begin
          TopDictCharStringType:=trunc(DictEntry^.Operands[0].FloatValue);
@@ -7100,7 +7101,7 @@ begin
          result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        if DictEntry^.Operands[0].Kind=nkINT then begin
+        if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
          TopDictCharset:=DictEntry^.Operands[0].IntegerValue;
         end else begin
          TopDictCharset:=trunc(DictEntry^.Operands[0].FloatValue);
@@ -7111,7 +7112,7 @@ begin
          result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        if DictEntry^.Operands[0].Kind=nkINT then begin
+        if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
          TopDictEncoding:=DictEntry^.Operands[0].IntegerValue;
         end else begin
          TopDictEncoding:=trunc(DictEntry^.Operands[0].FloatValue);
@@ -7122,7 +7123,7 @@ begin
          result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        if DictEntry^.Operands[0].Kind=nkINT then begin
+        if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
          TopDictCharStrings:=DictEntry^.Operands[0].IntegerValue;
         end else begin
          TopDictCharStrings:=trunc(DictEntry^.Operands[0].FloatValue);
@@ -7133,22 +7134,22 @@ begin
          result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        if DictEntry^.Operands[0].Kind=nkINT then begin
+        if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
          TopDictFontBBox[0]:=DictEntry^.Operands[0].IntegerValue;
         end else begin
          TopDictFontBBox[0]:=trunc(DictEntry^.Operands[0].FloatValue);
         end;
-        if DictEntry^.Operands[1].Kind=nkINT then begin
+        if DictEntry^.Operands[1].Kind=TNumberKind.INT then begin
          TopDictFontBBox[1]:=DictEntry^.Operands[1].IntegerValue;
         end else begin
          TopDictFontBBox[1]:=trunc(DictEntry^.Operands[1].FloatValue);
         end;
-        if DictEntry^.Operands[2].Kind=nkINT then begin
+        if DictEntry^.Operands[2].Kind=TNumberKind.INT then begin
          TopDictFontBBox[2]:=DictEntry^.Operands[2].IntegerValue;
         end else begin
          TopDictFontBBox[2]:=trunc(DictEntry^.Operands[2].FloatValue);
         end;
-        if DictEntry^.Operands[3].Kind=nkINT then begin
+        if DictEntry^.Operands[3].Kind=TNumberKind.INT then begin
          TopDictFontBBox[3]:=DictEntry^.Operands[3].IntegerValue;
         end else begin
          TopDictFontBBox[3]:=trunc(DictEntry^.Operands[3].FloatValue);
@@ -7163,12 +7164,12 @@ begin
          result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        if DictEntry^.Operands[0].Kind=nkINT then begin
+        if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
          TopDictPrivate[0]:=DictEntry^.Operands[0].IntegerValue;
         end else begin
          TopDictPrivate[0]:=trunc(DictEntry^.Operands[0].FloatValue);
         end;
-        if DictEntry^.Operands[1].Kind=nkINT then begin
+        if DictEntry^.Operands[1].Kind=TNumberKind.INT then begin
          TopDictPrivate[1]:=DictEntry^.Operands[1].IntegerValue;
         end else begin
          TopDictPrivate[1]:=trunc(DictEntry^.Operands[1].FloatValue);
@@ -7180,7 +7181,7 @@ begin
          exit;
         end;
         for j:=0 to 5 do begin
-         if DictEntry^.Operands[j].Kind=nkINT then begin
+         if DictEntry^.Operands[j].Kind=TNumberKind.INT then begin
           TopDictFontMatrix[j]:=DictEntry^.Operands[j].IntegerValue;
          end else begin
           TopDictFontMatrix[j]:=DictEntry^.Operands[j].FloatValue;
@@ -7208,7 +7209,7 @@ begin
          result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        if DictEntry^.Operands[0].Kind=nkINT then begin
+        if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
          PrivateDictSubRoutine:=DictEntry^.Operands[0].IntegerValue;
         end else begin
          PrivateDictSubRoutine:=trunc(DictEntry^.Operands[0].FloatValue);
@@ -7219,7 +7220,7 @@ begin
          result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        if DictEntry^.Operands[0].Kind=nkINT then begin
+        if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
          PrivateDictDefaultWidthX:=DictEntry^.Operands[0].IntegerValue;
         end else begin
          PrivateDictDefaultWidthX:=trunc(DictEntry^.Operands[0].FloatValue);
@@ -7230,7 +7231,7 @@ begin
          result:=pvTTF_TT_ERR_CorruptFile;
          exit;
         end;
-        if DictEntry^.Operands[0].Kind=nkINT then begin
+        if DictEntry^.Operands[0].Kind=TNumberKind.INT then begin
          PrivateDictNominalWidthX:=DictEntry^.Operands[0].IntegerValue;
         end else begin
          PrivateDictNominalWidthX:=trunc(DictEntry^.Operands[0].FloatValue);
@@ -10124,7 +10125,7 @@ begin
    if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
     SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
    end;
-   PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_MoveTo;
+   PolygonBuffer.Commands[CommandIndex].CommandType:=TpvTrueTypeFontPolygonCommandType.MoveTo;
    PolygonBuffer.Commands[CommandIndex].Points[0].x:=fx;
    PolygonBuffer.Commands[CommandIndex].Points[0].y:=fy;
    for j:=StartPointIndex+1 to GlyphBuffer.EndPointIndices[i] do begin
@@ -10138,7 +10139,7 @@ begin
       if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
        SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
       end;
-      PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_LineTo;
+      PolygonBuffer.Commands[CommandIndex].CommandType:=TpvTrueTypeFontPolygonCommandType.LineTo;
       PolygonBuffer.Commands[CommandIndex].Points[0].x:=x;
       PolygonBuffer.Commands[CommandIndex].Points[0].y:=y;
      end else begin
@@ -10153,7 +10154,7 @@ begin
       if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
        SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
       end;
-      PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QuadraticCurveTo;
+      PolygonBuffer.Commands[CommandIndex].CommandType:=TpvTrueTypeFontPolygonCommandType.QuadraticCurveTo;
       PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
       PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
       PolygonBuffer.Commands[CommandIndex].Points[1].x:=x;
@@ -10166,7 +10167,7 @@ begin
       if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
        SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
       end;
-      PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QuadraticCurveTo;
+      PolygonBuffer.Commands[CommandIndex].CommandType:=TpvTrueTypeFontPolygonCommandType.QuadraticCurveTo;
       PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
       PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
       PolygonBuffer.Commands[CommandIndex].Points[1].x:=MiddleX;
@@ -10183,7 +10184,7 @@ begin
      if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
       SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
      end;
-     PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_LineTo;
+     PolygonBuffer.Commands[CommandIndex].CommandType:=TpvTrueTypeFontPolygonCommandType.LineTo;
      PolygonBuffer.Commands[CommandIndex].Points[0].x:=fx;
      PolygonBuffer.Commands[CommandIndex].Points[0].y:=fy;
     end else begin
@@ -10192,7 +10193,7 @@ begin
      if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
       SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
      end;
-     PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QuadraticCurveTo;
+     PolygonBuffer.Commands[CommandIndex].CommandType:=TpvTrueTypeFontPolygonCommandType.QuadraticCurveTo;
      PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
      PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
      PolygonBuffer.Commands[CommandIndex].Points[1].x:=fx;
@@ -10202,7 +10203,7 @@ begin
     if not OnCurve then begin
      CommandIndex:=length(PolygonBuffer.Commands);
      SetLength(PolygonBuffer.Commands,CommandIndex+1);
-     PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_QuadraticCurveTo;
+     PolygonBuffer.Commands[CommandIndex].CommandType:=TpvTrueTypeFontPolygonCommandType.QuadraticCurveTo;
      PolygonBuffer.Commands[CommandIndex].Points[0].x:=cx;
      PolygonBuffer.Commands[CommandIndex].Points[0].y:=cy;
      PolygonBuffer.Commands[CommandIndex].Points[1].x:=lx;
@@ -10217,7 +10218,7 @@ begin
  if (CommandCount+1)>=length(PolygonBuffer.Commands) then begin
   SetLength(PolygonBuffer.Commands,RoundUpToPowerOfTwo(CommandCount+1));
  end;
- PolygonBuffer.Commands[CommandIndex].CommandType:=pvTTF_PolygonCommandType_Close;
+ PolygonBuffer.Commands[CommandIndex].CommandType:=TpvTrueTypeFontPolygonCommandType.Close;
  PolygonBuffer.CountCommands:=CommandCount;
 end;
 
@@ -10247,21 +10248,21 @@ begin
     Command:=@PolygonBuffer.Commands[BaseIndex+CommandIndex];
     Command^:=Glyph^.PostScriptPolygon.Commands[CommandIndex];
     case Command^.CommandType of
-     pvTTF_PolygonCommandType_MoveTo:begin
+     TpvTrueTypeFontPolygonCommandType.MoveTo:begin
       Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
       Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
      end;
-     pvTTF_PolygonCommandType_LineTo:begin
+     TpvTrueTypeFontPolygonCommandType.LineTo:begin
       Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
       Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
      end;
-     pvTTF_PolygonCommandType_QuadraticCurveTo:begin
+     TpvTrueTypeFontPolygonCommandType.QuadraticCurveTo:begin
       Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
       Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
       Command^.Points[1].x:=FloatScale(Command^.Points[1].x);
       Command^.Points[1].y:=FloatScale(Command^.Points[1].y);
      end;
-     pvTTF_PolygonCommandType_CubicCurveTo:begin
+     TpvTrueTypeFontPolygonCommandType.CubicCurveTo:begin
       Command^.Points[0].x:=FloatScale(Command^.Points[0].x);
       Command^.Points[0].y:=FloatScale(Command^.Points[0].y);
       Command^.Points[1].x:=FloatScale(Command^.Points[1].x);
@@ -10269,7 +10270,7 @@ begin
       Command^.Points[2].x:=FloatScale(Command^.Points[2].x);
       Command^.Points[2].y:=FloatScale(Command^.Points[2].y);
      end;
-     pvTTF_PolygonCommandType_Close:begin
+     TpvTrueTypeFontPolygonCommandType.Close:begin
      end;
     end;
    end;
@@ -10609,21 +10610,21 @@ begin
  fPolygonBuffer.CountCommands:=0;
  for CommandIndex:=0 to PolygonBuffer.CountCommands-1 do begin
   case PolygonBuffer.Commands[CommandIndex].CommandType of
-   pvTTF_PolygonCommandType_MoveTo,pvTTF_PolygonCommandType_LineTo:begin
+   TpvTrueTypeFontPolygonCommandType.MoveTo,TpvTrueTypeFontPolygonCommandType.LineTo:begin
     PointAt(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y);
    end;
-   pvTTF_PolygonCommandType_QuadraticCurveTo:begin
+   TpvTrueTypeFontPolygonCommandType.QuadraticCurveTo:begin
     QuadraticCurveTo(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y,
                      PolygonBuffer.Commands[CommandIndex].Points[1].x,PolygonBuffer.Commands[CommandIndex].Points[1].y,
                      Tolerance,MaxLevel);
    end;
-   pvTTF_PolygonCommandType_CubicCurveTo:begin
+   TpvTrueTypeFontPolygonCommandType.CubicCurveTo:begin
     CubicCurveTo(PolygonBuffer.Commands[CommandIndex].Points[0].x,PolygonBuffer.Commands[CommandIndex].Points[0].y,
                  PolygonBuffer.Commands[CommandIndex].Points[1].x,PolygonBuffer.Commands[CommandIndex].Points[1].y,
                  PolygonBuffer.Commands[CommandIndex].Points[2].x,PolygonBuffer.Commands[CommandIndex].Points[2].y,
                  Tolerance,MaxLevel);
    end;
-   pvTTF_PolygonCommandType_Close:begin
+   TpvTrueTypeFontPolygonCommandType.Close:begin
    end;
   end;
  end;
@@ -10636,22 +10637,22 @@ begin
   fPolygonBuffer.CountCommands:=0;
   for CommandIndex:=0 to PolygonBuffer.CountCommands-1 do begin
    case PolygonBuffer.Commands[CommandIndex].CommandType of
-    pvTTF_PolygonCommandType_MoveTo:begin
+    TpvTrueTypeFontPolygonCommandType.MoveTo:begin
      Rasterizer.MoveTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
                        round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y));
     end;
-    pvTTF_PolygonCommandType_LineTo:begin
+    TpvTrueTypeFontPolygonCommandType.LineTo:begin
      Rasterizer.LineTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
                        round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y));
     end;
-    pvTTF_PolygonCommandType_QuadraticCurveTo:begin
+    TpvTrueTypeFontPolygonCommandType.QuadraticCurveTo:begin
      Rasterizer.QuadraticCurveTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
                                  round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y),
                                  round(x+PolygonBuffer.Commands[CommandIndex].Points[1].x),
                                  round(y+PolygonBuffer.Commands[CommandIndex].Points[1].y),
                                  Tolerance,MaxLevel);
     end;
-    pvTTF_PolygonCommandType_CubicCurveTo:begin
+    TpvTrueTypeFontPolygonCommandType.CubicCurveTo:begin
      Rasterizer.CubicCurveTo(round(x+PolygonBuffer.Commands[CommandIndex].Points[0].x),
                              round(y+PolygonBuffer.Commands[CommandIndex].Points[0].y),
                              round(x+PolygonBuffer.Commands[CommandIndex].Points[1].x),
@@ -10660,7 +10661,7 @@ begin
                              round(y+PolygonBuffer.Commands[CommandIndex].Points[2].y),
                              Tolerance,MaxLevel);
     end;
-    pvTTF_PolygonCommandType_Close:begin
+    TpvTrueTypeFontPolygonCommandType.Close:begin
      Rasterizer.Close;
     end;
    end;

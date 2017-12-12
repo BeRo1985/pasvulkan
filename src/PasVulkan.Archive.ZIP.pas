@@ -100,12 +100,12 @@ type EpvArchiveZIP=class(Exception);
      PpvArchiveZIPOS=^TpvArchiveZIPOS;
      TpvArchiveZIPOS=
       (
-       pvazoFAT=0,
-       pvazoUNIX=3,
-       pvazoOS2=6,
-       pvazoNTFS=10,
-       pvazoVFAT=14,
-       pvazoOSX=19
+       FAT=0,
+       UNIX=3,
+       OS2=6,
+       NTFS=10,
+       VFAT=14,
+       OSX=19
       );
 
      PpvArchiveZIPCRC32=^TpvArchiveZIPCRC32;
@@ -426,8 +426,8 @@ constructor TpvArchiveZIPEntry.Create(aCollection:TCollection);
 begin
  inherited Create(aCollection);
  fFileName:='';
- fOS:=pvazoFAT;
-//fOS:={$if defined(Unix) or defined(Posix)}pvazoUNIX{$else}pvazoFAT{$ifend};
+ fOS:=TpvArchiveZIPOS.FAT;
+//fOS:={$if defined(Unix) or defined(Posix)}TpvArchiveZIPOS.UNIX{$else}TpvArchiveZIPOS.FAT{$ifend};
  fCompressionLevel:=0;
  fDateTime:=Now;
  fRequiresZIP64:=false;
@@ -493,15 +493,15 @@ function TpvArchiveZIPEntry.GetDirectory:boolean;
 begin
  result:=((Attributes=0) and (length(fFileName)>0) and (fFileName[length(fFileName)-1]='/')) or
          ((Attributes<>0) and
-          ((((fOS=pvazoFAT) and ((fAttributes and faDirectory)<>0))) or
-            ((fOS=pvazoUNIX) and ((fAttributes and $f000)=$4000))));
+          ((((fOS=TpvArchiveZIPOS.FAT) and ((fAttributes and faDirectory)<>0))) or
+            ((fOS=TpvArchiveZIPOS.UNIX) and ((fAttributes and $f000)=$4000))));
 end;
 
 function TpvArchiveZIPEntry.GetLink:boolean;
 begin
  result:=(Attributes<>0) and
-         ((((fOS=pvazoFAT) and ((fAttributes and faSymLink)<>0))) or
-           ((fOS=pvazoUNIX) and ((fAttributes and $f000)=$a000)));
+         ((((fOS=TpvArchiveZIPOS.FAT) and ((fAttributes and faSymLink)<>0))) or
+           ((fOS=TpvArchiveZIPOS.UNIX) and ((fAttributes and $f000)=$a000)));
 end;
 
 procedure TpvArchiveZIPEntry.LoadFromStream(const aStream:TStream);
@@ -3018,16 +3018,16 @@ begin
          LocalFile.Stream.ReadBuffer(InData^,LocalFile.Stream.Size);
          case LocalFile.CompressionLevel of
           2:begin
-           DoDeflate(InData,LocalFile.Stream.Size,DestData,DestLen,pvdmVeryFast,false);
+           DoDeflate(InData,LocalFile.Stream.Size,DestData,DestLen,TpvDeflateMode.VeryFast,false);
           end;
           3:begin
-           DoDeflate(InData,LocalFile.Stream.Size,DestData,DestLen,pvdmFast,false);
+           DoDeflate(InData,LocalFile.Stream.Size,DestData,DestLen,TpvDeflateMode.Fast,false);
           end;
           4:begin
-           DoDeflate(InData,LocalFile.Stream.Size,DestData,DestLen,pvdmMedium,false);
+           DoDeflate(InData,LocalFile.Stream.Size,DestData,DestLen,TpvDeflateMode.Medium,false);
           end;
           else begin
-           DoDeflate(InData,LocalFile.Stream.Size,DestData,DestLen,pvdmSlow,false);
+           DoDeflate(InData,LocalFile.Stream.Size,DestData,DestLen,TpvDeflateMode.Slow,false);
           end;
          end;
         finally

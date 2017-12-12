@@ -94,10 +94,10 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
      PpvSignedDistanceField2DPathSegmentSide=^TpvSignedDistanceField2DPathSegmentSide;
      TpvSignedDistanceField2DPathSegmentSide=
       (
-       pvdf2DpssLeft=-1,
-       pvdf2DpssOn=0,
-       pvdf2DpssRight=1,
-       pvdf2DpssNone=2
+       Left=-1,
+       On=0,
+       Right=1,
+       None=2
       );
 
      PpvSignedDistanceField2DDataItem=^TpvSignedDistanceField2DDataItem;
@@ -126,8 +126,8 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
      PpvSignedDistanceField2DPathSegmentType=^TpvSignedDistanceField2DPathSegmentType;
      TpvSignedDistanceField2DPathSegmentType=
       (
-       pvsdf2DpstLine,
-       pvsdf2DpstQuadraticBezierCurve
+       Line,
+       QuadraticBezierCurve
       );
 
      PpvSignedDistanceField2DBoundingBox=^TpvSignedDistanceField2DBoundingBox;
@@ -139,14 +139,14 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
      PpvSignedDistanceField2DPathSegmentColor=^TpvSignedDistanceField2DPathSegmentColor;
      TpvSignedDistanceField2DPathSegmentColor=
       (
-       pvsdf2DpscBlack=0,
-       pvsdf2DpscRed=1,
-       pvsdf2DpscGreen=2,
-       pvsdf2DpscYellow=3,
-       pvsdf2DpscBlue=4,
-       pvsdf2DpscMagenta=5,
-       pvsdf2DpscCyan=6,
-       pvsdf2DpscWhite=7
+       Black=0,
+       Red=1,
+       Green=2,
+       Yellow=3,
+       Blue=4,
+       Magenta=5,
+       Cyan=6,
+       White=7
       );
 
      PpvSignedDistanceField2DPathSegmentPoints=^TpvSignedDistanceField2DPathSegmentPoints;
@@ -185,10 +185,10 @@ type PpvSignedDistanceField2DPixel=^TpvSignedDistanceField2DPixel;
      PpvSignedDistanceField2DRowDataIntersectionType=^TpvSignedDistanceField2DRowDataIntersectionType;
      TpvSignedDistanceField2DRowDataIntersectionType=
       (
-       rditNoIntersection,
-       rditVerticalLine,
-       rditTangentLine,
-       rditTwoPointsIntersect
+       NoIntersection,
+       VerticalLine,
+       TangentLine,
+       TwoPointsIntersect
       );
 
      PpvSignedDistanceField2DRowData=^TpvSignedDistanceField2DRowData;
@@ -479,11 +479,11 @@ end;
 function TpvSignedDistanceField2DGenerator.PathSegmentDirection(const PathSegment:TpvSignedDistanceField2DPathSegment;const Which:TpvInt32):TpvSignedDistanceField2DDoublePrecisionPoint;
 begin
  case PathSegment.Type_ of
-  pvsdf2DpstLine:begin
+  TpvSignedDistanceField2DPathSegmentType.Line:begin
    result.x:=PathSegment.Points[1].x-PathSegment.Points[0].x;
    result.y:=PathSegment.Points[1].y-PathSegment.Points[0].y;
   end;
-  pvsdf2DpstQuadraticBezierCurve:begin
+  TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve:begin
    case Which of
     0:begin
      result.x:=PathSegment.Points[1].x-PathSegment.Points[0].x;
@@ -511,10 +511,10 @@ end;
 function TpvSignedDistanceField2DGenerator.PathSegmentCountPoints(const PathSegment:TpvSignedDistanceField2DPathSegment):TpvInt32;
 begin
  case PathSegment.Type_ of
-  pvsdf2DpstLine:begin
+  TpvSignedDistanceField2DPathSegmentType.Line:begin
    result:=2;
   end;
-  pvsdf2DpstQuadraticBezierCurve:begin
+  TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve:begin
    result:=3;
   end;
   else begin
@@ -527,10 +527,10 @@ end;
 function TpvSignedDistanceField2DGenerator.PathSegmentEndPoint(const PathSegment:TpvSignedDistanceField2DPathSegment):PpvSignedDistanceField2DDoublePrecisionPoint;
 begin
  case PathSegment.Type_ of
-  pvsdf2DpstLine:begin
+  TpvSignedDistanceField2DPathSegmentType.Line:begin
    result:=@PathSegment.Points[1];
   end;
-  pvsdf2DpstQuadraticBezierCurve:begin
+  TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve:begin
    result:=@PathSegment.Points[2];
   end;
   else begin
@@ -543,10 +543,10 @@ end;
 function TpvSignedDistanceField2DGenerator.PathSegmentCornerPoint(const PathSegment:TpvSignedDistanceField2DPathSegment;const WhichA,WhichB:TpvInt32):PpvSignedDistanceField2DDoublePrecisionPoint;
 begin
  case PathSegment.Type_ of
-  pvsdf2DpstLine:begin
+  TpvSignedDistanceField2DPathSegmentType.Line:begin
    result:=@PathSegment.Points[WhichB and 1];
   end;
-  pvsdf2DpstQuadraticBezierCurve:begin
+  TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve:begin
    result:=@PathSegment.Points[(WhichA and 1)+(WhichB and 1)];
   end;
   else begin
@@ -561,7 +561,7 @@ var p0,p1,p2,p1mp0,d,t,sp0,sp1,sp2,p01p,p02p,p12p:TpvSignedDistanceField2DDouble
     Hypotenuse,CosTheta,SinTheta,a,b,h,c,g,f,gd,fd,x,y,Lambda:TpvDouble;
 begin
  case PathSegment.Type_ of
-  pvsdf2DpstLine:begin
+  TpvSignedDistanceField2DPathSegmentType.Line:begin
    p0:=PathSegment.Points[0];
    p2:=PathSegment.Points[1];
    PathSegment.BoundingBox.Min.x:=Min(p0.x,p2.x);
@@ -675,8 +675,8 @@ begin
    SetLength(Contour.PathSegments,Contour.CountPathSegments*2);
   end;
   PathSegment:=@Contour.PathSegments[result];
-  PathSegment^.Type_:=pvsdf2DpstLine;
-  PathSegment^.Color:=pvsdf2DpscBlack;
+  PathSegment^.Type_:=TpvSignedDistanceField2DPathSegmentType.Line;
+  PathSegment^.Color:=TpvSignedDistanceField2DPathSegmentColor.Black;
   PathSegment^.Points[0]:=Points[0];
   PathSegment^.Points[1]:=Points[1];
   InitializePathSegment(PathSegment^);
@@ -697,8 +697,8 @@ begin
     SetLength(Contour.PathSegments,Contour.CountPathSegments*2);
    end;
    PathSegment:=@Contour.PathSegments[result];
-   PathSegment^.Type_:=pvsdf2DpstLine;
-   PathSegment^.Color:=pvsdf2DpscBlack;
+   PathSegment^.Type_:=TpvSignedDistanceField2DPathSegmentType.Line;
+   PathSegment^.Color:=TpvSignedDistanceField2DPathSegmentColor.Black;
    PathSegment^.Points[0]:=Points[0];
    PathSegment^.Points[1]:=Points[2];
    InitializePathSegment(PathSegment^);
@@ -709,8 +709,8 @@ begin
    SetLength(Contour.PathSegments,Contour.CountPathSegments*2);
   end;
   PathSegment:=@Contour.PathSegments[result];
-  PathSegment^.Type_:=pvsdf2DpstQuadraticBezierCurve;
-  PathSegment^.Color:=pvsdf2DpscBlack;
+  PathSegment^.Type_:=TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve;
+  PathSegment^.Color:=TpvSignedDistanceField2DPathSegmentColor.Black;
   PathSegment^.Points[0]:=Points[0];
   PathSegment^.Points[1]:=Points[1];
   PathSegment^.Points[2]:=Points[2];
@@ -1079,7 +1079,7 @@ procedure TpvSignedDistanceField2DGenerator.PrecomputationForRow(out RowData:Tpv
 var XFormPointLeft,XFormPointRight:TpvSignedDistanceField2DDoublePrecisionPoint;
     x0,y0,x1,y1,m,b,m2,c,Tolerance,d:TpvDouble;
 begin
- if PathSegment.Type_=pvsdf2DpstQuadraticBezierCurve then begin
+ if PathSegment.Type_=TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve then begin
   XFormPointLeft:=DoublePrecisionPointMap(PointLeft,PathSegment.XFormMatrix);
   XFormPointRight:=DoublePrecisionPointMap(PointRight,PathSegment.XFormMatrix);
   RowData.QuadraticXDirection:=SignOf(PathSegment.P2T.x-PathSegment.P0T.x);
@@ -1089,7 +1089,7 @@ begin
   x1:=XFormPointRight.x;
   y1:=XFormPointRight.y;
   if NearlyEqual(x0,x1,PathSegment.NearlyZeroScaled,true) then begin
-   RowData.IntersectionType:=rditVerticalLine;
+   RowData.IntersectionType:=TpvSignedDistanceField2DRowDataIntersectionType.VerticalLine;
    RowData.YAtIntersection:=sqr(x0);
    RowData.ScanlineXDirection:=0;
   end else begin
@@ -1102,13 +1102,13 @@ begin
       (SameValue(PathSegment.Points[0].y,PointLeft.y) or
        SameValue(PathSegment.Points[2].y,PointLeft.y)) and
        NearlyZero(c,Tolerance) then begin
-    RowData.IntersectionType:=rditTangentLine;
+    RowData.IntersectionType:=TpvSignedDistanceField2DRowDataIntersectionType.TangentLine;
     RowData.XAtIntersection[0]:=m*0.5;
     RowData.XAtIntersection[1]:=m*0.5;
    end else if c<=0.0 then begin
-    RowData.IntersectionType:=rditNoIntersection;
+    RowData.IntersectionType:=TpvSignedDistanceField2DRowDataIntersectionType.NoIntersection;
    end else begin
-    RowData.IntersectionType:=rditTwoPointsIntersect;
+    RowData.IntersectionType:=TpvSignedDistanceField2DRowDataIntersectionType.TwoPointsIntersect;
     d:=sqrt(c);
     RowData.XAtIntersection[0]:=(m+d)*0.5;
     RowData.XAtIntersection[1]:=(m-d)*0.5;
@@ -1123,11 +1123,11 @@ var p0,p1:TpvDouble;
     ip0,ip1:boolean;
 begin
  case RowData.IntersectionType of
-  rditVerticalLine:begin
+  TpvSignedDistanceField2DRowDataIntersectionType.VerticalLine:begin
    result:=TpvSignedDistanceField2DPathSegmentSide(TpvInt32(SignOf(XFormPoint.y-RowData.YAtIntersection)*RowData.QuadraticXDirection));
   end;
-  rditTwoPointsIntersect:begin
-   result:=pvdf2DpssNone;
+  TpvSignedDistanceField2DRowDataIntersectionType.TwoPointsIntersect:begin
+   result:=TpvSignedDistanceField2DPathSegmentSide.None;
    p0:=RowData.XAtIntersection[0];
    p1:=RowData.XAtIntersection[1];
    sp0:=SignOf(p0-XFormPoint.x);
@@ -1156,13 +1156,13 @@ begin
    end;
    if ip1 and BetweenClosed(p1,PathSegment.P0T.x,PathSegment.P2T.x,PathSegment.NearlyZeroScaled,true) then begin
     sp1:=SignOf(p1-XFormPoint.x);
-    if (result=pvdf2DpssNone) or (sp1=1) then begin
+    if (result=TpvSignedDistanceField2DPathSegmentSide.None) or (sp1=1) then begin
      result:=TpvSignedDistanceField2DPathSegmentSide(TpvInt32(-sp1*RowData.QuadraticXDirection));
     end;
    end;
   end;
-  rditTangentLine:begin
-   result:=pvdf2DpssNone;
+  TpvSignedDistanceField2DRowDataIntersectionType.TangentLine:begin
+   result:=TpvSignedDistanceField2DPathSegmentSide.None;
    if RowData.ScanlineXDirection=1 then begin
     if SameValue(PathSegment.Points[0].y,Point.y) then begin
      result:=TpvSignedDistanceField2DPathSegmentSide(TpvInt32(SignOf(RowData.XAtIntersection[0]-XFormPoint.x)));
@@ -1172,7 +1172,7 @@ begin
    end;
   end;
   else begin
-   result:=pvdf2DpssNone;
+   result:=TpvSignedDistanceField2DPathSegmentSide.None;
   end;
  end;
 end;
@@ -1183,7 +1183,7 @@ var XFormPoint,x:TpvSignedDistanceField2DDoublePrecisionPoint;
 begin
  XFormPoint:=DoublePrecisionPointMap(Point,PathSegment.XFormMatrix);
  case PathSegment.Type_ of
-  pvsdf2DpstLine:begin
+  TpvSignedDistanceField2DPathSegmentType.Line:begin
    if BetweenClosed(XFormPoint.x,PathSegment.P0T.x,PathSegment.P2T.x) then begin
     result:=sqr(XFormPoint.y);
    end else if XFormPoint.x<PathSegment.P0T.x then begin
@@ -1194,10 +1194,10 @@ begin
    if BetweenClosedOpen(Point.y,PathSegment.BoundingBox.Min.y,PathSegment.BoundingBox.Max.y) then begin
     PathSegmentSide:=TpvSignedDistanceField2DPathSegmentSide(TpvInt32(SignOf(XFormPoint.y)));
    end else begin
-    PathSegmentSide:=pvdf2DpssNone;
+    PathSegmentSide:=TpvSignedDistanceField2DPathSegmentSide.None;
    end;
   end;
-  pvsdf2DpstQuadraticBezierCurve:begin
+  TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve:begin
    NearestPoint:=CalculateNearestPointForQuadraticBezierCurve(PathSegment,XFormPoint);
    if BetweenClosed(NearestPoint,PathSegment.P0T.x,PathSegment.P2T.x) then begin
     x.x:=NearestPoint;
@@ -1210,11 +1210,11 @@ begin
    if BetweenClosedOpen(Point.y,PathSegment.BoundingBox.Min.y,PathSegment.BoundingBox.Max.y) then begin
     PathSegmentSide:=CalculateSideOfQuadraticBezierCurve(PathSegment,Point,XFormPoint,RowData);
    end else begin
-    PathSegmentSide:=pvdf2DpssNone;
+    PathSegmentSide:=TpvSignedDistanceField2DPathSegmentSide.None;
    end;
   end;
   else begin
-   PathSegmentSide:=pvdf2DpssNone;
+   PathSegmentSide:=TpvSignedDistanceField2DPathSegmentSide.None;
    result:=0.0;
   end;
  end;
@@ -1240,7 +1240,7 @@ begin
    for CommandIndex:=0 to fVectorPath.Commands.Count-1 do begin
     Command:=fVectorPath.Commands[CommandIndex];
     case Command.CommandType of
-     pvvpctMoveTo:begin
+     TpvVectorPathCommandType.MoveTo:begin
       if assigned(Contour) then begin
        if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
         AddLineToPathSegmentArray(Contour^,[LastPoint,StartPoint]);
@@ -1256,7 +1256,7 @@ begin
       LastPoint.y:=(Command.y0*Scale)+fOffsetY;
       StartPoint:=LastPoint;
      end;
-     pvvpctLineTo:begin
+     TpvVectorPathCommandType.LineTo:begin
       if not assigned(Contour) then begin
        if length(fShape.Contours)<(fShape.CountContours+1) then begin
         SetLength(fShape.Contours,(fShape.CountContours+1)*2);
@@ -1271,7 +1271,7 @@ begin
       end;
       LastPoint:=Point;
      end;
-     pvvpctQuadraticCurveTo:begin
+     TpvVectorPathCommandType.QuadraticCurveTo:begin
       if not assigned(Contour) then begin
        if length(fShape.Contours)<(fShape.CountContours+1) then begin
         SetLength(fShape.Contours,(fShape.CountContours+1)*2);
@@ -1294,7 +1294,7 @@ begin
       end;
       LastPoint:=Point;
      end;
-     pvvpctCubicCurveTo:begin
+     TpvVectorPathCommandType.CubicCurveTo:begin
       if not assigned(Contour) then begin
        if length(fShape.Contours)<(fShape.CountContours+1) then begin
         SetLength(fShape.Contours,(fShape.CountContours+1)*2);
@@ -1320,7 +1320,7 @@ begin
       end;
       LastPoint:=Point;
      end;
-     pvvpctClose:begin
+     TpvVectorPathCommandType.Close:begin
       if assigned(Contour) then begin
        if not (SameValue(LastPoint.x,StartPoint.x) and SameValue(LastPoint.y,StartPoint.y)) then begin
         AddLineToPathSegmentArray(Contour^,[LastPoint,StartPoint]);
@@ -1346,7 +1346,7 @@ var BasePathSegment:TpvSignedDistanceField2DPathSegment;
 begin
  if (BasePathSegmentIndex>=0) and (BasePathSegmentIndex<Contour.CountPathSegments) then begin
   BasePathSegment:=Contour.PathSegments[BasePathSegmentIndex];
-  if BasePathSegment.Type_ in [pvsdf2DpstLine,pvsdf2DpstQuadraticBezierCurve] then begin
+  if BasePathSegment.Type_ in [TpvSignedDistanceField2DPathSegmentType.Line,TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve] then begin
    inc(Contour.CountPathSegments,2);
    if length(Contour.PathSegments)<=Contour.CountPathSegments then begin
     SetLength(Contour.PathSegments,Contour.CountPathSegments*2);
@@ -1357,32 +1357,32 @@ begin
    Assert(false);
   end;
   case BasePathSegment.Type_ of
-   pvsdf2DpstLine:begin
-    Contour.PathSegments[BasePathSegmentIndex+0].Type_:=pvsdf2DpstLine;
+   TpvSignedDistanceField2DPathSegmentType.Line:begin
+    Contour.PathSegments[BasePathSegmentIndex+0].Type_:=TpvSignedDistanceField2DPathSegmentType.Line;
     Contour.PathSegments[BasePathSegmentIndex+0].Color:=BasePathSegment.Color;
     Contour.PathSegments[BasePathSegmentIndex+0].Points[0]:=BasePathSegment.Points[0];
     Contour.PathSegments[BasePathSegmentIndex+0].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0);
-    Contour.PathSegments[BasePathSegmentIndex+1].Type_:=pvsdf2DpstLine;
+    Contour.PathSegments[BasePathSegmentIndex+1].Type_:=TpvSignedDistanceField2DPathSegmentType.Line;
     Contour.PathSegments[BasePathSegmentIndex+1].Color:=BasePathSegment.Color;
     Contour.PathSegments[BasePathSegmentIndex+1].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+0].Points[1];
     Contour.PathSegments[BasePathSegmentIndex+1].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0);
-    Contour.PathSegments[BasePathSegmentIndex+2].Type_:=pvsdf2DpstLine;
+    Contour.PathSegments[BasePathSegmentIndex+2].Type_:=TpvSignedDistanceField2DPathSegmentType.Line;
     Contour.PathSegments[BasePathSegmentIndex+2].Color:=BasePathSegment.Color;
     Contour.PathSegments[BasePathSegmentIndex+2].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+1].Points[1];
     Contour.PathSegments[BasePathSegmentIndex+2].Points[1]:=BasePathSegment.Points[1];
    end;
-   pvsdf2DpstQuadraticBezierCurve:begin
-    Contour.PathSegments[BasePathSegmentIndex+0].Type_:=pvsdf2DpstQuadraticBezierCurve;
+   TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve:begin
+    Contour.PathSegments[BasePathSegmentIndex+0].Type_:=TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve;
     Contour.PathSegments[BasePathSegmentIndex+0].Color:=BasePathSegment.Color;
     Contour.PathSegments[BasePathSegmentIndex+0].Points[0]:=BasePathSegment.Points[0];
     Contour.PathSegments[BasePathSegmentIndex+0].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0);
     Contour.PathSegments[BasePathSegmentIndex+0].Points[2]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],1.0/3.0),1.0/3.0);
-    Contour.PathSegments[BasePathSegmentIndex+1].Type_:=pvsdf2DpstQuadraticBezierCurve;
+    Contour.PathSegments[BasePathSegmentIndex+1].Type_:=TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve;
     Contour.PathSegments[BasePathSegmentIndex+1].Color:=BasePathSegment.Color;
     Contour.PathSegments[BasePathSegmentIndex+1].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+0].Points[2];
     Contour.PathSegments[BasePathSegmentIndex+1].Points[1]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],5.0/9.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],4.0/9.0),0.5);
     Contour.PathSegments[BasePathSegmentIndex+1].Points[2]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],2.0/3.0),2.0/3.0);
-    Contour.PathSegments[BasePathSegmentIndex+2].Type_:=pvsdf2DpstQuadraticBezierCurve;
+    Contour.PathSegments[BasePathSegmentIndex+2].Type_:=TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve;
     Contour.PathSegments[BasePathSegmentIndex+2].Color:=BasePathSegment.Color;
     Contour.PathSegments[BasePathSegmentIndex+2].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+1].Points[2];
     Contour.PathSegments[BasePathSegmentIndex+2].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0);
@@ -1402,32 +1402,32 @@ procedure TpvSignedDistanceField2DGenerator.SplitPathSegmentIntoThreePartsToCont
 begin
  if (BasePathSegmentIndex>=0) and (BasePathSegmentIndex<Contour.CountPathSegments) then begin
   case BasePathSegment.Type_ of
-   pvsdf2DpstLine:begin
-    Contour.PathSegments[BasePathSegmentIndex+0].Type_:=pvsdf2DpstLine;
+   TpvSignedDistanceField2DPathSegmentType.Line:begin
+    Contour.PathSegments[BasePathSegmentIndex+0].Type_:=TpvSignedDistanceField2DPathSegmentType.Line;
     Contour.PathSegments[BasePathSegmentIndex+0].Color:=BasePathSegment.Color;
     Contour.PathSegments[BasePathSegmentIndex+0].Points[0]:=BasePathSegment.Points[0];
     Contour.PathSegments[BasePathSegmentIndex+0].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0);
-    Contour.PathSegments[BasePathSegmentIndex+1].Type_:=pvsdf2DpstLine;
+    Contour.PathSegments[BasePathSegmentIndex+1].Type_:=TpvSignedDistanceField2DPathSegmentType.Line;
     Contour.PathSegments[BasePathSegmentIndex+1].Color:=BasePathSegment.Color;
     Contour.PathSegments[BasePathSegmentIndex+1].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+0].Points[1];
     Contour.PathSegments[BasePathSegmentIndex+1].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0);
-    Contour.PathSegments[BasePathSegmentIndex+2].Type_:=pvsdf2DpstLine;
+    Contour.PathSegments[BasePathSegmentIndex+2].Type_:=TpvSignedDistanceField2DPathSegmentType.Line;
     Contour.PathSegments[BasePathSegmentIndex+2].Color:=BasePathSegment.Color;
     Contour.PathSegments[BasePathSegmentIndex+2].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+1].Points[1];
     Contour.PathSegments[BasePathSegmentIndex+2].Points[1]:=BasePathSegment.Points[1];
    end;
-   pvsdf2DpstQuadraticBezierCurve:begin
-    Contour.PathSegments[BasePathSegmentIndex+0].Type_:=pvsdf2DpstQuadraticBezierCurve;
+   TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve:begin
+    Contour.PathSegments[BasePathSegmentIndex+0].Type_:=TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve;
     Contour.PathSegments[BasePathSegmentIndex+0].Color:=BasePathSegment.Color;
     Contour.PathSegments[BasePathSegmentIndex+0].Points[0]:=BasePathSegment.Points[0];
     Contour.PathSegments[BasePathSegmentIndex+0].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0);
     Contour.PathSegments[BasePathSegmentIndex+0].Points[2]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],1.0/3.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],1.0/3.0),1.0/3.0);
-    Contour.PathSegments[BasePathSegmentIndex+1].Type_:=pvsdf2DpstQuadraticBezierCurve;
+    Contour.PathSegments[BasePathSegmentIndex+1].Type_:=TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve;
     Contour.PathSegments[BasePathSegmentIndex+1].Color:=BasePathSegment.Color;
     Contour.PathSegments[BasePathSegmentIndex+1].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+0].Points[2];
     Contour.PathSegments[BasePathSegmentIndex+1].Points[1]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],5.0/9.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],4.0/9.0),0.5);
     Contour.PathSegments[BasePathSegmentIndex+1].Points[2]:=DoublePrecisionPointLerp(DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0),DoublePrecisionPointLerp(BasePathSegment.Points[1],BasePathSegment.Points[2],2.0/3.0),2.0/3.0);
-    Contour.PathSegments[BasePathSegmentIndex+2].Type_:=pvsdf2DpstQuadraticBezierCurve;
+    Contour.PathSegments[BasePathSegmentIndex+2].Type_:=TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve;
     Contour.PathSegments[BasePathSegmentIndex+2].Color:=BasePathSegment.Color;
     Contour.PathSegments[BasePathSegmentIndex+2].Points[0]:=Contour.PathSegments[BasePathSegmentIndex+1].Points[2];
     Contour.PathSegments[BasePathSegmentIndex+2].Points[1]:=DoublePrecisionPointLerp(BasePathSegment.Points[0],BasePathSegment.Points[1],2.0/3.0);
@@ -1476,20 +1476,20 @@ var ContourIndex,PathSegmentIndex,CountCorners,CornerIndex,SplineIndex,StartInde
     Color,InitialColor:TpvSignedDistanceField2DPathSegmentColor;
     Colors:array[0..2] of TpvSignedDistanceField2DPathSegmentColor;
     PathSegments:TpvSignedDistanceField2DPathSegments;
- procedure SwitchColor(var Color:TpvSignedDistanceField2DPathSegmentColor;const BannedColor:TpvSignedDistanceField2DPathSegmentColor=pvsdf2DpscBlack);
- const StartColors:array[0..2] of TpvSignedDistanceField2DPathSegmentColor=(pvsdf2DpscCyan,pvsdf2DpscMagenta,pvsdf2DpscYellow);
+ procedure SwitchColor(var Color:TpvSignedDistanceField2DPathSegmentColor;const BannedColor:TpvSignedDistanceField2DPathSegmentColor=TpvSignedDistanceField2DPathSegmentColor.Black);
+ const StartColors:array[0..2] of TpvSignedDistanceField2DPathSegmentColor=(TpvSignedDistanceField2DPathSegmentColor.Cyan,TpvSignedDistanceField2DPathSegmentColor.Magenta,TpvSignedDistanceField2DPathSegmentColor.Yellow);
  var CombinedColor:TpvSignedDistanceField2DPathSegmentColor;
      Shifted:TpvUInt64;
  begin
   CombinedColor:=TpvSignedDistanceField2DPathSegmentColor(TpvInt32(TpvInt32(Color) and TpvInt32(BannedColor)));
-  if CombinedColor in [pvsdf2DpscRed,pvsdf2DpscGreen,pvsdf2DpscBlue] then begin
-   Color:=TpvSignedDistanceField2DPathSegmentColor(TpvInt32(TpvInt32(CombinedColor) xor TpvInt32(TpvSignedDistanceField2DPathSegmentColor(pvsdf2DpscWhite))));
-  end else if CombinedColor in [pvsdf2DpscBlack,pvsdf2DpscWhite] then begin
+  if CombinedColor in [TpvSignedDistanceField2DPathSegmentColor.Red,TpvSignedDistanceField2DPathSegmentColor.Green,TpvSignedDistanceField2DPathSegmentColor.Blue] then begin
+   Color:=TpvSignedDistanceField2DPathSegmentColor(TpvInt32(TpvInt32(CombinedColor) xor TpvInt32(TpvSignedDistanceField2DPathSegmentColor(TpvSignedDistanceField2DPathSegmentColor.White))));
+  end else if CombinedColor in [TpvSignedDistanceField2DPathSegmentColor.Black,TpvSignedDistanceField2DPathSegmentColor.White] then begin
    Color:=StartColors[Seed mod 3];
    Seed:=Seed div 3;
   end else begin
    Shifted:=TpvInt32(Color) shl (1+(Seed and 1));
-   Color:=TpvSignedDistanceField2DPathSegmentColor(TpvInt32((Shifted or (Shifted shr 3)) and TpvInt32(TpvSignedDistanceField2DPathSegmentColor(pvsdf2DpscWhite))));
+   Color:=TpvSignedDistanceField2DPathSegmentColor(TpvInt32((Shifted or (Shifted shr 3)) and TpvInt32(TpvSignedDistanceField2DPathSegmentColor(TpvSignedDistanceField2DPathSegmentColor.White))));
    Seed:=Seed shr 1;
   end;
  end;
@@ -1541,12 +1541,12 @@ begin
      0:begin
       for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
        PathSegment:=@Contour^.PathSegments[PathSegmentIndex];
-       PathSegment^.Color:=pvsdf2DpscWhite;
+       PathSegment^.Color:=TpvSignedDistanceField2DPathSegmentColor.White;
       end;
      end;
      1:begin
-      Colors[0]:=pvsdf2DpscWhite;
-      Colors[1]:=pvsdf2DpscWhite;
+      Colors[0]:=TpvSignedDistanceField2DPathSegmentColor.White;
+      Colors[1]:=TpvSignedDistanceField2DPathSegmentColor.White;
       SwitchColor(Colors[0]);
       Colors[2]:=Colors[0];
       SwitchColor(Colors[2]);
@@ -1601,7 +1601,7 @@ begin
      else begin
       SplineIndex:=0;
       StartIndex:=Corners[0];
-      Color:=pvsdf2DpscWhite;
+      Color:=TpvSignedDistanceField2DPathSegmentColor.White;
       SwitchColor(Color);
       InitialColor:=Color;
       for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
@@ -1611,7 +1611,7 @@ begin
        end;
        if ((SplineIndex+1)<CountCorners) and (Corners[SplineIndex+1]=OtherPathSegmentIndex) then begin
         inc(SplineIndex);
-        SwitchColor(Color,TpvSignedDistanceField2DPathSegmentColor(TpvInt32(IfThen(SplineIndex=(CountCorners-1),TpvInt32(InitialColor),TpvInt32(TpvSignedDistanceField2DPathSegmentColor(pvsdf2DpscBlack))))));
+        SwitchColor(Color,TpvSignedDistanceField2DPathSegmentColor(TpvInt32(IfThen(SplineIndex=(CountCorners-1),TpvInt32(InitialColor),TpvInt32(TpvSignedDistanceField2DPathSegmentColor(TpvSignedDistanceField2DPathSegmentColor.Black))))));
        end;
        Contour^.PathSegments[OtherPathSegmentIndex].Color:=Color;
       end;
@@ -1711,7 +1711,7 @@ begin
    x1:=DistanceField.Width-1;
    y1:=DistanceField.Height-1;}
    for y:=Max(FromY,y0) to Min(ToY,y1) do begin
-    PreviousPathSegmentSide:=pvdf2DpssNone;
+    PreviousPathSegmentSide:=TpvSignedDistanceField2DPathSegmentSide.None;
     pY:=y+0.5;
     PointLeft.x:=x0;
     PointLeft.y:=pY;
@@ -1736,15 +1736,15 @@ begin
          ((y>=PathSegmentBoundingBox.Min.y) and (y<=PathSegmentBoundingBox.Max.y))) then begin
       continue;
      end else begin
-      PathSegmentSide:=pvdf2DpssNone;
+      PathSegmentSide:=TpvSignedDistanceField2DPathSegmentSide.None;
       CurrentSquaredDistance:=DistanceToPathSegment(Point,PathSegment^,RowData,PathSegmentSide);
       CurrentSquaredPseudoDistance:=CurrentSquaredDistance;
 (**)  if fMultiChannel then begin
        case PathSegment^.Type_ of
-        pvsdf2DpstLine:begin
+        TpvSignedDistanceField2DPathSegmentType.Line:begin
          Time:=GetLineNonClippedTime(Point,PathSegment^.Points[0],PathSegment^.Points[1]);
         end;
-        pvsdf2DpstQuadraticBezierCurve:begin
+        TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve:begin
          Time:=GetQuadraticBezierCurveNonClippedTime(Point,PathSegment^.Points[0],PathSegment^.Points[1],PathSegment^.Points[2]);
         end;
         else begin
@@ -1791,9 +1791,9 @@ begin
         end;}
        end;
       end;(**)
-      if (PreviousPathSegmentSide=pvdf2DpssLeft) and (PathSegmentSide=pvdf2DpssRight) then begin
+      if (PreviousPathSegmentSide=TpvSignedDistanceField2DPathSegmentSide.Left) and (PathSegmentSide=TpvSignedDistanceField2DPathSegmentSide.Right) then begin
        DeltaWindingScore:=-1;
-      end else if (PreviousPathSegmentSide=pvdf2DpssRight) and (PathSegmentSide=pvdf2DpssLeft) then begin
+      end else if (PreviousPathSegmentSide=TpvSignedDistanceField2DPathSegmentSide.Right) and (PathSegmentSide=TpvSignedDistanceField2DPathSegmentSide.Left) then begin
        DeltaWindingScore:=1;
       end else begin
        DeltaWindingScore:=0;
@@ -1803,17 +1803,17 @@ begin
        DistanceFieldDataItem^.SquaredDistance:=CurrentSquaredDistance;
       end;
       if fMultiChannel then begin
-       if (((TpvInt32(PathSegment^.Color) and TpvInt32(TpvSignedDistanceField2DPathSegmentColor(pvsdf2DpscRed)))<>0)) and
+       if (((TpvInt32(PathSegment^.Color) and TpvInt32(TpvSignedDistanceField2DPathSegmentColor(TpvSignedDistanceField2DPathSegmentColor.Red)))<>0)) and
           (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceR) then begin
         DistanceFieldDataItem^.SquaredDistanceR:=CurrentSquaredDistance;
         DistanceFieldDataItem^.PseudoSquaredDistanceR:=CurrentSquaredPseudoDistance;
        end;
-       if (((TpvInt32(PathSegment^.Color) and TpvInt32(TpvSignedDistanceField2DPathSegmentColor(pvsdf2DpscGreen)))<>0)) and
+       if (((TpvInt32(PathSegment^.Color) and TpvInt32(TpvSignedDistanceField2DPathSegmentColor(TpvSignedDistanceField2DPathSegmentColor.Green)))<>0)) and
           (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceG) then begin
         DistanceFieldDataItem^.SquaredDistanceG:=CurrentSquaredDistance;
         DistanceFieldDataItem^.PseudoSquaredDistanceG:=CurrentSquaredPseudoDistance;
        end;
-       if (((TpvInt32(PathSegment^.Color) and TpvInt32(TpvSignedDistanceField2DPathSegmentColor(pvsdf2DpscBlue)))<>0)) and
+       if (((TpvInt32(PathSegment^.Color) and TpvInt32(TpvSignedDistanceField2DPathSegmentColor(TpvSignedDistanceField2DPathSegmentColor.Blue)))<>0)) and
           (CurrentSquaredDistance<DistanceFieldDataItem^.SquaredDistanceB) then begin
         DistanceFieldDataItem^.SquaredDistanceB:=CurrentSquaredDistance;
         DistanceFieldDataItem^.PseudoSquaredDistanceB:=CurrentSquaredPseudoDistance;
@@ -1911,14 +1911,14 @@ begin
     for PathSegmentIndex:=0 to Contour^.CountPathSegments-1 do begin
      PathSegment:=@Contour^.PathSegments[PathSegmentIndex];
      case PathSegment^.Type_ of
-      pvsdf2DpstLine:begin
+      TpvSignedDistanceField2DPathSegmentType.Line:begin
        if PathSegmentIndex=0 then begin
         StartPoint:=PathSegment^.Points[0];
        end;
        LastPoint:=PathSegment^.Points[1];
        AddPathSegment(PathSegment^.Points[0],PathSegment^.Points[1]);
       end;
-      pvsdf2DpstQuadraticBezierCurve:begin
+      TpvSignedDistanceField2DPathSegmentType.QuadraticBezierCurve:begin
        if PathSegmentIndex=0 then begin
         StartPoint:=PathSegment^.Points[0];
        end;
@@ -2005,14 +2005,14 @@ begin
     end;
    end;
    case fVectorPath.FillRule of
-    pvvpfrNonZero:begin
+    TpvVectorPathFillRule.NonZero:begin
      if WindingNumber<>0 then begin
       DistanceFieldSign:=1;
      end else begin
       DistanceFieldSign:=-1;
      end;
     end;
-    else {pvvpfrEvenOdd:}begin
+    else {TpvVectorPathFillRule.EvenOdd:}begin
      if (WindingNumber and 1)<>0 then begin
       DistanceFieldSign:=1;
      end else begin

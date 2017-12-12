@@ -171,27 +171,27 @@ type EpvJSONSyntaxError=class(Exception);
 
      PpvJSONModeFlag=^TpvJSONModeFlag;
      TpvJSONModeFlag=(
-                         sjmfUnquotedKeys,
-                         sjmfComments,
-                         sjmfImplicitRootObject,
-                         sjmfOptionalCommas,
-                         sjmfEqualsForColon,
-                         sjmfMultilineStrings
-                        );
+                      UnquotedKeys,
+                      Comments,
+                      ImplicitRootObject,
+                      OptionalCommas,
+                      EqualsForColon,
+                      MultilineStrings
+                     );
 
      PpvJSONModeFlags=^TpvJSONModeFlag;
      TpvJSONModeFlags=set of TpvJSONModeFlag;
 
-const SimplifiedJSONModeFlags:TpvJSONModeFlags=[sjmfUnquotedKeys,
-                                                   sjmfComments,
-                                                   sjmfImplicitRootObject,
-                                                   sjmfOptionalCommas,
-                                                   sjmfEqualsForColon,
-                                                   sjmfMultilineStrings];
+const SimplifiedJSONModeFlags:TpvJSONModeFlags=[TpvJSONModeFlag.UnquotedKeys,
+                                                TpvJSONModeFlag.Comments,
+                                                TpvJSONModeFlag.ImplicitRootObject,
+                                                TpvJSONModeFlag.OptionalCommas,
+                                                TpvJSONModeFlag.EqualsForColon,
+                                                TpvJSONModeFlag.MultilineStrings];
 
 function JSONStringQuote(const s:TpvJSONUTF8String):TpvJSONRawByteString;
 
-function JSONParse(const pSource:TpvJSONRawByteString;const pModeFlags:TpvJSONModeFlags=[sjmfComments]):TpvJSONItem;
+function JSONParse(const pSource:TpvJSONRawByteString;const pModeFlags:TpvJSONModeFlags=[TpvJSONModeFlag.Comments]):TpvJSONItem;
 function JSONStringify(const pJSONItem:TpvJSONItem;const pFormatting:boolean=false;const pModeFlags:TpvJSONModeFlags=[];const pLevel:TpvInt32=0):TpvJSONRawByteString;
 
 function JSONGetNumber(const pItem:TpvJSONItem;const pDefault:TpvDouble=0.0):TpvDouble;
@@ -712,22 +712,22 @@ begin
  result:=result+'"';
 end;
 
-function JSONParse(const pSource:TpvJSONRawByteString;const pModeFlags:TpvJSONModeFlags=[sjmfComments]):TpvJSONItem;
+function JSONParse(const pSource:TpvJSONRawByteString;const pModeFlags:TpvJSONModeFlags=[TpvJSONModeFlag.Comments]):TpvJSONItem;
 type TEncoding=(Latin1,UTF8,UTF16LE,UTF16BE,UTF32LE,UTF32BE);
 var Position:TpvInt32;
     CurrentChar:TpvUInt32;
     CharEOF:boolean;
     Encoding:TEncoding;
  procedure NextChar;
- const UTF16Shifts:array[UTF16LE..UTF16BE,0..1] of TpvInt32=((0,8),(8,0));
+ const UTF16Shifts:array[TEncoding.UTF16LE..TEncoding.UTF16BE,0..1] of TpvInt32=((0,8),(8,0));
  var Temp:TpvUInt32;
  begin
   if Position<=length(pSource) then begin
    case Encoding of
-    UTF8:begin
+    TEncoding.UTF8:begin
      CurrentChar:=GetNextUTF8Char(PAnsiChar(@pSource[1]),Length(pSource),Position);
     end;
-    UTF16LE,UTF16BE:begin
+    TEncoding.UTF16LE,TEncoding.UTF16BE:begin
      if (Position+1)<=length(pSource) then begin
       CurrentChar:=(TpvUInt32(byte(AnsiChar(pSource[Position]))) shl UTF16Shifts[Encoding,0]) or (TpvUInt32(byte(AnsiChar(pSource[Position+1]))) shl UTF16Shifts[Encoding,1]);
       inc(Position,2);
@@ -748,7 +748,7 @@ var Position:TpvInt32;
       CharEOF:=true;
      end;
     end;
-    UTF32LE:begin
+    TEncoding.UTF32LE:begin
      if (Position+3)<=length(pSource) then begin
       CurrentChar:=(TpvUInt32(byte(AnsiChar(pSource[Position]))) shl 0) or
                    (TpvUInt32(byte(AnsiChar(pSource[Position+1]))) shl 8) or
@@ -761,7 +761,7 @@ var Position:TpvInt32;
       CharEOF:=true;
      end;
     end;
-    UTF32BE:begin
+    TEncoding.UTF32BE:begin
      if (Position+3)<=length(pSource) then begin
       CurrentChar:=(TpvUInt32(byte(AnsiChar(pSource[Position]))) shl 24) or
                    (TpvUInt32(byte(AnsiChar(pSource[Position+1]))) shl 16) or
@@ -797,7 +797,7 @@ var Position:TpvInt32;
      NextChar;
     end;
     ord('/'):begin
-     if sjmfComments in pModeFlags then begin
+     if TpvJSONModeFlag.Comments in pModeFlags then begin
       NextChar;
       case CurrentChar of
        ord('/'):begin
@@ -894,7 +894,7 @@ var Position:TpvInt32;
       while not (CharEOF or IsChar('"')) do begin
        case CurrentChar of
         $0000..$001f:begin
-         if sjmfMultiLineStrings in pModeFlags then begin
+         if TpvJSONModeFlag.MultiLineStrings in pModeFlags then begin
           AddChar(CurrentChar);
           NextChar;
          end else begin
@@ -1096,7 +1096,7 @@ var Position:TpvInt32;
   begin
    result:=nil;
    try
-    if (sjmfUnquotedKeys in pModeFlags) and
+    if (TpvJSONModeFlag.UnquotedKeys in pModeFlags) and
        (not CharEOF) and
        ((CurrentChar=UInt16(WideChar('_'))) or
         ((CurrentChar>=UInt16(WideChar('a'))) and (CurrentChar<=UInt16(WideChar('z')))) or
@@ -1124,7 +1124,7 @@ var Position:TpvInt32;
      end;
     end;
     SkipWhite;
-    if sjmfEqualsForColon in pModeFlags then begin
+    if TpvJSONModeFlag.EqualsForColon in pModeFlags then begin
      ExpectChar('=');
     end else begin
      ExpectChar(':');
@@ -1154,7 +1154,7 @@ var Position:TpvInt32;
       if (not (CharEOF or ImplicitRootObject)) and IsChar('}') then begin
        JSONError;
       end;
-     end else if not (sjmfOptionalCommas in pModeFlags) then begin
+     end else if not (TpvJSONModeFlag.OptionalCommas in pModeFlags) then begin
       break;
      end;
     end;
@@ -1181,7 +1181,7 @@ var Position:TpvInt32;
       if (not CharEOF) and IsChar(']') then begin
        JSONError;
       end;
-     end else if not (sjmfOptionalCommas in pModeFlags) then begin
+     end else if not (TpvJSONModeFlag.OptionalCommas in pModeFlags) then begin
       break;
      end;
     end;
@@ -1249,25 +1249,25 @@ begin
   CharEOF:=false;
   if (length(pSource)>=3) and ((byte(ansichar(pSource[1]))=$ef) and (byte(ansichar(pSource[2]))=$bb) and (byte(ansichar(pSource[3]))=$bf)) then begin
    Position:=4;
-   Encoding:=UTF8;
+   Encoding:=TEncoding.UTF8;
   end else if (length(pSource)>=4) and ((byte(ansichar(pSource[1]))=$ff) and (byte(ansichar(pSource[2]))=$fe) and (byte(ansichar(pSource[3]))=$00) and (byte(ansichar(pSource[4]))=$00)) then begin
    Position:=5;
-   Encoding:=UTF32LE;
+   Encoding:=TEncoding.UTF32LE;
   end else if (length(pSource)>=4) and ((byte(ansichar(pSource[1]))=$00) and (byte(ansichar(pSource[2]))=$00) and (byte(ansichar(pSource[3]))=$fe) and (byte(ansichar(pSource[4]))=$ff)) then begin
    Position:=5;
-   Encoding:=UTF32BE;
+   Encoding:=TEncoding.UTF32BE;
   end else if (length(pSource)>=2) and ((byte(ansichar(pSource[1]))=$ff) and (byte(ansichar(pSource[2]))=$fe)) then begin
    Position:=3;
-   Encoding:=UTF16LE;
+   Encoding:=TEncoding.UTF16LE;
   end else if (length(pSource)>=2) and ((byte(ansichar(pSource[1]))=$fe) and (byte(ansichar(pSource[2]))=$ff)) then begin
    Position:=3;
-   Encoding:=UTF16BE;
+   Encoding:=TEncoding.UTF16BE;
   end else begin
    Position:=1;
-   Encoding:=Latin1;
+   Encoding:=TEncoding.Latin1;
   end;
   NextChar;
-  result:=ParseValue(sjmfImplicitRootObject in pModeFlags);
+  result:=ParseValue(TpvJSONModeFlag.ImplicitRootObject in pModeFlags);
   SkipWhite;
   if not CharEOF then begin
    JSONError;
@@ -1330,7 +1330,7 @@ begin
     result:=result+#13#10;
    end;
    Count:=TpvJSONItemArray(pJSONItem).Count;
-   if sjmfImplicitRootObject in pModeFlags then begin
+   if TpvJSONModeFlag.ImplicitRootObject in pModeFlags then begin
     LevelOffset:=-1;
    end else begin
     LevelOffset:=0;
@@ -1342,7 +1342,7 @@ begin
      end;
     end;
     result:=result+JSONStringify(TpvJSONItemArray(pJSONItem).Items[Index],pFormatting,pModeFlags,pLevel+1);
-    if ((Index+1)<Count) and not (sjmfOptionalCommas in pModeFlags) then begin
+    if ((Index+1)<Count) and not (TpvJSONModeFlag.OptionalCommas in pModeFlags) then begin
      result:=result+',';
     end;
     if pFormatting then begin
@@ -1356,7 +1356,7 @@ begin
    end;
    result:=result+']';
   end else if pJSONItem is TpvJSONItemObject then begin
-   if (not (sjmfImplicitRootObject in pModeFlags)) or (pLevel<>0) then begin
+   if (not (TpvJSONModeFlag.ImplicitRootObject in pModeFlags)) or (pLevel<>0) then begin
     result:='{';
     if pFormatting then begin
      result:=result+#13#10;
@@ -1364,7 +1364,7 @@ begin
    end else begin
     result:='';
    end;
-   if sjmfImplicitRootObject in pModeFlags then begin
+   if TpvJSONModeFlag.ImplicitRootObject in pModeFlags then begin
     LevelOffset:=-1;
    end else begin
     LevelOffset:=0;
@@ -1377,12 +1377,12 @@ begin
      end;
     end;
     Key:=TpvJSONItemObject(pJSONItem).Keys[Index];
-    if (sjmfUnquotedKeys in pModeFlags) and IsIdentifier(Key) then begin
+    if (TpvJSONModeFlag.UnquotedKeys in pModeFlags) and IsIdentifier(Key) then begin
      result:=result+TpvJSONRawByteString(Key);
     end else begin
      result:=result+JSONStringQuote(Key);
     end;
-    if sjmfEqualsForColon in pModeFlags then begin
+    if TpvJSONModeFlag.EqualsForColon in pModeFlags then begin
      if pFormatting then begin
       result:=result+' ';
      end;
@@ -1394,7 +1394,7 @@ begin
      result:=result+' ';
     end;
     result:=result+JSONStringify(TpvJSONItemObject(pJSONItem).Values[Index],pFormatting,pModeFlags,pLevel+1);
-    if ((Index+1)<Count) and not (sjmfOptionalCommas in pModeFlags) then begin
+    if ((Index+1)<Count) and not (TpvJSONModeFlag.OptionalCommas in pModeFlags) then begin
      result:=result+',';
     end;
     if pFormatting then begin
@@ -1406,7 +1406,7 @@ begin
      result:=result+'  ';
     end;
    end;
-   if (not (sjmfImplicitRootObject in pModeFlags)) or (pLevel<>0) then begin
+   if (not (TpvJSONModeFlag.ImplicitRootObject in pModeFlags)) or (pLevel<>0) then begin
     result:=result+'}';
    end;
   end else begin

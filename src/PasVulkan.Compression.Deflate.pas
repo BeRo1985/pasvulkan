@@ -70,11 +70,11 @@ uses SysUtils,
 type PpvDeflateMode=^TpvDeflateMode;
      TpvDeflateMode=
       (
-       pvdmNone,
-       pvdmVeryFast,
-       pvdmFast,
-       pvdmMedium,
-       pvdmSlow
+       None,
+       VeryFast,
+       Fast,
+       Medium,
+       Slow
       );
 
 function DoDeflate(const aInData:TpvPointer;const aInLen:TpvSizeUInt;var aDestData:TpvPointer;var aDestLen:TpvSizeUInt;const aMode:TpvDeflateMode;const aWithHeader:boolean):boolean;
@@ -186,16 +186,16 @@ begin
  aDestData:=nil;
  FillChar(d_stream,SizeOf(z_stream),AnsiChar(#0));
  case aMode of
-  pvdmVeryFast:begin
+  TpvDeflateMode.VeryFast:begin
    Level:=1;
   end;
-  pvdmFast:begin
+  TpvDeflateMode.Fast:begin
    Level:=5;
   end;
-  pvdmMedium:begin
+  TpvDeflateMode.Medium:begin
    Level:=-1;
   end;
-  pvdmSlow:begin
+  TpvDeflateMode.Slow:begin
    Level:=9;
   end;
   else begin
@@ -416,22 +416,22 @@ begin
  aDestLen:=0;
  InitializeLookUpTables;
  try
-  DoCompression:=aMode<>pvdmNone;
-  Greedy:=aMode in [pvdmMedium,pvdmSlow];
+  DoCompression:=aMode<>TpvDeflateMode.None;
+  Greedy:=aMode in [TpvDeflateMode.Medium,TpvDeflateMode.Slow];
   case aMode of
-   pvdmVeryFast:begin
+   TpvDeflateMode.VeryFast:begin
     MaxSteps:=1;
     SkipStrength:=7;
    end;
-   pvdmFast:begin
+   TpvDeflateMode.Fast:begin
     MaxSteps:=128;
     SkipStrength:=7;
    end;
-   pvdmMedium:begin
+   TpvDeflateMode.Medium:begin
     MaxSteps:=128;
     SkipStrength:=32;
    end;
-   pvdmSlow:begin
+   TpvDeflateMode.Slow:begin
     MaxSteps:=MaxOffset;
     SkipStrength:=32;
    end;

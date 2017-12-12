@@ -74,11 +74,11 @@ uses SysUtils,
 type PpvVectorPathCommandType=^TpvVectorPathCommandType;
      TpvVectorPathCommandType=
       (
-       pvvpctMoveTo,
-       pvvpctLineTo,
-       pvvpctQuadraticCurveTo,
-       pvvpctCubicCurveTo,
-       pvvpctClose
+       MoveTo,
+       LineTo,
+       QuadraticCurveTo,
+       CubicCurveTo,
+       Close
       );
 
      TpvVectorPathCommand=class
@@ -113,8 +113,8 @@ type PpvVectorPathCommandType=^TpvVectorPathCommandType;
      PpvVectorPathFillRule=^TpvVectorPathFillRule;
      TpvVectorPathFillRule=
       (
-       pvvpfrNonZero,
-       pvvpfrEvenOdd
+       NonZero,
+       EvenOdd
       );
 
      TpvVectorPath=class
@@ -160,7 +160,7 @@ constructor TpvVectorPath.Create;
 begin
  inherited Create;
  fCommands:=TpvVectorPathCommandList.Create(true);
- fFillRule:=pvvpfrEvenOdd;
+ fFillRule:=TpvVectorPathFillRule.EvenOdd;
 end;
 
 constructor TpvVectorPath.CreateFromSVGPath(const aCommands:TpvRawByteString);
@@ -543,27 +543,27 @@ end;
 
 procedure TpvVectorPath.MoveTo(const aX,aY:TpvDouble);
 begin
- fCommands.Add(TpvVectorPathCommand.Create(pvvpctMoveTo,aX,aY));
+ fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.MoveTo,aX,aY));
 end;
 
 procedure TpvVectorPath.LineTo(const aX,aY:TpvDouble);
 begin
- fCommands.Add(TpvVectorPathCommand.Create(pvvpctLineTo,aX,aY));
+ fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.LineTo,aX,aY));
 end;
 
 procedure TpvVectorPath.QuadraticCurveTo(const aCX,aCY,aAX,aAY:TpvDouble);
 begin
- fCommands.Add(TpvVectorPathCommand.Create(pvvpctQuadraticCurveTo,aCX,aCY,aAX,aAY));
+ fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.QuadraticCurveTo,aCX,aCY,aAX,aAY));
 end;
 
 procedure TpvVectorPath.CubicCurveTo(const aC0X,aC0Y,aC1X,aC1Y,aAX,aAY:TpvDouble);
 begin
- fCommands.Add(TpvVectorPathCommand.Create(pvvpctCubicCurveTo,aC0X,aC0Y,aC1X,aC1Y,aAX,aAY));
+ fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.CubicCurveTo,aC0X,aC0Y,aC1X,aC1Y,aAX,aAY));
 end;
 
 procedure TpvVectorPath.Close;
 begin
- fCommands.Add(TpvVectorPathCommand.Create(pvvpctClose));
+ fCommands.Add(TpvVectorPathCommand.Create(TpvVectorPathCommandType.Close));
 end;
 
 function TpvVectorPath.GetSignedDistance(const aX,aY,aScale:TpvDouble;out aInsideOutsideSign:TpvInt32):TpvDouble;
@@ -664,25 +664,25 @@ begin
  for Index:=0 to fCommands.Count-1 do begin
   Command:=fCommands.Items[Index];
   case Command.fCommandType of
-   pvvpctMoveTo:begin
+   TpvVectorPathCommandType.MoveTo:begin
     StartX:=Command.x0*aScale;
     StartY:=Command.y0*aScale;
     LastX:=Command.x0*aScale;
     LastY:=Command.y0*aScale;
    end;
-   pvvpctLineTo:begin
+   TpvVectorPathCommandType.LineTo:begin
     DoLineTo(Command.x0*aScale,Command.y0*aScale);
    end;
-   pvvpctQuadraticCurveTo:begin
+   TpvVectorPathCommandType.QuadraticCurveTo:begin
     DoQuadraticCurveTo(Command.x0*aScale,Command.y0*aScale,
                        Command.x1*aScale,Command.y1*aScale);
    end;
-   pvvpctCubicCurveTo:begin
+   TpvVectorPathCommandType.CubicCurveTo:begin
     DoCubicCurveTo(Command.x0*aScale,Command.y0*aScale,
                    Command.x1*aScale,Command.y1*aScale,
                    Command.x2*aScale,Command.y2*aScale);
    end;
-   pvvpctClose:begin
+   TpvVectorPathCommandType.Close:begin
     DoLineTo(StartX,StartY);
    end;
   end;

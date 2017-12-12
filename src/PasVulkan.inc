@@ -232,4 +232,5 @@
 {$ifndef HAS_TYPE_DOUBLE}
  {$error No double floating point precision}
 {$endif}
+{$scopedenums on}
 

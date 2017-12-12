@@ -161,7 +161,7 @@ begin
                                                    pvApplication.VulkanDevice.TransferQueue,
                                                    pvApplication.VulkanTransferCommandBuffers[0,0],
                                                    pvApplication.VulkanTransferCommandBufferFences[0,0],
-                                                   vtdtCheckerboard,
+                                                   TpvVulkanTextureDefaultType.Checkerboard,
                                                    512,
                                                    512,
                                                    0,
@@ -170,9 +170,9 @@ begin
                                                    true,
                                                    false,
                                                    true);{}
- fBoxAlbedoTexture.WrapModeU:=vtwmRepeat;
- fBoxAlbedoTexture.WrapModeV:=vtwmRepeat;
- fBoxAlbedoTexture.WrapModeW:=vtwmRepeat;
+ fBoxAlbedoTexture.WrapModeU:=TpvVulkanTextureWrapMode.WrappedRepeat;
+ fBoxAlbedoTexture.WrapModeV:=TpvVulkanTextureWrapMode.WrappedRepeat;
+ fBoxAlbedoTexture.WrapModeW:=TpvVulkanTextureWrapMode.WrappedRepeat;
  fBoxAlbedoTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
  fBoxAlbedoTexture.UpdateSampler;
 
@@ -208,7 +208,7 @@ begin
                                                        0,
                                                        0,
                                                        0,
-                                                       [vbfPersistentMapped]
+                                                       [TpvVulkanBufferFlag.PersistentMapped]
                                                       );
   fVulkanUniformBuffers[Index].UploadData(pvApplication.VulkanDevice.TransferQueue,
                                           pvApplication.VulkanTransferCommandBuffers[0,0],
@@ -216,7 +216,7 @@ begin
                                           fUniformBuffer,
                                           0,
                                           SizeOf(TScreenExampleDragonUniformBuffer),
-                                          vbutsbmYes);
+                                          TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
  end;
 
  fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
@@ -493,7 +493,7 @@ end;
 function TScreenExampleDragon.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=false;
- if fReady and (aKeyEvent.KeyEventType=KEYEVENT_DOWN) then begin
+ if fReady and (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.DOWN) then begin
   case aKeyEvent.KeyCode of
    KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
     pvApplication.NextScreen:=TScreenMainMenu.Create;
@@ -544,7 +544,7 @@ begin
  result:=false;
  if fReady then begin
   case aPointerEvent.PointerEventType of
-   POINTEREVENT_DOWN:begin
+   TpvApplicationInputPointerEventType.DOWN:begin
     fSelectedIndex:=-1;
     cy:=fStartY;
     for Index:=0 to 0 do begin
@@ -557,9 +557,9 @@ begin
      cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
     end;
    end;
-   POINTEREVENT_UP:begin
+   TpvApplicationInputPointerEventType.UP:begin
    end;
-   POINTEREVENT_MOTION:begin
+   TpvApplicationInputPointerEventType.MOTION:begin
     fSelectedIndex:=-1;
     cy:=fStartY;
     for Index:=0 to 0 do begin
@@ -569,7 +569,7 @@ begin
      cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
     end;
    end;
-   POINTEREVENT_DRAG:begin
+   TpvApplicationInputPointerEventType.DRAG:begin
    end;
   end;
  end;

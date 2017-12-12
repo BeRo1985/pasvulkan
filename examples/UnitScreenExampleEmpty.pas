@@ -245,7 +245,7 @@ end;
 function TScreenExampleEmpty.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=false;
- if fReady and (aKeyEvent.KeyEventType=KEYEVENT_DOWN) then begin
+ if fReady and (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.DOWN) then begin
   case aKeyEvent.KeyCode of
    KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
     pvApplication.NextScreen:=TScreenMainMenu.Create;
@@ -296,7 +296,7 @@ begin
  result:=false;
  if fReady then begin
   case aPointerEvent.PointerEventType of
-   POINTEREVENT_DOWN:begin
+   TpvApplicationInputPointerEventType.DOWN:begin
     fSelectedIndex:=-1;
     cy:=fStartY;
     for Index:=0 to 0 do begin
@@ -309,9 +309,9 @@ begin
      cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
     end;
    end;
-   POINTEREVENT_UP:begin
+   TpvApplicationInputPointerEventType.UP:begin
    end;
-   POINTEREVENT_MOTION:begin
+   TpvApplicationInputPointerEventType.MOTION:begin
     fSelectedIndex:=-1;
     cy:=fStartY;
     for Index:=0 to 0 do begin
@@ -321,7 +321,7 @@ begin
      cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
     end;
    end;
-   POINTEREVENT_DRAG:begin
+   TpvApplicationInputPointerEventType.DRAG:begin
    end;
   end;
  end;

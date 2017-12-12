@@ -225,7 +225,7 @@ begin
  fGUIWindow.Left:=50;
  fGUIWindow.Top:=400;
  fGUIWindow.Title:='Window with GridLayout';
- fGUIWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIWindow.Content,pvglaFill,pvgloVertical,8.0,8.0);
+ fGUIWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIWindow.Content,TpvGUILayoutAlignment.Fill,TpvGUILayoutOrientation.Vertical,8.0,8.0);
  fGUIWindow.AddMinimizationButton;
  fGUIWindow.AddMaximizationButton;
  fGUIWindow.AddCloseButton;
@@ -287,11 +287,11 @@ begin
  end;
 
  Panel:=TPvGUIPanel.Create(fGUIWindow.Content);
- Panel.Layout:=TpvGUIGridLayout.Create(Panel,4,pvglaLeading,pvglaMiddle,pvgloHorizontal,0.0,8.0,8.0);
+ Panel.Layout:=TpvGUIGridLayout.Create(Panel,4,TpvGUILayoutAlignment.Leading,TpvGUILayoutAlignment.Middle,TpvGUILayoutOrientation.Horizontal,0.0,8.0,8.0);
 
  fGUILabel:=TpvGUILabel.Create(Panel);
  fGUILabel.Caption:='An example label';
- fGUILabel.Cursor:=pvgcLink;
+ fGUILabel.Cursor:=TpvGUICursor.Link;
 
 {fGUIButton:=TpvGUIButton.Create(fGUIWindow.ButtonPanel);
  fGUIButton.Caption:=TpvRawByteString(#$e2#$80#$a6);}
@@ -309,56 +309,56 @@ begin
 
  fGUITextEdit:=TpvGUITextEdit.Create(fGUIWindow.Content);
  fGUITextEdit.Text:='An example text edit';
- fGUITextEdit.TextHorizontalAlignment:=TpvGUITextAlignment.pvgtaLeading;
+ fGUITextEdit.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
  fGUITextEdit.MinimumWidth:=320;
  fGUITextEdit.MinimumHeight:=32;
  fGUITextEdit.Enabled:=true;
 
  IntegerEdit:=TpvGUIIntegerEdit.Create(fGUIWindow.Content);
  IntegerEdit.Value:=1337;
- IntegerEdit.TextHorizontalAlignment:=TpvGUITextAlignment.pvgtaLeading;
+ IntegerEdit.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
  IntegerEdit.MinimumWidth:=320;
  IntegerEdit.MinimumHeight:=32;
  IntegerEdit.Enabled:=true;
 
  FloatEdit:=TpvGUIFloatEdit.Create(fGUIWindow.Content);
  FloatEdit.Value:=PI;
- FloatEdit.TextHorizontalAlignment:=TpvGUITextAlignment.pvgtaLeading;
+ FloatEdit.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
  FloatEdit.MinimumWidth:=320;
  FloatEdit.MinimumHeight:=32;
  FloatEdit.Enabled:=true;
 
 {Popup:=TpvGUIPopup.Create(fGUITextEdit);
  Popup.FixedSize.Vector:=TpvVector2.Create(160,100);
- Popup.AnchorSide:=pvgpasBottom;}
+ Popup.AnchorSide:=TpvGUIPopupAnchorSide.Bottom;}
 
  fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
  fGUIOtherWindow.Left:=550;
  fGUIOtherWindow.Top:=50;
  fGUIOtherWindow.Title:='Window with BoxLayout';
- fGUIOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,pvglaLeading,pvgloVertical,8.0,8.0);
+ fGUIOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,8.0);
  fGUIOtherWindow.AddMinimizationButton;
  fGUIOtherWindow.AddMaximizationButton;
  fGUIOtherWindow.AddCloseButton;
 
  Panel:=TPvGUIPanel.Create(fGUIOtherWindow.Content);
- Panel.Layout:=TpvGUIGridLayout.Create(Panel,4,pvglaLeading,pvglaMiddle,pvgloHorizontal,0.0,8.0,8.0);
+ Panel.Layout:=TpvGUIGridLayout.Create(Panel,4,TpvGUILayoutAlignment.Leading,TpvGUILayoutAlignment.Middle,TpvGUILayoutOrientation.Horizontal,0.0,8.0,8.0);
 
  fGUILabel:=TpvGUILabel.Create(Panel);
  fGUILabel.Caption:='An other example label';
- fGUILabel.Cursor:=pvgcBusy;
+ fGUILabel.Cursor:=TpvGUICursor.Busy;
 
  fGUILabel:=TpvGUILabel.Create(Panel);
  fGUILabel.Caption:='An another example label';
- fGUILabel.Cursor:=pvgcUnavailable;
+ fGUILabel.Cursor:=TpvGUICursor.Unavailable;
 
  fGUILabel:=TpvGUILabel.Create(Panel);
  fGUILabel.Caption:='Yet another example label';
- fGUILabel.Cursor:=pvgcPen;
+ fGUILabel.Cursor:=TpvGUICursor.Pen;
 
  fGUILabel:=TpvGUILabel.Create(Panel);
  fGUILabel.Caption:='Again another example label';
- fGUILabel.Cursor:=pvgcLink;
+ fGUILabel.Cursor:=TpvGUICursor.Link;
 
  TpvGUICheckBox.Create(Panel).Caption:='Check box';
 
@@ -390,7 +390,7 @@ begin
  fGUIYetOtherWindow.AddCloseButton;
 
  ScrollPanel:=TpvGUIScrollPanel.Create(fGUIYetOtherWindow.Content);
- ScrollPanel.Content.Layout:=TpvGUIBoxLayout.Create(ScrollPanel.Content,pvglaLeading,pvgloVertical,8.0,8.0);
+ ScrollPanel.Content.Layout:=TpvGUIBoxLayout.Create(ScrollPanel.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,8.0);
 
  fGUIButton:=TpvGUIToggleButton.Create(ScrollPanel.Content);
  fGUIButton.Caption:='Toggle button';
@@ -401,17 +401,17 @@ begin
  fGUIYetOtherWindow.Left:=750;
  fGUIYetOtherWindow.Top:=200;
  fGUIYetOtherWindow.Title:='Window with FlowLayout';
-//fGUIYetOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,pvglaLeading,pvgloVertical,8.0,8.0);
+//fGUIYetOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,8.0);
  fGUIYetOtherWindow.Content.Layout:=TpvGUIFlowLayout.Create(fGUIOtherWindow.Content,
-                                                            pvgloHorizontal,
+                                                            TpvGUILayoutOrientation.Horizontal,
                                                             8.0,
                                                             300.0,
                                                             0.0,
                                                             4.0,
                                                             4.0,
-                                                            pgfldLeftToRight,
-                                                            pgflaMiddle,
-                                                            pgflaMiddle,
+                                                            TpvGUIFlowLayoutDirection.LeftToRight,
+                                                            TpvGUIFlowLayoutAlignment.Middle,
+                                                            TpvGUIFlowLayoutAlignment.Middle,
                                                             true);
  fGUIYetOtherWindow.AddMinimizationButton;
  fGUIYetOtherWindow.AddMaximizationButton;
@@ -419,11 +419,11 @@ begin
 
  fGUILabel:=TpvGUILabel.Create(fGUIYetOtherWindow.Content);
  fGUILabel.Caption:='An other example label';
- fGUILabel.Cursor:=pvgcBusy;
+ fGUILabel.Cursor:=TpvGUICursor.Busy;
 
  fGUILabel:=TpvGUILabel.Create(fGUIYetOtherWindow.Content);
  fGUILabel.Caption:='An another example label';
- fGUILabel.Cursor:=pvgcUnavailable;
+ fGUILabel.Cursor:=TpvGUICursor.Unavailable;
 
  fGUIButton:=TpvGUIPopupMenuButton.Create(fGUIYetOtherWindow.Content);
  fGUIButton.Caption:='Popup menu';
@@ -445,53 +445,53 @@ begin
  fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
  fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasTop;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=TpvGUIPopupAnchorSide.Top;
 
  fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
  fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasBottom;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=TpvGUIPopupAnchorSide.Bottom;
 
  fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
  fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasLeft;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=TpvGUIPopupAnchorSide.Left;
 
  fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
  fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasRight;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=TpvGUIPopupAnchorSide.Right;
 
  ScrollBar:=TpvGUIScrollBar.Create(fGUIYetOtherWindow.Content);
- ScrollBar.Orientation:=pvgsboHorizontal;
+ ScrollBar.Orientation:=TpvGUIScrollBarOrientation.Horizontal;
  ScrollBar.MinimumValue:=0;
  ScrollBar.MaximumValue:=100;
  ScrollBar.ThumbButtonSize:=24.0;
  ScrollBar.FixedWidth:=256.0;
 
  Slider:=TpvGUISlider.Create(fGUIYetOtherWindow.Content);
- Slider.Orientation:=pvgsoHorizontal;
+ Slider.Orientation:=TpvGUISliderOrientation.Horizontal;
  Slider.FixedWidth:=256.0;
 
  fGUIProgressBar0:=TpvGUIProgressBar.Create(fGUIYetOtherWindow.Content);
- fGUIProgressBar0.Orientation:=pvgpboHorizontal;
+ fGUIProgressBar0.Orientation:=TpvGUIProgressBarOrientation.Horizontal;
  fGUIProgressBar0.MinimumValue:=0;
  fGUIProgressBar0.MaximumValue:=100;
  fGUIProgressBar0.Value:=75;
  fGUIProgressBar0.FixedWidth:=256.0;
 
  ScrollBar:=TpvGUIScrollBar.Create(fGUIYetOtherWindow.Content);
- ScrollBar.Orientation:=pvgsboVertical;
+ ScrollBar.Orientation:=TpvGUIScrollBarOrientation.Vertical;
  //ScrollBar.SliderButtonSize:=24.0;
  ScrollBar.MaximumValue:=2;
  ScrollBar.FixedHeight:=128.0;
 
  Slider:=TpvGUISlider.Create(fGUIYetOtherWindow.Content);
- Slider.Orientation:=pvgsoVertical;
+ Slider.Orientation:=TpvGUISliderOrientation.Vertical;
  Slider.FixedHeight:=128.0;
 
  fGUIProgressBar1:=TpvGUIProgressBar.Create(fGUIYetOtherWindow.Content);
- fGUIProgressBar1.Orientation:=pvgpboVertical;
+ fGUIProgressBar1.Orientation:=TpvGUIProgressBarOrientation.Vertical;
  fGUIProgressBar1.MinimumValue:=0;
  fGUIProgressBar1.MaximumValue:=100;
  fGUIProgressBar1.Value:=25;
@@ -515,31 +515,31 @@ begin
  fGUIButton:=TpvGUIPopupButton.Create(Window.Content);
  fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasLeft;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=TpvGUIPopupAnchorSide.Left;
  TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,0,1,1,2.0,2.0,2.0,2.0);
 
  fGUIButton:=TpvGUIPopupButton.Create(Window.Content);
  fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasTop;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=TpvGUIPopupAnchorSide.Top;
  TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,0,1,1,2.0,2.0,2.0,2.0);
 
  fGUIButton:=TpvGUIPopupButton.Create(Window.Content);
  fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasRight;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=TpvGUIPopupAnchorSide.Right;
  TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(2,0,1,1,2.0,2.0,2.0,2.0);
 
  fGUIButton:=TpvGUIPopupButton.Create(Window.Content);
  fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasRight;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=TpvGUIPopupAnchorSide.Right;
  TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,3,1,2.0,2.0,2.0,2.0);
 
  fGUIButton:=TpvGUIPopupButton.Create(Window.Content);
  fGUIButton.Caption:='Popup';
  fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=pvgpasBottom;
+ TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=TpvGUIPopupAnchorSide.Bottom;
  TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,2,2,1,2.0,2.0,2.0,2.0);
 
 end;
@@ -678,7 +678,7 @@ function TScreenExampleGUI.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent)
 begin
  result:=false;
  if fReady and not fGUIInstance.KeyEvent(aKeyEvent) then begin
-  if aKeyEvent.KeyEventType=KEYEVENT_DOWN then begin
+  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.DOWN then begin
    case aKeyEvent.KeyCode of
     KEYCODE_AC_BACK{,KEYCODE_ESCAPE}:begin
      pvApplication.NextScreen:=TScreenMainMenu.Create;
@@ -735,7 +735,7 @@ begin
   LocalPointerEvent.RelativePosition:=LocalPointerEvent.RelativePosition*fScreenToCanvasScale;
   if not fGUIInstance.PointerEvent(LocalPointerEvent) then begin
    case aPointerEvent.PointerEventType of
-    POINTEREVENT_DOWN:begin
+    TpvApplicationInputPointerEventType.DOWN:begin
      fSelectedIndex:=-1;
      cy:=fStartY;
      for Index:=0 to 0 do begin
@@ -748,9 +748,9 @@ begin
       cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
      end;
     end;
-    POINTEREVENT_UP:begin
+    TpvApplicationInputPointerEventType.UP:begin
     end;
-    POINTEREVENT_MOTION:begin
+    TpvApplicationInputPointerEventType.MOTION:begin
      fSelectedIndex:=-1;
      cy:=fStartY;
      for Index:=0 to 0 do begin
@@ -760,21 +760,21 @@ begin
       cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
      end;
     end;
-    POINTEREVENT_DRAG:begin
+    TpvApplicationInputPointerEventType.DRAG:begin
     end;
    end;
   end;
  end;
  case aPointerEvent.PointerEventType of
-  POINTEREVENT_DOWN:begin
+  TpvApplicationInputPointerEventType.DOWN:begin
    Include(fLastMouseButtons,aPointerEvent.Button);
    fLastMousePosition:=aPointerEvent.Position*fScreenToCanvasScale;
   end;
-  POINTEREVENT_UP:begin
+  TpvApplicationInputPointerEventType.UP:begin
    Exclude(fLastMouseButtons,aPointerEvent.Button);
    fLastMousePosition:=aPointerEvent.Position*fScreenToCanvasScale;
   end;
-  POINTEREVENT_MOTION:begin
+  TpvApplicationInputPointerEventType.MOTION:begin
    fLastMousePosition:=aPointerEvent.Position*fScreenToCanvasScale;
   end;
  end;
@@ -808,11 +808,11 @@ begin
 
  fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.Identity;
 
- fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
+ fVulkanCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
 
 {$if false}
- fVulkanCanvas.Color:=TpvVector4.Create(IfThen(BUTTON_LEFT in fLastMouseButtons,1.0,0.0),
-                                        IfThen(BUTTON_RIGHT in fLastMouseButtons,1.0,0.0),
+ fVulkanCanvas.Color:=TpvVector4.Create(IfThen(TpvApplicationInputPointerButton.LEFT in fLastMouseButtons,1.0,0.0),
+                                        IfThen(TpvApplicationInputPointerButton.RIGHT in fLastMouseButtons,1.0,0.0),
                                         1.0,
                                         1.0);
  fVulkanCanvas.DrawFilledCircle(fLastMousePosition,16.0);

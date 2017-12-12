@@ -1078,28 +1078,28 @@ begin
  VectorPath:=TpvVectorPath.Create;
  try
   if aFillRule=pvTTF_PolygonWindingRule_NONZERO then begin
-   VectorPath.FillRule:=pvvpfrNonZero;
+   VectorPath.FillRule:=TpvVectorPathFillRule.NonZero;
   end else begin
-   VectorPath.FillRule:=pvvpfrEvenOdd;
+   VectorPath.FillRule:=TpvVectorPathFillRule.EvenOdd;
   end;
   for CommandIndex:=0 to aPolygonBuffer.CountCommands-1 do begin
    Command:=@aPolygonBuffer.Commands[CommandIndex];
    case Command^.CommandType of
-    pvTTF_PolygonCommandType_MoveTo:begin
+    TpvTrueTypeFontPolygonCommandType.MoveTo:begin
      VectorPath.MoveTo(Command^.Points[0].x,
                        Command^.Points[0].y);
     end;
-    pvTTF_PolygonCommandType_LineTo:begin
+    TpvTrueTypeFontPolygonCommandType.LineTo:begin
      VectorPath.LineTo(Command^.Points[0].x,
                        Command^.Points[0].y);
     end;
-    pvTTF_PolygonCommandType_QuadraticCurveTo:begin
+    TpvTrueTypeFontPolygonCommandType.QuadraticCurveTo:begin
      VectorPath.QuadraticCurveTo(Command^.Points[0].x,
                                  Command^.Points[0].y,
                                  Command^.Points[1].x,
                                  Command^.Points[1].y);
     end;
-    pvTTF_PolygonCommandType_CubicCurveTo:begin
+    TpvTrueTypeFontPolygonCommandType.CubicCurveTo:begin
      VectorPath.CubicCurveTo(Command^.Points[0].x,
                              Command^.Points[0].y,
                              Command^.Points[1].x,
@@ -1107,7 +1107,7 @@ begin
                              Command^.Points[2].x,
                              Command^.Points[2].y);
     end;
-    pvTTF_PolygonCommandType_Close:begin
+    TpvTrueTypeFontPolygonCommandType.Close:begin
      VectorPath.Close;
     end;
    end;

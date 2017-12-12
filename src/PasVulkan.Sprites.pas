@@ -184,8 +184,8 @@ type EpvSpriteAtlas=class(Exception);
      PpvSpriteFlag=^TpvSpriteFlag;
      TpvSpriteFlag=
       (
-       pvsfSignedDistanceField,
-       pvsfRotated
+       SignedDistanceField,
+       Rotated
       );
 
      PpvSpriteFlags=^TpvSpriteFlags;
@@ -261,8 +261,8 @@ type EpvSpriteAtlas=class(Exception);
      PpvSpriteNinePatchRegionMode=^TpvSpriteNinePatchRegionMode;
      TpvSpriteNinePatchRegionMode=
       (
-       pvsnprmStretch,
-       pvsnprmTile
+       Stretch,
+       Tile
       );
 
      PpvSpriteNinePatchRegion=^TpvSpriteNinePatchRegion;
@@ -325,7 +325,7 @@ type EpvSpriteAtlas=class(Exception);
        function LoadXML(const aTextureStream:TStream;const aStream:TStream):boolean;
        function LoadRawSprite(const aName:TpvRawByteString;aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvInt32;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aDepth16Bit:boolean=false;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors=nil):TpvSprite;
        function LoadSignedDistanceFieldSprite(const aName:TpvRawByteString;const aVectorPath:TpvVectorPath;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite; overload;
-       function LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=pvvpfrNonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite; overload;
+       function LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=TpvVectorPathFillRule.NonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite; overload;
        function LoadSprite(const aName:TpvRawByteString;aStream:TStream;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
        function LoadSprites(const aName:TpvRawByteString;aStream:TStream;aSpriteWidth:TpvInt32=64;aSpriteHeight:TpvInt32=64;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprites;
        procedure LoadFromStream(const aStream:TStream);
@@ -534,16 +534,16 @@ begin
                                                0,
                                                1,
                                                MipMapLevels[aMipMaps],
-                                               [vtufTransferDst,vtufSampled],
+                                               [TpvVulkanTextureUsageFlag.TransferDst,TpvVulkanTextureUsageFlag.Sampled],
                                                UploadPixels,
                                                fWidth*fHeight*BytesPerPixel,
                                                false,
                                                false,
                                                1,
                                                true);
-   fTexture.WrapModeU:=vtwmClampToBorder;
-   fTexture.WrapModeV:=vtwmClampToBorder;
-   fTexture.WrapModeW:=vtwmClampToBorder;
+   fTexture.WrapModeU:=TpvVulkanTextureWrapMode.ClampToBorder;
+   fTexture.WrapModeV:=TpvVulkanTextureWrapMode.ClampToBorder;
+   fTexture.WrapModeW:=TpvVulkanTextureWrapMode.ClampToBorder;
    fTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
    fTexture.UpdateSampler;
 
@@ -749,7 +749,7 @@ begin
                                                Max(1,fLayers),
                                                1,
                                                MipMapLevels[aMipMaps],
-                                               [vtufTransferDst,vtufSampled],
+                                               [TpvVulkanTextureUsageFlag.TransferDst,TpvVulkanTextureUsageFlag.Sampled],
                                                UploadPixels,
                                                fCountTexels*fBytesPerPixel,
                                                false,
@@ -757,9 +757,9 @@ begin
                                                1,
                                                true);
 
-   fTexture.WrapModeU:=vtwmClampToBorder;
-   fTexture.WrapModeV:=vtwmClampToBorder;
-   fTexture.WrapModeW:=vtwmClampToBorder;
+   fTexture.WrapModeU:=TpvVulkanTextureWrapMode.ClampToBorder;
+   fTexture.WrapModeV:=TpvVulkanTextureWrapMode.ClampToBorder;
+   fTexture.WrapModeW:=TpvVulkanTextureWrapMode.ClampToBorder;
    fTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
    fTexture.UpdateSampler;
 
@@ -815,29 +815,29 @@ end;
 
 function TpvSprite.GetSignedDistanceField:boolean;
 begin
- result:=pvsfSignedDistanceField in fFlags;
+ result:=TpvSpriteFlag.SignedDistanceField in fFlags;
 end;
 
 procedure TpvSprite.SetSignedDistanceField(const aSignedDistanceField:boolean);
 begin
  if aSignedDistanceField then begin
-  Include(fFlags,pvsfSignedDistanceField);
+  Include(fFlags,TpvSpriteFlag.SignedDistanceField);
  end else begin
-  Exclude(fFlags,pvsfSignedDistanceField);
+  Exclude(fFlags,TpvSpriteFlag.SignedDistanceField);
  end;
 end;
 
 function TpvSprite.GetRotated:boolean;
 begin
- result:=pvsfRotated in fFlags;
+ result:=TpvSpriteFlag.Rotated in fFlags;
 end;
 
 procedure TpvSprite.SetRotated(const aRotated:boolean);
 begin
  if aRotated then begin
-  Include(fFlags,pvsfRotated);
+  Include(fFlags,TpvSpriteFlag.Rotated);
  end else begin
-  Exclude(fFlags,pvsfRotated);
+  Exclude(fFlags,TpvSpriteFlag.Rotated);
  end;
 end;
 
@@ -992,11 +992,11 @@ var Index:TpvInt32;
 begin
  result:=false;
  if (aDataSize>7) and (PFirstBytes(aDataPointer)^[0]=$89) and (PFirstBytes(aDataPointer)^[1]=$50) and (PFirstBytes(aDataPointer)^[2]=$4e) and (PFirstBytes(aDataPointer)^[3]=$47) and (PFirstBytes(aDataPointer)^[4]=$0d) and (PFirstBytes(aDataPointer)^[5]=$0a) and (PFirstBytes(aDataPointer)^[6]=$1a) and (PFirstBytes(aDataPointer)^[7]=$0a) then begin
-  PNGPixelFormat:=pvppfUnknown;
+  PNGPixelFormat:=TpvPNGPixelFormat.Unknown;
   if LoadPNGImage(aDataPointer,aDataSize,aImageData,aImageWidth,aImageHeight,false,PNGPixelFormat) then begin
    result:=true;
    if fDepth16Bit then begin
-    if PNGPixelFormat=pvppfR8G8B8A8 then begin
+    if PNGPixelFormat=TpvPNGPixelFormat.R8G8B8A8 then begin
      // Convert to R16G1B16A16
      GetMem(NewImageData,aImageWidth*aImageHeight*8);
      try
@@ -1013,7 +1013,7 @@ begin
      end;
     end;
    end else begin
-    if PNGPixelFormat=pvppfR16G16B16A16 then begin
+    if PNGPixelFormat=TpvPNGPixelFormat.R16G16B16A16 then begin
      // Convert to R8G8B8A8 in-place
      p8:=aImageData;
      p16:=aImageData;
@@ -1702,7 +1702,7 @@ begin
  end;
 end;
 
-function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=pvvpfrNonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
+function TpvSpriteAtlas.LoadSignedDistanceFieldSprite(const aName,aSVGPath:TpvRawByteString;const aImageWidth,aImageHeight:TpvInt32;const aScale:TpvDouble=1.0;const aOffsetX:TpvDouble=0.0;const aOffsetY:TpvDouble=0.0;const aVectorPathFillRule:TpvVectorPathFillRule=TpvVectorPathFillRule.NonZero;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1):TpvSprite;
 var VectorPath:TpvVectorPath;
 begin
  VectorPath:=TpvVectorPath.CreateFromSVGPath(aSVGPath);
@@ -2055,10 +2055,10 @@ begin
       ui8:=ReadUInt8;
       Sprite.fFlags:=[];
       if (ui8 and 1)<>0 then begin
-       Include(Sprite.fFlags,pvsfSignedDistanceField);
+       Include(Sprite.fFlags,TpvSpriteFlag.SignedDistanceField);
       end;
       if (ui8 and 2)<>0 then begin
-       Include(Sprite.fFlags,pvsfRotated);
+       Include(Sprite.fFlags,TpvSpriteFlag.Rotated);
       end;
       Sprite.fX:=ReadInt32;
       Sprite.fY:=ReadInt32;
@@ -2121,7 +2121,7 @@ begin
         if (ImageWidth=ArrayTexture.fWidth) and
            (ImageHeight=ArrayTexture.fHeight) then begin
          if fDepth16Bit then begin
-          if PNGPixelFormat=pvppfR8G8B8A8 then begin
+          if PNGPixelFormat=TpvPNGPixelFormat.R8G8B8A8 then begin
            // Convert to R16G1B16A16
            GetMem(NewImageData,ImageWidth*ImageHeight*8);
            try
@@ -2138,7 +2138,7 @@ begin
            end;
           end;
          end else begin
-          if PNGPixelFormat=pvppfR16G16B16A16 then begin
+          if PNGPixelFormat=TpvPNGPixelFormat.R16G16B16A16 then begin
            // Convert to R8G8B8A8 in-place
            p8:=ImageData;
            p16:=ImageData;
@@ -2301,8 +2301,8 @@ begin
         end;
        end;
        WriteInt32(SubSubIndex);
-       WriteUInt8((TpvUInt8(ord(pvsfSignedDistanceField in Sprite.fFlags) and 1) shl 0) or
-                  (TpvUInt8(ord(pvsfRotated in Sprite.fFlags) and 1) shl 1) or
+       WriteUInt8((TpvUInt8(ord(TpvSpriteFlag.SignedDistanceField in Sprite.fFlags) and 1) shl 0) or
+                  (TpvUInt8(ord(TpvSpriteFlag.Rotated in Sprite.fFlags) and 1) shl 1) or
                   (TpvUInt8(ord(length(Sprite.fTrimmedHullVectors)>0) and 1) shl 2));
        WriteInt32(Sprite.fX);
        WriteInt32(Sprite.fY);
@@ -2354,14 +2354,14 @@ begin
                             ArrayTexture.fWidth,
                             ArrayTexture.fHeight,
                             Entry.Stream,
-                            pvppfR16G16B16A16,
+                            TpvPNGPixelFormat.R16G16B16A16,
                             aFast);
       end else begin
        SavePNGImageAsStream(ArrayTexture.GetTexelPointer(0,0,Index),
                             ArrayTexture.fWidth,
                             ArrayTexture.fHeight,
                             Entry.Stream,
-                            pvppfR8G8B8A8,
+                            TpvPNGPixelFormat.R8G8B8A8,
                             aFast);
       end;
      finally

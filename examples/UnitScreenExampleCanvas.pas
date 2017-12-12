@@ -326,9 +326,9 @@ begin
   Stream.Free;
  end;
 
- fTextureTreeLeafs.WrapModeU:=vtwmMirroredRepeat;
- fTextureTreeLeafs.WrapModeV:=vtwmMirroredRepeat;
- fTextureTreeLeafs.WrapModeW:=vtwmClampToEdge;
+ fTextureTreeLeafs.WrapModeU:=TpvVulkanTextureWrapMode.MirroredRepeat;
+ fTextureTreeLeafs.WrapModeV:=TpvVulkanTextureWrapMode.MirroredRepeat;
+ fTextureTreeLeafs.WrapModeW:=TpvVulkanTextureWrapMode.ClampToEdge;
  fTextureTreeLeafs.BorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
  fTextureTreeLeafs.UpdateSampler;
 
@@ -460,7 +460,7 @@ end;
 function TScreenExampleCanvas.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=false;
- if fReady and (aKeyEvent.KeyEventType=KEYEVENT_DOWN) then begin
+ if fReady and (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.DOWN) then begin
   case aKeyEvent.KeyCode of
    KEYCODE_AC_BACK,KEYCODE_ESCAPE:begin
     pvApplication.NextScreen:=TScreenMainMenu.Create;
@@ -511,7 +511,7 @@ begin
  result:=false;
  if fReady then begin
   case aPointerEvent.PointerEventType of
-   POINTEREVENT_DOWN:begin
+   TpvApplicationInputPointerEventType.DOWN:begin
     fSelectedIndex:=-1;
     cy:=fStartY;
     for Index:=0 to 0 do begin
@@ -524,9 +524,9 @@ begin
      cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
     end;
    end;
-   POINTEREVENT_UP:begin
+   TpvApplicationInputPointerEventType.UP:begin
    end;
-   POINTEREVENT_MOTION:begin
+   TpvApplicationInputPointerEventType.MOTION:begin
     fSelectedIndex:=-1;
     cy:=fStartY;
     for Index:=0 to 0 do begin
@@ -536,7 +536,7 @@ begin
      cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
     end;
    end;
-   POINTEREVENT_DRAG:begin
+   TpvApplicationInputPointerEventType.DRAG:begin
    end;
   end;
  end;
@@ -569,13 +569,13 @@ begin
 
  fVulkanCanvas.ViewMatrix:=TpvMatrix4x4.Identity;
 
- fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
+ fVulkanCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
 
  fVulkanCanvas.Push;
 
  fVulkanCanvas.ModelMatrix:=TpvMatrix4x4.Identity;
  fVulkanCanvas.Texture:=fTextureTreeLeafs;
- fVulkanCanvas.FillStyle:=pvcfsImage;
+ fVulkanCanvas.FillStyle:=TpvCanvasFillStyle.Image;
  fVulkanCanvas.FillMatrix:=TpvMatrix4x4.CreateTranslation(-fVulkanCanvas.Width*0.125,
                                                           -fVulkanCanvas.Height*0.5)*
                            TpvMatrix4x4.CreateScale(Mix(4,32,(((cos(fTime*pi*1.0)*0.5)+0.5)))/fVulkanCanvas.Width,
@@ -592,8 +592,8 @@ begin
  if not assigned(fShapeCircleInsideRoundedRectangle) then begin
   fVulkanCanvas.Push;
   fVulkanCanvas.LineWidth:=10.0;
-  fVulkanCanvas.LineCap:=pvclcButt;
-  fVulkanCanvas.LineJoin:=pvcljBevel;
+  fVulkanCanvas.LineCap:=TpvCanvasLineCap.Butt;
+  fVulkanCanvas.LineJoin:=TpvCanvasLineJoin.Bevel;
   fVulkanCanvas.BeginPath;
   fVulkanCanvas.RoundedRectangle(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height-(fVulkanCanvas.Width*0.125),fVulkanCanvas.Width*0.1,fVulkanCanvas.Width*0.1,fVulkanCanvas.Width*0.02);
   fVulkanCanvas.Circle(fVulkanCanvas.Width*0.125,fVulkanCanvas.Height-(fVulkanCanvas.Width*0.125),fVulkanCanvas.Width*0.1);
@@ -601,8 +601,8 @@ begin
   fVulkanCanvas.EndPath;
   fVulkanCanvas.Pop;
  end;
- fVulkanCanvas.FillStyle:=pvcfsRadialGradient;
- fVulkanCanvas.FillWrapMode:=pvcfwmMirroredRepeat;
+ fVulkanCanvas.FillStyle:=TpvCanvasFillStyle.RadialGradient;
+ fVulkanCanvas.FillWrapMode:=TpvCanvasFillWrapMode.MirroredRepeat;
  fVulkanCanvas.StartColor:=ConvertSRGBToLinear(TpvVector4.Create((sin((fTime*0.84)*pi*2.0)*0.5)+0.5,
                                                                  (cos((fTime*0.98)*pi*2.0)*0.5)+0.5,
                                                                  (sin((fTime*0.43)*pi*2.0)*0.5)+0.5,
@@ -619,11 +619,11 @@ begin
  fVulkanCanvas.DrawShape(fShapeCircleInsideRoundedRectangle);
 
  if frac(fTime*0.5)<0.5 then begin
-  fVulkanCanvas.FillStyle:=pvcfsRadialGradient;
+  fVulkanCanvas.FillStyle:=TpvCanvasFillStyle.RadialGradient;
  end else begin
-  fVulkanCanvas.FillStyle:=pvcfsLinearGradient;
+  fVulkanCanvas.FillStyle:=TpvCanvasFillStyle.LinearGradient;
  end;
- fVulkanCanvas.FillWrapMode:=pvcfwmMirroredRepeat;
+ fVulkanCanvas.FillWrapMode:=TpvCanvasFillWrapMode.MirroredRepeat;
  fVulkanCanvas.StartColor:=ConvertSRGBToLinear(TpvVector4.Create((sin((fTime*0.78)*pi*2.0)*0.5)+0.5,
                                                                  (cos((fTime*0.65)*pi*2.0)*0.5)+0.5,
                                                                  (sin((fTime*0.91)*pi*2.0)*0.5)+0.5,
@@ -643,7 +643,7 @@ begin
 
  fVulkanCanvas.DrawTexturedRectangle(fTextureTreeLeafs,fVulkanCanvas.Width*0.5+(fVulkanCanvas.Width*0.25*cos(fTime*pi*0.73)),fVulkanCanvas.Height-(fVulkanCanvas.Width*0.125),fVulkanCanvas.Width*0.05,fVulkanCanvas.Width*0.05,fTime*pi*2.0);
 
- fVulkanCanvas.BlendingMode:=pvcbmNone;
+ fVulkanCanvas.BlendingMode:=TpvCanvasBlendingMode.None;
 
  fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 
@@ -654,7 +654,7 @@ begin
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteTest.Height;
  fVulkanCanvas.DrawSprite(fVulkanSpriteTest,SrcRect,DstRect,TpvVector2.Create(fVulkanSpriteTest.Width*0.5,fVulkanSpriteTest.Height*0.5),sin(fTime*pi*1.3*0.1)*pi*2.0);
 
- fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
+ fVulkanCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
 
  SrcRect:=TpvRect.CreateAbsolute(0,0,fVulkanSpriteAppIcon.Width,fVulkanSpriteAppIcon.Height);
  DstRect.Left:=((fVulkanCanvas.Width-fVulkanSpriteAppIcon.Width)*0.5)+(sin(fTime*pi*2.0*0.1)*128.0);
@@ -663,7 +663,7 @@ begin
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteAppIcon.Height;
  fVulkanCanvas.DrawSprite(fVulkanSpriteAppIcon,SrcRect,DstRect,TpvVector2.Create(fVulkanSpriteAppIcon.Width*0.5,fVulkanSpriteAppIcon.Height*0.5),cos(fTime*pi*1.7*0.1)*pi*2.0);
 
- fVulkanCanvas.BlendingMode:=pvcbmAdditiveBlending;
+ fVulkanCanvas.BlendingMode:=TpvCanvasBlendingMode.AdditiveBlending;
 
  fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,0.5);
 
@@ -674,7 +674,7 @@ begin
  DstRect.Bottom:=DstRect.Top+fVulkanSpriteDancer0.Height;
  fVulkanCanvas.DrawSprite(fVulkanSpriteDancer0,SrcRect,DstRect,TpvVector2.Create(fVulkanSpriteDancer0.Width*0.5,fVulkanSpriteDancer0.Height*0.5),cos(fTime*pi*1.5*0.1)*pi*2.0);
 
- fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
+ fVulkanCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
 
  fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 
@@ -696,7 +696,7 @@ begin
                                  TpvMatrix4x4.CreateTranslation(0.0,0.0,-1.0)*
                                  TpvMatrix4x4.CreatePerspective(53.13,fVulkanCanvas.Width/fVulkanCanvas.Height,0.01,128.0);
 
- fVulkanCanvas.BlendingMode:=pvcbmAlphaBlending;
+ fVulkanCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
 
  rbs:='This is an example text';
 
@@ -767,18 +767,18 @@ begin
      case Index of
       0:begin
        fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(1.0,0.25,0.25,1.0));
-       fVulkanCanvas.LineJoin:=pvcljRound;
-       fVulkanCanvas.LineCap:=pvclcRound;
+       fVulkanCanvas.LineJoin:=TpvCanvasLineJoin.Round;
+       fVulkanCanvas.LineCap:=TpvCanvasLineCap.Round;
       end;
       1:begin
        fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(0.25,1.0,0.25,1.0));
-       fVulkanCanvas.LineJoin:=pvcljMiter;
-       fVulkanCanvas.LineCap:=pvclcButt;
+       fVulkanCanvas.LineJoin:=TpvCanvasLineJoin.Miter;
+       fVulkanCanvas.LineCap:=TpvCanvasLineCap.Butt;
       end;
       2:begin
        fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(0.25,0.25,1.0,1.0));
-       fVulkanCanvas.LineJoin:=pvcljBevel;
-       fVulkanCanvas.LineCap:=pvclcSquare;
+       fVulkanCanvas.LineJoin:=TpvCanvasLineJoin.Bevel;
+       fVulkanCanvas.LineCap:=TpvCanvasLineCap.Square;
       end;
      end;
     end;
@@ -786,18 +786,18 @@ begin
      case Index of
       0:begin
        fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(0.25,1.0,0.25,1.0));
-       fVulkanCanvas.LineJoin:=pvcljRound;
-       fVulkanCanvas.LineCap:=pvclcRound;
+       fVulkanCanvas.LineJoin:=TpvCanvasLineJoin.Round;
+       fVulkanCanvas.LineCap:=TpvCanvasLineCap.Round;
       end;
       1:begin
        fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(0.25,0.25,1.0,1.0));
-       fVulkanCanvas.LineJoin:=pvcljMiter;
-       fVulkanCanvas.LineCap:=pvclcButt;
+       fVulkanCanvas.LineJoin:=TpvCanvasLineJoin.Miter;
+       fVulkanCanvas.LineCap:=TpvCanvasLineCap.Butt;
       end;
       2:begin
        fVulkanCanvas.Color:=ConvertSRGBToLinear(TpvVector4.Create(1.0,0.25,0.25,1.0));
-       fVulkanCanvas.LineJoin:=pvcljBevel;
-       fVulkanCanvas.LineCap:=pvclcSquare;
+       fVulkanCanvas.LineJoin:=TpvCanvasLineJoin.Bevel;
+       fVulkanCanvas.LineCap:=TpvCanvasLineCap.Square;
       end;
      end;
     end;
@@ -816,7 +816,7 @@ begin
  fVulkanCanvas.Push;
  fVulkanCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fVulkanCanvas.Width*0.75,fVulkanCanvas.Height*0.0);
  fVulkanCanvas.Texture:=fTextureTreeLeafs;
- fVulkanCanvas.FillStyle:=pvcfsImage;
+ fVulkanCanvas.FillStyle:=TpvCanvasFillStyle.Image;
  fVulkanCanvas.FillMatrix:=TpvMatrix4x4.CreateScale(4.0/fVulkanCanvas.Width,
                                                     (4.0/fVulkanCanvas.Height)*(fVulkanCanvas.Height/fVulkanCanvas.Width))*
                            TpvMatrix4x4.CreateTranslation(cos(fTime*0.5)*0.25,

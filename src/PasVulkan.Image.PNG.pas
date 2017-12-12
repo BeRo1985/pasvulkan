@@ -72,18 +72,18 @@ type EpvLoadPNGImage=class(Exception);
      PpvPNGPixelFormat=^TpvPNGPixelFormat;
      TpvPNGPixelFormat=
       (
-       pvppfUnknown,
-       pvppfR8G8B8A8,
-       pvppfR16G16B16A16
+       Unknown,
+       R8G8B8A8,
+       R16G16B16A16
       );
 
 function LoadPNGImage(DataPointer:TpvPointer;DataSize:TpvUInt32;var ImageData:TpvPointer;var ImageWidth,ImageHeight:TpvInt32;const HeaderOnly:boolean;var PixelFormat:TpvPNGPixelFormat):boolean;
 
-function SavePNGImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;out aDestData:TpvPointer;out aDestDataSize:TpvUInt32;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8;const aFast:boolean=false):boolean;
+function SavePNGImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;out aDestData:TpvPointer;out aDestDataSize:TpvUInt32;const aImagePixelFormat:TpvPNGPixelFormat=TpvPNGPixelFormat.R8G8B8A8;const aFast:boolean=false):boolean;
 
-function SavePNGImageAsStream(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aStream:TStream;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8;const aFast:boolean=false):boolean;
+function SavePNGImageAsStream(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aStream:TStream;const aImagePixelFormat:TpvPNGPixelFormat=TpvPNGPixelFormat.R8G8B8A8;const aFast:boolean=false):boolean;
 
-function SavePNGImageAsFile(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aFileName:string;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8;const aFast:boolean=false):boolean;
+function SavePNGImageAsFile(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aFileName:string;const aImagePixelFormat:TpvPNGPixelFormat=TpvPNGPixelFormat.R8G8B8A8;const aFast:boolean=false):boolean;
 
 implementation
 
@@ -199,10 +199,10 @@ begin
   end;
   case BitDepth of
    16:begin
-    PixelFormat:=pvppfR16G16B16A16;
+    PixelFormat:=TpvPNGPixelFormat.R16G16B16A16;
    end;
    else begin
-    PixelFormat:=pvppfR8G8B8A8;
+    PixelFormat:=TpvPNGPixelFormat.R8G8B8A8;
    end;
   end;
   if not HeaderOnly then begin
@@ -351,22 +351,22 @@ type TBitsUsed=array[0..7] of TpvUInt32;
      TColorData=TpvUInt64;
      TPixelColorType=
       (
-       pctUnknown,
-       pctPalette1,
-       pctPalette2,
-       pctPalette4,
-       pctPalette8,
-       pctGray1,
-       pctGray2,
-       pctGray4,
-       pctGray8,
-       pctGray16,
-       pctGrayAlpha8,
-       pctGrayAlpha16,
-       pctColor8,
-       pctColor16,
-       pctColorAlpha8,
-       pctColorAlpha16
+       Unknown,
+       Palette1,
+       Palette2,
+       Palette4,
+       Palette8,
+       Gray1,
+       Gray2,
+       Gray4,
+       Gray8,
+       Gray16,
+       GrayAlpha8,
+       GrayAlpha16,
+       Color8,
+       Color16,
+       ColorAlpha8,
+       ColorAlpha16
       );
      PPNGPixelUI8=^TPNGPixelUI8;
      TPNGPixelUI8=packed record
@@ -499,7 +499,7 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
   l:=length(TransparentColor);
   for x:=0 to ScanlineLength[CurrentPass]-1 do begin
    case PixelColorType of
-    pctPalette1:begin
+    TPixelColorType.Palette1:begin
      c:=CalcColor;
      if c<pc then begin
       pe:=Palette[c];
@@ -510,7 +510,7 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
       pe.a:=0;
      end;
     end;
-    pctPalette2:begin
+    TPixelColorType.Palette2:begin
      c:=CalcColor;
      if c<pc then begin
       pe:=Palette[c];
@@ -521,7 +521,7 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
       pe.a:=0;
      end;
     end;
-    pctPalette4:begin
+    TPixelColorType.Palette4:begin
      c:=CalcColor;
      if c<pc then begin
       pe:=Palette[c];
@@ -532,7 +532,7 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
       pe.a:=0;
      end;
     end;
-    pctPalette8:begin
+    TPixelColorType.Palette8:begin
      c:=CalcColor;
      if c<pc then begin
       pe:=Palette[c];
@@ -543,63 +543,63 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
       pe.a:=0;
      end;
     end;
-    pctGray1:begin
+    TPixelColorType.Gray1:begin
      c:=CalcColor;
      pe.r:=(0-(c and 1)) and $ffff;
      pe.g:=(0-(c and 1)) and $ffff;
      pe.b:=(0-(c and 1)) and $ffff;
      pe.a:=$ffff;
     end;
-    pctGray2:begin
+    TPixelColorType.Gray2:begin
      c:=CalcColor;
      pe.r:=(c and 3) or ((c and 3) shl 2) or ((c and 3) shl 4) or ((c and 3) shl 6) or ((c and 3) shl 8) or ((c and 3) shl 10) or ((c and 3) shl 12) or ((c and 3) shl 14);
      pe.g:=(c and 3) or ((c and 3) shl 2) or ((c and 3) shl 4) or ((c and 3) shl 6) or ((c and 3) shl 8) or ((c and 3) shl 10) or ((c and 3) shl 12) or ((c and 3) shl 14);
      pe.b:=(c and 3) or ((c and 3) shl 2) or ((c and 3) shl 4) or ((c and 3) shl 6) or ((c and 3) shl 8) or ((c and 3) shl 10) or ((c and 3) shl 12) or ((c and 3) shl 14);
      pe.a:=$ffff;
     end;
-    pctGray4:begin
+    TPixelColorType.Gray4:begin
      c:=CalcColor;
      pe.r:=(c and $f) or ((c and $f) shl 4) or ((c and $f) shl 8) or ((c and $f) shl 12);
      pe.g:=(c and $f) or ((c and $f) shl 4) or ((c and $f) shl 8) or ((c and $f) shl 12);
      pe.b:=(c and $f) or ((c and $f) shl 4) or ((c and $f) shl 8) or ((c and $f) shl 12);
      pe.a:=$ffff;
     end;
-    pctGray8:begin
+    TPixelColorType.Gray8:begin
      pe.r:=TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+0])^) or (TpvUInt16(TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+0])^)) shl 8);
      pe.g:=pe.r;
      pe.b:=pe.r;
      pe.a:=$ffff;
      inc(DataIndex);
     end;
-    pctGray16:begin
+    TPixelColorType.Gray16:begin
      pe.r:=(TpvUInt16(TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+0])^)) shl 8) or TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+1])^);
      pe.g:=pe.r;
      pe.b:=pe.r;
      pe.a:=$ffff;
      inc(DataIndex,2);
     end;
-    pctGrayAlpha8:begin
+    TPixelColorType.GrayAlpha8:begin
      c:=CalcColor;
      pe.r:=(c and $00ff) or ((c and $00ff) shl 8);
      pe.g:=(c and $00ff) or ((c and $00ff) shl 8);
      pe.b:=(c and $00ff) or ((c and $00ff) shl 8);
      pe.a:=(c and $ff00) or ((c and $ff00) shr 8);
     end;
-    pctGrayAlpha16:begin
+    TPixelColorType.GrayAlpha16:begin
      c:=CalcColor;
      pe.r:=(c shr 16) and $ffff;
      pe.g:=(c shr 16) and $ffff;
      pe.b:=(c shr 16) and $ffff;
      pe.a:=c and $ffff;
     end;
-    pctColor8:begin
+    TPixelColorType.Color8:begin
      pe.r:=TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+0])^) or (TpvUInt16(TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+0])^)) shl 8);
      pe.g:=TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+1])^) or (TpvUInt16(TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+1])^)) shl 8);
      pe.b:=TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+2])^) or (TpvUInt16(TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+2])^)) shl 8);
      pe.a:=$ffff;
      inc(DataIndex,3);
     end;
-    pctColor16:begin
+    TPixelColorType.Color16:begin
      pe.r:=(TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+0])^) shl 8) or
            (TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+1])^) shl 0);
      pe.g:=(TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+2])^) shl 8) or
@@ -609,14 +609,14 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
      pe.a:=$ffff;
      inc(DataIndex,6);
     end;
-    pctColorAlpha8:begin
+    TPixelColorType.ColorAlpha8:begin
      pe.r:=TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+0])^) or (TpvUInt16(TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+0])^)) shl 8);
      pe.g:=TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+1])^) or (TpvUInt16(TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+1])^)) shl 8);
      pe.b:=TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+2])^) or (TpvUInt16(TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+2])^)) shl 8);
      pe.a:=TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+3])^) or (TpvUInt16(TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+3])^)) shl 8);
      inc(DataIndex,4);
     end;
-    pctColorAlpha16:begin
+    TPixelColorType.ColorAlpha16:begin
      pe.r:=(TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+0])^) shl 8) or
            (TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+1])^) shl 0);
      pe.g:=(TpvUInt8(TpvPointer(@CurrentLine^[DataIndex+2])^) shl 8) or
@@ -640,14 +640,14 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
     pe.a:=0;
    end;
    case PixelFormat of
-    pvppfR8G8B8A8:begin
+    TpvPNGPixelFormat.R8G8B8A8:begin
      pui8:=PPNGPixelUI8(TpvPointer(@PpvRawByteChar(ImageData)[((y*TpvInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixelUI8)]));
      pui8^.r:=pe.r shr 8;
      pui8^.g:=pe.g shr 8;
      pui8^.b:=pe.b shr 8;
      pui8^.a:=pe.a shr 8;
     end;
-    pvppfR16G16B16A16:begin
+    TpvPNGPixelFormat.R16G16B16A16:begin
      pui16:=PPNGPixelUI16(TpvPointer(@PpvRawByteChar(ImageData)[((y*TpvInt32(Width))+(StartX+(x*DeltaX)))*sizeof(TPNGPixelUI16)]));
      pui16^.r:=pe.r;
      pui16^.g:=pe.g;
@@ -666,7 +666,7 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
      pui16:PPNGPixelUI16;
  begin
   case PixelFormat of
-   pvppfR8G8B8A8:begin
+   TpvPNGPixelFormat.R8G8B8A8:begin
     a:=255;
     pui8:=PPNGPixelUI8(TpvPointer(@PpvRawByteChar(ImageData)[0]));
     for i:=0 to WidthHeight-1 do begin
@@ -699,7 +699,7 @@ var DataEnd,DataPtr,DataNextChunk,DataPtrEx:TpvPointer;
      end;
     end;
    end;
-   pvppfR16G16B16A16:begin
+   TpvPNGPixelFormat.R16G16B16A16:begin
     a:=65535;
     pui16:=PPNGPixelUI16(TpvPointer(@PpvRawByteChar(ImageData)[0]));
     for i:=0 to WidthHeight-1 do begin
@@ -992,11 +992,11 @@ begin
         case BitDepth of
          16:begin
           OutputBitsPerPixel:=64;
-          PixelFormat:=pvppfR16G16B16A16;
+          PixelFormat:=TpvPNGPixelFormat.R16G16B16A16;
          end;
          else begin
           OutputBitsPerPixel:=32;
-          PixelFormat:=pvppfR8G8B8A8;
+          PixelFormat:=TpvPNGPixelFormat.R8G8B8A8;
          end;
         end;
 //      ImageBytesPerPixel:=((TpvInt32(ImgBytes)*TpvInt32(BitDepth))+7) shr 3;
@@ -1038,54 +1038,54 @@ begin
           end;
          end;
          ByteWidth:=0;
-         PixelColorType:=pctUnknown;
+         PixelColorType:=TPixelColorType.Unknown;
          case ColorType of
           0:begin
            case BitDepth of
             1:begin
-             PixelColorType:=pctGray1;
+             PixelColorType:=TPixelColorType.Gray1;
              ByteWidth:=1;
             end;
             2:begin
-             PixelColorType:=pctGray2;
+             PixelColorType:=TPixelColorType.Gray2;
              ByteWidth:=1;
             end;
             4:begin
-             PixelColorType:=pctGray4;
+             PixelColorType:=TPixelColorType.Gray4;
              ByteWidth:=1;
             end;
             8:begin
-             PixelColorType:=pctGray8;
+             PixelColorType:=TPixelColorType.Gray8;
              ByteWidth:=1;
             end;
             16:begin
-             PixelColorType:=pctGray16;
+             PixelColorType:=TPixelColorType.Gray16;
              ByteWidth:=2;
             end;
            end;
           end;
           2:begin
            if BitDepth=8 then begin
-            PixelColorType:=pctColor8;
+            PixelColorType:=TPixelColorType.Color8;
             ByteWidth:=3;
            end else begin
-            PixelColorType:=pctColor16;
+            PixelColorType:=TPixelColorType.Color16;
             ByteWidth:=6;
            end;
           end;
           3:begin
            case BitDepth of
             1:begin
-             PixelColorType:=pctPalette1;
+             PixelColorType:=TPixelColorType.Palette1;
             end;
             2:begin
-             PixelColorType:=pctPalette2;
+             PixelColorType:=TPixelColorType.Palette2;
             end;
             4:begin
-             PixelColorType:=pctPalette4;
+             PixelColorType:=TPixelColorType.Palette4;
             end;
             8:begin
-             PixelColorType:=pctPalette8;
+             PixelColorType:=TPixelColorType.Palette8;
             end;
            end;
            if BitDepth=16 then begin
@@ -1096,19 +1096,19 @@ begin
           end;
           4:begin
            if BitDepth=8 then begin
-            PixelColorType:=pctGrayAlpha8;
+            PixelColorType:=TPixelColorType.GrayAlpha8;
             ByteWidth:=2;
            end else begin
-            PixelColorType:=pctGrayAlpha16;
+            PixelColorType:=TPixelColorType.GrayAlpha16;
             ByteWidth:=4;
            end;
           end;
           6:begin
            if BitDepth=8 then begin
-            PixelColorType:=pctColorAlpha8;
+            PixelColorType:=TPixelColorType.ColorAlpha8;
             ByteWidth:=4;
            end else begin
-            PixelColorType:=pctColorAlpha16;
+            PixelColorType:=TPixelColorType.ColorAlpha16;
             ByteWidth:=8;
            end;
           end;
@@ -1255,7 +1255,7 @@ begin
 end;
 {$ifend}
 
-function SavePNGImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;out aDestData:TpvPointer;out aDestDataSize:TpvUInt32;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8;const aFast:boolean=false):boolean;
+function SavePNGImage(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;out aDestData:TpvPointer;out aDestDataSize:TpvUInt32;const aImagePixelFormat:TpvPNGPixelFormat=TpvPNGPixelFormat.R8G8B8A8;const aFast:boolean=false):boolean;
 type PPNGHeader=^TPNGHeader;
      TPNGHeader=packed record
       PNGSignature:array[0..7] of TpvUInt8;
@@ -1402,10 +1402,10 @@ var PNGHeader:PPNGHeader;
 begin
  result:=false;
  case aImagePixelFormat of
-  pvppfR8G8B8A8:begin
+  TpvPNGPixelFormat.R8G8B8A8:begin
    ByteWidth:=4;
   end;
-  pvppfR16G16B16A16:begin
+  TpvPNGPixelFormat.R16G16B16A16:begin
    ByteWidth:=8;
   end;
   else begin
@@ -1444,9 +1444,9 @@ begin
    inc(OutByteIndex,RowSize+1);
   end;
   if aFast then begin
-   DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,pvdmVeryFast,true);
+   DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,TpvDeflateMode.VeryFast,true);
   end else begin
-   DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,pvdmMedium,true);
+   DoDeflate(ImageData,ImageDataSize,IDATData,IDATDataSize,TpvDeflateMode.Medium,true);
   end;
   if assigned(IDATData) then begin
    try
@@ -1459,10 +1459,10 @@ begin
     PNGHeader:=TpvPointer(@PBytes(aDestData)^[0]);
     PNGHeader^:=PNGHeaderTemplate;
     case aImagePixelFormat of
-     pvppfR8G8B8A8:begin
+     TpvPNGPixelFormat.R8G8B8A8:begin
       PNGHeader^.IHDRChunkBitDepth:=$08;
      end;
-     pvppfR16G16B16A16:begin
+     TpvPNGPixelFormat.R16G16B16A16:begin
       PNGHeader^.IHDRChunkBitDepth:=$10;
      end;
      else begin
@@ -1506,7 +1506,7 @@ begin
  end;
 end;
 
-function SavePNGImageAsStream(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aStream:TStream;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8;const aFast:boolean=false):boolean;
+function SavePNGImageAsStream(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aStream:TStream;const aImagePixelFormat:TpvPNGPixelFormat=TpvPNGPixelFormat.R8G8B8A8;const aFast:boolean=false):boolean;
 var Data:TpvPointer;
     DataSize:TpvUInt32;
 begin
@@ -1520,7 +1520,7 @@ begin
  end;
 end;
 
-function SavePNGImageAsFile(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aFileName:string;const aImagePixelFormat:TpvPNGPixelFormat=pvppfR8G8B8A8;const aFast:boolean=false):boolean;
+function SavePNGImageAsFile(const aImageData:TpvPointer;const aImageWidth,aImageHeight:TpvUInt32;const aFileName:string;const aImagePixelFormat:TpvPNGPixelFormat=TpvPNGPixelFormat.R8G8B8A8;const aFast:boolean=false):boolean;
 var FileStream:TFileStream;
 begin
  FileStream:=TFileStream.Create(aFileName,fmCreate);

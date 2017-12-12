@@ -233,16 +233,16 @@ begin
                                                    SDFFontDepth,
                                                    1,
                                                    1,
-                                                   [vtufTransferDst,vtufSampled],
+                                                   [TpvVulkanTextureUsageFlag.TransferDst,TpvVulkanTextureUsageFlag.Sampled],
                                                    @SDFFontData[0],
                                                    length(SDFFontData),
                                                    false,
                                                    false,
                                                    0,
                                                    false);
-   fFontTexture.WrapModeU:=vtwmClampToBorder;
-   fFontTexture.WrapModeV:=vtwmClampToBorder;
-   fFontTexture.WrapModeW:=vtwmClampToBorder;
+   fFontTexture.WrapModeU:=TpvVulkanTextureWrapMode.ClampToBorder;
+   fFontTexture.WrapModeV:=TpvVulkanTextureWrapMode.ClampToBorder;
+   fFontTexture.WrapModeW:=TpvVulkanTextureWrapMode.ClampToBorder;
    fFontTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
    fFontTexture.UpdateSampler;
 
@@ -262,7 +262,7 @@ begin
                                                        0,
                                                        0,
                                                        0,
-                                                       [vbfPersistentMapped]
+                                                       [TpvVulkanBufferFlag.PersistentMapped]
                                                       );
    fVulkanVertexBuffers[Index].UploadData(pvApplication.VulkanDevice.TransferQueue,
                                           pvApplication.VulkanTransferCommandBuffers[0,0],
@@ -270,7 +270,7 @@ begin
                                           fBufferCharsBuffers[0],
                                           0,
                                           SizeOf(TTextOverlayBufferChars),
-                                          vbutsbmNo);
+                                          TpvVulkanBufferUseTemporaryStagingBufferMode.No);
   end;
   
   fVulkanIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
@@ -286,7 +286,7 @@ begin
                                 fIndices,
                                 0,
                                 SizeOf(TTextOverlayIndices),
-                                vbutsbmYes);
+                                TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
 
   fVulkanUniformBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
                                                SizeOf(TTextOverlayUniformBuffer),
@@ -301,7 +301,7 @@ begin
                                   fUniformBuffer,
                                   0,
                                   SizeOf(TTextOverlayUniformBuffer),
-                                  vbutsbmNo);
+                                  TpvVulkanBufferUseTemporaryStagingBufferMode.No);
 
   fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
                                                         TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
@@ -525,7 +525,7 @@ begin
                                   fUniformBuffer,
                                   0,
                                   SizeOf(TTextOverlayUniformBuffer),
-                                  vbutsbmNo);
+                                  TpvVulkanBufferUseTemporaryStagingBufferMode.No);
 
  end;
 
