@@ -624,7 +624,7 @@ type EpvVulkanException=class(Exception);
        Unknown,
        Android,
        Mir,
-       pWayland,
+       Wayland,
        Win32,
        XCB,
        XLIB,
