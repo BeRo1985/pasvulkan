@@ -8137,19 +8137,19 @@ begin
    CurrentScore:=0;
    case CurrentPhysicalDevice.fProperties.deviceType of
     VK_PHYSICAL_DEVICE_TYPE_OTHER:begin
-     CurrentScore:=CurrentScore or (int64(1) shl 60);
+     CurrentScore:=CurrentScore or (int64(1) shl 55);
     end;
     VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:begin
-     CurrentScore:=CurrentScore or (int64(3) shl 60);
+     CurrentScore:=CurrentScore or (int64(3) shl 55);
     end;
     VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:begin
-     CurrentScore:=CurrentScore or (int64(4) shl 60);
+     CurrentScore:=CurrentScore or (int64(4) shl 55);
     end;
     VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:begin
-     CurrentScore:=CurrentScore or (int64(2) shl 60);
+     CurrentScore:=CurrentScore or (int64(2) shl 55);
     end;
     else begin
-     CurrentScore:=CurrentScore or (int64(0) shl 60);
+     CurrentScore:=CurrentScore or (int64(0) shl 55);
     end;
    end;
    OK:=false;
@@ -8171,12 +8171,12 @@ begin
     if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TpvInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0 then begin
      inc(Temp);
     end;
-    CurrentScore:=CurrentScore or (int64(Temp) shl 55);
+    CurrentScore:=CurrentScore or (int64(Temp) shl 50);
    end;
    if not OK then begin
     continue;
    end;
-   if (BestScore>CurrentScore) or not assigned(BestPhysicalDevice) then begin
+   if (BestScore<CurrentScore) or not assigned(BestPhysicalDevice) then begin
     BestPhysicalDevice:=CurrentPhysicalDevice;
     BestScore:=CurrentScore;
    end;
