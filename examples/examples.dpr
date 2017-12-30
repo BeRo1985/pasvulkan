@@ -18,7 +18,12 @@
  {$define Windows}
 {$ifend}
 
-//{$if defined(fpc) and defined(Unix)}cthreads,{$ifend}
+(*{$if defined(fpc) and defined(Unix)}
+  cthreads,
+  BaseUnix,
+  {$elseif defined(Windows)}
+  Windows,
+  {$ifend}*)
 
 uses
   {$if defined(fpc) and defined(Unix)}
