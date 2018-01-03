@@ -461,7 +461,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasVulkanDescriptor=class;
 
-     TpvCanvasVulkanDescriptorLinkedListNode=class(TpvCircularDoublyLinkedListNode<TpvCanvasVulkanDescriptor>);
+     TpvCanvasVulkanDescriptorLinkedListNode=TpvCircularDoublyLinkedListNode<TpvCanvasVulkanDescriptor>;
 
      TpvCanvasVulkanDescriptor=class(TpvCanvasVulkanDescriptorLinkedListNode)
       private
@@ -469,6 +469,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fDescriptorPool:TpvVulkanDescriptorPool;
        fDescriptorSet:TpvVulkanDescriptorSet;
        fDescriptorTexture:TObject;
+       fLastUsedFrameNumber:TpvNativeUInt;
       public
        constructor Create(const aCanvas:TpvCanvas); reintroduce;
        destructor Destroy; override;
@@ -477,6 +478,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        property DescriptorPool:TpvVulkanDescriptorPool read fDescriptorPool write fDescriptorPool;
        property DescriptorSet:TpvVulkanDescriptorSet read fDescriptorSet write fDescriptorSet;
        property DescriptorTexture:TObject read fDescriptorTexture write fDescriptorTexture;
+       property LastUsedFrameNumber:TpvNativeUInt read fLastUsedFrameNumber write fLastUsedFrameNumber;
      end;
 
      TpvCanvasTextureDescriptorSetHashMap=class(TpvHashMap<TObject,TpvCanvasVulkanDescriptor>);
@@ -572,6 +574,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fVulkanCanvasBuffers:TpvCanvasBuffers;
        fCountBuffers:TpvInt32;
        fCurrentFillBuffer:PpvCanvasBuffer;
+       fCurrentFrameNumber:TpvNativeUInt;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
        fViewPort:TVkViewport;
@@ -638,6 +641,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        procedure GetNextDestinationVertexBuffer;
        function ClipCheck(const aX0,aY0,aX1,aY1:TpvFloat):boolean;
        function GetVertexState:TpvUInt32; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure GarbageCollectDescriptors;
       public
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aGraphicsQueue:TpvVulkanQueue;
@@ -3072,6 +3076,8 @@ begin
 
  SetCountBuffers(1);
 
+ fCurrentFrameNumber:=0;
+
 end;
 
 destructor TpvCanvas.Destroy;
@@ -3664,6 +3670,28 @@ begin
          (TpvUInt32(fState.fFillWrapMode) shl pvcvsFillWrapModeShift);
 end;
 
+procedure TpvCanvas.GarbageCollectDescriptors;
+var DescriptorLinkedListNode,PreviousDescriptorLinkedListNode:TpvCanvasVulkanDescriptorLinkedListNode;
+    Descriptor:TpvCanvasVulkanDescriptor;
+begin
+ DescriptorLinkedListNode:=fVulkanDescriptors.Back;
+ while DescriptorLinkedListNode<>fVulkanDescriptors do begin
+  PreviousDescriptorLinkedListNode:=DescriptorLinkedListNode.Previous;
+  Descriptor:=DescriptorLinkedListNode.Value;
+  if assigned(Descriptor) and
+     (TpvNativeInt(TpvNativeUInt(fCurrentFrameNumber-Descriptor.fLastUsedFrameNumber))>2) then begin
+   try
+    fVulkanTextureDescriptorSetHashMap.Delete(Descriptor.fDescriptorTexture);
+   finally
+    Descriptor.Free;
+   end;
+  end else begin
+   break;
+  end;
+  DescriptorLinkedListNode:=PreviousDescriptorLinkedListNode;
+ end;
+end;
+
 procedure TpvCanvas.Start(const aBufferIndex:TpvInt32);
 begin
 
@@ -3703,6 +3731,10 @@ begin
  while fStateStack.Count>0 do begin
   Pop;
  end;
+
+ GarbageCollectDescriptors;
+
+ inc(fCurrentFrameNumber);
 
 end;
 
@@ -3764,7 +3796,12 @@ begin
     end;
    end;
 
-   if not fVulkanTextureDescriptorSetHashMap.TryGet(CurrentTexture,Descriptor) then begin
+   if fVulkanTextureDescriptorSetHashMap.TryGet(CurrentTexture,Descriptor) then begin
+    // Move existent descriptor to front
+    Descriptor.Remove;
+    fVulkanDescriptors.Front.Insert(Descriptor);
+   end else begin
+    // Allocate new descriptor
     Descriptor:=TpvCanvasVulkanDescriptor.Create(self);
     try
      if assigned(CurrentTexture) then begin
@@ -3813,6 +3850,8 @@ begin
      fVulkanTextureDescriptorSetHashMap.Add(CurrentTexture,Descriptor);
     end;
    end;
+
+   Descriptor.fLastUsedFrameNumber:=fCurrentFrameNumber;
 
    QueueItemIndex:=fCurrentFillBuffer^.fCountQueueItems;
    inc(fCurrentFillBuffer^.fCountQueueItems);
