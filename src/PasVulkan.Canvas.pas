@@ -2873,7 +2873,7 @@ destructor TpvCanvasVulkanDescriptor.Destroy;
 begin
  FreeAndNil(fDescriptorSet);
  FreeAndNil(fDescriptorPool);
- FreeAndNil(fDescriptorTexture);
+ fDescriptorTexture:=nil;
  inherited Destroy;
 end;
 
@@ -3766,48 +3766,52 @@ begin
 
    if not fVulkanTextureDescriptorSetHashMap.TryGet(CurrentTexture,Descriptor) then begin
     Descriptor:=TpvCanvasVulkanDescriptor.Create(self);
-    if assigned(CurrentTexture) then begin
-     Descriptor.fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
-                                                                TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
-                                                               1);
-     Descriptor.fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
-     Descriptor.fDescriptorPool.Initialize;
-     Descriptor.fDescriptorSet:=TpvVulkanDescriptorSet.Create(Descriptor.fDescriptorPool,
-                                                              fVulkanDescriptorSetTextureLayout);
-     if CurrentTexture is TpvSpriteAtlasArrayTexture then begin
-      Descriptor.fDescriptorSet.WriteToDescriptorSet(0,
-                                                     0,
-                                                     1,
-                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                     [TpvSpriteAtlasArrayTexture(CurrentTexture).Texture.DescriptorImageInfo],
-                                                     [],
-                                                     [],
-                                                     false
-                                                    );
-     end else begin
-      Descriptor.fDescriptorSet.WriteToDescriptorSet(0,
-                                                     0,
-                                                     1,
-                                                     TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-                                                     [TpvVulkanTexture(CurrentTexture).DescriptorImageInfo],
-                                                     [],
-                                                     [],
-                                                     false
-                                                    );
-     end;
-     Descriptor.fDescriptorSet.Flush;
-    end else begin
-     Descriptor.fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
-                                                                TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+    try
+     if assigned(CurrentTexture) then begin
+      Descriptor.fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
+                                                                 TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
                                                                 1);
-     Descriptor.fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
-     Descriptor.fDescriptorPool.Initialize;
-     Descriptor.fDescriptorSet:=TpvVulkanDescriptorSet.Create(Descriptor.fDescriptorPool,
-                                                              fVulkanDescriptorSetNoTextureLayout);
-     Descriptor.fDescriptorSet.Flush;
+      Descriptor.fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1);
+      Descriptor.fDescriptorPool.Initialize;
+      Descriptor.fDescriptorSet:=TpvVulkanDescriptorSet.Create(Descriptor.fDescriptorPool,
+                                                               fVulkanDescriptorSetTextureLayout);
+      if CurrentTexture is TpvSpriteAtlasArrayTexture then begin
+       Descriptor.fDescriptorSet.WriteToDescriptorSet(0,
+                                                      0,
+                                                      1,
+                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                      [TpvSpriteAtlasArrayTexture(CurrentTexture).Texture.DescriptorImageInfo],
+                                                      [],
+                                                      [],
+                                                      false
+                                                     );
+      end else begin
+       Descriptor.fDescriptorSet.WriteToDescriptorSet(0,
+                                                      0,
+                                                      1,
+                                                      TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                      [TpvVulkanTexture(CurrentTexture).DescriptorImageInfo],
+                                                      [],
+                                                      [],
+                                                      false
+                                                     );
+      end;
+      Descriptor.fDescriptorSet.Flush;
+     end else begin
+      Descriptor.fDescriptorPool:=TpvVulkanDescriptorPool.Create(fDevice,
+                                                                 TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                                 1);
+      Descriptor.fDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1);
+      Descriptor.fDescriptorPool.Initialize;
+      Descriptor.fDescriptorSet:=TpvVulkanDescriptorSet.Create(Descriptor.fDescriptorPool,
+                                                               fVulkanDescriptorSetNoTextureLayout);
+      Descriptor.fDescriptorSet.Flush;
+     end;
+    finally
+     Descriptor.fDescriptorTexture:=CurrentTexture;
+     fVulkanDescriptors.Front.Insert(Descriptor);
+     fVulkanTextureDescriptorSetHashMap.Add(CurrentTexture,Descriptor);
     end;
-    Descriptor.fDescriptorTexture:=CurrentTexture;
-    fVulkanTextureDescriptorSetHashMap.Add(CurrentTexture,Descriptor);
    end;
 
    QueueItemIndex:=fCurrentFillBuffer^.fCountQueueItems;
