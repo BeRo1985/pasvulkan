@@ -1880,11 +1880,8 @@ begin
 end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.HashKey(const Key:TpvHashMapKey):TpvUInt32;
-{$ifdef ReleaseBuild}
 var p:TpvUInt64;
-{$endif}
 begin
-{$ifdef ReleaseBuild}
  // We're hoping here that the compiler is here so smart, so that the compiler optimizes the
  // unused if-branches away
 {$ifndef ExtraStringHashMap}
@@ -1911,43 +1908,55 @@ begin
           (TpvUUID(pointer(@Key)^).DoubleWords[1]*19349669) xor
           (TpvUUID(pointer(@Key)^).DoubleWords[2]*83492791) xor
           (TpvUUID(pointer(@Key)^).DoubleWords[3]*50331653);
- end else{$endif}if SizeOf(TpvHashMapKey)=SizeOf(UInt16) then begin
-  // 16-bit big => use 16-bit integer-rehashing
-  result:=UInt16(pointer(@Key)^);
-  result:=(result or (((not result) and $ffff) shl 16));
-  dec(result,result shl 6);
-  result:=result xor (result shr 17);
-  dec(result,result shl 9);
-  result:=result xor (result shl 4);
-  dec(result,result shl 3);
-  result:=result xor (result shl 10);
-  result:=result xor (result shr 15);
- end else if SizeOf(TpvHashMapKey)=SizeOf(TpvUInt32) then begin
-  // 32-bit big => use 32-bit integer-rehashing
-  result:=TpvUInt32(pointer(@Key)^);
-  dec(result,result shl 6);
-  result:=result xor (result shr 17);
-  dec(result,result shl 9);
-  result:=result xor (result shl 4);
-  dec(result,result shl 3);
-  result:=result xor (result shl 10);
-  result:=result xor (result shr 15);
- end else if SizeOf(TpvHashMapKey)=SizeOf(TpvUInt64) then begin
-  // 64-bit big => use 64-bit integer-rehashing
-  p:=TpvUInt64(pointer(@Key)^);
-  p:=(not p)+(p shl 18); // p:=((p shl 18)-p-)1;
-  p:=p xor (p shr 31);
-  p:=p*21; // p:=(p+(p shl 2))+(p shl 4);
-  p:=p xor (p shr 11);
-  p:=p+(p shl 6);
-  result:=longword(TpvPtrUInt(p xor (p shr 22)));
- end else{$else} begin
-  result:=HashData(PByte(pointer(@Key)),SizeOf(TpvHashMapKey));
+ end else{$endif}begin
+  case SizeOf(TpvHashMapKey) of
+   SizeOf(UInt16):begin
+    // 16-bit big => use 16-bit integer-rehashing
+    result:=TpvUInt16(pointer(@Key)^);
+    result:=(result or (((not result) and $ffff) shl 16));
+    dec(result,result shl 6);
+    result:=result xor (result shr 17);
+    dec(result,result shl 9);
+    result:=result xor (result shl 4);
+    dec(result,result shl 3);
+    result:=result xor (result shl 10);
+    result:=result xor (result shr 15);
+   end;
+   SizeOf(TpvUInt32):begin
+    // 32-bit big => use 32-bit integer-rehashing
+    result:=TpvUInt32(pointer(@Key)^);
+    dec(result,result shl 6);
+    result:=result xor (result shr 17);
+    dec(result,result shl 9);
+    result:=result xor (result shl 4);
+    dec(result,result shl 3);
+    result:=result xor (result shl 10);
+    result:=result xor (result shr 15);
+   end;
+   SizeOf(TpvUInt64):begin
+    // 64-bit big => use 64-bit to 32-bit integer-rehashing
+    p:=TpvUInt64(pointer(@Key)^);
+    p:=(not p)+(p shl 18); // p:=((p shl 18)-p-)1;
+    p:=p xor (p shr 31);
+    p:=p*21; // p:=(p+(p shl 2))+(p shl 4);
+    p:=p xor (p shr 11);
+    p:=p+(p shl 6);
+    result:=TpvUInt32(TpvPtrUInt(p xor (p shr 22)));
+   end;
+   else begin
+    result:=HashData(PByte(pointer(@Key)),SizeOf(TpvHashMapKey));
+   end;
+  end;
  end;
-{$endif}
+{$if defined(CPU386) or defined(CPUAMD64)}
+ // Special case: The hash value may be never zero
+ result:=result or (-TpvUInt32(ord(result=0) and 1));
+{$else}
  if result=0 then begin
+  // Special case: The hash value may be never zero
   result:=$ffffffff;
  end;
+{$ifend}
 end;
 
 function TpvHashMap<TpvHashMapKey,TpvHashMapValue>.CompareKey(const KeyA,KeyB:TpvHashMapKey):boolean;
