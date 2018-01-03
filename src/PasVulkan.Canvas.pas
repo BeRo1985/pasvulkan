@@ -72,6 +72,7 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Utils,
      PasVulkan.Collections,
+     PasVulkan.CircularDoublyLinkedList,
      PasVulkan.Framework,
      PasVulkan.Sprites,
      PasVulkan.Font;
@@ -508,6 +509,26 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
      TpvCanvasTextureDescriptorSetHashMap=class(TpvHashMap<TObject,TpvInt32>);
 
      TpvCanvasTextureDescriptorFreeList=class(TpvGenericList<TpvInt32>);
+
+     TpvCanvasDescriptor=class;
+
+     TpvCanvasDescriptorLinkedListNode=class(TpvCircularDoublyLinkedListNode<TpvCanvasDescriptor>);
+
+     TpvCanvasDescriptor=class(TpvCanvasDescriptorLinkedListNode)
+      private
+       fCanvas:TpvCanvas;
+       fDescriptorPool:TpvVulkanDescriptorPool;
+       fDescriptorSet:TpvVulkanDescriptorSet;
+       fDescriptorTexture:TObject;
+      public
+       constructor Create(const aCanvas:TpvCanvas); reintroduce;
+       destructor Destroy; override;
+      published
+       property Canvas:TpvCanvas read fCanvas;
+       property DescriptorPool:TpvVulkanDescriptorPool read fDescriptorPool write fDescriptorPool;
+       property DescriptorSet:TpvVulkanDescriptorSet read fDescriptorSet write fDescriptorSet;
+       property DescriptorTexture:TObject read fDescriptorTexture write fDescriptorTexture;
+     end;
 
      TpvCanvasCommon=class
       private
@@ -2847,6 +2868,24 @@ begin
   end;
  end;
  FillFlush;
+end;
+
+constructor TpvCanvasDescriptor.Create(const aCanvas:TpvCanvas);
+begin
+ inherited Create;
+ Value:=self;
+ fCanvas:=aCanvas;
+ fDescriptorPool:=nil;
+ fDescriptorSet:=nil;
+ fDescriptorTexture:=nil;
+end;
+
+destructor TpvCanvasDescriptor.Destroy;
+begin
+ FreeAndNil(fDescriptorSet);
+ FreeAndNil(fDescriptorPool);
+ FreeAndNil(fDescriptorTexture);
+ inherited Destroy;
 end;
 
 constructor TpvCanvasCommon.Create(const aDevice:TpvVulkanDevice);

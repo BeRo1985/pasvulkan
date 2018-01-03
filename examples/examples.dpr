@@ -43,6 +43,7 @@ uses
   PasVulkan.Math in '..\src\PasVulkan.Math.pas',
   PasVulkan.Types in '..\src\PasVulkan.Types.pas',
   PasVulkan.Utils in '..\src\PasVulkan.Utils.pas',
+  PasVulkan.CircularDoublyLinkedList in '..\src\PasVulkan.CircularDoublyLinkedList.pas',
   PasVulkan.Collections in '..\src\PasVulkan.Collections.pas',
   PasVulkan.XML in '..\src\PasVulkan.XML.pas',
   PasVulkan.VectorPath in '..\src\PasVulkan.VectorPath.pas',
