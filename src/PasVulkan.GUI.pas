@@ -117,6 +117,8 @@ type TpvGUIObject=class;
 
      TpvGUIPanel=class;
 
+     TpvGUITabControl=class;
+
      EpvGUIWidget=class(Exception);
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
@@ -1919,6 +1921,86 @@ type TpvGUIObject=class;
        property HorizontalScrollBar:TpvGUIScrollBar read fHorizontalScrollBar;
        property VerticalScrollBar:TpvGUIScrollBar read fVerticalScrollBar;
        property Content:TpvGUIPanel read fContent;
+     end;
+
+     PpvGUITabFlag=^TpvGUITabFlag;
+     TpvGUITabFlag=
+      (
+       Modified,
+       Selected
+      );
+
+     PpvGUITabFlags=^TpvGUITabFlags;
+     TpvGUITabFlags=set of TpvGUITabFlag;
+
+     TpvGUITab=class(TCollectionItem)
+      private
+       fFlags:TpvGUITabFlags;
+       fCaption:TpvUTF8String;
+       fData:TObject;
+       fTag:TpvSizeInt;
+       procedure Invalidate;
+       procedure SetCaption(const aCaption:TpvUTF8String);
+       function GetModified:boolean; inline;
+       procedure SetModified(const aModified:boolean); 
+       function GetSelected:boolean; inline;
+       procedure SetSelected(const aSelected:boolean); 
+      public
+       constructor Create(aCollection:TCollection); override;
+       destructor Destroy; override;
+       property Data:TObject read fData write fData;
+      published
+       property Caption:TpvUTF8String read fCaption write SetCaption;
+       property Modified:boolean read GetModified write SetModified;
+       property Selected:boolean read GetSelected write SetSelected;
+       property Tag:TpvSizeInt read fTag write fTag;
+     end;
+
+     TpvGUITabList=class(TCollection)
+      private
+       fOwner:TpvGUITabControl;
+       function GetItem(const aIndex:TpvSizeInt):TpvGUITab; inline;
+       procedure SetItem(const aIndex:TpvSizeInt;const aTab:TpvGUITab); inline;
+      protected
+       procedure DoSelected(const aTab:TpvGUITab;const aSelected:boolean); inline;
+       procedure Invalidated(const aTab:TpvGUITab); inline;
+      public
+       constructor Create(const aOwner:TpvGUITabControl); reintroduce;
+       destructor Destroy; override;
+       function IndexOf(const aTab:TpvGUITab):TpvSizeInt;
+       function IndexOfData(const aData:TObject):TpvSizeInt;
+       function IndexOfTag(const aTag:TpvSizeInt):TpvSizeInt;
+       function Remove(const aTab:TpvGUITab):TpvSizeInt;
+       property Items[const aIndex:TpvSizeInt]:TpvGUITab read GetItem write SetItem; default;
+     end;
+
+     TpvGUITabControlOnTabSelected=procedure(const aSender:TObject;const aTab:TpvGUITab;const aSelected:boolean) of object;
+      
+     TpvGUITabControl=class(TpvGUIWidget)
+      private
+       fTabs:TpvGUITabList;
+       fTabIndex:TpvSizeInt;
+       fOnTabSelected:TpvGUITabControlOnTabSelected;
+       function GetPreferredSize:TpvVector2; override;
+       procedure SetTabs(const aTabs:TpvGUITabList);
+       function GetTabIndex:TpvSizeInt;
+       procedure SetTabIndex(const aTabIndex:TpvSizeInt);
+       function GetTab:TpvGUITab;
+       procedure SetTab(const aTab:TpvGUITab);
+       procedure Invalidate;
+       procedure LookToTab(const aTab:TpvGUITab);
+       procedure TabSelected(const aTab:TpvGUITab;const aSelected:boolean); 
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure PerformLayout; override;
+       procedure Update; override;
+       procedure Draw; override;
+      published
+       property Tabs:TpvGUITabList read fTabs write SetTabs;
+       property TabIndex:TpvSizeInt read GetTabIndex write SetTabIndex;
+       property Tab:TpvGUITab read GetTab write SetTab;
+       property OnTabSelected:TpvGUITabControlOnTabSelected read fOnTabSelected write fOnTabSelected;
      end;
 
 implementation
@@ -13176,6 +13258,235 @@ begin
 end;
 
 procedure TpvGUIScrollPanel.Draw;
+begin
+ inherited Draw;
+end;
+
+constructor TpvGUITab.Create(aCollection:TCollection);
+begin
+ inherited Create(aCollection);
+ fFlags:=[];
+ fCaption:='';
+ fData:=nil;
+ fTag:=0;
+end;
+
+destructor TpvGUITab.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvGUITab.Invalidate;
+begin
+ (Collection as TpvGUITabList).Invalidated(self);
+end;
+
+procedure TpvGUITab.SetCaption(const aCaption:TpvUTF8String);
+begin
+ if fCaption<>aCaption then begin
+  fCaption:=aCaption;
+  Invalidate;
+ end;
+end;
+
+function TpvGUITab.GetModified:boolean;
+begin
+ result:=TpvGUITabFlag.Modified in fFlags;
+end;
+
+procedure TpvGUITab.SetModified(const aModified:boolean);
+begin
+ if (TpvGUITabFlag.Modified in fFlags)<>aModified then begin
+  if aModified then begin
+   Include(fFlags,TpvGUITabFlag.Modified);
+  end else begin
+   Exclude(fFlags,TpvGUITabFlag.Modified);
+  end;
+  Invalidate;
+ end;
+end;
+
+function TpvGUITab.GetSelected:boolean;
+begin
+ result:=TpvGUITabFlag.Selected in fFlags;
+end;
+
+procedure TpvGUITab.SetSelected(const aSelected:boolean);
+begin
+ if (TpvGUITabFlag.Selected in fFlags)<>aSelected then begin
+  if aSelected then begin
+   Include(fFlags,TpvGUITabFlag.Selected);
+  end else begin
+   Exclude(fFlags,TpvGUITabFlag.Selected);
+  end;
+  Invalidate;
+ end;
+end;
+
+constructor TpvGUITabList.Create(const aOwner:TpvGUITabControl);
+begin
+ inherited Create(TpvGUITab);
+ fOwner:=aOwner;
+end;
+
+destructor TpvGUITabList.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TpvGUITabList.GetItem(const aIndex:TpvSizeInt):TpvGUITab;
+begin
+ result:=TpvGUITab(inherited Items[aIndex]);
+end;
+
+procedure TpvGUITabList.SetItem(const aIndex:TpvSizeInt;const aTab:TpvGUITab);
+begin
+ inherited Items[aIndex]:=TCollectionItem(aTab);
+end;
+
+procedure TpvGUITabList.DoSelected(const aTab:TpvGUITab;const aSelected:boolean);
+begin
+ fOwner.TabSelected(aTab,aSelected);
+end;
+
+procedure TpvGUITabList.Invalidated(const aTab:TpvGUITab);
+begin
+ fOwner.Invalidate;
+end;
+
+function TpvGUITabList.IndexOf(const aTab:TpvGUITab):TpvSizeInt;
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to Count-1 do begin
+  if Items[Index]=aTab then begin
+   result:=Index;
+   exit;
+  end;
+ end;
+ result:=-1;
+end;
+
+function TpvGUITabList.IndexOfData(const aData:TObject):TpvSizeInt;
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to Count-1 do begin
+  if Items[Index].fData=aData then begin
+   result:=Index;
+   exit;
+  end;
+ end;
+ result:=-1;
+end;
+
+function TpvGUITabList.IndexOfTag(const aTag:TpvSizeInt):TpvSizeInt;
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to Count-1 do begin
+  if Items[Index].fTag=aTag then begin
+   result:=Index;
+   exit;
+  end;
+ end;
+ result:=-1;
+end;
+
+function TpvGUITabList.Remove(const aTab:TpvGUITab):TpvSizeInt;
+begin
+ result:=IndexOf(aTab);
+ if result>=0 then begin
+  Delete(result);
+  if result=fOwner.fTabIndex then begin
+   fOwner.SetTabIndex(Min(Max(result,0),Count-1));
+  end;
+ end;
+end;
+
+constructor TpvGUITabControl.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+ fTabs:=TpvGUITabList.Create(self);
+ fTabIndex:=-1;
+ fOnTabSelected:=nil;
+end;
+
+destructor TpvGUITabControl.Destroy;
+begin
+ FreeAndNil(fTabs);
+ inherited Destroy;
+end;
+
+function TpvGUITabControl.GetPreferredSize:TpvVector2;
+begin
+ result:=inherited GetPreferredSize;
+end;
+
+procedure TpvGUITabControl.SetTabs(const aTabs:TpvGUITabList);
+begin
+ fTabs.Assign(aTabs);
+ SetTabIndex(Max(Min(fTabIndex,fTabs.Count-1),0));
+end;
+
+function TpvGUITabControl.GetTabIndex:TpvSizeInt;
+begin
+ result:=Min(Max(fTabIndex,0),fTabs.Count-1);
+end;
+
+procedure TpvGUITabControl.SetTabIndex(const aTabIndex:TpvSizeInt);
+begin
+ if fTabIndex<>aTabIndex then begin
+  fTabIndex:=aTabIndex;
+  if (fTabIndex>=0) and (fTabIndex<fTabs.Count) then begin
+   LookToTab(fTabs.Items[fTabIndex]);
+  end;
+ end;
+end;
+
+function TpvGUITabControl.GetTab:TpvGUITab;
+begin
+ if (fTabIndex>=0) and (fTabIndex<fTabs.Count) then begin
+  result:=fTabs.Items[fTabIndex];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+procedure TpvGUITabControl.SetTab(const aTab:TpvGUITab);
+begin
+ SetTabIndex(fTabs.IndexOf(aTab));
+end;
+
+procedure TpvGUITabControl.Invalidate;
+begin
+  
+end;
+
+procedure TpvGUITabControl.LookToTab(const aTab:TpvGUITab);
+begin
+
+end;
+
+procedure TpvGUITabControl.TabSelected(const aTab:TpvGUITab;const aSelected:boolean); 
+begin
+ if aSelected then begin
+  LookToTab(aTab);
+  fTabIndex:=aTab.Index;
+ end;      
+ if assigned(fOnTabSelected) then begin
+  fOnTabSelected(self,aTab,aSelected);
+ end;   
+end;
+
+procedure TpvGUITabControl.PerformLayout;
+begin
+ inherited PerformLayout;
+end;
+
+procedure TpvGUITabControl.Update;
+begin
+ inherited Update;
+end;
+
+procedure TpvGUITabControl.Draw;
 begin
  inherited Draw;
 end;
