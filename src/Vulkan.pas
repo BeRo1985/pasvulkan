@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=66;
+      VK_HEADER_VERSION=67;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -477,8 +477,8 @@ const VK_NULL_HANDLE=0;
       VK_EXT_DISCARD_RECTANGLES_EXTENSION_NAME='VK_EXT_discard_rectangles';
       VK_NV_EXTENSION_101_SPEC_VERSION=0;
       VK_NV_EXTENSION_101_EXTENSION_NAME='VK_NV_extension_101';
-      VK_NV_EXTENSION_102_SPEC_VERSION=0;
-      VK_NV_EXTENSION_102_EXTENSION_NAME='VK_NV_extension_102';
+      VK_EXT_CONSERVATIVE_RASTERIZATION_SPEC_VERSION=1;
+      VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME='VK_EXT_conservative_rasterization';
       VK_NV_EXTENSION_103_SPEC_VERSION=0;
       VK_NV_EXTENSION_103_EXTENSION_NAME='VK_NV_extension_103';
       VK_NV_EXTENSION_104_SPEC_VERSION=0;
@@ -657,6 +657,16 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_190_EXTENSION_NAME='VK_AMD_extension_190';
       VK_NV_EXTENSION_191_SPEC_VERSION=0;
       VK_NV_EXTENSION_191_EXTENSION_NAME='VK_NV_extension_191';
+      VK_GOOGLE_EXTENSION_192_SPEC_VERSION=0;
+      VK_GOOGLE_EXTENSION_192_EXTENSION_NAME='VK_GOOGLE_extension_192';
+      VK_GOOGLE_EXTENSION_193_SPEC_VERSION=0;
+      VK_GOOGLE_EXTENSION_193_EXTENSION_NAME='VK_GOOGLE_extension_193';
+      VK_GOOGLE_EXTENSION_194_SPEC_VERSION=0;
+      VK_GOOGLE_EXTENSION_194_EXTENSION_NAME='VK_GOOGLE_extension_194';
+      VK_GOOGLE_EXTENSION_195_SPEC_VERSION=0;
+      VK_GOOGLE_EXTENSION_195_EXTENSION_NAME='VK_GOOGLE_extension_195';
+      VK_GOOGLE_EXTENSION_196_SPEC_VERSION=0;
+      VK_GOOGLE_EXTENSION_196_EXTENSION_NAME='VK_GOOGLE_extension_196';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1083,6 +1093,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkValidationCacheCreateFlagsEXT=^PVkValidationCacheCreateFlagsEXT;
      PVkValidationCacheCreateFlagsEXT=^TVkValidationCacheCreateFlagsEXT;
      TVkValidationCacheCreateFlagsEXT=TVkFlags;
+
+     PPVkPipelineRasterizationConservativeStateCreateFlagsEXT=^PVkPipelineRasterizationConservativeStateCreateFlagsEXT;
+     PVkPipelineRasterizationConservativeStateCreateFlagsEXT=^TVkPipelineRasterizationConservativeStateCreateFlagsEXT;
+     TVkPipelineRasterizationConservativeStateCreateFlagsEXT=TVkFlags;
 
      PPVkInstance=^PVkInstance;
      PVkInstance=^TVkInstance;
@@ -2011,6 +2025,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV=1000098000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT=1000099000,
        VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT=1000099001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT=1000101000,
+       VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT=1000101001,
        VK_STRUCTURE_TYPE_HDR_METADATA_EXT=1000105000,
        VK_STRUCTURE_TYPE_SHARED_PRESENT_SURFACE_CAPABILITIES_KHR=1000111000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FENCE_INFO_KHR=1000112000,
@@ -2997,6 +3013,15 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT=256,
        VK_QUEUE_GLOBAL_PRIORITY_HIGH_EXT=512,
        VK_QUEUE_GLOBAL_PRIORITY_REALTIME_EXT=1024
+      );
+
+     PPVkConservativeRasterizationModeEXT=^PVkConservativeRasterizationModeEXT;
+     PVkConservativeRasterizationModeEXT=^TVkConservativeRasterizationModeEXT;
+     TVkConservativeRasterizationModeEXT=
+      (
+       VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT=0,
+       VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT=1,
+       VK_CONSERVATIVE_RASTERIZATION_MODE_UNDERESTIMATE_EXT=2
       );
 
      PPPFN_vkInternalAllocationNotification=^PPFN_vkInternalAllocationNotification;
@@ -8773,6 +8798,54 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        minImportedHostPointerAlignment:TVkDeviceSize;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const pMinImportedHostPointerAlignment:TVkDeviceSize);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceConservativeRasterizationPropertiesEXT=^PVkPhysicalDeviceConservativeRasterizationPropertiesEXT;
+     PVkPhysicalDeviceConservativeRasterizationPropertiesEXT=^TVkPhysicalDeviceConservativeRasterizationPropertiesEXT;
+     TVkPhysicalDeviceConservativeRasterizationPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT
+       pNext:PVkVoid;
+       primitiveOverestimationSize:TVkFloat;
+       maxExtraPrimitiveOverestimationSize:TVkFloat;
+       extraPrimitiveOverestimationSizeGranularity:TVkFloat;
+       primitiveUnderestimation:TVkBool32;
+       conservativePointAndLineRasterization:TVkBool32;
+       degenerateTrianglesRasterized:TVkBool32;
+       degenerateLinesRasterized:TVkBool32;
+       fullyCoveredFragmentShaderInputVariable:TVkBool32;
+       conservativeRasterizationPostDepthCoverage:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pPrimitiveOverestimationSize:TVkFloat;
+                          const pMaxExtraPrimitiveOverestimationSize:TVkFloat;
+                          const pExtraPrimitiveOverestimationSizeGranularity:TVkFloat;
+                          const pPrimitiveUnderestimation:TVkBool32;
+                          const pConservativePointAndLineRasterization:TVkBool32;
+                          const pDegenerateTrianglesRasterized:TVkBool32;
+                          const pDegenerateLinesRasterized:TVkBool32;
+                          const pFullyCoveredFragmentShaderInputVariable:TVkBool32;
+                          const pConservativeRasterizationPostDepthCoverage:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPipelineRasterizationConservativeStateCreateInfoEXT=^PVkPipelineRasterizationConservativeStateCreateInfoEXT;
+     PVkPipelineRasterizationConservativeStateCreateInfoEXT=^TVkPipelineRasterizationConservativeStateCreateInfoEXT;
+     TVkPipelineRasterizationConservativeStateCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT
+       pNext:PVkVoid; //< Pointer to next structure
+       flags:TVkPipelineRasterizationConservativeStateCreateFlagsEXT; //< Reserved
+       conservativeRasterizationMode:TVkConservativeRasterizationModeEXT; //< Conservative rasterization mode
+       extraPrimitiveOverestimationSize:TVkFloat; //< Extra overestimation to add to the primitive
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFlags:TVkPipelineRasterizationConservativeStateCreateFlagsEXT; //< Reserved
+                          const pConservativeRasterizationMode:TVkConservativeRasterizationModeEXT; //< Conservative rasterization mode
+                          const pExtraPrimitiveOverestimationSize:TVkFloat); //< Extra overestimation to add to the primitive
 {$endif}
      end;
 
@@ -16639,6 +16712,40 @@ begin
  sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT;
  pNext:=nil;
  minImportedHostPointerAlignment:=pMinImportedHostPointerAlignment;
+end;
+
+constructor TVkPhysicalDeviceConservativeRasterizationPropertiesEXT.Create(const pPrimitiveOverestimationSize:TVkFloat;
+                                                                           const pMaxExtraPrimitiveOverestimationSize:TVkFloat;
+                                                                           const pExtraPrimitiveOverestimationSizeGranularity:TVkFloat;
+                                                                           const pPrimitiveUnderestimation:TVkBool32;
+                                                                           const pConservativePointAndLineRasterization:TVkBool32;
+                                                                           const pDegenerateTrianglesRasterized:TVkBool32;
+                                                                           const pDegenerateLinesRasterized:TVkBool32;
+                                                                           const pFullyCoveredFragmentShaderInputVariable:TVkBool32;
+                                                                           const pConservativeRasterizationPostDepthCoverage:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT;
+ pNext:=nil;
+ primitiveOverestimationSize:=pPrimitiveOverestimationSize;
+ maxExtraPrimitiveOverestimationSize:=pMaxExtraPrimitiveOverestimationSize;
+ extraPrimitiveOverestimationSizeGranularity:=pExtraPrimitiveOverestimationSizeGranularity;
+ primitiveUnderestimation:=pPrimitiveUnderestimation;
+ conservativePointAndLineRasterization:=pConservativePointAndLineRasterization;
+ degenerateTrianglesRasterized:=pDegenerateTrianglesRasterized;
+ degenerateLinesRasterized:=pDegenerateLinesRasterized;
+ fullyCoveredFragmentShaderInputVariable:=pFullyCoveredFragmentShaderInputVariable;
+ conservativeRasterizationPostDepthCoverage:=pConservativeRasterizationPostDepthCoverage;
+end;
+
+constructor TVkPipelineRasterizationConservativeStateCreateInfoEXT.Create(const pFlags:TVkPipelineRasterizationConservativeStateCreateFlagsEXT;
+                                                                          const pConservativeRasterizationMode:TVkConservativeRasterizationModeEXT;
+                                                                          const pExtraPrimitiveOverestimationSize:TVkFloat);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT;
+ pNext:=nil;
+ flags:=pFlags;
+ conservativeRasterizationMode:=pConservativeRasterizationMode;
+ extraPrimitiveOverestimationSize:=pExtraPrimitiveOverestimationSize;
 end;
 {$endif}
 
