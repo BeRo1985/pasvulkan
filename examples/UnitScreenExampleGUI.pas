@@ -153,7 +153,7 @@ var Index:TpvInt32;
     ScrollBar:TpvGUIScrollBar;
     Slider:TpvGUISlider;
     ScrollPanel:TpvGUIScrollPanel;
-    TabControl:TpvGUITabControl;
+    TabPanel:TpvGUITabPanel;
 begin
 
  inherited Show;
@@ -546,17 +546,17 @@ begin
  Window:=TpvGUIWindow.Create(fGUIInstance);
  Window.Left:=450;
  Window.Top:=200;
- Window.Title:='Window with FillLayout';
+ Window.Title:='Window with TabPanel';
  Window.Content.Layout:=TpvGUIFillLayout.Create(Window.Content,4.0);
  Window.AddMinimizationButton;
  Window.AddMaximizationButton;
  Window.AddCloseButton;
 
- TabControl:=TpvGUITabControl.Create(Window.Content);
+ TabPanel:=TpvGUITabPanel.Create(Window.Content);
 
  begin
 
-  Panel:=TpvGUIPanel.Create(TabControl.Content);
+  Panel:=TpvGUIPanel.Create(TabPanel.Content);
   Panel.Layout:=TpvGUIFlowLayout.Create(Panel,
                                         TpvGUILayoutOrientation.Horizontal,
                                         8.0,
@@ -568,7 +568,7 @@ begin
                                         TpvGUIFlowLayoutAlignment.Middle,
                                         TpvGUIFlowLayoutAlignment.Middle,
                                         true);
-  TabControl.Tabs.Add('A tab').Content:=Panel;
+  TabPanel.Tabs.Add('A tab').Content:=Panel;
 
   fGUIButton:=TpvGUIButton.Create(Panel);
   fGUIButton.Caption:='Button';
@@ -581,7 +581,7 @@ begin
 
  begin
 
-  Panel:=TpvGUIPanel.Create(TabControl.Content);
+  Panel:=TpvGUIPanel.Create(TabPanel.Content);
   Panel.Layout:=TpvGUIFlowLayout.Create(Panel,
                                         TpvGUILayoutOrientation.Horizontal,
                                         8.0,
@@ -593,7 +593,7 @@ begin
                                         TpvGUIFlowLayoutAlignment.Leading,
                                         TpvGUIFlowLayoutAlignment.Leading,
                                         true);
-  TabControl.Tabs.Add('An another tab').Content:=Panel;
+  TabPanel.Tabs.Add('An another tab').Content:=Panel;
 
   fGUIButton:=TpvGUIPopupMenuButton.Create(Panel);
   fGUIButton.Caption:='Popup menu';
@@ -616,9 +616,9 @@ begin
 
  begin
 
-  Panel:=TpvGUIPanel.Create(TabControl.Content);
+  Panel:=TpvGUIPanel.Create(TabPanel.Content);
   Panel.Layout:=TpvGUIFillLayout.Create(Panel,0.0);
-  TabControl.Tabs.Add('An yet another tab').Content:=Panel;
+  TabPanel.Tabs.Add('An yet another tab').Content:=Panel;
 
   ScrollPanel:=TpvGUIScrollPanel.Create(Panel);
   ScrollPanel.Content.Layout:=TpvGUIBoxLayout.Create(ScrollPanel.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,8.0);
@@ -632,7 +632,7 @@ begin
 
  begin
 
-  Panel:=TpvGUIPanel.Create(TabControl.Content);
+  Panel:=TpvGUIPanel.Create(TabPanel.Content);
   Panel.Layout:=TpvGUIFlowLayout.Create(Panel,
                                         TpvGUILayoutOrientation.Horizontal,
                                         8.0,
@@ -644,11 +644,11 @@ begin
                                         TpvGUIFlowLayoutAlignment.Middle,
                                         TpvGUIFlowLayoutAlignment.Middle,
                                         true);
-  TabControl.Tabs.Add('An also yet another tab').Content:=Panel;
+  TabPanel.Tabs.Add('An also yet another tab').Content:=Panel;
 
  end;
 
- TabControl.TabIndex:=0;
+ TabPanel.TabIndex:=0;
 
 end;
 
