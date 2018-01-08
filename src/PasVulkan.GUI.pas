@@ -6768,7 +6768,7 @@ begin
  end;
  }
 
- MaximumHeight:=Maximum(MaximumHeight,10.0+CurrentFont.RowHeight(150.0,CurrentFontSize));
+ MaximumHeight:=10.0+CurrentFont.RowHeight(150.0,CurrentFontSize);
 
  Width:=Clamp((aTabPanel.fSize.x+(aTabPanel.fTabs.Count*MaximumHeight*0.3725))/Max(aTabPanel.fTabs.Count,1),50.0,200.0);
 
