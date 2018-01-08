@@ -553,11 +553,11 @@ begin
  Window.AddCloseButton;
 
  TabControl:=TpvGUITabControl.Create(Window.Content);
- TabControl.Tabs.Add('A tab');
+ TabControl.Tabs.Add('A tab').Content:=TpvGUIButton.Create(TabControl.Content);
  TabControl.Tabs.Add('An another tab');
  TabControl.Tabs.Add('An yet another tab');
  TabControl.Tabs.Add('An also yet another tab');
-
+ TabControl.TabIndex:=0;
 
 end;
 

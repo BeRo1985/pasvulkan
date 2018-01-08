@@ -1999,6 +1999,7 @@ type TpvGUIObject=class;
        fContentRect:TpvRect;
        fTabs:TpvGUITabList;
        fTabIndex:TpvSizeInt;
+       fContent:TpvGUIPanel;
        fOnTabSelected:TpvGUITabControlOnTabEvent;
        fOnTabUnselected:TpvGUITabControlOnTabEvent;
        function GetHighlightRect:TpvRect; override;
@@ -2028,6 +2029,7 @@ type TpvGUIObject=class;
        property Tabs:TpvGUITabList read fTabs write SetTabs;
        property TabIndex:TpvSizeInt read GetTabIndex write SetTabIndex;
        property Tab:TpvGUITab read GetTab write SetTab;
+       property Content:TpvGUIPanel read fContent;
        property OnTabSelected:TpvGUITabControlOnTabEvent read fOnTabSelected write fOnTabSelected;
        property OnTabUnselected:TpvGUITabControlOnTabEvent read fOnTabUnselected write fOnTabUnselected;
      end;
@@ -6797,7 +6799,7 @@ begin
 
  aTabControl.fHeaderRect:=TpvRect.CreateAbsolute(TpvVector2.Null,TpvVector2.Create(aTabControl.fSize.x,MaximumHeight));
 
- aTabControl.fContentRect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(0.0,MaximumHeight),TpvVector2.Create(aTabControl.fSize.x,aTabControl.fSize.y-MaximumHeight));
+ aTabControl.fContentRect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(0.0,MaximumHeight),TpvVector2.Create(aTabControl.fSize.x,aTabControl.fSize.y));
 
 end;
 
@@ -6825,7 +6827,7 @@ begin
   Tab:=aTabControl.fTabs.Items[TabIndex];
 
   if assigned(Tab.fContent) then begin
-   ContentSize:=Maximum(ContentSize,GetWidgetPreferredSize(Tab.fContent));
+   ContentSize:=Maximum(ContentSize,Tab.fContent.GetPreferredSize);
   end;
 
   HeaderSize:=Maximum(HeaderSize,Tab.fPosition+Tab.fSize);
@@ -13677,6 +13679,10 @@ begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
  Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
 
+ fContent:=TpvGUIPanel.Create(self);
+
+ fContent.fLayout:=TpvGUIFillLayout.Create(fContent,0.0);
+
  fTabs:=TpvGUITabList.Create(self);
 
  fTabIndex:=-1;
@@ -13737,6 +13743,11 @@ begin
    EnsureTabIsVisible(CurrentTab);
    if assigned(CurrentTab.fContent) then begin
     CurrentTab.fContent.Visible:=true;
+    if CurrentTab.fContent.Parent=fContent then begin
+     CurrentTab.fContent.fPosition:=TpvVector2.Null;
+     CurrentTab.fContent.fSize:=fContentRect.Size;
+    end;
+    CurrentTab.fContent.PerformLayout;
    end;
    if assigned(fOnTabSelected) then begin
     fOnTabSelected(self,CurrentTab);
@@ -13770,8 +13781,26 @@ begin
 end;
 
 procedure TpvGUITabControl.PerformLayout;
+var CurrentTabIndex:TpvSizeInt;
+    CurrentTab:TpvGUITab;
 begin
- inherited PerformLayout;
+ Skin.GetTabControlPreferredSize(self);
+ for CurrentTabIndex:=0 to fTabs.Count-1 do begin
+  CurrentTab:=fTabs.Items[CurrentTabIndex];
+  if assigned(CurrentTab.fContent) and (CurrentTabIndex<>fTabIndex) then begin
+   CurrentTab.fContent.Visible:=false;
+  end;
+ end;
+ fContent.fPosition:=fContentRect.LeftTop;
+ fContent.fSize:=fContentRect.Size;
+ fContent.PerformLayout;
+ for CurrentTabIndex:=0 to fTabs.Count-1 do begin
+  CurrentTab:=fTabs.Items[CurrentTabIndex];
+  if assigned(CurrentTab.fContent) and (CurrentTabIndex=fTabIndex) then begin
+   CurrentTab.fContent.Visible:=true;
+   CurrentTab.fContent.PerformLayout;
+  end;
+ end;
 end;
 
 function TpvGUITabControl.Enter:boolean;
