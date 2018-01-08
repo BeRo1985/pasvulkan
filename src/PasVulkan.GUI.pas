@@ -1953,6 +1953,7 @@ type TpvGUIObject=class;
        fTag:TpvSizeInt;
        fPosition:TpvVector2;
        fSize:TpvVector2;
+       fRect:TpvRect;
        procedure Invalidate;
        procedure SetCaption(const aCaption:TpvUTF8String);
        function GetModified:boolean; inline;
@@ -1995,9 +1996,12 @@ type TpvGUIObject=class;
       
      TpvGUITabControl=class(TpvGUIWidget)
       private
+       fHeaderRect:TpvRect;
+       fContentRect:TpvRect;
        fTabs:TpvGUITabList;
        fTabIndex:TpvSizeInt;
        fOnTabSelected:TpvGUITabControlOnTabSelected;
+       function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
        procedure SetTabs(const aTabs:TpvGUITabList);
        function GetTabIndex:TpvSizeInt;
@@ -2011,6 +2015,14 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure PerformLayout; override;
+       function Enter:boolean; override;
+       function Leave:boolean; override;
+       function PointerEnter:boolean; override;
+       function PointerLeave:boolean; override;
+       function DragEvent(const aPosition:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Update; override;
        procedure Draw; override;
       published
@@ -4719,8 +4731,8 @@ begin
                           true,
                           TpvVector2.InlineableCreate(-32.0,-32.0),
                           aWidget.fSize+TpvVector2.InlineableCreate(32.0,32.0),
-                          TpvVector2.InlineableCreate(0.0,0.0),
-                          Rect.Size);
+                          Rect.LeftTop,
+                          Rect.RightBottom);
   end else if fInstance.fFocusedWidget=aWidget then begin
    aCanvas.ClipRect:=aWidget.fParentClipRect;
    aCanvas.ModelMatrix:=aWidget.fModelMatrix;
@@ -4728,8 +4740,8 @@ begin
                           true,
                           TpvVector2.InlineableCreate(-32.0,-32.0),
                           aWidget.fSize+TpvVector2.InlineableCreate(32.0,32.0),
-                          TpvVector2.InlineableCreate(0.0,0.0),
-                          Rect.Size);
+                          Rect.LeftTop,
+                          Rect.RightBottom);
   end;
  end;
 end;
@@ -6766,8 +6778,9 @@ begin
 
   Tab.fPosition:=Position;
 
-  Tab.fSize.x:=Width;
-  Tab.fSize.y:=MaximumHeight;
+  Tab.fSize:=TpvVector2.InlineableCreate(Width,MaximumHeight);
+
+  Tab.fRect:=TpvRect.CreateRelative(Tab.fPosition,Tab.fSize);
 
   Position.x:=Position.x+(Tab.fSize.x-(Tab.fSize.y*0.5));
 
@@ -6781,6 +6794,10 @@ begin
   end;
 
  end;
+
+ aTabControl.fHeaderRect:=TpvRect.CreateAbsolute(TpvVector2.Null,TpvVector2.Create(aTabControl.fSize.x,MaximumHeight));
+
+ aTabControl.fContentRect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(0.0,MaximumHeight),TpvVector2.Create(aTabControl.fSize.x,aTabControl.fSize.y-MaximumHeight));
 
 end;
 
@@ -6839,6 +6856,40 @@ var Element,Index,TabIndex:TpvInt32;
     Tab:TpvGUITab;
     CurrentFont:TpvFont;
     CurrentFontSize:TpvFloat;
+ procedure DrawTab(const aTab:TpvGUITab);
+ begin
+
+  if aTabControl.Enabled then begin
+   aCanvas.Color:=aTabControl.FontColor;
+   if aTabControl.fTabIndex=aTab.Index then begin
+    Element:=GUI_ELEMENT_TAB_BUTTON_PUSHED;
+   end else begin
+    Element:=GUI_ELEMENT_TAB_BUTTON_UNFOCUSED;
+   end;
+  end else begin
+   Element:=GUI_ELEMENT_TAB_BUTTON_DISABLED;
+   aCanvas.Color:=TpvVector4.InlineableCreate(aTabControl.FontColor.rgb,aTabControl.FontColor.a*0.25);
+  end;
+
+  aCanvas.DrawGUIElement(Element,
+                         true,
+                         aTab.fPosition,
+                         aTab.fPosition+aTab.fSize,
+                         aTab.fPosition,
+                         aTab.fPosition+aTab.fSize);
+
+  aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
+
+  aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+
+  aCanvas.Font:=CurrentFont;
+
+  aCanvas.FontSize:=CurrentFontSize;
+
+  aCanvas.DrawText(aTab.fCachedCaption,
+                   aTab.fPosition+TpvVector2.InlineableCreate(aTab.fSize.x*0.5,aTab.fSize.y*0.5));
+
+ end;
 begin
 
  ProcessTabControl(aTabControl);
@@ -6851,39 +6902,14 @@ begin
  CurrentFontSize:=aTabControl.FontSize;
 
  for TabIndex:=0 to aTabControl.fTabs.Count-1 do begin
-
   Tab:=aTabControl.fTabs.Items[TabIndex];
-
-  if aTabControl.Enabled then begin
-   aCanvas.Color:=aTabControl.FontColor;
-   if TabIndex=(aTabControl.fTabs.Count-1) then begin
-    Element:=GUI_ELEMENT_TAB_BUTTON_FOCUSED;
-   end else begin
-    Element:=GUI_ELEMENT_TAB_BUTTON_UNFOCUSED;
-   end;
-  end else begin
-   Element:=GUI_ELEMENT_TAB_BUTTON_DISABLED;
-   aCanvas.Color:=TpvVector4.InlineableCreate(aTabControl.FontColor.rgb,aTabControl.FontColor.a*0.25);
+  if aTabControl.fTabIndex<>Tab.Index then begin
+   DrawTab(Tab);
   end;
+ end;
 
-  aCanvas.DrawGUIElement(Element,
-                         true,
-                         Tab.fPosition,
-                         Tab.fPosition+Tab.fSize,
-                         Tab.fPosition,
-                         Tab.fPosition+Tab.fSize);
-
-  aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
-
-  aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
-
-  aCanvas.Font:=CurrentFont;
-
-  aCanvas.FontSize:=CurrentFontSize;
-
-  aCanvas.DrawText(Tab.fCachedCaption,
-                   Tab.fPosition+TpvVector2.InlineableCreate(Tab.fSize.x*0.5,Tab.fSize.y*0.5));
-
+ if (aTabControl.fTabIndex>=0) and (aTabControl.fTabIndex<aTabControl.fTabs.Count) then begin
+  DrawTab(aTabControl.fTabs.Items[aTabControl.fTabIndex]);
  end;
 
 {for Index:=0 to 1 do begin
@@ -13651,15 +13677,32 @@ end;
 constructor TpvGUITabControl.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
+
+ Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
+
  fTabs:=TpvGUITabList.Create(self);
+
  fTabIndex:=-1;
+
  fOnTabSelected:=nil;
+
 end;
 
 destructor TpvGUITabControl.Destroy;
 begin
  FreeAndNil(fTabs);
  inherited Destroy;
+end;
+
+function TpvGUITabControl.GetHighlightRect:TpvRect;
+begin
+ if (fTabIndex>=0) and (fTabIndex<fTabs.Count) then begin
+  result:=fTabs.Items[fTabIndex].fRect;
+ end else begin
+  result:=fHeaderRect;
+ end;
 end;
 
 function TpvGUITabControl.GetPreferredSize:TpvVector2;
@@ -13726,6 +13769,141 @@ end;
 procedure TpvGUITabControl.PerformLayout;
 begin
  inherited PerformLayout;
+end;
+
+function TpvGUITabControl.Enter:boolean;
+begin
+ result:=inherited Enter;
+end;
+
+function TpvGUITabControl.Leave:boolean;
+begin
+ result:=inherited Leave;
+end;
+
+function TpvGUITabControl.PointerEnter:boolean;
+begin
+ result:=inherited PointerEnter;
+end;
+
+function TpvGUITabControl.PointerLeave:boolean;
+begin
+ result:=inherited PointerLeave;
+end;
+
+function TpvGUITabControl.DragEvent(const aPosition:TpvVector2):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUITabControl.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if Enabled and not result then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_PAGEDOWN:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_PAGEUP:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_HOME:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_END:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+     end;
+    end;
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUITabControl.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var CurrentTabIndex:TpvSizeInt;
+    CurrentTab:TpvGUITab;
+begin
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+ if not result then begin
+  result:=inherited PointerEvent(aPointerEvent);
+  if not result then begin
+   case aPointerEvent.PointerEventType of
+    TpvApplicationInputPointerEventType.Down:begin
+     if not Focused then begin
+      RequestFocus;
+     end;
+     if not ((fTabIndex>=0) and (fTabIndex<fTabs.Count) and
+             fTabs.Items[fTabIndex].fRect.Touched(aPointerEvent.Position)) then begin
+      for CurrentTabIndex:=0 to fTabs.Count-1 do begin
+       if CurrentTabIndex<>fTabIndex then begin
+        CurrentTab:=fTabs.Items[CurrentTabIndex];
+        if CurrentTab.fRect.Touched(aPointerEvent.Position) then begin
+         SetTabIndex(CurrentTabIndex);
+         break;
+        end;
+       end;
+      end;
+     end;
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Up:begin
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Motion:begin
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Drag:begin
+     result:=true;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUITabControl.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+var TemporaryValue,Step:TpvInt64;
+    v:TpvFloat;
+begin
+ result:=inherited Scrolled(aPosition,aRelativeAmount);
+ if fHeaderRect.Touched(aPosition) and not result then begin
+  TemporaryValue:=fTabIndex;
+  v:=aRelativeAmount.x-aRelativeAmount.y;
+  if v<0.0 then begin
+   Step:=floor(v);
+  end else begin
+   Step:=ceil(v);
+  end;
+  SetTabIndex(Min(Max(fTabIndex+Step,0),fTabs.Count-1));
+  result:=true;
+ end;
 end;
 
 procedure TpvGUITabControl.Update;
