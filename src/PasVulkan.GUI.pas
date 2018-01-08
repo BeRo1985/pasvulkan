@@ -6749,7 +6749,7 @@ begin
 
  end;
 
- Width:=Clamp((aTabControl.fSize.x+(aTabControl.fTabs.Count*MaximumHeight*0.25))/Max(aTabControl.fTabs.Count,1),64.0,200.0);
+ Width:=Clamp((aTabControl.fSize.x+(aTabControl.fTabs.Count*MaximumHeight*0.3725))/Max(aTabControl.fTabs.Count,1),64.0,200.0);
 
  for TabIndex:=0 to aTabControl.fTabs.Count-1 do begin
   Tab:=aTabControl.fTabs.Items[TabIndex];
@@ -6811,9 +6811,11 @@ begin
    ContentSize:=Maximum(ContentSize,GetWidgetPreferredSize(Tab.fContent));
   end;
 
-  HeaderSize:=Maximum(HeaderSize,Tab.fSize);
+  HeaderSize:=Maximum(HeaderSize,Tab.fPosition+Tab.fSize);
 
  end;
+
+ HeaderSize.x:=Clamp(aTabControl.fTabs.Count*(200.0-(HeaderSize.y*0.25)),256.0,512.0);
 
  result:=Maximum(GetWidgetLayoutPreferredSize(aTabControl),
                  Maximum(HeaderSize+TpvVector2.InlineableCreate(0.0,ContentSize.y),
@@ -6825,6 +6827,7 @@ begin
  if aTabControl.fFixedSize.y>0.0 then begin
   result.y:=aTabControl.fFixedSize.y;
  end;
+
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawTabControl(const aCanvas:TpvCanvas;const aTabControl:TpvGUITabControl);

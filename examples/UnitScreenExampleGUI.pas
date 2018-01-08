@@ -544,8 +544,8 @@ begin
  TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,2,2,1,2.0,2.0,2.0,2.0);
 
  Window:=TpvGUIWindow.Create(fGUIInstance);
- Window.Left:=750;
- Window.Top:=650;
+ Window.Left:=450;
+ Window.Top:=200;
  Window.Title:='Window with FillLayout';
  Window.Content.Layout:=TpvGUIFillLayout.Create(Window.Content,4.0);
  Window.AddMinimizationButton;
@@ -555,6 +555,8 @@ begin
  TabControl:=TpvGUITabControl.Create(Window.Content);
  TabControl.Tabs.Add('A tab');
  TabControl.Tabs.Add('An another tab');
+ TabControl.Tabs.Add('An yet another tab');
+ TabControl.Tabs.Add('An also yet another tab');
 
 
 end;
