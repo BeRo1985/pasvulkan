@@ -13801,14 +13801,30 @@ begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
   case aKeyEvent.KeyCode of
-   KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+   KEYCODE_LEFT,KEYCODE_UP:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetTabIndex(Min(Max(fTabIndex-1,0),fTabs.Count-1));
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_RIGHT,KEYCODE_DOWN:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetTabIndex(Min(Max(fTabIndex+1,0),fTabs.Count-1));
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
      end;
     end;
     result:=true;
    end;
-   KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+   KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
      end;
@@ -13818,6 +13834,7 @@ begin
    KEYCODE_PAGEDOWN:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
+      SetTabIndex(Min(Max(fTabIndex-4,0),fTabs.Count-1));
      end;
     end;
     result:=true;
@@ -13825,6 +13842,7 @@ begin
    KEYCODE_PAGEUP:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
+      SetTabIndex(Min(Max(fTabIndex+4,0),fTabs.Count-1));
      end;
     end;
     result:=true;
@@ -13832,6 +13850,7 @@ begin
    KEYCODE_HOME:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
+      SetTabIndex(Min(0,fTabs.Count-1));
      end;
     end;
     result:=true;
@@ -13839,6 +13858,7 @@ begin
    KEYCODE_END:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
+      SetTabIndex(fTabs.Count-1);
      end;
     end;
     result:=true;
