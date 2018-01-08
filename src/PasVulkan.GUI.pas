@@ -1978,7 +1978,6 @@ type TpvGUIObject=class;
        function GetItem(const aIndex:TpvSizeInt):TpvGUITab; inline;
        procedure SetItem(const aIndex:TpvSizeInt;const aTab:TpvGUITab); inline;
       protected
-       procedure DoSelected(const aTab:TpvGUITab;const aSelected:boolean); inline;
        procedure Invalidated(const aTab:TpvGUITab); inline;
       public
        constructor Create(const aOwner:TpvGUITabControl); reintroduce;
@@ -1992,7 +1991,7 @@ type TpvGUIObject=class;
        property Items[const aIndex:TpvSizeInt]:TpvGUITab read GetItem write SetItem; default;
      end;
 
-     TpvGUITabControlOnTabSelected=procedure(const aSender:TObject;const aTab:TpvGUITab;const aSelected:boolean) of object;
+     TpvGUITabControlOnTabEvent=procedure(const aSender:TObject;const aTab:TpvGUITab) of object;
       
      TpvGUITabControl=class(TpvGUIWidget)
       private
@@ -2000,7 +1999,8 @@ type TpvGUIObject=class;
        fContentRect:TpvRect;
        fTabs:TpvGUITabList;
        fTabIndex:TpvSizeInt;
-       fOnTabSelected:TpvGUITabControlOnTabSelected;
+       fOnTabSelected:TpvGUITabControlOnTabEvent;
+       fOnTabUnselected:TpvGUITabControlOnTabEvent;
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
        procedure SetTabs(const aTabs:TpvGUITabList);
@@ -2010,7 +2010,6 @@ type TpvGUIObject=class;
        procedure SetTab(const aTab:TpvGUITab);
        procedure Invalidate;
        procedure EnsureTabIsVisible(const aTab:TpvGUITab);
-       procedure TabSelected(const aTab:TpvGUITab;const aSelected:boolean); 
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -2029,7 +2028,8 @@ type TpvGUIObject=class;
        property Tabs:TpvGUITabList read fTabs write SetTabs;
        property TabIndex:TpvSizeInt read GetTabIndex write SetTabIndex;
        property Tab:TpvGUITab read GetTab write SetTab;
-       property OnTabSelected:TpvGUITabControlOnTabSelected read fOnTabSelected write fOnTabSelected;
+       property OnTabSelected:TpvGUITabControlOnTabEvent read fOnTabSelected write fOnTabSelected;
+       property OnTabUnselected:TpvGUITabControlOnTabEvent read fOnTabUnselected write fOnTabUnselected;
      end;
 
 implementation
@@ -13599,11 +13599,6 @@ begin
  inherited Items[aIndex]:=TCollectionItem(aTab);
 end;
 
-procedure TpvGUITabList.DoSelected(const aTab:TpvGUITab;const aSelected:boolean);
-begin
- fOwner.TabSelected(aTab,aSelected);
-end;
-
 procedure TpvGUITabList.Invalidated(const aTab:TpvGUITab);
 begin
  fOwner.Invalidate;
@@ -13688,6 +13683,8 @@ begin
 
  fOnTabSelected:=nil;
 
+ fOnTabUnselected:=nil;
+
 end;
 
 destructor TpvGUITabControl.Destroy;
@@ -13722,11 +13719,28 @@ begin
 end;
 
 procedure TpvGUITabControl.SetTabIndex(const aTabIndex:TpvSizeInt);
+var CurrentTab:TpvGUITab;
 begin
  if fTabIndex<>aTabIndex then begin
+  if (fTabIndex>=0) and (fTabIndex<fTabs.Count) then begin
+   CurrentTab:=fTabs.Items[fTabIndex];
+   if assigned(fOnTabUnselected) then begin
+    fOnTabUnselected(self,CurrentTab);
+   end;
+   if assigned(CurrentTab.fContent) then begin
+    CurrentTab.fContent.Visible:=false;
+   end;
+  end;
   fTabIndex:=aTabIndex;
   if (fTabIndex>=0) and (fTabIndex<fTabs.Count) then begin
-   EnsureTabIsVisible(fTabs.Items[fTabIndex]);
+   CurrentTab:=fTabs.Items[fTabIndex];
+   EnsureTabIsVisible(CurrentTab);
+   if assigned(CurrentTab.fContent) then begin
+    CurrentTab.fContent.Visible:=true;
+   end;
+   if assigned(fOnTabSelected) then begin
+    fOnTabSelected(self,CurrentTab);
+   end;
   end;
  end;
 end;
@@ -13753,17 +13767,6 @@ end;
 procedure TpvGUITabControl.EnsureTabIsVisible(const aTab:TpvGUITab);
 begin
 
-end;
-
-procedure TpvGUITabControl.TabSelected(const aTab:TpvGUITab;const aSelected:boolean); 
-begin
- if aSelected then begin
-  EnsureTabIsVisible(aTab);
-  fTabIndex:=aTab.Index;
- end;      
- if assigned(fOnTabSelected) then begin
-  fOnTabSelected(self,aTab,aSelected);
- end;   
 end;
 
 procedure TpvGUITabControl.PerformLayout;
