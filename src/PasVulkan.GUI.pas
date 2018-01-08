@@ -1998,6 +1998,7 @@ type TpvGUIObject=class;
       private
        fHeaderRect:TpvRect;
        fContentRect:TpvRect;
+       fVisibleOffset:TpvFloat;
        fTabs:TpvGUITabList;
        fTabIndex:TpvSizeInt;
        fContent:TpvGUIPanel;
@@ -6756,7 +6757,7 @@ begin
 
  CurrentFontSize:=aTabControl.FontSize;
 
- MaximumHeight:=0.0;
+{MaximumHeight:=0.0;
 
  for TabIndex:=0 to aTabControl.fTabs.Count-1 do begin
 
@@ -6765,8 +6766,11 @@ begin
   MaximumHeight:=Maximum(MaximumHeight,10.0+CurrentFont.TextHeight(Tab.fCaption,CurrentFontSize));
 
  end;
+ }
 
- Width:=Clamp((aTabControl.fSize.x+(aTabControl.fTabs.Count*MaximumHeight*0.3725))/Max(aTabControl.fTabs.Count,1),48.0,200.0);
+ MaximumHeight:=Maximum(MaximumHeight,10.0+CurrentFont.RowHeight(150.0,CurrentFontSize));
+
+ Width:=Clamp((aTabControl.fSize.x+(aTabControl.fTabs.Count*MaximumHeight*0.3725))/Max(aTabControl.fTabs.Count,1),50.0,200.0);
 
  for TabIndex:=0 to aTabControl.fTabs.Count-1 do begin
   Tab:=aTabControl.fTabs.Items[TabIndex];
@@ -6803,6 +6807,24 @@ begin
  aTabControl.fHeaderRect:=TpvRect.CreateAbsolute(TpvVector2.Null,TpvVector2.Create(aTabControl.fSize.x,MaximumHeight));
 
  aTabControl.fContentRect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(0.0,MaximumHeight),TpvVector2.Create(aTabControl.fSize.x,aTabControl.fSize.y));
+
+ if (aTabControl.fTabIndex>=0) and (aTabControl.fTabIndex<aTabControl.fTabs.Count) then begin
+
+  Tab:=aTabControl.fTabs.Items[aTabControl.fTabIndex];
+
+  if (Tab.fRect.Left<0.0) or (Tab.fRect.Right>=aTabControl.fSize.x) then begin
+   aTabControl.fVisibleOffset:=-Max(Tab.fRect.Right-aTabControl.fSize.x,0);
+  end else begin
+   aTabControl.fVisibleOffset:=0;
+  end;
+
+ end;
+
+ for TabIndex:=0 to aTabControl.fTabs.Count-1 do begin
+  Tab:=aTabControl.fTabs.Items[TabIndex];
+  Tab.fPosition.x:=Tab.fPosition.x+aTabControl.fVisibleOffset;
+  Tab.fRect:=TpvRect.CreateRelative(Tab.fPosition,Tab.fSize);
+ end;
 
 end;
 
@@ -6947,7 +6969,7 @@ begin
                      TpvRect.CreateRelative(Offset,
                                             TpvVector2.InlineableCreate(TabButtonSize,TabButtonSize)));
 
- end;}
+ end;{}
 
  if aTabControl.Enabled then begin
   aCanvas.Color:=aTabControl.FontColor;
@@ -13699,6 +13721,8 @@ begin
  fContent:=TpvGUIPanel.Create(self);
 
  fContent.fLayout:=TpvGUIFillLayout.Create(fContent,IfThen(aContentMargin>=0.0,aContentMargin,Skin.fTabControlContentMargin));
+
+ fVisibleOffset:=0.0;
 
  fTabs:=TpvGUITabList.Create(self);
 
