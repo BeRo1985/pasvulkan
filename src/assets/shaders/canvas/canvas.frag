@@ -90,6 +90,10 @@ vec4 blend(vec4 a, vec4 b){
 #define GUI_ELEMENT_BOX_DARK_DISABLED 15  
 #define GUI_ELEMENT_PANEL_ENABLED 16
 #define GUI_ELEMENT_PANEL_DISABLED 17
+#define GUI_ELEMENT_TAB_BUTTON_UNFOCUSED 18
+#define GUI_ELEMENT_TAB_BUTTON_FOCUSED 19
+#define GUI_ELEMENT_TAB_BUTTON_PUSHED 20
+#define GUI_ELEMENT_TAB_BUTTON_DISABLED 21
 #define GUI_ELEMENT_MOUSE_CURSOR_ARROW 64
 #define GUI_ELEMENT_MOUSE_CURSOR_BEAM 65
 #define GUI_ELEMENT_MOUSE_CURSOR_BUSY 66
@@ -238,6 +242,23 @@ float sdRoundedRect(vec2 p, vec2 b, float r){
   b -= vec2(r);
   vec2 d = abs(p) - b;
   return min(max(d.x, d.y), 0.0) + length(max(abs(p) - b, 0.0)) - r;
+}
+
+float sdTabButton(vec2 p, vec2 b, float r){
+  // Chrome-style tab button with about 26.565051 angle slope tab shape
+#if 1
+  // with corner roundness 
+  return sdRoundedRect(p, b - vec2((b.y - p.y) * 0.5, 0.0), r);
+#else
+  const vec2 n = vec2(-0.894427190999914, 0.447213595499961); // vec2(sin(vec2(1.570796326794895, 0.0) + radians(180.0 - 26.565051177078010077161700198))); 
+#if 1
+  // with corner roundness 
+  return sdRoundedRect(p, b - vec2((p.y - b.y) * (n.y / n.x), 0.0), r);
+#else
+  // without corner roundness 
+  return max(abs(p.y) - b.y, -(dot(vec2(abs(p.x) - b.x, p.y - b.y), n)));  
+#endif
+#endif
 }
 
 float sdTriangle(in vec2 p0, in vec2 p1, in vec2 p2, in vec2 p){  
@@ -654,6 +675,71 @@ void main(void){
                       vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
         break;
       }      
+      case GUI_ELEMENT_TAB_BUTTON_UNFOCUSED:
+      case GUI_ELEMENT_TAB_BUTTON_FOCUSED:
+      case GUI_ELEMENT_TAB_BUTTON_PUSHED:
+      case GUI_ELEMENT_TAB_BUTTON_DISABLED:{
+        float d0 = sdTabButton(p - (size * 0.5), size * 0.5, uButtonCornerRadius),
+              d1 = sdTabButton(p - (size * 0.5), (size * 0.5) - vec2(1.0), uButtonCornerRadius),      
+              d2 = sdTabButton(p - (size * 0.5), (size * 0.5) - vec2(2.0), uButtonCornerRadius),      
+              d3 = sdTabButton(p - (size * 0.5), (size * 0.5) - vec2(3.0), uButtonCornerRadius);      
+        vec4 gradientTop,
+             gradientBottom,
+             borderTowardsLight,
+             borderAwayFromLight;
+        switch(guiElementIndex){
+        	case GUI_ELEMENT_TAB_BUTTON_UNFOCUSED:{
+            gradientTop = uUnfocusedButtonGradientTop;
+            gradientBottom = uUnfocusedButtonGradientBottom;
+            borderTowardsLight = uBorderLight;
+            borderAwayFromLight = uBorderDark;
+          	break;
+          }
+        	case GUI_ELEMENT_TAB_BUTTON_FOCUSED:{
+            gradientTop = uFocusedButtonGradientTop;
+            gradientBottom = uFocusedButtonGradientBottom;
+            borderTowardsLight = uBorderLight;
+            borderAwayFromLight = uBorderDark;
+          	break;
+          }
+        	case GUI_ELEMENT_TAB_BUTTON_PUSHED:{
+            gradientTop = uPushedButtonGradientTop;
+            gradientBottom = uPushedButtonGradientBottom;
+            borderTowardsLight = uBorderDark;
+            borderAwayFromLight = uBorderLight;
+          	break;
+          }
+        	case GUI_ELEMENT_TAB_BUTTON_DISABLED:{
+            gradientTop = uDisabledButtonGradientTop;
+            gradientBottom = uDisabledButtonGradientBottom;
+            borderTowardsLight = uBorderLight;
+            borderAwayFromLight = uBorderDark;
+          	break;
+          }
+        }
+        color = blend(color, 
+                      mix(mix(mix(mix((guiElementIndex == GUI_ELEMENT_TAB_BUTTON_PUSHED) ?
+                                        mix(gradientTop * 0.5f,
+                                            gradientTop,  
+                                            linearstep(0.0, 6.0, p.y)) :
+                                        gradientTop,
+                                      gradientBottom, 
+                                      linearstep(0.0, size.y, p.y)),
+                                  mix(mix(borderTowardsLight, 
+                                          uBorderMedium, 
+                                          linearstep(0.0, t, p.y - 3.0)), 
+                                      borderAwayFromLight, 
+                                      linearstep(0.0, t, p.y - (size.y - 3.0))),
+                                  linearstep(-t, t, d3)),
+                              uBorderMedium, 
+                              linearstep(-t, t, d2)),
+                            mix(uBorderMedium,
+                                uBorderLight,
+                                linearstep(-t, t, p.y - (size.y - 1.0))), 
+                            linearstep(-t, t, d1)) *
+                      vec2(1.0, linearstep(t, -t, d0)).xxxy);                      
+        break;
+      }
       case GUI_ELEMENT_MOUSE_CURSOR_ARROW:
       case GUI_ELEMENT_MOUSE_CURSOR_HELP:{
         float a = dot(p, normalize(vec2(-1.0, 0.0)));
