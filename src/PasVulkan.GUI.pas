@@ -528,6 +528,7 @@ type TpvGUIObject=class;
       private
       protected
        fSpacing:TpvFloat;
+       fTabControlContentMargin:TpvFloat;
        fFontSize:TpvFloat;
        fWindowHeaderFontSize:tpvFloat;
        fButtonFontSize:TpvFloat;
@@ -2012,7 +2013,7 @@ type TpvGUIObject=class;
        procedure Invalidate;
        procedure EnsureTabIsVisible(const aTab:TpvGUITab);
       public
-       constructor Create(const aParent:TpvGUIObject); override;
+       constructor Create(const aParent:TpvGUIObject;const aContentMargin:TpvFloat=-1.0); reintroduce;
        destructor Destroy; override;
        procedure PerformLayout; override;
        function Enter:boolean; override;
@@ -4158,6 +4159,8 @@ var Stream:TStream;
 begin
 
  fSpacing:=4.0;
+
+ fTabControlContentMargin:=3.0;
 
  fFontSize:=-12;
 
@@ -6763,7 +6766,7 @@ begin
 
  end;
 
- Width:=Clamp((aTabControl.fSize.x+(aTabControl.fTabs.Count*MaximumHeight*0.3725))/Max(aTabControl.fTabs.Count,1),64.0,200.0);
+ Width:=Clamp((aTabControl.fSize.x+(aTabControl.fTabs.Count*MaximumHeight*0.3725))/Max(aTabControl.fTabs.Count,1),48.0,200.0);
 
  for TabIndex:=0 to aTabControl.fTabs.Count-1 do begin
   Tab:=aTabControl.fTabs.Items[TabIndex];
@@ -6945,6 +6948,20 @@ begin
                                             TpvVector2.InlineableCreate(TabButtonSize,TabButtonSize)));
 
  end;}
+
+ if aTabControl.Enabled then begin
+  aCanvas.Color:=aTabControl.FontColor;
+  Element:=GUI_ELEMENT_PANEL_ENABLED;
+ end else begin
+  Element:=GUI_ELEMENT_PANEL_DISABLED;
+  aCanvas.Color:=TpvVector4.InlineableCreate(aTabControl.FontColor.rgb,aTabControl.FontColor.a*0.25);
+ end;
+ aCanvas.DrawGUIElement(Element,
+                        true,
+                        aTabControl.fContentRect.LeftTop,
+                        aTabControl.fContentRect.RightBottom,
+                        aTabControl.fContentRect.LeftTop,
+                        aTabControl.fContentRect.RightBottom);
 
 end;
 
@@ -13671,7 +13688,7 @@ begin
  end;
 end;
 
-constructor TpvGUITabControl.Create(const aParent:TpvGUIObject);
+constructor TpvGUITabControl.Create(const aParent:TpvGUIObject;const aContentMargin:TpvFloat=-1.0);
 begin
  inherited Create(aParent);
 
@@ -13681,7 +13698,7 @@ begin
 
  fContent:=TpvGUIPanel.Create(self);
 
- fContent.fLayout:=TpvGUIFillLayout.Create(fContent,0.0);
+ fContent.fLayout:=TpvGUIFillLayout.Create(fContent,IfThen(aContentMargin>=0.0,aContentMargin,Skin.fTabControlContentMargin));
 
  fTabs:=TpvGUITabList.Create(self);
 
@@ -13743,16 +13760,17 @@ begin
    EnsureTabIsVisible(CurrentTab);
    if assigned(CurrentTab.fContent) then begin
     CurrentTab.fContent.Visible:=true;
-    if CurrentTab.fContent.Parent=fContent then begin
+{   if CurrentTab.fContent.Parent=fContent then begin
      CurrentTab.fContent.fPosition:=TpvVector2.Null;
      CurrentTab.fContent.fSize:=fContentRect.Size;
     end;
-    CurrentTab.fContent.PerformLayout;
+    CurrentTab.fContent.PerformLayout;}
    end;
    if assigned(fOnTabSelected) then begin
     fOnTabSelected(self,CurrentTab);
    end;
   end;
+  fContent.PerformLayout;
  end;
 end;
 

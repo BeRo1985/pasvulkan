@@ -553,10 +553,101 @@ begin
  Window.AddCloseButton;
 
  TabControl:=TpvGUITabControl.Create(Window.Content);
- TabControl.Tabs.Add('A tab').Content:=TpvGUIButton.Create(TabControl.Content);
- TabControl.Tabs.Add('An another tab');
- TabControl.Tabs.Add('An yet another tab');
- TabControl.Tabs.Add('An also yet another tab');
+
+ begin
+
+  Panel:=TpvGUIPanel.Create(TabControl.Content);
+  Panel.Layout:=TpvGUIFlowLayout.Create(Panel,
+                                        TpvGUILayoutOrientation.Horizontal,
+                                        8.0,
+                                        300.0,
+                                        0.0,
+                                        4.0,
+                                        4.0,
+                                        TpvGUIFlowLayoutDirection.LeftToRight,
+                                        TpvGUIFlowLayoutAlignment.Middle,
+                                        TpvGUIFlowLayoutAlignment.Middle,
+                                        true);
+  TabControl.Tabs.Add('A tab').Content:=Panel;
+
+  fGUIButton:=TpvGUIButton.Create(Panel);
+  fGUIButton.Caption:='Button';
+  fGUIButton.Enabled:=true;
+
+  ScrollBar:=TpvGUIScrollBar.Create(Panel);
+  ScrollBar.Enabled:=true;
+
+ end;
+
+ begin
+
+  Panel:=TpvGUIPanel.Create(TabControl.Content);
+  Panel.Layout:=TpvGUIFlowLayout.Create(Panel,
+                                        TpvGUILayoutOrientation.Horizontal,
+                                        8.0,
+                                        300.0,
+                                        0.0,
+                                        4.0,
+                                        4.0,
+                                        TpvGUIFlowLayoutDirection.LeftToRight,
+                                        TpvGUIFlowLayoutAlignment.Leading,
+                                        TpvGUIFlowLayoutAlignment.Leading,
+                                        true);
+  TabControl.Tabs.Add('An another tab').Content:=Panel;
+
+  fGUIButton:=TpvGUIPopupMenuButton.Create(Panel);
+  fGUIButton.Caption:='Popup menu';
+  fGUIButton.Enabled:=true;
+  TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu).Caption:='Test 1';
+  MenuItem:=TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu);
+  MenuItem.Caption:='Test 2';
+  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
+  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test A';
+  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test B';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Test C';
+  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
+  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 1';
+  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 2';
+  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 3';
+  TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu).Caption:='Test 3';
+
+ end;
+
+ begin
+
+  Panel:=TpvGUIPanel.Create(TabControl.Content);
+  Panel.Layout:=TpvGUIFillLayout.Create(Panel,0.0);
+  TabControl.Tabs.Add('An yet another tab').Content:=Panel;
+
+  ScrollPanel:=TpvGUIScrollPanel.Create(Panel);
+  ScrollPanel.Content.Layout:=TpvGUIBoxLayout.Create(ScrollPanel.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,8.0);
+
+  fGUIButton:=TpvGUIToggleButton.Create(ScrollPanel.Content);
+  fGUIButton.Caption:='Toggle button';
+  fGUIButton.FixedWidth:=480;
+  fGUIButton.FixedHeight:=240;
+
+ end;
+
+ begin
+
+  Panel:=TpvGUIPanel.Create(TabControl.Content);
+  Panel.Layout:=TpvGUIFlowLayout.Create(Panel,
+                                        TpvGUILayoutOrientation.Horizontal,
+                                        8.0,
+                                        300.0,
+                                        0.0,
+                                        4.0,
+                                        4.0,
+                                        TpvGUIFlowLayoutDirection.LeftToRight,
+                                        TpvGUIFlowLayoutAlignment.Middle,
+                                        TpvGUIFlowLayoutAlignment.Middle,
+                                        true);
+  TabControl.Tabs.Add('An also yet another tab').Content:=Panel;
+
+ end;
+
  TabControl.TabIndex:=0;
 
 end;
