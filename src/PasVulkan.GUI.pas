@@ -119,6 +119,8 @@ type TpvGUIObject=class;
 
      TpvGUITabPanel=class;
 
+     TpvGUIListBox=class;
+
      EpvGUIWidget=class(Exception);
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
@@ -1057,7 +1059,6 @@ type TpvGUIObject=class;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Draw; override;
-       procedure ExecuteDraw; override;
       public
        property MousePosition:TpvVector2 read fMousePosition write fMousePosition;
       published
@@ -1173,7 +1174,6 @@ type TpvGUIObject=class;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Draw; override;
-       procedure ExecuteDraw; override;
       public
        property FontColor;
        property SavedPosition:TpvVector2 read fSavedPosition write fSavedPosition;
@@ -1274,7 +1274,6 @@ type TpvGUIObject=class;
        procedure UpdatePosition;
        procedure PerformLayout; override;
        procedure Draw; override;
-       procedure ExecuteDraw; override;
       published
        property ParentWidget:TpvGUIWidget read fParentWidget;
        property ParentHolder:TpvGUIHolder read fParentHolder;
@@ -1294,7 +1293,6 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject;const aImage:TObject); reintroduce;
        destructor Destroy; override;
        procedure Draw; override;
-       procedure ExecuteDraw; override;
       published
        property Image:TObject read fImage write fImage;
      end;
@@ -1320,7 +1318,6 @@ type TpvGUIObject=class;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Draw; override;
-       procedure ExecuteDraw; override;
       public
        property FontColor;
       published
@@ -1387,7 +1384,6 @@ type TpvGUIObject=class;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure PerformLayout; override;
        procedure Draw; override;
-       procedure ExecuteDraw; override;
       public
        property FontColor;
       published
@@ -1481,7 +1477,6 @@ type TpvGUIObject=class;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Draw; override;
-       procedure ExecuteDraw; override;
       public
        property FontColor;
       published
@@ -1554,7 +1549,6 @@ type TpvGUIObject=class;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Draw; override;
-       procedure ExecuteDraw; override;
       published
        property Font;
        property FontSize;
@@ -1728,7 +1722,6 @@ type TpvGUIObject=class;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Draw; override;
-       procedure ExecuteDraw; override;
       published
      end;
 
@@ -1787,7 +1780,6 @@ type TpvGUIObject=class;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure PerformLayout; override;
        procedure Draw; override;
-       procedure ExecuteDraw; override;
       published
        property Orientation:TpvGUIScrollBarOrientation read fOrientation write SetOrientation;
        property MinimumValue:TpvInt64 read fMinimumValue write SetMinimumValue;
@@ -1852,7 +1844,6 @@ type TpvGUIObject=class;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Draw; override;
-       procedure ExecuteDraw; override;
       published
        property Orientation:TpvGUISliderOrientation read fOrientation write SetOrientation;
        property MinimumValue:TpvInt64 read fMinimumValue write SetMinimumValue;
@@ -1890,7 +1881,6 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure Draw; override;
-       procedure ExecuteDraw; override;
       published
        property Orientation:TpvGUIProgressBarOrientation read fOrientation write SetOrientation;
        property MinimumValue:TpvInt64 read fMinimumValue write SetMinimumValue;
@@ -1925,7 +1915,6 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure PerformLayout; override;
        procedure Draw; override;
-       procedure ExecuteDraw; override;
       published
        property HorizontalScrollDirection:TpvGUIScrollPanelScrollDirection read fHorizontalScrollDirection write SetHorizontalScrollDirection;
        property VerticalScrollDirection:TpvGUIScrollPanelScrollDirection read fVerticalScrollDirection write SetVerticalScrollDirection;
@@ -2042,7 +2031,6 @@ type TpvGUIObject=class;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Draw; override;
-       procedure ExecuteDraw; override;
       published
        property Tabs:TpvGUITabList read fTabs write SetTabs;
        property TabIndex:TpvSizeInt read GetTabIndex write SetTabIndex;
@@ -2052,6 +2040,12 @@ type TpvGUIObject=class;
        property VisibleContent:boolean read GetVisibleContent write SetVisibleContent;
        property OnTabSelected:TpvGUITabPanelOnTabEvent read fOnTabSelected write fOnTabSelected;
        property OnTabUnselected:TpvGUITabPanelOnTabEvent read fOnTabUnselected write fOnTabUnselected;
+     end;
+
+     TpvGUIListBox=class(TpvGUIWidget)
+      private
+      public
+      published
      end;
 
 implementation
@@ -8577,11 +8571,6 @@ begin
  fTime:=fTime+fDeltaTime;
 end;
 
-procedure TpvGUIInstance.ExecuteDraw;
-begin
- inherited ExecuteDraw;
-end;
-
 constructor TpvGUIWindow.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
@@ -9349,11 +9338,6 @@ begin
  inherited Draw;
 end;
 
-procedure TpvGUIWindow.ExecuteDraw;
-begin
- inherited ExecuteDraw;
-end;
-
 constructor TpvGUIMessageDialogButton.Create(const aID:TpvInt32;
                                              const aCaption:TpvUTF8String;
                                              const aKeyCode:TpvInt32=KEYCODE_UNKNOWN;
@@ -9660,11 +9644,6 @@ begin
 
 end;
 
-procedure TpvGUIPopup.ExecuteDraw;
-begin
- inherited ExecuteDraw;
-end;
-
 constructor TpvGUIImage.Create(const aParent:TpvGUIObject;const aImage:TObject);
 begin
  inherited Create(aParent);
@@ -9685,11 +9664,6 @@ procedure TpvGUIImage.Draw;
 begin
  Skin.DrawImage(fCanvas,self);
  inherited Draw;
-end;
-
-procedure TpvGUIImage.ExecuteDraw;
-begin
- inherited ExecuteDraw;
 end;
 
 constructor TpvGUILabel.Create(const aParent:TpvGUIObject);
@@ -9790,11 +9764,6 @@ procedure TpvGUILabel.Draw;
 begin
  Skin.DrawLabel(fCanvas,self);
  inherited Draw;
-end;
-
-procedure TpvGUILabel.ExecuteDraw;
-begin
- inherited ExecuteDraw;
 end;
 
 constructor TpvGUIButton.Create(const aParent:TpvGUIObject);
@@ -10039,11 +10008,6 @@ procedure TpvGUIButton.Draw;
 begin
  Skin.DrawButton(fCanvas,self);
  inherited Draw;
-end;
-
-procedure TpvGUIButton.ExecuteDraw;
-begin
- inherited ExecuteDraw;
 end;
 
 constructor TpvGUIRadioButton.Create(const aParent:TpvGUIObject);
@@ -10315,11 +10279,6 @@ procedure TpvGUICheckBox.Draw;
 begin
  Skin.DrawCheckBox(fCanvas,self);
  inherited Draw;
-end;
-
-procedure TpvGUICheckBox.ExecuteDraw;
-begin
- inherited ExecuteDraw;
 end;
 
 constructor TpvGUIRadioCheckBox.Create(const aParent:TpvGUIObject);
@@ -11039,11 +10998,6 @@ procedure TpvGUITextEdit.Draw;
 begin
  Skin.DrawTextEdit(fCanvas,self);
  inherited Draw;
-end;
-
-procedure TpvGUITextEdit.ExecuteDraw;
-begin
- inherited ExecuteDraw;
 end;
 
 constructor TpvGUIIntegerEdit.Create(const aParent:TpvGUIObject);
@@ -12448,11 +12402,6 @@ begin
  inherited Draw;
 end;
 
-procedure TpvGUIWindowMenu.ExecuteDraw;
-begin
- inherited ExecuteDraw;
-end;
-
 constructor TpvGUIScrollBar.Create(const aParent:TpvGUIObject);
 begin
 
@@ -12936,11 +12885,6 @@ begin
  inherited Draw;
 end;
 
-procedure TpvGUIScrollBar.ExecuteDraw;
-begin
- inherited ExecuteDraw;
-end;
-
 constructor TpvGUISlider.Create(const aParent:TpvGUIObject);
 begin
 
@@ -13339,11 +13283,6 @@ begin
  inherited Draw;
 end;
 
-procedure TpvGUISlider.ExecuteDraw;
-begin
- inherited ExecuteDraw;
-end;
-
 constructor TpvGUIProgressBar.Create(const aParent:TpvGUIObject);
 begin
 
@@ -13412,11 +13351,6 @@ procedure TpvGUIProgressBar.Draw;
 begin
  Skin.DrawProgressBar(fCanvas,self);
  inherited Draw;
-end;
-
-procedure TpvGUIProgressBar.ExecuteDraw;
-begin
- inherited ExecuteDraw;
 end;
 
 constructor TpvGUIScrollPanel.Create(const aParent:TpvGUIObject);
@@ -13603,11 +13537,6 @@ end;
 procedure TpvGUIScrollPanel.Draw;
 begin
  inherited Draw;
-end;
-
-procedure TpvGUIScrollPanel.ExecuteDraw;
-begin
- inherited ExecuteDraw;
 end;
 
 constructor TpvGUITab.Create(aCollection:TCollection);
@@ -14127,11 +14056,6 @@ begin
  ExecuteInvalidateActions;
  Skin.DrawTabPanel(fCanvas,self);
  inherited Draw;
-end;
-
-procedure TpvGUITabPanel.ExecuteDraw;
-begin
- inherited ExecuteDraw;
 end;
 
 end.
