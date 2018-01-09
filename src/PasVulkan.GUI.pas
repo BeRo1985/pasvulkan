@@ -2006,6 +2006,7 @@ type TpvGUIObject=class;
        fContent:TpvGUIPanel;
        fOnTabSelected:TpvGUITabPanelOnTabEvent;
        fOnTabUnselected:TpvGUITabPanelOnTabEvent;
+       procedure SetContentMargin(const aContentMargin:TpvFloat);
        function GetVisibleHeader:boolean; inline;
        procedure SetVisibleHeader(const aVisibleHeader:boolean);
        function GetVisibleContent:boolean; inline;
@@ -2019,7 +2020,7 @@ type TpvGUIObject=class;
        procedure SetTab(const aTab:TpvGUITab);
        procedure ExecuteInvalidateActions;
       public
-       constructor Create(const aParent:TpvGUIObject;const aContentMargin:TpvFloat=-1.0); reintroduce;
+       constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure PerformLayout; override;
        function Enter:boolean; override;
@@ -2036,6 +2037,7 @@ type TpvGUIObject=class;
        property TabIndex:TpvSizeInt read GetTabIndex write SetTabIndex;
        property Tab:TpvGUITab read GetTab write SetTab;
        property Content:TpvGUIPanel read fContent;
+       property ContentMargin:TpvFloat read fContentMargin write SetContentMargin;
        property VisibleHeader:boolean read GetVisibleHeader write SetVisibleHeader;
        property VisibleContent:boolean read GetVisibleContent write SetVisibleContent;
        property OnTabSelected:TpvGUITabPanelOnTabEvent read fOnTabSelected write fOnTabSelected;
@@ -13684,7 +13686,7 @@ begin
  end;
 end;
 
-constructor TpvGUITabPanel.Create(const aParent:TpvGUIObject;const aContentMargin:TpvFloat=-1.0);
+constructor TpvGUITabPanel.Create(const aParent:TpvGUIObject);
 begin
 
  inherited Create(aParent);
@@ -13696,11 +13698,7 @@ begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
  Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
 
- if aContentMargin>=0.0 then begin
-  fContentMargin:=aContentMargin;
- end else begin
-  fContentMargin:=Skin.fTabPanelContentMargin;
- end;
+ fContentMargin:=Skin.fTabPanelContentMargin;
 
  fContentMarginVector:=TpvVector2.InlineableCreate(fContentMargin,fContentMargin);
 
@@ -13724,6 +13722,18 @@ destructor TpvGUITabPanel.Destroy;
 begin
  FreeAndNil(fTabs);
  inherited Destroy;
+end;
+
+procedure TpvGUITabPanel.SetContentMargin(const aContentMargin:TpvFloat);
+begin
+ if fContentMargin<>aContentMargin then begin
+  fContentMargin:=aContentMargin;
+  fContentMarginVector:=TpvVector2.InlineableCreate(fContentMargin,fContentMargin);
+  if assigned(fContent.fLayout) and (fContent.fLayout is TpvGUIFillLayout) then begin
+   TpvGUIFillLayout(fContent.fLayout).Margin:=fContentMargin;
+  end;
+  Include(fFlags,TpvGUITabPanelFlag.LayoutInvalidated);
+ end;
 end;
 
 function TpvGUITabPanel.GetVisibleHeader:boolean;
