@@ -2064,6 +2064,7 @@ type TpvGUIObject=class;
        fOnChangeItemIndex:TpvGUIOnEvent;
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
+       function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
        procedure AdjustScrollBar;
        procedure UpdateScrollBar;
@@ -14282,6 +14283,19 @@ begin
   if assigned(fOnChangeItemIndex) then begin
    fOnChangeItemIndex(self);
   end;
+ end;
+end;
+
+function TpvGUIListBox.GetHighlightRect:TpvRect;
+begin
+ if fScrollBar.Visible then begin
+  if fScrollBar.Focused and fScrollBar.PointerFocused then begin
+   result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(-16777216.0,-16777216.0),TpvVector2.Null);
+  end else begin
+   result:=TpvRect.CreateRelative(TpvVector2.Null,fSize-TpvVector2.InlineableCreate(fScrollBar.fSize.x,0.0));
+  end;
+ end else begin
+  result:=inherited GetHighlightRect;
  end;
 end;
 
