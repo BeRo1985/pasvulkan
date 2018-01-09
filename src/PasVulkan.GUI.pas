@@ -2066,6 +2066,7 @@ type TpvGUIObject=class;
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
+       function GetCountVisibleItems:TpvSizeInt;
        procedure AdjustScrollBar;
        procedure UpdateScrollBar;
       public
@@ -14238,7 +14239,9 @@ begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
 
  fScrollBar:=TpvGUIScrollBar.Create(self);
- fScrollBar.SetOrientation(TpvGUIScrollBarOrientation.Vertical);
+ fScrollBar.Orientation:=TpvGUIScrollBarOrientation.Vertical;
+ fScrollBar.MinimumValue:=0;
+ fScrollBar.MaximumValue:=1;
 
  fItems:=TStringList.Create;
 
@@ -14317,6 +14320,11 @@ begin
  AdjustScrollBar;
 end;
 
+function TpvGUIListBox.GetCountVisibleItems:TpvSizeInt;
+begin
+ result:=trunc((fSize.y-(fWorkYOffset*2.0))/Max(fWorkRowHeight,1));
+end;
+
 procedure TpvGUIListBox.AdjustScrollBar;
 var VisibleItems:TpvSizeInt;
 begin
@@ -14324,7 +14332,7 @@ begin
   if (fItemIndex-fScrollBar.Value)<0 then begin
    fScrollBar.Value:=fItemIndex;
   end else begin
-   VisibleItems:=trunc((fSize.y-(fWorkYOffset*2.0))/Max(fWorkRowHeight,1));
+   VisibleItems:=GetCountVisibleItems;
    if ((fItemIndex-fScrollBar.Value)+1)>=VisibleItems then begin
     fScrollBar.Value:=Max(0,(fItemIndex-VisibleItems)+1);
    end;
@@ -14337,9 +14345,8 @@ end;
 procedure TpvGUIListBox.UpdateScrollBar;
 var VisibleItems:TpvSizeInt;
 begin
- VisibleItems:=trunc((fSize.y-(fWorkYOffset*2.0))/Max(fWorkRowHeight,1));
+ VisibleItems:=GetCountVisibleItems;
  fScrollBar.Visible:=fItems.Count>VisibleItems;
- fScrollBar.MinimumValue:=0;
  fScrollBar.MaximumValue:=Max(1,fItems.Count-VisibleItems);
  if not fScrollBar.Visible then begin
   fScrollBar.Value:=0;
