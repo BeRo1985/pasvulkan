@@ -2082,6 +2082,7 @@ type TpvGUIObject=class;
        fWorkRowHeight:TpvFloat;
        fOnChange:TpvGUIOnEvent;
        fOnChangeItemIndex:TpvGUIOnEvent;
+       fOnChangeSelection:TpvGUIOnEvent;
        fSelectedBitmap:TpvGUIListBoxSelectedBitmap;
        fAction:TpvGUIListBoxAction;
        fActionStartIndex:TpvSizeInt;
@@ -2089,6 +2090,7 @@ type TpvGUIObject=class;
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
        function GetSelected(const aItemIndex:TpvSizeInt):boolean;
+       procedure ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:boolean);
        procedure SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
        function GetMultiSelect:boolean; inline;
        procedure SetMultiSelect(const aMultiSelect:boolean);
@@ -2119,6 +2121,7 @@ type TpvGUIObject=class;
        property MultiSelect:boolean read GetMultiSelect write SetMultiSelect;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
+       property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
      end;
 
 implementation
@@ -14320,6 +14323,8 @@ begin
 
  fOnChangeItemIndex:=nil;
 
+ fOnChangeSelection:=nil;
+
  fSelectedBitmap:=nil;
 
  fAction:=TpvGUIListBoxAction.None;
@@ -14347,6 +14352,9 @@ begin
    Exclude(fFlags,TpvGUIListBoxFlag.MultiSelect);
   end;
   fSelectedBitmap:=nil;
+  if assigned(fOnChangeSelection) then begin
+   fOnChangeSelection(self);
+  end;
  end;
 end;
 
@@ -14365,9 +14373,6 @@ begin
  if fItemIndex<>aItemIndex then begin
   fItemIndex:=Min(Max(aItemIndex,-1),fItems.Count-1);
   AdjustScrollBar;
-  if assigned(fOnChange) then begin
-   fOnChange(self);
-  end;
   if assigned(fOnChangeItemIndex) then begin
    fOnChangeItemIndex(self);
   end;
@@ -14384,7 +14389,7 @@ begin
  end;
 end;
 
-procedure TpvGUIListBox.SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
+procedure TpvGUIListBox.ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:boolean);
 var OldSize,NewSize:TpvSizeInt;
 begin
  if TpvGUIListBoxFlag.MultiSelect in fFlags then begin
@@ -14401,8 +14406,8 @@ begin
     end else begin
      fSelectedBitmap[aItemIndex shr 5]:=fSelectedBitmap[aItemIndex shr 5] and not (TpvUInt32(1) shl (aItemIndex and 31));
     end;
-    if assigned(fOnChange) then begin
-     fOnChange(self);
+    if assigned(fOnChangeSelection) and aEvent then begin
+     fOnChangeSelection(self);
     end;
    end;
   end;
@@ -14410,19 +14415,24 @@ begin
   if aSelected then begin
    if fItemIndex<>aItemIndex then begin
     SetItemIndex(aItemIndex);
-    if assigned(fOnChange) then begin
-     fOnChange(self);
+    if assigned(fOnChangeSelection) and aEvent then begin
+     fOnChangeSelection(self);
     end;
    end;
   end else begin
    if fItemIndex>=0 then begin
     SetItemIndex(-1);
-    if assigned(fOnChange) then begin
-     fOnChange(self);
+    if assigned(fOnChangeSelection) and aEvent then begin
+     fOnChangeSelection(self);
     end;
    end;
   end;
  end;
+end;
+
+procedure TpvGUIListBox.SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
+begin
+ ChangeSelected(aItemIndex,aSelected,true);
 end;
 
 procedure TpvGUIListBox.ClearSelection;
@@ -14432,8 +14442,8 @@ begin
  end else begin
   SetItemIndex(-1);
  end;
- if assigned(fOnChange) then begin
-  fOnChange(self);
+ if assigned(fOnChangeSelection) then begin
+  fOnChangeSelection(self);
  end;
 end;
 
@@ -14536,7 +14546,10 @@ function TpvGUIListBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boo
    fActionStopIndex:=fItemIndex;
    ClearSelection;
    for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
-    SetSelected(CurrentItemIndex,true);
+    ChangeSelected(CurrentItemIndex,true,false);
+   end;
+   if assigned(fOnChangeSelection) then begin
+    fOnChangeSelection(self);
    end;
   end;
  end;
@@ -14661,7 +14674,10 @@ begin
       fActionStopIndex:=fItemIndex;
       ClearSelection;
       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
-       SetSelected(CurrentItemIndex,true);
+       ChangeSelected(CurrentItemIndex,true,false);
+      end;
+      if assigned(fOnChangeSelection) then begin
+       fOnChangeSelection(self);
       end;
      end;
      fAction:=TpvGUIListBoxAction.None;
@@ -14673,7 +14689,10 @@ begin
       fActionStopIndex:=fItemIndex;
       ClearSelection;
       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
-       SetSelected(CurrentItemIndex,true);
+       ChangeSelected(CurrentItemIndex,true,false);
+      end;
+      if assigned(fOnChangeSelection) then begin
+       fOnChangeSelection(self);
       end;
      end;
      result:=true;
@@ -14684,7 +14703,10 @@ begin
       fActionStopIndex:=fItemIndex;
       ClearSelection;
       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
-       SetSelected(CurrentItemIndex,true);
+       ChangeSelected(CurrentItemIndex,true,false);
+      end;
+      if assigned(fOnChangeSelection) then begin
+       fOnChangeSelection(self);
       end;
      end;
      result:=true;
