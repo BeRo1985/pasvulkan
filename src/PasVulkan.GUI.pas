@@ -2063,6 +2063,14 @@ type TpvGUIObject=class;
 
      TpvGUIListBoxSelectedBitmap=array of TpvUInt32;
 
+     PpvGUIListBoxAction=^TpvGUIListBoxAction;
+     TpvGUIListBoxAction=
+      (
+       None,
+       PreMark,
+       Mark
+      );
+
      TpvGUIListBox=class(TpvGUIWidget)
       private
        fFlags:TpvGUIListBoxFlags;
@@ -2075,6 +2083,9 @@ type TpvGUIObject=class;
        fOnChange:TpvGUIOnEvent;
        fOnChangeItemIndex:TpvGUIOnEvent;
        fSelectedBitmap:TpvGUIListBoxSelectedBitmap;
+       fAction:TpvGUIListBoxAction;
+       fActionStartIndex:TpvSizeInt;
+       fActionStopIndex:TpvSizeInt;
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
        function GetSelected(const aItemIndex:TpvSizeInt):boolean;
@@ -7234,7 +7245,7 @@ begin
                           Rect.RightBottom);
   end;
 
-  aCanvas.DrawText(aListBox.fItems[ItemIndex],Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
+  aCanvas.DrawText(TpvUTF8String(aListBox.fItems[ItemIndex]),Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
 
   Position.y:=Position.y+RowHeight;
 
@@ -14302,6 +14313,8 @@ begin
 
  fSelectedBitmap:=nil;
 
+ fAction:=TpvGUIListBoxAction.None;
+
 end;
 
 destructor TpvGUIListBox.Destroy;
@@ -14496,6 +14509,7 @@ end;
 
 function TpvGUIListBox.PointerLeave:boolean;
 begin
+ fAction:=TpvGUIListBoxAction.None;
  result:=inherited PointerLeave;
 end;
 
@@ -14505,14 +14519,44 @@ begin
 end;
 
 function TpvGUIListBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+ procedure DoSelection(const aForce:boolean);
+ var CurrentItemIndex:TpvSizeInt;
+ begin
+  if aForce or (fAction in [TpvGUIListBoxAction.PreMark,TpvGUIListBoxAction.Mark]) then begin
+   fAction:=TpvGUIListBoxAction.Mark;
+   fActionStopIndex:=fItemIndex;
+   ClearSelection;
+   for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+    SetSelected(CurrentItemIndex,true);
+   end;
+  end;
+ end;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
   case aKeyEvent.KeyCode of
+   KEYCODE_LSHIFT,KEYCODE_RSHIFT:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Down:begin
+      fAction:=TpvGUIListBoxAction.PreMark;
+      fActionStartIndex:=fItemIndex;
+      fActionStopIndex:=fItemIndex;
+     end;
+     TpvApplicationInputKeyEventType.Up:begin
+      if fAction=TpvGUIListBoxAction.Mark then begin
+       DoSelection(true);
+       fAction:=TpvGUIListBoxAction.None;
+      end else if fAction=TpvGUIListBoxAction.PreMark then begin
+       fAction:=TpvGUIListBoxAction.None;
+      end;
+     end;
+    end;
+   end;
    KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
       SetItemIndex(Min(Max(fItemIndex-1,0),fItems.Count-1));
+      DoSelection(false);
      end;
     end;
     result:=true;
@@ -14521,6 +14565,7 @@ begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
       SetItemIndex(Min(Max(fItemIndex+1,0),fItems.Count-1));
+      DoSelection(false);
      end;
     end;
     result:=true;
@@ -14529,6 +14574,7 @@ begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
       SetItemIndex(Min(Max(fItemIndex+4,0),fItems.Count-1));
+      DoSelection(false);
      end;
     end;
     result:=true;
@@ -14537,6 +14583,7 @@ begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
       SetItemIndex(Min(Max(fItemIndex-4,0),fItems.Count-1));
+      DoSelection(false);
      end;
     end;
     result:=true;
@@ -14545,6 +14592,7 @@ begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
       SetItemIndex(Min(0,fItems.Count-1));
+      DoSelection(false);
      end;
     end;
     result:=true;
@@ -14553,6 +14601,7 @@ begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
       SetItemIndex(fItems.Count-1);
+      DoSelection(false);
      end;
     end;
     result:=true;
@@ -14572,6 +14621,7 @@ begin
 end;
 
 function TpvGUIListBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var CurrentItemIndex:TpvSizeInt;
 begin
  UpdateScrollBar;
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -14583,20 +14633,51 @@ begin
      if not Focused then begin
       RequestFocus;
      end;
+     fAction:=TpvGUIListBoxAction.None;
      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
      if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
       SetSelected(fItemIndex,not GetSelected(fItemIndex));
      end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
+      fAction:=TpvGUIListBoxAction.Mark;
+      fActionStartIndex:=fItemIndex;
+      fActionStopIndex:=fItemIndex;
+      ClearSelection;
+      SetSelected(fItemIndex,true);
      end;
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Up:begin
+     if fAction=TpvGUIListBoxAction.Mark then begin
+      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
+      fActionStopIndex:=fItemIndex;
+      ClearSelection;
+      for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+       SetSelected(CurrentItemIndex,true);
+      end;
+     end;
+     fAction:=TpvGUIListBoxAction.None;
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Motion:begin
+     if fAction=TpvGUIListBoxAction.Mark then begin
+      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
+      fActionStopIndex:=fItemIndex;
+      ClearSelection;
+      for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+       SetSelected(CurrentItemIndex,true);
+      end;
+     end;
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Drag:begin
+     if fAction=TpvGUIListBoxAction.Mark then begin
+      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
+      fActionStopIndex:=fItemIndex;
+      ClearSelection;
+      for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+       SetSelected(CurrentItemIndex,true);
+      end;
+     end;
      result:=true;
     end;
    end;
