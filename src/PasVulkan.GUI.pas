@@ -14544,7 +14544,7 @@ function TpvGUIListBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boo
   if aForce or (fAction in [TpvGUIListBoxAction.PreMark,TpvGUIListBoxAction.Mark]) then begin
    fAction:=TpvGUIListBoxAction.Mark;
    fActionStopIndex:=fItemIndex;
-   ClearSelection;
+   fSelectedBitmap:=nil;
    for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
     ChangeSelected(CurrentItemIndex,true,false);
    end;
@@ -14663,7 +14663,7 @@ begin
       fAction:=TpvGUIListBoxAction.Mark;
       fActionStartIndex:=fItemIndex;
       fActionStopIndex:=fItemIndex;
-      ClearSelection;
+      fSelectedBitmap:=nil;
       SetSelected(fItemIndex,true);
      end;
      result:=true;
@@ -14672,7 +14672,7 @@ begin
      if fAction=TpvGUIListBoxAction.Mark then begin
       SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
       fActionStopIndex:=fItemIndex;
-      ClearSelection;
+      fSelectedBitmap:=nil;
       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
        ChangeSelected(CurrentItemIndex,true,false);
       end;
@@ -14687,7 +14687,7 @@ begin
      if fAction=TpvGUIListBoxAction.Mark then begin
       SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
       fActionStopIndex:=fItemIndex;
-      ClearSelection;
+      fSelectedBitmap:=nil;
       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
        ChangeSelected(CurrentItemIndex,true,false);
       end;
@@ -14701,7 +14701,7 @@ begin
      if fAction=TpvGUIListBoxAction.Mark then begin
       SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
       fActionStopIndex:=fItemIndex;
-      ClearSelection;
+      fSelectedBitmap:=nil;
       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
        ChangeSelected(CurrentItemIndex,true,false);
       end;
