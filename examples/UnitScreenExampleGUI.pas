@@ -35,7 +35,29 @@ uses SysUtils,
      PasVulkan.Font,
      PasVulkan.TrueTypeFont;
 
-type TScreenExampleGUI=class(TpvApplicationScreen)
+type TScreenExampleGUIWindow=class(TpvGUIWindow)
+      private
+       fGUILabel0:TpvGUILabel;
+       fGUILabel1:TpvGUILabel;
+       fGUIPopupMenuButton0:TpvGUIPopupMenuButton;
+       fGUIPopupButton0:TpvGUIPopupButton;
+       fGUIPopupButton1:TpvGUIPopupButton;
+       fGUIPopupButton2:TpvGUIPopupButton;
+       fGUIPopupButton3:TpvGUIPopupButton;
+       fGUIScrollBar0:TpvGUIScrollBar;
+       fGUISlider0:TpvGUISlider;
+       fGUIProgressBar0:TpvGUIProgressBar;
+       fGUIScrollBar1:TpvGUIScrollBar;
+       fGUISlider1:TpvGUISlider;
+       fGUIProgressBar1:TpvGUIProgressBar;
+       fTime:TpvDouble;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure Update; override;
+     end;
+
+     TScreenExampleGUI=class(TpvApplicationScreen)
       private
        fVulkanRenderPass:TpvVulkanRenderPass;
        fVulkanCommandPool:TpvVulkanCommandPool;
@@ -50,8 +72,6 @@ type TScreenExampleGUI=class(TpvApplicationScreen)
        fGUITextEdit:TpvGUITextEdit;
        fGUIOtherWindow:TpvGUIWindow;
        fGUIYetOtherWindow:TpvGUIWindow;
-       fGUIProgressBar0:TpvGUIProgressBar;
-       fGUIProgressBar1:TpvGUIProgressBar;
        fLastMousePosition:TpvVector2;
        fLastMouseButtons:TpvApplicationInputPointerButtons;
        fReady:boolean;
@@ -112,6 +132,133 @@ const SpritesVertices:array[0..2,0..1,0..2] of TpvFloat=
       Offsets:array[0..0] of TVkDeviceSize=(0);
 
       FontSize=3.0;
+
+constructor TScreenExampleGUIWindow.Create(const aParent:TpvGUIObject);
+var MenuItem:TpvGUIMenuItem;
+    PopupMenu:TpvGUIPopupMenu;
+begin
+ inherited Create(aParent);
+
+ Left:=750;
+ Top:=200;
+ Title:='Window with FlowLayout';
+//Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,8.0);
+ Content.Layout:=TpvGUIFlowLayout.Create(Content,
+                                         TpvGUILayoutOrientation.Horizontal,
+                                         8.0,
+                                         300.0,
+                                         0.0,
+                                         4.0,
+                                         4.0,
+                                         TpvGUIFlowLayoutDirection.LeftToRight,
+                                         TpvGUIFlowLayoutAlignment.Middle,
+                                         TpvGUIFlowLayoutAlignment.Middle,
+                                         true);
+ AddMinimizationButton;
+ AddMaximizationButton;
+ AddCloseButton;
+
+ fGUILabel0:=TpvGUILabel.Create(Content);
+ fGUILabel0.Caption:='An other example label';
+ fGUILabel0.Cursor:=TpvGUICursor.Busy;
+
+ fGUILabel1:=TpvGUILabel.Create(Content);
+ fGUILabel1.Caption:='An another example label';
+ fGUILabel1.Cursor:=TpvGUICursor.Unavailable;
+
+ fGUIPopupMenuButton0:=TpvGUIPopupMenuButton.Create(Content);
+ fGUIPopupMenuButton0.Caption:='Popup menu';
+ fGUIPopupMenuButton0.Enabled:=true;
+ TpvGUIMenuItem.Create(fGUIPopupMenuButton0.PopupMenu).Caption:='Test 1';
+ MenuItem:=TpvGUIMenuItem.Create(fGUIPopupMenuButton0.PopupMenu);
+ MenuItem.Caption:='Test 2';
+ PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
+ TpvGUIMenuItem.Create(PopupMenu).Caption:='Test A';
+ TpvGUIMenuItem.Create(PopupMenu).Caption:='Test B';
+ MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+ MenuItem.Caption:='Test C';
+ PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
+ TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 1';
+ TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 2';
+ TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 3';
+ TpvGUIMenuItem.Create(fGUIPopupMenuButton0.PopupMenu).Caption:='Test 3';
+
+ fGUIPopupButton0:=TpvGUIPopupButton.Create(Content);
+ fGUIPopupButton0.Caption:='Popup';
+ fGUIPopupButton0.Enabled:=true;
+ fGUIPopupButton0.Popup.AnchorSide:=TpvGUIPopupAnchorSide.Top;
+
+ fGUIPopupButton1:=TpvGUIPopupButton.Create(Content);
+ fGUIPopupButton1.Caption:='Popup';
+ fGUIPopupButton1.Enabled:=true;
+ fGUIPopupButton1.Popup.AnchorSide:=TpvGUIPopupAnchorSide.Bottom;
+
+ fGUIPopupButton2:=TpvGUIPopupButton.Create(Content);
+ fGUIPopupButton2.Caption:='Popup';
+ fGUIPopupButton2.Enabled:=true;
+ fGUIPopupButton2.Popup.AnchorSide:=TpvGUIPopupAnchorSide.Left;
+
+ fGUIPopupButton3:=TpvGUIPopupButton.Create(Content);
+ fGUIPopupButton3.Caption:='Popup';
+ fGUIPopupButton3.Enabled:=true;
+ fGUIPopupButton3.Popup.AnchorSide:=TpvGUIPopupAnchorSide.Right;
+
+ fGUIScrollBar0:=TpvGUIScrollBar.Create(Content);
+ fGUIScrollBar0.Orientation:=TpvGUIScrollBarOrientation.Horizontal;
+ fGUIScrollBar0.MinimumValue:=0;
+ fGUIScrollBar0.MaximumValue:=100;
+ fGUIScrollBar0.ThumbButtonSize:=24.0;
+ fGUIScrollBar0.FixedWidth:=256.0;
+
+ fGUISlider0:=TpvGUISlider.Create(Content);
+ fGUISlider0.Orientation:=TpvGUISliderOrientation.Horizontal;
+ fGUISlider0.FixedWidth:=256.0;
+
+ fGUIProgressBar0:=TpvGUIProgressBar.Create(Content);
+ fGUIProgressBar0.Orientation:=TpvGUIProgressBarOrientation.Horizontal;
+ fGUIProgressBar0.MinimumValue:=0;
+ fGUIProgressBar0.MaximumValue:=100;
+ fGUIProgressBar0.Value:=75;
+ fGUIProgressBar0.FixedWidth:=256.0;
+
+ fGUIScrollBar1:=TpvGUIScrollBar.Create(Content);
+ fGUIScrollBar1.Orientation:=TpvGUIScrollBarOrientation.Vertical;
+ //fGUIScrollBar1.SliderButtonSize:=24.0;
+ fGUIScrollBar1.MaximumValue:=2;
+ fGUIScrollBar1.FixedHeight:=128.0;
+
+ fGUISlider1:=TpvGUISlider.Create(Content);
+ fGUISlider1.Orientation:=TpvGUISliderOrientation.Vertical;
+ fGUISlider1.FixedHeight:=128.0;
+
+ fGUIProgressBar1:=TpvGUIProgressBar.Create(Content);
+ fGUIProgressBar1.Orientation:=TpvGUIProgressBarOrientation.Vertical;
+ fGUIProgressBar1.MinimumValue:=0;
+ fGUIProgressBar1.MaximumValue:=100;
+ fGUIProgressBar1.Value:=25;
+ fGUIProgressBar1.FixedHeight:=64.0;
+
+ fTime:=0.0;
+
+end;
+
+destructor TScreenExampleGUIWindow.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TScreenExampleGUIWindow.Update;
+begin
+
+ fGUIProgressBar0.Value:=round(fGUIProgressBar0.MinimumValue+((fGUIProgressBar0.MaximumValue-fGUIProgressBar0.MinimumValue)*frac(fTime)));
+
+ fGUIProgressBar1.Value:=round(fGUIProgressBar1.MinimumValue+((fGUIProgressBar1.MaximumValue-fGUIProgressBar1.MinimumValue)*frac(fTime)));
+
+ fTime:=fTime+Instance.DeltaTime;
+
+ inherited Update;
+
+end;
 
 constructor TScreenExampleGUI.Create;
 begin
@@ -398,105 +545,7 @@ begin
  fGUIButton.FixedWidth:=480;
  fGUIButton.FixedHeight:=240;
 
- fGUIYetOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
- fGUIYetOtherWindow.Left:=750;
- fGUIYetOtherWindow.Top:=200;
- fGUIYetOtherWindow.Title:='Window with FlowLayout';
-//fGUIYetOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,8.0);
- fGUIYetOtherWindow.Content.Layout:=TpvGUIFlowLayout.Create(fGUIOtherWindow.Content,
-                                                            TpvGUILayoutOrientation.Horizontal,
-                                                            8.0,
-                                                            300.0,
-                                                            0.0,
-                                                            4.0,
-                                                            4.0,
-                                                            TpvGUIFlowLayoutDirection.LeftToRight,
-                                                            TpvGUIFlowLayoutAlignment.Middle,
-                                                            TpvGUIFlowLayoutAlignment.Middle,
-                                                            true);
- fGUIYetOtherWindow.AddMinimizationButton;
- fGUIYetOtherWindow.AddMaximizationButton;
- fGUIYetOtherWindow.AddCloseButton;
-
- fGUILabel:=TpvGUILabel.Create(fGUIYetOtherWindow.Content);
- fGUILabel.Caption:='An other example label';
- fGUILabel.Cursor:=TpvGUICursor.Busy;
-
- fGUILabel:=TpvGUILabel.Create(fGUIYetOtherWindow.Content);
- fGUILabel.Caption:='An another example label';
- fGUILabel.Cursor:=TpvGUICursor.Unavailable;
-
- fGUIButton:=TpvGUIPopupMenuButton.Create(fGUIYetOtherWindow.Content);
- fGUIButton.Caption:='Popup menu';
- fGUIButton.Enabled:=true;
- TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu).Caption:='Test 1';
- MenuItem:=TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu);
- MenuItem.Caption:='Test 2';
- PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
- TpvGUIMenuItem.Create(PopupMenu).Caption:='Test A';
- TpvGUIMenuItem.Create(PopupMenu).Caption:='Test B';
- MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
- MenuItem.Caption:='Test C';
- PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
- TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 1';
- TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 2';
- TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 3';
- TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu).Caption:='Test 3';
-
- fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
- fGUIButton.Caption:='Popup';
- fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=TpvGUIPopupAnchorSide.Top;
-
- fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
- fGUIButton.Caption:='Popup';
- fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=TpvGUIPopupAnchorSide.Bottom;
-
- fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
- fGUIButton.Caption:='Popup';
- fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=TpvGUIPopupAnchorSide.Left;
-
- fGUIButton:=TpvGUIPopupButton.Create(fGUIYetOtherWindow.Content);
- fGUIButton.Caption:='Popup';
- fGUIButton.Enabled:=true;
- TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=TpvGUIPopupAnchorSide.Right;
-
- ScrollBar:=TpvGUIScrollBar.Create(fGUIYetOtherWindow.Content);
- ScrollBar.Orientation:=TpvGUIScrollBarOrientation.Horizontal;
- ScrollBar.MinimumValue:=0;
- ScrollBar.MaximumValue:=100;
- ScrollBar.ThumbButtonSize:=24.0;
- ScrollBar.FixedWidth:=256.0;
-
- Slider:=TpvGUISlider.Create(fGUIYetOtherWindow.Content);
- Slider.Orientation:=TpvGUISliderOrientation.Horizontal;
- Slider.FixedWidth:=256.0;
-
- fGUIProgressBar0:=TpvGUIProgressBar.Create(fGUIYetOtherWindow.Content);
- fGUIProgressBar0.Orientation:=TpvGUIProgressBarOrientation.Horizontal;
- fGUIProgressBar0.MinimumValue:=0;
- fGUIProgressBar0.MaximumValue:=100;
- fGUIProgressBar0.Value:=75;
- fGUIProgressBar0.FixedWidth:=256.0;
-
- ScrollBar:=TpvGUIScrollBar.Create(fGUIYetOtherWindow.Content);
- ScrollBar.Orientation:=TpvGUIScrollBarOrientation.Vertical;
- //ScrollBar.SliderButtonSize:=24.0;
- ScrollBar.MaximumValue:=2;
- ScrollBar.FixedHeight:=128.0;
-
- Slider:=TpvGUISlider.Create(fGUIYetOtherWindow.Content);
- Slider.Orientation:=TpvGUISliderOrientation.Vertical;
- Slider.FixedHeight:=128.0;
-
- fGUIProgressBar1:=TpvGUIProgressBar.Create(fGUIYetOtherWindow.Content);
- fGUIProgressBar1.Orientation:=TpvGUIProgressBarOrientation.Vertical;
- fGUIProgressBar1.MinimumValue:=0;
- fGUIProgressBar1.MaximumValue:=100;
- fGUIProgressBar1.Value:=25;
- fGUIProgressBar1.FixedHeight:=64.0;
+ fGUIYetOtherWindow:=TScreenExampleGUIWindow.Create(fGUIInstance);
 
  Window:=TpvGUIWindow.Create(fGUIInstance);
  Window.Left:=150;
@@ -929,14 +978,11 @@ begin
  fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 {$ifend}
 
- fGUIProgressBar0.Value:=round(fGUIProgressBar0.MinimumValue+((fGUIProgressBar0.MaximumValue-fGUIProgressBar0.MinimumValue)*frac(fTime)));
-
- fGUIProgressBar1.Value:=round(fGUIProgressBar1.MinimumValue+((fGUIProgressBar1.MaximumValue-fGUIProgressBar1.MinimumValue)*frac(fTime)));
-
  fGUIInstance.DrawWidgetBounds:=false;
  fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateSwapChainImageIndex;
  fGUIInstance.DeltaTime:=aDeltaTime;
  fGUIInstance.Update;
+ fGUIInstance.Draw;
 
  fVulkanCanvas.Stop;
 
@@ -972,7 +1018,7 @@ begin
    VulkanSwapChain:=pvApplication.VulkanSwapChain;
 
    fGUIInstance.DrawBufferIndex:=pvApplication.DrawSwapChainImageIndex;
-   fGUIInstance.Draw;
+   fGUIInstance.ExecuteDraw;
 
    VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 
