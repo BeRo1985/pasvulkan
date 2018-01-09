@@ -7153,7 +7153,7 @@ var Element:TpvInt32;
     CurrentFontSize,RowHeight:TpvFloat;
     Position:TpvVector2;
     FontColor:TpvVector4;
-    ClipRect,Rect:TpvRect;
+    ClipRect,DrawRect,Rect:TpvRect;
 begin
 
 
@@ -7209,8 +7209,8 @@ begin
 
  aCanvas.ClipRect:=ClipRect;
 
- ClipRect.LeftTop:=ClipRect.LeftTop-aListBox.fClipRect.LeftTop;
- ClipRect.RightBottom:=ClipRect.RightBottom-aListBox.fClipRect.LeftTop;
+ DrawRect.LeftTop:=ClipRect.LeftTop-aListBox.fClipRect.LeftTop;
+ DrawRect.RightBottom:=ClipRect.RightBottom-aListBox.fClipRect.LeftTop;
 
  for ItemIndex:=aListBox.fScrollBar.Value to aListBox.fItems.Count-1 do begin
 
@@ -7227,27 +7227,36 @@ begin
    aCanvas.Color:=FontColor;
   end;
 
+  aCanvas.DrawText(TpvUTF8String(aListBox.fItems[ItemIndex]),Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
+
   if aListBox.fItemIndex=ItemIndex then begin
-   Rect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(BoxCornerMargin,
-                                                            Position.y),
-                                TpvVector2.InlineableCreate(ClipRect.Right,
-                                                            Position.y+RowHeight));
    if aListBox.Focused then begin
     Element:=GUI_ELEMENT_FOCUSED;
    end else begin
     Element:=GUI_ELEMENT_HOVERED;
    end;
+   Rect:=ClipRect;
+   Rect.Left:=ClipRect.Left-1.0;
+   Rect.Right:=ClipRect.Right+1.0;
+   aCanvas.ClipRect:=Rect;
+   Rect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                            Position.y),
+                                TpvVector2.InlineableCreate(DrawRect.Right,
+                                                            Position.y+RowHeight));
    aCanvas.DrawGUIElement(Element,
                           true,
-                          Rect.LeftTop+TpvVector2.InlineableCreate(-32.0,-32.0),
-                          Rect.RightBottom+TpvVector2.InlineableCreate(32.0,32.0),
-                          Rect.LeftTop,
-                          Rect.RightBottom);
+                          Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
+                          Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
+                          Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
+                          Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0));
+   aCanvas.ClipRect:=ClipRect;
   end;
 
-  aCanvas.DrawText(TpvUTF8String(aListBox.fItems[ItemIndex]),Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
-
   Position.y:=Position.y+RowHeight;
+
+  if Position.y>aListBox.fSize.y then begin
+   break;
+  end;
 
  end;
 
