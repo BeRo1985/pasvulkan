@@ -647,6 +647,9 @@ type TpvGUIObject=class;
        function GetTabPanelPreferredSize(const aTabPanel:TpvGUITabPanel):TpvVector2; virtual;
        procedure DrawTabPanel(const aCanvas:TpvCanvas;const aTabPanel:TpvGUITabPanel); virtual;
       public
+       function GetListBoxPreferredSize(const aListBox:TpvGUIListBox):TpvVector2; virtual;
+       procedure DrawListBox(const aCanvas:TpvCanvas;const aListBox:TpvGUIListBox); virtual;
+      public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
        property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
@@ -783,6 +786,9 @@ type TpvGUIObject=class;
        procedure PreprocessTabPanel(const aTabPanel:TpvGUITabPanel); override;
        function GetTabPanelPreferredSize(const aTabPanel:TpvGUITabPanel):TpvVector2; override;
        procedure DrawTabPanel(const aCanvas:TpvCanvas;const aTabPanel:TpvGUITabPanel); override;
+      public
+       function GetListBoxPreferredSize(const aListBox:TpvGUIListBox):TpvVector2; override;
+       procedure DrawListBox(const aCanvas:TpvCanvas;const aListBox:TpvGUIListBox); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -2046,8 +2052,27 @@ type TpvGUIObject=class;
 
      TpvGUIListBox=class(TpvGUIWidget)
       private
+       fItems:TStrings;
+       fItemIndex:TpvSizeInt;
+       procedure SetItems(const aItems:TStrings);
+       procedure SetItemIndex(const aItemIndex:TpvSizeInt);
+       function GetPreferredSize:TpvVector2; override;
       public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure PerformLayout; override;
+       function Enter:boolean; override;
+       function Leave:boolean; override;
+       function PointerEnter:boolean; override;
+       function PointerLeave:boolean; override;
+       function DragEvent(const aPosition:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure Draw; override;
       published
+       property Items:TStrings read fItems write SetItems;
+       property ItemIndex:TpvSizeInt read fItemIndex write SetItemIndex;
      end;
 
 implementation
@@ -4171,6 +4196,16 @@ begin
 end;
 
 procedure TpvGUISkin.DrawTabPanel(const aCanvas:TpvCanvas;const aTabPanel:TpvGUITabPanel);
+begin
+
+end;
+
+function TpvGUISkin.GetListBoxPreferredSize(const aListBox:TpvGUIListBox):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aListBox);
+end;
+
+procedure TpvGUISkin.DrawListBox(const aCanvas:TpvCanvas;const aListBox:TpvGUIListBox);
 begin
 
 end;
@@ -7037,6 +7072,53 @@ begin
                          aTabPanel.fContentRect.RightBottom);
 
  end;
+
+end;
+
+
+function TpvGUIDefaultVectorBasedSkin.GetListBoxPreferredSize(const aListBox:TpvGUIListBox):TpvVector2;
+var CurrentFont:TpvFont;
+    CurrentFontSize:TpvFloat;
+begin
+
+ CurrentFont:=aListBox.Font;
+
+ CurrentFontSize:=aListBox.FontSize;
+
+ result:=CurrentFont.RowHeight(100,CurrentFontSize)*8;
+
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawListBox(const aCanvas:TpvCanvas;const aListBox:TpvGUIListBox);
+var Element:TpvInt32;
+    CurrentFont:TpvFont;
+    CurrentFontSize:TpvFloat;
+begin
+
+ aCanvas.ModelMatrix:=aListBox.fModelMatrix;
+ aCanvas.ClipRect:=aListBox.fClipRect;
+
+ CurrentFont:=aListBox.Font;
+
+ CurrentFontSize:=aListBox.FontSize;
+
+ if aListBox.Enabled then begin
+  aCanvas.Color:=aListBox.FontColor;
+  if aListBox.Focused then begin
+   Element:=GUI_ELEMENT_BOX_FOCUSED;
+  end else begin
+   Element:=GUI_ELEMENT_BOX_UNFOCUSED;
+  end;
+ end else begin
+  Element:=GUI_ELEMENT_BOX_DISABLED;
+  aCanvas.Color:=TpvVector4.InlineableCreate(aListBox.FontColor.rgb,aListBox.FontColor.a*0.25);
+ end;
+ aCanvas.DrawGUIElement(Element,
+                        true,
+                        TpvVector2.Null,
+                        aListBox.fSize,
+                        TpvVector2.Null,
+                        aListBox.fSize);
 
 end;
 
@@ -14065,6 +14147,182 @@ procedure TpvGUITabPanel.Draw;
 begin
  ExecuteInvalidateActions;
  Skin.DrawTabPanel(fCanvas,self);
+ inherited Draw;
+end;
+
+constructor TpvGUIListBox.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
+
+ fItems:=TStringList.Create;
+ fItemIndex:=-1;
+
+end;
+
+destructor TpvGUIListBox.Destroy;
+begin
+ FreeAndNil(fItems);
+ inherited Destroy;
+end;
+
+procedure TpvGUIListBox.SetItems(const aItems:TStrings);
+begin
+ fItems.Assign(aItems);
+ SetItemIndex(Min(Max(fItemIndex,0),fItems.Count-1));
+end;
+
+procedure TpvGUIListBox.SetItemIndex(const aItemIndex:TpvSizeInt);
+begin
+ if fItemIndex<>aItemIndex then begin
+  fItemIndex:=Min(Max(aItemIndex,0),fItems.Count-1);
+ end;
+end;
+
+function TpvGUIListBox.GetPreferredSize:TpvVector2;
+begin
+ result:=Skin.GetListBoxPreferredSize(self);
+end;
+
+procedure TpvGUIListBox.PerformLayout;
+begin
+ inherited PerformLayout;
+end;
+
+function TpvGUIListBox.Enter:boolean;
+begin
+ result:=inherited Enter;
+end;
+
+function TpvGUIListBox.Leave:boolean;
+begin
+ result:=inherited Leave;
+end;
+
+function TpvGUIListBox.PointerEnter:boolean;
+begin
+ result:=inherited PointerEnter;
+end;
+
+function TpvGUIListBox.PointerLeave:boolean;
+begin
+ result:=inherited PointerLeave;
+end;
+
+function TpvGUIListBox.DragEvent(const aPosition:TpvVector2):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUIListBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if Enabled and not result then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(Max(fItemIndex-1,0),fItems.Count-1));
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(Max(fItemIndex+1,0),fItems.Count-1));
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_PAGEDOWN:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(Max(fItemIndex-4,0),fItems.Count-1));
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_PAGEUP:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(Max(fItemIndex+4,0),fItems.Count-1));
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_HOME:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(0,fItems.Count-1));
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_END:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(fItems.Count-1);
+     end;
+    end;
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIListBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+begin
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+ if not result then begin
+  result:=inherited PointerEvent(aPointerEvent);
+  if not result then begin
+   case aPointerEvent.PointerEventType of
+    TpvApplicationInputPointerEventType.Down:begin
+     if not Focused then begin
+      RequestFocus;
+     end;
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Up:begin
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Motion:begin
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Drag:begin
+     result:=true;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIListBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+var TemporaryValue,Step:TpvInt64;
+    v:TpvFloat;
+begin
+ result:=inherited Scrolled(aPosition,aRelativeAmount);
+ if not result then begin
+  TemporaryValue:=fItemIndex;
+  v:=aRelativeAmount.x-aRelativeAmount.y;
+  if v<0.0 then begin
+   Step:=floor(v);
+  end else begin
+   Step:=ceil(v);
+  end;
+  SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
+  result:=true;
+ end;
+end;
+
+procedure TpvGUIListBox.Draw;
+begin
+ Skin.DrawListBox(fCanvas,self);
  inherited Draw;
 end;
 

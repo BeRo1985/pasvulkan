@@ -50,6 +50,7 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        fGUIScrollBar1:TpvGUIScrollBar;
        fGUISlider1:TpvGUISlider;
        fGUIProgressBar1:TpvGUIProgressBar;
+       fGUIListBox0:TpvGUIListBox;
        fTime:TpvDouble;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -237,6 +238,18 @@ begin
  fGUIProgressBar1.MaximumValue:=100;
  fGUIProgressBar1.Value:=25;
  fGUIProgressBar1.FixedHeight:=64.0;
+
+ fGUIListBox0:=TpvGUIListBox.Create(Content);
+ fGUIListBox0.Items.Add('Item 1');
+ fGUIListBox0.Items.Add('Item 2');
+ fGUIListBox0.Items.Add('Item 3');
+ fGUIListBox0.Items.Add('Item 4');
+ fGUIListBox0.Items.Add('Item 5');
+ fGUIListBox0.Items.Add('Item 6');
+ fGUIListBox0.Items.Add('Item 7');
+ fGUIListBox0.Items.Add('Item 8');
+ fGUIListBox0.Items.Add('Item 9');
+ fGUIListBox0.Items.Add('Item 10');
 
  fTime:=0.0;
 
