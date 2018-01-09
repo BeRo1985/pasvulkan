@@ -7118,8 +7118,16 @@ var Element:TpvInt32;
     ClipRect:TpvRect;
 begin
 
+
  aCanvas.ModelMatrix:=aListBox.fModelMatrix;
- aCanvas.ClipRect:=aListBox.fClipRect;
+
+ ClipRect:=aListBox.fClipRect;
+
+ if aListBox.fScrollBar.Visible then begin
+  ClipRect.Right:=ClipRect.Right-aListBox.fScrollBar.fSize.x;
+ end;
+
+ aCanvas.ClipRect:=ClipRect;
 
  CurrentFont:=aListBox.Font;
 
@@ -7157,9 +7165,10 @@ begin
 
  aCanvas.Color:=FontColor;
 
- ClipRect:=aListBox.fClipRect;
  ClipRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
+
  ClipRect.RightBottom:=ClipRect.RightBottom-TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
+
  aCanvas.ClipRect:=ClipRect;
 
  for ItemIndex:=aListBox.fScrollBar.Value to aListBox.fItems.Count-1 do begin
