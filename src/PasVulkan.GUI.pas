@@ -1954,8 +1954,6 @@ type TpvGUIObject=class;
        fPosition:TpvVector2;
        fSize:TpvVector2;
        fRect:TpvRect;
-       procedure InvalidateLayout;
-       procedure InvalidateHeader;
        procedure SetCaption(const aCaption:TpvUTF8String);
        function GetModified:boolean; inline;
        procedure SetModified(const aModified:boolean);
@@ -2029,9 +2027,7 @@ type TpvGUIObject=class;
        procedure SetTabIndex(const aTabIndex:TpvSizeInt);
        function GetTab:TpvGUITab;
        procedure SetTab(const aTab:TpvGUITab);
-       procedure UpdateIfNeeded;
-       procedure InvalidateLayout;
-       procedure InvalidateHeader;
+       procedure ExecuteInvalidateActions;
       public
        constructor Create(const aParent:TpvGUIObject;const aContentMargin:TpvFloat=-1.0); reintroduce;
        destructor Destroy; override;
@@ -13620,22 +13616,11 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvGUITab.InvalidateLayout;
-begin
- (Collection as TpvGUITabList).fOwner.InvalidateLayout;
-end;
-
-procedure TpvGUITab.InvalidateHeader;
-begin
- (Collection as TpvGUITabList).fOwner.InvalidateHeader;
-end;
-
 procedure TpvGUITab.SetCaption(const aCaption:TpvUTF8String);
 begin
  if fCaption<>aCaption then begin
   fCaption:=aCaption;
   fCachedCaptionInvalidated:=true;
-  InvalidateHeader;
  end;
 end;
 
@@ -13652,8 +13637,6 @@ begin
   end else begin
    Exclude(fFlags,TpvGUITabFlag.Modified);
   end;
-  InvalidateLayout;
-  InvalidateHeader;
  end;
 end;
 
@@ -13844,6 +13827,7 @@ end;
 function TpvGUITabPanel.GetHighlightRect:TpvRect;
 var p:TpvVector2;
 begin
+ ExecuteInvalidateActions;
  if TpvGUITabPanelFlag.VisibleHeader in fFlags then begin
   p:=fInstance.MousePosition-GetAbsolutePosition;
   if ((fTabIndex>=0) and (fTabIndex<fTabs.Count) and
@@ -13899,7 +13883,7 @@ begin
     end;
     CurrentTab.fContent.PerformLayout;
    end;
-   InvalidateHeader;
+   Include(fFlags,TpvGUITabPanelFlag.HeaderInvalidated);
   end;
  end;
 end;
@@ -13916,16 +13900,6 @@ end;
 procedure TpvGUITabPanel.SetTab(const aTab:TpvGUITab);
 begin
  SetTabIndex(fTabs.IndexOf(aTab));
-end;
-
-procedure TpvGUITabPanel.InvalidateLayout;
-begin
- Include(fFlags,TpvGUITabPanelFlag.LayoutInvalidated);
-end;
-
-procedure TpvGUITabPanel.InvalidateHeader;
-begin
- Include(fFlags,TpvGUITabPanelFlag.HeaderInvalidated);
 end;
 
 procedure TpvGUITabPanel.PerformLayout;
@@ -13956,13 +13930,14 @@ begin
  end;
 end;
 
-procedure TpvGUITabPanel.UpdateIfNeeded;
+procedure TpvGUITabPanel.ExecuteInvalidateActions;
 begin
  if TpvGUITabPanelFlag.LayoutInvalidated in fFlags then begin
   try
    PerformLayout;
   finally
-   Exclude(fFlags,TpvGUITabPanelFlag.LayoutInvalidated);
+   fFlags:=fFlags-[TpvGUITabPanelFlag.LayoutInvalidated,
+                   TpvGUITabPanelFlag.HeaderInvalidated];
   end;
  end;
  if TpvGUITabPanelFlag.HeaderInvalidated in fFlags then begin
@@ -14001,7 +13976,7 @@ end;
 
 function TpvGUITabPanel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
- UpdateIfNeeded;
+ ExecuteInvalidateActions;
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and (TpvGUITabPanelFlag.VisibleHeader in fFlags) and not result then begin
   case aKeyEvent.KeyCode of
@@ -14075,7 +14050,7 @@ function TpvGUITabPanel.PointerEvent(const aPointerEvent:TpvApplicationInputPoin
 var CurrentTabIndex:TpvSizeInt;
     CurrentTab:TpvGUITab;
 begin
- UpdateIfNeeded;
+ ExecuteInvalidateActions;
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
   result:=inherited PointerEvent(aPointerEvent);
@@ -14118,7 +14093,7 @@ function TpvGUITabPanel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boo
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
- UpdateIfNeeded;
+ ExecuteInvalidateActions;
  result:=inherited Scrolled(aPosition,aRelativeAmount);
  if (TpvGUITabPanelFlag.VisibleHeader in fFlags) and
     fHeaderRect.Touched(aPosition) and not result then begin
@@ -14136,7 +14111,7 @@ end;
 
 procedure TpvGUITabPanel.Update;
 begin
- UpdateIfNeeded;
+ ExecuteInvalidateActions;
  Skin.DrawTabPanel(fCanvas,self);
  inherited Update;
 end;
