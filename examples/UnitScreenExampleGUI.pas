@@ -35,7 +35,7 @@ uses SysUtils,
      PasVulkan.Font,
      PasVulkan.TrueTypeFont;
 
-type TScreenExampleGUIWindow=class(TpvGUIWindow)
+type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
       private
        fGUILabel0:TpvGUILabel;
        fGUILabel1:TpvGUILabel;
@@ -133,7 +133,7 @@ const SpritesVertices:array[0..2,0..1,0..2] of TpvFloat=
 
       FontSize=3.0;
 
-constructor TScreenExampleGUIWindow.Create(const aParent:TpvGUIObject);
+constructor TScreenExampleGUIFillLayoutExampleWindow.Create(const aParent:TpvGUIObject);
 var MenuItem:TpvGUIMenuItem;
     PopupMenu:TpvGUIPopupMenu;
 begin
@@ -142,7 +142,7 @@ begin
  Left:=750;
  Top:=200;
  Title:='Window with FlowLayout';
-//Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,8.0);
+//Content.Layout:=TpvGUIBoxLayout.Create(Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,8.0);
  Content.Layout:=TpvGUIFlowLayout.Create(Content,
                                          TpvGUILayoutOrientation.Horizontal,
                                          8.0,
@@ -242,12 +242,12 @@ begin
 
 end;
 
-destructor TScreenExampleGUIWindow.Destroy;
+destructor TScreenExampleGUIFillLayoutExampleWindow.Destroy;
 begin
  inherited Destroy;
 end;
 
-procedure TScreenExampleGUIWindow.Update;
+procedure TScreenExampleGUIFillLayoutExampleWindow.Update;
 begin
 
  fGUIProgressBar0.Value:=round(fGUIProgressBar0.MinimumValue+((fGUIProgressBar0.MaximumValue-fGUIProgressBar0.MinimumValue)*frac(fTime)));
@@ -545,7 +545,7 @@ begin
  fGUIButton.FixedWidth:=480;
  fGUIButton.FixedHeight:=240;
 
- fGUIYetOtherWindow:=TScreenExampleGUIWindow.Create(fGUIInstance);
+ fGUIYetOtherWindow:=TScreenExampleGUIFillLayoutExampleWindow.Create(fGUIInstance);
 
  Window:=TpvGUIWindow.Create(fGUIInstance);
  Window.Left:=150;
