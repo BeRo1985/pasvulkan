@@ -2054,15 +2054,16 @@ type TpvGUIObject=class;
 
      TpvGUIListBox=class(TpvGUIWidget)
       private
+       fScrollBar:TpvGUIScrollBar;
        fItems:TStrings;
        fItemIndex:TpvSizeInt;
-       fOffsetItemIndex:TpvSizeInt;
        fRowHeight:TpvFloat;
        fWorkYOffset:TpvFloat;
        fWorkRowHeight:TpvFloat;
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
        function GetPreferredSize:TpvVector2; override;
+       procedure UpdateScrollBar;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -7161,7 +7162,7 @@ begin
  ClipRect.RightBottom:=ClipRect.RightBottom-TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
  aCanvas.ClipRect:=ClipRect;
 
- for ItemIndex:=aListBox.fOffsetItemIndex to aListBox.fItems.Count-1 do begin
+ for ItemIndex:=aListBox.fScrollBar.Value to aListBox.fItems.Count-1 do begin
 
   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
 
@@ -14221,11 +14222,12 @@ begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
  Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
 
+ fScrollBar:=TpvGUIScrollBar.Create(self);
+ fScrollBar.SetOrientation(TpvGUIScrollBarOrientation.Vertical);
+
  fItems:=TStringList.Create;
 
  fItemIndex:=-1;
-
- fOffsetItemIndex:=0;
 
  fRowHeight:=0.0;
 
@@ -14248,9 +14250,18 @@ begin
 end;
 
 procedure TpvGUIListBox.SetItemIndex(const aItemIndex:TpvSizeInt);
+var VisibleItems:TpvSizeInt;
 begin
  if fItemIndex<>aItemIndex then begin
   fItemIndex:=Min(Max(aItemIndex,0),fItems.Count-1);
+  if fScrollBar.Visible then begin
+   VisibleItems:=trunc((fSize.y-(fWorkYOffset*2.0))/Max(fWorkRowHeight,1));
+   if (fItemIndex-fScrollBar.Value)<0 then begin
+    fScrollBar.Value:=fItemIndex;
+   end else if ((fItemIndex-fScrollBar.Value)+1)>=VisibleItems then begin
+    fScrollBar.Value:=Max(0,(fItemIndex-VisibleItems)+1);
+   end;
+  end;
  end;
 end;
 
@@ -14260,8 +14271,27 @@ begin
 end;
 
 procedure TpvGUIListBox.PerformLayout;
+var ScrollBarSize:TpvVector2;
 begin
+ fScrollBar.Visible:=false;
  inherited PerformLayout;
+ fScrollBar.Visible:=true;
+ ScrollBarSize:=fScrollBar.GetPreferredSize;
+ fScrollBar.fPosition:=TpvVector2.InlineableCreate(fSize.x-ScrollBarSize.x,0.0);
+ fScrollBar.fSize:=TpvVector2.InlineableCreate(ScrollBarSize.x,fSize.y);
+ UpdateScrollBar;
+end;
+
+procedure TpvGUIListBox.UpdateScrollBar;
+var VisibleItems:TpvSizeInt;
+begin
+ VisibleItems:=trunc((fSize.y-(fWorkYOffset*2.0))/Max(fWorkRowHeight,1));
+ fScrollBar.Visible:=fItems.Count>VisibleItems;
+ fScrollBar.MinimumValue:=0;
+ fScrollBar.MaximumValue:=Max(1,fItems.Count-VisibleItems);
+ if not fScrollBar.Visible then begin
+  fScrollBar.Value:=0;
+ end;
 end;
 
 function TpvGUIListBox.Enter:boolean;
@@ -14348,6 +14378,7 @@ end;
 
 function TpvGUIListBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 begin
+ UpdateScrollBar;
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
   result:=inherited PointerEvent(aPointerEvent);
@@ -14357,7 +14388,7 @@ begin
      if not Focused then begin
       RequestFocus;
      end;
-     SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fOffsetItemIndex);
+     SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Up:begin
@@ -14394,6 +14425,7 @@ end;
 
 procedure TpvGUIListBox.Draw;
 begin
+ UpdateScrollBar;
  Skin.DrawListBox(fCanvas,self);
  inherited Draw;
 end;
