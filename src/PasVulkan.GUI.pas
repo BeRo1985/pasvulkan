@@ -723,6 +723,8 @@ type TpvGUIObject=class;
        const ButtonHorizontalBorderSpacing=10.0;
              ButtonIconSpacing=8.0;
              TabButtonSize=24;
+             BoxCornerMargin=3.0;
+             ListBoxHorizontalMargin=2.0;
       protected
        fUnfocusedWindowHeaderFontShadow:boolean;
        fFocusedWindowHeaderFontShadow:boolean;
@@ -2054,6 +2056,10 @@ type TpvGUIObject=class;
       private
        fItems:TStrings;
        fItemIndex:TpvSizeInt;
+       fOffsetItemIndex:TpvSizeInt;
+       fRowHeight:TpvFloat;
+       fWorkYOffset:TpvFloat;
+       fWorkRowHeight:TpvFloat;
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
        function GetPreferredSize:TpvVector2; override;
@@ -2073,6 +2079,7 @@ type TpvGUIObject=class;
       published
        property Items:TStrings read fItems write SetItems;
        property ItemIndex:TpvSizeInt read fItemIndex write SetItemIndex;
+       property RowHeight:TpvFloat read fRowHeight write fRowHeight;
      end;
 
 implementation
@@ -7078,21 +7085,36 @@ end;
 
 function TpvGUIDefaultVectorBasedSkin.GetListBoxPreferredSize(const aListBox:TpvGUIListBox):TpvVector2;
 var CurrentFont:TpvFont;
-    CurrentFontSize:TpvFloat;
+    CurrentFontSize,RowHeight:TpvFloat;
 begin
 
  CurrentFont:=aListBox.Font;
 
  CurrentFontSize:=aListBox.FontSize;
 
- result:=CurrentFont.RowHeight(100,CurrentFontSize)*8;
+ if aListBox.fRowHeight>0.0 then begin
+  RowHeight:=aListBox.fRowHeight;
+ end else begin
+  RowHeight:=CurrentFont.RowHeight(150,CurrentFontSize);
+ end;
+
+ aListBox.fWorkYOffset:=BoxCornerMargin;
+
+ aListBox.fWorkRowHeight:=RowHeight;
+
+ result:=TpvVector2.InlineableCreate((BoxCornerMargin*2.0)+100.0,
+                                     (RowHeight*8.0)+(BoxCornerMargin*2.0));
 
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawListBox(const aCanvas:TpvCanvas;const aListBox:TpvGUIListBox);
 var Element:TpvInt32;
+    ItemIndex:TpvSizeInt;
     CurrentFont:TpvFont;
-    CurrentFontSize:TpvFloat;
+    CurrentFontSize,RowHeight:TpvFloat;
+    Position:TpvVector2;
+    FontColor:TpvVector4;
+    ClipRect:TpvRect;
 begin
 
  aCanvas.ModelMatrix:=aListBox.fModelMatrix;
@@ -7103,7 +7125,7 @@ begin
  CurrentFontSize:=aListBox.FontSize;
 
  if aListBox.Enabled then begin
-  aCanvas.Color:=aListBox.FontColor;
+  FontColor:=aListBox.FontColor;
   if aListBox.Focused then begin
    Element:=GUI_ELEMENT_BOX_FOCUSED;
   end else begin
@@ -7111,7 +7133,7 @@ begin
   end;
  end else begin
   Element:=GUI_ELEMENT_BOX_DISABLED;
-  aCanvas.Color:=TpvVector4.InlineableCreate(aListBox.FontColor.rgb,aListBox.FontColor.a*0.25);
+  FontColor:=TpvVector4.InlineableCreate(aListBox.FontColor.rgb,aListBox.FontColor.a*0.25);
  end;
  aCanvas.DrawGUIElement(Element,
                         true,
@@ -7119,6 +7141,46 @@ begin
                         aListBox.fSize,
                         TpvVector2.Null,
                         aListBox.fSize);
+
+ Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
+
+ if aListBox.fRowHeight>0.0 then begin
+  RowHeight:=aListBox.fRowHeight;
+ end else begin
+  RowHeight:=CurrentFont.RowHeight(150,CurrentFontSize);
+ end;
+
+ aListBox.fWorkYOffset:=BoxCornerMargin;
+
+ aListBox.fWorkRowHeight:=RowHeight;
+
+ aCanvas.Color:=FontColor;
+
+ ClipRect:=aListBox.fClipRect;
+ ClipRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
+ ClipRect.RightBottom:=ClipRect.RightBottom-TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
+ aCanvas.ClipRect:=ClipRect;
+
+ for ItemIndex:=aListBox.fOffsetItemIndex to aListBox.fItems.Count-1 do begin
+
+  aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+
+  aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+
+  if aListBox.fItemIndex=ItemIndex then begin
+   aCanvas.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+   aCanvas.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                                                  Position.y),
+                                                      TpvVector2.InlineableCreate(aListBox.fSize.x-(BoxCornerMargin*2.0),
+                                                                                  RowHeight)));
+   aCanvas.Color:=FontColor;
+  end;
+
+  aCanvas.DrawText(aListBox.fItems[ItemIndex],Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
+
+  Position.y:=Position.y+RowHeight;
+
+ end;
 
 end;
 
@@ -14160,7 +14222,16 @@ begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
 
  fItems:=TStringList.Create;
+
  fItemIndex:=-1;
+
+ fOffsetItemIndex:=0;
+
+ fRowHeight:=0.0;
+
+ fWorkRowHeight:=0.0;
+
+ fWorkYOffset:=0.0;
 
 end;
 
@@ -14286,6 +14357,7 @@ begin
      if not Focused then begin
       RequestFocus;
      end;
+     SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fOffsetItemIndex);
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Up:begin
