@@ -2052,8 +2052,20 @@ type TpvGUIObject=class;
        property OnTabUnselected:TpvGUITabPanelOnTabEvent read fOnTabUnselected write fOnTabUnselected;
      end;
 
+     PpvGUIListBoxFlag=^TpvGUIListBoxFlag;
+     TpvGUIListBoxFlag=
+      (
+       MultiSelect
+      );
+
+     PpvGUIListBoxFlags=^TpvGUIListBoxFlags;
+     TpvGUIListBoxFlags=set of TpvGUIListBoxFlag;
+
+     TpvGUIListBoxSelectedBitmap=array of TpvUInt32;
+
      TpvGUIListBox=class(TpvGUIWidget)
       private
+       fFlags:TpvGUIListBoxFlags;
        fScrollBar:TpvGUIScrollBar;
        fItems:TStrings;
        fItemIndex:TpvSizeInt;
@@ -2062,8 +2074,13 @@ type TpvGUIObject=class;
        fWorkRowHeight:TpvFloat;
        fOnChange:TpvGUIOnEvent;
        fOnChangeItemIndex:TpvGUIOnEvent;
+       fSelectedBitmap:TpvGUIListBoxSelectedBitmap;
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
+       function GetSelected(const aItemIndex:TpvSizeInt):boolean;
+       procedure SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
+       function GetMultiSelect:boolean; inline;
+       procedure SetMultiSelect(const aMultiSelect:boolean);
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
        function GetCountVisibleItems:TpvSizeInt;
@@ -2072,6 +2089,7 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
+       procedure ClearSelection;
        procedure PerformLayout; override;
        function Enter:boolean; override;
        function Leave:boolean; override;
@@ -2082,10 +2100,12 @@ type TpvGUIObject=class;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Draw; override;
+       property Selected[const aItemIndex:TpvSizeInt]:boolean read GetSelected write SetSelected;
       published
        property Items:TStrings read fItems write SetItems;
        property ItemIndex:TpvSizeInt read fItemIndex write SetItemIndex;
        property RowHeight:TpvFloat read fRowHeight write fRowHeight;
+       property MultiSelect:boolean read GetMultiSelect write SetMultiSelect;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
      end;
@@ -7122,7 +7142,7 @@ var Element:TpvInt32;
     CurrentFontSize,RowHeight:TpvFloat;
     Position:TpvVector2;
     FontColor:TpvVector4;
-    ClipRect:TpvRect;
+    ClipRect,Rect:TpvRect;
 begin
 
 
@@ -7178,19 +7198,40 @@ begin
 
  aCanvas.ClipRect:=ClipRect;
 
+ ClipRect.LeftTop:=ClipRect.LeftTop-aListBox.fClipRect.LeftTop;
+ ClipRect.RightBottom:=ClipRect.RightBottom-aListBox.fClipRect.LeftTop;
+
  for ItemIndex:=aListBox.fScrollBar.Value to aListBox.fItems.Count-1 do begin
 
   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
 
   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
 
-  if aListBox.fItemIndex=ItemIndex then begin
+  if aListBox.Selected[ItemIndex] then begin
    aCanvas.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
    aCanvas.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
                                                                                   Position.y),
                                                       TpvVector2.InlineableCreate(aListBox.fSize.x-(BoxCornerMargin*2.0),
                                                                                   RowHeight)));
    aCanvas.Color:=FontColor;
+  end;
+
+  if aListBox.fItemIndex=ItemIndex then begin
+   Rect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                            Position.y),
+                                TpvVector2.InlineableCreate(ClipRect.Right,
+                                                            Position.y+RowHeight));
+   if aListBox.Focused then begin
+    Element:=GUI_ELEMENT_FOCUSED;
+   end else begin
+    Element:=GUI_ELEMENT_HOVERED;
+   end;
+   aCanvas.DrawGUIElement(Element,
+                          true,
+                          Rect.LeftTop+TpvVector2.InlineableCreate(-32.0,-32.0),
+                          Rect.RightBottom+TpvVector2.InlineableCreate(32.0,32.0),
+                          Rect.LeftTop,
+                          Rect.RightBottom);
   end;
 
   aCanvas.DrawText(aListBox.fItems[ItemIndex],Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
@@ -14243,6 +14284,8 @@ begin
  fScrollBar.MinimumValue:=0;
  fScrollBar.MaximumValue:=1;
 
+ fFlags:=[];
+
  fItems:=TStringList.Create;
 
  fItemIndex:=-1;
@@ -14257,12 +14300,32 @@ begin
 
  fOnChangeItemIndex:=nil;
 
+ fSelectedBitmap:=nil;
+
 end;
 
 destructor TpvGUIListBox.Destroy;
 begin
  FreeAndNil(fItems);
+ fSelectedBitmap:=nil;
  inherited Destroy;
+end;
+
+function TpvGUIListBox.GetMultiSelect:boolean;
+begin
+ result:=TpvGUIListBoxFlag.MultiSelect in fFlags;
+end;
+
+procedure TpvGUIListBox.SetMultiSelect(const aMultiSelect:boolean);
+begin
+ if (TpvGUIListBoxFlag.MultiSelect in fFlags)<>aMultiSelect then begin
+  if aMultiSelect then begin
+   Include(fFlags,TpvGUIListBoxFlag.MultiSelect);
+  end else begin
+   Exclude(fFlags,TpvGUIListBoxFlag.MultiSelect);
+  end;
+  fSelectedBitmap:=nil;
+ end;
 end;
 
 procedure TpvGUIListBox.SetItems(const aItems:TStrings);
@@ -14278,7 +14341,7 @@ end;
 procedure TpvGUIListBox.SetItemIndex(const aItemIndex:TpvSizeInt);
 begin
  if fItemIndex<>aItemIndex then begin
-  fItemIndex:=Min(Max(aItemIndex,0),fItems.Count-1);
+  fItemIndex:=Min(Max(aItemIndex,-1),fItems.Count-1);
   AdjustScrollBar;
   if assigned(fOnChange) then begin
    fOnChange(self);
@@ -14286,6 +14349,69 @@ begin
   if assigned(fOnChangeItemIndex) then begin
    fOnChangeItemIndex(self);
   end;
+ end;
+end;
+
+function TpvGUIListBox.GetSelected(const aItemIndex:TpvSizeInt):boolean;
+begin
+ if TpvGUIListBoxFlag.MultiSelect in fFlags then begin
+  result:=((aItemIndex>=0) and (aItemIndex<fItems.Count) and ((aItemIndex shr 5)<length(fSelectedBitmap))) and
+          ((fSelectedBitmap[aItemIndex shr 5] and (TpvUInt32(1) shl (aItemIndex and 31)))<>0);
+ end else begin
+  result:=fItemIndex=aItemIndex;
+ end;
+end;
+
+procedure TpvGUIListBox.SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
+var OldSize,NewSize:TpvSizeInt;
+begin
+ if TpvGUIListBoxFlag.MultiSelect in fFlags then begin
+  if (aItemIndex>=0) and (aItemIndex<fItems.Count) then begin
+   OldSize:=length(fSelectedBitmap);
+   NewSize:=RoundUpToPowerOfTwoSizeUInt((aItemIndex shr 5)+1);
+   if OldSize<NewSize then begin
+    SetLength(fSelectedBitmap,NewSize);
+    FillChar(fSelectedBitmap[OldSize],(NewSize-OldSize)*SizeOf(TpvUInt32),0);
+   end;
+   if GetSelected(aItemIndex)<>aSelected then begin
+    if aSelected then begin
+     fSelectedBitmap[aItemIndex shr 5]:=fSelectedBitmap[aItemIndex shr 5] or (TpvUInt32(1) shl (aItemIndex and 31));
+    end else begin
+     fSelectedBitmap[aItemIndex shr 5]:=fSelectedBitmap[aItemIndex shr 5] and not (TpvUInt32(1) shl (aItemIndex and 31));
+    end;
+    if assigned(fOnChange) then begin
+     fOnChange(self);
+    end;
+   end;
+  end;
+ end else begin
+  if aSelected then begin
+   if fItemIndex<>aItemIndex then begin
+    SetItemIndex(aItemIndex);
+    if assigned(fOnChange) then begin
+     fOnChange(self);
+    end;
+   end;
+  end else begin
+   if fItemIndex>=0 then begin
+    SetItemIndex(-1);
+    if assigned(fOnChange) then begin
+     fOnChange(self);
+    end;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvGUIListBox.ClearSelection;
+begin
+ if TpvGUIListBoxFlag.MultiSelect in fFlags then begin
+  fSelectedBitmap:=nil;
+ end else begin
+  SetItemIndex(-1);
+ end;
+ if assigned(fOnChange) then begin
+  fOnChange(self);
  end;
 end;
 
@@ -14431,6 +14557,16 @@ begin
     end;
     result:=true;
    end;
+   KEYCODE_SPACE:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      if MultiSelect then begin
+       SetSelected(fItemIndex,not GetSelected(fItemIndex));
+      end;
+     end;
+    end;
+    result:=true;
+   end;
   end;
  end;
 end;
@@ -14448,6 +14584,10 @@ begin
       RequestFocus;
      end;
      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
+     if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
+      SetSelected(fItemIndex,not GetSelected(fItemIndex));
+     end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
+     end;
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Up:begin

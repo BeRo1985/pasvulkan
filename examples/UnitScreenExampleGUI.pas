@@ -240,6 +240,7 @@ begin
  fGUIProgressBar1.FixedHeight:=64.0;
 
  fGUIListBox0:=TpvGUIListBox.Create(Content);
+ fGUIListBox0.MultiSelect:=true;
  fGUIListBox0.Items.Add('Item 1');
  fGUIListBox0.Items.Add('Item 2');
  fGUIListBox0.Items.Add('Item 3');
