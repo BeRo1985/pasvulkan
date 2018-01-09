@@ -14628,6 +14628,16 @@ begin
     end;
     result:=true;
    end;
+   KEYCODE_BACKSPACE:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      if MultiSelect then begin
+       ClearSelection;
+      end;
+     end;
+    end;
+    result:=true;
+   end;
    KEYCODE_SPACE:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
