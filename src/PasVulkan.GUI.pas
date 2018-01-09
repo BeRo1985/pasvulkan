@@ -640,6 +640,7 @@ type TpvGUIObject=class;
        function GetProgressBarPreferredSize(const aProgressBar:TpvGUIProgressBar):TpvVector2; virtual;
        procedure DrawProgressBar(const aCanvas:TpvCanvas;const aProgressBar:TpvGUIProgressBar); virtual;
       public
+       procedure PreprocessTabPanel(const aTabPanel:TpvGUITabPanel); virtual;
        function GetTabPanelPreferredSize(const aTabPanel:TpvGUITabPanel):TpvVector2; virtual;
        procedure DrawTabPanel(const aCanvas:TpvCanvas;const aTabPanel:TpvGUITabPanel); virtual;
       public
@@ -775,9 +776,8 @@ type TpvGUIObject=class;
       public
        function GetProgressBarPreferredSize(const aProgressBar:TpvGUIProgressBar):TpvVector2; override;
        procedure DrawProgressBar(const aCanvas:TpvCanvas;const aProgressBar:TpvGUIProgressBar); override;
-      private
-       procedure ProcessTabPanel(const aTabPanel:TpvGUITabPanel);
       public
+       procedure PreprocessTabPanel(const aTabPanel:TpvGUITabPanel); override;
        function GetTabPanelPreferredSize(const aTabPanel:TpvGUITabPanel):TpvVector2; override;
        procedure DrawTabPanel(const aCanvas:TpvCanvas;const aTabPanel:TpvGUITabPanel); override;
       public
@@ -1936,8 +1936,7 @@ type TpvGUIObject=class;
      PpvGUITabFlag=^TpvGUITabFlag;
      TpvGUITabFlag=
       (
-       Modified,
-       Selected
+       Modified
       );
 
      PpvGUITabFlags=^TpvGUITabFlags;
@@ -1955,7 +1954,8 @@ type TpvGUIObject=class;
        fPosition:TpvVector2;
        fSize:TpvVector2;
        fRect:TpvRect;
-       procedure Invalidate;
+       procedure InvalidateLayout;
+       procedure InvalidateHeader;
        procedure SetCaption(const aCaption:TpvUTF8String);
        function GetModified:boolean; inline;
        procedure SetModified(const aModified:boolean);
@@ -1979,7 +1979,6 @@ type TpvGUIObject=class;
        function GetItem(const aIndex:TpvSizeInt):TpvGUITab; inline;
        procedure SetItem(const aIndex:TpvSizeInt;const aTab:TpvGUITab); inline;
       protected
-       procedure Invalidated(const aTab:TpvGUITab); inline;
       public
        constructor Create(const aOwner:TpvGUITabPanel); reintroduce;
        destructor Destroy; override;
@@ -1992,18 +1991,37 @@ type TpvGUIObject=class;
        property Items[const aIndex:TpvSizeInt]:TpvGUITab read GetItem write SetItem; default;
      end;
 
-     TpvGUITabPanelOnTabEvent=procedure(const aSender:TObject;const aTab:TpvGUITab) of object;
-      
+     TpvGUITabPanelOnTabEvent=function(const aSender:TObject;const aTab:TpvGUITab):boolean of object;
+
+     PpvGUITabPanelFlag=^TpvGUITabPanelFlag;
+     TpvGUITabPanelFlag=
+      (
+       VisibleHeader,
+       VisibleContent,
+       LayoutInvalidated,
+       HeaderInvalidated
+      );
+
+     PpvGUITabPanelFlags=^TpvGUITabPanelFlags;
+     TpvGUITabPanelFlags=set of TpvGUITabPanelFlag;
+
      TpvGUITabPanel=class(TpvGUIWidget)
       private
+       fFlags:TpvGUITabPanelFlags;
        fHeaderRect:TpvRect;
        fContentRect:TpvRect;
        fVisibleOffset:TpvFloat;
        fTabs:TpvGUITabList;
        fTabIndex:TpvSizeInt;
+       fContentMargin:TpvFloat;
+       fContentMarginVector:TpvVector2;
        fContent:TpvGUIPanel;
        fOnTabSelected:TpvGUITabPanelOnTabEvent;
        fOnTabUnselected:TpvGUITabPanelOnTabEvent;
+       function GetVisibleHeader:boolean; inline;
+       procedure SetVisibleHeader(const aVisibleHeader:boolean);
+       function GetVisibleContent:boolean; inline;
+       procedure SetVisibleContent(const aVisibleContent:boolean);
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
        procedure SetTabs(const aTabs:TpvGUITabList);
@@ -2011,8 +2029,9 @@ type TpvGUIObject=class;
        procedure SetTabIndex(const aTabIndex:TpvSizeInt);
        function GetTab:TpvGUITab;
        procedure SetTab(const aTab:TpvGUITab);
-       procedure Invalidate;
-       procedure EnsureTabIsVisible(const aTab:TpvGUITab);
+       procedure UpdateIfNeeded;
+       procedure InvalidateLayout;
+       procedure InvalidateHeader;
       public
        constructor Create(const aParent:TpvGUIObject;const aContentMargin:TpvFloat=-1.0); reintroduce;
        destructor Destroy; override;
@@ -2032,6 +2051,8 @@ type TpvGUIObject=class;
        property TabIndex:TpvSizeInt read GetTabIndex write SetTabIndex;
        property Tab:TpvGUITab read GetTab write SetTab;
        property Content:TpvGUIPanel read fContent;
+       property VisibleHeader:boolean read GetVisibleHeader write SetVisibleHeader;
+       property VisibleContent:boolean read GetVisibleContent write SetVisibleContent;
        property OnTabSelected:TpvGUITabPanelOnTabEvent read fOnTabSelected write fOnTabSelected;
        property OnTabUnselected:TpvGUITabPanelOnTabEvent read fOnTabUnselected write fOnTabUnselected;
      end;
@@ -4130,6 +4151,11 @@ begin
 end;
 
 procedure TpvGUISkin.DrawProgressBar(const aCanvas:TpvCanvas;const aProgressBar:TpvGUIProgressBar);
+begin
+
+end;
+
+procedure TpvGUISkin.PreprocessTabPanel(const aTabPanel:TpvGUITabPanel);
 begin
 
 end;
@@ -6745,7 +6771,7 @@ begin
 
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.ProcessTabPanel(const aTabPanel:TpvGUITabPanel);
+procedure TpvGUIDefaultVectorBasedSkin.PreprocessTabPanel(const aTabPanel:TpvGUITabPanel);
 var TabIndex:TpvSizeInt;
     Tab:TpvGUITab;
     Position,Size,TextSize:TpvVector2;
@@ -6836,14 +6862,17 @@ var HeaderSize,ContentSize:TpvVector2;
     CurrentFontSize:TpvFloat;
 begin
 
- ProcessTabPanel(aTabPanel);
+ PreprocessTabPanel(aTabPanel);
 
  CurrentFont:=aTabPanel.Font;
 
  CurrentFontSize:=aTabPanel.FontSize;
 
  HeaderSize:=TpvVector2.Null;
- HeaderSize:=TpvVector2.InlineableCreate((ButtonHorizontalBorderSpacing+TabButtonSize)*2.0,Maximum(TabButtonSize,CurrentFont.RowHeight(100,CurrentFontSize))+10.0);
+
+ if TpvGUITabPanelFlag.VisibleHeader in aTabPanel.fFlags then begin
+  HeaderSize:=TpvVector2.InlineableCreate((ButtonHorizontalBorderSpacing+TabButtonSize)*2.0,Maximum(TabButtonSize,CurrentFont.RowHeight(100,CurrentFontSize))+10.0);
+ end;
 
  ContentSize:=TpvVector2.Null;
 
@@ -6851,7 +6880,7 @@ begin
 
   Tab:=aTabPanel.fTabs.Items[TabIndex];
 
-  if assigned(Tab.fContent) then begin
+  if (TpvGUITabPanelFlag.VisibleContent in aTabPanel.fFlags) and assigned(Tab.fContent) then begin
    ContentSize:=Maximum(ContentSize,Tab.fContent.GetPreferredSize);
   end;
 
@@ -6861,9 +6890,20 @@ begin
 
  HeaderSize.x:=Clamp(aTabPanel.fTabs.Count*(200.0-(HeaderSize.y*0.25)),256.0,512.0);
 
- result:=Maximum(GetWidgetLayoutPreferredSize(aTabPanel),
-                 Maximum(HeaderSize+TpvVector2.InlineableCreate(0.0,ContentSize.y),
-                         ContentSize));
+ result:=TpvVector2.Null;
+
+ if TpvGUITabPanelFlag.VisibleHeader in aTabPanel.fFlags then begin
+  result:=HeaderSize;
+  if TpvGUITabPanelFlag.VisibleContent in aTabPanel.fFlags then begin
+   result.y:=result.y+ContentSize.y;
+  end;
+ end;
+
+ if TpvGUITabPanelFlag.VisibleContent in aTabPanel.fFlags then begin
+  result:=Maximum(result,ContentSize);
+ end;
+
+ result:=Maximum(result,GetWidgetLayoutPreferredSize(aTabPanel));
 
  if aTabPanel.fFixedSize.x>0.0 then begin
   result.x:=aTabPanel.fFixedSize.x;
@@ -6919,8 +6959,6 @@ var Element,Index,TabIndex:TpvInt32;
  end;
 begin
 
- ProcessTabPanel(aTabPanel);
-
  aCanvas.ModelMatrix:=aTabPanel.fModelMatrix;
  aCanvas.ClipRect:=aTabPanel.fClipRect;
 
@@ -6928,62 +6966,72 @@ begin
 
  CurrentFontSize:=aTabPanel.FontSize;
 
- for TabIndex:=0 to aTabPanel.fTabs.Count-1 do begin
-  Tab:=aTabPanel.fTabs.Items[TabIndex];
-  if aTabPanel.fTabIndex<>Tab.Index then begin
-   DrawTab(Tab);
+ if TpvGUITabPanelFlag.VisibleHeader in aTabPanel.fFlags then begin
+
+  PreprocessTabPanel(aTabPanel);
+
+  for TabIndex:=0 to aTabPanel.fTabs.Count-1 do begin
+   Tab:=aTabPanel.fTabs.Items[TabIndex];
+   if aTabPanel.fTabIndex<>Tab.Index then begin
+    DrawTab(Tab);
+   end;
   end;
+
+  if (aTabPanel.fTabIndex>=0) and (aTabPanel.fTabIndex<aTabPanel.fTabs.Count) then begin
+   DrawTab(aTabPanel.fTabs.Items[aTabPanel.fTabIndex]);
+  end;
+
+ {for Index:=0 to 1 do begin
+
+   if aTabPanel.Enabled then begin
+    aCanvas.Color:=aTabPanel.FontColor;
+    Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
+   end else begin
+    Element:=GUI_ELEMENT_BUTTON_DISABLED;
+    aCanvas.Color:=TpvVector4.InlineableCreate(aTabPanel.FontColor.rgb,aTabPanel.FontColor.a*0.25);
+   end;
+
+   if Index=0 then begin
+    Offset:=TpvVector2.InlineableCreate(aTabPanel.fSize.x-(TabButtonSize*2),0.0);
+    Sprite:=TpvSprite(fIconDirectionArrowLeft);
+   end else begin
+    Offset:=TpvVector2.InlineableCreate(aTabPanel.fSize.x-TabButtonSize,0.0);
+    Sprite:=TpvSprite(fIconDirectionArrowRight);
+   end;
+
+   aCanvas.DrawGUIElement(Element,
+                          true,
+                          Offset,
+                          Offset+TpvVector2.InlineableCreate(TabButtonSize,TabButtonSize),
+                          Offset,
+                          Offset+TpvVector2.InlineableCreate(TabButtonSize,TabButtonSize));
+
+   aCanvas.DrawSprite(Sprite,
+                      TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
+                      TpvRect.CreateRelative(Offset,
+                                             TpvVector2.InlineableCreate(TabButtonSize,TabButtonSize)));
+
+  end;{}
+
  end;
 
- if (aTabPanel.fTabIndex>=0) and (aTabPanel.fTabIndex<aTabPanel.fTabs.Count) then begin
-  DrawTab(aTabPanel.fTabs.Items[aTabPanel.fTabIndex]);
- end;
-
-{for Index:=0 to 1 do begin
+ if TpvGUITabPanelFlag.VisibleContent in aTabPanel.fFlags then begin
 
   if aTabPanel.Enabled then begin
    aCanvas.Color:=aTabPanel.FontColor;
-   Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
+   Element:=GUI_ELEMENT_PANEL_ENABLED;
   end else begin
-   Element:=GUI_ELEMENT_BUTTON_DISABLED;
+   Element:=GUI_ELEMENT_PANEL_DISABLED;
    aCanvas.Color:=TpvVector4.InlineableCreate(aTabPanel.FontColor.rgb,aTabPanel.FontColor.a*0.25);
   end;
-
-  if Index=0 then begin
-   Offset:=TpvVector2.InlineableCreate(aTabPanel.fSize.x-(TabButtonSize*2),0.0);
-   Sprite:=TpvSprite(fIconDirectionArrowLeft);
-  end else begin
-   Offset:=TpvVector2.InlineableCreate(aTabPanel.fSize.x-TabButtonSize,0.0);
-   Sprite:=TpvSprite(fIconDirectionArrowRight);
-  end;
-
   aCanvas.DrawGUIElement(Element,
                          true,
-                         Offset,
-                         Offset+TpvVector2.InlineableCreate(TabButtonSize,TabButtonSize),
-                         Offset,
-                         Offset+TpvVector2.InlineableCreate(TabButtonSize,TabButtonSize));
+                         aTabPanel.fContentRect.LeftTop,
+                         aTabPanel.fContentRect.RightBottom,
+                         aTabPanel.fContentRect.LeftTop,
+                         aTabPanel.fContentRect.RightBottom);
 
-  aCanvas.DrawSprite(Sprite,
-                     TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                     TpvRect.CreateRelative(Offset,
-                                            TpvVector2.InlineableCreate(TabButtonSize,TabButtonSize)));
-
- end;{}
-
- if aTabPanel.Enabled then begin
-  aCanvas.Color:=aTabPanel.FontColor;
-  Element:=GUI_ELEMENT_PANEL_ENABLED;
- end else begin
-  Element:=GUI_ELEMENT_PANEL_DISABLED;
-  aCanvas.Color:=TpvVector4.InlineableCreate(aTabPanel.FontColor.rgb,aTabPanel.FontColor.a*0.25);
  end;
- aCanvas.DrawGUIElement(Element,
-                        true,
-                        aTabPanel.fContentRect.LeftTop,
-                        aTabPanel.fContentRect.RightBottom,
-                        aTabPanel.fContentRect.LeftTop,
-                        aTabPanel.fContentRect.RightBottom);
 
 end;
 
@@ -13572,16 +13620,22 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvGUITab.Invalidate;
+procedure TpvGUITab.InvalidateLayout;
 begin
- (Collection as TpvGUITabList).Invalidated(self);
+ (Collection as TpvGUITabList).fOwner.InvalidateLayout;
+end;
+
+procedure TpvGUITab.InvalidateHeader;
+begin
+ (Collection as TpvGUITabList).fOwner.InvalidateHeader;
 end;
 
 procedure TpvGUITab.SetCaption(const aCaption:TpvUTF8String);
 begin
  if fCaption<>aCaption then begin
   fCaption:=aCaption;
-  Invalidate;
+  fCachedCaptionInvalidated:=true;
+  InvalidateHeader;
  end;
 end;
 
@@ -13598,24 +13652,24 @@ begin
   end else begin
    Exclude(fFlags,TpvGUITabFlag.Modified);
   end;
-  Invalidate;
+  InvalidateLayout;
+  InvalidateHeader;
  end;
 end;
 
 function TpvGUITab.GetSelected:boolean;
 begin
- result:=TpvGUITabFlag.Selected in fFlags;
+ result:=(Collection as TpvGUITabList).fOwner.fTabIndex=Index;
 end;
 
 procedure TpvGUITab.SetSelected(const aSelected:boolean);
 begin
- if (TpvGUITabFlag.Selected in fFlags)<>aSelected then begin
+ if (Collection as TpvGUITabList).fOwner.fTabIndex<>Index then begin
   if aSelected then begin
-   Include(fFlags,TpvGUITabFlag.Selected);
+   (Collection as TpvGUITabList).fOwner.SetTabIndex(Index);
   end else begin
-   Exclude(fFlags,TpvGUITabFlag.Selected);
+   (Collection as TpvGUITabList).fOwner.SetTabIndex(-1);
   end;
-  Invalidate;
  end;
 end;
 
@@ -13638,11 +13692,6 @@ end;
 procedure TpvGUITabList.SetItem(const aIndex:TpvSizeInt;const aTab:TpvGUITab);
 begin
  inherited Items[aIndex]:=TCollectionItem(aTab);
-end;
-
-procedure TpvGUITabList.Invalidated(const aTab:TpvGUITab);
-begin
- fOwner.Invalidate;
 end;
 
 function TpvGUITabList.IndexOf(const aTab:TpvGUITab):TpvSizeInt;
@@ -13712,15 +13761,27 @@ end;
 
 constructor TpvGUITabPanel.Create(const aParent:TpvGUIObject;const aContentMargin:TpvFloat=-1.0);
 begin
+
  inherited Create(aParent);
+
+ fFlags:=[TpvGUITabPanelFlag.VisibleHeader,
+          TpvGUITabPanelFlag.VisibleContent];
 
  Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
  Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
  Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
 
+ if aContentMargin>=0.0 then begin
+  fContentMargin:=aContentMargin;
+ end else begin
+  fContentMargin:=Skin.fTabPanelContentMargin;
+ end;
+
+ fContentMarginVector:=TpvVector2.InlineableCreate(fContentMargin,fContentMargin);
+
  fContent:=TpvGUIPanel.Create(self);
 
- fContent.fLayout:=TpvGUIFillLayout.Create(fContent,IfThen(aContentMargin>=0.0,aContentMargin,Skin.fTabPanelContentMargin));
+ fContent.fLayout:=TpvGUIFillLayout.Create(fContent,fContentMargin);
 
  fVisibleOffset:=0.0;
 
@@ -13740,15 +13801,61 @@ begin
  inherited Destroy;
 end;
 
+function TpvGUITabPanel.GetVisibleHeader:boolean;
+begin
+ result:=TpvGUITabPanelFlag.VisibleHeader in fFlags;
+end;
+
+procedure TpvGUITabPanel.SetVisibleHeader(const aVisibleHeader:boolean);
+begin
+ if (TpvGUITabPanelFlag.VisibleHeader in fFlags)<>aVisibleHeader then begin
+  if aVisibleHeader then begin
+   Include(fFlags,TpvGUITabPanelFlag.VisibleHeader);
+   fWidgetFlags:=fWidgetFlags+[TpvGUIWidgetFlag.TabStop,
+                               TpvGUIWidgetFlag.DrawFocus,
+                               TpvGUIWidgetFlag.Draggable];
+  end else begin
+   Exclude(fFlags,TpvGUITabPanelFlag.VisibleHeader);
+   fWidgetFlags:=fWidgetFlags-[TpvGUIWidgetFlag.TabStop,
+                               TpvGUIWidgetFlag.DrawFocus,
+                               TpvGUIWidgetFlag.Draggable];
+  end;
+  Include(fFlags,TpvGUITabPanelFlag.LayoutInvalidated);
+ end;
+end;
+
+function TpvGUITabPanel.GetVisibleContent:boolean;
+begin
+ result:=TpvGUITabPanelFlag.VisibleContent in fFlags;
+end;
+
+procedure TpvGUITabPanel.SetVisibleContent(const aVisibleContent:boolean);
+begin
+ if (TpvGUITabPanelFlag.VisibleContent in fFlags)<>aVisibleContent then begin
+  if aVisibleContent then begin
+   Include(fFlags,TpvGUITabPanelFlag.VisibleContent);
+  end else begin
+   Exclude(fFlags,TpvGUITabPanelFlag.VisibleContent);
+  end;
+  Include(fFlags,TpvGUITabPanelFlag.LayoutInvalidated);
+ end;
+end;
+
 function TpvGUITabPanel.GetHighlightRect:TpvRect;
 var p:TpvVector2;
 begin
- p:=fInstance.MousePosition-GetAbsolutePosition;
- if ((fTabIndex>=0) and (fTabIndex<fTabs.Count) and
-     fTabs.Items[fTabIndex].fRect.Touched(p)) or not fHeaderRect.Touched(p) then begin
-  result:=fTabs.Items[fTabIndex].fRect;
+ if TpvGUITabPanelFlag.VisibleHeader in fFlags then begin
+  p:=fInstance.MousePosition-GetAbsolutePosition;
+  if ((fTabIndex>=0) and (fTabIndex<fTabs.Count) and
+      fTabs.Items[fTabIndex].fRect.Touched(p)) or not fHeaderRect.Touched(p) then begin
+   result:=fTabs.Items[fTabIndex].fRect;
+  end else begin
+   result:=fHeaderRect;
+  end;
+ end else if TpvGUITabPanelFlag.VisibleContent in fFlags then begin
+  result:=fContentRect;
  end else begin
-  result:=fHeaderRect;
+  result:=TpvRect.CreateRelative(-16777216.0,-16777216.0,0.0,0.0);
  end;
 end;
 
@@ -13774,30 +13881,26 @@ begin
  if fTabIndex<>aTabIndex then begin
   if (fTabIndex>=0) and (fTabIndex<fTabs.Count) then begin
    CurrentTab:=fTabs.Items[fTabIndex];
-   if assigned(fOnTabUnselected) then begin
-    fOnTabUnselected(self,CurrentTab);
-   end;
-   if assigned(CurrentTab.fContent) then begin
+   if (not (assigned(fOnTabUnselected) and fOnTabUnselected(self,CurrentTab))) and
+      assigned(CurrentTab.fContent) then begin
     CurrentTab.fContent.Visible:=false;
    end;
   end;
   fTabIndex:=aTabIndex;
   if (fTabIndex>=0) and (fTabIndex<fTabs.Count) then begin
    CurrentTab:=fTabs.Items[fTabIndex];
-   EnsureTabIsVisible(CurrentTab);
-   if assigned(CurrentTab.fContent) then begin
+   if (not (assigned(fOnTabSelected) and fOnTabSelected(self,CurrentTab))) and
+      assigned(CurrentTab.fContent) then begin
     CurrentTab.fContent.Visible:=true;
-{   if CurrentTab.fContent.Parent=fContent then begin
-     CurrentTab.fContent.fPosition:=TpvVector2.Null;
-     CurrentTab.fContent.fSize:=fContentRect.Size;
+    if (TpvGUITabPanelFlag.VisibleContent in fFlags) and
+       (CurrentTab.fContent.Parent=fContent) then begin
+     CurrentTab.fContent.fPosition:=fContentMarginVector;
+     CurrentTab.fContent.fSize:=fContentRect.Size-(fContentMarginVector*2.0);
     end;
-    CurrentTab.fContent.PerformLayout;}
+    CurrentTab.fContent.PerformLayout;
    end;
-   if assigned(fOnTabSelected) then begin
-    fOnTabSelected(self,CurrentTab);
-   end;
+   InvalidateHeader;
   end;
-  fContent.PerformLayout;
  end;
 end;
 
@@ -13815,14 +13918,14 @@ begin
  SetTabIndex(fTabs.IndexOf(aTab));
 end;
 
-procedure TpvGUITabPanel.Invalidate;
+procedure TpvGUITabPanel.InvalidateLayout;
 begin
-
+ Include(fFlags,TpvGUITabPanelFlag.LayoutInvalidated);
 end;
 
-procedure TpvGUITabPanel.EnsureTabIsVisible(const aTab:TpvGUITab);
+procedure TpvGUITabPanel.InvalidateHeader;
 begin
-
+ Include(fFlags,TpvGUITabPanelFlag.HeaderInvalidated);
 end;
 
 procedure TpvGUITabPanel.PerformLayout;
@@ -13836,14 +13939,37 @@ begin
    CurrentTab.fContent.Visible:=false;
   end;
  end;
- fContent.fPosition:=fContentRect.LeftTop;
- fContent.fSize:=fContentRect.Size;
- fContent.PerformLayout;
+ if TpvGUITabPanelFlag.VisibleContent in fFlags then begin
+  fContent.Visible:=true;
+  fContent.fPosition:=fContentRect.LeftTop;
+  fContent.fSize:=fContentRect.Size;
+  fContent.PerformLayout;
+ end else begin
+  fContent.Visible:=false;
+ end;
  for CurrentTabIndex:=0 to fTabs.Count-1 do begin
   CurrentTab:=fTabs.Items[CurrentTabIndex];
   if assigned(CurrentTab.fContent) and (CurrentTabIndex=fTabIndex) then begin
    CurrentTab.fContent.Visible:=true;
    CurrentTab.fContent.PerformLayout;
+  end;
+ end;
+end;
+
+procedure TpvGUITabPanel.UpdateIfNeeded;
+begin
+ if TpvGUITabPanelFlag.LayoutInvalidated in fFlags then begin
+  try
+   PerformLayout;
+  finally
+   Exclude(fFlags,TpvGUITabPanelFlag.LayoutInvalidated);
+  end;
+ end;
+ if TpvGUITabPanelFlag.HeaderInvalidated in fFlags then begin
+  try
+   Skin.PreprocessTabPanel(self);
+  finally
+   Exclude(fFlags,TpvGUITabPanelFlag.HeaderInvalidated);
   end;
  end;
 end;
@@ -13875,8 +14001,9 @@ end;
 
 function TpvGUITabPanel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
+ UpdateIfNeeded;
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and not result then begin
+ if Enabled and (TpvGUITabPanelFlag.VisibleHeader in fFlags) and not result then begin
   case aKeyEvent.KeyCode of
    KEYCODE_LEFT,KEYCODE_UP:begin
     case aKeyEvent.KeyEventType of
@@ -13948,6 +14075,7 @@ function TpvGUITabPanel.PointerEvent(const aPointerEvent:TpvApplicationInputPoin
 var CurrentTabIndex:TpvSizeInt;
     CurrentTab:TpvGUITab;
 begin
+ UpdateIfNeeded;
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
   result:=inherited PointerEvent(aPointerEvent);
@@ -13957,7 +14085,8 @@ begin
      if not Focused then begin
       RequestFocus;
      end;
-     if not ((fTabIndex>=0) and (fTabIndex<fTabs.Count) and
+     if (TpvGUITabPanelFlag.VisibleHeader in fFlags) and
+        not ((fTabIndex>=0) and (fTabIndex<fTabs.Count) and
              fTabs.Items[fTabIndex].fRect.Touched(aPointerEvent.Position)) then begin
       for CurrentTabIndex:=0 to fTabs.Count-1 do begin
        if CurrentTabIndex<>fTabIndex then begin
@@ -13989,8 +14118,10 @@ function TpvGUITabPanel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boo
 var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
+ UpdateIfNeeded;
  result:=inherited Scrolled(aPosition,aRelativeAmount);
- if fHeaderRect.Touched(aPosition) and not result then begin
+ if (TpvGUITabPanelFlag.VisibleHeader in fFlags) and
+    fHeaderRect.Touched(aPosition) and not result then begin
   TemporaryValue:=fTabIndex;
   v:=aRelativeAmount.x-aRelativeAmount.y;
   if v<0.0 then begin
@@ -14005,6 +14136,7 @@ end;
 
 procedure TpvGUITabPanel.Update;
 begin
+ UpdateIfNeeded;
  Skin.DrawTabPanel(fCanvas,self);
  inherited Update;
 end;
