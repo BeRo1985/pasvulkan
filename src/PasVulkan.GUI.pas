@@ -2060,9 +2060,12 @@ type TpvGUIObject=class;
        fRowHeight:TpvFloat;
        fWorkYOffset:TpvFloat;
        fWorkRowHeight:TpvFloat;
+       fOnChange:TpvGUIOnEvent;
+       fOnChangeItemIndex:TpvGUIOnEvent;
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
        function GetPreferredSize:TpvVector2; override;
+       procedure AdjustScrollBar;
        procedure UpdateScrollBar;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -2081,6 +2084,8 @@ type TpvGUIObject=class;
        property Items:TStrings read fItems write SetItems;
        property ItemIndex:TpvSizeInt read fItemIndex write SetItemIndex;
        property RowHeight:TpvFloat read fRowHeight write fRowHeight;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
+       property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
      end;
 
 implementation
@@ -14244,6 +14249,10 @@ begin
 
  fWorkYOffset:=0.0;
 
+ fOnChange:=nil;
+
+ fOnChangeItemIndex:=nil;
+
 end;
 
 destructor TpvGUIListBox.Destroy;
@@ -14256,20 +14265,22 @@ procedure TpvGUIListBox.SetItems(const aItems:TStrings);
 begin
  fItems.Assign(aItems);
  SetItemIndex(Min(Max(fItemIndex,0),fItems.Count-1));
+ AdjustScrollBar;
+ if assigned(fOnChange) then begin
+  fOnChange(self);
+ end;
 end;
 
 procedure TpvGUIListBox.SetItemIndex(const aItemIndex:TpvSizeInt);
-var VisibleItems:TpvSizeInt;
 begin
  if fItemIndex<>aItemIndex then begin
   fItemIndex:=Min(Max(aItemIndex,0),fItems.Count-1);
-  if fScrollBar.Visible then begin
-   VisibleItems:=trunc((fSize.y-(fWorkYOffset*2.0))/Max(fWorkRowHeight,1));
-   if (fItemIndex-fScrollBar.Value)<0 then begin
-    fScrollBar.Value:=fItemIndex;
-   end else if ((fItemIndex-fScrollBar.Value)+1)>=VisibleItems then begin
-    fScrollBar.Value:=Max(0,(fItemIndex-VisibleItems)+1);
-   end;
+  AdjustScrollBar;
+  if assigned(fOnChange) then begin
+   fOnChange(self);
+  end;
+  if assigned(fOnChangeItemIndex) then begin
+   fOnChangeItemIndex(self);
   end;
  end;
 end;
@@ -14289,6 +14300,24 @@ begin
  fScrollBar.fPosition:=TpvVector2.InlineableCreate(fSize.x-ScrollBarSize.x,0.0);
  fScrollBar.fSize:=TpvVector2.InlineableCreate(ScrollBarSize.x,fSize.y);
  UpdateScrollBar;
+ AdjustScrollBar;
+end;
+
+procedure TpvGUIListBox.AdjustScrollBar;
+var VisibleItems:TpvSizeInt;
+begin
+ if fScrollBar.Visible then begin
+  if (fItemIndex-fScrollBar.Value)<0 then begin
+   fScrollBar.Value:=fItemIndex;
+  end else begin
+   VisibleItems:=trunc((fSize.y-(fWorkYOffset*2.0))/Max(fWorkRowHeight,1));
+   if ((fItemIndex-fScrollBar.Value)+1)>=VisibleItems then begin
+    fScrollBar.Value:=Max(0,(fItemIndex-VisibleItems)+1);
+   end;
+  end;
+ end else begin
+  fScrollBar.Value:=0;
+ end;
 end;
 
 procedure TpvGUIListBox.UpdateScrollBar;
