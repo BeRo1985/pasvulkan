@@ -14395,7 +14395,7 @@ begin
    KEYCODE_PAGEDOWN:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex-4,0),fItems.Count-1));
+      SetItemIndex(Min(Max(fItemIndex+4,0),fItems.Count-1));
      end;
     end;
     result:=true;
@@ -14403,7 +14403,7 @@ begin
    KEYCODE_PAGEUP:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex+4,0),fItems.Count-1));
+      SetItemIndex(Min(Max(fItemIndex-4,0),fItems.Count-1));
      end;
     end;
     result:=true;
