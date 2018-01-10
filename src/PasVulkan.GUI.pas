@@ -2174,7 +2174,8 @@ type TpvGUIObject=class;
        procedure PopupButtonOnChange(const aSender:TpvGUIObject;const aChanged:boolean);
        function PopupOnEnter(const aSender:TpvGUIObject):boolean;
        function PopupOnLeave(const aSender:TpvGUIObject):boolean;
-       procedure ListBoxChangeItemIndex(const aSender:TpvGUIObject);
+       procedure ListBoxOnChangeItemIndex(const aSender:TpvGUIObject);
+       function ListBoxOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
        function GetHighlightRect:TpvRect; override;
@@ -10293,10 +10294,15 @@ end;
 
 procedure TpvGUIButton.SetDown(const aDown:boolean);
 begin
- if aDown then begin
-  Include(fButtonFlags,TpvGUIButtonFlag.Down);
- end else begin
-  Exclude(fButtonFlags,TpvGUIButtonFlag.Down);
+ if (TpvGUIButtonFlag.Down in fButtonFlags)<>aDown then begin
+  if aDown then begin
+   Include(fButtonFlags,TpvGUIButtonFlag.Down);
+  end else begin
+   Exclude(fButtonFlags,TpvGUIButtonFlag.Down);
+  end;
+  if assigned(OnChange) then begin
+   OnChange(self,Down);
+  end;
  end;
 end;
 
@@ -10404,9 +10410,6 @@ begin
  end else begin
   Down:=true;
  end;
- if (OldDown<>Down) and assigned(OnChange) then begin
-  OnChange(self,Down);
- end;
 end;
 
 procedure TpvGUIButton.ProcessUp(const aPosition:TpvVector2);
@@ -10418,9 +10421,6 @@ begin
  end;
  if TpvGUIButtonFlag.NormalButton in fButtonFlags then begin
   Down:=false;
- end;
- if (OldDown<>Down) and assigned(OnChange) then begin
-  OnChange(self,Down);
  end;
 end;
 
@@ -15069,7 +15069,8 @@ begin
 
  fListBox:=TpvGUIListBox.Create(fPopupButton.Popup.Content);
  fListBox.MultiSelect:=false;
- fListBox.OnChangeItemIndex:=ListBoxChangeItemIndex;
+ fListBox.OnChangeItemIndex:=ListBoxOnChangeItemIndex;
+ fListBox.OnKeyEvent:=ListBoxOnKeyEvent;
 
  fPopupButton.fToFocusWidget:=fListBox;
 
@@ -15120,10 +15121,28 @@ begin
  result:=false;
 end;
 
-procedure TpvGUIComboBox.ListBoxChangeItemIndex(const aSender:TpvGUIObject);
+procedure TpvGUIComboBox.ListBoxOnChangeItemIndex(const aSender:TpvGUIObject);
 begin
  if fPopupButton.Down then begin
   SetItemIndex(fListBox.fItemIndex);
+ end;
+end;
+
+function TpvGUIComboBox.ListBoxOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=false;
+ case aKeyEvent.KeyCode of
+  KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_KP_ENTER:begin
+   case aKeyEvent.KeyEventType of
+    TpvApplicationInputKeyEventType.Typed:begin
+     if fPopupButton.Down then begin
+      fPopupButton.Down:=false;
+      RequestFocus;
+      result:=true;
+     end;
+    end;
+   end;
+  end;
  end;
 end;
 
@@ -15263,9 +15282,10 @@ begin
     end;
     result:=true;
    end;
-   KEYCODE_SPACE:begin
+   KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_KP_ENTER:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
+      fPopupButton.SetDown(true);
      end;
     end;
     result:=true;
