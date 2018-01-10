@@ -1082,6 +1082,7 @@ type TpvGUIObject=class;
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
        function AddMenu:TpvGUIWindowMenu;
        procedure PerformLayout; override;
+       function FindWidget(const aPosition:TpvVector2):TpvGUIWidget; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -1443,6 +1444,7 @@ type TpvGUIObject=class;
      TpvGUIPopupButton=class(TpvGUIButton)
       private
        fPopup:TpvGUIPopup;
+       fToFocusWidget:TpvGUIWidget;
       protected
        procedure SetDown(const aDown:boolean); override;
       public
@@ -1450,6 +1452,7 @@ type TpvGUIObject=class;
        procedure PerformLayout; override;
       published
        property Popup:TpvGUIPopup read fPopup;
+       property ToFocusWidget:TpvGUIWidget read fToFocusWidget write fToFocusWidget;
      end;
 
      TpvGUIPopupMenuButton=class(TpvGUIButton)
@@ -2169,6 +2172,7 @@ type TpvGUIObject=class;
        fOnDrawItem:TpvGUIComboBoxOnDrawItem;
        fOnGetItemText:TpvGUIComboBoxOnGetItemText;
        procedure PopupButtonOnChange(const aSender:TpvGUIObject;const aChanged:boolean);
+       function PopupOnEnter(const aSender:TpvGUIObject):boolean;
        function PopupOnLeave(const aSender:TpvGUIObject):boolean;
        procedure ListBoxChangeItemIndex(const aSender:TpvGUIObject);
        procedure SetItems(const aItems:TStrings);
@@ -8654,6 +8658,7 @@ begin
  end;
 
  try
+
   for CurrentIndex:=0 to fLastFocusPath.Count-1 do begin
    Current:=fLastFocusPath.Items[CurrentIndex];
    if Current is TpvGUIWidget then begin
@@ -8663,16 +8668,17 @@ begin
     end;
    end;
   end;
+
+   for CurrentIndex:=0 to fCurrentFocusPath.Count-1 do begin
+    Current:=fCurrentFocusPath.Items[CurrentIndex];
+    if (Current is TpvGUIWidget) and not fLastFocusPath.Contains(Current) then begin
+     CurrentWidget:=Current as TpvGUIWidget;
+     CurrentWidget.Enter;
+    end;
+   end;
+
  finally
   fLastFocusPath.Clear;
- end;
-
- for CurrentIndex:=0 to fCurrentFocusPath.Count-1 do begin
-  Current:=fCurrentFocusPath.Items[CurrentIndex];
-  if Current is TpvGUIWidget then begin
-   CurrentWidget:=Current as TpvGUIWidget;
-   CurrentWidget.Enter;
-  end;
  end;
 
  if assigned(fWindow) then begin
@@ -8764,6 +8770,28 @@ begin
   fMenu.PerformLayout;
  end;
 
+end;
+
+function TpvGUIInstance.FindWidget(const aPosition:TpvVector2):TpvGUIWidget;
+var Index:TpvSizeInt;
+    Child:TpvGUIObject;
+    ChildWidget:TpvGUIWidget;
+    ChildPosition:TpvVector2;
+begin
+ for Index:=fCurrentFocusPath.Count-1 downto 0 do begin
+  Child:=fCurrentFocusPath.Items[Index];
+  if Child is TpvGUIWidget then begin
+   ChildWidget:=TpvGUIWidget(Child);
+   ChildPosition:=aPosition-ChildWidget.GetAbsolutePosition;
+   if ChildWidget.Contains(ChildPosition) then begin
+    result:=ChildWidget.FindWidget(ChildPosition);
+    if assigned(result) then begin
+     exit;
+    end;
+   end;
+  end;
+ end;
+ result:=inherited FindWidget(aPosition);
 end;
 
 function TpvGUIInstance.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -8878,7 +8906,9 @@ begin
           fDragWidget.IncRef;
          end else begin
           TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
-          UpdateFocus(nil);
+          if (fPopupMenuStack.Count>0) or not (assigned(CurrentWidget) and CurrentWidget.Focused) then begin
+           UpdateFocus(nil);
+          end;
          end;
         end;
         else begin
@@ -10489,6 +10519,8 @@ begin
  fPopup.fSize:=TpvVector2.InlineableCreate(160,80);
  fPopup.fFixedSize:=TpvVector2.InlineableCreate(160,80);
 
+ fToFocusWidget:=nil;
+
 end;
 
 procedure TpvGUIPopupButton.PerformLayout;
@@ -10533,7 +10565,11 @@ begin
    fPopup.fSize.y:=ChildPreferredSize.y;
   end;
   fPopup.PerformLayout;
-  fPopup.RequestFocus;
+  if assigned(fToFocusWidget) then begin
+   fToFocusWidget.RequestFocus;
+  end else begin
+   fPopup.RequestFocus;
+  end;
  end;
 end;
 
@@ -15028,11 +15064,14 @@ begin
  fPopupButton.Popup.Content.fFixedSize.y:=-1.0;
  fPopupButton.Popup.Content.Layout:=TpvGUIFillLayout.Create(fPopupButton.Popup.Content,0.0);
  fPopupButton.fOnChange:=PopupButtonOnChange;
+ fPopupButton.Popup.fOnEnter:=PopupOnEnter;
+ fPopupButton.Popup.fOnLeave:=PopupOnLeave;
 
  fListBox:=TpvGUIListBox.Create(fPopupButton.Popup.Content);
  fListBox.MultiSelect:=false;
  fListBox.OnChangeItemIndex:=ListBoxChangeItemIndex;
- fListBox.fOnLeave:=PopupOnLeave;
+
+ fPopupButton.fToFocusWidget:=fListBox;
 
  fItems:=TStringList.Create;
 
@@ -15066,6 +15105,11 @@ begin
   fListBox.SetItems(fItems);
   fListBox.SetItemIndex(fItemIndex);
  end;
+end;
+
+function TpvGUIComboBox.PopupOnEnter(const aSender:TpvGUIObject):boolean;
+begin
+ result:=false;
 end;
 
 function TpvGUIComboBox.PopupOnLeave(const aSender:TpvGUIObject):boolean;
