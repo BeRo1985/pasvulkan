@@ -2166,6 +2166,7 @@ type TpvGUIObject=class;
        fItemIndex:TpvSizeInt;
        fRowHeight:TpvFloat;
        fWorkRowHeight:TpvFloat;
+       fClosePopup:boolean;
        fOnChange:TpvGUIOnEvent;
        fOnChangeItemIndex:TpvGUIOnEvent;
        fOnChangeSelection:TpvGUIOnEvent;
@@ -2192,6 +2193,7 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure Update; override;
        procedure Draw; override;
       published
        property Items:TStrings read fItems write SetItems;
@@ -15074,6 +15076,8 @@ begin
 
  fPopupButton.fToFocusWidget:=fListBox;
 
+ fClosePopup:=false;
+
  fItems:=TStringList.Create;
 
  fItemIndex:=-1;
@@ -15110,14 +15114,13 @@ end;
 
 function TpvGUIComboBox.PopupOnEnter(const aSender:TpvGUIObject):boolean;
 begin
+ fClosePopup:=false;
  result:=false;
 end;
 
 function TpvGUIComboBox.PopupOnLeave(const aSender:TpvGUIObject):boolean;
 begin
- if fPopupButton.Down then begin
-  fPopupButton.Down:=false;
- end;
+ fClosePopup:=true;
  result:=false;
 end;
 
@@ -15339,6 +15342,17 @@ begin
   SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
   result:=true;
  end;
+end;
+
+procedure TpvGUIComboBox.Update;
+begin
+ if fClosePopup then begin
+  fClosePopup:=false;
+  if fPopupButton.Down then begin
+   fPopupButton.Down:=false;
+  end;
+ end;
+ inherited Update;
 end;
 
 procedure TpvGUIComboBox.Draw;
