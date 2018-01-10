@@ -2158,9 +2158,11 @@ type TpvGUIObject=class;
 
      TpvGUIComboBoxOnGetItemText=function(const aSender:TpvGUIComboBox;const aItemIndex:TpvSizeInt):TpvUTF8String of object;
 
+     TpvGUIComboBoxPopupButton=class(TpvGUIPopupButton);
+
      TpvGUIComboBox=class(TpvGUIWidget)
       private
-       fPopupButton:TpvGUIPopupButton;
+       fPopupButton:TpvGUIComboBoxPopupButton;
        fListBox:TpvGUIListBox;
        fItems:TStrings;
        fItemIndex:TpvSizeInt;
@@ -2199,6 +2201,7 @@ type TpvGUIObject=class;
        property Items:TStrings read fItems write SetItems;
        property ItemIndex:TpvSizeInt read fItemIndex write SetItemIndex;
        property RowHeight:TpvFloat read fRowHeight write fRowHeight;
+       property ListBox:TpvGUIListBox read fListBox;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
        property OnDrawItem:TpvGUIComboBoxOnDrawItem read fOnDrawItem write fOnDrawItem;
@@ -5556,8 +5559,13 @@ begin
  end;
  TemporarySize.x:=TextSize.x+IconSize.x+ChevronIconSize.x;
  TemporarySize.y:=Max(TextSize.y,Maximum(IconSize.y,ChevronIconSize.y));
- result:=Maximum(GetWidgetLayoutPreferredSize(aButton),
-                 TemporarySize+TpvVector2.InlineableCreate(ButtonHorizontalBorderSpacing*2.0,10.0));
+ if aButton is TpvGUIComboBoxPopupButton then begin
+  result:=Maximum(GetWidgetLayoutPreferredSize(aButton),
+                  TemporarySize+TpvVector2.InlineableCreate(8.0,10.0));
+ end else begin
+  result:=Maximum(GetWidgetLayoutPreferredSize(aButton),
+                  TemporarySize+TpvVector2.InlineableCreate(ButtonHorizontalBorderSpacing*2.0,10.0));
+ end;
  if aButton.fFixedSize.x>0.0 then begin
   result.x:=aButton.fFixedSize.x;
  end;
@@ -5828,6 +5836,10 @@ begin
  aCanvas.DrawText(aButton.fCachedCaption,
                   Offset+TextRect.LeftTop+TextOffset);
  if assigned(ChevronIcon) then begin
+  if aButton is TpvGUIComboBoxPopupButton then begin
+   ChevronIconRect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(4.0,4.0),
+                                           aButton.fSize-TpvVector2.InlineableCreate(4.0,4.0));
+  end;
   aCanvas.DrawSprite(ChevronIcon,
                      TpvRect.CreateRelative(TpvVector2.Null,
                                             TpvVector2.InlineableCreate(ChevronIcon.Width,ChevronIcon.Height)),
@@ -15056,7 +15068,7 @@ begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
  Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
 
- fPopupButton:=TpvGUIPopupButton.Create(self);
+ fPopupButton:=TpvGUIComboBoxPopupButton.Create(self);
  fPopupButton.Caption:='';
  fPopupButton.Popup.fAnchorSide:=TpvGUIPopupAnchorSide.Bottom;
  fPopupButton.Popup.fParentWidget:=self;
