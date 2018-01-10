@@ -127,6 +127,8 @@ type TpvGUIObject=class;
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
 
+     TpvGUIOnEnterLeaveEvent=function(const aSender:TpvGUIObject):boolean of object;
+
      TpvGUIOnChange=procedure(const aSender:TpvGUIObject;const aChanged:boolean) of object;
 
      TpvGUIOnKeyEvent=function(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean of object;
@@ -888,6 +890,10 @@ type TpvGUIObject=class;
        fTextHorizontalAlignment:TpvGUITextAlignment;
        fTextVerticalAlignment:TpvGUITextAlignment;
        fTextTruncation:TpvGUITextTruncation;
+       fOnEnterEvent:TpvGUIOnEnterLeaveEvent;
+       fOnLeaveEvent:TpvGUIOnEnterLeaveEvent;
+       fOnPointerEnterEvent:TpvGUIOnEnterLeaveEvent;
+       fOnPointerLeaveEvent:TpvGUIOnEnterLeaveEvent;
        fOnKeyEvent:TpvGUIOnKeyEvent;
        fOnPointerEvent:TpvGUIOnPointerEvent;
        fOnScrolled:TpvGUIOnScrolled;
@@ -1008,6 +1014,10 @@ type TpvGUIObject=class;
        property FixedWidth:TpvFloat read GetFixedWidth write SetFixedWidth;
        property FixedHeight:TpvFloat read GetFixedHeight write SetFixedHeight;
        property Hint:TpvUTF8String read fHint write fHint;
+       property OnEnterEvent:TpvGUIOnEnterLeaveEvent read fOnEnterEvent write fOnEnterEvent;
+       property OnLeaveEvent:TpvGUIOnEnterLeaveEvent read fOnLeaveEvent write fOnLeaveEvent;
+       property OnPointerEnterEvent:TpvGUIOnEnterLeaveEvent read fOnPointerEnterEvent write fOnPointerEnterEvent;
+       property OnPointerLeaveEvent:TpvGUIOnEnterLeaveEvent read fOnPointerLeaveEvent write fOnPointerLeaveEvent;
        property OnKeyEvent:TpvGUIOnKeyEvent read fOnKeyEvent write fOnKeyEvent;
        property OnPointerEvent:TpvGUIOnPointerEvent read fOnPointerEvent write fOnPointerEvent;
        property OnScrolled:TpvGUIOnScrolled read fOnScrolled write fOnScrolled;
@@ -7535,6 +7545,14 @@ begin
 
  fTextTruncation:=TpvGUITextTruncation.None;
 
+ fOnEnterEvent:=nil;
+
+ fOnLeaveEvent:=nil;
+
+ fOnPointerEnterEvent:=nil;
+
+ fOnPointerLeaveEvent:=nil;
+
  fOnKeyEvent:=nil;
 
  fOnPointerEvent:=nil;
@@ -8153,25 +8171,25 @@ end;
 function TpvGUIWidget.Enter:boolean;
 begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.Focused);
- result:=false;
+ result:=assigned(fOnEnterEvent) and fOnEnterEvent(self);
 end;
 
 function TpvGUIWidget.Leave:boolean;
 begin
  Exclude(fWidgetFlags,TpvGUIWidgetFlag.Focused);
- result:=false;
+ result:=assigned(fOnLeaveEvent) and fOnLeaveEvent(self);
 end;
 
 function TpvGUIWidget.PointerEnter:boolean;
 begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.PointerFocused);
- result:=false;
+ result:=assigned(fOnPointerEnterEvent) and fOnPointerEnterEvent(self);
 end;
 
 function TpvGUIWidget.PointerLeave:boolean;
 begin
  Exclude(fWidgetFlags,TpvGUIWidgetFlag.PointerFocused);
- result:=false;
+ result:=assigned(fOnPointerLeaveEvent) and fOnPointerLeaveEvent(self);
 end;
 
 function TpvGUIWidget.DragEvent(const aPosition:TpvVector2):boolean;
