@@ -2071,6 +2071,8 @@ type TpvGUIObject=class;
        Mark
       );
 
+     TpvGUIListBoxOnDrawItem=function(const aSender:TpvGUIListBox;const aItemIndex:TpvSizeInt;const aRect:TpvRect):boolean of object;
+
      TpvGUIListBox=class(TpvGUIWidget)
       private
        fFlags:TpvGUIListBoxFlags;
@@ -2083,6 +2085,7 @@ type TpvGUIObject=class;
        fOnChange:TpvGUIOnEvent;
        fOnChangeItemIndex:TpvGUIOnEvent;
        fOnChangeSelection:TpvGUIOnEvent;
+       fOnDrawItem:TpvGUIListBoxOnDrawItem;
        fSelectedBitmap:TpvGUIListBoxSelectedBitmap;
        fAction:TpvGUIListBoxAction;
        fActionStartIndex:TpvSizeInt;
@@ -2122,6 +2125,7 @@ type TpvGUIObject=class;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
        property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
+       property OnDrawItem:TpvGUIListBoxOnDrawItem read fOnDrawItem write fOnDrawItem;
      end;
 
 implementation
@@ -7217,42 +7221,52 @@ begin
 
  for ItemIndex:=aListBox.fScrollBar.Value to aListBox.fItems.Count-1 do begin
 
-  aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
-
-  aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
-
-  if aListBox.Selected[ItemIndex] then begin
-   aCanvas.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
-   aCanvas.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
+  if not (assigned(aListBox.fOnDrawItem) and
+          aListBox.fOnDrawItem(aListBox,
+                               ItemIndex,
+                               TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left,
                                                                                   Position.y),
-                                                      TpvVector2.InlineableCreate(aListBox.fSize.x-(BoxCornerMargin*2.0),
-                                                                                  RowHeight)));
-   aCanvas.Color:=FontColor;
-  end;
+                                                      TpvVector2.InlineableCreate(DrawRect.Right,
+                                                                                  Position.y+RowHeight)))) then begin
 
-  aCanvas.DrawText(TpvUTF8String(aListBox.fItems[ItemIndex]),Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
+   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
 
-  if aListBox.fItemIndex=ItemIndex then begin
-   if aListBox.Focused then begin
-    Element:=GUI_ELEMENT_FOCUSED;
-   end else begin
-    Element:=GUI_ELEMENT_HOVERED;
+   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+
+   if aListBox.Selected[ItemIndex] then begin
+    aCanvas.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+    aCanvas.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                                                   Position.y),
+                                                       TpvVector2.InlineableCreate(aListBox.fSize.x-(BoxCornerMargin*2.0),
+                                                                                   RowHeight)));
+    aCanvas.Color:=FontColor;
    end;
-   Rect:=ClipRect;
-   Rect.Left:=ClipRect.Left-1.0;
-   Rect.Right:=ClipRect.Right+1.0;
-   aCanvas.ClipRect:=Rect;
-   Rect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(BoxCornerMargin,
-                                                            Position.y),
-                                TpvVector2.InlineableCreate(DrawRect.Right,
-                                                            Position.y+RowHeight));
-   aCanvas.DrawGUIElement(Element,
-                          true,
-                          Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
-                          Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
-                          Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
-                          Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0));
-   aCanvas.ClipRect:=ClipRect;
+
+   aCanvas.DrawText(TpvUTF8String(aListBox.fItems[ItemIndex]),Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
+
+   if aListBox.fItemIndex=ItemIndex then begin
+    if aListBox.Focused then begin
+     Element:=GUI_ELEMENT_FOCUSED;
+    end else begin
+     Element:=GUI_ELEMENT_HOVERED;
+    end;
+    Rect:=ClipRect;
+    Rect.Left:=ClipRect.Left-1.0;
+    Rect.Right:=ClipRect.Right+1.0;
+    aCanvas.ClipRect:=Rect;
+    Rect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                             Position.y),
+                                 TpvVector2.InlineableCreate(DrawRect.Right,
+                                                             Position.y+RowHeight));
+    aCanvas.DrawGUIElement(Element,
+                           true,
+                           Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
+                           Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
+                           Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
+                           Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0));
+    aCanvas.ClipRect:=ClipRect;
+   end;
+
   end;
 
   Position.y:=Position.y+RowHeight;
@@ -14324,6 +14338,8 @@ begin
  fOnChangeItemIndex:=nil;
 
  fOnChangeSelection:=nil;
+
+ fOnDrawItem:=nil;
 
  fSelectedBitmap:=nil;
 
