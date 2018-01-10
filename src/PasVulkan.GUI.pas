@@ -825,15 +825,15 @@ type TpvGUIObject=class;
        Up
       );
 
-     TpvGUIWidgetEnumerator=class(TEnumerator<TpvGUIWidget>)
+     TpvGUIWidgetEnumerator=record
       private
        fWidget:TpvGUIWidget;
        fIndex:TpvSizeInt;
-      protected
-       function DoMoveNext:boolean; override;
-       function DoGetCurrent:TpvGUIWidget; override;
+       function GetCurrent:TpvGUIWidget; inline;
       public
-       constructor Create(const aWidget:TpvGUIWidget); reintroduce;
+       constructor Create(const aWidget:TpvGUIWidget);
+       function MoveNext:boolean; inline;
+       property Current:TpvGUIWidget read GetCurrent;
      end;
 
      PpvGUIWidgetFlag=^TpvGUIWidgetFlag;
@@ -7292,12 +7292,11 @@ end;
 
 constructor TpvGUIWidgetEnumerator.Create(const aWidget:TpvGUIWidget);
 begin
- inherited Create;
  fWidget:=aWidget;
  fIndex:=-1;
 end;
 
-function TpvGUIWidgetEnumerator.DoMoveNext:boolean;
+function TpvGUIWidgetEnumerator.MoveNext:boolean;
 begin
  inc(fIndex);
  while (fIndex<fWidget.fChildren.Count) and not (fWidget.fChildren[fIndex] is TpvGUIWidget) do begin
@@ -7306,7 +7305,7 @@ begin
  result:=(fWidget.fChildren.Count<>0) and (fIndex<fWidget.fChildren.Count);
 end;
 
-function TpvGUIWidgetEnumerator.DoGetCurrent:TpvGUIWidget;
+function TpvGUIWidgetEnumerator.GetCurrent:TpvGUIWidget;
 begin
  result:=fWidget.fChildren[fIndex] as TpvGUIWidget;
 end;
