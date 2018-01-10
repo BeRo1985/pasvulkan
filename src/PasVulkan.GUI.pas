@@ -890,10 +890,10 @@ type TpvGUIObject=class;
        fTextHorizontalAlignment:TpvGUITextAlignment;
        fTextVerticalAlignment:TpvGUITextAlignment;
        fTextTruncation:TpvGUITextTruncation;
-       fOnEnterEvent:TpvGUIOnEnterLeaveEvent;
-       fOnLeaveEvent:TpvGUIOnEnterLeaveEvent;
-       fOnPointerEnterEvent:TpvGUIOnEnterLeaveEvent;
-       fOnPointerLeaveEvent:TpvGUIOnEnterLeaveEvent;
+       fOnEnter:TpvGUIOnEnterLeaveEvent;
+       fOnLeave:TpvGUIOnEnterLeaveEvent;
+       fOnPointerEnter:TpvGUIOnEnterLeaveEvent;
+       fOnPointerLeave:TpvGUIOnEnterLeaveEvent;
        fOnKeyEvent:TpvGUIOnKeyEvent;
        fOnPointerEvent:TpvGUIOnPointerEvent;
        fOnScrolled:TpvGUIOnScrolled;
@@ -1014,10 +1014,10 @@ type TpvGUIObject=class;
        property FixedWidth:TpvFloat read GetFixedWidth write SetFixedWidth;
        property FixedHeight:TpvFloat read GetFixedHeight write SetFixedHeight;
        property Hint:TpvUTF8String read fHint write fHint;
-       property OnEnterEvent:TpvGUIOnEnterLeaveEvent read fOnEnterEvent write fOnEnterEvent;
-       property OnLeaveEvent:TpvGUIOnEnterLeaveEvent read fOnLeaveEvent write fOnLeaveEvent;
-       property OnPointerEnterEvent:TpvGUIOnEnterLeaveEvent read fOnPointerEnterEvent write fOnPointerEnterEvent;
-       property OnPointerLeaveEvent:TpvGUIOnEnterLeaveEvent read fOnPointerLeaveEvent write fOnPointerLeaveEvent;
+       property OnEnter:TpvGUIOnEnterLeaveEvent read fOnEnter write fOnEnter;
+       property OnLeave:TpvGUIOnEnterLeaveEvent read fOnLeave write fOnLeave;
+       property OnPointerEnter:TpvGUIOnEnterLeaveEvent read fOnPointerEnter write fOnPointerEnter;
+       property OnPointerLeave:TpvGUIOnEnterLeaveEvent read fOnPointerLeave write fOnPointerLeave;
        property OnKeyEvent:TpvGUIOnKeyEvent read fOnKeyEvent write fOnKeyEvent;
        property OnPointerEvent:TpvGUIOnPointerEvent read fOnPointerEvent write fOnPointerEvent;
        property OnScrolled:TpvGUIOnScrolled read fOnScrolled write fOnScrolled;
@@ -2169,6 +2169,7 @@ type TpvGUIObject=class;
        fOnDrawItem:TpvGUIComboBoxOnDrawItem;
        fOnGetItemText:TpvGUIComboBoxOnGetItemText;
        procedure PopupButtonOnChange(const aSender:TpvGUIObject;const aChanged:boolean);
+       function PopupOnLeave(const aSender:TpvGUIObject):boolean;
        procedure ListBoxChangeItemIndex(const aSender:TpvGUIObject);
        procedure SetItems(const aItems:TStrings);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
@@ -7545,13 +7546,13 @@ begin
 
  fTextTruncation:=TpvGUITextTruncation.None;
 
- fOnEnterEvent:=nil;
+ fOnEnter:=nil;
 
- fOnLeaveEvent:=nil;
+ fOnLeave:=nil;
 
- fOnPointerEnterEvent:=nil;
+ fOnPointerEnter:=nil;
 
- fOnPointerLeaveEvent:=nil;
+ fOnPointerLeave:=nil;
 
  fOnKeyEvent:=nil;
 
@@ -8171,25 +8172,25 @@ end;
 function TpvGUIWidget.Enter:boolean;
 begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.Focused);
- result:=assigned(fOnEnterEvent) and fOnEnterEvent(self);
+ result:=assigned(fOnEnter) and fOnEnter(self);
 end;
 
 function TpvGUIWidget.Leave:boolean;
 begin
  Exclude(fWidgetFlags,TpvGUIWidgetFlag.Focused);
- result:=assigned(fOnLeaveEvent) and fOnLeaveEvent(self);
+ result:=assigned(fOnLeave) and fOnLeave(self);
 end;
 
 function TpvGUIWidget.PointerEnter:boolean;
 begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.PointerFocused);
- result:=assigned(fOnPointerEnterEvent) and fOnPointerEnterEvent(self);
+ result:=assigned(fOnPointerEnter) and fOnPointerEnter(self);
 end;
 
 function TpvGUIWidget.PointerLeave:boolean;
 begin
  Exclude(fWidgetFlags,TpvGUIWidgetFlag.PointerFocused);
- result:=assigned(fOnPointerLeaveEvent) and fOnPointerLeaveEvent(self);
+ result:=assigned(fOnPointerLeave) and fOnPointerLeave(self);
 end;
 
 function TpvGUIWidget.DragEvent(const aPosition:TpvVector2):boolean;
@@ -15031,6 +15032,7 @@ begin
  fListBox:=TpvGUIListBox.Create(fPopupButton.Popup.Content);
  fListBox.MultiSelect:=false;
  fListBox.OnChangeItemIndex:=ListBoxChangeItemIndex;
+ fListBox.fOnLeave:=PopupOnLeave;
 
  fItems:=TStringList.Create;
 
@@ -15064,6 +15066,14 @@ begin
   fListBox.SetItems(fItems);
   fListBox.SetItemIndex(fItemIndex);
  end;
+end;
+
+function TpvGUIComboBox.PopupOnLeave(const aSender:TpvGUIObject):boolean;
+begin
+ if fPopupButton.Down then begin
+  fPopupButton.Down:=false;
+ end;
+ result:=false;
 end;
 
 procedure TpvGUIComboBox.ListBoxChangeItemIndex(const aSender:TpvGUIObject);
