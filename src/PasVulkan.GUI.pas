@@ -7293,12 +7293,16 @@ begin
   Element:=GUI_ELEMENT_BOX_DISABLED;
   FontColor:=TpvVector4.InlineableCreate(aListBox.FontColor.rgb,aListBox.FontColor.a*0.25);
  end;
+
+ DrawRect.LeftTop:=ClipRect.LeftTop-aListBox.fClipRect.LeftTop;
+ DrawRect.RightBottom:=ClipRect.RightBottom-aListBox.fClipRect.LeftTop;
+
  aCanvas.DrawGUIElement(Element,
                         true,
-                        TpvVector2.Null,
-                        aListBox.fSize,
-                        TpvVector2.Null,
-                        aListBox.fSize);
+                        DrawRect.LeftTop,
+                        DrawRect.RightBottom,
+                        DrawRect.LeftTop,
+                        DrawRect.RightBottom);
 
  Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
 
