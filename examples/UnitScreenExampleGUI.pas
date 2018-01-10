@@ -51,6 +51,7 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        fGUISlider1:TpvGUISlider;
        fGUIProgressBar1:TpvGUIProgressBar;
        fGUIListBox0:TpvGUIListBox;
+       fGUIComboBox0:TpvGUIComboBox;
        fTime:TpvDouble;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -251,6 +252,19 @@ begin
  fGUIListBox0.Items.Add('Item 8');
  fGUIListBox0.Items.Add('Item 9');
  fGUIListBox0.Items.Add('Item 10');
+
+ fGUIComboBox0:=TpvGUIComboBox.Create(Content);
+ fGUIComboBox0.Items.Add('Item 1');
+ fGUIComboBox0.Items.Add('Item 2');
+ fGUIComboBox0.Items.Add('Item 3');
+ fGUIComboBox0.Items.Add('Item 4');
+ fGUIComboBox0.Items.Add('Item 5');
+ fGUIComboBox0.Items.Add('Item 6');
+ fGUIComboBox0.Items.Add('Item 7');
+ fGUIComboBox0.Items.Add('Item 8');
+ fGUIComboBox0.Items.Add('Item 9');
+ fGUIComboBox0.Items.Add('Item 10');
+ fGUIComboBox0.ItemIndex:=0;
 
  fTime:=0.0;
 

@@ -1206,11 +1206,13 @@ begin
   end;
   LastGlyph:=CurrentGlyph;
  end;
- if result=0 then begin
-  result:=fMaxX-fMinX;
- end;
- if result<Width then begin
-  result:=Width;
+ if length(aText)>0 then begin
+  if result=0 then begin
+   result:=fMaxX-fMinX;
+  end;
+  if result<Width then begin
+   result:=Width;
+  end;
  end;
  result:=result*GetScaleFactor(aSize);
 end;
@@ -1261,11 +1263,13 @@ begin
   end;
   LastGlyph:=CurrentGlyph;
  end;
- if result=0 then begin
-  result:=fMaxY-fMinY;
- end;
- if result<Height then begin
-  result:=Height;
+ if length(aText)>0 then begin
+  if result=0 then begin
+   result:=fMaxY-fMinY;
+  end;
+  if result<Height then begin
+   result:=Height;
+  end;
  end;
  result:=result*GetScaleFactor(aSize);
 end;
@@ -1313,11 +1317,13 @@ begin
   end;
   LastGlyph:=CurrentGlyph;
  end;
- if result.x=0 then begin
-  result.x:=fMaxX-fMinX;
- end;
- if result.y=0 then begin
-  result.y:=fMaxY-fMinY;
+ if length(aText)>0 then begin
+  if result.x=0 then begin
+   result.x:=fMaxX-fMinX;
+  end;
+  if result.y=0 then begin
+   result.y:=fMaxY-fMinY;
+  end;
  end;
  result:=Maximum(result,Size)*GetScaleFactor(aSize);
 end;

@@ -121,6 +121,8 @@ type TpvGUIObject=class;
 
      TpvGUIListBox=class;
 
+     TpvGUIComboBox=class;
+
      EpvGUIWidget=class(Exception);
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
@@ -650,6 +652,9 @@ type TpvGUIObject=class;
        function GetListBoxPreferredSize(const aListBox:TpvGUIListBox):TpvVector2; virtual;
        procedure DrawListBox(const aCanvas:TpvCanvas;const aListBox:TpvGUIListBox); virtual;
       public
+       function GetComboBoxPreferredSize(const aComboBox:TpvGUIComboBox):TpvVector2; virtual;
+       procedure DrawComboBox(const aCanvas:TpvCanvas;const aComboBox:TpvGUIComboBox); virtual;
+      public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
        property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
@@ -725,6 +730,7 @@ type TpvGUIObject=class;
              TabButtonSize=24;
              BoxCornerMargin=3.0;
              ListBoxHorizontalMargin=2.0;
+             ComboBoxHorizontalMargin=2.0;
       protected
        fUnfocusedWindowHeaderFontShadow:boolean;
        fFocusedWindowHeaderFontShadow:boolean;
@@ -791,6 +797,9 @@ type TpvGUIObject=class;
       public
        function GetListBoxPreferredSize(const aListBox:TpvGUIListBox):TpvVector2; override;
        procedure DrawListBox(const aCanvas:TpvCanvas;const aListBox:TpvGUIListBox); override;
+      public
+       function GetComboBoxPreferredSize(const aComboBox:TpvGUIComboBox):TpvVector2; override;
+       procedure DrawComboBox(const aCanvas:TpvCanvas;const aComboBox:TpvGUIComboBox); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -2130,6 +2139,52 @@ type TpvGUIObject=class;
        property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
        property OnDrawItem:TpvGUIListBoxOnDrawItem read fOnDrawItem write fOnDrawItem;
        property OnGetItemText:TpvGUIListBoxOnGetItemText read fOnGetItemText write fOnGetItemText;
+     end;
+
+     TpvGUIComboBoxOnDrawItem=function(const aSender:TpvGUIComboBox;const aItemIndex:TpvSizeInt;const aRect:TpvRect):boolean of object;
+
+     TpvGUIComboBoxOnGetItemText=function(const aSender:TpvGUIComboBox;const aItemIndex:TpvSizeInt):TpvUTF8String of object;
+
+     TpvGUIComboBox=class(TpvGUIWidget)
+      private
+       fPopupButton:TpvGUIPopupButton;
+       fListBox:TpvGUIListBox;
+       fItems:TStrings;
+       fItemIndex:TpvSizeInt;
+       fRowHeight:TpvFloat;
+       fWorkRowHeight:TpvFloat;
+       fOnChange:TpvGUIOnEvent;
+       fOnChangeItemIndex:TpvGUIOnEvent;
+       fOnChangeSelection:TpvGUIOnEvent;
+       fOnDrawItem:TpvGUIComboBoxOnDrawItem;
+       fOnGetItemText:TpvGUIComboBoxOnGetItemText;
+       procedure PopupButtonOnChange(const aSender:TpvGUIObject;const aChanged:boolean);
+       procedure ListBoxChangeItemIndex(const aSender:TpvGUIObject);
+       procedure SetItems(const aItems:TStrings);
+       procedure SetItemIndex(const aItemIndex:TpvSizeInt);
+       function GetHighlightRect:TpvRect; override;
+       function GetPreferredSize:TpvVector2; override;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure PerformLayout; override;
+       function Enter:boolean; override;
+       function Leave:boolean; override;
+       function PointerEnter:boolean; override;
+       function PointerLeave:boolean; override;
+       function DragEvent(const aPosition:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure Draw; override;
+      published
+       property Items:TStrings read fItems write SetItems;
+       property ItemIndex:TpvSizeInt read fItemIndex write SetItemIndex;
+       property RowHeight:TpvFloat read fRowHeight write fRowHeight;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
+       property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
+       property OnDrawItem:TpvGUIComboBoxOnDrawItem read fOnDrawItem write fOnDrawItem;
+       property OnGetItemText:TpvGUIComboBoxOnGetItemText read fOnGetItemText write fOnGetItemText;
      end;
 
 implementation
@@ -4263,6 +4318,16 @@ begin
 end;
 
 procedure TpvGUISkin.DrawListBox(const aCanvas:TpvCanvas;const aListBox:TpvGUIListBox);
+begin
+
+end;
+
+function TpvGUISkin.GetComboBoxPreferredSize(const aComboBox:TpvGUIComboBox):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aComboBox);
+end;
+
+procedure TpvGUISkin.DrawComboBox(const aCanvas:TpvCanvas;const aComboBox:TpvGUIComboBox);
 begin
 
 end;
@@ -7183,6 +7248,10 @@ begin
 
  CurrentFontSize:=aListBox.FontSize;
 
+ aCanvas.Font:=CurrentFont;
+
+ aCanvas.FontSize:=CurrentFontSize;
+
  if aListBox.Enabled then begin
   FontColor:=aListBox.FontColor;
   if aListBox.Focused then begin
@@ -7284,6 +7353,121 @@ begin
 
   if Position.y>aListBox.fSize.y then begin
    break;
+  end;
+
+ end;
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.GetComboBoxPreferredSize(const aComboBox:TpvGUIComboBox):TpvVector2;
+var CurrentFont:TpvFont;
+    CurrentFontSize,RowHeight:TpvFloat;
+begin
+
+ CurrentFont:=aComboBox.Font;
+
+ CurrentFontSize:=aComboBox.FontSize;
+
+ if aComboBox.fRowHeight>0.0 then begin
+  RowHeight:=aComboBox.fRowHeight;
+ end else begin
+  RowHeight:=CurrentFont.RowHeight(150,CurrentFontSize);
+ end;
+
+ aComboBox.fWorkRowHeight:=RowHeight;
+
+ result:=TpvVector2.InlineableCreate((BoxCornerMargin*2.0)+100.0,
+                                     (RowHeight*1.0)+(BoxCornerMargin*2.0));
+
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawComboBox(const aCanvas:TpvCanvas;const aComboBox:TpvGUIComboBox);
+var Element:TpvInt32;
+    ItemIndex:TpvSizeInt;
+    CurrentFont:TpvFont;
+    CurrentFontSize,RowHeight:TpvFloat;
+    Position:TpvVector2;
+    FontColor:TpvVector4;
+    ClipRect,DrawRect,Rect:TpvRect;
+    ItemText:TpvUTF8String;
+begin
+
+ aCanvas.ModelMatrix:=aComboBox.fModelMatrix;
+
+ ClipRect:=aComboBox.fClipRect;
+
+ aCanvas.ClipRect:=ClipRect;
+
+ CurrentFont:=aComboBox.Font;
+
+ CurrentFontSize:=aComboBox.FontSize;
+
+ aCanvas.Font:=CurrentFont;
+
+ aCanvas.FontSize:=CurrentFontSize;
+
+ if aComboBox.Enabled then begin
+  FontColor:=aComboBox.FontColor;
+  if aComboBox.Focused then begin
+   Element:=GUI_ELEMENT_BOX_FOCUSED;
+  end else begin
+   Element:=GUI_ELEMENT_BOX_UNFOCUSED;
+  end;
+ end else begin
+  Element:=GUI_ELEMENT_BOX_DISABLED;
+  FontColor:=TpvVector4.InlineableCreate(aComboBox.FontColor.rgb,aComboBox.FontColor.a*0.25);
+ end;
+ aCanvas.DrawGUIElement(Element,
+                        true,
+                        TpvVector2.Null,
+                        aComboBox.fSize,
+                        TpvVector2.Null,
+                        aComboBox.fSize);
+
+ Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ComboBoxHorizontalMargin,BoxCornerMargin);
+
+ if aComboBox.fRowHeight>0.0 then begin
+  RowHeight:=aComboBox.fRowHeight;
+ end else begin
+  RowHeight:=CurrentFont.RowHeight(150,CurrentFontSize);
+ end;
+
+ aComboBox.fWorkRowHeight:=RowHeight;
+
+ aCanvas.Color:=FontColor;
+
+ ClipRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
+
+ ClipRect.RightBottom:=ClipRect.RightBottom-TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
+
+ aCanvas.ClipRect:=ClipRect;
+
+ DrawRect.LeftTop:=ClipRect.LeftTop-aComboBox.fClipRect.LeftTop;
+ DrawRect.RightBottom:=ClipRect.RightBottom-aComboBox.fClipRect.LeftTop;
+
+ ItemIndex:=aComboBox.ItemIndex;
+ if (ItemIndex>=0) and (ItemIndex<aComboBox.fItems.Count) then begin
+
+  if not (assigned(aComboBox.fOnDrawItem) and
+          aComboBox.fOnDrawItem(aComboBox,
+                                ItemIndex,
+                                TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left,
+                                                                                   Position.y),
+                                                       TpvVector2.InlineableCreate(DrawRect.Right,
+                                                                                   Position.y+RowHeight)))) then begin
+
+   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+
+   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+
+   if assigned(aComboBox.fOnGetItemText) then begin
+    ItemText:=aComboBox.fOnGetItemText(aComboBox,ItemIndex);
+   end else begin
+    ItemText:=TpvUTF8String(aComboBox.fItems[ItemIndex]);
+   end;
+
+   aCanvas.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
+
   end;
 
  end;
@@ -10289,20 +10473,46 @@ begin
 end;
 
 procedure TpvGUIPopupButton.PerformLayout;
+var ChildFixedSize,ChildPreferredSize:TpvVector2;
 begin
  inherited PerformLayout;
  if assigned(fPopup) and fPopup.Visible then begin
   fPopup.UpdatePosition;
+  ChildFixedSize:=fPopup.GetFixedSize;
+  ChildPreferredSize:=fPopup.GetPreferredSize;
+  if ChildFixedSize.x>0.0 then begin
+   fPopup.fSize.x:=ChildFixedSize.x;
+  end else begin
+   fPopup.fSize.x:=ChildPreferredSize.x;
+  end;
+  if ChildFixedSize.x>0.0 then begin
+   fPopup.fSize.y:=ChildFixedSize.y;
+  end else begin
+   fPopup.fSize.y:=ChildPreferredSize.y;
+  end;
   fPopup.PerformLayout;
  end;
 end;
 
 procedure TpvGUIPopupButton.SetDown(const aDown:boolean);
+var ChildFixedSize,ChildPreferredSize:TpvVector2;
 begin
  inherited SetDown(aDown);
  fPopup.Visible:=aDown;
  if aDown then begin
   fPopup.UpdatePosition;
+  ChildFixedSize:=fPopup.GetFixedSize;
+  ChildPreferredSize:=fPopup.GetPreferredSize;
+  if ChildFixedSize.x>0.0 then begin
+   fPopup.fSize.x:=ChildFixedSize.x;
+  end else begin
+   fPopup.fSize.x:=ChildPreferredSize.x;
+  end;
+  if ChildFixedSize.x>0.0 then begin
+   fPopup.fSize.y:=ChildFixedSize.y;
+  end else begin
+   fPopup.fSize.y:=ChildPreferredSize.y;
+  end;
   fPopup.PerformLayout;
   fPopup.RequestFocus;
  end;
@@ -14601,6 +14811,7 @@ begin
       end;
      end;
     end;
+    result:=true;
    end;
    KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
     case aKeyEvent.KeyEventType of
@@ -14776,6 +14987,265 @@ procedure TpvGUIListBox.Draw;
 begin
  UpdateScrollBar;
  Skin.DrawListBox(fCanvas,self);
+ inherited Draw;
+end;
+
+constructor TpvGUIComboBox.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
+
+ fPopupButton:=TpvGUIPopupButton.Create(self);
+ fPopupButton.Caption:='';
+ fPopupButton.Popup.fAnchorSide:=TpvGUIPopupAnchorSide.Bottom;
+ fPopupButton.Popup.fParentWidget:=self;
+ fPopupButton.Popup.fFixedSize.x:=-1.0;
+ fPopupButton.Popup.fFixedSize.y:=-1.0;
+ fPopupButton.Popup.Content.fFixedSize.x:=-1.0;
+ fPopupButton.Popup.Content.fFixedSize.y:=-1.0;
+ fPopupButton.Popup.Content.Layout:=TpvGUIFillLayout.Create(fPopupButton.Popup.Content,0.0);
+ fPopupButton.fOnChange:=PopupButtonOnChange;
+
+ fListBox:=TpvGUIListBox.Create(fPopupButton.Popup.Content);
+ fListBox.MultiSelect:=false;
+ fListBox.OnChangeItemIndex:=ListBoxChangeItemIndex;
+
+ fItems:=TStringList.Create;
+
+ fItemIndex:=-1;
+
+ fRowHeight:=0.0;
+
+ fWorkRowHeight:=0.0;
+
+ fOnChange:=nil;
+
+ fOnChangeItemIndex:=nil;
+
+ fOnChangeSelection:=nil;
+
+ fOnDrawItem:=nil;
+
+ fOnGetItemText:=nil;
+
+end;
+
+destructor TpvGUIComboBox.Destroy;
+begin
+ FreeAndNil(fItems);
+ inherited Destroy;
+end;
+
+procedure TpvGUIComboBox.PopupButtonOnChange(const aSender:TpvGUIObject;const aChanged:boolean);
+begin
+ if aChanged then begin
+  fListBox.SetItems(fItems);
+  fListBox.SetItemIndex(fItemIndex);
+ end;
+end;
+
+procedure TpvGUIComboBox.ListBoxChangeItemIndex(const aSender:TpvGUIObject);
+begin
+ if fPopupButton.Down then begin
+  SetItemIndex(fListBox.fItemIndex);
+ end;
+end;
+
+procedure TpvGUIComboBox.SetItems(const aItems:TStrings);
+begin
+ fItems.Assign(aItems);
+ SetItemIndex(Min(Max(fItemIndex,0),fItems.Count-1));
+ if assigned(fOnChange) then begin
+  fOnChange(self);
+ end;
+end;
+
+procedure TpvGUIComboBox.SetItemIndex(const aItemIndex:TpvSizeInt);
+begin
+ if fItemIndex<>aItemIndex then begin
+  fItemIndex:=Min(Max(aItemIndex,-1),fItems.Count-1);
+  if assigned(fOnChangeItemIndex) then begin
+   fOnChangeItemIndex(self);
+  end;
+ end;
+end;
+
+function TpvGUIComboBox.GetHighlightRect:TpvRect;
+begin
+ if fPopupButton.Visible then begin
+  if fPopupButton.Focused and fPopupButton.PointerFocused then begin
+   result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(-16777216.0,-16777216.0),TpvVector2.Null);
+  end else begin
+   result:=TpvRect.CreateRelative(TpvVector2.Null,fSize-TpvVector2.InlineableCreate(fPopupButton.fSize.x,0.0));
+  end;
+ end else begin
+  result:=inherited GetHighlightRect;
+ end;
+end;
+
+function TpvGUIComboBox.GetPreferredSize:TpvVector2;
+begin
+ result:=Skin.GetComboBoxPreferredSize(self);
+end;
+
+procedure TpvGUIComboBox.PerformLayout;
+var PopupButtonSize:TpvVector2;
+begin
+ fPopupButton.Visible:=false;
+ fListBox.Visible:=false;
+ inherited PerformLayout;
+ fPopupButton.Visible:=true;
+ fListBox.Visible:=true;
+ PopupButtonSize:=fPopupButton.GetPreferredSize;
+ fPopupButton.fPosition:=TpvVector2.InlineableCreate(fSize.x-PopupButtonSize.x,0.0);
+ fPopupButton.fSize:=TpvVector2.InlineableCreate(PopupButtonSize.x,fSize.y);
+ fPopupButton.Popup.fFixedSize.x:=fSize.x;
+ fPopupButton.Popup.fFixedSize.y:=fListBox.GetPreferredSize.y;
+end;
+
+function TpvGUIComboBox.Enter:boolean;
+begin
+ result:=inherited Enter;
+end;
+
+function TpvGUIComboBox.Leave:boolean;
+begin
+ result:=inherited Leave;
+end;
+
+function TpvGUIComboBox.PointerEnter:boolean;
+begin
+ result:=inherited PointerEnter;
+end;
+
+function TpvGUIComboBox.PointerLeave:boolean;
+begin
+ result:=inherited PointerLeave;
+end;
+
+function TpvGUIComboBox.DragEvent(const aPosition:TpvVector2):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUIComboBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if Enabled and not result then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(Max(fItemIndex-1,0),fItems.Count-1));
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(Max(fItemIndex+1,0),fItems.Count-1));
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_PAGEDOWN:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(Max(fItemIndex+4,0),fItems.Count-1));
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_PAGEUP:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(Max(fItemIndex-4,0),fItems.Count-1));
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_HOME:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(0,fItems.Count-1));
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_END:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(fItems.Count-1);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_SPACE:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+     end;
+    end;
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIComboBox.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var CurrentItemIndex:TpvSizeInt;
+begin
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+ if not result then begin
+  result:=inherited PointerEvent(aPointerEvent);
+  if not result then begin
+   case aPointerEvent.PointerEventType of
+    TpvApplicationInputPointerEventType.Down:begin
+     if not Focused then begin
+      RequestFocus;
+     end;
+     fPopupButton.SetDown(false);
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Up:begin
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Motion:begin
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Drag:begin
+     result:=true;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIComboBox.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+var TemporaryValue,Step:TpvInt64;
+    v:TpvFloat;
+begin
+ result:=inherited Scrolled(aPosition,aRelativeAmount);
+ if not result then begin
+  TemporaryValue:=fItemIndex;
+  v:=aRelativeAmount.x-aRelativeAmount.y;
+  if v<0.0 then begin
+   Step:=floor(v);
+  end else begin
+   Step:=ceil(v);
+  end;
+  SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
+  result:=true;
+ end;
+end;
+
+procedure TpvGUIComboBox.Draw;
+begin
+ Skin.DrawComboBox(fCanvas,self);
  inherited Draw;
 end;
 
