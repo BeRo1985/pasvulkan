@@ -15135,7 +15135,7 @@ function TpvGUIComboBox.ListBoxOnKeyEvent(const aSender:TpvGUIObject;const aKeyE
 begin
  result:=false;
  case aKeyEvent.KeyCode of
-  KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_KP_ENTER:begin
+  KEYCODE_SPACE,KEYCODE_RETURN,KEYCODE_KP_ENTER,KEYCODE_ESCAPE:begin
    case aKeyEvent.KeyEventType of
     TpvApplicationInputKeyEventType.Typed:begin
      if fPopupButton.Down then begin
