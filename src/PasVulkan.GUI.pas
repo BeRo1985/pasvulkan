@@ -2073,6 +2073,8 @@ type TpvGUIObject=class;
 
      TpvGUIListBoxOnDrawItem=function(const aSender:TpvGUIListBox;const aItemIndex:TpvSizeInt;const aRect:TpvRect):boolean of object;
 
+     TpvGUIListBoxOnGetItemText=function(const aSender:TpvGUIListBox;const aItemIndex:TpvSizeInt):TpvUTF8String of object;
+
      TpvGUIListBox=class(TpvGUIWidget)
       private
        fFlags:TpvGUIListBoxFlags;
@@ -2086,6 +2088,7 @@ type TpvGUIObject=class;
        fOnChangeItemIndex:TpvGUIOnEvent;
        fOnChangeSelection:TpvGUIOnEvent;
        fOnDrawItem:TpvGUIListBoxOnDrawItem;
+       fOnGetItemText:TpvGUIListBoxOnGetItemText;
        fSelectedBitmap:TpvGUIListBoxSelectedBitmap;
        fAction:TpvGUIListBoxAction;
        fActionStartIndex:TpvSizeInt;
@@ -2126,6 +2129,7 @@ type TpvGUIObject=class;
        property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
        property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
        property OnDrawItem:TpvGUIListBoxOnDrawItem read fOnDrawItem write fOnDrawItem;
+       property OnGetItemText:TpvGUIListBoxOnGetItemText read fOnGetItemText write fOnGetItemText;
      end;
 
 implementation
@@ -7161,6 +7165,7 @@ var Element:TpvInt32;
     Position:TpvVector2;
     FontColor:TpvVector4;
     ClipRect,DrawRect,Rect:TpvRect;
+    ItemText:TpvUTF8String;
 begin
 
 
@@ -7242,7 +7247,13 @@ begin
     aCanvas.Color:=FontColor;
    end;
 
-   aCanvas.DrawText(TpvUTF8String(aListBox.fItems[ItemIndex]),Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
+   if assigned(aListBox.fOnGetItemText) then begin
+    ItemText:=aListBox.fOnGetItemText(aListBox,ItemIndex);
+   end else begin
+    ItemText:=TpvUTF8String(aListBox.fItems[ItemIndex]);
+   end;
+
+   aCanvas.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
 
    if aListBox.fItemIndex=ItemIndex then begin
     if aListBox.Focused then begin
@@ -14340,6 +14351,8 @@ begin
  fOnChangeSelection:=nil;
 
  fOnDrawItem:=nil;
+
+ fOnGetItemText:=nil;
 
  fSelectedBitmap:=nil;
 
