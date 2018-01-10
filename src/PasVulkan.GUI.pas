@@ -7426,6 +7426,8 @@ begin
 
  ClipRect:=aComboBox.fClipRect;
 
+ ClipRect.Right:=ClipRect.Right-aComboBox.fPopupButton.fSize.x;
+
  aCanvas.ClipRect:=ClipRect;
 
  CurrentFont:=aComboBox.Font;
@@ -7447,12 +7449,16 @@ begin
   Element:=GUI_ELEMENT_BOX_DISABLED;
   FontColor:=TpvVector4.InlineableCreate(aComboBox.FontColor.rgb,aComboBox.FontColor.a*0.25);
  end;
+
+ DrawRect.LeftTop:=ClipRect.LeftTop-aComboBox.fClipRect.LeftTop;
+ DrawRect.RightBottom:=ClipRect.RightBottom-aComboBox.fClipRect.LeftTop;
+
  aCanvas.DrawGUIElement(Element,
                         true,
-                        TpvVector2.Null,
-                        aComboBox.fSize,
-                        TpvVector2.Null,
-                        aComboBox.fSize);
+                        DrawRect.LeftTop,
+                        DrawRect.RightBottom,
+                        DrawRect.LeftTop,
+                        DrawRect.RightBottom);
 
  Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ComboBoxHorizontalMargin,BoxCornerMargin);
 
