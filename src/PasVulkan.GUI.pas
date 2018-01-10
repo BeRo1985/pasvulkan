@@ -15058,6 +15058,9 @@ end;
 procedure TpvGUIComboBox.SetItems(const aItems:TStrings);
 begin
  fItems.Assign(aItems);
+ if fPopupButton.Down then begin
+  fListBox.SetItems(aItems);
+ end;
  SetItemIndex(Min(Max(fItemIndex,0),fItems.Count-1));
  if assigned(fOnChange) then begin
   fOnChange(self);
@@ -15068,6 +15071,9 @@ procedure TpvGUIComboBox.SetItemIndex(const aItemIndex:TpvSizeInt);
 begin
  if fItemIndex<>aItemIndex then begin
   fItemIndex:=Min(Max(aItemIndex,-1),fItems.Count-1);
+  if fPopupButton.Down then begin
+   fListBox.SetItemIndex(fItemIndex);
+  end;
   if assigned(fOnChangeItemIndex) then begin
    fOnChangeItemIndex(self);
   end;
