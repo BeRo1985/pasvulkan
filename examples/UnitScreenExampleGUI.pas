@@ -74,6 +74,9 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        fSplitterPanel0:TpvGUISplitterPanel;
        fSplitterPanel1:TpvGUISplitterPanel;
        fPanel4:TpvGUIPanel;
+       fScrollPanel1:TpvGUIScrollPanel;
+       fToggleButton1:TpvGUIToggleButton;
+       fPanel5:TpvGUIPanel;
        fButton2:TpvGUIButton;
       public
        constructor Create(const aParent:TpvGUIObject); override;
@@ -424,15 +427,27 @@ begin
 
   fSplitterPanel1.LeftTopPanel.Layout:=TpvGUIFillLayout.Create(fSplitterPanel1.LeftTopPanel,4.0);
 
+  fPanel4:=TpvGUIPanel.Create(fSplitterPanel1.LeftTopPanel);
+
+  fPanel4.Layout:=TpvGUIFillLayout.Create(fPanel4,0.0);
+
+  fScrollPanel1:=TpvGUIScrollPanel.Create(fPanel4);
+  fScrollPanel1.Content.Layout:=TpvGUIBoxLayout.Create(fScrollPanel1.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,4.0);
+
+  fToggleButton1:=TpvGUIToggleButton.Create(fScrollPanel1.Content);
+  fToggleButton1.Caption:='Toggle button';
+  fToggleButton1.FixedWidth:=320;
+  fToggleButton1.FixedHeight:=180;
+
   fSplitterPanel1.RightBottomPanel.Background:=true;
 
   fSplitterPanel1.RightBottomPanel.Layout:=TpvGUIFillLayout.Create(fSplitterPanel1.RightBottomPanel,4.0);
 
-  fPanel4:=TpvGUIPanel.Create(fSplitterPanel1.RightBottomPanel);
+  fPanel5:=TpvGUIPanel.Create(fSplitterPanel1.RightBottomPanel);
 
-  fPanel4.Layout:=TpvGUIBoxLayout.Create(fPanel4,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,0.0);
+  fPanel5.Layout:=TpvGUIBoxLayout.Create(fPanel5,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,0.0);
 
-  fButton2:=TpvGUIButton.Create(fPanel4);
+  fButton2:=TpvGUIButton.Create(fPanel5);
   fButton2.Caption:='Button';
   fButton2.Enabled:=true;
 
