@@ -449,6 +449,8 @@ begin
 
   fButton2:=TpvGUIButton.Create(fPanel5);
   fButton2.Caption:='Button';
+  fButton2.FixedWidth:=160;
+  fButton2.FixedHeight:=90;
   fButton2.Enabled:=true;
 
  end;

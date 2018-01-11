@@ -7683,6 +7683,27 @@ if aSplitterPanelGripButton.Enabled then begin
                         TpvVector2.Null,
                         aSplitterPanelGripButton.fSize);
 
+{if TpvGUISplitterPanel(aSplitterPanelGripButton.fParent).fGripSize>=9.0 then begin
+
+  if aSplitterPanelGripButton.Enabled then begin
+   if aSplitterPanelGripButton.Focused then begin
+    Element:=GUI_ELEMENT_BOX_FOCUSED;
+   end else begin
+    Element:=GUI_ELEMENT_BOX_UNFOCUSED;
+   end;
+  end else begin
+   Element:=GUI_ELEMENT_BOX_DISABLED;
+  end;
+
+  aCanvas.DrawGUIElement(Element,
+                         true,
+                         TpvVector2.InlineableCreate(3.0,3.0),
+                         aSplitterPanelGripButton.fSize-TpvVector2.InlineableCreate(3.0,3.0),
+                         TpvVector2.InlineableCreate(3.0,3.0),
+                         aSplitterPanelGripButton.fSize-TpvVector2.InlineableCreate(3.0,3.0));
+
+ end;}
+
 end;
 
 constructor TpvGUIWidgetEnumerator.Create(const aWidget:TpvGUIWidget);
@@ -15677,9 +15698,11 @@ begin
      if not Focused then begin
       RequestFocus;
      end;
+     fDown:=true;
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Up:begin
+     fDown:=false;
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Motion:begin
@@ -15725,7 +15748,7 @@ begin
 
  fOrientation:=TpvGUISplitterPanelOrientation.Horizontal;
 
- fGripSize:=10.0;
+ fGripSize:=8.0;
 
  fPartitionFactor:=0.5;
 
