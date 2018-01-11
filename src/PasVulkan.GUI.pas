@@ -2041,6 +2041,7 @@ type TpvGUIObject=class;
       (
        VisibleHeader,
        VisibleContent,
+       VisibleContentBackground,
        LayoutInvalidated,
        HeaderInvalidated
       );
@@ -2066,6 +2067,8 @@ type TpvGUIObject=class;
        procedure SetVisibleHeader(const aVisibleHeader:boolean);
        function GetVisibleContent:boolean; inline;
        procedure SetVisibleContent(const aVisibleContent:boolean);
+       function GetVisibleContentBackground:boolean; inline;
+       procedure SetVisibleContentBackground(const aVisibleContentBackground:boolean);
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
        procedure SetTabs(const aTabs:TpvGUITabList);
@@ -2095,6 +2098,7 @@ type TpvGUIObject=class;
        property ContentMargin:TpvFloat read fContentMargin write SetContentMargin;
        property VisibleHeader:boolean read GetVisibleHeader write SetVisibleHeader;
        property VisibleContent:boolean read GetVisibleContent write SetVisibleContent;
+       property VisibleContentBackground:boolean read GetVisibleContentBackground write SetVisibleContentBackground;
        property OnTabSelected:TpvGUITabPanelOnTabEvent read fOnTabSelected write fOnTabSelected;
        property OnTabUnselected:TpvGUITabPanelOnTabEvent read fOnTabUnselected write fOnTabUnselected;
      end;
@@ -7330,7 +7334,7 @@ begin
 
  end;
 
- if TpvGUITabPanelFlag.VisibleContent in aTabPanel.fFlags then begin
+ if (aTabPanel.fFlags*[TpvGUITabPanelFlag.VisibleContent,TpvGUITabPanelFlag.VisibleContentBackground])=[TpvGUITabPanelFlag.VisibleContent,TpvGUITabPanelFlag.VisibleContentBackground] then begin
 
   if aTabPanel.Enabled then begin
    aCanvas.Color:=aTabPanel.FontColor;
@@ -14447,7 +14451,8 @@ begin
  inherited Create(aParent);
 
  fFlags:=[TpvGUITabPanelFlag.VisibleHeader,
-          TpvGUITabPanelFlag.VisibleContent];
+          TpvGUITabPanelFlag.VisibleContent,
+          TpvGUITabPanelFlag.VisibleContentBackground];
 
  Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
  Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
@@ -14528,6 +14533,22 @@ begin
    Exclude(fFlags,TpvGUITabPanelFlag.VisibleContent);
   end;
   Include(fFlags,TpvGUITabPanelFlag.LayoutInvalidated);
+ end;
+end;
+
+function TpvGUITabPanel.GetVisibleContentBackground:boolean;
+begin
+ result:=TpvGUITabPanelFlag.VisibleContentBackground in fFlags;
+end;
+
+procedure TpvGUITabPanel.SetVisibleContentBackground(const aVisibleContentBackground:boolean);
+begin
+ if (TpvGUITabPanelFlag.VisibleContentBackground in fFlags)<>aVisibleContentBackground then begin
+  if aVisibleContentBackground then begin
+   Include(fFlags,TpvGUITabPanelFlag.VisibleContentBackground);
+  end else begin
+   Exclude(fFlags,TpvGUITabPanelFlag.VisibleContentBackground);
+  end;
  end;
 end;
 
