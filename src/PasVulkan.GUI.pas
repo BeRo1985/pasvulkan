@@ -2208,6 +2208,47 @@ type TpvGUIObject=class;
        property OnGetItemText:TpvGUIComboBoxOnGetItemText read fOnGetItemText write fOnGetItemText;
      end;
 
+     PpvGUISplitterPanelOrientation=^TpvGUISplitterPanelOrientation;
+     TpvGUISplitterPanelOrientation=
+      (
+       Horizontal,
+       Vertical
+      );
+
+     TpvGUISplitterPanelGripButton=class(TpvGUIWidget)
+      private
+       fDown:boolean;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure Draw; override;
+     end;
+
+     TpvGUISplitterPanel=class(TpvGUIWidget)
+      private
+       fOrientation:TpvGUISplitterPanelOrientation;
+       fGripSize:TpvFloat;
+       fPartitionFactor:TpvFloat;
+       fLeftTopPanel:TpvGUIPanel;
+       fRightBottomPanel:TpvGUIPanel;
+       fGripButton:TpvGUISplitterPanelGripButton;
+       fDirty:boolean;
+       procedure SetOrientation(const aOrientation:TpvGUISplitterPanelOrientation);
+       procedure SetGripSize(const aGripSize:TpvFloat);
+       procedure SetPartitionFactor(const aPartitionFactor:TpvFloat);
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure PerformLayout; override;
+       procedure Update; override;
+      published
+       property Orientation:TpvGUISplitterPanelOrientation read fOrientation write SetOrientation;
+       property GripSize:TpvFloat read fGripSize write SetGripSize;
+       property PartitionFactor:TpvFloat read fPartitionFactor write SetPartitionFactor;
+       property LeftTopPanel:TpvGUIPanel read fLeftTopPanel;
+       property RightBottomPanel:TpvGUIPanel read fRightBottomPanel;
+     end;
+
 implementation
 
 uses PasDblStrUtils,
@@ -15381,6 +15422,137 @@ procedure TpvGUIComboBox.Draw;
 begin
  Skin.DrawComboBox(fCanvas,self);
  inherited Draw;
+end;
+
+constructor TpvGUISplitterPanelGripButton.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+ fDown:=false;
+end;
+
+destructor TpvGUISplitterPanelGripButton.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvGUISplitterPanelGripButton.Draw;
+begin
+ inherited Draw;
+end;
+
+constructor TpvGUISplitterPanel.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ fOrientation:=TpvGUISplitterPanelOrientation.Horizontal;
+
+ fGripSize:=8.0;
+
+ fPartitionFactor:=0.5;
+
+ fLeftTopPanel:=TpvGUIPanel.Create(self);
+
+ fGripButton:=TpvGUISplitterPanelGripButton.Create(self);
+
+ fRightBottomPanel:=TpvGUIPanel.Create(self);
+
+ fDirty:=true;
+
+end;
+
+destructor TpvGUISplitterPanel.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvGUISplitterPanel.SetOrientation(const aOrientation:TpvGUISplitterPanelOrientation);
+begin
+ if fOrientation<>aOrientation then begin
+  fOrientation:=aOrientation;
+  fDirty:=true;
+ end;
+end;
+
+procedure TpvGUISplitterPanel.SetGripSize(const aGripSize:TpvFloat);
+begin
+ if fGripSize<>aGripSize then begin
+  fGripSize:=aGripSize;
+  fDirty:=true;
+ end;
+end;
+
+procedure TpvGUISplitterPanel.SetPartitionFactor(const aPartitionFactor:TpvFloat);
+begin
+ if fPartitionFactor<>aPartitionFactor then begin
+  fPartitionFactor:=aPartitionFactor;
+  fDirty:=true;
+ end;
+end;
+
+procedure TpvGUISplitterPanel.PerformLayout;
+var AvailableSpace,LeftTopSize,RightBottomSize:TpvFloat;
+begin
+
+ case fOrientation of
+  TpvGUISplitterPanelOrientation.Horizontal:begin
+   AvailableSpace:=fSize.x;
+  end;
+  else {TpvGUISplitterPanelOrientation.Vertical:}begin
+   AvailableSpace:=fSize.y;
+  end;
+ end;
+
+ LeftTopSize:=(AvailableSpace*fPartitionFactor)-(fGripSize*0.5);
+
+ RightBottomSize:=(AvailableSpace*(1.0-fPartitionFactor))-(fGripSize*0.5);
+
+ case fOrientation of
+
+  TpvGUISplitterPanelOrientation.Horizontal:begin
+
+   fLeftTopPanel.fPosition:=TpvVector2.Null;
+   fLeftTopPanel.fSize:=TpvVector2.InlineableCreate(LeftTopSize,fSize.y);
+   fLeftTopPanel.PerformLayout;
+
+   fGripButton.fPosition:=TpvVector2.InlineableCreate(LeftTopSize,0.0);
+   fGripButton.fSize:=TpvVector2.InlineableCreate(fGripSize,fSize.y);
+   fGripButton.PerformLayout;
+
+   fRightBottomPanel.fPosition:=TpvVector2.InlineableCreate(LeftTopSize+fGripSize,0.0);
+   fRightBottomPanel.fSize:=TpvVector2.InlineableCreate(RightBottomSize,fSize.y);
+   fRightBottomPanel.PerformLayout;
+
+  end;
+
+  else {TpvGUISplitterPanelOrientation.Vertical:}begin
+
+   fLeftTopPanel.fPosition:=TpvVector2.Null;
+   fLeftTopPanel.fSize:=TpvVector2.InlineableCreate(fSize.x,LeftTopSize);
+   fLeftTopPanel.PerformLayout;
+
+   fGripButton.fPosition:=TpvVector2.InlineableCreate(0.0,LeftTopSize);
+   fGripButton.fSize:=TpvVector2.InlineableCreate(fSize.x,fGripSize);
+   fGripButton.PerformLayout;
+
+   fRightBottomPanel.fPosition:=TpvVector2.InlineableCreate(0.0,LeftTopSize+fGripSize);
+   fRightBottomPanel.fSize:=TpvVector2.InlineableCreate(fSize.x,RightBottomSize);
+   fRightBottomPanel.PerformLayout;
+
+  end;
+
+ end;
+
+ fDirty:=false;
+
+end;
+
+procedure TpvGUISplitterPanel.Update;
+begin
+ if fDirty then begin
+  PerformLayout;
+ end;
+ inherited Update;
 end;
 
 end.
