@@ -8918,6 +8918,11 @@ begin
 end;
 
 function TpvGUIInstance.FindWidget(const aPosition:TpvVector2):TpvGUIWidget;
+{$if true}
+begin
+ result:=inherited FindWidget(aPosition);
+end;
+{$else}
 var Index:TpvSizeInt;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
@@ -8938,6 +8943,7 @@ begin
  end;
  result:=inherited FindWidget(aPosition);
 end;
+{$ifend}
 
 function TpvGUIInstance.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 var Index:TpvInt32;
@@ -15513,6 +15519,8 @@ begin
 
  fDown:=false;
 
+ Cursor:=TpvGUICursor.EW;
+
 end;
 
 destructor TpvGUISplitterPanelGripButton.Destroy;
@@ -15736,6 +15744,7 @@ begin
    fGripButton.fPosition:=TpvVector2.InlineableCreate(LeftTopSize,0.0);
    fGripButton.fSize:=TpvVector2.InlineableCreate(fGripSize,fSize.y);
    fGripButton.PerformLayout;
+   fGripButton.Cursor:=TpvGUICursor.EW;
 
    fRightBottomPanel.fPosition:=TpvVector2.InlineableCreate(LeftTopSize+fGripSize,0.0);
    fRightBottomPanel.fSize:=TpvVector2.InlineableCreate(RightBottomSize,fSize.y);
@@ -15752,6 +15761,7 @@ begin
    fGripButton.fPosition:=TpvVector2.InlineableCreate(0.0,LeftTopSize);
    fGripButton.fSize:=TpvVector2.InlineableCreate(fSize.x,fGripSize);
    fGripButton.PerformLayout;
+   fGripButton.Cursor:=TpvGUICursor.NS;
 
    fRightBottomPanel.fPosition:=TpvVector2.InlineableCreate(0.0,LeftTopSize+fGripSize);
    fRightBottomPanel.fSize:=TpvVector2.InlineableCreate(fSize.x,RightBottomSize);
