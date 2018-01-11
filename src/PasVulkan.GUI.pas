@@ -621,6 +621,9 @@ type TpvGUIObject=class;
        function GetWindowPreferredSize(const aWindow:TpvGUIWindow):TpvVector2; virtual;
        procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); virtual;
       public
+       function GetPanelPreferredSize(const aPanel:TpvGUIPanel):TpvVector2; virtual;
+       procedure DrawPanel(const aCanvas:TpvCanvas;const aPanel:TpvGUIPanel); virtual;
+      public
        function GetImagePreferredSize(const aImage:TpvGUIImage):TpvVector2; virtual;
        procedure DrawImage(const aCanvas:TpvCanvas;const aImage:TpvGUIImage); virtual;
       public
@@ -765,6 +768,9 @@ type TpvGUIObject=class;
       public
        function GetWindowPreferredSize(const aWindow:TpvGUIWindow):TpvVector2; override;
        procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); override;
+      public
+       function GetPanelPreferredSize(const aPanel:TpvGUIPanel):TpvVector2; override;
+       procedure DrawPanel(const aCanvas:TpvCanvas;const aPanel:TpvGUIPanel); override;
       public
        function GetImagePreferredSize(const aImage:TpvGUIImage):TpvVector2; override;
        procedure DrawImage(const aCanvas:TpvCanvas;const aImage:TpvGUIImage); override;
@@ -1320,7 +1326,16 @@ type TpvGUIObject=class;
        property AnchorOffset:TpvVector2Property read fAnchorOffsetProperty;
      end;
 
-     TpvGUIPanel=class(TpvGUIWidget);
+     TpvGUIPanel=class(TpvGUIWidget)
+      private
+       fBackground:boolean;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure Draw; override;
+      published
+       property Background:boolean read fBackground write fBackground;
+     end;
 
      TpvGUIImage=class(TpvGUIWidget)
       private
@@ -4286,6 +4301,15 @@ procedure TpvGUISkin.DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWind
 begin
 end;
 
+function TpvGUISkin.GetPanelPreferredSize(const aPanel:TpvGUIPanel):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aPanel);
+end;
+
+procedure TpvGUISkin.DrawPanel(const aCanvas:TpvCanvas;const aPanel:TpvGUIPanel);
+begin
+end;
+
 function TpvGUISkin.GetImagePreferredSize(const aImage:TpvGUIImage):TpvVector2;
 begin
  result:=GetWidgetPreferredSize(aImage);
@@ -5436,6 +5460,34 @@ begin
  finally
   aCanvas.Color:=LastColor;
  end;
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.GetPanelPreferredSize(const aPanel:TpvGUIPanel):TpvVector2;
+begin
+ result:=TpvVector2.InlineableCreate(1.0,1.0);
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawPanel(const aCanvas:TpvCanvas;const aPanel:TpvGUIPanel);
+var Element:TpvInt32;
+begin
+
+ aCanvas.ModelMatrix:=aPanel.fModelMatrix;
+
+ aCanvas.ClipRect:=aPanel.fClipRect;
+
+ if aPanel.Enabled then begin
+  Element:=GUI_ELEMENT_PANEL_ENABLED;
+ end else begin
+  Element:=GUI_ELEMENT_PANEL_DISABLED;
+ end;
+
+ aCanvas.DrawGUIElement(Element,
+                        true,
+                        TpvVector2.Null,
+                        aPanel.fSize,
+                        TpvVector2.Null,
+                        aPanel.fSize);
 
 end;
 
@@ -7632,7 +7684,6 @@ if aSplitterPanelGripButton.Enabled then begin
                         aSplitterPanelGripButton.fSize);
 
 end;
-
 
 constructor TpvGUIWidgetEnumerator.Create(const aWidget:TpvGUIWidget);
 begin
@@ -10277,6 +10328,25 @@ begin
 
  inherited Draw;
 
+end;
+
+constructor TpvGUIPanel.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+ fBackground:=false;
+end;
+
+destructor TpvGUIPanel.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvGUIPanel.Draw;
+begin
+ if fBackground then begin
+  Skin.DrawPanel(fCanvas,self);
+ end;
+ inherited Draw;
 end;
 
 constructor TpvGUIImage.Create(const aParent:TpvGUIObject;const aImage:TObject);

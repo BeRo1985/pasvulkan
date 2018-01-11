@@ -409,10 +409,18 @@ begin
   fSplitterPanel0:=TpvGUISplitterPanel.Create(fPanel3);
   fSplitterPanel0.Orientation:=TpvGUISplitterPanelOrientation.Horizontal;
 
+  fSplitterPanel0.LeftTopPanel.Background:=true;
+
+  fSplitterPanel0.RightBottomPanel.Background:=false;
+
   fSplitterPanel0.RightBottomPanel.Layout:=TpvGUIFillLayout.Create(fSplitterPanel0.RightBottomPanel,0.0);
 
   fSplitterPanel1:=TpvGUISplitterPanel.Create(fSplitterPanel0.RightBottomPanel);
   fSplitterPanel1.Orientation:=TpvGUISplitterPanelOrientation.Vertical;
+
+  fSplitterPanel1.LeftTopPanel.Background:=true;
+
+  fSplitterPanel1.RightBottomPanel.Background:=true;
 
  end;
 
