@@ -59,6 +59,23 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        procedure Update; override;
      end;
 
+     TScreenExampleGUITabPanelExampleWindow=class(TpvGUIWindow)
+      private
+       fTabPanel0:TpvGUITabPanel;
+       fPanel0:TpvGUIPanel;
+       fButton0:TpvGUIButton;
+       fScrollBar0:TpvGUIScrollBar;
+       fPanel1:TpvGUIPanel;
+       fButton1:TpvGUIButton;
+       fPanel2:TpvGUIPanel;
+       fScrollPanel0:TpvGUIScrollPanel;
+       fToggleButton0:TpvGUIToggleButton;
+       fPanel3:TpvGUIPanel;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+     end;
+
      TScreenExampleGUI=class(TpvApplicationScreen)
       private
        fVulkanRenderPass:TpvVulkanRenderPass;
@@ -286,6 +303,126 @@ begin
 
  inherited Update;
 
+end;
+
+constructor TScreenExampleGUITabPanelExampleWindow.Create(const aParent:TpvGUIObject);
+var MenuItem:TpvGUIMenuItem;
+    PopupMenu:TpvGUIPopupMenu;
+begin
+
+ inherited Create(aParent);
+
+ Left:=450;
+ Top:=200;
+ Title:='Window with TabPanel';
+ content.Layout:=TpvGUIFillLayout.Create(Content,4.0);
+ AddMinimizationButton;
+ AddMaximizationButton;
+ AddCloseButton;
+
+ fTabPanel0:=TpvGUITabPanel.Create(Window.Content);
+
+ begin
+
+  fPanel0:=TpvGUIPanel.Create(fTabPanel0.Content);
+  fPanel0.Layout:=TpvGUIFlowLayout.Create(fPanel0,
+                                          TpvGUILayoutOrientation.Horizontal,
+                                          8.0,
+                                          300.0,
+                                          0.0,
+                                          4.0,
+                                          4.0,
+                                          TpvGUIFlowLayoutDirection.LeftToRight,
+                                          TpvGUIFlowLayoutAlignment.Middle,
+                                          TpvGUIFlowLayoutAlignment.Middle,
+                                          true);
+  fTabPanel0.Tabs.Add('A tab').Content:=fPanel0;
+
+  fButton0:=TpvGUIButton.Create(fPanel0);
+  fButton0.Caption:='Button';
+  fButton0.Enabled:=true;
+
+  fScrollBar0:=TpvGUIScrollBar.Create(fPanel0);
+  fScrollBar0.Enabled:=true;
+
+ end;
+
+ begin
+
+  fPanel1:=TpvGUIPanel.Create(fTabPanel0.Content);
+  fPanel1.Layout:=TpvGUIFlowLayout.Create(fPanel1,
+                                          TpvGUILayoutOrientation.Horizontal,
+                                          8.0,
+                                          300.0,
+                                          0.0,
+                                          4.0,
+                                          4.0,
+                                          TpvGUIFlowLayoutDirection.LeftToRight,
+                                          TpvGUIFlowLayoutAlignment.Leading,
+                                          TpvGUIFlowLayoutAlignment.Leading,
+                                          true);
+  fTabPanel0.Tabs.Add('An another tab').Content:=fPanel1;
+
+  fButton1:=TpvGUIPopupMenuButton.Create(fPanel1);
+  fButton1.Caption:='Popup menu';
+  fButton1.Enabled:=true;
+  TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fButton1).PopupMenu).Caption:='Test 1';
+  MenuItem:=TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fButton1).PopupMenu);
+  MenuItem.Caption:='Test 2';
+  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
+  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test A';
+  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test B';
+  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
+  MenuItem.Caption:='Test C';
+  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
+  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 1';
+  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 2';
+  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 3';
+  TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fButton1).PopupMenu).Caption:='Test 3';
+
+ end;
+
+ begin
+
+  fPanel2:=TpvGUIPanel.Create(fTabPanel0.Content);
+  fPanel2.Layout:=TpvGUIFillLayout.Create(fPanel0,0.0);
+  fTabPanel0.Tabs.Add('An yet another tab').Content:=fPanel2;
+
+  fScrollPanel0:=TpvGUIScrollPanel.Create(fPanel2);
+  fScrollPanel0.Content.Layout:=TpvGUIBoxLayout.Create(fScrollPanel0.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,8.0);
+
+  fToggleButton0:=TpvGUIToggleButton.Create(fScrollPanel0.Content);
+  fToggleButton0.Caption:='Toggle button';
+  fToggleButton0.FixedWidth:=480;
+  fToggleButton0.FixedHeight:=240;
+
+ end;
+
+ begin
+
+  fPanel3:=TpvGUIPanel.Create(fTabPanel0.Content);
+  fPanel3.Layout:=TpvGUIFlowLayout.Create(fPanel3,
+                                          TpvGUILayoutOrientation.Horizontal,
+                                          8.0,
+                                          300.0,
+                                          0.0,
+                                          4.0,
+                                          4.0,
+                                          TpvGUIFlowLayoutDirection.LeftToRight,
+                                          TpvGUIFlowLayoutAlignment.Middle,
+                                          TpvGUIFlowLayoutAlignment.Middle,
+                                          true);
+  fTabPanel0.Tabs.Add('An also yet another tab').Content:=fPanel3;
+
+ end;
+
+ fTabPanel0.TabIndex:=0;
+
+end;
+
+destructor TScreenExampleGUITabPanelExampleWindow.Destroy;
+begin
+ inherited Destroy;
 end;
 
 constructor TScreenExampleGUI.Create;
@@ -620,112 +757,7 @@ begin
  TpvGUIPopupButton(fGUIButton).Popup.AnchorSide:=TpvGUIPopupAnchorSide.Bottom;
  TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,2,2,1,2.0,2.0,2.0,2.0);
 
- Window:=TpvGUIWindow.Create(fGUIInstance);
- Window.Left:=450;
- Window.Top:=200;
- Window.Title:='Window with TabPanel';
- Window.Content.Layout:=TpvGUIFillLayout.Create(Window.Content,4.0);
- Window.AddMinimizationButton;
- Window.AddMaximizationButton;
- Window.AddCloseButton;
-
- TabPanel:=TpvGUITabPanel.Create(Window.Content);
-
- begin
-
-  Panel:=TpvGUIPanel.Create(TabPanel.Content);
-  Panel.Layout:=TpvGUIFlowLayout.Create(Panel,
-                                        TpvGUILayoutOrientation.Horizontal,
-                                        8.0,
-                                        300.0,
-                                        0.0,
-                                        4.0,
-                                        4.0,
-                                        TpvGUIFlowLayoutDirection.LeftToRight,
-                                        TpvGUIFlowLayoutAlignment.Middle,
-                                        TpvGUIFlowLayoutAlignment.Middle,
-                                        true);
-  TabPanel.Tabs.Add('A tab').Content:=Panel;
-
-  fGUIButton:=TpvGUIButton.Create(Panel);
-  fGUIButton.Caption:='Button';
-  fGUIButton.Enabled:=true;
-
-  ScrollBar:=TpvGUIScrollBar.Create(Panel);
-  ScrollBar.Enabled:=true;
-
- end;
-
- begin
-
-  Panel:=TpvGUIPanel.Create(TabPanel.Content);
-  Panel.Layout:=TpvGUIFlowLayout.Create(Panel,
-                                        TpvGUILayoutOrientation.Horizontal,
-                                        8.0,
-                                        300.0,
-                                        0.0,
-                                        4.0,
-                                        4.0,
-                                        TpvGUIFlowLayoutDirection.LeftToRight,
-                                        TpvGUIFlowLayoutAlignment.Leading,
-                                        TpvGUIFlowLayoutAlignment.Leading,
-                                        true);
-  TabPanel.Tabs.Add('An another tab').Content:=Panel;
-
-  fGUIButton:=TpvGUIPopupMenuButton.Create(Panel);
-  fGUIButton.Caption:='Popup menu';
-  fGUIButton.Enabled:=true;
-  TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu).Caption:='Test 1';
-  MenuItem:=TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu);
-  MenuItem.Caption:='Test 2';
-  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
-  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test A';
-  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test B';
-  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
-  MenuItem.Caption:='Test C';
-  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
-  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 1';
-  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 2';
-  TpvGUIMenuItem.Create(PopupMenu).Caption:='Test 3';
-  TpvGUIMenuItem.Create(TpvGUIPopupMenuButton(fGUIButton).PopupMenu).Caption:='Test 3';
-
- end;
-
- begin
-
-  Panel:=TpvGUIPanel.Create(TabPanel.Content);
-  Panel.Layout:=TpvGUIFillLayout.Create(Panel,0.0);
-  TabPanel.Tabs.Add('An yet another tab').Content:=Panel;
-
-  ScrollPanel:=TpvGUIScrollPanel.Create(Panel);
-  ScrollPanel.Content.Layout:=TpvGUIBoxLayout.Create(ScrollPanel.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,8.0);
-
-  fGUIButton:=TpvGUIToggleButton.Create(ScrollPanel.Content);
-  fGUIButton.Caption:='Toggle button';
-  fGUIButton.FixedWidth:=480;
-  fGUIButton.FixedHeight:=240;
-
- end;
-
- begin
-
-  Panel:=TpvGUIPanel.Create(TabPanel.Content);
-  Panel.Layout:=TpvGUIFlowLayout.Create(Panel,
-                                        TpvGUILayoutOrientation.Horizontal,
-                                        8.0,
-                                        300.0,
-                                        0.0,
-                                        4.0,
-                                        4.0,
-                                        TpvGUIFlowLayoutDirection.LeftToRight,
-                                        TpvGUIFlowLayoutAlignment.Middle,
-                                        TpvGUIFlowLayoutAlignment.Middle,
-                                        true);
-  TabPanel.Tabs.Add('An also yet another tab').Content:=Panel;
-
- end;
-
- TabPanel.TabIndex:=0;
+ TScreenExampleGUITabPanelExampleWindow.Create(fGUIInstance);
 
 end;
 
