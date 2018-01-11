@@ -123,6 +123,10 @@ type TpvGUIObject=class;
 
      TpvGUIComboBox=class;
 
+     TpvGUISplitterPanelGripButton=class;
+
+     TpvGUISplitterPanel=class;
+
      EpvGUIWidget=class(Exception);
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
@@ -657,6 +661,9 @@ type TpvGUIObject=class;
        function GetComboBoxPreferredSize(const aComboBox:TpvGUIComboBox):TpvVector2; virtual;
        procedure DrawComboBox(const aCanvas:TpvCanvas;const aComboBox:TpvGUIComboBox); virtual;
       public
+       function GetSplitterPanelGripButtonPreferredSize(const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton):TpvVector2; virtual;
+       procedure DrawSplitterPanelGripButton(const aCanvas:TpvCanvas;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton); virtual;
+      public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
        property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
@@ -802,6 +809,9 @@ type TpvGUIObject=class;
       public
        function GetComboBoxPreferredSize(const aComboBox:TpvGUIComboBox):TpvVector2; override;
        procedure DrawComboBox(const aCanvas:TpvCanvas;const aComboBox:TpvGUIComboBox); override;
+      public
+       function GetSplitterPanelGripButtonPreferredSize(const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton):TpvVector2; override;
+       procedure DrawSplitterPanelGripButton(const aCanvas:TpvCanvas;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -2218,6 +2228,7 @@ type TpvGUIObject=class;
      TpvGUISplitterPanelGripButton=class(TpvGUIWidget)
       private
        fDown:boolean;
+       function GetPreferredSize:TpvVector2; override;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -4390,6 +4401,16 @@ begin
 end;
 
 procedure TpvGUISkin.DrawComboBox(const aCanvas:TpvCanvas;const aComboBox:TpvGUIComboBox);
+begin
+
+end;
+
+function TpvGUISkin.GetSplitterPanelGripButtonPreferredSize(const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aSplitterPanelGripButton);
+end;
+
+procedure TpvGUISkin.DrawSplitterPanelGripButton(const aCanvas:TpvCanvas;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton);
 begin
 
 end;
@@ -7554,6 +7575,55 @@ begin
  end;
 
 end;
+
+function TpvGUIDefaultVectorBasedSkin.GetSplitterPanelGripButtonPreferredSize(const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton):TpvVector2;
+var SplitterPanel:TpvGUISplitterPanel;
+begin
+ if assigned(aSplitterPanelGripButton.fParent) and
+    (aSplitterPanelGripButton.fParent is TpvGUISplitterPanel) then begin
+  SplitterPanel:=TpvGUISplitterPanel(aSplitterPanelGripButton.fParent);
+  case SplitterPanel.fOrientation of
+   TpvGUISplitterPanelOrientation.Horizontal:begin
+    result:=TpvVector2.InlineableCreate(SplitterPanel.fGripSize,SplitterPanel.fSize.y);
+   end;
+   else {TpvGUISplitterPanelOrientation.Vertical:}begin
+    result:=TpvVector2.InlineableCreate(SplitterPanel.fSize.x,SplitterPanel.fGripSize);
+   end;
+  end;
+ end else begin
+  result:=TpvVector2.InlineableCreate(8.0,8.0);
+ end;
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawSplitterPanelGripButton(const aCanvas:TpvCanvas;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton);
+var Element:TpvInt32;
+begin
+
+ aCanvas.ModelMatrix:=aSplitterPanelGripButton.fModelMatrix;
+
+ aCanvas.ClipRect:=aSplitterPanelGripButton.fClipRect;
+
+if aSplitterPanelGripButton.Enabled then begin
+  if aSplitterPanelGripButton.fDown then begin
+   Element:=GUI_ELEMENT_BUTTON_PUSHED;
+  end else if aSplitterPanelGripButton.Focused then begin
+   Element:=GUI_ELEMENT_BUTTON_FOCUSED;
+  end else begin
+   Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
+  end;
+ end else begin
+  Element:=GUI_ELEMENT_BUTTON_DISABLED;
+ end;
+
+ aCanvas.DrawGUIElement(Element,
+                        true,
+                        TpvVector2.Null,
+                        aSplitterPanelGripButton.fSize,
+                        TpvVector2.Null,
+                        aSplitterPanelGripButton.fSize);
+
+end;
+
 
 constructor TpvGUIWidgetEnumerator.Create(const aWidget:TpvGUIWidget);
 begin
@@ -15435,8 +15505,14 @@ begin
  inherited Destroy;
 end;
 
+function TpvGUISplitterPanelGripButton.GetPreferredSize:TpvVector2;
+begin
+ result:=Skin.GetSplitterPanelGripButtonPreferredSize(self);
+end;
+
 procedure TpvGUISplitterPanelGripButton.Draw;
 begin
+ Skin.DrawSplitterPanelGripButton(fCanvas,self);
  inherited Draw;
 end;
 
