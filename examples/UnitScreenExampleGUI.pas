@@ -71,6 +71,8 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        fScrollPanel0:TpvGUIScrollPanel;
        fToggleButton0:TpvGUIToggleButton;
        fPanel3:TpvGUIPanel;
+       fSplitterPanel0:TpvGUISplitterPanel;
+       fSplitterPanel1:TpvGUISplitterPanel;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -401,18 +403,16 @@ begin
  begin
 
   fPanel3:=TpvGUIPanel.Create(fTabPanel0.Content);
-  fPanel3.Layout:=TpvGUIFlowLayout.Create(fPanel3,
-                                          TpvGUILayoutOrientation.Horizontal,
-                                          8.0,
-                                          300.0,
-                                          0.0,
-                                          4.0,
-                                          4.0,
-                                          TpvGUIFlowLayoutDirection.LeftToRight,
-                                          TpvGUIFlowLayoutAlignment.Middle,
-                                          TpvGUIFlowLayoutAlignment.Middle,
-                                          true);
+  fPanel3.Layout:=TpvGUIFillLayout.Create(fPanel3,0.0);
   fTabPanel0.Tabs.Add('An also yet another tab').Content:=fPanel3;
+
+  fSplitterPanel0:=TpvGUISplitterPanel.Create(fPanel3);
+  fSplitterPanel0.Orientation:=TpvGUISplitterPanelOrientation.Horizontal;
+
+  fSplitterPanel0.RightBottomPanel.Layout:=TpvGUIFillLayout.Create(fSplitterPanel0.RightBottomPanel,0.0);
+
+  fSplitterPanel1:=TpvGUISplitterPanel.Create(fSplitterPanel0.RightBottomPanel);
+  fSplitterPanel1.Orientation:=TpvGUISplitterPanelOrientation.Vertical;
 
  end;
 

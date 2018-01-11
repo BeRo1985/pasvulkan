@@ -2232,6 +2232,10 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
+       function DragEvent(const aPosition:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
        procedure Draw; override;
      end;
 
@@ -2247,6 +2251,9 @@ type TpvGUIObject=class;
        procedure SetOrientation(const aOrientation:TpvGUISplitterPanelOrientation);
        procedure SetGripSize(const aGripSize:TpvFloat);
        procedure SetPartitionFactor(const aPartitionFactor:TpvFloat);
+       function GetAvailableSpace:TpvFloat;
+       function GetPartitionSize:TpvFloat;
+       procedure SetPartitionSize(const aPartitonSize:TpvFloat);
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -2256,6 +2263,8 @@ type TpvGUIObject=class;
        property Orientation:TpvGUISplitterPanelOrientation read fOrientation write SetOrientation;
        property GripSize:TpvFloat read fGripSize write SetGripSize;
        property PartitionFactor:TpvFloat read fPartitionFactor write SetPartitionFactor;
+       property AvailableSpace:TpvFloat read GetAvailableSpace;
+       property PartitionSize:TpvFloat read GetPartitionSize write SetPartitionSize;
        property LeftTopPanel:TpvGUIPanel read fLeftTopPanel;
        property RightBottomPanel:TpvGUIPanel read fRightBottomPanel;
      end;
@@ -15497,7 +15506,13 @@ end;
 constructor TpvGUISplitterPanelGripButton.Create(const aParent:TpvGUIObject);
 begin
  inherited Create(aParent);
+
+ Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
+
  fDown:=false;
+
 end;
 
 destructor TpvGUISplitterPanelGripButton.Destroy;
@@ -15508,6 +15523,115 @@ end;
 function TpvGUISplitterPanelGripButton.GetPreferredSize:TpvVector2;
 begin
  result:=Skin.GetSplitterPanelGripButtonPreferredSize(self);
+end;
+
+function TpvGUISplitterPanelGripButton.DragEvent(const aPosition:TpvVector2):boolean;
+begin
+ result:=true;
+end;
+
+function TpvGUISplitterPanelGripButton.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if Enabled and not result then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize-1.0,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+1.0,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_PAGEDOWN:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+(TpvGUISplitterPanel(fParent).AvailableSpace*0.25),0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_PAGEUP:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize-(TpvGUISplitterPanel(fParent).AvailableSpace*0.25),0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_HOME:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      TpvGUISplitterPanel(fParent).PartitionFactor:=0.0;
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_END:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      TpvGUISplitterPanel(fParent).PartitionFactor:=1.0;
+     end;
+    end;
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUISplitterPanelGripButton.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var CurrentItemIndex:TpvSizeInt;
+begin
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+ if not result then begin
+  result:=inherited PointerEvent(aPointerEvent);
+  if not result then begin
+   case aPointerEvent.PointerEventType of
+    TpvApplicationInputPointerEventType.Down:begin
+     if not Focused then begin
+      RequestFocus;
+     end;
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Up:begin
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Motion:begin
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Drag:begin
+     case TpvGUISplitterPanel(fParent).fOrientation of
+      TpvGUISplitterPanelOrientation.Horizontal:begin
+       TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+aPointerEvent.RelativePosition.x,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+      end;
+      else {TpvGUISplitterPanelOrientation.Vertical:}begin
+       TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+aPointerEvent.RelativePosition.y,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+      end;
+     end;
+     result:=true;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUISplitterPanelGripButton.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+var v:TpvFloat;
+begin
+ result:=inherited Scrolled(aPosition,aRelativeAmount);
+ if not result then begin
+  v:=aRelativeAmount.x-aRelativeAmount.y;
+  TpvGUISplitterPanel(fParent).PartitionSize:=Clamp(TpvGUISplitterPanel(fParent).PartitionSize+v,0.0,TpvGUISplitterPanel(fParent).AvailableSpace);
+  result:=true;
+ end;
 end;
 
 procedure TpvGUISplitterPanelGripButton.Draw;
@@ -15523,7 +15647,7 @@ begin
 
  fOrientation:=TpvGUISplitterPanelOrientation.Horizontal;
 
- fGripSize:=8.0;
+ fGripSize:=10.0;
 
  fPartitionFactor:=0.5;
 
@@ -15566,22 +15690,40 @@ begin
  end;
 end;
 
-procedure TpvGUISplitterPanel.PerformLayout;
-var AvailableSpace,LeftTopSize,RightBottomSize:TpvFloat;
+function TpvGUISplitterPanel.GetAvailableSpace:TpvFloat;
 begin
-
  case fOrientation of
   TpvGUISplitterPanelOrientation.Horizontal:begin
-   AvailableSpace:=fSize.x;
+   result:=fSize.x;
   end;
   else {TpvGUISplitterPanelOrientation.Vertical:}begin
-   AvailableSpace:=fSize.y;
+   result:=fSize.y;
   end;
  end;
+ if result<1e-4 then begin
+  result:=1e-4;
+ end;
+end;
 
- LeftTopSize:=(AvailableSpace*fPartitionFactor)-(fGripSize*0.5);
+function TpvGUISplitterPanel.GetPartitionSize:TpvFloat;
+begin
+ result:=fPartitionFactor*AvailableSpace;
+end;
 
- RightBottomSize:=(AvailableSpace*(1.0-fPartitionFactor))-(fGripSize*0.5);
+procedure TpvGUISplitterPanel.SetPartitionSize(const aPartitonSize:TpvFloat);
+begin
+ SetPartitionFactor(Clamp(aPartitonSize/AvailableSpace,0.0,1.0));
+end;
+
+procedure TpvGUISplitterPanel.PerformLayout;
+var CurrentAvailableSpace,LeftTopSize,RightBottomSize:TpvFloat;
+begin
+
+ CurrentAvailableSpace:=GetAvailableSpace;
+
+ LeftTopSize:=(CurrentAvailableSpace*fPartitionFactor)-(fGripSize*0.5);
+
+ RightBottomSize:=(CurrentAvailableSpace*(1.0-fPartitionFactor))-(fGripSize*0.5);
 
  case fOrientation of
 
