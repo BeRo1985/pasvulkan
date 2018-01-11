@@ -403,7 +403,7 @@ begin
  begin
 
   fPanel3:=TpvGUIPanel.Create(fTabPanel0.Content);
-  fPanel3.Layout:=TpvGUIFillLayout.Create(fPanel3,0.0);
+  fPanel3.Layout:=TpvGUIFillLayout.Create(fPanel3,4.0);
   fTabPanel0.Tabs.Add('An also yet another tab').Content:=fPanel3;
 
   fSplitterPanel0:=TpvGUISplitterPanel.Create(fPanel3);

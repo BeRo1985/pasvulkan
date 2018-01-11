@@ -15724,14 +15724,17 @@ begin
 end;
 
 procedure TpvGUISplitterPanel.PerformLayout;
-var CurrentAvailableSpace,LeftTopSize,RightBottomSize:TpvFloat;
+var CurrentAvailableSpace,CurrentPartitionSize,
+    LeftTopSize,RightBottomSize:TpvFloat;
 begin
 
  CurrentAvailableSpace:=GetAvailableSpace;
 
- LeftTopSize:=(CurrentAvailableSpace*fPartitionFactor)-(fGripSize*0.5);
+ CurrentPartitionSize:=Clamp(fPartitionFactor*CurrentAvailableSpace,fGripSize*0.5,CurrentAvailableSpace-(GripSize*0.5));
 
- RightBottomSize:=(CurrentAvailableSpace*(1.0-fPartitionFactor))-(fGripSize*0.5);
+ LeftTopSize:=CurrentPartitionSize-(fGripSize*0.5);
+
+ RightBottomSize:=(CurrentAvailableSpace-CurrentPartitionSize)-(fGripSize*0.5);
 
  case fOrientation of
 
