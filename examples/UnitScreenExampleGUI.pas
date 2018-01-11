@@ -73,6 +73,8 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        fPanel3:TpvGUIPanel;
        fSplitterPanel0:TpvGUISplitterPanel;
        fSplitterPanel1:TpvGUISplitterPanel;
+       fPanel4:TpvGUIPanel;
+       fButton2:TpvGUIButton;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -420,7 +422,19 @@ begin
 
   fSplitterPanel1.LeftTopPanel.Background:=true;
 
+  fSplitterPanel1.LeftTopPanel.Layout:=TpvGUIFillLayout.Create(fSplitterPanel1.LeftTopPanel,4.0);
+
   fSplitterPanel1.RightBottomPanel.Background:=true;
+
+  fSplitterPanel1.RightBottomPanel.Layout:=TpvGUIFillLayout.Create(fSplitterPanel1.RightBottomPanel,4.0);
+
+  fPanel4:=TpvGUIPanel.Create(fSplitterPanel1.RightBottomPanel);
+
+  fPanel4.Layout:=TpvGUIBoxLayout.Create(fPanel4,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,0.0);
+
+  fButton2:=TpvGUIButton.Create(fPanel4);
+  fButton2.Caption:='Button';
+  fButton2.Enabled:=true;
 
  end;
 
