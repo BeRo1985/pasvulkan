@@ -410,84 +410,165 @@ type TpvDynamicArray<T>=class
      TpvStringHashMap<TpvHashMapValue>=class(TpvHashMap<RawByteString,TpvHashMapValue>);
 {$endif}
 
-     TpvSkipList<TpvSkipListKey,TpvSkipListValue>=class
+     TpvGenericSkipList<TKey,TValue>=class
       public
-       type TpvSkipListPair=class
+       type TPair=class
              private
-              fSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>;
-              fPrevious:TpvSkipListPair;
-              fNext:TpvSkipListPair;
-              fKey:TpvSkipListKey;
-              fValue:TpvSkipListValue;
-              function GetPrevious:TpvSkipListPair;
-              function GetNext:TpvSkipListPair;
+              fSkipList:TpvGenericSkipList<TKey,TValue>;
+              fPrevious:TPair;
+              fNext:TPair;
+              fKey:TKey;
+              fValue:TValue;
+              function GetPrevious:TPair;
+              function GetNext:TPair;
              public
-              constructor Create(const aSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>;const aKey:TpvSkipListKey;const aValue:TpvSkipListValue); reintroduce;
-              constructor CreateEmpty(const aSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>); reintroduce;
+              constructor Create(const aSkipList:TpvGenericSkipList<TKey,TValue>;const aKey:TKey;const aValue:TValue); reintroduce;
+              constructor CreateEmpty(const aSkipList:TpvGenericSkipList<TKey,TValue>); reintroduce;
               destructor Destroy; override;
-              property Previous:TpvSkipListPair read GetPrevious;
-              property Next:TpvSkipListPair read GetNext;
-              property Key:TpvSkipListKey read fKey write fKey;
-              property Value:TpvSkipListValue read fValue write fValue;
+              property Previous:TPair read GetPrevious;
+              property Next:TPair read GetNext;
+              property Key:TKey read fKey write fKey;
+              property Value:TValue read fValue write fValue;
             end;
-            TpvSkipListNode=class
+            TNode=class
              private
-              fPrevious:TpvSkipListNode;
-              fNext:TpvSkipListNode;
-              fChildren:TpvSkipListNode;
-              fPair:TpvSkipListPair;
+              fPrevious:TNode;
+              fNext:TNode;
+              fChildren:TNode;
+              fPair:TPair;
              public
-              constructor Create(const aPrevious:TpvSkipListNode=nil;
-                                 const aNext:TpvSkipListNode=nil;
-                                 const aChildren:TpvSkipListNode=nil;
-                                 const aPair:TpvSkipListPair=nil); reintroduce;
+              constructor Create(const aPrevious:TNode=nil;
+                                 const aNext:TNode=nil;
+                                 const aChildren:TNode=nil;
+                                 const aPair:TPair=nil); reintroduce;
               destructor Destroy; override;
              published
-              property Previous:TpvSkipListNode read fPrevious write fPrevious;
-              property Next:TpvSkipListNode read fNext write fNext;
-              property Children:TpvSkipListNode read fChildren write fChildren;
-              property Pair:TpvSkipListPair read fPair write fPair;
+              property Previous:TNode read fPrevious write fPrevious;
+              property Next:TNode read fNext write fNext;
+              property Children:TNode read fChildren write fChildren;
+              property Pair:TPair read fPair write fPair;
             end;
-            TpvSkipListNodeArray=array of TpvSkipListNode;
-            TpvSkipListRandomGeneratorState=record
+            TNodeArray=array of TNode;
+            TRandomGeneratorState=record
              State:TpvUInt64;
              Increment:TpvUInt64;
             end;
       private
        type TValueEnumerator=record
              private
-              fSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>;
-              fPair:TpvSkipListPair;
-              function GetCurrent:TpvSkipListValue; inline;
+              fSkipList:TpvGenericSkipList<TKey,TValue>;
+              fPair:TPair;
+              function GetCurrent:TValue; inline;
              public
-              constructor Create(const aSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>);
+              constructor Create(const aSkipList:TpvGenericSkipList<TKey,TValue>);
               function MoveNext:boolean; inline;
-              property Current:TpvSkipListValue read GetCurrent;
+              property Current:TValue read GetCurrent;
             end;
       private
-       fRandomGeneratorState:TpvSkipListRandomGeneratorState;
-       fDefaultValue:TpvSkipListValue;
-       fHead:TpvSkipListNode;
-       fPairs:TpvSkipListPair;
+       fRandomGeneratorState:TRandomGeneratorState;
+       fDefaultValue:TValue;
+       fHead:TNode;
+       fPairs:TPair;
        function GetRandomValue:TpvUInt32;
-       function GetFirstPair:TpvSkipListPair;
-       function GetLastPair:TpvSkipListPair;
-       function FindPreviousNode(const aNode:TpvSkipListNode;const aKey:TpvSkipListKey):TpvSkipListNode;
+       function GetFirstPair:TPair;
+       function GetLastPair:TPair;
+       function FindPreviousNode(const aNode:TNode;const aKey:TKey):TNode;
       public
-       constructor Create(const aDefaultValue:TpvSkipListValue); reintroduce;
+       constructor Create(const aDefaultValue:TValue); reintroduce;
        destructor Destroy; override;
-       function GetNearestPair(const aKey:TpvSkipListKey):TpvSkipListPair;
-       function GetNearestKey(const aKey:TpvSkipListKey):TpvSkipListKey;
-       function GetNearestValue(const aKey:TpvSkipListKey):TpvSkipListValue;
-       function Get(const aKey:TpvSkipListKey;out aValue:TpvSkipListValue):boolean;
-       function GetPair(const aKey:TpvSkipListKey):TpvSkipListPair;
-       function GetValue(const aKey:TpvSkipListKey):TpvSkipListValue;
-       procedure SetValue(const aKey:TpvSkipListKey;const aValue:TpvSkipListValue);
-       procedure Delete(const aKey:TpvSkipListKey);
+       function GetNearestPair(const aKey:TKey):TPair;
+       function GetNearestKey(const aKey:TKey):TKey;
+       function GetNearestValue(const aKey:TKey):TValue;
+       function Get(const aKey:TKey;out aValue:TValue):boolean;
+       function GetPair(const aKey:TKey):TPair;
+       function GetValue(const aKey:TKey):TValue;
+       procedure SetValue(const aKey:TKey;const aValue:TValue);
+       procedure Delete(const aKey:TKey);
        function GetEnumerator:TValueEnumerator;
-       property FirstPair:TpvSkipListPair read GetFirstPair;
-       property LastPair:TpvSkipListPair read GetLastPair;
-       property Values[const aKey:TpvSkipListKey]:TpvSkipListValue read GetValue write SetValue; default;
+       property FirstPair:TPair read GetFirstPair;
+       property LastPair:TPair read GetLastPair;
+       property Values[const aKey:TKey]:TValue read GetValue write SetValue; default;
+     end;
+
+     TpvInt64SkipList<TValue>=class
+      public
+       type TKey=TpvInt64;
+            TPair=class
+             private
+              fSkipList:TpvInt64SkipList<TValue>;
+              fPrevious:TPair;
+              fNext:TPair;
+              fKey:TKey;
+              fValue:TValue;
+              function GetPrevious:TPair;
+              function GetNext:TPair;
+             public
+              constructor Create(const aSkipList:TpvInt64SkipList<TValue>;const aKey:TKey;const aValue:TValue); reintroduce;
+              constructor CreateEmpty(const aSkipList:TpvInt64SkipList<TValue>); reintroduce;
+              destructor Destroy; override;
+              property Previous:TPair read GetPrevious;
+              property Next:TPair read GetNext;
+              property Key:TKey read fKey write fKey;
+              property Value:TValue read fValue write fValue;
+            end;
+            TNode=class
+             private
+              fPrevious:TNode;
+              fNext:TNode;
+              fChildren:TNode;
+              fPair:TPair;
+             public
+              constructor Create(const aPrevious:TNode=nil;
+                                 const aNext:TNode=nil;
+                                 const aChildren:TNode=nil;
+                                 const aPair:TPair=nil); reintroduce;
+              destructor Destroy; override;
+             published
+              property Previous:TNode read fPrevious write fPrevious;
+              property Next:TNode read fNext write fNext;
+              property Children:TNode read fChildren write fChildren;
+              property Pair:TPair read fPair write fPair;
+            end;
+            TNodeArray=array of TNode;
+            TRandomGeneratorState=record
+             State:TpvUInt64;
+             Increment:TpvUInt64;
+            end;
+      private
+       type TValueEnumerator=record
+             private
+              fSkipList:TpvInt64SkipList<TValue>;
+              fPair:TPair;
+              function GetCurrent:TValue; inline;
+             public
+              constructor Create(const aSkipList:TpvInt64SkipList<TValue>);
+              function MoveNext:boolean; inline;
+              property Current:TValue read GetCurrent;
+            end;
+      private
+       fRandomGeneratorState:TRandomGeneratorState;
+       fDefaultValue:TValue;
+       fHead:TNode;
+       fPairs:TPair;
+       function GetRandomValue:TpvUInt32;
+       function GetFirstPair:TPair;
+       function GetLastPair:TPair;
+       function FindPreviousNode(const aNode:TNode;const aKey:TKey):TNode;
+      public
+       constructor Create(const aDefaultValue:TValue); reintroduce;
+       destructor Destroy; override;
+       function GetNearestPair(const aKey:TKey):TPair;
+       function GetNearestKey(const aKey:TKey):TKey;
+       function GetNearestValue(const aKey:TKey):TValue;
+       function Get(const aKey:TKey;out aValue:TValue):boolean;
+       function GetPair(const aKey:TKey):TPair;
+       function GetValue(const aKey:TKey):TValue;
+       procedure SetValue(const aKey:TKey;const aValue:TValue);
+       procedure Delete(const aKey:TKey);
+       function GetEnumerator:TValueEnumerator;
+       property FirstPair:TPair read GetFirstPair;
+       property LastPair:TPair read GetLastPair;
+       property Values[const aKey:TKey]:TValue read GetValue write SetValue; default;
      end;
 
 implementation
@@ -2630,24 +2711,24 @@ begin
 end;
 {$endif}
 
-constructor TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TValueEnumerator.Create(const aSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>);
+constructor TpvGenericSkipList<TKey,TValue>.TValueEnumerator.Create(const aSkipList:TpvGenericSkipList<TKey,TValue>);
 begin
  fSkipList:=aSkipList;
  fPair:=fSkipList.fPairs;
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TValueEnumerator.GetCurrent:TpvSkipListValue;
+function TpvGenericSkipList<TKey,TValue>.TValueEnumerator.GetCurrent:TValue;
 begin
  result:=fPair.fValue;
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TValueEnumerator.MoveNext:boolean;
+function TpvGenericSkipList<TKey,TValue>.TValueEnumerator.MoveNext:boolean;
 begin
  fPair:=fPair.fNext;
  result:=fPair<>fSkipList.fPairs;
 end;
 
-constructor TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TpvSkipListPair.Create(const aSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>;const aKey:TpvSkipListKey;const aValue:TpvSkipListValue);
+constructor TpvGenericSkipList<TKey,TValue>.TPair.Create(const aSkipList:TpvGenericSkipList<TKey,TValue>;const aKey:TKey;const aValue:TValue);
 begin
  inherited Create;
  fSkipList:=aSkipList;
@@ -2657,7 +2738,7 @@ begin
  fValue:=aValue;
 end;
 
-constructor TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TpvSkipListPair.CreateEmpty(const aSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>);
+constructor TpvGenericSkipList<TKey,TValue>.TPair.CreateEmpty(const aSkipList:TpvGenericSkipList<TKey,TValue>);
 begin
  inherited Create;
  fSkipList:=aSkipList;
@@ -2667,7 +2748,7 @@ begin
  Initialize(fValue);
 end;
 
-destructor TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TpvSkipListPair.Destroy;
+destructor TpvGenericSkipList<TKey,TValue>.TPair.Destroy;
 begin
  fPrevious.fNext:=fNext;
  fNext.fPrevious:=fPrevious;
@@ -2678,7 +2759,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TpvSkipListPair.GetPrevious:TpvSkipListPair;
+function TpvGenericSkipList<TKey,TValue>.TPair.GetPrevious:TPair;
 begin
  if fPrevious<>fSkipList.fPairs then begin
   result:=fPrevious;
@@ -2687,7 +2768,7 @@ begin
  end;
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TpvSkipListPair.GetNext:TpvSkipListPair;
+function TpvGenericSkipList<TKey,TValue>.TPair.GetNext:TPair;
 begin
  if fNext<>fSkipList.fPairs then begin
   result:=fNext;
@@ -2696,10 +2777,10 @@ begin
  end;
 end;
 
-constructor TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TpvSkipListNode.Create(const aPrevious:TpvSkipListNode=nil;
-                                                                                const aNext:TpvSkipListNode=nil;
-                                                                                const aChildren:TpvSkipListNode=nil;
-                                                                                const aPair:TpvSkipListPair=nil);
+constructor TpvGenericSkipList<TKey,TValue>.TNode.Create(const aPrevious:TNode=nil;
+                                                         const aNext:TNode=nil;
+                                                         const aChildren:TNode=nil;
+                                                         const aPair:TPair=nil);
 begin
  inherited Create;
  fPrevious:=aPrevious;
@@ -2708,7 +2789,7 @@ begin
  fPair:=aPair;
 end;
 
-destructor TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TpvSkipListNode.Destroy;
+destructor TpvGenericSkipList<TKey,TValue>.TNode.Destroy;
 begin
  if assigned(fPair) and not assigned(fChildren) then begin
   fPair.Free;
@@ -2716,7 +2797,7 @@ begin
  inherited Destroy;
 end;
 
-constructor TpvSkipList<TpvSkipListKey,TpvSkipListValue>.Create(const aDefaultValue:TpvSkipListValue);
+constructor TpvGenericSkipList<TKey,TValue>.Create(const aDefaultValue:TValue);
 begin
  inherited Create;
  fRandomGeneratorState.State:=0;
@@ -2725,12 +2806,12 @@ begin
  inc(fRandomGeneratorState.State,(TpvPtrUInt(TpvPointer(self)) shr 19) or (TpvPtrUInt(Pointer(self)) shl 13));
  GetRandomValue;
  fDefaultValue:=aDefaultValue;
- fHead:=TpvSkipListNode.Create;
- fPairs:=TpvSkipListPair.CreateEmpty(self);
+ fHead:=TNode.Create;
+ fPairs:=TPair.CreateEmpty(self);
 end;
 
-destructor TpvSkipList<TpvSkipListKey,TpvSkipListValue>.Destroy;
-var Node,TemporaryHead,CurrentNode,NextNode:TpvSkipListNode;
+destructor TpvGenericSkipList<TKey,TValue>.Destroy;
+var Node,TemporaryHead,CurrentNode,NextNode:TNode;
 begin
  Node:=fHead;
  while assigned(Node) do begin
@@ -2750,7 +2831,7 @@ begin
  inherited Destroy;
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.GetRandomValue:TpvUInt32;
+function TpvGenericSkipList<TKey,TValue>.GetRandomValue:TpvUInt32;
 var RandomGeneratorState:TpvUInt64;
 {$ifndef fpc}
     RandomGeneratorXorShifted,RandomGeneratorRotation:TpvUInt32;
@@ -2767,7 +2848,7 @@ begin
 {$endif}
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.GetFirstPair:TpvSkipListPair;
+function TpvGenericSkipList<TKey,TValue>.GetFirstPair:TPair;
 begin
  result:=fPairs.fNext;
  if result=fPairs then begin
@@ -2775,7 +2856,7 @@ begin
  end;
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.GetLastPair:TpvSkipListPair;
+function TpvGenericSkipList<TKey,TValue>.GetLastPair:TPair;
 begin
  result:=fPairs.fPrevious;
  if result=fPairs then begin
@@ -2783,11 +2864,11 @@ begin
  end;
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.FindPreviousNode(const aNode:TpvSkipListNode;const aKey:TpvSkipListKey):TpvSkipListNode;
-var NextNode:TpvSkipListNode;
-    Comparer:IComparer<TpvSkipListKey>;
+function TpvGenericSkipList<TKey,TValue>.FindPreviousNode(const aNode:TNode;const aKey:TKey):TNode;
+var NextNode:TNode;
+    Comparer:IComparer<TKey>;
 begin
- Comparer:=TComparer<TpvSkipListKey>.Default;
+ Comparer:=TComparer<TKey>.Default;
  result:=aNode;
  while assigned(result) do begin
   NextNode:=result.fNext;
@@ -2799,9 +2880,9 @@ begin
  end;
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.GetNearestPair(const aKey:TpvSkipListKey):TpvSkipListPair;
-var CurrentNode,PreviousNode:TpvSkipListNode;
-    Pair,BestPair:TpvSkipListPair;
+function TpvGenericSkipList<TKey,TValue>.GetNearestPair(const aKey:TKey):TPair;
+var CurrentNode,PreviousNode:TNode;
+    Pair,BestPair:TPair;
 begin
  BestPair:=fPairs.Next;
  CurrentNode:=fHead;
@@ -2820,8 +2901,8 @@ begin
  end;
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.GetNearestKey(const aKey:TpvSkipListKey):TpvSkipListKey;
-var Pair:TpvSkipListPair;
+function TpvGenericSkipList<TKey,TValue>.GetNearestKey(const aKey:TKey):TKey;
+var Pair:TPair;
 begin
  Pair:=GetNearestPair(aKey);
  if assigned(Pair) then begin
@@ -2831,8 +2912,8 @@ begin
  end;
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.GetNearestValue(const aKey:TpvSkipListKey):TpvSkipListValue;
-var Pair:TpvSkipListPair;
+function TpvGenericSkipList<TKey,TValue>.GetNearestValue(const aKey:TKey):TValue;
+var Pair:TPair;
 begin
  Pair:=GetNearestPair(aKey);
  if assigned(Pair) then begin
@@ -2842,12 +2923,12 @@ begin
  end;
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.Get(const aKey:TpvSkipListKey;out aValue:TpvSkipListValue):boolean;
-var CurrentNode,PreviousNode:TpvSkipListNode;
-    Pair:TpvSkipListPair;
-    Comparer:IComparer<TpvSkipListKey>;
+function TpvGenericSkipList<TKey,TValue>.Get(const aKey:TKey;out aValue:TValue):boolean;
+var CurrentNode,PreviousNode:TNode;
+    Pair:TPair;
+    Comparer:IComparer<TKey>;
 begin
- Comparer:=TComparer<TpvSkipListKey>.Default;
+ Comparer:=TComparer<TKey>.Default;
  CurrentNode:=fHead;
  while assigned(CurrentNode) do begin
   PreviousNode:=FindPreviousNode(CurrentNode,aKey);
@@ -2862,12 +2943,12 @@ begin
  result:=false;
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.GetPair(const aKey:TpvSkipListKey):TpvSkipListPair;
-var CurrentNode,PreviousNode:TpvSkipListNode;
-    Pair:TpvSkipListPair;
-    Comparer:IComparer<TpvSkipListKey>;
+function TpvGenericSkipList<TKey,TValue>.GetPair(const aKey:TKey):TPair;
+var CurrentNode,PreviousNode:TNode;
+    Pair:TPair;
+    Comparer:IComparer<TKey>;
 begin
- Comparer:=TComparer<TpvSkipListKey>.Default;
+ Comparer:=TComparer<TKey>.Default;
  CurrentNode:=fHead;
  while assigned(CurrentNode) do begin
   PreviousNode:=FindPreviousNode(CurrentNode,aKey);
@@ -2881,12 +2962,12 @@ begin
  result:=nil;
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.GetValue(const aKey:TpvSkipListKey):TpvSkipListValue;
-var CurrentNode,PreviousNode:TpvSkipListNode;
-    Pair:TpvSkipListPair;
-    Comparer:IComparer<TpvSkipListKey>;
+function TpvGenericSkipList<TKey,TValue>.GetValue(const aKey:TKey):TValue;
+var CurrentNode,PreviousNode:TNode;
+    Pair:TPair;
+    Comparer:IComparer<TKey>;
 begin
- Comparer:=TComparer<TpvSkipListKey>.Default;
+ Comparer:=TComparer<TKey>.Default;
  CurrentNode:=fHead;
  while assigned(CurrentNode) do begin
   PreviousNode:=FindPreviousNode(CurrentNode,aKey);
@@ -2900,15 +2981,15 @@ begin
  result:=fDefaultValue;
 end;
 
-procedure TpvSkipList<TpvSkipListKey,TpvSkipListValue>.SetValue(const aKey:TpvSkipListKey;const aValue:TpvSkipListValue);
+procedure TpvGenericSkipList<TKey,TValue>.SetValue(const aKey:TKey;const aValue:TValue);
 var AllocatedPreviousNodes,CountPreviousNodes:TpvInt32;
     RandomGeneratorValue:TpvUInt32;
-    CurrentNode,PreviousNode,NewNode:TpvSkipListNode;
-    Pair,OtherPair:TpvSkipListPair;
-    PreviousNodes:TpvSkipListNodeArray;
-    Comparer:IComparer<TpvSkipListKey>;
+    CurrentNode,PreviousNode,NewNode:TNode;
+    Pair,OtherPair:TPair;
+    PreviousNodes:TNodeArray;
+    Comparer:IComparer<TKey>;
 begin
- Comparer:=TComparer<TpvSkipListKey>.Default;
+ Comparer:=TComparer<TKey>.Default;
  PreviousNodes:=nil;
  try
   CurrentNode:=fHead;
@@ -2938,12 +3019,12 @@ begin
      OtherPair:=fPairs.fNext;
     end;
    end;
-   Pair:=TpvSkipListPair.Create(self,aKey,aValue);
+   Pair:=TPair.Create(self,aKey,aValue);
    Pair.fPrevious:=OtherPair.fPrevious;
    Pair.fNext:=OtherPair;
    Pair.fPrevious.fNext:=Pair;
    OtherPair.fPrevious:=Pair;
-   NewNode:=TpvSkipListNode.Create(PreviousNode,PreviousNode.fNext,nil,Pair);
+   NewNode:=TNode.Create(PreviousNode,PreviousNode.fNext,nil,Pair);
    if assigned(PreviousNode.fNext) then begin
     PreviousNode.fNext.fPrevious:=NewNode;
    end;
@@ -2961,10 +3042,10 @@ begin
       dec(CountPreviousNodes);
       PreviousNode:=PreviousNodes[CountPreviousNodes];
      end else begin
-      fHead:=TpvSkipListNode.Create(nil,nil,fHead);
+      fHead:=TNode.Create(nil,nil,fHead);
       PreviousNode:=fHead;
      end;
-     NewNode:=TpvSkipListNode.Create(PreviousNode,PreviousNode.fNext,NewNode,Pair);
+     NewNode:=TNode.Create(PreviousNode,PreviousNode.fNext,NewNode,Pair);
      if assigned(PreviousNode.fNext) then begin
       PreviousNode.fNext.fPrevious:=NewNode;
      end;
@@ -2977,12 +3058,12 @@ begin
  end;
 end;
 
-procedure TpvSkipList<TpvSkipListKey,TpvSkipListValue>.Delete(const aKey:TpvSkipListKey);
-var CurrentNode,PreviousNode:TpvSkipListNode;
-    Pair:TpvSkipListPair;
-    Comparer:IComparer<TpvSkipListKey>;
+procedure TpvGenericSkipList<TKey,TValue>.Delete(const aKey:TKey);
+var CurrentNode,PreviousNode:TNode;
+    Pair:TPair;
+    Comparer:IComparer<TKey>;
 begin
- Comparer:=TComparer<TpvSkipListKey>.Default;
+ Comparer:=TComparer<TKey>.Default;
  CurrentNode:=fHead;
  while assigned(CurrentNode) do begin
   PreviousNode:=FindPreviousNode(CurrentNode,aKey);
@@ -3006,7 +3087,376 @@ begin
  end;
 end;
 
-function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.GetEnumerator:TValueEnumerator;
+function TpvGenericSkipList<TKey,TValue>.GetEnumerator:TValueEnumerator;
+begin
+ result:=TValueEnumerator.Create(self);
+end;
+
+constructor TpvInt64SkipList<TValue>.TValueEnumerator.Create(const aSkipList:TpvInt64SkipList<TValue>);
+begin
+ fSkipList:=aSkipList;
+ fPair:=fSkipList.fPairs;
+end;
+
+function TpvInt64SkipList<TValue>.TValueEnumerator.GetCurrent:TValue;
+begin
+ result:=fPair.fValue;
+end;
+
+function TpvInt64SkipList<TValue>.TValueEnumerator.MoveNext:boolean;
+begin
+ fPair:=fPair.fNext;
+ result:=fPair<>fSkipList.fPairs;
+end;
+
+constructor TpvInt64SkipList<TValue>.TPair.Create(const aSkipList:TpvInt64SkipList<TValue>;const aKey:TKey;const aValue:TValue);
+begin
+ inherited Create;
+ fSkipList:=aSkipList;
+ fPrevious:=self;
+ fNext:=self;
+ fKey:=aKey;
+ fValue:=aValue;
+end;
+
+constructor TpvInt64SkipList<TValue>.TPair.CreateEmpty(const aSkipList:TpvInt64SkipList<TValue>);
+begin
+ inherited Create;
+ fSkipList:=aSkipList;
+ fPrevious:=self;
+ fNext:=self;
+ Initialize(fKey);
+ Initialize(fValue);
+end;
+
+destructor TpvInt64SkipList<TValue>.TPair.Destroy;
+begin
+ fPrevious.fNext:=fNext;
+ fNext.fPrevious:=fPrevious;
+ fPrevious:=self;
+ fNext:=self;
+ Finalize(fKey);
+ Finalize(fValue);
+ inherited Destroy;
+end;
+
+function TpvInt64SkipList<TValue>.TPair.GetPrevious:TPair;
+begin
+ if fPrevious<>fSkipList.fPairs then begin
+  result:=fPrevious;
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvInt64SkipList<TValue>.TPair.GetNext:TPair;
+begin
+ if fNext<>fSkipList.fPairs then begin
+  result:=fNext;
+ end else begin
+  result:=nil;
+ end;
+end;
+
+constructor TpvInt64SkipList<TValue>.TNode.Create(const aPrevious:TNode=nil;
+                                                    const aNext:TNode=nil;
+                                                    const aChildren:TNode=nil;
+                                                    const aPair:TPair=nil);
+begin
+ inherited Create;
+ fPrevious:=aPrevious;
+ fNext:=aNext;
+ fChildren:=aChildren;
+ fPair:=aPair;
+end;
+
+destructor TpvInt64SkipList<TValue>.TNode.Destroy;
+begin
+ if assigned(fPair) and not assigned(fChildren) then begin
+  fPair.Free;
+ end;
+ inherited Destroy;
+end;
+
+constructor TpvInt64SkipList<TValue>.Create(const aDefaultValue:TValue);
+begin
+ inherited Create;
+ fRandomGeneratorState.State:=0;
+ fRandomGeneratorState.Increment:=(TpvPtrUInt(TpvPointer(self)) shl 1) or 1;
+ GetRandomValue;
+ inc(fRandomGeneratorState.State,(TpvPtrUInt(TpvPointer(self)) shr 19) or (TpvPtrUInt(Pointer(self)) shl 13));
+ GetRandomValue;
+ fDefaultValue:=aDefaultValue;
+ fHead:=TNode.Create;
+ fPairs:=TPair.CreateEmpty(self);
+end;
+
+destructor TpvInt64SkipList<TValue>.Destroy;
+var Node,TemporaryHead,CurrentNode,NextNode:TNode;
+begin
+ Node:=fHead;
+ while assigned(Node) do begin
+  TemporaryHead:=Node;
+  Node:=Node.fChildren;
+  CurrentNode:=TemporaryHead;
+  while assigned(CurrentNode) do begin
+   NextNode:=CurrentNode.fNext;
+   CurrentNode.Free;
+   CurrentNode:=NextNode;
+  end;
+ end;
+ while fPairs.fNext<>fPairs do begin
+  fPairs.fNext.Free;
+ end;
+ fPairs.Free;
+ inherited Destroy;
+end;
+
+function TpvInt64SkipList<TValue>.GetRandomValue:TpvUInt32;
+var RandomGeneratorState:TpvUInt64;
+{$ifndef fpc}
+    RandomGeneratorXorShifted,RandomGeneratorRotation:TpvUInt32;
+{$endif}
+begin
+ RandomGeneratorState:=fRandomGeneratorState.State;
+ fRandomGeneratorState.State:=(RandomGeneratorState*TpvUInt64(6364136223846793005))+fRandomGeneratorState.Increment;
+{$ifdef fpc}
+ result:=RORDWord(TpvUInt32(((RandomGeneratorState shr 18) xor RandomGeneratorState) shr 27),RandomGeneratorState shr 59);
+{$else}
+ RandomGeneratorXorShifted:=((RandomGeneratorState shr 18) xor RandomGeneratorState) shr 27;
+ RandomGeneratorRotation:=RandomGeneratorState shr 59;
+ result:=(RandomGeneratorXorShifted shr RandomGeneratorRotation) or (RandomGeneratorXorShifted shl (32-RandomGeneratorRotation));
+{$endif}
+end;
+
+function TpvInt64SkipList<TValue>.GetFirstPair:TPair;
+begin
+ result:=fPairs.fNext;
+ if result=fPairs then begin
+  result:=nil;
+ end;
+end;
+
+function TpvInt64SkipList<TValue>.GetLastPair:TPair;
+begin
+ result:=fPairs.fPrevious;
+ if result=fPairs then begin
+  result:=nil;
+ end;
+end;
+
+function TpvInt64SkipList<TValue>.FindPreviousNode(const aNode:TNode;const aKey:TKey):TNode;
+var NextNode:TNode;
+begin
+ result:=aNode;
+ while assigned(result) do begin
+  NextNode:=result.fNext;
+  if assigned(NextNode) and (NextNode.fPair.fKey<=aKey) then begin
+   result:=NextNode;
+  end else begin
+   break;
+  end;
+ end;
+end;
+
+function TpvInt64SkipList<TValue>.GetNearestPair(const aKey:TKey):TPair;
+var CurrentNode,PreviousNode:TNode;
+    Pair,BestPair:TPair;
+begin
+ BestPair:=fPairs.Next;
+ CurrentNode:=fHead;
+ while assigned(CurrentNode) do begin
+  PreviousNode:=FindPreviousNode(CurrentNode,aKey);
+  Pair:=PreviousNode.fPair;
+  if assigned(Pair) then begin
+   BestPair:=Pair;
+  end;
+  CurrentNode:=PreviousNode.fChildren;
+ end;
+ if assigned(BestPair) and (BestPair<>fPairs) then begin
+  result:=BestPair;
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvInt64SkipList<TValue>.GetNearestKey(const aKey:TKey):TKey;
+var Pair:TPair;
+begin
+ Pair:=GetNearestPair(aKey);
+ if assigned(Pair) then begin
+  result:=Pair.fKey;
+ end else begin
+  result:=aKey;
+ end;
+end;
+
+function TpvInt64SkipList<TValue>.GetNearestValue(const aKey:TKey):TValue;
+var Pair:TPair;
+begin
+ Pair:=GetNearestPair(aKey);
+ if assigned(Pair) then begin
+  result:=Pair.fValue;
+ end else begin
+  result:=fDefaultValue;
+ end;
+end;
+
+function TpvInt64SkipList<TValue>.Get(const aKey:TKey;out aValue:TValue):boolean;
+var CurrentNode,PreviousNode:TNode;
+    Pair:TPair;
+begin
+ CurrentNode:=fHead;
+ while assigned(CurrentNode) do begin
+  PreviousNode:=FindPreviousNode(CurrentNode,aKey);
+  Pair:=PreviousNode.fPair;
+  if assigned(Pair) and (Pair.fKey=aKey) then begin
+   aValue:=Pair.fValue;
+   result:=true;
+   exit;
+  end;
+  CurrentNode:=PreviousNode.fChildren;
+ end;
+ result:=false;
+end;
+
+function TpvInt64SkipList<TValue>.GetPair(const aKey:TKey):TPair;
+var CurrentNode,PreviousNode:TNode;
+    Pair:TPair;
+begin
+ CurrentNode:=fHead;
+ while assigned(CurrentNode) do begin
+  PreviousNode:=FindPreviousNode(CurrentNode,aKey);
+  Pair:=PreviousNode.fPair;
+  if assigned(Pair) and (Pair.fKey=aKey) then begin
+   result:=Pair;
+   exit;
+  end;
+  CurrentNode:=PreviousNode.fChildren;
+ end;
+ result:=nil;
+end;
+
+function TpvInt64SkipList<TValue>.GetValue(const aKey:TKey):TValue;
+var CurrentNode,PreviousNode:TNode;
+    Pair:TPair;
+begin
+ CurrentNode:=fHead;
+ while assigned(CurrentNode) do begin
+  PreviousNode:=FindPreviousNode(CurrentNode,aKey);
+  Pair:=PreviousNode.fPair;
+  if assigned(Pair) and (Pair.fKey=aKey) then begin
+   result:=Pair.fValue;
+   exit;
+  end;
+  CurrentNode:=PreviousNode.fChildren;
+ end;
+ result:=fDefaultValue;
+end;
+
+procedure TpvInt64SkipList<TValue>.SetValue(const aKey:TKey;const aValue:TValue);
+var AllocatedPreviousNodes,CountPreviousNodes:TpvInt32;
+    RandomGeneratorValue:TpvUInt32;
+    CurrentNode,PreviousNode,NewNode:TNode;
+    Pair,OtherPair:TPair;
+    PreviousNodes:TNodeArray;
+begin
+ PreviousNodes:=nil;
+ try
+  CurrentNode:=fHead;
+  AllocatedPreviousNodes:=0;
+  CountPreviousNodes:=0;
+  while assigned(CurrentNode) do begin
+   PreviousNode:=FindPreviousNode(CurrentNode,aKey);
+   if AllocatedPreviousNodes<=CountPreviousNodes then begin
+    AllocatedPreviousNodes:=(CountPreviousNodes+1) shl 1;
+    SetLength(PreviousNodes,AllocatedPreviousNodes);
+   end;
+   PreviousNodes[CountPreviousNodes]:=PreviousNode;
+   inc(CountPreviousNodes);
+   CurrentNode:=PreviousNode.fChildren;
+  end;
+  dec(CountPreviousNodes);
+  PreviousNode:=PreviousNodes[CountPreviousNodes];
+  if assigned(PreviousNode.fPair) and (PreviousNode.fPair.fKey=aKey) then begin
+   PreviousNode.fPair.fValue:=aValue;
+  end else begin
+   if assigned(PreviousNode.fPair) and (PreviousNode.fPair.fNext<>fPairs) then begin
+    OtherPair:=PreviousNode.fPair.fNext;
+   end else begin
+    if fPairs.fPrevious.fKey<aKey then begin
+     OtherPair:=fPairs;
+    end else begin
+     OtherPair:=fPairs.fNext;
+    end;
+   end;
+   Pair:=TPair.Create(self,aKey,aValue);
+   Pair.fPrevious:=OtherPair.fPrevious;
+   Pair.fNext:=OtherPair;
+   Pair.fPrevious.fNext:=Pair;
+   OtherPair.fPrevious:=Pair;
+   NewNode:=TNode.Create(PreviousNode,PreviousNode.fNext,nil,Pair);
+   if assigned(PreviousNode.fNext) then begin
+    PreviousNode.fNext.fPrevious:=NewNode;
+   end;
+   PreviousNode.fNext:=NewNode;
+   RandomGeneratorValue:=0;
+   repeat
+    if RandomGeneratorValue=0 then begin
+     RandomGeneratorValue:=GetRandomValue;
+    end;
+    if (RandomGeneratorValue and 1)=0 then begin
+     break;
+    end else begin
+     RandomGeneratorValue:=RandomGeneratorValue shr 1;
+     if CountPreviousNodes>0 then begin
+      dec(CountPreviousNodes);
+      PreviousNode:=PreviousNodes[CountPreviousNodes];
+     end else begin
+      fHead:=TNode.Create(nil,nil,fHead);
+      PreviousNode:=fHead;
+     end;
+     NewNode:=TNode.Create(PreviousNode,PreviousNode.fNext,NewNode,Pair);
+     if assigned(PreviousNode.fNext) then begin
+      PreviousNode.fNext.fPrevious:=NewNode;
+     end;
+     PreviousNode.fNext:=NewNode;
+    end;
+   until false;
+  end;
+ finally
+  PreviousNodes:=nil;
+ end;
+end;
+
+procedure TpvInt64SkipList<TValue>.Delete(const aKey:TKey);
+var CurrentNode,PreviousNode:TNode;
+    Pair:TPair;
+begin
+ CurrentNode:=fHead;
+ while assigned(CurrentNode) do begin
+  PreviousNode:=FindPreviousNode(CurrentNode,aKey);
+  if assigned(PreviousNode) then begin
+   Pair:=PreviousNode.fPair;
+   if assigned(Pair) and (Pair.fKey=aKey) then begin
+    CurrentNode:=PreviousNode;
+    repeat
+     CurrentNode.fPrevious.fNext:=CurrentNode.fNext;
+     if assigned(CurrentNode.fNext) then begin
+      CurrentNode.fNext.fPrevious:=CurrentNode.fPrevious;
+     end;
+     PreviousNode:=CurrentNode;
+     CurrentNode:=CurrentNode.fChildren;
+     PreviousNode.Free;
+    until not assigned(CurrentNode);
+    break;
+   end;
+  end;
+  CurrentNode:=PreviousNode.fChildren;
+ end;
+end;
+
+function TpvInt64SkipList<TValue>.GetEnumerator:TValueEnumerator;
 begin
  result:=TValueEnumerator.Create(self);
 end;
