@@ -412,10 +412,9 @@ type TpvDynamicArray<T>=class
 
      TpvSkipList<TpvSkipListKey,TpvSkipListValue>=class
       public
-       type TpvSkipListSelf=TpvSkipList<TpvSkipListKey,TpvSkipListValue>;
-            TpvSkipListPair=class
+       type TpvSkipListPair=class
              private
-              fSkipList:TpvSkipListSelf;
+              fSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>;
               fPrevious:TpvSkipListPair;
               fNext:TpvSkipListPair;
               fKey:TpvSkipListKey;
@@ -423,8 +422,8 @@ type TpvDynamicArray<T>=class
               function GetPrevious:TpvSkipListPair;
               function GetNext:TpvSkipListPair;
              public
-              constructor Create(const aSkipList:TpvSkipListSelf;const aKey:TpvSkipListKey;const aValue:TpvSkipListValue); reintroduce;
-              constructor CreateEmpty(const aSkipList:TpvSkipListSelf); reintroduce;
+              constructor Create(const aSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>;const aKey:TpvSkipListKey;const aValue:TpvSkipListValue); reintroduce;
+              constructor CreateEmpty(const aSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>); reintroduce;
               destructor Destroy; override;
               property Previous:TpvSkipListPair read GetPrevious;
               property Next:TpvSkipListPair read GetNext;
@@ -455,6 +454,17 @@ type TpvDynamicArray<T>=class
              Increment:TpvUInt64;
             end;
       private
+       type TValueEnumerator=record
+             private
+              fSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>;
+              fPair:TpvSkipListPair;
+              function GetCurrent:TpvSkipListValue; inline;
+             public
+              constructor Create(const aSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>);
+              function MoveNext:boolean; inline;
+              property Current:TpvSkipListValue read GetCurrent;
+            end;
+      private
        fRandomGeneratorState:TpvSkipListRandomGeneratorState;
        fDefaultValue:TpvSkipListValue;
        fHead:TpvSkipListNode;
@@ -474,6 +484,7 @@ type TpvDynamicArray<T>=class
        function GetValue(const aKey:TpvSkipListKey):TpvSkipListValue;
        procedure SetValue(const aKey:TpvSkipListKey;const aValue:TpvSkipListValue);
        procedure Delete(const aKey:TpvSkipListKey);
+       function GetEnumerator:TValueEnumerator;
        property FirstPair:TpvSkipListPair read GetFirstPair;
        property LastPair:TpvSkipListPair read GetLastPair;
        property Values[const aKey:TpvSkipListKey]:TpvSkipListValue read GetValue write SetValue; default;
@@ -2619,7 +2630,24 @@ begin
 end;
 {$endif}
 
-constructor TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TpvSkipListPair.Create(const aSkipList:TpvSkipListSelf;const aKey:TpvSkipListKey;const aValue:TpvSkipListValue);
+constructor TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TValueEnumerator.Create(const aSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>);
+begin
+ fSkipList:=aSkipList;
+ fPair:=fSkipList.fPairs;
+end;
+
+function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TValueEnumerator.GetCurrent:TpvSkipListValue;
+begin
+ result:=fPair.fValue;
+end;
+
+function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TValueEnumerator.MoveNext:boolean;
+begin
+ fPair:=fPair.fNext;
+ result:=fPair<>fSkipList.fPairs;
+end;
+
+constructor TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TpvSkipListPair.Create(const aSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>;const aKey:TpvSkipListKey;const aValue:TpvSkipListValue);
 begin
  inherited Create;
  fSkipList:=aSkipList;
@@ -2629,7 +2657,7 @@ begin
  fValue:=aValue;
 end;
 
-constructor TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TpvSkipListPair.CreateEmpty(const aSkipList:TpvSkipListSelf);
+constructor TpvSkipList<TpvSkipListKey,TpvSkipListValue>.TpvSkipListPair.CreateEmpty(const aSkipList:TpvSkipList<TpvSkipListKey,TpvSkipListValue>);
 begin
  inherited Create;
  fSkipList:=aSkipList;
@@ -2976,6 +3004,11 @@ begin
   end;
   CurrentNode:=PreviousNode.fChildren;
  end;
+end;
+
+function TpvSkipList<TpvSkipListKey,TpvSkipListValue>.GetEnumerator:TValueEnumerator;
+begin
+ result:=TValueEnumerator.Create(self);
 end;
 
 end.
