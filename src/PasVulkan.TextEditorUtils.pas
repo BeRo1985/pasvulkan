@@ -1029,8 +1029,8 @@ procedure TpvUTF8StringRopeLineMap.Update(const aUntilCodePoint,aUntilLine:TpvSi
 var DoStop:boolean;
 begin
  if (fCodePointIndex<fRope.fCountCodePoints) and
-    (fCodePointIndex<aUntilCodePoint) and
-    (fCountLines<aUntilCodePoint) then begin
+    ((aUntilCodePoint=High(TpvSizeUInt)) or (fCodePointIndex<aUntilCodePoint)) and
+    ((aUntilLine=High(TpvSizeUInt)) or (fCountLines<aUntilLine)) then begin
   if fCodePointIndex=0 then begin
    fNode:=fRope.fHead;
    fNodeCodeUnitIndex:=0;
