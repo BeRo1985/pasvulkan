@@ -235,7 +235,31 @@ type TpvUTF8DFA=class
        function GetLineIndexFromCodePointIndex(const aCodePointIndex:TpvSizeUInt):TpvSizeInt;
        function GetStartCodePointIndexFromLineIndex(const aLineIndex:TpvSizeUInt):TpvSizeInt;
        function GetStopCodePointIndexFromLineIndex(const aLineIndex:TpvSizeUInt):TpvSizeInt;
+      published
+       property CountLines:TpvSizeUInt read fCountLines;
      end;
+
+     TpvAbstractTextEditor=class
+      private
+       fVisibleAreaWidth:TpvSizeUInt;
+       fVisibleAreaHeight:TpvSizeUInt;
+       fNonScrollVisibleAreaWidth:TpvSizeUInt;
+       fNonScrollVisibleAreaHeight:TpvSizeUInt;
+       fVisibleAreaDirty:boolean;
+       procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeUInt);
+       procedure SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeUInt);
+       procedure SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeUInt);
+       procedure SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeUInt);
+      public
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+      published
+       property VisibleAreaWidth:TpvSizeUInt read fVisibleAreaWidth write SetVisibleAreaWidth;
+       property VisibleAreaHeight:TpvSizeUInt read fVisibleAreaHeight write SetVisibleAreaHeight;
+       property NonScrollVisibleAreaWidth:TpvSizeUInt read fNonScrollVisibleAreaWidth write SetNonScrollVisibleAreaWidth;
+       property NonScrollVisibleAreaHeight:TpvSizeUInt read fNonScrollVisibleAreaHeight write SetNonScrollVisibleAreaHeight;
+     end;
+
 
 implementation
 
@@ -1137,6 +1161,49 @@ begin
   end;
  end else begin
   result:=-1;
+ end;
+end;
+
+constructor TpvAbstractTextEditor.Create;
+begin
+ inherited Create;
+ fVisibleAreaDirty:=false;
+end;
+
+destructor TpvAbstractTextEditor.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvAbstractTextEditor.SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeUInt);
+begin
+ if fVisibleAreaWidth<>aVisibleAreaWidth then begin
+  fVisibleAreaWidth:=aVisibleAreaWidth;
+  fVisibleAreaDirty:=true;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeUInt);
+begin
+ if fVisibleAreaHeight<>aVisibleAreaHeight then begin
+  fVisibleAreaHeight:=aVisibleAreaHeight;
+  fVisibleAreaDirty:=true;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeUInt);
+begin
+ if fNonScrollVisibleAreaWidth<>aNonScrollVisibleAreaWidth then begin
+  fNonScrollVisibleAreaWidth:=aNonScrollVisibleAreaWidth;
+  fVisibleAreaDirty:=true;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeUInt);
+begin
+ if fNonScrollVisibleAreaHeight<>aNonScrollVisibleAreaHeight then begin
+  fNonScrollVisibleAreaHeight:=aNonScrollVisibleAreaHeight;
+  fVisibleAreaDirty:=true;
  end;
 end;
 
