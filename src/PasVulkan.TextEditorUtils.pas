@@ -217,7 +217,7 @@ type TpvUTF8DFA=class
        fLines:TLines;
        fCountLines:TpvSizeUInt;
        fCodePointIndex:TpvSizeUInt;
-       fLastWasNewLine:boolean;
+       fLastWasPossibleNewLineTwoCharSequence:boolean;
        fCodeUnit:AnsiChar;
        fLastCodeUnit:AnsiChar;
        fNode:TpvUTF8StringRope.TNode;
@@ -954,7 +954,7 @@ begin
  fCountLines:=0;
  AddLine(0);
  fCodePointIndex:=0;
- fLastWasNewLine:=false;
+ fLastWasPossibleNewLineTwoCharSequence:=false;
  fLastCodeUnit:=#0;
  fUTF8DFAState:=TpvUTF8DFA.StateAccept;
 end;
@@ -1003,7 +1003,7 @@ begin
    if (NewCountLines>0) and ((NewCountLines+1)<fCountLines) then begin
     fCodePointIndex:=fLines[NewCountLines];
     fCountLines:=NewCountLines;
-    fLastWasNewLine:=true;
+    fLastWasPossibleNewLineTwoCharSequence:=false;
     fLastCodeUnit:=#0;
     fUTF8DFAState:=TpvUTF8DFA.StateAccept;
    end else begin
@@ -1048,28 +1048,28 @@ begin
       if fUTF8DFACharClass=TpvUTF8DFA.StateCharClassSingleByte then begin
        case fCodeUnit of
         #$0a,#$0d:begin
-         if fLastWasNewLine and
+         if fLastWasPossibleNewLineTwoCharSequence and
             (((fCodeUnit=#$0a) and (fLastCodeUnit=#$0d)) or
              ((fCodeUnit=#$0d) and (fLastCodeUnit=#$0a))) then begin
           if fCountLines>0 then begin
            fLines[fCountLines-1]:=fCodePointIndex;
           end;
-          fLastWasNewLine:=false;
+          fLastWasPossibleNewLineTwoCharSequence:=false;
          end else begin
-          fLastWasNewLine:=true;
           AddLine(fCodePointIndex);
           if ((aUntilCodePoint<>High(TpvSizeUInt)) and (fCodePointIndex>=aUntilCodePoint)) or
              ((aUntilLine<>High(TpvSizeUInt)) and (fCountLines>=aUntilLine)) then begin
            DoStop:=2; // for as fallback for possible two-single-char-class-codepoint-width-sized newline sequences
           end;
+          fLastWasPossibleNewLineTwoCharSequence:=true;
          end;
         end;
         else begin
-         fLastWasNewLine:=false;
+         fLastWasPossibleNewLineTwoCharSequence:=false;
         end;
        end;
       end else begin
-       fLastWasNewLine:=false;
+       fLastWasPossibleNewLineTwoCharSequence:=false;
       end;
       fLastCodeUnit:=fCodeUnit;
       fUTF8DFAState:=TpvUTF8DFA.StateAccept;
