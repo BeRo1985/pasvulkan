@@ -66,26 +66,65 @@ uses SysUtils,
      Math,
      PasVulkan.Types;
 
-type EpvUTF8StringRope=class(Exception);
+type TpvUTF8DFA=class
+      public                                            //0 1 2 3 4 5 6 7 8 9 a b c d e f
+        const CodePointSizes:array[AnsiChar] of TpvUInt8=(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 0
+                                                          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 1
+                                                          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 2
+                                                          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 3
+                                                          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 4
+                                                          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 5
+                                                          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 6
+                                                          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 7
+                                                          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 8
+                                                          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 9
+                                                          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // a
+                                                          1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // b
+                                                          1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,  // c
+                                                          2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,  // d
+                                                          3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,  // e
+                                                          4,4,4,4,4,4,4,4,5,5,5,5,6,6,6,6); // f
+              StateCharClasses:array[AnsiChar] of TpvUInt8=($00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,
+                                                            $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,
+                                                            $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,
+                                                            $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,
+                                                            $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,
+                                                            $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,
+                                                            $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,
+                                                            $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,
+                                                            $01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,
+                                                            $01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,
+                                                            $01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,
+                                                            $01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,
+                                                            $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,
+                                                            $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,
+                                                            $04,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04,
+                                                            $05,$05,$05,$05,$05,$05,$05,$05,$06,$06,$06,$06,$07,$07,$08,$08);
+              StateTransitions:array[TpvUInt8] of TpvUInt8=($00,$10,$10,$20,$30,$40,$50,$60,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$00,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$20,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$30,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$40,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$50,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10);
+
+               StateAccept=0;
+               StateError=16;
+               StateCharClassSingleByte=0;
+     end;
+
+     EpvUTF8StringRope=class(Exception);
 
      TpvUTF8StringRope=class
-      private // Non-strict UTF8 code point size table       0 1 2 3 4 5 6 7 8 9 a b c d e f
-       const UTF8CodePointSizes:array[AnsiChar] of TpvUInt8=(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 0
-                                                             1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 1
-                                                             1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 2
-                                                             1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 3
-                                                             1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 4
-                                                             1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 5
-                                                             1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 6
-                                                             1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 7
-                                                             0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  // 8
-                                                             0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  // 9
-                                                             0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  // a
-                                                             0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,  // b
-                                                             1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,  // c
-                                                             2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,  // d
-                                                             3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,  // e
-                                                             4,4,4,4,4,4,4,4,5,5,5,5,6,6,6,6); // f
       public
        type TNode=class
              public
@@ -166,6 +205,45 @@ type EpvUTF8StringRope=class(Exception);
        property CountCodePoints:TpvSizeUInt read fCountCodePoints;
        property CountCodeUnits:TpvSizeUInt read fCountCodeUnits;
        property Text:TpvUTF8String read GetText write SetText;
+     end;
+
+     TpvUTF8StringRopeLineMap=class
+      public
+       type TLine=record
+             private
+              fDirty:boolean;
+              fStartCodePointIndex:TpvSizeUInt;
+              fStopCodePointIndex:TpvSizeUInt;
+             public
+              property Dirty:boolean read fDirty write fDirty;
+              property StartCodePointIndex:TpvSizeUInt read fStartCodePointIndex write fStartCodePointIndex;
+              property StopCodePointIndex:TpvSizeUInt read fStopCodePointIndex write fStopCodePointIndex;
+            end;
+            PLine=^TLine;
+            TLines=array of TLine;
+      private
+       fRope:TpvUTF8StringRope;
+       fLines:TLines;
+       fCountLines:TpvSizeUInt;
+       fCodePointIndex:TpvSizeUInt;
+       fLastWasNewLine:boolean;
+       fCodeUnit:AnsiChar;
+       fLastCodeUnit:AnsiChar;
+       fNode:TpvUTF8StringRope.TNode;
+       fNodeCodeUnitIndex:TpvSizeUInt;
+       fUTF8DFACharClass:TpvUInt8;
+       fUTF8DFAState:TpvUInt8;
+       fNodePositionLinks:TpvUTF8StringRope.TNode.TNodePositionLinks;
+       procedure AddLine(const aCodePointIndex:TpvSizeUInt);
+      public
+       constructor Create(const aRope:TpvUTF8StringRope); reintroduce;
+       destructor Destroy; override;
+       procedure Reset;
+       procedure Truncate(const aUntilCodePoint,aUntilLine:TpvSizeUInt);
+       procedure Update(const aUntilCodePoint,aUntilLine:TpvSizeUInt);
+       function GetLineIndexFromCodePointIndex(const aCodePointIndex:TpvSizeUInt):TpvSizeInt;
+       function GetStartCodePointIndexFromLineIndex(const aLineIndex:TpvSizeUInt):TpvSizeInt;
+       function GetStopCodePointIndexFromLineIndex(const aLineIndex:TpvSizeUInt):TpvSizeInt;
      end;
 
 implementation
@@ -394,7 +472,7 @@ begin
  result:=0;
  Index:=0;
  while Index<aCountCodePoints do begin
-  inc(result,UTF8CodePointSizes[aString[result]]);
+  inc(result,TpvUTF8DFA.CodePointSizes[aString[result]]);
   inc(Index);
  end;
 end;
@@ -405,37 +483,25 @@ begin
  result:=0;
  Index:=0;
  while Index<aCountCodeUnits do begin
-  inc(Index,UTF8CodePointSizes[aString[Index]]);
+  inc(Index,TpvUTF8DFA.CodePointSizes[aString[Index]]);
   inc(result);
  end;
 end;
 
 class function TpvUTF8StringRope.GetCountCodeUnitsAndCheck(const aString:TpvUTF8String):TpvSizeUInt;
-var CountCodeUnits,CodePointSize,Index:TpvSizeUInt;
+var Index:TpvSizeUInt;
+    State:TpvUInt32;
 begin
- result:=0;
- Index:=1;
- CountCodeUnits:=length(aString);
- while Index<=CountCodeUnits do begin
-  CodePointSize:=UTF8CodePointSizes[aString[Index]];
-  if CodePointSize>0 then begin
-   inc(result);
-   inc(Index);
-   dec(CodePointSize);
-   while (CodePointSize>0) and (Index<=CountCodeUnits) do begin
-    if (ord(aString[Index]) and $c0)<>$80 then begin
-     raise EpvUTF8StringRope.Create('Invalid UTF8');
-    end;
-    inc(result);
-    inc(Index);
-    dec(CodePointSize);
-   end;
-   if CodePointSize>0 then begin
-    raise EpvUTF8StringRope.Create('Invalid UTF8');
-   end;
-  end else begin
+ State:=TpvUTF8DFA.StateAccept;
+ result:=length(aString);
+ for Index:=1 to result do begin
+  State:=TpvUTF8DFA.StateTransitions[State+TpvUTF8DFA.StateCharClasses[aString[Index]]];
+  if State=TpvUTF8DFA.StateError then begin
    raise EpvUTF8StringRope.Create('Invalid UTF8');
   end;
+ end;
+ if State<>TpvUTF8DFA.StateAccept then begin
+  raise EpvUTF8StringRope.Create('Invalid UTF8');
  end;
 end;
 
@@ -606,7 +672,7 @@ begin
    CountNewNodeCodeUnits:=0;
    CountNewNodeCodePoints:=0;
    while (StringOffset+CountNewNodeCodeUnits)<CountInsertedCodeUnits do begin
-    CodePointSize:=UTF8CodePointSizes[aString[StringOffset+CountNewNodeCodeUnits+1]];
+    CodePointSize:=TpvUTF8DFA.CodePointSizes[aString[StringOffset+CountNewNodeCodeUnits+1]];
     if (CodePointSize+CountNewNodeCodeUnits)<=TNode.StringSize then begin
      inc(CountNewNodeCodeUnits,CodePointSize);
      inc(CountNewNodeCodePoints);
@@ -865,6 +931,210 @@ begin
 
  WriteLn;
 
+end;
+
+constructor TpvUTF8StringRopeLineMap.Create(const aRope:TpvUTF8StringRope);
+begin
+ inherited Create;
+ fRope:=aRope;
+ fLines:=nil;
+ fCountLines:=0;
+ Reset;
+ Update(High(TpvSizeUInt),High(TpvSizeUInt));
+end;
+
+destructor TpvUTF8StringRopeLineMap.Destroy;
+begin
+ fLines:=nil;
+ inherited Destroy;
+end;
+
+procedure TpvUTF8StringRopeLineMap.AddLine(const aCodePointIndex:TpvSizeUInt);
+var Line:PLine;
+begin
+ if fCountLines>0 then begin
+  fLines[fCountLines-1].fStopCodePointIndex:=aCodePointIndex+1;
+ end;
+ if TpvSizeUInt(length(fLines))<(fCountLines+1) then begin
+  SetLength(fLines,(fCountLines+1)*2);
+ end;
+ Line:=@fLines[fCountLines];
+ Line^.fDirty:=false;
+ Line^.fStartCodePointIndex:=aCodePointIndex;
+ Line^.fStopCodePointIndex:=aCodePointIndex;
+ inc(fCountLines);
+end;
+
+procedure TpvUTF8StringRopeLineMap.Reset;
+begin
+ fCountLines:=0;
+ AddLine(0);
+ fCodePointIndex:=0;
+ fLastWasNewLine:=false;
+ fLastCodeUnit:=#0;
+ fUTF8DFAState:=TpvUTF8DFA.StateAccept;
+end;
+
+procedure TpvUTF8StringRopeLineMap.Truncate(const aUntilCodePoint,aUntilLine:TpvSizeUInt);
+var LineIndex:TpvSizeUInt;
+begin
+ if (aUntilCodePoint<>High(TpvSizeUInt)) or
+    (aUntilLine<>High(TpvSizeUInt)) then begin
+  if (aUntilCodePoint=0) or
+     (aUntilLine=0) then begin
+   fCountLines:=0;
+  end else begin
+   if (aUntilLine<>High(TpvSizeUInt)) and
+      (fCountLines>aUntilLine) then begin
+    fCountLines:=aUntilLine;
+   end;
+   if (fCountLines>0) and
+      (aUntilCodePoint<>High(TpvSizeUInt)) then begin
+    LineIndex:=GetLineIndexFromCodePointIndex(aUntilCodePoint-1);
+    if (LineIndex>0) and (fCountLines>(LineIndex-1)) then begin
+     fCountLines:=LineIndex-1;
+     while (fCountLines>0) and
+           (fLines[fCountLines-1].fStartCodePointIndex>=aUntilCodePoint) do begin
+      dec(fCountLines);
+     end;
+    end else begin
+     fCountLines:=0;
+    end;
+   end else begin
+    fCountLines:=0;
+   end;
+  end;
+  if fCountLines>0 then begin
+   fCodePointIndex:=fLines[fCountLines-1].fStopCodePointIndex;
+   fLastWasNewLine:=true;
+   fLastCodeUnit:=#0;
+   fUTF8DFAState:=TpvUTF8DFA.StateAccept;
+  end else begin
+   Reset;
+  end;
+ end;
+end;
+
+procedure TpvUTF8StringRopeLineMap.Update(const aUntilCodePoint,aUntilLine:TpvSizeUInt);
+var DoStop:boolean;
+begin
+ if (fCodePointIndex<fRope.fCountCodePoints) and
+    (fCodePointIndex<aUntilCodePoint) and
+    (fCountLines<aUntilCodePoint) then begin
+  if fCodePointIndex=0 then begin
+   fNode:=fRope.fHead;
+   fNodeCodeUnitIndex:=0;
+  end else begin
+   fNode:=fRope.FindNodePositionAtCodePoint(fCodePointIndex,fNodePositionLinks);
+   fNodeCodeUnitIndex:=fNodePositionLinks[0].fSkipSize;
+  end;
+  DoStop:=false;
+  while assigned(fNode) do begin
+   if fNodeCodeUnitIndex>=fNode.fCountCodeUnits then begin
+    fNode:=fNode.fLinks[0].fNode;
+    fNodeCodeUnitIndex:=0;
+    if assigned(fNode) then begin
+     continue;
+    end else begin
+     if fCountLines>0 then begin
+      fLines[fCountLines-1].fStopCodePointIndex:=fCodePointIndex;
+     end;
+     break;
+    end;
+   end else begin
+    fCodeUnit:=fNode.fData[fNodeCodeUnitIndex];
+    inc(fNodeCodeUnitIndex);
+    fUTF8DFACharClass:=TpvUTF8DFA.StateCharClasses[fCodeUnit];
+    fUTF8DFAState:=TpvUTF8DFA.StateTransitions[fUTF8DFAState+fUTF8DFACharClass];
+    case fUTF8DFAState of
+     TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
+      inc(fCodePointIndex);
+      if fCountLines>0 then begin
+       fLines[fCountLines-1].fStopCodePointIndex:=fCodePointIndex;
+      end;
+      if fUTF8DFACharClass=TpvUTF8DFA.StateCharClassSingleByte then begin
+       case fCodeUnit of
+        #$0a,#$0d:begin
+         if fLastWasNewLine and
+            (((fCodeUnit=#$0a) and (fLastCodeUnit=#$0d)) or
+             ((fCodeUnit=#$0d) and (fLastCodeUnit=#$0a))) then begin
+          fLastWasNewLine:=false;
+         end else begin
+          fLastWasNewLine:=true;
+          AddLine(fCodePointIndex);
+          if ((aUntilCodePoint<>High(TpvSizeUInt)) and (fCodePointIndex>=aUntilCodePoint)) or
+             ((aUntilLine<>High(TpvSizeUInt)) and (fCountLines>=aUntilLine)) then begin
+           DoStop:=true;
+          end;
+         end;
+        end;
+        else begin
+         fLastWasNewLine:=false;
+        end;
+       end;
+      end else begin
+       fLastWasNewLine:=false;
+      end;
+      fLastCodeUnit:=fCodeUnit;
+      fUTF8DFAState:=TpvUTF8DFA.StateAccept;
+      if DoStop then begin
+       break;
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvUTF8StringRopeLineMap.GetLineIndexFromCodePointIndex(const aCodePointIndex:TpvSizeUInt):TpvSizeInt;
+var MinIndex,MaxIndex,MidIndex:TpvSizeInt;
+begin
+ if aCodePointIndex<=fRope.CountCodePoints then begin
+  if fCodePointIndex<aCodePointIndex then begin
+   Update(aCodePointIndex+1,High(TpvSizeUInt));
+  end;
+  MinIndex:=0;
+  MaxIndex:=fCountLines-1;
+  while MinIndex<MaxIndex do begin
+   MidIndex:=MinIndex+((MaxIndex-MinIndex) shr 1);
+   if aCodePointIndex<fLines[MidIndex].fStartCodePointIndex then begin
+    MaxIndex:=MidIndex-1;
+   end else if aCodePointIndex>=fLines[MidIndex+1].fStartCodePointIndex then begin
+    MinIndex:=MidIndex+1;
+   end else begin
+    MinIndex:=MidIndex;
+    break;
+   end;
+  end;
+  result:=MinIndex;
+ end else begin
+  result:=-1;
+ end;
+end;
+
+function TpvUTF8StringRopeLineMap.GetStartCodePointIndexFromLineIndex(const aLineIndex:TpvSizeUInt):TpvSizeInt;
+begin
+ if fCountLines<=aLineIndex then begin
+  Update(High(TpvSizeUInt),aLineIndex+1);
+ end;
+ if aLineIndex<fCountLines then begin
+  result:=fLines[aLineIndex].StartCodePointIndex;
+ end else begin
+  result:=-1;
+ end;
+end;
+
+function TpvUTF8StringRopeLineMap.GetStopCodePointIndexFromLineIndex(const aLineIndex:TpvSizeUInt):TpvSizeInt;
+begin
+ if fCountLines<=aLineIndex then begin
+  Update(High(TpvSizeUInt),aLineIndex+1);
+ end;
+ if aLineIndex<TpvSizeUInt(fCountLines) then begin
+  result:=fLines[aLineIndex].StopCodePointIndex;
+ end else begin
+  result:=-1;
+ end;
 end;
 
 end.
