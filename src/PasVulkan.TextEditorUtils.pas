@@ -976,34 +976,43 @@ begin
 end;
 
 procedure TpvUTF8StringRopeLineMap.Truncate(const aUntilCodePoint,aUntilLine:TpvSizeUInt);
-var LineIndex:TpvSizeUInt;
+var UntilCodePointCountLines,UntilLineCountLines,NewCountLines,LineIndex:TpvSizeUInt;
 begin
- if (aUntilCodePoint<>High(TpvSizeUInt)) or
-    (aUntilLine<>High(TpvSizeUInt)) then begin
-  if (aUntilCodePoint=0) or
-     (aUntilLine=0) then begin
-   fCountLines:=0;
-  end else begin
-   if (aUntilLine<>High(TpvSizeUInt)) and
-      (fCountLines>aUntilLine) then begin
-    fCountLines:=aUntilLine;
-   end;
-   if (fCountLines>0) and
-      (aUntilCodePoint<>High(TpvSizeUInt)) then begin
-    LineIndex:=GetLineIndexFromCodePointIndex(aUntilCodePoint-1);
-    if (LineIndex>0) and (fCountLines>(LineIndex-1)) then begin
-     fCountLines:=LineIndex-1;
-     while (fCountLines>0) and
-           (fLines[fCountLines-1].fStartCodePointIndex>=aUntilCodePoint) do begin
-      dec(fCountLines);
-     end;
-    end else begin
-     fCountLines:=0;
+
+ if aUntilCodePoint<>High(TpvSizeUInt) then begin
+  if aUntilCodePoint>0 then begin
+   LineIndex:=GetLineIndexFromCodePointIndex(aUntilCodePoint-1);
+   if (LineIndex>0) and (fCountLines>(LineIndex-1)) then begin
+    UntilCodePointCountLines:=LineIndex-1;
+    while (UntilCodePointCountLines>0) and
+          (fLines[UntilCodePointCountLines-1].fStartCodePointIndex>=aUntilCodePoint) do begin
+     dec(UntilCodePointCountLines);
     end;
    end else begin
-    fCountLines:=0;
+    UntilCodePointCountLines:=0;
    end;
+  end else begin
+   UntilCodePointCountLines:=0;
   end;
+ end else begin
+  UntilCodePointCountLines:=fCountLines;
+ end;
+
+ if (aUntilLine<>High(TpvSizeUInt)) and
+    (fCountLines>aUntilLine) then begin
+  UntilLineCountLines:=aUntilLine;
+ end else begin
+  UntilLineCountLines:=fCountLines;
+ end;
+
+ if UntilCodePointCountLines<UntilLineCountLines then begin
+  NewCountLines:=UntilCodePointCountLines;
+ end else begin
+  NewCountLines:=UntilLineCountLines;
+ end;
+
+ if fCountLines<>NewCountLines then begin
+  fCountLines:=NewCountLines;
   if fCountLines>0 then begin
    fCodePointIndex:=fLines[fCountLines-1].fStopCodePointIndex;
    fLastWasNewLine:=true;
@@ -1013,6 +1022,7 @@ begin
    Reset;
   end;
  end;
+
 end;
 
 procedure TpvUTF8StringRopeLineMap.Update(const aUntilCodePoint,aUntilLine:TpvSizeUInt);
