@@ -209,16 +209,7 @@ type TpvUTF8DFA=class
 
      TpvUTF8StringRopeLineMap=class
       public
-       type TLine=record
-             private
-              fDirty:boolean;
-              fStartCodePointIndex:TpvSizeUInt;
-              fStopCodePointIndex:TpvSizeUInt;
-             public
-              property Dirty:boolean read fDirty write fDirty;
-              property StartCodePointIndex:TpvSizeUInt read fStartCodePointIndex write fStartCodePointIndex;
-              property StopCodePointIndex:TpvSizeUInt read fStopCodePointIndex write fStopCodePointIndex;
-            end;
+       type TLine=TpvSizeUInt;
             PLine=^TLine;
             TLines=array of TLine;
       private
@@ -950,18 +941,11 @@ begin
 end;
 
 procedure TpvUTF8StringRopeLineMap.AddLine(const aCodePointIndex:TpvSizeUInt);
-var Line:PLine;
 begin
- if fCountLines>0 then begin
-  fLines[fCountLines-1].fStopCodePointIndex:=aCodePointIndex+1;
- end;
  if TpvSizeUInt(length(fLines))<(fCountLines+1) then begin
   SetLength(fLines,(fCountLines+1)*2);
  end;
- Line:=@fLines[fCountLines];
- Line^.fDirty:=false;
- Line^.fStartCodePointIndex:=aCodePointIndex;
- Line^.fStopCodePointIndex:=aCodePointIndex;
+ fLines[fCountLines]:=aCodePointIndex;
  inc(fCountLines);
 end;
 
@@ -985,7 +969,7 @@ begin
    if (LineIndex>0) and (fCountLines>(LineIndex-1)) then begin
     UntilCodePointCountLines:=LineIndex-1;
     while (UntilCodePointCountLines>0) and
-          (fLines[UntilCodePointCountLines-1].fStartCodePointIndex>=aUntilCodePoint) do begin
+          (fLines[UntilCodePointCountLines-1]>=aUntilCodePoint) do begin
      dec(UntilCodePointCountLines);
     end;
    end else begin
@@ -1012,21 +996,26 @@ begin
  end;
 
  if fCountLines<>NewCountLines then begin
-  fCountLines:=NewCountLines;
-  if fCountLines>0 then begin
-   fCodePointIndex:=fLines[fCountLines-1].fStopCodePointIndex;
-   fLastWasNewLine:=true;
-   fLastCodeUnit:=#0;
-   fUTF8DFAState:=TpvUTF8DFA.StateAccept;
-  end else begin
-   Reset;
+  while (NewCountLines>0) and ((NewCountLines+1)>=fCountLines) do begin
+   dec(NewCountLines);
+  end;
+  if fCountLines<>NewCountLines then begin
+   if (NewCountLines>0) and ((NewCountLines+1)<fCountLines) then begin
+    fCodePointIndex:=fLines[NewCountLines];
+    fCountLines:=NewCountLines;
+    fLastWasNewLine:=true;
+    fLastCodeUnit:=#0;
+    fUTF8DFAState:=TpvUTF8DFA.StateAccept;
+   end else begin
+    Reset;
+   end;
   end;
  end;
 
 end;
 
 procedure TpvUTF8StringRopeLineMap.Update(const aUntilCodePoint,aUntilLine:TpvSizeUInt);
-var DoStop:boolean;
+var DoStop:TpvInt32;
 begin
  if (fCodePointIndex<fRope.fCountCodePoints) and
     ((aUntilCodePoint=High(TpvSizeUInt)) or (fCodePointIndex<aUntilCodePoint)) and
@@ -1038,7 +1027,7 @@ begin
    fNode:=fRope.FindNodePositionAtCodePoint(fCodePointIndex,fNodePositionLinks);
    fNodeCodeUnitIndex:=fNodePositionLinks[0].fSkipSize;
   end;
-  DoStop:=false;
+  DoStop:=0;
   while assigned(fNode) do begin
    if fNodeCodeUnitIndex>=fNode.fCountCodeUnits then begin
     fNode:=fNode.fLinks[0].fNode;
@@ -1046,9 +1035,6 @@ begin
     if assigned(fNode) then begin
      continue;
     end else begin
-     if fCountLines>0 then begin
-      fLines[fCountLines-1].fStopCodePointIndex:=fCodePointIndex;
-     end;
      break;
     end;
    end else begin
@@ -1059,22 +1045,22 @@ begin
     case fUTF8DFAState of
      TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
       inc(fCodePointIndex);
-      if fCountLines>0 then begin
-       fLines[fCountLines-1].fStopCodePointIndex:=fCodePointIndex;
-      end;
       if fUTF8DFACharClass=TpvUTF8DFA.StateCharClassSingleByte then begin
        case fCodeUnit of
         #$0a,#$0d:begin
          if fLastWasNewLine and
             (((fCodeUnit=#$0a) and (fLastCodeUnit=#$0d)) or
              ((fCodeUnit=#$0d) and (fLastCodeUnit=#$0a))) then begin
+          if fCountLines>0 then begin
+           fLines[fCountLines-1]:=fCodePointIndex;
+          end;
           fLastWasNewLine:=false;
          end else begin
           fLastWasNewLine:=true;
           AddLine(fCodePointIndex);
           if ((aUntilCodePoint<>High(TpvSizeUInt)) and (fCodePointIndex>=aUntilCodePoint)) or
              ((aUntilLine<>High(TpvSizeUInt)) and (fCountLines>=aUntilLine)) then begin
-           DoStop:=true;
+           DoStop:=2; // for as fallback for possible two-single-char-class-codepoint-width-sized newline sequences
           end;
          end;
         end;
@@ -1087,8 +1073,11 @@ begin
       end;
       fLastCodeUnit:=fCodeUnit;
       fUTF8DFAState:=TpvUTF8DFA.StateAccept;
-      if DoStop then begin
-       break;
+      if DoStop>0 then begin
+       dec(DoStop);
+       if DoStop=0 then begin
+        break;
+       end;
       end;
      end;
     end;
@@ -1108,9 +1097,9 @@ begin
   MaxIndex:=fCountLines-1;
   while MinIndex<MaxIndex do begin
    MidIndex:=MinIndex+((MaxIndex-MinIndex) shr 1);
-   if aCodePointIndex<fLines[MidIndex].fStartCodePointIndex then begin
+   if aCodePointIndex<fLines[MidIndex] then begin
     MaxIndex:=MidIndex-1;
-   end else if aCodePointIndex>=fLines[MidIndex+1].fStartCodePointIndex then begin
+   end else if aCodePointIndex>=fLines[MidIndex+1] then begin
     MinIndex:=MidIndex+1;
    end else begin
     MinIndex:=MidIndex;
@@ -1129,7 +1118,7 @@ begin
   Update(High(TpvSizeUInt),aLineIndex+1);
  end;
  if aLineIndex<fCountLines then begin
-  result:=fLines[aLineIndex].StartCodePointIndex;
+  result:=fLines[aLineIndex];
  end else begin
   result:=-1;
  end;
@@ -1138,10 +1127,14 @@ end;
 function TpvUTF8StringRopeLineMap.GetStopCodePointIndexFromLineIndex(const aLineIndex:TpvSizeUInt):TpvSizeInt;
 begin
  if fCountLines<=aLineIndex then begin
-  Update(High(TpvSizeUInt),aLineIndex+1);
+  Update(High(TpvSizeUInt),aLineIndex+2);
  end;
  if aLineIndex<TpvSizeUInt(fCountLines) then begin
-  result:=fLines[aLineIndex].StopCodePointIndex;
+  if (aLineIndex+1)<TpvSizeUInt(fCountLines) then begin
+   result:=fLines[aLineIndex+1];
+  end else begin
+   result:=fRope.CountCodePoints;
+  end;
  end else begin
   result:=-1;
  end;
