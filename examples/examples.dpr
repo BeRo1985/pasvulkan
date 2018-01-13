@@ -45,6 +45,7 @@ uses
   PasVulkan.Utils in '..\src\PasVulkan.Utils.pas',
   PasVulkan.CircularDoublyLinkedList in '..\src\PasVulkan.CircularDoublyLinkedList.pas',
   PasVulkan.Collections in '..\src\PasVulkan.Collections.pas',
+  PasVulkan.TextEditorUtils in '..\src\PasVulkan.TextEditorUtils.pas',
   PasVulkan.XML in '..\src\PasVulkan.XML.pas',
   PasVulkan.VectorPath in '..\src\PasVulkan.VectorPath.pas',
   PasVulkan.TrueTypeFont in '..\src\PasVulkan.TrueTypeFont.pas',

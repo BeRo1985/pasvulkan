@@ -216,6 +216,7 @@
         <DCCReference Include="..\src\PasVulkan.Utils.pas"/>
         <DCCReference Include="..\src\PasVulkan.CircularDoublyLinkedList.pas"/>
         <DCCReference Include="..\src\PasVulkan.Collections.pas"/>
+        <DCCReference Include="..\src\PasVulkan.TextEditorUtils.pas"/>
         <DCCReference Include="..\src\PasVulkan.XML.pas"/>
         <DCCReference Include="..\src\PasVulkan.VectorPath.pas"/>
         <DCCReference Include="..\src\PasVulkan.TrueTypeFont.pas"/>
@@ -320,7 +321,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector2Helper.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
+                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector4.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
@@ -355,6 +356,11 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
+                <DeployFile LocalName="$(BDS)\Redist\osx32\libcgsqlite3.dylib" Class="DependencyModule">
+                    <Platform Name="OSX32">
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName="DelphiOutput\Win32\Debug\examples.exe" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>examples.exe</RemoteName>
@@ -370,11 +376,6 @@
                 <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector3Helper.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
-                        <Overwrite>true</Overwrite>
-                    </Platform>
-                </DeployFile>
-                <DeployFile LocalName="$(BDS)\Redist\osx32\libcgsqlite3.dylib" Class="DependencyModule">
-                    <Platform Name="OSX32">
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
@@ -418,7 +419,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector4.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
+                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector2Helper.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
