@@ -4,13 +4,11 @@ unit UnitMain;
 
 interface
 
-uses SysUtils,Classes,CRT,PasVulkan.Types,PasVulkan.TextEditor;
+uses SysUtils,Classes,PasVulkan.Types,PasVulkan.TextEditor,UnitConsole;
 
 procedure Main;
 
 implementation
-
-var ScreenWidth,ScreenHeight:Int32;
 
 function RepChar(const aChar:Char;const aCount:Int32):string;
 var Index:Int32;
@@ -24,20 +22,18 @@ end;
 procedure DisplayKeys;
  procedure AddFKey(const aFKeyNr:byte;const aName:string);
  begin
-  CRT.HighVideo;
-  CRT.TextBackground(CRT.Black);
-  CRT.TextColor(CRT.Mono);
-  Write(aFKeyNr);
-  CRT.LowVideo;
-  CRT.TextBackground(CRT.Cyan);
-  CRT.TextColor(CRT.Black);
-  Write(aName);
-  CRT.TextBackground(CRT.Black);
-  CRT.TextColor(CRT.Mono);
-  Write(' ');
+  Console.TextBackground(TConsole.TColor.Black);
+  Console.TextColor(TConsole.TColor.LightGray);
+  Console.Write(IntToStr(aFKeyNr));
+  Console.TextBackground(TConsole.TColor.Cyan);
+  Console.TextColor(TConsole.TColor.Black);
+  Console.Write(aName);
+  Console.TextBackground(TConsole.TColor.Black);
+  Console.TextColor(TConsole.TColor.LightGray);
+  Console.Write(' ');
  end;
 begin
- CRT.GotoXY(1,ScreenHeight);
+ Console.GotoXY(1,Console.Height);
  AddFKey(1,'Help');
  AddFKey(2,'Save');
  AddFKey(3,'Find');
@@ -46,51 +42,47 @@ begin
  AddFKey(6,'Undo');
  AddFKey(7,'Redo');
  AddFKey(10,'Quit');
- while CRT.WhereX<ScreenWidth do begin
-  Write(' ');
+ while Console.WhereX<Console.Width do begin
+  Console.Write(' ');
  end;
 end;
 
 procedure ClearEditScreen;
 var Index:Int32;
 begin
- CRT.TextBackground(CRT.Blue);
- CRT.TextColor(CRT.Mono);
- for Index:=2 to ScreenHeight-1 do begin
-  CRT.GotoXY(1,Index);
-  Write(RepChar(#32,ScreenWidth));
+ Console.TextBackground(TConsole.TColor.Blue);
+ Console.TextColor(TConsole.TColor.LightGray);
+ for Index:=2 to Console.Height-1 do begin
+  Console.GotoXY(1,Index);
+  Console.Write(RepChar(#32,Console.Width));
  end;
- CRT.TextBackground(CRT.Black);
- CRT.TextColor(CRT.Mono);
+ Console.TextBackground(TConsole.TColor.Black);
+ Console.TextColor(TConsole.TColor.LightGray);
 end;
 
 procedure ResetScreen;
 begin
 
- ScreenWidth:=(CRT.WindMaxX-CRT.WindMinX)+1;
- ScreenHeight:=(CRT.WindMaxY-CRT.WindMinY)+1;
+ Console.TextBackground(TConsole.TColor.Blue);
+ Console.TextColor(TConsole.TColor.LightGray);
+ Console.ClrScr;
+ Console.TextBackground(TConsole.TColor.Black);
+ Console.TextColor(TConsole.TColor.LightGray);
 
- CRT.TextBackground(CRT.Blue);
- CRT.TextColor(CRT.Mono);
- CRT.ClrScr;
- CRT.TextBackground(CRT.Black);
- CRT.TextColor(CRT.Mono);
+ Console.CursorOff;
 
- CRT.CursorOff;
+ Console.TextBackground(TConsole.TColor.Cyan);
+ Console.TextColor(TConsole.TColor.Black);
+ Console.GotoXY(1,1);
+ Console.Write(RepChar(#32,Console.Width));
 
- CRT.LowVideo;
- CRT.GotoXY(1,1);
- Write(RepChar(#205,ScreenWidth));
-
- CRT.HighVideo;
- CRT.GotoXY(4,1);
- Write(' PasVulkan Test TextEditor ');
-
- CRT.LowVideo;
- CRT.GotoXY(1,ScreenHeight-1);
- Write(RepChar(#196,ScreenWidth));
+ Console.GotoXY(2,1);
+ Console.Write('PasVulkan Test Text Editor');
 
  DisplayKeys;
+
+ Console.TextBackground(TConsole.TColor.Black);
+ Console.TextColor(TConsole.TColor.LightGray);
 
 end;
 
@@ -100,19 +92,22 @@ begin
 
  ResetScreen;
 
- ClearEditScreen;
+ //ClearEditScreen;
 
- CRT.GotoXY(1,2);
+ Console.GotoXY(1,2);
 
- CRT.CursorOn;
+ Console.CursorOn;
 
- repeat
+ Console.Flush;
 
-  c:=ReadKey;
+{ repeat
+
+//  c:=ReadKey;
   if c<>#0 then begin
   end;
 
- until false;
+ until false;}
+ readln;
 end;
 
 end.

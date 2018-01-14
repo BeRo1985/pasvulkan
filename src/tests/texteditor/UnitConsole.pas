@@ -22,7 +22,7 @@ type PConsoleBufferItem=^TConsoleBufferItem;
        type TColor=class
              public
               const Black=0;
-                    Blu=1;
+                    Blue=1;
                     Green=2;
                     Cyan=3;
                     Red=4;
@@ -89,14 +89,16 @@ type PConsoleBufferItem=^TConsoleBufferItem;
        property CursorState:TCursorState read fCursorState write fCursorState;
      end;
 
+var Console:TConsole=nil;
+
 implementation
 
 constructor TConsole.Create;
 begin
  inherited Create;
  fBuffer:=nil;
- fWidth:=80;
- fHeight:=25;
+ fWidth:=(CRT.WindMaxX-CRT.WindMinX)+1;
+ fHeight:=(CRT.WindMaxY-CRT.WindMinY)+1;
  UpdateBufferSize;
  ClrScr;
  fDirty:=false;
@@ -153,7 +155,7 @@ end;
 procedure TConsole.GotoXY(const aX,aY:Int32);
 begin
  fCursorX:=Min(Max(aX,1),fWidth);
- fCursorY:=Max(Max(aY,1),fHeight);
+ fCursorY:=Min(Max(aY,1),fHeight);
 end;
 
 procedure TConsole.TextBackground(const aBackgroundColor:UInt8);
@@ -360,5 +362,9 @@ begin
  end;
 end;
 
+initialization
+ Console:=TConsole.Create;
+finalization
+ Console.Free;
 end.
 
