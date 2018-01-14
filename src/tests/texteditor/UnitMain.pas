@@ -222,6 +222,8 @@ begin
  Console.TextBackground(TConsole.TColor.Black);
  Console.TextColor(TConsole.TColor.LightGray);
  Console.ClrScr;
+ Console.GotoXY(1,1);
+ Console.Flush;
 
 end;
 
