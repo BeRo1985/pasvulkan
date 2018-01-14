@@ -4,7 +4,7 @@ unit UnitMain;
 
 interface
 
-uses SysUtils,Classes,PasVulkan.Types,PasVulkan.TextEditor,UnitConsole,CRT;
+uses SysUtils,Classes,PasVulkan.Types,PasVulkan.TextEditor,UnitConsole;
 
 procedure Main;
 
@@ -106,12 +106,12 @@ begin
 
   Console.Flush;
 
-  if KeyPressed then begin
-   c:=ReadKey;
+  if Console.KeyPressed then begin
+   c:=Console.ReadKey;
    case c of
     #0:begin
      // Code escape
-     c:=ReadKey;
+     c:=Console.ReadKey;
      case c of
       #68:begin
        // F10
@@ -121,7 +121,7 @@ begin
     end;
    end;
   end else begin
-   Delay(10);
+   Sleep(10);
   end;
 
  until false;

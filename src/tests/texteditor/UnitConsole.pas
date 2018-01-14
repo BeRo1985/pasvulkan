@@ -90,6 +90,8 @@ type PConsoleBufferItem=^TConsoleBufferItem;
        procedure CursorOn;
        procedure CursorBig;
        procedure Flush;
+       function KeyPressed:boolean;
+       function ReadKey:Char;
       published
        property Width:Int32 read fWidth write SetWidth;
        property Height:Int32 read fHeight write SetHeight;
@@ -484,6 +486,16 @@ begin
  end;
 end;
 {$endif}
+
+function TConsole.KeyPressed:boolean;
+begin
+ result:=CRT.KeyPressed;
+end;
+
+function TConsole.ReadKey:Char;
+begin
+ result:=CRT.ReadKey;
+end;
 
 initialization
  Console:=TConsole.Create;
