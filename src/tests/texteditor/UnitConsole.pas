@@ -6,7 +6,7 @@ unit UnitConsole;
 
 interface
 
-uses SysUtils,Classes,Math,PUCU,CRT;
+uses {$ifdef Windows}Windows,{$endif}SysUtils,Classes,Math,PUCU,CRT;
 
 type PConsoleBufferItem=^TConsoleBufferItem;
      TConsoleBufferItem=record
@@ -63,6 +63,10 @@ type PConsoleBufferItem=^TConsoleBufferItem;
        fForegroundColor:UInt8;
        fScrollLock:boolean;
        fCursorState:TCursorState;
+{$ifdef Windows}
+       fConsoleHandle:Windows.THANDLE;
+       fConsoleBuffer:array of CHAR_INFO;
+{$endif}
        procedure SetWidth(const aWidth:Int32);
        procedure SetHeight(const aHeight:Int32);
        procedure UpdateBufferSize;
@@ -103,6 +107,10 @@ implementation
 constructor TConsole.Create;
 begin
  inherited Create;
+{$ifdef Windows}
+ fConsoleHandle:=GetStdHandle(STD_OUTPUT_HANDLE);
+ fConsoleBuffer:=nil;
+{$endif}
  fBuffer:=nil;
  fLastBuffer:=nil;
  fWidth:=(CRT.WindMaxX-CRT.WindMinX)+1;
@@ -120,6 +128,9 @@ destructor TConsole.Destroy;
 begin
  fBuffer:=nil;
  fLastBuffer:=nil;
+{$ifdef Windows}
+ fConsoleBuffer:=nil;
+{$endif}
  inherited Destroy;
 end;
 
@@ -147,6 +158,9 @@ var x,y:Int32;
 begin
  SetLength(fBuffer,fWidth*fHeight);
  SetLength(fLastBuffer,fWidth*fHeight);
+{$ifdef Windows}
+ SetLength(fConsoleBuffer,fWidth*fHeight);
+{$endif}
  BufferItem:=@fLastBuffer[0];
  for y:=0 to fHeight-1 do begin
   for x:=0 to fWidth-1 do begin
@@ -348,7 +362,48 @@ begin
 end;
 
 procedure TConsole.Flush;
-var x,y,LastBackgroundColor,LastForegroundColor:Int32;
+{$ifdef Windows}
+var x,y:Int32;
+    BufferItem:PConsoleBufferItem;
+    CharBufSize,CharacterPos:Windows.TCOORD;
+    WriteArea:Windows.TSMALL_RECT;
+    p:PCHAR_INFO;
+begin
+ CRT.cursoroff;
+ BufferItem:=@fBuffer[0];
+ p:=@fConsoleBuffer[0];
+ for y:=1 to fHeight do begin
+  for x:=1 to fWidth do begin
+   p^.Attributes:=(BufferItem^.BackgroundColor shl 4) or BufferItem.ForegroundColor;
+   p^.UnicodeChar:=WideChar(Word(BufferItem^.CodePoint));
+   inc(BufferItem);
+   inc(p);
+  end;
+ end;
+ CharBufSize.x:=fWidth;
+ CharBufSize.y:=fHeight;
+ CharacterPos.x:=0;
+ CharacterPos.y:=0;
+ WriteArea.Left:=0;
+ WriteArea.Top:=0;
+ WriteArea.Right:=fWidth-1;
+ WriteArea.Bottom:=fHeight-1;
+ WriteConsoleOutputW(fConsoleHandle,@fConsoleBuffer[0],CharBufSize,CharacterPos,WriteArea);
+ CRT.GotoXY(fCursorX,fCursorY);
+ case fCursorState of
+  TConsole.TCursorState.Off:begin
+   CRT.cursoroff;
+  end;
+  TConsole.TCursorState.On:begin
+   CRT.cursoron;
+  end;
+  TConsole.TCursorState.Big:begin
+   CRT.cursorbig;
+  end;
+ end;
+end;
+{$else}
+var i,x,y,LastBackgroundColor,LastForegroundColor:Int32;
     BufferItem,LastBufferItem:PConsoleBufferItem;
 begin
  LastBackgroundColor:=-1;
@@ -397,6 +452,7 @@ begin
   end;
  end;
 end;
+{$endif}
 
 initialization
  Console:=TConsole.Create;
