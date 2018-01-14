@@ -217,6 +217,9 @@ type TpvUTF8DFA=class
        fRope:TpvUTF8StringRope;
        fLines:TLines;
        fCountLines:TpvSizeUInt;
+       fLineWrap:TpvSizeUInt;
+       fTabWidth:TpvSizeUInt;
+       fCountVisibleVisualCodePointsSinceNewLine:TpvSizeUInt;
        fCodePointIndex:TpvSizeUInt;
        fLastWasPossibleNewLineTwoCharSequence:boolean;
        fCodeUnit:AnsiChar;
@@ -226,6 +229,8 @@ type TpvUTF8DFA=class
        fUTF8DFACharClass:TpvUInt8;
        fUTF8DFAState:TpvUInt8;
        fNodePositionLinks:TpvUTF8StringRope.TNode.TNodePositionLinks;
+       procedure SetLineWrap(const aLineWrap:TpvSizeUInt);
+       procedure SetTabWidth(const aTabWidth:TpvSizeUInt);
        procedure AddLine(const aCodePointIndex:TpvSizeUInt);
       public
        constructor Create(const aRope:TpvUTF8StringRope); reintroduce;
@@ -238,6 +243,8 @@ type TpvUTF8DFA=class
        function GetStopCodePointIndexFromLineIndex(const aLineIndex:TpvSizeUInt):TpvSizeInt;
       published
        property CountLines:TpvSizeUInt read fCountLines;
+       property LineWrap:TpvSizeUInt read fLineWrap write SetLineWrap;
+       property TabWidth:TpvSizeUInt read fTabWidth write SetTabWidth;
      end;
 
      TpvAbstractTextEditor=class
@@ -266,7 +273,7 @@ type TpvUTF8DFA=class
        constructor Create; reintroduce;
        destructor Destroy; override;
        procedure Update;
-       procedure FillDrawBuffer;
+       procedure FillDrawBuffer(var fDrawBufferItems:TDrawBufferItems);
        procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
        procedure Backspace;
        procedure Delete;
@@ -1037,6 +1044,8 @@ begin
  fRope:=aRope;
  fLines:=nil;
  fCountLines:=0;
+ fLineWrap:=0;
+ fTabWidth:=8;
  Reset;
  Update(High(TpvSizeUInt),High(TpvSizeUInt));
 end;
@@ -1045,6 +1054,26 @@ destructor TpvUTF8StringRopeLineMap.Destroy;
 begin
  fLines:=nil;
  inherited Destroy;
+end;
+
+procedure TpvUTF8StringRopeLineMap.SetLineWrap(const aLineWrap:TpvSizeUInt);
+begin
+ if fLineWrap<>aLineWrap then begin
+  fLineWrap:=aLineWrap;
+  Reset;
+  Update(High(TpvSizeUInt),High(TpvSizeUInt));
+ end;
+end;
+
+procedure TpvUTF8StringRopeLineMap.SetTabWidth(const aTabWidth:TpvSizeUInt);
+begin
+ if fTabWidth<>aTabWidth then begin
+  fTabWidth:=aTabWidth;
+  if fLineWrap>0 then begin
+   Reset;
+   Update(High(TpvSizeUInt),High(TpvSizeUInt));
+  end;
+ end;
 end;
 
 procedure TpvUTF8StringRopeLineMap.AddLine(const aCodePointIndex:TpvSizeUInt);
@@ -1061,6 +1090,7 @@ begin
  fCountLines:=0;
  AddLine(0);
  fCodePointIndex:=0;
+ fCountVisibleVisualCodePointsSinceNewLine:=0;
  fLastWasPossibleNewLineTwoCharSequence:=false;
  fLastCodeUnit:=#0;
  fUTF8DFAState:=TpvUTF8DFA.StateAccept;
@@ -1110,6 +1140,7 @@ begin
    if (NewCountLines>0) and ((NewCountLines+1)<fCountLines) then begin
     fCodePointIndex:=fLines[NewCountLines];
     fCountLines:=NewCountLines;
+    fCountVisibleVisualCodePointsSinceNewLine:=0;
     fLastWasPossibleNewLineTwoCharSequence:=false;
     fLastCodeUnit:=#0;
     fUTF8DFAState:=TpvUTF8DFA.StateAccept;
@@ -1123,6 +1154,7 @@ end;
 
 procedure TpvUTF8StringRopeLineMap.Update(const aUntilCodePoint,aUntilLine:TpvSizeUInt);
 var DoStop:TpvInt32;
+    DoNewLine,DoTab:boolean;
 begin
  if (fCodePointIndex<fRope.fCountCodePoints) and
     ((aUntilCodePoint=High(TpvSizeUInt)) or (fCodePointIndex<aUntilCodePoint)) and
@@ -1152,8 +1184,13 @@ begin
     case fUTF8DFAState of
      TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
       inc(fCodePointIndex);
+      DoNewLine:=false;
+      DoTab:=false;
       if fUTF8DFACharClass=TpvUTF8DFA.StateCharClassSingleByte then begin
        case fCodeUnit of
+        #$09:begin
+         DoTab:=true;
+        end;
         #$0a,#$0d:begin
          if fLastWasPossibleNewLineTwoCharSequence and
             (((fCodeUnit=#$0a) and (fLastCodeUnit=#$0d)) or
@@ -1163,11 +1200,7 @@ begin
           end;
           fLastWasPossibleNewLineTwoCharSequence:=false;
          end else begin
-          AddLine(fCodePointIndex);
-          if ((aUntilCodePoint<>High(TpvSizeUInt)) and (fCodePointIndex>=aUntilCodePoint)) or
-             ((aUntilLine<>High(TpvSizeUInt)) and (fCountLines>=aUntilLine)) then begin
-           DoStop:=2; // for as fallback for possible two-single-char-class-codepoint-width-sized newline sequences
-          end;
+          DoNewLine:=true;
           fLastWasPossibleNewLineTwoCharSequence:=true;
          end;
         end;
@@ -1177,6 +1210,24 @@ begin
        end;
       end else begin
        fLastWasPossibleNewLineTwoCharSequence:=false;
+      end;
+      if fLineWrap>0 then begin
+       if DoTab and (fTabWidth>0) then begin
+        inc(fCountVisibleVisualCodePointsSinceNewLine,fTabWidth-(fCountVisibleVisualCodePointsSinceNewLine mod fTabWidth));
+       end else begin
+        inc(fCountVisibleVisualCodePointsSinceNewLine);
+       end;
+       if fCountVisibleVisualCodePointsSinceNewLine>=fLineWrap then begin
+        fCountVisibleVisualCodePointsSinceNewLine:=0;
+        DoNewLine:=true;
+       end;
+      end;
+      if DoNewLine then begin
+       AddLine(fCodePointIndex);
+       if ((aUntilCodePoint<>High(TpvSizeUInt)) and (fCodePointIndex>=aUntilCodePoint)) or
+          ((aUntilLine<>High(TpvSizeUInt)) and (fCountLines>=aUntilLine)) then begin
+        DoStop:=2; // for as fallback for possible two-single-char-class-codepoint-width-sized newline sequences
+       end;
       end;
       fLastCodeUnit:=fCodeUnit;
       fUTF8DFAState:=TpvUTF8DFA.StateAccept;
@@ -1301,7 +1352,8 @@ begin
 
 end;
 
-procedure TpvAbstractTextEditor.FillDrawBuffer;
+procedure TpvAbstractTextEditor.FillDrawBuffer(var fDrawBufferItems:TDrawBufferItems);
+
 begin
 
 end;
