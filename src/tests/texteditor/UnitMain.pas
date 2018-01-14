@@ -7,6 +7,7 @@ interface
 uses SysUtils,Classes,PasVulkan.Types,PasVulkan.TextEditor,UnitConsole;
 
 var AbstractTextEditor:TpvAbstractTextEditor=nil;
+    AbstractTextEditorBuffer:TpvAbstractTextEditor.TDrawBufferItems=nil;
     OverwriteMode:boolean=false;
 
 procedure Main;
@@ -105,6 +106,7 @@ begin
 end;
 
 procedure UpdateScreen;
+var x,y,i:Int32;
 begin
 
  ResetScreen;
@@ -118,6 +120,18 @@ begin
  AbstractTextEditor.VisibleAreaHeight:=Console.Height-2;
  AbstractTextEditor.NonScrollVisibleAreaWidth:=Console.Width;
  AbstractTextEditor.NonScrollVisibleAreaHeight:=Console.Height-2;
+
+ AbstractTextEditor.FillDrawBuffer(AbstractTextEditorBuffer);
+
+ i:=0;
+ for y:=0 to AbstractTextEditor.VisibleAreaHeight-1 do begin
+  for x:=0 to AbstractTextEditor.VisibleAreaWidth-1 do begin
+   if i<length(AbstractTextEditorBuffer) then begin
+    Console.WriteCodePointToBuffer(x+1,y+2,AbstractTextEditorBuffer[i].CodePoint);
+   end;
+   inc(i);
+  end;
+ end;
 
  if OverwriteMode then begin
   Console.CursorBig;
@@ -214,6 +228,8 @@ begin
    end;
 
   until false;
+
+  AbstractTextEditorBuffer:=nil;
 
  finally
   AbstractTextEditor.Free;

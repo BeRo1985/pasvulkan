@@ -266,6 +266,7 @@ type TpvUTF8DFA=class
        fStringRopeLineMap:TpvUTF8StringRopeLineMap;
        fStringRopeVisualLineMap:TpvUTF8StringRopeLineMap;
        fCodePointIndex:TpvSizeUInt;
+       fFirstVisualLineIndex:TpvSizeUInt;
        procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeUInt);
        procedure SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeUInt);
        procedure SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeUInt);
@@ -1308,6 +1309,7 @@ begin
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fCodePointIndex:=0;
+ fFirstVisualLineIndex:=0;
 end;
 
 destructor TpvAbstractTextEditor.Destroy;
@@ -1356,9 +1358,45 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.FillDrawBuffer(var fDrawBufferItems:TDrawBufferItems);
-
+var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
+    VisualLineIndex,CountRemainingLines,
+    VisualLineStartCodePointIndex,VisualLineStopCodePointIndex,
+    CurrentCodePointIndex:TpvSizeUInt;
 begin
-
+ BufferSize:=VisibleAreaWidth*VisibleAreaHeight;
+ if BufferSize>0 then begin
+  if length(fDrawBufferItems)<>BufferSize then begin
+   SetLength(fDrawBufferItems,BufferSize);
+  end;
+  FillChar(fDrawBufferItems[0],BufferSize*SizeOf(TDrawBufferItem),#0);
+  BufferIndex:=0;
+  while BufferIndex<BufferSize do begin
+   fDrawBufferItems[BufferIndex].CodePoint:=32;
+   inc(BufferIndex);
+  end;
+  VisualLineIndex:=fFirstVisualLineIndex;
+  CountRemainingLines:=VisibleAreaHeight;
+  BufferBaseIndex:=0;
+  while CountRemainingLines>0 do begin
+   VisualLineStartCodePointIndex:=fStringRopeVisualLineMap.GetStartCodePointIndexFromLineIndex(VisualLineIndex);
+   if VisualLineStartCodePointIndex>=fStringRope.fCountCodePoints then begin
+    break;
+   end;
+   VisualLineStopCodePointIndex:=fStringRopeVisualLineMap.GetStopCodePointIndexFromLineIndex(VisualLineIndex);
+   BufferBaseEndIndex:=BufferBaseIndex+VisibleAreaWidth;
+   BufferIndex:=BufferBaseIndex;
+   for CurrentCodePointIndex:=VisualLineStartCodePointIndex to VisualLineStopCodePointIndex do begin
+    if BufferIndex>=BufferBaseEndIndex then begin
+     break;
+    end;
+    fDrawBufferItems[BufferIndex].CodePoint:=fStringRope.GetCodePoint(CurrentCodePointIndex);
+    inc(BufferIndex);
+   end;
+   inc(BufferBaseIndex,VisibleAreaWidth);
+   dec(CountRemainingLines);
+   inc(VisualLineIndex);
+  end;
+ end;
 end;
 
 procedure TpvAbstractTextEditor.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
