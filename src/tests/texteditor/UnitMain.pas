@@ -45,6 +45,7 @@ begin
  while Console.WhereX<Console.Width do begin
   Console.Write(' ');
  end;
+ Console.Write(' ');
 end;
 
 procedure ClearEditScreen;
