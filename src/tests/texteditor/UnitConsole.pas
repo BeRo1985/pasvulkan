@@ -418,9 +418,18 @@ begin
  end;
 end;
 {$else}
-var x,y,LastBackgroundColor,LastForegroundColor:Int32;
+var x,y,LastBackgroundColor,LastForegroundColor,LastX,LastY:Int32;
     BufferItem,LastBufferItem:PConsoleBufferItem;
     HasChanges:boolean;
+    StringBuffer:string;
+ procedure FlushProcessedBuffer;
+ begin
+  if length(StringBuffer)>0 then begin
+   CRT.GotoXY(LastX,LastY);
+   System.Write(StringBuffer);
+   StringBuffer:='';
+  end;
+ end;
 begin
  HasChanges:=(WhereX<>fCursorX) or (WhereY<>fCursorY) or (fLastCursorState<>fCursorState);
  fLastCursorState:=fCursorState;
@@ -443,9 +452,12 @@ begin
  LastBufferItem:=@fLastBuffer[0];
  LastBackgroundColor:=-1;
  LastForegroundColor:=-1;
+ LastX:=1;
+ LastY:=1;
  CRT.cursoroff;
  BufferItem:=@fBuffer[0];
  LastBufferItem:=@fLastBuffer[0];
+ StringBuffer:='';
  for y:=1 to fHeight do begin
   for x:=1 to fWidth do begin
    if (x=fWidth) and (y=fHeight) then begin
@@ -453,27 +465,33 @@ begin
    end;
    if LastBufferItem^.Value<>BufferItem^.Value then begin
     LastBufferItem^.Value:=BufferItem^.Value;
-    if (CRT.WhereX<>x) or (CRT.WhereY<>Y) then begin
-     CRT.GotoXY(x,y);
-    end;
     if LastBackgroundColor<>BufferItem^.BackgroundColor then begin
+     FlushProcessedBuffer;
      LastBackgroundColor:=BufferItem^.BackgroundColor;
-     CRT.TextBackground(BufferItem^.BackgroundColor);
+     CRT.TextBackground(LastBackgroundColor);
     end;
     if LastForegroundColor<>BufferItem^.ForegroundColor then begin
+     FlushProcessedBuffer;
      LastForegroundColor:=BufferItem^.ForegroundColor;
-     CRT.TextColor(BufferItem^.ForegroundColor);
+     CRT.TextColor(LastForegroundColor);
+    end;
+    if length(StringBuffer)=0 then begin
+     LastX:=x;
+     LastY:=y;
     end;
     if BufferItem^.CodePoint<128 then begin
-     System.Write(Chr(BufferItem^.CodePoint));
+     StringBuffer:=StringBuffer+Chr(BufferItem^.CodePoint);
     end else begin
-     System.Write(PUCUUTF32CharToUTF8(BufferItem^.CodePoint));
+     StringBuffer:=StringBuffer+PUCUUTF32CharToUTF8(BufferItem^.CodePoint);
     end;
+   end else begin
+    FlushProcessedBuffer;
    end;
    inc(BufferItem);
    inc(LastBufferItem);
   end;
  end;
+ FlushProcessedBuffer;
  CRT.GotoXY(fCursorX,fCursorY);
  case fCursorState of
   TConsole.TCursorState.Off:begin
