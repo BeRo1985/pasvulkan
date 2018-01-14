@@ -10,9 +10,15 @@ uses SysUtils,Classes,Math,PUCU,CRT;
 
 type PConsoleBufferItem=^TConsoleBufferItem;
      TConsoleBufferItem=record
-      BackgroundColor:UInt8;
-      ForegroundColor:UInt8;
-      CodePoint:UInt32;
+      case boolean of
+       false:(
+        BackgroundColor:UInt8;
+        ForegroundColor:UInt8;
+        CodePoint:UInt32;
+       );
+       true:(
+        Value:UInt64;
+       );
      end;
 
      TConsoleBufferItems=array of TConsoleBufferItem;
@@ -50,6 +56,7 @@ type PConsoleBufferItem=^TConsoleBufferItem;
        fHeight:Int32;
        fDirty:boolean;
        fBuffer:TConsoleBufferItems;
+       fLastBuffer:TConsoleBufferItems;
        fCursorX:Int32;
        fCursorY:Int32;
        fBackgroundColor:UInt8;
@@ -97,6 +104,7 @@ constructor TConsole.Create;
 begin
  inherited Create;
  fBuffer:=nil;
+ fLastBuffer:=nil;
  fWidth:=(CRT.WindMaxX-CRT.WindMinX)+1;
  fHeight:=(CRT.WindMaxY-CRT.WindMinY)+1;
  UpdateBufferSize;
@@ -111,6 +119,7 @@ end;
 destructor TConsole.Destroy;
 begin
  fBuffer:=nil;
+ fLastBuffer:=nil;
  inherited Destroy;
 end;
 
@@ -133,8 +142,20 @@ begin
 end;
 
 procedure TConsole.UpdateBufferSize;
+var x,y:Int32;
+    BufferItem:PConsoleBufferItem;
 begin
  SetLength(fBuffer,fWidth*fHeight);
+ SetLength(fLastBuffer,fWidth*fHeight);
+ BufferItem:=@fLastBuffer[0];
+ for y:=0 to fHeight-1 do begin
+  for x:=0 to fWidth-1 do begin
+   BufferItem^.BackgroundColor:=$ff;
+   BufferItem^.ForegroundColor:=$ff;
+   BufferItem^.CodePoint:=$ffffffff;
+   inc(BufferItem);
+  end;
+ end;
 end;
 
 procedure TConsole.ClrScr;
@@ -328,34 +349,39 @@ end;
 
 procedure TConsole.Flush;
 var x,y,LastBackgroundColor,LastForegroundColor:Int32;
-    BufferItem:PConsoleBufferItem;
+    BufferItem,LastBufferItem:PConsoleBufferItem;
 begin
  LastBackgroundColor:=-1;
  LastForegroundColor:=-1;
  CRT.cursoroff;
  BufferItem:=@fBuffer[0];
+ LastBufferItem:=@fLastBuffer[0];
  for y:=1 to fHeight do begin
   for x:=1 to fWidth do begin
    if (x=fWidth) and (y=fHeight) then begin
     break;
    end;
-   if (CRT.WhereX<>x) or (CRT.WhereY<>Y) then begin
-    CRT.GotoXY(x,y);
-   end;
-   if LastBackgroundColor<>BufferItem^.BackgroundColor then begin
-    LastBackgroundColor:=BufferItem^.BackgroundColor;
-    CRT.TextBackground(BufferItem^.BackgroundColor);
-   end;
-   if LastForegroundColor<>BufferItem^.ForegroundColor then begin
-    LastForegroundColor:=BufferItem^.ForegroundColor;
-    CRT.TextColor(BufferItem^.ForegroundColor);
-   end;
-   if BufferItem^.CodePoint<128 then begin
-    System.Write(Chr(BufferItem^.CodePoint));
-   end else begin
-    System.Write(PUCUUTF32CharToUTF8(BufferItem^.CodePoint));
+   if LastBufferItem^.Value<>BufferItem^.Value then begin
+    LastBufferItem^.Value:=BufferItem^.Value;
+    if (CRT.WhereX<>x) or (CRT.WhereY<>Y) then begin
+     CRT.GotoXY(x,y);
+    end;
+    if LastBackgroundColor<>BufferItem^.BackgroundColor then begin
+     LastBackgroundColor:=BufferItem^.BackgroundColor;
+     CRT.TextBackground(BufferItem^.BackgroundColor);
+    end;
+    if LastForegroundColor<>BufferItem^.ForegroundColor then begin
+     LastForegroundColor:=BufferItem^.ForegroundColor;
+     CRT.TextColor(BufferItem^.ForegroundColor);
+    end;
+    if BufferItem^.CodePoint<128 then begin
+     System.Write(Chr(BufferItem^.CodePoint));
+    end else begin
+     System.Write(PUCUUTF32CharToUTF8(BufferItem^.CodePoint));
+    end;
    end;
    inc(BufferItem);
+   inc(LastBufferItem);
   end;
  end;
  CRT.GotoXY(fCursorX,fCursorY);
