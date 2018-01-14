@@ -1428,7 +1428,7 @@ end;
 
 procedure TpvAbstractTextEditor.Backspace;
 begin
- if (fCodePointIndex>0) and (fCodePointIndex<fStringRope.fCountCodePoints) then begin
+ if (fCodePointIndex>0) and (fCodePointIndex<=fStringRope.fCountCodePoints) then begin
   dec(fCodePointIndex);
   fStringRope.Delete(fCodePointIndex,1);
   if fCodePointIndex>0 then begin
@@ -1482,7 +1482,7 @@ end;
 
 procedure TpvAbstractTextEditor.MoveRight;
 begin
- if (fCodePointIndex+1)<fStringRope.CountCodePoints then begin
+ if fCodePointIndex<fStringRope.CountCodePoints then begin
   inc(fCodePointIndex);
  end;
 end;
