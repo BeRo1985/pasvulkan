@@ -62,8 +62,8 @@
         <IsPartOfProject Value="True"/>
         <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
-        <TopLine Value="92"/>
-        <CursorPos X="45" Y="101"/>
+        <TopLine Value="109"/>
+        <CursorPos X="10" Y="127"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
         <DefaultSyntaxHighlighter Value="Delphi"/>
@@ -107,7 +107,7 @@
         <UsageCount Value="10"/>
       </Unit11>
     </Units>
-    <JumpHistory Count="27" HistoryIndex="26">
+    <JumpHistory Count="30" HistoryIndex="29">
       <Position1>
         <Filename Value="UnitConsole.pas"/>
         <Caret Line="344" Column="8" TopLine="331"/>
@@ -216,6 +216,18 @@
         <Filename Value="UnitMain.pas"/>
         <Caret Line="49" Column="4" TopLine="36"/>
       </Position27>
+      <Position28>
+        <Filename Value="UnitMain.pas"/>
+        <Caret Line="119" Column="17" TopLine="101"/>
+      </Position28>
+      <Position29>
+        <Filename Value="UnitMain.pas"/>
+        <Caret Line="104" Column="4" TopLine="89"/>
+      </Position29>
+      <Position30>
+        <Filename Value="UnitMain.pas"/>
+        <Caret Line="127" TopLine="106"/>
+      </Position30>
     </JumpHistory>
     <RunParams>
       <FormatVersion Value="2"/>

@@ -6,6 +6,8 @@ interface
 
 uses SysUtils,Classes,PasVulkan.Types,PasVulkan.TextEditor,UnitConsole;
 
+var AbstractTextEditor:TpvAbstractTextEditor=nil;
+
 procedure Main;
 
 implementation
@@ -97,6 +99,11 @@ begin
  Console.TextBackground(TConsole.TColor.Blue);
  Console.TextColor(TConsole.TColor.LightCyan);
 
+ AbstractTextEditor.VisibleAreaWidth:=Console.Width;
+ AbstractTextEditor.VisibleAreaHeight:=Console.Height-2;
+ AbstractTextEditor.NonScrollVisibleAreaWidth:=Console.Width;
+ AbstractTextEditor.NonScrollVisibleAreaHeight:=Console.Height-2;
+
  Console.CursorOn;
 
  Console.Flush;
@@ -107,29 +114,38 @@ procedure Main;
 var c:char;
 begin
 
- repeat
+ AbstractTextEditor:=TpvAbstractTextEditor.Create;
+ try
 
-  UpdateScreen;
+  repeat
 
-  if Console.KeyPressed then begin
-   c:=Console.ReadKey;
-   case c of
-    #0:begin
-     // Code escape
-     c:=Console.ReadKey;
-     case c of
-      #68:begin
-       // F10
-       break;
+   UpdateScreen;
+
+   if Console.KeyPressed then begin
+    c:=Console.ReadKey;
+    case c of
+     #0:begin
+      // Code escape
+      if Console.KeyPressed then begin
+       c:=Console.ReadKey;
+       case c of
+        #68:begin
+         // F10
+         break;
+        end;
+       end;
       end;
      end;
     end;
+   end else begin
+    Sleep(10);
    end;
-  end else begin
-   Sleep(10);
-  end;
 
- until false;
+  until false;
+
+ finally
+  AbstractTextEditor.Free;
+ end;
 end;
 
 end.
