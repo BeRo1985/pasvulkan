@@ -87,24 +87,29 @@ begin
 
 end;
 
-procedure Main;
-var c:char;
+procedure UpdateScreen;
 begin
 
  ResetScreen;
 
- //ClearEditScreen;
-
  Console.GotoXY(1,2);
 
  Console.TextBackground(TConsole.TColor.Blue);
- Console.TextColor(TConsole.TColor.White);
+ Console.TextColor(TConsole.TColor.LightCyan);
 
  Console.CursorOn;
 
+ Console.Flush;
+
+end;
+
+procedure Main;
+var c:char;
+begin
+
  repeat
 
-  Console.Flush;
+  UpdateScreen;
 
   if Console.KeyPressed then begin
    c:=Console.ReadKey;
