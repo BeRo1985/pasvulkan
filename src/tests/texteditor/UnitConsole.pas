@@ -6,7 +6,7 @@ unit UnitConsole;
 
 interface
 
-uses {$ifdef Windows}Windows,{$endif}SysUtils,Classes,Math,PUCU,CRT;
+uses {$ifdef Windows}Windows,{$endif}SysUtils,Classes,Math,PUCU;
 
 type PConsoleBufferItem=^TConsoleBufferItem;
      TConsoleBufferItem=record
@@ -106,6 +106,8 @@ type PConsoleBufferItem=^TConsoleBufferItem;
 var Console:TConsole=nil;
 
 implementation
+
+uses CRT;
 
 constructor TConsole.Create;
 begin

@@ -246,6 +246,9 @@ type TpvUTF8DFA=class
        fNonScrollVisibleAreaWidth:TpvSizeUInt;
        fNonScrollVisibleAreaHeight:TpvSizeUInt;
        fVisibleAreaDirty:boolean;
+       fStringRope:TpvUTF8StringRope;
+       fStringRopeLineMap:TpvUTF8StringRopeLineMap;
+       fCodePointIndex:TpvSizeUInt;
        procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeUInt);
        procedure SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeUInt);
        procedure SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeUInt);
@@ -253,6 +256,8 @@ type TpvUTF8DFA=class
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
+       procedure Update;
+       procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
       published
        property VisibleAreaWidth:TpvSizeUInt read fVisibleAreaWidth write SetVisibleAreaWidth;
        property VisibleAreaHeight:TpvSizeUInt read fVisibleAreaHeight write SetVisibleAreaHeight;
@@ -262,6 +267,8 @@ type TpvUTF8DFA=class
 
 
 implementation
+
+uses PUCU;
 
 constructor TpvUTF8StringRope.TNode.Create(const aHeight:TpvInt32);
 begin
@@ -1168,10 +1175,15 @@ constructor TpvAbstractTextEditor.Create;
 begin
  inherited Create;
  fVisibleAreaDirty:=false;
+ fStringRope:=TpvUTF8StringRope.Create;
+ fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
+ fCodePointIndex:=0;
 end;
 
 destructor TpvAbstractTextEditor.Destroy;
 begin
+ fStringRopeLineMap.Free;
+ fStringRope.Free;
  inherited Destroy;
 end;
 
@@ -1205,6 +1217,21 @@ begin
   fNonScrollVisibleAreaHeight:=aNonScrollVisibleAreaHeight;
   fVisibleAreaDirty:=true;
  end;
+end;
+
+procedure TpvAbstractTextEditor.Update;
+begin
+
+end;
+
+procedure TpvAbstractTextEditor.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
+begin
+ fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
+ if aOverwrite and (fCodePointIndex<fStringRope.fCountCodePoints) then begin
+  fStringRope.Delete(fCodePointIndex,1);
+ end;
+ fStringRope.Insert(fCodePointIndex,PUCUUTF32CharToUTF8(aCodePoint));
+ inc(fCodePointIndex);
 end;
 
 end.

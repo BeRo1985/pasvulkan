@@ -7,6 +7,7 @@ interface
 uses SysUtils,Classes,PasVulkan.Types,PasVulkan.TextEditor,UnitConsole;
 
 var AbstractTextEditor:TpvAbstractTextEditor=nil;
+    OverwriteMode:boolean=false;
 
 procedure Main;
 
@@ -104,7 +105,11 @@ begin
  AbstractTextEditor.NonScrollVisibleAreaWidth:=Console.Width;
  AbstractTextEditor.NonScrollVisibleAreaHeight:=Console.Height-2;
 
- Console.CursorOn;
+ if OverwriteMode then begin
+  Console.CursorBig;
+ end else begin
+  Console.CursorOn;
+ end;
 
  Console.Flush;
 
@@ -129,12 +134,52 @@ begin
       if Console.KeyPressed then begin
        c:=Console.ReadKey;
        case c of
+        #82:begin
+         // Insert
+         OverwriteMode:=not OverwriteMode;
+        end;
+        #83:begin
+         // Delete
+        end;
+        #71:begin
+         // Home
+        end;
+        #79:begin
+         // End
+        end;
+        #73:begin
+         // Page up
+        end;
+        #81:begin
+         // Page down
+        end;
+        #72:begin
+         // Up
+        end;
+        #80:begin
+         // Down
+        end;
+        #75:begin
+         // Left
+        end;
+        #77:begin
+         // Right
+        end;
         #68:begin
          // F10
          break;
         end;
        end;
       end;
+     end;
+     #8:begin
+      // Backspace
+     end;
+     #27:begin
+      // Escape
+     end;
+     else begin
+      AbstractTextEditor.InsertCodePoint(ord(c),OverwriteMode);
      end;
     end;
    end else begin
@@ -149,4 +194,3 @@ begin
 end;
 
 end.
-
