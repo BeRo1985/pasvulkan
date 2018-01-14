@@ -1366,7 +1366,8 @@ procedure TpvAbstractTextEditor.FillDrawBuffer(var aDrawBufferItems:TDrawBufferI
 var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     VisualLineIndex,CountRemainingLines:TpvSizeUInt;
     VisualLineStartCodePointIndex,VisualLineStopCodePointIndex,
-    CurrentCodePointIndex,LocalCursorX,LocalCursorY:TpvSizeInt;
+    CurrentCodePointIndex,LocalCursorX,LocalCursorY,StepWidth:TpvSizeInt;
+    CodePoint:TpvUInt32;
 begin
  fCursorX:=0;
  fCursorY:=0;
@@ -1403,9 +1404,22 @@ begin
      fCursorX:=LocalCursorX;
      fCursorY:=LocalCursorY;
     end;
-    aDrawBufferItems[BufferIndex].CodePoint:=fStringRope.GetCodePoint(CurrentCodePointIndex);
-    inc(BufferIndex);
-    inc(LocalCursorX);
+    CodePoint:=fStringRope.GetCodePoint(CurrentCodePointIndex);
+    StepWidth:=1;
+    case CodePoint of
+     9:begin
+      CodePoint:=32;
+      StepWidth:=Max(1,(fStringRopeVisualLineMap.fTabWidth-(LocalCursorX mod fStringRopeVisualLineMap.fTabWidth)));
+     end;
+     10,13:begin
+      CodePoint:=32;
+     end;
+    end;
+    if BufferIndex<BufferSize then begin
+     aDrawBufferItems[BufferIndex].CodePoint:=CodePoint;
+    end;
+    inc(BufferIndex,StepWidth);
+    inc(LocalCursorX,StepWidth);
    end;
    if (fCodePointIndex>=fStringRope.CountCodePoints) and
       (fCodePointIndex=fStringRopeVisualLineMap.GetStopCodePointIndexFromLineIndex(VisualLineIndex)) then begin
@@ -1422,13 +1436,17 @@ end;
 
 procedure TpvAbstractTextEditor.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
 begin
- fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
- fStringRopeVisualLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
+ fStringRopeLineMap.Reset;
+ fStringRopeVisualLineMap.Reset;
+{fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
+ fStringRopeVisualLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));}
  if aOverwrite and (fCodePointIndex<fStringRope.fCountCodePoints) then begin
   fStringRope.Delete(fCodePointIndex,1);
  end;
  fStringRope.Insert(fCodePointIndex,PUCUUTF32CharToUTF8(aCodePoint));
  inc(fCodePointIndex);
+ fStringRopeLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
+ fStringRopeVisualLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
 end;
 
 procedure TpvAbstractTextEditor.Backspace;
@@ -1443,6 +1461,10 @@ begin
    fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
    fStringRopeVisualLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
   end;
+  fStringRopeLineMap.Reset;
+  fStringRopeVisualLineMap.Reset;
+  fStringRopeLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
+  fStringRopeVisualLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
  end;
 end;
 
@@ -1465,7 +1487,7 @@ begin
 {$ifdef Unix}
  InsertCodePoint(10,aOverwrite);
 {$else}
- InsertCodePoint(13,aOverwrite);
+//InsertCodePoint(13,aOverwrite);
  InsertCodePoint(10,aOverwrite);
 {$endif}
 end;
