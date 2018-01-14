@@ -25,27 +25,31 @@
       <FormatVersion Value="2"/>
       <Modes Count="0"/>
     </RunParams>
-    <Units Count="5">
+    <Units Count="6">
       <Unit0>
         <Filename Value="texteditor.lpr"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
       <Unit1>
-        <Filename Value="..\..\PasVulkan.TextEditorUtils.pas"/>
+        <Filename Value="..\..\PasVulkan.Types.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit1>
       <Unit2>
-        <Filename Value="..\..\PasVulkan.Types.pas"/>
+        <Filename Value="..\..\..\externals\pasmp\src\PasMP.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit2>
       <Unit3>
-        <Filename Value="..\..\..\externals\pasmp\src\PasMP.pas"/>
+        <Filename Value="..\..\..\externals\pucu\src\PUCU.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit3>
       <Unit4>
-        <Filename Value="..\..\..\externals\pucu\src\PUCU.pas"/>
+        <Filename Value="..\..\PasVulkan.TextEditor.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit4>
+      <Unit5>
+        <Filename Value="UnitMain.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit5>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -59,6 +63,11 @@
       <OtherUnitFiles Value="..\..;..\..\..\externals\pasmp\src;..\..\..\externals\pucu\src"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
+    <Parsing>
+      <SyntaxOptions>
+        <SyntaxMode Value="Delphi"/>
+      </SyntaxOptions>
+    </Parsing>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="3">
