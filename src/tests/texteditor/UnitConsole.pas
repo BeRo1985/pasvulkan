@@ -69,6 +69,8 @@ type PConsoleBufferItem=^TConsoleBufferItem;
 {$ifdef Windows}
        fConsoleHandle:Windows.THANDLE;
        fConsoleBuffer:array of CHAR_INFO;
+       fConsoleInfo:TConsoleScreenBufferinfo;
+       fCursorInfo:TConsoleCursorInfo;
 {$endif}
        procedure SetWidth(const aWidth:Int32);
        procedure SetHeight(const aHeight:Int32);
@@ -109,7 +111,9 @@ var Console:TConsole=nil;
 
 implementation
 
+//{$ifndef Windows}
 uses CRT;
+//{$endif}
 
 constructor TConsole.Create;
 begin
@@ -117,11 +121,20 @@ begin
 {$ifdef Windows}
  fConsoleHandle:=GetStdHandle(STD_OUTPUT_HANDLE);
  fConsoleBuffer:=nil;
+ if GetConsoleScreenBufferInfo(fConsoleHandle,fConsoleInfo) then begin
+  fWidth:=(fConsoleInfo.srWindow.Right-fConsoleInfo.srWindow.Left)+1;
+  fHeight:=(fConsoleInfo.srWindow.Bottom-fConsoleInfo.srWindow.Top)+1;
+ end else begin
+  fWidth:=80;
+  fHeight:=25;
+ end;
+ GetConsoleCursorInfo(fConsoleHandle,fCursorInfo);
+{$else}
+ fWidth:=(CRT.WindMaxX-CRT.WindMinX)+1;
+ fHeight:=(CRT.WindMaxY-CRT.WindMinY)+1;
 {$endif}
  fBuffer:=nil;
  fLastBuffer:=nil;
- fWidth:=(CRT.WindMaxX-CRT.WindMinX)+1;
- fHeight:=(CRT.WindMaxY-CRT.WindMinY)+1;
  UpdateBufferSize;
  ClrScr;
  fDirty:=false;
@@ -374,10 +387,11 @@ procedure TConsole.Flush;
 {$ifdef Windows}
 var x,y:Int32;
     BufferItem,LastBufferItem:PConsoleBufferItem;
-    CharBufSize,CharacterPos:Windows.TCOORD;
+    CharBufSize,CharacterPos,CurInfo:Windows.TCOORD;
     WriteArea:Windows.TSMALL_RECT;
     p:PCHAR_INFO;
     HasChanges:boolean;
+    CursorInfo:TConsoleCursorInfo;
 begin
  HasChanges:=(fLastCursorX<>fCursorX) or (fLastCursorY<>fCursorY) or (fLastCursorState<>fCursorState);
  fLastCursorX:=fCursorX;
@@ -409,18 +423,24 @@ begin
   WriteArea.Right:=fWidth-1;
   WriteArea.Bottom:=fHeight-1;
   WriteConsoleOutputW(fConsoleHandle,@fConsoleBuffer[0],CharBufSize,CharacterPos,WriteArea);
-  CRT.GotoXY(fCursorX,fCursorY);
+  GetConsoleCursorInfo(fConsoleHandle,CursorInfo);
   case fCursorState of
    TConsole.TCursorState.Off:begin
-    CRT.cursoroff;
+    CursorInfo.bVisible:=false;
    end;
    TConsole.TCursorState.On:begin
-    CRT.cursoron;
+    CursorInfo.dwSize:=fCursorInfo.dwSize;
+    CursorInfo.bVisible:=true;
    end;
    TConsole.TCursorState.Big:begin
-    CRT.cursorbig;
+    CursorInfo.dwSize:=93;
+    CursorInfo.bVisible:=true;
    end;
   end;
+  CurInfo.X:=fCursorX-1;
+  CurInfo.Y:=fCursorY-1;
+  SetConsoleCursorPosition(fConsoleHandle,CurInfo);
+  SetConsoleCursorInfo(fConsoleHandle,CursorInfo);
  end;
 end;
 {$else}
