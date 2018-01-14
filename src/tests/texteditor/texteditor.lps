@@ -50,9 +50,10 @@
       <Unit5>
         <Filename Value="..\..\PasVulkan.TextEditor.pas"/>
         <IsPartOfProject Value="True"/>
-        <EditorIndex Value="3"/>
-        <TopLine Value="1096"/>
-        <CursorPos X="9" Y="816"/>
+        <IsVisibleTab Value="True"/>
+        <EditorIndex Value="2"/>
+        <TopLine Value="1294"/>
+        <CursorPos X="6" Y="1316"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
         <DefaultSyntaxHighlighter Value="Delphi"/>
@@ -76,12 +77,10 @@
       <Unit8>
         <Filename Value="UnitConsole.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
-        <EditorIndex Value="2"/>
-        <TopLine Value="454"/>
-        <CursorPos Y="474"/>
+        <EditorIndex Value="-1"/>
+        <TopLine Value="354"/>
+        <CursorPos X="16" Y="370"/>
         <UsageCount Value="20"/>
-        <Loaded Value="True"/>
         <DefaultSyntaxHighlighter Value="Delphi"/>
       </Unit8>
       <Unit9>
@@ -107,7 +106,7 @@
         <UsageCount Value="10"/>
       </Unit11>
     </Units>
-    <JumpHistory Count="30" HistoryIndex="29">
+    <JumpHistory Count="16" HistoryIndex="15">
       <Position1>
         <Filename Value="UnitMain.pas"/>
         <Caret Line="127" Column="14" TopLine="111"/>
@@ -165,69 +164,13 @@
         <Caret Line="144" Column="9" TopLine="134"/>
       </Position14>
       <Position15>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="428" TopLine="419"/>
+        <Filename Value="..\..\PasVulkan.TextEditor.pas"/>
+        <Caret Line="1308" Column="39" TopLine="1289"/>
       </Position15>
       <Position16>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="429" TopLine="419"/>
+        <Filename Value="..\..\PasVulkan.TextEditor.pas"/>
+        <Caret Line="1310" Column="20" TopLine="1289"/>
       </Position16>
-      <Position17>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="428" Column="15" TopLine="415"/>
-      </Position17>
-      <Position18>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="486" Column="5" TopLine="474"/>
-      </Position18>
-      <Position19>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="428" TopLine="422"/>
-      </Position19>
-      <Position20>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="429" TopLine="422"/>
-      </Position20>
-      <Position21>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="431" TopLine="422"/>
-      </Position21>
-      <Position22>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="466" TopLine="454"/>
-      </Position22>
-      <Position23>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="467" TopLine="454"/>
-      </Position23>
-      <Position24>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="468" TopLine="454"/>
-      </Position24>
-      <Position25>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="470" TopLine="454"/>
-      </Position25>
-      <Position26>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="466" TopLine="454"/>
-      </Position26>
-      <Position27>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="470" TopLine="454"/>
-      </Position27>
-      <Position28>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="466" TopLine="454"/>
-      </Position28>
-      <Position29>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="467" TopLine="454"/>
-      </Position29>
-      <Position30>
-        <Filename Value="UnitConsole.pas"/>
-        <Caret Line="466" TopLine="454"/>
-      </Position30>
     </JumpHistory>
     <RunParams>
       <FormatVersion Value="2"/>

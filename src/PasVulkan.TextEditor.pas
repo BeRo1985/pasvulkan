@@ -1290,18 +1290,34 @@ end;
 
 procedure TpvAbstractTextEditor.MoveLeft;
 begin
+ if fCodePointIndex>0 then begin
+  dec(fCodePointIndex);
+ end;
 end;
 
 procedure TpvAbstractTextEditor.MoveRight;
 begin
+ if (fCodePointIndex+1)<fStringRope.CountCodePoints then begin
+  inc(fCodePointIndex);
+ end;
 end;
 
 procedure TpvAbstractTextEditor.MoveToLineBegin;
+var LineIndex:TpvSizeUInt;
 begin
+ if fCodePointIndex<fStringRope.CountCodePoints then begin
+  LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
+  fCodePointIndex:=fStringRopeLineMap.GetStartCodePointIndexFromLineIndex(LineIndex);
+ end;
 end;
 
 procedure TpvAbstractTextEditor.MoveToLineEnd;
+var LineIndex:TpvSizeUInt;
 begin
+ if fCodePointIndex<fStringRope.CountCodePoints then begin
+  LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
+  fCodePointIndex:=fStringRopeLineMap.GetStopCodePointIndexFromLineIndex(LineIndex);
+ end;
 end;
 
 procedure TpvAbstractTextEditor.MovePageUp;
