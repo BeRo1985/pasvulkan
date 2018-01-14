@@ -63,6 +63,7 @@ type PConsoleBufferItem=^TConsoleBufferItem;
        fForegroundColor:UInt8;
        fScrollLock:boolean;
        fCursorState:TCursorState;
+       fLastCursorState:TCursorState;
 {$ifdef Windows}
        fConsoleHandle:Windows.THANDLE;
        fConsoleBuffer:array of CHAR_INFO;
@@ -370,7 +371,8 @@ var x,y:Int32;
     p:PCHAR_INFO;
     HasChanges:boolean;
 begin
- HasChanges:=(WhereX<>fCursorX) or (WhereY<>fCursorY);
+ HasChanges:=(WhereX<>fCursorX) or (WhereY<>fCursorY) or (fLastCursorState<>fCursorState);
+ fLastCursorState:=fCursorState;
  BufferItem:=@fBuffer[0];
  LastBufferItem:=@fLastBuffer[0];
  p:=@fConsoleBuffer[0];
@@ -414,7 +416,27 @@ end;
 {$else}
 var x,y,LastBackgroundColor,LastForegroundColor:Int32;
     BufferItem,LastBufferItem:PConsoleBufferItem;
+    HasChanges:boolean;
 begin
+ HasChanges:=(WhereX<>fCursorX) or (WhereY<>fCursorY) or (fLastCursorState<>fCursorState);
+ fLastCursorState:=fCursorState;
+ BufferItem:=@fBuffer[0];
+ LastBufferItem:=@fLastBuffer[0];
+ for y:=1 to fHeight do begin
+  for x:=1 to fWidth do begin
+   if (x=fWidth) and (y=fHeight) then begin
+    break;
+   end;
+   if LastBufferItem^.Value<>BufferItem^.Value then begin
+    HasChanges:=true;
+   end;
+  end;
+ end;
+ if not HasChanges then begin
+  exit;
+ end;
+ BufferItem:=@fBuffer[0];
+ LastBufferItem:=@fLastBuffer[0];
  LastBackgroundColor:=-1;
  LastForegroundColor:=-1;
  CRT.cursoroff;

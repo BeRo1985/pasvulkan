@@ -100,8 +100,6 @@ begin
  Console.TextBackground(TConsole.TColor.Blue);
  Console.TextColor(TConsole.TColor.White);
 
- Console.Write('Ä');
-
  Console.CursorOn;
 
  repeat
