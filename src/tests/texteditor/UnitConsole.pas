@@ -59,6 +59,8 @@ type PConsoleBufferItem=^TConsoleBufferItem;
        fLastBuffer:TConsoleBufferItems;
        fCursorX:Int32;
        fCursorY:Int32;
+       fLastCursorX:Int32;
+       fLastCursorY:Int32;
        fBackgroundColor:UInt8;
        fForegroundColor:UInt8;
        fScrollLock:boolean;
@@ -126,6 +128,8 @@ begin
  fScrollLock:=true;
  fBackgroundColor:=TColor.Black;
  fForegroundColor:=TColor.LightGray;
+ fLastCursorX:=-1;
+ fLastCursorY:=-1;
  GotoXY(1,1);
 end;
 
@@ -375,7 +379,9 @@ var x,y:Int32;
     p:PCHAR_INFO;
     HasChanges:boolean;
 begin
- HasChanges:=(WhereX<>fCursorX) or (WhereY<>fCursorY) or (fLastCursorState<>fCursorState);
+ HasChanges:=(fLastCursorX<>fCursorX) or (fLastCursorY<>fCursorY) or (fLastCursorState<>fCursorState);
+ fLastCursorX:=fCursorX;
+ fLastCursorY:=fCursorY;
  fLastCursorState:=fCursorState;
  BufferItem:=@fBuffer[0];
  LastBufferItem:=@fLastBuffer[0];
@@ -431,7 +437,9 @@ var x,y,LastBackgroundColor,LastForegroundColor,LastX,LastY:Int32;
   end;
  end;
 begin
- HasChanges:=(WhereX<>fCursorX) or (WhereY<>fCursorY) or (fLastCursorState<>fCursorState);
+ HasChanges:=(fLastCursorX<>fCursorX) or (fLastCursorY<>fCursorY) or (fLastCursorState<>fCursorState);
+ fLastCursorX:=fCursorX;
+ fLastCursorY:=fCursorY;
  fLastCursorState:=fCursorState;
  BufferItem:=@fBuffer[0];
  LastBufferItem:=@fLastBuffer[0];
