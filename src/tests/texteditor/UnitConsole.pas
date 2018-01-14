@@ -364,41 +364,50 @@ end;
 procedure TConsole.Flush;
 {$ifdef Windows}
 var x,y:Int32;
-    BufferItem:PConsoleBufferItem;
+    BufferItem,LastBufferItem:PConsoleBufferItem;
     CharBufSize,CharacterPos:Windows.TCOORD;
     WriteArea:Windows.TSMALL_RECT;
     p:PCHAR_INFO;
+    HasChanges:boolean;
 begin
- CRT.cursoroff;
+ HasChanges:=(WhereX<>fCursorX) or (WhereY<>fCursorY);
  BufferItem:=@fBuffer[0];
+ LastBufferItem:=@fLastBuffer[0];
  p:=@fConsoleBuffer[0];
  for y:=1 to fHeight do begin
   for x:=1 to fWidth do begin
+   if LastBufferItem^.Value<>BufferItem^.Value then begin
+    LastBufferItem^.Value:=BufferItem^.Value;
+    HasChanges:=true;
+   end;
    p^.Attributes:=(BufferItem^.BackgroundColor shl 4) or BufferItem.ForegroundColor;
    p^.UnicodeChar:=WideChar(Word(BufferItem^.CodePoint));
+   inc(LastBufferItem);
    inc(BufferItem);
    inc(p);
   end;
  end;
- CharBufSize.x:=fWidth;
- CharBufSize.y:=fHeight;
- CharacterPos.x:=0;
- CharacterPos.y:=0;
- WriteArea.Left:=0;
- WriteArea.Top:=0;
- WriteArea.Right:=fWidth-1;
- WriteArea.Bottom:=fHeight-1;
- WriteConsoleOutputW(fConsoleHandle,@fConsoleBuffer[0],CharBufSize,CharacterPos,WriteArea);
- CRT.GotoXY(fCursorX,fCursorY);
- case fCursorState of
-  TConsole.TCursorState.Off:begin
-   CRT.cursoroff;
-  end;
-  TConsole.TCursorState.On:begin
-   CRT.cursoron;
-  end;
-  TConsole.TCursorState.Big:begin
-   CRT.cursorbig;
+ if HasChanges then begin
+  CharBufSize.x:=fWidth;
+  CharBufSize.y:=fHeight;
+  CharacterPos.x:=0;
+  CharacterPos.y:=0;
+  WriteArea.Left:=0;
+  WriteArea.Top:=0;
+  WriteArea.Right:=fWidth-1;
+  WriteArea.Bottom:=fHeight-1;
+  WriteConsoleOutputW(fConsoleHandle,@fConsoleBuffer[0],CharBufSize,CharacterPos,WriteArea);
+  CRT.GotoXY(fCursorX,fCursorY);
+  case fCursorState of
+   TConsole.TCursorState.Off:begin
+    CRT.cursoroff;
+   end;
+   TConsole.TCursorState.On:begin
+    CRT.cursoron;
+   end;
+   TConsole.TCursorState.Big:begin
+    CRT.cursorbig;
+   end;
   end;
  end;
 end;

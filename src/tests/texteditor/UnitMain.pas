@@ -4,7 +4,7 @@ unit UnitMain;
 
 interface
 
-uses SysUtils,Classes,PasVulkan.Types,PasVulkan.TextEditor,UnitConsole;
+uses SysUtils,Classes,PasVulkan.Types,PasVulkan.TextEditor,UnitConsole,CRT;
 
 procedure Main;
 
@@ -97,18 +97,36 @@ begin
 
  Console.GotoXY(1,2);
 
+ Console.TextBackground(TConsole.TColor.Blue);
+ Console.TextColor(TConsole.TColor.White);
+
+ Console.Write('Ä');
+
  Console.CursorOn;
 
- Console.Flush;
+ repeat
 
-{ repeat
+  Console.Flush;
 
-//  c:=ReadKey;
-  if c<>#0 then begin
+  if KeyPressed then begin
+   c:=ReadKey;
+   case c of
+    #0:begin
+     // Code escape
+     c:=ReadKey;
+     case c of
+      #68:begin
+       // F10
+       break;
+      end;
+     end;
+    end;
+   end;
+  end else begin
+   Delay(10);
   end;
 
- until false;}
- readln;
+ until false;
 end;
 
 end.
