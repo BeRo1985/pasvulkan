@@ -156,7 +156,7 @@ begin
 
    UpdateScreen;
 
-   if Console.KeyPressed then begin
+   if {Console.KeyPressed}true then begin
     c:=Console.ReadKey;
     case c of
      #0:begin

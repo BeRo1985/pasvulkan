@@ -1414,9 +1414,13 @@ begin
       CodePoint:=32;
       StepWidth:=Max(1,(fStringRopeVisualLineMap.fTabWidth-(LocalCursorX mod fStringRopeVisualLineMap.fTabWidth)));
      end;
-     10,13:begin
+     10:begin
       CodePoint:=32;
       LastWasNewLine:=true;
+     end;
+     13:begin
+      CodePoint:=32;
+      StepWidth:=0;
      end;
     end;
     if BufferIndex<BufferSize then begin
