@@ -199,6 +199,7 @@ type TpvUTF8DFA=class
        procedure Insert(const aCodePointIndex:TpvSizeUInt;const aString:TpvUTF8String);
        procedure Delete(const aCodePointIndex,aCountCodePoints:TpvSizeUInt);
        function Extract(const aCodePointIndex,aCountCodePoints:TpvSizeUInt):TpvUTF8String;
+       function GetCodePoint(const aCodePointIndex:TpvSizeUInt):TpvUInt32;
        function GetEnumerator:TNodeEnumerator;
        procedure Check;
        procedure Dump;
@@ -240,6 +241,14 @@ type TpvUTF8DFA=class
      end;
 
      TpvAbstractTextEditor=class
+      public
+       type TDrawBufferItem=record
+             BackgroundColor:TpvUInt8;
+             ForegroundColor:TpvUInt8;
+             CodePoint:TpvUInt32;
+            end;
+            PDrawBufferItem=^TDrawBufferItem;
+            TDrawBufferItems=array of TDrawBufferItem;
       private
        fVisibleAreaWidth:TpvSizeUInt;
        fVisibleAreaHeight:TpvSizeUInt;
@@ -257,6 +266,7 @@ type TpvUTF8DFA=class
        constructor Create; reintroduce;
        destructor Destroy; override;
        procedure Update;
+       procedure FillDrawBuffer;
        procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
        procedure Backspace;
        procedure Delete;
@@ -880,6 +890,61 @@ begin
  result:=ExtractAtNodePosition(Node,NodePositionLinks,CountCodePoints);
 end;
 
+function TpvUTF8StringRope.GetCodePoint(const aCodePointIndex:TpvSizeUInt):TpvUInt32;
+var Node:TNode;
+    NodePositionLinks:TNode.TNodePositionLinks;
+    NodeCodeUnitIndex,CodePointIndex:TpvSizeUInt;
+    CodeUnit:AnsiChar;
+    First:boolean;
+    UTF8DFAState,UTF8DFACharClass:TpvUInt8;
+begin
+{$if defined(DebugTpvUTF8StringRope)}
+ Check;
+{$ifend}
+ result:=0;
+ if aCodePointIndex<fCountCodePoints then begin
+  CodePointIndex:=aCodePointIndex;
+ end else begin
+  CodePointIndex:=fCountCodePoints;
+ end;
+ Node:=FindNodePositionAtCodePoint(CodePointIndex,NodePositionLinks);
+ if assigned(Node) then begin
+  NodeCodeUnitIndex:=NodePositionLinks[0].fSkipSize;
+  UTF8DFAState:=TpvUTF8DFA.StateAccept;
+  while assigned(Node) do begin
+   if NodeCodeUnitIndex>=Node.fCountCodeUnits then begin
+    Node:=Node.fLinks[0].fNode;
+    NodeCodeUnitIndex:=0;
+    if assigned(Node) then begin
+     continue;
+    end else begin
+     break;
+    end;
+   end else begin
+    CodeUnit:=Node.fData[NodeCodeUnitIndex];
+    inc(NodeCodeUnitIndex);
+    UTF8DFACharClass:=TpvUTF8DFA.StateCharClasses[CodeUnit];
+    UTF8DFAState:=TpvUTF8DFA.StateTransitions[UTF8DFAState+UTF8DFACharClass];
+    case UTF8DFAState of
+     TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
+      if First then begin
+       First:=false;
+       result:=ord(CodeUnit) and ($ff shr UTF8DFACharClass);
+      end else begin
+       break;
+      end;
+     end;
+     else begin
+      result:=(result shl 6) or (ord(CodeUnit) and $3f);
+     end;
+    end;
+   end;
+  end;
+ end else begin
+  result:=0;
+ end;
+end;
+
 function TpvUTF8StringRope.GetEnumerator:TNodeEnumerator;
 begin
  result:=TNodeEnumerator.Create(self);
@@ -1187,6 +1252,7 @@ begin
  inherited Create;
  fVisibleAreaDirty:=false;
  fStringRope:=TpvUTF8StringRope.Create;
+ fStringRope.Text:='Hello world';
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fCodePointIndex:=0;
 end;
@@ -1231,6 +1297,11 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.Update;
+begin
+
+end;
+
+procedure TpvAbstractTextEditor.FillDrawBuffer;
 begin
 
 end;
