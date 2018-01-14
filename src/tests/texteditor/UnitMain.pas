@@ -133,6 +133,8 @@ begin
   end;
  end;
 
+ Console.GotoXY(AbstractTextEditor.CursorX+1,AbstractTextEditor.CursorY+2);
+
  if OverwriteMode then begin
   Console.CursorBig;
  end else begin

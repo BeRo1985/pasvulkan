@@ -267,6 +267,8 @@ type TpvUTF8DFA=class
        fStringRopeVisualLineMap:TpvUTF8StringRopeLineMap;
        fCodePointIndex:TpvSizeUInt;
        fFirstVisualLineIndex:TpvSizeUInt;
+       fCursorX:TpvSizeInt;
+       fCursorY:TpvSizeInt;
        procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeUInt);
        procedure SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeUInt);
        procedure SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeUInt);
@@ -275,7 +277,7 @@ type TpvUTF8DFA=class
        constructor Create; reintroduce;
        destructor Destroy; override;
        procedure Update;
-       procedure FillDrawBuffer(var fDrawBufferItems:TDrawBufferItems);
+       procedure FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
        procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
        procedure Backspace;
        procedure Delete;
@@ -293,6 +295,8 @@ type TpvUTF8DFA=class
        property VisibleAreaHeight:TpvSizeUInt read fVisibleAreaHeight write SetVisibleAreaHeight;
        property NonScrollVisibleAreaWidth:TpvSizeUInt read fNonScrollVisibleAreaWidth write SetNonScrollVisibleAreaWidth;
        property NonScrollVisibleAreaHeight:TpvSizeUInt read fNonScrollVisibleAreaHeight write SetNonScrollVisibleAreaHeight;
+       property CursorX:TpvSizeInt read fCursorX;
+       property CursorY:TpvSizeInt read fCursorY;
      end;
 
 
@@ -1358,21 +1362,26 @@ begin
 
 end;
 
-procedure TpvAbstractTextEditor.FillDrawBuffer(var fDrawBufferItems:TDrawBufferItems);
+procedure TpvAbstractTextEditor.FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
 var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     VisualLineIndex,CountRemainingLines,
     VisualLineStartCodePointIndex,VisualLineStopCodePointIndex,
     CurrentCodePointIndex:TpvSizeUInt;
+    LocalCursorX,LocalCursorY:TpvSizeInt;
 begin
+ fCursorX:=0;
+ fCursorY:=0;
+ LocalCursorX:=0;
+ LocalCursorY:=0;
  BufferSize:=VisibleAreaWidth*VisibleAreaHeight;
  if BufferSize>0 then begin
-  if length(fDrawBufferItems)<>BufferSize then begin
-   SetLength(fDrawBufferItems,BufferSize);
+  if length(aDrawBufferItems)<>BufferSize then begin
+   SetLength(aDrawBufferItems,BufferSize);
   end;
-  FillChar(fDrawBufferItems[0],BufferSize*SizeOf(TDrawBufferItem),#0);
+  FillChar(aDrawBufferItems[0],BufferSize*SizeOf(TDrawBufferItem),#0);
   BufferIndex:=0;
   while BufferIndex<BufferSize do begin
-   fDrawBufferItems[BufferIndex].CodePoint:=32;
+   aDrawBufferItems[BufferIndex].CodePoint:=32;
    inc(BufferIndex);
   end;
   VisualLineIndex:=fFirstVisualLineIndex;
@@ -1390,10 +1399,16 @@ begin
     if BufferIndex>=BufferBaseEndIndex then begin
      break;
     end;
-    fDrawBufferItems[BufferIndex].CodePoint:=fStringRope.GetCodePoint(CurrentCodePointIndex);
+    if fCodePointIndex=CurrentCodePointIndex then begin
+     fCursorX:=LocalCursorX;
+     fCursorY:=LocalCursorY;
+    end;
+    aDrawBufferItems[BufferIndex].CodePoint:=fStringRope.GetCodePoint(CurrentCodePointIndex);
     inc(BufferIndex);
+    inc(LocalCursorX);
    end;
    inc(BufferBaseIndex,VisibleAreaWidth);
+   inc(LocalCursorY);
    dec(CountRemainingLines);
    inc(VisualLineIndex);
   end;
