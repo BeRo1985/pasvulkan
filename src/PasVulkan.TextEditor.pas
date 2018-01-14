@@ -910,7 +910,7 @@ begin
 {$if defined(DebugTpvUTF8StringRope)}
  Check;
 {$ifend}
- result:=0;
+ result:=32;
  if aCodePointIndex<fCountCodePoints then begin
   CodePointIndex:=aCodePointIndex;
  end else begin
@@ -920,6 +920,7 @@ begin
  if assigned(Node) then begin
   NodeCodeUnitIndex:=NodePositionLinks[0].fSkipSize;
   UTF8DFAState:=TpvUTF8DFA.StateAccept;
+  First:=true;
   while assigned(Node) do begin
    if NodeCodeUnitIndex>=Node.fCountCodeUnits then begin
     Node:=Node.fLinks[0].fNode;
@@ -950,7 +951,7 @@ begin
    end;
   end;
  end else begin
-  result:=0;
+  result:=32;
  end;
 end;
 
