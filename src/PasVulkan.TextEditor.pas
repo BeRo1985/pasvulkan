@@ -258,6 +258,9 @@ type TpvUTF8DFA=class
        destructor Destroy; override;
        procedure Update;
        procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
+       procedure Backspace;
+       procedure Delete;
+       procedure Enter(const aOverwrite:boolean);
       published
        property VisibleAreaWidth:TpvSizeUInt read fVisibleAreaWidth write SetVisibleAreaWidth;
        property VisibleAreaHeight:TpvSizeUInt read fVisibleAreaHeight write SetVisibleAreaHeight;
@@ -1233,5 +1236,41 @@ begin
  fStringRope.Insert(fCodePointIndex,PUCUUTF32CharToUTF8(aCodePoint));
  inc(fCodePointIndex);
 end;
+
+procedure TpvAbstractTextEditor.Backspace;
+begin
+ if (fCodePointIndex>0) and (fCodePointIndex<fStringRope.fCountCodePoints) then begin
+  dec(fCodePointIndex);
+  fStringRope.Delete(fCodePointIndex,1);
+  if fCodePointIndex>0 then begin
+   fStringRopeLineMap.Truncate(fCodePointIndex-1,High(TpvSizeUInt));
+  end else begin
+   fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
+  end;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.Delete;
+begin
+ if fCodePointIndex<fStringRope.fCountCodePoints then begin
+  fStringRope.Delete(fCodePointIndex,1);
+  if fCodePointIndex>0 then begin
+   fStringRopeLineMap.Truncate(fCodePointIndex-1,High(TpvSizeUInt));
+  end else begin
+   fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
+  end;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.Enter(const aOverwrite:boolean);
+begin
+{$ifdef Unix}
+ InsertCodePoint(10,aOverwrite);
+{$else}
+ InsertCodePoint(13,aOverwrite);
+ InsertCodePoint(10,aOverwrite);
+{$endif}
+end;
+
 
 end.

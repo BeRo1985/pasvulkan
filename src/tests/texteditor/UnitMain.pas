@@ -40,10 +40,12 @@ begin
  AddFKey(1,'Help');
  AddFKey(2,'Save');
  AddFKey(3,'Find');
- AddFKey(4,'Replace');
- AddFKey(5,'Load');
- AddFKey(6,'Undo');
- AddFKey(7,'Redo');
+ AddFKey(4,'Repl');
+ AddFKey(5,'Refr');
+ AddFKey(6,'Wrap');
+ AddFKey(7,'Undo');
+ AddFKey(8,'Redo');
+ AddFKey(9,'Load');
  AddFKey(10,'Quit');
  while Console.WhereX<Console.Width do begin
   Console.Write(' ');
@@ -140,6 +142,7 @@ begin
         end;
         #83:begin
          // Delete
+         AbstractTextEditor.Delete;
         end;
         #71:begin
          // Home
@@ -174,6 +177,10 @@ begin
      end;
      #8:begin
       // Backspace
+      AbstractTextEditor.Backspace;
+     end;
+     #13:begin
+      AbstractTextEditor.Enter(OverwriteMode);
      end;
      #27:begin
       // Escape
