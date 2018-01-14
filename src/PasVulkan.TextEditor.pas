@@ -1145,7 +1145,7 @@ begin
   end;
   if fCountLines<>NewCountLines then begin
    if (NewCountLines>0) and ((NewCountLines+1)<fCountLines) then begin
-    fCodePointIndex:=fLines[NewCountLines];
+    fCodePointIndex:=fLines[NewCountLines-1];
     fCountLines:=NewCountLines;
     fCountVisibleVisualCodePointsSinceNewLine:=0;
     fLastWasPossibleNewLineTwoCharSequence:=false;
@@ -1449,10 +1449,8 @@ end;
 
 procedure TpvAbstractTextEditor.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
 begin
- fStringRopeLineMap.Reset;
- fStringRopeVisualLineMap.Reset;
-{fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
- fStringRopeVisualLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));}
+ fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
+ fStringRopeVisualLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
  if aOverwrite and (fCodePointIndex<fStringRope.fCountCodePoints) then begin
   fStringRope.Delete(fCodePointIndex,1);
  end;
@@ -1474,8 +1472,6 @@ begin
    fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
    fStringRopeVisualLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
   end;
-  fStringRopeLineMap.Reset;
-  fStringRopeVisualLineMap.Reset;
   fStringRopeLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
   fStringRopeVisualLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
  end;
@@ -1492,8 +1488,6 @@ begin
    fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
    fStringRopeVisualLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
   end;
-  fStringRopeLineMap.Reset;
-  fStringRopeVisualLineMap.Reset;
   fStringRopeLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
   fStringRopeVisualLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
  end;
