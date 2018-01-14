@@ -1364,10 +1364,9 @@ end;
 
 procedure TpvAbstractTextEditor.FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
 var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
-    VisualLineIndex,CountRemainingLines,
+    VisualLineIndex,CountRemainingLines:TpvSizeUInt;
     VisualLineStartCodePointIndex,VisualLineStopCodePointIndex,
-    CurrentCodePointIndex:TpvSizeUInt;
-    LocalCursorX,LocalCursorY:TpvSizeInt;
+    CurrentCodePointIndex,LocalCursorX,LocalCursorY:TpvSizeInt;
 begin
  fCursorX:=0;
  fCursorY:=0;
@@ -1395,7 +1394,8 @@ begin
    VisualLineStopCodePointIndex:=fStringRopeVisualLineMap.GetStopCodePointIndexFromLineIndex(VisualLineIndex);
    BufferBaseEndIndex:=BufferBaseIndex+VisibleAreaWidth;
    BufferIndex:=BufferBaseIndex;
-   for CurrentCodePointIndex:=VisualLineStartCodePointIndex to VisualLineStopCodePointIndex do begin
+   LocalCursorX:=0;
+   for CurrentCodePointIndex:=VisualLineStartCodePointIndex to VisualLineStopCodePointIndex-1 do begin
     if BufferIndex>=BufferBaseEndIndex then begin
      break;
     end;
@@ -1406,6 +1406,11 @@ begin
     aDrawBufferItems[BufferIndex].CodePoint:=fStringRope.GetCodePoint(CurrentCodePointIndex);
     inc(BufferIndex);
     inc(LocalCursorX);
+   end;
+   if (fCodePointIndex>=fStringRope.CountCodePoints) and
+      (fCodePointIndex=fStringRopeVisualLineMap.GetStopCodePointIndexFromLineIndex(VisualLineIndex)) then begin
+    fCursorX:=LocalCursorX;
+    fCursorY:=LocalCursorY;
    end;
    inc(BufferBaseIndex,VisibleAreaWidth);
    inc(LocalCursorY);
