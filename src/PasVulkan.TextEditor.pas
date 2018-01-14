@@ -1310,7 +1310,7 @@ begin
  inherited Create;
  fVisibleAreaDirty:=false;
  fStringRope:=TpvUTF8StringRope.Create;
- fStringRope.Text:='Hello world';
+ fStringRope.Text:='Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello'#10#10;
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fCodePointIndex:=0;
@@ -1492,6 +1492,10 @@ begin
    fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
    fStringRopeVisualLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
   end;
+  fStringRopeLineMap.Reset;
+  fStringRopeVisualLineMap.Reset;
+  fStringRopeLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
+  fStringRopeVisualLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
  end;
 end;
 
@@ -1506,11 +1510,33 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.MoveUp;
+var LineIndex,CodePointOffset,NewCodePointIndex,OtherCodePointIndex:TpvSizeInt;
 begin
+ if fCodePointIndex<=fStringRope.CountCodePoints then begin
+  LineIndex:=fStringRopeVisualLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
+  if LineIndex>0 then begin
+   CodePointOffset:=fCodePointIndex-fStringRopeVisualLineMap.GetStartCodePointIndexFromLineIndex(LineIndex);
+   NewCodePointIndex:=fStringRopeVisualLineMap.GetStartCodePointIndexFromLineIndex(LineIndex-1);
+   if NewCodePointIndex>=0 then begin
+    OtherCodePointIndex:=fStringRopeVisualLineMap.GetStopCodePointIndexFromLineIndex(LineIndex-1);
+    fCodePointIndex:=Min(NewCodePointIndex+CodePointOffset,OtherCodePointIndex-1);
+   end;
+  end;
+ end;
 end;
 
 procedure TpvAbstractTextEditor.MoveDown;
+var LineIndex,CodePointOffset,NewCodePointIndex,OtherCodePointIndex:TpvSizeInt;
 begin
+ if fCodePointIndex<fStringRope.CountCodePoints then begin
+  LineIndex:=fStringRopeVisualLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
+  CodePointOffset:=fCodePointIndex-fStringRopeVisualLineMap.GetStartCodePointIndexFromLineIndex(LineIndex);
+  NewCodePointIndex:=fStringRopeVisualLineMap.GetStartCodePointIndexFromLineIndex(LineIndex+1);
+  if NewCodePointIndex>=0 then begin
+   OtherCodePointIndex:=fStringRopeVisualLineMap.GetStopCodePointIndexFromLineIndex(LineIndex+1);
+   fCodePointIndex:=Min(NewCodePointIndex+CodePointOffset,OtherCodePointIndex-1);
+  end;
+ end;
 end;
 
 procedure TpvAbstractTextEditor.MoveLeft;
@@ -1533,15 +1559,25 @@ begin
  if fCodePointIndex<fStringRope.CountCodePoints then begin
   LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
   fCodePointIndex:=fStringRopeLineMap.GetStartCodePointIndexFromLineIndex(LineIndex);
+ end else if (fCodePointIndex>0) and (fCodePointIndex>=fStringRope.CountCodePoints) then begin
+  LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fStringRope.CountCodePoints-1);
+  fCodePointIndex:=fStringRopeLineMap.GetStartCodePointIndexFromLineIndex(LineIndex);
  end;
 end;
 
 procedure TpvAbstractTextEditor.MoveToLineEnd;
-var LineIndex:TpvSizeUInt;
+var LineIndex,NewCodePointIndex:TpvSizeUInt;
 begin
  if fCodePointIndex<fStringRope.CountCodePoints then begin
   LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
-  fCodePointIndex:=fStringRopeLineMap.GetStopCodePointIndexFromLineIndex(LineIndex);
+  NewCodePointIndex:=fStringRopeLineMap.GetStopCodePointIndexFromLineIndex(LineIndex);
+  if NewCodePointIndex>=0 then begin
+   fCodePointIndex:=NewCodePointIndex;
+  end;
+{ if (fCodePointIndex>0) and (fCodePointIndex>=fStringRope.CountCodePoints) and
+     (fStringRopeLineMap.GetStartCodePointIndexFromLineIndex(LineIndex)=fCodePointIndex) then begin
+   dec(fCodePointIndex);
+  end;}
  end;
 end;
 
