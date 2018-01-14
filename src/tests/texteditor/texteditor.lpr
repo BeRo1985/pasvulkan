@@ -17,6 +17,7 @@ uses {$ifdef Unix}
      PUCU in '..\..\..\externals\pucu\src\PUCU.pas',
      PasVulkan.Types in '..\..\PasVulkan.Types.pas',
      PasVulkan.TextEditor in '..\..\PasVulkan.TextEditor.pas',
+     UnitConsole in 'UnitConsole.pas',
      UnitMain in 'UnitMain.pas';
 
 begin
