@@ -1368,6 +1368,7 @@ var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     VisualLineStartCodePointIndex,VisualLineStopCodePointIndex,
     CurrentCodePointIndex,LocalCursorX,LocalCursorY,StepWidth:TpvSizeInt;
     CodePoint:TpvUInt32;
+    LastWasNewLine:boolean;
 begin
  fCursorX:=0;
  fCursorY:=0;
@@ -1396,6 +1397,7 @@ begin
    BufferBaseEndIndex:=BufferBaseIndex+VisibleAreaWidth;
    BufferIndex:=BufferBaseIndex;
    LocalCursorX:=0;
+   LastWasNewLine:=false;
    for CurrentCodePointIndex:=VisualLineStartCodePointIndex to VisualLineStopCodePointIndex-1 do begin
     if BufferIndex>=BufferBaseEndIndex then begin
      break;
@@ -1406,6 +1408,7 @@ begin
     end;
     CodePoint:=fStringRope.GetCodePoint(CurrentCodePointIndex);
     StepWidth:=1;
+    LastWasNewLine:=false;
     case CodePoint of
      9:begin
       CodePoint:=32;
@@ -1413,6 +1416,7 @@ begin
      end;
      10,13:begin
       CodePoint:=32;
+      LastWasNewLine:=true;
      end;
     end;
     if BufferIndex<BufferSize then begin
@@ -1423,8 +1427,13 @@ begin
    end;
    if (fCodePointIndex>=fStringRope.CountCodePoints) and
       (fCodePointIndex=fStringRopeVisualLineMap.GetStopCodePointIndexFromLineIndex(VisualLineIndex)) then begin
-    fCursorX:=LocalCursorX;
-    fCursorY:=LocalCursorY;
+    if LastWasNewLine then begin
+     fCursorX:=0;
+     fCursorY:=LocalCursorY+1;
+    end else begin
+     fCursorX:=LocalCursorX;
+     fCursorY:=LocalCursorY;
+    end;
    end;
    inc(BufferBaseIndex,VisibleAreaWidth);
    inc(LocalCursorY);
