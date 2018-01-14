@@ -403,7 +403,7 @@ begin
  end;
 end;
 {$else}
-var i,x,y,LastBackgroundColor,LastForegroundColor:Int32;
+var x,y,LastBackgroundColor,LastForegroundColor:Int32;
     BufferItem,LastBufferItem:PConsoleBufferItem;
 begin
  LastBackgroundColor:=-1;
