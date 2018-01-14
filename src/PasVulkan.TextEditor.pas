@@ -264,6 +264,7 @@ type TpvUTF8DFA=class
        fVisibleAreaDirty:boolean;
        fStringRope:TpvUTF8StringRope;
        fStringRopeLineMap:TpvUTF8StringRopeLineMap;
+       fStringRopeVisualLineMap:TpvUTF8StringRopeLineMap;
        fCodePointIndex:TpvSizeUInt;
        procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeUInt);
        procedure SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeUInt);
@@ -1305,12 +1306,14 @@ begin
  fStringRope:=TpvUTF8StringRope.Create;
  fStringRope.Text:='Hello world';
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
+ fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fCodePointIndex:=0;
 end;
 
 destructor TpvAbstractTextEditor.Destroy;
 begin
  fStringRopeLineMap.Free;
+ fStringRopeVisualLineMap.Free;
  fStringRope.Free;
  inherited Destroy;
 end;
@@ -1361,6 +1364,7 @@ end;
 procedure TpvAbstractTextEditor.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
 begin
  fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
+ fStringRopeVisualLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
  if aOverwrite and (fCodePointIndex<fStringRope.fCountCodePoints) then begin
   fStringRope.Delete(fCodePointIndex,1);
  end;
@@ -1375,8 +1379,10 @@ begin
   fStringRope.Delete(fCodePointIndex,1);
   if fCodePointIndex>0 then begin
    fStringRopeLineMap.Truncate(fCodePointIndex-1,High(TpvSizeUInt));
+   fStringRopeVisualLineMap.Truncate(fCodePointIndex-1,High(TpvSizeUInt));
   end else begin
    fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
+   fStringRopeVisualLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
   end;
  end;
 end;
@@ -1387,8 +1393,10 @@ begin
   fStringRope.Delete(fCodePointIndex,1);
   if fCodePointIndex>0 then begin
    fStringRopeLineMap.Truncate(fCodePointIndex-1,High(TpvSizeUInt));
+   fStringRopeVisualLineMap.Truncate(fCodePointIndex-1,High(TpvSizeUInt));
   end else begin
    fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
+   fStringRopeVisualLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
   end;
  end;
 end;
