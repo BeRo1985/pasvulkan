@@ -261,6 +261,14 @@ type TpvUTF8DFA=class
        procedure Backspace;
        procedure Delete;
        procedure Enter(const aOverwrite:boolean);
+       procedure MoveUp;
+       procedure MoveDown;
+       procedure MoveLeft;
+       procedure MoveRight;
+       procedure MoveToLineBegin;
+       procedure MoveToLineEnd;
+       procedure MovePageUp;
+       procedure MovePageDown;
       published
        property VisibleAreaWidth:TpvSizeUInt read fVisibleAreaWidth write SetVisibleAreaWidth;
        property VisibleAreaHeight:TpvSizeUInt read fVisibleAreaHeight write SetVisibleAreaHeight;
@@ -1272,5 +1280,36 @@ begin
 {$endif}
 end;
 
+procedure TpvAbstractTextEditor.MoveUp;
+begin
+end;
+
+procedure TpvAbstractTextEditor.MoveDown;
+begin
+end;
+
+procedure TpvAbstractTextEditor.MoveLeft;
+begin
+end;
+
+procedure TpvAbstractTextEditor.MoveRight;
+begin
+end;
+
+procedure TpvAbstractTextEditor.MoveToLineBegin;
+begin
+end;
+
+procedure TpvAbstractTextEditor.MoveToLineEnd;
+begin
+end;
+
+procedure TpvAbstractTextEditor.MovePageUp;
+begin
+end;
+
+procedure TpvAbstractTextEditor.MovePageDown;
+begin
+end;
 
 end.

@@ -85,6 +85,18 @@ begin
  Console.GotoXY(2,1);
  Console.Write('PasVulkan Test Text Editor');
 
+ Console.GotoXY(Console.Width-6,1);
+ Console.Write('[');
+ Console.Write('-');
+ Console.Write('-');
+ Console.Write('-');
+ if OverwriteMode then begin
+  Console.Write('O');
+ end else begin
+  Console.Write('-');
+ end;
+ Console.Write(']');
+
  DisplayKeys;
 
  Console.TextBackground(TConsole.TColor.Black);
@@ -146,27 +158,35 @@ begin
         end;
         #71:begin
          // Home
+         AbstractTextEditor.MoveToLineBegin;
         end;
         #79:begin
          // End
+         AbstractTextEditor.MoveToLineEnd;
         end;
         #73:begin
          // Page up
+         AbstractTextEditor.MovePageUp;
         end;
         #81:begin
          // Page down
+         AbstractTextEditor.MovePageDown;
         end;
         #72:begin
          // Up
+         AbstractTextEditor.MoveUp;
         end;
         #80:begin
          // Down
+         AbstractTextEditor.MoveDown;
         end;
         #75:begin
          // Left
+         AbstractTextEditor.MoveLeft;
         end;
         #77:begin
          // Right
+         AbstractTextEditor.MoveRight;
         end;
         #68:begin
          // F10
@@ -198,6 +218,11 @@ begin
  finally
   AbstractTextEditor.Free;
  end;
+
+ Console.TextBackground(TConsole.TColor.Black);
+ Console.TextColor(TConsole.TColor.LightGray);
+ Console.ClrScr;
+
 end;
 
 end.
