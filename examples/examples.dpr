@@ -19,18 +19,18 @@
 {$ifend}
 
 (*{$if defined(fpc) and defined(Unix)}
-  cthreads,
-  BaseUnix,
+   cthreads,
+   BaseUnix,
   {$elseif defined(Windows)}
-  Windows,
+   Windows,
   {$ifend}*)
 
 uses
   {$if defined(fpc) and defined(Unix)}
-  cthreads,
-  BaseUnix,
+   cthreads,
+   BaseUnix,
   {$elseif defined(Windows)}
-  Windows,
+   Windows,
   {$ifend}
   SysUtils,
   Classes,
@@ -45,7 +45,7 @@ uses
   PasVulkan.Utils in '..\src\PasVulkan.Utils.pas',
   PasVulkan.CircularDoublyLinkedList in '..\src\PasVulkan.CircularDoublyLinkedList.pas',
   PasVulkan.Collections in '..\src\PasVulkan.Collections.pas',
-  PasVulkan.TextEditorUtils in '..\src\PasVulkan.TextEditorUtils.pas',
+  PasVulkan.TextEditor in '..\src\PasVulkan.TextEditor.pas',
   PasVulkan.XML in '..\src\PasVulkan.XML.pas',
   PasVulkan.VectorPath in '..\src\PasVulkan.VectorPath.pas',
   PasVulkan.TrueTypeFont in '..\src\PasVulkan.TrueTypeFont.pas',
