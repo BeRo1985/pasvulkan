@@ -2,9 +2,11 @@ unit UnitConsole;
 
 {$mode delphi}
 
+{$scopedenums on}
+
 interface
 
-uses SysUtils,Classes,Math,PUCU;
+uses SysUtils,Classes,Math,PUCU,CRT;
 
 type PConsoleBufferItem=^TConsoleBufferItem;
      TConsoleBufferItem=record
@@ -37,6 +39,12 @@ type PConsoleBufferItem=^TConsoleBufferItem;
                     White=15;
                     Blink=128;
             end;
+            TCursorState=
+             (
+              Off,
+              On,
+              Big
+             );
       private
        fWidth:Int32;
        fHeight:Int32;
@@ -47,6 +55,7 @@ type PConsoleBufferItem=^TConsoleBufferItem;
        fBackgroundColor:UInt8;
        fForegroundColor:UInt8;
        fScrollLock:boolean;
+       fCursorState:TCursorState;
        procedure SetWidth(const aWidth:Int32);
        procedure SetHeight(const aHeight:Int32);
        procedure UpdateBufferSize;
@@ -65,6 +74,10 @@ type PConsoleBufferItem=^TConsoleBufferItem;
        procedure WriteCodePoint(const aCodePoint:UInt32);
        procedure Write(const aString:TPUCUUTF8String);
        procedure WriteLn(const aString:TPUCUUTF8String);
+       procedure CursorOff;
+       procedure CursorOn;
+       procedure CursorBig;
+       procedure Flush;
       published
        property Width:Int32 read fWidth write SetWidth;
        property Height:Int32 read fHeight write SetHeight;
@@ -73,6 +86,7 @@ type PConsoleBufferItem=^TConsoleBufferItem;
        property WhereX:Int32 read fCursorX;
        property WhereY:Int32 read fCursorY;
        property ScrollLock:boolean read fScrollLock write fScrollLock;
+       property CursorState:TCursorState read fCursorState write fCursorState;
      end;
 
 implementation
@@ -295,6 +309,56 @@ begin
  Write(aString+#13#10);
 end;
 
+procedure TConsole.CursorOff;
+begin
+ fCursorState:=TConsole.TCursorState.Off;
+end;
+
+procedure TConsole.CursorOn;
+begin
+ fCursorState:=TConsole.TCursorState.On;
+end;
+
+procedure TConsole.CursorBig;
+begin
+ fCursorState:=TConsole.TCursorState.Big;
+end;
+
+procedure TConsole.Flush;
+var x,y:Int32;
+    BufferItem:PConsoleBufferItem;
+begin
+ CRT.cursoroff;
+ BufferItem:=@fBuffer[0];
+ for y:=1 to fHeight do begin
+  for x:=1 to fWidth do begin
+   if (x=fWidth) and (y=fHeight) then begin
+    break;
+   end;
+   CRT.GotoXY32(x,y);
+   CRT.TextBackground(BufferItem^.BackgroundColor);
+   CRT.TextColor(BufferItem^.ForegroundColor);
+   if BufferItem^.CodePoint<128 then begin
+    System.Write(Chr(BufferItem^.CodePoint));
+   end else begin
+    System.Write(PUCUUTF32CharToUTF8(BufferItem^.CodePoint));
+   end;
+   inc(BufferItem);
+  end;
+ end;
+ CRT.GotoXY32(fCursorX,fCursorY);
+ case fCursorState of
+  TConsole.TCursorState.Off:begin
+   CRT.cursoroff;
+  end;
+  TConsole.TCursorState.On:begin
+   CRT.cursoron;
+  end;
+  TConsole.TCursorState.Big:begin
+   CRT.cursorbig;
+  end;
+ end;
+end;
 
 end.
 
