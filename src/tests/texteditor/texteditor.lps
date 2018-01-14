@@ -59,10 +59,9 @@
       <Unit6>
         <Filename Value="UnitMain.pas"/>
         <IsPartOfProject Value="True"/>
-        <IsVisibleTab Value="True"/>
         <EditorIndex Value="1"/>
         <TopLine Value="58"/>
-        <CursorPos X="2" Y="82"/>
+        <CursorPos X="37" Y="80"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
         <DefaultSyntaxHighlighter Value="Delphi"/>
@@ -78,9 +77,10 @@
       <Unit8>
         <Filename Value="UnitConsole.pas"/>
         <IsPartOfProject Value="True"/>
+        <IsVisibleTab Value="True"/>
         <EditorIndex Value="2"/>
-        <TopLine Value="289"/>
-        <CursorPos Y="304"/>
+        <TopLine Value="324"/>
+        <CursorPos X="54" Y="344"/>
         <UsageCount Value="20"/>
         <Loaded Value="True"/>
         <DefaultSyntaxHighlighter Value="Delphi"/>

@@ -327,9 +327,11 @@ begin
 end;
 
 procedure TConsole.Flush;
-var x,y:Int32;
+var x,y,LastBackgroundColor,LastForegroundColor:Int32;
     BufferItem:PConsoleBufferItem;
 begin
+ LastBackgroundColor:=-1;
+ LastForegroundColor:=-1;
  CRT.cursoroff;
  BufferItem:=@fBuffer[0];
  for y:=1 to fHeight do begin
@@ -337,9 +339,17 @@ begin
    if (x=fWidth) and (y=fHeight) then begin
     break;
    end;
-   CRT.GotoXY32(x,y);
-   CRT.TextBackground(BufferItem^.BackgroundColor);
-   CRT.TextColor(BufferItem^.ForegroundColor);
+   if (CRT.WhereX<>x) or (CRT.WhereY<>Y) then begin
+    CRT.GotoXY(x,y);
+   end;
+   if LastBackgroundColor<>BufferItem^.BackgroundColor then begin
+    LastBackgroundColor:=BufferItem^.BackgroundColor;
+    CRT.TextBackground(BufferItem^.BackgroundColor);
+   end;
+   if LastForegroundColor<>BufferItem^.ForegroundColor then begin
+    LastForegroundColor:=BufferItem^.ForegroundColor;
+    CRT.TextColor(BufferItem^.ForegroundColor);
+   end;
    if BufferItem^.CodePoint<128 then begin
     System.Write(Chr(BufferItem^.CodePoint));
    end else begin
@@ -348,7 +358,7 @@ begin
    inc(BufferItem);
   end;
  end;
- CRT.GotoXY32(fCursorX,fCursorY);
+ CRT.GotoXY(fCursorX,fCursorY);
  case fCursorState of
   TConsole.TCursorState.Off:begin
    CRT.cursoroff;
