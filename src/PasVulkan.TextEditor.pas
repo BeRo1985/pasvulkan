@@ -282,6 +282,7 @@ type TpvUTF8DFA=class
        destructor Destroy; override;
        procedure Update;
        procedure FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
+       function IsTwoCodePointLineEnd(const aCodePoint:TpvUInt32):boolean;
        procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
        procedure InsertString(const aString:TpvUTF8String;const aOverwrite:boolean);
        procedure Backspace;
@@ -1907,6 +1908,13 @@ begin
 
 end;
 
+function TpvAbstractTextEditor.IsTwoCodePointLineEnd(const aCodePoint:TpvUInt32):boolean;
+var Temporary:TpvUTF8String;
+begin
+ Temporary:=fStringRope.Extract(aCodePoint,2);
+ result:=(Temporary=TpvUTF8String(#13#10)) or (Temporary=TpvUTF8String(#10#13));
+end;
+
 procedure TpvAbstractTextEditor.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
 begin
  fStringRopeLineMap.Truncate(fCodePointIndex,-1);
@@ -1937,15 +1945,13 @@ end;
 
 procedure TpvAbstractTextEditor.Backspace;
 var Count:TpvSizeInt;
-    Temporary:TpvUTF8String;
 begin
  if (fCodePointIndex>0) and (fCodePointIndex<=fStringRope.fCountCodePoints) then begin
-  Count:=1;
-  if fStringRopeLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex-1))=fCodePointIndex then begin
-   Temporary:=fStringRope.Extract(fCodePointIndex-2,2);
-   if (Temporary=TpvUTF8String(#13#10)) or (Temporary=TpvUTF8String(#10#13)) then begin
-    Count:=2;
-   end;
+  if (fStringRopeLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex-1))=fCodePointIndex) and
+     IsTwoCodePointLineEnd(fCodePointIndex-2) then begin
+   Count:=2;
+  end else begin
+   Count:=1;
   end;
   dec(fCodePointIndex,Count);
   fStringRope.Delete(fCodePointIndex,Count);
@@ -1966,12 +1972,11 @@ var Count:TpvSizeInt;
     Temporary:TpvUTF8String;
 begin
  if fCodePointIndex<fStringRope.fCountCodePoints then begin
-  Count:=1;
-  if fStringRopeLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex))=(fCodePointIndex+2) then begin
-   Temporary:=fStringRope.Extract(fCodePointIndex,2);
-   if (Temporary=TpvUTF8String(#13#10)) or (Temporary=TpvUTF8String(#10#13)) then begin
-    Count:=2;
-   end;
+  if (fStringRopeLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex))=(fCodePointIndex+2)) and
+     IsTwoCodePointLineEnd(fCodePointIndex) then begin
+   Count:=2;
+  end else begin
+   Count:=1;
   end;
   fStringRope.Delete(fCodePointIndex,Count);
   if fCodePointIndex>0 then begin
@@ -2029,32 +2034,27 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.MoveLeft;
-var Temporary:TpvUTF8String;
-    Count:TpvSizeInt;
+var Count:TpvSizeInt;
 begin
  if fCodePointIndex>0 then begin
-  Count:=1;
-  if fCodePointIndex>1 then begin
-   Temporary:=fStringRope.Extract(fCodePointIndex-2,2);
-   if (Temporary=TpvUTF8String(#13#10)) or (Temporary=TpvUTF8String(#10#13)) then begin
-    Count:=2;
-   end;
+  if (fCodePointIndex>1) and IsTwoCodePointLineEnd(fCodePointIndex-2) then begin
+   Count:=2;
+  end else begin
+   Count:=1;
   end;
   dec(fCodePointIndex,Count);
  end;
 end;
 
 procedure TpvAbstractTextEditor.MoveRight;
-var Temporary:TpvUTF8String;
-    Count:TpvSizeInt;
+var Count:TpvSizeInt;
 begin
  if fCodePointIndex<fStringRope.CountCodePoints then begin
-  Count:=1;
-  if (fCodePointIndex+1)<fStringRope.CountCodePoints then begin
-   Temporary:=fStringRope.Extract(fCodePointIndex,2);
-   if (Temporary=TpvUTF8String(#13#10)) or (Temporary=TpvUTF8String(#10#13)) then begin
-    Count:=2;
-   end;
+  if ((fCodePointIndex+1)<fStringRope.CountCodePoints) and
+     IsTwoCodePointLineEnd(fCodePointIndex) then begin
+   Count:=2;
+  end else begin
+   Count:=1;
   end;
   inc(fCodePointIndex,Count);
  end;
