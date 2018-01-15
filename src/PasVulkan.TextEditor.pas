@@ -1290,39 +1290,6 @@ begin
      end;
 
     end;
-{      if fLineWrap>0 then begin
-        if DoTab and (fTabWidth>0) then begin
-         inc(fCountVisibleVisualCodePointsSinceNewLine,fTabWidth-(fCountVisibleVisualCodePointsSinceNewLine mod fTabWidth));
-        end else begin
-         inc(fCountVisibleVisualCodePointsSinceNewLine);
-        end;
-        if fCountVisibleVisualCodePointsSinceNewLine>=fLineWrap then begin
-         fCountVisibleVisualCodePointsSinceNewLine:=0;
-         DoNewLine:=true;
-        end;
-       end;
-       if DoNewLine then begin
-        AddLine(fCodePointIndex);
-        if ((aUntilCodePoint>=0) and (fCodePointIndex>=aUntilCodePoint)) or
-           ((aUntilLine>=0) and (fCountLines>=aUntilLine)) then begin
-         DoStop:=2; // for as fallback for possible two-single-char-class-codepoint-width-sized newline sequences
-        end;
-       end;
-       fLastCodeUnit:=fCodeUnit;
-       fUTF8DFAState:=TpvUTF8DFA.StateAccept;
-       if DoStop>0 then begin
-        dec(DoStop);
-        if DoStop=0 then begin
-         DoStop:=-1;
-        end;
-       end;
-      end;
-     end;
-     fUTF8DFAState:=TpvUTF8DFA.StateTransitions[fUTF8DFAState+fUTF8DFACharClass];
-     if DoStop<0 then begin
-      break;
-     end;
-    end;}
 
     if DoStop<0 then begin
      break;
