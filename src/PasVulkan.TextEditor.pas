@@ -283,6 +283,7 @@ type TpvUTF8DFA=class
        procedure Update;
        procedure FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
        procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
+       procedure InsertString(const aString:TpvUTF8String;const aOverwrite:boolean);
        procedure Backspace;
        procedure Delete;
        procedure Enter(const aOverwrite:boolean);
@@ -1911,6 +1912,21 @@ begin
  fStringRopeVisualLineMap.Update(-1,-1);}
 end;
 
+procedure TpvAbstractTextEditor.InsertString(const aString:TpvUTF8String;const aOverwrite:boolean);
+var CountCodePoints:TpvSizeInt;
+begin
+ CountCodePoints:=TpvUTF8StringRope.GetCountCodePoints(@aString[1],length(aString));
+ fStringRopeLineMap.Truncate(fCodePointIndex,-1);
+ fStringRopeVisualLineMap.Truncate(fCodePointIndex,-1);
+ if aOverwrite and (fCodePointIndex<fStringRope.fCountCodePoints) then begin
+  fStringRope.Delete(fCodePointIndex,CountCodePoints);
+ end;
+ fStringRope.Insert(fCodePointIndex,aString);
+ inc(fCodePointIndex,CountCodePoints);
+{fStringRopeLineMap.Update(-1,-1);
+ fStringRopeVisualLineMap.Update(-1,-1);}
+end;
+
 procedure TpvAbstractTextEditor.Backspace;
 var Count:TpvSizeInt;
     Temporary:TpvUTF8String;
@@ -1967,8 +1983,12 @@ begin
 {$ifdef Unix}
  InsertCodePoint(10,aOverwrite);
 {$else}
-//InsertCodePoint(13,aOverwrite);
- InsertCodePoint(10,aOverwrite);
+ if aOverwrite then begin
+  MoveDown;
+  MoveToLineBegin;
+ end else begin
+  InsertString(TpvUTF8String(#13#10),aOverwrite);
+ end;
 {$endif}
 end;
 
