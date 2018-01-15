@@ -250,14 +250,7 @@ type TpvUTF8DFA=class
        fCountVisibleVisualCodePointsSinceNewLine:TpvSizeInt;
        fCodePointIndex:TpvSizeInt;
        fLastWasPossibleNewLineTwoCharSequence:boolean;
-       fCodeUnit:AnsiChar;
-       fCodePoint:TpvUInt32;
        fLastCodePoint:TpvUInt32;
-       fNodePositionLinks:TpvUTF8StringRope.TNode.TNodePositionLinks;
-       fNode:TpvUTF8StringRope.TNode;
-       fNodeCodeUnitIndex:TpvSizeInt;
-       fUTF8DFACharClass:TpvUInt8;
-       fUTF8DFAState:TpvUInt8;
        procedure SetLineWrap(const aLineWrap:TpvSizeInt);
        procedure SetTabWidth(const aTabWidth:TpvSizeInt);
        procedure AddLine(const aCodePointIndex:TpvSizeInt);
@@ -1236,9 +1229,7 @@ begin
  fCodePointIndex:=0;
  fCountVisibleVisualCodePointsSinceNewLine:=0;
  fLastWasPossibleNewLineTwoCharSequence:=false;
- fCodePoint:=0;
  fLastCodePoint:=0;
- fUTF8DFAState:=TpvUTF8DFA.StateAccept;
 end;
 
 procedure TpvUTF8StringRopeLineMap.Truncate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
@@ -1287,9 +1278,7 @@ begin
     fCountLines:=NewCountLines;
     fCountVisibleVisualCodePointsSinceNewLine:=0;
     fLastWasPossibleNewLineTwoCharSequence:=false;
-    fCodePoint:=0;
     fLastCodePoint:=0;
-    fUTF8DFAState:=TpvUTF8DFA.StateAccept;
    end else begin
     Reset;
    end;
@@ -1299,136 +1288,79 @@ begin
 end;
 
 procedure TpvUTF8StringRopeLineMap.Update(const aUntilCodePoint,aUntilLine:TpvSizeInt);
-var DoStop:TpvInt32;
+var CodePoint:TpvUInt32;
+    DoStop:TpvInt32;
     DoNewLine,DoTab:boolean;
 begin
+
  if (fCodePointIndex<fStringRope.fCountCodePoints) and
     ((aUntilCodePoint<0) or (fCodePointIndex<aUntilCodePoint)) and
     ((aUntilLine<0) or (fCountLines<aUntilLine)) then begin
 
-  if fCodePointIndex=0 then begin
-   fNode:=fStringRope.fHead;
-   fNodeCodeUnitIndex:=0;
-  end else begin
-   fNode:=fStringRope.FindNodePositionAtCodePoint(fCodePointIndex,fNodePositionLinks);
-   if assigned(fNode) then begin
-    fNodeCodeUnitIndex:=TpvUTF8StringRope.GetCountCodeUnits(@fNode.fData[0],fNodePositionLinks[0].fSkipSize);
-   end else begin
-    fNodeCodeUnitIndex:=0;
-   end;
-  end;
-
   DoStop:=0;
-  if assigned(fNode) then begin
 
-   repeat
+  for CodePoint in fStringRope.GetCodePointEnumeratorSource(fCodePointIndex,-1) do begin
 
-    if fNodeCodeUnitIndex>=fNode.fCountCodeUnits then begin
+   inc(fCodePointIndex);
 
-     fNode:=fNode.fLinks[0].fNode;
+   DoTab:=false;
 
-     fNodeCodeUnitIndex:=0;
+   DoNewLine:=false;
 
-     if assigned(fNode) then begin
-      continue;
-     end else begin
-      break;
-     end;
-
-    end else begin
-
-     fCodeUnit:=fNode.fData[fNodeCodeUnitIndex];
-     inc(fNodeCodeUnitIndex);
-
-     fUTF8DFACharClass:=TpvUTF8DFA.StateCharClasses[fCodeUnit];
-
-     case fUTF8DFAState of
-      TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
-       fCodePoint:=ord(fCodeUnit) and ($ff shr fUTF8DFACharClass);
-      end;
-      else begin
-       fCodePoint:=(fCodePoint shl 6) or (ord(fCodeUnit) and $3f);
-      end;
-     end;
-
-     fUTF8DFAState:=TpvUTF8DFA.StateTransitions[fUTF8DFAState+fUTF8DFACharClass];
-
-     if fUTF8DFAState<=TpvUTF8DFA.StateError then begin
-
-      if fUTF8DFAState<>TpvUTF8DFA.StateAccept then begin
-       fCodePoint:=$fffd;
-      end;
-
-      inc(fCodePointIndex);
-
-      DoTab:=false;
-
-      DoNewLine:=false;
-
-      case fCodePoint of
-       $09:begin
-        DoTab:=true;
-        fLastWasPossibleNewLineTwoCharSequence:=false;
-       end;
-       $0a,$0d:begin
-        if fLastWasPossibleNewLineTwoCharSequence and
-           (((fCodePoint=$0a) and (fLastCodePoint=$0d)) or
-            ((fCodePoint=$0d) and (fLastCodePoint=$0a))) then begin
-         if fCountLines>0 then begin
-          fLines[fCountLines-1]:=fCodePointIndex;
-         end;
-         fLastWasPossibleNewLineTwoCharSequence:=false;
-        end else begin
-         DoNewLine:=true;
-         fLastWasPossibleNewLineTwoCharSequence:=true;
-        end;
-       end;
-       else begin
-        fLastWasPossibleNewLineTwoCharSequence:=false;
-       end;
-      end;
-
-      if fLineWrap>0 then begin
-       if (fCodePoint<>10) and (fCodePoint<>13) then begin
-        if DoTab and (fTabWidth>0) then begin
-         inc(fCountVisibleVisualCodePointsSinceNewLine,fTabWidth-(fCountVisibleVisualCodePointsSinceNewLine mod fTabWidth));
-        end else begin
-         inc(fCountVisibleVisualCodePointsSinceNewLine);
-        end;
-       end;
-       if fCountVisibleVisualCodePointsSinceNewLine>=fLineWrap then begin
-        fCountVisibleVisualCodePointsSinceNewLine:=0;
-        DoNewLine:=true;
-       end;
-      end;
-
-      if DoNewLine then begin
-       AddLine(fCodePointIndex);
-       fCountVisibleVisualCodePointsSinceNewLine:=0;
-       if ((aUntilCodePoint>=0) and (fCodePointIndex>=aUntilCodePoint)) or
-          ((aUntilLine>=0) and (fCountLines>=aUntilLine)) then begin
-        DoStop:=2; // for as fallback for possible two-single-char-class-codepoint-width-sized newline sequences
-       end;
-      end;
-
-      fLastCodePoint:=fCodePoint;
-
-      if DoStop>0 then begin
-       dec(DoStop);
-       if DoStop=0 then begin
-        DoStop:=-1;
-       end;
-      end;
-
-     end;
-
+   case CodePoint of
+    $09:begin
+     DoTab:=true;
+     fLastWasPossibleNewLineTwoCharSequence:=false;
     end;
+    $0a,$0d:begin
+     if fLastWasPossibleNewLineTwoCharSequence and
+        (((CodePoint=$0a) and (fLastCodePoint=$0d)) or
+         ((CodePoint=$0d) and (fLastCodePoint=$0a))) then begin
+      if fCountLines>0 then begin
+       fLines[fCountLines-1]:=fCodePointIndex;
+      end;
+      fLastWasPossibleNewLineTwoCharSequence:=false;
+     end else begin
+      DoNewLine:=true;
+      fLastWasPossibleNewLineTwoCharSequence:=true;
+     end;
+    end;
+    else begin
+     fLastWasPossibleNewLineTwoCharSequence:=false;
+    end;
+   end;
 
-    if DoStop<0 then begin
+   if fLineWrap>0 then begin
+    if (CodePoint<>10) and (CodePoint<>13) then begin
+     if DoTab and (fTabWidth>0) then begin
+      inc(fCountVisibleVisualCodePointsSinceNewLine,fTabWidth-(fCountVisibleVisualCodePointsSinceNewLine mod fTabWidth));
+     end else begin
+      inc(fCountVisibleVisualCodePointsSinceNewLine);
+     end;
+    end;
+    if fCountVisibleVisualCodePointsSinceNewLine>=fLineWrap then begin
+     fCountVisibleVisualCodePointsSinceNewLine:=0;
+     DoNewLine:=true;
+    end;
+   end;
+
+   if DoNewLine then begin
+    AddLine(fCodePointIndex);
+    fCountVisibleVisualCodePointsSinceNewLine:=0;
+    if ((aUntilCodePoint>=0) and (fCodePointIndex>=aUntilCodePoint)) or
+       ((aUntilLine>=0) and (fCountLines>=aUntilLine)) then begin
+     DoStop:=2; // for as fallback for possible two-single-char-class-codepoint-width-sized newline sequences
+    end;
+   end;
+
+   fLastCodePoint:=CodePoint;
+
+   if DoStop>0 then begin
+    dec(DoStop);
+    if DoStop=0 then begin
      break;
     end;
-
-   until false;
+   end;
 
   end;
 
