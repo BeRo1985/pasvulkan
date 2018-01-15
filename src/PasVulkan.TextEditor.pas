@@ -242,7 +242,7 @@ type TpvUTF8DFA=class
             PLine=^TLine;
             TLines=array of TLine;
       private
-       fRope:TpvUTF8StringRope;
+       fStringRope:TpvUTF8StringRope;
        fLines:TLines;
        fCountLines:TpvSizeInt;
        fLineWrap:TpvSizeInt;
@@ -1185,7 +1185,7 @@ end;
 constructor TpvUTF8StringRopeLineMap.Create(const aRope:TpvUTF8StringRope);
 begin
  inherited Create;
- fRope:=aRope;
+ fStringRope:=aRope;
  fLines:=nil;
  fCountLines:=0;
  fLineWrap:=0;
@@ -1302,15 +1302,15 @@ procedure TpvUTF8StringRopeLineMap.Update(const aUntilCodePoint,aUntilLine:TpvSi
 var DoStop:TpvInt32;
     DoNewLine,DoTab:boolean;
 begin
- if (fCodePointIndex<fRope.fCountCodePoints) and
+ if (fCodePointIndex<fStringRope.fCountCodePoints) and
     ((aUntilCodePoint<0) or (fCodePointIndex<aUntilCodePoint)) and
     ((aUntilLine<0) or (fCountLines<aUntilLine)) then begin
 
   if fCodePointIndex=0 then begin
-   fNode:=fRope.fHead;
+   fNode:=fStringRope.fHead;
    fNodeCodeUnitIndex:=0;
   end else begin
-   fNode:=fRope.FindNodePositionAtCodePoint(fCodePointIndex,fNodePositionLinks);
+   fNode:=fStringRope.FindNodePositionAtCodePoint(fCodePointIndex,fNodePositionLinks);
    if assigned(fNode) then begin
     fNodeCodeUnitIndex:=TpvUTF8StringRope.GetCountCodeUnits(@fNode.fData[0],fNodePositionLinks[0].fSkipSize);
    end else begin
@@ -1439,7 +1439,7 @@ end;
 function TpvUTF8StringRopeLineMap.GetLineIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt):TpvSizeInt;
 var MinIndex,MaxIndex,MidIndex:TpvSizeInt;
 begin
- if aCodePointIndex<=fRope.CountCodePoints then begin
+ if aCodePointIndex<=fStringRope.CountCodePoints then begin
   Update(aCodePointIndex+1,-1);
   MinIndex:=0;
   MaxIndex:=fCountLines-1;
@@ -1491,7 +1491,7 @@ begin
 
    StopCodePointIndex:=GetCodePointIndexFromNextLineIndexOrTextEnd(aLineIndex);
 
-   if fRope.GetNodeAndOffsetFromCodePointIndex(StartCodePointIndex,Node,NodeCodeUnitIndex) and
+   if fStringRope.GetNodeAndOffsetFromCodePointIndex(StartCodePointIndex,Node,NodeCodeUnitIndex) and
       assigned(Node) then begin
 
     CodePoint:=0;
@@ -1587,7 +1587,7 @@ begin
 
     until false;
 
-    if CurrentCodePointIndex=fRope.CountCodePoints then begin
+    if CurrentCodePointIndex=fStringRope.CountCodePoints then begin
      inc(aColumnIndex);
     end;
 
@@ -1616,7 +1616,7 @@ begin
   if (aLineIndex+1)<fCountLines then begin
    result:=fLines[aLineIndex+1];
   end else begin
-   result:=fRope.CountCodePoints;
+   result:=fStringRope.CountCodePoints;
   end;
  end else begin
   result:=-1;
@@ -1625,11 +1625,8 @@ end;
 
 function TpvUTF8StringRopeLineMap.GetCodePointIndexFromLineIndexAndColumnIndex(const aLineIndex,aColumnIndex:TpvSizeInt):TpvSizeInt;
 var StartCodePointIndex,StopCodePointIndex,CurrentCodePointIndex,
-    NodeCodeUnitIndex,StepWidth,CurrentColumn:TpvSizeInt;
-    CodeUnit:AnsiChar;
-    UTF8DFAState,UTF8DFACharClass:TpvUInt8;
+    StepWidth,CurrentColumn:TpvSizeInt;
     CodePoint,LastCodePoint:TpvUInt32;
-    Node:TpvUTF8StringRope.TNode;
     LastWasPossibleNewLineTwoCharSequence:boolean;
 begin
 
@@ -1644,108 +1641,60 @@ begin
   if (aLineIndex+1)<fCountLines then begin
    StopCodePointIndex:=fLines[aLineIndex+1];
   end else begin
-   StopCodePointIndex:=fRope.CountCodePoints;
+   StopCodePointIndex:=fStringRope.CountCodePoints;
   end;
 
-  if fRope.GetNodeAndOffsetFromCodePointIndex(StartCodePointIndex,Node,NodeCodeUnitIndex) and
-     assigned(Node) then begin
+  CurrentColumn:=0;
 
-   CodePoint:=0;
+  CurrentCodePointIndex:=StartCodePointIndex;
 
-   CurrentColumn:=0;
+  LastCodePoint:=0;
 
-   CurrentCodePointIndex:=StartCodePointIndex;
+  LastWasPossibleNewLineTwoCharSequence:=false;
 
-   UTF8DFAState:=TpvUTF8DFA.StateAccept;
+  if StartCodePointIndex<StopCodePointIndex then begin
 
-   LastCodePoint:=0;
+   for CodePoint in fStringRope.GetCodePointEnumeratorSource(StartCodePointIndex,StopCodePointIndex) do begin
 
-   LastWasPossibleNewLineTwoCharSequence:=false;
+    StepWidth:=1;
 
-   repeat
-
-    if NodeCodeUnitIndex>=Node.fCountCodeUnits then begin
-
-     Node:=Node.fLinks[0].fNode;
-     NodeCodeUnitIndex:=0;
-
-     if assigned(Node) then begin
-      continue;
-     end else begin
-      break;
+    case CodePoint of
+     9:begin
+      StepWidth:=Max(1,(fTabWidth-(CurrentColumn mod fTabWidth)));
+      LastWasPossibleNewLineTwoCharSequence:=false;
      end;
-
-    end else begin
-
-     CodeUnit:=Node.fData[NodeCodeUnitIndex];
-     inc(NodeCodeUnitIndex);
-
-     UTF8DFACharClass:=TpvUTF8DFA.StateCharClasses[CodeUnit];
-
-     case UTF8DFAState of
-      TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
-       CodePoint:=ord(CodeUnit) and ($ff shr UTF8DFACharClass);
-      end;
-      else begin
-       CodePoint:=(CodePoint shl 6) or (ord(CodeUnit) and $3f);
+     $0a,$0d:begin
+      if LastWasPossibleNewLineTwoCharSequence and
+         (((CodePoint=$0a) and (LastCodePoint=$0d)) or
+          ((CodePoint=$0d) and (LastCodePoint=$0a))) then begin
+       StepWidth:=0;
+       LastWasPossibleNewLineTwoCharSequence:=false;
+      end else begin
+       LastWasPossibleNewLineTwoCharSequence:=true;
       end;
      end;
-
-     UTF8DFAState:=TpvUTF8DFA.StateTransitions[UTF8DFAState+UTF8DFACharClass];
-
-     if UTF8DFAState<=TpvUTF8DFA.StateError then begin
-
-      if UTF8DFAState<>TpvUTF8DFA.StateAccept then begin
-       CodePoint:=$fffd;
-      end;
-
-      StepWidth:=1;
-
-      case CodePoint of
-       9:begin
-        StepWidth:=Max(1,(fTabWidth-(CurrentColumn mod fTabWidth)));
-        LastWasPossibleNewLineTwoCharSequence:=false;
-       end;
-       $0a,$0d:begin
-        if LastWasPossibleNewLineTwoCharSequence and
-           (((CodePoint=$0a) and (LastCodePoint=$0d)) or
-            ((CodePoint=$0d) and (LastCodePoint=$0a))) then begin
-         StepWidth:=0;
-         LastWasPossibleNewLineTwoCharSequence:=false;
-        end else begin
-         LastWasPossibleNewLineTwoCharSequence:=true;
-        end;
-       end;
-       else begin
-        LastWasPossibleNewLineTwoCharSequence:=false;
-       end;
-      end;
-
-      LastCodePoint:=CodePoint;
-
-      result:=CurrentCodePointIndex;
-
-      if LastWasPossibleNewLineTwoCharSequence or
-         (CurrentColumn>=aColumnIndex) then begin
-       break;
-      end;
-
-      inc(CurrentColumn,StepWidth);
-
-      inc(CurrentCodePointIndex);
-
-      if (CurrentCodePointIndex>=StopCodePointIndex) then begin
-       break;
-      end;
-
+     else begin
+      LastWasPossibleNewLineTwoCharSequence:=false;
      end;
-
     end;
 
-   until false;
+    LastCodePoint:=CodePoint;
 
-   if (CurrentColumn<=aColumnIndex) and (CurrentCodePointIndex=fRope.CountCodePoints) then begin
-    result:=fRope.CountCodePoints;
+    result:=CurrentCodePointIndex;
+
+    if LastWasPossibleNewLineTwoCharSequence or
+       (CurrentColumn>=aColumnIndex) then begin
+     break;
+    end;
+
+    inc(CurrentColumn,StepWidth);
+
+    inc(CurrentCodePointIndex);
+
+   end;
+
+   if (CurrentColumn<=aColumnIndex) and (CurrentCodePointIndex=fStringRope.CountCodePoints) then begin
+    result:=fStringRope.CountCodePoints;
    end;
 
   end;
