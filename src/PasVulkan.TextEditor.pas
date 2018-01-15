@@ -1468,6 +1468,10 @@ begin
 
     until false;
 
+    if CurrentCodePointIndex=fRope.CountCodePoints then begin
+     inc(aColumnIndex);
+    end;
+
    end;
 
   end;
@@ -1621,7 +1625,7 @@ begin
 
       inc(CurrentCodePointIndex);
 
-      if CurrentCodePointIndex>=StopCodePointIndex then begin
+      if (CurrentCodePointIndex>=StopCodePointIndex) then begin
        break;
       end;
 
@@ -1630,6 +1634,10 @@ begin
     end;
 
    until false;
+
+   if (CurrentColumn<=aColumnIndex) and (CurrentCodePointIndex=fRope.CountCodePoints) then begin
+    result:=fRope.CountCodePoints;
+   end;
 
   end;
 
@@ -2026,7 +2034,7 @@ var Temporary:TpvUTF8String;
 begin
  if fCodePointIndex>0 then begin
   Count:=1;
-  if fCodePointIndex>2 then begin
+  if fCodePointIndex>1 then begin
    Temporary:=fStringRope.Extract(fCodePointIndex-2,2);
    if (Temporary=TpvUTF8String(#13#10)) or (Temporary=TpvUTF8String(#10#13)) then begin
     Count:=2;
@@ -2042,7 +2050,7 @@ var Temporary:TpvUTF8String;
 begin
  if fCodePointIndex<fStringRope.CountCodePoints then begin
   Count:=1;
-  if (fCodePointIndex+2)<fStringRope.CountCodePoints then begin
+  if (fCodePointIndex+1)<fStringRope.CountCodePoints then begin
    Temporary:=fStringRope.Extract(fCodePointIndex,2);
    if (Temporary=TpvUTF8String(#13#10)) or (Temporary=TpvUTF8String(#10#13)) then begin
     Count:=2;
@@ -2059,7 +2067,7 @@ begin
   LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
   fCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
  end else if (fCodePointIndex>0) and (fCodePointIndex>=fStringRope.CountCodePoints) then begin
-  LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fStringRope.CountCodePoints-1);
+  LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fStringRope.CountCodePoints);
   fCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
  end;
 end;
