@@ -1365,7 +1365,7 @@ begin
    end else begin
     Node:=fRope.FindNodePositionAtCodePoint(StartCodePointIndex,NodePositionLinks);
     if assigned(Node) then begin
-     NodeCodeUnitIndex:=TpvUTF8StringRope.GetCountCodeUnits(@Node.fData[0],fNodePositionLinks[0].fSkipSize);
+     NodeCodeUnitIndex:=TpvUTF8StringRope.GetCountCodeUnits(@Node.fData[0],NodePositionLinks[0].fSkipSize);
     end else begin
      NodeCodeUnitIndex:=0;
     end;
@@ -1517,7 +1517,7 @@ begin
   end else begin
    Node:=fRope.FindNodePositionAtCodePoint(StartCodePointIndex,NodePositionLinks);
    if assigned(Node) then begin
-    NodeCodeUnitIndex:=TpvUTF8StringRope.GetCountCodeUnits(@Node.fData[0],fNodePositionLinks[0].fSkipSize);
+    NodeCodeUnitIndex:=TpvUTF8StringRope.GetCountCodeUnits(@Node.fData[0],NodePositionLinks[0].fSkipSize);
    end else begin
     NodeCodeUnitIndex:=0;
    end;
