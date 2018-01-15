@@ -164,6 +164,23 @@ type TpvUTF8DFA=class
               function MoveNext:boolean; inline;
               property Current:TNode read GetCurrent;
             end;
+            TCodePointEnumerator=record
+             private
+              fStringRope:TpvUTF8StringRope;
+              fFirst:boolean;
+              fNode:TNode;
+              fNodeCodeUnitIndex:TpvSizeInt;
+              fCodePointIndex:TpvSizeInt;
+              fStopCodePointIndex:TpvSizeInt;
+              fCodePoint:TpvUInt32;
+              fUTF8DFACharClass:TpvUInt8;
+              fUTF8DFAState:TpvUInt8;
+              function GetCurrent:TpvUInt32;
+             public
+              constructor Create(const aStringRope:TpvUTF8StringRope;const aStartCodePointIndex:TpvSizeInt=0;const aStopCodePointIndex:TpvSizeInt=-1);
+              function MoveNext:boolean; inline;
+              property Current:TpvUInt32 read GetCurrent;
+            end;
             TRandomGenerator=record
              private
               fState:TpvUInt64;
@@ -227,11 +244,11 @@ type TpvUTF8DFA=class
        fCodeUnit:AnsiChar;
        fCodePoint:TpvUInt32;
        fLastCodePoint:TpvUInt32;
+       fNodePositionLinks:TpvUTF8StringRope.TNode.TNodePositionLinks;
        fNode:TpvUTF8StringRope.TNode;
        fNodeCodeUnitIndex:TpvSizeInt;
        fUTF8DFACharClass:TpvUInt8;
        fUTF8DFAState:TpvUInt8;
-       fNodePositionLinks:TpvUTF8StringRope.TNode.TNodePositionLinks;
        procedure SetLineWrap(const aLineWrap:TpvSizeInt);
        procedure SetTabWidth(const aTabWidth:TpvSizeInt);
        procedure AddLine(const aCodePointIndex:TpvSizeInt);
@@ -353,6 +370,64 @@ begin
    fNode:=fNode.fLinks[0].fNode;
    result:=assigned(fNode);
   end;
+ end;
+end;
+
+constructor TpvUTF8StringRope.TCodePointEnumerator.Create(const aStringRope:TpvUTF8StringRope;const aStartCodePointIndex:TpvSizeInt=0;const aStopCodePointIndex:TpvSizeInt=-1);
+begin
+ fStringRope:=aStringRope;
+ fFirst:=true;
+ fStringRope.GetNodeAndOffsetFromCodePointIndex(aStartCodePointIndex,fNode,fNodeCodeUnitIndex);
+ fCodePointIndex:=aStartCodePointIndex;
+ fStopCodePointIndex:=aStopCodePointIndex;
+ fUTF8DFAState:=TpvUTF8DFA.StateAccept;
+ fCodePoint:=0;
+end;
+
+function TpvUTF8StringRope.TCodePointEnumerator.GetCurrent:TpvUInt32;
+begin
+ result:=fCodePoint;
+end;
+
+function TpvUTF8StringRope.TCodePointEnumerator.MoveNext:boolean;
+var CodeUnit:AnsiChar;
+begin
+ result:=false;
+ if assigned(fNode) and
+    ((fStopCodePointIndex<0) or
+     (fCodePointIndex<fStopCodePointIndex)) then begin
+  repeat
+   if fNodeCodeUnitIndex>=fNode.fCountCodeUnits then begin
+    fNode:=fNode.fLinks[0].fNode;
+    fNodeCodeUnitIndex:=0;
+    if assigned(fNode) then begin
+     continue;
+    end else begin
+     break;
+    end;
+   end else begin
+    CodeUnit:=fNode.fData[fNodeCodeUnitIndex];
+    inc(fNodeCodeUnitIndex);
+    fUTF8DFACharClass:=TpvUTF8DFA.StateCharClasses[CodeUnit];
+    case fUTF8DFAState of
+     TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
+      fCodePoint:=ord(CodeUnit) and ($ff shr fUTF8DFACharClass);
+     end;
+     else begin
+      fCodePoint:=(fCodePoint shl 6) or (ord(CodeUnit) and $3f);
+     end;
+    end;
+    fUTF8DFAState:=TpvUTF8DFA.StateTransitions[fUTF8DFAState+fUTF8DFACharClass];
+    if fUTF8DFAState<=TpvUTF8DFA.StateError then begin
+     if fUTF8DFAState<>TpvUTF8DFA.StateAccept then begin
+      fCodePoint:=$fffd;
+     end;
+     inc(fCodePointIndex);
+     result:=true;
+     break;
+    end;
+   end;
+  until false;
  end;
 end;
 
