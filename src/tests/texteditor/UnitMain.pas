@@ -35,13 +35,13 @@ procedure DisplayKeys;
  begin
   Console.TextBackground(TConsole.TColor.Black);
   Console.TextColor(TConsole.TColor.LightGray);
-  Console.Write(IntToStr(aFKeyNr));
+  Console.Write(UTF8String(IntToStr(aFKeyNr)));
   Console.TextBackground(TConsole.TColor.Cyan);
   Console.TextColor(TConsole.TColor.Black);
-  Console.Write(aName);
+  Console.Write(UTF8String(aName));
   Console.TextBackground(TConsole.TColor.Black);
   Console.TextColor(TConsole.TColor.LightGray);
-  Console.Write(' ');
+  Console.Write(UTF8String(' '));
  end;
 begin
  Console.GotoXY(1,Console.Height);
@@ -68,7 +68,7 @@ begin
  Console.TextColor(TConsole.TColor.LightGray);
  for Index:=2 to Console.Height-1 do begin
   Console.GotoXY(1,Index);
-  Console.Write(RepChar(#32,Console.Width));
+  Console.Write(UTF8String(RepChar(#32,Console.Width)));
  end;
  Console.TextBackground(TConsole.TColor.Black);
  Console.TextColor(TConsole.TColor.LightGray);
@@ -88,7 +88,7 @@ begin
  Console.TextBackground(TConsole.TColor.Cyan);
  Console.TextColor(TConsole.TColor.Black);
  Console.GotoXY(1,1);
- Console.Write(RepChar(#32,Console.Width));
+ Console.Write(UTF8String(RepChar(#32,Console.Width)));
 
  Console.GotoXY(2,1);
  Console.Write('PasVulkan Test Text Editor');

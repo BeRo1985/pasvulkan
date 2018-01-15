@@ -135,7 +135,7 @@ type TpvUTF8DFA=class
               type TNodeLink=record
                     private
                      fNode:TNode;
-                     fSkipSize:TpvSizeUInt;
+                     fSkipSize:TpvSizeInt;
                    end;
                    PNodeLink=^TNodeLink;
                    TNodeLinks=array of TNodeLink; // index 0 is linked-list-next
@@ -143,7 +143,7 @@ type TpvUTF8DFA=class
                    TData=array[0..StringSize-1] of AnsiChar;
              private
               fData:TData;
-              fCountCodeUnits:TpvSizeUInt;
+              fCountCodeUnits:TpvSizeInt;
               fHeight:TpvInt32;
               fLinks:TNodeLinks;
               function GetData:TpvUTF8String;
@@ -168,83 +168,84 @@ type TpvUTF8DFA=class
              private
               fState:TpvUInt64;
               fIncrement:TpvUInt64;
+             public
               constructor Create(const aSeed:TpvUInt64);
               function GetUInt32:TpvUInt32;
               function GetUInt64:TpvUInt64;
             end;
       private
-       fCountCodePoints:TpvSizeUInt;
-       fCountCodeUnits:TpvSizeUInt;
+       fCountCodePoints:TpvSizeInt;
+       fCountCodeUnits:TpvSizeInt;
        fHead:TNode;
        fRandomGenerator:TRandomGenerator;
        function GetText:TpvUTF8String;
        procedure SetText(const aString:TpvUTF8String);
        class function FindFirstSetBit(aValue:TpvUInt64):TpvUInt32; {$ifndef fpc}{$ifdef cpu386}stdcall;{$else}register;{$endif}{$endif} static;
        function GetRandomHeight:TpvInt32;
-       class function GetCountCodeUnits(const aString:PAnsiChar;const aCountCodePoints:TpvSizeUInt):TpvSizeUInt; static;
-       class function GetCountCodePoints(const aString:PAnsiChar;const aCountCodeUnits:TpvSizeUInt):TpvSizeUInt; static;
-       class function GetCountCodeUnitsAndCheck(const aString:TpvUTF8String):TpvSizeUInt; static;
-       function FindNodePositionAtCodePoint(const aCodePointIndex:TpvSizeUInt;out aNodePositionLinks:TNode.TNodePositionLinks):TNode;
+       class function GetCountCodeUnits(const aString:PAnsiChar;const aCountCodePoints:TpvSizeInt):TpvSizeInt; static;
+       class function GetCountCodePoints(const aString:PAnsiChar;const aCountCodeUnits:TpvSizeInt):TpvSizeInt; static;
+       class function GetCountCodeUnitsAndCheck(const aString:TpvUTF8String):TpvSizeInt; static;
+       function FindNodePositionAtCodePoint(const aCodePointIndex:TpvSizeInt;out aNodePositionLinks:TNode.TNodePositionLinks):TNode;
        procedure UpdateOffsetList(var aNodePositionLinks:TNode.TNodePositionLinks;const aCountCodePoints:TpvSizeInt);
-       procedure InsertAt(var aNodePositionLinks:TNode.TNodePositionLinks;const aString:PAnsiChar;const aCountCodeUnits,aCountCodePoints:TpvSizeUInt);
+       procedure InsertAt(var aNodePositionLinks:TNode.TNodePositionLinks;const aString:PAnsiChar;const aCountCodeUnits,aCountCodePoints:TpvSizeInt);
        procedure InsertAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aString:TpvUTF8String);
-       procedure DeleteAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aCountCodePoints:TpvSizeUInt);
-       function ExtractAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aCountCodePoints:TpvSizeUInt):TpvUTF8String;
+       procedure DeleteAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aCountCodePoints:TpvSizeInt);
+       function ExtractAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aCountCodePoints:TpvSizeInt):TpvUTF8String;
       public
        constructor Create; reintroduce; overload;
        constructor Create(const aString:TpvUTF8String); reintroduce; overload;
        constructor Create(const aFrom:TpvUTF8StringRope); reintroduce; overload;
        destructor Destroy; override;
        procedure Clear;
-       procedure Insert(const aCodePointIndex:TpvSizeUInt;const aString:TpvUTF8String);
-       procedure Delete(const aCodePointIndex,aCountCodePoints:TpvSizeUInt);
-       function Extract(const aCodePointIndex,aCountCodePoints:TpvSizeUInt):TpvUTF8String;
-       function GetCodePoint(const aCodePointIndex:TpvSizeUInt):TpvUInt32;
+       procedure Insert(const aCodePointIndex:TpvSizeInt;const aString:TpvUTF8String);
+       procedure Delete(const aCodePointIndex,aCountCodePoints:TpvSizeInt);
+       function Extract(const aCodePointIndex,aCountCodePoints:TpvSizeInt):TpvUTF8String;
+       function GetCodePoint(const aCodePointIndex:TpvSizeInt):TpvUInt32;
        function GetEnumerator:TNodeEnumerator;
        procedure Check;
        procedure Dump;
-       property CountCodePoints:TpvSizeUInt read fCountCodePoints;
-       property CountCodeUnits:TpvSizeUInt read fCountCodeUnits;
+       property CountCodePoints:TpvSizeInt read fCountCodePoints;
+       property CountCodeUnits:TpvSizeInt read fCountCodeUnits;
        property Text:TpvUTF8String read GetText write SetText;
      end;
 
      TpvUTF8StringRopeLineMap=class
       public
-       type TLine=TpvSizeUInt;
+       type TLine=TpvSizeInt;
             PLine=^TLine;
             TLines=array of TLine;
       private
        fRope:TpvUTF8StringRope;
        fLines:TLines;
-       fCountLines:TpvSizeUInt;
-       fLineWrap:TpvSizeUInt;
-       fTabWidth:TpvSizeUInt;
-       fCountVisibleVisualCodePointsSinceNewLine:TpvSizeUInt;
-       fCodePointIndex:TpvSizeUInt;
+       fCountLines:TpvSizeInt;
+       fLineWrap:TpvSizeInt;
+       fTabWidth:TpvSizeInt;
+       fCountVisibleVisualCodePointsSinceNewLine:TpvSizeInt;
+       fCodePointIndex:TpvSizeInt;
        fLastWasPossibleNewLineTwoCharSequence:boolean;
        fCodeUnit:AnsiChar;
        fLastCodeUnit:AnsiChar;
        fNode:TpvUTF8StringRope.TNode;
-       fNodeCodeUnitIndex:TpvSizeUInt;
+       fNodeCodeUnitIndex:TpvSizeInt;
        fUTF8DFACharClass:TpvUInt8;
        fUTF8DFAState:TpvUInt8;
        fNodePositionLinks:TpvUTF8StringRope.TNode.TNodePositionLinks;
-       procedure SetLineWrap(const aLineWrap:TpvSizeUInt);
-       procedure SetTabWidth(const aTabWidth:TpvSizeUInt);
-       procedure AddLine(const aCodePointIndex:TpvSizeUInt);
+       procedure SetLineWrap(const aLineWrap:TpvSizeInt);
+       procedure SetTabWidth(const aTabWidth:TpvSizeInt);
+       procedure AddLine(const aCodePointIndex:TpvSizeInt);
       public
        constructor Create(const aRope:TpvUTF8StringRope); reintroduce;
        destructor Destroy; override;
        procedure Reset;
-       procedure Truncate(const aUntilCodePoint,aUntilLine:TpvSizeUInt);
-       procedure Update(const aUntilCodePoint,aUntilLine:TpvSizeUInt);
-       function GetLineIndexFromCodePointIndex(const aCodePointIndex:TpvSizeUInt):TpvSizeInt;
-       function GetStartCodePointIndexFromLineIndex(const aLineIndex:TpvSizeUInt):TpvSizeInt;
-       function GetStopCodePointIndexFromLineIndex(const aLineIndex:TpvSizeUInt):TpvSizeInt;
+       procedure Truncate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
+       procedure Update(const aUntilCodePoint,aUntilLine:TpvSizeInt);
+       function GetLineIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt):TpvSizeInt;
+       function GetStartCodePointIndexFromLineIndex(const aLineIndex:TpvSizeInt):TpvSizeInt;
+       function GetStopCodePointIndexFromLineIndex(const aLineIndex:TpvSizeInt):TpvSizeInt;
       published
-       property CountLines:TpvSizeUInt read fCountLines;
-       property LineWrap:TpvSizeUInt read fLineWrap write SetLineWrap;
-       property TabWidth:TpvSizeUInt read fTabWidth write SetTabWidth;
+       property CountLines:TpvSizeInt read fCountLines;
+       property LineWrap:TpvSizeInt read fLineWrap write SetLineWrap;
+       property TabWidth:TpvSizeInt read fTabWidth write SetTabWidth;
      end;
 
      TpvAbstractTextEditor=class
@@ -257,22 +258,22 @@ type TpvUTF8DFA=class
             PDrawBufferItem=^TDrawBufferItem;
             TDrawBufferItems=array of TDrawBufferItem;
       private
-       fVisibleAreaWidth:TpvSizeUInt;
-       fVisibleAreaHeight:TpvSizeUInt;
-       fNonScrollVisibleAreaWidth:TpvSizeUInt;
-       fNonScrollVisibleAreaHeight:TpvSizeUInt;
+       fVisibleAreaWidth:TpvSizeInt;
+       fVisibleAreaHeight:TpvSizeInt;
+       fNonScrollVisibleAreaWidth:TpvSizeInt;
+       fNonScrollVisibleAreaHeight:TpvSizeInt;
        fVisibleAreaDirty:boolean;
        fStringRope:TpvUTF8StringRope;
        fStringRopeLineMap:TpvUTF8StringRopeLineMap;
        fStringRopeVisualLineMap:TpvUTF8StringRopeLineMap;
-       fCodePointIndex:TpvSizeUInt;
-       fFirstVisualLineIndex:TpvSizeUInt;
+       fCodePointIndex:TpvSizeInt;
+       fFirstVisualLineIndex:TpvSizeInt;
        fCursorX:TpvSizeInt;
        fCursorY:TpvSizeInt;
-       procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeUInt);
-       procedure SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeUInt);
-       procedure SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeUInt);
-       procedure SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeUInt);
+       procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeInt);
+       procedure SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeInt);
+       procedure SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeInt);
+       procedure SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeInt);
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -291,10 +292,10 @@ type TpvUTF8DFA=class
        procedure MovePageUp;
        procedure MovePageDown;
       published
-       property VisibleAreaWidth:TpvSizeUInt read fVisibleAreaWidth write SetVisibleAreaWidth;
-       property VisibleAreaHeight:TpvSizeUInt read fVisibleAreaHeight write SetVisibleAreaHeight;
-       property NonScrollVisibleAreaWidth:TpvSizeUInt read fNonScrollVisibleAreaWidth write SetNonScrollVisibleAreaWidth;
-       property NonScrollVisibleAreaHeight:TpvSizeUInt read fNonScrollVisibleAreaHeight write SetNonScrollVisibleAreaHeight;
+       property VisibleAreaWidth:TpvSizeInt read fVisibleAreaWidth write SetVisibleAreaWidth;
+       property VisibleAreaHeight:TpvSizeInt read fVisibleAreaHeight write SetVisibleAreaHeight;
+       property NonScrollVisibleAreaWidth:TpvSizeInt read fNonScrollVisibleAreaWidth write SetNonScrollVisibleAreaWidth;
+       property NonScrollVisibleAreaHeight:TpvSizeInt read fNonScrollVisibleAreaHeight write SetNonScrollVisibleAreaHeight;
        property CursorX:TpvSizeInt read fCursorX;
        property CursorY:TpvSizeInt read fCursorY;
      end;
@@ -435,7 +436,7 @@ begin
 end;
 
 function TpvUTF8StringRope.GetText:TpvUTF8String;
-var Position:TpvSizeUInt;
+var Position:TpvSizeInt;
     Node:TNode;
 begin
  SetLength(result,fCountCodeUnits);
@@ -522,8 +523,8 @@ begin
  end;
 end;
 
-class function TpvUTF8StringRope.GetCountCodeUnits(const aString:PAnsiChar;const aCountCodePoints:TpvSizeUInt):TpvSizeUInt;
-var Index:TpvSizeUInt;
+class function TpvUTF8StringRope.GetCountCodeUnits(const aString:PAnsiChar;const aCountCodePoints:TpvSizeInt):TpvSizeInt;
+var Index:TpvSizeInt;
 begin
  result:=0;
  Index:=0;
@@ -533,8 +534,8 @@ begin
  end;
 end;
 
-class function TpvUTF8StringRope.GetCountCodePoints(const aString:PAnsiChar;const aCountCodeUnits:TpvSizeUInt):TpvSizeUInt;
-var Index:TpvSizeUInt;
+class function TpvUTF8StringRope.GetCountCodePoints(const aString:PAnsiChar;const aCountCodeUnits:TpvSizeInt):TpvSizeInt;
+var Index:TpvSizeInt;
 begin
  result:=0;
  Index:=0;
@@ -544,8 +545,8 @@ begin
  end;
 end;
 
-class function TpvUTF8StringRope.GetCountCodeUnitsAndCheck(const aString:TpvUTF8String):TpvSizeUInt;
-var Index:TpvSizeUInt;
+class function TpvUTF8StringRope.GetCountCodeUnitsAndCheck(const aString:TpvUTF8String):TpvSizeInt;
+var Index:TpvSizeInt;
     State:TpvUInt32;
 begin
  State:=TpvUTF8DFA.StateAccept;
@@ -561,9 +562,9 @@ begin
  end;
 end;
 
-function TpvUTF8StringRope.FindNodePositionAtCodePoint(const aCodePointIndex:TpvSizeUInt;out aNodePositionLinks:TNode.TNodePositionLinks):TNode;
+function TpvUTF8StringRope.FindNodePositionAtCodePoint(const aCodePointIndex:TpvSizeInt;out aNodePositionLinks:TNode.TNodePositionLinks):TNode;
 var Height:TpvInt32;
-    Offset,Skip:TpvSizeUInt;
+    Offset,Skip:TpvSizeInt;
 begin
 {$if defined(DebugTpvUTF8StringRope)}
  Assert(aCodePointIndex<=fCountCodePoints);
@@ -604,7 +605,7 @@ begin
  end;
 end;
 
-procedure TpvUTF8StringRope.InsertAt(var aNodePositionLinks:TNode.TNodePositionLinks;const aString:PAnsiChar;const aCountCodeUnits,aCountCodePoints:TpvSizeUInt);
+procedure TpvUTF8StringRope.InsertAt(var aNodePositionLinks:TNode.TNodePositionLinks;const aString:PAnsiChar;const aCountCodeUnits,aCountCodePoints:TpvSizeInt);
 var MaximumHeight,NewHeight,Index:TpvInt32;
     NewNode:TNode;
     PreviousNodeLink:TNode.PNodeLink;
@@ -652,7 +653,7 @@ end;
 procedure TpvUTF8StringRope.InsertAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aString:TpvUTF8String);
 var OffsetCodeUnits,Offset,CountInsertedCodePoints,CountEndCodeUnits,
     CountEndCodePoints,StringOffset,CountNewNodeCodeUnits,CountNewNodeCodePoints,
-    CodePointSize,CountInsertedCodeUnits:TpvSizeUInt;
+    CodePointSize,CountInsertedCodeUnits:TpvSizeInt;
     InsertHere:boolean;
     Node,NextNode:TNode;
     Index:TpvInt32;
@@ -748,9 +749,9 @@ begin
 
 end;
 
-procedure TpvUTF8StringRope.DeleteAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aCountCodePoints:TpvSizeUInt);
+procedure TpvUTF8StringRope.DeleteAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aCountCodePoints:TpvSizeInt);
 var Offset,RemainingCodePoints,CodePointsToDo,CodePointsRemoved,
-    LeadingCodeUnits,RemovedCodeUnits,TrailingCodeUnits:TpvSizeUInt;
+    LeadingCodeUnits,RemovedCodeUnits,TrailingCodeUnits:TpvSizeInt;
     Node,NextNode:TNode;
     Index:TpvInt32;
 begin
@@ -804,9 +805,9 @@ begin
  end;
 end;
 
-function TpvUTF8StringRope.ExtractAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aCountCodePoints:TpvSizeUInt):TpvUTF8String;
+function TpvUTF8StringRope.ExtractAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aCountCodePoints:TpvSizeInt):TpvUTF8String;
 var Offset,RemainingCodePoints,CodePointsToDo,CodePointsExtracted,
-    LeadingCodeUnits,ExtractedCodeUnits:TpvSizeUInt;
+    LeadingCodeUnits,ExtractedCodeUnits:TpvSizeInt;
     Node:TNode;
     TemporaryString:TpvUTF8String;
 begin
@@ -838,10 +839,10 @@ begin
  end;
 end;
 
-procedure TpvUTF8StringRope.Insert(const aCodePointIndex:TpvSizeUInt;const aString:TpvUTF8String);
+procedure TpvUTF8StringRope.Insert(const aCodePointIndex:TpvSizeInt;const aString:TpvUTF8String);
 var Node:TNode;
     NodePositionLinks:TNode.TNodePositionLinks;
-    CodePointIndex:TpvSizeUInt;
+    CodePointIndex:TpvSizeInt;
 begin
 {$if defined(DebugTpvUTF8StringRope)}
  Check;
@@ -858,10 +859,10 @@ begin
 {$ifend}
 end;
 
-procedure TpvUTF8StringRope.Delete(const aCodePointIndex,aCountCodePoints:TpvSizeUInt);
+procedure TpvUTF8StringRope.Delete(const aCodePointIndex,aCountCodePoints:TpvSizeInt);
 var Node:TNode;
     NodePositionLinks:TNode.TNodePositionLinks;
-    CodePointIndex,CountCodePoints:TpvSizeUInt;
+    CodePointIndex,CountCodePoints:TpvSizeInt;
 begin
 {$if defined(DebugTpvUTF8StringRope)}
  Check;
@@ -882,10 +883,10 @@ begin
 {$ifend}
 end;
 
-function TpvUTF8StringRope.Extract(const aCodePointIndex,aCountCodePoints:TpvSizeUInt):TpvUTF8String;
+function TpvUTF8StringRope.Extract(const aCodePointIndex,aCountCodePoints:TpvSizeInt):TpvUTF8String;
 var Node:TNode;
     NodePositionLinks:TNode.TNodePositionLinks;
-    CodePointIndex,CountCodePoints:TpvSizeUInt;
+    CodePointIndex,CountCodePoints:TpvSizeInt;
 begin
 {$if defined(DebugTpvUTF8StringRope)}
  Check;
@@ -903,10 +904,10 @@ begin
  result:=ExtractAtNodePosition(Node,NodePositionLinks,CountCodePoints);
 end;
 
-function TpvUTF8StringRope.GetCodePoint(const aCodePointIndex:TpvSizeUInt):TpvUInt32;
+function TpvUTF8StringRope.GetCodePoint(const aCodePointIndex:TpvSizeInt):TpvUInt32;
 var Node:TNode;
     NodePositionLinks:TNode.TNodePositionLinks;
-    NodeCodeUnitIndex,CodePointIndex:TpvSizeUInt;
+    NodeCodeUnitIndex,CodePointIndex:TpvSizeInt;
     CodeUnit:AnsiChar;
     First:boolean;
     UTF8DFAState,UTF8DFACharClass:TpvUInt8;
@@ -968,7 +969,7 @@ procedure TpvUTF8StringRope.Check;
 {$if defined(DebugTpvUTF8StringRope)}
 var Index:TpvInt32;
     Node:TNode;
-    CurrentCountCodeUnits,CurrentCountCodePoints:TpvSizeUInt;
+    CurrentCountCodeUnits,CurrentCountCodePoints:TpvSizeInt;
     SkipOverLink:TNode.PNodeLink;
     NodePositionLinks:TNode.TNodePositionLinks;
 begin
@@ -1054,7 +1055,7 @@ begin
  fLineWrap:=0;
  fTabWidth:=8;
  Reset;
- Update(High(TpvSizeUInt),High(TpvSizeUInt));
+ Update(-1,-1);
 end;
 
 destructor TpvUTF8StringRopeLineMap.Destroy;
@@ -1063,29 +1064,29 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvUTF8StringRopeLineMap.SetLineWrap(const aLineWrap:TpvSizeUInt);
+procedure TpvUTF8StringRopeLineMap.SetLineWrap(const aLineWrap:TpvSizeInt);
 begin
  if fLineWrap<>aLineWrap then begin
   fLineWrap:=aLineWrap;
   Reset;
-  Update(High(TpvSizeUInt),High(TpvSizeUInt));
+  Update(-1,-1);
  end;
 end;
 
-procedure TpvUTF8StringRopeLineMap.SetTabWidth(const aTabWidth:TpvSizeUInt);
+procedure TpvUTF8StringRopeLineMap.SetTabWidth(const aTabWidth:TpvSizeInt);
 begin
  if fTabWidth<>aTabWidth then begin
   fTabWidth:=aTabWidth;
   if fLineWrap>0 then begin
    Reset;
-   Update(High(TpvSizeUInt),High(TpvSizeUInt));
+   Update(-1,-1);
   end;
  end;
 end;
 
-procedure TpvUTF8StringRopeLineMap.AddLine(const aCodePointIndex:TpvSizeUInt);
+procedure TpvUTF8StringRopeLineMap.AddLine(const aCodePointIndex:TpvSizeInt);
 begin
- if TpvSizeUInt(length(fLines))<(fCountLines+1) then begin
+ if length(fLines)<(fCountLines+1) then begin
   SetLength(fLines,(fCountLines+1)*2);
  end;
  fLines[fCountLines]:=aCodePointIndex;
@@ -1103,11 +1104,11 @@ begin
  fUTF8DFAState:=TpvUTF8DFA.StateAccept;
 end;
 
-procedure TpvUTF8StringRopeLineMap.Truncate(const aUntilCodePoint,aUntilLine:TpvSizeUInt);
-var UntilCodePointCountLines,UntilLineCountLines,NewCountLines,LineIndex:TpvSizeUInt;
+procedure TpvUTF8StringRopeLineMap.Truncate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
+var UntilCodePointCountLines,UntilLineCountLines,NewCountLines,LineIndex:TpvSizeInt;
 begin
 
- if aUntilCodePoint<>High(TpvSizeUInt) then begin
+ if aUntilCodePoint>=0 then begin
   if aUntilCodePoint>0 then begin
    LineIndex:=GetLineIndexFromCodePointIndex(aUntilCodePoint-1);
    if (LineIndex>0) and (fCountLines>(LineIndex-1)) then begin
@@ -1126,7 +1127,7 @@ begin
   UntilCodePointCountLines:=fCountLines;
  end;
 
- if (aUntilLine<>High(TpvSizeUInt)) and
+ if (aUntilLine>=0) and
     (fCountLines>aUntilLine) then begin
   UntilLineCountLines:=aUntilLine;
  end else begin
@@ -1159,13 +1160,13 @@ begin
 
 end;
 
-procedure TpvUTF8StringRopeLineMap.Update(const aUntilCodePoint,aUntilLine:TpvSizeUInt);
+procedure TpvUTF8StringRopeLineMap.Update(const aUntilCodePoint,aUntilLine:TpvSizeInt);
 var DoStop:TpvInt32;
     DoNewLine,DoTab:boolean;
 begin
  if (fCodePointIndex<fRope.fCountCodePoints) and
-    ((aUntilCodePoint=High(TpvSizeUInt)) or (fCodePointIndex<aUntilCodePoint)) and
-    ((aUntilLine=High(TpvSizeUInt)) or (fCountLines<aUntilLine)) then begin
+    ((aUntilCodePoint<0) or (fCodePointIndex<aUntilCodePoint)) and
+    ((aUntilLine<0) or (fCountLines<aUntilLine)) then begin
   if fCodePointIndex=0 then begin
    fNode:=fRope.fHead;
    fNodeCodeUnitIndex:=0;
@@ -1231,8 +1232,8 @@ begin
       end;
       if DoNewLine then begin
        AddLine(fCodePointIndex);
-       if ((aUntilCodePoint<>High(TpvSizeUInt)) and (fCodePointIndex>=aUntilCodePoint)) or
-          ((aUntilLine<>High(TpvSizeUInt)) and (fCountLines>=aUntilLine)) then begin
+       if ((aUntilCodePoint>=0) and (fCodePointIndex>=aUntilCodePoint)) or
+          ((aUntilLine>=0) and (fCountLines>=aUntilLine)) then begin
         DoStop:=2; // for as fallback for possible two-single-char-class-codepoint-width-sized newline sequences
        end;
       end;
@@ -1251,12 +1252,12 @@ begin
  end;
 end;
 
-function TpvUTF8StringRopeLineMap.GetLineIndexFromCodePointIndex(const aCodePointIndex:TpvSizeUInt):TpvSizeInt;
+function TpvUTF8StringRopeLineMap.GetLineIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt):TpvSizeInt;
 var MinIndex,MaxIndex,MidIndex:TpvSizeInt;
 begin
  if aCodePointIndex<=fRope.CountCodePoints then begin
   if fCodePointIndex<aCodePointIndex then begin
-   Update(aCodePointIndex+1,High(TpvSizeUInt));
+   Update(aCodePointIndex+1,-1);
   end;
   MinIndex:=0;
   MaxIndex:=fCountLines-1;
@@ -1277,10 +1278,10 @@ begin
  end;
 end;
 
-function TpvUTF8StringRopeLineMap.GetStartCodePointIndexFromLineIndex(const aLineIndex:TpvSizeUInt):TpvSizeInt;
+function TpvUTF8StringRopeLineMap.GetStartCodePointIndexFromLineIndex(const aLineIndex:TpvSizeInt):TpvSizeInt;
 begin
  if fCountLines<=aLineIndex then begin
-  Update(High(TpvSizeUInt),aLineIndex+1);
+  Update(-1,aLineIndex+1);
  end;
  if aLineIndex<fCountLines then begin
   result:=fLines[aLineIndex];
@@ -1289,13 +1290,13 @@ begin
  end;
 end;
 
-function TpvUTF8StringRopeLineMap.GetStopCodePointIndexFromLineIndex(const aLineIndex:TpvSizeUInt):TpvSizeInt;
+function TpvUTF8StringRopeLineMap.GetStopCodePointIndexFromLineIndex(const aLineIndex:TpvSizeInt):TpvSizeInt;
 begin
  if fCountLines<=aLineIndex then begin
-  Update(High(TpvSizeUInt),aLineIndex+2);
+  Update(-1,aLineIndex+2);
  end;
- if aLineIndex<TpvSizeUInt(fCountLines) then begin
-  if (aLineIndex+1)<TpvSizeUInt(fCountLines) then begin
+ if aLineIndex<fCountLines then begin
+  if (aLineIndex+1)<fCountLines then begin
    result:=fLines[aLineIndex+1];
   end else begin
    result:=fRope.CountCodePoints;
@@ -1325,7 +1326,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvAbstractTextEditor.SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeUInt);
+procedure TpvAbstractTextEditor.SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeInt);
 begin
  if fVisibleAreaWidth<>aVisibleAreaWidth then begin
   fVisibleAreaWidth:=aVisibleAreaWidth;
@@ -1333,7 +1334,7 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeUInt);
+procedure TpvAbstractTextEditor.SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeInt);
 begin
  if fVisibleAreaHeight<>aVisibleAreaHeight then begin
   fVisibleAreaHeight:=aVisibleAreaHeight;
@@ -1341,7 +1342,7 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeUInt);
+procedure TpvAbstractTextEditor.SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeInt);
 begin
  if fNonScrollVisibleAreaWidth<>aNonScrollVisibleAreaWidth then begin
   fNonScrollVisibleAreaWidth:=aNonScrollVisibleAreaWidth;
@@ -1349,7 +1350,7 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeUInt);
+procedure TpvAbstractTextEditor.SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeInt);
 begin
  if fNonScrollVisibleAreaHeight<>aNonScrollVisibleAreaHeight then begin
   fNonScrollVisibleAreaHeight:=aNonScrollVisibleAreaHeight;
@@ -1364,7 +1365,7 @@ end;
 
 procedure TpvAbstractTextEditor.FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
 var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
-    VisualLineIndex,CountRemainingLines:TpvSizeUInt;
+    VisualLineIndex,CountRemainingLines,
     VisualLineStartCodePointIndex,VisualLineStopCodePointIndex,
     CurrentCodePointIndex,LocalCursorX,LocalCursorY,StepWidth:TpvSizeInt;
     CodePoint:TpvUInt32;
@@ -1449,15 +1450,15 @@ end;
 
 procedure TpvAbstractTextEditor.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
 begin
- fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
- fStringRopeVisualLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
+ fStringRopeLineMap.Truncate(fCodePointIndex,-1);
+ fStringRopeVisualLineMap.Truncate(fCodePointIndex,-1);
  if aOverwrite and (fCodePointIndex<fStringRope.fCountCodePoints) then begin
   fStringRope.Delete(fCodePointIndex,1);
  end;
  fStringRope.Insert(fCodePointIndex,PUCUUTF32CharToUTF8(aCodePoint));
  inc(fCodePointIndex);
- fStringRopeLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
- fStringRopeVisualLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
+ fStringRopeLineMap.Update(-1,-1);
+ fStringRopeVisualLineMap.Update(-1,-1);
 end;
 
 procedure TpvAbstractTextEditor.Backspace;
@@ -1466,14 +1467,14 @@ begin
   dec(fCodePointIndex);
   fStringRope.Delete(fCodePointIndex,1);
   if fCodePointIndex>0 then begin
-   fStringRopeLineMap.Truncate(fCodePointIndex-1,High(TpvSizeUInt));
-   fStringRopeVisualLineMap.Truncate(fCodePointIndex-1,High(TpvSizeUInt));
+   fStringRopeLineMap.Truncate(fCodePointIndex-1,-1);
+   fStringRopeVisualLineMap.Truncate(fCodePointIndex-1,-1);
   end else begin
-   fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
-   fStringRopeVisualLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
+   fStringRopeLineMap.Truncate(fCodePointIndex,-1);
+   fStringRopeVisualLineMap.Truncate(fCodePointIndex,-1);
   end;
-  fStringRopeLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
-  fStringRopeVisualLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
+  fStringRopeLineMap.Update(-1,-1);
+  fStringRopeVisualLineMap.Update(-1,-1);
  end;
 end;
 
@@ -1482,14 +1483,14 @@ begin
  if fCodePointIndex<fStringRope.fCountCodePoints then begin
   fStringRope.Delete(fCodePointIndex,1);
   if fCodePointIndex>0 then begin
-   fStringRopeLineMap.Truncate(fCodePointIndex-1,High(TpvSizeUInt));
-   fStringRopeVisualLineMap.Truncate(fCodePointIndex-1,High(TpvSizeUInt));
+   fStringRopeLineMap.Truncate(fCodePointIndex-1,-1);
+   fStringRopeVisualLineMap.Truncate(fCodePointIndex-1,-1);
   end else begin
-   fStringRopeLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
-   fStringRopeVisualLineMap.Truncate(fCodePointIndex,High(TpvSizeUInt));
+   fStringRopeLineMap.Truncate(fCodePointIndex,-1);
+   fStringRopeVisualLineMap.Truncate(fCodePointIndex,-1);
   end;
-  fStringRopeLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
-  fStringRopeVisualLineMap.Update(High(TpvSizeUInt),High(TpvSizeUInt));
+  fStringRopeLineMap.Update(-1,-1);
+  fStringRopeVisualLineMap.Update(-1,-1);
  end;
 end;
 
@@ -1548,7 +1549,7 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.MoveToLineBegin;
-var LineIndex:TpvSizeUInt;
+var LineIndex:TpvSizeInt;
 begin
  if fCodePointIndex<fStringRope.CountCodePoints then begin
   LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
@@ -1560,7 +1561,7 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.MoveToLineEnd;
-var LineIndex,NewCodePointIndex:TpvSizeUInt;
+var LineIndex,NewCodePointIndex:TpvSizeInt;
 begin
  if fCodePointIndex<fStringRope.CountCodePoints then begin
   LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
