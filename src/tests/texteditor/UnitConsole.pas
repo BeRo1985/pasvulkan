@@ -165,7 +165,7 @@ type PConsoleBufferItem=^TConsoleBufferItem;
                (VirtualCode:$00dc;Normal:$005c;Shift:$007c;Ctrl:$001c;Alt:$012b),
                (VirtualCode:$00dd;Normal:$005d;Shift:$007d;Ctrl:$001d;Alt:$011b),
                (VirtualCode:$00de;Normal:$0027;Shift:$0022;Ctrl:$ffff;Alt:$0128)
-                  );
+              );
 {$endif}
       private
        fWidth:Int32;
