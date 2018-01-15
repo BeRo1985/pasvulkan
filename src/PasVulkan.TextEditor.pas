@@ -1659,6 +1659,7 @@ begin
  fStringRope:=TpvUTF8StringRope.Create;
 //fStringRope.Text:=UTF8Encode('Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello ä'#10#10);
  fStringRope.Text:='Hello world'#13#10'Hello world'#13#10'Hello world'#13#10'Hello world'#13#10'Hello'#13#10#13#10;
+ fStringRope.Text:='Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello'#10#10;
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fCodePointIndex:=0;
@@ -1885,8 +1886,7 @@ begin
 
    end;
 
-   if (fCodePointIndex>=fStringRope.CountCodePoints) and
-      (fCodePointIndex=fStringRopeVisualLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(VisualLineIndex)) then begin
+   if fCodePointIndex>=fStringRope.CountCodePoints then begin
     if LastWasNewLine then begin
      fCursorX:=0;
      fCursorY:=LocalCursorY+1;
@@ -1961,7 +1961,7 @@ begin
 {$ifdef Unix}
  InsertCodePoint(10,aOverwrite);
 {$else}
- InsertCodePoint(13,aOverwrite);
+//InsertCodePoint(13,aOverwrite);
  InsertCodePoint(10,aOverwrite);
 {$endif}
 end;
