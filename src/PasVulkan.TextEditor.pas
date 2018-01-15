@@ -1823,13 +1823,8 @@ var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     VisualLineIndex,CountRemainingLines,
     VisualLineStartCodePointIndex,VisualLineStopCodePointIndex,
     CurrentCodePointIndex,LocalCursorX,LocalCursorY,StepWidth:TpvSizeInt;
-    CodePoint:TpvUInt32;
+    CodePoint,IncomingCodePoint:TpvUInt32;
     LastWasNewLine:boolean;
-    CodeUnit:AnsiChar;
-    Node:TpvUTF8StringRope.TNode;
-    NodeCodeUnitIndex:TpvSizeInt;
-    UTF8DFACharClass:TpvUInt8;
-    UTF8DFAState:TpvUInt8;
 begin
 
  fCursorX:=0;
@@ -1860,10 +1855,6 @@ begin
 
   BufferBaseIndex:=0;
 
-  Node:=nil;
-
-  NodeCodeUnitIndex:=0;
-
   CurrentCodePointIndex:=-1;
 
   while CountRemainingLines>0 do begin
@@ -1878,106 +1869,59 @@ begin
 
    BufferBaseEndIndex:=BufferBaseIndex+VisibleAreaWidth;
 
+   if BufferBaseEndIndex>BufferSize then begin
+    BufferBaseEndIndex:=BufferSize;
+   end;
+
    BufferIndex:=BufferBaseIndex;
 
    LocalCursorX:=0;
 
    LastWasNewLine:=false;
 
-   if (VisualLineStartCodePointIndex<VisualLineStopCodePointIndex) and
-      fStringRope.GetNodeAndOffsetFromCodePointIndex(VisualLineStartCodePointIndex,Node,NodeCodeUnitIndex) and
-      assigned(Node) then begin
+   CurrentCodePointIndex:=VisualLineStartCodePointIndex;
 
-    CurrentCodePointIndex:=VisualLineStartCodePointIndex;
+   for IncomingCodePoint in fStringRope.GetCodePointEnumeratorSource(VisualLineStartCodePointIndex,VisualLineStopCodePointIndex) do begin
 
-    UTF8DFAState:=TpvUTF8DFA.StateAccept;
+    if fCodePointIndex=CurrentCodePointIndex then begin
+     fCursorX:=LocalCursorX;
+     fCursorY:=LocalCursorY;
+    end;
 
-    CodePoint:=0;
+    StepWidth:=1;
 
-    repeat
+    LastWasNewLine:=false;
 
-     if NodeCodeUnitIndex>=Node.fCountCodeUnits then begin
-
-      Node:=Node.fLinks[0].fNode;
-      NodeCodeUnitIndex:=0;
-
-      if assigned(Node) then begin
-       continue;
-      end else begin
-       break;
-      end;
-
-     end else begin
-
-      CodeUnit:=Node.fData[NodeCodeUnitIndex];
-      inc(NodeCodeUnitIndex);
-
-      UTF8DFACharClass:=TpvUTF8DFA.StateCharClasses[CodeUnit];
-
-      case UTF8DFAState of
-       TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
-        CodePoint:=ord(CodeUnit) and ($ff shr UTF8DFACharClass);
-       end;
-       else begin
-        CodePoint:=(CodePoint shl 6) or (ord(CodeUnit) and $3f);
-       end;
-      end;
-
-      UTF8DFAState:=TpvUTF8DFA.StateTransitions[UTF8DFAState+UTF8DFACharClass];
-
-      if UTF8DFAState<=TpvUTF8DFA.StateError then begin
-
-       if UTF8DFAState<>TpvUTF8DFA.StateAccept then begin
-        CodePoint:=$fffd;
-       end;
-
-       if fCodePointIndex=CurrentCodePointIndex then begin
-        fCursorX:=LocalCursorX;
-        fCursorY:=LocalCursorY;
-       end;
-
-       StepWidth:=1;
-
-       LastWasNewLine:=false;
-
-       case CodePoint of
-        9:begin
-         CodePoint:=32;
-         StepWidth:=Max(1,(fStringRopeVisualLineMap.fTabWidth-(LocalCursorX mod fStringRopeVisualLineMap.fTabWidth)));
-        end;
-        10:begin
-//       CodePoint:=48;
-         CodePoint:=32;
-         LastWasNewLine:=true;
-         StepWidth:=0;
-        end;
-        13:begin
-         CodePoint:=32;
-         StepWidth:=0;
-        end;
-       end;
-
-       if (StepWidth>0) and
-          (BufferIndex<BufferSize) and
-          (LocalCursorX<fVisibleAreaWidth) then begin
-        aDrawBufferItems[BufferIndex].CodePoint:=CodePoint;
-       end;
-
-       inc(BufferIndex,StepWidth);
-
-       inc(LocalCursorX,StepWidth);
-
-       inc(CurrentCodePointIndex);
-
-       if CurrentCodePointIndex>=VisualLineStopCodePointIndex then begin
-        break;
-       end;
-
-      end;
-
+    case IncomingCodePoint of
+     9:begin
+      CodePoint:=32;
+      StepWidth:=Max(1,(fStringRopeVisualLineMap.fTabWidth-(LocalCursorX mod fStringRopeVisualLineMap.fTabWidth)));
      end;
+     10:begin
+//    CodePoint:=48;
+      CodePoint:=32;
+      LastWasNewLine:=true;
+      StepWidth:=0;
+     end;
+     13:begin
+      CodePoint:=32;
+      StepWidth:=0;
+     end;
+     else begin
+      CodePoint:=IncomingCodePoint;
+     end;
+    end;
 
-    until false;
+    if (StepWidth>0) and
+       (BufferIndex<BufferBaseEndIndex) then begin
+     aDrawBufferItems[BufferIndex].CodePoint:=CodePoint;
+    end;
+
+    inc(BufferIndex,StepWidth);
+
+    inc(LocalCursorX,StepWidth);
+
+    inc(CurrentCodePointIndex);
 
    end;
 
@@ -2006,10 +1950,10 @@ begin
 end;
 
 function TpvAbstractTextEditor.IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
-{$if true}
 var CodePoint,LastCodePoint:TpvUInt32;
     LastWasPossibleNewLineTwoCharSequence:boolean;
 begin
+ result:=false;
  LastCodePoint:=0;
  LastWasPossibleNewLineTwoCharSequence:=false;
  for CodePoint in fStringRope.GetCodePointEnumeratorSource(aCodePointIndex,aCodePointIndex+2) do begin
@@ -2031,105 +1975,6 @@ begin
   LastCodePoint:=CodePoint;
  end;
 end;
-{$elseif true}
-var NodeCodeUnitIndex:TpvSizeInt;
-    CodeUnit:AnsiChar;
-    UTF8DFAState,UTF8DFACharClass:TpvUInt8;
-    CodePoint,LastCodePoint:TpvUInt32;
-    Node:TpvUTF8StringRope.TNode;
-    LastWasPossibleNewLineTwoCharSequence:boolean;
-begin
- result:=false;
-
- if (aCodePointIndex>=0) and
-    ((aCodePointIndex+1)<fStringRope.fCountCodePoints) and
-    fStringRope.GetNodeAndOffsetFromCodePointIndex(aCodePointIndex,Node,NodeCodeUnitIndex) and
-    assigned(Node) then begin
-
-  CodePoint:=0;
-
-  UTF8DFAState:=TpvUTF8DFA.StateAccept;
-
-  LastCodePoint:=0;
-
-  LastWasPossibleNewLineTwoCharSequence:=false;
-
-  repeat
-
-   if NodeCodeUnitIndex>=Node.fCountCodeUnits then begin
-
-    Node:=Node.fLinks[0].fNode;
-    NodeCodeUnitIndex:=0;
-
-    if assigned(Node) then begin
-     continue;
-    end else begin
-     break;
-    end;
-
-   end else begin
-
-    CodeUnit:=Node.fData[NodeCodeUnitIndex];
-    inc(NodeCodeUnitIndex);
-
-    UTF8DFACharClass:=TpvUTF8DFA.StateCharClasses[CodeUnit];
-
-    case UTF8DFAState of
-     TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
-      CodePoint:=ord(CodeUnit) and ($ff shr UTF8DFACharClass);
-     end;
-     else begin
-      CodePoint:=(CodePoint shl 6) or (ord(CodeUnit) and $3f);
-     end;
-    end;
-
-    UTF8DFAState:=TpvUTF8DFA.StateTransitions[UTF8DFAState+UTF8DFACharClass];
-
-    if UTF8DFAState<=TpvUTF8DFA.StateError then begin
-
-     if UTF8DFAState<>TpvUTF8DFA.StateAccept then begin
-      CodePoint:=$fffd;
-     end;
-
-     case CodePoint of
-      $0a,$0d:begin
-       if LastWasPossibleNewLineTwoCharSequence and
-          (((CodePoint=$0a) and (LastCodePoint=$0d)) or
-           ((CodePoint=$0d) and (LastCodePoint=$0a))) then begin
-        result:=true;
-        break;
-       end else begin
-        LastWasPossibleNewLineTwoCharSequence:=true;
-       end;
-      end;
-      else begin
-       break;
-      end;
-     end;
-
-     LastCodePoint:=CodePoint;
-
-    end;
-
-   end;
-
-  until false;
-
- end;
-
-end;
-{$else}
-var Temporary:TpvUTF8String;
-begin
- result:=false;
- if (aCodePointIndex>=0) and
-    ((aCodePointIndex+1)<fStringRope.fCountCodePoints) then begin
-  Temporary:=fStringRope.Extract(aCodePointIndex,2);
-  result:=(Temporary=TpvUTF8String(#13#10)) or
-          (Temporary=TpvUTF8String(#10#13));
- end;
-end;
-{$ifend}
 
 procedure TpvAbstractTextEditor.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
 var Count:TpvSizeInt;

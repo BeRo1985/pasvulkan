@@ -234,8 +234,8 @@ begin
       AbstractTextEditor.InsertCodePoint(c,OverwriteMode);
      end;
     end;
-   end else begin
-    Sleep(10);
+{  end else begin
+    Sleep(10);}
    end;
 
   until false;
