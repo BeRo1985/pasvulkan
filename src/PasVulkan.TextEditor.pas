@@ -152,8 +152,7 @@ type TpvUTF8DFA=class
               destructor Destroy; override;
               property Data:TpvUTF8String read GetData;
             end;
-      private
-       type TNodeEnumerator=record
+            TNodeEnumerator=record
              private
               fStringRope:TpvUTF8StringRope;
               fFirst:boolean;
@@ -180,6 +179,15 @@ type TpvUTF8DFA=class
               constructor Create(const aStringRope:TpvUTF8StringRope;const aStartCodePointIndex:TpvSizeInt=0;const aStopCodePointIndex:TpvSizeInt=-1);
               function MoveNext:boolean; inline;
               property Current:TpvUInt32 read GetCurrent;
+            end;
+            TCodePointEnumeratorSource=record
+             private
+              fStringRope:TpvUTF8StringRope;
+              fStartCodePointIndex:TpvSizeInt;
+              fStopCodePointIndex:TpvSizeInt;
+             public
+              constructor Create(const aStringRope:TpvUTF8StringRope;const aStartCodePointIndex:TpvSizeInt=0;const aStopCodePointIndex:TpvSizeInt=-1);
+              function GetEnumerator:TCodePointEnumerator;
             end;
             TRandomGenerator=record
              private
@@ -220,6 +228,7 @@ type TpvUTF8DFA=class
        function Extract(const aCodePointIndex,aCountCodePoints:TpvSizeInt):TpvUTF8String;
        function GetCodePoint(const aCodePointIndex:TpvSizeInt):TpvUInt32;
        function GetEnumerator:TNodeEnumerator;
+       function GetCodePointEnumeratorSource(const aStartCodePointIndex:TpvSizeInt=0;const aStopCodePointIndex:TpvSizeInt=-1):TpvUTF8StringRope.TCodePointEnumeratorSource;
        procedure Check;
        procedure Dump;
        property CountCodePoints:TpvSizeInt read fCountCodePoints;
@@ -429,6 +438,18 @@ begin
    end;
   until false;
  end;
+end;
+
+constructor TpvUTF8StringRope.TCodePointEnumeratorSource.Create(const aStringRope:TpvUTF8StringRope;const aStartCodePointIndex,aStopCodePointIndex:TpvSizeInt);
+begin
+ fStringRope:=aStringRope;
+ fStartCodePointIndex:=aStartCodePointIndex;
+ fStopCodePointIndex:=aStopCodePointIndex;
+end;
+
+function TpvUTF8StringRope.TCodePointEnumeratorSource.GetEnumerator:TpvUTF8StringRope.TCodePointEnumerator;
+begin
+ result:=TpvUTF8StringRope.TCodePointEnumerator.Create(fStringRope,fStartCodePointIndex,fStopCodePointIndex);
 end;
 
 constructor TpvUTF8StringRope.TRandomGenerator.Create(const aSeed:TpvUInt64);
@@ -1073,6 +1094,11 @@ end;
 function TpvUTF8StringRope.GetEnumerator:TNodeEnumerator;
 begin
  result:=TNodeEnumerator.Create(self);
+end;
+
+function TpvUTF8StringRope.GetCodePointEnumeratorSource(const aStartCodePointIndex:TpvSizeInt=0;const aStopCodePointIndex:TpvSizeInt=-1):TpvUTF8StringRope.TCodePointEnumeratorSource;
+begin
+ result:=TpvUTF8StringRope.TCodePointEnumeratorSource.Create(self,aStartCodePointIndex,aStopCodePointIndex);
 end;
 
 procedure TpvUTF8StringRope.Check;
