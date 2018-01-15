@@ -252,8 +252,8 @@ constructor TConsole.Create;
 begin
  inherited Create;
 {$ifdef Windows}
-{SetConsoleCP(CP_UTF8);
- SetConsoleOutputCP(CP_UTF8);}
+ SetConsoleCP(CP_UTF8);
+ SetConsoleOutputCP(CP_UTF8);
  fConsoleInputHandle:=GetStdHandle(STD_INPUT_HANDLE);
  fConsoleOutputHandle:=GetStdHandle(STD_OUTPUT_HANDLE);
  fConsoleBuffer:=nil;
@@ -544,7 +544,7 @@ begin
     HasChanges:=true;
    end;
    p^.Attributes:=(BufferItem^.BackgroundColor shl 4) or BufferItem.ForegroundColor;
-   p^.UnicodeChar:=WideChar(Word(BufferItem^.CodePoint));
+   p^.UnicodeChar:=WideChar(UInt16(BufferItem^.CodePoint));
    inc(LastBufferItem);
    inc(BufferItem);
    inc(p);
@@ -746,7 +746,7 @@ begin
       end;
      end;
     end;
-    ReadConsoleInput(fConsoleInputHandle,Input[0],CountRead,CountRead);
+    ReadConsoleInputW(fConsoleInputHandle,Input[0],CountRead,CountRead);
    finally
     Input:=nil;
    end;
@@ -765,7 +765,7 @@ begin
   fConsoleExtendedChar:=-1;
  end else begin
   repeat
-   if ReadConsoleInput(fConsoleInputHandle,Input,1,CountRead) then begin
+   if ReadConsoleInputW(fConsoleInputHandle,Input,1,CountRead) then begin
     if (Input.EventType=KEY_EVENT) and Input.Event.KeyEvent.bKeyDown then begin
      Key:=LookupKey(Input.Event.KeyEvent.wVirtualKeyCode);
      if assigned(Key) then begin

@@ -553,8 +553,8 @@ begin
  result:=length(aString);
  for Index:=1 to result do begin
   State:=TpvUTF8DFA.StateTransitions[State+TpvUTF8DFA.StateCharClasses[aString[Index]]];
-  if State=TpvUTF8DFA.StateError then begin
-   raise EpvUTF8StringRope.Create('Invalid UTF8');
+  if State<=TpvUTF8DFA.StateError then begin
+   break;
   end;
  end;
  if State<>TpvUTF8DFA.StateAccept then begin
@@ -923,7 +923,7 @@ begin
  end;
  Node:=FindNodePositionAtCodePoint(CodePointIndex,NodePositionLinks);
  if assigned(Node) then begin
-  NodeCodeUnitIndex:=NodePositionLinks[0].fSkipSize;
+  NodeCodeUnitIndex:=GetCountCodeUnits(@Node.fData[0],NodePositionLinks[0].fSkipSize);
   UTF8DFAState:=TpvUTF8DFA.StateAccept;
   First:=true;
   while assigned(Node) do begin
@@ -939,7 +939,6 @@ begin
     CodeUnit:=Node.fData[NodeCodeUnitIndex];
     inc(NodeCodeUnitIndex);
     UTF8DFACharClass:=TpvUTF8DFA.StateCharClasses[CodeUnit];
-    UTF8DFAState:=TpvUTF8DFA.StateTransitions[UTF8DFAState+UTF8DFACharClass];
     case UTF8DFAState of
      TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
       if First then begin
@@ -953,7 +952,11 @@ begin
       result:=(result shl 6) or (ord(CodeUnit) and $3f);
      end;
     end;
+    UTF8DFAState:=TpvUTF8DFA.StateTransitions[UTF8DFAState+UTF8DFACharClass];
    end;
+  end;
+  if UTF8DFAState<>TpvUTF8DFA.StateAccept then begin
+   result:=$fffd;
   end;
  end else begin
   result:=32;
@@ -1172,7 +1175,11 @@ begin
    fNodeCodeUnitIndex:=0;
   end else begin
    fNode:=fRope.FindNodePositionAtCodePoint(fCodePointIndex,fNodePositionLinks);
-   fNodeCodeUnitIndex:=fNodePositionLinks[0].fSkipSize;
+   if assigned(fNode) then begin
+    fNodeCodeUnitIndex:=TpvUTF8StringRope.GetCountCodeUnits(@fNode.fData[0],fNodePositionLinks[0].fSkipSize);
+   end else begin
+    fNodeCodeUnitIndex:=0;
+   end;
   end;
   DoStop:=0;
   while assigned(fNode) do begin
@@ -1188,7 +1195,6 @@ begin
     fCodeUnit:=fNode.fData[fNodeCodeUnitIndex];
     inc(fNodeCodeUnitIndex);
     fUTF8DFACharClass:=TpvUTF8DFA.StateCharClasses[fCodeUnit];
-    fUTF8DFAState:=TpvUTF8DFA.StateTransitions[fUTF8DFAState+fUTF8DFACharClass];
     case fUTF8DFAState of
      TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
       inc(fCodePointIndex);
@@ -1242,10 +1248,14 @@ begin
       if DoStop>0 then begin
        dec(DoStop);
        if DoStop=0 then begin
-        break;
+        DoStop:=-1;
        end;
       end;
      end;
+    end;
+    fUTF8DFAState:=TpvUTF8DFA.StateTransitions[fUTF8DFAState+fUTF8DFACharClass];
+    if DoStop<0 then begin
+     break;
     end;
    end;
   end;
@@ -1311,7 +1321,8 @@ begin
  inherited Create;
  fVisibleAreaDirty:=false;
  fStringRope:=TpvUTF8StringRope.Create;
- fStringRope.Text:='Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello'#10#10;
+//fStringRope.Text:=UTF8Encode('Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello ה'#10#10);
+ fStringRope.Text:=UTF8Encode('הה');//'Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello ה'#10#10;
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fCodePointIndex:=0;
