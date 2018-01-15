@@ -240,8 +240,8 @@ type TpvUTF8DFA=class
        procedure Truncate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
        procedure Update(const aUntilCodePoint,aUntilLine:TpvSizeInt);
        function GetLineIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt):TpvSizeInt;
-       function GetStartCodePointIndexFromLineIndex(const aLineIndex:TpvSizeInt):TpvSizeInt;
-       function GetStopCodePointIndexFromLineIndex(const aLineIndex:TpvSizeInt):TpvSizeInt;
+       function GetCodePointIndexFromLineIndex(const aLineIndex:TpvSizeInt):TpvSizeInt;
+       function GetCodePointIndexFromNextLineIndexOrTextEnd(const aLineIndex:TpvSizeInt):TpvSizeInt;
       published
        property CountLines:TpvSizeInt read fCountLines;
        property LineWrap:TpvSizeInt read fLineWrap write SetLineWrap;
@@ -1288,7 +1288,7 @@ begin
  end;
 end;
 
-function TpvUTF8StringRopeLineMap.GetStartCodePointIndexFromLineIndex(const aLineIndex:TpvSizeInt):TpvSizeInt;
+function TpvUTF8StringRopeLineMap.GetCodePointIndexFromLineIndex(const aLineIndex:TpvSizeInt):TpvSizeInt;
 begin
  if fCountLines<=aLineIndex then begin
   Update(-1,aLineIndex+1);
@@ -1300,7 +1300,7 @@ begin
  end;
 end;
 
-function TpvUTF8StringRopeLineMap.GetStopCodePointIndexFromLineIndex(const aLineIndex:TpvSizeInt):TpvSizeInt;
+function TpvUTF8StringRopeLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(const aLineIndex:TpvSizeInt):TpvSizeInt;
 begin
  if fCountLines<=aLineIndex then begin
   Update(-1,aLineIndex+2);
@@ -1381,68 +1381,167 @@ var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     CurrentCodePointIndex,LocalCursorX,LocalCursorY,StepWidth:TpvSizeInt;
     CodePoint:TpvUInt32;
     LastWasNewLine:boolean;
+    CodeUnit:AnsiChar;
+    Node:TpvUTF8StringRope.TNode;
+    NodeCodeUnitIndex:TpvSizeInt;
+    UTF8DFACharClass:TpvUInt8;
+    UTF8DFAState:TpvUInt8;
+    NodePositionLinks:TpvUTF8StringRope.TNode.TNodePositionLinks;
 begin
+
  fCursorX:=0;
  fCursorY:=0;
+
  LocalCursorX:=0;
  LocalCursorY:=0;
+
  BufferSize:=VisibleAreaWidth*VisibleAreaHeight;
+
  if BufferSize>0 then begin
+
   if length(aDrawBufferItems)<>BufferSize then begin
    SetLength(aDrawBufferItems,BufferSize);
   end;
+
   FillChar(aDrawBufferItems[0],BufferSize*SizeOf(TDrawBufferItem),#0);
+
   BufferIndex:=0;
   while BufferIndex<BufferSize do begin
    aDrawBufferItems[BufferIndex].CodePoint:=32;
    inc(BufferIndex);
   end;
+
   VisualLineIndex:=fFirstVisualLineIndex;
+
   CountRemainingLines:=VisibleAreaHeight;
+
   BufferBaseIndex:=0;
+
   while CountRemainingLines>0 do begin
-   VisualLineStartCodePointIndex:=fStringRopeVisualLineMap.GetStartCodePointIndexFromLineIndex(VisualLineIndex);
+
+   VisualLineStartCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndex(VisualLineIndex);
    if VisualLineStartCodePointIndex>=fStringRope.fCountCodePoints then begin
     break;
    end;
-   VisualLineStopCodePointIndex:=fStringRopeVisualLineMap.GetStopCodePointIndexFromLineIndex(VisualLineIndex);
+
+   VisualLineStopCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(VisualLineIndex);
+
    BufferBaseEndIndex:=BufferBaseIndex+VisibleAreaWidth;
+
    BufferIndex:=BufferBaseIndex;
+
    LocalCursorX:=0;
+
    LastWasNewLine:=false;
-   for CurrentCodePointIndex:=VisualLineStartCodePointIndex to VisualLineStopCodePointIndex-1 do begin
-    if BufferIndex>=BufferBaseEndIndex then begin
-     break;
+
+   CurrentCodePointIndex:=VisualLineStartCodePointIndex;
+
+   if CurrentCodePointIndex=0 then begin
+    Node:=fStringRope.fHead;
+    NodeCodeUnitIndex:=0;
+   end else begin
+    Node:=fStringRope.FindNodePositionAtCodePoint(CurrentCodePointIndex,NodePositionLinks);
+    if assigned(Node) then begin
+     NodeCodeUnitIndex:=TpvUTF8StringRope.GetCountCodeUnits(@Node.fData[0],NodePositionLinks[0].fSkipSize);
+    end else begin
+     NodeCodeUnitIndex:=0;
     end;
-    if fCodePointIndex=CurrentCodePointIndex then begin
-     fCursorX:=LocalCursorX;
-     fCursorY:=LocalCursorY;
-    end;
-    CodePoint:=fStringRope.GetCodePoint(CurrentCodePointIndex);
-    StepWidth:=1;
-    LastWasNewLine:=false;
-    case CodePoint of
-     9:begin
-      CodePoint:=32;
-      StepWidth:=Max(1,(fStringRopeVisualLineMap.fTabWidth-(LocalCursorX mod fStringRopeVisualLineMap.fTabWidth)));
-     end;
-     10:begin
-      CodePoint:=32;
-      LastWasNewLine:=true;
-     end;
-     13:begin
-      CodePoint:=32;
-      StepWidth:=0;
-     end;
-    end;
-    if BufferIndex<BufferSize then begin
-     aDrawBufferItems[BufferIndex].CodePoint:=CodePoint;
-    end;
-    inc(BufferIndex,StepWidth);
-    inc(LocalCursorX,StepWidth);
    end;
+
+   UTF8DFAState:=TpvUTF8DFA.StateAccept;
+
+   CodePoint:=0;
+
+   if CurrentCodePointIndex<VisualLineStopCodePointIndex then begin
+
+    while assigned(Node) do begin
+
+     if NodeCodeUnitIndex>=Node.fCountCodeUnits then begin
+
+      Node:=Node.fLinks[0].fNode;
+      NodeCodeUnitIndex:=0;
+
+      if assigned(Node) then begin
+       continue;
+      end else begin
+       break;
+      end;
+
+     end else begin
+
+      CodeUnit:=Node.fData[NodeCodeUnitIndex];
+      inc(NodeCodeUnitIndex);
+
+      UTF8DFACharClass:=TpvUTF8DFA.StateCharClasses[CodeUnit];
+
+      case UTF8DFAState of
+       TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
+        CodePoint:=ord(CodeUnit) and ($ff shr UTF8DFACharClass);
+       end;
+       else begin
+        CodePoint:=(CodePoint shl 6) or (ord(CodeUnit) and $3f);
+       end;
+      end;
+
+      UTF8DFAState:=TpvUTF8DFA.StateTransitions[UTF8DFAState+UTF8DFACharClass];
+
+      if UTF8DFAState<=TpvUTF8DFA.StateError then begin
+
+       if UTF8DFAState<>TpvUTF8DFA.StateAccept then begin
+        CodePoint:=$fffd;
+       end;
+
+       if fCodePointIndex=CurrentCodePointIndex then begin
+        fCursorX:=LocalCursorX;
+        fCursorY:=LocalCursorY;
+       end;
+
+       CodePoint:=fStringRope.GetCodePoint(CurrentCodePointIndex);
+       StepWidth:=1;
+
+       LastWasNewLine:=false;
+
+       case CodePoint of
+        9:begin
+         CodePoint:=32;
+         StepWidth:=Max(1,(fStringRopeVisualLineMap.fTabWidth-(LocalCursorX mod fStringRopeVisualLineMap.fTabWidth)));
+        end;
+        10:begin
+         CodePoint:=32;
+         LastWasNewLine:=true;
+        end;
+        13:begin
+         CodePoint:=32;
+         StepWidth:=0;
+        end;
+       end;
+
+       if BufferIndex<BufferSize then begin
+        aDrawBufferItems[BufferIndex].CodePoint:=CodePoint;
+       end else begin
+        break;
+       end;
+
+       inc(BufferIndex,StepWidth);
+
+       inc(LocalCursorX,StepWidth);
+
+       inc(CurrentCodePointIndex);
+
+       if CurrentCodePointIndex>=VisualLineStopCodePointIndex then begin
+        break;
+       end;
+
+      end;
+
+     end;
+
+    end;
+
+   end;
+
    if (fCodePointIndex>=fStringRope.CountCodePoints) and
-      (fCodePointIndex=fStringRopeVisualLineMap.GetStopCodePointIndexFromLineIndex(VisualLineIndex)) then begin
+      (fCodePointIndex=fStringRopeVisualLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(VisualLineIndex)) then begin
     if LastWasNewLine then begin
      fCursorX:=0;
      fCursorY:=LocalCursorY+1;
@@ -1451,12 +1550,19 @@ begin
      fCursorY:=LocalCursorY;
     end;
    end;
+
    inc(BufferBaseIndex,VisibleAreaWidth);
+
    inc(LocalCursorY);
+
    dec(CountRemainingLines);
+
    inc(VisualLineIndex);
+
   end;
+
  end;
+
 end;
 
 procedure TpvAbstractTextEditor.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
@@ -1521,10 +1627,10 @@ begin
  if fCodePointIndex<=fStringRope.CountCodePoints then begin
   LineIndex:=fStringRopeVisualLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
   if LineIndex>0 then begin
-   CodePointOffset:=fCodePointIndex-fStringRopeVisualLineMap.GetStartCodePointIndexFromLineIndex(LineIndex);
-   NewCodePointIndex:=fStringRopeVisualLineMap.GetStartCodePointIndexFromLineIndex(LineIndex-1);
+   CodePointOffset:=fCodePointIndex-fStringRopeVisualLineMap.GetCodePointIndexFromLineIndex(LineIndex);
+   NewCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndex(LineIndex-1);
    if NewCodePointIndex>=0 then begin
-    OtherCodePointIndex:=fStringRopeVisualLineMap.GetStopCodePointIndexFromLineIndex(LineIndex-1);
+    OtherCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(LineIndex-1);
     fCodePointIndex:=Min(NewCodePointIndex+CodePointOffset,OtherCodePointIndex-1);
    end;
   end;
@@ -1536,10 +1642,10 @@ var LineIndex,CodePointOffset,NewCodePointIndex,OtherCodePointIndex:TpvSizeInt;
 begin
  if fCodePointIndex<fStringRope.CountCodePoints then begin
   LineIndex:=fStringRopeVisualLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
-  CodePointOffset:=fCodePointIndex-fStringRopeVisualLineMap.GetStartCodePointIndexFromLineIndex(LineIndex);
-  NewCodePointIndex:=fStringRopeVisualLineMap.GetStartCodePointIndexFromLineIndex(LineIndex+1);
+  CodePointOffset:=fCodePointIndex-fStringRopeVisualLineMap.GetCodePointIndexFromLineIndex(LineIndex);
+  NewCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndex(LineIndex+1);
   if NewCodePointIndex>=0 then begin
-   OtherCodePointIndex:=fStringRopeVisualLineMap.GetStopCodePointIndexFromLineIndex(LineIndex+1);
+   OtherCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(LineIndex+1);
    fCodePointIndex:=Min(NewCodePointIndex+CodePointOffset,OtherCodePointIndex-1);
   end;
  end;
@@ -1564,10 +1670,10 @@ var LineIndex:TpvSizeInt;
 begin
  if fCodePointIndex<fStringRope.CountCodePoints then begin
   LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
-  fCodePointIndex:=fStringRopeLineMap.GetStartCodePointIndexFromLineIndex(LineIndex);
+  fCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
  end else if (fCodePointIndex>0) and (fCodePointIndex>=fStringRope.CountCodePoints) then begin
   LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fStringRope.CountCodePoints-1);
-  fCodePointIndex:=fStringRopeLineMap.GetStartCodePointIndexFromLineIndex(LineIndex);
+  fCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
  end;
 end;
 
@@ -1576,7 +1682,7 @@ var LineIndex,NewCodePointIndex:TpvSizeInt;
 begin
  if fCodePointIndex<fStringRope.CountCodePoints then begin
   LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
-  NewCodePointIndex:=fStringRopeLineMap.GetStopCodePointIndexFromLineIndex(LineIndex);
+  NewCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(LineIndex);
   if NewCodePointIndex>=0 then begin
    fCodePointIndex:=NewCodePointIndex;
   end;
