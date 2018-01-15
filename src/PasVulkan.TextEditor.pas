@@ -1448,7 +1448,8 @@ begin
 
        aColumnIndex:=CurrentColumn;
 
-       if CurrentCodePointIndex>=aCodePointIndex then begin
+       if LastWasPossibleNewLineTwoCharSequence or
+          (CurrentCodePointIndex>=aCodePointIndex) then begin
         break;
        end;
 
@@ -1610,7 +1611,8 @@ begin
 
       result:=CurrentCodePointIndex;
 
-      if CurrentColumn>=aColumnIndex then begin
+      if LastWasPossibleNewLineTwoCharSequence or
+         (CurrentColumn>=aColumnIndex) then begin
        break;
       end;
 
