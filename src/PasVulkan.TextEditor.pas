@@ -1417,10 +1417,15 @@ begin
 
   BufferBaseIndex:=0;
 
+  Node:=nil;
+
+  CurrentCodePointIndex:=-1;
+
   while CountRemainingLines>0 do begin
 
    VisualLineStartCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndex(VisualLineIndex);
-   if VisualLineStartCodePointIndex>=fStringRope.fCountCodePoints then begin
+   if (VisualLineStartCodePointIndex<0) or
+      (VisualLineStartCodePointIndex>=fStringRope.fCountCodePoints) then begin
     break;
    end;
 
@@ -1434,19 +1439,21 @@ begin
 
    LastWasNewLine:=false;
 
-   CurrentCodePointIndex:=VisualLineStartCodePointIndex;
-
-   if CurrentCodePointIndex=0 then begin
+   if VisualLineStartCodePointIndex=0 then begin
     Node:=fStringRope.fHead;
     NodeCodeUnitIndex:=0;
    end else begin
-    Node:=fStringRope.FindNodePositionAtCodePoint(CurrentCodePointIndex,NodePositionLinks);
-    if assigned(Node) then begin
-     NodeCodeUnitIndex:=TpvUTF8StringRope.GetCountCodeUnits(@Node.fData[0],NodePositionLinks[0].fSkipSize);
-    end else begin
-     NodeCodeUnitIndex:=0;
+    if not (assigned(Node) and (CurrentCodePointIndex=VisualLineStartCodePointIndex)) then begin
+     Node:=fStringRope.FindNodePositionAtCodePoint(VisualLineStartCodePointIndex,NodePositionLinks);
+     if assigned(Node) then begin
+      NodeCodeUnitIndex:=TpvUTF8StringRope.GetCountCodeUnits(@Node.fData[0],NodePositionLinks[0].fSkipSize);
+     end else begin
+      NodeCodeUnitIndex:=0;
+     end;
     end;
    end;
+
+   CurrentCodePointIndex:=VisualLineStartCodePointIndex;
 
    UTF8DFAState:=TpvUTF8DFA.StateAccept;
 
