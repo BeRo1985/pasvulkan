@@ -8,6 +8,7 @@ unit UnitConsole;
  {$define Windows}
 {$ifend}
 {$scopedenums on}
+{$m+}
 
 interface
 
@@ -68,103 +69,115 @@ type PConsoleBufferItem=^TConsoleBufferItem;
               Shift:Int32;
               Ctrl:Int32;
               Alt:Int32;
+              IgnoreWhenInternational:boolean;
             end;
             PKey=^TKey;
-            TKeys=array[0..91] of TKey;
-       const Keys:TKeys=
+            TKeys=array[0..93] of TKey;
+       const NullKey:TKey=
               (
-               (VirtualCode:$0008;Normal:$0008;Shift:$0008;Ctrl:$007f;Alt:$010e),
-               (VirtualCode:$0009;Normal:$0009;Shift:$010f;Ctrl:$0194;Alt:$01a5),
-               (VirtualCode:$000d;Normal:$000d;Shift:$000d;Ctrl:$000a;Alt:$01a6),
-               (VirtualCode:$001b;Normal:$001b;Shift:$001b;Ctrl:$001b;Alt:$0101),
-               (VirtualCode:$0020;Normal:$0020;Shift:$0020;Ctrl:$0103;Alt:$0020),
-               (VirtualCode:$0021;Normal:$0149;Shift:$0149;Ctrl:$018f;Alt:$0199),
-               (VirtualCode:$0022;Normal:$0151;Shift:$0151;Ctrl:$0176;Alt:$01a1),
-               (VirtualCode:$0023;Normal:$014f;Shift:$014f;Ctrl:$0175;Alt:$019f),
-               (VirtualCode:$0024;Normal:$0147;Shift:$0147;Ctrl:$0177;Alt:$0197),
-               (VirtualCode:$0025;Normal:$014b;Shift:$014b;Ctrl:$0173;Alt:$019b),
-               (VirtualCode:$0026;Normal:$0148;Shift:$0148;Ctrl:$018d;Alt:$0198),
-               (VirtualCode:$0027;Normal:$014d;Shift:$014d;Ctrl:$0174;Alt:$019d),
-               (VirtualCode:$0028;Normal:$0150;Shift:$0150;Ctrl:$0191;Alt:$01a0),
-               (VirtualCode:$002d;Normal:$0152;Shift:$0152;Ctrl:$0192;Alt:$01a2),
-               (VirtualCode:$002e;Normal:$0153;Shift:$0153;Ctrl:$0193;Alt:$01a3),
-               (VirtualCode:$0030;Normal:$0030;Shift:$0029;Ctrl:$ffff;Alt:$0181),
-               (VirtualCode:$0031;Normal:$0031;Shift:$0021;Ctrl:$ffff;Alt:$0178),
-               (VirtualCode:$0032;Normal:$0032;Shift:$0040;Ctrl:$0103;Alt:$0179),
-               (VirtualCode:$0033;Normal:$0033;Shift:$0023;Ctrl:$ffff;Alt:$017a),
-               (VirtualCode:$0034;Normal:$0034;Shift:$0024;Ctrl:$ffff;Alt:$017b),
-               (VirtualCode:$0035;Normal:$0035;Shift:$0025;Ctrl:$ffff;Alt:$017c),
-               (VirtualCode:$0036;Normal:$0036;Shift:$005e;Ctrl:$001e;Alt:$017d),
-               (VirtualCode:$0037;Normal:$0037;Shift:$0026;Ctrl:$ffff;Alt:$017e),
-               (VirtualCode:$0038;Normal:$0038;Shift:$002a;Ctrl:$ffff;Alt:$017f),
-               (VirtualCode:$0039;Normal:$0039;Shift:$0028;Ctrl:$ffff;Alt:$0180),
-               (VirtualCode:$0041;Normal:$0061;Shift:$0041;Ctrl:$0001;Alt:$011e),
-               (VirtualCode:$0042;Normal:$0062;Shift:$0042;Ctrl:$0002;Alt:$0130),
-               (VirtualCode:$0043;Normal:$0063;Shift:$0043;Ctrl:$0003;Alt:$012e),
-               (VirtualCode:$0044;Normal:$0064;Shift:$0044;Ctrl:$0004;Alt:$0120),
-               (VirtualCode:$0045;Normal:$0065;Shift:$0045;Ctrl:$0005;Alt:$0112),
-               (VirtualCode:$0046;Normal:$0066;Shift:$0046;Ctrl:$0006;Alt:$0121),
-               (VirtualCode:$0047;Normal:$0067;Shift:$0047;Ctrl:$0007;Alt:$0122),
-               (VirtualCode:$0048;Normal:$0068;Shift:$0048;Ctrl:$0008;Alt:$0123),
-               (VirtualCode:$0049;Normal:$0069;Shift:$0049;Ctrl:$0009;Alt:$0117),
-               (VirtualCode:$004a;Normal:$006a;Shift:$004a;Ctrl:$000a;Alt:$0124),
-               (VirtualCode:$004b;Normal:$006b;Shift:$004b;Ctrl:$000b;Alt:$0125),
-               (VirtualCode:$004c;Normal:$006c;Shift:$004c;Ctrl:$000c;Alt:$0126),
-               (VirtualCode:$004d;Normal:$006d;Shift:$004d;Ctrl:$000d;Alt:$0132),
-               (VirtualCode:$004e;Normal:$006e;Shift:$004e;Ctrl:$000e;Alt:$0131),
-               (VirtualCode:$004f;Normal:$006f;Shift:$004f;Ctrl:$000f;Alt:$0118),
-               (VirtualCode:$0050;Normal:$0070;Shift:$0050;Ctrl:$0010;Alt:$0119),
-               (VirtualCode:$0051;Normal:$0071;Shift:$0051;Ctrl:$0011;Alt:$0110),
-               (VirtualCode:$0052;Normal:$0072;Shift:$0052;Ctrl:$0012;Alt:$0113),
-               (VirtualCode:$0053;Normal:$0073;Shift:$0053;Ctrl:$0013;Alt:$011f),
-               (VirtualCode:$0054;Normal:$0074;Shift:$0054;Ctrl:$0014;Alt:$0114),
-               (VirtualCode:$0055;Normal:$0075;Shift:$0055;Ctrl:$0015;Alt:$0116),
-               (VirtualCode:$0056;Normal:$0076;Shift:$0056;Ctrl:$0016;Alt:$012f),
-               (VirtualCode:$0057;Normal:$0077;Shift:$0057;Ctrl:$0017;Alt:$0111),
-               (VirtualCode:$0058;Normal:$0078;Shift:$0058;Ctrl:$0018;Alt:$012d),
-               (VirtualCode:$0059;Normal:$0079;Shift:$0059;Ctrl:$0019;Alt:$0115),
-               (VirtualCode:$005a;Normal:$007a;Shift:$005a;Ctrl:$001a;Alt:$012c),
-               (VirtualCode:$005b;Normal:$ffff;Shift:$ffff;Ctrl:$ffff;Alt:$ffff),
-               (VirtualCode:$005c;Normal:$ffff;Shift:$ffff;Ctrl:$ffff;Alt:$ffff),
-               (VirtualCode:$005d;Normal:$ffff;Shift:$ffff;Ctrl:$ffff;Alt:$ffff),
-               (VirtualCode:$0060;Normal:$0030;Shift:$0152;Ctrl:$0192;Alt:$ffff),
-               (VirtualCode:$0061;Normal:$0031;Shift:$014f;Ctrl:$0175;Alt:$ffff),
-               (VirtualCode:$0062;Normal:$0032;Shift:$0150;Ctrl:$0191;Alt:$ffff),
-               (VirtualCode:$0063;Normal:$0033;Shift:$0151;Ctrl:$0176;Alt:$ffff),
-               (VirtualCode:$0064;Normal:$0034;Shift:$014b;Ctrl:$0173;Alt:$ffff),
-               (VirtualCode:$0065;Normal:$0035;Shift:$014c;Ctrl:$018f;Alt:$ffff),
-               (VirtualCode:$0066;Normal:$0036;Shift:$014d;Ctrl:$0174;Alt:$ffff),
-               (VirtualCode:$0067;Normal:$0037;Shift:$0147;Ctrl:$0177;Alt:$ffff),
-               (VirtualCode:$0068;Normal:$0038;Shift:$0148;Ctrl:$018d;Alt:$ffff),
-               (VirtualCode:$0069;Normal:$0039;Shift:$0149;Ctrl:$0184;Alt:$ffff),
-               (VirtualCode:$006a;Normal:$002a;Shift:$002a;Ctrl:$0196;Alt:$0137),
-               (VirtualCode:$006b;Normal:$002b;Shift:$002b;Ctrl:$0190;Alt:$014e),
-               (VirtualCode:$006d;Normal:$002d;Shift:$002d;Ctrl:$018e;Alt:$014a),
-               (VirtualCode:$006e;Normal:$002e;Shift:$002e;Ctrl:$0153;Alt:$0193),
-               (VirtualCode:$006f;Normal:$002f;Shift:$002f;Ctrl:$0195;Alt:$01a4),
-               (VirtualCode:$0070;Normal:$013b;Shift:$0154;Ctrl:$015e;Alt:$0168),
-               (VirtualCode:$0071;Normal:$013c;Shift:$0155;Ctrl:$015f;Alt:$0169),
-               (VirtualCode:$0072;Normal:$013d;Shift:$0156;Ctrl:$0160;Alt:$016a),
-               (VirtualCode:$0073;Normal:$013e;Shift:$0157;Ctrl:$0161;Alt:$016b),
-               (VirtualCode:$0074;Normal:$013f;Shift:$0158;Ctrl:$0162;Alt:$016c),
-               (VirtualCode:$0075;Normal:$0140;Shift:$0159;Ctrl:$0163;Alt:$016d),
-               (VirtualCode:$0076;Normal:$0141;Shift:$015a;Ctrl:$0164;Alt:$016e),
-               (VirtualCode:$0077;Normal:$0142;Shift:$015b;Ctrl:$0165;Alt:$016f),
-               (VirtualCode:$0078;Normal:$0143;Shift:$015c;Ctrl:$0166;Alt:$0170),
-               (VirtualCode:$0079;Normal:$0144;Shift:$015d;Ctrl:$0167;Alt:$0171),
-               (VirtualCode:$007a;Normal:$0185;Shift:$0187;Ctrl:$0189;Alt:$018b),
-               (VirtualCode:$007b;Normal:$0186;Shift:$0188;Ctrl:$018a;Alt:$018c),
-               (VirtualCode:$00ba;Normal:$003b;Shift:$003a;Ctrl:$ffff;Alt:$0127),
-               (VirtualCode:$00bb;Normal:$003d;Shift:$002b;Ctrl:$ffff;Alt:$0183),
-               (VirtualCode:$00bc;Normal:$002c;Shift:$003c;Ctrl:$ffff;Alt:$0133),
-               (VirtualCode:$00bd;Normal:$002d;Shift:$005f;Ctrl:$001f;Alt:$0182),
-               (VirtualCode:$00be;Normal:$002e;Shift:$003e;Ctrl:$ffff;Alt:$0134),
-               (VirtualCode:$00bf;Normal:$002f;Shift:$003f;Ctrl:$ffff;Alt:$0135),
-               (VirtualCode:$00c0;Normal:$0060;Shift:$007e;Ctrl:$ffff;Alt:$0129),
-               (VirtualCode:$00db;Normal:$005b;Shift:$007b;Ctrl:$001b;Alt:$011a),
-               (VirtualCode:$00dc;Normal:$005c;Shift:$007c;Ctrl:$001c;Alt:$012b),
-               (VirtualCode:$00dd;Normal:$005d;Shift:$007d;Ctrl:$001d;Alt:$011b),
-               (VirtualCode:$00de;Normal:$0027;Shift:$0022;Ctrl:$ffff;Alt:$0128)
+               VirtualCode:$0000;
+               Normal:$0000;
+               Shift:$0000;
+               Ctrl:$0000;
+               Alt:$0000;
+              );
+             Keys:TKeys=
+              (
+               // Must be virtual-code-sorted for the binary-search
+               (VirtualCode:$0008{VK_BACK};Normal:$0008;Shift:$0008;Ctrl:$007f;Alt:$010e;IgnoreWhenInternational:false),
+               (VirtualCode:$0009{VK_TAB};Normal:$0009;Shift:$010f;Ctrl:$0194;Alt:$01a5;IgnoreWhenInternational:false),
+               (VirtualCode:$000d{VK_RETURN};Normal:$000d;Shift:$000d;Ctrl:$000a;Alt:$01a6;IgnoreWhenInternational:false),
+               (VirtualCode:$001b{VK_ESCAPE};Normal:$001b;Shift:$001b;Ctrl:$001b;Alt:$0101;IgnoreWhenInternational:false),
+               (VirtualCode:$0020{VK_SPACE};Normal:$0020;Shift:$0020;Ctrl:$0103;Alt:$0020;IgnoreWhenInternational:false),
+               (VirtualCode:$0021{VK_PRIOR};Normal:$0149;Shift:$0149;Ctrl:$018f;Alt:$0199;IgnoreWhenInternational:false),
+               (VirtualCode:$0022{VK_NEXT};Normal:$0151;Shift:$0151;Ctrl:$0176;Alt:$01a1;IgnoreWhenInternational:false),
+               (VirtualCode:$0023{VK_END};Normal:$014f;Shift:$014f;Ctrl:$0175;Alt:$019f;IgnoreWhenInternational:false),
+               (VirtualCode:$0024{VK_HOME};Normal:$0147;Shift:$0147;Ctrl:$0177;Alt:$0197;IgnoreWhenInternational:false),
+               (VirtualCode:$0025{VK_LEFT};Normal:$014b;Shift:$014b;Ctrl:$0173;Alt:$019b;IgnoreWhenInternational:false),
+               (VirtualCode:$0026{VK_UP};Normal:$0148;Shift:$0148;Ctrl:$018d;Alt:$0198;IgnoreWhenInternational:false),
+               (VirtualCode:$0027{VK_RIGHT};Normal:$014d;Shift:$014d;Ctrl:$0174;Alt:$019d;IgnoreWhenInternational:false),
+               (VirtualCode:$0028{VK_DOWN};Normal:$0150;Shift:$0150;Ctrl:$0191;Alt:$01a0;IgnoreWhenInternational:false),
+               (VirtualCode:$002d{VK_INSERT};Normal:$0152;Shift:$0152;Ctrl:$0192;Alt:$01a2;IgnoreWhenInternational:false),
+               (VirtualCode:$002e{VK_DELETE};Normal:$0153;Shift:$0153;Ctrl:$0193;Alt:$01a3;IgnoreWhenInternational:false),
+               (VirtualCode:$0030{0};Normal:$0030;Shift:$0029;Ctrl:$ffff;Alt:$0181;IgnoreWhenInternational:true),
+               (VirtualCode:$0031{1};Normal:$0031;Shift:$0021;Ctrl:$ffff;Alt:$0178;IgnoreWhenInternational:true),
+               (VirtualCode:$0032{2};Normal:$0032;Shift:$0040;Ctrl:$0103;Alt:$0179;IgnoreWhenInternational:true),
+               (VirtualCode:$0033{3};Normal:$0033;Shift:$0023;Ctrl:$ffff;Alt:$017a;IgnoreWhenInternational:true),
+               (VirtualCode:$0034{4};Normal:$0034;Shift:$0024;Ctrl:$ffff;Alt:$017b;IgnoreWhenInternational:true),
+               (VirtualCode:$0035{5};Normal:$0035;Shift:$0025;Ctrl:$ffff;Alt:$017c;IgnoreWhenInternational:true),
+               (VirtualCode:$0036{6};Normal:$0036;Shift:$005e;Ctrl:$001e;Alt:$017d;IgnoreWhenInternational:true),
+               (VirtualCode:$0037{7};Normal:$0037;Shift:$0026;Ctrl:$ffff;Alt:$017e;IgnoreWhenInternational:true),
+               (VirtualCode:$0038{8};Normal:$0038;Shift:$002a;Ctrl:$ffff;Alt:$017f;IgnoreWhenInternational:true),
+               (VirtualCode:$0039{9};Normal:$0039;Shift:$0028;Ctrl:$ffff;Alt:$0180;IgnoreWhenInternational:true),
+               (VirtualCode:$0041{A};Normal:$0061;Shift:$0041;Ctrl:$0001;Alt:$011e;IgnoreWhenInternational:true),
+               (VirtualCode:$0042{B};Normal:$0062;Shift:$0042;Ctrl:$0002;Alt:$0130;IgnoreWhenInternational:true),
+               (VirtualCode:$0043{C};Normal:$0063;Shift:$0043;Ctrl:$0003;Alt:$012e;IgnoreWhenInternational:true),
+               (VirtualCode:$0044{D};Normal:$0064;Shift:$0044;Ctrl:$0004;Alt:$0120;IgnoreWhenInternational:true),
+               (VirtualCode:$0045{E};Normal:$0065;Shift:$0045;Ctrl:$0005;Alt:$0112;IgnoreWhenInternational:true),
+               (VirtualCode:$0046{F};Normal:$0066;Shift:$0046;Ctrl:$0006;Alt:$0121;IgnoreWhenInternational:true),
+               (VirtualCode:$0047{G};Normal:$0067;Shift:$0047;Ctrl:$0007;Alt:$0122;IgnoreWhenInternational:true),
+               (VirtualCode:$0048{H};Normal:$0068;Shift:$0048;Ctrl:$0008;Alt:$0123;IgnoreWhenInternational:true),
+               (VirtualCode:$0049{I};Normal:$0069;Shift:$0049;Ctrl:$0009;Alt:$0117;IgnoreWhenInternational:true),
+               (VirtualCode:$004a{J};Normal:$006a;Shift:$004a;Ctrl:$000a;Alt:$0124;IgnoreWhenInternational:true),
+               (VirtualCode:$004b{K};Normal:$006b;Shift:$004b;Ctrl:$000b;Alt:$0125;IgnoreWhenInternational:true),
+               (VirtualCode:$004c{L};Normal:$006c;Shift:$004c;Ctrl:$000c;Alt:$0126;IgnoreWhenInternational:true),
+               (VirtualCode:$004d{M};Normal:$006d;Shift:$004d;Ctrl:$000d;Alt:$0132;IgnoreWhenInternational:true),
+               (VirtualCode:$004e{N};Normal:$006e;Shift:$004e;Ctrl:$000e;Alt:$0131;IgnoreWhenInternational:true),
+               (VirtualCode:$004f{O};Normal:$006f;Shift:$004f;Ctrl:$000f;Alt:$0118;IgnoreWhenInternational:true),
+               (VirtualCode:$0050{P};Normal:$0070;Shift:$0050;Ctrl:$0010;Alt:$0119;IgnoreWhenInternational:true),
+               (VirtualCode:$0051{Q};Normal:$0071;Shift:$0051;Ctrl:$0011;Alt:$0110;IgnoreWhenInternational:true),
+               (VirtualCode:$0052{R};Normal:$0072;Shift:$0052;Ctrl:$0012;Alt:$0113;IgnoreWhenInternational:true),
+               (VirtualCode:$0053{S};Normal:$0073;Shift:$0053;Ctrl:$0013;Alt:$011f;IgnoreWhenInternational:true),
+               (VirtualCode:$0054{T};Normal:$0074;Shift:$0054;Ctrl:$0014;Alt:$0114;IgnoreWhenInternational:true),
+               (VirtualCode:$0055{U};Normal:$0075;Shift:$0055;Ctrl:$0015;Alt:$0116;IgnoreWhenInternational:true),
+               (VirtualCode:$0056{V};Normal:$0076;Shift:$0056;Ctrl:$0016;Alt:$012f;IgnoreWhenInternational:true),
+               (VirtualCode:$0057{W};Normal:$0077;Shift:$0057;Ctrl:$0017;Alt:$0111;IgnoreWhenInternational:true),
+               (VirtualCode:$0058{X};Normal:$0078;Shift:$0058;Ctrl:$0018;Alt:$012d;IgnoreWhenInternational:true),
+               (VirtualCode:$0059{Y};Normal:$0079;Shift:$0059;Ctrl:$0019;Alt:$0115;IgnoreWhenInternational:true),
+               (VirtualCode:$005a{Z};Normal:$007a;Shift:$005a;Ctrl:$001a;Alt:$012c;IgnoreWhenInternational:true),
+               (VirtualCode:$005b{VK_LWIN};Normal:$ffff;Shift:$ffff;Ctrl:$ffff;Alt:$ffff;IgnoreWhenInternational:false),
+               (VirtualCode:$005c{VK_RWIN};Normal:$ffff;Shift:$ffff;Ctrl:$ffff;Alt:$ffff;IgnoreWhenInternational:false),
+               (VirtualCode:$005d{VK_APPS};Normal:$ffff;Shift:$ffff;Ctrl:$ffff;Alt:$ffff;IgnoreWhenInternational:false),
+               (VirtualCode:$0060{VK_NUMPAD0};Normal:$0030;Shift:$0152;Ctrl:$0192;Alt:$ffff;IgnoreWhenInternational:false),
+               (VirtualCode:$0061{VK_NUMPAD1};Normal:$0031;Shift:$014f;Ctrl:$0175;Alt:$ffff;IgnoreWhenInternational:false),
+               (VirtualCode:$0062{VK_NUMPAD2};Normal:$0032;Shift:$0150;Ctrl:$0191;Alt:$ffff;IgnoreWhenInternational:false),
+               (VirtualCode:$0063{VK_NUMPAD3};Normal:$0033;Shift:$0151;Ctrl:$0176;Alt:$ffff;IgnoreWhenInternational:false),
+               (VirtualCode:$0064{VK_NUMPAD4};Normal:$0034;Shift:$014b;Ctrl:$0173;Alt:$ffff;IgnoreWhenInternational:false),
+               (VirtualCode:$0065{VK_NUMPAD5};Normal:$0035;Shift:$014c;Ctrl:$018f;Alt:$ffff;IgnoreWhenInternational:false),
+               (VirtualCode:$0066{VK_NUMPAD6};Normal:$0036;Shift:$014d;Ctrl:$0174;Alt:$ffff;IgnoreWhenInternational:false),
+               (VirtualCode:$0067{VK_NUMPAD7};Normal:$0037;Shift:$0147;Ctrl:$0177;Alt:$ffff;IgnoreWhenInternational:false),
+               (VirtualCode:$0068{VK_NUMPAD8};Normal:$0038;Shift:$0148;Ctrl:$018d;Alt:$ffff;IgnoreWhenInternational:false),
+               (VirtualCode:$0069{VK_NUMPAD9};Normal:$0039;Shift:$0149;Ctrl:$0184;Alt:$ffff;IgnoreWhenInternational:false),
+               (VirtualCode:$006a{VK_MULTIPLY};Normal:$002a;Shift:$002a;Ctrl:$0196;Alt:$0137;IgnoreWhenInternational:false),
+               (VirtualCode:$006b{VK_ADD};Normal:$002b;Shift:$002b;Ctrl:$0190;Alt:$014e;IgnoreWhenInternational:false),
+               (VirtualCode:$006d{VK_SUBTRACT};Normal:$002d;Shift:$002d;Ctrl:$018e;Alt:$014a;IgnoreWhenInternational:false),
+               (VirtualCode:$006e{VK_DECIMAL};Normal:$002e;Shift:$002e;Ctrl:$0153;Alt:$0193;IgnoreWhenInternational:false),
+               (VirtualCode:$006f{VK_DIVIDE};Normal:$002f;Shift:$002f;Ctrl:$0195;Alt:$01a4;IgnoreWhenInternational:false),
+               (VirtualCode:$0070{VK_F1};Normal:$013b;Shift:$0154;Ctrl:$015e;Alt:$0168;IgnoreWhenInternational:false),
+               (VirtualCode:$0071{VK_F2};Normal:$013c;Shift:$0155;Ctrl:$015f;Alt:$0169;IgnoreWhenInternational:false),
+               (VirtualCode:$0072{VK_F3};Normal:$013d;Shift:$0156;Ctrl:$0160;Alt:$016a;IgnoreWhenInternational:false),
+               (VirtualCode:$0073{VK_F4};Normal:$013e;Shift:$0157;Ctrl:$0161;Alt:$016b;IgnoreWhenInternational:false),
+               (VirtualCode:$0074{VK_F5};Normal:$013f;Shift:$0158;Ctrl:$0162;Alt:$016c;IgnoreWhenInternational:false),
+               (VirtualCode:$0075{VK_F6};Normal:$0140;Shift:$0159;Ctrl:$0163;Alt:$016d;IgnoreWhenInternational:false),
+               (VirtualCode:$0076{VK_F7};Normal:$0141;Shift:$015a;Ctrl:$0164;Alt:$016e;IgnoreWhenInternational:false),
+               (VirtualCode:$0077{VK_F8};Normal:$0142;Shift:$015b;Ctrl:$0165;Alt:$016f;IgnoreWhenInternational:false),
+               (VirtualCode:$0078{VK_F9};Normal:$0143;Shift:$015c;Ctrl:$0166;Alt:$0170;IgnoreWhenInternational:false),
+               (VirtualCode:$0079{VK_F10};Normal:$0144;Shift:$015d;Ctrl:$0167;Alt:$0171;IgnoreWhenInternational:false),
+               (VirtualCode:$007a{VK_F11};Normal:$0185;Shift:$0187;Ctrl:$0189;Alt:$018b;IgnoreWhenInternational:false),
+               (VirtualCode:$007b{VK_F12};Normal:$0186;Shift:$0188;Ctrl:$018a;Alt:$018c;IgnoreWhenInternational:false),
+               (VirtualCode:$00ba{VK_OEM_1};Normal:$003b;Shift:$003a;Ctrl:$ffff;Alt:$0127;IgnoreWhenInternational:true),
+               (VirtualCode:$00bb{VK_OEM_PLUS};Normal:$003d;Shift:$002b;Ctrl:$ffff;Alt:$0183;IgnoreWhenInternational:true),
+               (VirtualCode:$00bc{VK_OEM_COMMA};Normal:$002c;Shift:$003c;Ctrl:$ffff;Alt:$0133;IgnoreWhenInternational:true),
+               (VirtualCode:$00bd{VK_OEM_MINUS};Normal:$002d;Shift:$005f;Ctrl:$001f;Alt:$0182;IgnoreWhenInternational:true),
+               (VirtualCode:$00be{VK_OEM_PERIOD};Normal:$002e;Shift:$003e;Ctrl:$ffff;Alt:$0134;IgnoreWhenInternational:true),
+               (VirtualCode:$00bf{VK_OEM_2};Normal:$002f;Shift:$003f;Ctrl:$ffff;Alt:$0135;IgnoreWhenInternational:true),
+               (VirtualCode:$00c0{VK_OEM_3};Normal:$0060;Shift:$007e;Ctrl:$ffff;Alt:$0129;IgnoreWhenInternational:true),
+               (VirtualCode:$00db{VK_OEM_4};Normal:$005b;Shift:$007b;Ctrl:$001b;Alt:$011a;IgnoreWhenInternational:true),
+               (VirtualCode:$00dc{VK_OEM_5};Normal:$005c;Shift:$007c;Ctrl:$001c;Alt:$012b;IgnoreWhenInternational:true),
+               (VirtualCode:$00dd{VK_OEM_6};Normal:$005d;Shift:$007d;Ctrl:$001d;Alt:$011b;IgnoreWhenInternational:true),
+               (VirtualCode:$00de{VK_OEM_7};Normal:$0027;Shift:$0022;Ctrl:$ffff;Alt:$0128;IgnoreWhenInternational:true),
+               (VirtualCode:$00df{VK_OEM_8};Normal:$ffff;Shift:$ffff;Ctrl:$ffff;Alt:$ffff;IgnoreWhenInternational:true),
+               (VirtualCode:$00e2{VK_OEM_102};Normal:$ffff;Shift:$ffff;Ctrl:$ffff;Alt:$ffff;IgnoreWhenInternational:true)
               );
 {$endif}
       private
@@ -239,6 +252,8 @@ constructor TConsole.Create;
 begin
  inherited Create;
 {$ifdef Windows}
+{SetConsoleCP(CP_UTF8);
+ SetConsoleOutputCP(CP_UTF8);}
  fConsoleInputHandle:=GetStdHandle(STD_INPUT_HANDLE);
  fConsoleOutputHandle:=GetStdHandle(STD_OUTPUT_HANDLE);
  fConsoleBuffer:=nil;
@@ -668,6 +683,9 @@ begin
   MidIndex:=MinIndex+((MaxIndex-MinIndex) shr 1);
   if Keys[MidIndex].VirtualCode=aVirtualCode then begin
    result:=@Keys[MidIndex];
+   if result^.IgnoreWhenInternational then begin
+    result:=@NullKey;
+   end;
    break;
   end else if Keys[MidIndex].VirtualCode<aVirtualCode then begin
    MinIndex:=MidIndex+1;
@@ -758,8 +776,14 @@ begin
         result:=0;
         break;
        end;
-       if (Code=0) and (Input.Event.KeyEvent.AsciiChar<>#0) then begin
-        result:=ord(Input.Event.KeyEvent.AsciiChar);
+       if Code=0 then begin
+        if Input.Event.KeyEvent.UnicodeChar<>#0 then begin
+         result:=ord(Input.Event.KeyEvent.UnicodeChar);
+        end else if Input.Event.KeyEvent.AsciiChar<>#0 then begin
+         result:=ord(Input.Event.KeyEvent.AsciiChar);
+        end else begin
+         result:=Code;
+        end;
        end else begin
         result:=Code;
        end;
