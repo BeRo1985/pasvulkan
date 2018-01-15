@@ -1272,6 +1272,7 @@ begin
 
       if DoNewLine then begin
        AddLine(fCodePointIndex);
+       fCountVisibleVisualCodePointsSinceNewLine:=0;
        if ((aUntilCodePoint>=0) and (fCodePointIndex>=aUntilCodePoint)) or
           ((aUntilLine>=0) and (fCountLines>=aUntilLine)) then begin
         DoStop:=2; // for as fallback for possible two-single-char-class-codepoint-width-sized newline sequences
@@ -1629,6 +1630,7 @@ begin
  fStringRope.Text:='Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello'#10#10;
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
+//fStringRopeVisualLineMap.LineWrap:=80;
  fCodePointIndex:=0;
  fFirstVisualLineIndex:=0;
 end;
