@@ -27,7 +27,7 @@
     </RunParams>
     <Units Count="7">
       <Unit0>
-        <Filename Value="texteditor.lpr"/>
+        <Filename Value="texteditor.dpr"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
       <Unit1>

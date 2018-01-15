@@ -7,6 +7,10 @@ program texteditor;
  {$apptype console}
 {$endif}
 
+(*{$ifdef Unix}
+      cthreads,
+     {$endif}*)
+
 uses {$ifdef Unix}
       cthreads,
      {$endif}
@@ -22,4 +26,3 @@ uses {$ifdef Unix}
 begin
  Main;
 end.
-

@@ -1,6 +1,13 @@
 unit UnitMain;
-
-{$mode delphi}
+{$ifdef fpc}
+ {$mode delphi}
+{$else}
+ {$legacyifend on}
+{$endif}
+{$if defined(Win32) or defined(Win64)}
+ {$define Windows}
+{$ifend}
+{$scopedenums on}
 
 interface
 
@@ -146,7 +153,7 @@ begin
 end;
 
 procedure Main;
-var c:char;
+var c:Int32;
 begin
 
  AbstractTextEditor:=TpvAbstractTextEditor.Create;
@@ -159,70 +166,70 @@ begin
    if {Console.KeyPressed}true then begin
     c:=Console.ReadKey;
     case c of
-     #0:begin
+     0:begin
       // Code escape
       if Console.KeyPressed then begin
        c:=Console.ReadKey;
        case c of
-        #82:begin
+        82:begin
          // Insert
          OverwriteMode:=not OverwriteMode;
         end;
-        #83:begin
+        83:begin
          // Delete
          AbstractTextEditor.Delete;
         end;
-        #71:begin
+        71:begin
          // Home
          AbstractTextEditor.MoveToLineBegin;
         end;
-        #79:begin
+        79:begin
          // End
          AbstractTextEditor.MoveToLineEnd;
         end;
-        #73:begin
+        73:begin
          // Page up
          AbstractTextEditor.MovePageUp;
         end;
-        #81:begin
+        81:begin
          // Page down
          AbstractTextEditor.MovePageDown;
         end;
-        #72:begin
+        72:begin
          // Up
          AbstractTextEditor.MoveUp;
         end;
-        #80:begin
+        80:begin
          // Down
          AbstractTextEditor.MoveDown;
         end;
-        #75:begin
+        75:begin
          // Left
          AbstractTextEditor.MoveLeft;
         end;
-        #77:begin
+        77:begin
          // Right
          AbstractTextEditor.MoveRight;
         end;
-        #68:begin
+        68:begin
          // F10
          break;
         end;
        end;
       end;
      end;
-     #8:begin
+     8:begin
       // Backspace
       AbstractTextEditor.Backspace;
      end;
-     #13:begin
+     13:begin
       AbstractTextEditor.Enter(OverwriteMode);
      end;
-     #27:begin
+     27:begin
       // Escape
      end;
      else begin
-      AbstractTextEditor.InsertCodePoint(ord(c),OverwriteMode);
+      AbstractTextEditor.InsertCodePoint(c,OverwriteMode);
      end;
     end;
    end else begin
