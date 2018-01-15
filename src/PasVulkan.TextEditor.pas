@@ -1261,10 +1261,12 @@ begin
       end;
 
       if fLineWrap>0 then begin
-       if DoTab and (fTabWidth>0) then begin
-        inc(fCountVisibleVisualCodePointsSinceNewLine,fTabWidth-(fCountVisibleVisualCodePointsSinceNewLine mod fTabWidth));
-       end else begin
-        inc(fCountVisibleVisualCodePointsSinceNewLine);
+       if (fCodePoint<>10) and (fCodePoint<>13) then begin
+        if DoTab and (fTabWidth>0) then begin
+         inc(fCountVisibleVisualCodePointsSinceNewLine,fTabWidth-(fCountVisibleVisualCodePointsSinceNewLine mod fTabWidth));
+        end else begin
+         inc(fCountVisibleVisualCodePointsSinceNewLine);
+        end;
        end;
        if fCountVisibleVisualCodePointsSinceNewLine>=fLineWrap then begin
         fCountVisibleVisualCodePointsSinceNewLine:=0;
@@ -1852,13 +1854,14 @@ begin
          StepWidth:=Max(1,(fStringRopeVisualLineMap.fTabWidth-(LocalCursorX mod fStringRopeVisualLineMap.fTabWidth)));
         end;
         10:begin
-         CodePoint:=48;
+//       CodePoint:=48;
+         CodePoint:=32;
          LastWasNewLine:=true;
          StepWidth:=1;
         end;
         13:begin
-         CodePoint:=49;
-         StepWidth:=1;
+         CodePoint:=32;
+         StepWidth:=0;
         end;
        end;
 
