@@ -2007,6 +2007,31 @@ end;
 
 function TpvAbstractTextEditor.IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
 {$if true}
+var CodePoint,LastCodePoint:TpvUInt32;
+    LastWasPossibleNewLineTwoCharSequence:boolean;
+begin
+ LastCodePoint:=0;
+ LastWasPossibleNewLineTwoCharSequence:=false;
+ for CodePoint in fStringRope.GetCodePointEnumeratorSource(aCodePointIndex,aCodePointIndex+2) do begin
+  case CodePoint of
+   $0a,$0d:begin
+    if LastWasPossibleNewLineTwoCharSequence and
+       (((CodePoint=$0a) and (LastCodePoint=$0d)) or
+        ((CodePoint=$0d) and (LastCodePoint=$0a))) then begin
+     result:=true;
+     break;
+    end else begin
+     LastWasPossibleNewLineTwoCharSequence:=true;
+    end;
+   end;
+   else begin
+    break;
+   end;
+  end;
+  LastCodePoint:=CodePoint;
+ end;
+end;
+{$elseif true}
 var NodeCodeUnitIndex:TpvSizeInt;
     CodeUnit:AnsiChar;
     UTF8DFAState,UTF8DFACharClass:TpvUInt8;
@@ -2170,7 +2195,6 @@ end;
 
 procedure TpvAbstractTextEditor.Delete;
 var Count:TpvSizeInt;
-    Temporary:TpvUTF8String;
 begin
  if fCodePointIndex<fStringRope.fCountCodePoints then begin
   if IsTwoCodePointNewLine(fCodePointIndex) then begin
