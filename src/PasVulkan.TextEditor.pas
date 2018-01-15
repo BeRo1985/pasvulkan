@@ -1397,13 +1397,17 @@ begin
         end;
        end;
 
+       aColumnIndex:=CurrentColumn;
+
+       if CurrentCodePointIndex>=aCodePointIndex then begin
+        break;
+       end;
+
        inc(CurrentColumn,StepWidth);
 
        inc(CurrentCodePointIndex);
 
-       if (CurrentCodePointIndex>=StopCodePointIndex) or
-          (CurrentCodePointIndex>=aCodePointIndex) then begin
-        aColumnIndex:=CurrentColumn;
+       if CurrentCodePointIndex>=StopCodePointIndex then begin
         break;
        end;
 
@@ -1446,13 +1450,132 @@ begin
 end;
 
 function TpvUTF8StringRopeLineMap.GetCodePointIndexFromLineIndexAndColumnIndex(const aLineIndex,aColumnIndex:TpvSizeInt):TpvSizeInt;
+var StartCodePointIndex,StopCodePointIndex,CurrentCodePointIndex,
+    NodeCodeUnitIndex,StepWidth,CurrentColumn:TpvSizeInt;
+    CodeUnit:AnsiChar;
+    UTF8DFAState,UTF8DFACharClass:TpvUInt8;
+    CodePoint:TpvUInt32;
+    Node:TpvUTF8StringRope.TNode;
+    LastWasNewLine:boolean;
+    NodePositionLinks:TpvUTF8StringRope.TNode.TNodePositionLinks;
 begin
- Update(-1,aLineIndex+1);
+ Update(-1,aLineIndex+2);
  if (aLineIndex>=0) and (aLineIndex<fCountLines) then begin
+
   result:=fLines[aLineIndex];
+
+  StartCodePointIndex:=result;
+
+  if (aLineIndex+1)<fCountLines then begin
+   StopCodePointIndex:=fLines[aLineIndex+1];
+  end else begin
+   StopCodePointIndex:=fRope.CountCodePoints;
+  end;
+
+  if StartCodePointIndex=0 then begin
+   Node:=fRope.fHead;
+   NodeCodeUnitIndex:=0;
+  end else begin
+   Node:=fRope.FindNodePositionAtCodePoint(StartCodePointIndex,NodePositionLinks);
+   if assigned(Node) then begin
+    NodeCodeUnitIndex:=TpvUTF8StringRope.GetCountCodeUnits(@Node.fData[0],fNodePositionLinks[0].fSkipSize);
+   end else begin
+    NodeCodeUnitIndex:=0;
+   end;
+  end;
+
+  if assigned(Node) then begin
+
+   CodePoint:=0;
+
+   CurrentColumn:=0;
+
+   CurrentCodePointIndex:=StartCodePointIndex;
+
+   repeat
+
+    if NodeCodeUnitIndex>=Node.fCountCodeUnits then begin
+
+     Node:=Node.fLinks[0].fNode;
+     NodeCodeUnitIndex:=0;
+
+     if assigned(Node) then begin
+      continue;
+     end else begin
+      break;
+     end;
+
+    end else begin
+
+     CodeUnit:=Node.fData[NodeCodeUnitIndex];
+     inc(NodeCodeUnitIndex);
+
+     UTF8DFACharClass:=TpvUTF8DFA.StateCharClasses[CodeUnit];
+
+     case UTF8DFAState of
+      TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
+       CodePoint:=ord(CodeUnit) and ($ff shr UTF8DFACharClass);
+      end;
+      else begin
+       CodePoint:=(CodePoint shl 6) or (ord(CodeUnit) and $3f);
+      end;
+     end;
+
+     UTF8DFAState:=TpvUTF8DFA.StateTransitions[UTF8DFAState+UTF8DFACharClass];
+
+     if UTF8DFAState<=TpvUTF8DFA.StateError then begin
+
+      if UTF8DFAState<>TpvUTF8DFA.StateAccept then begin
+       CodePoint:=$fffd;
+      end;
+
+      StepWidth:=1;
+
+      LastWasNewLine:=false;
+
+      case CodePoint of
+       9:begin
+        CodePoint:=32;
+        StepWidth:=Max(1,(fTabWidth-(CurrentColumn mod fTabWidth)));
+       end;
+       10:begin
+        CodePoint:=32;
+        LastWasNewLine:=true;
+       end;
+       13:begin
+        CodePoint:=32;
+        StepWidth:=0;
+       end;
+      end;
+
+      result:=CurrentCodePointIndex;
+
+      if CurrentColumn>=aColumnIndex then begin
+       break;
+      end;
+
+      inc(CurrentColumn,StepWidth);
+
+      inc(CurrentCodePointIndex);
+
+      if CurrentCodePointIndex>=StopCodePointIndex then begin
+       break;
+      end;
+
+     end;
+
+    end;
+
+   until false;
+
+  end;
+
  end else begin
+
   result:=-1;
+
  end;
+
 end;
 
 constructor TpvAbstractTextEditor.Create;
