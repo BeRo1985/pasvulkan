@@ -738,7 +738,7 @@ begin
        end;
        else begin
         Key:=LookupKey(VirtualKeyCode);
-        if assigned(Key) and (TranslateKey(Input[Index],Key)>=0) then begin
+        if assigned(Key) and (TranslateKey(Input[Index],Key)<>$ffff) then begin
          result:=true;
          exit;
         end;
@@ -770,7 +770,7 @@ begin
      Key:=LookupKey(Input.Event.KeyEvent.wVirtualKeyCode);
      if assigned(Key) then begin
       Code:=TranslateKey(Input,Key);
-      if Code>=0 then begin
+      if Code<>$ffff then begin
        if Code>=$100 then begin
         fConsoleExtendedChar:=Code-$100;
         result:=0;
