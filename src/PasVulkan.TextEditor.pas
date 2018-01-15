@@ -1333,9 +1333,9 @@ var StartCodePointIndex,StopCodePointIndex,CurrentCodePointIndex,
     NodeCodeUnitIndex,StepWidth,CurrentColumn:TpvSizeInt;
     CodeUnit:AnsiChar;
     UTF8DFAState,UTF8DFACharClass:TpvUInt8;
-    CodePoint:TpvUInt32;
+    CodePoint,LastCodePoint:TpvUInt32;
     Node:TpvUTF8StringRope.TNode;
-    LastWasNewLine:boolean;
+    LastWasPossibleNewLineTwoCharSequence:boolean;
     NodePositionLinks:TpvUTF8StringRope.TNode.TNodePositionLinks;
 begin
 
@@ -1380,6 +1380,10 @@ begin
 
     CurrentCodePointIndex:=StartCodePointIndex;
 
+    LastCodePoint:=0;
+
+    LastWasPossibleNewLineTwoCharSequence:=false;
+
     UTF8DFAState:=TpvUTF8DFA.StateAccept;
 
     repeat
@@ -1420,22 +1424,27 @@ begin
 
        StepWidth:=1;
 
-       LastWasNewLine:=false;
-
        case CodePoint of
         9:begin
-         CodePoint:=32;
          StepWidth:=Max(1,(fTabWidth-(CurrentColumn mod fTabWidth)));
+         LastWasPossibleNewLineTwoCharSequence:=false;
         end;
-        10:begin
-         CodePoint:=32;
-         LastWasNewLine:=true;
+        $0a,$0d:begin
+         if LastWasPossibleNewLineTwoCharSequence and
+            (((CodePoint=$0a) and (LastCodePoint=$0d)) or
+             ((CodePoint=$0d) and (LastCodePoint=$0a))) then begin
+          StepWidth:=0;
+          LastWasPossibleNewLineTwoCharSequence:=false;
+         end else begin
+          LastWasPossibleNewLineTwoCharSequence:=true;
+         end;
         end;
-        13:begin
-         CodePoint:=32;
-         StepWidth:=0;
+        else begin
+         LastWasPossibleNewLineTwoCharSequence:=false;
         end;
        end;
+
+       LastCodePoint:=CodePoint;
 
        aColumnIndex:=CurrentColumn;
 
@@ -1494,9 +1503,9 @@ var StartCodePointIndex,StopCodePointIndex,CurrentCodePointIndex,
     NodeCodeUnitIndex,StepWidth,CurrentColumn:TpvSizeInt;
     CodeUnit:AnsiChar;
     UTF8DFAState,UTF8DFACharClass:TpvUInt8;
-    CodePoint:TpvUInt32;
+    CodePoint,LastCodePoint:TpvUInt32;
     Node:TpvUTF8StringRope.TNode;
-    LastWasNewLine:boolean;
+    LastWasPossibleNewLineTwoCharSequence:boolean;
     NodePositionLinks:TpvUTF8StringRope.TNode.TNodePositionLinks;
 begin
  Update(-1,-1);//aLineIndex+2);
@@ -1533,6 +1542,10 @@ begin
    CurrentCodePointIndex:=StartCodePointIndex;
 
    UTF8DFAState:=TpvUTF8DFA.StateAccept;
+
+   LastCodePoint:=0;
+
+   LastWasPossibleNewLineTwoCharSequence:=false;
 
    repeat
 
@@ -1573,22 +1586,27 @@ begin
 
       StepWidth:=1;
 
-      LastWasNewLine:=false;
-
       case CodePoint of
        9:begin
-        CodePoint:=32;
         StepWidth:=Max(1,(fTabWidth-(CurrentColumn mod fTabWidth)));
+        LastWasPossibleNewLineTwoCharSequence:=false;
        end;
-       10:begin
-        CodePoint:=32;
-        LastWasNewLine:=true;
+       $0a,$0d:begin
+        if LastWasPossibleNewLineTwoCharSequence and
+           (((CodePoint=$0a) and (LastCodePoint=$0d)) or
+            ((CodePoint=$0d) and (LastCodePoint=$0a))) then begin
+         StepWidth:=0;
+         LastWasPossibleNewLineTwoCharSequence:=false;
+        end else begin
+         LastWasPossibleNewLineTwoCharSequence:=true;
+        end;
        end;
-       13:begin
-        CodePoint:=32;
-        StepWidth:=0;
+       else begin
+        LastWasPossibleNewLineTwoCharSequence:=false;
        end;
       end;
+
+      LastCodePoint:=CodePoint;
 
       result:=CurrentCodePointIndex;
 
@@ -1627,7 +1645,7 @@ begin
  fStringRope:=TpvUTF8StringRope.Create;
 //fStringRope.Text:=UTF8Encode('Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello ä'#10#10);
  fStringRope.Text:='Hello world'#13#10'Hello world'#13#10'Hello world'#13#10'Hello world'#13#10'Hello'#13#10#13#10;
- fStringRope.Text:='Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello'#10#10;
+// fStringRope.Text:='Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello'#10#10;
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
 //fStringRopeVisualLineMap.LineWrap:=80;
@@ -1822,19 +1840,18 @@ begin
          StepWidth:=Max(1,(fStringRopeVisualLineMap.fTabWidth-(LocalCursorX mod fStringRopeVisualLineMap.fTabWidth)));
         end;
         10:begin
-         CodePoint:=32;
+         CodePoint:=48;
          LastWasNewLine:=true;
+         StepWidth:=1;
         end;
         13:begin
-         CodePoint:=32;
-         StepWidth:=0;
+         CodePoint:=49;
+         StepWidth:=1;
         end;
        end;
 
        if (BufferIndex<BufferSize) and (StepWidth>0) then begin
         aDrawBufferItems[BufferIndex].CodePoint:=CodePoint;
-       end else begin
-        break;
        end;
 
        inc(BufferIndex,StepWidth);
@@ -1893,10 +1910,19 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.Backspace;
+var Count:TpvSizeInt;
+    Temporary:TpvUTF8String;
 begin
  if (fCodePointIndex>0) and (fCodePointIndex<=fStringRope.fCountCodePoints) then begin
-  dec(fCodePointIndex);
-  fStringRope.Delete(fCodePointIndex,1);
+  Count:=1;
+  if fStringRopeLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex-1))=fCodePointIndex then begin
+   Temporary:=fStringRope.Extract(fCodePointIndex-2,2);
+   if (Temporary=TpvUTF8String(#13#10)) or (Temporary=TpvUTF8String(#10#13)) then begin
+    Count:=2;
+   end;
+  end;
+  dec(fCodePointIndex,Count);
+  fStringRope.Delete(fCodePointIndex,Count);
   if fCodePointIndex>0 then begin
    fStringRopeLineMap.Truncate(fCodePointIndex-1,-1);
    fStringRopeVisualLineMap.Truncate(fCodePointIndex-1,-1);
@@ -1910,9 +1936,18 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.Delete;
+var Count:TpvSizeInt;
+    Temporary:TpvUTF8String;
 begin
  if fCodePointIndex<fStringRope.fCountCodePoints then begin
-  fStringRope.Delete(fCodePointIndex,1);
+  Count:=1;
+  if fStringRopeLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex))=(fCodePointIndex+2) then begin
+   Temporary:=fStringRope.Extract(fCodePointIndex,2);
+   if (Temporary=TpvUTF8String(#13#10)) or (Temporary=TpvUTF8String(#10#13)) then begin
+    Count:=2;
+   end;
+  end;
+  fStringRope.Delete(fCodePointIndex,Count);
   if fCodePointIndex>0 then begin
    fStringRopeLineMap.Truncate(fCodePointIndex-1,-1);
    fStringRopeVisualLineMap.Truncate(fCodePointIndex-1,-1);
@@ -1964,23 +1999,34 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.MoveLeft;
+var Temporary:TpvUTF8String;
+    Count:TpvSizeInt;
 begin
  if fCodePointIndex>0 then begin
-  dec(fCodePointIndex);
-  if (fCodePointIndex>0) and (fStringRope.GetCodePoint(fCodePointIndex)=13) then begin
-   dec(fCodePointIndex);
+  Count:=1;
+  if fCodePointIndex>2 then begin
+   Temporary:=fStringRope.Extract(fCodePointIndex-2,2);
+   if (Temporary=TpvUTF8String(#13#10)) or (Temporary=TpvUTF8String(#10#13)) then begin
+    Count:=2;
+   end;
   end;
+  dec(fCodePointIndex,Count);
  end;
 end;
 
 procedure TpvAbstractTextEditor.MoveRight;
+var Temporary:TpvUTF8String;
+    Count:TpvSizeInt;
 begin
  if fCodePointIndex<fStringRope.CountCodePoints then begin
-  inc(fCodePointIndex);
-  if (fCodePointIndex<fStringRope.CountCodePoints) and
-     (fStringRope.GetCodePoint(fCodePointIndex)=13) then begin
-   inc(fCodePointIndex);
+  Count:=1;
+  if (fCodePointIndex+2)<fStringRope.CountCodePoints then begin
+   Temporary:=fStringRope.Extract(fCodePointIndex,2);
+   if (Temporary=TpvUTF8String(#13#10)) or (Temporary=TpvUTF8String(#10#13)) then begin
+    Count:=2;
+   end;
   end;
+  inc(fCodePointIndex,Count);
  end;
 end;
 
