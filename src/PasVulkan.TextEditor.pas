@@ -1270,9 +1270,7 @@ function TpvUTF8StringRopeLineMap.GetLineIndexFromCodePointIndex(const aCodePoin
 var MinIndex,MaxIndex,MidIndex:TpvSizeInt;
 begin
  if aCodePointIndex<=fRope.CountCodePoints then begin
-  if fCodePointIndex<aCodePointIndex then begin
-   Update(aCodePointIndex+1,-1);
-  end;
+  Update(aCodePointIndex+1,-1);
   MinIndex:=0;
   MaxIndex:=fCountLines-1;
   while MinIndex<MaxIndex do begin
@@ -1302,6 +1300,8 @@ var StartCodePointIndex,StopCodePointIndex,CurrentCodePointIndex,
     LastWasNewLine:boolean;
     NodePositionLinks:TpvUTF8StringRope.TNode.TNodePositionLinks;
 begin
+
+ Update(-1,-1);//aLineIndex+2);
 
  aLineIndex:=GetLineIndexFromCodePointIndex(aCodePointIndex);
 
@@ -1341,6 +1341,8 @@ begin
     CurrentColumn:=0;
 
     CurrentCodePointIndex:=StartCodePointIndex;
+
+    UTF8DFAState:=TpvUTF8DFA.StateAccept;
 
     repeat
      if NodeCodeUnitIndex>=Node.fCountCodeUnits then begin
@@ -1427,7 +1429,7 @@ end;
 
 function TpvUTF8StringRopeLineMap.GetCodePointIndexFromLineIndex(const aLineIndex:TpvSizeInt):TpvSizeInt;
 begin
- Update(-1,aLineIndex+1);
+ Update(-1,-1);//aLineIndex+1);
  if (aLineIndex>=0) and (aLineIndex<fCountLines) then begin
   result:=fLines[aLineIndex];
  end else begin
@@ -1437,7 +1439,7 @@ end;
 
 function TpvUTF8StringRopeLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(const aLineIndex:TpvSizeInt):TpvSizeInt;
 begin
- Update(-1,aLineIndex+2);
+ Update(-1,-1);//aLineIndex+2);
  if (aLineIndex>=0) and (aLineIndex<fCountLines) then begin
   if (aLineIndex+1)<fCountLines then begin
    result:=fLines[aLineIndex+1];
@@ -1459,7 +1461,7 @@ var StartCodePointIndex,StopCodePointIndex,CurrentCodePointIndex,
     LastWasNewLine:boolean;
     NodePositionLinks:TpvUTF8StringRope.TNode.TNodePositionLinks;
 begin
- Update(-1,aLineIndex+2);
+ Update(-1,-1);//aLineIndex+2);
  if (aLineIndex>=0) and (aLineIndex<fCountLines) then begin
 
   result:=fLines[aLineIndex];
@@ -1491,6 +1493,8 @@ begin
    CurrentColumn:=0;
 
    CurrentCodePointIndex:=StartCodePointIndex;
+
+   UTF8DFAState:=TpvUTF8DFA.StateAccept;
 
    repeat
 
@@ -1680,6 +1684,8 @@ begin
   BufferBaseIndex:=0;
 
   Node:=nil;
+
+  NodeCodeUnitIndex:=0;
 
   CurrentCodePointIndex:=-1;
 
