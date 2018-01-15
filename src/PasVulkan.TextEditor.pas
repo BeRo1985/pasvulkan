@@ -1857,7 +1857,7 @@ begin
 //       CodePoint:=48;
          CodePoint:=32;
          LastWasNewLine:=true;
-         StepWidth:=1;
+         StepWidth:=0;
         end;
         13:begin
          CodePoint:=32;
@@ -1865,7 +1865,9 @@ begin
         end;
        end;
 
-       if (BufferIndex<BufferSize) and (StepWidth>0) then begin
+       if (StepWidth>0) and
+          (BufferIndex<BufferSize) and
+          (LocalCursorX<fVisibleAreaWidth) then begin
         aDrawBufferItems[BufferIndex].CodePoint:=CodePoint;
        end;
 
@@ -1924,11 +1926,17 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
+var Count:TpvSizeInt;
 begin
  fStringRopeLineMap.Truncate(fCodePointIndex,-1);
  fStringRopeVisualLineMap.Truncate(fCodePointIndex,-1);
  if aOverwrite and (fCodePointIndex<fStringRope.fCountCodePoints) then begin
-  fStringRope.Delete(fCodePointIndex,1);
+  if IsTwoCodePointNewLine(fCodePointIndex) then begin
+   Count:=2;
+  end else begin
+   Count:=1;
+  end;
+  fStringRope.Delete(fCodePointIndex,Count);
  end;
  fStringRope.Insert(fCodePointIndex,PUCUUTF32CharToUTF8(aCodePoint));
  inc(fCodePointIndex);
@@ -1937,13 +1945,18 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.InsertString(const aString:TpvUTF8String;const aOverwrite:boolean);
-var CountCodePoints:TpvSizeInt;
+var CountCodePoints,Count:TpvSizeInt;
 begin
  CountCodePoints:=TpvUTF8StringRope.GetCountCodePoints(@aString[1],length(aString));
  fStringRopeLineMap.Truncate(fCodePointIndex,-1);
  fStringRopeVisualLineMap.Truncate(fCodePointIndex,-1);
  if aOverwrite and (fCodePointIndex<fStringRope.fCountCodePoints) then begin
-  fStringRope.Delete(fCodePointIndex,CountCodePoints);
+  if IsTwoCodePointNewLine(fCodePointIndex) then begin
+   Count:=2;
+  end else begin
+   Count:=1;
+  end;
+  fStringRope.Delete(fCodePointIndex,(CountCodePoints+Count)-1);
  end;
  fStringRope.Insert(fCodePointIndex,aString);
  inc(fCodePointIndex,CountCodePoints);

@@ -51,10 +51,12 @@ begin
  AddFKey(4,'Repl');
  AddFKey(5,'Refr');
  AddFKey(6,'Wrap');
- AddFKey(7,'Undo');
- AddFKey(8,'Redo');
+ AddFKey(7,'InsL');
+ AddFKey(8,'DelL');
  AddFKey(9,'Load');
  AddFKey(10,'Quit');
+ AddFKey(11,'Undo');
+ AddFKey(12,'Redo');
  while Console.WhereX<Console.Width do begin
   Console.Write(' ');
  end;
