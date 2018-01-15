@@ -282,7 +282,7 @@ type TpvUTF8DFA=class
        destructor Destroy; override;
        procedure Update;
        procedure FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
-       function IsTwoCodePointNewLine(const aCodePoint:TpvUInt32):boolean;
+       function IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
        procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
        procedure InsertString(const aString:TpvUTF8String;const aOverwrite:boolean);
        procedure Backspace;
@@ -1913,17 +1913,121 @@ begin
 
 end;
 
-function TpvAbstractTextEditor.IsTwoCodePointNewLine(const aCodePoint:TpvUInt32):boolean;
+function TpvAbstractTextEditor.IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
+{$if true}
+var NodeCodeUnitIndex:TpvSizeInt;
+    CodeUnit:AnsiChar;
+    UTF8DFAState,UTF8DFACharClass:TpvUInt8;
+    CodePoint,LastCodePoint:TpvUInt32;
+    Node:TpvUTF8StringRope.TNode;
+    LastWasPossibleNewLineTwoCharSequence:boolean;
+    NodePositionLinks:TpvUTF8StringRope.TNode.TNodePositionLinks;
+begin
+ result:=false;
+
+ if (aCodePointIndex>=0) and
+    ((aCodePointIndex+1)<fStringRope.fCountCodePoints) then begin
+
+  if aCodePointIndex=0 then begin
+   Node:=fStringRope.fHead;
+   NodeCodeUnitIndex:=0;
+  end else begin
+   Node:=fStringRope.FindNodePositionAtCodePoint(aCodePointIndex,NodePositionLinks);
+   if assigned(Node) then begin
+    NodeCodeUnitIndex:=TpvUTF8StringRope.GetCountCodeUnits(@Node.fData[0],NodePositionLinks[0].fSkipSize);
+   end else begin
+    NodeCodeUnitIndex:=0;
+   end;
+  end;
+
+  if assigned(Node) then begin
+
+   CodePoint:=0;
+
+   UTF8DFAState:=TpvUTF8DFA.StateAccept;
+
+   LastCodePoint:=0;
+
+   LastWasPossibleNewLineTwoCharSequence:=false;
+
+   repeat
+
+    if NodeCodeUnitIndex>=Node.fCountCodeUnits then begin
+
+     Node:=Node.fLinks[0].fNode;
+     NodeCodeUnitIndex:=0;
+
+     if assigned(Node) then begin
+      continue;
+     end else begin
+      break;
+     end;
+
+    end else begin
+
+     CodeUnit:=Node.fData[NodeCodeUnitIndex];
+     inc(NodeCodeUnitIndex);
+
+     UTF8DFACharClass:=TpvUTF8DFA.StateCharClasses[CodeUnit];
+
+     case UTF8DFAState of
+      TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
+       CodePoint:=ord(CodeUnit) and ($ff shr UTF8DFACharClass);
+      end;
+      else begin
+       CodePoint:=(CodePoint shl 6) or (ord(CodeUnit) and $3f);
+      end;
+     end;
+
+     UTF8DFAState:=TpvUTF8DFA.StateTransitions[UTF8DFAState+UTF8DFACharClass];
+
+     if UTF8DFAState<=TpvUTF8DFA.StateError then begin
+
+      if UTF8DFAState<>TpvUTF8DFA.StateAccept then begin
+       CodePoint:=$fffd;
+      end;
+
+      case CodePoint of
+       $0a,$0d:begin
+        if LastWasPossibleNewLineTwoCharSequence and
+           (((CodePoint=$0a) and (LastCodePoint=$0d)) or
+            ((CodePoint=$0d) and (LastCodePoint=$0a))) then begin
+         result:=true;
+         break;
+        end else begin
+         LastWasPossibleNewLineTwoCharSequence:=true;
+        end;
+       end;
+       else begin
+        break;
+       end;
+      end;
+
+      LastCodePoint:=CodePoint;
+
+     end;
+
+    end;
+
+   until false;
+
+  end;
+
+ end;
+
+end;
+{$else}
 var Temporary:TpvUTF8String;
 begin
  result:=false;
- if (aCodePoint>=0) and
-    ((aCodePoint+1)<fStringRope.fCountCodePoints) then begin
-  Temporary:=fStringRope.Extract(aCodePoint,2);
+ if (aCodePointIndex>=0) and
+    ((aCodePointIndex+1)<fStringRope.fCountCodePoints) then begin
+  Temporary:=fStringRope.Extract(aCodePointIndex,2);
   result:=(Temporary=TpvUTF8String(#13#10)) or
           (Temporary=TpvUTF8String(#10#13));
  end;
 end;
+{$ifend}
 
 procedure TpvAbstractTextEditor.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
 var Count:TpvSizeInt;
