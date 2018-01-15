@@ -926,7 +926,7 @@ begin
   NodeCodeUnitIndex:=GetCountCodeUnits(@Node.fData[0],NodePositionLinks[0].fSkipSize);
   UTF8DFAState:=TpvUTF8DFA.StateAccept;
   First:=true;
-  while assigned(Node) do begin
+  repeat
    if NodeCodeUnitIndex>=Node.fCountCodeUnits then begin
     Node:=Node.fLinks[0].fNode;
     NodeCodeUnitIndex:=0;
@@ -954,7 +954,7 @@ begin
     end;
     UTF8DFAState:=TpvUTF8DFA.StateTransitions[UTF8DFAState+UTF8DFACharClass];
    end;
-  end;
+  until false;
   if UTF8DFAState<>TpvUTF8DFA.StateAccept then begin
    result:=$fffd;
   end;
@@ -1182,82 +1182,84 @@ begin
    end;
   end;
   DoStop:=0;
-  while assigned(fNode) do begin
-   if fNodeCodeUnitIndex>=fNode.fCountCodeUnits then begin
-    fNode:=fNode.fLinks[0].fNode;
-    fNodeCodeUnitIndex:=0;
-    if assigned(fNode) then begin
-     continue;
+  if assigned(fNode) then begin
+   repeat
+    if fNodeCodeUnitIndex>=fNode.fCountCodeUnits then begin
+     fNode:=fNode.fLinks[0].fNode;
+     fNodeCodeUnitIndex:=0;
+     if assigned(fNode) then begin
+      continue;
+     end else begin
+      break;
+     end;
     end else begin
-     break;
-    end;
-   end else begin
-    fCodeUnit:=fNode.fData[fNodeCodeUnitIndex];
-    inc(fNodeCodeUnitIndex);
-    fUTF8DFACharClass:=TpvUTF8DFA.StateCharClasses[fCodeUnit];
-    case fUTF8DFAState of
-     TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
-      inc(fCodePointIndex);
-      DoNewLine:=false;
-      DoTab:=false;
-      if fUTF8DFACharClass=TpvUTF8DFA.StateCharClassSingleByte then begin
-       case fCodeUnit of
-        #$09:begin
-         DoTab:=true;
-        end;
-        #$0a,#$0d:begin
-         if fLastWasPossibleNewLineTwoCharSequence and
-            (((fCodeUnit=#$0a) and (fLastCodeUnit=#$0d)) or
-             ((fCodeUnit=#$0d) and (fLastCodeUnit=#$0a))) then begin
-          if fCountLines>0 then begin
-           fLines[fCountLines-1]:=fCodePointIndex;
+     fCodeUnit:=fNode.fData[fNodeCodeUnitIndex];
+     inc(fNodeCodeUnitIndex);
+     fUTF8DFACharClass:=TpvUTF8DFA.StateCharClasses[fCodeUnit];
+     case fUTF8DFAState of
+      TpvUTF8DFA.StateAccept..TpvUTF8DFA.StateError:begin
+       inc(fCodePointIndex);
+       DoNewLine:=false;
+       DoTab:=false;
+       if fUTF8DFACharClass=TpvUTF8DFA.StateCharClassSingleByte then begin
+        case fCodeUnit of
+         #$09:begin
+          DoTab:=true;
+         end;
+         #$0a,#$0d:begin
+          if fLastWasPossibleNewLineTwoCharSequence and
+             (((fCodeUnit=#$0a) and (fLastCodeUnit=#$0d)) or
+              ((fCodeUnit=#$0d) and (fLastCodeUnit=#$0a))) then begin
+           if fCountLines>0 then begin
+            fLines[fCountLines-1]:=fCodePointIndex;
+           end;
+           fLastWasPossibleNewLineTwoCharSequence:=false;
+          end else begin
+           DoNewLine:=true;
+           fLastWasPossibleNewLineTwoCharSequence:=true;
           end;
+         end;
+         else begin
           fLastWasPossibleNewLineTwoCharSequence:=false;
-         end else begin
-          DoNewLine:=true;
-          fLastWasPossibleNewLineTwoCharSequence:=true;
          end;
         end;
-        else begin
-         fLastWasPossibleNewLineTwoCharSequence:=false;
+       end else begin
+        fLastWasPossibleNewLineTwoCharSequence:=false;
+       end;
+       if fLineWrap>0 then begin
+        if DoTab and (fTabWidth>0) then begin
+         inc(fCountVisibleVisualCodePointsSinceNewLine,fTabWidth-(fCountVisibleVisualCodePointsSinceNewLine mod fTabWidth));
+        end else begin
+         inc(fCountVisibleVisualCodePointsSinceNewLine);
+        end;
+        if fCountVisibleVisualCodePointsSinceNewLine>=fLineWrap then begin
+         fCountVisibleVisualCodePointsSinceNewLine:=0;
+         DoNewLine:=true;
         end;
        end;
-      end else begin
-       fLastWasPossibleNewLineTwoCharSequence:=false;
-      end;
-      if fLineWrap>0 then begin
-       if DoTab and (fTabWidth>0) then begin
-        inc(fCountVisibleVisualCodePointsSinceNewLine,fTabWidth-(fCountVisibleVisualCodePointsSinceNewLine mod fTabWidth));
-       end else begin
-        inc(fCountVisibleVisualCodePointsSinceNewLine);
+       if DoNewLine then begin
+        AddLine(fCodePointIndex);
+        if ((aUntilCodePoint>=0) and (fCodePointIndex>=aUntilCodePoint)) or
+           ((aUntilLine>=0) and (fCountLines>=aUntilLine)) then begin
+         DoStop:=2; // for as fallback for possible two-single-char-class-codepoint-width-sized newline sequences
+        end;
        end;
-       if fCountVisibleVisualCodePointsSinceNewLine>=fLineWrap then begin
-        fCountVisibleVisualCodePointsSinceNewLine:=0;
-        DoNewLine:=true;
-       end;
-      end;
-      if DoNewLine then begin
-       AddLine(fCodePointIndex);
-       if ((aUntilCodePoint>=0) and (fCodePointIndex>=aUntilCodePoint)) or
-          ((aUntilLine>=0) and (fCountLines>=aUntilLine)) then begin
-        DoStop:=2; // for as fallback for possible two-single-char-class-codepoint-width-sized newline sequences
-       end;
-      end;
-      fLastCodeUnit:=fCodeUnit;
-      fUTF8DFAState:=TpvUTF8DFA.StateAccept;
-      if DoStop>0 then begin
-       dec(DoStop);
-       if DoStop=0 then begin
-        DoStop:=-1;
+       fLastCodeUnit:=fCodeUnit;
+       fUTF8DFAState:=TpvUTF8DFA.StateAccept;
+       if DoStop>0 then begin
+        dec(DoStop);
+        if DoStop=0 then begin
+         DoStop:=-1;
+        end;
        end;
       end;
      end;
+     fUTF8DFAState:=TpvUTF8DFA.StateTransitions[fUTF8DFAState+fUTF8DFACharClass];
+     if DoStop<0 then begin
+      break;
+     end;
     end;
-    fUTF8DFAState:=TpvUTF8DFA.StateTransitions[fUTF8DFAState+fUTF8DFACharClass];
-    if DoStop<0 then begin
-     break;
-    end;
-   end;
+   until false;
   end;
  end;
 end;
@@ -1322,7 +1324,7 @@ begin
  fVisibleAreaDirty:=false;
  fStringRope:=TpvUTF8StringRope.Create;
 //fStringRope.Text:=UTF8Encode('Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello ה'#10#10);
- fStringRope.Text:=UTF8Encode('הה');//'Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello ה'#10#10;
+ fStringRope.Text:='Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello'#10#10;
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fCodePointIndex:=0;
@@ -1459,9 +1461,10 @@ begin
 
    CodePoint:=0;
 
-   if CurrentCodePointIndex<VisualLineStopCodePointIndex then begin
+   if (CurrentCodePointIndex<VisualLineStopCodePointIndex) and
+      assigned(Node) then begin
 
-    while assigned(Node) do begin
+    repeat
 
      if NodeCodeUnitIndex>=Node.fCountCodeUnits then begin
 
@@ -1543,7 +1546,7 @@ begin
 
      end;
 
-    end;
+    until false;
 
    end;
 
