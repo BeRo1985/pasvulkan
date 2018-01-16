@@ -2051,7 +2051,7 @@ begin
  fVisibleAreaDirty:=false;
  fStringRope:=TpvUTF8StringRope.Create;
 //fStringRope.Text:=UTF8Encode('Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello ä'#10#10);
- fStringRope.Text:='Hello world'#13#10'Hello world'#13#10'Hello world'#13#10'Hello world'#13#10'Hello'#13#10#13#10;
+//fStringRope.Text:='Hello world'#13#10'Hello world'#13#10'Hello world'#13#10'Hello world'#13#10'Hello'#13#10#13#10;
 // fStringRope.Text:='Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello'#10#10;
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);

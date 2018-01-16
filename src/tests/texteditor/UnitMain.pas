@@ -217,7 +217,9 @@ begin
  AbstractTextEditor:=TpvAbstractTextEditor.Create;
  try
 
-//  AbstractTextEditor.LoadFromFile('d:\PasVulkan.TextEditor.pas');
+  if ParamCount>0 then begin
+   AbstractTextEditor.LoadFromFile(ParamStr(1));
+  end;
 
   repeat
 
