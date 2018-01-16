@@ -122,15 +122,16 @@ type TpvUTF8DFA=class
      end;
 
      TpvUTF8Utils=class
-      private
-       const UTF16LittleEndianBigEndianShifts:array[0..1,0..1] of TpvInt32=((0,8),(8,0));
-             UTF32LittleEndianBigEndianShifts:array[0..1,0..3] of TpvInt32=((0,8,16,24),(24,16,8,0));
-             cpLATIN1=28591;
+      public
+       const cpLATIN1=28591;
              cpISO_8859_1=28591;
              cpUTF16LE=1200;
              cpUTF16BE=1201;
              cpUTF7=65000;
              cpUTF8=65001;
+      private
+       const UTF16LittleEndianBigEndianShifts:array[0..1,0..1] of TpvInt32=((0,8),(8,0));
+             UTF32LittleEndianBigEndianShifts:array[0..1,0..3] of TpvInt32=((0,8,16,24),(24,16,8,0));
       public
        class function UTF32CharToUTF8(const aCodePoint:TpvUInt32):TpVUTF8String; static;
        class function UTF8Validate(const aString:TpvUTF8String):boolean; static;
@@ -1846,7 +1847,7 @@ begin
 
  result:=false;
 
- Update(-1,aLineIndex+2);
+ Update(aCodePointIndex+1,-1);
 
  aLineIndex:=GetLineIndexFromCodePointIndex(aCodePointIndex);
 

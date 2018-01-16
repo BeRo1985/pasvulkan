@@ -217,6 +217,8 @@ begin
  AbstractTextEditor:=TpvAbstractTextEditor.Create;
  try
 
+//  AbstractTextEditor.LoadFromFile('d:\PasVulkan.TextEditor.pas');
+
   repeat
 
    UpdateScreen;
