@@ -127,7 +127,7 @@ begin
  Console.GotoXY(1,2);
 
  Console.TextBackground(TConsole.TColor.Blue);
- Console.TextColor(TConsole.TColor.LightGray);
+ Console.TextColor(TConsole.TColor.White);
 //Console.TextColor(TConsole.TColor.LightCyan);
 
  AbstractTextEditor.VisibleAreaWidth:=Console.Width;
