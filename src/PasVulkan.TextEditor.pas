@@ -1997,9 +1997,9 @@ procedure TpvAbstractTextEditor.MoveToLineEnd;
 var LineIndex,NewCodePointIndex:TpvSizeInt;
 begin
  if fCodePointIndex<=fStringRope.CountCodePoints then begin
-  LineIndex:=fStringRopeVisualLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
+  LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
   if LineIndex>=0 then begin
-   NewCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndexAndColumnIndex(LineIndex,High(TpvSizeInt));
+   NewCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromLineIndexAndColumnIndex(LineIndex,High(TpvSizeInt));
    if NewCodePointIndex>=0 then begin
     fCodePointIndex:=NewCodePointIndex;
    end;
