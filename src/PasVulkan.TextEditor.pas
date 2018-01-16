@@ -301,7 +301,7 @@ type TpvUTF8DFA=class
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       procedure EnsureCursorIsVisible(const aUpdateCursor:boolean=true);
+       procedure EnsureCursorIsVisible(const aUpdateCursor:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
        procedure UpdateCursor;
        procedure FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
        function IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
@@ -1657,7 +1657,7 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.EnsureCursorIsVisible(const aUpdateCursor:boolean=true);
+procedure TpvAbstractTextEditor.EnsureCursorIsVisible(const aUpdateCursor:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
 var CurrentLineIndex,CurrentColumnIndex:TpvSizeInt;
 begin
 
@@ -1665,8 +1665,8 @@ begin
 
   if CurrentLineIndex<fCursorOffsetY then begin
    fCursorOffsetY:=CurrentLineIndex;
-  end else if (fCursorOffsetY+NonScrollVisibleAreaHeight)<=CurrentLineIndex then begin
-   fCursorOffsetY:=(CurrentLineIndex-NonScrollVisibleAreaHeight)+1;
+  end else if (fCursorOffsetY+NonScrollVisibleAreaHeight)<(CurrentLineIndex+aForceVisibleLines) then begin
+   fCursorOffsetY:=(CurrentLineIndex+aForceVisibleLines)-NonScrollVisibleAreaHeight;
   end;
 
   if CurrentColumnIndex<fCursorOffsetX then begin
@@ -1993,11 +1993,34 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.MovePageUp;
+var LineIndex,ColumnIndex,NewCodePointIndex:TpvSizeInt;
 begin
+ if fCodePointIndex<=fStringRope.CountCodePoints then begin
+  fStringRopeVisualLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,LineIndex,ColumnIndex);
+  if LineIndex>=0 then begin
+   NewCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndexAndColumnIndex(Max(0,LineIndex-fNonScrollVisibleAreaHeight),ColumnIndex);
+   if NewCodePointIndex>=0 then begin
+    fCodePointIndex:=NewCodePointIndex;
+   end;
+  end;
+  EnsureCursorIsVisible(true,fNonScrollVisibleAreaHeight);
+ end;
 end;
 
 procedure TpvAbstractTextEditor.MovePageDown;
+var LineIndex,ColumnIndex,NewCodePointIndex:TpvSizeInt;
 begin
+ if fCodePointIndex<=fStringRope.CountCodePoints then begin
+  fStringRopeVisualLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,LineIndex,ColumnIndex);
+  if LineIndex>=0 then begin
+   fStringRopeVisualLineMap.Update(-1,LineIndex+fNonScrollVisibleAreaHeight+1);
+   NewCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndexAndColumnIndex(Max(0,Min(LineIndex+fNonScrollVisibleAreaHeight,fStringRopeVisualLineMap.fCountLines-1)),ColumnIndex);
+   if NewCodePointIndex>=0 then begin
+    fCodePointIndex:=NewCodePointIndex;
+   end;
+  end;
+  EnsureCursorIsVisible(true,fNonScrollVisibleAreaHeight);
+ end;
 end;
 
 end.
