@@ -1721,27 +1721,21 @@ begin
      fCursorY:=LocalCursorY;
     end;
 
-    StepWidth:=1;
-
-    LastWasNewLine:=false;
-
     case IncomingCodePoint of
-     9:begin
+     $09:begin
       CodePoint:=32;
       StepWidth:=Max(1,(fStringRopeVisualLineMap.fTabWidth-(LocalCursorX mod fStringRopeVisualLineMap.fTabWidth)));
+      LastWasNewLine:=false;
      end;
-     10:begin
-//    CodePoint:=48;
+     $0a,$0d:begin
       CodePoint:=32;
+      StepWidth:=0;
       LastWasNewLine:=true;
-      StepWidth:=0;
-     end;
-     13:begin
-      CodePoint:=32;
-      StepWidth:=0;
      end;
      else begin
       CodePoint:=IncomingCodePoint;
+      StepWidth:=1;
+      LastWasNewLine:=false;
      end;
     end;
 
