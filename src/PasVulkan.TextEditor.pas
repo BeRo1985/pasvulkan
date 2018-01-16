@@ -290,7 +290,8 @@ type TpvUTF8DFA=class
        fStringRopeLineMap:TpvUTF8StringRopeLineMap;
        fStringRopeVisualLineMap:TpvUTF8StringRopeLineMap;
        fCodePointIndex:TpvSizeInt;
-       fFirstVisualLineIndex:TpvSizeInt;
+       fOffsetX:TpvSizeInt;
+       fOffsetY:TpvSizeInt;
        fCursorX:TpvSizeInt;
        fCursorY:TpvSizeInt;
        procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeInt);
@@ -1603,7 +1604,8 @@ begin
  fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
 //fStringRopeVisualLineMap.LineWrap:=80;
  fCodePointIndex:=0;
- fFirstVisualLineIndex:=0;
+ fOffsetX:=0;
+ fOffsetY:=0;
 end;
 
 destructor TpvAbstractTextEditor.Destroy;
@@ -1652,9 +1654,14 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
+const EmptyDrawBufferItem:TDrawBufferItem=
+       (
+        BackgroundColor:0;
+        ForegroundColor:0;
+        CodePoint:32;
+       );
 var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
-    VisualLineIndex,CountRemainingLines,
-    VisualLineStartCodePointIndex,VisualLineStopCodePointIndex,
+    VisualLineIndex,VisualLineStartCodePointIndex,VisualLineStopCodePointIndex,
     CurrentCodePointIndex,LocalCursorX,LocalCursorY,StepWidth:TpvSizeInt;
     CodePoint,IncomingCodePoint:TpvUInt32;
     LastWasNewLine:boolean;
@@ -1674,23 +1681,13 @@ begin
    SetLength(aDrawBufferItems,BufferSize);
   end;
 
-  FillChar(aDrawBufferItems[0],BufferSize*SizeOf(TDrawBufferItem),#0);
-
-  BufferIndex:=0;
-  while BufferIndex<BufferSize do begin
-   aDrawBufferItems[BufferIndex].CodePoint:=32;
-   inc(BufferIndex);
+  for BufferIndex:=0 to BufferSize-1 do begin
+   aDrawBufferItems[BufferIndex]:=EmptyDrawBufferItem;
   end;
-
-  VisualLineIndex:=fFirstVisualLineIndex;
-
-  CountRemainingLines:=VisibleAreaHeight;
 
   BufferBaseIndex:=0;
 
-  CurrentCodePointIndex:=-1;
-
-  while CountRemainingLines>0 do begin
+  for VisualLineIndex:=fOffsetY to fOffsetY+(VisibleAreaHeight-1) do begin
 
    VisualLineStartCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndex(VisualLineIndex);
    if (VisualLineStartCodePointIndex<0) or
@@ -1708,7 +1705,7 @@ begin
 
    BufferIndex:=BufferBaseIndex;
 
-   LocalCursorX:=0;
+   LocalCursorX:=-fOffsetX;
 
    LastWasNewLine:=false;
 
@@ -1739,14 +1736,22 @@ begin
      end;
     end;
 
-    if (StepWidth>0) and
-       (BufferIndex<BufferBaseEndIndex) then begin
-     aDrawBufferItems[BufferIndex].CodePoint:=CodePoint;
+    if StepWidth>0 then begin
+
+     if LocalCursorX>=0 then begin
+
+      BufferIndex:=BufferBaseIndex+LocalCursorX;
+
+      if (BufferIndex>=BufferBaseIndex) and
+         (BufferIndex<BufferBaseEndIndex) then begin
+       aDrawBufferItems[BufferIndex].CodePoint:=CodePoint;
+      end;
+
+     end;
+
+     inc(LocalCursorX,StepWidth);
+
     end;
-
-    inc(BufferIndex,StepWidth);
-
-    inc(LocalCursorX,StepWidth);
 
     inc(CurrentCodePointIndex);
 
@@ -1765,10 +1770,6 @@ begin
    inc(BufferBaseIndex,VisibleAreaWidth);
 
    inc(LocalCursorY);
-
-   dec(CountRemainingLines);
-
-   inc(VisualLineIndex);
 
   end;
 
