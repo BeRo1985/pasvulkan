@@ -261,7 +261,7 @@ type TpvUTF8DFA=class
        procedure Truncate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
        procedure Update(const aUntilCodePoint,aUntilLine:TpvSizeInt);
        function GetLineIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt):TpvSizeInt;
-       procedure GetLineIndexAndColumnIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt;out aLineIndex,aColumnIndex:TpvSizeInt);
+       function GetLineIndexAndColumnIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt;out aLineIndex,aColumnIndex:TpvSizeInt):boolean;
        function GetCodePointIndexFromLineIndex(const aLineIndex:TpvSizeInt):TpvSizeInt;
        function GetCodePointIndexFromNextLineIndexOrTextEnd(const aLineIndex:TpvSizeInt):TpvSizeInt;
        function GetCodePointIndexFromLineIndexAndColumnIndex(const aLineIndex,aColumnIndex:TpvSizeInt):TpvSizeInt;
@@ -290,8 +290,8 @@ type TpvUTF8DFA=class
        fStringRopeLineMap:TpvUTF8StringRopeLineMap;
        fStringRopeVisualLineMap:TpvUTF8StringRopeLineMap;
        fCodePointIndex:TpvSizeInt;
-       fOffsetX:TpvSizeInt;
-       fOffsetY:TpvSizeInt;
+       fCursorOffsetX:TpvSizeInt;
+       fCursorOffsetY:TpvSizeInt;
        fCursorX:TpvSizeInt;
        fCursorY:TpvSizeInt;
        procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeInt);
@@ -301,7 +301,8 @@ type TpvUTF8DFA=class
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       procedure Update;
+       procedure EnsureCursorIsVisible(const aUpdateCursor:boolean=true);
+       procedure UpdateCursor;
        procedure FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
        function IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
        procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
@@ -1393,12 +1394,14 @@ begin
  end;
 end;
 
-procedure TpvUTF8StringRopeLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt;out aLineIndex,aColumnIndex:TpvSizeInt);
+function TpvUTF8StringRopeLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt;out aLineIndex,aColumnIndex:TpvSizeInt):boolean;
 var StartCodePointIndex,StopCodePointIndex,CurrentCodePointIndex,
     StepWidth,CurrentColumn:TpvSizeInt;
     CodePoint,LastCodePoint:TpvUInt32;
     LastWasPossibleNewLineTwoCharSequence:boolean;
 begin
+
+ result:=false;
 
  Update(-1,-1);//aLineIndex+2);
 
@@ -1475,6 +1478,8 @@ begin
     if CurrentCodePointIndex=fStringRope.CountCodePoints then begin
      inc(aColumnIndex);
     end;
+
+    result:=true;
 
    end;
 
@@ -1604,8 +1609,8 @@ begin
  fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
 //fStringRopeVisualLineMap.LineWrap:=80;
  fCodePointIndex:=0;
- fOffsetX:=0;
- fOffsetY:=0;
+ fCursorOffsetX:=0;
+ fCursorOffsetY:=0;
 end;
 
 destructor TpvAbstractTextEditor.Destroy;
@@ -1648,9 +1653,40 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.Update;
+procedure TpvAbstractTextEditor.EnsureCursorIsVisible(const aUpdateCursor:boolean=true);
+var CurrentLineIndex,CurrentColumnIndex:TpvSizeInt;
 begin
 
+ if fStringRopeVisualLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,CurrentLineIndex,CurrentColumnIndex) then begin
+
+  if CurrentLineIndex<fCursorOffsetY then begin
+   fCursorOffsetY:=CurrentLineIndex;
+  end else if (fCursorOffsetY+NonScrollVisibleAreaHeight)<=CurrentLineIndex then begin
+   fCursorOffsetY:=(CurrentLineIndex-NonScrollVisibleAreaHeight)+1;
+  end;
+
+  if CurrentColumnIndex<fCursorOffsetX then begin
+   fCursorOffsetX:=CurrentColumnIndex;
+  end else if (fCursorOffsetX+NonScrollVisibleAreaWidth)<=CurrentColumnIndex then begin
+   fCursorOffsetX:=(CurrentColumnIndex-NonScrollVisibleAreaWidth)+1;
+  end;
+
+  if aUpdateCursor then begin
+   fCursorX:=CurrentColumnIndex-fCursorOffsetX;
+   fCursorY:=CurrentLineIndex-fCursorOffsetY;
+  end;
+
+ end;
+
+end;
+
+procedure TpvAbstractTextEditor.UpdateCursor;
+var CurrentLineIndex,CurrentColumnIndex:TpvSizeInt;
+begin
+ if fStringRopeVisualLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,CurrentLineIndex,CurrentColumnIndex) then begin
+  fCursorX:=CurrentColumnIndex-fCursorOffsetX;
+  fCursorY:=CurrentLineIndex-fCursorOffsetY;
+ end;
 end;
 
 procedure TpvAbstractTextEditor.FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
@@ -1661,17 +1697,12 @@ const EmptyDrawBufferItem:TDrawBufferItem=
         CodePoint:32;
        );
 var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
-    VisualLineIndex,VisualLineStartCodePointIndex,VisualLineStopCodePointIndex,
-    CurrentCodePointIndex,LocalCursorX,LocalCursorY,StepWidth:TpvSizeInt;
+    CurrentLineIndex,StartCodePointIndex,StopCodePointIndex,
+    CurrentCodePointIndex,RelativeCursorX,RelativeCursorY,StepWidth:TpvSizeInt;
     CodePoint,IncomingCodePoint:TpvUInt32;
-    LastWasNewLine:boolean;
 begin
 
- fCursorX:=0;
- fCursorY:=0;
-
- LocalCursorX:=0;
- LocalCursorY:=0;
+ EnsureCursorIsVisible(true);
 
  BufferSize:=VisibleAreaWidth*VisibleAreaHeight;
 
@@ -1687,15 +1718,17 @@ begin
 
   BufferBaseIndex:=0;
 
-  for VisualLineIndex:=fOffsetY to fOffsetY+(VisibleAreaHeight-1) do begin
+  RelativeCursorY:=-fCursorOffsetY;
 
-   VisualLineStartCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndex(VisualLineIndex);
-   if (VisualLineStartCodePointIndex<0) or
-      (VisualLineStartCodePointIndex>=fStringRope.fCountCodePoints) then begin
+  for CurrentLineIndex:=fCursorOffsetY to fCursorOffsetY+(VisibleAreaHeight-1) do begin
+
+   StartCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndex(CurrentLineIndex);
+   if (StartCodePointIndex<0) or
+      (StartCodePointIndex>=fStringRope.fCountCodePoints) then begin
     break;
    end;
 
-   VisualLineStopCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(VisualLineIndex);
+   StopCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(CurrentLineIndex);
 
    BufferBaseEndIndex:=BufferBaseIndex+VisibleAreaWidth;
 
@@ -1705,42 +1738,32 @@ begin
 
    BufferIndex:=BufferBaseIndex;
 
-   LocalCursorX:=-fOffsetX;
+   RelativeCursorX:=-fCursorOffsetX;
 
-   LastWasNewLine:=false;
+   CurrentCodePointIndex:=StartCodePointIndex;
 
-   CurrentCodePointIndex:=VisualLineStartCodePointIndex;
-
-   for IncomingCodePoint in fStringRope.GetCodePointEnumeratorSource(VisualLineStartCodePointIndex,VisualLineStopCodePointIndex) do begin
-
-    if fCodePointIndex=CurrentCodePointIndex then begin
-     fCursorX:=LocalCursorX;
-     fCursorY:=LocalCursorY;
-    end;
+   for IncomingCodePoint in fStringRope.GetCodePointEnumeratorSource(StartCodePointIndex,StopCodePointIndex) do begin
 
     case IncomingCodePoint of
      $09:begin
       CodePoint:=32;
-      StepWidth:=Max(1,(fStringRopeVisualLineMap.fTabWidth-(LocalCursorX mod fStringRopeVisualLineMap.fTabWidth)));
-      LastWasNewLine:=false;
+      StepWidth:=Max(1,(fStringRopeVisualLineMap.fTabWidth-(RelativeCursorX mod fStringRopeVisualLineMap.fTabWidth)));
      end;
      $0a,$0d:begin
       CodePoint:=32;
       StepWidth:=0;
-      LastWasNewLine:=true;
      end;
      else begin
       CodePoint:=IncomingCodePoint;
       StepWidth:=1;
-      LastWasNewLine:=false;
      end;
     end;
 
     if StepWidth>0 then begin
 
-     if LocalCursorX>=0 then begin
+     if RelativeCursorX>=0 then begin
 
-      BufferIndex:=BufferBaseIndex+LocalCursorX;
+      BufferIndex:=BufferBaseIndex+RelativeCursorX;
 
       if (BufferIndex>=BufferBaseIndex) and
          (BufferIndex<BufferBaseEndIndex) then begin
@@ -1749,7 +1772,7 @@ begin
 
      end;
 
-     inc(LocalCursorX,StepWidth);
+     inc(RelativeCursorX,StepWidth);
 
     end;
 
@@ -1757,19 +1780,9 @@ begin
 
    end;
 
-   if fCodePointIndex>=fStringRope.CountCodePoints then begin
-    if LastWasNewLine then begin
-     fCursorX:=0;
-     fCursorY:=LocalCursorY+1;
-    end else begin
-     fCursorX:=LocalCursorX;
-     fCursorY:=LocalCursorY;
-    end;
-   end;
-
    inc(BufferBaseIndex,VisibleAreaWidth);
 
-   inc(LocalCursorY);
+   inc(RelativeCursorY);
 
   end;
 
