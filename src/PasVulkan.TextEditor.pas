@@ -320,6 +320,8 @@ type TpvUTF8DFA=class
        procedure MoveToLineEnd;
        procedure MovePageUp;
        procedure MovePageDown;
+       procedure InsertLine;
+       procedure DeleteLine;
       published
        property VisibleAreaWidth:TpvSizeInt read fVisibleAreaWidth write SetVisibleAreaWidth;
        property VisibleAreaHeight:TpvSizeInt read fVisibleAreaHeight write SetVisibleAreaHeight;
@@ -2035,6 +2037,43 @@ begin
    end;
   end;
   EnsureCursorIsVisible(true,fNonScrollVisibleAreaHeight);
+ end;
+end;
+
+procedure TpvAbstractTextEditor.InsertLine;
+var LineIndex,LineCodePointIndex:TpvSizeInt;
+begin
+ LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
+ if LineIndex>=0 then begin
+  LineCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
+  fStringRopeLineMap.Truncate(LineCodePointIndex,-1);
+  fStringRopeVisualLineMap.Truncate(LineCodePointIndex,-1);
+{$ifdef Windows}
+  fStringRope.Insert(LineCodePointIndex,TpvUTF8String(#13#10));
+  inc(fCodePointIndex,2);
+{$else}
+  fStringRope.Insert(LineCodePointIndex,TpvUTF8String(#10));
+  inc(fCodePointIndex,1);
+{$endif}
+  EnsureCursorIsVisible(true);
+ end;
+end;
+
+procedure TpvAbstractTextEditor.DeleteLine;
+var LineIndex,StartCodePointIndex,StopCodePointIndex:TpvSizeInt;
+begin
+ LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
+ if LineIndex>=0 then begin
+  StartCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
+  StopCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(LineIndex);
+  if (StartCodePointIndex>=0) and
+     (StartCodePointIndex<StopCodePointIndex) then begin
+   fStringRope.Delete(StartCodePointIndex,StopCodePointIndex-StartCodePointIndex);
+   fStringRopeLineMap.Truncate(Max(0,StartCodePointIndex)-1,-1);
+   fStringRopeVisualLineMap.Truncate(Max(0,StartCodePointIndex-1),-1);
+   fCodePointIndex:=StartCodePointIndex;
+   EnsureCursorIsVisible(true);
+  end;
  end;
 end;
 

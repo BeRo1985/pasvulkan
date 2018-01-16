@@ -226,6 +226,14 @@ begin
           AbstractTextEditor.LineWrap:=0;
          end;
         end;
+        65:begin
+         // F7
+         AbstractTextEditor.InsertLine;
+        end;
+        66:begin
+         // F8
+         AbstractTextEditor.DeleteLine;
+        end;
         68:begin
          // F10
          break;
