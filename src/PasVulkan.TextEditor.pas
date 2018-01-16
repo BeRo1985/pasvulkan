@@ -159,7 +159,7 @@ type TpvUTF8DFA=class
               fNode:TNode;
               function GetCurrent:TNode; inline;
              public
-              constructor Create(const aStringRope:TpvUTF8StringRope);
+              constructor Create(const aCodeUnitsRope:TpvUTF8StringRope);
               function MoveNext:boolean; inline;
               property Current:TNode read GetCurrent;
             end;
@@ -176,7 +176,7 @@ type TpvUTF8DFA=class
               fUTF8DFAState:TpvUInt8;
               function GetCurrent:TpvUInt32;
              public
-              constructor Create(const aStringRope:TpvUTF8StringRope;const aStartCodePointIndex:TpvSizeInt=0;const aStopCodePointIndex:TpvSizeInt=-1);
+              constructor Create(const aCodeUnitsRope:TpvUTF8StringRope;const aStartCodePointIndex:TpvSizeInt=0;const aStopCodePointIndex:TpvSizeInt=-1);
               function MoveNext:boolean; inline;
               property Current:TpvUInt32 read GetCurrent;
             end;
@@ -186,7 +186,7 @@ type TpvUTF8DFA=class
               fStartCodePointIndex:TpvSizeInt;
               fStopCodePointIndex:TpvSizeInt;
              public
-              constructor Create(const aStringRope:TpvUTF8StringRope;const aStartCodePointIndex:TpvSizeInt=0;const aStopCodePointIndex:TpvSizeInt=-1);
+              constructor Create(const aCodeUnitsRope:TpvUTF8StringRope;const aStartCodePointIndex:TpvSizeInt=0;const aStopCodePointIndex:TpvSizeInt=-1);
               function GetEnumerator:TCodePointEnumerator;
             end;
             TRandomGenerator=record
@@ -204,26 +204,27 @@ type TpvUTF8DFA=class
        fHead:TNode;
        fRandomGenerator:TRandomGenerator;
        function GetText:TpvUTF8String;
-       procedure SetText(const aString:TpvUTF8String);
+       procedure SetText(const aCodeUnits:TpvUTF8String);
        class function FindFirstSetBit(aValue:TpvUInt64):TpvUInt32; {$ifndef fpc}{$ifdef cpu386}stdcall;{$else}register;{$endif}{$endif} static;
        function GetRandomHeight:TpvInt32;
-       class function GetCountCodeUnits(const aString:PAnsiChar;const aCountCodePoints:TpvSizeInt):TpvSizeInt; static;
-       class function GetCountCodePoints(const aString:PAnsiChar;const aCountCodeUnits:TpvSizeInt):TpvSizeInt; static;
-       class function GetCountCodeUnitsAndCheck(const aString:TpvUTF8String):TpvSizeInt; static;
+       class function GetCountCodeUnits(const aCodeUnits:PAnsiChar;const aCountCodePoints:TpvSizeInt):TpvSizeInt; static;
+       class function GetCountCodePoints(const aCodeUnits:PAnsiChar;const aCountCodeUnits:TpvSizeInt):TpvSizeInt; static;
+       class procedure UTF8Check(const aCodeUnits:PAnsiChar;const aCountCodeUnits:TpvSizeInt); static;
        function FindNodePositionAtCodePoint(const aCodePointIndex:TpvSizeInt;out aNodePositionLinks:TNode.TNodePositionLinks):TNode;
        procedure UpdateOffsetList(var aNodePositionLinks:TNode.TNodePositionLinks;const aCountCodePoints:TpvSizeInt);
-       procedure InsertAt(var aNodePositionLinks:TNode.TNodePositionLinks;const aString:PAnsiChar;const aCountCodeUnits,aCountCodePoints:TpvSizeInt);
-       procedure InsertAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aString:TpvUTF8String);
+       procedure InsertAt(var aNodePositionLinks:TNode.TNodePositionLinks;const aCodeUnits:PAnsiChar;const aCountCodeUnits,aCountCodePoints:TpvSizeInt);
+       procedure InsertAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aCodeUnits:PAnsiChar;const aCountCodeUnits:TpvSizeInt);
        procedure DeleteAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aCountCodePoints:TpvSizeInt);
        function ExtractAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aCountCodePoints:TpvSizeInt):TpvUTF8String;
       public
        constructor Create; reintroduce; overload;
-       constructor Create(const aString:TpvUTF8String); reintroduce; overload;
+       constructor Create(const aCodeUnits:TpvUTF8String); reintroduce; overload;
        constructor Create(const aFrom:TpvUTF8StringRope); reintroduce; overload;
        destructor Destroy; override;
        procedure Clear;
        function GetNodeAndOffsetFromCodePointIndex(const aCodePointIndex:TpvSizeInt;out aNode:TNode;out aNodeCodeUnitIndex:TpvSizeInt):boolean;
-       procedure Insert(const aCodePointIndex:TpvSizeInt;const aString:TpvUTF8String);
+       procedure Insert(const aCodePointIndex:TpvSizeInt;const aCodeUnits:PAnsiChar;const aCountCodeUnits:TpvSizeInt); overload;
+       procedure Insert(const aCodePointIndex:TpvSizeInt;const aCodeUnits:TpvUTF8String); overload;
        procedure Delete(const aCodePointIndex,aCountCodePoints:TpvSizeInt);
        function Extract(const aCodePointIndex,aCountCodePoints:TpvSizeInt):TpvUTF8String;
        function GetCodePoint(const aCodePointIndex:TpvSizeInt):TpvUInt32;
@@ -308,7 +309,7 @@ type TpvUTF8DFA=class
        procedure FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
        function IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
        procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
-       procedure InsertString(const aString:TpvUTF8String;const aOverwrite:boolean);
+       procedure InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean);
        procedure Backspace;
        procedure Delete;
        procedure Enter(const aOverwrite:boolean);
@@ -356,9 +357,9 @@ begin
  SetString(result,PAnsiChar(@fData[0]),fCountCodeUnits);
 end;
 
-constructor TpvUTF8StringRope.TNodeEnumerator.Create(const aStringRope:TpvUTF8StringRope);
+constructor TpvUTF8StringRope.TNodeEnumerator.Create(const aCodeUnitsRope:TpvUTF8StringRope);
 begin
- fStringRope:=aStringRope;
+ fStringRope:=aCodeUnitsRope;
  fFirst:=true;
  fNode:=fStringRope.fHead;
 end;
@@ -381,9 +382,9 @@ begin
  end;
 end;
 
-constructor TpvUTF8StringRope.TCodePointEnumerator.Create(const aStringRope:TpvUTF8StringRope;const aStartCodePointIndex:TpvSizeInt=0;const aStopCodePointIndex:TpvSizeInt=-1);
+constructor TpvUTF8StringRope.TCodePointEnumerator.Create(const aCodeUnitsRope:TpvUTF8StringRope;const aStartCodePointIndex:TpvSizeInt=0;const aStopCodePointIndex:TpvSizeInt=-1);
 begin
- fStringRope:=aStringRope;
+ fStringRope:=aCodeUnitsRope;
  fFirst:=true;
  fStringRope.GetNodeAndOffsetFromCodePointIndex(aStartCodePointIndex,fNode,fNodeCodeUnitIndex);
  fCodePointIndex:=aStartCodePointIndex;
@@ -439,9 +440,9 @@ begin
  end;
 end;
 
-constructor TpvUTF8StringRope.TCodePointEnumeratorSource.Create(const aStringRope:TpvUTF8StringRope;const aStartCodePointIndex,aStopCodePointIndex:TpvSizeInt);
+constructor TpvUTF8StringRope.TCodePointEnumeratorSource.Create(const aCodeUnitsRope:TpvUTF8StringRope;const aStartCodePointIndex,aStopCodePointIndex:TpvSizeInt);
 begin
- fStringRope:=aStringRope;
+ fStringRope:=aCodeUnitsRope;
  fStartCodePointIndex:=aStartCodePointIndex;
  fStopCodePointIndex:=aStopCodePointIndex;
 end;
@@ -496,10 +497,10 @@ begin
  fRandomGenerator:=TRandomGenerator.Create(TpvPtrUInt(self));
 end;
 
-constructor TpvUTF8StringRope.Create(const aString:TpvUTF8String);
+constructor TpvUTF8StringRope.Create(const aCodeUnits:TpvUTF8String);
 begin
  Create;
- SetText(aString);
+ SetText(aCodeUnits);
 end;
 
 constructor TpvUTF8StringRope.Create(const aFrom:TpvUTF8StringRope);
@@ -555,10 +556,10 @@ begin
  end;
 end;
 
-procedure TpvUTF8StringRope.SetText(const aString:TpvUTF8String);
+procedure TpvUTF8StringRope.SetText(const aCodeUnits:TpvUTF8String);
 begin
  Clear;
- Insert(0,aString);
+ Insert(0,aCodeUnits);
 end;
 
 {$ifdef fpc}
@@ -624,36 +625,35 @@ begin
  end;
 end;
 
-class function TpvUTF8StringRope.GetCountCodeUnits(const aString:PAnsiChar;const aCountCodePoints:TpvSizeInt):TpvSizeInt;
+class function TpvUTF8StringRope.GetCountCodeUnits(const aCodeUnits:PAnsiChar;const aCountCodePoints:TpvSizeInt):TpvSizeInt;
 var Index:TpvSizeInt;
 begin
  result:=0;
  Index:=0;
  while Index<aCountCodePoints do begin
-  inc(result,TpvUTF8DFA.CodePointSizes[aString[result]]);
+  inc(result,TpvUTF8DFA.CodePointSizes[aCodeUnits[result]]);
   inc(Index);
  end;
 end;
 
-class function TpvUTF8StringRope.GetCountCodePoints(const aString:PAnsiChar;const aCountCodeUnits:TpvSizeInt):TpvSizeInt;
+class function TpvUTF8StringRope.GetCountCodePoints(const aCodeUnits:PAnsiChar;const aCountCodeUnits:TpvSizeInt):TpvSizeInt;
 var Index:TpvSizeInt;
 begin
  result:=0;
  Index:=0;
  while Index<aCountCodeUnits do begin
-  inc(Index,TpvUTF8DFA.CodePointSizes[aString[Index]]);
+  inc(Index,TpvUTF8DFA.CodePointSizes[aCodeUnits[Index]]);
   inc(result);
  end;
 end;
 
-class function TpvUTF8StringRope.GetCountCodeUnitsAndCheck(const aString:TpvUTF8String):TpvSizeInt;
+class procedure TpvUTF8StringRope.UTF8Check(const aCodeUnits:PAnsiChar;const aCountCodeUnits:TpvSizeInt);
 var Index:TpvSizeInt;
     State:TpvUInt32;
 begin
  State:=TpvUTF8DFA.StateAccept;
- result:=length(aString);
- for Index:=1 to result do begin
-  State:=TpvUTF8DFA.StateTransitions[State+TpvUTF8DFA.StateCharClasses[aString[Index]]];
+ for Index:=0 to aCountCodeUnits-1 do begin
+  State:=TpvUTF8DFA.StateTransitions[State+TpvUTF8DFA.StateCharClasses[aCodeUnits[Index]]];
   if State<=TpvUTF8DFA.StateError then begin
    break;
   end;
@@ -732,7 +732,7 @@ begin
  end;
 end;
 
-procedure TpvUTF8StringRope.InsertAt(var aNodePositionLinks:TNode.TNodePositionLinks;const aString:PAnsiChar;const aCountCodeUnits,aCountCodePoints:TpvSizeInt);
+procedure TpvUTF8StringRope.InsertAt(var aNodePositionLinks:TNode.TNodePositionLinks;const aCodeUnits:PAnsiChar;const aCountCodeUnits,aCountCodePoints:TpvSizeInt);
 var MaximumHeight,NewHeight,Index:TpvInt32;
     NewNode:TNode;
     PreviousNodeLink:TNode.PNodeLink;
@@ -744,7 +744,7 @@ begin
 
  NewNode:=TNode.Create(NewHeight);
  NewNode.fCountCodeUnits:=aCountCodeUnits;
- Move(aString[0],NewNode.fData[0],aCountCodeUnits);
+ Move(aCodeUnits[0],NewNode.fData[0],aCountCodeUnits);
 
 {$if defined(DebugTpvUTF8StringRope)}
  Assert(NewHeight<TNode.MaximumHeight);
@@ -777,7 +777,7 @@ begin
 
 end;
 
-procedure TpvUTF8StringRope.InsertAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aString:TpvUTF8String);
+procedure TpvUTF8StringRope.InsertAtNodePosition(const aNode:TNode;var aNodePositionLinks:TNode.TNodePositionLinks;const aCodeUnits:PAnsiChar;const aCountCodeUnits:TpvSizeInt);
 var OffsetCodeUnits,Offset,CountInsertedCodePoints,CountEndCodeUnits,
     CountEndCodePoints,StringOffset,CountNewNodeCodeUnits,CountNewNodeCodePoints,
     CodePointSize,CountInsertedCodeUnits:TpvSizeInt;
@@ -797,7 +797,9 @@ begin
   OffsetCodeUnits:=0;
  end;
 
- CountInsertedCodeUnits:=GetCountCodeUnitsAndCheck(aString);
+ CountInsertedCodeUnits:=aCountCodeUnits;
+
+ UTF8Check(aCodeUnits,CountInsertedCodeUnits);
 
  InsertHere:=(aNode.fCountCodeUnits+CountInsertedCodeUnits)<=TNode.StringSize;
 
@@ -824,14 +826,14 @@ begin
         Node.fCountCodeUnits-OffsetCodeUnits);
   end;
 
-  Move(aString[1],
+  Move(aCodeUnits[0],
        Node.fData[OffsetCodeUnits],
        CountInsertedCodeUnits);
   inc(Node.fCountCodeUnits,CountInsertedCodeUnits);
 
   inc(fCountCodeUnits,CountInsertedCodeUnits);
 
-  CountInsertedCodePoints:=GetCountCodePoints(@aString[1],length(aString));
+  CountInsertedCodePoints:=GetCountCodePoints(@aCodeUnits[0],aCountCodeUnits);
 
   inc(fCountCodePoints,CountInsertedCodePoints);
 
@@ -856,7 +858,7 @@ begin
    CountNewNodeCodeUnits:=0;
    CountNewNodeCodePoints:=0;
    while (StringOffset+CountNewNodeCodeUnits)<CountInsertedCodeUnits do begin
-    CodePointSize:=TpvUTF8DFA.CodePointSizes[aString[StringOffset+CountNewNodeCodeUnits+1]];
+    CodePointSize:=TpvUTF8DFA.CodePointSizes[aCodeUnits[StringOffset+CountNewNodeCodeUnits]];
     if (CodePointSize+CountNewNodeCodeUnits)<=TNode.StringSize then begin
      inc(CountNewNodeCodeUnits,CodePointSize);
      inc(CountNewNodeCodePoints);
@@ -864,7 +866,7 @@ begin
      break;
     end;
    end;
-   InsertAt(aNodePositionLinks,@aString[StringOffset+1],CountNewNodeCodeUnits,CountNewNodeCodePoints);
+   InsertAt(aNodePositionLinks,@aCodeUnits[StringOffset],CountNewNodeCodeUnits,CountNewNodeCodePoints);
    inc(StringOffset,CountNewNodeCodeUnits);
   end;
 
@@ -966,7 +968,7 @@ begin
  end;
 end;
 
-procedure TpvUTF8StringRope.Insert(const aCodePointIndex:TpvSizeInt;const aString:TpvUTF8String);
+procedure TpvUTF8StringRope.Insert(const aCodePointIndex:TpvSizeInt;const aCodeUnits:PAnsiChar;const aCountCodeUnits:TpvSizeInt);
 var Node:TNode;
     NodePositionLinks:TNode.TNodePositionLinks;
     CodePointIndex:TpvSizeInt;
@@ -980,10 +982,15 @@ begin
   CodePointIndex:=fCountCodePoints;
  end;
  Node:=FindNodePositionAtCodePoint(CodePointIndex,NodePositionLinks);
- InsertAtNodePosition(Node,NodePositionLinks,aString);
+ InsertAtNodePosition(Node,NodePositionLinks,aCodeUnits,aCountCodeUnits);
 {$if defined(DebugTpvUTF8StringRope)}
  Check;
 {$ifend}
+end;
+
+procedure TpvUTF8StringRope.Insert(const aCodePointIndex:TpvSizeInt;const aCodeUnits:TpvUTF8String);
+begin
+ Insert(aCodePointIndex,PAnsiChar(aCodeUnits),length(aCodeUnits));
 end;
 
 procedure TpvUTF8StringRope.Delete(const aCodePointIndex,aCountCodePoints:TpvSizeInt);
@@ -1868,10 +1875,10 @@ begin
  inc(fCodePointIndex);
 end;
 
-procedure TpvAbstractTextEditor.InsertString(const aString:TpvUTF8String;const aOverwrite:boolean);
+procedure TpvAbstractTextEditor.InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean);
 var CountCodePoints,Count:TpvSizeInt;
 begin
- CountCodePoints:=TpvUTF8StringRope.GetCountCodePoints(@aString[1],length(aString));
+ CountCodePoints:=TpvUTF8StringRope.GetCountCodePoints(@aCodeUnits[1],length(aCodeUnits));
  fStringRopeLineMap.Truncate(fCodePointIndex,-1);
  fStringRopeVisualLineMap.Truncate(fCodePointIndex,-1);
  if aOverwrite and (fCodePointIndex<fStringRope.fCountCodePoints) then begin
@@ -1882,7 +1889,7 @@ begin
   end;
   fStringRope.Delete(fCodePointIndex,(CountCodePoints+Count)-1);
  end;
- fStringRope.Insert(fCodePointIndex,aString);
+ fStringRope.Insert(fCodePointIndex,aCodeUnits);
  inc(fCodePointIndex,CountCodePoints);
 end;
 
