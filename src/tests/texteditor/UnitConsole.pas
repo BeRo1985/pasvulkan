@@ -608,6 +608,8 @@ begin
    if LastBufferItem^.Value<>BufferItem^.Value then begin
     HasChanges:=true;
    end;
+   inc(BufferItem);
+   inc(LastBufferItem);
   end;
  end;
  if not HasChanges then begin
