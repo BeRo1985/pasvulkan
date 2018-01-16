@@ -1611,7 +1611,7 @@ begin
  fVisibleAreaDirty:=false;
  fStringRope:=TpvUTF8StringRope.Create;
 //fStringRope.Text:=UTF8Encode('Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello ä'#10#10);
-// fStringRope.Text:='Hello world'#13#10'Hello world'#13#10'Hello world'#13#10'Hello world'#13#10'Hello'#13#10#13#10;
+ fStringRope.Text:='Hello world'#13#10'Hello world'#13#10'Hello world'#13#10'Hello world'#13#10'Hello'#13#10#13#10;
 // fStringRope.Text:='Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello'#10#10;
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
@@ -1721,11 +1721,14 @@ var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     CurrentLineIndex,StartCodePointIndex,StopCodePointIndex,
     CurrentCodePointIndex,RelativeCursorX,RelativeCursorY,StepWidth:TpvSizeInt;
     CodePoint,IncomingCodePoint:TpvUInt32;
+    CodePointEnumerator:TpvUTF8StringRope.TCodePointEnumerator;
 begin
 
  EnsureCursorIsVisible(true);
 
  BufferSize:=VisibleAreaWidth*VisibleAreaHeight;
+
+ CodePointEnumerator.fFirst:=true; // for to suppress compiler-warning
 
  if BufferSize>0 then begin
 
@@ -1740,6 +1743,8 @@ begin
   BufferBaseIndex:=0;
 
   RelativeCursorY:=-fCursorOffsetY;
+
+  CurrentCodePointIndex:=-1;
 
   for CurrentLineIndex:=fCursorOffsetY to fCursorOffsetY+(VisibleAreaHeight-1) do begin
 
@@ -1761,9 +1766,17 @@ begin
 
    RelativeCursorX:=-fCursorOffsetX;
 
-   CurrentCodePointIndex:=StartCodePointIndex;
+   if CurrentCodePointIndex<>StartCodePointIndex then begin
+    CurrentCodePointIndex:=StartCodePointIndex;
 
-   for IncomingCodePoint in fStringRope.GetCodePointEnumeratorSource(StartCodePointIndex,StopCodePointIndex) do begin
+    CodePointEnumerator:=TpvUTF8StringRope.TCodePointEnumerator.Create(fStringRope,StartCodePointIndex,-1);
+
+   end;
+
+   while (CurrentCodePointIndex<StopCodePointIndex) and
+         CodePointEnumerator.MoveNext do begin
+
+    IncomingCodePoint:=CodePointEnumerator.GetCurrent;
 
     case IncomingCodePoint of
      $09:begin
