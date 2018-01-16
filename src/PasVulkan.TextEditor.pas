@@ -1611,7 +1611,7 @@ begin
 // fStringRope.Text:='Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello'#10#10;
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
-//fStringRopeVisualLineMap.LineWrap:=80;
+// fStringRopeVisualLineMap.LineWrap:=80;
  fCodePointIndex:=0;
  fCursorOffsetX:=0;
  fCursorOffsetY:=0;
