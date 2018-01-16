@@ -122,10 +122,22 @@ type TpvUTF8DFA=class
      end;
 
      TpvUTF8Utils=class
+      private
+       const UTF16LittleEndianBigEndianShifts:array[0..1,0..1] of TpvInt32=((0,8),(8,0));
+             UTF32LittleEndianBigEndianShifts:array[0..1,0..3] of TpvInt32=((0,8,16,24),(24,16,8,0));
+             cpLATIN1=28591;
+             cpISO_8859_1=28591;
+             cpUTF16LE=1200;
+             cpUTF16BE=1201;
+             cpUTF7=65000;
+             cpUTF8=65001;
       public
        class function UTF32CharToUTF8(const aCodePoint:TpvUInt32):TpVUTF8String; static;
        class function UTF8Validate(const aString:TpvUTF8String):boolean; static;
        class function UTF8Correct(const aString:TpvUTF8String):TpvUTF8String; static;
+       class function RawDataToUTF8String(const aData;const aDataLength:TpvInt32;const aCodePage:TpvInt32=-1):TpvUTF8String; static;
+       class function RawByteStringToUTF8String(const aString:TpvRawByteString;const aCodePage:TpvInt32=-1):TpvUTF8String; static;
+       class function RawStreamToUTF8String(const aStream:TStream;const aCodePage:TpvInt32=-1):TpvUTF8String; static;
      end;
 
      EpvUTF8StringRope=class(Exception);
@@ -345,6 +357,8 @@ type TpvUTF8DFA=class
 
 implementation
 
+uses PUCU;
+
 class function TpvUTF8Utils.UTF32CharToUTF8(const aCodePoint:TpvUInt32):TpVUTF8String;
 var Data:array[0..3] of AnsiChar;
     ResultLen:TpvInt32;
@@ -476,6 +490,280 @@ begin
    end;
   end;
   SetLength(result,ResultLen);
+ end;
+end;
+
+class function TpvUTF8Utils.RawDataToUTF8String(const aData;const aDataLength:TpvInt32;const aCodePage:TpvInt32=-1):TpvUTF8String;
+type TBytes=array[0..65535] of TpvUInt8;
+     PBytes=^TBytes;
+var Bytes:PBytes;
+    BytesPerCodeUnit,BytesPerCodeUnitMask,StartCodeUnit,CodeUnit,
+    InputLen,OutputLen:TpvSizeInt;
+    LittleEndianBigEndian,PassIndex,CodePoint,Temp:TpvUInt32;
+    State,CharClass,Value:TpvUInt8;
+    CodePage:PPUCUCharSetCodePage;
+    SubCodePages:PPUCUCharSetSubCodePages;
+    SubSubCodePages:PPUCUCharSetSubSubCodePages;
+begin
+ begin
+  CodePage:=nil;
+  if (aCodePage>=0) and (aCodePage<=65535) then begin
+   SubCodePages:=PUCUCharSetCodePages[(aCodePage shr 8) and $ff];
+   if assigned(SubCodePages) then begin
+    SubSubCodePages:=SubCodePages^[(aCodePage shr 4) and $f];
+    if assigned(SubSubCodePages) then begin
+     CodePage:=SubSubCodePages^[(aCodePage shr 0) and $f];
+    end;
+   end;
+  end;
+ end;
+ result:='';
+ Bytes:=@aData;
+ if aCodePage=cpUTF16LE then begin
+  // UTF16 little endian (per code page)
+  BytesPerCodeUnit:=2;
+  BytesPerCodeUnitMask:=1;
+  LittleEndianBigEndian:=0;
+  if (aDataLength>=2) and
+     ((Bytes^[0]=$ff) and (Bytes^[1]=$fe)) then begin
+   Bytes:=@Bytes^[2];
+   InputLen:=aDataLength-2;
+  end else begin
+   Bytes:=@Bytes^[0];
+   InputLen:=aDataLength;
+  end;
+ end else if aCodePage=cpUTF16BE then begin
+  // UTF16 big endian (per code page)
+  BytesPerCodeUnit:=2;
+  BytesPerCodeUnitMask:=1;
+  LittleEndianBigEndian:=1;
+  if (aDataLength>=2) and
+     ((Bytes^[0]=$fe) and (Bytes^[1]=$ff)) then begin
+   Bytes:=@Bytes^[2];
+   InputLen:=aDataLength-2;
+  end else begin
+   Bytes:=@Bytes^[0];
+   InputLen:=aDataLength;
+  end;
+ end else if aCodePage=cpUTF7 then begin
+  // UTF7 (per code page)
+  raise Exception.Create('UTF-7 not supported');
+ end else if aCodePage=cpUTF8 then begin
+  // UTF8 (per code page)
+  BytesPerCodeUnit:=1;
+  BytesPerCodeUnitMask:=0;
+  LittleEndianBigEndian:=0;
+  if (aDataLength>=3) and (Bytes^[0]=$ef) and (Bytes^[1]=$bb) and (Bytes^[2]=$bf) then begin
+   Bytes:=@Bytes^[3];
+   InputLen:=aDataLength-3;
+  end else begin
+   Bytes:=@Bytes^[0];
+   InputLen:=aDataLength;
+  end;
+ end else if assigned(CodePage) then begin
+  // Code page
+  BytesPerCodeUnit:=0;
+  BytesPerCodeUnitMask:=0;
+  LittleEndianBigEndian:=0;
+  Bytes:=@Bytes^[0];
+  InputLen:=aDataLength;
+ end else if (aDataLength>=3) and (Bytes^[0]=$ef) and (Bytes^[1]=$bb) and (Bytes^[2]=$bf) then begin
+  // UTF8
+  BytesPerCodeUnit:=1;
+  BytesPerCodeUnitMask:=0;
+  LittleEndianBigEndian:=0;
+  Bytes:=@Bytes^[3];
+  InputLen:=aDataLength-3;
+ end else if (aDataLength>=4) and
+             (((Bytes^[0]=$00) and (Bytes^[1]=$00) and (Bytes^[2]=$fe) and (Bytes^[3]=$ff)) or
+              ((Bytes^[0]=$ff) and (Bytes^[1]=$fe) and (Bytes^[2]=$00) and (Bytes^[3]=$00))) then begin
+  // UTF32
+  BytesPerCodeUnit:=4;
+  BytesPerCodeUnitMask:=3;
+  if Bytes^[0]=$00 then begin
+   // Big endian
+   LittleEndianBigEndian:=1;
+  end else begin
+   // Little endian
+   LittleEndianBigEndian:=0;
+  end;
+  Bytes:=@Bytes^[4];
+  InputLen:=aDataLength-4;
+ end else if (aDataLength>=2) and
+             (((Bytes^[0]=$fe) and (Bytes^[1]=$ff)) or
+              ((Bytes^[0]=$ff) and (Bytes^[1]=$fe))) then begin
+  // UTF16
+  BytesPerCodeUnit:=2;
+  BytesPerCodeUnitMask:=1;
+  if Bytes^[0]=$fe then begin
+   // Big endian
+   LittleEndianBigEndian:=1;
+  end else begin
+   // Little endian
+   LittleEndianBigEndian:=0;
+  end;
+  Bytes:=@Bytes^[2];
+  InputLen:=aDataLength-2;
+ end else begin
+  // Latin1
+  BytesPerCodeUnit:=0;
+  BytesPerCodeUnitMask:=0;
+  LittleEndianBigEndian:=0;
+  Bytes:=@Bytes^[0];
+  InputLen:=aDataLength;
+ end;
+ for PassIndex:=0 to 1 do begin
+  CodeUnit:=0;
+  OutputLen:=0;
+  while (CodeUnit+BytesPerCodeUnitMask)<InputLen do begin
+   case BytesPerCodeUnit of
+    1:begin
+     // UTF8
+     CodePoint:=0;
+     if (CodeUnit>=0) and (CodeUnit<InputLen) then begin
+      StartCodeUnit:=CodeUnit;
+      State:=TpvUTF8DFA.StateAccept;
+      repeat
+       Value:=ord(Bytes^[CodeUnit]);
+       inc(CodeUnit);
+       CharClass:=TpvUTF8DFA.StateCharClasses[AnsiChar(TpvUInt8(Value))];
+       if State=TpvUTF8DFA.StateAccept then begin
+        CodePoint:=Value and ($ff shr CharClass);
+       end else begin
+        CodePoint:=(CodePoint shl 6) or (Value and $3f);
+       end;
+       State:=TpvUTF8DFA.StateTransitions[State+CharClass];
+      until (State<=TpvUTF8DFA.StateError) or (CodeUnit>=InputLen);
+      if State<>TpvUTF8DFA.StateAccept then begin
+       CodePoint:=ord(Bytes^[StartCodeUnit]);
+       CodeUnit:=StartCodeUnit+1;
+      end;
+     end;
+    end;
+    2:begin
+     // UTF16
+     CodePoint:=(TpvUInt32(Bytes^[CodeUnit+0]) shl UTF16LittleEndianBigEndianShifts[LittleEndianBigEndian,0]) or
+                (TpvUInt32(Bytes^[CodeUnit+1]) shl UTF16LittleEndianBigEndianShifts[LittleEndianBigEndian,1]);
+     inc(CodeUnit,2);
+     if ((CodeUnit+1)<InputLen) and ((CodePoint and $fc00)=$d800) then begin
+      Temp:=(TpvUInt32(Bytes^[CodeUnit+0]) shl UTF16LittleEndianBigEndianShifts[LittleEndianBigEndian,0]) or
+            (TpvUInt32(Bytes^[CodeUnit+1]) shl UTF16LittleEndianBigEndianShifts[LittleEndianBigEndian,1]);
+      if (Temp and $fc00)=$dc00 then begin
+       CodePoint:=(TpvUInt32(TpvUInt32(CodePoint and $3ff) shl 10) or TpvUInt32(Temp and $3ff))+$10000;
+       inc(CodeUnit,2);
+      end;
+     end;
+    end;
+    4:begin
+     // UTF32
+     CodePoint:=(TpvUInt32(Bytes^[CodeUnit+0]) shl UTF32LittleEndianBigEndianShifts[LittleEndianBigEndian,0]) or
+                (TpvUInt32(Bytes^[CodeUnit+1]) shl UTF32LittleEndianBigEndianShifts[LittleEndianBigEndian,1]) or
+                (TpvUInt32(Bytes^[CodeUnit+2]) shl UTF32LittleEndianBigEndianShifts[LittleEndianBigEndian,2]) or
+                (TpvUInt32(Bytes^[CodeUnit+3]) shl UTF32LittleEndianBigEndianShifts[LittleEndianBigEndian,3]);
+     inc(CodeUnit,4);
+    end;
+    else begin
+     // Latin1 or custom code page
+     CodePoint:=Bytes^[CodeUnit];
+     inc(CodeUnit);
+     if assigned(CodePage) then begin
+      CodePoint:=CodePage^[CodePoint and $ff];
+     end;
+    end;
+   end;
+   if PassIndex=0 then begin
+    if CodePoint<=$7f then begin
+     inc(OutputLen);
+    end else if CodePoint<=$7ff then begin
+     inc(OutputLen,2);
+    end else if CodePoint<=$ffff then begin
+     inc(OutputLen,3);
+    end else if CodePoint<=$1fffff then begin
+     inc(OutputLen,4);
+    end else begin
+     inc(OutputLen,3);
+    end;
+   end else begin
+    if CodePoint<=$7f then begin
+     inc(OutputLen);
+     result[OutputLen]:=AnsiChar(TpvUInt8(CodePoint));
+    end else if CodePoint<=$7ff then begin
+     inc(OutputLen);
+     result[OutputLen]:=AnsiChar(TpvUInt8($c0 or ((CodePoint shr 6) and $1f)));
+     inc(OutputLen);
+     result[OutputLen]:=AnsiChar(TpvUInt8($80 or (CodePoint and $3f)));
+    end else if CodePoint<=$d7ff then begin
+     inc(OutputLen);
+     result[OutputLen]:=AnsiChar(TpvUInt8($e0 or ((CodePoint shr 12) and $0f)));
+     inc(OutputLen);
+     result[OutputLen]:=AnsiChar(TpvUInt8($80 or ((CodePoint shr 6) and $3f)));
+     inc(OutputLen);
+     result[OutputLen]:=AnsiChar(TpvUInt8($80 or (CodePoint and $3f)));
+    end else if CodePoint<=$dfff then begin
+     inc(OutputLen);
+     result[OutputLen]:=#$ef; // $fffd
+     inc(OutputLen);
+     result[OutputLen]:=#$bf;
+     inc(OutputLen);
+     result[OutputLen]:=#$bd;
+    end else if CodePoint<=$ffff then begin
+     inc(OutputLen);
+     result[OutputLen]:=AnsiChar(TpvUInt8($e0 or ((CodePoint shr 12) and $0f)));
+     inc(OutputLen);
+     result[OutputLen]:=AnsiChar(TpvUInt8($80 or ((CodePoint shr 6) and $3f)));
+     inc(OutputLen);
+     result[OutputLen]:=AnsiChar(TpvUInt8($80 or (CodePoint and $3f)));
+    end else if CodePoint<=$1fffff then begin
+     inc(OutputLen);
+     result[OutputLen]:=AnsiChar(TpvUInt8($f0 or ((CodePoint shr 18) and $07)));
+     inc(OutputLen);
+     result[OutputLen]:=AnsiChar(TpvUInt8($80 or ((CodePoint shr 12) and $3f)));
+     inc(OutputLen);
+     result[OutputLen]:=AnsiChar(TpvUInt8($80 or ((CodePoint shr 6) and $3f)));
+     inc(OutputLen);
+     result[OutputLen]:=AnsiChar(TpvUInt8($80 or (CodePoint and $3f)));
+    end else begin
+     inc(OutputLen);
+     result[OutputLen]:=#$ef; // $fffd
+     inc(OutputLen);
+     result[OutputLen]:=#$bf;
+     inc(OutputLen);
+     result[OutputLen]:=#$bd;
+    end;
+   end;
+  end;
+  if PassIndex=0 then begin
+   SetLength(result,OutputLen);
+  end;
+ end;
+end;
+
+class function TpvUTF8Utils.RawByteStringToUTF8String(const aString:TpvRawByteString;const aCodePage:TpvInt32=-1):TpvUTF8String;
+var p:PAnsiChar;
+begin
+ if length(aString)>0 then begin
+  p:=PAnsiChar(@aString[1]);
+  result:=RawDataToUTF8String(p^,length(aString),aCodePage);
+ end else begin
+  result:='';
+ end;
+end;
+
+class function TpvUTF8Utils.RawStreamToUTF8String(const aStream:TStream;const aCodePage:TpvInt32=-1):TpvUTF8String;
+var Memory:pointer;
+    Size:TpvSizeInt;
+begin
+ result:='';
+ if assigned(aStream) and (aStream.Seek(0,soBeginning)=0) then begin
+  Size:=aStream.Size;
+  GetMem(Memory,Size);
+  try
+   if aStream.Read(Memory^,Size)=Size then begin
+    result:=PUCURawDataToUTF8String(Memory^,Size,aCodePage);
+   end;
+  finally
+   FreeMem(Memory);
+  end;
  end;
 end;
 
@@ -2060,30 +2348,9 @@ procedure TpvAbstractTextEditor.LoadFromStream(const aStream:TStream);
 var TemporaryString:TpvUTF8String;
 begin
  if assigned(aStream) then begin
-  if fStringRope.fCountCodePoints>0 then begin
-   fStringRopeLineMap.Truncate(0,0);
-   fStringRopeVisualLineMap.Truncate(0,0);
-   fStringRope.Delete(0,fStringRope.fCountCodePoints);
-  end;
-  if aStream.Size>0 then begin
-   if aStream is TMemoryStream then begin
-    try
-     fStringRope.Insert(0,TMemoryStream(aStream).Memory,TMemoryStream(aStream).Size);
-    except
-     on e:EpvUTF8StringRope do begin
-      SetLength(TemporaryString,aStream.Size);
-      aStream.Seek(0,soBeginning);
-      aStream.ReadBuffer(TemporaryString[1],aStream.Size);
-      fStringRope.Text:=TpvUTF8Utils.UTF8Correct(TemporaryString);
-     end;
-    end;
-   end else begin
-    SetLength(TemporaryString,aStream.Size);
-    aStream.Seek(0,soBeginning);
-    aStream.ReadBuffer(TemporaryString[1],aStream.Size);
-    fStringRope.Text:=TpvUTF8Utils.UTF8Correct(TemporaryString);
-   end;
-  end;
+  fStringRopeLineMap.Truncate(0,0);
+  fStringRopeVisualLineMap.Truncate(0,0);
+  fStringRope.Text:=TpvUTF8Utils.RawStreamToUTF8String(aStream);
   fStringRopeLineMap.Update(-1,-1);
   fStringRopeVisualLineMap.Update(-1,-1);
   fCodePointIndex:=0;
