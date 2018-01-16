@@ -1479,9 +1479,13 @@ begin
      inc(aColumnIndex);
     end;
 
-    result:=true;
+   end else begin
+
+    aColumnIndex:=0;
 
    end;
+
+   result:=true;
 
   end;
 
@@ -1832,8 +1836,6 @@ begin
  end;
  fStringRope.Insert(fCodePointIndex,PUCUUTF32CharToUTF8(aCodePoint));
  inc(fCodePointIndex);
-{fStringRopeLineMap.Update(-1,-1);
- fStringRopeVisualLineMap.Update(-1,-1);}
 end;
 
 procedure TpvAbstractTextEditor.InsertString(const aString:TpvUTF8String;const aOverwrite:boolean);
@@ -1852,8 +1854,6 @@ begin
  end;
  fStringRope.Insert(fCodePointIndex,aString);
  inc(fCodePointIndex,CountCodePoints);
-{fStringRopeLineMap.Update(-1,-1);
- fStringRopeVisualLineMap.Update(-1,-1);}
 end;
 
 procedure TpvAbstractTextEditor.Backspace;
@@ -1874,8 +1874,6 @@ begin
    fStringRopeLineMap.Truncate(fCodePointIndex,-1);
    fStringRopeVisualLineMap.Truncate(fCodePointIndex,-1);
   end;
-{ fStringRopeLineMap.Update(-1,-1);
-  fStringRopeVisualLineMap.Update(-1,-1);}
  end;
 end;
 
@@ -1896,8 +1894,6 @@ begin
    fStringRopeLineMap.Truncate(fCodePointIndex,-1);
    fStringRopeVisualLineMap.Truncate(fCodePointIndex,-1);
   end;
-{ fStringRopeLineMap.Update(-1,-1);
-  fStringRopeVisualLineMap.Update(-1,-1);}
  end;
 end;
 
@@ -1913,6 +1909,7 @@ begin
   InsertCodePoint(10,aOverwrite);
 {$endif}
  end;
+ UpdateCursor;
 end;
 
 procedure TpvAbstractTextEditor.MoveUp;
