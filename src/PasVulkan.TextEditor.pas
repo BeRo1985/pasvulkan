@@ -310,6 +310,10 @@ type TpvUTF8DFA=class
        function IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
        procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
        procedure InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean);
+       procedure LoadFromStream(const aStream:TStream);
+       procedure LoadFromFile(const aFileName:string);
+       procedure SaveToStream(const aStream:TStream);
+       procedure SaveToFile(const aFileName:string);
        procedure Backspace;
        procedure Delete;
        procedure Enter(const aOverwrite:boolean);
@@ -1911,6 +1915,79 @@ begin
    fStringRopeLineMap.Truncate(fCodePointIndex,-1);
    fStringRopeVisualLineMap.Truncate(fCodePointIndex,-1);
   end;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.LoadFromStream(const aStream:TStream);
+var TemporaryString:TpvUTF8String;
+begin
+ if assigned(aStream) then begin
+  if fStringRope.fCountCodePoints>0 then begin
+   fStringRopeLineMap.Truncate(0,0);
+   fStringRopeVisualLineMap.Truncate(0,0);
+   fStringRope.Delete(0,fStringRope.fCountCodePoints);
+  end;
+  if aStream.Size>0 then begin
+   if aStream is TMemoryStream then begin
+    try
+     fStringRope.Insert(0,TMemoryStream(aStream).Memory,TMemoryStream(aStream).Size);
+    except
+     on e:EpvUTF8StringRope do begin
+      SetLength(TemporaryString,aStream.Size);
+      aStream.Seek(0,soBeginning);
+      aStream.ReadBuffer(TemporaryString[1],aStream.Size);
+      TemporaryString:=PUCUUTF8Correct(TemporaryString);
+      fStringRope.Insert(0,PAnsiChar(TemporaryString),length(TemporaryString));
+     end;
+    end;
+   end else begin
+    SetLength(TemporaryString,aStream.Size);
+    aStream.Seek(0,soBeginning);
+    aStream.ReadBuffer(TemporaryString[1],aStream.Size);
+    TemporaryString:=PUCUUTF8Correct(TemporaryString);
+    fStringRope.Insert(0,PAnsiChar(TemporaryString),length(TemporaryString));
+   end;
+  end;
+  fStringRopeLineMap.Update(-1,-1);
+  fStringRopeVisualLineMap.Update(-1,-1);
+  fCodePointIndex:=0;
+  EnsureCursorIsVisible(true);
+ end;
+end;
+
+procedure TpvAbstractTextEditor.LoadFromFile(const aFileName:string);
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  LoadFromStream(FileStream);
+ finally
+  FileStream.Free;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.SaveToStream(const aStream:TStream);
+var TemporaryString:TpvUTF8String;
+begin
+ if assigned(aStream) then begin
+  TemporaryString:=fStringRope.GetText;
+  aStream.Seek(0,soBeginning);
+  aStream.Size:=length(TemporaryString);
+  if length(TemporaryString)>0 then begin
+   aStream.Seek(0,soBeginning);
+   aStream.WriteBuffer(TemporaryString[1],aStream.Size);
+  end;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.SaveToFile(const aFileName:string);
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(aFileName,fmCreate);
+ try
+  SaveToStream(FileStream);
+ finally
+  FileStream.Free;
  end;
 end;
 
