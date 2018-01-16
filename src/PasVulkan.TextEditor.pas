@@ -83,7 +83,7 @@ type TpvUTF8DFA=class
                                                           1,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,  // c
                                                           2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,  // d
                                                           3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,  // e
-                                                          4,4,4,4,4,4,4,4,5,5,5,5,6,6,6,6); // f
+                                                          4,4,4,4,4,1,1,1,1,1,1,1,1,1,1,1); // f
               StateCharClasses:array[AnsiChar] of TpvUInt8=($00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,
                                                             $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,
                                                             $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,
@@ -93,22 +93,22 @@ type TpvUTF8DFA=class
                                                             $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,
                                                             $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,
                                                             $01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,
-                                                            $01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,
-                                                            $01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,
-                                                            $01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,$01,
-                                                            $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,
-                                                            $03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,
-                                                            $04,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04,$04,
-                                                            $05,$05,$05,$05,$05,$05,$05,$05,$06,$06,$06,$06,$07,$07,$08,$08);
-              StateTransitions:array[TpvUInt8] of TpvUInt8=($00,$10,$10,$20,$30,$40,$50,$60,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $09,$09,$09,$09,$09,$09,$09,$09,$09,$09,$09,$09,$09,$09,$09,$09,
+                                                            $07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,
+                                                            $07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,$07,
+                                                            $08,$08,$02,$02,$02,$02,$02,$02,$02,$02,$02,$02,$02,$02,$02,$02,
+                                                            $02,$02,$02,$02,$02,$02,$02,$02,$02,$02,$02,$02,$02,$02,$02,$02,
+                                                            $0a,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$03,$04,$03,$03,
+                                                            $0b,$06,$06,$06,$05,$08,$08,$08,$08,$08,$08,$08,$08,$08,$08,$08);
+              StateTransitions:array[TpvUInt8] of TpvUInt8=($00,$10,$20,$30,$50,$80,$70,$10,$10,$10,$40,$60,$10,$10,$10,$10,
                                                             $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
-                                                            $10,$00,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
-                                                            $10,$20,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$00,$10,$10,$10,$10,$10,$00,$10,$00,$10,$10,$10,$10,$10,$10,
+                                                            $10,$20,$10,$10,$10,$10,$10,$20,$10,$20,$10,$10,$10,$10,$10,$10,
+                                                            $10,$10,$10,$10,$10,$10,$10,$20,$10,$10,$10,$10,$10,$10,$10,$10,
+                                                            $10,$20,$10,$10,$10,$10,$10,$10,$10,$20,$10,$10,$10,$10,$10,$10,
+                                                            $10,$10,$10,$10,$10,$10,$10,$30,$10,$30,$10,$10,$10,$10,$10,$10,
+                                                            $10,$30,$10,$10,$10,$10,$10,$30,$10,$30,$10,$10,$10,$10,$10,$10,
                                                             $10,$30,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
-                                                            $10,$40,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
-                                                            $10,$50,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
-                                                            $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
-                                                            $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
                                                             $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
                                                             $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
                                                             $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
@@ -116,7 +116,6 @@ type TpvUTF8DFA=class
                                                             $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
                                                             $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,
                                                             $10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10,$10);
-
                StateAccept=0;
                StateError=16;
                StateCharClassSingleByte=0;
@@ -347,7 +346,7 @@ type TpvUTF8DFA=class
 implementation
 
 class function TpvUTF8Utils.UTF32CharToUTF8(const aCodePoint:TpvUInt32):TpVUTF8String;
-var Data:array[0..5] of AnsiChar;
+var Data:array[0..3] of AnsiChar;
     ResultLen:TpvInt32;
 begin
  if aCodePoint=0 then begin
@@ -381,21 +380,6 @@ begin
    Data[2]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 6) and $3f)));
    Data[3]:=AnsiChar(TpvUInt8($80 or (aCodePoint and $3f)));
    ResultLen:=4;
-  end else if aCodePoint<=$3ffffff then begin
-   Data[0]:=AnsiChar(TpvUInt8($f8 or ((aCodePoint shr 24) and $03)));
-   Data[1]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 18) and $3f)));
-   Data[2]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 12) and $3f)));
-   Data[3]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 6) and $3f)));
-   Data[4]:=AnsiChar(TpvUInt8($80 or (aCodePoint and $3f)));
-   ResultLen:=5;
-  end else if aCodePoint<=$7fffffff then begin
-   Data[0]:=AnsiChar(TpvUInt8($fc or ((aCodePoint shr 30) and $01)));
-   Data[1]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 24) and $3f)));
-   Data[2]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 18) and $3f)));
-   Data[3]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 12) and $3f)));
-   Data[4]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 6) and $3f)));
-   Data[5]:=AnsiChar(TpvUInt8($80 or (aCodePoint and $3f)));
-   ResultLen:=6;
   end else begin
    Data[0]:=#$ef; // $fffd
    Data[1]:=#$bf;
@@ -431,7 +415,7 @@ begin
   result:='';
   CodeUnit:=1;
   Len:=length(aString);
-  SetLength(result,Len*6);
+  SetLength(result,Len*4);
   Data:=@result[1];
   ResultLen:=0;
   while CodeUnit<=Len do begin
@@ -484,21 +468,6 @@ begin
     Data[ResultLen+2]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
     Data[ResultLen+3]:=AnsiChar(TpvUInt8($80 or (CharValue and $3f)));
     inc(ResultLen,4);
-   end else if CharValue<=$3ffffff then begin
-    Data[ResultLen]:=AnsiChar(TpvUInt8($f8 or ((CharValue shr 24) and $03)));
-    Data[ResultLen+1]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 18) and $3f)));
-    Data[ResultLen+2]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
-    Data[ResultLen+3]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
-    Data[ResultLen+4]:=AnsiChar(TpvUInt8($80 or (CharValue and $3f)));
-    inc(ResultLen,5);
-   end else if CharValue<=$7fffffff then begin
-    Data[ResultLen]:=AnsiChar(TpvUInt8($fc or ((CharValue shr 30) and $01)));
-    Data[ResultLen+1]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 24) and $3f)));
-    Data[ResultLen+2]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 18) and $3f)));
-    Data[ResultLen+3]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
-    Data[ResultLen+4]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
-    Data[ResultLen+5]:=AnsiChar(TpvUInt8($80 or (CharValue and $3f)));
-    inc(ResultLen,6);
    end else begin
     Data[ResultLen]:=#$ef; // $fffd
     Data[ResultLen+1]:=#$bf;
