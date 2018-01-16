@@ -330,8 +330,10 @@ type TpvUTF8DFA=class
        procedure InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean);
        procedure LoadFromStream(const aStream:TStream);
        procedure LoadFromFile(const aFileName:string);
+       procedure LoadFromString(const aString:TpvRawByteString);
        procedure SaveToStream(const aStream:TStream);
        procedure SaveToFile(const aFileName:string);
+       function SaveToString:TpvUTF8String;
        procedure Backspace;
        procedure Delete;
        procedure Enter(const aOverwrite:boolean);
@@ -2345,17 +2347,18 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.LoadFromStream(const aStream:TStream);
-var TemporaryString:TpvUTF8String;
 begin
  if assigned(aStream) then begin
-  fStringRopeLineMap.Truncate(0,0);
-  fStringRopeVisualLineMap.Truncate(0,0);
   fStringRope.Text:=TpvUTF8Utils.RawStreamToUTF8String(aStream);
-  fStringRopeLineMap.Update(-1,-1);
-  fStringRopeVisualLineMap.Update(-1,-1);
-  fCodePointIndex:=0;
-  EnsureCursorIsVisible(true);
+ end else begin
+  fStringRope.Text:='';
  end;
+ fStringRopeLineMap.Truncate(0,0);
+ fStringRopeVisualLineMap.Truncate(0,0);
+ fStringRopeLineMap.Update(-1,-1);
+ fStringRopeVisualLineMap.Update(-1,-1);
+ fCodePointIndex:=0;
+ EnsureCursorIsVisible(true);
 end;
 
 procedure TpvAbstractTextEditor.LoadFromFile(const aFileName:string);
@@ -2367,6 +2370,17 @@ begin
  finally
   FileStream.Free;
  end;
+end;
+
+procedure TpvAbstractTextEditor.LoadFromString(const aString:TpvRawByteString);
+begin
+ fStringRope.Text:=TpvUTF8Utils.RawByteStringToUTF8String(aString);
+ fStringRopeLineMap.Truncate(0,0);
+ fStringRopeVisualLineMap.Truncate(0,0);
+ fStringRopeLineMap.Update(-1,-1);
+ fStringRopeVisualLineMap.Update(-1,-1);
+ fCodePointIndex:=0;
+ EnsureCursorIsVisible(true);
 end;
 
 procedure TpvAbstractTextEditor.SaveToStream(const aStream:TStream);
@@ -2392,6 +2406,11 @@ begin
  finally
   FileStream.Free;
  end;
+end;
+
+function TpvAbstractTextEditor.SaveToString:TpvUTF8String;
+begin
+ result:=fStringRope.GetText;
 end;
 
 procedure TpvAbstractTextEditor.Delete;
