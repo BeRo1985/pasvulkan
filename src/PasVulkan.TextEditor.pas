@@ -122,6 +122,13 @@ type TpvUTF8DFA=class
                StateCharClassSingleByte=0;
      end;
 
+     TpvUTF8Utils=class
+      public
+       class function UTF32CharToUTF8(const aCodePoint:TpvUInt32):TpVUTF8String; static;
+       class function UTF8Validate(const aString:TpvUTF8String):boolean; static;
+       class function UTF8Correct(const aString:TpvUTF8String):TpvUTF8String; static;
+     end;
+
      EpvUTF8StringRope=class(Exception);
 
      TpvUTF8StringRope=class
@@ -339,7 +346,169 @@ type TpvUTF8DFA=class
 
 implementation
 
-uses PUCU;
+class function TpvUTF8Utils.UTF32CharToUTF8(const aCodePoint:TpvUInt32):TpVUTF8String;
+var Data:array[0..5] of AnsiChar;
+    ResultLen:TpvInt32;
+begin
+ if aCodePoint=0 then begin
+  result:=#0;
+ end else begin
+  if aCodePoint<=$7f then begin
+   Data[0]:=AnsiChar(TpvUInt8(aCodePoint));
+   ResultLen:=1;
+  end else if aCodePoint<=$7ff then begin
+   Data[0]:=AnsiChar(TpvUInt8($c0 or ((aCodePoint shr 6) and $1f)));
+   Data[1]:=AnsiChar(TpvUInt8($80 or (aCodePoint and $3f)));
+   ResultLen:=2;
+  end else if aCodePoint<=$d7ff then begin
+   Data[0]:=AnsiChar(TpvUInt8($e0 or ((aCodePoint shr 12) and $0f)));
+   Data[1]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 6) and $3f)));
+   Data[2]:=AnsiChar(TpvUInt8($80 or (aCodePoint and $3f)));
+   ResultLen:=3;
+  end else if aCodePoint<=$dfff then begin
+   Data[0]:=#$ef; // $fffd
+   Data[1]:=#$bf;
+   Data[2]:=#$bd;
+   ResultLen:=3;
+  end else if aCodePoint<=$ffff then begin
+   Data[0]:=AnsiChar(TpvUInt8($e0 or ((aCodePoint shr 12) and $0f)));
+   Data[1]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 6) and $3f)));
+   Data[2]:=AnsiChar(TpvUInt8($80 or (aCodePoint and $3f)));
+   ResultLen:=3;
+  end else if aCodePoint<=$1fffff then begin
+   Data[0]:=AnsiChar(TpvUInt8($f0 or ((aCodePoint shr 18) and $07)));
+   Data[1]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 12) and $3f)));
+   Data[2]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 6) and $3f)));
+   Data[3]:=AnsiChar(TpvUInt8($80 or (aCodePoint and $3f)));
+   ResultLen:=4;
+  end else if aCodePoint<=$3ffffff then begin
+   Data[0]:=AnsiChar(TpvUInt8($f8 or ((aCodePoint shr 24) and $03)));
+   Data[1]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 18) and $3f)));
+   Data[2]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 12) and $3f)));
+   Data[3]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 6) and $3f)));
+   Data[4]:=AnsiChar(TpvUInt8($80 or (aCodePoint and $3f)));
+   ResultLen:=5;
+  end else if aCodePoint<=$7fffffff then begin
+   Data[0]:=AnsiChar(TpvUInt8($fc or ((aCodePoint shr 30) and $01)));
+   Data[1]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 24) and $3f)));
+   Data[2]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 18) and $3f)));
+   Data[3]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 12) and $3f)));
+   Data[4]:=AnsiChar(TpvUInt8($80 or ((aCodePoint shr 6) and $3f)));
+   Data[5]:=AnsiChar(TpvUInt8($80 or (aCodePoint and $3f)));
+   ResultLen:=6;
+  end else begin
+   Data[0]:=#$ef; // $fffd
+   Data[1]:=#$bf;
+   Data[2]:=#$bd;
+   ResultLen:=3;
+  end;
+  SetString(result,PAnsiChar(@Data[0]),ResultLen);
+ end;
+end;
+
+class function TpvUTF8Utils.UTF8Validate(const aString:TpvUTF8String):boolean;
+var Index:TpvSizeInt;
+    State:TpvUInt32;
+begin
+ State:=TpvUTF8DFA.StateAccept;
+ for Index:=1 to length(aString) do begin
+  State:=TpvUTF8DFA.StateTransitions[State+TpvUTF8DFA.StateCharClasses[aString[Index]]];
+  if State=TpvUTF8DFA.StateError then begin
+   break;
+  end;
+ end;
+ result:=State=TpvUTF8DFA.StateAccept;
+end;
+
+class function TpvUTF8Utils.UTF8Correct(const aString:TpvUTF8String):TpvUTF8String;
+var CodeUnit,Len,ResultLen:TpvSizeInt;
+    StartCodeUnit,Value,CharClass,State,CharValue:TpvUInt32;
+    Data:PAnsiChar;
+begin
+ if (length(aString)=0) or UTF8Validate(aString) then begin
+  result:=aString;
+ end else begin
+  result:='';
+  CodeUnit:=1;
+  Len:=length(aString);
+  SetLength(result,Len*6);
+  Data:=@result[1];
+  ResultLen:=0;
+  while CodeUnit<=Len do begin
+   StartCodeUnit:=CodeUnit;
+   State:=TpvUTF8DFA.StateAccept;
+   CharValue:=0;
+   while CodeUnit<=Len do begin
+    Value:=ord(aString[CodeUnit]);
+    inc(CodeUnit);
+    CharClass:=TpvUTF8DFA.StateCharClasses[AnsiChar(UInt8(Value))];
+    if State=TpvUTF8DFA.StateAccept then begin
+     CharValue:=Value and ($ff shr CharClass);
+    end else begin
+     CharValue:=(CharValue shl 6) or (Value and $3f);
+    end;
+    State:=TpvUTF8DFA.StateTransitions[State+CharClass];
+    if State<=TpvUTF8DFA.StateError then begin
+     break;
+    end;
+   end;
+   if State<>TpvUTF8DFA.StateAccept then begin
+    CharValue:=ord(aString[StartCodeUnit]);
+    CodeUnit:=StartCodeUnit+1;
+   end;
+   if CharValue<=$7f then begin
+    Data[ResultLen]:=AnsiChar(TpvUInt8(CharValue));
+    inc(ResultLen);
+   end else if CharValue<=$7ff then begin
+    Data[ResultLen]:=AnsiChar(TpvUInt8($c0 or ((CharValue shr 6) and $1f)));
+    Data[ResultLen+1]:=AnsiChar(TpvUInt8($80 or (CharValue and $3f)));
+    inc(ResultLen,2);
+   end else if CharValue<=$d7ff then begin
+    Data[ResultLen]:=AnsiChar(TpvUInt8($e0 or ((CharValue shr 12) and $0f)));
+    Data[ResultLen+1]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
+    Data[ResultLen+2]:=AnsiChar(TpvUInt8($80 or (CharValue and $3f)));
+    inc(ResultLen,3);
+   end else if CharValue<=$dfff then begin
+    Data[ResultLen]:=#$ef; // $fffd
+    Data[ResultLen+1]:=#$bf;
+    Data[ResultLen+2]:=#$bd;
+    inc(ResultLen,3);
+   end else if CharValue<=$ffff then begin
+    Data[ResultLen]:=AnsiChar(TpvUInt8($e0 or ((CharValue shr 12) and $0f)));
+    Data[ResultLen+1]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
+    Data[ResultLen+2]:=AnsiChar(TpvUInt8($80 or (CharValue and $3f)));
+    inc(ResultLen,3);
+   end else if CharValue<=$1fffff then begin
+    Data[ResultLen]:=AnsiChar(TpvUInt8($f0 or ((CharValue shr 18) and $07)));
+    Data[ResultLen+1]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
+    Data[ResultLen+2]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
+    Data[ResultLen+3]:=AnsiChar(TpvUInt8($80 or (CharValue and $3f)));
+    inc(ResultLen,4);
+   end else if CharValue<=$3ffffff then begin
+    Data[ResultLen]:=AnsiChar(TpvUInt8($f8 or ((CharValue shr 24) and $03)));
+    Data[ResultLen+1]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 18) and $3f)));
+    Data[ResultLen+2]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
+    Data[ResultLen+3]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
+    Data[ResultLen+4]:=AnsiChar(TpvUInt8($80 or (CharValue and $3f)));
+    inc(ResultLen,5);
+   end else if CharValue<=$7fffffff then begin
+    Data[ResultLen]:=AnsiChar(TpvUInt8($fc or ((CharValue shr 30) and $01)));
+    Data[ResultLen+1]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 24) and $3f)));
+    Data[ResultLen+2]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 18) and $3f)));
+    Data[ResultLen+3]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
+    Data[ResultLen+4]:=AnsiChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
+    Data[ResultLen+5]:=AnsiChar(TpvUInt8($80 or (CharValue and $3f)));
+    inc(ResultLen,6);
+   end else begin
+    Data[ResultLen]:=#$ef; // $fffd
+    Data[ResultLen+1]:=#$bf;
+    Data[ResultLen+2]:=#$bd;
+    inc(ResultLen,3);
+   end;
+  end;
+  SetLength(result,ResultLen);
+ end;
+end;
 
 constructor TpvUTF8StringRope.TNode.Create(const aHeight:TpvInt32);
 begin
@@ -658,7 +827,7 @@ begin
  State:=TpvUTF8DFA.StateAccept;
  for Index:=0 to aCountCodeUnits-1 do begin
   State:=TpvUTF8DFA.StateTransitions[State+TpvUTF8DFA.StateCharClasses[aCodeUnits[Index]]];
-  if State<=TpvUTF8DFA.StateError then begin
+  if State=TpvUTF8DFA.StateError then begin
    break;
   end;
  end;
@@ -1875,7 +2044,7 @@ begin
   end;
   fStringRope.Delete(fCodePointIndex,Count);
  end;
- fStringRope.Insert(fCodePointIndex,PUCUUTF32CharToUTF8(aCodePoint));
+ fStringRope.Insert(fCodePointIndex,TpvUTF8Utils.UTF32CharToUTF8(aCodePoint));
  inc(fCodePointIndex);
 end;
 
@@ -1936,16 +2105,14 @@ begin
       SetLength(TemporaryString,aStream.Size);
       aStream.Seek(0,soBeginning);
       aStream.ReadBuffer(TemporaryString[1],aStream.Size);
-      TemporaryString:=PUCUUTF8Correct(TemporaryString);
-      fStringRope.Insert(0,PAnsiChar(TemporaryString),length(TemporaryString));
+      fStringRope.Text:=TpvUTF8Utils.UTF8Correct(TemporaryString);
      end;
     end;
    end else begin
     SetLength(TemporaryString,aStream.Size);
     aStream.Seek(0,soBeginning);
     aStream.ReadBuffer(TemporaryString[1],aStream.Size);
-    TemporaryString:=PUCUUTF8Correct(TemporaryString);
-    fStringRope.Insert(0,PAnsiChar(TemporaryString),length(TemporaryString));
+    fStringRope.Text:=TpvUTF8Utils.UTF8Correct(TemporaryString);
    end;
   end;
   fStringRopeLineMap.Update(-1,-1);
