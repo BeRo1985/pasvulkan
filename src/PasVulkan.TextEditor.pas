@@ -1665,6 +1665,9 @@ begin
   fLineWrap:=aLineWrap;
   fStringRopeVisualLineMap.LineWrap:=aLineWrap;
   fStringRopeVisualLineMap.Update(-1,-1);
+  if aLineWrap>0 then begin
+   fCursorOffsetX:=0;
+  end;
   EnsureCursorIsVisible(true);
  end;
 end;
