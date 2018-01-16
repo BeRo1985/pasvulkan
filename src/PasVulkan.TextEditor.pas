@@ -1403,7 +1403,7 @@ begin
 
  result:=false;
 
- Update(-1,-1);//aLineIndex+2);
+ Update(-1,aLineIndex+2);
 
  aLineIndex:=GetLineIndexFromCodePointIndex(aCodePointIndex);
 
@@ -1495,7 +1495,7 @@ end;
 
 function TpvUTF8StringRopeLineMap.GetCodePointIndexFromLineIndex(const aLineIndex:TpvSizeInt):TpvSizeInt;
 begin
- Update(-1,-1);//aLineIndex+1);
+ Update(-1,aLineIndex+1);
  if (aLineIndex>=0) and (aLineIndex<fCountLines) then begin
   result:=fLines[aLineIndex];
  end else begin
@@ -1505,7 +1505,7 @@ end;
 
 function TpvUTF8StringRopeLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(const aLineIndex:TpvSizeInt):TpvSizeInt;
 begin
- Update(-1,-1);//aLineIndex+2);
+ Update(-1,aLineIndex+2);
  if (aLineIndex>=0) and (aLineIndex<fCountLines) then begin
   if (aLineIndex+1)<fCountLines then begin
    result:=fLines[aLineIndex+1];
@@ -1524,7 +1524,7 @@ var StartCodePointIndex,StopCodePointIndex,CurrentCodePointIndex,
     LastWasPossibleNewLineTwoCharSequence:boolean;
 begin
 
- Update(-1,-1);//aLineIndex+2);
+ Update(-1,aLineIndex+2);
 
  if (aLineIndex>=0) and (aLineIndex<fCountLines) then begin
 
