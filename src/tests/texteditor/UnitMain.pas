@@ -50,7 +50,11 @@ begin
  AddFKey(3,'Find');
  AddFKey(4,'Repl');
  AddFKey(5,'Refr');
- AddFKey(6,'Wrap');
+ if AbstractTextEditor.LineWrap=0 then begin
+  AddFKey(6,'Wrap');
+ end else begin
+  AddFKey(6,'UnWr');
+ end;
  AddFKey(7,'InsL');
  AddFKey(8,'DelL');
  AddFKey(9,'Load');
@@ -123,7 +127,8 @@ begin
  Console.GotoXY(1,2);
 
  Console.TextBackground(TConsole.TColor.Blue);
- Console.TextColor(TConsole.TColor.LightCyan);
+ Console.TextColor(TConsole.TColor.LightGray);
+//Console.TextColor(TConsole.TColor.LightCyan);
 
  AbstractTextEditor.VisibleAreaWidth:=Console.Width;
  AbstractTextEditor.VisibleAreaHeight:=Console.Height-2;
@@ -212,6 +217,14 @@ begin
         77:begin
          // Right
          AbstractTextEditor.MoveRight;
+        end;
+        64:begin
+         // F6
+         if AbstractTextEditor.LineWrap=0 then begin
+          AbstractTextEditor.LineWrap:=AbstractTextEditor.NonScrollVisibleAreaWidth;
+         end else begin
+          AbstractTextEditor.LineWrap:=0;
+         end;
         end;
         68:begin
          // F10

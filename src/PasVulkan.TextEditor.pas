@@ -294,10 +294,12 @@ type TpvUTF8DFA=class
        fCursorOffsetY:TpvSizeInt;
        fCursorX:TpvSizeInt;
        fCursorY:TpvSizeInt;
+       fLineWrap:TpvSizeInt;
        procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeInt);
        procedure SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeInt);
        procedure SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeInt);
        procedure SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeInt);
+       procedure SetLineWrap(const aLineWrap:TpvSizeInt);
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -325,8 +327,8 @@ type TpvUTF8DFA=class
        property NonScrollVisibleAreaHeight:TpvSizeInt read fNonScrollVisibleAreaHeight write SetNonScrollVisibleAreaHeight;
        property CursorX:TpvSizeInt read fCursorX;
        property CursorY:TpvSizeInt read fCursorY;
+       property LineWrap:TpvSizeInt read fLineWrap write SetLineWrap;
      end;
-
 
 implementation
 
@@ -1611,10 +1613,10 @@ begin
 // fStringRope.Text:='Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello'#10#10;
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
-// fStringRopeVisualLineMap.LineWrap:=80;
  fCodePointIndex:=0;
  fCursorOffsetX:=0;
  fCursorOffsetY:=0;
+ fLineWrap:=0;
 end;
 
 destructor TpvAbstractTextEditor.Destroy;
@@ -1654,6 +1656,16 @@ begin
  if fNonScrollVisibleAreaHeight<>aNonScrollVisibleAreaHeight then begin
   fNonScrollVisibleAreaHeight:=aNonScrollVisibleAreaHeight;
   fVisibleAreaDirty:=true;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.SetLineWrap(const aLineWrap:TpvSizeInt);
+begin
+ if fLineWrap<>aLineWrap then begin
+  fLineWrap:=aLineWrap;
+  fStringRopeVisualLineMap.LineWrap:=aLineWrap;
+  fStringRopeVisualLineMap.Update(-1,-1);
+  EnsureCursorIsVisible(true);
  end;
 end;
 
