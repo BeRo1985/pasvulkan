@@ -2316,13 +2316,13 @@ begin
  if assigned(fParent) then begin
   if assigned(fNext) then begin
    fNext.fPrevious:=fPrevious;
-  end else if fParent.fFirstView=self then begin
-   fParent.fFirstView:=fPrevious;
+  end else if fParent.fLastView=self then begin
+   fParent.fLastView:=fPrevious;
   end;
   if assigned(fPrevious) then begin
    fPrevious.fNext:=fNext;
-  end else if fParent.fLastView=self then begin
-   fParent.fLastView:=fNext;
+  end else if fParent.fFirstView=self then begin
+   fParent.fFirstView:=fNext;
   end;
   fPrevious:=nil;
   fNext:=nil;
