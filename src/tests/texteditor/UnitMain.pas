@@ -147,9 +147,6 @@ begin
  Console.GotoXY(1,1);
  Console.Write(UTF8String(RepChar(#32,Console.Width)));
 
- Console.GotoXY(2,1);
- Console.Write('PasVulkan Test Text Editor');
-
  Console.GotoXY(Console.Width-6,1);
  Console.Write('[');
  Console.Write('-');
@@ -175,18 +172,25 @@ begin
 
  ResetScreen;
 
- Console.GotoXY(1,2);
-
- Console.TextBackground(TConsole.TColor.Blue);
- Console.TextColor(TConsole.TColor.White);
-//Console.TextColor(TConsole.TColor.LightCyan);
-
  AbstractTextEditorView.VisibleAreaWidth:=Console.Width;
  AbstractTextEditorView.VisibleAreaHeight:=Console.Height-2;
  AbstractTextEditorView.NonScrollVisibleAreaWidth:=Console.Width;
  AbstractTextEditorView.NonScrollVisibleAreaHeight:=Console.Height-2;
 
  AbstractTextEditorView.UpdateBuffer;
+
+ Console.TextBackground(TConsole.TColor.Cyan);
+ Console.TextColor(TConsole.TColor.Black);
+ Console.GotoXY(Console.Width-40,1);
+ Console.Write('Line: '+IntToStr(AbstractTextEditorView.LineColumn.Line));
+ Console.GotoXY(Console.Width-25,1);
+ Console.Write('Column: '+IntToStr(AbstractTextEditorView.LineColumn.Column));
+
+ Console.GotoXY(1,2);
+
+ Console.TextBackground(TConsole.TColor.Blue);
+ Console.TextColor(TConsole.TColor.LightGray);
+//Console.TextColor(TConsole.TColor.LightCyan);
 
  i:=0;
  for y:=0 to AbstractTextEditorView.VisibleAreaHeight-1 do begin
@@ -198,7 +202,7 @@ begin
   end;
  end;
 
- Console.GotoXY(AbstractTextEditorView.CursorX+1,AbstractTextEditorView.CursorY+2);
+ Console.GotoXY(AbstractTextEditorView.Cursor.x+1,AbstractTextEditorView.Cursor.y+2);
 
  if OverwriteMode then begin
   Console.CursorBig;

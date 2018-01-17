@@ -293,7 +293,19 @@ type TpvUTF8DFA=class
 
      TpvAbstractTextEditor=class
       public
-       type TView=class
+       type TCoordinate=record
+             public
+              x:TpvSizeInt;
+              y:TpvSizeInt;
+            end;
+            PCoordinate=^TCoordinate;
+            TLineColumn=record
+             public
+              Line:TpvSizeInt;
+              Column:TpvSizeInt;
+            end;
+            PLineColumn=^TLineColumn;
+            TView=class
              public
               type TBufferItem=record
                     BackgroundColor:TpvUInt8;
@@ -312,10 +324,9 @@ type TpvUTF8DFA=class
               fNonScrollVisibleAreaWidth:TpvSizeInt;
               fNonScrollVisibleAreaHeight:TpvSizeInt;
               fCodePointIndex:TpvSizeInt;
-              fCursorOffsetX:TpvSizeInt;
-              fCursorOffsetY:TpvSizeInt;
-              fCursorX:TpvSizeInt;
-              fCursorY:TpvSizeInt;
+              fCursorOffset:TCoordinate;
+              fCursor:TCoordinate;
+              fLineColumn:TLineColumn;
               fLineWrap:TpvSizeInt;
               fStringRopeVisualLineMap:TpvUTF8StringRopeLineMap;
               fBuffer:TBufferItems;
@@ -324,6 +335,7 @@ type TpvUTF8DFA=class
               procedure SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeInt);
               procedure SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeInt);
               procedure SetLineWrap(const aLineWrap:TpvSizeInt);
+              procedure SetLineColumn(const aLineColumn:TLineColumn);
              public
               constructor Create(const aParent:TpvAbstractTextEditor); reintroduce;
               destructor Destroy; override;
@@ -349,13 +361,13 @@ type TpvUTF8DFA=class
               procedure InsertLine;
               procedure DeleteLine;
               property Buffer:TBufferItems read fBuffer;
+              property Cursor:TCoordinate read fCursor;
+              property LineColumn:TLineColumn read fLineColumn write SetLineColumn;
              published
               property VisibleAreaWidth:TpvSizeInt read fVisibleAreaWidth write SetVisibleAreaWidth;
               property VisibleAreaHeight:TpvSizeInt read fVisibleAreaHeight write SetVisibleAreaHeight;
               property NonScrollVisibleAreaWidth:TpvSizeInt read fNonScrollVisibleAreaWidth write SetNonScrollVisibleAreaWidth;
               property NonScrollVisibleAreaHeight:TpvSizeInt read fNonScrollVisibleAreaHeight write SetNonScrollVisibleAreaHeight;
-              property CursorX:TpvSizeInt read fCursorX;
-              property CursorY:TpvSizeInt read fCursorY;
               property LineWrap:TpvSizeInt read fLineWrap write SetLineWrap;
             end;
       private
@@ -2281,10 +2293,10 @@ begin
  fNonScrollVisibleAreaHeight:=0;
  fVisibleAreaDirty:=false;
  fCodePointIndex:=0;
- fCursorOffsetX:=0;
- fCursorOffsetY:=0;
- fCursorX:=0;
- fCursorY:=0;
+ fCursorOffset.x:=0;
+ fCursorOffset.y:=0;
+ fCursor.x:=0;
+ fCursor.y:=0;
  fLineWrap:=0;
  fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fParent.fStringRope);
  fBuffer:=nil;
@@ -2371,11 +2383,18 @@ begin
   fStringRopeVisualLineMap.LineWrap:=aLineWrap;
   fStringRopeVisualLineMap.Update(-1,-1);
   if aLineWrap>0 then begin
-   fCursorOffsetX:=0;
+   fCursorOffset.x:=0;
   end;
   EnsureCodePointIndexIsInRange;
   EnsureCursorIsVisible(true);
  end;
+end;
+
+procedure TpvAbstractTextEditor.TView.SetLineColumn(const aLineColumn:TLineColumn);
+begin
+ fCodePointIndex:=fParent.fStringRopeLineMap.GetCodePointIndexFromLineIndexAndColumnIndex(aLineColumn.Line,aLineColumn.Column);
+ EnsureCodePointIndexIsInRange;
+ EnsureCursorIsVisible(true);
 end;
 
 procedure TpvAbstractTextEditor.TView.EnsureCodePointIndexIsInRange;
@@ -2389,23 +2408,28 @@ begin
 
  if fStringRopeVisualLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,CurrentLineIndex,CurrentColumnIndex) then begin
 
-  if CurrentLineIndex<fCursorOffsetY then begin
-   fCursorOffsetY:=CurrentLineIndex;
-  end else if (fCursorOffsetY+NonScrollVisibleAreaHeight)<(CurrentLineIndex+aForceVisibleLines) then begin
-   fCursorOffsetY:=(CurrentLineIndex+aForceVisibleLines)-NonScrollVisibleAreaHeight;
+  if CurrentLineIndex<fCursorOffset.y then begin
+   fCursorOffset.y:=CurrentLineIndex;
+  end else if (fCursorOffset.y+NonScrollVisibleAreaHeight)<(CurrentLineIndex+aForceVisibleLines) then begin
+   fCursorOffset.y:=(CurrentLineIndex+aForceVisibleLines)-NonScrollVisibleAreaHeight;
   end;
 
-  if CurrentColumnIndex<fCursorOffsetX then begin
-   fCursorOffsetX:=CurrentColumnIndex;
-  end else if (fCursorOffsetX+NonScrollVisibleAreaWidth)<=CurrentColumnIndex then begin
-   fCursorOffsetX:=(CurrentColumnIndex-NonScrollVisibleAreaWidth)+1;
+  if CurrentColumnIndex<fCursorOffset.x then begin
+   fCursorOffset.x:=CurrentColumnIndex;
+  end else if (fCursorOffset.x+NonScrollVisibleAreaWidth)<=CurrentColumnIndex then begin
+   fCursorOffset.x:=(CurrentColumnIndex-NonScrollVisibleAreaWidth)+1;
   end;
 
   if aUpdateCursor then begin
-   fCursorX:=CurrentColumnIndex-fCursorOffsetX;
-   fCursorY:=CurrentLineIndex-fCursorOffsetY;
+   fCursor.x:=CurrentColumnIndex-fCursorOffset.x;
+   fCursor.y:=CurrentLineIndex-fCursorOffset.y;
   end;
 
+ end;
+
+ if aUpdateCursor and fParent.fStringRopeLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,CurrentLineIndex,CurrentColumnIndex) then begin
+  fLineColumn.Line:=CurrentLineIndex;
+  fLineColumn.Column:=CurrentColumnIndex;
  end;
 
 end;
@@ -2414,8 +2438,12 @@ procedure TpvAbstractTextEditor.TView.UpdateCursor;
 var CurrentLineIndex,CurrentColumnIndex:TpvSizeInt;
 begin
  if fStringRopeVisualLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,CurrentLineIndex,CurrentColumnIndex) then begin
-  fCursorX:=CurrentColumnIndex-fCursorOffsetX;
-  fCursorY:=CurrentLineIndex-fCursorOffsetY;
+  fCursor.x:=CurrentColumnIndex-fCursorOffset.x;
+  fCursor.y:=CurrentLineIndex-fCursorOffset.y;
+ end;
+ if fParent.fStringRopeLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,CurrentLineIndex,CurrentColumnIndex) then begin
+  fLineColumn.Line:=CurrentLineIndex;
+  fLineColumn.Column:=CurrentColumnIndex;
  end;
 end;
 
@@ -2428,8 +2456,9 @@ const EmptyBufferItem:TBufferItem=
        );
 var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     CurrentLineIndex,StartCodePointIndex,StopCodePointIndex,
-    CurrentCodePointIndex,RelativeCursorX,RelativeCursorY,StepWidth:TpvSizeInt;
+    CurrentCodePointIndex,StepWidth:TpvSizeInt;
     CodePoint,IncomingCodePoint:TpvUInt32;
+    RelativeCursor:TCoordinate;
     CodePointEnumerator:TpvUTF8StringRope.TCodePointEnumerator;
 begin
 
@@ -2453,11 +2482,11 @@ begin
 
   BufferBaseIndex:=0;
 
-  RelativeCursorY:=-fCursorOffsetY;
+  RelativeCursor.y:=-fCursorOffset.y;
 
   CurrentCodePointIndex:=-1;
 
-  for CurrentLineIndex:=fCursorOffsetY to fCursorOffsetY+(VisibleAreaHeight-1) do begin
+  for CurrentLineIndex:=fCursorOffset.y to fCursorOffset.y+(VisibleAreaHeight-1) do begin
 
    StartCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndex(CurrentLineIndex);
    if (StartCodePointIndex<0) or
@@ -2475,7 +2504,7 @@ begin
 
    BufferIndex:=BufferBaseIndex;
 
-   RelativeCursorX:=-fCursorOffsetX;
+   RelativeCursor.x:=-fCursorOffset.x;
 
    if CurrentCodePointIndex<>StartCodePointIndex then begin
     CurrentCodePointIndex:=StartCodePointIndex;
@@ -2492,7 +2521,7 @@ begin
     case IncomingCodePoint of
      $09:begin
       CodePoint:=32;
-      StepWidth:=Max(1,(fStringRopeVisualLineMap.fTabWidth-(RelativeCursorX mod fStringRopeVisualLineMap.fTabWidth)));
+      StepWidth:=Max(1,(fStringRopeVisualLineMap.fTabWidth-(RelativeCursor.x mod fStringRopeVisualLineMap.fTabWidth)));
      end;
      $0a,$0d:begin
       CodePoint:=32;
@@ -2506,9 +2535,9 @@ begin
 
     if StepWidth>0 then begin
 
-     if RelativeCursorX>=0 then begin
+     if RelativeCursor.x>=0 then begin
 
-      BufferIndex:=BufferBaseIndex+RelativeCursorX;
+      BufferIndex:=BufferBaseIndex+RelativeCursor.x;
 
       if (BufferIndex>=BufferBaseIndex) and
          (BufferIndex<BufferBaseEndIndex) then begin
@@ -2517,7 +2546,7 @@ begin
 
      end;
 
-     inc(RelativeCursorX,StepWidth);
+     inc(RelativeCursor.x,StepWidth);
 
     end;
 
@@ -2527,7 +2556,7 @@ begin
 
    inc(BufferBaseIndex,VisibleAreaWidth);
 
-   inc(RelativeCursorY);
+   inc(RelativeCursor.y);
 
   end;
 
