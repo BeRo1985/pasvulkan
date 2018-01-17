@@ -111,7 +111,7 @@ type PConsoleBufferItem=^TConsoleBufferItem;
 {$ifdef Windows}
       private
        type TInputRecord={$ifdef fpc}Windows.TINPUTRECORD{$else}Windows.TInputRecord{$endif};
-            PInputRecord=^TInputRecord;
+            //PInputRecord=^TInputRecord;
             TInputRecords=array of TInputRecord;
             TKey=record
              public
@@ -131,6 +131,7 @@ type PConsoleBufferItem=^TConsoleBufferItem;
                Shift:$0000;
                Ctrl:$0000;
                Alt:$0000;
+               IgnoreWhenInternational:true;
               );
              Keys:TKeys=
               (
