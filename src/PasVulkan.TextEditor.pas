@@ -334,6 +334,8 @@ type TpvUTF8DFA=class
              public
               constructor Create(const aParent:TpvAbstractTextEditor); reintroduce;
               destructor Destroy; override;
+              procedure AfterConstruction; override;
+              procedure BeforeDestruction; override;
               procedure EnsureCodePointIndexIsInRange;
               procedure EnsureCursorIsVisible(const aUpdateCursor:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
               procedure UpdateCursor;
@@ -2271,15 +2273,6 @@ constructor TpvAbstractTextEditor.TView.Create(const aParent:TpvAbstractTextEdit
 begin
  inherited Create;
  fParent:=aParent;
- if assigned(fParent.fFirstView) then begin
-  fParent.fFirstView.fNext:=self;
-  fPrevious:=fParent.fFirstView;
- end else begin
-  fParent.fFirstView:=self;
-  fPrevious:=nil;
- end;
- fParent.fLastView:=self;
- fNext:=nil;
  fVisibleAreaWidth:=0;
  fVisibleAreaHeight:=0;
  fNonScrollVisibleAreaWidth:=0;
@@ -2299,19 +2292,42 @@ destructor TpvAbstractTextEditor.TView.Destroy;
 begin
  FreeAndNil(fStringRopeVisualLineMap);
  fBuffer:=nil;
- if assigned(fNext) then begin
-  fNext.fPrevious:=fPrevious;
- end else if fParent.fFirstView=self then begin
-  fParent.fFirstView:=fPrevious;
- end;
- if assigned(fPrevious) then begin
-  fPrevious.fNext:=fNext;
- end else if fParent.fLastView=self then begin
-  fParent.fLastView:=fNext;
- end;
- fPrevious:=nil;
- fNext:=nil;
  inherited Destroy;
+end;
+
+procedure TpvAbstractTextEditor.TView.AfterConstruction;
+begin
+ inherited AfterConstruction;
+ if assigned(fParent) then begin
+  if assigned(fParent.fFirstView) then begin
+   fParent.fFirstView.fNext:=self;
+   fPrevious:=fParent.fFirstView;
+  end else begin
+   fParent.fFirstView:=self;
+   fPrevious:=nil;
+  end;
+  fParent.fLastView:=self;
+  fNext:=nil;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.TView.BeforeDestruction;
+begin
+ if assigned(fParent) then begin
+  if assigned(fNext) then begin
+   fNext.fPrevious:=fPrevious;
+  end else if fParent.fFirstView=self then begin
+   fParent.fFirstView:=fPrevious;
+  end;
+  if assigned(fPrevious) then begin
+   fPrevious.fNext:=fNext;
+  end else if fParent.fLastView=self then begin
+   fParent.fLastView:=fNext;
+  end;
+  fPrevious:=nil;
+  fNext:=nil;
+ end;
+ inherited BeforeDestruction;
 end;
 
 procedure TpvAbstractTextEditor.TView.SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeInt);
