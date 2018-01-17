@@ -293,14 +293,7 @@ type TpvUTF8DFA=class
 
      TpvAbstractTextEditor=class
       public
-       type TDrawBufferItem=record
-             BackgroundColor:TpvUInt8;
-             ForegroundColor:TpvUInt8;
-             CodePoint:TpvUInt32;
-            end;
-            PDrawBufferItem=^TDrawBufferItem;
-            TDrawBufferItems=array of TDrawBufferItem;
-            TView=class
+       type TView=class
              public
               type TBufferItem=record
                     BackgroundColor:TpvUInt8;
@@ -339,7 +332,7 @@ type TpvUTF8DFA=class
               procedure EnsureCodePointIndexIsInRange;
               procedure EnsureCursorIsVisible(const aUpdateCursor:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
               procedure UpdateCursor;
-              procedure FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
+              procedure UpdateBuffer;
               procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
               procedure InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean);
               procedure Backspace;
@@ -2426,8 +2419,8 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.TView.FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
-const EmptyDrawBufferItem:TDrawBufferItem=
+procedure TpvAbstractTextEditor.TView.UpdateBuffer;
+const EmptyBufferItem:TBufferItem=
        (
         BackgroundColor:0;
         ForegroundColor:0;
@@ -2450,12 +2443,12 @@ begin
 
  if BufferSize>0 then begin
 
-  if length(aDrawBufferItems)<>BufferSize then begin
-   SetLength(aDrawBufferItems,BufferSize);
+  if length(fBuffer)<>BufferSize then begin
+   SetLength(fBuffer,BufferSize);
   end;
 
   for BufferIndex:=0 to BufferSize-1 do begin
-   aDrawBufferItems[BufferIndex]:=EmptyDrawBufferItem;
+   fBuffer[BufferIndex]:=EmptyBufferItem;
   end;
 
   BufferBaseIndex:=0;
@@ -2519,7 +2512,7 @@ begin
 
       if (BufferIndex>=BufferBaseIndex) and
          (BufferIndex<BufferBaseEndIndex) then begin
-       aDrawBufferItems[BufferIndex].CodePoint:=CodePoint;
+       fBuffer[BufferIndex].CodePoint:=CodePoint;
       end;
 
      end;

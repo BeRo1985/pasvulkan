@@ -66,7 +66,6 @@ uses SysUtils,Classes,PasVulkan.Types,PasVulkan.TextEditor,UnitConsole;
 
 var AbstractTextEditor:TpvAbstractTextEditor=nil;
     AbstractTextEditorView:TpvAbstractTextEditor.TView;
-    AbstractTextEditorBuffer:TpvAbstractTextEditor.TDrawBufferItems=nil;
     OverwriteMode:boolean=false;
 
 procedure Main;
@@ -187,13 +186,13 @@ begin
  AbstractTextEditorView.NonScrollVisibleAreaWidth:=Console.Width;
  AbstractTextEditorView.NonScrollVisibleAreaHeight:=Console.Height-2;
 
- AbstractTextEditorView.FillDrawBuffer(AbstractTextEditorBuffer);
+ AbstractTextEditorView.UpdateBuffer;
 
  i:=0;
  for y:=0 to AbstractTextEditorView.VisibleAreaHeight-1 do begin
   for x:=0 to AbstractTextEditorView.VisibleAreaWidth-1 do begin
-   if i<length(AbstractTextEditorBuffer) then begin
-    Console.WriteCodePointToBuffer(x+1,y+2,AbstractTextEditorBuffer[i].CodePoint);
+   if i<length(AbstractTextEditorView.Buffer) then begin
+    Console.WriteCodePointToBuffer(x+1,y+2,AbstractTextEditorView.Buffer[i].CodePoint);
    end;
    inc(i);
   end;
@@ -318,8 +317,6 @@ begin
    end;
 
   until false;
-
-  AbstractTextEditorBuffer:=nil;
 
  finally
   AbstractTextEditor.Free;
