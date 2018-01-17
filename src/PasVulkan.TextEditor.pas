@@ -2371,6 +2371,7 @@ begin
   if aLineWrap>0 then begin
    fCursorOffsetX:=0;
   end;
+  EnsureCodePointIndexIsInRange;
   EnsureCursorIsVisible(true);
  end;
 end;
@@ -2715,6 +2716,7 @@ begin
     fCodePointIndex:=NewCodePointIndex;
    end;
   end;
+  EnsureCodePointIndexIsInRange;
   EnsureCursorIsVisible(true,fNonScrollVisibleAreaHeight);
  end;
 end;
@@ -2731,6 +2733,7 @@ begin
     fCodePointIndex:=NewCodePointIndex;
    end;
   end;
+  EnsureCodePointIndexIsInRange;
   EnsureCursorIsVisible(true,fNonScrollVisibleAreaHeight);
  end;
 end;
