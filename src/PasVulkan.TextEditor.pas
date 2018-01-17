@@ -383,6 +383,8 @@ type TpvUTF8DFA=class
        function CreateView:TpvAbstractTextEditor.TView;
        procedure LineMapTruncate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
        procedure LineMapUpdate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
+       procedure ResetLineMaps;
+       procedure ResetViewCodePointIndices;
        procedure UpdateViewCodePointIndices(const aCodePointIndex,aDelta:TpvSizeInt);
        procedure EnsureViewCodePointIndicesAreInRange;
        procedure EnsureViewCursorsAreVisible(const aUpdateCursors:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
@@ -2124,23 +2126,14 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.LoadFromStream(const aStream:TStream);
-var View:TView;
 begin
  if assigned(aStream) then begin
   fStringRope.Text:=TpvUTF8Utils.RawStreamToUTF8String(aStream);
  end else begin
   fStringRope.Text:='';
  end;
- fStringRopeLineMap.Truncate(0,0);
- fStringRopeLineMap.Update(-1,-1);
- View:=fFirstView;
- while assigned(View) do begin
-  View.fStringRopeVisualLineMap.Truncate(0,0);
-  View.fStringRopeVisualLineMap.Update(-1,-1);
-  View.fCodePointIndex:=0;
-  View.EnsureCursorIsVisible(true);
-  View:=View.fNext;
- end;
+ ResetLineMaps;
+ ResetViewCodePointIndices;
 end;
 
 procedure TpvAbstractTextEditor.LoadFromFile(const aFileName:string);
@@ -2155,19 +2148,10 @@ begin
 end;
 
 procedure TpvAbstractTextEditor.LoadFromString(const aString:TpvRawByteString);
-var View:TView;
 begin
  fStringRope.Text:=TpvUTF8Utils.RawByteStringToUTF8String(aString);
- fStringRopeLineMap.Truncate(0,0);
- fStringRopeLineMap.Update(-1,-1);
- View:=fFirstView;
- while assigned(View) do begin
-  View.fStringRopeVisualLineMap.Truncate(0,0);
-  View.fStringRopeVisualLineMap.Update(-1,-1);
-  View.fCodePointIndex:=0;
-  View.EnsureCursorIsVisible(true);
-  View:=View.fNext;
- end;
+ ResetLineMaps;
+ ResetViewCodePointIndices;
 end;
 
 procedure TpvAbstractTextEditor.SaveToStream(const aStream:TStream);
@@ -2223,6 +2207,31 @@ begin
  View:=fFirstView;
  while assigned(View) do begin
   View.fStringRopeVisualLineMap.Update(aUntilCodePoint,aUntilLine);
+  View:=View.fNext;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.ResetLineMaps;
+var View:TView;
+begin
+ fStringRopeLineMap.Truncate(0,0);
+ fStringRopeLineMap.Update(-1,-1);
+ View:=fFirstView;
+ while assigned(View) do begin
+  View.fStringRopeVisualLineMap.Truncate(0,0);
+  View.fStringRopeVisualLineMap.Update(-1,-1);
+  View:=View.fNext;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.ResetViewCodePointIndices;
+var View:TView;
+begin
+ View:=fFirstView;
+ while assigned(View) do begin
+  View.fCodePointIndex:=0;
+  View.EnsureCodePointIndexIsInRange;
+  View.EnsureCursorIsVisible(true);
   View:=View.fNext;
  end;
 end;
