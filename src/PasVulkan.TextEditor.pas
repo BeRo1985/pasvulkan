@@ -300,62 +300,92 @@ type TpvUTF8DFA=class
             end;
             PDrawBufferItem=^TDrawBufferItem;
             TDrawBufferItems=array of TDrawBufferItem;
+            TView=class
+             public
+              type TBufferItem=record
+                    BackgroundColor:TpvUInt8;
+                    ForegroundColor:TpvUInt8;
+                    CodePoint:TpvUInt32;
+                   end;
+                   PBufferItem=^TBufferItem;
+                   TBufferItems=array of TBufferItem;
+             private
+              fParent:TpvAbstractTextEditor;
+              fPrevious:TView;
+              fNext:TView;
+              fVisibleAreaDirty:boolean;
+              fVisibleAreaWidth:TpvSizeInt;
+              fVisibleAreaHeight:TpvSizeInt;
+              fNonScrollVisibleAreaWidth:TpvSizeInt;
+              fNonScrollVisibleAreaHeight:TpvSizeInt;
+              fCodePointIndex:TpvSizeInt;
+              fCursorOffsetX:TpvSizeInt;
+              fCursorOffsetY:TpvSizeInt;
+              fCursorX:TpvSizeInt;
+              fCursorY:TpvSizeInt;
+              fLineWrap:TpvSizeInt;
+              fStringRopeVisualLineMap:TpvUTF8StringRopeLineMap;
+              fBuffer:TBufferItems;
+              procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeInt);
+              procedure SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeInt);
+              procedure SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeInt);
+              procedure SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeInt);
+              procedure SetLineWrap(const aLineWrap:TpvSizeInt);
+             public
+              constructor Create(const aParent:TpvAbstractTextEditor); reintroduce;
+              destructor Destroy; override;
+              procedure EnsureCodePointIndexIsInRange;
+              procedure EnsureCursorIsVisible(const aUpdateCursor:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
+              procedure UpdateCursor;
+              procedure FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
+              procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
+              procedure InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean);
+              procedure Backspace;
+              procedure Delete;
+              procedure Enter(const aOverwrite:boolean);
+              procedure MoveUp;
+              procedure MoveDown;
+              procedure MoveLeft;
+              procedure MoveRight;
+              procedure MoveToLineBegin;
+              procedure MoveToLineEnd;
+              procedure MovePageUp;
+              procedure MovePageDown;
+              procedure InsertLine;
+              procedure DeleteLine;
+              property Buffer:TBufferItems read fBuffer;
+             published
+              property VisibleAreaWidth:TpvSizeInt read fVisibleAreaWidth write SetVisibleAreaWidth;
+              property VisibleAreaHeight:TpvSizeInt read fVisibleAreaHeight write SetVisibleAreaHeight;
+              property NonScrollVisibleAreaWidth:TpvSizeInt read fNonScrollVisibleAreaWidth write SetNonScrollVisibleAreaWidth;
+              property NonScrollVisibleAreaHeight:TpvSizeInt read fNonScrollVisibleAreaHeight write SetNonScrollVisibleAreaHeight;
+              property CursorX:TpvSizeInt read fCursorX;
+              property CursorY:TpvSizeInt read fCursorY;
+              property LineWrap:TpvSizeInt read fLineWrap write SetLineWrap;
+            end;
       private
-       fVisibleAreaWidth:TpvSizeInt;
-       fVisibleAreaHeight:TpvSizeInt;
-       fNonScrollVisibleAreaWidth:TpvSizeInt;
-       fNonScrollVisibleAreaHeight:TpvSizeInt;
-       fVisibleAreaDirty:boolean;
        fStringRope:TpvUTF8StringRope;
        fStringRopeLineMap:TpvUTF8StringRopeLineMap;
-       fStringRopeVisualLineMap:TpvUTF8StringRopeLineMap;
-       fCodePointIndex:TpvSizeInt;
-       fCursorOffsetX:TpvSizeInt;
-       fCursorOffsetY:TpvSizeInt;
-       fCursorX:TpvSizeInt;
-       fCursorY:TpvSizeInt;
-       fLineWrap:TpvSizeInt;
-       procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeInt);
-       procedure SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeInt);
-       procedure SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeInt);
-       procedure SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeInt);
-       procedure SetLineWrap(const aLineWrap:TpvSizeInt);
+       fFirstView:TView;
+       fLastView:TView;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       procedure EnsureCursorIsVisible(const aUpdateCursor:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
-       procedure UpdateCursor;
-       procedure FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
        function IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
-       procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
-       procedure InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean);
        procedure LoadFromStream(const aStream:TStream);
        procedure LoadFromFile(const aFileName:string);
        procedure LoadFromString(const aString:TpvRawByteString);
        procedure SaveToStream(const aStream:TStream);
        procedure SaveToFile(const aFileName:string);
        function SaveToString:TpvUTF8String;
-       procedure Backspace;
-       procedure Delete;
-       procedure Enter(const aOverwrite:boolean);
-       procedure MoveUp;
-       procedure MoveDown;
-       procedure MoveLeft;
-       procedure MoveRight;
-       procedure MoveToLineBegin;
-       procedure MoveToLineEnd;
-       procedure MovePageUp;
-       procedure MovePageDown;
-       procedure InsertLine;
-       procedure DeleteLine;
+       function CreateView:TpvAbstractTextEditor.TView;
+       procedure LineMapTruncate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
+       procedure LineMapUpdate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
+       procedure UpdateViewCodePointIndices(const aCodePointIndex,aDelta:TpvSizeInt);
+       procedure EnsureViewCodePointIndicesAreInRange;
+       procedure EnsureViewCursorsAreVisible(const aUpdateCursors:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
+       procedure UpdateViewCursors;
       published
-       property VisibleAreaWidth:TpvSizeInt read fVisibleAreaWidth write SetVisibleAreaWidth;
-       property VisibleAreaHeight:TpvSizeInt read fVisibleAreaHeight write SetVisibleAreaHeight;
-       property NonScrollVisibleAreaWidth:TpvSizeInt read fNonScrollVisibleAreaWidth write SetNonScrollVisibleAreaWidth;
-       property NonScrollVisibleAreaHeight:TpvSizeInt read fNonScrollVisibleAreaHeight write SetNonScrollVisibleAreaHeight;
-       property CursorX:TpvSizeInt read fCursorX;
-       property CursorY:TpvSizeInt read fCursorY;
-       property LineWrap:TpvSizeInt read fLineWrap write SetLineWrap;
      end;
 
 implementation
@@ -2048,28 +2078,243 @@ end;
 constructor TpvAbstractTextEditor.Create;
 begin
  inherited Create;
- fVisibleAreaDirty:=false;
  fStringRope:=TpvUTF8StringRope.Create;
-//fStringRope.Text:=UTF8Encode('Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello ä'#10#10);
-//fStringRope.Text:='Hello world'#13#10'Hello world'#13#10'Hello world'#13#10'Hello world'#13#10'Hello'#13#10#13#10;
-// fStringRope.Text:='Hello world'#10'Hello world'#10'Hello world'#10'Hello world'#10'Hello'#10#10;
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
- fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
- fCodePointIndex:=0;
- fCursorOffsetX:=0;
- fCursorOffsetY:=0;
- fLineWrap:=0;
+ fFirstView:=nil;
+ fLastView:=nil;
 end;
 
 destructor TpvAbstractTextEditor.Destroy;
 begin
+ while assigned(fLastView) do begin
+  fLastView.Free;
+ end;
  fStringRopeLineMap.Free;
- fStringRopeVisualLineMap.Free;
  fStringRope.Free;
  inherited Destroy;
 end;
 
-procedure TpvAbstractTextEditor.SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeInt);
+function TpvAbstractTextEditor.IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
+var CodePoint,LastCodePoint:TpvUInt32;
+    LastWasPossibleNewLineTwoCharSequence:boolean;
+begin
+ result:=false;
+ LastCodePoint:=0;
+ LastWasPossibleNewLineTwoCharSequence:=false;
+ for CodePoint in fStringRope.GetCodePointEnumeratorSource(aCodePointIndex,aCodePointIndex+2) do begin
+  case CodePoint of
+   $0a,$0d:begin
+    if LastWasPossibleNewLineTwoCharSequence and
+       (((CodePoint=$0a) and (LastCodePoint=$0d)) or
+        ((CodePoint=$0d) and (LastCodePoint=$0a))) then begin
+     result:=true;
+     break;
+    end else begin
+     LastWasPossibleNewLineTwoCharSequence:=true;
+    end;
+   end;
+   else begin
+    break;
+   end;
+  end;
+  LastCodePoint:=CodePoint;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.LoadFromStream(const aStream:TStream);
+var View:TView;
+begin
+ if assigned(aStream) then begin
+  fStringRope.Text:=TpvUTF8Utils.RawStreamToUTF8String(aStream);
+ end else begin
+  fStringRope.Text:='';
+ end;
+ fStringRopeLineMap.Truncate(0,0);
+ fStringRopeLineMap.Update(-1,-1);
+ View:=fFirstView;
+ while assigned(View) do begin
+  View.fStringRopeVisualLineMap.Truncate(0,0);
+  View.fStringRopeVisualLineMap.Update(-1,-1);
+  View.fCodePointIndex:=0;
+  View.EnsureCursorIsVisible(true);
+  View:=View.fNext;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.LoadFromFile(const aFileName:string);
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+ try
+  LoadFromStream(FileStream);
+ finally
+  FileStream.Free;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.LoadFromString(const aString:TpvRawByteString);
+var View:TView;
+begin
+ fStringRope.Text:=TpvUTF8Utils.RawByteStringToUTF8String(aString);
+ fStringRopeLineMap.Truncate(0,0);
+ fStringRopeLineMap.Update(-1,-1);
+ View:=fFirstView;
+ while assigned(View) do begin
+  View.fStringRopeVisualLineMap.Truncate(0,0);
+  View.fStringRopeVisualLineMap.Update(-1,-1);
+  View.fCodePointIndex:=0;
+  View.EnsureCursorIsVisible(true);
+  View:=View.fNext;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.SaveToStream(const aStream:TStream);
+var TemporaryString:TpvUTF8String;
+begin
+ if assigned(aStream) then begin
+  TemporaryString:=fStringRope.GetText;
+  aStream.Seek(0,soBeginning);
+  aStream.Size:=length(TemporaryString);
+  if length(TemporaryString)>0 then begin
+   aStream.Seek(0,soBeginning);
+   aStream.WriteBuffer(TemporaryString[1],aStream.Size);
+  end;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.SaveToFile(const aFileName:string);
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(aFileName,fmCreate);
+ try
+  SaveToStream(FileStream);
+ finally
+  FileStream.Free;
+ end;
+end;
+
+function TpvAbstractTextEditor.SaveToString:TpvUTF8String;
+begin
+ result:=fStringRope.GetText;
+end;
+
+function TpvAbstractTextEditor.CreateView:TpvAbstractTextEditor.TView;
+begin
+ result:=TpvAbstractTextEditor.TView.Create(self);
+end;
+
+procedure TpvAbstractTextEditor.LineMapTruncate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
+var View:TView;
+begin
+ fStringRopeLineMap.Truncate(aUntilCodePoint,aUntilLine);
+ View:=fFirstView;
+ while assigned(View) do begin
+  View.fStringRopeVisualLineMap.Truncate(aUntilCodePoint,aUntilLine);
+  View:=View.fNext;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.LineMapUpdate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
+var View:TView;
+begin
+ fStringRopeLineMap.Update(aUntilCodePoint,aUntilLine);
+ View:=fFirstView;
+ while assigned(View) do begin
+  View.fStringRopeVisualLineMap.Update(aUntilCodePoint,aUntilLine);
+  View:=View.fNext;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.UpdateViewCodePointIndices(const aCodePointIndex,aDelta:TpvSizeInt);
+var View:TView;
+begin
+ View:=fFirstView;
+ while assigned(View) do begin
+  if View.fCodePointIndex>=aCodePointIndex then begin
+   inc(View.fCodePointIndex,aDelta);
+  end;
+  View:=View.fNext;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.EnsureViewCodePointIndicesAreInRange;
+var View:TView;
+begin
+ View:=fFirstView;
+ while assigned(View) do begin
+  View.EnsureCodePointIndexIsInRange;
+  View:=View.fNext;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.EnsureViewCursorsAreVisible(const aUpdateCursors:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
+var View:TView;
+begin
+ View:=fFirstView;
+ while assigned(View) do begin
+  View.EnsureCursorIsVisible(aUpdateCursors,aForceVisibleLines);
+  View:=View.fNext;
+ end;
+end;
+
+procedure TpvAbstractTextEditor.UpdateViewCursors;
+var View:TView;
+begin
+ View:=fFirstView;
+ while assigned(View) do begin
+  View.UpdateCursor;
+  View:=View.fNext;
+ end;
+end;
+
+constructor TpvAbstractTextEditor.TView.Create(const aParent:TpvAbstractTextEditor);
+begin
+ inherited Create;
+ fParent:=aParent;
+ if assigned(fParent.fFirstView) then begin
+  fParent.fFirstView.fNext:=self;
+  fPrevious:=fParent.fFirstView;
+ end else begin
+  fParent.fFirstView:=self;
+  fPrevious:=nil;
+ end;
+ fParent.fLastView:=self;
+ fNext:=nil;
+ fVisibleAreaWidth:=0;
+ fVisibleAreaHeight:=0;
+ fNonScrollVisibleAreaWidth:=0;
+ fNonScrollVisibleAreaHeight:=0;
+ fVisibleAreaDirty:=false;
+ fCodePointIndex:=0;
+ fCursorOffsetX:=0;
+ fCursorOffsetY:=0;
+ fCursorX:=0;
+ fCursorY:=0;
+ fLineWrap:=0;
+ fStringRopeVisualLineMap:=TpvUTF8StringRopeLineMap.Create(fParent.fStringRope);
+ fBuffer:=nil;
+end;
+
+destructor TpvAbstractTextEditor.TView.Destroy;
+begin
+ FreeAndNil(fStringRopeVisualLineMap);
+ fBuffer:=nil;
+ if assigned(fNext) then begin
+  fNext.fPrevious:=fPrevious;
+ end else if fParent.fFirstView=self then begin
+  fParent.fFirstView:=fPrevious;
+ end;
+ if assigned(fPrevious) then begin
+  fPrevious.fNext:=fNext;
+ end else if fParent.fLastView=self then begin
+  fParent.fLastView:=fNext;
+ end;
+ fPrevious:=nil;
+ fNext:=nil;
+ inherited Destroy;
+end;
+
+procedure TpvAbstractTextEditor.TView.SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeInt);
 begin
  if fVisibleAreaWidth<>aVisibleAreaWidth then begin
   fVisibleAreaWidth:=aVisibleAreaWidth;
@@ -2077,7 +2322,7 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeInt);
+procedure TpvAbstractTextEditor.TView.SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeInt);
 begin
  if fVisibleAreaHeight<>aVisibleAreaHeight then begin
   fVisibleAreaHeight:=aVisibleAreaHeight;
@@ -2085,7 +2330,7 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeInt);
+procedure TpvAbstractTextEditor.TView.SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeInt);
 begin
  if fNonScrollVisibleAreaWidth<>aNonScrollVisibleAreaWidth then begin
   fNonScrollVisibleAreaWidth:=aNonScrollVisibleAreaWidth;
@@ -2093,7 +2338,7 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeInt);
+procedure TpvAbstractTextEditor.TView.SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeInt);
 begin
  if fNonScrollVisibleAreaHeight<>aNonScrollVisibleAreaHeight then begin
   fNonScrollVisibleAreaHeight:=aNonScrollVisibleAreaHeight;
@@ -2101,7 +2346,7 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.SetLineWrap(const aLineWrap:TpvSizeInt);
+procedure TpvAbstractTextEditor.TView.SetLineWrap(const aLineWrap:TpvSizeInt);
 begin
  if fLineWrap<>aLineWrap then begin
   fLineWrap:=aLineWrap;
@@ -2114,7 +2359,12 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.EnsureCursorIsVisible(const aUpdateCursor:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
+procedure TpvAbstractTextEditor.TView.EnsureCodePointIndexIsInRange;
+begin
+ fCodePointIndex:=Min(Max(fCodePointIndex,0),fParent.fStringRope.CountCodePoints);
+end;
+
+procedure TpvAbstractTextEditor.TView.EnsureCursorIsVisible(const aUpdateCursor:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
 var CurrentLineIndex,CurrentColumnIndex:TpvSizeInt;
 begin
 
@@ -2141,7 +2391,7 @@ begin
 
 end;
 
-procedure TpvAbstractTextEditor.UpdateCursor;
+procedure TpvAbstractTextEditor.TView.UpdateCursor;
 var CurrentLineIndex,CurrentColumnIndex:TpvSizeInt;
 begin
  if fStringRopeVisualLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,CurrentLineIndex,CurrentColumnIndex) then begin
@@ -2150,7 +2400,7 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
+procedure TpvAbstractTextEditor.TView.FillDrawBuffer(var aDrawBufferItems:TDrawBufferItems);
 const EmptyDrawBufferItem:TDrawBufferItem=
        (
         BackgroundColor:0;
@@ -2163,6 +2413,8 @@ var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     CodePoint,IncomingCodePoint:TpvUInt32;
     CodePointEnumerator:TpvUTF8StringRope.TCodePointEnumerator;
 begin
+
+ EnsureCodePointIndexIsInRange;
 
  EnsureCursorIsVisible(true);
 
@@ -2190,7 +2442,7 @@ begin
 
    StartCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndex(CurrentLineIndex);
    if (StartCodePointIndex<0) or
-      (StartCodePointIndex>=fStringRope.fCountCodePoints) then begin
+      (StartCodePointIndex>=fParent.fStringRope.fCountCodePoints) then begin
     break;
    end;
 
@@ -2209,7 +2461,7 @@ begin
    if CurrentCodePointIndex<>StartCodePointIndex then begin
     CurrentCodePointIndex:=StartCodePointIndex;
 
-    CodePointEnumerator:=TpvUTF8StringRope.TCodePointEnumerator.Create(fStringRope,StartCodePointIndex,-1);
+    CodePointEnumerator:=TpvUTF8StringRope.TCodePointEnumerator.Create(fParent.fStringRope,StartCodePointIndex,-1);
 
    end;
 
@@ -2264,177 +2516,84 @@ begin
 
 end;
 
-function TpvAbstractTextEditor.IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
-var CodePoint,LastCodePoint:TpvUInt32;
-    LastWasPossibleNewLineTwoCharSequence:boolean;
-begin
- result:=false;
- LastCodePoint:=0;
- LastWasPossibleNewLineTwoCharSequence:=false;
- for CodePoint in fStringRope.GetCodePointEnumeratorSource(aCodePointIndex,aCodePointIndex+2) do begin
-  case CodePoint of
-   $0a,$0d:begin
-    if LastWasPossibleNewLineTwoCharSequence and
-       (((CodePoint=$0a) and (LastCodePoint=$0d)) or
-        ((CodePoint=$0d) and (LastCodePoint=$0a))) then begin
-     result:=true;
-     break;
-    end else begin
-     LastWasPossibleNewLineTwoCharSequence:=true;
-    end;
-   end;
-   else begin
-    break;
-   end;
-  end;
-  LastCodePoint:=CodePoint;
- end;
-end;
-
-procedure TpvAbstractTextEditor.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
+procedure TpvAbstractTextEditor.TView.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
 var Count:TpvSizeInt;
 begin
- fStringRopeLineMap.Truncate(fCodePointIndex,-1);
- fStringRopeVisualLineMap.Truncate(fCodePointIndex,-1);
- if aOverwrite and (fCodePointIndex<fStringRope.fCountCodePoints) then begin
-  if IsTwoCodePointNewLine(fCodePointIndex) then begin
+ fParent.LineMapTruncate(fCodePointIndex,-1);
+ if aOverwrite and (fCodePointIndex<fParent.fStringRope.fCountCodePoints) then begin
+  if fParent.IsTwoCodePointNewLine(fCodePointIndex) then begin
    Count:=2;
   end else begin
    Count:=1;
   end;
-  fStringRope.Delete(fCodePointIndex,Count);
+  fParent.fStringRope.Delete(fCodePointIndex,Count);
  end;
- fStringRope.Insert(fCodePointIndex,TpvUTF8Utils.UTF32CharToUTF8(aCodePoint));
- inc(fCodePointIndex);
+ fParent.fStringRope.Insert(fCodePointIndex,TpvUTF8Utils.UTF32CharToUTF8(aCodePoint));
+ fParent.UpdateViewCodePointIndices(fCodePointIndex,1);
+ fParent.EnsureViewCodePointIndicesAreInRange;
+ fParent.EnsureViewCursorsAreVisible(true);
 end;
 
-procedure TpvAbstractTextEditor.InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean);
+procedure TpvAbstractTextEditor.TView.InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean);
 var CountCodePoints,Count:TpvSizeInt;
 begin
  CountCodePoints:=TpvUTF8StringRope.GetCountCodePoints(@aCodeUnits[1],length(aCodeUnits));
- fStringRopeLineMap.Truncate(fCodePointIndex,-1);
- fStringRopeVisualLineMap.Truncate(fCodePointIndex,-1);
- if aOverwrite and (fCodePointIndex<fStringRope.fCountCodePoints) then begin
-  if IsTwoCodePointNewLine(fCodePointIndex) then begin
+ fParent.LineMapTruncate(fCodePointIndex,-1);
+ if aOverwrite and (fCodePointIndex<fParent.fStringRope.fCountCodePoints) then begin
+  if fParent.IsTwoCodePointNewLine(fCodePointIndex) then begin
    Count:=2;
   end else begin
    Count:=1;
   end;
-  fStringRope.Delete(fCodePointIndex,(CountCodePoints+Count)-1);
+  fParent.fStringRope.Delete(fCodePointIndex,(CountCodePoints+Count)-1);
  end;
- fStringRope.Insert(fCodePointIndex,aCodeUnits);
- inc(fCodePointIndex,CountCodePoints);
+ fParent.fStringRope.Insert(fCodePointIndex,aCodeUnits);
+ fParent.UpdateViewCodePointIndices(fCodePointIndex,CountCodePoints);
+ fParent.EnsureViewCodePointIndicesAreInRange;
+ fParent.EnsureViewCursorsAreVisible(true);
 end;
 
-procedure TpvAbstractTextEditor.Backspace;
+procedure TpvAbstractTextEditor.TView.Backspace;
 var Count:TpvSizeInt;
 begin
- if (fCodePointIndex>0) and (fCodePointIndex<=fStringRope.fCountCodePoints) then begin
-  if IsTwoCodePointNewLine(fCodePointIndex-2) then begin
+ if (fCodePointIndex>0) and (fCodePointIndex<=fParent.fStringRope.fCountCodePoints) then begin
+  if fparent.IsTwoCodePointNewLine(fCodePointIndex-2) then begin
    Count:=2;
   end else begin
    Count:=1;
   end;
-  dec(fCodePointIndex,Count);
-  fStringRope.Delete(fCodePointIndex,Count);
+  fParent.UpdateViewCodePointIndices(fCodePointIndex,-Count);
+  fParent.fStringRope.Delete(fCodePointIndex,Count);
   if fCodePointIndex>0 then begin
-   fStringRopeLineMap.Truncate(fCodePointIndex-1,-1);
-   fStringRopeVisualLineMap.Truncate(fCodePointIndex-1,-1);
+   fParent.LineMapTruncate(fCodePointIndex-1,-1);
   end else begin
-   fStringRopeLineMap.Truncate(fCodePointIndex,-1);
-   fStringRopeVisualLineMap.Truncate(fCodePointIndex,-1);
+   fParent.LineMapTruncate(fCodePointIndex,-1);
   end;
  end;
+ fParent.EnsureViewCodePointIndicesAreInRange;
+ fParent.EnsureViewCursorsAreVisible(true);
 end;
 
-procedure TpvAbstractTextEditor.LoadFromStream(const aStream:TStream);
-begin
- if assigned(aStream) then begin
-  fStringRope.Text:=TpvUTF8Utils.RawStreamToUTF8String(aStream);
- end else begin
-  fStringRope.Text:='';
- end;
- fStringRopeLineMap.Truncate(0,0);
- fStringRopeVisualLineMap.Truncate(0,0);
- fStringRopeLineMap.Update(-1,-1);
- fStringRopeVisualLineMap.Update(-1,-1);
- fCodePointIndex:=0;
- EnsureCursorIsVisible(true);
-end;
-
-procedure TpvAbstractTextEditor.LoadFromFile(const aFileName:string);
-var FileStream:TFileStream;
-begin
- FileStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
- try
-  LoadFromStream(FileStream);
- finally
-  FileStream.Free;
- end;
-end;
-
-procedure TpvAbstractTextEditor.LoadFromString(const aString:TpvRawByteString);
-begin
- fStringRope.Text:=TpvUTF8Utils.RawByteStringToUTF8String(aString);
- fStringRopeLineMap.Truncate(0,0);
- fStringRopeVisualLineMap.Truncate(0,0);
- fStringRopeLineMap.Update(-1,-1);
- fStringRopeVisualLineMap.Update(-1,-1);
- fCodePointIndex:=0;
- EnsureCursorIsVisible(true);
-end;
-
-procedure TpvAbstractTextEditor.SaveToStream(const aStream:TStream);
-var TemporaryString:TpvUTF8String;
-begin
- if assigned(aStream) then begin
-  TemporaryString:=fStringRope.GetText;
-  aStream.Seek(0,soBeginning);
-  aStream.Size:=length(TemporaryString);
-  if length(TemporaryString)>0 then begin
-   aStream.Seek(0,soBeginning);
-   aStream.WriteBuffer(TemporaryString[1],aStream.Size);
-  end;
- end;
-end;
-
-procedure TpvAbstractTextEditor.SaveToFile(const aFileName:string);
-var FileStream:TFileStream;
-begin
- FileStream:=TFileStream.Create(aFileName,fmCreate);
- try
-  SaveToStream(FileStream);
- finally
-  FileStream.Free;
- end;
-end;
-
-function TpvAbstractTextEditor.SaveToString:TpvUTF8String;
-begin
- result:=fStringRope.GetText;
-end;
-
-procedure TpvAbstractTextEditor.Delete;
+procedure TpvAbstractTextEditor.TView.Delete;
 var Count:TpvSizeInt;
 begin
- if fCodePointIndex<fStringRope.fCountCodePoints then begin
-  if IsTwoCodePointNewLine(fCodePointIndex) then begin
+ if fCodePointIndex<fParent.fStringRope.fCountCodePoints then begin
+  if fParent.IsTwoCodePointNewLine(fCodePointIndex) then begin
    Count:=2;
   end else begin
    Count:=1;
   end;
-  fStringRope.Delete(fCodePointIndex,Count);
+  fParent.fStringRope.Delete(fCodePointIndex,Count);
   if fCodePointIndex>0 then begin
-   fStringRopeLineMap.Truncate(fCodePointIndex-1,-1);
-   fStringRopeVisualLineMap.Truncate(fCodePointIndex-1,-1);
+   fParent.LineMapTruncate(fCodePointIndex-1,-1);
   end else begin
-   fStringRopeLineMap.Truncate(fCodePointIndex,-1);
-   fStringRopeVisualLineMap.Truncate(fCodePointIndex,-1);
+   fParent.LineMapTruncate(fCodePointIndex,-1);
   end;
  end;
+ fParent.EnsureViewCursorsAreVisible(true);
 end;
 
-procedure TpvAbstractTextEditor.Enter(const aOverwrite:boolean);
+procedure TpvAbstractTextEditor.TView.Enter(const aOverwrite:boolean);
 begin
  if aOverwrite then begin
   MoveDown;
@@ -2446,13 +2605,13 @@ begin
   InsertCodePoint(10,aOverwrite);
 {$endif}
  end;
- UpdateCursor;
+ fParent.UpdateViewCursors;
 end;
 
-procedure TpvAbstractTextEditor.MoveUp;
+procedure TpvAbstractTextEditor.TView.MoveUp;
 var LineIndex,ColumnIndex,NewCodePointIndex:TpvSizeInt;
 begin
- if fCodePointIndex<=fStringRope.CountCodePoints then begin
+ if fCodePointIndex<=fParent.fStringRope.CountCodePoints then begin
   fStringRopeVisualLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,LineIndex,ColumnIndex);
   if LineIndex>=0 then begin
    NewCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndexAndColumnIndex(LineIndex-1,ColumnIndex);
@@ -2463,10 +2622,10 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.MoveDown;
+procedure TpvAbstractTextEditor.TView.MoveDown;
 var LineIndex,ColumnIndex,NewCodePointIndex:TpvSizeInt;
 begin
- if fCodePointIndex<fStringRope.CountCodePoints then begin
+ if fCodePointIndex<fParent.fStringRope.CountCodePoints then begin
   fStringRopeVisualLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,LineIndex,ColumnIndex);
   if LineIndex>=0 then begin
    NewCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndexAndColumnIndex(LineIndex+1,ColumnIndex);
@@ -2477,11 +2636,11 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.MoveLeft;
+procedure TpvAbstractTextEditor.TView.MoveLeft;
 var Count:TpvSizeInt;
 begin
  if fCodePointIndex>0 then begin
-  if IsTwoCodePointNewLine(fCodePointIndex-2) then begin
+  if fParent.IsTwoCodePointNewLine(fCodePointIndex-2) then begin
    Count:=2;
   end else begin
    Count:=1;
@@ -2490,11 +2649,11 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.MoveRight;
+procedure TpvAbstractTextEditor.TView.MoveRight;
 var Count:TpvSizeInt;
 begin
- if fCodePointIndex<fStringRope.CountCodePoints then begin
-  if IsTwoCodePointNewLine(fCodePointIndex) then begin
+ if fCodePointIndex<fParent.fStringRope.CountCodePoints then begin
+  if fParent.IsTwoCodePointNewLine(fCodePointIndex) then begin
    Count:=2;
   end else begin
    Count:=1;
@@ -2503,25 +2662,25 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.MoveToLineBegin;
+procedure TpvAbstractTextEditor.TView.MoveToLineBegin;
 var LineIndex:TpvSizeInt;
 begin
- if fCodePointIndex<fStringRope.CountCodePoints then begin
-  LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
-  fCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
- end else if (fCodePointIndex>0) and (fCodePointIndex>=fStringRope.CountCodePoints) then begin
-  LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fStringRope.CountCodePoints);
-  fCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
+ if fCodePointIndex<fParent.fStringRope.CountCodePoints then begin
+  LineIndex:=fParent.fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
+  fCodePointIndex:=fParent.fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
+ end else if (fCodePointIndex>0) and (fCodePointIndex>=fParent.fStringRope.CountCodePoints) then begin
+  LineIndex:=fParent.fStringRopeLineMap.GetLineIndexFromCodePointIndex(fParent.fStringRope.CountCodePoints);
+  fCodePointIndex:=fParent.fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
  end;
 end;
 
-procedure TpvAbstractTextEditor.MoveToLineEnd;
+procedure TpvAbstractTextEditor.TView.MoveToLineEnd;
 var LineIndex,NewCodePointIndex:TpvSizeInt;
 begin
- if fCodePointIndex<=fStringRope.CountCodePoints then begin
-  LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
+ if fCodePointIndex<=fParent.fStringRope.CountCodePoints then begin
+  LineIndex:=fParent.fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
   if LineIndex>=0 then begin
-   NewCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromLineIndexAndColumnIndex(LineIndex,High(TpvSizeInt));
+   NewCodePointIndex:=fParent.fStringRopeLineMap.GetCodePointIndexFromLineIndexAndColumnIndex(LineIndex,High(TpvSizeInt));
    if NewCodePointIndex>=0 then begin
     fCodePointIndex:=NewCodePointIndex;
    end;
@@ -2529,10 +2688,10 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.MovePageUp;
+procedure TpvAbstractTextEditor.TView.MovePageUp;
 var LineIndex,ColumnIndex,NewCodePointIndex:TpvSizeInt;
 begin
- if fCodePointIndex<=fStringRope.CountCodePoints then begin
+ if fCodePointIndex<=fParent.fStringRope.CountCodePoints then begin
   fStringRopeVisualLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,LineIndex,ColumnIndex);
   if LineIndex>=0 then begin
    NewCodePointIndex:=fStringRopeVisualLineMap.GetCodePointIndexFromLineIndexAndColumnIndex(Max(0,LineIndex-fNonScrollVisibleAreaHeight),ColumnIndex);
@@ -2544,10 +2703,10 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.MovePageDown;
+procedure TpvAbstractTextEditor.TView.MovePageDown;
 var LineIndex,ColumnIndex,NewCodePointIndex:TpvSizeInt;
 begin
- if fCodePointIndex<=fStringRope.CountCodePoints then begin
+ if fCodePointIndex<=fParent.fStringRope.CountCodePoints then begin
   fStringRopeVisualLineMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,LineIndex,ColumnIndex);
   if LineIndex>=0 then begin
    fStringRopeVisualLineMap.Update(-1,LineIndex+fNonScrollVisibleAreaHeight+1);
@@ -2560,39 +2719,39 @@ begin
  end;
 end;
 
-procedure TpvAbstractTextEditor.InsertLine;
+procedure TpvAbstractTextEditor.TView.InsertLine;
 var LineIndex,LineCodePointIndex:TpvSizeInt;
 begin
- LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
+ LineIndex:=fParent.fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
  if LineIndex>=0 then begin
-  LineCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
-  fStringRopeLineMap.Truncate(LineCodePointIndex,-1);
-  fStringRopeVisualLineMap.Truncate(LineCodePointIndex,-1);
+  LineCodePointIndex:=fParent.fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
+  fParent.LineMapTruncate(LineCodePointIndex,-1);
 {$ifdef Windows}
-  fStringRope.Insert(LineCodePointIndex,TpvUTF8String(#13#10));
-  inc(fCodePointIndex,2);
+  fParent.fStringRope.Insert(LineCodePointIndex,TpvUTF8String(#13#10));
+  fParent.UpdateViewCodePointIndices(fCodePointIndex,2);
 {$else}
-  fStringRope.Insert(LineCodePointIndex,TpvUTF8String(#10));
-  inc(fCodePointIndex,1);
+  fParent.fStringRope.Insert(LineCodePointIndex,TpvUTF8String(#10));
+  fParent.UpdateViewCodePointIndices(fCodePointIndex,1);
 {$endif}
-  EnsureCursorIsVisible(true);
+  fParent.EnsureViewCodePointIndicesAreInRange;
+  fParent.EnsureViewCursorsAreVisible(true);
  end;
 end;
 
-procedure TpvAbstractTextEditor.DeleteLine;
+procedure TpvAbstractTextEditor.TView.DeleteLine;
 var LineIndex,StartCodePointIndex,StopCodePointIndex:TpvSizeInt;
 begin
- LineIndex:=fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
+ LineIndex:=fParent.fStringRopeLineMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
  if LineIndex>=0 then begin
-  StartCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
-  StopCodePointIndex:=fStringRopeLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(LineIndex);
+  StartCodePointIndex:=fParent.fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
+  StopCodePointIndex:=fParent.fStringRopeLineMap.GetCodePointIndexFromNextLineIndexOrTextEnd(LineIndex);
   if (StartCodePointIndex>=0) and
      (StartCodePointIndex<StopCodePointIndex) then begin
-   fStringRope.Delete(StartCodePointIndex,StopCodePointIndex-StartCodePointIndex);
-   fStringRopeLineMap.Truncate(Max(0,StartCodePointIndex)-1,-1);
-   fStringRopeVisualLineMap.Truncate(Max(0,StartCodePointIndex-1),-1);
-   fCodePointIndex:=StartCodePointIndex;
-   EnsureCursorIsVisible(true);
+   fParent.fStringRope.Delete(StartCodePointIndex,StopCodePointIndex-StartCodePointIndex);
+   fParent.LineMapTruncate(Max(0,StartCodePointIndex)-1,-1);
+   fParent.UpdateViewCodePointIndices(fCodePointIndex,StartCodePointIndex-fCodePointIndex);
+   fParent.EnsureViewCodePointIndicesAreInRange;
+   fParent.EnsureViewCursorsAreVisible(true);
   end;
  end;
 end;

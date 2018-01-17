@@ -1,4 +1,4 @@
-(******************************************************************************
+﻿(******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
  *                       Version see PasVulkan.Framework.pas                  *
@@ -65,6 +65,7 @@ interface
 uses SysUtils,Classes,PasVulkan.Types,PasVulkan.TextEditor,UnitConsole;
 
 var AbstractTextEditor:TpvAbstractTextEditor=nil;
+    AbstractTextEditorView:TpvAbstractTextEditor.TView;
     AbstractTextEditorBuffer:TpvAbstractTextEditor.TDrawBufferItems=nil;
     OverwriteMode:boolean=false;
 
@@ -101,7 +102,7 @@ begin
  AddFKey(3,'Find');
  AddFKey(4,'Repl');
  AddFKey(5,'Refr');
- if AbstractTextEditor.LineWrap=0 then begin
+ if AbstractTextEditorView.LineWrap=0 then begin
   AddFKey(6,'Wrap');
  end else begin
   AddFKey(6,'UnWr');
@@ -181,16 +182,16 @@ begin
  Console.TextColor(TConsole.TColor.White);
 //Console.TextColor(TConsole.TColor.LightCyan);
 
- AbstractTextEditor.VisibleAreaWidth:=Console.Width;
- AbstractTextEditor.VisibleAreaHeight:=Console.Height-2;
- AbstractTextEditor.NonScrollVisibleAreaWidth:=Console.Width;
- AbstractTextEditor.NonScrollVisibleAreaHeight:=Console.Height-2;
+ AbstractTextEditorView.VisibleAreaWidth:=Console.Width;
+ AbstractTextEditorView.VisibleAreaHeight:=Console.Height-2;
+ AbstractTextEditorView.NonScrollVisibleAreaWidth:=Console.Width;
+ AbstractTextEditorView.NonScrollVisibleAreaHeight:=Console.Height-2;
 
- AbstractTextEditor.FillDrawBuffer(AbstractTextEditorBuffer);
+ AbstractTextEditorView.FillDrawBuffer(AbstractTextEditorBuffer);
 
  i:=0;
- for y:=0 to AbstractTextEditor.VisibleAreaHeight-1 do begin
-  for x:=0 to AbstractTextEditor.VisibleAreaWidth-1 do begin
+ for y:=0 to AbstractTextEditorView.VisibleAreaHeight-1 do begin
+  for x:=0 to AbstractTextEditorView.VisibleAreaWidth-1 do begin
    if i<length(AbstractTextEditorBuffer) then begin
     Console.WriteCodePointToBuffer(x+1,y+2,AbstractTextEditorBuffer[i].CodePoint);
    end;
@@ -198,7 +199,7 @@ begin
   end;
  end;
 
- Console.GotoXY(AbstractTextEditor.CursorX+1,AbstractTextEditor.CursorY+2);
+ Console.GotoXY(AbstractTextEditorView.CursorX+1,AbstractTextEditorView.CursorY+2);
 
  if OverwriteMode then begin
   Console.CursorBig;
@@ -216,6 +217,8 @@ begin
 
  AbstractTextEditor:=TpvAbstractTextEditor.Create;
  try
+
+  AbstractTextEditorView:=AbstractTextEditor.CreateView;
 
   if ParamCount>0 then begin
    AbstractTextEditor.LoadFromFile(ParamStr(1));
@@ -239,55 +242,55 @@ begin
         end;
         83:begin
          // Delete
-         AbstractTextEditor.Delete;
+         AbstractTextEditorView.Delete;
         end;
         71:begin
          // Home
-         AbstractTextEditor.MoveToLineBegin;
+         AbstractTextEditorView.MoveToLineBegin;
         end;
         79:begin
          // End
-         AbstractTextEditor.MoveToLineEnd;
+         AbstractTextEditorView.MoveToLineEnd;
         end;
         73:begin
          // Page up
-         AbstractTextEditor.MovePageUp;
+         AbstractTextEditorView.MovePageUp;
         end;
         81:begin
          // Page down
-         AbstractTextEditor.MovePageDown;
+         AbstractTextEditorView.MovePageDown;
         end;
         72:begin
          // Up
-         AbstractTextEditor.MoveUp;
+         AbstractTextEditorView.MoveUp;
         end;
         80:begin
          // Down
-         AbstractTextEditor.MoveDown;
+         AbstractTextEditorView.MoveDown;
         end;
         75:begin
          // Left
-         AbstractTextEditor.MoveLeft;
+         AbstractTextEditorView.MoveLeft;
         end;
         77:begin
          // Right
-         AbstractTextEditor.MoveRight;
+         AbstractTextEditorView.MoveRight;
         end;
         64:begin
          // F6
-         if AbstractTextEditor.LineWrap=0 then begin
-          AbstractTextEditor.LineWrap:=AbstractTextEditor.NonScrollVisibleAreaWidth;
+         if AbstractTextEditorView.LineWrap=0 then begin
+          AbstractTextEditorView.LineWrap:=AbstractTextEditorView.NonScrollVisibleAreaWidth;
          end else begin
-          AbstractTextEditor.LineWrap:=0;
+          AbstractTextEditorView.LineWrap:=0;
          end;
         end;
         65:begin
          // F7
-         AbstractTextEditor.InsertLine;
+         AbstractTextEditorView.InsertLine;
         end;
         66:begin
          // F8
-         AbstractTextEditor.DeleteLine;
+         AbstractTextEditorView.DeleteLine;
         end;
         68:begin
          // F10
@@ -298,16 +301,16 @@ begin
      end;
      8:begin
       // Backspace
-      AbstractTextEditor.Backspace;
+      AbstractTextEditorView.Backspace;
      end;
      13:begin
-      AbstractTextEditor.Enter(OverwriteMode);
+      AbstractTextEditorView.Enter(OverwriteMode);
      end;
      27:begin
       // Escape
      end;
      else begin
-      AbstractTextEditor.InsertCodePoint(c,OverwriteMode);
+      AbstractTextEditorView.InsertCodePoint(c,OverwriteMode);
      end;
     end;
 {  end else begin
