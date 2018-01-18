@@ -464,6 +464,7 @@ type TpvUTF8DFA=class
        procedure Undo(const aView:TView=nil);
        procedure Redo(const aView:TView=nil);
       published
+       property UndoRedoManager:TUndoRedoManager read fUndoRedoManager;
      end;
 
 implementation

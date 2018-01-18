@@ -182,9 +182,9 @@ begin
  Console.TextBackground(TConsole.TColor.Cyan);
  Console.TextColor(TConsole.TColor.Black);
  Console.GotoXY(Console.Width-40,1);
- Console.Write('Line: '+IntToStr(AbstractTextEditorView.LineColumn.Line));
+ Console.Write(UTF8String('Line: '+IntToStr(AbstractTextEditorView.LineColumn.Line)));
  Console.GotoXY(Console.Width-25,1);
- Console.Write('Column: '+IntToStr(AbstractTextEditorView.LineColumn.Column));
+ Console.Write(UTF8String('Column: '+IntToStr(AbstractTextEditorView.LineColumn.Column)));
 
  Console.GotoXY(1,2);
 
