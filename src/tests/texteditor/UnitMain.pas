@@ -309,6 +309,18 @@ begin
      13:begin
       AbstractTextEditorView.Enter(OverwriteMode);
      end;
+     17:begin
+      // Ctrl-Q
+      break;
+     end;
+     25:begin
+      // Ctrl-Y
+      AbstractTextEditor.Redo(AbstractTextEditorView);
+     end;
+     26:begin
+      // Ctrl-Z
+      AbstractTextEditor.Undo(AbstractTextEditorView);
+     end;
      27:begin
       // Escape
      end;
