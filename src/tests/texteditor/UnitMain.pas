@@ -64,8 +64,8 @@ interface
 
 uses SysUtils,Classes,PasVulkan.Types,PasVulkan.TextEditor,UnitConsole;
 
-var AbstractTextEditor:TpvAbstractTextEditor=nil;
-    AbstractTextEditorView:TpvAbstractTextEditor.TView;
+var AbstractTextEditor:TpvTextEditor=nil;
+    AbstractTextEditorView:TpvTextEditor.TView;
     OverwriteMode:boolean=false;
 
 procedure Main;
@@ -218,7 +218,7 @@ procedure Main;
 var c:Int32;
 begin
 
- AbstractTextEditor:=TpvAbstractTextEditor.Create;
+ AbstractTextEditor:=TpvTextEditor.Create;
  try
 
   AbstractTextEditorView:=AbstractTextEditor.CreateView;
