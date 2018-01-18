@@ -419,6 +419,8 @@ type TpvUTF8DFA=class
        fStringRopeLineMap:TpvUTF8StringRopeLineMap;
        fFirstView:TView;
        fLastView:TView;
+       fUndoStack:TList;
+       fRedoStack:TList;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -2266,12 +2268,21 @@ begin
  fStringRopeLineMap:=TpvUTF8StringRopeLineMap.Create(fStringRope);
  fFirstView:=nil;
  fLastView:=nil;
+ fUndoStack:=TList.Create;
+ fRedoStack:=TList.Create;
 end;
 
 destructor TpvTextEditor.Destroy;
+var Index:TpvSizeInt;
 begin
  while assigned(fLastView) do begin
   fLastView.Free;
+ end;
+ for Index:=fUndoStack.Count-1 downto 0 do begin
+  TUndoRedoCommand(fUndoStack.Items[Index]).Free;
+ end;
+ for Index:=fRedoStack.Count-1 downto 0 do begin
+  TUndoRedoCommand(fRedoStack.Items[Index]).Free;
  end;
  fStringRopeLineMap.Free;
  fStringRope.Free;
