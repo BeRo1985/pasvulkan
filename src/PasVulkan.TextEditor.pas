@@ -2282,7 +2282,6 @@ begin
 end;
 
 destructor TpvTextEditor.Destroy;
-var Index:TpvSizeInt;
 begin
  while assigned(fLastView) do begin
   fLastView.Free;
@@ -2484,7 +2483,7 @@ procedure TpvTextEditor.Undo(const aView:TView=nil);
 var UndoRedoCommand:TUndoRedoCommand;
 begin
  if fUndoStack.Count>0 then begin
-  UndoRedoCommand:=TUndoRedoCommand(fUndoStack.ExtractItem(fUndoStack.Items[fUndoStack.Count-1],TList.TDirection.FromEnd));
+  UndoRedoCommand:=TUndoRedoCommand(fUndoStack.Extract(fUndoStack.Items[fUndoStack.Count-1]));
   try
    UndoRedoCommand.Undo(aView);
   finally
@@ -2497,7 +2496,7 @@ procedure TpvTextEditor.Redo(const aView:TView=nil);
 var UndoRedoCommand:TUndoRedoCommand;
 begin
  if fRedoStack.Count>0 then begin
-  UndoRedoCommand:=TUndoRedoCommand(fRedoStack.ExtractItem(fRedoStack.Items[fRedoStack.Count-1],TList.TDirection.FromEnd));
+  UndoRedoCommand:=TUndoRedoCommand(fRedoStack.Extract(fRedoStack.Items[fRedoStack.Count-1]));
   try
    UndoRedoCommand.Redo(aView);
   finally
