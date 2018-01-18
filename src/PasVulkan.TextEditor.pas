@@ -440,6 +440,8 @@ type TpvUTF8DFA=class
        procedure EnsureViewCodePointIndicesAreInRange;
        procedure EnsureViewCursorsAreVisible(const aUpdateCursors:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
        procedure UpdateViewCursors;
+       procedure Undo(const aView:TView=nil);
+       procedure Redo(const aView:TView=nil);
       published
      end;
 
@@ -2466,6 +2468,40 @@ begin
  while assigned(View) do begin
   View.UpdateCursor;
   View:=View.fNext;
+ end;
+end;
+
+procedure TpvTextEditor.Undo(const aView:TView=nil);
+var UndoRedoCommand:TUndoRedoCommand;
+begin
+ if fUndoStack.Count>0 then begin
+  UndoRedoCommand:=TUndoRedoCommand(fUndoStack.Items[fUndoStack.Count]);
+  try
+   UndoRedoCommand.Undo(aView);
+  finally
+   try
+    fUndoStack.Delete(fUndoStack.Count-1);
+   finally
+    fRedoStack.Add(UndoRedoCommand);
+   end;
+  end;
+ end;
+end;
+
+procedure TpvTextEditor.Redo(const aView:TView=nil);
+var UndoRedoCommand:TUndoRedoCommand;
+begin
+ if fRedoStack.Count>0 then begin
+  UndoRedoCommand:=TUndoRedoCommand(fRedoStack.Items[fUndoStack.Count]);
+  try
+   UndoRedoCommand.Redo(aView);
+  finally
+   try
+    fRedoStack.Delete(fUndoStack.Count-1);
+   finally
+    fUndoStack.Add(UndoRedoCommand);
+   end;
+  end;
  end;
 end;
 
