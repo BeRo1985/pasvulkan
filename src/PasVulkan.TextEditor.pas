@@ -67,6 +67,8 @@ uses SysUtils,
      Math,
      PasVulkan.Types;
 
+{-$define TpvTextEditorUsePUCU}
+
 type TpvTextEditor=class
       public
        type TUTF8DFA=class
@@ -481,7 +483,9 @@ type TpvTextEditor=class
 
 implementation
 
+{$ifdef TpvTextEditorUsePUCU}
 uses PUCU;
+{$endif}
 
 class function TpvTextEditor.TUTF8Utils.UTF32CharToUTF8(const aCodePoint:TpvUInt32):TpVUTF8String;
 var Data:array[0..3] of AnsiChar;
@@ -625,10 +629,13 @@ var Bytes:PBytes;
     InputLen,OutputLen:TpvSizeInt;
     LittleEndianBigEndian,PassIndex,CodePoint,Temp:TpvUInt32;
     State,CharClass,Value:TpvUInt8;
+{$ifdef TpvTextEditorUsePUCU}
     CodePage:PPUCUCharSetCodePage;
     SubCodePages:PPUCUCharSetSubCodePages;
     SubSubCodePages:PPUCUCharSetSubSubCodePages;
+{$endif}
 begin
+{$ifdef TpvTextEditorUsePUCU}
  begin
   CodePage:=nil;
   if (aCodePage>=0) and (aCodePage<=65535) then begin
@@ -641,6 +648,7 @@ begin
    end;
   end;
  end;
+{$endif}
  result:='';
  Bytes:=@aData;
  if aCodePage=cpUTF16LE then begin
@@ -684,6 +692,7 @@ begin
    Bytes:=@Bytes^[0];
    InputLen:=aDataLength;
   end;
+{$ifdef TpvTextEditorUsePUCU}
  end else if assigned(CodePage) then begin
   // Code page
   BytesPerCodeUnit:=0;
@@ -691,6 +700,7 @@ begin
   LittleEndianBigEndian:=0;
   Bytes:=@Bytes^[0];
   InputLen:=aDataLength;
+{$endif}
  end else if (aDataLength>=3) and (Bytes^[0]=$ef) and (Bytes^[1]=$bb) and (Bytes^[2]=$bf) then begin
   // UTF8
   BytesPerCodeUnit:=1;
@@ -790,9 +800,11 @@ begin
      // Latin1 or custom code page
      CodePoint:=Bytes^[CodeUnit];
      inc(CodeUnit);
+{$ifdef TpvTextEditorUsePUCU}
      if assigned(CodePage) then begin
       CodePoint:=CodePage^[CodePoint and $ff];
      end;
+{$endif}
     end;
    end;
    if PassIndex=0 then begin
@@ -883,7 +895,7 @@ begin
   GetMem(Memory,Size);
   try
    if aStream.Read(Memory^,Size)=Size then begin
-    result:=PUCURawDataToUTF8String(Memory^,Size,aCodePage);
+    result:=RawDataToUTF8String(Memory^,Size,aCodePage);
    end;
   finally
    FreeMem(Memory);
