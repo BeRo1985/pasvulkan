@@ -307,10 +307,13 @@ type TpvUTF8DFA=class
             end;
             PLineColumn=^TLineColumn;
             TView=class;
+            TUndoRedoCommand=class;
+            TUndoRedoCommandClass=class of TUndoRedoCommand;
             TUndoRedoCommand=class
              private
               fParent:TpvTextEditor;
               fCursorCodePointIndex:TpvSizeInt;
+              fSealed:boolean;
              public
               constructor Create(const aParent:TpvTextEditor;const aCursorCodePointIndex:TpvSizeInt); reintroduce; virtual;
               destructor Destroy; override;
@@ -347,6 +350,16 @@ type TpvUTF8DFA=class
               fCodeUnits:TpvUTF8String;
              public
               constructor Create(const aParent:TpvTextEditor;const aCursorCodePointIndex,aCodePointIndex,aCountCodePoints:TpvSizeInt;const aCodeUnits:TpvUTF8String); reintroduce;
+              destructor Destroy; override;
+              procedure Undo(const aView:TpvTextEditor.TView=nil); override;
+              procedure Redo(const aView:TpvTextEditor.TView=nil); override;
+            end;
+            TUndoRedoCommandGroup=class(TUndoRedoCommand)
+             private
+              fClass:TUndoRedoCommandClass;
+              fList:TObjectList;
+             public
+              constructor Create(const aParent:TpvTextEditor;const aClass:TUndoRedoCommandClass); reintroduce;
               destructor Destroy; override;
               procedure Undo(const aView:TpvTextEditor.TView=nil); override;
               procedure Redo(const aView:TpvTextEditor.TView=nil); override;
@@ -2159,6 +2172,7 @@ begin
  inherited Create;
  fParent:=aParent;
  fCursorCodePointIndex:=aCursorCodePointIndex;
+ fSealed:=false;
 end;
 
 destructor TpvTextEditor.TUndoRedoCommand.Destroy;
@@ -2286,6 +2300,36 @@ begin
  fParent.EnsureViewCursorsAreVisible(true);
 end;
 
+constructor TpvTextEditor.TUndoRedoCommandGroup.Create(const aParent:TpvTextEditor;const aClass:TUndoRedoCommandClass);
+begin
+ inherited Create(aParent,0);
+ fClass:=aClass;
+ fList:=TObjectList.Create;
+ fList.OwnsObjects:=true;
+end;
+
+destructor TpvTextEditor.TUndoRedoCommandGroup.Destroy;
+begin
+ fList.Free;
+ inherited Destroy;
+end;
+
+procedure TpvTextEditor.TUndoRedoCommandGroup.Undo(const aView:TpvTextEditor.TView=nil);
+var Index:TpvSizeInt;
+begin
+ for Index:=fList.Count-1 downto 0 do begin
+  TUndoRedoCommand(fList[Index]).Undo(aView);
+ end;
+end;
+
+procedure TpvTextEditor.TUndoRedoCommandGroup.Redo(const aView:TpvTextEditor.TView=nil);
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to fList.Count-1 do begin
+  TUndoRedoCommand(fList[Index]).Redo(aView);
+ end;
+end;
+
 constructor TpvTextEditor.TUndoRedoManager.Create(const aParent:TpvTextEditor);
 begin
  inherited Create;
@@ -2309,7 +2353,28 @@ end;
 
 procedure TpvTextEditor.TUndoRedoManager.Add(const aUndoRedoCommand:TpvTextEditor.TUndoRedoCommand);
 var Index:TpvSizeInt;
+    UndoRedoCommand:TpvTextEditor.TUndoRedoCommand;
+    UndoRedoCommandGroup:TpvTextEditor.TUndoRedoCommandGroup;
 begin
+ if (fHistoryIndex>=0) and (fHistoryIndex<Count) then begin
+  UndoRedoCommand:=TpvTextEditor.TUndoRedoCommand(Items[fHistoryIndex]);
+  if not UndoRedoCommand.fSealed then begin
+   if UndoRedoCommand is TpvTextEditor.TUndoRedoCommandGroup then begin
+    UndoRedoCommandGroup:=TpvTextEditor.TUndoRedoCommandGroup(UndoRedoCommand);
+    if aUndoRedoCommand is UndoRedoCommandGroup.fClass then begin
+     UndoRedoCommandGroup.fList.Add(aUndoRedoCommand);
+     exit;
+    end;
+   end else if UndoRedoCommand is aUndoRedoCommand.ClassType then begin
+    Extract(UndoRedoCommand);
+    UndoRedoCommandGroup:=TpvTextEditor.TUndoRedoCommandGroup.Create(fParent,TpvTextEditor.TUndoRedoCommandClass(aUndoRedoCommand.ClassType));
+    Insert(fHistoryIndex,UndoRedoCommandGroup);
+    UndoRedoCommandGroup.fList.Add(UndoRedoCommand);
+    UndoRedoCommandGroup.fList.Add(aUndoRedoCommand);
+    exit;
+   end;
+  end;
+ end;
  for Index:=Count-1 downto fHistoryIndex+1 do begin
   Delete(Index);
  end;
@@ -2326,6 +2391,7 @@ var UndoRedoCommand:TpvTextEditor.TUndoRedoCommand;
 begin
  if (fHistoryIndex>=0) and (fHistoryIndex<Count) then begin
   UndoRedoCommand:=TpvTextEditor.TUndoRedoCommand(Items[fHistoryIndex]);
+  UndoRedoCommand.fSealed:=true;
   UndoRedoCommand.Undo(aView);
   dec(fHistoryIndex);
   if fMaxRedoSteps>0 then begin
@@ -2342,6 +2408,7 @@ begin
  if (fHistoryIndex>=(-1)) and ((fHistoryIndex+1)<Count) then begin
   inc(fHistoryIndex);
   UndoRedoCommand:=TpvTextEditor.TUndoRedoCommand(Items[fHistoryIndex]);
+  UndoRedoCommand.fSealed:=true;
   UndoRedoCommand.Redo;
   if fMaxUndoSteps>0 then begin
    while fHistoryIndex>fMaxUndoSteps do begin
