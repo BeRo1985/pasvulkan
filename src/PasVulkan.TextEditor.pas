@@ -314,6 +314,7 @@ type TpvUTF8DFA=class
               fParent:TpvTextEditor;
               fCursorCodePointIndex:TpvSizeInt;
               fSealed:boolean;
+              fActionID:TpvUInt64;
              public
               constructor Create(const aParent:TpvTextEditor;const aCursorCodePointIndex:TpvSizeInt); reintroduce; virtual;
               destructor Destroy; override;
@@ -370,10 +371,12 @@ type TpvUTF8DFA=class
               fHistoryIndex:TpvSizeInt;
               fMaxUndoSteps:TpvSizeInt;
               fMaxRedoSteps:TpvSizeInt;
+              fActionID:TpvUInt64;
              public
               constructor Create(const aParent:TpvTextEditor); reintroduce;
               destructor Destroy; override;
               procedure Clear; reintroduce;
+              procedure IncreaseActionID;
               procedure Add(const aUndoRedoCommand:TpvTextEditor.TUndoRedoCommand); reintroduce;
               procedure Undo(const aView:TpvTextEditor.TView=nil);
               procedure Redo(const aView:TpvTextEditor.TView=nil);
@@ -2173,6 +2176,7 @@ begin
  fParent:=aParent;
  fCursorCodePointIndex:=aCursorCodePointIndex;
  fSealed:=false;
+ fActionID:=aParent.fUndoRedoManager.fActionID;
 end;
 
 destructor TpvTextEditor.TUndoRedoCommand.Destroy;
@@ -2338,6 +2342,7 @@ begin
  fHistoryIndex:=-1;
  fMaxUndoSteps:=-1;
  fMaxRedoSteps:=-1;
+ fActionID:=0;
 end;
 
 destructor TpvTextEditor.TUndoRedoManager.Destroy;
@@ -2349,6 +2354,12 @@ procedure TpvTextEditor.TUndoRedoManager.Clear;
 begin
  inherited Clear;
  fHistoryIndex:=-1;
+ fActionID:=0;
+end;
+
+procedure TpvTextEditor.TUndoRedoManager.IncreaseActionID;
+begin
+ inc(fActionID);
 end;
 
 procedure TpvTextEditor.TUndoRedoManager.Add(const aUndoRedoCommand:TpvTextEditor.TUndoRedoCommand);
@@ -2358,7 +2369,7 @@ var Index:TpvSizeInt;
 begin
  if (fHistoryIndex>=0) and (fHistoryIndex<Count) then begin
   UndoRedoCommand:=TpvTextEditor.TUndoRedoCommand(Items[fHistoryIndex]);
-  if not UndoRedoCommand.fSealed then begin
+  if (UndoRedoCommand.fActionID=fActionID) and not UndoRedoCommand.fSealed then begin
    if UndoRedoCommand is TpvTextEditor.TUndoRedoCommandGroup then begin
     UndoRedoCommandGroup:=TpvTextEditor.TUndoRedoCommandGroup(UndoRedoCommand);
     if aUndoRedoCommand is UndoRedoCommandGroup.fClass then begin
@@ -2399,6 +2410,7 @@ begin
     Delete(Count-1);
    end;
   end;
+  IncreaseActionID;
  end;
 end;
 
@@ -2416,6 +2428,7 @@ begin
     Delete(0);
    end;
   end;
+  IncreaseActionID;
  end;
 end;
 
@@ -3032,6 +3045,7 @@ begin
    end;
   end;
  end;
+ fParent.fUndoRedoManager.IncreaseActionID;
 end;
 
 procedure TpvTextEditor.TView.MoveDown;
@@ -3046,6 +3060,7 @@ begin
    end;
   end;
  end;
+ fParent.fUndoRedoManager.IncreaseActionID;
 end;
 
 procedure TpvTextEditor.TView.MoveLeft;
@@ -3059,6 +3074,7 @@ begin
   end;
   dec(fCodePointIndex,Count);
  end;
+ fParent.fUndoRedoManager.IncreaseActionID;
 end;
 
 procedure TpvTextEditor.TView.MoveRight;
@@ -3072,6 +3088,7 @@ begin
   end;
   inc(fCodePointIndex,Count);
  end;
+ fParent.fUndoRedoManager.IncreaseActionID;
 end;
 
 procedure TpvTextEditor.TView.MoveToLineBegin;
@@ -3084,6 +3101,7 @@ begin
   LineIndex:=fParent.fStringRopeLineMap.GetLineIndexFromCodePointIndex(fParent.fStringRope.CountCodePoints);
   fCodePointIndex:=fParent.fStringRopeLineMap.GetCodePointIndexFromLineIndex(LineIndex);
  end;
+ fParent.fUndoRedoManager.IncreaseActionID;
 end;
 
 procedure TpvTextEditor.TView.MoveToLineEnd;
@@ -3098,6 +3116,7 @@ begin
    end;
   end;
  end;
+ fParent.fUndoRedoManager.IncreaseActionID;
 end;
 
 procedure TpvTextEditor.TView.MovePageUp;
@@ -3114,6 +3133,7 @@ begin
   EnsureCodePointIndexIsInRange;
   EnsureCursorIsVisible(true,fNonScrollVisibleAreaHeight);
  end;
+ fParent.fUndoRedoManager.IncreaseActionID;
 end;
 
 procedure TpvTextEditor.TView.MovePageDown;
@@ -3131,6 +3151,7 @@ begin
   EnsureCodePointIndexIsInRange;
   EnsureCursorIsVisible(true,fNonScrollVisibleAreaHeight);
  end;
+ fParent.fUndoRedoManager.IncreaseActionID;
 end;
 
 procedure TpvTextEditor.TView.InsertLine;
