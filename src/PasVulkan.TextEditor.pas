@@ -2445,7 +2445,7 @@ begin
   inc(fHistoryIndex);
   UndoRedoCommand:=TpvTextEditor.TUndoRedoCommand(Items[fHistoryIndex]);
   UndoRedoCommand.fSealed:=true;
-  UndoRedoCommand.Redo;
+  UndoRedoCommand.Redo(aView);
   if fMaxUndoSteps>0 then begin
    while fHistoryIndex>fMaxUndoSteps do begin
     dec(fHistoryIndex);
