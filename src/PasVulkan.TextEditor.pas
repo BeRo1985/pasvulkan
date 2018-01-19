@@ -1129,7 +1129,7 @@ begin
 end;
 
 {$ifdef fpc}
-class function TpvTextEditor.TpvUTF8StringRope.FindFirstSetBit(aValue:TpvUInt64):TpvUInt32;
+class function TpvTextEditor.TRope.FindFirstSetBit(aValue:TpvUInt64):TpvUInt32;
 begin
  if aValue=0 then begin
   result:=255;
@@ -1152,7 +1152,7 @@ asm
 @Done:
 end;
 {$elseif defined(cpuamd64) or defined(cpux64)}
-class function TpvTextEditor.TpvUTF8StringRope.FindFirstSetBit(aValue:TpvUInt64):TpvUInt32; assembler; register; {$ifdef fpc}nostackframe;{$endif}
+class function TpvTextEditor.TRope.FindFirstSetBit(aValue:TpvUInt64):TpvUInt32; assembler; register; {$ifdef fpc}nostackframe;{$endif}
 asm
 {$ifndef fpc}
  .NOFRAME
@@ -1167,7 +1167,7 @@ asm
 @Done:
 end;
 {$else}
-class function TpvTextEditor.TpvUTF8StringRope.FindFirstSetBit(aValue:TpvUInt64):TpvUInt32;
+class function TpvTextEditor.TRope.FindFirstSetBit(aValue:TpvUInt64):TpvUInt32;
 const DebruijnMultiplicator:TpvUInt64=TpvUInt64($03f79d71b4cb0a89);
       DebruijnShift=58;
       DebruijnMask=63;
