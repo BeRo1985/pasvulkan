@@ -71,6 +71,7 @@ uses SysUtils,
 
 type TpvTextEditor=class
       public
+       const NewLineCodePointSequence={$ifdef Windows}#13#10{$else}#10{$endif};
        type TUTF8DFA=class
              public                                            //0 1 2 3 4 5 6 7 8 9 a b c d e f
                const CodePointSizes:array[AnsiChar] of TpvUInt8=(1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,  // 0
@@ -460,6 +461,8 @@ type TpvTextEditor=class
        function GetCountLines:TpvSizeInt;
        function GetText:TpvUTF8String;
        procedure SetText(const aText:TpvUTF8String);
+       function GetLine(const aLineIndex:TpvSizeInt):TpvUTF8String;
+       procedure SetLine(const aLineIndex:TpvSizeInt;const aLine:TpvUTF8String);
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -481,10 +484,12 @@ type TpvTextEditor=class
        procedure UpdateViewCursors;
        procedure Undo(const aView:TView=nil);
        procedure Redo(const aView:TView=nil);
+      public
+       property Lines[const aLineIndex:TpvSizeInt]:TpvUTF8String read GetLine write SetLine; default;
       published
        property Text:TpvUTF8String read GetText write SetText;
-       property UndoRedoManager:TUndoRedoManager read fUndoRedoManager;
        property CountLines:TpvSizeInt read GetCountLines;
+       property UndoRedoManager:TUndoRedoManager read fUndoRedoManager;
      end;
 
 implementation
@@ -2599,6 +2604,49 @@ begin
  fRope.SetText(aText);
  ResetLineCacheMaps;
  ResetViewCodePointIndices;
+end;
+
+function TpvTextEditor.GetLine(const aLineIndex:TpvSizeInt):TpvUTF8String;
+var StartCodePointIndex,StopCodePointIndex,CodeUnitIndex:TpvSizeInt;
+begin
+ result:='';
+ fLineCacheMap.Update(-1,aLineIndex+2);
+ if (aLineIndex>=0) and (aLineIndex<fLineCacheMap.fCountLines) then begin
+  StartCodePointIndex:=fLineCacheMap.GetCodePointIndexFromLineIndex(aLineIndex);
+  StopCodePointIndex:=fLineCacheMap.GetCodePointIndexFromNextLineIndexOrTextEnd(aLineIndex);
+  if (StartCodePointIndex>=0) and
+     (StartCodePointIndex<StopCodePointIndex) then begin
+   result:=fRope.Extract(StartCodePointIndex,StopCodePointIndex-StartCodePointIndex);
+   for CodeUnitIndex:=length(result) downto 1 do begin
+    if not (result[CodeUnitIndex] in [AnsiChar(#10),AnsiChar(#13)]) then begin
+     result:=Copy(result,1,CodeUnitIndex+1);
+     break;
+    end;
+   end;
+   exit;
+  end;
+ end;
+ raise ERangeError.Create('Line index out of bounds');
+end;
+
+procedure TpvTextEditor.SetLine(const aLineIndex:TpvSizeInt;const aLine:TpvUTF8String);
+var StartCodePointIndex,StopCodePointIndex:TpvSizeInt;
+begin
+ fLineCacheMap.Update(-1,aLineIndex+2);
+ if (aLineIndex>=0) and (aLineIndex<=fLineCacheMap.fCountLines) then begin
+  StartCodePointIndex:=fLineCacheMap.GetCodePointIndexFromLineIndex(aLineIndex);
+  if StartCodePointIndex>=0 then begin
+   fUndoRedoManager.Clear;
+   StopCodePointIndex:=fLineCacheMap.GetCodePointIndexFromNextLineIndexOrTextEnd(aLineIndex);
+   if StartCodePointIndex<StopCodePointIndex then begin
+    fRope.Delete(StartCodePointIndex,StopCodePointIndex-StartCodePointIndex);
+   end;
+   fRope.Insert(StartCodePointIndex,aLine+NewLineCodePointSequence);
+   LineMapTruncate(-1,Max(0,aLineIndex-1));
+   exit;
+  end;
+ end;
+ raise ERangeError.Create('Line index out of bounds');
 end;
 
 function TpvTextEditor.CreateView:TpvTextEditor.TView;
