@@ -149,6 +149,7 @@ begin
    s:=DumpExceptionCallStack(e);
    __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(s)));
    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'PasVulkanApplication',PAnsiChar(AnsiString(s)),nil);
+   raise;
   end;
  end;
 {$ifend}

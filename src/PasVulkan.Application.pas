@@ -6121,14 +6121,14 @@ var Index:TpvInt32;
     ImageMemoryBarrier:TVkImageMemoryBarrier;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
- __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.CreateVulkanFrameBuffers');
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanCommandBuffers');
 {$ifend}
 
  DestroyVulkanCommandBuffers;
 
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
-                                               fVulkanDevice.GraphicsQueueFamilyIndex,
-                                               TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+                                                 fVulkanDevice.GraphicsQueueFamilyIndex,
+                                                 TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
  for Index:=0 to CountSwapChainImages-1 do begin
 
