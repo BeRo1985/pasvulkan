@@ -456,6 +456,10 @@ type TpvTextEditor=class
        fFirstView:TView;
        fLastView:TView;
        fUndoRedoManager:TUndoRedoManager;
+       fCountLines:TpvSizeInt;
+       function GetCountLines:TpvSizeInt;
+       function GetText:TpvUTF8String;
+       procedure SetText(const aText:TpvUTF8String);
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -469,7 +473,7 @@ type TpvTextEditor=class
        function CreateView:TpvTextEditor.TView;
        procedure LineMapTruncate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
        procedure LineMapUpdate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
-       procedure ResetLineMaps;
+       procedure ResetLineCacheMaps;
        procedure ResetViewCodePointIndices;
        procedure UpdateViewCodePointIndices(const aCodePointIndex,aDelta:TpvSizeInt);
        procedure EnsureViewCodePointIndicesAreInRange;
@@ -478,7 +482,9 @@ type TpvTextEditor=class
        procedure Undo(const aView:TView=nil);
        procedure Redo(const aView:TView=nil);
       published
+       property Text:TpvUTF8String read GetText write SetText;
        property UndoRedoManager:TUndoRedoManager read fUndoRedoManager;
+       property CountLines:TpvSizeInt read GetCountLines;
      end;
 
 implementation
@@ -2471,6 +2477,7 @@ begin
  fFirstView:=nil;
  fLastView:=nil;
  fUndoRedoManager:=TUndoRedoManager.Create(self);
+ fCountLines:=-1;
 end;
 
 destructor TpvTextEditor.Destroy;
@@ -2482,6 +2489,15 @@ begin
  fRope.Free;
  fUndoRedoManager.Free;
  inherited Destroy;
+end;
+
+function TpvTextEditor.GetCountLines:TpvSizeInt;
+begin
+ if fCountLines<0 then begin
+  fLineCacheMap.Update(-1,-1);
+  fCountLines:=fLineCacheMap.fCountLines;
+ end;
+ result:=fCountLines;
 end;
 
 function TpvTextEditor.IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
@@ -2519,7 +2535,7 @@ begin
  end else begin
   fRope.Text:='';
  end;
- ResetLineMaps;
+ ResetLineCacheMaps;
  ResetViewCodePointIndices;
 end;
 
@@ -2537,8 +2553,8 @@ end;
 procedure TpvTextEditor.LoadFromString(const aString:TpvRawByteString);
 begin
  fUndoRedoManager.Clear;
- fRope.Text:=TUTF8Utils.RawByteStringToUTF8String(aString);
- ResetLineMaps;
+ fRope.SetText(TUTF8Utils.RawByteStringToUTF8String(aString));
+ ResetLineCacheMaps;
  ResetViewCodePointIndices;
 end;
 
@@ -2572,6 +2588,19 @@ begin
  result:=fRope.GetText;
 end;
 
+function TpvTextEditor.GetText:TpvUTF8String;
+begin
+ result:=fRope.GetText;
+end;
+
+procedure TpvTextEditor.SetText(const aText:TpvUTF8String);
+begin
+ fUndoRedoManager.Clear;
+ fRope.SetText(aText);
+ ResetLineCacheMaps;
+ ResetViewCodePointIndices;
+end;
+
 function TpvTextEditor.CreateView:TpvTextEditor.TView;
 begin
  result:=TpvTextEditor.TView.Create(self);
@@ -2586,6 +2615,7 @@ begin
   View.fVisualLineCacheMap.Truncate(aUntilCodePoint,aUntilLine);
   View:=View.fNext;
  end;
+ fCountLines:=-1;
 end;
 
 procedure TpvTextEditor.LineMapUpdate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
@@ -2597,9 +2627,10 @@ begin
   View.fVisualLineCacheMap.Update(aUntilCodePoint,aUntilLine);
   View:=View.fNext;
  end;
+ fCountLines:=-1;
 end;
 
-procedure TpvTextEditor.ResetLineMaps;
+procedure TpvTextEditor.ResetLineCacheMaps;
 var View:TView;
 begin
  fLineCacheMap.Truncate(0,0);
@@ -2610,6 +2641,7 @@ begin
   View.fVisualLineCacheMap.Update(-1,-1);
   View:=View.fNext;
  end;
+ fCountLines:=-1;
 end;
 
 procedure TpvTextEditor.ResetViewCodePointIndices;
