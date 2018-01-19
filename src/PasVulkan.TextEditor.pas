@@ -2377,12 +2377,20 @@ begin
      exit;
     end;
    end else if UndoRedoCommand is aUndoRedoCommand.ClassType then begin
-    Extract(UndoRedoCommand);
-    UndoRedoCommandGroup:=TpvTextEditor.TUndoRedoCommandGroup.Create(fParent,TpvTextEditor.TUndoRedoCommandClass(aUndoRedoCommand.ClassType));
-    Insert(fHistoryIndex,UndoRedoCommandGroup);
-    UndoRedoCommandGroup.fList.Add(UndoRedoCommand);
-    UndoRedoCommandGroup.fList.Add(aUndoRedoCommand);
-    exit;
+    if UndoRedoCommand is TpvTextEditor.TUndoRedoCommandInsert then begin
+     if (TpvTextEditor.TUndoRedoCommandInsert(UndoRedoCommand).fCodePointIndex+TpvTextEditor.TUndoRedoCommandInsert(UndoRedoCommand).fCountCodePoints)=TpvTextEditor.TUndoRedoCommandInsert(aUndoRedoCommand).fCodePointIndex then begin
+      inc(TpvTextEditor.TUndoRedoCommandInsert(UndoRedoCommand).fCountCodePoints,TpvTextEditor.TUndoRedoCommandInsert(aUndoRedoCommand).fCountCodePoints);
+      TpvTextEditor.TUndoRedoCommandInsert(UndoRedoCommand).fCodeUnits:=TpvTextEditor.TUndoRedoCommandInsert(UndoRedoCommand).fCodeUnits+TpvTextEditor.TUndoRedoCommandInsert(aUndoRedoCommand).fCodeUnits;
+      exit;
+     end;
+    end else begin
+     Extract(UndoRedoCommand);
+     UndoRedoCommandGroup:=TpvTextEditor.TUndoRedoCommandGroup.Create(fParent,TpvTextEditor.TUndoRedoCommandClass(aUndoRedoCommand.ClassType));
+     Insert(fHistoryIndex,UndoRedoCommandGroup);
+     UndoRedoCommandGroup.fList.Add(UndoRedoCommand);
+     UndoRedoCommandGroup.fList.Add(aUndoRedoCommand);
+     exit;
+    end;
    end;
   end;
  end;
