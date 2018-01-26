@@ -299,6 +299,13 @@ begin
          // F10
          break;
         end;
+        $fffe:begin
+         // Resize
+         if AbstractTextEditorView.LineWrap<>0 then begin
+          AbstractTextEditorView.LineWrap:=Console.Width;
+          AbstractTextEditorView.EnsureCursorIsVisible(true);
+         end;
+        end;
        end;
       end;
      end;
@@ -326,9 +333,6 @@ begin
      end;
      27:begin
       // Escape
-     end;
-     $fffe:begin
-      // Resize
      end;
      else begin
       AbstractTextEditorView.InsertCodePoint(c,OverwriteMode);
