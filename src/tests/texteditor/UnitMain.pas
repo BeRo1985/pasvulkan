@@ -302,6 +302,9 @@ begin
        end;
       end;
      end;
+     3:begin
+      // CTRL-C
+     end;
      8:begin
       // Backspace
       AbstractTextEditorView.Backspace;
@@ -323,6 +326,9 @@ begin
      end;
      27:begin
       // Escape
+     end;
+     $fffe:begin
+      // Resize
      end;
      else begin
       AbstractTextEditorView.InsertCodePoint(c,OverwriteMode);

@@ -254,6 +254,7 @@ type PConsoleBufferItem=^TConsoleBufferItem;
        fConsoleInfo:TConsoleScreenBufferinfo;
        fCursorInfo:TConsoleCursorInfo;
        fConsoleExtendedChar:Int32;
+       fOldConsoleMode:DWORD;
        function LookupKey(const aVirtualCode:Int32):PKey;
        function TranslateKey(const aInput:TInputRecord;const aKey:PKey):Int32;
 {$endif}
@@ -301,6 +302,9 @@ uses CRT;
 {$endif}
 
 constructor TConsole.Create;
+{$ifdef Windows}
+var Coords:TCoord;
+{$endif}
 begin
  inherited Create;
 {$ifdef Windows}
@@ -316,8 +320,16 @@ begin
   fWidth:=80;
   fHeight:=25;
  end;
+ Coords.x:=fWidth;
+ Coords.y:=fHeight;
+ SetConsoleScreenBufferSize(fConsoleOutputHandle,Coords);
  GetConsoleCursorInfo(fConsoleOutputHandle,fCursorInfo);
  fConsoleExtendedChar:=-1;
+ GetConsoleMode(fConsoleInputHandle,fOldConsoleMode);
+ SetConsoleMode(fConsoleInputHandle,(ENABLE_WINDOW_INPUT or
+                                     ENABLE_MOUSE_INPUT) and not
+                                    (ENABLE_PROCESSED_INPUT or
+                                     ENABLE_WRAP_AT_EOL_OUTPUT));
 {$else}
  fWidth:=(CRT.WindMaxX-CRT.WindMinX)+1;
  fHeight:=(CRT.WindMaxY-CRT.WindMinY)+1;
@@ -341,6 +353,7 @@ begin
  fLastBuffer:=nil;
 {$ifdef Windows}
  fConsoleBuffer:=nil;
+ SetConsoleMode(fConsoleInputHandle,fOldConsoleMode);
 {$endif}
  inherited Destroy;
 end;
@@ -783,18 +796,25 @@ begin
    try
     PeekConsoleInput(fConsoleInputHandle,Input[0],CountEvents,CountRead);
     for Index:=0 to CountRead-1 do begin
-     if ((Input[Index].EventType and KEY_EVENT)<>0) and
-        Input[Index].Event.KeyEvent.bKeyDown then begin
-      VirtualKeyCode:=Input[Index].Event.KeyEvent.wVirtualKeyCode;
-      case VirtualKeyCode of
-       VK_SHIFT,VK_CONTROL,VK_MENU:begin
-        // Ignore
-       end;
-       else begin
-        Key:=LookupKey(VirtualKeyCode);
-        if assigned(Key) and (TranslateKey(Input[Index],Key)<>$ffff) then begin
-         result:=true;
-         exit;
+     case Input[Index].EventType of
+      WINDOW_BUFFER_SIZE_EVENT:begin
+       result:=true;
+       exit;
+      end;
+      KEY_EVENT:begin
+       if Input[Index].Event.KeyEvent.bKeyDown then begin
+        VirtualKeyCode:=Input[Index].Event.KeyEvent.wVirtualKeyCode;
+        case VirtualKeyCode of
+         VK_SHIFT,VK_CONTROL,VK_MENU:begin
+          // Ignore
+         end;
+         else begin
+          Key:=LookupKey(VirtualKeyCode);
+          if assigned(Key) and (TranslateKey(Input[Index],Key)<>$ffff) then begin
+           result:=true;
+           exit;
+          end;
+         end;
         end;
        end;
       end;
@@ -813,6 +833,7 @@ var Code:Int32;
     Input:TInputRecord;
     CountRead:UInt32;
     Key:PKey;
+    Coords:TCoord;
 begin
  if fConsoleExtendedChar>=0 then begin
   result:=fConsoleExtendedChar;
@@ -820,28 +841,49 @@ begin
  end else begin
   repeat
    if ReadConsoleInputW(fConsoleInputHandle,Input,1,CountRead) then begin
-    if (Input.EventType=KEY_EVENT) and Input.Event.KeyEvent.bKeyDown then begin
-     Key:=LookupKey(Input.Event.KeyEvent.wVirtualKeyCode);
-     if assigned(Key) then begin
-      Code:=TranslateKey(Input,Key);
-      if Code<>$ffff then begin
-       if Code>=$100 then begin
-        fConsoleExtendedChar:=Code-$100;
+    case Input.EventType of
+     WINDOW_BUFFER_SIZE_EVENT:begin
+      if GetConsoleScreenBufferInfo(fConsoleOutputHandle,fConsoleInfo) then begin
+       if (fWidth<>(fConsoleInfo.srWindow.Right-fConsoleInfo.srWindow.Left)+1) or
+          (fHeight<>(fConsoleInfo.srWindow.Bottom-fConsoleInfo.srWindow.Top)+1) then begin
+        fWidth:=(fConsoleInfo.srWindow.Right-fConsoleInfo.srWindow.Left)+1;
+        fHeight:=(fConsoleInfo.srWindow.Bottom-fConsoleInfo.srWindow.Top)+1;
+        UpdateBufferSize;
+        fDirty:=true;
+        Coords.x:=fWidth;
+        Coords.y:=fHeight;
+        SetConsoleScreenBufferSize(fConsoleOutputHandle,Coords);
         result:=0;
+        fConsoleExtendedChar:=$fffe;
         break;
        end;
-       if Code=0 then begin
-        if Input.Event.KeyEvent.UnicodeChar<>#0 then begin
-         result:=ord(Input.Event.KeyEvent.UnicodeChar);
-        end else if Input.Event.KeyEvent.AsciiChar<>#0 then begin
-         result:=ord(Input.Event.KeyEvent.AsciiChar);
-        end else begin
-         result:=Code;
+      end;
+     end;
+     KEY_EVENT:begin
+      if Input.Event.KeyEvent.bKeyDown then begin
+       Key:=LookupKey(Input.Event.KeyEvent.wVirtualKeyCode);
+       if assigned(Key) then begin
+        Code:=TranslateKey(Input,Key);
+        if Code<>$ffff then begin
+         if Code>=$100 then begin
+          fConsoleExtendedChar:=Code-$100;
+          result:=0;
+          break;
+         end;
+         if Code=0 then begin
+          if Input.Event.KeyEvent.UnicodeChar<>#0 then begin
+           result:=ord(Input.Event.KeyEvent.UnicodeChar);
+          end else if Input.Event.KeyEvent.AsciiChar<>#0 then begin
+           result:=ord(Input.Event.KeyEvent.AsciiChar);
+          end else begin
+           result:=Code;
+          end;
+         end else begin
+          result:=Code;
+         end;
+         break;
         end;
-       end else begin
-        result:=Code;
        end;
-       break;
       end;
      end;
     end;
