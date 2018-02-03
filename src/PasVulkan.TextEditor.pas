@@ -304,6 +304,12 @@ type TpvTextEditor=class
               Column:TpvSizeInt;
             end;
             PLineColumn=^TLineColumn;
+            TMarkState=record
+             public
+              StartCodePointIndex:TpvSizeInt;
+              EndCodePointIndex:TpvSizeInt;
+            end;
+            PMarkState=^TMarkState;
             TView=class;
             TUndoRedoCommand=class;
             TUndoRedoCommandClass=class of TUndoRedoCommand;
@@ -312,10 +318,12 @@ type TpvTextEditor=class
               fParent:TpvTextEditor;
               fUndoCursorCodePointIndex:TpvSizeInt;
               fRedoCursorCodePointIndex:TpvSizeInt;
+              fUndoMarkState:TMarkState;
+              fRedoMarkState:TMarkState;
               fSealed:boolean;
               fActionID:TpvUInt64;
              public
-              constructor Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex:TpvSizeInt); reintroduce; virtual;
+              constructor Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex:TpvSizeInt;const aUndoMarkState,aRedoMarkState:TMarkState); reintroduce; virtual;
               destructor Destroy; override;
               procedure Undo(const aView:TpvTextEditor.TView=nil); virtual;
               procedure Redo(const aView:TpvTextEditor.TView=nil); virtual;
@@ -326,7 +334,7 @@ type TpvTextEditor=class
               fCountCodePoints:TpvSizeInt;
               fCodeUnits:TpvUTF8String;
              public
-              constructor Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex,aCodePointIndex,aCountCodePoints:TpvSizeInt;const aCodeUnits:TpvUTF8String); reintroduce;
+              constructor Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex:TpvSizeInt;const aUndoMarkState,aRedoMarkState:TMarkState;const aCodePointIndex,aCountCodePoints:TpvSizeInt;const aCodeUnits:TpvUTF8String); reintroduce;
               destructor Destroy; override;
               procedure Undo(const aView:TpvTextEditor.TView=nil); override;
               procedure Redo(const aView:TpvTextEditor.TView=nil); override;
@@ -338,7 +346,7 @@ type TpvTextEditor=class
               fCodeUnits:TpvUTF8String;
               fPreviousCodeUnits:TpvUTF8String;
              public
-              constructor Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex,aCodePointIndex,aCountCodePoints:TpvSizeInt;const aCodeUnits,aPreviousCodeUnits:TpvUTF8String); reintroduce;
+              constructor Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex:TpvSizeInt;const aUndoMarkState,aRedoMarkState:TMarkState;const aCodePointIndex,aCountCodePoints:TpvSizeInt;const aCodeUnits,aPreviousCodeUnits:TpvUTF8String); reintroduce;
               destructor Destroy; override;
               procedure Undo(const aView:TpvTextEditor.TView=nil); override;
               procedure Redo(const aView:TpvTextEditor.TView=nil); override;
@@ -349,7 +357,7 @@ type TpvTextEditor=class
               fCountCodePoints:TpvSizeInt;
               fCodeUnits:TpvUTF8String;
              public
-              constructor Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex,aCodePointIndex,aCountCodePoints:TpvSizeInt;const aCodeUnits:TpvUTF8String); reintroduce;
+              constructor Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex:TpvSizeInt;const aUndoMarkState,aRedoMarkState:TMarkState;const aCodePointIndex,aCountCodePoints:TpvSizeInt;const aCodeUnits:TpvUTF8String); reintroduce;
               destructor Destroy; override;
               procedure Undo(const aView:TpvTextEditor.TView=nil); override;
               procedure Redo(const aView:TpvTextEditor.TView=nil); override;
@@ -410,15 +418,16 @@ type TpvTextEditor=class
               fLineWrap:TpvSizeInt;
               fVisualLineCacheMap:TLineCacheMap;
               fBuffer:TBufferItems;
-              fMarkStartCodePointIndex:TpvSizeInt;
-              fMarkEndCodePointIndex:TpvSizeInt;
+              fMarkState:TMarkState;
               procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeInt);
               procedure SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeInt);
               procedure SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeInt);
               procedure SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeInt);
               procedure SetLineWrap(const aLineWrap:TpvSizeInt);
               procedure SetLineColumn(const aLineColumn:TLineColumn);
+              function GetMarkStartCodePointIndex:TpvSizeInt;
               procedure SetMarkStartCodePointIndex(const aMarkStartCodePointIndex:TpvSizeInt);
+              function GetMarkEndCodePointIndex:TpvSizeInt;
               procedure SetMarkEndCodePointIndex(const aMarkEndCodePointIndex:TpvSizeInt);
              public
               constructor Create(const aParent:TpvTextEditor); reintroduce;
@@ -457,9 +466,13 @@ type TpvTextEditor=class
               property NonScrollVisibleAreaWidth:TpvSizeInt read fNonScrollVisibleAreaWidth write SetNonScrollVisibleAreaWidth;
               property NonScrollVisibleAreaHeight:TpvSizeInt read fNonScrollVisibleAreaHeight write SetNonScrollVisibleAreaHeight;
               property LineWrap:TpvSizeInt read fLineWrap write SetLineWrap;
-              property MarkStartCodePointIndex:TpvSizeInt read fMarkStartCodePointIndex write SetMarkStartCodePointIndex;
-              property MarkEndCodePointIndex:TpvSizeInt read fMarkEndCodePointIndex write SetMarkEndCodePointIndex;
+              property MarkStartCodePointIndex:TpvSizeInt read GetMarkStartCodePointIndex write SetMarkStartCodePointIndex;
+              property MarkEndCodePointIndex:TpvSizeInt read GetMarkEndCodePointIndex write SetMarkEndCodePointIndex;
             end;
+       const EmptyMarkState:TMarkState=(
+              StartCodePointIndex:-1;
+              EndCodePointIndex:-1;
+             );
       private
        fRope:TRope;
        fLineCacheMap:TLineCacheMap;
@@ -2200,12 +2213,14 @@ begin
 
 end;
 
-constructor TpvTextEditor.TUndoRedoCommand.Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex:TpvSizeInt);
+constructor TpvTextEditor.TUndoRedoCommand.Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex:TpvSizeInt;const aUndoMarkState,aRedoMarkState:TMarkState);
 begin
  inherited Create;
  fParent:=aParent;
  fUndoCursorCodePointIndex:=aUndoCursorCodePointIndex;
  fRedoCursorCodePointIndex:=aRedoCursorCodePointIndex;
+ fUndoMarkState:=aUndoMarkState;
+ fRedoMarkstate:=aRedoMarkState;
  fSealed:=false;
  fActionID:=aParent.fUndoRedoManager.fActionID;
 end;
@@ -2223,9 +2238,9 @@ procedure TpvTextEditor.TUndoRedoCommand.Undo(const aView:TpvTextEditor.TView=ni
 begin
 end;
 
-constructor TpvTextEditor.TUndoRedoCommandInsert.Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex,aCodePointIndex,aCountCodePoints:TpvSizeInt;const aCodeUnits:TpvUTF8String);
+constructor TpvTextEditor.TUndoRedoCommandInsert.Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex:TpvSizeInt;const aUndoMarkState,aRedoMarkState:TMarkState;const aCodePointIndex,aCountCodePoints:TpvSizeInt;const aCodeUnits:TpvUTF8String);
 begin
- inherited Create(aParent,aUndoCursorCodePointIndex,aRedoCursorCodePointIndex);
+ inherited Create(aParent,aUndoCursorCodePointIndex,aRedoCursorCodePointIndex,aUndoMarkState,aRedoMarkState);
  fCodePointIndex:=aCodePointIndex;
  fCountCodePoints:=aCountCodePoints;
  fCodeUnits:=aCodeUnits;
@@ -2243,6 +2258,7 @@ begin
  fParent.UpdateViewCodePointIndices(fCodePointIndex,-fCountCodePoints);
  if assigned(aView) then begin
   aView.fCodePointIndex:=fUndoCursorCodePointIndex;
+  aView.fMarkState:=fUndoMarkState;
  end;
  fParent.EnsureViewCodePointIndicesAreInRange;
  fParent.EnsureViewCursorsAreVisible(true);
@@ -2255,14 +2271,15 @@ begin
  fParent.UpdateViewCodePointIndices(fCodePointIndex,fCountCodePoints);
  if assigned(aView) then begin
   aView.fCodePointIndex:=fRedoCursorCodePointIndex;
+  aView.fMarkState:=fRedoMarkState;
  end;
  fParent.EnsureViewCodePointIndicesAreInRange;
  fParent.EnsureViewCursorsAreVisible(true);
 end;
 
-constructor TpvTextEditor.TUndoRedoCommandOverwrite.Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex,aCodePointIndex,aCountCodePoints:TpvSizeInt;const aCodeUnits,aPreviousCodeUnits:TpvUTF8String);
+constructor TpvTextEditor.TUndoRedoCommandOverwrite.Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex:TpvSizeInt;const aUndoMarkState,aRedoMarkState:TMarkState;const aCodePointIndex,aCountCodePoints:TpvSizeInt;const aCodeUnits,aPreviousCodeUnits:TpvUTF8String);
 begin
- inherited Create(aParent,aUndoCursorCodePointIndex,aRedoCursorCodePointIndex);
+ inherited Create(aParent,aUndoCursorCodePointIndex,aRedoCursorCodePointIndex,aUndoMarkState,aRedoMarkState);
  fCodePointIndex:=aCodePointIndex;
  fCountCodePoints:=aCountCodePoints;
  fCodeUnits:=aCodeUnits;
@@ -2281,6 +2298,7 @@ begin
  fParent.fRope.Insert(fCodePointIndex,fPreviousCodeUnits);
  if assigned(aView) then begin
   aView.fCodePointIndex:=fUndoCursorCodePointIndex;
+  aView.fMarkState:=fUndoMarkState;
  end;
  fParent.EnsureViewCodePointIndicesAreInRange;
  fParent.EnsureViewCursorsAreVisible(true);
@@ -2293,14 +2311,15 @@ begin
  fParent.fRope.Insert(fCodePointIndex,fCodeUnits);
  if assigned(aView) then begin
   aView.fCodePointIndex:=fRedoCursorCodePointIndex;
+  aView.fMarkState:=fRedoMarkState;
  end;
  fParent.EnsureViewCodePointIndicesAreInRange;
  fParent.EnsureViewCursorsAreVisible(true);
 end;
 
-constructor TpvTextEditor.TUndoRedoCommandDelete.Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex,aCodePointIndex,aCountCodePoints:TpvSizeInt;const aCodeUnits:TpvUTF8String);
+constructor TpvTextEditor.TUndoRedoCommandDelete.Create(const aParent:TpvTextEditor;const aUndoCursorCodePointIndex,aRedoCursorCodePointIndex:TpvSizeInt;const aUndoMarkState,aRedoMarkState:TMarkState;const aCodePointIndex,aCountCodePoints:TpvSizeInt;const aCodeUnits:TpvUTF8String);
 begin
- inherited Create(aParent,aUndoCursorCodePointIndex,aRedoCursorCodePointIndex);
+ inherited Create(aParent,aUndoCursorCodePointIndex,aRedoCursorCodePointIndex,aUndoMarkState,aRedoMarkState);
  fCodePointIndex:=aCodePointIndex;
  fCountCodePoints:=aCountCodePoints;
  fCodeUnits:=aCodeUnits;
@@ -2318,6 +2337,7 @@ begin
  fParent.UpdateViewCodePointIndices(fCodePointIndex,fCountCodePoints);
  if assigned(aView) then begin
   aView.fCodePointIndex:=fUndoCursorCodePointIndex;
+  aView.fMarkState:=fUndoMarkState;
  end;
  fParent.EnsureViewCodePointIndicesAreInRange;
  fParent.EnsureViewCursorsAreVisible(true);
@@ -2330,6 +2350,7 @@ begin
  fParent.UpdateViewCodePointIndices(fCodePointIndex,-fCountCodePoints);
  if assigned(aView) then begin
   aView.fCodePointIndex:=fRedoCursorCodePointIndex;
+  aView.fMarkState:=fRedoMarkState;
  end;
  fParent.EnsureViewCodePointIndicesAreInRange;
  fParent.EnsureViewCursorsAreVisible(true);
@@ -2337,7 +2358,7 @@ end;
 
 constructor TpvTextEditor.TUndoRedoCommandGroup.Create(const aParent:TpvTextEditor;const aClass:TUndoRedoCommandClass);
 begin
- inherited Create(aParent,0,0);
+ inherited Create(aParent,0,0,EmptyMarkState,EmptyMarkState);
  fClass:=aClass;
  fList:=TObjectList.Create;
  fList.OwnsObjects:=true;
@@ -2749,8 +2770,8 @@ var View:TView;
 begin
  View:=fFirstView;
  while assigned(View) do begin
-  View.fMarkStartCodePointIndex:=-1;
-  View.fMarkEndCodePointIndex:=-1;
+  View.fMarkState.StartCodePointIndex:=-1;
+  View.fMarkState.EndCodePointIndex:=-1;
   View:=View.fNext;
  end;
 end;
@@ -2834,8 +2855,8 @@ begin
  fLineWrap:=0;
  fVisualLineCacheMap:=TLineCacheMap.Create(fParent.fRope);
  fBuffer:=nil;
- fMarkStartCodePointIndex:=-1;
- fMarkEndCodePointIndex:=-1;
+ fMarkState.StartCodePointIndex:=-1;
+ fMarkState.EndCodePointIndex:=-1;
 end;
 
 destructor TpvTextEditor.TView.Destroy;
@@ -2933,28 +2954,38 @@ begin
  EnsureCursorIsVisible(true);
 end;
 
+function TpvTextEditor.TView.GetMarkStartCodePointIndex:TpvSizeInt;
+begin
+ result:=fMarkState.StartCodePointIndex;
+end;
+
 procedure TpvTextEditor.TView.SetMarkStartCodePointIndex(const aMarkStartCodePointIndex:TpvSizeInt);
 begin
- if fMarkStartCodePointIndex<>aMarkStartCodePointIndex then begin
-  fMarkStartCodePointIndex:=Min(Max(aMarkStartCodePointIndex,-1),fParent.fRope.fCountCodePoints-1);
+ if fMarkState.StartCodePointIndex<>aMarkStartCodePointIndex then begin
+  fMarkState.StartCodePointIndex:=Min(Max(aMarkStartCodePointIndex,-1),fParent.fRope.fCountCodePoints-1);
  end;
+end;
+
+function TpvTextEditor.TView.GetMarkEndCodePointIndex:TpvSizeInt;
+begin
+ result:=fMarkState.EndCodePointIndex;
 end;
 
 procedure TpvTextEditor.TView.SetMarkEndCodePointIndex(const aMarkEndCodePointIndex:TpvSizeInt);
 begin
- if fMarkEndCodePointIndex<>aMarkEndCodePointIndex then begin
-  fMarkEndCodePointIndex:=Min(Max(aMarkEndCodePointIndex,-1),fParent.fRope.fCountCodePoints-1);
+ if fMarkState.EndCodePointIndex<>aMarkEndCodePointIndex then begin
+  fMarkState.EndCodePointIndex:=Min(Max(aMarkEndCodePointIndex,-1),fParent.fRope.fCountCodePoints-1);
  end;
 end;
 
 procedure TpvTextEditor.TView.ClampMarkCodePointIndices;
 begin
- if (fMarkStartCodePointIndex>=0) and (fMarkEndCodePointIndex>=0) then begin
-  fMarkStartCodePointIndex:=Min(Max(fMarkStartCodePointIndex,-1),fParent.fRope.fCountCodePoints-1);
-  fMarkEndCodePointIndex:=Min(Max(fMarkEndCodePointIndex,-1),fParent.fRope.fCountCodePoints-1);
+ if (fMarkState.StartCodePointIndex>=0) and (fMarkState.EndCodePointIndex>=0) then begin
+  fMarkState.StartCodePointIndex:=Min(Max(fMarkState.StartCodePointIndex,-1),fParent.fRope.fCountCodePoints-1);
+  fMarkState.EndCodePointIndex:=Min(Max(fMarkState.EndCodePointIndex,-1),fParent.fRope.fCountCodePoints-1);
  end else begin
-  fMarkStartCodePointIndex:=-1;
-  fMarkEndCodePointIndex:=-1;
+  fMarkState.StartCodePointIndex:=-1;
+  fMarkState.EndCodePointIndex:=-1;
  end;
 end;
 
@@ -3130,16 +3161,16 @@ end;
 function TpvTextEditor.TView.DeleteMarkedRange:boolean;
 var StartCodePointIndex,EndCodePointIndex,Count:TpvSizeInt;
 begin
- result:=((fMarkStartCodePointIndex>=0) and
-          (fMarkStartCodePointIndex<fParent.fRope.fCountCodePoints)) and
-         ((fMarkEndCodePointIndex>=0) and
-          (fMarkEndCodePointIndex<fParent.fRope.fCountCodePoints));
+ result:=((fMarkState.StartCodePointIndex>=0) and
+          (fMarkState.StartCodePointIndex<fParent.fRope.fCountCodePoints)) and
+         ((fMarkState.EndCodePointIndex>=0) and
+          (fMarkState.EndCodePointIndex<fParent.fRope.fCountCodePoints));
  if result then begin
-  StartCodePointIndex:=Min(fMarkStartCodePointIndex,fMarkEndCodePointIndex);
-  EndCodePointIndex:=Max(fMarkStartCodePointIndex,fMarkEndCodePointIndex);
+  StartCodePointIndex:=Min(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
+  EndCodePointIndex:=Max(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
   fCodePointIndex:=StartCodePointIndex;
   Count:=(EndCodePointIndex-StartCodePointIndex)+1;
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,fCodePointIndex,Count,fParent.fRope.Extract(fCodePointIndex,Count)));
+  fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,Count,fParent.fRope.Extract(fCodePointIndex,Count)));
   fParent.fRope.Delete(fCodePointIndex,Count);
   if fCodePointIndex>0 then begin
    fParent.LineMapTruncate(fCodePointIndex-1,-1);
@@ -3166,11 +3197,11 @@ begin
   end else begin
    Count:=1;
   end;
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandOverwrite.Create(fParent,fCodePointIndex,fCodePointIndex+Count,fCodePointIndex,Count,CodeUnits,fParent.fRope.Extract(fCodePointIndex,Count)));
+  fParent.fUndoRedoManager.Add(TUndoRedoCommandOverwrite.Create(fParent,fCodePointIndex,fCodePointIndex+Count,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,Count,CodeUnits,fParent.fRope.Extract(fCodePointIndex,Count)));
   fParent.fRope.Delete(fCodePointIndex,Count);
   fParent.fRope.Insert(fCodePointIndex,CodeUnits);
  end else begin
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+1,fCodePointIndex,1,CodeUnits));
+  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+1,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,1,CodeUnits));
   fParent.fRope.Insert(fCodePointIndex,CodeUnits);
  end;
  if HasDeletedMarkedRange then begin
@@ -3196,12 +3227,12 @@ begin
   end else begin
    Count:=1;
   end;
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,CountCodePoints,(CountCodePoints+Count)-1,fParent.fRope.Extract(fCodePointIndex,(CountCodePoints+Count)-1)));
+  fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,CountCodePoints,(CountCodePoints+Count)-1,fParent.fRope.Extract(fCodePointIndex,(CountCodePoints+Count)-1)));
   fParent.fRope.Delete(fCodePointIndex,(CountCodePoints+Count)-1);
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+(CountCodePoints+Count)-1,CountCodePoints,(CountCodePoints+Count)-1,aCodeUnits));
+  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+(CountCodePoints+Count)-1,TpvTextEditor.EmptyMarkState,fMarkState,CountCodePoints,(CountCodePoints+Count)-1,aCodeUnits));
   fParent.fRope.Insert(fCodePointIndex,aCodeUnits);
  end else begin
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+CountCodePoints,fCodePointIndex,CountCodePoints,aCodeUnits));
+  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+CountCodePoints,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,CountCodePoints,aCodeUnits));
   fParent.fRope.Insert(fCodePointIndex,aCodeUnits);
  end;
  if HasDeletedMarkedRange then begin
@@ -3223,7 +3254,7 @@ begin
    end else begin
     Count:=1;
    end;
-   fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex-Count,fCodePointIndex-Count,Count,fParent.fRope.Extract(fCodePointIndex-Count,Count)));
+   fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex-Count,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex-Count,Count,fParent.fRope.Extract(fCodePointIndex-Count,Count)));
    fParent.UpdateViewCodePointIndices(fCodePointIndex,-Count);
    fParent.fRope.Delete(fCodePointIndex,Count);
    if fCodePointIndex>0 then begin
@@ -3248,7 +3279,7 @@ begin
    end else begin
     Count:=1;
    end;
-   fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,fCodePointIndex,Count,fParent.fRope.Extract(fCodePointIndex,Count)));
+   fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,Count,fParent.fRope.Extract(fCodePointIndex,Count)));
    fParent.fRope.Delete(fCodePointIndex,Count);
    if fCodePointIndex>0 then begin
     fParent.LineMapTruncate(fCodePointIndex-1,-1);
@@ -3405,11 +3436,11 @@ begin
   LineCodePointIndex:=fParent.fLineCacheMap.GetCodePointIndexFromLineIndex(LineIndex);
   fParent.LineMapTruncate(LineCodePointIndex,-1);
 {$ifdef Windows}
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex,LineCodePointIndex,2,#13#10));
+  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,LineCodePointIndex,2,#13#10));
   fParent.fRope.Insert(LineCodePointIndex,TpvUTF8String(#13#10));
   fParent.UpdateViewCodePointIndices(LineCodePointIndex,2);
 {$else}
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex,LineCodePointIndex,1,#10));
+  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,LineCodePointIndex,1,#10));
   fParent.fRope.Insert(LineCodePointIndex,TpvUTF8String(#10));
   fParent.UpdateViewCodePointIndices(LineCodePointIndex,1);
 {$endif}
@@ -3428,7 +3459,7 @@ begin
   StopCodePointIndex:=fParent.fLineCacheMap.GetCodePointIndexFromNextLineIndexOrTextEnd(LineIndex);
   if (StartCodePointIndex>=0) and
      (StartCodePointIndex<StopCodePointIndex) then begin
-   fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,StartCodePointIndex,StopCodePointIndex-StartCodePointIndex,fParent.fRope.Extract(StartCodePointIndex,StopCodePointIndex-StartCodePointIndex)));
+   fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,StartCodePointIndex,StopCodePointIndex-StartCodePointIndex,fParent.fRope.Extract(StartCodePointIndex,StopCodePointIndex-StartCodePointIndex)));
    fParent.fRope.Delete(StartCodePointIndex,StopCodePointIndex-StartCodePointIndex);
    fParent.LineMapTruncate(Max(0,StartCodePointIndex)-1,-1);
    fParent.UpdateViewCodePointIndices(fCodePointIndex,StartCodePointIndex-fCodePointIndex);
