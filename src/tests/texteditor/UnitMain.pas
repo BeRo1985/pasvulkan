@@ -110,8 +110,8 @@ begin
  AddFKey(8,'DelL');
  AddFKey(9,'Load');
  AddFKey(10,'Quit');
- AddFKey(11,'Undo');
- AddFKey(12,'Redo');
+ AddFKey(11,'Mark');
+ AddFKey(12,'    ');
  while Console.WhereX<Console.Width do begin
   Console.Write(' ');
  end;

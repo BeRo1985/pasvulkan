@@ -409,21 +409,27 @@ type TpvTextEditor=class
               fLineWrap:TpvSizeInt;
               fVisualLineCacheMap:TLineCacheMap;
               fBuffer:TBufferItems;
+              fMarkStartCodePointIndex:TpvSizeInt;
+              fMarkEndCodePointIndex:TpvSizeInt;
               procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeInt);
               procedure SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeInt);
               procedure SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeInt);
               procedure SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeInt);
               procedure SetLineWrap(const aLineWrap:TpvSizeInt);
               procedure SetLineColumn(const aLineColumn:TLineColumn);
+              procedure SetMarkStartCodePointIndex(const aMarkStartCodePointIndex:TpvSizeInt);
+              procedure SetMarkEndCodePointIndex(const aMarkEndCodePointIndex:TpvSizeInt);
              public
               constructor Create(const aParent:TpvTextEditor); reintroduce;
               destructor Destroy; override;
               procedure AfterConstruction; override;
               procedure BeforeDestruction; override;
+              procedure ClampMarkCodePointIndices;
               procedure EnsureCodePointIndexIsInRange;
               procedure EnsureCursorIsVisible(const aUpdateCursor:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
               procedure UpdateCursor;
               procedure UpdateBuffer;
+              function DeleteMarkedRange:boolean;
               procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
               procedure InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean);
               procedure Backspace;
@@ -450,6 +456,8 @@ type TpvTextEditor=class
               property NonScrollVisibleAreaWidth:TpvSizeInt read fNonScrollVisibleAreaWidth write SetNonScrollVisibleAreaWidth;
               property NonScrollVisibleAreaHeight:TpvSizeInt read fNonScrollVisibleAreaHeight write SetNonScrollVisibleAreaHeight;
               property LineWrap:TpvSizeInt read fLineWrap write SetLineWrap;
+              property MarkStartCodePointIndex:TpvSizeInt read fMarkStartCodePointIndex write SetMarkStartCodePointIndex;
+              property MarkEndCodePointIndex:TpvSizeInt read fMarkEndCodePointIndex write SetMarkEndCodePointIndex;
             end;
       private
        fRope:TRope;
@@ -478,6 +486,8 @@ type TpvTextEditor=class
        procedure LineMapUpdate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
        procedure ResetLineCacheMaps;
        procedure ResetViewCodePointIndices;
+       procedure ResetViewMarkCodePointIndices;
+       procedure ClampViewMarkCodePointIndices;
        procedure UpdateViewCodePointIndices(const aCodePointIndex,aDelta:TpvSizeInt);
        procedure EnsureViewCodePointIndicesAreInRange;
        procedure EnsureViewCursorsAreVisible(const aUpdateCursors:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
@@ -2542,6 +2552,7 @@ begin
  end;
  ResetLineCacheMaps;
  ResetViewCodePointIndices;
+ ResetViewMarkCodePointIndices;
 end;
 
 procedure TpvTextEditor.LoadFromFile(const aFileName:string);
@@ -2561,6 +2572,7 @@ begin
  fRope.SetText(TUTF8Utils.RawByteStringToUTF8String(aString));
  ResetLineCacheMaps;
  ResetViewCodePointIndices;
+ ResetViewMarkCodePointIndices;
 end;
 
 procedure TpvTextEditor.SaveToStream(const aStream:TStream);
@@ -2604,6 +2616,7 @@ begin
  fRope.SetText(aText);
  ResetLineCacheMaps;
  ResetViewCodePointIndices;
+ ResetViewMarkCodePointIndices;
 end;
 
 function TpvTextEditor.GetLine(const aLineIndex:TpvSizeInt):TpvUTF8String;
@@ -2704,6 +2717,27 @@ begin
  end;
 end;
 
+procedure TpvTextEditor.ResetViewMarkCodePointIndices;
+var View:TView;
+begin
+ View:=fFirstView;
+ while assigned(View) do begin
+  View.fMarkStartCodePointIndex:=-1;
+  View.fMarkEndCodePointIndex:=-1;
+  View:=View.fNext;
+ end;
+end;
+
+procedure TpvTextEditor.ClampViewMarkCodePointIndices;
+var View:TView;
+begin
+ View:=fFirstView;
+ while assigned(View) do begin
+  View.ClampMarkCodePointIndices;
+  View:=View.fNext;
+ end;
+end;
+
 procedure TpvTextEditor.UpdateViewCodePointIndices(const aCodePointIndex,aDelta:TpvSizeInt);
 var View:TView;
 begin
@@ -2773,6 +2807,8 @@ begin
  fLineWrap:=0;
  fVisualLineCacheMap:=TLineCacheMap.Create(fParent.fRope);
  fBuffer:=nil;
+ fMarkStartCodePointIndex:=-1;
+ fMarkEndCodePointIndex:=-1;
 end;
 
 destructor TpvTextEditor.TView.Destroy;
@@ -2870,6 +2906,31 @@ begin
  EnsureCursorIsVisible(true);
 end;
 
+procedure TpvTextEditor.TView.SetMarkStartCodePointIndex(const aMarkStartCodePointIndex:TpvSizeInt);
+begin
+ if fMarkStartCodePointIndex<>aMarkStartCodePointIndex then begin
+  fMarkStartCodePointIndex:=Min(Max(aMarkStartCodePointIndex,-1),fParent.fRope.fCountCodePoints-1);
+ end;
+end;
+
+procedure TpvTextEditor.TView.SetMarkEndCodePointIndex(const aMarkEndCodePointIndex:TpvSizeInt);
+begin
+ if fMarkEndCodePointIndex<>aMarkEndCodePointIndex then begin
+  fMarkEndCodePointIndex:=Min(Max(aMarkEndCodePointIndex,-1),fParent.fRope.fCountCodePoints-1);
+ end;
+end;
+
+procedure TpvTextEditor.TView.ClampMarkCodePointIndices;
+begin
+ if (fMarkStartCodePointIndex>=0) and (fMarkEndCodePointIndex>=0) then begin
+  fMarkStartCodePointIndex:=Min(Max(fMarkStartCodePointIndex,-1),fParent.fRope.fCountCodePoints-1);
+  fMarkEndCodePointIndex:=Min(Max(fMarkEndCodePointIndex,-1),fParent.fRope.fCountCodePoints-1);
+ end else begin
+  fMarkStartCodePointIndex:=-1;
+  fMarkEndCodePointIndex:=-1;
+ end;
+end;
+
 procedure TpvTextEditor.TView.EnsureCodePointIndexIsInRange;
 begin
  fCodePointIndex:=Min(Max(fCodePointIndex,0),fParent.fRope.CountCodePoints);
@@ -2934,6 +2995,8 @@ var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     RelativeCursor:TCoordinate;
     CodePointEnumerator:TRope.TCodePointEnumerator;
 begin
+
+ ClampMarkCodePointIndices;
 
  EnsureCodePointIndexIsInRange;
 
@@ -3037,6 +3100,30 @@ begin
 
 end;
 
+function TpvTextEditor.TView.DeleteMarkedRange:boolean;
+var StartCodePointIndex,EndCodePointIndex,Count:TpvSizeInt;
+begin
+ result:=((fMarkStartCodePointIndex>=0) and
+          (fMarkStartCodePointIndex<fParent.fRope.fCountCodePoints)) and
+         ((fMarkEndCodePointIndex>=0) and
+          (fMarkEndCodePointIndex<fParent.fRope.fCountCodePoints));
+ if result then begin
+  StartCodePointIndex:=Min(fMarkStartCodePointIndex,fMarkEndCodePointIndex);
+  EndCodePointIndex:=Max(fMarkStartCodePointIndex,fMarkEndCodePointIndex);
+  fCodePointIndex:=StartCodePointIndex;
+  Count:=(EndCodePointIndex-StartCodePointIndex)+1;
+  fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,fCodePointIndex,Count,fParent.fRope.Extract(fCodePointIndex,Count)));
+  fParent.fRope.Delete(fCodePointIndex,Count);
+  if fCodePointIndex>0 then begin
+   fParent.LineMapTruncate(fCodePointIndex-1,-1);
+  end else begin
+   fParent.LineMapTruncate(fCodePointIndex,-1);
+  end;
+  fParent.EnsureViewCursorsAreVisible(true);
+  fParent.ResetViewMarkCodePointIndices;
+ end;
+end;
+
 procedure TpvTextEditor.TView.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
 var Count:TpvSizeInt;
     CodeUnits:TpvUTF8String;
@@ -3059,6 +3146,7 @@ begin
  fParent.UpdateViewCodePointIndices(fCodePointIndex,1);
  fParent.EnsureViewCodePointIndicesAreInRange;
  fParent.EnsureViewCursorsAreVisible(true);
+ fParent.ResetViewMarkCodePointIndices;
 end;
 
 procedure TpvTextEditor.TView.InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean);
@@ -3083,48 +3171,55 @@ begin
  fParent.UpdateViewCodePointIndices(fCodePointIndex,CountCodePoints);
  fParent.EnsureViewCodePointIndicesAreInRange;
  fParent.EnsureViewCursorsAreVisible(true);
+ fParent.ResetViewMarkCodePointIndices;
 end;
 
 procedure TpvTextEditor.TView.Backspace;
 var Count:TpvSizeInt;
 begin
- if (fCodePointIndex>0) and (fCodePointIndex<=fParent.fRope.fCountCodePoints) then begin
-  if fparent.IsTwoCodePointNewLine(fCodePointIndex-2) then begin
-   Count:=2;
-  end else begin
-   Count:=1;
+ if not DeleteMarkedRange then begin
+  if (fCodePointIndex>0) and (fCodePointIndex<=fParent.fRope.fCountCodePoints) then begin
+   if fparent.IsTwoCodePointNewLine(fCodePointIndex-2) then begin
+    Count:=2;
+   end else begin
+    Count:=1;
+   end;
+   fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex-Count,fCodePointIndex-Count,Count,fParent.fRope.Extract(fCodePointIndex-Count,Count)));
+   fParent.UpdateViewCodePointIndices(fCodePointIndex,-Count);
+   fParent.fRope.Delete(fCodePointIndex,Count);
+   if fCodePointIndex>0 then begin
+    fParent.LineMapTruncate(fCodePointIndex-1,-1);
+   end else begin
+    fParent.LineMapTruncate(fCodePointIndex,-1);
+   end;
   end;
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex-Count,fCodePointIndex-Count,Count,fParent.fRope.Extract(fCodePointIndex-Count,Count)));
-  fParent.UpdateViewCodePointIndices(fCodePointIndex,-Count);
-  fParent.fRope.Delete(fCodePointIndex,Count);
-  if fCodePointIndex>0 then begin
-   fParent.LineMapTruncate(fCodePointIndex-1,-1);
-  end else begin
-   fParent.LineMapTruncate(fCodePointIndex,-1);
-  end;
+  fParent.EnsureViewCodePointIndicesAreInRange;
+  fParent.EnsureViewCursorsAreVisible(true);
+  fParent.ResetViewMarkCodePointIndices;
  end;
- fParent.EnsureViewCodePointIndicesAreInRange;
- fParent.EnsureViewCursorsAreVisible(true);
 end;
 
 procedure TpvTextEditor.TView.Delete;
 var Count:TpvSizeInt;
 begin
- if fCodePointIndex<fParent.fRope.fCountCodePoints then begin
-  if fParent.IsTwoCodePointNewLine(fCodePointIndex) then begin
-   Count:=2;
-  end else begin
-   Count:=1;
+ if not DeleteMarkedRange then begin
+  if fCodePointIndex<fParent.fRope.fCountCodePoints then begin
+   if fParent.IsTwoCodePointNewLine(fCodePointIndex) then begin
+    Count:=2;
+   end else begin
+    Count:=1;
+   end;
+   fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,fCodePointIndex,Count,fParent.fRope.Extract(fCodePointIndex,Count)));
+   fParent.fRope.Delete(fCodePointIndex,Count);
+   if fCodePointIndex>0 then begin
+    fParent.LineMapTruncate(fCodePointIndex-1,-1);
+   end else begin
+    fParent.LineMapTruncate(fCodePointIndex,-1);
+   end;
   end;
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,fCodePointIndex,Count,fParent.fRope.Extract(fCodePointIndex,Count)));
-  fParent.fRope.Delete(fCodePointIndex,Count);
-  if fCodePointIndex>0 then begin
-   fParent.LineMapTruncate(fCodePointIndex-1,-1);
-  end else begin
-   fParent.LineMapTruncate(fCodePointIndex,-1);
-  end;
+  fParent.EnsureViewCursorsAreVisible(true);
+  fParent.ResetViewMarkCodePointIndices;
  end;
- fParent.EnsureViewCursorsAreVisible(true);
 end;
 
 procedure TpvTextEditor.TView.Enter(const aOverwrite:boolean);
@@ -3281,6 +3376,7 @@ begin
 {$endif}
   fParent.EnsureViewCodePointIndicesAreInRange;
   fParent.EnsureViewCursorsAreVisible(true);
+  fParent.ResetViewMarkCodePointIndices;
  end;
 end;
 
@@ -3299,6 +3395,7 @@ begin
    fParent.UpdateViewCodePointIndices(fCodePointIndex,StartCodePointIndex-fCodePointIndex);
    fParent.EnsureViewCodePointIndicesAreInRange;
    fParent.EnsureViewCursorsAreVisible(true);
+   fParent.ResetViewMarkCodePointIndices;
   end;
  end;
 end;
