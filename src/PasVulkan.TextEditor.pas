@@ -377,6 +377,7 @@ type TpvTextEditor=class
               procedure Clear; reintroduce;
               procedure IncreaseActionID;
               procedure Add(const aUndoRedoCommand:TpvTextEditor.TUndoRedoCommand); reintroduce;
+              procedure GroupUndoRedoCommands(const aFromIndex,aToIndex:TpvSizeInt);
               procedure Undo(const aView:TpvTextEditor.TView=nil);
               procedure Redo(const aView:TpvTextEditor.TView=nil);
              published
@@ -2428,7 +2429,11 @@ begin
       exit;
      end;
     end else begin
+{$ifdef fpc}
      Extract(UndoRedoCommand);
+{$else}
+     ExtractItem(UndoRedoCommand,TDirection.FromEnd);
+{$endif}
      UndoRedoCommandGroup:=TpvTextEditor.TUndoRedoCommandGroup.Create(fParent,TpvTextEditor.TUndoRedoCommandClass(aUndoRedoCommand.ClassType));
      Insert(fHistoryIndex,UndoRedoCommandGroup);
      UndoRedoCommandGroup.fList.Add(UndoRedoCommand);
@@ -2447,6 +2452,28 @@ begin
   end;
  end;
  fHistoryIndex:=inherited Add(aUndoRedoCommand);
+end;
+
+procedure TpvTextEditor.TUndoRedoManager.GroupUndoRedoCommands(const aFromIndex,aToIndex:TpvSizeInt);
+var Index:TpvSizeInt;
+    UndoRedoCommand:TpvTextEditor.TUndoRedoCommand;
+    UndoRedoCommandGroup:TpvTextEditor.TUndoRedoCommandGroup;
+begin
+ if ((aFromIndex>=0) and (aFromIndex<Count)) and
+    ((aToIndex>=0) and (aToIndex<Count)) then begin
+  UndoRedoCommandGroup:=TpvTextEditor.TUndoRedoCommandGroup.Create(fParent,TUndoRedoCommand);
+  UndoRedoCommandGroup.fSealed:=true;
+  Insert(aFromIndex,UndoRedoCommandGroup);
+  for Index:=aFromIndex to aToIndex do begin
+   UndoRedoCommand:=TpvTextEditor.TUndoRedoCommand(Items[aFromIndex+1]);
+{$ifdef fpc}
+   Extract(UndoRedoCommand);
+{$else}
+   ExtractItem(UndoRedoCommand,TDirection.FromEnd);
+{$endif}
+   UndoRedoCommandGroup.fList.Add(UndoRedoCommand);
+  end;
+ end;
 end;
 
 procedure TpvTextEditor.TUndoRedoManager.Undo(const aView:TpvTextEditor.TView=nil);
@@ -3125,9 +3152,12 @@ begin
 end;
 
 procedure TpvTextEditor.TView.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
-var Count:TpvSizeInt;
+var Count,UndoRedoHistoryIndex:TpvSizeInt;
     CodeUnits:TpvUTF8String;
+    HasDeletedMarkedRange:boolean;
 begin
+ UndoRedoHistoryIndex:=fParent.fUndoRedoManager.fHistoryIndex;
+ HasDeletedMarkedRange:=DeleteMarkedRange;
  CodeUnits:=TUTF8Utils.UTF32CharToUTF8(aCodePoint);
  fParent.LineMapTruncate(fCodePointIndex,-1);
  if aOverwrite and (fCodePointIndex<fParent.fRope.fCountCodePoints) then begin
@@ -3143,6 +3173,9 @@ begin
   fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+1,fCodePointIndex,1,CodeUnits));
   fParent.fRope.Insert(fCodePointIndex,CodeUnits);
  end;
+ if HasDeletedMarkedRange then begin
+  fParent.fUndoRedoManager.GroupUndoRedoCommands(UndoRedoHistoryIndex,fParent.fUndoRedoManager.fHistoryIndex);
+ end;
  fParent.UpdateViewCodePointIndices(fCodePointIndex,1);
  fParent.EnsureViewCodePointIndicesAreInRange;
  fParent.EnsureViewCursorsAreVisible(true);
@@ -3150,8 +3183,11 @@ begin
 end;
 
 procedure TpvTextEditor.TView.InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean);
-var CountCodePoints,Count:TpvSizeInt;
+var CountCodePoints,Count,UndoRedoHistoryIndex:TpvSizeInt;
+    HasDeletedMarkedRange:boolean;
 begin
+ UndoRedoHistoryIndex:=fParent.fUndoRedoManager.fHistoryIndex;
+ HasDeletedMarkedRange:=DeleteMarkedRange;
  CountCodePoints:=TRope.GetCountCodePoints(@aCodeUnits[1],length(aCodeUnits));
  fParent.LineMapTruncate(fCodePointIndex,-1);
  if aOverwrite and (fCodePointIndex<fParent.fRope.fCountCodePoints) then begin
@@ -3167,6 +3203,9 @@ begin
  end else begin
   fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+CountCodePoints,fCodePointIndex,CountCodePoints,aCodeUnits));
   fParent.fRope.Insert(fCodePointIndex,aCodeUnits);
+ end;
+ if HasDeletedMarkedRange then begin
+  fParent.fUndoRedoManager.GroupUndoRedoCommands(UndoRedoHistoryIndex,fParent.fUndoRedoManager.fHistoryIndex);
  end;
  fParent.UpdateViewCodePointIndices(fCodePointIndex,CountCodePoints);
  fParent.EnsureViewCodePointIndicesAreInRange;
