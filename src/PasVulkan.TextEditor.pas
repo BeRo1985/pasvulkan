@@ -442,7 +442,8 @@ type TpvTextEditor=class
               procedure MarkAll;
               procedure UnmarkAll;
               procedure SetMarkStart;
-              procedure SetMarkEnd;
+              procedure SetMarkEndToHere;
+              procedure SetMarkEndUntilHere;
               function HasMarkedRange:boolean;
               function GetMarkedRangeText:TpvUTF8String;
               function DeleteMarkedRange:boolean;
@@ -3188,9 +3189,14 @@ begin
  fMarkState.EndCodePointIndex:=fCodePointIndex;
 end;
 
-procedure TpvTextEditor.TView.SetMarkEnd;
+procedure TpvTextEditor.TView.SetMarkEndToHere;
 begin
  fMarkState.EndCodePointIndex:=fCodePointIndex;
+end;
+
+procedure TpvTextEditor.TView.SetMarkEndUntilHere;
+begin
+ fMarkState.EndCodePointIndex:=fCodePointIndex-1;
 end;
 
 function TpvTextEditor.TView.HasMarkedRange:boolean;
