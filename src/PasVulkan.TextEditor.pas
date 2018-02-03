@@ -448,9 +448,10 @@ type TpvTextEditor=class
               function GetMarkedRangeText:TpvUTF8String;
               function DeleteMarkedRange:boolean;
               function CutMarkedRangeText:TpvUTF8String;
-              procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
-              procedure InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean);
+              procedure InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean;const aStealIt:boolean=false);
+              procedure InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean;const aStealIt:boolean=false);
               procedure Backspace;
+              procedure Paste(const aText:TpvUTF8String);
               procedure Delete;
               procedure Enter(const aOverwrite:boolean);
               procedure MoveUp;
@@ -3263,10 +3264,11 @@ begin
  end;
 end;
 
-procedure TpvTextEditor.TView.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean);
+procedure TpvTextEditor.TView.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean;const aStealIt:boolean=false);
 var Count,UndoRedoHistoryIndex:TpvSizeInt;
     CodeUnits:TpvUTF8String;
     HasDeletedMarkedRange:boolean;
+    UndoRedoCommand:TpvTextEditor.TUndoRedoCommand;
 begin
  UndoRedoHistoryIndex:=fParent.fUndoRedoManager.fHistoryIndex;
  HasDeletedMarkedRange:=DeleteMarkedRange;
@@ -3278,11 +3280,15 @@ begin
   end else begin
    Count:=1;
   end;
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandOverwrite.Create(fParent,fCodePointIndex,fCodePointIndex+Count,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,Count,CodeUnits,fParent.fRope.Extract(fCodePointIndex,Count)));
+  UndoRedoCommand:=TUndoRedoCommandOverwrite.Create(fParent,fCodePointIndex,fCodePointIndex+Count,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,Count,CodeUnits,fParent.fRope.Extract(fCodePointIndex,Count));
+  UndoRedoCommand.fSealed:=aStealIt;
+  fParent.fUndoRedoManager.Add(UndoRedoCommand);
   fParent.fRope.Delete(fCodePointIndex,Count);
   fParent.fRope.Insert(fCodePointIndex,CodeUnits);
  end else begin
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+1,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,1,CodeUnits));
+  UndoRedoCommand:=TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+1,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,1,CodeUnits);
+  UndoRedoCommand.fSealed:=aStealIt;
+  fParent.fUndoRedoManager.Add(UndoRedoCommand);
   fParent.fRope.Insert(fCodePointIndex,CodeUnits);
  end;
  if HasDeletedMarkedRange then begin
@@ -3294,9 +3300,10 @@ begin
  fParent.ResetViewMarkCodePointIndices;
 end;
 
-procedure TpvTextEditor.TView.InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean);
+procedure TpvTextEditor.TView.InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean;const aStealIt:boolean=false);
 var CountCodePoints,Count,UndoRedoHistoryIndex:TpvSizeInt;
     HasDeletedMarkedRange:boolean;
+    UndoRedoCommand:TpvTextEditor.TUndoRedoCommand;
 begin
  UndoRedoHistoryIndex:=fParent.fUndoRedoManager.fHistoryIndex;
  HasDeletedMarkedRange:=DeleteMarkedRange;
@@ -3308,13 +3315,18 @@ begin
   end else begin
    Count:=1;
   end;
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,CountCodePoints,(CountCodePoints+Count)-1,fParent.fRope.Extract(fCodePointIndex,(CountCodePoints+Count)-1)));
+  UndoRedoCommand:=TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,CountCodePoints,(CountCodePoints+Count)-1,fParent.fRope.Extract(fCodePointIndex,(CountCodePoints+Count)-1));
+  UndoRedoCommand.fSealed:=aStealIt;
+  fParent.fUndoRedoManager.Add(UndoRedoCommand);
   fParent.fRope.Delete(fCodePointIndex,(CountCodePoints+Count)-1);
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+(CountCodePoints+Count)-1,TpvTextEditor.EmptyMarkState,fMarkState,CountCodePoints,(CountCodePoints+Count)-1,aCodeUnits));
+  UndoRedoCommand:=TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+(CountCodePoints+Count)-1,TpvTextEditor.EmptyMarkState,fMarkState,CountCodePoints,(CountCodePoints+Count)-1,aCodeUnits);
+  UndoRedoCommand.fSealed:=aStealIt;
+  fParent.fUndoRedoManager.Add(UndoRedoCommand);
   fParent.fRope.Insert(fCodePointIndex,aCodeUnits);
  end else begin
-  fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+CountCodePoints,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,CountCodePoints,aCodeUnits));
-  fParent.fRope.Insert(fCodePointIndex,aCodeUnits);
+  UndoRedoCommand:=TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+CountCodePoints,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,CountCodePoints,aCodeUnits);
+  UndoRedoCommand.fSealed:=aStealIt;
+  fParent.fUndoRedoManager.Add(UndoRedoCommand);
  end;
  if HasDeletedMarkedRange then begin
   fParent.fUndoRedoManager.GroupUndoRedoCommands(UndoRedoHistoryIndex,fParent.fUndoRedoManager.fHistoryIndex);
@@ -3350,6 +3362,11 @@ begin
  end;
 end;
 
+procedure TpvTextEditor.TView.Paste(const aText:TpvUTF8String);
+begin
+ InsertString(aText,false,true);
+end;
+
 procedure TpvTextEditor.TView.Delete;
 var Count:TpvSizeInt;
 begin
@@ -3380,9 +3397,9 @@ begin
   MoveToLineBegin;
  end else begin
 {$ifdef Windows}
-  InsertString(TpvUTF8String(#13#10),aOverwrite);
+  InsertString(TpvUTF8String(#13#10),aOverwrite,false);
 {$else}
-  InsertCodePoint(10,aOverwrite);
+  InsertCodePoint(10,aOverwrite,false);
 {$endif}
  end;
  fParent.UpdateViewCursors;
