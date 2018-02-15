@@ -3327,6 +3327,7 @@ begin
   UndoRedoCommand:=TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex+CountCodePoints,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,CountCodePoints,aCodeUnits);
   UndoRedoCommand.fSealed:=aStealIt;
   fParent.fUndoRedoManager.Add(UndoRedoCommand);
+  fParent.fRope.Insert(fCodePointIndex,aCodeUnits);
  end;
  if HasDeletedMarkedRange then begin
   fParent.fUndoRedoManager.GroupUndoRedoCommands(UndoRedoHistoryIndex,fParent.fUndoRedoManager.fHistoryIndex);
