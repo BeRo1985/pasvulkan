@@ -396,10 +396,10 @@ type TpvTextEditor=class
             TSyntaxHighlightingState=class
              private
               fCodePointIndex:TpvSizeInt;
-              fColor:TpvUInt32;
+              fAttribute:TpvUInt32;
              public
               property CodePointIndex:TpvSizeInt read fCodePointIndex write fCodePointIndex;
-              property Color:TpvUInt32 read fColor write fColor;
+              property Attribute:TpvUInt32 read fAttribute write fAttribute;
             end;
             TSyntaxHighlightingStates=array of TSyntaxHighlightingState;
             TSyntaxHighlighting=class
@@ -440,7 +440,7 @@ type TpvTextEditor=class
             TView=class
              public
               type TBufferItem=record
-                    Color:TpvUInt32;
+                    Attribute:TpvUInt32;
                     CodePoint:TpvUInt32;
                    end;
                    PBufferItem=^TBufferItem;
@@ -3072,7 +3072,7 @@ begin
     fStates[fCountStates]:=State;
     inc(fCountStates);
     TGenericSyntaxHighlightingState(State).fCodePointIndex:=CodePointIndex;
-    TGenericSyntaxHighlightingState(State).fColor:=TpvUInt32(Kind);
+    TGenericSyntaxHighlightingState(State).fAttribute:=TpvUInt32(Kind);
     TGenericSyntaxHighlightingState(State).fKind:=Kind;
    end;
    inc(CodePointIndex);
@@ -3298,13 +3298,13 @@ end;
 procedure TpvTextEditor.TView.UpdateBuffer;
 const EmptyBufferItem:TBufferItem=
        (
-        Color:0;
+        Attribute:0;
         CodePoint:32;
        );
 var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     CurrentLineIndex,StartCodePointIndex,StopCodePointIndex,
     CurrentCodePointIndex,StepWidth,StateIndex:TpvSizeInt;
-    CodePoint,IncomingCodePoint,CurrentColor:TpvUInt32;
+    CodePoint,IncomingCodePoint,CurrentAttribute:TpvUInt32;
     RelativeCursor:TCoordinate;
     CodePointEnumerator:TRope.TCodePointEnumerator;
     BufferItem:PBufferItem;
@@ -3377,16 +3377,16 @@ begin
     end;
 
     if StateIndex<fParent.fSyntaxHighlighting.fCountStates then begin
-     CurrentColor:=fParent.fSyntaxHighlighting.fStates[StateIndex].fColor;
+     CurrentAttribute:=fParent.fSyntaxHighlighting.fStates[StateIndex].fAttribute;
     end else begin
-     CurrentColor:=0;
+     CurrentAttribute:=0;
     end;
 
    end else begin
 
     StateIndex:=0;
 
-    CurrentColor:=0;
+    CurrentAttribute:=0;
 
    end;
 
@@ -3398,7 +3398,7 @@ begin
      while ((StateIndex+1)<fParent.fSyntaxHighlighting.fCountStates) and
            (fParent.fSyntaxHighlighting.fStates[StateIndex+1].fCodePointIndex<=CurrentCodePointIndex) do begin
       inc(StateIndex);
-      CurrentColor:=fParent.fSyntaxHighlighting.fStates[StateIndex].fColor;
+      CurrentAttribute:=fParent.fSyntaxHighlighting.fStates[StateIndex].fAttribute;
      end;
 
     end;
@@ -3429,7 +3429,7 @@ begin
       if (BufferIndex>=BufferBaseIndex) and
          (BufferIndex<BufferBaseEndIndex) then begin
        BufferItem:=@fBuffer[BufferIndex];
-       BufferItem^.Color:=CurrentColor;
+       BufferItem^.Attribute:=CurrentAttribute;
        BufferItem^.CodePoint:=CodePoint;
       end;
 

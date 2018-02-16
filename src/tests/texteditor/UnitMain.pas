@@ -198,7 +198,7 @@ begin
   for x:=0 to AbstractTextEditorView.VisibleAreaWidth-1 do begin
    if i<length(AbstractTextEditorView.Buffer) then begin
     BufferItem:=@AbstractTextEditorView.Buffer[i];
-    case BufferItem^.Color of
+    case BufferItem^.Attribute of
      1:begin
       Console.TextColor(TConsole.TColor.LightGreen);
      end;
