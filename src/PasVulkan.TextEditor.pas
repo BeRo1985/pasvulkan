@@ -3202,6 +3202,8 @@ begin
    fCursorOffset.y:=(CurrentLineIndex+aForceVisibleLines)-NonScrollVisibleAreaHeight;
   end;
 
+  fVisualLineCacheMap.Update(-1,fVisualLineCacheMap.fCountLines+(fNonScrollVisibleAreaHeight*2));
+
   if fCursorOffset.y>=(fVisualLineCacheMap.fCountLines-NonScrollVisibleAreaHeight) then begin
    fCursorOffset.y:=fVisualLineCacheMap.fCountLines-fNonScrollVisibleAreaHeight;
   end;
