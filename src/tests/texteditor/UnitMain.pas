@@ -237,6 +237,8 @@ begin
  AbstractTextEditor:=TpvTextEditor.Create;
  try
 
+  AbstractTextEditor.SyntaxHighlighting:=TpvTextEditor.TGenericSyntaxHighlighting.Create(AbstractTextEditor);
+
   AbstractTextEditorView:=AbstractTextEditor.CreateView;
 
   if ParamCount>0 then begin
