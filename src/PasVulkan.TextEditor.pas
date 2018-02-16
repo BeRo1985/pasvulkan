@@ -2927,7 +2927,7 @@ begin
  if aCodePointIndex<=fParent.fRope.CountCodePoints then begin
   Update(aCodePointIndex+1);
   MinIndex:=0;
-  MaxIndex:=fCountStates;
+  MaxIndex:=fCountStates-1;
   while MinIndex<MaxIndex do begin
    MidIndex:=MinIndex+((MaxIndex-MinIndex) shr 1);
    if aCodePointIndex<fStates[MidIndex].fCodePointIndex then begin
@@ -2957,7 +2957,7 @@ end;
 procedure TpvTextEditor.TSyntaxHighlighting.Truncate(const aUntilCodePoint:TpvSizeInt);
 begin
  while (fCountStates>0) and
-       (fStates[fCountStates].fCodePointIndex>=aUntilCodePoint) do begin
+       (fStates[fCountStates-1].fCodePointIndex>=aUntilCodePoint) do begin
   dec(fCountStates);
   FreeAndNil(fStates[fCountStates]);
  end;
@@ -2969,7 +2969,6 @@ end;
 procedure TpvTextEditor.TSyntaxHighlighting.Update(const aUntilCodePoint:TpvSizeInt);
 begin
 end;
-
 
 procedure TpvTextEditor.TGenericSyntaxHighlighting.Update(const aUntilCodePoint:TpvSizeInt);
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
@@ -3256,10 +3255,11 @@ const EmptyBufferItem:TBufferItem=
        );
 var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     CurrentLineIndex,StartCodePointIndex,StopCodePointIndex,
-    CurrentCodePointIndex,StepWidth:TpvSizeInt;
-    CodePoint,IncomingCodePoint:TpvUInt32;
+    CurrentCodePointIndex,StepWidth,StateIndex:TpvSizeInt;
+    CodePoint,IncomingCodePoint,CurrentColor:TpvUInt32;
     RelativeCursor:TCoordinate;
     CodePointEnumerator:TRope.TCodePointEnumerator;
+    BufferItem:PBufferItem;
 begin
 
  ClampMarkCodePointIndices;
@@ -3317,8 +3317,22 @@ begin
 
    fParent.SyntaxHighlighting.Update(StopCodePointIndex);
 
+   StateIndex:=fParent.SyntaxHighlighting.GetStateIndexFromCodePointIndex(StartCodePointIndex);
+
+   if StateIndex<fParent.SyntaxHighlighting.fCountStates then begin
+    CurrentColor:=fParent.SyntaxHighlighting.fStates[StateIndex].fColor;
+   end else begin
+    CurrentColor:=0;
+   end;
+
    while (CurrentCodePointIndex<StopCodePointIndex) and
          CodePointEnumerator.MoveNext do begin
+
+    while ((StateIndex+1)<fParent.SyntaxHighlighting.fCountStates) and
+          (fParent.SyntaxHighlighting.fStates[StateIndex+1].fCodePointIndex<=CurrentCodePointIndex) do begin
+     CurrentColor:=fParent.SyntaxHighlighting.fStates[StateIndex].fColor;
+     inc(StateIndex);
+    end;
 
     IncomingCodePoint:=CodePointEnumerator.GetCurrent;
 
@@ -3337,7 +3351,7 @@ begin
      end;
     end;
 
-    if StepWidth>0 then begin
+    while StepWidth>0 do begin
 
      if RelativeCursor.x>=0 then begin
 
@@ -3345,12 +3359,17 @@ begin
 
       if (BufferIndex>=BufferBaseIndex) and
          (BufferIndex<BufferBaseEndIndex) then begin
-       fBuffer[BufferIndex].CodePoint:=CodePoint;
+       BufferItem:=@fBuffer[BufferIndex];
+       BufferItem^.Color:=CurrentColor;
+       BufferItem^.CodePoint:=CodePoint;
       end;
 
      end;
 
-     inc(RelativeCursor.x,StepWidth);
+     CodePoint:=0;
+
+     inc(RelativeCursor.x);
+     dec(StepWidth);
 
     end;
 
