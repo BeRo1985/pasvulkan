@@ -2987,50 +2987,53 @@ begin
   LastKind:=TGenericSyntaxHighlightingState.TKind.WhiteSpace;
   CodePointIndex:=0;
  end;
- CodePointEnumeratorSource:=fParent.fRope.GetCodePointEnumeratorSource(CodePointIndex,IfThen(aUntilCodePoint<0,aUntilCodePoint,aUntilCodePoint+1));
- for CodePoint in CodePointEnumeratorSource do begin
-  case CodePoint of
-   0..32:begin
-    Kind:=TGenericSyntaxHighlightingState.TKind.WhiteSpace;
-   end;
-   ord('a')..ord('z'),ord('A')..ord('Z'),ord('_'):begin
-    case LastKind of
-     TGenericSyntaxHighlightingState.TKind.Number:begin
-      Kind:=TGenericSyntaxHighlightingState.TKind.Number;
-     end;
-     else begin
-      Kind:=TGenericSyntaxHighlightingState.TKind.Alpha;
+ if CodePointIndex<fParent.fRope.fCountCodePoints then begin
+  CodePointEnumeratorSource:=fParent.fRope.GetCodePointEnumeratorSource(CodePointIndex,IfThen(aUntilCodePoint<0,aUntilCodePoint,aUntilCodePoint+1));
+  for CodePoint in CodePointEnumeratorSource do begin
+   case CodePoint of
+    0..32:begin
+     Kind:=TGenericSyntaxHighlightingState.TKind.WhiteSpace;
+    end;
+    ord('a')..ord('z'),ord('A')..ord('Z'),ord('_'):begin
+     case LastKind of
+      TGenericSyntaxHighlightingState.TKind.Number:begin
+       Kind:=TGenericSyntaxHighlightingState.TKind.Number;
+      end;
+      else begin
+       Kind:=TGenericSyntaxHighlightingState.TKind.Alpha;
+      end;
      end;
     end;
-   end;
-   ord('0')..ord('9'):begin
-    case LastKind of
-     TGenericSyntaxHighlightingState.TKind.Alpha:begin
-      Kind:=TGenericSyntaxHighlightingState.TKind.Alpha;
-     end;
-     else begin
-      Kind:=TGenericSyntaxHighlightingState.TKind.Number;
+    ord('0')..ord('9'):begin
+     case LastKind of
+      TGenericSyntaxHighlightingState.TKind.Alpha:begin
+       Kind:=TGenericSyntaxHighlightingState.TKind.Alpha;
+      end;
+      else begin
+       Kind:=TGenericSyntaxHighlightingState.TKind.Number;
+      end;
      end;
     end;
+    else begin
+     Kind:=TGenericSyntaxHighlightingState.TKind.Special;
+    end;
    end;
-   else begin
-    Kind:=TGenericSyntaxHighlightingState.TKind.Special;
+   if LastKind<>Kind then begin
+    LastKind:=Kind;
+    OldCount:=length(fStates);
+    if OldCount<(fCountStates+1) then begin
+     SetLength(fStates,(fCountStates+1)*2);
+     FillChar(fStates[OldCount],(length(fStates)-OldCount)*SizeOf(TSyntaxHighlightingState),#0);
+    end;
+    State:=TGenericSyntaxHighlightingState.Create;
+    fStates[fCountStates]:=State;
+    inc(fCountStates);
+    TGenericSyntaxHighlightingState(State).fCodePointIndex:=CodePointIndex;
+    TGenericSyntaxHighlightingState(State).fColor:=TpvUInt32(Kind);
+    TGenericSyntaxHighlightingState(State).fKind:=Kind;
    end;
+   inc(CodePointIndex);
   end;
-  if LastKind<>Kind then begin
-   OldCount:=length(fStates);
-   if OldCount<(fCountStates+1) then begin
-    SetLength(fStates,(fCountStates+1)*2);
-    FillChar(fStates[OldCount],(length(fStates)-OldCount)*SizeOf(TSyntaxHighlightingState),#0);
-   end;
-   State:=TGenericSyntaxHighlightingState.Create;
-   fStates[fCountStates]:=State;
-   inc(fCountStates);
-   TGenericSyntaxHighlightingState(State).fCodePointIndex:=CodePointIndex;
-   TGenericSyntaxHighlightingState(State).fColor:=TpvUInt32(Kind);
-   TGenericSyntaxHighlightingState(State).fKind:=Kind;
-  end;
-  inc(CodePointIndex);
  end;
 end;
 
@@ -3319,7 +3322,7 @@ begin
 
    fParent.SyntaxHighlighting.Update(StopCodePointIndex);
 
-   StateIndex:=fParent.SyntaxHighlighting.GetStateIndexFromCodePointIndex(StartCodePointIndex);
+   StateIndex:=fParent.SyntaxHighlighting.GetStateIndexFromCodePointIndex(CurrentCodePointIndex);
 
    if StateIndex<fParent.SyntaxHighlighting.fCountStates then begin
     CurrentColor:=fParent.SyntaxHighlighting.fStates[StateIndex].fColor;
@@ -3332,8 +3335,8 @@ begin
 
     while ((StateIndex+1)<fParent.SyntaxHighlighting.fCountStates) and
           (fParent.SyntaxHighlighting.fStates[StateIndex+1].fCodePointIndex<=CurrentCodePointIndex) do begin
-     CurrentColor:=fParent.SyntaxHighlighting.fStates[StateIndex].fColor;
      inc(StateIndex);
+     CurrentColor:=fParent.SyntaxHighlighting.fStates[StateIndex].fColor;
     end;
 
     IncomingCodePoint:=CodePointEnumerator.GetCurrent;

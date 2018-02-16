@@ -168,6 +168,7 @@ end;
 
 procedure UpdateScreen;
 var x,y,i:Int32;
+    BufferItem:TpvTextEditor.TView.PBufferItem;
 begin
 
  ResetScreen;
@@ -196,7 +197,22 @@ begin
  for y:=0 to AbstractTextEditorView.VisibleAreaHeight-1 do begin
   for x:=0 to AbstractTextEditorView.VisibleAreaWidth-1 do begin
    if i<length(AbstractTextEditorView.Buffer) then begin
-    Console.WriteCodePointToBuffer(x+1,y+2,AbstractTextEditorView.Buffer[i].CodePoint);
+    BufferItem:=@AbstractTextEditorView.Buffer[i];
+    case BufferItem^.Color of
+     1:begin
+      Console.TextColor(TConsole.TColor.LightGreen);
+     end;
+     2:begin
+      Console.TextColor(TConsole.TColor.LightMagenta);
+     end;
+     3:begin
+      Console.TextColor(TConsole.TColor.Yellow);
+     end;
+     else begin
+      Console.TextColor(TConsole.TColor.LightGray);
+     end;
+    end;
+    Console.WriteCodePointToBuffer(x+1,y+2,BufferItem^.CodePoint);
    end;
    inc(i);
   end;
