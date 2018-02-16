@@ -3015,10 +3015,22 @@ begin
    fCursorOffset.y:=(CurrentLineIndex+aForceVisibleLines)-NonScrollVisibleAreaHeight;
   end;
 
+  if fCursorOffset.y>=(fVisualLineCacheMap.fCountLines-NonScrollVisibleAreaHeight) then begin
+   fCursorOffset.y:=fVisualLineCacheMap.fCountLines-fNonScrollVisibleAreaHeight;
+  end;
+
+  if fCursorOffset.y<0 then begin
+   fCursorOffset.y:=0;
+  end;
+
   if CurrentColumnIndex<fCursorOffset.x then begin
    fCursorOffset.x:=CurrentColumnIndex;
   end else if (fCursorOffset.x+NonScrollVisibleAreaWidth)<=CurrentColumnIndex then begin
    fCursorOffset.x:=(CurrentColumnIndex-NonScrollVisibleAreaWidth)+1;
+  end;
+
+  if fCursorOffset.x<0 then begin
+   fCursorOffset.x:=0;
   end;
 
   if aUpdateCursor then begin
@@ -3502,9 +3514,14 @@ begin
    if NewCodePointIndex>=0 then begin
     fCodePointIndex:=NewCodePointIndex;
    end;
+   if fCursorOffset.y<fNonScrollVisibleAreaHeight then begin
+    fCursorOffset.y:=0;
+   end else begin
+    dec(fCursorOffset.y,fNonScrollVisibleAreaHeight);
+   end;
   end;
   EnsureCodePointIndexIsInRange;
-  EnsureCursorIsVisible(true,fNonScrollVisibleAreaHeight);
+  EnsureCursorIsVisible(true);
  end;
  fParent.fUndoRedoManager.IncreaseActionID;
 end;
@@ -3520,9 +3537,14 @@ begin
    if NewCodePointIndex>=0 then begin
     fCodePointIndex:=NewCodePointIndex;
    end;
+   if (fCursorOffset.y+fNonScrollVisibleAreaHeight)>=fVisualLineCacheMap.fCountLines then begin
+    fCursorOffset.y:=fVisualLineCacheMap.fCountLines-1;
+   end else begin
+    inc(fCursorOffset.y,fNonScrollVisibleAreaHeight);
+   end;
   end;
   EnsureCodePointIndexIsInRange;
-  EnsureCursorIsVisible(true,fNonScrollVisibleAreaHeight);
+  EnsureCursorIsVisible(true);
  end;
  fParent.fUndoRedoManager.IncreaseActionID;
 end;
