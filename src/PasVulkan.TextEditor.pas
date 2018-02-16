@@ -408,6 +408,7 @@ type TpvTextEditor=class
              protected
               fStates:TSyntaxHighlightingStates;
               fCountStates:TpvSizeInt;
+              function GetStateIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt):TpvSizeInt;
              public
               constructor Create(const aParent:TpvTextEditor); reintroduce;
               destructor Destroy; override;
@@ -2920,6 +2921,30 @@ begin
  inherited Destroy;
 end;
 
+function TpvTextEditor.TSyntaxHighlighting.GetStateIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt):TpvSizeInt;
+var MinIndex,MaxIndex,MidIndex:TpvSizeInt;
+begin
+ if aCodePointIndex<=fParent.fRope.CountCodePoints then begin
+  Update(aCodePointIndex+1);
+  MinIndex:=0;
+  MaxIndex:=fCountStates;
+  while MinIndex<MaxIndex do begin
+   MidIndex:=MinIndex+((MaxIndex-MinIndex) shr 1);
+   if aCodePointIndex<fStates[MidIndex].fCodePointIndex then begin
+    MaxIndex:=MidIndex-1;
+   end else if aCodePointIndex>=fStates[MidIndex+1].fCodePointIndex then begin
+    MinIndex:=MidIndex+1;
+   end else begin
+    MinIndex:=MidIndex;
+    break;
+   end;
+  end;
+  result:=MinIndex;
+ end else begin
+  result:=-1;
+ end;
+end;
+
 procedure TpvTextEditor.TSyntaxHighlighting.Reset;
 var Index:TpvSizeInt;
 begin
@@ -2944,6 +2969,7 @@ end;
 procedure TpvTextEditor.TSyntaxHighlighting.Update(const aUntilCodePoint:TpvSizeInt);
 begin
 end;
+
 
 procedure TpvTextEditor.TGenericSyntaxHighlighting.Update(const aUntilCodePoint:TpvSizeInt);
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
