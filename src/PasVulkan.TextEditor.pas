@@ -396,7 +396,17 @@ type TpvTextEditor=class
             end;
             TSyntaxHighlighting=class
              public
-              type TState=class
+              type TAttributes=class
+                    public
+                     const Unknown=0;
+                           WhiteSpace=1;
+                           Comment=2;
+                           Keyword=3;
+                           Identifier=4;
+                           Number=5;
+                           Symbol=6;
+                   end;
+                   TState=class
                     private
                      fCodePointIndex:TpvSizeInt;
                      fAttribute:TpvUInt32;
@@ -427,10 +437,10 @@ type TpvTextEditor=class
                     public
                      type TKind=
                            (
-                            WhiteSpace=0,
-                            Special=1,
-                            Number=2,
-                            Alpha=3
+                            WhiteSpace=TSyntaxHighlighting.TAttributes.WhiteSpace,
+                            Special=TSyntaxHighlighting.TAttributes.Symbol,
+                            Number=TSyntaxHighlighting.TAttributes.Number,
+                            Alpha=TSyntaxHighlighting.TAttributes.Identifier
                            );
                     private
                      fKind:TKind;
@@ -542,6 +552,7 @@ type TpvTextEditor=class
               procedure Clear;
               procedure BuildDFA;
               procedure AddKeyword(const aKeyword:TpvRawByteString;const aAttribute:TpvUInt32);
+              procedure AddKeywords(const aKeywords:array of TpvRawByteString;const aAttribute:TpvUInt32);
               procedure AddRule(const aRule:TpvRawByteString;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
               procedure Update(const aUntilCodePoint:TpvSizeInt); override;
             end;
@@ -3540,6 +3551,14 @@ begin
  Keyword^.fAttribute:=aAttribute;
 end;
 
+procedure TpvTextEditor.TDFASyntaxHighlighting.AddKeywords(const aKeywords:array of TpvRawByteString;const aAttribute:TpvUInt32);
+var Keyword:TpvRawByteString;
+begin
+ for Keyword in aKeywords do begin
+  AddKeyword(Keyword,aAttribute);
+ end;
+end;
+
 procedure TpvTextEditor.TDFASyntaxHighlighting.AddRule(const aRule:TpvRawByteString;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
 var IsBegin,IsEnd:boolean;
  procedure AddNFATransition(const aFrom,aTo:TpvSizeInt;const aSet:TCharSet);
@@ -4075,14 +4094,31 @@ end;
 
 procedure TpvTextEditor.TPascalSyntaxHighlighting.Setup;
 begin
- AddRule('\(\*.*\*\)|\{.*\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],1);
- AddRule('\(\*.*|\{.*',[],1);
- AddRule('//[^'#10#13']*['#10#13']?',[],1);
- AddRule('\$[0-9A-Fa-f]*',[],3);
- AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],3);
- AddRule('[A-Za-z][A-Za-z0-9_]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],2);
-(*AddRule('//[^'#10#13']*$',[],1);
- AddRule('\-|\+|\*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],4);*)
+ fCaseInsensitive:=true;
+ AddKeywords(['absolute','abstract','and','array','as','asm','assembler',
+              'automated','begin','case','cdecl','class','const','constructor',
+              'contains','default','deprecated','destructor','dispid',
+              'dispinterface','div','do','downto','dynamic','else','end','except',
+              'export','exports','external','far','file','final','finalization',
+              'finally','for','forward','function','goto','helper','if',
+              'implementation','implements','in','index','inherited',
+              'initialization','inline','interface','is','label','library',
+              'message','mod','name','near','nil','nodefault','not','object','of',
+              'on','operator','or','out','overload','override','package','packed',
+              'pascal','platform','private','procedure','program','property',
+              'protected','public','published','raise','read','readonly','record',
+              'register','reintroduce','repeat','requires','resourcestring',
+              'safecall','sealed','set','shl','shr','stdcall','stored','string',
+              'stringresource','then','threadvar','to','try','type','unit','until',
+              'uses','var','virtual','while','with','write','writeonly','xor'],
+             TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
+ AddRule('\(\*.*\*\)|\{.*\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
+ AddRule('\(\*.*|\{.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
+ AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
+ AddRule('\$[0-9A-Fa-f]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
+ AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
+ AddRule('[A-Za-z][A-Za-z0-9_]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule('\-|\+|\*|\^|\[|\]|\(|\)|\,|\..|\.|\;|\:|\:\=|\=|\<|\>|\<\>|\>\=|\<\=|\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Symbol);
 end;
 
 constructor TpvTextEditor.TView.Create(const aParent:TpvTextEditor);
