@@ -513,6 +513,13 @@ type TpvTextEditor=class
                    EParserErrorExpectedRightBracket=class(EParserError);
                    EParserErrorEmptySet=class(EParserError);
                    EParserErrorInvalidMetaChar=class(EParserError);
+                   TKeyword=record
+                    private
+                     fKeyword:TpvRawByteString;
+                     fAttribute:TpvUInt32;
+                   end;
+                   PKeyword=^TKeyword;
+                   TKeywords=array of TKeyword;
                    TState=class(TSyntaxHighlighting.TState)
                     public
                      type TKind=
@@ -535,6 +542,9 @@ type TpvTextEditor=class
               fDFA:TDFA;
               fAccept:TAccept;
               fEquivalence:TEquivalence;
+              fKeywords:TKeywords;
+              fCountKeywords:TpvSizeInt;
+              fCaseInsensitive:boolean;
              protected
               procedure Setup; virtual;
              public
@@ -3413,14 +3423,71 @@ begin
 end;
 
 constructor TpvTextEditor.TDFASyntaxHighlighting.Create(const aParent:TpvTextEditor);
+var Index,SubIndex:TpvSizeInt;
+    Keyword:TKeyword;
 begin
  inherited Create(aParent);
+
  fNFAStates:=2;
+
  fNFA:=nil;
+
  fDFA:=nil;
+
  fAccept:=nil;
- Setup;
- BuildDFA;
+
+ fKeywords:=nil;
+
+ fCountKeywords:=0;
+
+ fCaseInsensitive:=false;
+
+ try
+
+  Setup;
+
+ finally
+
+  BuildDFA;
+
+  if fCaseInsensitive then begin
+   for Index:=0 to fCountKeywords-1 do begin
+    fKeywords[Index].fKeyword:=TpvRawByteString(LowerCase(String(fKeywords[Index].fKeyword)));
+   end;
+  end;
+
+  Index:=0;
+  while (Index+1)<fCountKeywords do begin
+   if fKeywords[Index].fKeyword>fKeywords[Index+1].fKeyword then begin
+    Keyword:=fKeywords[Index];
+    fKeywords[Index]:=fKeywords[Index+1];
+    fKeywords[Index+1]:=Keyword;
+    if Index>0 then begin
+     dec(Index);
+    end else begin
+     inc(Index);
+    end;
+   end else begin
+    inc(Index);
+   end;
+  end;
+
+  Index:=0;
+  while Index<fCountKeywords do begin
+   while ((Index+1)<fCountKeywords) and
+         (fKeywords[Index].fKeyword=fKeywords[Index+1].fKeyword) do begin
+    dec(fCountKeywords);
+    for SubIndex:=Index+1 to fCountKeywords-1 do begin
+     fKeywords[SubIndex]:=fKeywords[SubIndex+1];
+    end;
+   end;
+   inc(Index);
+  end;
+
+  SetLength(fKeywords,fCountKeywords);
+
+ end;
+
 end;
 
 destructor TpvTextEditor.TDFASyntaxHighlighting.Destroy;
@@ -3434,6 +3501,8 @@ var NFA:TNFA;
     DFA:TDFA;
     Accept:TAccept;
 begin
+ fKeywords:=nil;
+ fCountKeywords:=0;
  fDFAStates:=0;
  fNFAStates:=2;
  while assigned(fNFA) do begin
@@ -3454,8 +3523,15 @@ begin
 end;
 
 procedure TpvTextEditor.TDFASyntaxHighlighting.AddKeyword(const aKeyword:TpvRawByteString;const aAttribute:TpvUInt32);
+var Keyword:PKeyword;
 begin
-
+ if length(fKeywords)<=fCountKeywords then begin
+  SetLength(fKeywords,(fCountKeywords+1)*2);
+ end;
+ Keyword:=@fKeywords[fCountKeywords];
+ inc(fCountKeywords);
+ Keyword^.fKeyword:=aKeyword;
+ Keyword^.fAttribute:=aAttribute;
 end;
 
 procedure TpvTextEditor.TDFASyntaxHighlighting.AddRule(const aRule:TpvRawByteString;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
