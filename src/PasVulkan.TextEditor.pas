@@ -199,6 +199,7 @@ type TpvTextEditor=class
                      function GetCurrent:TpvUInt32;
                     public
                      constructor Create(const aCodeUnitsRope:TRope;const aStartCodePointIndex:TpvSizeInt=0;const aStopCodePointIndex:TpvSizeInt=-1);
+                     function CanMoveNext:boolean; inline;
                      function MoveNext:boolean; inline;
                      property Current:TpvUInt32 read GetCurrent;
                    end;
@@ -521,19 +522,8 @@ type TpvTextEditor=class
                    PKeyword=^TKeyword;
                    TKeywords=array of TKeyword;
                    TState=class(TSyntaxHighlighting.TState)
-                    public
-                     type TKind=
-                           (
-                            WhiteSpace,
-                            CommentLine,
-                            CommentParenStar,
-                            CommentBracket,
-                            Keyword
-                           );
                     private
-                     fKind:TKind;
-                    published
-                     property Kind:TKind read fKind;
+                     fAccept:TAccept;
                    end;
              private
               fNFAStates:TpvSizeInt;
@@ -555,6 +545,11 @@ type TpvTextEditor=class
               procedure AddKeyword(const aKeyword:TpvRawByteString;const aAttribute:TpvUInt32);
               procedure AddRule(const aRule:TpvRawByteString;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
               procedure Update(const aUntilCodePoint:TpvSizeInt); override;
+            end;
+            TPascalSyntaxHighlighting=class(TDFASyntaxHighlighting)
+             protected
+              procedure Setup; override;
+             public
             end;
             TView=class
              public
@@ -1170,6 +1165,13 @@ end;
 function TpvTextEditor.TRope.TCodePointEnumerator.GetCurrent:TpvUInt32;
 begin
  result:=fCodePoint;
+end;
+
+function TpvTextEditor.TRope.TCodePointEnumerator.CanMoveNext:boolean;
+begin
+ result:=assigned(fNode) and
+         ((fStopCodePointIndex<0) or
+          (fCodePointIndex<fStopCodePointIndex));
 end;
 
 function TpvTextEditor.TRope.TCodePointEnumerator.MoveNext:boolean;
@@ -3931,14 +3933,26 @@ end;
 
 procedure TpvTextEditor.TDFASyntaxHighlighting.Update(const aUntilCodePoint:TpvSizeInt);
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
-    CodePoint:TpvUInt32;
-    CodePointIndex:TpvSizeInt;
+    CodePointEnumerator,WorkCodePointEnumerator:TpvTextEditor.TRope.TCodePointEnumerator;
+    CodePoint,Attribute,LastAttribute:TpvUInt32;
+    CodePointIndex,WorkCodePointIndex,LastAcceptPosition,
+    CurrentStringPosition,CurrentStringLength,
+    LineIndex,ColumnIndex:TpvSizeInt;
     State:TSyntaxHighlighting.TState;
-    LastKind,Kind:TDFASyntaxHighlighting.TState.TKind;
+    DFA:TDFA;
     OldCount:TpvSizeInt;
+    CurrentString:TpvRawByteString;
+    CurrentChar:AnsiChar;
+    Accept,LastAccept,LastStateAccept:TAccept;
+    CodePointEnumeratorMoveNext,WorkCodePointEnumeratorMoveNext,
+    IsBegin,WorkNewLine:boolean;
 begin
+
  State:=nil;
- LastKind:=TDFASyntaxHighlighting.TState.TKind.WhiteSpace;
+
+ LastStateAccept:=nil;
+ LastAttribute:=$ffffffff;
+
  if fCountStates>0 then begin
   if fTruncated then begin
    CodePointIndex:=fStates[fCountStates-1].CodePointIndex;
@@ -3950,7 +3964,8 @@ begin
     FreeAndNil(fStates[fCountStates]);
     if fCountStates>0 then begin
      State:=fStates[fCountStates-1];
-     LastKind:=TDFASyntaxHighlighting.TState(State).fKind;
+     LastStateAccept:=TDFASyntaxHighlighting.TState(State).fAccept;
+     LastAttribute:=TDFASyntaxHighlighting.TState(State).fAttribute;
     end else begin
      CodePointIndex:=0;
     end;
@@ -3959,60 +3974,136 @@ begin
    end;
   end else begin
    State:=fStates[fCountStates-1];
-   LastKind:=TDFASyntaxHighlighting.TState(State).fKind;
+   LastStateAccept:=TDFASyntaxHighlighting.TState(State).fAccept;
+   LastAttribute:=TDFASyntaxHighlighting.TState(State).fAttribute;
    CodePointIndex:=fStates[fCountStates-1].CodePointIndex+1;
   end;
  end else begin
   CodePointIndex:=0;
  end;
+
  if CodePointIndex<fParent.fRope.fCountCodePoints then begin
+
   CodePointEnumeratorSource:=fParent.fRope.GetCodePointEnumeratorSource(CodePointIndex,IfThen(aUntilCodePoint<0,aUntilCodePoint,aUntilCodePoint+1));
-  for CodePoint in CodePointEnumeratorSource do begin
-{  case CodePoint of
-    0..32:begin
-     Kind:=TDFASyntaxHighlighting.TState.TKind.WhiteSpace;
-    end;
-    ord('a')..ord('z'),ord('A')..ord('Z'),ord('_'):begin
-     case LastKind of
-      TDFASyntaxHighlighting.TState.TKind.Number:begin
-       Kind:=TDFASyntaxHighlighting.TState.TKind.Number;
-      end;
-      else begin
-       Kind:=TDFASyntaxHighlighting.TState.TKind.Alpha;
-      end;
-     end;
-    end;
-    ord('0')..ord('9'):begin
-     case LastKind of
-      TDFASyntaxHighlighting.TState.TKind.Alpha:begin
-       Kind:=TDFASyntaxHighlighting.TState.TKind.Alpha;
-      end;
-      else begin
-       Kind:=TDFASyntaxHighlighting.TState.TKind.Number;
-      end;
-     end;
-    end;
-    else begin
-     Kind:=TDFASyntaxHighlighting.TState.TKind.Special;
-    end;
+
+  CodePointEnumerator:=CodePointEnumeratorSource.GetEnumerator;
+
+  CodePointEnumeratorMoveNext:=CodePointEnumerator.MoveNext;
+
+  IsBegin:=(CodePointIndex=0) or
+           (fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(fParent.fLineCacheMap.GetCodePointIndexFromLineIndex(CodePointIndex))=CodePointIndex);
+
+  while CodePointEnumeratorMoveNext do begin
+
+   if IsBegin then begin
+    IsBegin:=false;
+    DFA:=fDFA.fNext;
+   end else begin
+    DFA:=fDFA;
    end;
-   if LastKind<>Kind then begin
-    LastKind:=Kind;
+
+   WorkCodePointEnumeratorMoveNext:=CodePointEnumeratorMoveNext;
+   WorkCodePointEnumerator:=CodePointEnumerator;
+   WorkCodePointIndex:=CodePointIndex;
+   WorkNewLine:=false;
+
+   LastAccept:=nil;
+   LastAcceptPosition:=-1;
+
+   while WorkCodePointEnumeratorMoveNext do begin
+
+    CodePoint:=WorkCodePointEnumerator.GetCurrent;
+
+    WorkCodePointEnumeratorMoveNext:=WorkCodePointEnumerator.MoveNext;
+
+    inc(WorkCodePointIndex);
+
+    WorkNewLine:=CodePoint in [10,13];
+
+    if CodePoint<128 then begin
+     CurrentChar:=AnsiChar(TpvUInt8(CodePoint));
+    end else begin
+     CurrentChar:=#128;
+    end;
+
+    DFA:=DFA.fWhereTo[CurrentChar];
+
+    if not assigned(DFA) then begin
+     if not assigned(LastAccept) then begin
+      CodePointEnumeratorMoveNext:=CodePointEnumerator.MoveNext;
+      inc(CodePointIndex);
+      WorkCodePointEnumeratorMoveNext:=CodePointEnumeratorMoveNext;
+      WorkCodePointEnumerator:=CodePointEnumerator;
+      WorkCodePointIndex:=CodePointIndex;
+     end;
+     break;
+    end;
+
+    if (CodePointIndex=(fParent.fRope.fCountCodePoints-1)) or
+       WorkNewLine then begin
+     Accept:=DFA.fAcceptEnd;
+    end else begin
+     Accept:=DFA.fAccept;
+    end;
+
+    if assigned(Accept) then begin
+     LastAccept:=Accept;
+     LastAcceptPosition:=CodePointIndex;
+     if TAccept.TFlag.IsQuick in Accept.fFlags then begin
+      break;
+     end;
+    end;
+
+   end;
+
+   if assigned(LastAccept) then begin
+    Attribute:=LastAccept.fAttribute;
+   end else begin
+    Attribute:=0;
+   end;
+
+   if (LastStateAccept<>LastAccept) or
+      (LastAttribute<>Attribute) then begin
+    LastStateAccept:=LastAccept;
+    LastAttribute:=Attribute;
     OldCount:=length(fStates);
     if OldCount<(fCountStates+1) then begin
      SetLength(fStates,(fCountStates+1)*2);
      FillChar(fStates[OldCount],(length(fStates)-OldCount)*SizeOf(TSyntaxHighlighting.TState),#0);
     end;
-    State:=TDFASyntaxHighlighting.TState.Create;
+    State:=TGenericSyntaxHighlighting.TState.Create;
     fStates[fCountStates]:=State;
     inc(fCountStates);
     TDFASyntaxHighlighting.TState(State).fCodePointIndex:=CodePointIndex;
-    TDFASyntaxHighlighting.TState(State).fAttribute:=TpvUInt32(Kind);
-    TDFASyntaxHighlighting.TState(State).fKind:=Kind;
-   end;}
-   inc(CodePointIndex);
+    TDFASyntaxHighlighting.TState(State).fAttribute:=Attribute;
+    TDFASyntaxHighlighting.TState(State).fAccept:=LastStateAccept;
+   end;
+
+   if assigned(LastAccept) then begin
+    IsBegin:=WorkNewLine;
+    CodePointEnumeratorMoveNext:=WorkCodePointEnumeratorMoveNext;
+    CodePointEnumerator:=WorkCodePointEnumerator;
+    CodePointIndex:=WorkCodePointIndex;
+   end else begin
+    IsBegin:=CodePointEnumerator.GetCurrent in [10,13];
+    CodePointEnumeratorMoveNext:=CodePointEnumerator.MoveNext;
+    inc(CodePointIndex);
+   end;
+
   end;
+
  end;
+
+end;
+
+procedure TpvTextEditor.TPascalSyntaxHighlighting.Setup;
+begin
+ AddRule('//[^'#10#13']*$',[],1);
+ AddRule('\(\*.*\*\)||\{.*\}',[],1);
+ AddRule('[A-Za-z][A-Za-z0-9_]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],2);
+ AddRule('[0-9]+',[],3);
+ AddRule('\$[0-9a-fA-F]+',[],3);
+ AddRule('\-|\+|\*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],4);
 end;
 
 constructor TpvTextEditor.TView.Create(const aParent:TpvTextEditor);
