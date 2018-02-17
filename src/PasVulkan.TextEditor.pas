@@ -3097,8 +3097,19 @@ begin
 end;
 
 procedure TpvTextEditor.TSyntaxHighlighting.Truncate(const aUntilCodePoint:TpvSizeInt);
+var LineIndex,UntilCodePoint:TpvSizeInt;
 begin
- if aUntilCodePoint<0 then begin
+ if aUntilCodePoint>=0 then begin
+  LineIndex:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(aUntilCodePoint);
+  if LineIndex>=0 then begin
+   UntilCodePoint:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(LineIndex);
+  end else begin
+   UntilCodePoint:=aUntilCodePoint;
+  end;
+ end else begin
+  UntilCodePoint:=aUntilCodePoint;
+ end;
+ if UntilCodePoint<0 then begin
   while fCountStates>0 do begin
    dec(fCountStates);
    FreeAndNil(fStates[fCountStates]);
@@ -3107,13 +3118,13 @@ begin
   fCodePointIndex:=0;
  end else begin
   while (fCountStates>0) and
-        (fStates[fCountStates-1].fCodePointIndex>=aUntilCodePoint) do begin
+        (fStates[fCountStates-1].fCodePointIndex>=UntilCodePoint) do begin
    dec(fCountStates);
    fCodePointIndex:=fStates[fCountStates].fCodePointIndex;
    FreeAndNil(fStates[fCountStates]);
   end;
  if (fCountStates>0) and
-    (fStates[fCountStates-1].fCodePointIndex<aUntilCodePoint) then begin
+    (fStates[fCountStates-1].fCodePointIndex<UntilCodePoint) then begin
    dec(fCountStates);
    fCodePointIndex:=fStates[fCountStates].fCodePointIndex;
    FreeAndNil(fStates[fCountStates]);
@@ -3975,8 +3986,6 @@ begin
     DFA:=fDFA;
    end;
 
- //DFA:=fDFA.fNext;
-
    ParserStates[1]:=ParserStates[0];
 
    LastAccept:=nil;
@@ -4049,13 +4058,7 @@ begin
    if assigned(LastAccept) then begin
     ParserStates[0]:=ParserStates[2];
    end else begin
-    if ParserStates[0].CodePointIndex<>ParserStates[1].CodePointIndex then begin
-     ParserStates[0]:=ParserStates[1];
-    end else begin
-     ParserStates[0].NewLine:=ParserStates[0].CodePointEnumerator.GetCurrent in [10,13];
-     ParserStates[0].Valid:=ParserStates[0].CodePointEnumerator.MoveNext;
-     inc(ParserStates[0].CodePointIndex);
-    end;
+    ParserStates[0]:=ParserStates[1];
    end;
 
    if ParserStates[0].CodePointIndex>=fParent.fRope.fCountCodePoints then begin
@@ -4523,15 +4526,15 @@ begin
   fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,Count,fParent.fRope.Extract(fCodePointIndex,Count)));
   fParent.fRope.Delete(fCodePointIndex,Count);
   if fCodePointIndex>0 then begin
+   fParent.LineMapTruncate(fCodePointIndex-1,-1);
    if assigned(fParent.fSyntaxHighlighting) then begin
     fParent.fSyntaxHighlighting.Truncate(fCodePointIndex-1);
    end;
-   fParent.LineMapTruncate(fCodePointIndex-1,-1);
   end else begin
+   fParent.LineMapTruncate(fCodePointIndex,-1);
    if assigned(fParent.fSyntaxHighlighting) then begin
     fParent.fSyntaxHighlighting.Truncate(fCodePointIndex);
    end;
-   fParent.LineMapTruncate(fCodePointIndex,-1);
   end;
   fParent.EnsureViewCursorsAreVisible(true);
   fParent.ResetViewMarkCodePointIndices;
@@ -4550,15 +4553,15 @@ begin
   result:=fParent.fRope.Extract(fCodePointIndex,Count);
   fParent.fRope.Delete(fCodePointIndex,Count);
   if fCodePointIndex>0 then begin
+   fParent.LineMapTruncate(fCodePointIndex-1,-1);
    if assigned(fParent.fSyntaxHighlighting) then begin
     fParent.fSyntaxHighlighting.Truncate(fCodePointIndex-1);
    end;
-   fParent.LineMapTruncate(fCodePointIndex-1,-1);
   end else begin
+   fParent.LineMapTruncate(fCodePointIndex,-1);
    if assigned(fParent.fSyntaxHighlighting) then begin
     fParent.fSyntaxHighlighting.Truncate(fCodePointIndex);
    end;
-   fParent.LineMapTruncate(fCodePointIndex,-1);
   end;
   fParent.EnsureViewCursorsAreVisible(true);
   fParent.ResetViewMarkCodePointIndices;
@@ -4576,10 +4579,10 @@ begin
  UndoRedoHistoryIndex:=fParent.fUndoRedoManager.fHistoryIndex;
  HasDeletedMarkedRange:=DeleteMarkedRange;
  CodeUnits:=TUTF8Utils.UTF32CharToUTF8(aCodePoint);
+ fParent.LineMapTruncate(fCodePointIndex,-1);
  if assigned(fParent.fSyntaxHighlighting) then begin
   fParent.fSyntaxHighlighting.Truncate(fCodePointIndex);
  end;
- fParent.LineMapTruncate(fCodePointIndex,-1);
  if aOverwrite and (fCodePointIndex<fParent.fRope.fCountCodePoints) then begin
   if fParent.IsTwoCodePointNewLine(fCodePointIndex) then begin
    Count:=2;
@@ -4614,10 +4617,10 @@ begin
  UndoRedoHistoryIndex:=fParent.fUndoRedoManager.fHistoryIndex;
  HasDeletedMarkedRange:=DeleteMarkedRange;
  CountCodePoints:=TRope.GetCountCodePoints(@aCodeUnits[1],length(aCodeUnits));
+ fParent.LineMapTruncate(fCodePointIndex,-1);
  if assigned(fParent.fSyntaxHighlighting) then begin
   fParent.fSyntaxHighlighting.Truncate(fCodePointIndex);
  end;
- fParent.LineMapTruncate(fCodePointIndex,-1);
  if aOverwrite and (fCodePointIndex<fParent.fRope.fCountCodePoints) then begin
   if fParent.IsTwoCodePointNewLine(fCodePointIndex) then begin
    Count:=2;
@@ -4661,15 +4664,15 @@ begin
    fParent.UpdateViewCodePointIndices(fCodePointIndex,-Count);
    fParent.fRope.Delete(fCodePointIndex,Count);
    if fCodePointIndex>0 then begin
+    fParent.LineMapTruncate(fCodePointIndex-1,-1);
     if assigned(fParent.fSyntaxHighlighting) then begin
      fParent.fSyntaxHighlighting.Truncate(fCodePointIndex-1);
     end;
-    fParent.LineMapTruncate(fCodePointIndex-1,-1);
    end else begin
+    fParent.LineMapTruncate(fCodePointIndex,-1);
     if assigned(fParent.fSyntaxHighlighting) then begin
      fParent.fSyntaxHighlighting.Truncate(fCodePointIndex);
     end;
-    fParent.LineMapTruncate(fCodePointIndex,-1);
    end;
   end;
   fParent.EnsureViewCodePointIndicesAreInRange;
@@ -4696,15 +4699,15 @@ begin
    fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,Count,fParent.fRope.Extract(fCodePointIndex,Count)));
    fParent.fRope.Delete(fCodePointIndex,Count);
    if fCodePointIndex>0 then begin
+    fParent.LineMapTruncate(fCodePointIndex-1,-1);
     if assigned(fParent.fSyntaxHighlighting) then begin
      fParent.fSyntaxHighlighting.Truncate(fCodePointIndex-1);
     end;
-    fParent.LineMapTruncate(fCodePointIndex-1,-1);
    end else begin
+    fParent.LineMapTruncate(fCodePointIndex,-1);
     if assigned(fParent.fSyntaxHighlighting) then begin
      fParent.fSyntaxHighlighting.Truncate(fCodePointIndex);
     end;
-    fParent.LineMapTruncate(fCodePointIndex,-1);
    end;
   end;
   fParent.EnsureViewCursorsAreVisible(true);
@@ -4864,10 +4867,10 @@ begin
  LineIndex:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
  if LineIndex>=0 then begin
   LineCodePointIndex:=fParent.fLineCacheMap.GetCodePointIndexFromLineIndex(LineIndex);
+  fParent.LineMapTruncate(LineCodePointIndex,-1);
   if assigned(fParent.fSyntaxHighlighting) then begin
    fParent.fSyntaxHighlighting.Truncate(fCodePointIndex);
   end;
-  fParent.LineMapTruncate(LineCodePointIndex,-1);
 {$ifdef Windows}
   fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,LineCodePointIndex,2,#13#10));
   fParent.fRope.Insert(LineCodePointIndex,TpvUTF8String(#13#10));
@@ -4894,10 +4897,10 @@ begin
      (StartCodePointIndex<StopCodePointIndex) then begin
    fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,StartCodePointIndex,StopCodePointIndex-StartCodePointIndex,fParent.fRope.Extract(StartCodePointIndex,StopCodePointIndex-StartCodePointIndex)));
    fParent.fRope.Delete(StartCodePointIndex,StopCodePointIndex-StartCodePointIndex);
+   fParent.LineMapTruncate(Max(0,StartCodePointIndex)-1,-1);
    if assigned(fParent.fSyntaxHighlighting) then begin
     fParent.fSyntaxHighlighting.Truncate(Max(0,StartCodePointIndex)-1);
    end;
-   fParent.LineMapTruncate(Max(0,StartCodePointIndex)-1,-1);
    fParent.UpdateViewCodePointIndices(fCodePointIndex,StartCodePointIndex-fCodePointIndex);
    fParent.EnsureViewCodePointIndicesAreInRange;
    fParent.EnsureViewCursorsAreVisible(true);
