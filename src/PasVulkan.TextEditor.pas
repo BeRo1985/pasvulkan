@@ -3150,9 +3150,8 @@ end;
 
 procedure TpvTextEditor.TGenericSyntaxHighlighting.Update(const aUntilCodePoint:TpvSizeInt);
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
-    CodePoint:TpvUInt32;
+    CodePoint,LastAttribute,Attribute:TpvUInt32;
     State:TSyntaxHighlighting.TState;
-    LastAttribute,Attribute:TpvUInt32;
     OldCount:TpvSizeInt;
 begin
  if fCodePointIndex<fParent.fRope.fCountCodePoints then begin
