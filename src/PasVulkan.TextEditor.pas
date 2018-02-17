@@ -3967,7 +3967,7 @@ type TParserState=record
      end;
      TParserStates=array[0..3] of TParserState;
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
-    CodePoint,Attribute:TpvUInt32;
+    CodePoint,Attribute,Preprocessor:TpvUInt32;
     LastState,State:TDFASyntaxHighlighting.TState;
     DFA:TDFA;
     OldCount:TpvSizeInt;
@@ -3988,6 +3988,8 @@ begin
 
   CodePointEnumeratorSource:=fParent.fRope.GetCodePointEnumeratorSource(fCodePointIndex,-1);
 
+  Preprocessor:=TpvUInt32($ffffffff);
+
   ParserStates[0].CodePointIndex:=fCodePointIndex;
 
   ParserStates[0].CodePointEnumerator:=CodePointEnumeratorSource.GetEnumerator;
@@ -3996,6 +3998,7 @@ begin
 
   ParserStates[0].NewLine:=(ParserStates[0].CodePointIndex=0) or
                            (fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(fParent.fLineCacheMap.GetCodePointIndexFromLineIndex(ParserStates[0].CodePointIndex))=ParserStates[0].CodePointIndex);
+
 
   while ParserStates[0].Valid and
         ((aUntilCodePoint<0) or
@@ -4062,14 +4065,20 @@ begin
      while ParserStates[3].Valid and
            (ParserStates[3].CodePointIndex<ParserStates[2].CodePointIndex) do begin
       CodePoint:=ParserStates[3].CodePointEnumerator.Current;
-      KeywordString:=KeywordString+TpvTextEditor.TUTF8Utils.UTF32CharToUTF8(CodePoint);
+      if fCaseInsensitive then begin
+       if (CodePoint>=ord('A')) and (CodePoint<=ord('Z')) then begin
+        inc(CodePoint,ord('a')-ord('A'));
+       end;
+      end;
+      if CodePoint<128 then begin
+       KeywordString:=KeywordString+AnsiChar(TpvUInt8(CodePoint));
+      end else begin
+       KeywordString:=KeywordString+TpvTextEditor.TUTF8Utils.UTF32CharToUTF8(CodePoint);
+      end;
       ParserStates[3].Valid:=ParserStates[3].CodePointEnumerator.MoveNext;
       inc(ParserStates[3].CodePointIndex);
      end;
      if length(KeywordString)>0 then begin
-      if fCaseInsensitive then begin
-       KeywordString:=LowerCase(KeywordString);
-      end;
       MinIndex:=0;
       MaxIndex:=fCountKeywords-1;
       while MinIndex<MaxIndex do begin
@@ -4090,8 +4099,18 @@ begin
       end;
      end;
     end;
+    if TAccept.TFlag.IsPreprocessor in LastAccept.fFlags then begin
+     Preprocessor:=LastAccept.fAttribute;
+    end else if (Preprocessor<>TpvUInt32($ffffffff)) and
+                (Attribute<>TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment) then begin
+     Attribute:=Preprocessor;
+    end;
    end else begin
-    Attribute:=0;
+    if Preprocessor<>TpvUInt32($ffffffff) then begin
+     Attribute:=Preprocessor;
+    end else begin
+     Attribute:=TpvTextEditor.TSyntaxHighlighting.TAttributes.Unknown;
+    end;
    end;
 
    if (not assigned(LastState)) or
