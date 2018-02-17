@@ -199,17 +199,26 @@ begin
    if i<length(AbstractTextEditorView.Buffer) then begin
     BufferItem:=@AbstractTextEditorView.Buffer[i];
     case BufferItem^.Attribute of
-     1:begin
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.String_:begin
+      Console.TextColor(TConsole.TColor.LightCyan);
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Symbol:begin
       Console.TextColor(TConsole.TColor.LightGreen);
      end;
-     2:begin
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Number:begin
       Console.TextColor(TConsole.TColor.LightMagenta);
      end;
-     3:begin
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier:begin
       Console.TextColor(TConsole.TColor.Yellow);
      end;
-     else begin
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword:begin
+      Console.TextColor(TConsole.TColor.White);
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment:begin
       Console.TextColor(TConsole.TColor.LightGray);
+     end;
+     else begin
+      Console.TextColor(TConsole.TColor.DarkGray);
      end;
     end;
     Console.WriteCodePointToBuffer(x+1,y+2,BufferItem^.CodePoint);
@@ -237,13 +246,15 @@ begin
  AbstractTextEditor:=TpvTextEditor.Create;
  try
 
-  AbstractTextEditor.SyntaxHighlighting:=TpvTextEditor.TGenericSyntaxHighlighting.Create(AbstractTextEditor);
+  AbstractTextEditor.SyntaxHighlighting:=TpvTextEditor.TPascalSyntaxHighlighting.Create(AbstractTextEditor);
 
   AbstractTextEditorView:=AbstractTextEditor.CreateView;
 
   if ParamCount>0 then begin
    AbstractTextEditor.LoadFromFile(ParamStr(1));
   end;
+
+  //AbstractTextEditor.Text:='//0123 3.14159e+0 $1337c0de if then { bla }';
 
   repeat
 
