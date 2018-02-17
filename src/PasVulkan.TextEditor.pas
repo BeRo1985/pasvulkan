@@ -453,7 +453,7 @@ type TpvTextEditor=class
             end;
             TDFASyntaxHighlighting=class(TSyntaxHighlighting)
              public
-              const KeywordCharSet=['0'..'z'];
+              const KeywordCharSet=[#32..#127];
               type TCharSet=set of AnsiChar;
                    PCharSet=^TCharSet;
                    TNFA=class
@@ -532,7 +532,7 @@ type TpvTextEditor=class
                    end;
                    PKeyword=^TKeyword;
                    TKeywords=array of TKeyword;
-                   TKeywordCharSet='0'..'z';
+                   TKeywordCharSet=#32..#127;
                    TKeywordCharTreeNode=class
                     public
                      type TKeywordCharTreeNodes=array[TKeywordCharSet] of TKeywordCharTreeNode;
