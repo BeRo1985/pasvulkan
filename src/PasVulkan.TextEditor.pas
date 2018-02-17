@@ -393,25 +393,26 @@ type TpvTextEditor=class
               property MaxUndoSteps:TpvSizeInt read fMaxUndoSteps write fMaxUndoSteps;
               property MaxRedoSteps:TpvSizeInt read fMaxRedoSteps write fMaxRedoSteps;
             end;
-            TSyntaxHighlightingState=class
-             private
-              fCodePointIndex:TpvSizeInt;
-              fAttribute:TpvUInt32;
-             public
-              property CodePointIndex:TpvSizeInt read fCodePointIndex write fCodePointIndex;
-              property Attribute:TpvUInt32 read fAttribute write fAttribute;
-            end;
-            TSyntaxHighlightingStates=array of TSyntaxHighlightingState;
             TSyntaxHighlighting=class
+             public
+              type TState=class
+                    private
+                     fCodePointIndex:TpvSizeInt;
+                     fAttribute:TpvUInt32;
+                    public
+                     property CodePointIndex:TpvSizeInt read fCodePointIndex write fCodePointIndex;
+                     property Attribute:TpvUInt32 read fAttribute write fAttribute;
+                   end;
+                   TStates=array of TState;
              private
               fParent:TpvTextEditor;
              protected
-              fStates:TSyntaxHighlightingStates;
+              fStates:TStates;
               fCountStates:TpvSizeInt;
               fTruncated:boolean;
               function GetStateIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt):TpvSizeInt;
              public
-              constructor Create(const aParent:TpvTextEditor); reintroduce;
+              constructor Create(const aParent:TpvTextEditor); reintroduce; virtual;
               destructor Destroy; override;
               procedure Reset; virtual;
               procedure Truncate(const aUntilCodePoint:TpvSizeInt); virtual;
@@ -419,22 +420,130 @@ type TpvTextEditor=class
              published
               property Parent:TpvTextEditor read fParent;
             end;
-            TGenericSyntaxHighlightingState=class(TSyntaxHighlightingState)
-             public
-              type TKind=
-                    (
-                     WhiteSpace=0,
-                     Special=1,
-                     Number=2,
-                     Alpha=3
-                    );
-             private
-              fKind:TKind;
-             published
-              property Kind:TKind read fKind;
-            end;
             TGenericSyntaxHighlighting=class(TSyntaxHighlighting)
              public
+              type TState=class(TSyntaxHighlighting.TState)
+                    public
+                     type TKind=
+                           (
+                            WhiteSpace=0,
+                            Special=1,
+                            Number=2,
+                            Alpha=3
+                           );
+                    private
+                     fKind:TKind;
+                    published
+                     property Kind:TKind read fKind;
+                   end;
+             public
+              procedure Update(const aUntilCodePoint:TpvSizeInt); override;
+            end;
+            TDFASyntaxHighlighting=class(TSyntaxHighlighting)
+             public
+              type TCharSet=set of AnsiChar;
+                   PCharSet=^TCharSet;
+                   TNFA=class
+                    private
+                     fNext:TNFA;
+                     fFrom:TpvUInt32;
+                     fTo:TpvUInt32;
+                     fSet:TCharSet;
+                     fIsEmpty:boolean;
+                   end;
+                   TNFAArray=array of TNFA;
+                   TNFASetArray=array of TpvUInt32;
+                   TNFASet=record
+                    private
+                     fSet:TNFASetArray;
+                    public
+                     constructor Create(const aValues:array of TpvUInt32);
+                     class operator Add(const aSet:TNFASet;const aValue:TpvUInt32):TNFASet;
+                     class operator Add(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator Subtract(const aSet:TNFASet;const aValue:TpvUInt32):TNFASet;
+                     class operator Subtract(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator Multiply(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator LogicalAnd(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator LogicalOr(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator LogicalXor(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator BitwiseAnd(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator BitwiseOr(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator BitwiseXor(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator In(const aValue:TpvUInt32;const aSet:TNFASet):boolean;
+                     class operator Equal(const aSet,aOtherSet:TNFASet):boolean;
+                     class operator NotEqual(const aSet,aOtherSet:TNFASet):boolean;
+                   end;
+                   TAccept=class
+                    public
+                     type TFlag=
+                           (
+                            IsQuick,
+                            IsEnd,
+                            IsPreprocessor,
+                            IsKeyword
+                           );
+                          PFlag=^TFlag;
+                          TFlags=set of TFlag;
+                          PFlags=^TFlags;
+                    private
+                     fNext:TAccept;
+                     fFlags:TFlags;
+                     fState:TpvUInt32;
+                     fAttribute:TpvUInt32;
+                   end;
+                   TDFA=class
+                    public
+                     type TDFASet=array[AnsiChar] of TDFA;
+                          PDFASet=^TDFASet;
+                    private
+                     fNext:TDFA;
+                     fNumber:TpvSizeInt;
+                     fNFASet:TNFASet;
+                     fAccept:TAccept;
+                     fAcceptEnd:TAccept;
+                     fWhereTo:TDFASet;
+                   end;
+                   TDFAArray=array of TDFA;
+                   TEquivalence=array[AnsiChar] of AnsiChar;
+                   PEquivalence=^TEquivalence;
+                   EParserError=class(Exception);
+                   EParserErrorExpectedEndOfText=class(EParserError);
+                   EParserErrorUnexpectedEndOfText=class(EParserError);
+                   EParserErrorExpectedRightParen=class(EParserError);
+                   EParserErrorExpectedRightBracket=class(EParserError);
+                   EParserErrorEmptySet=class(EParserError);
+                   EParserErrorInvalidMetaChar=class(EParserError);
+                   TState=class(TSyntaxHighlighting.TState)
+                    public
+                     type TKind=
+                           (
+                            WhiteSpace,
+                            CommentLine,
+                            CommentParenStar,
+                            CommentBracket,
+                            Keyword
+                           );
+                    private
+                     fKind:TKind;
+                    published
+                     property Kind:TKind read fKind;
+                   end;
+             private
+              fNFAStates:TpvSizeInt;
+              fDFAStates:TpvSizeInt;
+              fNFA:TNFA;
+              fDFA:TDFA;
+              fAccept:TAccept;
+              fEquivalence:TEquivalence;
+             protected
+              procedure Setup; virtual;
+             public
+              constructor Create(const aParent:TpvTextEditor); override;
+              destructor Destroy; override;
+              procedure Clear;
+              procedure BuildDFA;
+              procedure AddKeyword(const aKeyword:TpvRawByteString;const aAttribute:TpvUInt32);
+              procedure AddRule(const aRule:TpvRawByteString;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
               procedure Update(const aUntilCodePoint:TpvSizeInt); override;
             end;
             TView=class
@@ -2998,12 +3107,12 @@ procedure TpvTextEditor.TGenericSyntaxHighlighting.Update(const aUntilCodePoint:
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
     CodePoint:TpvUInt32;
     CodePointIndex:TpvSizeInt;
-    State:TSyntaxHighlightingState;
-    LastKind,Kind:TGenericSyntaxHighlightingState.TKind;
+    State:TSyntaxHighlighting.TState;
+    LastKind,Kind:TGenericSyntaxHighlighting.TState.TKind;
     OldCount:TpvSizeInt;
 begin
  State:=nil;
- LastKind:=TGenericSyntaxHighlightingState.TKind.WhiteSpace;
+ LastKind:=TGenericSyntaxHighlighting.TState.TKind.WhiteSpace;
  if fCountStates>0 then begin
   if fTruncated then begin
    CodePointIndex:=fStates[fCountStates-1].CodePointIndex;
@@ -3015,7 +3124,7 @@ begin
     FreeAndNil(fStates[fCountStates]);
     if fCountStates>0 then begin
      State:=fStates[fCountStates-1];
-     LastKind:=TGenericSyntaxHighlightingState(State).fKind;
+     LastKind:=TGenericSyntaxHighlighting.TState(State).fKind;
     end else begin
      CodePointIndex:=0;
     end;
@@ -3024,7 +3133,7 @@ begin
    end;
   end else begin
    State:=fStates[fCountStates-1];
-   LastKind:=TGenericSyntaxHighlightingState(State).fKind;
+   LastKind:=TGenericSyntaxHighlighting.TState(State).fKind;
    CodePointIndex:=fStates[fCountStates-1].CodePointIndex+1;
   end;
  end else begin
@@ -3035,30 +3144,30 @@ begin
   for CodePoint in CodePointEnumeratorSource do begin
    case CodePoint of
     0..32:begin
-     Kind:=TGenericSyntaxHighlightingState.TKind.WhiteSpace;
+     Kind:=TGenericSyntaxHighlighting.TState.TKind.WhiteSpace;
     end;
     ord('a')..ord('z'),ord('A')..ord('Z'),ord('_'):begin
      case LastKind of
-      TGenericSyntaxHighlightingState.TKind.Number:begin
-       Kind:=TGenericSyntaxHighlightingState.TKind.Number;
+      TGenericSyntaxHighlighting.TState.TKind.Number:begin
+       Kind:=TGenericSyntaxHighlighting.TState.TKind.Number;
       end;
       else begin
-       Kind:=TGenericSyntaxHighlightingState.TKind.Alpha;
+       Kind:=TGenericSyntaxHighlighting.TState.TKind.Alpha;
       end;
      end;
     end;
     ord('0')..ord('9'):begin
      case LastKind of
-      TGenericSyntaxHighlightingState.TKind.Alpha:begin
-       Kind:=TGenericSyntaxHighlightingState.TKind.Alpha;
+      TGenericSyntaxHighlighting.TState.TKind.Alpha:begin
+       Kind:=TGenericSyntaxHighlighting.TState.TKind.Alpha;
       end;
       else begin
-       Kind:=TGenericSyntaxHighlightingState.TKind.Number;
+       Kind:=TGenericSyntaxHighlighting.TState.TKind.Number;
       end;
      end;
     end;
     else begin
-     Kind:=TGenericSyntaxHighlightingState.TKind.Special;
+     Kind:=TGenericSyntaxHighlighting.TState.TKind.Special;
     end;
    end;
    if LastKind<>Kind then begin
@@ -3066,15 +3175,765 @@ begin
     OldCount:=length(fStates);
     if OldCount<(fCountStates+1) then begin
      SetLength(fStates,(fCountStates+1)*2);
-     FillChar(fStates[OldCount],(length(fStates)-OldCount)*SizeOf(TSyntaxHighlightingState),#0);
+     FillChar(fStates[OldCount],(length(fStates)-OldCount)*SizeOf(TSyntaxHighlighting.TState),#0);
     end;
-    State:=TGenericSyntaxHighlightingState.Create;
+    State:=TGenericSyntaxHighlighting.TState.Create;
     fStates[fCountStates]:=State;
     inc(fCountStates);
-    TGenericSyntaxHighlightingState(State).fCodePointIndex:=CodePointIndex;
-    TGenericSyntaxHighlightingState(State).fAttribute:=TpvUInt32(Kind);
-    TGenericSyntaxHighlightingState(State).fKind:=Kind;
+    TGenericSyntaxHighlighting.TState(State).fCodePointIndex:=CodePointIndex;
+    TGenericSyntaxHighlighting.TState(State).fAttribute:=TpvUInt32(Kind);
+    TGenericSyntaxHighlighting.TState(State).fKind:=Kind;
    end;
+   inc(CodePointIndex);
+  end;
+ end;
+end;
+
+constructor TpvTextEditor.TDFASyntaxHighlighting.TNFASet.Create(const aValues:array of TpvUInt32);
+var Value,MaxValue:TpvUInt32;
+    WordIndex:TpvSizeInt;
+begin
+ MaxValue:=0;
+ for Value in aValues do begin
+  if MaxValue<Value then begin
+   MaxValue:=Value;
+  end;
+ end;
+ SetLength(fSet,(MaxValue+31) shr 5);
+ if length(fSet)>0 then begin
+  FillChar(fSet[0],length(fSet)*SizeOf(TpvUInt32),#0);
+ end;
+ for Value in aValues do begin
+  WordIndex:=Value shr 5;
+  fSet[WordIndex]:=fSet[WordIndex] or (TpvUInt32(1) shl (Value and 31));
+ end;
+end;
+
+class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.Add(const aSet:TNFASet;const aValue:TpvUInt32):TNFASet;
+var WordIndex,OldCount:TpvSizeInt;
+begin
+ result.fSet:=copy(aSet.fSet);
+ WordIndex:=aValue shr 5;
+ OldCount:=length(result.fSet);
+ if OldCount<=WordIndex then begin
+  SetLength(result.fSet,(WordIndex+1)*2);
+  FillChar(result.fSet[OldCount],(length(result.fSet)-OldCount)*SizeOf(TpvUInt32),#0);
+ end;
+ result.fSet[WordIndex]:=result.fSet[WordIndex] or (TpvUInt32(1) shl (aValue and 31));
+end;
+
+class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.Add(const aSet,aOtherSet:TNFASet):TNFASet;
+var Index:TpvSizeInt;
+    WordValue:TpvUInt32;
+begin
+ SetLength(result.fSet,Max(length(aSet.fSet),length(aOtherSet.fSet)));
+ for Index:=0 to length(result.fSet)-1 do begin
+  if Index<length(aSet.fSet) then begin
+   WordValue:=aSet.fSet[Index];
+  end else begin
+   WordValue:=0;
+  end;
+  if Index<length(aOtherSet.fSet) then begin
+   WordValue:=WordValue or aOtherSet.fSet[Index];
+  end;
+  result.fSet[Index]:=WordValue;
+ end;
+end;
+
+class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.Subtract(const aSet:TNFASet;const aValue:TpvUInt32):TNFASet;
+var WordIndex:TpvSizeInt;
+begin
+ result.fSet:=copy(aSet.fSet);
+ WordIndex:=aValue shr 5;
+ if WordIndex<length(result.fSet) then begin
+  result.fSet[WordIndex]:=result.fSet[WordIndex] and not (TpvUInt32(1) shl (aValue and 31));
+ end;
+end;
+
+class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.Subtract(const aSet,aOtherSet:TNFASet):TNFASet;
+var Index:TpvSizeInt;
+begin
+ SetLength(result.fSet,length(aSet.fSet));
+ for Index:=0 to length(result.fSet)-1 do begin
+  result.fSet[Index]:=aSet.fSet[Index] and not aOtherSet.fSet[Index];
+ end;
+end;
+
+class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.Multiply(const aSet,aOtherSet:TNFASet):TNFASet;
+var Index:TpvSizeInt;
+begin
+ SetLength(result.fSet,length(aSet.fSet));
+ for Index:=0 to length(result.fSet)-1 do begin
+  result.fSet[Index]:=aSet.fSet[Index] and aOtherSet.fSet[Index];
+ end;
+end;
+
+class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.LogicalAnd(const aSet,aOtherSet:TNFASet):TNFASet;
+var Index:TpvSizeInt;
+begin
+ SetLength(result.fSet,length(aSet.fSet));
+ for Index:=0 to length(result.fSet)-1 do begin
+  result.fSet[Index]:=aSet.fSet[Index] and aOtherSet.fSet[Index];
+ end;
+end;
+
+class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.LogicalOr(const aSet,aOtherSet:TNFASet):TNFASet;
+var Index:TpvSizeInt;
+    WordValue:TpvUInt32;
+begin
+ SetLength(result.fSet,Max(length(aSet.fSet),length(aOtherSet.fSet)));
+ for Index:=0 to length(result.fSet)-1 do begin
+  if Index<length(aSet.fSet) then begin
+   WordValue:=aSet.fSet[Index];
+  end else begin
+   WordValue:=0;
+  end;
+  if Index<length(aOtherSet.fSet) then begin
+   WordValue:=WordValue or aOtherSet.fSet[Index];
+  end;
+  result.fSet[Index]:=WordValue;
+ end;
+end;
+
+class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.LogicalXor(const aSet,aOtherSet:TNFASet):TNFASet;
+var Index:TpvSizeInt;
+    WordValue:TpvUInt32;
+begin
+ SetLength(result.fSet,Max(length(aSet.fSet),length(aOtherSet.fSet)));
+ for Index:=0 to length(result.fSet)-1 do begin
+  if Index<length(aSet.fSet) then begin
+   WordValue:=aSet.fSet[Index];
+  end else begin
+   WordValue:=0;
+  end;
+  if Index<length(aOtherSet.fSet) then begin
+   WordValue:=WordValue xor aOtherSet.fSet[Index];
+  end;
+  result.fSet[Index]:=WordValue;
+ end;
+end;
+
+class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.BitwiseAnd(const aSet,aOtherSet:TNFASet):TNFASet;
+var Index:TpvSizeInt;
+begin
+ SetLength(result.fSet,length(aSet.fSet));
+ for Index:=0 to length(result.fSet)-1 do begin
+  result.fSet[Index]:=aSet.fSet[Index] and aOtherSet.fSet[Index];
+ end;
+end;
+
+class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.BitwiseOr(const aSet,aOtherSet:TNFASet):TNFASet;
+var Index:TpvSizeInt;
+    WordValue:TpvUInt32;
+begin
+ SetLength(result.fSet,Max(length(aSet.fSet),length(aOtherSet.fSet)));
+ for Index:=0 to length(result.fSet)-1 do begin
+  if Index<length(aSet.fSet) then begin
+   WordValue:=aSet.fSet[Index];
+  end else begin
+   WordValue:=0;
+  end;
+  if Index<length(aOtherSet.fSet) then begin
+   WordValue:=WordValue or aOtherSet.fSet[Index];
+  end;
+  result.fSet[Index]:=WordValue;
+ end;
+end;
+
+class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.BitwiseXor(const aSet,aOtherSet:TNFASet):TNFASet;
+var Index:TpvSizeInt;
+    WordValue:TpvUInt32;
+begin
+ SetLength(result.fSet,Max(length(aSet.fSet),length(aOtherSet.fSet)));
+ for Index:=0 to length(result.fSet)-1 do begin
+  if Index<length(aSet.fSet) then begin
+   WordValue:=aSet.fSet[Index];
+  end else begin
+   WordValue:=0;
+  end;
+  if Index<length(aOtherSet.fSet) then begin
+   WordValue:=WordValue xor aOtherSet.fSet[Index];
+  end;
+  result.fSet[Index]:=WordValue;
+ end;
+end;
+
+class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.In(const aValue:TpvUInt32;const aSet:TNFASet):boolean;
+var WordIndex:TpvSizeInt;
+begin
+ WordIndex:=aValue shr 5;
+ result:=(WordIndex<length(aSet.fSet)) and
+         ((aSet.fSet[WordIndex] and (TpvUInt32(1) shl (aValue and 31)))<>0);
+end;
+
+class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.Equal(const aSet,aOtherSet:TNFASet):boolean;
+var Index:TpvSizeInt;
+    WordValue,OtherWordValue:TpvUInt32;
+begin
+ result:=true;
+ for Index:=0 to Max(length(aSet.fSet),length(aOtherSet.fSet))-1 do begin
+  if Index<length(aSet.fSet) then begin
+   WordValue:=aSet.fSet[Index];
+  end else begin
+   WordValue:=0;
+  end;
+  if Index<length(aOtherSet.fSet) then begin
+   OtherWordValue:=aOtherSet.fSet[Index];
+  end else begin
+   OtherWordValue:=0;
+  end;
+  if WordValue<>OtherWordValue then begin
+   result:=false;
+   exit;
+  end;
+ end;
+end;
+
+class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.NotEqual(const aSet,aOtherSet:TNFASet):boolean;
+var Index:TpvSizeInt;
+    WordValue,OtherWordValue:TpvUInt32;
+begin
+ result:=false;
+ for Index:=0 to Max(length(aSet.fSet),length(aOtherSet.fSet))-1 do begin
+  if Index<length(aSet.fSet) then begin
+   WordValue:=aSet.fSet[Index];
+  end else begin
+   WordValue:=0;
+  end;
+  if Index<length(aOtherSet.fSet) then begin
+   OtherWordValue:=aOtherSet.fSet[Index];
+  end else begin
+   OtherWordValue:=0;
+  end;
+  if WordValue<>OtherWordValue then begin
+   result:=true;
+   exit;
+  end;
+ end;
+end;
+
+constructor TpvTextEditor.TDFASyntaxHighlighting.Create(const aParent:TpvTextEditor);
+begin
+ inherited Create(aParent);
+ fNFAStates:=2;
+ fNFA:=nil;
+ fDFA:=nil;
+ fAccept:=nil;
+ Setup;
+ BuildDFA;
+end;
+
+destructor TpvTextEditor.TDFASyntaxHighlighting.Destroy;
+begin
+ Clear;
+ inherited Destroy;
+end;
+
+procedure TpvTextEditor.TDFASyntaxHighlighting.Clear;
+var NFA:TNFA;
+    DFA:TDFA;
+    Accept:TAccept;
+begin
+ fDFAStates:=0;
+ fNFAStates:=2;
+ while assigned(fNFA) do begin
+  NFA:=fNFA.fNext;
+  fNFA.Free;
+  fNFA:=NFA;
+ end;
+ while assigned(fDFA) do begin
+  DFA:=fDFA.fNext;
+  fDFA.Free;
+  fDFA:=DFA;
+ end;
+ while assigned(fAccept) do begin
+  Accept:=fAccept.fNext;
+  fAccept.Free;
+  fAccept:=Accept;
+ end;
+end;
+
+procedure TpvTextEditor.TDFASyntaxHighlighting.AddKeyword(const aKeyword:TpvRawByteString;const aAttribute:TpvUInt32);
+begin
+
+end;
+
+procedure TpvTextEditor.TDFASyntaxHighlighting.AddRule(const aRule:TpvRawByteString;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
+var IsBegin,IsEnd:boolean;
+ procedure AddNFATransition(const aFrom,aTo:TpvSizeInt;const aSet:TCharSet);
+ var NFA:TNFA;
+     CurrentChar,EquivalenceChar:AnsiChar;
+     Other:array[AnsiChar] of AnsiChar;
+     InSet:TCharSet;
+ begin
+  NFA:=TNFA.Create;
+  NFA.fNext:=fNFA;
+  fNFA:=NFA;
+  NFA.fSet:=aSet;
+  NFA.fIsEmpty:=aSet=[];
+  NFA.fFrom:=aFrom;
+  NFA.fTo:=aTo;
+  if aSet<>[] then begin
+   FillChar(Other,SizeOf(Other),#0);
+   InSet:=[];
+   for CurrentChar:=#0 to #255 do begin
+    EquivalenceChar:=fEquivalence[CurrentChar];
+    if CurrentChar=EquivalenceChar then begin
+     Other[CurrentChar]:=CurrentChar;
+     if CurrentChar in aSet then begin
+      Include(InSet,CurrentChar);
+     end;
+    end else if (not (CurrentChar in aSet)) xor not (EquivalenceChar in InSet) then begin
+     if Other[EquivalenceChar]=EquivalenceChar then begin
+      Other[EquivalenceChar]:=CurrentChar;
+     end;
+     fEquivalence[CurrentChar]:=Other[EquivalenceChar];
+    end;
+   end;
+  end;
+ end;
+ procedure Parse(var aStart,aEnd:TpvSizeInt);
+ const LexSymbolChars=['^','$','|','*','+','?','[',']','-','.','(',')'];
+ var InputText:TpvRawByteString;
+     InputPosition:TpvSizeInt;
+     InputLength:TpvSizeInt;
+  procedure ParseLevel1(var aStart,aEnd:TpvSizeInt);
+   procedure ParseLevel2(var aStart,aEnd:TpvSizeInt);
+    procedure ParseLevel3(var aStart,aEnd:TpvSizeInt);
+     procedure ParseLevel4(var aStart,aEnd:TpvSizeInt);
+     var CharSet:TCharSet;
+         Complement:boolean;
+         CurrentChar,OneEndChar,OtherEndChar:AnsiChar;
+     begin
+      if (InputPosition<=InputLength) and (InputText[InputPosition]='(') then begin
+       inc(InputPosition);
+       ParseLevel1(aStart,aEnd);
+       if (InputPosition<=InputLength) and (InputText[InputPosition]=')') then begin
+        inc(InputPosition);
+       end else begin
+        raise EParserErrorExpectedRightParen.Create('Expected right paren');
+       end;
+      end else if InputPosition<=InputLength then begin
+       CharSet:=[];
+       CurrentChar:=InputText[InputPosition];
+       case CurrentChar of
+        '.':begin
+         CharSet:=[#0..#255];
+        end;
+        '[':begin
+         inc(InputPosition);
+         Complement:=(InputPosition<=InputLength) and (InputText[InputPosition]='^');
+         if Complement then begin
+          inc(InputPosition);
+          CharSet:=[#0..#255];
+         end;
+         if (InputPosition<=InputLength) and (InputText[InputPosition]=']') then begin
+          inc(InputPosition);
+          raise EParserErrorEmptySet.Create('Empty set');
+         end else begin
+          while InputPosition<=InputLength do begin
+           CurrentChar:=InputText[InputPosition];
+           case CurrentChar of
+            ']':begin
+             break;
+            end;
+            else begin
+             if CurrentChar in ([#0..#255]-LexSymbolChars) then begin
+              inc(InputPosition);
+              if (CurrentChar='\') and (InputPosition<=InputLength) then begin
+               CurrentChar:=InputText[InputPosition];
+               inc(InputPosition);
+              end;
+              OneEndChar:=CurrentChar;
+              OtherEndChar:=CurrentChar;
+              if (InputPosition<=InputLength) and (InputText[InputPosition]='-') then begin
+               inc(InputPosition);
+               if InputPosition<=InputLength then begin
+                CurrentChar:=InputText[InputPosition];
+                if CurrentChar in ([#0..#255]-LexSymbolChars) then begin
+                 inc(InputPosition);
+                 if (CurrentChar='\') and (InputPosition<=InputLength) then begin
+                  CurrentChar:=InputText[InputPosition];
+                  inc(InputPosition);
+                 end;
+                 OtherEndChar:=CurrentChar;
+                end else begin
+                 raise EParserErrorInvalidMetaChar.Create('Invalid meta-char');
+                end;
+               end else begin
+                raise EParserErrorUnexpectedEndOfText.Create('Unexpected end of text');
+               end;
+              end;
+              if OneEndChar=OtherEndChar then begin
+               if Complement then begin
+                Exclude(CharSet,OneEndChar);
+               end else begin
+                Include(CharSet,OneEndChar);
+               end;
+              end else if OtherEndChar<OneEndChar then begin
+               if Complement then begin
+                CharSet:=CharSet-[OtherEndChar..OneEndChar];
+               end else begin
+                CharSet:=CharSet+[OtherEndChar..OneEndChar];
+               end;
+              end else begin
+               if Complement then begin
+                CharSet:=CharSet-[OneEndChar..OtherEndChar];
+               end else begin
+                CharSet:=CharSet+[OneEndChar..OtherEndChar];
+               end;
+              end;
+             end else begin
+              raise EParserErrorInvalidMetaChar.Create('Invalid meta-char');
+             end;
+            end;
+           end;
+          end;
+          if (InputPosition<=InputLength) and (InputText[InputPosition]=']') then begin
+           inc(InputPosition);
+          end else begin
+           raise EParserErrorExpectedRightBracket.Create('Expected right bracket');
+          end;
+         end;
+        end;
+        else begin
+         if CurrentChar in (([#0..#255]-LexSymbolChars)+['-']) then begin
+          inc(InputPosition);
+          if (CurrentChar='\') and (InputPosition<=InputLength) then begin
+           CurrentChar:=InputText[InputPosition];
+           inc(InputPosition);
+          end;
+          Include(CharSet,CurrentChar);
+         end else begin
+          raise EParserErrorInvalidMetaChar.Create('Invalid meta-char');
+         end;
+        end;
+       end;
+       if aEnd=0 then begin
+        aEnd:=fNFAStates;
+        inc(fNFAStates);
+       end;
+       if aStart=0 then begin
+        aStart:=fNFAStates;
+        inc(fNFAStates);
+       end;
+       AddNFATransition(aStart,aEnd,CharSet);
+      end;
+     end;
+    var LocalStart,LocalEnd:TpvSizeInt;
+    begin
+     LocalStart:=0;
+     LocalEnd:=0;
+     ParseLevel4(LocalStart,LocalEnd);
+     if InputPosition<=InputLength then begin
+      case InputText[InputPosition] of
+       '*':begin
+        inc(InputPosition);
+        AddNFATransition(LocalStart,LocalEnd,[]);
+        AddNFATransition(LocalEnd,LocalStart,[]);
+       end;
+       '+':begin
+        inc(InputPosition);
+        AddNFATransition(LocalEnd,LocalStart,[]);
+       end;
+       '?':begin
+        inc(InputPosition);
+        AddNFATransition(LocalStart,LocalEnd,[]);
+       end;
+      end;
+     end;
+     if aEnd=0 then begin
+      aEnd:=fNFAStates;
+      inc(fNFAStates);
+      AddNFATransition(LocalEnd,aEnd,[]);
+     end;
+     if aStart=0 then begin
+      aStart:=fNFAStates;
+      inc(fNFAStates);
+      AddNFATransition(aStart,LocalStart,[]);
+     end;
+    end;
+   const AllowedChars=([#0..#255]-LexSymbolChars)+['(','[','-','.'];
+   var LocalStart,LocalEnd:TpvSizeInt;
+   begin
+    LocalEnd:=0;
+    ParseLevel3(aStart,LocalEnd);
+    while (InputPosition<=InputLength) and
+          (InputText[InputPosition] in AllowedChars) do begin
+     LocalStart:=LocalEnd;
+     LocalEnd:=0;
+     ParseLevel3(LocalStart,LocalEnd);
+    end;
+    if aEnd<>0 then begin
+     AddNFATransition(LocalEnd,aEnd,[]);
+    end else begin
+     aEnd:=LocalEnd;
+    end;
+   end;
+  begin
+   ParseLevel2(aStart,aEnd);
+   while (InputPosition<=InputLength) and (InputText[InputPosition]='|') do begin
+    inc(InputPosition);
+    ParseLevel2(aStart,aEnd);
+   end;
+  end;
+ begin
+
+  InputText:=aRule;
+  InputPosition:=1;
+  InputLength:=length(InputText);
+
+  if (InputPosition<=InputLength) and (InputText[InputPosition]='^') then begin
+   IsBegin:=true;
+   inc(InputPosition);
+  end else begin
+   IsBegin:=false;
+  end;
+
+  ParseLevel1(aStart,aEnd);
+
+  if (InputPosition<=InputLength) and (InputText[InputPosition]='$') then begin
+   IsEnd:=true;
+   inc(InputPosition);
+  end else begin
+   IsEnd:=false;
+  end;
+
+  if InputPosition<>InputLength then begin
+   raise EParserErrorExpectedEndOfText.Create('Expected end of text');
+  end;
+
+ end;
+var LocalStart,LocalEnd,OldNFAStates:TpvSizeInt;
+    Accept:TAccept;
+    OldNFA,NFA:TNFA;
+begin
+ LocalStart:=0;
+ LocalEnd:=0;
+ OldNFAStates:=fNFAStates;
+ OldNFA:=fNFA;
+ try
+  Parse(LocalStart,LocalEnd);
+  AddNFATransition(ord(IsBegin) and 1,LocalStart,[]);
+  Accept:=TAccept.Create;
+  Accept.fNext:=fAccept;
+  fAccept:=Accept;
+  Accept.fState:=LocalEnd;
+  Accept.fFlags:=aFlags;
+  if IsEnd then begin
+   Include(Accept.fFlags,TAccept.TFlag.IsEnd);
+  end;
+  Accept.fAttribute:=aAttribute;
+ except
+  fNFAStates:=OldNFAStates;
+  while assigned(fNFA) and (fNFA<>OldNFA) do begin
+   NFA:=fNFA.fNext;
+   fNFA.Free;
+   fNFA:=NFA;
+  end;
+  raise;
+ end;
+end;
+
+procedure TpvTextEditor.TDFASyntaxHighlighting.BuildDFA;
+ procedure ComputeClosure(var aNFASet:TNFASet);
+ var NFA:TNFA;
+     Changed:boolean;
+ begin
+  repeat
+   Changed:=false;
+   NFA:=fNFA;
+   while assigned(NFA) do begin
+    if NFA.fIsEmpty and (NFA.fFrom in aNFASet) and not (NFA.fTo in aNFASet) then begin
+     Changed:=true;
+     aNFASet:=aNFASet+NFA.fTo;
+    end;
+   end;
+  until not Changed;
+ end;
+var SetSize:TpvSizeInt;
+    Tail,Next,Search:TDFA;
+    Destination:TNFASet;
+    CurrentChar:AnsiChar;
+    DestinationEmpty:boolean;
+    NFA:TNFA;
+    Accept:TAccept;
+begin
+
+ Destination:=TNFASet.Create([]);
+
+ fDFAStates:=0;
+
+ Tail:=TDFA.Create;
+ fDFA:=Tail;
+ Tail.fNext:=nil;
+ Tail.fNFASet:=TNFASet.Create([0]);
+ Tail.fNumber:=fDFAStates;
+ inc(fDFAStates);
+ ComputeClosure(Tail.fNFASet);
+
+ Tail.fNext:=TDFA.Create;
+ Tail:=Tail.fNext;
+ Tail.fNFASet:=TNFASet.Create([0,1]);
+ ComputeClosure(Tail.fNFASet);
+
+ Next:=fDFA;
+ while assigned(Next) do begin
+
+  for CurrentChar:=#0 to #255 do begin
+
+   if fEquivalence[CurrentChar]=CurrentChar then begin
+
+    Destination:=TNFASet.Create([]);
+    DestinationEmpty:=true;
+
+    NFA:=fNFA;
+    while assigned(NFA) do begin
+     if (NFA.fFrom in Next.fNFASet) and
+        (not NFA.fIsEmpty) and
+        (CurrentChar in NFA.fSet) then begin
+      Destination:=Destination+NFA.fTo;
+      DestinationEmpty:=false;
+     end;
+     NFA:=NFA.fNext;
+    end;
+
+    ComputeClosure(Destination);
+
+    if DestinationEmpty then begin
+     Search:=nil;
+    end else begin
+     Search:=fDFA;
+     while assigned(Search) and (Search.fNFASet<>Destination) do begin
+      Search:=Search.fNext;
+     end;
+     if not assigned(Search) then begin
+      Tail.fNext:=TDFA.Create;
+      Tail:=Tail.fNext;
+      Search:=Tail;
+      Tail.fNext:=nil;
+      Tail.fNumber:=fDFAStates;
+      inc(fDFAStates);
+      Tail.fNFASet.fSet:=copy(Destination.fSet);
+     end;
+    end;
+
+    Next.fWhereTo[CurrentChar]:=Search;
+
+   end else begin
+
+    Next.fWhereTo[CurrentChar]:=Next.fWhereTo[fEquivalence[CurrentChar]];
+
+   end;
+
+  end;
+
+  Next.fAccept:=nil;
+  Next.fAcceptEnd:=nil;
+
+  Accept:=fAccept;
+  while assigned(Accept) do begin
+   if Accept.fState in Next.fNFASet then begin
+    Next.fAcceptEnd:=Accept;
+    if not (TAccept.TFlag.IsEnd in Accept.fFlags) then begin
+     Next.fAccept:=Accept;
+    end;
+   end;
+   Accept:=Accept.fNext;
+  end;
+
+  Next:=Next.fNext;
+
+ end;
+
+end;
+
+procedure TpvTextEditor.TDFASyntaxHighlighting.Setup;
+begin
+
+end;
+
+procedure TpvTextEditor.TDFASyntaxHighlighting.Update(const aUntilCodePoint:TpvSizeInt);
+var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
+    CodePoint:TpvUInt32;
+    CodePointIndex:TpvSizeInt;
+    State:TSyntaxHighlighting.TState;
+    LastKind,Kind:TDFASyntaxHighlighting.TState.TKind;
+    OldCount:TpvSizeInt;
+begin
+ State:=nil;
+ LastKind:=TDFASyntaxHighlighting.TState.TKind.WhiteSpace;
+ if fCountStates>0 then begin
+  if fTruncated then begin
+   CodePointIndex:=fStates[fCountStates-1].CodePointIndex;
+   if ((CodePointIndex<aUntilCodePoint) or
+       (aUntilCodePoint<0)) and
+      (CodePointIndex<fParent.fRope.fCountCodePoints) then begin
+    fTruncated:=false;
+    dec(fCountStates);
+    FreeAndNil(fStates[fCountStates]);
+    if fCountStates>0 then begin
+     State:=fStates[fCountStates-1];
+     LastKind:=TDFASyntaxHighlighting.TState(State).fKind;
+    end else begin
+     CodePointIndex:=0;
+    end;
+   end else begin
+    CodePointIndex:=fParent.fRope.fCountCodePoints;
+   end;
+  end else begin
+   State:=fStates[fCountStates-1];
+   LastKind:=TDFASyntaxHighlighting.TState(State).fKind;
+   CodePointIndex:=fStates[fCountStates-1].CodePointIndex+1;
+  end;
+ end else begin
+  CodePointIndex:=0;
+ end;
+ if CodePointIndex<fParent.fRope.fCountCodePoints then begin
+  CodePointEnumeratorSource:=fParent.fRope.GetCodePointEnumeratorSource(CodePointIndex,IfThen(aUntilCodePoint<0,aUntilCodePoint,aUntilCodePoint+1));
+  for CodePoint in CodePointEnumeratorSource do begin
+{  case CodePoint of
+    0..32:begin
+     Kind:=TDFASyntaxHighlighting.TState.TKind.WhiteSpace;
+    end;
+    ord('a')..ord('z'),ord('A')..ord('Z'),ord('_'):begin
+     case LastKind of
+      TDFASyntaxHighlighting.TState.TKind.Number:begin
+       Kind:=TDFASyntaxHighlighting.TState.TKind.Number;
+      end;
+      else begin
+       Kind:=TDFASyntaxHighlighting.TState.TKind.Alpha;
+      end;
+     end;
+    end;
+    ord('0')..ord('9'):begin
+     case LastKind of
+      TDFASyntaxHighlighting.TState.TKind.Alpha:begin
+       Kind:=TDFASyntaxHighlighting.TState.TKind.Alpha;
+      end;
+      else begin
+       Kind:=TDFASyntaxHighlighting.TState.TKind.Number;
+      end;
+     end;
+    end;
+    else begin
+     Kind:=TDFASyntaxHighlighting.TState.TKind.Special;
+    end;
+   end;
+   if LastKind<>Kind then begin
+    LastKind:=Kind;
+    OldCount:=length(fStates);
+    if OldCount<(fCountStates+1) then begin
+     SetLength(fStates,(fCountStates+1)*2);
+     FillChar(fStates[OldCount],(length(fStates)-OldCount)*SizeOf(TSyntaxHighlighting.TState),#0);
+    end;
+    State:=TDFASyntaxHighlighting.TState.Create;
+    fStates[fCountStates]:=State;
+    inc(fCountStates);
+    TDFASyntaxHighlighting.TState(State).fCodePointIndex:=CodePointIndex;
+    TDFASyntaxHighlighting.TState(State).fAttribute:=TpvUInt32(Kind);
+    TDFASyntaxHighlighting.TState(State).fKind:=Kind;
+   end;}
    inc(CodePointIndex);
   end;
  end;
