@@ -453,6 +453,7 @@ type TpvTextEditor=class
             end;
             TDFASyntaxHighlighting=class(TSyntaxHighlighting)
              public
+              const KeywordCharSet=['0'..'z'];
               type TCharSet=set of AnsiChar;
                    PCharSet=^TCharSet;
                    TNFA=class
@@ -531,6 +532,19 @@ type TpvTextEditor=class
                    end;
                    PKeyword=^TKeyword;
                    TKeywords=array of TKeyword;
+                   TKeywordCharSet='0'..'z';
+                   TKeywordCharTreeNode=class
+                    public
+                     type TKeywordCharTreeNodes=array[TKeywordCharSet] of TKeywordCharTreeNode;
+                    private
+                     fChildren:TKeywordCharTreeNodes;
+                     fHasChildren:boolean;
+                     fKeyword:boolean;
+                     fAttribute:TpvUInt32;
+                    public
+                     constructor Create; reintroduce;
+                     destructor Destroy; override;
+                   end;
                    TState=class(TSyntaxHighlighting.TState)
                     private
                      fAccept:TAccept;
@@ -542,16 +556,15 @@ type TpvTextEditor=class
               fDFA:TDFA;
               fAccept:TAccept;
               fEquivalence:TEquivalence;
-              fKeywords:TKeywords;
-              fCountKeywords:TpvSizeInt;
+              fKeywordCharRootTreeNode:TKeywordCharTreeNode;
               fCaseInsensitive:boolean;
+              procedure Clear;
+              procedure BuildDFA;
              protected
               procedure Setup; virtual;
              public
               constructor Create(const aParent:TpvTextEditor); override;
               destructor Destroy; override;
-              procedure Clear;
-              procedure BuildDFA;
               procedure AddKeyword(const aKeyword:TpvRawByteString;const aAttribute:TpvUInt32);
               procedure AddKeywords(const aKeywords:array of TpvRawByteString;const aAttribute:TpvUInt32);
               procedure AddRule(const aRule:TpvRawByteString;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
@@ -3438,6 +3451,24 @@ begin
  end;
 end;
 
+constructor TpvTextEditor.TDFASyntaxHighlighting.TKeywordCharTreeNode.Create;
+begin
+ inherited Create;
+ FillChar(fChildren,SizeOf(TKeywordCharTreeNodes),#0);
+ fHasChildren:=false;
+ fKeyword:=false;
+ fAttribute:=TpvTextEditor.TDFASyntaxHighlighting.TAttributes.Unknown;
+end;
+
+destructor TpvTextEditor.TDFASyntaxHighlighting.TKeywordCharTreeNode.Destroy;
+var CurrentChar:AnsiChar;
+begin
+ for CurrentChar:=Low(TKeywordCharTreeNodes) to High(TKeywordCharTreeNodes) do begin
+  FreeAndNil(fChildren[CurrentChar]);
+ end;
+ inherited Destroy;
+end;
+
 constructor TpvTextEditor.TDFASyntaxHighlighting.Create(const aParent:TpvTextEditor);
 var Index,SubIndex:TpvSizeInt;
     Keyword:TKeyword;
@@ -3452,13 +3483,11 @@ begin
 
  fAccept:=nil;
 
- fKeywords:=nil;
-
- fCountKeywords:=0;
-
  fCaseInsensitive:=false;
 
  FillChar(fEquivalence,SizeOf(TEquivalence),#0);
+
+ fKeywordCharRootTreeNode:=TKeywordCharTreeNode.Create;
 
  try
 
@@ -3468,42 +3497,6 @@ begin
 
   BuildDFA;
 
-  if fCaseInsensitive then begin
-   for Index:=0 to fCountKeywords-1 do begin
-    fKeywords[Index].fKeyword:=TpvRawByteString(LowerCase(String(fKeywords[Index].fKeyword)));
-   end;
-  end;
-
-  Index:=0;
-  while (Index+1)<fCountKeywords do begin
-   if fKeywords[Index].fKeyword>fKeywords[Index+1].fKeyword then begin
-    Keyword:=fKeywords[Index];
-    fKeywords[Index]:=fKeywords[Index+1];
-    fKeywords[Index+1]:=Keyword;
-    if Index>0 then begin
-     dec(Index);
-    end else begin
-     inc(Index);
-    end;
-   end else begin
-    inc(Index);
-   end;
-  end;
-
-  Index:=0;
-  while Index<fCountKeywords do begin
-   while ((Index+1)<fCountKeywords) and
-         (fKeywords[Index].fKeyword=fKeywords[Index+1].fKeyword) do begin
-    dec(fCountKeywords);
-    for SubIndex:=Index+1 to fCountKeywords-1 do begin
-     fKeywords[SubIndex]:=fKeywords[SubIndex+1];
-    end;
-   end;
-   inc(Index);
-  end;
-
-  SetLength(fKeywords,fCountKeywords);
-
  end;
 
 end;
@@ -3511,6 +3504,7 @@ end;
 destructor TpvTextEditor.TDFASyntaxHighlighting.Destroy;
 begin
  Clear;
+ FreeAndNil(fKeywordCharRootTreeNode);
  inherited Destroy;
 end;
 
@@ -3519,8 +3513,6 @@ var NFA:TNFA;
     DFA:TDFA;
     Accept:TAccept;
 begin
- fKeywords:=nil;
- fCountKeywords:=0;
  fDFAStates:=0;
  fNFAStates:=2;
  while assigned(fNFA) do begin
@@ -3541,15 +3533,35 @@ begin
 end;
 
 procedure TpvTextEditor.TDFASyntaxHighlighting.AddKeyword(const aKeyword:TpvRawByteString;const aAttribute:TpvUInt32);
-var Keyword:PKeyword;
+var Node:TKeywordCharTreeNode;
+    Index:TpvSizeInt;
+    CurrentChar:ansichar;
 begin
- if length(fKeywords)<=fCountKeywords then begin
-  SetLength(fKeywords,(fCountKeywords+1)*2);
+ Node:=fKeywordCharRootTreeNode;
+ for Index:=1 to length(aKeyword) do begin
+  CurrentChar:=aKeyword[Index];
+  if CurrentChar in KeywordCharSet then begin
+   if fCaseInsensitive and (CurrentChar in ['A'..'Z']) then begin
+    inc(CurrentChar,ord('a')-ord('A'));
+   end;
+   if Node.fHasChildren and assigned(Node.fChildren[CurrentChar]) then begin
+    Node:=Node.fChildren[CurrentChar];
+   end else begin
+    Node.fChildren[CurrentChar]:=TKeywordCharTreeNode.Create;
+    Node.fHasChildren:=true;
+    Node:=Node.fChildren[CurrentChar];
+    Node.fHasChildren:=false;
+    Node.fKeyword:=false;
+    Node.fAttribute:=TpvTextEditor.TDFASyntaxHighlighting.TAttributes.Unknown;
+   end;
+  end else begin
+   break;
+  end;
  end;
- Keyword:=@fKeywords[fCountKeywords];
- inc(fCountKeywords);
- Keyword^.fKeyword:=aKeyword;
- Keyword^.fAttribute:=aAttribute;
+ if assigned(Node) and (Node<>fKeywordCharRootTreeNode) then begin
+  Node.fKeyword:=true;
+  Node.fAttribute:=aAttribute;
+ end;
 end;
 
 procedure TpvTextEditor.TDFASyntaxHighlighting.AddKeywords(const aKeywords:array of TpvRawByteString;const aAttribute:TpvUInt32);
@@ -3973,8 +3985,7 @@ var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
     OldCount:TpvSizeInt;
     Accept,LastAccept:TAccept;
     ParserStates:TParserStates;
-    KeywordString:TpvRawByteString;
-    MinIndex,MaxIndex,MidIndex:TpvSizeInt;
+    KeywordCharTreeNode:TKeywordCharTreeNode;
 begin
 
  if (fCodePointIndex<fParent.fRope.fCountCodePoints) and
@@ -4006,6 +4017,7 @@ begin
 
    if ParserStates[0].NewLine then begin
     ParserStates[0].NewLine:=false;
+    Preprocessor:=TpvUInt32($ffffffff);
     DFA:=fDFA.fNext;
    end else begin
     DFA:=fDFA;
@@ -4060,43 +4072,30 @@ begin
    if assigned(LastAccept) then begin
     Attribute:=LastAccept.fAttribute;
     if TAccept.TFlag.IsKeyword in LastAccept.fFlags then begin
-     KeywordString:='';
      ParserStates[3]:=ParserStates[0];
+     KeywordCharTreeNode:=fKeywordCharRootTreeNode;
      while ParserStates[3].Valid and
            (ParserStates[3].CodePointIndex<ParserStates[2].CodePointIndex) do begin
       CodePoint:=ParserStates[3].CodePointEnumerator.Current;
-      if fCaseInsensitive then begin
-       if (CodePoint>=ord('A')) and (CodePoint<=ord('Z')) then begin
+      if (CodePoint>=ord(Low(TKeywordCharSet))) and (CodePoint<=ord(High(TKeywordCharSet))) then begin
+       if fCaseInsensitive and ((CodePoint>=ord('A')) and (CodePoint<=ord('Z'))) then begin
         inc(CodePoint,ord('a')-ord('A'));
        end;
-      end;
-      if CodePoint<128 then begin
-       KeywordString:=KeywordString+AnsiChar(TpvUInt8(CodePoint));
-      end else begin
-       KeywordString:=KeywordString+TpvTextEditor.TUTF8Utils.UTF32CharToUTF8(CodePoint);
-      end;
-      ParserStates[3].Valid:=ParserStates[3].CodePointEnumerator.MoveNext;
-      inc(ParserStates[3].CodePointIndex);
-     end;
-     if length(KeywordString)>0 then begin
-      MinIndex:=0;
-      MaxIndex:=fCountKeywords-1;
-      while MinIndex<MaxIndex do begin
-       MidIndex:=MinIndex+((MaxIndex-MinIndex) shr 1);
-       if KeywordString<fKeywords[MidIndex].fKeyword then begin
-        MaxIndex:=MidIndex-1;
-       end else if KeywordString>=fKeywords[MidIndex+1].fKeyword then begin
-        MinIndex:=MidIndex+1;
-       end else begin
-        MinIndex:=MidIndex;
-        break;
+       if KeywordCharTreeNode.fHasChildren and
+          assigned(KeywordCharTreeNode.fChildren[AnsiChar(TpvUInt8(CodePoint))]) then begin
+        KeywordCharTreeNode:=KeywordCharTreeNode.fChildren[AnsiChar(TpvUInt8(CodePoint))];
+        ParserStates[3].Valid:=ParserStates[3].CodePointEnumerator.MoveNext;
+        inc(ParserStates[3].CodePointIndex);
+        continue;
        end;
       end;
-      if (MinIndex>=0) and
-         (MinIndex<fCountKeywords) and
-         (KeywordString=fKeywords[MinIndex].fKeyword) then begin
-       Attribute:=fKeywords[MinIndex].fAttribute;
-      end;
+      break;
+     end;
+     if (assigned(KeywordCharTreeNode) and
+         KeywordCharTreeNode.fKeyword) and not
+        (ParserStates[3].Valid and
+         (ParserStates[3].CodePointIndex<ParserStates[2].CodePointIndex)) then begin
+      Attribute:=KeywordCharTreeNode.fAttribute;
      end;
     end;
     if TAccept.TFlag.IsPreprocessor in LastAccept.fFlags then begin
