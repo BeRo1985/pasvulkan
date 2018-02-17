@@ -450,7 +450,6 @@ type TpvTextEditor=class
                      fFrom:TpvUInt32;
                      fTo:TpvUInt32;
                      fSet:TCharSet;
-                     fIsEmpty:boolean;
                    end;
                    TNFAArray=array of TNFA;
                    TNFASetArray=array of TpvUInt32;
@@ -3211,7 +3210,7 @@ begin
    MaxValue:=Value;
   end;
  end;
- SetLength(fSet,(MaxValue+31) shr 5);
+ SetLength(fSet,(MaxValue+32) shr 5);
  if length(fSet)>0 then begin
   FillChar(fSet[0],length(fSet)*SizeOf(TpvUInt32),#0);
  end;
@@ -3444,6 +3443,8 @@ begin
 
  fCaseInsensitive:=false;
 
+ FillChar(fEquivalence,SizeOf(TEquivalence),#0);
+
  try
 
   Setup;
@@ -3548,7 +3549,6 @@ var IsBegin,IsEnd:boolean;
   NFA.fNext:=fNFA;
   fNFA:=NFA;
   NFA.fSet:=aSet;
-  NFA.fIsEmpty:=aSet=[];
   NFA.fFrom:=aFrom;
   NFA.fTo:=aTo;
   if aSet<>[] then begin
@@ -3596,6 +3596,7 @@ var IsBegin,IsEnd:boolean;
        CurrentChar:=InputText[InputPosition];
        case CurrentChar of
         '.':begin
+         inc(InputPosition);
          CharSet:=[#0..#255];
         end;
         '[':begin
@@ -3687,12 +3688,12 @@ var IsBegin,IsEnd:boolean;
          end;
         end;
        end;
-       if aEnd=0 then begin
-        aEnd:=fNFAStates;
-        inc(fNFAStates);
-       end;
        if aStart=0 then begin
         aStart:=fNFAStates;
+        inc(fNFAStates);
+       end;
+       if aEnd=0 then begin
+        aEnd:=fNFAStates;
         inc(fNFAStates);
        end;
        AddNFATransition(aStart,aEnd,CharSet);
@@ -3777,7 +3778,7 @@ var IsBegin,IsEnd:boolean;
    IsEnd:=false;
   end;
 
-  if InputPosition<>InputLength then begin
+  if InputPosition<=InputLength then begin
    raise EParserErrorExpectedEndOfText.Create('Expected end of text');
   end;
 
@@ -3822,10 +3823,11 @@ procedure TpvTextEditor.TDFASyntaxHighlighting.BuildDFA;
    Changed:=false;
    NFA:=fNFA;
    while assigned(NFA) do begin
-    if NFA.fIsEmpty and (NFA.fFrom in aNFASet) and not (NFA.fTo in aNFASet) then begin
+    if (NFA.fSet=[]) and (NFA.fFrom in aNFASet) and not (NFA.fTo in aNFASet) then begin
      Changed:=true;
      aNFASet:=aNFASet+NFA.fTo;
     end;
+    NFA:=NFA.fNext;
    end;
   until not Changed;
  end;
@@ -3852,7 +3854,10 @@ begin
 
  Tail.fNext:=TDFA.Create;
  Tail:=Tail.fNext;
+ Tail.fNext:=nil;
  Tail.fNFASet:=TNFASet.Create([0,1]);
+ Tail.fNumber:=fDFAStates;
+ inc(fDFAStates);
  ComputeClosure(Tail.fNFASet);
 
  Next:=fDFA;
@@ -3868,7 +3873,6 @@ begin
     NFA:=fNFA;
     while assigned(NFA) do begin
      if (NFA.fFrom in Next.fNFASet) and
-        (not NFA.fIsEmpty) and
         (CurrentChar in NFA.fSet) then begin
       Destination:=Destination+NFA.fTo;
       DestinationEmpty:=false;
@@ -3932,20 +3936,22 @@ begin
 end;
 
 procedure TpvTextEditor.TDFASyntaxHighlighting.Update(const aUntilCodePoint:TpvSizeInt);
+type TParserState=record
+      CodePointEnumerator:TpvTextEditor.TRope.TCodePointEnumerator;
+      CodePointIndex:TpvSizeInt;
+      CodePoint:TpvUInt32;
+      Valid:boolean;
+      NewLine:boolean;
+     end;
+     TParserStates=array[0..2] of TParserState;
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
-    CodePointEnumerator,WorkCodePointEnumerator:TpvTextEditor.TRope.TCodePointEnumerator;
     CodePoint,Attribute,LastAttribute:TpvUInt32;
-    CodePointIndex,WorkCodePointIndex,LastAcceptPosition,
-    CurrentStringPosition,CurrentStringLength,
-    LineIndex,ColumnIndex:TpvSizeInt;
+    LastAcceptPosition,CodePointIndex:TpvSizeInt;
     State:TSyntaxHighlighting.TState;
     DFA:TDFA;
     OldCount:TpvSizeInt;
-    CurrentString:TpvRawByteString;
-    CurrentChar:AnsiChar;
     Accept,LastAccept,LastStateAccept:TAccept;
-    CodePointEnumeratorMoveNext,WorkCodePointEnumeratorMoveNext,
-    IsBegin,WorkNewLine:boolean;
+    ParserStates:TParserStates;
 begin
 
  State:=nil;
@@ -3986,61 +3992,58 @@ begin
 
   CodePointEnumeratorSource:=fParent.fRope.GetCodePointEnumeratorSource(CodePointIndex,IfThen(aUntilCodePoint<0,aUntilCodePoint,aUntilCodePoint+1));
 
-  CodePointEnumerator:=CodePointEnumeratorSource.GetEnumerator;
+  ParserStates[0].CodePointIndex:=CodePointIndex;
 
-  CodePointEnumeratorMoveNext:=CodePointEnumerator.MoveNext;
+  ParserStates[0].CodePointEnumerator:=CodePointEnumeratorSource.GetEnumerator;
 
-  IsBegin:=(CodePointIndex=0) or
-           (fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(fParent.fLineCacheMap.GetCodePointIndexFromLineIndex(CodePointIndex))=CodePointIndex);
+  ParserStates[0].Valid:=ParserStates[0].CodePointEnumerator.MoveNext;
 
-  while CodePointEnumeratorMoveNext do begin
+  ParserStates[0].NewLine:=(ParserStates[0].CodePointIndex=0) or
+                           (fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(fParent.fLineCacheMap.GetCodePointIndexFromLineIndex(ParserStates[0].CodePointIndex))=ParserStates[0].CodePointIndex);
 
-   if IsBegin then begin
-    IsBegin:=false;
+  while  ParserStates[0].Valid do begin
+
+   if ParserStates[0].NewLine then begin
+    ParserStates[0].NewLine:=false;
     DFA:=fDFA.fNext;
    end else begin
     DFA:=fDFA;
    end;
 
-   WorkCodePointEnumeratorMoveNext:=CodePointEnumeratorMoveNext;
-   WorkCodePointEnumerator:=CodePointEnumerator;
-   WorkCodePointIndex:=CodePointIndex;
-   WorkNewLine:=false;
+   DFA:=fDFA.fNext;
+
+   ParserStates[1]:=ParserStates[0];
 
    LastAccept:=nil;
    LastAcceptPosition:=-1;
 
-   while WorkCodePointEnumeratorMoveNext do begin
+   while ParserStates[1].Valid do begin
 
-    CodePoint:=WorkCodePointEnumerator.GetCurrent;
+    CodePoint:=ParserStates[1].CodePointEnumerator.Current;
 
-    WorkCodePointEnumeratorMoveNext:=WorkCodePointEnumerator.MoveNext;
+    ParserStates[1].Valid:=ParserStates[1].CodePointEnumerator.MoveNext;
 
-    inc(WorkCodePointIndex);
+    inc(ParserStates[1].CodePointIndex);
 
-    WorkNewLine:=CodePoint in [10,13];
+    ParserStates[1].NewLine:=CodePoint in [10,13];
 
     if CodePoint<128 then begin
-     CurrentChar:=AnsiChar(TpvUInt8(CodePoint));
+     DFA:=DFA.fWhereTo[AnsiChar(TpvUInt8(CodePoint))];
     end else begin
-     CurrentChar:=#128;
+     DFA:=DFA.fWhereTo[#128];
     end;
-
-    DFA:=DFA.fWhereTo[CurrentChar];
 
     if not assigned(DFA) then begin
      if not assigned(LastAccept) then begin
-      CodePointEnumeratorMoveNext:=CodePointEnumerator.MoveNext;
-      inc(CodePointIndex);
-      WorkCodePointEnumeratorMoveNext:=CodePointEnumeratorMoveNext;
-      WorkCodePointEnumerator:=CodePointEnumerator;
-      WorkCodePointIndex:=CodePointIndex;
+      ParserStates[1]:=ParserStates[0];
+      ParserStates[1].Valid:=ParserStates[1].CodePointEnumerator.MoveNext;
+      inc(ParserStates[1].CodePointIndex);
      end;
      break;
     end;
 
-    if (CodePointIndex=(fParent.fRope.fCountCodePoints-1)) or
-       WorkNewLine then begin
+    if (ParserStates[1].CodePointIndex=(fParent.fRope.fCountCodePoints-1)) or
+       ParserStates[1].NewLine then begin
      Accept:=DFA.fAcceptEnd;
     end else begin
      Accept:=DFA.fAccept;
@@ -4049,6 +4052,7 @@ begin
     if assigned(Accept) then begin
      LastAccept:=Accept;
      LastAcceptPosition:=CodePointIndex;
+     ParserStates[2]:=ParserStates[1];
      if TAccept.TFlag.IsQuick in Accept.fFlags then begin
       break;
      end;
@@ -4074,20 +4078,18 @@ begin
     State:=TGenericSyntaxHighlighting.TState.Create;
     fStates[fCountStates]:=State;
     inc(fCountStates);
-    TDFASyntaxHighlighting.TState(State).fCodePointIndex:=CodePointIndex;
+    TDFASyntaxHighlighting.TState(State).fCodePointIndex:=ParserStates[0].CodePointIndex;
     TDFASyntaxHighlighting.TState(State).fAttribute:=Attribute;
     TDFASyntaxHighlighting.TState(State).fAccept:=LastStateAccept;
    end;
 
    if assigned(LastAccept) then begin
-    IsBegin:=WorkNewLine;
-    CodePointEnumeratorMoveNext:=WorkCodePointEnumeratorMoveNext;
-    CodePointEnumerator:=WorkCodePointEnumerator;
-    CodePointIndex:=WorkCodePointIndex;
+    ParserStates[0]:=ParserStates[2];
    end else begin
-    IsBegin:=CodePointEnumerator.GetCurrent in [10,13];
-    CodePointEnumeratorMoveNext:=CodePointEnumerator.MoveNext;
-    inc(CodePointIndex);
+    ParserStates[0]:=ParserStates[1];
+{   ParserStates[0].NewLine:=ParserStates[0].CodePointEnumerator.GetCurrent in [10,13];
+    ParserStates[0].Valid:=ParserStates[0].CodePointEnumerator.MoveNext;
+    inc(ParserStates[0].CodePointIndex);}
    end;
 
   end;
@@ -4098,12 +4100,15 @@ end;
 
 procedure TpvTextEditor.TPascalSyntaxHighlighting.Setup;
 begin
- AddRule('//[^'#10#13']*$',[],1);
- AddRule('\(\*.*\*\)||\{.*\}',[],1);
+ AddRule('\$[0-9A-Fa-f]+',[],3);
+ AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],3);
+// AddRule('[0-9]+',[],3);
+//AddRule('[0-9]+.[0-9]+([eE][\-\+][0-9]+)?',[],3);
+(*AddRule('//[^'#10#13']*$',[],1);
+ AddRule('\(\*.*\*\)|\{.*\}',[],1);
  AddRule('[A-Za-z][A-Za-z0-9_]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],2);
  AddRule('[0-9]+',[],3);
- AddRule('\$[0-9a-fA-F]+',[],3);
- AddRule('\-|\+|\*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],4);
+ AddRule('\-|\+|\*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],4);*)
 end;
 
 constructor TpvTextEditor.TView.Create(const aParent:TpvTextEditor);
