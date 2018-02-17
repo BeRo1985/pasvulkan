@@ -3965,7 +3965,7 @@ type TParserState=record
       Valid:boolean;
       NewLine:boolean;
      end;
-     TParserStates=array[0..2] of TParserState;
+     TParserStates=array[0..3] of TParserState;
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
     CodePoint,Attribute:TpvUInt32;
     LastState,State:TDFASyntaxHighlighting.TState;
@@ -3973,6 +3973,8 @@ var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
     OldCount:TpvSizeInt;
     Accept,LastAccept:TAccept;
     ParserStates:TParserStates;
+    KeywordString:TpvRawByteString;
+    MinIndex,MaxIndex,MidIndex:TpvSizeInt;
 begin
 
  if (fCodePointIndex<fParent.fRope.fCountCodePoints) and
@@ -4054,6 +4056,40 @@ begin
 
    if assigned(LastAccept) then begin
     Attribute:=LastAccept.fAttribute;
+    if TAccept.TFlag.IsKeyword in LastAccept.fFlags then begin
+     KeywordString:='';
+     ParserStates[3]:=ParserStates[0];
+     while ParserStates[3].Valid and
+           (ParserStates[3].CodePointIndex<ParserStates[2].CodePointIndex) do begin
+      CodePoint:=ParserStates[3].CodePointEnumerator.Current;
+      KeywordString:=KeywordString+TpvTextEditor.TUTF8Utils.UTF32CharToUTF8(CodePoint);
+      ParserStates[3].Valid:=ParserStates[3].CodePointEnumerator.MoveNext;
+      inc(ParserStates[3].CodePointIndex);
+     end;
+     if length(KeywordString)>0 then begin
+      if fCaseInsensitive then begin
+       KeywordString:=LowerCase(KeywordString);
+      end;
+      MinIndex:=0;
+      MaxIndex:=fCountKeywords-1;
+      while MinIndex<MaxIndex do begin
+       MidIndex:=MinIndex+((MaxIndex-MinIndex) shr 1);
+       if KeywordString<fKeywords[MidIndex].fKeyword then begin
+        MaxIndex:=MidIndex-1;
+       end else if KeywordString>=fKeywords[MidIndex+1].fKeyword then begin
+        MinIndex:=MidIndex+1;
+       end else begin
+        MinIndex:=MidIndex;
+        break;
+       end;
+      end;
+      if (MinIndex>=0) and
+         (MinIndex<fCountKeywords) and
+         (KeywordString=fKeywords[MinIndex].fKeyword) then begin
+       Attribute:=fKeywords[MinIndex].fAttribute;
+      end;
+     end;
+    end;
    end else begin
     Attribute:=0;
    end;
@@ -4120,7 +4156,7 @@ begin
  AddRule('\$[0-9A-Fa-f]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[A-Za-z][A-Za-z0-9_]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
- AddRule('\-|\+|\*|\^|\[|\]|\(|\)|\,|\.\.|\.|\;|\:|\:\=|\=|\<|\>|\<\>|\>\=|\<\=|\}',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Symbol);
+ AddRule('\-|\+|\*|\^|\[|\]|\(|\)|\,|\.\.|\.|\;|\:|\:\=|\=|\<|\>|\<\>|\>\=|\<\=|\}|\@',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Symbol);
  AddRule('\''.*\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\''.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
 end;
