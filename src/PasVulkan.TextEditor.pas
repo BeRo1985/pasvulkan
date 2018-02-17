@@ -3724,13 +3724,13 @@ var IsBegin,IsEnd:boolean;
      if aEnd=0 then begin
       aEnd:=fNFAStates;
       inc(fNFAStates);
-      AddNFATransition(LocalEnd,aEnd,[]);
      end;
+     AddNFATransition(LocalEnd,aEnd,[]);
      if aStart=0 then begin
       aStart:=fNFAStates;
       inc(fNFAStates);
-      AddNFATransition(aStart,LocalStart,[]);
      end;
+     AddNFATransition(aStart,LocalStart,[]);
     end;
    const AllowedChars=([#0..#255]-LexSymbolChars)+['(','[','-','.'];
    var LocalStart,LocalEnd:TpvSizeInt;
@@ -4100,7 +4100,7 @@ end;
 
 procedure TpvTextEditor.TPascalSyntaxHighlighting.Setup;
 begin
- AddRule('\$[0-9A-Fa-f]+',[],3);
+ AddRule('\$[0-9A-Fa-f]*',[],3);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],3);
 // AddRule('[0-9]+',[],3);
 //AddRule('[0-9]+.[0-9]+([eE][\-\+][0-9]+)?',[],3);
