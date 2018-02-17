@@ -434,20 +434,7 @@ type TpvTextEditor=class
             end;
             TGenericSyntaxHighlighting=class(TSyntaxHighlighting)
              public
-              type TState=class(TSyntaxHighlighting.TState)
-                    public
-                     type TKind=
-                           (
-                            WhiteSpace=TSyntaxHighlighting.TAttributes.WhiteSpace,
-                            Special=TSyntaxHighlighting.TAttributes.Symbol,
-                            Number=TSyntaxHighlighting.TAttributes.Number,
-                            Alpha=TSyntaxHighlighting.TAttributes.Identifier
-                           );
-                    private
-                     fKind:TKind;
-                    published
-                     property Kind:TKind read fKind;
-                   end;
+              type TState=class(TSyntaxHighlighting.TState);
              public
               procedure Update(const aUntilCodePoint:TpvSizeInt); override;
             end;
@@ -475,9 +462,6 @@ type TpvTextEditor=class
                      class operator Subtract(const aSet:TNFASet;const aValue:TpvUInt32):TNFASet;
                      class operator Subtract(const aSet,aOtherSet:TNFASet):TNFASet;
                      class operator Multiply(const aSet,aOtherSet:TNFASet):TNFASet;
-                     class operator LogicalAnd(const aSet,aOtherSet:TNFASet):TNFASet;
-                     class operator LogicalOr(const aSet,aOtherSet:TNFASet):TNFASet;
-                     class operator LogicalXor(const aSet,aOtherSet:TNFASet):TNFASet;
                      class operator BitwiseAnd(const aSet,aOtherSet:TNFASet):TNFASet;
                      class operator BitwiseOr(const aSet,aOtherSet:TNFASet):TNFASet;
                      class operator BitwiseXor(const aSet,aOtherSet:TNFASet):TNFASet;
@@ -3168,49 +3152,49 @@ procedure TpvTextEditor.TGenericSyntaxHighlighting.Update(const aUntilCodePoint:
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
     CodePoint:TpvUInt32;
     State:TSyntaxHighlighting.TState;
-    LastKind,Kind:TGenericSyntaxHighlighting.TState.TKind;
+    LastAttribute,Attribute:TpvUInt32;
     OldCount:TpvSizeInt;
 begin
  if fCodePointIndex<fParent.fRope.fCountCodePoints then begin
   if fCountStates>0 then begin
    State:=fStates[fCountStates-1];
-   LastKind:=TGenericSyntaxHighlighting.TState(State).fKind;
+   LastAttribute:=TGenericSyntaxHighlighting.TState(State).fAttribute;
   end else begin
    State:=nil;
-   LastKind:=TGenericSyntaxHighlighting.TState.TKind.WhiteSpace;
+   LastAttribute:=TSyntaxHighlighting.TAttributes.Unknown;
   end;
   CodePointEnumeratorSource:=fParent.fRope.GetCodePointEnumeratorSource(fCodePointIndex,IfThen(aUntilCodePoint<0,aUntilCodePoint,aUntilCodePoint+1));
   for CodePoint in CodePointEnumeratorSource do begin
    case CodePoint of
     0..32:begin
-     Kind:=TGenericSyntaxHighlighting.TState.TKind.WhiteSpace;
+     Attribute:=TSyntaxHighlighting.TAttributes.WhiteSpace;
     end;
     ord('a')..ord('z'),ord('A')..ord('Z'),ord('_'):begin
-     case LastKind of
-      TGenericSyntaxHighlighting.TState.TKind.Number:begin
-       Kind:=TGenericSyntaxHighlighting.TState.TKind.Number;
+     case LastAttribute of
+      TSyntaxHighlighting.TAttributes.Number:begin
+       Attribute:=TSyntaxHighlighting.TAttributes.Number;
       end;
       else begin
-       Kind:=TGenericSyntaxHighlighting.TState.TKind.Alpha;
+       Attribute:=TSyntaxHighlighting.TAttributes.Identifier;
       end;
      end;
     end;
     ord('0')..ord('9'):begin
-     case LastKind of
-      TGenericSyntaxHighlighting.TState.TKind.Alpha:begin
-       Kind:=TGenericSyntaxHighlighting.TState.TKind.Alpha;
+     case LastAttribute of
+      TSyntaxHighlighting.TAttributes.Identifier:begin
+       Attribute:=TSyntaxHighlighting.TAttributes.Identifier;
       end;
       else begin
-       Kind:=TGenericSyntaxHighlighting.TState.TKind.Number;
+       Attribute:=TSyntaxHighlighting.TAttributes.Number;
       end;
      end;
     end;
     else begin
-     Kind:=TGenericSyntaxHighlighting.TState.TKind.Special;
+     Attribute:=TSyntaxHighlighting.TAttributes.Symbol;
     end;
    end;
-   if LastKind<>Kind then begin
-    LastKind:=Kind;
+   if LastAttribute<>Attribute then begin
+    LastAttribute:=Attribute;
     OldCount:=length(fStates);
     if OldCount<(fCountStates+1) then begin
      SetLength(fStates,(fCountStates+1)*2);
@@ -3220,8 +3204,7 @@ begin
     fStates[fCountStates]:=State;
     inc(fCountStates);
     TGenericSyntaxHighlighting.TState(State).fCodePointIndex:=fCodePointIndex;
-    TGenericSyntaxHighlighting.TState(State).fAttribute:=TpvUInt32(Kind);
-    TGenericSyntaxHighlighting.TState(State).fKind:=Kind;
+    TGenericSyntaxHighlighting.TState(State).fAttribute:=Attribute;
    end;
    inc(fCodePointIndex);
   end;
@@ -3304,51 +3287,6 @@ begin
  SetLength(result.fSet,length(aSet.fSet));
  for Index:=0 to length(result.fSet)-1 do begin
   result.fSet[Index]:=aSet.fSet[Index] and aOtherSet.fSet[Index];
- end;
-end;
-
-class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.LogicalAnd(const aSet,aOtherSet:TNFASet):TNFASet;
-var Index:TpvSizeInt;
-begin
- SetLength(result.fSet,length(aSet.fSet));
- for Index:=0 to length(result.fSet)-1 do begin
-  result.fSet[Index]:=aSet.fSet[Index] and aOtherSet.fSet[Index];
- end;
-end;
-
-class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.LogicalOr(const aSet,aOtherSet:TNFASet):TNFASet;
-var Index:TpvSizeInt;
-    WordValue:TpvUInt32;
-begin
- SetLength(result.fSet,Max(length(aSet.fSet),length(aOtherSet.fSet)));
- for Index:=0 to length(result.fSet)-1 do begin
-  if Index<length(aSet.fSet) then begin
-   WordValue:=aSet.fSet[Index];
-  end else begin
-   WordValue:=0;
-  end;
-  if Index<length(aOtherSet.fSet) then begin
-   WordValue:=WordValue or aOtherSet.fSet[Index];
-  end;
-  result.fSet[Index]:=WordValue;
- end;
-end;
-
-class operator TpvTextEditor.TDFASyntaxHighlighting.TNFASet.LogicalXor(const aSet,aOtherSet:TNFASet):TNFASet;
-var Index:TpvSizeInt;
-    WordValue:TpvUInt32;
-begin
- SetLength(result.fSet,Max(length(aSet.fSet),length(aOtherSet.fSet)));
- for Index:=0 to length(result.fSet)-1 do begin
-  if Index<length(aSet.fSet) then begin
-   WordValue:=aSet.fSet[Index];
-  end else begin
-   WordValue:=0;
-  end;
-  if Index<length(aOtherSet.fSet) then begin
-   WordValue:=WordValue xor aOtherSet.fSet[Index];
-  end;
-  result.fSet[Index]:=WordValue;
  end;
 end;
 
@@ -3470,8 +3408,6 @@ begin
 end;
 
 constructor TpvTextEditor.TDFASyntaxHighlighting.Create(const aParent:TpvTextEditor);
-var Index,SubIndex:TpvSizeInt;
-    Keyword:TKeyword;
 begin
  inherited Create(aParent);
 
@@ -3866,8 +3802,7 @@ procedure TpvTextEditor.TDFASyntaxHighlighting.BuildDFA;
    end;
   until not Changed;
  end;
-var SetSize:TpvSizeInt;
-    Tail,Next,Search:TDFA;
+var Tail,Next,Search:TDFA;
     Destination:TNFASet;
     CurrentChar:AnsiChar;
     DestinationEmpty:boolean;
@@ -4077,8 +4012,8 @@ begin
      while ParserStates[3].Valid and
            (ParserStates[3].CodePointIndex<ParserStates[2].CodePointIndex) do begin
       CodePoint:=ParserStates[3].CodePointEnumerator.Current;
-      if (CodePoint>=ord(Low(TKeywordCharSet))) and (CodePoint<=ord(High(TKeywordCharSet))) then begin
-       if fCaseInsensitive and ((CodePoint>=ord('A')) and (CodePoint<=ord('Z'))) then begin
+      if (CodePoint>=TpvUInt32(ord(Low(TKeywordCharSet)))) and (CodePoint<=TpvUInt32(ord(High(TKeywordCharSet)))) then begin
+       if fCaseInsensitive and ((CodePoint>=TpvUInt32(ord('A'))) and (CodePoint<=TpvUInt32(ord('Z')))) then begin
         inc(CodePoint,ord('a')-ord('A'));
        end;
        if KeywordCharTreeNode.fHasChildren and
@@ -4597,7 +4532,7 @@ begin
 end;
 
 function TpvTextEditor.TView.GetMarkedRangeText:TpvUTF8String;
-var StartCodePointIndex,EndCodePointIndex,Count:TpvSizeInt;
+var StartCodePointIndex,EndCodePointIndex:TpvSizeInt;
 begin
  if HasMarkedRange then begin
   StartCodePointIndex:=Min(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
