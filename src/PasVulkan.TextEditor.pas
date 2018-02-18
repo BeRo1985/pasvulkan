@@ -4274,7 +4274,7 @@ end;
 
 procedure TpvTextEditor.TCSyntaxHighlighting.Setup;
 begin
- fCaseInsensitive:=true;
+ fCaseInsensitive:=false;
  AddKeywords(['_Alignas','_Alignof','_Atomic','_Bool','_Complex','_Generic','_Imaginary',
               '_Noreturn','_Static_assert','_Thread_local','auto','break','case','char',
               'const','continue','default','do','double','else','enum','extern','float',
@@ -4301,7 +4301,7 @@ end;
 
 procedure TpvTextEditor.TCPPSyntaxHighlighting.Setup;
 begin
- fCaseInsensitive:=true;
+ fCaseInsensitive:=false;
  AddKeywords(['__asm','__automated','__cdecl','__classid','__closure','__declspec',
               '__dispid','__except','__export','__fastcall','__finally','__import',
               '__int16','__int32','__int64','__int8','__pascal','__property',
@@ -4336,7 +4336,7 @@ end;
 
 procedure TpvTextEditor.TJavaSyntaxHighlighting.Setup;
 begin
- fCaseInsensitive:=true;
+ fCaseInsensitive:=false;
  AddKeywords(['abstract','assert','boolean','break','byte','case','catch','char',
               'class','const','continue','default','do','double','else','enum',
               'extends','false','final','finally','float','for','goto','if',
@@ -4363,7 +4363,7 @@ end;
 
 procedure TpvTextEditor.TGLSLSyntaxHighlighting.Setup;
 begin
- fCaseInsensitive:=true;
+ fCaseInsensitive:=false;
  AddKeywords(['and_op','or_op','xor_op','mul_assign','div_assign','add_assign',
               'atomic_uint','break','continue','do','else','for','if','discard',
               'return','switch','case','default','subroutine','bvec2','bvec3',
