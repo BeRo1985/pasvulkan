@@ -202,7 +202,10 @@ begin
      TpvTextEditor.TSyntaxHighlighting.TAttributes.String_:begin
       Console.TextColor(TConsole.TColor.LightCyan);
      end;
-     TpvTextEditor.TSyntaxHighlighting.TAttributes.Symbol:begin
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator:begin
+      Console.TextColor(TConsole.TColor.LightGreen);
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter:begin
       Console.TextColor(TConsole.TColor.LightGreen);
      end;
      TpvTextEditor.TSyntaxHighlighting.TAttributes.Number:begin

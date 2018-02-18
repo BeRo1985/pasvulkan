@@ -400,12 +400,17 @@ type TpvTextEditor=class
                     public
                      const Unknown=0;
                            WhiteSpace=1;
-                           Comment=2;
-                           Keyword=3;
-                           Identifier=4;
-                           Number=5;
-                           Symbol=6;
-                           String_=7;
+                           Preprocessor=2;
+                           Comment=3;
+                           Keyword=4;
+                           Type_=5;
+                           Builtin=6;
+                           Identifier=7;
+                           Number=8;
+                           Symbol=9;
+                           String_=10;
+                           Delimiter=11;
+                           Operator=12;
                    end;
                    TState=class
                     private
@@ -4136,12 +4141,13 @@ begin
  AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\(\*.*\*\)|\{.*\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\(\*.*|\{.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
+ AddRule('//.*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment); // or alternatively '//[^'#10#13']*['#10#13']?'
  AddRule('\#(\$[0-9A-Fa-f]*|[0-9]*)',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\$[0-9A-Fa-f]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[A-Za-z][A-Za-z0-9_]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
- AddRule('\-|\+|\*|\^|\[|\]|\(|\)|\,|\.\.|\.|\;|\:|\:\=|\=|\<|\>|\<\>|\>\=|\<\=|\}|\@',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Symbol);
+ AddRule('\@|\-|\+|\/|\*|\=|\<|\>|\<\>|\<\=|\>\=|\:\=|\^',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
+ AddRule('\}|\[|\]|\(|\)|\,|\.|\.\.|\:|\;|\?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
  AddRule('\''[^\'']*\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\''[^\'']*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
 end;
