@@ -3916,6 +3916,7 @@ var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
     CodePoint,Attribute,Preprocessor:TpvUInt32;
     LastState,State:TDFASyntaxHighlighting.TState;
     DFA:TDFA;
+    EndOfLine:boolean;
     OldCount:TpvSizeInt;
     Accept,LastAccept:TAccept;
     ParserStates:TParserStates;
@@ -3986,8 +3987,10 @@ begin
      break;
     end;
 
-   if (ParserStates[1].CodePointIndex=(fParent.fRope.fCountCodePoints-1)) or
-       ParserStates[1].NewLine then begin
+    EndOfLine:=(ParserStates[1].CodePointIndex=fParent.fRope.fCountCodePoints) or
+               ParserStates[1].NewLine;
+
+    if EndOfLine then begin
      Accept:=DFA.fAcceptEnd;
     end else begin
      Accept:=DFA.fAccept;
@@ -3996,7 +3999,8 @@ begin
     if assigned(Accept) then begin
      LastAccept:=Accept;
      ParserStates[2]:=ParserStates[1];
-     if TAccept.TFlag.IsQuick in Accept.fFlags then begin
+     if (TAccept.TFlag.IsQuick in Accept.fFlags) or
+        (EndOfLine and (TAccept.TFlag.IsEnd in Accept.fFlags)) then begin
       break;
      end;
     end;
@@ -4109,8 +4113,8 @@ begin
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[A-Za-z][A-Za-z0-9_]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('\-|\+|\*|\^|\[|\]|\(|\)|\,|\.\.|\.|\;|\:|\:\=|\=|\<|\>|\<\>|\>\=|\<\=|\}|\@',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Symbol);
- AddRule('\''.*\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
- AddRule('\''.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
+ AddRule('\''[^\'']*\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
+ AddRule('\''[^\'']*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
 end;
 
 constructor TpvTextEditor.TView.Create(const aParent:TpvTextEditor);
