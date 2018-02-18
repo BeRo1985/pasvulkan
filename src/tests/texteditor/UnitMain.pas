@@ -220,6 +220,9 @@ begin
      TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment:begin
       Console.TextColor(TConsole.TColor.LightGray);
      end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor:begin
+      Console.TextColor(TConsole.TColor.LightRed);
+     end;
      else begin
       Console.TextColor(TConsole.TColor.DarkGray);
      end;
@@ -249,16 +252,17 @@ begin
  AbstractTextEditor:=TpvTextEditor.Create;
  try
 
-  AbstractTextEditor.SyntaxHighlighting:=TpvTextEditor.TPascalSyntaxHighlighting.Create(AbstractTextEditor);
+  AbstractTextEditor.SyntaxHighlighting:=TpvTextEditor.TCSyntaxHighlighting.Create(AbstractTextEditor);
 
   AbstractTextEditorView:=AbstractTextEditor.CreateView;
 
   if ParamCount>0 then begin
-   AbstractTextEditor.LoadFromFile(ParamStr(1));
+//   AbstractTextEditor.LoadFromFile(ParamStr(1));
   end;
 
   //AbstractTextEditor.Text:='//0123 3.14159e+0 $1337c0de if then { bla }';
 //AbstractTextEditor.Text:='''//0123 3.14159e+0 $1337c0de if then { bla }'#13#10'bla';
+  AbstractTextEditor.Text:='#ifdef test'#13#10'void main(){'#13#10'}'#13#10'#endif';
 
   repeat
 
