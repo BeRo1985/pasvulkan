@@ -4170,7 +4170,7 @@ begin
  AddRule('\#(\$[0-9A-Fa-f]*|[0-9]*)',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\$[0-9A-Fa-f]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
- AddRule('[A-Za-z\_][A-Za-z0-9\_]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule('[A-Za-z\_'#128'-'#255'][A-Za-z0-9\_'#128'-'#255']*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('\@|\-|\+|\/|\*|\=|\<|\>|\<\>|\<\=|\>\=|\:\=|\^',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
  AddRule('\}|\[|\]|\(|\)|\,|\.|\.\.|\:|\;|\?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
  AddRule('\''[^\'']*\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
