@@ -579,6 +579,11 @@ type TpvTextEditor=class
               procedure Setup; override;
              public
             end;
+            TGLSLSyntaxHighlighting=class(TDFASyntaxHighlighting)
+             protected
+              procedure Setup; override;
+             public
+            end;
             TCodePointSet=record
              public
               type TCodePointRange=record
@@ -4337,13 +4342,70 @@ begin
               'short','static','strictfp','super','switch','synchronized','this',
               'throw','throws','transient','true','try','void','volatile','while'],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
- AddRule('^['#32#9']*\#',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick,TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsPreprocessor],TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor);
  AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\/\*.*\*\/',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\/\*.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('//.*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment); // or alternatively '//[^'#10#13']*['#10#13']?'
  AddRule(TpvRawByteString('[A-Za-z\_\$'#128'-'#255'][A-Za-z0-9\_\$'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
+ AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
+ AddRule('[0-9A-Fa-f]+[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
+ AddRule('\"([^\"\\]|\\.)*\"',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
+ AddRule('\"([^\"\\]|\\.)*\\?$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
+ AddRule('\''([^\''\\]|\\.)*\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
+ AddRule('\''([^\''\\]|\\.)*\\?$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
+ AddRule('[\%\-\+\/\&\*\=\<\>\|\!\~\^]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
+ AddRule('[\(\[\{\}\]\)\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+end;
+
+procedure TpvTextEditor.TGLSLSyntaxHighlighting.Setup;
+begin
+ fCaseInsensitive:=true;
+ AddKeywords(['and_op','or_op','xor_op','mul_assign','div_assign','add_assign',
+              'atomic_uint','break','continue','do','else','for','if','discard',
+              'return','switch','case','default','subroutine','bvec2','bvec3',
+              'bvec4','ivec2','ivec3','ivec4','uvec2','uvec3','uvec4','vec2',
+              'vec3','vec4','coherent','volatile','restrict','readonly',
+              'writeonly','comma','colon','equal','semicolon','bang','dash',
+              'tilde','plus','star','slash','percent','const','bool','float',
+              'double','int','uint','dmat2x2','dmat2x3','dmat2x4','dmat3x2',
+              'dmat3x3','dmat3x4','dmat4x2','dmat4x3','dmat4x4','dvec2','dvec3',
+              'dvec4','dmat2','dmat3','dmat4','field_selection','floatconstant',
+              'doubleconstant','intconstant','uintconstant','boolconstant',
+              'high_precision','medium_precision','low_precision','precision',
+              'identifier','type_name','image1d','iimage1d','uimage1d','image2d',
+              'iimage2d','image1darray','iimage1darray','uimage1darray',
+              'image2darray','iimage2darray','uimage2darray','image2dms',
+              'iimage2dms','uimage2dms','image2dmsarray','iimage2dmsarray',
+              'uimage2dmsarray','image2drect','iimage2drect','uimage2drect',
+              'imagebuffer','iimagebuffer','uimagebuffer','imagecube','iimagecube',
+              'uimagecube','imagecubearray','iimagecubearray','uimagecubearray',
+              'inc_op','dec_op','le_op','ge_op','eq_op','ne_op','invariant','precise',
+              'isampler1darray','isampler2darray','usampler1d','usampler2d','usampler3d',
+              'isamplercubearray','usamplercubearray','left_angle','right_angle',
+              'vertical_bar','caret','ampersand','question','left_op','right_op',
+              'left_paren','right_paren','left_bracket','right_bracket','left_brace',
+              'right_brace','dot','mat2','mat3','mat4','centroid','in','out','inout',
+              'mat2x2','mat2x3','mat2x4','mat3x2','mat3x3','mat3x4','mat4x2','mat4x3',
+              'mat4x4','mod_assign','left_assign','right_assign','and_assign','xor_assign',
+              'or_assign','noperspective','flat','smooth','layout','sampler1d','sampler2d',
+              'sampler3d','samplercube','sampler1dshadow','sampler2dshadow',
+              'sampler2darrayshadow','isampler1d','isampler2d','isampler3d','isamplercube',
+              'sampler2dms','isampler2dms','usampler2dms','sampler2dmsarray',
+              'isampler2dmsarray','usampler2dmsarray','sampler2drect','sampler2drectshadow',
+              'isampler2drect','usampler2drect','samplerbuffer','isamplerbuffer','usamplerbuffer',
+              'samplercubearray','samplercubearrayshadow','samplercubeshadow','sampler1darray',
+              'sampler2darray','sampler1darrayshadow','struct','void','while','sub_assign',
+              'uimage2d','image3d','iimage3d','uimage3d','uniform','patch','sample','buffer',
+              'shared','usamplercube','usampler1darray','usampler2darray'],
+             TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
+ AddRule('^['#32#9']*\#',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick,TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsPreprocessor],TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor);
+ AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
+ AddRule('\/\*.*\*\/',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
+ AddRule('\/\*.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
+ AddRule('//.*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment); // or alternatively '//[^'#10#13']*['#10#13']?'
+ AddRule(TpvRawByteString('[A-Za-z\_\$'#128'-'#255'][A-Za-z0-9\_\$'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9A-Fa-f]+[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('\"([^\"\\]|\\.)*\"',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
