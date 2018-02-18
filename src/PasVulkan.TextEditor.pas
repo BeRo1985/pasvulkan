@@ -566,7 +566,15 @@ type TpvTextEditor=class
             end;
             TView=class
              public
-              type TBufferItem=record
+              type TAutoIdentOnEnterMode=
+                    (
+                     None,
+                     Copy,
+                     Tabs,
+                     Spaces
+                    );
+                   PAutoIdentOnEnterMode=^TAutoIdentOnEnterMode;
+                   TBufferItem=record
                     Attribute:TpvUInt32;
                     CodePoint:TpvUInt32;
                    end;
@@ -576,6 +584,7 @@ type TpvTextEditor=class
               fParent:TpvTextEditor;
               fPrevious:TView;
               fNext:TView;
+              fAutoIdentOnEnterMode:TAutoIdentOnEnterMode;
               fVisibleAreaDirty:boolean;
               fVisibleAreaWidth:TpvSizeInt;
               fVisibleAreaHeight:TpvSizeInt;
@@ -640,6 +649,7 @@ type TpvTextEditor=class
               property Cursor:TCoordinate read fCursor;
               property LineColumn:TLineColumn read fLineColumn write SetLineColumn;
              published
+              property AutoIdentOnEnterMode:TAutoIdentOnEnterMode read fAutoIdentOnEnterMode write fAutoIdentOnEnterMode;
               property VisibleAreaWidth:TpvSizeInt read fVisibleAreaWidth write SetVisibleAreaWidth;
               property VisibleAreaHeight:TpvSizeInt read fVisibleAreaHeight write SetVisibleAreaHeight;
               property NonScrollVisibleAreaWidth:TpvSizeInt read fNonScrollVisibleAreaWidth write SetNonScrollVisibleAreaWidth;
@@ -4182,6 +4192,7 @@ begin
  fCursor.x:=0;
  fCursor.y:=0;
  fLineWrap:=0;
+ fAutoIdentOnEnterMode:=TAutoIdentOnEnterMode.Copy;
  fVisualLineCacheMap:=TLineCacheMap.Create(fParent.fRope);
  fBuffer:=nil;
  fMarkState.StartCodePointIndex:=-1;
@@ -4522,7 +4533,7 @@ begin
 
      end;
 
-     CodePoint:=0;
+     CodePoint:=32;
 
      inc(RelativeCursor.x);
      dec(StepWidth);
@@ -4798,16 +4809,77 @@ begin
 end;
 
 procedure TpvTextEditor.TView.Enter(const aOverwrite:boolean);
+var LineIndex,StartCodePointIndex,StopCodePointIndex,WhiteSpaceSteps:TpvSizeInt;
+    CodePoint:TpvUInt32;
+    PrependedWhiteSpace:TpvUTF8String;
 begin
  if aOverwrite then begin
   MoveDown;
   MoveToLineBegin;
  end else begin
+  PrependedWhiteSpace:='';
+  if fAutoIdentOnEnterMode<>TAutoIdentOnEnterMode.None then begin
+   LineIndex:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
+   if LineIndex>=0 then begin
+    StartCodePointIndex:=fParent.fLineCacheMap.GetCodePointIndexFromLineIndex(LineIndex);
+    StopCodePointIndex:=fParent.fLineCacheMap.GetCodePointIndexFromNextLineIndexOrTextEnd(LineIndex);
+    case fAutoIdentOnEnterMode of
+     TAutoIdentOnEnterMode.Copy:begin
+      for CodePoint in fParent.fRope.GetCodePointEnumeratorSource(StartCodePointIndex,StopCodePointIndex) do begin
+       case CodePoint of
+        9,32:begin
+         PrependedWhiteSpace:=PrependedWhiteSpace+TpvTextEditor.TUTF8Utils.UTF32CharToUTF8(CodePoint);
+        end;
+        else begin
+         break;
+        end;
+       end;
+      end;
+     end;
+     TAutoIdentOnEnterMode.Tabs,
+     TAutoIdentOnEnterMode.Spaces:begin
+      WhiteSpaceSteps:=0;
+      for CodePoint in fParent.fRope.GetCodePointEnumeratorSource(StartCodePointIndex,StopCodePointIndex) do begin
+       case CodePoint of
+        9:begin
+         if fVisualLineCacheMap.fTabWidth>0 then begin
+          inc(WhiteSpaceSteps,fVisualLineCacheMap.fTabWidth-(WhiteSpaceSteps mod fVisualLineCacheMap.fTabWidth));
+         end;
+        end;
+        32:begin
+         inc(WhiteSpaceSteps);
+        end;
+        else begin
+         break;
+        end;
+       end;
+      end;
+      case fAutoIdentOnEnterMode of
+       TAutoIdentOnEnterMode.Tabs:begin
+        if fVisualLineCacheMap.fTabWidth>0 then begin
+         PrependedWhiteSpace:=TpvUTF8String(StringOfChar(#9,WhiteSpaceSteps div fVisualLineCacheMap.fTabWidth))+
+                              TpvUTF8String(StringOfChar(#32,WhiteSpaceSteps mod fVisualLineCacheMap.fTabWidth));
+        end else begin
+         PrependedWhiteSpace:=TpvUTF8String(StringOfChar(#32,WhiteSpaceSteps));
+        end;
+       end;
+       else {TAutoIdentOnEnterMode.Spaces:}begin
+        PrependedWhiteSpace:=TpvUTF8String(StringOfChar(#32,WhiteSpaceSteps));
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+  if length(PrependedWhiteSpace)>0 then begin
+   InsertString({$ifdef Windows}TpvUTF8String(#13#10){$else}TpvUTF8String(#10){$endif}+TpvUTF8String(PrependedWhiteSpace),aOverwrite,false);
+  end else begin
 {$ifdef Windows}
-  InsertString(TpvUTF8String(#13#10),aOverwrite,false);
+   InsertString(TpvUTF8String(#13#10),aOverwrite,false);
 {$else}
-  InsertCodePoint(10,aOverwrite,false);
+   InsertCodePoint(10,aOverwrite,false);
 {$endif}
+  end;
  end;
  fParent.UpdateViewCursors;
 end;
