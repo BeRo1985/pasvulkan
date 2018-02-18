@@ -3429,6 +3429,7 @@ begin
 end;
 
 constructor TpvTextEditor.TDFASyntaxHighlighting.Create(const aParent:TpvTextEditor);
+var NFA:TNFA;
 begin
  inherited Create(aParent);
 
@@ -3452,7 +3453,21 @@ begin
 
  finally
 
-  BuildDFA;
+  try
+
+   BuildDFA;
+
+  finally
+
+   // We don't need the original NFA states anymore, after we have built the DFA states
+   fNFAStates:=0;
+   while assigned(fNFA) do begin
+    NFA:=fNFA.fNext;
+    fNFA.Free;
+    fNFA:=NFA;
+   end;
+
+  end;
 
  end;
 
@@ -4145,7 +4160,7 @@ begin
  AddRule('\#(\$[0-9A-Fa-f]*|[0-9]*)',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\$[0-9A-Fa-f]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
- AddRule('[A-Za-z][A-Za-z0-9_]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule('[A-Za-z\_][A-Za-z0-9\_]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('\@|\-|\+|\/|\*|\=|\<|\>|\<\>|\<\=|\>\=|\:\=|\^',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
  AddRule('\}|\[|\]|\(|\)|\,|\.|\.\.|\:|\;|\?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
  AddRule('\''[^\'']*\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
