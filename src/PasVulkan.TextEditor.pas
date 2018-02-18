@@ -3967,6 +3967,49 @@ var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
     Accept,LastAccept:TAccept;
     ParserStates:TParserStates;
     KeywordCharTreeNode:TKeywordCharTreeNode;
+    CodeUnit:TpvRawByteChar;
+    DoBreak:boolean;
+ function ProcessCodeUnit(const aCodeUnit:TpvRawByteChar):boolean;
+ begin
+
+  DFA:=DFA.fWhereTo[aCodeUnit];
+
+  if not assigned(DFA) then begin
+   if not assigned(LastAccept) then begin
+    ParserStates[1]:=ParserStates[0];
+    CodePoint:=ParserStates[1].CodePointEnumerator.GetCurrent;
+    ParserStates[1].Valid:=ParserStates[1].CodePointEnumerator.MoveNext;
+    inc(ParserStates[1].CodePointIndex);
+    if (CodePoint in [10,13]) or
+       (ParserStates[1].CodePointIndex=fParent.fRope.fCountCodePoints) then begin
+     ParserStates[1].NewLine:=ParserStates[1].NewLine or 2;
+    end;
+    ParserStates[1].NewLine:=ParserStates[1].NewLine shr 1;
+   end;
+   result:=false;
+   exit;
+  end;
+
+  if (ParserStates[1].NewLine and 2)<>0 then begin
+   Accept:=DFA.fAcceptEnd;
+  end else begin
+   Accept:=DFA.fAccept;
+  end;
+
+  if assigned(Accept) then begin
+   LastAccept:=Accept;
+   ParserStates[2]:=ParserStates[1];
+   if (TAccept.TFlag.IsQuick in Accept.fFlags) or
+      (((ParserStates[1].NewLine and 2)<>0) and
+       (TAccept.TFlag.IsEnd in Accept.fFlags)) then begin
+    result:=false;
+    exit;
+   end;
+  end;
+
+  result:=true;
+
+ end;
 begin
 
  if (fCodePointIndex<fParent.fRope.fCountCodePoints) and
@@ -4027,38 +4070,18 @@ begin
     end;
 
     if CodePoint<128 then begin
-     DFA:=DFA.fWhereTo[AnsiChar(TpvUInt8(CodePoint))];
-    end else begin
-     DFA:=DFA.fWhereTo[#128];
-    end;
-
-    if not assigned(DFA) then begin
-     if not assigned(LastAccept) then begin
-      ParserStates[1]:=ParserStates[0];
-      CodePoint:=ParserStates[1].CodePointEnumerator.GetCurrent;
-      ParserStates[1].Valid:=ParserStates[1].CodePointEnumerator.MoveNext;
-      inc(ParserStates[1].CodePointIndex);
-      if (CodePoint in [10,13]) or
-         (ParserStates[1].CodePointIndex=fParent.fRope.fCountCodePoints) then begin
-       ParserStates[1].NewLine:=ParserStates[1].NewLine or 2;
-      end;
-      ParserStates[1].NewLine:=ParserStates[1].NewLine shr 1;
+     if not ProcessCodeUnit(AnsiChar(TpvUInt8(CodePoint))) then begin
+      break;
      end;
-     break;
-    end;
-
-    if (ParserStates[1].NewLine and 2)<>0 then begin
-     Accept:=DFA.fAcceptEnd;
     end else begin
-     Accept:=DFA.fAccept;
-    end;
-
-    if assigned(Accept) then begin
-     LastAccept:=Accept;
-     ParserStates[2]:=ParserStates[1];
-     if (TAccept.TFlag.IsQuick in Accept.fFlags) or
-        (((ParserStates[1].NewLine and 2)<>0) and
-         (TAccept.TFlag.IsEnd in Accept.fFlags)) then begin
+     DoBreak:=false;
+     for CodeUnit in TpvTextEditor.TUTF8Utils.UTF32CharToUTF8(CodePoint) do begin
+      if not ProcessCodeUnit(AnsiChar(TpvUInt8(CodePoint))) then begin
+       DoBreak:=true;
+       break;
+      end;
+     end;
+     if DoBreak then begin
       break;
      end;
     end;
@@ -4170,7 +4193,7 @@ begin
  AddRule('\#(\$[0-9A-Fa-f]*|[0-9]*)',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\$[0-9A-Fa-f]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
- AddRule('[A-Za-z\_'#128'-'#255'][A-Za-z0-9\_'#128'-'#255']*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule(TpvRawByteString('[A-Za-z\_'#128'-'#255'][A-Za-z0-9\_'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('\@|\-|\+|\/|\*|\=|\<|\>|\<\>|\<\=|\>\=|\:\=|\^',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
  AddRule('\}|\[|\]|\(|\)|\,|\.|\.\.|\:|\;|\?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
  AddRule('\''[^\'']*\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
