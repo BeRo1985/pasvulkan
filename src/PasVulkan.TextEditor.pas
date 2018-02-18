@@ -663,6 +663,7 @@ type TpvTextEditor=class
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
+       function IsCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
        function IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
        procedure LoadFromStream(const aStream:TStream);
        procedure LoadFromFile(const aFileName:string);
@@ -2766,6 +2767,22 @@ begin
  result:=fCountLines;
 end;
 
+function TpvTextEditor.IsCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
+var CodePoint:TpvUInt32;
+begin
+ result:=false;
+ for CodePoint in fRope.GetCodePointEnumeratorSource(aCodePointIndex,aCodePointIndex+1) do begin
+  case CodePoint of
+   $0a,$0d:begin
+    result:=true;
+   end;
+   else begin
+    break;
+   end;
+  end;
+ end;
+end;
+
 function TpvTextEditor.IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
 var CodePoint,LastCodePoint:TpvUInt32;
     LastWasPossibleNewLineTwoCharSequence:boolean;
@@ -3908,15 +3925,14 @@ procedure TpvTextEditor.TDFASyntaxHighlighting.Update(const aUntilCodePoint:TpvS
 type TParserState=record
       CodePointEnumerator:TpvTextEditor.TRope.TCodePointEnumerator;
       CodePointIndex:TpvSizeInt;
+      NewLine:TpvUInt8;
       Valid:boolean;
-      NewLine:boolean;
      end;
      TParserStates=array[0..3] of TParserState;
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
     CodePoint,Attribute,Preprocessor:TpvUInt32;
     LastState,State:TDFASyntaxHighlighting.TState;
     DFA:TDFA;
-    EndOfLine:boolean;
     OldCount:TpvSizeInt;
     Accept,LastAccept:TAccept;
     ParserStates:TParserStates;
@@ -3942,16 +3958,19 @@ begin
 
   ParserStates[0].Valid:=ParserStates[0].CodePointEnumerator.MoveNext;
 
-  ParserStates[0].NewLine:=(ParserStates[0].CodePointIndex=0) or
-                           (fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(fParent.fLineCacheMap.GetCodePointIndexFromLineIndex(ParserStates[0].CodePointIndex))=ParserStates[0].CodePointIndex);
-
+  if (ParserStates[0].CodePointIndex=0) or
+     ((ParserStates[0].CodePointIndex>0) and
+      fParent.IsCodePointNewLine(ParserStates[0].CodePointIndex-1)) then begin
+   ParserStates[0].NewLine:=1;
+  end else begin
+   ParserStates[0].NewLine:=0;
+  end;
 
   while ParserStates[0].Valid and
         ((aUntilCodePoint<0) or
          (ParserStates[0].CodePointIndex<aUntilCodePoint)) do begin
 
-   if ParserStates[0].NewLine then begin
-    ParserStates[0].NewLine:=false;
+   if (ParserStates[0].NewLine and 1)<>0 then begin
     Preprocessor:=TpvUInt32($ffffffff);
     DFA:=fDFA.fNext;
    end else begin
@@ -3964,13 +3983,18 @@ begin
 
    while ParserStates[1].Valid do begin
 
-    CodePoint:=ParserStates[1].CodePointEnumerator.Current;
+    CodePoint:=ParserStates[1].CodePointEnumerator.GetCurrent;
 
     ParserStates[1].Valid:=ParserStates[1].CodePointEnumerator.MoveNext;
 
     inc(ParserStates[1].CodePointIndex);
 
-    ParserStates[1].NewLine:=CodePoint in [10,13];
+    ParserStates[1].NewLine:=ParserStates[1].NewLine shr 1;
+
+    if (CodePoint in [10,13]) or
+       (ParserStates[1].CodePointIndex=fParent.fRope.fCountCodePoints) then begin
+     ParserStates[1].NewLine:=ParserStates[1].NewLine or 2;
+    end;
 
     if CodePoint<128 then begin
      DFA:=DFA.fWhereTo[AnsiChar(TpvUInt8(CodePoint))];
@@ -3981,16 +4005,19 @@ begin
     if not assigned(DFA) then begin
      if not assigned(LastAccept) then begin
       ParserStates[1]:=ParserStates[0];
+      CodePoint:=ParserStates[1].CodePointEnumerator.GetCurrent;
       ParserStates[1].Valid:=ParserStates[1].CodePointEnumerator.MoveNext;
       inc(ParserStates[1].CodePointIndex);
+      if (CodePoint in [10,13]) or
+         (ParserStates[1].CodePointIndex=fParent.fRope.fCountCodePoints) then begin
+       ParserStates[1].NewLine:=ParserStates[1].NewLine or 2;
+      end;
+      ParserStates[1].NewLine:=ParserStates[1].NewLine shr 1;
      end;
      break;
     end;
 
-    EndOfLine:=(ParserStates[1].CodePointIndex=fParent.fRope.fCountCodePoints) or
-               ParserStates[1].NewLine;
-
-    if EndOfLine then begin
+    if (ParserStates[1].NewLine and 2)<>0 then begin
      Accept:=DFA.fAcceptEnd;
     end else begin
      Accept:=DFA.fAccept;
@@ -4000,7 +4027,8 @@ begin
      LastAccept:=Accept;
      ParserStates[2]:=ParserStates[1];
      if (TAccept.TFlag.IsQuick in Accept.fFlags) or
-        (EndOfLine and (TAccept.TFlag.IsEnd in Accept.fFlags)) then begin
+        (((ParserStates[1].NewLine and 2)<>0) and
+         (TAccept.TFlag.IsEnd in Accept.fFlags)) then begin
       break;
      end;
     end;
@@ -4105,6 +4133,7 @@ begin
               'stringresource','then','threadvar','to','try','type','unit','until',
               'uses','var','virtual','while','with','write','writeonly','xor'],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
+ AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\(\*.*\*\)|\{.*\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\(\*.*|\{.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);

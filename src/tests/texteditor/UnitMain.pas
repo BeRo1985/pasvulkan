@@ -251,11 +251,11 @@ begin
   AbstractTextEditorView:=AbstractTextEditor.CreateView;
 
   if ParamCount>0 then begin
-   //AbstractTextEditor.LoadFromFile(ParamStr(1));
+   AbstractTextEditor.LoadFromFile(ParamStr(1));
   end;
 
   //AbstractTextEditor.Text:='//0123 3.14159e+0 $1337c0de if then { bla }';
-  AbstractTextEditor.Text:='''//0123 3.14159e+0 $1337c0de if then { bla }'#13#10'bla';
+//AbstractTextEditor.Text:='''//0123 3.14159e+0 $1337c0de if then { bla }'#13#10'bla';
 
   repeat
 
