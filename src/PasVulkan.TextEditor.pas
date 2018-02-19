@@ -737,6 +737,11 @@ type TpvTextEditor=class
                     // Qualifier kind
                     qkGREEDY=0;
                     qkLAZY=1;
+              type TCodePointWindow=record
+                    private
+                     fCodePoints:array[-1..2] of TpvUInt32;
+                    public
+                   end;
              private
 
               fRegularExpression:TpvRawByteString;
@@ -770,6 +775,8 @@ type TpvTextEditor=class
               fFreeSubMatches:PRegularExpressionSubMatches;
               fAllSubMatches:TList;
 
+              fCodePointWindow:TCodePointWindow;
+
               fInputLength:TpvInt32;
 
               fBeginningJump:longbool;
@@ -800,10 +807,10 @@ type TpvTextEditor=class
               function NewSubMatches(const aCount:TpvInt32;const aBitState:TpvUInt32):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
               procedure DecRef(const aSubMatches:PRegularExpressionSubMatches); {$ifdef caninline}inline;{$endif}
               function IncRef(const aSubMatches:PRegularExpressionSubMatches):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
-              function Update(const aSubMatches:PRegularExpressionSubMatches;const aIndex,aPosition:TpvInt32):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
+              function Update(const aSubMatches:PRegularExpressionSubMatches;const aIndex,aPosition:TpvSizeInt):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
               function NewThread(const aInstruction:PRegularExpressionInstruction;const aSubMatches:PRegularExpressionSubMatches):TRegularExpressionThread; {$ifdef caninline}inline;{$endif}
-              function IsWordChar(const aPosition:TpvInt32;const aCodePoint:TpvUInt32):boolean; {$ifdef caninline}inline;{$endif}
-              procedure AddThread(const aThreadList:PRegularExpressionThreadList;aInstruction:PRegularExpressionInstruction;aSubMatches:PRegularExpressionSubMatches;const aPosition:TpvInt32;const aPreviousCodePoint,aCurrentCodePoint,aNextCodePoint:TpvUInt32);
+              function IsWordChar(const aPosition:TpvInt32):boolean; {$ifdef caninline}inline;{$endif}
+              procedure AddThread(const aThreadList:PRegularExpressionThreadList;aInstruction:PRegularExpressionInstruction;aSubMatches:PRegularExpressionSubMatches;const aPosition,aWindowOffset:TpvSizeInt);
              protected
               function SearchMatch(const aRope:TpvTextEditor.TRope;var aCaptures:TRegularExpressionCaptures;const aStartPosition,aUntilExcludingPosition:TpvInt32;const aUnanchoredStart:boolean):boolean;
              public
@@ -6584,7 +6591,7 @@ begin
  result:=aSubMatches;
 end;
 
-function TpvTextEditor.TRegularExpression.Update(const aSubMatches:PRegularExpressionSubMatches;const aIndex,aPosition:TpvInt32):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
+function TpvTextEditor.TRegularExpression.Update(const aSubMatches:PRegularExpressionSubMatches;const aIndex,aPosition:TpvSizeInt):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
 var Counter:TpvInt32;
     BitState:TpvUInt32;
 begin
@@ -6622,12 +6629,12 @@ begin
  result.SubMatches:=aSubMatches;
 end;
 
-function TpvTextEditor.TRegularExpression.IsWordChar(const aPosition:TpvInt32;const aCodePoint:TpvUInt32):boolean; {$ifdef caninline}inline;{$endif}
+function TpvTextEditor.TRegularExpression.IsWordChar(const aPosition:TpvInt32):boolean; {$ifdef caninline}inline;{$endif}
 begin
- result:=((aPosition>=0) and (aPosition<fInputLength)) and (aCodePoint in [ord('A')..ord('Z'),ord('a')..ord('z')]);
+ result:=fCodePointWindow.fCodePoints[aPosition] in [ord('A')..ord('Z'),ord('a')..ord('z')];
 end;
 
-procedure TpvTextEditor.TRegularExpression.AddThread(const aThreadList:PRegularExpressionThreadList;aInstruction:PRegularExpressionInstruction;aSubMatches:PRegularExpressionSubMatches;const aPosition:TpvInt32;const aPreviousCodePoint,aCurrentCodePoint,aNextCodePoint:TpvUInt32);
+procedure TpvTextEditor.TRegularExpression.AddThread(const aThreadList:PRegularExpressionThreadList;aInstruction:PRegularExpressionInstruction;aSubMatches:PRegularExpressionSubMatches;const aPosition,aWindowOffset:TpvSizeInt);
 var Thread:PRegularExpressionThread;
 begin
  while assigned(aInstruction) do begin
@@ -6642,7 +6649,7 @@ begin
      continue;
     end;
     opSPLIT:begin
-     AddThread(aThreadList,aInstruction^.Next,IncRef(aSubMatches),aPosition,aPreviousCodePoint,aCurrentCodePoint,aNextCodePoint);
+     AddThread(aThreadList,aInstruction^.Next,IncRef(aSubMatches),aPosition,aWindowOffset);
      aInstruction:=aInstruction^.OtherNext;
      continue;
     end;
@@ -6652,7 +6659,9 @@ begin
      continue;
     end;
     opBOL:begin
-     if (aPosition=0) or ((TRegularExpressionFlag.MultiLine in fFlags) and ((aPosition>0) and (aPreviousCodePoint in [10,13]))) then begin
+     if (aPosition=0) or
+        ((TRegularExpressionFlag.MultiLine in fFlags) and
+         ((aPosition>0) and (fCodePointWindow.fCodePoints[aWindowOffset-1] in [10,13]))) then begin
       aInstruction:=aInstruction^.Next;
       continue;
      end else begin
@@ -6661,7 +6670,10 @@ begin
      end;
     end;
     opEOL:begin
-     if ((aPosition+1)>=fInputLength) or ((TRegularExpressionFlag.MultiLine in fFlags) and (((aPosition+1)<fInputLength) and (aNextCodePoint in [10,13]))) then begin
+     if ((aPosition+1)>=fInputLength) or
+        ((TRegularExpressionFlag.MultiLine in fFlags) and
+         (((aPosition+1)<fInputLength) and
+          (fCodePointWindow.fCodePoints[aWindowOffset+1] in [10,13]))) then begin
       aInstruction:=aInstruction^.Next;
       continue;
      end else begin
@@ -6670,7 +6682,7 @@ begin
      end;
     end;
     opBRK:begin
-     if IsWordChar(aPosition-1,aPreviousCodePoint)<>IsWordChar(aPosition,aCurrentCodePoint) then begin
+     if IsWordChar(aWindowOffset-1)<>IsWordChar(aWindowOffset) then begin
       aInstruction:=aInstruction^.Next;
       continue;
      end else begin
@@ -6679,7 +6691,7 @@ begin
      end;
     end;
     opNBRK:begin
-     if IsWordChar(aPosition-1,aPreviousCodePoint)=IsWordChar(aPosition,aCurrentCodePoint) then begin
+     if IsWordChar(aWindowOffset-1)=IsWordChar(aWindowOffset) then begin
       aInstruction:=aInstruction^.Next;
       continue;
      end else begin
@@ -6700,15 +6712,16 @@ begin
 end;
 
 function TpvTextEditor.TRegularExpression.SearchMatch(const aRope:TpvTextEditor.TRope;var aCaptures:TRegularExpressionCaptures;const aStartPosition,aUntilExcludingPosition:TpvInt32;const aUnanchoredStart:boolean):boolean;
-var CurrentPosition,Counter,ThreadIndex,CurrentLength,LastPosition:TpvInt32;
+var CurrentPosition,Counter,ThreadIndex,CurrentLength,LastPosition,WindowStartOffset:TpvSizeInt;
     CurrentThreadList,NewThreadList,TemporaryThreadList:PRegularExpressionThreadList;
     SubMatches,Matched,BestSubMatches:PRegularExpressionSubMatches;
     CurrentThread:PRegularExpressionThread;
     Thread:TRegularExpressionThread;
     Instruction:PRegularExpressionInstruction;
-    PreviousCodePoint,CurrentCodePoint,NextCodePoint:TpvUInt32;
+    BitState,PreviousCodePoint,CurrentCodePoint,NextCodePoint:TpvUInt32;
     Capture:PRegularExpressionCapture;
-    BitState:TpvUInt32;
+    CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
+    CodePointEnumerator:TpvTextEditor.TRope.TCodePointEnumerator;
 begin
  result:=false;
 
@@ -6722,15 +6735,29 @@ begin
 
  SubMatches:=NewSubMatches(fCountSubMatches,0);
 
- PreviousCodePoint:=aRope.GetCodePoint(aStartPosition-1);
-
- CurrentCodePoint:=aRope.GetCodePoint(aStartPosition);
+ if aStartPosition>0 then begin
+  WindowStartOffset:=-1;
+ end else begin
+  WindowStartOffset:=0;
+ end;
+ CodePointEnumeratorSource:=TpvTextEditor.TRope.TCodePointEnumeratorSource.Create(aRope,aStartPosition+WindowStartOffset,aRope.fCountCodePoints);
+ CodePointEnumerator:=CodePointEnumeratorSource.GetEnumerator;
+ for Counter:=-1 to WindowStartOffset-1 do begin
+  fCodePointWindow.fCodePoints[Counter]:=$ffffffff;
+ end;
+ for Counter:=WindowStartOffset to 2 do begin
+  if CodePointEnumerator.MoveNext then begin
+   fCodePointWindow.fCodePoints[Counter]:=CodePointEnumerator.GetCurrent;
+  end else begin
+   fCodePointWindow.fCodePoints[Counter]:=$ffffffff;
+  end;
+ end;
 
  inc(fGeneration);
  if aUnanchoredStart then begin
-  AddThread(CurrentThreadList,fUnanchoredStartInstruction,SubMatches,aStartPosition,PreviousCodePoint,CurrentCodePoint,NextCodePoint);
+  AddThread(CurrentThreadList,fUnanchoredStartInstruction,SubMatches,aStartPosition,0);
  end else begin
-  AddThread(CurrentThreadList,fAnchoredStartInstruction,SubMatches,aStartPosition,PreviousCodePoint,CurrentCodePoint,NextCodePoint);
+  AddThread(CurrentThreadList,fAnchoredStartInstruction,SubMatches,aStartPosition,0);
  end;
 
  Matched:=nil;
@@ -6745,9 +6772,14 @@ begin
   if CurrentThreadList^.Count=0 then begin
    break;
   end;
-  PreviousCodePoint:=aRope.GetCodePoint(CurrentPosition-1);
-  CurrentCodePoint:=aRope.GetCodePoint(CurrentPosition);
-  NextCodePoint:=aRope.GetCodePoint(CurrentPosition+1);
+  fCodePointWindow.fCodePoints[-1]:=fCodePointWindow.fCodePoints[0];
+  fCodePointWindow.fCodePoints[0]:=fCodePointWindow.fCodePoints[1];
+  fCodePointWindow.fCodePoints[1]:=fCodePointWindow.fCodePoints[2];
+  if CodePointEnumerator.MoveNext then begin
+   fCodePointWindow.fCodePoints[2]:=CodePointEnumerator.GetCurrent;
+  end else begin
+   fCodePointWindow.fCodePoints[2]:=$ffffffff;
+  end;
   inc(fGeneration);
   for ThreadIndex:=0 to CurrentThreadList^.Count-1 do begin
    CurrentThread:=@CurrentThreadList^.Threads[ThreadIndex];
@@ -6758,7 +6790,7 @@ begin
      if (CurrentPosition>=fInputLength) or (CurrentCodePoint<>TpvUInt32(Instruction^.Value)) then begin
       DecRef(SubMatches);
      end else begin
-      AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,PreviousCodePoint,CurrentCodePoint,NextCodePoint);
+      AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,1);
      end;
     end;
     opCHAR:begin
@@ -6766,14 +6798,14 @@ begin
         (CurrentCodePoint in PRegularExpressionCharClass(pointer(TpvPtrUInt(Instruction^.Value)))^) then begin
       DecRef(SubMatches);
      end else begin
-      AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,PreviousCodePoint,CurrentCodePoint,NextCodePoint);
+      AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,1);
      end;
     end;
     opANY:begin
      if CurrentPosition>=fInputLength then begin
       DecRef(SubMatches);
      end else begin
-      AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,PreviousCodePoint,CurrentCodePoint,NextCodePoint);
+      AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,1);
      end;
     end;
     opMATCH:begin
