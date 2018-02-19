@@ -742,8 +742,15 @@ type TpvTextEditor=class
 
               type TCodePointWindow=record
                     private
-                     fCodePoints:array[-1..2] of TpvUInt32;
+                     fCodePoints:array[0..3] of TpvUInt32;
+                     fOffset:TpvSizeInt;
+                     function GetCodePoint(const aOffset:TpvSizeInt):TpvUInt32;
+                     procedure SetCodePoint(const aOffset:TpvSizeInt;const aCodePoint:TpvUInt32);
                     public
+                     procedure Reset;
+                     procedure Advance;
+                    public
+                     property CodePoints[const aOffset:TpvSizeInt]:TpvUInt32 read GetCodePoint write SetCodePoint; default;
                    end;
              private
 
@@ -5182,6 +5189,30 @@ begin
  result:=(Self-CodePointSetToSubtract)+CodePointSetToAdd;
 end;
 
+function TpvTextEditor.TRegularExpression.TCodePointWindow.GetCodePoint(const aOffset:TpvSizeInt):TpvUInt32;
+begin
+ result:=fCodePoints[(fOffset+aOffset) and 3];
+end;
+
+procedure TpvTextEditor.TRegularExpression.TCodePointWindow.SetCodePoint(const aOffset:TpvSizeInt;const aCodePoint:TpvUInt32);
+begin
+ fCodePoints[(fOffset+aOffset) and 3]:=aCodePoint;
+end;
+
+procedure TpvTextEditor.TRegularExpression.TCodePointWindow.Reset;
+begin
+ fCodePoints[0]:=$ffffffff;
+ fCodePoints[1]:=$ffffffff;
+ fCodePoints[2]:=$ffffffff;
+ fCodePoints[3]:=$ffffffff;
+ fOffset:=1;
+end;
+
+procedure TpvTextEditor.TRegularExpression.TCodePointWindow.Advance;
+begin
+ fOffset:=(fOffset+1) and 3;
+end;
+
 constructor TpvTextEditor.TRegularExpression.Create(const aParent:TpvTextEditor;const aRegularExpression:TpvRawByteString;const aFlags:TRegularExpressionFlags=[]);
 begin
  inherited Create;
@@ -6647,7 +6678,7 @@ end;
 
 function TpvTextEditor.TRegularExpression.IsWordChar(const aPosition:TpvInt32):boolean; {$ifdef caninline}inline;{$endif}
 begin
- result:=fCodePointWindow.fCodePoints[aPosition] in [ord('A')..ord('Z'),ord('a')..ord('z')];
+ result:=fCodePointWindow[aPosition] in [ord('A')..ord('Z'),ord('a')..ord('z')];
 end;
 
 procedure TpvTextEditor.TRegularExpression.AddThread(const aThreadList:PRegularExpressionThreadList;aInstruction:PRegularExpressionInstruction;aSubMatches:PRegularExpressionSubMatches;const aPosition,aWindowOffset:TpvSizeInt);
@@ -6677,7 +6708,7 @@ begin
     opBOL:begin
      if (aPosition=0) or
         ((TRegularExpressionFlag.MultiLine in fFlags) and
-         ((aPosition>0) and (fCodePointWindow.fCodePoints[aWindowOffset-1] in [10,13]))) then begin
+         ((aPosition>0) and (fCodePointWindow[aWindowOffset-1] in [10,13]))) then begin
       aInstruction:=aInstruction^.Next;
       continue;
      end else begin
@@ -6689,7 +6720,7 @@ begin
      if ((aPosition+1)>=fInputLength) or
         ((TRegularExpressionFlag.MultiLine in fFlags) and
          (((aPosition+1)<fInputLength) and
-          (fCodePointWindow.fCodePoints[aWindowOffset+1] in [10,13]))) then begin
+          (fCodePointWindow[aWindowOffset+1] in [10,13]))) then begin
       aInstruction:=aInstruction^.Next;
       continue;
      end else begin
@@ -6734,7 +6765,7 @@ var CurrentPosition,Counter,ThreadIndex,CurrentLength,LastPosition,WindowStartOf
     CurrentThread:PRegularExpressionThread;
     Thread:TRegularExpressionThread;
     Instruction:PRegularExpressionInstruction;
-    BitState,PreviousCodePoint,CurrentCodePoint,NextCodePoint:TpvUInt32;
+    BitState:TpvUInt32;
     Capture:PRegularExpressionCapture;
     CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
     CodePointEnumerator:TpvTextEditor.TRope.TCodePointEnumerator;
@@ -6751,6 +6782,8 @@ begin
 
  SubMatches:=NewSubMatches(fCountSubMatches,0);
 
+ fCodePointWindow.Reset;
+
  if aStartPosition>0 then begin
   WindowStartOffset:=-1;
  end else begin
@@ -6759,13 +6792,13 @@ begin
  CodePointEnumeratorSource:=TpvTextEditor.TRope.TCodePointEnumeratorSource.Create(fParent.fRope,aStartPosition+WindowStartOffset,fParent.fRope.fCountCodePoints);
  CodePointEnumerator:=CodePointEnumeratorSource.GetEnumerator;
  for Counter:=-1 to WindowStartOffset-1 do begin
-  fCodePointWindow.fCodePoints[Counter]:=$ffffffff;
+  fCodePointWindow[Counter]:=$ffffffff;
  end;
  for Counter:=WindowStartOffset to 2 do begin
   if CodePointEnumerator.MoveNext then begin
-   fCodePointWindow.fCodePoints[Counter]:=CodePointEnumerator.GetCurrent;
+   fCodePointWindow[Counter]:=CodePointEnumerator.GetCurrent;
   end else begin
-   fCodePointWindow.fCodePoints[Counter]:=$ffffffff;
+   fCodePointWindow[Counter]:=$ffffffff;
   end;
  end;
 
@@ -6782,19 +6815,15 @@ begin
 
  LastPosition:=-1;
 
- NextCodePoint:=0;
-
  for CurrentPosition:=aStartPosition to aUntilExcludingPosition-1 do begin
   if CurrentThreadList^.Count=0 then begin
    break;
   end;
-  fCodePointWindow.fCodePoints[-1]:=fCodePointWindow.fCodePoints[0];
-  fCodePointWindow.fCodePoints[0]:=fCodePointWindow.fCodePoints[1];
-  fCodePointWindow.fCodePoints[1]:=fCodePointWindow.fCodePoints[2];
+  fCodePointWindow.Advance;
   if CodePointEnumerator.MoveNext then begin
-   fCodePointWindow.fCodePoints[2]:=CodePointEnumerator.GetCurrent;
+   fCodePointWindow[2]:=CodePointEnumerator.GetCurrent;
   end else begin
-   fCodePointWindow.fCodePoints[2]:=$ffffffff;
+   fCodePointWindow[2]:=$ffffffff;
   end;
   inc(fGeneration);
   for ThreadIndex:=0 to CurrentThreadList^.Count-1 do begin
@@ -6803,7 +6832,7 @@ begin
    SubMatches:=CurrentThread^.SubMatches;
    case Instruction^.IndexAndOpcode and $ff of
     opSINGLECHAR:begin
-     if (CurrentPosition>=fInputLength) or (CurrentCodePoint<>TpvUInt32(Instruction^.Value)) then begin
+     if (CurrentPosition>=fInputLength) or (fCodePointWindow[0]<>TpvUInt32(Instruction^.Value)) then begin
       DecRef(SubMatches);
      end else begin
       AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,1);
@@ -6811,7 +6840,7 @@ begin
     end;
     opCHAR:begin
      if (CurrentPosition>=fInputLength) or not
-        (CurrentCodePoint in PRegularExpressionCharClass(pointer(TpvPtrUInt(Instruction^.Value)))^) then begin
+        (fCodePointWindow[0] in PRegularExpressionCharClass(pointer(TpvPtrUInt(Instruction^.Value)))^) then begin
       DecRef(SubMatches);
      end else begin
       AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,1);
