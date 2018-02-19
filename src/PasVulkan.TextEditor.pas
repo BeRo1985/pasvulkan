@@ -4935,8 +4935,11 @@ begin
 end;
 
 class operator TpvTextEditor.TCodePointSet.Subtract(const aCodePointSet:TCodePointSet;const aCodePointRange:TCodePointRange):TCodePointSet;
+var CodePointRanges:TCodePointRanges;
 begin
- result:=aCodePointSet-TCodePointSet.Create([aCodePointRange]);
+ SetLength(CodePointRanges,1);
+ CodePointRanges[0]:=aCodePointRange;
+ result:=aCodePointSet-TCodePointSet.Create(CodePointRanges);
 end;
 
 class operator TpvTextEditor.TCodePointSet.Subtract(const aCodePointSet:TCodePointSet;const aCodePointRanges:array of TCodePointRange):TCodePointSet;
@@ -5009,8 +5012,11 @@ begin
 end;
 
 class operator TpvTextEditor.TCodePointSet.Multiply(const aCodePointSet:TCodePointSet;const aCodePointRange:TCodePointRange):TCodePointSet;
+var CodePointRanges:TCodePointRanges;
 begin
- result:=aCodePointSet*TCodePointSet.Create([aCodePointRange]);
+ SetLength(CodePointRanges,1);
+ CodePointRanges[0]:=aCodePointRange;
+ result:=aCodePointSet*TCodePointSet.Create(CodePointRanges);
 end;
 
 class operator TpvTextEditor.TCodePointSet.Multiply(const aCodePointSet:TCodePointSet;const aCodePointRanges:array of TCodePointRange):TCodePointSet;
@@ -5136,9 +5142,12 @@ function TpvTextEditor.TCodePointSet.ToCaseInsensitive:TCodePointSet;
 var UsedCodePointSet,CodePointSetToAdd:TCodePointSet;
     Range:TCodePointRange;
     CodePoint:TpvUInt32;
+var CodePointRanges:TCodePointRanges;
 begin
- UsedCodePointSet:=TCodePointSet.Create([TCodePointRange.Create(ord('A'),ord('Z')),
-                                         TCodePointRange.Create(ord('a'),ord('z'))]);
+ SetLength(CodePointRanges,2);
+ CodePointRanges[0]:=TCodePointRange.Create(ord('A'),ord('Z'));
+ CodePointRanges[1]:=TCodePointRange.Create(ord('a'),ord('z'));
+ UsedCodePointSet:=TCodePointSet.Create(CodePointRanges);
  CodePointSetToAdd:=TCodePointSet.CreateEmpty;
  for Range in UsedCodePointSet.fRanges do begin
   for CodePoint:=Range.fFromCodePoint to Range.fToCodePoint do begin
@@ -5290,13 +5299,7 @@ end;
 destructor TpvTextEditor.TRegularExpression.Destroy;
 var Index:TpvInt32;
     SubMatches:PRegularExpressionSubMatches;
-    Flags:TpvUInt32;
 begin
-
-{if assigned(UnanchoredRootNode) then begin
-  FreeNode(UnanchoredRootNode);
-  UnanchoredRootNode:=nil;
- end;{}
 
  for Index:=0 to fNodes.Count-1 do begin
   FreeMem(fNodes[Index]);
@@ -5455,8 +5458,6 @@ end;
 function TpvTextEditor.TRegularExpression.NewAlt(aNodeLeft,aNodeRight:PRegularExpressionNode):PRegularExpressionNode;
 var NodeEx,pl,pr:PPRegularExpressionNode;
     Node,l,r:PRegularExpressionNode;
-    i,j,k:TpvInt32;
-    CharClass:TRegularExpressionCharClass;
 begin
  if assigned(aNodeLeft) and assigned(aNodeRight) then begin
   if (aNodeLeft^.NodeType=ntCAT) and (aNodeRight^.NodeType=ntCAT) {and not (rfONLYFASTOPTIMIZATIONS in Flags)} then begin
@@ -5774,7 +5775,7 @@ var SourcePosition,SourceLength:TpvSizeInt;
   end else if Name='punct' then begin
    result:=TpvTextEditor.TCodePointSet.Create(['!','"','#','$','%','&','''','(',')','*','+',
                                                ',','\','-','.','/',':',';','<','=','>','?',
-                                               '@','[','\',']','^','_','`','{','|','}','~']);
+                                               '@','[',']','^','_','`','{','|','}','~']);
   end else if Name='space' then begin
    result:=TpvTextEditor.TCodePointSet.Create([#9,#10..#13,#32]);
   end else if Name='upper' then begin
@@ -5792,7 +5793,6 @@ var SourcePosition,SourceLength:TpvSizeInt;
  var Value:TpvInt32;
      Negate,IsSingle:boolean;
      StartCodePoint,EndCodePoint:TpvUInt32;
-     CharClass:TRegularExpressionCharClass;
      Name:TpvRawByteString;
  begin
   result:=nil;
@@ -5827,7 +5827,7 @@ var SourcePosition,SourceLength:TpvSizeInt;
           Value:=fCountParens;
           inc(fCountParens);
           if fNamedGroupStringList.IndexOfName(String(Name))<0 then begin
-           fNamedGroupStringList.AddPair(String(Name),IntToStr(Value));
+           fNamedGroupStringList.Add(String(Name)+fNamedGroupStringList.NameValueSeparator+IntToStr(Value));
           end;
           result:=NewNode(ntPAREN,ParseDisjunction,nil,0);
           result^.Value:=Value;
@@ -5850,7 +5850,7 @@ var SourcePosition,SourceLength:TpvSizeInt;
            Value:=fCountParens;
            inc(fCountParens);
            if fNamedGroupStringList.IndexOfName(String(Name))<0 then begin
-            fNamedGroupStringList.AddPair(String(Name),IntToStr(Value));
+            fNamedGroupStringList.Add(String(Name)+fNamedGroupStringList.NameValueSeparator+IntToStr(Value));
            end;
            result:=NewNode(ntPAREN,ParseDisjunction,nil,0);
            result^.Value:=Value;
@@ -5873,7 +5873,7 @@ var SourcePosition,SourceLength:TpvSizeInt;
            Value:=fCountParens;
            inc(fCountParens);
            if fNamedGroupStringList.IndexOfName(String(Name))<0 then begin
-            fNamedGroupStringList.AddPair(String(Name),IntToStr(Value));
+            fNamedGroupStringList.Add(String(Name)+fNamedGroupStringList.NameValueSeparator+IntToStr(Value));
            end;
            result:=NewNode(ntPAREN,ParseDisjunction,nil,0);
            result^.Value:=Value;
@@ -6277,7 +6277,6 @@ var SourcePosition,SourceLength:TpvSizeInt;
   end;
  end;
 var Counter:TpvInt32;
-    CurrentChar:ansichar;
     Node:PRegularExpressionNode;
 begin
  Source:=fRegularExpression;
@@ -6329,9 +6328,8 @@ procedure TpvTextEditor.TRegularExpression.Compile;
    Instructions[result].OtherNext:=pointer(TpvPtrInt(-1));
   end;
   procedure Emit(Node:PRegularExpressionNode);
-  var i0,i1,Counter,Count,Index:TpvInt32;
+  var i0,i1,Counter,Index:TpvInt32;
       Last:array of TpvInt32;
-      CurrentCodePoint,SingleCodePoint:TpvUInt32;
   begin
    while assigned(Node) do begin
     case Node^.NodeType of
@@ -6350,7 +6348,6 @@ procedure TpvTextEditor.TRegularExpression.Compile;
       continue;
      end;
      ntCHAR:begin
-      SingleCodePoint:=0;
       if (length(Node^.CharClass.fRanges)=1) and
          (Node^.CharClass.fRanges[0].fFromCodePoint=Node^.CharClass.fRanges[0].fToCodePoint) then begin
        i0:=NewInstruction(opSINGLECHAR);
@@ -6582,12 +6579,12 @@ procedure TpvTextEditor.TRegularExpression.Compile;
    for Counter:=0 to CountInstructions-1 do begin
     Instruction:=@Instructions[Counter];
     if Instruction^.Next<>pointer(TpvPtrInt(-1)) then begin
-     Instruction^.Next:=@Instructions[TpvPtrInt(Instruction^.Next)];
+     Instruction^.Next:=@Instructions[TpvPtrInt(TpvPtrUInt(Instruction^.Next))];
     end else begin
      Instruction^.Next:=nil;
     end;
     if Instruction^.OtherNext<>pointer(TpvPtrInt(-1)) then begin
-     Instruction^.OtherNext:=@Instructions[TpvPtrInt(Instruction^.OtherNext)];
+     Instruction^.OtherNext:=@Instructions[TpvPtrInt(TpvPtrUInt(Instruction^.OtherNext))];
     end else begin
      Instruction^.OtherNext:=nil;
     end;
@@ -6763,7 +6760,6 @@ var CurrentPosition,Counter,ThreadIndex,CurrentLength,LastPosition,WindowStartOf
     CurrentThreadList,NewThreadList,TemporaryThreadList:PRegularExpressionThreadList;
     SubMatches,Matched,BestSubMatches:PRegularExpressionSubMatches;
     CurrentThread:PRegularExpressionThread;
-    Thread:TRegularExpressionThread;
     Instruction:PRegularExpressionInstruction;
     BitState:TpvUInt32;
     Capture:PRegularExpressionCapture;
