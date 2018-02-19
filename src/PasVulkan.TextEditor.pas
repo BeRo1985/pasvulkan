@@ -770,7 +770,6 @@ type TpvTextEditor=class
               fFreeSubMatches:PRegularExpressionSubMatches;
               fAllSubMatches:TList;
 
-              fInput:pansichar;
               fInputLength:TpvInt32;
 
               fBeginningJump:longbool;
@@ -783,40 +782,33 @@ type TpvTextEditor=class
 
               fNamedGroupStringList:TStringList;
 
-              function NewNode(const NodeType:TpvInt32;const Left,Right:PRegularExpressionNode;const Value:TpvInt32):PRegularExpressionNode;
-              procedure FreeNode(var Node:PRegularExpressionNode);
-              function AreNodesEqual(NodeA,NodeB:PRegularExpressionNode):boolean;
-              function AreNodesEqualSafe(NodeA,NodeB:PRegularExpressionNode):boolean;
-              function Concat(NodeLeft,NodeRight:PRegularExpressionNode):PRegularExpressionNode;
-              function NewAlt(NodeLeft,NodeRight:PRegularExpressionNode):PRegularExpressionNode;
-              function NewPlus(Node:PRegularExpressionNode;Kind:TpvInt32):PRegularExpressionNode;
-              function NewStar(Node:PRegularExpressionNode;Kind:TpvInt32):PRegularExpressionNode;
-              function NewQuest(Node:PRegularExpressionNode;Kind:TpvInt32):PRegularExpressionNode;
+              function NewNode(const aNodeType:TpvInt32;const aLeft,aRight:PRegularExpressionNode;const aValue:TpvInt32):PRegularExpressionNode;
+              procedure FreeNode(var aNode:PRegularExpressionNode);
+              function AreNodesEqual(aNodeA,aNodeB:PRegularExpressionNode):boolean;
+              function AreNodesEqualSafe(aNodeA,aNodeB:PRegularExpressionNode):boolean;
+              function Concat(aNodeLeft,aNodeRight:PRegularExpressionNode):PRegularExpressionNode;
+              function NewAlt(aNodeLeft,aNodeRight:PRegularExpressionNode):PRegularExpressionNode;
+              function NewPlus(aNode:PRegularExpressionNode;aKind:TpvInt32):PRegularExpressionNode;
+              function NewStar(aNode:PRegularExpressionNode;aKind:TpvInt32):PRegularExpressionNode;
+              function NewQuest(aNode:PRegularExpressionNode;aKind:TpvInt32):PRegularExpressionNode;
 
-              function IsStarNullable(Node:PRegularExpressionNode):boolean;
-              function StarDenull(Node:PRegularExpressionNode):PRegularExpressionNode;
+              function IsStarNullable(aNode:PRegularExpressionNode):boolean;
+              function StarDenull(aNode:PRegularExpressionNode):PRegularExpressionNode;
 
               procedure Parse;
               procedure Compile;
-              function NewSubMatches(const Count:TpvInt32;const BitState:TpvUInt32):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
-              procedure DecRef(const SubMatches:PRegularExpressionSubMatches); {$ifdef caninline}inline;{$endif}
-              function IncRef(const SubMatches:PRegularExpressionSubMatches):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
-              function Update(const SubMatches:PRegularExpressionSubMatches;const Index,Position:TpvInt32):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
-              function NewThread(const Instruction:PRegularExpressionInstruction;const SubMatches:PRegularExpressionSubMatches):TRegularExpressionThread; {$ifdef caninline}inline;{$endif}
-              function IsWordChar(const Position:TpvInt32;const aCodePoint:TpvUInt32):boolean; {$ifdef caninline}inline;{$endif}
-              procedure AddThread(const ThreadList:PRegularExpressionThreadList;Instruction:PRegularExpressionInstruction;SubMatches:PRegularExpressionSubMatches;const Position:TpvInt32;const aPreviousCodePoint,aCurrentCodePoint:TpvUInt32);
-              function SearchMatch(const aRope:TpvTextEditor.TRope;var Captures:TRegularExpressionCaptures;const StartPosition,UntilExcludingPosition:TpvInt32;const UnanchoredStart:boolean):boolean;
+              function NewSubMatches(const aCount:TpvInt32;const aBitState:TpvUInt32):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
+              procedure DecRef(const aSubMatches:PRegularExpressionSubMatches); {$ifdef caninline}inline;{$endif}
+              function IncRef(const aSubMatches:PRegularExpressionSubMatches):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
+              function Update(const aSubMatches:PRegularExpressionSubMatches;const aIndex,aPosition:TpvInt32):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
+              function NewThread(const aInstruction:PRegularExpressionInstruction;const aSubMatches:PRegularExpressionSubMatches):TRegularExpressionThread; {$ifdef caninline}inline;{$endif}
+              function IsWordChar(const aPosition:TpvInt32;const aCodePoint:TpvUInt32):boolean; {$ifdef caninline}inline;{$endif}
+              procedure AddThread(const aThreadList:PRegularExpressionThreadList;aInstruction:PRegularExpressionInstruction;aSubMatches:PRegularExpressionSubMatches;const aPosition:TpvInt32;const aPreviousCodePoint,aCurrentCodePoint,aNextCodePoint:TpvUInt32);
+             protected
+              function SearchMatch(const aRope:TpvTextEditor.TRope;var aCaptures:TRegularExpressionCaptures;const aStartPosition,aUntilExcludingPosition:TpvInt32;const aUnanchoredStart:boolean):boolean;
              public
-              constructor Create(const ARegularExpression:TpvRawByteString;const AFlags:TRegularExpressionFlags=[]);
+              constructor Create(const aRegularExpression:TpvRawByteString;const aFlags:TRegularExpressionFlags=[]);
               destructor Destroy; override;
-       {       function PtrMatch(const AInput:pointer;const AInputLength:TpvInt32;var Captures:TRegularExpressionCaptures;const StartPosition:TpvInt32=0):boolean;
-              function PtrMatchNext(const AInput:pointer;const AInputLength:TpvInt32;var Captures:TRegularExpressionCaptures;const StartPosition:TpvInt32=0):boolean;
-              function PtrMatchAll(const AInput:pointer;const AInputLength:TpvInt32;var Captures:TRegularExpressionMultiCaptures;const StartPosition:TpvInt32=0;Limit:TpvInt32=-1):boolean;
-       //      function PtrReplaceAll(const AInput:pointer;const AInputLength:TpvInt32;const AReplacement:pointer;const AReplacementLength:TpvInt32;const StartPosition:TpvInt32=0;Limit:TpvInt32=-1):TpvRawByteString;
-              function Match(const AInput:TpvRawByteString;var Captures:TRegularExpressionCaptures;const StartPosition:TpvInt32=1):boolean;
-              function MatchNext(const AInput:TpvRawByteString;var Captures:TRegularExpressionCaptures;const StartPosition:TpvInt32=1):boolean;
-              function MatchAll(const AInput:TpvRawByteString;var Captures:TRegularExpressionMultiCaptures;const StartPosition:TpvInt32=1;Limit:TpvInt32=-1):boolean;
-              function ReplaceAll(const AInput,AReplacement:TpvRawByteString;const StartPosition:TpvInt32=1;Limit:TpvInt32=-1):TpvRawByteString;}
               property NamedGroups:TStringList read fNamedGroupStringList;
             end;
             TView=class
@@ -5169,7 +5161,7 @@ begin
  result:=(Self-CodePointSetToSubtract)+CodePointSetToAdd;
 end;
 
-constructor TpvTextEditor.TRegularExpression.Create(const ARegularExpression:TpvRawByteString;const AFlags:TRegularExpressionFlags=[]);
+constructor TpvTextEditor.TRegularExpression.Create(const aRegularExpression:TpvRawByteString;const aFlags:TRegularExpressionFlags=[]);
 begin
  inherited Create;
 
@@ -5199,9 +5191,9 @@ begin
 
  fAllSubMatches:=TList.Create;
 
- fRegularExpression:=ARegularExpression;
+ fRegularExpression:=aRegularExpression;
 
- fFlags:=AFlags;
+ fFlags:=aFlags;
 
  fBeginningJump:=false;
  fBeginningSplit:=false;
@@ -5284,82 +5276,82 @@ begin
  inherited Destroy;
 end;
 
-function TpvTextEditor.TRegularExpression.NewNode(const NodeType:TpvInt32;const Left,Right:PRegularExpressionNode;const Value:TpvInt32):PRegularExpressionNode;
+function TpvTextEditor.TRegularExpression.NewNode(const aNodeType:TpvInt32;const aLeft,aRight:PRegularExpressionNode;const aValue:TpvInt32):PRegularExpressionNode;
 begin
  GetMem(result,SizeOf(TRegularExpressionNode));
  FillChar(result^,SizeOf(TRegularExpressionNode),#0);
- result^.NodeType:=NodeType;
- result^.Left:=Left;
- result^.Right:=Right;
- result^.Value:=Value;
+ result^.NodeType:=aNodeType;
+ result^.Left:=aLeft;
+ result^.Right:=aRight;
+ result^.Value:=aValue;
  result^.Index:=fNodes.Add(result);
 end;
 
-procedure TpvTextEditor.TRegularExpression.FreeNode(var Node:PRegularExpressionNode);
+procedure TpvTextEditor.TRegularExpression.FreeNode(var aNode:PRegularExpressionNode);
 begin
- if assigned(Node) then begin
-  if assigned(Node^.Left) then begin
-   FreeNode(Node^.Left);
+ if assigned(aNode) then begin
+  if assigned(aNode^.Left) then begin
+   FreeNode(aNode^.Left);
   end;
-  if assigned(Node^.Right) then begin
-   FreeNode(Node^.Right);
+  if assigned(aNode^.Right) then begin
+   FreeNode(aNode^.Right);
   end;
-  FreeMem(Node);
-  Node:=nil;
+  FreeMem(aNode);
+  aNode:=nil;
  end;
 end;
 
-function TpvTextEditor.TRegularExpression.AreNodesEqual(NodeA,NodeB:PRegularExpressionNode):boolean;
+function TpvTextEditor.TRegularExpression.AreNodesEqual(aNodeA,aNodeB:PRegularExpressionNode):boolean;
 begin
- result:=(NodeA=NodeB) or
-         ((((assigned(NodeA) and assigned(NodeB))) and
-          ((NodeA^.NodeType=NodeB^.NodeType) and
-           ((NodeA^.Value=NodeB^.Value) and
-            (AreNodesEqual(NodeA^.Left,NodeB^.Left) and AreNodesEqual(NodeA^.Right,NodeB^.Right))))) or
-          not (assigned(NodeA) or assigned(NodeB)));
+ result:=(aNodeA=aNodeB) or
+         ((((assigned(aNodeA) and assigned(aNodeB))) and
+          ((aNodeA^.NodeType=aNodeB^.NodeType) and
+           ((aNodeA^.Value=aNodeB^.Value) and
+            (AreNodesEqual(aNodeA^.Left,aNodeB^.Left) and AreNodesEqual(aNodeA^.Right,aNodeB^.Right))))) or
+          not (assigned(aNodeA) or assigned(aNodeB)));
 end;
 
-function TpvTextEditor.TRegularExpression.AreNodesEqualSafe(NodeA,NodeB:PRegularExpressionNode):boolean;
+function TpvTextEditor.TRegularExpression.AreNodesEqualSafe(aNodeA,aNodeB:PRegularExpressionNode):boolean;
 begin
- result:=(NodeA=NodeB) or
-         ((((assigned(NodeA) and assigned(NodeB))) and
-           (((NodeA^.NodeType=NodeB^.NodeType) and not (NodeB^.NodeType in [ntPAREN])) and
-            ((NodeA^.Value=NodeB^.Value) and
-             (AreNodesEqualSafe(NodeA^.Left,NodeB^.Left) and
-              AreNodesEqualSafe(NodeA^.Right,NodeB^.Right))))) or
-          not (assigned(NodeA) or assigned(NodeB)));
+ result:=(aNodeA=aNodeB) or
+         ((((assigned(aNodeA) and assigned(aNodeB))) and
+           (((aNodeA^.NodeType=aNodeB^.NodeType) and not (aNodeB^.NodeType in [ntPAREN])) and
+            ((aNodeA^.Value=aNodeB^.Value) and
+             (AreNodesEqualSafe(aNodeA^.Left,aNodeB^.Left) and
+              AreNodesEqualSafe(aNodeA^.Right,aNodeB^.Right))))) or
+          not (assigned(aNodeA) or assigned(aNodeB)));
 end;
 
-function TpvTextEditor.TRegularExpression.Concat(NodeLeft,NodeRight:PRegularExpressionNode):PRegularExpressionNode;
+function TpvTextEditor.TRegularExpression.Concat(aNodeLeft,aNodeRight:PRegularExpressionNode):PRegularExpressionNode;
 begin
- if assigned(NodeLeft) and assigned(NodeRight) then begin
-  if (NodeLeft^.NodeType=ntZEROWIDTH) and (NodeRight^.NodeType=ntZEROWIDTH) then begin
-   NodeLeft^.Value:=NodeLeft^.Value or NodeRight^.Value;
-   result:=NodeLeft;
-  end else if ((NodeLeft^.NodeType in [ntSTAR,ntPLUS,ntQUEST]) and (NodeRight^.NodeType=ntPLUS)) and AreNodesEqualSafe(NodeLeft^.Left,NodeRight^.Left) and (NodeLeft^.Value=0) and (NodeRight^.Value=0) then begin
-   result:=NodeRight;
-  end else if ((NodeLeft^.NodeType in [ntSTAR,ntPLUS]) and (NodeRight^.NodeType in [ntSTAR,ntQUEST])) and AreNodesEqualSafe(NodeLeft^.Left,NodeRight^.Left) and (NodeLeft^.Value=0) and (NodeRight^.Value=0) then begin
-   result:=NodeLeft;
-  end else if (NodeLeft^.NodeType=ntCAT) and assigned(NodeLeft^.Left) and assigned(NodeLeft^.Right) then begin
-   if (NodeLeft^.Right^.NodeType=ntZEROWIDTH) and (NodeRight^.NodeType=ntZEROWIDTH) then begin
-    NodeLeft^.Right^.Value:=NodeLeft^.Right^.Value or NodeRight^.Value;
-    result:=NodeLeft;
-   end else if ((NodeLeft^.Right^.NodeType in [ntSTAR,ntPLUS,ntQUEST]) and (NodeRight^.NodeType=ntPLUS)) and AreNodesEqualSafe(NodeLeft^.Right^.Left,NodeRight^.Left) and (NodeLeft^.Right^.Value=0) and (NodeRight^.Value=0) then begin
-    NodeLeft^.Right:=NodeRight;
-    result:=NodeLeft;
-   end else if ((NodeLeft^.Right^.NodeType in [ntSTAR,ntPLUS]) and (NodeRight^.NodeType in [ntSTAR,ntQUEST])) and AreNodesEqualSafe(NodeLeft^.Right^.Left,NodeRight^.Left) and (NodeLeft^.Right^.Value=0) and (NodeRight^.Value=0) then begin
-    result:=NodeLeft;
+ if assigned(aNodeLeft) and assigned(aNodeRight) then begin
+  if (aNodeLeft^.NodeType=ntZEROWIDTH) and (aNodeRight^.NodeType=ntZEROWIDTH) then begin
+   aNodeLeft^.Value:=aNodeLeft^.Value or aNodeRight^.Value;
+   result:=aNodeLeft;
+  end else if ((aNodeLeft^.NodeType in [ntSTAR,ntPLUS,ntQUEST]) and (aNodeRight^.NodeType=ntPLUS)) and AreNodesEqualSafe(aNodeLeft^.Left,aNodeRight^.Left) and (aNodeLeft^.Value=0) and (aNodeRight^.Value=0) then begin
+   result:=aNodeRight;
+  end else if ((aNodeLeft^.NodeType in [ntSTAR,ntPLUS]) and (aNodeRight^.NodeType in [ntSTAR,ntQUEST])) and AreNodesEqualSafe(aNodeLeft^.Left,aNodeRight^.Left) and (aNodeLeft^.Value=0) and (aNodeRight^.Value=0) then begin
+   result:=aNodeLeft;
+  end else if (aNodeLeft^.NodeType=ntCAT) and assigned(aNodeLeft^.Left) and assigned(aNodeLeft^.Right) then begin
+   if (aNodeLeft^.Right^.NodeType=ntZEROWIDTH) and (aNodeRight^.NodeType=ntZEROWIDTH) then begin
+    aNodeLeft^.Right^.Value:=aNodeLeft^.Right^.Value or aNodeRight^.Value;
+    result:=aNodeLeft;
+   end else if ((aNodeLeft^.Right^.NodeType in [ntSTAR,ntPLUS,ntQUEST]) and (aNodeRight^.NodeType=ntPLUS)) and AreNodesEqualSafe(aNodeLeft^.Right^.Left,aNodeRight^.Left) and (aNodeLeft^.Right^.Value=0) and (aNodeRight^.Value=0) then begin
+    aNodeLeft^.Right:=aNodeRight;
+    result:=aNodeLeft;
+   end else if ((aNodeLeft^.Right^.NodeType in [ntSTAR,ntPLUS]) and (aNodeRight^.NodeType in [ntSTAR,ntQUEST])) and AreNodesEqualSafe(aNodeLeft^.Right^.Left,aNodeRight^.Left) and (aNodeLeft^.Right^.Value=0) and (aNodeRight^.Value=0) then begin
+    result:=aNodeLeft;
    end else begin
-    result:=NewNode(ntCAT,NodeLeft,NodeRight,0);
+    result:=NewNode(ntCAT,aNodeLeft,aNodeRight,0);
    end;
   end else begin
-   result:=NewNode(ntCAT,NodeLeft,NodeRight,0);
+   result:=NewNode(ntCAT,aNodeLeft,aNodeRight,0);
   end;
  end else begin
-  if assigned(NodeLeft) then begin
-   result:=NodeLeft;
-  end else if assigned(NodeRight) then begin
-   result:=NodeRight;
+  if assigned(aNodeLeft) then begin
+   result:=aNodeLeft;
+  end else if assigned(aNodeRight) then begin
+   result:=aNodeRight;
   end else begin
    result:=nil;
   end;
@@ -5406,15 +5398,15 @@ begin
  end;
 end;
 
-function TpvTextEditor.TRegularExpression.NewAlt(NodeLeft,NodeRight:PRegularExpressionNode):PRegularExpressionNode;
+function TpvTextEditor.TRegularExpression.NewAlt(aNodeLeft,aNodeRight:PRegularExpressionNode):PRegularExpressionNode;
 var NodeEx,pl,pr:PPRegularExpressionNode;
     Node,l,r:PRegularExpressionNode;
     i,j,k:TpvInt32;
     CharClass:TRegularExpressionCharClass;
 begin
- if assigned(NodeLeft) and assigned(NodeRight) then begin
-  if (NodeLeft^.NodeType=ntCAT) and (NodeRight^.NodeType=ntCAT) {and not (rfONLYFASTOPTIMIZATIONS in Flags)} then begin
-   result:=NewNode(ntALT,NodeLeft,NodeRight,0);
+ if assigned(aNodeLeft) and assigned(aNodeRight) then begin
+  if (aNodeLeft^.NodeType=ntCAT) and (aNodeRight^.NodeType=ntCAT) {and not (rfONLYFASTOPTIMIZATIONS in Flags)} then begin
+   result:=NewNode(ntALT,aNodeLeft,aNodeRight,0);
    NodeEx:=@result;
    while (((assigned(NodeEx) and assigned(NodeEx^)) and (NodeEx^^.NodeType=ntALT)) and (assigned(NodeEx^^.Left) and assigned(NodeEx^^.Right))) and ((NodeEx^^.Left^.NodeType=ntCAT) and (NodeEx^^.Right^.NodeType=ntCAT)) do begin
     Node:=NodeEx^;
@@ -5440,19 +5432,19 @@ begin
     end;
     break;
    end;
-  end else if AreNodesEqualSafe(NodeLeft,NodeRight) then begin
-   result:=NodeLeft;
-  end else if (NodeLeft^.NodeType=ntCHAR) and (NodeRight^.NodeType=ntCHAR) then begin
+  end else if AreNodesEqualSafe(aNodeLeft,aNodeRight) then begin
+   result:=aNodeLeft;
+  end else if (aNodeLeft^.NodeType=ntCHAR) and (aNodeRight^.NodeType=ntCHAR) then begin
    result:=NewNode(ntCHAR,nil,nil,0);
-   result^.CharClass:=NodeLeft^.CharClass+NodeRight^.CharClass;
+   result^.CharClass:=aNodeLeft^.CharClass+aNodeRight^.CharClass;
   end else begin
-   result:=NewNode(ntALT,NodeLeft,NodeRight,0);
+   result:=NewNode(ntALT,aNodeLeft,aNodeRight,0);
   end;
  end else begin
-  if assigned(NodeLeft) then begin
-   result:=NodeLeft;
-  end else if assigned(NodeRight) then begin
-   result:=NodeRight;
+  if assigned(aNodeLeft) then begin
+   result:=aNodeLeft;
+  end else if assigned(aNodeRight) then begin
+   result:=aNodeRight;
   end else begin
    result:=nil;
   end;
@@ -5466,62 +5458,62 @@ end;
   * (a*)? equals (a?)* equals a*
   * (a+)? equals (a?)+ equals a*
 }
-function TpvTextEditor.TRegularExpression.NewPlus(Node:PRegularExpressionNode;Kind:TpvInt32):PRegularExpressionNode;
+function TpvTextEditor.TRegularExpression.NewPlus(aNode:PRegularExpressionNode;aKind:TpvInt32):PRegularExpressionNode;
 begin
- if (Kind=qkGREEDY) and ((assigned(Node) and (Node^.NodeType=ntPAREN)) and ((assigned(Node^.Left) and (Node^.Left^.NodeType in [ntPLUS,ntSTAR])) and (Node^.Left^.Value=qkGREEDY))) then begin
-  result:=Node;
- end else if (Kind=qkGREEDY) and ((assigned(Node) and (Node^.NodeType=ntPLUS)) and (Node^.Value=qkGREEDY)) then begin
-  result:=Node;
- end else if (Kind=qkGREEDY) and ((assigned(Node) and (Node^.NodeType in [ntSTAR,ntQUEST])) and (Node^.Value=qkGREEDY)) then begin
-  result:=Node;
+ if (aKind=qkGREEDY) and ((assigned(aNode) and (aNode^.NodeType=ntPAREN)) and ((assigned(aNode^.Left) and (aNode^.Left^.NodeType in [ntPLUS,ntSTAR])) and (aNode^.Left^.Value=qkGREEDY))) then begin
+  result:=aNode;
+ end else if (aKind=qkGREEDY) and ((assigned(aNode) and (aNode^.NodeType=ntPLUS)) and (aNode^.Value=qkGREEDY)) then begin
+  result:=aNode;
+ end else if (aKind=qkGREEDY) and ((assigned(aNode) and (aNode^.NodeType in [ntSTAR,ntQUEST])) and (aNode^.Value=qkGREEDY)) then begin
+  result:=aNode;
   result^.NodeType:=ntSTAR;
  end else begin
-  result:=NewNode(ntPLUS,Node,nil,Kind);
+  result:=NewNode(ntPLUS,aNode,nil,aKind);
  end;
 end;
 
-function TpvTextEditor.TRegularExpression.NewStar(Node:PRegularExpressionNode;Kind:TpvInt32):PRegularExpressionNode;
+function TpvTextEditor.TRegularExpression.NewStar(aNode:PRegularExpressionNode;aKind:TpvInt32):PRegularExpressionNode;
 begin
-  if (Kind=qkGREEDY) and ((assigned(Node) and (Node^.NodeType=ntPAREN)) and ((assigned(Node^.Left) and (Node^.Left^.NodeType in [ntSTAR,ntPLUS{,ntQUEST}])) and (Node^.Left^.Value=qkGREEDY))) then begin
-  result:=Node;
+  if (aKind=qkGREEDY) and ((assigned(aNode) and (aNode^.NodeType=ntPAREN)) and ((assigned(aNode^.Left) and (aNode^.Left^.NodeType in [ntSTAR,ntPLUS{,ntQUEST}])) and (aNode^.Left^.Value=qkGREEDY))) then begin
+  result:=aNode;
   result^.Left^.NodeType:=ntSTAR;
- end else if (Kind=qkGREEDY) and ((assigned(Node) and (Node^.NodeType in [ntPLUS,ntQUEST,ntSTAR])) and (Node^.Value=qkGREEDY)) then begin
-  result:=Node;
+ end else if (aKind=qkGREEDY) and ((assigned(aNode) and (aNode^.NodeType in [ntPLUS,ntQUEST,ntSTAR])) and (aNode^.Value=qkGREEDY)) then begin
+  result:=aNode;
   result^.NodeType:=ntSTAR;
  end else begin
-  result:=NewNode(ntSTAR,StarDenull(Node),nil,Kind);
+  result:=NewNode(ntSTAR,StarDenull(aNode),nil,aKind);
  end;
 end;
 
-function TpvTextEditor.TRegularExpression.NewQuest(Node:PRegularExpressionNode;Kind:TpvInt32):PRegularExpressionNode;
+function TpvTextEditor.TRegularExpression.NewQuest(aNode:PRegularExpressionNode;aKind:TpvInt32):PRegularExpressionNode;
 begin
- if (Kind=qkGREEDY) and ((assigned(Node) and (Node^.NodeType=ntPAREN)) and ((assigned(Node^.Left) and (Node^.Left^.NodeType=ntQUEST)) and (Node^.Left^.Value=qkGREEDY))) then begin
-  result:=Node;
- end else if (Kind=qkGREEDY) and ((assigned(Node) and (Node^.NodeType=ntPAREN)) and ((assigned(Node^.Left) and (Node^.Left^.NodeType in [ntSTAR,ntPLUS{,ntQUEST}])) and (Node^.Left^.Value=qkGREEDY))) then begin
-  result:=Node;
+ if (aKind=qkGREEDY) and ((assigned(aNode) and (aNode^.NodeType=ntPAREN)) and ((assigned(aNode^.Left) and (aNode^.Left^.NodeType=ntQUEST)) and (aNode^.Left^.Value=qkGREEDY))) then begin
+  result:=aNode;
+ end else if (aKind=qkGREEDY) and ((assigned(aNode) and (aNode^.NodeType=ntPAREN)) and ((assigned(aNode^.Left) and (aNode^.Left^.NodeType in [ntSTAR,ntPLUS{,ntQUEST}])) and (aNode^.Left^.Value=qkGREEDY))) then begin
+  result:=aNode;
   result^.Left^.NodeType:=ntSTAR;
- end else if (Kind=qkGREEDY) and ((assigned(Node) and (Node^.NodeType=ntQUEST)) and (Node^.Value=qkGREEDY)) then begin
-  result:=Node;
- end else if (Kind=qkGREEDY) and ((assigned(Node) and (Node^.NodeType in [ntPLUS,ntSTAR])) and (Node^.Value=qkGREEDY)) then begin
-  result:=Node;
+ end else if (aKind=qkGREEDY) and ((assigned(aNode) and (aNode^.NodeType=ntQUEST)) and (aNode^.Value=qkGREEDY)) then begin
+  result:=aNode;
+ end else if (aKind=qkGREEDY) and ((assigned(aNode) and (aNode^.NodeType in [ntPLUS,ntSTAR])) and (aNode^.Value=qkGREEDY)) then begin
+  result:=aNode;
   result^.NodeType:=ntSTAR;
  end else begin
-  result:=NewNode(ntQUEST,Node,nil,Kind);
+  result:=NewNode(ntQUEST,aNode,nil,aKind);
  end;
 end;
 
-function TpvTextEditor.TRegularExpression.IsStarNullable(Node:PRegularExpressionNode):boolean;
+function TpvTextEditor.TRegularExpression.IsStarNullable(aNode:PRegularExpressionNode):boolean;
 begin
- if assigned(Node) then begin
-  case Node^.NodeType of
+ if assigned(aNode) then begin
+  case aNode^.NodeType of
    ntSTAR:begin
-    result:=Node^.Value=qkGREEDY;
+    result:=aNode^.Value=qkGREEDY;
    end;
    ntALT:begin
-    result:=(IsStarNullable(Node^.Left) or IsStarNullable(Node^.Right)) or not (assigned(Node^.Left) and assigned(Node^.Right));
+    result:=(IsStarNullable(aNode^.Left) or IsStarNullable(aNode^.Right)) or not (assigned(aNode^.Left) and assigned(aNode^.Right));
    end;
    ntCAT:begin
-    result:=IsStarNullable(Node^.Left) and IsStarNullable(Node^.Right);
+    result:=IsStarNullable(aNode^.Left) and IsStarNullable(aNode^.Right);
    end;
    else begin
     result:=false;
@@ -5532,9 +5524,9 @@ begin
  end;
 end;
 
-function TpvTextEditor.TRegularExpression.StarDenull(Node:PRegularExpressionNode):PRegularExpressionNode;
+function TpvTextEditor.TRegularExpression.StarDenull(aNode:PRegularExpressionNode):PRegularExpressionNode;
 begin
- result:=Node;
+ result:=aNode;
  if IsStarNullable(result) then begin
   case result^.NodeType of
    ntSTAR:begin
@@ -6561,7 +6553,7 @@ begin
  GenerateInstructions(fInstructions,fCountInstructions);
 end;
 
-function TpvTextEditor.TRegularExpression.NewSubMatches(const Count:TpvInt32;const BitState:TpvUInt32):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
+function TpvTextEditor.TRegularExpression.NewSubMatches(const aCount:TpvInt32;const aBitState:TpvUInt32):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
 begin
  if assigned(fFreeSubMatches) then begin
   result:=fFreeSubMatches;
@@ -6573,45 +6565,45 @@ begin
   fAllSubMatches.Add(result);
  end;
  result^.ReferenceCounter:=1;
- result^.Count:=Count;
- result^.BitState:=BitState;
+ result^.Count:=aCount;
+ result^.BitState:=aBitState;
 end;
 
-procedure TpvTextEditor.TRegularExpression.DecRef(const SubMatches:PRegularExpressionSubMatches); {$ifdef caninline}inline;{$endif}
+procedure TpvTextEditor.TRegularExpression.DecRef(const aSubMatches:PRegularExpressionSubMatches); {$ifdef caninline}inline;{$endif}
 begin
- dec(SubMatches^.ReferenceCounter);
- if SubMatches^.ReferenceCounter=0 then begin
-  SubMatches^.Next:=fFreeSubMatches;
-  fFreeSubMatches:=SubMatches;
+ dec(aSubMatches^.ReferenceCounter);
+ if aSubMatches^.ReferenceCounter=0 then begin
+  aSubMatches^.Next:=fFreeSubMatches;
+  fFreeSubMatches:=aSubMatches;
  end;
 end;
 
-function TpvTextEditor.TRegularExpression.IncRef(const SubMatches:PRegularExpressionSubMatches):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
+function TpvTextEditor.TRegularExpression.IncRef(const aSubMatches:PRegularExpressionSubMatches):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
 begin
- inc(SubMatches^.ReferenceCounter);
- result:=SubMatches;
+ inc(aSubMatches^.ReferenceCounter);
+ result:=aSubMatches;
 end;
 
-function TpvTextEditor.TRegularExpression.Update(const SubMatches:PRegularExpressionSubMatches;const Index,Position:TpvInt32):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
+function TpvTextEditor.TRegularExpression.Update(const aSubMatches:PRegularExpressionSubMatches;const aIndex,aPosition:TpvInt32):PRegularExpressionSubMatches; {$ifdef caninline}inline;{$endif}
 var Counter:TpvInt32;
     BitState:TpvUInt32;
 begin
- result:=SubMatches;
+ result:=aSubMatches;
  if result^.ReferenceCounter>1 then begin
-  result:=NewSubMatches(SubMatches^.Count,SubMatches^.BitState);
+  result:=NewSubMatches(aSubMatches^.Count,aSubMatches^.BitState);
   if (result^.BitState and TpvUInt32($80000000))=0 then begin
    BitState:=result^.BitState;
    while BitState<>0 do begin
     Counter:=PopFirstOneBit(BitState);
-    result^.SubMatches[Counter]:=SubMatches^.SubMatches[Counter];
+    result^.SubMatches[Counter]:=aSubMatches^.SubMatches[Counter];
    end;
   end else begin
-   Move(SubMatches^.SubMatches[0],result^.SubMatches[0],SubMatches^.Count*SizeOf(TRegularExpressionSubMatchesItem));
+   Move(aSubMatches^.SubMatches[0],result^.SubMatches[0],aSubMatches^.Count*SizeOf(TRegularExpressionSubMatchesItem));
   end;
-  dec(SubMatches^.ReferenceCounter);
+  dec(aSubMatches^.ReferenceCounter);
  end;
 {$ifdef cpu386}
- result^.BitState:=result^.BitState or ((TpvUInt32(1) shl Index) or TpvUInt32(-TpvUInt32(TpvUInt32(-(Index-30)) shr 31)));
+ result^.BitState:=result^.BitState or ((TpvUInt32(1) shl aIndex) or TpvUInt32(-TpvUInt32(TpvUInt32(-(aIndex-30)) shr 31)));
 {$else}
  if (result^.BitState and TpvUInt32($80000000))=0 then begin
   if Index>30 then begin
@@ -6621,85 +6613,85 @@ begin
   end;
  end;
 {$endif}
- result^.SubMatches[Index]:=Position;
+ result^.SubMatches[aIndex]:=aPosition;
 end;
 
-function TpvTextEditor.TRegularExpression.NewThread(const Instruction:PRegularExpressionInstruction;const SubMatches:PRegularExpressionSubMatches):TRegularExpressionThread; {$ifdef caninline}inline;{$endif}
+function TpvTextEditor.TRegularExpression.NewThread(const aInstruction:PRegularExpressionInstruction;const aSubMatches:PRegularExpressionSubMatches):TRegularExpressionThread; {$ifdef caninline}inline;{$endif}
 begin
- result.Instruction:=Instruction;
- result.SubMatches:=SubMatches;
+ result.Instruction:=aInstruction;
+ result.SubMatches:=aSubMatches;
 end;
 
-function TpvTextEditor.TRegularExpression.IsWordChar(const Position:TpvInt32;const aCodePoint:TpvUInt32):boolean; {$ifdef caninline}inline;{$endif}
+function TpvTextEditor.TRegularExpression.IsWordChar(const aPosition:TpvInt32;const aCodePoint:TpvUInt32):boolean; {$ifdef caninline}inline;{$endif}
 begin
- result:=((Position>=0) and (Position<fInputLength)) and (fInput[Position] in ['A'..'Z','a'..'z']);
+ result:=((aPosition>=0) and (aPosition<fInputLength)) and (aCodePoint in [ord('A')..ord('Z'),ord('a')..ord('z')]);
 end;
 
-procedure TpvTextEditor.TRegularExpression.AddThread(const ThreadList:PRegularExpressionThreadList;Instruction:PRegularExpressionInstruction;SubMatches:PRegularExpressionSubMatches;const Position:TpvInt32;const aPreviousCodePoint,aCurrentCodePoint:TpvUInt32);
+procedure TpvTextEditor.TRegularExpression.AddThread(const aThreadList:PRegularExpressionThreadList;aInstruction:PRegularExpressionInstruction;aSubMatches:PRegularExpressionSubMatches;const aPosition:TpvInt32;const aPreviousCodePoint,aCurrentCodePoint,aNextCodePoint:TpvUInt32);
 var Thread:PRegularExpressionThread;
 begin
- while assigned(Instruction) do begin
-  if Instruction^.Generation=fGeneration then begin
-   DecRef(SubMatches);
+ while assigned(aInstruction) do begin
+  if aInstruction^.Generation=fGeneration then begin
+   DecRef(aSubMatches);
    break;
   end else begin
-   Instruction^.Generation:=fGeneration;
-   case Instruction^.IndexAndOpcode and $ff of
+   aInstruction^.Generation:=fGeneration;
+   case aInstruction^.IndexAndOpcode and $ff of
     opJMP:begin
-     Instruction:=Instruction^.Next;
+     aInstruction:=aInstruction^.Next;
      continue;
     end;
     opSPLIT:begin
-     AddThread(ThreadList,Instruction^.Next,IncRef(SubMatches),Position,aPreviousCodePoint,aCurrentCodePoint);
-     Instruction:=Instruction^.OtherNext;
+     AddThread(aThreadList,aInstruction^.Next,IncRef(aSubMatches),aPosition,aPreviousCodePoint,aCurrentCodePoint,aNextCodePoint);
+     aInstruction:=aInstruction^.OtherNext;
      continue;
     end;
     opSAVE:begin
-     SubMatches:=Update(SubMatches,Instruction^.Value,Position);
-     Instruction:=Instruction^.Next;
+     aSubMatches:=Update(aSubMatches,aInstruction^.Value,aPosition);
+     aInstruction:=aInstruction^.Next;
      continue;
     end;
     opBOL:begin
-     if (Position=0) or ((TRegularExpressionFlag.MultiLine in fFlags) and ((Position>0) and (fInput[Position-1] in [#10,#13]))) then begin
-      Instruction:=Instruction^.Next;
+     if (aPosition=0) or ((TRegularExpressionFlag.MultiLine in fFlags) and ((aPosition>0) and (aPreviousCodePoint in [10,13]))) then begin
+      aInstruction:=aInstruction^.Next;
       continue;
      end else begin
-      DecRef(SubMatches);
+      DecRef(aSubMatches);
       break;
      end;
     end;
     opEOL:begin
-     if ((Position+1)>=fInputLength) or ((TRegularExpressionFlag.MultiLine in fFlags) and (((Position+1)<fInputLength) and (fInput[Position+1] in [#10,#13]))) then begin
-      Instruction:=Instruction^.Next;
+     if ((aPosition+1)>=fInputLength) or ((TRegularExpressionFlag.MultiLine in fFlags) and (((aPosition+1)<fInputLength) and (aNextCodePoint in [10,13]))) then begin
+      aInstruction:=aInstruction^.Next;
       continue;
      end else begin
-      DecRef(SubMatches);
+      DecRef(aSubMatches);
       break;
      end;
     end;
     opBRK:begin
-     if IsWordChar(Position-1,aPreviousCodePoint)<>IsWordChar(Position,aCurrentCodePoint) then begin
-      Instruction:=Instruction^.Next;
+     if IsWordChar(aPosition-1,aPreviousCodePoint)<>IsWordChar(aPosition,aCurrentCodePoint) then begin
+      aInstruction:=aInstruction^.Next;
       continue;
      end else begin
-      DecRef(SubMatches);
+      DecRef(aSubMatches);
       break;
      end;
     end;
     opNBRK:begin
-     if IsWordChar(Position-1,aPreviousCodePoint)=IsWordChar(Position,aCurrentCodePoint) then begin
-      Instruction:=Instruction^.Next;
+     if IsWordChar(aPosition-1,aPreviousCodePoint)=IsWordChar(aPosition,aCurrentCodePoint) then begin
+      aInstruction:=aInstruction^.Next;
       continue;
      end else begin
-      DecRef(SubMatches);
+      DecRef(aSubMatches);
       break;
      end;
     end;
     else begin
-     Thread:=@ThreadList^.Threads[ThreadList^.Count];
-     inc(ThreadList^.Count);
-     Thread^.Instruction:=Instruction;
-     Thread^.SubMatches:=SubMatches;
+     Thread:=@aThreadList^.Threads[aThreadList^.Count];
+     inc(aThreadList^.Count);
+     Thread^.Instruction:=aInstruction;
+     Thread^.SubMatches:=aSubMatches;
      break;
     end;
    end;
@@ -6707,7 +6699,7 @@ begin
  end;
 end;
 
-function TpvTextEditor.TRegularExpression.SearchMatch(const aRope:TpvTextEditor.TRope;var Captures:TRegularExpressionCaptures;const StartPosition,UntilExcludingPosition:TpvInt32;const UnanchoredStart:boolean):boolean;
+function TpvTextEditor.TRegularExpression.SearchMatch(const aRope:TpvTextEditor.TRope;var aCaptures:TRegularExpressionCaptures;const aStartPosition,aUntilExcludingPosition:TpvInt32;const aUnanchoredStart:boolean):boolean;
 var CurrentPosition,Counter,ThreadIndex,CurrentLength,LastPosition:TpvInt32;
     CurrentThreadList,NewThreadList,TemporaryThreadList:PRegularExpressionThreadList;
     SubMatches,Matched,BestSubMatches:PRegularExpressionSubMatches;
@@ -6720,6 +6712,8 @@ var CurrentPosition,Counter,ThreadIndex,CurrentLength,LastPosition:TpvInt32;
 begin
  result:=false;
 
+ fInputLength:=aRope.CountCodePoints;
+
  CurrentThreadList:=@fThreadLists[0];
  NewThreadList:=@fThreadLists[1];
 
@@ -6728,15 +6722,15 @@ begin
 
  SubMatches:=NewSubMatches(fCountSubMatches,0);
 
- PreviousCodePoint:=aRope.GetCodePoint(StartPosition-1);
+ PreviousCodePoint:=aRope.GetCodePoint(aStartPosition-1);
 
- CurrentCodePoint:=aRope.GetCodePoint(StartPosition);
+ CurrentCodePoint:=aRope.GetCodePoint(aStartPosition);
 
  inc(fGeneration);
- if UnanchoredStart then begin
-  AddThread(CurrentThreadList,fUnanchoredStartInstruction,SubMatches,StartPosition,PreviousCodePoint,CurrentCodePoint);
+ if aUnanchoredStart then begin
+  AddThread(CurrentThreadList,fUnanchoredStartInstruction,SubMatches,aStartPosition,PreviousCodePoint,CurrentCodePoint,NextCodePoint);
  end else begin
-  AddThread(CurrentThreadList,fAnchoredStartInstruction,SubMatches,StartPosition,PreviousCodePoint,CurrentCodePoint);
+  AddThread(CurrentThreadList,fAnchoredStartInstruction,SubMatches,aStartPosition,PreviousCodePoint,CurrentCodePoint,NextCodePoint);
  end;
 
  Matched:=nil;
@@ -6747,7 +6741,7 @@ begin
 
  NextCodePoint:=0;
 
- for CurrentPosition:=StartPosition to UntilExcludingPosition-1 do begin
+ for CurrentPosition:=aStartPosition to aUntilExcludingPosition-1 do begin
   if CurrentThreadList^.Count=0 then begin
    break;
   end;
@@ -6764,7 +6758,7 @@ begin
      if (CurrentPosition>=fInputLength) or (CurrentCodePoint<>TpvUInt32(Instruction^.Value)) then begin
       DecRef(SubMatches);
      end else begin
-      AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,CurrentCodePoint,NextCodePoint);
+      AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,PreviousCodePoint,CurrentCodePoint,NextCodePoint);
      end;
     end;
     opCHAR:begin
@@ -6772,14 +6766,14 @@ begin
         (CurrentCodePoint in PRegularExpressionCharClass(pointer(TpvPtrUInt(Instruction^.Value)))^) then begin
       DecRef(SubMatches);
      end else begin
-      AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,CurrentCodePoint,NextCodePoint);
+      AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,PreviousCodePoint,CurrentCodePoint,NextCodePoint);
      end;
     end;
     opANY:begin
      if CurrentPosition>=fInputLength then begin
       DecRef(SubMatches);
      end else begin
-      AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,CurrentCodePoint,NextCodePoint);
+      AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,PreviousCodePoint,CurrentCodePoint,NextCodePoint);
      end;
     end;
     opMATCH:begin
@@ -6829,8 +6823,8 @@ begin
        BestSubMatches:=NewSubMatches(fCountSubMatches,SubMatches^.BitState);
       end;
       if SubMatches^.BitState<>0 then begin
-       if LastPosition<UntilExcludingPosition then begin
-        LastPosition:=UntilExcludingPosition;
+       if LastPosition<aUntilExcludingPosition then begin
+        LastPosition:=aUntilExcludingPosition;
         BestSubMatches^.BitState:=SubMatches^.BitState;
         Move(SubMatches^.SubMatches[0],BestSubMatches^.SubMatches[0],SubMatches^.Count*SizeOf(TRegularExpressionSubMatchesItem));
        end;
@@ -6858,10 +6852,10 @@ begin
  end;
 
  if assigned(Matched) then begin
-  SetLength(Captures,fCountParens);
+  SetLength(aCaptures,fCountParens);
   BitState:=Matched^.BitState;
   for Counter:=0 to fCountParens-1 do begin
-   Capture:=@Captures[Counter];
+   Capture:=@aCaptures[Counter];
    if (BitState and TpvUInt32($80000000))<>0 then begin
     CurrentPosition:=Matched^.SubMatches[Counter shl 1];
     CurrentLength:=Matched^.SubMatches[(Counter shl 1) or 1]-CurrentPosition;
