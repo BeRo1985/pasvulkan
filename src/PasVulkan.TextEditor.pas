@@ -140,6 +140,7 @@ type TpvTextEditor=class
              public
               class function UTF32CharToUTF8(const aCodePoint:TpvUInt32):TpVUTF8String; static;
               class function UTF8Validate(const aString:TpvUTF8String):boolean; static;
+              class function UTF8GetCodePointAndIncFallback(const aString:TpvUTF8String;var aCodeUnit:TpvSizeInt):TpvUInt32; static;
               class function UTF8Correct(const aString:TpvUTF8String):TpvUTF8String; static;
               class function RawDataToUTF8String(const aData;const aDataLength:TpvInt32;const aCodePage:TpvInt32=-1):TpvUTF8String; static;
               class function RawByteStringToUTF8String(const aString:TpvRawByteString;const aCodePage:TpvInt32=-1):TpvUTF8String; static;
@@ -1074,6 +1075,33 @@ begin
   end;
  end;
  result:=State=TUTF8DFA.StateAccept;
+end;
+
+class function TpvTextEditor.TUTF8Utils.UTF8GetCodePointAndIncFallback(const aString:TpvUTF8String;var aCodeUnit:TpvSizeInt):TpvUInt32;
+var Len,StartCodeUnit:TpvSizeInt;
+    Value,CharClass,State:TpvUInt32;
+begin
+ result:=0;
+ Len:=length(aString);
+ if (aCodeUnit>0) and (aCodeUnit<=Len) then begin
+  StartCodeUnit:=aCodeUnit;
+  State:=TpvTextEditor.TUTF8DFA.StateAccept;
+  repeat
+   Value:=TpvUInt8(TpvRawByteChar(aString[aCodeUnit]));
+   inc(aCodeUnit);
+   CharClass:=TpvTextEditor.TUTF8DFA.StateCharClasses[TpvRawByteChar(Value)];
+   if State=TpvTextEditor.TUTF8DFA.StateAccept then begin
+    result:=Value and ($ff shr CharClass);
+   end else begin
+    result:=(result shl 6) or (Value and $3f);
+   end;
+   State:=TpvTextEditor.TUTF8DFA.StateTransitions[State+CharClass];
+  until (State<=TpvTextEditor.TUTF8DFA.StateError) or (aCodeUnit>Len);
+  if State<>TpvTextEditor.TUTF8DFA.StateAccept then begin
+   result:=TpvUInt8(TpvRawByteChar(aString[StartCodeUnit]));
+   aCodeUnit:=StartCodeUnit+1;
+  end;
+ end;
 end;
 
 class function TpvTextEditor.TUTF8Utils.UTF8Correct(const aString:TpvUTF8String):TpvUTF8String;
@@ -5526,8 +5554,8 @@ begin
 end;
 
 procedure TpvTextEditor.TRegularExpression.Parse;
-var SourcePosition,SourceLength:TpvInt32;
-    Source:TpvRawByteString;
+var SourcePosition,SourceLength:TpvSizeInt;
+    Source:TpvUTF8String;
  function Hex2Value(const c:ansichar):TpvUInt32;
  begin
   case c of
@@ -5852,8 +5880,7 @@ var SourcePosition,SourceLength:TpvInt32;
         end;
         else begin
          result:=NewNode(ntCHAR,nil,nil,0);
-         result^.CharClass:=GetCharClass(ord(Source[SourcePosition]),IsSingle,StartCodePoint);
-         inc(SourcePosition);
+         result^.CharClass:=GetCharClass(TpvTextEditor.TUTF8Utils.UTF8GetCodePointAndIncFallback(Source,SourcePosition),IsSingle,StartCodePoint);
         end;
        end;
       end else begin
@@ -5925,8 +5952,7 @@ var SourcePosition,SourceLength:TpvInt32;
             end;
             else begin
              IsSingle:=false;
-             result^.CharClass:=result^.CharClass+GetCharClass(ord(Source[SourcePosition]),IsSingle,StartCodePoint);
-             inc(SourcePosition);
+             result^.CharClass:=result^.CharClass+GetCharClass(TpvTextEditor.TUTF8Utils.UTF8GetCodePointAndIncFallback(Source,SourcePosition),IsSingle,StartCodePoint);
              if not IsSingle then begin
               continue;
              end;
@@ -5960,8 +5986,7 @@ var SourcePosition,SourceLength:TpvInt32;
           raise ERegularExpression.Create('Syntax error');
          end;
          else begin
-          StartCodePoint:=ord(Source[SourcePosition]);
-          inc(SourcePosition);
+          StartCodePoint:=TpvTextEditor.TUTF8Utils.UTF8GetCodePointAndIncFallback(Source,SourcePosition);
          end;
         end;
         if (SourcePosition<=SourceLength) and (Source[SourcePosition]='-') then begin
@@ -5984,8 +6009,7 @@ var SourcePosition,SourceLength:TpvInt32;
              end;
              else begin
               IsSingle:=false;
-              result^.CharClass:=result^.CharClass+GetCharClass(ord(Source[SourcePosition]),IsSingle,EndCodePoint);
-              inc(SourcePosition);
+              result^.CharClass:=result^.CharClass+GetCharClass(TpvTextEditor.TUTF8Utils.UTF8GetCodePointAndIncFallback(Source,SourcePosition),IsSingle,EndCodePoint);
               if not IsSingle then begin
                raise ERegularExpression.Create('Syntax error');
               end;
@@ -5997,8 +6021,7 @@ var SourcePosition,SourceLength:TpvInt32;
            raise ERegularExpression.Create('Syntax error');
           end;
           else begin
-           EndCodePoint:=ord(Source[SourcePosition]);
-           inc(SourcePosition);
+           EndCodePoint:=TpvTextEditor.TUTF8Utils.UTF8GetCodePointAndIncFallback(Source,SourcePosition);
           end;
          end;
          if EndCodePoint<StartCodePoint then begin
@@ -6025,8 +6048,7 @@ var SourcePosition,SourceLength:TpvInt32;
      end;
      else begin
       result:=NewNode(ntCHAR,nil,nil,0);
-      result^.CharClass:=TpvTextEditor.TCodePointSet.Create([Source[SourcePosition]]);
-      inc(SourcePosition);
+      result^.CharClass:=TpvTextEditor.TCodePointSet.Create([TpvTextEditor.TUTF8Utils.UTF8GetCodePointAndIncFallback(Source,SourcePosition)]);
      end;
     end;
    end;
