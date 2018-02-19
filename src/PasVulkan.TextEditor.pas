@@ -747,6 +747,8 @@ type TpvTextEditor=class
                    end;
              private
 
+              fParent:TpvTextEditor;
+
               fRegularExpression:TpvRawByteString;
 
               fFlags:TRegularExpressionFlags;
@@ -815,9 +817,9 @@ type TpvTextEditor=class
               function IsWordChar(const aPosition:TpvInt32):boolean; {$ifdef caninline}inline;{$endif}
               procedure AddThread(const aThreadList:PRegularExpressionThreadList;aInstruction:PRegularExpressionInstruction;aSubMatches:PRegularExpressionSubMatches;const aPosition,aWindowOffset:TpvSizeInt);
              protected
-              function SearchMatch(const aRope:TpvTextEditor.TRope;var aCaptures:TRegularExpressionCaptures;const aStartPosition,aUntilExcludingPosition:TpvInt32;const aUnanchoredStart:boolean):boolean;
+              function SearchMatch(var aCaptures:TRegularExpressionCaptures;const aStartPosition,aUntilExcludingPosition:TpvInt32;const aUnanchoredStart:boolean):boolean;
              public
-              constructor Create(const aRegularExpression:TpvRawByteString;const aFlags:TRegularExpressionFlags=[]);
+              constructor Create(const aParent:TpvTextEditor;const aRegularExpression:TpvRawByteString;const aFlags:TRegularExpressionFlags=[]);
               destructor Destroy; override;
               property NamedGroups:TStringList read fNamedGroupStringList;
             end;
@@ -932,6 +934,7 @@ type TpvTextEditor=class
        procedure SetText(const aText:TpvUTF8String);
        function GetLine(const aLineIndex:TpvSizeInt):TpvUTF8String;
        procedure SetLine(const aLineIndex:TpvSizeInt;const aLine:TpvUTF8String);
+       procedure SetSyntaxHighlighting(const aSyntaxHighlighting:TpvTextEditor.TSyntaxHighlighting);
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -962,7 +965,7 @@ type TpvTextEditor=class
        property Text:TpvUTF8String read GetText write SetText;
        property CountLines:TpvSizeInt read GetCountLines;
        property UndoRedoManager:TUndoRedoManager read fUndoRedoManager;
-       property SyntaxHighlighting:TSyntaxHighlighting read fSyntaxHighlighting write fSyntaxHighlighting;
+       property SyntaxHighlighting:TSyntaxHighlighting read fSyntaxHighlighting write SetSyntaxHighlighting;
      end;
 
 implementation
@@ -3290,6 +3293,14 @@ begin
  raise ERangeError.Create('Line index out of bounds');
 end;
 
+procedure TpvTextEditor.SetSyntaxHighlighting(const aSyntaxHighlighting:TpvTextEditor.TSyntaxHighlighting);
+begin
+ if fSyntaxHighlighting<>aSyntaxHighlighting then begin
+  fSyntaxHighlighting.Free;
+  fSyntaxHighlighting:=aSyntaxHighlighting;
+ end;
+end;
+
 function TpvTextEditor.CreateView:TpvTextEditor.TView;
 begin
  result:=TpvTextEditor.TView.Create(self);
@@ -5171,9 +5182,11 @@ begin
  result:=(Self-CodePointSetToSubtract)+CodePointSetToAdd;
 end;
 
-constructor TpvTextEditor.TRegularExpression.Create(const aRegularExpression:TpvRawByteString;const aFlags:TRegularExpressionFlags=[]);
+constructor TpvTextEditor.TRegularExpression.Create(const aParent:TpvTextEditor;const aRegularExpression:TpvRawByteString;const aFlags:TRegularExpressionFlags=[]);
 begin
  inherited Create;
+
+ fParent:=aParent;
 
  fGeneration:=0;
  fCountParens:=0;
@@ -6714,7 +6727,7 @@ begin
  end;
 end;
 
-function TpvTextEditor.TRegularExpression.SearchMatch(const aRope:TpvTextEditor.TRope;var aCaptures:TRegularExpressionCaptures;const aStartPosition,aUntilExcludingPosition:TpvInt32;const aUnanchoredStart:boolean):boolean;
+function TpvTextEditor.TRegularExpression.SearchMatch(var aCaptures:TRegularExpressionCaptures;const aStartPosition,aUntilExcludingPosition:TpvInt32;const aUnanchoredStart:boolean):boolean;
 var CurrentPosition,Counter,ThreadIndex,CurrentLength,LastPosition,WindowStartOffset:TpvSizeInt;
     CurrentThreadList,NewThreadList,TemporaryThreadList:PRegularExpressionThreadList;
     SubMatches,Matched,BestSubMatches:PRegularExpressionSubMatches;
@@ -6728,7 +6741,7 @@ var CurrentPosition,Counter,ThreadIndex,CurrentLength,LastPosition,WindowStartOf
 begin
  result:=false;
 
- fInputLength:=aRope.CountCodePoints;
+ fInputLength:=fParent.fRope.CountCodePoints;
 
  CurrentThreadList:=@fThreadLists[0];
  NewThreadList:=@fThreadLists[1];
@@ -6743,7 +6756,7 @@ begin
  end else begin
   WindowStartOffset:=0;
  end;
- CodePointEnumeratorSource:=TpvTextEditor.TRope.TCodePointEnumeratorSource.Create(aRope,aStartPosition+WindowStartOffset,aRope.fCountCodePoints);
+ CodePointEnumeratorSource:=TpvTextEditor.TRope.TCodePointEnumeratorSource.Create(fParent.fRope,aStartPosition+WindowStartOffset,fParent.fRope.fCountCodePoints);
  CodePointEnumerator:=CodePointEnumeratorSource.GetEnumerator;
  for Counter:=-1 to WindowStartOffset-1 do begin
   fCodePointWindow.fCodePoints[Counter]:=$ffffffff;

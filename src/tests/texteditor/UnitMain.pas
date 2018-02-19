@@ -252,17 +252,17 @@ begin
  AbstractTextEditor:=TpvTextEditor.Create;
  try
 
-  AbstractTextEditor.SyntaxHighlighting:=TpvTextEditor.TCSyntaxHighlighting.Create(AbstractTextEditor);
+  AbstractTextEditor.SyntaxHighlighting:=TpvTextEditor.TPascalSyntaxHighlighting.Create(AbstractTextEditor);
 
   AbstractTextEditorView:=AbstractTextEditor.CreateView;
 
   if ParamCount>0 then begin
-//   AbstractTextEditor.LoadFromFile(ParamStr(1));
+   AbstractTextEditor.LoadFromFile(ParamStr(1));
   end;
 
   //AbstractTextEditor.Text:='//0123 3.14159e+0 $1337c0de if then { bla }';
 //AbstractTextEditor.Text:='''//0123 3.14159e+0 $1337c0de if then { bla }'#13#10'bla';
-  AbstractTextEditor.Text:='#ifdef test'#13#10'void main(){'#13#10'}'#13#10'#endif';
+//AbstractTextEditor.Text:='#ifdef test'#13#10'void main(){'#13#10'}'#13#10'#endif';
 
   repeat
 
