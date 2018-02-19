@@ -737,6 +737,9 @@ type TpvTextEditor=class
                     // Qualifier kind
                     qkGREEDY=0;
                     qkLAZY=1;
+
+                    MaxGeneration=$40000000;
+
               type TCodePointWindow=record
                     private
                      fCodePoints:array[-1..2] of TpvUInt32;
@@ -6913,6 +6916,13 @@ begin
   end;
   DecRef(Matched);
   result:=true;
+ end;
+
+ if fGeneration>MaxGeneration then begin
+  fGeneration:=0;
+  for Counter:=0 to fCountInstructions-1 do begin
+   fInstructions[Counter].Generation:=$ffffffff;
+  end;
  end;
 
 end;
