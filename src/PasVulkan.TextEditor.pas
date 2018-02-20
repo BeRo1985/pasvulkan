@@ -822,10 +822,11 @@ type TpvTextEditor=class
               function IsWordChar(const aPosition:TpvInt32):boolean; {$ifdef caninline}inline;{$endif}
               procedure AddThread(const aThreadList:PRegularExpressionThreadList;aInstruction:PRegularExpressionInstruction;aSubMatches:PRegularExpressionSubMatches;const aPosition,aWindowOffset:TpvSizeInt);
              protected
-              function SearchMatch(var aCaptures:TRegularExpressionCaptures;const aStartPosition,aUntilExcludingPosition:TpvInt32;const aUnanchoredStart:boolean):boolean;
+              function SearchMatch(out aCaptures:TRegularExpressionCaptures;const aStartPosition,aUntilExcludingPosition:TpvSizeInt;const aUnanchoredStart:boolean):boolean;
              public
               constructor Create(const aParent:TpvTextEditor;const aRegularExpression:TpvRawByteString;const aFlags:TRegularExpressionFlags=[]);
               destructor Destroy; override;
+              function MatchNext(out aCaptures:TRegularExpressionCaptures;out aPosition,aLength:TpvSizeInt;const aStartPosition:TpvSizeInt=0;const aUntilExcludingPosition:TpvSizeInt=-1;const aCountTries:TpvSizeInt=-1):boolean;
               property NamedGroups:TStringList read fNamedGroupStringList;
             end;
             TView=class
@@ -6753,7 +6754,7 @@ begin
  end;
 end;
 
-function TpvTextEditor.TRegularExpression.SearchMatch(var aCaptures:TRegularExpressionCaptures;const aStartPosition,aUntilExcludingPosition:TpvInt32;const aUnanchoredStart:boolean):boolean;
+function TpvTextEditor.TRegularExpression.SearchMatch(out aCaptures:TRegularExpressionCaptures;const aStartPosition,aUntilExcludingPosition:TpvSizeInt;const aUnanchoredStart:boolean):boolean;
 var CurrentPosition,Counter,ThreadIndex,CurrentLength,LastPosition,WindowStartOffset,
     CountCodePoints:TpvSizeInt;
     CurrentThreadList,NewThreadList,TemporaryThreadList:PRegularExpressionThreadList;
@@ -6966,6 +6967,34 @@ begin
   end;
  end;
 
+end;
+
+function TpvTextEditor.TRegularExpression.MatchNext(out aCaptures:TRegularExpressionCaptures;out aPosition,aLength:TpvSizeInt;const aStartPosition:TpvSizeInt=0;const aUntilExcludingPosition:TpvSizeInt=-1;const aCountTries:TpvSizeInt=-1):boolean;
+var Position,UntilExcludingPosition,CountTries:TpvSizeInt;
+begin
+ if aUntilExcludingPosition>=0 then begin
+  UntilExcludingPosition:=aUntilExcludingPosition;
+ end else begin
+  UntilExcludingPosition:=fParent.fRope.fCountCodePoints;
+ end;
+ CountTries:=aCountTries;
+ for Position:=aStartPosition to UntilExcludingPosition-1 do begin
+  if CountTries>0 then begin
+   dec(CountTries);
+   if CountTries=0 then begin
+    break;
+   end;
+  end;
+  if SearchMatch(aCaptures,Position,UntilExcludingPosition,fDoUnanchoredStart) then begin
+   aPosition:=aCaptures[0].Start;
+   aLength:=aCaptures[0].Length;
+   result:=true;
+   exit;
+  end else if fDoUnanchoredStart or fBeginningWildcardLoop or fBeginningAnchor then begin
+   break;
+  end;
+ end;
+ result:=false;
 end;
 
 constructor TpvTextEditor.TView.Create(const aParent:TpvTextEditor);
