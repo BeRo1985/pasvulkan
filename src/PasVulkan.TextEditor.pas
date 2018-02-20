@@ -789,8 +789,6 @@ type TpvTextEditor=class
 
               fCodePointWindow:TCodePointWindow;
 
-              fInputLength:TpvInt32;
-
               fBeginningJump:longbool;
               fBeginningSplit:longbool;
               fBeginningWildCard:longbool;
@@ -6714,9 +6712,9 @@ begin
      end;
     end;
     opEOL:begin
-     if ((aPosition+1)>=fInputLength) or
+     if ((aPosition+1)>=fParent.fRope.CountCodePoints) or
         ((TRegularExpressionFlag.MultiLine in fFlags) and
-         (((aPosition+1)<fInputLength) and
+         (((aPosition+1)<fParent.fRope.CountCodePoints) and
           (fCodePointWindow[aWindowOffset+1] in [10,13]))) then begin
       aInstruction:=aInstruction^.Next;
       continue;
@@ -6756,7 +6754,8 @@ begin
 end;
 
 function TpvTextEditor.TRegularExpression.SearchMatch(var aCaptures:TRegularExpressionCaptures;const aStartPosition,aUntilExcludingPosition:TpvInt32;const aUnanchoredStart:boolean):boolean;
-var CurrentPosition,Counter,ThreadIndex,CurrentLength,LastPosition,WindowStartOffset:TpvSizeInt;
+var CurrentPosition,Counter,ThreadIndex,CurrentLength,LastPosition,WindowStartOffset,
+    CountCodePoints:TpvSizeInt;
     CurrentThreadList,NewThreadList,TemporaryThreadList:PRegularExpressionThreadList;
     SubMatches,Matched,BestSubMatches:PRegularExpressionSubMatches;
     CurrentThread:PRegularExpressionThread;
@@ -6768,7 +6767,7 @@ var CurrentPosition,Counter,ThreadIndex,CurrentLength,LastPosition,WindowStartOf
 begin
  result:=false;
 
- fInputLength:=fParent.fRope.CountCodePoints;
+ CountCodePoints:=fParent.fRope.CountCodePoints;
 
  CurrentThreadList:=@fThreadLists[0];
  NewThreadList:=@fThreadLists[1];
@@ -6785,7 +6784,7 @@ begin
  end else begin
   WindowStartOffset:=0;
  end;
- CodePointEnumeratorSource:=TpvTextEditor.TRope.TCodePointEnumeratorSource.Create(fParent.fRope,aStartPosition+WindowStartOffset,fParent.fRope.fCountCodePoints);
+ CodePointEnumeratorSource:=TpvTextEditor.TRope.TCodePointEnumeratorSource.Create(fParent.fRope,aStartPosition+WindowStartOffset,CountCodePoints);
  CodePointEnumerator:=CodePointEnumeratorSource.GetEnumerator;
  for Counter:=-1 to WindowStartOffset-1 do begin
   fCodePointWindow[Counter]:=$ffffffff;
@@ -6799,6 +6798,7 @@ begin
  end;
 
  inc(fGeneration);
+
  if aUnanchoredStart then begin
   AddThread(CurrentThreadList,fUnanchoredStartInstruction,SubMatches,aStartPosition,0);
  end else begin
@@ -6815,11 +6815,13 @@ begin
   if CurrentThreadList^.Count=0 then begin
    break;
   end;
-  fCodePointWindow.Advance;
-  if CodePointEnumerator.MoveNext then begin
-   fCodePointWindow[2]:=CodePointEnumerator.GetCurrent;
-  end else begin
-   fCodePointWindow[2]:=$ffffffff;
+  if CurrentPosition<>aStartPosition then begin
+   fCodePointWindow.Advance;
+   if CodePointEnumerator.MoveNext then begin
+    fCodePointWindow[2]:=CodePointEnumerator.GetCurrent;
+   end else begin
+    fCodePointWindow[2]:=$ffffffff;
+   end;
   end;
   inc(fGeneration);
   for ThreadIndex:=0 to CurrentThreadList^.Count-1 do begin
@@ -6828,14 +6830,15 @@ begin
    SubMatches:=CurrentThread^.SubMatches;
    case Instruction^.IndexAndOpcode and $ff of
     opSINGLECHAR:begin
-     if (CurrentPosition>=fInputLength) or (fCodePointWindow[0]<>TpvUInt32(Instruction^.Value)) then begin
+     if (CurrentPosition>=CountCodePoints) or
+        (fCodePointWindow[0]<>TpvUInt32(Instruction^.Value)) then begin
       DecRef(SubMatches);
      end else begin
       AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,1);
      end;
     end;
     opCHAR:begin
-     if (CurrentPosition>=fInputLength) or not
+     if (CurrentPosition>=CountCodePoints) or not
         (fCodePointWindow[0] in PRegularExpressionCharClass(pointer(TpvPtrUInt(Instruction^.Value)))^) then begin
       DecRef(SubMatches);
      end else begin
@@ -6843,7 +6846,7 @@ begin
      end;
     end;
     opANY:begin
-     if CurrentPosition>=fInputLength then begin
+     if CurrentPosition>=CountCodePoints then begin
       DecRef(SubMatches);
      end else begin
       AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,1);
