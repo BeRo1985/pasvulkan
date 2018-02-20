@@ -515,13 +515,6 @@ type TpvTextEditor=class
                    EParserErrorExpectedRightBracket=class(EParserError);
                    EParserErrorEmptySet=class(EParserError);
                    EParserErrorInvalidMetaChar=class(EParserError);
-                   TKeyword=record
-                    private
-                     fKeyword:TpvRawByteString;
-                     fAttribute:TpvUInt32;
-                   end;
-                   PKeyword=^TKeyword;
-                   TKeywords=array of TKeyword;
                    TKeywordCharSet=#32..#127;
                    TKeywordCharTreeNode=class
                     public
@@ -555,9 +548,9 @@ type TpvTextEditor=class
              public
               constructor Create(const aParent:TpvTextEditor); override;
               destructor Destroy; override;
-              procedure AddKeyword(const aKeyword:TpvRawByteString;const aAttribute:TpvUInt32);
-              procedure AddKeywords(const aKeywords:array of TpvRawByteString;const aAttribute:TpvUInt32);
-              procedure AddRule(const aRule:TpvRawByteString;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
+              procedure AddKeyword(const aKeyword:TpvUTF8String;const aAttribute:TpvUInt32);
+              procedure AddKeywords(const aKeywords:array of TpvUTF8String;const aAttribute:TpvUInt32);
+              procedure AddRule(const aRule:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
               procedure Update(const aUntilCodePoint:TpvSizeInt); override;
             end;
             TPascalSyntaxHighlighting=class(TDFASyntaxHighlighting)
@@ -756,7 +749,7 @@ type TpvTextEditor=class
 
               fParent:TpvTextEditor;
 
-              fRegularExpression:TpvRawByteString;
+              fRegularExpression:TpvUTF8String;
 
               fFlags:TRegularExpressionFlags;
 
@@ -824,7 +817,7 @@ type TpvTextEditor=class
              protected
               function SearchMatch(out aCaptures:TRegularExpressionCaptures;const aStartPosition,aUntilExcludingPosition:TpvSizeInt;const aUnanchoredStart:boolean):boolean;
              public
-              constructor Create(const aParent:TpvTextEditor;const aRegularExpression:TpvRawByteString;const aFlags:TRegularExpressionFlags=[]);
+              constructor Create(const aParent:TpvTextEditor;const aRegularExpression:TpvUTF8String;const aFlags:TRegularExpressionFlags=[]);
               destructor Destroy; override;
               function MatchNext(out aCaptures:TRegularExpressionCaptures;out aPosition,aLength:TpvSizeInt;const aStartPosition:TpvSizeInt=0;const aUntilExcludingPosition:TpvSizeInt=-1;const aCountTries:TpvSizeInt=-1):boolean;
               function FindNext(out aPosition,aLength:TpvSizeInt;const aStartPosition:TpvSizeInt=0;const aUntilExcludingPosition:TpvSizeInt=-1;const aCountTries:TpvSizeInt=-1):boolean;
@@ -3867,7 +3860,7 @@ begin
  end;
 end;
 
-procedure TpvTextEditor.TDFASyntaxHighlighting.AddKeyword(const aKeyword:TpvRawByteString;const aAttribute:TpvUInt32);
+procedure TpvTextEditor.TDFASyntaxHighlighting.AddKeyword(const aKeyword:TpvUTF8String;const aAttribute:TpvUInt32);
 var Node:TKeywordCharTreeNode;
     Index:TpvSizeInt;
     CurrentChar:ansichar;
@@ -3899,7 +3892,7 @@ begin
  end;
 end;
 
-procedure TpvTextEditor.TDFASyntaxHighlighting.AddKeywords(const aKeywords:array of TpvRawByteString;const aAttribute:TpvUInt32);
+procedure TpvTextEditor.TDFASyntaxHighlighting.AddKeywords(const aKeywords:array of TpvUTF8String;const aAttribute:TpvUInt32);
 var Keyword:TpvRawByteString;
 begin
  for Keyword in aKeywords do begin
@@ -3907,7 +3900,7 @@ begin
  end;
 end;
 
-procedure TpvTextEditor.TDFASyntaxHighlighting.AddRule(const aRule:TpvRawByteString;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
+procedure TpvTextEditor.TDFASyntaxHighlighting.AddRule(const aRule:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
 var IsBegin,IsEnd:boolean;
  procedure AddNFATransition(const aFrom,aTo:TpvSizeInt;const aSet:TCharSet);
  var NFA:TNFA;
@@ -5224,7 +5217,7 @@ begin
  fOffset:=(fOffset+1) and 3;
 end;
 
-constructor TpvTextEditor.TRegularExpression.Create(const aParent:TpvTextEditor;const aRegularExpression:TpvRawByteString;const aFlags:TRegularExpressionFlags=[]);
+constructor TpvTextEditor.TRegularExpression.Create(const aParent:TpvTextEditor;const aRegularExpression:TpvUTF8String;const aFlags:TRegularExpressionFlags=[]);
 begin
  inherited Create;
 
@@ -5754,7 +5747,7 @@ var SourcePosition,SourceLength:TpvSizeInt;
    end;
   end;
  end;
- function GetCharClassPerName(const Name:TpvRawByteString):TRegularExpressionCharClass;
+ function GetCharClassPerName(const Name:TpvUTF8String):TRegularExpressionCharClass;
  begin
   if Name='alnum' then begin
    result:=TpvTextEditor.TCodePointSet.Create(['a'..'z','A'..'Z','0'..'9']);
@@ -5792,10 +5785,10 @@ var SourcePosition,SourceLength:TpvSizeInt;
   end;
  end;
  function ParseAtom:PRegularExpressionNode;
- var Value:TpvInt32;
+ var Value,Position:TpvSizeInt;
      Negate,IsSingle:boolean;
      StartCodePoint,EndCodePoint,CodePoint:TpvUInt32;
-     Name:TpvRawByteString;
+     Name:TpvUTF8String;
  begin
   result:=nil;
   try
@@ -5816,10 +5809,14 @@ var SourcePosition,SourceLength:TpvSizeInt;
          end;
          '''':begin
           inc(SourcePosition);
-          Name:='';
+          Position:=SourcePosition;
           while (SourcePosition<=SourceLength) and (Source[SourcePosition] in ['0'..'9','A'..'Z','a'..'z','_']) do begin
-           Name:=Name+Source[SourcePosition];
            inc(SourcePosition);
+          end;
+          if Position<SourcePosition then begin
+           Name:=copy(Source,Position,SourcePosition-Position);
+          end else begin
+           Name:='';
           end;
           if (SourcePosition<=SourceLength) and (Source[SourcePosition]='''') then begin
            inc(SourcePosition);
@@ -5839,10 +5836,14 @@ var SourcePosition,SourceLength:TpvSizeInt;
           if (SourcePosition<=SourceLength) and (Source[SourcePosition] in ['!','=']) then begin
            raise ERegularExpression.Create('Syntax error');
           end else begin
-           Name:='';
+           Position:=SourcePosition;
            while (SourcePosition<=SourceLength) and (Source[SourcePosition] in ['0'..'9','A'..'Z','a'..'z','_']) do begin
-            Name:=Name+Source[SourcePosition];
             inc(SourcePosition);
+           end;
+           if Position<SourcePosition then begin
+            Name:=copy(Source,Position,SourcePosition-Position);
+           end else begin
+            Name:='';
            end;
            if (SourcePosition<=SourceLength) and (Source[SourcePosition]='>') then begin
             inc(SourcePosition);
@@ -5862,10 +5863,14 @@ var SourcePosition,SourceLength:TpvSizeInt;
           inc(SourcePosition);
           if (SourcePosition<=SourceLength) and (Source[SourcePosition]='<') then begin
            inc(SourcePosition);
-           Name:='';
+           Position:=SourcePosition;
            while (SourcePosition<=SourceLength) and (Source[SourcePosition] in ['0'..'9','A'..'Z','a'..'z','_']) do begin
-            Name:=Name+Source[SourcePosition];
             inc(SourcePosition);
+           end;
+           if Position<SourcePosition then begin
+            Name:=copy(Source,Position,SourcePosition-Position);
+           end else begin
+            Name:='';
            end;
            if (SourcePosition<=SourceLength) and (Source[SourcePosition]='>') then begin
             inc(SourcePosition);
@@ -5955,10 +5960,14 @@ var SourcePosition,SourceLength:TpvSizeInt;
       inc(SourcePosition);
       if (SourcePosition<=SourceLength) and (Source[SourcePosition]=':') then begin
        inc(SourcePosition);
-       Name:='';
-       while (SourcePosition<=SourceLength) and (Source[SourcePosition] in ['a'..'z']) do begin
-        Name:=Name+Source[SourcePosition];
+       Position:=SourcePosition;
+       while (SourcePosition<=SourceLength) and (Source[SourcePosition] in ['0'..'9','A'..'Z','a'..'z','_']) do begin
         inc(SourcePosition);
+       end;
+       if Position<SourcePosition then begin
+        Name:=copy(Source,Position,SourcePosition-Position);
+       end else begin
+        Name:='';
        end;
        if ((SourcePosition+1)<=SourceLength) and ((Source[SourcePosition]=':') and (Source[SourcePosition+1]=']')) then begin
         inc(SourcePosition,2);
@@ -6022,10 +6031,14 @@ var SourcePosition,SourceLength:TpvSizeInt;
           inc(SourcePosition);
           if (SourcePosition<=SourceLength) and (Source[SourcePosition]=':') then begin
            inc(SourcePosition);
-           Name:='';
-           while (SourcePosition<=SourceLength) and (Source[SourcePosition] in ['a'..'z']) do begin
-            Name:=Name+Source[SourcePosition];
+           Position:=SourcePosition;
+           while (SourcePosition<=SourceLength) and (Source[SourcePosition] in ['0'..'9','A'..'Z','a'..'z','_']) do begin
             inc(SourcePosition);
+           end;
+           if Position<SourcePosition then begin
+            Name:=copy(Source,Position,SourcePosition-Position);
+           end else begin
+            Name:='';
            end;
            if ((SourcePosition+1)<=SourceLength) and ((Source[SourcePosition]=':') and (Source[SourcePosition+1]=']')) then begin
             inc(SourcePosition,2);
