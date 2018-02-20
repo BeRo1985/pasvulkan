@@ -4619,7 +4619,7 @@ end;
 procedure TpvTextEditor.TJavaSyntaxHighlighting.Setup;
 begin
  fCaseInsensitive:=false;
- AddKeywords(['abstract','assert','boolean','break','byte','case','catch','char',
+ AddKeywords(['abstract','assert','boolean','break','TpvUInt8','case','catch','char',
               'class','const','continue','default','do','double','else','enum',
               'extends','false','final','finally','float','for','goto','if',
               'implements','import','instanceof','int','interface','long','native',
@@ -5607,13 +5607,13 @@ var SourcePosition,SourceLength:TpvSizeInt;
  begin
   case c of
    '0'..'9':begin
-    result:=byte(ansichar(c))-byte(ansichar('0'))
+    result:=TpvUInt8(ansichar(c))-TpvUInt8(ansichar('0'))
    end;
    'a'..'f':begin
-    result:=(byte(ansichar(c))-byte(ansichar('a')))+$a;
+    result:=(TpvUInt8(ansichar(c))-TpvUInt8(ansichar('a')))+$a;
    end;
    'A'..'F':begin
-    result:=(byte(ansichar(c))-byte(ansichar('A')))+$a;
+    result:=(TpvUInt8(ansichar(c))-TpvUInt8(ansichar('A')))+$a;
    end;
    else begin
     result:=0;
@@ -5792,7 +5792,7 @@ var SourcePosition,SourceLength:TpvSizeInt;
  function ParseAtom:PRegularExpressionNode;
  var Value:TpvInt32;
      Negate,IsSingle:boolean;
-     StartCodePoint,EndCodePoint:TpvUInt32;
+     StartCodePoint,EndCodePoint,CodePoint:TpvUInt32;
      Name:TpvRawByteString;
  begin
   result:=nil;
@@ -5914,12 +5914,16 @@ var SourcePosition,SourceLength:TpvSizeInt;
         end;
         'x','X':begin
          inc(SourcePosition);
-         if ((SourcePosition+1)<=SourceLength) and
-            (Source[SourcePosition+0] in ['0'..'9','a'..'f','A'..'F']) and
-            (Source[SourcePosition+1] in ['0'..'9','a'..'f','A'..'F']) then begin
+         if (SourcePosition<=SourceLength) and
+            (Source[SourcePosition] in ['0'..'9','a'..'f','A'..'F']) then begin
+          CodePoint:=0;
+          repeat
+           CodePoint:=(CodePoint shl 4) or Hex2Value(Source[SourcePosition]);
+           inc(SourcePosition);
+          until (SourcePosition>SourceLength) or not
+                (Source[SourcePosition] in ['0'..'9','a'..'f','A'..'F']);
           result:=NewNode(ntCHAR,nil,nil,0);
-          result^.CharClass:=TpvTextEditor.TCodePointSet.Create([TpvUInt32((Hex2Value(Source[SourcePosition+0]) shl 8) or Hex2Value(Source[SourcePosition+1]))]);
-          inc(SourcePosition,2);
+          result^.CharClass:=TpvTextEditor.TCodePointSet.Create([CodePoint]);
          end else begin
           raise ERegularExpression.Create('Syntax error');
          end;
@@ -5986,12 +5990,16 @@ var SourcePosition,SourceLength:TpvSizeInt;
            case Source[SourcePosition] of
             'x','X':begin
              inc(SourcePosition);
-             if ((SourcePosition+1)<=SourceLength) and
-                (Source[SourcePosition+0] in ['0'..'9','a'..'f','A'..'F']) and
-                (Source[SourcePosition+1] in ['0'..'9','a'..'f','A'..'F']) then begin
-              StartCodePoint:=(Hex2Value(Source[SourcePosition+0]) shl 8) or Hex2Value(Source[SourcePosition+1]);
+             if (SourcePosition<=SourceLength) and
+                (Source[SourcePosition] in ['0'..'9','a'..'f','A'..'F']) then begin
+              CodePoint:=0;
+              repeat
+               CodePoint:=(CodePoint shl 4) or Hex2Value(Source[SourcePosition]);
+               inc(SourcePosition);
+              until (SourcePosition>SourceLength) or not
+                    (Source[SourcePosition] in ['0'..'9','a'..'f','A'..'F']);
+              StartCodePoint:=CodePoint;
               result^.CharClass:=result^.CharClass+TpvTextEditor.TCodePointSet.Create([StartCodePoint]);
-              inc(SourcePosition,2);
              end else begin
               raise ERegularExpression.Create('Syntax error');
              end;
@@ -6044,11 +6052,15 @@ var SourcePosition,SourceLength:TpvSizeInt;
             case Source[SourcePosition] of
              'x','X':begin
               inc(SourcePosition);
-              if ((SourcePosition+1)<=SourceLength) and
-                 (Source[SourcePosition+0] in ['0'..'9','a'..'f','A'..'F']) and
-                 (Source[SourcePosition+1] in ['0'..'9','a'..'f','A'..'F']) then begin
-               EndCodePoint:=(Hex2Value(Source[SourcePosition+0]) shl 8) or Hex2Value(Source[SourcePosition+1]);
-               inc(SourcePosition,2);
+              if (SourcePosition<=SourceLength) and
+                 (Source[SourcePosition] in ['0'..'9','a'..'f','A'..'F']) then begin
+               CodePoint:=0;
+               repeat
+                CodePoint:=(CodePoint shl 4) or Hex2Value(Source[SourcePosition]);
+                inc(SourcePosition);
+               until (SourcePosition>SourceLength) or not
+                     (Source[SourcePosition] in ['0'..'9','a'..'f','A'..'F']);
+               EndCodePoint:=CodePoint;
               end else begin
                raise ERegularExpression.Create('Syntax error');
               end;
@@ -6165,7 +6177,7 @@ var SourcePosition,SourceLength:TpvSizeInt;
        if (SourcePosition<=SourceLength) and (Source[SourcePosition] in ['0'..'9']) then begin
         MinCount:=0;
         while (SourcePosition<=SourceLength) and (Source[SourcePosition] in ['0'..'9']) do begin
-         MinCount:=(MinCount*10)+(byte(ansichar(Source[SourcePosition]))-byte(ansichar('0')));
+         MinCount:=(MinCount*10)+(TpvUInt8(ansichar(Source[SourcePosition]))-TpvUInt8(ansichar('0')));
          inc(SourcePosition);
         end;
        end else begin
@@ -6177,7 +6189,7 @@ var SourcePosition,SourceLength:TpvSizeInt;
         if (SourcePosition<=SourceLength) and (Source[SourcePosition] in ['0'..'9']) then begin
          MaxCount:=0;
          while (SourcePosition<=SourceLength) and (Source[SourcePosition] in ['0'..'9']) do begin
-          MaxCount:=(MaxCount*10)+(byte(ansichar(Source[SourcePosition]))-byte(ansichar('0')));
+          MaxCount:=(MaxCount*10)+(TpvUInt8(ansichar(Source[SourcePosition]))-TpvUInt8(ansichar('0')));
           inc(SourcePosition);
          end;
          if MinCount>MaxCount then begin
