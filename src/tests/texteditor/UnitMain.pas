@@ -247,6 +247,8 @@ end;
 
 procedure Main;
 var c:Int32;
+    RegularExpression:TpvTextEditor.TRegularExpression;
+    p,l:TpvSizeInt;
 begin
 
  AbstractTextEditor:=TpvTextEditor.Create;
@@ -315,6 +317,17 @@ begin
         77:begin
          // Right
          AbstractTextEditorView.MoveRight;
+        end;
+        61:begin
+         // F3
+         RegularExpression:=TpvTextEditor.TRegularExpression.Create(AbstractTextEditor,'\$[0-9]+',[]);
+         try
+          if RegularExpression.FindNext(p,l,AbstractTextEditorView.CodePointIndex+1) then begin
+           AbstractTextEditorView.CodePointIndex:=p;
+          end;
+         finally
+          RegularExpression.Free;
+         end;
         end;
         64:begin
          // F6

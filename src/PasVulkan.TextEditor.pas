@@ -870,6 +870,7 @@ type TpvTextEditor=class
               procedure SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeInt);
               procedure SetLineWrap(const aLineWrap:TpvSizeInt);
               procedure SetLineColumn(const aLineColumn:TLineColumn);
+              procedure SetCodePointIndex(const aCodePointIndex:TpvSizeInt);
               function GetMarkStartCodePointIndex:TpvSizeInt;
               procedure SetMarkStartCodePointIndex(const aMarkStartCodePointIndex:TpvSizeInt);
               function GetMarkEndCodePointIndex:TpvSizeInt;
@@ -921,6 +922,7 @@ type TpvTextEditor=class
               property NonScrollVisibleAreaWidth:TpvSizeInt read fNonScrollVisibleAreaWidth write SetNonScrollVisibleAreaWidth;
               property NonScrollVisibleAreaHeight:TpvSizeInt read fNonScrollVisibleAreaHeight write SetNonScrollVisibleAreaHeight;
               property LineWrap:TpvSizeInt read fLineWrap write SetLineWrap;
+              property CodePointIndex:TpvSizeInt read fCodePointIndex write SetCodePointIndex;
               property MarkStartCodePointIndex:TpvSizeInt read GetMarkStartCodePointIndex write SetMarkStartCodePointIndex;
               property MarkEndCodePointIndex:TpvSizeInt read GetMarkEndCodePointIndex write SetMarkEndCodePointIndex;
             end;
@@ -7129,6 +7131,13 @@ end;
 procedure TpvTextEditor.TView.SetLineColumn(const aLineColumn:TLineColumn);
 begin
  fCodePointIndex:=fParent.fLineCacheMap.GetCodePointIndexFromLineIndexAndColumnIndex(aLineColumn.Line,aLineColumn.Column);
+ EnsureCodePointIndexIsInRange;
+ EnsureCursorIsVisible(true);
+end;
+
+procedure TpvTextEditor.TView.SetCodePointIndex(const aCodePointIndex:TpvSizeInt);
+begin
+ fCodePointIndex:=aCodePointIndex;
  EnsureCodePointIndexIsInRange;
  EnsureCursorIsVisible(true);
 end;
