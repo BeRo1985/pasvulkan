@@ -827,6 +827,7 @@ type TpvTextEditor=class
               constructor Create(const aParent:TpvTextEditor;const aRegularExpression:TpvRawByteString;const aFlags:TRegularExpressionFlags=[]);
               destructor Destroy; override;
               function MatchNext(out aCaptures:TRegularExpressionCaptures;out aPosition,aLength:TpvSizeInt;const aStartPosition:TpvSizeInt=0;const aUntilExcludingPosition:TpvSizeInt=-1;const aCountTries:TpvSizeInt=-1):boolean;
+              function FindNext(out aPosition,aLength:TpvSizeInt;const aStartPosition:TpvSizeInt=0;const aUntilExcludingPosition:TpvSizeInt=-1;const aCountTries:TpvSizeInt=-1):boolean;
               property NamedGroups:TStringList read fNamedGroupStringList;
             end;
             TView=class
@@ -6995,6 +6996,12 @@ begin
   end;
  end;
  result:=false;
+end;
+
+function TpvTextEditor.TRegularExpression.FindNext(out aPosition,aLength:TpvSizeInt;const aStartPosition:TpvSizeInt=0;const aUntilExcludingPosition:TpvSizeInt=-1;const aCountTries:TpvSizeInt=-1):boolean;
+var Captures:TRegularExpressionCaptures;
+begin
+ result:=MatchNext(Captures,aPosition,aLength,aStartPosition,aUntilExcludingPosition,aCountTries);
 end;
 
 constructor TpvTextEditor.TView.Create(const aParent:TpvTextEditor);
