@@ -4857,7 +4857,7 @@ begin
  AddRule('\''([^\''\\]|\\.)*\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\''([^\''\\]|\\.)*\\?$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('[\%\-\+\/\&\*\=\<\>\|\!\~\^]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
- AddRule('[\(\[\{\}\]\)\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('[\@\(\[\{\}\]\)\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
 end;
 
 class function TpvTextEditor.TGLSLSyntaxHighlighting.GetName:TpvUTF8String;
