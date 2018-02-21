@@ -3934,189 +3934,190 @@ var IsBegin,IsEnd:boolean;
   end;
  end;
  procedure Parse(var aStart,aEnd:TpvSizeInt);
- const LexSymbolChars=['^','$','|','*','+','?','[',']','-','.','(',')'];
+ const LexSymbolChars=['^','$','|','*','+','?','[',']','-','.','(',')','{','}'];
  var InputText:TpvRawByteString;
      InputPosition:TpvSizeInt;
      InputLength:TpvSizeInt;
-  procedure ParseLevel1(var aStart,aEnd:TpvSizeInt);
-   procedure ParseLevel2(var aStart,aEnd:TpvSizeInt);
-    procedure ParseLevel3(var aStart,aEnd:TpvSizeInt);
-     procedure ParseLevel4(var aStart,aEnd:TpvSizeInt);
-     var CharSet:TCharSet;
-         Complement:boolean;
-         CurrentChar,OneEndChar,OtherEndChar:AnsiChar;
-     begin
-      if (InputPosition<=InputLength) and (InputText[InputPosition]='(') then begin
+  procedure ParseDisjunction(var aStart,aEnd:TpvSizeInt); forward;
+  procedure ParseAtom(var aStart,aEnd:TpvSizeInt);
+  var CharSet:TCharSet;
+      Complement:boolean;
+      CurrentChar,OneEndChar,OtherEndChar:AnsiChar;
+  begin
+   if (InputPosition<=InputLength) and (InputText[InputPosition]='(') then begin
+    inc(InputPosition);
+    ParseDisjunction(aStart,aEnd);
+    if (InputPosition<=InputLength) and (InputText[InputPosition]=')') then begin
+     inc(InputPosition);
+    end else begin
+     raise EParserErrorExpectedRightParen.Create('Expected right paren');
+    end;
+   end else if InputPosition<=InputLength then begin
+    CharSet:=[];
+    CurrentChar:=InputText[InputPosition];
+    case CurrentChar of
+     '.':begin
+      inc(InputPosition);
+      CharSet:=[#0..#255];
+     end;
+     '[':begin
+      inc(InputPosition);
+      Complement:=(InputPosition<=InputLength) and (InputText[InputPosition]='^');
+      if Complement then begin
        inc(InputPosition);
-       ParseLevel1(aStart,aEnd);
-       if (InputPosition<=InputLength) and (InputText[InputPosition]=')') then begin
-        inc(InputPosition);
-       end else begin
-        raise EParserErrorExpectedRightParen.Create('Expected right paren');
-       end;
-      end else if InputPosition<=InputLength then begin
-       CharSet:=[];
-       CurrentChar:=InputText[InputPosition];
-       case CurrentChar of
-        '.':begin
-         inc(InputPosition);
-         CharSet:=[#0..#255];
-        end;
-        '[':begin
-         inc(InputPosition);
-         Complement:=(InputPosition<=InputLength) and (InputText[InputPosition]='^');
-         if Complement then begin
-          inc(InputPosition);
-          CharSet:=[#0..#255];
+       CharSet:=[#0..#255];
+      end;
+      if (InputPosition<=InputLength) and (InputText[InputPosition]=']') then begin
+       inc(InputPosition);
+       raise EParserErrorEmptySet.Create('Empty set');
+      end else begin
+       while InputPosition<=InputLength do begin
+        CurrentChar:=InputText[InputPosition];
+        case CurrentChar of
+         ']':begin
+          break;
          end;
-         if (InputPosition<=InputLength) and (InputText[InputPosition]=']') then begin
-          inc(InputPosition);
-          raise EParserErrorEmptySet.Create('Empty set');
-         end else begin
-          while InputPosition<=InputLength do begin
-           CurrentChar:=InputText[InputPosition];
-           case CurrentChar of
-            ']':begin
-             break;
-            end;
-            else begin
+         else begin
+          if CurrentChar in ([#0..#255]-LexSymbolChars) then begin
+           inc(InputPosition);
+           if (CurrentChar='\') and (InputPosition<=InputLength) then begin
+            CurrentChar:=InputText[InputPosition];
+            inc(InputPosition);
+           end;
+           OneEndChar:=CurrentChar;
+           OtherEndChar:=CurrentChar;
+           if (InputPosition<=InputLength) and (InputText[InputPosition]='-') then begin
+            inc(InputPosition);
+            if InputPosition<=InputLength then begin
+             CurrentChar:=InputText[InputPosition];
              if CurrentChar in ([#0..#255]-LexSymbolChars) then begin
               inc(InputPosition);
               if (CurrentChar='\') and (InputPosition<=InputLength) then begin
                CurrentChar:=InputText[InputPosition];
                inc(InputPosition);
               end;
-              OneEndChar:=CurrentChar;
               OtherEndChar:=CurrentChar;
-              if (InputPosition<=InputLength) and (InputText[InputPosition]='-') then begin
-               inc(InputPosition);
-               if InputPosition<=InputLength then begin
-                CurrentChar:=InputText[InputPosition];
-                if CurrentChar in ([#0..#255]-LexSymbolChars) then begin
-                 inc(InputPosition);
-                 if (CurrentChar='\') and (InputPosition<=InputLength) then begin
-                  CurrentChar:=InputText[InputPosition];
-                  inc(InputPosition);
-                 end;
-                 OtherEndChar:=CurrentChar;
-                end else begin
-                 raise EParserErrorInvalidMetaChar.Create('Invalid meta-char');
-                end;
-               end else begin
-                raise EParserErrorUnexpectedEndOfText.Create('Unexpected end of text');
-               end;
-              end;
-              if OneEndChar=OtherEndChar then begin
-               if Complement then begin
-                Exclude(CharSet,OneEndChar);
-               end else begin
-                Include(CharSet,OneEndChar);
-               end;
-              end else if OtherEndChar<OneEndChar then begin
-               if Complement then begin
-                CharSet:=CharSet-[OtherEndChar..OneEndChar];
-               end else begin
-                CharSet:=CharSet+[OtherEndChar..OneEndChar];
-               end;
-              end else begin
-               if Complement then begin
-                CharSet:=CharSet-[OneEndChar..OtherEndChar];
-               end else begin
-                CharSet:=CharSet+[OneEndChar..OtherEndChar];
-               end;
-              end;
              end else begin
               raise EParserErrorInvalidMetaChar.Create('Invalid meta-char');
              end;
+            end else begin
+             raise EParserErrorUnexpectedEndOfText.Create('Unexpected end of text');
             end;
            end;
-          end;
-          if (InputPosition<=InputLength) and (InputText[InputPosition]=']') then begin
-           inc(InputPosition);
+           if OneEndChar=OtherEndChar then begin
+            if Complement then begin
+             Exclude(CharSet,OneEndChar);
+            end else begin
+             Include(CharSet,OneEndChar);
+            end;
+           end else if OtherEndChar<OneEndChar then begin
+            if Complement then begin
+             CharSet:=CharSet-[OtherEndChar..OneEndChar];
+            end else begin
+             CharSet:=CharSet+[OtherEndChar..OneEndChar];
+            end;
+           end else begin
+            if Complement then begin
+             CharSet:=CharSet-[OneEndChar..OtherEndChar];
+            end else begin
+             CharSet:=CharSet+[OneEndChar..OtherEndChar];
+            end;
+           end;
           end else begin
-           raise EParserErrorExpectedRightBracket.Create('Expected right bracket');
+           raise EParserErrorInvalidMetaChar.Create('Invalid meta-char');
           end;
          end;
         end;
-        else begin
-         if CurrentChar in (([#0..#255]-LexSymbolChars)+['-']) then begin
-          inc(InputPosition);
-          if (CurrentChar='\') and (InputPosition<=InputLength) then begin
-           CurrentChar:=InputText[InputPosition];
-           inc(InputPosition);
-          end;
-          Include(CharSet,CurrentChar);
-         end else begin
-          raise EParserErrorInvalidMetaChar.Create('Invalid meta-char');
-         end;
-        end;
        end;
-       if aStart=0 then begin
-        aStart:=fNFAStates;
-        inc(fNFAStates);
-       end;
-       if aEnd=0 then begin
-        aEnd:=fNFAStates;
-        inc(fNFAStates);
-       end;
-       AddNFATransition(aStart,aEnd,CharSet);
-      end;
-     end;
-    var LocalStart,LocalEnd:TpvSizeInt;
-    begin
-     LocalStart:=0;
-     LocalEnd:=0;
-     ParseLevel4(LocalStart,LocalEnd);
-     if InputPosition<=InputLength then begin
-      case InputText[InputPosition] of
-       '*':begin
+       if (InputPosition<=InputLength) and (InputText[InputPosition]=']') then begin
         inc(InputPosition);
-        AddNFATransition(LocalStart,LocalEnd,[]);
-        AddNFATransition(LocalEnd,LocalStart,[]);
-       end;
-       '+':begin
-        inc(InputPosition);
-        AddNFATransition(LocalEnd,LocalStart,[]);
-       end;
-       '?':begin
-        inc(InputPosition);
-        AddNFATransition(LocalStart,LocalEnd,[]);
+       end else begin
+        raise EParserErrorExpectedRightBracket.Create('Expected right bracket');
        end;
       end;
      end;
-     if aEnd=0 then begin
-      aEnd:=fNFAStates;
-      inc(fNFAStates);
+     else begin
+      if CurrentChar in (([#0..#255]-LexSymbolChars)+['-']) then begin
+       inc(InputPosition);
+       if (CurrentChar='\') and (InputPosition<=InputLength) then begin
+        CurrentChar:=InputText[InputPosition];
+        inc(InputPosition);
+       end;
+       Include(CharSet,CurrentChar);
+      end else begin
+       raise EParserErrorInvalidMetaChar.Create('Invalid meta-char');
+      end;
      end;
-     AddNFATransition(LocalEnd,aEnd,[]);
-     if aStart=0 then begin
-      aStart:=fNFAStates;
-      inc(fNFAStates);
+    end;
+    if aStart=0 then begin
+     aStart:=fNFAStates;
+     inc(fNFAStates);
+    end;
+    if aEnd=0 then begin
+     aEnd:=fNFAStates;
+     inc(fNFAStates);
+    end;
+    AddNFATransition(aStart,aEnd,CharSet);
+   end;
+  end;
+  procedure ParseTerm(var aStart,aEnd:TpvSizeInt);
+  var LocalStart,LocalEnd:TpvSizeInt;
+  begin
+   LocalStart:=0;
+   LocalEnd:=0;
+   ParseAtom(LocalStart,LocalEnd);
+   if InputPosition<=InputLength then begin
+    case InputText[InputPosition] of
+     '*':begin
+      inc(InputPosition);
+      AddNFATransition(LocalStart,LocalEnd,[]);
+      AddNFATransition(LocalEnd,LocalStart,[]);
      end;
-     AddNFATransition(aStart,LocalStart,[]);
-    end;
-   const AllowedChars=([#0..#255]-LexSymbolChars)+['(','[','-','.'];
-   var LocalStart,LocalEnd:TpvSizeInt;
-   begin
-    LocalEnd:=0;
-    ParseLevel3(aStart,LocalEnd);
-    while (InputPosition<=InputLength) and
-          (InputText[InputPosition] in AllowedChars) do begin
-     LocalStart:=LocalEnd;
-     LocalEnd:=0;
-     ParseLevel3(LocalStart,LocalEnd);
-    end;
-    if aEnd<>0 then begin
-     AddNFATransition(LocalEnd,aEnd,[]);
-    end else begin
-     aEnd:=LocalEnd;
+     '+':begin
+      inc(InputPosition);
+      AddNFATransition(LocalEnd,LocalStart,[]);
+     end;
+     '?':begin
+      inc(InputPosition);
+      AddNFATransition(LocalStart,LocalEnd,[]);
+     end;
     end;
    end;
+   if aEnd=0 then begin
+    aEnd:=fNFAStates;
+    inc(fNFAStates);
+   end;
+   AddNFATransition(LocalEnd,aEnd,[]);
+   if aStart=0 then begin
+    aStart:=fNFAStates;
+    inc(fNFAStates);
+   end;
+   AddNFATransition(aStart,LocalStart,[]);
+  end;
+  procedure ParseAlternative(var aStart,aEnd:TpvSizeInt);
+  const AllowedChars=([#0..#255]-LexSymbolChars)+['(','[','-','.'];
+  var LocalStart,LocalEnd:TpvSizeInt;
   begin
-   ParseLevel2(aStart,aEnd);
+   LocalEnd:=0;
+   ParseTerm(aStart,LocalEnd);
+   while (InputPosition<=InputLength) and
+         (InputText[InputPosition] in AllowedChars) do begin
+    LocalStart:=LocalEnd;
+    LocalEnd:=0;
+    ParseTerm(LocalStart,LocalEnd);
+   end;
+   if aEnd<>0 then begin
+    AddNFATransition(LocalEnd,aEnd,[]);
+   end else begin
+    aEnd:=LocalEnd;
+   end;
+  end;
+  procedure ParseDisjunction(var aStart,aEnd:TpvSizeInt);
+  begin
+   ParseAlternative(aStart,aEnd);
    while (InputPosition<=InputLength) and (InputText[InputPosition]='|') do begin
     inc(InputPosition);
-    ParseLevel2(aStart,aEnd);
+    ParseAlternative(aStart,aEnd);
    end;
   end;
  begin
@@ -4132,7 +4133,7 @@ var IsBegin,IsEnd:boolean;
    IsBegin:=false;
   end;
 
-  ParseLevel1(aStart,aEnd);
+  ParseDisjunction(aStart,aEnd);
 
   if (InputPosition<=InputLength) and (InputText[InputPosition]='$') then begin
    IsEnd:=true;
@@ -6478,7 +6479,7 @@ procedure TpvTextEditor.TRegularExpression.Compile;
        end;
       end else if Node^.MaxCount<0 then begin
        if Node^.MinCount>0 then begin
-        // Infinity with minimum connt
+        // Infinity with minimum count
         for Counter:=1 to Node^.MinCount-1 do begin
          Emit(Node^.Left);
         end;
@@ -6495,7 +6496,7 @@ procedure TpvTextEditor.TRegularExpression.Compile;
          Instructions[i1].OtherNext:=pointer(TpvPtrInt(CountInstructions));
         end;
        end else begin
-        // Infinity without minimum connt
+        // Infinity without minimum count
         i0:=NewInstruction(opSPLIT);
         if Node^.Value<>0 then begin
          // Non-greedy
@@ -7935,3 +7936,4 @@ begin
 end;
 
 end.
+
