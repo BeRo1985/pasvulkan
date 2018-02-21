@@ -249,22 +249,26 @@ procedure Main;
 var c:Int32;
     RegularExpression:TpvTextEditor.TRegularExpression;
     p,l:TpvSizeInt;
+    FileExtension:TpvUTF8String;
 begin
 
  AbstractTextEditor:=TpvTextEditor.Create;
  try
 
-  AbstractTextEditor.SyntaxHighlighting:=TpvTextEditor.TPascalSyntaxHighlighting.Create(AbstractTextEditor);
-
   AbstractTextEditorView:=AbstractTextEditor.CreateView;
 
   if ParamCount>0 then begin
+   FileExtension:=TpvUTF8String(ExtractFileExt(ParamStr(1)));
    AbstractTextEditor.LoadFromFile(ParamStr(1));
+  end else begin
+   FileExtension:='';
   end;
+
+  AbstractTextEditor.SyntaxHighlighting:=TpvTextEditor.TSyntaxHighlighting.GetSyntaxHighlightingClassByFileExtension(FileExtension).Create(AbstractTextEditor);
 
   //AbstractTextEditor.Text:='//0123 3.14159e+0 $1337c0de if then { bla }';
 //AbstractTextEditor.Text:='''//0123 3.14159e+0 $1337c0de if then { bla }'#13#10'bla';
-//AbstractTextEditor.Text:='#ifdef test'#13#10'void main(){'#13#10'}'#13#10'#endif';
+//AbstractTextEditor.Text:='#ifdef test'#13#10'#define bla(x) \'#13#10' if(x){\'#13#10' }'#13#10'void main(){'#13#10'}'#13#10'#endif';
 
   repeat
 

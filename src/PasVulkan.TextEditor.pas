@@ -395,6 +395,8 @@ type TpvTextEditor=class
               property MaxUndoSteps:TpvSizeInt read fMaxUndoSteps write fMaxUndoSteps;
               property MaxRedoSteps:TpvSizeInt read fMaxRedoSteps write fMaxRedoSteps;
             end;
+            TSyntaxHighlighting=class;
+            TSyntaxHighlightingClass=class of TSyntaxHighlighting;
             TSyntaxHighlighting=class
              public
               type TAttributes=class
@@ -433,11 +435,12 @@ type TpvTextEditor=class
              public
               constructor Create(const aParent:TpvTextEditor); reintroduce; virtual;
               destructor Destroy; override;
-              function GetName:TpvUTF8String; virtual;
-              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; virtual;
+              class function GetName:TpvUTF8String; virtual;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; virtual;
               procedure Reset; virtual;
               procedure Truncate(const aUntilCodePoint:TpvSizeInt); virtual;
               procedure Update(const aUntilCodePoint:TpvSizeInt); virtual;
+              class function GetSyntaxHighlightingClassByFileExtension(const aFileExtension:TpvUTF8String):TSyntaxHighlightingClass; static;
              published
               property Parent:TpvTextEditor read fParent;
             end;
@@ -445,8 +448,8 @@ type TpvTextEditor=class
              public
               type TState=class(TSyntaxHighlighting.TState);
              public
-              function GetName:TpvUTF8String; override;
-              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
+              class function GetName:TpvUTF8String; override;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
               procedure Update(const aUntilCodePoint:TpvSizeInt); override;
             end;
             TDFASyntaxHighlighting=class(TSyntaxHighlighting)
@@ -556,8 +559,8 @@ type TpvTextEditor=class
              public
               constructor Create(const aParent:TpvTextEditor); override;
               destructor Destroy; override;
-              function GetName:TpvUTF8String; override;
-              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
+              class function GetName:TpvUTF8String; override;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
               procedure AddKeyword(const aKeyword:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
               procedure AddKeywords(const aKeywords:array of TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
               procedure AddRule(const aRule:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
@@ -567,36 +570,36 @@ type TpvTextEditor=class
              protected
               procedure Setup; override;
              public
-              function GetName:TpvUTF8String; override;
-              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
+              class function GetName:TpvUTF8String; override;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
             end;
             TCSyntaxHighlighting=class(TDFASyntaxHighlighting)
              protected
               procedure Setup; override;
              public
-              function GetName:TpvUTF8String; override;
-              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
+              class function GetName:TpvUTF8String; override;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
             end;
             TCPPSyntaxHighlighting=class(TDFASyntaxHighlighting)
              protected
               procedure Setup; override;
              public
-              function GetName:TpvUTF8String; override;
-              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
+              class function GetName:TpvUTF8String; override;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
             end;
             TJavaSyntaxHighlighting=class(TDFASyntaxHighlighting)
              protected
               procedure Setup; override;
              public
-              function GetName:TpvUTF8String; override;
-              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
+              class function GetName:TpvUTF8String; override;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
             end;
             TGLSLSyntaxHighlighting=class(TDFASyntaxHighlighting)
              protected
               procedure Setup; override;
              public
-              function GetName:TpvUTF8String; override;
-              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
+              class function GetName:TpvUTF8String; override;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
             end;
             TCharSet=set of AnsiChar;
             TCodePointSet=record
@@ -3470,12 +3473,12 @@ begin
  inherited Destroy;
 end;
 
-function TpvTextEditor.TSyntaxHighlighting.GetName:TpvUTF8String;
+class function TpvTextEditor.TSyntaxHighlighting.GetName:TpvUTF8String;
 begin
  result:='';
 end;
 
-function TpvTextEditor.TSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+class function TpvTextEditor.TSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
 begin
  result:=nil;
 end;
@@ -3556,12 +3559,35 @@ procedure TpvTextEditor.TSyntaxHighlighting.Update(const aUntilCodePoint:TpvSize
 begin
 end;
 
-function TpvTextEditor.TGenericSyntaxHighlighting.GetName:TpvUTF8String;
+class function TpvTextEditor.TSyntaxHighlighting.GetSyntaxHighlightingClassByFileExtension(const aFileExtension:TpvUTF8String):TSyntaxHighlightingClass;
+const SyntaxHighlightingClasses:array[0..4] of TSyntaxHighlightingClass=
+       (
+        TPascalSyntaxHighlighting,
+        TCSyntaxHighlighting,
+        TCPPSyntaxHighlighting,
+        TJavaSyntaxHighlighting,
+        TGLSLSyntaxHighlighting
+       );
+var SyntaxHighlightingClass:TSyntaxHighlightingClass;
+    FileExtension:TpvUTF8String;
+begin
+ for SyntaxHighlightingClass in SyntaxHighlightingClasses do begin
+  for FileExtension in SyntaxHighlightingClass.GetFileExtensions do begin
+   if FileExtension=aFileExtension then begin
+    result:=SyntaxHighlightingClass;
+    exit;
+   end;
+  end;
+ end;
+ result:=TGenericSyntaxHighlighting;
+end;
+
+class function TpvTextEditor.TGenericSyntaxHighlighting.GetName:TpvUTF8String;
 begin
  result:='Generic';
 end;
 
-function TpvTextEditor.TGenericSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+class function TpvTextEditor.TGenericSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
 begin
  result:=nil;
 end;
@@ -3628,12 +3654,12 @@ begin
  end;
 end;
 
-function TpvTextEditor.TDFASyntaxHighlighting.GetName:TpvUTF8String;
+class function TpvTextEditor.TDFASyntaxHighlighting.GetName:TpvUTF8String;
 begin
  result:='DFA';
 end;
 
-function TpvTextEditor.TDFASyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+class function TpvTextEditor.TDFASyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
 begin
  result:=nil;
 end;
@@ -4650,12 +4676,12 @@ begin
 
 end;
 
-function TpvTextEditor.TPascalSyntaxHighlighting.GetName:TpvUTF8String;
+class function TpvTextEditor.TPascalSyntaxHighlighting.GetName:TpvUTF8String;
 begin
  result:='Pascal';
 end;
 
-function TpvTextEditor.TPascalSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+class function TpvTextEditor.TPascalSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
 begin
  result:=nil;
  SetLength(result,3);
@@ -4702,12 +4728,12 @@ begin
  AddRule('\''[^\'']*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
 end;
 
-function TpvTextEditor.TCSyntaxHighlighting.GetName:TpvUTF8String;
+class function TpvTextEditor.TCSyntaxHighlighting.GetName:TpvUTF8String;
 begin
  result:='C';
 end;
 
-function TpvTextEditor.TCSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+class function TpvTextEditor.TCSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
 begin
  result:=nil;
  SetLength(result,2);
@@ -4743,12 +4769,12 @@ begin
  AddRule('[\(\[\{\}\]\)\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
 end;
 
-function TpvTextEditor.TCPPSyntaxHighlighting.GetName:TpvUTF8String;
+class function TpvTextEditor.TCPPSyntaxHighlighting.GetName:TpvUTF8String;
 begin
  result:='C++';
 end;
 
-function TpvTextEditor.TCPPSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+class function TpvTextEditor.TCPPSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
 begin
  result:=nil;
  SetLength(result,4);
@@ -4794,12 +4820,12 @@ begin
  AddRule('[\(\[\{\}\]\)\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
 end;
 
-function TpvTextEditor.TJavaSyntaxHighlighting.GetName:TpvUTF8String;
+class function TpvTextEditor.TJavaSyntaxHighlighting.GetName:TpvUTF8String;
 begin
  result:='Java';
 end;
 
-function TpvTextEditor.TJavaSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+class function TpvTextEditor.TJavaSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
 begin
  result:=nil;
  SetLength(result,1);
@@ -4834,12 +4860,12 @@ begin
  AddRule('[\(\[\{\}\]\)\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
 end;
 
-function TpvTextEditor.TGLSLSyntaxHighlighting.GetName:TpvUTF8String;
+class function TpvTextEditor.TGLSLSyntaxHighlighting.GetName:TpvUTF8String;
 begin
  result:='GLSL';
 end;
 
-function TpvTextEditor.TGLSLSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+class function TpvTextEditor.TGLSLSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
 begin
  result:=nil;
  SetLength(result,1);
