@@ -253,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_0=(1 shl 22) or (0 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=68;
+      VK_HEADER_VERSION=69;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -633,8 +633,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_178_EXTENSION_NAME='VK_KHR_extension_178';
       VK_EXT_EXTERNAL_MEMORY_HOST_SPEC_VERSION=1;
       VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME='VK_EXT_external_memory_host';
-      VK_KHR_EXTENSION_180_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_180_EXTENSION_NAME='VK_AMD_extension_180';
+      VK_AMD_BUFFER_MARKER_SPEC_VERSION=1;
+      VK_AMD_BUFFER_MARKER_EXTENSION_NAME='VK_AMD_buffer_marker';
       VK_KHR_EXTENSION_181_SPEC_VERSION=0;
       VK_KHR_EXTENSION_181_EXTENSION_NAME='VK_AMD_extension_181';
       VK_KHR_EXTENSION_182_SPEC_VERSION=0;
@@ -9416,6 +9416,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkGetMemoryHostPointerPropertiesEXT=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBitsKHR;const pHostPointer:PVkVoid;pMemoryHostPointerProperties:PVkMemoryHostPointerPropertiesEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     TvkCmdWriteBufferMarkerAMD=procedure(commandBuffer:TVkCommandBuffer;pipelineStage:TVkPipelineStageFlagBits;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;marker:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
 
      PPVulkanCommands=^PVulkanCommands;
      PVulkanCommands=^TVulkanCommands;
@@ -9983,6 +9985,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       GetShaderInfoAMD:TvkGetShaderInfoAMD;
 
       GetMemoryHostPointerPropertiesEXT:TvkGetMemoryHostPointerPropertiesEXT;
+
+      CmdWriteBufferMarkerAMD:TvkCmdWriteBufferMarkerAMD;
 
      end;
 
@@ -10557,6 +10561,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function GetMemoryHostPointerPropertiesEXT(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBitsKHR;const pHostPointer:PVkVoid;pMemoryHostPointerProperties:PVkMemoryHostPointerPropertiesEXT):TVkResult; virtual;
 
+       procedure CmdWriteBufferMarkerAMD(commandBuffer:TVkCommandBuffer;pipelineStage:TVkPipelineStageFlagBits;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;marker:TVkUInt32); virtual;
+
        property Commands:TVulkanCommands read fCommands;
      end;
 
@@ -11127,6 +11133,8 @@ var LibVulkan:pointer=nil;
     vkGetShaderInfoAMD:TvkGetShaderInfoAMD=nil;
 
     vkGetMemoryHostPointerPropertiesEXT:TvkGetMemoryHostPointerPropertiesEXT=nil;
+
+    vkCmdWriteBufferMarkerAMD:TvkCmdWriteBufferMarkerAMD=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -12324,6 +12332,10 @@ begin
    @vkGetMemoryHostPointerPropertiesEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetMemoryHostPointerPropertiesEXT'));
    @vk.fCommands.GetMemoryHostPointerPropertiesEXT:=addr(vkGetMemoryHostPointerPropertiesEXT);
   end;
+  if not assigned(vkCmdWriteBufferMarkerAMD) then begin
+   @vkCmdWriteBufferMarkerAMD:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdWriteBufferMarkerAMD'));
+   @vk.fCommands.CmdWriteBufferMarkerAMD:=addr(vkCmdWriteBufferMarkerAMD);
+  end;
   result:=assigned(vkCreateInstance);
  end;
 end;
@@ -12637,6 +12649,7 @@ begin
   @InstanceCommands.QueueSignalReleaseImageANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkQueueSignalReleaseImageANDROID')));
   @InstanceCommands.GetShaderInfoAMD:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetShaderInfoAMD')));
   @InstanceCommands.GetMemoryHostPointerPropertiesEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetMemoryHostPointerPropertiesEXT')));
+  @InstanceCommands.CmdWriteBufferMarkerAMD:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdWriteBufferMarkerAMD')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -12864,6 +12877,7 @@ begin
   @DeviceCommands.QueueSignalReleaseImageANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkQueueSignalReleaseImageANDROID')));
   @DeviceCommands.GetShaderInfoAMD:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetShaderInfoAMD')));
   @DeviceCommands.GetMemoryHostPointerPropertiesEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetMemoryHostPointerPropertiesEXT')));
+  @DeviceCommands.CmdWriteBufferMarkerAMD:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdWriteBufferMarkerAMD')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -18111,6 +18125,11 @@ end;
 function TVulkan.GetMemoryHostPointerPropertiesEXT(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBitsKHR;const pHostPointer:PVkVoid;pMemoryHostPointerProperties:PVkMemoryHostPointerPropertiesEXT):TVkResult;
 begin
  result:=fCommands.GetMemoryHostPointerPropertiesEXT(device,handleType,pHostPointer,pMemoryHostPointerProperties);
+end;
+
+procedure TVulkan.CmdWriteBufferMarkerAMD(commandBuffer:TVkCommandBuffer;pipelineStage:TVkPipelineStageFlagBits;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;marker:TVkUInt32);
+begin
+ fCommands.CmdWriteBufferMarkerAMD(commandBuffer,pipelineStage,dstBuffer,dstOffset,marker);
 end;
 
 initialization
