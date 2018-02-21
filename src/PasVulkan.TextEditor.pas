@@ -7570,7 +7570,8 @@ var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     CurrentLineIndex,StartCodePointIndex,StopCodePointIndex,
     CurrentCodePointIndex,StepWidth,StateIndex,
     LevelStateIndex:TpvSizeInt;
-    CodePoint,IncomingCodePoint,CurrentAttribute:TpvUInt32;
+    CodePoint,IncomingCodePoint,CurrentAttribute,
+    Level,CurrentLevel,TargetLevel:TpvUInt32;
     RelativeCursor:TCoordinate;
     CodePointEnumerator:TRope.TCodePointEnumerator;
     State,StartLevelState,EndLevelState:TpvTextEditor.TSyntaxHighlighting.TState;
@@ -7675,9 +7676,14 @@ begin
      case StartLevelState.fLevel and $c0000000 of
       $40000000:begin
        inc(LevelStateIndex);
+       CurrentLevel:=StartLevelState.fLevel and $3fffffff;
+       TargetLevel:=CurrentLevel or $80000000;
        while LevelStateIndex<fParent.fSyntaxHighlighting.fCountStates do begin
-        if fParent.fSyntaxHighlighting.fStates[LevelStateIndex].fLevel=((StartLevelState.fLevel and $3fffffff) or $80000000) then begin
+        Level:=fParent.fSyntaxHighlighting.fStates[LevelStateIndex].fLevel;
+        if Level=TargetLevel then begin
          EndLevelState:=fParent.fSyntaxHighlighting.fStates[LevelStateIndex];
+         break;
+        end else if (Level and $3fffffff)<CurrentLevel then begin
          break;
         end else begin
          inc(LevelStateIndex);
@@ -7686,9 +7692,14 @@ begin
       end;
       $80000000:begin
        dec(LevelStateIndex);
+       CurrentLevel:=StartLevelState.fLevel and $3fffffff;
+       TargetLevel:=CurrentLevel or $40000000;
        while LevelStateIndex>0 do begin
-        if fParent.fSyntaxHighlighting.fStates[LevelStateIndex].fLevel=((StartLevelState.fLevel and $3fffffff) or $40000000) then begin
+        Level:=fParent.fSyntaxHighlighting.fStates[LevelStateIndex].fLevel;
+        if Level=TargetLevel then begin
          EndLevelState:=fParent.fSyntaxHighlighting.fStates[LevelStateIndex];
+         break;
+        end else if (Level and $3fffffff)<CurrentLevel then begin
          break;
         end else begin
          dec(LevelStateIndex);
