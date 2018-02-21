@@ -418,9 +418,11 @@ type TpvTextEditor=class
                    TState=class
                     private
                      fCodePointIndex:TpvSizeInt;
+                     fLevel:TpvUInt32;
                      fAttribute:TpvUInt32;
                     public
                      property CodePointIndex:TpvSizeInt read fCodePointIndex write fCodePointIndex;
+                     property Level:TpvUInt32 read fLevel write fLevel;
                      property Attribute:TpvUInt32 read fAttribute write fAttribute;
                    end;
                    TStates=array of TState;
@@ -431,6 +433,7 @@ type TpvTextEditor=class
               fStates:TStates;
               fCountStates:TpvSizeInt;
               fCodePointIndex:TpvSizeInt;
+              fLevel:TpvUInt32;
               function GetStateIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt):TpvSizeInt;
              public
               constructor Create(const aParent:TpvTextEditor); reintroduce; virtual;
@@ -3463,6 +3466,7 @@ begin
  fStates:=nil;
  fCountStates:=0;
  fCodePointIndex:=0;
+ fLevel:=0;
 end;
 
 destructor TpvTextEditor.TSyntaxHighlighting.Destroy;
@@ -3538,17 +3542,20 @@ begin
   end;
   fStates:=nil;
   fCodePointIndex:=0;
+  fLevel:=0;
  end else begin
   while (fCountStates>0) and
         (fStates[fCountStates-1].fCodePointIndex>=UntilCodePoint) do begin
    dec(fCountStates);
    fCodePointIndex:=fStates[fCountStates].fCodePointIndex;
+   fLevel:=fStates[fCountStates].fLevel;
    FreeAndNil(fStates[fCountStates]);
   end;
  if (fCountStates>0) and
     (fStates[fCountStates-1].fCodePointIndex<UntilCodePoint) then begin
    dec(fCountStates);
    fCodePointIndex:=fStates[fCountStates].fCodePointIndex;
+   fLevel:=fStates[fCountStates].fLevel;
    FreeAndNil(fStates[fCountStates]);
   end;
   if ((fCountStates*8)<length(fStates)) and (fCountStates<(fCountStates*8)) then begin
@@ -3596,16 +3603,18 @@ end;
 
 procedure TpvTextEditor.TGenericSyntaxHighlighting.Update(const aUntilCodePoint:TpvSizeInt);
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
-    CodePoint,LastAttribute,Attribute:TpvUInt32;
+    CodePoint,LastLevel,LastAttribute,Attribute:TpvUInt32;
     State:TSyntaxHighlighting.TState;
     OldCount:TpvSizeInt;
 begin
  if fCodePointIndex<fParent.fRope.fCountCodePoints then begin
   if fCountStates>0 then begin
    State:=fStates[fCountStates-1];
+   LastLevel:=TGenericSyntaxHighlighting.TState(State).fLevel;
    LastAttribute:=TGenericSyntaxHighlighting.TState(State).fAttribute;
   end else begin
    State:=nil;
+   LastLevel:=0;
    LastAttribute:=TSyntaxHighlighting.TAttributes.Unknown;
   end;
   CodePointEnumeratorSource:=fParent.fRope.GetCodePointEnumeratorSource(fCodePointIndex,IfThen(aUntilCodePoint<0,aUntilCodePoint,aUntilCodePoint+1));
@@ -3635,10 +3644,22 @@ begin
      end;
     end;
     else begin
+     case CodePoint of
+      ord('('),ord('['),ord('{'):begin
+       inc(fLevel);
+      end;
+      ord(')'),ord(']'),ord('}'):begin
+       if fLevel>0 then begin
+        dec(fLevel);
+       end;
+      end;
+     end;
      Attribute:=TSyntaxHighlighting.TAttributes.Symbol;
     end;
    end;
-   if LastAttribute<>Attribute then begin
+   if (LastLevel<>fLevel) or
+      (LastAttribute<>Attribute) then begin
+    LastLevel:=fLevel;
     LastAttribute:=Attribute;
     OldCount:=length(fStates);
     if OldCount<(fCountStates+1) then begin
@@ -3649,6 +3670,7 @@ begin
     fStates[fCountStates]:=State;
     inc(fCountStates);
     TGenericSyntaxHighlighting.TState(State).fCodePointIndex:=fCodePointIndex;
+    TGenericSyntaxHighlighting.TState(State).fLevel:=fLevel;
     TGenericSyntaxHighlighting.TState(State).fAttribute:=Attribute;
    end;
    inc(fCodePointIndex);
@@ -4609,6 +4631,13 @@ begin
       Flags:=Flags+KeywordCharTreeNode.fFlags;
      end;
     end;
+    if TAccept.TFlag.IncreaseLevel in Flags then begin
+     inc(fLevel);
+    end else if TAccept.TFlag.DecreaseLevel in Flags then begin
+     if fLevel>0 then begin
+      dec(fLevel);
+     end;
+    end;
     if TAccept.TFlag.IsPreprocessorLine in Flags then begin
      Preprocessor:=LastAccept.fAttribute;
      if TAccept.TFlag.IsMaybeCPreprocessorMultiLine in Flags then begin
@@ -4645,6 +4674,7 @@ begin
 
    if (not assigned(LastState)) or
       ((LastState.fAccept<>LastAccept) or
+       (LastState.fLevel<>fLevel) or
        (LastState.fAttribute<>Attribute)) then begin
     OldCount:=length(fStates);
     if OldCount<(fCountStates+1) then begin
@@ -4656,6 +4686,7 @@ begin
     inc(fCountStates);
     State.fCodePointIndex:=ParserStates[0].CodePointIndex;
     State.fAttribute:=Attribute;
+    State.fLevel:=fLevel;
     State.fAccept:=LastAccept;
     LastState:=State;
    end;
