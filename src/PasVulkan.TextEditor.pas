@@ -422,6 +422,7 @@ type TpvTextEditor=class
                      property Attribute:TpvUInt32 read fAttribute write fAttribute;
                    end;
                    TStates=array of TState;
+                   TFileExtensions=array of TpvUTF8String;
              private
               fParent:TpvTextEditor;
              protected
@@ -432,6 +433,8 @@ type TpvTextEditor=class
              public
               constructor Create(const aParent:TpvTextEditor); reintroduce; virtual;
               destructor Destroy; override;
+              function GetName:TpvUTF8String; virtual;
+              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; virtual;
               procedure Reset; virtual;
               procedure Truncate(const aUntilCodePoint:TpvSizeInt); virtual;
               procedure Update(const aUntilCodePoint:TpvSizeInt); virtual;
@@ -442,6 +445,8 @@ type TpvTextEditor=class
              public
               type TState=class(TSyntaxHighlighting.TState);
              public
+              function GetName:TpvUTF8String; override;
+              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
               procedure Update(const aUntilCodePoint:TpvSizeInt); override;
             end;
             TDFASyntaxHighlighting=class(TSyntaxHighlighting)
@@ -551,6 +556,8 @@ type TpvTextEditor=class
              public
               constructor Create(const aParent:TpvTextEditor); override;
               destructor Destroy; override;
+              function GetName:TpvUTF8String; override;
+              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
               procedure AddKeyword(const aKeyword:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
               procedure AddKeywords(const aKeywords:array of TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
               procedure AddRule(const aRule:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
@@ -560,26 +567,36 @@ type TpvTextEditor=class
              protected
               procedure Setup; override;
              public
+              function GetName:TpvUTF8String; override;
+              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
             end;
             TCSyntaxHighlighting=class(TDFASyntaxHighlighting)
              protected
               procedure Setup; override;
              public
+              function GetName:TpvUTF8String; override;
+              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
             end;
             TCPPSyntaxHighlighting=class(TDFASyntaxHighlighting)
              protected
               procedure Setup; override;
              public
+              function GetName:TpvUTF8String; override;
+              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
             end;
             TJavaSyntaxHighlighting=class(TDFASyntaxHighlighting)
              protected
               procedure Setup; override;
              public
+              function GetName:TpvUTF8String; override;
+              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
             end;
             TGLSLSyntaxHighlighting=class(TDFASyntaxHighlighting)
              protected
               procedure Setup; override;
              public
+              function GetName:TpvUTF8String; override;
+              function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
             end;
             TCharSet=set of AnsiChar;
             TCodePointSet=record
@@ -3453,6 +3470,16 @@ begin
  inherited Destroy;
 end;
 
+function TpvTextEditor.TSyntaxHighlighting.GetName:TpvUTF8String;
+begin
+ result:='';
+end;
+
+function TpvTextEditor.TSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+begin
+ result:=nil;
+end;
+
 function TpvTextEditor.TSyntaxHighlighting.GetStateIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt):TpvSizeInt;
 var MinIndex,MaxIndex,MidIndex:TpvSizeInt;
 begin
@@ -3529,6 +3556,16 @@ procedure TpvTextEditor.TSyntaxHighlighting.Update(const aUntilCodePoint:TpvSize
 begin
 end;
 
+function TpvTextEditor.TGenericSyntaxHighlighting.GetName:TpvUTF8String;
+begin
+ result:='Generic';
+end;
+
+function TpvTextEditor.TGenericSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+begin
+ result:=nil;
+end;
+
 procedure TpvTextEditor.TGenericSyntaxHighlighting.Update(const aUntilCodePoint:TpvSizeInt);
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
     CodePoint,LastAttribute,Attribute:TpvUInt32;
@@ -3589,6 +3626,16 @@ begin
    inc(fCodePointIndex);
   end;
  end;
+end;
+
+function TpvTextEditor.TDFASyntaxHighlighting.GetName:TpvUTF8String;
+begin
+ result:='DFA';
+end;
+
+function TpvTextEditor.TDFASyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+begin
+ result:=nil;
 end;
 
 constructor TpvTextEditor.TDFASyntaxHighlighting.TNFASet.Create(const aValues:array of TpvUInt32);
@@ -4603,6 +4650,20 @@ begin
 
 end;
 
+function TpvTextEditor.TPascalSyntaxHighlighting.GetName:TpvUTF8String;
+begin
+ result:='Pascal';
+end;
+
+function TpvTextEditor.TPascalSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+begin
+ result:=nil;
+ SetLength(result,3);
+ result[0]:='.pas';
+ result[1]:='.pp';
+ result[2]:='.p';
+end;
+
 procedure TpvTextEditor.TPascalSyntaxHighlighting.Setup;
 begin
  fCaseInsensitive:=true;
@@ -4641,6 +4702,19 @@ begin
  AddRule('\''[^\'']*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
 end;
 
+function TpvTextEditor.TCSyntaxHighlighting.GetName:TpvUTF8String;
+begin
+ result:='C';
+end;
+
+function TpvTextEditor.TCSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+begin
+ result:=nil;
+ SetLength(result,2);
+ result[0]:='.c';
+ result[1]:='.h';
+end;
+
 procedure TpvTextEditor.TCSyntaxHighlighting.Setup;
 begin
  fCaseInsensitive:=false;
@@ -4667,6 +4741,21 @@ begin
  AddRule('\''([^\''\\]|\\.)*\\?$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('[\%\-\+\/\&\*\=\<\>\|\!\~\^]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
  AddRule('[\(\[\{\}\]\)\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+end;
+
+function TpvTextEditor.TCPPSyntaxHighlighting.GetName:TpvUTF8String;
+begin
+ result:='C++';
+end;
+
+function TpvTextEditor.TCPPSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+begin
+ result:=nil;
+ SetLength(result,4);
+ result[0]:='.cpp';
+ result[1]:='.cxx';
+ result[2]:='.hpp';
+ result[3]:='.hxx';
 end;
 
 procedure TpvTextEditor.TCPPSyntaxHighlighting.Setup;
@@ -4705,6 +4794,18 @@ begin
  AddRule('[\(\[\{\}\]\)\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
 end;
 
+function TpvTextEditor.TJavaSyntaxHighlighting.GetName:TpvUTF8String;
+begin
+ result:='Java';
+end;
+
+function TpvTextEditor.TJavaSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+begin
+ result:=nil;
+ SetLength(result,1);
+ result[0]:='.java';
+end;
+
 procedure TpvTextEditor.TJavaSyntaxHighlighting.Setup;
 begin
  fCaseInsensitive:=false;
@@ -4731,6 +4832,18 @@ begin
  AddRule('\''([^\''\\]|\\.)*\\?$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('[\%\-\+\/\&\*\=\<\>\|\!\~\^]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
  AddRule('[\(\[\{\}\]\)\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+end;
+
+function TpvTextEditor.TGLSLSyntaxHighlighting.GetName:TpvUTF8String;
+begin
+ result:='GLSL';
+end;
+
+function TpvTextEditor.TGLSLSyntaxHighlighting.GetFileExtensions:TpvTextEditor.TSyntaxHighlighting.TFileExtensions;
+begin
+ result:=nil;
+ SetLength(result,1);
+ result[0]:='.glsl';
 end;
 
 procedure TpvTextEditor.TGLSLSyntaxHighlighting.Setup;
