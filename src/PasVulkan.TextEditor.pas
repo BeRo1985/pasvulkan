@@ -491,7 +491,9 @@ type TpvTextEditor=class
                             IsEnd,
                             IsPreprocessorLine,
                             IsMaybeCPreprocessorMultiLine,
-                            IsKeyword
+                            IsKeyword,
+                            IncreaseLevel,
+                            DecreaseLevel
                            );
                           PFlag=^TFlag;
                           TFlags=set of TFlag;
@@ -4694,22 +4696,29 @@ procedure TpvTextEditor.TPascalSyntaxHighlighting.Setup;
 begin
  fCaseInsensitive:=true;
  AddKeywords(['absolute','abstract','and','array','as','asm','assembler',
-              'automated','begin','case','cdecl','class','const','constructor',
+              'automated','case','cdecl','const','constructor',
               'contains','default','deprecated','destructor','dispid',
-              'dispinterface','div','do','downto','dynamic','else','end','except',
+              'dispinterface','div','do','downto','dynamic','else','except',
               'export','exports','external','far','file','final','finalization',
               'finally','for','forward','function','goto','helper','if',
               'implementation','implements','in','index','inherited',
-              'initialization','inline','interface','is','label','library',
-              'message','mod','name','near','nil','nodefault','not','object','of',
-              'on','operator','or','out','overload','override','package','packed',
-              'pascal','platform','private','procedure','program','property',
-              'protected','public','published','raise','read','readonly','record',
+              'initialization','inline','is','label',
+              'message','mod','name','near','nil','nodefault','not','of',
+              'on','operator','or','out','overload','override','packed',
+              'pascal','platform','private','procedure','property',
+              'protected','public','published','raise','read','readonly',
               'register','reintroduce','repeat','requires','resourcestring',
               'safecall','sealed','set','shl','shr','stdcall','stored','string',
-              'stringresource','then','threadvar','to','try','type','unit','until',
+              'stringresource','then','threadvar','to','try','type','until',
               'uses','var','virtual','while','with','write','writeonly','xor'],
              [],
+             TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
+ AddKeywords(['begin','class','interface','library','object','package',
+              'program','record','unit'],
+             [TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IncreaseLevel],
+             TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
+ AddKeywords(['end'],
+             [TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.DecreaseLevel],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
  AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\(\*\$.*\*\)|\{\$.*\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor);
@@ -4723,7 +4732,9 @@ begin
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule(TpvRawByteString('[A-Za-z\_'#128'-'#255'][A-Za-z0-9\_'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('\@|\-|\+|\/|\*|\=|\<|\>|\<\>|\<\=|\>\=|\:\=|\^',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
- AddRule('\}|\*\)|\[|\]|\(|\)|\,|\.|\.\.|\:|\;|\?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('\}|\*\)|\,|\.|\.\.|\:|\;|\?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('\[|\(',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IncreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('\]|\)',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.DecreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
  AddRule('\''[^\'']*\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\''[^\'']*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
 end;
@@ -4766,7 +4777,9 @@ begin
  AddRule('\''([^\''\\]|\\.)*\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\''([^\''\\]|\\.)*\\?$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('[\%\-\+\/\&\*\=\<\>\|\!\~\^]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
- AddRule('[\(\[\{\}\]\)\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('[\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('\[|\(|\{',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IncreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('\]|\)|\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.DecreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
 end;
 
 class function TpvTextEditor.TCPPSyntaxHighlighting.GetName:TpvUTF8String;
@@ -4817,7 +4830,9 @@ begin
  AddRule('\''([^\''\\]|\\.)*\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\''([^\''\\]|\\.)*\\?$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('[\%\-\+\/\&\*\=\<\>\|\!\~\^]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
- AddRule('[\(\[\{\}\]\)\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('[\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('\[|\(|\{',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IncreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('\]|\)|\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.DecreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
 end;
 
 class function TpvTextEditor.TJavaSyntaxHighlighting.GetName:TpvUTF8String;
@@ -4857,7 +4872,10 @@ begin
  AddRule('\''([^\''\\]|\\.)*\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\''([^\''\\]|\\.)*\\?$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('[\%\-\+\/\&\*\=\<\>\|\!\~\^]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
- AddRule('[\@\(\[\{\}\]\)\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('[\@\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('[\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('\[|\(|\{',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IncreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('\]|\)|\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.DecreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
 end;
 
 class function TpvTextEditor.TGLSLSyntaxHighlighting.GetName:TpvUTF8String;
@@ -4928,7 +4946,9 @@ begin
  AddRule('\''([^\''\\]|\\.)*\''',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\''([^\''\\]|\\.)*\\?$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('[\%\-\+\/\&\*\=\<\>\|\!\~\^]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
- AddRule('[\(\[\{\}\]\)\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('[\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('\[|\(|\{',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IncreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
+ AddRule('\]|\)|\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.DecreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
 end;
 
 constructor TpvTextEditor.TCodePointSet.TCodePointRange.Create(const aCodePoint:TpvUInt32);
