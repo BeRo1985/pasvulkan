@@ -4329,6 +4329,7 @@ var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
     KeywordCharTreeNode:TKeywordCharTreeNode;
     CodeUnit:TpvRawByteChar;
     DoBreak,MaybePreprocessorMultiLine:boolean;
+    Flags:TAccept.TFlags;
  procedure UpdateMultiLineCPreprocessorState(var aMultiLineCPreprocessorState:TMultiLineCPreprocessorState;const aCodePoint:TpvUInt32);
  begin
   case aCodePoint of
@@ -4504,7 +4505,8 @@ begin
 
    if assigned(LastAccept) then begin
     Attribute:=LastAccept.fAttribute;
-    if TAccept.TFlag.IsKeyword in LastAccept.fFlags then begin
+    Flags:=LastAccept.fFlags;
+    if TAccept.TFlag.IsKeyword in Flags then begin
      ParserStates[3]:=ParserStates[0];
      KeywordCharTreeNode:=fKeywordCharRootTreeNode;
      while ParserStates[3].Valid and
@@ -4529,16 +4531,17 @@ begin
         (ParserStates[3].Valid and
          (ParserStates[3].CodePointIndex<ParserStates[2].CodePointIndex)) then begin
       Attribute:=KeywordCharTreeNode.fAttribute;
+      Flags:=Flags+KeywordCharTreeNode.fFlags;
      end;
     end;
-    if TAccept.TFlag.IsPreprocessorLine in LastAccept.fFlags then begin
+    if TAccept.TFlag.IsPreprocessorLine in Flags then begin
      Preprocessor:=LastAccept.fAttribute;
-     if TAccept.TFlag.IsMaybeCPreprocessorMultiLine in LastAccept.fFlags then begin
+     if TAccept.TFlag.IsMaybeCPreprocessorMultiLine in Flags then begin
       MaybePreprocessorMultiLine:=true;
      end;
     end else if Preprocessor<>TpvUInt32($ffffffff) then begin
      if Attribute=TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment then begin
-      if TAccept.TFlag.IsEnd in LastAccept.fFlags then begin
+      if TAccept.TFlag.IsEnd in Flags then begin
        MaybePreprocessorMultiLine:=false;
        ParserStates[2].MultiLineCPreprocessorState:=TMultiLineCPreprocessorState.None;
       end else begin
