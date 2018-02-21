@@ -4428,7 +4428,7 @@ type TMultiLineCPreprocessorState=
      end;
      TParserStates=array[0..3] of TParserState;
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
-    CodePoint,Level,LevelID,Attribute,Preprocessor:TpvUInt32;
+    CodePoint,Level,Attribute,Preprocessor:TpvUInt32;
     LastState,State:TDFASyntaxHighlighting.TState;
     DFA:TDFA;
     OldCount:TpvSizeInt;
