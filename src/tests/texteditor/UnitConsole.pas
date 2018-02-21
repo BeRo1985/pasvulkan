@@ -69,6 +69,8 @@ type PConsoleBufferItem=^TConsoleBufferItem;
      TConsoleBufferItem=record
       case boolean of
        false:(
+        Video:Int8;
+        Dummy:UInt8;
         BackgroundColor:UInt8;
         ForegroundColor:UInt8;
         CodePoint:UInt32;
@@ -242,6 +244,7 @@ type PConsoleBufferItem=^TConsoleBufferItem;
        fCursorY:Int32;
        fLastCursorX:Int32;
        fLastCursorY:Int32;
+       fVideo:Int8;
        fBackgroundColor:UInt8;
        fForegroundColor:UInt8;
        fScrollLock:boolean;
@@ -270,6 +273,9 @@ type PConsoleBufferItem=^TConsoleBufferItem;
        procedure DelLine;
        procedure ClrEOL;
        procedure GotoXY(const aX,aY:Int32);
+       procedure HighVideo;
+       procedure LowVideo;
+       procedure NormVideo;
        procedure TextBackground(const aBackgroundColor:UInt8);
        procedure TextColor(const aForegroundColor:UInt8);
        procedure WriteCodePointToBuffer(const aX,aY:Int32;const aCodePoint:UInt32);
@@ -340,6 +346,7 @@ begin
  ClrScr;
  fDirty:=false;
  fScrollLock:=true;
+ fVideo:=0;
  fBackgroundColor:=TColor.Black;
  fForegroundColor:=TColor.LightGray;
  fLastCursorX:=-1;
@@ -388,6 +395,7 @@ begin
  BufferItem:=@fLastBuffer[0];
  for y:=0 to fHeight-1 do begin
   for x:=0 to fWidth-1 do begin
+   BufferItem^.Video:=$7f;
    BufferItem^.BackgroundColor:=$ff;
    BufferItem^.ForegroundColor:=$ff;
    BufferItem^.CodePoint:=$ffffffff;
@@ -403,6 +411,7 @@ begin
  BufferItem:=@fBuffer[0];
  for y:=0 to fHeight-1 do begin
   for x:=0 to fWidth-1 do begin
+   BufferItem^.Video:=fVideo;
    BufferItem^.BackgroundColor:=fBackgroundColor;
    BufferItem^.ForegroundColor:=fForegroundColor;
    BufferItem^.CodePoint:=32;
@@ -415,6 +424,21 @@ procedure TConsole.GotoXY(const aX,aY:Int32);
 begin
  fCursorX:=Min(Max(aX,1),fWidth);
  fCursorY:=Min(Max(aY,1),fHeight);
+end;
+
+procedure TConsole.HighVideo;
+begin
+ fVideo:=1;
+end;
+
+procedure TConsole.LowVideo;
+begin
+ fVideo:=-1;
+end;
+
+procedure TConsole.NormVideo;
+begin
+ fVideo:=0;
 end;
 
 procedure TConsole.TextBackground(const aBackgroundColor:UInt8);
@@ -446,6 +470,7 @@ begin
  y:=fHeight-1;
  BufferItem:=@fBuffer[y*fWidth];
  for x:=0 to fWidth-1 do begin
+  BufferItem^.Video:=fVideo;
   BufferItem^.BackgroundColor:=fBackgroundColor;
   BufferItem^.ForegroundColor:=fForegroundColor;
   BufferItem^.CodePoint:=32;
@@ -462,6 +487,7 @@ begin
   y:=fCursorY-1;
   BufferItem:=@fBuffer[y*fWidth];
   for x:=0 to fWidth-1 do begin
+   BufferItem^.Video:=fVideo;
    BufferItem^.BackgroundColor:=fBackgroundColor;
    BufferItem^.ForegroundColor:=fForegroundColor;
    BufferItem^.CodePoint:=32;
@@ -497,6 +523,7 @@ begin
  if ((aX>0) and (aX<=fWidth)) and
     ((aY>0) and (aY<=fHeight)) then begin
   BufferItem:=@fBuffer[((aY-1)*fWidth)+(aX-1)];
+  BufferItem^.Video:=fVideo;
   BufferItem^.BackgroundColor:=fBackgroundColor;
   BufferItem^.ForegroundColor:=fForegroundColor;
   BufferItem^.CodePoint:=aCodePoint;
@@ -521,6 +548,7 @@ begin
     if ((fCursorX>0) and (fCursorX<=fWidth)) and
        ((fCursorY>0) and (fCursorY<=fHeight)) then begin
      BufferItem:=@fBuffer[((fCursorY-1)*fWidth)+(fCursorX-1)];
+     BufferItem^.Video:=fVideo;
      BufferItem^.BackgroundColor:=fBackgroundColor;
      BufferItem^.ForegroundColor:=fForegroundColor;
      BufferItem^.CodePoint:=32;
@@ -545,6 +573,7 @@ begin
    if ((fCursorX>0) and (fCursorX<=fWidth)) and
       ((fCursorY>0) and (fCursorY<=fHeight)) then begin
     BufferItem:=@fBuffer[((fCursorY-1)*fWidth)+(fCursorX-1)];
+    BufferItem^.Video:=fVideo;
     BufferItem^.BackgroundColor:=fBackgroundColor;
     BufferItem^.ForegroundColor:=fForegroundColor;
     BufferItem^.CodePoint:=aCodePoint;
@@ -609,6 +638,14 @@ begin
     HasChanges:=true;
    end;
    p^.Attributes:=(BufferItem^.BackgroundColor shl 4) or BufferItem.ForegroundColor;
+   case BufferItem^.Video of
+    -1:begin
+     p^.Attributes:=p^.Attributes and $77;
+    end;
+    1:begin
+     p^.Attributes:=p^.Attributes or $08;
+    end;
+   end;
    p^.UnicodeChar:=WideChar(UInt16(BufferItem^.CodePoint));
    inc(LastBufferItem);
    inc(BufferItem);
@@ -646,7 +683,7 @@ begin
  end;
 end;
 {$else}
-var x,y,LastBackgroundColor,LastForegroundColor,LastX,LastY:Int32;
+var x,y,LastBackgroundColor,LastForegroundColor,LastX,LastY,LastVideo:Int32;
     BufferItem,LastBufferItem:PConsoleBufferItem;
     HasChanges:boolean;
     StringBuffer:string;
@@ -682,6 +719,7 @@ begin
  end;
  BufferItem:=@fBuffer[0];
  LastBufferItem:=@fLastBuffer[0];
+ LastVideo:=$7f;
  LastBackgroundColor:=-1;
  LastForegroundColor:=-1;
  LastX:=1;
@@ -697,6 +735,20 @@ begin
    end;
    if LastBufferItem^.Value<>BufferItem^.Value then begin
     LastBufferItem^.Value:=BufferItem^.Value;
+    if LastVideo<>BufferItem^.Video then begin
+     LastVideo:=BufferItem^.Video;
+     case BufferItem^.Video of
+      -1:begin
+       CRT.LowVideo;
+      end;
+      1:begin
+       CRT.HighVideo;
+      end;
+      else begin
+       CRT.NormVideo;
+      end;
+     end;
+    end;
     if LastBackgroundColor<>BufferItem^.BackgroundColor then begin
      FlushProcessedBuffer;
      LastBackgroundColor:=BufferItem^.BackgroundColor;

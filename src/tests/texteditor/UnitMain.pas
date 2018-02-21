@@ -198,7 +198,12 @@ begin
   for x:=0 to AbstractTextEditorView.VisibleAreaWidth-1 do begin
    if i<length(AbstractTextEditorView.Buffer) then begin
     BufferItem:=@AbstractTextEditorView.Buffer[i];
-    case BufferItem^.Attribute of
+    if (BufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight)<>0 then begin
+     Console.HighVideo;
+    end else begin
+     Console.NormVideo;
+    end;
+    case BufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Mask of
      TpvTextEditor.TSyntaxHighlighting.TAttributes.String_:begin
       Console.TextColor(TConsole.TColor.LightCyan);
      end;
@@ -206,6 +211,9 @@ begin
       Console.TextColor(TConsole.TColor.LightGreen);
      end;
      TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter:begin
+      Console.TextColor(TConsole.TColor.LightGreen);
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Symbol:begin
       Console.TextColor(TConsole.TColor.LightGreen);
      end;
      TpvTextEditor.TSyntaxHighlighting.TAttributes.Number:begin
