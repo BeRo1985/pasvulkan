@@ -414,6 +414,8 @@ type TpvTextEditor=class
                            String_=10;
                            Delimiter=11;
                            Operator=12;
+                           Highlight=TpvUInt32($80000000);
+                           Mask=TpvUInt32($7fffffff);
                    end;
                    TState=class
                     private
@@ -3548,14 +3550,14 @@ begin
         (fStates[fCountStates-1].fCodePointIndex>=UntilCodePoint) do begin
    dec(fCountStates);
    fCodePointIndex:=fStates[fCountStates].fCodePointIndex;
-   fLevel:=fStates[fCountStates].fLevel;
+   fLevel:=fStates[fCountStates].fLevel and $3fffffff;
    FreeAndNil(fStates[fCountStates]);
   end;
  if (fCountStates>0) and
     (fStates[fCountStates-1].fCodePointIndex<UntilCodePoint) then begin
    dec(fCountStates);
    fCodePointIndex:=fStates[fCountStates].fCodePointIndex;
-   fLevel:=fStates[fCountStates].fLevel;
+   fLevel:=fStates[fCountStates].fLevel and $3fffffff;
    FreeAndNil(fStates[fCountStates]);
   end;
   if ((fCountStates*8)<length(fStates)) and (fCountStates<(fCountStates*8)) then begin
@@ -3603,7 +3605,7 @@ end;
 
 procedure TpvTextEditor.TGenericSyntaxHighlighting.Update(const aUntilCodePoint:TpvSizeInt);
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
-    CodePoint,LastLevel,LastAttribute,Attribute:TpvUInt32;
+    CodePoint,LastLevel,Level,LastAttribute,Attribute:TpvUInt32;
     State:TSyntaxHighlighting.TState;
     OldCount:TpvSizeInt;
 begin
@@ -3644,22 +3646,24 @@ begin
      end;
     end;
     else begin
-     case CodePoint of
-      ord('('),ord('['),ord('{'):begin
-       inc(fLevel);
-      end;
-      ord(')'),ord(']'),ord('}'):begin
-       if fLevel>0 then begin
-        dec(fLevel);
-       end;
-      end;
-     end;
      Attribute:=TSyntaxHighlighting.TAttributes.Symbol;
     end;
    end;
-   if (LastLevel<>fLevel) or
+   case CodePoint of
+    ord('('),ord('['),ord('{'):begin
+     inc(fLevel);
+     Level:=fLevel or $40000000;
+    end;
+    ord(')'),ord(']'),ord('}'):begin
+     Level:=fLevel or $80000000;
+    end;
+    else begin
+     Level:=fLevel;
+    end;
+   end;
+   if (LastLevel<>Level) or
       (LastAttribute<>Attribute) then begin
-    LastLevel:=fLevel;
+    LastLevel:=Level;
     LastAttribute:=Attribute;
     OldCount:=length(fStates);
     if OldCount<(fCountStates+1) then begin
@@ -3670,8 +3674,15 @@ begin
     fStates[fCountStates]:=State;
     inc(fCountStates);
     TGenericSyntaxHighlighting.TState(State).fCodePointIndex:=fCodePointIndex;
-    TGenericSyntaxHighlighting.TState(State).fLevel:=fLevel;
+    TGenericSyntaxHighlighting.TState(State).fLevel:=Level;
     TGenericSyntaxHighlighting.TState(State).fAttribute:=Attribute;
+   end;
+   case CodePoint of
+    ord(')'),ord(']'),ord('}'):begin
+     if fLevel>0 then begin
+      dec(fLevel);
+     end;
+    end;
    end;
    inc(fCodePointIndex);
   end;
@@ -4417,7 +4428,7 @@ type TMultiLineCPreprocessorState=
      end;
      TParserStates=array[0..3] of TParserState;
 var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
-    CodePoint,Attribute,Preprocessor:TpvUInt32;
+    CodePoint,Level,LevelID,Attribute,Preprocessor:TpvUInt32;
     LastState,State:TDFASyntaxHighlighting.TState;
     DFA:TDFA;
     OldCount:TpvSizeInt;
@@ -4520,6 +4531,7 @@ begin
 
   if fCountStates>0 then begin
    LastState:=TDFASyntaxHighlighting.TState(fStates[fCountStates-1]);
+   fLevel:=LastState.fLevel and $3fffffff;
   end else begin
    LastState:=nil;
   end;
@@ -4631,13 +4643,6 @@ begin
       Flags:=Flags+KeywordCharTreeNode.fFlags;
      end;
     end;
-    if TAccept.TFlag.IncreaseLevel in Flags then begin
-     inc(fLevel);
-    end else if TAccept.TFlag.DecreaseLevel in Flags then begin
-     if fLevel>0 then begin
-      dec(fLevel);
-     end;
-    end;
     if TAccept.TFlag.IsPreprocessorLine in Flags then begin
      Preprocessor:=LastAccept.fAttribute;
      if TAccept.TFlag.IsMaybeCPreprocessorMultiLine in Flags then begin
@@ -4670,11 +4675,21 @@ begin
     end else begin
      Attribute:=TpvTextEditor.TSyntaxHighlighting.TAttributes.Unknown;
     end;
+    Flags:=[];
+   end;
+
+   if TAccept.TFlag.IncreaseLevel in Flags then begin
+    inc(fLevel);
+    Level:=fLevel or $40000000;
+   end else if TAccept.TFlag.DecreaseLevel in Flags then begin
+    Level:=fLevel or $80000000;
+   end else begin
+    Level:=fLevel;
    end;
 
    if (not assigned(LastState)) or
       ((LastState.fAccept<>LastAccept) or
-       (LastState.fLevel<>fLevel) or
+       (LastState.fLevel<>Level) or
        (LastState.fAttribute<>Attribute)) then begin
     OldCount:=length(fStates);
     if OldCount<(fCountStates+1) then begin
@@ -4686,9 +4701,15 @@ begin
     inc(fCountStates);
     State.fCodePointIndex:=ParserStates[0].CodePointIndex;
     State.fAttribute:=Attribute;
-    State.fLevel:=fLevel;
+    State.fLevel:=Level;
     State.fAccept:=LastAccept;
     LastState:=State;
+   end;
+
+   if TAccept.TFlag.DecreaseLevel in Flags then begin
+    if fLevel>0 then begin
+     dec(fLevel);
+    end;
    end;
 
    if assigned(LastAccept) then begin
@@ -4727,25 +4748,24 @@ procedure TpvTextEditor.TPascalSyntaxHighlighting.Setup;
 begin
  fCaseInsensitive:=true;
  AddKeywords(['absolute','abstract','and','array','as','asm','assembler',
-              'automated','case','cdecl','const','constructor',
+              'automated','case','cdecl','class','const','constructor',
               'contains','default','deprecated','destructor','dispid',
               'dispinterface','div','do','downto','dynamic','else','except',
               'export','exports','external','far','file','final','finalization',
               'finally','for','forward','function','goto','helper','if',
-              'implementation','implements','in','index','inherited',
-              'initialization','inline','is','label',
+              'implementation','implements','in','index','interface','inherited',
+              'initialization','inline','is','label','library',
               'message','mod','name','near','nil','nodefault','not','of',
-              'on','operator','or','out','overload','override','packed',
-              'pascal','platform','private','procedure','property',
-              'protected','public','published','raise','read','readonly',
-              'register','reintroduce','repeat','requires','resourcestring',
+              'object','on','operator','or','out','overload','override',
+              'package','packed','pascal','platform','private','procedure',
+              'program','property','protected','public','published','raise','read',
+              'readonly','register','reintroduce','repeat','requires','resourcestring',
               'safecall','sealed','set','shl','shr','stdcall','stored','string',
-              'stringresource','then','threadvar','to','try','type','until',
+              'stringresource','then','threadvar','to','try','type','unit','until',
               'uses','var','virtual','while','with','write','writeonly','xor'],
              [],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
- AddKeywords(['begin','class','interface','library','object','package',
-              'program','record','unit'],
+ AddKeywords(['begin','record'],
              [TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IncreaseLevel],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
  AddKeywords(['end'],
@@ -7548,11 +7568,14 @@ const EmptyBufferItem:TBufferItem=
        );
 var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     CurrentLineIndex,StartCodePointIndex,StopCodePointIndex,
-    CurrentCodePointIndex,StepWidth,StateIndex:TpvSizeInt;
+    CurrentCodePointIndex,StepWidth,StateIndex,
+    LevelStateIndex:TpvSizeInt;
     CodePoint,IncomingCodePoint,CurrentAttribute:TpvUInt32;
     RelativeCursor:TCoordinate;
     CodePointEnumerator:TRope.TCodePointEnumerator;
+    State,StartLevelState,EndLevelState:TpvTextEditor.TSyntaxHighlighting.TState;
     BufferItem:PBufferItem;
+    CurrentHighlight:boolean;
 begin
 
  ClampMarkCodePointIndices;
@@ -7583,6 +7606,10 @@ begin
 
   StateIndex:=0;
 
+  State:=nil;
+
+  CurrentAttribute:=0;
+
   for CurrentLineIndex:=fCursorOffset.y to fCursorOffset.y+(VisibleAreaHeight-1) do begin
 
    StartCodePointIndex:=fVisualLineCacheMap.GetCodePointIndexFromLineIndex(CurrentLineIndex);
@@ -7611,6 +7638,10 @@ begin
 
    end;
 
+   StartLevelState:=nil;
+
+   EndLevelState:=nil;
+
    if assigned(fParent.fSyntaxHighlighting) then begin
 
     fParent.fSyntaxHighlighting.Update(StopCodePointIndex);
@@ -7622,18 +7653,55 @@ begin
     end;
 
     if StateIndex<fParent.fSyntaxHighlighting.fCountStates then begin
-     CurrentAttribute:=fParent.fSyntaxHighlighting.fStates[StateIndex].fAttribute;
-    end else begin
-     CurrentAttribute:=0;
+     State:=fParent.fSyntaxHighlighting.fStates[StateIndex];
+     CurrentAttribute:=State.fAttribute;
     end;
 
-   end else begin
+{   LevelStateIndex:=StateIndex;
+    while ((LevelStateIndex+1)<fParent.fSyntaxHighlighting.fCountStates) and
+          (fParent.fSyntaxHighlighting.fStates[LevelStateIndex+1].fCodePointIndex<=fCodePointIndex) do begin
+     inc(LevelStateIndex);
+     Level:=fParent.fSyntaxHighlighting.fStates[LevelStateIndex].fLevel;
+     LevelID:=fParent.fSyntaxHighlighting.fStates[LevelStateIndex].fLevelID;
+    end;}
+    LevelStateIndex:=fParent.fSyntaxHighlighting.GetStateIndexFromCodePointIndex(fCodePointIndex);
 
-    StateIndex:=0;
+    if LevelStateIndex>=0 then begin
 
-    CurrentAttribute:=0;
+     StartLevelState:=fParent.fSyntaxHighlighting.fStates[LevelStateIndex];
+
+     EndLevelState:=StartLevelState;
+
+     case StartLevelState.fLevel and $c0000000 of
+      $40000000:begin
+       inc(LevelStateIndex);
+       while LevelStateIndex<fParent.fSyntaxHighlighting.fCountStates do begin
+        if fParent.fSyntaxHighlighting.fStates[LevelStateIndex].fLevel=((StartLevelState.fLevel and $3fffffff) or $80000000) then begin
+         EndLevelState:=fParent.fSyntaxHighlighting.fStates[LevelStateIndex];
+         break;
+        end else begin
+         inc(LevelStateIndex);
+        end;
+       end;
+      end;
+      $80000000:begin
+       dec(LevelStateIndex);
+       while LevelStateIndex>0 do begin
+        if fParent.fSyntaxHighlighting.fStates[LevelStateIndex].fLevel=((StartLevelState.fLevel and $3fffffff) or $40000000) then begin
+         EndLevelState:=fParent.fSyntaxHighlighting.fStates[LevelStateIndex];
+         break;
+        end else begin
+         dec(LevelStateIndex);
+        end;
+       end;
+      end;
+     end;
+
+    end;
 
    end;
+
+   CurrentHighlight:=false;
 
    while (CurrentCodePointIndex<StopCodePointIndex) and
          CodePointEnumerator.MoveNext do begin
@@ -7643,7 +7711,17 @@ begin
      while ((StateIndex+1)<fParent.fSyntaxHighlighting.fCountStates) and
            (fParent.fSyntaxHighlighting.fStates[StateIndex+1].fCodePointIndex<=CurrentCodePointIndex) do begin
       inc(StateIndex);
-      CurrentAttribute:=fParent.fSyntaxHighlighting.fStates[StateIndex].fAttribute;
+      State:=fParent.fSyntaxHighlighting.fStates[StateIndex];
+     end;
+
+     if assigned(State) then begin
+
+      CurrentAttribute:=State.fAttribute;
+
+      CurrentHighlight:=((State.fLevel and $c0000000)<>0) and
+                        ((State=StartLevelState) or
+                         (State=EndLevelState));
+
      end;
 
     end;
@@ -7674,7 +7752,11 @@ begin
       if (BufferIndex>=BufferBaseIndex) and
          (BufferIndex<BufferBaseEndIndex) then begin
        BufferItem:=@fBuffer[BufferIndex];
-       BufferItem^.Attribute:=CurrentAttribute;
+       if CurrentHighlight then begin
+        BufferItem^.Attribute:=CurrentAttribute or TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight;
+       end else begin
+        BufferItem^.Attribute:=CurrentAttribute;
+       end;
        BufferItem^.CodePoint:=CodePoint;
       end;
 
