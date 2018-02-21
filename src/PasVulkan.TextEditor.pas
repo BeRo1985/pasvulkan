@@ -481,7 +481,8 @@ type TpvTextEditor=class
                            (
                             IsQuick,
                             IsEnd,
-                            IsPreprocessor,
+                            IsPreprocessorLine,
+                            IsMaybeCPreprocessorMultiLine,
                             IsKeyword
                            );
                           PFlag=^TFlag;
@@ -515,6 +516,7 @@ type TpvTextEditor=class
                    EParserErrorExpectedRightBracket=class(EParserError);
                    EParserErrorEmptySet=class(EParserError);
                    EParserErrorInvalidMetaChar=class(EParserError);
+                   EParserErrorInvalidCount=class(EParserError);
                    TKeywordCharSet=#32..#127;
                    TKeywordCharTreeNode=class
                     public
@@ -523,6 +525,7 @@ type TpvTextEditor=class
                      fChildren:TKeywordCharTreeNodes;
                      fHasChildren:boolean;
                      fKeyword:boolean;
+                     fFlags:TAccept.TFlags;
                      fAttribute:TpvUInt32;
                     public
                      constructor Create; reintroduce;
@@ -548,8 +551,8 @@ type TpvTextEditor=class
              public
               constructor Create(const aParent:TpvTextEditor); override;
               destructor Destroy; override;
-              procedure AddKeyword(const aKeyword:TpvUTF8String;const aAttribute:TpvUInt32);
-              procedure AddKeywords(const aKeywords:array of TpvUTF8String;const aAttribute:TpvUInt32);
+              procedure AddKeyword(const aKeyword:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
+              procedure AddKeywords(const aKeywords:array of TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
               procedure AddRule(const aRule:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
               procedure Update(const aUntilCodePoint:TpvSizeInt); override;
             end;
@@ -3860,7 +3863,7 @@ begin
  end;
 end;
 
-procedure TpvTextEditor.TDFASyntaxHighlighting.AddKeyword(const aKeyword:TpvUTF8String;const aAttribute:TpvUInt32);
+procedure TpvTextEditor.TDFASyntaxHighlighting.AddKeyword(const aKeyword:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
 var Node:TKeywordCharTreeNode;
     Index:TpvSizeInt;
     CurrentChar:ansichar;
@@ -3888,15 +3891,16 @@ begin
  end;
  if assigned(Node) and (Node<>fKeywordCharRootTreeNode) then begin
   Node.fKeyword:=true;
+  Node.fFlags:=aFlags;
   Node.fAttribute:=aAttribute;
  end;
 end;
 
-procedure TpvTextEditor.TDFASyntaxHighlighting.AddKeywords(const aKeywords:array of TpvUTF8String;const aAttribute:TpvUInt32);
+procedure TpvTextEditor.TDFASyntaxHighlighting.AddKeywords(const aKeywords:array of TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
 var Keyword:TpvRawByteString;
 begin
  for Keyword in aKeywords do begin
-  AddKeyword(Keyword,aAttribute);
+  AddKeyword(Keyword,aFlags,aAttribute);
  end;
 end;
 
@@ -4299,10 +4303,19 @@ begin
 end;
 
 procedure TpvTextEditor.TDFASyntaxHighlighting.Update(const aUntilCodePoint:TpvSizeInt);
-type TParserState=record
+type TMultiLineCPreprocessorState=
+      (
+       None,
+       Maybe,
+       Skip,
+       LastCRSkipLF,
+       LastLFSkipCR
+      );
+     TParserState=record
       CodePointEnumerator:TpvTextEditor.TRope.TCodePointEnumerator;
       CodePointIndex:TpvSizeInt;
       NewLine:TpvUInt8;
+      MultiLineCPreprocessorState:TMultiLineCPreprocessorState;
       Valid:boolean;
      end;
      TParserStates=array[0..3] of TParserState;
@@ -4315,7 +4328,50 @@ var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
     ParserStates:TParserStates;
     KeywordCharTreeNode:TKeywordCharTreeNode;
     CodeUnit:TpvRawByteChar;
-    DoBreak:boolean;
+    DoBreak,MaybePreprocessorMultiLine:boolean;
+ procedure UpdateMultiLineCPreprocessorState(var aMultiLineCPreprocessorState:TMultiLineCPreprocessorState;const aCodePoint:TpvUInt32);
+ begin
+  case aCodePoint of
+   ord('\'):begin
+    case aMultiLineCPreprocessorState of
+     TMultiLineCPreprocessorState.None:begin
+      if MaybePreprocessorMultiLine then begin
+       aMultiLineCPreprocessorState:=TMultiLineCPreprocessorState.Maybe;
+      end;
+     end;
+    end;
+   end;
+   10:begin
+    case aMultiLineCPreprocessorState of
+     TMultiLineCPreprocessorState.Maybe:begin
+      aMultiLineCPreprocessorState:=TMultiLineCPreprocessorState.LastLFSkipCR;
+     end;
+     TMultiLineCPreprocessorState.LastCRSkipLF:begin
+      aMultiLineCPreprocessorState:=TMultiLineCPreprocessorState.Skip;
+     end;
+     else begin
+      aMultiLineCPreprocessorState:=TMultiLineCPreprocessorState.None;
+     end;
+    end;
+   end;
+   13:begin
+    case aMultiLineCPreprocessorState of
+     TMultiLineCPreprocessorState.Maybe:begin
+      aMultiLineCPreprocessorState:=TMultiLineCPreprocessorState.LastCRSkipLF;
+     end;
+     TMultiLineCPreprocessorState.LastLFSkipCR:begin
+      aMultiLineCPreprocessorState:=TMultiLineCPreprocessorState.Skip;
+     end;
+     else begin
+      aMultiLineCPreprocessorState:=TMultiLineCPreprocessorState.None;
+     end;
+    end;
+   end;
+   else begin
+    aMultiLineCPreprocessorState:=TMultiLineCPreprocessorState.None;
+   end;
+  end;
+ end;
  function ProcessCodeUnit(const aCodeUnit:TpvRawByteChar):boolean;
  begin
 
@@ -4327,10 +4383,12 @@ var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
     CodePoint:=ParserStates[1].CodePointEnumerator.GetCurrent;
     ParserStates[1].Valid:=ParserStates[1].CodePointEnumerator.MoveNext;
     inc(ParserStates[1].CodePointIndex);
-    if (CodePoint in [10,13]) or
-       (ParserStates[1].CodePointIndex=fParent.fRope.fCountCodePoints) then begin
+    if (ParserStates[1].MultiLineCPreprocessorState=TMultiLineCPreprocessorState.None) and
+       ((CodePoint in [10,13]) or
+        (ParserStates[1].CodePointIndex=fParent.fRope.fCountCodePoints)) then begin
      ParserStates[1].NewLine:=ParserStates[1].NewLine or 2;
     end;
+    UpdateMultiLineCPreprocessorState(ParserStates[1].MultiLineCPreprocessorState,CodePoint);
     ParserStates[1].NewLine:=ParserStates[1].NewLine shr 1;
    end;
    result:=false;
@@ -4372,6 +4430,8 @@ begin
 
   Preprocessor:=TpvUInt32($ffffffff);
 
+  MaybePreprocessorMultiLine:=false;
+
   ParserStates[0].CodePointIndex:=fCodePointIndex;
 
   ParserStates[0].CodePointEnumerator:=CodePointEnumeratorSource.GetEnumerator;
@@ -4386,12 +4446,16 @@ begin
    ParserStates[0].NewLine:=0;
   end;
 
+  ParserStates[0].MultiLineCPreprocessorState:=TMultiLineCPreprocessorState.None;
+
   while ParserStates[0].Valid and
-        ((aUntilCodePoint<0) or
+        (MaybePreprocessorMultiLine or
+         (aUntilCodePoint<0) or
          (ParserStates[0].CodePointIndex<aUntilCodePoint)) do begin
 
    if (ParserStates[0].NewLine and 1)<>0 then begin
     Preprocessor:=TpvUInt32($ffffffff);
+    MaybePreprocessorMultiLine:=false;
     DFA:=fDFA.fNext;
    end else begin
     DFA:=fDFA;
@@ -4411,10 +4475,13 @@ begin
 
     ParserStates[1].NewLine:=ParserStates[1].NewLine shr 1;
 
-    if (CodePoint in [10,13]) or
-       (ParserStates[1].CodePointIndex=fParent.fRope.fCountCodePoints) then begin
+    if (ParserStates[1].MultiLineCPreprocessorState=TMultiLineCPreprocessorState.None) and
+       ((CodePoint in [10,13]) or
+        (ParserStates[1].CodePointIndex=fParent.fRope.fCountCodePoints)) then begin
      ParserStates[1].NewLine:=ParserStates[1].NewLine or 2;
     end;
+
+    UpdateMultiLineCPreprocessorState(ParserStates[1].MultiLineCPreprocessorState,CodePoint);
 
     if CodePoint<128 then begin
      if not ProcessCodeUnit(AnsiChar(TpvUInt8(CodePoint))) then begin
@@ -4464,11 +4531,31 @@ begin
       Attribute:=KeywordCharTreeNode.fAttribute;
      end;
     end;
-    if TAccept.TFlag.IsPreprocessor in LastAccept.fFlags then begin
+    if TAccept.TFlag.IsPreprocessorLine in LastAccept.fFlags then begin
      Preprocessor:=LastAccept.fAttribute;
-    end else if (Preprocessor<>TpvUInt32($ffffffff)) and
-                (Attribute<>TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment) then begin
-     Attribute:=Preprocessor;
+     if TAccept.TFlag.IsMaybeCPreprocessorMultiLine in LastAccept.fFlags then begin
+      MaybePreprocessorMultiLine:=true;
+     end;
+    end else if Preprocessor<>TpvUInt32($ffffffff) then begin
+     if Attribute=TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment then begin
+      if TAccept.TFlag.IsEnd in LastAccept.fFlags then begin
+       MaybePreprocessorMultiLine:=false;
+       ParserStates[2].MultiLineCPreprocessorState:=TMultiLineCPreprocessorState.None;
+      end else begin
+       case ParserStates[2].MultiLineCPreprocessorState of
+        TMultiLineCPreprocessorState.Maybe:begin
+         ParserStates[2].MultiLineCPreprocessorState:=TMultiLineCPreprocessorState.None;
+        end;
+        TMultiLineCPreprocessorState.LastCRSkipLF,
+        TMultiLineCPreprocessorState.LastLFSkipCR:begin
+         ParserStates[2].NewLine:=1;
+         ParserStates[2].MultiLineCPreprocessorState:=TMultiLineCPreprocessorState.None;
+        end;
+       end;
+      end;
+     end else begin
+      Attribute:=Preprocessor;
+     end;
     end;
    end else begin
     if Preprocessor<>TpvUInt32($ffffffff) then begin
@@ -4532,6 +4619,7 @@ begin
               'safecall','sealed','set','shl','shr','stdcall','stored','string',
               'stringresource','then','threadvar','to','try','type','unit','until',
               'uses','var','virtual','while','with','write','writeonly','xor'],
+             [],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
  AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\(\*\$.*\*\)|\{\$.*\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor);
@@ -4559,12 +4647,13 @@ begin
               'for','goto','if','inline','int','long','register','restrict','return',
               'short','signed','sizeof','static','struct','switch','typedef','union',
               'unsigned','void','volatile','while'],
+             [],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
- AddRule('^['#32#9']*\#',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick,TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsPreprocessor],TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor);
+ AddRule('^['#32#9']*\#',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick,TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsPreprocessorLine,TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsMaybeCPreprocessorMultiLine],TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor);
  AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\/\*.*\*\/',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\/\*.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule('//.*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment); // or alternatively '//[^'#10#13']*['#10#13']?'
+ AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule(TpvRawByteString('[A-Za-z\_\$'#128'-'#255'][A-Za-z0-9\_\$'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -4594,12 +4683,13 @@ begin
               'sizeof','static','static_cast','struct','switch','template','this',
               'throw','true','try','typedef','typeid','typename','union',
               'unsigned','using','virtual','void','volatile','wchar_t','while'],
+             [],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
- AddRule('^['#32#9']*\#',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick,TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsPreprocessor],TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor);
+ AddRule('^['#32#9']*\#',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick,TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsPreprocessorLine,TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsMaybeCPreprocessorMultiLine],TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor);
  AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\/\*.*\*\/',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\/\*.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule('//.*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment); // or alternatively '//[^'#10#13']*['#10#13']?'
+ AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule(TpvRawByteString('[A-Za-z\_\$'#128'-'#255'][A-Za-z0-9\_\$'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -4622,6 +4712,7 @@ begin
               'new','null','package','private','protected','public','return',
               'short','static','strictfp','super','switch','synchronized','this',
               'throw','throws','transient','true','try','void','volatile','while'],
+             [],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
  AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\/\*.*\*\/',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
@@ -4679,12 +4770,13 @@ begin
               'sampler2darray','sampler1darrayshadow','struct','void','while','sub_assign',
               'uimage2d','image3d','iimage3d','uimage3d','uniform','patch','sample','buffer',
               'shared','usamplercube','usampler1darray','usampler2darray'],
+             [],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
- AddRule('^['#32#9']*\#',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick,TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsPreprocessor],TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor);
+ AddRule('^['#32#9']*\#',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick,TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsPreprocessorLine,TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsMaybeCPreprocessorMultiLine],TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor);
  AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\/\*.*\*\/',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\/\*.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule('//.*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment); // or alternatively '//[^'#10#13']*['#10#13']?'
+ AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule(TpvRawByteString('[A-Za-z\_\$'#128'-'#255'][A-Za-z0-9\_\$'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
