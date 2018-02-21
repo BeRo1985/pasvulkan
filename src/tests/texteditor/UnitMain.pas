@@ -199,9 +199,11 @@ begin
    if i<length(AbstractTextEditorView.Buffer) then begin
     BufferItem:=@AbstractTextEditorView.Buffer[i];
     if (BufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight)<>0 then begin
-     Console.HighVideo;
+//   Console.HighVideo;
+     Console.TextBackground(TConsole.TColor.LightBlue);
     end else begin
-     Console.NormVideo;
+//   Console.NormVideo;
+     Console.TextBackground(TConsole.TColor.Blue);
     end;
     case BufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Mask of
      TpvTextEditor.TSyntaxHighlighting.TAttributes.String_:begin
