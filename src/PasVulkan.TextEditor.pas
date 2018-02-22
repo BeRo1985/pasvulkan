@@ -270,13 +270,11 @@ type TpvTextEditor=class
               fLines:TLines;
               fCountLines:TpvSizeInt;
               fLineWrap:TpvSizeInt;
-              fTabWidth:TpvSizeInt;
               fCountVisibleVisualCodePointsSinceNewLine:TpvSizeInt;
               fCodePointIndex:TpvSizeInt;
               fLastWasPossibleNewLineTwoCharSequence:boolean;
               fLastCodePoint:TpvUInt32;
               procedure SetLineWrap(const aLineWrap:TpvSizeInt);
-              procedure SetTabWidth(const aTabWidth:TpvSizeInt);
               procedure AddLine(const aCodePointIndex:TpvSizeInt);
              public
               constructor Create(const aRope:TRope); reintroduce;
@@ -292,7 +290,6 @@ type TpvTextEditor=class
              published
               property CountLines:TpvSizeInt read fCountLines;
               property LineWrap:TpvSizeInt read fLineWrap write SetLineWrap;
-              property TabWidth:TpvSizeInt read fTabWidth write SetTabWidth;
             end;
             TCoordinate=record
              public
@@ -961,6 +958,7 @@ type TpvTextEditor=class
        fLastView:TView;
        fUndoRedoManager:TUndoRedoManager;
        fSyntaxHighlighting:TSyntaxHighlighting;
+       fTabWidth:TpvSizeInt;
        fCountLines:TpvSizeInt;
        function GetCountLines:TpvSizeInt;
        function GetText:TpvUTF8String;
@@ -968,6 +966,7 @@ type TpvTextEditor=class
        function GetLine(const aLineIndex:TpvSizeInt):TpvUTF8String;
        procedure SetLine(const aLineIndex:TpvSizeInt;const aLine:TpvUTF8String);
        procedure SetSyntaxHighlighting(const aSyntaxHighlighting:TpvTextEditor.TSyntaxHighlighting);
+       procedure SetTabWidth(const aTabWidth:TpvSizeInt);
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -999,6 +998,7 @@ type TpvTextEditor=class
        property CountLines:TpvSizeInt read GetCountLines;
        property UndoRedoManager:TUndoRedoManager read fUndoRedoManager;
        property SyntaxHighlighting:TSyntaxHighlighting read fSyntaxHighlighting write SetSyntaxHighlighting;
+       property TabWidth:TpvSizeInt read fTabWidth write SetTabWidth;
      end;
 
 implementation
@@ -2364,7 +2364,6 @@ begin
  fLines:=nil;
  fCountLines:=0;
  fLineWrap:=0;
- fTabWidth:=8;
  Reset;
  Update(-1,-1);
 end;
@@ -2381,17 +2380,6 @@ begin
   fLineWrap:=aLineWrap;
   Reset;
   Update(-1,-1);
- end;
-end;
-
-procedure TpvTextEditor.TLineCacheMap.SetTabWidth(const aTabWidth:TpvSizeInt);
-begin
- if fTabWidth<>aTabWidth then begin
-  fTabWidth:=aTabWidth;
-  if fLineWrap>0 then begin
-   Reset;
-   Update(-1,-1);
-  end;
  end;
 end;
 
@@ -2514,8 +2502,8 @@ begin
 
    if fLineWrap>0 then begin
     if (CodePoint<>10) and (CodePoint<>13) then begin
-     if DoTab and (fTabWidth>0) then begin
-      inc(fCountVisibleVisualCodePointsSinceNewLine,fTabWidth-(fCountVisibleVisualCodePointsSinceNewLine mod fTabWidth));
+     if DoTab and (fParent.fTabWidth>0) then begin
+      inc(fCountVisibleVisualCodePointsSinceNewLine,fParent.fTabWidth-(fCountVisibleVisualCodePointsSinceNewLine mod fTabWidth));
      end else begin
       inc(fCountVisibleVisualCodePointsSinceNewLine);
      end;
@@ -3128,6 +3116,7 @@ begin
  fLastView:=nil;
  fUndoRedoManager:=TUndoRedoManager.Create(self);
  fSyntaxHighlighting:=nil;
+ fTabWidth:=8;
  fCountLines:=-1;
 end;
 
@@ -3332,6 +3321,14 @@ begin
  if fSyntaxHighlighting<>aSyntaxHighlighting then begin
   fSyntaxHighlighting.Free;
   fSyntaxHighlighting:=aSyntaxHighlighting;
+ end;
+end;
+
+procedure TpvTextEditor.SetTabWidth(const aTabWidth:TpvSizeInt);
+begin
+ if fTabWidth<>aTabWidth then begin
+  fTabWidth:=aTabWidth;
+  ResetLineCacheMaps;
  end;
 end;
 

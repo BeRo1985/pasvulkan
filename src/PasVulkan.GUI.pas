@@ -7985,7 +7985,7 @@ end;
 procedure TpvGUIDefaultVectorBasedSkin.DrawMultiLineTextEdit(const aCanvas:TpvCanvas;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
 var ViewBufferX,ViewBufferY,ViewBufferIndex:TpvSizeInt;
     ViewBufferItem:TpvTextEditor.TView.PBufferItem;
-    CurrentFontColor:TpvVector4;
+    CurrentFontColor,Color:TpvVector4;
     Offset,TextOffset:TpvVector2;
     TextSize,IconSize,TemporarySize:TpvVector2;
     OldClipRect,TextClipRect,SelectionRect:TpvRect;
@@ -8050,7 +8050,48 @@ begin
                                 (aMultiLineTextEdit.fFontCharSize*0.5)+TpvVector2.Create(1.0,1.0));
    end;
    if not (ViewBufferItem^.CodePoint in [0,32]) then begin
-    aCanvas.Color:=CurrentFontColor;
+    case ViewBufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Mask of
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace:begin
+      Color:=CurrentFontColor;
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor:begin
+      Color:=CurrentFontColor*TpvVector4.Create(1.0,0.1,0.1,1.0);
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment:begin
+      Color:=CurrentFontColor*TpvVector4.Create(0.5,0.5,0.5,1.0);
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword:begin
+      Color:=CurrentFontColor*TpvVector4.Create(1.0,1.0,1.0,1.0);
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Type_:begin
+      Color:=CurrentFontColor*TpvVector4.Create(1.0,1.0,0.0,1.0);
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Builtin:begin
+      Color:=CurrentFontColor*TpvVector4.Create(1.0,1.0,0.0,1.0);
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier:begin
+      Color:=CurrentFontColor*TpvVector4.Create(1.0,1.0,0.0,1.0);
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Number:begin
+      Color:=CurrentFontColor*TpvVector4.Create(1.0,0.0,1.0,1.0);
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Symbol:begin
+      Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,0.0,1.0);
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.String_:begin
+      Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,1.0,1.0);
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter:begin
+      Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,0.0,1.0);
+     end;
+     TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator:begin
+      Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,0.0,1.0);
+     end;
+     else begin
+      Color:=CurrentFontColor;
+     end;
+    end;
+    aCanvas.Color:=Color;
     aCanvas.DrawTextCodePoint(ViewBufferItem^.CodePoint,
                               TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
                               (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY)));
