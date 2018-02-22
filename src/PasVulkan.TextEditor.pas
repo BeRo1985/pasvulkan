@@ -414,8 +414,9 @@ type TpvTextEditor=class
                            String_=10;
                            Delimiter=11;
                            Operator=12;
+                           Marked=TpvUInt32($40000000);
                            Highlight=TpvUInt32($80000000);
-                           Mask=TpvUInt32($7fffffff);
+                           Mask=TpvUInt32($0fffffff);
                    end;
                    TState=class
                     private
@@ -7784,10 +7785,13 @@ begin
       if (BufferIndex>=BufferBaseIndex) and
          (BufferIndex<BufferBaseEndIndex) then begin
        BufferItem:=@fBuffer[BufferIndex];
+       BufferItem^.Attribute:=CurrentAttribute;
        if CurrentHighlight then begin
-        BufferItem^.Attribute:=CurrentAttribute or TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight;
-       end else begin
-        BufferItem^.Attribute:=CurrentAttribute;
+        BufferItem^.Attribute:=BufferItem^.Attribute or TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight;
+       end;
+       if (CurrentCodePointIndex>=fMarkState.StartCodePointIndex) and
+          (CurrentCodePointIndex<=fMarkState.EndCodePointIndex) then begin
+        BufferItem^.Attribute:=BufferItem^.Attribute or TpvTextEditor.TSyntaxHighlighting.TAttributes.Marked;
        end;
        BufferItem^.CodePoint:=CodePoint;
       end;
