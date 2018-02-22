@@ -2317,6 +2317,7 @@ type TpvGUIObject=class;
        fDirty:boolean;
        fEditable:boolean;
        fOverwrite:boolean;
+       fTextAreaOffset:TpvVector2;
        fFontCharSize:TpvVector2;
        function GetText:TpvUTF8String;
        procedure SetText(const aText:TpvUTF8String);
@@ -7914,6 +7915,8 @@ begin
  CurrentFont:=aMultiLineTextEdit.Font;
 
  CurrentFontSize:=aMultiLineTextEdit.FontSize;
+
+ aMultiLineTextEdit.fTextAreaOffset:=TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin);
 
  aMultiLineTextEdit.fFontCharSize:=TpvVector2.Create(CurrentFont.MaxX-CurrentFont.MinX,
                                                      CurrentFont.MaxY-CurrentFont.MinY)*
@@ -16743,6 +16746,9 @@ begin
          end;
         end;
        end;}
+       fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaOffset.x)/fFontCharSize.x)),
+                                                                               trunc(floor((aPointerEvent.Position.y-fTextAreaOffset.y)/fFontCharSize.y)));
+       fDirty:=true;
        RequestFocus;
       end;
       TpvApplicationInputPointerButton.Middle:begin

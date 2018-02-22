@@ -906,6 +906,7 @@ type TpvTextEditor=class
               procedure ClampMarkCodePointIndices;
               procedure EnsureCodePointIndexIsInRange;
               procedure EnsureCursorIsVisible(const aUpdateCursor:boolean=true;const aForceVisibleLines:TpvSizeInt=1);
+              function GetCodePointIndexFromRelativeCursorPosition(const aX,aY:TpvSizeInt):TpvSizeInt;
               procedure UpdateCursor;
               procedure UpdateBuffer;
               procedure MarkAll;
@@ -7566,6 +7567,12 @@ begin
   fLineColumn.Column:=CurrentColumnIndex;
  end;
 
+end;
+
+function TpvTextEditor.TView.GetCodePointIndexFromRelativeCursorPosition(const aX,aY:TpvSizeInt):TpvSizeInt;
+begin
+ result:=fVisualLineCacheMap.GetCodePointIndexFromLineIndexAndColumnIndex(fCursorOffset.y+aY,
+                                                                          fCursorOffset.x+aX);
 end;
 
 procedure TpvTextEditor.TView.UpdateCursor;
