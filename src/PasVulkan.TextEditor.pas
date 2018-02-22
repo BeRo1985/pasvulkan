@@ -266,6 +266,7 @@ type TpvTextEditor=class
                    PLine=^TLine;
                    TLines=array of TLine;
              private
+              fParent:TpvTextEditor;
               fRope:TRope;
               fLines:TLines;
               fCountLines:TpvSizeInt;
@@ -277,7 +278,7 @@ type TpvTextEditor=class
               procedure SetLineWrap(const aLineWrap:TpvSizeInt);
               procedure AddLine(const aCodePointIndex:TpvSizeInt);
              public
-              constructor Create(const aRope:TRope); reintroduce;
+              constructor Create(const aParent:TpvTextEditor;const aRope:TRope); reintroduce;
               destructor Destroy; override;
               procedure Reset;
               procedure Truncate(const aUntilCodePoint,aUntilLine:TpvSizeInt);
@@ -2357,9 +2358,10 @@ begin
 
 end;
 
-constructor TpvTextEditor.TLineCacheMap.Create(const aRope:TRope);
+constructor TpvTextEditor.TLineCacheMap.Create(const aParent:TpvTextEditor;const aRope:TRope);
 begin
  inherited Create;
+ fParent:=aParent;
  fRope:=aRope;
  fLines:=nil;
  fCountLines:=0;
@@ -2409,8 +2411,8 @@ begin
  if aUntilCodePoint>=0 then begin
   if aUntilCodePoint>0 then begin
    LineIndex:=GetLineIndexFromCodePointIndex(aUntilCodePoint-1);
-   if (LineIndex>0) and (fCountLines>(LineIndex-1)) then begin
-    UntilCodePointCountLines:=LineIndex-1;
+   if (LineIndex>0) and (fCountLines>(LineIndex-2)) then begin
+    UntilCodePointCountLines:=LineIndex-2;
     while (UntilCodePointCountLines>0) and
           (fLines[UntilCodePointCountLines-1]>=aUntilCodePoint) do begin
      dec(UntilCodePointCountLines);
@@ -2503,7 +2505,7 @@ begin
    if fLineWrap>0 then begin
     if (CodePoint<>10) and (CodePoint<>13) then begin
      if DoTab and (fParent.fTabWidth>0) then begin
-      inc(fCountVisibleVisualCodePointsSinceNewLine,fParent.fTabWidth-(fCountVisibleVisualCodePointsSinceNewLine mod fTabWidth));
+      inc(fCountVisibleVisualCodePointsSinceNewLine,fParent.fTabWidth-(fCountVisibleVisualCodePointsSinceNewLine mod fParent.fTabWidth));
      end else begin
       inc(fCountVisibleVisualCodePointsSinceNewLine);
      end;
@@ -2610,7 +2612,7 @@ begin
 
      case CodePoint of
       9:begin
-       StepWidth:=Max(1,(fTabWidth-(CurrentColumn mod fTabWidth)));
+       StepWidth:=Max(1,(fParent.fTabWidth-(CurrentColumn mod fParent.fTabWidth)));
        LastWasPossibleNewLineTwoCharSequence:=false;
       end;
       $0a,$0d:begin
@@ -2722,7 +2724,7 @@ begin
 
     case CodePoint of
      9:begin
-      StepWidth:=Max(1,(fTabWidth-(CurrentColumn mod fTabWidth)));
+      StepWidth:=Max(1,(fParent.fTabWidth-(CurrentColumn mod fParent.fTabWidth)));
       LastWasPossibleNewLineTwoCharSequence:=false;
      end;
      $0a,$0d:begin
@@ -3111,7 +3113,7 @@ constructor TpvTextEditor.Create;
 begin
  inherited Create;
  fRope:=TRope.Create;
- fLineCacheMap:=TLineCacheMap.Create(fRope);
+ fLineCacheMap:=TLineCacheMap.Create(self,fRope);
  fFirstView:=nil;
  fLastView:=nil;
  fUndoRedoManager:=TUndoRedoManager.Create(self);
@@ -7372,7 +7374,7 @@ begin
  fCursor.y:=0;
  fLineWrap:=0;
  fAutoIdentOnEnterMode:=TAutoIdentOnEnterMode.Copy;
- fVisualLineCacheMap:=TLineCacheMap.Create(fParent.fRope);
+ fVisualLineCacheMap:=TLineCacheMap.Create(fParent,fParent.fRope);
  fBuffer:=nil;
  fMarkState.StartCodePointIndex:=-1;
  fMarkState.EndCodePointIndex:=-1;
@@ -7765,7 +7767,7 @@ begin
     case IncomingCodePoint of
      $09:begin
       CodePoint:=32;
-      StepWidth:=Max(1,(fVisualLineCacheMap.fTabWidth-(RelativeCursor.x mod fVisualLineCacheMap.fTabWidth)));
+      StepWidth:=Max(1,(fParent.fTabWidth-(RelativeCursor.x mod fParent.fTabWidth)));
      end;
      $0a,$0d:begin
       CodePoint:=32;
@@ -8104,8 +8106,8 @@ begin
       for CodePoint in fParent.fRope.GetCodePointEnumeratorSource(StartCodePointIndex,StopCodePointIndex) do begin
        case CodePoint of
         9:begin
-         if fVisualLineCacheMap.fTabWidth>0 then begin
-          inc(WhiteSpaceSteps,fVisualLineCacheMap.fTabWidth-(WhiteSpaceSteps mod fVisualLineCacheMap.fTabWidth));
+         if fParent.fTabWidth>0 then begin
+          inc(WhiteSpaceSteps,fParent.fTabWidth-(WhiteSpaceSteps mod fParent.fTabWidth));
          end;
         end;
         32:begin
@@ -8118,9 +8120,9 @@ begin
       end;
       case fAutoIdentOnEnterMode of
        TAutoIdentOnEnterMode.Tabs:begin
-        if fVisualLineCacheMap.fTabWidth>0 then begin
-         PrependedWhiteSpace:=TpvUTF8String(StringOfChar(#9,WhiteSpaceSteps div fVisualLineCacheMap.fTabWidth))+
-                              TpvUTF8String(StringOfChar(#32,WhiteSpaceSteps mod fVisualLineCacheMap.fTabWidth));
+        if fParent.fTabWidth>0 then begin
+         PrependedWhiteSpace:=TpvUTF8String(StringOfChar(#9,WhiteSpaceSteps div fParent.fTabWidth))+
+                              TpvUTF8String(StringOfChar(#32,WhiteSpaceSteps mod fParent.fTabWidth));
         end else begin
          PrependedWhiteSpace:=TpvUTF8String(StringOfChar(#32,WhiteSpaceSteps));
         end;
