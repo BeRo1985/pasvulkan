@@ -867,6 +867,7 @@ type TpvGUIObject=class;
      TpvGUIWidgetFlag=
       (
        Enabled,
+       AutoSize,
        Visible,
        Draggable,
        Focused,
@@ -884,6 +885,7 @@ type TpvGUIObject=class;
      TpvGUIWidget=class(TpvGUIObject)
       public
        const DefaultFlags=[TpvGUIWidgetFlag.Enabled,
+                           TpvGUIWidgetFlag.AutoSize,
                            TpvGUIWidgetFlag.Visible];
       private
       protected
@@ -918,6 +920,8 @@ type TpvGUIObject=class;
        fModelMatrix:TpvMatrix4x4;
        function GetEnabled:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetEnabled(const aEnabled:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetAutoSize:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetAutoSize(const aAutoSize:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetVisible:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetVisible(const aVisible:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetDraggable:boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1015,6 +1019,7 @@ type TpvGUIObject=class;
        property FixedSize:TpvVector2Property read fFixedSizeProperty;
        property WidgetFlags:TpvGUIWidgetFlags read fWidgetFlags write fWidgetFlags;
        property Enabled:boolean read GetEnabled write SetEnabled;
+       property AutoSize:boolean read GetAutoSize write SetAutoSize;
        property Visible:boolean read GetVisible write SetVisible;
        property Draggable:boolean read GetDraggable write SetDraggable;
        property RecursiveVisible:boolean read GetRecursiveVisible;
@@ -2572,17 +2577,21 @@ begin
     if not First then begin
      Size[Axis0]:=Size[Axis0]+fSpacing;
     end;
-    ChildPreferredSize:=ChildWidget.PreferredSize;
-    ChildFixedSize:=ChildWidget.GetFixedSize;
-    if ChildFixedSize.x>0.0 then begin
-     ChildTargetSize.x:=ChildFixedSize.x;
+    if ChildWidget.AutoSize then begin
+     ChildPreferredSize:=ChildWidget.PreferredSize;
+     ChildFixedSize:=ChildWidget.GetFixedSize;
+     if ChildFixedSize.x>0.0 then begin
+      ChildTargetSize.x:=ChildFixedSize.x;
+     end else begin
+      ChildTargetSize.x:=ChildPreferredSize.x;
+     end;
+     if ChildFixedSize.y>0.0 then begin
+      ChildTargetSize.y:=ChildFixedSize.y;
+     end else begin
+      ChildTargetSize.y:=ChildPreferredSize.y;
+     end;
     end else begin
-     ChildTargetSize.x:=ChildPreferredSize.x;
-    end;
-    if ChildFixedSize.y>0.0 then begin
-     ChildTargetSize.y:=ChildFixedSize.y;
-    end else begin
-     ChildTargetSize.y:=ChildPreferredSize.y;
+     ChildTargetSize:=ChildWidget.fSize;
     end;
     Size[Axis0]:=Size[Axis0]+ChildTargetSize[Axis0];
     Size[Axis1]:=Max(Size[Axis1],ChildTargetSize[Axis1]+(fMargin*2.0));
@@ -2602,16 +2611,20 @@ var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget,LastVisibleChildWidget:TpvGUIWidget;
 begin
- FixedSize:=aWidget.GetFixedSize;
- if FixedSize.x>0.0 then begin
-  ContainerSize.x:=FixedSize.x;
+ if aWidget.AutoSize then begin
+  FixedSize:=aWidget.GetFixedSize;
+  if FixedSize.x>0.0 then begin
+   ContainerSize.x:=FixedSize.x;
+  end else begin
+   ContainerSize.x:=aWidget.Width;
+  end;
+  if FixedSize.y>0.0 then begin
+   ContainerSize.y:=FixedSize.y;
+  end else begin
+   ContainerSize.y:=aWidget.Height;
+  end;
  end else begin
-  ContainerSize.x:=aWidget.Width;
- end;
- if FixedSize.y>0.0 then begin
-  ContainerSize.y:=FixedSize.y;
- end else begin
-  ContainerSize.y:=aWidget.Height;
+  ContainerSize:=aWidget.fSize;
  end;
  Offset:=fMargin;
  YOffset:=0;
@@ -2636,17 +2649,23 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
-    ChildPreferredSize:=ChildWidget.PreferredSize;
-    ChildFixedSize:=ChildWidget.GetFixedSize;
-    if ChildFixedSize.x>0.0 then begin
-     ChildTargetSize.x:=ChildFixedSize.x;
+    if ChildWidget.AutoSize then begin
+     ChildPreferredSize:=ChildWidget.PreferredSize;
+     ChildFixedSize:=ChildWidget.GetFixedSize;
+     if ChildFixedSize.x>0.0 then begin
+      ChildTargetSize.x:=ChildFixedSize.x;
+     end else begin
+      ChildTargetSize.x:=ChildPreferredSize.x;
+     end;
+     if ChildFixedSize.y>0.0 then begin
+      ChildTargetSize.y:=ChildFixedSize.y;
+     end else begin
+      ChildTargetSize.y:=ChildPreferredSize.y;
+     end;
     end else begin
-     ChildTargetSize.x:=ChildPreferredSize.x;
-    end;
-    if ChildFixedSize.y>0.0 then begin
-     ChildTargetSize.y:=ChildFixedSize.y;
-    end else begin
-     ChildTargetSize.y:=ChildPreferredSize.y;
+     ChildPreferredSize:=ChildWidget.fSize;
+     ChildFixedSize:=ChildWidget.fSize;
+     ChildTargetSize:=ChildWidget.fSize;
     end;
     if IsInstance and (ChildWidget is TpvGUIWindow) then begin
      ChildWidget.fSize:=ChildTargetSize;
@@ -2711,17 +2730,21 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
-    ChildPreferredSize:=ChildWidget.PreferredSize;
-    ChildFixedSize:=ChildWidget.GetFixedSize;
-    if ChildFixedSize.x>0.0 then begin
-     ChildTargetSize.x:=ChildFixedSize.x;
+    if ChildWidget.AutoSize then begin
+     ChildPreferredSize:=ChildWidget.PreferredSize;
+     ChildFixedSize:=ChildWidget.GetFixedSize;
+     if ChildFixedSize.x>0.0 then begin
+      ChildTargetSize.x:=ChildFixedSize.x;
+     end else begin
+      ChildTargetSize.x:=ChildPreferredSize.x;
+     end;
+     if ChildFixedSize.y>0.0 then begin
+      ChildTargetSize.y:=ChildFixedSize.y;
+     end else begin
+      ChildTargetSize.y:=ChildPreferredSize.y;
+     end;
     end else begin
-     ChildTargetSize.x:=ChildPreferredSize.x;
-    end;
-    if ChildFixedSize.y>0.0 then begin
-     ChildTargetSize.y:=ChildFixedSize.y;
-    end else begin
-     ChildTargetSize.y:=ChildPreferredSize.y;
+     ChildTargetSize:=ChildWidget.fSize;
     end;
     Size:=Maximum(Size,ChildTargetSize);
    end;
@@ -2737,33 +2760,41 @@ var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
- FixedSize:=aWidget.GetFixedSize;
- if FixedSize.x>0.0 then begin
-  ContainerSize.x:=FixedSize.x;
+ if aWidget.AutoSize then begin
+  FixedSize:=aWidget.GetFixedSize;
+  if FixedSize.x>0.0 then begin
+   ContainerSize.x:=FixedSize.x;
+  end else begin
+   ContainerSize.x:=aWidget.Width;
+  end;
+  if FixedSize.y>0.0 then begin
+   ContainerSize.y:=FixedSize.y;
+  end else begin
+   ContainerSize.y:=aWidget.Height;
+  end;
  end else begin
-  ContainerSize.x:=aWidget.Width;
- end;
- if FixedSize.y>0.0 then begin
-  ContainerSize.y:=FixedSize.y;
- end else begin
-  ContainerSize.y:=aWidget.Height;
+  ContainerSize:=aWidget.fSize;
  end;
  for ChildIndex:=0 to aWidget.fChildren.Count-1 do begin
   Child:=aWidget.fChildren.Items[ChildIndex];
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
-    ChildPreferredSize:=ChildWidget.PreferredSize;
-    ChildFixedSize:=ChildWidget.GetFixedSize;
-    if ChildFixedSize.x>0.0 then begin
-     ChildTargetSize.x:=ChildFixedSize.x;
+    if ChildWidget.AutoSize then begin
+     ChildPreferredSize:=ChildWidget.PreferredSize;
+     ChildFixedSize:=ChildWidget.GetFixedSize;
+     if ChildFixedSize.x>0.0 then begin
+      ChildTargetSize.x:=ChildFixedSize.x;
+     end else begin
+      ChildTargetSize.x:=ChildPreferredSize.x;
+     end;
+     if ChildFixedSize.y>0.0 then begin
+      ChildTargetSize.y:=ChildFixedSize.y;
+     end else begin
+      ChildTargetSize.y:=ChildPreferredSize.y;
+     end;
     end else begin
-     ChildTargetSize.x:=ChildPreferredSize.x;
-    end;
-    if ChildFixedSize.y>0.0 then begin
-     ChildTargetSize.y:=ChildFixedSize.y;
-    end else begin
-     ChildTargetSize.y:=ChildPreferredSize.y;
+     ChildTargetSize:=ChildWidget.fSize;
     end;
     if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=TpvGUIWindowState.Maximized)) then begin
      ChildWidget.fPosition:=TpvVector2.InlineableCreate(fMargin,fMargin);
@@ -2820,17 +2851,21 @@ begin
     if not First then begin
      Size[Axis0]:=Size[Axis0]+fSpacing;
     end;
-    ChildPreferredSize:=ChildWidget.PreferredSize;
-    ChildFixedSize:=ChildWidget.GetFixedSize;
-    if ChildFixedSize.x>0.0 then begin
-     ChildTargetSize.x:=ChildFixedSize.x;
+    if ChildWidget.AutoSize then begin
+     ChildPreferredSize:=ChildWidget.PreferredSize;
+     ChildFixedSize:=ChildWidget.GetFixedSize;
+     if ChildFixedSize.x>0.0 then begin
+      ChildTargetSize.x:=ChildFixedSize.x;
+     end else begin
+      ChildTargetSize.x:=ChildPreferredSize.x;
+     end;
+     if ChildFixedSize.y>0.0 then begin
+      ChildTargetSize.y:=ChildFixedSize.y;
+     end else begin
+      ChildTargetSize.y:=ChildPreferredSize.y;
+     end;
     end else begin
-     ChildTargetSize.x:=ChildPreferredSize.x;
-    end;
-    if ChildFixedSize.y>0.0 then begin
-     ChildTargetSize.y:=ChildFixedSize.y;
-    end else begin
-     ChildTargetSize.y:=ChildPreferredSize.y;
+     ChildTargetSize:=ChildWidget.fSize;
     end;
     Size[Axis0]:=Size[Axis0]+ChildTargetSize[Axis0];
     Size[Axis1]:=Max(Size[Axis1],ChildTargetSize[Axis1]+(fMargin*2.0));
@@ -2850,16 +2885,20 @@ var Axis0,Axis1,ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
- FixedSize:=aWidget.GetFixedSize;
- if FixedSize.x>0.0 then begin
-  ContainerSize.x:=FixedSize.x;
+ if aWidget.AutoSize then begin
+  FixedSize:=aWidget.GetFixedSize;
+  if FixedSize.x>0.0 then begin
+   ContainerSize.x:=FixedSize.x;
+  end else begin
+   ContainerSize.x:=aWidget.Width;
+  end;
+  if FixedSize.y>0.0 then begin
+   ContainerSize.y:=FixedSize.y;
+  end else begin
+   ContainerSize.y:=aWidget.Height;
+  end;
  end else begin
-  ContainerSize.x:=aWidget.Width;
- end;
- if FixedSize.y>0.0 then begin
-  ContainerSize.y:=FixedSize.y;
- end else begin
-  ContainerSize.y:=aWidget.Height;
+  ContainerSize:=aWidget.fSize;
  end;
  case fOrientation of
   TpvGUILayoutOrientation.Horizontal:begin
@@ -2881,17 +2920,21 @@ begin
     if not First then begin
      Offset:=Offset+fSpacing;
     end;
-    ChildPreferredSize:=ChildWidget.PreferredSize;
-    ChildFixedSize:=ChildWidget.GetFixedSize;
-    if ChildFixedSize.x>0.0 then begin
-     ChildTargetSize.x:=ChildFixedSize.x;
+    if ChildWidget.AutoSize then begin
+     ChildPreferredSize:=ChildWidget.PreferredSize;
+     ChildFixedSize:=ChildWidget.GetFixedSize;
+     if ChildFixedSize.x>0.0 then begin
+      ChildTargetSize.x:=ChildFixedSize.x;
+     end else begin
+      ChildTargetSize.x:=ChildPreferredSize.x;
+     end;
+     if ChildFixedSize.y>0.0 then begin
+      ChildTargetSize.y:=ChildFixedSize.y;
+     end else begin
+      ChildTargetSize.y:=ChildPreferredSize.y;
+     end;
     end else begin
-     ChildTargetSize.x:=ChildPreferredSize.x;
-    end;
-    if ChildFixedSize.y>0.0 then begin
-     ChildTargetSize.y:=ChildFixedSize.y;
-    end else begin
-     ChildTargetSize.y:=ChildPreferredSize.y;
+     ChildTargetSize:=ChildWidget.fSize;
     end;
     Position:=TpvVector2.Null;
     Position[Axis0]:=Offset;
@@ -2980,17 +3023,21 @@ begin
       result.y:=result.y+fSpacing;
      end;
     end;
-    ChildPreferredSize:=ChildWidget.GetPreferredSize;
-    ChildFixedSize:=ChildWidget.GetFixedSize;
-    if ChildFixedSize.x>0.0 then begin
-     ChildTargetSize.x:=ChildFixedSize.x;
+    if ChildWidget.AutoSize then begin
+     ChildPreferredSize:=ChildWidget.GetPreferredSize;
+     ChildFixedSize:=ChildWidget.GetFixedSize;
+     if ChildFixedSize.x>0.0 then begin
+      ChildTargetSize.x:=ChildFixedSize.x;
+     end else begin
+      ChildTargetSize.x:=ChildPreferredSize.x;
+     end;
+     if ChildFixedSize.y>0.0 then begin
+      ChildTargetSize.y:=ChildFixedSize.y;
+     end else begin
+      ChildTargetSize.y:=ChildPreferredSize.y;
+     end;
     end else begin
-     ChildTargetSize.x:=ChildPreferredSize.x;
-    end;
-    if ChildFixedSize.y>0.0 then begin
-     ChildTargetSize.y:=ChildFixedSize.y;
-    end else begin
-     ChildTargetSize.y:=ChildPreferredSize.y;
+     ChildTargetSize:=ChildWidget.fSize;
     end;
     IndentCurrent:=Indent and not assigned(ChildLabel);
     result.x:=Max(result.x,ChildTargetSize.x+(2.0*fMargin)+((ord(IndentCurrent) and 1)*fGroupIdent));
@@ -3014,7 +3061,7 @@ var ChildIndex:TpvInt32;
     ChildLabel:TpVGUILabel;
 begin
  Size:=TpvVector2.InlineableCreate(fMargin*2.0,fMargin);
- if aWidget.GetFixedWidth>0.0 then begin
+ if aWidget.AutoSize and (aWidget.GetFixedWidth>0.0) then begin
   AvailableWidth:=aWidget.GetFixedWidth-(fMargin*2.0);
  end else begin
   AvailableWidth:=aWidget.Width-(fMargin*2.0);
@@ -3041,17 +3088,21 @@ begin
      end;
     end;
     IndentCurrent:=Indent and not assigned(ChildLabel);
-    ChildPreferredSize:=TpvVector2.InlineableCreate(AvailableWidth-((ord(IndentCurrent) and 1)*fGroupIdent),ChildWidget.GetPreferredSize.y);
-    ChildFixedSize:=ChildWidget.GetFixedSize;
-    if ChildFixedSize.x>0.0 then begin
-     ChildTargetSize.x:=ChildFixedSize.x;
+    if ChildWidget.AutoSize then begin
+     ChildPreferredSize:=TpvVector2.InlineableCreate(AvailableWidth-((ord(IndentCurrent) and 1)*fGroupIdent),ChildWidget.GetPreferredSize.y);
+     ChildFixedSize:=ChildWidget.GetFixedSize;
+     if ChildFixedSize.x>0.0 then begin
+      ChildTargetSize.x:=ChildFixedSize.x;
+     end else begin
+      ChildTargetSize.x:=ChildPreferredSize.x;
+     end;
+     if ChildFixedSize.y>0.0 then begin
+      ChildTargetSize.y:=ChildFixedSize.y;
+     end else begin
+      ChildTargetSize.y:=ChildPreferredSize.y;
+     end;
     end else begin
-     ChildTargetSize.x:=ChildPreferredSize.x;
-    end;
-    if ChildFixedSize.y>0.0 then begin
-     ChildTargetSize.y:=ChildFixedSize.y;
-    end else begin
-     ChildTargetSize.y:=ChildPreferredSize.y;
+     ChildTargetSize:=ChildWidget.fSize;
     end;
     ChildWidget.fPosition:=TpvVector2.InlineableCreate(fMargin+((ord(IndentCurrent) and 1)*fGroupIdent),Size.y);
     ChildWidget.fSize:=ChildTargetSize;
@@ -3235,20 +3286,28 @@ begin
 
    if assigned(ChildWidget) then begin
 
-    ChildPreferredSize:=ChildWidget.GetPreferredSize;
+    if ChildWidget.AutoSize then begin
 
-    ChildFixedSize:=ChildWidget.GetFixedSize;
+     ChildPreferredSize:=ChildWidget.GetPreferredSize;
 
-    if ChildFixedSize.x>0.0 then begin
-     ChildTargetSize.x:=ChildFixedSize.x;
+     ChildFixedSize:=ChildWidget.GetFixedSize;
+
+     if ChildFixedSize.x>0.0 then begin
+      ChildTargetSize.x:=ChildFixedSize.x;
+     end else begin
+      ChildTargetSize.x:=ChildPreferredSize.x;
+     end;
+
+     if ChildFixedSize.y>0.0 then begin
+      ChildTargetSize.y:=ChildFixedSize.y;
+     end else begin
+      ChildTargetSize.y:=ChildPreferredSize.y;
+     end;
+
     end else begin
-     ChildTargetSize.x:=ChildPreferredSize.x;
-    end;
 
-    if ChildFixedSize.y>0.0 then begin
-     ChildTargetSize.y:=ChildFixedSize.y;
-    end else begin
-     ChildTargetSize.y:=ChildPreferredSize.y;
+     ChildTargetSize:=ChildWidget.fSize;
+
     end;
 
     fGrid[Axis0,i0]:=Max(fGrid[Axis0,i0],ChildTargetSize[Axis0]);
@@ -3293,16 +3352,20 @@ var Index0,Index1,Index2,Axis0,Axis1,ChildIndex,
     Alignment:TpvGUILayoutAlignment;
 begin
 
- FixedSize:=aWidget.GetFixedSize;
- if FixedSize.x>0.0 then begin
-  ContainerSize.x:=FixedSize.x;
+ if aWidget.AutoSize then begin
+  FixedSize:=aWidget.GetFixedSize;
+  if FixedSize.x>0.0 then begin
+   ContainerSize.x:=FixedSize.x;
+  end else begin
+   ContainerSize.x:=aWidget.Width;
+  end;
+  if FixedSize.y>0.0 then begin
+   ContainerSize.y:=FixedSize.y;
+  end else begin
+   ContainerSize.y:=aWidget.Height;
+  end;
  end else begin
-  ContainerSize.x:=aWidget.Width;
- end;
- if FixedSize.y>0.0 then begin
-  ContainerSize.y:=FixedSize.y;
- end else begin
-  ContainerSize.y:=aWidget.Height;
+  ContainerSize:=aWidget.fSize;
  end;
 
  ComputeLayout(aWidget);
@@ -3359,20 +3422,30 @@ begin
 
    if assigned(ChildWidget) then begin
 
-    ChildPreferredSize:=ChildWidget.GetPreferredSize;
+    if ChildWidget.AutoSize then begin
 
-    ChildFixedSize:=ChildWidget.GetFixedSize;
+     ChildPreferredSize:=ChildWidget.GetPreferredSize;
 
-    if ChildFixedSize.x>0.0 then begin
-     ChildTargetSize.x:=ChildFixedSize.x;
+     ChildFixedSize:=ChildWidget.GetFixedSize;
+
+     if ChildFixedSize.x>0.0 then begin
+      ChildTargetSize.x:=ChildFixedSize.x;
+     end else begin
+      ChildTargetSize.x:=ChildPreferredSize.x;
+     end;
+
+     if ChildFixedSize.y>0.0 then begin
+      ChildTargetSize.y:=ChildFixedSize.y;
+     end else begin
+      ChildTargetSize.y:=ChildPreferredSize.y;
+     end;
+
     end else begin
-     ChildTargetSize.x:=ChildPreferredSize.x;
-    end;
 
-    if ChildFixedSize.y>0.0 then begin
-     ChildTargetSize.y:=ChildFixedSize.y;
-    end else begin
-     ChildTargetSize.y:=ChildPreferredSize.y;
+     ChildFixedSize:=ChildWidget.fSize;
+
+     ChildTargetSize:=ChildWidget.fSize;
+
     end;
 
     ChildPosition:=Position;
@@ -3562,18 +3635,26 @@ var AxisIndex,PhaseIndex,ChildIndex,Index:TpvInt32;
     CurrentSize,TotalStretch,Factor:TpvFloat;
 begin
 
- FixedSize:=aWidget.GetFixedSize;
+ if aWidget.AutoSize then begin
 
- if FixedSize.x>0.0 then begin
-  ContainerSize.x:=FixedSize.x;
- end else begin
-  ContainerSize.x:=aWidget.Width;
- end;
+  FixedSize:=aWidget.GetFixedSize;
 
- if FixedSize.y>0.0 then begin
-  ContainerSize.y:=FixedSize.y;
+  if FixedSize.x>0.0 then begin
+   ContainerSize.x:=FixedSize.x;
+  end else begin
+   ContainerSize.x:=aWidget.Width;
+  end;
+
+  if FixedSize.y>0.0 then begin
+   ContainerSize.y:=FixedSize.y;
+  end else begin
+   ContainerSize.y:=aWidget.Height;
+  end;
+
  end else begin
-  ContainerSize.y:=aWidget.Height;
+
+  ContainerSize:=aWidget.fSize;
+
  end;
 
  ContainerSize:=ContainerSize-TpvVector2.InlineableCreate(fMargin*2.0,fMargin*2.0);
@@ -3605,12 +3686,16 @@ begin
       if assigned(AnchorEntity) then begin
        Anchor:=AnchorEntity^.Value;
        if (Anchor.Size.Axis[AxisIndex]=1)=(PhaseIndex=0) then begin
-        ChildPreferredSize:=ChildWidget.GetPreferredSize[AxisIndex];
-        ChildFixedSize:=ChildWidget.GetFixedSize[AxisIndex];
-        if ChildFixedSize>0.0 then begin
-         ChildTargetSize:=ChildFixedSize;
+        if ChildWidget.AutoSize then begin
+         ChildPreferredSize:=ChildWidget.GetPreferredSize[AxisIndex];
+         ChildFixedSize:=ChildWidget.GetFixedSize[AxisIndex];
+         if ChildFixedSize>0.0 then begin
+          ChildTargetSize:=ChildFixedSize;
+         end else begin
+          ChildTargetSize:=ChildPreferredSize;
+         end;
         end else begin
-         ChildTargetSize:=ChildPreferredSize;
+         ChildTargetSize:=ChildWidget.fSize[AxisIndex];
         end;
         ChildTargetSize:=ChildTargetSize+(Anchor.Padding[AxisIndex,0]+Anchor.Padding[AxisIndex,1]);
         if (Anchor.Position.Axis[AxisIndex]+Anchor.Size.Axis[AxisIndex])>ColumnRows.Count then begin
@@ -3718,17 +3803,22 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
-    ChildPreferredSize:=ChildWidget.GetPreferredSize;
-    ChildFixedSize:=ChildWidget.GetFixedSize;
-    if ChildFixedSize.x>0.0 then begin
-     ChildTargetSize.x:=ChildFixedSize.x;
+    if ChildWidget.AutoSize then begin
+     ChildPreferredSize:=ChildWidget.GetPreferredSize;
+     ChildFixedSize:=ChildWidget.GetFixedSize;
+     if ChildFixedSize.x>0.0 then begin
+      ChildTargetSize.x:=ChildFixedSize.x;
+     end else begin
+      ChildTargetSize.x:=ChildPreferredSize.x;
+     end;
+     if ChildFixedSize.y>0.0 then begin
+      ChildTargetSize.y:=ChildFixedSize.y;
+     end else begin
+      ChildTargetSize.y:=ChildPreferredSize.y;
+     end;
     end else begin
-     ChildTargetSize.x:=ChildPreferredSize.x;
-    end;
-    if ChildFixedSize.y>0.0 then begin
-     ChildTargetSize.y:=ChildFixedSize.y;
-    end else begin
-     ChildTargetSize.y:=ChildPreferredSize.y;
+     ChildFixedSize:=ChildWidget.fSize;
+     ChildTargetSize:=ChildWidget.fSize;
     end;
     fFixedSizes[ChildIndex]:=ChildFixedSize;
     fTargetSizes[ChildIndex]:=ChildTargetSize;
@@ -3887,22 +3977,30 @@ begin
  Axis0:=AxisOrientationAxes[fOrientation,0];
  Axis1:=AxisOrientationAxes[fOrientation,1];
 
- FixedSize:=aWidget.GetFixedSize;
+ if aWidget.AutoSize then begin
 
- if FixedSize.x>0.0 then begin
-  ContainerSize.x:=FixedSize.x;
- end else if fDesignedSize.x>0.0 then begin
-  ContainerSize.x:=fDesignedSize.x;
- end else begin
-  ContainerSize.x:=aWidget.Width;
- end;
+  FixedSize:=aWidget.GetFixedSize;
 
- if FixedSize.y>0.0 then begin
-  ContainerSize.y:=FixedSize.y;
- end else if fDesignedSize.y>0.0 then begin
-  ContainerSize.y:=fDesignedSize.y;
+  if FixedSize.x>0.0 then begin
+   ContainerSize.x:=FixedSize.x;
+  end else if fDesignedSize.x>0.0 then begin
+   ContainerSize.x:=fDesignedSize.x;
+  end else begin
+   ContainerSize.x:=aWidget.Width;
+  end;
+
+  if FixedSize.y>0.0 then begin
+   ContainerSize.y:=FixedSize.y;
+  end else if fDesignedSize.y>0.0 then begin
+   ContainerSize.y:=fDesignedSize.y;
+  end else begin
+   ContainerSize.y:=aWidget.Height;
+  end;
+
  end else begin
-  ContainerSize.y:=aWidget.Height;
+
+  ContainerSize:=aWidget.fSize;
+
  end;
 
  result:=TpvVector2.Null;
@@ -3921,17 +4019,21 @@ begin
     if not First then begin
      Position[Axis0]:=Position[Axis0]+fSpacing[Axis0];
     end;
-    ChildPreferredSize:=ChildWidget.PreferredSize;
-    ChildFixedSize:=ChildWidget.GetFixedSize;
-    if ChildFixedSize.x>0.0 then begin
-     ChildTargetSize.x:=ChildFixedSize.x;
+    if ChildWidget.AutoSize then begin
+     ChildPreferredSize:=ChildWidget.PreferredSize;
+     ChildFixedSize:=ChildWidget.GetFixedSize;
+     if ChildFixedSize.x>0.0 then begin
+      ChildTargetSize.x:=ChildFixedSize.x;
+     end else begin
+      ChildTargetSize.x:=ChildPreferredSize.x;
+     end;
+     if ChildFixedSize.y>0.0 then begin
+      ChildTargetSize.y:=ChildFixedSize.y;
+     end else begin
+      ChildTargetSize.y:=ChildPreferredSize.y;
+     end;
     end else begin
-     ChildTargetSize.x:=ChildPreferredSize.x;
-    end;
-    if ChildFixedSize.y>0.0 then begin
-     ChildTargetSize.y:=ChildFixedSize.y;
-    end else begin
-     ChildTargetSize.y:=ChildPreferredSize.y;
+     ChildTargetSize:=ChildWidget.fSize;
     end;
     if (not First) and
        ((Position[Axis0]+ChildTargetSize[Axis0])>=(ContainerSize[Axis0]-fMargin)) then begin
@@ -3950,16 +4052,24 @@ begin
 
  result:=result+TpvVector2.InlineableCreate(fMargin*2.0,fMargin*2.0);
 
- if FixedSize.x>0.0 then begin
-  result.x:=FixedSize.x;
- end else if fDesignedSize.x>0.0 then begin
-  result.x:=fDesignedSize.x;
- end;
+ if aWidget.AutoSize then begin
 
- if FixedSize.y>0.0 then begin
-  result.y:=FixedSize.y;
- end else if fDesignedSize.y>0.0 then begin
-  result.y:=fDesignedSize.y;
+  if FixedSize.x>0.0 then begin
+   result.x:=FixedSize.x;
+  end else if fDesignedSize.x>0.0 then begin
+   result.x:=fDesignedSize.x;
+  end;
+
+  if FixedSize.y>0.0 then begin
+   result.y:=FixedSize.y;
+  end else if fDesignedSize.y>0.0 then begin
+   result.y:=fDesignedSize.y;
+  end;
+
+ end else begin
+
+  result:=aWidget.fSize;
+
  end;
 
 end;
@@ -4057,18 +4167,26 @@ begin
  Axis0:=AxisOrientationAxes[fOrientation,0];
  Axis1:=AxisOrientationAxes[fOrientation,1];
 
- FixedSize:=aWidget.GetFixedSize;
+ if aWidget.AutoSize then begin
 
- if FixedSize.x>0.0 then begin
-  ContainerSize.x:=FixedSize.x;
- end else begin
-  ContainerSize.x:=aWidget.Width;
- end;
+  FixedSize:=aWidget.GetFixedSize;
 
- if FixedSize.y>0.0 then begin
-  ContainerSize.y:=FixedSize.y;
+  if FixedSize.x>0.0 then begin
+   ContainerSize.x:=FixedSize.x;
+  end else begin
+   ContainerSize.x:=aWidget.Width;
+  end;
+
+  if FixedSize.y>0.0 then begin
+   ContainerSize.y:=FixedSize.y;
+  end else begin
+   ContainerSize.y:=aWidget.Height;
+  end;
+
  end else begin
-  ContainerSize.y:=aWidget.Height;
+
+  ContainerSize:=aWidget.fSize;
+
  end;
 
  if length(fPositions)<>aWidget.fChildren.Count then begin
@@ -4097,17 +4215,21 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
-    ChildPreferredSize:=ChildWidget.PreferredSize;
-    ChildFixedSize:=ChildWidget.GetFixedSize;
-    if ChildFixedSize.x>0.0 then begin
-     ChildTargetSize.x:=ChildFixedSize.x;
+    if ChildWidget.AutoSize then begin
+     ChildPreferredSize:=ChildWidget.PreferredSize;
+     ChildFixedSize:=ChildWidget.GetFixedSize;
+     if ChildFixedSize.x>0.0 then begin
+      ChildTargetSize.x:=ChildFixedSize.x;
+     end else begin
+      ChildTargetSize.x:=ChildPreferredSize.x;
+     end;
+     if ChildFixedSize.y>0.0 then begin
+      ChildTargetSize.y:=ChildFixedSize.y;
+     end else begin
+      ChildTargetSize.y:=ChildPreferredSize.y;
+     end;
     end else begin
-     ChildTargetSize.x:=ChildPreferredSize.x;
-    end;
-    if ChildFixedSize.y>0.0 then begin
-     ChildTargetSize.y:=ChildFixedSize.y;
-    end else begin
-     ChildTargetSize.y:=ChildPreferredSize.y;
+     ChildTargetSize:=ChildWidget.fSize;
     end;
     if fDirection=TpvGUIFlowLayoutDirection.LeftToRight then begin
      if not First then begin
@@ -7886,6 +8008,20 @@ begin
  end;
 end;
 
+function TpvGUIWidget.GetAutoSize:boolean;
+begin
+ result:=TpvGUIWidgetFlag.AutoSize in fWidgetFlags;
+end;
+
+procedure TpvGUIWidget.SetAutoSize(const aAutoSize:boolean);
+begin
+ if aAutoSize then begin
+  Include(fWidgetFlags,TpvGUIWidgetFlag.AutoSize);
+ end else begin
+  Exclude(fWidgetFlags,TpvGUIWidgetFlag.AutoSize);
+ end;
+end;
+
 function TpvGUIWidget.GetVisible:boolean;
 begin
  result:=TpvGUIWidgetFlag.Visible in fWidgetFlags;
@@ -8031,7 +8167,7 @@ end;
 
 procedure TpvGUIWidget.SetFixedWidth(const aFixedWidth:TpvFloat);
 begin
- FixedSize.x:=aFixedWidth;
+ fFixedSize.x:=aFixedWidth;
 end;
 
 function TpvGUIWidget.GetFixedHeight:TpvFloat;
@@ -8041,7 +8177,7 @@ end;
 
 procedure TpvGUIWidget.SetFixedHeight(const aFixedHeight:TpvFloat);
 begin
- FixedSize.y:=aFixedHeight;
+ fFixedSize.y:=aFixedHeight;
 end;
 
 function TpvGUIWidget.GetAbsolutePosition:TpvVector2;
