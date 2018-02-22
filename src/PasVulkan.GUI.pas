@@ -2316,6 +2316,7 @@ type TpvGUIObject=class;
        fViewBufferCursorY:TpvSizeInt;
        fDirty:boolean;
        fEditable:boolean;
+       fOverwrite:boolean;
        fFontCharSize:TpvVector2;
        function GetText:TpvUTF8String;
        procedure SetText(const aText:TpvUTF8String);
@@ -2345,6 +2346,7 @@ type TpvGUIObject=class;
        property View:TpvTextEditor.TView read fView;
        property Text:TpvUTF8String read GetText write SetText;
        property Editable:boolean read fEditable write fEditable;
+       property Overwrite:boolean read fOverwrite write fOverwrite;
      end;
 
 implementation
@@ -8063,10 +8065,16 @@ begin
     aMultiLineTextEdit.Focused and
     aMultiLineTextEdit.Editable and
     (frac(fInstance.fTime)<0.5) then begin
-  aCanvas.DrawFilledRectangle(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
-                              (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(aMultiLineTextEdit.fViewBufferCursorX,aMultiLineTextEdit.fViewBufferCursorY+0.5)),
-                              TpvVector2.InlineableCreate(1.0,
-                                                         aMultiLineTextEdit.fFontCharSize.y*0.5));
+  if aMultiLineTextEdit.fOverwrite then begin
+   aCanvas.DrawFilledRectangle(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
+                               (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(aMultiLineTextEdit.fViewBufferCursorX+0.5,aMultiLineTextEdit.fViewBufferCursorY+0.5)),
+                               aMultiLineTextEdit.fFontCharSize*0.5);
+  end else begin
+   aCanvas.DrawFilledRectangle(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
+                               (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(aMultiLineTextEdit.fViewBufferCursorX,aMultiLineTextEdit.fViewBufferCursorY+0.5)),
+                               TpvVector2.InlineableCreate(1.0,
+                                                           aMultiLineTextEdit.fFontCharSize.y*0.5));
+  end;
  end;
 
  aCanvas.ClipRect:=OldClipRect;
@@ -16295,6 +16303,8 @@ begin
 
  fEditable:=true;
 
+ fOverwrite:=false;
+
 end;
 
 destructor TpvGUIMultiLineTextEdit.Destroy;
@@ -16428,7 +16438,7 @@ begin
    TpvApplicationInputKeyEventType.Typed:begin
     case aKeyEvent.KeyCode of
      KEYCODE_RETURN,KEYCODE_RETURN2:begin
-      fView.Enter(false);
+      fView.Enter(fOverwrite);
       fDirty:=true;
       result:=true;
      end;
@@ -16570,6 +16580,7 @@ begin
       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
        PasteText;
       end else begin
+       fOverwrite:=not fOverwrite;
       end;
       fDirty:=true;
       result:=true;
@@ -16639,7 +16650,7 @@ begin
     end;
    end;
    TpvApplicationInputKeyEventType.Unicode:begin
-    fView.InsertCodePoint(aKeyEvent.KeyCode,false);
+    fView.InsertCodePoint(aKeyEvent.KeyCode,fOverwrite);
     fDirty:=true;
 {   if assigned(fOnChange) then begin
      fOnChange(self);
