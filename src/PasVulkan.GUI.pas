@@ -2320,6 +2320,8 @@ type TpvGUIObject=class;
        fOverwrite:boolean;
        fTextAreaOffset:TpvVector2;
        fFontCharSize:TpvVector2;
+       fOnClick:TpvGUIOnEvent;
+       fOnChange:TpvGUIOnEvent;
        procedure PopupMenuOnCutClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnCopyClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnPasteClick(const aSender:TpvGUIObject);
@@ -2355,6 +2357,8 @@ type TpvGUIObject=class;
        property Text:TpvUTF8String read GetText write SetText;
        property Editable:boolean read fEditable write fEditable;
        property Overwrite:boolean read fOverwrite write fOverwrite;
+       property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
 
 implementation
@@ -16410,6 +16414,10 @@ begin
 
  fOverwrite:=false;
 
+ fOnClick:=nil;
+
+ fOnChange:=nil;
+
 end;
 
 destructor TpvGUIMultiLineTextEdit.Destroy;
@@ -16503,6 +16511,9 @@ begin
  if fView.HasMarkedRange then begin
   pvApplication.Clipboard.SetText(fView.CutMarkedRangeText);
   fDirty:=true;
+  if assigned(fOnChange) then begin
+   fOnChange(self);
+  end;
  end;
 end;
 
@@ -16518,6 +16529,9 @@ begin
  if pvApplication.Clipboard.HasText then begin
   fView.Paste(pvApplication.Clipboard.GetText);
   fDirty:=true;
+  if assigned(fOnChange) then begin
+   fOnChange(self);
+  end;
  end;
 end;
 
@@ -16525,6 +16539,9 @@ procedure TpvGUIMultiLineTextEdit.DeleteSelectedText;
 begin
  if fView.DeleteMarkedRange then begin
   fDirty:=true;
+  if assigned(fOnChange) then begin
+   fOnChange(self);
+  end;
  end;
 end;
 
@@ -16584,6 +16601,9 @@ begin
      KEYCODE_RETURN,KEYCODE_RETURN2:begin
       fView.Enter(fOverwrite);
       fDirty:=true;
+      if assigned(fOnChange) then begin
+       fOnChange(self);
+      end;
       result:=true;
      end;
      KEYCODE_TAB:begin
@@ -16593,6 +16613,9 @@ begin
                                   TpvApplicationInputKeyModifier.META])=[] then begin
        fView.InsertCodePoint(9,fOverwrite);
        fDirty:=true;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
        result:=true;
       end;
      end;
@@ -16727,6 +16750,9 @@ begin
       end else begin
        fView.Backspace;
        fDirty:=true;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
       end;
       result:=true;
      end;
@@ -16749,10 +16775,10 @@ begin
       end else begin
        fView.Delete;
        fDirty:=true;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
       end;
-{     if assigned(fOnChange) then begin
-       fOnChange(self);
-      end;}
       result:=true;
      end;
      KEYCODE_A:begin
@@ -16787,6 +16813,9 @@ begin
         fView.Redo;
        end;
        fDirty:=true;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
        result:=true;
       end;
      end;
@@ -16798,6 +16827,9 @@ begin
         fView.Undo;
        end;
        fDirty:=true;
+       if assigned(fOnChange) then begin
+        fOnChange(self);
+       end;
        result:=true;
       end;
      end;
@@ -16806,9 +16838,9 @@ begin
    TpvApplicationInputKeyEventType.Unicode:begin
     fView.InsertCodePoint(aKeyEvent.KeyCode,fOverwrite);
     fDirty:=true;
-{   if assigned(fOnChange) then begin
+    if assigned(fOnChange) then begin
      fOnChange(self);
-    end;}
+    end;
     result:=true;
    end;
   end;
@@ -16844,9 +16876,9 @@ begin
     TpvApplicationInputPointerEventType.Up:begin
      case aPointerEvent.Button of
       TpvApplicationInputPointerButton.Left:begin
-{      if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
+       if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
         fOnClick(self);
-       end;}
+       end;
        RequestFocus;
       end;
       TpvApplicationInputPointerButton.Middle:begin
