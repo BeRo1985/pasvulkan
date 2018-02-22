@@ -7510,8 +7510,8 @@ end;
 procedure TpvTextEditor.TView.ClampMarkCodePointIndices;
 begin
  if (fMarkState.StartCodePointIndex>=0) and (fMarkState.EndCodePointIndex>=0) then begin
-  fMarkState.StartCodePointIndex:=Min(Max(fMarkState.StartCodePointIndex,-1),fParent.fRope.fCountCodePoints-1);
-  fMarkState.EndCodePointIndex:=Min(Max(fMarkState.EndCodePointIndex,-1),fParent.fRope.fCountCodePoints-1);
+  fMarkState.StartCodePointIndex:=Min(Max(fMarkState.StartCodePointIndex,-1),fParent.fRope.fCountCodePoints);
+  fMarkState.EndCodePointIndex:=Min(Max(fMarkState.EndCodePointIndex,-1),fParent.fRope.fCountCodePoints);
  end else begin
   fMarkState.StartCodePointIndex:=-1;
   fMarkState.EndCodePointIndex:=-1;
@@ -7599,6 +7599,7 @@ var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     State,StartLevelState,EndLevelState:TpvTextEditor.TSyntaxHighlighting.TState;
     BufferItem:PBufferItem;
     CurrentHighlight:boolean;
+    LocalMarkState:TMarkState;
 begin
 
  ClampMarkCodePointIndices;
@@ -7734,6 +7735,9 @@ begin
 
    end;
 
+   LocalMarkState.StartCodePointIndex:=Min(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
+   LocalMarkState.EndCodePointIndex:=Max(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
+
    CurrentHighlight:=false;
 
    while (CurrentCodePointIndex<StopCodePointIndex) and
@@ -7789,8 +7793,8 @@ begin
        if CurrentHighlight then begin
         BufferItem^.Attribute:=BufferItem^.Attribute or TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight;
        end;
-       if (CurrentCodePointIndex>=fMarkState.StartCodePointIndex) and
-          (CurrentCodePointIndex<=fMarkState.EndCodePointIndex) then begin
+       if (CurrentCodePointIndex>=LocalMarkState.StartCodePointIndex) and
+          (CurrentCodePointIndex<LocalMarkState.EndCodePointIndex) then begin
         BufferItem^.Attribute:=BufferItem^.Attribute or TpvTextEditor.TSyntaxHighlighting.TAttributes.Marked;
        end;
        BufferItem^.CodePoint:=CodePoint;
@@ -7823,7 +7827,7 @@ procedure TpvTextEditor.TView.MarkAll;
 begin
  if fParent.fRope.fCountCodePoints>0 then begin
   fMarkState.StartCodePointIndex:=0;
-  fMarkState.EndCodePointIndex:=fParent.fRope.fCountCodePoints-1;
+  fMarkState.EndCodePointIndex:=fParent.fRope.fCountCodePoints;
  end else begin
   fMarkState.StartCodePointIndex:=-1;
   fMarkState.EndCodePointIndex:=-1;
@@ -7854,10 +7858,11 @@ end;
 
 function TpvTextEditor.TView.HasMarkedRange:boolean;
 begin
- result:=((fMarkState.StartCodePointIndex>=0) and
-          (fMarkState.StartCodePointIndex<fParent.fRope.fCountCodePoints)) and
+ result:=(fMarkState.StartCodePointIndex<>fMarkState.EndCodePointIndex) and
+         ((fMarkState.StartCodePointIndex>=0) and
+          (fMarkState.StartCodePointIndex<=fParent.fRope.fCountCodePoints)) and
          ((fMarkState.EndCodePointIndex>=0) and
-          (fMarkState.EndCodePointIndex<fParent.fRope.fCountCodePoints));
+          (fMarkState.EndCodePointIndex<=fParent.fRope.fCountCodePoints));
 end;
 
 function TpvTextEditor.TView.GetMarkedRangeText:TpvUTF8String;
@@ -7866,7 +7871,7 @@ begin
  if HasMarkedRange then begin
   StartCodePointIndex:=Min(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
   EndCodePointIndex:=Max(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
-  result:=fParent.fRope.Extract(StartCodePointIndex,(EndCodePointIndex-StartCodePointIndex)+1);
+  result:=fParent.fRope.Extract(StartCodePointIndex,EndCodePointIndex-StartCodePointIndex);
  end else begin
   result:='';
  end;
@@ -7880,7 +7885,7 @@ begin
   StartCodePointIndex:=Min(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
   EndCodePointIndex:=Max(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
   fCodePointIndex:=StartCodePointIndex;
-  Count:=(EndCodePointIndex-StartCodePointIndex)+1;
+  Count:=EndCodePointIndex-StartCodePointIndex;
   fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,Count,fParent.fRope.Extract(fCodePointIndex,Count)));
   fParent.fRope.Delete(fCodePointIndex,Count);
   if fCodePointIndex>0 then begin
@@ -7906,7 +7911,7 @@ begin
   StartCodePointIndex:=Min(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
   EndCodePointIndex:=Max(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
   fCodePointIndex:=StartCodePointIndex;
-  Count:=(EndCodePointIndex-StartCodePointIndex)+1;
+  Count:=EndCodePointIndex-StartCodePointIndex;
   fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,Count,fParent.fRope.Extract(fCodePointIndex,Count)));
   result:=fParent.fRope.Extract(fCodePointIndex,Count);
   fParent.fRope.Delete(fCodePointIndex,Count);

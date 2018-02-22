@@ -7983,6 +7983,7 @@ end;
 procedure TpvGUIDefaultVectorBasedSkin.DrawMultiLineTextEdit(const aCanvas:TpvCanvas;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
 var ViewBufferX,ViewBufferY,ViewBufferIndex:TpvSizeInt;
     ViewBufferItem:TpvTextEditor.TView.PBufferItem;
+    CurrentFontColor:TpvVector4;
     Offset,TextOffset:TpvVector2;
     TextSize,IconSize,TemporarySize:TpvVector2;
     OldClipRect,TextClipRect,SelectionRect:TpvRect;
@@ -8024,6 +8025,8 @@ begin
  aCanvas.Font:=aMultiLineTextEdit.Font;
  aCanvas.FontSize:=aMultiLineTextEdit.FontSize;
 
+ CurrentFontColor:=aMultiLineTextEdit.FontColor;
+
  aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
  aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
 
@@ -8038,7 +8041,14 @@ begin
  for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
   for ViewBufferX:=0 to aMultiLineTextEdit.fViewBufferWidth-1 do begin
    ViewBufferItem:=@aMultiLineTextEdit.fViewBuffer[ViewBufferIndex];
+   if (ViewBufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Marked)<>0 then begin
+    aCanvas.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+    aCanvas.DrawFilledRectangle(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
+                                (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX+0.5,ViewBufferY+0.5)),
+                                (aMultiLineTextEdit.fFontCharSize*0.5)+TpvVector2.Create(1.0,1.0));
+   end;
    if not (ViewBufferItem^.CodePoint in [0,32]) then begin
+    aCanvas.Color:=CurrentFontColor;
     aCanvas.DrawTextCodePoint(ViewBufferItem^.CodePoint,
                               TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
                               (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY)));
@@ -8046,6 +8056,8 @@ begin
    inc(ViewBufferIndex);
   end;
  end;
+
+ aCanvas.Color:=CurrentFontColor;
 
  if aMultiLineTextEdit.Enabled and
     aMultiLineTextEdit.Focused and
@@ -16422,10 +16434,10 @@ begin
      end;
      KEYCODE_LEFT:begin
       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       fView.MoveLeft;
        if not fView.HasMarkedRange then begin
         fView.SetMarkStart;
        end;
+       fView.MoveLeft;
        fView.SetMarkEndToHere;
       end else begin
        if fView.HasMarkedRange then begin
@@ -16442,7 +16454,7 @@ begin
         fView.SetMarkStart;
        end;
        fView.MoveRight;
-       fView.SetMarkEndUntilHere;
+       fView.SetMarkEndToHere;
       end else begin
        if fView.HasMarkedRange then begin
         fView.UnmarkAll;
@@ -16489,21 +16501,10 @@ begin
        if not fView.HasMarkedRange then begin
         fView.SetMarkStart;
        end;
-       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-        fView.MovePageUp;
-       end else begin
-        fView.MoveToLineBegin;
-       end;
+       fView.MoveToLineBegin;
        fView.SetMarkEndToHere;
       end else begin
-       if fView.HasMarkedRange then begin
-        fView.UnmarkAll;
-       end;
-       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-        fView.MovePageUp;
-       end else begin
-        fView.MoveToLineBegin;
-       end;
+       fView.MoveToLineBegin;
       end;
       fDirty:=true;
       result:=true;
@@ -16513,21 +16514,13 @@ begin
        if not fView.HasMarkedRange then begin
         fView.SetMarkStart;
        end;
-       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-        fView.MovePageDown;
-       end else begin
-        fView.MoveToLineEnd;
-       end;
+       fView.MoveToLineEnd;
        fView.SetMarkEndToHere;
       end else begin
        if fView.HasMarkedRange then begin
         fView.UnmarkAll;
        end;
-       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-        fView.MovePageDown;
-       end else begin
-        fView.MoveToLineEnd;
-       end;
+       fView.MoveToLineEnd;
       end;
       fDirty:=true;
       result:=true;
