@@ -16438,7 +16438,7 @@ begin
         fView.SetMarkStart;
        end;
        fView.MoveLeft;
-       fView.SetMarkEndToHere;
+       fView.SetMarkEnd;
       end else begin
        if fView.HasMarkedRange then begin
         fView.UnmarkAll;
@@ -16454,7 +16454,7 @@ begin
         fView.SetMarkStart;
        end;
        fView.MoveRight;
-       fView.SetMarkEndToHere;
+       fView.SetMarkEnd;
       end else begin
        if fView.HasMarkedRange then begin
         fView.UnmarkAll;
@@ -16470,7 +16470,7 @@ begin
         fView.SetMarkStart;
        end;
        fView.MoveUp;
-       fView.SetMarkEndToHere;
+       fView.SetMarkEnd;
       end else begin
        if fView.HasMarkedRange then begin
         fView.UnmarkAll;
@@ -16486,7 +16486,7 @@ begin
         fView.SetMarkStart;
        end;
        fView.MoveDown;
-       fView.SetMarkEndToHere;
+       fView.SetMarkEnd;
       end else begin
        if fView.HasMarkedRange then begin
         fView.UnmarkAll;
@@ -16502,7 +16502,7 @@ begin
         fView.SetMarkStart;
        end;
        fView.MoveToLineBegin;
-       fView.SetMarkEndToHere;
+       fView.SetMarkEnd;
       end else begin
        fView.MoveToLineBegin;
       end;
@@ -16515,7 +16515,7 @@ begin
         fView.SetMarkStart;
        end;
        fView.MoveToLineEnd;
-       fView.SetMarkEndToHere;
+       fView.SetMarkEnd;
       end else begin
        if fView.HasMarkedRange then begin
         fView.UnmarkAll;
@@ -16531,7 +16531,7 @@ begin
         fView.SetMarkStart;
        end;
        fView.MovePageUp;
-       fView.SetMarkEndToHere;
+       fView.SetMarkEnd;
       end else begin
        if fView.HasMarkedRange then begin
         fView.UnmarkAll;
@@ -16547,7 +16547,7 @@ begin
         fView.SetMarkStart;
        end;
        fView.MovePageDown;
-       fView.SetMarkEndToHere;
+       fView.SetMarkEnd;
       end else begin
        if fView.HasMarkedRange then begin
         fView.UnmarkAll;
