@@ -16456,7 +16456,11 @@ end;
 
 function TpvGUIMultiLineTextEdit.DragEvent(const aPosition:TpvVector2):boolean;
 begin
- result:=inherited DragEvent(aPosition);
+ result:=true;//inherited DragEvent(aPosition);
+ fView.SetMarkStart;
+ fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPosition.x-fTextAreaOffset.x)/fFontCharSize.x)),
+                                                                         trunc(floor((aPosition.y-fTextAreaOffset.y)/fFontCharSize.y)));
+ fDirty:=true;
 end;
 
 function TpvGUIMultiLineTextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -16731,21 +16735,7 @@ begin
     TpvApplicationInputPointerEventType.Down:begin
      case aPointerEvent.Button of
       TpvApplicationInputPointerButton.Left:begin
-{      fTextSelectionStart:=0;
-       fTextSelectionEnd:=0;
-       fTextCursorPositionIndex:=1;
-       if fCountTextGlyphRects>0 then begin
-        if aPointerEvent.Position.x>=fTextGlyphRects[fCountTextGlyphRects-1].Right then begin
-         fTextCursorPositionIndex:=fCountTextGlyphRects+1;
-        end else begin
-         for Index:=fCountTextGlyphRects-1 downto 0 do begin
-          if aPointerEvent.Position.x>=fTextGlyphRects[Index].Left then begin
-           fTextCursorPositionIndex:=Index+1;
-           break;
-          end;
-         end;
-        end;
-       end;}
+       fView.SetMarkStart;
        fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaOffset.x)/fFontCharSize.x)),
                                                                                trunc(floor((aPointerEvent.Position.y-fTextAreaOffset.y)/fFontCharSize.y)));
        fDirty:=true;
@@ -16779,7 +16769,8 @@ begin
       end;
      end;
     end;
-    TpvApplicationInputPointerEventType.Motion:begin
+    TpvApplicationInputPointerEventType.Motion,
+    TpvApplicationInputPointerEventType.Drag:begin
      if TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons then begin
 {     if fTextSelectionStart<1 then begin
        fTextSelectionStart:=fTextCursorPositionIndex;
@@ -16798,6 +16789,10 @@ begin
        end;
       end;
       fTextSelectionEnd:=fTextCursorPositionIndex;}
+      fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaOffset.x)/fFontCharSize.x)),
+                                                                              trunc(floor((aPointerEvent.Position.y-fTextAreaOffset.y)/fFontCharSize.y)));
+      fView.SetMarkEnd;
+      fDirty:=true;
      end;
      if not fEditable then begin
       fCursor:=TpvGUICursor.Arrow;

@@ -7571,7 +7571,7 @@ end;
 
 function TpvTextEditor.TView.GetCodePointIndexFromRelativeCursorPosition(const aX,aY:TpvSizeInt):TpvSizeInt;
 begin
- result:=fVisualLineCacheMap.GetCodePointIndexFromLineIndexAndColumnIndex(fCursorOffset.y+aY,
+ result:=fVisualLineCacheMap.GetCodePointIndexFromLineIndexAndColumnIndex(Min(Max(fCursorOffset.y+aY,0),fVisualLineCacheMap.fCountLines-1),
                                                                           fCursorOffset.x+aX);
 end;
 
