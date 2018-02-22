@@ -7687,13 +7687,6 @@ begin
      CurrentAttribute:=State.fAttribute;
     end;
 
-{   LevelStateIndex:=StateIndex;
-    while ((LevelStateIndex+1)<fParent.fSyntaxHighlighting.fCountStates) and
-          (fParent.fSyntaxHighlighting.fStates[LevelStateIndex+1].fCodePointIndex<=fCodePointIndex) do begin
-     inc(LevelStateIndex);
-     Level:=fParent.fSyntaxHighlighting.fStates[LevelStateIndex].fLevel;
-     LevelID:=fParent.fSyntaxHighlighting.fStates[LevelStateIndex].fLevelID;
-    end;}
     LevelStateIndex:=fParent.fSyntaxHighlighting.GetStateIndexFromCodePointIndex(fCodePointIndex);
 
     if LevelStateIndex>=0 then begin
