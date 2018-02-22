@@ -49,7 +49,7 @@
  * 11. Make sure the code runs on all platforms with Vulkan support           *
  *                                                                            *
  ******************************************************************************)
- unit UnitMain;
+unit UnitMain;
 {$ifdef fpc}
  {$mode delphi}
 {$else}

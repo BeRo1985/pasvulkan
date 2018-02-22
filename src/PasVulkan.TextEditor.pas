@@ -8312,9 +8312,9 @@ begin
      (StartCodePointIndex<StopCodePointIndex) then begin
    fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,StartCodePointIndex,StopCodePointIndex-StartCodePointIndex,fParent.fRope.Extract(StartCodePointIndex,StopCodePointIndex-StartCodePointIndex)));
    fParent.fRope.Delete(StartCodePointIndex,StopCodePointIndex-StartCodePointIndex);
-   fParent.LineMapTruncate(Max(0,StartCodePointIndex)-1,-1);
+   fParent.LineMapTruncate(Max(0,StartCodePointIndex-1),-1);
    if assigned(fParent.fSyntaxHighlighting) then begin
-    fParent.fSyntaxHighlighting.Truncate(Max(0,StartCodePointIndex)-1);
+    fParent.fSyntaxHighlighting.Truncate(Max(0,StartCodePointIndex-1));
    end;
    fParent.UpdateViewCodePointIndices(fCodePointIndex,StartCodePointIndex-fCodePointIndex);
    fParent.EnsureViewCodePointIndicesAreInRange;
