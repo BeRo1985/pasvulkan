@@ -2326,6 +2326,14 @@ type TpvGUIObject=class;
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure PerformLayout; override;
+       function Enter:boolean; override;
+       function Leave:boolean; override;
+       procedure CutSelectedText;
+       procedure CopySelectedText;
+       procedure PasteText;
+       procedure DeleteSelectedText;
+       procedure SelectAll;
+       procedure SelectNone;
        function DragEvent(const aPosition:TpvVector2):boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
@@ -16323,6 +16331,58 @@ begin
  inherited PerformLayout;
 end;
 
+function TpvGUIMultiLineTextEdit.Enter:boolean;
+begin
+ result:=inherited Enter;
+end;
+
+function TpvGUIMultiLineTextEdit.Leave:boolean;
+begin
+ result:=inherited Leave;
+end;
+
+procedure TpvGUIMultiLineTextEdit.CutSelectedText;
+begin
+ if fView.HasMarkedRange then begin
+  pvApplication.Clipboard.SetText(fView.CutMarkedRangeText);
+  fDirty:=true;
+ end;
+end;
+
+procedure TpvGUIMultiLineTextEdit.CopySelectedText;
+begin
+ if fView.HasMarkedRange then begin
+  pvApplication.Clipboard.SetText(fView.GetMarkedRangeText);
+ end;
+end;
+
+procedure TpvGUIMultiLineTextEdit.PasteText;
+begin
+ if pvApplication.Clipboard.HasText then begin
+  fView.Paste(pvApplication.Clipboard.GetText);
+  fDirty:=true;
+ end;
+end;
+
+procedure TpvGUIMultiLineTextEdit.DeleteSelectedText;
+begin
+ if fView.DeleteMarkedRange then begin
+  fDirty:=true;
+ end;
+end;
+
+procedure TpvGUIMultiLineTextEdit.SelectAll;
+begin
+ fView.MarkAll;
+ fDirty:=true;
+end;
+
+procedure TpvGUIMultiLineTextEdit.SelectNone;
+begin
+ fView.UnmarkAll;
+ fDirty:=true;
+end;
+
 function TpvGUIMultiLineTextEdit.DragEvent(const aPosition:TpvVector2):boolean;
 begin
  result:=inherited DragEvent(aPosition);
@@ -16403,34 +16463,20 @@ begin
       result:=true;
      end;
      KEYCODE_HOME:begin
-{     if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if fTextSelectionStart<1 then begin
-        fTextSelectionStart:=fTextCursorPositionIndex;
-       end;
-       fTextCursorPositionIndex:=1;
-       fTextSelectionEnd:=fTextCursorPositionIndex;
+      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       fView.MovePageUp;
       end else begin
-       fTextSelectionStart:=0;
-       fTextSelectionEnd:=0;
-       fTextCursorPositionIndex:=1;
-      end;}
-      fView.MoveToLineBegin;
+       fView.MoveToLineBegin;
+      end;
       fDirty:=true;
       result:=true;
      end;
      KEYCODE_END:begin
-{     if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if fTextSelectionStart<1 then begin
-        fTextSelectionStart:=fTextCursorPositionIndex;
-       end;
-       fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
-       fTextSelectionEnd:=fTextCursorPositionIndex;
+      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       fView.MovePageDown;
       end else begin
-       fTextSelectionStart:=0;
-       fTextSelectionEnd:=0;
-       fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
-      end;}
-      fView.MoveToLineEnd;
+       fView.MoveToLineEnd;
+      end;
       fDirty:=true;
       result:=true;
      end;
@@ -16445,181 +16491,87 @@ begin
       result:=true;
      end;
      KEYCODE_BACKSPACE:begin
-{     if (fTextSelectionStart>0) and
-         (fTextSelectionEnd>0) then begin
-       CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
-       OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
-       TemporaryUncheckedText:=fText;
-       Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
-       if CheckText(TemporaryUncheckedText) then begin
-        fTextCursorPositionIndex:=CurrentPosition;
-        fTextSelectionStart:=0;
-        fTextSelectionEnd:=0;
-        if fText<>TemporaryUncheckedText then begin
-         fText:=TemporaryUncheckedText;
-         UpdateText;
-         if assigned(fOnChange) then begin
-          fOnChange(self);
-         end;
-        end;
-       end;
+      if fView.HasMarkedRange then begin
+       DeleteSelectedText;
       end else begin
-       CurrentPosition:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
-       if (CurrentPosition>1) and (CurrentPosition<=(length(fText)+1)) then begin
-        OtherPosition:=CurrentPosition;
-        PUCUUTF8Dec(fText,OtherPosition);
-        if (OtherPosition>0) and (OtherPosition<=length(fText)) and (OtherPosition<CurrentPosition) then begin
-         TemporaryUncheckedText:=fText;
-         Delete(TemporaryUncheckedText,OtherPosition,CurrentPosition-OtherPosition);
-         if CheckText(TemporaryUncheckedText) then begin
-          dec(fTextCursorPositionIndex);
-          if fText<>TemporaryUncheckedText then begin
-           fText:=TemporaryUncheckedText;
-           UpdateText;
-           if assigned(fOnChange) then begin
-            fOnChange(self);
-           end;
-          end;
-         end;
-        end;
-       end;
-      end;}
-      fView.Backspace;
-      fDirty:=true;
+       fView.Backspace;
+       fDirty:=true;
+      end;
       result:=true;
      end;
      KEYCODE_INSERT:begin
-{     TemporaryUncheckedText:=fText;
-      TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
-      TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
-      TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
-      if (TemporaryUncheckedTextSelectionStart>0) and
-         (TemporaryUncheckedTextSelectionEnd>0) then begin
-       CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
-       OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
-       Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
-       TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
-       TemporaryUncheckedTextSelectionStart:=0;
-       TemporaryUncheckedTextSelectionEnd:=0;
-      end;
       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if pvApplication.Clipboard.HasText then begin
-        TemporaryText:=pvApplication.Clipboard.GetText;
-        if length(TemporaryText)>0 then begin
-         Insert(TemporaryText,
-                TemporaryUncheckedText,
-                PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
-         inc(TemporaryUncheckedTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
-        end;
-       end;
+       PasteText;
       end else begin
-       Insert(#32,
-              TemporaryUncheckedText,
-              PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
       end;
-      if CheckText(TemporaryUncheckedText) then begin
-       fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
-       fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
-       fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
-       if fText<>TemporaryUncheckedText then begin
-        fText:=TemporaryUncheckedText;
-        UpdateText;
-        if assigned(fOnChange) then begin
-         fOnChange(self);
-        end;
-       end;
-      end;}
-//    fView.I
       fDirty:=true;
       result:=true;
      end;
      KEYCODE_DELETE:begin
-{     if (fTextSelectionStart>0) and
-         (fTextSelectionEnd>0) then begin
+      if fView.HasMarkedRange then begin
        if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
         CutSelectedText;
        end else begin
         DeleteSelectedText;
        end;
       end else begin
-       CurrentPosition:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
-       if (CurrentPosition>0) and (CurrentPosition<=length(fText)) then begin
-        OtherPosition:=CurrentPosition;
-        PUCUUTF8Inc(fText,OtherPosition);
-        if (OtherPosition>1) and (OtherPosition<=(length(fText)+1)) and (CurrentPosition<OtherPosition) then begin
-         TemporaryUncheckedText:=fText;
-         Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
-         if (fText<>TemporaryUncheckedText) and CheckText(TemporaryUncheckedText) then begin
-          fText:=TemporaryUncheckedText;
-          UpdateText;
-          if assigned(fOnChange) then begin
-           fOnChange(self);
-          end;
-         end;
-        end;
-       end;
+       fView.Delete;
+       fDirty:=true;
+      end;
+{     if assigned(fOnChange) then begin
+       fOnChange(self);
       end;}
-      fView.Delete;
-      fDirty:=true;
       result:=true;
      end;
      KEYCODE_A:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-{      fTextSelectionStart:=1;
-       fTextSelectionEnd:=PUCUUTF8Length(fText)+1;}
+       SelectAll;
        result:=true;
       end;
      end;
      KEYCODE_C:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-{      CopySelectedText;}
+       CopySelectedText;
        result:=true;
       end;
      end;
      KEYCODE_V:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-{      PasteText;}
+       PasteText;
        result:=true;
       end;
      end;
      KEYCODE_X:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
-{      CutSelectedText;}
+       CutSelectedText;
+       result:=true;
+      end;
+     end;
+     KEYCODE_Y:begin
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        fView.Undo;
+       end else begin
+        fView.Redo;
+       end;
+       fDirty:=true;
+       result:=true;
+      end;
+     end;
+     KEYCODE_Z:begin
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        fView.Redo;
+       end else begin
+        fView.Undo;
+       end;
+       fDirty:=true;
        result:=true;
       end;
      end;
     end;
    end;
    TpvApplicationInputKeyEventType.Unicode:begin
-{   TemporaryUncheckedText:=fText;
-    TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
-    TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
-    TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
-    if (TemporaryUncheckedTextSelectionStart>0) and
-       (TemporaryUncheckedTextSelectionEnd>0) then begin
-     CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
-     OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
-     Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
-     TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
-     TemporaryUncheckedTextSelectionStart:=0;
-     TemporaryUncheckedTextSelectionEnd:=0;
-    end;
-    Insert(PUCUUTF32CharToUTF8(aKeyEvent.KeyCode),
-           TemporaryUncheckedText,
-           PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
-    inc(TemporaryUncheckedTextCursorPositionIndex);
-    if CheckText(TemporaryUncheckedText) then begin
-     fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
-     fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
-     fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
-     if fText<>TemporaryUncheckedText then begin
-      fText:=TemporaryUncheckedText;
-      UpdateText;
-      if assigned(fOnChange) then begin
-       fOnChange(self);
-      end;
-     end;
-    end;}
     fView.InsertCodePoint(aKeyEvent.KeyCode,false);
     fDirty:=true;
 {   if assigned(fOnChange) then begin
