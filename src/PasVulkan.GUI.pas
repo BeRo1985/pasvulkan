@@ -8043,7 +8043,12 @@ begin
  for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
   for ViewBufferX:=0 to aMultiLineTextEdit.fViewBufferWidth-1 do begin
    ViewBufferItem:=@aMultiLineTextEdit.fViewBuffer[ViewBufferIndex];
-   if (ViewBufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Marked)<>0 then begin
+   if (ViewBufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight)<>0 then begin
+    aCanvas.Color:=TpvVector4.InlineableCreate(0.03125,0.03125,0.03125,1.0);
+    aCanvas.DrawFilledRectangle(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
+                                (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX+0.5,ViewBufferY+0.5)),
+                                (aMultiLineTextEdit.fFontCharSize*0.5)+TpvVector2.Create(1.0,1.0));
+   end else if (ViewBufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Marked)<>0 then begin
     aCanvas.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
     aCanvas.DrawFilledRectangle(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
                                 (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX+0.5,ViewBufferY+0.5)),
