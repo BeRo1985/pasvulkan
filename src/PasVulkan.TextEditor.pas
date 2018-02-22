@@ -3080,6 +3080,7 @@ begin
 {$endif}
    UndoRedoCommandGroup.fList.Add(UndoRedoCommand);
   end;
+  dec(fHistoryIndex,aToIndex-aFromIndex);
  end;
 end;
 
@@ -7958,7 +7959,7 @@ begin
   fParent.fRope.Insert(fCodePointIndex,CodeUnits);
  end;
  if HasDeletedMarkedRange then begin
-  fParent.fUndoRedoManager.GroupUndoRedoCommands(UndoRedoHistoryIndex,fParent.fUndoRedoManager.fHistoryIndex);
+  fParent.fUndoRedoManager.GroupUndoRedoCommands(UndoRedoHistoryIndex+1,fParent.fUndoRedoManager.fHistoryIndex);
  end;
  fParent.UpdateViewCodePointIndices(fCodePointIndex,1);
  fParent.EnsureViewCodePointIndicesAreInRange;
@@ -7999,7 +8000,7 @@ begin
   fParent.fRope.Insert(fCodePointIndex,aCodeUnits);
  end;
  if HasDeletedMarkedRange then begin
-  fParent.fUndoRedoManager.GroupUndoRedoCommands(UndoRedoHistoryIndex,fParent.fUndoRedoManager.fHistoryIndex);
+  fParent.fUndoRedoManager.GroupUndoRedoCommands(UndoRedoHistoryIndex+1,fParent.fUndoRedoManager.fHistoryIndex);
  end;
  fParent.UpdateViewCodePointIndices(fCodePointIndex,CountCodePoints);
  fParent.EnsureViewCodePointIndicesAreInRange;
