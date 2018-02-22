@@ -692,6 +692,9 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function TextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2):TpvCanvasTextGlyphRects; overload;
        function TextGlyphRects(const aText:TpvUTF8String;const aX,aY:TpvFloat):TpvCanvasTextGlyphRects; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function TextGlyphRects(const aText:TpvUTF8String):TpvCanvasTextGlyphRects; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawTextCodePoint(const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2):TpvCanvas; overload;
+       function DrawTextCodePoint(const aTextCodePoint:TpvUInt32;const aX,aY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DrawTextCodePoint(const aTextCodePoint:TpvUInt32):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2):TpvCanvas; overload;
        function DrawText(const aText:TpvUTF8String;const aX,aY:TpvFloat):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawText(const aText:TpvUTF8String):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -4613,6 +4616,61 @@ end;
 function TpvCanvas.TextGlyphRects(const aText:TpvUTF8String):TpvCanvasTextGlyphRects;
 begin
  result:=TextGlyphRects(aText,TpvVector2.Null);
+end;
+
+function TpvCanvas.DrawTextCodePoint(const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2):TpvCanvas;
+var Position,Size:TpvVector2;
+begin
+ if assigned(fState.fFont) then begin
+  Position:=aPosition;
+  if fState.fTextHorizontalAlignment<>TpvCanvasTextHorizontalAlignment.Leading then begin
+   if fState.fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
+    Size:=TextSize(PUCUUTF32CharToUTF8(aTextCodePoint));
+   end else begin
+    Size:=TpvVector2.InlineableCreate(TextWidth(PUCUUTF32CharToUTF8(aTextCodePoint)),0.0);
+   end;
+  end else begin
+   if fState.fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
+    Size:=TpvVector2.InlineableCreate(0.0,TextHeight(PUCUUTF32CharToUTF8(aTextCodePoint)));
+   end else begin
+    Size:=TpvVector2.InlineableCreate(0.0,0.0);
+   end;
+  end;
+  case fState.fTextHorizontalAlignment of
+   TpvCanvasTextHorizontalAlignment.Leading:begin
+    // Do nothing
+   end;
+   TpvCanvasTextHorizontalAlignment.Center:begin
+    Position.x:=Position.x-(Size.x*0.5);
+   end;
+   TpvCanvasTextHorizontalAlignment.Tailing:begin
+    Position.x:=Position.x-Size.x;
+   end;
+  end;
+  case fState.fTextVerticalAlignment of
+   TpvCanvasTextVerticalAlignment.Leading:begin
+    // Do nothing
+   end;
+   TpvCanvasTextVerticalAlignment.Middle:begin
+    Position.y:=Position.y-(Size.y*0.5);
+   end;
+   TpvCanvasTextVerticalAlignment.Tailing:begin
+    Position.y:=Position.y-Size.y;
+   end;
+  end;
+  fState.fFont.DrawCodePoint(self,aTextCodePoint,Position,fState.fFontSize);
+ end;
+ result:=self;
+end;
+
+function TpvCanvas.DrawTextCodePoint(const aTextCodePoint:TpvUInt32;const aX,aY:TpvFloat):TpvCanvas;
+begin
+ result:=DrawTextCodePoint(aTextCodePoint,TpvVector2.InlineableCreate(aX,aY));
+end;
+
+function TpvCanvas.DrawTextCodePoint(const aTextCodePoint:TpvUInt32):TpvCanvas;
+begin
+ result:=DrawTextCodePoint(aTextCodePoint,TpvVector2.InlineableCreate(0.0,0.0));
 end;
 
 function TpvCanvas.DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2):TpvCanvas;

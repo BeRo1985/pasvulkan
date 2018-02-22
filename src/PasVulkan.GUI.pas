@@ -79,7 +79,8 @@ uses SysUtils,
      PasVulkan.Sprites,
      PasVulkan.Canvas,
      PasVulkan.TrueTypeFont,
-     PasVulkan.Font;
+     PasVulkan.Font,
+     PasVulkan.TextEditor;
 
 type TpvGUIObject=class;
 
@@ -126,6 +127,8 @@ type TpvGUIObject=class;
      TpvGUISplitterPanelGripButton=class;
 
      TpvGUISplitterPanel=class;
+
+     TpvGUIMultiLineTextEdit=class;
 
      EpvGUIWidget=class(Exception);
 
@@ -667,6 +670,9 @@ type TpvGUIObject=class;
        function GetSplitterPanelGripButtonPreferredSize(const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton):TpvVector2; virtual;
        procedure DrawSplitterPanelGripButton(const aCanvas:TpvCanvas;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton); virtual;
       public
+       function GetMultiLineTextEditPreferredSize(const aMultiLineTextEdit:TpvGUIMultiLineTextEdit):TpvVector2; virtual;
+       procedure DrawMultiLineTextEdit(const aCanvas:TpvCanvas;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); virtual;
+      public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
        property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
@@ -743,6 +749,7 @@ type TpvGUIObject=class;
              BoxCornerMargin=3.0;
              ListBoxHorizontalMargin=2.0;
              ComboBoxHorizontalMargin=2.0;
+             MultiLineTextEditorMargin=4.0;
       protected
        fUnfocusedWindowHeaderFontShadow:boolean;
        fFocusedWindowHeaderFontShadow:boolean;
@@ -818,6 +825,11 @@ type TpvGUIObject=class;
       public
        function GetSplitterPanelGripButtonPreferredSize(const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton):TpvVector2; override;
        procedure DrawSplitterPanelGripButton(const aCanvas:TpvCanvas;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton); override;
+      private
+       procedure UpdateMultiLineTextEdit(const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
+      public
+       function GetMultiLineTextEditPreferredSize(const aMultiLineTextEdit:TpvGUIMultiLineTextEdit):TpvVector2; override;
+       procedure DrawMultiLineTextEdit(const aCanvas:TpvCanvas;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -2293,6 +2305,40 @@ type TpvGUIObject=class;
        property RightBottomPanel:TpvGUIPanel read fRightBottomPanel;
      end;
 
+     TpvGUIMultiLineTextEdit=class(TpvGUIWidget)
+      private
+       fTextEditor:TpvTextEditor;
+       fView:TpvTextEditor.TView;
+       fViewBuffer:TpvTextEditor.TView.TBufferItems;
+       fViewBufferWidth:TpvSizeInt;
+       fViewBufferHeight:TpvSizeInt;
+       fViewBufferCursorX:TpvSizeInt;
+       fViewBufferCursorY:TpvSizeInt;
+       fDirty:boolean;
+       fEditable:boolean;
+       fFontCharSize:TpvVector2;
+       function GetText:TpvUTF8String;
+       procedure SetText(const aText:TpvUTF8String);
+       function GetFont:TpvFont; override;
+       function GetHighlightRect:TpvRect; override;
+       function GetPreferredSize:TpvVector2; override;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure PerformLayout; override;
+       function DragEvent(const aPosition:TpvVector2):boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure Update; override;
+       procedure Draw; override;
+      published
+       property TextEditor:TpvTextEditor read fTextEditor;
+       property View:TpvTextEditor.TView read fView;
+       property Text:TpvUTF8String read GetText write SetText;
+       property Editable:boolean read fEditable write fEditable;
+     end;
+
 implementation
 
 uses PasDblStrUtils,
@@ -2796,7 +2842,8 @@ begin
     end else begin
      ChildTargetSize:=ChildWidget.fSize;
     end;
-    if not ((ChildWidget is TpvGUIWindow) and ((ChildWidget as TpvGUIWindow).WindowState=TpvGUIWindowState.Maximized)) then begin
+    if not ((ChildWidget is TpvGUIWindow) and
+            ((ChildWidget as TpvGUIWindow).WindowState=TpvGUIWindowState.Maximized)) then begin
      ChildWidget.fPosition:=TpvVector2.InlineableCreate(fMargin,fMargin);
     end;
     ChildWidget.fSize:=ContainerSize-(TpvVector2.InlineableCreate(fMargin,fMargin)*2.0);
@@ -4572,6 +4619,15 @@ end;
 procedure TpvGUISkin.DrawSplitterPanelGripButton(const aCanvas:TpvCanvas;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton);
 begin
 
+end;
+
+function TpvGUISkin.GetMultiLineTextEditPreferredSize(const aMultiLineTextEdit:TpvGUIMultiLineTextEdit):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aMultiLineTextEdit);
+end;
+
+procedure TpvGUISkin.DrawMultiLineTextEdit(const aCanvas:TpvCanvas;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
+begin
 end;
 
 constructor TpvGUIDefaultVectorBasedSkin.Create(const aParent:TpvGUIObject);
@@ -6433,6 +6489,7 @@ begin
 
  if aTextEdit.Enabled and
     aTextEdit.Focused and
+    aTextEdit.Editable and
     (frac(fInstance.fTime)<0.5) then begin
   if aTextEdit.fCountTextGlyphRects>0 then begin
    TextCursorPositionIndex:=Min(Max(aTextEdit.fTextCursorPositionIndex,1),aTextEdit.fCountTextGlyphRects+1);
@@ -7829,6 +7886,170 @@ if aSplitterPanelGripButton.Enabled then begin
                          aSplitterPanelGripButton.fSize-TpvVector2.InlineableCreate(3.0,3.0));
 
  end;}
+
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.UpdateMultiLineTextEdit(const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
+var Size,VisibleTextAreaSize:TpvVector2;
+    CurrentFont:TpvFont;
+    CurrentFontSize:TpvFloat;
+    VisibleAreaWidth,VisibleAreaHeight,
+    NonScrollVisibleAreaWidth,NonScrollVisibleAreaHeight:TpvSizeInt;
+begin
+
+ Size:=aMultiLineTextEdit.fSize;
+
+ VisibleTextAreaSize:=Size-(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)*2.0);
+
+ CurrentFont:=aMultiLineTextEdit.Font;
+
+ CurrentFontSize:=aMultiLineTextEdit.FontSize;
+
+ aMultiLineTextEdit.fFontCharSize:=TpvVector2.Create(CurrentFont.MaxX-CurrentFont.MinX,
+                                                     CurrentFont.MaxY-CurrentFont.MinY)*
+                                   CurrentFont.GetScaleFactor(CurrentFontSize);
+
+ VisibleAreaWidth:=Max(1,trunc(ceil(VisibleTextAreaSize.x/aMultiLineTextEdit.fFontCharSize.x)));
+ VisibleAreaHeight:=Max(1,trunc(ceil(VisibleTextAreaSize.y/aMultiLineTextEdit.fFontCharSize.y)));
+
+ NonScrollVisibleAreaWidth:=Max(1,trunc(floor(VisibleTextAreaSize.x/aMultiLineTextEdit.fFontCharSize.x)));
+ NonScrollVisibleAreaHeight:=Max(1,trunc(floor(VisibleTextAreaSize.y/aMultiLineTextEdit.fFontCharSize.y)));
+
+ if (aMultiLineTextEdit.fView.VisibleAreaWidth<>VisibleAreaWidth) or
+    (aMultiLineTextEdit.fView.VisibleAreaHeight<>VisibleAreaHeight) or
+    (aMultiLineTextEdit.fView.NonScrollVisibleAreaWidth<>NonScrollVisibleAreaWidth) or
+    (aMultiLineTextEdit.fView.NonScrollVisibleAreaHeight<>NonScrollVisibleAreaHeight) then begin
+
+  aMultiLineTextEdit.fView.VisibleAreaWidth:=VisibleAreaWidth;
+  aMultiLineTextEdit.fView.VisibleAreaHeight:=VisibleAreaHeight;
+
+  aMultiLineTextEdit.fView.NonScrollVisibleAreaWidth:=NonScrollVisibleAreaWidth;
+  aMultiLineTextEdit.fView.NonScrollVisibleAreaHeight:=NonScrollVisibleAreaHeight;
+
+  aMultiLineTextEdit.fDirty:=true;
+
+ end;
+
+ if aMultiLineTextEdit.fDirty then begin
+
+  try
+
+   aMultiLineTextEdit.fView.UpdateBuffer;
+
+   aMultiLineTextEdit.fViewBuffer:=copy(aMultiLineTextEdit.fView.Buffer);
+
+   aMultiLineTextEdit.fViewBufferWidth:=aMultiLineTextEdit.fView.VisibleAreaWidth;
+
+   aMultiLineTextEdit.fViewBufferHeight:=aMultiLineTextEdit.fView.VisibleAreaHeight;
+
+   aMultiLineTextEdit.fViewBufferCursorX:=aMultiLineTextEdit.fView.Cursor.x;
+
+   aMultiLineTextEdit.fViewBufferCursorY:=aMultiLineTextEdit.fView.Cursor.y;
+
+  finally
+   aMultiLineTextEdit.fDirty:=false;
+  end;
+
+ end;
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.GetMultiLineTextEditPreferredSize(const aMultiLineTextEdit:TpvGUIMultiLineTextEdit):TpvVector2;
+var TextSize:TpvVector2;
+begin
+ UpdateMultiLineTextEdit(aMultiLineTextEdit);
+ TextSize.x:=4*2;
+ TextSize.y:=(aMultiLineTextEdit.Font.RowHeight(100,aMultiLineTextEdit.GetFontSize))+(4*2);
+ result:=Maximum(GetWidgetLayoutPreferredSize(aMultiLineTextEdit),
+                 TextSize);
+{                Maximum(TextSize,
+                         TpvVector2.InlineableCreate(aMultiLineTextEdit.fMinimumWidth,aMultiLineTextEdit.fMinimumHeight)));}
+ if aMultiLineTextEdit.fFixedSize.x>0.0 then begin
+  result.x:=aMultiLineTextEdit.fFixedSize.x;
+ end;
+ if aMultiLineTextEdit.fFixedSize.y>0.0 then begin
+  result.y:=aMultiLineTextEdit.fFixedSize.y;
+ end;
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawMultiLineTextEdit(const aCanvas:TpvCanvas;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
+var ViewBufferX,ViewBufferY,ViewBufferIndex:TpvSizeInt;
+    ViewBufferItem:TpvTextEditor.TView.PBufferItem;
+    Offset,TextOffset:TpvVector2;
+    TextSize,IconSize,TemporarySize:TpvVector2;
+    OldClipRect,TextClipRect,SelectionRect:TpvRect;
+    Element,
+    TextCursorPositionIndex,
+    PreviousCursorPosition,NextCursorPosition,StartIndex,EndIndex:TpvInt32;
+    PreviousCursorX,NextCursorX:TpvFloat;
+    IconSprite:TpvSprite;
+begin
+
+ UpdateMultiLineTextEdit(aMultiLineTextEdit);
+
+ Offset:=TpvVector2.Null;
+
+ aCanvas.ModelMatrix:=aMultiLineTextEdit.fModelMatrix;
+ aCanvas.ClipRect:=aMultiLineTextEdit.fClipRect;
+
+ if not aMultiLineTextEdit.Enabled then begin
+
+  Element:=GUI_ELEMENT_BOX_DISABLED;
+
+ end else if aMultiLineTextEdit.Focused then begin
+
+  Element:=GUI_ELEMENT_BOX_FOCUSED;
+
+ end else begin
+
+  Element:=GUI_ELEMENT_BOX_UNFOCUSED;
+
+ end;
+
+ aCanvas.DrawGUIElement(Element,
+                        true,
+                        TpvVector2.InlineableCreate(0.0,0.0),
+                        TpvVector2.InlineableCreate(aMultiLineTextEdit.fSize.x,aMultiLineTextEdit.fSize.y),
+                        TpvVector2.InlineableCreate(0.0,0.0),
+                        TpvVector2.InlineableCreate(aMultiLineTextEdit.fSize.x,aMultiLineTextEdit.fSize.y));
+
+ aCanvas.Font:=aMultiLineTextEdit.Font;
+ aCanvas.FontSize:=aMultiLineTextEdit.FontSize;
+
+ aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+ aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
+
+ OldClipRect:=aCanvas.ClipRect;
+
+ TextClipRect.LeftTop:=OldClipRect.LeftTop+(TpvVector2.Create(BoxCornerMargin,BoxCornerMargin));
+ TextClipRect.RightBottom:=OldClipRect.RightBottom-(TpvVector2.Create(BoxCornerMargin,BoxCornerMargin));
+
+ aCanvas.ClipRect:=TextClipRect;
+
+ ViewBufferIndex:=0;
+ for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
+  for ViewBufferX:=0 to aMultiLineTextEdit.fViewBufferWidth-1 do begin
+   ViewBufferItem:=@aMultiLineTextEdit.fViewBuffer[ViewBufferIndex];
+   if not (ViewBufferItem^.CodePoint in [0,32]) then begin
+    aCanvas.DrawTextCodePoint(ViewBufferItem^.CodePoint,
+                              TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
+                              (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY)));
+   end;
+   inc(ViewBufferIndex);
+  end;
+ end;
+
+ if aMultiLineTextEdit.Enabled and
+    aMultiLineTextEdit.Focused and
+    aMultiLineTextEdit.Editable and
+    (frac(fInstance.fTime)<0.5) then begin
+  aCanvas.DrawFilledRectangle(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
+                              (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(aMultiLineTextEdit.fViewBufferCursorX,aMultiLineTextEdit.fViewBufferCursorY+0.5)),
+                              TpvVector2.InlineableCreate(1.0,
+                                                         aMultiLineTextEdit.fFontCharSize.y*0.5));
+ end;
+
+ aCanvas.ClipRect:=OldClipRect;
 
 end;
 
@@ -16035,5 +16256,484 @@ begin
  end;
  inherited Update;
 end;
+
+constructor TpvGUIMultiLineTextEdit.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+
+ Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
+
+ fTextEditor:=TpvTextEditor.Create;
+
+ fView:=fTextEditor.CreateView;
+
+ fViewBuffer:=nil;
+
+ fDirty:=true;
+
+ fEditable:=true;
+
+end;
+
+destructor TpvGUIMultiLineTextEdit.Destroy;
+begin
+
+ fViewBuffer:=nil;
+
+ FreeAndNil(fView);
+
+ FreeAndNil(fTextEditor);
+
+ inherited Destroy;
+end;
+
+function TpvGUIMultiLineTextEdit.GetText:TpvUTF8String;
+begin
+ result:=fTextEditor.Text;
+end;
+
+procedure TpvGUIMultiLineTextEdit.SetText(const aText:TpvUTF8String);
+begin
+ fTextEditor.Text:=aText;
+end;
+
+function TpvGUIMultiLineTextEdit.GetFont:TpvFont;
+begin
+ if assigned(Skin) and not assigned(fFont) then begin
+  result:=Skin.fMonoFont;
+ end else begin
+  result:=fFont;
+ end;
+end;
+
+function TpvGUIMultiLineTextEdit.GetHighlightRect:TpvRect;
+begin
+ result:=inherited GetHighlightRect;
+end;
+
+function TpvGUIMultiLineTextEdit.GetPreferredSize:TpvVector2;
+begin
+ result:=Skin.GetMultiLineTextEditPreferredSize(self);
+end;
+
+procedure TpvGUIMultiLineTextEdit.PerformLayout;
+begin
+ inherited PerformLayout;
+end;
+
+function TpvGUIMultiLineTextEdit.DragEvent(const aPosition:TpvVector2):boolean;
+begin
+ result:=inherited DragEvent(aPosition);
+end;
+
+function TpvGUIMultiLineTextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
+    TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
+    TemporaryText,TemporaryUncheckedText:TpvUTF8String;
+begin
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if Enabled and not result then begin
+  case aKeyEvent.KeyEventType of
+   TpvApplicationInputKeyEventType.Down:begin
+    case aKeyEvent.KeyCode of
+     KEYCODE_APPLICATION:begin
+      result:=true;
+     end;
+    end;
+   end;
+   TpvApplicationInputKeyEventType.Up:begin
+    case aKeyEvent.KeyCode of
+     KEYCODE_APPLICATION:begin
+{     if assigned(fPopupMenu) then begin
+       fPopupMenu.Activate(AbsolutePosition+(fSize*0.5));
+      end;}
+      result:=true;
+     end;
+    end;
+   end;
+   TpvApplicationInputKeyEventType.Typed:begin
+    case aKeyEvent.KeyCode of
+     KEYCODE_RETURN,KEYCODE_RETURN2:begin
+      fView.Enter(false);
+      fDirty:=true;
+      result:=true;
+     end;
+     KEYCODE_LEFT:begin
+{     if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       if fTextSelectionStart<1 then begin
+        fTextSelectionStart:=fTextCursorPositionIndex;
+       end;
+       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),PUCUUTF8Length(fText)+1);
+       fTextSelectionEnd:=fTextCursorPositionIndex;
+      end else begin
+       fTextSelectionStart:=0;
+       fTextSelectionEnd:=0;
+       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),PUCUUTF8Length(fText)+1);
+      end;}
+      fView.MoveLeft;
+      fDirty:=true;
+      result:=true;
+     end;
+     KEYCODE_RIGHT:begin
+{     if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       if fTextSelectionStart<1 then begin
+        fTextSelectionStart:=fTextCursorPositionIndex;
+       end;
+       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),PUCUUTF8Length(fText)+1);
+       fTextSelectionEnd:=fTextCursorPositionIndex;
+      end else begin
+       fTextSelectionStart:=0;
+       fTextSelectionEnd:=0;
+       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),PUCUUTF8Length(fText)+1);
+      end;}
+      fView.MoveRight;
+      fDirty:=true;
+      result:=true;
+     end;
+     KEYCODE_UP:begin
+      fView.MoveUp;
+      fDirty:=true;
+      result:=true;
+     end;
+     KEYCODE_DOWN:begin
+      fView.MoveDown;
+      fDirty:=true;
+      result:=true;
+     end;
+     KEYCODE_HOME:begin
+{     if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       if fTextSelectionStart<1 then begin
+        fTextSelectionStart:=fTextCursorPositionIndex;
+       end;
+       fTextCursorPositionIndex:=1;
+       fTextSelectionEnd:=fTextCursorPositionIndex;
+      end else begin
+       fTextSelectionStart:=0;
+       fTextSelectionEnd:=0;
+       fTextCursorPositionIndex:=1;
+      end;}
+      fView.MoveToLineBegin;
+      fDirty:=true;
+      result:=true;
+     end;
+     KEYCODE_END:begin
+{     if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       if fTextSelectionStart<1 then begin
+        fTextSelectionStart:=fTextCursorPositionIndex;
+       end;
+       fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
+       fTextSelectionEnd:=fTextCursorPositionIndex;
+      end else begin
+       fTextSelectionStart:=0;
+       fTextSelectionEnd:=0;
+       fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
+      end;}
+      fView.MoveToLineEnd;
+      fDirty:=true;
+      result:=true;
+     end;
+     KEYCODE_PAGEUP:begin
+      fView.MovePageUp;
+      fDirty:=true;
+      result:=true;
+     end;
+     KEYCODE_PAGEDOWN:begin
+      fView.MovePageDown;
+      fDirty:=true;
+      result:=true;
+     end;
+     KEYCODE_BACKSPACE:begin
+{     if (fTextSelectionStart>0) and
+         (fTextSelectionEnd>0) then begin
+       CurrentPosition:=PUCUUTF8GetCodeUnit(fText,Min(fTextSelectionStart,fTextSelectionEnd)-1);
+       OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
+       TemporaryUncheckedText:=fText;
+       Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+       if CheckText(TemporaryUncheckedText) then begin
+        fTextCursorPositionIndex:=CurrentPosition;
+        fTextSelectionStart:=0;
+        fTextSelectionEnd:=0;
+        if fText<>TemporaryUncheckedText then begin
+         fText:=TemporaryUncheckedText;
+         UpdateText;
+         if assigned(fOnChange) then begin
+          fOnChange(self);
+         end;
+        end;
+       end;
+      end else begin
+       CurrentPosition:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
+       if (CurrentPosition>1) and (CurrentPosition<=(length(fText)+1)) then begin
+        OtherPosition:=CurrentPosition;
+        PUCUUTF8Dec(fText,OtherPosition);
+        if (OtherPosition>0) and (OtherPosition<=length(fText)) and (OtherPosition<CurrentPosition) then begin
+         TemporaryUncheckedText:=fText;
+         Delete(TemporaryUncheckedText,OtherPosition,CurrentPosition-OtherPosition);
+         if CheckText(TemporaryUncheckedText) then begin
+          dec(fTextCursorPositionIndex);
+          if fText<>TemporaryUncheckedText then begin
+           fText:=TemporaryUncheckedText;
+           UpdateText;
+           if assigned(fOnChange) then begin
+            fOnChange(self);
+           end;
+          end;
+         end;
+        end;
+       end;
+      end;}
+      fView.Backspace;
+      fDirty:=true;
+      result:=true;
+     end;
+     KEYCODE_INSERT:begin
+{     TemporaryUncheckedText:=fText;
+      TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
+      TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
+      TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
+      if (TemporaryUncheckedTextSelectionStart>0) and
+         (TemporaryUncheckedTextSelectionEnd>0) then begin
+       CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+       OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+       Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+       TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
+       TemporaryUncheckedTextSelectionStart:=0;
+       TemporaryUncheckedTextSelectionEnd:=0;
+      end;
+      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       if pvApplication.Clipboard.HasText then begin
+        TemporaryText:=pvApplication.Clipboard.GetText;
+        if length(TemporaryText)>0 then begin
+         Insert(TemporaryText,
+                TemporaryUncheckedText,
+                PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
+         inc(TemporaryUncheckedTextCursorPositionIndex,PUCUUTF8Length(TemporaryText));
+        end;
+       end;
+      end else begin
+       Insert(#32,
+              TemporaryUncheckedText,
+              PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
+      end;
+      if CheckText(TemporaryUncheckedText) then begin
+       fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
+       fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
+       fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
+       if fText<>TemporaryUncheckedText then begin
+        fText:=TemporaryUncheckedText;
+        UpdateText;
+        if assigned(fOnChange) then begin
+         fOnChange(self);
+        end;
+       end;
+      end;}
+//    fView.I
+      fDirty:=true;
+      result:=true;
+     end;
+     KEYCODE_DELETE:begin
+{     if (fTextSelectionStart>0) and
+         (fTextSelectionEnd>0) then begin
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        CutSelectedText;
+       end else begin
+        DeleteSelectedText;
+       end;
+      end else begin
+       CurrentPosition:=PUCUUTF8GetCodeUnit(fText,fTextCursorPositionIndex-1);
+       if (CurrentPosition>0) and (CurrentPosition<=length(fText)) then begin
+        OtherPosition:=CurrentPosition;
+        PUCUUTF8Inc(fText,OtherPosition);
+        if (OtherPosition>1) and (OtherPosition<=(length(fText)+1)) and (CurrentPosition<OtherPosition) then begin
+         TemporaryUncheckedText:=fText;
+         Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+         if (fText<>TemporaryUncheckedText) and CheckText(TemporaryUncheckedText) then begin
+          fText:=TemporaryUncheckedText;
+          UpdateText;
+          if assigned(fOnChange) then begin
+           fOnChange(self);
+          end;
+         end;
+        end;
+       end;
+      end;}
+      fView.Delete;
+      fDirty:=true;
+      result:=true;
+     end;
+     KEYCODE_A:begin
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+{      fTextSelectionStart:=1;
+       fTextSelectionEnd:=PUCUUTF8Length(fText)+1;}
+       result:=true;
+      end;
+     end;
+     KEYCODE_C:begin
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+{      CopySelectedText;}
+       result:=true;
+      end;
+     end;
+     KEYCODE_V:begin
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+{      PasteText;}
+       result:=true;
+      end;
+     end;
+     KEYCODE_X:begin
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+{      CutSelectedText;}
+       result:=true;
+      end;
+     end;
+    end;
+   end;
+   TpvApplicationInputKeyEventType.Unicode:begin
+{   TemporaryUncheckedText:=fText;
+    TemporaryUncheckedTextCursorPositionIndex:=fTextCursorPositionIndex;
+    TemporaryUncheckedTextSelectionStart:=fTextSelectionStart;
+    TemporaryUncheckedTextSelectionEnd:=fTextSelectionEnd;
+    if (TemporaryUncheckedTextSelectionStart>0) and
+       (TemporaryUncheckedTextSelectionEnd>0) then begin
+     CurrentPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Min(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+     OtherPosition:=PUCUUTF8GetCodeUnit(TemporaryUncheckedText,Max(TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd)-1);
+     Delete(TemporaryUncheckedText,CurrentPosition,OtherPosition-CurrentPosition);
+     TemporaryUncheckedTextCursorPositionIndex:=CurrentPosition;
+     TemporaryUncheckedTextSelectionStart:=0;
+     TemporaryUncheckedTextSelectionEnd:=0;
+    end;
+    Insert(PUCUUTF32CharToUTF8(aKeyEvent.KeyCode),
+           TemporaryUncheckedText,
+           PUCUUTF8GetCodeUnit(TemporaryUncheckedText,TemporaryUncheckedTextCursorPositionIndex-1));
+    inc(TemporaryUncheckedTextCursorPositionIndex);
+    if CheckText(TemporaryUncheckedText) then begin
+     fTextCursorPositionIndex:=TemporaryUncheckedTextCursorPositionIndex;
+     fTextSelectionStart:=TemporaryUncheckedTextSelectionStart;
+     fTextSelectionEnd:=TemporaryUncheckedTextSelectionEnd;
+     if fText<>TemporaryUncheckedText then begin
+      fText:=TemporaryUncheckedText;
+      UpdateText;
+      if assigned(fOnChange) then begin
+       fOnChange(self);
+      end;
+     end;
+    end;}
+    fView.InsertCodePoint(aKeyEvent.KeyCode,false);
+    fDirty:=true;
+{   if assigned(fOnChange) then begin
+     fOnChange(self);
+    end;}
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIMultiLineTextEdit.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var Index:TpvInt32;
+begin
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+ if not result then begin
+  result:=inherited PointerEvent(aPointerEvent);
+  if not result then begin
+   case aPointerEvent.PointerEventType of
+    TpvApplicationInputPointerEventType.Down:begin
+     case aPointerEvent.Button of
+      TpvApplicationInputPointerButton.Left:begin
+{      fTextSelectionStart:=0;
+       fTextSelectionEnd:=0;
+       fTextCursorPositionIndex:=1;
+       if fCountTextGlyphRects>0 then begin
+        if aPointerEvent.Position.x>=fTextGlyphRects[fCountTextGlyphRects-1].Right then begin
+         fTextCursorPositionIndex:=fCountTextGlyphRects+1;
+        end else begin
+         for Index:=fCountTextGlyphRects-1 downto 0 do begin
+          if aPointerEvent.Position.x>=fTextGlyphRects[Index].Left then begin
+           fTextCursorPositionIndex:=Index+1;
+           break;
+          end;
+         end;
+        end;
+       end;}
+       RequestFocus;
+      end;
+      TpvApplicationInputPointerButton.Middle:begin
+       RequestFocus;
+      end;
+      TpvApplicationInputPointerButton.Right:begin
+       RequestFocus;
+      end;
+     end;
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Up:begin
+     case aPointerEvent.Button of
+      TpvApplicationInputPointerButton.Left:begin
+{      if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
+        fOnClick(self);
+       end;}
+       RequestFocus;
+      end;
+      TpvApplicationInputPointerButton.Middle:begin
+       RequestFocus;
+      end;
+      TpvApplicationInputPointerButton.Right:begin
+       RequestFocus;
+{      if assigned(fPopupMenu) then begin
+        fPopupMenu.Activate(AbsolutePosition+aPointerEvent.Position);
+       end; }
+      end;
+     end;
+    end;
+    TpvApplicationInputPointerEventType.Motion:begin
+     if TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons then begin
+{     if fTextSelectionStart<1 then begin
+       fTextSelectionStart:=fTextCursorPositionIndex;
+      end;
+      fTextCursorPositionIndex:=1;
+      if fCountTextGlyphRects>0 then begin
+       if aPointerEvent.Position.x>=fTextGlyphRects[fCountTextGlyphRects-1].Right then begin
+        fTextCursorPositionIndex:=fCountTextGlyphRects+1;
+       end else begin
+        for Index:=fCountTextGlyphRects-1 downto 0 do begin
+         if aPointerEvent.Position.x>=fTextGlyphRects[Index].Left then begin
+          fTextCursorPositionIndex:=Index+1;
+          break;
+         end;
+        end;
+       end;
+      end;
+      fTextSelectionEnd:=fTextCursorPositionIndex;}
+     end;
+     if not fEditable then begin
+      fCursor:=TpvGUICursor.Arrow;
+     end else begin
+      fCursor:=TpvGUICursor.Beam;
+     end;
+     result:=true;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIMultiLineTextEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+begin
+ result:=inherited Scrolled(aPosition,aRelativeAmount);
+end;
+
+procedure TpvGUIMultiLineTextEdit.Update;
+begin
+ inherited Update;
+end;
+
+procedure TpvGUIMultiLineTextEdit.Draw;
+begin
+ Skin.DrawMultiLineTextEdit(fCanvas,self);
+ inherited Draw;
+end;
+
 
 end.

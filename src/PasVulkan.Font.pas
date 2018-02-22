@@ -217,8 +217,13 @@ type EpvFont=class(Exception);
        function RowHeight(const aPercent:TpvFloat;const aSize:TpvFloat):TpvFloat;
        procedure GetTextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aRects:TpvRectArray;out aCountRects:TpvInt32);
        procedure Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat);
+       procedure DrawCodePoint(const aCanvas:TObject;const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2;const aSize:TpvFloat);
       published
        property BaseSize:TpvFloat read fBaseSize;
+       property MinX:TpvFloat read fMinX;
+       property MinY:TpvFloat read fMinY;
+       property MaxX:TpvFloat read fMaxX;
+       property MaxY:TpvFloat read fMaxY;
      end;
 
 implementation
@@ -1403,6 +1408,56 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
+  CodePointMapMainIndex:=CurrentCodePoint shr 12;
+  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
+  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
+     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) then begin
+   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
+  end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
+   CurrentGlyph:=Int64Value;
+  end else begin
+   CurrentGlyph:=-1;
+  end;
+  if CurrentGlyph>=0 then begin
+   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+    if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
+       (length(fKerningPairs)>0) and
+       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
+     Position:=Position+fKerningPairVectors[Int64Value];
+    end;
+    Glyph:=@fGlyphs[CurrentGlyph];
+    if LastGlyph<0 then begin
+     Position:=Position+Glyph^.SideBearings.LeftTop;
+    end;
+    TpvCanvas(aCanvas).DrawSprite(Glyph^.Sprite,
+                                  TpvRect.CreateRelative(TpvVector2.Null,
+                                                         Glyph^.Size),
+                                  TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
+                                                         Glyph^.Size*RescaleFactor));
+    Position:=Position+Glyph^.Advance;
+   end;
+  end else begin
+   CurrentGlyph:=0;
+  end;
+  LastGlyph:=CurrentGlyph;
+ end;
+end;
+
+procedure TpvFont.DrawCodePoint(const aCanvas:TObject;const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2;const aSize:TpvFloat);
+var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph,
+    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
+    ScaleFactor,RescaleFactor:TpvFloat;
+    Int64Value:TpvInt64;
+    Glyph:PpvFontGlyph;
+    Position:TpvVector2;
+begin
+ Position:=TpvVector2.Null;
+ ScaleFactor:=GetScaleFactor(aSize);
+ RescaleFactor:=ScaleFactor*fInverseBaseScaleFactor;
+ TextIndex:=1;
+ LastGlyph:=-1;
+ begin
+  CurrentCodePoint:=aTextCodePoint;
   CodePointMapMainIndex:=CurrentCodePoint shr 12;
   CodePointMapSubIndex:=CurrentCodePoint and $3ff;
   if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
