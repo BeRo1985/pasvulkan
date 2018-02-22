@@ -7011,10 +7011,10 @@ begin
  result^.BitState:=result^.BitState or ((TpvUInt32(1) shl aIndex) or TpvUInt32(-TpvUInt32(TpvUInt32(-(aIndex-30)) shr 31)));
 {$else}
  if (result^.BitState and TpvUInt32($80000000))=0 then begin
-  if Index>30 then begin
+  if aIndex>30 then begin
    result^.BitState:=$ffffffff;
   end else begin
-   result^.BitState:=result^.BitState or (TpvUInt32(1) shl Index);
+   result^.BitState:=result^.BitState or (TpvUInt32(1) shl aIndex);
   end;
  end;
 {$endif}
