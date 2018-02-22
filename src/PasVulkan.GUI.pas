@@ -16421,72 +16421,146 @@ begin
       result:=true;
      end;
      KEYCODE_LEFT:begin
-{     if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if fTextSelectionStart<1 then begin
-        fTextSelectionStart:=fTextCursorPositionIndex;
+      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       fView.MoveLeft;
+       if not fView.HasMarkedRange then begin
+        fView.SetMarkStart;
        end;
-       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),PUCUUTF8Length(fText)+1);
-       fTextSelectionEnd:=fTextCursorPositionIndex;
+       fView.SetMarkEndToHere;
       end else begin
-       fTextSelectionStart:=0;
-       fTextSelectionEnd:=0;
-       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),PUCUUTF8Length(fText)+1);
-      end;}
-      fView.MoveLeft;
+       if fView.HasMarkedRange then begin
+        fView.UnmarkAll;
+       end;
+       fView.MoveLeft;
+      end;
       fDirty:=true;
       result:=true;
      end;
      KEYCODE_RIGHT:begin
-{     if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       if fTextSelectionStart<1 then begin
-        fTextSelectionStart:=fTextCursorPositionIndex;
+      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       if not fView.HasMarkedRange then begin
+        fView.SetMarkStart;
        end;
-       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),PUCUUTF8Length(fText)+1);
-       fTextSelectionEnd:=fTextCursorPositionIndex;
+       fView.MoveRight;
+       fView.SetMarkEndUntilHere;
       end else begin
-       fTextSelectionStart:=0;
-       fTextSelectionEnd:=0;
-       fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),PUCUUTF8Length(fText)+1);
-      end;}
-      fView.MoveRight;
+       if fView.HasMarkedRange then begin
+        fView.UnmarkAll;
+       end;
+       fView.MoveRight;
+      end;
       fDirty:=true;
       result:=true;
      end;
      KEYCODE_UP:begin
-      fView.MoveUp;
+      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       if not fView.HasMarkedRange then begin
+        fView.SetMarkStart;
+       end;
+       fView.MoveUp;
+       fView.SetMarkEndToHere;
+      end else begin
+       if fView.HasMarkedRange then begin
+        fView.UnmarkAll;
+       end;
+       fView.MoveUp;
+      end;
       fDirty:=true;
       result:=true;
      end;
      KEYCODE_DOWN:begin
-      fView.MoveDown;
+      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       if not fView.HasMarkedRange then begin
+        fView.SetMarkStart;
+       end;
+       fView.MoveDown;
+       fView.SetMarkEndToHere;
+      end else begin
+       if fView.HasMarkedRange then begin
+        fView.UnmarkAll;
+       end;
+       fView.MoveDown;
+      end;
       fDirty:=true;
       result:=true;
      end;
      KEYCODE_HOME:begin
       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       fView.MovePageUp;
+       if not fView.HasMarkedRange then begin
+        fView.SetMarkStart;
+       end;
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        fView.MovePageUp;
+       end else begin
+        fView.MoveToLineBegin;
+       end;
+       fView.SetMarkEndToHere;
       end else begin
-       fView.MoveToLineBegin;
+       if fView.HasMarkedRange then begin
+        fView.UnmarkAll;
+       end;
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        fView.MovePageUp;
+       end else begin
+        fView.MoveToLineBegin;
+       end;
       end;
       fDirty:=true;
       result:=true;
      end;
      KEYCODE_END:begin
       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
-       fView.MovePageDown;
+       if not fView.HasMarkedRange then begin
+        fView.SetMarkStart;
+       end;
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        fView.MovePageDown;
+       end else begin
+        fView.MoveToLineEnd;
+       end;
+       fView.SetMarkEndToHere;
       end else begin
-       fView.MoveToLineEnd;
+       if fView.HasMarkedRange then begin
+        fView.UnmarkAll;
+       end;
+       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+        fView.MovePageDown;
+       end else begin
+        fView.MoveToLineEnd;
+       end;
       end;
       fDirty:=true;
       result:=true;
      end;
      KEYCODE_PAGEUP:begin
-      fView.MovePageUp;
+      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       if not fView.HasMarkedRange then begin
+        fView.SetMarkStart;
+       end;
+       fView.MovePageUp;
+       fView.SetMarkEndToHere;
+      end else begin
+       if fView.HasMarkedRange then begin
+        fView.UnmarkAll;
+       end;
+       fView.MovePageUp;
+      end;
       fDirty:=true;
       result:=true;
      end;
      KEYCODE_PAGEDOWN:begin
-      fView.MovePageDown;
+      if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
+       if not fView.HasMarkedRange then begin
+        fView.SetMarkStart;
+       end;
+       fView.MovePageDown;
+       fView.SetMarkEndToHere;
+      end else begin
+       if fView.HasMarkedRange then begin
+        fView.UnmarkAll;
+       end;
+       fView.MovePageDown;
+      end;
       fDirty:=true;
       result:=true;
      end;
