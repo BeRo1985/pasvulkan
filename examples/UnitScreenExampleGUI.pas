@@ -488,7 +488,7 @@ begin
 
  AutoSize:=false;
 
- Width:=450;
+ Width:=500;
  Height:=350;
 
  fMultiLineTextEdit0:=TpvGUIMultiLineTextEdit.Create(Content);
@@ -511,7 +511,7 @@ begin
                            #9'c := 4.0e+0;'#13#10+
                            #9'if ((a + b) = c) and true then'#13#10+
                            #9'begin'#13#10+
-                           #9#9'WriteLn(''Yay!'');'#13#10+
+                           #9#9'WriteLn(''Yay!''#$20''1 + 3 is 4 (hopefully)'');'#13#10+
                            #9'end;'#13#10+
                            'end.'#13#10;
 
