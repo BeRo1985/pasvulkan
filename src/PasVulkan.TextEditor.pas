@@ -849,6 +849,7 @@ type TpvTextEditor=class
              public
               constructor Create(const aParent:TpvTextEditor;const aRegularExpression:TpvUTF8String;const aFlags:TRegularExpressionFlags=[]);
               destructor Destroy; override;
+              class function Escape(const aString:TpvUTF8String):TpvUTF8String; static;
               function MatchNext(out aCaptures:TRegularExpressionCaptures;out aPosition,aLength:TpvSizeInt;const aStartPosition:TpvSizeInt=0;const aUntilExcludingPosition:TpvSizeInt=-1;const aCountTries:TpvSizeInt=-1):boolean;
               function FindNext(out aPosition,aLength:TpvSizeInt;const aStartPosition:TpvSizeInt=0;const aUntilExcludingPosition:TpvSizeInt=-1;const aCountTries:TpvSizeInt=-1):boolean;
               property NamedGroups:TStringList read fNamedGroupStringList;
@@ -5632,6 +5633,26 @@ begin
  fNamedGroupStringList.Free;
 
  inherited Destroy;
+end;
+
+class function TpvTextEditor.TRegularExpression.Escape(const aString:TpvUTF8String):TpvUTF8String;
+var Index,Len:TpvSizeInt;
+    CodePoint:TpvUInt32;
+begin
+ result:='';
+ Index:=1;
+ Len:=length(aString);
+ while Index<=Len do begin
+  CodePoint:=TpvTextEditor.TUTF8Utils.UTF8GetCodePointAndIncFallback(aString,Index);
+  case CodePoint of
+   33..47,58..64,91..96,123..126:begin
+    result:=result+'\'+TpvTextEditor.TUTF8Utils.UTF32CharToUTF8(CodePoint);
+   end;
+   else begin
+    result:=result+TpvTextEditor.TUTF8Utils.UTF32CharToUTF8(CodePoint);
+   end;
+  end;
+ end;
 end;
 
 function TpvTextEditor.TRegularExpression.NewNode(const aNodeType:TpvInt32;const aLeft,aRight:PRegularExpressionNode;const aValue:TpvInt32):PRegularExpressionNode;
