@@ -33,7 +33,8 @@ uses SysUtils,
      PasVulkan.Canvas,
      PasVulkan.GUI,
      PasVulkan.Font,
-     PasVulkan.TrueTypeFont;
+     PasVulkan.TrueTypeFont,
+     PasVulkan.TextEditor;
 
 type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
       private
@@ -78,6 +79,14 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        fToggleButton1:TpvGUIToggleButton;
        fPanel5:TpvGUIPanel;
        fButton2:TpvGUIButton;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+     end;
+
+     TScreenExampleGUIMultiLineTextEditWindow=class(TpvGUIWindow)
+      private
+       fMultiLineTextEdit0:TpvGUIMultiLineTextEdit;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -322,7 +331,7 @@ begin
  Left:=450;
  Top:=200;
  Title:='Window with TabPanel';
- content.Layout:=TpvGUIFillLayout.Create(Content,4.0);
+ Content.Layout:=TpvGUIFillLayout.Create(Content,4.0);
  AddMinimizationButton;
  AddMaximizationButton;
  AddCloseButton;
@@ -460,6 +469,55 @@ begin
 end;
 
 destructor TScreenExampleGUITabPanelExampleWindow.Destroy;
+begin
+ inherited Destroy;
+end;
+
+constructor TScreenExampleGUIMultiLineTextEditWindow.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ Left:=250;
+ Top:=200;
+ Title:='Window with MultiLineTextEdit';
+ Content.Layout:=TpvGUIFillLayout.Create(Content,4.0);
+ AddMinimizationButton;
+ AddMaximizationButton;
+ AddCloseButton;
+
+ AutoSize:=false;
+
+ Width:=450;
+ Height:=350;
+
+ fMultiLineTextEdit0:=TpvGUIMultiLineTextEdit.Create(Content);
+
+ fMultiLineTextEdit0.TextEditor.SyntaxHighlighting:=TpvTextEditor.TSyntaxHighlighting.GetSyntaxHighlightingClassByFileExtension('.pas').Create(fMultiLineTextEdit0.TextEditor);
+
+ fMultiLineTextEdit0.TextEditor.TabWidth:=2;
+
+ fMultiLineTextEdit0.Text:='program Test;'#13#10+
+                           '{$ifdef fpc}'#13#10+
+                           #9'{$mode delphi}'#13#10+
+                           '{$endif}'#13#10+
+                           'var'#13#10+
+                           #9'a: integer; // A comment'#13#10+
+                           #9'b: integer; { An another comment }'#13#10+
+                           #9'c: single;  (* An yet another comment *)'#13#10+
+                           'begin'#13#10+
+                           #9'a := 1;'#13#10+
+                           #9'b := 3;'#13#10+
+                           #9'c := 4.0e+0;'#13#10+
+                           #9'if ((a + b) = c) and true then'#13#10+
+                           #9'begin'#13#10+
+                           #9#9'WriteLn(''Yay!'');'#13#10+
+                           #9'end;'#13#10+
+                           'end.'#13#10;
+
+end;
+
+destructor TScreenExampleGUIMultiLineTextEditWindow.Destroy;
 begin
  inherited Destroy;
 end;
@@ -797,6 +855,8 @@ begin
  TpvGUIAdvancedGridLayout(Window.Content.Layout).Anchors[fGUIButton]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,2,2,1,2.0,2.0,2.0,2.0);
 
  TScreenExampleGUITabPanelExampleWindow.Create(fGUIInstance);
+
+ TScreenExampleGUIMultiLineTextEditWindow.Create(fGUIInstance);
 
 end;
 

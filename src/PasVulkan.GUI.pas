@@ -16488,6 +16488,16 @@ begin
       fDirty:=true;
       result:=true;
      end;
+     KEYCODE_TAB:begin
+      if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.SHIFT,
+                                  TpvApplicationInputKeyModifier.CTRL,
+                                  TpvApplicationInputKeyModifier.ALT,
+                                  TpvApplicationInputKeyModifier.META])=[] then begin
+       fView.InsertCodePoint(9,fOverwrite);
+       fDirty:=true;
+       result:=true;
+      end;
+     end;
      KEYCODE_LEFT:begin
       if TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers then begin
        if not fView.HasMarkedRange then begin

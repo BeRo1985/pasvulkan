@@ -66,7 +66,11 @@ var ExampleApplication:TExampleApplication=nil;
 
 implementation
 
+{$ifdef DirectDebugGUI}
+uses UnitScreenExampleGUI;
+{$else}
 uses UnitScreenMainMenu;
+{$endif}
 
 constructor TExampleApplication.Create;
 begin
@@ -91,7 +95,11 @@ begin
  end;
  Title:='SDL Vulkan Examples Application';
  PathName:='SDLVulkanExamplesApplication';
+{$ifdef DirectDebugGUI}
+ StartScreen:=TScreenExampleGUI;
+{$else}
  StartScreen:=TScreenMainMenu;
+{$endif}
  VisibleMouseCursor:=true;
  CatchMouse:=false;
  HideSystemBars:=true;
