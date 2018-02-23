@@ -8028,7 +8028,7 @@ var ViewBufferX,ViewBufferY,ViewBufferIndex,Index:TpvSizeInt;
     CurrentFontColor,Color:TpvVector4;
     Offset,TextOffset:TpvVector2;
     TextSize,IconSize,TemporarySize:TpvVector2;
-    OldClipRect,TextClipRect,SelectionRect:TpvRect;
+    OldClipRect,TextClipRect,Rect:TpvRect;
     Element,
     TextCursorPositionIndex,
     PreviousCursorPosition,NextCursorPosition,StartIndex,EndIndex:TpvInt32;
@@ -8082,9 +8082,17 @@ begin
 
  if aMultiLineTextEdit.fLeftSideBar then begin
   Color:=CurrentFontColor;
-  aCanvas.Color:=Color;
   for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
+   if ViewBufferY=aMultiLineTextEdit.fViewBufferCursorY then begin
+    aCanvas.Color:=Color*TpvVector4.InlineableCreate(0.015625,0.015625,0.015625,1.0);
+    Rect:=TpvRect.CreateAbsolute(aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
+                                 TpvVector2.Create(0.0,aMultiLineTextEdit.fFontCharSize.y*ViewBufferY),
+                                 aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
+                                 TpvVector2.Create(aMultiLineTextEdit.fLeftSideBarAreaRect.Width,aMultiLineTextEdit.fFontCharSize.y*(ViewBufferY+1)));
+    aCanvas.DrawFilledRectangle(Rect);
+   end;
    if aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]>=0 then begin
+    aCanvas.Color:=Color;
     Str(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]+1,LineNumberString);
     ViewBufferX:=5-length(LineNumberString);
     for Index:=1 to length(LineNumberString) do begin
@@ -8097,7 +8105,7 @@ begin
     end;
    end;
   end;
-  aCanvas.Color:=Color*TpvVector4.InlineableCreate(0.5,0.5,0.5,1.0);
+  aCanvas.Color:=Color*TpvVector4.InlineableCreate(0.25,0.25,0.25,1.0);
   aCanvas.DrawFilledRectangle(aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
                               (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(6.5,0.0))+
                               TpvVector2.Create(0.0,aMultiLineTextEdit.fLeftSideBarAreaRect.Height*0.5),
