@@ -7935,7 +7935,8 @@ begin
 end;
 
 function TpvTextEditor.TView.CutMarkedRangeText:TpvUTF8String;
-var StartCodePointIndex,EndCodePointIndex,Count:TpvSizeInt;
+var StartCodePointIndex,EndCodePointIndex,Count,
+    OldCountLines,Index,Len,CountLineDifference:TpvSizeInt;
 begin
  if HasMarkedRange then begin
   StartCodePointIndex:=Min(fMarkState.StartCodePointIndex,fMarkState.EndCodePointIndex);
@@ -7944,6 +7945,31 @@ begin
   Count:=EndCodePointIndex-StartCodePointIndex;
   fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,Count,fParent.fRope.Extract(fCodePointIndex,Count)));
   result:=fParent.fRope.Extract(fCodePointIndex,Count);
+  OldCountLines:=fParent.fCountLines;
+  CountLineDifference:=0;
+  Index:=1;
+  Len:=length(result);
+  while Index<=Len do begin
+   case result[Index] of
+    #10:begin
+     inc(CountLineDifference);
+     inc(Index);
+     if (Index<=Len) and (result[Index]=#13) then begin
+      inc(Index);
+     end;
+    end;
+    #13:begin
+     inc(CountLineDifference);
+     inc(Index);
+     if (Index<=Len) and (result[Index]=#10) then begin
+      inc(Index);
+     end;
+    end;
+    else begin
+     inc(Index);
+    end;
+   end;
+  end;
   fParent.fRope.Delete(fCodePointIndex,Count);
   if fCodePointIndex>0 then begin
    if assigned(fParent.fSyntaxHighlighting) then begin
@@ -7955,6 +7981,9 @@ begin
     fParent.fSyntaxHighlighting.Truncate(fCodePointIndex);
    end;
    fParent.LineMapTruncate(fCodePointIndex,-1);
+  end;
+  if OldCountLines>=CountLineDifference then begin
+   fParent.fCountLines:=OldCountLines-CountLineDifference;
   end;
   fParent.EnsureViewCursorsAreVisible(true);
   fParent.ResetViewMarkCodePointIndices;
