@@ -2328,6 +2328,8 @@ type TpvGUIObject=class;
        procedure PopupMenuOnDeleteClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnSelectAllClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnSelectNoneClick(const aSender:TpvGUIObject);
+       procedure PopupMenuOnUndoClick(const aSender:TpvGUIObject);
+       procedure PopupMenuOnRedoClick(const aSender:TpvGUIObject);
        function GetText:TpvUTF8String;
        procedure SetText(const aText:TpvUTF8String);
        function GetFont:TpvFont; override;
@@ -12949,6 +12951,16 @@ begin
 
  fPosition:=aPosition;
 
+ Skin.GetPopupMenuPreferredSize(self);
+
+ if (fPosition.x+fSize.x)>=fInstance.fSize.x then begin
+  fPosition.x:=Max(0.0,fInstance.fSize.x-fSize.x);
+ end;
+
+ if (fPosition.y+fSize.y)>=fInstance.fSize.y then begin
+  fPosition.y:=Max(0.0,fInstance.fSize.y-fSize.y);
+ end;
+
  if not fInstance.fPopupMenuStack.Contains(self) then begin
 
   if not assigned(fParent) then begin
@@ -16402,6 +16414,21 @@ begin
  MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
  MenuItem.OnClick:=PopupMenuOnSelectNoneClick;
 
+ MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
+ MenuItem.Caption:='-';
+
+ MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
+ MenuItem.Caption:='Undo';
+ MenuItem.fIcon:=Skin.fIconDirectionArrowLeft;
+ MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
+ MenuItem.OnClick:=PopupMenuOnUndoClick;
+
+ MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
+ MenuItem.Caption:='Redo';
+ MenuItem.fIcon:=Skin.fIconDirectionArrowRight;
+ MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
+ MenuItem.OnClick:=PopupMenuOnRedoClick;
+
  fTextEditor:=TpvTextEditor.Create;
 
  fView:=fTextEditor.CreateView;
@@ -16462,6 +16489,24 @@ begin
  SelectNone;
 end;
 
+procedure TpvGUIMultiLineTextEdit.PopupMenuOnUndoClick(const aSender:TpvGUIObject);
+begin
+ fView.Undo;
+ fDirty:=true;
+ if assigned(fOnChange) then begin
+  fOnChange(self);
+ end;
+end;
+
+procedure TpvGUIMultiLineTextEdit.PopupMenuOnRedoClick(const aSender:TpvGUIObject);
+begin
+ fView.Redo;
+ fDirty:=true;
+ if assigned(fOnChange) then begin
+  fOnChange(self);
+ end;
+end;
+
 function TpvGUIMultiLineTextEdit.GetText:TpvUTF8String;
 begin
  result:=fTextEditor.Text;
@@ -16470,6 +16515,10 @@ end;
 procedure TpvGUIMultiLineTextEdit.SetText(const aText:TpvUTF8String);
 begin
  fTextEditor.Text:=aText;
+ fDirty:=true;
+ if assigned(fOnChange) then begin
+  fOnChange(self);
+ end;
 end;
 
 function TpvGUIMultiLineTextEdit.GetFont:TpvFont;
@@ -16934,7 +16983,6 @@ begin
   result:=true;
  end;
 end;
-
 
 procedure TpvGUIMultiLineTextEdit.Update;
 begin
