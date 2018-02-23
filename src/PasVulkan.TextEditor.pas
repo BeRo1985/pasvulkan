@@ -7831,6 +7831,19 @@ begin
 
    end;
 
+   if (StartCodePointIndex>=LocalMarkState.StartCodePointIndex) and
+      (StopCodePointIndex<=LocalMarkState.EndCodePointIndex) then begin
+    while RelativeCursor.x<fVisibleAreaWidth do begin
+     BufferIndex:=BufferBaseIndex+RelativeCursor.x;
+     if (BufferIndex>=BufferBaseIndex) and
+        (BufferIndex<BufferBaseEndIndex) then begin
+      BufferItem:=@fBuffer[BufferIndex];
+      BufferItem^.Attribute:=TpvTextEditor.TSyntaxHighlighting.TAttributes.Marked;
+     end;
+     inc(RelativeCursor.x);
+    end;
+   end;
+
    inc(BufferBaseIndex,fVisibleAreaWidth);
 
    inc(RelativeCursor.y);
