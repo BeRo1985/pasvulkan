@@ -2311,6 +2311,7 @@ type TpvGUIObject=class;
        fTextEditor:TpvTextEditor;
        fView:TpvTextEditor.TView;
        fViewBuffer:TpvTextEditor.TView.TBufferItems;
+       fViewBufferLineIndices:TpvTextEditor.TView.TBufferLineIndices;
        fViewBufferWidth:TpvSizeInt;
        fViewBufferHeight:TpvSizeInt;
        fViewBufferCursorX:TpvSizeInt;
@@ -7962,7 +7963,9 @@ begin
 
    aMultiLineTextEdit.fView.UpdateBuffer;
 
-   aMultiLineTextEdit.fViewBuffer:=copy(aMultiLineTextEdit.fView.Buffer);
+   aMultiLineTextEdit.fViewBuffer:=aMultiLineTextEdit.fView.Buffer;
+
+   aMultiLineTextEdit.fViewBufferLineIndices:=aMultiLineTextEdit.fView.BufferLineIndices;
 
    aMultiLineTextEdit.fViewBufferWidth:=aMultiLineTextEdit.fView.VisibleAreaWidth;
 
