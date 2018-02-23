@@ -7832,7 +7832,7 @@ begin
    end;
 
    if ((StartCodePointIndex>=LocalMarkState.StartCodePointIndex) or
-       (StopCodePointIndex>=LocalMarkState.StartCodePointIndex)) and
+       (StopCodePointIndex>LocalMarkState.StartCodePointIndex)) and
       (StopCodePointIndex<=LocalMarkState.EndCodePointIndex) then begin
     while RelativeCursor.x<fVisibleAreaWidth do begin
      BufferIndex:=BufferBaseIndex+RelativeCursor.x;
