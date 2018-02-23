@@ -869,6 +869,7 @@ type TpvTextEditor=class
                    end;
                    PBufferItem=^TBufferItem;
                    TBufferItems=array of TBufferItem;
+                   TBufferLineIndices=array of TpvSizeInt;
              private
               fParent:TpvTextEditor;
               fPrevious:TView;
@@ -886,6 +887,7 @@ type TpvTextEditor=class
               fLineWrap:TpvSizeInt;
               fVisualLineCacheMap:TLineCacheMap;
               fBuffer:TBufferItems;
+              fBufferLineIndices:TBufferLineIndices;
               fMarkState:TMarkState;
               procedure SetVisibleAreaWidth(const aVisibleAreaWidth:TpvSizeInt);
               procedure SetVisibleAreaHeight(const aVisibleAreaHeight:TpvSizeInt);
@@ -936,6 +938,7 @@ type TpvTextEditor=class
               procedure Undo;
               procedure Redo;
               property Buffer:TBufferItems read fBuffer;
+              property BufferLineIndices:TBufferLineIndices read fBufferLineIndices;
               property Cursor:TCoordinate read fCursor;
               property LineColumn:TLineColumn read fLineColumn write SetLineColumn;
              published
@@ -7377,6 +7380,7 @@ begin
  fAutoIdentOnEnterMode:=TAutoIdentOnEnterMode.Copy;
  fVisualLineCacheMap:=TLineCacheMap.Create(fParent,fParent.fRope);
  fBuffer:=nil;
+ fBufferLineIndices:=nil;
  fMarkState.StartCodePointIndex:=-1;
  fMarkState.EndCodePointIndex:=-1;
 end;
@@ -7385,6 +7389,7 @@ destructor TpvTextEditor.TView.Destroy;
 begin
  FreeAndNil(fVisualLineCacheMap);
  fBuffer:=nil;
+ fBufferLineIndices:=nil;
  inherited Destroy;
 end;
 
@@ -7628,6 +7633,12 @@ begin
    fBuffer[BufferIndex]:=EmptyBufferItem;
   end;
 
+  if length(fBufferLineIndices)<>VisibleAreaHeight then begin
+   SetLength(fBufferLineIndices,VisibleAreaHeight);
+  end;
+
+  FillChar(fBufferLineIndices[0],VisibleAreaHeight*SizeOf(TpvSizeInt),#$ff);
+
   BufferBaseIndex:=0;
 
   RelativeCursor.y:=-fCursorOffset.y;
@@ -7649,6 +7660,8 @@ begin
    end;
 
    StopCodePointIndex:=fVisualLineCacheMap.GetCodePointIndexFromNextLineIndexOrTextEnd(CurrentLineIndex);
+
+   fBufferLineIndices[CurrentLineIndex-fCursorOffset.y]:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(StartCodePointIndex);
 
    BufferBaseEndIndex:=BufferBaseIndex+VisibleAreaWidth;
 
@@ -7812,7 +7825,7 @@ begin
 
    end;
 
-   inc(BufferBaseIndex,VisibleAreaWidth);
+   inc(BufferBaseIndex,fVisibleAreaWidth);
 
    inc(RelativeCursor.y);
 
