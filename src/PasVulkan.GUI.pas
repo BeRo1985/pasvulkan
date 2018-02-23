@@ -16419,12 +16419,14 @@ begin
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
  MenuItem.Caption:='Undo';
+ MenuItem.ShortcutHint:='Ctrl-Z';
  MenuItem.fIcon:=Skin.fIconDirectionArrowLeft;
  MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
  MenuItem.OnClick:=PopupMenuOnUndoClick;
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
  MenuItem.Caption:='Redo';
+ MenuItem.ShortcutHint:='Ctrl-Shift-Z';
  MenuItem.fIcon:=Skin.fIconDirectionArrowRight;
  MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
  MenuItem.OnClick:=PopupMenuOnRedoClick;
