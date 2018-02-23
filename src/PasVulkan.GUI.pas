@@ -16913,9 +16913,28 @@ begin
 end;
 
 function TpvGUIMultiLineTextEdit.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+var TemporaryValue,Step:TpvInt64;
+    v:TpvFloat;
 begin
  result:=inherited Scrolled(aPosition,aRelativeAmount);
+ if not result then begin
+  v:=aRelativeAmount.x+aRelativeAmount.y;
+  if v<0.0 then begin
+   Step:=floor(v);
+  end else begin
+   Step:=ceil(v);
+  end;
+  if Step<0 then begin
+   fView.MoveDown;
+   fDirty:=true;
+  end else if Step>0 then begin
+   fView.MoveUp;
+   fDirty:=true;
+  end;
+  result:=true;
+ end;
 end;
+
 
 procedure TpvGUIMultiLineTextEdit.Update;
 begin
