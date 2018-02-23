@@ -254,6 +254,9 @@ type TpvTextEditor=class
               function GetCodePoint(const aCodePointIndex:TpvSizeInt):TpvUInt32;
               function GetEnumerator:TNodeEnumerator;
               function GetCodePointEnumeratorSource(const aStartCodePointIndex:TpvSizeInt=0;const aStopCodePointIndex:TpvSizeInt=-1):TRope.TCodePointEnumeratorSource;
+              function IsCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
+              function IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
+              function CountNewLines(const aFromCodePointIndex,aUntilCodePointIndex:TpvSizeInt):TpvSizeInt;
               procedure Check;
               procedure Dump;
               property CountCodePoints:TpvSizeInt read fCountCodePoints;
@@ -975,8 +978,6 @@ type TpvTextEditor=class
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
-       function IsCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
-       function IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
        procedure LoadFromStream(const aStream:TStream);
        procedure LoadFromFile(const aFileName:string);
        procedure LoadFromString(const aString:TpvRawByteString);
@@ -2281,6 +2282,76 @@ begin
  result:=TRope.TCodePointEnumeratorSource.Create(self,aStartCodePointIndex,aStopCodePointIndex);
 end;
 
+function TpvTextEditor.TRope.IsCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
+var CodePoint:TpvUInt32;
+begin
+ result:=false;
+ for CodePoint in GetCodePointEnumeratorSource(aCodePointIndex,aCodePointIndex+1) do begin
+  case CodePoint of
+   $0a,$0d:begin
+    result:=true;
+   end;
+   else begin
+    break;
+   end;
+  end;
+ end;
+end;
+
+function TpvTextEditor.TRope.IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
+var CodePoint,LastCodePoint:TpvUInt32;
+    LastWasPossibleNewLineTwoCharSequence:boolean;
+begin
+ result:=false;
+ LastCodePoint:=0;
+ LastWasPossibleNewLineTwoCharSequence:=false;
+ for CodePoint in GetCodePointEnumeratorSource(aCodePointIndex,aCodePointIndex+2) do begin
+  case CodePoint of
+   $0a,$0d:begin
+    if LastWasPossibleNewLineTwoCharSequence and
+       (((CodePoint=$0a) and (LastCodePoint=$0d)) or
+        ((CodePoint=$0d) and (LastCodePoint=$0a))) then begin
+     result:=true;
+     break;
+    end else begin
+     LastWasPossibleNewLineTwoCharSequence:=true;
+    end;
+   end;
+   else begin
+    break;
+   end;
+  end;
+  LastCodePoint:=CodePoint;
+ end;
+end;
+
+function TpvTextEditor.TRope.CountNewLines(const aFromCodePointIndex,aUntilCodePointIndex:TpvSizeInt):TpvSizeInt;
+var CodePoint,LastCodePoint:TpvUInt32;
+    LastWasPossibleNewLineTwoCharSequence:boolean;
+begin
+ result:=0;
+ LastCodePoint:=0;
+ LastWasPossibleNewLineTwoCharSequence:=false;
+ for CodePoint in GetCodePointEnumeratorSource(aFromCodePointIndex,aUntilCodePointIndex) do begin
+  case CodePoint of
+   $0a,$0d:begin
+    if LastWasPossibleNewLineTwoCharSequence and
+       (((CodePoint=$0a) and (LastCodePoint=$0d)) or
+        ((CodePoint=$0d) and (LastCodePoint=$0a))) then begin
+     inc(result);
+     LastWasPossibleNewLineTwoCharSequence:=false;
+    end else begin
+     LastWasPossibleNewLineTwoCharSequence:=true;
+    end;
+   end;
+   else begin
+    break;
+   end;
+  end;
+  LastCodePoint:=CodePoint;
+ end;
+end;
+
 procedure TpvTextEditor.TRope.Check;
 {$if defined(DebugTpvUTF8StringRope)}
 var Index:TpvInt32;
@@ -3145,49 +3216,6 @@ begin
   fCountLines:=fLineCacheMap.fCountLines;
  end;
  result:=fCountLines;
-end;
-
-function TpvTextEditor.IsCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
-var CodePoint:TpvUInt32;
-begin
- result:=false;
- for CodePoint in fRope.GetCodePointEnumeratorSource(aCodePointIndex,aCodePointIndex+1) do begin
-  case CodePoint of
-   $0a,$0d:begin
-    result:=true;
-   end;
-   else begin
-    break;
-   end;
-  end;
- end;
-end;
-
-function TpvTextEditor.IsTwoCodePointNewLine(const aCodePointIndex:TpvSizeInt):boolean;
-var CodePoint,LastCodePoint:TpvUInt32;
-    LastWasPossibleNewLineTwoCharSequence:boolean;
-begin
- result:=false;
- LastCodePoint:=0;
- LastWasPossibleNewLineTwoCharSequence:=false;
- for CodePoint in fRope.GetCodePointEnumeratorSource(aCodePointIndex,aCodePointIndex+2) do begin
-  case CodePoint of
-   $0a,$0d:begin
-    if LastWasPossibleNewLineTwoCharSequence and
-       (((CodePoint=$0a) and (LastCodePoint=$0d)) or
-        ((CodePoint=$0d) and (LastCodePoint=$0a))) then begin
-     result:=true;
-     break;
-    end else begin
-     LastWasPossibleNewLineTwoCharSequence:=true;
-    end;
-   end;
-   else begin
-    break;
-   end;
-  end;
-  LastCodePoint:=CodePoint;
- end;
 end;
 
 procedure TpvTextEditor.LoadFromStream(const aStream:TStream);
@@ -4558,7 +4586,7 @@ begin
 
   if (ParserStates[0].CodePointIndex=0) or
      ((ParserStates[0].CodePointIndex>0) and
-      fParent.IsCodePointNewLine(ParserStates[0].CodePointIndex-1)) then begin
+      fParent.fRope.IsCodePointNewLine(ParserStates[0].CodePointIndex-1)) then begin
    ParserStates[0].NewLine:=1;
   end else begin
    ParserStates[0].NewLine:=0;
@@ -7908,7 +7936,8 @@ begin
 end;
 
 function TpvTextEditor.TView.DeleteMarkedRange:boolean;
-var StartCodePointIndex,EndCodePointIndex,Count:TpvSizeInt;
+var StartCodePointIndex,EndCodePointIndex,Count,
+    OldCountLines,CountLineDifference:TpvSizeInt;
 begin
  result:=HasMarkedRange;
  if result then begin
@@ -7917,6 +7946,8 @@ begin
   fCodePointIndex:=StartCodePointIndex;
   Count:=EndCodePointIndex-StartCodePointIndex;
   fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,Count,fParent.fRope.Extract(fCodePointIndex,Count)));
+  OldCountLines:=fParent.fCountLines;
+  CountLineDifference:=fParent.fRope.CountNewLines(StartCodePointIndex,EndCodePointIndex+1);
   fParent.fRope.Delete(fCodePointIndex,Count);
   if fCodePointIndex>0 then begin
    if assigned(fParent.fSyntaxHighlighting) then begin
@@ -7928,6 +7959,9 @@ begin
     fParent.fSyntaxHighlighting.Truncate(fCodePointIndex);
    end;
    fParent.LineMapTruncate(fCodePointIndex,-1);
+  end;
+  if OldCountLines>=CountLineDifference then begin
+   fParent.fCountLines:=OldCountLines-CountLineDifference;
   end;
   fParent.EnsureViewCursorsAreVisible(true);
   fParent.ResetViewMarkCodePointIndices;
@@ -8007,7 +8041,7 @@ begin
  end;
  fParent.LineMapTruncate(fCodePointIndex,-1);
  if aOverwrite and (fCodePointIndex<fParent.fRope.fCountCodePoints) then begin
-  if fParent.IsTwoCodePointNewLine(fCodePointIndex) then begin
+  if fParent.fRope.IsTwoCodePointNewLine(fCodePointIndex) then begin
    Count:=2;
   end else begin
    Count:=1;
@@ -8074,7 +8108,7 @@ begin
  end;
  fParent.LineMapTruncate(fCodePointIndex,-1);
  if aOverwrite and (fCodePointIndex<fParent.fRope.fCountCodePoints) then begin
-  if fParent.IsTwoCodePointNewLine(fCodePointIndex) then begin
+  if fParent.fRope.IsTwoCodePointNewLine(fCodePointIndex) then begin
    Count:=2;
   end else begin
    Count:=1;
@@ -8111,8 +8145,8 @@ begin
  if not DeleteMarkedRange then begin
   if (fCodePointIndex>0) and (fCodePointIndex<=fParent.fRope.fCountCodePoints) then begin
    OldCountLines:=fParent.fCountLines;
-   if fParent.IsCodePointNewLine(fCodePointIndex-1) then begin
-    if fParent.IsTwoCodePointNewLine(fCodePointIndex-2) then begin
+   if fParent.fRope.IsCodePointNewLine(fCodePointIndex-1) then begin
+    if fParent.fRope.IsTwoCodePointNewLine(fCodePointIndex-2) then begin
      Count:=2;
     end else begin
      Count:=1;
@@ -8157,8 +8191,8 @@ begin
  if not DeleteMarkedRange then begin
   if fCodePointIndex<fParent.fRope.fCountCodePoints then begin
    OldCountLines:=fParent.fCountLines;
-   if fParent.IsCodePointNewLine(fCodePointIndex) then begin
-    if fParent.IsTwoCodePointNewLine(fCodePointIndex) then begin
+   if fParent.fRope.IsCodePointNewLine(fCodePointIndex) then begin
+    if fParent.fRope.IsTwoCodePointNewLine(fCodePointIndex) then begin
      Count:=2;
     end else begin
      Count:=1;
@@ -8305,7 +8339,7 @@ procedure TpvTextEditor.TView.MoveLeft;
 var Count:TpvSizeInt;
 begin
  if fCodePointIndex>0 then begin
-  if fParent.IsTwoCodePointNewLine(fCodePointIndex-2) then begin
+  if fParent.fRope.IsTwoCodePointNewLine(fCodePointIndex-2) then begin
    Count:=2;
   end else begin
    Count:=1;
@@ -8319,7 +8353,7 @@ procedure TpvTextEditor.TView.MoveRight;
 var Count:TpvSizeInt;
 begin
  if fCodePointIndex<fParent.fRope.CountCodePoints then begin
-  if fParent.IsTwoCodePointNewLine(fCodePointIndex) then begin
+  if fParent.fRope.IsTwoCodePointNewLine(fCodePointIndex) then begin
    Count:=2;
   end else begin
    Count:=1;
