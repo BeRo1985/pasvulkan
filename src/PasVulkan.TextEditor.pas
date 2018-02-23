@@ -3198,12 +3198,13 @@ begin
  end else begin
   fRope.Text:='';
  end;
- if assigned(fSyntaxHighlighting) then begin
-  fSyntaxHighlighting.Reset;
- end;
  ResetLineCacheMaps;
  ResetViewCodePointIndices;
  ResetViewMarkCodePointIndices;
+ GetCountLines;
+ if assigned(fSyntaxHighlighting) then begin
+  fSyntaxHighlighting.Reset;
+ end;
 end;
 
 procedure TpvTextEditor.LoadFromFile(const aFileName:string);
@@ -3221,12 +3222,13 @@ procedure TpvTextEditor.LoadFromString(const aString:TpvRawByteString);
 begin
  fUndoRedoManager.Clear;
  fRope.SetText(TUTF8Utils.RawByteStringToUTF8String(aString));
- if assigned(fSyntaxHighlighting) then begin
-  fSyntaxHighlighting.Reset;
- end;
  ResetLineCacheMaps;
  ResetViewCodePointIndices;
  ResetViewMarkCodePointIndices;
+ GetCountLines;
+ if assigned(fSyntaxHighlighting) then begin
+  fSyntaxHighlighting.Reset;
+ end;
 end;
 
 procedure TpvTextEditor.SaveToStream(const aStream:TStream);
@@ -3268,12 +3270,13 @@ procedure TpvTextEditor.SetText(const aText:TpvUTF8String);
 begin
  fUndoRedoManager.Clear;
  fRope.SetText(aText);
- if assigned(fSyntaxHighlighting) then begin
-  fSyntaxHighlighting.Reset;
- end;
  ResetLineCacheMaps;
  ResetViewCodePointIndices;
  ResetViewMarkCodePointIndices;
+ GetCountLines;
+ if assigned(fSyntaxHighlighting) then begin
+  fSyntaxHighlighting.Reset;
+ end;
 end;
 
 function TpvTextEditor.GetLine(const aLineIndex:TpvSizeInt):TpvUTF8String;
@@ -3364,7 +3367,7 @@ begin
   View.fVisualLineCacheMap.Update(aUntilCodePoint,aUntilLine);
   View:=View.fNext;
  end;
- fCountLines:=-1;
+//fCountLines:=-1;
 end;
 
 procedure TpvTextEditor.ResetLineCacheMaps;
@@ -7961,13 +7964,14 @@ begin
 end;
 
 procedure TpvTextEditor.TView.InsertCodePoint(const aCodePoint:TpvUInt32;const aOverwrite:boolean;const aStealIt:boolean=false);
-var Count,UndoRedoHistoryIndex:TpvSizeInt;
+var Count,UndoRedoHistoryIndex,OldCountLines:TpvSizeInt;
     CodeUnits:TpvUTF8String;
     HasDeletedMarkedRange:boolean;
     UndoRedoCommand:TpvTextEditor.TUndoRedoCommand;
 begin
  UndoRedoHistoryIndex:=fParent.fUndoRedoManager.fHistoryIndex;
  HasDeletedMarkedRange:=DeleteMarkedRange;
+ OldCountLines:=fParent.fCountLines;
  CodeUnits:=TUTF8Utils.UTF32CharToUTF8(aCodePoint);
  if assigned(fParent.fSyntaxHighlighting) then begin
   fParent.fSyntaxHighlighting.Truncate(fCodePointIndex);
@@ -7993,6 +7997,9 @@ begin
  if HasDeletedMarkedRange then begin
   fParent.fUndoRedoManager.GroupUndoRedoCommands(UndoRedoHistoryIndex+1,fParent.fUndoRedoManager.fHistoryIndex);
  end;
+ if (OldCountLines>=0) and (aCodePoint in [10,13]) then begin
+  fParent.fCountLines:=OldCountLines+1;
+ end;
  fParent.UpdateViewCodePointIndices(fCodePointIndex,1);
  fParent.EnsureViewCodePointIndicesAreInRange;
  fParent.EnsureViewCursorsAreVisible(true);
@@ -8000,13 +8007,39 @@ begin
 end;
 
 procedure TpvTextEditor.TView.InsertString(const aCodeUnits:TpvUTF8String;const aOverwrite:boolean;const aStealIt:boolean=false);
-var CountCodePoints,Count,UndoRedoHistoryIndex:TpvSizeInt;
+var CountCodePoints,Count,UndoRedoHistoryIndex,OldCountLines,
+    CountLineDifference,Index,Len:TpvSizeInt;
     HasDeletedMarkedRange:boolean;
     UndoRedoCommand:TpvTextEditor.TUndoRedoCommand;
 begin
  UndoRedoHistoryIndex:=fParent.fUndoRedoManager.fHistoryIndex;
  HasDeletedMarkedRange:=DeleteMarkedRange;
+ OldCountLines:=fParent.fCountLines;
  CountCodePoints:=TRope.GetCountCodePoints(@aCodeUnits[1],length(aCodeUnits));
+ CountLineDifference:=0;
+ Index:=1;
+ Len:=length(aCodeUnits);
+ while Index<=Len do begin
+  case aCodeUnits[Index] of
+   #10:begin
+    inc(CountLineDifference);
+    inc(Index);
+    if (Index<=Len) and (aCodeUnits[Index]=#13) then begin
+     inc(Index);
+    end;
+   end;
+   #13:begin
+    inc(CountLineDifference);
+    inc(Index);
+    if (Index<=Len) and (aCodeUnits[Index]=#10) then begin
+     inc(Index);
+    end;
+   end;
+   else begin
+    inc(Index);
+   end;
+  end;
+ end;
  if assigned(fParent.fSyntaxHighlighting) then begin
   fParent.fSyntaxHighlighting.Truncate(fCodePointIndex);
  end;
@@ -8034,6 +8067,9 @@ begin
  if HasDeletedMarkedRange then begin
   fParent.fUndoRedoManager.GroupUndoRedoCommands(UndoRedoHistoryIndex+1,fParent.fUndoRedoManager.fHistoryIndex);
  end;
+ if (OldCountLines>=0) and (CountLineDifference>=0) then begin
+  fParent.fCountLines:=OldCountLines+CountLineDifference;
+ end;
  fParent.UpdateViewCodePointIndices(fCodePointIndex,CountCodePoints);
  fParent.EnsureViewCodePointIndicesAreInRange;
  fParent.EnsureViewCursorsAreVisible(true);
@@ -8041,14 +8077,21 @@ begin
 end;
 
 procedure TpvTextEditor.TView.Backspace;
-var Count:TpvSizeInt;
+var Count,OldCountLines,CountLineDifference:TpvSizeInt;
 begin
  if not DeleteMarkedRange then begin
   if (fCodePointIndex>0) and (fCodePointIndex<=fParent.fRope.fCountCodePoints) then begin
-   if fparent.IsTwoCodePointNewLine(fCodePointIndex-2) then begin
-    Count:=2;
+   OldCountLines:=fParent.fCountLines;
+   if fParent.IsCodePointNewLine(fCodePointIndex-1) then begin
+    if fParent.IsTwoCodePointNewLine(fCodePointIndex-2) then begin
+     Count:=2;
+    end else begin
+     Count:=1;
+    end;
+    CountLineDifference:=1;
    end else begin
     Count:=1;
+    CountLineDifference:=0;
    end;
    fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex-Count,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex-Count,Count,fParent.fRope.Extract(fCodePointIndex-Count,Count)));
    fParent.UpdateViewCodePointIndices(fCodePointIndex,-Count);
@@ -8064,6 +8107,9 @@ begin
     end;
     fParent.LineMapTruncate(fCodePointIndex,-1);
    end;
+   if OldCountLines>=CountLineDifference then begin
+    fParent.fCountLines:=OldCountLines-CountLineDifference;
+   end;
   end;
   fParent.EnsureViewCodePointIndicesAreInRange;
   fParent.EnsureViewCursorsAreVisible(true);
@@ -8077,14 +8123,21 @@ begin
 end;
 
 procedure TpvTextEditor.TView.Delete;
-var Count:TpvSizeInt;
+var Count,OldCountLines,CountLineDifference:TpvSizeInt;
 begin
  if not DeleteMarkedRange then begin
   if fCodePointIndex<fParent.fRope.fCountCodePoints then begin
-   if fParent.IsTwoCodePointNewLine(fCodePointIndex) then begin
-    Count:=2;
+   OldCountLines:=fParent.fCountLines;
+   if fParent.IsCodePointNewLine(fCodePointIndex) then begin
+    if fParent.IsTwoCodePointNewLine(fCodePointIndex) then begin
+     Count:=2;
+    end else begin
+     Count:=1;
+    end;
+    CountLineDifference:=1;
    end else begin
     Count:=1;
+    CountLineDifference:=0;
    end;
    fParent.fUndoRedoManager.Add(TUndoRedoCommandDelete.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,fCodePointIndex,Count,fParent.fRope.Extract(fCodePointIndex,Count)));
    fParent.fRope.Delete(fCodePointIndex,Count);
@@ -8099,6 +8152,9 @@ begin
     end;
     fParent.LineMapTruncate(fCodePointIndex,-1);
    end;
+   if OldCountLines>=CountLineDifference then begin
+    fParent.fCountLines:=OldCountLines-CountLineDifference;
+   end;
   end;
   fParent.EnsureViewCursorsAreVisible(true);
   fParent.ResetViewMarkCodePointIndices;
@@ -8106,7 +8162,8 @@ begin
 end;
 
 procedure TpvTextEditor.TView.Enter(const aOverwrite:boolean);
-var LineIndex,StartCodePointIndex,StopCodePointIndex,WhiteSpaceSteps:TpvSizeInt;
+var LineIndex,StartCodePointIndex,StopCodePointIndex,WhiteSpaceSteps,
+    OldCountLines:TpvSizeInt;
     CodePoint:TpvUInt32;
     PrependedWhiteSpace:TpvUTF8String;
 begin
@@ -8168,6 +8225,7 @@ begin
     end;
    end;
   end;
+  OldCountLines:=fParent.fCountLines;
   if length(PrependedWhiteSpace)>0 then begin
    InsertString({$ifdef Windows}TpvUTF8String(#13#10){$else}TpvUTF8String(#10){$endif}+TpvUTF8String(PrependedWhiteSpace),aOverwrite,false);
   end else begin
@@ -8176,6 +8234,9 @@ begin
 {$else}
    InsertCodePoint(10,aOverwrite,false);
 {$endif}
+  end;
+  if OldCountLines>=0 then begin
+   fParent.fCountLines:=OldCountLines+1;
   end;
  end;
  fParent.UpdateViewCursors;
@@ -8313,7 +8374,7 @@ begin
 end;
 
 procedure TpvTextEditor.TView.InsertLine;
-var LineIndex,LineCodePointIndex:TpvSizeInt;
+var LineIndex,LineCodePointIndex,OldCountLines:TpvSizeInt;
 begin
  LineIndex:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
  if LineIndex>=0 then begin
@@ -8321,7 +8382,11 @@ begin
   if assigned(fParent.fSyntaxHighlighting) then begin
    fParent.fSyntaxHighlighting.Truncate(fCodePointIndex);
   end;
+  OldCountLines:=fParent.fCountLines;
   fParent.LineMapTruncate(LineCodePointIndex,-1);
+  if OldCountLines>=0 then begin
+   fParent.fCountLines:=OldCountLines+1;
+  end;
 {$ifdef Windows}
   fParent.fUndoRedoManager.Add(TUndoRedoCommandInsert.Create(fParent,fCodePointIndex,fCodePointIndex,TpvTextEditor.EmptyMarkState,fMarkState,LineCodePointIndex,2,#13#10));
   fParent.fRope.Insert(LineCodePointIndex,TpvUTF8String(#13#10));
@@ -8338,7 +8403,7 @@ begin
 end;
 
 procedure TpvTextEditor.TView.DeleteLine;
-var LineIndex,StartCodePointIndex,StopCodePointIndex:TpvSizeInt;
+var LineIndex,StartCodePointIndex,StopCodePointIndex,OldCountLines:TpvSizeInt;
 begin
  LineIndex:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
  if LineIndex>=0 then begin
@@ -8351,7 +8416,12 @@ begin
    if assigned(fParent.fSyntaxHighlighting) then begin
     fParent.fSyntaxHighlighting.Truncate(Max(0,StartCodePointIndex-1));
    end;
+   OldCountLines:=fParent.fCountLines;
    fParent.LineMapTruncate(Max(0,StartCodePointIndex-1),-1);
+   OldCountLines:=fParent.fCountLines;
+   if OldCountLines>0 then begin
+    fParent.fCountLines:=OldCountLines-1;
+   end;
    fParent.UpdateViewCodePointIndices(fCodePointIndex,StartCodePointIndex-fCodePointIndex);
    fParent.EnsureViewCodePointIndicesAreInRange;
    fParent.EnsureViewCursorsAreVisible(true);
