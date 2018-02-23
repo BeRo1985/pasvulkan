@@ -2317,9 +2317,12 @@ type TpvGUIObject=class;
        fViewBufferCursorX:TpvSizeInt;
        fViewBufferCursorY:TpvSizeInt;
        fDirty:boolean;
+       fLeftSideBar:boolean;
        fEditable:boolean;
        fOverwrite:boolean;
-       fTextAreaOffset:TpvVector2;
+       fLeftSideBarAreaRect:TpvRect;
+       fTextAreaRect:TpvRect;
+       fVisibleTextAreaSize:TpvVector2;
        fFontCharSize:TpvVector2;
        fOnClick:TpvGUIOnEvent;
        fOnChange:TpvGUIOnEvent;
@@ -2358,6 +2361,7 @@ type TpvGUIObject=class;
        property TextEditor:TpvTextEditor read fTextEditor;
        property View:TpvTextEditor.TView read fView;
        property Text:TpvUTF8String read GetText write SetText;
+       property LeftSideBar:boolean read fLeftSideBar write fLeftSideBar;
        property Editable:boolean read fEditable write fEditable;
        property Overwrite:boolean read fOverwrite write fOverwrite;
        property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
@@ -7915,7 +7919,7 @@ if aSplitterPanelGripButton.Enabled then begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.UpdateMultiLineTextEdit(const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
-var Size,VisibleTextAreaSize:TpvVector2;
+var Size:TpvVector2;
     CurrentFont:TpvFont;
     CurrentFontSize:TpvFloat;
     VisibleAreaWidth,VisibleAreaHeight,
@@ -7924,23 +7928,40 @@ begin
 
  Size:=aMultiLineTextEdit.fSize;
 
- VisibleTextAreaSize:=Size-(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)*2.0);
-
  CurrentFont:=aMultiLineTextEdit.Font;
 
  CurrentFontSize:=aMultiLineTextEdit.FontSize;
-
- aMultiLineTextEdit.fTextAreaOffset:=TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin);
 
  aMultiLineTextEdit.fFontCharSize:=TpvVector2.Create(CurrentFont.MaxX-CurrentFont.MinX,
                                                      CurrentFont.MaxY-CurrentFont.MinY)*
                                    CurrentFont.GetScaleFactor(CurrentFontSize);
 
- VisibleAreaWidth:=Max(1,trunc(ceil(VisibleTextAreaSize.x/aMultiLineTextEdit.fFontCharSize.x)));
- VisibleAreaHeight:=Max(1,trunc(ceil(VisibleTextAreaSize.y/aMultiLineTextEdit.fFontCharSize.y)));
+ if aMultiLineTextEdit.fLeftSideBar then begin
 
- NonScrollVisibleAreaWidth:=Max(1,trunc(floor(VisibleTextAreaSize.x/aMultiLineTextEdit.fFontCharSize.x)));
- NonScrollVisibleAreaHeight:=Max(1,trunc(floor(VisibleTextAreaSize.y/aMultiLineTextEdit.fFontCharSize.y)));
+  aMultiLineTextEdit.fLeftSideBarAreaRect:=TpvRect.CreateAbsolute(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin),
+                                                                  TpvVector2.Create(aMultiLineTextEdit.fFontCharSize.x*7.0,Size.y-MultiLineTextEditorMargin));
+
+  aMultiLineTextEdit.fTextAreaRect:=TpvRect.CreateAbsolute(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
+                                                           TpvVector2.Create(aMultiLineTextEdit.fFontCharSize.x*7.0,0.0),
+                                                           Size-TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin));
+
+end else begin
+
+  aMultiLineTextEdit.fLeftSideBarAreaRect:=TpvRect.CreateAbsolute(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin),
+                                                                  TpvVector2.Create(0.0,0.0));
+
+  aMultiLineTextEdit.fTextAreaRect:=TpvRect.CreateAbsolute(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin),
+                                                           Size-TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin));
+
+ end;
+
+ aMultiLineTextEdit.fVisibleTextAreaSize:=aMultiLineTextEdit.fTextAreaRect.Size;
+
+ VisibleAreaWidth:=Max(1,trunc(ceil(aMultiLineTextEdit.fVisibleTextAreaSize.x/aMultiLineTextEdit.fFontCharSize.x)));
+ VisibleAreaHeight:=Max(1,trunc(ceil(aMultiLineTextEdit.fVisibleTextAreaSize.y/aMultiLineTextEdit.fFontCharSize.y)));
+
+ NonScrollVisibleAreaWidth:=Max(1,trunc(floor(aMultiLineTextEdit.fVisibleTextAreaSize.x/aMultiLineTextEdit.fFontCharSize.x)));
+ NonScrollVisibleAreaHeight:=Max(1,trunc(floor(aMultiLineTextEdit.fVisibleTextAreaSize.y/aMultiLineTextEdit.fFontCharSize.y)));
 
  if (aMultiLineTextEdit.fView.VisibleAreaWidth<>VisibleAreaWidth) or
     (aMultiLineTextEdit.fView.VisibleAreaHeight<>VisibleAreaHeight) or
@@ -8002,7 +8023,7 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawMultiLineTextEdit(const aCanvas:TpvCanvas;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
-var ViewBufferX,ViewBufferY,ViewBufferIndex:TpvSizeInt;
+var ViewBufferX,ViewBufferY,ViewBufferIndex,Index:TpvSizeInt;
     ViewBufferItem:TpvTextEditor.TView.PBufferItem;
     CurrentFontColor,Color:TpvVector4;
     Offset,TextOffset:TpvVector2;
@@ -8013,6 +8034,7 @@ var ViewBufferX,ViewBufferY,ViewBufferIndex:TpvSizeInt;
     PreviousCursorPosition,NextCursorPosition,StartIndex,EndIndex:TpvInt32;
     PreviousCursorX,NextCursorX:TpvFloat;
     IconSprite:TpvSprite;
+    LineNumberString:String[16];
 begin
 
  UpdateMultiLineTextEdit(aMultiLineTextEdit);
@@ -8058,18 +8080,42 @@ begin
 
  aCanvas.ClipRect:=TextClipRect;
 
+ if aMultiLineTextEdit.fLeftSideBar then begin
+  Color:=CurrentFontColor;
+  aCanvas.Color:=Color;
+  for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
+   if aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]>=0 then begin
+    Str(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]+1,LineNumberString);
+    ViewBufferX:=5-length(LineNumberString);
+    for Index:=1 to length(LineNumberString) do begin
+     if ViewBufferX>=0 then begin
+      aCanvas.DrawTextCodePoint(ord(LineNumberString[Index]),
+                                aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
+                                (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY)));
+     end;
+     inc(ViewBufferX);
+    end;
+   end;
+  end;
+  aCanvas.Color:=Color*TpvVector4.InlineableCreate(0.5,0.5,0.5,1.0);
+  aCanvas.DrawFilledRectangle(aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
+                              (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(6.5,0.0))+
+                              TpvVector2.Create(0.0,aMultiLineTextEdit.fLeftSideBarAreaRect.Height*0.5),
+                              TpvVector2.Create(1.0,aMultiLineTextEdit.fLeftSideBarAreaRect.Height*0.5));
+ end;
+
  ViewBufferIndex:=0;
  for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
   for ViewBufferX:=0 to aMultiLineTextEdit.fViewBufferWidth-1 do begin
    ViewBufferItem:=@aMultiLineTextEdit.fViewBuffer[ViewBufferIndex];
    if (ViewBufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Marked)<>0 then begin
     aCanvas.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
-    aCanvas.DrawFilledRectangle(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
+    aCanvas.DrawFilledRectangle(aMultiLineTextEdit.fTextAreaRect.Offset+
                                 (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX+0.5,ViewBufferY+0.5)),
                                 (aMultiLineTextEdit.fFontCharSize*0.5)+TpvVector2.Create(1.0,1.0));
    end else if (ViewBufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight)<>0 then begin
     aCanvas.Color:=TpvVector4.InlineableCreate(0.03125,0.03125,0.03125,1.0);
-    aCanvas.DrawFilledRectangle(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
+    aCanvas.DrawFilledRectangle(aMultiLineTextEdit.fTextAreaRect.Offset+
                                 (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX+0.5,ViewBufferY+0.5)),
                                 (aMultiLineTextEdit.fFontCharSize*0.5)+TpvVector2.Create(1.0,1.0));
    end;
@@ -8117,7 +8163,7 @@ begin
     end;
     aCanvas.Color:=Color;
     aCanvas.DrawTextCodePoint(ViewBufferItem^.CodePoint,
-                              TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
+                              aMultiLineTextEdit.fTextAreaRect.Offset+
                               (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY)));
    end;
    inc(ViewBufferIndex);
@@ -8131,11 +8177,11 @@ begin
     aMultiLineTextEdit.Editable and
     (frac(fInstance.fTime)<0.5) then begin
   if aMultiLineTextEdit.fOverwrite then begin
-   aCanvas.DrawFilledRectangle(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
+   aCanvas.DrawFilledRectangle(aMultiLineTextEdit.fTextAreaRect.Offset+
                                (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(aMultiLineTextEdit.fViewBufferCursorX+0.5,aMultiLineTextEdit.fViewBufferCursorY+0.5)),
                                aMultiLineTextEdit.fFontCharSize*0.5);
   end else begin
-   aCanvas.DrawFilledRectangle(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
+   aCanvas.DrawFilledRectangle(aMultiLineTextEdit.fTextAreaRect.Offset+
                                (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(aMultiLineTextEdit.fViewBufferCursorX,aMultiLineTextEdit.fViewBufferCursorY+0.5)),
                                TpvVector2.InlineableCreate(1.0,
                                                            aMultiLineTextEdit.fFontCharSize.y*0.5));
@@ -16442,6 +16488,8 @@ begin
 
  fDirty:=true;
 
+ fLeftSideBar:=true;
+
  fEditable:=true;
 
  fOverwrite:=false;
@@ -16616,8 +16664,8 @@ begin
  result:=aButton=TpvApplicationInputPointerButton.Left;
  if result then begin
   fView.SetMarkStart;
-  fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPosition.x-fTextAreaOffset.x)/fFontCharSize.x)),
-                                                                          trunc(floor((aPosition.y-fTextAreaOffset.y)/fFontCharSize.y)));
+  fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPosition.x-fTextAreaRect.Offset.x)/fFontCharSize.x)),
+                                                                          trunc(floor((aPosition.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
   fDirty:=true;
   if assigned(fPopupMenu) then begin
    fPopupMenu.Deactivate;
@@ -16913,8 +16961,8 @@ begin
      case aPointerEvent.Button of
       TpvApplicationInputPointerButton.Left:begin
        fView.SetMarkStart;
-       fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaOffset.x)/fFontCharSize.x)),
-                                                                               trunc(floor((aPointerEvent.Position.y-fTextAreaOffset.y)/fFontCharSize.y)));
+       fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaRect.Offset.x)/fFontCharSize.x)),
+                                                                               trunc(floor((aPointerEvent.Position.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
        fDirty:=true;
        RequestFocus;
       end;
@@ -16949,8 +16997,8 @@ begin
     TpvApplicationInputPointerEventType.Motion,
     TpvApplicationInputPointerEventType.Drag:begin
      if TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons then begin
-      fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaOffset.x)/fFontCharSize.x)),
-                                                                              trunc(floor((aPointerEvent.Position.y-fTextAreaOffset.y)/fFontCharSize.y)));
+      fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaRect.Offset.x)/fFontCharSize.x)),
+                                                                              trunc(floor((aPointerEvent.Position.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
       fView.SetMarkEnd;
       fDirty:=true;
      end;
