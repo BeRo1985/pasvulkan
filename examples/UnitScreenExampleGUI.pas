@@ -497,6 +497,8 @@ begin
 
  fMultiLineTextEdit0.TextEditor.TabWidth:=2;
 
+ fMultiLineTextEdit0.LineWrap:=false;
+
  fMultiLineTextEdit0.Text:='program Test;'#13#10+
                            '{$ifdef fpc}'#13#10+
                            #9'{$mode delphi}'#13#10+
