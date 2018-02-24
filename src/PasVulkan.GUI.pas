@@ -2305,9 +2305,22 @@ type TpvGUIObject=class;
        property RightBottomPanel:TpvGUIPanel read fRightBottomPanel;
      end;
 
+     PpvGUIMultiLineTextEditScrollDirection=^TpvGUIMultiLineTextEditScrollDirection;
+     TpvGUIMultiLineTextEditScrollDirection=
+      (
+       Off,
+       On,
+       Auto
+      );
+
      TpvGUIMultiLineTextEdit=class(TpvGUIWidget)
       private
        fPopupMenu:TpvGUIPopupMenu;
+       fSpacerPanel:TpvGUIPanel;
+       fHorizontalScrollBar:TpvGUIScrollBar;
+       fVerticalScrollBar:TpvGUIScrollBar;
+       fHorizontalScrollDirection:TpvGUIMultiLineTextEditScrollDirection;
+       fVerticalScrollDirection:TpvGUIMultiLineTextEditScrollDirection;
        fTextEditor:TpvTextEditor;
        fView:TpvTextEditor.TView;
        fViewBuffer:TpvTextEditor.TView.TBufferItems;
@@ -2316,6 +2329,8 @@ type TpvGUIObject=class;
        fViewBufferHeight:TpvSizeInt;
        fViewBufferCursorX:TpvSizeInt;
        fViewBufferCursorY:TpvSizeInt;
+       fViewOldCountLines:TpvSizeInt;
+       fViewCountLines:TpvSizeInt;
        fDirty:boolean;
        fLeftSideBar:boolean;
        fEditable:boolean;
@@ -2337,6 +2352,8 @@ type TpvGUIObject=class;
        procedure PopupMenuOnRedoClick(const aSender:TpvGUIObject);
        function GetText:TpvUTF8String;
        procedure SetText(const aText:TpvUTF8String);
+       procedure SetHorizontalScrollDirection(const aHorizontalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
+       procedure SetVerticalScrollDirection(const aVerticalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
        function GetFont:TpvFont; override;
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
@@ -2359,6 +2376,10 @@ type TpvGUIObject=class;
        procedure Update; override;
        procedure Draw; override;
       published
+       property HorizontalScrollDirection:TpvGUIMultiLineTextEditScrollDirection read fHorizontalScrollDirection write SetHorizontalScrollDirection;
+       property VerticalScrollDirection:TpvGUIMultiLineTextEditScrollDirection read fVerticalScrollDirection write SetVerticalScrollDirection;
+       property HorizontalScrollBar:TpvGUIScrollBar read fHorizontalScrollBar;
+       property VerticalScrollBar:TpvGUIScrollBar read fVerticalScrollBar;
        property TextEditor:TpvTextEditor read fTextEditor;
        property View:TpvTextEditor.TView read fView;
        property Text:TpvUTF8String read GetText write SetText;
@@ -7938,7 +7959,9 @@ begin
  aMultiLineTextEdit.fVisibleAreaRect:=TpvRect.CreateAbsolute(TpvVector2.Null,
                                                              aMultiLineTextEdit.fSize);
 
-//aMultiLineTextEdit.fVisibleAreaRect.Right:=aMultiLineTextEdit.fVisibleAreaRect.Right-32.0;
+ if aMultiLineTextEdit.fVerticalScrollBar.Visible then begin
+  aMultiLineTextEdit.fVisibleAreaRect.Right:=aMultiLineTextEdit.fVisibleAreaRect.Right-aMultiLineTextEdit.fVerticalScrollBar.Width;
+ end;
 
  Size:=aMultiLineTextEdit.fVisibleAreaRect.RightBottom;
 
@@ -8001,6 +8024,8 @@ end else begin
    aMultiLineTextEdit.fViewBufferCursorX:=aMultiLineTextEdit.fView.Cursor.x;
 
    aMultiLineTextEdit.fViewBufferCursorY:=aMultiLineTextEdit.fView.Cursor.y;
+
+   aMultiLineTextEdit.fViewCountLines:=aMultiLineTextEdit.fView.CountLines;
 
   finally
    aMultiLineTextEdit.fDirty:=false;
@@ -16431,6 +16456,23 @@ begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
  Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
 
+ fSpacerPanel:=TpvGUIPanel.Create(self);
+ fSpacerPanel.Visible:=false;
+
+ fHorizontalScrollBar:=TpvGUIScrollBar.Create(self);
+ fHorizontalScrollBar.Orientation:=TpvGUIScrollBarOrientation.Horizontal;
+ fHorizontalScrollBar.TabStop:=false;
+ fHorizontalScrollBar.Visible:=false;
+
+ fVerticalScrollBar:=TpvGUIScrollBar.Create(self);
+ fVerticalScrollBar.Orientation:=TpvGUIScrollBarOrientation.Vertical;
+ fVerticalScrollBar.TabStop:=false;
+ fVerticalScrollBar.Visible:=false;
+
+ fHorizontalScrollDirection:=TpvGUIMultiLineTextEditScrollDirection.Auto;
+
+ fVerticalScrollDirection:=TpvGUIMultiLineTextEditScrollDirection.Auto;
+
  fPopupMenu:=TpvGUIPopupMenu.Create(self);
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
@@ -16499,6 +16541,10 @@ begin
  fView:=fTextEditor.CreateView;
 
  fViewBuffer:=nil;
+
+ fViewOldCountLines:=-2;
+
+ fViewCountLines:=-2;
 
  fDirty:=true;
 
@@ -16574,6 +16620,22 @@ begin
  end;
 end;
 
+procedure TpvGUIMultiLineTextEdit.SetHorizontalScrollDirection(const aHorizontalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
+begin
+ if fHorizontalScrollDirection<>aHorizontalScrollDirection then begin
+  fHorizontalScrollDirection:=aHorizontalScrollDirection;
+  PerformLayout;
+ end;
+end;
+
+procedure TpvGUIMultiLineTextEdit.SetVerticalScrollDirection(const aVerticalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
+begin
+ if fVerticalScrollDirection<>aVerticalScrollDirection then begin
+  fVerticalScrollDirection:=aVerticalScrollDirection;
+  PerformLayout;
+ end;
+end;
+
 function TpvGUIMultiLineTextEdit.GetText:TpvUTF8String;
 begin
  result:=fTextEditor.Text;
@@ -16599,7 +16661,7 @@ end;
 
 function TpvGUIMultiLineTextEdit.GetHighlightRect:TpvRect;
 begin
- result:=inherited GetHighlightRect;
+ result:=fVisibleAreaRect;
 end;
 
 function TpvGUIMultiLineTextEdit.GetPreferredSize:TpvVector2;
@@ -16608,8 +16670,115 @@ begin
 end;
 
 procedure TpvGUIMultiLineTextEdit.PerformLayout;
+var Index,OldState,NewState:TpvInt32;
+    ContentPreferredSize,
+    HorizontalScrollBarPreferredSize,
+    VerticalScrollBarPreferredSize,
+    AvailiableSize:TpvVector2;
+    Coordinate:TpvTextEditor.TCoordinate;
 begin
- inherited PerformLayout;
+
+ Skin.GetMultiLineTextEditPreferredSize(self);
+
+ AvailiableSize:=fSize;
+
+ ContentPreferredSize:=fFontCharSize*TpvVector2.Create(1.0,fViewCountLines);
+
+ HorizontalScrollBarPreferredSize:=fHorizontalScrollBar.GetPreferredSize;
+
+ VerticalScrollBarPreferredSize:=fVerticalScrollBar.GetPreferredSize;
+
+ NewState:=0;
+
+ for Index:=0 to 2 do begin
+
+  OldState:=NewState;
+
+  if (fHorizontalScrollDirection=TpvGUIMultiLineTextEditScrollDirection.On) or
+     ((fHorizontalScrollDirection=TpvGUIMultiLineTextEditScrollDirection.Auto) and (ContentPreferredSize.x>AvailiableSize.x)) then begin
+   fHorizontalScrollBar.Visible:=true;
+   NewState:=NewState or 1;
+  end else begin
+   fHorizontalScrollBar.Visible:=false;
+  end;
+
+  if (fVerticalScrollDirection=TpvGUIMultiLineTextEditScrollDirection.On) or
+     ((fVerticalScrollDirection=TpvGUIMultiLineTextEditScrollDirection.Auto) and (ContentPreferredSize.y>AvailiableSize.y)) then begin
+   fVerticalScrollBar.Visible:=true;
+   NewState:=NewState or 2;
+  end else begin
+   fVerticalScrollBar.Visible:=false;
+  end;
+
+  if fHorizontalScrollBar.Visible then begin
+   fHorizontalScrollBar.fPosition:=TpvVector2.InlineableCreate(0.0,fSize.y-HorizontalScrollBarPreferredSize.y);
+   if fVerticalScrollBar.Visible then begin
+    fHorizontalScrollBar.fSize:=TpvVector2.InlineableCreate(fSize.x-VerticalScrollBarPreferredSize.x,HorizontalScrollBarPreferredSize.y);
+   end else begin
+    fHorizontalScrollBar.fSize:=TpvVector2.InlineableCreate(fSize.x,HorizontalScrollBarPreferredSize.y);
+   end;
+   fHorizontalScrollBar.PerformLayout;
+  end;
+
+  if fVerticalScrollBar.Visible then begin
+   fVerticalScrollBar.fPosition:=TpvVector2.InlineableCreate(fSize.x-VerticalScrollBarPreferredSize.x,0.0);
+   if fHorizontalScrollBar.Visible then begin
+    fVerticalScrollBar.fSize:=TpvVector2.InlineableCreate(VerticalScrollBarPreferredSize.x,fSize.y-HorizontalScrollBarPreferredSize.y);
+   end else begin
+    fVerticalScrollBar.fSize:=TpvVector2.InlineableCreate(VerticalScrollBarPreferredSize.x,fSize.y);
+   end;
+   fVerticalScrollBar.PerformLayout;
+  end;
+
+  if ((NewState and 1)<>0) and ((OldState and 1)=0) then begin
+   AvailiableSize.y:=AvailiableSize.y-HorizontalScrollBarPreferredSize.y;
+  end;
+
+  if ((NewState and 2)<>0) and ((OldState and 2)=0) then begin
+   AvailiableSize.x:=AvailiableSize.x-VerticalScrollBarPreferredSize.x;
+  end;
+
+  if NewState=OldState then begin
+   break;
+  end;
+
+ end;
+
+ if not fHorizontalScrollBar.Visible then begin
+  fHorizontalScrollBar.Value:=0;
+ end;
+
+ if not fVerticalScrollBar.Visible then begin
+  fVerticalScrollBar.Value:=0;
+ end;
+
+ fHorizontalScrollBar.MinimumValue:=0;
+ fHorizontalScrollBar.MaximumValue:=Max(0,ceil((ContentPreferredSize.x-AvailiableSize.x)/fFontCharSize.x));
+
+ fVerticalScrollBar.MinimumValue:=0;
+ fVerticalScrollBar.MaximumValue:=Max(0,ceil((ContentPreferredSize.y-AvailiableSize.y)/fFontCharSize.y));
+
+ fSpacerPanel.Visible:=fHorizontalScrollBar.Visible and fVerticalScrollBar.Visible;
+ if fSpacerPanel.Visible then begin
+  fSpacerPanel.fPosition:=AvailiableSize;
+  fSpacerPanel.fSize:=fSize-AvailiableSize;
+ end;
+
+ Coordinate:=fView.CursorOffset;
+ if fVerticalScrollBar.Visible then begin
+  Coordinate.y:=trunc(Max(0.0,fVerticalScrollBar.Value));
+ end;
+ if (fView.CursorOffset.x<>Coordinate.x) or
+    (fView.CursorOffset.y<>Coordinate.y) then begin
+  fView.CursorOffset:=Coordinate;
+  fDirty:=true;
+ end;
+
+{fContent.fPosition:=TpvVector2.InlineableCreate(-fHorizontalScrollBar.Value,
+                                                 -fVerticalScrollBar.Value);
+ fContent.fSize:=ContentPreferredSize;
+ fContent.PerformLayout;}
+
 end;
 
 function TpvGUIMultiLineTextEdit.Enter:boolean;
@@ -17053,6 +17222,16 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.Update;
 begin
+ if fViewOldCountLines<>fViewCountLines then begin
+  fViewOldCountLines:=fViewCountLines;
+  PerformLayout;
+ end;
+ if fHorizontalScrollBar.Visible and (fHorizontalScrollBar.Value<>fView.CursorOffset.x) then begin
+  fHorizontalScrollBar.Value:=fView.CursorOffset.x;
+ end;
+ if fVerticalScrollBar.Visible and (fVerticalScrollBar.Value<>fView.CursorOffset.y) then begin
+  fVerticalScrollBar.Value:=fView.CursorOffset.y;
+ end;
  inherited Update;
 end;
 
