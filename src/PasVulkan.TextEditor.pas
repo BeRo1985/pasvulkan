@@ -7741,7 +7741,7 @@ const EmptyBufferItem:TBufferItem=
 var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     CurrentLineIndex,StartCodePointIndex,StopCodePointIndex,
     CurrentCodePointIndex,StepWidth,StateIndex,
-    LevelStateIndex:TpvSizeInt;
+    LevelStateIndex,ColumnIndex,StepIndex:TpvSizeInt;
     CodePoint,IncomingCodePoint,CurrentAttribute,
     Level,CurrentLevel,TargetLevel:TpvUInt32;
     RelativeCursor:TCoordinate;
@@ -7817,6 +7817,8 @@ begin
    BufferIndex:=BufferBaseIndex;
 
    RelativeCursor.x:=-fCursorOffset.x;
+
+   ColumnIndex:=0;
 
    if CurrentCodePointIndex<>StartCodePointIndex then begin
 
@@ -7925,7 +7927,7 @@ begin
     case IncomingCodePoint of
      $09:begin
       CodePoint:=32;
-      StepWidth:=Max(1,(fParent.fTabWidth-(RelativeCursor.x mod fParent.fTabWidth)));
+      StepWidth:=Max(1,(fParent.fTabWidth-(ColumnIndex mod fParent.fTabWidth)));
      end;
      $0a,$0d:begin
       CodePoint:=32;
@@ -7937,7 +7939,7 @@ begin
      end;
     end;
 
-    while StepWidth>0 do begin
+    for StepIndex:=1 to StepWidth do begin
 
      if RelativeCursor.x>=0 then begin
 
@@ -7962,11 +7964,12 @@ begin
      CodePoint:=32;
 
      inc(RelativeCursor.x);
-     dec(StepWidth);
 
     end;
 
     inc(CurrentCodePointIndex);
+
+    inc(ColumnIndex,StepWidth);
 
    end;
 

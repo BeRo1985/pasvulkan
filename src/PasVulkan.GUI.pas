@@ -8003,6 +8003,10 @@ begin
  aMultiLineTextEdit.fVisibleAreaRect:=TpvRect.CreateAbsolute(TpvVector2.Null,
                                                              aMultiLineTextEdit.fSize);
 
+ if aMultiLineTextEdit.fHorizontalScrollBar.Visible then begin
+  aMultiLineTextEdit.fVisibleAreaRect.Bottom:=aMultiLineTextEdit.fVisibleAreaRect.Bottom-aMultiLineTextEdit.fHorizontalScrollBar.Height;
+ end;
+
  if aMultiLineTextEdit.fVerticalScrollBar.Visible then begin
   aMultiLineTextEdit.fVisibleAreaRect.Right:=aMultiLineTextEdit.fVisibleAreaRect.Right-aMultiLineTextEdit.fVerticalScrollBar.Width;
  end;
