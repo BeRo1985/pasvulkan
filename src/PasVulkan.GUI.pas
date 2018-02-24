@@ -2332,6 +2332,7 @@ type TpvGUIObject=class;
        fViewOldCountLines:TpvSizeInt;
        fViewCountLines:TpvSizeInt;
        fViewNonScrollCountVisibleLines:TpvSizeInt;
+       fTime:TpvDouble;
        fDirty:boolean;
        fLeftSideBar:boolean;
        fEditable:boolean;
@@ -8222,7 +8223,7 @@ begin
  if aMultiLineTextEdit.Enabled and
     aMultiLineTextEdit.Focused and
     aMultiLineTextEdit.Editable and
-    (frac(fInstance.fTime)<0.5) then begin
+    (frac(aMultiLineTextEdit.fTime)<0.5) then begin
   if aMultiLineTextEdit.fOverwrite then begin
    aCanvas.DrawFilledRectangle(aMultiLineTextEdit.fTextAreaRect.Offset+
                                (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(aMultiLineTextEdit.fViewBufferCursorX+0.5,aMultiLineTextEdit.fViewBufferCursorY+0.5)),
@@ -16556,6 +16557,8 @@ begin
 
  fViewCountLines:=-2;
 
+ fTime:=0.0;
+
  fDirty:=true;
 
  fLeftSideBar:=true;
@@ -16616,6 +16619,7 @@ procedure TpvGUIMultiLineTextEdit.PopupMenuOnUndoClick(const aSender:TpvGUIObjec
 begin
  fView.Undo;
  fDirty:=true;
+ fTime:=0.0;
  if assigned(fOnChange) then begin
   fOnChange(self);
  end;
@@ -16625,6 +16629,7 @@ procedure TpvGUIMultiLineTextEdit.PopupMenuOnRedoClick(const aSender:TpvGUIObjec
 begin
  fView.Redo;
  fDirty:=true;
+ fTime:=0.0;
  if assigned(fOnChange) then begin
   fOnChange(self);
  end;
@@ -16654,6 +16659,7 @@ begin
   Coordinate.x:=fHorizontalScrollBar.Value;
   fView.CursorOffset:=Coordinate;
   fDirty:=true;
+  fTime:=0.0;
  end;
 end;
 
@@ -16665,6 +16671,7 @@ begin
   Coordinate.y:=fVerticalScrollBar.Value;
   fView.CursorOffset:=Coordinate;
   fDirty:=true;
+  fTime:=0.0;
  end;
 end;
 
@@ -16677,6 +16684,7 @@ procedure TpvGUIMultiLineTextEdit.SetText(const aText:TpvUTF8String);
 begin
  fTextEditor.Text:=aText;
  fDirty:=true;
+ fTime:=0.0;
  if assigned(fOnChange) then begin
   fOnChange(self);
  end;
@@ -16812,6 +16820,7 @@ begin
  if fView.HasMarkedRange then begin
   pvApplication.Clipboard.SetText(fView.CutMarkedRangeText);
   fDirty:=true;
+  fTime:=0.0;
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;
@@ -16830,6 +16839,7 @@ begin
  if pvApplication.Clipboard.HasText then begin
   fView.Paste(pvApplication.Clipboard.GetText);
   fDirty:=true;
+  fTime:=0.0;
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;
@@ -16840,6 +16850,7 @@ procedure TpvGUIMultiLineTextEdit.DeleteSelectedText;
 begin
  if fView.DeleteMarkedRange then begin
   fDirty:=true;
+  fTime:=0.0;
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;
@@ -16850,12 +16861,14 @@ procedure TpvGUIMultiLineTextEdit.SelectAll;
 begin
  fView.MarkAll;
  fDirty:=true;
+ fTime:=0.0;
 end;
 
 procedure TpvGUIMultiLineTextEdit.SelectNone;
 begin
  fView.UnmarkAll;
  fDirty:=true;
+ fTime:=0.0;
 end;
 
 function TpvGUIMultiLineTextEdit.DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
@@ -16866,6 +16879,7 @@ begin
   fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPosition.x-fTextAreaRect.Offset.x)/fFontCharSize.x)),
                                                                           trunc(floor((aPosition.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
   fDirty:=true;
+  fTime:=0.0;
   if assigned(fPopupMenu) then begin
    fPopupMenu.Deactivate;
   end;
@@ -16902,6 +16916,7 @@ begin
      KEYCODE_RETURN,KEYCODE_RETURN2:begin
       fView.Enter(fOverwrite);
       fDirty:=true;
+      fTime:=0.0;
       if assigned(fOnChange) then begin
        fOnChange(self);
       end;
@@ -16914,6 +16929,7 @@ begin
                                   TpvApplicationInputKeyModifier.META])=[] then begin
        fView.InsertCodePoint(9,fOverwrite);
        fDirty:=true;
+       fTime:=0.0;
        if assigned(fOnChange) then begin
         fOnChange(self);
        end;
@@ -16934,6 +16950,7 @@ begin
        fView.MoveLeft;
       end;
       fDirty:=true;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_RIGHT:begin
@@ -16950,6 +16967,7 @@ begin
        fView.MoveRight;
       end;
       fDirty:=true;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_UP:begin
@@ -16966,6 +16984,7 @@ begin
        fView.MoveUp;
       end;
       fDirty:=true;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_DOWN:begin
@@ -16982,6 +17001,7 @@ begin
        fView.MoveDown;
       end;
       fDirty:=true;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_HOME:begin
@@ -16995,6 +17015,7 @@ begin
        fView.MoveToLineBegin;
       end;
       fDirty:=true;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_END:begin
@@ -17011,6 +17032,7 @@ begin
        fView.MoveToLineEnd;
       end;
       fDirty:=true;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_PAGEUP:begin
@@ -17027,6 +17049,7 @@ begin
        fView.MovePageUp;
       end;
       fDirty:=true;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_PAGEDOWN:begin
@@ -17043,6 +17066,7 @@ begin
        fView.MovePageDown;
       end;
       fDirty:=true;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_BACKSPACE:begin
@@ -17051,6 +17075,7 @@ begin
       end else begin
        fView.Backspace;
        fDirty:=true;
+       fTime:=0.0;
        if assigned(fOnChange) then begin
         fOnChange(self);
        end;
@@ -17064,6 +17089,7 @@ begin
        fOverwrite:=not fOverwrite;
       end;
       fDirty:=true;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_DELETE:begin
@@ -17076,6 +17102,7 @@ begin
       end else begin
        fView.Delete;
        fDirty:=true;
+       fTime:=0.0;
        if assigned(fOnChange) then begin
         fOnChange(self);
        end;
@@ -17114,6 +17141,7 @@ begin
         fView.Redo;
        end;
        fDirty:=true;
+       fTime:=0.0;
        if assigned(fOnChange) then begin
         fOnChange(self);
        end;
@@ -17128,6 +17156,7 @@ begin
         fView.Undo;
        end;
        fDirty:=true;
+       fTime:=0.0;
        if assigned(fOnChange) then begin
         fOnChange(self);
        end;
@@ -17139,6 +17168,7 @@ begin
    TpvApplicationInputKeyEventType.Unicode:begin
     fView.InsertCodePoint(aKeyEvent.KeyCode,fOverwrite);
     fDirty:=true;
+    fTime:=0.0;
     if assigned(fOnChange) then begin
      fOnChange(self);
     end;
@@ -17163,6 +17193,7 @@ begin
        fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPointerEvent.Position.x-fTextAreaRect.Offset.x)/fFontCharSize.x)),
                                                                                trunc(floor((aPointerEvent.Position.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
        fDirty:=true;
+       fTime:=0.0;
        RequestFocus;
       end;
       TpvApplicationInputPointerButton.Middle:begin
@@ -17200,6 +17231,7 @@ begin
                                                                               trunc(floor((aPointerEvent.Position.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
       fView.SetMarkEnd;
       fDirty:=true;
+      fTime:=0.0;
      end;
      if not fEditable then begin
       fCursor:=TpvGUICursor.Arrow;
@@ -17235,6 +17267,7 @@ begin
   if fVerticalScrollBar.Visible and (Step<>0) then begin
    fVerticalScrollBar.Value:=fVerticalScrollBar.Value-Step;
    fDirty:=true;
+   fTime:=0.0;
   end;
   result:=true;
  end;
@@ -17253,6 +17286,7 @@ begin
  if fVerticalScrollBar.Visible and (fVerticalScrollBar.Value<>fView.CursorOffset.y) then begin
   fVerticalScrollBar.Value:=fView.CursorOffset.y;
  end;
+ fTime:=fTime+fInstance.fDeltaTime;
  inherited Update;
 end;
 
