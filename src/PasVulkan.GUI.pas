@@ -2331,6 +2331,7 @@ type TpvGUIObject=class;
        fViewBufferCursorY:TpvSizeInt;
        fViewOldCountLines:TpvSizeInt;
        fViewCountLines:TpvSizeInt;
+       fViewNonScrollCountVisibleLines:TpvSizeInt;
        fDirty:boolean;
        fLeftSideBar:boolean;
        fEditable:boolean;
@@ -8031,6 +8032,8 @@ end else begin
    aMultiLineTextEdit.fViewBufferCursorY:=LineColumn.Line-aMultiLineTextEdit.fView.CursorOffset.y;
 
    aMultiLineTextEdit.fViewCountLines:=aMultiLineTextEdit.fView.CountLines;
+
+   aMultiLineTextEdit.fViewNonScrollCountVisibleLines:=aMultiLineTextEdit.fView.NonScrollVisibleAreaHeight;
 
   finally
    aMultiLineTextEdit.fDirty:=false;
@@ -16710,7 +16713,7 @@ begin
 
  AvailiableSize:=fSize;
 
- ContentPreferredSize:=fFontCharSize*TpvVector2.Create(1.0,fViewCountLines);
+ ContentPreferredSize:=fFontCharSize*TpvVector2.Create(1.0,fViewCountLines+1.0);
 
  HorizontalScrollBarPreferredSize:=fHorizontalScrollBar.GetPreferredSize;
 
