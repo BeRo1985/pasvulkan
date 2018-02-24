@@ -143,6 +143,7 @@ type TpvTextEditor=class
               class function UTF8GetCodePointAndIncFallback(const aString:TpvUTF8String;var aCodeUnit:TpvSizeInt):TpvUInt32; static;
               class function UTF8Correct(const aString:TpvUTF8String):TpvUTF8String; static;
               class function UTF8CountNewLines(const aString:TpvUTF8String):TpvSizeInt; static;
+              class function UTF8ConvertRangeToCodeUnitRegularExpression(const aFromCodePoint,aToCodePoint:TpvUInt32):TpvUTF8String;
               class function RawDataToUTF8String(const aData;const aDataLength:TpvInt32;const aCodePage:TpvInt32=-1):TpvUTF8String; static;
               class function RawByteStringToUTF8String(const aString:TpvRawByteString;const aCodePage:TpvInt32=-1):TpvUTF8String; static;
               class function RawStreamToUTF8String(const aStream:TStream;const aCodePage:TpvInt32=-1):TpvUTF8String; static;
@@ -1272,6 +1273,172 @@ begin
    end;
   end;
  end;
+end;
+
+class function TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression(const aFromCodePoint,aToCodePoint:TpvUInt32):TpvUTF8String;
+type TString6Chars=array[0..6] of TpvRawByteChar;
+const Seq0010ffff:array[0..6,0..4,0..1] of TpvInt32=((($00,$7f),(-1,-1),(-1,-1),(-1,-1),(-1,-1)),        // 00-7F
+                                                     (($c2,$df),($80,$bf),(-1,-1),(-1,-1),(-1,-1)),      // C2-DF 80-BF
+                                                     (($e0,$e0),($a0,$bf),($80,$bf),(-1,-1),(-1,-1)),    // E0-E0 A0-BF 80-BF
+                                                     (($e1,$ef),($80,$bf),($80,$bf),(-1,-1),(-1,-1)),    // E1-EF 80-BF 80-BF
+                                                     (($f0,$f0),($80,$bf),($80,$bf),($80,$bf),(-1,-1)),  // F0-F0 90-BF 80-BF 80-BF
+                                                     (($f1,$f3),($80,$bf),($80,$bf),($80,$bf),(-1,-1)),  // F1-F3 80-BF 80-BF 80-BF
+                                                     (($f4,$f4),($80,$bf),($80,$bf),($80,$bf),(-1,-1))); // F4-F4 80-8F 80-BF 80-BF
+var OutputNode,NodeChain:TpvUTF8String;
+ procedure Add(const aNewNode:TpvUTF8String);
+ begin
+  NodeChain:=NodeChain+aNewNode;
+ end;
+ procedure AddSuffix;
+ begin
+  if length(NodeChain)>0 then begin
+   if length(OutputNode)>0 then begin
+    OutputNode:=OutputNode+'|'+NodeChain;
+   end else begin
+    OutputNode:=NodeChain;
+   end;
+   NodeChain:='';
+  end;
+ end;
+ function ToString(const CharValue:TpvUInt32):TString6Chars;
+ begin
+  case CharValue of
+   $00000000..$0000007f:begin
+    result[0]:=TpvRawByteChar(TpvUInt8(1));
+    result[1]:=TpvRawByteChar(TpvUInt8(CharValue));
+   end;
+   $00000080..$000007ff:begin
+    result[0]:=TpvRawByteChar(TpvUInt8(2));
+    result[1]:=TpvRawByteChar(TpvUInt8($c0 or ((CharValue shr 6) and $1f)));
+    result[2]:=TpvRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
+   end;
+   $00000800..$0000ffff:begin
+    result[0]:=TpvRawByteChar(TpvUInt8(3));
+    result[1]:=TpvRawByteChar(TpvUInt8($e0 or ((CharValue shr 12) and $0f)));
+    result[2]:=TpvRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
+    result[3]:=TpvRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
+   end;
+   $00010000..$0010ffff:begin
+    result[0]:=TpvRawByteChar(TpvUInt8(4));
+    result[1]:=TpvRawByteChar(TpvUInt8($f0 or ((CharValue shr 18) and $07)));
+    result[2]:=TpvRawByteChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
+    result[3]:=TpvRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
+    result[4]:=TpvRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
+   end;
+   $00200000..$03ffffff:begin
+    result[0]:=TpvRawByteChar(TpvUInt8(5));
+    result[1]:=TpvRawByteChar(TpvUInt8($f8 or ((CharValue shr 24) and $03)));
+    result[2]:=TpvRawByteChar(TpvUInt8($80 or ((CharValue shr 18) and $3f)));
+    result[3]:=TpvRawByteChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
+    result[4]:=TpvRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
+    result[5]:=TpvRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
+   end;
+   $04000000..$7fffffff:begin
+    result[0]:=TpvRawByteChar(TpvUInt8(6));
+    result[1]:=TpvRawByteChar(TpvUInt8($fc or ((CharValue shr 30) and $01)));
+    result[2]:=TpvRawByteChar(TpvUInt8($80 or ((CharValue shr 24) and $3f)));
+    result[3]:=TpvRawByteChar(TpvUInt8($80 or ((CharValue shr 18) and $3f)));
+    result[4]:=TpvRawByteChar(TpvUInt8($80 or ((CharValue shr 12) and $3f)));
+    result[5]:=TpvRawByteChar(TpvUInt8($80 or ((CharValue shr 6) and $3f)));
+    result[6]:=TpvRawByteChar(TpvUInt8($80 or (CharValue and $3f)));
+   end;
+   else begin
+    result[0]:=TpvRawByteChar(TpvUInt8(3));
+    result[1]:=#$ef;
+    result[2]:=#$bf;
+    result[3]:=#$bd;
+   end;
+  end;
+ end;
+ procedure AddRange(const aFromCodePoint,aToCodePoint:TpvUInt8);
+ var Node:TpvUTF8String;
+ begin
+  if aFromCodePoint<>aToCodePoint then begin
+   Node:='[\x'+TpvUTF8String(LowerCase(IntToHex(TpvUInt8(aFromCodePoint),2)))+'-\x'+TpvUTF8String(LowerCase(IntToHex(TpvUInt8(aToCodePoint),2)))+']';
+  end else begin
+   Node:='\x'+TpvUTF8String(LowerCase(IntToHex(TpvUInt8(aFromCodePoint),2)));
+  end;
+  Add(Node);
+ end;
+ procedure ProcessRange(const aFromCodePoint,aToCodePoint:TpvUInt32);
+ var ToCodePoint,Index,OtherIndex,Mask:TpvUInt32;
+     FromRangeString,ToRangeString:TString6Chars;
+ begin
+  if aToCodePoint>$0010ffff then begin
+   ToCodePoint:=$0010ffff;
+  end else begin
+   ToCodePoint:=aToCodePoint;
+  end;
+  if aFromCodePoint<=ToCodePoint then begin
+   if (aFromCodePoint=$00000000) and (ToCodePoint=$0010ffff) then begin
+    for OtherIndex:=low(Seq0010ffff) to high(Seq0010ffff) do begin
+     for Index:=low(Seq0010ffff[OtherIndex]) to high(Seq0010ffff[OtherIndex]) do begin
+      if Seq0010ffff[OtherIndex,Index,0]<0 then begin
+       break;
+      end;
+      AddRange(TpvUInt8(Seq0010ffff[OtherIndex,Index,0]),TpvUInt8(Seq0010ffff[OtherIndex,Index,1]));
+     end;
+     AddSuffix;
+    end;
+   end else if (aFromCodePoint=$00000080) and (ToCodePoint=$0010ffff) then begin
+    for OtherIndex:=1 to high(Seq0010ffff) do begin
+     for Index:=low(Seq0010ffff[OtherIndex]) to high(Seq0010ffff[OtherIndex]) do begin
+      if Seq0010ffff[OtherIndex,Index,0]<0 then begin
+       break;
+      end;
+      AddRange(TpvUInt8(Seq0010ffff[OtherIndex,Index,0]),TpvUInt8(Seq0010ffff[OtherIndex,Index,1]));
+     end;
+     AddSuffix;
+    end;
+   end else begin
+    for Index:=1 to 3 do begin
+     if Index=1 then begin
+      Mask:=7;
+     end else begin
+      Mask:=(7-Index)+(6*(Index-1));
+     end;
+     Mask:=(1 shl Mask)-1;
+     if (aFromCodePoint<=Mask) and (Mask<ToCodePoint) then begin
+      ProcessRange(aFromCodePoint,Mask);
+      ProcessRange(Mask+1,ToCodePoint);
+      exit;
+     end;
+    end;
+    if ToCodePoint<128 then begin
+     AddRange(aFromCodePoint,ToCodePoint);
+     AddSuffix;
+    end else begin
+     for Index:=1 to 3 do begin
+      Mask:=(1 shl (6*Index))-1;
+      if (aFromCodePoint and not Mask)<>(ToCodePoint and not Mask) then begin
+       if (aFromCodePoint and Mask)<>0 then begin
+        ProcessRange(aFromCodePoint,aFromCodePoint or Mask);
+        ProcessRange((aFromCodePoint or Mask)+1,ToCodePoint);
+        exit;
+       end else if (ToCodePoint and Mask)<>Mask then begin
+        ProcessRange(aFromCodePoint,(ToCodePoint and not Mask)-1);
+        ProcessRange(ToCodePoint and not Mask,ToCodePoint);
+        exit;
+       end;
+      end;
+     end;
+     FromRangeString:=ToString(aFromCodePoint);
+     ToRangeString:=ToString(ToCodePoint);
+     if TpvUInt8(TpvRawByteChar(FromRangeString[0]))=TpvUInt8(TpvRawByteChar(ToRangeString[0])) then begin
+      for Index:=1 to TpvUInt8(TpvRawByteChar(FromRangeString[0])) do begin
+       AddRange(TpvUInt8(TpvRawByteChar(FromRangeString[Index])),TpvUInt8(TpvRawByteChar(ToRangeString[Index])));
+      end;
+      AddSuffix;
+     end;
+    end;
+   end;
+  end;
+ end;
+begin
+ OutputNode:='';
+ NodeChain:='';
+ ProcessRange(aFromCodePoint,aToCodePoint);
+ result:=OutputNode;
 end;
 
 class function TpvTextEditor.TUTF8Utils.RawDataToUTF8String(const aData;const aDataLength:TpvInt32;const aCodePage:TpvInt32=-1):TpvUTF8String;
@@ -4237,6 +4404,13 @@ var IsBegin,IsEnd:boolean;
            if (CurrentChar='\') and (InputPosition<=InputLength) then begin
             CurrentChar:=InputText[InputPosition];
             inc(InputPosition);
+            if (CurrentChar in ['x','X']) and
+               ((InputPosition+1)<=InputLength) and
+               (InputText[InputPosition] in ['0'..'9','a'..'f','A'..'F']) and
+               (InputText[InputPosition+1] in ['0'..'9','a'..'f','A'..'F']) then begin
+             CurrentChar:=TpvRawByteChar(TpvUInt8(StrToInt('$'+String(InputText[InputPosition]+InputText[InputPosition+1]))));
+             inc(InputPosition,2);
+            end;
            end;
            OneEndChar:=CurrentChar;
            OtherEndChar:=CurrentChar;
@@ -4249,6 +4423,13 @@ var IsBegin,IsEnd:boolean;
               if (CurrentChar='\') and (InputPosition<=InputLength) then begin
                CurrentChar:=InputText[InputPosition];
                inc(InputPosition);
+               if (CurrentChar in ['x','X']) and
+                  ((InputPosition+1)<=InputLength) and
+                  (InputText[InputPosition] in ['0'..'9','a'..'f','A'..'F']) and
+                  (InputText[InputPosition+1] in ['0'..'9','a'..'f','A'..'F']) then begin
+                CurrentChar:=TpvRawByteChar(TpvUInt8(StrToInt('$'+String(InputText[InputPosition]+InputText[InputPosition+1]))));
+                inc(InputPosition,2);
+               end;
               end;
               OtherEndChar:=CurrentChar;
              end else begin
@@ -4296,6 +4477,13 @@ var IsBegin,IsEnd:boolean;
        if (CurrentChar='\') and (InputPosition<=InputLength) then begin
         CurrentChar:=InputText[InputPosition];
         inc(InputPosition);
+        if (CurrentChar in ['x','X']) and
+           ((InputPosition+1)<=InputLength) and
+           (InputText[InputPosition] in ['0'..'9','a'..'f','A'..'F']) and
+           (InputText[InputPosition+1] in ['0'..'9','a'..'f','A'..'F']) then begin
+         CurrentChar:=TpvRawByteChar(TpvUInt8(StrToInt('$'+String(InputText[InputPosition]+InputText[InputPosition+1]))));
+         inc(InputPosition,2);
+        end;
        end;
        Include(CharSet,CurrentChar);
       end else begin
@@ -4974,7 +5162,18 @@ begin
  AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\/\*.*\*\/',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\/\*.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
+ AddRule('//(('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0000,$0009)+')|'+
+            '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000e,$0084)+')|'+
+            '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0086,$2027)+')|'+
+            '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($2029,$10ffff)+'))*'+
+            '(('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000b,$000c)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0085,$0085)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($2028,$2029)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+'))?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
+//AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule(TpvRawByteString('[A-Za-z\_\$'#128'-'#255'][A-Za-z0-9\_\$'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -5027,7 +5226,18 @@ begin
  AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\/\*.*\*\/',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\/\*.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
+ AddRule('//(('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0000,$0009)+')|'+
+            '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000e,$0084)+')|'+
+            '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0086,$2027)+')|'+
+            '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($2029,$10ffff)+'))*'+
+            '(('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000b,$000c)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0085,$0085)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($2028,$2029)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+'))?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
+//AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule(TpvRawByteString('[A-Za-z\_\$'#128'-'#255'][A-Za-z0-9\_\$'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -5143,7 +5353,18 @@ begin
  AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\/\*.*\*\/',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\/\*.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
+ AddRule('//(('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0000,$0009)+')|'+
+            '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000e,$0084)+')|'+
+            '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0086,$2027)+')|'+
+            '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($2029,$10ffff)+'))*'+
+            '(('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000b,$000c)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0085,$0085)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($2028,$2029)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
+             '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+'))?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
+//AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule(TpvRawByteString('[A-Za-z\_\$'#128'-'#255'][A-Za-z0-9\_\$'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
