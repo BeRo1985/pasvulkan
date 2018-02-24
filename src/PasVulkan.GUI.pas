@@ -1584,6 +1584,7 @@ type TpvGUIObject=class;
        fTextSelectionEnd:TpvInt32;
        fMinimumWidth:TpvFloat;
        fMinimumHeight:TpvFloat;
+       fTime:TpvDouble;
        fDragRect:TpvRect;
        fPopupMenu:TpvGUIPopupMenu;
        fOnClick:TpvGUIOnEvent;
@@ -1620,6 +1621,7 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure Update; override;
        procedure Draw; override;
       published
        property Font;
@@ -6545,7 +6547,7 @@ begin
  if aTextEdit.Enabled and
     aTextEdit.Focused and
     aTextEdit.Editable and
-    (frac(fInstance.fTime)<0.5) then begin
+    (frac(aTextEdit.fTime)<0.5) then begin
   if aTextEdit.fCountTextGlyphRects>0 then begin
    TextCursorPositionIndex:=Min(Max(aTextEdit.fTextCursorPositionIndex,1),aTextEdit.fCountTextGlyphRects+1);
    if TextCursorPositionIndex>aTextEdit.fCountTextGlyphRects then begin
@@ -11762,6 +11764,8 @@ begin
 
    UpdateText;
 
+   fTime:=0.0;
+
   end else begin
 
    fText:=aText;
@@ -11820,6 +11824,7 @@ begin
    end;
   end;
  end;
+ fTime:=0.0;
 end;
 
 procedure TpvGUITextEdit.CopySelectedText;
@@ -11831,6 +11836,7 @@ begin
   OtherPosition:=PUCUUTF8GetCodeUnit(fText,Max(fTextSelectionStart,fTextSelectionEnd)-1);
   pvApplication.Clipboard.SetText(Copy(fText,CurrentPosition,OtherPosition-CurrentPosition));
  end;
+ fTime:=0.0;
 end;
 
 procedure TpvGUITextEdit.PasteText;
@@ -11872,6 +11878,7 @@ begin
    end;
   end;
  end;
+ fTime:=0.0;
 end;
 
 procedure TpvGUITextEdit.DeleteSelectedText;
@@ -11897,18 +11904,21 @@ begin
    end;
   end;
  end;
+ fTime:=0.0;
 end;
 
 procedure TpvGUITextEdit.SelectAll;
 begin
  fTextSelectionStart:=1;
  fTextSelectionEnd:=PUCUUTF8Length(Text)+1;
+ fTime:=0.0;
 end;
 
 procedure TpvGUITextEdit.SelectNone;
 begin
  fTextSelectionStart:=0;
  fTextSelectionEnd:=0;
+ fTime:=0.0;
 end;
 
 procedure TpvGUITextEdit.PopupMenuOnCutClick(const aSender:TpvGUIObject);
@@ -11953,6 +11963,7 @@ begin
     case aKeyEvent.KeyCode of
      KEYCODE_APPLICATION:begin
       result:=true;
+      fTime:=0.0;
      end;
     end;
    end;
@@ -11962,6 +11973,7 @@ begin
       if assigned(fPopupMenu) then begin
        fPopupMenu.Activate(AbsolutePosition+(fSize*0.5));
       end;
+      fTime:=0.0;
       result:=true;
      end;
     end;
@@ -11980,6 +11992,7 @@ begin
        fTextSelectionEnd:=0;
        fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex-1,1),PUCUUTF8Length(fText)+1);
       end;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_RIGHT:begin
@@ -11994,6 +12007,7 @@ begin
        fTextSelectionEnd:=0;
        fTextCursorPositionIndex:=Min(Max(fTextCursorPositionIndex+1,1),PUCUUTF8Length(fText)+1);
       end;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_HOME:begin
@@ -12008,6 +12022,7 @@ begin
        fTextSelectionEnd:=0;
        fTextCursorPositionIndex:=1;
       end;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_END:begin
@@ -12022,6 +12037,7 @@ begin
        fTextSelectionEnd:=0;
        fTextCursorPositionIndex:=PUCUUTF8Length(fText)+1;
       end;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_BACKSPACE:begin
@@ -12064,6 +12080,7 @@ begin
         end;
        end;
       end;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_INSERT:begin
@@ -12107,6 +12124,7 @@ begin
         end;
        end;
       end;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_DELETE:begin
@@ -12135,6 +12153,7 @@ begin
         end;
        end;
       end;
+      fTime:=0.0;
       result:=true;
      end;
      KEYCODE_A:begin
@@ -12194,6 +12213,7 @@ begin
       end;
      end;
     end;
+    fTime:=0.0;
     result:=true;
    end;
   end;
@@ -12235,6 +12255,7 @@ begin
        RequestFocus;
       end;
      end;
+     fTime:=0.0;
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Up:begin
@@ -12255,6 +12276,7 @@ begin
        end;
       end;
      end;
+     fTime:=0.0;
     end;
     TpvApplicationInputPointerEventType.Motion:begin
      if TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons then begin
@@ -12275,6 +12297,7 @@ begin
        end;
       end;
       fTextSelectionEnd:=fTextCursorPositionIndex;
+      fTime:=0.0;
      end;
      if not fEditable then begin
       fCursor:=TpvGUICursor.Arrow;
@@ -12298,6 +12321,12 @@ begin
  if not result then begin
   result:=inherited Scrolled(aPosition,aRelativeAmount);
  end;
+end;
+
+procedure TpvGUITextEdit.Update;
+begin
+ fTime:=fTime+fInstance.fDeltaTime;
+ inherited Update;
 end;
 
 procedure TpvGUITextEdit.Draw;
