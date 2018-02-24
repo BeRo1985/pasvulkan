@@ -890,6 +890,7 @@ type TpvGUIObject=class;
        PointerFocused,
        KeyPreview,
        WantAllKeys,
+       WantTabKey,
        TabStop,
        Scissor,
        DrawFocus
@@ -952,6 +953,8 @@ type TpvGUIObject=class;
        procedure SetKeyPreview(const aKeyPreview:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetWantAllKeys:boolean; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetWantAllKeys(const aWantAllKeys:boolean); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetWantTabKey:boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetWantTabKey(const aWantTabKey:boolean); {$ifdef CAN_INLINE}inline;{$endif}
        function GetLeft:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetLeft(const aLeft:TpvFloat); {$ifdef CAN_INLINE}inline;{$endif}
        function GetTop:TpvFloat; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1044,6 +1047,7 @@ type TpvGUIObject=class;
        property TabStop:boolean read GetTabStop write SetTabStop;
        property KeyPreview:boolean read GetKeyPreview write SetKeyPreview;
        property WantAllKeys:boolean read GetWantAllKeys write SetWantAllKeys;
+       property WantTabKey:boolean read GetWantTabKey write SetWantTabKey;
        property Left:TpvFloat read GetLeft write SetLeft;
        property Top:TpvFloat read GetTop write SetTop;
        property Width:TpvFloat read GetWidth write SetWidth;
@@ -8560,6 +8564,20 @@ begin
  end;
 end;
 
+function TpvGUIWidget.GetWantTabKey:boolean;
+begin
+ result:=TpvGUIWidgetFlag.WantTabKey in fWidgetFlags;
+end;
+
+procedure TpvGUIWidget.SetWantTabKey(const aWantTabKey:boolean);
+begin
+ if aWantTabKey then begin
+  Include(fWidgetFlags,TpvGUIWidgetFlag.WantTabKey);
+ end else begin
+  Exclude(fWidgetFlags,TpvGUIWidgetFlag.WantTabKey);
+ end;
+end;
+
 function TpvGUIWidget.GetLeft:TpvFloat;
 begin
  result:=fPosition.x;
@@ -9613,8 +9631,8 @@ begin
      Current:=fCurrentFocusPath.Items[fCurrentFocusPath.Count-1];
      if (Current<>self) and (Current is TpvGUIWidget) then begin
       CurrentWidget:=Current as TpvGUIWidget;
-      if CurrentWidget.Focused then begin
-       result:=ProcessTab(CurrentWidget,TpvApplicationInputKeyModifier.SHIFT IN aKeyEvent.KeyModifiers);
+      if CurrentWidget.Focused and not (CurrentWidget.WantAllKeys or CurrentWidget.WantTabKey) then begin
+       result:=ProcessTab(CurrentWidget,TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers);
        if result then begin
         exit;
        end;
@@ -16523,6 +16541,8 @@ begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
  Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
  Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.WantAllKeys);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.WantTabKey);
 
  fSpacerPanel:=TpvGUIPanel.Create(self);
  fSpacerPanel.Visible:=false;
@@ -16530,13 +16550,13 @@ begin
  fHorizontalScrollBar:=TpvGUIScrollBar.Create(self);
  fHorizontalScrollBar.OnChange:=HorizontalScrollBarOnChange;
  fHorizontalScrollBar.Orientation:=TpvGUIScrollBarOrientation.Horizontal;
- fHorizontalScrollBar.TabStop:=false;
+//fHorizontalScrollBar.TabStop:=false;
  fHorizontalScrollBar.Visible:=false;
 
  fVerticalScrollBar:=TpvGUIScrollBar.Create(self);
  fVerticalScrollBar.OnChange:=VerticalScrollBarOnChange;
  fVerticalScrollBar.Orientation:=TpvGUIScrollBarOrientation.Vertical;
- fVerticalScrollBar.TabStop:=false;
+//fVerticalScrollBar.TabStop:=false;
  fVerticalScrollBar.Visible:=false;
 
  fHorizontalScrollDirection:=TpvGUIMultiLineTextEditScrollDirection.Auto;

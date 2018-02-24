@@ -105,7 +105,7 @@ begin
  HideSystemBars:=true;
  AndroidSeparateMouseAndTouch:=true;
  UseAudio:=true;
- DesiredCountSwapChainImages:=2;
+//DesiredCountSwapChainImages:=2;
 //PresentMode:=TpvApplicationPresentMode.Mailbox;
  PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.Mailbox{TpvApplicationPresentMode.NoVSync}{$else}TpvApplicationPresentMode.VSync{$endif};
 end;
