@@ -7948,6 +7948,7 @@ var Size:TpvVector2;
     CurrentFontSize:TpvFloat;
     VisibleAreaWidth,VisibleAreaHeight,
     NonScrollVisibleAreaWidth,NonScrollVisibleAreaHeight:TpvSizeInt;
+    LineColumn:TpvTextEditor.TLineColumn;
 begin
 
  CurrentFont:=aMultiLineTextEdit.Font;
@@ -8023,9 +8024,11 @@ end else begin
 
    aMultiLineTextEdit.fViewBufferHeight:=aMultiLineTextEdit.fView.VisibleAreaHeight;
 
-   aMultiLineTextEdit.fViewBufferCursorX:=aMultiLineTextEdit.fView.Cursor.x;
+   LineColumn:=aMultiLineTextEdit.fView.LineColumn;
 
-   aMultiLineTextEdit.fViewBufferCursorY:=aMultiLineTextEdit.fView.Cursor.y;
+   aMultiLineTextEdit.fViewBufferCursorX:=LineColumn.Column-aMultiLineTextEdit.fView.CursorOffset.x;
+
+   aMultiLineTextEdit.fViewBufferCursorY:=LineColumn.Line-aMultiLineTextEdit.fView.CursorOffset.y;
 
    aMultiLineTextEdit.fViewCountLines:=aMultiLineTextEdit.fView.CountLines;
 
@@ -16701,7 +16704,6 @@ var Index,OldState,NewState:TpvInt32;
     HorizontalScrollBarPreferredSize,
     VerticalScrollBarPreferredSize,
     AvailiableSize:TpvVector2;
-    Coordinate:TpvTextEditor.TCoordinate;
 begin
 
  Skin.GetMultiLineTextEditPreferredSize(self);
@@ -16789,21 +16791,6 @@ begin
   fSpacerPanel.fPosition:=AvailiableSize;
   fSpacerPanel.fSize:=fSize-AvailiableSize;
  end;
-
- Coordinate:=fView.CursorOffset;
- if fVerticalScrollBar.Visible then begin
-  Coordinate.y:=trunc(Max(0.0,fVerticalScrollBar.Value));
- end;
- if (fView.CursorOffset.x<>Coordinate.x) or
-    (fView.CursorOffset.y<>Coordinate.y) then begin
-  fView.CursorOffset:=Coordinate;
-  fDirty:=true;
- end;
-
-{fContent.fPosition:=TpvVector2.InlineableCreate(-fHorizontalScrollBar.Value,
-                                                 -fVerticalScrollBar.Value);
- fContent.fSize:=ContentPreferredSize;
- fContent.PerformLayout;}
 
 end;
 
@@ -17235,11 +17222,15 @@ begin
   end else begin
    Step:=ceil(v);
   end;
-  if Step<0 then begin
+{ if Step<0 then begin
    fView.MoveDown;
    fDirty:=true;
   end else if Step>0 then begin
    fView.MoveUp;
+   fDirty:=true;
+  end;}
+  if fVerticalScrollBar.Visible and (Step<>0) then begin
+   fVerticalScrollBar.Value:=fVerticalScrollBar.Value-Step;
    fDirty:=true;
   end;
   result:=true;
@@ -17248,6 +17239,7 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.Update;
 begin
+ Skin.GetMultiLineTextEditPreferredSize(self);
  if fViewOldCountLines<>fViewCountLines then begin
   fViewOldCountLines:=fViewCountLines;
   PerformLayout;
@@ -17263,6 +17255,12 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.Draw;
 begin
+ if fHorizontalScrollBar.Visible and (fHorizontalScrollBar.Value<>fView.CursorOffset.x) then begin
+  fHorizontalScrollBar.Value:=fView.CursorOffset.x;
+ end;
+ if fVerticalScrollBar.Visible and (fVerticalScrollBar.Value<>fView.CursorOffset.y) then begin
+  fVerticalScrollBar.Value:=fView.CursorOffset.y;
+ end;
  Skin.DrawMultiLineTextEdit(fCanvas,self);
  inherited Draw;
 end;
