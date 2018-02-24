@@ -277,6 +277,7 @@ type TpvTextEditor=class
               fLineWrap:TpvSizeInt;
               fCountVisibleVisualCodePointsSinceNewLine:TpvSizeInt;
               fCodePointIndex:TpvSizeInt;
+              fMaximumCountCodePointOnLongestLine:TpvSizeInt;
               fLastWasPossibleNewLineTwoCharSequence:boolean;
               fLastCodePoint:TpvUInt32;
               procedure SetLineWrap(const aLineWrap:TpvSizeInt);
@@ -295,6 +296,7 @@ type TpvTextEditor=class
              published
               property CountLines:TpvSizeInt read fCountLines;
               property LineWrap:TpvSizeInt read fLineWrap write SetLineWrap;
+              property MaximumCountCodePointOnLongestLine:TpvSizeInt read fMaximumCountCodePointOnLongestLine;
             end;
             TCoordinate=record
              public
@@ -904,6 +906,7 @@ type TpvTextEditor=class
               procedure SetMarkStartCodePointIndex(const aMarkStartCodePointIndex:TpvSizeInt);
               function GetMarkEndCodePointIndex:TpvSizeInt;
               procedure SetMarkEndCodePointIndex(const aMarkEndCodePointIndex:TpvSizeInt);
+              function GetMaximumVisibleColumnWidth:TpvSizeInt;
               function GetCountLines:TpvSizeInt;
              public
               constructor Create(const aParent:TpvTextEditor); reintroduce;
@@ -957,6 +960,7 @@ type TpvTextEditor=class
               property CodePointIndex:TpvSizeInt read fCodePointIndex write SetCodePointIndex;
               property MarkStartCodePointIndex:TpvSizeInt read GetMarkStartCodePointIndex write SetMarkStartCodePointIndex;
               property MarkEndCodePointIndex:TpvSizeInt read GetMarkEndCodePointIndex write SetMarkEndCodePointIndex;
+              property MaximumVisibleColumnWidth:TpvSizeInt read GetMaximumVisibleColumnWidth;
               property CountLines:TpvSizeInt read GetCountLines;
             end;
        const EmptyMarkState:TMarkState=(
@@ -2496,6 +2500,7 @@ begin
  fLines:=nil;
  fCountLines:=0;
  fLineWrap:=0;
+ fMaximumCountCodePointOnLongestLine:=0;
  Reset;
  Update(-1,-1);
 end;
@@ -2592,7 +2597,7 @@ end;
 procedure TpvTextEditor.TLineCacheMap.Update(const aUntilCodePoint,aUntilLine:TpvSizeInt);
 var CodePoint:TpvUInt32;
     DoStop:TpvInt32;
-    DoNewLine,DoTab:boolean;
+    DoNewLine:boolean;
 begin
 
  if (fCodePointIndex<fRope.fCountCodePoints) and
@@ -2605,14 +2610,16 @@ begin
 
    inc(fCodePointIndex);
 
-   DoTab:=false;
-
    DoNewLine:=false;
 
    case CodePoint of
     $09:begin
-     DoTab:=true;
      fLastWasPossibleNewLineTwoCharSequence:=false;
+     if fParent.fTabWidth>0 then begin
+      inc(fCountVisibleVisualCodePointsSinceNewLine,fParent.fTabWidth-(fCountVisibleVisualCodePointsSinceNewLine mod fParent.fTabWidth));
+     end else begin
+      inc(fCountVisibleVisualCodePointsSinceNewLine);
+     end;
     end;
     $0a,$0d:begin
      if fLastWasPossibleNewLineTwoCharSequence and
@@ -2629,24 +2636,16 @@ begin
     end;
     else begin
      fLastWasPossibleNewLineTwoCharSequence:=false;
+     inc(fCountVisibleVisualCodePointsSinceNewLine);
     end;
    end;
 
-   if fLineWrap>0 then begin
-    if (CodePoint<>10) and (CodePoint<>13) then begin
-     if DoTab and (fParent.fTabWidth>0) then begin
-      inc(fCountVisibleVisualCodePointsSinceNewLine,fParent.fTabWidth-(fCountVisibleVisualCodePointsSinceNewLine mod fParent.fTabWidth));
-     end else begin
-      inc(fCountVisibleVisualCodePointsSinceNewLine);
-     end;
-    end;
-    if fCountVisibleVisualCodePointsSinceNewLine>=fLineWrap then begin
-     fCountVisibleVisualCodePointsSinceNewLine:=0;
-     DoNewLine:=true;
-    end;
+   if fMaximumCountCodePointOnLongestLine<fCountVisibleVisualCodePointsSinceNewLine then begin
+    fMaximumCountCodePointOnLongestLine:=fCountVisibleVisualCodePointsSinceNewLine;
    end;
 
-   if DoNewLine then begin
+   if DoNewLine or
+      ((fLineWrap>0) and (fCountVisibleVisualCodePointsSinceNewLine>=fLineWrap)) then begin
     AddLine(fCodePointIndex);
     fCountVisibleVisualCodePointsSinceNewLine:=0;
     if ((aUntilCodePoint>=0) and (fCodePointIndex>=aUntilCodePoint)) or
@@ -7646,6 +7645,11 @@ begin
   fMarkState.StartCodePointIndex:=-1;
   fMarkState.EndCodePointIndex:=-1;
  end;
+end;
+
+function TpvTextEditor.TView.GetMaximumVisibleColumnWidth:TpvSizeInt;
+begin
+  result:=fVisualLineCacheMap.fMaximumCountCodePointOnLongestLine;
 end;
 
 function TpvTextEditor.TView.GetCountLines:TpvSizeInt;

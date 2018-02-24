@@ -2339,8 +2339,11 @@ type TpvGUIObject=class;
        fViewBufferHeight:TpvSizeInt;
        fViewBufferCursorX:TpvSizeInt;
        fViewBufferCursorY:TpvSizeInt;
+       fViewOldMaximumVisibleColumnWidth:TpvSizeInt;
+       fViewMaximumVisibleColumnWidth:TpvSizeInt;
        fViewOldCountLines:TpvSizeInt;
        fViewCountLines:TpvSizeInt;
+       fViewNonScrollMaximumVisibleColumnWidth:TpvSizeInt;
        fViewNonScrollCountVisibleLines:TpvSizeInt;
        fTime:TpvDouble;
        fDirty:boolean;
@@ -8068,7 +8071,11 @@ end else begin
 
    aMultiLineTextEdit.fViewBufferCursorY:=LineColumn.Line-aMultiLineTextEdit.fView.CursorOffset.y;
 
+   aMultiLineTextEdit.fViewOldMaximumVisibleColumnWidth:=aMultiLineTextEdit.fView.MaximumVisibleColumnWidth;
+
    aMultiLineTextEdit.fViewCountLines:=aMultiLineTextEdit.fView.CountLines;
+
+   aMultiLineTextEdit.fViewNonScrollMaximumVisibleColumnWidth:=aMultiLineTextEdit.fView.NonScrollVisibleAreaWidth;
 
    aMultiLineTextEdit.fViewNonScrollCountVisibleLines:=aMultiLineTextEdit.fView.NonScrollVisibleAreaHeight;
 
@@ -16632,6 +16639,10 @@ begin
 
  fViewBuffer:=nil;
 
+ fViewOldMaximumVisibleColumnWidth:=-2;
+
+ fViewMaximumVisibleColumnWidth:=-2;
+
  fViewOldCountLines:=-2;
 
  fViewCountLines:=-2;
@@ -16798,9 +16809,9 @@ begin
 
  Skin.GetMultiLineTextEditPreferredSize(self);
 
- AvailiableSize:=fSize;
+ AvailiableSize:=fTextAreaRect.Size;
 
- ContentPreferredSize:=fFontCharSize*TpvVector2.Create(1.0,fViewCountLines+1.0);
+ ContentPreferredSize:=fFontCharSize*TpvVector2.Create(fViewMaximumVisibleColumnWidth,fViewCountLines);
 
  HorizontalScrollBarPreferredSize:=fHorizontalScrollBar.GetPreferredSize;
 
@@ -16878,8 +16889,9 @@ begin
 
  fSpacerPanel.Visible:=fHorizontalScrollBar.Visible and fVerticalScrollBar.Visible;
  if fSpacerPanel.Visible then begin
-  fSpacerPanel.fPosition:=AvailiableSize;
-  fSpacerPanel.fSize:=fSize-AvailiableSize;
+  fSpacerPanel.fPosition.x:=fVerticalScrollBar.fPosition.x;
+  fSpacerPanel.fPosition.y:=fHorizontalScrollBar.fPosition.y;
+  fSpacerPanel.fSize:=fSize-fSpacerPanel.fPosition;
  end;
 
 end;
@@ -17355,7 +17367,9 @@ end;
 procedure TpvGUIMultiLineTextEdit.Update;
 begin
  Skin.GetMultiLineTextEditPreferredSize(self);
- if fViewOldCountLines<>fViewCountLines then begin
+ if (fViewOldMaximumVisibleColumnWidth<>fViewMaximumVisibleColumnWidth) or
+    (fViewOldCountLines<>fViewCountLines) then begin
+  fViewOldMaximumVisibleColumnWidth:=fViewMaximumVisibleColumnWidth;
   fViewOldCountLines:=fViewCountLines;
   PerformLayout;
  end;
