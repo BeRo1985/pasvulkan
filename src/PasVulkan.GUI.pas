@@ -1011,7 +1011,8 @@ type TpvGUIObject=class;
        function Leave:boolean; virtual;
        function PointerEnter:boolean; virtual;
        function PointerLeave:boolean; virtual;
-       function DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; virtual;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; virtual;
+       function DragReleaseEvent:boolean; virtual;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; virtual;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; virtual;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; virtual;
@@ -1238,7 +1239,8 @@ type TpvGUIObject=class;
        procedure Center;
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget; override;
        procedure PerformLayout; override;
-       function DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragReleaseEvent:boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -1662,7 +1664,8 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragReleaseEvent:boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -1692,7 +1695,8 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragReleaseEvent:boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -1834,6 +1838,7 @@ type TpvGUIObject=class;
        fButtonSize:TpvFloat;
        fThumbButtonSize:TpvFloat;
        fSliderPushed:boolean;
+       fDragActive:boolean;
        fOnChange:TpvGUIOnEvent;
        fFocusedSubWidget:TpvGUIScrollBarSubWidget;
        fPushedSubWidget:TpvGUIScrollBarSubWidget;
@@ -1856,7 +1861,8 @@ type TpvGUIObject=class;
        function Leave:boolean; override;
        function PointerEnter:boolean; override;
        function PointerLeave:boolean; override;
-       function DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragReleaseEvent:boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -1921,7 +1927,8 @@ type TpvGUIObject=class;
        function Leave:boolean; override;
        function PointerEnter:boolean; override;
        function PointerLeave:boolean; override;
-       function DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragReleaseEvent:boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -2112,7 +2119,8 @@ type TpvGUIObject=class;
        function Leave:boolean; override;
        function PointerEnter:boolean; override;
        function PointerLeave:boolean; override;
-       function DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragReleaseEvent:boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -2192,7 +2200,8 @@ type TpvGUIObject=class;
        function Leave:boolean; override;
        function PointerEnter:boolean; override;
        function PointerLeave:boolean; override;
-       function DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragReleaseEvent:boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -2247,7 +2256,8 @@ type TpvGUIObject=class;
        function Leave:boolean; override;
        function PointerEnter:boolean; override;
        function PointerLeave:boolean; override;
-       function DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragReleaseEvent:boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -2278,7 +2288,8 @@ type TpvGUIObject=class;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
-       function DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragReleaseEvent:boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -2386,7 +2397,8 @@ type TpvGUIObject=class;
        procedure DeleteSelectedText;
        procedure SelectAll;
        procedure SelectNone;
-       function DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragReleaseEvent:boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -9029,7 +9041,12 @@ begin
  result:=assigned(fOnPointerLeave) and fOnPointerLeave(self);
 end;
 
-function TpvGUIWidget.DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIWidget.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUIWidget.DragReleaseEvent:boolean;
 begin
  result:=false;
 end;
@@ -9734,13 +9751,16 @@ begin
       TpvApplicationInputPointerEventType.Down:begin
        case aPointerEvent.Button of
         TpvApplicationInputPointerButton.Left,TpvApplicationInputPointerButton.Right:begin
+         if assigned(fDragWidget) then begin
+          fDragWidget.DragReleaseEvent;
+         end;
          TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
          CurrentWidget:=FindWidget(aPointerEvent.Position);
          if assigned(CurrentWidget) and
             (CurrentWidget<>self) and
             CurrentWidget.Draggable and
-            CurrentWidget.DragEvent(aPointerEvent.Position-CurrentWidget.AbsolutePosition,
-                                    aPointerEvent.Button) then begin
+            CurrentWidget.DragAcquireEvent(aPointerEvent.Position-CurrentWidget.AbsolutePosition,
+                                           aPointerEvent.Button) then begin
           fDragWidget:=CurrentWidget;
           fDragWidget.IncRef;
          end else begin
@@ -9751,6 +9771,9 @@ begin
          end;
         end;
         else begin
+         if assigned(fDragWidget) then begin
+          fDragWidget.DragReleaseEvent;
+         end;
          TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
         end;
        end;
@@ -9760,12 +9783,15 @@ begin
        if assigned(CurrentWidget) and CurrentWidget.HasParent(fDragWidget) then begin
         CurrentWidget:=fDragWidget;
        end;
-       if assigned(fDragWidget) and (fDragWidget<>CurrentWidget) then begin
-        LocalPointerEvent:=aPointerEvent;
-        LocalPointerEvent.PointerEventType:=TpvApplicationInputPointerEventType.Up;
-        LocalPointerEvent.Button:=TpvApplicationInputPointerButton.Left;
-        LocalPointerEvent.Position:=LocalPointerEvent.Position-fDragWidget.AbsolutePosition;
-        fDragWidget.PointerEvent(LocalPointerEvent);
+       if assigned(fDragWidget) then begin
+        if fDragWidget<>CurrentWidget then begin
+         LocalPointerEvent:=aPointerEvent;
+         LocalPointerEvent.PointerEventType:=TpvApplicationInputPointerEventType.Up;
+         LocalPointerEvent.Button:=TpvApplicationInputPointerButton.Left;
+         LocalPointerEvent.Position:=LocalPointerEvent.Position-fDragWidget.AbsolutePosition;
+         fDragWidget.PointerEvent(LocalPointerEvent);
+        end;
+        fDragWidget.DragReleaseEvent;
        end;
        TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
       end;
@@ -10327,7 +10353,12 @@ begin
  end;
 end;
 
-function TpvGUIWindow.DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIWindow.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+begin
+ result:=true;
+end;
+
+function TpvGUIWindow.DragReleaseEvent:boolean;
 begin
  result:=true;
 end;
@@ -12607,9 +12638,14 @@ begin
  end;
 end;
 
-function TpvGUIIntegerEdit.DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIIntegerEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
 begin
  result:=fSpinnable and fDragRect.Touched(aPosition);
+end;
+
+function TpvGUIIntegerEdit.DragReleaseEvent:boolean;
+begin
+ result:=true;
 end;
 
 function TpvGUIIntegerEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -12875,9 +12911,14 @@ begin
  end;
 end;
 
-function TpvGUIFloatEdit.DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIFloatEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
 begin
  result:=fSpinnable and fDragRect.Touched(aPosition);
+end;
+
+function TpvGUIFloatEdit.DragReleaseEvent:boolean;
+begin
+ result:=true;
 end;
 
 function TpvGUIFloatEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -13839,6 +13880,8 @@ begin
 
  fSliderPushed:=false;
 
+ fDragActive:=false;
+
  fOnChange:=nil;
 
  fFocusedSubWidget:=TpvGUIScrollBarSubWidget.None;
@@ -14004,9 +14047,18 @@ begin
  result:=inherited PointerLeave;
 end;
 
-function TpvGUIScrollBar.DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIScrollBar.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
 begin
- result:=GetThumbButtonRect.Touched(aPosition);
+ result:=GetThumbButtonRect.Touched(aPosition) and (aButton=TpvApplicationInputPointerButton.Left);
+ if result then begin
+  fDragActive:=true;
+ end;
+end;
+
+function TpvGUIScrollBar.DragReleaseEvent:boolean;
+begin
+ fDragActive:=false;
+ result:=true;
 end;
 
 function TpvGUIScrollBar.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -14200,44 +14252,46 @@ begin
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Drag:begin
+     if fDragActive then begin
 {$if true}
-     case fOrientation of
-      TpvGUIScrollBarOrientation.Horizontal:begin
-       SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(ThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
+      case fOrientation of
+       TpvGUIScrollBarOrientation.Horizontal:begin
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.x-(fButtonSize+(ThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
+       end;
+       else {TpvGUIScrollBarOrientation.Vertical:}begin
+        SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(ThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
+       end;
       end;
-      else {TpvGUIScrollBarOrientation.Vertical:}begin
-       SetValue(round(fMinimumValue+((aPointerEvent.Position.y-(fButtonSize+(ThumbButtonSize*0.5)))*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+(ThumbButtonSize*1.0)))))));
-      end;
-     end;
 {$else}
-     case fOrientation of
-      TpvGUIScrollBarOrientation.Horizontal:begin
-       if (aPointerEvent.Position.x>=GetThumbButtonRect.Left) and
-          (aPointerEvent.Position.x<=GetThumbButtonRect.Right) then begin
-        Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+ThumbButtonSize))));
-       end else begin
-        Step:=0;
+      case fOrientation of
+       TpvGUIScrollBarOrientation.Horizontal:begin
+        if (aPointerEvent.Position.x>=GetThumbButtonRect.Left) and
+           (aPointerEvent.Position.x<=GetThumbButtonRect.Right) then begin
+         Step:=round(aPointerEvent.RelativePosition.x*((fMaximumValue-fMinimumValue)/Max(1,Width-((fButtonSize*2.0)+ThumbButtonSize))));
+        end else begin
+         Step:=0;
+        end;
+       end;
+       else {TpvGUIScrollBarOrientation.Vertical:}begin
+        if (aPointerEvent.Position.y>=GetThumbButtonRect.Top) and
+           (aPointerEvent.Position.y<=GetThumbButtonRect.Bottom) then begin
+         Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+ThumbButtonSize))));
+        end else begin
+         Step:=0;
+        end;
        end;
       end;
-      else {TpvGUIScrollBarOrientation.Vertical:}begin
-       if (aPointerEvent.Position.y>=GetThumbButtonRect.Top) and
-          (aPointerEvent.Position.y<=GetThumbButtonRect.Bottom) then begin
-        Step:=round(aPointerEvent.RelativePosition.y*((fMaximumValue-fMinimumValue)/Max(1,Height-((fButtonSize*2.0)+ThumbButtonSize))));
-       end else begin
-        Step:=0;
-       end;
+      if ((Step>0) and ((fValue+Step)<=fMaximumValue) and not (fValue>(fValue+Step))) or
+         ((Step<0) and ((fValue+Step)>=fMinimumValue) and not (fValue<(fValue+Step))) then begin
+       SetValue(fValue+Step);
+      end else if Step<0 then begin
+       SetValue(fMinimumValue);
+      end else if Step>0 then begin
+       SetValue(fMaximumValue);
       end;
-     end;
-     if ((Step>0) and ((fValue+Step)<=fMaximumValue) and not (fValue>(fValue+Step))) or
-        ((Step<0) and ((fValue+Step)>=fMinimumValue) and not (fValue<(fValue+Step))) then begin
-      SetValue(fValue+Step);
-     end else if Step<0 then begin
-      SetValue(fMinimumValue);
-     end else if Step>0 then begin
-      SetValue(fMaximumValue);
-     end;
 {$ifend}
-     result:=true;
+      result:=true;
+     end;
     end;
    end;
   end;
@@ -14451,9 +14505,14 @@ begin
  result:=inherited PointerLeave;
 end;
 
-function TpvGUISlider.DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUISlider.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
 begin
  result:=GetThumbButtonRect.Touched(aPosition);
+end;
+
+function TpvGUISlider.DragReleaseEvent:boolean;
+begin
+ result:=true;
 end;
 
 function TpvGUISlider.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -15346,7 +15405,12 @@ begin
  result:=inherited PointerLeave;
 end;
 
-function TpvGUITabPanel.DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUITabPanel.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUITabPanel.DragReleaseEvent:boolean;
 begin
  result:=false;
 end;
@@ -15736,7 +15800,12 @@ begin
  result:=inherited PointerLeave;
 end;
 
-function TpvGUIListBox.DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIListBox.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUIListBox.DragReleaseEvent:boolean;
 begin
  result:=false;
 end;
@@ -16136,7 +16205,12 @@ begin
  result:=inherited PointerLeave;
 end;
 
-function TpvGUIComboBox.DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIComboBox.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUIComboBox.DragReleaseEvent:boolean;
 begin
  result:=false;
 end;
@@ -16294,7 +16368,12 @@ begin
  result:=Skin.GetSplitterPanelGripButtonPreferredSize(self);
 end;
 
-function TpvGUISplitterPanelGripButton.DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUISplitterPanelGripButton.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+begin
+ result:=true;
+end;
+
+function TpvGUISplitterPanelGripButton.DragReleaseEvent:boolean;
 begin
  result:=true;
 end;
@@ -16972,7 +17051,7 @@ begin
  fTime:=0.0;
 end;
 
-function TpvGUIMultiLineTextEdit.DragEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+function TpvGUIMultiLineTextEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
 begin
  result:=aButton=TpvApplicationInputPointerButton.Left;
  if result then begin
@@ -16985,6 +17064,11 @@ begin
    fPopupMenu.Deactivate;
   end;
  end;
+end;
+
+function TpvGUIMultiLineTextEdit.DragReleaseEvent:boolean;
+begin
+ result:=true;
 end;
 
 function TpvGUIMultiLineTextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
