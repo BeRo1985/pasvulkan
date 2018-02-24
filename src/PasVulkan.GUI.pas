@@ -8071,7 +8071,7 @@ end else begin
 
    aMultiLineTextEdit.fViewBufferCursorY:=LineColumn.Line-aMultiLineTextEdit.fView.CursorOffset.y;
 
-   aMultiLineTextEdit.fViewOldMaximumVisibleColumnWidth:=aMultiLineTextEdit.fView.MaximumVisibleColumnWidth;
+   aMultiLineTextEdit.fViewMaximumVisibleColumnWidth:=aMultiLineTextEdit.fView.MaximumVisibleColumnWidth;
 
    aMultiLineTextEdit.fViewCountLines:=aMultiLineTextEdit.fView.CountLines;
 

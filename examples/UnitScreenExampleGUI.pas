@@ -488,7 +488,7 @@ begin
 
  AutoSize:=false;
 
- Width:=500;
+ Width:=550;
  Height:=350;
 
  fMultiLineTextEdit0:=TpvGUIMultiLineTextEdit.Create(Content);
@@ -513,7 +513,7 @@ begin
                            #9'begin'#13#10+
                            #9#9'WriteLn(''Yay!''#$20''1 + 3 is 4 (hopefully)'');'#13#10+
                            #9'end;'#13#10+
-                           'end.'#13#10;
+                           'end.';
 
 end;
 
