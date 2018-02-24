@@ -945,6 +945,7 @@ type TpvTextEditor=class
               property Buffer:TBufferItems read fBuffer;
               property BufferLineIndices:TBufferLineIndices read fBufferLineIndices;
               property Cursor:TCoordinate read fCursor;
+              property CursorOffset:TCoordinate read fCursorOffset write fCursorOffset;
               property LineColumn:TLineColumn read fLineColumn write SetLineColumn;
              published
               property AutoIdentOnEnterMode:TAutoIdentOnEnterMode read fAutoIdentOnEnterMode write fAutoIdentOnEnterMode;
@@ -3323,6 +3324,7 @@ begin
  if assigned(fSyntaxHighlighting) then begin
   fSyntaxHighlighting.Reset;
  end;
+ EnsureViewCursorsAreVisible(true);
 end;
 
 procedure TpvTextEditor.LoadFromFile(const aFileName:string);
@@ -3347,6 +3349,7 @@ begin
  if assigned(fSyntaxHighlighting) then begin
   fSyntaxHighlighting.Reset;
  end;
+ EnsureViewCursorsAreVisible(true);
 end;
 
 procedure TpvTextEditor.SaveToStream(const aStream:TStream);
@@ -3395,6 +3398,7 @@ begin
  if assigned(fSyntaxHighlighting) then begin
   fSyntaxHighlighting.Reset;
  end;
+ EnsureViewCursorsAreVisible(true);
 end;
 
 function TpvTextEditor.GetLine(const aLineIndex:TpvSizeInt):TpvUTF8String;
@@ -7748,7 +7752,7 @@ begin
 
  EnsureCodePointIndexIsInRange;
 
- EnsureCursorIsVisible(true);
+ //EnsureCursorIsVisible(true);
 
  BufferSize:=VisibleAreaWidth*VisibleAreaHeight;
 
@@ -8290,7 +8294,7 @@ begin
  end else begin
   PrependedWhiteSpace:='';
   if fAutoIdentOnEnterMode<>TAutoIdentOnEnterMode.None then begin
-   LineIndex:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
+  LineIndex:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(fCodePointIndex);
    if LineIndex>=0 then begin
     StartCodePointIndex:=fParent.fLineCacheMap.GetCodePointIndexFromLineIndex(LineIndex);
     StopCodePointIndex:=fParent.fLineCacheMap.GetCodePointIndexFromNextLineIndexOrTextEnd(LineIndex);
@@ -8356,6 +8360,9 @@ begin
    fParent.fCountLines:=OldCountLines+1;
   end;
  end;
+ ClampMarkCodePointIndices;
+ EnsureCodePointIndexIsInRange;
+ EnsureCursorIsVisible(true);
  fParent.UpdateViewCursors;
 end;
 
@@ -8371,6 +8378,7 @@ begin
    end;
   end;
  end;
+ EnsureCursorIsVisible(true);
  fParent.fUndoRedoManager.IncreaseActionID;
 end;
 
@@ -8386,6 +8394,7 @@ begin
    end;
   end;
  end;
+ EnsureCursorIsVisible(true);
  fParent.fUndoRedoManager.IncreaseActionID;
 end;
 
@@ -8400,6 +8409,7 @@ begin
   end;
   dec(fCodePointIndex,Count);
  end;
+ EnsureCursorIsVisible(true);
  fParent.fUndoRedoManager.IncreaseActionID;
 end;
 
@@ -8414,6 +8424,7 @@ begin
   end;
   inc(fCodePointIndex,Count);
  end;
+ EnsureCursorIsVisible(true);
  fParent.fUndoRedoManager.IncreaseActionID;
 end;
 
@@ -8427,6 +8438,7 @@ begin
   LineIndex:=fParent.fLineCacheMap.GetLineIndexFromCodePointIndex(fParent.fRope.CountCodePoints);
   fCodePointIndex:=fParent.fLineCacheMap.GetCodePointIndexFromLineIndex(LineIndex);
  end;
+ EnsureCursorIsVisible(true);
  fParent.fUndoRedoManager.IncreaseActionID;
 end;
 
@@ -8442,6 +8454,7 @@ begin
    end;
   end;
  end;
+ EnsureCursorIsVisible(true);
  fParent.fUndoRedoManager.IncreaseActionID;
 end;
 
