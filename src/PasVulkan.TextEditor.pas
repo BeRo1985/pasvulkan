@@ -1235,7 +1235,6 @@ begin
 end;
 
 class function TpvTextEditor.TUTF8Utils.UTF8CountNewLines(const aString:TpvUTF8String):TpvSizeInt;
-{$if true}
 var Index,Len:TpvSizeInt;
 begin
  result:=0;
@@ -1243,18 +1242,29 @@ begin
  Len:=length(aString);
  while Index<=Len do begin
   case aString[Index] of
-   #10:begin
+   #$0a:begin
     inc(result);
     inc(Index);
-    if (Index<=Len) and (aString[Index]=#13) then begin
+    if (Index<=Len) and (aString[Index]=#$0d) then begin
      inc(Index);
     end;
    end;
-   #13:begin
+   #$0d:begin
     inc(result);
     inc(Index);
-    if (Index<=Len) and (aString[Index]=#10) then begin
+    if (Index<=Len) and (aString[Index]=#$0a) then begin
      inc(Index);
+    end;
+   end;
+   #$0b,#$0c:begin
+    inc(result);
+    inc(Index);
+   end;
+   #$80..#$ff:begin
+    case TpvTextEditor.TUTF8Utils.UTF8GetCodePointAndIncFallback(aString,Index) of
+     $0a,$0b,$0c,$0d,$85,$2028,$2029:begin
+      inc(Index);
+     end;
     end;
    end;
    else begin
@@ -1263,30 +1273,6 @@ begin
   end;
  end;
 end;
-{$else}
-var CurrentChar,LastChar:TpvRawByteChar;
-    LastWasPossibleNewLineTwoCharSequence:boolean;
-begin
- result:=0;
- LastChar:=#0;
- LastWasPossibleNewLineTwoCharSequence:=false;
- for CurrentChar in aString do begin
-  case CurrentChar of
-   #$0a,#$0d:begin
-    if LastWasPossibleNewLineTwoCharSequence and
-       (((CurrentChar=#$0a) and (LastChar=#$0d)) or
-        ((CurrentChar=#$0d) and (LastChar=#$0a))) then begin
-     LastWasPossibleNewLineTwoCharSequence:=false;
-    end else begin
-     LastWasPossibleNewLineTwoCharSequence:=true;
-     inc(result);
-    end;
-   end;
-  end;
-  LastChar:=CurrentChar;
- end;
-end;
-{$ifend}
 
 class function TpvTextEditor.TUTF8Utils.RawDataToUTF8String(const aData;const aDataLength:TpvInt32;const aCodePage:TpvInt32=-1):TpvUTF8String;
 type TBytes=array[0..65535] of TpvUInt8;
@@ -2353,7 +2339,7 @@ begin
  result:=false;
  for CodePoint in GetCodePointEnumeratorSource(aCodePointIndex,aCodePointIndex+1) do begin
   case CodePoint of
-   $0a,$0d:begin
+   $0a,$0b,$0c,$0d,$85,$2028,$2029:begin
     result:=true;
    end;
    else begin
@@ -2408,6 +2394,10 @@ begin
      LastWasPossibleNewLineTwoCharSequence:=true;
      inc(result);
     end;
+   end;
+   $0b,$0c,$85,$2028,$2029:begin
+    LastWasPossibleNewLineTwoCharSequence:=false;
+    inc(result);
    end;
   end;
   LastCodePoint:=CodePoint;
@@ -2637,6 +2627,10 @@ begin
       fLastWasPossibleNewLineTwoCharSequence:=true;
      end;
     end;
+    $0b,$0c,$85,$2028,$2029:begin
+     fLastWasPossibleNewLineTwoCharSequence:=false;
+     DoNewLine:=true;
+    end;
     else begin
      fLastWasPossibleNewLineTwoCharSequence:=false;
      inc(fCountVisibleVisualCodePointsSinceNewLine);
@@ -2757,6 +2751,9 @@ begin
         LastWasPossibleNewLineTwoCharSequence:=true;
        end;
       end;
+{     $0b,$0c,$85,$2028,$2029:begin
+       LastWasPossibleNewLineTwoCharSequence:=false;
+      end;}
       else begin
        LastWasPossibleNewLineTwoCharSequence:=false;
       end;
@@ -2869,6 +2866,9 @@ begin
        LastWasPossibleNewLineTwoCharSequence:=true;
       end;
      end;
+{    $0b,$0c,$85,$2028,$2029:begin
+      LastWasPossibleNewLineTwoCharSequence:=false;
+     end;}
      else begin
       LastWasPossibleNewLineTwoCharSequence:=false;
      end;
@@ -3415,7 +3415,17 @@ begin
      (StartCodePointIndex<StopCodePointIndex) then begin
    result:=fRope.Extract(StartCodePointIndex,StopCodePointIndex-StartCodePointIndex);
    for CodeUnitIndex:=length(result) downto 1 do begin
-    if not (result[CodeUnitIndex] in [AnsiChar(#10),AnsiChar(#13)]) then begin
+    if not ((result[CodeUnitIndex] in [AnsiChar(#$0a),
+                                       AnsiChar(#$0b),
+                                       AnsiChar(#$0c),
+                                       AnsiChar(#$0d)]) or
+            (((CodeUnitIndex+1)<=length(result)) and
+              (result[CodeUnitIndex]=AnsiChar(#$c2)) and // $85
+              (result[CodeUnitIndex+1]=AnsiChar(#$85))) or
+            (((CodeUnitIndex+2)<=length(result)) and
+              (result[CodeUnitIndex]=AnsiChar(#$e2)) and // $2028 and $2029
+              (result[CodeUnitIndex+1]=AnsiChar(#$80)) and
+              (result[CodeUnitIndex+2] in [AnsiChar(#$a8),AnsiChar(#$a9)]))) then begin
      result:=Copy(result,1,CodeUnitIndex+1);
      break;
     end;
@@ -4582,7 +4592,7 @@ var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
      end;
     end;
    end;
-   10:begin
+   $0a:begin
     case aMultiLineCPreprocessorState of
      TMultiLineCPreprocessorState.Maybe:begin
       aMultiLineCPreprocessorState:=TMultiLineCPreprocessorState.LastLFSkipCR;
@@ -4595,12 +4605,22 @@ var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
      end;
     end;
    end;
-   13:begin
+   $0d:begin
     case aMultiLineCPreprocessorState of
      TMultiLineCPreprocessorState.Maybe:begin
       aMultiLineCPreprocessorState:=TMultiLineCPreprocessorState.LastCRSkipLF;
      end;
      TMultiLineCPreprocessorState.LastLFSkipCR:begin
+      aMultiLineCPreprocessorState:=TMultiLineCPreprocessorState.Skip;
+     end;
+     else begin
+      aMultiLineCPreprocessorState:=TMultiLineCPreprocessorState.None;
+     end;
+    end;
+   end;
+   $0b,$0c,$85,$2028,$2029:begin
+    case aMultiLineCPreprocessorState of
+     TMultiLineCPreprocessorState.Maybe:begin
       aMultiLineCPreprocessorState:=TMultiLineCPreprocessorState.Skip;
      end;
      else begin
@@ -4625,7 +4645,9 @@ var CodePointEnumeratorSource:TpvTextEditor.TRope.TCodePointEnumeratorSource;
     ParserStates[1].Valid:=ParserStates[1].CodePointEnumerator.MoveNext;
     inc(ParserStates[1].CodePointIndex);
     if (ParserStates[1].MultiLineCPreprocessorState=TMultiLineCPreprocessorState.None) and
-       ((CodePoint in [10,13]) or
+       (((CodePoint in [$0a,$0b,$0c,$0d,$85]) or
+         (CodePoint=$2028) or
+         (CodePoint=$2029)) or
         (ParserStates[1].CodePointIndex=fParent.fRope.fCountCodePoints)) then begin
      ParserStates[1].NewLine:=ParserStates[1].NewLine or 2;
     end;
@@ -4718,7 +4740,9 @@ begin
     ParserStates[1].NewLine:=ParserStates[1].NewLine shr 1;
 
     if (ParserStates[1].MultiLineCPreprocessorState=TMultiLineCPreprocessorState.None) and
-       ((CodePoint in [10,13]) or
+       (((CodePoint in [$0a,$0b,$0c,$0d,$85]) or
+         (CodePoint=$2028) or
+         (CodePoint=$2029)) or
         (ParserStates[1].CodePointIndex=fParent.fRope.fCountCodePoints)) then begin
      ParserStates[1].NewLine:=ParserStates[1].NewLine or 2;
     end;
@@ -4909,7 +4933,7 @@ begin
  AddRule('\(\*\*\)|\{\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\(\*\$.*|\{\$.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor);
  AddRule('\(\*.*|\{.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule('//.*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment); // or alternatively '//[^'#10#13']*['#10#13']?'
+ AddRule('//.*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\#(\$[0-9A-Fa-f]*|[0-9]*)',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\$[0-9A-Fa-f]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -5045,7 +5069,7 @@ begin
  AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\/\*.*\*\/',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\/\*.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule('//.*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment); // or alternatively '//[^'#10#13']*['#10#13']?'
+ AddRule('//.*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule(TpvRawByteString('[A-Za-z\_\$'#128'-'#255'][A-Za-z0-9\_\$'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -7190,7 +7214,10 @@ begin
     opBOL:begin
      if (aPosition=0) or
         ((TRegularExpressionFlag.MultiLine in fFlags) and
-         ((aPosition>0) and (fCodePointWindow[aWindowOffset-1] in [10,13]))) then begin
+         ((aPosition>0) and
+          ((fCodePointWindow[aWindowOffset-1] in [$0a,$0b,$0c,$0d,$85]) or
+           (fCodePointWindow[aWindowOffset-1]=$2028) or
+           (fCodePointWindow[aWindowOffset-1]=$2029)))) then begin
       aInstruction:=aInstruction^.Next;
       continue;
      end else begin
@@ -7202,7 +7229,9 @@ begin
      if ((aPosition+1)>=fParent.fRope.CountCodePoints) or
         ((TRegularExpressionFlag.MultiLine in fFlags) and
          (((aPosition+1)<fParent.fRope.CountCodePoints) and
-          (fCodePointWindow[aWindowOffset+1] in [10,13]))) then begin
+          ((fCodePointWindow[aWindowOffset+1] in [$0a,$0b,$0c,$0d,$85]) or
+           (fCodePointWindow[aWindowOffset+1]=$2028) or
+           (fCodePointWindow[aWindowOffset+1]=$2029)))) then begin
       aInstruction:=aInstruction^.Next;
       continue;
      end else begin
@@ -7946,7 +7975,7 @@ begin
       CodePoint:=32;
       StepWidth:=Max(1,(fParent.fTabWidth-(ColumnIndex mod fParent.fTabWidth)));
      end;
-     $0a,$0d:begin
+     $0a,$0b,$0c,$0d,$85,$2028,$2029:begin
       CodePoint:=32;
       StepWidth:=0;
      end;
@@ -8165,8 +8194,12 @@ begin
  if HasDeletedMarkedRange then begin
   fParent.fUndoRedoManager.GroupUndoRedoCommands(UndoRedoHistoryIndex+1,fParent.fUndoRedoManager.fHistoryIndex);
  end;
- if (OldCountLines>=0) and (aCodePoint in [10,13]) then begin
-  fParent.fCountLines:=OldCountLines+1;
+ if OldCountLines>=0 then begin
+  case aCodePoint of
+   $0a,$0b,$0c,$0d,$85,$2028,$2029:begin
+    fParent.fCountLines:=OldCountLines+1;
+   end;
+  end;
  end;
  fParent.UpdateViewCodePointIndices(fCodePointIndex,1);
  fParent.EnsureViewCodePointIndicesAreInRange;
