@@ -904,6 +904,7 @@ type TpvTextEditor=class
               procedure SetMarkStartCodePointIndex(const aMarkStartCodePointIndex:TpvSizeInt);
               function GetMarkEndCodePointIndex:TpvSizeInt;
               procedure SetMarkEndCodePointIndex(const aMarkEndCodePointIndex:TpvSizeInt);
+              function GetCountLines:TpvSizeInt;
              public
               constructor Create(const aParent:TpvTextEditor); reintroduce;
               destructor Destroy; override;
@@ -955,6 +956,7 @@ type TpvTextEditor=class
               property CodePointIndex:TpvSizeInt read fCodePointIndex write SetCodePointIndex;
               property MarkStartCodePointIndex:TpvSizeInt read GetMarkStartCodePointIndex write SetMarkStartCodePointIndex;
               property MarkEndCodePointIndex:TpvSizeInt read GetMarkEndCodePointIndex write SetMarkEndCodePointIndex;
+              property CountLines:TpvSizeInt read GetCountLines;
             end;
        const EmptyMarkState:TMarkState=(
               StartCodePointIndex:-1;
@@ -7639,6 +7641,16 @@ begin
  end else begin
   fMarkState.StartCodePointIndex:=-1;
   fMarkState.EndCodePointIndex:=-1;
+ end;
+end;
+
+function TpvTextEditor.TView.GetCountLines:TpvSizeInt;
+begin
+ if fVisualLineCacheMap.fLineWrap>0 then begin
+  fVisualLineCacheMap.Update(-1,-1);
+  result:=fVisualLineCacheMap.CountLines;
+ end else begin
+  result:=fParent.GetCountLines;
  end;
 end;
 
