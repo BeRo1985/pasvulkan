@@ -8197,6 +8197,8 @@ begin
                               (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(6.5,0.0))+
                               TpvVector2.Create(0.0,aMultiLineTextEdit.fLeftSideBarAreaRect.Height*0.5),
                               TpvVector2.Create(1.0,aMultiLineTextEdit.fLeftSideBarAreaRect.Height*0.5));
+  TextClipRect.Left:=TextClipRect.Left+(aMultiLineTextEdit.fFontCharSize.x*7.0);
+  aCanvas.ClipRect:=TextClipRect;
  end;
 
  ViewBufferIndex:=0;
@@ -8270,7 +8272,11 @@ begin
  if aMultiLineTextEdit.Enabled and
     aMultiLineTextEdit.Focused and
     aMultiLineTextEdit.Editable and
-    (frac(aMultiLineTextEdit.fTime)<0.5) then begin
+    (frac(aMultiLineTextEdit.fTime)<0.5) and
+    (aMultiLineTextEdit.fViewBufferCursorX>=0) and
+    (aMultiLineTextEdit.fViewBufferCursorX<=aMultiLineTextEdit.fViewBufferWidth) and
+    (aMultiLineTextEdit.fViewBufferCursorY>=0) and
+    (aMultiLineTextEdit.fViewBufferCursorY<=aMultiLineTextEdit.fViewBufferHeight) then begin
   if aMultiLineTextEdit.fOverwrite then begin
    aCanvas.DrawFilledRectangle(aMultiLineTextEdit.fTextAreaRect.Offset+
                                (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(aMultiLineTextEdit.fViewBufferCursorX+0.5,aMultiLineTextEdit.fViewBufferCursorY+0.5)),
