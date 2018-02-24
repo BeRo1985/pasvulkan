@@ -889,6 +889,7 @@ type TpvTextEditor=class
               fCodePointIndex:TpvSizeInt;
               fCursorOffset:TCoordinate;
               fCursor:TCoordinate;
+              fVisualLineColumn:TLineColumn;
               fLineColumn:TLineColumn;
               fLineWrap:TpvSizeInt;
               fVisualLineCacheMap:TLineCacheMap;
@@ -900,6 +901,7 @@ type TpvTextEditor=class
               procedure SetNonScrollVisibleAreaWidth(const aNonScrollVisibleAreaWidth:TpvSizeInt);
               procedure SetNonScrollVisibleAreaHeight(const aNonScrollVisibleAreaHeight:TpvSizeInt);
               procedure SetLineWrap(const aLineWrap:TpvSizeInt);
+              procedure SetVisualLineColumn(const aVisualLineColumn:TLineColumn);
               procedure SetLineColumn(const aLineColumn:TLineColumn);
               procedure SetCodePointIndex(const aCodePointIndex:TpvSizeInt);
               function GetMarkStartCodePointIndex:TpvSizeInt;
@@ -949,6 +951,7 @@ type TpvTextEditor=class
               property BufferLineIndices:TBufferLineIndices read fBufferLineIndices;
               property Cursor:TCoordinate read fCursor;
               property CursorOffset:TCoordinate read fCursorOffset write fCursorOffset;
+              property VisualLineColumn:TLineColumn read fVisualLineColumn write SetVisualLineColumn;
               property LineColumn:TLineColumn read fLineColumn write SetLineColumn;
              published
               property AutoIdentOnEnterMode:TAutoIdentOnEnterMode read fAutoIdentOnEnterMode write fAutoIdentOnEnterMode;
@@ -7598,6 +7601,13 @@ begin
  end;
 end;
 
+procedure TpvTextEditor.TView.SetVisualLineColumn(const aVisualLineColumn:TLineColumn);
+begin
+ fCodePointIndex:=fVisualLineCacheMap.GetCodePointIndexFromLineIndexAndColumnIndex(aVisualLineColumn.Line,aVisualLineColumn.Column);
+ EnsureCodePointIndexIsInRange;
+ EnsureCursorIsVisible(true);
+end;
+
 procedure TpvTextEditor.TView.SetLineColumn(const aLineColumn:TLineColumn);
 begin
  fCodePointIndex:=fParent.fLineCacheMap.GetCodePointIndexFromLineIndexAndColumnIndex(aLineColumn.Line,aLineColumn.Column);
@@ -7711,6 +7721,11 @@ begin
   fLineColumn.Column:=CurrentColumnIndex;
  end;
 
+ if aUpdateCursor and fVisualLineCacheMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,CurrentLineIndex,CurrentColumnIndex) then begin
+  fVisualLineColumn.Line:=CurrentLineIndex;
+  fVisualLineColumn.Column:=CurrentColumnIndex;
+ end;
+
 end;
 
 function TpvTextEditor.TView.GetCodePointIndexFromRelativeCursorPosition(const aX,aY:TpvSizeInt):TpvSizeInt;
@@ -7723,6 +7738,8 @@ procedure TpvTextEditor.TView.UpdateCursor;
 var CurrentLineIndex,CurrentColumnIndex:TpvSizeInt;
 begin
  if fVisualLineCacheMap.GetLineIndexAndColumnIndexFromCodePointIndex(fCodePointIndex,CurrentLineIndex,CurrentColumnIndex) then begin
+  fVisualLineColumn.Line:=CurrentLineIndex;
+  fVisualLineColumn.Column:=CurrentColumnIndex;
   fCursor.x:=CurrentColumnIndex-fCursorOffset.x;
   fCursor.y:=CurrentLineIndex-fCursorOffset.y;
  end;

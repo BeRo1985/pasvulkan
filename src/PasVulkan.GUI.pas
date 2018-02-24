@@ -2361,6 +2361,8 @@ type TpvGUIObject=class;
        fLeftSideBar:boolean;
        fEditable:boolean;
        fOverwrite:boolean;
+       fOldLineWrap:boolean;
+       fLineWrap:boolean;
        fVisibleAreaRect:TpvRect;
        fLeftSideBarAreaRect:TpvRect;
        fTextAreaRect:TpvRect;
@@ -2415,6 +2417,7 @@ type TpvGUIObject=class;
        property LeftSideBar:boolean read fLeftSideBar write fLeftSideBar;
        property Editable:boolean read fEditable write fEditable;
        property Overwrite:boolean read fOverwrite write fOverwrite;
+       property LineWrap:boolean read fLineWrap write fLineWrap;
        property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
@@ -8015,7 +8018,8 @@ begin
  aMultiLineTextEdit.fVisibleAreaRect:=TpvRect.CreateAbsolute(TpvVector2.Null,
                                                              aMultiLineTextEdit.fSize);
 
- if aMultiLineTextEdit.fHorizontalScrollBar.Visible then begin
+ if aMultiLineTextEdit.fHorizontalScrollBar.Visible and not
+    aMultiLineTextEdit.fLineWrap then begin
   aMultiLineTextEdit.fVisibleAreaRect.Bottom:=aMultiLineTextEdit.fVisibleAreaRect.Bottom-aMultiLineTextEdit.fHorizontalScrollBar.Height;
  end;
 
@@ -8055,7 +8059,8 @@ end else begin
  if (aMultiLineTextEdit.fView.VisibleAreaWidth<>VisibleAreaWidth) or
     (aMultiLineTextEdit.fView.VisibleAreaHeight<>VisibleAreaHeight) or
     (aMultiLineTextEdit.fView.NonScrollVisibleAreaWidth<>NonScrollVisibleAreaWidth) or
-    (aMultiLineTextEdit.fView.NonScrollVisibleAreaHeight<>NonScrollVisibleAreaHeight) then begin
+    (aMultiLineTextEdit.fView.NonScrollVisibleAreaHeight<>NonScrollVisibleAreaHeight) or
+    (aMultiLineTextEdit.fOldLineWrap<>aMultiLineTextEdit.fLineWrap) then begin
 
   aMultiLineTextEdit.fView.VisibleAreaWidth:=VisibleAreaWidth;
   aMultiLineTextEdit.fView.VisibleAreaHeight:=VisibleAreaHeight;
@@ -8064,6 +8069,14 @@ end else begin
   aMultiLineTextEdit.fView.NonScrollVisibleAreaHeight:=NonScrollVisibleAreaHeight;
 
   aMultiLineTextEdit.fDirty:=true;
+
+  if aMultiLineTextEdit.fLineWrap then begin
+   aMultiLineTextEdit.fView.LineWrap:=NonScrollVisibleAreaWidth;
+  end else begin
+   aMultiLineTextEdit.fView.LineWrap:=0;
+  end;
+
+  aMultiLineTextEdit.fOldLineWrap:=aMultiLineTextEdit.fLineWrap;
 
  end;
 
@@ -8081,7 +8094,7 @@ end else begin
 
    aMultiLineTextEdit.fViewBufferHeight:=aMultiLineTextEdit.fView.VisibleAreaHeight;
 
-   LineColumn:=aMultiLineTextEdit.fView.LineColumn;
+   LineColumn:=aMultiLineTextEdit.fView.VisualLineColumn;
 
    aMultiLineTextEdit.fViewBufferCursorX:=LineColumn.Column-aMultiLineTextEdit.fView.CursorOffset.x;
 
@@ -16746,6 +16759,10 @@ begin
 
  fOverwrite:=false;
 
+ fOldLineWrap:=false;
+
+ fLineWrap:=false;
+
  fOnClick:=nil;
 
  fOnChange:=nil;
@@ -16912,8 +16929,9 @@ begin
 
   OldState:=NewState;
 
-  if (fHorizontalScrollDirection=TpvGUIMultiLineTextEditScrollDirection.On) or
-     ((fHorizontalScrollDirection=TpvGUIMultiLineTextEditScrollDirection.Auto) and (ContentPreferredSize.x>AvailiableSize.x)) then begin
+  if ((fHorizontalScrollDirection=TpvGUIMultiLineTextEditScrollDirection.On) or
+      ((fHorizontalScrollDirection=TpvGUIMultiLineTextEditScrollDirection.Auto) and (ContentPreferredSize.x>AvailiableSize.x))) and not
+     fLineWrap then begin
    fHorizontalScrollBar.Visible:=true;
    NewState:=NewState or 1;
   end else begin
