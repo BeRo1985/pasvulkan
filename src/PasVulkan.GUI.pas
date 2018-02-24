@@ -2354,6 +2354,8 @@ type TpvGUIObject=class;
        procedure SetText(const aText:TpvUTF8String);
        procedure SetHorizontalScrollDirection(const aHorizontalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
        procedure SetVerticalScrollDirection(const aVerticalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
+       procedure HorizontalScrollBarOnChange(const aSender:TpvGUIObject);
+       procedure VerticalScrollBarOnChange(const aSender:TpvGUIObject);
        function GetFont:TpvFont; override;
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
@@ -16460,11 +16462,13 @@ begin
  fSpacerPanel.Visible:=false;
 
  fHorizontalScrollBar:=TpvGUIScrollBar.Create(self);
+ fHorizontalScrollBar.OnChange:=HorizontalScrollBarOnChange;
  fHorizontalScrollBar.Orientation:=TpvGUIScrollBarOrientation.Horizontal;
  fHorizontalScrollBar.TabStop:=false;
  fHorizontalScrollBar.Visible:=false;
 
  fVerticalScrollBar:=TpvGUIScrollBar.Create(self);
+ fVerticalScrollBar.OnChange:=VerticalScrollBarOnChange;
  fVerticalScrollBar.Orientation:=TpvGUIScrollBarOrientation.Vertical;
  fVerticalScrollBar.TabStop:=false;
  fVerticalScrollBar.Visible:=false;
@@ -16633,6 +16637,28 @@ begin
  if fVerticalScrollDirection<>aVerticalScrollDirection then begin
   fVerticalScrollDirection:=aVerticalScrollDirection;
   PerformLayout;
+ end;
+end;
+
+procedure TpvGUIMultiLineTextEdit.HorizontalScrollBarOnChange(const aSender:TpvGUIObject);
+var Coordinate:TpvTextEditor.TCoordinate;
+begin
+ Coordinate:=fView.CursorOffset;
+ if Coordinate.x<>fHorizontalScrollBar.Value then begin
+  Coordinate.x:=fHorizontalScrollBar.Value;
+  fView.CursorOffset:=Coordinate;
+  fDirty:=true;
+ end;
+end;
+
+procedure TpvGUIMultiLineTextEdit.VerticalScrollBarOnChange(const aSender:TpvGUIObject);
+var Coordinate:TpvTextEditor.TCoordinate;
+begin
+ Coordinate:=fView.CursorOffset;
+ if Coordinate.y<>fVerticalScrollBar.Value then begin
+  Coordinate.y:=fVerticalScrollBar.Value;
+  fView.CursorOffset:=Coordinate;
+  fDirty:=true;
  end;
 end;
 
