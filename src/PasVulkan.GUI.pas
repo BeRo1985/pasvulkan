@@ -606,6 +606,8 @@ type TpvGUIObject=class;
        fIconDialogStop:TObject;
        fIconDialogWarning:TObject;
        fIconArrowUpDown:TObject;
+       fIconUndo:TObject;
+       fIconRedo:TObject;
        fIconChevronHeight:TpvFloat;
        fIconPopupMenuHeight:TpvFloat;
        fIconMenuRightHeight:TpvFloat;
@@ -736,6 +738,8 @@ type TpvGUIObject=class;
        property IconDialogStop:TObject read fIconDialogStop write fIconDialogStop;
        property IconDialogWarning:TObject read fIconDialogWarning write fIconDialogWarning;
        property IconArrowUpDown:TObject read fIconArrowUpDown write fIconArrowUpDown;
+       property IconUndo:TObject read fIconUndo write fIconUndo;
+       property IconRedo:TObject read fIconRedo write fIconRedo;
        property IconChevronHeight:TpvFloat read fIconChevronHeight write fIconChevronHeight;
        property IconPopupMenuHeight:TpvFloat read fIconPopupMenuHeight write fIconPopupMenuHeight;
        property IconMenuRightHeight:TpvFloat read fIconMenuRightHeight write fIconMenuRightHeight;
@@ -4485,6 +4489,8 @@ begin
  fIconDialogStop:=nil;
  fIconDialogWarning:=nil;
  fIconArrowUpDown:=nil;
+ fIconUndo:=nil;
+ fIconRedo:=nil;
  Setup;
 end;
 
@@ -5247,6 +5253,30 @@ begin
                                                                                  true,
                                                                                  2,
                                                                                  1);
+
+ fIconUndo:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconUndo',
+                                                                          'M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5'+' 19.05,12.81 20.1,16L22.47,15.22C21.08,11.03 17.15,8 12.5,8Z',
+                                                                          48,
+                                                                          48,
+                                                                          48.0/24.0,
+                                                                          0.0,
+                                                                          0.0,
+                                                                          TpvVectorPathFillRule.NonZero,
+                                                                          true,
+                                                                          2,
+                                                                          1);
+
+ fIconRedo:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconRedo',
+                                                                          'M18.4,10.6C16.55,9 14.15,8 11.5,8C6.85,8 2.92,11.03 1.54,15.22L3.9,16C4.95,12.81 7.95,10.5 11.5,10.5C13.45,10.5 15.23,11.22 16.62,12.38L13,16H22V7L18.4,10.6Z',
+                                                                          48,
+                                                                          48,
+                                                                          48.0/24.0,
+                                                                          0.0,
+                                                                          0.0,
+                                                                          TpvVectorPathFillRule.NonZero,
+                                                                          true,
+                                                                          2,
+                                                                          1);
 
  fIconChevronHeight:=14.0;
 
@@ -16565,14 +16595,14 @@ begin
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
  MenuItem.Caption:='Undo';
  MenuItem.ShortcutHint:='Ctrl-Z';
- MenuItem.fIcon:=Skin.fIconDirectionArrowLeft;
+ MenuItem.fIcon:=Skin.fIconUndo;
  MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
  MenuItem.OnClick:=PopupMenuOnUndoClick;
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
  MenuItem.Caption:='Redo';
  MenuItem.ShortcutHint:='Ctrl-Shift-Z';
- MenuItem.fIcon:=Skin.fIconDirectionArrowRight;
+ MenuItem.fIcon:=Skin.fIconRedo;
  MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
  MenuItem.OnClick:=PopupMenuOnRedoClick;
 
