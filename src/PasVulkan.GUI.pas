@@ -2320,6 +2320,7 @@ type TpvGUIObject=class;
        fLeftSideBar:boolean;
        fEditable:boolean;
        fOverwrite:boolean;
+       fVisibleAreaRect:TpvRect;
        fLeftSideBarAreaRect:TpvRect;
        fTextAreaRect:TpvRect;
        fVisibleTextAreaSize:TpvVector2;
@@ -7926,8 +7927,6 @@ var Size:TpvVector2;
     NonScrollVisibleAreaWidth,NonScrollVisibleAreaHeight:TpvSizeInt;
 begin
 
- Size:=aMultiLineTextEdit.fSize;
-
  CurrentFont:=aMultiLineTextEdit.Font;
 
  CurrentFontSize:=aMultiLineTextEdit.FontSize;
@@ -7935,6 +7934,13 @@ begin
  aMultiLineTextEdit.fFontCharSize:=TpvVector2.Create(CurrentFont.MaxX-CurrentFont.MinX,
                                                      CurrentFont.MaxY-CurrentFont.MinY)*
                                    CurrentFont.GetScaleFactor(CurrentFontSize);
+
+ aMultiLineTextEdit.fVisibleAreaRect:=TpvRect.CreateAbsolute(TpvVector2.Null,
+                                                             aMultiLineTextEdit.fSize);
+
+//aMultiLineTextEdit.fVisibleAreaRect.Right:=aMultiLineTextEdit.fVisibleAreaRect.Right-32.0;
+
+ Size:=aMultiLineTextEdit.fVisibleAreaRect.RightBottom;
 
  if aMultiLineTextEdit.fLeftSideBar then begin
 
@@ -8060,10 +8066,10 @@ begin
 
  aCanvas.DrawGUIElement(Element,
                         true,
-                        TpvVector2.InlineableCreate(0.0,0.0),
-                        TpvVector2.InlineableCreate(aMultiLineTextEdit.fSize.x,aMultiLineTextEdit.fSize.y),
-                        TpvVector2.InlineableCreate(0.0,0.0),
-                        TpvVector2.InlineableCreate(aMultiLineTextEdit.fSize.x,aMultiLineTextEdit.fSize.y));
+                        aMultiLineTextEdit.fVisibleAreaRect.LeftTop,
+                        aMultiLineTextEdit.fVisibleAreaRect.RightBottom,
+                        aMultiLineTextEdit.fVisibleAreaRect.LeftTop,
+                        aMultiLineTextEdit.fVisibleAreaRect.RightBottom);
 
  aCanvas.Font:=aMultiLineTextEdit.Font;
  aCanvas.FontSize:=aMultiLineTextEdit.FontSize;
@@ -8075,8 +8081,8 @@ begin
 
  OldClipRect:=aCanvas.ClipRect;
 
- TextClipRect.LeftTop:=OldClipRect.LeftTop+(TpvVector2.Create(BoxCornerMargin,BoxCornerMargin));
- TextClipRect.RightBottom:=OldClipRect.RightBottom-(TpvVector2.Create(BoxCornerMargin,BoxCornerMargin));
+ TextClipRect.LeftTop:=(OldClipRect.LeftTop+aMultiLineTextEdit.fVisibleAreaRect.LeftTop)+(TpvVector2.Create(1.0,1.0));
+ TextClipRect.RightBottom:=(OldClipRect.LeftTop+aMultiLineTextEdit.fVisibleAreaRect.RightBottom)-(TpvVector2.Create(1.0,1.0));
 
  aCanvas.ClipRect:=TextClipRect;
 
