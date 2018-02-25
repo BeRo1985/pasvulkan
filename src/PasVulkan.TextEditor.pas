@@ -6277,6 +6277,16 @@ begin
      if not ProcessCodeUnit(AnsiChar(TpvUInt8(CodePoint))) then begin
       break;
      end;
+     end else if CodePoint in fNewLineCodePointSet then begin
+      // Use meta code unit value
+      if not ProcessCodeUnit(NewLineCodePointSetMetaCodeUnit) then begin
+       break;
+      end;
+     end else if CodePoint in fWhiteSpaceCodePointSetExcludingNewLineCodePointSet then begin
+      // Use meta code unit value
+      if not ProcessCodeUnit(WhiteSpaceCodePointSetExcludingNewLineCodePointSetMetaCodeUnit) then begin
+       break;
+      end;
     end else begin
      // Unicode range
      if CodePoint in fKeywordBeginCodePointSet then begin
@@ -6287,16 +6297,6 @@ begin
      end else if CodePoint in fKeywordPartCodePointSetExcludingBeginCodePointSet then begin
       // Use meta code unit value
       if not ProcessCodeUnit(KeywordPartCodePointSetExcludingBeginCodePointSetMetaCodeUnit) then begin
-       break;
-      end;
-     end else if CodePoint in fWhiteSpaceCodePointSetExcludingNewLineCodePointSet then begin
-      // Use meta code unit value
-      if not ProcessCodeUnit(WhiteSpaceCodePointSetExcludingNewLineCodePointSetMetaCodeUnit) then begin
-       break;
-      end;
-     end else if CodePoint in fNewLineCodePointSet then begin
-      // Use meta code unit value
-      if not ProcessCodeUnit(NewLineCodePointSetMetaCodeUnit) then begin
        break;
       end;
      end else begin
