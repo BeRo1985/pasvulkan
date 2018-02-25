@@ -2350,14 +2350,14 @@ begin
      try
       Entry.Stream:=TMemoryStream.Create;
       if fDepth16Bit then begin
-       SavePNGImageAsStream(ArrayTexture.GetTexelPointer(0,0,Index),
+       SavePNGImageAsStream(ArrayTexture.GetTexelPointer(0,0,SubIndex),
                             ArrayTexture.fWidth,
                             ArrayTexture.fHeight,
                             Entry.Stream,
                             TpvPNGPixelFormat.R16G16B16A16,
                             aFast);
       end else begin
-       SavePNGImageAsStream(ArrayTexture.GetTexelPointer(0,0,Index),
+       SavePNGImageAsStream(ArrayTexture.GetTexelPointer(0,0,SubIndex),
                             ArrayTexture.fWidth,
                             ArrayTexture.fHeight,
                             Entry.Stream,
