@@ -2353,6 +2353,8 @@ var LocalFileHeader:TpvArchiveZIPLocalFileHeader;
     UserAbort:=false;
     ItIsAtEnd:=false;
 
+    BitsFlagsType:=LocalFileHeader.BitFlags;
+
     case LocalFileHeader.CompressMethod of
      0:begin
       result:=CopyStored;

@@ -4726,8 +4726,13 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.Setup;
+const CacheVersionGUID:TGUID='{7CFB4F14-BEE7-45CC-AD92-4F13B773FE93}';
 var Stream:TStream;
     TrueTypeFont:TpvTrueTypeFont;
+    RecreateCacheFiles:boolean;
+    CacheStoragePath,CacheStorageFile:string;
+    FileStream:TFileStream;
+    CacheStorageCacheVersionGUID:TGUID;
 begin
 
  fSpacing:=4.0;
@@ -4799,137 +4804,170 @@ begin
 
  fPopupAnchorHeight:=0.0;
 
+ fWindowButtonIconHeight:=14.0;
+
+ fIconChevronHeight:=14.0;
+
+ fIconPopupMenuHeight:=14.0;
+
+ fIconMenuRightHeight:=12.0;
+
  fSignedDistanceFieldSpriteAtlas:=TpvSpriteAtlas.Create(fInstance.fVulkanDevice,false);
  fSignedDistanceFieldSpriteAtlas.UseConvexHullTrimming:=false;
 
- Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansFontData,GUIStandardTrueTypeFontSansFontDataSize);
- try
-  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
-  try
-   TrueTypeFont.Size:=-64;
-   TrueTypeFont.Hinting:=false;
-   fSansFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                             fSignedDistanceFieldSpriteAtlas,
-                                             TrueTypeFont,
-                                             fInstance.fFontCodePointRanges,
-                                             true,
-                                             2,
-                                             1);
-  finally
-   TrueTypeFont.Free;
+ RecreateCacheFiles:=true;
+
+ if pvApplication.Files.IsCacheStorageAvailable then begin
+
+  CacheStoragePath:=IncludeTrailingPathDelimiter(pvApplication.Files.GetCacheStoragePath);
+
+  CacheStorageFile:=CacheStoragePath+'gui_cache_version.dat';
+
+  if FileExists(CacheStorageFile) and
+     FileExists(CacheStoragePath+'gui_signed_distance_field_spriteatlas.zip') and
+     FileExists(CacheStoragePath+'gui_sans_font.dat') and
+     FileExists(CacheStoragePath+'gui_sans_bold_font.dat') and
+     FileExists(CacheStoragePath+'gui_sans_bold_italic_font.dat') and
+     FileExists(CacheStoragePath+'gui_sans_italic_font.dat') and
+     FileExists(CacheStoragePath+'gui_mono_font.dat') then begin
+
+   FileStream:=TFileStream.Create(CacheStorageFile,fmOpenRead or fmShareDenyWrite);
+   try
+    FileStream.Read(CacheStorageCacheVersionGUID,SizeOf(TGUID));
+   finally
+    FileStream.Free;
+   end;
+
+   if CompareMem(@CacheStorageCacheVersionGUID,@CacheVersionGUID,SizeOf(TGUID)) then begin
+
+    RecreateCacheFiles:=false;
+
+   end;
+
   end;
- finally
-  Stream.Free;
+
+ end else begin
+
+  CacheStoragePath:='';
+
  end;
 
- Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansBoldFontData,GUIStandardTrueTypeFontSansBoldFontDataSize);
- try
-  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+ if RecreateCacheFiles then begin
+
+  Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansFontData,GUIStandardTrueTypeFontSansFontDataSize);
   try
-   TrueTypeFont.Size:=-64;
-   TrueTypeFont.Hinting:=false;
-   fSansBoldFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                                 fSignedDistanceFieldSpriteAtlas,
-                                                 TrueTypeFont,
-                                                 fInstance.fFontCodePointRanges,
-                                                 true,
-                                                 2,
-                                                 1);
+   TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+   try
+    TrueTypeFont.Size:=-64;
+    TrueTypeFont.Hinting:=false;
+    fSansFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
+                                              fSignedDistanceFieldSpriteAtlas,
+                                              TrueTypeFont,
+                                              fInstance.fFontCodePointRanges,
+                                              true,
+                                              2,
+                                              1);
+   finally
+    TrueTypeFont.Free;
+   end;
   finally
-   TrueTypeFont.Free;
+   Stream.Free;
   end;
- finally
-  Stream.Free;
- end;
 
- Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansBoldItalicFontData,GUIStandardTrueTypeFontSansBoldItalicFontDataSize);
- try
-  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+  Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansBoldFontData,GUIStandardTrueTypeFontSansBoldFontDataSize);
   try
-   TrueTypeFont.Size:=-64;
-   TrueTypeFont.Hinting:=false;
-   fSansBoldItalicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                                       fSignedDistanceFieldSpriteAtlas,
-                                                       TrueTypeFont,
-                                                       fInstance.fFontCodePointRanges,
-                                                       true,
-                                                       2,
-                                                       1);
+   TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+   try
+    TrueTypeFont.Size:=-64;
+    TrueTypeFont.Hinting:=false;
+    fSansBoldFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
+                                                  fSignedDistanceFieldSpriteAtlas,
+                                                  TrueTypeFont,
+                                                  fInstance.fFontCodePointRanges,
+                                                  true,
+                                                  2,
+                                                  1);
+   finally
+    TrueTypeFont.Free;
+   end;
   finally
-   TrueTypeFont.Free;
+   Stream.Free;
   end;
- finally
-  Stream.Free;
- end;
 
- Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansItalicFontData,GUIStandardTrueTypeFontSansItalicFontDataSize);
- try
-  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+  Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansBoldItalicFontData,GUIStandardTrueTypeFontSansBoldItalicFontDataSize);
   try
-   TrueTypeFont.Size:=-64;
-   TrueTypeFont.Hinting:=false;
-   fSansItalicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                                   fSignedDistanceFieldSpriteAtlas,
-                                                   TrueTypeFont,
-                                                   fInstance.fFontCodePointRanges,
-                                                   true,
-                                                   2,
-                                                   1);
+   TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+   try
+    TrueTypeFont.Size:=-64;
+    TrueTypeFont.Hinting:=false;
+    fSansBoldItalicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
+                                                        fSignedDistanceFieldSpriteAtlas,
+                                                        TrueTypeFont,
+                                                        fInstance.fFontCodePointRanges,
+                                                        true,
+                                                        2,
+                                                        1);
+   finally
+    TrueTypeFont.Free;
+   end;
   finally
-   TrueTypeFont.Free;
+   Stream.Free;
   end;
- finally
-  Stream.Free;
- end;
 
- Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontMonoFontData,GUIStandardTrueTypeFontMonoFontDataSize);
- try
-  TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+  Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontSansItalicFontData,GUIStandardTrueTypeFontSansItalicFontDataSize);
   try
-   TrueTypeFont.Size:=-64;
-   TrueTypeFont.Hinting:=false;
-   fMonoFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
-                                             fSignedDistanceFieldSpriteAtlas,
-                                             TrueTypeFont,
-                                             fInstance.fFontCodePointRanges,
-                                             true,
-                                             2,
-                                             1);
+   TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+   try
+    TrueTypeFont.Size:=-64;
+    TrueTypeFont.Hinting:=false;
+    fSansItalicFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
+                                                    fSignedDistanceFieldSpriteAtlas,
+                                                    TrueTypeFont,
+                                                    fInstance.fFontCodePointRanges,
+                                                    true,
+                                                    2,
+                                                    1);
+   finally
+    TrueTypeFont.Free;
+   end;
   finally
-   TrueTypeFont.Free;
+   Stream.Free;
   end;
- finally
-  Stream.Free;
- end;
 
- fWindowButtonIconHeight:=14.0;
+  Stream:=TpvDataStream.Create(@GUIStandardTrueTypeFontMonoFontData,GUIStandardTrueTypeFontMonoFontDataSize);
+  try
+   TrueTypeFont:=TpvTrueTypeFont.Create(Stream,72);
+   try
+    TrueTypeFont.Size:=-64;
+    TrueTypeFont.Hinting:=false;
+    fMonoFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
+                                              fSignedDistanceFieldSpriteAtlas,
+                                              TrueTypeFont,
+                                              fInstance.fFontCodePointRanges,
+                                              true,
+                                              2,
+                                              1);
+   finally
+    TrueTypeFont.Free;
+   end;
+  finally
+   Stream.Free;
+  end;
 
- fIconWindowClose:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowClose',
-                                                                                 'M461.029 419.2l-164.571-163.2 164.571-163.2-41.143-41.143-164.571 163.2-163.2-163.2-41.143 41.143 163.2 163.2-163.2 163.2 41.143 41.143 163.2-163.2 164.571 163.2z',
-                                                                                 48,
-                                                                                 48,
-                                                                                 48.0/512.0,
-                                                                                 0.0,
-                                                                                 0.0,
-                                                                                 TpvVectorPathFillRule.NonZero,
-                                                                                 true,
-                                                                                 2,
-                                                                                 1);
+  fIconWindowClose:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowClose',
+                                                                                  'M461.029 419.2l-164.571-163.2 164.571-163.2-41.143-41.143-164.571 163.2-163.2-163.2-41.143 41.143 163.2 163.2-163.2 163.2 41.143 41.143 163.2-163.2 164.571 163.2z',
+                                                                                  48,
+                                                                                  48,
+                                                                                  48.0/512.0,
+                                                                                  0.0,
+                                                                                  0.0,
+                                                                                  TpvVectorPathFillRule.NonZero,
+                                                                                  true,
+                                                                                  2,
+                                                                                  1);
 
- fIconWindowRestore:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowRestore',
-                                                                                   'M61.714 353.143h97.143v98.286h292.571v-292.571h-97.143v-98.286h-292.571v292.571zm292.571 0v-146.286h49.143v195.429h-195.429v-49.143h146.286zm-243.429-97.143v-146.286h194.286v146.286h-194.286z',
-                                                                                   48,
-                                                                                   48,
-                                                                                   48.0/512.0,
-                                                                                   0.0,
-                                                                                   0.0,
-                                                                                   TpvVectorPathFillRule.NonZero,
-                                                                                   true,
-                                                                                   2,
-                                                                                   1);
-
- fIconWindowMinimize:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowMinimize',
-                                                                                    'M450.286 321.143h-389.714v98.286h389.714v-98.286z',
+  fIconWindowRestore:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowRestore',
+                                                                                    'M61.714 353.143h97.143v98.286h292.571v-292.571h-97.143v-98.286h-292.571v292.571zm292.571 0v-146.286h49.143v195.429h-195.429v-49.143h146.286zm-243.429-97.143v-146.286h194.286v146.286h-194.286z',
                                                                                     48,
                                                                                     48,
                                                                                     48.0/512.0,
@@ -4940,32 +4978,32 @@ begin
                                                                                     2,
                                                                                     1);
 
- fIconWindowMaximize:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowMaximize',
-                                                                                    'M61.714 451.429h389.714v-390.857h-389.714v390.857zm49.143-98.286v-243.429h292.571v243.429h-292.571z',
-                                                                                    48,
-                                                                                    48,
-                                                                                    48.0/512.0,
-                                                                                    0.0,
-                                                                                    0.0,
-                                                                                    TpvVectorPathFillRule.NonZero,
-                                                                                    true,
-                                                                                    2,
-                                                                                    1);
+  fIconWindowMinimize:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowMinimize',
+                                                                                     'M450.286 321.143h-389.714v98.286h389.714v-98.286z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/512.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     true,
+                                                                                     2,
+                                                                                     1);
 
- fIconMenuRight:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconMenuRight',
-                                                                               'M6,2 l12,10 l-12,10 v-20 z',
-                                                                               96,
-                                                                               96,
-                                                                               96.0/24.0,
-                                                                               0.0,
-                                                                               0.0,
-                                                                               TpvVectorPathFillRule.NonZero,
-                                                                               true,
-                                                                               2,
-                                                                               1);
+  fIconWindowMaximize:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconWindowMaximize',
+                                                                                     'M61.714 451.429h389.714v-390.857h-389.714v390.857zm49.143-98.286v-243.429h292.571v243.429h-292.571z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/512.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     true,
+                                                                                     2,
+                                                                                     1);
 
- fIconContentCut:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconContentCut',
-                                                                                'M19,3L13,9L15,11L22,4V3M12,12.5A0.5,0.5 0 0,1 11.5,12A0.5,0.5 0 0,1 12,11.5A0.5,0.5 0 0,1 12.5,12A0.5,0.5'+' 0 0,1 12,12.5M6,20A2,2 0 0,1 4,18C4,16.89 4.9,16 6,16A2,2 0 0,1 8,18C8,19.11 7.1,20 6,20M6,8A2,2 0 0,1 4,6C4,4.89 4.9,4 6,4A2,2 0 0,1 8,6C8,7.11 7.1,8 6,8M9.64,'+'7.64C9.87,7.14 10,6.59 10,6A4,4 0 0,0 6,2A4,4 0 0,0 2,6A4,4 0 0,0 6,10C6.59,10 7.14,9.87'+' 7.64,9.64L10,12L7.64,14.36C7.14,14.13 6.59,14 6,14A4,4 0 0,0 2,18A4,4 0 0,0 6,22A4,4 0 0,0 10,18C10,17.41'+' 9.87,16.86 9.64,16.36L12,14L19,21H22V20L9.64,7.64Z',
+  fIconMenuRight:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconMenuRight',
+                                                                                'M6,2 l12,10 l-12,10 v-20 z',
                                                                                 96,
                                                                                 96,
                                                                                 96.0/24.0,
@@ -4976,8 +5014,8 @@ begin
                                                                                 2,
                                                                                 1);
 
- fIconContentCopy:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconContentCopy',
-                                                                                 'M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z',
+  fIconContentCut:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconContentCut',
+                                                                                 'M19,3L13,9L15,11L22,4V3M12,12.5A0.5,0.5 0 0,1 11.5,12A0.5,0.5 0 0,1 12,11.5A0.5,0.5 0 0,1 12.5,12A0.5,0.5'+' 0 0,1 12,12.5M6,20A2,2 0 0,1 4,18C4,16.89 4.9,16 6,16A2,2 0 0,1 8,18C8,19.11 7.1,20 6,20M6,8A2,2 0 0,1 4,6C4,4.89 4.9,4 6,4A2,2 0 0,1 8,6C8,7.11 7.1,8 6,8M9.64,'+'7.64C9.87,7.14 10,6.59 10,6A4,4 0 0,0 6,2A4,4 0 0,0 2,6A4,4 0 0,0 6,10C6.59,10 7.14,9.87'+' 7.64,9.64L10,12L7.64,14.36C7.14,14.13 6.59,14 6,14A4,4 0 0,0 2,18A4,4 0 0,0 6,22A4,4 0 0,0 10,18C10,17.41'+' 9.87,16.86 9.64,16.36L12,14L19,21H22V20L9.64,7.64Z',
                                                                                  96,
                                                                                  96,
                                                                                  96.0/24.0,
@@ -4988,8 +5026,8 @@ begin
                                                                                  2,
                                                                                  1);
 
- fIconContentPaste:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconContentPaste',
-                                                                                  'M19,20H5V4H7V7H17V4H19M12,2A1,1 0 0,1 13,3A1,1 0 0,1 12,4A1,1 0 0,1 11,3A1,1 0 0,1 12,2M19,2H14.82C14.4,0.84 13.3,0 12,0C10.7,0 9.6,0.84 9.18,2H5A2,2 0 0,0 3,4V20'+'A2,2 0 0,0 5,22H19A2,2 0 0,0 21,20V4A2,2 0 0,0 19,2Z',
+  fIconContentCopy:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconContentCopy',
+                                                                                  'M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z',
                                                                                   96,
                                                                                   96,
                                                                                   96.0/24.0,
@@ -5000,8 +5038,8 @@ begin
                                                                                   2,
                                                                                   1);
 
- fIconContentDelete:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconContentDelete',
-                                                                                   'M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z',
+  fIconContentPaste:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconContentPaste',
+                                                                                   'M19,20H5V4H7V7H17V4H19M12,2A1,1 0 0,1 13,3A1,1 0 0,1 12,4A1,1 0 0,1 11,3A1,1 0 0,1 12,2M19,2H14.82C14.4,0.84 13.3,0 12,0C10.7,0 9.6,0.84 9.18,2H5A2,2 0 0,0 3,4V20'+'A2,2 0 0,0 5,22H19A2,2 0 0,0 21,20V4A2,2 0 0,0 19,2Z',
                                                                                    96,
                                                                                    96,
                                                                                    96.0/24.0,
@@ -5012,20 +5050,20 @@ begin
                                                                                    2,
                                                                                    1);
 
- fIconSelectAll:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconSelectAll',
-                                                                               'M9,9H15V15H9M7,17H17V7H7M15,5H17V3H15M15,21H17V19H15M19,17H21V15H19M19,9H21V7H19M19,21A2,2 0 0,0 21,19H19M19,13H21V11H19M11,21H13V19H11M9,3H7V5H9M3,17H5V15H3M5,21V19H3A2,2 0 0,0 5,21'+'M19,3V5H21A2,2 0 0,0 19,3M13,3H11V5H13M3,9H5V7H3M7,21H9V19H7M3,13H5V11H3M3,5H5V3A2,2 0 0,0 3,5Z',
-                                                                               96,
-                                                                               96,
-                                                                               96.0/24.0,
-                                                                               0.0,
-                                                                               0.0,
-                                                                               TpvVectorPathFillRule.NonZero,
-                                                                               true,
-                                                                               2,
-                                                                               1);
+  fIconContentDelete:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconContentDelete',
+                                                                                    'M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z',
+                                                                                    96,
+                                                                                    96,
+                                                                                    96.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    TpvVectorPathFillRule.NonZero,
+                                                                                    true,
+                                                                                    2,
+                                                                                    1);
 
- fIconSelectNone:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconSelectNone',
-                                                                                'M1,4.27L2.28,3L21,21.72L19.73,23L17,20.27V21H15V19H15.73L5,8.27V9H3V7H3.73L1,4.27M20,3A1,1 0 0,1 21,4V5H19V3H20M15,5V3H17V5H15M11,5V3H13V5H11M7,5V3H9V5H7M11,21V19H13V21H11M7,21V19H9V21H7'+'M4,21A1,1 0 0,1 3,20V19H5V21H4M3,15H5V17H3V15M21,15V17H19V15H21M3,11H5V13H3V11M21,11V13H19V11H21M21,7V9H19V7H21Z',
+  fIconSelectAll:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconSelectAll',
+                                                                                'M9,9H15V15H9M7,17H17V7H7M15,5H17V3H15M15,21H17V19H15M19,17H21V15H19M19,9H21V7H19M19,21A2,2 0 0,0 21,19H19M19,13H21V11H19M11,21H13V19H11M9,3H7V5H9M3,17H5V15H3M5,21V19H3A2,2 0 0,0 5,21'+'M19,3V5H21A2,2 0 0,0 19,3M13,3H11V5H13M3,9H5V7H3M7,21H9V19H7M3,13H5V11H3M3,5H5V3A2,2 0 0,0 3,5Z',
                                                                                 96,
                                                                                 96,
                                                                                 96.0/24.0,
@@ -5036,11 +5074,11 @@ begin
                                                                                 2,
                                                                                 1);
 
- fIconChevronLeft:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconChevronLeft',
-                                                                                 'M17.558 18.87 10.688 12 17.558 5.115 15.442 3 6.442 12 15.442 21 17.558 18.87Z',
-                                                                                 48,
-                                                                                 48,
-                                                                                 48.0/24.0,
+  fIconSelectNone:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconSelectNone',
+                                                                                 'M1,4.27L2.28,3L21,21.72L19.73,23L17,20.27V21H15V19H15.73L5,8.27V9H3V7H3.73L1,4.27M20,3A1,1 0 0,1 21,4V5H19V3H20M15,5V3H17V5H15M11,5V3H13V5H11M7,5V3H9V5H7M11,21V19H13V21H11M7,21V19H9V21H7'+'M4,21A1,1 0 0,1 3,20V19H5V21H4M3,15H5V17H3V15M21,15V17H19V15H21M3,11H5V13H3V11M21,11V13H19V11H21M21,7V9H19V7H21Z',
+                                                                                 96,
+                                                                                 96,
+                                                                                 96.0/24.0,
                                                                                  0.0,
                                                                                  0.0,
                                                                                  TpvVectorPathFillRule.NonZero,
@@ -5048,8 +5086,8 @@ begin
                                                                                  2,
                                                                                  1);
 
- fIconChevronRight:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconChevronRight',
-                                                                                  'M6.443 18.87 13.313 12 6.443 5.115 8.558 3 17.558 12 8.558 21 6.443 18.87Z',
+  fIconChevronLeft:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconChevronLeft',
+                                                                                  'M17.558 18.87 10.688 12 17.558 5.115 15.442 3 6.442 12 15.442 21 17.558 18.87Z',
                                                                                   48,
                                                                                   48,
                                                                                   48.0/24.0,
@@ -5060,200 +5098,8 @@ begin
                                                                                   2,
                                                                                   1);
 
- fIconChevronUp:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconChevronUp',
-                                                                               'M5.115 17.558 12 10.688 18.885 17.558 21 15.442 12 6.442 3 15.442 5.115 17.558Z',
-                                                                               48,
-                                                                               48,
-                                                                               48.0/24.0,
-                                                                               0.0,
-                                                                               0.0,
-                                                                               TpvVectorPathFillRule.NonZero,
-                                                                               true,
-                                                                               2,
-                                                                               1);
-
- fIconChevronDown:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconChevronDown',
-                                                                                 'M5.115 6.435 12 13.32 18.885 6.435 21 8.565 12 17.565 3 8.565 5.115 6.435Z',
-                                                                                 48,
-                                                                                 48,
-                                                                                 48.0/24.0,
-                                                                                 0.0,
-                                                                                 0.0,
-                                                                                 TpvVectorPathFillRule.NonZero,
-                                                                                 true,
-                                                                                 2,
-                                                                                 1);
-
- fIconCheck:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconCheck',
-                                                                           'M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z',
-                                                                           48,
-                                                                           48,
-                                                                           48.0/24.0,
-                                                                           0.0,
-                                                                           0.0,
-                                                                           TpvVectorPathFillRule.NonZero,
-                                                                           true,
-                                                                           2,
-                                                                           1);
-
- fIconDirectionArrowLeft:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDirectionArrowLeft',
-                                                                                        'M14,7L9,12L14,17V7Z',
-                                                                                        48,
-                                                                                        48,
-                                                                                        48.0/24.0,
-                                                                                        0.0,
-                                                                                        0.0,
-                                                                                        TpvVectorPathFillRule.NonZero,
-                                                                                        true,
-                                                                                        2,
-                                                                                        1);
-
- fIconDirectionArrowRight:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDirectionArrowRight',
-                                                                                         'M10,17L15,12L10,7V17Z',
-                                                                                         48,
-                                                                                         48,
-                                                                                         48.0/24.0,
-                                                                                         0.0,
-                                                                                         0.0,
-                                                                                         TpvVectorPathFillRule.NonZero,
-                                                                                         true,
-                                                                                         2,
-                                                                                         1);
-
- fIconDirectionArrowUp:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDirectionArrowUp',
-                                                                                      'M7,15L12,10L17,15H7Z',
-                                                                                      48,
-                                                                                      48,
-                                                                                      48.0/24.0,
-                                                                                      0.0,
-                                                                                      0.0,
-                                                                                      TpvVectorPathFillRule.NonZero,
-                                                                                      true,
-                                                                                      2,
-                                                                                      1);
-
- fIconDirectionArrowDown:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDirectionArrowDown',
-                                                                                        'M7,10L12,15L17,10H7Z',
-                                                                                        48,
-                                                                                        48,
-                                                                                        48.0/24.0,
-                                                                                        0.0,
-                                                                                        0.0,
-                                                                                        TpvVectorPathFillRule.NonZero,
-                                                                                        true,
-                                                                                        2,
-                                                                                        1);
-
- fIconCheck:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconCheck',
-                                                                           'M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z',
-                                                                           48,
-                                                                           48,
-                                                                           48.0/24.0,
-                                                                           0.0,
-                                                                           0.0,
-                                                                           TpvVectorPathFillRule.NonZero,
-                                                                           true,
-                                                                           2,
-                                                                           1);
-
- fIconRoundCheck:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconRoundCheck',
-                                                                                'M12 4A8 8 0 0 0 4 12 8 8 0 0 0 12 20 8 8 0 0 0 20 12 8 8 0 0 0 12 4Z',
-                                                                                48,
-                                                                                48,
-                                                                                48.0/24.0,
-                                                                                0.0,
-                                                                                0.0,
-                                                                                TpvVectorPathFillRule.NonZero,
-                                                                                true,
-                                                                                2,
-                                                                                1);
-
- fIconThumbUp:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconThumbUp',
-                                                                             'M23,10C23,8.89 22.1,8 21,8H14.68L15.64,3.43C15.66,3.33 15.67,3.22 15.67,3.11C15.67,2.7 15.5,2.32 15.23,2.05L14.17,1L7.59,7.58C7.22,7.95 7,8.45 7,9V19A2,2'+' 0 0,0 9,21H18C18.83,21 19.54,20.5 19.84,19.78L22.86,12.73C22.95,12.5 23,12.26 23,12V10.08L23,10M1,21H5V9H1V21Z',
-                                                                             48,
-                                                                             48,
-                                                                             48.0/24.0,
-                                                                             0.0,
-                                                                             0.0,
-                                                                             TpvVectorPathFillRule.NonZero,
-                                                                             true,
-                                                                             2,
-                                                                             1);
-
- fIconThumbDown:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconThumbDown',
-                                                                               'M19,15H23V3H19M15,3H6C5.17,3 4.46,3.5 4.16,4.22L1.14,11.27C1.05,11.5 1,11.74 1,12V13.91L1,14A2,2 0 0,0 3,16H9.31L8.36,20.57C8.34,20.67 8.33,20.77 8.33,20.88C8.33,21.3 8.5,21.67'+' 8.77,21.94L9.83,23L16.41,16.41C16.78,16.05 17,15.55 17,15V5C17,3.89 16.1,3 15,3Z',
-                                                                               48,
-                                                                               48,
-                                                                               48.0/24.0,
-                                                                               0.0,
-                                                                               0.0,
-                                                                               TpvVectorPathFillRule.NonZero,
-                                                                               true,
-                                                                               2,
-                                                                               1);
-
- fIconDialogAlert:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogAlert',
-                                                                                 'M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z',
-                                                                                 48,
-                                                                                 48,
-                                                                                 48.0/24.0,
-                                                                                 0.0,
-                                                                                 0.0,
-                                                                                 TpvVectorPathFillRule.NonZero,
-                                                                                 true,
-                                                                                 2,
-                                                                                 1);
-
- fIconDialogError:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogError',
-                                                                                 'M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z',
-                                                                                 48,
-                                                                                 48,
-                                                                                 48.0/24.0,
-                                                                                 0.0,
-                                                                                 0.0,
-                                                                                 TpvVectorPathFillRule.NonZero,
-                                                                                 true,
-                                                                                 2,
-                                                                                 1);
-
- fIconDialogInformation:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogInformation',
-                                                                                       'M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z',
-                                                                                       48,
-                                                                                       48,
-                                                                                       48.0/24.0,
-                                                                                       0.0,
-                                                                                       0.0,
-                                                                                       TpvVectorPathFillRule.NonZero,
-                                                                                       true,
-                                                                                       2,
-                                                                                       1);
-
- fIconDialogQuestion:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogQuestion',
-                                                                                    'M15.07,11.25L14.17,12.17C13.45,12.89 13,13.5 13,15H11V14.5C11,13.39 11.45,12.39 12.17,11.67L13.41,10.41C13.78,10.05'+' 14,9.55 14,9C14,7.89 13.1,7 12,7A2,2 0 0,0 10,9H8A4,4 0 0,1 12,5A4,4 0 0,1 16,9C16,9.88 15.64,10.67 15.07,11.25M13,19H11V17H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12C22,6.47 17.5,2 12,2Z',
-                                                                                    48,
-                                                                                    48,
-                                                                                    48.0/24.0,
-                                                                                    0.0,
-                                                                                    0.0,
-                                                                                    TpvVectorPathFillRule.NonZero,
-                                                                                    true,
-                                                                                    2,
-                                                                                    1);
-
- fIconDialogStop:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogStop',
-                                                                                'M12 1.2A10.8 10.8 0 0 1 22.8 12 10.8 10.8 0 0 1 12 22.8 10.8 10.8 0 0 1 1.2 12 10.8 10.8 0 0 1 12 1.2M12 3A9 9 0 0 0 3 12'+'C3 14.16 3.765 16.14 5.034 17.697L17.697 5.034C16.14 3.765 14.16 3 12 3M12 21A9 9 0 0 0 21 12C21 9.84 20.235 7.86 18.966 6.303L6.303 18.966C7.86 20.235 9.84 21 12 21Z',
-                                                                                48,
-                                                                                48,
-                                                                                48.0/24.0,
-                                                                                0.0,
-                                                                                0.0,
-                                                                                TpvVectorPathFillRule.NonZero,
-                                                                                true,
-                                                                                2,
-                                                                                1);
-
- fIconDialogWarning:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogWarning',
-                                                                                   'M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z',
+  fIconChevronRight:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconChevronRight',
+                                                                                   'M6.443 18.87 13.313 12 6.443 5.115 8.558 3 17.558 12 8.558 21 6.443 18.87Z',
                                                                                    48,
                                                                                    48,
                                                                                    48.0/24.0,
@@ -5264,8 +5110,104 @@ begin
                                                                                    2,
                                                                                    1);
 
- fIconArrowUpDown:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconArrowUpDown',
-                                                                                 'M4 10l8-8 8 8h-16zM4 14l8 8 8-8h-16z',
+  fIconChevronUp:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconChevronUp',
+                                                                                'M5.115 17.558 12 10.688 18.885 17.558 21 15.442 12 6.442 3 15.442 5.115 17.558Z',
+                                                                                48,
+                                                                                48,
+                                                                                48.0/24.0,
+                                                                                0.0,
+                                                                                0.0,
+                                                                                TpvVectorPathFillRule.NonZero,
+                                                                                true,
+                                                                                2,
+                                                                                1);
+
+  fIconChevronDown:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconChevronDown',
+                                                                                  'M5.115 6.435 12 13.32 18.885 6.435 21 8.565 12 17.565 3 8.565 5.115 6.435Z',
+                                                                                  48,
+                                                                                  48,
+                                                                                  48.0/24.0,
+                                                                                  0.0,
+                                                                                  0.0,
+                                                                                  TpvVectorPathFillRule.NonZero,
+                                                                                  true,
+                                                                                  2,
+                                                                                  1);
+
+  fIconCheck:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconCheck',
+                                                                            'M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z',
+                                                                            48,
+                                                                            48,
+                                                                            48.0/24.0,
+                                                                            0.0,
+                                                                            0.0,
+                                                                            TpvVectorPathFillRule.NonZero,
+                                                                            true,
+                                                                            2,
+                                                                            1);
+
+  fIconDirectionArrowLeft:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDirectionArrowLeft',
+                                                                                         'M14,7L9,12L14,17V7Z',
+                                                                                         48,
+                                                                                         48,
+                                                                                         48.0/24.0,
+                                                                                         0.0,
+                                                                                         0.0,
+                                                                                         TpvVectorPathFillRule.NonZero,
+                                                                                         true,
+                                                                                         2,
+                                                                                         1);
+
+  fIconDirectionArrowRight:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDirectionArrowRight',
+                                                                                          'M10,17L15,12L10,7V17Z',
+                                                                                          48,
+                                                                                          48,
+                                                                                          48.0/24.0,
+                                                                                          0.0,
+                                                                                          0.0,
+                                                                                          TpvVectorPathFillRule.NonZero,
+                                                                                          true,
+                                                                                          2,
+                                                                                          1);
+
+  fIconDirectionArrowUp:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDirectionArrowUp',
+                                                                                       'M7,15L12,10L17,15H7Z',
+                                                                                       48,
+                                                                                       48,
+                                                                                       48.0/24.0,
+                                                                                       0.0,
+                                                                                       0.0,
+                                                                                       TpvVectorPathFillRule.NonZero,
+                                                                                       true,
+                                                                                       2,
+                                                                                       1);
+
+  fIconDirectionArrowDown:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDirectionArrowDown',
+                                                                                         'M7,10L12,15L17,10H7Z',
+                                                                                         48,
+                                                                                         48,
+                                                                                         48.0/24.0,
+                                                                                         0.0,
+                                                                                         0.0,
+                                                                                         TpvVectorPathFillRule.NonZero,
+                                                                                         true,
+                                                                                         2,
+                                                                                         1);
+
+  fIconCheck:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconCheck',
+                                                                            'M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z',
+                                                                            48,
+                                                                            48,
+                                                                            48.0/24.0,
+                                                                            0.0,
+                                                                            0.0,
+                                                                            TpvVectorPathFillRule.NonZero,
+                                                                            true,
+                                                                            2,
+                                                                            1);
+
+  fIconRoundCheck:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconRoundCheck',
+                                                                                 'M12 4A8 8 0 0 0 4 12 8 8 0 0 0 12 20 8 8 0 0 0 20 12 8 8 0 0 0 12 4Z',
                                                                                  48,
                                                                                  48,
                                                                                  48.0/24.0,
@@ -5276,35 +5218,210 @@ begin
                                                                                  2,
                                                                                  1);
 
- fIconUndo:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconUndo',
-                                                                          'M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5'+' 19.05,12.81 20.1,16L22.47,15.22C21.08,11.03 17.15,8 12.5,8Z',
-                                                                          48,
-                                                                          48,
-                                                                          48.0/24.0,
-                                                                          0.0,
-                                                                          0.0,
-                                                                          TpvVectorPathFillRule.NonZero,
-                                                                          true,
-                                                                          2,
-                                                                          1);
+  fIconThumbUp:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconThumbUp',
+                                                                              'M23,10C23,8.89 22.1,8 21,8H14.68L15.64,3.43C15.66,3.33 15.67,3.22 15.67,3.11C15.67,2.7 15.5,2.32 15.23,2.05L14.17,1L7.59,7.58C7.22,7.95 7,8.45 7,9V19A2,2'+' 0 0,0 9,21H18C18.83,21 19.54,20.5 19.84,19.78L22.86,12.73C22.95,12.5 23,12.26 23,12V10.08L23,10M1,21H5V9H1V21Z',
+                                                                              48,
+                                                                              48,
+                                                                              48.0/24.0,
+                                                                              0.0,
+                                                                              0.0,
+                                                                              TpvVectorPathFillRule.NonZero,
+                                                                              true,
+                                                                              2,
+                                                                              1);
 
- fIconRedo:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconRedo',
-                                                                          'M18.4,10.6C16.55,9 14.15,8 11.5,8C6.85,8 2.92,11.03 1.54,15.22L3.9,16C4.95,12.81 7.95,10.5 11.5,10.5C13.45,10.5 15.23,11.22 16.62,12.38L13,16H22V7L18.4,10.6Z',
-                                                                          48,
-                                                                          48,
-                                                                          48.0/24.0,
-                                                                          0.0,
-                                                                          0.0,
-                                                                          TpvVectorPathFillRule.NonZero,
-                                                                          true,
-                                                                          2,
-                                                                          1);
+  fIconThumbDown:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconThumbDown',
+                                                                                'M19,15H23V3H19M15,3H6C5.17,3 4.46,3.5 4.16,4.22L1.14,11.27C1.05,11.5 1,11.74 1,12V13.91L1,14A2,2 0 0,0 3,16H9.31L8.36,20.57C8.34,20.67 8.33,20.77 8.33,20.88C8.33,21.3 8.5,21.67'+' 8.77,21.94L9.83,23L16.41,16.41C16.78,16.05 17,15.55 17,15V5C17,3.89 16.1,3 15,3Z',
+                                                                                48,
+                                                                                48,
+                                                                                48.0/24.0,
+                                                                                0.0,
+                                                                                0.0,
+                                                                                TpvVectorPathFillRule.NonZero,
+                                                                                true,
+                                                                                2,
+                                                                                1);
 
- fIconChevronHeight:=14.0;
+  fIconDialogAlert:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogAlert',
+                                                                                  'M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z',
+                                                                                  48,
+                                                                                  48,
+                                                                                  48.0/24.0,
+                                                                                  0.0,
+                                                                                  0.0,
+                                                                                  TpvVectorPathFillRule.NonZero,
+                                                                                  true,
+                                                                                  2,
+                                                                                  1);
 
- fIconPopupMenuHeight:=14.0;
+  fIconDialogError:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogError',
+                                                                                  'M13,13H11V7H13M13,17H11V15H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z',
+                                                                                  48,
+                                                                                  48,
+                                                                                  48.0/24.0,
+                                                                                  0.0,
+                                                                                  0.0,
+                                                                                  TpvVectorPathFillRule.NonZero,
+                                                                                  true,
+                                                                                  2,
+                                                                                  1);
 
- fIconMenuRightHeight:=12.0;
+  fIconDialogInformation:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogInformation',
+                                                                                        'M13,9H11V7H13M13,17H11V11H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z',
+                                                                                        48,
+                                                                                        48,
+                                                                                        48.0/24.0,
+                                                                                        0.0,
+                                                                                        0.0,
+                                                                                        TpvVectorPathFillRule.NonZero,
+                                                                                        true,
+                                                                                        2,
+                                                                                        1);
+
+  fIconDialogQuestion:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogQuestion',
+                                                                                     'M15.07,11.25L14.17,12.17C13.45,12.89 13,13.5 13,15H11V14.5C11,13.39 11.45,12.39 12.17,11.67L13.41,10.41C13.78,10.05'+' 14,9.55 14,9C14,7.89 13.1,7 12,7A2,2 0 0,0 10,9H8A4,4 0 0,1 12,5A4,4 0 0,1 16,9C16,9.88 15.64,10.67 15.07,11.25M13,19H11V17H13M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12C22,6.47 17.5,2 12,2Z',
+                                                                                     48,
+                                                                                     48,
+                                                                                     48.0/24.0,
+                                                                                     0.0,
+                                                                                     0.0,
+                                                                                     TpvVectorPathFillRule.NonZero,
+                                                                                     true,
+                                                                                     2,
+                                                                                     1);
+
+  fIconDialogStop:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogStop',
+                                                                                 'M12 1.2A10.8 10.8 0 0 1 22.8 12 10.8 10.8 0 0 1 12 22.8 10.8 10.8 0 0 1 1.2 12 10.8 10.8 0 0 1 12 1.2M12 3A9 9 0 0 0 3 12'+'C3 14.16 3.765 16.14 5.034 17.697L17.697 5.034C16.14 3.765 14.16 3 12 3M12 21A9 9 0 0 0 21 12C21 9.84 20.235 7.86 18.966 6.303L6.303 18.966C7.86 20.235 9.84 21 12 21Z',
+                                                                                 48,
+                                                                                 48,
+                                                                                 48.0/24.0,
+                                                                                 0.0,
+                                                                                 0.0,
+                                                                                 TpvVectorPathFillRule.NonZero,
+                                                                                 true,
+                                                                                 2,
+                                                                                 1);
+
+  fIconDialogWarning:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconDialogWarning',
+                                                                                    'M13,14H11V10H13M13,18H11V16H13M1,21H23L12,2L1,21Z',
+                                                                                    48,
+                                                                                    48,
+                                                                                    48.0/24.0,
+                                                                                    0.0,
+                                                                                    0.0,
+                                                                                    TpvVectorPathFillRule.NonZero,
+                                                                                    true,
+                                                                                    2,
+                                                                                    1);
+
+  fIconArrowUpDown:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconArrowUpDown',
+                                                                                  'M4 10l8-8 8 8h-16zM4 14l8 8 8-8h-16z',
+                                                                                  48,
+                                                                                  48,
+                                                                                  48.0/24.0,
+                                                                                  0.0,
+                                                                                  0.0,
+                                                                                  TpvVectorPathFillRule.NonZero,
+                                                                                  true,
+                                                                                  2,
+                                                                                  1);
+
+  fIconUndo:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconUndo',
+                                                                           'M12.5,8C9.85,8 7.45,9 5.6,10.6L2,7V16H11L7.38,12.38C8.77,11.22 10.54,10.5 12.5,10.5C16.04,10.5'+' 19.05,12.81 20.1,16L22.47,15.22C21.08,11.03 17.15,8 12.5,8Z',
+                                                                           48,
+                                                                           48,
+                                                                           48.0/24.0,
+                                                                           0.0,
+                                                                           0.0,
+                                                                           TpvVectorPathFillRule.NonZero,
+                                                                           true,
+                                                                           2,
+                                                                           1);
+
+  fIconRedo:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconRedo',
+                                                                           'M18.4,10.6C16.55,9 14.15,8 11.5,8C6.85,8 2.92,11.03 1.54,15.22L3.9,16C4.95,12.81 7.95,10.5 11.5,10.5C13.45,10.5 15.23,11.22 16.62,12.38L13,16H22V7L18.4,10.6Z',
+                                                                           48,
+                                                                           48,
+                                                                           48.0/24.0,
+                                                                           0.0,
+                                                                           0.0,
+                                                                           TpvVectorPathFillRule.NonZero,
+                                                                           true,
+                                                                           2,
+                                                                           1);
+
+  if length(CacheStoragePath)>0 then begin
+
+   fSignedDistanceFieldSpriteAtlas.SaveToFile(CacheStoragePath+'gui_signed_distance_field_spriteatlas.zip',true);
+
+   fSansFont.SaveToFile(CacheStoragePath+'gui_sans_font.dat');
+
+   fSansBoldFont.SaveToFile(CacheStoragePath+'gui_sans_bold_font.dat');
+
+   fSansBoldItalicFont.SaveToFile(CacheStoragePath+'gui_sans_bold_italic_font.dat');
+
+   fSansItalicFont.SaveToFile(CacheStoragePath+'gui_sans_italic_font.dat');
+
+   fMonoFont.SaveToFile(CacheStoragePath+'gui_mono_font.dat');
+
+   FileStream:=TFileStream.Create(CacheStoragePath+'gui_cache_version.dat',fmCreate);
+   try
+    FileStream.Write(CacheVersionGUID,SizeOf(TGUID));
+   finally
+    FileStream.Free;
+   end;
+
+  end;
+
+ end else begin
+
+  fSignedDistanceFieldSpriteAtlas.LoadFromFile(CacheStoragePath+'gui_signed_distance_field_spriteatlas.zip');
+
+  fSansFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_sans_font.dat');
+
+  fSansBoldFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_sans_bold_font.dat');
+
+  fSansBoldItalicFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_sans_bold_italic_font.dat');
+
+  fSansItalicFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_sans_italic_font.dat');
+
+  fMonoFont:=TpvFont.CreateFromFile(pvApplication.VulkanDevice,fSignedDistanceFieldSpriteAtlas,CacheStoragePath+'gui_mono_font.dat');
+
+  fIconWindowClose:=fSignedDistanceFieldSpriteAtlas.Sprites['IconWindowClose'];
+  fIconWindowRestore:=fSignedDistanceFieldSpriteAtlas.Sprites['IconWindowRestore'];
+  fIconWindowMinimize:=fSignedDistanceFieldSpriteAtlas.Sprites['IconWindowMinimize'];
+  fIconWindowMaximize:=fSignedDistanceFieldSpriteAtlas.Sprites['IconWindowMaximize'];
+  fIconMenuRight:=fSignedDistanceFieldSpriteAtlas.Sprites['IconMenuRight'];
+  fIconContentCut:=fSignedDistanceFieldSpriteAtlas.Sprites['IconContentCut'];
+  fIconContentCopy:=fSignedDistanceFieldSpriteAtlas.Sprites['IconContentCopy'];
+  fIconContentPaste:=fSignedDistanceFieldSpriteAtlas.Sprites['IconContentPaste'];
+  fIconContentDelete:=fSignedDistanceFieldSpriteAtlas.Sprites['IconContentDelete'];
+  fIconSelectAll:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSelectAll'];
+  fIconSelectNone:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSelectNone'];
+  fIconChevronLeft:=fSignedDistanceFieldSpriteAtlas.Sprites['IconChevronLeft'];
+  fIconChevronRight:=fSignedDistanceFieldSpriteAtlas.Sprites['IconChevronRight'];
+  fIconChevronUp:=fSignedDistanceFieldSpriteAtlas.Sprites['IconChevronUp'];
+  fIconChevronDown:=fSignedDistanceFieldSpriteAtlas.Sprites['IconChevronDown'];
+  fIconCheck:=fSignedDistanceFieldSpriteAtlas.Sprites['IconCheck'];
+  fIconDirectionArrowLeft:=fSignedDistanceFieldSpriteAtlas.Sprites['IconDirectionArrowLeft'];
+  fIconDirectionArrowRight:=fSignedDistanceFieldSpriteAtlas.Sprites['IconDirectionArrowRight'];
+  fIconDirectionArrowUp:=fSignedDistanceFieldSpriteAtlas.Sprites['IconDirectionArrowUp'];
+  fIconDirectionArrowDown:=fSignedDistanceFieldSpriteAtlas.Sprites['IconDirectionArrowDown'];
+  fIconCheck:=fSignedDistanceFieldSpriteAtlas.Sprites['IconCheck'];
+  fIconRoundCheck:=fSignedDistanceFieldSpriteAtlas.Sprites['IconRoundCheck'];
+  fIconThumbUp:=fSignedDistanceFieldSpriteAtlas.Sprites['IconThumbUp'];
+  fIconThumbDown:=fSignedDistanceFieldSpriteAtlas.Sprites['IconThumbDown'];
+  fIconDialogAlert:=fSignedDistanceFieldSpriteAtlas.Sprites['IconDialogAlert'];
+  fIconDialogError:=fSignedDistanceFieldSpriteAtlas.Sprites['IconDialogError'];
+  fIconDialogInformation:=fSignedDistanceFieldSpriteAtlas.Sprites['IconDialogInformation'];
+  fIconDialogQuestion:=fSignedDistanceFieldSpriteAtlas.Sprites['IconDialogQuestion'];
+  fIconDialogStop:=fSignedDistanceFieldSpriteAtlas.Sprites['IconDialogStop'];
+  fIconDialogWarning:=fSignedDistanceFieldSpriteAtlas.Sprites['IconDialogWarning'];
+  fIconArrowUpDown:=fSignedDistanceFieldSpriteAtlas.Sprites['IconArrowUpDown'];
+  fIconUndo:=fSignedDistanceFieldSpriteAtlas.Sprites['IconUndo'];
+  fIconRedo:=fSignedDistanceFieldSpriteAtlas.Sprites['IconRedo'];
+
+ end;
 
  fSignedDistanceFieldSpriteAtlas.MipMaps:=false;
  fSignedDistanceFieldSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
@@ -5314,9 +5431,13 @@ begin
                                         pvApplication.VulkanTransferCommandBuffers[0,0],
                                         pvApplication.VulkanTransferCommandBufferFences[0,0]);
 
-// SignedDistanceFieldSpriteAtlas.SaveToFile('testbla.zip');
+{SignedDistanceFieldSpriteAtlas.SaveToFile('testbla.zip');
 
- //fSansFont.SaveToFile('testfont.xml');
+ fSansFont.SaveToFile('sansfont.xml');
+ fSansBoldFont.SaveToFile('sansboldfont.xml');
+ fSansBoldItalicFont.SaveToFile('sansbolditalicfont.xml');
+ fSansItalicFont.SaveToFile('sansitalicfont.xml');
+ fMonoFont.SaveToFile('monofont.xml');}
 
 end;
 
