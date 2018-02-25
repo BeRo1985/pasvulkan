@@ -400,220 +400,6 @@ type TpvTextEditor=class
               property MaxUndoSteps:TpvSizeInt read fMaxUndoSteps write fMaxUndoSteps;
               property MaxRedoSteps:TpvSizeInt read fMaxRedoSteps write fMaxRedoSteps;
             end;
-            TSyntaxHighlighting=class;
-            TSyntaxHighlightingClass=class of TSyntaxHighlighting;
-            TSyntaxHighlighting=class
-             public
-              type TAttributes=class
-                    public
-                     const Unknown=0;
-                           WhiteSpace=1;
-                           Preprocessor=2;
-                           Comment=3;
-                           Keyword=4;
-                           Type_=5;
-                           Builtin=6;
-                           Identifier=7;
-                           Number=8;
-                           Symbol=9;
-                           String_=10;
-                           Delimiter=11;
-                           Operator=12;
-                           Marked=TpvUInt32($40000000);
-                           Highlight=TpvUInt32($80000000);
-                           Mask=TpvUInt32($0fffffff);
-                   end;
-                   TState=class
-                    private
-                     fCodePointIndex:TpvSizeInt;
-                     fLevel:TpvUInt32;
-                     fAttribute:TpvUInt32;
-                    public
-                     property CodePointIndex:TpvSizeInt read fCodePointIndex write fCodePointIndex;
-                     property Level:TpvUInt32 read fLevel write fLevel;
-                     property Attribute:TpvUInt32 read fAttribute write fAttribute;
-                   end;
-                   TStates=array of TState;
-                   TFileExtensions=array of TpvUTF8String;
-             private
-              fParent:TpvTextEditor;
-             protected
-              fStates:TStates;
-              fCountStates:TpvSizeInt;
-              fCodePointIndex:TpvSizeInt;
-              fLevel:TpvUInt32;
-              function GetStateIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt):TpvSizeInt;
-             public
-              constructor Create(const aParent:TpvTextEditor); reintroduce; virtual;
-              destructor Destroy; override;
-              class function GetName:TpvUTF8String; virtual;
-              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; virtual;
-              procedure Reset; virtual;
-              procedure Truncate(const aUntilCodePoint:TpvSizeInt); virtual;
-              procedure Update(const aUntilCodePoint:TpvSizeInt); virtual;
-              class function GetSyntaxHighlightingClassByFileExtension(const aFileExtension:TpvUTF8String):TSyntaxHighlightingClass; static;
-             published
-              property Parent:TpvTextEditor read fParent;
-            end;
-            TGenericSyntaxHighlighting=class(TSyntaxHighlighting)
-             public
-              type TState=class(TSyntaxHighlighting.TState);
-             public
-              class function GetName:TpvUTF8String; override;
-              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
-              procedure Update(const aUntilCodePoint:TpvSizeInt); override;
-            end;
-            TDFASyntaxHighlighting=class(TSyntaxHighlighting)
-             public
-              const KeywordCharSet=[#32..#127];
-              type TCharSet=set of AnsiChar;
-                   PCharSet=^TCharSet;
-                   TNFA=class
-                    private
-                     fNext:TNFA;
-                     fFrom:TpvUInt32;
-                     fTo:TpvUInt32;
-                     fSet:TCharSet;
-                   end;
-                   TNFAArray=array of TNFA;
-                   TNFASetArray=array of TpvUInt32;
-                   TNFASet=record
-                    private
-                     fSet:TNFASetArray;
-                    public
-                     constructor Create(const aValues:array of TpvUInt32);
-                     class operator Add(const aSet:TNFASet;const aValue:TpvUInt32):TNFASet;
-                     class operator Add(const aSet,aOtherSet:TNFASet):TNFASet;
-                     class operator Subtract(const aSet:TNFASet;const aValue:TpvUInt32):TNFASet;
-                     class operator Subtract(const aSet,aOtherSet:TNFASet):TNFASet;
-                     class operator Multiply(const aSet,aOtherSet:TNFASet):TNFASet;
-                     class operator BitwiseAnd(const aSet,aOtherSet:TNFASet):TNFASet;
-                     class operator BitwiseOr(const aSet,aOtherSet:TNFASet):TNFASet;
-                     class operator BitwiseXor(const aSet,aOtherSet:TNFASet):TNFASet;
-                     class operator In(const aValue:TpvUInt32;const aSet:TNFASet):boolean;
-                     class operator Equal(const aSet,aOtherSet:TNFASet):boolean;
-                     class operator NotEqual(const aSet,aOtherSet:TNFASet):boolean;
-                   end;
-                   TAccept=class
-                    public
-                     type TFlag=
-                           (
-                            IsQuick,
-                            IsEnd,
-                            IsPreprocessorLine,
-                            IsMaybeCPreprocessorMultiLine,
-                            IsKeyword,
-                            IncreaseLevel,
-                            DecreaseLevel
-                           );
-                          PFlag=^TFlag;
-                          TFlags=set of TFlag;
-                          PFlags=^TFlags;
-                    private
-                     fNext:TAccept;
-                     fFlags:TFlags;
-                     fState:TpvUInt32;
-                     fAttribute:TpvUInt32;
-                   end;
-                   TDFA=class
-                    public
-                     type TDFASet=array[AnsiChar] of TDFA;
-                          PDFASet=^TDFASet;
-                    private
-                     fNext:TDFA;
-                     fNumber:TpvSizeInt;
-                     fNFASet:TNFASet;
-                     fAccept:TAccept;
-                     fAcceptEnd:TAccept;
-                     fWhereTo:TDFASet;
-                   end;
-                   TDFAArray=array of TDFA;
-                   TEquivalence=array[AnsiChar] of AnsiChar;
-                   PEquivalence=^TEquivalence;
-                   EParserError=class(Exception);
-                   EParserErrorExpectedEndOfText=class(EParserError);
-                   EParserErrorUnexpectedEndOfText=class(EParserError);
-                   EParserErrorExpectedRightParen=class(EParserError);
-                   EParserErrorExpectedRightBracket=class(EParserError);
-                   EParserErrorEmptySet=class(EParserError);
-                   EParserErrorInvalidMetaChar=class(EParserError);
-                   EParserErrorInvalidCount=class(EParserError);
-                   TKeywordCharSet=#32..#127;
-                   TKeywordCharTreeNode=class
-                    public
-                     type TKeywordCharTreeNodes=array[TKeywordCharSet] of TKeywordCharTreeNode;
-                    private
-                     fChildren:TKeywordCharTreeNodes;
-                     fHasChildren:boolean;
-                     fKeyword:boolean;
-                     fFlags:TAccept.TFlags;
-                     fAttribute:TpvUInt32;
-                    public
-                     constructor Create; reintroduce;
-                     destructor Destroy; override;
-                   end;
-                   TState=class(TSyntaxHighlighting.TState)
-                    private
-                     fAccept:TAccept;
-                   end;
-             private
-              fNFAStates:TpvSizeInt;
-              fDFAStates:TpvSizeInt;
-              fNFA:TNFA;
-              fDFA:TDFA;
-              fAccept:TAccept;
-              fEquivalence:TEquivalence;
-              fKeywordCharRootTreeNode:TKeywordCharTreeNode;
-              fCaseInsensitive:boolean;
-              procedure Clear;
-              procedure BuildDFA;
-             protected
-              procedure Setup; virtual;
-             public
-              constructor Create(const aParent:TpvTextEditor); override;
-              destructor Destroy; override;
-              class function GetName:TpvUTF8String; override;
-              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
-              procedure AddKeyword(const aKeyword:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
-              procedure AddKeywords(const aKeywords:array of TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
-              procedure AddRule(const aRule:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
-              procedure Update(const aUntilCodePoint:TpvSizeInt); override;
-            end;
-            TPascalSyntaxHighlighting=class(TDFASyntaxHighlighting)
-             protected
-              procedure Setup; override;
-             public
-              class function GetName:TpvUTF8String; override;
-              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
-            end;
-            TCSyntaxHighlighting=class(TDFASyntaxHighlighting)
-             protected
-              procedure Setup; override;
-             public
-              class function GetName:TpvUTF8String; override;
-              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
-            end;
-            TCPPSyntaxHighlighting=class(TDFASyntaxHighlighting)
-             protected
-              procedure Setup; override;
-             public
-              class function GetName:TpvUTF8String; override;
-              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
-            end;
-            TJavaSyntaxHighlighting=class(TDFASyntaxHighlighting)
-             protected
-              procedure Setup; override;
-             public
-              class function GetName:TpvUTF8String; override;
-              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
-            end;
-            TGLSLSyntaxHighlighting=class(TDFASyntaxHighlighting)
-             protected
-              procedure Setup; override;
-             public
-              class function GetName:TpvUTF8String; override;
-              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
-            end;
             TCharSet=set of AnsiChar;
             TCodePointSet=record
              public
@@ -1412,6 +1198,222 @@ type TpvTextEditor=class
               function ToCodeUnitRegularExpression(const aUseNonCapturingGroups:boolean=false):TpvUTF8String;
             end;
             PCodePointSet=^TCodePointSet;
+            TSyntaxHighlighting=class;
+            TSyntaxHighlightingClass=class of TSyntaxHighlighting;
+            TSyntaxHighlighting=class
+             public
+              type TAttributes=class
+                    public
+                     const Unknown=0;
+                           WhiteSpace=1;
+                           Preprocessor=2;
+                           Comment=3;
+                           Keyword=4;
+                           Type_=5;
+                           Builtin=6;
+                           Identifier=7;
+                           Number=8;
+                           Symbol=9;
+                           String_=10;
+                           Delimiter=11;
+                           Operator=12;
+                           Marked=TpvUInt32($40000000);
+                           Highlight=TpvUInt32($80000000);
+                           Mask=TpvUInt32($0fffffff);
+                   end;
+                   TState=class
+                    private
+                     fCodePointIndex:TpvSizeInt;
+                     fLevel:TpvUInt32;
+                     fAttribute:TpvUInt32;
+                    public
+                     property CodePointIndex:TpvSizeInt read fCodePointIndex write fCodePointIndex;
+                     property Level:TpvUInt32 read fLevel write fLevel;
+                     property Attribute:TpvUInt32 read fAttribute write fAttribute;
+                   end;
+                   TStates=array of TState;
+                   TFileExtensions=array of TpvUTF8String;
+             private
+              fParent:TpvTextEditor;
+             protected
+              fStates:TStates;
+              fCountStates:TpvSizeInt;
+              fCodePointIndex:TpvSizeInt;
+              fLevel:TpvUInt32;
+              function GetStateIndexFromCodePointIndex(const aCodePointIndex:TpvSizeInt):TpvSizeInt;
+             public
+              constructor Create(const aParent:TpvTextEditor); reintroduce; virtual;
+              destructor Destroy; override;
+              class function GetName:TpvUTF8String; virtual;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; virtual;
+              procedure Reset; virtual;
+              procedure Truncate(const aUntilCodePoint:TpvSizeInt); virtual;
+              procedure Update(const aUntilCodePoint:TpvSizeInt); virtual;
+              class function GetSyntaxHighlightingClassByFileExtension(const aFileExtension:TpvUTF8String):TSyntaxHighlightingClass; static;
+             published
+              property Parent:TpvTextEditor read fParent;
+            end;
+            TGenericSyntaxHighlighting=class(TSyntaxHighlighting)
+             public
+              type TState=class(TSyntaxHighlighting.TState);
+             public
+              class function GetName:TpvUTF8String; override;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
+              procedure Update(const aUntilCodePoint:TpvSizeInt); override;
+            end;
+            TDFASyntaxHighlighting=class(TSyntaxHighlighting)
+             public
+              const KeywordCharSet=[#32..#127];
+              type TCharSet=set of AnsiChar;
+                   PCharSet=^TCharSet;
+                   TNFA=class
+                    private
+                     fNext:TNFA;
+                     fFrom:TpvUInt32;
+                     fTo:TpvUInt32;
+                     fSet:TCharSet;
+                   end;
+                   TNFAArray=array of TNFA;
+                   TNFASetArray=array of TpvUInt32;
+                   TNFASet=record
+                    private
+                     fSet:TNFASetArray;
+                    public
+                     constructor Create(const aValues:array of TpvUInt32);
+                     class operator Add(const aSet:TNFASet;const aValue:TpvUInt32):TNFASet;
+                     class operator Add(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator Subtract(const aSet:TNFASet;const aValue:TpvUInt32):TNFASet;
+                     class operator Subtract(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator Multiply(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator BitwiseAnd(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator BitwiseOr(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator BitwiseXor(const aSet,aOtherSet:TNFASet):TNFASet;
+                     class operator In(const aValue:TpvUInt32;const aSet:TNFASet):boolean;
+                     class operator Equal(const aSet,aOtherSet:TNFASet):boolean;
+                     class operator NotEqual(const aSet,aOtherSet:TNFASet):boolean;
+                   end;
+                   TAccept=class
+                    public
+                     type TFlag=
+                           (
+                            IsQuick,
+                            IsEnd,
+                            IsPreprocessorLine,
+                            IsMaybeCPreprocessorMultiLine,
+                            IsKeyword,
+                            IncreaseLevel,
+                            DecreaseLevel
+                           );
+                          PFlag=^TFlag;
+                          TFlags=set of TFlag;
+                          PFlags=^TFlags;
+                    private
+                     fNext:TAccept;
+                     fFlags:TFlags;
+                     fState:TpvUInt32;
+                     fAttribute:TpvUInt32;
+                   end;
+                   TDFA=class
+                    public
+                     type TDFASet=array[AnsiChar] of TDFA;
+                          PDFASet=^TDFASet;
+                    private
+                     fNext:TDFA;
+                     fNumber:TpvSizeInt;
+                     fNFASet:TNFASet;
+                     fAccept:TAccept;
+                     fAcceptEnd:TAccept;
+                     fWhereTo:TDFASet;
+                   end;
+                   TDFAArray=array of TDFA;
+                   TEquivalence=array[AnsiChar] of AnsiChar;
+                   PEquivalence=^TEquivalence;
+                   EParserError=class(Exception);
+                   EParserErrorExpectedEndOfText=class(EParserError);
+                   EParserErrorUnexpectedEndOfText=class(EParserError);
+                   EParserErrorExpectedRightParen=class(EParserError);
+                   EParserErrorExpectedRightBracket=class(EParserError);
+                   EParserErrorEmptySet=class(EParserError);
+                   EParserErrorInvalidMetaChar=class(EParserError);
+                   EParserErrorInvalidCount=class(EParserError);
+                   TKeywordCharSet=#32..#127;
+                   TKeywordCharTreeNode=class
+                    public
+                     type TKeywordCharTreeNodes=array[TKeywordCharSet] of TKeywordCharTreeNode;
+                    private
+                     fChildren:TKeywordCharTreeNodes;
+                     fHasChildren:boolean;
+                     fKeyword:boolean;
+                     fFlags:TAccept.TFlags;
+                     fAttribute:TpvUInt32;
+                    public
+                     constructor Create; reintroduce;
+                     destructor Destroy; override;
+                   end;
+                   TState=class(TSyntaxHighlighting.TState)
+                    private
+                     fAccept:TAccept;
+                   end;
+             private
+              fNFAStates:TpvSizeInt;
+              fDFAStates:TpvSizeInt;
+              fNFA:TNFA;
+              fDFA:TDFA;
+              fAccept:TAccept;
+              fEquivalence:TEquivalence;
+              fKeywordCharRootTreeNode:TKeywordCharTreeNode;
+              fCaseInsensitive:boolean;
+              fKeywordBeginCodePointSet:TCodePointSet;
+              fKeywordPartCodePointSet:TCodePointSet;
+              procedure Clear;
+              procedure BuildDFA;
+             protected
+              procedure Setup; virtual;
+             public
+              constructor Create(const aParent:TpvTextEditor); override;
+              destructor Destroy; override;
+              class function GetName:TpvUTF8String; override;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
+              procedure AddKeyword(const aKeyword:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
+              procedure AddKeywords(const aKeywords:array of TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
+              procedure AddRule(const aRule:TpvUTF8String;const aFlags:TAccept.TFlags;const aAttribute:TpvUInt32);
+              procedure Update(const aUntilCodePoint:TpvSizeInt); override;
+            end;
+            TPascalSyntaxHighlighting=class(TDFASyntaxHighlighting)
+             protected
+              procedure Setup; override;
+             public
+              class function GetName:TpvUTF8String; override;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
+            end;
+            TCSyntaxHighlighting=class(TDFASyntaxHighlighting)
+             protected
+              procedure Setup; override;
+             public
+              class function GetName:TpvUTF8String; override;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
+            end;
+            TCPPSyntaxHighlighting=class(TDFASyntaxHighlighting)
+             protected
+              procedure Setup; override;
+             public
+              class function GetName:TpvUTF8String; override;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
+            end;
+            TJavaSyntaxHighlighting=class(TDFASyntaxHighlighting)
+             protected
+              procedure Setup; override;
+             public
+              class function GetName:TpvUTF8String; override;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
+            end;
+            TGLSLSyntaxHighlighting=class(TDFASyntaxHighlighting)
+             protected
+              procedure Setup; override;
+             public
+              class function GetName:TpvUTF8String; override;
+              class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
+            end;
             ERegularExpression=class(Exception);
             PRegularExpressionCharClass=^TRegularExpressionCharClass;
             TRegularExpressionCharClass=TpvTextEditor.TCodePointSet;
@@ -4516,6 +4518,539 @@ begin
  fUndoRedoManager.Redo(aView);
 end;
 
+constructor TpvTextEditor.TCodePointSet.TCodePointRange.Create(const aCodePoint:TpvUInt32);
+begin
+ fFromCodePoint:=aCodePoint;
+ fToCodePoint:=aCodePoint;
+end;
+
+constructor TpvTextEditor.TCodePointSet.TCodePointRange.Create(const aFromCodePoint,aToCodePoint:TpvUInt32);
+begin
+ fFromCodePoint:=aFromCodePoint;
+ fToCodePoint:=aToCodePoint;
+end;
+
+class function TpvTextEditor.TCodePointSet.CreateEmpty:TCodePointSet;
+begin
+ result.fRanges:=nil;
+end;
+
+constructor TpvTextEditor.TCodePointSet.Create(const aCodePointRanges:array of TCodePointRange);
+begin
+ SetLength(fRanges,length(aCodePointRanges));
+ if length(fRanges)>0 then begin
+  Move(aCodePointRanges[0],fRanges[0],length(fRanges)*SizeOf(TCodePointRange));
+ end;
+ Optimize;
+end;
+
+constructor TpvTextEditor.TCodePointSet.Create(const aCodePoints:array of TpvUInt32);
+var Index:TpvSizeInt;
+    CodePointRanges:TCodePointRanges;
+begin
+ SetLength(CodePointRanges,length(aCodePoints));
+ for Index:=0 to length(aCodePoints)-1 do begin
+  CodePointRanges[Index]:=TCodePointRange.Create(aCodePoints[Index]);
+ end;
+ Create(CodePointRanges);
+end;
+
+constructor TpvTextEditor.TCodePointSet.Create(const aCharSet:TCharSet);
+var Count:TpvSizeInt;
+    CurrentChar:AnsiChar;
+begin
+ Count:=0;
+ for CurrentChar in aCharSet do begin
+  inc(Count);
+ end;
+ SetLength(fRanges,Count);
+ Count:=0;
+ for CurrentChar in aCharSet do begin
+  fRanges[Count]:=TpvTextEditor.TCodePointSet.TCodePointRange.Create(ord(CurrentChar));
+  inc(Count);
+ end;
+ Optimize;
+end;
+
+procedure TpvTextEditor.TCodePointSet.Sort;
+var Index,Count:TpvSizeInt;
+    CodePointRange:TCodePointRange;
+begin
+ Index:=0;
+ Count:=length(fRanges);
+ while (Index+1)<Count do begin
+  if (fRanges[Index].fFromCodePoint>fRanges[Index+1].fFromCodePoint) or
+     ((fRanges[Index].fFromCodePoint=fRanges[Index+1].fFromCodePoint) and
+      (fRanges[Index].fToCodePoint>fRanges[Index+1].fToCodePoint)) then begin
+   CodePointRange:=fRanges[Index];
+   fRanges[Index]:=fRanges[Index+1];
+   fRanges[Index+1]:=CodePointRange;
+   if Index>0 then begin
+    dec(Index);
+   end else begin
+    inc(Index);
+   end;
+  end else begin
+   inc(Index);
+  end;
+ end;
+end;
+
+procedure TpvTextEditor.TCodePointSet.Optimize;
+var Index,Count:TpvSizeInt;
+    NewCodePointRanges:TCodePointRanges;
+    NewRange,Range:PCodePointRange;
+begin
+ Sort;
+ SetLength(NewCodePointRanges,length(fRanges));
+ Count:=0;
+ try
+  NewRange:=nil;
+  for Index:=0 to length(fRanges)-1 do begin
+   Range:=@fRanges[Index];
+   if assigned(NewRange) and
+      (((Range^.fFromCodePoint<=NewRange^.fToCodePoint) and
+        (NewRange^.fFromCodePoint<=Range^.fToCodePoint)) or
+       ((NewRange^.fToCodePoint+1)=Range^.fFromCodePoint)) then begin
+    if NewRange^.fFromCodePoint>Range^.fFromCodePoint then begin
+     NewRange^.fFromCodePoint:=Range^.fFromCodePoint;
+    end;
+    if NewRange^.fToCodePoint<Range^.fToCodePoint then begin
+     NewRange^.fToCodePoint:=Range^.fToCodePoint;
+    end;
+   end else begin
+    NewRange:=@NewCodePointRanges[Count];
+    inc(Count);
+    NewRange^:=Range^;
+   end;
+  end;
+ finally
+  try
+   fRanges:=copy(NewCodePointRanges,0,Count);
+  finally
+   NewCodePointRanges:=nil;
+  end;
+ end;
+end;
+
+class operator TpvTextEditor.TCodePointSet.Add(const aCodePointSet,aOtherCodePointSet:TCodePointSet):TCodePointSet;
+begin
+ result:=aCodePointSet+aOtherCodePointSet.fRanges;
+end;
+
+class operator TpvTextEditor.TCodePointSet.Add(const aCodePointSet:TCodePointSet;const aOtherCodePointSets:array of TCodePointSet):TCodePointSet;
+var CodePointSet:TCodePointSet;
+begin
+ result.fRanges:=copy(aCodePointSet.fRanges);
+ for CodePointSet in aOtherCodePointSets do begin
+  result:=result+CodePointSet;
+ end;
+end;
+
+class operator TpvTextEditor.TCodePointSet.Add(const aCodePointSet:TCodePointSet;const aCodePointRange:TCodePointRange):TCodePointSet;
+var Index,InsertIndex:TpvSizeInt;
+begin
+ SetLength(result.fRanges,length(aCodePointSet.fRanges)+1);
+ InsertIndex:=0;
+ for Index:=length(aCodePointSet.fRanges)-1 downto 0 do begin
+  if (aCodePointRange.fFromCodePoint>aCodePointSet.fRanges[Index].fFromCodePoint) or
+      ((aCodePointRange.fFromCodePoint=aCodePointSet.fRanges[Index].fFromCodePoint) and
+       (aCodePointRange.fToCodePoint>aCodePointSet.fRanges[Index].fToCodePoint)) then begin
+   InsertIndex:=Index;
+   break;
+  end;
+ end;
+ for Index:=0 to InsertIndex-1 do begin
+  result.fRanges[Index]:=aCodePointSet.fRanges[Index];
+ end;
+ result.fRanges[InsertIndex]:=aCodePointRange;
+ for Index:=InsertIndex+1 to length(result.fRanges)-1 do begin
+  result.fRanges[Index]:=aCodePointSet.fRanges[Index-1];
+ end;
+ result.Optimize;
+end;
+
+class operator TpvTextEditor.TCodePointSet.Add(const aCodePointSet:TCodePointSet;const aCodePointRanges:array of TCodePointRange):TCodePointSet;
+var CodePointRange:TCodePointRange;
+begin
+ result.fRanges:=copy(aCodePointSet.fRanges);
+ for CodePointRange in aCodePointRanges do begin
+  result:=result+CodePointRange;
+ end;
+end;
+
+class operator TpvTextEditor.TCodePointSet.Add(const aCodePointSet:TCodePointSet;const aCodePoint:TpvUInt32):TCodePointSet;
+begin
+ result:=aCodePointSet+TCodePointRange.Create(aCodePoint);
+end;
+
+class operator TpvTextEditor.TCodePointSet.Add(const aCodePointSet:TCodePointSet;const aCodePoints:array of TpvUInt32):TCodePointSet;
+var CodePoint:TpvUInt32;
+begin
+ result.fRanges:=copy(aCodePointSet.fRanges);
+ for CodePoint in aCodePoints do begin
+  result:=result+CodePoint;
+ end;
+end;
+
+class operator TpvTextEditor.TCodePointSet.Subtract(const aCodePointSet,aOtherCodePointSet:TCodePointSet):TCodePointSet;
+var Count:TpvSizeInt;
+    First,Min,Max:TpvUInt32;
+    RangeA,RangeB:TCodePointRange;
+begin
+ result.fRanges:=nil;
+ Count:=0;
+ try
+  for RangeA in aCodePointSet.fRanges do begin
+   First:=RangeA.fFromCodePoint;
+   for RangeB in aOtherCodePointSet.fRanges do begin
+    if (First<=RangeB.fToCodePoint) and (RangeB.fFromCodePoint<=RangeA.fToCodePoint) then begin
+     if First>RangeB.fFromCodePoint then begin
+      Min:=First;
+     end else begin
+      Min:=RangeB.fFromCodePoint;
+     end;
+     if RangeA.fToCodePoint<RangeB.fToCodePoint then begin
+      Max:=RangeA.fToCodePoint;
+     end else begin
+      Max:=RangeB.fToCodePoint;
+     end;
+     if First<Min then begin
+      if length(result.fRanges)<=Count then begin
+       SetLength(result.fRanges,(Count+1)*2);
+      end;
+      result.fRanges[Count]:=TCodePointRange.Create(First,Min-1);
+      inc(Count);
+     end;
+     First:=Max+1;
+    end;
+   end;
+   if First<=RangeA.fToCodePoint then begin
+    if length(result.fRanges)<=Count then begin
+     SetLength(result.fRanges,(Count+1)*2);
+    end;
+    result.fRanges[Count]:=TCodePointRange.Create(First,RangeA.fToCodePoint);
+    inc(Count);
+   end;
+  end;
+ finally
+  try
+   SetLength(result.fRanges,Count);
+  finally
+   result.Optimize;
+  end;
+ end;
+end;
+
+class operator TpvTextEditor.TCodePointSet.Subtract(const aCodePointSet:TCodePointSet;const aOtherCodePointSets:array of TCodePointSet):TCodePointSet;
+var CodePointSet:TCodePointSet;
+begin
+ result.fRanges:=copy(aCodePointSet.fRanges);
+ for CodePointSet in aOtherCodePointSets do begin
+  result:=result-CodePointSet;
+ end;
+end;
+
+class operator TpvTextEditor.TCodePointSet.Subtract(const aCodePointSet:TCodePointSet;const aCodePointRange:TCodePointRange):TCodePointSet;
+var CodePointRanges:TCodePointRanges;
+begin
+ SetLength(CodePointRanges,1);
+ CodePointRanges[0]:=aCodePointRange;
+ result:=aCodePointSet-TCodePointSet.Create(CodePointRanges);
+end;
+
+class operator TpvTextEditor.TCodePointSet.Subtract(const aCodePointSet:TCodePointSet;const aCodePointRanges:array of TCodePointRange):TCodePointSet;
+begin
+ result:=aCodePointSet-TCodePointSet.Create(aCodePointRanges);
+end;
+
+class operator TpvTextEditor.TCodePointSet.Subtract(const aCodePointSet:TCodePointSet;const aCodePoint:TpvUInt32):TCodePointSet;
+begin
+ result:=aCodePointSet-TCodePointSet.Create([aCodePoint]);
+end;
+
+class operator TpvTextEditor.TCodePointSet.Subtract(const aCodePointSet:TCodePointSet;const aCodePoints:array of TpvUInt32):TCodePointSet;
+begin
+ result:=aCodePointSet-TCodePointSet.Create(aCodePoints);
+end;
+
+class operator TpvTextEditor.TCodePointSet.Multiply(const aCodePointSet,aOtherCodePointSet:TCodePointSet):TCodePointSet;
+var Count:TpvSizeInt;
+    Min,Max:TpvUInt32;
+    RangeA,RangeB:TCodePointRange;
+begin
+ result.fRanges:=nil;
+ Count:=0;
+ try
+  if (length(aCodePointSet.fRanges)>0) and
+     (length(aOtherCodePointSet.fRanges)>0) and
+     ((aCodePointSet.fRanges[0].fFromCodePoint<=aOtherCodePointSet.fRanges[length(aOtherCodePointSet.fRanges)-1].fToCodePoint) and
+      (aOtherCodePointSet.fRanges[0].fFromCodePoint<=aCodePointSet.fRanges[length(aCodePointSet.fRanges)-1].fToCodePoint)) then begin
+   for RangeA in aCodePointSet.fRanges do begin
+    for RangeB in aOtherCodePointSet.fRanges do begin
+     if (RangeA.fFromCodePoint<=RangeB.fToCodePoint) and (RangeB.fFromCodePoint<=RangeA.fToCodePoint) then begin
+      if RangeA.fFromCodePoint>RangeB.fFromCodePoint then begin
+       Min:=RangeA.fFromCodePoint;
+      end else begin
+       Min:=RangeB.fFromCodePoint;
+      end;
+      if RangeA.fToCodePoint<RangeB.fToCodePoint then begin
+       Max:=RangeA.fToCodePoint;
+      end else begin
+       Max:=RangeB.fToCodePoint;
+      end;
+      if Min<=Max then begin
+       if length(result.fRanges)<=Count then begin
+        SetLength(result.fRanges,(Count+1)*2);
+       end;
+       result.fRanges[Count]:=TCodePointRange.Create(Min,Max);
+       inc(Count);
+      end;
+     end;
+    end;
+   end;
+  end;
+ finally
+  try
+   SetLength(result.fRanges,Count);
+  finally
+   result.Optimize;
+  end;
+ end;
+end;
+
+class operator TpvTextEditor.TCodePointSet.Multiply(const aCodePointSet:TCodePointSet;const aOtherCodePointSets:array of TCodePointSet):TCodePointSet;
+var CodePointSet:TCodePointSet;
+begin
+ result.fRanges:=copy(aCodePointSet.fRanges);
+ for CodePointSet in aOtherCodePointSets do begin
+  result:=result*CodePointSet;
+ end;
+end;
+
+class operator TpvTextEditor.TCodePointSet.Multiply(const aCodePointSet:TCodePointSet;const aCodePointRange:TCodePointRange):TCodePointSet;
+var CodePointRanges:TCodePointRanges;
+begin
+ SetLength(CodePointRanges,1);
+ CodePointRanges[0]:=aCodePointRange;
+ result:=aCodePointSet*TCodePointSet.Create(CodePointRanges);
+end;
+
+class operator TpvTextEditor.TCodePointSet.Multiply(const aCodePointSet:TCodePointSet;const aCodePointRanges:array of TCodePointRange):TCodePointSet;
+begin
+ result:=aCodePointSet*TCodePointSet.Create(aCodePointRanges);
+end;
+
+class operator TpvTextEditor.TCodePointSet.Multiply(const aCodePointSet:TCodePointSet;const aCodePoint:TpvUInt32):TCodePointSet;
+begin
+ result:=aCodePointSet*TCodePointSet.Create([aCodePoint]);
+end;
+
+class operator TpvTextEditor.TCodePointSet.Multiply(const aCodePointSet:TCodePointSet;const aCodePoints:array of TpvUInt32):TCodePointSet;
+begin
+ result:=aCodePointSet*TCodePointSet.Create(aCodePoints);
+end;
+
+class operator TpvTextEditor.TCodePointSet.Equal(const aCodePointSet,aOtherCodePointSet:TCodePointSet):boolean;
+var Index:TpvSizeInt;
+begin
+ result:=length(aCodePointSet.fRanges)=length(aOtherCodePointSet.fRanges);
+ if result then begin
+  for Index:=0 to length(aCodePointSet.fRanges)-1 do begin
+   if (aCodePointSet.fRanges[Index].fFromCodePoint<>aOtherCodePointSet.fRanges[Index].fFromCodePoint) or
+      (aCodePointSet.fRanges[Index].fToCodePoint<>aOtherCodePointSet.fRanges[Index].fToCodePoint) then begin
+    result:=false;
+    break;
+   end;
+  end;
+ end;
+end;
+
+class operator TpvTextEditor.TCodePointSet.NotEqual(const aCodePointSet,aOtherCodePointSet:TCodePointSet):boolean;
+var Index:TpvSizeInt;
+begin
+ result:=length(aCodePointSet.fRanges)<>length(aOtherCodePointSet.fRanges);
+ if not result then begin
+  for Index:=0 to length(aCodePointSet.fRanges)-1 do begin
+   if (aCodePointSet.fRanges[Index].fFromCodePoint<>aOtherCodePointSet.fRanges[Index].fFromCodePoint) or
+      (aCodePointSet.fRanges[Index].fToCodePoint<>aOtherCodePointSet.fRanges[Index].fToCodePoint) then begin
+    result:=true;
+    break;
+   end;
+  end;
+ end;
+end;
+
+class operator TpvTextEditor.TCodePointSet.LogicalNot(const aCodePointSet:TCodePointSet):TCodePointSet;
+var Count:TpvSizeInt;
+    First,Min,Max:TpvUInt32;
+    RangeA,RangeB:TCodePointRange;
+begin
+ if length(aCodePointSet.fRanges)=0 then begin
+  result:=TCodePointSet.Create(TCodePointRange.Create(0,$ffffffff));
+ end else if (length(aCodePointSet.fRanges)=1) and
+             (aCodePointSet.fRanges[0].fFromCodePoint=0) and
+             (aCodePointSet.fRanges[0].fToCodePoint=$ffffffff) then begin
+  result.fRanges:=nil;
+ end else begin
+  // inlined: result:=TCodePointSet.Create(TCodePointRange.Create(0,$ffffffff))-aCodePointSet;
+  result.fRanges:=nil;
+  Count:=0;
+  try
+   RangeA:=TCodePointRange.Create(0,$ffffffff);
+   First:=RangeA.fFromCodePoint;
+   for RangeB in aCodePointSet.fRanges do begin
+    if (First<=RangeB.fToCodePoint) and (RangeB.fFromCodePoint<=RangeA.fToCodePoint) then begin
+     if First>RangeB.fFromCodePoint then begin
+      Min:=First;
+     end else begin
+      Min:=RangeB.fFromCodePoint;
+     end;
+     if RangeA.fToCodePoint<RangeB.fToCodePoint then begin
+      Max:=RangeA.fToCodePoint;
+     end else begin
+      Max:=RangeB.fToCodePoint;
+     end;
+     if First<Min then begin
+      if length(result.fRanges)<=Count then begin
+       SetLength(result.fRanges,(Count+1)*2);
+      end;
+      result.fRanges[Count]:=TCodePointRange.Create(First,Min-1);
+      inc(Count);
+     end;
+     First:=Max+1;
+    end;
+   end;
+   if First<=RangeA.fToCodePoint then begin
+    if length(result.fRanges)<=Count then begin
+     SetLength(result.fRanges,(Count+1)*2);
+    end;
+    result.fRanges[Count]:=TCodePointRange.Create(First,RangeA.fToCodePoint);
+    inc(Count);
+   end;
+  finally
+   try
+    SetLength(result.fRanges,Count);
+   finally
+    result.Optimize;
+   end;
+  end;
+ end;
+end;
+
+class operator TpvTextEditor.TCodePointSet.Negative(const aCodePointSet:TCodePointSet):TCodePointSet;
+begin
+ result:=not aCodePointSet;
+end;
+
+class operator TpvTextEditor.TCodePointSet.In(const aCodePoint:TpvUInt32;const aCodePointSet:TCodePointSet):boolean;
+var Range:TCodePointRange;
+begin
+ for Range in aCodePointSet.fRanges do begin
+  if (Range.fFromCodePoint<=aCodePoint) and (aCodePoint<=Range.fToCodePoint) then begin
+   result:=true;
+   exit;
+  end;
+ end;
+ result:=false;
+end;
+
+function TpvTextEditor.TCodePointSet.ToCaseInsensitive:TCodePointSet;
+var UsedCodePointSet,CodePointSetToAdd:TCodePointSet;
+    Range:TCodePointRange;
+    CodePoint:TpvUInt32;
+var CodePointRanges:TCodePointRanges;
+begin
+ SetLength(CodePointRanges,2);
+ CodePointRanges[0]:=TCodePointRange.Create(ord('A'),ord('Z'));
+ CodePointRanges[1]:=TCodePointRange.Create(ord('a'),ord('z'));
+ UsedCodePointSet:=TCodePointSet.Create(CodePointRanges);
+ CodePointSetToAdd:=TCodePointSet.CreateEmpty;
+ for Range in UsedCodePointSet.fRanges do begin
+  for CodePoint:=Range.fFromCodePoint to Range.fToCodePoint do begin
+   case CodePoint of
+    ord('A')..ord('Z'):Begin
+     CodePointSetToAdd:=CodePointSetToAdd+TpvUInt32(CodePoint+(ord('a')-ord('A')));
+    end;
+    ord('a')..ord('z'):Begin
+     CodePointSetToAdd:=CodePointSetToAdd+TpvUInt32(CodePoint-(ord('a')-ord('A')));
+    end;
+   end;
+  end;
+ end;
+ result:=Self+CodePointSetToAdd;
+end;
+
+function TpvTextEditor.TCodePointSet.ToLowerCase:TCodePointSet;
+var UsedCodePointSet,CodePointSetToAdd,CodePointSetToSubtract:TCodePointSet;
+    Range:TCodePointRange;
+    CodePoint:TpvUInt32;
+begin
+ UsedCodePointSet:=TCodePointSet.Create(TCodePointRange.Create(ord('A'),ord('Z')));
+ CodePointSetToAdd:=TCodePointSet.CreateEmpty;
+ CodePointSetToSubtract:=TCodePointSet.CreateEmpty;
+ for Range in UsedCodePointSet.fRanges do begin
+  for CodePoint:=Range.fFromCodePoint to Range.fToCodePoint do begin
+   CodePointSetToSubtract:=CodePointSetToSubtract+CodePoint;
+   CodePointSetToAdd:=CodePointSetToAdd+TpvUInt32(CodePoint+(ord('a')-ord('A')));
+  end;
+ end;
+ result:=(Self-CodePointSetToSubtract)+CodePointSetToAdd;
+end;
+
+function TpvTextEditor.TCodePointSet.ToUpperCase:TCodePointSet;
+var UsedCodePointSet,CodePointSetToAdd,CodePointSetToSubtract:TCodePointSet;
+    Range:TCodePointRange;
+    CodePoint:TpvUInt32;
+begin
+ UsedCodePointSet:=TCodePointSet.Create(TCodePointRange.Create(ord('a'),ord('z')));
+ CodePointSetToAdd:=TCodePointSet.CreateEmpty;
+ CodePointSetToSubtract:=TCodePointSet.CreateEmpty;
+ for Range in UsedCodePointSet.fRanges do begin
+  for CodePoint:=Range.fFromCodePoint to Range.fToCodePoint do begin
+   CodePointSetToSubtract:=CodePointSetToSubtract+CodePoint;
+   CodePointSetToAdd:=CodePointSetToAdd+TpvUInt32(CodePoint-(ord('a')-ord('A')));
+  end;
+ end;
+ result:=(Self-CodePointSetToSubtract)+CodePointSetToAdd;
+end;
+
+function TpvTextEditor.TCodePointSet.ToCodeUnitRegularExpression(const aUseNonCapturingGroups:boolean=false):TpvUTF8String;
+var Index,Count:TpvSizeInt;
+    Range:TCodePointSet.PCodePointRange;
+begin
+ Count:=length(fRanges);
+ if Count=0 then begin
+  result:='';
+ end else begin
+  if aUseNonCapturingGroups then begin
+   result:='(?:';
+  end else begin
+   result:='(';
+  end;
+  if Count=1 then begin
+   Range:=@fRanges[0];
+   result:=result+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression(Range^.fFromCodePoint,Range^.fToCodePoint);
+  end else begin
+   for Index:=0 to Count-1 do begin
+    Range:=@fRanges[Index];
+    if aUseNonCapturingGroups then begin
+     result:=result+'(?:';
+    end else begin
+     result:=result+'(';
+    end;
+    result:=result+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression(Range^.fFromCodePoint,Range^.fToCodePoint);
+    if (Index+1)<Count then begin
+     result:=result+')|';
+    end else begin
+     result:=result+')';
+    end;
+   end;
+  end;
+  result:=result+')';
+ end;
+end;
+
 constructor TpvTextEditor.TSyntaxHighlighting.Create(const aParent:TpvTextEditor);
 begin
  inherited Create;
@@ -4968,6 +5503,10 @@ begin
  FillChar(fEquivalence,SizeOf(TEquivalence),#0);
 
  fKeywordCharRootTreeNode:=TKeywordCharTreeNode.Create;
+
+ fKeywordBeginCodePointSet:=TpvTextEditor.TCodePointSet.Create(['A'..'Z','a'..'z','_']);
+
+ fKeywordPartCodePointSet:=TpvTextEditor.TCodePointSet.Create(['A'..'Z','a'..'z','_','0'..'9']);
 
  try
 
@@ -5843,6 +6382,12 @@ end;
 procedure TpvTextEditor.TPascalSyntaxHighlighting.Setup;
 begin
  fCaseInsensitive:=true;
+ fKeywordBeginCodePointSet:=(TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.WordClassCodeRanges)+
+                             TpvTextEditor.TCodePointSet.Create([TpvUInt32(ord('_'))]))-
+                            TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.DigitClassCodeRanges);
+ fKeywordPartCodePointSet:=TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.WordClassCodeRanges)+
+                           TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.DigitClassCodeRanges)+
+                           TpvTextEditor.TCodePointSet.Create([TpvUInt32(ord('_'))]);
  AddKeywords(['absolute','abstract','and','array','as','asm','assembler',
               'automated','case','cdecl','class','const','constructor',
               'contains','default','deprecated','destructor','dispid',
@@ -5911,6 +6456,12 @@ end;
 procedure TpvTextEditor.TCSyntaxHighlighting.Setup;
 begin
  fCaseInsensitive:=false;
+ fKeywordBeginCodePointSet:=(TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.WordClassCodeRanges)+
+                             TpvTextEditor.TCodePointSet.Create([TpvUInt32(ord('_')),TpvUInt32(ord('$'))]))-
+                            TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.DigitClassCodeRanges);
+ fKeywordPartCodePointSet:=TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.WordClassCodeRanges)+
+                           TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.DigitClassCodeRanges)+
+                           TpvTextEditor.TCodePointSet.Create([TpvUInt32(ord('_')),TpvUInt32(ord('$'))]);
  AddKeywords(['_Alignas','_Alignof','_Atomic','_Bool','_Complex','_Generic','_Imaginary',
               '_Noreturn','_Static_assert','_Thread_local','auto','break','case','char',
               'const','continue','default','do','double','else','enum','extern','float',
@@ -5984,6 +6535,12 @@ end;
 procedure TpvTextEditor.TCPPSyntaxHighlighting.Setup;
 begin
  fCaseInsensitive:=false;
+ fKeywordBeginCodePointSet:=(TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.WordClassCodeRanges)+
+                             TpvTextEditor.TCodePointSet.Create([TpvUInt32(ord('_')),TpvUInt32(ord('$'))]))-
+                            TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.DigitClassCodeRanges);
+ fKeywordPartCodePointSet:=TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.WordClassCodeRanges)+
+                           TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.DigitClassCodeRanges)+
+                           TpvTextEditor.TCodePointSet.Create([TpvUInt32(ord('_')),TpvUInt32(ord('$'))]);
  AddKeywords(['__asm','__automated','__cdecl','__classid','__closure','__declspec',
               '__dispid','__except','__export','__fastcall','__finally','__import',
               '__int16','__int32','__int64','__int8','__pascal','__property',
@@ -6062,6 +6619,12 @@ end;
 procedure TpvTextEditor.TJavaSyntaxHighlighting.Setup;
 begin
  fCaseInsensitive:=false;
+ fKeywordBeginCodePointSet:=(TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.WordClassCodeRanges)+
+                             TpvTextEditor.TCodePointSet.Create([TpvUInt32(ord('_')),TpvUInt32(ord('$'))]))-
+                            TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.DigitClassCodeRanges);
+ fKeywordPartCodePointSet:=TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.WordClassCodeRanges)+
+                           TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.DigitClassCodeRanges)+
+                           TpvTextEditor.TCodePointSet.Create([TpvUInt32(ord('_')),TpvUInt32(ord('$'))]);
  AddKeywords(['abstract','assert','boolean','break','TpvUInt8','case','catch','char',
               'class','const','continue','default','do','double','else','enum',
               'extends','false','final','finally','float','for','goto','if',
@@ -6114,6 +6677,12 @@ end;
 procedure TpvTextEditor.TGLSLSyntaxHighlighting.Setup;
 begin
  fCaseInsensitive:=false;
+ fKeywordBeginCodePointSet:=(TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.WordClassCodeRanges)+
+                             TpvTextEditor.TCodePointSet.Create([TpvUInt32(ord('_')),TpvUInt32(ord('$'))]))-
+                            TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.DigitClassCodeRanges);
+ fKeywordPartCodePointSet:=TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.WordClassCodeRanges)+
+                           TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.DigitClassCodeRanges)+
+                           TpvTextEditor.TCodePointSet.Create([TpvUInt32(ord('_')),TpvUInt32(ord('$'))]);
  AddKeywords(['and_op','or_op','xor_op','mul_assign','div_assign','add_assign',
               'atomic_uint','break','continue','do','else','for','if','discard',
               'return','switch','case','default','subroutine','bvec2','bvec3',
@@ -6198,539 +6767,6 @@ begin
  AddRule('[\,\;\.\?\:\\]',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
  AddRule('\[|\(|\{',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IncreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
  AddRule('\]|\)|\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.DecreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
-end;
-
-constructor TpvTextEditor.TCodePointSet.TCodePointRange.Create(const aCodePoint:TpvUInt32);
-begin
- fFromCodePoint:=aCodePoint;
- fToCodePoint:=aCodePoint;
-end;
-
-constructor TpvTextEditor.TCodePointSet.TCodePointRange.Create(const aFromCodePoint,aToCodePoint:TpvUInt32);
-begin
- fFromCodePoint:=aFromCodePoint;
- fToCodePoint:=aToCodePoint;
-end;
-
-class function TpvTextEditor.TCodePointSet.CreateEmpty:TCodePointSet;
-begin
- result.fRanges:=nil;
-end;
-
-constructor TpvTextEditor.TCodePointSet.Create(const aCodePointRanges:array of TCodePointRange);
-begin
- SetLength(fRanges,length(aCodePointRanges));
- if length(fRanges)>0 then begin
-  Move(aCodePointRanges[0],fRanges[0],length(fRanges)*SizeOf(TCodePointRange));
- end;
- Optimize;
-end;
-
-constructor TpvTextEditor.TCodePointSet.Create(const aCodePoints:array of TpvUInt32);
-var Index:TpvSizeInt;
-    CodePointRanges:TCodePointRanges;
-begin
- SetLength(CodePointRanges,length(aCodePoints));
- for Index:=0 to length(aCodePoints)-1 do begin
-  CodePointRanges[Index]:=TCodePointRange.Create(aCodePoints[Index]);
- end;
- Create(CodePointRanges);
-end;
-
-constructor TpvTextEditor.TCodePointSet.Create(const aCharSet:TCharSet);
-var Count:TpvSizeInt;
-    CurrentChar:AnsiChar;
-begin
- Count:=0;
- for CurrentChar in aCharSet do begin
-  inc(Count);
- end;
- SetLength(fRanges,Count);
- Count:=0;
- for CurrentChar in aCharSet do begin
-  fRanges[Count]:=TpvTextEditor.TCodePointSet.TCodePointRange.Create(ord(CurrentChar));
-  inc(Count);
- end;
- Optimize;
-end;
-
-procedure TpvTextEditor.TCodePointSet.Sort;
-var Index,Count:TpvSizeInt;
-    CodePointRange:TCodePointRange;
-begin
- Index:=0;
- Count:=length(fRanges);
- while (Index+1)<Count do begin
-  if (fRanges[Index].fFromCodePoint>fRanges[Index+1].fFromCodePoint) or
-     ((fRanges[Index].fFromCodePoint=fRanges[Index+1].fFromCodePoint) and
-      (fRanges[Index].fToCodePoint>fRanges[Index+1].fToCodePoint)) then begin
-   CodePointRange:=fRanges[Index];
-   fRanges[Index]:=fRanges[Index+1];
-   fRanges[Index+1]:=CodePointRange;
-   if Index>0 then begin
-    dec(Index);
-   end else begin
-    inc(Index);
-   end;
-  end else begin
-   inc(Index);
-  end;
- end;
-end;
-
-procedure TpvTextEditor.TCodePointSet.Optimize;
-var Index,Count:TpvSizeInt;
-    NewCodePointRanges:TCodePointRanges;
-    NewRange,Range:PCodePointRange;
-begin
- Sort;
- SetLength(NewCodePointRanges,length(fRanges));
- Count:=0;
- try
-  NewRange:=nil;
-  for Index:=0 to length(fRanges)-1 do begin
-   Range:=@fRanges[Index];
-   if assigned(NewRange) and
-      (((Range^.fFromCodePoint<=NewRange^.fToCodePoint) and
-        (NewRange^.fFromCodePoint<=Range^.fToCodePoint)) or
-       ((NewRange^.fToCodePoint+1)=Range^.fFromCodePoint)) then begin
-    if NewRange^.fFromCodePoint>Range^.fFromCodePoint then begin
-     NewRange^.fFromCodePoint:=Range^.fFromCodePoint;
-    end;
-    if NewRange^.fToCodePoint<Range^.fToCodePoint then begin
-     NewRange^.fToCodePoint:=Range^.fToCodePoint;
-    end;
-   end else begin
-    NewRange:=@NewCodePointRanges[Count];
-    inc(Count);
-    NewRange^:=Range^;
-   end;
-  end;
- finally
-  try
-   fRanges:=copy(NewCodePointRanges,0,Count);
-  finally
-   NewCodePointRanges:=nil;
-  end;
- end;
-end;
-
-class operator TpvTextEditor.TCodePointSet.Add(const aCodePointSet,aOtherCodePointSet:TCodePointSet):TCodePointSet;
-begin
- result:=aCodePointSet+aOtherCodePointSet.fRanges;
-end;
-
-class operator TpvTextEditor.TCodePointSet.Add(const aCodePointSet:TCodePointSet;const aOtherCodePointSets:array of TCodePointSet):TCodePointSet;
-var CodePointSet:TCodePointSet;
-begin
- result.fRanges:=copy(aCodePointSet.fRanges);
- for CodePointSet in aOtherCodePointSets do begin
-  result:=result+CodePointSet;
- end;
-end;
-
-class operator TpvTextEditor.TCodePointSet.Add(const aCodePointSet:TCodePointSet;const aCodePointRange:TCodePointRange):TCodePointSet;
-var Index,InsertIndex:TpvSizeInt;
-begin
- SetLength(result.fRanges,length(aCodePointSet.fRanges)+1);
- InsertIndex:=0;
- for Index:=length(aCodePointSet.fRanges)-1 downto 0 do begin
-  if (aCodePointRange.fFromCodePoint>aCodePointSet.fRanges[Index].fFromCodePoint) or
-      ((aCodePointRange.fFromCodePoint=aCodePointSet.fRanges[Index].fFromCodePoint) and
-       (aCodePointRange.fToCodePoint>aCodePointSet.fRanges[Index].fToCodePoint)) then begin
-   InsertIndex:=Index;
-   break;
-  end;
- end;
- for Index:=0 to InsertIndex-1 do begin
-  result.fRanges[Index]:=aCodePointSet.fRanges[Index];
- end;
- result.fRanges[InsertIndex]:=aCodePointRange;
- for Index:=InsertIndex+1 to length(result.fRanges)-1 do begin
-  result.fRanges[Index]:=aCodePointSet.fRanges[Index-1];
- end;
- result.Optimize;
-end;
-
-class operator TpvTextEditor.TCodePointSet.Add(const aCodePointSet:TCodePointSet;const aCodePointRanges:array of TCodePointRange):TCodePointSet;
-var CodePointRange:TCodePointRange;
-begin
- result.fRanges:=copy(aCodePointSet.fRanges);
- for CodePointRange in aCodePointRanges do begin
-  result:=result+CodePointRange;
- end;
-end;
-
-class operator TpvTextEditor.TCodePointSet.Add(const aCodePointSet:TCodePointSet;const aCodePoint:TpvUInt32):TCodePointSet;
-begin
- result:=aCodePointSet+TCodePointRange.Create(aCodePoint);
-end;
-
-class operator TpvTextEditor.TCodePointSet.Add(const aCodePointSet:TCodePointSet;const aCodePoints:array of TpvUInt32):TCodePointSet;
-var CodePoint:TpvUInt32;
-begin
- result.fRanges:=copy(aCodePointSet.fRanges);
- for CodePoint in aCodePoints do begin
-  result:=result+CodePoint;
- end;
-end;
-
-class operator TpvTextEditor.TCodePointSet.Subtract(const aCodePointSet,aOtherCodePointSet:TCodePointSet):TCodePointSet;
-var Count:TpvSizeInt;
-    First,Min,Max:TpvUInt32;
-    RangeA,RangeB:TCodePointRange;
-begin
- result.fRanges:=nil;
- Count:=0;
- try
-  for RangeA in aCodePointSet.fRanges do begin
-   First:=RangeA.fFromCodePoint;
-   for RangeB in aOtherCodePointSet.fRanges do begin
-    if (First<=RangeB.fToCodePoint) and (RangeB.fFromCodePoint<=RangeA.fToCodePoint) then begin
-     if First>RangeB.fFromCodePoint then begin
-      Min:=First;
-     end else begin
-      Min:=RangeB.fFromCodePoint;
-     end;
-     if RangeA.fToCodePoint<RangeB.fToCodePoint then begin
-      Max:=RangeA.fToCodePoint;
-     end else begin
-      Max:=RangeB.fToCodePoint;
-     end;
-     if First<Min then begin
-      if length(result.fRanges)<=Count then begin
-       SetLength(result.fRanges,(Count+1)*2);
-      end;
-      result.fRanges[Count]:=TCodePointRange.Create(First,Min-1);
-      inc(Count);
-     end;
-     First:=Max+1;
-    end;
-   end;
-   if First<=RangeA.fToCodePoint then begin
-    if length(result.fRanges)<=Count then begin
-     SetLength(result.fRanges,(Count+1)*2);
-    end;
-    result.fRanges[Count]:=TCodePointRange.Create(First,RangeA.fToCodePoint);
-    inc(Count);
-   end;
-  end;
- finally
-  try
-   SetLength(result.fRanges,Count);
-  finally
-   result.Optimize;
-  end;
- end;
-end;
-
-class operator TpvTextEditor.TCodePointSet.Subtract(const aCodePointSet:TCodePointSet;const aOtherCodePointSets:array of TCodePointSet):TCodePointSet;
-var CodePointSet:TCodePointSet;
-begin
- result.fRanges:=copy(aCodePointSet.fRanges);
- for CodePointSet in aOtherCodePointSets do begin
-  result:=result-CodePointSet;
- end;
-end;
-
-class operator TpvTextEditor.TCodePointSet.Subtract(const aCodePointSet:TCodePointSet;const aCodePointRange:TCodePointRange):TCodePointSet;
-var CodePointRanges:TCodePointRanges;
-begin
- SetLength(CodePointRanges,1);
- CodePointRanges[0]:=aCodePointRange;
- result:=aCodePointSet-TCodePointSet.Create(CodePointRanges);
-end;
-
-class operator TpvTextEditor.TCodePointSet.Subtract(const aCodePointSet:TCodePointSet;const aCodePointRanges:array of TCodePointRange):TCodePointSet;
-begin
- result:=aCodePointSet-TCodePointSet.Create(aCodePointRanges);
-end;
-
-class operator TpvTextEditor.TCodePointSet.Subtract(const aCodePointSet:TCodePointSet;const aCodePoint:TpvUInt32):TCodePointSet;
-begin
- result:=aCodePointSet-TCodePointSet.Create([aCodePoint]);
-end;
-
-class operator TpvTextEditor.TCodePointSet.Subtract(const aCodePointSet:TCodePointSet;const aCodePoints:array of TpvUInt32):TCodePointSet;
-begin
- result:=aCodePointSet-TCodePointSet.Create(aCodePoints);
-end;
-
-class operator TpvTextEditor.TCodePointSet.Multiply(const aCodePointSet,aOtherCodePointSet:TCodePointSet):TCodePointSet;
-var Count:TpvSizeInt;
-    Min,Max:TpvUInt32;
-    RangeA,RangeB:TCodePointRange;
-begin
- result.fRanges:=nil;
- Count:=0;
- try
-  if (length(aCodePointSet.fRanges)>0) and
-     (length(aOtherCodePointSet.fRanges)>0) and
-     ((aCodePointSet.fRanges[0].fFromCodePoint<=aOtherCodePointSet.fRanges[length(aOtherCodePointSet.fRanges)-1].fToCodePoint) and
-      (aOtherCodePointSet.fRanges[0].fFromCodePoint<=aCodePointSet.fRanges[length(aCodePointSet.fRanges)-1].fToCodePoint)) then begin
-   for RangeA in aCodePointSet.fRanges do begin
-    for RangeB in aOtherCodePointSet.fRanges do begin
-     if (RangeA.fFromCodePoint<=RangeB.fToCodePoint) and (RangeB.fFromCodePoint<=RangeA.fToCodePoint) then begin
-      if RangeA.fFromCodePoint>RangeB.fFromCodePoint then begin
-       Min:=RangeA.fFromCodePoint;
-      end else begin
-       Min:=RangeB.fFromCodePoint;
-      end;
-      if RangeA.fToCodePoint<RangeB.fToCodePoint then begin
-       Max:=RangeA.fToCodePoint;
-      end else begin
-       Max:=RangeB.fToCodePoint;
-      end;
-      if Min<=Max then begin
-       if length(result.fRanges)<=Count then begin
-        SetLength(result.fRanges,(Count+1)*2);
-       end;
-       result.fRanges[Count]:=TCodePointRange.Create(Min,Max);
-       inc(Count);
-      end;
-     end;
-    end;
-   end;
-  end;
- finally
-  try
-   SetLength(result.fRanges,Count);
-  finally
-   result.Optimize;
-  end;
- end;
-end;
-
-class operator TpvTextEditor.TCodePointSet.Multiply(const aCodePointSet:TCodePointSet;const aOtherCodePointSets:array of TCodePointSet):TCodePointSet;
-var CodePointSet:TCodePointSet;
-begin
- result.fRanges:=copy(aCodePointSet.fRanges);
- for CodePointSet in aOtherCodePointSets do begin
-  result:=result*CodePointSet;
- end;
-end;
-
-class operator TpvTextEditor.TCodePointSet.Multiply(const aCodePointSet:TCodePointSet;const aCodePointRange:TCodePointRange):TCodePointSet;
-var CodePointRanges:TCodePointRanges;
-begin
- SetLength(CodePointRanges,1);
- CodePointRanges[0]:=aCodePointRange;
- result:=aCodePointSet*TCodePointSet.Create(CodePointRanges);
-end;
-
-class operator TpvTextEditor.TCodePointSet.Multiply(const aCodePointSet:TCodePointSet;const aCodePointRanges:array of TCodePointRange):TCodePointSet;
-begin
- result:=aCodePointSet*TCodePointSet.Create(aCodePointRanges);
-end;
-
-class operator TpvTextEditor.TCodePointSet.Multiply(const aCodePointSet:TCodePointSet;const aCodePoint:TpvUInt32):TCodePointSet;
-begin
- result:=aCodePointSet*TCodePointSet.Create([aCodePoint]);
-end;
-
-class operator TpvTextEditor.TCodePointSet.Multiply(const aCodePointSet:TCodePointSet;const aCodePoints:array of TpvUInt32):TCodePointSet;
-begin
- result:=aCodePointSet*TCodePointSet.Create(aCodePoints);
-end;
-
-class operator TpvTextEditor.TCodePointSet.Equal(const aCodePointSet,aOtherCodePointSet:TCodePointSet):boolean;
-var Index:TpvSizeInt;
-begin
- result:=length(aCodePointSet.fRanges)=length(aOtherCodePointSet.fRanges);
- if result then begin
-  for Index:=0 to length(aCodePointSet.fRanges)-1 do begin
-   if (aCodePointSet.fRanges[Index].fFromCodePoint<>aOtherCodePointSet.fRanges[Index].fFromCodePoint) or
-      (aCodePointSet.fRanges[Index].fToCodePoint<>aOtherCodePointSet.fRanges[Index].fToCodePoint) then begin
-    result:=false;
-    break;
-   end;
-  end;
- end;
-end;
-
-class operator TpvTextEditor.TCodePointSet.NotEqual(const aCodePointSet,aOtherCodePointSet:TCodePointSet):boolean;
-var Index:TpvSizeInt;
-begin
- result:=length(aCodePointSet.fRanges)<>length(aOtherCodePointSet.fRanges);
- if not result then begin
-  for Index:=0 to length(aCodePointSet.fRanges)-1 do begin
-   if (aCodePointSet.fRanges[Index].fFromCodePoint<>aOtherCodePointSet.fRanges[Index].fFromCodePoint) or
-      (aCodePointSet.fRanges[Index].fToCodePoint<>aOtherCodePointSet.fRanges[Index].fToCodePoint) then begin
-    result:=true;
-    break;
-   end;
-  end;
- end;
-end;
-
-class operator TpvTextEditor.TCodePointSet.LogicalNot(const aCodePointSet:TCodePointSet):TCodePointSet;
-var Count:TpvSizeInt;
-    First,Min,Max:TpvUInt32;
-    RangeA,RangeB:TCodePointRange;
-begin
- if length(aCodePointSet.fRanges)=0 then begin
-  result:=TCodePointSet.Create(TCodePointRange.Create(0,$ffffffff));
- end else if (length(aCodePointSet.fRanges)=1) and
-             (aCodePointSet.fRanges[0].fFromCodePoint=0) and
-             (aCodePointSet.fRanges[0].fToCodePoint=$ffffffff) then begin
-  result.fRanges:=nil;
- end else begin
-  // inlined: result:=TCodePointSet.Create(TCodePointRange.Create(0,$ffffffff))-aCodePointSet;
-  result.fRanges:=nil;
-  Count:=0;
-  try
-   RangeA:=TCodePointRange.Create(0,$ffffffff);
-   First:=RangeA.fFromCodePoint;
-   for RangeB in aCodePointSet.fRanges do begin
-    if (First<=RangeB.fToCodePoint) and (RangeB.fFromCodePoint<=RangeA.fToCodePoint) then begin
-     if First>RangeB.fFromCodePoint then begin
-      Min:=First;
-     end else begin
-      Min:=RangeB.fFromCodePoint;
-     end;
-     if RangeA.fToCodePoint<RangeB.fToCodePoint then begin
-      Max:=RangeA.fToCodePoint;
-     end else begin
-      Max:=RangeB.fToCodePoint;
-     end;
-     if First<Min then begin
-      if length(result.fRanges)<=Count then begin
-       SetLength(result.fRanges,(Count+1)*2);
-      end;
-      result.fRanges[Count]:=TCodePointRange.Create(First,Min-1);
-      inc(Count);
-     end;
-     First:=Max+1;
-    end;
-   end;
-   if First<=RangeA.fToCodePoint then begin
-    if length(result.fRanges)<=Count then begin
-     SetLength(result.fRanges,(Count+1)*2);
-    end;
-    result.fRanges[Count]:=TCodePointRange.Create(First,RangeA.fToCodePoint);
-    inc(Count);
-   end;
-  finally
-   try
-    SetLength(result.fRanges,Count);
-   finally
-    result.Optimize;
-   end;
-  end;
- end;
-end;
-
-class operator TpvTextEditor.TCodePointSet.Negative(const aCodePointSet:TCodePointSet):TCodePointSet;
-begin
- result:=not aCodePointSet;
-end;
-
-class operator TpvTextEditor.TCodePointSet.In(const aCodePoint:TpvUInt32;const aCodePointSet:TCodePointSet):boolean;
-var Range:TCodePointRange;
-begin
- for Range in aCodePointSet.fRanges do begin
-  if (Range.fFromCodePoint<=aCodePoint) and (aCodePoint<=Range.fToCodePoint) then begin
-   result:=true;
-   exit;
-  end;
- end;
- result:=false;
-end;
-
-function TpvTextEditor.TCodePointSet.ToCaseInsensitive:TCodePointSet;
-var UsedCodePointSet,CodePointSetToAdd:TCodePointSet;
-    Range:TCodePointRange;
-    CodePoint:TpvUInt32;
-var CodePointRanges:TCodePointRanges;
-begin
- SetLength(CodePointRanges,2);
- CodePointRanges[0]:=TCodePointRange.Create(ord('A'),ord('Z'));
- CodePointRanges[1]:=TCodePointRange.Create(ord('a'),ord('z'));
- UsedCodePointSet:=TCodePointSet.Create(CodePointRanges);
- CodePointSetToAdd:=TCodePointSet.CreateEmpty;
- for Range in UsedCodePointSet.fRanges do begin
-  for CodePoint:=Range.fFromCodePoint to Range.fToCodePoint do begin
-   case CodePoint of
-    ord('A')..ord('Z'):Begin
-     CodePointSetToAdd:=CodePointSetToAdd+TpvUInt32(CodePoint+(ord('a')-ord('A')));
-    end;
-    ord('a')..ord('z'):Begin
-     CodePointSetToAdd:=CodePointSetToAdd+TpvUInt32(CodePoint-(ord('a')-ord('A')));
-    end;
-   end;
-  end;
- end;
- result:=Self+CodePointSetToAdd;
-end;
-
-function TpvTextEditor.TCodePointSet.ToLowerCase:TCodePointSet;
-var UsedCodePointSet,CodePointSetToAdd,CodePointSetToSubtract:TCodePointSet;
-    Range:TCodePointRange;
-    CodePoint:TpvUInt32;
-begin
- UsedCodePointSet:=TCodePointSet.Create(TCodePointRange.Create(ord('A'),ord('Z')));
- CodePointSetToAdd:=TCodePointSet.CreateEmpty;
- CodePointSetToSubtract:=TCodePointSet.CreateEmpty;
- for Range in UsedCodePointSet.fRanges do begin
-  for CodePoint:=Range.fFromCodePoint to Range.fToCodePoint do begin
-   CodePointSetToSubtract:=CodePointSetToSubtract+CodePoint;
-   CodePointSetToAdd:=CodePointSetToAdd+TpvUInt32(CodePoint+(ord('a')-ord('A')));
-  end;
- end;
- result:=(Self-CodePointSetToSubtract)+CodePointSetToAdd;
-end;
-
-function TpvTextEditor.TCodePointSet.ToUpperCase:TCodePointSet;
-var UsedCodePointSet,CodePointSetToAdd,CodePointSetToSubtract:TCodePointSet;
-    Range:TCodePointRange;
-    CodePoint:TpvUInt32;
-begin
- UsedCodePointSet:=TCodePointSet.Create(TCodePointRange.Create(ord('a'),ord('z')));
- CodePointSetToAdd:=TCodePointSet.CreateEmpty;
- CodePointSetToSubtract:=TCodePointSet.CreateEmpty;
- for Range in UsedCodePointSet.fRanges do begin
-  for CodePoint:=Range.fFromCodePoint to Range.fToCodePoint do begin
-   CodePointSetToSubtract:=CodePointSetToSubtract+CodePoint;
-   CodePointSetToAdd:=CodePointSetToAdd+TpvUInt32(CodePoint-(ord('a')-ord('A')));
-  end;
- end;
- result:=(Self-CodePointSetToSubtract)+CodePointSetToAdd;
-end;
-
-function TpvTextEditor.TCodePointSet.ToCodeUnitRegularExpression(const aUseNonCapturingGroups:boolean=false):TpvUTF8String;
-var Index,Count:TpvSizeInt;
-    Range:TCodePointSet.PCodePointRange;
-begin
- Count:=length(fRanges);
- if Count=0 then begin
-  result:='';
- end else begin
-  if aUseNonCapturingGroups then begin
-   result:='(?:';
-  end else begin
-   result:='(';
-  end;
-  if Count=1 then begin
-   Range:=@fRanges[0];
-   result:=result+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression(Range^.fFromCodePoint,Range^.fToCodePoint);
-  end else begin
-   for Index:=0 to Count-1 do begin
-    Range:=@fRanges[Index];
-    if aUseNonCapturingGroups then begin
-     result:=result+'(?:';
-    end else begin
-     result:=result+'(';
-    end;
-    result:=result+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression(Range^.fFromCodePoint,Range^.fToCodePoint);
-    if (Index+1)<Count then begin
-     result:=result+')|';
-    end else begin
-     result:=result+')';
-    end;
-   end;
-  end;
-  result:=result+')';
- end;
 end;
 
 function TpvTextEditor.TRegularExpression.TCodePointWindow.GetCodePoint(const aOffset:TpvSizeInt):TpvUInt32;
