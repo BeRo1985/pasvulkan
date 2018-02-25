@@ -335,6 +335,7 @@ var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     TrueTypeFontKerningIndex,TrueTypeFontKerningPairIndex,
     KerningPairIndex,CountKerningPairs,
     CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
+    CountCodePointRanges:TpvSizeInt;
     x0,y0,x1,y1:TpvDouble;
     KerningPairDoubleIndex:TpvUInt64;
     Int64Value:TpvInt64;
@@ -361,6 +362,7 @@ var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     GlyphDistanceFieldJob:PpvFontSignedDistanceFieldJob;
     UniqueID:string;
     GUID:TGUID;
+    CodePointRanges:array of TpvFontCodePointRange;
 begin
 
  Create(aDevice,aSpriteAtlas,aTrueTypeFont.TargetPPI,aTrueTypeFont.Size);
@@ -378,8 +380,39 @@ begin
  fMaxX:=aTrueTypeFont.MaxX;
  fMaxY:=aTrueTypeFont.MaxY;
 
- for Index:=low(aCodePointRanges) to high(aCodePointRanges) do begin
-  CodePointRange:=@aCodePointRanges[Index];
+ SetLength(CodePointRanges,length(aCodePointRanges));
+ if length(CodePointRanges)>0 then begin
+  Move(aCodePointRanges[0],CodePointRanges[0],length(CodePointRanges)*SizeOf(TpvFontCodePointRange));
+ end;
+
+ if length(CodePointRanges)=0 then begin
+  CodePointRange:=nil;
+  CountCodePointRanges:=0;
+  try
+   for CodePointIndex:=$000000 to $10ffff do begin
+    GlyphIndex:=aTrueTypeFont.GetGlyphIndex(CodePointIndex);
+    if (GlyphIndex>0) or (GlyphIndex<aTrueTypeFont.CountGlyphs) then begin
+     if assigned(CodePointRange) and
+        ((CodePointRange^.ToCodePoint+1)=CodePointIndex) then begin
+      inc(CodePointRange^.ToCodePoint);
+     end else begin
+      inc(CountCodePointRanges);
+      if length(CodePointRanges)<CountCodePointRanges then begin
+       SetLength(CodePointRanges,CountCodePointRanges*2);
+      end;
+      CodePointRange:=@CodePointRanges[CountCodePointRanges-1];
+      CodePointRange^.FromCodePoint:=CodePointIndex;
+      CodePointRange^.ToCodePoint:=CodePointIndex;
+     end;
+    end;
+   end;
+  finally
+   SetLength(CodePointRanges,CountCodePointRanges);
+  end;
+ end;
+
+ for Index:=low(CodePointRanges) to high(CodePointRanges) do begin
+  CodePointRange:=@CodePointRanges[Index];
   fMinimumCodePoint:=Min(fMinimumCodePoint,Min(CodePointRange^.FromCodePoint,CodePointRange^.ToCodePoint));
   fMaximumCodePoint:=Max(fMaximumCodePoint,Max(CodePointRange^.FromCodePoint,CodePointRange^.ToCodePoint));
  end;
@@ -390,8 +423,8 @@ begin
 
   FillChar(CodePointBitmap[0],length(CodePointBitmap)*SizeOf(TpvUInt32),#0);
 
-  for Index:=low(aCodePointRanges) to high(aCodePointRanges) do begin
-   CodePointRange:=@aCodePointRanges[Index];
+  for Index:=low(CodePointRanges) to high(CodePointRanges) do begin
+   CodePointRange:=@CodePointRanges[Index];
    for CodePointIndex:=Min(CodePointRange^.FromCodePoint,CodePointRange^.ToCodePoint) to Max(CodePointRange^.FromCodePoint,CodePointRange^.ToCodePoint) do begin
     BitmapCodePointIndex:=CodePointIndex-fMinimumCodePoint;
     CodePointBitmap[BitmapCodePointIndex shr 5]:=CodePointBitmap[BitmapCodePointIndex shr 5] or (TpvUInt32(1) shl (BitmapCodePointIndex and 31));
