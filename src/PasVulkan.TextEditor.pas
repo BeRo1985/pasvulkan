@@ -1264,6 +1264,9 @@ type TpvTextEditor=class
             TDFASyntaxHighlighting=class(TSyntaxHighlighting)
              public
               const KeywordCharSet=[#32..#127];
+                    // Official maximum allowed UTF8 byte value is $f4, so we're using $f5..$ff here as for-internal-usahg meta code units
+                    KeywordBeginCodePointSetMetaCodeUnit=AnsiChar(#$f5);
+                    KeywordPartCodePointSetExcludingBeginCodePointSetMetaCodeUnit=AnsiChar(#$f6);
               type TCharSet=set of AnsiChar;
                    PCharSet=^TCharSet;
                    TNFA=class
@@ -1365,6 +1368,7 @@ type TpvTextEditor=class
               fCaseInsensitive:boolean;
               fKeywordBeginCodePointSet:TCodePointSet;
               fKeywordPartCodePointSet:TCodePointSet;
+              fKeywordPartCodePointSetExcludingBeginCodePointSet:TCodePointSet;
               procedure Clear;
               procedure BuildDFA;
              protected
@@ -5512,6 +5516,8 @@ begin
 
   Setup;
 
+  fKeywordPartCodePointSetExcludingBeginCodePointSet:=fKeywordPartCodePointSet-fKeywordBeginCodePointSet;
+
  finally
 
   try
@@ -6228,20 +6234,35 @@ begin
 
     UpdateMultiLineCPreprocessorState(ParserStates[1].MultiLineCPreprocessorState,CodePoint);
 
-    if CodePoint<128 then begin
+    if CodePoint<$80 then begin
+     // ASCII range
      if not ProcessCodeUnit(AnsiChar(TpvUInt8(CodePoint))) then begin
       break;
      end;
     end else begin
-     DoBreak:=false;
-     for CodeUnit in TpvTextEditor.TUTF8Utils.UTF32CharToUTF8(CodePoint) do begin
-      if not ProcessCodeUnit(AnsiChar(TpvUInt8(CodePoint))) then begin
-       DoBreak:=true;
+     // Unicode range
+     if CodePoint in fKeywordBeginCodePointSet then begin
+      // Use meta code unit value
+      if not ProcessCodeUnit(KeywordBeginCodePointSetMetaCodeUnit) then begin
        break;
       end;
-     end;
-     if DoBreak then begin
-      break;
+     end else if CodePoint in fKeywordPartCodePointSetExcludingBeginCodePointSet then begin
+      // Use meta code unit value
+      if not ProcessCodeUnit(KeywordPartCodePointSetExcludingBeginCodePointSetMetaCodeUnit) then begin
+       break;
+      end;
+     end else begin
+      // Otherwise, use raw UTF8 code units
+      DoBreak:=false;
+      for CodeUnit in TpvTextEditor.TUTF8Utils.UTF32CharToUTF8(CodePoint) do begin
+       if not ProcessCodeUnit(AnsiChar(TpvUInt8(CodePoint))) then begin
+        DoBreak:=true;
+        break;
+       end;
+      end;
+      if DoBreak then begin
+       break;
+      end;
      end;
     end;
 
@@ -6431,7 +6452,7 @@ begin
  AddRule('\#(\$[0-9A-Fa-f]*|[0-9]*)',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\$[0-9A-Fa-f]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
- AddRule(TpvRawByteString('[A-Za-z\_'#$80'-'#$f4'][A-Za-z0-9\_'#$80'-'#$f4']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule('[A-Za-z\_\xf5][A-Za-z0-9\_\xf5\xf6]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('\@|\-|\+|\/|\*|\=|\<|\>|\<\>|\<\=|\>\=|\:\=|\^',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
  AddRule('\}|\*\)|\,|\.|\.\.|\:|\;|\?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
  AddRule('\[|\(',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IncreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
@@ -6503,7 +6524,7 @@ begin
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+'))?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule(TpvRawByteString('[A-Za-z\_\$'#$80'-'#$f4'][A-Za-z0-9\_\$'#$80'-'#$f4']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule('[A-Za-z\_\$\xf5][A-Za-z0-9\_\$\xf5\xf6]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9A-Fa-f]+[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -6590,7 +6611,7 @@ begin
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+'))?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule(TpvRawByteString('[A-Za-z\_\$'#$80'-'#$f4'][A-Za-z0-9\_\$'#$80'-'#$f4']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule('[A-Za-z\_\$\xf5][A-Za-z0-9\_\$\xf5\xf6]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9A-Fa-f]+[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -6647,7 +6668,7 @@ begin
  AddRule('\/\*.*\*\/',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\/\*.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('//.*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule(TpvRawByteString('[A-Za-z\_\$'#$80'-'#$f4'][A-Za-z0-9\_\$'#$80'-'#$f4']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule('[A-Za-z\_\$\xf5][A-Za-z0-9\_\$\xf5\xf6]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9A-Fa-f]+[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -6755,7 +6776,7 @@ begin
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+'))?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule(TpvRawByteString('[A-Za-z\_\$'#$80'-'#$f4'][A-Za-z0-9\_\$'#$80'-'#$f4']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule('[A-Za-z\_\$\xf5][A-Za-z0-9\_\$\xf5\xf6]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9A-Fa-f]+[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
