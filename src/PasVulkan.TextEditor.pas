@@ -4957,12 +4957,16 @@ begin
 end;
 
 class operator TpvTextEditor.TCodePointSet.In(const aCodePoint:TpvUInt32;const aCodePointSet:TCodePointSet):boolean;
-var MinIndex,MaxIndex,MidIndex:TpvSizeInt;
+var Count,MinIndex,MaxIndex,MidIndex:TpvSizeInt;
     Range:PCodePointRange;
 begin
- if aCodePoint<=$10fffff then begin
+ Count:=length(aCodePointSet.fRanges);
+ if (aCodePoint<=$10fffff) and
+    (Count>0) and
+    (aCodePointSet.fRanges[0].fFromCodePoint<=aCodePoint) and
+    (aCodePoint<=aCodePointSet.fRanges[Count-1].fToCodePoint) then begin
   MinIndex:=0;
-  MaxIndex:=length(aCodePointSet.fRanges)-1;
+  MaxIndex:=Count-1;
   while MinIndex<MaxIndex do begin
    MidIndex:=MinIndex+((MaxIndex-MinIndex) shr 1);
    if aCodePoint<aCodePointSet.fRanges[MidIndex].fFromCodePoint then begin
@@ -4977,12 +4981,10 @@ begin
   if (MinIndex>=0) and (MinIndex<length(aCodePointSet.fRanges)) then begin
    Range:=@aCodePointSet.fRanges[MinIndex];
    result:=(Range^.fFromCodePoint<=aCodePoint) and (aCodePoint<=Range^.fToCodePoint);
-  end else begin
-   result:=false;
+   exit;
   end;
- end else begin
-  result:=false;
  end;
+ result:=false;
 end;
 
 function TpvTextEditor.TCodePointSet.ToCaseInsensitive:TCodePointSet;
