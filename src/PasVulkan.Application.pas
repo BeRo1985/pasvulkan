@@ -4066,6 +4066,7 @@ begin
  result:=[];
  if (aKeyModifier and PasVulkan.SDL2.KMOD_LSHIFT)<>0 then begin
   Include(result,TpvApplicationInputKeyModifier.LSHIFT);
+  Include(result,TpvApplicationInputKeyModifier.SHIFT);
  end;
  if (aKeyModifier and PasVulkan.SDL2.KMOD_RSHIFT)<>0 then begin
   Include(result,TpvApplicationInputKeyModifier.RSHIFT);
