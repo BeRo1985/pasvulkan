@@ -8253,7 +8253,7 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawMultiLineTextEdit(const aCanvas:TpvCanvas;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
-var ViewBufferX,ViewBufferY,ViewBufferIndex,Index:TpvSizeInt;
+var ViewBufferX,ViewBufferY,ViewBufferIndex,StartViewBufferX,Index:TpvSizeInt;
     ViewBufferItem:TpvTextEditor.TView.PBufferItem;
     CurrentFontColor,Color:TpvVector4;
     Offset,TextOffset:TpvVector2;
@@ -8352,20 +8352,40 @@ begin
 
  ViewBufferIndex:=0;
  for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
-  for ViewBufferX:=0 to aMultiLineTextEdit.fViewBufferWidth-1 do begin
+  ViewBufferX:=0;
+  while ViewBufferX<aMultiLineTextEdit.fViewBufferWidth do begin
+   StartViewBufferX:=ViewBufferX;
    ViewBufferItem:=@aMultiLineTextEdit.fViewBuffer[ViewBufferIndex];
    if (ViewBufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Marked)<>0 then begin
-    aCanvas.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
-    aCanvas.DrawFilledRectangle(aMultiLineTextEdit.fTextAreaRect.Offset+
-                                (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX+0.5,ViewBufferY+0.5)),
-                                (aMultiLineTextEdit.fFontCharSize*0.5)+TpvVector2.Create(1.0,1.0));
+    repeat
+     inc(ViewBufferIndex);
+     inc(ViewBufferX);
+    until (ViewBufferX>=aMultiLineTextEdit.fViewBufferWidth) or
+          ((aMultiLineTextEdit.fViewBuffer[ViewBufferIndex].Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Marked)=0);
+    if StartViewBufferX<ViewBufferX then begin
+     aCanvas.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+     aCanvas.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
+                                                        (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(StartViewBufferX,ViewBufferY)),
+                                                        aMultiLineTextEdit.fTextAreaRect.Offset+
+                                                        (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY+1.0))));
+    end;
    end else if (ViewBufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight)<>0 then begin
-    aCanvas.Color:=TpvVector4.InlineableCreate(0.03125,0.03125,0.03125,1.0);
-    aCanvas.DrawFilledRectangle(aMultiLineTextEdit.fTextAreaRect.Offset+
-                                (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX+0.5,ViewBufferY+0.5)),
-                                (aMultiLineTextEdit.fFontCharSize*0.5)+TpvVector2.Create(1.0,1.0));
+    repeat
+     inc(ViewBufferIndex);
+     inc(ViewBufferX);
+    until (ViewBufferX>=aMultiLineTextEdit.fViewBufferWidth) or
+          ((aMultiLineTextEdit.fViewBuffer[ViewBufferIndex].Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight)=0);
+    if StartViewBufferX<ViewBufferX then begin
+     aCanvas.Color:=TpvVector4.InlineableCreate(0.03125,0.03125,0.03125,1.0);
+     aCanvas.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
+                                                        (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(StartViewBufferX,ViewBufferY)),
+                                                        aMultiLineTextEdit.fTextAreaRect.Offset+
+                                                        (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY+1.0))));
+    end;
+   end else begin
+    inc(ViewBufferIndex);
+    inc(ViewBufferX);
    end;
-   inc(ViewBufferIndex);
   end;
  end;
 
