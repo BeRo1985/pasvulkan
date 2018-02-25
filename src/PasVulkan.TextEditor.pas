@@ -664,7 +664,7 @@ type TpvTextEditor=class
               function ToCaseInsensitive:TCodePointSet;
               function ToLowerCase:TCodePointSet;
               function ToUpperCase:TCodePointSet;
-              function ToCodeUnitRegularExpression:TpvUTF8String;
+              function ToCodeUnitRegularExpression(const aUseNonCapturingGroups:boolean=false):TpvUTF8String;
             end;
             PCodePointSet=^TCodePointSet;
             ERegularExpression=class(Exception);
@@ -4368,6 +4368,12 @@ var IsBegin,IsEnd:boolean;
   begin
    if (InputPosition<=InputLength) and (InputText[InputPosition]='(') then begin
     inc(InputPosition);
+    if ((InputPosition+1)<=InputLength) and
+       (InputText[InputPosition]='?') and
+       (InputText[InputPosition+1]=':') then begin
+     // Fake non-capturing group support
+     inc(InputPosition,2);
+    end;
     ParseDisjunction(aStart,aEnd);
     if (InputPosition<=InputLength) and (InputText[InputPosition]=')') then begin
      inc(InputPosition);
@@ -5895,21 +5901,36 @@ begin
  result:=(Self-CodePointSetToSubtract)+CodePointSetToAdd;
 end;
 
-function TpvTextEditor.TCodePointSet.ToCodeUnitRegularExpression:TpvUTF8String;
-var Index:TpvSizeInt;
+function TpvTextEditor.TCodePointSet.ToCodeUnitRegularExpression(const aUseNonCapturingGroups:boolean=false):TpvUTF8String;
+var Index,Count:TpvSizeInt;
+    Range:TCodePointSet.PCodePointRange;
 begin
- if length(fRanges)=0 then begin
+ Count:=length(fRanges);
+ if Count=0 then begin
   result:='';
  end else begin
-  result:='(';
-  for Index:=0 to length(fRanges)-1 do begin
-   result:=result+
-           '('+
-           TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression(fRanges[Index].fFromCodePoint,fRanges[Index].fToCodePoint);
-   if (Index+1)<length(fRanges) then begin
-    result:=result+')|';
-   end else begin
-    result:=result+')';
+  if aUseNonCapturingGroups then begin
+   result:='(?:';
+  end else begin
+   result:='(';
+  end;
+  if Count=1 then begin
+   Range:=@fRanges[0];
+   result:=result+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression(Range^.fFromCodePoint,Range^.fToCodePoint);
+  end else begin
+   for Index:=0 to Count-1 do begin
+    Range:=@fRanges[Index];
+    if aUseNonCapturingGroups then begin
+     result:=result+'(?:';
+    end else begin
+     result:=result+'(';
+    end;
+    result:=result+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression(Range^.fFromCodePoint,Range^.fToCodePoint);
+    if (Index+1)<Count then begin
+     result:=result+')|';
+    end else begin
+     result:=result+')';
+    end;
    end;
   end;
   result:=result+')';
