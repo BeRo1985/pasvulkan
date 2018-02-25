@@ -664,6 +664,7 @@ type TpvTextEditor=class
               function ToCaseInsensitive:TCodePointSet;
               function ToLowerCase:TCodePointSet;
               function ToUpperCase:TCodePointSet;
+              function ToCodeUnitRegularExpression:TpvUTF8String;
             end;
             PCodePointSet=^TCodePointSet;
             ERegularExpression=class(Exception);
@@ -5115,7 +5116,16 @@ begin
  AddKeywords(['end'],
              [TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.DecreaseLevel],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
- AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
+ AddRule('(('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0009,$0009)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($00a0,$00a0)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($1680,$1680)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($180e,$180e)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($2000,$200b)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($205f,$205f)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($3000,$3000)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($feff,$feff)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($fffe,$fffe)+'))+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\(\*\$.*\*\)|\{\$.*\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor);
  AddRule('\(\*[^\$].*\*\)|\{[^\$].*\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\(\*\*\)|\{\}',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
@@ -5125,7 +5135,7 @@ begin
  AddRule('\#(\$[0-9A-Fa-f]*|[0-9]*)',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\$[0-9A-Fa-f]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
- AddRule(TpvRawByteString('[A-Za-z\_'#128'-'#255'][A-Za-z0-9\_'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule(TpvRawByteString('[A-Za-z\_'#$80'-'#$f4'][A-Za-z0-9\_'#$80'-'#$f4']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('\@|\-|\+|\/|\*|\=|\<|\>|\<\>|\<\=|\>\=|\:\=|\^',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
  AddRule('\}|\*\)|\,|\.|\.\.|\:|\;|\?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
  AddRule('\[|\(',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IncreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
@@ -5174,7 +5184,7 @@ begin
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+'))?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
 //AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule(TpvRawByteString('[A-Za-z\_\$'#128'-'#255'][A-Za-z0-9\_\$'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule(TpvRawByteString('[A-Za-z\_\$'#$80'-'#$f4'][A-Za-z0-9\_\$'#$80'-'#$f4']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9A-Fa-f]+[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -5238,7 +5248,7 @@ begin
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+'))?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
 //AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule(TpvRawByteString('[A-Za-z\_\$'#128'-'#255'][A-Za-z0-9\_\$'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule(TpvRawByteString('[A-Za-z\_\$'#$80'-'#$f4'][A-Za-z0-9\_\$'#$80'-'#$f4']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9A-Fa-f]+[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -5276,11 +5286,20 @@ begin
               'throw','throws','transient','true','try','void','volatile','while'],
              [],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
- AddRule('['#32#9']+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
+ AddRule('(('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0009,$0009)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($00a0,$00a0)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($1680,$1680)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($180e,$180e)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($2000,$200b)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($205f,$205f)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($3000,$3000)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($feff,$feff)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($fffe,$fffe)+'))+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);
  AddRule('\/\*.*\*\/',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\/\*.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('//.*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule(TpvRawByteString('[A-Za-z\_\$'#128'-'#255'][A-Za-z0-9\_\$'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule(TpvRawByteString('[A-Za-z\_\$'#$80'-'#$f4'][A-Za-z0-9\_\$'#$80'-'#$f4']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9A-Fa-f]+[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -5365,7 +5384,7 @@ begin
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+'))?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
 //AddRule('//[^'#10#13']*['#10#13']?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule(TpvRawByteString('[A-Za-z\_\$'#128'-'#255'][A-Za-z0-9\_\$'#128'-'#255']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule(TpvRawByteString('[A-Za-z\_\$'#$80'-'#$f4'][A-Za-z0-9\_\$'#$80'-'#$f4']*'),[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9A-Fa-f]+[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -5874,6 +5893,26 @@ begin
   end;
  end;
  result:=(Self-CodePointSetToSubtract)+CodePointSetToAdd;
+end;
+
+function TpvTextEditor.TCodePointSet.ToCodeUnitRegularExpression:TpvUTF8String;
+begin
+ if length(fRanges)=0 then begin
+  result:='';
+ end else begin
+  result:='(';
+  result:=result+')';
+ end;
+{AddRule('(('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0009,$0009)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($00a0,$00a0)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($1680,$1680)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($180e,$180e)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($2000,$200b)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($205f,$205f)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($3000,$3000)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($feff,$feff)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($fffe,$fffe)+'))+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);}
 end;
 
 function TpvTextEditor.TRegularExpression.TCodePointWindow.GetCodePoint(const aOffset:TpvSizeInt):TpvUInt32;

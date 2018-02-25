@@ -9266,9 +9266,16 @@ begin
  fFontCodePointRanges:=aFontCodePointRanges;
 
  if length(fFontCodePointRanges)=0 then begin
-  SetLength(fFontCodePointRanges,2);
-  fFontCodePointRanges[0]:=TpvFontCodePointRange.Create(0,255);
-  fFontCodePointRanges[1]:=TpvFontCodePointRange.Create($2026,$2026);
+{$if defined(PasVulkanLowMemoryTarget) or defined(PasVulkanSlowCPUTarget) or true}
+  SetLength(fFontCodePointRanges,4);
+  fFontCodePointRanges[0]:=TpvFontCodePointRange.Create($000000,$0000ff);
+  fFontCodePointRanges[1]:=TpvFontCodePointRange.Create($002026,$002026);
+  fFontCodePointRanges[2]:=TpvFontCodePointRange.Create($002400,$002426);
+  fFontCodePointRanges[3]:=TpvFontCodePointRange.Create($00fff0,$00ffff);
+{$else}
+  SetLength(fFontCodePointRanges,1);
+  fFontCodePointRanges[0]:=TpvFontCodePointRange.Create($000000,$10ffff);
+{$ifend}
  end;
 
  fStandardSkin:=TpvGUIDefaultVectorBasedSkin.Create(self);
@@ -17006,10 +17013,16 @@ end;
 function TpvGUIMultiLineTextEdit.Enter:boolean;
 begin
  result:=inherited Enter;
+ if fEditable then begin
+  pvApplication.Input.StartTextInput;
+ end;
 end;
 
 function TpvGUIMultiLineTextEdit.Leave:boolean;
 begin
+ if fEditable then begin
+  pvApplication.Input.StopTextInput;
+ end;
  result:=inherited Leave;
 end;
 

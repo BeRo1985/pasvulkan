@@ -425,7 +425,7 @@ begin
            TTFGlyphToGlyphHashMap.Add(TTFGlyphIndex,GlyphIndex);
            GlyphToTTFGlyphHashMap.Add(GlyphIndex,TTFGlyphIndex);
           end;
-          CodePointMapMainIndex:=CodePointIndex shr 12;
+          CodePointMapMainIndex:=CodePointIndex shr 10;
           CodePointMapSubIndex:=CodePointIndex and $3ff;
           if CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap) then begin
            if not assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
@@ -872,7 +872,7 @@ begin
    if (GlyphIndex<0) or (GlyphIndex>=length(fGlyphs)) then begin
     raise EpvFont.Create('Glyph index out of range');
    end;
-   CodePointMapMainIndex:=CodePointIndex shr 12;
+   CodePointMapMainIndex:=CodePointIndex shr 10;
    CodePointMapSubIndex:=CodePointIndex and $3ff;
    if CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap) then begin
     if not assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
@@ -1179,10 +1179,11 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  CodePointMapMainIndex:=CurrentCodePoint shr 12;
+  CodePointMapMainIndex:=CurrentCodePoint shr 10;
   CodePointMapSubIndex:=CurrentCodePoint and $3ff;
   if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) then begin
+     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
+     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
    CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
@@ -1236,10 +1237,11 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  CodePointMapMainIndex:=CurrentCodePoint shr 12;
+  CodePointMapMainIndex:=CurrentCodePoint shr 10;
   CodePointMapSubIndex:=CurrentCodePoint and $3ff;
   if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) then begin
+     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
+     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
    CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
@@ -1293,10 +1295,11 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  CodePointMapMainIndex:=CurrentCodePoint shr 12;
+  CodePointMapMainIndex:=CurrentCodePoint shr 10;
   CodePointMapSubIndex:=CurrentCodePoint and $3ff;
   if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) then begin
+     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
+     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
    CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
@@ -1357,10 +1360,11 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  CodePointMapMainIndex:=CurrentCodePoint shr 12;
+  CodePointMapMainIndex:=CurrentCodePoint shr 10;
   CodePointMapSubIndex:=CurrentCodePoint and $3ff;
   if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) then begin
+     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
+     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
    CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
@@ -1408,10 +1412,11 @@ begin
  LastGlyph:=-1;
  while TextIndex<=length(aText) do begin
   CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  CodePointMapMainIndex:=CurrentCodePoint shr 12;
+  CodePointMapMainIndex:=CurrentCodePoint shr 10;
   CodePointMapSubIndex:=CurrentCodePoint and $3ff;
   if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) then begin
+     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
+     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
    CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
@@ -1458,10 +1463,11 @@ begin
  LastGlyph:=-1;
  begin
   CurrentCodePoint:=aTextCodePoint;
-  CodePointMapMainIndex:=CurrentCodePoint shr 12;
+  CodePointMapMainIndex:=CurrentCodePoint shr 10;
   CodePointMapSubIndex:=CurrentCodePoint and $3ff;
-  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) then begin
+ if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
+     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
+     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
    CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
    CurrentGlyph:=Int64Value;
