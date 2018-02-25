@@ -1267,6 +1267,12 @@ type TpvTextEditor=class
                     // Official maximum allowed UTF8 byte value is $f4, so we're using $f5..$ff here as for-internal-usahg meta code units
                     KeywordBeginCodePointSetMetaCodeUnit=AnsiChar(#$f5);
                     KeywordPartCodePointSetExcludingBeginCodePointSetMetaCodeUnit=AnsiChar(#$f6);
+                    WhiteSpaceCodePointSetExcludingNewLineCodePointSetMetaCodeUnit=AnsiChar(#$f7);
+                    NewLineCodePointSetMetaCodeUnit=AnsiChar(#$f8);
+                    KeywordBeginCodePointSetMetaCodeUnitRegEx='\xf5';
+                    KeywordPartCodePointSetExcludingBeginCodePointSetMetaCodeUnitRegEx='\xf6';
+                    WhiteSpaceCodePointSetExcludingNewLineCodePointSetMetaCodeUnitRegEx='\xf7';
+                    NewLineCodePointSetMetaCodeUnitRegEx='\xf8';
               type TCharSet=set of AnsiChar;
                    PCharSet=^TCharSet;
                    TNFA=class
@@ -1369,6 +1375,9 @@ type TpvTextEditor=class
               fKeywordBeginCodePointSet:TCodePointSet;
               fKeywordPartCodePointSet:TCodePointSet;
               fKeywordPartCodePointSetExcludingBeginCodePointSet:TCodePointSet;
+              fWhiteSpaceCodePointSet:TCodePointSet;
+              fNewLineCodePointSet:TCodePointSet;
+              fWhiteSpaceCodePointSetExcludingNewLineCodePointSet:TCodePointSet;
               procedure Clear;
               procedure BuildDFA;
              protected
@@ -5508,15 +5517,25 @@ begin
 
  fKeywordCharRootTreeNode:=TKeywordCharTreeNode.Create;
 
- fKeywordBeginCodePointSet:=TpvTextEditor.TCodePointSet.Create(['A'..'Z','a'..'z','_']);
+ fKeywordBeginCodePointSet:=(TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.WordClassCodeRanges)+
+                             TpvTextEditor.TCodePointSet.Create([TpvUInt32(ord('_'))]))-
+                            TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.DigitClassCodeRanges);
 
- fKeywordPartCodePointSet:=TpvTextEditor.TCodePointSet.Create(['A'..'Z','a'..'z','_','0'..'9']);
+ fKeywordPartCodePointSet:=TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.WordClassCodeRanges)+
+                           TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.DigitClassCodeRanges)+
+                           TpvTextEditor.TCodePointSet.Create([TpvUInt32(ord('_'))]);
+
+ fWhiteSpaceCodePointSet:=TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.WhiteSpaceClassCodeRanges);
+
+ fNewLineCodePointSet:=TpvTextEditor.TCodePointSet.Create(TpvTextEditor.TCodePointSet.NewLineClassCodeRanges);
 
  try
 
   Setup;
 
   fKeywordPartCodePointSetExcludingBeginCodePointSet:=fKeywordPartCodePointSet-fKeywordBeginCodePointSet;
+
+  fWhiteSpaceCodePointSetExcludingNewLineCodePointSet:=fWhiteSpaceCodePointSet-fNewLineCodePointSet;
 
  finally
 
@@ -6251,6 +6270,16 @@ begin
       if not ProcessCodeUnit(KeywordPartCodePointSetExcludingBeginCodePointSetMetaCodeUnit) then begin
        break;
       end;
+     end else if CodePoint in fWhiteSpaceCodePointSetExcludingNewLineCodePointSet then begin
+      // Use meta code unit value
+      if not ProcessCodeUnit(WhiteSpaceCodePointSetExcludingNewLineCodePointSetMetaCodeUnit) then begin
+       break;
+      end;
+     end else if CodePoint in fNewLineCodePointSet then begin
+      // Use meta code unit value
+      if not ProcessCodeUnit(NewLineCodePointSetMetaCodeUnit) then begin
+       break;
+      end;
      end else begin
       // Otherwise, use raw UTF8 code units
       DoBreak:=false;
@@ -6452,7 +6481,7 @@ begin
  AddRule('\#(\$[0-9A-Fa-f]*|[0-9]*)',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.String_);
  AddRule('\$[0-9A-Fa-f]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
- AddRule('[A-Za-z\_\xf5][A-Za-z0-9\_\xf5\xf6]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule('[A-Za-z\_'+KeywordBeginCodePointSetMetaCodeUnitRegEx+'][A-Za-z0-9\_'+KeywordBeginCodePointSetMetaCodeUnitRegEx+KeywordPartCodePointSetExcludingBeginCodePointSetMetaCodeUnitRegEx+']*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('\@|\-|\+|\/|\*|\=|\<|\>|\<\>|\<\=|\>\=|\:\=|\^',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator);
  AddRule('\}|\*\)|\,|\.|\.\.|\:|\;|\?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
  AddRule('\[|\(',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IncreaseLevel],TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter);
@@ -6524,7 +6553,7 @@ begin
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+'))?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule('[A-Za-z\_\$\xf5][A-Za-z0-9\_\$\xf5\xf6]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule('[A-Za-z\_\$'+KeywordBeginCodePointSetMetaCodeUnitRegEx+'][A-Za-z0-9\_\$'+KeywordBeginCodePointSetMetaCodeUnitRegEx+KeywordPartCodePointSetExcludingBeginCodePointSetMetaCodeUnitRegEx+']*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9A-Fa-f]+[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -6611,7 +6640,7 @@ begin
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+'))?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule('[A-Za-z\_\$\xf5][A-Za-z0-9\_\$\xf5\xf6]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule('[A-Za-z\_\$'+KeywordBeginCodePointSetMetaCodeUnitRegEx+'][A-Za-z0-9\_\$'+KeywordBeginCodePointSetMetaCodeUnitRegEx+KeywordPartCodePointSetExcludingBeginCodePointSetMetaCodeUnitRegEx+']*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9A-Fa-f]+[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -6668,7 +6697,7 @@ begin
  AddRule('\/\*.*\*\/',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsQuick],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('\/\*.*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
  AddRule('//.*$',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule('[A-Za-z\_\$\xf5][A-Za-z0-9\_\$\xf5\xf6]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule('[A-Za-z\_\$'+KeywordBeginCodePointSetMetaCodeUnitRegEx+'][A-Za-z0-9\_\$'+KeywordBeginCodePointSetMetaCodeUnitRegEx+KeywordPartCodePointSetExcludingBeginCodePointSetMetaCodeUnitRegEx+']*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9A-Fa-f]+[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
@@ -6776,7 +6805,7 @@ begin
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+')|'+
              '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000d,$000d)+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+'))?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment);
- AddRule('[A-Za-z\_\$\xf5][A-Za-z0-9\_\$\xf5\xf6]*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
+ AddRule('[A-Za-z\_\$'+KeywordBeginCodePointSetMetaCodeUnitRegEx+'][A-Za-z0-9\_\$'+KeywordBeginCodePointSetMetaCodeUnitRegEx+KeywordPartCodePointSetExcludingBeginCodePointSetMetaCodeUnitRegEx+']*',[TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.IsKeyword],TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier);
  AddRule('[0-9]+(\.[0-9]+)?([Ee][\+\-]?[0-9]*)?([DdFf]|[Ll][Dd])?',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('0[xX][0-9A-Fa-f]*[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
  AddRule('[0-9A-Fa-f]+[LlUu]*',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.Number);
