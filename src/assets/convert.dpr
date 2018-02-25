@@ -152,7 +152,8 @@ begin
   ConvertFile('fonts/notosansbold.ttf','GUIStandardTrueTypeFontSansBoldFont');
   ConvertFile('fonts/notosansbolditalic.ttf','GUIStandardTrueTypeFontSansBoldItalicFont');
   ConvertFile('fonts/notosansitalic.ttf','GUIStandardTrueTypeFontSansItalicFont');
-  ConvertFile('fonts/notomono.ttf','GUIStandardTrueTypeFontMonoFont');
+//ConvertFile('fonts/notomono.ttf','GUIStandardTrueTypeFontMonoFont');
+  ConvertFile('fonts/hackregular.ttf','GUIStandardTrueTypeFontMonoFont');
   ConvertFile('shaders/canvas/canvas_frag_gui_no_texture.spv','CanvasFragmentGUINoTextureSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_no_texture.spv','CanvasFragmentNoTextureSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_texture.spv','CanvasFragmentTextureSPIRV');

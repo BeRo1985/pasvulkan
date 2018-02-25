@@ -4726,7 +4726,7 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.Setup;
-const CacheVersionGUID:TGUID='{F17789FB-4192-4182-9276-8DD1D2AD81EC}';
+const CacheVersionGUID:TGUID='{425B9DB4-1A8E-4BD0-8994-BF1AFD19FE8C}';
 var Stream:TStream;
     TrueTypeFont:TpvTrueTypeFont;
     RecreateCacheFiles:boolean;
@@ -8132,9 +8132,7 @@ begin
 
  CurrentFontSize:=aMultiLineTextEdit.FontSize;
 
- aMultiLineTextEdit.fFontCharSize:=TpvVector2.Create(CurrentFont.MaxX-CurrentFont.MinX,
-                                                     CurrentFont.MaxY-CurrentFont.MinY)*
-                                   CurrentFont.GetScaleFactor(CurrentFontSize);
+ aMultiLineTextEdit.fFontCharSize:=CurrentFont.MonospaceSize(CurrentFontSize);
 
  aMultiLineTextEdit.fVisibleAreaRect:=TpvRect.CreateAbsolute(TpvVector2.Null,
                                                              aMultiLineTextEdit.fSize);
@@ -8153,10 +8151,9 @@ begin
  if aMultiLineTextEdit.fLeftSideBar then begin
 
   aMultiLineTextEdit.fLeftSideBarAreaRect:=TpvRect.CreateAbsolute(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin),
-                                                                  TpvVector2.Create(aMultiLineTextEdit.fFontCharSize.x*7.0,Size.y-MultiLineTextEditorMargin));
+                                                                  TpvVector2.Create(CurrentFont.TextWidth('       ',CurrentFontSize)+MultiLineTextEditorMargin,Size.y-MultiLineTextEditorMargin));
 
-  aMultiLineTextEdit.fTextAreaRect:=TpvRect.CreateAbsolute(TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin)+
-                                                           TpvVector2.Create(aMultiLineTextEdit.fFontCharSize.x*7.0,0.0),
+  aMultiLineTextEdit.fTextAreaRect:=TpvRect.CreateAbsolute(TpvVector2.Create(aMultiLineTextEdit.fLeftSideBarAreaRect.Right,MultiLineTextEditorMargin),
                                                            Size-TpvVector2.Create(MultiLineTextEditorMargin,MultiLineTextEditorMargin));
 
 end else begin
@@ -8321,11 +8318,17 @@ begin
     Rect:=TpvRect.CreateAbsolute(aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
                                  TpvVector2.Create(0.0,aMultiLineTextEdit.fFontCharSize.y*ViewBufferY),
                                  aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
-                                 TpvVector2.Create(aMultiLineTextEdit.fLeftSideBarAreaRect.Width,aMultiLineTextEdit.fFontCharSize.y*(ViewBufferY+1)));
+                                 TpvVector2.Create(aMultiLineTextEdit.fLeftSideBarAreaRect.Width-(aMultiLineTextEdit.fFontCharSize.x*0.5),aMultiLineTextEdit.fFontCharSize.y*(ViewBufferY+1)));
     aCanvas.DrawFilledRectangle(Rect);
    end;
    if aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]>=0 then begin
     aCanvas.Color:=Color;
+{$if false}
+    Str(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]+1:5,LineNumberString);
+    aCanvas.DrawText(LineNumberString,
+                     aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
+                     (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(0.0,ViewBufferY)));
+{$else}
     Str(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]+1,LineNumberString);
     ViewBufferX:=5-length(LineNumberString);
     for Index:=1 to length(LineNumberString) do begin
@@ -8336,14 +8339,14 @@ begin
      end;
      inc(ViewBufferX);
     end;
+{$ifend}
    end;
   end;
   aCanvas.Color:=Color*TpvVector4.InlineableCreate(0.25,0.25,0.25,1.0);
-  aCanvas.DrawFilledRectangle(aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
-                              (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(6.5,0.0))+
-                              TpvVector2.Create(0.0,aMultiLineTextEdit.fLeftSideBarAreaRect.Height*0.5),
+  aCanvas.DrawFilledRectangle(TpvVector2.Create(aMultiLineTextEdit.fLeftSideBarAreaRect.Right-(aMultiLineTextEdit.fFontCharSize.x*0.5),
+                                                aMultiLineTextEdit.fLeftSideBarAreaRect.Top+(aMultiLineTextEdit.fLeftSideBarAreaRect.Height*0.5)),
                               TpvVector2.Create(1.0,aMultiLineTextEdit.fLeftSideBarAreaRect.Height*0.5));
-  TextClipRect.Left:=TextClipRect.Left+(aMultiLineTextEdit.fFontCharSize.x*7.0);
+  TextClipRect.Left:=aMultiLineTextEdit.fLeftSideBarAreaRect.Right;
   aCanvas.ClipRect:=TextClipRect;
  end;
 
@@ -8362,6 +8365,14 @@ begin
                                 (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX+0.5,ViewBufferY+0.5)),
                                 (aMultiLineTextEdit.fFontCharSize*0.5)+TpvVector2.Create(1.0,1.0));
    end;
+   inc(ViewBufferIndex);
+  end;
+ end;
+
+ ViewBufferIndex:=0;
+ for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
+  for ViewBufferX:=0 to aMultiLineTextEdit.fViewBufferWidth-1 do begin
+   ViewBufferItem:=@aMultiLineTextEdit.fViewBuffer[ViewBufferIndex];
    if not (ViewBufferItem^.CodePoint in [0,32]) then begin
     case ViewBufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Mask of
      TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace:begin
