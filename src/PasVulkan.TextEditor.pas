@@ -5896,23 +5896,24 @@ begin
 end;
 
 function TpvTextEditor.TCodePointSet.ToCodeUnitRegularExpression:TpvUTF8String;
+var Index:TpvSizeInt;
 begin
  if length(fRanges)=0 then begin
   result:='';
  end else begin
   result:='(';
+  for Index:=0 to length(fRanges)-1 do begin
+   result:=result+
+           '('+
+           TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression(fRanges[Index].fFromCodePoint,fRanges[Index].fToCodePoint);
+   if (Index+1)<length(fRanges) then begin
+    result:=result+')|';
+   end else begin
+    result:=result+')';
+   end;
+  end;
   result:=result+')';
  end;
-{AddRule('(('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0009,$0009)+')|'+
-          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+')|'+
-          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($00a0,$00a0)+')|'+
-          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($1680,$1680)+')|'+
-          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($180e,$180e)+')|'+
-          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($2000,$200b)+')|'+
-          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($205f,$205f)+')|'+
-          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($3000,$3000)+')|'+
-          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($feff,$feff)+')|'+
-          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($fffe,$fffe)+'))+',[],TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace);}
 end;
 
 function TpvTextEditor.TRegularExpression.TCodePointWindow.GetCodePoint(const aOffset:TpvSizeInt):TpvUInt32;
