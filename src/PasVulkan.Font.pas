@@ -336,13 +336,13 @@ var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     TrueTypeFontKerningIndex,TrueTypeFontKerningPairIndex,
     KerningPairIndex,CountKerningPairs,
     CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
-    CountCodePointRanges:TpvSizeInt;
+    CountCodePointRanges,OtherCodePointIndex:TpvSizeInt;
     x0,y0,x1,y1:TpvDouble;
     KerningPairDoubleIndex:TpvUInt64;
     Int64Value:TpvInt64;
     CodePointRange:PpvFontCodePointRange;
     CodePointIndex,BitmapCodePointIndex:TpvUInt32;
-    CodePointBitmap:TpvFontCodePointBitmap;
+    CodePointBitmap,NewCodePointBitmap:TpvFontCodePointBitmap;
     CodePointToTTFGlyphHashMap:TpvFontInt64HashMap;
     TTFGlyphToGlyphHashMap:TpvFontInt64HashMap;
     GlyphToTTFGlyphHashMap:TpvFontInt64HashMap;
@@ -448,7 +448,7 @@ begin
        BitmapCodePointIndex:=CodePointIndex-fMinimumCodePoint;
        if (CodePointBitmap[BitmapCodePointIndex shr 5] and (TpvUInt32(1) shl (BitmapCodePointIndex and 31)))<>0 then begin
         TTFGlyphIndex:=aTrueTypeFont.GetGlyphIndex(CodePointIndex);
-        if (TTFGlyphIndex>=0) and (TTFGlyphIndex<aTrueTypeFont.CountGlyphs) then begin
+        if (TTFGlyphIndex>0) and (TTFGlyphIndex<aTrueTypeFont.CountGlyphs) then begin
          if not CodePointToTTFGlyphHashMap.ExistKey(CodePointIndex) then begin
           CodePointToTTFGlyphHashMap.Add(CodePointIndex,TTFGlyphIndex);
           if TTFGlyphToGlyphHashMap.TryGet(TTFGlyphIndex,Int64Value) then begin
@@ -479,6 +479,8 @@ begin
           CodePointGlyphPair^.Glyph:=GlyphIndex;
          end;
         end;
+       end else begin
+        CodePointBitmap[BitmapCodePointIndex shr 5]:=CodePointBitmap[BitmapCodePointIndex shr 5] and not (TpvUInt32(1) shl (BitmapCodePointIndex and 31));
        end;
       end;
      finally
@@ -487,6 +489,38 @@ begin
      end;
     finally
      CodePointToTTFGlyphHashMap.Free;
+    end;
+
+    for CodePointIndex:=fMinimumCodePoint to fMaximumCodePoint do begin
+     BitmapCodePointIndex:=CodePointIndex-fMinimumCodePoint;
+     if (CodePointBitmap[BitmapCodePointIndex shr 5] and (TpvUInt32(1) shl (BitmapCodePointIndex and 31)))<>0 then begin
+      if fMinimumCodePoint<>CodePointIndex then begin
+       SetLength(NewCodePointBitmap,((fMaximumCodePoint-CodePointIndex)+32) shr 5);
+       FillChar(NewCodePointBitmap[0],length(NewCodePointBitmap)*SizeOf(TpvUInt32),#0);
+       for OtherCodePointIndex:=CodePointIndex to fMaximumCodePoint do begin
+        BitmapCodePointIndex:=OtherCodePointIndex-fMinimumCodePoint;
+        if (CodePointBitmap[BitmapCodePointIndex shr 5] and (TpvUInt32(1) shl (BitmapCodePointIndex and 31)))<>0 then begin
+         BitmapCodePointIndex:=OtherCodePointIndex-CodePointIndex;
+         CodePointBitmap[BitmapCodePointIndex shr 5]:=CodePointBitmap[BitmapCodePointIndex shr 5] or (TpvUInt32(1) shl (BitmapCodePointIndex and 31));
+        end;
+       end;
+       fMinimumCodePoint:=CodePointIndex;
+       CodePointBitmap:=NewCodePointBitmap;
+       NewCodePointBitmap:=nil;
+      end;
+      break;
+     end;
+    end;
+
+    for CodePointIndex:=fMaximumCodePoint downto fMinimumCodePoint do begin
+     BitmapCodePointIndex:=CodePointIndex-fMinimumCodePoint;
+     if (CodePointBitmap[BitmapCodePointIndex shr 5] and (TpvUInt32(1) shl (BitmapCodePointIndex and 31)))<>0 then begin
+      if fMaximumCodePoint<>CodePointIndex then begin
+       fMaximumCodePoint:=CodePointIndex;
+       SetLength(CodePointBitmap,((fMaximumCodePoint-fMinimumCodePoint)+32) shr 5);
+      end;
+      break;
+     end;
     end;
 
     // Convert glyph data and get polygon data

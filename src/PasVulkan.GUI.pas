@@ -1085,6 +1085,7 @@ type TpvGUIObject=class;
       private
        fVulkanDevice:TpvVulkanDevice;
        fFontCodePointRanges:TpvFontCodePointRanges;
+       fMonoFontCodePointRanges:TpvFontCodePointRanges;
        fStandardSkin:TpvGUISkin;
        fDrawWidgetBounds:boolean;
        fBuffers:TpvGUIInstanceBuffers;
@@ -1114,7 +1115,8 @@ type TpvGUIObject=class;
        procedure FindHoveredWidget;
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice;
-                          const aFontCodePointRanges:TpvFontCodePointRanges=nil); reintroduce;
+                          const aFontCodePointRanges:TpvFontCodePointRanges=nil;
+                          const aMonoFontCodePointRanges:TpvFontCodePointRanges=nil); reintroduce;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
@@ -4726,7 +4728,7 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.Setup;
-const CacheVersionGUID:TGUID='{9F056BC9-0B09-4AE2-B52A-9F3A8F09A59E}';
+const CacheVersionGUID:TGUID='{B37B6FC2-3284-43C7-9287-4C229213A648}';
 var Stream:TStream;
     TrueTypeFont:TpvTrueTypeFont;
     RecreateCacheFiles:boolean;
@@ -4943,7 +4945,7 @@ begin
     fMonoFont:=TpvFont.CreateFromTrueTypeFont(pvApplication.VulkanDevice,
                                               fSignedDistanceFieldSpriteAtlas,
                                               TrueTypeFont,
-                                              fInstance.fFontCodePointRanges,
+                                              fInstance.fMonoFontCodePointRanges,
                                               true,
                                               2,
                                               1);
@@ -9406,7 +9408,8 @@ begin
 end;
 
 constructor TpvGUIInstance.Create(const aVulkanDevice:TpvVulkanDevice;
-                                  const aFontCodePointRanges:TpvFontCodePointRanges=nil);
+                                  const aFontCodePointRanges:TpvFontCodePointRanges=nil;
+                                  const aMonoFontCodePointRanges:TpvFontCodePointRanges=nil);
 begin
 
  inherited Create(nil);
@@ -9416,6 +9419,8 @@ begin
  fVulkanDevice:=aVulkanDevice;
 
  fFontCodePointRanges:=aFontCodePointRanges;
+
+ fMonoFontCodePointRanges:=aMonoFontCodePointRanges;
 
  if length(fFontCodePointRanges)=0 then begin
 {$if defined(PasVulkanLowMemoryTarget) or defined(PasVulkanSlowCPUTarget) or true}
@@ -9427,6 +9432,19 @@ begin
 {$else}
   SetLength(fFontCodePointRanges,1);
   fFontCodePointRanges[0]:=TpvFontCodePointRange.Create($000000,$10ffff);
+{$ifend}
+ end;
+
+ if length(fMonoFontCodePointRanges)=0 then begin
+{$if defined(PasVulkanLowMemoryTarget) or defined(PasVulkanSlowCPUTarget)}
+  SetLength(fFontCodePointRanges,4);
+  fFontCodePointRanges[0]:=TpvFontCodePointRange.Create($000000,$0000ff);
+  fFontCodePointRanges[1]:=TpvFontCodePointRange.Create($002026,$002026);
+  fFontCodePointRanges[2]:=TpvFontCodePointRange.Create($002400,$002426);
+  fFontCodePointRanges[3]:=TpvFontCodePointRange.Create($00fff0,$00ffff);
+{$else}
+  SetLength(fMonoFontCodePointRanges,1);
+  fMonoFontCodePointRanges[0]:=TpvFontCodePointRange.Create($000000,$10ffff);
 {$ifend}
  end;
 
