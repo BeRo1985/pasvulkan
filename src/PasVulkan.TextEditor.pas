@@ -5564,7 +5564,7 @@ begin
 
   finally
 
-   // We don't need the original NFA states anymore, after we have built the DFA states
+   // We don't need the original NFA states anymore, after we have built the DFA states from them
    fNFAStates:=0;
    while assigned(fNFA) do begin
     NFA:=fNFA.fNext;
