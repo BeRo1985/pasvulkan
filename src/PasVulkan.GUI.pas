@@ -4726,7 +4726,7 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.Setup;
-const CacheVersionGUID:TGUID='{425B9DB4-1A8E-4BD0-8994-BF1AFD19FE8C}';
+const CacheVersionGUID:TGUID='{9F056BC9-0B09-4AE2-B52A-9F3A8F09A59E}';
 var Stream:TStream;
     TrueTypeFont:TpvTrueTypeFont;
     RecreateCacheFiles:boolean;
