@@ -5123,7 +5123,7 @@ begin
              [TpvTextEditor.TDFASyntaxHighlighting.TAccept.TFlag.DecreaseLevel],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
  AddRule('(('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0009,$0009)+')|'+
-          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0020,$0020)+')|'+
           '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($00a0,$00a0)+')|'+
           '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($1680,$1680)+')|'+
           '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($180e,$180e)+')|'+
@@ -5293,7 +5293,7 @@ begin
              [],
              TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword);
  AddRule('(('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0009,$0009)+')|'+
-          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($000a,$000a)+')|'+
+          '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($0020,$0020)+')|'+
           '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($00a0,$00a0)+')|'+
           '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($1680,$1680)+')|'+
           '('+TpvTextEditor.TUTF8Utils.UTF8ConvertRangeToCodeUnitRegularExpression($180e,$180e)+')|'+
