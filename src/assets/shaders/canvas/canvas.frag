@@ -976,5 +976,11 @@ void main(void){
     } 
   }
 #endif
-  outFragColor = color * (step(inClipRect.x, inPosition.x) * step(inClipRect.y, inPosition.y) * step(inPosition.x, inClipRect.z) * step(inPosition.y, inClipRect.w));
+  color *= step(inClipRect.x, inPosition.x) * step(inClipRect.y, inPosition.y) * step(inPosition.x, inClipRect.z) * step(inPosition.y, inClipRect.w);
+#if BLENDING == 0
+  if(color.w < 1e-6){
+    discard;
+  }
+#endif  
+  outFragColor = color;
 }

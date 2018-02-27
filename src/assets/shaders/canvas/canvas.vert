@@ -37,5 +37,5 @@ void main(void){
   outClipRect = inClipRect;
   outMetaInfo = inMetaInfo;
   vec4 p = pushConstants.transformMatrix * vec4(inPosition.xy, 0.0, 1.0);
-  gl_Position = vec4(vec2(p.xy / p.w), inPosition.z, 1.0);
+  gl_Position = vec4(vec2(p.xy / p.w), 1.0 - inPosition.z, 1.0);
 }

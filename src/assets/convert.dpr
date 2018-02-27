@@ -158,6 +158,10 @@ begin
   ConvertFile('shaders/canvas/canvas_frag_no_texture.spv','CanvasFragmentNoTextureSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_texture.spv','CanvasFragmentTextureSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_atlas_texture.spv','CanvasFragmentAtlasTextureSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_gui_no_texture_no_blending.spv','CanvasFragmentGUINoTextureNoBlendingSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_no_texture_no_blending.spv','CanvasFragmentNoTextureNoBlendingSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_texture_no_blending.spv','CanvasFragmentTextureNoBlendingSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_atlas_texture_no_blending.spv','CanvasFragmentAtlasTextureNoBlendingSPIRV');
   ConvertFile('shaders/canvas/canvas_vert.spv','CanvasVertexSPIRV');
   StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanAssets.inc');
  finally

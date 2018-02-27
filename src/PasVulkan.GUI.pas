@@ -2998,7 +2998,7 @@ end;
 procedure TpvGUIDeferredDrawEngine.Draw;
  procedure DrawBatchItem(const aBatchItem:TBatchItem);
  begin
-  fCanvas.ZIndex:=1.0-(aBatchItem.fZIndex/fCountTotalBatchItems);
+  fCanvas.ZIndex:=aBatchItem.fZIndex/fCountTotalBatchItems;
   fCanvas.ClipRect:=aBatchItem.fState.fClipRect;
   fCanvas.ModelMatrix:=aBatchItem.fState.fModelMatrix;
   fCanvas.Color:=aBatchItem.fState.fColor;
