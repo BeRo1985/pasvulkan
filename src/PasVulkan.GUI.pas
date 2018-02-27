@@ -7256,18 +7256,18 @@ begin
    if TextCursorPositionIndex>aTextEdit.fCountTextGlyphRects then begin
     aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(Max(aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right,
                                                                                        Offset.x+TextRect.Left+TextOffset.x+aDrawEngine.Font.TextWidth(aTextEdit.fText,aDrawEngine.FontSize))+0.0,
-                                                                                       Offset.y+TextRect.Top),
+                                                                                       Offset.y+TextRect.Top+((TextRect.Height-aDrawEngine.Font.RowHeight(100.0,aDrawEngine.FontSize))*0.5)),
                                                            TpvVector2.InlineableCreate(1.0,
                                                                                        aDrawEngine.Font.RowHeight(100.0,aDrawEngine.FontSize))));
    end else begin
     aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(aTextEdit.fTextGlyphRects[TextCursorPositionIndex-1].Left,
-                                                                                       Offset.y+TextRect.Top),
+                                                                                       Offset.y+TextRect.Top+((TextRect.Height-aDrawEngine.Font.RowHeight(100.0,aDrawEngine.FontSize))*0.5)),
                                                            TpvVector2.InlineableCreate(1.0,
                                                                                        aDrawEngine.Font.RowHeight(100.0,aDrawEngine.FontSize))));
    end;
   end else begin
    aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(Offset.x+TextRect.Left+TextOffset.x,
-                                                                                      Offset.y+TextRect.Top),
+                                                                                      Offset.y+TextRect.Top+((TextRect.Height-aDrawEngine.Font.RowHeight(100.0,aDrawEngine.FontSize))*0.5)),
                                                           TpvVector2.InlineableCreate(1.0,
                                                                                       aDrawEngine.Font.RowHeight(100.0,aDrawEngine.FontSize))));
   end;
