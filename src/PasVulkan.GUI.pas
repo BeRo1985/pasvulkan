@@ -195,6 +195,7 @@ type TpvGUIObject=class;
 
      TpvGUIInstantDrawEngine=class(TpvGUIDrawEngine)
       private
+       fAlwaysTransparent:boolean;
        function GetTransparent:boolean; override;
        procedure SetTransparent(const aTransparent:boolean); override;
        function GetClipRect:TpvRect; override;
@@ -204,12 +205,16 @@ type TpvGUIObject=class;
        function GetColor:TpvVector4; override;
        procedure SetColor(const aColor:TpvVector4); override;
       public
+       constructor Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas); override;
+       destructor Destroy; override;
        procedure Clear; override;
        procedure Draw; override;
        procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0); override;
        procedure DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect); override;
        procedure DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0); override;
        procedure DrawFilledRectangle(const aRect:TpvRect); override;
+      published
+       property AlwaysTransparent:boolean read fAlwaysTransparent write fAlwaysTransparent;
      end;
 
      TpvGUIDeferredDrawEngine=class(TpvGUIDrawEngine)
@@ -2808,6 +2813,17 @@ begin
  end;
 end;
 
+constructor TpvGUIInstantDrawEngine.Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas);
+begin
+ inherited Create(aInstance,aCanvas);
+ fAlwaysTransparent:=true;
+end;
+
+destructor TpvGUIInstantDrawEngine.Destroy;
+begin
+ inherited Destroy;
+end;
+
 function TpvGUIInstantDrawEngine.GetTransparent:boolean;
 begin
  result:=fCanvas.BlendingMode<>TpvCanvasBlendingMode.None;
@@ -2815,7 +2831,7 @@ end;
 
 procedure TpvGUIInstantDrawEngine.SetTransparent(const aTransparent:boolean);
 begin
- if aTransparent then begin
+ if fAlwaysTransparent or aTransparent then begin
   fCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
  end else begin
   fCanvas.BlendingMode:=TpvCanvasBlendingMode.None;
@@ -2854,7 +2870,9 @@ end;
 
 procedure TpvGUIInstantDrawEngine.Clear;
 begin
- // NOP
+ if fAlwaysTransparent then begin
+  fCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
+ end;
 end;
 
 procedure TpvGUIInstantDrawEngine.Draw;
