@@ -3,7 +3,7 @@
 // Copyright (C) 2017, Benjamin 'BeRo' Rosseaux (benjamin@rosseaux.de)
 // License: zlib 
 
-layout(location = 0) in vec2 inPosition; 
+layout(location = 0) in vec3 inPosition; 
 layout(location = 1) in vec4 inColor;    
 layout(location = 2) in vec3 inTexCoord; 
 layout(location = 3) in uint inState;    
@@ -27,7 +27,7 @@ out gl_PerVertex {
 };
 
 void main(void){
-  outPosition = inPosition;
+  outPosition = inPosition.xy;
   outColor = inColor;
   outTexCoord = inTexCoord;
   outState = ivec4(uvec4((inState >> 0u) & 0x3u,
@@ -36,5 +36,6 @@ void main(void){
                          0u));
   outClipRect = inClipRect;
   outMetaInfo = inMetaInfo;
-  gl_Position = pushConstants.transformMatrix * vec4(inPosition, 0.0, 1.0);
+  vec4 p = pushConstants.transformMatrix * vec4(inPosition.xy, 0.0, 1.0);
+  gl_Position = vec4(vec2(p.xy / p.w), inPosition.z / 16777216.0, 1.0);
 }

@@ -92,6 +92,14 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        destructor Destroy; override;
      end;
 
+     TpvGUIMultiLineTextEditSearchReplaceWindow=class(TpvGUIWindow)
+      private
+       fMultiLineTextEdit:TpvGUIMultiLineTextEdit;
+      public
+       constructor Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); reintroduce;
+       destructor Destroy; override;
+     end;
+
      TScreenExampleGUI=class(TpvApplicationScreen)
       private
        fVulkanRenderPass:TpvVulkanRenderPass;
@@ -524,6 +532,34 @@ begin
  inherited Destroy;
 end;
 
+constructor TpvGUIMultiLineTextEditSearchReplaceWindow.Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
+begin
+
+ inherited Create(aParent);
+
+ fMultiLineTextEdit:=aMultiLineTextEdit;
+
+ Left:=450;
+ Top:=170;
+ Title:='Search and replace';
+ Content.Layout:=TpvGUIFillLayout.Create(Content,4.0);
+ AddMinimizationButton;
+ AddMaximizationButton;
+ AddCloseButton;
+
+ AutoSize:=false;
+
+ Width:=550;
+ Height:=350;
+
+
+end;
+
+destructor TpvGUIMultiLineTextEditSearchReplaceWindow.Destroy;
+begin
+ inherited Destroy;
+end;
+
 constructor TScreenExampleGUI.Create;
 begin
  inherited Create;
@@ -859,6 +895,8 @@ begin
  TScreenExampleGUITabPanelExampleWindow.Create(fGUIInstance);
 
  TScreenExampleGUIMultiLineTextEditWindow.Create(fGUIInstance);
+
+//TpvGUIMultiLineTextEditSearchReplaceWindow.Create(fGUIInstance,nil);
 
 end;
 
