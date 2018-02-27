@@ -627,7 +627,11 @@ begin
                                  pvApplication.VulkanPipelineCache);
 
  fGUIInstance:=TpvGUIInstance.Create(pvApplication.VulkanDevice);
+{$if defined(Android) or defined(iOS)}
+ fGUIInstance.DrawEngine:=TpvGUIDeferredDrawEngine.Create(fGUIInstance,fVulkanCanvas);
+{$else}
  fGUIInstance.DrawEngine:=TpvGUIInstantDrawEngine.Create(fGUIInstance,fVulkanCanvas);
+{$ifend}
 
  fGUIInstance.Width:=pvApplication.Width;
  fGUIInstance.Height:=pvApplication.Height;
