@@ -145,19 +145,9 @@ type TpvGUIObject=class;
      TpvGUIOnScrolled=function(const aSender:TpvGUIObject;const aPosition,aRelativeAmount:TpvVector2):boolean of object;
 
      TpvGUIDrawEngine=class
-      public
-       type TState=record
-             private
-              fTransparent:boolean;
-              fClipRect:TpvRect;
-              fModelMatrix:TpvMatrix4x4;
-              fColor:TpvVector4;
-            end;
-            PState=^TState;
       private
        fInstance:TpvGUIInstance;
        fCanvas:TpvCanvas;
-       fState:TState;
        fFont:TpvFont;
        fFontSize:TpvFloat;
        fTextHorizontalAlignment:TpvCanvasTextHorizontalAlignment;
@@ -219,6 +209,15 @@ type TpvGUIObject=class;
 
      TpvGUIDeferredDrawEngine=class(TpvGUIDrawEngine)
       public
+       type TState=record
+             private
+              fTransparent:boolean;
+              fClipRect:TpvRect;
+              fModelMatrix:TpvMatrix4x4;
+              fColor:TpvVector4;
+            end;
+            PState=^TState;
+      public
        type TBatchItem=record
              public
               type TKind=
@@ -259,13 +258,24 @@ type TpvGUIObject=class;
             PBatchItem=^TBatchItem;
             TBatchItems=array of TBatchItem;
       private
+       fState:TState;
        fOpaqueBatchItems:TBatchItems;
        fCountOpaqueBatchItems:TpvSizeInt;
        fTransparentBatchItems:TBatchItems;
        fCountTransparentBatchItems:TpvSizeInt;
        fCountTotalBatchItems:TpvSizeInt;
+       function GetTransparent:boolean; override;
+       procedure SetTransparent(const aTransparent:boolean); override;
+       function GetClipRect:TpvRect; override;
+       procedure SetClipRect(const aClipRect:TpvRect); override;
+       function GetModelMatrix:TpvMatrix4x4; override;
+       procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4); override;
+       function GetColor:TpvVector4; override;
+       procedure SetColor(const aColor:TpvVector4); override;
        function NewBatchItem:PBatchItem;
       public
+       constructor Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas); override;
+       destructor Destroy; override;
        procedure Clear; override;
        procedure Draw; override;
        procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0); override;
@@ -2611,50 +2621,43 @@ end;
 
 function TpvGUIDrawEngine.GetTransparent:boolean;
 begin
- result:=fState.fTransparent;
+ result:=false;
 end;
 
 procedure TpvGUIDrawEngine.SetTransparent(const aTransparent:boolean);
 begin
- fState.fTransparent:=aTransparent;
 end;
 
 function TpvGUIDrawEngine.GetClipRect:TpvRect;
 begin
- result:=fState.fClipRect;
+ result.Min:=TpvVector2.Null;
+ result.Max:=TpvVector2.Null;
 end;
 
 procedure TpvGUIDrawEngine.SetClipRect(const aClipRect:TpvRect);
 begin
- fState.fClipRect:=aClipRect;
 end;
 
 function TpvGUIDrawEngine.GetModelMatrix:TpvMatrix4x4;
 begin
- result:=fState.fModelMatrix;
+ result:=TpvMatrix4x4.Identity;
 end;
 
 procedure TpvGUIDrawEngine.SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
 begin
- fState.fModelMatrix:=aModelMatrix;
 end;
 
 function TpvGUIDrawEngine.GetColor:TpvVector4;
 begin
- result:=fState.fColor;
+ result:=TpvVector4.Null;
 end;
 
 procedure TpvGUIDrawEngine.SetColor(const aColor:TpvVector4);
 begin
- fState.fColor:=aColor;
 end;
 
 procedure TpvGUIDrawEngine.Clear;
 begin
- fState.fTransparent:=fCanvas.BlendingMode<>TpvCanvasBlendingMode.None;
- fState.fClipRect:=fCanvas.ClipRect;
- fState.fModelMatrix:=fCanvas.ModelMatrix;
- fState.fColor:=fCanvas.Color;
  fFont:=fCanvas.Font;
  fFontSize:=fCanvas.FontSize;
  fTextHorizontalAlignment:=fCanvas.TextHorizontalAlignment;
@@ -2870,6 +2873,7 @@ end;
 
 procedure TpvGUIInstantDrawEngine.Clear;
 begin
+ inherited Clear;
  if fAlwaysTransparent then begin
   fCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
  end;
@@ -2900,6 +2904,65 @@ begin
  fCanvas.DrawFilledRectangle(aRect);
 end;
 
+constructor TpvGUIDeferredDrawEngine.Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas);
+begin
+ inherited Create(aInstance,aCanvas);
+ fOpaqueBatchItems:=nil;
+ fOpaqueBatchItems:=nil;
+ fCountOpaqueBatchItems:=0;
+ fTransparentBatchItems:=nil;
+ fCountTransparentBatchItems:=0;
+ fCountTotalBatchItems:=0;
+end;
+
+destructor TpvGUIDeferredDrawEngine.Destroy;
+begin
+ fOpaqueBatchItems:=nil;
+ fOpaqueBatchItems:=nil;
+ fTransparentBatchItems:=nil;
+ inherited Destroy;
+end;
+
+function TpvGUIDeferredDrawEngine.GetTransparent:boolean;
+begin
+ result:=fState.fTransparent;
+end;
+
+procedure TpvGUIDeferredDrawEngine.SetTransparent(const aTransparent:boolean);
+begin
+ fState.fTransparent:=aTransparent;
+end;
+
+function TpvGUIDeferredDrawEngine.GetClipRect:TpvRect;
+begin
+ result:=fState.fClipRect;
+end;
+
+procedure TpvGUIDeferredDrawEngine.SetClipRect(const aClipRect:TpvRect);
+begin
+ fState.fClipRect:=aClipRect;
+end;
+
+function TpvGUIDeferredDrawEngine.GetModelMatrix:TpvMatrix4x4;
+begin
+ result:=fState.fModelMatrix;
+end;
+
+procedure TpvGUIDeferredDrawEngine.SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
+begin
+ fState.fModelMatrix:=aModelMatrix;
+end;
+
+function TpvGUIDeferredDrawEngine.GetColor:TpvVector4;
+begin
+ result:=fState.fColor;
+end;
+
+procedure TpvGUIDeferredDrawEngine.SetColor(const aColor:TpvVector4);
+begin
+ fState.fColor:=aColor;
+end;
+
 function TpvGUIDeferredDrawEngine.NewBatchItem:PBatchItem;
 begin
  if fState.fTransparent then begin
@@ -2923,6 +2986,10 @@ end;
 procedure TpvGUIDeferredDrawEngine.Clear;
 begin
  inherited Clear;
+ fState.fTransparent:=fCanvas.BlendingMode<>TpvCanvasBlendingMode.None;
+ fState.fClipRect:=fCanvas.ClipRect;
+ fState.fModelMatrix:=fCanvas.ModelMatrix;
+ fState.fColor:=fCanvas.Color;
  fCountOpaqueBatchItems:=0;
  fCountTransparentBatchItems:=0;
  fCountTotalBatchItems:=0;
