@@ -2646,6 +2646,7 @@ end;
 
 procedure TpvGUIDrawEngine.Clear;
 begin
+ fState.fTransparent:=fCanvas.BlendingMode<>TpvCanvasBlendingMode.None;
  fState.fClipRect:=fCanvas.ClipRect;
  fState.fModelMatrix:=fCanvas.ModelMatrix;
  fState.fColor:=fCanvas.Color;
@@ -2809,12 +2810,16 @@ end;
 
 function TpvGUIInstantDrawEngine.GetTransparent:boolean;
 begin
- result:=fState.fTransparent;
+ result:=fCanvas.BlendingMode<>TpvCanvasBlendingMode.None;
 end;
 
 procedure TpvGUIInstantDrawEngine.SetTransparent(const aTransparent:boolean);
 begin
- fState.fTransparent:=aTransparent;
+ if aTransparent then begin
+  fCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
+ end else begin
+  fCanvas.BlendingMode:=TpvCanvasBlendingMode.None;
+ end;
 end;
 
 function TpvGUIInstantDrawEngine.GetClipRect:TpvRect;
@@ -2908,7 +2913,7 @@ end;
 procedure TpvGUIDeferredDrawEngine.Draw;
  procedure DrawBatchItem(const aBatchItem:TBatchItem);
  begin
-  fCanvas.ZIndex:=aBatchItem.fZIndex;
+  fCanvas.ZIndex:=1.0-(aBatchItem.fZIndex/fCountTotalBatchItems);
   fCanvas.ClipRect:=aBatchItem.fState.fClipRect;
   fCanvas.ModelMatrix:=aBatchItem.fState.fModelMatrix;
   fCanvas.Color:=aBatchItem.fState.fColor;
