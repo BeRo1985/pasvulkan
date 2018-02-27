@@ -627,7 +627,7 @@ begin
                                  pvApplication.VulkanPipelineCache);
 
  fGUIInstance:=TpvGUIInstance.Create(pvApplication.VulkanDevice);
- fGUIInstance.Canvas:=fVulkanCanvas;
+ fGUIInstance.DrawEngine:=TpvGUIInstantDrawEngine.Create(fGUIInstance,fVulkanCanvas);
 
  fGUIInstance.Width:=pvApplication.Width;
  fGUIInstance.Height:=pvApplication.Height;

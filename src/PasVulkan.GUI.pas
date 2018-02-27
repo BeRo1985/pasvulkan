@@ -144,6 +144,131 @@ type TpvGUIObject=class;
 
      TpvGUIOnScrolled=function(const aSender:TpvGUIObject;const aPosition,aRelativeAmount:TpvVector2):boolean of object;
 
+     TpvGUIDrawEngine=class
+      public
+       type TState=record
+             private
+              fTransparent:boolean;
+              fClipRect:TpvRect;
+              fModelMatrix:TpvMatrix4x4;
+              fColor:TpvVector4;
+            end;
+            PState=^TState;
+      private
+       fInstance:TpvGUIInstance;
+       fCanvas:TpvCanvas;
+       fState:TState;
+       fFont:TpvFont;
+       fFontSize:TpvFloat;
+       fTextHorizontalAlignment:TpvCanvasTextHorizontalAlignment;
+       fTextVerticalAlignment:TpvCanvasTextVerticalAlignment;
+       function GetTransparent:boolean; virtual;
+       procedure SetTransparent(const aTransparent:boolean); virtual;
+       function GetClipRect:TpvRect; virtual;
+       procedure SetClipRect(const aClipRect:TpvRect); virtual;
+       function GetModelMatrix:TpvMatrix4x4; virtual;
+       procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4); virtual;
+       function GetColor:TpvVector4; virtual;
+       procedure SetColor(const aColor:TpvVector4); virtual;
+      public
+       constructor Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas); reintroduce; virtual;
+       destructor Destroy; override;
+       procedure Clear; virtual;
+       procedure Draw; virtual;
+       procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0); virtual;
+       procedure DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect); virtual;
+       procedure DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0); virtual;
+       procedure DrawFilledRectangle(const aRect:TpvRect); virtual;
+       procedure DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2); virtual;
+       procedure DrawTextCodePoint(const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2); virtual;
+       procedure TextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;var aTextGlyphRects:TpvCanvasTextGlyphRects;out aCountTextGlyphRects:TpvInt32); virtual;
+       property ClipRect:TpvRect read GetClipRect write SetClipRect;
+       property ModelMatrix:TpvMatrix4x4 read GetModelMatrix write SetModelMatrix;
+       property Color:TpvVector4 read GetColor write SetColor;
+      published
+       property Transparent:boolean read GetTransparent write SetTransparent;
+       property Font:TpvFont read fFont write fFont;
+       property FontSize:TpvFloat read fFontSize write fFontSize;
+       property TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment read fTextHorizontalAlignment write fTextHorizontalAlignment;
+       property TextVerticalAlignment:TpvCanvasTextVerticalAlignment read fTextVerticalAlignment write fTextVerticalAlignment;
+     end;
+
+     TpvGUIInstantDrawEngine=class(TpvGUIDrawEngine)
+      private
+       function GetTransparent:boolean; override;
+       procedure SetTransparent(const aTransparent:boolean); override;
+       function GetClipRect:TpvRect; override;
+       procedure SetClipRect(const aClipRect:TpvRect); override;
+       function GetModelMatrix:TpvMatrix4x4; override;
+       procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4); override;
+       function GetColor:TpvVector4; override;
+       procedure SetColor(const aColor:TpvVector4); override;
+      public
+       procedure Clear; override;
+       procedure Draw; override;
+       procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0); override;
+       procedure DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect); override;
+       procedure DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0); override;
+       procedure DrawFilledRectangle(const aRect:TpvRect); override;
+     end;
+
+     TpvGUIDeferredDrawEngine=class(TpvGUIDrawEngine)
+      public
+       type TBatchItem=record
+             public
+              type TKind=
+                    (
+                     DrawGUIElement,
+                     DrawSprite,
+                     DrawTexturedRectangle,
+                     DrawFilledRectangle
+                    );
+             private
+              fZIndex:TpvSizeInt;
+              fState:TState;
+              case fKind:TKind of
+               TKind.DrawGUIElement:(
+                fDrawGUIElementGUIElement:TVkInt32;
+                fDrawGUIElementFocused:boolean;
+                fDrawGUIElementMin:TpvVector2;
+                fDrawGUIElementMax:TpvVector2;
+                fDrawGUIElementMetaMin:TpvVector2;
+                fDrawGUIElementMetaMax:TpvVector2;
+                fDrawGUIElementMeta:TpvFloat;
+               );
+               TKind.DrawSprite:(
+                fDrawSpriteSprite:TpvSprite;
+                fDrawSpriteSrcRect:TpvRect;
+                fDrawSpriteDestRect:TpvRect;
+               );
+               TKind.DrawTexturedRectangle:(
+                fDrawTexturedRectangleTexture:TpvVulkanTexture;
+                fDrawTexturedRectangleRect:TpvRect;
+                fDrawTexturedRectangleRotationAngle:TpvFloat;
+                fDrawTexturedRectangleTextureArrayLayer:TpvInt32;
+               );
+               TKind.DrawFilledRectangle:(
+                fDrawFilledRectangleRect:TpvRect;
+               );
+            end;
+            PBatchItem=^TBatchItem;
+            TBatchItems=array of TBatchItem;
+      private
+       fOpaqueBatchItems:TBatchItems;
+       fCountOpaqueBatchItems:TpvSizeInt;
+       fTransparentBatchItems:TBatchItems;
+       fCountTransparentBatchItems:TpvSizeInt;
+       fCountTotalBatchItems:TpvSizeInt;
+       function NewBatchItem:PBatchItem;
+      public
+       procedure Clear; override;
+       procedure Draw; override;
+       procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0); override;
+       procedure DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect); override;
+       procedure DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0); override;
+       procedure DrawFilledRectangle(const aRect:TpvRect); override;
+     end;
+
      TpvGUIObjectList=class(TObjectList<TpvGUIObject>)
       protected
        procedure Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification); override;
@@ -616,64 +741,64 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure Setup; virtual;
       public
-       procedure DrawFocus(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget); virtual;
+       procedure DrawFocus(const aDrawEngine:TpvGUIDrawEngine;const aWidget:TpvGUIWidget); virtual;
       public
-       procedure DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance); virtual;
+       procedure DrawMouse(const aDrawEngine:TpvGUIDrawEngine;const aInstance:TpvGUIInstance); virtual;
       public
        function GetWidgetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; virtual;
        function GetWidgetLayoutPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; virtual;
       public
        function GetWindowPreferredSize(const aWindow:TpvGUIWindow):TpvVector2; virtual;
-       procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); virtual;
+       procedure DrawWindow(const aDrawEngine:TpvGUIDrawEngine;const aWindow:TpvGUIWindow); virtual;
       public
        function GetPanelPreferredSize(const aPanel:TpvGUIPanel):TpvVector2; virtual;
-       procedure DrawPanel(const aCanvas:TpvCanvas;const aPanel:TpvGUIPanel); virtual;
+       procedure DrawPanel(const aDrawEngine:TpvGUIDrawEngine;const aPanel:TpvGUIPanel); virtual;
       public
        function GetImagePreferredSize(const aImage:TpvGUIImage):TpvVector2; virtual;
-       procedure DrawImage(const aCanvas:TpvCanvas;const aImage:TpvGUIImage); virtual;
+       procedure DrawImage(const aDrawEngine:TpvGUIDrawEngine;const aImage:TpvGUIImage); virtual;
       public
        function GetLabelPreferredSize(const aLabel:TpvGUILabel):TpvVector2; virtual;
-       procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); virtual;
+       procedure DrawLabel(const aDrawEngine:TpvGUIDrawEngine;const aLabel:TpvGUILabel); virtual;
       public
        function GetButtonPreferredSize(const aButton:TpvGUIButton):TpvVector2; virtual;
-       procedure DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton); virtual;
+       procedure DrawButton(const aDrawEngine:TpvGUIDrawEngine;const aButton:TpvGUIButton); virtual;
       public
        function GetCheckBoxPreferredSize(const aCheckBox:TpvGUICheckBox):TpvVector2; virtual;
-       procedure DrawCheckBox(const aCanvas:TpvCanvas;const aCheckBox:TpvGUICheckBox); virtual;
+       procedure DrawCheckBox(const aDrawEngine:TpvGUIDrawEngine;const aCheckBox:TpvGUICheckBox); virtual;
       public
        function GetTextEditPreferredSize(const aTextEdit:TpvGUITextEdit):TpvVector2; virtual;
-       procedure DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit); virtual;
+       procedure DrawTextEdit(const aDrawEngine:TpvGUIDrawEngine;const aTextEdit:TpvGUITextEdit); virtual;
       public
        function GetPopupMenuPreferredSize(const aPopupMenu:TpvGUIPopupMenu):TpvVector2; virtual;
-       procedure DrawPopupMenu(const aCanvas:TpvCanvas;const aPopupMenu:TpvGUIPopupMenu); virtual;
+       procedure DrawPopupMenu(const aDrawEngine:TpvGUIDrawEngine;const aPopupMenu:TpvGUIPopupMenu); virtual;
       public
        function GetWindowMenuPreferredSize(const aWindowMenu:TpvGUIWindowMenu):TpvVector2; virtual;
-       procedure DrawWindowMenu(const aCanvas:TpvCanvas;const aWindowMenu:TpvGUIWindowMenu); virtual;
+       procedure DrawWindowMenu(const aDrawEngine:TpvGUIDrawEngine;const aWindowMenu:TpvGUIWindowMenu); virtual;
       public
        function GetScrollBarPreferredSize(const aScrollBar:TpvGUIScrollBar):TpvVector2; virtual;
-       procedure DrawScrollBar(const aCanvas:TpvCanvas;const aScrollBar:TpvGUIScrollBar); virtual;
+       procedure DrawScrollBar(const aDrawEngine:TpvGUIDrawEngine;const aScrollBar:TpvGUIScrollBar); virtual;
       public
        function GetSliderPreferredSize(const aSlider:TpvGUISlider):TpvVector2; virtual;
-       procedure DrawSlider(const aCanvas:TpvCanvas;const aSlider:TpvGUISlider); virtual;
+       procedure DrawSlider(const aDrawEngine:TpvGUIDrawEngine;const aSlider:TpvGUISlider); virtual;
       public
        function GetProgressBarPreferredSize(const aProgressBar:TpvGUIProgressBar):TpvVector2; virtual;
-       procedure DrawProgressBar(const aCanvas:TpvCanvas;const aProgressBar:TpvGUIProgressBar); virtual;
+       procedure DrawProgressBar(const aDrawEngine:TpvGUIDrawEngine;const aProgressBar:TpvGUIProgressBar); virtual;
       public
        procedure PreprocessTabPanel(const aTabPanel:TpvGUITabPanel); virtual;
        function GetTabPanelPreferredSize(const aTabPanel:TpvGUITabPanel):TpvVector2; virtual;
-       procedure DrawTabPanel(const aCanvas:TpvCanvas;const aTabPanel:TpvGUITabPanel); virtual;
+       procedure DrawTabPanel(const aDrawEngine:TpvGUIDrawEngine;const aTabPanel:TpvGUITabPanel); virtual;
       public
        function GetListBoxPreferredSize(const aListBox:TpvGUIListBox):TpvVector2; virtual;
-       procedure DrawListBox(const aCanvas:TpvCanvas;const aListBox:TpvGUIListBox); virtual;
+       procedure DrawListBox(const aDrawEngine:TpvGUIDrawEngine;const aListBox:TpvGUIListBox); virtual;
       public
        function GetComboBoxPreferredSize(const aComboBox:TpvGUIComboBox):TpvVector2; virtual;
-       procedure DrawComboBox(const aCanvas:TpvCanvas;const aComboBox:TpvGUIComboBox); virtual;
+       procedure DrawComboBox(const aDrawEngine:TpvGUIDrawEngine;const aComboBox:TpvGUIComboBox); virtual;
       public
        function GetSplitterPanelGripButtonPreferredSize(const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton):TpvVector2; virtual;
-       procedure DrawSplitterPanelGripButton(const aCanvas:TpvCanvas;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton); virtual;
+       procedure DrawSplitterPanelGripButton(const aDrawEngine:TpvGUIDrawEngine;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton); virtual;
       public
        function GetMultiLineTextEditPreferredSize(const aMultiLineTextEdit:TpvGUIMultiLineTextEdit):TpvVector2; virtual;
-       procedure DrawMultiLineTextEdit(const aCanvas:TpvCanvas;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); virtual;
+       procedure DrawMultiLineTextEdit(const aDrawEngine:TpvGUIDrawEngine;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); virtual;
       public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
@@ -770,70 +895,70 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure Setup; override;
       public
-       procedure DrawFocus(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget); override;
+       procedure DrawFocus(const aDrawEngine:TpvGUIDrawEngine;const aWidget:TpvGUIWidget); override;
       public
-       procedure DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance); override;
+       procedure DrawMouse(const aDrawEngine:TpvGUIDrawEngine;const aInstance:TpvGUIInstance); override;
       public
        function GetWidgetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
        function GetWidgetLayoutPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
       public
        function GetWindowPreferredSize(const aWindow:TpvGUIWindow):TpvVector2; override;
-       procedure DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow); override;
+       procedure DrawWindow(const aDrawEngine:TpvGUIDrawEngine;const aWindow:TpvGUIWindow); override;
       public
        function GetPanelPreferredSize(const aPanel:TpvGUIPanel):TpvVector2; override;
-       procedure DrawPanel(const aCanvas:TpvCanvas;const aPanel:TpvGUIPanel); override;
+       procedure DrawPanel(const aDrawEngine:TpvGUIDrawEngine;const aPanel:TpvGUIPanel); override;
       public
        function GetImagePreferredSize(const aImage:TpvGUIImage):TpvVector2; override;
-       procedure DrawImage(const aCanvas:TpvCanvas;const aImage:TpvGUIImage); override;
+       procedure DrawImage(const aDrawEngine:TpvGUIDrawEngine;const aImage:TpvGUIImage); override;
       public
        function GetLabelPreferredSize(const aLabel:TpvGUILabel):TpvVector2; override;
-       procedure DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel); override;
+       procedure DrawLabel(const aDrawEngine:TpvGUIDrawEngine;const aLabel:TpvGUILabel); override;
       public
        function GetButtonPreferredSize(const aButton:TpvGUIButton):TpvVector2; override;
-       procedure DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton); override;
+       procedure DrawButton(const aDrawEngine:TpvGUIDrawEngine;const aButton:TpvGUIButton); override;
       public
        function GetCheckBoxPreferredSize(const aCheckBox:TpvGUICheckBox):TpvVector2; override;
-       procedure DrawCheckBox(const aCanvas:TpvCanvas;const aCheckBox:TpvGUICheckBox); override;
+       procedure DrawCheckBox(const aDrawEngine:TpvGUIDrawEngine;const aCheckBox:TpvGUICheckBox); override;
       public
        function GetTextEditPreferredSize(const aTextEdit:TpvGUITextEdit):TpvVector2; override;
-       procedure DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit); override;
+       procedure DrawTextEdit(const aDrawEngine:TpvGUIDrawEngine;const aTextEdit:TpvGUITextEdit); override;
       private
        function ProcessPopupMenuItems(const aPopupMenu:TpvGUIPopupMenu):TpvVector2;
       public
        function GetPopupMenuPreferredSize(const aPopupMenu:TpvGUIPopupMenu):TpvVector2; override;
-       procedure DrawPopupMenu(const aCanvas:TpvCanvas;const aPopupMenu:TpvGUIPopupMenu); override;
+       procedure DrawPopupMenu(const aDrawEngine:TpvGUIDrawEngine;const aPopupMenu:TpvGUIPopupMenu); override;
       private
        procedure ProcessWindowMenuItems(const aWindowMenu:TpvGUIWindowMenu);
       public
        function GetWindowMenuPreferredSize(const aWindowMenu:TpvGUIWindowMenu):TpvVector2; override;
-       procedure DrawWindowMenu(const aCanvas:TpvCanvas;const aWindowMenu:TpvGUIWindowMenu); override;
+       procedure DrawWindowMenu(const aDrawEngine:TpvGUIDrawEngine;const aWindowMenu:TpvGUIWindowMenu); override;
       public
        function GetScrollBarPreferredSize(const aScrollBar:TpvGUIScrollBar):TpvVector2; override;
-       procedure DrawScrollBar(const aCanvas:TpvCanvas;const aScrollBar:TpvGUIScrollBar); override;
+       procedure DrawScrollBar(const aDrawEngine:TpvGUIDrawEngine;const aScrollBar:TpvGUIScrollBar); override;
       public
        function GetSliderPreferredSize(const aSlider:TpvGUISlider):TpvVector2; override;
-       procedure DrawSlider(const aCanvas:TpvCanvas;const aSlider:TpvGUISlider); override;
+       procedure DrawSlider(const aDrawEngine:TpvGUIDrawEngine;const aSlider:TpvGUISlider); override;
       public
        function GetProgressBarPreferredSize(const aProgressBar:TpvGUIProgressBar):TpvVector2; override;
-       procedure DrawProgressBar(const aCanvas:TpvCanvas;const aProgressBar:TpvGUIProgressBar); override;
+       procedure DrawProgressBar(const aDrawEngine:TpvGUIDrawEngine;const aProgressBar:TpvGUIProgressBar); override;
       public
        procedure PreprocessTabPanel(const aTabPanel:TpvGUITabPanel); override;
        function GetTabPanelPreferredSize(const aTabPanel:TpvGUITabPanel):TpvVector2; override;
-       procedure DrawTabPanel(const aCanvas:TpvCanvas;const aTabPanel:TpvGUITabPanel); override;
+       procedure DrawTabPanel(const aDrawEngine:TpvGUIDrawEngine;const aTabPanel:TpvGUITabPanel); override;
       public
        function GetListBoxPreferredSize(const aListBox:TpvGUIListBox):TpvVector2; override;
-       procedure DrawListBox(const aCanvas:TpvCanvas;const aListBox:TpvGUIListBox); override;
+       procedure DrawListBox(const aDrawEngine:TpvGUIDrawEngine;const aListBox:TpvGUIListBox); override;
       public
        function GetComboBoxPreferredSize(const aComboBox:TpvGUIComboBox):TpvVector2; override;
-       procedure DrawComboBox(const aCanvas:TpvCanvas;const aComboBox:TpvGUIComboBox); override;
+       procedure DrawComboBox(const aDrawEngine:TpvGUIDrawEngine;const aComboBox:TpvGUIComboBox); override;
       public
        function GetSplitterPanelGripButtonPreferredSize(const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton):TpvVector2; override;
-       procedure DrawSplitterPanelGripButton(const aCanvas:TpvCanvas;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton); override;
+       procedure DrawSplitterPanelGripButton(const aDrawEngine:TpvGUIDrawEngine;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton); override;
       private
        procedure UpdateMultiLineTextEdit(const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
       public
        function GetMultiLineTextEditPreferredSize(const aMultiLineTextEdit:TpvGUIMultiLineTextEdit):TpvVector2; override;
-       procedure DrawMultiLineTextEdit(const aCanvas:TpvCanvas;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); override;
+       procedure DrawMultiLineTextEdit(const aDrawEngine:TpvGUIDrawEngine;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -906,7 +1031,6 @@ type TpvGUIObject=class;
                            TpvGUIWidgetFlag.Visible];
       private
       protected
-       fCanvas:TpvCanvas;
        fLayout:TpvGUILayout;
        fSkin:TpvGUISkin;
        fPopups:TpvGUIObjectList;
@@ -972,7 +1096,6 @@ type TpvGUIObject=class;
        function GetWindow:TpvGUIWindow;
        function GetLastParentWindow:TpvGUIWindow;
        function GetScissorParent:TpvGUIWidget;
-       procedure SetCanvas(const aCanvas:TpvCanvas); virtual;
        function GetSkin:TpvGUISkin; virtual;
        procedure SetSkin(const aSkin:TpvGUISkin); virtual;
        function GetWidgetPreferredSize:TpvVector2; virtual;
@@ -1030,7 +1153,6 @@ type TpvGUIObject=class;
       published
        property Window:TpvGUIWindow read GetWindow;
        property ScissorParent:TpvGUIWidget read GetScissorParent;
-       property Canvas:TpvCanvas read fCanvas write SetCanvas;
        property Layout:TpvGUILayout read fLayout write fLayout;
        property Skin:TpvGUISkin read GetSkin write SetSkin;
        property Cursor:TpvGUICursor read fCursor write fCursor;
@@ -1084,6 +1206,7 @@ type TpvGUIObject=class;
      TpvGUIInstance=class(TpvGUIHolder)
       private
        fVulkanDevice:TpvVulkanDevice;
+       fDrawEngine:TpvGUIDrawEngine;
        fFontCodePointRanges:TpvFontCodePointRanges;
        fMonoFontCodePointRanges:TpvFontCodePointRanges;
        fStandardSkin:TpvGUISkin;
@@ -1106,6 +1229,7 @@ type TpvGUIObject=class;
        fHoveredWidget:TpvGUIWidget;
        fMousePosition:TpvVector2;
        fVisibleCursor:TpvGUICursor;
+       procedure SetDrawEngine(const aDrawEngine:TpvGUIDrawEngine);
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
        procedure SetUpdateBufferIndex(const aUpdateBufferIndex:TpvInt32);
        procedure SetDrawBufferIndex(const aDrawBufferIndex:TpvInt32);
@@ -1135,6 +1259,7 @@ type TpvGUIObject=class;
        property MousePosition:TpvVector2 read fMousePosition write fMousePosition;
       published
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
+       property DrawEngine:TpvGUIDrawEngine read fDrawEngine write SetDrawEngine;
        property StandardSkin:TpvGUISkin read fStandardSkin;
        property DrawWidgetBounds:boolean read fDrawWidgetBounds write fDrawWidgetBounds;
        property CountBuffers:TpvInt32 read fCountBuffers write SetCountBuffers;
@@ -1781,7 +1906,7 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
-       procedure Draw(const aCanvas:TpvCanvas);
+       procedure Draw(const aDrawEngine:TpvGUIDrawEngine);
       public
        property FontColor:TpvVector4 read GetFontColor write fFontColor;
       published
@@ -2466,6 +2591,411 @@ const GUI_ELEMENT_WINDOW_HEADER=1;
       GUI_ELEMENT_MOUSE_CURSOR_PEN=75;
       GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE=76;
       GUI_ELEMENT_MOUSE_CURSOR_UP=77;
+
+constructor TpvGUIDrawEngine.Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas);
+begin
+ inherited Create;
+ fInstance:=aInstance;
+ fCanvas:=aCanvas;
+end;
+
+destructor TpvGUIDrawEngine.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TpvGUIDrawEngine.GetTransparent:boolean;
+begin
+ result:=fState.fTransparent;
+end;
+
+procedure TpvGUIDrawEngine.SetTransparent(const aTransparent:boolean);
+begin
+ fState.fTransparent:=aTransparent;
+end;
+
+function TpvGUIDrawEngine.GetClipRect:TpvRect;
+begin
+ result:=fState.fClipRect;
+end;
+
+procedure TpvGUIDrawEngine.SetClipRect(const aClipRect:TpvRect);
+begin
+ fState.fClipRect:=aClipRect;
+end;
+
+function TpvGUIDrawEngine.GetModelMatrix:TpvMatrix4x4;
+begin
+ result:=fState.fModelMatrix;
+end;
+
+procedure TpvGUIDrawEngine.SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
+begin
+ fState.fModelMatrix:=aModelMatrix;
+end;
+
+function TpvGUIDrawEngine.GetColor:TpvVector4;
+begin
+ result:=fState.fColor;
+end;
+
+procedure TpvGUIDrawEngine.SetColor(const aColor:TpvVector4);
+begin
+ fState.fColor:=aColor;
+end;
+
+procedure TpvGUIDrawEngine.Clear;
+begin
+ fState.fClipRect:=fCanvas.ClipRect;
+ fState.fModelMatrix:=fCanvas.ModelMatrix;
+ fState.fColor:=fCanvas.Color;
+ fFont:=fCanvas.Font;
+ fFontSize:=fCanvas.FontSize;
+ fTextHorizontalAlignment:=fCanvas.TextHorizontalAlignment;
+ fTextVerticalAlignment:=fCanvas.TextVerticalAlignment;
+end;
+
+procedure TpvGUIDrawEngine.Draw;
+begin
+end;
+
+procedure TpvGUIDrawEngine.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
+begin
+end;
+
+procedure TpvGUIDrawEngine.DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect);
+begin
+end;
+
+procedure TpvGUIDrawEngine.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0);
+begin
+end;
+
+procedure TpvGUIDrawEngine.DrawFilledRectangle(const aRect:TpvRect);
+begin
+end;
+
+procedure TpvGUIDrawEngine.DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2);
+var Position,Size:TpvVector2;
+begin
+ if assigned(fFont) then begin
+  Position:=aPosition;
+  if fTextHorizontalAlignment<>TpvCanvasTextHorizontalAlignment.Leading then begin
+   if fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
+    Size:=fFont.TextSize(aText,fFontSize);
+   end else begin
+    Size:=TpvVector2.InlineableCreate(fFont.TextWidth(aText,fFontSize),0.0);
+   end;
+  end else begin
+   if fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
+    Size:=TpvVector2.InlineableCreate(0.0,fFont.TextHeight(aText,fFontSize));
+   end else begin
+    Size:=TpvVector2.InlineableCreate(0.0,0.0);
+   end;
+  end;
+  case fTextHorizontalAlignment of
+   TpvCanvasTextHorizontalAlignment.Leading:begin
+    // Do nothing
+   end;
+   TpvCanvasTextHorizontalAlignment.Center:begin
+    Position.x:=Position.x-(Size.x*0.5);
+   end;
+   TpvCanvasTextHorizontalAlignment.Tailing:begin
+    Position.x:=Position.x-Size.x;
+   end;
+  end;
+  case fTextVerticalAlignment of
+   TpvCanvasTextVerticalAlignment.Leading:begin
+    // Do nothing
+   end;
+   TpvCanvasTextVerticalAlignment.Middle:begin
+    Position.y:=Position.y-(Size.y*0.5);
+   end;
+   TpvCanvasTextVerticalAlignment.Tailing:begin
+    Position.y:=Position.y-Size.y;
+   end;
+  end;
+  fFont.Draw(DrawSprite,aText,Position,fFontSize);
+ end;
+end;
+
+procedure TpvGUIDrawEngine.DrawTextCodePoint(const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2);
+var Position,Size:TpvVector2;
+begin
+ if assigned(fFont) then begin
+  Position:=aPosition;
+  if fTextHorizontalAlignment<>TpvCanvasTextHorizontalAlignment.Leading then begin
+   if fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
+    Size:=fFont.TextSize(PUCUUTF32CharToUTF8(aTextCodePoint),fFontSize);
+   end else begin
+    Size:=TpvVector2.InlineableCreate(fFont.TextWidth(PUCUUTF32CharToUTF8(aTextCodePoint),fFontSize),0.0);
+   end;
+  end else begin
+   if fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
+    Size:=TpvVector2.InlineableCreate(0.0,fFont.TextHeight(PUCUUTF32CharToUTF8(aTextCodePoint),fFontSize));
+   end else begin
+    Size:=TpvVector2.InlineableCreate(0.0,0.0);
+   end;
+  end;
+  case fTextHorizontalAlignment of
+   TpvCanvasTextHorizontalAlignment.Leading:begin
+    // Do nothing
+   end;
+   TpvCanvasTextHorizontalAlignment.Center:begin
+    Position.x:=Position.x-(Size.x*0.5);
+   end;
+   TpvCanvasTextHorizontalAlignment.Tailing:begin
+    Position.x:=Position.x-Size.x;
+   end;
+  end;
+  case fTextVerticalAlignment of
+   TpvCanvasTextVerticalAlignment.Leading:begin
+    // Do nothing
+   end;
+   TpvCanvasTextVerticalAlignment.Middle:begin
+    Position.y:=Position.y-(Size.y*0.5);
+   end;
+   TpvCanvasTextVerticalAlignment.Tailing:begin
+    Position.y:=Position.y-Size.y;
+   end;
+  end;
+  fFont.DrawCodePoint(DrawSprite,aTextCodePoint,Position,fFontSize);
+ end;
+end;
+
+procedure TpvGUIDrawEngine.TextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;var aTextGlyphRects:TpvCanvasTextGlyphRects;out aCountTextGlyphRects:TpvInt32);
+var Position,Size:TpvVector2;
+begin
+ if assigned(fFont) then begin
+  Position:=aPosition;
+  if fTextHorizontalAlignment<>TpvCanvasTextHorizontalAlignment.Leading then begin
+   if fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
+    Size:=fFont.TextSize(aText,fFontSize);
+   end else begin
+    Size:=TpvVector2.InlineableCreate(fFont.TextWidth(aText,fFontSize),0.0);
+   end;
+  end else begin
+   if fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
+    Size:=TpvVector2.InlineableCreate(0.0,fFont.TextHeight(aText,fFontSize));
+   end else begin
+    Size:=TpvVector2.InlineableCreate(0.0,0.0);
+   end;
+  end;
+  case fTextHorizontalAlignment of
+   TpvCanvasTextHorizontalAlignment.Leading:begin
+    // Do nothing
+   end;
+   TpvCanvasTextHorizontalAlignment.Center:begin
+    Position.x:=Position.x-(Size.x*0.5);
+   end;
+   TpvCanvasTextHorizontalAlignment.Tailing:begin
+    Position.x:=Position.x-Size.x;
+   end;
+  end;
+  case fTextVerticalAlignment of
+   TpvCanvasTextVerticalAlignment.Leading:begin
+    // Do nothing
+   end;
+   TpvCanvasTextVerticalAlignment.Middle:begin
+    Position.y:=Position.y-(Size.y*0.5);
+   end;
+   TpvCanvasTextVerticalAlignment.Tailing:begin
+    Position.y:=Position.y-Size.y;
+   end;
+  end;
+  fFont.GetTextGlyphRects(aText,Position,fFontSize,aTextGlyphRects,aCountTextGlyphRects);
+ end;
+end;
+
+function TpvGUIInstantDrawEngine.GetTransparent:boolean;
+begin
+ result:=fState.fTransparent;
+end;
+
+procedure TpvGUIInstantDrawEngine.SetTransparent(const aTransparent:boolean);
+begin
+ fState.fTransparent:=aTransparent;
+end;
+
+function TpvGUIInstantDrawEngine.GetClipRect:TpvRect;
+begin
+ result:=fCanvas.ClipRect;
+end;
+
+procedure TpvGUIInstantDrawEngine.SetClipRect(const aClipRect:TpvRect);
+begin
+ fCanvas.ClipRect:=aClipRect;
+end;
+
+function TpvGUIInstantDrawEngine.GetModelMatrix:TpvMatrix4x4;
+begin
+ result:=fCanvas.ModelMatrix;
+end;
+
+procedure TpvGUIInstantDrawEngine.SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
+begin
+ fCanvas.ModelMatrix:=aModelMatrix;
+end;
+
+function TpvGUIInstantDrawEngine.GetColor:TpvVector4;
+begin
+ result:=fCanvas.Color;
+end;
+
+procedure TpvGUIInstantDrawEngine.SetColor(const aColor:TpvVector4);
+begin
+ fCanvas.Color:=aColor;
+end;
+
+procedure TpvGUIInstantDrawEngine.Clear;
+begin
+ // NOP
+end;
+
+procedure TpvGUIInstantDrawEngine.Draw;
+begin
+ // NOP
+end;
+
+procedure TpvGUIInstantDrawEngine.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
+begin
+ fCanvas.DrawGUIElement(aGUIElement,aFocused,aMin,aMax,aMetaMin,aMetaMax,aMeta);
+end;
+
+procedure TpvGUIInstantDrawEngine.DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect);
+begin
+ fCanvas.DrawSprite(aSprite,aSrcRect,aDestRect);
+end;
+
+procedure TpvGUIInstantDrawEngine.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0);
+begin
+ fCanvas.DrawTexturedRectangle(aTexture,aRect,aRotationAngle,aTextureArrayLayer);
+end;
+
+procedure TpvGUIInstantDrawEngine.DrawFilledRectangle(const aRect:TpvRect);
+begin
+ fCanvas.DrawFilledRectangle(aRect);
+end;
+
+function TpvGUIDeferredDrawEngine.NewBatchItem:PBatchItem;
+begin
+ if fState.fTransparent then begin
+  inc(fCountTransparentBatchItems);
+  if length(fTransparentBatchItems)<fCountTransparentBatchItems then begin
+   SetLength(fTransparentBatchItems,fCountTransparentBatchItems*2);
+  end;
+  result:=@fTransparentBatchItems[fCountTransparentBatchItems-1];
+ end else begin
+  inc(fCountOpaqueBatchItems);
+  if length(fOpaqueBatchItems)<fCountOpaqueBatchItems then begin
+   SetLength(fOpaqueBatchItems,fCountOpaqueBatchItems*2);
+  end;
+  result:=@fOpaqueBatchItems[fCountOpaqueBatchItems-1];
+ end;
+ result^.fZIndex:=fCountTotalBatchItems;
+ result^.fState:=fState;
+ inc(fCountTotalBatchItems);
+end;
+
+procedure TpvGUIDeferredDrawEngine.Clear;
+begin
+ inherited Clear;
+ fCountOpaqueBatchItems:=0;
+ fCountTransparentBatchItems:=0;
+ fCountTotalBatchItems:=0;
+end;
+
+procedure TpvGUIDeferredDrawEngine.Draw;
+ procedure DrawBatchItem(const aBatchItem:TBatchItem);
+ begin
+  fCanvas.ZIndex:=aBatchItem.fZIndex;
+  fCanvas.ClipRect:=aBatchItem.fState.fClipRect;
+  fCanvas.ModelMatrix:=aBatchItem.fState.fModelMatrix;
+  fCanvas.Color:=aBatchItem.fState.fColor;
+  case aBatchItem.fKind of
+   TBatchItem.TKind.DrawGUIElement:begin
+    fCanvas.DrawGUIElement(aBatchItem.fDrawGUIElementGUIElement,
+                           aBatchItem.fDrawGUIElementFocused,
+                           aBatchItem.fDrawGUIElementMin,
+                           aBatchItem.fDrawGUIElementMax,
+                           aBatchItem.fDrawGUIElementMetaMin,
+                           aBatchItem.fDrawGUIElementMetaMax,
+                           aBatchItem.fDrawGUIElementMeta);
+   end;
+   TBatchItem.TKind.DrawSprite:begin
+    fCanvas.DrawSprite(aBatchItem.fDrawSpriteSprite,
+                       aBatchItem.fDrawSpriteSrcRect,
+                       aBatchItem.fDrawSpriteDestRect);
+   end;
+   TBatchItem.TKind.DrawTexturedRectangle:begin
+    fCanvas.DrawTexturedRectangle(aBatchItem.fDrawTexturedRectangleTexture,
+                                  aBatchItem.fDrawTexturedRectangleRect,
+                                  aBatchItem.fDrawTexturedRectangleRotationAngle,
+                                  aBatchItem.fDrawTexturedRectangleTextureArrayLayer);
+   end;
+   TBatchItem.TKind.DrawFilledRectangle:begin
+    fCanvas.DrawFilledRectangle(aBatchItem.fDrawFilledRectangleRect);
+   end;
+  end;
+ end;
+var Index:TpvSizeInt;
+begin
+ if fCountOpaqueBatchItems>0 then begin
+  fCanvas.BlendingMode:=TpvCanvasBlendingMode.None;
+  for Index:=fCountOpaqueBatchItems-1 downto 0 do begin
+   DrawBatchItem(fOpaqueBatchItems[Index]);
+  end;
+ end;
+ if fCountTransparentBatchItems>0 then begin
+  fCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
+  for Index:=0 to fCountTransparentBatchItems-1 do begin
+   DrawBatchItem(fTransparentBatchItems[Index]);
+  end;
+ end;
+end;
+
+procedure TpvGUIDeferredDrawEngine.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
+var BatchItem:PBatchItem;
+begin
+ BatchItem:=NewBatchItem;
+ BatchItem^.fKind:=TBatchItem.TKind.DrawGUIElement;
+ BatchItem^.fDrawGUIElementGUIElement:=aGUIElement;
+ BatchItem^.fDrawGUIElementFocused:=aFocused;
+ BatchItem^.fDrawGUIElementMin:=aMin;
+ BatchItem^.fDrawGUIElementMax:=aMax;
+ BatchItem^.fDrawGUIElementMetaMin:=aMetaMin;
+ BatchItem^.fDrawGUIElementMetaMax:=aMetaMax;
+ BatchItem^.fDrawGUIElementMeta:=aMeta;
+end;
+
+procedure TpvGUIDeferredDrawEngine.DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect);
+var BatchItem:PBatchItem;
+begin
+ BatchItem:=NewBatchItem;
+ BatchItem^.fKind:=TBatchItem.TKind.DrawSprite;
+ BatchItem^.fDrawSpriteSprite:=aSprite;
+ BatchItem^.fDrawSpriteSrcRect:=aSrcRect;
+ BatchItem^.fDrawSpriteDestRect:=aDestRect;
+end;
+
+procedure TpvGUIDeferredDrawEngine.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0);
+var BatchItem:PBatchItem;
+begin
+ BatchItem:=NewBatchItem;
+ BatchItem^.fKind:=TBatchItem.TKind.DrawTexturedRectangle;
+ BatchItem^.fDrawTexturedRectangleTexture:=aTexture;
+ BatchItem^.fDrawTexturedRectangleRect:=aRect;
+ BatchItem^.fDrawTexturedRectangleRotationAngle:=aRotationAngle;
+ BatchItem^.fDrawTexturedRectangleTextureArrayLayer:=aTextureArrayLayer;
+end;
+
+procedure TpvGUIDeferredDrawEngine.DrawFilledRectangle(const aRect:TpvRect);
+var BatchItem:PBatchItem;
+begin
+ BatchItem:=NewBatchItem;
+ BatchItem^.fKind:=TBatchItem.TKind.DrawFilledRectangle;
+ BatchItem^.fDrawFilledRectangleRect:=aRect;
+end;
 
 class function TpvGUITextUtils.TextTruncation(const aText:TpvUTF8String;
                                               const aTextTruncation:TpvGUITextTruncation;
@@ -4534,11 +5064,11 @@ begin
 
 end;
 
-procedure TpvGUISkin.DrawFocus(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget);
+procedure TpvGUISkin.DrawFocus(const aDrawEngine:TpvGUIDrawEngine;const aWidget:TpvGUIWidget);
 begin
 end;
 
-procedure TpvGUISkin.DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance);
+procedure TpvGUISkin.DrawMouse(const aDrawEngine:TpvGUIDrawEngine;const aInstance:TpvGUIInstance);
 begin
 end;
 
@@ -4557,7 +5087,7 @@ begin
  result:=GetWidgetPreferredSize(aWindow);
 end;
 
-procedure TpvGUISkin.DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow);
+procedure TpvGUISkin.DrawWindow(const aDrawEngine:TpvGUIDrawEngine;const aWindow:TpvGUIWindow);
 begin
 end;
 
@@ -4566,7 +5096,7 @@ begin
  result:=GetWidgetPreferredSize(aPanel);
 end;
 
-procedure TpvGUISkin.DrawPanel(const aCanvas:TpvCanvas;const aPanel:TpvGUIPanel);
+procedure TpvGUISkin.DrawPanel(const aDrawEngine:TpvGUIDrawEngine;const aPanel:TpvGUIPanel);
 begin
 end;
 
@@ -4575,7 +5105,7 @@ begin
  result:=GetWidgetPreferredSize(aImage);
 end;
 
-procedure TpvGUISkin.DrawImage(const aCanvas:TpvCanvas;const aImage:TpvGUIImage);
+procedure TpvGUISkin.DrawImage(const aDrawEngine:TpvGUIDrawEngine;const aImage:TpvGUIImage);
 begin
 end;
 
@@ -4584,7 +5114,7 @@ begin
  result:=GetWidgetPreferredSize(aLabel);
 end;
 
-procedure TpvGUISkin.DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel);
+procedure TpvGUISkin.DrawLabel(const aDrawEngine:TpvGUIDrawEngine;const aLabel:TpvGUILabel);
 begin
 end;
 
@@ -4593,7 +5123,7 @@ begin
  result:=GetWidgetPreferredSize(aButton);
 end;
 
-procedure TpvGUISkin.DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton);
+procedure TpvGUISkin.DrawButton(const aDrawEngine:TpvGUIDrawEngine;const aButton:TpvGUIButton);
 begin
 end;
 
@@ -4602,7 +5132,7 @@ begin
  result:=GetWidgetPreferredSize(aCheckBox);
 end;
 
-procedure TpvGUISkin.DrawCheckBox(const aCanvas:TpvCanvas;const aCheckBox:TpvGUICheckBox);
+procedure TpvGUISkin.DrawCheckBox(const aDrawEngine:TpvGUIDrawEngine;const aCheckBox:TpvGUICheckBox);
 begin
 end;
 
@@ -4611,7 +5141,7 @@ begin
  result:=GetWidgetPreferredSize(aTextEdit);
 end;
 
-procedure TpvGUISkin.DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit);
+procedure TpvGUISkin.DrawTextEdit(const aDrawEngine:TpvGUIDrawEngine;const aTextEdit:TpvGUITextEdit);
 begin
 end;
 
@@ -4620,7 +5150,7 @@ begin
  result:=TpvVector2.Null;
 end;
 
-procedure TpvGUISkin.DrawPopupMenu(const aCanvas:TpvCanvas;const aPopupMenu:TpvGUIPopupMenu);
+procedure TpvGUISkin.DrawPopupMenu(const aDrawEngine:TpvGUIDrawEngine;const aPopupMenu:TpvGUIPopupMenu);
 begin
 end;
 
@@ -4629,7 +5159,7 @@ begin
  result:=GetWidgetPreferredSize(aWindowMenu);
 end;
 
-procedure TpvGUISkin.DrawWindowMenu(const aCanvas:TpvCanvas;const aWindowMenu:TpvGUIWindowMenu);
+procedure TpvGUISkin.DrawWindowMenu(const aDrawEngine:TpvGUIDrawEngine;const aWindowMenu:TpvGUIWindowMenu);
 begin
 end;
 
@@ -4638,7 +5168,7 @@ begin
  result:=GetWidgetPreferredSize(aScrollBar);
 end;
 
-procedure TpvGUISkin.DrawScrollBar(const aCanvas:TpvCanvas;const aScrollBar:TpvGUIScrollBar);
+procedure TpvGUISkin.DrawScrollBar(const aDrawEngine:TpvGUIDrawEngine;const aScrollBar:TpvGUIScrollBar);
 begin
 
 end;
@@ -4648,7 +5178,7 @@ begin
  result:=GetWidgetPreferredSize(aSlider);
 end;
 
-procedure TpvGUISkin.DrawSlider(const aCanvas:TpvCanvas;const aSlider:TpvGUISlider);
+procedure TpvGUISkin.DrawSlider(const aDrawEngine:TpvGUIDrawEngine;const aSlider:TpvGUISlider);
 begin
 
 end;
@@ -4658,7 +5188,7 @@ begin
  result:=GetWidgetPreferredSize(aProgressBar);
 end;
 
-procedure TpvGUISkin.DrawProgressBar(const aCanvas:TpvCanvas;const aProgressBar:TpvGUIProgressBar);
+procedure TpvGUISkin.DrawProgressBar(const aDrawEngine:TpvGUIDrawEngine;const aProgressBar:TpvGUIProgressBar);
 begin
 
 end;
@@ -4673,7 +5203,7 @@ begin
  result:=GetWidgetPreferredSize(aTabPanel);
 end;
 
-procedure TpvGUISkin.DrawTabPanel(const aCanvas:TpvCanvas;const aTabPanel:TpvGUITabPanel);
+procedure TpvGUISkin.DrawTabPanel(const aDrawEngine:TpvGUIDrawEngine;const aTabPanel:TpvGUITabPanel);
 begin
 
 end;
@@ -4683,7 +5213,7 @@ begin
  result:=GetWidgetPreferredSize(aListBox);
 end;
 
-procedure TpvGUISkin.DrawListBox(const aCanvas:TpvCanvas;const aListBox:TpvGUIListBox);
+procedure TpvGUISkin.DrawListBox(const aDrawEngine:TpvGUIDrawEngine;const aListBox:TpvGUIListBox);
 begin
 
 end;
@@ -4693,7 +5223,7 @@ begin
  result:=GetWidgetPreferredSize(aComboBox);
 end;
 
-procedure TpvGUISkin.DrawComboBox(const aCanvas:TpvCanvas;const aComboBox:TpvGUIComboBox);
+procedure TpvGUISkin.DrawComboBox(const aDrawEngine:TpvGUIDrawEngine;const aComboBox:TpvGUIComboBox);
 begin
 
 end;
@@ -4703,7 +5233,7 @@ begin
  result:=GetWidgetPreferredSize(aSplitterPanelGripButton);
 end;
 
-procedure TpvGUISkin.DrawSplitterPanelGripButton(const aCanvas:TpvCanvas;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton);
+procedure TpvGUISkin.DrawSplitterPanelGripButton(const aDrawEngine:TpvGUIDrawEngine;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton);
 begin
 
 end;
@@ -4713,7 +5243,7 @@ begin
  result:=GetWidgetPreferredSize(aMultiLineTextEdit);
 end;
 
-procedure TpvGUISkin.DrawMultiLineTextEdit(const aCanvas:TpvCanvas;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
+procedure TpvGUISkin.DrawMultiLineTextEdit(const aDrawEngine:TpvGUIDrawEngine;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
 begin
 end;
 
@@ -5443,236 +5973,238 @@ begin
 
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawFocus(const aCanvas:TpvCanvas;const aWidget:TpvGUIWidget);
+procedure TpvGUIDefaultVectorBasedSkin.DrawFocus(const aDrawEngine:TpvGUIDrawEngine;const aWidget:TpvGUIWidget);
 var Rect:TpvRect;
 begin
  if assigned(fInstance) then begin
   Rect:=aWidget.HighlightRect;
+  aDrawEngine.Transparent:=true;
   if fInstance.fHoveredWidget=aWidget then begin
-   aCanvas.ClipRect:=aWidget.fParentClipRect;
-   aCanvas.ModelMatrix:=aWidget.fModelMatrix;
-   aCanvas.DrawGUIElement(GUI_ELEMENT_HOVERED,
-                          true,
-                          TpvVector2.InlineableCreate(-32.0,-32.0),
-                          aWidget.fSize+TpvVector2.InlineableCreate(32.0,32.0),
-                          Rect.LeftTop,
-                          Rect.RightBottom);
+   aDrawEngine.ClipRect:=aWidget.fParentClipRect;
+   aDrawEngine.ModelMatrix:=aWidget.fModelMatrix;
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_HOVERED,
+                              true,
+                              TpvVector2.InlineableCreate(-32.0,-32.0),
+                              aWidget.fSize+TpvVector2.InlineableCreate(32.0,32.0),
+                              Rect.LeftTop,
+                              Rect.RightBottom);
   end else if fInstance.fFocusedWidget=aWidget then begin
-   aCanvas.ClipRect:=aWidget.fParentClipRect;
-   aCanvas.ModelMatrix:=aWidget.fModelMatrix;
-   aCanvas.DrawGUIElement(GUI_ELEMENT_FOCUSED,
-                          true,
-                          TpvVector2.InlineableCreate(-32.0,-32.0),
-                          aWidget.fSize+TpvVector2.InlineableCreate(32.0,32.0),
-                          Rect.LeftTop,
-                          Rect.RightBottom);
+   aDrawEngine.ClipRect:=aWidget.fParentClipRect;
+   aDrawEngine.ModelMatrix:=aWidget.fModelMatrix;
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_FOCUSED,
+                              true,
+                              TpvVector2.InlineableCreate(-32.0,-32.0),
+                              aWidget.fSize+TpvVector2.InlineableCreate(32.0,32.0),
+                              Rect.LeftTop,
+                              Rect.RightBottom);
   end;
  end;
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawMouse(const aCanvas:TpvCanvas;const aInstance:TpvGUIInstance);
+procedure TpvGUIDefaultVectorBasedSkin.DrawMouse(const aDrawEngine:TpvGUIDrawEngine;const aInstance:TpvGUIInstance);
 begin
- aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(aInstance.fMousePosition)*aInstance.fModelMatrix;
- aCanvas.ClipRect:=aInstance.fClipRect;
+ aDrawEngine.ModelMatrix:=TpvMatrix4x4.CreateTranslation(aInstance.fMousePosition)*aInstance.fModelMatrix;
+ aDrawEngine.ClipRect:=aInstance.fClipRect;
+ aDrawEngine.Transparent:=true;
  case aInstance.fVisibleCursor of
   TpvGUICursor.Arrow:begin
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_ARROW,
-                          false,
-                          TpvVector2.InlineableCreate(2.0,2.0),
-                          TpvVector2.InlineableCreate(34.0,34.0),
-                          TpvVector2.InlineableCreate(2.0,2.0),
-                          TpvVector2.InlineableCreate(34.0,34.0));
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_ARROW,
-                          true,
-                          TpvVector2.Null,
-                          TpvVector2.InlineableCreate(32.0,32.0),
-                          TpvVector2.Null,
-                          TpvVector2.InlineableCreate(32.0,32.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_ARROW,
+                              false,
+                              TpvVector2.InlineableCreate(2.0,2.0),
+                              TpvVector2.InlineableCreate(34.0,34.0),
+                              TpvVector2.InlineableCreate(2.0,2.0),
+                              TpvVector2.InlineableCreate(34.0,34.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_ARROW,
+                              true,
+                              TpvVector2.Null,
+                              TpvVector2.InlineableCreate(32.0,32.0),
+                              TpvVector2.Null,
+                              TpvVector2.InlineableCreate(32.0,32.0));
   end;
   TpvGUICursor.Beam:begin
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BEAM,
-                          false,
-                          TpvVector2.InlineableCreate(-30.0,-30.0),
-                          TpvVector2.InlineableCreate(34.0,34.0),
-                          TpvVector2.InlineableCreate(-14.0,-14.0),
-                          TpvVector2.InlineableCreate(18.0,18.0));
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BEAM,
-                          true,
-                          TpvVector2.InlineableCreate(-32.0,-32.0),
-                          TpvVector2.InlineableCreate(32.0,32.0),
-                          TpvVector2.InlineableCreate(-16.0,-16.0),
-                          TpvVector2.InlineableCreate(16.0,16.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BEAM,
+                              false,
+                              TpvVector2.InlineableCreate(-30.0,-30.0),
+                              TpvVector2.InlineableCreate(34.0,34.0),
+                              TpvVector2.InlineableCreate(-14.0,-14.0),
+                              TpvVector2.InlineableCreate(18.0,18.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BEAM,
+                              true,
+                              TpvVector2.InlineableCreate(-32.0,-32.0),
+                              TpvVector2.InlineableCreate(32.0,32.0),
+                              TpvVector2.InlineableCreate(-16.0,-16.0),
+                              TpvVector2.InlineableCreate(16.0,16.0));
   end;
   TpvGUICursor.Busy:begin
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BUSY,
-                          false,
-                          TpvVector2.InlineableCreate(-18.0,-18.0),
-                          TpvVector2.InlineableCreate(22.0,22.0),
-                          TpvVector2.InlineableCreate(-8.0,-8.0),
-                          TpvVector2.InlineableCreate(12.0,12.0),
-                          frac(aInstance.fTime)*TwoPI);
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BUSY,
-                          true,
-                          TpvVector2.InlineableCreate(-20.0,-20.0),
-                          TpvVector2.InlineableCreate(20.0,20.0),
-                          TpvVector2.InlineableCreate(-10.0,-10.0),
-                          TpvVector2.InlineableCreate(10.0,10.0),
-                          frac(aInstance.fTime)*TwoPI);
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BUSY,
+                              false,
+                              TpvVector2.InlineableCreate(-18.0,-18.0),
+                              TpvVector2.InlineableCreate(22.0,22.0),
+                              TpvVector2.InlineableCreate(-8.0,-8.0),
+                              TpvVector2.InlineableCreate(12.0,12.0),
+                              frac(aInstance.fTime)*TwoPI);
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_BUSY,
+                              true,
+                              TpvVector2.InlineableCreate(-20.0,-20.0),
+                              TpvVector2.InlineableCreate(20.0,20.0),
+                              TpvVector2.InlineableCreate(-10.0,-10.0),
+                              TpvVector2.InlineableCreate(10.0,10.0),
+                              frac(aInstance.fTime)*TwoPI);
   end;
   TpvGUICursor.Cross:begin
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_CROSS,
-                          false,
-                          TpvVector2.InlineableCreate(-30.0,-30.0),
-                          TpvVector2.InlineableCreate(34.0,34.0),
-                          TpvVector2.InlineableCreate(-14.0,-14.0),
-                          TpvVector2.InlineableCreate(18.0,18.0));
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_CROSS,
-                          true,
-                          TpvVector2.InlineableCreate(-32.0,-32.0),
-                          TpvVector2.InlineableCreate(32.0,32.0),
-                          TpvVector2.InlineableCreate(-16.0,-16.0),
-                          TpvVector2.InlineableCreate(16.0,16.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_CROSS,
+                              false,
+                              TpvVector2.InlineableCreate(-30.0,-30.0),
+                              TpvVector2.InlineableCreate(34.0,34.0),
+                              TpvVector2.InlineableCreate(-14.0,-14.0),
+                              TpvVector2.InlineableCreate(18.0,18.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_CROSS,
+                              true,
+                              TpvVector2.InlineableCreate(-32.0,-32.0),
+                              TpvVector2.InlineableCreate(32.0,32.0),
+                              TpvVector2.InlineableCreate(-16.0,-16.0),
+                              TpvVector2.InlineableCreate(16.0,16.0));
   end;
   TpvGUICursor.EW:begin
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_EW,
-                          false,
-                          TpvVector2.InlineableCreate(-30.0,-30.0),
-                          TpvVector2.InlineableCreate(34.0,34.0),
-                          TpvVector2.InlineableCreate(-14.0,-14.0),
-                          TpvVector2.InlineableCreate(18.0,18.0));
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_EW,
-                          true,
-                          TpvVector2.InlineableCreate(-32.0,-32.0),
-                          TpvVector2.InlineableCreate(32.0,32.0),
-                          TpvVector2.InlineableCreate(-16.0,-16.0),
-                          TpvVector2.InlineableCreate(16.0,16.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_EW,
+                              false,
+                              TpvVector2.InlineableCreate(-30.0,-30.0),
+                              TpvVector2.InlineableCreate(34.0,34.0),
+                              TpvVector2.InlineableCreate(-14.0,-14.0),
+                              TpvVector2.InlineableCreate(18.0,18.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_EW,
+                              true,
+                              TpvVector2.InlineableCreate(-32.0,-32.0),
+                              TpvVector2.InlineableCreate(32.0,32.0),
+                              TpvVector2.InlineableCreate(-16.0,-16.0),
+                              TpvVector2.InlineableCreate(16.0,16.0));
   end;
   TpvGUICursor.Help:begin
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_HELP,
-                          false,
-                          TpvVector2.InlineableCreate(2.0,2.0),
-                          TpvVector2.InlineableCreate(64.0,64.0),
-                          TpvVector2.InlineableCreate(2.0,2.0),
-                          TpvVector2.InlineableCreate(34.0,34.0));
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_HELP,
-                          true,
-                          TpvVector2.Null,
-                          TpvVector2.InlineableCreate(64.0,64.0),
-                          TpvVector2.Null,
-                          TpvVector2.InlineableCreate(32.0,32.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_HELP,
+                              false,
+                              TpvVector2.InlineableCreate(2.0,2.0),
+                              TpvVector2.InlineableCreate(64.0,64.0),
+                              TpvVector2.InlineableCreate(2.0,2.0),
+                              TpvVector2.InlineableCreate(34.0,34.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_HELP,
+                              true,
+                              TpvVector2.Null,
+                              TpvVector2.InlineableCreate(64.0,64.0),
+                              TpvVector2.Null,
+                              TpvVector2.InlineableCreate(32.0,32.0));
   end;
   TpvGUICursor.Link:begin
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_LINK,
-                          false,
-                          TpvVector2.InlineableCreate(-30.0,-30.0),
-                          TpvVector2.InlineableCreate(34.0,34.0),
-                          TpvVector2.InlineableCreate(2.0,2.0),
-                          TpvVector2.InlineableCreate(18.0,18.0));
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_LINK,
-                          true,
-                          TpvVector2.InlineableCreate(-32.0,-32.0),
-                          TpvVector2.InlineableCreate(32.0,32.0),
-                          TpvVector2.Null,
-                          TpvVector2.InlineableCreate(16.0,16.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_LINK,
+                              false,
+                              TpvVector2.InlineableCreate(-30.0,-30.0),
+                              TpvVector2.InlineableCreate(34.0,34.0),
+                              TpvVector2.InlineableCreate(2.0,2.0),
+                              TpvVector2.InlineableCreate(18.0,18.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_LINK,
+                              true,
+                              TpvVector2.InlineableCreate(-32.0,-32.0),
+                              TpvVector2.InlineableCreate(32.0,32.0),
+                              TpvVector2.Null,
+                              TpvVector2.InlineableCreate(16.0,16.0));
   end;
   TpvGUICursor.Move:begin
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_MOVE,
-                          false,
-                          TpvVector2.InlineableCreate(-30.0,-30.0),
-                          TpvVector2.InlineableCreate(34.0,34.0),
-                          TpvVector2.InlineableCreate(-14.0,-14.0),
-                          TpvVector2.InlineableCreate(18.0,18.0));
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_MOVE,
-                          true,
-                          TpvVector2.InlineableCreate(-32.0,-32.0),
-                          TpvVector2.InlineableCreate(32.0,32.0),
-                          TpvVector2.InlineableCreate(-16.0,-16.0),
-                          TpvVector2.InlineableCreate(16.0,16.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_MOVE,
+                              false,
+                              TpvVector2.InlineableCreate(-30.0,-30.0),
+                              TpvVector2.InlineableCreate(34.0,34.0),
+                              TpvVector2.InlineableCreate(-14.0,-14.0),
+                              TpvVector2.InlineableCreate(18.0,18.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_MOVE,
+                              true,
+                              TpvVector2.InlineableCreate(-32.0,-32.0),
+                              TpvVector2.InlineableCreate(32.0,32.0),
+                              TpvVector2.InlineableCreate(-16.0,-16.0),
+                              TpvVector2.InlineableCreate(16.0,16.0));
   end;
   TpvGUICursor.NESW:begin
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NESW,
-                          false,
-                          TpvVector2.InlineableCreate(-30.0,-30.0),
-                          TpvVector2.InlineableCreate(34.0,34.0),
-                          TpvVector2.InlineableCreate(-14.0,-14.0),
-                          TpvVector2.InlineableCreate(18.0,18.0));
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NESW,
-                          true,
-                          TpvVector2.InlineableCreate(-32.0,-32.0),
-                          TpvVector2.InlineableCreate(32.0,32.0),
-                          TpvVector2.InlineableCreate(-16.0,-16.0),
-                          TpvVector2.InlineableCreate(16.0,16.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NESW,
+                              false,
+                              TpvVector2.InlineableCreate(-30.0,-30.0),
+                              TpvVector2.InlineableCreate(34.0,34.0),
+                              TpvVector2.InlineableCreate(-14.0,-14.0),
+                              TpvVector2.InlineableCreate(18.0,18.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NESW,
+                              true,
+                              TpvVector2.InlineableCreate(-32.0,-32.0),
+                              TpvVector2.InlineableCreate(32.0,32.0),
+                              TpvVector2.InlineableCreate(-16.0,-16.0),
+                              TpvVector2.InlineableCreate(16.0,16.0));
   end;
   TpvGUICursor.NS:begin
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NS,
-                          false,
-                          TpvVector2.InlineableCreate(-30.0,-30.0),
-                          TpvVector2.InlineableCreate(34.0,34.0),
-                          TpvVector2.InlineableCreate(-14.0,-14.0),
-                          TpvVector2.InlineableCreate(18.0,18.0));
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NS,
-                          true,
-                          TpvVector2.InlineableCreate(-32.0,-32.0),
-                          TpvVector2.InlineableCreate(32.0,32.0),
-                          TpvVector2.InlineableCreate(-16.0,-16.0),
-                          TpvVector2.InlineableCreate(16.0,16.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NS,
+                              false,
+                              TpvVector2.InlineableCreate(-30.0,-30.0),
+                              TpvVector2.InlineableCreate(34.0,34.0),
+                              TpvVector2.InlineableCreate(-14.0,-14.0),
+                              TpvVector2.InlineableCreate(18.0,18.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NS,
+                              true,
+                              TpvVector2.InlineableCreate(-32.0,-32.0),
+                              TpvVector2.InlineableCreate(32.0,32.0),
+                              TpvVector2.InlineableCreate(-16.0,-16.0),
+                              TpvVector2.InlineableCreate(16.0,16.0));
   end;
   TpvGUICursor.NWSE:begin
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NWSE,
-                          false,
-                          TpvVector2.InlineableCreate(-30.0,-30.0),
-                          TpvVector2.InlineableCreate(34.0,34.0),
-                          TpvVector2.InlineableCreate(-14.0,-14.0),
-                          TpvVector2.InlineableCreate(18.0,18.0));
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NWSE,
-                          true,
-                          TpvVector2.InlineableCreate(-32.0,-32.0),
-                          TpvVector2.InlineableCreate(32.0,32.0),
-                          TpvVector2.InlineableCreate(-16.0,-16.0),
-                          TpvVector2.InlineableCreate(16.0,16.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NWSE,
+                              false,
+                              TpvVector2.InlineableCreate(-30.0,-30.0),
+                              TpvVector2.InlineableCreate(34.0,34.0),
+                              TpvVector2.InlineableCreate(-14.0,-14.0),
+                              TpvVector2.InlineableCreate(18.0,18.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_NWSE,
+                              true,
+                              TpvVector2.InlineableCreate(-32.0,-32.0),
+                              TpvVector2.InlineableCreate(32.0,32.0),
+                              TpvVector2.InlineableCreate(-16.0,-16.0),
+                              TpvVector2.InlineableCreate(16.0,16.0));
   end;
   TpvGUICursor.Pen:begin
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_PEN,
-                          false,
-                          TpvVector2.InlineableCreate(-30.0,-30.0),
-                          TpvVector2.InlineableCreate(34.0,34.0),
-                          TpvVector2.InlineableCreate(-14.0,-14.0),
-                          TpvVector2.InlineableCreate(18.0,18.0));
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_PEN,
-                          true,
-                          TpvVector2.InlineableCreate(-32.0,-32.0),
-                          TpvVector2.InlineableCreate(32.0,32.0),
-                          TpvVector2.InlineableCreate(-16.0,-16.0),
-                          TpvVector2.InlineableCreate(16.0,16.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_PEN,
+                              false,
+                              TpvVector2.InlineableCreate(-30.0,-30.0),
+                              TpvVector2.InlineableCreate(34.0,34.0),
+                              TpvVector2.InlineableCreate(-14.0,-14.0),
+                              TpvVector2.InlineableCreate(18.0,18.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_PEN,
+                              true,
+                              TpvVector2.InlineableCreate(-32.0,-32.0),
+                              TpvVector2.InlineableCreate(32.0,32.0),
+                              TpvVector2.InlineableCreate(-16.0,-16.0),
+                              TpvVector2.InlineableCreate(16.0,16.0));
   end;
   TpvGUICursor.Unavailable:begin
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE,
-                          false,
-                          TpvVector2.InlineableCreate(-18.0,-18.0),
-                          TpvVector2.InlineableCreate(22.0,22.0),
-                          TpvVector2.InlineableCreate(-8.0,-8.0),
-                          TpvVector2.InlineableCreate(12.0,12.0),
-                          frac(aInstance.fTime)*TwoPI);
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE,
-                          true,
-                          TpvVector2.InlineableCreate(-20.0,-20.0),
-                          TpvVector2.InlineableCreate(20.0,20.0),
-                          TpvVector2.InlineableCreate(-10.0,-10.0),
-                          TpvVector2.InlineableCreate(10.0,10.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE,
+                              false,
+                              TpvVector2.InlineableCreate(-18.0,-18.0),
+                              TpvVector2.InlineableCreate(22.0,22.0),
+                              TpvVector2.InlineableCreate(-8.0,-8.0),
+                              TpvVector2.InlineableCreate(12.0,12.0),
+                              frac(aInstance.fTime)*TwoPI);
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE,
+                              true,
+                              TpvVector2.InlineableCreate(-20.0,-20.0),
+                              TpvVector2.InlineableCreate(20.0,20.0),
+                              TpvVector2.InlineableCreate(-10.0,-10.0),
+                              TpvVector2.InlineableCreate(10.0,10.0));
   end;
   TpvGUICursor.Up:begin
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UP,
-                          false,
-                          TpvVector2.InlineableCreate(-30.0,-30.0),
-                          TpvVector2.InlineableCreate(34.0,34.0),
-                          TpvVector2.InlineableCreate(-14.0,-14.0),
-                          TpvVector2.InlineableCreate(18.0,18.0));
-   aCanvas.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UP,
-                          true,
-                          TpvVector2.InlineableCreate(-32.0,-32.0),
-                          TpvVector2.InlineableCreate(32.0,32.0),
-                          TpvVector2.InlineableCreate(-16.0,-16.0),
-                          TpvVector2.InlineableCreate(16.0,16.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UP,
+                              false,
+                              TpvVector2.InlineableCreate(-30.0,-30.0),
+                              TpvVector2.InlineableCreate(34.0,34.0),
+                              TpvVector2.InlineableCreate(-14.0,-14.0),
+                              TpvVector2.InlineableCreate(18.0,18.0));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_MOUSE_CURSOR_UP,
+                              true,
+                              TpvVector2.InlineableCreate(-32.0,-32.0),
+                              TpvVector2.InlineableCreate(32.0,32.0),
+                              TpvVector2.InlineableCreate(-16.0,-16.0),
+                              TpvVector2.InlineableCreate(16.0,16.0));
   end;
  end;
 end;
@@ -5742,62 +6274,62 @@ begin
  end;
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawWindow(const aCanvas:TpvCanvas;const aWindow:TpvGUIWindow);
+procedure TpvGUIDefaultVectorBasedSkin.DrawWindow(const aDrawEngine:TpvGUIDrawEngine;const aWindow:TpvGUIWindow);
 var LastClipRect,NewClipRect:TpvRect;
     LastModelMatrix,NewModelMatrix:TpvMatrix4x4;
     LastColor:TpvVector4;
     Title:TpvRawByteString;
     Offset:TpvVector2;
 begin
- LastColor:=aCanvas.Color;
+ LastColor:=aDrawEngine.Color;
  try
 
-  aCanvas.ModelMatrix:=aWindow.fModelMatrix;
+  aDrawEngine.ModelMatrix:=aWindow.fModelMatrix;
 
-  aCanvas.Color:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
+  aDrawEngine.Color:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
 
-  aCanvas.ClipRect:=aWindow.fParentClipRect;
-  aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_DROPSHADOW,
-                        aWindow.Focused,
-                        TpvVector2.InlineableCreate(-fWindowShadowWidth,-fWindowShadowHeight),
-                        aWindow.fSize+TpvVector2.InlineableCreate(fWindowShadowWidth*2,fWindowShadowHeight*2),
-                        TpvVector2.InlineableCreate(0.0,0.0),
-                        aWindow.fSize);
+  aDrawEngine.ClipRect:=aWindow.fParentClipRect;
+  aDrawEngine.DrawGUIElement(GUI_ELEMENT_WINDOW_DROPSHADOW,
+                             aWindow.Focused,
+                             TpvVector2.InlineableCreate(-fWindowShadowWidth,-fWindowShadowHeight),
+                             aWindow.fSize+TpvVector2.InlineableCreate(fWindowShadowWidth*2,fWindowShadowHeight*2),
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             aWindow.fSize);
 
-  aCanvas.ClipRect:=aWindow.fClipRect;
+  aDrawEngine.ClipRect:=aWindow.fClipRect;
 
   if TpvGUIWindowFlag.Header in aWindow.fWindowFlags then begin
 
-   aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
-                          aWindow.Focused,
-                          TpvVector2.InlineableCreate(0.0,fWindowHeaderHeight-fSpacing),
-                          TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y),
-                          TpvVector2.InlineableCreate(0.0,fWindowHeaderHeight-fSpacing),
-                          TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
+                              aWindow.Focused,
+                              TpvVector2.InlineableCreate(0.0,fWindowHeaderHeight-fSpacing),
+                              TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y),
+                              TpvVector2.InlineableCreate(0.0,fWindowHeaderHeight-fSpacing),
+                              TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y));
 
-   aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_HEADER,
-                          aWindow.Focused,
-                          TpvVector2.InlineableCreate(0.0,0.0),
-                          TpvVector2.InlineableCreate(aWindow.fSize.x,fWindowHeaderHeight),
-                          TpvVector2.InlineableCreate(0.0,0.0),
-                          TpvVector2.InlineableCreate(aWindow.fSize.x,fWindowHeaderHeight));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_WINDOW_HEADER,
+                              aWindow.Focused,
+                              TpvVector2.InlineableCreate(0.0,0.0),
+                              TpvVector2.InlineableCreate(aWindow.fSize.x,fWindowHeaderHeight),
+                              TpvVector2.InlineableCreate(0.0,0.0),
+                              TpvVector2.InlineableCreate(aWindow.fSize.x,fWindowHeaderHeight));
 
-   LastClipRect:=aCanvas.ClipRect;
+   LastClipRect:=aDrawEngine.ClipRect;
    LastClipRect.LeftTop:=LastClipRect.LeftTop+TpvVector2.InlineableCreate(1.0,1.0);
    LastClipRect.RightBottom:=LastClipRect.RightBottom-TpvVector2.InlineableCreate(1.0,1.0);
-   aCanvas.ClipRect:=LastClipRect;
+   aDrawEngine.ClipRect:=LastClipRect;
 
-   LastModelMatrix:=aCanvas.ModelMatrix;
+   LastModelMatrix:=aDrawEngine.ModelMatrix;
    try
-    aCanvas.Font:=aWindow.Font;
-    aCanvas.FontSize:=fWindowHeaderFontSize;
+    aDrawEngine.Font:=aWindow.Font;
+    aDrawEngine.FontSize:=fWindowHeaderFontSize;
     case aWindow.TextHorizontalAlignment of
      TpvGUITextAlignment.Leading:begin
-      aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+      aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
       Offset.x:=fSpacing;
      end;
      TpvGUITextAlignment.Center:begin
-      aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
+      aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
       if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
        Offset.x:=aWindow.fButtonPanel.Left*0.5;
       end else begin
@@ -5805,7 +6337,7 @@ begin
       end;
      end;
      else {TpvGUITextAlignment.Tailing:}begin
-      aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
+      aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
       if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
        Offset.x:=aWindow.fButtonPanel.Left-fSpacing;
       end else begin
@@ -5814,65 +6346,65 @@ begin
      end;
     end;
     Offset.y:=fWindowHeaderHeight*0.5;
-    aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+    aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
     NewModelMatrix:=TpvMatrix4x4.CreateTranslation(Offset.x,Offset.y)*LastModelMatrix;
     if aWindow.fCachedTitleInvalidated then begin
      if assigned(aWindow.fButtonPanel) and (aWindow.fButtonPanel.Children.Count>0) then begin
       aWindow.fCachedTitle:=TpvGUITextUtils.TextTruncation(aWindow.fTitle,
                                                            aWindow.fTextTruncation,
-                                                           aCanvas.Font,
-                                                           aCanvas.FontSize,
+                                                           aDrawEngine.Font,
+                                                           aDrawEngine.FontSize,
                                                            aWindow.fButtonPanel.Left-(fSpacing*2.0));
      end else begin
       aWindow.fCachedTitle:=TpvGUITextUtils.TextTruncation(aWindow.fTitle,
                                                            aWindow.fTextTruncation,
-                                                           aCanvas.Font,
-                                                           aCanvas.FontSize,
+                                                           aDrawEngine.Font,
+                                                           aDrawEngine.FontSize,
                                                            aWindow.fSize.x-(fSpacing*2.0));
      end;
     end;
     if ((TpvGUIWidgetFlag.Focused in aWindow.fWidgetFlags) and fFocusedWindowHeaderFontShadow) or
        ((not (TpvGUIWidgetFlag.Focused in aWindow.fWidgetFlags)) and fUnfocusedWindowHeaderFontShadow) then begin
      if TpvGUIWidgetFlag.Focused in aWindow.fWidgetFlags then begin
-      aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fFocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
-      aCanvas.Color:=fFocusedWindowHeaderFontShadowColor;
+      aDrawEngine.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fFocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
+      aDrawEngine.Color:=fFocusedWindowHeaderFontShadowColor;
      end else begin
-      aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fUnfocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
-      aCanvas.Color:=fUnfocusedWindowHeaderFontShadowColor;
+      aDrawEngine.ModelMatrix:=TpvMatrix4x4.CreateTranslation(fUnfocusedWindowHeaderFontShadowOffset)*NewModelMatrix;
+      aDrawEngine.Color:=fUnfocusedWindowHeaderFontShadowColor;
      end;
-     aCanvas.DrawText(aWindow.fCachedTitle);
+     aDrawEngine.DrawText(aWindow.fCachedTitle,TpvVector2.Null);
     end;
-    aCanvas.ModelMatrix:=NewModelMatrix;
+    aDrawEngine.ModelMatrix:=NewModelMatrix;
     if TpvGUIWidgetFlag.Focused in aWindow.fWidgetFlags then begin
-     aCanvas.Color:=fFocusedWindowHeaderFontColor;
+     aDrawEngine.Color:=fFocusedWindowHeaderFontColor;
     end else begin
-     aCanvas.Color:=fUnfocusedWindowHeaderFontColor;
+     aDrawEngine.Color:=fUnfocusedWindowHeaderFontColor;
     end;
-    aCanvas.DrawText(aWindow.fCachedTitle);
+    aDrawEngine.DrawText(aWindow.fCachedTitle,TpvVector2.Null);
    finally
-    aCanvas.ModelMatrix:=LastModelMatrix;
+    aDrawEngine.ModelMatrix:=LastModelMatrix;
    end;
 
    aWindow.fCachedTitleInvalidated:=false;
 
   end else begin
 
-   aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
-                          aWindow.Focused,
-                          TpvVector2.InlineableCreate(0.0,0.0),
-                          TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y),
-                          TpvVector2.InlineableCreate(0.0,0.0),
-                          TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y));
+   aDrawEngine.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
+                              aWindow.Focused,
+                              TpvVector2.InlineableCreate(0.0,0.0),
+                              TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y),
+                              TpvVector2.InlineableCreate(0.0,0.0),
+                              TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y));
 
-   LastClipRect:=aCanvas.ClipRect;
+   LastClipRect:=aDrawEngine.ClipRect;
    LastClipRect.LeftTop:=LastClipRect.LeftTop+TpvVector2.InlineableCreate(1.0,1.0);
    LastClipRect.RightBottom:=LastClipRect.RightBottom-TpvVector2.InlineableCreate(1.0,1.0);
-   aCanvas.ClipRect:=LastClipRect;
+   aDrawEngine.ClipRect:=LastClipRect;
 
   end;
 
  finally
-  aCanvas.Color:=LastColor;
+  aDrawEngine.Color:=LastColor;
  end;
 
 end;
@@ -5882,13 +6414,13 @@ begin
  result:=TpvVector2.InlineableCreate(1.0,1.0);
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawPanel(const aCanvas:TpvCanvas;const aPanel:TpvGUIPanel);
+procedure TpvGUIDefaultVectorBasedSkin.DrawPanel(const aDrawEngine:TpvGUIDrawEngine;const aPanel:TpvGUIPanel);
 var Element:TpvInt32;
 begin
 
- aCanvas.ModelMatrix:=aPanel.fModelMatrix;
+ aDrawEngine.ModelMatrix:=aPanel.fModelMatrix;
 
- aCanvas.ClipRect:=aPanel.fClipRect;
+ aDrawEngine.ClipRect:=aPanel.fClipRect;
 
  if aPanel.Enabled then begin
   Element:=GUI_ELEMENT_PANEL_ENABLED;
@@ -5896,12 +6428,12 @@ begin
   Element:=GUI_ELEMENT_PANEL_DISABLED;
  end;
 
- aCanvas.DrawGUIElement(Element,
-                        true,
-                        TpvVector2.Null,
-                        aPanel.fSize,
-                        TpvVector2.Null,
-                        aPanel.fSize);
+ aDrawEngine.DrawGUIElement(Element,
+                            true,
+                            TpvVector2.Null,
+                            aPanel.fSize,
+                            TpvVector2.Null,
+                            aPanel.fSize);
 
 end;
 
@@ -5937,20 +6469,20 @@ begin
  end;
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawImage(const aCanvas:TpvCanvas;const aImage:TpvGUIImage);
+procedure TpvGUIDefaultVectorBasedSkin.DrawImage(const aDrawEngine:TpvGUIDrawEngine;const aImage:TpvGUIImage);
 begin
- aCanvas.ModelMatrix:=aImage.fModelMatrix;
- aCanvas.ClipRect:=aImage.fClipRect;
+ aDrawEngine.ModelMatrix:=aImage.fModelMatrix;
+ aDrawEngine.ClipRect:=aImage.fClipRect;
  if assigned(aImage.fImage) then begin
   if aImage.fImage is TpvSprite then begin
-   aCanvas.Color:=fImageSignedDistanceFieldColor;
-   aCanvas.DrawSprite(TpvSprite(aImage.fImage),
-                      TpvRect.CreateRelative(TpvVector2.Null,
-                                             TpvVector2.InlineableCreate(TpvSprite(aImage.fImage).Width,TpvSprite(aImage.fImage).Height)),
-                      TpvRect.CreateRelative(TpvVector2.Null,aImage.fSize));
+   aDrawEngine.Color:=fImageSignedDistanceFieldColor;
+   aDrawEngine.DrawSprite(TpvSprite(aImage.fImage),
+                          TpvRect.CreateRelative(TpvVector2.Null,
+                                                 TpvVector2.InlineableCreate(TpvSprite(aImage.fImage).Width,TpvSprite(aImage.fImage).Height)),
+                          TpvRect.CreateRelative(TpvVector2.Null,aImage.fSize));
   end else if aImage.fImage is TpvVulkanTexture then begin
-   aCanvas.DrawTexturedRectangle(TpvVulkanTexture(aImage.fImage),
-                                 TpvRect.CreateRelative(TpvVector2.Null,aImage.fSize));
+   aDrawEngine.DrawTexturedRectangle(TpvVulkanTexture(aImage.fImage),
+                                     TpvRect.CreateRelative(TpvVector2.Null,aImage.fSize));
   end;
  end;
 end;
@@ -5967,56 +6499,55 @@ begin
  end;
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawLabel(const aCanvas:TpvCanvas;const aLabel:TpvGUILabel);
+procedure TpvGUIDefaultVectorBasedSkin.DrawLabel(const aDrawEngine:TpvGUIDrawEngine;const aLabel:TpvGUILabel);
 var Offset:TpvVector2;
 begin
- aCanvas.ModelMatrix:=aLabel.fModelMatrix;
- aCanvas.ClipRect:=aLabel.fClipRect;
- aCanvas.Font:=aLabel.Font;
- aCanvas.FontSize:=aLabel.FontSize;
+ aDrawEngine.ModelMatrix:=aLabel.fModelMatrix;
+ aDrawEngine.ClipRect:=aLabel.fClipRect;
+ aDrawEngine.Font:=aLabel.Font;
+ aDrawEngine.FontSize:=aLabel.FontSize;
  case aLabel.TextHorizontalAlignment of
   TpvGUITextAlignment.Leading:begin
-   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
    Offset.x:=0.0;
   end;
   TpvGUITextAlignment.Center:begin
-   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
    Offset.x:=aLabel.fSize.x*0.5;
   end;
   else {TpvGUITextAlignment.Tailing:}begin
-   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
    Offset.x:=aLabel.fSize.x;
   end;
  end;
  case aLabel.TextVerticalAlignment of
   TpvGUITextAlignment.Leading:begin
-   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
    Offset.y:=0.0;
   end;
   TpvGUITextAlignment.Center:begin
-   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
    Offset.y:=aLabel.fSize.y*0.5;
   end;
   else {TpvGUITextAlignment.Tailing:}begin
-   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Tailing;
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Tailing;
    Offset.y:=aLabel.fSize.y;
   end;
  end;
  if aLabel.Enabled then begin
-  aCanvas.Color:=aLabel.FontColor;
+  aDrawEngine.Color:=aLabel.FontColor;
  end else begin
-  aCanvas.Color:=TpvVector4.InlineableCreate(aLabel.FontColor.rgb,aLabel.FontColor.a*0.25);
+  aDrawEngine.Color:=TpvVector4.InlineableCreate(aLabel.FontColor.rgb,aLabel.FontColor.a*0.25);
  end;
  if aLabel.fCachedCaptionInvalidated then begin
   aLabel.fCachedCaptionInvalidated:=false;
   aLabel.fCachedCaption:=TpvGUITextUtils.TextTruncation(aLabel.fCaption,
                                                         aLabel.fTextTruncation,
-                                                        aCanvas.Font,
-                                                        aCanvas.FontSize,
+                                                        aDrawEngine.Font,
+                                                        aDrawEngine.FontSize,
                                                         aLabel.fSize.x);
  end;
- aCanvas.DrawText(aLabel.fCachedCaption,
-                  Offset);
+ aDrawEngine.DrawText(aLabel.fCachedCaption,Offset);
 end;
 
 function TpvGUIDefaultVectorBasedSkin.GetButtonPreferredSize(const aButton:TpvGUIButton):TpvVector2;
@@ -6111,7 +6642,7 @@ begin
  end;
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawButton(const aCanvas:TpvCanvas;const aButton:TpvGUIButton);
+procedure TpvGUIDefaultVectorBasedSkin.DrawButton(const aDrawEngine:TpvGUIDrawEngine;const aButton:TpvGUIButton);
 var Offset,TextOffset:TpvVector2;
     TextSize,IconSize,TemporarySize,ChevronIconSize:TpvVector2;
     ButtonRect,TextRect,IconRect,ChevronIconRect:TpvRect;
@@ -6193,44 +6724,44 @@ begin
                                           TpvVector2.Null);
  end;
 
- aCanvas.ModelMatrix:=aButton.fModelMatrix;
- aCanvas.ClipRect:=aButton.fClipRect;
+ aDrawEngine.ModelMatrix:=aButton.fModelMatrix;
+ aDrawEngine.ClipRect:=aButton.fClipRect;
 
  if not aButton.Enabled then begin
 
-  aCanvas.DrawGUIElement(GUI_ELEMENT_BUTTON_DISABLED,
-                         true,
-                         TpvVector2.InlineableCreate(0.0,0.0),
-                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
-                         TpvVector2.InlineableCreate(0.0,0.0),
-                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
+  aDrawEngine.DrawGUIElement(GUI_ELEMENT_BUTTON_DISABLED,
+                             true,
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
 
  end else if aButton.Down then begin
 
-  aCanvas.DrawGUIElement(GUI_ELEMENT_BUTTON_PUSHED,
-                         true,
-                         TpvVector2.InlineableCreate(0.0,0.0),
-                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
-                         TpvVector2.InlineableCreate(0.0,0.0),
-                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
+  aDrawEngine.DrawGUIElement(GUI_ELEMENT_BUTTON_PUSHED,
+                             true,
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
 
  end else if aButton.Focused then begin
 
-  aCanvas.DrawGUIElement(GUI_ELEMENT_BUTTON_FOCUSED,
-                         true,
-                         TpvVector2.InlineableCreate(0.0,0.0),
-                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
-                         TpvVector2.InlineableCreate(0.0,0.0),
-                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
+  aDrawEngine.DrawGUIElement(GUI_ELEMENT_BUTTON_FOCUSED,
+                             true,
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
 
  end else begin
 
-  aCanvas.DrawGUIElement(GUI_ELEMENT_BUTTON_UNFOCUSED,
-                         true,
-                         TpvVector2.InlineableCreate(0.0,0.0),
-                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
-                         TpvVector2.InlineableCreate(0.0,0.0),
-                         TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
+  aDrawEngine.DrawGUIElement(GUI_ELEMENT_BUTTON_UNFOCUSED,
+                             true,
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
 
  end;
 
@@ -6307,80 +6838,78 @@ begin
 
  end;
 
- aCanvas.Font:=aButton.Font;
- aCanvas.FontSize:=aButton.FontSize;
+ aDrawEngine.Font:=aButton.Font;
+ aDrawEngine.FontSize:=aButton.FontSize;
  case aButton.TextHorizontalAlignment of
   TpvGUITextAlignment.Leading:begin
-   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
    TextOffset.x:=fSpacing;
   end;
   TpvGUITextAlignment.Center:begin
-   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
    TextOffset.x:=TextRect.Size.x*0.5;
   end;
   else {TpvGUITextAlignment.Tailing:}begin
-   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
    TextOffset.x:=TextRect.Size.x-fSpacing;
   end;
  end;
  case aButton.TextVerticalAlignment of
   TpvGUITextAlignment.Leading:begin
-   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
    TextOffset.y:=fSpacing;
   end;
   TpvGUITextAlignment.Center:begin
-   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
    TextOffset.y:=TextRect.Size.y*0.5;
   end;
   else {TpvGUITextAlignment.Tailing:}begin
-   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Tailing;
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Tailing;
    TextOffset.y:=TextRect.Size.y-fSpacing;
   end;
  end;
 
  if assigned(aButton.fIcon) then begin
   if aButton.Enabled then begin
-   aCanvas.Color:=aButton.FontColor;
+   aDrawEngine.Color:=aButton.FontColor;
   end else begin
-   aCanvas.Color:=TpvVector4.InlineableCreate(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
+   aDrawEngine.Color:=TpvVector4.InlineableCreate(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
   end;
   if aButton.fIcon is TpvSprite then begin
-   aCanvas.DrawSprite(TpvSprite(aButton.fIcon),
-                      TpvRect.CreateRelative(TpvVector2.Null,
-                                             TpvVector2.InlineableCreate(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)),
-                      TpvRect.CreateRelative(Offset+IconRect.LeftTop,IconRect.Size));
+   aDrawEngine.DrawSprite(TpvSprite(aButton.fIcon),
+                          TpvRect.CreateRelative(TpvVector2.Null,
+                                                 TpvVector2.InlineableCreate(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)),
+                          TpvRect.CreateRelative(Offset+IconRect.LeftTop,IconRect.Size));
   end else if aButton.fIcon is TpvVulkanTexture then begin
-   aCanvas.DrawTexturedRectangle(TpvVulkanTexture(aButton.fIcon),
-                                 Offset+IconRect.LeftTop+((IconRect.RightBottom-IconRect.LeftTop)*0.5),
-                                 (IconRect.RightBottom-IconRect.LeftTop)*0.5);
+   aDrawEngine.DrawTexturedRectangle(TpvVulkanTexture(aButton.fIcon),
+                                     TpvRect.CreateAbsolute(Offset+IconRect.LeftTop,Offset+IconRect.RightBottom));
   end;
  end;
  if aButton.Enabled then begin
-  aCanvas.Color:=aButton.FontColor;
+  aDrawEngine.Color:=aButton.FontColor;
  end else begin
-  aCanvas.Color:=TpvVector4.InlineableCreate(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
+  aDrawEngine.Color:=TpvVector4.InlineableCreate(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
  end;
- aCanvas.Font:=aButton.Font;
- aCanvas.FontSize:=aButton.FontSize;
+ aDrawEngine.Font:=aButton.Font;
+ aDrawEngine.FontSize:=aButton.FontSize;
  if aButton.fCachedCaptionInvalidated then begin
   aButton.fCachedCaptionInvalidated:=false;
   aButton.fCachedCaption:=TpvGUITextUtils.TextTruncation(aButton.fCaption,
                                                          aButton.fTextTruncation,
-                                                         aCanvas.Font,
-                                                         aCanvas.FontSize,
+                                                         aDrawEngine.Font,
+                                                         aDrawEngine.FontSize,
                                                          ButtonRect.Width+(ButtonHorizontalBorderSpacing*2.0))
  end;
- aCanvas.DrawText(aButton.fCachedCaption,
-                  Offset+TextRect.LeftTop+TextOffset);
+ aDrawEngine.DrawText(aButton.fCachedCaption,Offset+TextRect.LeftTop+TextOffset);
  if assigned(ChevronIcon) then begin
   if aButton is TpvGUIComboBoxPopupButton then begin
    ChevronIconRect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(4.0,4.0),
                                            aButton.fSize-TpvVector2.InlineableCreate(4.0,4.0));
   end;
-  aCanvas.DrawSprite(ChevronIcon,
-                     TpvRect.CreateRelative(TpvVector2.Null,
-                                            TpvVector2.InlineableCreate(ChevronIcon.Width,ChevronIcon.Height)),
-                     ChevronIconRect);
+  aDrawEngine.DrawSprite(ChevronIcon,
+                         TpvRect.CreateRelative(TpvVector2.Null,
+                                                TpvVector2.InlineableCreate(ChevronIcon.Width,ChevronIcon.Height)),
+                         ChevronIconRect);
  end;
 
 
@@ -6400,19 +6929,19 @@ begin
  end;
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawCheckBox(const aCanvas:TpvCanvas;const aCheckBox:TpvGUICheckBox);
+procedure TpvGUIDefaultVectorBasedSkin.DrawCheckBox(const aDrawEngine:TpvGUIDrawEngine;const aCheckBox:TpvGUICheckBox);
 var Element:TpvInt32;
     Offset:TpvVector2;
     Icon:TpvSprite;
 begin
 
- aCanvas.ModelMatrix:=aCheckBox.fModelMatrix;
- aCanvas.ClipRect:=aCheckBox.fClipRect;
+ aDrawEngine.ModelMatrix:=aCheckBox.fModelMatrix;
+ aDrawEngine.ClipRect:=aCheckBox.fClipRect;
 
  if aCheckBox.Enabled then begin
-  aCanvas.Color:=aCheckBox.FontColor;
+  aDrawEngine.Color:=aCheckBox.FontColor;
  end else begin
-  aCanvas.Color:=TpvVector4.InlineableCreate(aCheckBox.FontColor.rgb,aCheckBox.FontColor.a*0.25);
+  aDrawEngine.Color:=TpvVector4.InlineableCreate(aCheckBox.FontColor.rgb,aCheckBox.FontColor.a*0.25);
  end;
 
  if not aCheckBox.Enabled then begin
@@ -6431,12 +6960,12 @@ begin
 
  Offset:=TpvVector2.InlineableCreate(0.0,(aCheckBox.fSize.y-fCheckBoxSize.y)*0.5);
 
- aCanvas.DrawGUIElement(Element,
-                        aCheckBox.Focused,
-                        Offset,
-                        Offset+fCheckBoxSize,
-                        Offset,
-                        Offset+fCheckBoxSize);
+ aDrawEngine.DrawGUIElement(Element,
+                            aCheckBox.Focused,
+                            Offset,
+                            Offset+fCheckBoxSize,
+                            Offset,
+                            Offset+fCheckBoxSize);
 
  if aCheckBox.Checked then begin
 
@@ -6446,48 +6975,48 @@ begin
    Icon:=TpvSprite(fIconCheck);
   end;
 
-  aCanvas.DrawSprite(Icon,
-                     TpvRect.CreateRelative(0.0,0.0,Icon.Width,Icon.Height),
-                     TpvRect.CreateRelative(Offset,fCheckBoxSize));
+  aDrawEngine.DrawSprite(Icon,
+                         TpvRect.CreateRelative(0.0,0.0,Icon.Width,Icon.Height),
+                         TpvRect.CreateRelative(Offset,fCheckBoxSize));
 
  end;
 
- aCanvas.Font:=aCheckBox.Font;
- aCanvas.FontSize:=aCheckBox.FontSize;
+ aDrawEngine.Font:=aCheckBox.Font;
+ aDrawEngine.FontSize:=aCheckBox.FontSize;
  case aCheckBox.TextHorizontalAlignment of
   TpvGUITextAlignment.Leading:begin
-   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
    Offset.x:=fCheckBoxSize.x+fSpacing;
   end;
   TpvGUITextAlignment.Center:begin
-   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
    Offset.x:=(fCheckBoxSize.x+fSpacing)+((aCheckBox.fSize.x-(fCheckBoxSize.x+fSpacing))*0.5);
   end;
   else {TpvGUITextAlignment.Tailing:}begin
-   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
    Offset.x:=(fCheckBoxSize.x+fSpacing)+(aCheckBox.fSize.x-(fCheckBoxSize.x+fSpacing));
   end;
  end;
  case aCheckBox.TextVerticalAlignment of
   TpvGUITextAlignment.Leading:begin
-   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
    Offset.y:=0.0;
   end;
   TpvGUITextAlignment.Center:begin
-   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
    Offset.y:=aCheckBox.fSize.y*0.5;
   end;
   else {TpvGUITextAlignment.Tailing:}begin
-   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Tailing;
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Tailing;
    Offset.y:=aCheckBox.fSize.y;
   end;
  end;
- aCanvas.DrawText(TpvGUITextUtils.TextTruncation(aCheckBox.fCaption,
-                                                 aCheckBox.fTextTruncation,
-                                                 aCanvas.Font,
-                                                 aCanvas.FontSize,
-                                                 aCheckBox.fSize.x-(fCheckBoxSize.x+fSpacing)),
-                  Offset);
+ aDrawEngine.DrawText(TpvGUITextUtils.TextTruncation(aCheckBox.fCaption,
+                                                     aCheckBox.fTextTruncation,
+                                                     aDrawEngine.Font,
+                                                     aDrawEngine.FontSize,
+                                                     aCheckBox.fSize.x-(fCheckBoxSize.x+fSpacing)),
+                      Offset);
 
 end;
 
@@ -6507,7 +7036,7 @@ begin
  end;
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawTextEdit(const aCanvas:TpvCanvas;const aTextEdit:TpvGUITextEdit);
+procedure TpvGUIDefaultVectorBasedSkin.DrawTextEdit(const aDrawEngine:TpvGUIDrawEngine;const aTextEdit:TpvGUITextEdit);
 var Offset,TextOffset:TpvVector2;
     TextSize,IconSize,TemporarySize:TpvVector2;
     TextRect,IconRect,TextClipRect,SelectionRect:TpvRect;
@@ -6519,35 +7048,35 @@ begin
 
  Offset:=TpvVector2.Null;
 
- aCanvas.ModelMatrix:=aTextEdit.fModelMatrix;
- aCanvas.ClipRect:=aTextEdit.fClipRect;
+ aDrawEngine.ModelMatrix:=aTextEdit.fModelMatrix;
+ aDrawEngine.ClipRect:=aTextEdit.fClipRect;
 
  if not aTextEdit.Enabled then begin
 
-  aCanvas.DrawGUIElement(GUI_ELEMENT_BOX_DISABLED,
-                         true,
-                         TpvVector2.InlineableCreate(0.0,0.0),
-                         TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y),
-                         TpvVector2.InlineableCreate(0.0,0.0),
-                         TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y));
+  aDrawEngine.DrawGUIElement(GUI_ELEMENT_BOX_DISABLED,
+                             true,
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y),
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y));
 
  end else if aTextEdit.Focused then begin
 
-  aCanvas.DrawGUIElement(GUI_ELEMENT_BOX_FOCUSED,
-                         true,
-                         TpvVector2.InlineableCreate(0.0,0.0),
-                         TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y),
-                         TpvVector2.InlineableCreate(0.0,0.0),
-                         TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y));
+  aDrawEngine.DrawGUIElement(GUI_ELEMENT_BOX_FOCUSED,
+                             true,
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y),
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y));
 
  end else begin
 
-  aCanvas.DrawGUIElement(GUI_ELEMENT_BOX_UNFOCUSED,
-                         true,
-                         TpvVector2.InlineableCreate(0.0,0.0),
-                         TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y),
-                         TpvVector2.InlineableCreate(0.0,0.0),
-                         TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y));
+  aDrawEngine.DrawGUIElement(GUI_ELEMENT_BOX_UNFOCUSED,
+                             true,
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y),
+                             TpvVector2.InlineableCreate(0.0,0.0),
+                             TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y));
 
  end;
 
@@ -6582,57 +7111,57 @@ begin
 
  aTextEdit.fDragRect:=IconRect;
 
- aCanvas.Font:=aTextEdit.Font;
- aCanvas.FontSize:=aTextEdit.FontSize;
+ aDrawEngine.Font:=aTextEdit.Font;
+ aDrawEngine.FontSize:=aTextEdit.FontSize;
  case aTextEdit.TextHorizontalAlignment of
   TpvGUITextAlignment.Leading:begin
-   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
    TextOffset.x:=fSpacing;
   end;
   TpvGUITextAlignment.Center:begin
-   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
    TextOffset.x:=TextRect.Size.x*0.5;
   end;
   else {TpvGUITextAlignment.Tailing:}begin
-   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
    TextOffset.x:=TextRect.Size.x-fSpacing;
   end;
  end;
  case aTextEdit.TextVerticalAlignment of
   TpvGUITextAlignment.Leading:begin
-   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
    TextOffset.y:=fSpacing;
   end;
   TpvGUITextAlignment.Center:begin
-   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
    TextOffset.y:=TextRect.Size.y*0.5;
   end;
   else {TpvGUITextAlignment.Tailing:}begin
-   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Tailing;
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Tailing;
    TextOffset.y:=TextRect.Size.y-fSpacing;
   end;
  end;
 
 {if (length(aTextEdit.fIconText)>0) and assigned(aButton.fIconFont) then begin
   if aButton.Enabled then begin
-   aCanvas.Color:=aButton.FontColor;
+   aDrawLayer.Color:=aButton.FontColor;
   end else begin
-   aCanvas.Color:=TpvVector4.InlineableCreate(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
+   aaDrawLayer.Color:=TpvVector4.InlineableCreate(aButton.FontColor.rgb,aButton.FontColor.a*0.25);
   end;
-  aCanvas.Font:=aButton.fIconFont;
-  aCanvas.FontSize:=aButton.fIconFontSize;
-  aCanvas.DrawText(aButton.fIconText,IconRect.LeftTop);
+  aDrawLayer.Font:=aButton.fIconFont;
+  aDrawLayer.FontSize:=aButton.fIconFontSize;
+  aDrawLayer.DrawText(aButton.fIconText,IconRect.LeftTop);
  end else if assigned(aButton.fIcon) then begin
   if aButton.fIcon is TpvSprite then begin
-   aCanvas.DrawSprite(TpvSprite(aButton.fIcon),
-                      TpvRect.CreateRelative(TpvVector2.Null,
-                                             TpvVector2.InlineableCreate(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)),
-                      TpvRect.CreateRelative(Offset+IconRect.LeftTop,
-                                             TpvVector2.InlineableCreate(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)));
+   aDrawLayer.DrawSprite(TpvSprite(aButton.fIcon),
+                         TpvRect.CreateRelative(TpvVector2.Null,
+                                                TpvVector2.InlineableCreate(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)),
+                         TpvRect.CreateRelative(Offset+IconRect.LeftTop,
+                                                TpvVector2.InlineableCreate(TpvSprite(aButton.fIcon).Width,TpvSprite(aButton.fIcon).Height)));
   end else if aButton.fIcon is TpvVulkanTexture then begin
-   aCanvas.DrawTexturedRectangle(TpvVulkanTexture(aButton.fIcon),
-                                 Offset+IconRect.LeftTop+(TpvVector2.InlineableCreate(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5),
-                                 TpvVector2.InlineableCreate(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5);
+   aDrawLayer.DrawTexturedRectangle(TpvVulkanTexture(aButton.fIcon),
+                                    Offset+IconRect.LeftTop+(TpvVector2.InlineableCreate(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5),
+                                    TpvVector2.InlineableCreate(TpvVulkanTexture(aButton.fIcon).Width,TpvVulkanTexture(aButton.fIcon).Height)*0.5);
   end;
  end;  }
 
@@ -6641,17 +7170,17 @@ begin
                                       aTextEdit.fClipRect.Right-2,
                                       aTextEdit.fClipRect.Bottom-2);
 
- aCanvas.ClipRect:=TextClipRect;
+ aDrawEngine.ClipRect:=TextClipRect;
 
  TextClipRect.LeftTop:=TextClipRect.LeftTop-aTextEdit.fClipRect.LeftTop;
  TextClipRect.RightBottom:=TextClipRect.RightBottom-aTextEdit.fClipRect.LeftTop;
 
- aCanvas.Font:=aTextEdit.Font;
- aCanvas.FontSize:=aTextEdit.FontSize;
+ aDrawEngine.Font:=aTextEdit.Font;
+ aDrawEngine.FontSize:=aTextEdit.FontSize;
 
  TextOffset.x:=TextOffset.x+aTextEdit.fTextOffset;
 
- aCanvas.TextGlyphRects(aTextEdit.fText,Offset+TextRect.LeftTop+TextOffset,aTextEdit.fTextGlyphRects,aTextEdit.fCountTextGlyphRects);
+ aDrawEngine.TextGlyphRects(aTextEdit.fText,Offset+TextRect.LeftTop+TextOffset,aTextEdit.fTextGlyphRects,aTextEdit.fCountTextGlyphRects);
 
  if aTextEdit.fCountTextGlyphRects>0 then begin
 
@@ -6679,7 +7208,7 @@ begin
 
  end;
 
- aCanvas.TextGlyphRects(aTextEdit.fText,Offset+TextRect.LeftTop+TextOffset,aTextEdit.fTextGlyphRects,aTextEdit.fCountTextGlyphRects);
+ aDrawEngine.TextGlyphRects(aTextEdit.fText,Offset+TextRect.LeftTop+TextOffset,aTextEdit.fTextGlyphRects,aTextEdit.fCountTextGlyphRects);
 
  if (aTextEdit.fCountTextGlyphRects>16) and
     ((length(aTextEdit.fTextGlyphRects) shl 1)>=aTextEdit.fCountTextGlyphRects) then begin
@@ -6690,34 +7219,33 @@ begin
     (aTextEdit.fTextSelectionStart<=(aTextEdit.fCountTextGlyphRects+1)) and
     (aTextEdit.fTextSelectionEnd>0) and
     (aTextEdit.fTextSelectionEnd<=(aTextEdit.fCountTextGlyphRects+1)) then begin
-  aCanvas.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+  aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
   StartIndex:=Min(aTextEdit.fTextSelectionStart,aTextEdit.fTextSelectionEnd)-1;
   EndIndex:=Max(aTextEdit.fTextSelectionStart,aTextEdit.fTextSelectionEnd)-1;
   if StartIndex>=aTextEdit.fCountTextGlyphRects then begin
    SelectionRect.Left:=Maximum(aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right,
-                               Offset.x+TextRect.Left+TextOffset.x+aCanvas.TextWidth(aTextEdit.fText))+1.0;
+                               Offset.x+TextRect.Left+TextOffset.x+aDrawEngine.Font.TextWidth(aTextEdit.fText,aDrawEngine.FontSize))+1.0;
   end else begin
    SelectionRect.Left:=aTextEdit.fTextGlyphRects[StartIndex].Left+1.0;
   end;
   if EndIndex>=aTextEdit.fCountTextGlyphRects then begin
    SelectionRect.Right:=Maximum(aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right,
-                                Offset.x+TextRect.Left+TextOffset.x+aCanvas.TextWidth(aTextEdit.fText))+1.0;
+                                Offset.x+TextRect.Left+TextOffset.x+aDrawEngine.Font.TextWidth(aTextEdit.fText,aDrawEngine.FontSize))+1.0;
   end else begin
    SelectionRect.Right:=aTextEdit.fTextGlyphRects[EndIndex].Left+1.0;
   end;
   SelectionRect.Top:=(Offset.y+TextRect.Top)+2;
   SelectionRect.Bottom:=(Offset.y+TextRect.Bottom)-2;
-  aCanvas.DrawFilledRectangle((SelectionRect.LeftTop+SelectionRect.RightBottom)*0.5,
-                              (SelectionRect.RightBottom-SelectionRect.LeftTop)*0.5);
+  aDrawEngine.DrawFilledRectangle(SelectionRect);
  end;
 
  if aTextEdit.Enabled then begin
-  aCanvas.Color:=aTextEdit.FontColor;
+  aDrawEngine.Color:=aTextEdit.FontColor;
  end else begin
-  aCanvas.Color:=TpvVector4.InlineableCreate(aTextEdit.FontColor.rgb,aTextEdit.FontColor.a*0.25);
+  aDrawEngine.Color:=TpvVector4.InlineableCreate(aTextEdit.FontColor.rgb,aTextEdit.FontColor.a*0.25);
  end;
 
- aCanvas.DrawText(aTextEdit.fText,Offset+TextRect.LeftTop+TextOffset);
+ aDrawEngine.DrawText(aTextEdit.fText,Offset+TextRect.LeftTop+TextOffset);
 
  if aTextEdit.Enabled and
     aTextEdit.Focused and
@@ -6726,30 +7254,30 @@ begin
   if aTextEdit.fCountTextGlyphRects>0 then begin
    TextCursorPositionIndex:=Min(Max(aTextEdit.fTextCursorPositionIndex,1),aTextEdit.fCountTextGlyphRects+1);
    if TextCursorPositionIndex>aTextEdit.fCountTextGlyphRects then begin
-    aCanvas.DrawFilledRectangle(TpvVector2.InlineableCreate(Max(aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right,
-                                                            Offset.x+TextRect.Left+TextOffset.x+aCanvas.TextWidth(aTextEdit.fText))+0.5,
-                                                  Offset.y+TextRect.Top+(TextRect.Size.y*0.5)),
-                                TpvVector2.InlineableCreate(1.0,
-                                                            (aCanvas.TextRowHeight(100.0)*0.5)));
+    aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(Max(aTextEdit.fTextGlyphRects[aTextEdit.fCountTextGlyphRects-1].Right,
+                                                                                       Offset.x+TextRect.Left+TextOffset.x+aDrawEngine.Font.TextWidth(aTextEdit.fText,aDrawEngine.FontSize))+0.0,
+                                                                                       Offset.y+TextRect.Top),
+                                                           TpvVector2.InlineableCreate(1.0,
+                                                                                       aDrawEngine.Font.RowHeight(100.0,aDrawEngine.FontSize))));
    end else begin
-    aCanvas.DrawFilledRectangle(TpvVector2.InlineableCreate(aTextEdit.fTextGlyphRects[TextCursorPositionIndex-1].Left,
-                                                            Offset.y+TextRect.Top+(TextRect.Size.y*0.5)),
-                                TpvVector2.InlineableCreate(1.0,
-                                                            (aCanvas.TextRowHeight(100.0)*0.5)));
+    aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(aTextEdit.fTextGlyphRects[TextCursorPositionIndex-1].Left,
+                                                                                       Offset.y+TextRect.Top),
+                                                           TpvVector2.InlineableCreate(1.0,
+                                                                                       aDrawEngine.Font.RowHeight(100.0,aDrawEngine.FontSize))));
    end;
   end else begin
-   aCanvas.DrawFilledRectangle(TpvVector2.InlineableCreate(Offset.x+TextRect.Left+TextOffset.x,
-                                                           Offset.y+TextRect.Top+(TextRect.Size.y*0.5)),
-                               TpvVector2.InlineableCreate(1.0,
-                                                           (aCanvas.TextRowHeight(100.0)*0.5)));
+   aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(Offset.x+TextRect.Left+TextOffset.x,
+                                                                                      Offset.y+TextRect.Top),
+                                                          TpvVector2.InlineableCreate(1.0,
+                                                                                      aDrawEngine.Font.RowHeight(100.0,aDrawEngine.FontSize))));
   end;
  end;
 
  if assigned(IconSprite) then begin
-  aCanvas.DrawSprite(IconSprite,
-                     TpvRect.CreateRelative(TpvVector2.Null,
-                                            TpvVector2.InlineableCreate(IconSprite.Width,IconSprite.Height)),
-                     IconRect);
+  aDrawEngine.DrawSprite(IconSprite,
+                         TpvRect.CreateRelative(TpvVector2.Null,
+                                                TpvVector2.InlineableCreate(IconSprite.Width,IconSprite.Height)),
+                         IconRect);
  end;
 
 end;
@@ -6878,7 +7406,7 @@ begin
  result:=ProcessPopupMenuItems(aPopupMenu);
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawPopupMenu(const aCanvas:TpvCanvas;const aPopupMenu:TpvGUIPopupMenu);
+procedure TpvGUIDefaultVectorBasedSkin.DrawPopupMenu(const aDrawEngine:TpvGUIDrawEngine;const aPopupMenu:TpvGUIPopupMenu);
 var Index,Element:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
@@ -6888,27 +7416,27 @@ begin
 
  ProcessPopupMenuItems(aPopupMenu);
 
- aCanvas.ModelMatrix:=TpvMatrix4x4.CreateTranslation(aPopupMenu.fPosition);
+ aDrawEngine.ModelMatrix:=TpvMatrix4x4.CreateTranslation(aPopupMenu.fPosition);
 
- aCanvas.ClipRect:=aPopupMenu.fInstance.fClipRect;
- aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_DROPSHADOW,
-                        true,
-                        TpvVector2.InlineableCreate(-fWindowShadowWidth,-fWindowShadowHeight),
-                        aPopupMenu.fSize+TpvVector2.InlineableCreate(fWindowShadowWidth*2,fWindowShadowHeight*2),
-                        TpvVector2.InlineableCreate(0.0,0.0),
-                        aPopupMenu.fSize);
+ aDrawEngine.ClipRect:=aPopupMenu.fInstance.fClipRect;
+ aDrawEngine.DrawGUIElement(GUI_ELEMENT_WINDOW_DROPSHADOW,
+                            true,
+                            TpvVector2.InlineableCreate(-fWindowShadowWidth,-fWindowShadowHeight),
+                            aPopupMenu.fSize+TpvVector2.InlineableCreate(fWindowShadowWidth*2,fWindowShadowHeight*2),
+                            TpvVector2.InlineableCreate(0.0,0.0),
+                            aPopupMenu.fSize);
 
- aCanvas.ClipRect:=TpvRect.CreateRelative(aPopupMenu.fPosition,aPopupMenu.fSize);
+ aDrawEngine.ClipRect:=TpvRect.CreateRelative(aPopupMenu.fPosition,aPopupMenu.fSize);
 
- aCanvas.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
-                        true,
-                        TpvVector2.InlineableCreate(0.0,0.0),
-                        TpvVector2.InlineableCreate(aPopupMenu.fSize.x,aPopupMenu.fSize.y),
-                        TpvVector2.InlineableCreate(0.0,0.0),
-                        TpvVector2.InlineableCreate(aPopupMenu.fSize.x,aPopupMenu.fSize.y));
+ aDrawEngine.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
+                            true,
+                            TpvVector2.InlineableCreate(0.0,0.0),
+                            TpvVector2.InlineableCreate(aPopupMenu.fSize.x,aPopupMenu.fSize.y),
+                            TpvVector2.InlineableCreate(0.0,0.0),
+                            TpvVector2.InlineableCreate(aPopupMenu.fSize.x,aPopupMenu.fSize.y));
 
- aCanvas.Font:=aPopupMenu.Font;
- aCanvas.FontSize:=aPopupMenu.FontSize;
+ aDrawEngine.Font:=aPopupMenu.Font;
+ aDrawEngine.FontSize:=aPopupMenu.FontSize;
 
  for Index:=0 to aPopupMenu.Children.Count-1 do begin
 
@@ -6921,7 +7449,7 @@ begin
 
    if MenuItem.Enabled then begin
 
-    aCanvas.Color:=aPopupMenu.FontColor;
+    aDrawEngine.Color:=aPopupMenu.FontColor;
 
     if MenuItem.fCaption='-' then begin
      Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
@@ -6936,22 +7464,22 @@ begin
 
    end else begin
 
-    aCanvas.Color:=TpvVector4.InlineableCreate(aPopupMenu.FontColor.rgb,aPopupMenu.FontColor.a*0.25);
+    aDrawEngine.Color:=TpvVector4.InlineableCreate(aPopupMenu.FontColor.rgb,aPopupMenu.FontColor.a*0.25);
 
     Element:=GUI_ELEMENT_BUTTON_DISABLED;
 
    end;
 
-   aCanvas.DrawGUIElement(Element,
-                          true,
-                          MenuItem.fRect.LeftTop,
-                          MenuItem.fRect.RightBottom,
-                          MenuItem.fRect.LeftTop,
-                          MenuItem.fRect.RightBottom);
+   aDrawEngine.DrawGUIElement(Element,
+                              true,
+                              MenuItem.fRect.LeftTop,
+                              MenuItem.fRect.RightBottom,
+                              MenuItem.fRect.LeftTop,
+                              MenuItem.fRect.RightBottom);
 
    if MenuItem.fCaption<>'-' then begin
 
-    aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+    aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
 
     XOffset:=MenuItem.fRect.Left+(4.0+fSpacing);
 
@@ -6970,23 +7498,23 @@ begin
      end;
 
      if MenuItem.fIcon is TpvSprite then begin
-      aCanvas.DrawSprite(TpvSprite(MenuItem.fIcon),
-                         TpvRect.CreateRelative(TpvVector2.Null,
-                                                TpvVector2.InlineableCreate(TpvSprite(MenuItem.fIcon).Width,TpvSprite(MenuItem.fIcon).Height)),
-                         TpvRect.CreateRelative(TpvVector2.InlineableCreate(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-IconSize.y)*0.5)))+Offset,
-                                                IconSize));
+      aDrawEngine.DrawSprite(TpvSprite(MenuItem.fIcon),
+                             TpvRect.CreateRelative(TpvVector2.Null,
+                                                    TpvVector2.InlineableCreate(TpvSprite(MenuItem.fIcon).Width,TpvSprite(MenuItem.fIcon).Height)),
+                             TpvRect.CreateRelative(TpvVector2.InlineableCreate(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-IconSize.y)*0.5)))+Offset,
+                                                    IconSize));
      end else if MenuItem.fIcon is TpvVulkanTexture then begin
-      aCanvas.DrawTexturedRectangle(TpvVulkanTexture(MenuItem.fIcon),
-                                    TpvVector2.InlineableCreate(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-IconSize.y)*0.5)))+Offset,
-                                    IconSize);
+      aDrawEngine.DrawTexturedRectangle(TpvVulkanTexture(MenuItem.fIcon),
+                                        TpvRect.CreateRelative(TpvVector2.InlineableCreate(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-IconSize.y)*0.5)))+Offset,
+                                                               IconSize));
      end;
 
      XOffset:=XOffset+IconSize.x+fSpacing;
 
     end;
 
-    aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
-    aCanvas.DrawText(MenuItem.fCaption,TpvVector2.InlineableCreate(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
+    aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+    aDrawEngine.DrawText(MenuItem.fCaption,TpvVector2.InlineableCreate(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
 
     XOffset:=MenuItem.fRect.Right-(4.0+fSpacing);
 
@@ -6994,37 +7522,37 @@ begin
      SpriteWidth:=(TpvSprite(fIconMenuRight).Width*fIconMenuRightHeight)/TpvSprite(fIconMenuRight).Height;
      XOffset:=XOffset-SpriteWidth;
      if assigned(MenuItem.Menu) then begin
-      aCanvas.DrawSprite(TpvSprite(fIconMenuRight),
-                         TpvRect.CreateRelative(TpvVector2.Null,
-                                                TpvVector2.InlineableCreate(TpvSprite(fIconMenuRight).Width,TpvSprite(fIconMenuRight).Height)),
-                         TpvRect.CreateRelative(TpvVector2.InlineableCreate(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-fIconMenuRightHeight)*0.5)))+Offset,
-                                                TpvVector2.InlineableCreate(SpriteWidth,fIconMenuRightHeight)));
+      aDrawEngine.DrawSprite(TpvSprite(fIconMenuRight),
+                             TpvRect.CreateRelative(TpvVector2.Null,
+                                                    TpvVector2.InlineableCreate(TpvSprite(fIconMenuRight).Width,TpvSprite(fIconMenuRight).Height)),
+                             TpvRect.CreateRelative(TpvVector2.InlineableCreate(XOffset,((((MenuItem.fRect.Top+MenuItem.fRect.Bottom)-fIconMenuRightHeight)*0.5)))+Offset,
+                                                    TpvVector2.InlineableCreate(SpriteWidth,fIconMenuRightHeight)));
      end;
      XOffset:=XOffset-fSpacing;
     end;
 
     if length(MenuItem.fShortcutHint)>0 then begin
-     aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
-     aCanvas.DrawText(MenuItem.fShortcutHint,TpvVector2.InlineableCreate(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
+     aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Tailing;
+     aDrawEngine.DrawText(MenuItem.fShortcutHint,TpvVector2.InlineableCreate(XOffset,((MenuItem.fRect.Top+MenuItem.fRect.Bottom)*0.5))+Offset);
     end;
 
     if aPopupMenu.fHoveredMenuItem=MenuItem then begin
 
-     aCanvas.DrawGUIElement(GUI_ELEMENT_HOVERED,
-                            true,
-                            MenuItem.fRect.LeftTop,
-                            MenuItem.fRect.RightBottom,
-                            MenuItem.fRect.LeftTop,
-                            MenuItem.fRect.RightBottom);
+     aDrawEngine.DrawGUIElement(GUI_ELEMENT_HOVERED,
+                                true,
+                                MenuItem.fRect.LeftTop,
+                                MenuItem.fRect.RightBottom,
+                                MenuItem.fRect.LeftTop,
+                                MenuItem.fRect.RightBottom);
 
     end else if aPopupMenu.fFocusedMenuItem=MenuItem then begin
 
-     aCanvas.DrawGUIElement(GUI_ELEMENT_FOCUSED,
-                            true,
-                            MenuItem.fRect.LeftTop,
-                            MenuItem.fRect.RightBottom,
-                            MenuItem.fRect.LeftTop,
-                            MenuItem.fRect.RightBottom);
+     aDrawEngine.DrawGUIElement(GUI_ELEMENT_FOCUSED,
+                                true,
+                                MenuItem.fRect.LeftTop,
+                                MenuItem.fRect.RightBottom,
+                                MenuItem.fRect.LeftTop,
+                                MenuItem.fRect.RightBottom);
 
     end;
 
@@ -7080,7 +7608,7 @@ begin
  end;
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawWindowMenu(const aCanvas:TpvCanvas;const aWindowMenu:TpvGUIWindowMenu);
+procedure TpvGUIDefaultVectorBasedSkin.DrawWindowMenu(const aDrawEngine:TpvGUIDrawEngine;const aWindowMenu:TpvGUIWindowMenu);
 var Index,Element:TpvInt32;
     Child:TpvGUIObject;
     MenuItem:TpvGUIMenuItem;
@@ -7089,8 +7617,8 @@ begin
 
  ProcessWindowMenuItems(aWindowMenu);
 
- aCanvas.ModelMatrix:=aWindowMenu.fModelMatrix;
- aCanvas.ClipRect:=aWindowMenu.fClipRect;
+ aDrawEngine.ModelMatrix:=aWindowMenu.fModelMatrix;
+ aDrawEngine.ClipRect:=aWindowMenu.fClipRect;
 
  if aWindowMenu.Enabled then begin
   Element:=GUI_ELEMENT_PANEL_ENABLED;
@@ -7098,18 +7626,18 @@ begin
   Element:=GUI_ELEMENT_PANEL_DISABLED;
  end;
 
- aCanvas.DrawGUIElement(Element,
-                        true,
-                        TpvVector2.InlineableCreate(0.0,0.0),
-                        TpvVector2.InlineableCreate(aWindowMenu.fSize.x,aWindowMenu.fSize.y),
-                        TpvVector2.InlineableCreate(0.0,0.0),
-                        TpvVector2.InlineableCreate(aWindowMenu.fSize.x,aWindowMenu.fSize.y));
+ aDrawEngine.DrawGUIElement(Element,
+                            true,
+                            TpvVector2.InlineableCreate(0.0,0.0),
+                            TpvVector2.InlineableCreate(aWindowMenu.fSize.x,aWindowMenu.fSize.y),
+                            TpvVector2.InlineableCreate(0.0,0.0),
+                            TpvVector2.InlineableCreate(aWindowMenu.fSize.x,aWindowMenu.fSize.y));
 
- aCanvas.Font:=aWindowMenu.Font;
- aCanvas.FontSize:=aWindowMenu.FontSize;
+ aDrawEngine.Font:=aWindowMenu.Font;
+ aDrawEngine.FontSize:=aWindowMenu.FontSize;
 
- aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
- aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+ aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
+ aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
 
  for Index:=0 to aWindowMenu.Children.Count-1 do begin
 
@@ -7122,7 +7650,7 @@ begin
 
    if aWindowMenu.Enabled and MenuItem.Enabled then begin
 
-    aCanvas.Color:=aWindowMenu.FontColor;
+    aDrawEngine.Color:=aWindowMenu.FontColor;
 
     if aWindowMenu.fSelectedMenuItem=MenuItem then begin
      Element:=GUI_ELEMENT_BUTTON_PUSHED;
@@ -7135,38 +7663,38 @@ begin
 
    end else begin
 
-    aCanvas.Color:=TpvVector4.InlineableCreate(aWindowMenu.FontColor.rgb,aWindowMenu.FontColor.a*0.25);
+    aDrawEngine.Color:=TpvVector4.InlineableCreate(aWindowMenu.FontColor.rgb,aWindowMenu.FontColor.a*0.25);
 
     Element:=GUI_ELEMENT_BUTTON_DISABLED;
 
    end;
 
-   aCanvas.DrawGUIElement(Element,
-                          true,
-                          MenuItem.fRect.LeftTop,
-                          MenuItem.fRect.RightBottom,
-                          MenuItem.fRect.LeftTop,
-                          MenuItem.fRect.RightBottom);
+   aDrawEngine.DrawGUIElement(Element,
+                              true,
+                              MenuItem.fRect.LeftTop,
+                              MenuItem.fRect.RightBottom,
+                              MenuItem.fRect.LeftTop,
+                              MenuItem.fRect.RightBottom);
 
-   aCanvas.DrawText(MenuItem.fCaption,((MenuItem.fRect.LeftTop+MenuItem.fRect.RightBottom)*0.5)+Offset);
+   aDrawEngine.DrawText(MenuItem.fCaption,((MenuItem.fRect.LeftTop+MenuItem.fRect.RightBottom)*0.5)+Offset);
 
    if aWindowMenu.PointerFocused and (aWindowMenu.fHoveredMenuItem=MenuItem) then begin
 
-    aCanvas.DrawGUIElement(GUI_ELEMENT_HOVERED,
-                           true,
-                           MenuItem.fRect.LeftTop,
-                           MenuItem.fRect.RightBottom,
-                           MenuItem.fRect.LeftTop,
-                           MenuItem.fRect.RightBottom);
+    aDrawEngine.DrawGUIElement(GUI_ELEMENT_HOVERED,
+                               true,
+                               MenuItem.fRect.LeftTop,
+                               MenuItem.fRect.RightBottom,
+                               MenuItem.fRect.LeftTop,
+                               MenuItem.fRect.RightBottom);
 
    end else if aWindowMenu.Focused and (aWindowMenu.fFocusedMenuItem=MenuItem) then begin
 
-    aCanvas.DrawGUIElement(GUI_ELEMENT_FOCUSED,
-                           true,
-                           MenuItem.fRect.LeftTop,
-                           MenuItem.fRect.RightBottom,
-                           MenuItem.fRect.LeftTop,
-                           MenuItem.fRect.RightBottom);
+    aDrawEngine.DrawGUIElement(GUI_ELEMENT_FOCUSED,
+                               true,
+                               MenuItem.fRect.LeftTop,
+                               MenuItem.fRect.RightBottom,
+                               MenuItem.fRect.LeftTop,
+                               MenuItem.fRect.RightBottom);
 
    end;
 
@@ -7196,7 +7724,7 @@ begin
  end;
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawScrollBar(const aCanvas:TpvCanvas;const aScrollBar:TpvGUIScrollBar);
+procedure TpvGUIDefaultVectorBasedSkin.DrawScrollBar(const aDrawEngine:TpvGUIDrawEngine;const aScrollBar:TpvGUIScrollBar);
 const IconSpacer=0.0;
 var Element:TpvInt32;
     Offset:TpvVector2;
@@ -7204,8 +7732,8 @@ var Element:TpvInt32;
     Rect:TpvRect;
 begin
 
- aCanvas.ModelMatrix:=aScrollBar.fModelMatrix;
- aCanvas.ClipRect:=aScrollBar.fClipRect;
+ aDrawEngine.ModelMatrix:=aScrollBar.fModelMatrix;
+ aDrawEngine.ClipRect:=aScrollBar.fClipRect;
 
  if aScrollBar.Enabled then begin
   if aScrollBar.Focused xor (aScrollBar.fPushedSubWidget=TpvGUIScrollBarSubWidget.ThumbButton) then begin
@@ -7224,12 +7752,12 @@ begin
    Offset:=TpvVector2.InlineableCreate(0.0,aScrollBar.fButtonSize-2.0);
   end;
  end;
- aCanvas.DrawGUIElement(Element,
-                        true,
-                        Offset,
-                        TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset,
-                        Offset,
-                        TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset);
+ aDrawEngine.DrawGUIElement(Element,
+                            true,
+                            Offset,
+                            TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset,
+                            Offset,
+                            TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset);
 
  Rect:=aScrollBar.GetThumbButtonRect;
  if aScrollBar.Enabled then begin
@@ -7243,15 +7771,15 @@ begin
  end else begin
   Element:=GUI_ELEMENT_BUTTON_DISABLED;
  end;
- aCanvas.DrawGUIElement(Element,
-                        true,
-                        Rect.LeftTop,
-                        Rect.RightBottom,
-                        Rect.LeftTop,
-                        Rect.RightBottom);
+ aDrawEngine.DrawGUIElement(Element,
+                            true,
+                            Rect.LeftTop,
+                            Rect.RightBottom,
+                            Rect.LeftTop,
+                            Rect.RightBottom);
 
  if aScrollBar.Enabled then begin
-  aCanvas.Color:=aScrollBar.FontColor;
+  aDrawEngine.Color:=aScrollBar.FontColor;
   if aScrollBar.fPushedSubWidget=TpvGUIScrollBarSubWidget.DecButton then begin
    Element:=GUI_ELEMENT_BUTTON_PUSHED;
   end else if aScrollBar.Focused and (aScrollBar.fFocusedSubWidget=TpvGUIScrollBarSubWidget.DecButton) then begin
@@ -7261,39 +7789,39 @@ begin
   end;
  end else begin
   Element:=GUI_ELEMENT_BUTTON_DISABLED;
-  aCanvas.Color:=TpvVector4.InlineableCreate(aScrollBar.FontColor.rgb,aScrollBar.FontColor.a*0.25);
+  aDrawEngine.Color:=TpvVector4.InlineableCreate(aScrollBar.FontColor.rgb,aScrollBar.FontColor.a*0.25);
  end;
  case aScrollBar.fOrientation of
   TpvGUIScrollBarOrientation.Horizontal:begin
-   aCanvas.DrawGUIElement(Element,
-                          true,
-                          TpvVector2.InlineableCreate(0.0,0.0),
-                          TpvVector2.InlineableCreate(aScrollBar.fButtonSize,aScrollBar.fSize.y),
-                          TpvVector2.InlineableCreate(0.0,0.0),
-                          TpvVector2.InlineableCreate(aScrollBar.fButtonSize,aScrollBar.fSize.y));
+   aDrawEngine.DrawGUIElement(Element,
+                              true,
+                              TpvVector2.InlineableCreate(0.0,0.0),
+                              TpvVector2.InlineableCreate(aScrollBar.fButtonSize,aScrollBar.fSize.y),
+                              TpvVector2.InlineableCreate(0.0,0.0),
+                              TpvVector2.InlineableCreate(aScrollBar.fButtonSize,aScrollBar.fSize.y));
    Sprite:=TpvSprite(fIconDirectionArrowLeft);
-   aCanvas.DrawSprite(Sprite,
-                      TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                      TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(IconSpacer,IconSpacer),
-                                             TpvVector2.InlineableCreate(aScrollBar.fButtonSize-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
+   aDrawEngine.DrawSprite(Sprite,
+                          TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
+                          TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(IconSpacer,IconSpacer),
+                                                 TpvVector2.InlineableCreate(aScrollBar.fButtonSize-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
   end;
   else {TpvGUIScrollBarOrientation.Vertical:}begin
-   aCanvas.DrawGUIElement(Element,
-                          true,
-                          TpvVector2.InlineableCreate(0.0,0.0),
-                          TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fButtonSize),
-                          TpvVector2.InlineableCreate(0.0,0.0),
-                          TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fButtonSize));
+   aDrawEngine.DrawGUIElement(Element,
+                              true,
+                              TpvVector2.InlineableCreate(0.0,0.0),
+                              TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fButtonSize),
+                              TpvVector2.InlineableCreate(0.0,0.0),
+                              TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fButtonSize));
    Sprite:=TpvSprite(fIconDirectionArrowUp);
-   aCanvas.DrawSprite(Sprite,
-                      TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                      TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(IconSpacer,IconSpacer),
-                                             TpvVector2.InlineableCreate(aScrollBar.fSize.x-IconSpacer,aScrollBar.fButtonSize-IconSpacer)));
+   aDrawEngine.DrawSprite(Sprite,
+                          TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
+                          TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(IconSpacer,IconSpacer),
+                                                 TpvVector2.InlineableCreate(aScrollBar.fSize.x-IconSpacer,aScrollBar.fButtonSize-IconSpacer)));
   end;
  end;
 
  if aScrollBar.Enabled then begin
-  aCanvas.Color:=aScrollBar.FontColor;
+  aDrawEngine.Color:=aScrollBar.FontColor;
   if aScrollBar.fPushedSubWidget=TpvGUIScrollBarSubWidget.IncButton then begin
    Element:=GUI_ELEMENT_BUTTON_PUSHED;
   end else if aScrollBar.Focused and (aScrollBar.fFocusedSubWidget=TpvGUIScrollBarSubWidget.IncButton) then begin
@@ -7303,34 +7831,34 @@ begin
   end;
  end else begin
   Element:=GUI_ELEMENT_BUTTON_DISABLED;
-  aCanvas.Color:=TpvVector4.InlineableCreate(aScrollBar.FontColor.rgb,aScrollBar.FontColor.a*0.25);
+  aDrawEngine.Color:=TpvVector4.InlineableCreate(aScrollBar.FontColor.rgb,aScrollBar.FontColor.a*0.25);
  end;
  case aScrollBar.fOrientation of
   TpvGUIScrollBarOrientation.Horizontal:begin
-   aCanvas.DrawGUIElement(Element,
-                          true,
-                          TpvVector2.InlineableCreate(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
-                          TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y),
-                          TpvVector2.InlineableCreate(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
-                          TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y));
+   aDrawEngine.DrawGUIElement(Element,
+                              true,
+                              TpvVector2.InlineableCreate(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
+                              TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y),
+                              TpvVector2.InlineableCreate(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
+                              TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y));
    Sprite:=TpvSprite(fIconDirectionArrowRight);
-   aCanvas.DrawSprite(Sprite,
-                      TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                      TpvRect.CreateAbsolute(TpvVector2.InlineableCreate((aScrollBar.fSize.x-aScrollBar.fButtonSize)+IconSpacer,IconSpacer),
-                                             TpvVector2.InlineableCreate(aScrollBar.fSize.x-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
+   aDrawEngine.DrawSprite(Sprite,
+                          TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
+                          TpvRect.CreateAbsolute(TpvVector2.InlineableCreate((aScrollBar.fSize.x-aScrollBar.fButtonSize)+IconSpacer,IconSpacer),
+                                                 TpvVector2.InlineableCreate(aScrollBar.fSize.x-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
   end;
   else {TpvGUIScrollBarOrientation.Vertical:}begin
-   aCanvas.DrawGUIElement(Element,
-                          true,
-                          TpvVector2.InlineableCreate(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
-                          TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y),
-                          TpvVector2.InlineableCreate(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
-                          TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y));
+   aDrawEngine.DrawGUIElement(Element,
+                              true,
+                              TpvVector2.InlineableCreate(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
+                              TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y),
+                              TpvVector2.InlineableCreate(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
+                              TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y));
    Sprite:=TpvSprite(fIconDirectionArrowDown);
-   aCanvas.DrawSprite(Sprite,
-                      TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
-                      TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(IconSpacer,(aScrollBar.fSize.y-aScrollBar.fButtonSize)+IconSpacer),
-                                             TpvVector2.InlineableCreate(aScrollBar.fSize.x-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
+   aDrawEngine.DrawSprite(Sprite,
+                          TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
+                          TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(IconSpacer,(aScrollBar.fSize.y-aScrollBar.fButtonSize)+IconSpacer),
+                                                 TpvVector2.InlineableCreate(aScrollBar.fSize.x-IconSpacer,aScrollBar.fSize.y-IconSpacer)));
   end;
  end;
 
@@ -7356,7 +7884,7 @@ begin
  end;
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawSlider(const aCanvas:TpvCanvas;const aSlider:TpvGUISlider);
+procedure TpvGUIDefaultVectorBasedSkin.DrawSlider(const aDrawEngine:TpvGUIDrawEngine;const aSlider:TpvGUISlider);
 const IconSpacer=0.0;
 var Element:TpvInt32;
     Offset:TpvVector2;
@@ -7364,8 +7892,8 @@ var Element:TpvInt32;
     Rect:TpvRect;
 begin
 
- aCanvas.ModelMatrix:=aSlider.fModelMatrix;
- aCanvas.ClipRect:=aSlider.fClipRect;
+ aDrawEngine.ModelMatrix:=aSlider.fModelMatrix;
+ aDrawEngine.ClipRect:=aSlider.fClipRect;
 
  if aSlider.Enabled then begin
   if aSlider.Focused xor (aSlider.fPushedSubWidget=TpvGUISliderSubWidget.ThumbButton) then begin
@@ -7384,12 +7912,12 @@ begin
    Offset:=TpvVector2.InlineableCreate(6.0,0.0);
   end;
  end;
- aCanvas.DrawGUIElement(Element,
-                        true,
-                        Offset,
-                        TpvVector2.InlineableCreate(aSlider.fSize.x,aSlider.fSize.y)-Offset,
-                        Offset,
-                        TpvVector2.InlineableCreate(aSlider.fSize.x,aSlider.fSize.y)-Offset);
+ aDrawEngine.DrawGUIElement(Element,
+                            true,
+                            Offset,
+                            TpvVector2.InlineableCreate(aSlider.fSize.x,aSlider.fSize.y)-Offset,
+                            Offset,
+                            TpvVector2.InlineableCreate(aSlider.fSize.x,aSlider.fSize.y)-Offset);
 
  Rect:=aSlider.GetThumbButtonRect;
  if aSlider.Enabled then begin
@@ -7403,12 +7931,12 @@ begin
  end else begin
   Element:=GUI_ELEMENT_BUTTON_DISABLED;
  end;
- aCanvas.DrawGUIElement(Element,
-                        true,
-                        Rect.LeftTop,
-                        Rect.RightBottom,
-                        Rect.LeftTop,
-                        Rect.RightBottom);
+ aDrawEngine.DrawGUIElement(Element,
+                            true,
+                            Rect.LeftTop,
+                            Rect.RightBottom,
+                            Rect.LeftTop,
+                            Rect.RightBottom);
 
 end;
 
@@ -7432,7 +7960,7 @@ begin
  end;
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawProgressBar(const aCanvas:TpvCanvas;const aProgressBar:TpvGUIProgressBar);
+procedure TpvGUIDefaultVectorBasedSkin.DrawProgressBar(const aDrawEngine:TpvGUIDrawEngine;const aProgressBar:TpvGUIProgressBar);
 const IconSpacer=0.0;
 var Element:TpvInt32;
     Offset,Scale:TpvVector2;
@@ -7440,8 +7968,8 @@ var Element:TpvInt32;
     Rect:TpvRect;
 begin
 
- aCanvas.ModelMatrix:=aProgressBar.fModelMatrix;
- aCanvas.ClipRect:=aProgressBar.fClipRect;
+ aDrawEngine.ModelMatrix:=aProgressBar.fModelMatrix;
+ aDrawEngine.ClipRect:=aProgressBar.fClipRect;
 
  if aProgressBar.Enabled then begin
   if aProgressBar.Focused then begin
@@ -7460,12 +7988,12 @@ begin
    Offset:=TpvVector2.InlineableCreate(0.0,0.0);
   end;
  end;
- aCanvas.DrawGUIElement(Element,
-                        true,
-                        Offset,
-                        TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
-                        Offset,
-                        TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset);
+ aDrawEngine.DrawGUIElement(Element,
+                            true,
+                            Offset,
+                            TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
+                            Offset,
+                            TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset);
 
  if aProgressBar.Enabled then begin
   if aProgressBar.Focused then begin
@@ -7480,22 +8008,22 @@ begin
   TpvGUIProgressBarOrientation.Horizontal:begin
    Offset:=TpvVector2.InlineableCreate(2.0,2.0);
    Scale:=TpvVector2.InlineableCreate((aProgressBar.fValue-aProgressBar.fMinimumValue)/(aProgressBar.fMaximumValue-aProgressBar.fMinimumValue),1.0);
-   aCanvas.DrawGUIElement(Element,
-                          true,
-                          Offset,
-                          Offset+((TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale),
-                          Offset,
-                          Offset+((TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale));
+   aDrawEngine.DrawGUIElement(Element,
+                              true,
+                              Offset,
+                              Offset+((TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale),
+                              Offset,
+                              Offset+((TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale));
   end;
   else {TpvGUIProgressBarOrientation.Vertical:}begin
    Offset:=TpvVector2.InlineableCreate(2.0,2.0);
    Scale:=TpvVector2.InlineableCreate(1.0,1.0-((aProgressBar.fValue-aProgressBar.fMinimumValue)/(aProgressBar.fMaximumValue-aProgressBar.fMinimumValue)));
-   aCanvas.DrawGUIElement(Element,
-                          true,
-                          Offset+(TpvVector2.InlineableCreate(0.0,aProgressBar.fSize.y-(Offset.y*2.0))*Scale),
-                          TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
-                          Offset+(TpvVector2.InlineableCreate(0.0,aProgressBar.fSize.y-(Offset.y*2.0))*Scale),
-                          TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset);
+   aDrawEngine.DrawGUIElement(Element,
+                              true,
+                              Offset+(TpvVector2.InlineableCreate(0.0,aProgressBar.fSize.y-(Offset.y*2.0))*Scale),
+                              TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
+                              Offset+(TpvVector2.InlineableCreate(0.0,aProgressBar.fSize.y-(Offset.y*2.0))*Scale),
+                              TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset);
   end;
  end;
 
@@ -7644,7 +8172,7 @@ begin
 
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawTabPanel(const aCanvas:TpvCanvas;const aTabPanel:TpvGUITabPanel);
+procedure TpvGUIDefaultVectorBasedSkin.DrawTabPanel(const aDrawEngine:TpvGUIDrawEngine;const aTabPanel:TpvGUITabPanel);
 const IconSpacer=0.0;
 var Element,Index,TabIndex:TpvInt32;
     Offset:TpvVector2;
@@ -7657,7 +8185,7 @@ var Element,Index,TabIndex:TpvInt32;
  begin
 
   if aTabPanel.Enabled then begin
-   aCanvas.Color:=aTabPanel.FontColor;
+   aDrawEngine.Color:=aTabPanel.FontColor;
    if aTabPanel.fTabIndex=aTab.Index then begin
     Element:=GUI_ELEMENT_TAB_BUTTON_PUSHED;
    end else begin
@@ -7665,32 +8193,32 @@ var Element,Index,TabIndex:TpvInt32;
    end;
   end else begin
    Element:=GUI_ELEMENT_TAB_BUTTON_DISABLED;
-   aCanvas.Color:=TpvVector4.InlineableCreate(aTabPanel.FontColor.rgb,aTabPanel.FontColor.a*0.25);
+   aDrawEngine.Color:=TpvVector4.InlineableCreate(aTabPanel.FontColor.rgb,aTabPanel.FontColor.a*0.25);
   end;
 
-  aCanvas.DrawGUIElement(Element,
-                         true,
-                         aTab.fPosition,
-                         aTab.fPosition+aTab.fSize,
-                         aTab.fPosition,
-                         aTab.fPosition+aTab.fSize);
+  aDrawEngine.DrawGUIElement(Element,
+                             true,
+                             aTab.fPosition,
+                             aTab.fPosition+aTab.fSize,
+                             aTab.fPosition,
+                             aTab.fPosition+aTab.fSize);
 
-  aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
+  aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
 
-  aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+  aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
 
-  aCanvas.Font:=CurrentFont;
+  aDrawEngine.Font:=CurrentFont;
 
-  aCanvas.FontSize:=CurrentFontSize;
+  aDrawEngine.FontSize:=CurrentFontSize;
 
-  aCanvas.DrawText(aTab.fCachedCaption,
-                   aTab.fPosition+TpvVector2.InlineableCreate(aTab.fSize.x*0.5,aTab.fSize.y*0.5));
+  aDrawEngine.DrawText(aTab.fCachedCaption,
+                       aTab.fPosition+TpvVector2.InlineableCreate(aTab.fSize.x*0.5,aTab.fSize.y*0.5));
 
  end;
 begin
 
- aCanvas.ModelMatrix:=aTabPanel.fModelMatrix;
- aCanvas.ClipRect:=aTabPanel.fClipRect;
+ aDrawEngine.ModelMatrix:=aTabPanel.fModelMatrix;
+ aDrawEngine.ClipRect:=aTabPanel.fClipRect;
 
  CurrentFont:=aTabPanel.Font;
 
@@ -7748,18 +8276,18 @@ begin
  if (aTabPanel.fFlags*[TpvGUITabPanelFlag.VisibleContent,TpvGUITabPanelFlag.VisibleContentBackground])=[TpvGUITabPanelFlag.VisibleContent,TpvGUITabPanelFlag.VisibleContentBackground] then begin
 
   if aTabPanel.Enabled then begin
-   aCanvas.Color:=aTabPanel.FontColor;
+   aDrawEngine.Color:=aTabPanel.FontColor;
    Element:=GUI_ELEMENT_PANEL_ENABLED;
   end else begin
    Element:=GUI_ELEMENT_PANEL_DISABLED;
-   aCanvas.Color:=TpvVector4.InlineableCreate(aTabPanel.FontColor.rgb,aTabPanel.FontColor.a*0.25);
+   aDrawEngine.Color:=TpvVector4.InlineableCreate(aTabPanel.FontColor.rgb,aTabPanel.FontColor.a*0.25);
   end;
-  aCanvas.DrawGUIElement(Element,
-                         true,
-                         aTabPanel.fContentRect.LeftTop,
-                         aTabPanel.fContentRect.RightBottom,
-                         aTabPanel.fContentRect.LeftTop,
-                         aTabPanel.fContentRect.RightBottom);
+  aDrawEngine.DrawGUIElement(Element,
+                             true,
+                             aTabPanel.fContentRect.LeftTop,
+                             aTabPanel.fContentRect.RightBottom,
+                             aTabPanel.fContentRect.LeftTop,
+                             aTabPanel.fContentRect.RightBottom);
 
  end;
 
@@ -7790,7 +8318,7 @@ begin
 
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawListBox(const aCanvas:TpvCanvas;const aListBox:TpvGUIListBox);
+procedure TpvGUIDefaultVectorBasedSkin.DrawListBox(const aDrawEngine:TpvGUIDrawEngine;const aListBox:TpvGUIListBox);
 var Element:TpvInt32;
     ItemIndex:TpvSizeInt;
     CurrentFont:TpvFont;
@@ -7801,8 +8329,7 @@ var Element:TpvInt32;
     ItemText:TpvUTF8String;
 begin
 
-
- aCanvas.ModelMatrix:=aListBox.fModelMatrix;
+ aDrawEngine.ModelMatrix:=aListBox.fModelMatrix;
 
  ClipRect:=aListBox.fClipRect;
 
@@ -7810,15 +8337,15 @@ begin
   ClipRect.Right:=ClipRect.Right-aListBox.fScrollBar.fSize.x;
  end;
 
- aCanvas.ClipRect:=ClipRect;
+ aDrawEngine.ClipRect:=ClipRect;
 
  CurrentFont:=aListBox.Font;
 
  CurrentFontSize:=aListBox.FontSize;
 
- aCanvas.Font:=CurrentFont;
+ aDrawEngine.Font:=CurrentFont;
 
- aCanvas.FontSize:=CurrentFontSize;
+ aDrawEngine.FontSize:=CurrentFontSize;
 
  if aListBox.Enabled then begin
   FontColor:=aListBox.FontColor;
@@ -7835,12 +8362,12 @@ begin
  DrawRect.LeftTop:=ClipRect.LeftTop-aListBox.fClipRect.LeftTop;
  DrawRect.RightBottom:=ClipRect.RightBottom-aListBox.fClipRect.LeftTop;
 
- aCanvas.DrawGUIElement(Element,
-                        true,
-                        DrawRect.LeftTop,
-                        DrawRect.RightBottom,
-                        DrawRect.LeftTop,
-                        DrawRect.RightBottom);
+ aDrawEngine.DrawGUIElement(Element,
+                            true,
+                            DrawRect.LeftTop,
+                            DrawRect.RightBottom,
+                            DrawRect.LeftTop,
+                            DrawRect.RightBottom);
 
  Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
 
@@ -7854,13 +8381,13 @@ begin
 
  aListBox.fWorkRowHeight:=RowHeight;
 
- aCanvas.Color:=FontColor;
+ aDrawEngine.Color:=FontColor;
 
  ClipRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
 
  ClipRect.RightBottom:=ClipRect.RightBottom-TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
 
- aCanvas.ClipRect:=ClipRect;
+ aDrawEngine.ClipRect:=ClipRect;
 
  DrawRect.LeftTop:=ClipRect.LeftTop-aListBox.fClipRect.LeftTop;
  DrawRect.RightBottom:=ClipRect.RightBottom-aListBox.fClipRect.LeftTop;
@@ -7875,17 +8402,17 @@ begin
                                                       TpvVector2.InlineableCreate(DrawRect.Right,
                                                                                   Position.y+RowHeight)))) then begin
 
-   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
 
-   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
 
    if aListBox.Selected[ItemIndex] then begin
-    aCanvas.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
-    aCanvas.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
-                                                                                   Position.y),
-                                                       TpvVector2.InlineableCreate(aListBox.fSize.x-(BoxCornerMargin*2.0),
-                                                                                   RowHeight)));
-    aCanvas.Color:=FontColor;
+    aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+    aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                                                       Position.y),
+                                                           TpvVector2.InlineableCreate(aListBox.fSize.x-(BoxCornerMargin*2.0),
+                                                                                       RowHeight)));
+    aDrawEngine.Color:=FontColor;
    end;
 
    if assigned(aListBox.fOnGetItemText) then begin
@@ -7894,7 +8421,7 @@ begin
     ItemText:=TpvUTF8String(aListBox.fItems[ItemIndex]);
    end;
 
-   aCanvas.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
+   aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
 
    if aListBox.fItemIndex=ItemIndex then begin
     if aListBox.Focused then begin
@@ -7905,18 +8432,18 @@ begin
     Rect:=ClipRect;
     Rect.Left:=ClipRect.Left-1.0;
     Rect.Right:=ClipRect.Right+1.0;
-    aCanvas.ClipRect:=Rect;
+    aDrawEngine.ClipRect:=Rect;
     Rect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(BoxCornerMargin,
                                                              Position.y),
                                  TpvVector2.InlineableCreate(DrawRect.Right,
                                                              Position.y+RowHeight));
-    aCanvas.DrawGUIElement(Element,
-                           true,
-                           Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
-                           Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
-                           Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
-                           Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0));
-    aCanvas.ClipRect:=ClipRect;
+    aDrawEngine.DrawGUIElement(Element,
+                               true,
+                               Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
+                               Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
+                               Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
+                               Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0));
+    aDrawEngine.ClipRect:=ClipRect;
    end;
 
   end;
@@ -7953,7 +8480,7 @@ begin
 
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawComboBox(const aCanvas:TpvCanvas;const aComboBox:TpvGUIComboBox);
+procedure TpvGUIDefaultVectorBasedSkin.DrawComboBox(const aDrawEngine:TpvGUIDrawEngine;const aComboBox:TpvGUIComboBox);
 var Element:TpvInt32;
     ItemIndex:TpvSizeInt;
     CurrentFont:TpvFont;
@@ -7964,21 +8491,21 @@ var Element:TpvInt32;
     ItemText:TpvUTF8String;
 begin
 
- aCanvas.ModelMatrix:=aComboBox.fModelMatrix;
+ aDrawEngine.ModelMatrix:=aComboBox.fModelMatrix;
 
  ClipRect:=aComboBox.fClipRect;
 
  ClipRect.Right:=ClipRect.Right-aComboBox.fPopupButton.fSize.x;
 
- aCanvas.ClipRect:=ClipRect;
+ aDrawEngine.ClipRect:=ClipRect;
 
  CurrentFont:=aComboBox.Font;
 
  CurrentFontSize:=aComboBox.FontSize;
 
- aCanvas.Font:=CurrentFont;
+ aDrawEngine.Font:=CurrentFont;
 
- aCanvas.FontSize:=CurrentFontSize;
+ aDrawEngine.FontSize:=CurrentFontSize;
 
  if aComboBox.Enabled then begin
   FontColor:=aComboBox.FontColor;
@@ -7995,12 +8522,12 @@ begin
  DrawRect.LeftTop:=ClipRect.LeftTop-aComboBox.fClipRect.LeftTop;
  DrawRect.RightBottom:=ClipRect.RightBottom-aComboBox.fClipRect.LeftTop;
 
- aCanvas.DrawGUIElement(Element,
-                        true,
-                        DrawRect.LeftTop,
-                        DrawRect.RightBottom,
-                        DrawRect.LeftTop,
-                        DrawRect.RightBottom);
+ aDrawEngine.DrawGUIElement(Element,
+                            true,
+                            DrawRect.LeftTop,
+                            DrawRect.RightBottom,
+                            DrawRect.LeftTop,
+                            DrawRect.RightBottom);
 
  Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ComboBoxHorizontalMargin,BoxCornerMargin);
 
@@ -8012,13 +8539,13 @@ begin
 
  aComboBox.fWorkRowHeight:=RowHeight;
 
- aCanvas.Color:=FontColor;
+ aDrawEngine.Color:=FontColor;
 
  ClipRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
 
  ClipRect.RightBottom:=ClipRect.RightBottom-TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
 
- aCanvas.ClipRect:=ClipRect;
+ aDrawEngine.ClipRect:=ClipRect;
 
  DrawRect.LeftTop:=ClipRect.LeftTop-aComboBox.fClipRect.LeftTop;
  DrawRect.RightBottom:=ClipRect.RightBottom-aComboBox.fClipRect.LeftTop;
@@ -8034,9 +8561,9 @@ begin
                                                        TpvVector2.InlineableCreate(DrawRect.Right,
                                                                                    Position.y+RowHeight)))) then begin
 
-   aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
 
-   aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
 
    if assigned(aComboBox.fOnGetItemText) then begin
     ItemText:=aComboBox.fOnGetItemText(aComboBox,ItemIndex);
@@ -8044,7 +8571,7 @@ begin
     ItemText:=TpvUTF8String(aComboBox.fItems[ItemIndex]);
    end;
 
-   aCanvas.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
+   aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,RowHeight*0.5));
 
   end;
 
@@ -8071,13 +8598,13 @@ begin
  end;
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawSplitterPanelGripButton(const aCanvas:TpvCanvas;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton);
+procedure TpvGUIDefaultVectorBasedSkin.DrawSplitterPanelGripButton(const aDrawEngine:TpvGUIDrawEngine;const aSplitterPanelGripButton:TpvGUISplitterPanelGripButton);
 var Element:TpvInt32;
 begin
 
- aCanvas.ModelMatrix:=aSplitterPanelGripButton.fModelMatrix;
+ aDrawEngine.ModelMatrix:=aSplitterPanelGripButton.fModelMatrix;
 
- aCanvas.ClipRect:=aSplitterPanelGripButton.fClipRect;
+ aDrawEngine.ClipRect:=aSplitterPanelGripButton.fClipRect;
 
 if aSplitterPanelGripButton.Enabled then begin
   if aSplitterPanelGripButton.fDown then begin
@@ -8091,12 +8618,12 @@ if aSplitterPanelGripButton.Enabled then begin
   Element:=GUI_ELEMENT_BUTTON_DISABLED;
  end;
 
- aCanvas.DrawGUIElement(Element,
-                        true,
-                        TpvVector2.Null,
-                        aSplitterPanelGripButton.fSize,
-                        TpvVector2.Null,
-                        aSplitterPanelGripButton.fSize);
+ aDrawEngine.DrawGUIElement(Element,
+                            true,
+                            TpvVector2.Null,
+                            aSplitterPanelGripButton.fSize,
+                            TpvVector2.Null,
+                            aSplitterPanelGripButton.fSize);
 
 {if TpvGUISplitterPanel(aSplitterPanelGripButton.fParent).fGripSize>=9.0 then begin
 
@@ -8110,12 +8637,12 @@ if aSplitterPanelGripButton.Enabled then begin
    Element:=GUI_ELEMENT_BOX_DISABLED;
   end;
 
-  aCanvas.DrawGUIElement(Element,
-                         true,
-                         TpvVector2.InlineableCreate(3.0,3.0),
-                         aSplitterPanelGripButton.fSize-TpvVector2.InlineableCreate(3.0,3.0),
-                         TpvVector2.InlineableCreate(3.0,3.0),
-                         aSplitterPanelGripButton.fSize-TpvVector2.InlineableCreate(3.0,3.0));
+  aDrawEngine.DrawGUIElement(Element,
+                             true,
+                             TpvVector2.InlineableCreate(3.0,3.0),
+                             aSplitterPanelGripButton.fSize-TpvVector2.InlineableCreate(3.0,3.0),
+                             TpvVector2.InlineableCreate(3.0,3.0),
+                             aSplitterPanelGripButton.fSize-TpvVector2.InlineableCreate(3.0,3.0));
 
  end;}
 
@@ -8254,7 +8781,7 @@ begin
  end;
 end;
 
-procedure TpvGUIDefaultVectorBasedSkin.DrawMultiLineTextEdit(const aCanvas:TpvCanvas;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
+procedure TpvGUIDefaultVectorBasedSkin.DrawMultiLineTextEdit(const aDrawEngine:TpvGUIDrawEngine;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
 var ViewBufferX,ViewBufferY,ViewBufferIndex,StartViewBufferX,Index:TpvSizeInt;
     ViewBufferItem:TpvTextEditor.TView.PBufferItem;
     CurrentFontColor,Color:TpvVector4;
@@ -8273,8 +8800,8 @@ begin
 
  Offset:=TpvVector2.Null;
 
- aCanvas.ModelMatrix:=aMultiLineTextEdit.fModelMatrix;
- aCanvas.ClipRect:=aMultiLineTextEdit.fClipRect;
+ aDrawEngine.ModelMatrix:=aMultiLineTextEdit.fModelMatrix;
+ aDrawEngine.ClipRect:=aMultiLineTextEdit.fClipRect;
 
  if not aMultiLineTextEdit.Enabled then begin
 
@@ -8290,66 +8817,66 @@ begin
 
  end;
 
- aCanvas.DrawGUIElement(Element,
-                        true,
-                        aMultiLineTextEdit.fVisibleAreaRect.LeftTop,
-                        aMultiLineTextEdit.fVisibleAreaRect.RightBottom,
-                        aMultiLineTextEdit.fVisibleAreaRect.LeftTop,
-                        aMultiLineTextEdit.fVisibleAreaRect.RightBottom);
+ aDrawEngine.DrawGUIElement(Element,
+                            true,
+                            aMultiLineTextEdit.fVisibleAreaRect.LeftTop,
+                            aMultiLineTextEdit.fVisibleAreaRect.RightBottom,
+                            aMultiLineTextEdit.fVisibleAreaRect.LeftTop,
+                            aMultiLineTextEdit.fVisibleAreaRect.RightBottom);
 
- aCanvas.Font:=aMultiLineTextEdit.Font;
- aCanvas.FontSize:=aMultiLineTextEdit.FontSize;
+ aDrawEngine.Font:=aMultiLineTextEdit.Font;
+ aDrawEngine.FontSize:=aMultiLineTextEdit.FontSize;
 
  CurrentFontColor:=aMultiLineTextEdit.FontColor;
 
- aCanvas.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
- aCanvas.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
+ aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+ aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Leading;
 
- OldClipRect:=aCanvas.ClipRect;
+ OldClipRect:=aDrawEngine.ClipRect;
 
  TextClipRect.LeftTop:=(OldClipRect.LeftTop+aMultiLineTextEdit.fVisibleAreaRect.LeftTop)+(TpvVector2.Create(1.0,1.0));
  TextClipRect.RightBottom:=(OldClipRect.LeftTop+aMultiLineTextEdit.fVisibleAreaRect.RightBottom)-(TpvVector2.Create(1.0,1.0));
 
- aCanvas.ClipRect:=TextClipRect;
+ aDrawEngine.ClipRect:=TextClipRect;
 
  if aMultiLineTextEdit.fLeftSideBar then begin
   Color:=CurrentFontColor;
   for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
    if ViewBufferY=aMultiLineTextEdit.fViewBufferCursorY then begin
-    aCanvas.Color:=Color*TpvVector4.InlineableCreate(0.015625,0.015625,0.015625,1.0);
+    aDrawEngine.Color:=Color*TpvVector4.InlineableCreate(0.015625,0.015625,0.015625,1.0);
     Rect:=TpvRect.CreateAbsolute(aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
                                  TpvVector2.Create(0.0,aMultiLineTextEdit.fFontCharSize.y*ViewBufferY),
                                  aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
                                  TpvVector2.Create(aMultiLineTextEdit.fLeftSideBarAreaRect.Width-(aMultiLineTextEdit.fFontCharSize.x*0.5),aMultiLineTextEdit.fFontCharSize.y*(ViewBufferY+1)));
-    aCanvas.DrawFilledRectangle(Rect);
+    aDrawEngine.DrawFilledRectangle(Rect);
    end;
    if aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]>=0 then begin
-    aCanvas.Color:=Color;
+    aDrawEngine.Color:=Color;
 {$if false}
     Str(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]+1:5,LineNumberString);
-    aCanvas.DrawText(LineNumberString,
-                     aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
-                     (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(0.0,ViewBufferY)));
+    aDrawEngine.DrawText(LineNumberString,
+                         aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
+                         (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(0.0,ViewBufferY)));
 {$else}
     Str(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]+1,LineNumberString);
     ViewBufferX:=5-length(LineNumberString);
     for Index:=1 to length(LineNumberString) do begin
      if ViewBufferX>=0 then begin
-      aCanvas.DrawTextCodePoint(ord(LineNumberString[Index]),
-                                aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
-                                (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY)));
+      aDrawEngine.DrawTextCodePoint(ord(LineNumberString[Index]),
+                                    aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
+                                    (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY)));
      end;
      inc(ViewBufferX);
     end;
 {$ifend}
    end;
   end;
-  aCanvas.Color:=Color*TpvVector4.InlineableCreate(0.25,0.25,0.25,1.0);
-  aCanvas.DrawFilledRectangle(TpvVector2.Create(aMultiLineTextEdit.fLeftSideBarAreaRect.Right-(aMultiLineTextEdit.fFontCharSize.x*0.5),
-                                                aMultiLineTextEdit.fLeftSideBarAreaRect.Top+(aMultiLineTextEdit.fLeftSideBarAreaRect.Height*0.5)),
-                              TpvVector2.Create(1.0,aMultiLineTextEdit.fLeftSideBarAreaRect.Height*0.5));
+  aDrawEngine.Color:=Color*TpvVector4.InlineableCreate(0.25,0.25,0.25,1.0);
+  aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(TpvVector2.Create(aMultiLineTextEdit.fLeftSideBarAreaRect.Right-((aMultiLineTextEdit.fFontCharSize.x*0.5)+0.5),
+                                                                           aMultiLineTextEdit.fLeftSideBarAreaRect.Top),
+                                                         TpvVector2.Create(1.0,aMultiLineTextEdit.fLeftSideBarAreaRect.Height)));
   TextClipRect.Left:=aMultiLineTextEdit.fLeftSideBarAreaRect.Right;
-  aCanvas.ClipRect:=TextClipRect;
+  aDrawEngine.ClipRect:=TextClipRect;
  end;
 
  ViewBufferIndex:=0;
@@ -8365,11 +8892,11 @@ begin
     until (ViewBufferX>=aMultiLineTextEdit.fViewBufferWidth) or
           ((aMultiLineTextEdit.fViewBuffer[ViewBufferIndex].Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Marked)=0);
     if StartViewBufferX<ViewBufferX then begin
-     aCanvas.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
-     aCanvas.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
-                                                        (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(StartViewBufferX,ViewBufferY)),
-                                                        aMultiLineTextEdit.fTextAreaRect.Offset+
-                                                        (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY+1.0))));
+     aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+     aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
+                                                            (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(StartViewBufferX,ViewBufferY)),
+                                                            aMultiLineTextEdit.fTextAreaRect.Offset+
+                                                            (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY+1.0))));
     end;
    end else if (ViewBufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight)<>0 then begin
     repeat
@@ -8378,11 +8905,11 @@ begin
     until (ViewBufferX>=aMultiLineTextEdit.fViewBufferWidth) or
           ((aMultiLineTextEdit.fViewBuffer[ViewBufferIndex].Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight)=0);
     if StartViewBufferX<ViewBufferX then begin
-     aCanvas.Color:=TpvVector4.InlineableCreate(0.03125,0.03125,0.03125,1.0);
-     aCanvas.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
-                                                        (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(StartViewBufferX,ViewBufferY)),
-                                                        aMultiLineTextEdit.fTextAreaRect.Offset+
-                                                        (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY+1.0))));
+     aDrawEngine.Color:=TpvVector4.InlineableCreate(0.03125,0.03125,0.03125,1.0);
+     aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
+                                                            (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(StartViewBufferX,ViewBufferY)),
+                                                            aMultiLineTextEdit.fTextAreaRect.Offset+
+                                                            (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY+1.0))));
     end;
    end else begin
     inc(ViewBufferIndex);
@@ -8437,16 +8964,16 @@ begin
       Color:=CurrentFontColor;
      end;
     end;
-    aCanvas.Color:=Color;
-    aCanvas.DrawTextCodePoint(ViewBufferItem^.CodePoint,
-                              aMultiLineTextEdit.fTextAreaRect.Offset+
-                              (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY)));
+    aDrawEngine.Color:=Color;
+    aDrawEngine.DrawTextCodePoint(ViewBufferItem^.CodePoint,
+                                  aMultiLineTextEdit.fTextAreaRect.Offset+
+                                  (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY)));
    end;
    inc(ViewBufferIndex);
   end;
  end;
 
- aCanvas.Color:=CurrentFontColor;
+ aDrawEngine.Color:=CurrentFontColor;
 
  if aMultiLineTextEdit.Enabled and
     aMultiLineTextEdit.Focused and
@@ -8457,18 +8984,18 @@ begin
     (aMultiLineTextEdit.fViewBufferCursorY>=0) and
     (aMultiLineTextEdit.fViewBufferCursorY<=aMultiLineTextEdit.fViewBufferHeight) then begin
   if aMultiLineTextEdit.fOverwrite then begin
-   aCanvas.DrawFilledRectangle(aMultiLineTextEdit.fTextAreaRect.Offset+
-                               (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(aMultiLineTextEdit.fViewBufferCursorX+0.5,aMultiLineTextEdit.fViewBufferCursorY+0.5)),
-                               aMultiLineTextEdit.fFontCharSize*0.5);
+   aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(aMultiLineTextEdit.fTextAreaRect.Offset+
+                                                          (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(aMultiLineTextEdit.fViewBufferCursorX,aMultiLineTextEdit.fViewBufferCursorY)),
+                                                          aMultiLineTextEdit.fFontCharSize));
   end else begin
-   aCanvas.DrawFilledRectangle(aMultiLineTextEdit.fTextAreaRect.Offset+
-                               (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(aMultiLineTextEdit.fViewBufferCursorX,aMultiLineTextEdit.fViewBufferCursorY+0.5)),
-                               TpvVector2.InlineableCreate(1.0,
-                                                           aMultiLineTextEdit.fFontCharSize.y*0.5));
+   aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(aMultiLineTextEdit.fTextAreaRect.Offset+
+                                                          (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(aMultiLineTextEdit.fViewBufferCursorX,aMultiLineTextEdit.fViewBufferCursorY)),
+                                                          TpvVector2.InlineableCreate(1.0,
+                                                                                      aMultiLineTextEdit.fFontCharSize.y)));
   end;
  end;
 
- aCanvas.ClipRect:=OldClipRect;
+ aDrawEngine.ClipRect:=OldClipRect;
 
 end;
 
@@ -8496,8 +9023,6 @@ constructor TpvGUIWidget.Create(const aParent:TpvGUIObject);
 begin
 
  inherited Create(aParent);
-
- fCanvas:=nil;
 
  fLayout:=nil;
 
@@ -8589,21 +9114,6 @@ end;
 procedure TpvGUIWidget.BeforeDestruction;
 begin
  inherited BeforeDestruction;
-end;
-
-procedure TpvGUIWidget.SetCanvas(const aCanvas:TpvCanvas);
-var ChildIndex:TpvInt32;
-    Child:TpvGUIObject;
-    ChildWidget:TpvGUIWidget;
-begin
- fCanvas:=aCanvas;
- for ChildIndex:=0 to fChildren.Count-1 do begin
-  Child:=fChildren.Items[ChildIndex];
-  if Child is TpvGUIWidget then begin
-   ChildWidget:=Child as TpvGUIWidget;
-   ChildWidget.SetCanvas(aCanvas);
-  end;
- end;
 end;
 
 function TpvGUIWidget.GetSkin:TpvGUISkin;
@@ -9336,7 +9846,7 @@ var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
 begin
- if fInstance.fDrawWidgetBounds then begin
+{if fInstance.fDrawWidgetBounds then begin
   fCanvas.Push;
   try
    fCanvas.ModelMatrix:=fModelMatrix;
@@ -9356,7 +9866,7 @@ begin
   finally
    fCanvas.Pop;
   end;
- end;
+ end;}
  if TpvGUIWidgetFlag.Scissor in fWidgetFlags then begin
   fParentClipRect:=fClipRect;
  end;
@@ -9370,13 +9880,12 @@ begin
     ChildWidget.fClipRect:=fClipRect.GetIntersection(TpvRect.CreateRelative(fModelMatrix*ChildWidget.fPosition,
                                                                             ChildWidget.fSize));
     ChildWidget.fModelMatrix:=TpvMatrix4x4.CreateTranslation(ChildWidget.Left,ChildWidget.Top)*fModelMatrix;
-    ChildWidget.fCanvas:=fCanvas;
     ChildWidget.Draw;
    end;
   end;
  end;
  if TpvGUIWidgetFlag.DrawFocus in fWidgetFlags then begin
-  Skin.DrawFocus(fCanvas,self);
+  Skin.DrawFocus(fInstance.DrawEngine,self);
  end;
 end;
 
@@ -9390,7 +9899,6 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
-    ChildWidget.fCanvas:=fCanvas;
     ChildWidget.ExecuteDraw;
    end;
   end;
@@ -9415,6 +9923,8 @@ begin
  inherited Create(nil);
 
  fInstance:=self;
+
+ fDrawEngine:=nil;
 
  fVulkanDevice:=aVulkanDevice;
 
@@ -9511,8 +10021,18 @@ begin
 
  fBuffers:=nil;
 
+ FreeAndNil(fDrawEngine);
+
  inherited Destroy;
 
+end;
+
+procedure TpvGUIInstance.SetDrawEngine(const aDrawEngine:TpvGUIDrawEngine);
+begin
+ if fDrawEngine<>aDrawEngine then begin
+  FreeAndNil(fDrawEngine);
+  fDrawEngine:=aDrawEngine;
+ end;
 end;
 
 procedure TpvGUIInstance.SetCountBuffers(const aCountBuffers:TpvInt32);
@@ -10081,6 +10601,7 @@ var Index:TpvInt32;
     Popup:TpvGUIPopup;
     PopupMenu:TpvGUIPopupMenu;
 begin
+ fDrawEngine.Clear;
  ClearReferenceCountedObjectList;
  for Index:=0 to fChildren.Count-1 do begin
   if fChildren[Index] is TpvGUIPopup then begin
@@ -10090,8 +10611,8 @@ begin
    end;
   end;
  end;
- LastModelMatrix:=fCanvas.ModelMatrix;
- LastClipRect:=fCanvas.ClipRect;
+ LastModelMatrix:=fDrawEngine.ModelMatrix;
+ LastClipRect:=fDrawEngine.ClipRect;
  try
   fModelMatrix:=LastModelMatrix;
   fClipRect:=LastClipRect.GetIntersection(TpvRect.CreateRelative(fPosition,fSize));
@@ -10100,13 +10621,14 @@ begin
   for Index:=0 to fPopupMenuStack.Count-1 do begin
    PopupMenu:=fPopupMenuStack[Index] as TpvGUIPopupMenu;
    fInstance.AddReferenceCountedObjectForNextDraw(PopupMenu);
-   PopupMenu.Draw(fCanvas);
+   PopupMenu.Draw(fDrawEngine);
   end;
-  Skin.DrawMouse(fCanvas,self);
+  Skin.DrawMouse(fDrawEngine,self);
  finally
-  fCanvas.ModelMatrix:=LastModelMatrix;
-  fCanvas.ClipRect:=LastClipRect;
+  fDrawEngine.ModelMatrix:=LastModelMatrix;
+  fDrawEngine.ClipRect:=LastClipRect;
  end;
+ fDrawEngine.Draw;
  fTime:=fTime+fDeltaTime;
 end;
 
@@ -10878,7 +11400,7 @@ end;
 
 procedure TpvGUIWindow.Draw;
 begin
- Skin.DrawWindow(fCanvas,self);
+ Skin.DrawWindow(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -11202,7 +11724,7 @@ end;
 procedure TpvGUIPanel.Draw;
 begin
  if fBackground then begin
-  Skin.DrawPanel(fCanvas,self);
+  Skin.DrawPanel(fInstance.DrawEngine,self);
  end;
  inherited Draw;
 end;
@@ -11225,7 +11747,7 @@ end;
 
 procedure TpvGUIImage.Draw;
 begin
- Skin.DrawImage(fCanvas,self);
+ Skin.DrawImage(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -11325,7 +11847,7 @@ end;
 
 procedure TpvGUILabel.Draw;
 begin
- Skin.DrawLabel(fCanvas,self);
+ Skin.DrawLabel(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -11568,7 +12090,7 @@ end;
 
 procedure TpvGUIButton.Draw;
 begin
- Skin.DrawButton(fCanvas,self);
+ Skin.DrawButton(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -11871,7 +12393,7 @@ end;
 
 procedure TpvGUICheckBox.Draw;
 begin
- Skin.DrawCheckBox(fCanvas,self);
+ Skin.DrawCheckBox(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -12617,7 +13139,7 @@ end;
 
 procedure TpvGUITextEdit.Draw;
 begin
- Skin.DrawTextEdit(fCanvas,self);
+ Skin.DrawTextEdit(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -13759,9 +14281,9 @@ begin
  end;
 end;
 
-procedure TpvGUIPopupMenu.Draw(const aCanvas:TpvCanvas);
+procedure TpvGUIPopupMenu.Draw(const aDrawEngine:TpvGUIDrawEngine);
 begin
- Skin.DrawPopupMenu(aCanvas,self);
+ Skin.DrawPopupMenu(fInstance.DrawEngine,self);
 end;
 
 constructor TpvGUIWindowMenu.Create(const aParent:TpvGUIObject);
@@ -14039,7 +14561,7 @@ end;
 
 procedure TpvGUIWindowMenu.Draw;
 begin
- Skin.DrawWindowMenu(fCanvas,self);
+ Skin.DrawWindowMenu(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -14535,7 +15057,7 @@ begin
    end;
   end;
  end;
- Skin.DrawScrollBar(fCanvas,self);
+ Skin.DrawScrollBar(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -14938,7 +15460,7 @@ begin
    end;
   end;
  end;
- Skin.DrawSlider(fCanvas,self);
+ Skin.DrawSlider(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -15008,7 +15530,7 @@ end;
 
 procedure TpvGUIProgressBar.Draw;
 begin
- Skin.DrawProgressBar(fCanvas,self);
+ Skin.DrawProgressBar(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -15743,7 +16265,7 @@ end;
 procedure TpvGUITabPanel.Draw;
 begin
  ExecuteInvalidateActions;
- Skin.DrawTabPanel(fCanvas,self);
+ Skin.DrawTabPanel(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -16211,7 +16733,7 @@ end;
 procedure TpvGUIListBox.Draw;
 begin
  UpdateScrollBar;
- Skin.DrawListBox(fCanvas,self);
+ Skin.DrawListBox(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -16530,7 +17052,7 @@ end;
 
 procedure TpvGUIComboBox.Draw;
 begin
- Skin.DrawComboBox(fCanvas,self);
+ Skin.DrawComboBox(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -16676,7 +17198,7 @@ end;
 
 procedure TpvGUISplitterPanelGripButton.Draw;
 begin
- Skin.DrawSplitterPanelGripButton(fCanvas,self);
+ Skin.DrawSplitterPanelGripButton(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -17686,7 +18208,7 @@ begin
  if fVerticalScrollBar.Visible and (fVerticalScrollBar.Value<>fView.CursorOffset.y) then begin
   fVerticalScrollBar.Value:=fView.CursorOffset.y;
  end;
- Skin.DrawMultiLineTextEdit(fCanvas,self);
+ Skin.DrawMultiLineTextEdit(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
