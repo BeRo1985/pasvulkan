@@ -173,11 +173,11 @@ const vec4 uFocused = MAKE_COLOR(255.0, 192.0, 64.0, 255.0);
 
 const vec4 uHovered = MAKE_COLOR(64.0, 192.0, 255.0, 255.0);
 
-const vec4 uUnfocusedWindowFill = MAKE_GRAY_COLOR(43.0, 254.0);
-const vec4 uFocusedWindowFill = MAKE_GRAY_COLOR(45.0, 254.0);
+const vec4 uUnfocusedWindowFill = MAKE_GRAY_COLOR(43.0, 255.0);
+const vec4 uFocusedWindowFill = MAKE_GRAY_COLOR(45.0, 255.0);
 
-const vec4 uUnfocusedWindowFillBorder = MAKE_GRAY_COLOR(21.5, 254.0);
-const vec4 uFocusedWindowFillBorder = MAKE_GRAY_COLOR(22.5, 254.0);
+const vec4 uUnfocusedWindowFillBorder = MAKE_GRAY_COLOR(21.5, 255.0);
+const vec4 uFocusedWindowFillBorder = MAKE_GRAY_COLOR(22.5, 255.0);
 
 const vec4 uUnfocusedWindowTitle = MAKE_GRAY_COLOR(220.0, 160.0);
 const vec4 uFocusedWindowTitle = MAKE_GRAY_COLOR(255.0, 190.0);
