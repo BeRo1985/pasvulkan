@@ -17429,10 +17429,12 @@ begin
  fPartitionFactor:=0.5;
 
  fLeftTopPanel:=TpvGUIPanel.Create(self);
+ Include(fLeftTopPanel.fWidgetFlags,TpvGUIWidgetFlag.Scissor);
 
  fGripButton:=TpvGUISplitterPanelGripButton.Create(self);
 
  fRightBottomPanel:=TpvGUIPanel.Create(self);
+ Include(fRightBottomPanel.fWidgetFlags,TpvGUIWidgetFlag.Scissor);
 
  fDirty:=true;
 
