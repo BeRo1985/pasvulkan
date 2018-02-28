@@ -2910,63 +2910,99 @@ begin
 
  fReferenceCounter:=0;
 
- Stream:=TpvDataStream.Create(@CanvasVertexSPIRVData,CanvasVertexSPIRVDataSize);
+ if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+  Stream:=TpvDataStream.Create(@CanvasVertexClipDistanceSPIRVData,CanvasVertexClipDistanceSPIRVDataSize);
+ end else begin
+  Stream:=TpvDataStream.Create(@CanvasVertexSPIRVData,CanvasVertexSPIRVDataSize);
+ end;
  try
   fCanvasVertexShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=TpvDataStream.Create(@CanvasFragmentGUINoTextureSPIRVData,CanvasFragmentGUINoTextureSPIRVDataSize);
+ if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentGUINoTextureClipDistanceSPIRVData,CanvasFragmentGUINoTextureClipDistanceSPIRVDataSize);
+ end else begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentGUINoTextureSPIRVData,CanvasFragmentGUINoTextureSPIRVDataSize);
+ end;
  try
   fCanvasFragmentGUINoTextureShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=TpvDataStream.Create(@CanvasFragmentNoTextureSPIRVData,CanvasFragmentNoTextureSPIRVDataSize);
+ if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentNoTextureClipDistanceSPIRVData,CanvasFragmentNoTextureClipDistanceSPIRVDataSize);
+ end else begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentNoTextureSPIRVData,CanvasFragmentNoTextureSPIRVDataSize);
+ end;
  try
   fCanvasFragmentNoTextureShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=TpvDataStream.Create(@CanvasFragmentTextureSPIRVData,CanvasFragmentTextureSPIRVDataSize);
+ if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentTextureClipDistanceSPIRVData,CanvasFragmentTextureClipDistanceSPIRVDataSize);
+ end else begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentTextureSPIRVData,CanvasFragmentTextureSPIRVDataSize);
+ end;
  try
   fCanvasFragmentTextureShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=TpvDataStream.Create(@CanvasFragmentAtlasTextureSPIRVData,CanvasFragmentAtlasTextureSPIRVDataSize);
+ if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentAtlasTextureClipDistanceSPIRVData,CanvasFragmentAtlasTextureClipDistanceSPIRVDataSize);
+ end else begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentAtlasTextureSPIRVData,CanvasFragmentAtlasTextureSPIRVDataSize);
+ end;
  try
   fCanvasFragmentAtlasTextureShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=TpvDataStream.Create(@CanvasFragmentGUINoTextureNoBlendingSPIRVData,CanvasFragmentGUINoTextureNoBlendingSPIRVDataSize);
+ if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentGUINoTextureNoBlendingClipDistanceSPIRVData,CanvasFragmentGUINoTextureNoBlendingClipDistanceSPIRVDataSize);
+ end else begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentGUINoTextureNoBlendingSPIRVData,CanvasFragmentGUINoTextureNoBlendingSPIRVDataSize);
+ end;
  try
   fCanvasFragmentGUINoTextureNoBlendingShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=TpvDataStream.Create(@CanvasFragmentNoTextureNoBlendingSPIRVData,CanvasFragmentNoTextureNoBlendingSPIRVDataSize);
+ if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentNoTextureNoBlendingClipDistanceSPIRVData,CanvasFragmentNoTextureNoBlendingClipDistanceSPIRVDataSize);
+ end else begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentNoTextureNoBlendingSPIRVData,CanvasFragmentNoTextureNoBlendingSPIRVDataSize);
+ end;
  try
   fCanvasFragmentNoTextureNoBlendingShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=TpvDataStream.Create(@CanvasFragmentTextureNoBlendingSPIRVData,CanvasFragmentTextureNoBlendingSPIRVDataSize);
+ if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentTextureNoBlendingClipDistanceSPIRVData,CanvasFragmentTextureNoBlendingClipDistanceSPIRVDataSize);
+ end else begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentTextureNoBlendingSPIRVData,CanvasFragmentTextureNoBlendingSPIRVDataSize);
+ end;
  try
   fCanvasFragmentTextureNoBlendingShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
  finally
   Stream.Free;
  end;
 
- Stream:=TpvDataStream.Create(@CanvasFragmentAtlasTextureNoBlendingSPIRVData,CanvasFragmentAtlasTextureNoBlendingSPIRVDataSize);
+ if aDevice.PhysicalDevice.Features.shaderClipDistance<>0 then begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentAtlasTextureNoBlendingClipDistanceSPIRVData,CanvasFragmentAtlasTextureNoBlendingClipDistanceSPIRVDataSize);
+ end else begin
+  Stream:=TpvDataStream.Create(@CanvasFragmentAtlasTextureNoBlendingSPIRVData,CanvasFragmentAtlasTextureNoBlendingSPIRVDataSize);
+ end;
  try
   fCanvasFragmentAtlasTextureNoBlendingShaderModule:=TpvVulkanShaderModule.Create(fDevice,Stream);
  finally
@@ -3351,7 +3387,7 @@ begin
       end;
      end;
      VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
-     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;
+     VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=BlendingModeIndex in [TpvCanvasBlendingMode.None];
      VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
      VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
      VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;

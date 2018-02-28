@@ -162,7 +162,16 @@ begin
   ConvertFile('shaders/canvas/canvas_frag_no_texture_no_blending.spv','CanvasFragmentNoTextureNoBlendingSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_texture_no_blending.spv','CanvasFragmentTextureNoBlendingSPIRV');
   ConvertFile('shaders/canvas/canvas_frag_atlas_texture_no_blending.spv','CanvasFragmentAtlasTextureNoBlendingSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_gui_no_texture_clip_distance.spv','CanvasFragmentGUINoTextureClipDistanceSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_no_texture_clip_distance.spv','CanvasFragmentNoTextureClipDistanceSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_texture_clip_distance.spv','CanvasFragmentTextureClipDistanceSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_atlas_texture_clip_distance.spv','CanvasFragmentAtlasTextureClipDistanceSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_gui_no_texture_no_blending_clip_distance.spv','CanvasFragmentGUINoTextureNoBlendingClipDistanceSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_no_texture_no_blending_clip_distance.spv','CanvasFragmentNoTextureNoBlendingClipDistanceSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_texture_no_blending_clip_distance.spv','CanvasFragmentTextureNoBlendingClipDistanceSPIRV');
+  ConvertFile('shaders/canvas/canvas_frag_atlas_texture_no_blending_clip_distance.spv','CanvasFragmentAtlasTextureNoBlendingClipDistanceSPIRV');
   ConvertFile('shaders/canvas/canvas_vert.spv','CanvasVertexSPIRV');
+  ConvertFile('shaders/canvas/canvas_vert_clip_distance.spv','CanvasVertexClipDistanceSPIRV');
   StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanAssets.inc');
  finally
   StringList.Free;

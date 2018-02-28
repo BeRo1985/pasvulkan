@@ -20,12 +20,18 @@
 
 #define SIGNEDDISTANCEDFIELD
 
+layout(early_fragment_tests) in;
+
 layout(location = 0) in vec2 inPosition; // 2D position
 layout(location = 1) in vec4 inColor;    // RGBA Color (in linear space, NOT in sRGB non-linear color space!)
 layout(location = 2) in vec3 inTexCoord; // 2D texture coordinate with array texture layer index inside the z component
 layout(location = 3) flat in ivec4 inState; // x = Rendering mode, y = object type, z = not used yet, w = not used yet
+#if USECLIPDISTANCE
+layout(location = 4) in vec4 inMetaInfo; // Various stuff
+#else
 layout(location = 4) in vec4 inClipRect; // xy = Left Top, zw = Right Bottom
 layout(location = 5) in vec4 inMetaInfo; // Various stuff
+#endif
 
 #if FILLTYPE == FILLTYPE_ATLAS_TEXTURE 
 layout(binding = 0) uniform sampler2DArray uTexture;
@@ -976,11 +982,16 @@ void main(void){
     } 
   }
 #endif
+#if !USECLIPDISTANCE
+#if BLENDING
   color *= step(inClipRect.x, inPosition.x) * step(inClipRect.y, inPosition.y) * step(inPosition.x, inClipRect.z) * step(inPosition.y, inClipRect.w);
-#if BLENDING == 0
-  if(color.w < 1e-6){
+#else  
+//if(step(inClipRect.x, inPosition.x) * step(inClipRect.y, inPosition.y) * step(inPosition.x, inClipRect.z) * step(inPosition.y, inClipRect.w)) < 0.5){
+  if(any(lessThan(inPosition.xy, inClipRect.xy)) || 
+     any(greaterThan(inPosition.xy, inClipRect.zw))){
     discard;
   }
+#endif  
 #endif  
   outFragColor = color;
 }
