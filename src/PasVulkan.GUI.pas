@@ -10529,7 +10529,8 @@ begin
  end else begin
   // But at least Mali GPUs not
   fDrawEngine:=TpvGUIDeferredDrawEngine.Create(self,fCanvas);
-  TpvGUIDeferredDrawEngine(fDrawEngine).UseScissor:=Pos('mali',LowerCase(String(pvApplication.VulkanDevice.PhysicalDevice.DeviceName)))>0;
+  TpvGUIDeferredDrawEngine(fDrawEngine).UseScissor:=(pvApplication.VulkanDevice.PhysicalDevice.Features.shaderClipDistance=0) or
+                                                    (Pos('mali',LowerCase(String(pvApplication.VulkanDevice.PhysicalDevice.DeviceName)))>0);
  end;
 {$elseif true}
  fDrawEngine:=TpvGUIInstantDrawEngine.Create(self,fCanvas);
