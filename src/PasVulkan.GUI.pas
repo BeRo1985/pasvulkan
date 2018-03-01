@@ -166,6 +166,7 @@ type TpvGUIObject=class;
        procedure Clear; virtual;
        procedure Draw; virtual;
        procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0); virtual;
+       procedure DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true); virtual;
        procedure DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect); virtual;
        procedure DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0); virtual;
        procedure DrawFilledRectangle(const aRect:TpvRect); virtual;
@@ -200,6 +201,7 @@ type TpvGUIObject=class;
        procedure Clear; override;
        procedure Draw; override;
        procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0); override;
+       procedure DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true); override;
        procedure DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect); override;
        procedure DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0); override;
        procedure DrawFilledRectangle(const aRect:TpvRect); override;
@@ -2672,6 +2674,83 @@ procedure TpvGUIDrawEngine.DrawGUIElement(const aGUIElement:TVkInt32;const aFocu
 begin
 end;
 
+procedure TpvGUIDrawEngine.DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true);
+var RowIndex,ColumnIndex:TpvInt32;
+    Rect:TpvRect;
+    TransparentMargin:TpvRect;
+begin
+ TransparentMargin:=aTransparentMargin;
+ if TransparentMargin.Left<0.0 then begin
+  TransparentMargin.Left:=TransparentMargin.Right;
+ end else if TransparentMargin.Right<0.0 then begin
+  TransparentMargin.Right:=TransparentMargin.Left;
+ end;
+ if TransparentMargin.Top<0.0 then begin
+  TransparentMargin.Top:=TransparentMargin.Bottom;
+ end else if TransparentMargin.Bottom<0.0 then begin
+  TransparentMargin.Bottom:=TransparentMargin.Top;
+ end;
+ if (TransparentMargin.Left>=0.0) and
+    (TransparentMargin.Right>=0.0) and
+    (TransparentMargin.Top>=0.0) and
+    (TransparentMargin.Bottom>=0.0) then begin
+  for RowIndex:=0 to 2 do begin
+   for ColumnIndex:=0 to 2 do begin
+    case ColumnIndex of
+     0:begin
+      Rect.Left:=aMin.x;
+      Rect.Right:=Min(aMax.x,aMin.x+TransparentMargin.Left);
+     end;
+     1:begin
+      Rect.Left:=Min(aMax.x,aMin.x+TransparentMargin.Left);
+      Rect.Right:=Max(aMin.x,aMax.x-TransparentMargin.Right);
+     end;
+     else begin
+      Rect.Left:=Max(aMin.x,aMax.x-TransparentMargin.Right);
+      Rect.Right:=aMax.x;
+     end;
+    end;
+    case RowIndex of
+     0:begin
+      Rect.Top:=aMin.y;
+      Rect.Bottom:=Min(aMax.y,aMin.y+TransparentMargin.Top);
+     end;
+     1:begin
+      Rect.Top:=Min(aMax.y,aMin.y+TransparentMargin.Top);
+      Rect.Bottom:=Max(aMin.y,aMax.y-TransparentMargin.Bottom);
+     end;
+     else begin
+      Rect.Top:=Max(aMin.y,aMax.y-TransparentMargin.Bottom);
+      Rect.Bottom:=aMax.y;
+     end;
+    end;
+    if (Rect.Left<Rect.Right) and
+       (Rect.Top<Rect.Bottom) and
+       (aDrawCenter or
+        (RowIndex<>1) or
+        (ColumnIndex<>1)) then begin
+     Transparent:=(RowIndex<>1) or (ColumnIndex<>1);
+     DrawGUIElement(aGUIElement,
+                    aFocused,
+                    Rect.LeftTop,
+                    Rect.RightBottom,
+                    aMetaMin,
+                    aMetaMax,
+                    aMeta);
+    end;
+   end;
+  end;
+ end else begin
+  DrawGUIElement(aGUIElement,
+                 aFocused,
+                 aMin,
+                 aMax,
+                 aMetaMin,
+                 aMetaMax,
+                 aMeta);
+ end;
+end;
+
 procedure TpvGUIDrawEngine.DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect);
 begin
 end;
@@ -2885,6 +2964,11 @@ begin
 end;
 
 procedure TpvGUIInstantDrawEngine.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
+begin
+ fCanvas.DrawGUIElement(aGUIElement,aFocused,aMin,aMax,aMetaMin,aMetaMax,aMeta);
+end;
+
+procedure TpvGUIInstantDrawEngine.DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true);
 begin
  fCanvas.DrawGUIElement(aGUIElement,aFocused,aMin,aMax,aMetaMin,aMetaMax,aMeta);
 end;
@@ -6072,22 +6156,29 @@ begin
    aDrawEngine.ClipRect:=aWidget.fParentClipRect;
    aDrawEngine.ModelMatrix:=aWidget.fModelMatrix;
    aDrawEngine.Transparent:=true;
-   aDrawEngine.DrawGUIElement(GUI_ELEMENT_HOVERED,
-                              true,
-                              TpvVector2.InlineableCreate(-32.0,-32.0),
-                              aWidget.fSize+TpvVector2.InlineableCreate(32.0,32.0),
-                              Rect.LeftTop,
-                              Rect.RightBottom);
+   aDrawEngine.DrawGUIElementWithTransparentEdges(GUI_ELEMENT_HOVERED,
+                                                  true,
+                                                  TpvVector2.InlineableCreate(-4.0,-4.0),
+                                                  aWidget.fSize+TpvVector2.InlineableCreate(4.0,4.0),
+                                                  Rect.LeftTop,
+                                                  Rect.RightBottom,
+                                                  0.0,
+                                                  TpvRect.CreateAbsolute(32.0,32.0,32.0,32.0),
+                                                  false);
   end else if fInstance.fFocusedWidget=aWidget then begin
    aDrawEngine.ClipRect:=aWidget.fParentClipRect;
    aDrawEngine.ModelMatrix:=aWidget.fModelMatrix;
    aDrawEngine.Transparent:=true;
-   aDrawEngine.DrawGUIElement(GUI_ELEMENT_FOCUSED,
-                              true,
-                              TpvVector2.InlineableCreate(-32.0,-32.0),
-                              aWidget.fSize+TpvVector2.InlineableCreate(32.0,32.0),
-                              Rect.LeftTop,
-                              Rect.RightBottom);
+   aDrawEngine.DrawGUIElementWithTransparentEdges(GUI_ELEMENT_FOCUSED,
+                                                  true,
+                                                  TpvVector2.InlineableCreate(-4.0,-4.0),
+                                                  aWidget.fSize+TpvVector2.InlineableCreate(4.0,4.0),
+                                                  Rect.LeftTop,
+                                                  Rect.RightBottom,
+                                                  0.0,
+                                                  TpvRect.CreateAbsolute(32.0,32.0,32.0,32.0),
+                                                  false);
+
   end;
  end;
 end;
@@ -6381,12 +6472,16 @@ begin
 
   aDrawEngine.ClipRect:=aWindow.fParentClipRect;
   aDrawEngine.Transparent:=true;
-  aDrawEngine.DrawGUIElement(GUI_ELEMENT_WINDOW_DROPSHADOW,
-                             aWindow.Focused,
-                             TpvVector2.InlineableCreate(-fWindowShadowWidth,-fWindowShadowHeight),
-                             aWindow.fSize+TpvVector2.InlineableCreate(fWindowShadowWidth*2,fWindowShadowHeight*2),
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             aWindow.fSize);
+  aDrawEngine.DrawGUIElementWithTransparentEdges(GUI_ELEMENT_WINDOW_DROPSHADOW,
+                                                 aWindow.Focused,
+                                                 TpvVector2.InlineableCreate(-fWindowShadowWidth,-fWindowShadowHeight),
+                                                 aWindow.fSize+TpvVector2.InlineableCreate(fWindowShadowWidth*2,fWindowShadowHeight*2),
+                                                 TpvVector2.InlineableCreate(0.0,0.0),
+                                                 aWindow.fSize,
+                                                 0.0,
+                                                 TpvRect.CreateAbsolute(fWindowShadowWidth*1.125,fWindowShadowHeight*1.125,fWindowShadowWidth*2.25,fWindowShadowHeight*2.25),
+                                                 false);
+
 
   aDrawEngine.ClipRect:=aWindow.fClipRect;
 
@@ -6394,19 +6489,25 @@ begin
 
    aDrawEngine.Transparent:=false;
 
-   aDrawEngine.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
-                              aWindow.Focused,
-                              TpvVector2.InlineableCreate(0.0,fWindowHeaderHeight-fSpacing),
-                              TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y),
-                              TpvVector2.InlineableCreate(0.0,fWindowHeaderHeight-fSpacing),
-                              TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y));
+   aDrawEngine.DrawGUIElementWithTransparentEdges(GUI_ELEMENT_WINDOW_FILL,
+                                                  aWindow.Focused,
+                                                  TpvVector2.InlineableCreate(0.0,fWindowHeaderHeight-fSpacing),
+                                                  TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y),
+                                                  TpvVector2.InlineableCreate(0.0,fWindowHeaderHeight-fSpacing),
+                                                  TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y),
+                                                  0.0,
+                                                  TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                  true);
 
-   aDrawEngine.DrawGUIElement(GUI_ELEMENT_WINDOW_HEADER,
-                              aWindow.Focused,
-                              TpvVector2.InlineableCreate(0.0,0.0),
-                              TpvVector2.InlineableCreate(aWindow.fSize.x,fWindowHeaderHeight),
-                              TpvVector2.InlineableCreate(0.0,0.0),
-                              TpvVector2.InlineableCreate(aWindow.fSize.x,fWindowHeaderHeight));
+   aDrawEngine.DrawGUIElementWithTransparentEdges(GUI_ELEMENT_WINDOW_HEADER,
+                                                  aWindow.Focused,
+                                                  TpvVector2.InlineableCreate(0.0,0.0),
+                                                  TpvVector2.InlineableCreate(aWindow.fSize.x,fWindowHeaderHeight),
+                                                  TpvVector2.InlineableCreate(0.0,0.0),
+                                                  TpvVector2.InlineableCreate(aWindow.fSize.x,fWindowHeaderHeight),
+                                                  0.0,
+                                                  TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                  true);
 
    LastClipRect:=aDrawEngine.ClipRect;
    LastClipRect.LeftTop:=LastClipRect.LeftTop+TpvVector2.InlineableCreate(1.0,1.0);
@@ -6487,12 +6588,15 @@ begin
 
    aDrawEngine.Transparent:=false;
 
-   aDrawEngine.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
-                              aWindow.Focused,
-                              TpvVector2.InlineableCreate(0.0,0.0),
-                              TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y),
-                              TpvVector2.InlineableCreate(0.0,0.0),
-                              TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y));
+   aDrawEngine.DrawGUIElementWithTransparentEdges(GUI_ELEMENT_WINDOW_FILL,
+                                                  aWindow.Focused,
+                                                  TpvVector2.InlineableCreate(0.0,0.0),
+                                                  TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y),
+                                                  TpvVector2.InlineableCreate(0.0,0.0),
+                                                  TpvVector2.InlineableCreate(aWindow.fSize.x,aWindow.fSize.y),
+                                                  0.0,
+                                                  TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                  true);
 
    LastClipRect:=aDrawEngine.ClipRect;
    LastClipRect.LeftTop:=LastClipRect.LeftTop+TpvVector2.InlineableCreate(1.0,1.0);
@@ -6528,12 +6632,15 @@ begin
 
  aDrawEngine.Transparent:=false;
 
- aDrawEngine.DrawGUIElement(Element,
-                            true,
-                            TpvVector2.Null,
-                            aPanel.fSize,
-                            TpvVector2.Null,
-                            aPanel.fSize);
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                TpvVector2.Null,
+                                                aPanel.fSize,
+                                                TpvVector2.Null,
+                                                aPanel.fSize,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
 
 end;
 
@@ -6745,7 +6852,8 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawButton(const aDrawEngine:TpvGUIDrawEngine;const aButton:TpvGUIButton);
-var Offset,TextOffset:TpvVector2;
+var Element:TpvInt32;
+    Offset,TextOffset:TpvVector2;
     TextSize,IconSize,TemporarySize,ChevronIconSize:TpvVector2;
     ButtonRect,TextRect,IconRect,ChevronIconRect:TpvRect;
     SpriteWidth:TpvFloat;
@@ -6831,49 +6939,33 @@ begin
 
  if not aButton.Enabled then begin
 
-  aDrawEngine.Transparent:=false;
-
-  aDrawEngine.DrawGUIElement(GUI_ELEMENT_BUTTON_DISABLED,
-                             true,
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
+  Element:=GUI_ELEMENT_BUTTON_DISABLED;
 
  end else if aButton.Down then begin
 
-  aDrawEngine.Transparent:=false;
-
-  aDrawEngine.DrawGUIElement(GUI_ELEMENT_BUTTON_PUSHED,
-                             true,
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
+  Element:=GUI_ELEMENT_BUTTON_PUSHED;
 
  end else if aButton.Focused then begin
 
-  aDrawEngine.Transparent:=false;
-
-  aDrawEngine.DrawGUIElement(GUI_ELEMENT_BUTTON_FOCUSED,
-                             true,
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
+  Element:=GUI_ELEMENT_BUTTON_FOCUSED;
 
  end else begin
 
-  aDrawEngine.Transparent:=false;
-
-  aDrawEngine.DrawGUIElement(GUI_ELEMENT_BUTTON_UNFOCUSED,
-                             true,
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y));
+  Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
 
  end;
+
+ aDrawEngine.Transparent:=false;
+
+ aDrawEngine.DrawGUIElementWithTransparentEdges(GUI_ELEMENT_BUTTON_UNFOCUSED,
+                                                true,
+                                                TpvVector2.InlineableCreate(0.0,0.0),
+                                                TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
+                                                TpvVector2.InlineableCreate(0.0,0.0),
+                                                TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
 
  TextSize:=aButton.Font.TextSize(aButton.fCaption,aButton.FontSize);
 
@@ -7076,12 +7168,15 @@ begin
 
  aDrawEngine.Transparent:=false;
 
- aDrawEngine.DrawGUIElement(Element,
-                            aCheckBox.Focused,
-                            Offset,
-                            Offset+fCheckBoxSize,
-                            Offset,
-                            Offset+fCheckBoxSize);
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                aCheckBox.Focused,
+                                                Offset,
+                                                Offset+fCheckBoxSize,
+                                                Offset,
+                                                Offset+fCheckBoxSize,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
 
  if aCheckBox.Checked then begin
 
@@ -7156,11 +7251,11 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawTextEdit(const aDrawEngine:TpvGUIDrawEngine;const aTextEdit:TpvGUITextEdit);
-var Offset,TextOffset:TpvVector2;
+var Element,TextCursorPositionIndex,
+    PreviousCursorPosition,NextCursorPosition,StartIndex,EndIndex:TpvInt32;
+    Offset,TextOffset:TpvVector2;
     TextSize,IconSize,TemporarySize:TpvVector2;
     TextRect,IconRect,TextClipRect,SelectionRect:TpvRect;
-    TextCursorPositionIndex,
-    PreviousCursorPosition,NextCursorPosition,StartIndex,EndIndex:TpvInt32;
     PreviousCursorX,NextCursorX:TpvFloat;
     IconSprite:TpvSprite;
 begin
@@ -7172,38 +7267,29 @@ begin
 
  if not aTextEdit.Enabled then begin
 
-  aDrawEngine.Transparent:=false;
-
-  aDrawEngine.DrawGUIElement(GUI_ELEMENT_BOX_DISABLED,
-                             true,
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y),
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y));
+  Element:=GUI_ELEMENT_BOX_DISABLED;
 
  end else if aTextEdit.Focused then begin
 
-  aDrawEngine.Transparent:=false;
-
-  aDrawEngine.DrawGUIElement(GUI_ELEMENT_BOX_FOCUSED,
-                             true,
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y),
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y));
+  Element:=GUI_ELEMENT_BOX_FOCUSED;
 
  end else begin
 
-  aDrawEngine.Transparent:=false;
-
-  aDrawEngine.DrawGUIElement(GUI_ELEMENT_BOX_UNFOCUSED,
-                             true,
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y),
-                             TpvVector2.InlineableCreate(0.0,0.0),
-                             TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y));
+  Element:=GUI_ELEMENT_BOX_UNFOCUSED;
 
  end;
+
+ aDrawEngine.Transparent:=false;
+
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                TpvVector2.InlineableCreate(0.0,0.0),
+                                                TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y),
+                                                TpvVector2.InlineableCreate(0.0,0.0),
+                                                TpvVector2.InlineableCreate(aTextEdit.fSize.x,aTextEdit.fSize.y),
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
 
  if ((aTextEdit is TpvGUIIntegerEdit) or
      (aTextEdit is TpvGUIFloatEdit)) and
@@ -7554,23 +7640,29 @@ begin
 
  aDrawEngine.ClipRect:=aPopupMenu.fInstance.fClipRect;
  aDrawEngine.Transparent:=true;
- aDrawEngine.DrawGUIElement(GUI_ELEMENT_WINDOW_DROPSHADOW,
-                            true,
-                            TpvVector2.InlineableCreate(-fWindowShadowWidth,-fWindowShadowHeight),
-                            aPopupMenu.fSize+TpvVector2.InlineableCreate(fWindowShadowWidth*2,fWindowShadowHeight*2),
-                            TpvVector2.InlineableCreate(0.0,0.0),
-                            aPopupMenu.fSize);
+ aDrawEngine.DrawGUIElementWithTransparentEdges(GUI_ELEMENT_WINDOW_DROPSHADOW,
+                                                true,
+                                                TpvVector2.InlineableCreate(-fWindowShadowWidth,-fWindowShadowHeight),
+                                                aPopupMenu.fSize+TpvVector2.InlineableCreate(fWindowShadowWidth*2,fWindowShadowHeight*2),
+                                                TpvVector2.InlineableCreate(0.0,0.0),
+                                                aPopupMenu.fSize,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(fWindowShadowWidth*1.125,fWindowShadowHeight*1.25,fWindowShadowWidth*2.25,fWindowShadowHeight*2.25),
+                                                false);
 
  aDrawEngine.ClipRect:=TpvRect.CreateRelative(aPopupMenu.fPosition,aPopupMenu.fSize);
 
  aDrawEngine.Transparent:=false;
 
- aDrawEngine.DrawGUIElement(GUI_ELEMENT_WINDOW_FILL,
-                            true,
-                            TpvVector2.InlineableCreate(0.0,0.0),
-                            TpvVector2.InlineableCreate(aPopupMenu.fSize.x,aPopupMenu.fSize.y),
-                            TpvVector2.InlineableCreate(0.0,0.0),
-                            TpvVector2.InlineableCreate(aPopupMenu.fSize.x,aPopupMenu.fSize.y));
+ aDrawEngine.DrawGUIElementWithTransparentEdges(GUI_ELEMENT_WINDOW_FILL,
+                                                true,
+                                                TpvVector2.InlineableCreate(0.0,0.0),
+                                                TpvVector2.InlineableCreate(aPopupMenu.fSize.x,aPopupMenu.fSize.y),
+                                                TpvVector2.InlineableCreate(0.0,0.0),
+                                                TpvVector2.InlineableCreate(aPopupMenu.fSize.x,aPopupMenu.fSize.y),
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
 
  aDrawEngine.Font:=aPopupMenu.Font;
  aDrawEngine.FontSize:=aPopupMenu.FontSize;
@@ -7609,12 +7701,15 @@ begin
 
    aDrawEngine.Transparent:=false;
 
-   aDrawEngine.DrawGUIElement(Element,
-                              true,
-                              MenuItem.fRect.LeftTop,
-                              MenuItem.fRect.RightBottom,
-                              MenuItem.fRect.LeftTop,
-                              MenuItem.fRect.RightBottom);
+   aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                  true,
+                                                  MenuItem.fRect.LeftTop,
+                                                  MenuItem.fRect.RightBottom,
+                                                  MenuItem.fRect.LeftTop,
+                                                  MenuItem.fRect.RightBottom,
+                                                  0.0,
+                                                  TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                  true);
 
    if MenuItem.fCaption<>'-' then begin
 
@@ -7684,23 +7779,29 @@ begin
 
      aDrawEngine.Transparent:=true;
 
-     aDrawEngine.DrawGUIElement(GUI_ELEMENT_HOVERED,
-                                true,
-                                MenuItem.fRect.LeftTop,
-                                MenuItem.fRect.RightBottom,
-                                MenuItem.fRect.LeftTop,
-                                MenuItem.fRect.RightBottom);
+     aDrawEngine.DrawGUIElementWithTransparentEdges(GUI_ELEMENT_HOVERED,
+                                                    true,
+                                                    MenuItem.fRect.LeftTop,
+                                                    MenuItem.fRect.RightBottom,
+                                                    MenuItem.fRect.LeftTop,
+                                                    MenuItem.fRect.RightBottom,
+                                                    0.0,
+                                                    TpvRect.CreateAbsolute(16.0,16.0,16.0,16.0),
+                                                    false);
 
     end else if aPopupMenu.fFocusedMenuItem=MenuItem then begin
 
      aDrawEngine.Transparent:=true;
 
-     aDrawEngine.DrawGUIElement(GUI_ELEMENT_FOCUSED,
-                                true,
-                                MenuItem.fRect.LeftTop,
-                                MenuItem.fRect.RightBottom,
-                                MenuItem.fRect.LeftTop,
-                                MenuItem.fRect.RightBottom);
+     aDrawEngine.DrawGUIElementWithTransparentEdges(GUI_ELEMENT_FOCUSED,
+                                                    true,
+                                                    MenuItem.fRect.LeftTop,
+                                                    MenuItem.fRect.RightBottom,
+                                                    MenuItem.fRect.LeftTop,
+                                                    MenuItem.fRect.RightBottom,
+                                                    0.0,
+                                                    TpvRect.CreateAbsolute(16.0,16.0,16.0,16.0),
+                                                    false);
 
     end;
 
@@ -7776,12 +7877,15 @@ begin
 
  aDrawEngine.Transparent:=false;
 
- aDrawEngine.DrawGUIElement(Element,
-                            true,
-                            TpvVector2.InlineableCreate(0.0,0.0),
-                            TpvVector2.InlineableCreate(aWindowMenu.fSize.x,aWindowMenu.fSize.y),
-                            TpvVector2.InlineableCreate(0.0,0.0),
-                            TpvVector2.InlineableCreate(aWindowMenu.fSize.x,aWindowMenu.fSize.y));
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                TpvVector2.InlineableCreate(0.0,0.0),
+                                                TpvVector2.InlineableCreate(aWindowMenu.fSize.x,aWindowMenu.fSize.y),
+                                                TpvVector2.InlineableCreate(0.0,0.0),
+                                                TpvVector2.InlineableCreate(aWindowMenu.fSize.x,aWindowMenu.fSize.y),
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
 
  aDrawEngine.Font:=aWindowMenu.Font;
  aDrawEngine.FontSize:=aWindowMenu.FontSize;
@@ -7821,12 +7925,15 @@ begin
 
    aDrawEngine.Transparent:=false;
 
-   aDrawEngine.DrawGUIElement(Element,
-                              true,
-                              MenuItem.fRect.LeftTop,
-                              MenuItem.fRect.RightBottom,
-                              MenuItem.fRect.LeftTop,
-                              MenuItem.fRect.RightBottom);
+   aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                  true,
+                                                  MenuItem.fRect.LeftTop,
+                                                  MenuItem.fRect.RightBottom,
+                                                  MenuItem.fRect.LeftTop,
+                                                  MenuItem.fRect.RightBottom,
+                                                  0.0,
+                                                  TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                  true);
 
    aDrawEngine.Transparent:=true;
 
@@ -7836,23 +7943,29 @@ begin
 
     aDrawEngine.Transparent:=true;
 
-    aDrawEngine.DrawGUIElement(GUI_ELEMENT_HOVERED,
-                               true,
-                               MenuItem.fRect.LeftTop,
-                               MenuItem.fRect.RightBottom,
-                               MenuItem.fRect.LeftTop,
-                               MenuItem.fRect.RightBottom);
+    aDrawEngine.DrawGUIElementWithTransparentEdges(GUI_ELEMENT_HOVERED,
+                                                   true,
+                                                   MenuItem.fRect.LeftTop,
+                                                   MenuItem.fRect.RightBottom,
+                                                   MenuItem.fRect.LeftTop,
+                                                   MenuItem.fRect.RightBottom,
+                                                   0.0,
+                                                   TpvRect.CreateAbsolute(16.0,16.0,16.0,16.0),
+                                                   false);
 
    end else if aWindowMenu.Focused and (aWindowMenu.fFocusedMenuItem=MenuItem) then begin
 
     aDrawEngine.Transparent:=true;
 
-    aDrawEngine.DrawGUIElement(GUI_ELEMENT_FOCUSED,
-                               true,
-                               MenuItem.fRect.LeftTop,
-                               MenuItem.fRect.RightBottom,
-                               MenuItem.fRect.LeftTop,
-                               MenuItem.fRect.RightBottom);
+    aDrawEngine.DrawGUIElementWithTransparentEdges(GUI_ELEMENT_FOCUSED,
+                                                   true,
+                                                   MenuItem.fRect.LeftTop,
+                                                   MenuItem.fRect.RightBottom,
+                                                   MenuItem.fRect.LeftTop,
+                                                   MenuItem.fRect.RightBottom,
+                                                   0.0,
+                                                   TpvRect.CreateAbsolute(16.0,16.0,16.0,16.0),
+                                                   true);
 
    end;
 
@@ -7913,12 +8026,15 @@ begin
 
  aDrawEngine.Transparent:=false;
 
- aDrawEngine.DrawGUIElement(Element,
-                            true,
-                            Offset,
-                            TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset,
-                            Offset,
-                            TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset);
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                Offset,
+                                                TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset,
+                                                Offset,
+                                                TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y)-Offset,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
 
  Rect:=aScrollBar.GetThumbButtonRect;
  if aScrollBar.Enabled then begin
@@ -7935,12 +8051,15 @@ begin
 
  aDrawEngine.Transparent:=false;
 
- aDrawEngine.DrawGUIElement(Element,
-                            true,
-                            Rect.LeftTop,
-                            Rect.RightBottom,
-                            Rect.LeftTop,
-                            Rect.RightBottom);
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                Rect.LeftTop,
+                                                Rect.RightBottom,
+                                                Rect.LeftTop,
+                                                Rect.RightBottom,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
 
  if aScrollBar.Enabled then begin
   aDrawEngine.Color:=aScrollBar.FontColor;
@@ -7958,12 +8077,15 @@ begin
  case aScrollBar.fOrientation of
   TpvGUIScrollBarOrientation.Horizontal:begin
    aDrawEngine.Transparent:=false;
-   aDrawEngine.DrawGUIElement(Element,
-                              true,
-                              TpvVector2.InlineableCreate(0.0,0.0),
-                              TpvVector2.InlineableCreate(aScrollBar.fButtonSize,aScrollBar.fSize.y),
-                              TpvVector2.InlineableCreate(0.0,0.0),
-                              TpvVector2.InlineableCreate(aScrollBar.fButtonSize,aScrollBar.fSize.y));
+   aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                  true,
+                                                  TpvVector2.InlineableCreate(0.0,0.0),
+                                                  TpvVector2.InlineableCreate(aScrollBar.fButtonSize,aScrollBar.fSize.y),
+                                                  TpvVector2.InlineableCreate(0.0,0.0),
+                                                  TpvVector2.InlineableCreate(aScrollBar.fButtonSize,aScrollBar.fSize.y),
+                                                  0.0,
+                                                  TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                  true);
    Sprite:=TpvSprite(fIconDirectionArrowLeft);
    aDrawEngine.Transparent:=true;
    aDrawEngine.DrawSprite(Sprite,
@@ -7973,12 +8095,15 @@ begin
   end;
   else {TpvGUIScrollBarOrientation.Vertical:}begin
    aDrawEngine.Transparent:=false;
-   aDrawEngine.DrawGUIElement(Element,
-                              true,
-                              TpvVector2.InlineableCreate(0.0,0.0),
-                              TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fButtonSize),
-                              TpvVector2.InlineableCreate(0.0,0.0),
-                              TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fButtonSize));
+   aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                  true,
+                                                  TpvVector2.InlineableCreate(0.0,0.0),
+                                                  TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fButtonSize),
+                                                  TpvVector2.InlineableCreate(0.0,0.0),
+                                                  TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fButtonSize),
+                                                  0.0,
+                                                  TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                  true);
    Sprite:=TpvSprite(fIconDirectionArrowUp);
    aDrawEngine.Transparent:=true;
    aDrawEngine.DrawSprite(Sprite,
@@ -8004,12 +8129,15 @@ begin
  case aScrollBar.fOrientation of
   TpvGUIScrollBarOrientation.Horizontal:begin
    aDrawEngine.Transparent:=false;
-   aDrawEngine.DrawGUIElement(Element,
-                              true,
-                              TpvVector2.InlineableCreate(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
-                              TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y),
-                              TpvVector2.InlineableCreate(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
-                              TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y));
+   aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                  true,
+                                                  TpvVector2.InlineableCreate(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
+                                                  TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y),
+                                                  TpvVector2.InlineableCreate(aScrollBar.fSize.x-aScrollBar.fButtonSize,0.0),
+                                                  TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y),
+                                                  0.0,
+                                                  TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                  true);
    Sprite:=TpvSprite(fIconDirectionArrowRight);
    aDrawEngine.Transparent:=true;
    aDrawEngine.DrawSprite(Sprite,
@@ -8019,12 +8147,15 @@ begin
   end;
   else {TpvGUIScrollBarOrientation.Vertical:}begin
    aDrawEngine.Transparent:=false;
-   aDrawEngine.DrawGUIElement(Element,
-                              true,
-                              TpvVector2.InlineableCreate(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
-                              TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y),
-                              TpvVector2.InlineableCreate(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
-                              TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y));
+   aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                  true,
+                                                  TpvVector2.InlineableCreate(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
+                                                  TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y),
+                                                  TpvVector2.InlineableCreate(0.0,aScrollBar.fSize.y-aScrollBar.fButtonSize),
+                                                  TpvVector2.InlineableCreate(aScrollBar.fSize.x,aScrollBar.fSize.y),
+                                                  0.0,
+                                                  TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                  true);
    Sprite:=TpvSprite(fIconDirectionArrowDown);
    aDrawEngine.Transparent:=true;
    aDrawEngine.DrawSprite(Sprite,
@@ -8087,12 +8218,15 @@ begin
 
  aDrawEngine.Transparent:=false;
 
- aDrawEngine.DrawGUIElement(Element,
-                            true,
-                            Offset,
-                            TpvVector2.InlineableCreate(aSlider.fSize.x,aSlider.fSize.y)-Offset,
-                            Offset,
-                            TpvVector2.InlineableCreate(aSlider.fSize.x,aSlider.fSize.y)-Offset);
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                Offset,
+                                                TpvVector2.InlineableCreate(aSlider.fSize.x,aSlider.fSize.y)-Offset,
+                                                Offset,
+                                                TpvVector2.InlineableCreate(aSlider.fSize.x,aSlider.fSize.y)-Offset,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
 
  Rect:=aSlider.GetThumbButtonRect;
  if aSlider.Enabled then begin
@@ -8109,12 +8243,15 @@ begin
 
  aDrawEngine.Transparent:=false;
 
- aDrawEngine.DrawGUIElement(Element,
-                            true,
-                            Rect.LeftTop,
-                            Rect.RightBottom,
-                            Rect.LeftTop,
-                            Rect.RightBottom);
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                Rect.LeftTop,
+                                                Rect.RightBottom,
+                                                Rect.LeftTop,
+                                                Rect.RightBottom,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
 
 end;
 
@@ -8169,13 +8306,15 @@ begin
 
  aDrawEngine.Transparent:=false;
 
- aDrawEngine.DrawGUIElement(Element,
-                            true,
-                            Offset,
-                            TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
-                            Offset,
-                            TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset);
-
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                Offset,
+                                                TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
+                                                Offset,
+                                                TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
  if aProgressBar.Enabled then begin
   if aProgressBar.Focused then begin
    Element:=GUI_ELEMENT_BOX_FOCUSED;
@@ -8190,23 +8329,29 @@ begin
    Offset:=TpvVector2.InlineableCreate(2.0,2.0);
    Scale:=TpvVector2.InlineableCreate((aProgressBar.fValue-aProgressBar.fMinimumValue)/(aProgressBar.fMaximumValue-aProgressBar.fMinimumValue),1.0);
    aDrawEngine.Transparent:=false;
-   aDrawEngine.DrawGUIElement(Element,
-                              true,
-                              Offset,
-                              Offset+((TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale),
-                              Offset,
-                              Offset+((TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale));
+   aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                  true,
+                                                  Offset,
+                                                  Offset+((TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale),
+                                                  Offset,
+                                                  Offset+((TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-(Offset*2.0))*Scale),
+                                                  0.0,
+                                                  TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                  true);
   end;
   else {TpvGUIProgressBarOrientation.Vertical:}begin
    Offset:=TpvVector2.InlineableCreate(2.0,2.0);
    Scale:=TpvVector2.InlineableCreate(1.0,1.0-((aProgressBar.fValue-aProgressBar.fMinimumValue)/(aProgressBar.fMaximumValue-aProgressBar.fMinimumValue)));
    aDrawEngine.Transparent:=false;
-   aDrawEngine.DrawGUIElement(Element,
-                              true,
-                              Offset+(TpvVector2.InlineableCreate(0.0,aProgressBar.fSize.y-(Offset.y*2.0))*Scale),
-                              TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
-                              Offset+(TpvVector2.InlineableCreate(0.0,aProgressBar.fSize.y-(Offset.y*2.0))*Scale),
-                              TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset);
+   aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                  true,
+                                                  Offset+(TpvVector2.InlineableCreate(0.0,aProgressBar.fSize.y-(Offset.y*2.0))*Scale),
+                                                  TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
+                                                  Offset+(TpvVector2.InlineableCreate(0.0,aProgressBar.fSize.y-(Offset.y*2.0))*Scale),
+                                                  TpvVector2.InlineableCreate(aProgressBar.fSize.x,aProgressBar.fSize.y)-Offset,
+                                                  0.0,
+                                                  TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                  true);
   end;
  end;
 
@@ -8381,12 +8526,15 @@ var Element,Index,TabIndex:TpvInt32;
 
   aDrawEngine.Transparent:=true;
 
-  aDrawEngine.DrawGUIElement(Element,
-                             true,
-                             aTab.fPosition,
-                             aTab.fPosition+aTab.fSize,
-                             aTab.fPosition,
-                             aTab.fPosition+aTab.fSize);
+  aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                 true,
+                                                 aTab.fPosition,
+                                                 aTab.fPosition+aTab.fSize,
+                                                 aTab.fPosition,
+                                                 aTab.fPosition+aTab.fSize,
+                                                 0.0,
+                                                 TpvRect.CreateAbsolute(aTab.fSize.y*0.5,5.0,aTab.fSize.y*0.5,5.0),
+                                                 true);
 
   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Center;
 
@@ -8444,13 +8592,15 @@ begin
     Sprite:=TpvSprite(fIconDirectionArrowRight);
    end;
 
-   aCanvas.DrawGUIElement(Element,
-                          true,
-                          Offset,
-                          Offset+TpvVector2.InlineableCreate(TabButtonSize,TabButtonSize),
-                          Offset,
-                          Offset+TpvVector2.InlineableCreate(TabButtonSize,TabButtonSize));
-
+   aCanvas.DrawGUIElementWithTransparentEdges(Element,
+                                              true,
+                                              Offset,
+                                              Offset+TpvVector2.InlineableCreate(TabButtonSize,TabButtonSize),
+                                              Offset,
+                                              Offset+TpvVector2.InlineableCreate(TabButtonSize,TabButtonSize),
+                                              0.0,
+                                              TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                              true);
    aCanvas.DrawSprite(Sprite,
                       TpvRect.CreateRelative(0.0,0.0,Sprite.Width,Sprite.Height),
                       TpvRect.CreateRelative(Offset,
@@ -8472,12 +8622,15 @@ begin
 
   aDrawEngine.Transparent:=false;
 
-  aDrawEngine.DrawGUIElement(Element,
-                             true,
-                             aTabPanel.fContentRect.LeftTop,
-                             aTabPanel.fContentRect.RightBottom,
-                             aTabPanel.fContentRect.LeftTop,
-                             aTabPanel.fContentRect.RightBottom);
+  aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                 true,
+                                                 aTabPanel.fContentRect.LeftTop,
+                                                 aTabPanel.fContentRect.RightBottom,
+                                                 aTabPanel.fContentRect.LeftTop,
+                                                 aTabPanel.fContentRect.RightBottom,
+                                                 0.0,
+                                                 TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                 true);
 
  end;
 
@@ -8554,12 +8707,15 @@ begin
 
  aDrawEngine.Transparent:=false;
 
- aDrawEngine.DrawGUIElement(Element,
-                            true,
-                            DrawRect.LeftTop,
-                            DrawRect.RightBottom,
-                            DrawRect.LeftTop,
-                            DrawRect.RightBottom);
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                DrawRect.LeftTop,
+                                                DrawRect.RightBottom,
+                                                DrawRect.LeftTop,
+                                                DrawRect.RightBottom,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
 
  Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
 
@@ -8633,12 +8789,15 @@ begin
                                  TpvVector2.InlineableCreate(DrawRect.Right,
                                                              Position.y+RowHeight));
     aDrawEngine.Transparent:=true;
-    aDrawEngine.DrawGUIElement(Element,
-                               true,
-                               Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
-                               Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
-                               Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
-                               Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0));
+    aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                   true,
+                                                   Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
+                                                   Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
+                                                   Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
+                                                   Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0),
+                                                   0.0,
+                                                   TpvRect.CreateAbsolute(32.0,32.0,32.0,32.0),
+                                                   true);
     aDrawEngine.ClipRect:=ClipRect;
    end;
 
@@ -8720,12 +8879,15 @@ begin
 
  aDrawEngine.Transparent:=false;
 
- aDrawEngine.DrawGUIElement(Element,
-                            true,
-                            DrawRect.LeftTop,
-                            DrawRect.RightBottom,
-                            DrawRect.LeftTop,
-                            DrawRect.RightBottom);
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                DrawRect.LeftTop,
+                                                DrawRect.RightBottom,
+                                                DrawRect.LeftTop,
+                                                DrawRect.RightBottom,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
 
  Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ComboBoxHorizontalMargin,BoxCornerMargin);
 
@@ -8820,12 +8982,15 @@ if aSplitterPanelGripButton.Enabled then begin
 
  aDrawEngine.Transparent:=false;
 
- aDrawEngine.DrawGUIElement(Element,
-                            true,
-                            TpvVector2.Null,
-                            aSplitterPanelGripButton.fSize,
-                            TpvVector2.Null,
-                            aSplitterPanelGripButton.fSize);
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                TpvVector2.Null,
+                                                aSplitterPanelGripButton.fSize,
+                                                TpvVector2.Null,
+                                                aSplitterPanelGripButton.fSize,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
 
 {if TpvGUISplitterPanel(aSplitterPanelGripButton.fParent).fGripSize>=9.0 then begin
 
@@ -8841,12 +9006,15 @@ if aSplitterPanelGripButton.Enabled then begin
 
   aDrawEngine.Transparent:=false;
 
-  aDrawEngine.DrawGUIElement(Element,
-                             true,
-                             TpvVector2.InlineableCreate(3.0,3.0),
-                             aSplitterPanelGripButton.fSize-TpvVector2.InlineableCreate(3.0,3.0),
-                             TpvVector2.InlineableCreate(3.0,3.0),
-                             aSplitterPanelGripButton.fSize-TpvVector2.InlineableCreate(3.0,3.0));
+  aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                 true,
+                                                 TpvVector2.InlineableCreate(3.0,3.0),
+                                                 aSplitterPanelGripButton.fSize-TpvVector2.InlineableCreate(3.0,3.0),
+                                                 TpvVector2.InlineableCreate(3.0,3.0),
+                                                 aSplitterPanelGripButton.fSize-TpvVector2.InlineableCreate(3.0,3.0),
+                                                 0.0,
+                                                 TpvRect.CreateAbsolute(10.0,10.0,10.0,10.0),
+                                                 true);
 
  end;}
 
@@ -9023,12 +9191,15 @@ begin
 
  aDrawEngine.Transparent:=false;
 
- aDrawEngine.DrawGUIElement(Element,
-                            true,
-                            aMultiLineTextEdit.fVisibleAreaRect.LeftTop,
-                            aMultiLineTextEdit.fVisibleAreaRect.RightBottom,
-                            aMultiLineTextEdit.fVisibleAreaRect.LeftTop,
-                            aMultiLineTextEdit.fVisibleAreaRect.RightBottom);
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                aMultiLineTextEdit.fVisibleAreaRect.LeftTop,
+                                                aMultiLineTextEdit.fVisibleAreaRect.RightBottom,
+                                                aMultiLineTextEdit.fVisibleAreaRect.LeftTop,
+                                                aMultiLineTextEdit.fVisibleAreaRect.RightBottom,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
 
  aDrawEngine.Font:=aMultiLineTextEdit.Font;
  aDrawEngine.FontSize:=aMultiLineTextEdit.FontSize;
