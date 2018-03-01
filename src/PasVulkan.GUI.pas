@@ -3161,16 +3161,19 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
    State:=@fStates[LastState];
    if LastClipRect<>State^.fClipRect then begin
     LastClipRect:=State^.fClipRect;
+    ClipRect:=fClipRects[State^.fClipRect];
+    fCanvas.ClipRect:=ClipRect;
     if fUseScissor then begin
-     ClipRect.Vector4:=(fClipRects[State^.fClipRect].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
+     ClipRect.Vector4:=(ClipRect.Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
      ClipRect:=ClipRect.GetIntersection(LastScissorRect);
+     if (ClipRect.Width<=0.0) or (ClipRect.Height<=0.0) then begin
+      exit;
+     end;
      ClipRect2D.offset.x:=trunc(floor(ClipRect.Left));
      ClipRect2D.offset.y:=trunc(floor(ClipRect.Top));
      ClipRect2D.extent.width:=trunc(ceil(ClipRect.Width));
      ClipRect2D.extent.height:=trunc(ceil(ClipRect.Height));
      fCanvas.SetScissor(ClipRect2D);
-    end else begin
-     fCanvas.ClipRect:=fClipRects[State^.fClipRect];
     end;
    end;
    if LastModelMatrix<>State^.fModelMatrix then begin
