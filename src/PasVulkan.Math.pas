@@ -1085,6 +1085,8 @@ type PpvScalar=^TpvScalar;
        constructor CreateAbsolute(const aLeftTop,aRightBottom:TpvVector2); overload;
        constructor CreateRelative(const aLeft,aTop,aWidth,aHeight:TpvFloat); overload;
        constructor CreateRelative(const aLeftTop,aSize:TpvVector2); overload;
+       class operator Equal(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function GetIntersection(const WithAABB:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
        function Touched(const aPosition:TpvVector2;Threshold:TpvScalar=EPSILON):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -13718,6 +13720,16 @@ constructor TpvRect.CreateRelative(const aLeftTop,aSize:TpvVector2);
 begin
  LeftTop:=aLeftTop;
  RightBottom:=aLeftTop+aSize;
+end;
+
+class operator TpvRect.Equal(const a,b:TpvRect):boolean;
+begin
+ result:=a.Vector4=b.Vector4;
+end;
+
+class operator TpvRect.NotEqual(const a,b:TpvRect):boolean;
+begin
+ result:=a.Vector4<>b.Vector4;
 end;
 
 function TpvRect.Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean;

@@ -211,16 +211,18 @@ type TpvGUIObject=class;
 
      TpvGUIDeferredDrawEngine=class(TpvGUIDrawEngine)
       public
-       type TState=record
+       type TClipRects=array of TpvRect;
+            TModelMatrices=array of TpvMatrix4x4;
+            TColors=array of TpvVector4;
+            TState=record
              private
-              fTransparent:boolean;
-              fClipRect:TpvRect;
-              fModelMatrix:TpvMatrix4x4;
-              fColor:TpvVector4;
+              fClipRect:TpvSizeInt;
+              fModelMatrix:TpvSizeInt;
+              fColor:TpvSizeInt;
             end;
             PState=^TState;
-      public
-       type TBatchItem=record
+            TStates=array of TState;
+            TBatchItem=record
              public
               type TKind=
                     (
@@ -231,7 +233,7 @@ type TpvGUIObject=class;
                     );
              private
               fZIndex:TpvSizeInt;
-              fState:TState;
+              fState:TpvSizeInt;
               case fKind:TKind of
                TKind.DrawGUIElement:(
                 fDrawGUIElementGUIElement:TVkInt32;
@@ -260,12 +262,23 @@ type TpvGUIObject=class;
             PBatchItem=^TBatchItem;
             TBatchItems=array of TBatchItem;
       private
-       fState:TState;
+       fTransparent:boolean;
+       fClipRects:TClipRects;
+       fCountClipRects:TpvSizeInt;
+       fModelMatrices:TModelMatrices;
+       fCountModelMatrices:TpvSizeInt;
+       fColors:TColors;
+       fCountColors:TpvSizeInt;
+       fStates:TStates;
+       fCountStates:TpvSizeInt;
+       fState:PState;
        fOpaqueBatchItems:TBatchItems;
        fCountOpaqueBatchItems:TpvSizeInt;
        fTransparentBatchItems:TBatchItems;
        fCountTransparentBatchItems:TpvSizeInt;
        fCountTotalBatchItems:TpvSizeInt;
+       fDoNeedNewState:boolean;
+       procedure AcquireNewStateIfNeeded;
        function GetTransparent:boolean; override;
        procedure SetTransparent(const aTransparent:boolean); override;
        function GetClipRect:TpvRect; override;
@@ -2966,65 +2979,118 @@ end;
 constructor TpvGUIDeferredDrawEngine.Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas);
 begin
  inherited Create(aInstance,aCanvas);
- fOpaqueBatchItems:=nil;
+ fClipRects:=nil;
+ fCountClipRects:=0;
+ fModelMatrices:=nil;
+ fCountModelMatrices:=0;
+ fColors:=nil;
+ fCountColors:=0;
+ fStates:=nil;
+ fCountStates:=0;
  fOpaqueBatchItems:=nil;
  fCountOpaqueBatchItems:=0;
  fTransparentBatchItems:=nil;
  fCountTransparentBatchItems:=0;
  fCountTotalBatchItems:=0;
+ SetLength(fClipRects,1);
+ SetLength(fModelMatrices,1);
+ SetLength(fColors,1);
+ SetLength(fStates,1);
+ Clear;
 end;
 
 destructor TpvGUIDeferredDrawEngine.Destroy;
 begin
+ fClipRects:=nil;
+ fModelMatrices:=nil;
+ fColors:=nil;
+ fStates:=nil;
  fOpaqueBatchItems:=nil;
  fOpaqueBatchItems:=nil;
  fTransparentBatchItems:=nil;
  inherited Destroy;
 end;
 
+procedure TpvGUIDeferredDrawEngine.AcquireNewStateIfNeeded;
+begin
+ if fDoNeedNewState then begin
+  fDoNeedNewState:=false;
+  inc(fCountStates);
+  if length(fStates)<fCountStates then begin
+   SetLength(fStates,fCountStates*2);
+  end;
+  fState:=@fStates[fCountStates-1];
+  fState^:=fStates[fCountStates-2];
+ end;
+end;
+
 function TpvGUIDeferredDrawEngine.GetTransparent:boolean;
 begin
- result:=fState.fTransparent;
+ result:=fTransparent;
 end;
 
 procedure TpvGUIDeferredDrawEngine.SetTransparent(const aTransparent:boolean);
 begin
- fState.fTransparent:=aTransparent;
+ fTransparent:=aTransparent;
 end;
 
 function TpvGUIDeferredDrawEngine.GetClipRect:TpvRect;
 begin
- result:=fState.fClipRect;
+ result:=fClipRects[fState^.fClipRect];
 end;
 
 procedure TpvGUIDeferredDrawEngine.SetClipRect(const aClipRect:TpvRect);
 begin
- fState.fClipRect:=aClipRect;
+{if fClipRects[fState^.fClipRect]<>aClipRect then}begin
+  AcquireNewStateIfNeeded;
+  inc(fCountClipRects);
+  if length(fClipRects)<fCountClipRects then begin
+   SetLength(fClipRects,fCountClipRects*2);
+  end;
+  fState^.fClipRect:=fCountClipRects-1;
+  fClipRects[fState^.fClipRect]:=aClipRect;
+ end;
 end;
 
 function TpvGUIDeferredDrawEngine.GetModelMatrix:TpvMatrix4x4;
 begin
- result:=fState.fModelMatrix;
+ result:=fModelMatrices[fState^.fModelMatrix];
 end;
 
 procedure TpvGUIDeferredDrawEngine.SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
 begin
- fState.fModelMatrix:=aModelMatrix;
+{if fModelMatrices[fState^.fModelMatrix]<>aModelMatrix then}begin
+  AcquireNewStateIfNeeded;
+  inc(fCountModelMatrices);
+  if length(fModelMatrices)<fCountModelMatrices then begin
+   SetLength(fModelMatrices,fCountModelMatrices*2);
+  end;
+  fState^.fModelMatrix:=fCountModelMatrices-1;
+  fModelMatrices[fState^.fModelMatrix]:=aModelMatrix;
+ end;
 end;
 
 function TpvGUIDeferredDrawEngine.GetColor:TpvVector4;
 begin
- result:=fState.fColor;
+ result:=fColors[fState^.fColor];
 end;
 
 procedure TpvGUIDeferredDrawEngine.SetColor(const aColor:TpvVector4);
 begin
- fState.fColor:=aColor;
+{if fColors[fState^.fColor]<>aColor then}begin
+  AcquireNewStateIfNeeded;
+  inc(fCountColors);
+  if length(fColors)<fCountColors then begin
+   SetLength(fColors,fCountColors*2);
+  end;
+  fState^.fColor:=fCountColors-1;
+  fColors[fState^.fColor]:=aColor;
+ end;
 end;
 
 function TpvGUIDeferredDrawEngine.NewBatchItem:PBatchItem;
 begin
- if fState.fTransparent then begin
+ if fTransparent then begin
   inc(fCountTransparentBatchItems);
   if length(fTransparentBatchItems)<fCountTransparentBatchItems then begin
    SetLength(fTransparentBatchItems,fCountTransparentBatchItems*2);
@@ -3038,29 +3104,63 @@ begin
   result:=@fOpaqueBatchItems[fCountOpaqueBatchItems-1];
  end;
  result^.fZIndex:=fCountTotalBatchItems;
- result^.fState:=fState;
+ result^.fState:=fCountStates-1;
  inc(fCountTotalBatchItems);
+ fDoNeedNewState:=true;
 end;
 
 procedure TpvGUIDeferredDrawEngine.Clear;
 begin
  inherited Clear;
- fState.fTransparent:=fCanvas.BlendingMode<>TpvCanvasBlendingMode.None;
- fState.fClipRect:=fCanvas.ClipRect;
- fState.fModelMatrix:=fCanvas.ModelMatrix;
- fState.fColor:=fCanvas.Color;
+ begin
+  fClipRects[0]:=fCanvas.ClipRect;
+  fCountClipRects:=1;
+ end;
+ begin
+  fModelMatrices[0]:=fCanvas.ModelMatrix;
+  fCountModelMatrices:=1;
+ end;
+ begin
+  fColors[0]:=fCanvas.Color;
+  fCountColors:=1;
+ end;
+ begin
+  fState:=@fStates[0];
+  fCountStates:=1;
+  fTransparent:=fCanvas.BlendingMode<>TpvCanvasBlendingMode.None;
+  fState^.fClipRect:=0;
+  fState^.fModelMatrix:=0;
+  fState^.fColor:=0;
+ end;
+ fDoNeedNewState:=false;
  fCountOpaqueBatchItems:=0;
  fCountTransparentBatchItems:=0;
  fCountTotalBatchItems:=0;
 end;
 
 procedure TpvGUIDeferredDrawEngine.Draw;
+var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
+    State:TpvGUIDeferredDrawEngine.PState;
+    InverseCountTotalBatchItems:TpvDouble;
  procedure DrawBatchItem(const aBatchItem:TBatchItem);
  begin
-  fCanvas.ZIndex:=aBatchItem.fZIndex/fCountTotalBatchItems;
-  fCanvas.ClipRect:=aBatchItem.fState.fClipRect;
-  fCanvas.ModelMatrix:=aBatchItem.fState.fModelMatrix;
-  fCanvas.Color:=aBatchItem.fState.fColor;
+  fCanvas.ZIndex:=aBatchItem.fZIndex*InverseCountTotalBatchItems;
+  if LastState<>aBatchItem.fState then begin
+   LastState:=aBatchItem.fState;
+   State:=@fStates[LastState];
+   if LastClipRect<>State^.fClipRect then begin
+    LastClipRect:=State^.fClipRect;
+    fCanvas.ClipRect:=fClipRects[State^.fClipRect];
+   end;
+   if LastModelMatrix<>State^.fModelMatrix then begin
+    LastModelMatrix:=State^.fModelMatrix;
+    fCanvas.ModelMatrix:=fModelMatrices[State^.fModelMatrix];
+   end;
+   if LastColor<>State^.fColor then begin
+    LastColor:=State^.fColor;
+    fCanvas.Color:=fColors[State^.fColor];
+   end;
+  end;
   case aBatchItem.fKind of
    TBatchItem.TKind.DrawGUIElement:begin
     fCanvas.DrawGUIElement(aBatchItem.fDrawGUIElementGUIElement,
@@ -3089,6 +3189,11 @@ procedure TpvGUIDeferredDrawEngine.Draw;
  end;
 var Index:TpvSizeInt;
 begin
+ LastClipRect:=-1;
+ LastModelMatrix:=-1;
+ LastColor:=-1;
+ LastState:=-1;
+ InverseCountTotalBatchItems:=1.0/Max(1,fCountTotalBatchItems);
  if fCountOpaqueBatchItems>0 then begin
   fCanvas.BlendingMode:=TpvCanvasBlendingMode.None;
   for Index:=fCountOpaqueBatchItems-1 downto 0 do begin
@@ -9138,6 +9243,7 @@ var ViewBufferX,ViewBufferY,ViewBufferIndex,StartViewBufferX,Index:TpvSizeInt;
     Element,
     TextCursorPositionIndex,
     PreviousCursorPosition,NextCursorPosition,StartIndex,EndIndex:TpvInt32;
+    LastAttribute,Attribute:TpvUInt32;
     PreviousCursorX,NextCursorX:TpvFloat;
     IconSprite:TpvSprite;
     LineNumberString:String[16];
@@ -9193,18 +9299,19 @@ begin
 
  if aMultiLineTextEdit.fLeftSideBar then begin
   Color:=CurrentFontColor;
+  if (aMultiLineTextEdit.fViewBufferCursorY>=0) and
+     (aMultiLineTextEdit.fViewBufferCursorY<aMultiLineTextEdit.fViewBufferHeight) then begin
+   aDrawEngine.Color:=Color*TpvVector4.InlineableCreate(0.015625,0.015625,0.015625,1.0);
+   Rect:=TpvRect.CreateAbsolute(aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
+                                TpvVector2.Create(0.0,aMultiLineTextEdit.fFontCharSize.y*aMultiLineTextEdit.fViewBufferCursorY),
+                                aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
+                                TpvVector2.Create(aMultiLineTextEdit.fLeftSideBarAreaRect.Width-(aMultiLineTextEdit.fFontCharSize.x*0.5),aMultiLineTextEdit.fFontCharSize.y*(aMultiLineTextEdit.fViewBufferCursorY+1)));
+   aDrawEngine.Transparent:=true;
+   aDrawEngine.DrawFilledRectangle(Rect);
+  end;
+  aDrawEngine.Color:=Color;
   for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
-   if ViewBufferY=aMultiLineTextEdit.fViewBufferCursorY then begin
-    aDrawEngine.Color:=Color*TpvVector4.InlineableCreate(0.015625,0.015625,0.015625,1.0);
-    Rect:=TpvRect.CreateAbsolute(aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
-                                 TpvVector2.Create(0.0,aMultiLineTextEdit.fFontCharSize.y*ViewBufferY),
-                                 aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
-                                 TpvVector2.Create(aMultiLineTextEdit.fLeftSideBarAreaRect.Width-(aMultiLineTextEdit.fFontCharSize.x*0.5),aMultiLineTextEdit.fFontCharSize.y*(ViewBufferY+1)));
-    aDrawEngine.Transparent:=true;
-    aDrawEngine.DrawFilledRectangle(Rect);
-   end;
    if aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]>=0 then begin
-    aDrawEngine.Color:=Color;
 {$if false}
     Str(aMultiLineTextEdit.fViewBufferLineIndices[ViewBufferY]+1:5,LineNumberString);
     aDrawEngine.Transparent:=true;
@@ -9235,6 +9342,8 @@ begin
   aDrawEngine.ClipRect:=TextClipRect;
  end;
 
+ aDrawEngine.Transparent:=true;
+
  ViewBufferIndex:=0;
  for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
   ViewBufferX:=0;
@@ -9249,7 +9358,6 @@ begin
           ((aMultiLineTextEdit.fViewBuffer[ViewBufferIndex].Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Marked)=0);
     if StartViewBufferX<ViewBufferX then begin
      aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
-     aDrawEngine.Transparent:=true;
      aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
                                                             (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(StartViewBufferX,ViewBufferY)),
                                                             aMultiLineTextEdit.fTextAreaRect.Offset+
@@ -9263,7 +9371,6 @@ begin
           ((aMultiLineTextEdit.fViewBuffer[ViewBufferIndex].Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight)=0);
     if StartViewBufferX<ViewBufferX then begin
      aDrawEngine.Color:=TpvVector4.InlineableCreate(0.03125,0.03125,0.03125,1.0);
-     aDrawEngine.Transparent:=true;
      aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
                                                             (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(StartViewBufferX,ViewBufferY)),
                                                             aMultiLineTextEdit.fTextAreaRect.Offset+
@@ -9276,54 +9383,61 @@ begin
   end;
  end;
 
+ LastAttribute:=$ffffffff;
+
+ aDrawEngine.Transparent:=true;
+
  ViewBufferIndex:=0;
  for ViewBufferY:=0 to aMultiLineTextEdit.fViewBufferHeight-1 do begin
   for ViewBufferX:=0 to aMultiLineTextEdit.fViewBufferWidth-1 do begin
    ViewBufferItem:=@aMultiLineTextEdit.fViewBuffer[ViewBufferIndex];
    if not (ViewBufferItem^.CodePoint in [0,32]) then begin
-    case ViewBufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Mask of
-     TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace:begin
-      Color:=CurrentFontColor;
+    Attribute:=ViewBufferItem^.Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Mask;
+    if LastAttribute<>Attribute then begin
+     LastAttribute:=Attribute;
+     case Attribute of
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.WhiteSpace:begin
+       Color:=CurrentFontColor;
+      end;
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor:begin
+       Color:=CurrentFontColor*TpvVector4.Create(1.0,0.1,0.1,1.0);
+      end;
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment:begin
+       Color:=CurrentFontColor*TpvVector4.Create(0.5,0.5,0.5,1.0);
+      end;
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword:begin
+       Color:=CurrentFontColor*TpvVector4.Create(1.0,1.0,1.0,1.0);
+      end;
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.Type_:begin
+       Color:=CurrentFontColor*TpvVector4.Create(1.0,1.0,0.0,1.0);
+      end;
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.Builtin:begin
+       Color:=CurrentFontColor*TpvVector4.Create(1.0,1.0,0.0,1.0);
+      end;
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier:begin
+       Color:=CurrentFontColor*TpvVector4.Create(1.0,1.0,0.0,1.0);
+      end;
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.Number:begin
+       Color:=CurrentFontColor*TpvVector4.Create(1.0,0.0,1.0,1.0);
+      end;
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.Symbol:begin
+       Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,0.0,1.0);
+      end;
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.String_:begin
+       Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,1.0,1.0);
+      end;
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter:begin
+       Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,0.0,1.0);
+      end;
+      TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator:begin
+       Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,0.0,1.0);
+      end;
+      else begin
+       Color:=CurrentFontColor;
+      end;
      end;
-     TpvTextEditor.TSyntaxHighlighting.TAttributes.Preprocessor:begin
-      Color:=CurrentFontColor*TpvVector4.Create(1.0,0.1,0.1,1.0);
-     end;
-     TpvTextEditor.TSyntaxHighlighting.TAttributes.Comment:begin
-      Color:=CurrentFontColor*TpvVector4.Create(0.5,0.5,0.5,1.0);
-     end;
-     TpvTextEditor.TSyntaxHighlighting.TAttributes.Keyword:begin
-      Color:=CurrentFontColor*TpvVector4.Create(1.0,1.0,1.0,1.0);
-     end;
-     TpvTextEditor.TSyntaxHighlighting.TAttributes.Type_:begin
-      Color:=CurrentFontColor*TpvVector4.Create(1.0,1.0,0.0,1.0);
-     end;
-     TpvTextEditor.TSyntaxHighlighting.TAttributes.Builtin:begin
-      Color:=CurrentFontColor*TpvVector4.Create(1.0,1.0,0.0,1.0);
-     end;
-     TpvTextEditor.TSyntaxHighlighting.TAttributes.Identifier:begin
-      Color:=CurrentFontColor*TpvVector4.Create(1.0,1.0,0.0,1.0);
-     end;
-     TpvTextEditor.TSyntaxHighlighting.TAttributes.Number:begin
-      Color:=CurrentFontColor*TpvVector4.Create(1.0,0.0,1.0,1.0);
-     end;
-     TpvTextEditor.TSyntaxHighlighting.TAttributes.Symbol:begin
-      Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,0.0,1.0);
-     end;
-     TpvTextEditor.TSyntaxHighlighting.TAttributes.String_:begin
-      Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,1.0,1.0);
-     end;
-     TpvTextEditor.TSyntaxHighlighting.TAttributes.Delimiter:begin
-      Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,0.0,1.0);
-     end;
-     TpvTextEditor.TSyntaxHighlighting.TAttributes.Operator:begin
-      Color:=CurrentFontColor*TpvVector4.Create(0.0,1.0,0.0,1.0);
-     end;
-     else begin
-      Color:=CurrentFontColor;
-     end;
+     aDrawEngine.Color:=Color;
     end;
-    aDrawEngine.Color:=Color;
-    aDrawEngine.Transparent:=true;
     aDrawEngine.DrawTextCodePoint(ViewBufferItem^.CodePoint,
                                   aMultiLineTextEdit.fTextAreaRect.Offset+
                                   (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(ViewBufferX,ViewBufferY)));
