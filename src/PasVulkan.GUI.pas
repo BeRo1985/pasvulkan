@@ -3174,6 +3174,10 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
      ClipRect2D.extent.width:=trunc(ceil(ClipRect.Width));
      ClipRect2D.extent.height:=trunc(ceil(ClipRect.Height));
      fCanvas.SetScissor(ClipRect2D);
+    end else begin
+     if (ClipRect.Width<=0.0) or (ClipRect.Height<=0.0) then begin
+      exit;
+     end;
     end;
    end;
    if LastModelMatrix<>State^.fModelMatrix then begin
