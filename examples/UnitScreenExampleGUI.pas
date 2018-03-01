@@ -626,19 +626,7 @@ begin
                                  pvApplication.VulkanTransferCommandBufferFences[0,0],
                                  pvApplication.VulkanPipelineCache);
 
- fGUIInstance:=TpvGUIInstance.Create(pvApplication.VulkanDevice);
-{$if defined(Android) or defined(iOS)}
- if Pos('nvidia',LowerCase(String(pvApplication.VulkanDevice.PhysicalDevice.DeviceName)))>0 then begin
-  // NVIDIA Tegra K1 and X1 are fast enough for the full alpha-blended experience with
-  // enough fast memory bandwidth
-  fGUIInstance.DrawEngine:=TpvGUIInstantDrawEngine.Create(fGUIInstance,fVulkanCanvas);
- end else begin
-  // But at least Mali GPUs not
-  fGUIInstance.DrawEngine:=TpvGUIDeferredDrawEngine.Create(fGUIInstance,fVulkanCanvas);
- end;
-{$else}
- fGUIInstance.DrawEngine:=TpvGUIInstantDrawEngine.Create(fGUIInstance,fVulkanCanvas);
-{$ifend}
+ fGUIInstance:=TpvGUIInstance.Create(pvApplication.VulkanDevice,fVulkanCanvas);
 
  fGUIInstance.Width:=pvApplication.Width;
  fGUIInstance.Height:=pvApplication.Height;

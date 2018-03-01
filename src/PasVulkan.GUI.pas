@@ -278,6 +278,7 @@ type TpvGUIObject=class;
        fCountTransparentBatchItems:TpvSizeInt;
        fCountTotalBatchItems:TpvSizeInt;
        fDoNeedNewState:boolean;
+       fUseScissor:boolean;
        procedure AcquireNewStateIfNeeded;
        function GetTransparent:boolean; override;
        procedure SetTransparent(const aTransparent:boolean); override;
@@ -297,6 +298,8 @@ type TpvGUIObject=class;
        procedure DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect); override;
        procedure DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0); override;
        procedure DrawFilledRectangle(const aRect:TpvRect); override;
+      published
+       property UseScissor:boolean read fUseScissor write fUseScissor;
      end;
 
      TpvGUIObjectList=class(TObjectList<TpvGUIObject>)
@@ -1236,6 +1239,7 @@ type TpvGUIObject=class;
      TpvGUIInstance=class(TpvGUIHolder)
       private
        fVulkanDevice:TpvVulkanDevice;
+       fCanvas:TpvCanvas;
        fDrawEngine:TpvGUIDrawEngine;
        fFontCodePointRanges:TpvFontCodePointRanges;
        fMonoFontCodePointRanges:TpvFontCodePointRanges;
@@ -1269,6 +1273,7 @@ type TpvGUIObject=class;
        procedure FindHoveredWidget;
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice;
+                          const aCanvas:TpvCanvas;
                           const aFontCodePointRanges:TpvFontCodePointRanges=nil;
                           const aMonoFontCodePointRanges:TpvFontCodePointRanges=nil); reintroduce;
        destructor Destroy; override;
@@ -1289,6 +1294,7 @@ type TpvGUIObject=class;
        property MousePosition:TpvVector2 read fMousePosition write fMousePosition;
       published
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
+       property Canvas:TpvCanvas read fCanvas;
        property DrawEngine:TpvGUIDrawEngine read fDrawEngine write SetDrawEngine;
        property StandardSkin:TpvGUISkin read fStandardSkin;
        property DrawWidgetBounds:boolean read fDrawWidgetBounds write fDrawWidgetBounds;
@@ -2979,6 +2985,7 @@ end;
 constructor TpvGUIDeferredDrawEngine.Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas);
 begin
  inherited Create(aInstance,aCanvas);
+ fUseScissor:=false;
  fClipRects:=nil;
  fCountClipRects:=0;
  fModelMatrices:=nil;
@@ -3142,7 +3149,10 @@ procedure TpvGUIDeferredDrawEngine.Draw;
 var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
     State:TpvGUIDeferredDrawEngine.PState;
     InverseCountTotalBatchItems:TpvDouble;
+    ClipRectToScissorScale,ClipRectToScissorOffset:TPvVector4;
  procedure DrawBatchItem(const aBatchItem:TBatchItem);
+ var ClipRect:TpvRect;
+     ClipRect2D:TVkRect2D;
  begin
   fCanvas.ZIndex:=aBatchItem.fZIndex*InverseCountTotalBatchItems;
   if LastState<>aBatchItem.fState then begin
@@ -3150,7 +3160,16 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
    State:=@fStates[LastState];
    if LastClipRect<>State^.fClipRect then begin
     LastClipRect:=State^.fClipRect;
-    fCanvas.ClipRect:=fClipRects[State^.fClipRect];
+    if fUseScissor then begin
+     ClipRect.Vector4:=(fClipRects[State^.fClipRect].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
+     ClipRect2D.offset.x:=trunc(floor(ClipRect.Left));
+     ClipRect2D.offset.y:=trunc(floor(ClipRect.Top));
+     ClipRect2D.extent.width:=trunc(ceil(ClipRect.Width));
+     ClipRect2D.extent.height:=trunc(ceil(ClipRect.Height));
+     fCanvas.SetScissor(ClipRect2D);
+    end else begin
+     fCanvas.ClipRect:=fClipRects[State^.fClipRect];
+    end;
    end;
    if LastModelMatrix<>State^.fModelMatrix then begin
     LastModelMatrix:=State^.fModelMatrix;
@@ -3188,7 +3207,13 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
   end;
  end;
 var Index:TpvSizeInt;
+    LastScissor:TVkRect2D;
 begin
+ if fUseScissor then begin
+  LastScissor:=fCanvas.State.Scissor;
+  ClipRectToScissorScale:=(TpvVector2.InlineableCreate(fCanvas.Viewport^.width,fCanvas.Viewport^.height)/TpvVector2.InlineableCreate(fCanvas.Width,fCanvas.Height)).xyxy;
+  ClipRectToScissorOffset:=TpvVector2.InlineableCreate(fCanvas.Viewport.x,fCanvas.Viewport.y).xyxy;
+ end;
  LastClipRect:=-1;
  LastModelMatrix:=-1;
  LastColor:=-1;
@@ -3205,6 +3230,9 @@ begin
   for Index:=0 to fCountTransparentBatchItems-1 do begin
    DrawBatchItem(fTransparentBatchItems[Index]);
   end;
+ end;
+ if fUseScissor then begin
+  fCanvas.SetScissor(LastScissor);
  end;
 end;
 
@@ -10391,6 +10419,7 @@ begin
 end;
 
 constructor TpvGUIInstance.Create(const aVulkanDevice:TpvVulkanDevice;
+                                  const aCanvas:TpvCanvas;
                                   const aFontCodePointRanges:TpvFontCodePointRanges=nil;
                                   const aMonoFontCodePointRanges:TpvFontCodePointRanges=nil);
 begin
@@ -10399,9 +10428,9 @@ begin
 
  fInstance:=self;
 
- fDrawEngine:=nil;
-
  fVulkanDevice:=aVulkanDevice;
+
+ fCanvas:=aCanvas;
 
  fFontCodePointRanges:=aFontCodePointRanges;
 
@@ -10476,6 +10505,21 @@ begin
  Include(fWidgetFlags,TpvGUIWidgetFlag.Scissor);
 
  SetCountBuffers(1);
+
+{$if defined(Android) or defined(iOS)}
+ if Pos('nvidia',LowerCase(String(pvApplication.VulkanDevice.PhysicalDevice.DeviceName)))>0 then begin
+  // NVIDIA Tegra K1 and X1 are fast enough for the full brute-force alpha-blended
+  // experience with enough fast memory bandwidth
+  fDrawEngine:=TpvGUIInstantDrawEngine.Create(self,fCanvas);
+ end else begin
+  // But at least Mali GPUs not
+  fDrawEngine:=TpvGUIDeferredDrawEngine.Create(self,fCanvas);
+  TpvGUIDeferredDrawEngine(fDrawEngine).UseScissor:=Pos('mali',LowerCase(String(pvApplication.VulkanDevice.PhysicalDevice.DeviceName)))>0;
+ end;
+{$else}
+ fDrawEngine:=TpvGUIInstantDrawEngine.Create(self,fCanvas);
+//fGUIInstance.DrawEngine:=TpvGUIDeferredDrawEngine.Create(self,fCanvas);
+{$ifend}
 
 end;
 
