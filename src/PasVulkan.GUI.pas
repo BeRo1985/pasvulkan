@@ -3231,7 +3231,11 @@ begin
  LastState:=-1;
  InverseCountTotalBatchItems:=1.0/Max(1,fCountTotalBatchItems);
  if fCountOpaqueBatchItems>0 then begin
-  fCanvas.BlendingMode:=TpvCanvasBlendingMode.None;
+  if fUseScissor then begin
+   fCanvas.BlendingMode:=TpvCanvasBlendingMode.NoDiscard;
+  end else begin
+   fCanvas.BlendingMode:=TpvCanvasBlendingMode.None;
+  end;
   for Index:=fCountOpaqueBatchItems-1 downto 0 do begin
    DrawBatchItem(fOpaqueBatchItems[Index]);
   end;
@@ -10527,9 +10531,11 @@ begin
   fDrawEngine:=TpvGUIDeferredDrawEngine.Create(self,fCanvas);
   TpvGUIDeferredDrawEngine(fDrawEngine).UseScissor:=Pos('mali',LowerCase(String(pvApplication.VulkanDevice.PhysicalDevice.DeviceName)))>0;
  end;
-{$else}
+{$elseif true}
  fDrawEngine:=TpvGUIInstantDrawEngine.Create(self,fCanvas);
-//fGUIInstance.DrawEngine:=TpvGUIDeferredDrawEngine.Create(self,fCanvas);
+{$else}
+ fDrawEngine:=TpvGUIDeferredDrawEngine.Create(self,fCanvas);
+//TpvGUIDeferredDrawEngine(fDrawEngine).UseScissor:=true;
 {$ifend}
 
 end;
