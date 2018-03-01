@@ -2677,77 +2677,52 @@ end;
 procedure TpvGUIDrawEngine.DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true);
 var RowIndex,ColumnIndex:TpvInt32;
     Rect:TpvRect;
-    TransparentMargin:TpvRect;
 begin
- TransparentMargin:=aTransparentMargin;
- if TransparentMargin.Left<0.0 then begin
-  TransparentMargin.Left:=TransparentMargin.Right;
- end else if TransparentMargin.Right<0.0 then begin
-  TransparentMargin.Right:=TransparentMargin.Left;
- end;
- if TransparentMargin.Top<0.0 then begin
-  TransparentMargin.Top:=TransparentMargin.Bottom;
- end else if TransparentMargin.Bottom<0.0 then begin
-  TransparentMargin.Bottom:=TransparentMargin.Top;
- end;
- if (TransparentMargin.Left>=0.0) and
-    (TransparentMargin.Right>=0.0) and
-    (TransparentMargin.Top>=0.0) and
-    (TransparentMargin.Bottom>=0.0) then begin
-  for RowIndex:=0 to 2 do begin
-   for ColumnIndex:=0 to 2 do begin
-    case ColumnIndex of
-     0:begin
-      Rect.Left:=aMin.x;
-      Rect.Right:=Min(aMax.x,aMin.x+TransparentMargin.Left);
-     end;
-     1:begin
-      Rect.Left:=Min(aMax.x,aMin.x+TransparentMargin.Left);
-      Rect.Right:=Max(aMin.x,aMax.x-TransparentMargin.Right);
-     end;
-     else begin
-      Rect.Left:=Max(aMin.x,aMax.x-TransparentMargin.Right);
-      Rect.Right:=aMax.x;
-     end;
+ for RowIndex:=0 to 2 do begin
+  for ColumnIndex:=0 to 2 do begin
+   case ColumnIndex of
+    0:begin
+     Rect.Left:=aMin.x;
+     Rect.Right:=Min(aMax.x,aMin.x+aTransparentMargin.Left);
     end;
-    case RowIndex of
-     0:begin
-      Rect.Top:=aMin.y;
-      Rect.Bottom:=Min(aMax.y,aMin.y+TransparentMargin.Top);
-     end;
-     1:begin
-      Rect.Top:=Min(aMax.y,aMin.y+TransparentMargin.Top);
-      Rect.Bottom:=Max(aMin.y,aMax.y-TransparentMargin.Bottom);
-     end;
-     else begin
-      Rect.Top:=Max(aMin.y,aMax.y-TransparentMargin.Bottom);
-      Rect.Bottom:=aMax.y;
-     end;
+    1:begin
+     Rect.Left:=Min(aMax.x,aMin.x+aTransparentMargin.Left);
+     Rect.Right:=Max(aMin.x,aMax.x-aTransparentMargin.Right);
     end;
-    if (Rect.Left<Rect.Right) and
-       (Rect.Top<Rect.Bottom) and
-       (aDrawCenter or
-        (RowIndex<>1) or
-        (ColumnIndex<>1)) then begin
-     Transparent:=(RowIndex<>1) or (ColumnIndex<>1);
-     DrawGUIElement(aGUIElement,
-                    aFocused,
-                    Rect.LeftTop,
-                    Rect.RightBottom,
-                    aMetaMin,
-                    aMetaMax,
-                    aMeta);
+    else begin
+     Rect.Left:=Max(aMin.x,aMax.x-aTransparentMargin.Right);
+     Rect.Right:=aMax.x;
     end;
    end;
+   case RowIndex of
+    0:begin
+     Rect.Top:=aMin.y;
+     Rect.Bottom:=Min(aMax.y,aMin.y+aTransparentMargin.Top);
+    end;
+    1:begin
+     Rect.Top:=Min(aMax.y,aMin.y+aTransparentMargin.Top);
+     Rect.Bottom:=Max(aMin.y,aMax.y-aTransparentMargin.Bottom);
+    end;
+    else begin
+     Rect.Top:=Max(aMin.y,aMax.y-aTransparentMargin.Bottom);
+     Rect.Bottom:=aMax.y;
+    end;
+   end;
+   if (Rect.Left<Rect.Right) and
+      (Rect.Top<Rect.Bottom) and
+      (aDrawCenter or
+       (RowIndex<>1) or
+       (ColumnIndex<>1)) then begin
+    Transparent:=(RowIndex<>1) or (ColumnIndex<>1);
+    DrawGUIElement(aGUIElement,
+                   aFocused,
+                   Rect.LeftTop,
+                   Rect.RightBottom,
+                   aMetaMin,
+                   aMetaMax,
+                   aMeta);
+   end;
   end;
- end else begin
-  DrawGUIElement(aGUIElement,
-                 aFocused,
-                 aMin,
-                 aMax,
-                 aMetaMin,
-                 aMetaMax,
-                 aMeta);
  end;
 end;
 
