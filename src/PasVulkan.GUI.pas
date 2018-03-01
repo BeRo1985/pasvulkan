@@ -3150,6 +3150,7 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
     State:TpvGUIDeferredDrawEngine.PState;
     InverseCountTotalBatchItems:TpvDouble;
     ClipRectToScissorScale,ClipRectToScissorOffset:TPvVector4;
+    LastScissorRect:TpvRect;
  procedure DrawBatchItem(const aBatchItem:TBatchItem);
  var ClipRect:TpvRect;
      ClipRect2D:TVkRect2D;
@@ -3162,6 +3163,7 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
     LastClipRect:=State^.fClipRect;
     if fUseScissor then begin
      ClipRect.Vector4:=(fClipRects[State^.fClipRect].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
+     ClipRect:=ClipRect.GetIntersection(LastScissorRect);
      ClipRect2D.offset.x:=trunc(floor(ClipRect.Left));
      ClipRect2D.offset.y:=trunc(floor(ClipRect.Top));
      ClipRect2D.extent.width:=trunc(ceil(ClipRect.Width));
@@ -3211,6 +3213,8 @@ var Index:TpvSizeInt;
 begin
  if fUseScissor then begin
   LastScissor:=fCanvas.State.Scissor;
+  LastScissorRect:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(fCanvas.Viewport.x,fCanvas.Viewport.y),
+                                          TpvVector2.InlineableCreate(fCanvas.Viewport^.width,fCanvas.Viewport^.height));
   ClipRectToScissorScale:=(TpvVector2.InlineableCreate(fCanvas.Viewport^.width,fCanvas.Viewport^.height)/TpvVector2.InlineableCreate(fCanvas.Width,fCanvas.Height)).xyxy;
   ClipRectToScissorOffset:=TpvVector2.InlineableCreate(fCanvas.Viewport.x,fCanvas.Viewport.y).xyxy;
  end;
