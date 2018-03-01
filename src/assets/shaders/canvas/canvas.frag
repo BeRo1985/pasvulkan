@@ -983,9 +983,9 @@ void main(void){
   }
 #endif
 #if !USECLIPDISTANCE
-#if BLENDING
+#if BLENDING 
   color *= step(inClipRect.x, inPosition.x) * step(inClipRect.y, inPosition.y) * step(inPosition.x, inClipRect.z) * step(inPosition.y, inClipRect.w);
-#else  
+#else 
 //if(step(inClipRect.x, inPosition.x) * step(inClipRect.y, inPosition.y) * step(inPosition.x, inClipRect.z) * step(inPosition.y, inClipRect.w)) < 0.5){
   if(any(lessThan(inPosition.xy, inClipRect.xy)) || 
      any(greaterThan(inPosition.xy, inClipRect.zw))){
