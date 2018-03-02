@@ -145,47 +145,6 @@ type TpvGUIObject=class;
      TpvGUIOnScrolled=function(const aSender:TpvGUIObject;const aPosition,aRelativeAmount:TpvVector2):boolean of object;
 
      TpvGUIDrawEngine=class
-      private
-       fInstance:TpvGUIInstance;
-       fCanvas:TpvCanvas;
-       fFont:TpvFont;
-       fFontSize:TpvFloat;
-       fTextHorizontalAlignment:TpvCanvasTextHorizontalAlignment;
-       fTextVerticalAlignment:TpvCanvasTextVerticalAlignment;
-       function GetTransparent:boolean; virtual;
-       procedure SetTransparent(const aTransparent:boolean); virtual;
-       function GetClipRect:TpvRect; virtual;
-       procedure SetClipRect(const aClipRect:TpvRect); virtual;
-       function GetModelMatrix:TpvMatrix4x4; virtual;
-       procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4); virtual;
-       function GetColor:TpvVector4; virtual;
-       procedure SetColor(const aColor:TpvVector4); virtual;
-      public
-       constructor Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas); reintroduce; virtual;
-       destructor Destroy; override;
-       procedure Clear; virtual;
-       procedure Next; virtual;
-       procedure Draw; virtual;
-       procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0); virtual;
-       procedure DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true); virtual;
-       procedure DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect); virtual;
-       procedure DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0); virtual;
-       procedure DrawFilledRectangle(const aRect:TpvRect); virtual;
-       procedure DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2); virtual;
-       procedure DrawTextCodePoint(const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2); virtual;
-       procedure TextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;var aTextGlyphRects:TpvCanvasTextGlyphRects;out aCountTextGlyphRects:TpvInt32); virtual;
-       property ClipRect:TpvRect read GetClipRect write SetClipRect;
-       property ModelMatrix:TpvMatrix4x4 read GetModelMatrix write SetModelMatrix;
-       property Color:TpvVector4 read GetColor write SetColor;
-      published
-       property Transparent:boolean read GetTransparent write SetTransparent;
-       property Font:TpvFont read fFont write fFont;
-       property FontSize:TpvFloat read fFontSize write fFontSize;
-       property TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment read fTextHorizontalAlignment write fTextHorizontalAlignment;
-       property TextVerticalAlignment:TpvCanvasTextVerticalAlignment read fTextVerticalAlignment write fTextVerticalAlignment;
-     end;
-
-     TpvGUIDeferredDrawEngine=class(TpvGUIDrawEngine)
       public
        type TStrategy=
              (
@@ -244,6 +203,12 @@ type TpvGUIObject=class;
             PBatchItem=^TBatchItem;
             TBatchItems=array of TBatchItem;
       private
+       fInstance:TpvGUIInstance;
+       fCanvas:TpvCanvas;
+       fFont:TpvFont;
+       fFontSize:TpvFloat;
+       fTextHorizontalAlignment:TpvCanvasTextHorizontalAlignment;
+       fTextVerticalAlignment:TpvCanvasTextVerticalAlignment;
        fStrategy:TStrategy;
        fTransparent:boolean;
        fClipRects:TClipRects;
@@ -263,27 +228,38 @@ type TpvGUIObject=class;
        fDoNeedNewState:boolean;
        fUseScissor:boolean;
        procedure AcquireNewStateIfNeeded;
-       function GetTransparent:boolean; override;
-       procedure SetTransparent(const aTransparent:boolean); override;
-       function GetClipRect:TpvRect; override;
-       procedure SetClipRect(const aClipRect:TpvRect); override;
-       function GetModelMatrix:TpvMatrix4x4; override;
-       procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4); override;
-       function GetColor:TpvVector4; override;
-       procedure SetColor(const aColor:TpvVector4); override;
+       function GetTransparent:boolean; inline;
+       procedure SetTransparent(const aTransparent:boolean); inline;
+       function GetClipRect:TpvRect; inline;
+       procedure SetClipRect(const aClipRect:TpvRect);
+       function GetModelMatrix:TpvMatrix4x4; inline;
+       procedure SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
+       function GetColor:TpvVector4; inline;
+       procedure SetColor(const aColor:TpvVector4);
        function NewBatchItem:PBatchItem;
       public
-       constructor Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas); override;
+       constructor Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas); reintroduce;
        destructor Destroy; override;
-       procedure Clear; override;
-       procedure Next; override;
-       procedure Draw; override;
-       procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0); override;
-       procedure DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true); override;
-       procedure DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect); override;
-       procedure DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0); override;
-       procedure DrawFilledRectangle(const aRect:TpvRect); override;
+       procedure Clear;
+       procedure Next;
+       procedure Draw;
+       procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
+       procedure DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true);
+       procedure DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect);
+       procedure DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0);
+       procedure DrawFilledRectangle(const aRect:TpvRect);
+       procedure DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2);
+       procedure DrawTextCodePoint(const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2);
+       procedure TextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;var aTextGlyphRects:TpvCanvasTextGlyphRects;out aCountTextGlyphRects:TpvInt32);
+       property ClipRect:TpvRect read GetClipRect write SetClipRect;
+       property ModelMatrix:TpvMatrix4x4 read GetModelMatrix write SetModelMatrix;
+       property Color:TpvVector4 read GetColor write SetColor;
       published
+       property Transparent:boolean read GetTransparent write SetTransparent;
+       property Font:TpvFont read fFont write fFont;
+       property FontSize:TpvFloat read fFontSize write fFontSize;
+       property TextHorizontalAlignment:TpvCanvasTextHorizontalAlignment read fTextHorizontalAlignment write fTextHorizontalAlignment;
+       property TextVerticalAlignment:TpvCanvasTextVerticalAlignment read fTextVerticalAlignment write fTextVerticalAlignment;
        property Strategy:TStrategy read fStrategy write fStrategy;
        property UseScissor:boolean read fUseScissor write fUseScissor;
      end;
@@ -2616,59 +2592,216 @@ const GUI_ELEMENT_WINDOW_HEADER=1;
 
 constructor TpvGUIDrawEngine.Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas);
 begin
+
  inherited Create;
+
  fInstance:=aInstance;
+
  fCanvas:=aCanvas;
+
+ case fCanvas.Device.PhysicalDevice.Properties.vendorID of
+  $1002,      // AMD
+  $10de,      // NVIDIA
+  $8086:begin // Intel
+   // NVIDIA, AMD and Intel GPUs are fast enough for the full one-pass brute-force
+   // alpha-blended experience with enough fast memory bandwidth
+   fStrategy:=TStrategy.OnePassBackToFront;
+  end;
+{-$1010,      // ImgTec
+  $13b5,      // ARM
+  $5143,}     // Qualcomm
+  else begin
+   // But for example Mali, Adreno and PowerVR not
+   fStrategy:=TStrategy.TwoPassBidirectional;
+  end;
+ end;
+
+ fUseScissor:=pvApplication.VulkanDevice.PhysicalDevice.Features.shaderClipDistance=0;
+
+ fClipRects:=nil;
+ fCountClipRects:=0;
+
+ fModelMatrices:=nil;
+ fCountModelMatrices:=0;
+
+ fColors:=nil;
+ fCountColors:=0;
+
+ fStates:=nil;
+ fCountStates:=0;
+
+ fOpaqueBatchItems:=nil;
+ fCountOpaqueBatchItems:=0;
+
+ fTransparentBatchItems:=nil;
+ fCountTransparentBatchItems:=0;
+
+ fCountTotalBatchItems:=0;
+
+ SetLength(fClipRects,1);
+
+ SetLength(fModelMatrices,1);
+
+ SetLength(fColors,1);
+
+ SetLength(fStates,1);
+
+ Clear;
+
 end;
 
 destructor TpvGUIDrawEngine.Destroy;
 begin
+ fClipRects:=nil;
+ fModelMatrices:=nil;
+ fColors:=nil;
+ fStates:=nil;
+ fOpaqueBatchItems:=nil;
+ fTransparentBatchItems:=nil;
  inherited Destroy;
+end;
+
+procedure TpvGUIDrawEngine.AcquireNewStateIfNeeded;
+begin
+ if fDoNeedNewState then begin
+  fDoNeedNewState:=false;
+  inc(fCountStates);
+  if length(fStates)<fCountStates then begin
+   SetLength(fStates,fCountStates*2);
+  end;
+  fState:=@fStates[fCountStates-1];
+  fState^:=fStates[fCountStates-2];
+ end;
 end;
 
 function TpvGUIDrawEngine.GetTransparent:boolean;
 begin
- result:=false;
+ result:=fTransparent;
 end;
 
 procedure TpvGUIDrawEngine.SetTransparent(const aTransparent:boolean);
 begin
+ fTransparent:=aTransparent;
 end;
 
 function TpvGUIDrawEngine.GetClipRect:TpvRect;
 begin
- result.Min:=TpvVector2.Null;
- result.Max:=TpvVector2.Null;
+ result:=fClipRects[fState^.fClipRect];
 end;
 
 procedure TpvGUIDrawEngine.SetClipRect(const aClipRect:TpvRect);
 begin
+{if fClipRects[fState^.fClipRect]<>aClipRect then}begin
+  AcquireNewStateIfNeeded;
+  inc(fCountClipRects);
+  if length(fClipRects)<fCountClipRects then begin
+   SetLength(fClipRects,fCountClipRects*2);
+  end;
+  fState^.fClipRect:=fCountClipRects-1;
+  fClipRects[fState^.fClipRect]:=aClipRect;
+ end;
 end;
 
 function TpvGUIDrawEngine.GetModelMatrix:TpvMatrix4x4;
 begin
- result:=TpvMatrix4x4.Identity;
+ result:=fModelMatrices[fState^.fModelMatrix];
 end;
 
 procedure TpvGUIDrawEngine.SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
 begin
+{if fModelMatrices[fState^.fModelMatrix]<>aModelMatrix then}begin
+  AcquireNewStateIfNeeded;
+  inc(fCountModelMatrices);
+  if length(fModelMatrices)<fCountModelMatrices then begin
+   SetLength(fModelMatrices,fCountModelMatrices*2);
+  end;
+  fState^.fModelMatrix:=fCountModelMatrices-1;
+  fModelMatrices[fState^.fModelMatrix]:=aModelMatrix;
+ end;
 end;
 
 function TpvGUIDrawEngine.GetColor:TpvVector4;
 begin
- result:=TpvVector4.Null;
+ result:=fColors[fState^.fColor];
 end;
 
 procedure TpvGUIDrawEngine.SetColor(const aColor:TpvVector4);
 begin
+{if fColors[fState^.fColor]<>aColor then}begin
+  AcquireNewStateIfNeeded;
+  inc(fCountColors);
+  if length(fColors)<fCountColors then begin
+   SetLength(fColors,fCountColors*2);
+  end;
+  fState^.fColor:=fCountColors-1;
+  fColors[fState^.fColor]:=aColor;
+ end;
+end;
+
+function TpvGUIDrawEngine.NewBatchItem:PBatchItem;
+begin
+ if (fStrategy=TStrategy.OnePassBackToFront) or fTransparent then begin
+  inc(fCountTransparentBatchItems);
+  if length(fTransparentBatchItems)<fCountTransparentBatchItems then begin
+   SetLength(fTransparentBatchItems,fCountTransparentBatchItems*2);
+  end;
+  result:=@fTransparentBatchItems[fCountTransparentBatchItems-1];
+ end else begin
+  inc(fCountOpaqueBatchItems);
+  if length(fOpaqueBatchItems)<fCountOpaqueBatchItems then begin
+   SetLength(fOpaqueBatchItems,fCountOpaqueBatchItems*2);
+  end;
+  result:=@fOpaqueBatchItems[fCountOpaqueBatchItems-1];
+ end;
+ result^.fZIndex:=fCountTotalBatchItems;
+ result^.fState:=fCountStates-1;
+ inc(fCountTotalBatchItems);
+ fDoNeedNewState:=true;
 end;
 
 procedure TpvGUIDrawEngine.Clear;
 begin
+
  fFont:=fCanvas.Font;
+
  fFontSize:=fCanvas.FontSize;
+
  fTextHorizontalAlignment:=fCanvas.TextHorizontalAlignment;
+
  fTextVerticalAlignment:=fCanvas.TextVerticalAlignment;
+
+ begin
+  fClipRects[0]:=fCanvas.ClipRect;
+  fCountClipRects:=1;
+ end;
+
+ begin
+  fModelMatrices[0]:=fCanvas.ModelMatrix;
+  fCountModelMatrices:=1;
+ end;
+
+ begin
+  fColors[0]:=fCanvas.Color;
+  fCountColors:=1;
+ end;
+
+ begin
+  fState:=@fStates[0];
+  fCountStates:=1;
+  fTransparent:=fCanvas.BlendingMode<>TpvCanvasBlendingMode.None;
+  fState^.fClipRect:=0;
+  fState^.fModelMatrix:=0;
+  fState^.fColor:=0;
+ end;
+
+ fDoNeedNewState:=false;
+
+ fCountOpaqueBatchItems:=0;
+
+ fCountTransparentBatchItems:=0;
+
+ fCountTotalBatchItems:=0;
+
 end;
 
 procedure TpvGUIDrawEngine.Next;
@@ -2676,75 +2809,219 @@ begin
 end;
 
 procedure TpvGUIDrawEngine.Draw;
+var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
+    State:TpvGUIDrawEngine.PState;
+    InverseCountTotalBatchItems:TpvDouble;
+    ClipRectToScissorScale,ClipRectToScissorOffset:TPvVector4;
+    LastScissorRect:TpvRect;
+ procedure DrawBatchItem(const aBatchItem:TBatchItem);
+ var ClipRect:TpvRect;
+     ClipRect2D:TVkRect2D;
+ begin
+  fCanvas.ZIndex:=aBatchItem.fZIndex*InverseCountTotalBatchItems;
+  if LastState<>aBatchItem.fState then begin
+   LastState:=aBatchItem.fState;
+   State:=@fStates[LastState];
+   if LastClipRect<>State^.fClipRect then begin
+    LastClipRect:=State^.fClipRect;
+    ClipRect:=fClipRects[State^.fClipRect];
+    fCanvas.ClipRect:=ClipRect;
+    if fUseScissor then begin
+     ClipRect.Vector4:=(ClipRect.Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
+     ClipRect:=ClipRect.GetIntersection(LastScissorRect);
+     if (ClipRect.Width<=0.0) or (ClipRect.Height<=0.0) then begin
+      exit;
+     end;
+     ClipRect2D.offset.x:=trunc(floor(ClipRect.Left));
+     ClipRect2D.offset.y:=trunc(floor(ClipRect.Top));
+     ClipRect2D.extent.width:=trunc(ceil(ClipRect.Width));
+     ClipRect2D.extent.height:=trunc(ceil(ClipRect.Height));
+     fCanvas.SetScissor(ClipRect2D);
+    end else begin
+     if (ClipRect.Width<=0.0) or (ClipRect.Height<=0.0) then begin
+      exit;
+     end;
+    end;
+   end;
+   if LastModelMatrix<>State^.fModelMatrix then begin
+    LastModelMatrix:=State^.fModelMatrix;
+    fCanvas.ModelMatrix:=fModelMatrices[State^.fModelMatrix];
+   end;
+   if LastColor<>State^.fColor then begin
+    LastColor:=State^.fColor;
+    fCanvas.Color:=fColors[State^.fColor];
+   end;
+  end;
+  case aBatchItem.fKind of
+   TBatchItem.TKind.DrawGUIElement:begin
+    fCanvas.DrawGUIElement(aBatchItem.fDrawGUIElementGUIElement,
+                           aBatchItem.fDrawGUIElementFocused,
+                           aBatchItem.fDrawGUIElementMin,
+                           aBatchItem.fDrawGUIElementMax,
+                           aBatchItem.fDrawGUIElementMetaMin,
+                           aBatchItem.fDrawGUIElementMetaMax,
+                           aBatchItem.fDrawGUIElementMeta);
+   end;
+   TBatchItem.TKind.DrawSprite:begin
+    fCanvas.DrawSprite(aBatchItem.fDrawSpriteSprite,
+                       aBatchItem.fDrawSpriteSrcRect,
+                       aBatchItem.fDrawSpriteDestRect);
+   end;
+   TBatchItem.TKind.DrawTexturedRectangle:begin
+    fCanvas.DrawTexturedRectangle(aBatchItem.fDrawTexturedRectangleTexture,
+                                  aBatchItem.fDrawTexturedRectangleRect,
+                                  aBatchItem.fDrawTexturedRectangleRotationAngle,
+                                  aBatchItem.fDrawTexturedRectangleTextureArrayLayer);
+   end;
+   TBatchItem.TKind.DrawFilledRectangle:begin
+    fCanvas.DrawFilledRectangle(aBatchItem.fDrawFilledRectangleRect);
+   end;
+  end;
+ end;
+var Index:TpvSizeInt;
+    LastScissor:TVkRect2D;
 begin
+ if (fStrategy<>TStrategy.OnePassBackToFront) and fUseScissor then begin
+  LastScissor:=fCanvas.State.Scissor;
+  LastScissorRect:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(fCanvas.Viewport.x,fCanvas.Viewport.y),
+                                          TpvVector2.InlineableCreate(fCanvas.Viewport^.width,fCanvas.Viewport^.height));
+  ClipRectToScissorScale:=(TpvVector2.InlineableCreate(fCanvas.Viewport^.width,fCanvas.Viewport^.height)/TpvVector2.InlineableCreate(fCanvas.Width,fCanvas.Height)).xyxy;
+  ClipRectToScissorOffset:=TpvVector2.InlineableCreate(fCanvas.Viewport.x,fCanvas.Viewport.y).xyxy;
+ end;
+ LastClipRect:=-1;
+ LastModelMatrix:=-1;
+ LastColor:=-1;
+ LastState:=-1;
+ InverseCountTotalBatchItems:=1.0/Max(1,fCountTotalBatchItems);
+ if (fStrategy<>TStrategy.OnePassBackToFront) and (fCountOpaqueBatchItems>0) then begin
+  if fUseScissor then begin
+   fCanvas.BlendingMode:=TpvCanvasBlendingMode.NoDiscard;
+  end else begin
+   fCanvas.BlendingMode:=TpvCanvasBlendingMode.None;
+  end;
+  for Index:=fCountOpaqueBatchItems-1 downto 0 do begin
+   DrawBatchItem(fOpaqueBatchItems[Index]);
+  end;
+ end;
+ if fCountTransparentBatchItems>0 then begin
+  fCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
+  for Index:=0 to fCountTransparentBatchItems-1 do begin
+   DrawBatchItem(fTransparentBatchItems[Index]);
+  end;
+ end;
+ if (fStrategy<>TStrategy.OnePassBackToFront) and fUseScissor then begin
+  fCanvas.SetScissor(LastScissor);
+ end;
 end;
 
 procedure TpvGUIDrawEngine.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
+var BatchItem:PBatchItem;
 begin
+ BatchItem:=NewBatchItem;
+ BatchItem^.fKind:=TBatchItem.TKind.DrawGUIElement;
+ BatchItem^.fDrawGUIElementGUIElement:=aGUIElement;
+ BatchItem^.fDrawGUIElementFocused:=aFocused;
+ BatchItem^.fDrawGUIElementMin:=aMin;
+ BatchItem^.fDrawGUIElementMax:=aMax;
+ BatchItem^.fDrawGUIElementMetaMin:=aMetaMin;
+ BatchItem^.fDrawGUIElementMetaMax:=aMetaMax;
+ BatchItem^.fDrawGUIElementMeta:=aMeta;
 end;
 
 procedure TpvGUIDrawEngine.DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true);
-var RowIndex,ColumnIndex:TpvInt32;
+var BatchItem:PBatchItem;
+    RowIndex,ColumnIndex:TpvInt32;
     Rect:TpvRect;
 begin
- for RowIndex:=0 to 2 do begin
-  for ColumnIndex:=0 to 2 do begin
-   case ColumnIndex of
-    0:begin
-     Rect.Left:=aMin.x;
-     Rect.Right:=Min(aMax.x,aMin.x+aTransparentMargin.Left);
+ if fStrategy=TStrategy.OnePassBackToFront then begin
+  BatchItem:=NewBatchItem;
+  BatchItem^.fKind:=TBatchItem.TKind.DrawGUIElement;
+  BatchItem^.fDrawGUIElementGUIElement:=aGUIElement;
+  BatchItem^.fDrawGUIElementFocused:=aFocused;
+  BatchItem^.fDrawGUIElementMin:=aMin;
+  BatchItem^.fDrawGUIElementMax:=aMax;
+  BatchItem^.fDrawGUIElementMetaMin:=aMetaMin;
+  BatchItem^.fDrawGUIElementMetaMax:=aMetaMax;
+  BatchItem^.fDrawGUIElementMeta:=aMeta;
+ end else begin
+  for RowIndex:=0 to 2 do begin
+   for ColumnIndex:=0 to 2 do begin
+    case ColumnIndex of
+     0:begin
+      Rect.Left:=aMin.x;
+      Rect.Right:=Min(aMax.x,aMin.x+aTransparentMargin.Left);
+     end;
+     1:begin
+      Rect.Left:=Min(aMax.x,aMin.x+aTransparentMargin.Left);
+      Rect.Right:=Max(aMin.x,aMax.x-aTransparentMargin.Right);
+     end;
+     else begin
+      Rect.Left:=Max(aMin.x,aMax.x-aTransparentMargin.Right);
+      Rect.Right:=aMax.x;
+     end;
     end;
-    1:begin
-     Rect.Left:=Min(aMax.x,aMin.x+aTransparentMargin.Left);
-     Rect.Right:=Max(aMin.x,aMax.x-aTransparentMargin.Right);
+    case RowIndex of
+     0:begin
+      Rect.Top:=aMin.y;
+      Rect.Bottom:=Min(aMax.y,aMin.y+aTransparentMargin.Top);
+     end;
+     1:begin
+      Rect.Top:=Min(aMax.y,aMin.y+aTransparentMargin.Top);
+      Rect.Bottom:=Max(aMin.y,aMax.y-aTransparentMargin.Bottom);
+     end;
+     else begin
+      Rect.Top:=Max(aMin.y,aMax.y-aTransparentMargin.Bottom);
+      Rect.Bottom:=aMax.y;
+     end;
     end;
-    else begin
-     Rect.Left:=Max(aMin.x,aMax.x-aTransparentMargin.Right);
-     Rect.Right:=aMax.x;
+    if (Rect.Left<Rect.Right) and
+       (Rect.Top<Rect.Bottom) and
+       (aDrawCenter or
+        (RowIndex<>1) or
+        (ColumnIndex<>1)) then begin
+     Transparent:=(RowIndex<>1) or (ColumnIndex<>1);
+     BatchItem:=NewBatchItem;
+     BatchItem^.fKind:=TBatchItem.TKind.DrawGUIElement;
+     BatchItem^.fDrawGUIElementGUIElement:=aGUIElement;
+     BatchItem^.fDrawGUIElementFocused:=aFocused;
+     BatchItem^.fDrawGUIElementMin:=Rect.LeftTop;
+     BatchItem^.fDrawGUIElementMax:=Rect.RightBottom;
+     BatchItem^.fDrawGUIElementMetaMin:=aMetaMin;
+     BatchItem^.fDrawGUIElementMetaMax:=aMetaMax;
+     BatchItem^.fDrawGUIElementMeta:=aMeta;
     end;
-   end;
-   case RowIndex of
-    0:begin
-     Rect.Top:=aMin.y;
-     Rect.Bottom:=Min(aMax.y,aMin.y+aTransparentMargin.Top);
-    end;
-    1:begin
-     Rect.Top:=Min(aMax.y,aMin.y+aTransparentMargin.Top);
-     Rect.Bottom:=Max(aMin.y,aMax.y-aTransparentMargin.Bottom);
-    end;
-    else begin
-     Rect.Top:=Max(aMin.y,aMax.y-aTransparentMargin.Bottom);
-     Rect.Bottom:=aMax.y;
-    end;
-   end;
-   if (Rect.Left<Rect.Right) and
-      (Rect.Top<Rect.Bottom) and
-      (aDrawCenter or
-       (RowIndex<>1) or
-       (ColumnIndex<>1)) then begin
-    Transparent:=(RowIndex<>1) or (ColumnIndex<>1);
-    DrawGUIElement(aGUIElement,
-                   aFocused,
-                   Rect.LeftTop,
-                   Rect.RightBottom,
-                   aMetaMin,
-                   aMetaMax,
-                   aMeta);
    end;
   end;
  end;
 end;
 
 procedure TpvGUIDrawEngine.DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect);
+var BatchItem:PBatchItem;
 begin
+ BatchItem:=NewBatchItem;
+ BatchItem^.fKind:=TBatchItem.TKind.DrawSprite;
+ BatchItem^.fDrawSpriteSprite:=aSprite;
+ BatchItem^.fDrawSpriteSrcRect:=aSrcRect;
+ BatchItem^.fDrawSpriteDestRect:=aDestRect;
 end;
 
 procedure TpvGUIDrawEngine.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0);
+var BatchItem:PBatchItem;
 begin
+ BatchItem:=NewBatchItem;
+ BatchItem^.fKind:=TBatchItem.TKind.DrawTexturedRectangle;
+ BatchItem^.fDrawTexturedRectangleTexture:=aTexture;
+ BatchItem^.fDrawTexturedRectangleRect:=aRect;
+ BatchItem^.fDrawTexturedRectangleRotationAngle:=aRotationAngle;
+ BatchItem^.fDrawTexturedRectangleTextureArrayLayer:=aTextureArrayLayer;
 end;
 
 procedure TpvGUIDrawEngine.DrawFilledRectangle(const aRect:TpvRect);
+var BatchItem:PBatchItem;
 begin
+ BatchItem:=NewBatchItem;
+ BatchItem^.fKind:=TBatchItem.TKind.DrawFilledRectangle;
+ BatchItem^.fDrawFilledRectangleRect:=aRect;
 end;
 
 procedure TpvGUIDrawEngine.DrawText(const aText:TpvUTF8String;const aPosition:TpvVector2);
@@ -2877,418 +3154,6 @@ begin
   end;
   fFont.GetTextGlyphRects(aText,Position,fFontSize,aTextGlyphRects,aCountTextGlyphRects);
  end;
-end;
-
-constructor TpvGUIDeferredDrawEngine.Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas);
-begin
-
- inherited Create(aInstance,aCanvas);
-
- case pvApplication.VulkanDevice.PhysicalDevice.Properties.vendorID of
-  $1002,      // AMD
-  $10de,      // NVIDIA
-  $8086:begin // Intel
-   // NVIDIA, AMD and Intel GPUs are fast enough for the full one-pass brute-force
-   // alpha-blended experience with enough fast memory bandwidth
-   fStrategy:=TStrategy.OnePassBackToFront;
-  end;
-{-$1010,      // ImgTec
-  $13b5,      // ARM
-  $5143,}     // Qualcomm
-  else begin
-   // But for example Mali, Adreno and PowerVR not
-   fStrategy:=TStrategy.TwoPassBidirectional;
-  end;
- end;
-
- fUseScissor:=pvApplication.VulkanDevice.PhysicalDevice.Features.shaderClipDistance=0;
-
- fClipRects:=nil;
- fCountClipRects:=0;
-
- fModelMatrices:=nil;
- fCountModelMatrices:=0;
-
- fColors:=nil;
- fCountColors:=0;
-
- fStates:=nil;
- fCountStates:=0;
-
- fOpaqueBatchItems:=nil;
- fCountOpaqueBatchItems:=0;
-
- fTransparentBatchItems:=nil;
- fCountTransparentBatchItems:=0;
-
- fCountTotalBatchItems:=0;
-
- SetLength(fClipRects,1);
-
- SetLength(fModelMatrices,1);
-
- SetLength(fColors,1);
-
- SetLength(fStates,1);
-
- Clear;
-
-end;
-
-destructor TpvGUIDeferredDrawEngine.Destroy;
-begin
- fClipRects:=nil;
- fModelMatrices:=nil;
- fColors:=nil;
- fStates:=nil;
- fOpaqueBatchItems:=nil;
- fTransparentBatchItems:=nil;
- inherited Destroy;
-end;
-
-procedure TpvGUIDeferredDrawEngine.AcquireNewStateIfNeeded;
-begin
- if fDoNeedNewState then begin
-  fDoNeedNewState:=false;
-  inc(fCountStates);
-  if length(fStates)<fCountStates then begin
-   SetLength(fStates,fCountStates*2);
-  end;
-  fState:=@fStates[fCountStates-1];
-  fState^:=fStates[fCountStates-2];
- end;
-end;
-
-function TpvGUIDeferredDrawEngine.GetTransparent:boolean;
-begin
- result:=fTransparent;
-end;
-
-procedure TpvGUIDeferredDrawEngine.SetTransparent(const aTransparent:boolean);
-begin
- fTransparent:=aTransparent;
-end;
-
-function TpvGUIDeferredDrawEngine.GetClipRect:TpvRect;
-begin
- result:=fClipRects[fState^.fClipRect];
-end;
-
-procedure TpvGUIDeferredDrawEngine.SetClipRect(const aClipRect:TpvRect);
-begin
-{if fClipRects[fState^.fClipRect]<>aClipRect then}begin
-  AcquireNewStateIfNeeded;
-  inc(fCountClipRects);
-  if length(fClipRects)<fCountClipRects then begin
-   SetLength(fClipRects,fCountClipRects*2);
-  end;
-  fState^.fClipRect:=fCountClipRects-1;
-  fClipRects[fState^.fClipRect]:=aClipRect;
- end;
-end;
-
-function TpvGUIDeferredDrawEngine.GetModelMatrix:TpvMatrix4x4;
-begin
- result:=fModelMatrices[fState^.fModelMatrix];
-end;
-
-procedure TpvGUIDeferredDrawEngine.SetModelMatrix(const aModelMatrix:TpvMatrix4x4);
-begin
-{if fModelMatrices[fState^.fModelMatrix]<>aModelMatrix then}begin
-  AcquireNewStateIfNeeded;
-  inc(fCountModelMatrices);
-  if length(fModelMatrices)<fCountModelMatrices then begin
-   SetLength(fModelMatrices,fCountModelMatrices*2);
-  end;
-  fState^.fModelMatrix:=fCountModelMatrices-1;
-  fModelMatrices[fState^.fModelMatrix]:=aModelMatrix;
- end;
-end;
-
-function TpvGUIDeferredDrawEngine.GetColor:TpvVector4;
-begin
- result:=fColors[fState^.fColor];
-end;
-
-procedure TpvGUIDeferredDrawEngine.SetColor(const aColor:TpvVector4);
-begin
-{if fColors[fState^.fColor]<>aColor then}begin
-  AcquireNewStateIfNeeded;
-  inc(fCountColors);
-  if length(fColors)<fCountColors then begin
-   SetLength(fColors,fCountColors*2);
-  end;
-  fState^.fColor:=fCountColors-1;
-  fColors[fState^.fColor]:=aColor;
- end;
-end;
-
-function TpvGUIDeferredDrawEngine.NewBatchItem:PBatchItem;
-begin
- if (fStrategy=TStrategy.OnePassBackToFront) or fTransparent then begin
-  inc(fCountTransparentBatchItems);
-  if length(fTransparentBatchItems)<fCountTransparentBatchItems then begin
-   SetLength(fTransparentBatchItems,fCountTransparentBatchItems*2);
-  end;
-  result:=@fTransparentBatchItems[fCountTransparentBatchItems-1];
- end else begin
-  inc(fCountOpaqueBatchItems);
-  if length(fOpaqueBatchItems)<fCountOpaqueBatchItems then begin
-   SetLength(fOpaqueBatchItems,fCountOpaqueBatchItems*2);
-  end;
-  result:=@fOpaqueBatchItems[fCountOpaqueBatchItems-1];
- end;
- result^.fZIndex:=fCountTotalBatchItems;
- result^.fState:=fCountStates-1;
- inc(fCountTotalBatchItems);
- fDoNeedNewState:=true;
-end;
-
-procedure TpvGUIDeferredDrawEngine.Clear;
-begin
- inherited Clear;
- begin
-  fClipRects[0]:=fCanvas.ClipRect;
-  fCountClipRects:=1;
- end;
- begin
-  fModelMatrices[0]:=fCanvas.ModelMatrix;
-  fCountModelMatrices:=1;
- end;
- begin
-  fColors[0]:=fCanvas.Color;
-  fCountColors:=1;
- end;
- begin
-  fState:=@fStates[0];
-  fCountStates:=1;
-  fTransparent:=fCanvas.BlendingMode<>TpvCanvasBlendingMode.None;
-  fState^.fClipRect:=0;
-  fState^.fModelMatrix:=0;
-  fState^.fColor:=0;
- end;
- fDoNeedNewState:=false;
- fCountOpaqueBatchItems:=0;
- fCountTransparentBatchItems:=0;
- fCountTotalBatchItems:=0;
-end;
-
-procedure TpvGUIDeferredDrawEngine.Next;
-begin
-end;
-
-procedure TpvGUIDeferredDrawEngine.Draw;
-var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
-    State:TpvGUIDeferredDrawEngine.PState;
-    InverseCountTotalBatchItems:TpvDouble;
-    ClipRectToScissorScale,ClipRectToScissorOffset:TPvVector4;
-    LastScissorRect:TpvRect;
- procedure DrawBatchItem(const aBatchItem:TBatchItem);
- var ClipRect:TpvRect;
-     ClipRect2D:TVkRect2D;
- begin
-  fCanvas.ZIndex:=aBatchItem.fZIndex*InverseCountTotalBatchItems;
-  if LastState<>aBatchItem.fState then begin
-   LastState:=aBatchItem.fState;
-   State:=@fStates[LastState];
-   if LastClipRect<>State^.fClipRect then begin
-    LastClipRect:=State^.fClipRect;
-    ClipRect:=fClipRects[State^.fClipRect];
-    fCanvas.ClipRect:=ClipRect;
-    if fUseScissor then begin
-     ClipRect.Vector4:=(ClipRect.Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
-     ClipRect:=ClipRect.GetIntersection(LastScissorRect);
-     if (ClipRect.Width<=0.0) or (ClipRect.Height<=0.0) then begin
-      exit;
-     end;
-     ClipRect2D.offset.x:=trunc(floor(ClipRect.Left));
-     ClipRect2D.offset.y:=trunc(floor(ClipRect.Top));
-     ClipRect2D.extent.width:=trunc(ceil(ClipRect.Width));
-     ClipRect2D.extent.height:=trunc(ceil(ClipRect.Height));
-     fCanvas.SetScissor(ClipRect2D);
-    end else begin
-     if (ClipRect.Width<=0.0) or (ClipRect.Height<=0.0) then begin
-      exit;
-     end;
-    end;
-   end;
-   if LastModelMatrix<>State^.fModelMatrix then begin
-    LastModelMatrix:=State^.fModelMatrix;
-    fCanvas.ModelMatrix:=fModelMatrices[State^.fModelMatrix];
-   end;
-   if LastColor<>State^.fColor then begin
-    LastColor:=State^.fColor;
-    fCanvas.Color:=fColors[State^.fColor];
-   end;
-  end;
-  case aBatchItem.fKind of
-   TBatchItem.TKind.DrawGUIElement:begin
-    fCanvas.DrawGUIElement(aBatchItem.fDrawGUIElementGUIElement,
-                           aBatchItem.fDrawGUIElementFocused,
-                           aBatchItem.fDrawGUIElementMin,
-                           aBatchItem.fDrawGUIElementMax,
-                           aBatchItem.fDrawGUIElementMetaMin,
-                           aBatchItem.fDrawGUIElementMetaMax,
-                           aBatchItem.fDrawGUIElementMeta);
-   end;
-   TBatchItem.TKind.DrawSprite:begin
-    fCanvas.DrawSprite(aBatchItem.fDrawSpriteSprite,
-                       aBatchItem.fDrawSpriteSrcRect,
-                       aBatchItem.fDrawSpriteDestRect);
-   end;
-   TBatchItem.TKind.DrawTexturedRectangle:begin
-    fCanvas.DrawTexturedRectangle(aBatchItem.fDrawTexturedRectangleTexture,
-                                  aBatchItem.fDrawTexturedRectangleRect,
-                                  aBatchItem.fDrawTexturedRectangleRotationAngle,
-                                  aBatchItem.fDrawTexturedRectangleTextureArrayLayer);
-   end;
-   TBatchItem.TKind.DrawFilledRectangle:begin
-    fCanvas.DrawFilledRectangle(aBatchItem.fDrawFilledRectangleRect);
-   end;
-  end;
- end;
-var Index:TpvSizeInt;
-    LastScissor:TVkRect2D;
-begin
- if (fStrategy<>TStrategy.OnePassBackToFront) and fUseScissor then begin
-  LastScissor:=fCanvas.State.Scissor;
-  LastScissorRect:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(fCanvas.Viewport.x,fCanvas.Viewport.y),
-                                          TpvVector2.InlineableCreate(fCanvas.Viewport^.width,fCanvas.Viewport^.height));
-  ClipRectToScissorScale:=(TpvVector2.InlineableCreate(fCanvas.Viewport^.width,fCanvas.Viewport^.height)/TpvVector2.InlineableCreate(fCanvas.Width,fCanvas.Height)).xyxy;
-  ClipRectToScissorOffset:=TpvVector2.InlineableCreate(fCanvas.Viewport.x,fCanvas.Viewport.y).xyxy;
- end;
- LastClipRect:=-1;
- LastModelMatrix:=-1;
- LastColor:=-1;
- LastState:=-1;
- InverseCountTotalBatchItems:=1.0/Max(1,fCountTotalBatchItems);
- if (fStrategy<>TStrategy.OnePassBackToFront) and (fCountOpaqueBatchItems>0) then begin
-  if fUseScissor then begin
-   fCanvas.BlendingMode:=TpvCanvasBlendingMode.NoDiscard;
-  end else begin
-   fCanvas.BlendingMode:=TpvCanvasBlendingMode.None;
-  end;
-  for Index:=fCountOpaqueBatchItems-1 downto 0 do begin
-   DrawBatchItem(fOpaqueBatchItems[Index]);
-  end;
- end;
- if fCountTransparentBatchItems>0 then begin
-  fCanvas.BlendingMode:=TpvCanvasBlendingMode.AlphaBlending;
-  for Index:=0 to fCountTransparentBatchItems-1 do begin
-   DrawBatchItem(fTransparentBatchItems[Index]);
-  end;
- end;
- if (fStrategy<>TStrategy.OnePassBackToFront) and fUseScissor then begin
-  fCanvas.SetScissor(LastScissor);
- end;
-end;
-
-procedure TpvGUIDeferredDrawEngine.DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
-var BatchItem:PBatchItem;
-begin
- BatchItem:=NewBatchItem;
- BatchItem^.fKind:=TBatchItem.TKind.DrawGUIElement;
- BatchItem^.fDrawGUIElementGUIElement:=aGUIElement;
- BatchItem^.fDrawGUIElementFocused:=aFocused;
- BatchItem^.fDrawGUIElementMin:=aMin;
- BatchItem^.fDrawGUIElementMax:=aMax;
- BatchItem^.fDrawGUIElementMetaMin:=aMetaMin;
- BatchItem^.fDrawGUIElementMetaMax:=aMetaMax;
- BatchItem^.fDrawGUIElementMeta:=aMeta;
-end;
-
-procedure TpvGUIDeferredDrawEngine.DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true);
-var BatchItem:PBatchItem;
-    RowIndex,ColumnIndex:TpvInt32;
-    Rect:TpvRect;
-begin
- if fStrategy=TStrategy.OnePassBackToFront then begin
-  BatchItem:=NewBatchItem;
-  BatchItem^.fKind:=TBatchItem.TKind.DrawGUIElement;
-  BatchItem^.fDrawGUIElementGUIElement:=aGUIElement;
-  BatchItem^.fDrawGUIElementFocused:=aFocused;
-  BatchItem^.fDrawGUIElementMin:=aMin;
-  BatchItem^.fDrawGUIElementMax:=aMax;
-  BatchItem^.fDrawGUIElementMetaMin:=aMetaMin;
-  BatchItem^.fDrawGUIElementMetaMax:=aMetaMax;
-  BatchItem^.fDrawGUIElementMeta:=aMeta;
- end else begin
-  for RowIndex:=0 to 2 do begin
-   for ColumnIndex:=0 to 2 do begin
-    case ColumnIndex of
-     0:begin
-      Rect.Left:=aMin.x;
-      Rect.Right:=Min(aMax.x,aMin.x+aTransparentMargin.Left);
-     end;
-     1:begin
-      Rect.Left:=Min(aMax.x,aMin.x+aTransparentMargin.Left);
-      Rect.Right:=Max(aMin.x,aMax.x-aTransparentMargin.Right);
-     end;
-     else begin
-      Rect.Left:=Max(aMin.x,aMax.x-aTransparentMargin.Right);
-      Rect.Right:=aMax.x;
-     end;
-    end;
-    case RowIndex of
-     0:begin
-      Rect.Top:=aMin.y;
-      Rect.Bottom:=Min(aMax.y,aMin.y+aTransparentMargin.Top);
-     end;
-     1:begin
-      Rect.Top:=Min(aMax.y,aMin.y+aTransparentMargin.Top);
-      Rect.Bottom:=Max(aMin.y,aMax.y-aTransparentMargin.Bottom);
-     end;
-     else begin
-      Rect.Top:=Max(aMin.y,aMax.y-aTransparentMargin.Bottom);
-      Rect.Bottom:=aMax.y;
-     end;
-    end;
-    if (Rect.Left<Rect.Right) and
-       (Rect.Top<Rect.Bottom) and
-       (aDrawCenter or
-        (RowIndex<>1) or
-        (ColumnIndex<>1)) then begin
-     Transparent:=(RowIndex<>1) or (ColumnIndex<>1);
-     DrawGUIElement(aGUIElement,
-                    aFocused,
-                    Rect.LeftTop,
-                    Rect.RightBottom,
-                    aMetaMin,
-                    aMetaMax,
-                    aMeta);
-    end;
-   end;
-  end;
- end;
-end;
-
-procedure TpvGUIDeferredDrawEngine.DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect);
-var BatchItem:PBatchItem;
-begin
- BatchItem:=NewBatchItem;
- BatchItem^.fKind:=TBatchItem.TKind.DrawSprite;
- BatchItem^.fDrawSpriteSprite:=aSprite;
- BatchItem^.fDrawSpriteSrcRect:=aSrcRect;
- BatchItem^.fDrawSpriteDestRect:=aDestRect;
-end;
-
-procedure TpvGUIDeferredDrawEngine.DrawTexturedRectangle(const aTexture:TpvVulkanTexture;const aRect:TpvRect;const aRotationAngle:TpvFloat=0.0;const aTextureArrayLayer:TpvInt32=0);
-var BatchItem:PBatchItem;
-begin
- BatchItem:=NewBatchItem;
- BatchItem^.fKind:=TBatchItem.TKind.DrawTexturedRectangle;
- BatchItem^.fDrawTexturedRectangleTexture:=aTexture;
- BatchItem^.fDrawTexturedRectangleRect:=aRect;
- BatchItem^.fDrawTexturedRectangleRotationAngle:=aRotationAngle;
- BatchItem^.fDrawTexturedRectangleTextureArrayLayer:=aTextureArrayLayer;
-end;
-
-procedure TpvGUIDeferredDrawEngine.DrawFilledRectangle(const aRect:TpvRect);
-var BatchItem:PBatchItem;
-begin
- BatchItem:=NewBatchItem;
- BatchItem^.fKind:=TBatchItem.TKind.DrawFilledRectangle;
- BatchItem^.fDrawFilledRectangleRect:=aRect;
 end;
 
 class function TpvGUITextUtils.TextTruncation(const aText:TpvUTF8String;
@@ -10549,7 +10414,7 @@ begin
 
  SetCountBuffers(1);
 
- fDrawEngine:=TpvGUIDeferredDrawEngine.Create(self,fCanvas);
+ fDrawEngine:=TpvGUIDrawEngine.Create(self,fCanvas);
 
 end;
 
