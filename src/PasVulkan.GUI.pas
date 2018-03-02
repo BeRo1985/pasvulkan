@@ -11815,7 +11815,14 @@ end;
 procedure TpvGUIWindow.Draw;
 begin
  Skin.DrawWindow(fInstance.DrawEngine,self);
- inherited Draw;
+ if (fWindowState=TpvGUIWindowState.Minimized) and
+    (TpvGUIWidgetFlag.Visible in fContent.fWidgetFlags) then begin
+  Exclude(Content.fWidgetFlags,TpvGUIWidgetFlag.Visible);
+  inherited Draw;
+  Include(Content.fWidgetFlags,TpvGUIWidgetFlag.Visible);
+ end else begin
+  inherited Draw;
+ end;
 end;
 
 constructor TpvGUIMessageDialogButton.Create(const aID:TpvInt32;
