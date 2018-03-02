@@ -2818,7 +2818,6 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
  var ClipRect:TpvRect;
      ClipRect2D:TVkRect2D;
  begin
-  fCanvas.ZIndex:=aBatchItem.fZIndex*InverseCountTotalBatchItems;
   if LastState<>aBatchItem.fState then begin
    LastState:=aBatchItem.fState;
    State:=@fStates[LastState];
@@ -2852,6 +2851,7 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
     fCanvas.Color:=fColors[State^.fColor];
    end;
   end;
+  fCanvas.ZPosition:=aBatchItem.fZIndex*InverseCountTotalBatchItems;
   case aBatchItem.fKind of
    TBatchItem.TKind.DrawGUIElement:begin
     fCanvas.DrawGUIElement(aBatchItem.fDrawGUIElementGUIElement,
@@ -17062,9 +17062,7 @@ begin
   if not result then begin
    case aPointerEvent.PointerEventType of
     TpvApplicationInputPointerEventType.Down:begin
-     if not Focused then begin
-      RequestFocus;
-     end;
+     RequestFocus;
      fAction:=TpvGUIListBoxAction.None;
      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkRowHeight,1.0))+fScrollBar.Value);
      if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
