@@ -72,6 +72,8 @@ procedure Main;
 
 implementation
 
+var FileName:TpvUTF8String;
+
 function RepChar(const aChar:Char;const aCount:Int32):string;
 var Index:Int32;
 begin
@@ -146,6 +148,9 @@ begin
  Console.TextColor(TConsole.TColor.Black);
  Console.GotoXY(1,1);
  Console.Write(UTF8String(RepChar(#32,Console.Width)));
+
+ Console.GotoXY(2,1);
+ Console.Write(FileName);
 
  Console.GotoXY(Console.Width-6,1);
  Console.Write('[');
@@ -268,10 +273,12 @@ begin
   AbstractTextEditorView:=AbstractTextEditor.CreateView;
 
   if ParamCount>0 then begin
-   FileExtension:=TpvUTF8String(ExtractFileExt(ParamStr(1)));
+   FileName:=ParamStr(1);
+   FileExtension:=TpvUTF8String(ExtractFileExt(FileName));
    AbstractTextEditor.LoadFromFile(ParamStr(1));
   end else begin
-   FileExtension:='';
+   FileName:='noname.txt';
+   FileExtension:='.txt';
   end;
 
   AbstractTextEditor.SyntaxHighlighting:=TpvTextEditor.TSyntaxHighlighting.GetSyntaxHighlightingClassByFileExtension(FileExtension).Create(AbstractTextEditor);
@@ -331,6 +338,10 @@ begin
         77:begin
          // Right
          AbstractTextEditorView.MoveRight;
+        end;
+        60:begin
+         // F2
+         AbstractTextEditor.SaveToFile(ParamStr(1));
         end;
         61:begin
          // F3
