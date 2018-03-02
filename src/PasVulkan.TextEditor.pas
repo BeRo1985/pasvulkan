@@ -1428,9 +1428,8 @@ type TpvTextEditor=class
               class function GetFileExtensions:TSyntaxHighlighting.TFileExtensions; override;
             end;
             ERegularExpression=class(Exception);
-            PRegularExpressionCharClass=^TRegularExpressionCharClass;
             TRegularExpressionCharClass=TpvTextEditor.TCodePointSet;
-            TPRegularExpressionCharClasses=array of PRegularExpressionCharClass;
+            TPRegularExpressionCharClasses=array of TRegularExpressionCharClass;
             PRegularExpressionFlag=^TRegularExpressionFlag;
             TRegularExpressionFlag=
              (
@@ -1446,12 +1445,12 @@ type TpvTextEditor=class
             TRegularExpressionNode=record
              NodeType:TpvInt32;
              CharClass:TRegularExpressionCharClass;
-             Value:TpvInt32;
-             MinCount:TpvInt32;
-             MaxCount:TpvInt32;
+             Value:TpvSizeInt;
+             MinCount:TpvSizeInt;
+             MaxCount:TpvSizeInt;
              Left:PRegularExpressionNode;
              Right:PRegularExpressionNode;
-             Index:TpvInt32;
+             Index:TpvSizeInt;
             end;
             PRegularExpressionInstruction=^TRegularExpressionInstruction;
             TRegularExpressionInstruction=record
@@ -6847,7 +6846,7 @@ begin
  SetLength(fInstructions,0);
 
  for Index:=0 to fCountCharClasses-1 do begin
-  FreeMem(fCharClasses[Index]);
+  fCharClasses[Index].fRanges:=nil;
  end;
  SetLength(fCharClasses,0);
  fCountCharClasses:=0;
@@ -7946,7 +7945,7 @@ procedure TpvTextEditor.TRegularExpression.Compile;
        i0:=NewInstruction(opCHAR);
        Index:=-1;
        for Counter:=0 to fCountCharClasses-1 do begin
-        if fCharClasses[Counter]^=Node^.CharClass then begin
+        if fCharClasses[Counter]=Node^.CharClass then begin
          Index:=Counter;
          break;
         end;
@@ -7957,10 +7956,9 @@ procedure TpvTextEditor.TRegularExpression.Compile;
         if fCountCharClasses>length(fCharClasses) then begin
          SetLength(fCharClasses,fCountCharClasses*2);
         end;
-        GetMem(fCharClasses[Index],SizeOf(TRegularExpressionCharClass));
-        fCharClasses[Index]^:=Node^.CharClass;
+        fCharClasses[Index]:=Node^.CharClass;
        end;
-       Instructions[i0].Value:=TpvPtrUInt(pointer(fCharClasses[Index]));
+       Instructions[i0].Value:=Index;
       end;
       Instructions[i0].Next:=pointer(TpvPtrInt(CountInstructions));
      end;
@@ -8436,7 +8434,7 @@ begin
     end;
     opCHAR:begin
      if (CurrentPosition>=CountCodePoints) or not
-        (fCodePointWindow[0] in PRegularExpressionCharClass(pointer(TpvPtrUInt(Instruction^.Value)))^) then begin
+        (fCodePointWindow[0] in fCharClasses[TpvPtrUInt(Instruction^.Value)]) then begin
       DecRef(SubMatches);
      end else begin
       AddThread(NewThreadList,Instruction^.Next,SubMatches,CurrentPosition+1,1);

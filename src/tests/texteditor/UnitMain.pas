@@ -275,7 +275,10 @@ begin
   if ParamCount>0 then begin
    FileName:=ParamStr(1);
    FileExtension:=TpvUTF8String(ExtractFileExt(FileName));
-   AbstractTextEditor.LoadFromFile(ParamStr(1));
+   try
+    AbstractTextEditor.LoadFromFile(ParamStr(1));
+   except
+   end;
   end else begin
    FileName:='noname.txt';
    FileExtension:='.txt';
