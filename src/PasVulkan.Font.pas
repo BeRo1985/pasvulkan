@@ -230,6 +230,7 @@ type EpvFont=class(Exception);
        function CodePointSize(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvVector2;
        function MonospaceSize(const aSize:TpvFloat):TpvVector2;
        function RowHeight(const aPercent:TpvFloat;const aSize:TpvFloat):TpvFloat;
+       function LineSpace(const aPercent:TpvFloat;const aSize:TpvFloat):TpvFloat;
        procedure GetTextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aRects:TpvRectArray;out aCountRects:TpvInt32);
        procedure Draw(const aDrawSprite:TpvFontDrawSprite;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
        procedure Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
@@ -1572,6 +1573,14 @@ end;
 function TpvFont.RowHeight(const aPercent:TpvFloat;const aSize:TpvFloat):TpvFloat;
 begin
  result:=fUnitsPerEm*(aPercent*0.01);
+ if not IsZero(aSize) then begin
+  result:=result*GetScaleFactor(aSize);
+ end;
+end;
+
+function TpvFont.LineSpace(const aPercent:TpvFloat;const aSize:TpvFloat):TpvFloat;
+begin
+ result:=((fVerticalAscender-fVerticalDescender)+fVerticalLineGap)*(aPercent*0.01);
  if not IsZero(aSize) then begin
   result:=result*GetScaleFactor(aSize);
  end;

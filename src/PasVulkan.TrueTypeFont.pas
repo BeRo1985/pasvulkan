@@ -770,15 +770,15 @@ type EpvTrueTypeFont=class(Exception);
        fUnitsPerEm:TpvUInt16;
        fUnitsPerPixel:TpvUInt16;
        fThinBoldStrength:TpvInt32;
-       fOS2Ascender:TpvUInt16;
-       fOS2Descender:TpvUInt16;
-       fOS2LineGap:TpvUInt16;
-       fHorizontalAscender:TpvUInt16;
-       fHorizontalDescender:TpvUInt16;
-       fHorizontalLineGap:TpvUInt16;
-       fVerticalAscender:TpvUInt16;
-       fVerticalDescender:TpvUInt16;
-       fVerticalLineGap:TpvUInt16;
+       fOS2Ascender:TpvInt16;
+       fOS2Descender:TpvInt16;
+       fOS2LineGap:TpvInt16;
+       fHorizontalAscender:TpvInt16;
+       fHorizontalDescender:TpvInt16;
+       fHorizontalLineGap:TpvInt16;
+       fVerticalAscender:TpvInt16;
+       fVerticalDescender:TpvInt16;
+       fVerticalLineGap:TpvInt16;
        fAdvanceWidthMax:TpvUInt16;
        fAdvanceHeightMax:TpvUInt16;
        fPlatformID:TpvUInt16;
@@ -879,15 +879,15 @@ type EpvTrueTypeFont=class(Exception);
        property MinY:TpvInt16 read fMinY;
        property MaxX:TpvInt16 read fMaxX;
        property MaxY:TpvInt16 read fMaxY;
-       property OS2Ascender:TpvUInt16 read fOS2Ascender;
-       property OS2Descender:TpvUInt16 read fOS2Descender;
-       property OS2LineGap:TpvUInt16 read fOS2LineGap;
-       property HorizontalAscender:TpvUInt16 read fHorizontalAscender;
-       property HorizontalDescender:TpvUInt16 read fHorizontalDescender;
-       property HorizontalLineGap:TpvUInt16 read fHorizontalLineGap;
-       property VerticalAscender:TpvUInt16 read fVerticalAscender;
-       property VerticalDescender:TpvUInt16 read fVerticalDescender;
-       property VerticalLineGap:TpvUInt16 read fVerticalLineGap;
+       property OS2Ascender:TpvInt16 read fOS2Ascender;
+       property OS2Descender:TpvInt16 read fOS2Descender;
+       property OS2LineGap:TpvInt16 read fOS2LineGap;
+       property HorizontalAscender:TpvInt16 read fHorizontalAscender;
+       property HorizontalDescender:TpvInt16 read fHorizontalDescender;
+       property HorizontalLineGap:TpvInt16 read fHorizontalLineGap;
+       property VerticalAscender:TpvInt16 read fVerticalAscender;
+       property VerticalDescender:TpvInt16 read fVerticalDescender;
+       property VerticalLineGap:TpvInt16 read fVerticalLineGap;
        property AdvanceWidthMax:TpvUInt16 read fAdvanceWidthMax;
        property AdvanceHeightMax:TpvUInt16 read fAdvanceHeightMax;
        property Copyright:TpvRawByteString read fStringCopyright;
@@ -5750,11 +5750,11 @@ begin
    inc(Position,sizeof(TpvUInt16)); // fs selection
    inc(Position,sizeof(TpvUInt16)); // first char index
    inc(Position,sizeof(TpvUInt16)); // last char index
-   fOS2Ascender:=ToWORD(fFontData[Position],fFontData[Position+1]);
+   fOS2Ascender:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
    inc(Position,sizeof(TpvUInt16)); // typo ascender
-   fOS2Descender:=ToWORD(fFontData[Position],fFontData[Position+1]);
+   fOS2Descender:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
    inc(Position,sizeof(TpvUInt16)); // typo descender
-   fOS2LineGap:=ToWORD(fFontData[Position],fFontData[Position+1]);
+   fOS2LineGap:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
    inc(Position,sizeof(TpvUInt16)); // typo line gap
    inc(Position,sizeof(TpvUInt16)); // win ascent
    inc(Position,sizeof(TpvUInt16)); // win descent
