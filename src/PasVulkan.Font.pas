@@ -122,6 +122,7 @@ type EpvFont=class(Exception);
       Advance:TpvVector2;
       Bounds:TpvRect;
       SideBearings:TpvFontGlyphSideBearings;
+      Rect:TpvRect;
       Offset:TpvVector2;
       Size:TpvVector2;
       Width:TpvInt32;
@@ -177,7 +178,7 @@ type EpvFont=class(Exception);
 
      TpvFont=class
       private
-       const FileFormatGUID:TGUID='{8A98389D-4F91-492E-A3EE-C1E773FEA021}';
+       const FileFormatGUID:TGUID='{2405B44F-8747-4A17-AD91-83DAD9E48941}';
       private
        fDevice:TpvVulkanDevice;
        fSpriteAtlas:TpvSpriteAtlas;
@@ -209,6 +210,9 @@ type EpvFont=class(Exception);
        fCodePointToGlyphMap:TpvFontCodePointToGlyphMap;
        fKerningPairHashMap:TpvFontInt64HashMap;
        fSignedDistanceFieldJobs:TpvFontSignedDistanceFieldJobs;
+       fMonospaceSize:TpvVector2;
+       fHasMonospaceSize:boolean;
+       procedure CalculateMonospaceSize;
        procedure GenerateSignedDistanceField(var aSignedDistanceField:TpvSignedDistanceField2D;const aTrimmedHullVectors:PpvSpriteTrimmedHullVectors;const aOffsetX,aOffsetY:TpvDouble;const aMultiChannel:boolean;const aPolygonBuffer:TpvTrueTypeFontPolygonBuffer;const aFillRule:TpvInt32);
        procedure GenerateSignedDistanceFieldParallelForJobFunction(const Job:PPasMPJob;const ThreadIndex:TPasMPInt32;const Data:TVkPointer;const FromIndex,ToIndex:TPasMPNativeInt);
       public
@@ -365,11 +369,14 @@ begin
 
  fSignedDistanceFieldJobs:=nil;
 
+ fHasMonospaceSize:=false;
+
 end;
 
 constructor TpvFont.CreateFromTrueTypeFont(const aDevice:TpvVulkanDevice;const aSpriteAtlas:TpvSpriteAtlas;const aTrueTypeFont:TpvTrueTypeFont;const aCodePointRanges:array of TpvFontCodePointRange;const aAutomaticTrim:boolean=true;const aPadding:TpvInt32=2;const aTrimPadding:TpvInt32=1;const aConvexHullTrimming:boolean=false);
 const GlyphMetaDataScaleFactor=1.0;
       GlyphRasterizationScaleFactor=1.0/256.0;
+      GlyphRasterizationToMetaScaleFactor=1.0/4.0;
 var Index,TTFGlyphIndex,GlyphIndex,OtherGlyphIndex,CountGlyphs,
     CodePointGlyphPairIndex,CountCodePointGlyphPairs,
     TrueTypeFontKerningIndex,TrueTypeFontKerningPairIndex,
@@ -639,6 +646,11 @@ begin
         end;
 
         aTrueTypeFont.GetPolygonBufferBounds(PolygonBuffers[GlyphIndex],x0,y0,x1,y1);
+
+        Glyph^.Rect.Left:=x0*GlyphRasterizationToMetaScaleFactor;
+        Glyph^.Rect.Top:=y0*GlyphRasterizationToMetaScaleFactor;
+        Glyph^.Rect.Right:=x1*GlyphRasterizationToMetaScaleFactor;
+        Glyph^.Rect.Bottom:=y1*GlyphRasterizationToMetaScaleFactor;
 
         Glyph^.Offset.x:=(x0*GlyphRasterizationScaleFactor)-(VulkanDistanceField2DSpreadValue*2.0);
         Glyph^.Offset.y:=(y0*GlyphRasterizationScaleFactor)-(VulkanDistanceField2DSpreadValue*2.0);
@@ -989,6 +1001,10 @@ begin
    Glyph^.SideBearings.Top:=ReadFloat;
    Glyph^.SideBearings.Right:=ReadFloat;
    Glyph^.SideBearings.Bottom:=ReadFloat;
+   Glyph^.Rect.Left:=ReadFloat;
+   Glyph^.Rect.Top:=ReadFloat;
+   Glyph^.Rect.Right:=ReadFloat;
+   Glyph^.Rect.Bottom:=ReadFloat;
    Glyph^.Offset.x:=ReadFloat;
    Glyph^.Offset.y:=ReadFloat;
    Glyph^.Size.x:=ReadFloat;
@@ -1168,6 +1184,10 @@ begin
    WriteFloat(Glyph^.SideBearings.Top);
    WriteFloat(Glyph^.SideBearings.Right);
    WriteFloat(Glyph^.SideBearings.Bottom);
+   WriteFloat(Glyph^.Rect.Left);
+   WriteFloat(Glyph^.Rect.Top);
+   WriteFloat(Glyph^.Rect.Right);
+   WriteFloat(Glyph^.Rect.Bottom);
    WriteFloat(Glyph^.Offset.x);
    WriteFloat(Glyph^.Offset.y);
    WriteFloat(Glyph^.Size.x);
@@ -1210,6 +1230,62 @@ begin
   SaveToStream(Stream);
  finally
   Stream.Free;
+ end;
+end;
+
+procedure TpvFont.CalculateMonospaceSize;
+var CurrentCodePoint:TpvUInt32;
+    CurrentGlyph,CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
+    Glyph:PpvFontGlyph;
+begin
+ fMonospaceSize:=TpvVector2.Null;
+ for CurrentCodePoint:=$20 to $7e do begin
+  CodePointMapMainIndex:=CurrentCodePoint shr 10;
+  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
+  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
+     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
+     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
+   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
+   if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
+    Glyph:=@fGlyphs[CurrentGlyph];
+    fMonospaceSize:=Maximum(fMonospaceSize,Maximum(Glyph^.Bounds.RightBottom,Glyph^.Advance));
+   end;
+  end;
+ end;
+ if IsZero(fMonospaceSize.x) then begin
+  fMonospaceSize.x:=fMaxX-fMinX;
+ end;
+ if IsZero(fMonospaceSize.y) then begin
+  fMonospaceSize.y:=fMaxY-fMinY;
+ end;
+ if fAdvanceWidthMax<fAdvanceHeightMax then begin
+  fMonospaceSize:=Maximum(fMonospaceSize,
+                          TpvVector2.InlineableCreate(Maximum(Maximum(fUnitsPerEm,
+                                                                      fMaxX-fMinX
+                                                                     ),
+                                                              Maximum((fHorizontalAscender-fHorizontalDescender)+fHorizontalLineGap,
+                                                                      fAdvanceWidthMax
+                                                                     )
+                                                             ),
+                                                      Maximum((fVerticalAscender-fVerticalDescender)+fVerticalLineGap,
+                                                              fAdvanceHeightMax
+                                                             )
+                                                     )
+                         );
+ end else begin
+  fMonospaceSize:=Maximum(fMonospaceSize,
+                          TpvVector2.InlineableCreate(Maximum((fHorizontalAscender-fHorizontalDescender)+fHorizontalLineGap,
+                                                              fAdvanceWidthMax
+                                                             ),
+                                                      Maximum(Maximum(fUnitsPerEm,
+                                                                      fMaxY-fMinY
+                                                                     ),
+                                                              Maximum((fVerticalAscender-fVerticalDescender)+fVerticalLineGap,
+                                                                      fAdvanceHeightMax
+                                                                     )
+                                                             )
+                                                     )
+                         );
  end;
 end;
 
@@ -1539,35 +1615,12 @@ begin
 end;
 
 function TpvFont.MonospaceSize(const aSize:TpvFloat):TpvVector2;
-var CurrentGlyph:TpvInt32;
-    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
-    CurrentCodePoint:TpvUInt32;
-    Int64Value:TpvInt64;
-    Glyph:PpvFontGlyph;
 begin
- CurrentCodePoint:=ord(' ');
- CodePointMapMainIndex:=CurrentCodePoint shr 10;
- CodePointMapSubIndex:=CurrentCodePoint and $3ff;
- if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-    (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-    assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-  CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
-   Glyph:=@fGlyphs[CurrentGlyph];
-   result:=Maximum(Glyph^.Bounds.RightBottom,Glyph^.Advance);
-  end else begin
-   result:=TpvVector2.Null;
-  end;
- end else begin
-  result:=TpvVector2.Null;
+ if not fHasMonospaceSize then begin
+  fHasMonospaceSize:=true;
+  CalculateMonospaceSize;
  end;
- if IsZero(result.x) then begin
-  result.x:=fMaxX-fMinX;
- end;
- if IsZero(result.y) then begin
-  result.y:=fMaxY-fMinY;
- end;
- result:=Maximum(result,TpvVector2.InlineableCreate(0.0,Maximum(fUnitsPerEm,fMaxY-fMinY)))*GetScaleFactor(aSize);
+ result:=fMonospaceSize*GetScaleFactor(aSize);
 end;
 
 function TpvFont.RowHeight(const aPercent:TpvFloat;const aSize:TpvFloat):TpvFloat;
