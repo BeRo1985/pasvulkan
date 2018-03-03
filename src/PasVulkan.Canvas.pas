@@ -701,6 +701,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        function DrawSprite(const aSprite:TpvSprite;const aPosition:TpvVector2):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function DrawSprite(const aSprite:TpvSprite):TpvCanvas; overload; {$ifdef CAN_INLINE}inline;{$endif}
       public
+       procedure DrawSpriteProc(const aSprite:TpvSprite;const aSrc,aDest:TpvRect); inline;
+      public
        function DrawNinePatchSprite(const aSprite:TpvSprite;const aNinePatch:TpvSpriteNinePatch;const aPosition,aSize:TpvVector2):TpvCanvas; overload;
       public
        function TextWidth(const aText:TpvUTF8String):TpvFloat;
@@ -4647,6 +4649,11 @@ begin
  DrawSprite(aSprite,
             TpvVector2.InlineableCreate(0.0,0.0));
  result:=self;
+end;
+
+procedure TpvCanvas.DrawSpriteProc(const aSprite:TpvSprite;const aSrc,aDest:TpvRect);
+begin
+ DrawSprite(aSprite,aSrc,aDest);
 end;
 
 function TpvCanvas.DrawNinePatchSprite(const aSprite:TpvSprite;const aNinePatch:TpvSpriteNinePatch;const aPosition,aSize:TpvVector2):TpvCanvas;

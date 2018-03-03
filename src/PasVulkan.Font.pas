@@ -219,10 +219,10 @@ type EpvFont=class(Exception);
        function MonospaceSize(const aSize:TpvFloat):TpvVector2;
        function RowHeight(const aPercent:TpvFloat;const aSize:TpvFloat):TpvFloat;
        procedure GetTextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aRects:TpvRectArray;out aCountRects:TpvInt32);
-       procedure Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
        procedure Draw(const aDrawSprite:TpvFontDrawSprite;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
-       procedure DrawCodePoint(const aCanvas:TObject;const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
+       procedure Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
        procedure DrawCodePoint(const aDrawSprite:TpvFontDrawSprite;const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
+       procedure DrawCodePoint(const aCanvas:TObject;const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
       published
        property BaseSize:TpvFloat read fBaseSize;
        property MinX:TpvFloat read fMinX;
@@ -1503,57 +1503,6 @@ begin
  end;
 end;
 
-procedure TpvFont.Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat);
-var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph,
-    CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
-    ScaleFactor,RescaleFactor:TpvFloat;
-    Int64Value:TpvInt64;
-    Glyph:PpvFontGlyph;
-    Position:TpvVector2;
-begin
- Position:=TpvVector2.Null;
- ScaleFactor:=GetScaleFactor(aSize);
- RescaleFactor:=ScaleFactor*fInverseBaseScaleFactor;
- TextIndex:=1;
- LastGlyph:=-1;
- while TextIndex<=length(aText) do begin
-  CurrentCodePoint:=PUCUUTF8CodeUnitGetCharAndIncFallback(aText,TextIndex);
-  CodePointMapMainIndex:=CurrentCodePoint shr 10;
-  CodePointMapSubIndex:=CurrentCodePoint and $3ff;
-  if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-  end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
-   CurrentGlyph:=Int64Value;
-  end else begin
-   CurrentGlyph:=-1;
-  end;
-  if CurrentGlyph>=0 then begin
-   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
-    if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
-       (length(fKerningPairs)>0) and
-       fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
-     Position:=Position+fKerningPairVectors[Int64Value];
-    end;
-    Glyph:=@fGlyphs[CurrentGlyph];
-    if LastGlyph<0 then begin
-     Position:=Position+Glyph^.SideBearings.LeftTop;
-    end;
-    TpvCanvas(aCanvas).DrawSprite(Glyph^.Sprite,
-                                  TpvRect.CreateRelative(TpvVector2.Null,
-                                                         Glyph^.Size),
-                                  TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
-                                                         Glyph^.Size*RescaleFactor));
-    Position:=Position+Glyph^.Advance;
-   end;
-  end else begin
-   CurrentGlyph:=0;
-  end;
-  LastGlyph:=CurrentGlyph;
- end;
-end;
-
 procedure TpvFont.Draw(const aDrawSprite:TpvFontDrawSprite;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat);
 var TextIndex,CurrentCodePoint,CurrentGlyph,LastGlyph,
     CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
@@ -1605,36 +1554,9 @@ begin
  end;
 end;
 
-procedure TpvFont.DrawCodePoint(const aCanvas:TObject;const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2;const aSize:TpvFloat);
-var CurrentCodePoint,CurrentGlyph,CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
-    ScaleFactor,RescaleFactor:TpvFloat;
-    Int64Value:TpvInt64;
-    Glyph:PpvFontGlyph;
-    Position:TpvVector2;
+procedure TpvFont.Draw(const aCanvas:TObject;const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat);
 begin
- Position:=TpvVector2.Null;
- ScaleFactor:=GetScaleFactor(aSize);
- RescaleFactor:=ScaleFactor*fInverseBaseScaleFactor;
- CurrentCodePoint:=aTextCodePoint;
- CodePointMapMainIndex:=CurrentCodePoint shr 10;
- CodePointMapSubIndex:=CurrentCodePoint and $3ff;
- if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-    (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-    assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-  CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
- end else if fCodePointToGlyphHashMap.TryGet(CurrentCodePoint,Int64Value) then begin
-  CurrentGlyph:=Int64Value;
- end else begin
-  CurrentGlyph:=-1;
- end;
- if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
-  Glyph:=@fGlyphs[CurrentGlyph];
-  TpvCanvas(aCanvas).DrawSprite(Glyph^.Sprite,
-                                TpvRect.CreateRelative(TpvVector2.Null,
-                                                       Glyph^.Size),
-                                TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
-                                                       Glyph^.Size*RescaleFactor));
- end;
+ Draw(TpvCanvas(aCanvas).DrawSpriteProc,aText,aPosition,aSize);
 end;
 
 procedure TpvFont.DrawCodePoint(const aDrawSprite:TpvFontDrawSprite;const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2;const aSize:TpvFloat);
@@ -1667,6 +1589,11 @@ begin
               TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
                                      Glyph^.Size*RescaleFactor));
  end;
+end;
+
+procedure TpvFont.DrawCodePoint(const aCanvas:TObject;const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2;const aSize:TpvFloat);
+begin
+ DrawCodePoint(TpvCanvas(aCanvas).DrawSpriteProc,aTextCodePoint,aPosition,aSize);
 end;
 
 end.
