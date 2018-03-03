@@ -212,12 +212,12 @@ type EpvFont=class(Exception);
        procedure SaveToStream(const aStream:TStream);
        procedure SaveToFile(const aFileName:string);
        function GetScaleFactor(const aSize:TpvFloat):TpvFloat;
-       function TextWidth(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat; overload;
-       function TextWidth(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvFloat; overload;
-       function TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat; overload;
-       function TextHeight(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvFloat; overload;
-       function TextSize(const aText:TpvUTF8String;const aSize:TpvFloat):TpvVector2; overload;
-       function TextSize(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvVector2; overload;
+       function TextWidth(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
+       function TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFloat;
+       function TextSize(const aText:TpvUTF8String;const aSize:TpvFloat):TpvVector2;
+       function CodePointWidth(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvFloat;
+       function CodePointHeight(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvFloat;
+       function CodePointSize(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvVector2;
        function MonospaceSize(const aSize:TpvFloat):TpvVector2;
        function RowHeight(const aPercent:TpvFloat;const aSize:TpvFloat):TpvFloat;
        procedure GetTextGlyphRects(const aText:TpvUTF8String;const aPosition:TpvVector2;const aSize:TpvFloat;var aRects:TpvRectArray;out aCountRects:TpvInt32);
@@ -1276,76 +1276,12 @@ begin
   LastGlyph:=CurrentGlyph;
  end;
  if length(aText)>0 then begin
-  if result=0 then begin
+  if IsZero(result) then begin
    result:=fMaxX-fMinX;
   end;
   if result<Width then begin
    result:=Width;
   end;
- end;
- result:=result*GetScaleFactor(aSize);
-end;
-
-function TpvFont.TextWidth(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvFloat;
-var CurrentGlyph,CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
-    Width,NewWidth:TpvFloat;
-    Glyph:PpvFontGlyph;
-begin
- result:=0.0;
- Width:=0.0;
- CodePointMapMainIndex:=aTextCodePoint shr 10;
- CodePointMapSubIndex:=aTextCodePoint and $3ff;
- if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-    (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-    assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-  CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-  if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
-   Glyph:=@fGlyphs[CurrentGlyph];
-   result:=result+Glyph^.SideBearings.Left;
-   NewWidth:=result+(Glyph^.Bounds.Right-Glyph^.Bounds.Left);
-   if Width<NewWidth then begin
-    Width:=NewWidth;
-   end;
-   result:=result+Glyph^.Advance.x;
-  end;
- end;
- if result=0 then begin
-  result:=fMaxX-fMinX;
- end;
- if result<Width then begin
-  result:=Width;
- end;
- result:=result*GetScaleFactor(aSize);
-end;
-
-function TpvFont.TextHeight(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvFloat;
-var CurrentGlyph,CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
-    Height,NewHeight:TpvFloat;
-    Glyph:PpvFontGlyph;
-begin
- result:=0.0;
- Height:=0.0;
- CodePointMapMainIndex:=aTextCodePoint shr 10;
- CodePointMapSubIndex:=aTextCodePoint and $3ff;
- if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
-    (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
-    assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
-  CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-  if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
-   Glyph:=@fGlyphs[CurrentGlyph];
-   result:=result+Glyph^.SideBearings.Top;
-   NewHeight:=result+(Glyph^.Bounds.Bottom-Glyph^.Bounds.Top);
-   if Height<NewHeight then begin
-    Height:=NewHeight;
-   end;
-   result:=result+Glyph^.Advance.y;
-  end;
- end;
- if result=0 then begin
-  result:=fMaxY-fMinY;
- end;
- if result<Height then begin
-  result:=Height;
  end;
  result:=result*GetScaleFactor(aSize);
 end;
@@ -1392,7 +1328,7 @@ begin
   LastGlyph:=CurrentGlyph;
  end;
  if length(aText)>0 then begin
-  if result=0 then begin
+  if IsZero(result) then begin
    result:=fMaxY-fMinY;
   end;
   if result<Height then begin
@@ -1441,17 +1377,81 @@ begin
   LastGlyph:=CurrentGlyph;
  end;
  if length(aText)>0 then begin
-  if result.x=0 then begin
+  if IsZero(result.x) then begin
    result.x:=fMaxX-fMinX;
   end;
-  if result.y=0 then begin
+  if IsZero(result.y) then begin
    result.y:=fMaxY-fMinY;
   end;
  end;
  result:=Maximum(result,Size)*GetScaleFactor(aSize);
 end;
 
-function TpvFont.TextSize(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvVector2;
+function TpvFont.CodePointWidth(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvFloat;
+var CurrentGlyph,CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
+    Width,NewWidth:TpvFloat;
+    Glyph:PpvFontGlyph;
+begin
+ result:=0.0;
+ Width:=0.0;
+ CodePointMapMainIndex:=aTextCodePoint shr 10;
+ CodePointMapSubIndex:=aTextCodePoint and $3ff;
+ if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
+    (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
+    assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
+  CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
+  if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+   Glyph:=@fGlyphs[CurrentGlyph];
+   result:=result+Glyph^.SideBearings.Left;
+   NewWidth:=result+(Glyph^.Bounds.Right-Glyph^.Bounds.Left);
+   if Width<NewWidth then begin
+    Width:=NewWidth;
+   end;
+   result:=result+Glyph^.Advance.x;
+  end;
+ end;
+ if IsZero(result) then begin
+  result:=fMaxX-fMinX;
+ end;
+ if result<Width then begin
+  result:=Width;
+ end;
+ result:=result*GetScaleFactor(aSize);
+end;
+
+function TpvFont.CodePointHeight(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvFloat;
+var CurrentGlyph,CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
+    Height,NewHeight:TpvFloat;
+    Glyph:PpvFontGlyph;
+begin
+ result:=0.0;
+ Height:=0.0;
+ CodePointMapMainIndex:=aTextCodePoint shr 10;
+ CodePointMapSubIndex:=aTextCodePoint and $3ff;
+ if (CodePointMapMainIndex>=Low(TpvFontCodePointToGlyphMap)) and
+    (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
+    assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
+  CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
+  if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+   Glyph:=@fGlyphs[CurrentGlyph];
+   result:=result+Glyph^.SideBearings.Top;
+   NewHeight:=result+(Glyph^.Bounds.Bottom-Glyph^.Bounds.Top);
+   if Height<NewHeight then begin
+    Height:=NewHeight;
+   end;
+   result:=result+Glyph^.Advance.y;
+  end;
+ end;
+ if IsZero(result) then begin
+  result:=fMaxY-fMinY;
+ end;
+ if result<Height then begin
+  result:=Height;
+ end;
+ result:=result*GetScaleFactor(aSize);
+end;
+
+function TpvFont.CodePointSize(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvVector2;
 var CurrentGlyph,CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
     Size:TpvVector2;
     Int64Value:TpvInt64;
@@ -1472,10 +1472,10 @@ begin
    result:=result+Glyph^.Advance;
   end;
  end;
- if result.x=0 then begin
+ if IsZero(result.x) then begin
   result.x:=fMaxX-fMinX;
  end;
- if result.y=0 then begin
+ if IsZero(result.y) then begin
   result.y:=fMaxY-fMinY;
  end;
  result:=Maximum(result,Size)*GetScaleFactor(aSize);

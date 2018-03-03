@@ -3084,13 +3084,13 @@ begin
   Position:=aPosition;
   if fTextHorizontalAlignment<>TpvCanvasTextHorizontalAlignment.Leading then begin
    if fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
-    Size:=fFont.TextSize(TpvUInt32(aTextCodePoint),fFontSize);
+    Size:=fFont.CodePointSize(TpvUInt32(aTextCodePoint),fFontSize);
    end else begin
-    Size:=TpvVector2.InlineableCreate(fFont.TextWidth(TpvUInt32(aTextCodePoint),fFontSize),0.0);
+    Size:=TpvVector2.InlineableCreate(fFont.CodePointWidth(TpvUInt32(aTextCodePoint),fFontSize),0.0);
    end;
   end else begin
    if fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
-    Size:=TpvVector2.InlineableCreate(0.0,fFont.TextHeight(TpvUInt32(aTextCodePoint),fFontSize));
+    Size:=TpvVector2.InlineableCreate(0.0,fFont.CodePointHeight(TpvUInt32(aTextCodePoint),fFontSize));
    end else begin
     Size:=TpvVector2.InlineableCreate(0.0,0.0);
    end;

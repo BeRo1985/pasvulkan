@@ -4841,13 +4841,13 @@ begin
   Position:=aPosition;
   if fState.fTextHorizontalAlignment<>TpvCanvasTextHorizontalAlignment.Leading then begin
    if fState.fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
-    Size:=TextSize(PUCUUTF32CharToUTF8(aTextCodePoint));
+    Size:=fState.fFont.CodePointSize(aTextCodePoint,fState.fFontSize);
    end else begin
-    Size:=TpvVector2.InlineableCreate(TextWidth(PUCUUTF32CharToUTF8(aTextCodePoint)),0.0);
+    Size:=TpvVector2.InlineableCreate(fState.fFont.CodePointWidth(aTextCodePoint,fState.fFontSize),0.0);
    end;
   end else begin
    if fState.fTextVerticalAlignment<>TpvCanvasTextVerticalAlignment.Leading then begin
-    Size:=TpvVector2.InlineableCreate(0.0,TextHeight(PUCUUTF32CharToUTF8(aTextCodePoint)));
+    Size:=TpvVector2.InlineableCreate(0.0,fState.fFont.CodePointHeight(aTextCodePoint,fState.fFontSize));
    end else begin
     Size:=TpvVector2.InlineableCreate(0.0,0.0);
    end;
