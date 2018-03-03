@@ -7243,9 +7243,14 @@ end;
 
 function TpvGUIDefaultVectorBasedSkin.GetTextEditPreferredSize(const aTextEdit:TpvGUITextEdit):TpvVector2;
 var TextSize:TpvVector2;
+    CurrentFont:TpvFont;
+    CurrentFontSize:TpvFloat;
 begin
+ CurrentFont:=aTextEdit.Font;
+ CurrentFontSize:=aTextEdit.FontSize;
  TextSize.x:=4*2;
- TextSize.y:=(aTextEdit.Font.RowHeight(100,aTextEdit.GetFontSize))+(4*2);
+ TextSize.y:=Maximum(CurrentFont.RowHeight(100,CurrentFontSize),
+                     CurrentFont.LineSpace(100,CurrentFontSize))+(4*2);
  result:=Maximum(GetWidgetLayoutPreferredSize(aTextEdit),
                  Maximum(TextSize,
                          TpvVector2.InlineableCreate(aTextEdit.fMinimumWidth,aTextEdit.fMinimumHeight)));
@@ -8399,7 +8404,7 @@ begin
  end;
  }
 
- MaximumHeight:=10.0+CurrentFont.RowHeight(150.0,CurrentFontSize);
+ MaximumHeight:=10.0+Maximum(CurrentFont.RowHeight(150.0,CurrentFontSize),CurrentFont.LineSpace(100.0,CurrentFontSize));
 
  Width:=Clamp((aTabPanel.fSize.x+(aTabPanel.fTabs.Count*MaximumHeight*0.3725))/Max(aTabPanel.fTabs.Count,1),50.0,200.0);
 
@@ -8476,7 +8481,7 @@ begin
  HeaderSize:=TpvVector2.Null;
 
  if TpvGUITabPanelFlag.VisibleHeader in aTabPanel.fFlags then begin
-  HeaderSize:=TpvVector2.InlineableCreate((ButtonHorizontalBorderSpacing+TabButtonSize)*2.0,Maximum(TabButtonSize,CurrentFont.RowHeight(100,CurrentFontSize))+10.0);
+  HeaderSize:=TpvVector2.InlineableCreate((ButtonHorizontalBorderSpacing+TabButtonSize)*2.0,Maximum(TabButtonSize,Maximum(CurrentFont.RowHeight(100,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize)))+10.0);
  end;
 
  ContentSize:=TpvVector2.Null;
@@ -8670,7 +8675,7 @@ begin
  if aListBox.fRowHeight>0.0 then begin
   RowHeight:=aListBox.fRowHeight;
  end else begin
-  RowHeight:=CurrentFont.RowHeight(150,CurrentFontSize);
+  RowHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
  end;
 
  aListBox.fWorkYOffset:=BoxCornerMargin;
@@ -8743,7 +8748,7 @@ begin
  if aListBox.fRowHeight>0.0 then begin
   RowHeight:=aListBox.fRowHeight;
  end else begin
-  RowHeight:=CurrentFont.RowHeight(150,CurrentFontSize);
+  RowHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
  end;
 
  aListBox.fWorkYOffset:=BoxCornerMargin;
@@ -8848,7 +8853,7 @@ begin
  if aComboBox.fRowHeight>0.0 then begin
   RowHeight:=aComboBox.fRowHeight;
  end else begin
-  RowHeight:=CurrentFont.RowHeight(150,CurrentFontSize);
+  RowHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
  end;
 
  aComboBox.fWorkRowHeight:=RowHeight;
@@ -8917,7 +8922,7 @@ begin
  if aComboBox.fRowHeight>0.0 then begin
   RowHeight:=aComboBox.fRowHeight;
  end else begin
-  RowHeight:=CurrentFont.RowHeight(150,CurrentFontSize);
+  RowHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
  end;
 
  aComboBox.fWorkRowHeight:=RowHeight;
@@ -9164,10 +9169,15 @@ end;
 
 function TpvGUIDefaultVectorBasedSkin.GetMultiLineTextEditPreferredSize(const aMultiLineTextEdit:TpvGUIMultiLineTextEdit):TpvVector2;
 var TextSize:TpvVector2;
+    CurrentFont:TpvFont;
+    CurrentFontSize:TpvFloat;
 begin
  UpdateMultiLineTextEdit(aMultiLineTextEdit);
+ CurrentFont:=aMultiLineTextEdit.Font;
+ CurrentFontSize:=aMultiLineTextEdit.FontSize;
  TextSize.x:=4*2;
- TextSize.y:=(aMultiLineTextEdit.Font.RowHeight(100,aMultiLineTextEdit.GetFontSize))+(4*2);
+ TextSize.y:=Maximum(CurrentFont.RowHeight(100,CurrentFontSize),
+                     CurrentFont.LineSpace(100,CurrentFontSize))+(4*2);
  result:=Maximum(GetWidgetLayoutPreferredSize(aMultiLineTextEdit),
                  TextSize);
 {                Maximum(TextSize,
