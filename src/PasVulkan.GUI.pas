@@ -1667,6 +1667,8 @@ type TpvGUIObject=class;
        fCheckBoxFlags:TpvGUICheckBoxFlags;
        fCheckBoxGroup:TpvGUICheckBoxGroup;
        fCaption:TpvUTF8String;
+       fCachedCaption:TpvUTF8String;
+       fCachedCaptionInvalidated:boolean;
        fOnChange:TpvGUIOnChange;
        function GetPushed:boolean; inline;
        procedure SetPushed(const aPushed:boolean); inline;
@@ -1674,9 +1676,14 @@ type TpvGUIObject=class;
        procedure SetChecked(const aChecked:boolean);
       protected
        function GetHighlightRect:TpvRect; override;
+       function GetFont:TpvFont; override;
+       procedure SetFont(const aFont:TpvFont);
        function GetFontSize:TpvFloat; override;
+       procedure SetFontSize(const aFontSize:TpvFloat);
        function GetFontColor:TpvVector4; override;
        function GetPreferredSize:TpvVector2; override;
+       procedure SetTextTruncation(const aTextTruncation:TpvGUITextTruncation);
+       procedure SetCaption(const aCaption:TpvUTF8String);
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -1687,14 +1694,14 @@ type TpvGUIObject=class;
       public
        property FontColor;
       published
-       property Font;
-       property FontSize;
+       property Font read GetFont write SetFont;
+       property FontSize read GetFontSize write SetFontSize;
        property TextHorizontalAlignment;
        property TextVerticalAlignment;
-       property TextTruncation;
+       property TextTruncation write SetTextTruncation;
        property Pushed:boolean read GetPushed write SetPushed;
        property Checked:boolean read GetChecked write SetChecked;
-       property Caption:TpvUTF8String read fCaption write fCaption;
+       property Caption:TpvUTF8String read fCaption write SetCaption;
        property OnChange:TpvGUIOnChange read fOnChange write fOnChange;
      end;
 
@@ -7219,11 +7226,15 @@ begin
   end;
  end;
  aDrawEngine.Transparent:=true;
- aDrawEngine.DrawText(TpvGUITextUtils.TextTruncation(aCheckBox.fCaption,
-                                                     aCheckBox.fTextTruncation,
-                                                     aDrawEngine.Font,
-                                                     aDrawEngine.FontSize,
-                                                     aCheckBox.fSize.x-(fCheckBoxSize.x+fSpacing)),
+ if aCheckBox.fCachedCaptionInvalidated then begin
+  aCheckBox.fCachedCaptionInvalidated:=false;
+  aCheckBox.fCachedCaption:=TpvGUITextUtils.TextTruncation(aCheckBox.fCaption,
+                                                           aCheckBox.fTextTruncation,
+                                                           aDrawEngine.Font,
+                                                           aDrawEngine.FontSize,
+                                                           aCheckBox.fSize.x-(fCheckBoxSize.x+fSpacing));
+ end;
+ aDrawEngine.DrawText(aCheckBox.fCachedCaption,
                       Offset);
  aDrawEngine.Next;
 end;
@@ -12643,6 +12654,10 @@ begin
 
  fCaption:='';
 
+ fCachedCaption:='';
+
+ fCachedCaptionInvalidated:=true;
+
  fOnChange:=nil;
 
 end;
@@ -12726,12 +12741,33 @@ begin
  result.Size:=Skin.fCheckBoxSize;
 end;
 
+function TpvGUICheckBox.GetFont:TpvFont;
+begin
+ result:=inherited GetFont;
+end;
+
+procedure TpvGUICheckBox.SetFont(const aFont:TpvFont);
+begin
+ if fFont<>aFont then begin
+  fFont:=aFont;
+  fCachedCaptionInvalidated:=true;
+ end;
+end;
+
 function TpvGUICheckBox.GetFontSize:TpvFloat;
 begin
  if assigned(Skin) and IsZero(fFontSize) then begin
   result:=Skin.fCheckBoxFontSize;
  end else begin
   result:=fFontSize;
+ end;
+end;
+
+procedure TpvGUICheckBox.SetFontSize(const aFontSize:TpvFloat);
+begin
+ if fFontSize<>aFontSize then begin
+  fFontSize:=aFontSize;
+  fCachedCaptionInvalidated:=true;
  end;
 end;
 
@@ -12747,6 +12783,22 @@ end;
 function TpvGUICheckBox.GetPreferredSize:TpvVector2;
 begin
  result:=Skin.GetCheckBoxPreferredSize(self);
+end;
+
+procedure TpvGUICheckBox.SetTextTruncation(const aTextTruncation:TpvGUITextTruncation);
+begin
+ if fTextTruncation<>aTextTruncation then begin
+  fTextTruncation:=aTextTruncation;
+  fCachedCaptionInvalidated:=true;
+ end;
+end;
+
+procedure TpvGUICheckBox.SetCaption(const aCaption:TpvUTF8String);
+begin
+ if fCaption<>aCaption then begin
+  fCaption:=aCaption;
+  fCachedCaptionInvalidated:=true;
+ end;
 end;
 
 function TpvGUICheckBox.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
