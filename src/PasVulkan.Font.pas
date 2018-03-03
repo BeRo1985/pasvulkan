@@ -1238,7 +1238,7 @@ function TpvFont.TextWidth(const aText:TpvUTF8String;const aSize:TpvFloat):TpvFl
 var TextIndex,CurrentGlyph,LastGlyph,
     CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
     CurrentCodePoint:TpvUInt32;
-    Width,NewWidth:TpvFloat;
+    Width:TpvFloat;
     Int64Value:TpvInt64;
     Glyph:PpvFontGlyph;
 begin
@@ -1261,13 +1261,7 @@ begin
      result:=result+fKerningPairs[Int64Value].Horizontal;
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
-    if LastGlyph<0 then begin
-     result:=result+Glyph^.SideBearings.Left;
-    end;
-    NewWidth:=result+(Glyph^.Bounds.Right-Glyph^.Bounds.Left);
-    if Width<NewWidth then begin
-     Width:=NewWidth;
-    end;
+    Width:=Maximum(Width,result+Glyph^.Bounds.Right);
     result:=result+Glyph^.Advance.x;
    end;
   end else begin
@@ -1290,7 +1284,7 @@ function TpvFont.TextHeight(const aText:TpvUTF8String;const aSize:TpvFloat):TpvF
 var TextIndex,CurrentGlyph,LastGlyph,
     CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
     CurrentCodePoint:TpvUInt32;
-    Height,NewHeight:TpvFloat;
+    Height:TpvFloat;
     Int64Value:TpvInt64;
     Glyph:PpvFontGlyph;
 begin
@@ -1313,13 +1307,7 @@ begin
      result:=result+fKerningPairs[Int64Value].Vertical;
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
-    if LastGlyph<0 then begin
-     result:=result+Glyph^.SideBearings.Top;
-    end;
-    NewHeight:=result+(Glyph^.Bounds.Bottom-Glyph^.Bounds.Top);
-    if Height<NewHeight then begin
-     Height:=NewHeight;
-    end;
+    Height:=Maximum(Height,result+Glyph^.Bounds.Bottom);
     result:=result+Glyph^.Advance.y;
    end;
   end else begin
@@ -1365,10 +1353,7 @@ begin
      result:=result+fKerningPairVectors[Int64Value];
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
-    if LastGlyph<0 then begin
-     result:=result+Glyph^.SideBearings.LeftTop;
-    end;
-    Size:=Maximum(Size,result+(Glyph^.Bounds.RightBottom-Glyph^.Bounds.LeftTop));
+    Size:=Maximum(Size,result+Glyph^.Bounds.RightBottom);
     result:=result+Glyph^.Advance;
    end;
   end else begin
@@ -1389,7 +1374,7 @@ end;
 
 function TpvFont.CodePointWidth(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvFloat;
 var CurrentGlyph,CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
-    Width,NewWidth:TpvFloat;
+    Width:TpvFloat;
     Glyph:PpvFontGlyph;
 begin
  result:=0.0;
@@ -1402,12 +1387,8 @@ begin
   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
    Glyph:=@fGlyphs[CurrentGlyph];
-   result:=result+Glyph^.SideBearings.Left;
-   NewWidth:=result+(Glyph^.Bounds.Right-Glyph^.Bounds.Left);
-   if Width<NewWidth then begin
-    Width:=NewWidth;
-   end;
-   result:=result+Glyph^.Advance.x;
+   Width:=Glyph^.Bounds.Right;
+   result:=Glyph^.Advance.x;
   end;
  end;
  if IsZero(result) then begin
@@ -1421,7 +1402,7 @@ end;
 
 function TpvFont.CodePointHeight(const aTextCodePoint:TpvUInt32;const aSize:TpvFloat):TpvFloat;
 var CurrentGlyph,CodePointMapMainIndex,CodePointMapSubIndex:TpvInt32;
-    Height,NewHeight:TpvFloat;
+    Height:TpvFloat;
     Glyph:PpvFontGlyph;
 begin
  result:=0.0;
@@ -1434,12 +1415,8 @@ begin
   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
    Glyph:=@fGlyphs[CurrentGlyph];
-   result:=result+Glyph^.SideBearings.Top;
-   NewHeight:=result+(Glyph^.Bounds.Bottom-Glyph^.Bounds.Top);
-   if Height<NewHeight then begin
-    Height:=NewHeight;
-   end;
-   result:=result+Glyph^.Advance.y;
+   Height:=Glyph^.Bounds.Bottom;
+   result:=Glyph^.Advance.y;
   end;
  end;
  if IsZero(result) then begin
@@ -1467,8 +1444,7 @@ begin
   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
    Glyph:=@fGlyphs[CurrentGlyph];
-   result:=result+Glyph^.SideBearings.LeftTop;
-   Size:=Maximum(Size,result+(Glyph^.Bounds.RightBottom-Glyph^.Bounds.LeftTop));
+   Size:=Maximum(Size,result+Glyph^.Bounds.RightBottom);
    result:=result+Glyph^.Advance;
   end;
  end;
@@ -1497,7 +1473,7 @@ begin
   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
   if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
    Glyph:=@fGlyphs[CurrentGlyph];
-   result:=Glyph^.Advance;
+   result:=Maximum(Glyph^.Bounds.RightBottom,Glyph^.Advance);
   end else begin
    result:=TpvVector2.Null;
   end;
@@ -1550,9 +1526,6 @@ begin
      Position:=Position+fKerningPairVectors[Int64Value];
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
-    if LastGlyph<0 then begin
-     Position:=Position+Glyph^.SideBearings.LeftTop;
-    end;
     if length(aRects)<=aCountRects then begin
      SetLength(aRects,(aCountRects+1)*2);
     end;
@@ -1596,9 +1569,6 @@ begin
      Position:=Position+fKerningPairVectors[Int64Value];
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
-    if LastGlyph<0 then begin
-     Position:=Position+Glyph^.SideBearings.LeftTop;
-    end;
     aDrawSprite(Glyph^.Sprite,
                 TpvRect.CreateRelative(TpvVector2.Null,
                                        Glyph^.Size),

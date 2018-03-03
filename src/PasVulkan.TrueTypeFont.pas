@@ -10311,10 +10311,10 @@ begin
      inc(CurrentY,GetKerning(LastGlyph,CurrentGlyph,false));
     end;
 
-    if LastGlyph<0 then begin
+{   if LastGlyph<0 then begin
      dec(CurrentX,GetGlyphLeftSideBearing(CurrentGlyph));
      dec(CurrentY,GetGlyphTopSideBearing(CurrentGlyph));
-    end;
+    end;}
 
     if IsPostScriptGlyph(CurrentGlyph) then begin
 
@@ -10405,9 +10405,9 @@ begin
    if (LastGlyph>=0) and (LastGlyph<fCountGlyphs) then begin
     inc(result,GetKerning(LastGlyph,CurrentGlyph,true));
    end;
-   if LastGlyph<0 then begin
+{  if LastGlyph<0 then begin
     dec(result,GetGlyphLeftSideBearing(CurrentGlyph));
-   end;
+   end;}
    if LoadGlyphData(CurrentGlyph)=pvTTF_TT_ERR_NoError then begin
     NewWidth:=result+(fGlyphs[CurrentGlyph].Bounds.XMax-fGlyphs[CurrentGlyph].Bounds.XMin);
     if Width<NewWidth then begin
@@ -10439,9 +10439,9 @@ begin
    if (LastGlyph>=0) and (LastGlyph<fCountGlyphs) then begin
     inc(result,GetKerning(LastGlyph,CurrentGlyph,false));
    end;
-   if LastGlyph<0 then begin
+{  if LastGlyph<0 then begin
     dec(result,GetGlyphTopSideBearing(CurrentGlyph));
-   end;
+   end;}
    if LoadGlyphData(CurrentGlyph)=pvTTF_TT_ERR_NoError then begin
     NewHeight:=result+(fGlyphs[CurrentGlyph].Bounds.YMax-fGlyphs[CurrentGlyph].Bounds.YMin);
     if Height<NewHeight then begin
@@ -10476,10 +10476,10 @@ begin
     inc(aWidth,GetKerning(LastGlyph,CurrentGlyph,true));
     inc(aHeight,GetKerning(LastGlyph,CurrentGlyph,false));
    end;
-   if LastGlyph<0 then begin
+{  if LastGlyph<0 then begin
     dec(aWidth,GetGlyphLeftSideBearing(CurrentGlyph));
     dec(aHeight,GetGlyphTopSideBearing(CurrentGlyph));
-   end;
+   end;}
    if LoadGlyphData(CurrentGlyph)=pvTTF_TT_ERR_NoError then begin
     NewWidth:=aWidth+(fGlyphs[CurrentGlyph].Bounds.XMax-fGlyphs[CurrentGlyph].Bounds.XMin);
     NewHeight:=aHeight+(fGlyphs[CurrentGlyph].Bounds.YMax-fGlyphs[CurrentGlyph].Bounds.YMin);
