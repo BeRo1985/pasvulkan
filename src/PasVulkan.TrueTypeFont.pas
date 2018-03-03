@@ -773,6 +773,12 @@ type EpvTrueTypeFont=class(Exception);
        fAscender:TpvUInt16;
        fDescender:TpvUInt16;
        fLineGap:TpvUInt16;
+       fHorizontalAscender:TpvUInt16;
+       fHorizontalDescender:TpvUInt16;
+       fHorizontalLineGap:TpvUInt16;
+       fVerticalAscender:TpvUInt16;
+       fVerticalDescender:TpvUInt16;
+       fVerticalLineGap:TpvUInt16;
        fAdvanceWidthMax:TpvUInt16;
        fAdvanceHeightMax:TpvUInt16;
        fPlatformID:TpvUInt16;
@@ -873,6 +879,17 @@ type EpvTrueTypeFont=class(Exception);
        property MinY:TpvInt16 read fMinY;
        property MaxX:TpvInt16 read fMaxX;
        property MaxY:TpvInt16 read fMaxY;
+       property Ascender:TpvUInt16 read fAscender;
+       property Descender:TpvUInt16 read fDescender;
+       property LineGap:TpvUInt16 read fLineGap;
+       property HorizontalAscender:TpvUInt16 read fHorizontalAscender;
+       property HorizontalDescender:TpvUInt16 read fHorizontalDescender;
+       property HorizontalLineGap:TpvUInt16 read fHorizontalLineGap;
+       property VerticalAscender:TpvUInt16 read fVerticalAscender;
+       property VerticalDescender:TpvUInt16 read fVerticalDescender;
+       property VerticalLineGap:TpvUInt16 read fVerticalLineGap;
+       property AdvanceWidthMax:TpvUInt16 read fAdvanceWidthMax;
+       property AdvanceHeightMax:TpvUInt16 read fAdvanceHeightMax;
        property Copyright:TpvRawByteString read fStringCopyright;
        property Family:TpvRawByteString read fStringFamily;
        property SubFamily:TpvRawByteString read fStringSubFamily;
@@ -5345,6 +5362,12 @@ begin
  fAscender:=0;
  fDescender:=0;
  fLineGap:=0;
+ fHorizontalAscender:=0;
+ fHorizontalDescender:=0;
+ fHorizontalLineGap:=0;
+ fVerticalAscender:=0;
+ fVerticalDescender:=0;
+ fVerticalLineGap:=0;
  fKerningTables:=nil;
  fSize:=12;
  fLetterSpacingX:=0;
@@ -5727,8 +5750,11 @@ begin
    inc(Position,sizeof(TpvUInt16)); // fs selection
    inc(Position,sizeof(TpvUInt16)); // first char index
    inc(Position,sizeof(TpvUInt16)); // last char index
+   fAscender:=ToWORD(fFontData[Position],fFontData[Position+1]);
    inc(Position,sizeof(TpvUInt16)); // typo ascender
+   fDescender:=ToWORD(fFontData[Position],fFontData[Position+1]);
    inc(Position,sizeof(TpvUInt16)); // typo descender
+   fLineGap:=ToWORD(fFontData[Position],fFontData[Position+1]);
    inc(Position,sizeof(TpvUInt16)); // typo line gap
    inc(Position,sizeof(TpvUInt16)); // win ascent
    inc(Position,sizeof(TpvUInt16)); // win descent
@@ -7579,11 +7605,11 @@ begin
  end else begin
   Position:=Offset;
   inc(Position,sizeof(TpvUInt32)); // Table Version number
-  fAscender:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
+  fHorizontalAscender:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
   inc(Position,sizeof(TpvInt16));
-  fDescender:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
+  fHorizontalDescender:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
   inc(Position,sizeof(TpvInt16));
-  fLineGap:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
+  fHorizontalLineGap:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
   inc(Position,sizeof(TpvInt16));
   fAdvanceWidthMax:=ToWORD(fFontData[Position],fFontData[Position+1]);
   inc(Position,sizeof(TpvUInt16));
@@ -7642,11 +7668,11 @@ begin
  end else begin
   Position:=Offset;
   inc(Position,sizeof(TpvUInt32)); // Table Version number
-  fAscender:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
+  fVerticalAscender:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
   inc(Position,sizeof(TpvInt16));
-  fDescender:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
+  fVerticalDescender:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
   inc(Position,sizeof(TpvInt16));
-  fLineGap:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
+  fVerticalLineGap:=ToSMALLINT(fFontData[Position],fFontData[Position+1]);
   inc(Position,sizeof(TpvInt16));
   fAdvanceHeightMax:=ToWORD(fFontData[Position],fFontData[Position+1]);
   inc(Position,sizeof(TpvUInt16));
