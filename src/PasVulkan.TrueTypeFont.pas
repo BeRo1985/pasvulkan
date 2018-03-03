@@ -770,9 +770,9 @@ type EpvTrueTypeFont=class(Exception);
        fUnitsPerEm:TpvUInt16;
        fUnitsPerPixel:TpvUInt16;
        fThinBoldStrength:TpvInt32;
-       fAscender:TpvUInt16;
-       fDescender:TpvUInt16;
-       fLineGap:TpvUInt16;
+       fOS2Ascender:TpvUInt16;
+       fOS2Descender:TpvUInt16;
+       fOS2LineGap:TpvUInt16;
        fHorizontalAscender:TpvUInt16;
        fHorizontalDescender:TpvUInt16;
        fHorizontalLineGap:TpvUInt16;
@@ -879,9 +879,9 @@ type EpvTrueTypeFont=class(Exception);
        property MinY:TpvInt16 read fMinY;
        property MaxX:TpvInt16 read fMaxX;
        property MaxY:TpvInt16 read fMaxY;
-       property Ascender:TpvUInt16 read fAscender;
-       property Descender:TpvUInt16 read fDescender;
-       property LineGap:TpvUInt16 read fLineGap;
+       property OS2Ascender:TpvUInt16 read fOS2Ascender;
+       property OS2Descender:TpvUInt16 read fOS2Descender;
+       property OS2LineGap:TpvUInt16 read fOS2LineGap;
        property HorizontalAscender:TpvUInt16 read fHorizontalAscender;
        property HorizontalDescender:TpvUInt16 read fHorizontalDescender;
        property HorizontalLineGap:TpvUInt16 read fHorizontalLineGap;
@@ -5359,9 +5359,9 @@ begin
  fUnitsPerEm:=0;
  fUnitsPerPixel:=0;
  fThinBoldStrength:=0;
- fAscender:=0;
- fDescender:=0;
- fLineGap:=0;
+ fOS2Ascender:=0;
+ fOS2Descender:=0;
+ fOS2LineGap:=0;
  fHorizontalAscender:=0;
  fHorizontalDescender:=0;
  fHorizontalLineGap:=0;
@@ -5750,11 +5750,11 @@ begin
    inc(Position,sizeof(TpvUInt16)); // fs selection
    inc(Position,sizeof(TpvUInt16)); // first char index
    inc(Position,sizeof(TpvUInt16)); // last char index
-   fAscender:=ToWORD(fFontData[Position],fFontData[Position+1]);
+   fOS2Ascender:=ToWORD(fFontData[Position],fFontData[Position+1]);
    inc(Position,sizeof(TpvUInt16)); // typo ascender
-   fDescender:=ToWORD(fFontData[Position],fFontData[Position+1]);
+   fOS2Descender:=ToWORD(fFontData[Position],fFontData[Position+1]);
    inc(Position,sizeof(TpvUInt16)); // typo descender
-   fLineGap:=ToWORD(fFontData[Position],fFontData[Position+1]);
+   fOS2LineGap:=ToWORD(fFontData[Position],fFontData[Position+1]);
    inc(Position,sizeof(TpvUInt16)); // typo line gap
    inc(Position,sizeof(TpvUInt16)); // win ascent
    inc(Position,sizeof(TpvUInt16)); // win descent
