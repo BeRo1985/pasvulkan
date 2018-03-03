@@ -1522,6 +1522,7 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure PerformLayout; override;
        procedure Draw; override;
       public
        property FontColor;
@@ -1690,6 +1691,7 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure PerformLayout; override;
        procedure Draw; override;
       public
        property FontColor;
@@ -12277,6 +12279,12 @@ begin
  end;
 end;
 
+procedure TpvGUILabel.PerformLayout;
+begin
+ fCachedCaptionInvalidated:=true;
+ inherited PerformLayout;
+end;
+
 procedure TpvGUILabel.Draw;
 begin
  Skin.DrawLabel(fInstance.DrawEngine,self);
@@ -12862,6 +12870,12 @@ begin
  if not result then begin
   result:=inherited Scrolled(aPosition,aRelativeAmount);
  end;
+end;
+
+procedure TpvGUICheckBox.PerformLayout;
+begin
+ fCachedCaptionInvalidated:=true;
+ inherited PerformLayout;
 end;
 
 procedure TpvGUICheckBox.Draw;
