@@ -177,7 +177,7 @@ type EpvFont=class(Exception);
 
      TpvFont=class
       private
-       const FileFormatGUID:TGUID='{53715C48-BB4A-49D9-881F-AFE4DA6C60F7}';
+       const FileFormatGUID:TGUID='{8A98389D-4F91-492E-A3EE-C1E773FEA021}';
       private
        fDevice:TpvVulkanDevice;
        fSpriteAtlas:TpvSpriteAtlas;
@@ -417,11 +417,25 @@ begin
 
  fHorizontalLineGap:=aTrueTypeFont.HorizontalLineGap;
 
- fVerticalAscender:=aTrueTypeFont.VerticalAscender;
+ if (aTrueTypeFont.VerticalAscender<>0) or
+    (aTrueTypeFont.VerticalDescender<>0) or
+    (aTrueTypeFont.VerticalLineGap<>0) then begin
 
- fVerticalDescender:=aTrueTypeFont.VerticalDescender;
+  fVerticalAscender:=aTrueTypeFont.VerticalAscender;
 
- fVerticalLineGap:=aTrueTypeFont.VerticalLineGap;
+  fVerticalDescender:=aTrueTypeFont.VerticalDescender;
+
+  fVerticalLineGap:=aTrueTypeFont.VerticalLineGap;
+
+ end else begin
+
+  fVerticalAscender:=aTrueTypeFont.OS2Ascender;
+
+  fVerticalDescender:=aTrueTypeFont.OS2Descender;
+
+  fVerticalLineGap:=aTrueTypeFont.OS2LineGap;
+
+ end;
 
  fAdvanceWidthMax:=aTrueTypeFont.AdvanceWidthMax;
 
