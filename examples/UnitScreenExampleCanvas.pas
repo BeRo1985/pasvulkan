@@ -123,7 +123,7 @@ begin
 end;
 
 procedure TScreenExampleCanvas.Show;
-const CacheVersionGUID:TGUID='{69E4A9FE-B5E9-4C5C-8808-81C7B0BEA5FA}';
+const CacheVersionGUID:TGUID='{00C6497C-C19A-4CEB-92C3-894A9D201D0D}';
 var Stream:TStream;
     Index,x,y:TpvInt32;
     RawSprite:pointer;

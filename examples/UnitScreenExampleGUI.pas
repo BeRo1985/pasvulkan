@@ -552,7 +552,6 @@ begin
  Width:=550;
  Height:=350;
 
-
 end;
 
 destructor TpvGUIMultiLineTextEditSearchReplaceWindow.Destroy;
@@ -895,7 +894,7 @@ begin
 
  TScreenExampleGUIMultiLineTextEditWindow.Create(fGUIInstance);
 
-//TpvGUIMultiLineTextEditSearchReplaceWindow.Create(fGUIInstance,nil);
+ TpvGUIMultiLineTextEditSearchReplaceWindow.Create(fGUIInstance,nil);
 
 end;
 

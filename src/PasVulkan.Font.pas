@@ -80,6 +80,8 @@ uses SysUtils,
 
 type EpvFont=class(Exception);
 
+     EpvFontInvalidFormat=class(EpvFont);
+
      TpvFontCodePointBitmap=array of TpvUInt32;
 
      PpvFontCharacterRange=^TpvFontCharacterRange;
@@ -175,12 +177,20 @@ type EpvFont=class(Exception);
 
      TpvFont=class
       private
-       const FileFormatGUID:TGUID='{0DB9E897-9E36-493C-9747-C8A84B150CDD}';
+       const FileFormatGUID:TGUID='{53715C48-BB4A-49D9-881F-AFE4DA6C60F7}';
       private
        fDevice:TpvVulkanDevice;
        fSpriteAtlas:TpvSpriteAtlas;
        fTargetPPI:TpvInt32;
        fUnitsPerEm:TpvInt32;
+       fHorizontalAscender:TpvInt32;
+       fHorizontalDescender:TpvInt32;
+       fHorizontalLineGap:TpvInt32;
+       fVerticalAscender:TpvInt32;
+       fVerticalDescender:TpvInt32;
+       fVerticalLineGap:TpvInt32;
+       fAdvanceWidthMax:TpvInt32;
+       fAdvanceHeightMax:TpvInt32;
        fBaseScaleFactor:TpvFloat;
        fInverseBaseScaleFactor:TpvFloat;
        fBaseSize:TpvFloat;
@@ -226,6 +236,14 @@ type EpvFont=class(Exception);
        procedure DrawCodePoint(const aDrawSprite:TpvFontDrawSprite;const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
        procedure DrawCodePoint(const aCanvas:TObject;const aTextCodePoint:TpvUInt32;const aPosition:TpvVector2;const aSize:TpvFloat); overload;
       published
+       property HorizontalAscender:TpvInt32 read fHorizontalAscender;
+       property HorizontalDescender:TpvInt32 read fHorizontalDescender;
+       property HorizontalLineGap:TpvInt32 read fHorizontalLineGap;
+       property VerticalAscender:TpvInt32 read fVerticalAscender;
+       property VerticalDescender:TpvInt32 read fVerticalDescender;
+       property VerticalLineGap:TpvInt32 read fVerticalLineGap;
+       property AdvanceWidthMax:TpvInt32 read fAdvanceWidthMax;
+       property AdvanceHeightMax:TpvInt32 read fAdvanceHeightMax;
        property BaseSize:TpvFloat read fBaseSize;
        property MinX:TpvFloat read fMinX;
        property MinY:TpvFloat read fMinY;
@@ -297,6 +315,22 @@ begin
  fTargetPPI:=aTargetPPI;
 
  fUnitsPerEm:=72;
+
+ fHorizontalAscender:=0;
+
+ fHorizontalDescender:=0;
+
+ fHorizontalLineGap:=0;
+
+ fVerticalAscender:=0;
+
+ fVerticalDescender:=0;
+
+ fVerticalLineGap:=0;
+
+ fAdvanceWidthMax:=0;
+
+ fAdvanceHeightMax:=0;
 
  fBaseScaleFactor:=1.0;
 
@@ -376,6 +410,22 @@ begin
  PasMPInstance:=TPasMP.GetGlobalInstance;
 
  fUnitsPerEm:=aTrueTypeFont.GetUnitsPerEm;
+
+ fHorizontalAscender:=aTrueTypeFont.HorizontalDescender;
+
+ fHorizontalDescender:=aTrueTypeFont.HorizontalDescender;
+
+ fHorizontalLineGap:=aTrueTypeFont.HorizontalLineGap;
+
+ fVerticalAscender:=aTrueTypeFont.VerticalAscender;
+
+ fVerticalDescender:=aTrueTypeFont.VerticalDescender;
+
+ fVerticalLineGap:=aTrueTypeFont.VerticalLineGap;
+
+ fAdvanceWidthMax:=aTrueTypeFont.AdvanceWidthMax;
+
+ fAdvanceHeightMax:=aTrueTypeFont.AdvanceHeightMax;
 
  fBaseScaleFactor:=aTrueTypeFont.GetScaleFactor;
 
@@ -872,11 +922,19 @@ begin
   FileGUID.D4[7]:=ReadUInt8;
 
   if not CompareMem(@TpvFont.FileFormatGUID,@FileGUID,SizeOf(TGUID)) then begin
-   raise EpvFont.Create('Mismatch file format GUID');
+   raise EpvFontInvalidFormat.Create('Mismatch file format GUID');
   end;
 
   fTargetPPI:=ReadInt32;
   fUnitsPerEm:=ReadInt32;
+  fHorizontalAscender:=ReadInt32;
+  fHorizontalDescender:=ReadInt32;
+  fHorizontalLineGap:=ReadInt32;
+  fVerticalAscender:=ReadInt32;
+  fVerticalDescender:=ReadInt32;
+  fVerticalLineGap:=ReadInt32;
+  fAdvanceWidthMax:=ReadInt32;
+  fAdvanceHeightMax:=ReadInt32;
   fBaseScaleFactor:=ReadFloat;
   fInverseBaseScaleFactor:=ReadFloat;
   fBaseSize:=ReadFloat;
@@ -1061,6 +1119,14 @@ begin
 
   WriteInt32(fTargetPPI);
   WriteInt32(fUnitsPerEm);
+  WriteInt32(fHorizontalAscender);
+  WriteInt32(fHorizontalDescender);
+  WriteInt32(fHorizontalLineGap);
+  WriteInt32(fVerticalAscender);
+  WriteInt32(fVerticalDescender);
+  WriteInt32(fVerticalLineGap);
+  WriteInt32(fAdvanceWidthMax);
+  WriteInt32(fAdvanceHeightMax);
   WriteFloat(fBaseScaleFactor);
   WriteFloat(fInverseBaseScaleFactor);
   WriteFloat(fBaseSize);
