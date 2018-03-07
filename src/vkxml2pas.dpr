@@ -2782,30 +2782,33 @@ type TVendorID=class
        Contact:ansistring;
      end;
 
-     TExtension=class;
+     TExtensionOrFeature=class;
 
-     TExtensionEnum=class
+     TExtensionOrFeatureEnum=class
       public
-       Extension:TExtension;
+       ExtensionOrFeature:TExtensionOrFeature;
        Name:ansistring;
        Value:ansistring;
        Offset:longint;
        BitPos:longint;
        Dir:ansistring;
        Extends:ansistring;
+       Alias:ansistring;
      end;
 
-     TExtensionType=class
+     TExtensionOrFeatureType=class
       public
        Name:ansistring;
+       Alias:ansistring;
      end;
 
-     TExtensionCommand=class
+     TExtensionOrFeatureCommand=class
       public
        Name:ansistring;
+       Alias:ansistring;
      end;
 
-     TExtension=class
+     TExtensionOrFeature=class
       public
        Name:ansistring;
        Number:longint;
@@ -2820,7 +2823,7 @@ type TVendorID=class
        destructor Destroy; override;
      end;
 
-constructor TExtension.Create;
+constructor TExtensionOrFeature.Create;
 begin
  inherited Create;
  Name:='';
@@ -2834,7 +2837,7 @@ begin
  Commands:=TObjectList.Create(true);
 end;
 
-destructor TExtension.Destroy;
+destructor TExtensionOrFeature.Destroy;
 begin
  Enums.Free;
  Types.Free;
@@ -2845,15 +2848,16 @@ end;
 var Comment:ansistring;
     VendorIDList:TObjectList;
     TagList:TObjectList;
-    Extensions:TObjectList;
-    ExtensionEnums:TStringList;
-    ExtensionTypes:TStringList;
-    ExtensionCommands:TStringList;
+    ExtensionsOrFeatures:TObjectList;
+    ExtensionOrFeatureEnums:TStringList;
+    ExtensionOrFeatureTypes:TStringList;
+    ExtensionOrFeatureCommands:TStringList;
     VersionConstants:TStringList;
     BaseTypes:TStringList;
     BitMaskTypes:TStringList;
     HandleTypes:TStringList;
     ENumTypes:TStringList;
+    AliasENumTypes:TStringList;
     ENumConstants:TStringList;
     ENumValues:TStringList;
     TypeDefinitionTypes:TStringList;
@@ -3087,18 +3091,18 @@ procedure ParseExtensionsTag(Tag:TXMLTag);
 var i,j,k:longint;
     ChildItem,ChildChildItem,ChildChildChildItem:TXMLItem;
     ChildTag,ChildChildTag,ChildChildChildTag:TXMLTag;
-    Extension:TExtension;
-    ExtensionEnum:TExtensionEnum;
-    ExtensionType:TExtensionType;
-    ExtensionCommand:TExtensionCommand;
+    Extension:TExtensionOrFeature;
+    ExtensionOrFeatureEnum:TExtensionOrFeatureEnum;
+    ExtensionOrFeatureType:TExtensionOrFeatureType;
+    ExtensionOrFeatureCommand:TExtensionOrFeatureCommand;
 begin
  for i:=0 to Tag.Items.Count-1 do begin
   ChildItem:=Tag.Items[i];
   if ChildItem is TXMLTag then begin
    ChildTag:=TXMLTag(ChildItem);
    if ChildTag.Name='extension' then begin
-    Extension:=TExtension.Create;
-    Extensions.Add(Extension);
+    Extension:=TExtensionOrFeature.Create;
+    ExtensionsOrFeatures.Add(Extension);
     Extension.Name:=ChildTag.GetParameter('name','');
     Extension.Number:=StrToIntDef(ChildTag.GetParameter('number','0'),0);
     Extension.Protect:=ChildTag.GetParameter('protect','');
@@ -3115,26 +3119,113 @@ begin
         if ChildChildChildItem is TXMLTag then begin
          ChildChildChildTag:=TXMLTag(ChildChildChildItem);
          if ChildChildChildTag.Name='enum' then begin
-          ExtensionEnum:=TExtensionEnum.Create;
-          Extension.Enums.Add(ExtensionEnum);
-          ExtensionEnum.Extension:=Extension;
-          ExtensionEnum.Name:=ChildChildChildTag.GetParameter('name','');
-          ExtensionEnum.Value:=ChildChildChildTag.GetParameter('value','');
-          ExtensionEnum.Offset:=StrToIntDef(ChildChildChildTag.GetParameter('offset','-1'),-1);
-          ExtensionEnum.BitPos:=StrToIntDef(ChildChildChildTag.GetParameter('bitpos','-1'),-1);
-          ExtensionEnum.Dir:=ChildChildChildTag.GetParameter('dir','');
-          ExtensionEnum.Extends:=ChildChildChildTag.GetParameter('extends','');
-          ExtensionEnums.AddObject(ExtensionEnum.Name,ExtensionEnum);
+          ExtensionOrFeatureEnum:=TExtensionOrFeatureEnum.Create;
+          Extension.Enums.Add(ExtensionOrFeatureEnum);
+          ExtensionOrFeatureEnum.ExtensionOrFeature:=Extension;
+          ExtensionOrFeatureEnum.Name:=ChildChildChildTag.GetParameter('name','');
+          ExtensionOrFeatureEnum.Value:=ChildChildChildTag.GetParameter('value','');
+          ExtensionOrFeatureEnum.Offset:=StrToIntDef(ChildChildChildTag.GetParameter('offset','-1'),-1);
+          ExtensionOrFeatureEnum.BitPos:=StrToIntDef(ChildChildChildTag.GetParameter('bitpos','-1'),-1);
+          ExtensionOrFeatureEnum.Dir:=ChildChildChildTag.GetParameter('dir','');
+          ExtensionOrFeatureEnum.Extends:=ChildChildChildTag.GetParameter('extends','');
+          ExtensionOrFeatureEnum.Alias:=ChildChildChildTag.GetParameter('alias','');
+          if length(ExtensionOrFeatureEnum.Alias)>0 then begin
+           // Workarounds for vk.xml typo issues
+           if ExtensionOrFeatureEnum.Alias='VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL' then begin
+            ExtensionOrFeatureEnum.Alias:='VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHX';
+           end else if ExtensionOrFeatureEnum.Alias='VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL' then begin
+            ExtensionOrFeatureEnum.Alias:='VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHX';
+           end;
+          end;
+          ExtensionOrFeatureEnums.AddObject(ExtensionOrFeatureEnum.Name,ExtensionOrFeatureEnum);
          end else if ChildChildChildTag.Name='type' then begin
-          ExtensionType:=TExtensionType.Create;
-          Extension.Types.Add(ExtensionType);
-          ExtensionType.Name:=ChildChildChildTag.GetParameter('name','');
-          ExtensionTypes.AddObject(ExtensionType.Name,ExtensionType);
+          ExtensionOrFeatureType:=TExtensionOrFeatureType.Create;
+          Extension.Types.Add(ExtensionOrFeatureType);
+          ExtensionOrFeatureType.Name:=ChildChildChildTag.GetParameter('name','');
+          ExtensionOrFeatureType.Alias:=ChildChildChildTag.GetParameter('alias','');
+          ExtensionOrFeatureTypes.AddObject(ExtensionOrFeatureType.Name,ExtensionOrFeatureType);
          end else if ChildChildChildTag.Name='command' then begin
-          ExtensionCommand:=TExtensionCommand.Create;
-          Extension.Commands.Add(ExtensionCommand);
-          ExtensionCommand.Name:=ChildChildChildTag.GetParameter('name','');
-          ExtensionCommands.AddObject(ExtensionCommand.Name,ExtensionCommand);
+          ExtensionOrFeatureCommand:=TExtensionOrFeatureCommand.Create;
+          Extension.Commands.Add(ExtensionOrFeatureCommand);
+          ExtensionOrFeatureCommand.Name:=ChildChildChildTag.GetParameter('name','');
+          ExtensionOrFeatureCommand.Alias:=ChildChildChildTag.GetParameter('alias','');
+          ExtensionOrFeatureCommands.AddObject(ExtensionOrFeatureCommand.Name,ExtensionOrFeatureCommand);
+         end;
+        end;
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function ParseFeatureTags(Tag:TXMLTag):longint;
+var i,j,k:longint;
+    ChildItem,ChildChildItem,ChildChildChildItem:TXMLItem;
+    ChildTag,ChildChildTag,ChildChildChildTag:TXMLTag;
+    Feature:TExtensionOrFeature;
+    ExtensionOrFeatureEnum:TExtensionOrFeatureEnum;
+    ExtensionOrFeatureType:TExtensionOrFeatureType;
+    ExtensionOrFeatureCommand:TExtensionOrFeatureCommand;
+begin
+ result:=0;
+ for i:=0 to Tag.Items.Count-1 do begin
+  ChildItem:=Tag.Items[i];
+  if ChildItem is TXMLTag then begin
+   ChildTag:=TXMLTag(ChildItem);
+   if ChildTag.Name='feature' then begin
+    inc(result);
+    Feature:=TExtensionOrFeature.Create;
+    ExtensionsOrFeatures.Add(Feature);
+    Feature.Name:=ChildTag.GetParameter('name','');
+    Feature.Number:=StrToIntDef(ChildTag.GetParameter('number','0'),0);
+    Feature.Protect:=ChildTag.GetParameter('protect','');
+    Feature.Author:=ChildTag.GetParameter('author','');
+    Feature.Contact:=ChildTag.GetParameter('contact','');
+    Feature.Supported:=ChildTag.GetParameter('supported','');
+    for j:=0 to ChildTag.Items.Count-1 do begin
+     ChildChildItem:=ChildTag.Items[j];
+     if ChildChildItem is TXMLTag then begin
+      ChildChildTag:=TXMLTag(ChildChildItem);
+      if ChildChildTag.Name='require' then begin
+       for k:=0 to ChildChildTag.Items.Count-1 do begin
+        ChildChildChildItem:=ChildChildTag.Items[k];
+        if ChildChildChildItem is TXMLTag then begin
+         ChildChildChildTag:=TXMLTag(ChildChildChildItem);
+         if ChildChildChildTag.Name='enum' then begin
+          ExtensionOrFeatureEnum:=TExtensionOrFeatureEnum.Create;
+          Feature.Enums.Add(ExtensionOrFeatureEnum);
+          ExtensionOrFeatureEnum.ExtensionOrFeature:=Feature;
+          ExtensionOrFeatureEnum.Name:=ChildChildChildTag.GetParameter('name','');
+          ExtensionOrFeatureEnum.Value:=ChildChildChildTag.GetParameter('value','');
+          ExtensionOrFeatureEnum.Offset:=StrToIntDef(ChildChildChildTag.GetParameter('offset','-1'),-1);
+          ExtensionOrFeatureEnum.BitPos:=StrToIntDef(ChildChildChildTag.GetParameter('bitpos','-1'),-1);
+          ExtensionOrFeatureEnum.Dir:=ChildChildChildTag.GetParameter('dir','');
+          ExtensionOrFeatureEnum.Extends:=ChildChildChildTag.GetParameter('extends','');
+          ExtensionOrFeatureEnum.Alias:=ChildChildChildTag.GetParameter('alias','');
+          if length(ExtensionOrFeatureEnum.Alias)>0 then begin
+           // Workarounds for vk.xml typo issues
+           if ExtensionOrFeatureEnum.Alias='VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL' then begin
+            ExtensionOrFeatureEnum.Alias:='VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHX';
+           end else if ExtensionOrFeatureEnum.Alias='VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL' then begin
+            ExtensionOrFeatureEnum.Alias:='VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHX';
+           end;
+          end;
+          ExtensionOrFeatureEnums.AddObject(ExtensionOrFeatureEnum.Name,ExtensionOrFeatureEnum);
+         end else if ChildChildChildTag.Name='type' then begin
+          ExtensionOrFeatureType:=TExtensionOrFeatureType.Create;
+          Feature.Types.Add(ExtensionOrFeatureType);
+          ExtensionOrFeatureType.Name:=ChildChildChildTag.GetParameter('name','');
+          ExtensionOrFeatureType.Alias:=ChildChildChildTag.GetParameter('alias','');
+          ExtensionOrFeatureTypes.AddObject(ExtensionOrFeatureType.Name,ExtensionOrFeatureType);
+         end else if ChildChildChildTag.Name='command' then begin
+          ExtensionOrFeatureCommand:=TExtensionOrFeatureCommand.Create;
+          Feature.Commands.Add(ExtensionOrFeatureCommand);
+          ExtensionOrFeatureCommand.Name:=ChildChildChildTag.GetParameter('name','');
+          ExtensionOrFeatureCommand.Alias:=ChildChildChildTag.GetParameter('alias','');
+          ExtensionOrFeatureCommands.AddObject(ExtensionOrFeatureCommand.Name,ExtensionOrFeatureCommand);
          end;
         end;
        end;
@@ -3148,29 +3239,31 @@ end;
 
 procedure ProcessExtensions;
 var i:longint;
-    Extension:TExtension;
-    ExtensionEnum:TExtensionEnum;
-    ExtensionEnumValue:string;
+    ExtensionOrFeature:TExtensionOrFeature;
+    ExtensionOrFeatureEnum:TExtensionOrFeatureEnum;
+    ExtensionOrFeatureEnumValue:string;
 begin
- for i:=0 to ExtensionEnums.Count-1 do begin
-  ExtensionEnum:=TExtensionEnum(ExtensionEnums.Objects[i]);
-  Extension:=ExtensionEnum.Extension;
-  if length(ExtensionEnum.Name)>0 then begin
-   ExtensionEnumValue:=EnumValues.Values[ExtensionEnum.Value];
-   if length(ExtensionEnumValue)>0 then begin
-    ExtensionEnum.Value:=ExtensionEnumValue;
+ for i:=0 to ExtensionOrFeatureEnums.Count-1 do begin
+  ExtensionOrFeatureEnum:=TExtensionOrFeatureEnum(ExtensionOrFeatureEnums.Objects[i]);
+  ExtensionOrFeature:=ExtensionOrFeatureEnum.ExtensionOrFeature;
+  if length(ExtensionOrFeatureEnum.Name)>0 then begin
+   ExtensionOrFeatureEnumValue:=EnumValues.Values[ExtensionOrFeatureEnum.Value];
+   if length(ExtensionOrFeatureEnumValue)>0 then begin
+    ExtensionOrFeatureEnum.Value:=ExtensionOrFeatureEnumValue;
    end;
-   if length(ExtensionEnum.Extends)=0 then begin
-    if length(ExtensionEnum.Value)<>0 then begin
-     if pos('"',ExtensionEnum.Value)=0 then begin
-      ENumConstants.Add('      '+ExtensionEnum.Name+'='+ExtensionEnum.Value+';');
+   if length(ExtensionOrFeatureEnum.Extends)=0 then begin
+    if length(ExtensionOrFeatureEnum.Alias)<>0 then begin
+     ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+ExtensionOrFeatureEnum.Alias+';');
+    end else if length(ExtensionOrFeatureEnum.Value)<>0 then begin
+     if pos('"',ExtensionOrFeatureEnum.Value)=0 then begin
+      ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+ExtensionOrFeatureEnum.Value+';');
      end else begin
-      ENumConstants.Add('      '+ExtensionEnum.Name+'='+StringReplace(ExtensionEnum.Value,'"','''',[rfReplaceAll])+';');
+      ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+StringReplace(ExtensionOrFeatureEnum.Value,'"','''',[rfReplaceAll])+';');
      end;
-    end else if ExtensionEnum.Offset>=0 then begin
-     ENumConstants.Add('      '+ExtensionEnum.Name+'='+ExtensionEnum.Dir+IntToStr(1000000000+((Extension.Number-1)*1000)+ExtensionEnum.Offset)+';');
-    end else if ExtensionEnum.BitPos>=0 then begin
-     ENumConstants.Add('      '+ExtensionEnum.Name+'='+ExtensionEnum.Dir+'$'+IntToHex(longword(1) shl ExtensionEnum.BitPos,8)+';');
+    end else if ExtensionOrFeatureEnum.Offset>=0 then begin
+     ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+ExtensionOrFeatureEnum.Dir+IntToStr(1000000000+((ExtensionOrFeature.Number-1)*1000)+ExtensionOrFeatureEnum.Offset)+';');
+    end else if ExtensionOrFeatureEnum.BitPos>=0 then begin
+     ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+ExtensionOrFeatureEnum.Dir+'$'+IntToHex(longword(1) shl ExtensionOrFeatureEnum.BitPos,8)+';');
     end;
    end;
   end;
@@ -3223,7 +3316,7 @@ end;
 
 procedure ParseTypesTag(Tag:TXMLTag);
 type PTypeDefinitionKind=^TTypeDefinitionKind;
-     TTypeDefinitionKind=(tdkUNKNOWN,tdkSTRUCT,tdkUNION,tdkFUNCPOINTER);
+     TTypeDefinitionKind=(tdkUNKNOWN,tdkSTRUCT,tdkUNION,tdkFUNCPOINTER,tdkALIAS);
      PTypeDefinitionMember=^TTypeDefinitionMember;
      TTypeDefinitionMember=record
       Name:ansistring;
@@ -3246,6 +3339,7 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
       CountMembers:longint;
       Define:ansistring;
       Type_:ansistring;
+      Alias:ansistring;
       Ptr:longint;
       ValidityStringList:TStringList;
      end;
@@ -3254,7 +3348,8 @@ type PTypeDefinitionKind=^TTypeDefinitionKind;
 var i,j,k,ArraySize,CountTypeDefinitions,VersionMajor,VersionMinor,VersionPatch:longint;
     ChildItem,ChildChildItem,NextChildChildItem:TXMLItem;
     ChildTag,ChildChildTag:TXMLTag;
-    Category,Type_,Name,Text,NextText,ArraySizeStr,Comment,ParameterLine,ParameterName,CodeParameterLine:ansistring;
+    Category,Type_,Name,Text,NextText,ArraySizeStr,Comment,ParameterLine,ParameterName,CodeParameterLine,
+    Alias:ansistring;
     TypeDefinitions:TTypeDefinitions;
     SortedTypeDefinitions:TPTypeDefinitions;
     TypeDefinition:PTypeDefinition;
@@ -3269,11 +3364,13 @@ var i,j,k,ArraySize,CountTypeDefinitions,VersionMajor,VersionMinor,VersionPatch:
   function HaveDependencyOnTypeDefinition(const TypeDefinition,OtherTypeDefinition:PTypeDefinition):boolean;
   var i:longint;
   begin
-   result:=false;
-   for i:=0 to TypeDefinition^.CountMembers-1 do begin
-    if TypeDefinition^.Members[i].Type_=OtherTypeDefinition^.Name then begin
-     result:=true;
-     break;
+   result:=TypeDefinition^.Alias=OtherTypeDefinition^.Name;
+   if not result then begin
+    for i:=0 to TypeDefinition^.CountMembers-1 do begin
+     if TypeDefinition^.Members[i].Type_=OtherTypeDefinition^.Name then begin
+      result:=true;
+      break;
+     end;
     end;
    end;
   end;
@@ -3401,287 +3498,328 @@ begin
    if ChildItem is TXMLTag then begin
     ChildTag:=TXMLTag(ChildItem);
     if ChildTag.Name='type' then begin
-     ValidityStringList:=TStringList.Create;
-     try
-      ParseValidityTag(ChildTag.FindTag('validity'),ValidityStringList);
+     Alias:=ChildTag.GetParameter('alias');
+     if length(Alias)>0 then begin
+      Name:=ChildTag.GetParameter('name');
       Category:=ChildTag.GetParameter('category');
-      if Category='include' then begin
-      end else if Category='define' then begin
-       Name:=ParseText(ChildTag.FindTag('name'),['']);
-       if pos('VK_API_VERSION',Name)=1 then begin
-        VersionMajor:=1;
-        VersionMinor:=0;
-        VersionPatch:=0;
-        Text:=ParseText(ChildTag,['']);
-        if length(Text)>0 then begin
-         j:=pos('(',Text);
-         if j>0 then begin
-          delete(Text,1,j);
-          j:=pos(')',Text);
-          if j>0 then begin
-           Text:=copy(Text,1,j-1);
-           j:=pos(',',Text);
-           if j>0 then begin
-            VersionMajor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
-            delete(Text,1,j);
-            Text:=trim(Text);
-            j:=pos(',',Text);
-            if j>0 then begin
-             VersionMinor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
-             delete(Text,1,j);
-             Text:=trim(Text);
-             VersionPatch:=StrToIntDef(Text,0);
-            end;
-           end;
-          end;
-         end;
-        end;
-        VersionConstants.Add('      '+Name+'=('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or ('+IntToStr(VersionPatch)+' shl 0);');
-        VersionConstants.Add('');
-       end else if pos('VK_HEADER_VERSION',Name)=1 then begin
-        Text:=ParseText(ChildTag,['']);
-        j:=pos(Name,Text);
-        if j>0 then begin
-         Delete(Text,1,(j+length(Name))-1);
-         Text:=trim(Text);
-         VersionConstants.Add('      '+Name+'='+Text+';');
-         VersionConstants.Add('');
-        end;
-       end;
-      end else if Category='basetype' then begin
-       Type_:=ParseText(ChildTag.FindTag('type'),['']);
-       Name:=ParseText(ChildTag.FindTag('name'),['']);
-       BaseTypes.Add('     PP'+Name+'=^P'+Name+';');
-       BaseTypes.Add('     P'+Name+'=^T'+Name+';');
-       BaseTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
+      if Category='basetype' then begin
+       BaseTypes.Add('     PP'+Name+'=PP'+Alias+';');
+       BaseTypes.Add('     P'+Name+'=P'+Alias+';');
+       BaseTypes.Add('     T'+Name+'=T'+Alias+';');
        BaseTypes.Add('');
       end else if Category='bitmask' then begin
-       Type_:=ParseText(ChildTag.FindTag('type'),['']);
-       Name:=ParseText(ChildTag.FindTag('name'),['']);
-       BitMaskTypes.Add('     PP'+Name+'=^P'+Name+';');
-       BitMaskTypes.Add('     P'+Name+'=^T'+Name+';');
-       BitMaskTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
+       BitMaskTypes.Add('     PP'+Name+'=PP'+Alias+';');
+       BitMaskTypes.Add('     P'+Name+'=P'+Alias+';');
+       BitMaskTypes.Add('     T'+Name+'=T'+Alias+';');
        BitMaskTypes.Add('');
       end else if Category='handle' then begin
-       Type_:=ParseText(ChildTag.FindTag('type'),['']);
-       Name:=ParseText(ChildTag.FindTag('name'),['']);
-       HandleTypes.Add('     PP'+Name+'=^P'+Name+';');
-       HandleTypes.Add('     P'+Name+'=^T'+Name+';');
-       HandleTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
+       HandleTypes.Add('     PP'+Name+'=PP'+Alias+';');
+       HandleTypes.Add('     P'+Name+'=P'+Alias+';');
+       HandleTypes.Add('     T'+Name+'=T'+Alias+';');
        HandleTypes.Add('');
       end else if Category='enum' then begin
-       Name:=ChildTag.GetParameter('name');
-      end else if Category='funcpointer' then begin
-       TypeDefinition:=@TypeDefinitions[CountTypeDefinitions];
-       inc(CountTypeDefinitions);
-       TypeDefinition^.Kind:=tdkFUNCPOINTER;
-       TypeDefinition^.Name:='';
-       TypeDefinition^.Comment:=ChildTag.GetParameter('comment');
-       TypeDefinition^.Members:=nil;
-       TypeDefinition^.Define:='';
-       TypeDefinition^.Type_:='';
-       TypeDefinition^.Ptr:=0;
-       Name:='';
-       Type_:='';
-       Text:='';
-       Ptr:=false;
-       Constant:=false;
-       for j:=0 to ChildTag.Items.Count-1 do begin
-        ChildChildItem:=ChildTag.Items[j];
-        if ChildChildItem is TXMLTag then begin
-         ChildChildTag:=TXMLTag(ChildChildItem);
-         if ChildChildTag.Name='name' then begin
-          TypeDefinition^.Name:=ParseText(ChildChildTag,['']);
-          if pos('void*',Text)>0 then begin
-           TypeDefinition^.Ptr:=1;
-           TypeDefinition^.Type_:='void';
-          end else begin
-           Text:=trim(StringReplace(Text,'typedef','',[rfReplaceAll]));
-           Text:=trim(StringReplace(Text,'VKAPI_PTR','',[rfReplaceAll]));
-           Text:=trim(StringReplace(Text,'(','',[rfReplaceAll]));
-           Text:=trim(StringReplace(Text,'*','',[rfReplaceAll]));
-           TypeDefinition^.Type_:=Text;
-          end;
-         end else if ChildChildTag.Name='type' then begin
-          Type_:=ParseText(ChildChildTag,['']);
-         end;
-        end else if ChildChildItem is TXMLText then begin
-         Text:=TXMLText(ChildChildItem).Text;
-         if length(TypeDefinition^.Name)>0 then begin
-          while length(Text)>0 do begin
-           NextText:='';
-           if trim(Text)='const' then begin
-            Constant:=true;
-           end else if length(Type_)>0 then begin
-            if length(TypeDefinition^.Members)<TypeDefinition^.CountMembers+1 then begin
-             SetLength(TypeDefinition^.Members,(TypeDefinition^.CountMembers+1)*2);
-            end;
-            TypeDefinitionMember:=@TypeDefinition^.Members[TypeDefinition^.CountMembers];
-            inc(TypeDefinition^.CountMembers);
-            TypeDefinitionMember^.Type_:=Type_;
-            k:=pos(',',Text);
-            if k>0 then begin
-             NextText:=trim(copy(Text,k+1,(length(Text)-k)+1));
-             Text:=trim(copy(Text,1,k-1));
-            end;
-            Text:=trim(StringReplace(Text,');','',[rfReplaceAll]));
-            if pos('*',Text)>0 then begin
-             for k:=1 to length(Text) do begin
-              if Text[k]='*' then begin
-               inc(TypeDefinitionMember^.Ptr);
-              end;
-             end;
-             Text:=trim(StringReplace(Text,'*','',[rfReplaceAll]));
-            end;
-            TypeDefinitionMember^.Constant:=Constant;
-            Constant:=false;
-            if Text='object' then begin
-             Text:='object_';
-            end else if Text='set' then begin
-             Text:='set_';
-            end;
-            TypeDefinitionMember^.Name:=Text;
-            TypeDefinitionMember^.ArraySizeInt:=0;
-            TypeDefinitionMember^.ArraySizeStr:='';
-            TypeDefinitionMember^.Comment:='';
-            Type_:='';
-           end;
-           Text:=NextText;
-          end;
-         end;
-        end;
-       end;
-       SetLength(TypeDefinition^.Members,TypeDefinition^.CountMembers);
+       AliasEnumTypes.Add('     PP'+Name+'=PP'+Alias+';');
+       AliasEnumTypes.Add('     P'+Name+'=P'+Alias+';');
+       AliasEnumTypes.Add('     T'+Name+'=T'+Alias+';');
+       AliasEnumTypes.Add('');
       end else if (Category='struct') or (Category='union') then begin
-       Name:=ChildTag.GetParameter('name');
        TypeDefinition:=@TypeDefinitions[CountTypeDefinitions];
        inc(CountTypeDefinitions);
-       if Category='union' then begin
-        TypeDefinition^.Kind:=tdkUNION;
-       end else begin
-        TypeDefinition^.Kind:=tdkSTRUCT;
-       end;
+       TypeDefinition^.Kind:=tdkALIAS;
        TypeDefinition^.Name:=Name;
        TypeDefinition^.Comment:=ChildTag.GetParameter('comment');
        TypeDefinition^.Members:=nil;
        TypeDefinition^.Define:='';
-       if (pos('IOS',UpperCase(Name))>0) and (pos('MVK',Name)>0) then begin
-        TypeDefinition^.Define:='MoltenVK_IOS';
-       end else if (pos('MACOS',UpperCase(Name))>0) and (pos('MVK',Name)>0) then begin
-        TypeDefinition^.Define:='MoltenVK_MacOS';
-       end else if (pos('MVK',Name)>0) or (pos('MOLTENVK',UpperCase(Name))>0) then begin
-        TypeDefinition^.Define:='MoltenVK';
-       end else if (pos('ANDROID',Name)>0) or (pos('Android',Name)>0) then begin
-        TypeDefinition^.Define:='Android';
-       end;
-       SetLength(TypeDefinition^.Members,ChildTag.Items.Count);
-       TypeDefinition^.CountMembers:=0;
-       for j:=0 to ChildTag.Items.Count-1 do begin
-        ChildChildItem:=ChildTag.Items[j];
-        if ChildChildItem is TXMLTag then begin
-         ChildChildTag:=TXMLTag(ChildChildItem);
-         if ChildChildTag.Name='member' then begin
-          Comment:='';
-          if (j+1)<ChildTag.Items.Count then begin
-           k:=j+1;
-           while k<ChildTag.Items.Count do begin
-            NextChildChildItem:=ChildTag.Items[k];
-            if NextChildChildItem is TXMLCommentTag then begin
-             Comment:=trim(TXMLCommentTag(NextChildChildItem).Text);
-             break;
-            end else if NextChildChildItem is TXMLText then begin
-             inc(k);
-            end else begin
-             break;
-            end;
-           end;
-          end;
-          Name:=ParseText(ChildChildTag.FindTag('name'),['']);
-          ArraySizeStr:=ParseText(ChildChildTag.FindTag('enum'),['']);
-          k:=pos('[',Name);
-          ArraySize:=-1;
-          if k>0 then begin
-           Text:=copy(Name,k+1,length(Name)-k);
-           Name:=copy(Name,1,k-1);
-           k:=pos(']',Text);
-           if k>0 then begin
-            ArraySize:=StrToIntDef(copy(Text,1,k-1),1);
-           end;
-          end;
-          if ArraySize<0 then begin
-           Text:=ParseText(ChildChildTag,['comment']);
-           k:=pos('[',Text);
-           if k>0 then begin
-            Delete(Text,1,k);
-            k:=pos(']',Text);
-            if k>0 then begin
-             Text:=trim(copy(Text,1,k-1));
-             ArraySize:=StrToIntDef(Text,-1);
-             if ArraySize<0 then begin
-              ArraySizeStr:=Text;
+       TypeDefinition^.Type_:='';
+       TypeDefinition^.Alias:=Alias;
+       TypeDefinition^.Ptr:=0;
+      end else begin
+       Assert(false,Category);
+      end;
+     end else begin
+      ValidityStringList:=TStringList.Create;
+      try
+       ParseValidityTag(ChildTag.FindTag('validity'),ValidityStringList);
+       Category:=ChildTag.GetParameter('category');
+       if Category='include' then begin
+       end else if Category='define' then begin
+        Name:=ParseText(ChildTag.FindTag('name'),['']);
+        if pos('VK_API_VERSION',Name)=1 then begin
+         VersionMajor:=1;
+         VersionMinor:=0;
+         VersionPatch:=0;
+         Text:=ParseText(ChildTag,['']);
+         if length(Text)>0 then begin
+          j:=pos('(',Text);
+          if j>0 then begin
+           delete(Text,1,j);
+           j:=pos(')',Text);
+           if j>0 then begin
+            Text:=copy(Text,1,j-1);
+            j:=pos(',',Text);
+            if j>0 then begin
+             VersionMajor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
+             delete(Text,1,j);
+             Text:=trim(Text);
+             j:=pos(',',Text);
+             if j>0 then begin
+              VersionMinor:=StrToIntDef(trim(copy(Text,1,j-1)),0);
+              delete(Text,1,j);
+              Text:=trim(Text);
+              VersionPatch:=StrToIntDef(Text,0);
              end;
             end;
            end;
           end;
-          if Name='type' then begin
-           Name:='type_';
-          end else if Name='hinstance' then begin
-           Name:='hinstance_';
-          end else if Name='hwnd' then begin
-           Name:='hwnd_';
-          end else if Name='object' then begin
-           Name:='object_';
-          end else if Name='set' then begin
-           Name:='set_';
-          end;
-          TypeDefinitionMember:=@TypeDefinition^.Members[TypeDefinition^.CountMembers];
-          inc(TypeDefinition^.CountMembers);
-          TypeDefinitionMember^.Name:=Name;
-          TypeDefinitionMember^.ArraySizeInt:=ArraySize;
-          Type_:=ParseText(ChildChildTag.FindTag('type'),['']);
-          TypeDefinitionMember^.Type_:=Type_;
-          TypeDefinitionMember^.Values:=ChildChildTag.GetParameter('values');
-          TypeDefinitionMember^.ArraySizeStr:=ArraySizeStr;
-          TypeDefinitionMember^.Comment:=trim(ChildChildTag.GetParameter('comment')+' '+Comment);
-{         k:=0;
-          while k<ValidityStringList.Count do begin
-           if pos('pname:'+Name,ValidityStringList[k])>0 then begin
-            TypeDefinitionMember^.Comment:=trim(TypeDefinitionMember^.Comment+' '+StringReplace(ValidityStringList[k],'pname:','',[rfReplaceAll]));
+         end;
+         VersionConstants.Add('      '+Name+'=('+IntToStr(VersionMajor)+' shl 22) or ('+IntToStr(VersionMinor)+' shl 12) or ('+IntToStr(VersionPatch)+' shl 0);');
+         VersionConstants.Add('');
+        end else if pos('VK_HEADER_VERSION',Name)=1 then begin
+         Text:=ParseText(ChildTag,['']);
+         j:=pos(Name,Text);
+         if j>0 then begin
+          Delete(Text,1,(j+length(Name))-1);
+          Text:=trim(Text);
+          VersionConstants.Add('      '+Name+'='+Text+';');
+          VersionConstants.Add('');
+         end;
+        end;
+       end else if Category='basetype' then begin
+        Type_:=ParseText(ChildTag.FindTag('type'),['']);
+        Name:=ParseText(ChildTag.FindTag('name'),['']);
+        BaseTypes.Add('     PP'+Name+'=^P'+Name+';');
+        BaseTypes.Add('     P'+Name+'=^T'+Name+';');
+        BaseTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
+        BaseTypes.Add('');
+       end else if Category='bitmask' then begin
+        Type_:=ParseText(ChildTag.FindTag('type'),['']);
+        Name:=ParseText(ChildTag.FindTag('name'),['']);
+        BitMaskTypes.Add('     PP'+Name+'=^P'+Name+';');
+        BitMaskTypes.Add('     P'+Name+'=^T'+Name+';');
+        BitMaskTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
+        BitMaskTypes.Add('');
+       end else if Category='handle' then begin
+        Type_:=ParseText(ChildTag.FindTag('type'),['']);
+        Name:=ParseText(ChildTag.FindTag('name'),['']);
+        HandleTypes.Add('     PP'+Name+'=^P'+Name+';');
+        HandleTypes.Add('     P'+Name+'=^T'+Name+';');
+        HandleTypes.Add('     T'+Name+'='+TranslateType(Type_,0)+';');
+        HandleTypes.Add('');
+       end else if Category='enum' then begin
+        Name:=ChildTag.GetParameter('name');
+       end else if Category='funcpointer' then begin
+        TypeDefinition:=@TypeDefinitions[CountTypeDefinitions];
+        inc(CountTypeDefinitions);
+        TypeDefinition^.Kind:=tdkFUNCPOINTER;
+        TypeDefinition^.Name:='';
+        TypeDefinition^.Comment:=ChildTag.GetParameter('comment');
+        TypeDefinition^.Members:=nil;
+        TypeDefinition^.Define:='';
+        TypeDefinition^.Type_:='';
+        TypeDefinition^.Alias:='';
+        TypeDefinition^.Ptr:=0;
+        Name:='';
+        Type_:='';
+        Text:='';
+        Ptr:=false;
+        Constant:=false;
+        for j:=0 to ChildTag.Items.Count-1 do begin
+         ChildChildItem:=ChildTag.Items[j];
+         if ChildChildItem is TXMLTag then begin
+          ChildChildTag:=TXMLTag(ChildChildItem);
+          if ChildChildTag.Name='name' then begin
+           TypeDefinition^.Name:=ParseText(ChildChildTag,['']);
+           if pos('void*',Text)>0 then begin
+            TypeDefinition^.Ptr:=1;
+            TypeDefinition^.Type_:='void';
+           end else begin
+            Text:=trim(StringReplace(Text,'typedef','',[rfReplaceAll]));
+            Text:=trim(StringReplace(Text,'VKAPI_PTR','',[rfReplaceAll]));
+            Text:=trim(StringReplace(Text,'(','',[rfReplaceAll]));
+            Text:=trim(StringReplace(Text,'*','',[rfReplaceAll]));
+            TypeDefinition^.Type_:=Text;
            end;
-           inc(k);
-          end;{}
-          TypeDefinitionMember^.TypeDefinitionIndex:=-1;
-          TypeDefinitionMember^.Ptr:=0;
-          Text:=ParseText(ChildChildTag,['']);
-          for k:=1 to length(Text) do begin
-           if Text[k]='*' then begin
-            inc(TypeDefinitionMember^.Ptr);
-           end;
+          end else if ChildChildTag.Name='type' then begin
+           Type_:=ParseText(ChildChildTag,['']);
           end;
-          if (Type_='HWND') or (Type_='HINSTANCE') or (Type_='SECURITY_ATTRIBUTES') then begin
-           TypeDefinition^.Define:='Windows';
-          end else if Type_='RROutput' then begin
-           TypeDefinition^.Define:='RandR';
-          end else if (Type_='Display') or (Type_='VisualID') or (Type_='Window') then begin
-           TypeDefinition^.Define:='XLIB';
-          end else if (Type_='xcb_connection_t') or (Type_='xcb_visualid_t') or (Type_='xcb_window_t') then begin
-           TypeDefinition^.Define:='XCB';
-          end else if (Type_='wl_display') or (Type_='wl_surface') then begin
-           TypeDefinition^.Define:='Wayland';
-          end else if (Type_='MirConnection') or (Type_='MirSurface') then begin
-           TypeDefinition^.Define:='Mir';
-          end else if Type_='ANativeWindow' then begin
-           TypeDefinition^.Define:='Android';
+         end else if ChildChildItem is TXMLText then begin
+          Text:=TXMLText(ChildChildItem).Text;
+          if length(TypeDefinition^.Name)>0 then begin
+           while length(Text)>0 do begin
+            NextText:='';
+            if trim(Text)='const' then begin
+             Constant:=true;
+            end else if length(Type_)>0 then begin
+             if length(TypeDefinition^.Members)<TypeDefinition^.CountMembers+1 then begin
+              SetLength(TypeDefinition^.Members,(TypeDefinition^.CountMembers+1)*2);
+             end;
+             TypeDefinitionMember:=@TypeDefinition^.Members[TypeDefinition^.CountMembers];
+             inc(TypeDefinition^.CountMembers);
+             TypeDefinitionMember^.Type_:=Type_;
+             k:=pos(',',Text);
+             if k>0 then begin
+              NextText:=trim(copy(Text,k+1,(length(Text)-k)+1));
+              Text:=trim(copy(Text,1,k-1));
+             end;
+             Text:=trim(StringReplace(Text,');','',[rfReplaceAll]));
+             if pos('*',Text)>0 then begin
+              for k:=1 to length(Text) do begin
+               if Text[k]='*' then begin
+                inc(TypeDefinitionMember^.Ptr);
+               end;
+              end;
+              Text:=trim(StringReplace(Text,'*','',[rfReplaceAll]));
+             end;
+             TypeDefinitionMember^.Constant:=Constant;
+             Constant:=false;
+             if Text='object' then begin
+              Text:='object_';
+             end else if Text='set' then begin
+              Text:='set_';
+             end;
+             TypeDefinitionMember^.Name:=Text;
+             TypeDefinitionMember^.ArraySizeInt:=0;
+             TypeDefinitionMember^.ArraySizeStr:='';
+             TypeDefinitionMember^.Comment:='';
+             Type_:='';
+            end;
+            Text:=NextText;
+           end;
           end;
          end;
         end;
+        SetLength(TypeDefinition^.Members,TypeDefinition^.CountMembers);
+       end else if (Category='struct') or (Category='union') then begin
+        Name:=ChildTag.GetParameter('name');
+        TypeDefinition:=@TypeDefinitions[CountTypeDefinitions];
+        inc(CountTypeDefinitions);
+        if Category='union' then begin
+         TypeDefinition^.Kind:=tdkUNION;
+        end else begin
+         TypeDefinition^.Kind:=tdkSTRUCT;
+        end;
+        TypeDefinition^.Name:=Name;
+        TypeDefinition^.Comment:=ChildTag.GetParameter('comment');
+        TypeDefinition^.Members:=nil;
+        TypeDefinition^.Define:='';
+        if (pos('IOS',UpperCase(Name))>0) and (pos('MVK',Name)>0) then begin
+         TypeDefinition^.Define:='MoltenVK_IOS';
+        end else if (pos('MACOS',UpperCase(Name))>0) and (pos('MVK',Name)>0) then begin
+         TypeDefinition^.Define:='MoltenVK_MacOS';
+        end else if (pos('MVK',Name)>0) or (pos('MOLTENVK',UpperCase(Name))>0) then begin
+         TypeDefinition^.Define:='MoltenVK';
+        end else if (pos('ANDROID',Name)>0) or (pos('Android',Name)>0) then begin
+         TypeDefinition^.Define:='Android';
+        end;
+        SetLength(TypeDefinition^.Members,ChildTag.Items.Count);
+        TypeDefinition^.CountMembers:=0;
+        for j:=0 to ChildTag.Items.Count-1 do begin
+         ChildChildItem:=ChildTag.Items[j];
+         if ChildChildItem is TXMLTag then begin
+          ChildChildTag:=TXMLTag(ChildChildItem);
+          if ChildChildTag.Name='member' then begin
+           Comment:='';
+           if (j+1)<ChildTag.Items.Count then begin
+            k:=j+1;
+            while k<ChildTag.Items.Count do begin
+             NextChildChildItem:=ChildTag.Items[k];
+             if NextChildChildItem is TXMLCommentTag then begin
+              Comment:=trim(TXMLCommentTag(NextChildChildItem).Text);
+              break;
+             end else if NextChildChildItem is TXMLText then begin
+              inc(k);
+             end else begin
+              break;
+             end;
+            end;
+           end;
+           Name:=ParseText(ChildChildTag.FindTag('name'),['']);
+           ArraySizeStr:=ParseText(ChildChildTag.FindTag('enum'),['']);
+           k:=pos('[',Name);
+           ArraySize:=-1;
+           if k>0 then begin
+            Text:=copy(Name,k+1,length(Name)-k);
+            Name:=copy(Name,1,k-1);
+            k:=pos(']',Text);
+            if k>0 then begin
+             ArraySize:=StrToIntDef(copy(Text,1,k-1),1);
+            end;
+           end;
+           if ArraySize<0 then begin
+            Text:=ParseText(ChildChildTag,['comment']);
+            k:=pos('[',Text);
+            if k>0 then begin
+             Delete(Text,1,k);
+             k:=pos(']',Text);
+             if k>0 then begin
+              Text:=trim(copy(Text,1,k-1));
+              ArraySize:=StrToIntDef(Text,-1);
+              if ArraySize<0 then begin
+               ArraySizeStr:=Text;
+              end;
+             end;
+            end;
+           end;
+           if Name='type' then begin
+            Name:='type_';
+           end else if Name='hinstance' then begin
+            Name:='hinstance_';
+           end else if Name='hwnd' then begin
+            Name:='hwnd_';
+           end else if Name='object' then begin
+            Name:='object_';
+           end else if Name='set' then begin
+            Name:='set_';
+           end;
+           TypeDefinitionMember:=@TypeDefinition^.Members[TypeDefinition^.CountMembers];
+           inc(TypeDefinition^.CountMembers);
+           TypeDefinitionMember^.Name:=Name;
+           TypeDefinitionMember^.ArraySizeInt:=ArraySize;
+           Type_:=ParseText(ChildChildTag.FindTag('type'),['']);
+           TypeDefinitionMember^.Type_:=Type_;
+           TypeDefinitionMember^.Values:=ChildChildTag.GetParameter('values');
+           TypeDefinitionMember^.ArraySizeStr:=ArraySizeStr;
+           TypeDefinitionMember^.Comment:=trim(ChildChildTag.GetParameter('comment')+' '+Comment);
+ {         k:=0;
+           while k<ValidityStringList.Count do begin
+            if pos('pname:'+Name,ValidityStringList[k])>0 then begin
+             TypeDefinitionMember^.Comment:=trim(TypeDefinitionMember^.Comment+' '+StringReplace(ValidityStringList[k],'pname:','',[rfReplaceAll]));
+            end;
+            inc(k);
+           end;{}
+           TypeDefinitionMember^.TypeDefinitionIndex:=-1;
+           TypeDefinitionMember^.Ptr:=0;
+           Text:=ParseText(ChildChildTag,['']);
+           for k:=1 to length(Text) do begin
+            if Text[k]='*' then begin
+             inc(TypeDefinitionMember^.Ptr);
+            end;
+           end;
+           if (Type_='HWND') or (Type_='HINSTANCE') or (Type_='SECURITY_ATTRIBUTES') then begin
+            TypeDefinition^.Define:='Windows';
+           end else if Type_='RROutput' then begin
+            TypeDefinition^.Define:='RandR';
+           end else if (Type_='Display') or (Type_='VisualID') or (Type_='Window') then begin
+            TypeDefinition^.Define:='XLIB';
+           end else if (Type_='xcb_connection_t') or (Type_='xcb_visualid_t') or (Type_='xcb_window_t') then begin
+            TypeDefinition^.Define:='XCB';
+           end else if (Type_='wl_display') or (Type_='wl_surface') then begin
+            TypeDefinition^.Define:='Wayland';
+           end else if (Type_='MirConnection') or (Type_='MirSurface') then begin
+            TypeDefinition^.Define:='Mir';
+           end else if Type_='ANativeWindow' then begin
+            TypeDefinition^.Define:='Android';
+           end;
+          end;
+         end;
+        end;
+        SetLength(TypeDefinition^.Members,TypeDefinition^.CountMembers);
+        TypeDefinition^.ValidityStringList:=ValidityStringList;
+        ValidityStringList:=nil;
        end;
-       SetLength(TypeDefinition^.Members,TypeDefinition^.CountMembers);
-       TypeDefinition^.ValidityStringList:=ValidityStringList;
-       ValidityStringList:=nil;
+      finally
+       FreeAndNil(ValidityStringList);
       end;
-     finally
-      FreeAndNil(ValidityStringList);
      end;
     end;
    end;
@@ -3885,6 +4023,9 @@ begin
       TypeDefinitionTypes.Add('     T'+TypeDefinition^.Name+'=function('+Text+'):'+TranslateType(TypeDefinition^.Type_,TypeDefinition^.Ptr)+'; '+CallingConventions);
      end;
     end;
+    tdkALIAS:begin
+     TypeDefinitionTypes.Add('     T'+TypeDefinition^.Name+'=T'+TypeDefinition^.Alias+';');
+    end;
    end;
    if length(TypeDefinition^.Define)>0 then begin
     TypeDefinitionTypes.Add('{$endif}');
@@ -3906,7 +4047,9 @@ type PValueItem=^TValueItem;
       ValueStr:ansistring;
       ValueInt64:int64;
       Comment:ansistring;
-     end;
+      Alias:ansistring;
+      IsExtended:boolean;
+     end;              
      TValueItems=array of TValueItem;
 var i,j,lv,hv,CountValueItems:longint;
     ChildItem:TXMLItem;
@@ -3914,11 +4057,12 @@ var i,j,lv,hv,CountValueItems:longint;
     Type_,Name,NameEnum,Line,Comment,Expand,Value,LowValue,HighValue:ansistring;
     Values:TStringList;
     v:int64;
+    OK:boolean;
     ValueItems:TValueItems;
     ValueItem:PValueItem;
     TempValueItem:TValueItem;
-    ExtensionEnum:TExtensionEnum;
-    Extension:TExtension;
+    ExtensionOrFeatureEnum:TExtensionOrFeatureEnum;
+    Extension:TExtensionOrFeature;
 begin
  ValueItems:=nil;
  try
@@ -3938,6 +4082,7 @@ begin
      ChildTag:=TXMLTag(ChildItem);
      if (ChildTag.Name='enum') or (ChildTag.Name='unused') then begin
       ValueItem:=@ValueItems[CountValueItems];
+      ValueItem^.IsExtended:=false;
       inc(CountValueItems);
       if ChildTag.Name='unused' then begin
        ValueItem^.Name:=Expand+'_UNUSED_START';
@@ -3945,32 +4090,39 @@ begin
        ValueItem^.Name:=ChildTag.GetParameter('name');
       end;
       begin
-       Value:=ChildTag.GetParameter('value','');
-       if Value='(~0U)' then begin
-        ValueItem^.ValueStr:='TVkUInt32($ffffffff)';
-       end else if Value='(~0U-1)' then begin
-        ValueItem^.ValueStr:='TVkUInt32($fffffffe)';
-       end else if Value='(~0U-2)' then begin
-        ValueItem^.ValueStr:='TVkUInt32($fffffffd)';
-       end else if Value='(~0ULL)' then begin
-        ValueItem^.ValueStr:='TVkUInt64($ffffffffffffffff)';
-       end else if Value='(~0ULL-1)' then begin
-        ValueItem^.ValueStr:='TVkUInt64($fffffffffffffffe)';
-       end else if Value='(~0ULL-2)' then begin
-        ValueItem^.ValueStr:='TVkUInt64($fffffffffffffffd)';
-       end else if (length(Value)>0) and ((pos('.',Value)>0) or ((pos('f',Value)=length(Value)) and (pos('x',Value)=0))) then begin
-        ValueItem^.ValueStr:=StringReplace(Value,'f','',[]);
-       end else if length(Value)>0 then begin
-        ValueItem^.ValueStr:=IntToStr(StrToIntDef(ChildTag.GetParameter('value','0'),0));
+       ValueItem^.Alias:=ChildTag.GetParameter('alias','');
+      end;
+      begin
+       if length(ValueItem^.Alias)>0 then begin
+        ValueItem^.ValueStr:=ValueItem^.Alias;
        end else begin
-        if ChildTag.Name='unused' then begin
-         ValueItem^.ValueStr:=IntToStr(StrToIntDef(ChildTag.GetParameter('start','0'),0));
-        end else if Type_='bitmask' then begin
-         ValueItem^.ValueStr:='$'+IntToHex(longword(1) shl StrToIntDef(ChildTag.GetParameter('bitpos','0'),0),8);
-        end else if Type_='enum' then begin
+        Value:=ChildTag.GetParameter('value','');
+        if Value='(~0U)' then begin
+         ValueItem^.ValueStr:='TVkUInt32($ffffffff)';
+        end else if Value='(~0U-1)' then begin
+         ValueItem^.ValueStr:='TVkUInt32($fffffffe)';
+        end else if Value='(~0U-2)' then begin
+         ValueItem^.ValueStr:='TVkUInt32($fffffffd)';
+        end else if Value='(~0ULL)' then begin
+         ValueItem^.ValueStr:='TVkUInt64($ffffffffffffffff)';
+        end else if Value='(~0ULL-1)' then begin
+         ValueItem^.ValueStr:='TVkUInt64($fffffffffffffffe)';
+        end else if Value='(~0ULL-2)' then begin
+         ValueItem^.ValueStr:='TVkUInt64($fffffffffffffffd)';
+        end else if (length(Value)>0) and ((pos('.',Value)>0) or ((pos('f',Value)=length(Value)) and (pos('x',Value)=0))) then begin
+         ValueItem^.ValueStr:=StringReplace(Value,'f','',[]);
+        end else if length(Value)>0 then begin
          ValueItem^.ValueStr:=IntToStr(StrToIntDef(ChildTag.GetParameter('value','0'),0));
         end else begin
-         ValueItem^.ValueStr:=IntToStr(StrToIntDef(ChildTag.GetParameter('value','0'),0));
+         if ChildTag.Name='unused' then begin
+          ValueItem^.ValueStr:=IntToStr(StrToIntDef(ChildTag.GetParameter('start','0'),0));
+         end else if Type_='bitmask' then begin
+          ValueItem^.ValueStr:='$'+IntToHex(longword(1) shl StrToIntDef(ChildTag.GetParameter('bitpos','0'),0),8);
+         end else if Type_='enum' then begin
+          ValueItem^.ValueStr:=IntToStr(StrToIntDef(ChildTag.GetParameter('value','0'),0));
+         end else begin
+          ValueItem^.ValueStr:=IntToStr(StrToIntDef(ChildTag.GetParameter('value','0'),0));
+         end;
         end;
        end;
       end;
@@ -4007,6 +4159,7 @@ begin
      ValueItem^.ValueStr:=ValueItems[lv].ValueStr;
      ValueItem^.ValueInt64:=ValueItems[lv].ValueInt64;
      ValueItem^.Comment:=ValueItems[lv].Name;
+     ValueItem^.IsExtended:=false;
     end;
     begin
      ValueItem:=@ValueItems[CountValueItems];
@@ -4015,6 +4168,7 @@ begin
      ValueItem^.ValueStr:=ValueItems[hv].ValueStr;
      ValueItem^.ValueInt64:=ValueItems[hv].ValueInt64;
      ValueItem^.Comment:=ValueItems[hv].Name;
+     ValueItem^.IsExtended:=false;
     end;
     begin
      ValueItem:=@ValueItems[CountValueItems];
@@ -4023,6 +4177,7 @@ begin
      ValueItem^.ValueStr:=IntToStr((ValueItems[hv].ValueInt64-ValueItems[lv].ValueInt64)+1);
      ValueItem^.ValueInt64:=(ValueItems[hv].ValueInt64-ValueItems[lv].ValueInt64)+1;
      ValueItem^.Comment:='('+ValueItems[hv].Name+'-'+ValueItems[lv].Name+')+1';
+     ValueItem^.IsExtended:=false;
     end;
     begin
      ValueItem:=@ValueItems[CountValueItems];
@@ -4031,43 +4186,66 @@ begin
      ValueItem^.ValueStr:='$7fffffff';
      ValueItem^.ValueInt64:=$7fffffff;
      ValueItem^.Comment:='';
+     ValueItem^.IsExtended:=false;
     end;
    end;
-   for i:=0 to ExtensionEnums.Count-1 do begin
-    ExtensionEnum:=TExtensionEnum(ExtensionEnums.Objects[i]);
-    Extension:=ExtensionEnum.Extension;
-    if (length(ExtensionEnum.Extends)>0) and (ExtensionEnum.Extends=Name) then begin
+   for i:=0 to ExtensionOrFeatureEnums.Count-1 do begin
+    ExtensionOrFeatureEnum:=TExtensionOrFeatureEnum(ExtensionOrFeatureEnums.Objects[i]);
+    Extension:=ExtensionOrFeatureEnum.ExtensionOrFeature;
+    if (length(ExtensionOrFeatureEnum.Extends)>0) and (ExtensionOrFeatureEnum.Extends=Name) then begin
      if length(ValueItems)<(CountValueItems+1) then begin
       SetLength(ValueItems,(CountValueItems+1)*2);
      end;
      ValueItem:=@ValueItems[CountValueItems];
      inc(CountValueItems);
-     ValueItem^.Name:=ExtensionEnum.Name;
-     if length(ExtensionEnum.Value)<>0 then begin
-      ValueItem^.ValueStr:=ExtensionEnum.Value;
-     end else if ExtensionEnum.Offset>=0 then begin
-      ValueItem^.ValueStr:=ExtensionEnum.Dir+IntToStr(1000000000+((Extension.Number-1)*1000)+ExtensionEnum.Offset);
-     end else if ExtensionEnum.BitPos>=0 then begin
-      ValueItem^.ValueStr:=ExtensionEnum.Dir+'$'+IntToHex(longword(1) shl ExtensionEnum.BitPos,8);
+     ValueItem^.IsExtended:=true;
+     ValueItem^.Name:=ExtensionOrFeatureEnum.Name;
+     if length(ExtensionOrFeatureEnum.Alias)<>0 then begin
+      ValueItem^.ValueStr:=ExtensionOrFeatureEnum.Alias;
+      ValueItem^.Alias:=ExtensionOrFeatureEnum.Alias;
+     end else if length(ExtensionOrFeatureEnum.Value)<>0 then begin
+      ValueItem^.ValueStr:=ExtensionOrFeatureEnum.Value;
+     end else if ExtensionOrFeatureEnum.Offset>=0 then begin
+      ValueItem^.ValueStr:=ExtensionOrFeatureEnum.Dir+IntToStr(1000000000+((Extension.Number-1)*1000)+ExtensionOrFeatureEnum.Offset);
+     end else if ExtensionOrFeatureEnum.BitPos>=0 then begin
+      ValueItem^.ValueStr:=ExtensionOrFeatureEnum.Dir+'$'+IntToHex(longword(1) shl ExtensionOrFeatureEnum.BitPos,8);
      end;
      ValueItem^.ValueInt64:=StrToIntDef(ValueItem^.ValueStr,0);
      ValueItem^.Comment:='';
     end;
    end;
    for i:=0 to CountValueItems-1 do begin
-    for j:=0 to ExtensionEnums.Count-1 do begin
-     ExtensionEnum:=TExtensionEnum(ExtensionEnums.Objects[j]);
-     Extension:=ExtensionEnum.Extension;
-     if (length(ExtensionEnum.Extends)=0) and (ExtensionEnum.Value=ValueItems[i].Name) then begin
+    for j:=0 to ExtensionOrFeatureEnums.Count-1 do begin
+     ExtensionOrFeatureEnum:=TExtensionOrFeatureEnum(ExtensionOrFeatureEnums.Objects[j]);
+     Extension:=ExtensionOrFeatureEnum.ExtensionOrFeature;
+     if (length(ExtensionOrFeatureEnum.Extends)=0) and (ExtensionOrFeatureEnum.Value=ValueItems[i].Name) then begin
       if length(ValueItems)<(CountValueItems+1) then begin
        SetLength(ValueItems,(CountValueItems+1)*2);
       end;
       ValueItem:=@ValueItems[CountValueItems];
       inc(CountValueItems);
       ValueItem^:=ValueItems[i];
-      ValueItem^.Name:=ExtensionEnum.Name;
-      ExtensionEnum.Name:='';
+      ValueItem^.Name:=ExtensionOrFeatureEnum.Name;
+      ValueItem^.IsExtended:=false;
+      ExtensionOrFeatureEnum.Name:='';
       break;
+     end;
+    end;
+   end;
+   for i:=CountValueItems-1 downto 0 do begin
+    if ValueItems[i].IsExtended then begin
+     OK:=true;
+     for j:=0 to CountValueItems-1 do begin
+      if (ValueItems[j].Name=ValueItems[i].Name) and (i<>j) then begin
+       OK:=false;
+       break;
+      end;
+     end;
+     if not OK then begin
+      for j:=i to CountValueItems-2 do begin
+       ValueItems[j]:=ValueItems[j+1];
+      end;
+      dec(CountValueItems);
      end;
     end;
    end;
@@ -4079,7 +4257,9 @@ begin
     ENumTypes.Add('      (');
     i:=0;
     while i<(CountValueItems-1) do begin
-     if ValueItems[i].ValueInt64>ValueItems[i+1].ValueInt64 then begin
+     if (ValueItems[i].Alias>ValueItems[i+1].Alias) or
+        ((ValueItems[i].Alias=ValueItems[i+1].Alias) and
+         (ValueItems[i].ValueInt64>ValueItems[i+1].ValueInt64)) then begin
       TempValueItem:=ValueItems[i];
       ValueItems[i]:=ValueItems[i+1];
       ValueItems[i+1]:=TempValueItem;
@@ -4137,7 +4317,7 @@ procedure ParseCommandsTag(Tag:TXMLTag);
 var i,j,k,ArraySize,CountTypeDefinitions:longint;
     ChildItem,ChildChildItem:TXMLItem;
     ChildTag,ChildChildTag:TXMLTag;
-    ProtoName,ProtoType,ParamName,ParamType,Text,Line,Parameters,Define:ansistring;
+    ProtoName,ProtoType,ParamName,ParamType,Text,Line,Parameters,Define,Alias,AliasName:ansistring;
     ProtoPtr,ParamPtr:longint;
     IsDeviceCommand:boolean;
     ValidityStringList:TStringList;
@@ -4150,147 +4330,183 @@ begin
   if ChildItem is TXMLTag then begin
    ChildTag:=TXMLTag(ChildItem);
    if ChildTag.Name='command' then begin
-    ValidityStringList:=TStringList.Create;
-    try
-     ParseValidityTag(ChildTag.FindTag('validity'),ValidityStringList);
-     ProtoName:='';
-     ProtoType:='';
-     ProtoPtr:=0;
-     ParamName:='';
-     ParamType:='';
-     ParamPtr:=0;
-     IsDeviceCommand:=false;
-     Line:='';
-     Parameters:='';
-     Define:='';
-     for j:=0 to ChildTag.Items.Count-1 do begin
-      ChildChildItem:=ChildTag.Items[j];
-      if ChildChildItem is TXMLTag then begin
-       ChildChildTag:=TXMLTag(ChildChildItem);
-       if ChildChildTag.Name='proto' then begin
-        ProtoName:=ParseText(ChildChildTag.FindTag('name'),['']);
-        ProtoType:=ParseText(ChildChildTag.FindTag('type'),['']);
-        ProtoPtr:=0;
-        Text:=ParseText(ChildChildTag,['']);
-        for k:=1 to length(Text)-1 do begin
-         if Text[k]='*' then begin
-          inc(ProtoPtr);
+    Alias:=ChildTag.GetParameter('alias','');
+    AliasName:='';
+    if length(Alias)>0 then begin
+     AliasName:=ChildTag.GetParameter('name','');
+     ChildTag:=nil;
+     for k:=0 to Tag.Items.Count-1 do begin
+      ChildItem:=Tag.Items[k];
+      if ChildItem is TXMLTag then begin
+       ChildTag:=TXMLTag(ChildItem);
+       if ChildTag.Name='command' then begin
+        ProtoName:='';
+        for j:=0 to ChildTag.Items.Count-1 do begin
+         ChildChildItem:=ChildTag.Items[j];
+         if ChildChildItem is TXMLTag then begin
+          ChildChildTag:=TXMLTag(ChildChildItem);
+          if ChildChildTag.Name='proto' then begin
+           ProtoName:=ParseText(ChildChildTag.FindTag('name'),['']);
+           break;
+          end;
          end;
         end;
-       end else if ChildChildTag.Name='param' then begin
-        ParamName:=ParseText(ChildChildTag.FindTag('name'),['']);
-        ParamType:=ParseText(ChildChildTag.FindTag('type'),['']);
-        Text:=ParseText(ChildChildTag,['']);
-        ParamPtr:=0;
-        for k:=1 to length(Text)-1 do begin
-         if Text[k]='*' then begin
-          inc(ParamPtr);
-         end;
-        end;
-        if length(Line)>0 then begin
-         Line:=Line+';';
+        if ProtoName=Alias then begin
+         break;
         end else begin
-         if (ParamType='VkDevice') or (ParamType='VkQueue') or (ParamType='VkCommandBuffer') then begin
-          IsDeviceCommand:=true;
-         end;
-        end;
-        if ParamName='type' then begin
-         ParamName:='type_';
-        end else if ParamName='object' then begin
-         ParamName:='object_';
-        end else if ParamName='set' then begin
-         ParamName:='set_';
-        end;
-        if pos('const ',trim(Text))=1 then begin
-         Line:=Line+'const ';
-        end;
-        Line:=Line+ParamName+':'+TranslateType(ParamType,ParamPtr);
-        if length(Parameters)>0 then begin
-         Parameters:=Parameters+',';
-        end;
-        Parameters:=Parameters+ParamName;
-        if (ParamType='HWND') or (ParamType='HINSTANCE') or (pos('Win32',ProtoName)>0) then begin
-         Define:='Windows';
-        end else if ParamType='RROutput' then begin
-         Define:='RandR';
-        end else if (ParamType='Display') or (ParamType='VisualID') or (ParamType='Window') or (pos('Xlib',ParamType)>0) then begin
-         Define:='XLIB';
-        end else if (ParamType='xcb_connection_t') or (ParamType='xcb_visualid_t') or (ParamType='xcb_window_t') or (pos('Xcb',ParamType)>0) then begin
-         Define:='XCB';
-        end else if (ParamType='wl_display') or (ParamType='wl_surface') or (pos('Wayland',ParamType)>0) then begin
-         Define:='Wayland';
-        end else if (ParamType='MirConnection') or (ParamType='MirSurface') or (pos('Mir',ParamType)>0) then begin
-         Define:='Mir';
-        end else if (pos('IOS',UpperCase(ParamType))>0) and (pos('MVK',ParamType)>0) then begin
-         Define:='MoltenVK_IOS';
-        end else if (pos('MACOS',UpperCase(ParamType))>0) and (pos('MVK',ParamType)>0) then begin
-         Define:='MoltenVK_MacOS';
-        end else if (pos('MVK',ParamType)>0) or (pos('MOLTENVK',UpperCase(ParamType))>0) then begin
-         Define:='MoltenVK';
-        end else if (ParamType='ANativeWindow') or (pos('Android',ParamType)>0) or (pos('ANDROID',ParamType)>0) then begin
-         Define:='Android';
+         ChildTag:=nil;
         end;
        end;
       end;
      end;
-     if length(Define)>0 then begin
-      CommandTypes.Add('{$ifdef '+Define+'}');
-      CommandVariables.Add('{$ifdef '+Define+'}');
-      AllCommandType.Add('{$ifdef '+Define+'}');
-      AllCommandClassDefinitions.Add('{$ifdef '+Define+'}');
-      AllCommandClassImplementations.Add('{$ifdef '+Define+'}');
-     end;
-     if assigned(ValidityStringList) and (ValidityStringList.Count>0) then begin
-      ValidityStringList.Text:=StringReplace(ValidityStringList.Text,'pname:','',[rfReplaceAll]);
-      ValidityStringList.Text:=StringReplace(ValidityStringList.Text,'sname:','T',[rfReplaceAll]);
-      ValidityStringList.Text:=StringReplace(ValidityStringList.Text,'ename:','T',[rfReplaceAll]);
-      ValidityStringList.Text:=StringReplace(ValidityStringList.Text,'fname:','',[rfReplaceAll]);
-      ValidityStringList.Text:=WrapString(ValidityStringList.Text,sLineBreak,512);
-      for j:=0 to ValidityStringList.Count-1 do begin
-       CommandTypes.Add('     // '+ValidityStringList.Strings[j]);
-       CommandVariables.Add('    // '+ValidityStringList.Strings[j]);
-       AllCommandType.Add('      // '+ValidityStringList.Strings[j]);
-       AllCommandClassDefinitions.Add('       // '+ValidityStringList.Strings[j]);
+    end;
+    if assigned(ChildTag) then begin
+     ValidityStringList:=TStringList.Create;
+     try
+      ParseValidityTag(ChildTag.FindTag('validity'),ValidityStringList);
+      ProtoName:='';
+      ProtoType:='';
+      ProtoPtr:=0;
+      ParamName:='';
+      ParamType:='';
+      ParamPtr:=0;
+      IsDeviceCommand:=false;
+      Line:='';
+      Parameters:='';
+      Define:='';
+      for j:=0 to ChildTag.Items.Count-1 do begin
+       ChildChildItem:=ChildTag.Items[j];
+       if ChildChildItem is TXMLTag then begin
+        ChildChildTag:=TXMLTag(ChildChildItem);
+        if ChildChildTag.Name='proto' then begin
+         if length(AliasName)>0 then begin
+          ProtoName:=AliasName;
+         end else begin
+          ProtoName:=ParseText(ChildChildTag.FindTag('name'),['']);
+         end;
+         ProtoType:=ParseText(ChildChildTag.FindTag('type'),['']);
+         ProtoPtr:=0;
+         Text:=ParseText(ChildChildTag,['']);
+         for k:=1 to length(Text)-1 do begin
+          if Text[k]='*' then begin
+           inc(ProtoPtr);
+          end;
+         end;
+        end else if ChildChildTag.Name='param' then begin
+         ParamName:=ParseText(ChildChildTag.FindTag('name'),['']);
+         ParamType:=ParseText(ChildChildTag.FindTag('type'),['']);
+         Text:=ParseText(ChildChildTag,['']);
+         ParamPtr:=0;
+         for k:=1 to length(Text)-1 do begin
+          if Text[k]='*' then begin
+           inc(ParamPtr);
+          end;
+         end;
+         if length(Line)>0 then begin
+          Line:=Line+';';
+         end else begin
+          if (ParamType='VkDevice') or (ParamType='VkQueue') or (ParamType='VkCommandBuffer') then begin
+           IsDeviceCommand:=true;
+          end;
+         end;
+         if ParamName='type' then begin
+          ParamName:='type_';
+         end else if ParamName='object' then begin
+          ParamName:='object_';
+         end else if ParamName='set' then begin
+          ParamName:='set_';
+         end;
+         if pos('const ',trim(Text))=1 then begin
+          Line:=Line+'const ';
+         end;
+         Line:=Line+ParamName+':'+TranslateType(ParamType,ParamPtr);
+         if length(Parameters)>0 then begin
+          Parameters:=Parameters+',';
+         end;
+         Parameters:=Parameters+ParamName;
+         if (ParamType='HWND') or (ParamType='HINSTANCE') or (pos('Win32',ProtoName)>0) then begin
+          Define:='Windows';
+         end else if ParamType='RROutput' then begin
+          Define:='RandR';
+         end else if (ParamType='Display') or (ParamType='VisualID') or (ParamType='Window') or (pos('Xlib',ParamType)>0) then begin
+          Define:='XLIB';
+         end else if (ParamType='xcb_connection_t') or (ParamType='xcb_visualid_t') or (ParamType='xcb_window_t') or (pos('Xcb',ParamType)>0) then begin
+          Define:='XCB';
+         end else if (ParamType='wl_display') or (ParamType='wl_surface') or (pos('Wayland',ParamType)>0) then begin
+          Define:='Wayland';
+         end else if (ParamType='MirConnection') or (ParamType='MirSurface') or (pos('Mir',ParamType)>0) then begin
+          Define:='Mir';
+         end else if (pos('IOS',UpperCase(ParamType))>0) and (pos('MVK',ParamType)>0) then begin
+          Define:='MoltenVK_IOS';
+         end else if (pos('MACOS',UpperCase(ParamType))>0) and (pos('MVK',ParamType)>0) then begin
+          Define:='MoltenVK_MacOS';
+         end else if (pos('MVK',ParamType)>0) or (pos('MOLTENVK',UpperCase(ParamType))>0) then begin
+          Define:='MoltenVK';
+         end else if (ParamType='ANativeWindow') or (pos('Android',ParamType)>0) or (pos('ANDROID',ParamType)>0) then begin
+          Define:='Android';
+         end;
+        end;
+       end;
       end;
+      if length(Define)>0 then begin
+       CommandTypes.Add('{$ifdef '+Define+'}');
+       CommandVariables.Add('{$ifdef '+Define+'}');
+       AllCommandType.Add('{$ifdef '+Define+'}');
+       AllCommandClassDefinitions.Add('{$ifdef '+Define+'}');
+       AllCommandClassImplementations.Add('{$ifdef '+Define+'}');
+      end;
+      if assigned(ValidityStringList) and (ValidityStringList.Count>0) then begin
+       ValidityStringList.Text:=StringReplace(ValidityStringList.Text,'pname:','',[rfReplaceAll]);
+       ValidityStringList.Text:=StringReplace(ValidityStringList.Text,'sname:','T',[rfReplaceAll]);
+       ValidityStringList.Text:=StringReplace(ValidityStringList.Text,'ename:','T',[rfReplaceAll]);
+       ValidityStringList.Text:=StringReplace(ValidityStringList.Text,'fname:','',[rfReplaceAll]);
+       ValidityStringList.Text:=WrapString(ValidityStringList.Text,sLineBreak,512);
+       for j:=0 to ValidityStringList.Count-1 do begin
+        CommandTypes.Add('     // '+ValidityStringList.Strings[j]);
+        CommandVariables.Add('    // '+ValidityStringList.Strings[j]);
+        AllCommandType.Add('      // '+ValidityStringList.Strings[j]);
+        AllCommandClassDefinitions.Add('       // '+ValidityStringList.Strings[j]);
+       end;
+      end;
+      if (ProtoType='void') and (ProtoPtr=0) then begin
+       CommandTypes.Add('     T'+ProtoName+'=procedure('+Line+'); '+CallingConventions);
+      end else begin
+       CommandTypes.Add('     T'+ProtoName+'=function('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+'; '+CallingConventions);
+      end;
+      CommandVariables.Add('    '+ProtoName+':T'+ProtoName+'=nil;');
+      AllCommandType.Add('      '+copy(ProtoName,3,length(ProtoName)-2)+':T'+ProtoName+';');
+      if (ProtoType='void') and (ProtoPtr=0) then begin
+       AllCommandClassDefinitions.Add('       procedure '+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'); virtual;');
+       AllCommandClassImplementations.Add('procedure TVulkan.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+');');
+       AllCommandClassImplementations.Add('begin');
+       AllCommandClassImplementations.Add(' fCommands.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Parameters+');');
+       AllCommandClassImplementations.Add('end;');
+      end else begin
+       AllCommandClassDefinitions.Add('       function '+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+'; virtual;');
+       AllCommandClassImplementations.Add('function TVulkan.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+';');
+       AllCommandClassImplementations.Add('begin');
+       AllCommandClassImplementations.Add(' result:=fCommands.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Parameters+');');
+       AllCommandClassImplementations.Add('end;');
+      end;
+      AllCommands.Add(ProtoName+'='+Define);
+      if IsDeviceCommand then begin
+       AllDeviceCommands.Add(ProtoName+'='+Define);
+      end;
+      if length(Define)>0 then begin
+       CommandTypes.Add('{$endif}');
+       CommandVariables.Add('{$endif}');
+       AllCommandType.Add('{$endif}');
+       AllCommandClassDefinitions.Add('{$endif}');
+       AllCommandClassImplementations.Add('{$endif}');
+      end;
+      CommandTypes.Add('');
+      CommandVariables.Add('');
+      AllCommandType.Add('');
+      AllCommandClassDefinitions.Add('');
+      AllCommandClassImplementations.Add('');
+     finally
+      ValidityStringList.Free;
      end;
-     if (ProtoType='void') and (ProtoPtr=0) then begin
-      CommandTypes.Add('     T'+ProtoName+'=procedure('+Line+'); '+CallingConventions);
-     end else begin
-      CommandTypes.Add('     T'+ProtoName+'=function('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+'; '+CallingConventions);
-     end;
-     CommandVariables.Add('    '+ProtoName+':T'+ProtoName+'=nil;');
-     AllCommandType.Add('      '+copy(ProtoName,3,length(ProtoName)-2)+':T'+ProtoName+';');
-     if (ProtoType='void') and (ProtoPtr=0) then begin
-      AllCommandClassDefinitions.Add('       procedure '+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'); virtual;');
-      AllCommandClassImplementations.Add('procedure TVulkan.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+');');
-      AllCommandClassImplementations.Add('begin');
-      AllCommandClassImplementations.Add(' fCommands.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Parameters+');');
-      AllCommandClassImplementations.Add('end;');
-     end else begin
-      AllCommandClassDefinitions.Add('       function '+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+'; virtual;');
-      AllCommandClassImplementations.Add('function TVulkan.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Line+'):'+TranslateType(ProtoType,ProtoPtr)+';');
-      AllCommandClassImplementations.Add('begin');
-      AllCommandClassImplementations.Add(' result:=fCommands.'+copy(ProtoName,3,length(ProtoName)-2)+'('+Parameters+');');
-      AllCommandClassImplementations.Add('end;');
-     end;
-     AllCommands.Add(ProtoName+'='+Define);
-     if IsDeviceCommand then begin
-      AllDeviceCommands.Add(ProtoName+'='+Define);
-     end;
-     if length(Define)>0 then begin
-      CommandTypes.Add('{$endif}');
-      CommandVariables.Add('{$endif}');
-      AllCommandType.Add('{$endif}');
-      AllCommandClassDefinitions.Add('{$endif}');
-      AllCommandClassImplementations.Add('{$endif}');
-     end;
-     CommandTypes.Add('');
-     CommandVariables.Add('');
-     AllCommandType.Add('');
-     AllCommandClassDefinitions.Add('');
-     AllCommandClassImplementations.Add('');
-    finally
-     ValidityStringList.Free;
     end;
    end;
   end;
@@ -4299,7 +4515,7 @@ begin
 end;
 
 procedure ParseRegistryTag(Tag:TXMLTag);
-var i:longint;
+var i,j:longint;
     ChildItem:TXMLItem;
     ChildTag:TXMLTag;
 begin
@@ -4318,6 +4534,14 @@ begin
  if assigned(ChildTag) then begin
   writeln('found!');
   ParseExtensionsTag(ChildTag);
+ end else begin
+  writeln('not found!');
+ end;
+
+ write('Searching for registry/feature tags . . . ');
+ j:=ParseFeatureTags(Tag);
+ if j>0 then begin
+  writeln(j,' feature tags found!');
  end else begin
   writeln('not found!');
  end;
@@ -4374,21 +4598,22 @@ var VKXMLFileStream:TMemoryStream;
     OutputPAS:TStringList;
 
 var i,j:longint;
-    ExtensionEnum:TExtensionEnum;
+    ExtensionOrFeatureEnum:TExtensionOrFeatureEnum;
     s,s2:ansistring;
 begin
  Comment:='';
  VendorIDList:=TObjectList.Create(true);
  TagList:=TObjectList.Create(true);
- Extensions:=TObjectList.Create(true);
- ExtensionEnums:=TStringList.Create;
- ExtensionTypes:=TStringList.Create;
- ExtensionCommands:=TStringList.Create;
+ ExtensionsOrFeatures:=TObjectList.Create(true);
+ ExtensionOrFeatureEnums:=TStringList.Create;
+ ExtensionOrFeatureTypes:=TStringList.Create;
+ ExtensionOrFeatureCommands:=TStringList.Create;
  VersionConstants:=TStringList.Create;
  BaseTypes:=TStringList.Create;
  BitMaskTypes:=TStringList.Create;
  HandleTypes:=TStringList.Create;
  ENumTypes:=TStringList.Create;
+ AliasENumTypes:=TStringList.Create;
  ENumConstants:=TStringList.Create;
  ENumValues:=TStringList.Create;
  TypeDefinitionTypes:=TStringList.Create;
@@ -4737,6 +4962,7 @@ begin
    OutputPAS.AddStrings(BitMaskTypes);
    OutputPAS.AddStrings(HandleTypes);
    OutputPAS.AddStrings(EnumTypes);
+   OutputPAS.AddStrings(AliasEnumTypes);
    OutputPAS.AddStrings(TypeDefinitionTypes);
    OutputPAS.AddStrings(CommandTypes);
    OutputPAS.Add('');
@@ -4994,15 +5220,16 @@ begin
   FinalizeEntites;
   VendorIDList.Free;
   TagList.Free;
-  Extensions.Free;
-  ExtensionEnums.Free;
-  ExtensionTypes.Free;
-  ExtensionCommands.Free;
+  ExtensionsOrFeatures.Free;
+  ExtensionOrFeatureEnums.Free;
+  ExtensionOrFeatureTypes.Free;
+  ExtensionOrFeatureCommands.Free;
   BitMaskTypes.Free;
   VersionConstants.Free;
   BaseTypes.Free;
   HandleTypes.Free;
   ENumTypes.Free;
+  AliasENumTypes.Free;
   ENumConstants.Free;
   ENumValues.Free;
   TypeDefinitionConstructors.Free;
