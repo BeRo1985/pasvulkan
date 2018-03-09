@@ -6921,6 +6921,8 @@ begin
          ((((assigned(aNodeA) and assigned(aNodeB))) and
           ((aNodeA^.NodeType=aNodeB^.NodeType) and
            ((aNodeA^.Value=aNodeB^.Value) and
+            (aNodeA^.MinCount=aNodeB^.MinCount) and
+            (aNodeA^.MaxCount=aNodeB^.MaxCount) and
             (AreNodesEqual(aNodeA^.Left,aNodeB^.Left) and AreNodesEqual(aNodeA^.Right,aNodeB^.Right))))) or
           not (assigned(aNodeA) or assigned(aNodeB)));
 end;
@@ -6931,6 +6933,8 @@ begin
          ((((assigned(aNodeA) and assigned(aNodeB))) and
            (((aNodeA^.NodeType=aNodeB^.NodeType) and not (aNodeB^.NodeType in [ntPAREN])) and
             ((aNodeA^.Value=aNodeB^.Value) and
+             (aNodeA^.MinCount=aNodeB^.MinCount) and
+             (aNodeA^.MaxCount=aNodeB^.MaxCount) and
              (AreNodesEqualSafe(aNodeA^.Left,aNodeB^.Left) and
               AreNodesEqualSafe(aNodeA^.Right,aNodeB^.Right))))) or
           not (assigned(aNodeA) or assigned(aNodeB)));
