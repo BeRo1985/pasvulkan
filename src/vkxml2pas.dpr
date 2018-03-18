@@ -2930,6 +2930,8 @@ begin
     result:='PVkMirSurface';
    end else if Type_='ANativeWindow' then begin
     result:='PVkAndroidANativeWindow';
+   end else if Type_='AHardwareBuffer' then begin
+    result:='PVkAndroidAHardwareBuffer';
    end else if Type_='SECURITY_ATTRIBUTES' then begin
     result:='PSecurityAttributes';
    end else begin
@@ -2993,6 +2995,8 @@ begin
     result:='PPVkMirSurface';
    end else if Type_='ANativeWindow' then begin
     result:='PPVkAndroidANativeWindow';
+   end else if Type_='AHardwareBuffer' then begin
+    result:='PPVkAndroidAHardwareBuffer';
    end else begin
     result:='PP'+Type_;
    end;
@@ -3055,6 +3059,8 @@ begin
     result:='TVkMirSurface';
    end else if Type_='ANativeWindow' then begin
     result:='TVkAndroidANativeWindow';
+   end else if Type_='AHardwareBuffer' then begin
+    result:='TVkAndroidAHardwareBuffer';
    end else if Type_='LPCWSTR' then begin
     result:='PWideChar';
    end else begin
@@ -3129,14 +3135,14 @@ begin
           ExtensionOrFeatureEnum.Dir:=ChildChildChildTag.GetParameter('dir','');
           ExtensionOrFeatureEnum.Extends:=ChildChildChildTag.GetParameter('extends','');
           ExtensionOrFeatureEnum.Alias:=ChildChildChildTag.GetParameter('alias','');
-          if length(ExtensionOrFeatureEnum.Alias)>0 then begin
+{         if length(ExtensionOrFeatureEnum.Alias)>0 then begin
            // Workarounds for vk.xml typo issues
            if ExtensionOrFeatureEnum.Alias='VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL' then begin
             ExtensionOrFeatureEnum.Alias:='VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHX';
            end else if ExtensionOrFeatureEnum.Alias='VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL' then begin
             ExtensionOrFeatureEnum.Alias:='VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHX';
            end;
-          end;
+          end;}
           ExtensionOrFeatureEnums.AddObject(ExtensionOrFeatureEnum.Name,ExtensionOrFeatureEnum);
          end else if ChildChildChildTag.Name='type' then begin
           ExtensionOrFeatureType:=TExtensionOrFeatureType.Create;
@@ -3807,7 +3813,7 @@ begin
             TypeDefinition^.Define:='Wayland';
            end else if (Type_='MirConnection') or (Type_='MirSurface') then begin
             TypeDefinition^.Define:='Mir';
-           end else if Type_='ANativeWindow' then begin
+           end else if (Type_='ANativeWindow') or (Type_='AHardwareBuffer') then begin
             TypeDefinition^.Define:='Android';
            end;
           end;
@@ -4442,7 +4448,7 @@ begin
           Define:='MoltenVK_MacOS';
          end else if (pos('MVK',ParamType)>0) or (pos('MOLTENVK',UpperCase(ParamType))>0) then begin
           Define:='MoltenVK';
-         end else if (ParamType='ANativeWindow') or (pos('Android',ParamType)>0) or (pos('ANDROID',ParamType)>0) then begin
+         end else if (ParamType='ANativeWindow') or (ParamType='AHardwareBuffer') or (pos('Android',ParamType)>0) or (pos('ANDROID',ParamType)>0) then begin
           Define:='Android';
          end;
         end;
@@ -4884,6 +4890,9 @@ begin
    OutputPAS.Add('{$ifdef Android}');
    OutputPAS.Add('     PPVkAndroidANativeWindow=^PVkAndroidANativeWindow;');
    OutputPAS.Add('     PVkAndroidANativeWindow={$ifdef VulkanUseAndroidUnits}PANativeWindow{$else}TVkPointer{$endif};');
+   OutputPAS.Add('');
+   OutputPAS.Add('     PPVkAndroidAHardwareBuffer=^PVkAndroidAHardwareBuffer;');
+   OutputPAS.Add('     PVkAndroidAHardwareBuffer={$ifdef VulkanUseAndroidUnits}PAHardwareBuffer{$else}TVkPointer{$endif};');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('');
    OutputPAS.Add('{$ifdef Mir}');

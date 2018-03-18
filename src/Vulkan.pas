@@ -200,6 +200,9 @@ type PPVkInt8=^PVkInt8;
 {$ifdef Android}
      PPVkAndroidANativeWindow=^PVkAndroidANativeWindow;
      PVkAndroidANativeWindow={$ifdef VulkanUseAndroidUnits}PANativeWindow{$else}TVkPointer{$endif};
+
+     PPVkAndroidAHardwareBuffer=^PVkAndroidAHardwareBuffer;
+     PVkAndroidAHardwareBuffer={$ifdef VulkanUseAndroidUnits}PAHardwareBuffer{$else}TVkPointer{$endif};
 {$endif}
 
 {$ifdef Mir}
@@ -255,7 +258,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=70;
+      VK_HEADER_VERSION=71;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -418,7 +421,7 @@ const VK_NULL_HANDLE=0;
       VK_ARM_EXTENSION_02_EXTENSION_NAME='VK_ARM_extension_02';
       VK_IMG_EXTENSION_69_SPEC_VERSION=0;
       VK_IMG_EXTENSION_69_EXTENSION_NAME='VK_IMG_extension_69';
-      VK_KHR_MAINTENANCE1_SPEC_VERSION=1;
+      VK_KHR_MAINTENANCE1_SPEC_VERSION=2;
       VK_KHR_MAINTENANCE1_EXTENSION_NAME='VK_KHR_maintenance1';
       VK_KHR_DEVICE_GROUP_CREATION_SPEC_VERSION=1;
       VK_KHR_DEVICE_GROUP_CREATION_EXTENSION_NAME='VK_KHR_device_group_creation';
@@ -442,8 +445,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME='VK_KHR_external_semaphore_fd';
       VK_KHR_PUSH_DESCRIPTOR_SPEC_VERSION=2;
       VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME='VK_KHR_push_descriptor';
-      VK_KHX_DEPTH_STENCIL_LAYOUTS_SPEC_VERSION=1;
-      VK_KHX_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME='VK_KHX_depth_stencil_layouts';
+      VK_EXT_EXTENSION_82_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_82_EXTENSION_NAME='VK_EXT_extension_82';
       VK_KHR_EXTENSION_83_SPEC_VERSION=0;
       VK_KHR_EXTENSION_83_EXTENSION_NAME='VK_KHR_extension_83';
       VK_KHR_16BIT_STORAGE_SPEC_VERSION=1;
@@ -536,8 +539,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME='VK_KHR_dedicated_allocation';
       VK_EXT_DEBUG_UTILS_SPEC_VERSION=1;
       VK_EXT_DEBUG_UTILS_EXTENSION_NAME='VK_EXT_debug_utils';
-      VK_KHR_EXTENSION_130_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_130_EXTENSION_NAME='VK_KHR_extension_130';
+      VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_SPEC_VERSION=3;
+      VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME='VK_ANDROID_external_memory_android_hardware_buffer';
       VK_EXT_SAMPLER_FILTER_MINMAX_SPEC_VERSION=1;
       VK_EXT_SAMPLER_FILTER_MINMAX_EXTENSION_NAME='VK_EXT_sampler_filter_minmax';
       VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_SPEC_VERSION=1;
@@ -670,6 +673,8 @@ const VK_NULL_HANDLE=0;
       VK_GOOGLE_EXTENSION_196_EXTENSION_NAME='VK_GOOGLE_extension_196';
       VK_EXT_EXTENSION_197_SPEC_VERSION=0;
       VK_EXT_EXTENSION_197_EXTENSION_NAME='VK_EXT_extension_197';
+      VK_ARM_EXTENSION_198_SPEC_VERSION=0;
+      VK_ARM_EXTENSION_198_EXTENSION_NAME='VK_EXT_extension_198';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1337,11 +1342,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL=999999000,
        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL=999999001,
        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR=1000001002,
-       VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHX=1000081000,
-       VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHX=1000081001,
        VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR=1000111000,
-       VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR=VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHX,
-       VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR=VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHX
+       VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR=VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+       VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR=VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
       );
 
      PPVkAttachmentLoadOp=^PVkAttachmentLoadOp;
@@ -2196,6 +2199,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT=1000128002,
        VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT=1000128003,
        VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT=1000128004,
+       VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID=1000129000,
+       VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID=1000129001,
+       VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID=1000129002,
+       VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID=1000129003,
+       VK_STRUCTURE_TYPE_MEMORY_GET_ANDROID_HARDWARE_BUFFER_INFO_ANDROID=1000129004,
+       VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID=1000129005,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT=1000130000,
        VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT=1000130001,
        VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT=1000143000,
@@ -3015,6 +3024,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_ALLOCATION_BIT_EXT=$00000080,
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_HOST_MAPPED_FOREIGN_MEMORY_BIT_EXT=$00000100,
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT=$00000200,
+       VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID=$00000400,
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT_KHR=VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT,
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_KMT_BIT_KHR=VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_KMT_BIT,
        VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT_KHR=VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D12_HEAP_BIT,
@@ -9759,6 +9769,118 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+{$ifdef Android}
+     PPVkImportAndroidHardwareBufferInfoANDROID=^PVkImportAndroidHardwareBufferInfoANDROID;
+     PVkImportAndroidHardwareBufferInfoANDROID=^TVkImportAndroidHardwareBufferInfoANDROID;
+     TVkImportAndroidHardwareBufferInfoANDROID=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID
+       pNext:PVkVoid;
+       buffer:PVkAndroidAHardwareBuffer;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pBuffer:PVkAndroidAHardwareBuffer);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef Android}
+     PPVkAndroidHardwareBufferUsageANDROID=^PVkAndroidHardwareBufferUsageANDROID;
+     PVkAndroidHardwareBufferUsageANDROID=^TVkAndroidHardwareBufferUsageANDROID;
+     TVkAndroidHardwareBufferUsageANDROID=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID
+       pNext:PVkVoid;
+       androidHardwareBufferUsage:TVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pAndroidHardwareBufferUsage:TVkUInt64);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef Android}
+     PPVkAndroidHardwareBufferPropertiesANDROID=^PVkAndroidHardwareBufferPropertiesANDROID;
+     PVkAndroidHardwareBufferPropertiesANDROID=^TVkAndroidHardwareBufferPropertiesANDROID;
+     TVkAndroidHardwareBufferPropertiesANDROID=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID
+       pNext:PVkVoid;
+       allocationSize:TVkDeviceSize;
+       memoryTypeBits:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pAllocationSize:TVkDeviceSize;
+                          const pMemoryTypeBits:TVkUInt32);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef Android}
+     PPVkMemoryGetAndroidHardwareBufferInfoANDROID=^PVkMemoryGetAndroidHardwareBufferInfoANDROID;
+     PVkMemoryGetAndroidHardwareBufferInfoANDROID=^TVkMemoryGetAndroidHardwareBufferInfoANDROID;
+     TVkMemoryGetAndroidHardwareBufferInfoANDROID=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MEMORY_GET_ANDROID_HARDWARE_BUFFER_INFO_ANDROID
+       pNext:PVkVoid;
+       memory:TVkDeviceMemory;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pMemory:TVkDeviceMemory);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef Android}
+     PPVkAndroidHardwareBufferFormatPropertiesANDROID=^PVkAndroidHardwareBufferFormatPropertiesANDROID;
+     PVkAndroidHardwareBufferFormatPropertiesANDROID=^TVkAndroidHardwareBufferFormatPropertiesANDROID;
+     TVkAndroidHardwareBufferFormatPropertiesANDROID=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID
+       pNext:PVkVoid;
+       format:TVkFormat;
+       externalFormat:TVkUInt64;
+       formatFeatures:TVkFormatFeatureFlags;
+       samplerYcbcrConversionComponents:TVkComponentMapping;
+       suggestedYcbcrModel:TVkSamplerYcbcrModelConversion;
+       suggestedYcbcrRange:TVkSamplerYcbcrRange;
+       suggestedXChromaOffset:TVkChromaLocation;
+       suggestedYChromaOffset:TVkChromaLocation;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pFormat:TVkFormat;
+                          const pExternalFormat:TVkUInt64;
+                          const pFormatFeatures:TVkFormatFeatureFlags;
+                          const pSamplerYcbcrConversionComponents:TVkComponentMapping;
+                          const pSuggestedYcbcrModel:TVkSamplerYcbcrModelConversion;
+                          const pSuggestedYcbcrRange:TVkSamplerYcbcrRange;
+                          const pSuggestedXChromaOffset:TVkChromaLocation;
+                          const pSuggestedYChromaOffset:TVkChromaLocation);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef Android}
+     PPVkExternalFormatANDROID=^PVkExternalFormatANDROID;
+     PVkExternalFormatANDROID=^TVkExternalFormatANDROID;
+     TVkExternalFormatANDROID=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID
+       pNext:PVkVoid;
+       externalFormat:TVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const pExternalFormat:TVkUInt64);
+{$endif}
+     end;
+{$endif}
+
      TvkCreateInstance=function(const pCreateInfo:PVkInstanceCreateInfo;const pAllocator:PVkAllocationCallbacks;pInstance:PVkInstance):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkDestroyInstance=procedure(instance:TVkInstance;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -10404,6 +10526,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkGetMemoryHostPointerPropertiesEXT=function(device:TVkDevice;handleType:TVkExternalMemoryHandleTypeFlagBits;const pHostPointer:PVkVoid;pMemoryHostPointerProperties:PVkMemoryHostPointerPropertiesEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCmdWriteBufferMarkerAMD=procedure(commandBuffer:TVkCommandBuffer;pipelineStage:TVkPipelineStageFlagBits;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;marker:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+{$ifdef Android}
+     TvkGetAndroidHardwareBufferPropertiesANDROID=function(device:TVkDevice;const buffer:PVkAndroidAHardwareBuffer;pProperties:PVkAndroidHardwareBufferPropertiesANDROID):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
+{$ifdef Android}
+     TvkGetMemoryAndroidHardwareBufferANDROID=function(device:TVkDevice;const pInfo:PVkMemoryGetAndroidHardwareBufferInfoANDROID;pBuffer:PPVkAndroidAHardwareBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
 
 
      PPVulkanCommands=^PVulkanCommands;
@@ -11054,6 +11184,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       GetMemoryHostPointerPropertiesEXT:TvkGetMemoryHostPointerPropertiesEXT;
 
       CmdWriteBufferMarkerAMD:TvkCmdWriteBufferMarkerAMD;
+
+{$ifdef Android}
+      GetAndroidHardwareBufferPropertiesANDROID:TvkGetAndroidHardwareBufferPropertiesANDROID;
+{$endif}
+
+{$ifdef Android}
+      GetMemoryAndroidHardwareBufferANDROID:TvkGetMemoryAndroidHardwareBufferANDROID;
+{$endif}
 
      end;
 
@@ -11710,6 +11848,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure CmdWriteBufferMarkerAMD(commandBuffer:TVkCommandBuffer;pipelineStage:TVkPipelineStageFlagBits;dstBuffer:TVkBuffer;dstOffset:TVkDeviceSize;marker:TVkUInt32); virtual;
 
+{$ifdef Android}
+       function GetAndroidHardwareBufferPropertiesANDROID(device:TVkDevice;const buffer:PVkAndroidAHardwareBuffer;pProperties:PVkAndroidHardwareBufferPropertiesANDROID):TVkResult; virtual;
+{$endif}
+
+{$ifdef Android}
+       function GetMemoryAndroidHardwareBufferANDROID(device:TVkDevice;const pInfo:PVkMemoryGetAndroidHardwareBufferInfoANDROID;pBuffer:PPVkAndroidAHardwareBuffer):TVkResult; virtual;
+{$endif}
+
        property Commands:TVulkanCommands read fCommands;
      end;
 
@@ -12362,6 +12508,14 @@ var LibVulkan:pointer=nil;
     vkGetMemoryHostPointerPropertiesEXT:TvkGetMemoryHostPointerPropertiesEXT=nil;
 
     vkCmdWriteBufferMarkerAMD:TvkCmdWriteBufferMarkerAMD=nil;
+
+{$ifdef Android}
+    vkGetAndroidHardwareBufferPropertiesANDROID:TvkGetAndroidHardwareBufferPropertiesANDROID=nil;
+{$endif}
+
+{$ifdef Android}
+    vkGetMemoryAndroidHardwareBufferANDROID:TvkGetMemoryAndroidHardwareBufferANDROID=nil;
+{$endif}
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -13723,6 +13877,18 @@ begin
    @vkCmdWriteBufferMarkerAMD:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdWriteBufferMarkerAMD'));
    @vk.fCommands.CmdWriteBufferMarkerAMD:=addr(vkCmdWriteBufferMarkerAMD);
   end;
+{$ifdef Android}
+  if not assigned(vkGetAndroidHardwareBufferPropertiesANDROID) then begin
+   @vkGetAndroidHardwareBufferPropertiesANDROID:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetAndroidHardwareBufferPropertiesANDROID'));
+   @vk.fCommands.GetAndroidHardwareBufferPropertiesANDROID:=addr(vkGetAndroidHardwareBufferPropertiesANDROID);
+  end;
+{$endif}
+{$ifdef Android}
+  if not assigned(vkGetMemoryAndroidHardwareBufferANDROID) then begin
+   @vkGetMemoryAndroidHardwareBufferANDROID:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetMemoryAndroidHardwareBufferANDROID'));
+   @vk.fCommands.GetMemoryAndroidHardwareBufferANDROID:=addr(vkGetMemoryAndroidHardwareBufferANDROID);
+  end;
+{$endif}
   result:=assigned(vkCreateInstance);
  end;
 end;
@@ -14077,6 +14243,12 @@ begin
   @InstanceCommands.SubmitDebugUtilsMessageEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkSubmitDebugUtilsMessageEXT')));
   @InstanceCommands.GetMemoryHostPointerPropertiesEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetMemoryHostPointerPropertiesEXT')));
   @InstanceCommands.CmdWriteBufferMarkerAMD:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdWriteBufferMarkerAMD')));
+{$ifdef Android}
+  @InstanceCommands.GetAndroidHardwareBufferPropertiesANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetAndroidHardwareBufferPropertiesANDROID')));
+{$endif}
+{$ifdef Android}
+  @InstanceCommands.GetMemoryAndroidHardwareBufferANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetMemoryAndroidHardwareBufferANDROID')));
+{$endif}
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -14330,6 +14502,12 @@ begin
   @DeviceCommands.CmdInsertDebugUtilsLabelEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdInsertDebugUtilsLabelEXT')));
   @DeviceCommands.GetMemoryHostPointerPropertiesEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetMemoryHostPointerPropertiesEXT')));
   @DeviceCommands.CmdWriteBufferMarkerAMD:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdWriteBufferMarkerAMD')));
+{$ifdef Android}
+  @DeviceCommands.GetAndroidHardwareBufferPropertiesANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetAndroidHardwareBufferPropertiesANDROID')));
+{$endif}
+{$ifdef Android}
+  @DeviceCommands.GetMemoryAndroidHardwareBufferANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetMemoryAndroidHardwareBufferANDROID')));
+{$endif}
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -18390,6 +18568,76 @@ begin
  pNext:=nil;
  maxVertexAttribDivisor:=pMaxVertexAttribDivisor;
 end;
+
+{$ifdef Android}
+constructor TVkImportAndroidHardwareBufferInfoANDROID.Create(const pBuffer:PVkAndroidAHardwareBuffer);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID;
+ pNext:=nil;
+ buffer:=pBuffer;
+end;
+{$endif}
+
+{$ifdef Android}
+constructor TVkAndroidHardwareBufferUsageANDROID.Create(const pAndroidHardwareBufferUsage:TVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_USAGE_ANDROID;
+ pNext:=nil;
+ androidHardwareBufferUsage:=pAndroidHardwareBufferUsage;
+end;
+{$endif}
+
+{$ifdef Android}
+constructor TVkAndroidHardwareBufferPropertiesANDROID.Create(const pAllocationSize:TVkDeviceSize;
+                                                             const pMemoryTypeBits:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID;
+ pNext:=nil;
+ allocationSize:=pAllocationSize;
+ memoryTypeBits:=pMemoryTypeBits;
+end;
+{$endif}
+
+{$ifdef Android}
+constructor TVkMemoryGetAndroidHardwareBufferInfoANDROID.Create(const pMemory:TVkDeviceMemory);
+begin
+ sType:=VK_STRUCTURE_TYPE_MEMORY_GET_ANDROID_HARDWARE_BUFFER_INFO_ANDROID;
+ pNext:=nil;
+ memory:=pMemory;
+end;
+{$endif}
+
+{$ifdef Android}
+constructor TVkAndroidHardwareBufferFormatPropertiesANDROID.Create(const pFormat:TVkFormat;
+                                                                   const pExternalFormat:TVkUInt64;
+                                                                   const pFormatFeatures:TVkFormatFeatureFlags;
+                                                                   const pSamplerYcbcrConversionComponents:TVkComponentMapping;
+                                                                   const pSuggestedYcbcrModel:TVkSamplerYcbcrModelConversion;
+                                                                   const pSuggestedYcbcrRange:TVkSamplerYcbcrRange;
+                                                                   const pSuggestedXChromaOffset:TVkChromaLocation;
+                                                                   const pSuggestedYChromaOffset:TVkChromaLocation);
+begin
+ sType:=VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID;
+ pNext:=nil;
+ format:=pFormat;
+ externalFormat:=pExternalFormat;
+ formatFeatures:=pFormatFeatures;
+ samplerYcbcrConversionComponents:=pSamplerYcbcrConversionComponents;
+ suggestedYcbcrModel:=pSuggestedYcbcrModel;
+ suggestedYcbcrRange:=pSuggestedYcbcrRange;
+ suggestedXChromaOffset:=pSuggestedXChromaOffset;
+ suggestedYChromaOffset:=pSuggestedYChromaOffset;
+end;
+{$endif}
+
+{$ifdef Android}
+constructor TVkExternalFormatANDROID.Create(const pExternalFormat:TVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID;
+ pNext:=nil;
+ externalFormat:=pExternalFormat;
+end;
+{$endif}
 {$endif}
 
 constructor TVulkan.Create;
@@ -19957,6 +20205,20 @@ procedure TVulkan.CmdWriteBufferMarkerAMD(commandBuffer:TVkCommandBuffer;pipelin
 begin
  fCommands.CmdWriteBufferMarkerAMD(commandBuffer,pipelineStage,dstBuffer,dstOffset,marker);
 end;
+
+{$ifdef Android}
+function TVulkan.GetAndroidHardwareBufferPropertiesANDROID(device:TVkDevice;const buffer:PVkAndroidAHardwareBuffer;pProperties:PVkAndroidHardwareBufferPropertiesANDROID):TVkResult;
+begin
+ result:=fCommands.GetAndroidHardwareBufferPropertiesANDROID(device,buffer,pProperties);
+end;
+{$endif}
+
+{$ifdef Android}
+function TVulkan.GetMemoryAndroidHardwareBufferANDROID(device:TVkDevice;const pInfo:PVkMemoryGetAndroidHardwareBufferInfoANDROID;pBuffer:PPVkAndroidAHardwareBuffer):TVkResult;
+begin
+ result:=fCommands.GetMemoryAndroidHardwareBufferANDROID(device,pInfo,pBuffer);
+end;
+{$endif}
 
 initialization
  vk:=TVulkan.Create;
