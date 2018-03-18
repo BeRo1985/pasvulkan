@@ -3873,7 +3873,7 @@ begin
           (copy(TypeDefinition^.Members[j].Values,1,length('VK_STRUCTURE_TYPE_'))='VK_STRUCTURE_TYPE_') then begin
         TypeDefinition^.Members[j].Comment:='Must be '+TypeDefinition^.Members[j].Values; // Restore/Recreate old <= 1.0.22 sType member comments
        end;
-       ParameterName:='p'+UpCase(TypeDefinition^.Members[j].Name[1])+copy(TypeDefinition^.Members[j].Name,2,length(TypeDefinition^.Members[j].Name)-1);
+       ParameterName:='a'+UpCase(TypeDefinition^.Members[j].Name[1])+copy(TypeDefinition^.Members[j].Name,2,length(TypeDefinition^.Members[j].Name)-1);
        ParameterLine:=ParameterName+':';
        if length(TypeDefinition^.Members[j].ArraySizeStr)>0 then begin
         TypeDefinitionTypes.Add('       '+TypeDefinition^.Members[j].Name+':array[0..'+TypeDefinition^.Members[j].ArraySizeStr+'-1] of '+TranslateType(TypeDefinition^.Members[j].Type_,TypeDefinition^.Members[j].Ptr)+';'+MemberComment(TypeDefinition^.Members[j].Comment));
