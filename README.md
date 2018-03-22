@@ -113,7 +113,7 @@ The Vulkan.pas binding header unit itself (including the vkxml2pas.dpr converter
           
 ## Showcase videos
 
-- For more recent showcase videos see [![Youtube playlist](https://www.youtube.com/playlist?list=PLoqdQblnX8vTx3menwS15yIMAldRZzPa7)
+- For more recent showcase videos see [Youtube playlist](https://www.youtube.com/playlist?list=PLoqdQblnX8vTx3menwS15yIMAldRZzPa7)
 
 - PasVulkan on Android 7.0 on a NVIDIA Shield K1 Tablet
   [![PasVulkan on Android 7.0 on a NVIDIA Shield K1 Tablet](https://img.youtube.com/vi/aXIaW7-rHGI/0.jpg)](https://www.youtube.com/watch?v=aXIaW7-rHGI)
