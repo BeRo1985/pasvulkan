@@ -7,7 +7,7 @@
         <TargetedPlatforms>3</TargetedPlatforms>
         <AppType>Console</AppType>
         <FrameworkType>None</FrameworkType>
-        <ProjectVersion>18.3</ProjectVersion>
+        <ProjectVersion>18.4</ProjectVersion>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
@@ -347,6 +347,12 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
+                <DeployFile LocalName="..\src\PasVulkan.Applicaton.SDL2.inc" Configuration="Debug" Class="ProjectFile">
+                    <Platform Name="Win32">
+                        <RemoteDir>.\</RemoteDir>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector3.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
@@ -363,21 +369,15 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="DelphiOutput\Win32\Debug\examples.exe" Configuration="Debug" Class="ProjectOutput">
-                    <Platform Name="Win32">
-                        <RemoteName>examples.exe</RemoteName>
-                        <Overwrite>true</Overwrite>
-                    </Platform>
-                </DeployFile>
                 <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector3Helper.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\src\PasVulkan.Applicaton.SDL2.inc" Configuration="Debug" Class="ProjectFile">
+                <DeployFile LocalName="DelphiOutput\Win32\Debug\examples.exe" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
-                        <RemoteDir>.\</RemoteDir>
+                        <RemoteName>examples.exe</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>

@@ -6959,7 +6959,7 @@ begin
 
  aDrawEngine.Transparent:=false;
 
- aDrawEngine.DrawGUIElementWithTransparentEdges(GUI_ELEMENT_BUTTON_UNFOCUSED,
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
                                                 true,
                                                 TpvVector2.InlineableCreate(0.0,0.0),
                                                 TpvVector2.InlineableCreate(aButton.fSize.x,aButton.fSize.y),
