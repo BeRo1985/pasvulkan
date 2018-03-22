@@ -1411,7 +1411,7 @@ begin
      (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
      assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
    CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+   if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
        (length(fKerningPairs)>0) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
@@ -1457,7 +1457,7 @@ begin
      (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
      assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
    CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+   if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
        (length(fKerningPairs)>0) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
@@ -1503,7 +1503,7 @@ begin
      (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
      assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
    CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+   if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
        (length(fKerningPairs)>0) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
@@ -1542,7 +1542,7 @@ begin
     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-  if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
    Glyph:=@fGlyphs[CurrentGlyph];
    Width:=Glyph^.Bounds.Right;
    result:=Glyph^.Advance.x;
@@ -1570,7 +1570,7 @@ begin
     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-  if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
    Glyph:=@fGlyphs[CurrentGlyph];
    Height:=Glyph^.Bounds.Bottom;
    result:=Glyph^.Advance.y;
@@ -1599,7 +1599,7 @@ begin
     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-  if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
    Glyph:=@fGlyphs[CurrentGlyph];
    Size:=Maximum(Size,result+Glyph^.Bounds.RightBottom);
    result:=result+Glyph^.Advance;
@@ -1661,7 +1661,7 @@ begin
      (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
      assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
    CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+   if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
        (length(fKerningPairs)>0) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
@@ -1704,19 +1704,21 @@ begin
      (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
      assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
    CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-   if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+   if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
     if ((LastGlyph>=0) and (LastGlyph<length(fGlyphs))) and
        (length(fKerningPairs)>0) and
        fKerningPairHashMap.TryGet(CombineTwoUInt32IntoOneUInt64(LastGlyph,CurrentGlyph),Int64Value) then begin
      Position:=Position+fKerningPairVectors[Int64Value];
     end;
     Glyph:=@fGlyphs[CurrentGlyph];
-    aDrawSprite(Glyph^.Sprite,
-                TpvRect.CreateRelative(TpvVector2.Null,
-                                       Glyph^.Size),
-                TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
-                                       Glyph^.Size*RescaleFactor));
-    Position:=Position+Glyph^.Advance;
+    if assigned(Glyph^.Sprite) then begin
+     aDrawSprite(Glyph^.Sprite,
+                 TpvRect.CreateRelative(TpvVector2.Null,
+                                        Glyph^.Size),
+                 TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
+                                        Glyph^.Size*RescaleFactor));
+     Position:=Position+Glyph^.Advance;
+    end;
    end;
   end else begin
    CurrentGlyph:=0;
@@ -1747,13 +1749,15 @@ begin
     (CodePointMapMainIndex<=High(TpvFontCodePointToGlyphMap)) and
     assigned(fCodePointToGlyphMap[CodePointMapMainIndex]) then begin
   CurrentGlyph:=fCodePointToGlyphMap[CodePointMapMainIndex]^[CodePointMapSubIndex];
-  if (CurrentGlyph>=0) or (CurrentGlyph<length(fGlyphs)) then begin
+  if (CurrentGlyph>=0) and (CurrentGlyph<length(fGlyphs)) then begin
    Glyph:=@fGlyphs[CurrentGlyph];
-   aDrawSprite(Glyph^.Sprite,
-               TpvRect.CreateRelative(TpvVector2.Null,
-                                      Glyph^.Size),
-               TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
-                                      Glyph^.Size*RescaleFactor));
+   if assigned(Glyph^.Sprite) then begin
+    aDrawSprite(Glyph^.Sprite,
+                TpvRect.CreateRelative(TpvVector2.Null,
+                                       Glyph^.Size),
+                TpvRect.CreateRelative(aPosition+(Position*ScaleFactor)+(Glyph^.Offset*RescaleFactor),
+                                       Glyph^.Size*RescaleFactor));
+   end;
   end;
  end;
 end;
