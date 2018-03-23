@@ -18098,9 +18098,13 @@ begin
   1:begin
    // No
    fDoIt:=true;
+   fParent.fView.UnmarkAll;
+   fParent.fDirty:=true;
   end;
   2:begin
    // Cancel
+   fParent.fView.UnmarkAll;
+   fParent.fDirty:=true;
   end;
  end;
 end;
