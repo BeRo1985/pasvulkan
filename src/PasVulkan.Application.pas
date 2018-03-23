@@ -6848,6 +6848,7 @@ end;
 {$ifend}
 
 procedure TpvApplication.ProcessMessages;
+{$define TpvApplicationUpdateJobOnMainThread}
 var Index,Counter:TpvInt32;
     Joystick:TpvApplicationJoystick;
 {$if defined(PasVulkanUseSDL2)}
@@ -6856,7 +6857,11 @@ var Index,Counter:TpvInt32;
 {$else}
 {$ifend}
     OK,Found,DoUpdateMainJoystick:boolean;
+{$ifdef TpvApplicationUpdateJobOnMainThread}
+    DrawJob:PPasMPJob;
+{$else}
     Jobs:array[0..1] of PPasMPJob;
+{$endif}
 begin
 
  ProcessRunnables;
@@ -7268,9 +7273,19 @@ begin
 
       fDrawFrameCounter:=fFrameCounter-1;
 
+{$ifdef TpvApplicationUpdateJobOnMainThread}
+      DrawJob:=fPasMPInstance.Acquire(DrawJobFunction);
+      try
+       fPasMPInstance.Run(DrawJob);
+       UpdateJobFunction(nil,fPasMPInstance.GetJobWorkerThreadIndex);
+      finally
+       fPasMPInstance.WaitRelease(DrawJob);
+      end;
+{$else}
       Jobs[0]:=fPasMPInstance.Acquire(UpdateJobFunction);
       Jobs[1]:=fPasMPInstance.Acquire(DrawJobFunction);
       fPasMPInstance.Invoke(Jobs);
+{$endif}
 
      end else begin
 
