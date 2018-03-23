@@ -1361,6 +1361,7 @@ type TpvGUIObject=class;
        procedure AddCloseButton;
        function AddMenu:TpvGUIWindowMenu;
        procedure DisposeWindow;
+       procedure Close;
        procedure Center;
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget; override;
        procedure PerformLayout; override;
@@ -2582,9 +2583,13 @@ type TpvGUIObject=class;
        fCheckBoxPromptOnReplace:TpvGUICheckBox;
        fCheckBoxSearchSelection:TpvGUICheckBox;
        fCheckBoxEntrieScope:TpvGUICheckBox;
+       procedure ButtonFindOnClick(const aSender:TpvGUIObject);
+       procedure ButtonReplaceOnClick(const aSender:TpvGUIObject);
+       procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
       public
        constructor Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); reintroduce;
        destructor Destroy; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
      end;
 
 implementation
@@ -11184,7 +11189,7 @@ begin
    WindowState:=TpvGUIWindowState.Maximized;
   end;
  end else if aSender=fCloseButton then begin
-  DisposeWindow;
+  Close;
  end;
  if assigned(fInstance) and
     (aSender is TpvGUIWidget) and
@@ -11242,6 +11247,11 @@ begin
  if assigned(fInstance) then begin
   fInstance.DisposeWindow(self);
  end;
+end;
+
+procedure TpvGUIWindow.Close;
+begin
+ DisposeWindow;
 end;
 
 procedure TpvGUIWindow.SetWindowFlags(const aWindowFlags:TpvGUIWindowFlags);
@@ -12047,7 +12057,7 @@ begin
      fOnButtonClick(self,MessageDialogButton^.fID);
     end;
     result:=true;
-    DisposeWindow;
+    Close;
     break;
    end;
   end;
@@ -12067,7 +12077,7 @@ begin
    break;
   end;
  end;
- DisposeWindow;
+ Close;
 end;
 
 constructor TpvGUIPopup.Create(const aParent:TpvGUIObject);
@@ -18891,12 +18901,15 @@ begin
 
   fButtonFind:=TpvGUIButton.Create(fPanelButtons);
   fButtonFind.Caption:='Find';
+  fButtonFind.OnClick:=ButtonFindOnClick;
 
   fButtonReplace:=TpvGUIButton.Create(fPanelButtons);
   fButtonReplace.Caption:='Replace';
+  fButtonReplace.OnClick:=ButtonReplaceOnClick;
 
   fButtonCancel:=TpvGUIButton.Create(fPanelButtons);
   fButtonCancel.Caption:='Cancel';
+  fButtonCancel.OnClick:=ButtonCancelOnClick;
 
  end;
 
@@ -18904,15 +18917,46 @@ begin
 
  RequestFocus;
 
+ fTextEditFind.RequestFocus;
+
 end;
 
 destructor TpvGUIMultiLineTextEditSearchReplaceWindow.Destroy;
 begin
  if assigned(fMultiLineTextEdit) then begin
+  fMultiLineTextEdit.RequestFocus;
   fMultiLineTextEdit.fSearchReplaceWindow:=nil;
   fMultiLineTextEdit:=nil;
  end;
  inherited Destroy;
+end;
+
+function TpvGUIMultiLineTextEditSearchReplaceWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_ESCAPE:begin
+    result:=true;
+    Close;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvGUIMultiLineTextEditSearchReplaceWindow.ButtonFindOnClick(const aSender:TpvGUIObject);
+begin
+ Close;
+end;
+
+procedure TpvGUIMultiLineTextEditSearchReplaceWindow.ButtonReplaceOnClick(const aSender:TpvGUIObject);
+begin
+ Close;
+end;
+
+procedure TpvGUIMultiLineTextEditSearchReplaceWindow.ButtonCancelOnClick(const aSender:TpvGUIObject);
+begin
+ Close;
 end;
 
 end.
