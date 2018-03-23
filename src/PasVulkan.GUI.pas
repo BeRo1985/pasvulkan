@@ -728,6 +728,9 @@ type TpvGUIObject=class;
        fIconArrowUpDown:TObject;
        fIconUndo:TObject;
        fIconRedo:TObject;
+       fIconSearch:TObject;
+       fIconSearchNext:TObject;
+       fIconReplace:TObject;
        fIconChevronHeight:TpvFloat;
        fIconPopupMenuHeight:TpvFloat;
        fIconMenuRightHeight:TpvFloat;
@@ -860,6 +863,9 @@ type TpvGUIObject=class;
        property IconArrowUpDown:TObject read fIconArrowUpDown write fIconArrowUpDown;
        property IconUndo:TObject read fIconUndo write fIconUndo;
        property IconRedo:TObject read fIconRedo write fIconRedo;
+       property IconSearch:TObject read fIconSearch write fIconSearch;
+       property IconSearchNext:TObject read fIconSearchNext write fIconSearchNext;
+       property IconReplace:TObject read fIconReplace write fIconReplace;
        property IconChevronHeight:TpvFloat read fIconChevronHeight write fIconChevronHeight;
        property IconPopupMenuHeight:TpvFloat read fIconPopupMenuHeight write fIconPopupMenuHeight;
        property IconMenuRightHeight:TpvFloat read fIconMenuRightHeight write fIconMenuRightHeight;
@@ -2508,6 +2514,7 @@ type TpvGUIObject=class;
        fOnClick:TpvGUIOnEvent;
        fOnChange:TpvGUIOnEvent;
        fSearchReplaceWindow:TpvGUIMultiLineTextEditSearchReplaceWindow;
+       procedure OpenSearchReplaceDialog;
        procedure PopupMenuOnCutClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnCopyClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnPasteClick(const aSender:TpvGUIObject);
@@ -2516,6 +2523,9 @@ type TpvGUIObject=class;
        procedure PopupMenuOnSelectNoneClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnUndoClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnRedoClick(const aSender:TpvGUIObject);
+       procedure PopupMenuOnSearchClick(const aSender:TpvGUIObject);
+       procedure PopupMenuOnFindNextClick(const aSender:TpvGUIObject);
+       procedure PopupMenuOnReplaceClick(const aSender:TpvGUIObject);
        function GetText:TpvUTF8String;
        procedure SetText(const aText:TpvUTF8String);
        procedure SetHorizontalScrollDirection(const aHorizontalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
@@ -5251,6 +5261,9 @@ begin
  fIconArrowUpDown:=nil;
  fIconUndo:=nil;
  fIconRedo:=nil;
+ fIconSearch:=nil;
+ fIconSearchNext:=nil;
+ fIconReplace:=nil;
  Setup;
 end;
 
@@ -5464,7 +5477,7 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.Setup;
-const CacheVersionGUID:TGUID='{4034B8C7-89A8-42A2-BDF6-C1314DF13B46}';
+const CacheVersionGUID:TGUID='{51D9BE81-87CD-4894-8524-86AA0DA27908}';
 var Stream:TStream;
     TrueTypeFont:TpvTrueTypeFont;
     RecreateCacheFiles:boolean;
@@ -6088,6 +6101,46 @@ begin
                                                                            2,
                                                                            1);
 
+  fIconSearch:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconSearch',
+                                                                             'M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 '+
+                                                                             '0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z',
+                                                                             48,
+                                                                             48,
+                                                                             48.0/24.0,
+                                                                             0.0,
+                                                                             0.0,
+                                                                             TpvVectorPathFillRule.NonZero,
+                                                                             true,
+                                                                             2,
+                                                                             1);
+
+  fIconSearchNext:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconSearchNext',
+                                                                                 'M17.01 14h-.8l-.27-.27c.98-1.14 1.57-2.61 1.57-4.23 0-3.59-2.91-6.5-6.5-6.5s-6.5 3-6.5 6.5H2l3.84 4 4.16-4H6.51C6.51 7 8.53 5 11.01 5s4.5 2.01 4.5'+
+                                                                                 ' 4.5c0 2.48-2.02 4.5-4.5 4.5-.65 0-1.26-.14-1.82-.38L7.71 15.1c.97.57 2.09.9 3.3.9 1.61 0 3.08-.59 4.22-1.57l.27.27v.79l5.01 4.99L22 19l-4.99-5z',
+                                                                                 48,
+                                                                                 48,
+                                                                                 48.0/24.0,
+                                                                                 0.0,
+                                                                                 0.0,
+                                                                                 TpvVectorPathFillRule.NonZero,
+                                                                                 true,
+                                                                                 2,
+                                                                                 1);
+
+  fIconReplace:=fSignedDistanceFieldSpriteAtlas.LoadSignedDistanceFieldSprite('IconReplace',
+                                                                              'M11,6C12.38,6 13.63,6.56 14.54,7.46L12,10H18V4L15.95,6.05C14.68,4.78 12.93,4 11,4C7.47,4 4.57,6.61 4.08,10H6.1C6.56,7.72 8.58,6'+
+                                                                              ' 11,6M16.64,15.14C17.3,14.24 17.76,13.17 17.92,12H15.9C15.44,14.28 13.42,16 11,16C9.62,16 8.37,15.44'+
+                                                                              ' 7.46,14.54L10,12H4V18L6.05,15.95C7.32,17.22 9.07,18 11,18C12.55,18 14,17.5 15.14,16.64L20,21.5L21.5,20L16.64,15.14Z',
+                                                                              48,
+                                                                              48,
+                                                                              48.0/24.0,
+                                                                              0.0,
+                                                                              0.0,
+                                                                              TpvVectorPathFillRule.NonZero,
+                                                                              true,
+                                                                              2,
+                                                                              1);
+
   if length(CacheStoragePath)>0 then begin
 
    fSignedDistanceFieldSpriteAtlas.SaveToFile(CacheStoragePath+'gui_signed_distance_field_spriteatlas.zip',true);
@@ -6158,6 +6211,9 @@ begin
   fIconArrowUpDown:=fSignedDistanceFieldSpriteAtlas.Sprites['IconArrowUpDown'];
   fIconUndo:=fSignedDistanceFieldSpriteAtlas.Sprites['IconUndo'];
   fIconRedo:=fSignedDistanceFieldSpriteAtlas.Sprites['IconRedo'];
+  fIconSearch:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSearch'];
+  fIconSearchNext:=fSignedDistanceFieldSpriteAtlas.Sprites['IconSearchNext'];
+  fIconReplace:=fSignedDistanceFieldSpriteAtlas.Sprites['IconReplace'];
 
  end;
 
@@ -17975,6 +18031,30 @@ begin
  MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
  MenuItem.OnClick:=PopupMenuOnRedoClick;
 
+ MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
+ MenuItem.Caption:='-';
+
+ MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
+ MenuItem.Caption:='Search';
+ MenuItem.ShortcutHint:='Ctrl-F';
+ MenuItem.fIcon:=Skin.fIconSearch;
+ MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
+ MenuItem.OnClick:=PopupMenuOnSearchClick;
+
+ MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
+ MenuItem.Caption:='Find next';
+ MenuItem.ShortcutHint:='F3';
+ MenuItem.fIcon:=Skin.fIconSearchNext;
+ MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
+ MenuItem.OnClick:=PopupMenuOnFindNextClick;
+
+ MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
+ MenuItem.Caption:='Replace';
+ MenuItem.ShortcutHint:='Ctrl-H';
+ MenuItem.fIcon:=Skin.fIconReplace;
+ MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
+ MenuItem.OnClick:=PopupMenuOnReplaceClick;
+
  fTextEditor:=TpvTextEditor.Create;
 
  fView:=fTextEditor.CreateView;
@@ -18029,6 +18109,13 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvGUIMultiLineTextEdit.OpenSearchReplaceDialog;
+begin
+ if fEditable and not assigned(fSearchReplaceWindow) then begin
+  fSearchReplaceWindow:=TpvGUIMultiLineTextEditSearchReplaceWindow.Create(fInstance,self);
+ end;
+end;
+
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnCutClick(const aSender:TpvGUIObject);
 begin
  CutSelectedText;
@@ -18077,6 +18164,21 @@ begin
  if assigned(fOnChange) then begin
   fOnChange(self);
  end;
+end;
+
+procedure TpvGUIMultiLineTextEdit.PopupMenuOnSearchClick(const aSender:TpvGUIObject);
+begin
+ OpenSearchReplaceDialog;
+end;
+
+procedure TpvGUIMultiLineTextEdit.PopupMenuOnFindNextClick(const aSender:TpvGUIObject);
+begin
+
+end;
+
+procedure TpvGUIMultiLineTextEdit.PopupMenuOnReplaceClick(const aSender:TpvGUIObject);
+begin
+ OpenSearchReplaceDialog;
 end;
 
 procedure TpvGUIMultiLineTextEdit.SetHorizontalScrollDirection(const aHorizontalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
@@ -18621,9 +18723,7 @@ begin
       end;
      end;
      KEYCODE_F,KEYCODE_H,KEYCODE_R:begin
-      if not assigned(fSearchReplaceWindow) then begin
-       fSearchReplaceWindow:=TpvGUIMultiLineTextEditSearchReplaceWindow.Create(fInstance,self);
-      end;
+      OpenSearchReplaceDialog;
       result:=true;
      end;
     end;
