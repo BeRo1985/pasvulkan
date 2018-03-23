@@ -2477,6 +2477,27 @@ type TpvGUIObject=class;
 
      TpvGUIMultiLineTextEditSearchReplaceWindow=class;
 
+     TpvGUIMultiLineTextEditSearchReplaceState=class
+      private
+       fParent:TpvGUIMultiLineTextEdit;
+       fFind:TpvUTF8String;
+       fReplace:TpvUTF8String;
+       fUseRegularExpression:boolean;
+       fWholeWords:boolean;
+       fCaseInsensitive:boolean;
+       fReplaceAll:boolean;
+       fPromptOnReplace:boolean;
+       fSearchSelection:boolean;
+       fEntrieScope:boolean;
+       fDoReplace:boolean;
+       fCodePointIndex:TpvSizeInt;
+       fSelectionStart:TpvSizeInt;
+       fSelectionEnd:TpvSizeInt;
+      public
+       constructor Create(const aParent:TpvGUIMultiLineTextEdit); reintroduce;
+       destructor Destroy; override;
+     end;
+
      TpvGUIMultiLineTextEdit=class(TpvGUIWidget)
       private
        fPopupMenu:TpvGUIPopupMenu;
@@ -2514,6 +2535,7 @@ type TpvGUIObject=class;
        fOnClick:TpvGUIOnEvent;
        fOnChange:TpvGUIOnEvent;
        fSearchReplaceWindow:TpvGUIMultiLineTextEditSearchReplaceWindow;
+       fSearchReplaceState:TpvGUIMultiLineTextEditSearchReplaceState;
        procedure OpenSearchReplaceDialog;
        procedure PopupMenuOnCutClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnCopyClick(const aSender:TpvGUIObject);
@@ -2595,6 +2617,7 @@ type TpvGUIObject=class;
        fCheckBoxEntrieScope:TpvGUICheckBox;
        function TextEditFindOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditReplaceOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       procedure NewSearchReplaceState;
        procedure ButtonFindOnClick(const aSender:TpvGUIObject);
        procedure ButtonReplaceOnClick(const aSender:TpvGUIObject);
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
@@ -17937,6 +17960,55 @@ begin
  inherited Update;
 end;
 
+constructor TpvGUIMultiLineTextEditSearchReplaceState.Create(const aParent:TpvGUIMultiLineTextEdit);
+begin
+ inherited Create;
+
+ fParent:=aParent;
+
+ fFind:='';
+
+ fReplace:='';
+
+ fUseRegularExpression:=false;
+
+ fWholeWords:=false;
+
+ fCaseInsensitive:=false;
+
+ fReplaceAll:=false;
+
+ fPromptOnReplace:=false;
+
+ fSearchSelection:=false;
+
+ fEntrieScope:=false;
+
+ fDoReplace:=false;
+
+ fCodePointIndex:=-1;
+
+ fSelectionStart:=-1;
+
+ fSelectionEnd:=-1;
+
+end;
+
+destructor TpvGUIMultiLineTextEditSearchReplaceState.Destroy;
+begin
+
+ fFind:='';
+
+ fReplace:='';
+
+ if assigned(fParent) then begin
+  fParent.fSearchReplaceState:=nil;
+ end;
+
+ inherited Destroy;
+
+end;
+
 constructor TpvGUIMultiLineTextEdit.Create(const aParent:TpvGUIObject);
 var MenuItem:TpvGUIMenuItem;
 begin
@@ -18089,10 +18161,17 @@ begin
 
  fSearchReplaceWindow:=nil;
 
+ fSearchReplaceState:=nil;
+
 end;
 
 destructor TpvGUIMultiLineTextEdit.Destroy;
 begin
+
+ if assigned(fSearchReplaceState) then begin
+  fSearchReplaceState.fParent:=nil;
+  FreeAndNil(fSearchReplaceState);
+ end;
 
  if assigned(fSearchReplaceWindow) then begin
   fSearchReplaceWindow.fMultiLineTextEdit:=nil;
@@ -18111,8 +18190,25 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.OpenSearchReplaceDialog;
 begin
- if fEditable and not assigned(fSearchReplaceWindow) then begin
+ if not assigned(fSearchReplaceWindow) then begin
   fSearchReplaceWindow:=TpvGUIMultiLineTextEditSearchReplaceWindow.Create(fInstance,self);
+  if assigned(fSearchReplaceState) then begin
+   fSearchReplaceWindow.fTextEditFind.Text:=fSearchReplaceState.fFind;
+   fSearchReplaceWindow.fTextEditReplace.Text:=fSearchReplaceState.fReplace;
+   fSearchReplaceWindow.fRadioCheckBoxNormal.Checked:=not fSearchReplaceState.fUseRegularExpression;
+   fSearchReplaceWindow.fRadioCheckBoxRegularExpression.Checked:=fSearchReplaceState.fUseRegularExpression;
+   fSearchReplaceWindow.fCheckBoxWholeWords.Checked:=fSearchReplaceState.fWholeWords;
+   fSearchReplaceWindow.fCheckBoxCaseInsensitive.Checked:=fSearchReplaceState.fCaseInsensitive;
+   fSearchReplaceWindow.fCheckBoxReplaceAll.Checked:=fSearchReplaceState.fReplaceAll;
+   fSearchReplaceWindow.fCheckBoxPromptOnReplace.Checked:=fSearchReplaceState.fPromptOnReplace;
+  end;
+  if fView.HasMarkedRange then begin
+   fSearchReplaceWindow.fCheckBoxSearchSelection.Checked:=true;
+   fSearchReplaceWindow.fCheckBoxEntrieScope.Checked:=false;
+  end else begin
+   fSearchReplaceWindow.fCheckBoxSearchSelection.Checked:=false;
+   fSearchReplaceWindow.fCheckBoxEntrieScope.Checked:=true;
+  end;
  end;
 end;
 
@@ -18979,6 +19075,7 @@ begin
 
    fCheckBoxPromptOnReplace:=TpvGUICheckBox.Create(fPanelFlags);
    fCheckBoxPromptOnReplace.Caption:='Prompt on replace';
+   fCheckBoxPromptOnReplace.Checked:=true;
 
    fCheckBoxSearchSelection:=TpvGUICheckBox.Create(fPanelFlags);
    fCheckBoxSearchSelection.Caption:='Search selection';
@@ -19074,13 +19171,38 @@ begin
  end;
 end;
 
+procedure TpvGUIMultiLineTextEditSearchReplaceWindow.NewSearchReplaceState;
+begin
+ if assigned(fMultiLineTextEdit.fSearchReplaceState) then begin
+  fMultiLineTextEdit.fSearchReplaceState.fParent:=nil;
+  FreeAndNil(fMultiLineTextEdit.fSearchReplaceState);
+ end;
+ fMultiLineTextEdit.fSearchReplaceState:=TpvGUIMultiLineTextEditSearchReplaceState.Create(fMultiLineTextEdit);
+ fMultiLineTextEdit.fSearchReplaceState.fFind:=fTextEditFind.Text;
+ fMultiLineTextEdit.fSearchReplaceState.fReplace:=fTextEditReplace.Text;
+ fMultiLineTextEdit.fSearchReplaceState.fUseRegularExpression:=fRadioCheckBoxRegularExpression.Checked;
+ fMultiLineTextEdit.fSearchReplaceState.fWholeWords:=fCheckBoxWholeWords.Checked;
+ fMultiLineTextEdit.fSearchReplaceState.fCaseInsensitive:=fCheckBoxCaseInsensitive.Checked;
+ fMultiLineTextEdit.fSearchReplaceState.fReplaceAll:=fCheckBoxReplaceAll.Checked;
+ fMultiLineTextEdit.fSearchReplaceState.fPromptOnReplace:=fCheckBoxPromptOnReplace.Checked;
+ fMultiLineTextEdit.fSearchReplaceState.fSearchSelection:=fCheckBoxSearchSelection.Checked;
+ fMultiLineTextEdit.fSearchReplaceState.fEntrieScope:=fCheckBoxEntrieScope.Checked;
+ fMultiLineTextEdit.fSearchReplaceState.fCodePointIndex:=-fMultiLineTextEdit.fView.CodePointIndex;
+ fMultiLineTextEdit.fSearchReplaceState.fSelectionStart:=fMultiLineTextEdit.fView.MarkStartCodePointIndex;
+ fMultiLineTextEdit.fSearchReplaceState.fSelectionEnd:=fMultiLineTextEdit.fView.MarkEndCodePointIndex;
+end;
+
 procedure TpvGUIMultiLineTextEditSearchReplaceWindow.ButtonFindOnClick(const aSender:TpvGUIObject);
 begin
+ NewSearchReplaceState;
+ fMultiLineTextEdit.fSearchReplaceState.fDoReplace:=false;
  Close;
 end;
 
 procedure TpvGUIMultiLineTextEditSearchReplaceWindow.ButtonReplaceOnClick(const aSender:TpvGUIObject);
 begin
+ NewSearchReplaceState;
+ fMultiLineTextEdit.fSearchReplaceState.fDoReplace:=true;
  Close;
 end;
 
