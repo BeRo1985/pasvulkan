@@ -1057,6 +1057,7 @@ type TpvGUIObject=class;
        fOnKeyEvent:TpvGUIOnKeyEvent;
        fOnPointerEvent:TpvGUIOnPointerEvent;
        fOnScrolled:TpvGUIOnScrolled;
+       fOnDestroy:TpvGUIOnEvent;
        fParentClipRect:TpvRect;
        fClipRect:TpvRect;
        fModelMatrix:TpvMatrix4x4;
@@ -1186,6 +1187,7 @@ type TpvGUIObject=class;
        property OnKeyEvent:TpvGUIOnKeyEvent read fOnKeyEvent write fOnKeyEvent;
        property OnPointerEvent:TpvGUIOnPointerEvent read fOnPointerEvent write fOnPointerEvent;
        property OnScrolled:TpvGUIOnScrolled read fOnScrolled write fOnScrolled;
+       property OnDestroy:TpvGUIOnEvent read fOnDestroy write fOnDestroy;
      end;
 
      TpvGUIInstanceBufferReferenceCountedObjects=array of TpvReferenceCountedObject;
@@ -2493,12 +2495,14 @@ type TpvGUIObject=class;
        fEntrieScope:boolean;
        fDoReplace:boolean;
        fDoIt:boolean;
+       fDoRefocusTextEditor:boolean;
        fCodePointIndex:TpvSizeInt;
        fSelectionStart:TpvSizeInt;
        fSelectionEnd:TpvSizeInt;
        fCaptures:TpvTextEditor.TRegularExpressionCaptures;
        procedure Substitute;
        procedure MessageDialogOnButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
+       procedure InfoMessageDialogOnButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
       public
        constructor Create(const aParent:TpvGUIMultiLineTextEdit); reintroduce;
        destructor Destroy; override;
@@ -9634,6 +9638,8 @@ begin
 
  fOnScrolled:=nil;
 
+ fOnDestroy:=nil;
+
  fPopups:=TpvGUIObjectList.Create(false);
 
 end;
@@ -9642,6 +9648,11 @@ destructor TpvGUIWidget.Destroy;
 var Index:TpvInt32;
     Popup:TpvGUIPopup;
 begin
+
+ if assigned(fOnDestroy) then begin
+  fOnDestroy(self);
+  fOnDestroy:=nil;
+ end;
 
  try
   for Index:=fPopups.Count-1 downto 0 do begin
@@ -18002,6 +18013,8 @@ begin
 
  fDoIt:=false;
 
+ fDoRefocusTextEditor:=false;
+
  fCodePointIndex:=-1;
 
  fSelectionStart:=-1;
@@ -18107,6 +18120,12 @@ begin
    fParent.fDirty:=true;
   end;
  end;
+ fDoRefocusTextEditor:=true;
+end;
+
+procedure TpvGUIMultiLineTextEditSearchReplaceState.InfoMessageDialogOnButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
+begin
+ fDoRefocusTextEditor:=true;
 end;
 
 procedure TpvGUIMultiLineTextEditSearchReplaceState.Process;
@@ -18144,17 +18163,19 @@ begin
       break;
      end else begin
       Substitute;
+      fDoRefocusTextEditor:=true;
       First:=false;
       continue;
      end;
     end else begin
      fParent.fView.UnmarkAll;
      if First or not (fReplaceAll and not fPromptOnReplace) then begin
-      TpvGUIMessageDialog.Create(fParent.fInstance,
-                                 'Replace',
-                                 'No more founds',
-                                 [TpvGUIMessageDialogButton.Create(0,'OK',KEYCODE_RETURN,fParent.fInstance.Skin.IconWindowClose,24.0)],
-                                 fParent.fInstance.Skin.fIconDialogInformation);
+      MessageDialog:=TpvGUIMessageDialog.Create(fParent.fInstance,
+                                                'Replace',
+                                                'No more founds',
+                                                [TpvGUIMessageDialogButton.Create(0,'OK',KEYCODE_RETURN,fParent.fInstance.Skin.IconWindowClose,24.0)],
+                                                fParent.fInstance.Skin.fIconDialogInformation);
+      MessageDialog.OnButtonClick:=InfoMessageDialogOnButtonClick;
      end;
     end;
     break;
@@ -18172,15 +18193,21 @@ begin
     fParent.fView.MarkStartCodePointIndex:=ResultPosition;
     fParent.fView.MarkEndCodePointIndex:=ResultPosition+ResultLength;
     fParent.fView.EnsureCodePointIndexIsInRange;
+    fDoRefocusTextEditor:=true;
    end else begin
     fParent.fView.UnmarkAll;
-    TpvGUIMessageDialog.Create(fParent.fInstance,
-                               'Search',
-                               'No more founds',
-                               [TpvGUIMessageDialogButton.Create(0,'OK',KEYCODE_RETURN,fParent.fInstance.Skin.IconWindowClose,24.0)]);
+    MessageDialog:=TpvGUIMessageDialog.Create(fParent.fInstance,
+                                              'Search',
+                                              'No more founds',
+                                              [TpvGUIMessageDialogButton.Create(0,'OK',KEYCODE_RETURN,fParent.fInstance.Skin.IconWindowClose,24.0)]);
+    MessageDialog.OnButtonClick:=InfoMessageDialogOnButtonClick;
    end;
   end;
   fParent.fDirty:=true;
+ end;
+ if fDoRefocusTextEditor then begin
+  fDoRefocusTextEditor:=false;
+  fParent.RequestFocus;
  end;
 end;
 
