@@ -19252,6 +19252,7 @@ begin
 
    fCheckBoxReplaceAll:=TpvGUICheckBox.Create(fPanelFlags);
    fCheckBoxReplaceAll.Caption:='Replace all';
+   fCheckBoxReplaceAll.Checked:=true;
    fCheckBoxReplaceAll.Enabled:=fReplace;
 
    fCheckBoxPromptOnReplace:=TpvGUICheckBox.Create(fPanelFlags);
