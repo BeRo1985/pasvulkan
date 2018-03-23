@@ -2037,14 +2037,14 @@ begin
  end;
 end;
 
-class function TpvTextEditor.TUTF8Utils.UTF8CountCodePoints(const aString:TpvUTF8String):TpvSizeInt; static;
+class function TpvTextEditor.TUTF8Utils.UTF8CountCodePoints(const aString:TpvUTF8String):TpvSizeInt;
 var Index,Len:TpvSizeInt;
 begin
  result:=0;
  Index:=1;
  Len:=length(aString);
  while Index<=Len do begin
-  UTF8
+  UTF8GetCodePointAndIncFallback(aString,Index);
   inc(result);
  end;
 end;

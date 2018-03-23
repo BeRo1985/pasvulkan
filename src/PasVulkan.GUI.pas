@@ -18112,11 +18112,13 @@ end;
 procedure TpvGUIMultiLineTextEditSearchReplaceState.Process;
 var ResultPosition,ResultLength,StartPosition,UntilExcludingPosition:TpvSizeInt;
     MessageDialog:TpvGUIMessageDialog;
+    First:boolean;
 begin
  if fDoIt then begin
   fDoIt:=false;
   if fDoReplace then begin
    fCaptures:=nil;
+   First:=true;
    repeat
     StartPosition:=Max(0,fCodePointIndex);
     UntilExcludingPosition:=fParent.fTextEditor.Rope.CountCodePoints+1;
@@ -18142,10 +18144,18 @@ begin
       break;
      end else begin
       Substitute;
+      First:=false;
       continue;
      end;
     end else begin
      fParent.fView.UnmarkAll;
+     if First or not (fReplaceAll and not fPromptOnReplace) then begin
+      TpvGUIMessageDialog.Create(fParent.fInstance,
+                                 'Replace',
+                                 'No more founds',
+                                 [TpvGUIMessageDialogButton.Create(0,'OK',KEYCODE_RETURN,fParent.fInstance.Skin.IconWindowClose,24.0)],
+                                 fParent.fInstance.Skin.fIconDialogInformation);
+     end;
     end;
     break;
    until not fReplaceAll;
@@ -18164,6 +18174,10 @@ begin
     fParent.fView.EnsureCodePointIndexIsInRange;
    end else begin
     fParent.fView.UnmarkAll;
+    TpvGUIMessageDialog.Create(fParent.fInstance,
+                               'Search',
+                               'No more founds',
+                               [TpvGUIMessageDialogButton.Create(0,'OK',KEYCODE_RETURN,fParent.fInstance.Skin.IconWindowClose,24.0)]);
    end;
   end;
   fParent.fDirty:=true;
