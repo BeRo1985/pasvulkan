@@ -19258,7 +19258,7 @@ begin
  fMultiLineTextEdit.fSearchReplaceState.fSelectionEnd:=fMultiLineTextEdit.fView.MarkEndCodePointIndex;
  s:=fMultiLineTextEdit.fSearchReplaceState.fFind;
  if not fMultiLineTextEdit.fSearchReplaceState.fUseRegularExpression then begin
-
+  s:=TpvTextEditor.TRegularExpression.Escape(s);
  end;
  if fMultiLineTextEdit.fSearchReplaceState.fWholeWords then begin
   s:='\b'+s+'\b';
