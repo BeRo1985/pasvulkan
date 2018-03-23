@@ -18030,7 +18030,7 @@ begin
   fDoIt:=false;
   StartPosition:=Max(0,fCodePointIndex);
   UntilExcludingPosition:=fParent.fTextEditor.Rope.CountCodePoints+1;
-  if fSearchSelection then begin
+  if fSearchSelection and (fSelectionStart>=0) then begin
    StartPosition:=Max(StartPosition,fSelectionStart);
    UntilExcludingPosition:=Min(UntilExcludingPosition,fSelectionEnd);
   end;
@@ -19254,8 +19254,13 @@ begin
  end else begin
   fMultiLineTextEdit.fSearchReplaceState.fCodePointIndex:=fMultiLineTextEdit.fView.CodePointIndex;
  end;
- fMultiLineTextEdit.fSearchReplaceState.fSelectionStart:=fMultiLineTextEdit.fView.MarkStartCodePointIndex;
- fMultiLineTextEdit.fSearchReplaceState.fSelectionEnd:=fMultiLineTextEdit.fView.MarkEndCodePointIndex;
+ if fMultiLineTextEdit.fView.HasMarkedRange then begin
+  fMultiLineTextEdit.fSearchReplaceState.fSelectionStart:=Min(fMultiLineTextEdit.fView.MarkStartCodePointIndex,fMultiLineTextEdit.fView.MarkEndCodePointIndex);
+  fMultiLineTextEdit.fSearchReplaceState.fSelectionEnd:=Max(fMultiLineTextEdit.fView.MarkStartCodePointIndex,fMultiLineTextEdit.fView.MarkEndCodePointIndex);
+ end else begin
+  fMultiLineTextEdit.fSearchReplaceState.fSelectionStart:=-1;
+  fMultiLineTextEdit.fSearchReplaceState.fSelectionEnd:=-1;
+ end;
  s:=fMultiLineTextEdit.fSearchReplaceState.fFind;
  if not fMultiLineTextEdit.fSearchReplaceState.fUseRegularExpression then begin
   s:=TpvTextEditor.TRegularExpression.Escape(s);
