@@ -2498,6 +2498,7 @@ type TpvGUIObject=class;
        fSelectionEnd:TpvSizeInt;
        fCaptures:TpvTextEditor.TRegularExpressionCaptures;
        procedure Substitute;
+       procedure MessageDialogOnButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
       public
        constructor Create(const aParent:TpvGUIMultiLineTextEdit); reintroduce;
        destructor Destroy; override;
@@ -18086,8 +18087,27 @@ begin
  end;
 end;
 
+procedure TpvGUIMultiLineTextEditSearchReplaceState.MessageDialogOnButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
+begin
+ case aID of
+  0:begin
+   // Yes
+   Substitute;
+   fDoIt:=true;
+  end;
+  1:begin
+   // No
+   fDoIt:=true;
+  end;
+  2:begin
+   // Cancel
+  end;
+ end;
+end;
+
 procedure TpvGUIMultiLineTextEditSearchReplaceState.Process;
 var ResultPosition,ResultLength,StartPosition,UntilExcludingPosition:TpvSizeInt;
+    MessageDialog:TpvGUIMessageDialog;
 begin
  if fDoIt then begin
   fDoIt:=false;
@@ -18099,28 +18119,32 @@ begin
   end;
   if fDoReplace then begin
    fCaptures:=nil;
-   try
-    repeat
-     if fRegularExpression.MatchNext(fCaptures,ResultPosition,ResultLength,StartPosition,UntilExcludingPosition) then begin
-      fCodePointIndex:=ResultPosition+ResultLength;
-      fParent.fView.CodePointIndex:=ResultPosition;
-      fParent.fView.MarkStartCodePointIndex:=ResultPosition;
-      fParent.fView.MarkEndCodePointIndex:=ResultPosition+ResultLength;
-      fParent.fView.EnsureCodePointIndexIsInRange;
-      if fPromptOnReplace then begin
-       break;
-      end else begin
-       Substitute;
-       continue;
-      end;
+   repeat
+    if fRegularExpression.MatchNext(fCaptures,ResultPosition,ResultLength,StartPosition,UntilExcludingPosition) then begin
+     fCodePointIndex:=ResultPosition+ResultLength;
+     fParent.fView.CodePointIndex:=ResultPosition;
+     fParent.fView.MarkStartCodePointIndex:=ResultPosition;
+     fParent.fView.MarkEndCodePointIndex:=ResultPosition+ResultLength;
+     fParent.fView.EnsureCodePointIndexIsInRange;
+     if fPromptOnReplace then begin
+      MessageDialog:=TpvGUIMessageDialog.Create(fParent.fInstance,
+                                                'Replace',
+                                                'Do you want to replace this find?',
+                                                [TpvGUIMessageDialogButton.Create(0,'Yes',KEYCODE_Y,fParent.fInstance.Skin.IconThumbUp,24.0),
+                                                 TpvGUIMessageDialogButton.Create(1,'No',KEYCODE_N,fParent.fInstance.Skin.IconThumbDown,24.0),
+                                                 TpvGUIMessageDialogButton.Create(2,'Cancel',KEYCODE_ESCAPE,fParent.fInstance.Skin.fIconDialogStop,24.0)],
+                                                fParent.fInstance.Skin.fIconDialogQuestion);
+      MessageDialog.OnButtonClick:=MessageDialogOnButtonClick;
+      break;
      end else begin
-      fParent.fView.UnmarkAll;
+      Substitute;
+      continue;
      end;
-     break;
-    until not fReplaceAll;
-   finally
-    fCaptures:=nil;
-   end;
+    end else begin
+     fParent.fView.UnmarkAll;
+    end;
+    break;
+   until not fReplaceAll;
   end else begin
    if fRegularExpression.FindNext(ResultPosition,ResultLength,StartPosition,UntilExcludingPosition) then begin
     fCodePointIndex:=ResultPosition+ResultLength;
