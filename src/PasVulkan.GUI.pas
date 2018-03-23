@@ -2468,6 +2468,8 @@ type TpvGUIObject=class;
        Auto
       );
 
+     TpvGUIMultiLineTextEditSearchReplaceWindow=class;
+
      TpvGUIMultiLineTextEdit=class(TpvGUIWidget)
       private
        fPopupMenu:TpvGUIPopupMenu;
@@ -2504,6 +2506,7 @@ type TpvGUIObject=class;
        fFontCharSize:TpvVector2;
        fOnClick:TpvGUIOnEvent;
        fOnChange:TpvGUIOnEvent;
+       fSearchReplaceWindow:TpvGUIMultiLineTextEditSearchReplaceWindow;
        procedure PopupMenuOnCutClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnCopyClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnPasteClick(const aSender:TpvGUIObject);
@@ -2554,6 +2557,34 @@ type TpvGUIObject=class;
        property LineWrap:boolean read fLineWrap write fLineWrap;
        property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
+     end;
+
+     TpvGUIMultiLineTextEditSearchReplaceWindow=class(TpvGUIWindow)
+      private
+       fMultiLineTextEdit:TpvGUIMultiLineTextEdit;
+       fAdvancedGridLayout:TpvGUIAdvancedGridLayout;
+       fLabelFind:TpvGUILabel;
+       fTextEditFind:TpvGUITextEdit;
+       fLabelReplace:TpvGUILabel;
+       fTextEditReplace:TpvGUITextEdit;
+       fPanelButtons:TpvGUIPanel;
+       fButtonFind:TpvGUIButton;
+       fButtonReplace:TpvGUIButton;
+       fButtonCancel:TpvGUIButton;
+       fPanelOptions:TpvGUIPanel;
+       fPanelMode:TpvGUIPanel;
+       fPanelFlags:TpvGUIPanel;
+       fRadioCheckBoxNormal:TpvGUIRadioCheckBox;
+       fRadioCheckBoxRegularExpression:TpvGUIRadioCheckBox;
+       fCheckBoxWholeWords:TpvGUICheckBox;
+       fCheckBoxCaseInsensitive:TpvGUICheckBox;
+       fCheckBoxReplaceAll:TpvGUICheckBox;
+       fCheckBoxPromptOnReplace:TpvGUICheckBox;
+       fCheckBoxSearchSelection:TpvGUICheckBox;
+       fCheckBoxEntrieScope:TpvGUICheckBox;
+      public
+       constructor Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); reintroduce;
+       destructor Destroy; override;
      end;
 
 implementation
@@ -4680,10 +4711,10 @@ begin
        TpvGUILayoutAlignment.Leading:begin
        end;
        TpvGUILayoutAlignment.Middle:begin
-        ChildPosition:=ChildPosition+((ChildPosition-TargetSize)*0.5);
+        ChildPosition:=ChildPosition+((CellSize-TargetSize)*0.5);
        end;
        TpvGUILayoutAlignment.Tailing:begin
-        ChildPosition:=ChildPosition+(ChildPosition-TargetSize);
+        ChildPosition:=ChildPosition+(CellSize-TargetSize);
        end;
        TpvGUILayoutAlignment.Fill:begin
         if fFixedSizes[ChildIndex][AxisIndex]>0.0 then begin
@@ -7443,7 +7474,8 @@ begin
  if (aTextEdit.fTextSelectionStart>0) and
     (aTextEdit.fTextSelectionStart<=(aTextEdit.fCountTextGlyphRects+1)) and
     (aTextEdit.fTextSelectionEnd>0) and
-    (aTextEdit.fTextSelectionEnd<=(aTextEdit.fCountTextGlyphRects+1)) then begin
+    (aTextEdit.fTextSelectionEnd<=(aTextEdit.fCountTextGlyphRects+1)) and
+    (aTextEdit.fCountTextGlyphRects>0) then begin
   aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
   StartIndex:=Min(aTextEdit.fTextSelectionStart,aTextEdit.fTextSelectionEnd)-1;
   EndIndex:=Max(aTextEdit.fTextSelectionStart,aTextEdit.fTextSelectionEnd)-1;
@@ -17963,10 +17995,18 @@ begin
 
  fOnChange:=nil;
 
+ fSearchReplaceWindow:=nil;
+
 end;
 
 destructor TpvGUIMultiLineTextEdit.Destroy;
 begin
+
+ if assigned(fSearchReplaceWindow) then begin
+  fSearchReplaceWindow.fMultiLineTextEdit:=nil;
+  fSearchReplaceWindow.DisposeWindow;
+  fSearchReplaceWindow:=nil;
+ end;
 
  fViewBuffer:=nil;
 
@@ -18568,6 +18608,12 @@ begin
        result:=true;
       end;
      end;
+     KEYCODE_F,KEYCODE_H,KEYCODE_R:begin
+      if not assigned(fSearchReplaceWindow) then begin
+       fSearchReplaceWindow:=TpvGUIMultiLineTextEditSearchReplaceWindow.Create(fInstance,self);
+      end;
+      result:=true;
+     end;
     end;
    end;
    TpvApplicationInputKeyEventType.Unicode:begin
@@ -18709,5 +18755,164 @@ begin
  inherited Draw;
 end;
 
+constructor TpvGUIMultiLineTextEditSearchReplaceWindow.Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
+begin
+
+ inherited Create(aParent);
+
+ Modal:=true;
+
+ fMultiLineTextEdit:=aMultiLineTextEdit;
+
+ Left:=450;
+ Top:=170;
+ Title:='Search and replace';
+ fAdvancedGridLayout:=TpvGUIAdvancedGridLayout.Create(Window.Content,0.0);
+ Content.Layout:=fAdvancedGridLayout;
+ fAdvancedGridLayout.Rows.Add(40.0,0.0);
+ fAdvancedGridLayout.Rows.Add(40.0,0.0);
+ fAdvancedGridLayout.Rows.Add(120.0,1.0);
+ fAdvancedGridLayout.Columns.Add(80.0,0.0);
+ fAdvancedGridLayout.Columns.Add(150.0,1.0);
+ fAdvancedGridLayout.Columns.Add(100.0,0.0);
+ AddMinimizationButton;
+ AddMaximizationButton;
+ AddCloseButton;
+
+ begin
+
+  fLabelFind:=TpvGUILabel.Create(Content);
+  fLabelFind.Caption:='Find';
+  fLabelFind.TextHorizontalAlignment:=TpvGUITextAlignment.Tailing;
+  fAdvancedGridLayout.Anchors[fLabelFind]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,0,1,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Tailing,TpvGUILayoutAlignment.Middle);
+
+  fTextEditFind:=TpvGUITextEdit.Create(Content);
+  fTextEditFind.MinimumHeight:=32;
+  fAdvancedGridLayout.Anchors[fTextEditFind]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,0,1,1,2.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
+
+ end;
+
+ begin
+
+  fLabelReplace:=TpvGUILabel.Create(Content);
+  fLabelReplace.Caption:='Replace';
+  fLabelReplace.TextHorizontalAlignment:=TpvGUITextAlignment.Tailing;
+  fAdvancedGridLayout.Anchors[fLabelReplace]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,1,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Tailing,TpvGUILayoutAlignment.Middle);
+
+  fTextEditReplace:=TpvGUITextEdit.Create(Content);
+  fTextEditReplace.MinimumHeight:=32;
+  fAdvancedGridLayout.Anchors[fTextEditReplace]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,1,1,1,2.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
+
+ end;
+
+ begin
+
+  fPanelOptions:=TpvGUIPanel.Create(Content);
+  fPanelOptions.Layout:=TpvGUIGridLayout.Create(fPanelOptions,
+                                                1,
+                                                TpvGUILayoutAlignment.Leading,
+                                                TpvGUILayoutAlignment.Leading,
+                                                TpvGUILayoutOrientation.Vertical,
+                                                4.0,
+                                                4.0,
+                                                4.0);
+  fAdvancedGridLayout.Anchors[fPanelOptions]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,2,2,1,6.0,4.0,6.0,2.0,TpvGUILayoutAlignment.Leading,TpvGUILayoutAlignment.Leading);
+
+  begin
+
+   fPanelMode:=TpvGUIPanel.Create(fPanelOptions);
+   fPanelMode.Layout:=TpvGUIGridLayout.Create(fPanelMode,
+                                              1,
+                                              TpvGUILayoutAlignment.Leading,
+                                              TpvGUILayoutAlignment.Middle,
+                                              TpvGUILayoutOrientation.Horizontal,
+                                              10.0,
+                                              10.0,
+                                              4.0);
+   fPanelMode.Background:=true;
+
+   fRadioCheckBoxNormal:=TpvGUIRadioCheckBox.Create(fPanelMode);
+   fRadioCheckBoxNormal.Caption:='Normal';
+
+   fRadioCheckBoxRegularExpression:=TpvGUIRadioCheckBox.Create(fPanelMode);
+   fRadioCheckBoxRegularExpression.Caption:='Regular expression';
+
+   fRadioCheckBoxNormal.Checked:=true;
+
+  end;
+
+  begin
+
+   fPanelFlags:=TpvGUIPanel.Create(fPanelOptions);
+   fPanelFlags.Layout:=TpvGUIGridLayout.Create(fPanelFlags,
+                                               1,
+                                               TpvGUILayoutAlignment.Leading,
+                                               TpvGUILayoutAlignment.Middle,
+                                               TpvGUILayoutOrientation.Horizontal,
+                                               10.0,
+                                               10.0,
+                                               4.0);
+   fPanelFlags.Background:=true;
+
+   fCheckBoxWholeWords:=TpvGUICheckBox.Create(fPanelFlags);
+   fCheckBoxWholeWords.Caption:='Whole words';
+
+   fCheckBoxCaseInsensitive:=TpvGUICheckBox.Create(fPanelFlags);
+   fCheckBoxCaseInsensitive.Caption:='Case insensitive';
+
+   fCheckBoxReplaceAll:=TpvGUICheckBox.Create(fPanelFlags);
+   fCheckBoxReplaceAll.Caption:='Replace all';
+
+   fCheckBoxPromptOnReplace:=TpvGUICheckBox.Create(fPanelFlags);
+   fCheckBoxPromptOnReplace.Caption:='Prompt on replace';
+
+   fCheckBoxSearchSelection:=TpvGUICheckBox.Create(fPanelFlags);
+   fCheckBoxSearchSelection.Caption:='Search selection';
+
+   fCheckBoxEntrieScope:=TpvGUICheckBox.Create(fPanelFlags);
+   fCheckBoxEntrieScope.Caption:='Entrie scope';
+
+  end;
+
+ end;
+
+ begin
+
+  fPanelButtons:=TpvGUIPanel.Create(Content);
+  fPanelButtons.Layout:=TpvGUIGridLayout.Create(fPanelButtons,
+                                                1,
+                                                TpvGUILayoutAlignment.Fill,
+                                                TpvGUILayoutAlignment.Middle,
+                                                TpvGUILayoutOrientation.Horizontal,
+                                                0.0,
+                                                0.0,
+                                                4.0);
+  fAdvancedGridLayout.Anchors[fPanelButtons]:=TpvGUIAdvancedGridLayoutAnchor.Create(2,0,1,3,2.0,4.0,6.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Leading);
+
+  fButtonFind:=TpvGUIButton.Create(fPanelButtons);
+  fButtonFind.Caption:='Find';
+
+  fButtonReplace:=TpvGUIButton.Create(fPanelButtons);
+  fButtonReplace.Caption:='Replace';
+
+  fButtonCancel:=TpvGUIButton.Create(fPanelButtons);
+  fButtonCancel.Caption:='Cancel';
+
+ end;
+
+ Center;
+
+ RequestFocus;
+
+end;
+
+destructor TpvGUIMultiLineTextEditSearchReplaceWindow.Destroy;
+begin
+ if assigned(fMultiLineTextEdit) then begin
+  fMultiLineTextEdit.fSearchReplaceWindow:=nil;
+  fMultiLineTextEdit:=nil;
+ end;
+ inherited Destroy;
+end;
 
 end.
