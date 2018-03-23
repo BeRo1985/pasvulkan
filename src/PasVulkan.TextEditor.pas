@@ -143,6 +143,7 @@ type TpvTextEditor=class
               class function UTF8GetCodePointAndIncFallback(const aString:TpvUTF8String;var aCodeUnit:TpvSizeInt):TpvUInt32; static;
               class function UTF8Correct(const aString:TpvUTF8String):TpvUTF8String; static;
               class function UTF8CountNewLines(const aString:TpvUTF8String):TpvSizeInt; static;
+              class function UTF8CountCodePoints(const aString:TpvUTF8String):TpvSizeInt; static;
               class function UTF8ConvertRangeToCodeUnitRegularExpression(const aFromCodePoint,aToCodePoint:TpvUInt32):TpvUTF8String;
               class function RawDataToUTF8String(const aData;const aDataLength:TpvInt32;const aCodePage:TpvInt32=-1):TpvUTF8String; static;
               class function RawByteStringToUTF8String(const aString:TpvRawByteString;const aCodePage:TpvInt32=-1):TpvUTF8String; static;
@@ -2033,6 +2034,18 @@ begin
     inc(Index);
    end;
   end;
+ end;
+end;
+
+class function TpvTextEditor.TUTF8Utils.UTF8CountCodePoints(const aString:TpvUTF8String):TpvSizeInt; static;
+var Index,Len:TpvSizeInt;
+begin
+ result:=0;
+ Index:=1;
+ Len:=length(aString);
+ while Index<=Len do begin
+  UTF8
+  inc(result);
  end;
 end;
 

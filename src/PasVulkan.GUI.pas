@@ -2496,6 +2496,8 @@ type TpvGUIObject=class;
        fCodePointIndex:TpvSizeInt;
        fSelectionStart:TpvSizeInt;
        fSelectionEnd:TpvSizeInt;
+       fCaptures:TpvTextEditor.TRegularExpressionCaptures;
+       procedure Substitute;
       public
        constructor Create(const aParent:TpvGUIMultiLineTextEdit); reintroduce;
        destructor Destroy; override;
@@ -18005,10 +18007,14 @@ begin
 
  fSelectionEnd:=-1;
 
+ fCaptures:=nil;
+
 end;
 
 destructor TpvGUIMultiLineTextEditSearchReplaceState.Destroy;
 begin
+
+ fCaptures:=nil;
 
  fFind:='';
 
@@ -18024,6 +18030,62 @@ begin
 
 end;
 
+procedure TpvGUIMultiLineTextEditSearchReplaceState.Substitute;
+var Index,Len,Last,CaptureIndex,Difference:TpvSizeInt;
+    Capture:TpvTextEditor.PRegularExpressionCapture;
+    Subsitution:TpvUTF8String;
+begin
+ if length(fCaptures)>0 then begin
+  Subsitution:='';
+  Index:=1;
+  Len:=length(fReplace);
+  Last:=1;
+  while Index <= Len do begin
+   case fReplace[Index] of
+    '$':begin
+     Subsitution:=Subsitution+copy(fReplace,Last,Index-Last);
+     inc(Index);
+     if Index<=Len then begin
+      case fReplace[Index] of
+       '$':begin
+        Subsitution:=Subsitution+'$';
+        inc(Index);
+       end;
+       '0'..'9':begin
+        CaptureIndex:=0;
+        repeat
+         CaptureIndex:=(CaptureIndex*10)+(ord(fReplace[Index])-ord('0'));
+         inc(Index);
+        until (Index>Len) or not (fReplace[Index] in ['0'..'9']);
+        if (CaptureIndex>=0) and (CaptureIndex<length(fCaptures)) then begin
+         Capture:=@fCaptures[CaptureIndex];
+         Subsitution:=Subsitution+fParent.fTextEditor.Rope.Extract(Capture^.Start,Capture^.Length);
+        end;
+       end;
+      end;
+     end;
+     Last:=Index;
+    end else begin
+     inc(Index);
+    end;
+   end;
+  end;
+  if Last=1 then begin
+   Subsitution:=fReplace;
+  end else begin
+   Subsitution:=Subsitution+copy(fReplace,Last,(Len-Last)+1);
+  end;
+  Difference:=TpvTextEditor.TUTF8Utils.UTF8CountCodePoints(Subsitution)-fCaptures[0].Length;
+  fParent.fView.MarkStartCodePointIndex:=fCaptures[0].Start;
+  fParent.fView.MarkEndCodePointIndex:=fCaptures[0].Start+fCaptures[0].Length;
+  fParent.fView.InsertString(Subsitution,false);
+  if fCaptures[0].Start<fSelectionEnd then begin
+   fSelectionEnd:=Max(fSelectionStart,fSelectionEnd+Difference);
+  end;
+  fCodePointIndex:=Max(fCaptures[0].Start+1,(fCaptures[0].Start+fCaptures[0].Length)+Difference);
+ end;
+end;
+
 procedure TpvGUIMultiLineTextEditSearchReplaceState.Process;
 var ResultPosition,ResultLength,StartPosition,UntilExcludingPosition:TpvSizeInt;
 begin
@@ -18036,6 +18098,29 @@ begin
    UntilExcludingPosition:=Min(UntilExcludingPosition,fSelectionEnd);
   end;
   if fDoReplace then begin
+   fCaptures:=nil;
+   try
+    repeat
+     if fRegularExpression.MatchNext(fCaptures,ResultPosition,ResultLength,StartPosition,UntilExcludingPosition) then begin
+      fCodePointIndex:=ResultPosition+ResultLength;
+      fParent.fView.CodePointIndex:=ResultPosition;
+      fParent.fView.MarkStartCodePointIndex:=ResultPosition;
+      fParent.fView.MarkEndCodePointIndex:=ResultPosition+ResultLength;
+      fParent.fView.EnsureCodePointIndexIsInRange;
+      if fPromptOnReplace then begin
+       break;
+      end else begin
+       Substitute;
+       continue;
+      end;
+     end else begin
+      fParent.fView.UnmarkAll;
+     end;
+     break;
+    until not fReplaceAll;
+   finally
+    fCaptures:=nil;
+   end;
   end else begin
    if fRegularExpression.FindNext(ResultPosition,ResultLength,StartPosition,UntilExcludingPosition) then begin
     fCodePointIndex:=ResultPosition+ResultLength;
