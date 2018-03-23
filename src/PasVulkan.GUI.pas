@@ -10793,13 +10793,13 @@ begin
    end;
   end;
 
-   for CurrentIndex:=0 to fCurrentFocusPath.Count-1 do begin
-    Current:=fCurrentFocusPath.Items[CurrentIndex];
-    if (Current is TpvGUIWidget) and not fLastFocusPath.Contains(Current) then begin
-     CurrentWidget:=Current as TpvGUIWidget;
-     CurrentWidget.Enter;
-    end;
+  for CurrentIndex:=0 to fCurrentFocusPath.Count-1 do begin
+   Current:=fCurrentFocusPath.Items[CurrentIndex];
+   if (Current is TpvGUIWidget) and not fLastFocusPath.Contains(Current) then begin
+    CurrentWidget:=Current as TpvGUIWidget;
+    CurrentWidget.Enter;
    end;
+  end;
 
  finally
   fLastFocusPath.Clear;

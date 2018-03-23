@@ -763,6 +763,8 @@ type EpvApplication=class(Exception)
        fMaxPointerID:TpvInt32;
        fJoysticks:TList;
        fMainJoystick:TpvApplicationJoystick;
+       fTextInput:longbool;
+       fLastTextInput:longbool;
 {$if defined(PasVulkanUseSDL2)}
        function TranslateSDLKeyCode(const aKeyCode,aScanCode:TpvInt32):TpvInt32;
        function TranslateSDLKeyModifier(const aKeyModifier:TpvInt32):TpvApplicationInputKeyModifiers;
@@ -3268,6 +3270,8 @@ begin
  SetLength(fEventTimes,1024);
  fJoysticks:=TList.Create;
  fMainJoystick:=nil;
+ fTextInput:=false;
+ fLastTextInput:=false;
 end;
 
 destructor TpvApplicationInput.Destroy;
@@ -4584,16 +4588,22 @@ end;
 
 procedure TpvApplicationInput.StartTextInput;
 begin
-{$if defined(PasVulkanUseSDL2)}
- SDL_StartTextInput;
-{$ifend}
+ fCriticalSection.Acquire;
+ try
+  fTextInput:=true;
+ finally
+  fCriticalSection.Release;
+ end;
 end;
 
 procedure TpvApplicationInput.StopTextInput;
 begin
-{$if defined(PasVulkanUseSDL2)}
- SDL_StopTextInput;
-{$ifend}
+ fCriticalSection.Acquire;
+ try
+  fTextInput:=false;
+ finally
+  fCriticalSection.Release;
+ end;
 end;
 
 procedure TpvApplicationInput.GetTextInput(const aCallback:TpvApplicationInputTextInputCallback;const aTitle,aText:TpvApplicationRawByteString;const aPlaceholder:TpvApplicationRawByteString='');
@@ -6916,6 +6926,16 @@ begin
 
  fInput.fCriticalSection.Acquire;
  try
+
+   if fInput.fLastTextInput<>fInput.fTextInput then begin
+    fInput.fLastTextInput:=fInput.fTextInput;
+    if fInput.fTextInput then begin
+     SDL_StartTextInput;
+    end else begin
+     SDL_StopTextInput;
+    end;
+   end;
+
   fInput.fEventCount:=0;
 
   fInput.fMouseDeltaX:=0;
