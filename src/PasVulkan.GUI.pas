@@ -2540,7 +2540,7 @@ type TpvGUIObject=class;
        fOnChange:TpvGUIOnEvent;
        fSearchReplaceWindow:TpvGUIMultiLineTextEditSearchReplaceWindow;
        fSearchReplaceState:TpvGUIMultiLineTextEditSearchReplaceState;
-       procedure OpenSearchReplaceDialog;
+       procedure OpenSearchReplaceDialog(const aReplace:boolean);
        procedure FindNext;
        procedure PopupMenuOnCutClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnCopyClick(const aSender:TpvGUIObject);
@@ -2621,6 +2621,7 @@ type TpvGUIObject=class;
        fCheckBoxPromptOnReplace:TpvGUICheckBox;
        fCheckBoxSearchSelection:TpvGUICheckBox;
        fCheckBoxEntrieScope:TpvGUICheckBox;
+       fReplace:boolean;
        function TextEditFindOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditReplaceOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        procedure NewSearchReplaceState;
@@ -2628,7 +2629,7 @@ type TpvGUIObject=class;
        procedure ButtonReplaceOnClick(const aSender:TpvGUIObject);
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
       public
-       constructor Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); reintroduce;
+       constructor Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit;const aReplace:boolean); reintroduce;
        destructor Destroy; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
      end;
@@ -18229,10 +18230,10 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvGUIMultiLineTextEdit.OpenSearchReplaceDialog;
+procedure TpvGUIMultiLineTextEdit.OpenSearchReplaceDialog(const aReplace:boolean);
 begin
  if not assigned(fSearchReplaceWindow) then begin
-  fSearchReplaceWindow:=TpvGUIMultiLineTextEditSearchReplaceWindow.Create(fInstance,self);
+  fSearchReplaceWindow:=TpvGUIMultiLineTextEditSearchReplaceWindow.Create(fInstance,self,aReplace);
   if assigned(fSearchReplaceState) then begin
    fSearchReplaceWindow.fTextEditFind.Text:=fSearchReplaceState.fFind;
    fSearchReplaceWindow.fTextEditReplace.Text:=fSearchReplaceState.fReplace;
@@ -18313,7 +18314,7 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnSearchClick(const aSender:TpvGUIObject);
 begin
- OpenSearchReplaceDialog;
+ OpenSearchReplaceDialog(false);
 end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnFindNextClick(const aSender:TpvGUIObject);
@@ -18323,7 +18324,7 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnReplaceClick(const aSender:TpvGUIObject);
 begin
- OpenSearchReplaceDialog;
+ OpenSearchReplaceDialog(true);
 end;
 
 procedure TpvGUIMultiLineTextEdit.SetHorizontalScrollDirection(const aHorizontalScrollDirection:TpvGUIMultiLineTextEditScrollDirection);
@@ -18867,8 +18868,12 @@ begin
        result:=true;
       end;
      end;
-     KEYCODE_F,KEYCODE_H,KEYCODE_R:begin
-      OpenSearchReplaceDialog;
+     KEYCODE_F:begin
+      OpenSearchReplaceDialog(false);
+      result:=true;
+     end;
+     KEYCODE_H,KEYCODE_R:begin
+      OpenSearchReplaceDialog(true);
       result:=true;
      end;
      KEYCODE_F3:begin
@@ -19019,7 +19024,7 @@ begin
  inherited Draw;
 end;
 
-constructor TpvGUIMultiLineTextEditSearchReplaceWindow.Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
+constructor TpvGUIMultiLineTextEditSearchReplaceWindow.Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit;const aReplace:boolean);
 begin
 
  inherited Create(aParent);
@@ -19028,9 +19033,15 @@ begin
 
  fMultiLineTextEdit:=aMultiLineTextEdit;
 
+ fReplace:=aReplace;
+
  Left:=450;
  Top:=170;
- Title:='Search and replace';
+ if fReplace then begin
+  Title:='Replace';
+ end else begin
+  Title:='Search';
+ end;
  fAdvancedGridLayout:=TpvGUIAdvancedGridLayout.Create(Window.Content,0.0);
  Content.Layout:=fAdvancedGridLayout;
  fAdvancedGridLayout.Rows.Add(40.0,0.0);
@@ -19067,6 +19078,7 @@ begin
   fTextEditReplace:=TpvGUITextEdit.Create(Content);
   fTextEditReplace.MinimumHeight:=32;
   fTextEditReplace.OnKeyEvent:=TextEditReplaceOnKeyEvent;
+  fTextEditReplace.Enabled:=fReplace;
   fAdvancedGridLayout.Anchors[fTextEditReplace]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,1,1,1,2.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
 
  end;
@@ -19131,10 +19143,12 @@ begin
 
    fCheckBoxReplaceAll:=TpvGUICheckBox.Create(fPanelFlags);
    fCheckBoxReplaceAll.Caption:='Replace all';
+   fCheckBoxReplaceAll.Enabled:=fReplace;
 
    fCheckBoxPromptOnReplace:=TpvGUICheckBox.Create(fPanelFlags);
    fCheckBoxPromptOnReplace.Caption:='Prompt on replace';
    fCheckBoxPromptOnReplace.Checked:=true;
+   fCheckBoxPromptOnReplace.Enabled:=fReplace;
 
    fCheckBoxSearchSelection:=TpvGUICheckBox.Create(fPanelFlags);
    fCheckBoxSearchSelection.Caption:='Search selection';
@@ -19166,6 +19180,7 @@ begin
   fButtonReplace:=TpvGUIButton.Create(fPanelButtons);
   fButtonReplace.Caption:='Replace';
   fButtonReplace.OnClick:=ButtonReplaceOnClick;
+  fButtonReplace.Enabled:=fReplace;
 
   fButtonCancel:=TpvGUIButton.Create(fPanelButtons);
   fButtonCancel.Caption:='Cancel';
@@ -19210,7 +19225,11 @@ begin
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
    KEYCODE_RETURN,KEYCODE_RETURN2:begin
-    ButtonFindOnClick(self);
+    if fReplace then begin
+     ButtonReplaceOnClick(self);
+    end else begin
+     ButtonFindOnClick(self);
+    end;
     result:=true;
    end;
   end;
@@ -19223,7 +19242,11 @@ begin
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
    KEYCODE_RETURN,KEYCODE_RETURN2:begin
-    ButtonReplaceOnClick(self);
+    if fReplace then begin
+     ButtonReplaceOnClick(self);
+    end else begin
+     ButtonFindOnClick(self);
+    end;
     result:=true;
    end;
   end;
