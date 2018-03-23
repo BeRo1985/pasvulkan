@@ -18115,15 +18115,15 @@ var ResultPosition,ResultLength,StartPosition,UntilExcludingPosition:TpvSizeInt;
 begin
  if fDoIt then begin
   fDoIt:=false;
-  StartPosition:=Max(0,fCodePointIndex);
-  UntilExcludingPosition:=fParent.fTextEditor.Rope.CountCodePoints+1;
-  if fSearchSelection and (fSelectionStart>=0) then begin
-   StartPosition:=Max(StartPosition,fSelectionStart);
-   UntilExcludingPosition:=Min(UntilExcludingPosition,fSelectionEnd);
-  end;
   if fDoReplace then begin
    fCaptures:=nil;
    repeat
+    StartPosition:=Max(0,fCodePointIndex);
+    UntilExcludingPosition:=fParent.fTextEditor.Rope.CountCodePoints+1;
+    if fSearchSelection and (fSelectionStart>=0) then begin
+     StartPosition:=Max(StartPosition,fSelectionStart);
+     UntilExcludingPosition:=Min(UntilExcludingPosition,fSelectionEnd);
+    end;
     if fRegularExpression.MatchNext(fCaptures,ResultPosition,ResultLength,StartPosition,UntilExcludingPosition) then begin
      fCodePointIndex:=ResultPosition+ResultLength;
      fParent.fView.CodePointIndex:=ResultPosition;
@@ -18150,6 +18150,12 @@ begin
     break;
    until not fReplaceAll;
   end else begin
+   StartPosition:=Max(0,fCodePointIndex);
+   UntilExcludingPosition:=fParent.fTextEditor.Rope.CountCodePoints+1;
+   if fSearchSelection and (fSelectionStart>=0) then begin
+    StartPosition:=Max(StartPosition,fSelectionStart);
+    UntilExcludingPosition:=Min(UntilExcludingPosition,fSelectionEnd);
+   end;
    if fRegularExpression.FindNext(ResultPosition,ResultLength,StartPosition,UntilExcludingPosition) then begin
     fCodePointIndex:=ResultPosition+ResultLength;
     fParent.fView.CodePointIndex:=ResultPosition;
