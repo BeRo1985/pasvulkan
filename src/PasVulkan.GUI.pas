@@ -2583,6 +2583,8 @@ type TpvGUIObject=class;
        fCheckBoxPromptOnReplace:TpvGUICheckBox;
        fCheckBoxSearchSelection:TpvGUICheckBox;
        fCheckBoxEntrieScope:TpvGUICheckBox;
+       function TextEditFindOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       function TextEditReplaceOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        procedure ButtonFindOnClick(const aSender:TpvGUIObject);
        procedure ButtonReplaceOnClick(const aSender:TpvGUIObject);
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
@@ -18798,6 +18800,7 @@ begin
 
   fTextEditFind:=TpvGUITextEdit.Create(Content);
   fTextEditFind.MinimumHeight:=32;
+  fTextEditFind.OnKeyEvent:=TextEditFindOnKeyEvent;
   fAdvancedGridLayout.Anchors[fTextEditFind]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,0,1,1,2.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
 
  end;
@@ -18811,6 +18814,7 @@ begin
 
   fTextEditReplace:=TpvGUITextEdit.Create(Content);
   fTextEditReplace.MinimumHeight:=32;
+  fTextEditReplace.OnKeyEvent:=TextEditReplaceOnKeyEvent;
   fAdvancedGridLayout.Anchors[fTextEditReplace]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,1,1,1,2.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
 
  end;
@@ -18939,6 +18943,32 @@ begin
    KEYCODE_ESCAPE:begin
     result:=true;
     Close;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIMultiLineTextEditSearchReplaceWindow.TextEditFindOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=false;
+ if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_RETURN,KEYCODE_RETURN2:begin
+    ButtonFindOnClick(self);
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIMultiLineTextEditSearchReplaceWindow.TextEditReplaceOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=false;
+ if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_RETURN,KEYCODE_RETURN2:begin
+    ButtonReplaceOnClick(self);
+    result:=true;
    end;
   end;
  end;
