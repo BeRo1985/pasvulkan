@@ -2541,6 +2541,7 @@ type TpvGUIObject=class;
        fSearchReplaceWindow:TpvGUIMultiLineTextEditSearchReplaceWindow;
        fSearchReplaceState:TpvGUIMultiLineTextEditSearchReplaceState;
        procedure OpenSearchReplaceDialog;
+       procedure FindNext;
        procedure PopupMenuOnCutClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnCopyClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnPasteClick(const aSender:TpvGUIObject);
@@ -18023,10 +18024,29 @@ begin
 end;
 
 procedure TpvGUIMultiLineTextEditSearchReplaceState.Process;
+var ResultPosition,ResultLength,StartPosition,UntilExcludingPosition:TpvSizeInt;
 begin
  if fDoIt then begin
   fDoIt:=false;
-
+  StartPosition:=Max(0,fCodePointIndex);
+  UntilExcludingPosition:=fParent.fTextEditor.Rope.CountCodePoints+1;
+  if fSearchSelection then begin
+   StartPosition:=Max(StartPosition,fSelectionStart);
+   UntilExcludingPosition:=Min(UntilExcludingPosition,fSelectionEnd);
+  end;
+  if fDoReplace then begin
+  end else begin
+   if fRegularExpression.FindNext(ResultPosition,ResultLength,StartPosition,UntilExcludingPosition) then begin
+    fCodePointIndex:=ResultPosition+ResultLength;
+    fParent.fView.CodePointIndex:=ResultPosition;
+    fParent.fView.MarkStartCodePointIndex:=ResultPosition;
+    fParent.fView.MarkEndCodePointIndex:=ResultPosition+ResultLength;
+    fParent.fView.EnsureCodePointIndexIsInRange;
+   end else begin
+    fParent.fView.UnmarkAll;
+   end;
+  end;
+  fParent.fDirty:=true;
  end;
 end;
 
@@ -18234,6 +18254,13 @@ begin
  end;
 end;
 
+procedure TpvGUIMultiLineTextEdit.FindNext;
+begin
+ if assigned(fSearchReplaceState) and not fSearchReplaceState.fDoReplace then begin
+  fSearchReplaceState.fDoIt:=true;
+ end;
+end;
+
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnCutClick(const aSender:TpvGUIObject);
 begin
  CutSelectedText;
@@ -18291,7 +18318,7 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnFindNextClick(const aSender:TpvGUIObject);
 begin
-
+ FindNext;
 end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnReplaceClick(const aSender:TpvGUIObject);
@@ -18844,6 +18871,10 @@ begin
       OpenSearchReplaceDialog;
       result:=true;
      end;
+     KEYCODE_F3:begin
+      FindNext;
+      result:=true;
+     end;
     end;
    end;
    TpvApplicationInputKeyEventType.Unicode:begin
@@ -19218,14 +19249,19 @@ begin
  fMultiLineTextEdit.fSearchReplaceState.fPromptOnReplace:=fCheckBoxPromptOnReplace.Checked;
  fMultiLineTextEdit.fSearchReplaceState.fSearchSelection:=fCheckBoxSearchSelection.Checked;
  fMultiLineTextEdit.fSearchReplaceState.fEntrieScope:=fCheckBoxEntrieScope.Checked;
- fMultiLineTextEdit.fSearchReplaceState.fCodePointIndex:=-fMultiLineTextEdit.fView.CodePointIndex;
+ if fMultiLineTextEdit.fSearchReplaceState.fEntrieScope then begin
+  fMultiLineTextEdit.fSearchReplaceState.fCodePointIndex:=0;
+ end else begin
+  fMultiLineTextEdit.fSearchReplaceState.fCodePointIndex:=fMultiLineTextEdit.fView.CodePointIndex;
+ end;
  fMultiLineTextEdit.fSearchReplaceState.fSelectionStart:=fMultiLineTextEdit.fView.MarkStartCodePointIndex;
  fMultiLineTextEdit.fSearchReplaceState.fSelectionEnd:=fMultiLineTextEdit.fView.MarkEndCodePointIndex;
  s:=fMultiLineTextEdit.fSearchReplaceState.fFind;
- if fMultiLineTextEdit.fSearchReplaceState.fUseRegularExpression then begin
+ if not fMultiLineTextEdit.fSearchReplaceState.fUseRegularExpression then begin
+
  end;
  if fMultiLineTextEdit.fSearchReplaceState.fWholeWords then begin
-  s:='\b'+s+'\B';
+  s:='\b'+s+'\b';
  end;
  RegularExpressionFlags:=[];
  if fMultiLineTextEdit.fSearchReplaceState.fCaseInsensitive then begin

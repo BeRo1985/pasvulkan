@@ -1772,6 +1772,7 @@ type TpvTextEditor=class
       public
        property Lines[const aLineIndex:TpvSizeInt]:TpvUTF8String read GetLine write SetLine; default;
       published
+       property Rope:TRope read fRope;
        property Text:TpvUTF8String read GetText write SetText;
        property CountLines:TpvSizeInt read GetCountLines;
        property UndoRedoManager:TUndoRedoManager read fUndoRedoManager;
