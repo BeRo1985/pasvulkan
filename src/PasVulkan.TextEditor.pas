@@ -5009,7 +5009,7 @@ begin
  SetLength(CodePointRanges,2);
  CodePointRanges[0]:=TCodePointRange.Create(ord('A'),ord('Z'));
  CodePointRanges[1]:=TCodePointRange.Create(ord('a'),ord('z'));
- UsedCodePointSet:=TCodePointSet.Create(CodePointRanges);
+ UsedCodePointSet:=self*TCodePointSet.Create(CodePointRanges);
  CodePointSetToAdd:=TCodePointSet.CreateEmpty;
  for Range in UsedCodePointSet.fRanges do begin
   for CodePoint:=Range.fFromCodePoint to Range.fToCodePoint do begin
@@ -5031,7 +5031,7 @@ var UsedCodePointSet,CodePointSetToAdd,CodePointSetToSubtract:TCodePointSet;
     Range:TCodePointRange;
     CodePoint:TpvUInt32;
 begin
- UsedCodePointSet:=TCodePointSet.Create(TCodePointRange.Create(ord('A'),ord('Z')));
+ UsedCodePointSet:=self*TCodePointSet.Create(TCodePointRange.Create(ord('A'),ord('Z')));
  CodePointSetToAdd:=TCodePointSet.CreateEmpty;
  CodePointSetToSubtract:=TCodePointSet.CreateEmpty;
  for Range in UsedCodePointSet.fRanges do begin
@@ -5048,7 +5048,7 @@ var UsedCodePointSet,CodePointSetToAdd,CodePointSetToSubtract:TCodePointSet;
     Range:TCodePointRange;
     CodePoint:TpvUInt32;
 begin
- UsedCodePointSet:=TCodePointSet.Create(TCodePointRange.Create(ord('a'),ord('z')));
+ UsedCodePointSet:=self*TCodePointSet.Create(TCodePointRange.Create(ord('a'),ord('z')));
  CodePointSetToAdd:=TCodePointSet.CreateEmpty;
  CodePointSetToSubtract:=TCodePointSet.CreateEmpty;
  for Range in UsedCodePointSet.fRanges do begin
