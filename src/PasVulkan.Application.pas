@@ -5356,7 +5356,7 @@ end;
 
 class procedure TpvApplication.Log(const aLevel:TpvInt32;const aWhere,aWhat:string);
 begin
-{$if (defined(fpc) and defined(android)) and not defined(Release)}
+{$if (defined(fpc) and defined(android)) and (defined(Debug) or not defined(Release))}
  case aLevel of
   LOG_NONE:begin
   end;
@@ -5373,7 +5373,7 @@ begin
    __android_log_write(ANDROID_LOG_ERROR,PAnsiChar(AnsiString(aWhere)),PAnsiChar(AnsiString(aWhat)));
   end;
  end;
-{$elseif not defined(Release)}
+{$elseif defined(Debug) or not defined(Release)}
  case aLevel of
   LOG_NONE:begin
   end;

@@ -8677,6 +8677,7 @@ begin
   end;
   fPrevious:=nil;
   fNext:=nil;
+  fParent:=nil;
  end;
  inherited BeforeDestruction;
 end;

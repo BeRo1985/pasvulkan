@@ -278,6 +278,7 @@ type TpvGUIObject=class;
        fID:TpvUTF8String;
        fTag:TpvPtrInt;
        fReferenceCounter:TpvInt32;
+       fMarkBits:TpvSizeUInt;
       public
        constructor Create(const aParent:TpvGUIObject); reintroduce; virtual;
        destructor Destroy; override;
@@ -1225,6 +1226,7 @@ type TpvGUIObject=class;
        fModalWindowStack:TpvGUIObjectList;
        fLastFocusPath:TpvGUIObjectList;
        fCurrentFocusPath:TpvGUIObjectList;
+       fWipeReferenceCountedObjectList:TList;
        fDragWidget:TpvGUIWidget;
        fWindow:TpvGUIWindow;
        fContent:TpvGUIPanel;
@@ -1251,6 +1253,7 @@ type TpvGUIObject=class;
        procedure BeforeDestruction; override;
        procedure ReleaseObject(const aGUIObject:TpvGUIObject);
        procedure ClearReferenceCountedObjectList;
+       procedure WipeReferenceCountedObjectList;
        procedure AddReferenceCountedObjectForNextDraw(const aObject:TpvReferenceCountedObject);
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
        function AddMenu:TpvGUIWindowMenu;
@@ -3372,9 +3375,22 @@ begin
 end;
 
 destructor TpvGUIObject.Destroy;
+{$ifdef PasVulkanGUIDebug}
+var Index:TpvSizeInt;
+{$endif}
 begin
+{$ifdef PasVulkanGUIDebug}
+ pvApplication.Log(LOG_VERBOSE,ClassName+'.TpvGUIObject.Destroy','Entering... self: '+IntToHex(TpvPtrInt(self),16));
+ for Index:=0 to fChildren.Count-1 do begin
+  fChildren[Index].fParent:=nil;
+ end;
+{$endif}
  FreeAndNil(fChildren);
  inherited Destroy;
+{$ifdef PasVulkanGUIDebug}
+ fChildren:=pointer(TpvPtrUInt(1)); // for intentionally intended SIGSERV exceptions at Use-After-Free problems
+ pvApplication.Log(LOG_VERBOSE,ClassName+'.TpvGUIObject.Destroy','Leaving...');
+{$endif}
 end;
 
 function TpvGUIObject.HasParent(const aParent:TpvGUIObject):boolean;
@@ -3413,10 +3429,16 @@ end;
 
 procedure TpvGUIObject.BeforeDestruction;
 begin
+{$ifdef PasVulkanGUIDebug}
+ pvApplication.Log(LOG_VERBOSE,ClassName+'.TpvGUIObject.BeforeDestruction','Entering... self: '+IntToHex(TpvPtrInt(self),16)+' Parent: '+IntToHex(TpvPtrInt(fParent),16));
+{$endif}
  if assigned(fParent) and assigned(fParent.fChildren) then begin
   fParent.fChildren.Extract(self);
  end;
  inherited BeforeDestruction;
+{$ifdef PasVulkanGUIDebug}
+ pvApplication.Log(LOG_VERBOSE,ClassName+'.TpvGUIObject.BeforeDestruction','Leaving...');
+{$endif}
 end;
 
 constructor TpvGUIObjectHolder.Create(const aParent:TpvGUIObject;const aHoldedObject:TObject=nil);
@@ -10556,6 +10578,8 @@ begin
 
  fCurrentFocusPath:=TpvGUIObjectList.Create(false);
 
+ fWipeReferenceCountedObjectList:=TList.Create;
+
  fDragWidget:=nil;
 
  fWindow:=nil;
@@ -10583,6 +10607,8 @@ end;
 destructor TpvGUIInstance.Destroy;
 begin
 
+ WipeReferenceCountedObjectList;
+
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
 
  FreeAndNil(fPopupMenuStack);
@@ -10594,6 +10620,8 @@ begin
  FreeAndNil(fModalWindowStack);
 
  SetCountBuffers(0);
+
+ FreeAndNil(fWipeReferenceCountedObjectList);
 
  fBuffers:=nil;
 
@@ -10614,30 +10642,42 @@ end;
 procedure TpvGUIInstance.SetCountBuffers(const aCountBuffers:TpvInt32);
 var Index,SubIndex:TpvInt32;
     Buffer:PpvGUIInstanceBuffer;
+    ReferenceCountedObject:TpvReferenceCountedObject;
 begin
 
  if fCountBuffers<>aCountBuffers then begin
 
-  for Index:=aCountBuffers to fCountBuffers-1 do begin
-   Buffer:=@fBuffers[Index];
-   for SubIndex:=0 to Buffer^.CountReferenceCountedObjects-1 do begin
-    Buffer^.ReferenceCountedObjects[SubIndex].DecRef;
-   end;
-   Buffer^.CountReferenceCountedObjects:=0;
-  end;
+  try
 
-  if length(fBuffers)<aCountBuffers then begin
-   SetLength(fBuffers,aCountBuffers*2);
-   for Index:=Max(0,fCountBuffers) to length(fBuffers)-1 do begin
+   for Index:=aCountBuffers to fCountBuffers-1 do begin
+    Buffer:=@fBuffers[Index];
+    for SubIndex:=0 to Buffer^.CountReferenceCountedObjects-1 do begin
+     ReferenceCountedObject:=Buffer^.ReferenceCountedObjects[SubIndex];
+     if ReferenceCountedObject.DecRefWithoutFree=0 then begin
+      fWipeReferenceCountedObjectList.Add(ReferenceCountedObject);
+     end;
+    end;
+    Buffer^.CountReferenceCountedObjects:=0;
+   end;
+
+   if length(fBuffers)<aCountBuffers then begin
+    SetLength(fBuffers,aCountBuffers*2);
+    for Index:=Max(0,fCountBuffers) to length(fBuffers)-1 do begin
+     fBuffers[Index].CountReferenceCountedObjects:=0;
+    end;
+   end;
+
+   for Index:=fCountBuffers to aCountBuffers-1 do begin
     fBuffers[Index].CountReferenceCountedObjects:=0;
    end;
-  end;
 
-  for Index:=fCountBuffers to aCountBuffers-1 do begin
-   fBuffers[Index].CountReferenceCountedObjects:=0;
-  end;
+   fCountBuffers:=aCountBuffers;
 
-  fCountBuffers:=aCountBuffers;
+  finally
+
+   WipeReferenceCountedObjectList;
+
+  end;
 
  end;
 
@@ -10651,6 +10691,7 @@ end;
 
 procedure TpvGUIInstance.BeforeDestruction;
 begin
+ WipeReferenceCountedObjectList;
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fFocusedWidget);
@@ -10659,6 +10700,7 @@ begin
  fModalWindowStack.Clear;
  fLastFocusPath.Clear;
  fCurrentFocusPath.Clear;
+ fWipeReferenceCountedObjectList.Clear;
  DecRefWithoutFree;
  inherited BeforeDestruction;
 end;
@@ -10714,13 +10756,80 @@ end;
 procedure TpvGUIInstance.ClearReferenceCountedObjectList;
 var Index:TpvInt32;
     Buffer:PpvGUIInstanceBuffer;
+    ReferenceCountedObject:TpvReferenceCountedObject;
 begin
  if (fUpdateBufferIndex>=0) and (fUpdateBufferIndex<fCountBuffers) then begin
   Buffer:=@fBuffers[fUpdateBufferIndex];
   for Index:=0 to Buffer^.CountReferenceCountedObjects-1 do begin
-   Buffer^.ReferenceCountedObjects[Index].DecRef;
+   ReferenceCountedObject:=Buffer^.ReferenceCountedObjects[Index];
+   if ReferenceCountedObject.DecRefWithoutFree=0 then begin
+    fWipeReferenceCountedObjectList.Add(ReferenceCountedObject);
+   end;
   end;
   Buffer^.CountReferenceCountedObjects:=0;
+ end;
+end;
+
+procedure TpvGUIInstance.WipeReferenceCountedObjectList;
+ procedure DoIt;
+ var SortedList,ToDeleteList:TList;
+  procedure Visit(const aObject:TpvGUIObject;const aIsChild:boolean);
+  var Index:TpvSizeInt;
+  begin
+   if (aObject.fMarkBits and 3)=0 then begin
+    aObject.fMarkBits:=aObject.fMarkBits or 1;
+    if assigned(aObject.Children) then begin
+     for Index:=0 to aObject.Children.Count-1 do begin
+      Visit(aObject.Children[Index],true);
+     end;
+    end;
+    aObject.fMarkBits:=(aObject.fMarkBits and not 1) or 2;
+    if aIsChild then begin
+     aObject.fMarkBits:=aObject.fMarkBits or 4;
+    end;
+    SortedList.Add(aObject);
+   end;
+  end;
+ var Index:TpvSizeInt;
+     ReferenceCountedObject:TpvReferenceCountedObject;
+ begin
+  SortedList:=TList.Create;
+  try
+   try
+    for Index:=0 to fWipeReferenceCountedObjectList.Count-1 do begin
+     ReferenceCountedObject:=TpvReferenceCountedObject(fWipeReferenceCountedObjectList.Items[Index]);
+     if assigned(ReferenceCountedObject) then begin
+      if ReferenceCountedObject is TpvGUIObject then begin
+       Visit(TpvGUIObject(ReferenceCountedObject),false);
+      end else begin
+       ReferenceCountedObject.Free;
+      end;
+     end;
+    end;
+   finally
+    fWipeReferenceCountedObjectList.Clear;
+   end;
+   ToDeleteList:=TList.Create;
+   try
+    for Index:=0 to SortedList.Count-1 do begin
+     ReferenceCountedObject:=TpvReferenceCountedObject(SortedList.Items[Index]);
+     if (TpvGUIObject(ReferenceCountedObject).fMarkBits and 4)=0 then begin
+      ToDeleteList.Add(TpvGUIObject(ReferenceCountedObject));
+     end;
+    end;
+    for Index:=ToDeleteList.Count-1 downto 0 do begin
+     TpvGUIObject(ToDeleteList.Items[Index]).Free;
+    end;
+   finally
+    ToDeleteList.Free;
+   end;
+  finally
+   SortedList.Free;
+  end;
+ end;
+begin
+ if fWipeReferenceCountedObjectList.Count>0 then begin
+  DoIt;
  end;
 end;
 
@@ -11179,6 +11288,7 @@ var Index:TpvInt32;
 begin
  fDrawEngine.Clear;
  ClearReferenceCountedObjectList;
+ WipeReferenceCountedObjectList;
  for Index:=0 to fChildren.Count-1 do begin
   if fChildren[Index] is TpvGUIPopup then begin
    Popup:=fChildren[Index] as TpvGUIPopup;
@@ -18388,29 +18498,32 @@ begin
  FreeAndNil(fTextEditor);
 
  inherited Destroy;
+
 end;
 
 procedure TpvGUIMultiLineTextEdit.OpenSearchReplaceDialog(const aReplace:boolean);
 begin
- if not assigned(fSearchReplaceWindow) then begin
-  fSearchReplaceWindow:=TpvGUIMultiLineTextEditSearchReplaceWindow.Create(fInstance,self,aReplace);
-  if assigned(fSearchReplaceState) then begin
-   fSearchReplaceWindow.fTextEditFind.Text:=fSearchReplaceState.fFind;
-   fSearchReplaceWindow.fTextEditReplace.Text:=fSearchReplaceState.fReplace;
-   fSearchReplaceWindow.fRadioCheckBoxNormal.Checked:=not fSearchReplaceState.fUseRegularExpression;
-   fSearchReplaceWindow.fRadioCheckBoxRegularExpression.Checked:=fSearchReplaceState.fUseRegularExpression;
-   fSearchReplaceWindow.fCheckBoxWholeWords.Checked:=fSearchReplaceState.fWholeWords;
-   fSearchReplaceWindow.fCheckBoxCaseInsensitive.Checked:=fSearchReplaceState.fCaseInsensitive;
-   fSearchReplaceWindow.fCheckBoxMultiLine.Checked:=fSearchReplaceState.fMultiLine;
-   fSearchReplaceWindow.fCheckBoxReplaceAll.Checked:=fSearchReplaceState.fReplaceAll;
-   fSearchReplaceWindow.fCheckBoxPromptOnReplace.Checked:=fSearchReplaceState.fPromptOnReplace;
-  end;
-  if fView.HasMarkedRange then begin
-   fSearchReplaceWindow.fCheckBoxSearchSelection.Checked:=true;
-   fSearchReplaceWindow.fCheckBoxEntrieScope.Checked:=false;
-  end else begin
-   fSearchReplaceWindow.fCheckBoxSearchSelection.Checked:=false;
-   fSearchReplaceWindow.fCheckBoxEntrieScope.Checked:=true;
+ if assigned(fView) then begin
+  if not assigned(fSearchReplaceWindow) then begin
+   fSearchReplaceWindow:=TpvGUIMultiLineTextEditSearchReplaceWindow.Create(fInstance,self,aReplace);
+   if assigned(fSearchReplaceState) then begin
+    fSearchReplaceWindow.fTextEditFind.Text:=fSearchReplaceState.fFind;
+    fSearchReplaceWindow.fTextEditReplace.Text:=fSearchReplaceState.fReplace;
+    fSearchReplaceWindow.fRadioCheckBoxNormal.Checked:=not fSearchReplaceState.fUseRegularExpression;
+    fSearchReplaceWindow.fRadioCheckBoxRegularExpression.Checked:=fSearchReplaceState.fUseRegularExpression;
+    fSearchReplaceWindow.fCheckBoxWholeWords.Checked:=fSearchReplaceState.fWholeWords;
+    fSearchReplaceWindow.fCheckBoxCaseInsensitive.Checked:=fSearchReplaceState.fCaseInsensitive;
+    fSearchReplaceWindow.fCheckBoxMultiLine.Checked:=fSearchReplaceState.fMultiLine;
+    fSearchReplaceWindow.fCheckBoxReplaceAll.Checked:=fSearchReplaceState.fReplaceAll;
+    fSearchReplaceWindow.fCheckBoxPromptOnReplace.Checked:=fSearchReplaceState.fPromptOnReplace;
+   end;
+   if fView.HasMarkedRange then begin
+    fSearchReplaceWindow.fCheckBoxSearchSelection.Checked:=true;
+    fSearchReplaceWindow.fCheckBoxEntrieScope.Checked:=false;
+   end else begin
+    fSearchReplaceWindow.fCheckBoxSearchSelection.Checked:=false;
+    fSearchReplaceWindow.fCheckBoxEntrieScope.Checked:=true;
+   end;
   end;
  end;
 end;
@@ -18454,21 +18567,25 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnUndoClick(const aSender:TpvGUIObject);
 begin
- fView.Undo;
- fDirty:=true;
- fTime:=0.0;
- if assigned(fOnChange) then begin
-  fOnChange(self);
+ if assigned(fView) then begin
+  fView.Undo;
+  fDirty:=true;
+  fTime:=0.0;
+  if assigned(fOnChange) then begin
+   fOnChange(self);
+  end;
  end;
 end;
 
 procedure TpvGUIMultiLineTextEdit.PopupMenuOnRedoClick(const aSender:TpvGUIObject);
 begin
- fView.Redo;
- fDirty:=true;
- fTime:=0.0;
- if assigned(fOnChange) then begin
-  fOnChange(self);
+ if assigned(fView) then begin
+  fView.Redo;
+  fDirty:=true;
+  fTime:=0.0;
+  if assigned(fOnChange) then begin
+   fOnChange(self);
+  end;
  end;
 end;
 
@@ -18506,39 +18623,49 @@ end;
 procedure TpvGUIMultiLineTextEdit.HorizontalScrollBarOnChange(const aSender:TpvGUIObject);
 var Coordinate:TpvTextEditor.TCoordinate;
 begin
- Coordinate:=fView.CursorOffset;
- if Coordinate.x<>fHorizontalScrollBar.Value then begin
-  Coordinate.x:=fHorizontalScrollBar.Value;
-  fView.CursorOffset:=Coordinate;
-  fDirty:=true;
-  fTime:=0.0;
+ if assigned(fView) then begin
+  Coordinate:=fView.CursorOffset;
+  if Coordinate.x<>fHorizontalScrollBar.Value then begin
+   Coordinate.x:=fHorizontalScrollBar.Value;
+   fView.CursorOffset:=Coordinate;
+   fDirty:=true;
+   fTime:=0.0;
+  end;
  end;
 end;
 
 procedure TpvGUIMultiLineTextEdit.VerticalScrollBarOnChange(const aSender:TpvGUIObject);
 var Coordinate:TpvTextEditor.TCoordinate;
 begin
- Coordinate:=fView.CursorOffset;
- if Coordinate.y<>fVerticalScrollBar.Value then begin
-  Coordinate.y:=fVerticalScrollBar.Value;
-  fView.CursorOffset:=Coordinate;
-  fDirty:=true;
-  fTime:=0.0;
+ if assigned(fView) then begin
+  Coordinate:=fView.CursorOffset;
+  if Coordinate.y<>fVerticalScrollBar.Value then begin
+   Coordinate.y:=fVerticalScrollBar.Value;
+   fView.CursorOffset:=Coordinate;
+   fDirty:=true;
+   fTime:=0.0;
+  end;
  end;
 end;
 
 function TpvGUIMultiLineTextEdit.GetText:TpvUTF8String;
 begin
- result:=fTextEditor.Text;
+ if assigned(fTextEditor) then begin
+  result:=fTextEditor.Text;
+ end else begin
+  result:='';
+ end;
 end;
 
 procedure TpvGUIMultiLineTextEdit.SetText(const aText:TpvUTF8String);
 begin
- fTextEditor.Text:=aText;
- fDirty:=true;
- fTime:=0.0;
- if assigned(fOnChange) then begin
-  fOnChange(self);
+ if assigned(fTextEditor) then begin
+  fTextEditor.Text:=aText;
+  fDirty:=true;
+  fTime:=0.0;
+  if assigned(fOnChange) then begin
+   fOnChange(self);
+  end;
  end;
 end;
 
@@ -18677,7 +18804,7 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.CutSelectedText;
 begin
- if fView.HasMarkedRange then begin
+ if assigned(fView) and fView.HasMarkedRange then begin
   pvApplication.Clipboard.SetText(fView.CutMarkedRangeText);
   fDirty:=true;
   fTime:=0.0;
@@ -18689,14 +18816,14 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.CopySelectedText;
 begin
- if fView.HasMarkedRange then begin
+ if assigned(fView) and fView.HasMarkedRange then begin
   pvApplication.Clipboard.SetText(fView.GetMarkedRangeText);
  end;
 end;
 
 procedure TpvGUIMultiLineTextEdit.PasteText;
 begin
- if pvApplication.Clipboard.HasText then begin
+ if assigned(fView) and pvApplication.Clipboard.HasText then begin
   fView.Paste(pvApplication.Clipboard.GetText);
   fDirty:=true;
   fTime:=0.0;
@@ -18708,7 +18835,7 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.DeleteSelectedText;
 begin
- if fView.DeleteMarkedRange then begin
+ if assigned(fView) and fView.DeleteMarkedRange then begin
   fDirty:=true;
   fTime:=0.0;
   if assigned(fOnChange) then begin
@@ -18719,22 +18846,26 @@ end;
 
 procedure TpvGUIMultiLineTextEdit.SelectAll;
 begin
- fView.MarkAll;
- fDirty:=true;
- fTime:=0.0;
+ if assigned(fView) then begin
+  fView.MarkAll;
+  fDirty:=true;
+  fTime:=0.0;
+ end;
 end;
 
 procedure TpvGUIMultiLineTextEdit.SelectNone;
 begin
- fView.UnmarkAll;
- fDirty:=true;
- fTime:=0.0;
+ if assigned(fView) then begin
+  fView.UnmarkAll;
+  fDirty:=true;
+  fTime:=0.0;
+ end;
 end;
 
 function TpvGUIMultiLineTextEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
 begin
  result:=aButton=TpvApplicationInputPointerButton.Left;
- if result then begin
+ if result and assigned(fView) then begin
   fView.SetMarkStart;
   fView.CodePointIndex:=fView.GetCodePointIndexFromRelativeCursorPosition(trunc(floor((aPosition.x-fTextAreaRect.Offset.x)/fFontCharSize.x)),
                                                                           trunc(floor((aPosition.y-fTextAreaRect.Offset.y)/fFontCharSize.y)));
@@ -18757,7 +18888,7 @@ var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
     TemporaryText,TemporaryUncheckedText:TpvUTF8String;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
- if Enabled and not result then begin
+ if assigned(fView) and Enabled and not result then begin
   case aKeyEvent.KeyEventType of
    TpvApplicationInputKeyEventType.Down:begin
     case aKeyEvent.KeyCode of
@@ -19061,7 +19192,7 @@ begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
   result:=inherited PointerEvent(aPointerEvent);
-  if not result then begin
+  if assigned(fView) and not result then begin
    case aPointerEvent.PointerEventType of
     TpvApplicationInputPointerEventType.Down:begin
      case aPointerEvent.Button of
@@ -19127,7 +19258,7 @@ var TemporaryValue,Step:TpvInt64;
     v:TpvFloat;
 begin
  result:=inherited Scrolled(aPosition,aRelativeAmount);
- if not result then begin
+ if assigned(fView) and not result then begin
   v:=aRelativeAmount.x+aRelativeAmount.y;
   if v<0.0 then begin
    Step:=floor(v);
@@ -19155,32 +19286,36 @@ begin
  if assigned(fSearchReplaceState) then begin
   fSearchReplaceState.Process;
  end;
- Skin.GetMultiLineTextEditPreferredSize(self);
- if (fViewOldMaximumVisibleColumnWidth<>fViewMaximumVisibleColumnWidth) or
-    (fViewOldCountLines<>fViewCountLines) then begin
-  fViewOldMaximumVisibleColumnWidth:=fViewMaximumVisibleColumnWidth;
-  fViewOldCountLines:=fViewCountLines;
-  PerformLayout;
+ if assigned(fView) then begin
+  Skin.GetMultiLineTextEditPreferredSize(self);
+  if (fViewOldMaximumVisibleColumnWidth<>fViewMaximumVisibleColumnWidth) or
+     (fViewOldCountLines<>fViewCountLines) then begin
+   fViewOldMaximumVisibleColumnWidth:=fViewMaximumVisibleColumnWidth;
+   fViewOldCountLines:=fViewCountLines;
+   PerformLayout;
+  end;
+  if fHorizontalScrollBar.Visible and (fHorizontalScrollBar.Value<>fView.CursorOffset.x) then begin
+   fHorizontalScrollBar.Value:=fView.CursorOffset.x;
+  end;
+  if fVerticalScrollBar.Visible and (fVerticalScrollBar.Value<>fView.CursorOffset.y) then begin
+   fVerticalScrollBar.Value:=fView.CursorOffset.y;
+  end;
+  fTime:=fTime+fInstance.fDeltaTime;
  end;
- if fHorizontalScrollBar.Visible and (fHorizontalScrollBar.Value<>fView.CursorOffset.x) then begin
-  fHorizontalScrollBar.Value:=fView.CursorOffset.x;
- end;
- if fVerticalScrollBar.Visible and (fVerticalScrollBar.Value<>fView.CursorOffset.y) then begin
-  fVerticalScrollBar.Value:=fView.CursorOffset.y;
- end;
- fTime:=fTime+fInstance.fDeltaTime;
  inherited Update;
 end;
 
 procedure TpvGUIMultiLineTextEdit.Draw;
 begin
- if fHorizontalScrollBar.Visible and (fHorizontalScrollBar.Value<>fView.CursorOffset.x) then begin
-  fHorizontalScrollBar.Value:=fView.CursorOffset.x;
+ if assigned(fView) then begin
+  if fHorizontalScrollBar.Visible and (fHorizontalScrollBar.Value<>fView.CursorOffset.x) then begin
+   fHorizontalScrollBar.Value:=fView.CursorOffset.x;
+  end;
+  if fVerticalScrollBar.Visible and (fVerticalScrollBar.Value<>fView.CursorOffset.y) then begin
+   fVerticalScrollBar.Value:=fView.CursorOffset.y;
+  end;
+  Skin.DrawMultiLineTextEdit(fInstance.DrawEngine,self);
  end;
- if fVerticalScrollBar.Visible and (fVerticalScrollBar.Value<>fView.CursorOffset.y) then begin
-  fVerticalScrollBar.Value:=fView.CursorOffset.y;
- end;
- Skin.DrawMultiLineTextEdit(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -19422,48 +19557,50 @@ begin
   fMultiLineTextEdit.fSearchReplaceState.fParent:=nil;
   FreeAndNil(fMultiLineTextEdit.fSearchReplaceState);
  end;
- fMultiLineTextEdit.fSearchReplaceState:=TpvGUIMultiLineTextEditSearchReplaceState.Create(fMultiLineTextEdit);
- fMultiLineTextEdit.fSearchReplaceState.fFind:=fTextEditFind.Text;
- fMultiLineTextEdit.fSearchReplaceState.fReplace:=fTextEditReplace.Text;
- fMultiLineTextEdit.fSearchReplaceState.fUseRegularExpression:=fRadioCheckBoxRegularExpression.Checked;
- fMultiLineTextEdit.fSearchReplaceState.fWholeWords:=fCheckBoxWholeWords.Checked;
- fMultiLineTextEdit.fSearchReplaceState.fCaseInsensitive:=fCheckBoxCaseInsensitive.Checked;
- fMultiLineTextEdit.fSearchReplaceState.fMultiLine:=fCheckBoxMultiLine.Checked;
- fMultiLineTextEdit.fSearchReplaceState.fReplaceAll:=fCheckBoxReplaceAll.Checked;
- fMultiLineTextEdit.fSearchReplaceState.fPromptOnReplace:=fCheckBoxPromptOnReplace.Checked;
- fMultiLineTextEdit.fSearchReplaceState.fSearchSelection:=fCheckBoxSearchSelection.Checked;
- fMultiLineTextEdit.fSearchReplaceState.fEntrieScope:=fCheckBoxEntrieScope.Checked;
- if fMultiLineTextEdit.fSearchReplaceState.fEntrieScope then begin
-  fMultiLineTextEdit.fSearchReplaceState.fCodePointIndex:=0;
- end else begin
-  fMultiLineTextEdit.fSearchReplaceState.fCodePointIndex:=fMultiLineTextEdit.fView.CodePointIndex;
- end;
- if fMultiLineTextEdit.fView.HasMarkedRange then begin
-  fMultiLineTextEdit.fSearchReplaceState.fSelectionStart:=Min(fMultiLineTextEdit.fView.MarkStartCodePointIndex,fMultiLineTextEdit.fView.MarkEndCodePointIndex);
-  fMultiLineTextEdit.fSearchReplaceState.fSelectionEnd:=Max(fMultiLineTextEdit.fView.MarkStartCodePointIndex,fMultiLineTextEdit.fView.MarkEndCodePointIndex);
- end else begin
-  fMultiLineTextEdit.fSearchReplaceState.fSelectionStart:=-1;
-  fMultiLineTextEdit.fSearchReplaceState.fSelectionEnd:=-1;
- end;
- s:=fMultiLineTextEdit.fSearchReplaceState.fFind;
- if not fMultiLineTextEdit.fSearchReplaceState.fUseRegularExpression then begin
-  s:=TpvTextEditor.TRegularExpression.Escape(s);
- end;
- if fMultiLineTextEdit.fSearchReplaceState.fWholeWords then begin
-  s:='\b'+s+'\b';
- end;
- RegularExpressionFlags:=[];
- if fMultiLineTextEdit.fSearchReplaceState.fCaseInsensitive then begin
-  Include(RegularExpressionFlags,TpvTextEditor.TRegularExpressionFlag.CaseInsensitive);
- end;
- if fMultiLineTextEdit.fSearchReplaceState.fMultiLine then begin
-  Include(RegularExpressionFlags,TpvTextEditor.TRegularExpressionFlag.MultiLine);
- end;
- try
-  fMultiLineTextEdit.fSearchReplaceState.fRegularExpression:=TpvTextEditor.TRegularExpression.Create(fMultiLineTextEdit.fTextEditor,s,RegularExpressionFlags);
- except
-  TpvGUIMessageDialog.Create(fInstance,'Error','Syntax error');
-  raise;
+ if assigned(fMultiLineTextEdit) and assigned(fMultiLineTextEdit.fView) then begin
+  fMultiLineTextEdit.fSearchReplaceState:=TpvGUIMultiLineTextEditSearchReplaceState.Create(fMultiLineTextEdit);
+  fMultiLineTextEdit.fSearchReplaceState.fFind:=fTextEditFind.Text;
+  fMultiLineTextEdit.fSearchReplaceState.fReplace:=fTextEditReplace.Text;
+  fMultiLineTextEdit.fSearchReplaceState.fUseRegularExpression:=fRadioCheckBoxRegularExpression.Checked;
+  fMultiLineTextEdit.fSearchReplaceState.fWholeWords:=fCheckBoxWholeWords.Checked;
+  fMultiLineTextEdit.fSearchReplaceState.fCaseInsensitive:=fCheckBoxCaseInsensitive.Checked;
+  fMultiLineTextEdit.fSearchReplaceState.fMultiLine:=fCheckBoxMultiLine.Checked;
+  fMultiLineTextEdit.fSearchReplaceState.fReplaceAll:=fCheckBoxReplaceAll.Checked;
+  fMultiLineTextEdit.fSearchReplaceState.fPromptOnReplace:=fCheckBoxPromptOnReplace.Checked;
+  fMultiLineTextEdit.fSearchReplaceState.fSearchSelection:=fCheckBoxSearchSelection.Checked;
+  fMultiLineTextEdit.fSearchReplaceState.fEntrieScope:=fCheckBoxEntrieScope.Checked;
+  if fMultiLineTextEdit.fSearchReplaceState.fEntrieScope then begin
+   fMultiLineTextEdit.fSearchReplaceState.fCodePointIndex:=0;
+  end else begin
+   fMultiLineTextEdit.fSearchReplaceState.fCodePointIndex:=fMultiLineTextEdit.fView.CodePointIndex;
+  end;
+  if fMultiLineTextEdit.fView.HasMarkedRange then begin
+   fMultiLineTextEdit.fSearchReplaceState.fSelectionStart:=Min(fMultiLineTextEdit.fView.MarkStartCodePointIndex,fMultiLineTextEdit.fView.MarkEndCodePointIndex);
+   fMultiLineTextEdit.fSearchReplaceState.fSelectionEnd:=Max(fMultiLineTextEdit.fView.MarkStartCodePointIndex,fMultiLineTextEdit.fView.MarkEndCodePointIndex);
+  end else begin
+   fMultiLineTextEdit.fSearchReplaceState.fSelectionStart:=-1;
+   fMultiLineTextEdit.fSearchReplaceState.fSelectionEnd:=-1;
+  end;
+  s:=fMultiLineTextEdit.fSearchReplaceState.fFind;
+  if not fMultiLineTextEdit.fSearchReplaceState.fUseRegularExpression then begin
+   s:=TpvTextEditor.TRegularExpression.Escape(s);
+  end;
+  if fMultiLineTextEdit.fSearchReplaceState.fWholeWords then begin
+   s:='\b'+s+'\b';
+  end;
+  RegularExpressionFlags:=[];
+  if fMultiLineTextEdit.fSearchReplaceState.fCaseInsensitive then begin
+   Include(RegularExpressionFlags,TpvTextEditor.TRegularExpressionFlag.CaseInsensitive);
+  end;
+  if fMultiLineTextEdit.fSearchReplaceState.fMultiLine then begin
+   Include(RegularExpressionFlags,TpvTextEditor.TRegularExpressionFlag.MultiLine);
+  end;
+  try
+   fMultiLineTextEdit.fSearchReplaceState.fRegularExpression:=TpvTextEditor.TRegularExpression.Create(fMultiLineTextEdit.fTextEditor,s,RegularExpressionFlags);
+  except
+   TpvGUIMessageDialog.Create(fInstance,'Error','Syntax error');
+   raise;
+  end;
  end;
 end;
 

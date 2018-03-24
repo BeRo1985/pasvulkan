@@ -132,6 +132,8 @@ type TpvSwap<T>=class
        property Count:TpvInt32 read fCount write SetCount;
      end;
 
+procedure DebugBreakPoint;
+
 function CombineTwoUInt32IntoOneUInt64(const a,b:TpvUInt32):TpvUInt64; {$ifdef caninline}inline;{$endif}
 
 // Sorts data direct inplace
@@ -146,6 +148,26 @@ implementation
 
 uses PasVulkan.Math,
      Generics.Defaults;
+
+procedure DebugBreakPoint;{$if defined(cpuarm)}assembler; // E7FFDEFE
+asm
+ .long 0xFEDEFFE7
+end;
+{$elseif defined(cpu386)}assembler; {$ifdef fpc}nostackframe;{$endif}
+asm
+ db $cc // int3
+end;
+{$elseif defined(cpux86_64)}assembler; {$ifdef fpc}nostackframe;{$endif}
+asm
+{$ifndef fpc}
+ .NOFRAME
+{$endif}
+ db $cc // int3
+end;
+{$else}
+begin
+end;
+{$ifend}
 
 class procedure TpvSwap<T>.Swap(var aValue,aOtherValue:T);
 var Temporary:T;
