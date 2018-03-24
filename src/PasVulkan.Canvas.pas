@@ -4272,6 +4272,7 @@ begin
 end;
 
 procedure TpvCanvas.ExecuteDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
+{$undef PasVulkanCanvasDoNotTrustGPUDriverAtDynamicStates}
 const Offsets:array[0..0] of TVkDeviceSize=(0);
 var Index,StartVertexIndex,TextureMode:TpvInt32;
     Descriptor:TpvCanvasVulkanDescriptor;
@@ -4344,19 +4345,25 @@ begin
        BlendingMode:=QueueItem^.BlendingMode;
        TextureMode:=QueueItem^.TextureMode;
        aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipelines[QueueItem^.BlendingMode,QueueItem^.TextureMode].Handle);
+{$ifdef PasVulkanCanvasDoNotTrustGPUDriverAtDynamicStates}
        OldScissor.offset.x:=-$7fffffff;
        OldScissor.offset.y:=-$7fffffff;
        OldScissor.extent.Width:=$7fffffff;
        OldScissor.extent.Height:=$7fffffff;
+{$endif}
        Descriptor:=nil;
+{$ifdef PasVulkanCanvasDoNotTrustGPUDriverAtDynamicStates}
        ForceUpdatePushConstants:=true;
+{$endif}
       end;
 
       if ForceUpdate or
          (Descriptor<>QueueItem^.Descriptor) then begin
        Descriptor:=QueueItem^.Descriptor;
        aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayouts[QueueItem^.BlendingMode,QueueItem^.TextureMode].Handle,0,1,@Descriptor.fDescriptorSet.Handle,0,nil);
+{$ifdef PasVulkanCanvasDoNotTrustGPUDriverAtDynamicStates}
        ForceUpdatePushConstants:=true;
+{$endif}
       end;
 
       if ForceUpdate or
