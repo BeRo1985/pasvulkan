@@ -272,13 +272,18 @@ type TpvGUIObject=class;
 
      TpvGUIObject=class(TpvReferenceCountedObject)
       private
+       const TemporarilyMarkBit=TPasMPUInt32(1 shl 0);
+             PermanentlyMarkBit=TPasMPUInt32(1 shl 1);
+             ChildMarkBit=TPasMPUInt32(1 shl 2);
+             ProtectedMarkBit=TPasMPUInt32(1 shl 3);
+             ReleasedMarkBit=TPasMPUInt32(1 shl 4);
+      private
        fInstance:TpvGUIInstance;
        fParent:TpvGUIObject;
        fChildren:TpvGUIObjectList;
        fID:TpvUTF8String;
        fTag:TpvPtrInt;
-       fReferenceCounter:TpvInt32;
-       fMarkBits:TpvSizeUInt;
+       fMarkBits:TPasMPUInt32;
       public
        constructor Create(const aParent:TpvGUIObject); reintroduce; virtual;
        destructor Destroy; override;
@@ -292,7 +297,27 @@ type TpvGUIObject=class;
        property Children:TpvGUIObjectList read fChildren;
        property ID:TpvUTF8String read fID write fID;
        property Tag:TpvPtrInt read fTag write fTag;
-       property ReferenceCounter:TpvInt32 read fReferenceCounter write fReferenceCounter;
+     end;
+     EpvGUIObjectGarbageDisposer=class(Exception);
+
+     TpvGUIObjectGarbageDisposer=class
+      private
+       // This is NOT a garbage collector, it's reallly just a Directed-Acyclic-Graph-
+       // Topological-Sort-based garbage disposer for TpvGUIObject object instances,
+       // so that all garbage objects are freed in a controlled topological order
+       // relatively to each another.
+       fInstance:TpvGUIInstance;
+       fLock:TPasMPSlimReaderWriterLock;
+       fToDisposeList:TList;
+       fTopologicalSortedList:TList;
+       fToFreeList:TList;
+       fCountToDisposeObjects:{$ifdef cpu64}TPasMPInt64{$else}TPasMPInt32{$endif};
+       procedure Visit(const aObject:TpvGUIObject;const aIsChild:boolean);
+      public
+       constructor Create(const aInstance:TpvGUIInstance); reintroduce;
+       destructor Destroy; override;
+       procedure AddGarbage(const aObject:TpvGUIObject);
+       procedure DisposeAllGarbage;
      end;
 
      TpvGUIObjectHolder=class(TpvGUIObject)
@@ -1191,12 +1216,12 @@ type TpvGUIObject=class;
        property OnDestroy:TpvGUIOnEvent read fOnDestroy write fOnDestroy;
      end;
 
-     TpvGUIInstanceBufferReferenceCountedObjects=array of TpvReferenceCountedObject;
+     TpvGUIInstanceBufferObjects=array of TpvGUIObject;
 
      PpvGUIInstanceBuffer=^TpvGUIInstanceBuffer;
      TpvGUIInstanceBuffer=record
-      ReferenceCountedObjects:TpvGUIInstanceBufferReferenceCountedObjects;
-      CountReferenceCountedObjects:TpvInt32;
+      ProtectedObjects:TpvGUIInstanceBufferObjects;
+      CountProtectedObjects:TpvInt32;
      end;
 
      TpvGUIInstanceBuffers=array of TpvGUIInstanceBuffer;
@@ -1210,6 +1235,7 @@ type TpvGUIObject=class;
      TpvGUIInstance=class(TpvGUIHolder)
       private
        fVulkanDevice:TpvVulkanDevice;
+       fObjectGarbageDisposer:TpvGUIObjectGarbageDisposer;
        fCanvas:TpvCanvas;
        fDrawEngine:TpvGUIDrawEngine;
        fFontCodePointRanges:TpvFontCodePointRanges;
@@ -1226,7 +1252,6 @@ type TpvGUIObject=class;
        fModalWindowStack:TpvGUIObjectList;
        fLastFocusPath:TpvGUIObjectList;
        fCurrentFocusPath:TpvGUIObjectList;
-       fWipeReferenceCountedObjectList:TList;
        fDragWidget:TpvGUIWidget;
        fWindow:TpvGUIWindow;
        fContent:TpvGUIPanel;
@@ -1252,9 +1277,8 @@ type TpvGUIObject=class;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
        procedure ReleaseObject(const aGUIObject:TpvGUIObject);
-       procedure ClearReferenceCountedObjectList;
-       procedure WipeReferenceCountedObjectList;
-       procedure AddReferenceCountedObjectForNextDraw(const aObject:TpvReferenceCountedObject);
+       procedure ClearProtectedObjectList;
+       procedure ProtectObjectForNextDraw(const aObject:TpvGUIObject);
        procedure UpdateFocus(const aWidget:TpvGUIWidget);
        function AddMenu:TpvGUIWindowMenu;
        procedure PerformLayout; override;
@@ -1262,6 +1286,7 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure Update; override;
        procedure Draw; override;
       public
        property MousePosition:TpvVector2 read fMousePosition write fMousePosition;
@@ -1336,6 +1361,7 @@ type TpvGUIObject=class;
                            TpvGUIWindowFlag.ResizableW,
                            TpvGUIWindowFlag.ResizableE];
       private
+       fWindowDisposed:boolean;
       protected
        fTitle:TpvUTF8String;
        fCachedTitle:TpvUTF8String;
@@ -3370,9 +3396,11 @@ begin
 
  fTag:=0;
 
- fReferenceCounter:=0;
+ fMarkBits:=0;
 
 end;
+
+{-$define PasVulkanGUIDebug}
 
 destructor TpvGUIObject.Destroy;
 {$ifdef PasVulkanGUIDebug}
@@ -3439,6 +3467,142 @@ begin
 {$ifdef PasVulkanGUIDebug}
  pvApplication.Log(LOG_VERBOSE,ClassName+'.TpvGUIObject.BeforeDestruction','Leaving...');
 {$endif}
+end;
+
+constructor TpvGUIObjectGarbageDisposer.Create(const aInstance:TpvGUIInstance);
+begin
+
+ inherited Create;
+
+ fInstance:=aInstance;
+
+ fLock:=TPasMPSlimReaderWriterLock.Create;
+
+ fToDisposeList:=TList.Create;
+
+ fTopologicalSortedList:=TList.Create;
+
+ fToFreeList:=TList.Create;
+
+ fCountToDisposeObjects:=0;
+
+end;
+
+destructor TpvGUIObjectGarbageDisposer.Destroy;
+begin
+
+ DisposeAllGarbage;
+
+ FreeAndNil(fToDisposeList);
+
+ FreeAndNil(fTopologicalSortedList);
+
+ FreeAndNil(fToFreeList);
+
+ FreeAndNil(fLock);
+
+ inherited Destroy;
+
+end;
+
+procedure TpvGUIObjectGarbageDisposer.AddGarbage(const aObject:TpvGUIObject);
+begin
+ fLock.Acquire;
+ try
+  fToDisposeList.Add(aObject);
+  TPasMPInterlocked.Increment(fCountToDisposeObjects);
+ finally
+  fLock.Release;
+ end;
+end;
+
+procedure TpvGUIObjectGarbageDisposer.Visit(const aObject:TpvGUIObject;const aIsChild:boolean);
+var Index:TpvSizeInt;
+    OldGarbageDisposerData,NewGarbageDisposerData:TPasMPUInt32;
+begin
+ case TPasMPInterlocked.Read(aObject.fMarkBits) and (TpvGUIObject.TemporarilyMarkBit or
+                                                     TpvGUIObject.PermanentlyMarkBit) of
+  0:begin
+   begin
+    // Mark it temporarily
+    TPasMPInterlocked.BitwiseOr(aObject.fMarkBits,TpvGUIObject.TemporarilyMarkBit);
+   end;
+   if assigned(aObject.Children) then begin
+    for Index:=0 to aObject.Children.Count-1 do begin
+     Visit(aObject.Children[Index],true);
+    end;
+   end;
+   begin
+    // Mark it permanently
+    repeat
+     OldGarbageDisposerData:=TPasMPInterlocked.Read(aObject.fMarkBits);
+     NewGarbageDisposerData:=(OldGarbageDisposerData and not TpvGUIObject.TemporarilyMarkBit) or TpvGUIObject.PermanentlyMarkBit;
+    if aIsChild then begin
+     // Mark it also as child of an another garbage parent object
+     NewGarbageDisposerData:=NewGarbageDisposerData or TpvGUIObject.ChildMarkBit;
+    end;
+    until TPasMPInterlocked.CompareExchange(aObject.fMarkBits,NewGarbageDisposerData,OldGarbageDisposerData)=OldGarbageDisposerData;
+   end;
+   fTopologicalSortedList.Add(aObject);
+  end;
+  TpvGUIObject.TemporarilyMarkBit,
+  TpvGUIObject.TemporarilyMarkBit or TpvGUIObject.PermanentlyMarkBit:begin
+   // If it's already temporarily marked, then it's not a valid directed acyclic graph.
+   raise EpvGUIObjectGarbageDisposer.Create('Directed recursive cycle detected');
+  end;
+ end;
+end;
+
+procedure TpvGUIObjectGarbageDisposer.DisposeAllGarbage;
+var Index:TpvSizeInt;
+    CurrentObject:TpvGUIObject;
+begin
+ if TPasMPInterlocked.Read(fCountToDisposeObjects)>0 then begin
+  fLock.Acquire;
+  try
+   TPasMPInterlocked.Write(fCountToDisposeObjects,0);
+   try
+    try
+     for Index:=0 to fToDisposeList.Count-1 do begin
+      Visit(TpvGUIObject(fToDisposeList.Items[Index]),false);
+     end;
+    finally
+     fToDisposeList.Clear;
+    end;
+    try
+     for Index:=0 to fTopologicalSortedList.Count-1 do begin
+      CurrentObject:=TpvGUIObject(fTopologicalSortedList.Items[Index]);
+      case TPasMPInterlocked.Read(CurrentObject.fMarkBits) and (TpvGUIObject.ChildMarkBit or
+                                                                TpvGUIObject.ProtectedMarkBit) of
+       TpvGUIObject.ChildMarkBit:begin
+        // Do nothing, if it is a child of an another garbage parent object, because
+        // the another garbage parent object will freeing it already anyway then.
+       end;
+       TpvGUIObject.ChildMarkBit or TpvGUIObject.ProtectedMarkBit,
+       TpvGUIObject.ProtectedMarkBit:begin
+        // Delayed garbage
+        fToDisposeList.Add(CurrentObject);
+        TPasMPInterlocked.Increment(fCountToDisposeObjects);
+       end;
+       else begin
+        // Otherwise we could freeing it
+        fToFreeList.Add(CurrentObject);
+       end;
+      end;
+     end;
+     for Index:=fToFreeList.Count-1 downto 0 do begin
+      TpvGUIObject(fToFreeList.Items[Index]).Free;
+     end;
+    finally
+     fToFreeList.Clear;
+    end;
+   finally
+    fTopologicalSortedList.Clear;
+   end;
+  finally
+   fLock.Release;
+  end;
+ end;
 end;
 
 constructor TpvGUIObjectHolder.Create(const aParent:TpvGUIObject;const aHoldedObject:TObject=nil);
@@ -10469,7 +10633,7 @@ begin
   Child:=fChildren.Items[ChildIndex];
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
-   fInstance.AddReferenceCountedObjectForNextDraw(ChildWidget);
+   fInstance.ProtectObjectForNextDraw(ChildWidget);
    if ChildWidget.Visible then begin
     ChildWidget.fParentClipRect:=fParentClipRect;
     ChildWidget.fClipRect:=fClipRect.GetIntersection(TpvRect.CreateRelative(fModelMatrix*ChildWidget.fPosition,
@@ -10521,6 +10685,8 @@ begin
  fInstance:=self;
 
  fVulkanDevice:=aVulkanDevice;
+
+ fObjectGarbageDisposer:=TpvGUIObjectGarbageDisposer.Create(self);
 
  fCanvas:=aCanvas;
 
@@ -10578,8 +10744,6 @@ begin
 
  fCurrentFocusPath:=TpvGUIObjectList.Create(false);
 
- fWipeReferenceCountedObjectList:=TList.Create;
-
  fDragWidget:=nil;
 
  fWindow:=nil;
@@ -10605,9 +10769,8 @@ begin
 end;
 
 destructor TpvGUIInstance.Destroy;
+var Index:TpvSizeInt;
 begin
-
- WipeReferenceCountedObjectList;
 
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
 
@@ -10621,11 +10784,11 @@ begin
 
  SetCountBuffers(0);
 
- FreeAndNil(fWipeReferenceCountedObjectList);
-
  fBuffers:=nil;
 
  FreeAndNil(fDrawEngine);
+
+ FreeAndNil(fObjectGarbageDisposer);
 
  inherited Destroy;
 
@@ -10642,7 +10805,7 @@ end;
 procedure TpvGUIInstance.SetCountBuffers(const aCountBuffers:TpvInt32);
 var Index,SubIndex:TpvInt32;
     Buffer:PpvGUIInstanceBuffer;
-    ReferenceCountedObject:TpvReferenceCountedObject;
+    CurrentObject:TpvGUIObject;
 begin
 
  if fCountBuffers<>aCountBuffers then begin
@@ -10651,31 +10814,31 @@ begin
 
    for Index:=aCountBuffers to fCountBuffers-1 do begin
     Buffer:=@fBuffers[Index];
-    for SubIndex:=0 to Buffer^.CountReferenceCountedObjects-1 do begin
-     ReferenceCountedObject:=Buffer^.ReferenceCountedObjects[SubIndex];
-     if ReferenceCountedObject.DecRefWithoutFree=0 then begin
-      fWipeReferenceCountedObjectList.Add(ReferenceCountedObject);
+    for SubIndex:=0 to Buffer^.CountProtectedObjects-1 do begin
+     CurrentObject:=Buffer^.ProtectedObjects[SubIndex];
+     if CurrentObject.DecRefWithoutFree=0 then begin
+      fObjectGarbageDisposer.AddGarbage(CurrentObject);
      end;
     end;
-    Buffer^.CountReferenceCountedObjects:=0;
+    Buffer^.CountProtectedObjects:=0;
    end;
 
    if length(fBuffers)<aCountBuffers then begin
     SetLength(fBuffers,aCountBuffers*2);
     for Index:=Max(0,fCountBuffers) to length(fBuffers)-1 do begin
-     fBuffers[Index].CountReferenceCountedObjects:=0;
+     fBuffers[Index].CountProtectedObjects:=0;
     end;
    end;
 
    for Index:=fCountBuffers to aCountBuffers-1 do begin
-    fBuffers[Index].CountReferenceCountedObjects:=0;
+    fBuffers[Index].CountProtectedObjects:=0;
    end;
 
    fCountBuffers:=aCountBuffers;
 
   finally
 
-   WipeReferenceCountedObjectList;
+   fObjectGarbageDisposer.DisposeAllGarbage;
 
   end;
 
@@ -10691,7 +10854,7 @@ end;
 
 procedure TpvGUIInstance.BeforeDestruction;
 begin
- WipeReferenceCountedObjectList;
+ fObjectGarbageDisposer.DisposeAllGarbage;
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
  TpvReferenceCountedObject.DecRefOrFreeAndNil(fFocusedWidget);
@@ -10700,7 +10863,7 @@ begin
  fModalWindowStack.Clear;
  fLastFocusPath.Clear;
  fCurrentFocusPath.Clear;
- fWipeReferenceCountedObjectList.Clear;
+ fObjectGarbageDisposer.DisposeAllGarbage;
  DecRefWithoutFree;
  inherited BeforeDestruction;
 end;
@@ -10717,7 +10880,11 @@ end;
 
 procedure TpvGUIInstance.ReleaseObject(const aGUIObject:TpvGUIObject);
 begin
- if assigned(aGUIObject) then begin
+ if assigned(aGUIObject) and ((TPasMPInterlocked.Read(aGUIObject.fMarkBits) and TpvGUIObject.ReleasedMarkBit)=0) then begin
+  TPasMPInterlocked.BitwiseOr(aGUIObject.fMarkBits,TpvGUIObject.ReleasedMarkBit);
+  if aGUIObject is TpvGUIWindow then begin
+   TpvGUIWindow(aGUIObject).fWindowDisposed:=true;
+  end;
   if assigned(fPopupMenuStack) and fPopupMenuStack.Contains(aGUIObject) then begin
    fPopupMenuStack.Clear;
   end;
@@ -10753,98 +10920,37 @@ begin
  end;
 end;
 
-procedure TpvGUIInstance.ClearReferenceCountedObjectList;
+procedure TpvGUIInstance.ClearProtectedObjectList;
 var Index:TpvInt32;
     Buffer:PpvGUIInstanceBuffer;
-    ReferenceCountedObject:TpvReferenceCountedObject;
+    CurrentObject:TpvGUIObject;
 begin
  if (fUpdateBufferIndex>=0) and (fUpdateBufferIndex<fCountBuffers) then begin
   Buffer:=@fBuffers[fUpdateBufferIndex];
-  for Index:=0 to Buffer^.CountReferenceCountedObjects-1 do begin
-   ReferenceCountedObject:=Buffer^.ReferenceCountedObjects[Index];
-   if ReferenceCountedObject.DecRefWithoutFree=0 then begin
-    fWipeReferenceCountedObjectList.Add(ReferenceCountedObject);
+  for Index:=0 to Buffer^.CountProtectedObjects-1 do begin
+   CurrentObject:=Buffer^.ProtectedObjects[Index];
+   TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,TPasMPUInt32(not TpvGUIObject.ProtectedMarkBit));
+   if CurrentObject.DecRefWithoutFree=0 then begin
+    fObjectGarbageDisposer.AddGarbage(CurrentObject);
    end;
   end;
-  Buffer^.CountReferenceCountedObjects:=0;
+  Buffer^.CountProtectedObjects:=0;
  end;
 end;
 
-procedure TpvGUIInstance.WipeReferenceCountedObjectList;
- procedure DoIt;
- var SortedList,ToDeleteList:TList;
-  procedure Visit(const aObject:TpvGUIObject;const aIsChild:boolean);
-  var Index:TpvSizeInt;
-  begin
-   if (aObject.fMarkBits and 3)=0 then begin
-    aObject.fMarkBits:=aObject.fMarkBits or 1;
-    if assigned(aObject.Children) then begin
-     for Index:=0 to aObject.Children.Count-1 do begin
-      Visit(aObject.Children[Index],true);
-     end;
-    end;
-    aObject.fMarkBits:=(aObject.fMarkBits and not 1) or 2;
-    if aIsChild then begin
-     aObject.fMarkBits:=aObject.fMarkBits or 4;
-    end;
-    SortedList.Add(aObject);
-   end;
-  end;
- var Index:TpvSizeInt;
-     ReferenceCountedObject:TpvReferenceCountedObject;
- begin
-  SortedList:=TList.Create;
-  try
-   try
-    for Index:=0 to fWipeReferenceCountedObjectList.Count-1 do begin
-     ReferenceCountedObject:=TpvReferenceCountedObject(fWipeReferenceCountedObjectList.Items[Index]);
-     if assigned(ReferenceCountedObject) then begin
-      if ReferenceCountedObject is TpvGUIObject then begin
-       Visit(TpvGUIObject(ReferenceCountedObject),false);
-      end else begin
-       ReferenceCountedObject.Free;
-      end;
-     end;
-    end;
-   finally
-    fWipeReferenceCountedObjectList.Clear;
-   end;
-   ToDeleteList:=TList.Create;
-   try
-    for Index:=0 to SortedList.Count-1 do begin
-     ReferenceCountedObject:=TpvReferenceCountedObject(SortedList.Items[Index]);
-     if (TpvGUIObject(ReferenceCountedObject).fMarkBits and 4)=0 then begin
-      ToDeleteList.Add(TpvGUIObject(ReferenceCountedObject));
-     end;
-    end;
-    for Index:=ToDeleteList.Count-1 downto 0 do begin
-     TpvGUIObject(ToDeleteList.Items[Index]).Free;
-    end;
-   finally
-    ToDeleteList.Free;
-   end;
-  finally
-   SortedList.Free;
-  end;
- end;
-begin
- if fWipeReferenceCountedObjectList.Count>0 then begin
-  DoIt;
- end;
-end;
-
-procedure TpvGUIInstance.AddReferenceCountedObjectForNextDraw(const aObject:TpvReferenceCountedObject);
+procedure TpvGUIInstance.ProtectObjectForNextDraw(const aObject:TpvGUIObject);
 var Index:TpvInt32;
     Buffer:PpvGUIInstanceBuffer;
 begin
  if assigned(aObject) and ((fUpdateBufferIndex>=0) and (fUpdateBufferIndex<fCountBuffers)) then begin
   Buffer:=@fBuffers[fUpdateBufferIndex];
-  Index:=Buffer^.CountReferenceCountedObjects;
-  inc(Buffer^.CountReferenceCountedObjects);
-  if length(Buffer^.ReferenceCountedObjects)<Buffer^.CountReferenceCountedObjects then begin
-   SetLength(Buffer^.ReferenceCountedObjects,Buffer^.CountReferenceCountedObjects*2);
+  Index:=Buffer^.CountProtectedObjects;
+  inc(Buffer^.CountProtectedObjects);
+  if length(Buffer^.ProtectedObjects)<Buffer^.CountProtectedObjects then begin
+   SetLength(Buffer^.ProtectedObjects,Buffer^.CountProtectedObjects*2);
   end;
-  Buffer^.ReferenceCountedObjects[Index]:=aObject;
+  Buffer^.ProtectedObjects[Index]:=aObject;
+  TPasMPInterlocked.BitwiseOr(aObject.fMarkBits,TpvGUIObject.ProtectedMarkBit);
   aObject.IncRef;
  end;
 end;
@@ -11279,6 +11385,11 @@ begin
  end;
 end;
 
+procedure TpvGUIInstance.Update;
+begin
+ inherited Update;
+end;
+
 procedure TpvGUIInstance.Draw;
 var Index:TpvInt32;
     LastModelMatrix:TpvMatrix4x4;
@@ -11287,8 +11398,8 @@ var Index:TpvInt32;
     PopupMenu:TpvGUIPopupMenu;
 begin
  fDrawEngine.Clear;
- ClearReferenceCountedObjectList;
- WipeReferenceCountedObjectList;
+ ClearProtectedObjectList;
+ fObjectGarbageDisposer.DisposeAllGarbage;
  for Index:=0 to fChildren.Count-1 do begin
   if fChildren[Index] is TpvGUIPopup then begin
    Popup:=fChildren[Index] as TpvGUIPopup;
@@ -11306,7 +11417,7 @@ begin
   inherited Draw;
   for Index:=0 to fPopupMenuStack.Count-1 do begin
    PopupMenu:=fPopupMenuStack[Index] as TpvGUIPopupMenu;
-   fInstance.AddReferenceCountedObjectForNextDraw(PopupMenu);
+   fInstance.ProtectObjectForNextDraw(PopupMenu);
    PopupMenu.Draw(fDrawEngine);
   end;
   Skin.DrawMouse(fDrawEngine,self);
@@ -11372,7 +11483,7 @@ end;
 
 procedure TpvGUIWindow.BeforeDestruction;
 begin
- if assigned(fInstance) then begin
+ if assigned(fInstance) and not fWindowDisposed then begin
   fInstance.DisposeWindow(self);
  end;
  inherited BeforeDestruction;
