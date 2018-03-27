@@ -5883,6 +5883,7 @@ begin
                                              TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT),
                                              VK_SHARING_MODE_EXCLUSIVE,
                                              nil,
+                                             false,
                                              VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
                                              PresentModeToVulkanPresentMode[fPresentMode],
                                              true,

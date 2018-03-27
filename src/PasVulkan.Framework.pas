@@ -570,6 +570,7 @@ type EpvVulkanException=class(Exception);
        fAvailableExtensions:TpvVulkanAvailableExtensions;
        fAvailableLayerNames:TStringList;
        fAvailableExtensionNames:TStringList;
+        fPipelineStageAllShaderBits:TpvUInt32;
       public
        constructor Create(const aInstance:TpvVulkanInstance;const aPhysicalDevice:TVkPhysicalDevice);
        destructor Destroy; override;
@@ -608,6 +609,7 @@ type EpvVulkanException=class(Exception);
        property AvailableExtensions:TpvVulkanAvailableExtensions read fAvailableExtensions;
        property AvailableLayerNames:TStringList read fAvailableLayerNames;
        property AvailableExtensionNames:TStringList read fAvailableExtensionNames;
+       property PipelineStageAllShaderBits:TpvUInt32 read fPipelineStageAllShaderBits;
      end;
 
      TpvVulkanPhysicalDeviceList=class(TpvVulkanObjectList)
@@ -1738,7 +1740,8 @@ type EpvVulkanException=class(Exception);
                           const aImageUsage:TVkImageUsageFlags=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
                           const aImageSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
                           const aQueueFamilyIndices:TVkUInt32List=nil;
-                          const aCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+                          const aForceCompositeAlpha:boolean=false;
+                          const aCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=TVkCompositeAlphaFlagBitsKHR(VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
                           const aPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
                           const aClipped:boolean=true;
                           const aDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff);
@@ -2906,7 +2909,7 @@ function VulkanErrorToString(const ErrorCode:TVkResult):TpvVulkanCharString;
 
 function StringListToVulkanCharStringArray(const StringList:TStringList):TpvVulkanCharStringArray;
 
-function VulkanAccessFlagsToPipelineStages(const aAccessFlags:TVkAccessFlags;const aDefaultPipelineStageFlags:TVkPipelineStageFlags=TVkPipelineStageFlags(0)):TVkPipelineStageFlags;
+function VulkanAccessFlagsToPipelineStages(const aPhysicalDevice:TpvVulkanPhysicalDevice;const aAccessFlags:TVkAccessFlags;const aDefaultPipelineStageFlags:TVkPipelineStageFlags=TVkPipelineStageFlags(0)):TVkPipelineStageFlags;
 
 procedure VulkanSetImageLayout(const aImage:TVkImage;
                                const aAspectMask:TVkImageAspectFlags;
@@ -5812,7 +5815,7 @@ begin
  end;
 end;
 
-function VulkanAccessFlagsToPipelineStages(const aAccessFlags:TVkAccessFlags;const aDefaultPipelineStageFlags:TVkPipelineStageFlags=TVkPipelineStageFlags(0)):TVkPipelineStageFlags;
+function VulkanAccessFlagsToPipelineStages(const aPhysicalDevice:TpvVulkanPhysicalDevice;const aAccessFlags:TVkAccessFlags;const aDefaultPipelineStageFlags:TVkPipelineStageFlags=TVkPipelineStageFlags(0)):TVkPipelineStageFlags;
 begin
  result:=TVkPipelineStageFlags(0);
  if (aAccessFlags and TVkAccessFlags(VK_ACCESS_INDIRECT_COMMAND_READ_BIT))<>0 then begin
@@ -5826,12 +5829,7 @@ begin
                        TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or
                        TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT)))<>0 then begin
   result:=result or
-          TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-          TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
-          TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
-          TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
-          TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
-          TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+          aPhysicalDevice.fPipelineStageAllShaderBits;
  end;
  if (aAccessFlags and TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT))<>0 then begin
   result:=result or TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
@@ -5974,8 +5972,8 @@ begin
   end;
   DstPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
  end else begin
-  SrcPipelineStageFlags:=VulkanAccessFlagsToPipelineStages(ImageMemoryBarrier.srcAccessMask,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
-  DstPipelineStageFlags:=VulkanAccessFlagsToPipelineStages(ImageMemoryBarrier.dstAccessMask,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
+  SrcPipelineStageFlags:=VulkanAccessFlagsToPipelineStages(aCommandBuffer.Device.PhysicalDevice,ImageMemoryBarrier.srcAccessMask,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
+  DstPipelineStageFlags:=VulkanAccessFlagsToPipelineStages(aCommandBuffer.Device.PhysicalDevice,ImageMemoryBarrier.dstAccessMask,TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT));
  end;
 
  aCommandBuffer.CmdPipelineBarrier(SrcPipelineStageFlags,
@@ -7558,6 +7556,19 @@ begin
   end;
  finally
   SetLength(ExtensionProperties,0);
+ end;
+
+ fPipelineStageAllShaderBits:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+                              TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+ if fFeatures.tessellationShader<>0 then begin
+  fPipelineStageAllShaderBits:=fPipelineStageAllShaderBits or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
+ end;
+ if fFeatures.geometryShader<>0 then begin
+  fPipelineStageAllShaderBits:=fPipelineStageAllShaderBits or
+                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT);
  end;
 
 end;
@@ -12261,12 +12272,7 @@ begin
                     TVkAccessFlags(0),
                     TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT),
                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
-                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
-                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
-                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
-                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                    fDevice.fPhysicalDevice.fPipelineStageAllShaderBits,
                     nil,
                     aGraphicsCommandBuffer,
                     aGraphicsQueue,
@@ -12600,7 +12606,8 @@ constructor TpvVulkanSwapChain.Create(const aDevice:TpvVulkanDevice;
                                       const aImageUsage:TVkImageUsageFlags=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
                                       const aImageSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
                                       const aQueueFamilyIndices:TVkUInt32List=nil;
-                                      const aCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+                                      const aForceCompositeAlpha:boolean=false;
+                                      const aCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=TVkCompositeAlphaFlagBitsKHR(VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
                                       const aPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
                                       const aClipped:boolean=true;
                                       const aDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff);
@@ -12611,10 +12618,18 @@ const PresentModeTryOrder:array[TPresentModes,0..3] of TVkPresentModeKHR=
         (VK_PRESENT_MODE_MAILBOX_KHR,VK_PRESENT_MODE_IMMEDIATE_KHR,VK_PRESENT_MODE_FIFO_RELAXED_KHR,VK_PRESENT_MODE_FIFO_KHR),
         (VK_PRESENT_MODE_FIFO_KHR,VK_PRESENT_MODE_FIFO_RELAXED_KHR,VK_PRESENT_MODE_MAILBOX_KHR,VK_PRESENT_MODE_IMMEDIATE_KHR),
         (VK_PRESENT_MODE_FIFO_RELAXED_KHR,VK_PRESENT_MODE_FIFO_KHR,VK_PRESENT_MODE_MAILBOX_KHR,VK_PRESENT_MODE_IMMEDIATE_KHR));
+      CompositeAlphaTryOrder:array[0..3] of TVkCompositeAlphaFlagBitsKHR=
+       (
+        VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+        VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+        VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR
+       );
 var Index,TryIterationIndex:TpvInt32;
     SurfaceCapabilities:TVkSurfaceCapabilitiesKHR;
     SurfacePresentModes:TVkPresentModeKHRArray;
     SurfaceFormat:TVkSurfaceFormatKHR;
+    CompositeAlpha:TVkCompositeAlphaFlagBitsKHR;
     SwapChainImages:array of TVkImage;
     FormatProperties:TVkFormatProperties;
     SwapChainCreateInfo:TVkSwapchainCreateInfoKHR;
@@ -12726,6 +12741,24 @@ begin
    SwapChainCreateInfo.preTransform:=TVkSurfaceTransformFlagBitsKHR(VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR);
   end else begin
    SwapChainCreateInfo.preTransform:=TVkSurfaceTransformFlagBitsKHR(SurfaceCapabilities.currentTransform);
+  end;
+
+  if aForceCompositeAlpha and
+     ((SurfaceCapabilities.supportedCompositeAlpha and TpvUInt32(aCompositeAlpha))<>0) then begin
+   SwapChainCreateInfo.compositeAlpha:=aCompositeAlpha;
+  end else begin
+   Found:=false;
+   for Index:=Low(CompositeAlphaTryOrder) to High(CompositeAlphaTryOrder) do begin
+    CompositeAlpha:=CompositeAlphaTryOrder[Index];
+    if (SurfaceCapabilities.supportedCompositeAlpha and TpvUInt32(CompositeAlpha))<>0 then begin
+     SwapChainCreateInfo.compositeAlpha:=CompositeAlpha;
+     Found:=true;
+     break;
+    end;
+   end;
+   if not Found then begin
+    raise EpvVulkanException.Create('Vulkan initialization error (no suitable compositeAlpha mode found, buggy graphics driver?)');
+   end;
   end;
 
   SwapChainCreateInfo.compositeAlpha:=aCompositeAlpha;
@@ -19735,12 +19768,7 @@ begin
      ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
      ImageMemoryBarrier.subresourceRange.layerCount:=Max(1,fTotalCountArrayLayers);
      aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TRANSFER_BIT),
-                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
-                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
-                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
-                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
-                                               TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                               fDevice.fPhysicalDevice.fPipelineStageAllShaderBits,
                                                0,
                                                0,
                                                nil,
@@ -19793,12 +19821,7 @@ begin
   try
 
    aGraphicsCommandBuffer.CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
-                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
-                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
-                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
-                                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT),
+                                             fDevice.fPhysicalDevice.fPipelineStageAllShaderBits,
                                              0,
                                              0,
                                              nil,
