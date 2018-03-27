@@ -19279,12 +19279,16 @@ begin
       end;
      end;
      KEYCODE_F:begin
-      OpenSearchReplaceDialog(false);
-      result:=true;
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+       OpenSearchReplaceDialog(false);
+       result:=true;
+      end;
      end;
      KEYCODE_H,KEYCODE_R:begin
-      OpenSearchReplaceDialog(true);
-      result:=true;
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+       OpenSearchReplaceDialog(true);
+       result:=true;
+      end;
      end;
      KEYCODE_F3:begin
       FindNext;

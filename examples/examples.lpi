@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="10"/>
+    <Version Value="11"/>
     <PathDelim Value="\"/>
     <General>
       <Flags>
@@ -21,11 +21,12 @@
       <Version Value="2"/>
     </PublishOptions>
     <RunParams>
-      <local>
-        <FormatVersion Value="1"/>
-      </local>
+      <FormatVersion Value="2"/>
+      <Modes Count="1">
+        <Mode0 Name="default"/>
+      </Modes>
     </RunParams>
-    <Units Count="67">
+    <Units Count="69">
       <Unit0>
         <Filename Value="examples.dpr"/>
         <IsPartOfProject Value="True"/>
@@ -199,101 +200,109 @@
         <IsPartOfProject Value="True"/>
       </Unit42>
       <Unit43>
-        <Filename Value="..\src\PasVulkan.JSON.pas"/>
+        <Filename Value="..\src\PasVulkan.Image.TGA.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit43>
       <Unit44>
-        <Filename Value="..\src\PasVulkan.Image.TGA.pas"/>
+        <Filename Value="..\src\PasVulkan.Image.PNG.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit44>
       <Unit45>
-        <Filename Value="..\src\PasVulkan.Image.PNG.pas"/>
+        <Filename Value="..\src\PasVulkan.Image.JPEG.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit45>
       <Unit46>
-        <Filename Value="..\src\PasVulkan.Image.JPEG.pas"/>
+        <Filename Value="..\src\PasVulkan.Image.BMP.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit46>
       <Unit47>
-        <Filename Value="..\src\PasVulkan.Image.BMP.pas"/>
+        <Filename Value="..\src\PasVulkan.Font.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit47>
       <Unit48>
-        <Filename Value="..\src\PasVulkan.Font.pas"/>
+        <Filename Value="..\src\PasVulkan.Compression.Deflate.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit48>
       <Unit49>
-        <Filename Value="..\src\PasVulkan.Compression.Deflate.pas"/>
+        <Filename Value="..\src\PasVulkan.Canvas.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit49>
       <Unit50>
-        <Filename Value="..\src\PasVulkan.Canvas.pas"/>
+        <Filename Value="..\src\PasVulkan.Assets.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit50>
       <Unit51>
-        <Filename Value="..\src\PasVulkan.Assets.pas"/>
+        <Filename Value="..\src\PasVulkan.Audio.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit51>
       <Unit52>
-        <Filename Value="..\src\PasVulkan.Audio.pas"/>
+        <Filename Value="..\src\PasVulkan.Audio.OGGVorbisTremor.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit52>
       <Unit53>
-        <Filename Value="..\src\PasVulkan.Audio.OGGVorbisTremor.pas"/>
+        <Filename Value="..\src\PasVulkan.Audio.OGGVorbisTremor.ExternalLibrary.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit53>
       <Unit54>
-        <Filename Value="..\src\PasVulkan.Audio.OGGVorbisTremor.ExternalLibrary.pas"/>
+        <Filename Value="..\src\PasVulkan.Audio.HRTFTables.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit54>
       <Unit55>
-        <Filename Value="..\src\PasVulkan.Audio.HRTFTables.pas"/>
+        <Filename Value="UnitExampleApplication.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit55>
       <Unit56>
-        <Filename Value="UnitExampleApplication.pas"/>
+        <Filename Value="UnitScreenExampleGUI.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit56>
       <Unit57>
-        <Filename Value="UnitScreenExampleGUI.pas"/>
+        <Filename Value="..\externals\pucu\src\PUCU.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit57>
       <Unit58>
-        <Filename Value="..\externals\pucu\src\PUCU.pas"/>
+        <Filename Value="..\externals\pasdblstrutils\src\PasDblStrUtils.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit58>
       <Unit59>
-        <Filename Value="..\externals\pasdblstrutils\src\PasDblStrUtils.pas"/>
+        <Filename Value="..\src\PasVulkan.VectorPath.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit59>
       <Unit60>
-        <Filename Value="..\src\PasVulkan.VectorPath.pas"/>
+        <Filename Value="UnitScreenExampleEmpty.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit60>
       <Unit61>
-        <Filename Value="UnitScreenExampleEmpty.pas"/>
+        <Filename Value="UnitScreenExampleCanvas.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit61>
       <Unit62>
-        <Filename Value="UnitScreenExampleCanvas.pas"/>
+        <Filename Value="..\src\PasVulkan.Archive.ZIP.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit62>
       <Unit63>
-        <Filename Value="..\src\PasVulkan.Archive.ZIP.pas"/>
+        <Filename Value="..\src\PasVulkan.Image.PNG.ExternalLibrary.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit63>
       <Unit64>
-        <Filename Value="..\src\PasVulkan.Image.PNG.ExternalLibrary.pas"/>
+        <Filename Value="..\src\PasVulkan.SignedDistanceField2D.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit64>
       <Unit65>
-        <Filename Value="..\src\PasVulkan.SignedDistanceField2D.pas"/>
+        <Filename Value="..\src\PasVulkan.ConvexHullGenerator2D.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit65>
       <Unit66>
-        <Filename Value="..\src\PasVulkan.ConvexHullGenerator2D.pas"/>
+        <Filename Value="..\externals\pasjson\src\PasJSON.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit66>
+      <Unit67>
+        <Filename Value="..\src\PasVulkan.CircularDoublyLinkedList.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit67>
+      <Unit68>
+        <Filename Value="..\src\PasVulkan.TextEditor.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit68>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

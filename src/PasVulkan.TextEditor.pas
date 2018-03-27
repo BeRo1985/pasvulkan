@@ -4578,7 +4578,7 @@ begin
  for Index:=0 to length(aCodePoints)-1 do begin
   CodePointRanges[Index]:=TCodePointRange.Create(aCodePoints[Index]);
  end;
- Create(CodePointRanges);
+ self:=TpvTextEditor.TCodePointSet.Create(CodePointRanges);
 end;
 
 constructor TpvTextEditor.TCodePointSet.Create(const aCharSet:TCharSet);
