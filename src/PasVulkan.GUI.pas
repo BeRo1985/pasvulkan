@@ -2722,6 +2722,12 @@ begin
 
  fCanvas:=aCanvas;
 
+{$ifdef SamsungDebug}
+
+ fStrategy:=TStrategy.TwoPassBidirectional;
+ fUseScissor:=false;
+
+{$else}
  case fCanvas.Device.PhysicalDevice.Properties.vendorID of
   $1002,      // AMD
   $10de,      // NVIDIA
@@ -2740,6 +2746,8 @@ begin
  end;
 
  fUseScissor:=pvApplication.VulkanDevice.PhysicalDevice.Features.shaderClipDistance=0;
+
+{$endif}
 
  fClipRects:=nil;
  fCountClipRects:=0;
