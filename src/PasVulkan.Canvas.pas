@@ -4284,6 +4284,7 @@ var Index,StartVertexIndex,TextureMode:TpvInt32;
     OldScissor:TVkRect2D;
     TransformMatrix,FillMatrix:TpvMatrix4x4;
     ForceUpdate,ForceUpdatePushConstants:boolean;
+//  DynamicOffset:TVkDeviceSize;
 begin
 
  if assigned(fVulkanRenderPass) and
@@ -4402,6 +4403,12 @@ begin
       end;
 
       aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,QueueItem^.StartIndexIndex,QueueItem^.StartVertexIndex,0);
+
+{     DynamicOffset:=QueueItem^.StartVertexIndex*SizeOf(TpvCanvasVertex);
+      aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@VulkanVertexBuffer.Handle,@DynamicOffset);
+
+      aVulkanCommandBuffer.CmdBindIndexBuffer(VulkanIndexBuffer.Handle,QueueItem^.StartIndexIndex*SizeOf(TpvUInt32),VK_INDEX_TYPE_UINT32);
+      aVulkanCommandBuffer.CmdDrawIndexed(QueueItem^.CountIndices,1,0,0,0);}
 
       ForceUpdate:=false;
 

@@ -46,6 +46,11 @@ layout(push_constant) uniform PushConstants {
   layout(offset = 64) mat4 fillMatrix;
 } pushConstants;
 
+#if 0
+void main(){
+  outFragColor = vec4(1.0);
+}
+#else
 // Some facts about a sRGB non-linear frame-buffer from the Vulkan specification:
 //   If the numeric format of a framebuffer attachment uses sRGB encoding, the R, G, and B destination color values 
 //   (after conversion from fixed-point to floating-point) are considered to be encoded for the sRGB color space and 
@@ -995,3 +1000,4 @@ void main(void){
 #endif  
   outFragColor = color;
 }
+#endif
