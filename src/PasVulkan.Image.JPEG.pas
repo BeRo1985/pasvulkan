@@ -58,9 +58,9 @@ unit PasVulkan.Image.JPEG;
   {$ifend}
  {$endif}
 {$endif}
-{$ifndef cpu386}
+{$if defined(Darwin) or defined(CompileForWithPIC) or not defined(cpu386)}
  {$define PurePascal}
-{$endif}
+{$ifend}
 
 interface
 
