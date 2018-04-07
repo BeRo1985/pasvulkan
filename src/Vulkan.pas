@@ -258,7 +258,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=71;
+      VK_HEADER_VERSION=72;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -601,8 +601,8 @@ const VK_NULL_HANDLE=0;
       VK_EXT_EXTENSION_160_EXTENSION_NAME='VK_EXT_extension_160';
       VK_EXT_VALIDATION_CACHE_SPEC_VERSION=1;
       VK_EXT_VALIDATION_CACHE_EXTENSION_NAME='VK_EXT_validation_cache';
-      VK_EXT_EXTENSION_162_SPEC_VERSION=0;
-      VK_EXT_EXTENSION_162_EXTENSION_NAME='VK_EXT_extension_162';
+      VK_EXT_DESCRIPTOR_INDEXING_SPEC_VERSION=2;
+      VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME='VK_EXT_descriptor_indexing';
       VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_SPEC_VERSION=1;
       VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME='VK_EXT_shader_viewport_index_layer';
       VK_EXT_EXTENSION_164_SPEC_VERSION=0;
@@ -649,8 +649,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_184_EXTENSION_NAME='VK_AMD_extension_184';
       VK_KHR_EXTENSION_185_SPEC_VERSION=0;
       VK_KHR_EXTENSION_185_EXTENSION_NAME='VK_AMD_extension_185';
-      VK_KHR_EXTENSION_186_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_186_EXTENSION_NAME='VK_AMD_extension_186';
+      VK_AMD_SHADER_CORE_PROPERTIES_SPEC_VERSION=1;
+      VK_AMD_SHADER_CORE_PROPERTIES_EXTENSION_NAME='VK_AMD_shader_core_properties';
       VK_KHR_EXTENSION_187_SPEC_VERSION=0;
       VK_KHR_EXTENSION_187_EXTENSION_NAME='VK_AMD_extension_187';
       VK_KHR_EXTENSION_188_SPEC_VERSION=0;
@@ -675,6 +675,10 @@ const VK_NULL_HANDLE=0;
       VK_EXT_EXTENSION_197_EXTENSION_NAME='VK_EXT_extension_197';
       VK_ARM_EXTENSION_198_SPEC_VERSION=0;
       VK_ARM_EXTENSION_198_EXTENSION_NAME='VK_EXT_extension_198';
+      VK_NV_SHADER_SUBGROUP_PARTITIONED_SPEC_VERSION=1;
+      VK_NV_SHADER_SUBGROUP_PARTITIONED_EXTENSION_NAME='VK_NV_shader_subgroup_partitioned';
+      VK_KHR_EXTENSION_200_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_200_EXTENSION_NAME='VK_KHR_extension_200';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1173,6 +1177,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkPipelineRasterizationConservativeStateCreateFlagsEXT=^PVkPipelineRasterizationConservativeStateCreateFlagsEXT;
      PVkPipelineRasterizationConservativeStateCreateFlagsEXT=^TVkPipelineRasterizationConservativeStateCreateFlagsEXT;
      TVkPipelineRasterizationConservativeStateCreateFlagsEXT=TVkFlags;
+
+     PPVkDescriptorBindingFlagsEXT=^PVkDescriptorBindingFlagsEXT;
+     PVkDescriptorBindingFlagsEXT=^TVkDescriptorBindingFlagsEXT;
+     TVkDescriptorBindingFlagsEXT=TVkFlags;
 
      PPVkInstance=^PVkInstance;
      PVkInstance=^TVkInstance;
@@ -2220,10 +2228,16 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_MODULATION_STATE_CREATE_INFO_NV=1000152000,
        VK_STRUCTURE_TYPE_VALIDATION_CACHE_CREATE_INFO_EXT=1000160000,
        VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT=1000160001,
+       VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT=1000161000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT=1000161001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT=1000161002,
+       VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT=1000161003,
+       VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT_EXT=1000161004,
        VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT=1000174000,
        VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT=1000178000,
        VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT=1000178001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT=1000178002,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD=1000185000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT=1000190000,
        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT=1000190001,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO,
@@ -2300,6 +2314,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkResult=
       (
        VK_ERROR_NOT_PERMITTED_EXT=-1000174001,
+       VK_ERROR_FRAGMENTATION_EXT=-1000161000,
        VK_ERROR_INVALID_SHADER_NV=-1000012000,
        VK_ERROR_VALIDATION_FAILED_EXT=-1000011001,
        VK_ERROR_INCOMPATIBLE_DISPLAY_KHR=-1000003001,
@@ -2771,7 +2786,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDescriptorPoolCreateFlagBits=^TVkDescriptorPoolCreateFlagBits;
      TVkDescriptorPoolCreateFlagBits=
       (
-       VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT=$00000001               //< Descriptor sets may be freed individually
+       VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT=$00000001,              //< Descriptor sets may be freed individually
+       VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT=$00000002
       );
 
      PPVkDependencyFlagBits=^PVkDependencyFlagBits;
@@ -2957,7 +2973,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_SUBGROUP_FEATURE_SHUFFLE_BIT=$00000010,                                //< Shuffle subgroup operations
        VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT=$00000020,                       //< Shuffle relative subgroup operations
        VK_SUBGROUP_FEATURE_CLUSTERED_BIT=$00000040,                              //< Clustered subgroup operations
-       VK_SUBGROUP_FEATURE_QUAD_BIT=$00000080                                    //< Quad subgroup operations
+       VK_SUBGROUP_FEATURE_QUAD_BIT=$00000080,                                   //< Quad subgroup operations
+       VK_SUBGROUP_FEATURE_PARTITIONED_BIT_NV=$00000100
       );
 
      PPVkIndirectCommandsLayoutUsageFlagBitsNVX=^PVkIndirectCommandsLayoutUsageFlagBitsNVX;
@@ -3007,7 +3024,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDescriptorSetLayoutCreateFlagBits=^TVkDescriptorSetLayoutCreateFlagBits;
      TVkDescriptorSetLayoutCreateFlagBits=
       (
-       VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR=$00000001
+       VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR=$00000001,
+       VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT=$00000002
       );
 
      PPVkExternalMemoryHandleTypeFlagBits=^PVkExternalMemoryHandleTypeFlagBits;
@@ -3348,6 +3366,16 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT=0,
        VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT=1,
        VK_CONSERVATIVE_RASTERIZATION_MODE_UNDERESTIMATE_EXT=2
+      );
+
+     PPVkDescriptorBindingFlagBitsEXT=^PVkDescriptorBindingFlagBitsEXT;
+     PVkDescriptorBindingFlagBitsEXT=^TVkDescriptorBindingFlagBitsEXT;
+     TVkDescriptorBindingFlagBitsEXT=
+      (
+       VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT_EXT=$00000001,
+       VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT_EXT=$00000002,
+       VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT=$00000004,
+       VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT=$00000008
       );
 
      PPVkDescriptorUpdateTemplateTypeKHR=PPVkDescriptorUpdateTemplateType;
@@ -9707,6 +9735,46 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkPhysicalDeviceShaderCorePropertiesAMD=^PVkPhysicalDeviceShaderCorePropertiesAMD;
+     PVkPhysicalDeviceShaderCorePropertiesAMD=^TVkPhysicalDeviceShaderCorePropertiesAMD;
+     TVkPhysicalDeviceShaderCorePropertiesAMD=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD
+       pNext:PVkVoid;
+       shaderEngineCount:TVkUInt32;
+       shaderArraysPerEngineCount:TVkUInt32;
+       computeUnitsPerShaderArray:TVkUInt32;
+       simdPerComputeUnit:TVkUInt32;
+       wavefrontsPerSimd:TVkUInt32;
+       wavefrontSize:TVkUInt32;
+       sgprsPerSimd:TVkUInt32;
+       minSgprAllocation:TVkUInt32;
+       maxSgprAllocation:TVkUInt32;
+       sgprAllocationGranularity:TVkUInt32;
+       vgprsPerSimd:TVkUInt32;
+       minVgprAllocation:TVkUInt32;
+       maxVgprAllocation:TVkUInt32;
+       vgprAllocationGranularity:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShaderEngineCount:TVkUInt32;
+                          const aShaderArraysPerEngineCount:TVkUInt32;
+                          const aComputeUnitsPerShaderArray:TVkUInt32;
+                          const aSimdPerComputeUnit:TVkUInt32;
+                          const aWavefrontsPerSimd:TVkUInt32;
+                          const aWavefrontSize:TVkUInt32;
+                          const aSgprsPerSimd:TVkUInt32;
+                          const aMinSgprAllocation:TVkUInt32;
+                          const aMaxSgprAllocation:TVkUInt32;
+                          const aSgprAllocationGranularity:TVkUInt32;
+                          const aVgprsPerSimd:TVkUInt32;
+                          const aMinVgprAllocation:TVkUInt32;
+                          const aMaxVgprAllocation:TVkUInt32;
+                          const aVgprAllocationGranularity:TVkUInt32);
+{$endif}
+     end;
+
      PPVkPipelineRasterizationConservativeStateCreateInfoEXT=^PVkPipelineRasterizationConservativeStateCreateInfoEXT;
      PVkPipelineRasterizationConservativeStateCreateInfoEXT=^TVkPipelineRasterizationConservativeStateCreateInfoEXT;
      TVkPipelineRasterizationConservativeStateCreateInfoEXT=record
@@ -9722,6 +9790,162 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const aFlags:TVkPipelineRasterizationConservativeStateCreateFlagsEXT; //< Reserved
                           const aConservativeRasterizationMode:TVkConservativeRasterizationModeEXT; //< Conservative rasterization mode
                           const aExtraPrimitiveOverestimationSize:TVkFloat); //< Extra overestimation to add to the primitive
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceDescriptorIndexingFeaturesEXT=^PVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
+     PVkPhysicalDeviceDescriptorIndexingFeaturesEXT=^TVkPhysicalDeviceDescriptorIndexingFeaturesEXT;
+     TVkPhysicalDeviceDescriptorIndexingFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT
+       pNext:PVkVoid;
+       shaderInputAttachmentArrayDynamicIndexing:TVkBool32;
+       shaderUniformTexelBufferArrayDynamicIndexing:TVkBool32;
+       shaderStorageTexelBufferArrayDynamicIndexing:TVkBool32;
+       shaderUniformBufferArrayNonUniformIndexing:TVkBool32;
+       shaderSampledImageArrayNonUniformIndexing:TVkBool32;
+       shaderStorageBufferArrayNonUniformIndexing:TVkBool32;
+       shaderStorageImageArrayNonUniformIndexing:TVkBool32;
+       shaderInputAttachmentArrayNonUniformIndexing:TVkBool32;
+       shaderUniformTexelBufferArrayNonUniformIndexing:TVkBool32;
+       shaderStorageTexelBufferArrayNonUniformIndexing:TVkBool32;
+       descriptorBindingUniformBufferUpdateAfterBind:TVkBool32;
+       descriptorBindingSampledImageUpdateAfterBind:TVkBool32;
+       descriptorBindingStorageImageUpdateAfterBind:TVkBool32;
+       descriptorBindingStorageBufferUpdateAfterBind:TVkBool32;
+       descriptorBindingUniformTexelBufferUpdateAfterBind:TVkBool32;
+       descriptorBindingStorageTexelBufferUpdateAfterBind:TVkBool32;
+       descriptorBindingUpdateUnusedWhilePending:TVkBool32;
+       descriptorBindingPartiallyBound:TVkBool32;
+       descriptorBindingVariableDescriptorCount:TVkBool32;
+       runtimeDescriptorArray:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShaderInputAttachmentArrayDynamicIndexing:TVkBool32;
+                          const aShaderUniformTexelBufferArrayDynamicIndexing:TVkBool32;
+                          const aShaderStorageTexelBufferArrayDynamicIndexing:TVkBool32;
+                          const aShaderUniformBufferArrayNonUniformIndexing:TVkBool32;
+                          const aShaderSampledImageArrayNonUniformIndexing:TVkBool32;
+                          const aShaderStorageBufferArrayNonUniformIndexing:TVkBool32;
+                          const aShaderStorageImageArrayNonUniformIndexing:TVkBool32;
+                          const aShaderInputAttachmentArrayNonUniformIndexing:TVkBool32;
+                          const aShaderUniformTexelBufferArrayNonUniformIndexing:TVkBool32;
+                          const aShaderStorageTexelBufferArrayNonUniformIndexing:TVkBool32;
+                          const aDescriptorBindingUniformBufferUpdateAfterBind:TVkBool32;
+                          const aDescriptorBindingSampledImageUpdateAfterBind:TVkBool32;
+                          const aDescriptorBindingStorageImageUpdateAfterBind:TVkBool32;
+                          const aDescriptorBindingStorageBufferUpdateAfterBind:TVkBool32;
+                          const aDescriptorBindingUniformTexelBufferUpdateAfterBind:TVkBool32;
+                          const aDescriptorBindingStorageTexelBufferUpdateAfterBind:TVkBool32;
+                          const aDescriptorBindingUpdateUnusedWhilePending:TVkBool32;
+                          const aDescriptorBindingPartiallyBound:TVkBool32;
+                          const aDescriptorBindingVariableDescriptorCount:TVkBool32;
+                          const aRuntimeDescriptorArray:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceDescriptorIndexingPropertiesEXT=^PVkPhysicalDeviceDescriptorIndexingPropertiesEXT;
+     PVkPhysicalDeviceDescriptorIndexingPropertiesEXT=^TVkPhysicalDeviceDescriptorIndexingPropertiesEXT;
+     TVkPhysicalDeviceDescriptorIndexingPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT
+       pNext:PVkVoid;
+       maxUpdateAfterBindDescriptorsInAllPools:TVkUInt32;
+       shaderUniformBufferArrayNonUniformIndexingNative:TVkBool32;
+       shaderSampledImageArrayNonUniformIndexingNative:TVkBool32;
+       shaderStorageBufferArrayNonUniformIndexingNative:TVkBool32;
+       shaderStorageImageArrayNonUniformIndexingNative:TVkBool32;
+       shaderInputAttachmentArrayNonUniformIndexingNative:TVkBool32;
+       robustBufferAccessUpdateAfterBind:TVkBool32;
+       quadDivergentImplicitLod:TVkBool32;
+       maxPerStageDescriptorUpdateAfterBindSamplers:TVkUInt32;
+       maxPerStageDescriptorUpdateAfterBindUniformBuffers:TVkUInt32;
+       maxPerStageDescriptorUpdateAfterBindStorageBuffers:TVkUInt32;
+       maxPerStageDescriptorUpdateAfterBindSampledImages:TVkUInt32;
+       maxPerStageDescriptorUpdateAfterBindStorageImages:TVkUInt32;
+       maxPerStageDescriptorUpdateAfterBindInputAttachments:TVkUInt32;
+       maxPerStageUpdateAfterBindResources:TVkUInt32;
+       maxDescriptorSetUpdateAfterBindSamplers:TVkUInt32;
+       maxDescriptorSetUpdateAfterBindUniformBuffers:TVkUInt32;
+       maxDescriptorSetUpdateAfterBindUniformBuffersDynamic:TVkUInt32;
+       maxDescriptorSetUpdateAfterBindStorageBuffers:TVkUInt32;
+       maxDescriptorSetUpdateAfterBindStorageBuffersDynamic:TVkUInt32;
+       maxDescriptorSetUpdateAfterBindSampledImages:TVkUInt32;
+       maxDescriptorSetUpdateAfterBindStorageImages:TVkUInt32;
+       maxDescriptorSetUpdateAfterBindInputAttachments:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMaxUpdateAfterBindDescriptorsInAllPools:TVkUInt32;
+                          const aShaderUniformBufferArrayNonUniformIndexingNative:TVkBool32;
+                          const aShaderSampledImageArrayNonUniformIndexingNative:TVkBool32;
+                          const aShaderStorageBufferArrayNonUniformIndexingNative:TVkBool32;
+                          const aShaderStorageImageArrayNonUniformIndexingNative:TVkBool32;
+                          const aShaderInputAttachmentArrayNonUniformIndexingNative:TVkBool32;
+                          const aRobustBufferAccessUpdateAfterBind:TVkBool32;
+                          const aQuadDivergentImplicitLod:TVkBool32;
+                          const aMaxPerStageDescriptorUpdateAfterBindSamplers:TVkUInt32;
+                          const aMaxPerStageDescriptorUpdateAfterBindUniformBuffers:TVkUInt32;
+                          const aMaxPerStageDescriptorUpdateAfterBindStorageBuffers:TVkUInt32;
+                          const aMaxPerStageDescriptorUpdateAfterBindSampledImages:TVkUInt32;
+                          const aMaxPerStageDescriptorUpdateAfterBindStorageImages:TVkUInt32;
+                          const aMaxPerStageDescriptorUpdateAfterBindInputAttachments:TVkUInt32;
+                          const aMaxPerStageUpdateAfterBindResources:TVkUInt32;
+                          const aMaxDescriptorSetUpdateAfterBindSamplers:TVkUInt32;
+                          const aMaxDescriptorSetUpdateAfterBindUniformBuffers:TVkUInt32;
+                          const aMaxDescriptorSetUpdateAfterBindUniformBuffersDynamic:TVkUInt32;
+                          const aMaxDescriptorSetUpdateAfterBindStorageBuffers:TVkUInt32;
+                          const aMaxDescriptorSetUpdateAfterBindStorageBuffersDynamic:TVkUInt32;
+                          const aMaxDescriptorSetUpdateAfterBindSampledImages:TVkUInt32;
+                          const aMaxDescriptorSetUpdateAfterBindStorageImages:TVkUInt32;
+                          const aMaxDescriptorSetUpdateAfterBindInputAttachments:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkDescriptorSetLayoutBindingFlagsCreateInfoEXT=^PVkDescriptorSetLayoutBindingFlagsCreateInfoEXT;
+     PVkDescriptorSetLayoutBindingFlagsCreateInfoEXT=^TVkDescriptorSetLayoutBindingFlagsCreateInfoEXT;
+     TVkDescriptorSetLayoutBindingFlagsCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT
+       pNext:PVkVoid;
+       bindingCount:TVkUInt32;
+       pBindingFlags:PVkDescriptorBindingFlagsEXT;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aBindingCount:TVkUInt32;
+                          const aPBindingFlags:PVkDescriptorBindingFlagsEXT);
+{$endif}
+     end;
+
+     PPVkDescriptorSetVariableDescriptorCountAllocateInfoEXT=^PVkDescriptorSetVariableDescriptorCountAllocateInfoEXT;
+     PVkDescriptorSetVariableDescriptorCountAllocateInfoEXT=^TVkDescriptorSetVariableDescriptorCountAllocateInfoEXT;
+     TVkDescriptorSetVariableDescriptorCountAllocateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT
+       pNext:PVkVoid;
+       descriptorSetCount:TVkUInt32;
+       pDescriptorCounts:PVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDescriptorSetCount:TVkUInt32;
+                          const aPDescriptorCounts:PVkUInt32);
+{$endif}
+     end;
+
+     PPVkDescriptorSetVariableDescriptorCountLayoutSupportEXT=^PVkDescriptorSetVariableDescriptorCountLayoutSupportEXT;
+     PVkDescriptorSetVariableDescriptorCountLayoutSupportEXT=^TVkDescriptorSetVariableDescriptorCountLayoutSupportEXT;
+     TVkDescriptorSetVariableDescriptorCountLayoutSupportEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT_EXT
+       pNext:PVkVoid;
+       maxVariableDescriptorCount:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMaxVariableDescriptorCount:TVkUInt32);
 {$endif}
      end;
 
@@ -18535,6 +18759,39 @@ begin
  conservativeRasterizationPostDepthCoverage:=aConservativeRasterizationPostDepthCoverage;
 end;
 
+constructor TVkPhysicalDeviceShaderCorePropertiesAMD.Create(const aShaderEngineCount:TVkUInt32;
+                                                            const aShaderArraysPerEngineCount:TVkUInt32;
+                                                            const aComputeUnitsPerShaderArray:TVkUInt32;
+                                                            const aSimdPerComputeUnit:TVkUInt32;
+                                                            const aWavefrontsPerSimd:TVkUInt32;
+                                                            const aWavefrontSize:TVkUInt32;
+                                                            const aSgprsPerSimd:TVkUInt32;
+                                                            const aMinSgprAllocation:TVkUInt32;
+                                                            const aMaxSgprAllocation:TVkUInt32;
+                                                            const aSgprAllocationGranularity:TVkUInt32;
+                                                            const aVgprsPerSimd:TVkUInt32;
+                                                            const aMinVgprAllocation:TVkUInt32;
+                                                            const aMaxVgprAllocation:TVkUInt32;
+                                                            const aVgprAllocationGranularity:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD;
+ pNext:=nil;
+ shaderEngineCount:=aShaderEngineCount;
+ shaderArraysPerEngineCount:=aShaderArraysPerEngineCount;
+ computeUnitsPerShaderArray:=aComputeUnitsPerShaderArray;
+ simdPerComputeUnit:=aSimdPerComputeUnit;
+ wavefrontsPerSimd:=aWavefrontsPerSimd;
+ wavefrontSize:=aWavefrontSize;
+ sgprsPerSimd:=aSgprsPerSimd;
+ minSgprAllocation:=aMinSgprAllocation;
+ maxSgprAllocation:=aMaxSgprAllocation;
+ sgprAllocationGranularity:=aSgprAllocationGranularity;
+ vgprsPerSimd:=aVgprsPerSimd;
+ minVgprAllocation:=aMinVgprAllocation;
+ maxVgprAllocation:=aMaxVgprAllocation;
+ vgprAllocationGranularity:=aVgprAllocationGranularity;
+end;
+
 constructor TVkPipelineRasterizationConservativeStateCreateInfoEXT.Create(const aFlags:TVkPipelineRasterizationConservativeStateCreateFlagsEXT;
                                                                           const aConservativeRasterizationMode:TVkConservativeRasterizationModeEXT;
                                                                           const aExtraPrimitiveOverestimationSize:TVkFloat);
@@ -18544,6 +18801,127 @@ begin
  flags:=aFlags;
  conservativeRasterizationMode:=aConservativeRasterizationMode;
  extraPrimitiveOverestimationSize:=aExtraPrimitiveOverestimationSize;
+end;
+
+constructor TVkPhysicalDeviceDescriptorIndexingFeaturesEXT.Create(const aShaderInputAttachmentArrayDynamicIndexing:TVkBool32;
+                                                                  const aShaderUniformTexelBufferArrayDynamicIndexing:TVkBool32;
+                                                                  const aShaderStorageTexelBufferArrayDynamicIndexing:TVkBool32;
+                                                                  const aShaderUniformBufferArrayNonUniformIndexing:TVkBool32;
+                                                                  const aShaderSampledImageArrayNonUniformIndexing:TVkBool32;
+                                                                  const aShaderStorageBufferArrayNonUniformIndexing:TVkBool32;
+                                                                  const aShaderStorageImageArrayNonUniformIndexing:TVkBool32;
+                                                                  const aShaderInputAttachmentArrayNonUniformIndexing:TVkBool32;
+                                                                  const aShaderUniformTexelBufferArrayNonUniformIndexing:TVkBool32;
+                                                                  const aShaderStorageTexelBufferArrayNonUniformIndexing:TVkBool32;
+                                                                  const aDescriptorBindingUniformBufferUpdateAfterBind:TVkBool32;
+                                                                  const aDescriptorBindingSampledImageUpdateAfterBind:TVkBool32;
+                                                                  const aDescriptorBindingStorageImageUpdateAfterBind:TVkBool32;
+                                                                  const aDescriptorBindingStorageBufferUpdateAfterBind:TVkBool32;
+                                                                  const aDescriptorBindingUniformTexelBufferUpdateAfterBind:TVkBool32;
+                                                                  const aDescriptorBindingStorageTexelBufferUpdateAfterBind:TVkBool32;
+                                                                  const aDescriptorBindingUpdateUnusedWhilePending:TVkBool32;
+                                                                  const aDescriptorBindingPartiallyBound:TVkBool32;
+                                                                  const aDescriptorBindingVariableDescriptorCount:TVkBool32;
+                                                                  const aRuntimeDescriptorArray:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
+ pNext:=nil;
+ shaderInputAttachmentArrayDynamicIndexing:=aShaderInputAttachmentArrayDynamicIndexing;
+ shaderUniformTexelBufferArrayDynamicIndexing:=aShaderUniformTexelBufferArrayDynamicIndexing;
+ shaderStorageTexelBufferArrayDynamicIndexing:=aShaderStorageTexelBufferArrayDynamicIndexing;
+ shaderUniformBufferArrayNonUniformIndexing:=aShaderUniformBufferArrayNonUniformIndexing;
+ shaderSampledImageArrayNonUniformIndexing:=aShaderSampledImageArrayNonUniformIndexing;
+ shaderStorageBufferArrayNonUniformIndexing:=aShaderStorageBufferArrayNonUniformIndexing;
+ shaderStorageImageArrayNonUniformIndexing:=aShaderStorageImageArrayNonUniformIndexing;
+ shaderInputAttachmentArrayNonUniformIndexing:=aShaderInputAttachmentArrayNonUniformIndexing;
+ shaderUniformTexelBufferArrayNonUniformIndexing:=aShaderUniformTexelBufferArrayNonUniformIndexing;
+ shaderStorageTexelBufferArrayNonUniformIndexing:=aShaderStorageTexelBufferArrayNonUniformIndexing;
+ descriptorBindingUniformBufferUpdateAfterBind:=aDescriptorBindingUniformBufferUpdateAfterBind;
+ descriptorBindingSampledImageUpdateAfterBind:=aDescriptorBindingSampledImageUpdateAfterBind;
+ descriptorBindingStorageImageUpdateAfterBind:=aDescriptorBindingStorageImageUpdateAfterBind;
+ descriptorBindingStorageBufferUpdateAfterBind:=aDescriptorBindingStorageBufferUpdateAfterBind;
+ descriptorBindingUniformTexelBufferUpdateAfterBind:=aDescriptorBindingUniformTexelBufferUpdateAfterBind;
+ descriptorBindingStorageTexelBufferUpdateAfterBind:=aDescriptorBindingStorageTexelBufferUpdateAfterBind;
+ descriptorBindingUpdateUnusedWhilePending:=aDescriptorBindingUpdateUnusedWhilePending;
+ descriptorBindingPartiallyBound:=aDescriptorBindingPartiallyBound;
+ descriptorBindingVariableDescriptorCount:=aDescriptorBindingVariableDescriptorCount;
+ runtimeDescriptorArray:=aRuntimeDescriptorArray;
+end;
+
+constructor TVkPhysicalDeviceDescriptorIndexingPropertiesEXT.Create(const aMaxUpdateAfterBindDescriptorsInAllPools:TVkUInt32;
+                                                                    const aShaderUniformBufferArrayNonUniformIndexingNative:TVkBool32;
+                                                                    const aShaderSampledImageArrayNonUniformIndexingNative:TVkBool32;
+                                                                    const aShaderStorageBufferArrayNonUniformIndexingNative:TVkBool32;
+                                                                    const aShaderStorageImageArrayNonUniformIndexingNative:TVkBool32;
+                                                                    const aShaderInputAttachmentArrayNonUniformIndexingNative:TVkBool32;
+                                                                    const aRobustBufferAccessUpdateAfterBind:TVkBool32;
+                                                                    const aQuadDivergentImplicitLod:TVkBool32;
+                                                                    const aMaxPerStageDescriptorUpdateAfterBindSamplers:TVkUInt32;
+                                                                    const aMaxPerStageDescriptorUpdateAfterBindUniformBuffers:TVkUInt32;
+                                                                    const aMaxPerStageDescriptorUpdateAfterBindStorageBuffers:TVkUInt32;
+                                                                    const aMaxPerStageDescriptorUpdateAfterBindSampledImages:TVkUInt32;
+                                                                    const aMaxPerStageDescriptorUpdateAfterBindStorageImages:TVkUInt32;
+                                                                    const aMaxPerStageDescriptorUpdateAfterBindInputAttachments:TVkUInt32;
+                                                                    const aMaxPerStageUpdateAfterBindResources:TVkUInt32;
+                                                                    const aMaxDescriptorSetUpdateAfterBindSamplers:TVkUInt32;
+                                                                    const aMaxDescriptorSetUpdateAfterBindUniformBuffers:TVkUInt32;
+                                                                    const aMaxDescriptorSetUpdateAfterBindUniformBuffersDynamic:TVkUInt32;
+                                                                    const aMaxDescriptorSetUpdateAfterBindStorageBuffers:TVkUInt32;
+                                                                    const aMaxDescriptorSetUpdateAfterBindStorageBuffersDynamic:TVkUInt32;
+                                                                    const aMaxDescriptorSetUpdateAfterBindSampledImages:TVkUInt32;
+                                                                    const aMaxDescriptorSetUpdateAfterBindStorageImages:TVkUInt32;
+                                                                    const aMaxDescriptorSetUpdateAfterBindInputAttachments:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT;
+ pNext:=nil;
+ maxUpdateAfterBindDescriptorsInAllPools:=aMaxUpdateAfterBindDescriptorsInAllPools;
+ shaderUniformBufferArrayNonUniformIndexingNative:=aShaderUniformBufferArrayNonUniformIndexingNative;
+ shaderSampledImageArrayNonUniformIndexingNative:=aShaderSampledImageArrayNonUniformIndexingNative;
+ shaderStorageBufferArrayNonUniformIndexingNative:=aShaderStorageBufferArrayNonUniformIndexingNative;
+ shaderStorageImageArrayNonUniformIndexingNative:=aShaderStorageImageArrayNonUniformIndexingNative;
+ shaderInputAttachmentArrayNonUniformIndexingNative:=aShaderInputAttachmentArrayNonUniformIndexingNative;
+ robustBufferAccessUpdateAfterBind:=aRobustBufferAccessUpdateAfterBind;
+ quadDivergentImplicitLod:=aQuadDivergentImplicitLod;
+ maxPerStageDescriptorUpdateAfterBindSamplers:=aMaxPerStageDescriptorUpdateAfterBindSamplers;
+ maxPerStageDescriptorUpdateAfterBindUniformBuffers:=aMaxPerStageDescriptorUpdateAfterBindUniformBuffers;
+ maxPerStageDescriptorUpdateAfterBindStorageBuffers:=aMaxPerStageDescriptorUpdateAfterBindStorageBuffers;
+ maxPerStageDescriptorUpdateAfterBindSampledImages:=aMaxPerStageDescriptorUpdateAfterBindSampledImages;
+ maxPerStageDescriptorUpdateAfterBindStorageImages:=aMaxPerStageDescriptorUpdateAfterBindStorageImages;
+ maxPerStageDescriptorUpdateAfterBindInputAttachments:=aMaxPerStageDescriptorUpdateAfterBindInputAttachments;
+ maxPerStageUpdateAfterBindResources:=aMaxPerStageUpdateAfterBindResources;
+ maxDescriptorSetUpdateAfterBindSamplers:=aMaxDescriptorSetUpdateAfterBindSamplers;
+ maxDescriptorSetUpdateAfterBindUniformBuffers:=aMaxDescriptorSetUpdateAfterBindUniformBuffers;
+ maxDescriptorSetUpdateAfterBindUniformBuffersDynamic:=aMaxDescriptorSetUpdateAfterBindUniformBuffersDynamic;
+ maxDescriptorSetUpdateAfterBindStorageBuffers:=aMaxDescriptorSetUpdateAfterBindStorageBuffers;
+ maxDescriptorSetUpdateAfterBindStorageBuffersDynamic:=aMaxDescriptorSetUpdateAfterBindStorageBuffersDynamic;
+ maxDescriptorSetUpdateAfterBindSampledImages:=aMaxDescriptorSetUpdateAfterBindSampledImages;
+ maxDescriptorSetUpdateAfterBindStorageImages:=aMaxDescriptorSetUpdateAfterBindStorageImages;
+ maxDescriptorSetUpdateAfterBindInputAttachments:=aMaxDescriptorSetUpdateAfterBindInputAttachments;
+end;
+
+constructor TVkDescriptorSetLayoutBindingFlagsCreateInfoEXT.Create(const aBindingCount:TVkUInt32;
+                                                                   const aPBindingFlags:PVkDescriptorBindingFlagsEXT);
+begin
+ sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
+ pNext:=nil;
+ bindingCount:=aBindingCount;
+ pBindingFlags:=aPBindingFlags;
+end;
+
+constructor TVkDescriptorSetVariableDescriptorCountAllocateInfoEXT.Create(const aDescriptorSetCount:TVkUInt32;
+                                                                          const aPDescriptorCounts:PVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT;
+ pNext:=nil;
+ descriptorSetCount:=aDescriptorSetCount;
+ pDescriptorCounts:=aPDescriptorCounts;
+end;
+
+constructor TVkDescriptorSetVariableDescriptorCountLayoutSupportEXT.Create(const aMaxVariableDescriptorCount:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT_EXT;
+ pNext:=nil;
+ maxVariableDescriptorCount:=aMaxVariableDescriptorCount;
 end;
 
 constructor TVkVertexInputBindingDivisorDescriptionEXT.Create(const aBinding:TVkUInt32;
