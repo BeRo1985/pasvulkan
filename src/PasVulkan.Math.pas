@@ -90,7 +90,8 @@ interface
 uses SysUtils,
      Classes,
      Math,
-     PasVulkan.Types;
+     PasVulkan.Types,
+     Vulkan;
 
 const EPSILON={$ifdef UseDouble}1e-14{$else}1e-5{$endif}; // actually {$ifdef UseDouble}1e-16{$else}1e-7{$endif}; but we are conservative here
 
@@ -1083,12 +1084,18 @@ type PpvScalar=^TpvScalar;
        function GetSize:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        procedure SetSize(const aSize:TpvVector2); {$ifdef CAN_INLINE}inline;{$endif}
       public
+       constructor CreateFromVkRect2D(const aFrom:TVkRect2D); overload;
        constructor CreateAbsolute(const aLeft,aTop,aRight,aBottom:TpvFloat); overload;
        constructor CreateAbsolute(const aLeftTop,aRightBottom:TpvVector2); overload;
        constructor CreateRelative(const aLeft,aTop,aWidth,aHeight:TpvFloat); overload;
        constructor CreateRelative(const aLeftTop,aSize:TpvVector2); overload;
+       class operator Implicit(const a:TVkRect2D):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TVkRect2D):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Implicit(const a:TpvRect):TVkRect2D; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const a:TpvRect):TVkRect2D; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
        class operator NotEqual(const a,b:TpvRect):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       function ToVkRect2D:TVkRect2D; {$ifdef CAN_INLINE}inline;{$endif}
        function Intersect(const aWithRect:TpvRect;Threshold:TpvScalar=EPSILON):boolean; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function GetIntersection(const WithAABB:TpvRect):TpvRect; {$ifdef CAN_INLINE}inline;{$endif}
        function Touched(const aPosition:TpvVector2;Threshold:TpvScalar=EPSILON):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -13696,6 +13703,14 @@ begin
  result.z:=Radius*cos(Theta);
 end;
 
+constructor TpvRect.CreateFromVkRect2D(const aFrom:TVkRect2D);
+begin
+ Left:=aFrom.offset.x;
+ Top:=aFrom.offset.y;
+ Right:=aFrom.offset.x+aFrom.extent.width;
+ Bottom:=aFrom.offset.y+aFrom.extent.height;
+end;
+
 constructor TpvRect.CreateAbsolute(const aLeft,aTop,aRight,aBottom:TpvFloat);
 begin
  Left:=aLeft;
@@ -13722,6 +13737,26 @@ constructor TpvRect.CreateRelative(const aLeftTop,aSize:TpvVector2);
 begin
  LeftTop:=aLeftTop;
  RightBottom:=aLeftTop+aSize;
+end;
+
+class operator TpvRect.Implicit(const a:TVkRect2D):TpvRect;
+begin
+ result:=TpvRect.CreateFromVkRect2D(a);
+end;
+
+class operator TpvRect.Explicit(const a:TVkRect2D):TpvRect;
+begin
+ result:=TpvRect.CreateFromVkRect2D(a);
+end;
+
+class operator TpvRect.Implicit(const a:TpvRect):TVkRect2D;
+begin
+ result:=a.ToVkRect2D;
+end;
+
+class operator TpvRect.Explicit(const a:TpvRect):TVkRect2D;
+begin
+ result:=a.ToVkRect2D;
 end;
 
 class operator TpvRect.Equal(const a,b:TpvRect):boolean;
@@ -13752,6 +13787,14 @@ function TpvRect.Touched(const aPosition:TpvVector2;Threshold:TpvScalar=EPSILON)
 begin
  result:=((aPosition.x>=(Min.x-Threshold)) and (aPosition.x<=(Max.x+Threshold))) and
          ((aPosition.y>=(Min.y-Threshold)) and (aPosition.y<=(Max.y+Threshold)));
+end;
+
+function TpvRect.ToVkRect2D:TVkRect2D;
+begin
+ result.offset.x:=trunc(floor(Left));
+ result.offset.y:=trunc(floor(Top));
+ result.extent.width:=trunc(ceil(Right-Left));
+ result.extent.height:=trunc(ceil(Bottom-Top));
 end;
 
 function TpvRect.GetWidth:TpvFloat;

@@ -92,6 +92,14 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        destructor Destroy; override;
      end;
 
+     TScreenExampleGUICube=class(TpvGUIWindow)
+      private
+       fVulkanCanvasCube:TpvGUIVulkanCanvas;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+     end;
+
      TScreenExampleGUI=class(TpvApplicationScreen)
       private
        fVulkanRenderPass:TpvVulkanRenderPass;
@@ -526,6 +534,33 @@ begin
  inherited Destroy;
 end;
 
+constructor TScreenExampleGUICube.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ Left:=250;
+ Top:=200;
+ Title:='Window with VulkanCanvas';
+ Content.Layout:=TpvGUIFillLayout.Create(Content,4.0);
+ AddMinimizationButton;
+ AddMaximizationButton;
+ AddCloseButton;
+
+ AutoSize:=false;
+
+ Width:=550;
+ Height:=350;
+
+ fVulkanCanvasCube:=TpvGUIVulkanCanvas.Create(Content);
+
+end;
+
+destructor TScreenExampleGUICube.Destroy;
+begin
+ inherited Destroy;
+end;
+
 constructor TScreenExampleGUI.Create;
 begin
  inherited Create;
@@ -860,6 +895,8 @@ begin
  TScreenExampleGUITabPanelExampleWindow.Create(fGUIInstance);
 
  TScreenExampleGUIMultiLineTextEditWindow.Create(fGUIInstance);
+
+ TScreenExampleGUICube.Create(fGUIInstance);
 
 end;
 

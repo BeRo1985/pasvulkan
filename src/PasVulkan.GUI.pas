@@ -2695,8 +2695,8 @@ type TpvGUIObject=class;
        fDrawRects:array[0..1] of TpvRect;
        fClipRects:array[0..1] of TpvRect;
       protected
-       procedure UpdateContent(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D); virtual;
-       procedure DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D); virtual;
+       procedure UpdateContent(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); virtual;
+       procedure DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); virtual;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -3005,30 +3005,18 @@ end;
 procedure TpvGUIDrawEngine.DrawVulkanCanvasHook(const aData:TpvPointer;const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
 var VulkanCanvas:TpvGUIVulkanCanvas;
     ClipRectToScissorScale,ClipRectToScissorOffset:TpvVector4;
-    LocalDrawRect:TpvRect;
-    LocalClipRect:TpvRect;
-    ViewPortDrawRect,ViewPortClipRect:TVkRect2D;
+    LocalDrawRect,LocalClipRect:TpvRect;
 begin
  VulkanCanvas:=aData;
  ClipRectToScissorScale:=(TpvVector2.InlineableCreate(fCanvas.Viewport^.width,fCanvas.Viewport^.height)/TpvVector2.InlineableCreate(fCanvas.Width,fCanvas.Height)).xyxy;
  ClipRectToScissorOffset:=TpvVector2.InlineableCreate(fCanvas.Viewport.x,fCanvas.Viewport.y).xyxy;
- LocalDrawRect.Vector4:=(VulkanCanvas.fDrawRects[fInstance.DrawBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
- LocalClipRect.Vector4:=(VulkanCanvas.fClipRects[fInstance.DrawBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
- ViewPortDrawRect.offset.x:=trunc(floor(LocalDrawRect.Left));
- ViewPortDrawRect.offset.y:=trunc(floor(LocalDrawRect.Top));
- ViewPortDrawRect.extent.width:=trunc(ceil(LocalDrawRect.Width));
- ViewPortDrawRect.extent.height:=trunc(ceil(LocalDrawRect.Height));
- ViewPortClipRect.offset.x:=trunc(floor(LocalClipRect.Left));
- ViewPortClipRect.offset.y:=trunc(floor(LocalClipRect.Top));
- ViewPortClipRect.extent.width:=trunc(ceil(LocalClipRect.Width));
- ViewPortClipRect.extent.height:=trunc(ceil(LocalClipRect.Height));
+ LocalDrawRect.Vector4:=(VulkanCanvas.fDrawRects[fInstance.fUpdateBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
+ LocalClipRect.Vector4:=(VulkanCanvas.fClipRects[fInstance.fUpdateBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
  VulkanCanvas.DrawContent(aVulkanCommandBuffer,
                           aBufferIndex,
                           fInstance.DrawBufferIndex,
-                          VulkanCanvas.fDrawRects[fInstance.DrawBufferIndex and 1],
-                          VulkanCanvas.fClipRects[fInstance.DrawBufferIndex and 1],
-                          ViewPortDrawRect,
-                          ViewPortClipRect);
+                          LocalDrawRect,
+                          LocalClipRect);
 end;
 
 procedure TpvGUIDrawEngine.Draw;
@@ -19929,11 +19917,11 @@ begin
 
 end;
 
-procedure TpvGUIVulkanCanvas.UpdateContent(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D);
+procedure TpvGUIVulkanCanvas.UpdateContent(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect);
 begin
 end;
 
-procedure TpvGUIVulkanCanvas.DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D);
+procedure TpvGUIVulkanCanvas.DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect);
 begin
 end;
 
@@ -19950,9 +19938,7 @@ end;
 procedure TpvGUIVulkanCanvas.Draw;
 var ModelMatrix:TpvMatrix4x4;
     ClipRectToScissorScale,ClipRectToScissorOffset:TpvVector4;
-    LocalDrawRect:TpvRect;
-    LocalClipRect:TpvRect;
-    ViewPortDrawRect,ViewPortClipRect:TVkRect2D;
+    LocalDrawRect,LocalClipRect:TpvRect;
 begin
  fDrawRects[fInstance.fUpdateBufferIndex and 1]:=TpvRect.CreateRelative(GetAbsolutePosition,fSize);
  fClipRects[fInstance.fUpdateBufferIndex and 1]:=fClipRect;
@@ -19960,19 +19946,9 @@ begin
  ClipRectToScissorOffset:=TpvVector2.InlineableCreate(fInstance.fDrawEngine.fCanvas.Viewport.x,fInstance.fDrawEngine.fCanvas.Viewport.y).xyxy;
  LocalDrawRect.Vector4:=(fDrawRects[fInstance.fUpdateBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
  LocalClipRect.Vector4:=(fClipRects[fInstance.fUpdateBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
- ViewPortDrawRect.offset.x:=trunc(floor(LocalDrawRect.Left));
- ViewPortDrawRect.offset.y:=trunc(floor(LocalDrawRect.Top));
- ViewPortDrawRect.extent.width:=trunc(ceil(LocalDrawRect.Width));
- ViewPortDrawRect.extent.height:=trunc(ceil(LocalDrawRect.Height));
- ViewPortClipRect.offset.x:=trunc(floor(LocalClipRect.Left));
- ViewPortClipRect.offset.y:=trunc(floor(LocalClipRect.Top));
- ViewPortClipRect.extent.width:=trunc(ceil(LocalClipRect.Width));
- ViewPortClipRect.extent.height:=trunc(ceil(LocalClipRect.Height));
  UpdateContent(fInstance.fUpdateBufferIndex,
                fDrawRects[fInstance.UpdateBufferIndex and 1],
-               fClipRects[fInstance.UpdateBufferIndex and 1],
-               ViewPortDrawRect,
-               ViewPortClipRect);
+               fClipRects[fInstance.UpdateBufferIndex and 1]);
  ModelMatrix:=fInstance.fDrawEngine.ModelMatrix;
  fInstance.fDrawEngine.ModelMatrix:=TpvMatrix4x4.Identity;
  fInstance.fDrawEngine.DrawVulkanCanvas(self,fDrawRects[fInstance.fUpdateBufferIndex and 1]);
