@@ -972,6 +972,7 @@ begin
   fVulkanRenderCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
  end;
 
+ fGUIInstance.VulkanRenderPass:=fVulkanRenderPass;
  fGUIInstance.CountBuffers:=pvApplication.CountSwapChainImages;
  fGUIInstance.Width:=fVulkanCanvas.Width;
  fGUIInstance.Height:=fVulkanCanvas.Height;

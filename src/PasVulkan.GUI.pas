@@ -1252,6 +1252,7 @@ type TpvGUIObject=class;
      TpvGUIInstance=class(TpvGUIHolder)
       private
        fVulkanDevice:TpvVulkanDevice;
+       fVulkanRenderPass:TpvVulkanRenderPass;
        fObjectGarbageDisposer:TpvGUIObjectGarbageDisposer;
        fCanvas:TpvCanvas;
        fDrawEngine:TpvGUIDrawEngine;
@@ -1310,6 +1311,7 @@ type TpvGUIObject=class;
        property MousePosition:TpvVector2 read fMousePosition write fMousePosition;
       published
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
+       property VulkanRenderPass:TpvVulkanRenderPass read fVulkanRenderPass write fVulkanRenderPass;
        property Canvas:TpvCanvas read fCanvas;
        property DrawEngine:TpvGUIDrawEngine read fDrawEngine write SetDrawEngine;
        property StandardSkin:TpvGUISkin read fStandardSkin;
@@ -10813,7 +10815,7 @@ begin
  end;
 end;
 
-procedure TpvGUIWidget.ExecuteDraw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+procedure TpvGUIWidget.ExecuteDraw(var aWaitSemaphore:TpvVulkanSemaphore);
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
@@ -10823,7 +10825,7 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
-    ChildWidget.ExecuteDraw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
+    ChildWidget.ExecuteDraw(aWaitSemaphore);
    end;
   end;
  end;
@@ -10850,6 +10852,8 @@ begin
  fInstance:=self;
 
  fVulkanDevice:=aVulkanDevice;
+
+ fVulkanRenderPass:=nil;
 
  fObjectGarbageDisposer:=TpvGUIObjectGarbageDisposer.Create(self);
 
