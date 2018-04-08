@@ -861,6 +861,8 @@ type EpvApplication=class(Exception)
 
        function CanBeParallelProcessed:boolean; virtual;
 
+       procedure Check(const aDeltaTime:TpvDouble); virtual;
+
        procedure Update(const aDeltaTime:TpvDouble); virtual;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
@@ -1127,6 +1129,7 @@ type EpvApplication=class(Exception)
        fNowTime:TpvApplicationHighResolutionTime;
        fDeltaTime:TpvApplicationHighResolutionTime;
        fFloatDeltaTime:TpvDouble;
+       fUpdateDeltaTime:TpvDouble;
 
        fFrameTimesHistoryDeltaTimes:array[0..FrameTimesHistorySize-1] of TpvDouble;
        fFrameTimesHistoryTimePoints:array[0..FrameTimesHistorySize-1] of TpvApplicationHighResolutionTime;
@@ -1307,6 +1310,8 @@ type EpvApplication=class(Exception)
        function Scrolled(const aRelativeAmount:TpvVector2):boolean; virtual;
 
        function CanBeParallelProcessed:boolean; virtual;
+
+       procedure Check(const aDeltaTime:TpvDouble); virtual;
 
        procedure Update(const aDeltaTime:TpvDouble); virtual;
 
@@ -4864,6 +4869,10 @@ begin
  result:=false;
 end;
 
+procedure TpvApplicationScreen.Check(const aDeltaTime:TpvDouble);
+begin
+end;
+
 procedure TpvApplicationScreen.Update(const aDeltaTime:TpvDouble);
 begin
 end;
@@ -6765,7 +6774,7 @@ end;
 
 procedure TpvApplication.UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 begin
- Update(Min(Max(fFloatDeltaTime,0.0),0.25));
+ Update(fUpdateDeltaTime);
 end;
 
 procedure TpvApplication.DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
@@ -7245,8 +7254,11 @@ begin
 
    UpdateFrameTimesHistory;
 
+   fUpdateDeltaTime:=Min(Max(fFloatDeltaTime,0.0),0.25);
+
    fUpdateFrameCounter:=fFrameCounter;
    fDrawFrameCounter:=fFrameCounter;
+   Check(fUpdateDeltaTime);
    UpdateJobFunction(nil,0);
    inc(fFrameCounter);
 
@@ -7266,6 +7278,8 @@ begin
 
     UpdateFrameTimesHistory;
 
+    fUpdateDeltaTime:=Min(Max(fFloatDeltaTime,0.0),0.25);
+
     try
 
      if CanBeParallelProcessed and (fCountSwapChainImages>1) then begin
@@ -7273,6 +7287,8 @@ begin
       fUpdateFrameCounter:=fFrameCounter;
 
       fDrawFrameCounter:=fFrameCounter-1;
+
+      Check(fUpdateDeltaTime);
 
 {$ifdef TpvApplicationUpdateJobOnMainThread}
       DrawJob:=fPasMPInstance.Acquire(DrawJobFunction);
@@ -7293,6 +7309,8 @@ begin
       fUpdateFrameCounter:=fFrameCounter;
 
       fDrawFrameCounter:=fFrameCounter;
+
+      Check(fUpdateDeltaTime);
 
       UpdateJobFunction(nil,0);
 
@@ -7915,6 +7933,13 @@ begin
   result:=fScreen.CanBeParallelProcessed;
  end else begin
   result:=false;
+ end;
+end;
+
+procedure TpvApplication.Check(const aDeltaTime:TpvDouble);
+begin
+ if assigned(fScreen) then begin
+  fScreen.Check(aDeltaTime);
  end;
 end;
 

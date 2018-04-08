@@ -142,6 +142,8 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
 
        function CanBeParallelProcessed:boolean; override;
 
+       procedure Check(const aDeltaTime:TpvDouble); override;
+
        procedure Update(const aDeltaTime:TpvDouble); override;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
@@ -1109,6 +1111,17 @@ end;
 function TScreenExampleGUI.CanBeParallelProcessed:boolean;
 begin
  result:=true;
+end;
+
+procedure TScreenExampleGUI.Check(const aDeltaTime:TpvDouble);
+begin
+
+ inherited Check(aDeltaTime);
+
+ fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateSwapChainImageIndex;
+ fGUIInstance.DeltaTime:=aDeltaTime;
+ fGUIInstance.Check;
+
 end;
 
 procedure TScreenExampleGUI.Update(const aDeltaTime:TpvDouble);
