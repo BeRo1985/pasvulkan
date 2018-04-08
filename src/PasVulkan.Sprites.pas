@@ -1174,6 +1174,8 @@ begin
 
  TrimmedHullVectors:=nil;
 
+ TrimmedImageData:=nil;
+
  try
 
   TotalPadding:=aPadding shl 1;
