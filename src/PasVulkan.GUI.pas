@@ -2692,7 +2692,7 @@ type TpvGUIObject=class;
        fClipRects:array[0..1] of TpvRect;
       protected
        procedure VisualUpdate(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D); virtual;
-       procedure VisualDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D); virtual;
+       procedure VisualDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D); virtual;
       public
        procedure Update; override;
        procedure Draw; override;
@@ -3017,6 +3017,7 @@ begin
  ViewPortClipRect.extent.height:=trunc(ceil(LocalClipRect.Height));
  VulkanCanvas.VisualDraw(aVulkanCommandBuffer,
                          aBufferIndex,
+                         fInstance.DrawBufferIndex,
                          VulkanCanvas.fDrawRects[fInstance.DrawBufferIndex and 1],
                          VulkanCanvas.fClipRects[fInstance.DrawBufferIndex and 1],
                          ViewPortDrawRect,
@@ -19892,7 +19893,7 @@ procedure TpvGUIVulkanCanvas.VisualUpdate(const aBufferIndex:TpvInt32;const aDra
 begin
 end;
 
-procedure TpvGUIVulkanCanvas.VisualDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D);
+procedure TpvGUIVulkanCanvas.VisualDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D);
 begin
 end;
 
