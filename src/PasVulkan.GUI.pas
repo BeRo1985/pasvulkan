@@ -2694,24 +2694,15 @@ type TpvGUIObject=class;
       private
        fDrawRects:array[0..1] of TpvRect;
        fClipRects:array[0..1] of TpvRect;
-       fContentInitialized:longbool;
-       fContentWidth:TpvInt32;
-       fContentHeight:TpvInt32;
       protected
-       procedure InitializeContent; virtual;
-       procedure FinalizeContent; virtual;
-       procedure UpdateContent; virtual;
-       procedure UpdateVisual(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D); virtual;
-       procedure DrawVisual(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D); virtual;
+       procedure UpdateContent(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D); virtual;
+       procedure DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D); virtual;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure Check; override;
        procedure Update; override;
        procedure Draw; override;
-      published
-       property ContentWidth:TpvInt32 read fContentWidth;
-       property ContentHeight:TpvInt32 read fContentHeight;
      end;
 
 implementation
@@ -3031,13 +3022,13 @@ begin
  ViewPortClipRect.offset.y:=trunc(floor(LocalClipRect.Top));
  ViewPortClipRect.extent.width:=trunc(ceil(LocalClipRect.Width));
  ViewPortClipRect.extent.height:=trunc(ceil(LocalClipRect.Height));
- VulkanCanvas.DrawVisual(aVulkanCommandBuffer,
-                         aBufferIndex,
-                         fInstance.DrawBufferIndex,
-                         VulkanCanvas.fDrawRects[fInstance.DrawBufferIndex and 1],
-                         VulkanCanvas.fClipRects[fInstance.DrawBufferIndex and 1],
-                         ViewPortDrawRect,
-                         ViewPortClipRect);
+ VulkanCanvas.DrawContent(aVulkanCommandBuffer,
+                          aBufferIndex,
+                          fInstance.DrawBufferIndex,
+                          VulkanCanvas.fDrawRects[fInstance.DrawBufferIndex and 1],
+                          VulkanCanvas.fClipRects[fInstance.DrawBufferIndex and 1],
+                          ViewPortDrawRect,
+                          ViewPortClipRect);
 end;
 
 procedure TpvGUIDrawEngine.Draw;
@@ -19929,76 +19920,30 @@ begin
 
  inherited Create(aParent);
 
- fContentWidth:=0;
- fContentHeight:=0;
-
- fContentInitialized:=false;
-
 end;
 
 destructor TpvGUIVulkanCanvas.Destroy;
 begin
 
- if fContentInitialized then begin
-  FinalizeContent;
- end;
-
  inherited Destroy;
 
 end;
 
-procedure TpvGUIVulkanCanvas.InitializeContent;
-begin
-
-end;
-
-procedure TpvGUIVulkanCanvas.FinalizeContent;
-begin
-
-end;
-
-procedure TpvGUIVulkanCanvas.UpdateContent;
-begin
-
-end;
-
-procedure TpvGUIVulkanCanvas.UpdateVisual(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D);
+procedure TpvGUIVulkanCanvas.UpdateContent(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D);
 begin
 end;
 
-procedure TpvGUIVulkanCanvas.DrawVisual(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D);
+procedure TpvGUIVulkanCanvas.DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect;const aViewPortDrawRect,aViewPortClipRect:TVkRect2D);
 begin
 end;
 
 procedure TpvGUIVulkanCanvas.Check;
-var NewWidth,NewHeight:TpvInt32;
 begin
- NewWidth:=trunc(ceil(fSize.x));
- NewHeight:=trunc(ceil(fSize.y));
- if (fContentWidth<>NewWidth) or
-    (fContentHeight<>NewHeight) then begin
-  try
-   try
-    if fContentInitialized then begin
-     FinalizeContent;
-    end;
-   finally
-    fContentWidth:=NewWidth;
-    fContentHeight:=NewHeight;
-   end;
-   InitializeContent;
-  finally
-   fContentInitialized:=true;
-  end;
- end;
  inherited Check;
 end;
 
 procedure TpvGUIVulkanCanvas.Update;
 begin
- if fContentInitialized then begin
-  UpdateContent;
- end;
  inherited Update;
 end;
 
@@ -20023,11 +19968,11 @@ begin
  ViewPortClipRect.offset.y:=trunc(floor(LocalClipRect.Top));
  ViewPortClipRect.extent.width:=trunc(ceil(LocalClipRect.Width));
  ViewPortClipRect.extent.height:=trunc(ceil(LocalClipRect.Height));
- UpdateVisual(fInstance.fUpdateBufferIndex,
-              fDrawRects[fInstance.UpdateBufferIndex and 1],
-              fClipRects[fInstance.UpdateBufferIndex and 1],
-              ViewPortDrawRect,
-              ViewPortClipRect);
+ UpdateContent(fInstance.fUpdateBufferIndex,
+               fDrawRects[fInstance.UpdateBufferIndex and 1],
+               fClipRects[fInstance.UpdateBufferIndex and 1],
+               ViewPortDrawRect,
+               ViewPortClipRect);
  ModelMatrix:=fInstance.fDrawEngine.ModelMatrix;
  fInstance.fDrawEngine.ModelMatrix:=TpvMatrix4x4.Identity;
  fInstance.fDrawEngine.DrawVulkanCanvas(self,fDrawRects[fInstance.fUpdateBufferIndex and 1]);
