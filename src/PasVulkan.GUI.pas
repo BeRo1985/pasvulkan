@@ -1187,7 +1187,7 @@ type TpvGUIObject=class;
        procedure AfterCreateSwapChain; virtual;
        procedure BeforeDestroySwapChain; virtual;
        procedure Draw; virtual;
-       procedure ExecuteDraw; virtual;
+       procedure ExecuteDraw(var aWaitSemaphore:TpvVulkanSemaphore); virtual;
       public
        property AbsolutePosition:TpvVector2 read GetAbsolutePosition;
        property PreferredSize:TpvVector2 read GetPreferredSize;
@@ -10813,7 +10813,7 @@ begin
  end;
 end;
 
-procedure TpvGUIWidget.ExecuteDraw;
+procedure TpvGUIWidget.ExecuteDraw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 var ChildIndex:TpvInt32;
     Child:TpvGUIObject;
     ChildWidget:TpvGUIWidget;
@@ -10823,7 +10823,7 @@ begin
   if Child is TpvGUIWidget then begin
    ChildWidget:=Child as TpvGUIWidget;
    if ChildWidget.Visible then begin
-    ChildWidget.ExecuteDraw;
+    ChildWidget.ExecuteDraw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
    end;
   end;
  end;

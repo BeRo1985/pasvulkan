@@ -1191,7 +1191,7 @@ begin
    VulkanSwapChain:=pvApplication.VulkanSwapChain;
 
    fGUIInstance.DrawBufferIndex:=pvApplication.DrawSwapChainImageIndex;
-   fGUIInstance.ExecuteDraw;
+   fGUIInstance.ExecuteDraw(aWaitSemaphore);
 
    VulkanCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 
