@@ -130,6 +130,8 @@ type TpvGUIObject=class;
 
      TpvGUIMultiLineTextEdit=class;
 
+     TpvGUIVulkanCanvas=class;
+
      EpvGUIWidget=class(Exception);
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
@@ -167,6 +169,8 @@ type TpvGUIObject=class;
              public
               type TKind=
                     (
+                     DrawVulkanCanvas,
+                     DrawInvisibleDepthRect,
                      DrawGUIElement,
                      DrawSprite,
                      DrawTexturedRectangle,
@@ -176,6 +180,12 @@ type TpvGUIObject=class;
               fZIndex:TpvSizeInt;
               fState:TpvSizeInt;
               case fKind:TKind of
+               TKind.DrawVulkanCanvas:(
+                fDrawVulkanCanvas:TpvGUIVulkanCanvas;
+               );
+               TKind.DrawInvisibleDepthRect:(
+                fDrawInvisibleDepthRect:TpvRect;
+               );
                TKind.DrawGUIElement:(
                 fDrawGUIElementGUIElement:TVkInt32;
                 fDrawGUIElementFocused:boolean;
@@ -220,6 +230,8 @@ type TpvGUIObject=class;
        fStates:TStates;
        fCountStates:TpvSizeInt;
        fState:PState;
+       fForcedBackToFrontOpaqueBatchItems:TBatchItems;
+       fCountForcedBackToFrontOpaqueBatchItems:TpvSizeInt;
        fOpaqueBatchItems:TBatchItems;
        fCountOpaqueBatchItems:TpvSizeInt;
        fTransparentBatchItems:TBatchItems;
@@ -237,12 +249,15 @@ type TpvGUIObject=class;
        function GetColor:TpvVector4; inline;
        procedure SetColor(const aColor:TpvVector4);
        function NewBatchItem:PBatchItem;
+       function NewForcedBackToFrontOpaqueBatchItem:PBatchItem;
+       procedure DrawVulkanCanvasHook(const aData:TpvPointer;const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
       public
        constructor Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas); reintroduce;
        destructor Destroy; override;
        procedure Clear;
        procedure Next;
        procedure Draw;
+       procedure DrawVulkanCanvas(const aVulkanCanvas:TpvGUIVulkanCanvas;const aRect:TpvRect);
        procedure DrawGUIElement(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat=0.0);
        procedure DrawGUIElementWithTransparentEdges(const aGUIElement:TVkInt32;const aFocused:boolean;const aMin,aMax,aMetaMin,aMetaMax:TpvVector2;const aMeta:TpvFloat;const aTransparentMargin:TpvRect;const aDrawCenter:boolean=true);
        procedure DrawSprite(const aSprite:TpvSprite;const aSrcRect,aDestRect:TpvRect);
@@ -298,6 +313,7 @@ type TpvGUIObject=class;
        property ID:TpvUTF8String read fID write fID;
        property Tag:TpvPtrInt read fTag write fTag;
      end;
+
      EpvGUIObjectGarbageDisposer=class(Exception);
 
      TpvGUIObjectGarbageDisposer=class
@@ -2670,6 +2686,17 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
      end;
 
+     TpvGUIVulkanCanvas=class(TpvGUIWidget)
+      private
+       fDrawRects:array[0..1] of TpvRect;
+      protected
+       procedure VisualUpdate(const aBufferIndex:TpvInt32); virtual;
+       procedure VisualDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32;const aRect:TpvRect); virtual;
+      public
+       procedure Update; override;
+       procedure Draw; override;
+     end;
+
 implementation
 
 uses PasDblStrUtils,
@@ -2712,6 +2739,7 @@ const GUI_ELEMENT_WINDOW_HEADER=1;
       GUI_ELEMENT_MOUSE_CURSOR_PEN=75;
       GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE=76;
       GUI_ELEMENT_MOUSE_CURSOR_UP=77;
+      GUI_ELEMENT_HIDDEN=96;
 
 constructor TpvGUIDrawEngine.Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas);
 begin
@@ -2761,6 +2789,9 @@ begin
  fStates:=nil;
  fCountStates:=0;
 
+ fForcedBackToFrontOpaqueBatchItems:=nil;
+ fCountForcedBackToFrontOpaqueBatchItems:=0;
+
  fOpaqueBatchItems:=nil;
  fCountOpaqueBatchItems:=0;
 
@@ -2787,6 +2818,7 @@ begin
  fModelMatrices:=nil;
  fColors:=nil;
  fStates:=nil;
+ fForcedBackToFrontOpaqueBatchItems:=nil;
  fOpaqueBatchItems:=nil;
  fTransparentBatchItems:=nil;
  inherited Destroy;
@@ -2890,6 +2922,27 @@ begin
  fDoNeedNewState:=true;
 end;
 
+function TpvGUIDrawEngine.NewForcedBackToFrontOpaqueBatchItem:PBatchItem;
+begin
+ if fStrategy=TStrategy.OnePassBackToFront then begin
+  inc(fCountTransparentBatchItems);
+  if length(fTransparentBatchItems)<fCountTransparentBatchItems then begin
+   SetLength(fTransparentBatchItems,fCountTransparentBatchItems*2);
+  end;
+  result:=@fTransparentBatchItems[fCountTransparentBatchItems-1];
+ end else begin
+  inc(fCountForcedBackToFrontOpaqueBatchItems);
+  if length(fForcedBackToFrontOpaqueBatchItems)<fCountForcedBackToFrontOpaqueBatchItems then begin
+   SetLength(fForcedBackToFrontOpaqueBatchItems,fCountForcedBackToFrontOpaqueBatchItems*2);
+  end;
+  result:=@fForcedBackToFrontOpaqueBatchItems[fCountForcedBackToFrontOpaqueBatchItems-1];
+ end;
+ result^.fZIndex:=fCountTotalBatchItems;
+ result^.fState:=fCountStates-1;
+ inc(fCountTotalBatchItems);
+ fDoNeedNewState:=true;
+end;
+
 procedure TpvGUIDrawEngine.Clear;
 begin
 
@@ -2927,6 +2980,8 @@ begin
 
  fDoNeedNewState:=false;
 
+ fCountForcedBackToFrontOpaqueBatchItems:=0;
+
  fCountOpaqueBatchItems:=0;
 
  fCountTransparentBatchItems:=0;
@@ -2939,6 +2994,13 @@ procedure TpvGUIDrawEngine.Next;
 begin
 end;
 
+procedure TpvGUIDrawEngine.DrawVulkanCanvasHook(const aData:TpvPointer;const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32);
+var VulkanCanvas:TpvGUIVulkanCanvas;
+begin
+ VulkanCanvas:=aData;
+ VulkanCanvas.VisualDraw(aVulkanCommandBuffer,aBufferIndex,VulkanCanvas.fDrawRects[fInstance.DrawBufferIndex and 1]);
+end;
+
 procedure TpvGUIDrawEngine.Draw;
 var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
     State:TpvGUIDrawEngine.PState;
@@ -2948,6 +3010,7 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
  procedure DrawBatchItem(const aBatchItem:TBatchItem);
  var ClipRect:TpvRect;
      ClipRect2D:TVkRect2D;
+     OldBlendingMode:TpvCanvasBlendingMode;
  begin
   if LastState<>aBatchItem.fState then begin
    LastState:=aBatchItem.fState;
@@ -2984,6 +3047,25 @@ var LastClipRect,LastModelMatrix,LastColor,LastState:TpvSizeInt;
   end;
   fCanvas.ZPosition:=aBatchItem.fZIndex*InverseCountTotalBatchItems;
   case aBatchItem.fKind of
+   TBatchItem.TKind.DrawVulkanCanvas:begin
+    fCanvas.Hook(DrawVulkanCanvasHook,aBatchItem.fDrawVulkanCanvas);
+   end;
+   TBatchItem.TKind.DrawInvisibleDepthRect:begin
+    OldBlendingMode:=fCanvas.BlendingMode;
+    fCanvas.BlendingMode:=TpvCanvasBlendingMode.OnlyDepth;
+{$if true}
+    fCanvas.DrawFilledRectangle(aBatchItem.fDrawInvisibleDepthRect);
+{$else}
+    fCanvas.DrawGUIElement(GUI_ELEMENT_HIDDEN,
+                           true,
+                           aBatchItem.fDrawInvisibleDepthRect.LeftTop,
+                           aBatchItem.fDrawInvisibleDepthRect.RightBottom,
+                           aBatchItem.fDrawInvisibleDepthRect.LeftTop,
+                           aBatchItem.fDrawInvisibleDepthRect.RightBottom,
+                           0.0);
+{$ifend}
+    fCanvas.BlendingMode:=OldBlendingMode;
+   end;
    TBatchItem.TKind.DrawGUIElement:begin
     fCanvas.DrawGUIElement(aBatchItem.fDrawGUIElementGUIElement,
                            aBatchItem.fDrawGUIElementFocused,
@@ -3024,14 +3106,19 @@ begin
  LastColor:=-1;
  LastState:=-1;
  InverseCountTotalBatchItems:=1.0/Max(1,fCountTotalBatchItems);
- if (fStrategy<>TStrategy.OnePassBackToFront) and (fCountOpaqueBatchItems>0) then begin
+ if fStrategy<>TStrategy.OnePassBackToFront then begin
   if fUseScissor then begin
    fCanvas.BlendingMode:=TpvCanvasBlendingMode.NoDiscard;
   end else begin
    fCanvas.BlendingMode:=TpvCanvasBlendingMode.None;
   end;
-  for Index:=fCountOpaqueBatchItems-1 downto 0 do begin
-   DrawBatchItem(fOpaqueBatchItems[Index]);
+  for Index:=0 to fCountForcedBackToFrontOpaqueBatchItems-1 do begin
+   DrawBatchItem(fForcedBackToFrontOpaqueBatchItems[Index]);
+  end;
+  if fCountOpaqueBatchItems>0 then begin
+   for Index:=fCountOpaqueBatchItems-1 downto 0 do begin
+    DrawBatchItem(fOpaqueBatchItems[Index]);
+   end;
   end;
  end;
  if fCountTransparentBatchItems>0 then begin
@@ -3042,6 +3129,27 @@ begin
  end;
  if (fStrategy<>TStrategy.OnePassBackToFront) and fUseScissor then begin
   fCanvas.SetScissor(LastScissor);
+ end;
+end;
+
+procedure TpvGUIDrawEngine.DrawVulkanCanvas(const aVulkanCanvas:TpvGUIVulkanCanvas;const aRect:TpvRect);
+var BatchItem:PBatchItem;
+begin
+ begin
+  Color:=TpvVector4.InlineableCreate(0.0,0.0,0.0,1.0);
+  BatchItem:=NewForcedBackToFrontOpaqueBatchItem;
+  BatchItem^.fKind:=TBatchItem.TKind.DrawFilledRectangle;
+  BatchItem^.fDrawFilledRectangleRect:=aRect;
+ end;
+ begin
+  BatchItem:=NewForcedBackToFrontOpaqueBatchItem;
+  BatchItem^.fKind:=TBatchItem.TKind.DrawVulkanCanvas;
+  BatchItem^.fDrawVulkanCanvas:=aVulkanCanvas;
+ end;
+ begin
+  BatchItem:=NewForcedBackToFrontOpaqueBatchItem;
+  BatchItem^.fKind:=TBatchItem.TKind.DrawInvisibleDepthRect;
+  BatchItem^.fDrawInvisibleDepthRect:=aRect;
  end;
 end;
 
@@ -10780,7 +10888,7 @@ destructor TpvGUIInstance.Destroy;
 var Index:TpvSizeInt;
 begin
 
- TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+ TpvGUIObject.DecRefOrFreeAndNil(fDragWidget);
 
  FreeAndNil(fPopupMenuStack);
 
@@ -10863,10 +10971,10 @@ end;
 procedure TpvGUIInstance.BeforeDestruction;
 begin
  fObjectGarbageDisposer.DisposeAllGarbage;
- TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
- TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
- TpvReferenceCountedObject.DecRefOrFreeAndNil(fFocusedWidget);
- TpvReferenceCountedObject.DecRefOrFreeAndNil(fHoveredWidget);
+ TpvGUIObject.DecRefOrFreeAndNil(fDragWidget);
+ TpvGUIObject.DecRefOrFreeAndNil(fWindow);
+ TpvGUIObject.DecRefOrFreeAndNil(fFocusedWidget);
+ TpvGUIObject.DecRefOrFreeAndNil(fHoveredWidget);
  fPopupMenuStack.Clear;
  fModalWindowStack.Clear;
  fLastFocusPath.Clear;
@@ -10906,16 +11014,16 @@ begin
    fCurrentFocusPath.Clear;
   end;
   if fDragWidget=aGUIObject then begin
-   TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+   TpvGUIObject.DecRefOrFreeAndNil(fDragWidget);
   end;
   if fWindow=aGUIObject then begin
-   TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
+   TpvGUIObject.DecRefOrFreeAndNil(fWindow);
   end;
   if fFocusedWidget=aGUIObject then begin
-   TpvReferenceCountedObject.DecRefOrFreeAndNil(fFocusedWidget);
+   TpvGUIObject.DecRefOrFreeAndNil(fFocusedWidget);
   end;
   if fHoveredWidget=aGUIObject then begin
-   TpvReferenceCountedObject.DecRefOrFreeAndNil(fHoveredWidget);
+   TpvGUIObject.DecRefOrFreeAndNil(fHoveredWidget);
   end;
   if assigned(aGUIObject.fParent) and
      assigned(aGUIObject.fParent.fChildren) and
@@ -10987,9 +11095,9 @@ begin
 
  fCurrentFocusPath.Clear;
 
- TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
+ TpvGUIObject.DecRefOrFreeAndNil(fWindow);
 
- TpvReferenceCountedObject.DecRefOrFreeAndNil(fFocusedWidget);
+ TpvGUIObject.DecRefOrFreeAndNil(fFocusedWidget);
  fFocusedWidget:=aWidget;
  if assigned(fFocusedWidget) then begin
   fFocusedWidget.IncRef;
@@ -11003,7 +11111,7 @@ begin
    fCurrentFocusPath.Insert(0,CurrentWidget);
   end;
   if CurrentWidget is TpvGUIWindow then begin
-   TpvReferenceCountedObject.DecRefOrFreeAndNil(fWindow);
+   TpvGUIObject.DecRefOrFreeAndNil(fWindow);
    fWindow:=CurrentWidget as TpvGUIWindow;
    fWindow.IncRef;
    break;
@@ -11263,7 +11371,7 @@ begin
          if assigned(fDragWidget) then begin
           fDragWidget.DragReleaseEvent;
          end;
-         TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+         TpvGUIObject.DecRefOrFreeAndNil(fDragWidget);
          CurrentWidget:=FindWidget(aPointerEvent.Position);
          if assigned(CurrentWidget) and
             (CurrentWidget<>self) and
@@ -11273,7 +11381,7 @@ begin
           fDragWidget:=CurrentWidget;
           fDragWidget.IncRef;
          end else begin
-          TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+          TpvGUIObject.DecRefOrFreeAndNil(fDragWidget);
           if (fPopupMenuStack.Count>0) or not (assigned(CurrentWidget) and CurrentWidget.Focused) then begin
            UpdateFocus(nil);
           end;
@@ -11283,7 +11391,7 @@ begin
          if assigned(fDragWidget) then begin
           fDragWidget.DragReleaseEvent;
          end;
-         TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+         TpvGUIObject.DecRefOrFreeAndNil(fDragWidget);
         end;
        end;
       end;
@@ -11302,7 +11410,7 @@ begin
         end;
         fDragWidget.DragReleaseEvent;
        end;
-       TpvReferenceCountedObject.DecRefOrFreeAndNil(fDragWidget);
+       TpvGUIObject.DecRefOrFreeAndNil(fDragWidget);
       end;
      end;
      result:=inherited PointerEvent(aPointerEvent);
@@ -11385,7 +11493,7 @@ begin
   end;
  end;
  if fHoveredWidget<>CurrentWidget then begin
-  TpvReferenceCountedObject.DecRefOrFreeAndNil(fHoveredWidget);
+  TpvGUIObject.DecRefOrFreeAndNil(fHoveredWidget);
   fHoveredWidget:=CurrentWidget;
   if assigned(fHoveredWidget) then begin
    fHoveredWidget.IncRef;
@@ -19756,6 +19864,31 @@ end;
 procedure TpvGUIMultiLineTextEditSearchReplaceWindow.ButtonCancelOnClick(const aSender:TpvGUIObject);
 begin
  Close;
+end;
+
+procedure TpvGUIVulkanCanvas.VisualUpdate(const aBufferIndex:TpvInt32);
+begin
+end;
+
+procedure TpvGUIVulkanCanvas.VisualDraw(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32;const aRect:TpvRect);
+begin
+end;
+
+procedure TpvGUIVulkanCanvas.Update;
+begin
+ inherited Update;
+end;
+
+procedure TpvGUIVulkanCanvas.Draw;
+var ModelMatrix:TpvMatrix4x4;
+begin
+ fDrawRects[fInstance.fUpdateBufferIndex and 1]:=TpvRect.CreateRelative(GetAbsolutePosition,fSize);
+ VisualUpdate(fInstance.fUpdateBufferIndex);
+ ModelMatrix:=fInstance.fDrawEngine.ModelMatrix;
+ fInstance.fDrawEngine.ModelMatrix:=TpvMatrix4x4.Identity;
+ fInstance.fDrawEngine.DrawVulkanCanvas(self,fDrawRects[fInstance.fUpdateBufferIndex and 1]);
+ fInstance.fDrawEngine.ModelMatrix:=ModelMatrix;
+ inherited Draw;
 end;
 
 end.

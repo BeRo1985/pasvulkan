@@ -95,7 +95,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        None=0,
        NoDiscard=1,
        AlphaBlending=2,
-       AdditiveBlending=3
+       AdditiveBlending=3,
+       OnlyDepth=4
       );
 
      PpvCanvasLineJoin=^TpvCanvasLineJoin;
@@ -447,7 +448,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      TpvCanvasIndexBufferSizes=array of TVkSizeInt;
 
-     TpvCanvasHook=procedure(const aData:TpvPointer) of object;
+     TpvCanvasHook=procedure(const aData:TpvPointer;const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32) of object;
 
      TpvCanvasQueueItemKind=
       (
@@ -3462,7 +3463,17 @@ begin
                                                                            TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
                                                                            TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
       end;
-      else {pvcbmAdditiveBlending:}begin
+      TpvCanvasBlendingMode.OnlyDepth:begin
+       VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                           VK_BLEND_FACTOR_ONE,
+                                                                           VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                           VK_BLEND_OP_ADD,
+                                                                           VK_BLEND_FACTOR_ONE,
+                                                                           VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                           VK_BLEND_OP_ADD,
+                                                                           0);
+      end;
+      else {TpvCanvasBlendingMode.AdditiveBlending:}begin
        VulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(true,
                                                                            VK_BLEND_FACTOR_ONE,
                                                                            VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
@@ -3478,7 +3489,11 @@ begin
      end;
      VulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
      VulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;//BlendingModeIndex in [TpvCanvasBlendingMode.None];
-     VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+     if BlendingModeIndex=TpvCanvasBlendingMode.OnlyDepth then begin
+      VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_ALWAYS;
+     end else begin
+      VulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS_OR_EQUAL;
+     end;
      VulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
      VulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
 
@@ -4418,7 +4433,7 @@ begin
 
      TpvCanvasQueueItemKind.Hook:begin
       if assigned(QueueItem^.Hook) then begin
-       QueueItem^.Hook(QueueItem^.HookData);
+       QueueItem^.Hook(QueueItem^.HookData,aVulkanCommandBuffer,aBufferIndex);
       end;
       ForceUpdate:=true;
      end;

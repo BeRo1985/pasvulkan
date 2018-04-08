@@ -119,6 +119,7 @@ vec4 blend(vec4 a, vec4 b){
 #define GUI_ELEMENT_MOUSE_CURSOR_PEN 75
 #define GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE 76
 #define GUI_ELEMENT_MOUSE_CURSOR_UP 77     
+#define GUI_ELEMENT_HIDDEN 96
 
 const float uWindowCornerRadius = 2.0;
 const float uWindowHeaderHeight = 32.0;
@@ -983,6 +984,10 @@ void main(void){
                         vec2(1.0, linearstep(t, -((length(size) * SQRT_0_DOT_5) * 0.125) + t, d)).xxxy);
         }
         break;
+      }
+      case GUI_ELEMENT_HIDDEN:{
+        color = vec4(0.0);
+        break;        
       }
     } 
   }
