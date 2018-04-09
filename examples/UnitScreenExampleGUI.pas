@@ -205,7 +205,7 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        procedure BeforeDestroySwapChain; override;
        procedure Update; override;
        procedure UpdateContent(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); override;
-       procedure DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); override;
+       procedure DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); override;
      end;
 
      TScreenExampleGUICube=class(TpvGUIWindow)
@@ -258,7 +258,7 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        procedure BeforeDestroySwapChain; override;
        procedure Update; override;
        procedure UpdateContent(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); override;
-       procedure DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); override;
+       procedure DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); override;
      end;
 
      TScreenExampleGUIDragon=class(TpvGUIWindow)
@@ -987,7 +987,7 @@ procedure TpvGUIVulkanCanvasCube.UpdateContent(const aBufferIndex:TpvInt32;const
 begin
 end;
 
-procedure TpvGUIVulkanCanvasCube.DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect);
+procedure TpvGUIVulkanCanvasCube.DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect);
 var ViewPort:TVkViewPort;
     ScissorRect:TVkRect2D;
     ClearAttachments:array[0..1] of TVkClearAttachment;
@@ -1015,7 +1015,7 @@ begin
   ModelMatrix:=TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*
                TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
   ViewMatrix:=TpvMatrix4x4.CreateTranslation(0.0,0.0,-6.0);
-  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(45.0,Width/Height,1.0,128.0);
+  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(45.0,aDrawRect.Width/aDrawRect.Height,1.0,128.0);
 
   fUniformBuffer.ModelViewProjectionMatrix:=(ModelMatrix*ViewMatrix)*ProjectionMatrix;
   fUniformBuffer.ModelViewNormalMatrix:=TpvMatrix4x4.Create((ModelMatrix*ViewMatrix).ToMatrix3x3.Inverse.Transpose);
@@ -1366,7 +1366,7 @@ procedure TpvGUIVulkanCanvasDragon.UpdateContent(const aBufferIndex:TpvInt32;con
 begin
 end;
 
-procedure TpvGUIVulkanCanvasDragon.DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect);
+procedure TpvGUIVulkanCanvasDragon.DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect);
 var ViewPort:TVkViewPort;
     ScissorRect:TVkRect2D;
     ClearAttachments:array[0..1] of TVkClearAttachment;
@@ -1394,7 +1394,7 @@ begin
   ModelMatrix:=TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*
                TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
   ViewMatrix:=TpvMatrix4x4.CreateTranslation(0.0,0.0,-32.0);
-  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(45.0,pvApplication.Width/pvApplication.Height,1.0,1024.0);
+  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(45.0,aDrawRect.Width/aDrawRect.Height,1.0,1024.0);
 
   fUniformBuffer.ModelViewMatrix:=ModelMatrix*ViewMatrix;
   fUniformBuffer.ModelViewProjectionMatrix:=fUniformBuffer.ModelViewMatrix*ProjectionMatrix;

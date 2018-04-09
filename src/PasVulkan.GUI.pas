@@ -2706,7 +2706,7 @@ type TpvGUIObject=class;
        fClipRects:array[0..1] of TpvRect;
       protected
        procedure UpdateContent(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); virtual;
-       procedure DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); virtual;
+       procedure DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); virtual;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
