@@ -20008,6 +20008,7 @@ begin
                fClipRects[fInstance.UpdateBufferIndex and 1]);
  ModelMatrix:=fInstance.fDrawEngine.ModelMatrix;
  fInstance.fDrawEngine.ModelMatrix:=TpvMatrix4x4.Identity;
+ fInstance.fDrawEngine.ClipRect:=fClipRect;
  fInstance.fDrawEngine.DrawVulkanCanvas(self,fDrawRects[fInstance.fUpdateBufferIndex and 1]);
  fInstance.fDrawEngine.ModelMatrix:=ModelMatrix;
  inherited Draw;
