@@ -299,6 +299,7 @@ type TpvGUIObject=class;
        fID:TpvUTF8String;
        fTag:TpvPtrInt;
        fMarkBits:TPasMPUInt32;
+       fGarbageDisposerCounter:TPasMPUInt32;
       public
        constructor Create(const aParent:TpvGUIObject); reintroduce; virtual;
        destructor Destroy; override;
@@ -313,6 +314,7 @@ type TpvGUIObject=class;
        property Children:TpvGUIObjectList read fChildren;
        property ID:TpvUTF8String read fID write fID;
        property Tag:TpvPtrInt read fTag write fTag;
+       property GarbageDisposerCounter:TPasMPUInt32 read fGarbageDisposerCounter write fGarbageDisposerCounter;
      end;
 
      EpvGUIObjectGarbageDisposer=class(Exception);
@@ -3532,6 +3534,8 @@ begin
 
  fMarkBits:=0;
 
+ fGarbageDisposerCounter:=0;
+
 end;
 
 {-$define PasVulkanGUIDebug}
@@ -3718,21 +3722,30 @@ begin
     try
      for Index:=0 to fTopologicalSortedList.Count-1 do begin
       CurrentObject:=TpvGUIObject(fTopologicalSortedList.Items[Index]);
-      case TPasMPInterlocked.Read(CurrentObject.fMarkBits) and (TpvGUIObject.ChildMarkBit or
-                                                                TpvGUIObject.ProtectedMarkBit) of
-       TpvGUIObject.ChildMarkBit:begin
-        // Do nothing, if it is a child of an another garbage parent object, because
-        // the another garbage parent object will freeing it already anyway then.
-       end;
-       TpvGUIObject.ChildMarkBit or TpvGUIObject.ProtectedMarkBit,
-       TpvGUIObject.ProtectedMarkBit:begin
-        // Delayed garbage
-        fToDisposeList.Add(CurrentObject);
-        TPasMPInterlocked.Increment(fCountToDisposeObjects);
-       end;
-       else begin
-        // Otherwise we could freeing it
-        fToFreeList.Add(CurrentObject);
+      if CurrentObject.fGarbageDisposerCounter>0 then begin
+       // Delayed garbage
+       TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,not TpvUInt32(TpvGUIObject.ChildMarkBit or TpvGUIObject.TemporarilyMarkBit or TpvGUIObject.PermanentlyMarkBit));
+       TPasMPInterlocked.Decrement(CurrentObject.fGarbageDisposerCounter);
+       fToDisposeList.Add(CurrentObject);
+       TPasMPInterlocked.Increment(fCountToDisposeObjects);
+      end else begin
+       case TPasMPInterlocked.Read(CurrentObject.fMarkBits) and (TpvGUIObject.ChildMarkBit or
+                                                                 TpvGUIObject.ProtectedMarkBit) of
+        TpvGUIObject.ChildMarkBit:begin
+         // Do nothing, if it is a child of an another garbage parent object, because
+         // the another garbage parent object will freeing it already anyway then.
+        end;
+        TpvGUIObject.ChildMarkBit or TpvGUIObject.ProtectedMarkBit,
+        TpvGUIObject.ProtectedMarkBit:begin
+         // Delayed garbage
+         TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,not TpvUInt32(TpvGUIObject.ChildMarkBit or TpvGUIObject.TemporarilyMarkBit or TpvGUIObject.PermanentlyMarkBit));
+         fToDisposeList.Add(CurrentObject);
+         TPasMPInterlocked.Increment(fCountToDisposeObjects);
+        end;
+        else begin
+         // Otherwise we could freeing it
+         fToFreeList.Add(CurrentObject);
+        end;
        end;
       end;
      end;
@@ -9986,19 +9999,21 @@ begin
   fOnDestroy:=nil;
  end;
 
- try
-  for Index:=fPopups.Count-1 downto 0 do begin
-   Popup:=fPopups[Index] as TpvGUIPopup;
-   try
-    Popup.fParentWidget:=nil;
-    Popup.fParentHolder:=nil;
-    fInstance.ReleaseObject(Popup);
-   finally
-    fPopups.Delete(Index);
+{if assigned(fPopups) then}begin
+  try
+   for Index:=fPopups.Count-1 downto 0 do begin
+    Popup:=fPopups[Index] as TpvGUIPopup;
+    try
+     Popup.fParentWidget:=nil;
+     Popup.fParentHolder:=nil;
+     fInstance.ReleaseObject(Popup);
+    finally
+     fPopups.Delete(Index);
+    end;
    end;
+  finally
+   FreeAndNil(fPopups);
   end;
- finally
-  FreeAndNil(fPopups);
  end;
 
  FreeAndNil(fPositionProperty);

@@ -92,9 +92,124 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        destructor Destroy; override;
      end;
 
+     TpvGUIVulkanCanvasCube=class(TpvGUIVulkanCanvas)
+      private
+       type TScreenExampleCubeUniformBuffer=record
+             ModelViewProjectionMatrix:TpvMatrix4x4;
+             ModelViewNormalMatrix:TpvMatrix4x4; // actually TpvMatrix3x3, but it would have then a TMatrix3x4 alignment, according to https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#interfaces-resources-layout
+            end;
+            PScreenExampleCubeUniformBuffer=^TScreenExampleCubeUniformBuffer;
+            TScreenExampleCubeState=record
+             Time:TpvDouble;
+             AnglePhases:array[0..1] of TpvFloat;
+            end;
+            PScreenExampleCubeState=^TScreenExampleCubeState;
+            TScreenExampleCubeStates=array[0..MaxSwapChainImages-1] of TScreenExampleCubeState;
+            PScreenExampleCubeStates=^TScreenExampleCubeStates;
+            TVertex=record
+             Position:TpvVector3;
+             Tangent:TpvVector3;
+             Bitangent:TpvVector3;
+             Normal:TpvVector3;
+             TexCoord:TpvVector2;
+            end;
+            PVertex=^TVertex;
+       const CubeVertices:array[0..23] of TVertex=
+              (// Left
+               (Position:(x:-1;y:-1;z:-1;);Tangent:(x:0;y:0;z:1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:-1;y:0;z:0;);TexCoord:(u:0;v:0)),
+               (Position:(x:-1;y: 1;z:-1;);Tangent:(x:0;y:0;z:1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:-1;y:0;z:0;);TexCoord:(u:0;v:1)),
+               (Position:(x:-1;y: 1;z: 1;);Tangent:(x:0;y:0;z:1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:-1;y:0;z:0;);TexCoord:(u:1;v:1)),
+               (Position:(x:-1;y:-1;z: 1;);Tangent:(x:0;y:0;z:1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:-1;y:0;z:0;);TexCoord:(u:1;v:0)),
+
+               // Right
+               (Position:(x: 1;y:-1;z: 1;);Tangent:(x:0;y:0;z:-1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:1;y:0;z:0;);TexCoord:(u:0;v:0)),
+               (Position:(x: 1;y: 1;z: 1;);Tangent:(x:0;y:0;z:-1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:1;y:0;z:0;);TexCoord:(u:0;v:1)),
+               (Position:(x: 1;y: 1;z:-1;);Tangent:(x:0;y:0;z:-1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:1;y:0;z:0;);TexCoord:(u:1;v:1)),
+               (Position:(x: 1;y:-1;z:-1;);Tangent:(x:0;y:0;z:-1;);Bitangent:(x:0;y:1;z:0;);Normal:(x:1;y:0;z:0;);TexCoord:(u:1;v:0)),
+
+               // Bottom
+               (Position:(x:-1;y:-1;z:-1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:1;);Normal:(x:0;y:-1;z:0;);TexCoord:(u:0;v:0)),
+               (Position:(x:-1;y:-1;z: 1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:1;);Normal:(x:0;y:-1;z:0;);TexCoord:(u:0;v:1)),
+               (Position:(x: 1;y:-1;z: 1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:1;);Normal:(x:0;y:-1;z:0;);TexCoord:(u:1;v:1)),
+               (Position:(x: 1;y:-1;z:-1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:1;);Normal:(x:0;y:-1;z:0;);TexCoord:(u:1;v:0)),
+
+               // Top
+               (Position:(x:-1;y: 1;z:-1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:-1;);Normal:(x:0;y:1;z:0;);TexCoord:(u:0;v:0)),
+               (Position:(x: 1;y: 1;z:-1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:-1;);Normal:(x:0;y:1;z:0;);TexCoord:(u:0;v:1)),
+               (Position:(x: 1;y: 1;z: 1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:-1;);Normal:(x:0;y:1;z:0;);TexCoord:(u:1;v:1)),
+               (Position:(x:-1;y: 1;z: 1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:0;z:-1;);Normal:(x:0;y:1;z:0;);TexCoord:(u:1;v:0)),
+
+               // Back
+               (Position:(x: 1;y:-1;z:-1;);Tangent:(x:-1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:-1;);TexCoord:(u:0;v:0)),
+               (Position:(x: 1;y: 1;z:-1;);Tangent:(x:-1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:-1;);TexCoord:(u:0;v:1)),
+               (Position:(x:-1;y: 1;z:-1;);Tangent:(x:-1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:-1;);TexCoord:(u:1;v:1)),
+               (Position:(x:-1;y:-1;z:-1;);Tangent:(x:-1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:-1;);TexCoord:(u:1;v:0)),
+
+               // Front
+               (Position:(x:-1;y:-1;z:1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:1;);TexCoord:(u:0;v:0)),
+               (Position:(x:-1;y: 1;z:1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:1;);TexCoord:(u:0;v:1)),
+               (Position:(x: 1;y: 1;z:1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:1;);TexCoord:(u:1;v:1)),
+               (Position:(x: 1;y:-1;z:1;);Tangent:(x:1;y:0;z:0;);Bitangent:(x:0;y:1;z:0;);Normal:(x:0;y:0;z:1;);TexCoord:(u:1;v:0))
+
+              );
+             CubeIndices:array[0..35] of TpvInt32=
+              ( // Left
+                0, 1, 2,
+                0, 2, 3,
+
+                // Right
+                4, 5, 6,
+                4, 6, 7,
+
+                // Bottom
+                8, 9, 10,
+                8, 10, 11,
+
+                // Top
+                12, 13, 14,
+                12, 14, 15,
+
+                // Back
+                16, 17, 18,
+                16, 18, 19,
+
+                // Front
+                20, 21, 22,
+                20, 22, 23);
+             Offsets:array[0..0] of TVkDeviceSize=(0);
+      private
+       fCubeVertexShaderModule:TpvVulkanShaderModule;
+       fCubeFragmentShaderModule:TpvVulkanShaderModule;
+       fVulkanPipelineShaderStageCubeVertex:TpvVulkanPipelineShaderStage;
+       fVulkanPipelineShaderStageCubeFragment:TpvVulkanPipelineShaderStage;
+       fVulkanGraphicsPipeline:TpvVulkanGraphicsPipeline;
+       fVulkanVertexBuffer:TpvVulkanBuffer;
+       fVulkanIndexBuffer:TpvVulkanBuffer;
+       fVulkanUniformBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanBuffer;
+       fVulkanDescriptorPool:TpvVulkanDescriptorPool;
+       fVulkanDescriptorSetLayout:TpvVulkanDescriptorSetLayout;
+       fVulkanDescriptorSets:array[0..MaxSwapChainImages-1] of TpvVulkanDescriptorSet;
+       fVulkanPipelineLayout:TpvVulkanPipelineLayout;
+       fVulkanCommandPool:TpvVulkanCommandPool;
+//     fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
+       fVulkanRenderSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+       fUniformBuffer:TScreenExampleCubeUniformBuffer;
+       fBoxAlbedoTexture:TpvVulkanTexture;
+       fState:TScreenExampleCubeState;
+       fStates:TScreenExampleCubeStates;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure AfterCreateSwapChain; override;
+       procedure BeforeDestroySwapChain; override;
+       procedure Update; override;
+       procedure UpdateContent(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); override;
+       procedure DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect); override;
+     end;
+
      TScreenExampleGUICube=class(TpvGUIWindow)
       private
-       fVulkanCanvasCube:TpvGUIVulkanCanvas;
+       fVulkanCanvasCube:TpvGUIVulkanCanvasCube;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -534,13 +649,443 @@ begin
  inherited Destroy;
 end;
 
+constructor TpvGUIVulkanCanvasCube.Create(const aParent:TpvGUIObject);
+var Index:TpvInt32;
+    Stream:TStream;
+begin
+
+ inherited Create(aParent);
+
+ fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                 pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+                                                 TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+ for Index:=0 to MaxSwapChainImages-1 do begin
+//fVulkanRenderCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  fVulkanRenderSemaphores[Index]:=TpvVulkanSemaphore.Create(pvApplication.VulkanDevice);
+ end;
+
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/cube/cube_vert.spv');
+ try
+  fCubeVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ Stream:=pvApplication.Assets.GetAssetStream('shaders/cube/cube_frag.spv');
+ try
+  fCubeFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
+ finally
+  Stream.Free;
+ end;
+
+ fBoxAlbedoTexture:=TpvVulkanTexture.CreateDefault(pvApplication.VulkanDevice,
+                                                   pvApplication.VulkanDevice.GraphicsQueue,
+                                                   pvApplication.VulkanGraphicsCommandBuffers[0,0],
+                                                   pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                                   pvApplication.VulkanDevice.TransferQueue,
+                                                   pvApplication.VulkanTransferCommandBuffers[0,0],
+                                                   pvApplication.VulkanTransferCommandBufferFences[0,0],
+                                                   TpvVulkanTextureDefaultType.Checkerboard,
+                                                   512,
+                                                   512,
+                                                   0,
+                                                   0,
+                                                   1,
+                                                   true,
+                                                   true,
+                                                   true);{}
+
+{Stream:=pvApplication.Assets.GetAssetStream('textures/box_albedo.png');
+ try
+  fBoxAlbedoTexture:=TpvVulkanTexture.CreateFromPNG(pvApplication.VulkanDevice,
+                                                    pvApplication.VulkanGraphicsCommandBuffers[0,0],
+                                                    pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                                    pvApplication.VulkanTransferCommandBuffers[0,0],
+                                                    pvApplication.VulkanTransferCommandBufferFences[0,0],
+                                                    Stream,
+                                                    true);
+ finally
+  Stream.Free;
+ end;{}
+
+{Stream:=pvApplication.Assets.GetAssetStream('textures/box_albedo.jpg');
+ try
+  fBoxAlbedoTexture:=TpvVulkanTexture.CreateFromJPEG(pvApplication.VulkanDevice,
+                                                     pvApplication.VulkanGraphicsCommandBuffers[0,0],
+                                                     pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                                     pvApplication.VulkanTransferCommandBuffers[0,0],
+                                                     pvApplication.VulkanTransferCommandBufferFences[0,0],
+                                                     Stream,
+                                                     true);
+ finally
+  Stream.Free;
+ end;{}
+
+ fBoxAlbedoTexture.WrapModeU:=TpvVulkanTextureWrapMode.ClampToEdge;
+ fBoxAlbedoTexture.WrapModeV:=TpvVulkanTextureWrapMode.ClampToEdge;
+ fBoxAlbedoTexture.WrapModeW:=TpvVulkanTextureWrapMode.ClampToEdge;
+ fBoxAlbedoTexture.BorderColor:=VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+ fBoxAlbedoTexture.UpdateSampler;
+
+ fVulkanPipelineShaderStageCubeVertex:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_VERTEX_BIT,fCubeVertexShaderModule,'main');
+
+ fVulkanPipelineShaderStageCubeFragment:=TpvVulkanPipelineShaderStage.Create(VK_SHADER_STAGE_FRAGMENT_BIT,fCubeFragmentShaderModule,'main');
+
+ fVulkanGraphicsPipeline:=nil;
+
+ fVulkanVertexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                             SizeOf(CubeVertices),
+                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
+                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                             nil,
+                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                            );
+ fVulkanVertexBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
+                                pvApplication.VulkanTransferCommandBuffers[0,0],
+                                pvApplication.VulkanTransferCommandBufferFences[0,0],
+                                CubeVertices,
+                                0,
+                                SizeOf(CubeVertices),
+                                TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+
+ fVulkanIndexBuffer:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                            SizeOf(CubeIndices),
+                                            TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
+                                            TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                            nil,
+                                            TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                                           );
+ fVulkanIndexBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
+                               pvApplication.VulkanTransferCommandBuffers[0,0],
+                               pvApplication.VulkanTransferCommandBufferFences[0,0],
+                               CubeIndices,
+                               0,
+                               SizeOf(CubeIndices),
+                               TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+
+ for Index:=0 to MaxSwapChainImages-1 do begin
+  fVulkanUniformBuffers[Index]:=TpvVulkanBuffer.Create(pvApplication.VulkanDevice,
+                                                       SizeOf(TScreenExampleCubeUniformBuffer),
+                                                       TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
+                                                       TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
+                                                       nil,
+                                                       TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       0,
+                                                       [TpvVulkanBufferFlag.PersistentMapped]
+                                                      );
+  fVulkanUniformBuffers[Index].UploadData(pvApplication.VulkanDevice.TransferQueue,
+                                          pvApplication.VulkanTransferCommandBuffers[0,0],
+                                          pvApplication.VulkanTransferCommandBufferFences[0,0],
+                                          fUniformBuffer,
+                                          0,
+                                          SizeOf(TScreenExampleCubeUniformBuffer),
+                                          TpvVulkanBufferUseTemporaryStagingBufferMode.Yes);
+ end;
+
+ fVulkanDescriptorPool:=TpvVulkanDescriptorPool.Create(pvApplication.VulkanDevice,
+                                                       TVkDescriptorPoolCreateFlags(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT),
+                                                       MaxSwapChainImages);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,MaxSwapChainImages);
+ fVulkanDescriptorPool.AddDescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,MaxSwapChainImages);
+ fVulkanDescriptorPool.Initialize;
+
+ fVulkanDescriptorSetLayout:=TpvVulkanDescriptorSetLayout.Create(pvApplication.VulkanDevice);
+ fVulkanDescriptorSetLayout.AddBinding(0,
+                                       VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_VERTEX_BIT) or TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.AddBinding(1,
+                                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                       1,
+                                       TVkShaderStageFlags(VK_SHADER_STAGE_FRAGMENT_BIT),
+                                       []);
+ fVulkanDescriptorSetLayout.Initialize;
+
+ for Index:=0 to MaxSwapChainImages-1 do begin
+  fVulkanDescriptorSets[Index]:=TpvVulkanDescriptorSet.Create(fVulkanDescriptorPool,
+                                                              fVulkanDescriptorSetLayout);
+  fVulkanDescriptorSets[Index].WriteToDescriptorSet(0,
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+                                                    [],
+                                                    [fVulkanUniformBuffers[Index].DescriptorBufferInfo],
+                                                    [],
+                                                    false
+                                                   );
+  fVulkanDescriptorSets[Index].WriteToDescriptorSet(1,
+                                                    0,
+                                                    1,
+                                                    TVkDescriptorType(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+                                                    [fBoxAlbedoTexture.DescriptorImageInfo],
+                                                    [],
+                                                    [],
+                                                    false
+                                                   );
+  fVulkanDescriptorSets[Index].Flush;
+ end;
+
+ fVulkanPipelineLayout:=TpvVulkanPipelineLayout.Create(pvApplication.VulkanDevice);
+ fVulkanPipelineLayout.AddDescriptorSetLayout(fVulkanDescriptorSetLayout);
+ fVulkanPipelineLayout.Initialize;
+
+end;
+
+destructor TpvGUIVulkanCanvasCube.Destroy;
+var Index:TpvInt32;
+begin
+ FreeAndNil(fVulkanPipelineLayout);
+ for Index:=0 to MaxSwapChainImages-1 do begin
+  FreeAndNil(fVulkanDescriptorSets[Index]);
+ end;
+ FreeAndNil(fVulkanDescriptorSetLayout);
+ FreeAndNil(fVulkanDescriptorPool);
+ for Index:=0 to MaxSwapChainImages-1 do begin
+  FreeAndNil(fVulkanUniformBuffers[Index]);
+ end;
+ FreeAndNil(fVulkanIndexBuffer);
+ FreeAndNil(fVulkanVertexBuffer);
+ FreeAndNil(fVulkanGraphicsPipeline);
+ FreeAndNil(fVulkanPipelineShaderStageCubeVertex);
+ FreeAndNil(fVulkanPipelineShaderStageCubeFragment);
+ FreeAndNil(fCubeFragmentShaderModule);
+ FreeAndNil(fCubeVertexShaderModule);
+ FreeAndNil(fBoxAlbedoTexture);
+ for Index:=0 to MaxSwapChainImages-1 do begin
+// FreeAndNil(fVulkanRenderCommandBuffers[Index]);
+  FreeAndNil(fVulkanRenderSemaphores[Index]);
+ end;
+ FreeAndNil(fVulkanCommandPool);
+ inherited Destroy;
+end;
+
+procedure TpvGUIVulkanCanvasCube.AfterCreateSwapChain;
+var SwapChainImageIndex:TpvInt32;
+    VulkanCommandBuffer:TpvVulkanCommandBuffer;
+begin
+ inherited AfterCreateSwapChain;
+
+ FreeAndNil(fVulkanGraphicsPipeline);
+
+ fVulkanGraphicsPipeline:=TpvVulkanGraphicsPipeline.Create(pvApplication.VulkanDevice,
+                                                           pvApplication.VulkanPipelineCache,
+                                                           0,
+                                                           [],
+                                                           fVulkanPipelineLayout,
+                                                           Instance.VulkanRenderPass,
+                                                           0,
+                                                           nil,
+                                                           0);
+
+ fVulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageCubeVertex);
+ fVulkanGraphicsPipeline.AddStage(fVulkanPipelineShaderStageCubeFragment);
+
+ fVulkanGraphicsPipeline.InputAssemblyState.Topology:=VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+ fVulkanGraphicsPipeline.InputAssemblyState.PrimitiveRestartEnable:=false;
+
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputBindingDescription(0,SizeOf(TVertex),VK_VERTEX_INPUT_RATE_VERTEX);
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(0,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@PVertex(nil)^.Position)));
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(1,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@PVertex(nil)^.Tangent)));
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(2,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@PVertex(nil)^.Bitangent)));
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(3,0,VK_FORMAT_R32G32B32_SFLOAT,TVkPtrUInt(pointer(@PVertex(nil)^.Normal)));
+ fVulkanGraphicsPipeline.VertexInputState.AddVertexInputAttributeDescription(4,0,VK_FORMAT_R32G32_SFLOAT,TVkPtrUInt(pointer(@PVertex(nil)^.TexCoord)));
+
+ fVulkanGraphicsPipeline.ViewPortState.AddViewPort(0.0,0.0,pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height,0.0,1.0);
+ fVulkanGraphicsPipeline.ViewPortState.DynamicViewPorts:=true;
+
+ fVulkanGraphicsPipeline.ViewPortState.AddScissor(0,0,pvApplication.VulkanSwapChain.Width,pvApplication.VulkanSwapChain.Height);
+ fVulkanGraphicsPipeline.ViewPortState.DynamicScissors:=true;
+
+ fVulkanGraphicsPipeline.RasterizationState.DepthClampEnable:=false;
+ fVulkanGraphicsPipeline.RasterizationState.RasterizerDiscardEnable:=false;
+ fVulkanGraphicsPipeline.RasterizationState.PolygonMode:=VK_POLYGON_MODE_FILL;
+ fVulkanGraphicsPipeline.RasterizationState.CullMode:=TVkCullModeFlags(VK_CULL_MODE_BACK_BIT);
+ fVulkanGraphicsPipeline.RasterizationState.FrontFace:=VK_FRONT_FACE_COUNTER_CLOCKWISE;
+ fVulkanGraphicsPipeline.RasterizationState.DepthBiasEnable:=false;
+ fVulkanGraphicsPipeline.RasterizationState.DepthBiasConstantFactor:=0.0;
+ fVulkanGraphicsPipeline.RasterizationState.DepthBiasClamp:=0.0;
+ fVulkanGraphicsPipeline.RasterizationState.DepthBiasSlopeFactor:=0.0;
+ fVulkanGraphicsPipeline.RasterizationState.LineWidth:=1.0;
+
+ fVulkanGraphicsPipeline.MultisampleState.RasterizationSamples:=VK_SAMPLE_COUNT_1_BIT;
+ fVulkanGraphicsPipeline.MultisampleState.SampleShadingEnable:=false;
+ fVulkanGraphicsPipeline.MultisampleState.MinSampleShading:=0.0;
+ fVulkanGraphicsPipeline.MultisampleState.CountSampleMasks:=0;
+ fVulkanGraphicsPipeline.MultisampleState.AlphaToCoverageEnable:=false;
+ fVulkanGraphicsPipeline.MultisampleState.AlphaToOneEnable:=false;
+
+ fVulkanGraphicsPipeline.ColorBlendState.LogicOpEnable:=false;
+ fVulkanGraphicsPipeline.ColorBlendState.LogicOp:=VK_LOGIC_OP_COPY;
+ fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[0]:=0.0;
+ fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[1]:=0.0;
+ fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[2]:=0.0;
+ fVulkanGraphicsPipeline.ColorBlendState.BlendConstants[3]:=0.0;
+ fVulkanGraphicsPipeline.ColorBlendState.AddColorBlendAttachmentState(false,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_OP_ADD,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_FACTOR_ZERO,
+                                                                      VK_BLEND_OP_ADD,
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_R_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_G_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_B_BIT) or
+                                                                      TVkColorComponentFlags(VK_COLOR_COMPONENT_A_BIT));
+
+ fVulkanGraphicsPipeline.DepthStencilState.DepthTestEnable:=true;
+ fVulkanGraphicsPipeline.DepthStencilState.DepthWriteEnable:=true;
+ fVulkanGraphicsPipeline.DepthStencilState.DepthCompareOp:=VK_COMPARE_OP_LESS;
+ fVulkanGraphicsPipeline.DepthStencilState.DepthBoundsTestEnable:=false;
+ fVulkanGraphicsPipeline.DepthStencilState.StencilTestEnable:=false;
+
+ fVulkanGraphicsPipeline.DynamicState.AddDynamicStates([VK_DYNAMIC_STATE_VIEWPORT,
+                                                        VK_DYNAMIC_STATE_SCISSOR]);
+
+ fVulkanGraphicsPipeline.Initialize;
+
+ fVulkanGraphicsPipeline.FreeMemory;
+
+{for SwapChainImageIndex:=0 to length(fVulkanRenderCommandBuffers)-1 do begin
+  FreeAndNil(fVulkanRenderCommandBuffers[SwapChainImageIndex]);
+ end;}
+
+{for SwapChainImageIndex:=0 to pvApplication.CountSwapChainImages-1 do begin
+
+  fVulkanRenderCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fVulkanCommandPool,VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+
+  VulkanCommandBuffer:=fVulkanRenderCommandBuffers[SwapChainImageIndex];
+
+  VulkanCommandBuffer.BeginRecordingSecondary(Instance.VulkanRenderPass.Handle,
+                                              VK_NULL_HANDLE,
+                                              0,
+                                              false,
+                                              0,
+                                              0,
+                                              TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) or
+                                              TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
+
+  VulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[SwapChainImageIndex].Handle,0,nil);
+  VulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
+  VulkanCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanVertexBuffer.Handle,@Offsets);
+  VulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+  VulkanCommandBuffer.CmdDrawIndexed(length(CubeIndices),1,0,0,0);
+
+  VulkanCommandBuffer.EndRecording;
+
+ end;}
+
+end;
+
+procedure TpvGUIVulkanCanvasCube.BeforeDestroySwapChain;
+begin
+ FreeAndNil(fVulkanGraphicsPipeline);
+ inherited BeforeDestroySwapChain;
+end;
+
+procedure TpvGUIVulkanCanvasCube.Update;
+const f0=1.0/(2.0*pi);
+      f1=0.5/(2.0*pi);
+begin
+ fState.Time:=fState.Time+Instance.DeltaTime;
+ fState.AnglePhases[0]:=frac(fState.AnglePhases[0]+(Instance.DeltaTime*f0));
+ fState.AnglePhases[1]:=frac(fState.AnglePhases[1]+(Instance.DeltaTime*f1));
+ fStates[pvApplication.UpdateSwapChainImageIndex]:=fState;
+ inherited Update;
+end;
+
+procedure TpvGUIVulkanCanvasCube.UpdateContent(const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect);
+begin
+end;
+
+procedure TpvGUIVulkanCanvasCube.DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect);
+var ViewPort:TVkViewPort;
+    ScissorRect:TVkRect2D;
+    ClearAttachments:array[0..1] of TVkClearAttachment;
+    ClearRects:array[0..1] of TVkClearRect;
+    ModelMatrix:TpvMatrix4x4;
+    ViewMatrix:TpvMatrix4x4;
+    ProjectionMatrix:TpvMatrix4x4;
+    State:PScreenExampleCubeState;
+    p:pointer;
+begin
+
+ if assigned(fVulkanGraphicsPipeline) then begin
+
+  ViewPort.x:=aDrawRect.Left;
+  ViewPort.y:=aDrawRect.Top;
+  ViewPort.width:=aDrawRect.Width;
+  ViewPort.height:=aDrawRect.Height;
+  ViewPort.minDepth:=0.0;
+  ViewPort.maxDepth:=1.0;
+
+  ScissorRect:=aClipRect;
+
+  State:=@fStates[pvApplication.DrawSwapChainImageIndex];
+
+  ModelMatrix:=TpvMatrix4x4.CreateRotate(State^.AnglePhases[0]*TwoPI,TpvVector3.Create(0.0,0.0,1.0))*
+               TpvMatrix4x4.CreateRotate(State^.AnglePhases[1]*TwoPI,TpvVector3.Create(0.0,1.0,0.0));
+  ViewMatrix:=TpvMatrix4x4.CreateTranslation(0.0,0.0,-6.0);
+  ProjectionMatrix:=TpvMatrix4x4.CreatePerspective(45.0,Width/Height,1.0,128.0);
+
+  fUniformBuffer.ModelViewProjectionMatrix:=(ModelMatrix*ViewMatrix)*ProjectionMatrix;
+  fUniformBuffer.ModelViewNormalMatrix:=TpvMatrix4x4.Create((ModelMatrix*ViewMatrix).ToMatrix3x3.Inverse.Transpose);
+
+  p:=fVulkanUniformBuffers[pvApplication.DrawSwapChainImageIndex].Memory.MapMemory(0,SizeOf(TScreenExampleCubeUniformBuffer));
+  if assigned(p) then begin
+   try
+    Move(fUniformBuffer,p^,SizeOf(TScreenExampleCubeUniformBuffer));
+   finally
+    fVulkanUniformBuffers[pvApplication.DrawSwapChainImageIndex].Memory.UnmapMemory;
+   end;
+  end;
+
+  ClearRects[0].rect:=ScissorRect;
+  ClearRects[0].baseArrayLayer:=0;
+  ClearRects[0].layerCount:=1;
+
+  ClearRects[1].rect:=ScissorRect;
+  ClearRects[1].baseArrayLayer:=0;
+  ClearRects[1].layerCount:=1;
+
+  ClearAttachments[0].aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  ClearAttachments[0].colorAttachment:=0;
+  ClearAttachments[0].clearValue.color.float32[0]:=0.0;
+  ClearAttachments[0].clearValue.color.float32[1]:=0.0;
+  ClearAttachments[0].clearValue.color.float32[2]:=0.0;
+  ClearAttachments[0].clearValue.color.float32[3]:=1.0;
+
+  ClearAttachments[1].aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT);
+  ClearAttachments[1].colorAttachment:=0;
+  ClearAttachments[1].clearValue.depthStencil.depth:=1.0;
+  ClearAttachments[1].clearValue.depthStencil.stencil:=0;
+
+  aVulkanCommandBuffer.CmdSetViewport(0,1,@ViewPort);
+  aVulkanCommandBuffer.CmdSetScissor(0,1,@ScissorRect);
+  aVulkanCommandBuffer.CmdClearAttachments(2,@ClearAttachments[0],2,@ClearRects[0]);
+  aVulkanCommandBuffer.CmdBindDescriptorSets(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanPipelineLayout.Handle,0,1,@fVulkanDescriptorSets[pvApplication.DrawSwapChainImageIndex].Handle,0,nil);
+  aVulkanCommandBuffer.CmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,fVulkanGraphicsPipeline.Handle);
+  aVulkanCommandBuffer.CmdBindVertexBuffers(0,1,@fVulkanVertexBuffer.Handle,@Offsets);
+  aVulkanCommandBuffer.CmdBindIndexBuffer(fVulkanIndexBuffer.Handle,0,VK_INDEX_TYPE_UINT32);
+  aVulkanCommandBuffer.CmdDrawIndexed(length(CubeIndices),1,0,0,0);
+
+ end;
+
+end;
+
 constructor TScreenExampleGUICube.Create(const aParent:TpvGUIObject);
 begin
 
  inherited Create(aParent);
 
- Left:=250;
- Top:=200;
+ GarbageDisposerCounter:=1;
+
+ Left:=350;
+ Top:=225;
  Title:='Window with VulkanCanvas';
  Content.Layout:=TpvGUIFillLayout.Create(Content,4.0);
  AddMinimizationButton;
@@ -552,7 +1097,7 @@ begin
  Width:=550;
  Height:=350;
 
- fVulkanCanvasCube:=TpvGUIVulkanCanvas.Create(Content);
+ fVulkanCanvasCube:=TpvGUIVulkanCanvasCube.Create(Content);
 
 end;
 
