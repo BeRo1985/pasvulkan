@@ -3020,8 +3020,8 @@ begin
  VulkanCanvas:=aData;
  ClipRectToScissorScale:=(TpvVector2.InlineableCreate(fCanvas.Viewport^.width,fCanvas.Viewport^.height)/TpvVector2.InlineableCreate(fCanvas.Width,fCanvas.Height)).xyxy;
  ClipRectToScissorOffset:=TpvVector2.InlineableCreate(fCanvas.Viewport.x,fCanvas.Viewport.y).xyxy;
- LocalDrawRect.Vector4:=(VulkanCanvas.fDrawRects[fInstance.fUpdateBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
- LocalClipRect.Vector4:=(VulkanCanvas.fClipRects[fInstance.fUpdateBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
+ LocalDrawRect.Vector4:=(VulkanCanvas.fDrawRects[fInstance.fDrawBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
+ LocalClipRect.Vector4:=(VulkanCanvas.fClipRects[fInstance.fDrawBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
  VulkanCanvas.DrawContent(aVulkanCommandBuffer,
                           aBufferIndex,
                           fInstance.DrawBufferIndex,
