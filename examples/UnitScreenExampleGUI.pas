@@ -1082,8 +1082,6 @@ begin
 
  inherited Create(aParent);
 
- GarbageDisposerCounter:=1;
-
  Left:=350;
  Top:=225;
  Title:='Window with VulkanCanvas';

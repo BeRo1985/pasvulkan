@@ -285,7 +285,11 @@ type TpvGUIObject=class;
       public
      end;
 
-     TpvGUIObject=class(TpvReferenceCountedObject)
+     IpvGUIObject=interface(IpvReferenceCountedObject)['{DF4E2599-646B-42AF-A138-7C213997EE3D}']
+      function GetGUIObject:TpvGUIObject;
+     end;
+
+     TpvGUIObject=class(TpvReferenceCountedObject,IpvGUIObject)
       private
        const TemporarilyMarkBit=TPasMPUInt32(1 shl 0);
              PermanentlyMarkBit=TPasMPUInt32(1 shl 1);
@@ -298,13 +302,15 @@ type TpvGUIObject=class;
        fChildren:TpvGUIObjectList;
        fID:TpvUTF8String;
        fTag:TpvPtrInt;
-       fMarkBits:TPasMPUInt32;
+       fProtectedObjectCounter:TPasMPUInt32;
        fGarbageDisposerCounter:TPasMPUInt32;
+       fMarkBits:TPasMPUInt32;
       public
        constructor Create(const aParent:TpvGUIObject); reintroduce; virtual;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
+       function GetGUIObject:TpvGUIObject;
        function HasParent(const aParent:TpvGUIObject):boolean; virtual;
        procedure Check; virtual;
        procedure Update; virtual;
@@ -1240,7 +1246,9 @@ type TpvGUIObject=class;
      PpvGUIInstanceBuffer=^TpvGUIInstanceBuffer;
      TpvGUIInstanceBuffer=record
       ProtectedObjects:TpvGUIInstanceBufferObjects;
+      DelayedProtectedObjects:TpvGUIInstanceBufferObjects;
       CountProtectedObjects:TpvInt32;
+      CountDelayedProtectedObjects:TpvInt32;
      end;
 
      TpvGUIInstanceBuffers=array of TpvGUIInstanceBuffer;
@@ -3559,6 +3567,11 @@ begin
 {$endif}
 end;
 
+function TpvGUIObject.GetGUIObject:TpvGUIObject;
+begin
+ result:=nil;
+end;
+
 function TpvGUIObject.HasParent(const aParent:TpvGUIObject):boolean;
 var CurrentParent:TpvGUIObject;
 begin
@@ -3639,9 +3652,14 @@ begin
 end;
 
 destructor TpvGUIObjectGarbageDisposer.Destroy;
+var Tries:TpvUInt32;
 begin
 
- DisposeAllGarbage;
+ Tries:=256;
+ while (Tries>0) and (fCountToDisposeObjects>0) do begin
+  dec(Tries);
+  DisposeAllGarbage;
+ end;
 
  FreeAndNil(fToDisposeList);
 
@@ -10984,17 +11002,26 @@ begin
      end;
     end;
     Buffer^.CountProtectedObjects:=0;
+    for SubIndex:=0 to Buffer^.CountDelayedProtectedObjects-1 do begin
+     CurrentObject:=Buffer^.DelayedProtectedObjects[SubIndex];
+     if CurrentObject.DecRefWithoutFree=0 then begin
+      fObjectGarbageDisposer.AddGarbage(CurrentObject);
+     end;
+    end;
+    Buffer^.CountDelayedProtectedObjects:=0;
    end;
 
    if length(fBuffers)<aCountBuffers then begin
     SetLength(fBuffers,aCountBuffers*2);
     for Index:=Max(0,fCountBuffers) to length(fBuffers)-1 do begin
      fBuffers[Index].CountProtectedObjects:=0;
+     fBuffers[Index].CountDelayedProtectedObjects:=0;
     end;
    end;
 
    for Index:=fCountBuffers to aCountBuffers-1 do begin
     fBuffers[Index].CountProtectedObjects:=0;
+    fBuffers[Index].CountDelayedProtectedObjects:=0;
    end;
 
    fCountBuffers:=aCountBuffers;
@@ -11084,20 +11111,34 @@ begin
 end;
 
 procedure TpvGUIInstance.ClearProtectedObjectList;
-var Index:TpvInt32;
+var Index,SubIndex:TpvInt32;
     Buffer:PpvGUIInstanceBuffer;
     CurrentObject:TpvGUIObject;
 begin
  if (fUpdateBufferIndex>=0) and (fUpdateBufferIndex<fCountBuffers) then begin
   Buffer:=@fBuffers[fUpdateBufferIndex];
+  Buffer^.CountDelayedProtectedObjects:=0;
   for Index:=0 to Buffer^.CountProtectedObjects-1 do begin
    CurrentObject:=Buffer^.ProtectedObjects[Index];
-   TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,TPasMPUInt32(not TpvGUIObject.ProtectedMarkBit));
-   if CurrentObject.DecRefWithoutFree=0 then begin
-    fObjectGarbageDisposer.AddGarbage(CurrentObject);
+   if TPasMPInterlocked.Decrement(CurrentObject.fProtectedObjectCounter)>0 then begin
+    SubIndex:=Buffer^.CountDelayedProtectedObjects;
+    inc(Buffer^.CountDelayedProtectedObjects);
+    if length(Buffer^.DelayedProtectedObjects)<Buffer^.CountDelayedProtectedObjects then begin
+     SetLength(Buffer^.DelayedProtectedObjects,Buffer^.CountDelayedProtectedObjects*2);
+    end;
+    Buffer^.DelayedProtectedObjects[SubIndex]:=CurrentObject;
+   end else begin
+    TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,TPasMPUInt32(not TpvGUIObject.ProtectedMarkBit));
+    if CurrentObject.DecRefWithoutFree=0 then begin
+     fObjectGarbageDisposer.AddGarbage(CurrentObject);
+    end;
    end;
   end;
-  Buffer^.CountProtectedObjects:=0;
+  Buffer^.CountProtectedObjects:=Buffer^.CountDelayedProtectedObjects;
+  Buffer^.CountDelayedProtectedObjects:=0;
+  if Buffer^.CountProtectedObjects>0 then begin
+   Move(Buffer^.DelayedProtectedObjects[0],Buffer^.ProtectedObjects[0],Buffer^.CountProtectedObjects*SizeOf(TpvGUIObject));
+  end;
  end;
 end;
 
@@ -11115,6 +11156,7 @@ begin
   Buffer^.ProtectedObjects[Index]:=aObject;
   TPasMPInterlocked.BitwiseOr(aObject.fMarkBits,TpvGUIObject.ProtectedMarkBit);
   aObject.IncRef;
+  aObject.fProtectedObjectCounter:=2;
  end;
 end;
 
