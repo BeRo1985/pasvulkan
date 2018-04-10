@@ -1281,6 +1281,7 @@ type TpvGUIObject=class;
        fTime:TpvDouble;
        fPopupMenuStack:TpvGUIObjectList;
        fModalWindowStack:TpvGUIObjectList;
+       fWindowList:TpvGUIObjectList;
        fLastFocusPath:TpvGUIObjectList;
        fCurrentFocusPath:TpvGUIObjectList;
        fDragWidget:TpvGUIWidget;
@@ -10499,17 +10500,6 @@ begin
  end;
 end;
 
-function TpvGUIWidgetFindNextWindowSort(aItem0,aItem1:pointer):integer;
-begin
- if {%H-}TpvPtrUInt(aItem0)<{%H-}TpvPtrUInt(aItem1) then begin
-  result:=-1;
- end else if {%H-}TpvPtrUInt(aItem0)>{%H-}TpvPtrUInt(aItem1) then begin
-  result:=1;
- end else begin
-  result:=0;
- end;
-end;
-
 function TpvGUIWidget.FindNextWindow(const aCurrentWindow:TpvGUIWindow;const aForward:boolean):TpvGUIWindow;
 const Directions:array[boolean] of TpvInt32=(-1,1);
 var Count,Index,StartIndex:TpvInt32;
@@ -10521,13 +10511,12 @@ begin
  if assigned(fInstance) then begin
   List:=Classes.TList.Create;
   try
-   for Index:=0 to fInstance.fChildren.Count-1 do begin
-    Object_:=fInstance.fChildren.Items[Index];
+   for Index:=0 to fInstance.fWindowList.Count-1 do begin
+    Object_:=fInstance.fWindowList.Items[Index];
     if (Object_ is TpvGUIWindow) and not (Object_ is TpvGUIPopup) then begin
      List.Add(Object_);
     end;
    end;
-   List.Sort(TpvGUIWidgetFindNextWindowSort);
    Count:=List.Count;
    if Count>0 then begin
     Index:=List.IndexOf(aCurrentWindow);
@@ -11004,6 +10993,8 @@ begin
 
  fModalWindowStack:=TpvGUIObjectList.Create(false);
 
+ fWindowList:=TpvGUIObjectList.Create(false);
+
  fLastFocusPath:=TpvGUIObjectList.Create(false);
 
  fCurrentFocusPath:=TpvGUIObjectList.Create(false);
@@ -11045,6 +11036,8 @@ begin
  FreeAndNil(fCurrentFocusPath);
 
  FreeAndNil(fModalWindowStack);
+
+ FreeAndNil(fWindowList);
 
  SetCountBuffers(0);
 
@@ -11134,6 +11127,7 @@ begin
  TpvGUIObject.DecRefOrFreeAndNil(fHoveredWidget);
  fPopupMenuStack.Clear;
  fModalWindowStack.Clear;
+ fWindowList.Clear;
  fLastFocusPath.Clear;
  fCurrentFocusPath.Clear;
  fObjectGarbageDisposer.DisposeAllGarbage;
@@ -11159,16 +11153,19 @@ begin
    TpvGUIWindow(aGUIObject).fWindowDisposed:=true;
   end;
   if assigned(fPopupMenuStack) and fPopupMenuStack.Contains(aGUIObject) then begin
-   fPopupMenuStack.Clear;
+   fPopupMenuStack.Remove(aGUIObject);
   end;
   if assigned(fModalWindowStack) and fModalWindowStack.Contains(aGUIObject) then begin
-   fModalWindowStack.Clear;
+   fModalWindowStack.Remove(aGUIObject);
+  end;
+  if assigned(fWindowList) and fWindowList.Contains(aGUIObject) then begin
+   fWindowList.Remove(aGUIObject);
   end;
   if assigned(fLastFocusPath) and fLastFocusPath.Contains(aGUIObject) then begin
-   fLastFocusPath.Clear;
+   fLastFocusPath.Remove(aGUIObject);
   end;
   if assigned(fCurrentFocusPath) and fCurrentFocusPath.Contains(aGUIObject) then begin
-   fCurrentFocusPath.Clear;
+   fCurrentFocusPath.Remove(aGUIObject);
   end;
   if fDragWidget=aGUIObject then begin
    TpvGUIObject.DecRefOrFreeAndNil(fDragWidget);
@@ -11452,6 +11449,19 @@ begin
    case aKeyEvent.KeyCode of
     KEYCODE_RCTRL,KEYCODE_LCTRL:begin
      if fWindowTabbing and (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up) then begin
+      if fCurrentFocusPath.Count>0 then begin
+       Current:=fCurrentFocusPath.Items[fCurrentFocusPath.Count-1];
+       if (Current<>self) and (Current is TpvGUIWidget) then begin
+        CurrentWidget:=Current as TpvGUIWidget;
+        CurrentWidget:=CurrentWidget.Window;
+        if assigned(CurrentWidget) then begin
+         Index:=fWindowList.IndexOf(CurrentWidget);
+         if assigned(CurrentWidget) and (Index>0) then begin
+          fWindowList.Move(Index,0);
+         end;
+        end;
+       end;
+      end;
       fWindowTabbing:=false;
       result:=true;
      end;
@@ -11750,6 +11760,7 @@ end;
 
 constructor TpvGUIWindow.Create(const aParent:TpvGUIObject);
 begin
+
  inherited Create(aParent);
 
  fTitle:='Window';
@@ -11798,10 +11809,14 @@ end;
 procedure TpvGUIWindow.AfterConstruction;
 begin
  inherited AfterConstruction;
+ fInstance.fWindowList.Add(self);
 end;
 
 procedure TpvGUIWindow.BeforeDestruction;
 begin
+ if assigned(fInstance) and assigned(fInstance.fWindowList) and fInstance.fWindowList.Contains(self) then begin
+  fInstance.fWindowList.Remove(self);
+ end;
  if assigned(fInstance) and not fWindowDisposed then begin
   fInstance.DisposeWindow(self);
  end;
