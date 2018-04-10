@@ -3024,7 +3024,6 @@ begin
  LocalClipRect.Vector4:=(VulkanCanvas.fClipRects[fInstance.fDrawBufferIndex and 1].Vector4*ClipRectToScissorScale)+ClipRectToScissorOffset;
  VulkanCanvas.DrawContent(aVulkanCommandBuffer,
                           aBufferIndex,
-                          fInstance.DrawBufferIndex,
                           LocalDrawRect,
                           LocalClipRect);
 end;
@@ -19544,13 +19543,13 @@ begin
        if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
         fOnClick(self);
        end;
-       RequestFocus;
+//     RequestFocus;
       end;
       TpvApplicationInputPointerButton.Middle:begin
-       RequestFocus;
+//     RequestFocus;
       end;
       TpvApplicationInputPointerButton.Right:begin
-       RequestFocus;
+//     RequestFocus;
        if assigned(fPopupMenu) then begin
         fPopupMenu.Activate(AbsolutePosition+aPointerEvent.Position);
        end;
@@ -19978,7 +19977,7 @@ procedure TpvGUIVulkanCanvas.UpdateContent(const aBufferIndex:TpvInt32;const aDr
 begin
 end;
 
-procedure TpvGUIVulkanCanvas.DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aVulkanBufferIndex,aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect);
+procedure TpvGUIVulkanCanvas.DrawContent(const aVulkanCommandBuffer:TpvVulkanCommandBuffer;const aBufferIndex:TpvInt32;const aDrawRect,aClipRect:TpvRect);
 begin
 end;
 
