@@ -10565,13 +10565,15 @@ var CurrentWindow,ParentWindow:TpvGUIWindow;
 begin
  result:=false;
  if assigned(fInstance) then begin
-  ParentWindow:=aFromWidget.Window;
-  if assigned(ParentWindow) then begin
-   CurrentWindow:=fInstance.FindNextWindow(ParentWindow,not aToPrevious);
-   if assigned(CurrentWindow) then begin
-    fInstance.UpdateFocus(CurrentWindow);
-    result:=true;
-   end;
+  if assigned(aFromWidget) then begin
+   ParentWindow:=aFromWidget.Window;
+  end else begin
+   ParentWindow:=nil;
+  end;
+  CurrentWindow:=fInstance.FindNextWindow(ParentWindow,not aToPrevious);
+  if assigned(CurrentWindow) then begin
+   fInstance.UpdateFocus(CurrentWindow);
+   result:=true;
   end;
  end;
 end;
@@ -11458,13 +11460,14 @@ begin
      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
       fWindowTabbing:=true;
       if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+       CurrentWidget:=nil;
        if fCurrentFocusPath.Count>0 then begin
         Current:=fCurrentFocusPath.Items[fCurrentFocusPath.Count-1];
         if (Current<>self) and (Current is TpvGUIWidget) then begin
          CurrentWidget:=Current as TpvGUIWidget;
-         ProcessWindowTab(CurrentWidget,TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers);
         end;
        end;
+       ProcessWindowTab(CurrentWidget,TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers);
       end;
       result:=true;
       exit;
