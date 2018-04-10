@@ -11445,6 +11445,7 @@ function TpvGUIInstance.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):bo
 var Index:TpvInt32;
     Current:TpvGUIObject;
     CurrentWidget:TpvGUIWidget;
+    List:Classes.TList;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if not result then begin
@@ -11464,6 +11465,18 @@ begin
          Index:=fWindowList.IndexOf(CurrentWidget);
          if assigned(CurrentWidget) and (Index>0) then begin
           fWindowList.Move(Index,0);
+         end;
+         if (fCurrentFocusPath.Count>0) and
+            (fCurrentFocusPath.Items[fCurrentFocusPath.Count-1]=CurrentWidget) then begin
+          List:=Classes.TList.Create;
+          try
+           CurrentWidget.GetTabList(List);
+           if List.Count>0 then begin
+            TpvGUIWidget(List.Items[0]).RequestFocus;
+           end;
+          finally
+           List.Free;
+          end;
          end;
         end;
        end;
