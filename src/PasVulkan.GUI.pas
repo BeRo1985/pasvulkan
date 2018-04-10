@@ -11317,6 +11317,12 @@ begin
  end;
 
  if assigned(fWindow) then begin
+  if assigned(fWindowList) and not fWindowTabbing then begin
+   CurrentIndex:=fWindowList.IndexOf(fWindow);
+   if assigned(CurrentWidget) and (CurrentIndex>0) then begin
+    fWindowList.Move(CurrentIndex,0);
+   end;
+  end;
   MoveWindowToFront(fWindow);
  end;
 
