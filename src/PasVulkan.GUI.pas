@@ -1396,6 +1396,7 @@ type TpvGUIObject=class;
                            TpvGUIWindowFlag.ResizableE];
       private
        fWindowDisposed:boolean;
+       fLastFocused:TpvGUIWidget;
       protected
        fTitle:TpvUTF8String;
        fCachedTitle:TpvUTF8String;
@@ -10053,7 +10054,12 @@ begin
 end;
 
 procedure TpvGUIWidget.BeforeDestruction;
+var ParentWindow:TpvGUIWindow;
 begin
+ ParentWindow:=GetWindow;
+ if assigned(ParentWindow) and (ParentWindow.fLastFocused=self) then begin
+  ParentWindow.fLastFocused:=nil;
+ end;
  inherited BeforeDestruction;
 end;
 
@@ -11318,6 +11324,7 @@ begin
 
  if assigned(fWindow) then begin
   if assigned(fWindowList) and not fWindowTabbing then begin
+   fWindow.fLastFocused:=aWidget;
    CurrentIndex:=fWindowList.IndexOf(fWindow);
    if assigned(fWindow) and (CurrentIndex>0) then begin
     fWindowList.Move(CurrentIndex,0);
@@ -11445,6 +11452,7 @@ function TpvGUIInstance.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):bo
 var Index:TpvInt32;
     Current:TpvGUIObject;
     CurrentWidget:TpvGUIWidget;
+    CurrentWindow:TpvGUIWindow;
     List:Classes.TList;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
@@ -11460,19 +11468,23 @@ begin
        Current:=fCurrentFocusPath.Items[fCurrentFocusPath.Count-1];
        if (Current<>self) and (Current is TpvGUIWidget) then begin
         CurrentWidget:=Current as TpvGUIWidget;
-        CurrentWidget:=CurrentWidget.Window;
-        if assigned(CurrentWidget) then begin
-         Index:=fWindowList.IndexOf(CurrentWidget);
-         if assigned(CurrentWidget) and (Index>0) then begin
+        CurrentWindow:=CurrentWidget.Window;
+        if assigned(CurrentWindow) then begin
+         Index:=fWindowList.IndexOf(CurrentWindow);
+         if Index>0 then begin
           fWindowList.Move(Index,0);
          end;
          if (fCurrentFocusPath.Count>0) and
-            (fCurrentFocusPath.Items[fCurrentFocusPath.Count-1]=CurrentWidget) then begin
+            (fCurrentFocusPath.Items[fCurrentFocusPath.Count-1]=CurrentWindow) then begin
           List:=Classes.TList.Create;
           try
            CurrentWidget.GetTabList(List);
            if List.Count>0 then begin
-            TpvGUIWidget(List.Items[0]).RequestFocus;
+            if assigned(CurrentWindow.fLastFocused) and (List.IndexOf(CurrentWindow.fLastFocused)>=0) then begin
+             CurrentWindow.fLastFocused.RequestFocus;
+            end else begin
+             TpvGUIWidget(List.Items[0]).RequestFocus;
+            end;
            end;
           finally
            List.Free;
@@ -11818,7 +11830,9 @@ begin
 
  fTextTruncation:=TpvGUITextTruncation.Middle;
 
- end;
+ fLastFocused:=nil;
+
+end;
 
 destructor TpvGUIWindow.Destroy;
 begin
