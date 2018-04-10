@@ -1178,6 +1178,8 @@ type TpvGUIObject=class;
        function FindWidget(const aPosition:TpvVector2):TpvGUIWidget; virtual;
        function FindNextWidget(const aCurrentWidget:TpvGUIWidget;const aForward,aCheckTabStop,aCheckParent:boolean):TpvGUIWidget; virtual;
        function ProcessTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean; virtual;
+       function FindNextWindow(const aCurrentWindow:TpvGUIWindow;const aForward:boolean):TpvGUIWindow; virtual;
+       function ProcessWindowTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean; virtual;
        procedure SetSizeToPreferredSize; virtual;
        procedure PerformLayout; virtual;
        procedure RequestFocus; virtual;
@@ -1270,6 +1272,7 @@ type TpvGUIObject=class;
        fMonoFontCodePointRanges:TpvFontCodePointRanges;
        fStandardSkin:TpvGUISkin;
        fDrawWidgetBounds:boolean;
+       fWindowTabbing:boolean;
        fBuffers:TpvGUIInstanceBuffers;
        fCountBuffers:TpvInt32;
        fUpdateBufferIndex:TpvInt32;
@@ -10496,6 +10499,83 @@ begin
  end;
 end;
 
+function TpvGUIWidgetFindNextWindowSort(aItem0,aItem1:pointer):integer;
+begin
+ if {%H-}TpvPtrUInt(aItem0)<{%H-}TpvPtrUInt(aItem1) then begin
+  result:=-1;
+ end else if {%H-}TpvPtrUInt(aItem0)>{%H-}TpvPtrUInt(aItem1) then begin
+  result:=1;
+ end else begin
+  result:=0;
+ end;
+end;
+
+function TpvGUIWidget.FindNextWindow(const aCurrentWindow:TpvGUIWindow;const aForward:boolean):TpvGUIWindow;
+const Directions:array[boolean] of TpvInt32=(-1,1);
+var Count,Index,StartIndex:TpvInt32;
+    Object_:TpvGUIObject;
+    Window:TpvGUIWindow;
+    List:Classes.TList;
+begin
+ result:=nil;
+ if assigned(fInstance) then begin
+  List:=Classes.TList.Create;
+  try
+   for Index:=0 to fInstance.fChildren.Count-1 do begin
+    Object_:=fInstance.fChildren.Items[Index];
+    if (Object_ is TpvGUIWindow) and not (Object_ is TpvGUIPopup) then begin
+     List.Add(Object_);
+    end;
+   end;
+   List.Sort(TpvGUIWidgetFindNextWindowSort);
+   Count:=List.Count;
+   if Count>0 then begin
+    Index:=List.IndexOf(aCurrentWindow);
+    if Index<0 then begin
+     if aForward then begin
+      Index:=0;
+     end else begin
+      Index:=Count-1;
+     end;
+    end;
+    StartIndex:=Index;
+    repeat
+     inc(Index,Directions[aForward]);
+     if Index<0 then begin
+      inc(Index,Count);
+     end else if Index>=Count then begin
+      dec(Index,Count);
+     end;
+     Window:=List.Items[Index];
+     if (Window<>aCurrentWindow) and
+        ((Window.fWidgetFlags*[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled])=[TpvGUIWidgetFlag.Visible,TpvGUIWidgetFlag.Enabled]) then begin
+      result:=Window;
+      break;
+     end;
+    until Index=StartIndex;
+   end;
+  finally
+   List.Free;
+  end;
+ end;
+end;
+
+function TpvGUIWidget.ProcessWindowTab(const aFromWidget:TpvGUIWidget;const aToPrevious:boolean):boolean;
+var CurrentWindow,ParentWindow:TpvGUIWindow;
+begin
+ result:=false;
+ if assigned(fInstance) then begin
+  ParentWindow:=aFromWidget.Window;
+  if assigned(ParentWindow) then begin
+   CurrentWindow:=fInstance.FindNextWindow(ParentWindow,not aToPrevious);
+   if assigned(CurrentWindow) then begin
+    fInstance.UpdateFocus(CurrentWindow);
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
 function TpvGUIWidget.GetWindow:TpvGUIWindow;
 var CurrentWidget:TpvGUIWidget;
 begin
@@ -10821,7 +10901,7 @@ begin
    end;
   end;
  end;
- if TpvGUIWidgetFlag.DrawFocus in fWidgetFlags then begin
+ if (TpvGUIWidgetFlag.DrawFocus in fWidgetFlags) or (assigned(fInstance) and (fInstance.fWindowTabbing and (self is TpvGUIWindow))) then begin
   Skin.DrawFocus(fInstance.DrawEngine,self);
  end;
 end;
@@ -10903,6 +10983,8 @@ begin
  fStandardSkin:=TpvGUIDefaultVectorBasedSkin.Create(self);
 
  fDrawWidgetBounds:=false;
+
+ fWindowTabbing:=false;
 
  fBuffers:=nil;
 
@@ -11365,15 +11447,40 @@ begin
    result:=(fPopupMenuStack[fPopupMenuStack.Count-1] as TpvGUIPopupMenu).KeyEvent(aKeyEvent);
   end;
   if not result then begin
-   if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and (aKeyEvent.KeyCode=KEYCODE_TAB) then begin
-    if fCurrentFocusPath.Count>0 then begin
-     Current:=fCurrentFocusPath.Items[fCurrentFocusPath.Count-1];
-     if (Current<>self) and (Current is TpvGUIWidget) then begin
-      CurrentWidget:=Current as TpvGUIWidget;
-      if CurrentWidget.Focused and not (CurrentWidget.WantAllKeys or CurrentWidget.WantTabKey) then begin
-       result:=ProcessTab(CurrentWidget,TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers);
-       if result then begin
-        exit;
+   case aKeyEvent.KeyCode of
+    KEYCODE_RCTRL,KEYCODE_LCTRL:begin
+     if fWindowTabbing and (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Up) then begin
+      fWindowTabbing:=false;
+      result:=true;
+     end;
+    end;
+    KEYCODE_TAB:begin
+     if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+      fWindowTabbing:=true;
+      if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+       if fCurrentFocusPath.Count>0 then begin
+        Current:=fCurrentFocusPath.Items[fCurrentFocusPath.Count-1];
+        if (Current<>self) and (Current is TpvGUIWidget) then begin
+         CurrentWidget:=Current as TpvGUIWidget;
+         ProcessWindowTab(CurrentWidget,TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers);
+        end;
+       end;
+      end;
+      result:=true;
+      exit;
+     end else begin
+      if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+       if fCurrentFocusPath.Count>0 then begin
+        Current:=fCurrentFocusPath.Items[fCurrentFocusPath.Count-1];
+        if (Current<>self) and (Current is TpvGUIWidget) then begin
+         CurrentWidget:=Current as TpvGUIWidget;
+         if CurrentWidget.Focused and not (CurrentWidget.WantAllKeys or CurrentWidget.WantTabKey) then begin
+          result:=ProcessTab(CurrentWidget,TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers);
+          if result then begin
+           exit;
+          end;
+         end;
+        end;
        end;
       end;
      end;
