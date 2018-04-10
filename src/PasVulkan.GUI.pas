@@ -11815,7 +11815,7 @@ end;
 procedure TpvGUIWindow.AfterConstruction;
 begin
  inherited AfterConstruction;
- fInstance.fWindowList.Add(self);
+ fInstance.fWindowList.Insert(0,self);
 end;
 
 procedure TpvGUIWindow.BeforeDestruction;
