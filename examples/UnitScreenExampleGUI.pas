@@ -879,9 +879,8 @@ begin
 end;
 
 procedure TpvGUIVulkanCanvasCube.AfterCreateSwapChain;
-var SwapChainImageIndex:TpvInt32;
-    VulkanCommandBuffer:TpvVulkanCommandBuffer;
 begin
+
  inherited AfterCreateSwapChain;
 
  FreeAndNil(fVulkanGraphicsPipeline);
@@ -1259,9 +1258,8 @@ begin
 end;
 
 procedure TpvGUIVulkanCanvasDragon.AfterCreateSwapChain;
-var SwapChainImageIndex:TpvInt32;
-    VulkanCommandBuffer:TpvVulkanCommandBuffer;
 begin
+
  inherited AfterCreateSwapChain;
 
  FreeAndNil(fVulkanGraphicsPipeline);

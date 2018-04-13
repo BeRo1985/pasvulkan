@@ -1245,12 +1245,18 @@ type TpvGUIObject=class;
 
      TpvGUIInstanceBufferObjects=array of TpvGUIObject;
 
+     PpvGUIInstanceBufferList=^TpvGUIInstanceBufferList;
+     TpvGUIInstanceBufferList=record
+      ProtectedObjects:TpvGUIInstanceBufferObjects;
+      CountProtectedObjects:TpvInt32;
+     end;
+
+     TpvGUIInstanceBufferLists=array[0..1] of TpvGUIInstanceBufferList;
+
      PpvGUIInstanceBuffer=^TpvGUIInstanceBuffer;
      TpvGUIInstanceBuffer=record
-      ProtectedObjects:TpvGUIInstanceBufferObjects;
-      DelayedProtectedObjects:TpvGUIInstanceBufferObjects;
-      CountProtectedObjects:TpvInt32;
-      CountDelayedProtectedObjects:TpvInt32;
+      Lists:TpvGUIInstanceBufferLists;
+      Counter:TpvUInt32;
      end;
 
      TpvGUIInstanceBuffers=array of TpvGUIInstanceBuffer;
@@ -11081,8 +11087,9 @@ begin
 end;
 
 procedure TpvGUIInstance.SetCountBuffers(const aCountBuffers:TpvInt32);
-var Index,SubIndex:TpvInt32;
+var Index,SubIndex,SubSubIndex:TpvInt32;
     Buffer:PpvGUIInstanceBuffer;
+    BufferList:PpvGUIInstanceBufferList;
     CurrentObject:TpvGUIObject;
 begin
 
@@ -11092,33 +11099,33 @@ begin
 
    for Index:=aCountBuffers to fCountBuffers-1 do begin
     Buffer:=@fBuffers[Index];
-    for SubIndex:=0 to Buffer^.CountProtectedObjects-1 do begin
-     CurrentObject:=Buffer^.ProtectedObjects[SubIndex];
-     if CurrentObject.DecRefWithoutFree=0 then begin
-      fObjectGarbageDisposer.AddGarbage(CurrentObject);
+    for SubIndex:=Low(TpvGUIInstanceBufferLists) to High(TpvGUIInstanceBufferLists) do begin
+     BufferList:=@Buffer^.Lists[SubIndex];
+     for SubSubIndex:=0 to BufferList^.CountProtectedObjects-1 do begin
+      CurrentObject:=BufferList^.ProtectedObjects[SubSubIndex];
+      if CurrentObject.DecRefWithoutFree=0 then begin
+       fObjectGarbageDisposer.AddGarbage(CurrentObject);
+      end;
      end;
+     BufferList^.CountProtectedObjects:=0;
     end;
-    Buffer^.CountProtectedObjects:=0;
-    for SubIndex:=0 to Buffer^.CountDelayedProtectedObjects-1 do begin
-     CurrentObject:=Buffer^.DelayedProtectedObjects[SubIndex];
-     if CurrentObject.DecRefWithoutFree=0 then begin
-      fObjectGarbageDisposer.AddGarbage(CurrentObject);
-     end;
-    end;
-    Buffer^.CountDelayedProtectedObjects:=0;
    end;
 
    if length(fBuffers)<aCountBuffers then begin
     SetLength(fBuffers,aCountBuffers*2);
     for Index:=Max(0,fCountBuffers) to length(fBuffers)-1 do begin
-     fBuffers[Index].CountProtectedObjects:=0;
-     fBuffers[Index].CountDelayedProtectedObjects:=0;
+     Buffer:=@fBuffers[Index];
+     for SubIndex:=Low(TpvGUIInstanceBufferLists) to High(TpvGUIInstanceBufferLists) do begin
+      Buffer^.Lists[SubIndex].CountProtectedObjects:=0;
+     end;
     end;
    end;
 
    for Index:=fCountBuffers to aCountBuffers-1 do begin
-    fBuffers[Index].CountProtectedObjects:=0;
-    fBuffers[Index].CountDelayedProtectedObjects:=0;
+    Buffer:=@fBuffers[Index];
+    for SubIndex:=Low(TpvGUIInstanceBufferLists) to High(TpvGUIInstanceBufferLists) do begin
+     Buffer^.Lists[SubIndex].CountProtectedObjects:=0;
+    end;
    end;
 
    fCountBuffers:=aCountBuffers;
@@ -11226,20 +11233,29 @@ end;
 procedure TpvGUIInstance.ClearProtectedObjectList;
 var Index,SubIndex:TpvInt32;
     Buffer:PpvGUIInstanceBuffer;
+    CurrentList,OtherList:PpvGUIInstanceBufferList;
     CurrentObject:TpvGUIObject;
 begin
+
  if (fUpdateBufferIndex>=0) and (fUpdateBufferIndex<fCountBuffers) then begin
+
   Buffer:=@fBuffers[fUpdateBufferIndex];
-  Buffer^.CountDelayedProtectedObjects:=0;
-  for Index:=0 to Buffer^.CountProtectedObjects-1 do begin
-   CurrentObject:=Buffer^.ProtectedObjects[Index];
+
+  CurrentList:=@Buffer^.Lists[(Buffer^.Counter+0) and 1];
+
+  OtherList:=@Buffer^.Lists[(Buffer^.Counter+1) and 1];
+
+  OtherList^.CountProtectedObjects:=0;
+
+  for Index:=0 to CurrentList^.CountProtectedObjects-1 do begin
+   CurrentObject:=CurrentList^.ProtectedObjects[Index];
    if TPasMPInterlocked.Decrement(CurrentObject.fProtectedObjectCounter)>0 then begin
-    SubIndex:=Buffer^.CountDelayedProtectedObjects;
-    inc(Buffer^.CountDelayedProtectedObjects);
-    if length(Buffer^.DelayedProtectedObjects)<Buffer^.CountDelayedProtectedObjects then begin
-     SetLength(Buffer^.DelayedProtectedObjects,Buffer^.CountDelayedProtectedObjects*2);
+    SubIndex:=OtherList^.CountProtectedObjects;
+    inc(OtherList^.CountProtectedObjects);
+    if length(OtherList^.ProtectedObjects)<OtherList^.CountProtectedObjects then begin
+     SetLength(OtherList^.ProtectedObjects,OtherList^.CountProtectedObjects*2);
     end;
-    Buffer^.DelayedProtectedObjects[SubIndex]:=CurrentObject;
+    OtherList^.ProtectedObjects[SubIndex]:=CurrentObject;
    end else begin
     TPasMPInterlocked.BitwiseAnd(CurrentObject.fMarkBits,TPasMPUInt32(not TpvGUIObject.ProtectedMarkBit));
     if CurrentObject.DecRefWithoutFree=0 then begin
@@ -11247,28 +11263,32 @@ begin
     end;
    end;
   end;
-  Buffer^.CountProtectedObjects:=Buffer^.CountDelayedProtectedObjects;
-  Buffer^.CountDelayedProtectedObjects:=0;
-  if Buffer^.CountProtectedObjects>0 then begin
-   Move(Buffer^.DelayedProtectedObjects[0],Buffer^.ProtectedObjects[0],Buffer^.CountProtectedObjects*SizeOf(TpvGUIObject));
-  end;
+
+  CurrentList^.CountProtectedObjects:=0;
+
+  Buffer^.Counter:=(Buffer^.Counter+1) and 1;
+
  end;
 end;
 
 procedure TpvGUIInstance.ProtectObjectForNextDraw(const aObject:TpvGUIObject);
 var Index:TpvInt32;
     Buffer:PpvGUIInstanceBuffer;
+    CurrentList:PpvGUIInstanceBufferList;
 begin
  if assigned(aObject) and ((fUpdateBufferIndex>=0) and (fUpdateBufferIndex<fCountBuffers)) then begin
-  Buffer:=@fBuffers[fUpdateBufferIndex];
-  Index:=Buffer^.CountProtectedObjects;
-  inc(Buffer^.CountProtectedObjects);
-  if length(Buffer^.ProtectedObjects)<Buffer^.CountProtectedObjects then begin
-   SetLength(Buffer^.ProtectedObjects,Buffer^.CountProtectedObjects*2);
+  if (aObject.fMarkBits and TpvGUIObject.ProtectedMarkBit)=0 then begin
+   Buffer:=@fBuffers[fUpdateBufferIndex];
+   CurrentList:=@Buffer^.Lists[(Buffer^.Counter+0) and 1];
+   Index:=CurrentList^.CountProtectedObjects;
+   inc(CurrentList^.CountProtectedObjects);
+   if length(CurrentList^.ProtectedObjects)<CurrentList^.CountProtectedObjects then begin
+    SetLength(CurrentList^.ProtectedObjects,CurrentList^.CountProtectedObjects*2);
+   end;
+   CurrentList^.ProtectedObjects[Index]:=aObject;
+   TPasMPInterlocked.BitwiseOr(aObject.fMarkBits,TpvGUIObject.ProtectedMarkBit);
+   aObject.IncRef;
   end;
-  Buffer^.ProtectedObjects[Index]:=aObject;
-  TPasMPInterlocked.BitwiseOr(aObject.fMarkBits,TpvGUIObject.ProtectedMarkBit);
-  aObject.IncRef;
   aObject.fProtectedObjectCounter:=2;
  end;
 end;
