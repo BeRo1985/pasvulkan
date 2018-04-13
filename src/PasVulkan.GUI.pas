@@ -1273,6 +1273,7 @@ type TpvGUIObject=class;
        fStandardSkin:TpvGUISkin;
        fDrawWidgetBounds:boolean;
        fWindowTabbing:boolean;
+       fSwapChainReady:boolean;
        fBuffers:TpvGUIInstanceBuffers;
        fCountBuffers:TpvInt32;
        fUpdateBufferIndex:TpvInt32;
@@ -1308,6 +1309,8 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        procedure AfterConstruction; override;
        procedure BeforeDestruction; override;
+       procedure AfterCreateSwapChain; override;
+       procedure BeforeDestroySwapChain; override;
        procedure ReleaseObject(const aGUIObject:TpvGUIObject);
        procedure ClearProtectedObjectList;
        procedure ProtectObjectForNextDraw(const aObject:TpvGUIObject);
@@ -10051,11 +10054,21 @@ end;
 procedure TpvGUIWidget.AfterConstruction;
 begin
  inherited AfterConstruction;
+ if (not (self is TpvGUIInstance)) and
+    assigned(fInstance) and
+    fInstance.fSwapChainReady then begin
+  AfterCreateSwapChain;
+ end;
 end;
 
 procedure TpvGUIWidget.BeforeDestruction;
 var ParentWindow:TpvGUIWindow;
 begin
+ if (not (self is TpvGUIInstance)) and
+    assigned(fInstance) and
+    fInstance.fSwapChainReady then begin
+  BeforeDestroySwapChain;
+ end;
  ParentWindow:=GetWindow;
  if assigned(ParentWindow) and (ParentWindow.fLastFocused=self) then begin
   ParentWindow.fLastFocused:=nil;
@@ -10983,6 +10996,8 @@ begin
 
  fWindowTabbing:=false;
 
+ fSwapChainReady:=false;
+
  fBuffers:=nil;
 
  fCountBuffers:=0;
@@ -11139,6 +11154,18 @@ begin
  fObjectGarbageDisposer.DisposeAllGarbage;
  DecRefWithoutFree;
  inherited BeforeDestruction;
+end;
+
+procedure TpvGUIInstance.AfterCreateSwapChain;
+begin
+ inherited AfterCreateSwapChain;
+ fSwapChainReady:=true;
+end;
+
+procedure TpvGUIInstance.BeforeDestroySwapChain;
+begin
+ fSwapChainReady:=false;
+ inherited BeforeDestroySwapChain;
 end;
 
 procedure TpvGUIInstance.SetUpdateBufferIndex(const aUpdateBufferIndex:TpvInt32);
