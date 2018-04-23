@@ -8892,7 +8892,7 @@ var BufferSize,BufferBaseIndex,BufferBaseEndIndex,BufferIndex,
     CodePointEnumerator:TRope.TCodePointEnumerator;
     State,StartLevelState,EndLevelState:TpvTextEditor.TSyntaxHighlighting.TState;
     BufferItem:PBufferItem;
-    CurrentHighlight:boolean;
+    CurrentHighlight,LineEndMarked:boolean;
     LocalMarkState:TMarkState;
 begin
 
@@ -9043,6 +9043,8 @@ begin
 
    CurrentHighlight:=false;
 
+   LineEndMarked:=false;
+
    while (CurrentCodePointIndex<StopCodePointIndex) and
          CodePointEnumerator.MoveNext do begin
 
@@ -9074,6 +9076,10 @@ begin
       StepWidth:=Max(1,(fParent.fTabWidth-(ColumnIndex mod fParent.fTabWidth)));
      end;
      $0a,$0b,$0c,$0d,$85,$2028,$2029:begin
+      if (CurrentCodePointIndex>=LocalMarkState.StartCodePointIndex) and
+         (CurrentCodePointIndex<LocalMarkState.EndCodePointIndex) then begin
+       LineEndMarked:=true;
+      end;
       CodePoint:=32;
       StepWidth:=0;
      end;
@@ -9117,9 +9123,7 @@ begin
 
    end;
 
-   if ((StartCodePointIndex>=LocalMarkState.StartCodePointIndex) or
-       (StopCodePointIndex>LocalMarkState.StartCodePointIndex)) and
-      (StopCodePointIndex<=LocalMarkState.EndCodePointIndex) then begin
+   if LineEndMarked then begin
     while RelativeCursor.x<fVisibleAreaWidth do begin
      BufferIndex:=BufferBaseIndex+RelativeCursor.x;
      if (BufferIndex>=BufferBaseIndex) and
