@@ -270,6 +270,15 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
        destructor Destroy; override;
      end;
 
+     TScreenExampleGUIColorPicker=class(TpvGUIWindow)
+      private
+       fScrollPanel:TpvGUIScrollPanel;
+       fColorWheel:TpvGUIColorWheel;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+     end;
+
      TScreenExampleGUI=class(TpvApplicationScreen)
       private
        fVulkanRenderPass:TpvVulkanRenderPass;
@@ -1470,6 +1479,40 @@ begin
  inherited Destroy;
 end;
 
+constructor TScreenExampleGUIColorPicker.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ Left:=500;
+ Top:=100;
+ Title:='Window with ColorPicker';
+ Content.Layout:=TpvGUIFillLayout.Create(Content,0.0);
+ AddMinimizationButton;
+ AddMaximizationButton;
+ AddCloseButton;
+
+ AutoSize:=false;
+
+ Width:=550;
+ Height:=350;
+
+{
+ fScrollPanel:=TpvGUIScrollPanel.Create(Content);
+ fScrollPanel.Content.Layout:=TpvGUIBoxLayout.Create(fScrollPanel.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,4.0);
+}
+
+ fColorWheel:=TpvGUIColorWheel.Create({fScrollPanel.}Content);
+{fColorWheel.FixedWidth:=640;
+ fColorWheel.FixedHeight:=480;}
+
+end;
+
+destructor TScreenExampleGUIColorPicker.Destroy;
+begin
+ inherited Destroy;
+end;
+
 constructor TScreenExampleGUI.Create;
 begin
  inherited Create;
@@ -1808,6 +1851,8 @@ begin
  TScreenExampleGUICube.Create(fGUIInstance);
 
  TScreenExampleGUIDragon.Create(fGUIInstance);
+
+ TScreenExampleGUIColorPicker.Create(fGUIInstance);
 
 end;
 

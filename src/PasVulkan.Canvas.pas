@@ -422,13 +422,13 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
 
      PpvCanvasVertex=^TpvCanvasVertex;
      TpvCanvasVertex=packed record               //   Size                                    Offset
-      Position:TpvVector3;                       //    8 bytes (2x 32-bit floats)           =  0
-      Color:TpvHalfFloatVector4;                 // +  8 bytes (4x 16-bit half-floats)      =  8 (=> 8 byte aligned)
-      TextureCoord:TpvVector3;                   // + 12 bytes (3x 32-bit floats)           = 16 (=> 16 byte aligned)
-      State:TpvUInt32;                           // +  4 bytes (1x 32-bit unsigned integer) = 28 (=> 4 byte aligned)
-      ClipRect:TpvRect;                          // + 16 bytes (4x 32-bit floats)           = 32 (=> 32 byte aligned)
-      MetaInfo:TpvVector4;                       // + 16 bytes (4x 32-bit floats)           = 48 (=> 32 byte aligned)
-     end;                                        // = 64 bytes per vertex
+      Position:TpvVector3;                       //   12 bytes (3x 32-bit floats)           =
+      Color:TpvHalfFloatVector4;                 // +  8 bytes (4x 16-bit half-floats)      =
+      TextureCoord:TpvVector3;                   // + 12 bytes (3x 32-bit floats)           =
+      State:TpvUInt32;                           // +  4 bytes (1x 32-bit unsigned integer) =
+      ClipRect:TpvRect;                          // + 16 bytes (4x 32-bit floats)           =
+      MetaInfo:TpvVector4;                       // + 16 bytes (4x 32-bit floats)           =
+     end;                                        // = 68 bytes per vertex
 
      TpvCanvasVertices=array of TpvCanvasVertex;
 

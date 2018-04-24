@@ -132,6 +132,8 @@ type TpvGUIObject=class;
 
      TpvGUIVulkanCanvas=class;
 
+     TpvGUIColorWheel=class;
+
      EpvGUIWidget=class(Exception);
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
@@ -849,6 +851,9 @@ type TpvGUIObject=class;
        function GetMultiLineTextEditPreferredSize(const aMultiLineTextEdit:TpvGUIMultiLineTextEdit):TpvVector2; virtual;
        procedure DrawMultiLineTextEdit(const aDrawEngine:TpvGUIDrawEngine;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); virtual;
       public
+       function GetColorWheelPreferredSize(const aColorWheel:TpvGUIColorWheel):TpvVector2; virtual;
+       procedure DrawColorWheel(const aDrawEngine:TpvGUIDrawEngine;const aColorWheel:TpvGUIColorWheel); virtual;
+      public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
        property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
@@ -1011,6 +1016,9 @@ type TpvGUIObject=class;
       public
        function GetMultiLineTextEditPreferredSize(const aMultiLineTextEdit:TpvGUIMultiLineTextEdit):TpvVector2; override;
        procedure DrawMultiLineTextEdit(const aDrawEngine:TpvGUIDrawEngine;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); override;
+      public
+       function GetColorWheelPreferredSize(const aColorWheel:TpvGUIColorWheel):TpvVector2; override;
+       procedure DrawColorWheel(const aDrawEngine:TpvGUIDrawEngine;const aColorWheel:TpvGUIColorWheel); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -2729,6 +2737,22 @@ type TpvGUIObject=class;
        procedure Draw; override;
      end;
 
+     TpvGUIColorWheel=class(TpvGUIWidget)
+      private
+       fHSV:TpvVector3;
+       fDrawOffset:TpvVector2;
+       fDrawSize:TpvVector2;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure Check; override;
+       procedure Update; override;
+       procedure Draw; override;
+     end;
+
 implementation
 
 uses PasDblStrUtils,
@@ -2772,6 +2796,7 @@ const GUI_ELEMENT_WINDOW_HEADER=1;
       GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE=76;
       GUI_ELEMENT_MOUSE_CURSOR_UP=77;
       GUI_ELEMENT_HIDDEN=96;
+      GUI_ELEMENT_COLOR_WHEEL=97;
 
 constructor TpvGUIDrawEngine.Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas);
 begin
@@ -5876,6 +5901,15 @@ begin
 end;
 
 procedure TpvGUISkin.DrawMultiLineTextEdit(const aDrawEngine:TpvGUIDrawEngine;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
+begin
+end;
+
+function TpvGUISkin.GetColorWheelPreferredSize(const aColorWheel:TpvGUIColorWheel):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aColorWheel);
+end;
+
+procedure TpvGUISkin.DrawColorWheel(const aDrawEngine:TpvGUIDrawEngine;const aColorWheel:TpvGUIColorWheel);
 begin
 end;
 
@@ -9936,6 +9970,40 @@ begin
  end;
 
  aDrawEngine.ClipRect:=OldClipRect;
+
+ aDrawEngine.Next;
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.GetColorWheelPreferredSize(const aColorWheel:TpvGUIColorWheel):TpvVector2;
+var DrawSize:TpvFloat;
+begin
+ result:=GetWidgetPreferredSize(aColorWheel);
+ DrawSize:=Min(result.x,result.y);
+ result:=TpvVector2.InlineableCreate(DrawSize,DrawSize);
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawColorWheel(const aDrawEngine:TpvGUIDrawEngine;const aColorWheel:TpvGUIColorWheel);
+var Element:TpvInt32;
+begin
+
+ aDrawEngine.ModelMatrix:=aColorWheel.fModelMatrix;
+
+ aDrawEngine.ClipRect:=aColorWheel.fClipRect;
+
+ Element:=GUI_ELEMENT_COLOR_WHEEL;
+
+ aDrawEngine.Transparent:=true;
+
+ aDrawEngine.Color:=TpvVector4.InlineableCreate(Clamp(aColorWheel.fHSV,TpvVector3.InlineableCreate(0.0,0.0,0.0),TpvVector3.InlineableCreate(1.0,1.0,1.0)),aDrawEngine.Color.w);
+
+ aDrawEngine.DrawGUIElement(Element,
+                            aColorWheel.Enabled,
+                            aColorWheel.fDrawOffset,
+                            aColorWheel.fDrawOffset+aColorWheel.fDrawSize,
+                            aColorWheel.fDrawOffset,
+                            aColorWheel.fDrawOffset+aColorWheel.fDrawSize,
+                            0.0);
 
  aDrawEngine.Next;
 
@@ -20215,6 +20283,172 @@ begin
  fInstance.fDrawEngine.ClipRect:=fClipRect;
  fInstance.fDrawEngine.DrawVulkanCanvas(self,fDrawRects[fInstance.fUpdateBufferIndex and 1]);
  fInstance.fDrawEngine.ModelMatrix:=ModelMatrix;
+ inherited Draw;
+end;
+
+constructor TpvGUIColorWheel.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
+
+ fHSV:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
+
+end;
+
+destructor TpvGUIColorWheel.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TpvGUIColorWheel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
+    TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
+    TemporaryText,TemporaryUncheckedText:TpvUTF8String;
+begin
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if Enabled and not result then begin
+  case aKeyEvent.KeyEventType of
+   TpvApplicationInputKeyEventType.Down:begin
+    case aKeyEvent.KeyCode of
+     KEYCODE_APPLICATION:begin
+      result:=true;
+     end;
+    end;
+   end;
+   TpvApplicationInputKeyEventType.Up:begin
+    case aKeyEvent.KeyCode of
+     KEYCODE_APPLICATION:begin
+{     if assigned(fPopupMenu) then begin
+       fPopupMenu.Activate(AbsolutePosition+(fSize*0.5));
+      end;}
+      result:=true;
+     end;
+    end;
+   end;
+   TpvApplicationInputKeyEventType.Typed:begin
+    case aKeyEvent.KeyCode of
+     KEYCODE_LEFT:begin
+      fHSV.y:=Clamp(fHSV.y-0.01,0.0,1.0);
+      result:=true;
+     end;
+     KEYCODE_RIGHT:begin
+      fHSV.y:=Clamp(fHSV.y+0.01,0.0,1.0);
+      result:=true;
+     end;
+     KEYCODE_UP:begin
+      fHSV.z:=Clamp(fHSV.z+0.01,0.0,1.0);
+      result:=true;
+     end;
+     KEYCODE_DOWN:begin
+      fHSV.z:=Clamp(fHSV.z-0.01,0.0,1.0);
+      result:=true;
+     end;
+     KEYCODE_HOME:begin
+      result:=true;
+     end;
+     KEYCODE_END:begin
+      result:=true;
+     end;
+     KEYCODE_PAGEUP:begin
+      fHSV.x:=fHSV.x-0.01;
+      if fHSV.x<0.0 then begin
+       fHSV.x:=fHSV.x+1.0;
+      end;
+      result:=true;
+     end;
+     KEYCODE_PAGEDOWN:begin
+      fHSV.x:=fHSV.x+0.01;
+      if fHSV.x>1.0 then begin
+       fHSV.x:=fHSV.x-1.0;
+      end;
+      result:=true;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIColorWheel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var Index:TpvInt32;
+begin
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+ if not result then begin
+  result:=inherited PointerEvent(aPointerEvent);
+  if not result then begin
+   case aPointerEvent.PointerEventType of
+    TpvApplicationInputPointerEventType.Down:begin
+     case aPointerEvent.Button of
+      TpvApplicationInputPointerButton.Left:begin
+       RequestFocus;
+      end;
+      TpvApplicationInputPointerButton.Middle:begin
+       RequestFocus;
+      end;
+      TpvApplicationInputPointerButton.Right:begin
+       RequestFocus;
+      end;
+     end;
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Up:begin
+     case aPointerEvent.Button of
+      TpvApplicationInputPointerButton.Left:begin
+{      if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
+        fOnClick(self);
+       end;}
+       RequestFocus;
+      end;
+      TpvApplicationInputPointerButton.Middle:begin
+       RequestFocus;
+      end;
+      TpvApplicationInputPointerButton.Right:begin
+       RequestFocus;
+{      if assigned(fPopupMenu) then begin
+        fPopupMenu.Activate(AbsolutePosition+aPointerEvent.Position);
+       end;}
+      end;
+     end;
+    end;
+    TpvApplicationInputPointerEventType.Motion:begin
+     if TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons then begin
+     end;
+     fCursor:=TpvGUICursor.Cross;
+     result:=true;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIColorWheel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+begin
+ result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
+ if not result then begin
+  result:=inherited Scrolled(aPosition,aRelativeAmount);
+ end;
+end;
+
+procedure TpvGUIColorWheel.Check;
+var DrawSize:TpvFloat;
+begin
+ DrawSize:=Min(fSize.x,fSize.y);
+ fDrawSize:=TpvVector2.InlineableCreate(DrawSize,DrawSize);
+ fDrawOffset:=(fSize-fDrawSize)*0.5;
+ inherited Check;
+end;
+
+procedure TpvGUIColorWheel.Update;
+begin
+ inherited Update;
+end;
+
+procedure TpvGUIColorWheel.Draw;
+begin
+ Skin.DrawColorWheel(Instance.DrawEngine,self);
  inherited Draw;
 end;
 

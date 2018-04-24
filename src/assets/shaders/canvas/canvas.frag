@@ -120,6 +120,7 @@ vec4 blend(vec4 a, vec4 b){
 #define GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE 76
 #define GUI_ELEMENT_MOUSE_CURSOR_UP 77     
 #define GUI_ELEMENT_HIDDEN 96
+#define GUI_ELEMENT_COLOR_WHEEL 97
 
 const float uWindowCornerRadius = 2.0;
 const float uWindowHeaderHeight = 32.0;
@@ -284,6 +285,35 @@ float sdTriangle(in vec2 p0, in vec2 p1, in vec2 p2, in vec2 p){
                    vec2(dot(pq2, pq2), (v2.x * e2.y) - (v2.y * e2.x)));  
   return -sqrt(d.x) * sign(d.y);  
 }  
+
+vec3 barycentricTriangle(in vec2 p0, in vec2 p1, in vec2 p2, in vec2 p){
+  vec2 v0 = p1 - p0, v1 = p2 - p0, v2 = p - p0;
+  float d00 = dot(v0, v0), d01 = dot(v0, v1), d11 = dot(v1, v1), d20 = dot(v2, v0),
+        d21 = dot(v2, v1), d = (d00 * d11) - (d01 * d01);
+  vec2 vw = vec2((d11 * d20) - (d01 * d21), (d00 * d21) - (d01 * d20)) / d;
+  return vec3(1.0 - (vw.x + vw.y), vw);
+}
+                      
+vec2 rotate(vec2 v, float a){
+  vec2 s = sin(vec2(a) + vec2(0.0, 1.57079633));
+	return mat2(s.y, -s.x, s.x, s.y) * v;
+}                               
+
+vec3 rgb2hsv(vec3 c){
+  vec4 k = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0),
+       p = mix(vec4(c.bg, k.wz), vec4(c.gb, k.xy), step(c.b, c.g)),
+       q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
+  float d = q.x - min(q.w, q.y),
+        e = 1.0e-10;
+  return clamp(vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x), vec3(0.0), vec3(1.0));
+}
+
+vec3 hsv2rgb(vec3 c){
+    vec4 k = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs((fract(c.xxx + k.xyz) * 6.0) - k.www);
+    return clamp(c.z * mix(k.xxx, clamp(p - k.xxx, 0.0, 1.0), c.y), vec3(0.0), vec3(1.0));
+}
+
 #endif
 
 void main(void){
@@ -989,6 +1019,36 @@ void main(void){
         color = vec4(0.0);
         break;        
       }
+      case GUI_ELEMENT_COLOR_WHEEL:{
+        vec3 hsv = inColor.xyz;
+        p -= (size * 0.5);
+        vec2 size2 = vec2(min(size.x, size.y)) * (SQRT_0_DOT_5 * 0.95),
+             p2 = rotate(p, hsv.x * 6.28318531) + (size2 * 0.5);
+        float r = length(size2) * 0.5, 
+              r2 = r * SQRT_0_DOT_5,
+              pa = atan(p.y, p.x) / 6.28318531,
+              pad = fract((pa - fract(hsv.x + 0.495)) + 0.5) - 0.5; 
+        vec2 tv0 = (size2 * 0.5) + rotate(vec2(r2, 0.0), radians(0.0)),
+             tv1 = (size2 * 0.5) + rotate(vec2(r2, 0.0), radians(120.0)),             
+             tv2 = (size2 * 0.5) + rotate(vec2(r2, 0.0), radians(-120.0)),
+             tv = tv2 + ((tv1 - tv2) * hsv.z) + ((tv0 - tv1) * (hsv.y * hsv.z));
+        float d0 = max(length(p) - r, -(length(p) - (r * 0.75))),
+              d1 = sdTriangle(tv0, tv1, tv2, p2),
+              d2 = length(tv - p2),
+              d3 = max(d2 - (r * 0.08), -(d2 - (r * 0.04))),
+              d4 = d2 - (r * mix(0.04, 0.08, 0.5)),
+              d5 = d2 - (r * 0.07),
+              d6 = max(sdRoundedRect(p2 - vec2(size2.x * 1.118, size2.y * 0.5), vec2(r * 0.13725, r * 0.04), 1e-4), 
+                       -sdRoundedRect(p2 - vec2(size2.x * 1.118, size2.y * 0.5), vec2(r * 0.1, r * 0.01), 1e-4));
+        vec3 b = clamp(barycentricTriangle(tv0, tv1, tv2, p2), vec3(0.0), vec3(1.0));
+        color = blend(blend(blend(blend(blend(color,    
+                                              vec4(pow((hsv2rgb(vec3(hsv.x, 1.0, 1.0)) * b.x) + (vec3(1.0) * b.y) + (vec3(0.0) * b.z), vec3(2.2)), 1.0) * linearstep(t, -t, d1)),
+                                        vec4(pow(hsv2rgb(vec3(pa, 1.0, 1.0)), vec3(2.2)), 1.0) * linearstep(t, -t, d0)),
+                                  vec4(0.95) * linearstep(t, -t, d6)),
+                            vec4(pow(hsv2rgb(hsv), vec3(2.2)), 1.0) *  linearstep(t, -t, d5)),
+                       vec4(pow(vec3(mix(1.0 - b.z, b.z, linearstep(t, -t, d4))), vec3(2.2)), 1.0) * linearstep(t, -t, d3) * 0.5);
+        break;
+      }      
     } 
   }
 #endif
