@@ -2740,8 +2740,10 @@ type TpvGUIObject=class;
      TpvGUIColorWheel=class(TpvGUIWidget)
       private
        fHSV:TpvVector3;
+       fHSVProperty:TpvVector3Property;
        fDrawOffset:TpvVector2;
        fDrawSize:TpvVector2;
+       fMode:TpvInt32;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -2751,6 +2753,8 @@ type TpvGUIObject=class;
        procedure Check; override;
        procedure Update; override;
        procedure Draw; override;
+      published
+       property HSV:TpvVector3Property read fHSVProperty;
      end;
 
 implementation
@@ -20296,11 +20300,19 @@ begin
 
  fHSV:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
 
+ fHSVProperty:=TpvVector3Property.Create(@fHSV);
+
+ fMode:=0;
+
 end;
 
 destructor TpvGUIColorWheel.Destroy;
 begin
+
+ FreeAndNil(fHSVProperty);
+
  inherited Destroy;
+
 end;
 
 function TpvGUIColorWheel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -20353,16 +20365,16 @@ begin
       result:=true;
      end;
      KEYCODE_PAGEUP:begin
-      fHSV.x:=fHSV.x-0.01;
-      if fHSV.x<0.0 then begin
-       fHSV.x:=fHSV.x+1.0;
+      fHSV.x:=fHSV.x+0.01;
+      if fHSV.x>1.0 then begin
+       fHSV.x:=fHSV.x-1.0;
       end;
       result:=true;
      end;
      KEYCODE_PAGEDOWN:begin
-      fHSV.x:=fHSV.x+0.01;
-      if fHSV.x>1.0 then begin
-       fHSV.x:=fHSV.x-1.0;
+      fHSV.x:=fHSV.x-0.01;
+      if fHSV.x<0.0 then begin
+       fHSV.x:=fHSV.x+1.0;
       end;
       result:=true;
      end;
@@ -20374,6 +20386,66 @@ end;
 
 function TpvGUIColorWheel.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
 var Index:TpvInt32;
+ function Rotate(const aPoint:TpvVector2;const aAngle:TpvScalar):TpvVector2;
+ var s,c:TpvScalar;
+ begin
+  s:=0.0;
+  c:=0.0;
+  SinCos(aAngle,s,c);
+  result:=TpvMatrix2x2.Create(c,-s,s,c)*aPoint;
+ end;
+ function Process(const aPoint:TpvVector2;const aDoHandle:boolean;const aMode:TpvInt32;var aOutMode:TpvInt32):boolean;
+ var p,p2,p3,p4,LocalSize:TpvVector2;
+     Radius,Radius2,d,s,t:TpvScalar;
+     bc:TpvVector3;
+     Triangle:TpvTriangle;
+ begin
+  result:=false;
+  aOutMode:=0;
+  p:=aPoint-(fDrawOffset+(fDrawSize*0.5));
+  LocalSize:=fDrawSize*(SQRT_0_DOT_5*0.95);
+  Radius:=LocalSize.Length*0.5;
+  if (aMode=1) or ((aMode=0) and ((p.Length<=Radius) and (p.Length>=(Radius*0.75)))) then begin
+   if aDoHandle then begin
+    aOutMode:=1;
+    fHSV.x:=arctan2(p.y,p.x)/TwoPI;
+    if fHSV.x<0.0 then begin
+     fHSV.x:=fHSV.x+1.0;
+    end;
+    if fHSV.x>1.0 then begin
+     fHSV.x:=fHSV.x-1.0;
+    end;
+   end;
+   result:=true;
+   exit;
+  end;
+  begin
+   Radius2:=Radius*SQRT_0_DOT_5;
+   p2:=Rotate(p,fHSV.x*TwoPI)+(LocalSize*0.5);
+   p3:=TpvVector2.InlineableCreate(Radius2,0.0);
+   p4:=LocalSize*0.5;
+   Triangle.Points[0]:=TpvVector3.InlineableCreate(p4+Rotate(p3,0.0*DEG2RAD),0.0);
+   Triangle.Points[1]:=TpvVector3.InlineableCreate(p4+Rotate(p3,120.0*DEG2RAD),0.0);
+   Triangle.Points[2]:=TpvVector3.InlineableCreate(p4+Rotate(p3,-120.0*DEG2RAD),0.0);
+   Triangle.Normal:=TpvVector3.InlineableCreate(0.0,0.0,1.0);
+   if (aMode=2) or ((aMode=0) and Triangle.Contains(TpvVector3.InlineableCreate(p2,0.0))) then begin
+    d:=Triangle.GetClosestPointTo(TpvVector3.InlineableCreate(p2,0.0),bc,s,t);
+    bc:=TpvVector3.InlineableCreate(1.0-(s+t),s,t);
+    if aDoHandle then begin
+     aOutMode:=2;
+     p4:=Clamp(TpvVector2.InlineableCreate(bc.x,1.0-bc.z),TpvVector2.Null,TpvVector2.InlineableCreate(1.0,1.0));
+     if p4.y>0.0 then begin
+      p4.x:=p4.x/p4.y;
+     end else begin
+      p4.x:=0.0;
+     end;
+     fHSV.yz:=p4;
+    end;
+    result:=true;
+    exit;
+   end;
+  end;
+ end;
 begin
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
  if not result then begin
@@ -20381,8 +20453,10 @@ begin
   if not result then begin
    case aPointerEvent.PointerEventType of
     TpvApplicationInputPointerEventType.Down:begin
+     fMode:=0;
      case aPointerEvent.Button of
       TpvApplicationInputPointerButton.Left:begin
+       Process(aPointerEvent.Position,true,0,fMode);
        RequestFocus;
       end;
       TpvApplicationInputPointerButton.Middle:begin
@@ -20400,6 +20474,7 @@ begin
 {      if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
         fOnClick(self);
        end;}
+       fMode:=0;
        RequestFocus;
       end;
       TpvApplicationInputPointerButton.Middle:begin
@@ -20414,9 +20489,11 @@ begin
      end;
     end;
     TpvApplicationInputPointerEventType.Motion:begin
-     if TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons then begin
+     if Process(aPointerEvent.Position,Focused and (TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons),fMode,fMode) then begin
+      fCursor:=TpvGUICursor.Cross;
+     end else begin
+      fCursor:=TpvGUICursor.Arrow;
      end;
-     fCursor:=TpvGUICursor.Cross;
      result:=true;
     end;
    end;
@@ -20428,7 +20505,8 @@ function TpvGUIColorWheel.Scrolled(const aPosition,aRelativeAmount:TpvVector2):b
 begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
-  result:=inherited Scrolled(aPosition,aRelativeAmount);
+  fHSV.x:=frac(frac((fHSV.x+((aRelativeAmount.x+aRelativeAmount.y)*0.01))+1.0)+1.0);
+  result:=true;
  end;
 end;
 

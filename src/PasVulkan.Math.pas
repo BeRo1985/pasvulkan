@@ -110,6 +110,8 @@ const EPSILON={$ifdef UseDouble}1e-14{$else}1e-5{$endif}; // actually {$ifdef Us
 
       TwoPI=PI*2.0;
 
+      SQRT_0_DOT_5=0.70710678118;
+
       SupraEngineFPUPrecisionMode:TFPUPrecisionMode={$ifdef cpu386}pmExtended{$else}{$ifdef cpux64}pmExtended{$else}pmDouble{$endif}{$endif};
 
       SupraEngineFPUExceptionMask:TFPUExceptionMask=[exInvalidOp,exDenormalized,exZeroDivide,exOverflow,exUnderflow,exPrecision];
@@ -938,7 +940,8 @@ type PpvScalar=^TpvScalar;
        function SegmentIntersect(const Segment:TpvSegment;out Time:TpvScalar;out IntersectionPoint:TpvVector3):boolean;
        function ClosestPointTo(const Point:TpvVector3;out ClosestPoint:TpvVector3):boolean; overload;
        function ClosestPointTo(const Segment:TpvSegment;out Time:TpvScalar;out pClosestPointOnSegment,pClosestPointOnTriangle:TpvVector3):boolean; overload;
-       function GetClosestPointTo(const pPoint:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar;
+       function GetClosestPointTo(const pPoint:TpvVector3;out ClosestPoint:TpvVector3;out s,t:TpvScalar):TpvScalar; overload;
+       function GetClosestPointTo(const pPoint:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar; overload;
        function DistanceTo(const Point:TpvVector3):TpvScalar;
        function SquaredDistanceTo(const Point:TpvVector3):TpvScalar;
        function RayIntersection(const RayOrigin,RayDirection:TpvVector3;var Time,u,v:TpvScalar):boolean;
@@ -11803,9 +11806,9 @@ begin
 
 end;
 
-function TpvTriangle.GetClosestPointTo(const pPoint:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar;
+function TpvTriangle.GetClosestPointTo(const pPoint:TpvVector3;out ClosestPoint:TpvVector3;out s,t:TpvScalar):TpvScalar;
 var Diff,Edge0,Edge1:TpvVector3;
-    A00,A01,A11,B0,C,Det,B1,s,t,SquaredDistance,InvDet,Tmp0,Tmp1,Numer,Denom:TpvScalar;
+    A00,A01,A11,B0,C,Det,B1,SquaredDistance,InvDet,Tmp0,Tmp1,Numer,Denom:TpvScalar;
 begin
  Diff:=Points[0]-pPoint;
  Edge0:=Points[1]-Points[0];
@@ -11957,6 +11960,12 @@ begin
  ClosestPoint.y:=Points[0].y+((Edge0.y*s)+(Edge1.y*t));
  ClosestPoint.z:=Points[0].z+((Edge0.z*s)+(Edge1.z*t));
  result:=abs(SquaredDistance);
+end;
+
+function TpvTriangle.GetClosestPointTo(const pPoint:TpvVector3;out ClosestPoint:TpvVector3):TpvScalar;
+var s,t:TpvScalar;
+begin
+ result:=GetClosestPointTo(pPoint,ClosestPoint,s,t);
 end;
 
 function TpvTriangle.DistanceTo(const Point:TpvVector3):TpvScalar;
