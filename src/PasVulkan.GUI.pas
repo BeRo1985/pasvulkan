@@ -2804,6 +2804,8 @@ type TpvGUIObject=class;
        fFloatEditS:TpvGUIFloatEdit;
        fLabelV:TpvGUILabel;
        fFloatEditV:TpvGUIFloatEdit;
+       fLabelHeximal:TpvGUILabel;
+       fTextEditHeximal:TpvGUITextEdit;
        fRGBAEditFieldsPanel:TpvGUIPanel;
        fLabelR:TpvGUILabel;
        fFloatEditR:TpvGUIFloatEdit;
@@ -2819,6 +2821,7 @@ type TpvGUIObject=class;
        procedure FloatEditHOnChange(const aSender:TpvGUIObject);
        procedure FloatEditSOnChange(const aSender:TpvGUIObject);
        procedure FloatEditVOnChange(const aSender:TpvGUIObject);
+       procedure TextEditHeximalOnChange(const aSender:TpvGUIObject);
        procedure FloatEditROnChange(const aSender:TpvGUIObject);
        procedure FloatEditGOnChange(const aSender:TpvGUIObject);
        procedure FloatEditBOnChange(const aSender:TpvGUIObject);
@@ -20874,6 +20877,18 @@ begin
 
   end;
 
+  begin
+
+   fLabelHeximal:=TpvGUILabel.Create(fHSVEditFieldsPanel);
+   fLabelHeximal.Caption:='Heximal';
+   fLabelHeximal.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+   fTextEditHeximal:=TpvGUITextEdit.Create(fHSVEditFieldsPanel);
+   fTextEditHeximal.FixedHeight:=32.0;
+   fTextEditHeximal.OnChange:=TextEditHeximalOnChange;
+
+  end;
+
  end;
 
  begin
@@ -20969,6 +20984,13 @@ begin
  if not fFloatEditV.Focused then begin
   fFloatEditV.Value:=fHSV.z;
  end;
+ if not fTextEditHeximal.Focused then begin
+  fTextEditHeximal.Text:=UTF8String('#'+
+                                    LowerCase(IntToHex(Round(Clamp(fRGBA.x,0.0,1.0)*255.0),2)+
+                                              IntToHex(Round(Clamp(fRGBA.y,0.0,1.0)*255.0),2)+
+                                              IntToHex(Round(Clamp(fRGBA.z,0.0,1.0)*255.0),2)+
+                                              IntToHex(Round(Clamp(fRGBA.w,0.0,1.0)*255.0),2)));
+ end;
  if not fFloatEditR.Focused then begin
   fFloatEditR.Value:=fRGBA.x;
  end;
@@ -21025,6 +21047,32 @@ procedure TpvGUIColorPicker.FloatEditVOnChange(const aSender:TpvGUIObject);
 begin
  if fHSVProperty.z<>fFloatEditV.Value then begin
   fHSVProperty.z:=fFloatEditV.Value;
+ end;
+end;
+
+procedure TpvGUIColorPicker.TextEditHeximalOnChange(const aSender:TpvGUIObject);
+var Temp:TpvVector4;
+    s:string;
+begin
+ s:=Trim(string(fTextEditHeximal.Text));
+ if (length(s)>1) and (s[1] in ['#','$']) then begin
+  Delete(s,1,1);
+ end;
+ Temp.x:=StrToIntDef('$'+copy(s,1,2),0)/255.0;
+ Temp.y:=StrToIntDef('$'+copy(s,3,2),0)/255.0;
+ Temp.z:=StrToIntDef('$'+copy(s,5,2),0)/255.0;
+ Temp.w:=StrToIntDef('$'+copy(s,7,2),0)/255.0;
+ if fRGBAProperty.x<>Temp.x then begin
+  fRGBAProperty.x:=Temp.x;
+ end;
+ if fRGBAProperty.y<>Temp.y then begin
+  fRGBAProperty.y:=Temp.y;
+ end;
+ if fRGBAProperty.z<>Temp.z then begin
+  fRGBAProperty.z:=Temp.z;
+ end;
+ if fRGBAProperty.w<>Temp.w then begin
+  fRGBAProperty.w:=Temp.w;
  end;
 end;
 
