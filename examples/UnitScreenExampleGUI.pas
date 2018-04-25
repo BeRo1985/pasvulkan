@@ -1484,7 +1484,7 @@ begin
 
  inherited Create(aParent);
 
- Left:=650;
+ Left:=600;
  Top:=300;
  Title:='Window with ColorPicker';
  Content.Layout:=TpvGUIFillLayout.Create(Content,4.0);

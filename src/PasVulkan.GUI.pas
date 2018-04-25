@@ -2797,7 +2797,7 @@ type TpvGUIObject=class;
        fColorWheel:TpvGUIColorWheel;
        fColorPanel:TpvGUIColorPanel;
        fAlphaSlider:TpvGUISlider;
-       fEditFieldsPanel:TpvGUIPanel;
+       fHSVEditFieldsPanel:TpvGUIPanel;
        fLabelH:TpvGUILabel;
        fFloatEditH:TpvGUIFloatEdit;
        fLabelS:TpvGUILabel;
@@ -2815,6 +2815,13 @@ type TpvGUIObject=class;
        procedure UpdateEditFields;
        procedure ColorWheelOnChange(const aSender:TpvGUIObject);
        procedure AlphaSliderOnChange(const aSender:TpvGUIObject);
+       procedure FloatEditHOnChange(const aSender:TpvGUIObject);
+       procedure FloatEditSOnChange(const aSender:TpvGUIObject);
+       procedure FloatEditVOnChange(const aSender:TpvGUIObject);
+       procedure FloatEditROnChange(const aSender:TpvGUIObject);
+       procedure FloatEditGOnChange(const aSender:TpvGUIObject);
+       procedure FloatEditBOnChange(const aSender:TpvGUIObject);
+       procedure FloatEditAOnChange(const aSender:TpvGUIObject);
        procedure HSVPropertyOnChange(const aSender:TObject);
        procedure RGBAPropertyOnChange(const aSender:TObject);
       public
@@ -20811,58 +20818,60 @@ begin
  fAlphaSlider.OnChange:=AlphaSliderOnChange;
  fAdvancedGridLayout.Anchors[fAlphaSlider]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,0,1,2,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
 
- fEditFieldsPanel:=TpvGUIPanel.Create(self);
- fEditFieldsPanel.Background:=true;
- fEditFieldsPanel.Layout:=TpvGUIGroupLayout.Create(fEditFieldsPanel,8.0,6.0,10.0,0.0);
- fAdvancedGridLayout.Anchors[fEditFieldsPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(2,0,1,2,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+ fHSVEditFieldsPanel:=TpvGUIPanel.Create(self);
+ fHSVEditFieldsPanel.Background:=true;
+ fHSVEditFieldsPanel.Layout:=TpvGUIGroupLayout.Create(fHSVEditFieldsPanel,8.0,6.0,10.0,0.0);
+ fAdvancedGridLayout.Anchors[fHSVEditFieldsPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(2,0,1,2,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
 
  begin
 
-  fLabelH:=TpvGUILabel.Create(fEditFieldsPanel);
+  fLabelH:=TpvGUILabel.Create(fHSVEditFieldsPanel);
   fLabelH.Caption:='Hue';
   fLabelH.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
 
-  fFloatEditH:=TpvGUIFloatEdit.Create(fEditFieldsPanel);
+  fFloatEditH:=TpvGUIFloatEdit.Create(fHSVEditFieldsPanel);
   fFloatEditH.FixedHeight:=32.0;
   fFloatEditH.MinimumValue:=0.0;
   fFloatEditH.MaximumValue:=1.0;
   fFloatEditH.SmallStep:=1.0/256.0;
   fFloatEditH.LargeStep:=1.0/16.0;
-  fFloatEditH.Value:=fHSV.x;
+  fFloatEditH.OnChange:=FloatEditHOnChange;
 
  end;
 
  begin
 
-  fLabelS:=TpvGUILabel.Create(fEditFieldsPanel);
+  fLabelS:=TpvGUILabel.Create(fHSVEditFieldsPanel);
   fLabelS.Caption:='Saturation';
   fLabelS.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
 
-  fFloatEditS:=TpvGUIFloatEdit.Create(fEditFieldsPanel);
+  fFloatEditS:=TpvGUIFloatEdit.Create(fHSVEditFieldsPanel);
   fFloatEditS.FixedHeight:=32.0;
   fFloatEditS.MinimumValue:=0.0;
   fFloatEditS.MaximumValue:=1.0;
   fFloatEditS.SmallStep:=1.0/256.0;
   fFloatEditS.LargeStep:=1.0/16.0;
-  fFloatEditS.Value:=fHSV.y;
+  fFloatEditS.OnChange:=FloatEditSOnChange;
 
  end;
 
  begin
 
-  fLabelV:=TpvGUILabel.Create(fEditFieldsPanel);
+  fLabelV:=TpvGUILabel.Create(fHSVEditFieldsPanel);
   fLabelV.Caption:='Value';
   fLabelV.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
 
-  fFloatEditV:=TpvGUIFloatEdit.Create(fEditFieldsPanel);
+  fFloatEditV:=TpvGUIFloatEdit.Create(fHSVEditFieldsPanel);
   fFloatEditV.FixedHeight:=32.0;
   fFloatEditV.MinimumValue:=0.0;
   fFloatEditV.MaximumValue:=1.0;
   fFloatEditV.SmallStep:=1.0/256.0;
   fFloatEditV.LargeStep:=1.0/16.0;
-  fFloatEditV.Value:=fHSV.z;
+  fFloatEditV.OnChange:=FloatEditVOnChange;
 
  end;
+
+ UpdateEditFields;
 
 end;
 
@@ -20873,9 +20882,15 @@ end;
 
 procedure TpvGUIColorPicker.UpdateEditFields;
 begin
- fFloatEditH.Value:=fHSV.x;
- fFloatEditS.Value:=fHSV.y;
- fFloatEditV.Value:=fHSV.z;
+ if not fFloatEditH.Focused then begin
+  fFloatEditH.Value:=fHSV.x;
+ end;
+ if not fFloatEditS.Focused then begin
+  fFloatEditS.Value:=fHSV.y;
+ end;
+ if not fFloatEditV.Focused then begin
+  fFloatEditV.Value:=fHSV.z;
+ end;
 end;
 
 procedure TpvGUIColorPicker.ColorWheelOnChange(const aSender:TpvGUIObject);
@@ -20899,6 +20914,55 @@ begin
  UpdateEditFields;
  if assigned(fOnChange) then begin
   fOnChange(self);
+ end;
+end;
+
+procedure TpvGUIColorPicker.FloatEditHOnChange(const aSender:TpvGUIObject);
+begin
+ if fHSVProperty.x<>fFloatEditH.Value then begin
+  fHSVProperty.x:=fFloatEditH.Value;
+ end;
+end;
+
+procedure TpvGUIColorPicker.FloatEditSOnChange(const aSender:TpvGUIObject);
+begin
+ if fHSVProperty.y<>fFloatEditS.Value then begin
+  fHSVProperty.y:=fFloatEditS.Value;
+ end;
+end;
+
+procedure TpvGUIColorPicker.FloatEditVOnChange(const aSender:TpvGUIObject);
+begin
+ if fHSVProperty.z<>fFloatEditV.Value then begin
+  fHSVProperty.z:=fFloatEditV.Value;
+ end;
+end;
+
+procedure TpvGUIColorPicker.FloatEditROnChange(const aSender:TpvGUIObject);
+begin
+ if fRGBAProperty.x<>fFloatEditR.Value then begin
+  fRGBAProperty.x:=fFloatEditR.Value;
+ end;
+end;
+
+procedure TpvGUIColorPicker.FloatEditGOnChange(const aSender:TpvGUIObject);
+begin
+ if fRGBAProperty.y<>fFloatEditG.Value then begin
+  fRGBAProperty.y:=fFloatEditG.Value;
+ end;
+end;
+
+procedure TpvGUIColorPicker.FloatEditBOnChange(const aSender:TpvGUIObject);
+begin
+ if fRGBAProperty.z<>fFloatEditB.Value then begin
+  fRGBAProperty.z:=fFloatEditB.Value;
+ end;
+end;
+
+procedure TpvGUIColorPicker.FloatEditAOnChange(const aSender:TpvGUIObject);
+begin
+ if fRGBAProperty.w<>fFloatEditA.Value then begin
+  fRGBAProperty.w:=fFloatEditA.Value;
  end;
 end;
 
