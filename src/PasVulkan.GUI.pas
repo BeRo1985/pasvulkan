@@ -2767,14 +2767,16 @@ type TpvGUIObject=class;
      end;
 
      TpvGUIColorPicker=class(TpvGUIWidget)
-{     private
+      private
        fHSV:TpvVector3;
        fHSVProperty:TpvVector3Property;
-       fRGB:TpvVector3;
-       fRGBProperty:TpvVector3Property;
+       fRGBA:TpvVector4;
+       fRGBAProperty:TpvVector4Property;
        fOnChange:TpvGUIOnEvent;
+       fColorWheel:TpvGUIColorWheel;
+       procedure ColorWheelOnChange(const aSender:TpvGUIObject);
        procedure HSVPropertyOnChange(const aSender:TObject);
-       procedure RGBPropertyOnChange(const aSender:TObject);
+       procedure RGBAPropertyOnChange(const aSender:TObject);
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -2783,7 +2785,8 @@ type TpvGUIObject=class;
        procedure Draw; override;
       published
        property HSV:TpvVector3Property read fHSVProperty;
-       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;          }
+       property RGBA:TpvVector4Property read fRGBAProperty;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
 
 implementation
@@ -20631,6 +20634,72 @@ end;
 procedure TpvGUIColorWheel.Draw;
 begin
  Skin.DrawColorWheel(Instance.DrawEngine,self);
+ inherited Draw;
+end;
+
+constructor TpvGUIColorPicker.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ fLayout:=TpvGUIFillLayout.Create(self,0.0);
+
+ fHSV:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
+
+ fRGBA:=TpvVector4.InlineableCreate(ConvertHSVToRGB(fHSV),1.0);
+
+ fHSVProperty:=TpvVector3Property.Create(@fHSV);
+ fHSVProperty.OnChange:=HSVPropertyOnChange;
+
+ fRGBAProperty:=TpvVector4Property.Create(@fRGBA);
+ fRGBAProperty.OnChange:=RGBAPropertyOnChange;
+
+ fOnChange:=nil;
+
+ fColorWheel:=TpvGUIColorWheel.Create(self);
+ fColorWheel.fHSV:=fHSV;
+ fColorWheel.fRGB:=fRGBA.xyz;
+ fColorWheel.fOnChange:=ColorWheelOnChange;
+
+end;
+
+destructor TpvGUIColorPicker.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvGUIColorPicker.ColorWheelOnChange(const aSender:TpvGUIObject);
+begin
+ fHSV:=fColorWheel.fHSV;
+ fRGBA.xyz:=fColorWheel.fRGB;
+end;
+
+procedure TpvGUIColorPicker.HSVPropertyOnChange(const aSender:TObject);
+begin
+ fRGBA.xyz:=ConvertHSVToRGB(fHSV);
+ fColorWheel.fHSV:=fHSV;
+ fColorWheel.fRGB:=fRGBA.xyz;
+end;
+
+procedure TpvGUIColorPicker.RGBAPropertyOnChange(const aSender:TObject);
+begin
+ fHSV.xyz:=ConvertRGBToHSV(fRGBA.xyz);
+ fColorWheel.fHSV:=fHSV;
+ fColorWheel.fRGB:=fRGBA.xyz;
+end;
+
+procedure TpvGUIColorPicker.Check;
+begin
+ inherited Check;
+end;
+
+procedure TpvGUIColorPicker.Update;
+begin
+ inherited Update;
+end;
+
+procedure TpvGUIColorPicker.Draw;
+begin
  inherited Draw;
 end;
 

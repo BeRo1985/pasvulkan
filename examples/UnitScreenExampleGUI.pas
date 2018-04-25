@@ -273,7 +273,7 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
      TScreenExampleGUIColorPicker=class(TpvGUIWindow)
       private
        fScrollPanel:TpvGUIScrollPanel;
-       fColorWheel:TpvGUIColorWheel;
+       fColorPicker:TpvGUIColorPicker;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -1502,7 +1502,7 @@ begin
  fScrollPanel.Content.Layout:=TpvGUIBoxLayout.Create(fScrollPanel.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,4.0);
 }
 
- fColorWheel:=TpvGUIColorWheel.Create({fScrollPanel.}Content);
+ fColorPicker:=TpvGUIColorPicker.Create({fScrollPanel.}Content);
 {fColorWheel.FixedWidth:=640;
  fColorWheel.FixedHeight:=480;}
 
