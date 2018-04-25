@@ -134,6 +134,8 @@ type TpvGUIObject=class;
 
      TpvGUIColorWheel=class;
 
+     TpvGUIColorPicker=class;
+
      EpvGUIWidget=class(Exception);
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
@@ -2741,11 +2743,14 @@ type TpvGUIObject=class;
       private
        fHSV:TpvVector3;
        fHSVProperty:TpvVector3Property;
+       fRGB:TpvVector3;
+       fRGBProperty:TpvVector3Property;
        fDrawOffset:TpvVector2;
        fDrawSize:TpvVector2;
        fMode:TpvInt32;
        fOnChange:TpvGUIOnEvent;
        procedure HSVPropertyOnChange(const aSender:TObject);
+       procedure RGBPropertyOnChange(const aSender:TObject);
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -2757,7 +2762,28 @@ type TpvGUIObject=class;
        procedure Draw; override;
       published
        property HSV:TpvVector3Property read fHSVProperty;
+       property RGB:TpvVector3Property read fRGBProperty;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
+     end;
+
+     TpvGUIColorPicker=class(TpvGUIWidget)
+{     private
+       fHSV:TpvVector3;
+       fHSVProperty:TpvVector3Property;
+       fRGB:TpvVector3;
+       fRGBProperty:TpvVector3Property;
+       fOnChange:TpvGUIOnEvent;
+       procedure HSVPropertyOnChange(const aSender:TObject);
+       procedure RGBPropertyOnChange(const aSender:TObject);
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure Check; override;
+       procedure Update; override;
+       procedure Draw; override;
+      published
+       property HSV:TpvVector3Property read fHSVProperty;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;          }
      end;
 
 implementation
@@ -10015,6 +10041,11 @@ begin
  end;
 
  aDrawEngine.Transparent:=true;
+
+{// for debug
+ aDrawEngine.Color:=TpvVector4.InlineableCreate(Clamp(ConvertSRGBToLinear(aColorWheel.fRGB),TpvVector3.InlineableCreate(0.0,0.0,0.0),TpvVector3.InlineableCreate(1.0,1.0,1.0)),1.0);
+
+ aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(aColorWheel.fDrawOffset,aColorWheel.fDrawSize*0.125));}
 
  aDrawEngine.Color:=TpvVector4.InlineableCreate(Clamp(aColorWheel.fHSV,TpvVector3.InlineableCreate(0.0,0.0,0.0),TpvVector3.InlineableCreate(1.0,1.0,1.0)),aDrawEngine.Color.w);
 
@@ -20317,8 +20348,13 @@ begin
 
  fHSV:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
 
+ fRGB:=ConvertHSVToRGB(fHSV);
+
  fHSVProperty:=TpvVector3Property.Create(@fHSV);
  fHSVProperty.OnChange:=HSVPropertyOnChange;
+
+ fRGBProperty:=TpvVector3Property.Create(@fRGB);
+ fRGBProperty.OnChange:=RGBPropertyOnChange;
 
  fMode:=0;
 
@@ -20331,12 +20367,20 @@ begin
 
  FreeAndNil(fHSVProperty);
 
+ FreeAndNil(fRGBProperty);
+
  inherited Destroy;
 
 end;
 
 procedure TpvGUIColorWheel.HSVPropertyOnChange(const aSender:TObject);
 begin
+ fRGB:=ConvertHSVToRGB(fHSV);
+end;
+
+procedure TpvGUIColorWheel.RGBPropertyOnChange(const aSender:TObject);
+begin
+ fHSV:=ConvertHSVToRGB(fRGB);
 end;
 
 function TpvGUIColorWheel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -20368,6 +20412,7 @@ begin
     case aKeyEvent.KeyCode of
      KEYCODE_LEFT:begin
       fHSV.y:=Clamp(fHSV.y-0.01,0.0,1.0);
+      fRGB:=ConvertHSVToRGB(fHSV);
       if assigned(fOnChange) then begin
        fOnChange(self);
       end;
@@ -20375,6 +20420,7 @@ begin
      end;
      KEYCODE_RIGHT:begin
       fHSV.y:=Clamp(fHSV.y+0.01,0.0,1.0);
+      fRGB:=ConvertHSVToRGB(fHSV);
       if assigned(fOnChange) then begin
        fOnChange(self);
       end;
@@ -20382,6 +20428,7 @@ begin
      end;
      KEYCODE_UP:begin
       fHSV.z:=Clamp(fHSV.z+0.01,0.0,1.0);
+      fRGB:=ConvertHSVToRGB(fHSV);
       if assigned(fOnChange) then begin
        fOnChange(self);
       end;
@@ -20389,6 +20436,7 @@ begin
      end;
      KEYCODE_DOWN:begin
       fHSV.z:=Clamp(fHSV.z-0.01,0.0,1.0);
+      fRGB:=ConvertHSVToRGB(fHSV);
        if assigned(fOnChange) then begin
        fOnChange(self);
       end;
@@ -20405,6 +20453,7 @@ begin
       if fHSV.x>1.0 then begin
        fHSV.x:=fHSV.x-1.0;
       end;
+      fRGB:=ConvertHSVToRGB(fHSV);
       if assigned(fOnChange) then begin
        fOnChange(self);
       end;
@@ -20415,6 +20464,7 @@ begin
       if fHSV.x<0.0 then begin
        fHSV.x:=fHSV.x+1.0;
       end;
+      fRGB:=ConvertHSVToRGB(fHSV);
       if assigned(fOnChange) then begin
        fOnChange(self);
       end;
@@ -20457,6 +20507,7 @@ var Index:TpvInt32;
     if fHSV.x>1.0 then begin
      fHSV.x:=fHSV.x-1.0;
     end;
+    fRGB:=ConvertHSVToRGB(fHSV);
     if assigned(fOnChange) then begin
      fOnChange(self);
     end;
@@ -20485,6 +20536,7 @@ var Index:TpvInt32;
       p4.x:=0.0;
      end;
      fHSV.yz:=p4;
+     fRGB:=ConvertHSVToRGB(fHSV);
      if assigned(fOnChange) then begin
       fOnChange(self);
      end;
@@ -20554,6 +20606,7 @@ begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
   fHSV.x:=frac(frac((fHSV.x+((aRelativeAmount.x+aRelativeAmount.y)*0.01))+1.0)+1.0);
+  fRGB:=ConvertHSVToRGB(fHSV);
   if assigned(fOnChange) then begin
    fOnChange(self);
   end;

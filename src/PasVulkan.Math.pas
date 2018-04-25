@@ -1547,6 +1547,9 @@ function ConvertLinearToSRGB(const aColor:TpvVector4):TpvVector4; overload;
 function ConvertSRGBToLinear(const aColor:TpvVector3):TpvVector3; overload;
 function ConvertSRGBToLinear(const aColor:TpvVector4):TpvVector4; overload;
 
+function ConvertHSVToRGB(const aHSV:TpvVector3):TpvVector3;
+function ConvertRGBToHSV(const aRGB:TpvVector3):TpvVector3;
+
 implementation
 
 function RoundUpToPowerOfTwo(x:TpvUInt32):TpvUInt32;
@@ -16764,6 +16767,77 @@ begin
   fOnChange(self);
  end else begin
   fVector^:=aNewVector;
+ end;
+end;
+
+function ConvertHSVToRGB(const aHSV:TpvVector3):TpvVector3;
+var Angle,Sector,FracSector,h,s,v,p,q,t:TpvScalar;
+    IntSector:TpvInt32;
+begin
+ s:=aHSV.y;
+ if SameValue(s,0.0) then begin
+  result:=aHSV.zzz;
+ end else begin
+  h:=aHSV.x;
+  Angle:=frac(h)*360.0;
+  Sector:=Angle/60.0;
+  IntSector:=trunc(Sector);
+  FracSector:=frac(Sector);
+  v:=aHSV.z;
+  p:=v*(1.0-s);
+  q:=v*(1.0-(s*FracSector));
+  t:=v*(1.0-(s*(1.0-FracSector)));
+  case IntSector of
+   0:begin
+    result:=TpvVector3.InlineableCreate(v,t,p);
+   end;
+   1:begin
+    result:=TpvVector3.InlineableCreate(q,v,p);
+   end;
+   2:begin
+    result:=TpvVector3.InlineableCreate(p,v,t);
+   end;
+   3:begin
+    result:=TpvVector3.InlineableCreate(p,q,v);
+   end;
+   4:begin
+    result:=TpvVector3.InlineableCreate(t,p,v);
+   end;
+   else begin
+    result:=TpvVector3.InlineableCreate(v,p,q);
+   end;
+  end;
+ end;
+end;
+
+function ConvertRGBToHSV(const aRGB:TpvVector3):TpvVector3;
+var MinValue,MaxValue,Delta,h,s,v:TpvScalar;
+begin
+ MinValue:=Min(aRGB.x,Min(aRGB.y,aRGB.z));
+ MaxValue:=Max(aRGB.x,Max(aRGB.y,aRGB.z));
+ v:=MaxValue;
+ Delta:=MaxValue-MinValue;
+ if Delta<1e-5 then begin
+  result:=TpvVector3.InlineableCreate(0.0,0.0,v);
+ end else if MaxValue>0.0 then begin
+  s:=Delta/MaxValue;
+  if SameValue(aRGB.x,MaxValue) then begin
+   h:=(aRGB.y-aRGB.z)/Delta;
+  end else if SameValue(aRGB.y,MaxValue) then begin
+   h:=2.0+((aRGB.z-aRGB.x)/Delta);
+  end else begin
+   h:=4.0+((aRGB.x-aRGB.y)/Delta);
+  end;
+  h:=(h*60.0);
+  if h<0.0 then begin
+   h:=h+360.0;
+  end else if h>360.0 then begin
+   h:=h-360.0;
+  end;
+  h:=h/360.0;
+  result:=TpvVector3.InlineableCreate(h,s,v);
+ end else begin
+  result:=TpvVector3.InlineableCreate(-1.0,0.0,v);
  end;
 end;
 
