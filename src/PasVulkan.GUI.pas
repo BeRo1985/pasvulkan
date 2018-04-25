@@ -2797,6 +2797,7 @@ type TpvGUIObject=class;
        fColorWheel:TpvGUIColorWheel;
        fColorPanel:TpvGUIColorPanel;
        fAlphaSlider:TpvGUISlider;
+       fEditFieldsPanel:TpvGUIPanel;
        procedure ColorWheelOnChange(const aSender:TpvGUIObject);
        procedure AlphaSliderOnChange(const aSender:TpvGUIObject);
        procedure HSVPropertyOnChange(const aSender:TObject);
@@ -20792,7 +20793,11 @@ begin
  fAlphaSlider.fSmallStep:=256;
  fAlphaSlider.fLargeStep:=4096;
  fAlphaSlider.OnChange:=AlphaSliderOnChange;
- fAdvancedGridLayout.Anchors[fAlphaSlider]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,0,1,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+ fAdvancedGridLayout.Anchors[fAlphaSlider]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,0,1,2,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+
+ fEditFieldsPanel:=TpvGUIPanel.Create(self);
+ fEditFieldsPanel.Background:=true;
+ fAdvancedGridLayout.Anchors[fEditFieldsPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(2,0,1,2,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
 
 end;
 

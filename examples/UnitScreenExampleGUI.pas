@@ -1484,8 +1484,8 @@ begin
 
  inherited Create(aParent);
 
- Left:=500;
- Top:=100;
+ Left:=650;
+ Top:=300;
  Title:='Window with ColorPicker';
  Content.Layout:=TpvGUIFillLayout.Create(Content,4.0);
  AddMinimizationButton;
