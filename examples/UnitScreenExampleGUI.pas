@@ -1487,7 +1487,7 @@ begin
  Left:=500;
  Top:=100;
  Title:='Window with ColorPicker';
- Content.Layout:=TpvGUIFillLayout.Create(Content,0.0);
+ Content.Layout:=TpvGUIFillLayout.Create(Content,4.0);
  AddMinimizationButton;
  AddMaximizationButton;
  AddCloseButton;

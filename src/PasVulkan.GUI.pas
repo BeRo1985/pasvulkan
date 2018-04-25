@@ -118,6 +118,8 @@ type TpvGUIObject=class;
 
      TpvGUIPanel=class;
 
+     TpvGUIColorPanel=class;
+
      TpvGUITabPanel=class;
 
      TpvGUIListBox=class;
@@ -807,6 +809,9 @@ type TpvGUIObject=class;
        function GetPanelPreferredSize(const aPanel:TpvGUIPanel):TpvVector2; virtual;
        procedure DrawPanel(const aDrawEngine:TpvGUIDrawEngine;const aPanel:TpvGUIPanel); virtual;
       public
+       function GetColorPanelPreferredSize(const aColorPanel:TpvGUIColorPanel):TpvVector2; virtual;
+       procedure DrawColorPanel(const aDrawEngine:TpvGUIDrawEngine;const aColorPanel:TpvGUIColorPanel); virtual;
+      public
        function GetImagePreferredSize(const aImage:TpvGUIImage):TpvVector2; virtual;
        procedure DrawImage(const aDrawEngine:TpvGUIDrawEngine;const aImage:TpvGUIImage); virtual;
       public
@@ -966,6 +971,9 @@ type TpvGUIObject=class;
       public
        function GetPanelPreferredSize(const aPanel:TpvGUIPanel):TpvVector2; override;
        procedure DrawPanel(const aDrawEngine:TpvGUIDrawEngine;const aPanel:TpvGUIPanel); override;
+      public
+       function GetColorPanelPreferredSize(const aColorPanel:TpvGUIColorPanel):TpvVector2; override;
+       procedure DrawColorPanel(const aDrawEngine:TpvGUIDrawEngine;const aColorPanel:TpvGUIColorPanel); override;
       public
        function GetImagePreferredSize(const aImage:TpvGUIImage):TpvVector2; override;
        procedure DrawImage(const aDrawEngine:TpvGUIDrawEngine;const aImage:TpvGUIImage); override;
@@ -1579,6 +1587,18 @@ type TpvGUIObject=class;
        procedure Draw; override;
       published
        property Background:boolean read fBackground write fBackground;
+     end;
+
+     TpvGUIColorPanel=class(TpvGUIWidget)
+      private
+       fRGBA:TpvVector4;
+       fRGBAProperty:TpvVector4Property;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure Draw; override;
+      published
+       property RGBA:TpvVector4Property read fRGBAProperty;
      end;
 
      TpvGUIImage=class(TpvGUIWidget)
@@ -2773,8 +2793,12 @@ type TpvGUIObject=class;
        fRGBA:TpvVector4;
        fRGBAProperty:TpvVector4Property;
        fOnChange:TpvGUIOnEvent;
+       fAdvancedGridLayout:TpvGUIAdvancedGridLayout;
        fColorWheel:TpvGUIColorWheel;
+       fColorPanel:TpvGUIColorPanel;
+       fAlphaSlider:TpvGUISlider;
        procedure ColorWheelOnChange(const aSender:TpvGUIObject);
+       procedure AlphaSliderOnChange(const aSender:TpvGUIObject);
        procedure HSVPropertyOnChange(const aSender:TObject);
        procedure RGBAPropertyOnChange(const aSender:TObject);
       public
@@ -5795,6 +5819,15 @@ procedure TpvGUISkin.DrawPanel(const aDrawEngine:TpvGUIDrawEngine;const aPanel:T
 begin
 end;
 
+function TpvGUISkin.GetColorPanelPreferredSize(const aColorPanel:TpvGUIColorPanel):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aColorPanel);
+end;
+
+procedure TpvGUISkin.DrawColorPanel(const aDrawEngine:TpvGUIDrawEngine;const aColorPanel:TpvGUIColorPanel);
+begin
+end;
+
 function TpvGUISkin.GetImagePreferredSize(const aImage:TpvGUIImage):TpvVector2;
 begin
  result:=GetWidgetPreferredSize(aImage);
@@ -7218,6 +7251,65 @@ begin
                                                 0.0,
                                                 TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
                                                 true);
+
+ aDrawEngine.Next;
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.GetColorPanelPreferredSize(const aColorPanel:TpvGUIColorPanel):TpvVector2;
+begin
+ result:=TpvVector2.InlineableCreate(1.0,1.0);
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawColorPanel(const aDrawEngine:TpvGUIDrawEngine;const aColorPanel:TpvGUIColorPanel);
+var Element:TpvInt32;
+begin
+
+ aDrawEngine.ModelMatrix:=aColorPanel.fModelMatrix;
+
+ aDrawEngine.ClipRect:=aColorPanel.fClipRect;
+
+ if aColorPanel.Enabled then begin
+  Element:=GUI_ELEMENT_PANEL_ENABLED;
+ end else begin
+  Element:=GUI_ELEMENT_PANEL_DISABLED;
+ end;
+
+ aDrawEngine.Transparent:=false;
+
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                TpvVector2.Null,
+                                                aColorPanel.fSize,
+                                                TpvVector2.Null,
+                                                aColorPanel.fSize,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
+
+ aDrawEngine.Transparent:=true;
+
+ aDrawEngine.Color:=TpvVector4.InlineableCreate(0.125,0.125,0.125,1.0);
+
+ aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(TpvVector2.Create(4.0,4.0),aColorPanel.fSize-TpvVector2.Create(4.0,4.0)));
+
+ aDrawEngine.Color:=TpvVector4.InlineableCreate(0.0625,0.0625,0.0625,1.0);
+
+ aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(TpvVector2.Create(4.0,4.0),
+                                                        (aColorPanel.fSize*TpvVector2.Create(0.25,0.5))-TpvVector2.Create(0.0,0.0)));
+
+ aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(TpvVector2.Create(aColorPanel.fSize.x*0.5,4.0),
+                                                        (aColorPanel.fSize*TpvVector2.Create(0.75,0.5))-TpvVector2.Create(0.0,0.0)));
+
+ aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(TpvVector2.Create(aColorPanel.fSize.x*0.25,aColorPanel.fSize.y*0.5),
+                                                        (aColorPanel.fSize*TpvVector2.Create(0.5,1.0))-TpvVector2.Create(0.0,4.0)));
+
+ aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(TpvVector2.Create(aColorPanel.fSize.x*0.75,aColorPanel.fSize.y*0.5),
+                                                        (aColorPanel.fSize*TpvVector2.Create(1.0,1.0))-TpvVector2.Create(4.0,4.0)));
+
+ aDrawEngine.Color:=Clamp(ConvertSRGBToLinear(aColorPanel.fRGBA),TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0),TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0));
+
+ aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(TpvVector2.Create(4.0,4.0),aColorPanel.fSize-TpvVector2.Create(4.0,4.0)));
 
  aDrawEngine.Next;
 
@@ -13072,6 +13164,25 @@ begin
  if fBackground then begin
   Skin.DrawPanel(fInstance.DrawEngine,self);
  end;
+ inherited Draw;
+end;
+
+constructor TpvGUIColorPanel.Create(const aParent:TpvGUIObject);
+begin
+ inherited Create(aParent);
+ fRGBA:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
+ fRGBAProperty:=TpvVector4Property.Create(@fRGBA);
+end;
+
+destructor TpvGUIColorPanel.Destroy;
+begin
+ FreeAndnil(fRGBAProperty);
+ inherited Destroy;
+end;
+
+procedure TpvGUIColorPanel.Draw;
+begin
+ Skin.DrawColorPanel(fInstance.DrawEngine,self);
  inherited Draw;
 end;
 
@@ -20642,8 +20753,6 @@ begin
 
  inherited Create(aParent);
 
- fLayout:=TpvGUIFillLayout.Create(self,0.0);
-
  fHSV:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
 
  fRGBA:=TpvVector4.InlineableCreate(ConvertHSVToRGB(fHSV),1.0);
@@ -20656,10 +20765,34 @@ begin
 
  fOnChange:=nil;
 
+ fAdvancedGridLayout:=TpvGUIAdvancedGridLayout.Create(Window.Content,0.0);
+ Layout:=fAdvancedGridLayout;
+ fAdvancedGridLayout.Rows.Add(216.0,0.0);
+ fAdvancedGridLayout.Rows.Add(40.0,0.0);
+ fAdvancedGridLayout.Rows.Add(40.0,0.0);
+ fAdvancedGridLayout.Columns.Add(216.0,0.0);
+ fAdvancedGridLayout.Columns.Add(32.0,0.0);
+ fAdvancedGridLayout.Columns.Add(400.0,1.0);
+
  fColorWheel:=TpvGUIColorWheel.Create(self);
  fColorWheel.fHSV:=fHSV;
  fColorWheel.fRGB:=fRGBA.xyz;
  fColorWheel.fOnChange:=ColorWheelOnChange;
+ fAdvancedGridLayout.Anchors[fColorWheel]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,0,1,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+
+ fColorPanel:=TpvGUIColorPanel.Create(self);
+ fColorPanel.fRGBA:=fRGBA;
+ fAdvancedGridLayout.Anchors[fColorPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,1,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+
+ fAlphaSlider:=TpvGUISlider.Create(self);
+ fAlphaSlider.fOrientation:=TpvGUISliderOrientation.Vertical;
+ fAlphaSlider.fMinimumValue:=0;
+ fAlphaSlider.fMaximumValue:=65536;
+ fAlphaSlider.fValue:=round((1.0-Clamp(fRGBA.w,0.0,1.0))*65536);
+ fAlphaSlider.fSmallStep:=256;
+ fAlphaSlider.fLargeStep:=4096;
+ fAlphaSlider.OnChange:=AlphaSliderOnChange;
+ fAdvancedGridLayout.Anchors[fAlphaSlider]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,0,1,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
 
 end;
 
@@ -20672,6 +20805,16 @@ procedure TpvGUIColorPicker.ColorWheelOnChange(const aSender:TpvGUIObject);
 begin
  fHSV:=fColorWheel.fHSV;
  fRGBA.xyz:=fColorWheel.fRGB;
+ fColorPanel.fRGBA:=fRGBA;
+ fAlphaSlider.fValue:=round((1.0-Clamp(fRGBA.w,0.0,1.0))*65536);
+end;
+
+procedure TpvGUIColorPicker.AlphaSliderOnChange(const aSender:TpvGUIObject);
+begin
+ fRGBA.w:=1.0-(fAlphaSlider.fValue/65536.0);
+ fHSV.xyz:=ConvertRGBToHSV(fRGBA.xyz);
+ fColorWheel.fHSV:=fHSV;
+ fColorPanel.fRGBA:=fRGBA;
 end;
 
 procedure TpvGUIColorPicker.HSVPropertyOnChange(const aSender:TObject);
@@ -20679,6 +20822,8 @@ begin
  fRGBA.xyz:=ConvertHSVToRGB(fHSV);
  fColorWheel.fHSV:=fHSV;
  fColorWheel.fRGB:=fRGBA.xyz;
+ fColorPanel.fRGBA:=fRGBA;
+ fAlphaSlider.fValue:=round((1.0-Clamp(fRGBA.w,0.0,1.0))*65536);
 end;
 
 procedure TpvGUIColorPicker.RGBAPropertyOnChange(const aSender:TObject);
@@ -20686,6 +20831,8 @@ begin
  fHSV.xyz:=ConvertRGBToHSV(fRGBA.xyz);
  fColorWheel.fHSV:=fHSV;
  fColorWheel.fRGB:=fRGBA.xyz;
+ fColorPanel.fRGBA:=fRGBA;
+ fAlphaSlider.fValue:=round((1.0-Clamp(fRGBA.w,0.0,1.0))*65536);
 end;
 
 procedure TpvGUIColorPicker.Check;
