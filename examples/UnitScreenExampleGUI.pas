@@ -1492,7 +1492,7 @@ begin
  AddMaximizationButton;
  AddCloseButton;
 
- AutoSize:=false;
+ AutoSize:=true;
 
  Width:=550;
  Height:=350;

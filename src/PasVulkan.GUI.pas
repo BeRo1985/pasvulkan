@@ -20769,10 +20769,10 @@ begin
  Layout:=fAdvancedGridLayout;
  fAdvancedGridLayout.Rows.Add(216.0,0.0);
  fAdvancedGridLayout.Rows.Add(40.0,0.0);
- fAdvancedGridLayout.Rows.Add(40.0,0.0);
+//fAdvancedGridLayout.Rows.Add(40.0,0.0);
  fAdvancedGridLayout.Columns.Add(216.0,0.0);
  fAdvancedGridLayout.Columns.Add(32.0,0.0);
- fAdvancedGridLayout.Columns.Add(400.0,1.0);
+ fAdvancedGridLayout.Columns.Add(180.0,1.0);
 
  fColorWheel:=TpvGUIColorWheel.Create(self);
  fColorWheel.fHSV:=fHSV;
