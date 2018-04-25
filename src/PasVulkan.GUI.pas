@@ -2798,6 +2798,21 @@ type TpvGUIObject=class;
        fColorPanel:TpvGUIColorPanel;
        fAlphaSlider:TpvGUISlider;
        fEditFieldsPanel:TpvGUIPanel;
+       fLabelH:TpvGUILabel;
+       fFloatEditH:TpvGUIFloatEdit;
+       fLabelS:TpvGUILabel;
+       fFloatEditS:TpvGUIFloatEdit;
+       fLabelV:TpvGUILabel;
+       fFloatEditV:TpvGUIFloatEdit;
+       fLabelR:TpvGUILabel;
+       fFloatEditR:TpvGUIFloatEdit;
+       fLabelG:TpvGUILabel;
+       fFloatEditG:TpvGUIFloatEdit;
+       fLabelB:TpvGUILabel;
+       fFloatEditB:TpvGUIFloatEdit;
+       fLabelA:TpvGUILabel;
+       fFloatEditA:TpvGUIFloatEdit;
+       procedure UpdateEditFields;
        procedure ColorWheelOnChange(const aSender:TpvGUIObject);
        procedure AlphaSliderOnChange(const aSender:TpvGUIObject);
        procedure HSVPropertyOnChange(const aSender:TObject);
@@ -14932,9 +14947,9 @@ begin
     TemporaryValue:=GetValue;
     v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
     if v<0.0 then begin
-     Step:=floor(v);
+     Step:=floor(v)*fSmallStep;
     end else begin
-     Step:=ceil(v);
+     Step:=ceil(v)*fSmallStep;
     end;
     if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
        ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
@@ -14959,9 +14974,9 @@ begin
   TemporaryValue:=GetValue;
   v:=aRelativeAmount.x+aRelativeAmount.y;
   if v<0.0 then begin
-   Step:=floor(v);
+   Step:=floor(v)*fSmallStep;
   end else begin
-   Step:=ceil(v);
+   Step:=ceil(v)*fSmallStep;
   end;
   if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
      ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
@@ -15205,9 +15220,9 @@ begin
     TemporaryValue:=GetValue;
     v:=aPointerEvent.RelativePosition.x-aPointerEvent.RelativePosition.y;
     if v<0.0 then begin
-     Step:=floor(v);
+     Step:=floor(v)*fSmallStep;
     end else begin
-     Step:=ceil(v);
+     Step:=ceil(v)*fSmallStep;
     end;
     if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
        ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
@@ -15232,9 +15247,9 @@ begin
   TemporaryValue:=GetValue;
   v:=aRelativeAmount.x+aRelativeAmount.y;
   if v<0.0 then begin
-   Step:=floor(v);
+   Step:=floor(v)*fSmallStep;
   end else begin
-   Step:=ceil(v);
+   Step:=ceil(v)*fSmallStep;
   end;
   if ((Step>0) and ((TemporaryValue+Step)<=fMaximumValue) and not (TemporaryValue>(TemporaryValue+Step))) or
      ((Step<0) and ((TemporaryValue+Step)>=fMinimumValue) and not (TemporaryValue<(TemporaryValue+Step))) then begin
@@ -20773,7 +20788,8 @@ begin
 //fAdvancedGridLayout.Rows.Add(40.0,0.0);
  fAdvancedGridLayout.Columns.Add(216.0,0.0);
  fAdvancedGridLayout.Columns.Add(32.0,0.0);
- fAdvancedGridLayout.Columns.Add(180.0,1.0);
+ fAdvancedGridLayout.Columns.Add(180.0,0.0);
+ fAdvancedGridLayout.Columns.Add(180.0,0.0);
 
  fColorWheel:=TpvGUIColorWheel.Create(self);
  fColorWheel.fHSV:=fHSV;
@@ -20797,7 +20813,56 @@ begin
 
  fEditFieldsPanel:=TpvGUIPanel.Create(self);
  fEditFieldsPanel.Background:=true;
+ fEditFieldsPanel.Layout:=TpvGUIGroupLayout.Create(fEditFieldsPanel,8.0,6.0,10.0,0.0);
  fAdvancedGridLayout.Anchors[fEditFieldsPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(2,0,1,2,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+
+ begin
+
+  fLabelH:=TpvGUILabel.Create(fEditFieldsPanel);
+  fLabelH.Caption:='Hue';
+  fLabelH.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+  fFloatEditH:=TpvGUIFloatEdit.Create(fEditFieldsPanel);
+  fFloatEditH.FixedHeight:=32.0;
+  fFloatEditH.MinimumValue:=0.0;
+  fFloatEditH.MaximumValue:=1.0;
+  fFloatEditH.SmallStep:=1.0/256.0;
+  fFloatEditH.LargeStep:=1.0/16.0;
+  fFloatEditH.Value:=fHSV.x;
+
+ end;
+
+ begin
+
+  fLabelS:=TpvGUILabel.Create(fEditFieldsPanel);
+  fLabelS.Caption:='Saturation';
+  fLabelS.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+  fFloatEditS:=TpvGUIFloatEdit.Create(fEditFieldsPanel);
+  fFloatEditS.FixedHeight:=32.0;
+  fFloatEditS.MinimumValue:=0.0;
+  fFloatEditS.MaximumValue:=1.0;
+  fFloatEditS.SmallStep:=1.0/256.0;
+  fFloatEditS.LargeStep:=1.0/16.0;
+  fFloatEditS.Value:=fHSV.y;
+
+ end;
+
+ begin
+
+  fLabelV:=TpvGUILabel.Create(fEditFieldsPanel);
+  fLabelV.Caption:='Value';
+  fLabelV.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+  fFloatEditV:=TpvGUIFloatEdit.Create(fEditFieldsPanel);
+  fFloatEditV.FixedHeight:=32.0;
+  fFloatEditV.MinimumValue:=0.0;
+  fFloatEditV.MaximumValue:=1.0;
+  fFloatEditV.SmallStep:=1.0/256.0;
+  fFloatEditV.LargeStep:=1.0/16.0;
+  fFloatEditV.Value:=fHSV.z;
+
+ end;
 
 end;
 
@@ -20806,12 +20871,20 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvGUIColorPicker.UpdateEditFields;
+begin
+ fFloatEditH.Value:=fHSV.x;
+ fFloatEditS.Value:=fHSV.y;
+ fFloatEditV.Value:=fHSV.z;
+end;
+
 procedure TpvGUIColorPicker.ColorWheelOnChange(const aSender:TpvGUIObject);
 begin
  fHSV:=fColorWheel.fHSV;
  fRGBA.xyz:=fColorWheel.fRGB;
  fColorPanel.fRGBA:=fRGBA;
  fAlphaSlider.fValue:=round((1.0-Clamp(fRGBA.w,0.0,1.0))*65536);
+ UpdateEditFields;
  if assigned(fOnChange) then begin
   fOnChange(self);
  end;
@@ -20823,6 +20896,7 @@ begin
  fHSV.xyz:=ConvertRGBToHSV(fRGBA.xyz);
  fColorWheel.fHSV:=fHSV;
  fColorPanel.fRGBA:=fRGBA;
+ UpdateEditFields;
  if assigned(fOnChange) then begin
   fOnChange(self);
  end;
@@ -20835,6 +20909,7 @@ begin
  fColorWheel.fRGB:=fRGBA.xyz;
  fColorPanel.fRGBA:=fRGBA;
  fAlphaSlider.fValue:=round((1.0-Clamp(fRGBA.w,0.0,1.0))*65536);
+ UpdateEditFields;
  if assigned(fOnChange) then begin
   fOnChange(self);
  end;
@@ -20847,6 +20922,7 @@ begin
  fColorWheel.fRGB:=fRGBA.xyz;
  fColorPanel.fRGBA:=fRGBA;
  fAlphaSlider.fValue:=round((1.0-Clamp(fRGBA.w,0.0,1.0))*65536);
+ UpdateEditFields;
  if assigned(fOnChange) then begin
   fOnChange(self);
  end;
