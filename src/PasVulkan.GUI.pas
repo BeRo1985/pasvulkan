@@ -20807,6 +20807,9 @@ begin
  fRGBA.xyz:=fColorWheel.fRGB;
  fColorPanel.fRGBA:=fRGBA;
  fAlphaSlider.fValue:=round((1.0-Clamp(fRGBA.w,0.0,1.0))*65536);
+ if assigned(fOnChange) then begin
+  fOnChange(self);
+ end;
 end;
 
 procedure TpvGUIColorPicker.AlphaSliderOnChange(const aSender:TpvGUIObject);
@@ -20815,6 +20818,9 @@ begin
  fHSV.xyz:=ConvertRGBToHSV(fRGBA.xyz);
  fColorWheel.fHSV:=fHSV;
  fColorPanel.fRGBA:=fRGBA;
+ if assigned(fOnChange) then begin
+  fOnChange(self);
+ end;
 end;
 
 procedure TpvGUIColorPicker.HSVPropertyOnChange(const aSender:TObject);
@@ -20824,6 +20830,9 @@ begin
  fColorWheel.fRGB:=fRGBA.xyz;
  fColorPanel.fRGBA:=fRGBA;
  fAlphaSlider.fValue:=round((1.0-Clamp(fRGBA.w,0.0,1.0))*65536);
+ if assigned(fOnChange) then begin
+  fOnChange(self);
+ end;
 end;
 
 procedure TpvGUIColorPicker.RGBAPropertyOnChange(const aSender:TObject);
@@ -20833,6 +20842,9 @@ begin
  fColorWheel.fRGB:=fRGBA.xyz;
  fColorPanel.fRGBA:=fRGBA;
  fAlphaSlider.fValue:=round((1.0-Clamp(fRGBA.w,0.0,1.0))*65536);
+ if assigned(fOnChange) then begin
+  fOnChange(self);
+ end;
 end;
 
 procedure TpvGUIColorPicker.Check;
