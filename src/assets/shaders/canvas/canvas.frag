@@ -105,6 +105,9 @@ vec4 blend(vec4 a, vec4 b){
 #define GUI_ELEMENT_TAB_BUTTON_FOCUSED 19
 #define GUI_ELEMENT_TAB_BUTTON_PUSHED 20
 #define GUI_ELEMENT_TAB_BUTTON_DISABLED 21
+#define GUI_ELEMENT_COLOR_WHEEL_UNFOCUSED 22
+#define GUI_ELEMENT_COLOR_WHEEL_FOCUSED 23
+#define GUI_ELEMENT_COLOR_WHEEL_DISABLED 24
 #define GUI_ELEMENT_MOUSE_CURSOR_ARROW 64
 #define GUI_ELEMENT_MOUSE_CURSOR_BEAM 65
 #define GUI_ELEMENT_MOUSE_CURSOR_BUSY 66
@@ -120,7 +123,6 @@ vec4 blend(vec4 a, vec4 b){
 #define GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE 76
 #define GUI_ELEMENT_MOUSE_CURSOR_UP 77     
 #define GUI_ELEMENT_HIDDEN 96
-#define GUI_ELEMENT_COLOR_WHEEL 97
 
 const float uWindowCornerRadius = 2.0;
 const float uWindowHeaderHeight = 32.0;
@@ -1019,10 +1021,26 @@ void main(void){
         color = vec4(0.0);
         break;        
       }
-      case GUI_ELEMENT_COLOR_WHEEL:{
+      case GUI_ELEMENT_COLOR_WHEEL_UNFOCUSED:
+      case GUI_ELEMENT_COLOR_WHEEL_FOCUSED:
+      case GUI_ELEMENT_COLOR_WHEEL_DISABLED:{
+        float v = 1.0, w = 0.0; 
+        switch(guiElementIndex){
+          case GUI_ELEMENT_COLOR_WHEEL_UNFOCUSED:{
+            break;
+          }                                     
+          case GUI_ELEMENT_COLOR_WHEEL_FOCUSED:{
+            w = 1.0;
+            break;
+          }                                     
+          case GUI_ELEMENT_COLOR_WHEEL_DISABLED:{
+            v = 0.75; 
+            break;
+          }                                     
+        }
         vec3 hsv = inColor.xyz;
         p -= (size * 0.5);
-        vec2 size2 = vec2(min(size.x, size.y)) * (SQRT_0_DOT_5 * 0.95),
+        vec2 size2 = vec2(min(size.x, size.y)) * SQRT_0_DOT_5 * 0.95,
              p2 = rotate(p, hsv.x * 6.28318531) + (size2 * 0.5);
         float r = length(size2) * 0.5, 
               r2 = r * SQRT_0_DOT_5,
@@ -1041,14 +1059,15 @@ void main(void){
               d6 = max(sdRoundedRect(p2 - vec2(size2.x * 1.118, size2.y * 0.5), vec2(r * 0.13725, r * 0.04), 1e-4), 
                        -sdRoundedRect(p2 - vec2(size2.x * 1.118, size2.y * 0.5), vec2(r * 0.1, r * 0.01), 1e-4));
         vec3 b = clamp(barycentricTriangle(tv0, tv1, tv2, p2), vec3(0.0), vec3(1.0));
+//      color = blend(color, vec4(1.0) * linearstep(t, -t, sdRoundedRect(p, size * 0.5, 1e-4))); 
         color = blend(blend(blend(blend(blend(color,    
-                                              vec4(pow((hsv2rgb(vec3(hsv.x, 1.0, 1.0)) * b.x) + (vec3(1.0) * b.y) + (vec3(0.0) * b.z), vec3(2.2)), 1.0) * linearstep(t, -t, d1)),
-                                        vec4(pow(hsv2rgb(vec3(pa, 1.0, 1.0)), vec3(2.2)), 1.0) * linearstep(t, -t, d0)),
-                                  vec4(0.95) * linearstep(t, -t, d6)),
-                            vec4(pow(hsv2rgb(hsv), vec3(2.2)), 1.0) *  linearstep(t, -t, d5)),
-                       vec4(pow(vec3(mix(1.0 - b.z, b.z, linearstep(t, -t, d4))), vec3(2.2)), 1.0) * linearstep(t, -t, d3) * 0.5);
+                                              vec4(pow((hsv2rgb(vec3(hsv.x, 1.0, 1.0)) * b.x) + (vec3(1.0) * b.y) + (vec3(0.0) * b.z), vec3(2.2)), 1.0) * linearstep(t, -t, d1) * v),
+                                        vec4(pow(hsv2rgb(vec3(pa, 1.0, 1.0)), vec3(2.2)), 1.0) * linearstep(t, -t, d0) * v),
+                                  vec4(vec3(w), mix(1.0, 0.95, w)) * linearstep(t, -t, d6) * v),
+                            vec4(pow(hsv2rgb(hsv), vec3(2.2)), 1.0) *  linearstep(t, -t, d5) * v),
+                       vec4(pow(vec3(mix(1.0 - b.z, b.z, linearstep(t, -t, d4))), vec3(2.2)), 1.0) * linearstep(t, -t, d3) * 0.5 * v);
         break;
-      }      
+      }
     } 
   }
 #endif

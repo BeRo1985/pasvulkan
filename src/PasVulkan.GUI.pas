@@ -2785,6 +2785,9 @@ const GUI_ELEMENT_WINDOW_HEADER=1;
       GUI_ELEMENT_TAB_BUTTON_FOCUSED=19;
       GUI_ELEMENT_TAB_BUTTON_PUSHED=20;
       GUI_ELEMENT_TAB_BUTTON_DISABLED=21;
+      GUI_ELEMENT_COLOR_WHEEL_UNFOCUSED=22;
+      GUI_ELEMENT_COLOR_WHEEL_FOCUSED=23;
+      GUI_ELEMENT_COLOR_WHEEL_DISABLED=24;
       GUI_ELEMENT_MOUSE_CURSOR_ARROW=64;
       GUI_ELEMENT_MOUSE_CURSOR_BEAM=65;
       GUI_ELEMENT_MOUSE_CURSOR_BUSY=66;
@@ -2800,7 +2803,6 @@ const GUI_ELEMENT_WINDOW_HEADER=1;
       GUI_ELEMENT_MOUSE_CURSOR_UNAVAILABLE=76;
       GUI_ELEMENT_MOUSE_CURSOR_UP=77;
       GUI_ELEMENT_HIDDEN=96;
-      GUI_ELEMENT_COLOR_WHEEL=97;
 
 constructor TpvGUIDrawEngine.Create(const aInstance:TpvGUIInstance;const aCanvas:TpvCanvas);
 begin
@@ -9995,7 +9997,19 @@ begin
 
  aDrawEngine.ClipRect:=aColorWheel.fClipRect;
 
- Element:=GUI_ELEMENT_COLOR_WHEEL;
+ if not aColorWheel.Enabled then begin
+
+  Element:=GUI_ELEMENT_COLOR_WHEEL_DISABLED;
+
+ end else if aColorWheel.Focused then begin
+
+  Element:=GUI_ELEMENT_COLOR_WHEEL_FOCUSED;
+
+ end else begin
+
+  Element:=GUI_ELEMENT_COLOR_WHEEL_UNFOCUSED;
+
+ end;
 
  aDrawEngine.Transparent:=true;
 
