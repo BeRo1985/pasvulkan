@@ -2804,6 +2804,7 @@ type TpvGUIObject=class;
        fFloatEditS:TpvGUIFloatEdit;
        fLabelV:TpvGUILabel;
        fFloatEditV:TpvGUIFloatEdit;
+       fRGBAEditFieldsPanel:TpvGUIPanel;
        fLabelR:TpvGUILabel;
        fFloatEditR:TpvGUIFloatEdit;
        fLabelG:TpvGUILabel;
@@ -20790,10 +20791,10 @@ begin
 
  fAdvancedGridLayout:=TpvGUIAdvancedGridLayout.Create(Window.Content,0.0);
  Layout:=fAdvancedGridLayout;
- fAdvancedGridLayout.Rows.Add(216.0,0.0);
+ fAdvancedGridLayout.Rows.Add(224.0,0.0);
  fAdvancedGridLayout.Rows.Add(40.0,0.0);
 //fAdvancedGridLayout.Rows.Add(40.0,0.0);
- fAdvancedGridLayout.Columns.Add(216.0,0.0);
+ fAdvancedGridLayout.Columns.Add(224.0,0.0);
  fAdvancedGridLayout.Columns.Add(32.0,0.0);
  fAdvancedGridLayout.Columns.Add(180.0,0.0);
  fAdvancedGridLayout.Columns.Add(180.0,0.0);
@@ -20818,56 +20819,133 @@ begin
  fAlphaSlider.OnChange:=AlphaSliderOnChange;
  fAdvancedGridLayout.Anchors[fAlphaSlider]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,0,1,2,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
 
- fHSVEditFieldsPanel:=TpvGUIPanel.Create(self);
- fHSVEditFieldsPanel.Background:=true;
- fHSVEditFieldsPanel.Layout:=TpvGUIGroupLayout.Create(fHSVEditFieldsPanel,8.0,6.0,10.0,0.0);
- fAdvancedGridLayout.Anchors[fHSVEditFieldsPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(2,0,1,2,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
-
  begin
 
-  fLabelH:=TpvGUILabel.Create(fHSVEditFieldsPanel);
-  fLabelH.Caption:='Hue';
-  fLabelH.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+  fHSVEditFieldsPanel:=TpvGUIPanel.Create(self);
+  fHSVEditFieldsPanel.Background:=true;
+  fHSVEditFieldsPanel.Layout:=TpvGUIGroupLayout.Create(fHSVEditFieldsPanel,8.0,6.0,8.0,0.0);
+  fAdvancedGridLayout.Anchors[fHSVEditFieldsPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(2,0,1,2,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
 
-  fFloatEditH:=TpvGUIFloatEdit.Create(fHSVEditFieldsPanel);
-  fFloatEditH.FixedHeight:=32.0;
-  fFloatEditH.MinimumValue:=0.0;
-  fFloatEditH.MaximumValue:=1.0;
-  fFloatEditH.SmallStep:=1.0/256.0;
-  fFloatEditH.LargeStep:=1.0/16.0;
-  fFloatEditH.OnChange:=FloatEditHOnChange;
+  begin
+
+   fLabelH:=TpvGUILabel.Create(fHSVEditFieldsPanel);
+   fLabelH.Caption:='Hue';
+   fLabelH.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+   fFloatEditH:=TpvGUIFloatEdit.Create(fHSVEditFieldsPanel);
+   fFloatEditH.FixedHeight:=32.0;
+   fFloatEditH.MinimumValue:=0.0;
+   fFloatEditH.MaximumValue:=1.0;
+   fFloatEditH.SmallStep:=1.0/256.0;
+   fFloatEditH.LargeStep:=1.0/16.0;
+   fFloatEditH.OnChange:=FloatEditHOnChange;
+
+  end;
+
+  begin
+
+   fLabelS:=TpvGUILabel.Create(fHSVEditFieldsPanel);
+   fLabelS.Caption:='Saturation';
+   fLabelS.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+   fFloatEditS:=TpvGUIFloatEdit.Create(fHSVEditFieldsPanel);
+   fFloatEditS.FixedHeight:=32.0;
+   fFloatEditS.MinimumValue:=0.0;
+   fFloatEditS.MaximumValue:=1.0;
+   fFloatEditS.SmallStep:=1.0/256.0;
+   fFloatEditS.LargeStep:=1.0/16.0;
+   fFloatEditS.OnChange:=FloatEditSOnChange;
+
+  end;
+
+  begin
+
+   fLabelV:=TpvGUILabel.Create(fHSVEditFieldsPanel);
+   fLabelV.Caption:='Value';
+   fLabelV.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+   fFloatEditV:=TpvGUIFloatEdit.Create(fHSVEditFieldsPanel);
+   fFloatEditV.FixedHeight:=32.0;
+   fFloatEditV.MinimumValue:=0.0;
+   fFloatEditV.MaximumValue:=1.0;
+   fFloatEditV.SmallStep:=1.0/256.0;
+   fFloatEditV.LargeStep:=1.0/16.0;
+   fFloatEditV.OnChange:=FloatEditVOnChange;
+
+  end;
 
  end;
 
  begin
 
-  fLabelS:=TpvGUILabel.Create(fHSVEditFieldsPanel);
-  fLabelS.Caption:='Saturation';
-  fLabelS.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+  fRGBAEditFieldsPanel:=TpvGUIPanel.Create(self);
+  fRGBAEditFieldsPanel.Background:=true;
+  fRGBAEditFieldsPanel.Layout:=TpvGUIGroupLayout.Create(fRGBAEditFieldsPanel,8.0,6.0,8.0,0.0);
+  fAdvancedGridLayout.Anchors[fRGBAEditFieldsPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(3,0,1,2,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
 
-  fFloatEditS:=TpvGUIFloatEdit.Create(fHSVEditFieldsPanel);
-  fFloatEditS.FixedHeight:=32.0;
-  fFloatEditS.MinimumValue:=0.0;
-  fFloatEditS.MaximumValue:=1.0;
-  fFloatEditS.SmallStep:=1.0/256.0;
-  fFloatEditS.LargeStep:=1.0/16.0;
-  fFloatEditS.OnChange:=FloatEditSOnChange;
+  begin
 
- end;
+   fLabelR:=TpvGUILabel.Create(fRGBAEditFieldsPanel);
+   fLabelR.Caption:='Red';
+   fLabelR.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
 
- begin
+   fFloatEditR:=TpvGUIFloatEdit.Create(fRGBAEditFieldsPanel);
+   fFloatEditR.FixedHeight:=32.0;
+   fFloatEditR.MinimumValue:=0.0;
+   fFloatEditR.MaximumValue:=1.0;
+   fFloatEditR.SmallStep:=1.0/256.0;
+   fFloatEditR.LargeStep:=1.0/16.0;
+   fFloatEditR.OnChange:=FloatEditROnChange;
 
-  fLabelV:=TpvGUILabel.Create(fHSVEditFieldsPanel);
-  fLabelV.Caption:='Value';
-  fLabelV.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+  end;
 
-  fFloatEditV:=TpvGUIFloatEdit.Create(fHSVEditFieldsPanel);
-  fFloatEditV.FixedHeight:=32.0;
-  fFloatEditV.MinimumValue:=0.0;
-  fFloatEditV.MaximumValue:=1.0;
-  fFloatEditV.SmallStep:=1.0/256.0;
-  fFloatEditV.LargeStep:=1.0/16.0;
-  fFloatEditV.OnChange:=FloatEditVOnChange;
+  begin
+
+   fLabelG:=TpvGUILabel.Create(fRGBAEditFieldsPanel);
+   fLabelG.Caption:='Green';
+   fLabelG.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+   fFloatEditG:=TpvGUIFloatEdit.Create(fRGBAEditFieldsPanel);
+   fFloatEditG.FixedHeight:=32.0;
+   fFloatEditG.MinimumValue:=0.0;
+   fFloatEditG.MaximumValue:=1.0;
+   fFloatEditG.SmallStep:=1.0/256.0;
+   fFloatEditG.LargeStep:=1.0/16.0;
+   fFloatEditG.OnChange:=FloatEditGOnChange;
+
+  end;
+
+  begin
+
+   fLabelB:=TpvGUILabel.Create(fRGBAEditFieldsPanel);
+   fLabelB.Caption:='Blue';
+   fLabelB.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+   fFloatEditB:=TpvGUIFloatEdit.Create(fRGBAEditFieldsPanel);
+   fFloatEditB.FixedHeight:=32.0;
+   fFloatEditB.MinimumValue:=0.0;
+   fFloatEditB.MaximumValue:=1.0;
+   fFloatEditB.SmallStep:=1.0/256.0;
+   fFloatEditB.LargeStep:=1.0/16.0;
+   fFloatEditB.OnChange:=FloatEditBOnChange;
+
+  end;
+
+  begin
+
+   fLabelA:=TpvGUILabel.Create(fRGBAEditFieldsPanel);
+   fLabelA.Caption:='Alpha';
+   fLabelA.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+   fFloatEditA:=TpvGUIFloatEdit.Create(fRGBAEditFieldsPanel);
+   fFloatEditA.FixedHeight:=32.0;
+   fFloatEditA.MinimumValue:=0.0;
+   fFloatEditA.MaximumValue:=1.0;
+   fFloatEditA.SmallStep:=1.0/256.0;
+   fFloatEditA.LargeStep:=1.0/16.0;
+   fFloatEditA.OnChange:=FloatEditAOnChange;
+
+  end;
 
  end;
 
@@ -20890,6 +20968,18 @@ begin
  end;
  if not fFloatEditV.Focused then begin
   fFloatEditV.Value:=fHSV.z;
+ end;
+ if not fFloatEditR.Focused then begin
+  fFloatEditR.Value:=fRGBA.x;
+ end;
+ if not fFloatEditG.Focused then begin
+  fFloatEditG.Value:=fRGBA.y;
+ end;
+ if not fFloatEditB.Focused then begin
+  fFloatEditB.Value:=fRGBA.z;
+ end;
+ if not fFloatEditA.Focused then begin
+  fFloatEditA.Value:=fRGBA.w;
  end;
 end;
 
