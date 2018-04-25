@@ -2744,6 +2744,8 @@ type TpvGUIObject=class;
        fDrawOffset:TpvVector2;
        fDrawSize:TpvVector2;
        fMode:TpvInt32;
+       fOnChange:TpvGUIOnEvent;
+       procedure HSVPropertyOnChange(const aSender:TObject);
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -2755,6 +2757,7 @@ type TpvGUIObject=class;
        procedure Draw; override;
       published
        property HSV:TpvVector3Property read fHSVProperty;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
 
 implementation
@@ -20315,8 +20318,11 @@ begin
  fHSV:=TpvVector3.InlineableCreate(1.0,1.0,1.0);
 
  fHSVProperty:=TpvVector3Property.Create(@fHSV);
+ fHSVProperty.OnChange:=HSVPropertyOnChange;
 
  fMode:=0;
+
+ fOnChange:=nil;
 
 end;
 
@@ -20327,6 +20333,10 @@ begin
 
  inherited Destroy;
 
+end;
+
+procedure TpvGUIColorWheel.HSVPropertyOnChange(const aSender:TObject);
+begin
 end;
 
 function TpvGUIColorWheel.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -20358,19 +20368,31 @@ begin
     case aKeyEvent.KeyCode of
      KEYCODE_LEFT:begin
       fHSV.y:=Clamp(fHSV.y-0.01,0.0,1.0);
+      if assigned(fOnChange) then begin
+       fOnChange(self);
+      end;
       result:=true;
      end;
      KEYCODE_RIGHT:begin
       fHSV.y:=Clamp(fHSV.y+0.01,0.0,1.0);
+      if assigned(fOnChange) then begin
+       fOnChange(self);
+      end;
       result:=true;
      end;
      KEYCODE_UP:begin
       fHSV.z:=Clamp(fHSV.z+0.01,0.0,1.0);
+      if assigned(fOnChange) then begin
+       fOnChange(self);
+      end;
       result:=true;
      end;
      KEYCODE_DOWN:begin
       fHSV.z:=Clamp(fHSV.z-0.01,0.0,1.0);
-      result:=true;
+       if assigned(fOnChange) then begin
+       fOnChange(self);
+      end;
+     result:=true;
      end;
      KEYCODE_HOME:begin
       result:=true;
@@ -20383,12 +20405,18 @@ begin
       if fHSV.x>1.0 then begin
        fHSV.x:=fHSV.x-1.0;
       end;
+      if assigned(fOnChange) then begin
+       fOnChange(self);
+      end;
       result:=true;
      end;
      KEYCODE_PAGEDOWN:begin
       fHSV.x:=fHSV.x-0.01;
       if fHSV.x<0.0 then begin
        fHSV.x:=fHSV.x+1.0;
+      end;
+      if assigned(fOnChange) then begin
+       fOnChange(self);
       end;
       result:=true;
      end;
@@ -20429,6 +20457,9 @@ var Index:TpvInt32;
     if fHSV.x>1.0 then begin
      fHSV.x:=fHSV.x-1.0;
     end;
+    if assigned(fOnChange) then begin
+     fOnChange(self);
+    end;
    end;
    result:=true;
    exit;
@@ -20454,6 +20485,9 @@ var Index:TpvInt32;
       p4.x:=0.0;
      end;
      fHSV.yz:=p4;
+     if assigned(fOnChange) then begin
+      fOnChange(self);
+     end;
     end;
     result:=true;
     exit;
@@ -20520,6 +20554,9 @@ begin
  result:=assigned(fOnScrolled) and fOnScrolled(self,aPosition,aRelativeAmount);
  if not result then begin
   fHSV.x:=frac(frac((fHSV.x+((aRelativeAmount.x+aRelativeAmount.y)*0.01))+1.0)+1.0);
+  if assigned(fOnChange) then begin
+   fOnChange(self);
+  end;
   result:=true;
  end;
 end;
