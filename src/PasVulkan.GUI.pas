@@ -1874,6 +1874,8 @@ type TpvGUIObject=class;
        procedure DeleteSelectedText;
        procedure SelectAll;
        procedure SelectNone;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragReleaseEvent:boolean; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
@@ -14296,6 +14298,16 @@ begin
  SelectNone;
 end;
 
+function TpvGUITextEdit.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUITextEdit.DragReleaseEvent:boolean;
+begin
+ result:=false;
+end;
+
 function TpvGUITextEdit.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 var CurrentPosition,OtherPosition,TemporaryUncheckedTextCursorPositionIndex,
     TemporaryUncheckedTextSelectionStart,TemporaryUncheckedTextSelectionEnd:TpvInt32;
@@ -14624,7 +14636,7 @@ begin
      fTime:=0.0;
     end;
     TpvApplicationInputPointerEventType.Motion:begin
-     if TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons then begin
+     if Focused and (TpvApplicationInputPointerButton.Left in aPointerEvent.Buttons) then begin
       if fTextSelectionStart<1 then begin
        fTextSelectionStart:=fTextCursorPositionIndex;
       end;
@@ -21055,7 +21067,7 @@ var Temp:TpvVector4;
     s:string;
 begin
  s:=Trim(string(fTextEditHeximal.Text));
- if (length(s)>1) and (s[1] in ['#','$']) then begin
+ if (length(s)>1) and ((s[1]='#') or (s[1]='$')) then begin
   Delete(s,1,1);
  end;
  Temp.x:=StrToIntDef('$'+copy(s,1,2),0)/255.0;
