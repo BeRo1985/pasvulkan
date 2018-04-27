@@ -316,6 +316,26 @@ vec3 hsv2rgb(vec3 c){
     return clamp(c.z * mix(k.xxx, clamp(p - k.xxx, 0.0, 1.0), c.y), vec3(0.0), vec3(1.0));
 }
 
+vec3 convertLinearRGBToSRGB(vec3 c){
+  return mix((pow(c, vec3(1.0 / 2.4)) * vec3(1.055)) - vec3(5.5e-2), 
+             c * vec3(12.92),     
+             lessThan(c, vec3(3.1308e-3)));
+}
+
+vec3 convertSRGBToLinearRGB(vec3 c){
+  return mix(pow((c + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)),
+             c / vec3(12.92),
+             lessThan(c, vec3(4.045e-2)));
+}
+
+vec3 colorWheelConditionalConvertSRGBToLinearRGB(vec3 c){
+  return mix(c,
+             mix(pow((c + vec3(5.5e-2)) / vec3(1.055), vec3(2.4)),
+                 c / vec3(12.92),
+                 lessThan(c, vec3(4.045e-2))),
+            step(0.5, inTexCoord.z));
+}
+
 #endif
 
 void main(void){
@@ -1061,11 +1081,11 @@ void main(void){
         vec3 b = clamp(barycentricTriangle(tv0, tv1, tv2, p2), vec3(0.0), vec3(1.0));
 //      color = blend(color, vec4(1.0) * linearstep(t, -t, sdRoundedRect(p, size * 0.5, 1e-4))); 
         color = blend(blend(blend(blend(blend(color,    
-                                              vec4(pow((hsv2rgb(vec3(hsv.x, 1.0, 1.0)) * b.x) + (vec3(1.0) * b.y) + (vec3(0.0) * b.z), vec3(2.2)), 1.0) * linearstep(t, -t, d1) * v),
-                                        vec4(pow(hsv2rgb(vec3(pa, 1.0, 1.0)), vec3(2.2)), 1.0) * linearstep(t, -t, d0) * v),
+                                              vec4(colorWheelConditionalConvertSRGBToLinearRGB((hsv2rgb(vec3(hsv.x, 1.0, 1.0)) * b.x) + (vec3(1.0) * b.y) + (vec3(0.0) * b.z)), 1.0) * linearstep(t, -t, d1) * v),
+                                        vec4(colorWheelConditionalConvertSRGBToLinearRGB(hsv2rgb(vec3(pa, 1.0, 1.0))), 1.0) * linearstep(t, -t, d0) * v),
                                   vec4(vec3(w), mix(1.0, 0.95, w)) * linearstep(t, -t, d6) * v),
-                            vec4(pow(hsv2rgb(hsv), vec3(2.2)), 1.0) *  linearstep(t, -t, d5) * v),
-                       vec4(pow(vec3(mix(1.0 - b.z, b.z, linearstep(t, -t, d4))), vec3(2.2)), 1.0) * linearstep(t, -t, d3) * 0.5 * v);
+                            vec4(colorWheelConditionalConvertSRGBToLinearRGB(hsv2rgb(hsv)), 1.0) *  linearstep(t, -t, d5) * v),
+                       vec4(colorWheelConditionalConvertSRGBToLinearRGB(vec3(mix(1.0 - b.z, b.z, linearstep(t, -t, d4)))), 1.0) * linearstep(t, -t, d3) * 0.5 * v);
         break;
       }
     } 

@@ -1593,12 +1593,14 @@ type TpvGUIObject=class;
       private
        fRGBA:TpvVector4;
        fRGBAProperty:TpvVector4Property;
+       fSRGB:boolean;
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
        procedure Draw; override;
       published
        property RGBA:TpvVector4Property read fRGBAProperty;
+       property SRGB:boolean read fSRGB write fSRGB;
      end;
 
      TpvGUIImage=class(TpvGUIWidget)
@@ -2767,6 +2769,7 @@ type TpvGUIObject=class;
        fHSVProperty:TpvVector3Property;
        fRGB:TpvVector3;
        fRGBProperty:TpvVector3Property;
+       fSRGB:boolean;
        fDrawOffset:TpvVector2;
        fDrawSize:TpvVector2;
        fMode:TpvInt32;
@@ -2785,6 +2788,7 @@ type TpvGUIObject=class;
       published
        property HSV:TpvVector3Property read fHSVProperty;
        property RGB:TpvVector3Property read fRGBProperty;
+       property SRGB:boolean read fSRGB write fSRGB;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
 
@@ -2794,6 +2798,7 @@ type TpvGUIObject=class;
        fHSVProperty:TpvVector3Property;
        fRGBA:TpvVector4;
        fRGBAProperty:TpvVector4Property;
+       fSRGB:boolean;
        fOnChange:TpvGUIOnEvent;
        fAdvancedGridLayout:TpvGUIAdvancedGridLayout;
        fColorWheel:TpvGUIColorWheel;
@@ -2817,6 +2822,7 @@ type TpvGUIObject=class;
        fFloatEditB:TpvGUIFloatEdit;
        fLabelA:TpvGUILabel;
        fFloatEditA:TpvGUIFloatEdit;
+       procedure SetSRGB(const aSRGB:boolean);
        procedure UpdateEditFields;
        procedure ColorWheelOnChange(const aSender:TpvGUIObject);
        procedure AlphaSliderOnChange(const aSender:TpvGUIObject);
@@ -2839,6 +2845,7 @@ type TpvGUIObject=class;
       published
        property HSV:TpvVector3Property read fHSVProperty;
        property RGBA:TpvVector4Property read fRGBAProperty;
+       property SRGB:boolean read fSRGB write SetSRGB;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
 
@@ -7336,7 +7343,11 @@ begin
  aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(TpvVector2.Create(aColorPanel.fSize.x*0.75,aColorPanel.fSize.y*0.5),
                                                         (aColorPanel.fSize*TpvVector2.Create(1.0,1.0))-TpvVector2.Create(4.0,4.0)));
 
- aDrawEngine.Color:=Clamp(ConvertSRGBToLinear(aColorPanel.fRGBA),TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0),TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0));
+ if aColorPanel.fSRGB then begin
+  aDrawEngine.Color:=Clamp(ConvertSRGBToLinear(aColorPanel.fRGBA),TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0),TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0));
+ end else begin
+  aDrawEngine.Color:=Clamp(aColorPanel.fRGBA,TpvVector4.InlineableCreate(0.0,0.0,0.0,0.0),TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0));
+ end;
 
  aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(TpvVector2.Create(4.0,4.0),aColorPanel.fSize-TpvVector2.Create(4.0,4.0)));
 
@@ -10171,7 +10182,7 @@ begin
 
  aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(aColorWheel.fDrawOffset,aColorWheel.fDrawSize*0.125));}
 
- aDrawEngine.Color:=TpvVector4.InlineableCreate(Clamp(aColorWheel.fHSV,TpvVector3.InlineableCreate(0.0,0.0,0.0),TpvVector3.InlineableCreate(1.0,1.0,1.0)),aDrawEngine.Color.w);
+ aDrawEngine.Color:=TpvVector4.InlineableCreate(Clamp(aColorWheel.fHSV,TpvVector3.InlineableCreate(0.0,0.0,0.0),TpvVector3.InlineableCreate(1.0,1.0,1.0)),1.0);
 
  aDrawEngine.DrawGUIElement(Element,
                             aColorWheel.Enabled,
@@ -10179,7 +10190,7 @@ begin
                             aColorWheel.fDrawOffset+aColorWheel.fDrawSize,
                             aColorWheel.fDrawOffset,
                             aColorWheel.fDrawOffset+aColorWheel.fDrawSize,
-                            0.0);
+                            IfThen(aColorWheel.fSRGB,1.0,0.0));
 
  aDrawEngine.Next;
 
@@ -13201,6 +13212,7 @@ begin
  inherited Create(aParent);
  fRGBA:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
  fRGBAProperty:=TpvVector4Property.Create(@fRGBA);
+ fSRGB:=true;
 end;
 
 destructor TpvGUIColorPanel.Destroy;
@@ -20509,6 +20521,8 @@ begin
  fRGBProperty:=TpvVector3Property.Create(@fRGB);
  fRGBProperty.OnChange:=RGBPropertyOnChange;
 
+ fSRGB:=true;
+
  fMode:=0;
 
  fOnChange:=nil;
@@ -20976,6 +20990,10 @@ begin
 
  end;
 
+ fSRGB:=false;
+
+ SetSRGB(true);
+
  UpdateEditFields;
 
 end;
@@ -20983,6 +21001,15 @@ end;
 destructor TpvGUIColorPicker.Destroy;
 begin
  inherited Destroy;
+end;
+
+procedure TpvGUIColorPicker.SetSRGB(const aSRGB:boolean);
+begin
+ if fSRGB<>aSRGB then begin
+  fSRGB:=aSRGB;
+  fColorWheel.SRGB:=fSRGB;
+  fColorPanel.SRGB:=fSRGB;
+ end;
 end;
 
 procedure TpvGUIColorPicker.UpdateEditFields;
