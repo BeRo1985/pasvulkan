@@ -272,8 +272,14 @@ type TScreenExampleGUIFillLayoutExampleWindow=class(TpvGUIWindow)
 
      TScreenExampleGUIColorPicker=class(TpvGUIWindow)
       private
-       fScrollPanel:TpvGUIScrollPanel;
+       fBoxLayout:TpvGUIBoxLayout;
        fColorPicker:TpvGUIColorPicker;
+       fModePanel:TpvGUIPanel;
+       fModePanelLabel:TpvGUILabel;
+       fModePanelGroupLayout:TpvGUIGroupLayout;
+       fLinearRGBModeRadioCheckBox:TpvGUIRadioCheckBox;
+       fSRGBModeRadioCheckBox:TpvGUIRadioCheckBox;
+       procedure LinearRGBOrSRGBModeRadioCheckBoxOnChange(const aSender:TpvGUIObject);
       public
        constructor Create(const aParent:TpvGUIObject); override;
        destructor Destroy; override;
@@ -1484,10 +1490,15 @@ begin
 
  inherited Create(aParent);
 
- Left:=600;
- Top:=300;
+ Left:=100;
+ Top:=100;
  Title:='Window with ColorPicker';
- Content.Layout:=TpvGUIFillLayout.Create(Content,4.0);
+ fBoxLayout:=TpvGUIBoxLayout.Create(Content,
+                                    TpvGUILayoutAlignment.Middle,
+                                    TpvGUILayoutOrientation.Horizontal,
+                                    4.0,
+                                    0.0);
+ Content.Layout:=fBoxLayout;
  AddMinimizationButton;
  AddMaximizationButton;
  AddCloseButton;
@@ -1497,20 +1508,43 @@ begin
  Width:=550;
  Height:=350;
 
-{
- fScrollPanel:=TpvGUIScrollPanel.Create(Content);
- fScrollPanel.Content.Layout:=TpvGUIBoxLayout.Create(fScrollPanel.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,4.0);
-}
+ fColorPicker:=TpvGUIColorPicker.Create(Content);
 
- fColorPicker:=TpvGUIColorPicker.Create({fScrollPanel.}Content);
-{fColorWheel.FixedWidth:=640;
- fColorWheel.FixedHeight:=480;}
+ fModePanel:=TpvGUIPanel.Create(Content);
+ fModePanel.Background:=true;
+
+ fModePanelGroupLayout:=TpvGUIGroupLayout.Create(fModePanel,
+                                                 16.0,
+                                                 8.0,
+                                                 8.0,
+                                                 8.0);
+ fModePanel.Layout:=fModePanelGroupLayout;
+
+ fModePanelLabel:=TpvGUILabel.Create(fModePanel);
+ fModePanelLabel.Caption:='Mode';
+ fModePanelLabel.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+ fLinearRGBModeRadioCheckBox:=TpvGUIRadioCheckBox.Create(fModePanel);
+ fLinearRGBModeRadioCheckBox.Caption:='Linear RGB';
+ fLinearRGBModeRadioCheckBox.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+ fLinearRGBModeRadioCheckBox.OnChange:=LinearRGBOrSRGBModeRadioCheckBoxOnChange;
+
+ fSRGBModeRadioCheckBox:=TpvGUIRadioCheckBox.Create(fModePanel);
+ fSRGBModeRadioCheckBox.Caption:='sRGB';
+ fSRGBModeRadioCheckBox.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+ fSRGBModeRadioCheckBox.Checked:=true;
+ fLinearRGBModeRadioCheckBox.OnChange:=LinearRGBOrSRGBModeRadioCheckBoxOnChange;
 
 end;
 
 destructor TScreenExampleGUIColorPicker.Destroy;
 begin
  inherited Destroy;
+end;
+
+procedure TScreenExampleGUIColorPicker.LinearRGBOrSRGBModeRadioCheckBoxOnChange(const aSender:TpvGUIObject);
+begin
+ fColorPicker.SRGB:=fSRGBModeRadioCheckBox.Checked;
 end;
 
 constructor TScreenExampleGUI.Create;

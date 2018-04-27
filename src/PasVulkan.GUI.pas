@@ -144,8 +144,6 @@ type TpvGUIObject=class;
 
      TpvGUIOnEnterLeaveEvent=function(const aSender:TpvGUIObject):boolean of object;
 
-     TpvGUIOnChange=procedure(const aSender:TpvGUIObject;const aChanged:boolean) of object;
-
      TpvGUIOnKeyEvent=function(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean of object;
 
      TpvGUIOnPointerEvent=function(const aSender:TpvGUIObject;const aPointerEvent:TpvApplicationInputPointerEvent):boolean of object;
@@ -1684,7 +1682,7 @@ type TpvGUIObject=class;
        fIcon:TObject;
        fIconHeight:TpvFloat;
        fOnClick:TpvGUIOnEvent;
-       fOnChange:TpvGUIOnChange;
+       fOnChange:TpvGUIOnEvent;
        procedure ProcessDown(const aPosition:TpvVector2);
        procedure ProcessUp(const aPosition:TpvVector2);
       protected
@@ -1717,7 +1715,7 @@ type TpvGUIObject=class;
        property Icon:TObject read fIcon write fIcon;
        property IconHeight:TpvFloat read fIconHeight write fIconHeight;
        property OnClick:TpvGUIOnEvent read fOnClick write fOnClick;
-       property OnChange:TpvGUIOnChange read fOnChange write fOnChange;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property TextHorizontalAlignment;
        property TextVerticalAlignment;
        property TextTruncation;
@@ -1784,7 +1782,7 @@ type TpvGUIObject=class;
        fCaption:TpvUTF8String;
        fCachedCaption:TpvUTF8String;
        fCachedCaptionInvalidated:boolean;
-       fOnChange:TpvGUIOnChange;
+       fOnChange:TpvGUIOnEvent;
        function GetPushed:boolean; inline;
        procedure SetPushed(const aPushed:boolean); inline;
        function GetChecked:boolean; inline;
@@ -1818,7 +1816,7 @@ type TpvGUIObject=class;
        property Pushed:boolean read GetPushed write SetPushed;
        property Checked:boolean read GetChecked write SetChecked;
        property Caption:TpvUTF8String read fCaption write SetCaption;
-       property OnChange:TpvGUIOnChange read fOnChange write fOnChange;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
 
      TpvGUIRadioCheckBox=class(TpvGUICheckBox)
@@ -2489,7 +2487,7 @@ type TpvGUIObject=class;
        fOnChangeSelection:TpvGUIOnEvent;
        fOnDrawItem:TpvGUIComboBoxOnDrawItem;
        fOnGetItemText:TpvGUIComboBoxOnGetItemText;
-       procedure PopupButtonOnChange(const aSender:TpvGUIObject;const aChanged:boolean);
+       procedure PopupButtonOnChange(const aSender:TpvGUIObject);
        function PopupOnEnter(const aSender:TpvGUIObject):boolean;
        function PopupOnLeave(const aSender:TpvGUIObject):boolean;
        procedure ListBoxOnChangeItemIndex(const aSender:TpvGUIObject);
@@ -13404,8 +13402,8 @@ begin
   end else begin
    Exclude(fButtonFlags,TpvGUIButtonFlag.Down);
   end;
-  if assigned(OnChange) then begin
-   OnChange(self,Down);
+  if assigned(fOnChange) then begin
+   fOnChange(self);
   end;
  end;
 end;
@@ -13471,9 +13469,6 @@ begin
     if (ChildButton<>self) and
        ((ChildButton.fButtonFlags*[TpvGUIButtonFlag.RadioButton,TpvGUIButtonFlag.Down])=[TpvGUIButtonFlag.RadioButton,TpvGUIButtonFlag.Down]) then begin
      ChildButton.Down:=false;
-     if assigned(ChildButton.fOnChange) then begin
-      ChildButton.fOnChange(ChildButton,false);
-     end;
     end;
    end;
   end else if assigned(fParent) then begin
@@ -13485,9 +13480,6 @@ begin
        (((Child as TpvGUIButton).fButtonFlags*[TpvGUIButtonFlag.RadioButton,TpvGUIButtonFlag.Down])=[TpvGUIButtonFlag.RadioButton,TpvGUIButtonFlag.Down]) then begin
      ChildButton:=Child as TpvGUIButton;
      ChildButton.Down:=false;
-     if assigned(ChildButton.fOnChange) then begin
-      ChildButton.fOnChange(ChildButton,false);
-     end;
     end;
    end;
   end;
@@ -13502,9 +13494,6 @@ begin
        (((Child as TpvGUIButton).fButtonFlags*[TpvGUIButtonFlag.PopupButton,TpvGUIButtonFlag.Down])=[TpvGUIButtonFlag.PopupButton,TpvGUIButtonFlag.Down]) then begin
      ChildButton:=Child as TpvGUIButton;
      ChildButton.Down:=false;
-     if assigned(ChildButton.fOnChange) then begin
-      ChildButton.fOnChange(ChildButton,false);
-     end;
     end;
    end;
   end;
@@ -13775,7 +13764,7 @@ begin
          ((ChildCheckBox.fCheckBoxFlags*[TpvGUICheckBoxFlag.RadioCheckBox,TpvGUICheckBoxFlag.Checked])=[TpvGUICheckBoxFlag.RadioCheckBox,TpvGUICheckBoxFlag.Checked]) then begin
        Exclude(ChildCheckBox.fCheckBoxFlags,TpvGUICheckBoxFlag.Checked);
        if assigned(ChildCheckBox.fOnChange) then begin
-        ChildCheckBox.fOnChange(ChildCheckBox,false);
+        ChildCheckBox.fOnChange(ChildCheckBox);
        end;
       end;
      end;
@@ -13789,19 +13778,19 @@ begin
        ChildCheckBox:=Child as TpvGUICheckBox;
        Exclude(ChildCheckBox.fCheckBoxFlags,TpvGUICheckBoxFlag.Checked);
        if assigned(ChildCheckBox.fOnChange) then begin
-        ChildCheckBox.fOnChange(ChildCheckBox,false);
+        ChildCheckBox.fOnChange(ChildCheckBox);
        end;
       end;
      end;
     end;
    end;
    if assigned(fOnChange) then begin
-    fOnChange(self,true);
+    fOnChange(self);
    end;
   end else begin
    Exclude(fCheckBoxFlags,TpvGUICheckBoxFlag.Checked);
    if assigned(fOnChange) then begin
-    fOnChange(self,false);
+    fOnChange(self);
    end;
   end;
  end;
@@ -18353,12 +18342,10 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvGUIComboBox.PopupButtonOnChange(const aSender:TpvGUIObject;const aChanged:boolean);
+procedure TpvGUIComboBox.PopupButtonOnChange(const aSender:TpvGUIObject);
 begin
- if aChanged then begin
-  fListBox.SetItems(fItems);
-  fListBox.SetItemIndex(fItemIndex);
- end;
+ fListBox.SetItems(fItems);
+ fListBox.SetItemIndex(fItemIndex);
 end;
 
 function TpvGUIComboBox.PopupOnEnter(const aSender:TpvGUIObject):boolean;
