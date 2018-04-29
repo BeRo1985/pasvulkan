@@ -2847,6 +2847,83 @@ type TpvGUIObject=class;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
      end;
 
+     TpvGUIListViewColumn=class(TCollectionItem)
+      public
+       type TAlignment=
+             (
+              Leading=0,
+              Center=1,
+              Tailing=2
+             );
+      private
+       fAlignment:TAlignment;
+       fAutoSize:boolean;
+       fCaption:TpvUTF8String;
+       fMinWidth:TpvFloat;
+       fMaxWidth:TpvFloat;
+       fTag:TpvSizeInt;
+       fVisible:boolean;
+       fWidth:TpvFloat;
+      protected
+       procedure SetIndex(Value:integer); override;
+       function GetDisplayName:string; override;
+       function GetStoredWidth:TpvFloat;
+      public
+       constructor Create(Collection:TCollection); override;
+       destructor Destroy; override;
+       procedure Assign(Source:TPersistent); override;
+      published
+       property Alignment:TAlignment read fAlignment write fAlignment default TAlignment.Leading;
+       property AutoSize:boolean read fAutoSize write fAutoSize default false;
+       property Caption:TpvUTF8String read fCaption write fCaption;
+       property MinWidth:TpvFloat read fMinWidth write fMinWidth;
+       property MaxWidth:TpvFloat read fMaxWidth write fMaxWidth;
+       property Tag:TpvSizeInt read fTag write fTag default 0;
+       property Visible:boolean read fVisible write fVisible default true;
+       property Width:TpvFloat read GetStoredWidth write fWidth;
+     end;
+
+     TpvGUIListViewColumns=class(TCollection)
+      public
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+     end;
+
+     TpvGUIListViewItems=class;
+
+     TpvGUIListViewItem=class(TPersistent)
+      private
+       fParent:TpvGUIListViewItems;
+       fCaption:TpvUTF8String;
+       fData:pointer;
+       fFocused:boolean;
+       fImage:TObject;
+       fSelected:boolean;
+       fSubItems:TStrings;
+       fTag:TpvSizeInt;
+       function GetIndex:TpvSizeInt;
+       procedure SetSubItems(const aSubItems:TStrings);
+      public
+       constructor Create(const aParent:TpvGUIListViewItems); reintroduce;
+       destructor Destroy; override;
+       procedure Assign(Source:TPersistent); override;
+       property Data:pointer read fData write fData;
+      published
+       property Caption:TpvUTF8String read fCaption write fCaption;
+       property Index:TpvSizeInt read GetIndex;
+       property Focused:boolean read fFocused write fFocused;
+       property Image:TObject read fImage write fImage;
+       property Selected:boolean read fSelected write fSelected;
+       property SubItems:TStrings read fSubItems write SetSubItems;
+       property Tag:TpvSizeInt read fTag write fTag default 0;
+     end;
+
+     TpvGUIListViewItems=class(TObjectList<TpvGUIListViewItem>)
+      public
+       constructor Create; reintroduce;
+       destructor Destroy; override;
+     end;
+
 implementation
 
 uses PasDblStrUtils,
@@ -21169,6 +21246,132 @@ end;
 procedure TpvGUIColorPicker.Draw;
 begin
  inherited Draw;
+end;
+
+constructor TpvGUIListViewColumn.Create(Collection:TCollection);
+begin
+ inherited Create(Collection);
+ fAlignment:=TAlignment.Leading;
+ fAutoSize:=false;
+ fCaption:='';
+ fMinWidth:=-1.0;
+ fMaxWidth:=-1.0;
+ fTag:=0;
+ fVisible:=true;
+ fWidth:=100;
+end;
+
+destructor TpvGUIListViewColumn.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvGUIListViewColumn.Assign(Source:TPersistent);
+begin
+ if Source is TpvGUIListViewColumn then begin
+  fAlignment:=TpvGUIListViewColumn(Source).fAlignment;
+  fAutoSize:=TpvGUIListViewColumn(Source).fAutoSize;
+  fCaption:=TpvGUIListViewColumn(Source).fCaption;
+  fMinWidth:=TpvGUIListViewColumn(Source).fMinWidth;
+  fMaxWidth:=TpvGUIListViewColumn(Source).fMaxWidth;
+  fTag:=TpvGUIListViewColumn(Source).fTag;
+  fVisible:=TpvGUIListViewColumn(Source).fVisible;
+  fWidth:=TpvGUIListViewColumn(Source).fWidth;
+ end else begin
+  inherited Assign(Source);
+ end;
+end;
+
+procedure TpvGUIListViewColumn.SetIndex(Value:integer);
+begin
+ inherited SetIndex(Value);
+end;
+
+function TpvGUIListViewColumn.GetDisplayName:string;
+begin
+ result:=String(fCaption);
+end;
+
+function TpvGUIListViewColumn.GetStoredWidth:TpvFloat;
+begin
+ result:=fWidth;
+ if (fMinWidth>=0.0) and (result<fMinWidth) then begin
+  result:=fMinWidth;
+ end;
+ if (fMaxWidth>=0.0) and (result>fMaxWidth) then begin
+  result:=fMaxWidth;
+ end;
+end;
+
+constructor TpvGUIListViewColumns.Create;
+begin
+ inherited Create(TpvGUIListViewColumn);
+end;
+
+destructor TpvGUIListViewColumns.Destroy;
+begin
+ inherited Destroy;
+end;
+
+constructor TpvGUIListViewItem.Create(const aParent:TpvGUIListViewItems);
+begin
+ fParent:=aParent;
+ fCaption:='';
+ fData:=nil;
+ fFocused:=false;
+ fImage:=nil;
+ fSelected:=false;
+ fSubItems:=TStringList.Create;
+ fTag:=0;
+end;
+
+destructor TpvGUIListViewItem.Destroy;
+begin
+ FreeAndNil(fSubItems);
+ inherited Destroy;
+end;
+
+procedure TpvGUIListViewItem.Assign(Source:TPersistent);
+begin
+ if Source is TpvGUIListViewItem then begin
+  fCaption:=TpvGUIListViewItem(Source).fCaption;
+  fData:=TpvGUIListViewItem(Source).fData;
+  fFocused:=TpvGUIListViewItem(Source).fFocused;
+  fImage:=TpvGUIListViewItem(Source).fImage;
+  fSelected:=TpvGUIListViewItem(Source).fSelected;
+  SetSubItems(TpvGUIListViewItem(Source).fSubItems);
+  fTag:=TpvGUIListViewItem(Source).fTag;
+ end else begin
+  inherited Assign(Source);
+ end;
+end;
+
+function TpvGUIListViewItem.GetIndex:TpvSizeInt;
+begin
+ if assigned(fParent) then begin
+  result:=fParent.IndexOf(self);
+ end else begin
+  result:=-1;
+ end;
+end;
+
+procedure TpvGUIListViewItem.SetSubItems(const aSubItems:TStrings);
+begin
+ if assigned(aSubItems) and (fSubItems<>aSubItems) then begin
+  fSubItems.Clear;
+  fSubItems.AddStrings(aSubItems);
+ end;
+end;
+
+constructor TpvGUIListViewItems.Create;
+begin
+ inherited Create;
+ OwnsObjects:=true;
+end;
+
+destructor TpvGUIListViewItems.Destroy;
+begin
+ inherited Destroy;
 end;
 
 end.
