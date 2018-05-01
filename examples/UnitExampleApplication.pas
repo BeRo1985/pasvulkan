@@ -40,6 +40,7 @@ const MenuColors:array[boolean,0..1,0..3] of TpvFloat=
 
 type TExampleApplication=class(TpvApplication)
       private
+       fForceUseValidationLayers:boolean;
        fMakeScreenshotJPEG:boolean;
        fMakeScreenshotPNG:boolean;
        fTextOverlay:TTextOverlay;
@@ -73,12 +74,27 @@ uses UnitScreenMainMenu;
 {$endif}
 
 constructor TExampleApplication.Create;
+{$if not (defined(Android) or defined(iOS))}
+var Index:TpvInt32;
+    Parameter:String;
+{$ifend}
 begin
  inherited Create;
  ExampleApplication:=self;
+ fForceUseValidationLayers:=false;
  fMakeScreenshotJPEG:=false;
  fMakeScreenshotPNG:=false;
  fTextOverlay:=nil;
+{$if not (defined(Android) or defined(iOS))}
+ for Index:=1 to ParamCount do begin
+  Parameter:=LowerCase(ParamStr(Index));
+  if (Parameter='--force-use-validation-layers') or
+     (Parameter='/force-use-validation-layers') then begin
+   fForceUseValidationLayers:=true;
+   break;
+  end;
+ end;
+{$ifend}
 end;
 
 destructor TExampleApplication.Destroy;
@@ -89,7 +105,7 @@ end;
 
 procedure TExampleApplication.Setup;
 begin
- if Debugging then begin
+ if Debugging or fForceUseValidationLayers then begin
   VulkanDebugging:=true;
   VulkanValidation:=true;
  end;
