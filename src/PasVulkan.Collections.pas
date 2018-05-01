@@ -153,7 +153,7 @@ type TpvDynamicArray<T>=class
        fItems:array of T;
        fCount:TpvSizeInt;
        fAllocated:TpvSizeInt;
-       fOwnObjects:boolean;
+       fOwnsObjects:boolean;
        procedure SetCount(const pNewCount:TpvSizeInt);
        function GetItem(const pIndex:TpvSizeInt):T;
        procedure SetItem(const pIndex:TpvSizeInt;const pItem:T);
@@ -171,7 +171,7 @@ type TpvDynamicArray<T>=class
        property Count:TpvSizeInt read fCount write SetCount;
        property Allocated:TpvSizeInt read fAllocated;
        property Items[const pIndex:TpvSizeInt]:T read GetItem write SetItem; default;
-       property OwnObjects:boolean read fOwnObjects write fOwnObjects;
+       property OwnsObjects:boolean read fOwnsObjects write fOwnsObjects;
      end;
 
      TpvObjectList=TpvObjectGenericList<TObject>;
@@ -1167,7 +1167,7 @@ begin
  fItems:=nil;
  fCount:=0;
  fAllocated:=0;
- fOwnObjects:=true;
+ fOwnsObjects:=true;
 end;
 
 destructor TpvObjectGenericList<T>.Destroy;
@@ -1179,7 +1179,7 @@ end;
 procedure TpvObjectGenericList<T>.Clear;
 var Index:TpvSizeInt;
 begin
- if fOwnObjects then begin
+ if fOwnsObjects then begin
   for Index:=fCount-1 downto 0 do begin
    FreeAndNil(fItems[Index]);
   end;
@@ -1203,7 +1203,7 @@ begin
   FillChar(fItems[fCount],(pNewCount-fCount)*SizeOf(T),#0);
   fCount:=pNewCount;
  end else if fCount>pNewCount then begin
-  if fOwnObjects then begin
+  if fOwnsObjects then begin
    for Index:=fCount-1 downto pNewCount do begin
     FreeAndNil(fItems[Index]);
    end;
@@ -1262,39 +1262,49 @@ begin
 end;
 
 procedure TpvObjectGenericList<T>.Insert(const pIndex:TpvSizeInt;const pItem:T);
+var OldCount:TpvSizeInt;
 begin
  if pIndex>=0 then begin
-  if pIndex<fCount then begin
-   inc(fCount);
-   if fCount<fAllocated then begin
-    fAllocated:=fCount shl 1;
-    SetLength(fItems,fAllocated);
-   end;
-   Move(fItems[pIndex],fItems[pIndex+1],(fCount-(pIndex+1))*SizeOf(T));
-   FillChar(fItems[pIndex],SizeOf(T),#0);
-  end else begin
+  OldCount:=fCount;
+  if fCount<pIndex then begin
    fCount:=pIndex+1;
-   if fCount<fAllocated then begin
-    fAllocated:=fCount shl 1;
-    SetLength(fItems,fAllocated);
-   end;
+  end else begin
+   inc(fCount);
+  end;
+  if fAllocated<fCount then begin
+   fAllocated:=fCount shl 1;
+   SetLength(fItems,fAllocated);
+  end;
+  if OldCount<fCount then begin
+   FillChar(fItems[OldCount],(fCount-OldCount)*SizeOf(T),#0);
+  end;
+  if pIndex<OldCount then begin
+   System.Move(fItems[pIndex],fItems[pIndex+1],(OldCount-(pIndex+1))*SizeOf(T));
+   FillChar(fItems[pIndex],SizeOf(T),#0);
   end;
   fItems[pIndex]:=pItem;
  end;
 end;
 
 procedure TpvObjectGenericList<T>.Delete(const pIndex:TpvSizeInt);
+var Old:T;
 begin
  if (pIndex<0) or (pIndex>=fCount) then begin
   raise ERangeError.Create('Out of index range');
  end;
- FreeANdNil(fItems[pIndex]);
- Move(fItems[pIndex+1],fItems[pIndex],(fCount-pIndex)*SizeOf(T));
+ Old:=fItems[pIndex];
  dec(fCount);
- FillChar(fItems[fCount],SizeOf(T),#0);
+ FillChar(fItems[pIndex],SizeOf(T),#0);
+ if pIndex<>fCount then begin
+  System.Move(fItems[pIndex+1],fItems[pIndex],(fCount-pIndex)*SizeOf(T));
+  FillChar(fItems[fCount],SizeOf(T),#0);
+ end;
  if fCount<(fAllocated shr 1) then begin
   fAllocated:=fAllocated shr 1;
   SetLength(fItems,fAllocated);
+ end;
+ if fOwnsObjects then begin
+  FreeAndNil(Old);
  end;
 end;
 
@@ -1512,22 +1522,25 @@ begin
 end;
 
 procedure TpvGenericList<T>.Insert(const pIndex:TpvSizeInt;const pItem:T);
+var OldCount:TpvSizeInt;
 begin
  if pIndex>=0 then begin
-  if pIndex<fCount then begin
-   inc(fCount);
-   if fCount<fAllocated then begin
-    fAllocated:=fCount shl 1;
-    SetLength(fItems,fAllocated);
-   end;
-   Move(fItems[pIndex],fItems[pIndex+1],(fCount-(pIndex+1))*SizeOf(T));
-   FillChar(fItems[pIndex],SizeOf(T),#0);
-  end else begin
+  OldCount:=fCount;
+  if fCount<pIndex then begin
    fCount:=pIndex+1;
-   if fCount<fAllocated then begin
-    fAllocated:=fCount shl 1;
-    SetLength(fItems,fAllocated);
-   end;
+  end else begin
+   inc(fCount);
+  end;
+  if fAllocated<fCount then begin
+   fAllocated:=fCount shl 1;
+   SetLength(fItems,fAllocated);
+  end;
+  if OldCount<fCount then begin
+   FillChar(fItems[OldCount],(fCount-OldCount)*SizeOf(T),#0);
+  end;
+  if pIndex<OldCount then begin
+   System.Move(fItems[pIndex],fItems[pIndex+1],(OldCount-(pIndex+1))*SizeOf(T));
+   FillChar(fItems[pIndex],SizeOf(T),#0);
   end;
   fItems[pIndex]:=pItem;
  end;
@@ -1540,9 +1553,12 @@ begin
   raise ERangeError.Create('Out of index range');
  end;
  Finalize(fItems[pIndex]);
- Move(fItems[pIndex+1],fItems[pIndex],(fCount-pIndex)*SizeOf(T));
  dec(fCount);
- FillChar(fItems[fCount],SizeOf(T),#0);
+ FillChar(fItems[pIndex],SizeOf(T),#0);
+ if pIndex<>fCount then begin
+  System.Move(fItems[pIndex+1],fItems[pIndex],(fCount-pIndex)*SizeOf(T));
+  FillChar(fItems[fCount],SizeOf(T),#0);
+ end;
  if fCount<(fAllocated shr 1) then begin
   fAllocated:=fAllocated shr 1;
   SetLength(fItems,fAllocated);

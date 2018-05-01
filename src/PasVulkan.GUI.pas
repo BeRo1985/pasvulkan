@@ -283,10 +283,48 @@ type TpvGUIObject=class;
        property UseScissor:boolean read fUseScissor write fUseScissor;
      end;
 
-     TpvGUIObjectList=class(TObjectList<TpvGUIObject>)
-      protected
-       procedure Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification); override;
+     TpvGUIObjectList=class
+      private
+       type TValueEnumerator=record
+             private
+              fObjectList:TpvGUIObjectList;
+              fIndex:TpvSizeInt;
+              function GetCurrent:TpvGUIObject; inline;
+             public
+              constructor Create(const aObjectList:TpvGUIObjectList);
+              function MoveNext:boolean; inline;
+              property Current:TpvGUIObject read GetCurrent;
+            end;
+      private
+       fItems:array of TpvGUIObject;
+       fCount:TpvSizeInt;
+       fAllocated:TpvSizeInt;
+       fNotifyObjects:boolean;
+       fOwnsObjects:boolean;
+       procedure HandleAdd(const aValue:TpvGUIObject);
+       procedure HandleRemoveAndNil(var aValue:TpvGUIObject);
+       procedure SetCount(const aNewCount:TpvSizeInt);
+       function GetItem(const aIndex:TpvSizeInt):TpvGUIObject;
+       procedure SetItem(const aIndex:TpvSizeInt;const aItem:TpvGUIObject);
       public
+       constructor Create(const aOwnsObjects:boolean);
+       destructor Destroy; override;
+       procedure Clear;
+       function IndexOf(const aItem:TpvGUIObject):TpvSizeInt;
+       function Contains(const aItem:TpvGUIObject):boolean;
+       function Add(const aItem:TpvGUIObject):TpvSizeInt;
+       procedure Insert(const aIndex:TpvSizeInt;const aItem:TpvGUIObject);
+       procedure Delete(const aIndex:TpvSizeInt);
+       procedure Remove(const aItem:TpvGUIObject);
+       procedure Extract(const aItem:TpvGUIObject);
+       procedure Exchange(const aIndex,aWithIndex:TpvSizeInt);
+       procedure Move(const aIndex,aToIndex:TpvSizeInt);
+       function GetEnumerator:TValueEnumerator;
+       property Count:TpvSizeInt read fCount write SetCount;
+       property Allocated:TpvSizeInt read fAllocated;
+       property Items[const aIndex:TpvSizeInt]:TpvGUIObject read GetItem write SetItem; default;
+       property NotifyObjects:boolean read fNotifyObjects write fNotifyObjects;
+       property OwnsObjects:boolean read fOwnsObjects write fOwnsObjects;
      end;
 
      IpvGUIObject=interface(IpvReferenceCountedObject)['{DF4E2599-646B-42AF-A138-7C213997EE3D}']
@@ -1660,7 +1698,7 @@ type TpvGUIObject=class;
      PpvGUIButtonFlags=^TpvGUIButtonFlags;
      TpvGUIButtonFlags=set of TpvGUIButtonFlag;
 
-     TpvGUIButtonGroup=class(TObjectList<TpvGUIButton>);
+     TpvGUIButtonGroup=class(TpvObjectGenericList<TpvGUIButton>);
 
      PpvGUIButtonIconPosition=^TpvGUIButtonIconPosition;
      TpvGUIButtonIconPosition=
@@ -1773,7 +1811,7 @@ type TpvGUIObject=class;
      PpvGUICheckBoxFlags=^TpvGUICheckBoxFlags;
      TpvGUICheckBoxFlags=set of TpvGUICheckBoxFlag;
 
-     TpvGUICheckBoxGroup=class(TObjectList<TpvGUICheckBox>);
+     TpvGUICheckBoxGroup=class(TpvObjectGenericList<TpvGUICheckBox>);
 
      TpvGUICheckBox=class(TpvGUIWidget)
       private
@@ -2918,7 +2956,7 @@ type TpvGUIObject=class;
        property Tag:TpvSizeInt read fTag write fTag default 0;
      end;
 
-     TpvGUIListViewItems=class(TObjectList<TpvGUIListViewItem>)
+     TpvGUIListViewItems=class(TpvObjectGenericList<TpvGUIListViewItem>)
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
@@ -3712,22 +3750,258 @@ begin
  end;
 end;
 
-procedure TpvGUIObjectList.Notify({$ifdef fpc}constref{$else}const{$endif} Value:TpvGUIObject;Action:TCollectionNotification);
+constructor TpvGUIObjectList.TValueEnumerator.Create(const aObjectList:TpvGUIObjectList);
 begin
- if assigned(Value) then begin
-  case Action of
-   cnAdded:begin
-    Value.IncRef;
-   end;
-   cnRemoved:begin
-    Value.DecRef;
-   end;
-   cnExtracted:begin
+ fObjectList:=aObjectList;
+ fIndex:=-1;
+end;
+
+function TpvGUIObjectList.TValueEnumerator.MoveNext:boolean;
+begin
+ inc(fIndex);
+ result:=fIndex<fObjectList.fCount;
+end;
+
+function TpvGUIObjectList.TValueEnumerator.GetCurrent:TpvGUIObject;
+begin
+ result:=fObjectList.fItems[fIndex];
+end;
+
+constructor TpvGUIObjectList.Create(const aOwnsObjects:boolean);
+begin
+ inherited Create;
+ fItems:=nil;
+ fCount:=0;
+ fAllocated:=0;
+ fNotifyObjects:=true;
+ fOwnsObjects:=aOwnsObjects;
+end;
+
+destructor TpvGUIObjectList.Destroy;
+begin
+ Clear;
+ inherited Destroy;
+end;
+
+procedure TpvGUIObjectList.HandleAdd(const aValue:TpvGUIObject);
+begin
+ if assigned(aValue) then begin
+  if fNotifyObjects then begin
+   aValue.IncRef;
+  end;
+ end;
+end;
+
+procedure TpvGUIObjectList.HandleRemoveAndNil(var aValue:TpvGUIObject);
+var Value:TpvGUIObject;
+begin
+ if assigned(aValue) then begin
+  Value:=aValue;
+  aValue:=nil;
+  if fNotifyObjects then begin
+   Value.DecRef;
+  end else if fOwnsObjects then begin
+   Value.Free;
+  end;
+ end;
+end;
+
+procedure TpvGUIObjectList.Clear;
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to fCount-1 do begin
+  HandleRemoveAndNil(fItems[Index]);
+ end;
+ fCount:=0;
+//fItems:=nil;
+//fAllocated:=0;
+end;
+
+procedure TpvGUIObjectList.SetCount(const aNewCount:TpvSizeInt);
+var Index,NewAllocated:TpvSizeInt;
+    Item:TpvPointer;
+begin
+ if fCount<aNewCount then begin
+  NewAllocated:=RoundUpToPowerOfTwoSizeUInt(aNewCount);
+  if fAllocated<NewAllocated then begin
+   SetLength(fItems,NewAllocated);
+   FillChar(fItems[fAllocated],(NewAllocated-fAllocated)*SizeOf(TpvGUIObject),#0);
+   fAllocated:=NewAllocated;
+  end;
+  FillChar(fItems[fCount],(aNewCount-fCount)*SizeOf(TpvGUIObject),#0);
+  fCount:=aNewCount;
+ end else if fCount>aNewCount then begin
+  for Index:=aNewCount to fCount-1 do begin
+   HandleRemoveAndNil(fItems[Index]);
+  end;
+  fCount:=aNewCount;
+  if aNewCount<(fAllocated shr 2) then begin
+   if aNewCount=0 then begin
+    fItems:=nil;
+    fAllocated:=0;
+   end else begin
+    NewAllocated:=fAllocated shr 1;
+    SetLength(fItems,NewAllocated);
+    fAllocated:=NewAllocated;
    end;
   end;
- end else begin
-  inherited Notify(Value,Action);
  end;
+end;
+
+function TpvGUIObjectList.GetItem(const aIndex:TpvSizeInt):TpvGUIObject;
+begin
+ if (aIndex<0) or (aIndex>=fCount) then begin
+  raise ERangeError.Create('Out of index range');
+ end;
+ result:=fItems[aIndex];
+end;
+
+procedure TpvGUIObjectList.SetItem(const aIndex:TpvSizeInt;const aItem:TpvGUIObject);
+begin
+ if (aIndex<0) or (aIndex>=fCount) then begin
+  raise ERangeError.Create('Out of index range');
+ end;
+ if fItems[aIndex]<>aItem then begin
+  HandleRemoveAndNil(fItems[aIndex]);
+  fItems[aIndex]:=aItem;
+  HandleAdd(aItem);
+ end else begin
+  fItems[aIndex]:=aItem;
+ end;
+end;
+
+function TpvGUIObjectList.IndexOf(const aItem:TpvGUIObject):TpvSizeInt;
+var Index:TpvInt32;
+begin
+ for Index:=0 to fCount-1 do begin
+  if fItems[Index]=aItem then begin
+   result:=Index;
+   exit;
+  end;
+ end;
+ result:=-1;
+end;
+
+function TpvGUIObjectList.Contains(const aItem:TpvGUIObject):boolean;
+var Index:TpvInt32;
+begin
+ for Index:=0 to fCount-1 do begin
+  if fItems[Index]=aItem then begin
+   result:=true;
+   exit;
+  end;
+ end;
+ result:=false;
+end;
+
+function TpvGUIObjectList.Add(const aItem:TpvGUIObject):TpvSizeInt;
+begin
+ result:=fCount;
+ inc(fCount);
+ if fAllocated<fCount then begin
+  fAllocated:=fCount+fCount;
+  SetLength(fItems,fAllocated);
+ end;
+ fItems[result]:=aItem;
+ HandleAdd(aItem);
+end;
+
+procedure TpvGUIObjectList.Insert(const aIndex:TpvSizeInt;const aItem:TpvGUIObject);
+var OldCount:TpvSizeInt;
+begin
+ if aIndex>=0 then begin
+  OldCount:=fCount;
+  if fCount<aIndex then begin
+   fCount:=aIndex+1;
+  end else begin
+   inc(fCount);
+  end;
+  if fAllocated<fCount then begin
+   fAllocated:=fCount shl 1;
+   SetLength(fItems,fAllocated);
+  end;
+  if OldCount<fCount then begin
+   FillChar(fItems[OldCount],(fCount-OldCount)*SizeOf(TpvGUIObject),#0);
+  end;
+  if aIndex<OldCount then begin
+   System.Move(fItems[aIndex],fItems[aIndex+1],(OldCount-(aIndex+1))*SizeOf(TpvGUIObject));
+   FillChar(fItems[aIndex],SizeOf(TpvGUIObject),#0);
+  end;
+  fItems[aIndex]:=aItem;
+  HandleAdd(aItem);
+ end;
+end;
+
+procedure TpvGUIObjectList.Delete(const aIndex:TpvSizeInt);
+var Old:TpvGUIObject;
+begin
+ if (aIndex<0) or (aIndex>=fCount) then begin
+  raise ERangeError.Create('Out of index range');
+ end;
+ Old:=fItems[aIndex];
+ dec(fCount);
+ FillChar(fItems[aIndex],SizeOf(TpvGUIObject),#0);
+ if aIndex<>fCount then begin
+  System.Move(fItems[aIndex+1],fItems[aIndex],(fCount-aIndex)*SizeOf(TpvGUIObject));
+  FillChar(fItems[fCount],SizeOf(TpvGUIObject),#0);
+ end;
+{if fCount<(fAllocated shr 1) then begin
+  fAllocated:=fAllocated shr 1;
+  SetLength(fItems,fAllocated);
+ end;}
+ if assigned(fItems[aIndex]) then begin
+  HandleRemoveAndNil(Old);
+ end;
+end;
+
+procedure TpvGUIObjectList.Remove(const aItem:TpvGUIObject);
+var Index:TpvSizeInt;
+begin
+ Index:=IndexOf(aItem);
+ if Index>=0 then begin
+  Delete(Index);
+ end;
+end;
+
+procedure TpvGUIObjectList.Extract(const aItem:TpvGUIObject);
+var Index:TpvSizeInt;
+begin
+ Index:=IndexOf(aItem);
+ if Index>=0 then begin
+  FillChar(fItems[Index],SizeOf(TpvGUIObject),#0);
+  Delete(Index);
+ end;
+end;
+
+procedure TpvGUIObjectList.Exchange(const aIndex,aWithIndex:TpvSizeInt);
+var Temporary:TpvGUIObject;
+begin
+ if ((aIndex<0) or (aIndex>=fCount)) or ((aWithIndex<0) or (aWithIndex>=fCount)) then begin
+  raise ERangeError.Create('Out of index range');
+ end;
+ Temporary:=fItems[aIndex];
+ fItems[aIndex]:=fItems[aWithIndex];
+ fItems[aWithIndex]:=Temporary;
+end;
+
+procedure TpvGUIObjectList.Move(const aIndex,aToIndex:TpvSizeInt);
+var Temporary:TpvGUIObject;
+begin
+ if ((aIndex<0) or (aIndex>=fCount)) or ((aToIndex<0) or (aToIndex>=fCount)) then begin
+  raise ERangeError.Create('Out of index range');
+ end;
+ Temporary:=fItems[aIndex];
+ if aIndex<aToIndex then begin
+  System.Move(fItems[aIndex+1],fItems[AIndex],(aToIndex-aIndex)*SizeOf(TpvGUIObject));
+ end else if aIndex>aToIndex then begin
+  System.Move(fItems[aToIndex],fItems[aToIndex],(aIndex-aToIndex)*SizeOf(TpvGUIObject));
+ end;
+ fItems[aToIndex]:=Temporary;
+end;
+
+function TpvGUIObjectList.GetEnumerator:TpvGUIObjectList.TValueEnumerator;
+begin
+ result:=TValueEnumerator.Create(self);
 end;
 
 constructor TpvGUIObject.Create(const aParent:TpvGUIObject);
@@ -5074,10 +5348,10 @@ begin
  fAnchors:=TpvGUIAdvancedGridLayoutAnchors.Create(TpvGUIAdvancedGridLayoutAnchor.CreateNull);
 
  fRows:=TpvGUIAdvancedGridLayoutColumnRows.Create;
- fRows.OwnObjects:=true;
+ fRows.OwnsObjects:=true;
 
  fColumns:=TpvGUIAdvancedGridLayoutColumnRows.Create;
- fColumns.OwnObjects:=true;
+ fColumns.OwnsObjects:=true;
 
  fMargin:=aMargin;
 
@@ -13440,7 +13714,8 @@ begin
 
  fButtonFlags:=[TpvGUIButtonFlag.NormalButton];
 
- fButtonGroup:=TpvGUIButtonGroup.Create(false);
+ fButtonGroup:=TpvGUIButtonGroup.Create;
+ fButtonGroup.OwnsObjects:=false;
 
  fCaption:='Button';
 
@@ -13788,7 +14063,8 @@ begin
 
  fCheckBoxFlags:=[];
 
- fCheckBoxGroup:=TpvGUICheckBoxGroup.Create(false);
+ fCheckBoxGroup:=TpvGUICheckBoxGroup.Create;
+ fCheckBoxGroup.OwnsObjects:=false;
 
  fCaption:='';
 
