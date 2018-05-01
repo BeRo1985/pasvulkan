@@ -41,6 +41,7 @@ const MenuColors:array[boolean,0..1,0..3] of TpvFloat=
 type TExampleApplication=class(TpvApplication)
       private
        fForceUseValidationLayers:boolean;
+       fForceNoVSync:boolean;
        fMakeScreenshotJPEG:boolean;
        fMakeScreenshotPNG:boolean;
        fTextOverlay:TTextOverlay;
@@ -82,6 +83,7 @@ begin
  inherited Create;
  ExampleApplication:=self;
  fForceUseValidationLayers:=false;
+ fForceNoVSync:=false;
  fMakeScreenshotJPEG:=false;
  fMakeScreenshotPNG:=false;
  fTextOverlay:=nil;
@@ -91,7 +93,9 @@ begin
   if (Parameter='--force-use-validation-layers') or
      (Parameter='/force-use-validation-layers') then begin
    fForceUseValidationLayers:=true;
-   break;
+  end else if (Parameter='--force-no-vsync') or
+              (Parameter='/force-no-vsync') then begin
+   fForceNoVSync:=true;
   end;
  end;
 {$ifend}
@@ -122,8 +126,11 @@ begin
  AndroidSeparateMouseAndTouch:=true;
  UseAudio:=true;
 //DesiredCountSwapChainImages:=2;
-//PresentMode:=TpvApplicationPresentMode.Mailbox;
- PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.Mailbox{TpvApplicationPresentMode.NoVSync}{$else}TpvApplicationPresentMode.VSync{$endif};
+ if fForceNoVSync then begin
+  PresentMode:=TpvApplicationPresentMode.Mailbox;
+ end else begin
+  PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.Mailbox{TpvApplicationPresentMode.NoVSync}{$else}TpvApplicationPresentMode.VSync{$endif};
+ end;
 end;
 
 procedure TExampleApplication.Start;
