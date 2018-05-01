@@ -315,6 +315,7 @@ type TpvGUIObject=class;
        function Add(const aItem:TpvGUIObject):TpvSizeInt;
        procedure Insert(const aIndex:TpvSizeInt;const aItem:TpvGUIObject);
        procedure Delete(const aIndex:TpvSizeInt);
+       procedure DeleteRangeBackwards(const aFromIndex,aToIndex:TpvSizeInt);
        procedure Remove(const aItem:TpvGUIObject);
        procedure Extract(const aItem:TpvGUIObject);
        procedure Exchange(const aIndex,aWithIndex:TpvSizeInt);
@@ -3924,7 +3925,7 @@ begin
    FillChar(fItems[OldCount],(fCount-OldCount)*SizeOf(TpvGUIObject),#0);
   end;
   if aIndex<OldCount then begin
-   System.Move(fItems[aIndex],fItems[aIndex+1],(OldCount-(aIndex+1))*SizeOf(TpvGUIObject));
+   System.Move(fItems[aIndex],fItems[aIndex+1],(OldCount-aIndex)*SizeOf(TpvGUIObject));
    FillChar(fItems[aIndex],SizeOf(TpvGUIObject),#0);
   end;
   fItems[aIndex]:=aItem;
@@ -3949,8 +3950,16 @@ begin
   fAllocated:=fAllocated shr 1;
   SetLength(fItems,fAllocated);
  end;}
- if assigned(fItems[aIndex]) then begin
+ if assigned(Old) then begin
   HandleRemoveAndNil(Old);
+ end;
+end;
+
+procedure TpvGUIObjectList.DeleteRangeBackwards(const aFromIndex,aToIndex:TpvSizeInt);
+var Index:TpvSizeInt;
+begin
+ for Index:=aToIndex downto aFromIndex do begin
+  Delete(Index);
  end;
 end;
 
@@ -3994,7 +4003,7 @@ begin
  if aIndex<aToIndex then begin
   System.Move(fItems[aIndex+1],fItems[AIndex],(aToIndex-aIndex)*SizeOf(TpvGUIObject));
  end else if aIndex>aToIndex then begin
-  System.Move(fItems[aToIndex],fItems[aToIndex],(aIndex-aToIndex)*SizeOf(TpvGUIObject));
+  System.Move(fItems[aToIndex],fItems[aToIndex+1],(aIndex-aToIndex)*SizeOf(TpvGUIObject));
  end;
  fItems[aToIndex]:=Temporary;
 end;
@@ -4163,6 +4172,7 @@ begin
  fLock.Acquire;
  try
   fToDisposeList.Add(aObject);
+  aObject.IncRef;
   TPasMPInterlocked.Increment(fCountToDisposeObjects);
  finally
   fLock.Release;
@@ -4253,6 +4263,7 @@ begin
       end;
      end;
      for Index:=fToFreeList.Count-1 downto 0 do begin
+      TpvGUIObject(fToFreeList.Items[Index]).DecRefWithoutFree;
       TpvGUIObject(fToFreeList.Items[Index]).Free;
      end;
     finally
@@ -11795,6 +11806,9 @@ begin
   TPasMPInterlocked.BitwiseOr(aGUIObject.fMarkBits,TpvGUIObject.ReleasedMarkBit);
   if aGUIObject is TpvGUIWindow then begin
    TpvGUIWindow(aGUIObject).fWindowDisposed:=true;
+   if assigned(fFocusedWidget) and (TpvGUIWindow(aGUIObject).GetWindow=TpvGUIWindow(aGUIObject)) then begin
+    TpvGUIObject.DecRefOrFreeAndNil(fFocusedWidget);
+   end;
   end;
   if assigned(fPopupMenuStack) and fPopupMenuStack.Contains(aGUIObject) then begin
    fPopupMenuStack.Remove(aGUIObject);
@@ -11806,10 +11820,12 @@ begin
    fWindowList.Remove(aGUIObject);
   end;
   if assigned(fLastFocusPath) and fLastFocusPath.Contains(aGUIObject) then begin
-   fLastFocusPath.Remove(aGUIObject);
+   fLastFocusPath.DeleteRangeBackwards(fLastFocusPath.IndexOf(aGUIObject),fLastFocusPath.Count-1);
+   TpvGUIObject.DecRefOrFreeAndNil(fFocusedWidget);
   end;
   if assigned(fCurrentFocusPath) and fCurrentFocusPath.Contains(aGUIObject) then begin
-   fCurrentFocusPath.Remove(aGUIObject);
+   fCurrentFocusPath.DeleteRangeBackwards(fCurrentFocusPath.IndexOf(aGUIObject),fCurrentFocusPath.Count-1);
+   TpvGUIObject.DecRefOrFreeAndNil(fFocusedWidget);
   end;
   if fDragWidget=aGUIObject then begin
    TpvGUIObject.DecRefOrFreeAndNil(fDragWidget);

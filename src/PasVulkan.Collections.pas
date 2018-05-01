@@ -1279,7 +1279,7 @@ begin
    FillChar(fItems[OldCount],(fCount-OldCount)*SizeOf(T),#0);
   end;
   if pIndex<OldCount then begin
-   System.Move(fItems[pIndex],fItems[pIndex+1],(OldCount-(pIndex+1))*SizeOf(T));
+   System.Move(fItems[pIndex],fItems[pIndex+1],(OldCount-pIndex)*SizeOf(T));
    FillChar(fItems[pIndex],SizeOf(T),#0);
   end;
   fItems[pIndex]:=pItem;
@@ -1539,7 +1539,7 @@ begin
    FillChar(fItems[OldCount],(fCount-OldCount)*SizeOf(T),#0);
   end;
   if pIndex<OldCount then begin
-   System.Move(fItems[pIndex],fItems[pIndex+1],(OldCount-(pIndex+1))*SizeOf(T));
+   System.Move(fItems[pIndex],fItems[pIndex+1],(OldCount-pIndex)*SizeOf(T));
    FillChar(fItems[pIndex],SizeOf(T),#0);
   end;
   fItems[pIndex]:=pItem;

@@ -367,10 +367,10 @@ type PPpvInt8=^PpvInt8;
        procedure BeforeDestruction; override;
        class function NewInstance:TObject; override;
        function GetReferenceCountedObject:TpvReferenceCountedObject; inline;
-       function IncRef:TpvInt32; inline;
-       function DecRef:TpvInt32; inline;
-       function DecRefWithoutFree:TpvInt32; inline;
-       class procedure DecRefOrFreeAndNil(var aObject); static; inline;
+       function IncRef:TpvInt32; {$ifdef ReleaseBuild}inline;{$endif}
+       function DecRef:TpvInt32; {$ifdef ReleaseBuild}inline;{$endif}
+       function DecRefWithoutFree:TpvInt32; {$ifdef ReleaseBuild}inline;{$endif}
+       class procedure DecRefOrFreeAndNil(var aObject); static; {$ifdef ReleaseBuild}inline;{$endif}
        property ReferenceCounter:TpvInt32 read fReferenceCounter;
      end;
 
@@ -1077,7 +1077,7 @@ begin
  if assigned(TheObject) then begin
   TObject(aObject):=nil;
   if TheObject is TpvReferenceCountedObject then begin
-   (TheObject as TpvReferenceCountedObject).DecRef;
+   TpvReferenceCountedObject(TheObject).DecRef;
   end else begin
    TheObject.Free;
   end;

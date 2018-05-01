@@ -8598,11 +8598,14 @@ begin
    end;
   end;
   if SearchMatch(aCaptures,Position,UntilExcludingPosition,fDoUnanchoredStart) then begin
-   aPosition:=aCaptures[0].Start;
-   aLength:=aCaptures[0].Length;
-   result:=true;
-   exit;
-  end else if fDoUnanchoredStart or fBeginningWildcardLoop or fBeginningAnchor then begin
+   if length(aCaptures)>0 then begin
+    aPosition:=aCaptures[0].Start;
+    aLength:=aCaptures[0].Length;
+    result:=true;
+    exit;
+   end;
+  end;
+  if fDoUnanchoredStart or fBeginningWildcardLoop or fBeginningAnchor then begin
    break;
   end;
  end;
