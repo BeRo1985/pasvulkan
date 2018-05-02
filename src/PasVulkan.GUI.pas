@@ -355,6 +355,7 @@ type TpvGUIObject=class;
        procedure BeforeDestruction; override;
        function GetGUIObject:TpvGUIObject;
        function HasParent(const aParent:TpvGUIObject):boolean; virtual;
+       function HasParentOrIs(const aParent:TpvGUIObject):boolean; virtual;
        procedure Check; virtual;
        procedure Update; virtual;
       published
@@ -4070,6 +4071,20 @@ function TpvGUIObject.HasParent(const aParent:TpvGUIObject):boolean;
 var CurrentParent:TpvGUIObject;
 begin
  CurrentParent:=fParent;
+ while assigned(CurrentParent) do begin
+  if CurrentParent=aParent then begin
+   result:=true;
+   exit;
+  end;
+  CurrentParent:=CurrentParent.Parent;
+ end;
+ result:=false;
+end;
+
+function TpvGUIObject.HasParentOrIs(const aParent:TpvGUIObject):boolean;
+var CurrentParent:TpvGUIObject;
+begin
+ CurrentParent:=self;
  while assigned(CurrentParent) do begin
   if CurrentParent=aParent then begin
    result:=true;
@@ -11806,9 +11821,6 @@ begin
   TPasMPInterlocked.BitwiseOr(aGUIObject.fMarkBits,TpvGUIObject.ReleasedMarkBit);
   if aGUIObject is TpvGUIWindow then begin
    TpvGUIWindow(aGUIObject).fWindowDisposed:=true;
-   if assigned(fFocusedWidget) and (TpvGUIWindow(aGUIObject).GetWindow=TpvGUIWindow(aGUIObject)) then begin
-    TpvGUIObject.DecRefOrFreeAndNil(fFocusedWidget);
-   end;
   end;
   if assigned(fPopupMenuStack) and fPopupMenuStack.Contains(aGUIObject) then begin
    fPopupMenuStack.Remove(aGUIObject);
@@ -11821,22 +11833,20 @@ begin
   end;
   if assigned(fLastFocusPath) and fLastFocusPath.Contains(aGUIObject) then begin
    fLastFocusPath.DeleteRangeBackwards(fLastFocusPath.IndexOf(aGUIObject),fLastFocusPath.Count-1);
-   TpvGUIObject.DecRefOrFreeAndNil(fFocusedWidget);
   end;
   if assigned(fCurrentFocusPath) and fCurrentFocusPath.Contains(aGUIObject) then begin
    fCurrentFocusPath.DeleteRangeBackwards(fCurrentFocusPath.IndexOf(aGUIObject),fCurrentFocusPath.Count-1);
-   TpvGUIObject.DecRefOrFreeAndNil(fFocusedWidget);
   end;
-  if fDragWidget=aGUIObject then begin
+  if assigned(fDragWidget) and fDragWidget.HasParentOrIs(aGUIObject) then begin
    TpvGUIObject.DecRefOrFreeAndNil(fDragWidget);
   end;
-  if fWindow=aGUIObject then begin
+  if assigned(fWindow) and fWindow.HasParentOrIs(aGUIObject) then begin
    TpvGUIObject.DecRefOrFreeAndNil(fWindow);
   end;
-  if fFocusedWidget=aGUIObject then begin
+  if assigned(fFocusedWidget) and fFocusedWidget.HasParentOrIs(aGUIObject) then begin
    TpvGUIObject.DecRefOrFreeAndNil(fFocusedWidget);
   end;
-  if fHoveredWidget=aGUIObject then begin
+  if assigned(fHoveredWidget) and fHoveredWidget.HasParentOrIs(aGUIObject) then begin
    TpvGUIObject.DecRefOrFreeAndNil(fHoveredWidget);
   end;
   if assigned(aGUIObject.fParent) and
