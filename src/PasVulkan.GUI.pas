@@ -1359,6 +1359,7 @@ type TpvGUIObject=class;
        procedure SetCountBuffers(const aCountBuffers:TpvInt32);
        procedure SetUpdateBufferIndex(const aUpdateBufferIndex:TpvInt32);
        procedure SetDrawBufferIndex(const aDrawBufferIndex:TpvInt32);
+       procedure UpdateFocusForReleaseObject(const aGUIObject:TpvGUIObject);
        procedure DisposeWindow(const aWindow:TpvGUIWindow);
        procedure CenterWindow(const aWindow:TpvGUIWindow);
        procedure MoveWindowToFront(const aWindow:TpvGUIWindow);
@@ -11815,6 +11816,30 @@ begin
  fDrawBufferIndex:=aDrawBufferIndex;
 end;
 
+procedure TpvGUIInstance.UpdateFocusForReleaseObject(const aGUIObject:TpvGUIObject);
+var Index:TpvSizeInt;
+    OtherObject:TpvGUIObject;
+begin
+
+ Index:=fCurrentFocusPath.IndexOf(aGUIObject);
+ if Index>0 then begin
+  OtherObject:=fCurrentFocusPath[Index-1];
+  if assigned(OtherObject) and (OtherObject is TpvGUIWidget) then begin
+   UpdateFocus(TpvGUIWidget(OtherObject));
+  end else begin
+   UpdateFocus(nil);
+  end;
+ end else begin
+  UpdateFocus(nil);
+ end;
+
+ // Just for to be sure
+ if fCurrentFocusPath.Contains(aGUIObject) then begin
+  fCurrentFocusPath.DeleteRangeBackwards(fCurrentFocusPath.IndexOf(aGUIObject),fCurrentFocusPath.Count-1);
+ end;
+
+end;
+
 procedure TpvGUIInstance.ReleaseObject(const aGUIObject:TpvGUIObject);
 begin
  if assigned(aGUIObject) and ((TPasMPInterlocked.Read(aGUIObject.fMarkBits) and TpvGUIObject.ReleasedMarkBit)=0) then begin
@@ -11831,23 +11856,23 @@ begin
   if assigned(fWindowList) and fWindowList.Contains(aGUIObject) then begin
    fWindowList.Remove(aGUIObject);
   end;
-  if assigned(fLastFocusPath) and fLastFocusPath.Contains(aGUIObject) then begin
-   fLastFocusPath.DeleteRangeBackwards(fLastFocusPath.IndexOf(aGUIObject),fLastFocusPath.Count-1);
-  end;
-  if assigned(fCurrentFocusPath) and fCurrentFocusPath.Contains(aGUIObject) then begin
-   fCurrentFocusPath.DeleteRangeBackwards(fCurrentFocusPath.IndexOf(aGUIObject),fCurrentFocusPath.Count-1);
-  end;
   if assigned(fDragWidget) and fDragWidget.HasParentOrIs(aGUIObject) then begin
    TpvGUIObject.DecRefOrFreeAndNil(fDragWidget);
+  end;
+  if assigned(fHoveredWidget) and fHoveredWidget.HasParentOrIs(aGUIObject) then begin
+   TpvGUIObject.DecRefOrFreeAndNil(fHoveredWidget);
+  end;
+  if assigned(fCurrentFocusPath) and fCurrentFocusPath.Contains(aGUIObject) then begin
+   UpdateFocusForReleaseObject(aGUIObject);
+  end;
+  if assigned(fLastFocusPath) and fLastFocusPath.Contains(aGUIObject) then begin
+   fLastFocusPath.DeleteRangeBackwards(fLastFocusPath.IndexOf(aGUIObject),fLastFocusPath.Count-1);
   end;
   if assigned(fWindow) and fWindow.HasParentOrIs(aGUIObject) then begin
    TpvGUIObject.DecRefOrFreeAndNil(fWindow);
   end;
   if assigned(fFocusedWidget) and fFocusedWidget.HasParentOrIs(aGUIObject) then begin
    TpvGUIObject.DecRefOrFreeAndNil(fFocusedWidget);
-  end;
-  if assigned(fHoveredWidget) and fHoveredWidget.HasParentOrIs(aGUIObject) then begin
-   TpvGUIObject.DecRefOrFreeAndNil(fHoveredWidget);
   end;
   if assigned(aGUIObject.fParent) and
      assigned(aGUIObject.fParent.fChildren) and
