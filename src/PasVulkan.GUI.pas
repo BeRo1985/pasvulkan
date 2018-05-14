@@ -3039,7 +3039,7 @@ begin
   $13b5,      // ARM
   $5143,}     // Qualcomm
   else begin
-   // But for example Mali, Adreno and PowerVR not
+   // But for example Mali, Adreno and PowerVR
    fStrategy:=TStrategy.TwoPassBidirectional;
   end;
  end;
@@ -21118,31 +21118,28 @@ begin
        RequestFocus;
       end;
       TpvApplicationInputPointerButton.Middle:begin
-       RequestFocus;
       end;
       TpvApplicationInputPointerButton.Right:begin
-       RequestFocus;
       end;
      end;
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Up:begin
-     case aPointerEvent.Button of
-      TpvApplicationInputPointerButton.Left:begin
-{      if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
-        fOnClick(self);
-       end;}
-       fMode:=0;
-       RequestFocus;
-      end;
-      TpvApplicationInputPointerButton.Middle:begin
-       RequestFocus;
-      end;
-      TpvApplicationInputPointerButton.Right:begin
-       RequestFocus;
-{      if assigned(fPopupMenu) then begin
-        fPopupMenu.Activate(AbsolutePosition+aPointerEvent.Position);
-       end;}
+     if Focused then begin
+      case aPointerEvent.Button of
+       TpvApplicationInputPointerButton.Left:begin
+ {      if assigned(fOnClick) and Contains(aPointerEvent.Position) then begin
+         fOnClick(self);
+        end;}
+        fMode:=0;
+       end;
+       TpvApplicationInputPointerButton.Middle:begin
+       end;
+       TpvApplicationInputPointerButton.Right:begin
+ {      if assigned(fPopupMenu) then begin
+         fPopupMenu.Activate(AbsolutePosition+aPointerEvent.Position);
+        end;}
+       end;
       end;
      end;
     end;
