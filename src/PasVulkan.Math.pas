@@ -2572,7 +2572,7 @@ end;
 function TpvVector3.Perpendicular:TpvVector3;
 var v,p:TpvVector3;
 begin
- v:=p.Normalize;
+ v:=self.Normalize;
  p.x:=System.abs(v.x);
  p.y:=System.abs(v.y);
  p.z:=System.abs(v.z);
@@ -3594,7 +3594,7 @@ end;
 function TpvVector4.Perpendicular:TpvVector4;
 var v,p:TpvVector4;
 begin
- v:=p.Normalize;
+ v:=self.Normalize;
  p.x:=System.abs(v.x);
  p.y:=System.abs(v.y);
  p.z:=System.abs(v.z);
@@ -5006,7 +5006,7 @@ end;
 function TpvQuaternion.Perpendicular:TpvQuaternion;
 var v,p:TpvQuaternion;
 begin
- v:=p.Normalize;
+ v:=self.Normalize;
  p.x:=System.abs(v.x);
  p.y:=System.abs(v.y);
  p.z:=System.abs(v.z);
