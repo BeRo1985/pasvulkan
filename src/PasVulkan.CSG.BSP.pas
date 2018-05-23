@@ -99,7 +99,7 @@ type PpvCSGBSPClassification=^TpvCSGBSPClassification;
       );
 
      PpvCSGBSPVertex=^TpvCSGBSPVertex;
-     TpvCSGBSPVertex=object
+     TpvCSGBSPVertex=record
       public
        Position:TpvVector3;
        Normal:TpvVector3;
@@ -108,7 +108,7 @@ type PpvCSGBSPClassification=^TpvCSGBSPClassification;
      end;
 
      PpvCSGBSPPolygonVertices=^TpvCSGBSPPolygonVertices;
-     TpvCSGBSPPolygonVertices=object
+     TpvCSGBSPPolygonVertices=record
       public
        Vertices:array of TpvCSGBSPVertex;
        CountVertices:TpvSizeInt;
@@ -119,7 +119,7 @@ type PpvCSGBSPClassification=^TpvCSGBSPClassification;
      end;
 
      PpvCSGBSPPolygon=^TpvCSGBSPPolygon;
-     TpvCSGBSPPolygon=object
+     TpvCSGBSPPolygon=record
       public
        Vertices:TpvCSGBSPPolygonVertices;
        Plane:TpvPlane;
@@ -135,7 +135,7 @@ type PpvCSGBSPClassification=^TpvCSGBSPClassification;
      TpvCSGBSPPolygons=array of TpvCSGBSPPolygon;
 
      PpvCSGBSPPolygonList=^TpvCSGBSPPolygonList;
-     TpvCSGBSPPolygonList=object
+     TpvCSGBSPPolygonList=record
       public
        Polygons:TpvCSGBSPPolygons;
        CountPolygons:TpvSizeInt;
