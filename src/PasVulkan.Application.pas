@@ -5494,12 +5494,42 @@ begin
 {$ifend}
  if not assigned(VulkanDevice) then begin
 
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Creating vulkan device');
+{$ifend}
   fVulkanDevice:=TpvVulkanDevice.Create(VulkanInstance,nil,aSurface,nil);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Created vulkan device');
+{$ifend}
+
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Adding vulkan device queues');
+{$ifend}
   fVulkanDevice.AddQueues;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Added vulkan device queues');
+{$ifend}
+
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Adding VK_KHR_SWAPCHAIN_EXTENSION_NAME to vulkan device');
+{$ifend}
   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Added VK_KHR_SWAPCHAIN_EXTENSION_NAME to vulkan device');
+{$ifend}
+
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Initializing vulkan device');
+{$ifend}
   fVulkanDevice.Initialize;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Initialized vulkan device');
+{$ifend}
 
   if (length(fVulkanPipelineCacheFileName)>0) and FileExists(fVulkanPipelineCacheFileName) then begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Existent pipeline cache found, loading...');
+{$ifend}
    try
     fVulkanPipelineCache:=TpvVulkanPipelineCache.CreateFromFile(fVulkanDevice,fVulkanPipelineCacheFileName);
    except
@@ -5507,8 +5537,17 @@ begin
      fVulkanPipelineCache:=TpvVulkanPipelineCache.Create(fVulkanDevice);
     end;
    end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Existent pipeline cache loaded');
+{$ifend}
   end else begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','No existent pipeline cache found, creating new pipeline cache...');
+{$ifend}
    fVulkanPipelineCache:=TpvVulkanPipelineCache.Create(fVulkanDevice);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Created new pipeline cache...');
+{$ifend}
   end;
 
   fVulkanCountCommandQueues:=length(fVulkanDevice.PhysicalDevice.QueueFamilyProperties);
