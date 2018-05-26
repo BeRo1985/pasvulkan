@@ -5489,6 +5489,9 @@ procedure TpvApplication.CreateVulkanDevice(const aSurface:TpvVulkanSurface=nil)
 var QueueFamilyIndex,ThreadIndex,SwapChainImageIndex:TpvInt32;
     FormatProperties:TVkFormatProperties;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanDevice');
+{$ifend}
  if not assigned(VulkanDevice) then begin
 
   fVulkanDevice:=TpvVulkanDevice.Create(VulkanInstance,nil,aSurface,nil);
@@ -5596,6 +5599,9 @@ var i:TpvInt32;
     CountExtensions:TSDLInt32;
     Extensions:TExtensions;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanInstance');
+{$ifend}
  if not assigned(fVulkanInstance) then begin
   SDL_VERSION(SDL_SysWMinfo.version);
   if {$if defined(PasVulkanUseSDL2WithVulkanSupport)}fSDLVersionWithVulkanSupport or{$ifend}
@@ -5703,6 +5709,9 @@ begin
    end;
   end;
  end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.CreateVulkanInstance');
+{$ifend}
 end;
 {$else}
 begin
