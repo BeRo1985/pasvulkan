@@ -70,7 +70,7 @@ uses {$if defined(Windows)}
      {$if defined(XCB) and defined(VulkanUseXCBUnits)}xcb,{$ifend}
      {$if defined(Mir) and defined(VulkanUseMirUnits)}Mir,{$ifend}
      {$if defined(Wayland) and defined(VulkanUseWaylandUnits)}Wayland,{$ifend}
-     {$if defined(Android) and defined(VulkanUseAndroidUnits)}Android,{$ifend}
+     {$if defined(Android)}PasVulkan.Android,{$ifend}
      SysUtils,Classes,SyncObjs,Math,
      PasMP,
      PUCU,
@@ -8303,9 +8303,21 @@ var Index:TpvInt32;
     DoAdd:boolean;
     QueueFamilyProperties:PVkQueueFamilyProperties;
 begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Entering TpvVulkanDevice.AddQueues');
+{$ifend}
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Scanning queue family properties');
+{$ifend}
  for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework',PAnsiChar(AnsiString('Queue family property number '+IntToStr(Index))));
+{$ifend}
   DoAdd:=false;
   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Checking universal queue family for surface support');
+{$ifend}
   if (((QueueFamilyProperties.queueFlags and (TpvUInt32(VK_QUEUE_GRAPHICS_BIT) or
                                               TpvUInt32(VK_QUEUE_COMPUTE_BIT) or
                                               TpvUInt32(VK_QUEUE_TRANSFER_BIT)))=(TpvUInt32(VK_QUEUE_GRAPHICS_BIT) or
@@ -8317,37 +8329,79 @@ begin
     DoAdd:=true;
    end;
   end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Checked universal queue family for surface support');
+{$ifend}
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Checking present queue family for surface support');
+{$ifend}
   if (fPresentQueueFamilyIndex<0) and ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or not assigned(aSurface)) then begin
    fPresentQueueFamilyIndex:=Index;
    if aPresent then begin
     DoAdd:=true;
    end;
   end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Checked present queue family for surface support');
+{$ifend}
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Checking graphics queue family for surface support');
+{$ifend}
   if ((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicsQueueFamilyIndex<0) then begin
    fGraphicsQueueFamilyIndex:=Index;
    if aGraphics then begin
     DoAdd:=true;
    end;
   end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Checked graphics queue family for surface support');
+{$ifend}
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Checking compute queue family for surface support');
+{$ifend}
   if ((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_COMPUTE_BIT))<>0) and (fComputeQueueFamilyIndex<0) then begin
    fComputeQueueFamilyIndex:=Index;
    if aCompute then begin
     DoAdd:=true;
    end;
   end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Checked compute queue family for surface support');
+{$ifend}
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Checking transfer queue family for surface support');
+{$ifend}
   if ((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueFamilyIndex<0) then begin
    fTransferQueueFamilyIndex:=Index;
    if aTransfer then begin
     DoAdd:=true;
    end;
   end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Checked transfer queue family for surface support');
+{$ifend}
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Checking for VK_QUEUE_SPARSE_BINDING_BIT support');
+{$ifend}
   if ((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_SPARSE_BINDING_BIT))=0) and aSparseBinding then begin
    raise EpvVulkanException.Create('Only unsatisfactory device queue families available');
   end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Checked for VK_QUEUE_SPARSE_BINDING_BIT support');
+{$ifend}
   if DoAdd then begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Adding device queue create info');
+{$ifend}
    fDeviceQueueCreateInfoList.Add(TpvVulkanDeviceQueueCreateInfo.Create(Index,[1.0]));
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Added device queue create info');
+{$ifend}
   end;
  end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Scanned queue family properties');
+{$ifend}
  if ((fTransferQueueFamilyIndex<0) and aTransfer) and
     (((fGraphicsQueueFamilyIndex>=0) and aGraphics) or
      ((fComputeQueueFamilyIndex>=0) and aCompute)) then begin
@@ -8370,6 +8424,9 @@ begin
     ((fTransferQueueFamilyIndex<0) and aTransfer) then begin
   raise EpvVulkanException.Create('Only unsatisfactory device queue families available');
  end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Leaving TpvVulkanDevice.AddQueues');
+{$ifend}
 end;
 
 procedure TpvVulkanDevice.Initialize;
