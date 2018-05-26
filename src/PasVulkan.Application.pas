@@ -5782,7 +5782,13 @@ begin
    if not SDL_Vulkan_CreateSurface(fSurfaceWindow,fVulkanInstance.Handle,@VulkanSurface) then begin
     raise EpvVulkanException.Create('Vulkan initialization failure at SDL_Vulkan_CreateSurface: '+String(SDL_GetError));
    end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Creating vulkan surface');
+{$ifend}
    fVulkanSurface:=TpvVulkanSurface.CreateHandle(fVulkanInstance,VulkanSurface);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Created vulkan surface');
+{$ifend}
   end else{$ifend} begin
    SDL_VERSION(SDL_SysWMinfo.version);
    if SDL_GetWindowWMInfo(fSurfaceWindow,@SDL_SysWMinfo)<>0 then begin
@@ -5791,7 +5797,7 @@ begin
 {$if defined(Android)}
      SDL_SYSWM_ANDROID:begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
-      __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanApplication',PAnsiChar('Got native window 0x'+IntToHex(PtrUInt(SDL_SysWMinfo.Window),SizeOf(PtrUInt)*2)));
+      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar('Got native window 0x'+IntToHex(PtrUInt(SDL_SysWMinfo.Window),SizeOf(PtrUInt)*2)));
 {$ifend}
       VulkanSurfaceCreateInfo.Android.sType:=VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
       VulkanSurfaceCreateInfo.Android.window:=SDL_SysWMinfo.Window;
@@ -5836,7 +5842,13 @@ begin
      end;
     end;
 
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Creating vulkan surface');
+{$ifend}
     fVulkanSurface:=TpvVulkanSurface.Create(fVulkanInstance,VulkanSurfaceCreateInfo);
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Created vulkan surface');
+{$ifend}
 
    end;
 
