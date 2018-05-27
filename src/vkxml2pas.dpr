@@ -3932,6 +3932,8 @@ begin
          end else if (length(TypeDefinition^.Members[j].Values)>0) and
                      (copy(TypeDefinition^.Members[j].Values,1,length('VK_STRUCTURE_TYPE_'))='VK_STRUCTURE_TYPE_') then begin
           RecordConstructorCodeBlockStringList.Add(' '+TypeDefinition^.Members[j].Name+':='+TypeDefinition^.Members[j].Values+';');
+         end else if TypeDefinition^.Members[j].Name='sType' then begin
+          RecordConstructorCodeBlockStringList.Add(' '+TypeDefinition^.Members[j].Name+':=TVkStructureType(TVkInt32(0));');
          end else begin
           Assert(false);
          end;
@@ -3954,34 +3956,40 @@ begin
          CodeParameterLine:=CodeParameterLine+');';
          ParameterLine:=ParameterLine+');'+MemberComment(TypeDefinition^.Members[j].Comment);
         end;
-        RecordConstructorCodeStringList.Add(CodeParameterLine);
-        RecordConstructorStringList.Add(ParameterLine);
+        if (TypeDefinition^.Name<>'VkBaseInStructure') and
+           (TypeDefinition^.Name<>'VkBaseOutStructure') then begin
+         RecordConstructorCodeStringList.Add(CodeParameterLine);
+         RecordConstructorStringList.Add(ParameterLine);
+        end;
        end;
       end;
-      if HasArray then begin
-       RecordConstructorCodeStringList.Add('var ArrayItemCount:TVkInt32;');
-      end;
-      RecordConstructorCodeStringList.Add('begin');
-      if HasArray then begin
-       RecordConstructorCodeStringList.Add(' FillChar(self,SizeOf(T'+TypeDefinition^.Name+'),#0);');
-      end;
-      RecordConstructorCodeStringList.AddStrings(RecordConstructorCodeBlockStringList);
-      RecordConstructorCodeStringList.Add('end;');
-      if TypeDefinitionConstructors.Count>0 then begin
-       TypeDefinitionConstructors.Add('');
-      end;
-      if length(TypeDefinition^.Define)>0 then begin
-       TypeDefinitionConstructors.Add('{$ifdef '+TypeDefinition^.Define+'}');
-      end;
-      TypeDefinitionConstructors.AddStrings(RecordConstructorCodeStringList);
-      if length(TypeDefinition^.Define)>0 then begin
-       TypeDefinitionConstructors.Add('{$endif}');
+      if (TypeDefinition^.Name<>'VkBaseInStructure') and
+         (TypeDefinition^.Name<>'VkBaseOutStructure') then begin
+       if HasArray then begin
+        RecordConstructorCodeStringList.Add('var ArrayItemCount:TVkInt32;');
+       end;
+       RecordConstructorCodeStringList.Add('begin');
+       if HasArray then begin
+        RecordConstructorCodeStringList.Add(' FillChar(self,SizeOf(T'+TypeDefinition^.Name+'),#0);');
+       end;
+       RecordConstructorCodeStringList.AddStrings(RecordConstructorCodeBlockStringList);
+       RecordConstructorCodeStringList.Add('end;');
+       if TypeDefinitionConstructors.Count>0 then begin
+        TypeDefinitionConstructors.Add('');
+       end;
+       if length(TypeDefinition^.Define)>0 then begin
+        TypeDefinitionConstructors.Add('{$ifdef '+TypeDefinition^.Define+'}');
+       end;
+       TypeDefinitionConstructors.AddStrings(RecordConstructorCodeStringList);
+       if length(TypeDefinition^.Define)>0 then begin
+        TypeDefinitionConstructors.Add('{$endif}');
+       end;
       end;
       TypeDefinitionTypes.Add('{$ifdef HAS_ADVANCED_RECORDS}');
       if RecordConstructorStringList.Count>0 then begin
        TypeDefinitionTypes.AddStrings(RecordConstructorStringList);
       end else begin
-       TypeDefinitionTypes.Add('       constructor Create;');
+//     TypeDefinitionTypes.Add('       function Create:T'+TypeDefinition^.Name+';');
       end;
       TypeDefinitionTypes.Add('{$endif}');
       TypeDefinitionTypes.Add('     end;');

@@ -258,7 +258,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=74;
+      VK_HEADER_VERSION=76;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -523,8 +523,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME='VK_KHR_get_surface_capabilities2';
       VK_KHR_VARIABLE_POINTERS_SPEC_VERSION=1;
       VK_KHR_VARIABLE_POINTERS_EXTENSION_NAME='VK_KHR_variable_pointers';
-      VK_KHR_EXTENSION_122_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_122_EXTENSION_NAME='VK_KHR_extension_122';
+      VK_KHR_GET_DISPLAY_PROPERTIES_2_SPEC_VERSION=1;
+      VK_KHR_GET_DISPLAY_PROPERTIES_2_EXTENSION_NAME='VK_KHR_get_display_properties2';
       VK_MVK_IOS_SURFACE_SPEC_VERSION=2;
       VK_MVK_IOS_SURFACE_EXTENSION_NAME='VK_MVK_ios_surface';
       VK_MVK_MACOS_SURFACE_SPEC_VERSION=2;
@@ -617,8 +617,8 @@ const VK_NULL_HANDLE=0;
       VK_EXT_EXTENSION_168_EXTENSION_NAME='VK_NV_extension_168';
       VK_KHR_MAINTENANCE3_SPEC_VERSION=1;
       VK_KHR_MAINTENANCE3_EXTENSION_NAME='VK_KHR_maintenance3';
-      VK_EXT_EXTENSION_170_SPEC_VERSION=0;
-      VK_EXT_EXTENSION_170_EXTENSION_NAME='VK_EXT_extension_170';
+      VK_KHR_DRAW_INDIRECT_COUNT_SPEC_VERSION=1;
+      VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME='VK_KHR_draw_indirect_count';
       VK_QCOM_extension_171_SPEC_VERSION=0;
       VK_QCOM_extension_171_EXTENSION_NAME='VK_QCOM_extension_171';
       VK_QCOM_extension_172_SPEC_VERSION=0;
@@ -695,6 +695,12 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_207_EXTENSION_NAME='VK_NV_extension_207';
       VK_KHR_EXTENSION_208_SPEC_VERSION=0;
       VK_KHR_EXTENSION_208_EXTENSION_NAME='VK_KHR_extension_208';
+      VK_KHR_EXTENSION_209_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_209_EXTENSION_NAME='VK_KHR_extension_209';
+      VK_KHR_EXTENSION_210_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_210_EXTENSION_NAME='VK_KHR_extension_210';
+      VK_KHR_EXTENSION_211_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_211_EXTENSION_NAME='VK_KHR_extension_211';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -2216,6 +2222,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR=1000119000,
        VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR=1000119001,
        VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR=1000119002,
+       VK_STRUCTURE_TYPE_DISPLAY_PROPERTIES_2_KHR=1000121000,
+       VK_STRUCTURE_TYPE_DISPLAY_PLANE_PROPERTIES_2_KHR=1000121001,
+       VK_STRUCTURE_TYPE_DISPLAY_MODE_PROPERTIES_2_KHR=1000121002,
+       VK_STRUCTURE_TYPE_DISPLAY_PLANE_INFO_2_KHR=1000121003,
+       VK_STRUCTURE_TYPE_DISPLAY_PLANE_CAPABILITIES_2_KHR=1000121004,
        VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK=1000122000,
        VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK=1000123000,
        VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT=1000128000,
@@ -3501,6 +3512,30 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const aObjectType:TVkObjectType;
                           const aObjectHandle:TVkUInt64;
                           const aPObjectName:PVkChar);
+{$endif}
+     end;
+
+     PPVkBaseOutStructure=^PVkBaseOutStructure;
+     PVkBaseOutStructure=^TVkBaseOutStructure;
+     TVkBaseOutStructure=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType;
+       pNext:PVkBaseOutStructure;
+{$ifdef HAS_ADVANCED_RECORDS}
+{$endif}
+     end;
+
+     PPVkBaseInStructure=^PVkBaseInStructure;
+     PVkBaseInStructure=^TVkBaseInStructure;
+     TVkBaseInStructure=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType;
+       pNext:PVkBaseInStructure;
+{$ifdef HAS_ADVANCED_RECORDS}
 {$endif}
      end;
 
@@ -8703,6 +8738,78 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkDisplayProperties2KHR=^PVkDisplayProperties2KHR;
+     PVkDisplayProperties2KHR=^TVkDisplayProperties2KHR;
+     TVkDisplayProperties2KHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_PROPERTIES_2_KHR
+       pNext:PVkVoid;
+       displayProperties:TVkDisplayPropertiesKHR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDisplayProperties:TVkDisplayPropertiesKHR);
+{$endif}
+     end;
+
+     PPVkDisplayPlaneProperties2KHR=^PVkDisplayPlaneProperties2KHR;
+     PVkDisplayPlaneProperties2KHR=^TVkDisplayPlaneProperties2KHR;
+     TVkDisplayPlaneProperties2KHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_PLANE_PROPERTIES_2_KHR
+       pNext:PVkVoid;
+       displayPlaneProperties:TVkDisplayPlanePropertiesKHR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDisplayPlaneProperties:TVkDisplayPlanePropertiesKHR);
+{$endif}
+     end;
+
+     PPVkDisplayModeProperties2KHR=^PVkDisplayModeProperties2KHR;
+     PVkDisplayModeProperties2KHR=^TVkDisplayModeProperties2KHR;
+     TVkDisplayModeProperties2KHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_MODE_PROPERTIES_2_KHR
+       pNext:PVkVoid;
+       displayModeProperties:TVkDisplayModePropertiesKHR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDisplayModeProperties:TVkDisplayModePropertiesKHR);
+{$endif}
+     end;
+
+     PPVkDisplayPlaneInfo2KHR=^PVkDisplayPlaneInfo2KHR;
+     PVkDisplayPlaneInfo2KHR=^TVkDisplayPlaneInfo2KHR;
+     TVkDisplayPlaneInfo2KHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_PLANE_INFO_2_KHR
+       pNext:PVkVoid;
+       mode:TVkDisplayModeKHR;
+       planeIndex:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMode:TVkDisplayModeKHR;
+                          const aPlaneIndex:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkDisplayPlaneCapabilities2KHR=^PVkDisplayPlaneCapabilities2KHR;
+     PVkDisplayPlaneCapabilities2KHR=^TVkDisplayPlaneCapabilities2KHR;
+     TVkDisplayPlaneCapabilities2KHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DISPLAY_PLANE_CAPABILITIES_2_KHR
+       pNext:PVkVoid;
+       capabilities:TVkDisplayPlaneCapabilitiesKHR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aCapabilities:TVkDisplayPlaneCapabilitiesKHR);
+{$endif}
+     end;
+
      PPVkSharedPresentSurfaceCapabilitiesKHR=^PVkSharedPresentSurfaceCapabilitiesKHR;
      PVkSharedPresentSurfaceCapabilitiesKHR=^TVkSharedPresentSurfaceCapabilitiesKHR;
      TVkSharedPresentSurfaceCapabilitiesKHR=record
@@ -10699,6 +10806,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkGetPhysicalDeviceSurfaceFormats2KHR=function(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceFormatCount:PVkUInt32;pSurfaceFormats:PVkSurfaceFormat2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     TvkGetPhysicalDeviceDisplayProperties2KHR=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayProperties2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetPhysicalDeviceDisplayPlaneProperties2KHR=function(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPlaneProperties2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetDisplayModeProperties2KHR=function(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;pPropertyCount:PVkUInt32;pProperties:PVkDisplayModeProperties2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetDisplayPlaneCapabilities2KHR=function(physicalDevice:TVkPhysicalDevice;const pDisplayPlaneInfo:PVkDisplayPlaneInfo2KHR;pCapabilities:PVkDisplayPlaneCapabilities2KHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkGetBufferMemoryRequirements2=procedure(device:TVkDevice;const pInfo:PVkBufferMemoryRequirementsInfo2;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetBufferMemoryRequirements2KHR=procedure(device:TVkDevice;const pInfo:PVkBufferMemoryRequirementsInfo2;pMemoryRequirements:PVkMemoryRequirements2); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -10774,6 +10889,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef Android}
      TvkGetMemoryAndroidHardwareBufferANDROID=function(device:TVkDevice;const pInfo:PVkMemoryGetAndroidHardwareBufferInfoANDROID;pBuffer:PPVkAndroidAHardwareBuffer):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
+
+     TvkCmdDrawIndirectCountKHR=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdDrawIndexedIndirectCountKHR=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 
      PPVulkanCommands=^PVulkanCommands;
@@ -11357,6 +11476,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       GetPhysicalDeviceSurfaceFormats2KHR:TvkGetPhysicalDeviceSurfaceFormats2KHR;
 
+      GetPhysicalDeviceDisplayProperties2KHR:TvkGetPhysicalDeviceDisplayProperties2KHR;
+
+      GetPhysicalDeviceDisplayPlaneProperties2KHR:TvkGetPhysicalDeviceDisplayPlaneProperties2KHR;
+
+      GetDisplayModeProperties2KHR:TvkGetDisplayModeProperties2KHR;
+
+      GetDisplayPlaneCapabilities2KHR:TvkGetDisplayPlaneCapabilities2KHR;
+
       GetBufferMemoryRequirements2:TvkGetBufferMemoryRequirements2;
 
       GetBufferMemoryRequirements2KHR:TvkGetBufferMemoryRequirements2KHR;
@@ -11432,6 +11559,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef Android}
       GetMemoryAndroidHardwareBufferANDROID:TvkGetMemoryAndroidHardwareBufferANDROID;
 {$endif}
+
+      CmdDrawIndirectCountKHR:TvkCmdDrawIndirectCountKHR;
+
+      CmdDrawIndexedIndirectCountKHR:TvkCmdDrawIndexedIndirectCountKHR;
 
      end;
 
@@ -12020,6 +12151,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function GetPhysicalDeviceSurfaceFormats2KHR(physicalDevice:TVkPhysicalDevice;const pSurfaceInfo:PVkPhysicalDeviceSurfaceInfo2KHR;pSurfaceFormatCount:PVkUInt32;pSurfaceFormats:PVkSurfaceFormat2KHR):TVkResult; virtual;
 
+       function GetPhysicalDeviceDisplayProperties2KHR(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayProperties2KHR):TVkResult; virtual;
+
+       function GetPhysicalDeviceDisplayPlaneProperties2KHR(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPlaneProperties2KHR):TVkResult; virtual;
+
+       function GetDisplayModeProperties2KHR(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;pPropertyCount:PVkUInt32;pProperties:PVkDisplayModeProperties2KHR):TVkResult; virtual;
+
+       function GetDisplayPlaneCapabilities2KHR(physicalDevice:TVkPhysicalDevice;const pDisplayPlaneInfo:PVkDisplayPlaneInfo2KHR;pCapabilities:PVkDisplayPlaneCapabilities2KHR):TVkResult; virtual;
+
        procedure GetBufferMemoryRequirements2(device:TVkDevice;const pInfo:PVkBufferMemoryRequirementsInfo2;pMemoryRequirements:PVkMemoryRequirements2); virtual;
 
        procedure GetBufferMemoryRequirements2KHR(device:TVkDevice;const pInfo:PVkBufferMemoryRequirementsInfo2;pMemoryRequirements:PVkMemoryRequirements2); virtual;
@@ -12095,6 +12234,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef Android}
        function GetMemoryAndroidHardwareBufferANDROID(device:TVkDevice;const pInfo:PVkMemoryGetAndroidHardwareBufferInfoANDROID;pBuffer:PPVkAndroidAHardwareBuffer):TVkResult; virtual;
 {$endif}
+
+       procedure CmdDrawIndirectCountKHR(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); virtual;
+
+       procedure CmdDrawIndexedIndirectCountKHR(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); virtual;
 
        property Commands:TVulkanCommands read fCommands;
      end;
@@ -12681,6 +12824,14 @@ var LibVulkan:pointer=nil;
 
     vkGetPhysicalDeviceSurfaceFormats2KHR:TvkGetPhysicalDeviceSurfaceFormats2KHR=nil;
 
+    vkGetPhysicalDeviceDisplayProperties2KHR:TvkGetPhysicalDeviceDisplayProperties2KHR=nil;
+
+    vkGetPhysicalDeviceDisplayPlaneProperties2KHR:TvkGetPhysicalDeviceDisplayPlaneProperties2KHR=nil;
+
+    vkGetDisplayModeProperties2KHR:TvkGetDisplayModeProperties2KHR=nil;
+
+    vkGetDisplayPlaneCapabilities2KHR:TvkGetDisplayPlaneCapabilities2KHR=nil;
+
     vkGetBufferMemoryRequirements2:TvkGetBufferMemoryRequirements2=nil;
 
     vkGetBufferMemoryRequirements2KHR:TvkGetBufferMemoryRequirements2KHR=nil;
@@ -12756,6 +12907,10 @@ var LibVulkan:pointer=nil;
 {$ifdef Android}
     vkGetMemoryAndroidHardwareBufferANDROID:TvkGetMemoryAndroidHardwareBufferANDROID=nil;
 {$endif}
+
+    vkCmdDrawIndirectCountKHR:TvkCmdDrawIndirectCountKHR=nil;
+
+    vkCmdDrawIndexedIndirectCountKHR:TvkCmdDrawIndexedIndirectCountKHR=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -13981,6 +14136,22 @@ begin
    @vkGetPhysicalDeviceSurfaceFormats2KHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceSurfaceFormats2KHR'));
    @vk.fCommands.GetPhysicalDeviceSurfaceFormats2KHR:=addr(vkGetPhysicalDeviceSurfaceFormats2KHR);
   end;
+  if not assigned(vkGetPhysicalDeviceDisplayProperties2KHR) then begin
+   @vkGetPhysicalDeviceDisplayProperties2KHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceDisplayProperties2KHR'));
+   @vk.fCommands.GetPhysicalDeviceDisplayProperties2KHR:=addr(vkGetPhysicalDeviceDisplayProperties2KHR);
+  end;
+  if not assigned(vkGetPhysicalDeviceDisplayPlaneProperties2KHR) then begin
+   @vkGetPhysicalDeviceDisplayPlaneProperties2KHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceDisplayPlaneProperties2KHR'));
+   @vk.fCommands.GetPhysicalDeviceDisplayPlaneProperties2KHR:=addr(vkGetPhysicalDeviceDisplayPlaneProperties2KHR);
+  end;
+  if not assigned(vkGetDisplayModeProperties2KHR) then begin
+   @vkGetDisplayModeProperties2KHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDisplayModeProperties2KHR'));
+   @vk.fCommands.GetDisplayModeProperties2KHR:=addr(vkGetDisplayModeProperties2KHR);
+  end;
+  if not assigned(vkGetDisplayPlaneCapabilities2KHR) then begin
+   @vkGetDisplayPlaneCapabilities2KHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetDisplayPlaneCapabilities2KHR'));
+   @vk.fCommands.GetDisplayPlaneCapabilities2KHR:=addr(vkGetDisplayPlaneCapabilities2KHR);
+  end;
   if not assigned(vkGetBufferMemoryRequirements2) then begin
    @vkGetBufferMemoryRequirements2:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetBufferMemoryRequirements2'));
    @vk.fCommands.GetBufferMemoryRequirements2:=addr(vkGetBufferMemoryRequirements2);
@@ -14129,6 +14300,14 @@ begin
    @vk.fCommands.GetMemoryAndroidHardwareBufferANDROID:=addr(vkGetMemoryAndroidHardwareBufferANDROID);
   end;
 {$endif}
+  if not assigned(vkCmdDrawIndirectCountKHR) then begin
+   @vkCmdDrawIndirectCountKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawIndirectCountKHR'));
+   @vk.fCommands.CmdDrawIndirectCountKHR:=addr(vkCmdDrawIndirectCountKHR);
+  end;
+  if not assigned(vkCmdDrawIndexedIndirectCountKHR) then begin
+   @vkCmdDrawIndexedIndirectCountKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawIndexedIndirectCountKHR'));
+   @vk.fCommands.CmdDrawIndexedIndirectCountKHR:=addr(vkCmdDrawIndexedIndirectCountKHR);
+  end;
   result:=assigned(vkCreateInstance);
  end;
 end;
@@ -14449,6 +14628,10 @@ begin
   @InstanceCommands.GetPhysicalDeviceMultisamplePropertiesEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceMultisamplePropertiesEXT')));
   @InstanceCommands.GetPhysicalDeviceSurfaceCapabilities2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSurfaceCapabilities2KHR')));
   @InstanceCommands.GetPhysicalDeviceSurfaceFormats2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSurfaceFormats2KHR')));
+  @InstanceCommands.GetPhysicalDeviceDisplayProperties2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceDisplayProperties2KHR')));
+  @InstanceCommands.GetPhysicalDeviceDisplayPlaneProperties2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceDisplayPlaneProperties2KHR')));
+  @InstanceCommands.GetDisplayModeProperties2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetDisplayModeProperties2KHR')));
+  @InstanceCommands.GetDisplayPlaneCapabilities2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetDisplayPlaneCapabilities2KHR')));
   @InstanceCommands.GetBufferMemoryRequirements2:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetBufferMemoryRequirements2')));
   @InstanceCommands.GetBufferMemoryRequirements2KHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetBufferMemoryRequirements2KHR')));
   @InstanceCommands.GetImageMemoryRequirements2:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetImageMemoryRequirements2')));
@@ -14489,6 +14672,8 @@ begin
 {$ifdef Android}
   @InstanceCommands.GetMemoryAndroidHardwareBufferANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetMemoryAndroidHardwareBufferANDROID')));
 {$endif}
+  @InstanceCommands.CmdDrawIndirectCountKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawIndirectCountKHR')));
+  @InstanceCommands.CmdDrawIndexedIndirectCountKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawIndexedIndirectCountKHR')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -14748,6 +14933,8 @@ begin
 {$ifdef Android}
   @DeviceCommands.GetMemoryAndroidHardwareBufferANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetMemoryAndroidHardwareBufferANDROID')));
 {$endif}
+  @DeviceCommands.CmdDrawIndirectCountKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawIndirectCountKHR')));
+  @DeviceCommands.CmdDrawIndexedIndirectCountKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawIndexedIndirectCountKHR')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -18182,6 +18369,43 @@ begin
  surfaceFormat:=aSurfaceFormat;
 end;
 
+constructor TVkDisplayProperties2KHR.Create(const aDisplayProperties:TVkDisplayPropertiesKHR);
+begin
+ sType:=VK_STRUCTURE_TYPE_DISPLAY_PROPERTIES_2_KHR;
+ pNext:=nil;
+ displayProperties:=aDisplayProperties;
+end;
+
+constructor TVkDisplayPlaneProperties2KHR.Create(const aDisplayPlaneProperties:TVkDisplayPlanePropertiesKHR);
+begin
+ sType:=VK_STRUCTURE_TYPE_DISPLAY_PLANE_PROPERTIES_2_KHR;
+ pNext:=nil;
+ displayPlaneProperties:=aDisplayPlaneProperties;
+end;
+
+constructor TVkDisplayModeProperties2KHR.Create(const aDisplayModeProperties:TVkDisplayModePropertiesKHR);
+begin
+ sType:=VK_STRUCTURE_TYPE_DISPLAY_MODE_PROPERTIES_2_KHR;
+ pNext:=nil;
+ displayModeProperties:=aDisplayModeProperties;
+end;
+
+constructor TVkDisplayPlaneInfo2KHR.Create(const aMode:TVkDisplayModeKHR;
+                                           const aPlaneIndex:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_DISPLAY_PLANE_INFO_2_KHR;
+ pNext:=nil;
+ mode:=aMode;
+ planeIndex:=aPlaneIndex;
+end;
+
+constructor TVkDisplayPlaneCapabilities2KHR.Create(const aCapabilities:TVkDisplayPlaneCapabilitiesKHR);
+begin
+ sType:=VK_STRUCTURE_TYPE_DISPLAY_PLANE_CAPABILITIES_2_KHR;
+ pNext:=nil;
+ capabilities:=aCapabilities;
+end;
+
 constructor TVkSharedPresentSurfaceCapabilitiesKHR.Create(const aSharedPresentSupportedUsageFlags:TVkImageUsageFlags);
 begin
  sType:=VK_STRUCTURE_TYPE_SHARED_PRESENT_SURFACE_CAPABILITIES_KHR;
@@ -20430,6 +20654,26 @@ begin
  result:=fCommands.GetPhysicalDeviceSurfaceFormats2KHR(physicalDevice,pSurfaceInfo,pSurfaceFormatCount,pSurfaceFormats);
 end;
 
+function TVulkan.GetPhysicalDeviceDisplayProperties2KHR(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayProperties2KHR):TVkResult;
+begin
+ result:=fCommands.GetPhysicalDeviceDisplayProperties2KHR(physicalDevice,pPropertyCount,pProperties);
+end;
+
+function TVulkan.GetPhysicalDeviceDisplayPlaneProperties2KHR(physicalDevice:TVkPhysicalDevice;pPropertyCount:PVkUInt32;pProperties:PVkDisplayPlaneProperties2KHR):TVkResult;
+begin
+ result:=fCommands.GetPhysicalDeviceDisplayPlaneProperties2KHR(physicalDevice,pPropertyCount,pProperties);
+end;
+
+function TVulkan.GetDisplayModeProperties2KHR(physicalDevice:TVkPhysicalDevice;display:TVkDisplayKHR;pPropertyCount:PVkUInt32;pProperties:PVkDisplayModeProperties2KHR):TVkResult;
+begin
+ result:=fCommands.GetDisplayModeProperties2KHR(physicalDevice,display,pPropertyCount,pProperties);
+end;
+
+function TVulkan.GetDisplayPlaneCapabilities2KHR(physicalDevice:TVkPhysicalDevice;const pDisplayPlaneInfo:PVkDisplayPlaneInfo2KHR;pCapabilities:PVkDisplayPlaneCapabilities2KHR):TVkResult;
+begin
+ result:=fCommands.GetDisplayPlaneCapabilities2KHR(physicalDevice,pDisplayPlaneInfo,pCapabilities);
+end;
+
 procedure TVulkan.GetBufferMemoryRequirements2(device:TVkDevice;const pInfo:PVkBufferMemoryRequirementsInfo2;pMemoryRequirements:PVkMemoryRequirements2);
 begin
  fCommands.GetBufferMemoryRequirements2(device,pInfo,pMemoryRequirements);
@@ -20613,6 +20857,16 @@ begin
  result:=fCommands.GetMemoryAndroidHardwareBufferANDROID(device,pInfo,pBuffer);
 end;
 {$endif}
+
+procedure TVulkan.CmdDrawIndirectCountKHR(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32);
+begin
+ fCommands.CmdDrawIndirectCountKHR(commandBuffer,buffer,offset,countBuffer,countBufferOffset,maxDrawCount,stride);
+end;
+
+procedure TVulkan.CmdDrawIndexedIndirectCountKHR(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32);
+begin
+ fCommands.CmdDrawIndexedIndirectCountKHR(commandBuffer,buffer,offset,countBuffer,countBufferOffset,maxDrawCount,stride);
+end;
 
 initialization
  vk:=TVulkan.Create;
