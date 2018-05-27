@@ -772,12 +772,17 @@ type EpvVulkanException=class(Exception);
                           const aAllocationManager:TpvVulkanAllocationManager=nil);
        destructor Destroy; override;
        procedure AddQueue(const aQueueFamilyIndex:TpvUInt32;const aQueuePriorities:array of TpvFloat;const aSurface:TpvVulkanSurface=nil);
-       procedure AddQueues(const aUniversal:boolean=true;
-                           const aPresent:boolean=true;
-                           const aGraphics:boolean=true;
-                           const aCompute:boolean=true;
-                           const aTransfer:boolean=true;
-                           const aSparseBinding:boolean=false;
+       procedure AddQueues(const aScanUniversal:boolean=true;
+                           const aScanPresent:boolean=true;
+                           const aScanGraphics:boolean=true;
+                           const aScanCompute:boolean=true;
+                           const aScanTransfer:boolean=true;
+                           const aNeedUniversal:boolean=true;
+                           const aNeedPresent:boolean=true;
+                           const aNeedGraphics:boolean=true;
+                           const aNeedCompute:boolean=true;
+                           const aNeedTransfer:boolean=true;
+                           const aNeedSparseBinding:boolean=false;
                            const aSurface:TpvVulkanSurface=nil);
        procedure Initialize;
        procedure WaitIdle;
@@ -8292,12 +8297,17 @@ begin
  end;
 end;
 
-procedure TpvVulkanDevice.AddQueues(const aUniversal:boolean=true;
-                                    const aPresent:boolean=true;
-                                    const aGraphics:boolean=true;
-                                    const aCompute:boolean=true;
-                                    const aTransfer:boolean=true;
-                                    const aSparseBinding:boolean=false;
+procedure TpvVulkanDevice.AddQueues(const aScanUniversal:boolean=true;
+                                    const aScanPresent:boolean=true;
+                                    const aScanGraphics:boolean=true;
+                                    const aScanCompute:boolean=true;
+                                    const aScanTransfer:boolean=true;
+                                    const aNeedUniversal:boolean=true;
+                                    const aNeedPresent:boolean=true;
+                                    const aNeedGraphics:boolean=true;
+                                    const aNeedCompute:boolean=true;
+                                    const aNeedTransfer:boolean=true;
+                                    const aNeedSparseBinding:boolean=false;
                                     const aSurface:TpvVulkanSurface=nil);
 var Index:TpvInt32;
     DoAdd:boolean;
@@ -8325,7 +8335,7 @@ begin
                                                                                   TpvUInt32(VK_QUEUE_TRANSFER_BIT))) and (fUniversalQueueFamilyIndex<0)) and
      ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or not assigned(aSurface)) then begin
    fUniversalQueueFamilyIndex:=Index;
-   if aUniversal then begin
+   if aScanUniversal then begin
     DoAdd:=true;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
     __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Found universal queue family');
@@ -8340,7 +8350,7 @@ begin
 {$ifend}
   if (fPresentQueueFamilyIndex<0) and ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or not assigned(aSurface)) then begin
    fPresentQueueFamilyIndex:=Index;
-   if aPresent then begin
+   if aScanPresent then begin
     DoAdd:=true;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
     __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Found present queue family');
@@ -8355,7 +8365,7 @@ begin
 {$ifend}
   if ((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicsQueueFamilyIndex<0) then begin
    fGraphicsQueueFamilyIndex:=Index;
-   if aGraphics then begin
+   if aScanGraphics then begin
     DoAdd:=true;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
     __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Found graphics queue family');
@@ -8370,7 +8380,7 @@ begin
 {$ifend}
   if ((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_COMPUTE_BIT))<>0) and (fComputeQueueFamilyIndex<0) then begin
    fComputeQueueFamilyIndex:=Index;
-   if aCompute then begin
+   if aScanCompute then begin
     DoAdd:=true;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
     __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Found compute queue family');
@@ -8385,7 +8395,7 @@ begin
 {$ifend}
   if ((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueFamilyIndex<0) then begin
    fTransferQueueFamilyIndex:=Index;
-   if aTransfer then begin
+   if aScanTransfer then begin
     DoAdd:=true;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
     __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Found transfer queue family');
@@ -8398,7 +8408,11 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Checking for VK_QUEUE_SPARSE_BINDING_BIT support');
 {$ifend}
-  if ((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_SPARSE_BINDING_BIT))=0) and aSparseBinding then begin
+  if ((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_SPARSE_BINDING_BIT))=0) and aNeedSparseBinding then begin
+{$if (defined(fpc) and defined(android))}
+   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Only unsatisfactory device queue families available');
+   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','No VK_QUEUE_SPARSE_BINDING_BIT support found');
+{$ifend}
    raise EpvVulkanException.Create('Only unsatisfactory device queue families available');
   end;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -8417,9 +8431,9 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Scanned queue family properties');
 {$ifend}
- if ((fTransferQueueFamilyIndex<0) and aTransfer) and
-    (((fGraphicsQueueFamilyIndex>=0) and aGraphics) or
-     ((fComputeQueueFamilyIndex>=0) and aCompute)) then begin
+ if ((fTransferQueueFamilyIndex<0) and aNeedTransfer) and
+    (((fGraphicsQueueFamilyIndex>=0) and aScanGraphics) or
+     ((fComputeQueueFamilyIndex>=0) and aScanCompute)) then begin
   // https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkQueueFamilyProperties.html
   // Quote: "All commands that are allowed on a queue that supports transfer operations are
   //         also allowed on a queue that supports either graphics or compute operations thus
@@ -8429,37 +8443,59 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Overriding transfer queue family index');
 {$ifend}
-  if (fGraphicsQueueFamilyIndex>=0) and aGraphics then begin
+  if (fGraphicsQueueFamilyIndex>=0) and aScanGraphics then begin
    fTransferQueueFamilyIndex:=fGraphicsQueueFamilyIndex;
-  end else if (fComputeQueueFamilyIndex>=0) and aCompute then begin
+  end else if (fComputeQueueFamilyIndex>=0) and aScanCompute then begin
    fTransferQueueFamilyIndex:=fComputeQueueFamilyIndex;
   end;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Overrided transfer queue family index');
 {$ifend}
+  if (fUniversalQueueFamilyIndex<0) and ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or not assigned(aSurface)) then begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Overriding universal queue family index');
+{$ifend}
+   fUniversalQueueFamilyIndex:=Index;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Overrided universal queue family index');
+{$ifend}
+  end;
  end;
- if ((fUniversalQueueFamilyIndex<0) and aUniversal) or
-    ((fPresentQueueFamilyIndex<0) and aPresent) or
-    ((fGraphicsQueueFamilyIndex<0) and aGraphics) or
-    ((fComputeQueueFamilyIndex<0) and aCompute) or
-    ((fTransferQueueFamilyIndex<0) and aTransfer) then begin
+ if ((fUniversalQueueFamilyIndex<0) and aNeedUniversal) and
+    (fPresentQueueFamilyIndex>=0) and
+    (fGraphicsQueueFamilyIndex=fPresentQueueFamilyIndex) and
+    (fComputeQueueFamilyIndex=fPresentQueueFamilyIndex) and
+    (fTransferQueueFamilyIndex=fPresentQueueFamilyIndex) then begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Overriding universal queue family index');
+{$ifend}
+  fUniversalQueueFamilyIndex:=fPresentQueueFamilyIndex;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+  __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Overrided universal queue family index');
+{$ifend}
+ end;
+ if ((fUniversalQueueFamilyIndex<0) and aNeedUniversal) or
+    ((fPresentQueueFamilyIndex<0) and aNeedPresent) or
+    ((fGraphicsQueueFamilyIndex<0) and aNeedGraphics) or
+    ((fComputeQueueFamilyIndex<0) and aNeedCompute) or
+    ((fTransferQueueFamilyIndex<0) and aNeedTransfer) then begin
 {$if (defined(fpc) and defined(android))}
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Only unsatisfactory device queue families available');
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework',PAnsiChar(AnsiString('Universal device queue family: '+
                                                                                     'Found: '+IntToStr(ord(fUniversalQueueFamilyIndex>=0) and 1)+', '+
-                                                                                    'Needed: '+IntToStr(ord(aUniversal) and 1))));
+                                                                                    'Needed: '+IntToStr(ord(aNeedUniversal) and 1))));
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework',PAnsiChar(AnsiString('Present device queue family: '+
                                                                                     'Found: '+IntToStr(ord(fPresentQueueFamilyIndex>=0) and 1)+', '+
-                                                                                    'Needed: '+IntToStr(ord(aPresent) and 1))));
+                                                                                    'Needed: '+IntToStr(ord(aNeedPresent) and 1))));
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework',PAnsiChar(AnsiString('Graphics device queue family: '+
                                                                                     'Found: '+IntToStr(ord(fGraphicsQueueFamilyIndex>=0) and 1)+', '+
-                                                                                    'Needed: '+IntToStr(ord(aGraphics) and 1))));
+                                                                                    'Needed: '+IntToStr(ord(aNeedGraphics) and 1))));
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework',PAnsiChar(AnsiString('Compute device queue family: '+
                                                                                     'Found: '+IntToStr(ord(fComputeQueueFamilyIndex>=0) and 1)+', '+
-                                                                                    'Needed: '+IntToStr(ord(aCompute) and 1))));
+                                                                                    'Needed: '+IntToStr(ord(aNeedCompute) and 1))));
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework',PAnsiChar(AnsiString('Transfer device queue family: '+
                                                                                     'Found: '+IntToStr(ord(fTransferQueueFamilyIndex>=0) and 1)+', '+
-                                                                                    'Needed: '+IntToStr(ord(aTransfer) and 1))));
+                                                                                    'Needed: '+IntToStr(ord(aNeedTransfer) and 1))));
 {$ifend}
   raise EpvVulkanException.Create('Only unsatisfactory device queue families available');
  end;
