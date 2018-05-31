@@ -2202,7 +2202,7 @@ begin
   Sinus:=0.0;
   Cosinus:=0.0;
   SinCos(Theta,Sinus,Cosinus);
-  result:=((self*Cosinus)+((b-(self*DotProduct)).Normalize*Sinus)).Normalize;
+  result:=(self*Cosinus)+((b-(self*DotProduct)).Normalize*Sinus);
  end;
 end;
 
@@ -3206,7 +3206,7 @@ begin
   Sinus:=0.0;
   Cosinus:=0.0;
   SinCos(Theta,Sinus,Cosinus);
-  result:=((self*Cosinus)+((b-(self*DotProduct)).Normalize*Sinus)).Normalize;
+  result:=(self*Cosinus)+((b-(self*DotProduct)).Normalize*Sinus);
  end;
 end;
 
@@ -4117,7 +4117,7 @@ begin
   Sinus:=0.0;
   Cosinus:=0.0;
   SinCos(Theta,Sinus,Cosinus);
-  result:=((self*Cosinus)+((b-(self*DotProduct)).Normalize*Sinus)).Normalize;
+  result:=(self*Cosinus)+((b-(self*DotProduct)).Normalize*Sinus);
  end;
 end;
 
