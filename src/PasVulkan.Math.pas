@@ -180,7 +180,7 @@ type PpvScalar=^TpvScalar;
        function Cross(const b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function Lerp(const b:TpvVector2;const t:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const b:TpvVector2;const t:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       function Slerp(const b:TpvVector2;const t:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TpvVector2;const t:TpvScalar):TpvVector2;
        function Angle(const b,c:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Rotate(const Angle:TpvScalar):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Rotate(const Center:TpvVector2;const Angle:TpvScalar):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -247,7 +247,7 @@ type PpvScalar=^TpvScalar;
        function Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function Lerp(const b:TpvVector3;const t:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const b:TpvVector3;const t:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Slerp(const b:TpvVector3;const t:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TpvVector3;const t:TpvScalar):TpvVector3;
        function Angle(const b,c:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function RotateX(const Angle:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function RotateY(const Angle:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
@@ -318,7 +318,7 @@ type PpvScalar=^TpvScalar;
        function Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function Lerp(const b:TpvVector4;const t:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const b:TpvVector4;const t:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Slerp(const b:TpvVector4;const t:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TpvVector4;const t:TpvScalar):TpvVector4;
        function Angle(const b,c:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function RotateX(const Angle:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        function RotateY(const Angle:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -518,7 +518,7 @@ type PpvScalar=^TpvScalar;
        function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function Lerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Slerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion;
        function RotateAroundAxis(const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Integrate(const Omega:TpvVector3;const DeltaTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Spin(const Omega:TpvVector3;const DeltaTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
