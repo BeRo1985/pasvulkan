@@ -515,10 +515,13 @@ type PpvScalar=^TpvScalar;
        function Normalize:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function Abs:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Exp:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Log:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function Lerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Nlerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Slerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion;
+       function UnflippedSlerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion;
        function RotateAroundAxis(const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Integrate(const Omega:TpvVector3;const DeltaTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Spin(const Omega:TpvVector3;const DeltaTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
@@ -5421,6 +5424,43 @@ begin
 end;
 {$ifend}
 
+function TpvQuaternion.Exp:TpvQuaternion;
+var Angle,Sinus,Coefficent:TpvScalar;
+begin
+ Angle:=sqrt(sqr(x)+sqr(y)+sqr(z));
+ Sinus:=sin(Angle);
+ result.w:=cos(Angle);
+ if System.Abs(Sinus)>1e-6 then begin
+  Coefficent:=Sinus/Angle;
+  result.x:=x*Coefficent;
+  result.y:=y*Coefficent;
+  result.z:=z*Coefficent;
+ end else begin
+  result.x:=x;
+  result.y:=y;
+  result.z:=z;
+ end;
+end;
+
+function TpvQuaternion.Log:TpvQuaternion;
+var Theta,SinTheta,Coefficent:TpvScalar;
+begin
+ result.x:=x;
+ result.y:=y;
+ result.z:=z;
+ result.w:=0.0;
+ if System.Abs(w)<1.0 then begin
+  Theta:=ArcCos(w);
+  SinTheta:=sin(Theta);
+  if System.Abs(SinTheta)>1e-6 then begin
+   Coefficent:=Theta/SinTheta;
+   result.x:=result.x*Coefficent;
+   result.y:=result.y*Coefficent;
+   result.z:=result.z*Coefficent;
+  end;
+ end;
+end;
+
 function TpvQuaternion.Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
 {$if defined(SIMD) and defined(cpu386)}
 asm
@@ -5499,6 +5539,22 @@ begin
   s1:=t;
  end;
  result:=(s0*self)+(b*(s1*s2));
+end;
+
+function TpvQuaternion.UnflippedSlerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion;
+var Omega,co,so,s0,s1:TpvScalar;
+begin
+ co:=Dot(b);
+ if (1.0-co)>EPSILON then begin
+  Omega:=ArcCos(co);
+  so:=sin(Omega);
+  s0:=sin((1.0-t)*Omega)/so;
+  s1:=sin(t*Omega)/so;
+ end else begin
+  s0:=1.0-t;
+  s1:=t;
+ end;
+ result:=(s0*self)+(b*s1);
 end;
 
 function TpvQuaternion.RotateAroundAxis(const b:TpvQuaternion):TpvQuaternion;
