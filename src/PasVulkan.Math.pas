@@ -179,6 +179,8 @@ type PpvScalar=^TpvScalar;
        function Dot(const b:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Cross(const b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function Lerp(const b:TpvVector2;const t:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const b:TpvVector2;const t:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TpvVector2;const t:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function Angle(const b,c:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Rotate(const Angle:TpvScalar):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
        function Rotate(const Center:TpvVector2;const Angle:TpvScalar):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -244,6 +246,8 @@ type PpvScalar=^TpvScalar;
        function AngleTo(const b:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function Lerp(const b:TpvVector3;const t:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const b:TpvVector3;const t:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TpvVector3;const t:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Angle(const b,c:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function RotateX(const Angle:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function RotateY(const Angle:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
@@ -313,6 +317,8 @@ type PpvScalar=^TpvScalar;
        function AngleTo(const b:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function Lerp(const b:TpvVector4;const t:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const b:TpvVector4;const t:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const b:TpvVector4;const t:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        function Angle(const b,c:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function RotateX(const Angle:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        function RotateY(const Angle:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -2171,6 +2177,35 @@ begin
  end;
 end;
 
+function TpvVector2.Nlerp(const b:TpvVector2;const t:TpvScalar):TpvVector2;
+begin
+ result:=self.Lerp(b,t).Normalize;
+end;
+
+function TpvVector2.Slerp(const b:TpvVector2;const t:TpvScalar):TpvVector2;
+var DotProduct,Theta,Sinus,Cosinus:TpvScalar;
+begin
+ if t<=0.0 then begin
+  result:=self;
+ end else if t>=1.0 then begin
+  result:=b;
+ end else if self=b then begin
+  result:=b;
+ end else begin
+  DotProduct:=self.Dot(b);
+  if DotProduct<-1.0 then begin
+   DotProduct:=-1.0;
+  end else if DotProduct>1.0 then begin
+   DotProduct:=1.0;
+  end;
+  Theta:=ArcCos(DotProduct)*t;
+  Sinus:=0.0;
+  Cosinus:=0.0;
+  SinCos(Theta,Sinus,Cosinus);
+  result:=((self*Cosinus)+((b-(self*DotProduct)).Normalize*Sinus)).Normalize;
+ end;
+end;
+
 function TpvVector2.Angle(const b,c:TpvVector2):TpvScalar;
 var DeltaAB,DeltaCB:TpvVector2;
     LengthAB,LengthCB:TpvScalar;
@@ -3146,6 +3181,35 @@ begin
  end;
 end;
 
+function TpvVector3.Nlerp(const b:TpvVector3;const t:TpvScalar):TpvVector3;
+begin
+ result:=self.Lerp(b,t).Normalize;
+end;
+
+function TpvVector3.Slerp(const b:TpvVector3;const t:TpvScalar):TpvVector3;
+var DotProduct,Theta,Sinus,Cosinus:TpvScalar;
+begin
+ if t<=0.0 then begin
+  result:=self;
+ end else if t>=1.0 then begin
+  result:=b;
+ end else if self=b then begin
+  result:=b;
+ end else begin
+  DotProduct:=self.Dot(b);
+  if DotProduct<-1.0 then begin
+   DotProduct:=-1.0;
+  end else if DotProduct>1.0 then begin
+   DotProduct:=1.0;
+  end;
+  Theta:=ArcCos(DotProduct)*t;
+  Sinus:=0.0;
+  Cosinus:=0.0;
+  SinCos(Theta,Sinus,Cosinus);
+  result:=((self*Cosinus)+((b-(self*DotProduct)).Normalize*Sinus)).Normalize;
+ end;
+end;
+
 function TpvVector3.Angle(const b,c:TpvVector3):TpvScalar;
 var DeltaAB,DeltaCB:TpvVector3;
     LengthAB,LengthCB:TpvScalar;
@@ -4025,6 +4089,35 @@ begin
   result.y:=(y*InvT)+(b.y*t);
   result.z:=(z*InvT)+(b.z*t);
   result.w:=(w*InvT)+(b.w*t);
+ end;
+end;
+
+function TpvVector4.Nlerp(const b:TpvVector4;const t:TpvScalar):TpvVector4;
+begin
+ result:=self.Lerp(b,t).Normalize;
+end;
+
+function TpvVector4.Slerp(const b:TpvVector4;const t:TpvScalar):TpvVector4;
+var DotProduct,Theta,Sinus,Cosinus:TpvScalar;
+begin
+ if t<=0.0 then begin
+  result:=self;
+ end else if t>=1.0 then begin
+  result:=b;
+ end else if self=b then begin
+  result:=b;
+ end else begin
+  DotProduct:=self.Dot(b);
+  if DotProduct<-1.0 then begin
+   DotProduct:=-1.0;
+  end else if DotProduct>1.0 then begin
+   DotProduct:=1.0;
+  end;
+  Theta:=ArcCos(DotProduct)*t;
+  Sinus:=0.0;
+  Cosinus:=0.0;
+  SinCos(Theta,Sinus,Cosinus);
+  result:=((self*Cosinus)+((b-(self*DotProduct)).Normalize*Sinus)).Normalize;
  end;
 end;
 
