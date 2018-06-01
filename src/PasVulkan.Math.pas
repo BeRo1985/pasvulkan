@@ -7075,11 +7075,11 @@ begin
   result:=b;
  end else begin
   Scale:=TpvVector3.Create(Right.Length,
-                         Up.Length,
-                         Forwards.Length).Lerp(TpvVector3.Create(b.Right.Length,
-                                                               b.Up.Length,
-                                                               b.Forwards.Length),
-                                               t);
+                           Up.Length,
+                           Forwards.Length).Lerp(TpvVector3.Create(b.Right.Length,
+                                                                   b.Up.Length,
+                                                                   b.Forwards.Length),
+                                                 t);
   result:=TpvMatrix3x3.CreateFromQuaternion(Normalize.ToQuaternion.Nlerp(b.Normalize.ToQuaternion,t));
   result.Right:=result.Right*Scale.x;
   result.Up:=result.Up*Scale.y;
@@ -7096,11 +7096,11 @@ begin
   result:=b;
  end else begin
   Scale:=TpvVector3.Create(Right.Length,
-                         Up.Length,
-                         Forwards.Length).Lerp(TpvVector3.Create(b.Right.Length,
-                                                               b.Up.Length,
-                                                               b.Forwards.Length),
-                                               t);
+                           Up.Length,
+                           Forwards.Length).Lerp(TpvVector3.Create(b.Right.Length,
+                                                                   b.Up.Length,
+                                                                   b.Forwards.Length),
+                                                 t);
   result:=TpvMatrix3x3.CreateFromQuaternion(Normalize.ToQuaternion.Slerp(b.Normalize.ToQuaternion,t));
   result.Right:=result.Right*Scale.x;
   result.Up:=result.Up*Scale.y;
@@ -10616,11 +10616,11 @@ begin
   result:=b;
  end else begin
   Scale:=TpvVector3.Create(Right.xyz.Length,
-                         Up.xyz.Length,
-                         Forwards.xyz.Length).Lerp(TpvVector3.Create(b.Right.xyz.Length,
-                                                                   b.Up.xyz.Length,
-                                                                   b.Forwards.xyz.Length),
-                                                   t);
+                           Up.xyz.Length,
+                           Forwards.xyz.Length).Lerp(TpvVector3.Create(b.Right.xyz.Length,
+                                                                       b.Up.xyz.Length,
+                                                                       b.Forwards.xyz.Length),
+                                                     t);
   result:=TpvMatrix4x4.CreateFromQuaternion(Normalize.ToQuaternion.Nlerp(b.Normalize.ToQuaternion,t));
   result.Right.xyz:=result.Right.xyz*Scale.x;
   result.Up.xyz:=result.Up.xyz*Scale.y;
@@ -10643,11 +10643,11 @@ begin
   result:=b;
  end else begin
   Scale:=TpvVector3.Create(Right.xyz.Length,
-                         Up.xyz.Length,
-                         Forwards.xyz.Length).Lerp(TpvVector3.Create(b.Right.xyz.Length,
-                                                                   b.Up.xyz.Length,
-                                                                   b.Forwards.xyz.Length),
-                                                   t);
+                           Up.xyz.Length,
+                           Forwards.xyz.Length).Lerp(TpvVector3.Create(b.Right.xyz.Length,
+                                                                       b.Up.xyz.Length,
+                                                                       b.Forwards.xyz.Length),
+                                                     t);
   result:=TpvMatrix4x4.CreateFromQuaternion(Normalize.ToQuaternion.Slerp(b.Normalize.ToQuaternion,t));
   result.Right.xyz:=result.Right.xyz*Scale.x;
   result.Up.xyz:=result.Up.xyz*Scale.y;
