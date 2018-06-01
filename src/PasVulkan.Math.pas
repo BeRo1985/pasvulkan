@@ -622,6 +622,7 @@ type PpvScalar=^TpvScalar;
        constructor CreateTranslation(const pTranslation:TpvVector2); overload;
        constructor CreateFromToRotation(const FromDirection,ToDirection:TpvVector3);
        constructor CreateConstruct(const pForwards,pUp:TpvVector3);
+       constructor CreateConstructForwardUp(const aForward,aUp:TpvVector3);
        constructor CreateOuterProduct(const u,v:TpvVector3);
        constructor CreateFromQuaternion(ppvQuaternion:TpvQuaternion);
        constructor CreateFromQTangent(pQTangent:TpvQuaternion);
@@ -6264,6 +6265,23 @@ var RightVector,UpVector,ForwardVector:TpvVector3;
 begin
  ForwardVector:=(-pForwards).Normalize;
  RightVector:=pUp.Cross(ForwardVector).Normalize;
+ UpVector:=ForwardVector.Cross(RightVector).Normalize;
+ RawComponents[0,0]:=RightVector.x;
+ RawComponents[0,1]:=RightVector.y;
+ RawComponents[0,2]:=RightVector.z;
+ RawComponents[1,0]:=UpVector.x;
+ RawComponents[1,1]:=UpVector.y;
+ RawComponents[1,2]:=UpVector.z;
+ RawComponents[2,0]:=ForwardVector.x;
+ RawComponents[2,1]:=ForwardVector.y;
+ RawComponents[2,2]:=ForwardVector.z;
+end;
+
+constructor TpvMatrix3x3.CreateConstructForwardUp(const aForward,aUp:TpvVector3);
+var RightVector,UpVector,ForwardVector:TpvVector3;
+begin
+ ForwardVector:=aForward.Normalize;
+ RightVector:=aUp.Normalize.Cross(ForwardVector).Normalize;
  UpVector:=ForwardVector.Cross(RightVector).Normalize;
  RawComponents[0,0]:=RightVector.x;
  RawComponents[0,1]:=RightVector.y;
