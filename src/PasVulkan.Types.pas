@@ -332,17 +332,22 @@ type PPpvInt8=^PpvInt8;
          D4:array[0..7] of TpvUInt8;
         );
         2:(
-         TpvUInt8s:array[0..15] of TpvUInt8;
+         UInt8s:array[0..15] of TpvUInt8;
         );
         3:(
-         TpvUInt16s:array[0..7] of TpvUInt16;
+         UInt16s:array[0..7] of TpvUInt16;
         );
         4:(
-         DoubleTpvUInt16s:array[0..3] of TpvUInt32;
+         UInt32s:array[0..3] of TpvUInt32;
         );
         5:(
-         QuadTpvUInt16s:array[0..1] of TpvUInt64;
+         UInt64s:array[0..1] of TpvUInt64;
         );
+     end;
+
+     TpvUUIDHelper=record helper for TpvUUID
+      public
+       const Null:TpvUUID=(UInt32s:(0,0,0,0));
      end;
 
      TpvObject=class(TObject);
@@ -918,8 +923,8 @@ begin
   D4[6]:=StringToHex(copy(UUID,34,2));
   D4[7]:=StringToHex(copy(UUID,36,2));
  end else begin
-  QuadTpvUInt16s[0]:=0;
-  QuadTpvUInt16s[1]:=0;
+  UInt64s[0]:=0;
+  UInt64s[1]:=0;
  end;
 end;
 
