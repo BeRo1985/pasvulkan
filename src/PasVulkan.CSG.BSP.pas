@@ -98,13 +98,38 @@ type PpvCSGBSPClassification=^TpvCSGBSPClassification;
        Spanning=3
       );
 
+     PpvCSGBSPVector2=^TpvCSGBSPVector2;
+     TpvCSGBSPVector2=record
+      public
+       x,y:TpvDouble;
+     end;
+
+     PpvCSGBSPVector3=^TpvCSGBSPVector3;
+     TpvCSGBSPVector3=record
+      public
+       x,y,z:TpvDouble;
+     end;
+
+     PpvCSGBSPVector4=^TpvCSGBSPVector4;
+     TpvCSGBSPVector4=record
+      public
+       x,y,z,w:TpvDouble;
+     end;
+
+     PpvCSGBSPPlane=^TpvCSGBSPPlane;
+     TpvCSGBSPPlane=record
+      public
+       Normal:TpvCSGBSPVector3;
+       Distance:TpvDouble;
+     end;
+
      PpvCSGBSPVertex=^TpvCSGBSPVertex;
      TpvCSGBSPVertex=record
       public
-       Position:TpvVector3;
-       Normal:TpvVector3;
-       TexCoord:TpvVector2;
-       Color:TpvVector4;
+       Position:TpvCSGBSPVector3;
+       Normal:TpvCSGBSPVector3;
+       TexCoord:TpvCSGBSPVector2;
+       Color:TpvCSGBSPVector4;
      end;
 
      PpvCSGBSPPolygonVertices=^TpvCSGBSPPolygonVertices;
@@ -122,13 +147,13 @@ type PpvCSGBSPClassification=^TpvCSGBSPClassification;
      TpvCSGBSPPolygon=record
       public
        Vertices:TpvCSGBSPPolygonVertices;
-       Plane:TpvPlane;
+       Plane:TpvCSGBSPPlane;
        procedure Initialize;
        procedure Deinitialize;
        procedure CalculateProperties;
        procedure Flip;
        function Clone:TpvCSGBSPPolygon;
-       function ClassifyVertex(const aVertex:TpvVector3):TpvCSGBSPClassification;
+       function ClassifyVertex(const aVertex:TpvCSGBSPVector3):TpvCSGBSPClassification;
        function ClassifySide(const aPolygon:TpvCSGBSPPolygon):TpvCSGBSPClassification;
      end;
 
@@ -184,7 +209,7 @@ type PpvCSGBSPClassification=^TpvCSGBSPClassification;
 
 implementation
 
-const EPSILON=1e-6;
+const EPSILON=1e-5;
 
 procedure TpvCSGBSPPolygonVertices.Initialize;
 begin
@@ -231,9 +256,25 @@ begin
 end;
 
 procedure TpvCSGBSPPolygon.CalculateProperties;
+var v10,v20,v10c20:TpvCSGBSPVector3;
+    l:TpvDouble;
 begin
- Plane.Normal:=(Vertices.Vertices[2].Position-Vertices.Vertices[0].Position).Cross(Vertices.Vertices[1].Position-Vertices.Vertices[0].Position).Normalize;
- Plane.Distance:=-Plane.Normal.Dot(Vertices.Vertices[0].Position);
+ v10.x:=Vertices.Vertices[1].Position.x-Vertices.Vertices[0].Position.x;
+ v10.y:=Vertices.Vertices[1].Position.y-Vertices.Vertices[0].Position.y;
+ v10.z:=Vertices.Vertices[1].Position.z-Vertices.Vertices[0].Position.z;
+ v20.x:=Vertices.Vertices[2].Position.x-Vertices.Vertices[0].Position.x;
+ v20.y:=Vertices.Vertices[2].Position.y-Vertices.Vertices[0].Position.y;
+ v20.z:=Vertices.Vertices[2].Position.z-Vertices.Vertices[0].Position.z;
+ v10c20.x:=(v20.y*v10.z)-(v20.z*v10.y);
+ v10c20.y:=(v20.z*v10.x)-(v20.x*v10.z);
+ v10c20.z:=(v20.x*v10.y)-(v20.y*v10.x);
+ l:=sqrt(sqr(v10c20.x)+sqr(v10c20.y)+sqr(v10c20.z));
+ Plane.Normal.x:=v10c20.x/l;
+ Plane.Normal.y:=v10c20.y/l;
+ Plane.Normal.z:=v10c20.z/l;
+ Plane.Distance:=-((Plane.Normal.x*Vertices.Vertices[0].Position.x)+
+                   (Plane.Normal.y*Vertices.Vertices[0].Position.y)+
+                   (Plane.Normal.z*Vertices.Vertices[0].Position.z));
 end;
 
 procedure TpvCSGBSPPolygon.Flip;
@@ -245,7 +286,9 @@ begin
   Vertices.Vertices[i]:=Vertices.Vertices[Vertices.CountVertices-(i+1)];
   Vertices.Vertices[Vertices.CountVertices-(i+1)]:=Vertex;
  end;
- Plane.Normal:=-Plane.Normal;
+ Plane.Normal.x:=-Plane.Normal.x;
+ Plane.Normal.y:=-Plane.Normal.y;
+ Plane.Normal.z:=-Plane.Normal.z;
  Plane.Distance:=-Plane.Distance;
 end;
 
@@ -256,10 +299,12 @@ begin
  result.Plane:=Plane;
 end;
 
-function TpvCSGBSPPolygon.ClassifyVertex(const aVertex:TpvVector3):TpvCSGBSPClassification;
-var SideValue:single;
+function TpvCSGBSPPolygon.ClassifyVertex(const aVertex:TpvCSGBSPVector3):TpvCSGBSPClassification;
+var SideValue:TpvDouble;
 begin
- SideValue:=Plane.Normal.Dot(aVertex)+Plane.Distance;
+ SideValue:=((Plane.Normal.x*aVertex.x)+
+             (Plane.Normal.y*aVertex.y)+
+             (Plane.Normal.z*aVertex.z))+Plane.Distance;
  if SideValue<(-EPSILON) then begin
   result:=TpvCSGBSPClassification.Back;
  end else if SideValue>EPSILON then begin
@@ -298,15 +343,18 @@ end;
 class procedure TpvCSGBSP.PolygonSplit(const aThis,aPolygon:TpvCSGBSPPolygon;var aCoplanarFrontList,aCoplanarBackList,aFrontList,aBackList:TpvCSGBSPPolygonList);
 var i,j:TpvSizeInt;
     ci,cj:TpvCSGBSPClassification;
-    t:single;
+    t,it:TpvDouble;
     fv,bv:TpvCSGBSPPolygonVertices;
     vi,vj:PpvCSGBSPVertex;
     v:TpvCSGBSPVertex;
     p:TpvCSGBSPPolygon;
+    w:TpvCSGBSPVector3;
 begin
  case aThis.ClassifySide(aPolygon) of
   TpvCSGBSPClassification.Coplanar:begin
-   if aThis.Plane.Normal.Dot(aPolygon.Plane.Normal)>0.0 then begin
+   if ((aThis.Plane.Normal.x*aPolygon.Plane.Normal.x)+
+       (aThis.Plane.Normal.y*aPolygon.Plane.Normal.y)+
+       (aThis.Plane.Normal.z*aPolygon.Plane.Normal.z))>0.0 then begin
     aCoplanarFrontList.Add(aPolygon);
    end else begin
     aCoplanarBackList.Add(aPolygon);
@@ -346,11 +394,32 @@ begin
 {$else}
      if TpvCSGBSPClassification(TpvInt32(TpvInt32(ci) or TpvInt32(cj)))=TpvCSGBSPClassification.Spanning then begin
 {$endif}
-      t:=(aThis.Plane.Normal.Dot(vi^.Position)+aThis.Plane.Distance)/aThis.Plane.Normal.Dot(vj^.Position-vi^.Position);
-      v.Position:=vi^.Position.Lerp(vj^.Position,t);
-      v.Normal:=vi^.Normal.Lerp(vj^.Normal,t);
-      v.TexCoord:=vi^.TexCoord.Lerp(vj^.TexCoord,t);
-      v.Color:=vi^.Color.Lerp(vj^.Color,t);
+      w.x:=vj^.Position.x-vi^.Position.x;
+      w.y:=vj^.Position.y-vi^.Position.y;
+      w.z:=vj^.Position.z-vi^.Position.z;
+      t:=(((aThis.Plane.Normal.x*vi^.Position.x)+
+           (aThis.Plane.Normal.y*vi^.Position.y)+
+           (aThis.Plane.Normal.z*vi^.Position.z))+aThis.Plane.Distance)/((aThis.Plane.Normal.x*w.x)+
+                                                                         (aThis.Plane.Normal.y*w.y)+
+                                                                         (aThis.Plane.Normal.z*w.z));
+      if t<0.0 then begin
+       t:=0.0;
+      end else if t>1.0 then begin
+       t:=1.0;
+      end;
+      it:=1.0-t;
+      v.Position.x:=(vi^.Position.x*it)+(vj^.Position.x*t);
+      v.Position.y:=(vi^.Position.y*it)+(vj^.Position.y*t);
+      v.Position.z:=(vi^.Position.z*it)+(vj^.Position.z*t);
+      v.Normal.x:=(vi^.Normal.x*it)+(vj^.Normal.x*t);
+      v.Normal.y:=(vi^.Normal.y*it)+(vj^.Normal.y*t);
+      v.Normal.z:=(vi^.Normal.z*it)+(vj^.Normal.z*t);
+      v.TexCoord.x:=(vi^.TexCoord.x*it)+(vj^.TexCoord.x*t);
+      v.TexCoord.y:=(vi^.TexCoord.y*it)+(vj^.TexCoord.y*t);
+      v.Color.x:=(vi^.Color.x*it)+(vj^.Color.x*t);
+      v.Color.y:=(vi^.Color.y*it)+(vj^.Color.y*t);
+      v.Color.z:=(vi^.Color.z*it)+(vj^.Color.z*t);
+      v.Color.w:=(vi^.Color.w*it)+(vj^.Color.w*t);
       fv.Add(v);
       bv.Add(v);
      end;
