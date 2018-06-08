@@ -487,9 +487,8 @@ begin
         Vertex:=VertexA.Interpolate(VertexB,Time);
         try
          FrontVertices.Add(Vertex.Clone);
-         BackVertices.Add(Vertex.Clone);
         finally
-         FreeAndNil(Vertex);
+         BackVertices.Add(Vertex);
         end;
        end;
       end;
@@ -555,9 +554,17 @@ begin
 end;
 
 function TpvCSGBSPPolygon.Clone:TpvCSGBSPPolygon;
+var Vertex:TpvCSGBSPVertex;
 begin
- result:=TpvCSGBSPPolygon.CreateFromVertices(fVertices);
- result.fPlane:=fPlane.Clone;
+ result:=TpvCSGBSPPolygon.Create;
+ for Vertex in fVertices do begin
+  result.fVertices.Add(Vertex.Clone);
+ end;
+ if assigned(fPlane) then begin
+  result.fPlane:=fPlane.Clone;
+ end else begin
+  result.fPlane:=nil;
+ end;
 end;
 
 constructor TpvCSGBSPPolygons.CreateCube(const aCX,aCY,aCZ,aRX,aRY,aRZ:TpvDouble);
@@ -1066,6 +1073,7 @@ begin
    for Polygon in JobStackItem.SrcNode.fPolygons do begin
     JobStackItem.DstNode.fPolygons.Add(Polygon.Clone);
    end;
+   FreeAndNil(JobStackItem.DstNode.fPlane);
    JobStackItem.DstNode.fPlane:=JobStackItem.SrcNode.fPlane.Clone;
    if assigned(JobStackItem.SrcNode.fBackNode) then begin
     JobStackItem.DstNode.fBackNode:=TpvCSGBSPNode.Create;
@@ -1091,6 +1099,7 @@ begin
  for Polygon in fPolygons do begin
   result.fPolygons.Add(Polygon.Clone);
  end;
+ FreeAndNil(result.fPlane);
  result.fPlane:=fPlane.Clone;
  if assigned(fFrontNode) then begin
   result.fFrontNode:=fFrontNode.Clone;
@@ -1194,9 +1203,9 @@ begin
         JobStack.Push(NewJobStackItem);
         FrontList:=nil;
        end else begin
-        for Polygon in FrontList do begin
-         result.Add(Polygon.Clone);
-        end;
+        result.AddRange(FrontList);
+        FrontList.OwnsObjects:=false;
+        FrontList.Clear;
        end;
       finally
        FreeAndNil(BackList);
@@ -1205,9 +1214,9 @@ begin
       FreeAndNil(FrontList);
      end;
     end else begin
-     for Polygon in JobStackItem.List do begin
-      result.Add(Polygon.Clone);
-     end;
+     result.AddRange(JobStackItem.List);
+     JobStackItem.List.OwnsObjects:=false;
+     JobStackItem.List.Clear;
     end;
    finally
     FreeAndNil(JobStackItem.List);
@@ -1234,14 +1243,16 @@ begin
      if assigned(fFrontNode) then begin
       FrontList:=fFrontNode.ClipPolygons(FrontList);
      end;
-     for Polygon in FrontList do begin
-      result.Add(Polygon.Clone);
+     begin
+      result.AddRange(FrontList);
+      FrontList.OwnsObjects:=false;
+      FrontList.Clear;
      end;
      if assigned(fBackNode) then begin
       BackList:=fBackNode.ClipPolygons(BackList);
-      for Polygon in BackList do begin
-       result.Add(Polygon.Clone);
-      end;
+      result.AddRange(BackList);
+      BackList.OwnsObjects:=false;
+      BackList.Clear;
      end;
     finally
      FreeAndNil(BackList);
@@ -1250,9 +1261,9 @@ begin
     FreeAndNil(FrontList);
    end;
   end else begin
-   for Polygon in aPolygons do begin
-    result.Add(Polygon.Clone);
-   end;
+   result.AddRange(aPolygons);
+   aPolygons.OwnsObjects:=false;
+   aPolygons.Clear;
   end;
  finally
   aPolygons.Free;
