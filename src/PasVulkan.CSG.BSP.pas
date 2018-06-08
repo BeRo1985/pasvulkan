@@ -159,13 +159,15 @@ type PpvCSGBSPClassification=^TpvCSGBSPClassification;
        function ToTrianglePolygons:TpvCSGBSPPolygons;
      end;
 
-     PpvCSGBSPPlane=^TpvCSGBSPPlane;
-     TpvCSGBSPPlane=record
+     TpvCSGBSPPlane=class
+      private
+       fNormal:TpvCSGBSPVector3;
+       fDistance:TpvDouble;
       public
-       Normal:TpvCSGBSPVector3;
-       Distance:TpvDouble;
-       constructor Create(const aV0,aV1,aV2:TpvCSGBSPVector3);
-       class function CreateEmpty:TpvCSGBSPPlane; static;
+       constructor Create(const aV0,aV1,aV2:TpvCSGBSPVector3); reintroduce; overload;
+       constructor Create(const aNormal:TpvCSGBSPVector3;const aDistance:TpvDouble); reintroduce; overload;
+       constructor CreateEmpty;
+       function Clone:TpvCSGBSPPlane;
        function OK:boolean;
        procedure Flip;
        procedure SplitPolygon(const aPolygon:TpvCSGBSPPolygon;const aCoplanarFrontList,aCoplanarBackList,aFrontList,aBackList:TpvCSGBSPPolygons);
@@ -379,27 +381,41 @@ end;
 
 constructor TpvCSGBSPPlane.Create(const aV0,aV1,aV2:TpvCSGBSPVector3);
 begin
- Normal:=((aV1-aV0).Cross(aV2-aV0)).Normalize;
- Distance:=Normal.Dot(aV0);
+ inherited Create;
+ fNormal:=((aV1-aV0).Cross(aV2-aV0)).Normalize;
+ fDistance:=fNormal.Dot(aV0);
 end;
 
-class function TpvCSGBSPPlane.CreateEmpty:TpvCSGBSPPlane;
+constructor TpvCSGBSPPlane.Create(const aNormal:TpvCSGBSPVector3;const aDistance:TpvDouble);
 begin
- result.Normal.x:=0.0;
- result.Normal.y:=0.0;
- result.Normal.z:=0.0;
- result.Distance:=0.0;
+ inherited Create;
+ fNormal:=aNormal;
+ fDistance:=aDistance;
+end;
+
+constructor TpvCSGBSPPlane.CreateEmpty;
+begin
+ inherited Create;
+ fNormal.x:=0.0;
+ fNormal.y:=0.0;
+ fNormal.z:=0.0;
+ fDistance:=0.0;
+end;
+
+function TpvCSGBSPPlane.Clone:TpvCSGBSPPlane;
+begin
+ result:=TpvCSGBSPPlane.Create(fNormal,fDistance);
 end;
 
 function TpvCSGBSPPlane.OK:boolean;
 begin
- result:=(sqr(Normal.x)+sqr(Normal.y)+sqr(Normal.z))>0.0;
+ result:=fNormal.Length>0.0;
 end;
 
 procedure TpvCSGBSPPlane.Flip;
 begin
- Normal:=-Normal;
- Distance:=-Distance;
+ fNormal:=-fNormal;
+ fDistance:=-fDistance;
 end;
 
 procedure TpvCSGBSPPlane.SplitPolygon(const aPolygon:TpvCSGBSPPolygon;const aCoplanarFrontList,aCoplanarBackList,aFrontList,aBackList:TpvCSGBSPPolygons);
@@ -419,7 +435,7 @@ begin
   SetLength(VectorTypes,aPolygon.fVertices.Count);
   for IndexA:=0 to aPolygon.fVertices.Count-1 do begin
    Vertex:=aPolygon.fVertices.Items[IndexA];
-   VectorDistance:=self.Normal.Dot(Vertex.Position)-self.Distance;
+   VectorDistance:=fNormal.Dot(Vertex.Position)-fDistance;
    if VectorDistance<-EPSILON then begin
     VectorType:=BACK;
    end else if Time>EPSILON then begin
@@ -432,7 +448,7 @@ begin
   end;
   case PolygonType of
    COPLANAR:begin
-    if self.Normal.Dot(aPolygon.fPlane.Normal)>0.0 then begin
+    if fNormal.Dot(aPolygon.fPlane.fNormal)>0.0 then begin
      aCoplanarFrontList.Add(aPolygon.Clone);
     end else begin
      aCoplanarBackList.Add(aPolygon.Clone);
@@ -465,7 +481,7 @@ begin
         BackVertices.Add(VertexA.Clone);
        end;
        if (VectorTypeA or VectorTypeB)=SPANNING then begin
-        Time:=(self.Distance-self.Normal.Dot(VertexA.Position))/self.Normal.Dot(VertexB.Position-VertexA.Position);
+        Time:=(fDistance-fNormal.Dot(VertexA.Position))/fNormal.Dot(VertexB.Position-VertexA.Position);
         Vertex:=VertexA.Interpolate(VertexB,Time);
         try
          FrontVertices.Add(Vertex.Clone);
@@ -498,6 +514,7 @@ constructor TpvCSGBSPPolygon.Create;
 begin
  inherited Create;
  fVertices:=TpvCSGBSPVertices.Create(true);
+ fPlane:=nil;
 end;
 
 constructor TpvCSGBSPPolygon.CreateFromVertices(const aVertices:TpvCSGBSPVertices);
@@ -513,12 +530,14 @@ end;
 destructor TpvCSGBSPPolygon.Destroy;
 begin
  FreeAndNil(fVertices);
+ FreeAndNil(fPlane);
  inherited Destroy;
 end;
 
 procedure TpvCSGBSPPolygon.CalculateProperties;
 begin
  if fVertices.Count>2 then begin
+  FreeAndNil(fPlane);
   fPlane:=TpvCSGBSPPlane.Create(fVertices[0].Position,fVertices[1].Position,fVertices[2].Position);
  end;
 end;
@@ -536,7 +555,7 @@ end;
 function TpvCSGBSPPolygon.Clone:TpvCSGBSPPolygon;
 begin
  result:=TpvCSGBSPPolygon.CreateFromVertices(fVertices);
- result.fPlane:=fPlane;
+ result.fPlane:=fPlane.Clone;
 end;
 
 constructor TpvCSGBSPPolygons.CreateCube(const aCX,aCY,aCZ,aRX,aRY,aRZ:TpvDouble);
@@ -665,7 +684,7 @@ constructor TpvCSGBSPNode.Create;
 begin
  inherited Create;
  fPolygons:=TpvCSGBSPPolygons.Create(true);
- fPlane:=TpvCSGBSPPlane.CreateEmpty;
+ fPlane:=nil;
  fFrontNode:=nil;
  fBackNode:=nil;
 end;
@@ -830,6 +849,7 @@ end;
 destructor TpvCSGBSPNode.Destroy;
 begin
  FreeAndNil(fPolygons);
+ FreeAndNil(fPlane);
  FreeAndNil(fFrontNode);
  FreeAndNil(fBackNode);
  inherited Destroy;
@@ -861,7 +881,7 @@ begin
      BackList:=TpvCSGBSPPolygons.Create(true);
      try
       if JobStackItem.List.Count>0 then begin
-       if not JobStackItem.Node.fPlane.OK then begin
+       if not assigned(JobStackItem.Node.fPlane) then begin
         Polygon:=JobStackItem.List.Items[0];
         JobStackItem.Node.fPlane:=Polygon.fPlane;
        end;
@@ -964,7 +984,7 @@ begin
    for Polygon in JobStackItem.SrcNode.fPolygons do begin
     JobStackItem.DstNode.fPolygons.Add(Polygon.Clone);
    end;
-   JobStackItem.DstNode.fPlane:=JobStackItem.SrcNode.fPlane;
+   JobStackItem.DstNode.fPlane:=JobStackItem.SrcNode.fPlane.Clone;
    if assigned(JobStackItem.SrcNode.fBackNode) then begin
     JobStackItem.DstNode.fBackNode:=TpvCSGBSPNode.Create;
     NewJobStackItem.DstNode:=JobStackItem.DstNode.fBackNode;
@@ -1034,7 +1054,7 @@ begin
   while JobStack.Count>0 do begin
    JobStackItem:=JobStack.Pop;
    try
-    if JobStackItem.Node.fPlane.OK then begin
+    if assigned(JobStackItem.Node.fPlane) then begin
      FrontList:=TpvCSGBSPPolygons.Create(true);
      try
       BackList:=TpvCSGBSPPolygons.Create(true);
