@@ -932,7 +932,7 @@ begin
      try
       BackList:=TpvCSGBSPPolygons.Create(true);
       try
-       for Polygon in NewJobStackItem.List do begin
+       for Polygon in JobStackItem.List do begin
         JobStackItem.Node.fPlane.SplitPolygon(Polygon,FrontList,BackList,FrontList,BackList);
        end;
        if assigned(JobStackItem.Node.fFrontNode) then begin
