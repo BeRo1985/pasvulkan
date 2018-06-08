@@ -154,6 +154,8 @@ type PpvCSGBSPClassification=^TpvCSGBSPClassification;
 
      TpvCSGBSPPolygons=class(TObjectList<TpvCSGBSPPolygon>)
       public
+       constructor CreateCube(const aCX,aCY,aCZ,aRX,aRY,aRZ:TpvDouble);
+       constructor CreateSphere(const aCX,aCY,aCZ,aRadius:TpvDouble;const aSlices:TpvSizeInt=16;const aStacks:TpvSizeInt=8);
        function ToTrianglePolygons:TpvCSGBSPPolygons;
      end;
 
@@ -537,6 +539,111 @@ begin
  result.fPlane:=fPlane;
 end;
 
+constructor TpvCSGBSPPolygons.CreateCube(const aCX,aCY,aCZ,aRX,aRY,aRZ:TpvDouble);
+const SideVertexIndices:array[0..5,0..3] of TpvUInt8=
+       (
+        (0,4,6,2), // Left
+        (1,3,7,5), // Right
+        (0,1,5,4), // Bottom
+        (2,6,7,3), // Top
+        (0,2,3,1), // Back
+        (4,5,7,6)  // Front
+       );
+      SideNormals:array[0..5] of TpvCSGBSPVector3=
+       (
+        (x:-1.0;y:0.0;z:0.0),
+        (x:1.0;y:0.0;z:0.0),
+        (x:0.0;y:-1.0;z:0.0),
+        (x:0.0;y:1.0;z:0.0),
+        (x:0.0;y:0.0;z:-1.0),
+        (x:0.0;y:0.0;z:1.0)
+       );
+var SideIndex,SideVertexIndex,VertexIndex:TpvSizeInt;
+    Vertices:TpvCSGBSPVertices;
+    Vertex:TpvCSGBSPVertex;
+begin
+ inherited Create(true);
+ for SideIndex:=0 to 5 do begin
+  Vertices:=TpvCSGBSPVertices.Create(true);
+  try
+   for SideVertexIndex:=0 to 3 do begin
+    VertexIndex:=SideVertexIndices[SideIndex,SideVertexIndex];
+    Vertex:=TpvCSGBSPVertex.Create;
+    try
+     Vertex.Position.x:=aCX+(((((VertexIndex shr 0) and 1) shl 1)-1)*aRX);
+     Vertex.Position.y:=aCY+(((((VertexIndex shr 1) and 1) shl 1)-1)*aRY);
+     Vertex.Position.z:=aCZ+(((((VertexIndex shr 2) and 1) shl 1)-1)*aRZ);
+     Vertex.Normal:=SideNormals[SideIndex];
+     Vertex.TexCoord.x:=SideVertexIndex and 1;
+     Vertex.TexCoord.y:=((SideVertexIndex shr 1) and 1) xor (SideVertexIndex and 1);
+     Vertex.Color.x:=1.0;
+     Vertex.Color.y:=1.0;
+     Vertex.Color.z:=1.0;
+     Vertex.Color.w:=1.0;
+    finally
+     Vertices.Add(Vertex);
+    end;
+   end;
+  finally
+   try
+    Add(TpvCSGBSPPolygon.CreateFromVertices(Vertices));
+   finally
+    FreeAndNil(Vertices);
+   end;
+  end;
+ end;
+end;
+
+constructor TpvCSGBSPPolygons.CreateSphere(const aCX,aCY,aCZ,aRadius:TpvDouble;const aSlices:TpvSizeInt=16;const aStacks:TpvSizeInt=8);
+var Vertices:TpvCSGBSPVertices;
+ procedure AddVertex(const aTheta,aPhi:TpvDouble);
+ var Theta,Phi,dx,dy,dz:TpvDouble;
+     Vertex:TpvCSGBSPVertex;
+ begin
+  Theta:=aTheta*TwoPI;
+  Phi:=aPhi*PI;
+  Vertex:=TpvCSGBSPVertex.Create;
+  try
+   dx:=cos(Theta)*sin(Phi);
+   dy:=cos(Phi);
+   dz:=sin(Theta)*sin(Phi);
+   Vertex.Position.x:=aCX+(dx*aRadius);
+   Vertex.Position.y:=aCY+(dy*aRadius);
+   Vertex.Position.z:=aCZ+(dz*aRadius);
+   Vertex.Normal.x:=dx;
+   Vertex.Normal.y:=dy;
+   Vertex.Normal.z:=dz;
+   Vertex.TexCoord.x:=aTheta;
+   Vertex.TexCoord.y:=aPhi;
+   Vertex.Color.x:=1.0;
+   Vertex.Color.y:=1.0;
+   Vertex.Color.z:=1.0;
+  finally
+   Vertices.Add(Vertex);
+  end;
+ end;
+var SliceIndex,StackIndex:TpvSizeInt;
+begin
+ inherited Create(true);
+ for SliceIndex:=0 to aSlices-1 do begin
+  for StackIndex:=0 to aStacks-1 do begin
+   Vertices:=TpvCSGBSPVertices.Create(true);
+   try
+    AddVertex(SliceIndex/aSlices,StackIndex/aStacks);
+    if StackIndex>0 then begin
+     AddVertex((SliceIndex+1)/aSlices,StackIndex/aStacks);
+    end;
+    if StackIndex<(aStacks-1) then begin
+     AddVertex((SliceIndex+1)/aSlices,(StackIndex+1)/aStacks);
+    end;
+    AddVertex(SliceIndex/aSlices,(StackIndex+1)/aStacks);
+   finally
+    Add(TpvCSGBSPPolygon.CreateFromVertices(Vertices));
+   end;
+  end;
+ end;
+end;
+
 function TpvCSGBSPPolygons.ToTrianglePolygons:TpvCSGBSPPolygons;
 var VertexIndex:TpvSizeInt;
     InputPolygon,OutputPolygon:TpvCSGBSPPolygon;
@@ -765,16 +872,6 @@ begin
                                               FrontList,
                                               BackList);
        end;
-       if FrontList.Count>0 then begin
-        if not assigned(JobStackItem.Node.fFrontNode) then begin
-         JobStackItem.Node.fFrontNode:=TpvCSGBSPNode.Create;
-        end;
-        NewJobStackItem.Node:=JobStackItem.Node.fFrontNode;
-        NewJobStackItem.List:=FrontList;
-        NewJobStackItem.DoFree:=true;
-        FrontList:=nil;
-        JobStack.Push(NewJobStackItem);
-       end;
        if BackList.Count>0 then begin
         if not assigned(JobStackItem.Node.fBackNode) then begin
          JobStackItem.Node.fBackNode:=TpvCSGBSPNode.Create;
@@ -783,6 +880,16 @@ begin
         NewJobStackItem.List:=BackList;
         NewJobStackItem.DoFree:=true;
         BackList:=nil;
+        JobStack.Push(NewJobStackItem);
+       end;
+       if FrontList.Count>0 then begin
+        if not assigned(JobStackItem.Node.fFrontNode) then begin
+         JobStackItem.Node.fFrontNode:=TpvCSGBSPNode.Create;
+        end;
+        NewJobStackItem.Node:=JobStackItem.Node.fFrontNode;
+        NewJobStackItem.List:=FrontList;
+        NewJobStackItem.DoFree:=true;
+        FrontList:=nil;
         JobStack.Push(NewJobStackItem);
        end;
       end;
@@ -822,12 +929,12 @@ begin
    for i:=0 to JobStackItem.Node.fPolygons.Count-1 do begin
     result.Add(JobStackItem.Node.fPolygons[i].Clone);
    end;
-   if assigned(JobStackItem.Node.fFrontNode) then begin
-    NewJobStackItem.Node:=JobStackItem.Node.fFrontNode;
-    JobStack.Push(NewJobStackItem);
-   end;
    if assigned(JobStackItem.Node.fBackNode) then begin
     NewJobStackItem.Node:=JobStackItem.Node.fBackNode;
+    JobStack.Push(NewJobStackItem);
+   end;
+   if assigned(JobStackItem.Node.fFrontNode) then begin
+    NewJobStackItem.Node:=JobStackItem.Node.fFrontNode;
     JobStack.Push(NewJobStackItem);
    end;
   end;
@@ -858,16 +965,16 @@ begin
     JobStackItem.DstNode.fPolygons.Add(Polygon.Clone);
    end;
    JobStackItem.DstNode.fPlane:=JobStackItem.SrcNode.fPlane;
-   if assigned(JobStackItem.SrcNode.fFrontNode) then begin
-    JobStackItem.DstNode.fFrontNode:=TpvCSGBSPNode.Create;
-    NewJobStackItem.DstNode:=JobStackItem.DstNode.fFrontNode;
-    NewJobStackItem.SrcNode:=JobStackItem.SrcNode.fFrontNode;
-    JobStack.Push(NewJobStackItem);
-   end;
    if assigned(JobStackItem.SrcNode.fBackNode) then begin
     JobStackItem.DstNode.fBackNode:=TpvCSGBSPNode.Create;
     NewJobStackItem.DstNode:=JobStackItem.DstNode.fBackNode;
     NewJobStackItem.SrcNode:=JobStackItem.SrcNode.fBackNode;
+    JobStack.Push(NewJobStackItem);
+   end;
+   if assigned(JobStackItem.SrcNode.fFrontNode) then begin
+    JobStackItem.DstNode.fFrontNode:=TpvCSGBSPNode.Create;
+    NewJobStackItem.DstNode:=JobStackItem.DstNode.fFrontNode;
+    NewJobStackItem.SrcNode:=JobStackItem.SrcNode.fFrontNode;
     JobStack.Push(NewJobStackItem);
    end;
   end;
@@ -894,11 +1001,11 @@ begin
    Temp:=Node.fFrontNode;
    Node.fFrontNode:=Node.fBackNode;
    Node.fBackNode:=Temp;
-   if assigned(Node.fFrontNode) then begin
-    JobStack.Push(Node.fFrontNode);
-   end;
    if assigned(Node.fBackNode) then begin
     JobStack.Push(Node.fBackNode);
+   end;
+   if assigned(Node.fFrontNode) then begin
+    JobStack.Push(Node.fFrontNode);
    end;
   end;
  finally
@@ -935,6 +1042,12 @@ begin
        for Polygon in JobStackItem.List do begin
         JobStackItem.Node.fPlane.SplitPolygon(Polygon,FrontList,BackList,FrontList,BackList);
        end;
+       if assigned(JobStackItem.Node.fBackNode) then begin
+        NewJobStackItem.Node:=JobStackItem.Node.fBackNode;
+        NewJobStackItem.List:=BackList;
+        JobStack.Push(NewJobStackItem);
+        BackList:=nil;
+       end;
        if assigned(JobStackItem.Node.fFrontNode) then begin
         NewJobStackItem.Node:=JobStackItem.Node.fFrontNode;
         NewJobStackItem.List:=FrontList;
@@ -944,12 +1057,6 @@ begin
         for Polygon in FrontList do begin
          result.Add(Polygon.Clone);
         end;
-       end;
-       if assigned(JobStackItem.Node.fBackNode) then begin
-        NewJobStackItem.Node:=JobStackItem.Node.fBackNode;
-        NewJobStackItem.List:=BackList;
-        JobStack.Push(NewJobStackItem);
-        BackList:=nil;
        end;
       finally
        FreeAndNil(BackList);
@@ -982,11 +1089,11 @@ begin
   while JobStack.Count>0 do begin
    Node:=JobStack.Pop;
    Node.fPolygons:=aNode.ClipPolygons(Node.fPolygons);
-   if assigned(Node.fFrontNode) then begin
-    JobStack.Push(Node.fFrontNode);
-   end;
    if assigned(Node.fBackNode) then begin
     JobStack.Push(Node.fBackNode);
+   end;
+   if assigned(Node.fFrontNode) then begin
+    JobStack.Push(Node.fFrontNode);
    end;
   end;
  finally
