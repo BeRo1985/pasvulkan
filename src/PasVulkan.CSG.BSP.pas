@@ -87,7 +87,9 @@ unit PasVulkan.CSG.BSP;
 
 interface
 
-uses SysUtils,Classes,Math,PasVulkan.Types,PasVulkan.Math;
+uses SysUtils,Classes,Math,
+     Generics.Collections,
+     PasVulkan.Types,PasVulkan.Math;
 
 type PpvCSGBSPClassification=^TpvCSGBSPClassification;
      TpvCSGBSPClassification=
@@ -102,18 +104,57 @@ type PpvCSGBSPClassification=^TpvCSGBSPClassification;
      TpvCSGBSPVector2=record
       public
        x,y:TpvDouble;
+       constructor Create(const aFrom:TpvVector2);
+       function Lerp(const aWith:TpvCSGBSPVector2;const aTime:TpvDouble):TpvCSGBSPVector2;
+       function ToVector:TpvVector2;
      end;
 
      PpvCSGBSPVector3=^TpvCSGBSPVector3;
      TpvCSGBSPVector3=record
       public
        x,y,z:TpvDouble;
+       constructor Create(const aFrom:TpvVector3);
+       class operator Add(const aLeft,aRight:TpvCSGBSPVector3):TpvCSGBSPVector3;
+       class operator Subtract(const aLeft,aRight:TpvCSGBSPVector3):TpvCSGBSPVector3;
+       class operator Multiply(const aLeft:TpvCSGBSPVector3;const aRight:TpvDouble):TpvCSGBSPVector3;
+       class operator Divide(const aLeft:TpvCSGBSPVector3;const aRight:TpvDouble):TpvCSGBSPVector3;
+       class operator Negative(const aVector:TpvCSGBSPVector3):TpvCSGBSPVector3;
+       function Cross(const aWith:TpvCSGBSPVector3):TpvCSGBSPVector3;
+       function Dot(const aWith:TpvCSGBSPVector3):TpvDouble;
+       function Length:TpvDouble;
+       function Lerp(const aWith:TpvCSGBSPVector3;const aTime:TpvDouble):TpvCSGBSPVector3;
+       function Normalize:TpvCSGBSPVector3;
+       function ToVector:TpvVector3;
      end;
 
      PpvCSGBSPVector4=^TpvCSGBSPVector4;
      TpvCSGBSPVector4=record
       public
        x,y,z,w:TpvDouble;
+       constructor Create(const aFrom:TpvVector4);
+       function Lerp(const aWith:TpvCSGBSPVector4;const aTime:TpvDouble):TpvCSGBSPVector4;
+       function ToVector:TpvVector4;
+     end;
+
+     TpvCSGBSPVertex=class
+      public
+       Position:TpvCSGBSPVector3;
+       Normal:TpvCSGBSPVector3;
+       TexCoord:TpvCSGBSPVector2;
+       Color:TpvCSGBSPVector4;
+       function Clone:TpvCSGBSPVertex;
+       procedure Flip;
+       function Interpolate(const aWith:TpvCSGBSPVertex;const aTime:TpvDouble):TpvCSGBSPVertex;
+     end;
+
+     TpvCSGBSPVertices=class(TObjectList<TpvCSGBSPVertex>)
+     end;
+
+     TpvCSGBSPPolygon=class;
+
+     TpvCSGBSPPolygons=class(TObjectList<TpvCSGBSPPolygon>)
+      public
+       function ToTrianglePolygons:TpvCSGBSPPolygons;
      end;
 
      PpvCSGBSPPlane=^TpvCSGBSPPlane;
@@ -121,720 +162,835 @@ type PpvCSGBSPClassification=^TpvCSGBSPClassification;
       public
        Normal:TpvCSGBSPVector3;
        Distance:TpvDouble;
+       constructor Create(const aV0,aV1,aV2:TpvCSGBSPVector3);
+       class function CreateEmpty:TpvCSGBSPPlane; static;
+       function OK:boolean;
+       procedure Flip;
+       procedure SplitPolygon(const aPolygon:TpvCSGBSPPolygon;const aCoplanarFrontList,aCoplanarBackList,aFrontList,aBackList:TpvCSGBSPPolygons);
      end;
 
-     PpvCSGBSPVertex=^TpvCSGBSPVertex;
-     TpvCSGBSPVertex=record
+     TpvCSGBSPPolygon=class
+      private
+       fVertices:TpvCSGBSPVertices;
+       fPlane:TpvCSGBSPPlane;
       public
-       Position:TpvCSGBSPVector3;
-       Normal:TpvCSGBSPVector3;
-       TexCoord:TpvCSGBSPVector2;
-       Color:TpvCSGBSPVector4;
-     end;
-
-     PpvCSGBSPPolygonVertices=^TpvCSGBSPPolygonVertices;
-     TpvCSGBSPPolygonVertices=record
-      public
-       Vertices:array of TpvCSGBSPVertex;
-       CountVertices:TpvSizeInt;
-       procedure Initialize;
-       procedure Deinitialize;
-       function Clone:TpvCSGBSPPolygonVertices;
-       procedure Add(const aVertex:TpvCSGBSPVertex);
-     end;
-
-     PpvCSGBSPPolygon=^TpvCSGBSPPolygon;
-     TpvCSGBSPPolygon=record
-      public
-       Vertices:TpvCSGBSPPolygonVertices;
-       Plane:TpvCSGBSPPlane;
-       procedure Initialize;
-       procedure Deinitialize;
+       constructor Create; reintroduce;
+       constructor CreateFromVertices(const aVertices:TpvCSGBSPVertices); reintroduce;
+       destructor Destroy; override;
        procedure CalculateProperties;
        procedure Flip;
        function Clone:TpvCSGBSPPolygon;
-       function ClassifyVertex(const aVertex:TpvCSGBSPVector3):TpvCSGBSPClassification;
-       function ClassifySide(const aPolygon:TpvCSGBSPPolygon):TpvCSGBSPClassification;
-     end;
-
-     TpvCSGBSPPolygons=array of TpvCSGBSPPolygon;
-
-     PpvCSGBSPPolygonList=^TpvCSGBSPPolygonList;
-     TpvCSGBSPPolygonList=record
       public
-       Polygons:TpvCSGBSPPolygons;
-       CountPolygons:TpvSizeInt;
-       procedure Initialize;
-       procedure Deinitialize;
-       function Clone:TpvCSGBSPPolygonList;
-       procedure Add(const aPolygon:TpvCSGBSPPolygon);
+       property Plane:TpvCSGBSPPlane read fPlane write fPlane;
+      published
+       property Vertices:TpvCSGBSPVertices read fVertices;
      end;
 
      TpvCSGBSPNode=class
+      private
+       fPolygons:TpvCSGBSPPolygons;
+       fPlane:TpvCSGBSPPlane;
+       fFrontNode:TpvCSGBSPNode;
+       fBackNode:TpvCSGBSPNode;
+       function ClipPolygons(const aPolygons:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+       procedure ClipTo(const aNode:TpvCSGBSPNode);
       public
-       PolygonList:TpvCSGBSPPolygonList;
-       Divider:TpvCSGBSPPolygon;
-       HasDivider:boolean;
-       FrontNode:TpvCSGBSPNode;
-       BackNode:TpvCSGBSPNode;
-       constructor Create(const aInputPolygonList:TpvCSGBSPPolygonList);
+       constructor Create; reintroduce; overload;
+       constructor Create(const aPolygons:TpvCSGBSPPolygons;const aDoFree:boolean=false); reintroduce; overload;
+       constructor CreateSubtract(const aNodeA,aNodeB:TpvCSGBSPNode);
+       constructor CreateUnion(const aNodeA,aNodeB:TpvCSGBSPNode);
+       constructor CreateIntersection(const aNodeA,aNodeB:TpvCSGBSPNode);
+       constructor CreateDifference(const aNodeA,aNodeB:TpvCSGBSPNode);
        destructor Destroy; override;
-       function IsConvex:boolean;
-       procedure Build(const aInputPolygonList:TpvCSGBSPPolygonList);
-       procedure AllPolygons(var aOutputPolygonList:TpvCSGBSPPolygonList);
+       procedure Build(const aPolygons:TpvCSGBSPPolygons;const aDoFree:boolean=false);
+       function AllPolygons:TpvCSGBSPPolygons;
        function Clone:TpvCSGBSPNode;
        function Invert:TpvCSGBSPNode;
-       procedure ClipPolygons(const aInputPolygonList:TpvCSGBSPPolygonList;var aOutputPolygonList:TpvCSGBSPPolygonList);
-       procedure ClipTo(const aNode:TpvCSGBSPNode);
-     end;
-
-     TpvCSGBSPTree=class
-      public
-       Root:TpvCSGBSPNode;
-       constructor Create(const aInputPolygonList:TpvCSGBSPPolygonList); overload;
-       constructor Create(const aNode:TpvCSGBSPNode); overload;
-       destructor Destroy; override;
-       function Subtract(aOtherTree:TpvCSGBSPTree):TpvCSGBSPNode;
-       function Union(aOtherTree:TpvCSGBSPTree):TpvCSGBSPNode;
-       function Intersection(aOtherTree:TpvCSGBSPTree):TpvCSGBSPNode;
-       function Difference(aOtherTree:TpvCSGBSPTree):TpvCSGBSPNode;
-       function Invert:TpvCSGBSPNode;
-       procedure GetTrianglePolygons(out aOutputPolygonList:TpvCSGBSPPolygonList);
-     end;
-
-     TpvCSGBSP=class
-      public
-       class procedure PolygonSplit(const aThis,aPolygon:TpvCSGBSPPolygon;var aCoplanarFrontList,aCoplanarBackList,aFrontList,aBackList:TpvCSGBSPPolygonList); static;
      end;
 
 implementation
 
 const EPSILON=1e-5;
 
-procedure TpvCSGBSPPolygonVertices.Initialize;
+constructor TpvCSGBSPVector2.Create(const aFrom:TpvVector2);
 begin
- Vertices:=nil;
- CountVertices:=0;
+ x:=aFrom.x;
+ y:=aFrom.y;
 end;
 
-procedure TpvCSGBSPPolygonVertices.Deinitialize;
+function TpvCSGBSPVector2.Lerp(const aWith:TpvCSGBSPVector2;const aTime:TpvDouble):TpvCSGBSPVector2;
+var InverseTime:TpvDouble;
 begin
- SetLength(Vertices,0);
- CountVertices:=0;
-end;
-
-function TpvCSGBSPPolygonVertices.Clone:TpvCSGBSPPolygonVertices;
-begin
- result.Initialize;
- result.Vertices:=copy(Vertices);
- result.CountVertices:=CountVertices;
-end;
-
-procedure TpvCSGBSPPolygonVertices.Add(const aVertex:TpvCSGBSPVertex);
-begin
- if (CountVertices+1)>length(Vertices) then begin
-  SetLength(Vertices,(CountVertices+1)*2);
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  InverseTime:=1.0-aTime;
+  result.x:=(x*InverseTime)+(aWith.x*aTime);
+  result.y:=(y*InverseTime)+(aWith.y*aTime);
  end;
- Vertices[CountVertices]:=aVertex;
- inc(CountVertices);
 end;
 
-procedure TpvCSGBSPPolygon.Initialize;
+function TpvCSGBSPVector2.ToVector:TpvVector2;
 begin
- Vertices.Initialize;
+ result.x:=x;
+ result.y:=y;
 end;
 
-procedure TpvCSGBSPPolygon.Deinitialize;
+constructor TpvCSGBSPVector3.Create(const aFrom:TpvVector3);
 begin
- Vertices.Deinitialize;
+ x:=aFrom.x;
+ y:=aFrom.y;
+ z:=aFrom.z;
 end;
 
-procedure TpvCSGBSPPolygonList.Initialize;
+class operator TpvCSGBSPVector3.Add(const aLeft,aRight:TpvCSGBSPVector3):TpvCSGBSPVector3;
 begin
- Polygons:=nil;
- CountPolygons:=0;
+ result.x:=aLeft.x+aRight.x;
+ result.y:=aLeft.y+aRight.y;
+ result.z:=aLeft.z+aRight.z;
+end;
+
+class operator TpvCSGBSPVector3.Subtract(const aLeft,aRight:TpvCSGBSPVector3):TpvCSGBSPVector3;
+begin
+ result.x:=aLeft.x-aRight.x;
+ result.y:=aLeft.y-aRight.y;
+ result.z:=aLeft.z-aRight.z;
+end;
+
+class operator TpvCSGBSPVector3.Multiply(const aLeft:TpvCSGBSPVector3;const aRight:TpvDouble):TpvCSGBSPVector3;
+begin
+ result.x:=aLeft.x*aRight;
+ result.y:=aLeft.y*aRight;
+ result.z:=aLeft.z*aRight;
+end;
+
+class operator TpvCSGBSPVector3.Divide(const aLeft:TpvCSGBSPVector3;const aRight:TpvDouble):TpvCSGBSPVector3;
+begin
+ result.x:=aLeft.x/aRight;
+ result.y:=aLeft.y/aRight;
+ result.z:=aLeft.z/aRight;
+end;
+
+class operator TpvCSGBSPVector3.Negative(const aVector:TpvCSGBSPVector3):TpvCSGBSPVector3;
+begin
+ result.x:=-aVector.x;
+ result.y:=-aVector.y;
+ result.z:=-aVector.z;
+end;
+
+function TpvCSGBSPVector3.Cross(const aWith:TpvCSGBSPVector3):TpvCSGBSPVector3;
+begin
+ result.x:=(y*aWith.z)-(z*aWith.y);
+ result.y:=(z*aWith.x)-(x*aWith.z);
+ result.z:=(x*aWith.y)-(y*aWith.x);
+end;
+
+function TpvCSGBSPVector3.Dot(const aWith:TpvCSGBSPVector3):TpvDouble;
+begin
+ result:=(x*aWith.x)+(y*aWith.y)+(z*aWith.z);
+end;
+
+function TpvCSGBSPVector3.Length:TpvDouble;
+begin
+ result:=sqrt(sqr(x)+sqr(y)+sqr(z));
+end;
+
+function TpvCSGBSPVector3.Lerp(const aWith:TpvCSGBSPVector3;const aTime:TpvDouble):TpvCSGBSPVector3;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  result:=(self*(1.0-aTime))+(aWith*aTime);
+ end;
+end;
+
+function TpvCSGBSPVector3.Normalize:TpvCSGBSPVector3;
+begin
+ result:=self/Length;
+end;
+
+function TpvCSGBSPVector3.ToVector:TpvVector3;
+begin
+ result.x:=x;
+ result.y:=y;
+ result.z:=z;
+end;
+
+constructor TpvCSGBSPVector4.Create(const aFrom:TpvVector4);
+begin
+ x:=aFrom.x;
+ y:=aFrom.y;
+ z:=aFrom.z;
+ w:=aFrom.w;
+end;
+
+function TpvCSGBSPVector4.Lerp(const aWith:TpvCSGBSPVector4;const aTime:TpvDouble):TpvCSGBSPVector4;
+var InverseTime:TpvDouble;
+begin
+ if aTime<=0.0 then begin
+  result:=self;
+ end else if aTime>=1.0 then begin
+  result:=aWith;
+ end else begin
+  InverseTime:=1.0-aTime;
+  result.x:=(x*InverseTime)+(aWith.x*aTime);
+  result.y:=(y*InverseTime)+(aWith.y*aTime);
+  result.z:=(z*InverseTime)+(aWith.z*aTime);
+  result.w:=(w*InverseTime)+(aWith.w*aTime);
+ end;
+end;
+
+function TpvCSGBSPVector4.ToVector:TpvVector4;
+begin
+ result.x:=x;
+ result.y:=y;
+ result.z:=z;
+ result.w:=w;
+end;
+
+function TpvCSGBSPVertex.Clone:TpvCSGBSPVertex;
+begin
+ result:=TpvCSGBSPVertex.Create;
+ result.Position:=Position;
+ result.Normal:=Normal;
+ result.TexCoord:=TexCoord;
+ result.Color:=Color;
+end;
+
+procedure TpvCSGBSPVertex.Flip;
+begin
+ Normal:=-Normal;
+end;
+
+function TpvCSGBSPVertex.Interpolate(const aWith:TpvCSGBSPVertex;const aTime:TpvDouble):TpvCSGBSPVertex;
+begin
+ result:=TpvCSGBSPVertex.Create;
+ result.Position:=Position.Lerp(aWith.Position,aTime);
+ result.Normal:=Normal.Lerp(aWith.Normal,aTime);
+ result.TexCoord:=TexCoord.Lerp(aWith.TexCoord,aTime);
+ result.Color:=Color.Lerp(aWith.Color,aTime);
+end;
+
+constructor TpvCSGBSPPlane.Create(const aV0,aV1,aV2:TpvCSGBSPVector3);
+begin
+ Normal:=((aV1-aV0).Cross(aV2-aV0)).Normalize;
+ Distance:=Normal.Dot(aV0);
+end;
+
+class function TpvCSGBSPPlane.CreateEmpty:TpvCSGBSPPlane;
+begin
+ result.Normal.x:=0.0;
+ result.Normal.y:=0.0;
+ result.Normal.z:=0.0;
+ result.Distance:=0.0;
+end;
+
+function TpvCSGBSPPlane.OK:boolean;
+begin
+ result:=(sqr(Normal.x)+sqr(Normal.y)+sqr(Normal.z))>0.0;
+end;
+
+procedure TpvCSGBSPPlane.Flip;
+begin
+ Normal:=-Normal;
+ Distance:=-Distance;
+end;
+
+procedure TpvCSGBSPPlane.SplitPolygon(const aPolygon:TpvCSGBSPPolygon;const aCoplanarFrontList,aCoplanarBackList,aFrontList,aBackList:TpvCSGBSPPolygons);
+const COPLANAR=0;
+      FRONT=1;
+      BACK=2;
+      SPANNING=3;
+var IndexA,IndexB,PolygonType,VectorType,VectorTypeA,VectorTypeB:TpvSizeInt;
+    VectorTypes:array of TpvSizeInt;
+    Time,VectorDistance:TpvDouble;
+    FrontVertices,BackVertices:TpvCSGBSPVertices;
+    Vertex,VertexA,VertexB:TpvCSGBSPVertex;
+begin
+ VectorTypes:=nil;
+ try
+  PolygonType:=0;
+  SetLength(VectorTypes,aPolygon.fVertices.Count);
+  for IndexA:=0 to aPolygon.fVertices.Count-1 do begin
+   Vertex:=aPolygon.fVertices.Items[IndexA];
+   VectorDistance:=self.Normal.Dot(Vertex.Position)-self.Distance;
+   if VectorDistance<-EPSILON then begin
+    VectorType:=BACK;
+   end else if Time>EPSILON then begin
+    VectorType:=FRONT;
+   end else begin
+    VectorType:=COPLANAR;
+   end;
+   PolygonType:=PolygonType or VectorType;
+   VectorTypes[IndexA]:=VectorType;
+  end;
+  case PolygonType of
+   COPLANAR:begin
+    if self.Normal.Dot(aPolygon.fPlane.Normal)>0.0 then begin
+     aCoplanarFrontList.Add(aPolygon.Clone);
+    end else begin
+     aCoplanarBackList.Add(aPolygon.Clone);
+    end;
+   end;
+   FRONT:begin
+    aFrontList.Add(aPolygon.Clone);
+   end;
+   BACK:begin
+    aBackList.Add(aPolygon.Clone);
+   end;
+   else {SPANNING:}begin
+    FrontVertices:=TpvCSGBSPVertices.Create(true);
+    try
+     BackVertices:=TpvCSGBSPVertices.Create(true);
+     try
+      for IndexA:=0 to aPolygon.fVertices.Count-1 do begin
+       IndexB:=IndexA+1;
+       if IndexB>=aPolygon.fVertices.Count then begin
+        IndexB:=0;
+       end;
+       VertexA:=aPolygon.fVertices.Items[IndexA];
+       VertexB:=aPolygon.fVertices.Items[IndexB];
+       VectorTypeA:=VectorTypes[IndexA];
+       VectorTypeB:=VectorTypes[IndexB];
+       if VectorTypeA<>BACK then begin
+        FrontVertices.Add(VertexA.Clone);
+       end;
+       if VectorTypeA<>FRONT then begin
+        BackVertices.Add(VertexA.Clone);
+       end;
+       if (VectorTypeA or VectorTypeB)=SPANNING then begin
+        Time:=(self.Distance-self.Normal.Dot(VertexA.Position))/self.Normal.Dot(VertexB.Position-VertexA.Position);
+        Vertex:=VertexA.Interpolate(VertexB,Time);
+        try
+         FrontVertices.Add(Vertex.Clone);
+         BackVertices.Add(Vertex.Clone);
+        finally
+         FreeAndNil(Vertex);
+        end;
+       end;
+      end;
+      if FrontVertices.Count>=3 then begin
+       aFrontList.Add(TpvCSGBSPPolygon.CreateFromVertices(FrontVertices));
+      end;
+      if BackVertices.Count>=3 then begin
+       aBackList.Add(TpvCSGBSPPolygon.CreateFromVertices(BackVertices));
+      end;
+     finally
+      FreeAndNil(BackVertices);
+     end;
+    finally
+     FreeAndNil(FrontVertices);
+    end;
+   end;
+  end;
+ finally
+  VectorTypes:=nil;
+ end;
+end;
+
+constructor TpvCSGBSPPolygon.Create;
+begin
+ inherited Create;
+ fVertices:=TpvCSGBSPVertices.Create(true);
+end;
+
+constructor TpvCSGBSPPolygon.CreateFromVertices(const aVertices:TpvCSGBSPVertices);
+var Vertex:TpvCSGBSPVertex;
+begin
+ Create;
+ for Vertex in aVertices do begin
+  fVertices.Add(Vertex.Clone);
+ end;
+ CalculateProperties;
+end;
+
+destructor TpvCSGBSPPolygon.Destroy;
+begin
+ FreeAndNil(fVertices);
+ inherited Destroy;
 end;
 
 procedure TpvCSGBSPPolygon.CalculateProperties;
-var v10,v20,v10c20:TpvCSGBSPVector3;
-    l:TpvDouble;
 begin
- v10.x:=Vertices.Vertices[1].Position.x-Vertices.Vertices[0].Position.x;
- v10.y:=Vertices.Vertices[1].Position.y-Vertices.Vertices[0].Position.y;
- v10.z:=Vertices.Vertices[1].Position.z-Vertices.Vertices[0].Position.z;
- v20.x:=Vertices.Vertices[2].Position.x-Vertices.Vertices[0].Position.x;
- v20.y:=Vertices.Vertices[2].Position.y-Vertices.Vertices[0].Position.y;
- v20.z:=Vertices.Vertices[2].Position.z-Vertices.Vertices[0].Position.z;
- v10c20.x:=(v20.y*v10.z)-(v20.z*v10.y);
- v10c20.y:=(v20.z*v10.x)-(v20.x*v10.z);
- v10c20.z:=(v20.x*v10.y)-(v20.y*v10.x);
- l:=sqrt(sqr(v10c20.x)+sqr(v10c20.y)+sqr(v10c20.z));
- Plane.Normal.x:=v10c20.x/l;
- Plane.Normal.y:=v10c20.y/l;
- Plane.Normal.z:=v10c20.z/l;
- Plane.Distance:=-((Plane.Normal.x*Vertices.Vertices[0].Position.x)+
-                   (Plane.Normal.y*Vertices.Vertices[0].Position.y)+
-                   (Plane.Normal.z*Vertices.Vertices[0].Position.z));
+ if fVertices.Count>2 then begin
+  fPlane:=TpvCSGBSPPlane.Create(fVertices[0].Position,fVertices[1].Position,fVertices[2].Position);
+ end;
 end;
 
 procedure TpvCSGBSPPolygon.Flip;
-var i:TpvSizeInt;
-    Vertex:TpvCSGBSPVertex;
+var Vertex:TpvCSGBSPVertex;
 begin
- for i:=0 to (Vertices.CountVertices shr 1)-1 do begin
-  Vertex:=Vertices.Vertices[i];
-  Vertices.Vertices[i]:=Vertices.Vertices[Vertices.CountVertices-(i+1)];
-  Vertices.Vertices[Vertices.CountVertices-(i+1)]:=Vertex;
+ fVertices.Reverse;
+ for Vertex in fVertices do begin
+  Vertex.Flip;
  end;
- Plane.Normal.x:=-Plane.Normal.x;
- Plane.Normal.y:=-Plane.Normal.y;
- Plane.Normal.z:=-Plane.Normal.z;
- Plane.Distance:=-Plane.Distance;
+ fPlane.Flip;
 end;
 
 function TpvCSGBSPPolygon.Clone:TpvCSGBSPPolygon;
 begin
- result.Initialize;
- result.Vertices:=Vertices.Clone;
- result.Plane:=Plane;
+ result:=TpvCSGBSPPolygon.CreateFromVertices(fVertices);
+ result.fPlane:=fPlane;
 end;
 
-function TpvCSGBSPPolygon.ClassifyVertex(const aVertex:TpvCSGBSPVector3):TpvCSGBSPClassification;
-var SideValue:TpvDouble;
+function TpvCSGBSPPolygons.ToTrianglePolygons:TpvCSGBSPPolygons;
+var VertexIndex:TpvSizeInt;
+    InputPolygon,OutputPolygon:TpvCSGBSPPolygon;
 begin
- SideValue:=((Plane.Normal.x*aVertex.x)+
-             (Plane.Normal.y*aVertex.y)+
-             (Plane.Normal.z*aVertex.z))+Plane.Distance;
- if SideValue<(-EPSILON) then begin
-  result:=TpvCSGBSPClassification.Back;
- end else if SideValue>EPSILON then begin
-  result:=TpvCSGBSPClassification.Front;
- end else begin
-  result:=TpvCSGBSPClassification.Coplanar;
- end;
-end;
-
-function TpvCSGBSPPolygon.ClassifySide(const aPolygon:TpvCSGBSPPolygon):TpvCSGBSPClassification;
-var i,Positive,Negative:TpvSizeInt;
-begin
- Positive:=0;
- Negative:=0;
- for i:=0 to aPolygon.Vertices.CountVertices-1 do begin
-  case ClassifyVertex(aPolygon.Vertices.Vertices[i].Position) of
-   TpvCSGBSPClassification.Back:begin
-    inc(Negative);
-   end;
-   TpvCSGBSPClassification.Front:begin
-    inc(Positive);
-   end;
-  end;
- end;
- if (Positive>0) and (Negative=0) then begin
-  result:=TpvCSGBSPClassification.Front;
- end else if (Positive=0) and (Negative>0) then begin
-  result:=TpvCSGBSPClassification.Back;
- end else if (Positive=0) and (Negative=0) then begin
-  result:=TpvCSGBSPClassification.Coplanar;
- end else begin
-  result:=TpvCSGBSPClassification.Spanning;
- end;
-end;
-
-class procedure TpvCSGBSP.PolygonSplit(const aThis,aPolygon:TpvCSGBSPPolygon;var aCoplanarFrontList,aCoplanarBackList,aFrontList,aBackList:TpvCSGBSPPolygonList);
-var i,j:TpvSizeInt;
-    ci,cj:TpvCSGBSPClassification;
-    t,it:TpvDouble;
-    fv,bv:TpvCSGBSPPolygonVertices;
-    vi,vj:PpvCSGBSPVertex;
-    v:TpvCSGBSPVertex;
-    p:TpvCSGBSPPolygon;
-    w:TpvCSGBSPVector3;
-begin
- case aThis.ClassifySide(aPolygon) of
-  TpvCSGBSPClassification.Coplanar:begin
-   if ((aThis.Plane.Normal.x*aPolygon.Plane.Normal.x)+
-       (aThis.Plane.Normal.y*aPolygon.Plane.Normal.y)+
-       (aThis.Plane.Normal.z*aPolygon.Plane.Normal.z))>0.0 then begin
-    aCoplanarFrontList.Add(aPolygon);
-   end else begin
-    aCoplanarBackList.Add(aPolygon);
-   end;
-  end;
-  TpvCSGBSPClassification.Front:begin
-   aFrontList.Add(aPolygon);
-  end;
-  TpvCSGBSPClassification.Back:begin
-   aBackList.Add(aPolygon);
-  end;
-  else {TpvCSGBSPClassification.Spanning:}begin
-   fv.Initialize;
-   bv.Initialize;
-   try
-    for i:=0 to aPolygon.Vertices.CountVertices-1 do begin
-     j:=i+1;
-     if j>=aPolygon.Vertices.CountVertices then begin
-      j:=0;
-     end;
-     vi:=@aPolygon.Vertices.Vertices[i];
-     vj:=@aPolygon.Vertices.Vertices[j];
-     ci:=aThis.ClassifyVertex(vi^.Position);
-     cj:=aThis.ClassifyVertex(vj^.Position);
-     if ci<>TpvCSGBSPClassification.Back then begin
-      fv.Add(vi^);
-     end;
-     if ci<>TpvCSGBSPClassification.Front then begin
-      bv.Add(vi^);
-     end;
-{$undef ReferenceCheckImplementation}
-{$ifdef ReferenceCheckImplementation}
-    if (ci=TpvCSGBSPClassification.Spanning) or
-        (cj=TpvCSGBSPClassification.Spanning) or
-        ((ci=TpvCSGBSPClassification.Back) and (cj=TpvCSGBSPClassification.Front)) or
-        ((ci=TpvCSGBSPClassification.Front) and (cj=TpvCSGBSPClassification.Back)) then begin
-{$else}
-     if TpvCSGBSPClassification(TpvInt32(TpvInt32(ci) or TpvInt32(cj)))=TpvCSGBSPClassification.Spanning then begin
-{$endif}
-      w.x:=vj^.Position.x-vi^.Position.x;
-      w.y:=vj^.Position.y-vi^.Position.y;
-      w.z:=vj^.Position.z-vi^.Position.z;
-      t:=(((aThis.Plane.Normal.x*vi^.Position.x)+
-           (aThis.Plane.Normal.y*vi^.Position.y)+
-           (aThis.Plane.Normal.z*vi^.Position.z))+aThis.Plane.Distance)/((aThis.Plane.Normal.x*w.x)+
-                                                                         (aThis.Plane.Normal.y*w.y)+
-                                                                         (aThis.Plane.Normal.z*w.z));
-      if t<0.0 then begin
-       t:=0.0;
-      end else if t>1.0 then begin
-       t:=1.0;
-      end;
-      it:=1.0-t;
-      v.Position.x:=(vi^.Position.x*it)+(vj^.Position.x*t);
-      v.Position.y:=(vi^.Position.y*it)+(vj^.Position.y*t);
-      v.Position.z:=(vi^.Position.z*it)+(vj^.Position.z*t);
-      v.Normal.x:=(vi^.Normal.x*it)+(vj^.Normal.x*t);
-      v.Normal.y:=(vi^.Normal.y*it)+(vj^.Normal.y*t);
-      v.Normal.z:=(vi^.Normal.z*it)+(vj^.Normal.z*t);
-      v.TexCoord.x:=(vi^.TexCoord.x*it)+(vj^.TexCoord.x*t);
-      v.TexCoord.y:=(vi^.TexCoord.y*it)+(vj^.TexCoord.y*t);
-      v.Color.x:=(vi^.Color.x*it)+(vj^.Color.x*t);
-      v.Color.y:=(vi^.Color.y*it)+(vj^.Color.y*t);
-      v.Color.z:=(vi^.Color.z*it)+(vj^.Color.z*t);
-      v.Color.w:=(vi^.Color.w*it)+(vj^.Color.w*t);
-      fv.Add(v);
-      bv.Add(v);
-     end;
-    end;
-    if fv.CountVertices>=3 then begin
-     p.Vertices:=fv.Clone;
-     p.CalculateProperties;
-     aFrontList.Add(p);
-    end;
-    if bv.CountVertices>=3 then begin
-     p.Vertices:=bv.Clone;
-     p.CalculateProperties;
-     aBackList.Add(p);
-    end;
-   finally
-    fv.Deinitialize;
-    bv.Deinitialize;
-   end;
+ result:=TpvCSGBSPPolygons.Create(true);
+ for InputPolygon in self do begin
+  for VertexIndex:=2 to InputPolygon.fVertices.Count-1 do begin
+   OutputPolygon:=TpvCSGBSPPolygon.Create;
+   OutputPolygon.fVertices.Add(InputPolygon.fVertices[0].Clone);
+   OutputPolygon.fVertices.Add(InputPolygon.fVertices[VertexIndex-1].Clone);
+   OutputPolygon.fVertices.Add(InputPolygon.fVertices[VertexIndex].Clone);
+   OutputPolygon.CalculateProperties;
+   result.Add(OutputPolygon);
   end;
  end;
 end;
 
-procedure TpvCSGBSPPolygonList.Deinitialize;
-var i:TpvSizeInt;
-begin
- for i:=0 to CountPolygons-1 do begin
-  Polygons[i].Deinitialize;
- end;
- SetLength(Polygons,0);
- CountPolygons:=0;
-end;
-
-function TpvCSGBSPPolygonList.Clone:TpvCSGBSPPolygonList;
-var i:TpvSizeInt;
-begin
- result.Initialize;
- for i:=0 to CountPolygons-1 do begin
-  result.Add(Polygons[i].Clone);
- end;
-end;
-
-procedure TpvCSGBSPPolygonList.Add(const aPolygon:TpvCSGBSPPolygon);
-begin
- if (CountPolygons+1)>length(Polygons) then begin
-  SetLength(Polygons,(CountPolygons+1)*2);
- end;
- Polygons[CountPolygons]:=aPolygon;
- inc(CountPolygons);
-end;
-
-constructor TpvCSGBSPNode.Create(const aInputPolygonList:TpvCSGBSPPolygonList);
-var i:TpvSizeInt;
-    FrontList,BackList:TpvCSGBSPPolygonList;
+constructor TpvCSGBSPNode.Create;
 begin
  inherited Create;
- PolygonList.Initialize;
- FillChar(Divider,SizeOf(TpvCSGBSPPolygon),AnsiChar(#0));
- HasDivider:=false;
- FrontNode:=nil;
- BackNode:=nil;
- FrontList.Initialize;
- BackList.Initialize;
+ fPolygons:=TpvCSGBSPPolygons.Create(true);
+ fPlane:=TpvCSGBSPPlane.CreateEmpty;
+ fFrontNode:=nil;
+ fBackNode:=nil;
+end;
+
+constructor TpvCSGBSPNode.Create(const aPolygons:TpvCSGBSPPolygons;const aDoFree:boolean=false);
+begin
+ Create;
+ Build(aPolygons,aDoFree);
+end;
+
+constructor TpvCSGBSPNode.CreateSubtract(const aNodeA,aNodeB:TpvCSGBSPNode);
+var a,b:TpvCSGBSPNode;
+    p:TpvCSGBSPPolygons;
+begin
+ a:=aNodeA.Clone;
  try
-  if aInputPolygonList.CountPolygons>0 then begin
-   Divider:=aInputPolygonList.Polygons[0].Clone;
-   HasDivider:=true;
-   for i:=0 to aInputPolygonList.CountPolygons-1 do begin
-    TpvCSGBSP.PolygonSplit(Divider,aInputPolygonList.Polygons[i],PolygonList,PolygonList,FrontList,BackList);
+  b:=aNodeB.Clone;
+  try
+   a.Invert;
+   a.ClipTo(b);
+   b.ClipTo(a);
+   b.Invert;
+   b.ClipTo(a);
+   b.Invert;
+   p:=b.AllPolygons;
+   try
+    a.Build(p);
+   finally
+    FreeAndNil(p);
    end;
-   if FrontList.CountPolygons>0 then begin
-    FrontNode:=TpvCSGBSPNode.Create(FrontList);
+   a.Invert;
+   p:=a.AllPolygons;
+   try
+    Create(p);
+   finally
+    FreeAndNil(p);
    end;
-   if BackList.CountPolygons>0 then begin
-    BackNode:=TpvCSGBSPNode.Create(BackList);
-   end;
+  finally
+   FreeAndNil(b);
   end;
  finally
-  FrontList.Deinitialize;
-  BackList.Deinitialize;
+  FreeAndNil(a);
+ end;
+end;
+
+constructor TpvCSGBSPNode.CreateUnion(const aNodeA,aNodeB:TpvCSGBSPNode);
+var a,b:TpvCSGBSPNode;
+    p:TpvCSGBSPPolygons;
+begin
+ a:=aNodeA.Clone;
+ try
+  b:=aNodeB.Clone;
+  try
+   a.ClipTo(b);
+   b.ClipTo(a);
+   b.Invert;
+   b.ClipTo(a);
+   b.Invert;
+   p:=b.AllPolygons;
+   try
+    a.Build(p);
+   finally
+    FreeAndNil(p);
+   end;
+   p:=a.AllPolygons;
+   try
+    Create(p);
+   finally
+    FreeAndNil(p);
+   end;
+  finally
+   FreeAndNil(b);
+  end;
+ finally
+  FreeAndNil(a);
+ end;
+end;
+
+constructor TpvCSGBSPNode.CreateIntersection(const aNodeA,aNodeB:TpvCSGBSPNode);
+var a,b:TpvCSGBSPNode;
+    p:TpvCSGBSPPolygons;
+begin
+ a:=aNodeA.Clone;
+ try
+  b:=aNodeB.Clone;
+  try
+   a.Invert;
+   b.ClipTo(a);
+   b.Invert;
+   a.ClipTo(b);
+   b.ClipTo(a);
+   p:=b.AllPolygons;
+   try
+    a.Build(p);
+   finally
+    FreeAndNil(p);
+   end;
+   a.Invert;
+   p:=a.AllPolygons;
+   try
+    Create(p);
+   finally
+    FreeAndNil(p);
+   end;
+  finally
+   FreeAndNil(b);
+  end;
+ finally
+  FreeAndNil(a);
+ end;
+end;
+
+constructor TpvCSGBSPNode.CreateDifference(const aNodeA,aNodeB:TpvCSGBSPNode);
+var a,b:TpvCSGBSPNode;
+    p:TpvCSGBSPPolygons;
+begin
+ a:=aNodeA.Clone;
+ try
+  b:=aNodeB.Clone;
+  try
+   a.ClipTo(b);
+   b.ClipTo(a);
+   b.Invert;
+   b.ClipTo(a);
+   b.Invert;
+   p:=b.AllPolygons;
+   try
+    a.Build(p);
+   finally
+    FreeAndNil(p);
+   end;
+  finally
+   FreeAndNil(b);
+  end;
+  b:=aNodeB.Clone;
+  try
+   b.ClipTo(a);
+   a.ClipTo(b);
+   a.Invert;
+   a.ClipTo(b);
+   a.Invert;
+   p:=a.AllPolygons;
+   try
+    b.Build(p);
+   finally
+    FreeAndNil(p);
+   end;
+   p:=b.AllPolygons;
+   try
+    Create(p);
+   finally
+    FreeAndNil(p);
+   end;
+  finally
+   FreeAndNil(b);
+  end;
+ finally
+  FreeAndNil(a);
  end;
 end;
 
 destructor TpvCSGBSPNode.Destroy;
 begin
- PolygonList.Deinitialize;
- Divider.Deinitialize;
- FreeAndNil(FrontNode);
- FreeAndNil(BackNode);
+ FreeAndNil(fPolygons);
+ FreeAndNil(fFrontNode);
+ FreeAndNil(fBackNode);
  inherited Destroy;
 end;
 
-function TpvCSGBSPNode.IsConvex:boolean;
-var i,j:TpvSizeInt;
+procedure TpvCSGBSPNode.Build(const aPolygons:TpvCSGBSPPolygons;const aDoFree:boolean=false);
+type TJobStackItem=record
+      Node:TpvCSGBSPNode;
+      List:TpvCSGBSPPolygons;
+      DoFree:boolean;
+     end;
+     TJobStack=TStack<TJobStackItem>;
+var JobStack:TJobStack;
+    JobStackItem,NewJobStackItem:TJobStackItem;
+    Polygon:TpvCSGBSPPolygon;
+    FrontList,BackList:TpvCSGBSPPolygons;
 begin
- result:=true;
- for i:=0 to PolygonList.CountPolygons-1 do begin
-  for j:=0 to PolygonList.CountPolygons-1 do begin
-   if (i<>j) and (PolygonList.Polygons[i].ClassifySide(PolygonList.Polygons[j])<>TpvCSGBSPClassification.Back) then begin
-    result:=false;
-    exit;
-   end;
-  end;
- end;
-end;
-
-procedure TpvCSGBSPNode.Build(const aInputPolygonList:TpvCSGBSPPolygonList);
-var i:TpvSizeInt;
-    FrontList,BackList:TpvCSGBSPPolygonList;
-begin
- FrontList.Initialize;
- BackList.Initialize;
+ JobStack:=TJobStack.Create;
  try
-  if aInputPolygonList.CountPolygons>0 then begin
-   if not HasDivider then begin
-    Divider:=aInputPolygonList.Polygons[0].Clone;
-   end;
-   for i:=0 to aInputPolygonList.CountPolygons-1 do begin
-    TpvCSGBSP.PolygonSplit(Divider,aInputPolygonList.Polygons[i],PolygonList,PolygonList,FrontList,BackList);
-   end;
-   if FrontList.CountPolygons>0 then begin
-    if assigned(FrontNode) then begin
-     FrontNode.Build(FrontList);
-    end else begin
-     FrontNode:=TpvCSGBSPNode.Create(FrontList);
+  NewJobStackItem.Node:=self;
+  NewJobStackItem.List:=aPolygons;
+  NewJobStackItem.DoFree:=aDoFree;
+  JobStack.Push(NewJobStackItem);
+  while JobStack.Count>0 do begin
+   JobStackItem:=JobStack.Pop;
+   try
+    FrontList:=TpvCSGBSPPolygons.Create(true);
+    try
+     BackList:=TpvCSGBSPPolygons.Create(true);
+     try
+      if JobStackItem.List.Count>0 then begin
+       if not JobStackItem.Node.fPlane.OK then begin
+        Polygon:=JobStackItem.List.Items[0];
+        JobStackItem.Node.fPlane:=Polygon.fPlane;
+       end;
+       for Polygon in JobStackItem.List do begin
+        JobStackItem.Node.fPlane.SplitPolygon(Polygon,
+                                              JobStackItem.Node.fPolygons,
+                                              JobStackItem.Node.fPolygons,
+                                              FrontList,
+                                              BackList);
+       end;
+       if FrontList.Count>0 then begin
+        if not assigned(JobStackItem.Node.fFrontNode) then begin
+         JobStackItem.Node.fFrontNode:=TpvCSGBSPNode.Create;
+        end;
+        NewJobStackItem.Node:=JobStackItem.Node.fFrontNode;
+        NewJobStackItem.List:=FrontList;
+        NewJobStackItem.DoFree:=true;
+        FrontList:=nil;
+        JobStack.Push(NewJobStackItem);
+       end;
+       if BackList.Count>0 then begin
+        if not assigned(JobStackItem.Node.fBackNode) then begin
+         JobStackItem.Node.fBackNode:=TpvCSGBSPNode.Create;
+        end;
+        NewJobStackItem.Node:=JobStackItem.Node.fBackNode;
+        NewJobStackItem.List:=BackList;
+        NewJobStackItem.DoFree:=true;
+        BackList:=nil;
+        JobStack.Push(NewJobStackItem);
+       end;
+      end;
+     finally
+      FreeAndNil(BackList);
+     end;
+    finally
+     FreeAndNil(FrontList);
     end;
-   end;
-   if BackList.CountPolygons>0 then begin
-    if assigned(BackNode) then begin
-     BackNode.Build(BackList);
-    end else begin
-     BackNode:=TpvCSGBSPNode.Create(BackList);
+   finally
+    if JobStackItem.DoFree then begin
+     FreeAndNil(JobStackItem.List);
     end;
    end;
   end;
  finally
-  FrontList.Deinitialize;
-  BackList.Deinitialize;
+  FreeAndNil(JobStack);
  end;
 end;
 
-procedure TpvCSGBSPNode.AllPolygons(var aOutputPolygonList:TpvCSGBSPPolygonList);
-var i:TpvSizeInt;
+function TpvCSGBSPNode.AllPolygons:TpvCSGBSPPolygons;
+type TJobStackItem=record
+      Node:TpvCSGBSPNode;
+     end;
+     TJobStack=TStack<TJobStackItem>;
+var JobStack:TJobStack;
+    JobStackItem,NewJobStackItem:TJobStackItem;
+    i:TpvSizeInt;
 begin
- for i:=0 to PolygonList.CountPolygons-1 do begin
-  aOutputPolygonList.Add(PolygonList.Polygons[i].Clone);
- end;
- if assigned(FrontNode) then begin
-  FrontNode.AllPolygons(aOutputPolygonList);
- end;
- if assigned(BackNode) then begin
-  BackNode.AllPolygons(aOutputPolygonList);
+ result:=TpvCSGBSPPolygons.Create(true);
+ JobStack:=TJobStack.Create;
+ try
+  NewJobStackItem.Node:=self;
+  JobStack.Push(NewJobStackItem);
+  while JobStack.Count>0 do begin
+   JobStackItem:=JobStack.Pop;
+   for i:=0 to JobStackItem.Node.fPolygons.Count-1 do begin
+    result.Add(JobStackItem.Node.fPolygons[i].Clone);
+   end;
+   if assigned(JobStackItem.Node.fFrontNode) then begin
+    NewJobStackItem.Node:=JobStackItem.Node.fFrontNode;
+    JobStack.Push(NewJobStackItem);
+   end;
+   if assigned(JobStackItem.Node.fBackNode) then begin
+    NewJobStackItem.Node:=JobStackItem.Node.fBackNode;
+    JobStack.Push(NewJobStackItem);
+   end;
+  end;
+ finally
+  FreeAndNil(JobStack);
  end;
 end;
 
 function TpvCSGBSPNode.Clone:TpvCSGBSPNode;
-var EmptyList:TpvCSGBSPPolygonList;
+type TJobStackItem=record
+      DstNode:TpvCSGBSPNode;
+      SrcNode:TpvCSGBSPNode;
+     end;
+     TJobStack=TStack<TJobStackItem>;
+var JobStack:TJobStack;
+    JobStackItem,NewJobStackItem:TJobStackItem;
+var Polygon:TpvCSGBSPPolygon;
 begin
- EmptyList.Initialize;
+ JobStack:=TJobStack.Create;
  try
-  result:=TpvCSGBSPNode.Create(EmptyList);
-  result.PolygonList:=PolygonList.Clone;
-  result.Divider:=Divider.Clone;
-  result.HasDivider:=HasDivider;
-  if assigned(FrontNode) then begin
-   result.FrontNode:=FrontNode.Clone;
-  end else begin
-   result.FrontNode:=nil;
-  end;
-  if assigned(BackNode) then begin
-   result.BackNode:=BackNode.Clone;
-  end else begin
-   result.BackNode:=nil;
+  result:=TpvCSGBSPNode.Create;
+  NewJobStackItem.DstNode:=result;
+  NewJobStackItem.SrcNode:=self;
+  JobStack.Push(NewJobStackItem);
+  while JobStack.Count>0 do begin
+   JobStackItem:=JobStack.Pop;
+   for Polygon in JobStackItem.SrcNode.fPolygons do begin
+    JobStackItem.DstNode.fPolygons.Add(Polygon.Clone);
+   end;
+   JobStackItem.DstNode.fPlane:=JobStackItem.SrcNode.fPlane;
+   if assigned(JobStackItem.SrcNode.fFrontNode) then begin
+    JobStackItem.DstNode.fFrontNode:=TpvCSGBSPNode.Create;
+    NewJobStackItem.DstNode:=JobStackItem.DstNode.fFrontNode;
+    NewJobStackItem.SrcNode:=JobStackItem.SrcNode.fFrontNode;
+    JobStack.Push(NewJobStackItem);
+   end;
+   if assigned(JobStackItem.SrcNode.fBackNode) then begin
+    JobStackItem.DstNode.fBackNode:=TpvCSGBSPNode.Create;
+    NewJobStackItem.DstNode:=JobStackItem.DstNode.fBackNode;
+    NewJobStackItem.SrcNode:=JobStackItem.SrcNode.fBackNode;
+    JobStack.Push(NewJobStackItem);
+   end;
   end;
  finally
-  EmptyList.Deinitialize;
+  JobStack.Free;
  end;
 end;
 
 function TpvCSGBSPNode.Invert:TpvCSGBSPNode;
-var i:TpvSizeInt;
-    Temp:TpvCSGBSPNode;
+type TJobStack=TStack<TpvCSGBSPNode>;
+var JobStack:TJobStack;
+    i:TpvSizeInt;
+    Node,Temp:TpvCSGBSPNode;
 begin
- for i:=0 to PolygonList.CountPolygons-1 do begin
-  PolygonList.Polygons[i].Flip;
- end;
- Divider.Flip;
- if assigned(FrontNode) then begin
-  FrontNode.Invert;
- end;
- if assigned(BackNode) then begin
-  BackNode.Invert;
- end;
- Temp:=FrontNode;
- FrontNode:=BackNode;
- BackNode:=Temp;
- result:=self;
-end;
-
-procedure TpvCSGBSPNode.ClipPolygons(const aInputPolygonList:TpvCSGBSPPolygonList;var aOutputPolygonList:TpvCSGBSPPolygonList);
-var i:TpvSizeInt;
-    FrontList,BackList,TempList:TpvCSGBSPPolygonList;
-begin
- FrontList.Initialize;
- BackList.Initialize;
- TempList.Initialize;
+ JobStack:=TJobStack.Create;
  try
-  if HasDivider then begin
-   for i:=0 to aInputPolygonList.CountPolygons-1 do begin
-    TpvCSGBSP.PolygonSplit(Divider,aInputPolygonList.Polygons[i],PolygonList,PolygonList,FrontList,BackList);
+  JobStack.Push(self);
+  while JobStack.Count>0 do begin
+   Node:=JobStack.Pop;
+   for i:=0 to Node.fPolygons.Count-1 do begin
+    Node.fPolygons[i].Flip;
    end;
-   if assigned(FrontNode) then begin
-    TempList:=FrontList.Clone;
-    FrontList.Deinitialize;
-    FrontNode.ClipPolygons(TempList,FrontList);
+   fPlane.Flip;
+   Temp:=Node.fFrontNode;
+   Node.fFrontNode:=Node.fBackNode;
+   Node.fBackNode:=Temp;
+   if assigned(Node.fFrontNode) then begin
+    JobStack.Push(Node.fFrontNode);
    end;
-   if assigned(BackNode) then begin
-    TempList:=BackList.Clone;
-    BackList.Deinitialize;
-    BackNode.ClipPolygons(TempList,BackList);
-   end else begin
-    BackList.Deinitialize;
-   end;
-   for i:=0 to FrontList.CountPolygons-1 do begin
-    aOutputPolygonList.Add(FrontList.Polygons[i]);
-   end;
-   for i:=0 to BackList.CountPolygons-1 do begin
-    aOutputPolygonList.Add(BackList.Polygons[i]);
-   end;
-  end else begin
-   for i:=0 to aInputPolygonList.CountPolygons-1 do begin
-    aOutputPolygonList.Add(aInputPolygonList.Polygons[i]);
+   if assigned(Node.fBackNode) then begin
+    JobStack.Push(Node.fBackNode);
    end;
   end;
  finally
-  FrontList.Deinitialize;
-  BackList.Deinitialize;
-  TempList.Deinitialize;
+  JobStack.Free;
+ end;
+ result:=self;
+end;
+
+function TpvCSGBSPNode.ClipPolygons(const aPolygons:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+type TJobStackItem=record
+      Node:TpvCSGBSPNode;
+      List:TpvCSGBSPPolygons;
+     end;
+     TJobStack=TStack<TJobStackItem>;
+var JobStack:TJobStack;
+    JobStackItem,NewJobStackItem:TJobStackItem;
+    FrontList,BackList:TpvCSGBSPPolygons;
+    Polygon:TpvCSGBSPPolygon;
+begin
+ result:=TpvCSGBSPPolygons.Create(true);
+ JobStack:=TJobStack.Create;
+ try
+  NewJobStackItem.Node:=self;
+  NewJobStackItem.List:=aPolygons;
+  JobStack.Push(NewJobStackItem);
+  while JobStack.Count>0 do begin
+   JobStackItem:=JobStack.Pop;
+   try
+    if JobStackItem.Node.fPlane.OK then begin
+     FrontList:=TpvCSGBSPPolygons.Create(true);
+     try
+      BackList:=TpvCSGBSPPolygons.Create(true);
+      try
+       for Polygon in NewJobStackItem.List do begin
+        JobStackItem.Node.fPlane.SplitPolygon(Polygon,FrontList,BackList,FrontList,BackList);
+       end;
+       if assigned(JobStackItem.Node.fFrontNode) then begin
+        NewJobStackItem.Node:=JobStackItem.Node.fFrontNode;
+        NewJobStackItem.List:=FrontList;
+        JobStack.Push(NewJobStackItem);
+        FrontList:=nil;
+       end else begin
+        for Polygon in FrontList do begin
+         result.Add(Polygon.Clone);
+        end;
+       end;
+       if assigned(JobStackItem.Node.fBackNode) then begin
+        NewJobStackItem.Node:=JobStackItem.Node.fBackNode;
+        NewJobStackItem.List:=BackList;
+        JobStack.Push(NewJobStackItem);
+        BackList:=nil;
+       end;
+      finally
+       FreeAndNil(BackList);
+      end;
+     finally
+      FreeAndNil(FrontList);
+     end;
+    end else begin
+     for Polygon in NewJobStackItem.List do begin
+      result.Add(Polygon.Clone);
+     end;
+    end;
+   finally
+    FreeAndNil(NewJobStackItem.List);
+   end;
+  end;
+ finally
+  FreeAndNil(JobStack);
  end;
 end;
 
 procedure TpvCSGBSPNode.ClipTo(const aNode:TpvCSGBSPNode);
-var TempList:TpvCSGBSPPolygonList;
+type TJobStack=TStack<TpvCSGBSPNode>;
+var JobStack:TJobStack;
+    Node:TpvCSGBSPNode;
 begin
- TempList.Initialize;
+ JobStack:=TJobStack.Create;
  try
-  TempList:=PolygonList.Clone;
-  PolygonList.Deinitialize;
-  aNode.ClipPolygons(TempList,PolygonList);
- finally
-  TempList.Deinitialize;
- end;
- if assigned(FrontNode) then begin
-  FrontNode.ClipTo(aNode);
- end;
- if assigned(BackNode) then begin
-  BackNode.ClipTo(aNode);
- end;
-end;
-
-constructor TpvCSGBSPTree.Create(const aInputPolygonList:TpvCSGBSPPolygonList);
-begin
- inherited Create;
- Root:=TpvCSGBSPNode.Create(aInputPolygonList);
-end;
-
-constructor TpvCSGBSPTree.Create(const aNode:TpvCSGBSPNode);
-begin
- inherited Create;
- Root:=aNode;
-end;
-
-destructor TpvCSGBSPTree.Destroy;
-begin
- FreeAndNil(Root);
- inherited Destroy;
-end;
-
-function TpvCSGBSPTree.Subtract(aOtherTree:TpvCSGBSPTree):TpvCSGBSPNode;
-var a,b:TpvCSGBSPNode;
-    TempList:TpvCSGBSPPolygonList;
-begin
- b:=nil;
- TempList.Initialize;
- try
-  a:=Root.Clone;
-  b:=aOtherTree.Root.Clone;
-  a.Invert;
-  a.ClipTo(b);
-  b.ClipTo(a);
-  b.Invert;
-  b.ClipTo(a);
-  b.Invert;
-  b.AllPolygons(TempList);
-  a.Build(TempList);
-  a.Invert;
-  result:=a;
- finally
-  TempList.Deinitialize;
-  b.Free;
- end;
-end;
-
-function TpvCSGBSPTree.Union(aOtherTree:TpvCSGBSPTree):TpvCSGBSPNode;
-var a,b:TpvCSGBSPNode;
-    TempList:TpvCSGBSPPolygonList;
-begin
- b:=nil;
- TempList.Initialize;
- try
-  a:=Root.Clone;
-  b:=aOtherTree.Root.Clone;
-  a.ClipTo(b);
-  b.ClipTo(a);
-  b.Invert;
-  b.ClipTo(a);
-  b.Invert;
-  b.AllPolygons(TempList);
-  a.Build(TempList);
-  result:=a;
- finally
-  TempList.Deinitialize;
-  b.Free;
- end;
-end;
-
-function TpvCSGBSPTree.Intersection(aOtherTree:TpvCSGBSPTree):TpvCSGBSPNode;
-var a,b:TpvCSGBSPNode;
-    TempList:TpvCSGBSPPolygonList;
-begin
- b:=nil;
- TempList.Initialize;
- try
-  a:=Root.Clone;
-  b:=aOtherTree.Root.Clone;
-  a.Invert;
-  b.ClipTo(a);
-  b.Invert;
-  a.ClipTo(a);
-  b.ClipTo(a);
-  b.AllPolygons(TempList);
-  a.Build(TempList);
-  a.Invert;
-  result:=a;
- finally
-  TempList.Deinitialize;
-  b.Free;
- end;
-end;
-
-function TpvCSGBSPTree.Difference(aOtherTree:TpvCSGBSPTree):TpvCSGBSPNode;
-var a,b:TpvCSGBSPNode;
-    TempList:TpvCSGBSPPolygonList;
-begin
- a:=nil;
- b:=nil;
- TempList.Initialize;
- try
-  a:=Root.Clone;
-  b:=aOtherTree.Root.Clone;
-
-  a.ClipTo(b);
-  b.ClipTo(a);
-  b.Invert;
-  b.ClipTo(a);
-  b.Invert;
-  b.AllPolygons(TempList);
-  a.Build(TempList);
-
-  b.Free;
-  
-  b:=aOtherTree.Root.Clone;
-  b.ClipTo(a);
-  a.ClipTo(b);
-  a.Invert;
-  a.ClipTo(b);
-  a.Invert;
-  a.AllPolygons(TempList);
-  b.Build(TempList);
-
-  result:=b.Clone;
- finally
-  TempList.Deinitialize;
-  a.Free;
-  b.Free;
- end;
-end;
-
-function TpvCSGBSPTree.Invert:TpvCSGBSPNode;
-begin
- result:=Root.Clone.Invert;
-end;
-
-procedure TpvCSGBSPTree.GetTrianglePolygons(out aOutputPolygonList:TpvCSGBSPPolygonList);
-var i,j:TpvSizeInt;
-    TempList:TpvCSGBSPPolygonList;
-    Polygon:TpvCSGBSPPolygon;
-begin
- TempList.Initialize;
- Polygon.Initialize;
- try
-  Root.AllPolygons(TempList);
-  SetLength(Polygon.Vertices.Vertices,3);
-  Polygon.Vertices.CountVertices:=3;
-  for i:=0 to TempList.CountPolygons-1 do begin
-   for j:=2 to TempList.Polygons[i].Vertices.CountVertices-1 do begin
-    Polygon.Vertices.Vertices[0]:=TempList.Polygons[i].Vertices.Vertices[0];
-    Polygon.Vertices.Vertices[1]:=TempList.Polygons[i].Vertices.Vertices[j-1];
-    Polygon.Vertices.Vertices[2]:=TempList.Polygons[i].Vertices.Vertices[j];
-    Polygon.CalculateProperties;
-    aOutputPolygonList.Add(Polygon.Clone);
+  JobStack.Push(self);
+  while JobStack.Count>0 do begin
+   Node:=JobStack.Pop;
+   Node.fPolygons:=aNode.ClipPolygons(Node.fPolygons);
+   if assigned(Node.fFrontNode) then begin
+    JobStack.Push(Node.fFrontNode);
+   end;
+   if assigned(Node.fBackNode) then begin
+    JobStack.Push(Node.fBackNode);
    end;
   end;
  finally
-  Polygon.Deinitialize;
-  TempList.Deinitialize;
+  FreeAndNil(JobStack);
  end;
 end;
 
