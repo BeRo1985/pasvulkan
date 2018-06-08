@@ -83,6 +83,8 @@ unit PasVulkan.CSG.BSP;
  {$endif}
 {$endif}
 
+{-$define NonRecursive}
+
 {$warnings off}
 
 interface
@@ -543,12 +545,18 @@ begin
 end;
 
 procedure TpvCSGBSPPolygon.Flip;
-var Vertex:TpvCSGBSPVertex;
+var Index:TpvSizeInt;
+    NewVertices:TpvCSGBSPVertices;
+    Vertex:TpvCSGBSPVertex;
 begin
- fVertices.Reverse;
- for Vertex in fVertices do begin
+ NewVertices:=TpvCSGBSPVertices.Create(true);
+ for Index:=fVertices.Count-1 downto 0 do begin
+  Vertex:=fVertices[Index].Clone;
   Vertex.Flip;
+  NewVertices.Add(Vertex);
  end;
+ fVertices.Free;
+ fVertices:=NewVertices;
  fPlane.Flip;
 end;
 
@@ -856,6 +864,7 @@ begin
 end;
 
 procedure TpvCSGBSPNode.Build(const aPolygons:TpvCSGBSPPolygons;const aDoFree:boolean=false);
+{$ifdef NonRecursive}
 type TJobStackItem=record
       Node:TpvCSGBSPNode;
       List:TpvCSGBSPPolygons;
@@ -929,8 +938,56 @@ begin
   FreeAndNil(JobStack);
  end;
 end;
+{$else}
+var Polygon:TpvCSGBSPPolygon;
+    FrontList,BackList:TpvCSGBSPPolygons;
+begin
+ try
+  FrontList:=TpvCSGBSPPolygons.Create(true);
+  try
+   BackList:=TpvCSGBSPPolygons.Create(true);
+   try
+    if aPolygons.Count>0 then begin
+     if not assigned(fPlane) then begin
+      Polygon:=aPolygons.Items[0];
+      fPlane:=Polygon.fPlane.Clone;
+     end;
+     for Polygon in aPolygons do begin
+      fPlane.SplitPolygon(Polygon,
+                          fPolygons,
+                          fPolygons,
+                          FrontList,
+                          BackList);
+     end;
+     if FrontList.Count>0 then begin
+      if not assigned(fFrontNode) then begin
+       fFrontNode:=TpvCSGBSPNode.Create;
+      end;
+      fFrontNode.Build(FrontList);
+     end;
+     if BackList.Count>0 then begin
+      if not assigned(fBackNode) then begin
+       fBackNode:=TpvCSGBSPNode.Create;
+      end;
+      fBackNode.Build(BackList);
+     end;
+    end;
+   finally
+    FreeAndNil(BackList);
+   end;
+  finally
+   FreeAndNil(FrontList);
+  end;
+ finally
+  if aDoFree then begin
+   aPolygons.Free;
+  end;
+ end;
+end;
+{$endif}
 
 function TpvCSGBSPNode.AllPolygons:TpvCSGBSPPolygons;
+{$ifdef NonRecursive}
 type TJobStackItem=record
       Node:TpvCSGBSPNode;
      end;
@@ -962,8 +1019,39 @@ begin
   FreeAndNil(JobStack);
  end;
 end;
+{$else}
+var Polygon:TpvCSGBSPPolygon;
+    Polygons:TpvCSGBSPPolygons;
+begin
+ result:=TpvCSGBSPPolygons.Create(true);
+ for Polygon in fPolygons do begin
+  result.Add(Polygon.Clone);
+ end;
+ if assigned(fFrontNode) then begin
+  Polygons:=fFrontNode.AllPolygons;
+  try
+   for Polygon in Polygons do begin
+    result.Add(Polygon.Clone);
+   end;
+  finally
+   FreeAndNil(Polygons);
+  end;
+ end;
+ if assigned(fBackNode) then begin
+  Polygons:=fBackNode.AllPolygons;
+  try
+   for Polygon in Polygons do begin
+    result.Add(Polygon.Clone);
+   end;
+  finally
+   FreeAndNil(Polygons);
+  end;
+ end;
+end;
+{$endif}
 
 function TpvCSGBSPNode.Clone:TpvCSGBSPNode;
+{$ifdef NonRecursive}
 type TJobStackItem=record
       DstNode:TpvCSGBSPNode;
       SrcNode:TpvCSGBSPNode;
@@ -971,7 +1059,7 @@ type TJobStackItem=record
      TJobStack=TStack<TJobStackItem>;
 var JobStack:TJobStack;
     JobStackItem,NewJobStackItem:TJobStackItem;
-var Polygon:TpvCSGBSPPolygon;
+    Polygon:TpvCSGBSPPolygon;
 begin
  JobStack:=TJobStack.Create;
  try
@@ -1002,22 +1090,39 @@ begin
   JobStack.Free;
  end;
 end;
+{$else}
+var Polygon:TpvCSGBSPPolygon;
+begin
+ result:=TpvCSGBSPNode.Create;
+ for Polygon in fPolygons do begin
+  result.fPolygons.Add(Polygon.Clone);
+ end;
+ result.fPlane:=fPlane.Clone;
+ if assigned(fFrontNode) then begin
+  result.fFrontNode:=fFrontNode.Clone;
+ end;
+ if assigned(fBackNode) then begin
+  result.fBackNode:=fBackNode.Clone;
+ end;
+end;
+{$endif}
 
 function TpvCSGBSPNode.Invert:TpvCSGBSPNode;
+{$ifdef NonRecursive}
 type TJobStack=TStack<TpvCSGBSPNode>;
 var JobStack:TJobStack;
-    i:TpvSizeInt;
     Node,Temp:TpvCSGBSPNode;
+    Polygon:TpvCSGBSPPolygon;
 begin
  JobStack:=TJobStack.Create;
  try
   JobStack.Push(self);
   while JobStack.Count>0 do begin
    Node:=JobStack.Pop;
-   for i:=0 to Node.fPolygons.Count-1 do begin
-    Node.fPolygons[i].Flip;
+   for Polygon in Node.fPolygons do begin
+    Polygon.Flip;
    end;
-   fPlane.Flip;
+   Node.fPlane.Flip;
    Temp:=Node.fFrontNode;
    Node.fFrontNode:=Node.fBackNode;
    Node.fBackNode:=Temp;
@@ -1033,8 +1138,29 @@ begin
  end;
  result:=self;
 end;
+{$else}
+var Polygon:TpvCSGBSPPolygon;
+    Temp:TpvCSGBSPNode;
+begin
+ for Polygon in fPolygons do begin
+  Polygon.Flip;
+ end;
+ fPlane.Flip;
+ Temp:=fFrontNode;
+ fFrontNode:=fBackNode;
+ fBackNode:=Temp;
+ if assigned(fFrontNode) then begin
+  fFrontNode.Invert;
+ end;
+ if assigned(fBackNode) then begin
+  fBackNode.Invert;
+ end;
+ result:=self;
+end;
+{$endif}
 
 function TpvCSGBSPNode.ClipPolygons(const aPolygons:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+{$ifdef NonRecursive}
 type TJobStackItem=record
       Node:TpvCSGBSPNode;
       List:TpvCSGBSPPolygons;
@@ -1085,7 +1211,7 @@ begin
       FreeAndNil(FrontList);
      end;
     end else begin
-     for Polygon in NewJobStackItem.List do begin
+     for Polygon in JobStackItem.List do begin
       result.Add(Polygon.Clone);
      end;
     end;
@@ -1097,8 +1223,51 @@ begin
   FreeAndNil(JobStack);
  end;
 end;
+{$else}
+var FrontList,BackList:TpvCSGBSPPolygons;
+    Polygon:TpvCSGBSPPolygon;
+begin
+ try
+  result:=TpvCSGBSPPolygons.Create(true);
+  if assigned(fPlane) then begin
+   FrontList:=TpvCSGBSPPolygons.Create(true);
+   try
+    BackList:=TpvCSGBSPPolygons.Create(true);
+    try
+     for Polygon in aPolygons do begin
+      fPlane.SplitPolygon(Polygon,FrontList,BackList,FrontList,BackList);
+     end;
+     if assigned(fFrontNode) then begin
+      FrontList:=fFrontNode.ClipPolygons(FrontList);
+     end;
+     for Polygon in FrontList do begin
+      result.Add(Polygon.Clone);
+     end;
+     if assigned(fBackNode) then begin
+      BackList:=fBackNode.ClipPolygons(BackList);
+      for Polygon in BackList do begin
+       result.Add(Polygon.Clone);
+      end;
+     end;
+    finally
+     FreeAndNil(BackList);
+    end;
+   finally
+    FreeAndNil(FrontList);
+   end;
+  end else begin
+   for Polygon in aPolygons do begin
+    result.Add(Polygon.Clone);
+   end;
+  end;
+ finally
+  aPolygons.Free;
+ end;
+end;
+{$endif}
 
 procedure TpvCSGBSPNode.ClipTo(const aNode:TpvCSGBSPNode);
+{$ifdef NonRecursive}
 type TJobStack=TStack<TpvCSGBSPNode>;
 var JobStack:TJobStack;
     Node:TpvCSGBSPNode;
@@ -1120,5 +1289,16 @@ begin
   FreeAndNil(JobStack);
  end;
 end;
+{$else}
+begin
+ fPolygons:=aNode.ClipPolygons(fPolygons);
+ if assigned(fFrontNode) then begin
+  fFrontNode.ClipTo(aNode);
+ end;
+ if assigned(fBackNode) then begin
+  fBackNode.ClipTo(aNode);
+ end;
+end;
+{$endif}
 
 end.
