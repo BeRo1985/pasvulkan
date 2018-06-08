@@ -83,7 +83,7 @@ unit PasVulkan.CSG.BSP;
  {$endif}
 {$endif}
 
-{-$define NonRecursive}
+{$define NonRecursive}
 
 {$warnings off}
 
@@ -440,7 +440,7 @@ begin
    VectorDistance:=fNormal.Dot(Vertex.Position)-fDistance;
    if VectorDistance<-EPSILON then begin
     VectorType:=BACK;
-   end else if Time>EPSILON then begin
+   end else if VectorDistance>EPSILON then begin
     VectorType:=FRONT;
    end else begin
     VectorType:=COPLANAR;
@@ -1216,7 +1216,7 @@ begin
      end;
     end;
    finally
-    FreeAndNil(NewJobStackItem.List);
+    FreeAndNil(JobStackItem.List);
    end;
   end;
  finally
