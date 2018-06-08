@@ -883,7 +883,7 @@ begin
       if JobStackItem.List.Count>0 then begin
        if not assigned(JobStackItem.Node.fPlane) then begin
         Polygon:=JobStackItem.List.Items[0];
-        JobStackItem.Node.fPlane:=Polygon.fPlane;
+        JobStackItem.Node.fPlane:=Polygon.fPlane.Clone;
        end;
        for Polygon in JobStackItem.List do begin
         JobStackItem.Node.fPlane.SplitPolygon(Polygon,
