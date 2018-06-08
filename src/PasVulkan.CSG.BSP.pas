@@ -545,18 +545,12 @@ begin
 end;
 
 procedure TpvCSGBSPPolygon.Flip;
-var Index:TpvSizeInt;
-    NewVertices:TpvCSGBSPVertices;
-    Vertex:TpvCSGBSPVertex;
+var Vertex:TpvCSGBSPVertex;
 begin
- NewVertices:=TpvCSGBSPVertices.Create(true);
- for Index:=fVertices.Count-1 downto 0 do begin
-  Vertex:=fVertices[Index].Clone;
+ fVertices.Reverse;
+ for Vertex in fVertices do begin
   Vertex.Flip;
-  NewVertices.Add(Vertex);
  end;
- fVertices.Free;
- fVertices:=NewVertices;
  fPlane.Flip;
 end;
 
