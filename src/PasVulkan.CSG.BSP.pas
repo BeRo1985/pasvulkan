@@ -193,6 +193,14 @@ type PpvCSGBSPClassification=^TpvCSGBSPClassification;
       public
        class function CreateCube(const aCX,aCY,aCZ,aRX,aRY,aRZ:TpvDouble):TpvCSGBSPPolygons; static;
        class function CreateSphere(const aCX,aCY,aCZ,aRadius:TpvDouble;const aSlices:TpvSizeInt=16;const aStacks:TpvSizeInt=8):TpvCSGBSPPolygons; static;
+       class function CreateSubtraction(const aLeft,aRight:TpvCSGBSPPolygons):TpvCSGBSPPolygons; static;
+       class function CreateUnion(const aLeft,aRight:TpvCSGBSPPolygons):TpvCSGBSPPolygons; static;
+       class function CreateIntersection(const aLeft,aRight:TpvCSGBSPPolygons):TpvCSGBSPPolygons; static;
+       class function CreateSymmetricDifference(const aLeft,aRight:TpvCSGBSPPolygons):TpvCSGBSPPolygons; static;
+       function Subtraction(const aWith:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+       function Union(const aWith:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+       function Intersection(const aWith:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+       function SymmetricDifference(const aWith:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
        function ToTrianglePolygons:TpvCSGBSPPolygons;
      end;
 
@@ -207,17 +215,17 @@ type PpvCSGBSPClassification=^TpvCSGBSPClassification;
        fPlane:TpvCSGBSPPlane;
        fFrontNode:TpvCSGBSPNode;
        fBackNode:TpvCSGBSPNode;
-       function ClipPolygons(const aPolygons:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
-       procedure ClipTo(const aNode:TpvCSGBSPNode);
       public
        constructor Create; reintroduce; overload;
        constructor Create(const aPolygons:TpvCSGBSPPolygons;const aDoFree:boolean=false); reintroduce; overload;
-       constructor CreateSubtract(const aNodeA,aNodeB:TpvCSGBSPNode);
+       constructor CreateSubtraction(const aNodeA,aNodeB:TpvCSGBSPNode);
        constructor CreateUnion(const aNodeA,aNodeB:TpvCSGBSPNode);
        constructor CreateIntersection(const aNodeA,aNodeB:TpvCSGBSPNode);
-       constructor CreateDifference(const aNodeA,aNodeB:TpvCSGBSPNode);
+       constructor CreateSymmetricDifference(const aNodeA,aNodeB:TpvCSGBSPNode);
        destructor Destroy; override;
        procedure Build(const aPolygons:TpvCSGBSPPolygons;const aDoFree:boolean=false);
+       function ClipPolygons(const aPolygons:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+       procedure ClipTo(const aNode:TpvCSGBSPNode);
        function AllPolygons:TpvCSGBSPPolygons;
        function Clone:TpvCSGBSPNode;
        function Invert:TpvCSGBSPNode;
@@ -679,6 +687,114 @@ begin
  end;
 end;
 
+class function TpvCSGBSPPolygonsHelper.CreateSubtraction(const aLeft,aRight:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+begin
+ result:=aLeft.Subtraction(aRight);
+end;
+
+class function TpvCSGBSPPolygonsHelper.CreateUnion(const aLeft,aRight:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+begin
+ result:=aLeft.Union(aRight);
+end;
+
+class function TpvCSGBSPPolygonsHelper.CreateIntersection(const aLeft,aRight:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+begin
+ result:=aLeft.Intersection(aRight);
+end;
+
+class function TpvCSGBSPPolygonsHelper.CreateSymmetricDifference(const aLeft,aRight:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+begin
+ result:=aLeft.SymmetricDifference(aRight);
+end;
+
+function TpvCSGBSPPolygonsHelper.Subtraction(const aWith:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+var a,b,c:TpvCSGBSPNode;
+begin
+ c:=nil;
+ try
+  a:=TpvCSGBSPNode.Create(self);
+  try
+   b:=TpvCSGBSPNode.Create(aWith);
+   try
+    c:=TpvCSGBSPNode.CreateSubtraction(a,b);
+   finally
+    FreeAndNil(b);
+   end;
+  finally
+   FreeAndNil(a);
+  end;
+  result:=c.AllPolygons;
+ finally
+  FreeAndNil(c);
+ end;
+end;
+
+function TpvCSGBSPPolygonsHelper.Union(const aWith:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+var a,b,c:TpvCSGBSPNode;
+begin
+ c:=nil;
+ try
+  a:=TpvCSGBSPNode.Create(self);
+  try
+   b:=TpvCSGBSPNode.Create(aWith);
+   try
+    c:=TpvCSGBSPNode.CreateUnion(a,b);
+   finally
+    FreeAndNil(b);
+   end;
+  finally
+   FreeAndNil(a);
+  end;
+  result:=c.AllPolygons;
+ finally
+  FreeAndNil(c);
+ end;
+end;
+
+function TpvCSGBSPPolygonsHelper.Intersection(const aWith:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+var a,b,c:TpvCSGBSPNode;
+begin
+ c:=nil;
+ try
+  a:=TpvCSGBSPNode.Create(self);
+  try
+   b:=TpvCSGBSPNode.Create(aWith);
+   try
+    c:=TpvCSGBSPNode.CreateIntersection(a,b);
+   finally
+    FreeAndNil(b);
+   end;
+  finally
+   FreeAndNil(a);
+  end;
+  result:=c.AllPolygons;
+ finally
+  FreeAndNil(c);
+ end;
+end;
+
+function TpvCSGBSPPolygonsHelper.SymmetricDifference(const aWith:TpvCSGBSPPolygons):TpvCSGBSPPolygons;
+var a,b,c:TpvCSGBSPNode;
+begin
+ c:=nil;
+ try
+  a:=TpvCSGBSPNode.Create(self);
+  try
+   b:=TpvCSGBSPNode.Create(aWith);
+   try
+    c:=TpvCSGBSPNode.CreateSymmetricDifference(a,b);
+   finally
+    FreeAndNil(b);
+   end;
+  finally
+   FreeAndNil(a);
+  end;
+  result:=c.AllPolygons;
+ finally
+  FreeAndNil(c);
+ end;
+end;
+
 function TpvCSGBSPPolygonsHelper.ToTrianglePolygons:TpvCSGBSPPolygons;
 var PolygonIndex,VertexIndex:TpvSizeInt;
     InputPolygon:PpvCSGBSPPolygon;
@@ -714,7 +830,7 @@ begin
  Build(aPolygons,aDoFree);
 end;
 
-constructor TpvCSGBSPNode.CreateSubtract(const aNodeA,aNodeB:TpvCSGBSPNode);
+constructor TpvCSGBSPNode.CreateSubtraction(const aNodeA,aNodeB:TpvCSGBSPNode);
 var a,b:TpvCSGBSPNode;
 begin
  a:=aNodeA.Clone;
@@ -783,31 +899,19 @@ begin
  end;
 end;
 
-constructor TpvCSGBSPNode.CreateDifference(const aNodeA,aNodeB:TpvCSGBSPNode);
+constructor TpvCSGBSPNode.CreateSymmetricDifference(const aNodeA,aNodeB:TpvCSGBSPNode);
 var a,b:TpvCSGBSPNode;
 begin
- a:=aNodeA.Clone;
+ // Possible symmertic difference (boolean XOR) implementations:
+ // Intersection(Union(A,B),Inverse(Intersection(A,B))) <= used here, because it seems the most robust mnethod in this BSP-based CSG implementation!
+ // Intersection(Union(A,B),Union(Inverse(A),Inverse(B)))
+ // Union(Subtraction(A,B),Subtraction(B,A))
+ // Subtraction(Union(A,B),Intersection(A,B))
+ a:=TpvCSGBSPNode.CreateUnion(aNodeA,aNodeB);
  try
-  b:=aNodeB.Clone;
+  b:=TpvCSGBSPNode.CreateIntersection(aNodeA,aNodeB);
   try
-   a.ClipTo(b);
-   b.ClipTo(a);
-   b.Invert;
-   b.ClipTo(a);
-   b.Invert;
-   a.Build(b.AllPolygons);
-  finally
-   FreeAndNil(b);
-  end;
-  b:=aNodeB.Clone;
-  try
-   b.ClipTo(a);
-   a.ClipTo(b);
-   a.Invert;
-   a.ClipTo(b);
-   a.Invert;
-   b.Build(a.AllPolygons);
-   Create(b.AllPolygons);
+   CreateIntersection(a,b.Invert);
   finally
    FreeAndNil(b);
   end;
