@@ -93,16 +93,7 @@ uses SysUtils,Classes,Math,
      Generics.Collections,
      PasVulkan.Types,PasVulkan.Math;
 
-type PpvCSGBSPClassification=^TpvCSGBSPClassification;
-     TpvCSGBSPClassification=
-      (
-       Coplanar=0,
-       Front=1,
-       Back=2,
-       Spanning=3
-      );
-
-     TpvCSGBSPArray<T>=record
+type TpvCSGBSPArray<T>=record
       public
        Items:array of T;
        Count:TpvSizeInt;
