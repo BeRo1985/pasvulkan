@@ -296,7 +296,7 @@ type TpvCSGBSPTriangleMesh=class
               property Front:TNode read fFront write fFront;
             end;
       public
-       class function EpsilonSign(const aValue:TFloat):TpvSizeInt;
+       class function EpsilonSign(const aValue:TFloat):TpvSizeInt; static;
      end;
 
 
