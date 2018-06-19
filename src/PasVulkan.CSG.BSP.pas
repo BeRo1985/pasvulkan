@@ -670,7 +670,7 @@ begin
     AddVertex((SliceIndex+1)/aSlices,StackIndex/aStacks);
    end;
    if StackIndex<(aStacks-1) then begin
-   AddVertex((SliceIndex+1)/aSlices,(StackIndex+1)/aStacks);
+    AddVertex((SliceIndex+1)/aSlices,(StackIndex+1)/aStacks);
    end;
    AddVertex(SliceIndex/aSlices,(StackIndex+1)/aStacks);
    result.Add(TpvCSGBSPPolygon.CreateFromVertices(Vertices));
@@ -928,7 +928,7 @@ type TJobStackItem=record
      TJobStack=TStack<TJobStackItem>;
 var JobStack:TJobStack;
     JobStackItem,NewJobStackItem,FrontJobStackItem,BackJobStackItem:TJobStackItem;
-    PolygonIndex:TpvSizeInt;
+    PolygonIndex,SplitPolygonIndex:TpvSizeInt;
 begin
  JobStack:=TJobStack.Create;
  try
@@ -940,10 +940,14 @@ begin
    FrontJobStackItem.List.Initialize;
    BackJobStackItem.List.Initialize;
    if JobStackItem.List.Count>0 then begin
-    if not JobStackItem.Node.fPlane.OK then begin
-     JobStackItem.Node.fPlane:=JobStackItem.List.Items[0].Plane;
+    if JobStackItem.Node.fPlane.OK then begin
+     SplitPolygonIndex:=-1;
+    end else begin
+     SplitPolygonIndex:=0;
+     JobStackItem.Node.fPlane:=JobStackItem.List.Items[SplitPolygonIndex].Plane;
+     JobStackItem.Node.fPolygons.Add(JobStackItem.List.Items[SplitPolygonIndex]);
     end;
-    for PolygonIndex:=0 to JobStackItem.List.Count-1 do begin
+    for PolygonIndex:=SplitPolygonIndex+1 to JobStackItem.List.Count-1 do begin
      JobStackItem.Node.fPlane.SplitPolygon(JobStackItem.List.Items[PolygonIndex],
                                            JobStackItem.Node.fPolygons,
                                            JobStackItem.Node.fPolygons,
@@ -971,16 +975,20 @@ begin
  end;
 end;
 {$else}
-var PolygonIndex:TpvSizeInt;
+var PolygonIndex,SplitPolygonIndex:TpvSizeInt;
     FrontList,BackList:TpvCSGBSPPolygons;
 begin
  FrontList.Initialize;
  BackList.Initialize;
  if aPolygons.Count>0 then begin
-  if not fPlane.OK then begin
-   fPlane:=aPolygons.Items[0].Plane;
+  if fPlane.OK then begin
+   SplitPolygonIndex:=-1;
+  end else begin
+   SplitPolygonIndex:=0;
+   fPlane:=aPolygons.Items[SplitPolygonIndex].Plane;
+   fPolygons.Add(aPolygons.Items[SplitPolygonIndex]);
   end;
-  for PolygonIndex:=0 to aPolygons.Count-1 do begin
+  for PolygonIndex:=SplitPolygonIndex+1 to aPolygons.Count-1 do begin
    fPlane.SplitPolygon(aPolygons.Items[PolygonIndex],
                        fPolygons,
                        fPolygons,
