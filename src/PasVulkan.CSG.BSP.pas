@@ -185,6 +185,8 @@ type TpvCSGBSP=class
               Normal:TVector3;
               TexCoord:TVector4;
               Color:TVector4;
+              class operator Equal(const aLeft,aRight:TVertex):boolean;
+              class operator NotEqual(const aLeft,aRight:TVertex):boolean;
               class operator Add(const aLeft,aRight:TVertex):TVertex;
               class operator Subtract(const aLeft,aRight:TVertex):TVertex;
               class operator Multiply(const aLeft:TVertex;const aRight:TFloat):TVertex;
@@ -759,6 +761,22 @@ begin
 end;
 
 { TpvCSGBSP.TVertex }
+
+class operator TpvCSGBSP.TVertex.Equal(const aLeft,aRight:TVertex):boolean;
+begin
+ result:=(aLeft.Position=aRight.Position) and
+         (aLeft.Normal=aRight.Normal) and
+         (aLeft.TexCoord=aRight.TexCoord) and
+         (aLeft.Color=aRight.Color);
+end;
+
+class operator TpvCSGBSP.TVertex.NotEqual(const aLeft,aRight:TVertex):boolean;
+begin
+ result:=(aLeft.Position<>aRight.Position) or
+         (aLeft.Normal<>aRight.Normal) or
+         (aLeft.TexCoord<>aRight.TexCoord) or
+         (aLeft.Color<>aRight.Color);
+end;
 
 class operator TpvCSGBSP.TVertex.Add(const aLeft,aRight:TVertex):TVertex;
 begin
@@ -2254,7 +2272,7 @@ type THashTableItem=record
      THashTable=array of TpvSizeInt;
 var Index,Count,HashIndex,CountHashTableItems,
     CountPolygonVertices:TpvSizeInt;
-    Vertex,OtherVertex:TVertex;
+    Vertex,OtherVertex:PVertex;
     VertexIndex:TIndex;
     NewVertices:TVertexList;
     NewIndices:TIndexList;
@@ -2291,7 +2309,7 @@ begin
       end;
       while (CountPolygonVertices>0) and (Index<Count) do begin
        dec(CountPolygonVertices);
-       Vertex:=fVertices.Items[fIndices.Items[Index]];
+       Vertex:=@fVertices.Items[fIndices.Items[Index]];
        VertexIndex:=-1;
        Hash:=(trunc(Vertex.Position.x*4096)*73856093) xor
              (trunc(Vertex.Position.y*4096)*19349653) xor
@@ -2300,21 +2318,8 @@ begin
        while HashIndex>=0 do begin
         HashTableItem:=@HashTableItems[HashIndex];
         if HashTableItem^.Hash=Hash then begin
-         OtherVertex:=NewVertices.Items[HashTableItem^.VertexIndex];
-         if SameValue(Vertex.Position.x,OtherVertex.Position.x) and
-            SameValue(Vertex.Position.y,OtherVertex.Position.y) and
-            SameValue(Vertex.Position.z,OtherVertex.Position.z) and
-            SameValue(Vertex.Normal.x,OtherVertex.Normal.x) and
-            SameValue(Vertex.Normal.y,OtherVertex.Normal.y) and
-            SameValue(Vertex.Normal.z,OtherVertex.Normal.z) and
-            SameValue(Vertex.TexCoord.x,OtherVertex.TexCoord.x) and
-            SameValue(Vertex.TexCoord.y,OtherVertex.TexCoord.y) and
-            SameValue(Vertex.TexCoord.z,OtherVertex.TexCoord.z) and
-            SameValue(Vertex.TexCoord.w,OtherVertex.TexCoord.w) and
-            SameValue(Vertex.Color.x,OtherVertex.Color.x) and
-            SameValue(Vertex.Color.y,OtherVertex.Color.y) and
-            SameValue(Vertex.Color.z,OtherVertex.Color.z) and
-            SameValue(Vertex.Color.w,OtherVertex.Color.w) then begin
+         OtherVertex:=@NewVertices.Items[HashTableItem^.VertexIndex];
+         if Vertex^=OtherVertex^ then begin
           VertexIndex:=HashTableItem^.VertexIndex;
           break;
          end;
@@ -2322,7 +2327,7 @@ begin
         HashIndex:=HashTableItem^.Next;
        end;
        if VertexIndex<0 then begin
-        VertexIndex:=NewVertices.Add(Vertex);
+        VertexIndex:=NewVertices.Add(Vertex^);
         HashIndex:=CountHashTableItems;
         inc(CountHashTableItems);
         if CountHashTableItems>length(HashTableItems) then begin
