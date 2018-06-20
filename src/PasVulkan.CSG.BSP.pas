@@ -1433,6 +1433,7 @@ constructor TpvCSGBSP.TMesh.CreateSphere(const aCX,aCY,aCZ,aRadius:TFloat;const 
   Vertex.Color.x:=1.0;
   Vertex.Color.y:=1.0;
   Vertex.Color.z:=1.0;
+  Vertex.Color.w:=1.0;
   result:=fVertices.Add(Vertex);
  end;
 var SliceIndex,StackIndex:TpvSizeInt;
