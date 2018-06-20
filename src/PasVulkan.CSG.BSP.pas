@@ -117,6 +117,7 @@ type TpvCSGBSP=class
               function Add(const aItem:T):TpvSizeInt; overload;
               function Add(const aItems:array of T):TpvSizeInt; overload;
               function Add(const aFrom:{$ifdef fpc}TpvCSGBSP.{$endif}TDynamicArray<T>):TpvSizeInt; overload;
+              function AddRangeFrom(const aFrom:{$ifdef fpc}TpvCSGBSP.{$endif}TDynamicArray<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt; overload;
               procedure Exchange(const aIndexA,aIndexB:TpvSizeInt); inline;
             end;
             TDynamicStack<T>=record
@@ -286,6 +287,9 @@ type TpvCSGBSP=class
               destructor Destroy; override;
               procedure Assign(const aFrom:TMesh);
               procedure Invert;
+              procedure ConvertToPolygons;
+              procedure ConvertToTriangles;
+              procedure Canonicalize;
               procedure CalculateNormals(const aSoftNormals:boolean=true);
               procedure RemoveDuplicateAndUnusedVertices;
               procedure FixTJunctions;
@@ -405,7 +409,7 @@ function TpvCSGBSP.TDynamicArray<T>.AddNew:TpvSizeInt;
 begin
  result:=Count;
  if length(Items)<(Count+1) then begin
-  SetLength(Items,(Count+1)+((Count+1) div 2));
+  SetLength(Items,(Count+1)+((Count+1) shr 1));
  end;
  System.Initialize(Items[Count]);
  inc(Count);
@@ -415,7 +419,7 @@ function TpvCSGBSP.TDynamicArray<T>.Add(const aItem:T):TpvSizeInt;
 begin
  result:=Count;
  if length(Items)<(Count+1) then begin
-  SetLength(Items,(Count+1)+((Count+1) div 2));
+  SetLength(Items,(Count+1)+((Count+1) shr 1));
  end;
  Items[Count]:=aItem;
  inc(Count);
@@ -428,7 +432,7 @@ begin
  FromCount:=length(aItems);
  if FromCount>0 then begin
   if length(Items)<(Count+FromCount) then begin
-   SetLength(Items,(Count+FromCount)+((Count+FromCount) div 2));
+   SetLength(Items,(Count+FromCount)+((Count+FromCount) shr 1));
   end;
   for Index:=0 to FromCount-1 do begin
    Items[Count]:=aItems[Index];
@@ -443,10 +447,25 @@ begin
  result:=Count;
  if aFrom.Count>0 then begin
   if length(Items)<(Count+aFrom.Count) then begin
-   SetLength(Items,(Count+aFrom.Count)+((Count+aFrom.Count) div 2));
+   SetLength(Items,(Count+aFrom.Count)+((Count+aFrom.Count) shr 1));
   end;
   for Index:=0 to aFrom.Count-1 do begin
    Items[Count]:=aFrom.Items[Index];
+   inc(Count);
+  end;
+ end;
+end;
+
+function TpvCSGBSP.TDynamicArray<T>.AddRangeFrom(const aFrom:{$ifdef fpc}TpvCSGBSP.{$endif}TDynamicArray<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt;
+var Index:TpvSizeInt;
+begin
+ result:=Count;
+ if aCount>0 then begin
+  if length(Items)<(Count+aCount) then begin
+   SetLength(Items,(Count+aCount)+((Count+aCount) shr 1));
+  end;
+  for Index:=0 to aCount-1 do begin
+   Items[Count]:=aFrom.Items[aStartIndex+Index];
    inc(Count);
   end;
  end;
@@ -477,7 +496,7 @@ end;
 procedure TpvCSGBSP.TDynamicStack<T>.Push(const aItem:T);
 begin
  if length(Items)<(Count+1) then begin
-  SetLength(Items,(Count+1)+((Count+1) div 2));
+  SetLength(Items,(Count+1)+((Count+1) shr 1));
  end;
  Items[Count]:=aItem;
  inc(Count);
@@ -1164,9 +1183,8 @@ var Index,OtherIndex,Count,CountPolygonVertices,
     VertexOrientationA,
     VertexOrientationB:TpvSizeInt;
     VertexOrientations:array of TpvSizeInt;
-    VertexIndices:array of TIndex;
     VectorDistance:TpvDouble;
-    FrontVertexIndices,BackVertexIndices:TIndexList;
+    BackVertexIndices,FrontVertexIndices:TIndexList;
     VertexIndex:TIndex;
     VertexA,VertexB:PVertex;
 begin
@@ -1174,148 +1192,140 @@ begin
  VertexOrientations:=nil;
  try
 
-  VertexIndices:=nil;
+  BackVertexIndices.Initialize;
   try
 
-   Index:=0;
+   FrontVertexIndices.Initialize;
+   try
 
-   Count:=aIndices.Count;
+    Index:=0;
 
-   while Index<Count do begin
+    Count:=aIndices.Count;
 
-    CountPolygonVertices:=aIndices.Items[Index];
-    inc(Index);
+    while Index<Count do begin
 
-    if (CountPolygonVertices>0) and
-       ((Index+(CountPolygonVertices-1))<Count) then begin
+     CountPolygonVertices:=aIndices.Items[Index];
+     inc(Index);
 
-     if CountPolygonVertices>2 then begin
+     if (CountPolygonVertices>0) and
+        ((Index+(CountPolygonVertices-1))<Count) then begin
 
-      PolygonOrientation:=0;
+      if CountPolygonVertices>2 then begin
 
-      if length(VertexOrientations)<CountPolygonVertices then begin
-       SetLength(VertexOrientations,CountPolygonVertices);
-      end;
+       PolygonOrientation:=0;
 
-      if length(VertexIndices)<>CountPolygonVertices then begin
-       SetLength(VertexIndices,CountPolygonVertices);
-      end;
+       if length(VertexOrientations)<CountPolygonVertices then begin
+        SetLength(VertexOrientations,(CountPolygonVertices*3) shr 1);
+       end;
 
-      for IndexA:=0 to CountPolygonVertices-1 do begin
-       VertexIndex:=aIndices.Items[Index+IndexA];
-       VertexIndices[IndexA]:=VertexIndex;
-       VertexOrientation:=EpsilonSignToOrientation[(TpvCSGBSP.EpsilonSign(DistanceTo(aVertices.Items[VertexIndex].Position))+1) and 3];
-       PolygonOrientation:=PolygonOrientation or VertexOrientation;
-       VertexOrientations[IndexA]:=VertexOrientation;
-      end;
+       for IndexA:=0 to CountPolygonVertices-1 do begin
+        VertexIndex:=aIndices.Items[Index+IndexA];
+        VertexOrientation:=EpsilonSignToOrientation[(TpvCSGBSP.EpsilonSign(DistanceTo(aVertices.Items[VertexIndex].Position))+1) and 3];
+        PolygonOrientation:=PolygonOrientation or VertexOrientation;
+        VertexOrientations[IndexA]:=VertexOrientation;
+       end;
 
-      case PolygonOrientation of
+       case PolygonOrientation of
 
-       Coplanar:begin
-        if assigned(aCoplanarFrontList) or assigned(aCoplanarBackList) then begin
-         if Normal.Dot(TPlane.Create(aVertices.Items[VertexIndices[0]].Position,
-                                     aVertices.Items[VertexIndices[1]].Position,
-                                     aVertices.Items[VertexIndices[2]].Position).Normal)>0.0 then begin
-          if assigned(aCoplanarFrontList) then begin
-           aCoplanarFrontList^.Add(CountPolygonVertices);
-           aCoplanarFrontList^.Add(VertexIndices);
-          end;
-         end else begin
-          if assigned(aCoplanarBackList) then begin
-           aCoplanarBackList^.Add(CountPolygonVertices);
-           aCoplanarBackList^.Add(VertexIndices);
+        Coplanar:begin
+         if assigned(aCoplanarFrontList) or assigned(aCoplanarBackList) then begin
+          if Normal.Dot(TPlane.Create(aVertices.Items[aIndices.Items[Index+0]].Position,
+                                      aVertices.Items[aIndices.Items[Index+1]].Position,
+                                      aVertices.Items[aIndices.Items[Index+2]].Position).Normal)>0.0 then begin
+           if assigned(aCoplanarFrontList) then begin
+            aCoplanarFrontList^.Add(CountPolygonVertices);
+            aCoplanarFrontList^.AddRangeFrom(aIndices,Index,CountPolygonVertices);
+           end;
+          end else begin
+           if assigned(aCoplanarBackList) then begin
+            aCoplanarBackList^.Add(CountPolygonVertices);
+            aCoplanarBackList^.AddRangeFrom(aIndices,Index,CountPolygonVertices);
+           end;
           end;
          end;
         end;
-       end;
 
-       Front:begin
-        if assigned(aFrontList) then begin
-         aFrontList^.Add(CountPolygonVertices);
-         aFrontList^.Add(VertexIndices);
+        Front:begin
+         if assigned(aFrontList) then begin
+          aFrontList^.Add(CountPolygonVertices);
+          aFrontList^.AddRangeFrom(aIndices,Index,CountPolygonVertices);
+         end;
         end;
-       end;
 
-       Back:begin
-        if assigned(aBackList) then begin
-         aBackList^.Add(CountPolygonVertices);
-         aBackList^.Add(VertexIndices);
+        Back:begin
+         if assigned(aBackList) then begin
+          aBackList^.Add(CountPolygonVertices);
+          aBackList^.AddRangeFrom(aIndices,Index,CountPolygonVertices);
+         end;
         end;
-       end;
 
-       else {SPANNING:}begin
+        else {SPANNING:}begin
 
-        FrontVertexIndices.Initialize;
-        try
+         BackVertexIndices.Count:=0;
 
-         BackVertexIndices.Initialize;
-         try
+         FrontVertexIndices.Count:=0;
 
-          for IndexA:=0 to CountPolygonVertices-1 do begin
+         for IndexA:=0 to CountPolygonVertices-1 do begin
 
-           IndexB:=IndexA+1;
-           if IndexB>=CountPolygonVertices then begin
-            IndexB:=0;
-           end;
-
-           VertexIndex:=VertexIndices[IndexA];
-
-           VertexA:=@aVertices.Items[VertexIndex];
-
-           VertexOrientationA:=VertexOrientations[IndexA];
-           VertexOrientationB:=VertexOrientations[IndexB];
-
-           if VertexOrientationA<>Back then begin
-            FrontVertexIndices.Add(VertexIndex);
-           end;
-
-           if VertexOrientationA<>Front then begin
-            BackVertexIndices.Add(VertexIndex);
-           end;
-
-           if (VertexOrientationA or VertexOrientationB)=Spanning then begin
-            VertexB:=@aVertices.Items[VertexIndices[IndexB]];
-            VertexIndex:=aVertices.Add(VertexA^.Lerp(VertexB^,-(DistanceTo(VertexA^.Position)/Normal.Dot(VertexB^.Position-VertexA^.Position))));
-            FrontVertexIndices.Add(VertexIndex);
-            BackVertexIndices.Add(VertexIndex);
-           end;
-
+          IndexB:=IndexA+1;
+          if IndexB>=CountPolygonVertices then begin
+           IndexB:=0;
           end;
 
-          if assigned(aFrontList) and (FrontVertexIndices.Count>2) then begin
-           aFrontList^.Add(FrontVertexIndices.Count);
-           aFrontList^.Add(FrontVertexIndices);
+          VertexIndex:=aIndices.Items[Index+IndexA];
+
+          VertexA:=@aVertices.Items[VertexIndex];
+
+          VertexOrientationA:=VertexOrientations[IndexA];
+          VertexOrientationB:=VertexOrientations[IndexB];
+
+          if VertexOrientationA<>Front then begin
+           BackVertexIndices.Add(VertexIndex);
           end;
 
-          if assigned(aBackList) and (BackVertexIndices.Count>2) then begin
-           aBackList^.Add(BackVertexIndices.Count);
-           aBackList^.Add(BackVertexIndices);
+          if VertexOrientationA<>Back then begin
+           FrontVertexIndices.Add(VertexIndex);
           end;
 
-         finally
-          BackVertexIndices.Finalize;
+          if (VertexOrientationA or VertexOrientationB)=Spanning then begin
+           VertexB:=@aVertices.Items[aIndices.Items[Index+IndexB]];
+           VertexIndex:=aVertices.Add(VertexA^.Lerp(VertexB^,-(DistanceTo(VertexA^.Position)/Normal.Dot(VertexB^.Position-VertexA^.Position))));
+           BackVertexIndices.Add(VertexIndex);
+           FrontVertexIndices.Add(VertexIndex);
+          end;
+
          end;
 
-        finally
-         FrontVertexIndices.Finalize;
+         if assigned(aBackList) and (BackVertexIndices.Count>2) then begin
+          aBackList^.Add(BackVertexIndices.Count);
+          aBackList^.Add(BackVertexIndices);
+         end;
+
+         if assigned(aFrontList) and (FrontVertexIndices.Count>2) then begin
+          aFrontList^.Add(FrontVertexIndices.Count);
+          aFrontList^.Add(FrontVertexIndices);
+         end;
+
         end;
 
        end;
 
       end;
 
+     end else begin
+      Assert(false);
      end;
 
-    end else begin
-     Assert(false);
+     inc(Index,CountPolygonVertices);
+
     end;
 
-    inc(Index,CountPolygonVertices);
-
+   finally
+    FrontVertexIndices.Finalize;
    end;
 
   finally
-   VertexIndices:=nil;
+   BackVertexIndices.Finalize;
   end;
 
  finally
@@ -2193,6 +2203,54 @@ begin
     end;
    end;
   end;
+ end;
+end;
+
+procedure TpvCSGBSP.TMesh.ConvertToPolygons;
+begin
+ SetMode(TMode.Polygons);
+end;
+
+procedure TpvCSGBSP.TMesh.ConvertToTriangles;
+begin
+ SetMode(TMode.Triangles);
+end;
+
+procedure TpvCSGBSP.TMesh.Canonicalize;
+var Index,Count,CountPolygonVertices:TpvSizeInt;
+    NewIndices:TIndexList;
+begin
+ NewIndices.Initialize;
+ try
+  Index:=0;
+  Count:=fIndices.Count;
+  while Index<Count do begin
+   case fMode of
+    TMode.Triangles:begin
+     CountPolygonVertices:=3;
+    end;
+    else {TMode.Polygons:}begin
+     CountPolygonVertices:=fIndices.Items[Index];
+     inc(Index);
+    end;
+   end;
+   if CountPolygonVertices>2 then begin
+    if (Index+(CountPolygonVertices-1))<Count then begin
+     case fMode of
+      TMode.Triangles:begin
+      end;
+      else {TMode.Polygons:}begin
+       NewIndices.Add(CountPolygonVertices);
+      end;
+     end;
+     NewIndices.AddRangeFrom(fIndices,Index,CountPolygonVertices);
+    end;
+   end;
+   inc(Index,CountPolygonVertices);
+  end;
+  SetIndices(NewIndices);
+ finally
+  NewIndices.Finalize;
  end;
 end;
 
