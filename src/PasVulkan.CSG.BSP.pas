@@ -2252,6 +2252,7 @@ begin
  finally
   NewIndices.Finalize;
  end;
+ RemoveDuplicateAndUnusedVertices;
 end;
 
 procedure TpvCSGBSP.TMesh.CalculateNormals(const aSoftNormals:boolean=true);
