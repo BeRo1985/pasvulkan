@@ -285,7 +285,7 @@ type TpvCSGBSP=class
               procedure Assign(const aFrom:TMesh);
               procedure Invert;
               procedure CalculateNormals(const aSoftNormals:boolean=true);
-              procedure RemoveDuplicateVertices;
+              procedure RemoveDuplicateAndUnusedVertices;
               procedure FixTJunctions;
               function ToNode(const aSplitSettings:PSplitSettings=nil):TNode;
              public
@@ -1391,7 +1391,7 @@ begin
    end;
   end;
  end;
- RemoveDuplicateVertices;
+ RemoveDuplicateAndUnusedVertices;
 end;
 
 constructor TpvCSGBSP.TMesh.CreateSphere(const aCX,aCY,aCZ,aRadius:TFloat;const aSlices:TpvSizeInt=16;const aStacks:TpvSizeInt=8;const aMode:TMode=TMode.Triangles);
@@ -1459,7 +1459,7 @@ begin
  finally
   PolygonIndices.Finalize;
  end;
- RemoveDuplicateVertices;
+ RemoveDuplicateAndUnusedVertices;
 end;
 
 constructor TpvCSGBSP.TMesh.CreateFromCSGOperation(const aLeftMesh:TMesh;
@@ -2017,7 +2017,7 @@ begin
  end else begin
   ProcessPolygons;
  end;
- RemoveDuplicateVertices;
+ RemoveDuplicateAndUnusedVertices;
 end;
 
 constructor TpvCSGBSP.TMesh.CreateUnion(const aLeftMesh:TMesh;
@@ -2232,13 +2232,15 @@ begin
    for Index:=0 to length(Normals)-1 do begin
     fVertices.Items[Index].Normal:=Normals[Index].Normalize;
    end;
+  end else begin
+   RemoveDuplicateAndUnusedVertices;
   end;
  finally
   SetLength(Normals,0);
  end;
 end;
 
-procedure TpvCSGBSP.TMesh.RemoveDuplicateVertices;
+procedure TpvCSGBSP.TMesh.RemoveDuplicateAndUnusedVertices;
 const HashBits=16;
       HashSize=1 shl HashBits;
       HashMask=HashSize-1;
@@ -2364,7 +2366,7 @@ var Index,TriangleVertexIndex,VertexIndex,
     VertexIndices:array[0..3] of TIndex;
 begin
  SetMode(TMode.Triangles);
- RemoveDuplicateVertices;
+ RemoveDuplicateAndUnusedVertices;
  try
   repeat
    TryAgain:=false;
@@ -2415,7 +2417,7 @@ begin
    end;
   until not TryAgain;
  finally
-  RemoveDuplicateVertices;
+  RemoveDuplicateAndUnusedVertices;
  end;
 end;
 
@@ -2901,7 +2903,7 @@ begin
    JobStack.Finalize;
   end;
  finally
-  result.RemoveDuplicateVertices;
+  result.RemoveDuplicateAndUnusedVertices;
  end;
 end;
 
