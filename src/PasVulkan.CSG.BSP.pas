@@ -101,6 +101,8 @@ type TpvCSGBSP=class
              TJunctionEpsilon=1e-4;
              TJunctionOneMinusEpsilon=1.0-TJunctionEpsilon;
              TJunctionOnePlusEpsilon=1.0+TJunctionEpsilon;
+             daabbtNULLNODE=-1;
+             AABBMULTIPLIER=2.0;
        type TFloat=TpvDouble;
             PFloat=^TFloat;
             TDynamicArray<T>=record
@@ -198,6 +200,16 @@ type TpvCSGBSP=class
               function CloneFlip:TVertex;
               function Normalize:TVertex;
             end;
+            TAABB=record
+             public
+              Min:TVector3;
+              Max:TVector3;
+              function Cost:TFloat;
+              function Combine(const aAABB:TAABB):TAABB;
+              function Contains(const aAABB:TAABB;const aThreshold:TFloat=0.0):boolean;
+              function Intersects(const aAABB:TAABB;const aThreshold:TFloat=Epsilon):boolean;
+            end;
+            PAABB=^TAABB;
             PVertex=^TVertex;
             TVertexList=TDynamicArray<TVertex>;
             PVertexList=^TVertexList;
@@ -231,6 +243,53 @@ type TpvCSGBSP=class
                                       const aFrontList:PIndexList);
             end;
             PPlane=^TPlane;
+            PDynamicAABBTreeNode=^TDynamicAABBTreeNode;
+            TDynamicAABBTreeNode=record
+             AABB:TAABB;
+             UserData:TpvPtrInt;
+             Children:array[0..1] of TpvSizeInt;
+             Height:TpvSizeInt;
+             case boolean of
+              false:(
+               Parent:TpvSizeInt;
+              );
+              true:(
+               Next:TpvSizeInt;
+              );
+            end;
+            PDynamicAABBTreeNodes=^TDynamicAABBTreeNodes;
+            TDynamicAABBTreeNodes=array[0..0] of TDynamicAABBTreeNode;
+            PDynamicAABBTreeSizeIntArray=^TDynamicAABBTreeSizeIntArray;
+            TDynamicAABBTreeSizeIntArray=array[0..65535] of TpvSizeInt;
+            TDynamicAABBFrozenTreeNode=record
+             Left:TpvSizeInt;
+             Right:TpvSizeInt;
+             AABB:TAABB;
+             UserData:pointer;
+            end;
+            TDynamicAABBTree=class
+             public
+              Root:TpvSizeInt;
+              Nodes:PDynamicAABBTreeNodes;
+              NodeCount:TpvSizeInt;
+              NodeCapacity:TpvSizeInt;
+              FreeList:TpvSizeInt;
+              Path:TpvSizeUInt;
+              InsertionCount:TpvSizeInt;
+              Stack:PDynamicAABBTreeSizeIntArray;
+              StackCapacity:TpvSizeInt;
+              constructor Create;
+              destructor Destroy; override;
+              function AllocateNode:TpvSizeInt;
+              procedure FreeNode(const aNodeID:TpvSizeInt);
+              function Balance(const aNodeID:TpvSizeInt):TpvSizeInt;
+              procedure InsertLeaf(const aLeaf:TpvSizeInt);
+              procedure RemoveLeaf(const aLeaf:TpvSizeInt);
+              function CreateProxy(const aAABB:TAABB;const aUserData:TpvPtrInt):TpvSizeInt;
+              procedure DestroyProxy(const aNodeID:TpvSizeInt);
+              function MoveProxy(const aNodeID:TpvSizeInt;const aAABB:TAABB;const aDisplacement:TVector3):boolean;
+              procedure Rebalance(const aIterations:TpvSizeInt);
+            end;
             TSplitSettings=record
              SearchBestFactor:TpvSizeInt;
              PolygonSplitCost:TFloat;
@@ -344,6 +403,7 @@ type TpvCSGBSP=class
                PolygonSplitCost:1.0;
                PolygonImbalanceCost:0.25;
               );
+             ThresholdAABBVector:TVector3=(x:AABBEPSILON;y:AABBEPSILON;z:AABBEPSILON);
       public
        class function EpsilonSign(const aValue:TFloat):TpvSizeInt; static;
      end;
@@ -1332,6 +1392,397 @@ begin
   VertexOrientations:=nil;
  end;
 
+end;
+
+{ TpvCSGBSP.TAABB }
+
+function TpvCSGBSP.TAABB.Cost:TFloat;
+begin
+// result:=(self.Max.x-self.Min.x)+(self.Max.y-self.Min.y)+(self.Max.z-self.Min.z); // Manhattan distance
+ result:=(self.Max.x-self.Min.x)*(self.Max.y-self.Min.y)*(self.Max.z-self.Min.z); // Volume
+end;
+
+function TpvCSGBSP.TAABB.Combine(const aAABB:TAABB):TAABB;
+begin
+ result.Min.x:=Math.Min(self.Min.x,aaABB.Min.x);
+ result.Min.y:=Math.Min(self.Min.y,aAABB.Min.y);
+ result.Min.z:=Math.Min(self.Min.z,aAABB.Min.z);
+ result.Max.x:=Math.Max(self.Max.x,aAABB.Max.x);
+ result.Max.y:=Math.Max(self.Max.y,aAABB.Max.y);
+ result.Max.z:=Math.Max(self.Max.z,aAABB.Max.z);
+end;
+
+function TpvCSGBSP.TAABB.Contains(const aAABB:TAABB;const aThreshold:TFloat=0.0):boolean;
+begin
+ result:=((self.Min.x-aThreshold)<=(aAABB.Min.x+aThreshold)) and ((self.Min.y-aThreshold)<=(aAABB.Min.y+aThreshold)) and ((self.Min.z-aThreshold)<=(aAABB.Min.z+aThreshold)) and
+         ((self.Max.x+aThreshold)>=(aAABB.Min.x+aThreshold)) and ((self.Max.y+aThreshold)>=(aAABB.Min.y+aThreshold)) and ((self.Max.z+aThreshold)>=(aAABB.Min.z+aThreshold)) and
+         ((self.Min.x-aThreshold)<=(aAABB.Max.x-aThreshold)) and ((self.Min.y-aThreshold)<=(aAABB.Max.y-aThreshold)) and ((self.Min.z-aThreshold)<=(aAABB.Max.z-aThreshold)) and
+         ((self.Max.x+aThreshold)>=(aAABB.Max.x-aThreshold)) and ((self.Max.y+aThreshold)>=(aAABB.Max.y-aThreshold)) and ((self.Max.z+aThreshold)>=(aAABB.Max.z-aThreshold));
+end;
+
+function TpvCSGBSP.TAABB.Intersects(const aAABB:TAABB;const aThreshold:TFloat=Epsilon):boolean;
+begin
+ result:=(((self.Max.x+aThreshold)>=(aAABB.Min.x-aThreshold)) and ((self.Min.x-aThreshold)<=(aAABB.Max.x+aThreshold))) and
+         (((self.Max.y+aThreshold)>=(aAABB.Min.y-aThreshold)) and ((self.Min.y-aThreshold)<=(aAABB.Max.y+aThreshold))) and
+         (((self.Max.z+aThreshold)>=(aAABB.Min.z-aThreshold)) and ((self.Min.z-aThreshold)<=(aAABB.Max.z+aThreshold)));
+end;
+
+{ TpvCSGBSP.TDynamicAABBTree }
+
+constructor TpvCSGBSP.TDynamicAABBTree.Create;
+var i:TpvSizeInt;
+begin
+ inherited Create;
+ Root:=daabbtNULLNODE;
+ NodeCount:=0;
+ NodeCapacity:=16;
+ GetMem(Nodes,NodeCapacity*SizeOf(TDynamicAABBTreeNode));
+ FillChar(Nodes^,NodeCapacity*SizeOf(TDynamicAABBTreeNode),#0);
+ for i:=0 to NodeCapacity-2 do begin
+  Nodes^[i].Next:=i+1;
+  Nodes^[i].Height:=-1;
+ end;
+ Nodes^[NodeCapacity-1].Next:=daabbtNULLNODE;
+ Nodes^[NodeCapacity-1].Height:=-1;
+ FreeList:=0;
+ Path:=0;
+ InsertionCount:=0;
+ StackCapacity:=16;
+ GetMem(Stack,StackCapacity*SizeOf(TpvSizeInt));
+end;
+
+destructor TpvCSGBSP.TDynamicAABBTree.Destroy;
+begin
+ FreeMem(Nodes);
+ FreeMem(Stack);
+ inherited Destroy;
+end;
+
+function TpvCSGBSP.TDynamicAABBTree.AllocateNode:TpvSizeInt;
+var Node:PDynamicAABBTreeNode;
+    i:TpvSizeInt;
+begin
+ if FreeList=daabbtNULLNODE then begin
+  inc(NodeCapacity,NodeCapacity);
+  ReallocMem(Nodes,NodeCapacity*SizeOf(TDynamicAABBTreeNode));
+  FillChar(Nodes^[NodeCount],(NodeCapacity-NodeCount)*SizeOf(TDynamicAABBTreeNode),#0);
+  for i:=NodeCount to NodeCapacity-2 do begin
+   Nodes^[i].Next:=i+1;
+   Nodes^[i].Height:=-1;
+  end;
+  Nodes^[NodeCapacity-1].Next:=daabbtNULLNODE;
+  Nodes^[NodeCapacity-1].Height:=-1;
+  FreeList:=NodeCount;
+ end;
+ result:=FreeList;
+ FreeList:=Nodes^[result].Next;
+ Node:=@Nodes^[result];
+ Node^.Parent:=daabbtNULLNODE;
+ Node^.Children[0]:=daabbtNULLNODE;
+ Node^.Children[1]:=daabbtNULLNODE;
+ Node^.Height:=0;
+ Node^.UserData:=0;
+ inc(NodeCount);
+end;
+
+procedure TpvCSGBSP.TDynamicAABBTree.FreeNode(const aNodeID:TpvSizeInt);
+var Node:PDynamicAABBTreeNode;
+begin
+ Node:=@Nodes^[aNodeID];
+ Node^.Next:=FreeList;
+ Node^.Height:=-1;
+ FreeList:=aNodeID;
+ dec(NodeCount);
+end;
+
+function TpvCSGBSP.TDynamicAABBTree.Balance(const aNodeID:TpvSizeInt):TpvSizeInt;
+var NodeA,NodeB,NodeC,NodeD,NodeE,NodeF,NodeG:PDynamicAABBTreeNode;
+    NodeBID,NodeCID,NodeDID,NodeEID,NodeFID,NodeGID,NodeBalance:TpvSizeInt;
+begin
+ NodeA:=@Nodes^[aNodeID];
+ if (NodeA.Children[0]<0) or (NodeA^.Height<2) then begin
+  result:=aNodeID;
+ end else begin
+  NodeBID:=NodeA^.Children[0];
+  NodeCID:=NodeA^.Children[1];
+  NodeB:=@Nodes^[NodeBID];
+  NodeC:=@Nodes^[NodeCID];
+  NodeBalance:=NodeC^.Height-NodeB^.Height;
+  if NodeBalance>1 then begin
+   NodeFID:=NodeC^.Children[0];
+   NodeGID:=NodeC^.Children[1];
+   NodeF:=@Nodes^[NodeFID];
+   NodeG:=@Nodes^[NodeGID];
+   NodeC^.Children[0]:=aNodeID;
+   NodeC^.Parent:=NodeA^.Parent;
+   NodeA^.Parent:=NodeCID;
+   if NodeC^.Parent>=0 then begin
+    if Nodes^[NodeC^.Parent].Children[0]=aNodeID then begin
+     Nodes^[NodeC^.Parent].Children[0]:=NodeCID;
+    end else begin
+     Nodes^[NodeC^.Parent].Children[1]:=NodeCID;
+    end;
+   end else begin
+    Root:=NodeCID;
+   end;
+   if NodeF^.Height>NodeG^.Height then begin
+    NodeC^.Children[1]:=NodeFID;
+    NodeA^.Children[1]:=NodeGID;
+    NodeG^.Parent:=aNodeID;
+    NodeA^.AABB:=NodeB^.AABB.Combine(NodeG^.AABB);
+    NodeC^.AABB:=NodeA^.AABB.Combine(NodeF^.AABB);
+    NodeA^.Height:=1+Max(NodeB^.Height,NodeG^.Height);
+    NodeC^.Height:=1+Max(NodeA^.Height,NodeF^.Height);
+   end else begin
+    NodeC^.Children[1]:=NodeGID;
+    NodeA^.Children[1]:=NodeFID;
+    NodeF^.Parent:=aNodeID;
+    NodeA^.AABB:=NodeB^.AABB.Combine(NodeF^.AABB);
+    NodeC^.AABB:=NodeA^.AABB.Combine(NodeG^.AABB);
+    NodeA^.Height:=1+Max(NodeB^.Height,NodeF^.Height);
+    NodeC^.Height:=1+Max(NodeA^.Height,NodeG^.Height);
+   end;
+   result:=NodeCID;
+  end else if NodeBalance<-1 then begin
+   NodeDID:=NodeB^.Children[0];
+   NodeEID:=NodeB^.Children[1];
+   NodeD:=@Nodes^[NodeDID];
+   NodeE:=@Nodes^[NodeEID];
+   NodeB^.Children[0]:=aNodeID;
+   NodeB^.Parent:=NodeA^.Parent;
+   NodeA^.Parent:=NodeBID;
+   if NodeB^.Parent>=0 then begin
+    if Nodes^[NodeB^.Parent].Children[0]=aNodeID then begin
+     Nodes^[NodeB^.Parent].Children[0]:=NodeBID;
+    end else begin
+     Nodes^[NodeB^.Parent].Children[1]:=NodeBID;
+    end;
+   end else begin
+    Root:=NodeBID;
+   end;
+   if NodeD^.Height>NodeE^.Height then begin
+    NodeB^.Children[1]:=NodeDID;
+    NodeA^.Children[0]:=NodeEID;
+    NodeE^.Parent:=aNodeID;
+    NodeA^.AABB:=NodeC^.AABB.Combine(NodeE^.AABB);
+    NodeB^.AABB:=NodeA^.AABB.Combine(NodeD^.AABB);
+    NodeA^.Height:=1+Max(NodeC^.Height,NodeE^.Height);
+    NodeB^.Height:=1+Max(NodeA^.Height,NodeD^.Height);
+   end else begin
+    NodeB^.Children[1]:=NodeEID;
+    NodeA^.Children[0]:=NodeDID;
+    NodeD^.Parent:=aNodeID;
+    NodeA^.AABB:=NodeC^.AABB.Combine(NodeD^.AABB);
+    NodeB^.AABB:=NodeA^.AABB.Combine(NodeE^.AABB);
+    NodeA^.Height:=1+Max(NodeC^.Height,NodeD^.Height);
+    NodeB^.Height:=1+Max(NodeA^.Height,NodeE^.Height);
+   end;
+   result:=NodeBID;
+  end else begin
+   result:=aNodeID;
+  end;
+ end;
+end;
+
+procedure TpvCSGBSP.TDynamicAABBTree.InsertLeaf(const aLeaf:TpvSizeInt);
+var Node:PDynamicAABBTreeNode;
+    LeafAABB,CombinedAABB,AABB:TAABB;
+    Index,Sibling,OldParent,NewParent:TpvSizeInt;
+    Children:array[0..1] of TpvSizeInt;
+    CombinedCost,Cost,InheritanceCost:TFloat;
+    Costs:array[0..1] of TFloat;
+begin
+ inc(InsertionCount);
+ if Root<0 then begin
+  Root:=aLeaf;
+  Nodes^[aLeaf].Parent:=daabbtNULLNODE;
+ end else begin
+  LeafAABB:=Nodes^[aLeaf].AABB;
+  Index:=Root;
+  while Nodes^[Index].Children[0]>=0 do begin
+   Children[0]:=Nodes^[Index].Children[0];
+   Children[1]:=Nodes^[Index].Children[1];
+
+   CombinedAABB:=Nodes^[Index].AABB.Combine(LeafAABB);
+   CombinedCost:=CombinedAABB.Cost;
+   Cost:=CombinedCost*2.0;
+   InheritanceCost:=2.0*(CombinedCost-Nodes^[Index].AABB.Cost);
+
+   AABB:=LeafAABB.Combine(Nodes^[Children[0]].AABB);
+   if Nodes^[Children[0]].Children[0]<0 then begin
+    Costs[0]:=AABB.Cost+InheritanceCost;
+   end else begin
+    Costs[0]:=(AABB.Cost-Nodes^[Children[0]].AABB.Cost)+InheritanceCost;
+   end;
+
+   AABB:=LeafAABB.Combine(Nodes^[Children[1]].AABB);
+   if Nodes^[Children[1]].Children[1]<0 then begin
+    Costs[1]:=AABB.Cost+InheritanceCost;
+   end else begin
+    Costs[1]:=(AABB.Cost-Nodes^[Children[1]].AABB.Cost)+InheritanceCost;
+   end;
+
+   if (Cost<Costs[0]) and (Cost<Costs[1]) then begin
+    break;
+   end else begin
+    if Costs[0]<Costs[1] then begin
+     Index:=Children[0];
+    end else begin
+     Index:=Children[1];
+    end;
+   end;
+
+  end;
+
+  Sibling:=Index;
+
+  OldParent:=Nodes^[Sibling].Parent;
+  NewParent:=AllocateNode;
+  Nodes^[NewParent].Parent:=OldParent;
+  Nodes^[NewParent].UserData:=0;
+  Nodes^[NewParent].AABB:=LeafAABB.Combine(Nodes^[Sibling].AABB);
+  Nodes^[NewParent].Height:=Nodes^[Sibling].Height+1;
+
+  if OldParent>=0 then begin
+   if Nodes^[OldParent].Children[0]=Sibling then begin
+    Nodes^[OldParent].Children[0]:=NewParent;
+   end else begin
+    Nodes^[OldParent].Children[1]:=NewParent;
+   end;
+   Nodes^[NewParent].Children[0]:=Sibling;
+   Nodes^[NewParent].Children[1]:=aLeaf;
+   Nodes^[Sibling].Parent:=NewParent;
+   Nodes^[aLeaf].Parent:=NewParent;
+  end else begin
+   Nodes^[NewParent].Children[0]:=Sibling;
+   Nodes^[NewParent].Children[1]:=aLeaf;
+   Nodes^[Sibling].Parent:=NewParent;
+   Nodes^[aLeaf].Parent:=NewParent;
+   Root:=NewParent;
+  end;
+
+  Index:=Nodes^[aLeaf].Parent;
+  while Index>=0 do begin
+   Index:=Balance(Index);
+   Node:=@Nodes^[Index];
+   Node^.AABB:=Nodes^[Node^.Children[0]].AABB.Combine(Nodes^[Node^.Children[1]].AABB);
+   Node^.Height:=1+Max(Nodes^[Node^.Children[0]].Height,Nodes^[Node^.Children[1]].Height);
+   Index:=Node^.Parent;
+  end;
+
+ end;
+end;
+
+procedure TpvCSGBSP.TDynamicAABBTree.RemoveLeaf(const aLeaf:TpvSizeInt);
+var Node:PDynamicAABBTreeNode;
+    Parent,GrandParent,Sibling,Index:TpvSizeInt;
+begin
+ if Root=aLeaf then begin
+  Root:=daabbtNULLNODE;
+ end else begin
+  Parent:=Nodes^[aLeaf].Parent;
+  GrandParent:=Nodes^[Parent].Parent;
+  if Nodes^[Parent].Children[0]=aLeaf then begin
+   Sibling:=Nodes^[Parent].Children[1];
+  end else begin
+   Sibling:=Nodes^[Parent].Children[0];
+  end;
+  if GrandParent>=0 then begin
+   if Nodes^[GrandParent].Children[0]=Parent then begin
+    Nodes^[GrandParent].Children[0]:=Sibling;
+   end else begin
+    Nodes^[GrandParent].Children[1]:=Sibling;
+   end;
+   Nodes^[Sibling].Parent:=GrandParent;
+   FreeNode(Parent);
+   Index:=GrandParent;
+   while Index>=0 do begin
+    Index:=Balance(Index);
+    Node:=@Nodes^[Index];
+    Node^.AABB:=Nodes^[Node^.Children[0]].AABB.Combine(Nodes^[Node^.Children[1]].AABB);
+    Node^.Height:=1+Max(Nodes^[Node^.Children[0]].Height,Nodes^[Node^.Children[1]].Height);
+    Index:=Node^.Parent;
+   end;
+  end else begin
+   Root:=Sibling;
+   Nodes^[Sibling].Parent:=daabbtNULLNODE;
+   FreeNode(Parent);
+  end;
+ end;
+end;
+
+function TpvCSGBSP.TDynamicAABBTree.CreateProxy(const aAABB:TAABB;const aUserData:TpvPtrInt):TpvSizeInt;
+var Node:PDynamicAABBTreeNode;
+begin
+ result:=AllocateNode;
+ Node:=@Nodes^[result];
+ Node^.AABB.Min:=aAABB.Min-ThresholdAABBVector;
+ Node^.AABB.Max:=aAABB.Max+ThresholdAABBVector;
+ Node^.UserData:=aUserData;
+ Node^.Height:=0;
+ InsertLeaf(result);
+end;
+
+procedure TpvCSGBSP.TDynamicAABBTree.DestroyProxy(const aNodeID:TpvSizeInt);
+begin
+ RemoveLeaf(aNodeID);
+ FreeNode(aNodeID);
+end;
+
+function TpvCSGBSP.TDynamicAABBTree.MoveProxy(const aNodeID:TpvSizeInt;const aAABB:TAABB;const aDisplacement:TVector3):boolean;
+var Node:PDynamicAABBTreeNode;
+    b:TAABB;
+    d:TVector3;
+begin
+ Node:=@Nodes^[aNodeID];
+ result:=not Node^.AABB.Contains(aAABB);
+ if result then begin
+  RemoveLeaf(aNodeID);
+  b.Min:=aAABB.Min-ThresholdAABBVector;
+  b.Max:=aAABB.Max+ThresholdAABBVector;
+  d:=aDisplacement*AABBMULTIPLIER;
+  if d.x<0.0 then begin
+   b.Min.x:=b.Min.x+d.x;
+  end else if d.x>0.0 then begin
+   b.Max.x:=b.Max.x+d.x;
+  end;
+  if d.y<0.0 then begin
+   b.Min.y:=b.Min.y+d.y;
+  end else if d.y>0.0 then begin
+   b.Max.y:=b.Max.y+d.y;
+  end;
+  if d.z<0.0 then begin
+   b.Min.z:=b.Min.z+d.z;
+  end else if d.z>0.0 then begin
+   b.Max.z:=b.Max.z+d.z;
+  end;
+  Node^.AABB:=b;
+  InsertLeaf(aNodeID);
+ end;
+end;
+
+procedure TpvCSGBSP.TDynamicAABBTree.Rebalance(const aIterations:TpvSizeInt);
+var Counter,Node:TpvSizeInt;
+    Bit:TpvSizeUInt;
+//  Children:PDynamicAABBTreeSizeIntArray;
+begin
+ if (Root>=0) and (Root<NodeCount) then begin
+  for Counter:=1 to aIterations do begin
+   Bit:=0;
+   Node:=Root;
+   while Nodes[Node].Children[0]>=0 do begin
+    Node:=Nodes[Node].Children[(Path shr Bit) and 1];
+    Bit:=(Bit+1) and 31;
+   end;
+   inc(Path);
+   if ((Node>=0) and (Node<NodeCount)) and (Nodes[Node].Children[0]<0) then begin
+    RemoveLeaf(Node);
+    InsertLeaf(Node);
+   end else begin
+    break;
+   end;
+  end;
+ end;
 end;
 
 { TpvCSGBSP.TMesh }
@@ -2424,66 +2875,122 @@ end;
 
 procedure TpvCSGBSP.TMesh.FixTJunctions;
 const Map:array[0..2,0..3] of TpvSizeInt=((3,1,2,2),(0,3,2,0),(0,1,3,1));
+type TAABBTreeStack=TDynamicStack<TpvSizeInt>;
 var Index,TriangleVertexIndex,VertexIndex,
     CountIndices,CountVertices,Previous:TpvSizeInt;
     TryAgain:boolean;
     Position0,Position1,VertexPosition,
     Direction,DifferenceToVertexPosition:TVector3;
     Time:TFloat;
+    CurrentVertex:PVertex;
     Vertex:TVertex;
     VertexIndices:array[0..3] of TIndex;
+    Vertices:array[0..3] of PVertex;
+    VertexDynamicAABBTree:TDynamicAABBTree;
+    AABB,PointAABB:TAABB;
+    AABBTreeStack:TAABBTreeStack;
+    NodeID:TpvSizeInt;
+    Node:PDynamicAABBTreeNode;
 begin
  SetMode(TMode.Triangles);
  RemoveDuplicateAndUnusedVertices;
  try
-  repeat
-   TryAgain:=false;
-   CountIndices:=fIndices.Count;
-   CountVertices:=fVertices.Count;
-   Index:=0;
-   while ((Index+2)<CountIndices) and not TryAgain do begin
-    VertexIndices[0]:=fIndices.Items[Index+0];
-    VertexIndices[1]:=fIndices.Items[Index+1];
-    VertexIndices[2]:=fIndices.Items[Index+2];
-    Previous:=2;
-    TriangleVertexIndex:=0;
-    while (TriangleVertexIndex<3) and not TryAgain do begin
-     Position0:=fVertices.Items[VertexIndices[Previous]].Position;
-     Position1:=fVertices.Items[VertexIndices[TriangleVertexIndex]].Position;
-     VertexIndex:=0;
-     while (VertexIndex<CountVertices) and not TryAgain do begin
-      VertexPosition:=fVertices.Items[VertexIndex].Position;
-      if (VertexIndices[0]<>VertexIndex) and
-         (VertexIndices[1]<>VertexIndex) and
-         (VertexIndices[2]<>VertexIndex) and
-         (fVertices.Items[VertexIndices[0]].Position<>VertexPosition) and
-         (fVertices.Items[VertexIndices[1]].Position<>VertexPosition) and
-         (fVertices.Items[VertexIndices[2]].Position<>VertexPosition) and
-         ((Position0-VertexPosition).Normalize.Dot((VertexPosition-Position1).Normalize)>=TJunctionOneMinusEpsilon) then begin
-       Direction:=Position1-Position0;
-       DifferenceToVertexPosition:=VertexPosition-Position0;
-       Time:=DifferenceToVertexPosition.Dot(Direction)/Direction.Dot(Direction);
-       if ((Time>=TJunctionEpsilon) and (Time<=TJunctionOneMinusEpsilon)) and
-          (((Direction*Time)-DifferenceToVertexPosition).SquaredLength<TJunctionEpsilon) then begin
-        Vertex:=fVertices.Items[fIndices.Items[Index+Previous]].Lerp(fVertices.Items[fIndices.Items[Index+TriangleVertexIndex]],Time);
-        Vertex.Position:=VertexPosition;
-        VertexIndices[3]:=fVertices.Add(Vertex);
-        fIndices.Items[Index+Map[TriangleVertexIndex,3]]:=VertexIndices[3];
-        fIndices.Add([VertexIndices[Map[TriangleVertexIndex,0]],
-                      VertexIndices[Map[TriangleVertexIndex,1]],
-                      VertexIndices[Map[TriangleVertexIndex,2]]]);
-        TryAgain:=true;
-        break;
-       end;
-      end;
-      inc(VertexIndex);
-     end;
-     Previous:=TriangleVertexIndex;
-     inc(TriangleVertexIndex);
+  VertexDynamicAABBTree:=TDynamicAABBTree.Create;
+  try
+   AABBTreeStack.Initialize;
+   try
+    for Index:=0 to fVertices.Count-1 do begin
+     CurrentVertex:=@fVertices.Items[Index];
+     PointAABB.Min:=CurrentVertex^.Position-ThresholdAABBVector;
+     PointAABB.Max:=CurrentVertex^.Position+ThresholdAABBVector;
+     VertexDynamicAABBTree.CreateProxy(PointAABB,Index);
     end;
-    inc(Index,3);
+    repeat
+     TryAgain:=false;
+     CountIndices:=fIndices.Count;
+     CountVertices:=fVertices.Count;
+     Index:=0;
+     while ((Index+2)<CountIndices) and not TryAgain do begin
+      VertexIndices[0]:=fIndices.Items[Index+0];
+      VertexIndices[1]:=fIndices.Items[Index+1];
+      VertexIndices[2]:=fIndices.Items[Index+2];
+      Vertices[0]:=@fVertices.Items[VertexIndices[0]];
+      Vertices[1]:=@fVertices.Items[VertexIndices[1]];
+      Vertices[2]:=@fVertices.Items[VertexIndices[2]];
+      Previous:=2;
+      TriangleVertexIndex:=0;
+      while (TriangleVertexIndex<3) and not TryAgain do begin
+       Position0:=fVertices.Items[VertexIndices[Previous]].Position;
+       Position1:=fVertices.Items[VertexIndices[TriangleVertexIndex]].Position;
+       AABB.Min.x:=Min(Position0.x,Position1.x)-Epsilon;
+       AABB.Min.y:=Min(Position0.y,Position1.y)-Epsilon;
+       AABB.Min.z:=Min(Position0.z,Position1.z)-Epsilon;
+       AABB.Max.x:=Max(Position0.x,Position1.x)+Epsilon;
+       AABB.Max.y:=Max(Position0.y,Position1.y)+Epsilon;
+       AABB.Max.z:=Max(Position0.z,Position1.z)+Epsilon;
+       if VertexDynamicAABBTree.Root>=0 then begin
+        AABBTreeStack.Count:=0;
+        AABBTreeStack.Push(VertexDynamicAABBTree.Root);
+        while AABBTreeStack.Pop(NodeID) and not TryAgain do begin
+         Node:=@VertexDynamicAABBTree.Nodes[NodeID];
+         if Node^.AABB.Intersects(AABB) then begin
+          if Node^.Children[0]<0 then begin
+           VertexIndex:=Node^.UserData;
+           if VertexIndex>=0 then begin
+            CurrentVertex:=@fVertices.Items[VertexIndex];
+            if (VertexIndices[0]<>VertexIndex) and
+               (VertexIndices[1]<>VertexIndex) and
+               (VertexIndices[2]<>VertexIndex) and
+               (fVertices.Items[VertexIndices[0]].Position<>CurrentVertex^.Position) and
+               (fVertices.Items[VertexIndices[1]].Position<>CurrentVertex^.Position) and
+               (fVertices.Items[VertexIndices[2]].Position<>CurrentVertex^.Position) and
+               ((Position0-CurrentVertex^.Position).Normalize.Dot((CurrentVertex^.Position-Position1).Normalize)>=TJunctionOneMinusEpsilon) then begin
+             Direction:=Position1-Position0;
+             DifferenceToVertexPosition:=CurrentVertex^.Position-Position0;
+             Time:=DifferenceToVertexPosition.Dot(Direction)/Direction.Dot(Direction);
+             if ((Time>=TJunctionEpsilon) and (Time<=TJunctionOneMinusEpsilon)) and
+                (((Direction*Time)-DifferenceToVertexPosition).SquaredLength<TJunctionEpsilon) then begin
+              VertexPosition:=CurrentVertex^.Position;
+              Vertex:=fVertices.Items[fIndices.Items[Index+Previous]].Lerp(fVertices.Items[fIndices.Items[Index+TriangleVertexIndex]],Time);
+//            Vertex.Position:=VertexPosition;
+              VertexIndices[3]:=fVertices.Add(Vertex);
+              if Vertex.Position<>VertexPosition then begin
+               PointAABB.Min:=Vertex.Position-ThresholdAABBVector;
+               PointAABB.Max:=Vertex.Position+ThresholdAABBVector;
+               VertexDynamicAABBTree.CreateProxy(PointAABB,VertexIndices[3]);
+              end;
+              fIndices.Items[Index+Map[TriangleVertexIndex,3]]:=VertexIndices[3];
+              fIndices.Add([VertexIndices[Map[TriangleVertexIndex,0]],
+                            VertexIndices[Map[TriangleVertexIndex,1]],
+                            VertexIndices[Map[TriangleVertexIndex,2]]]);
+              TryAgain:=true;
+              break;
+             end;
+            end;
+           end;
+          end else begin
+           if Node^.Children[1]>=0 then begin
+            AABBTreeStack.Push(Node^.Children[1]);
+           end;
+           if Node^.Children[0]>=0 then begin
+            AABBTreeStack.Push(Node^.Children[0]);
+           end;
+          end;
+         end;
+        end;
+       end;
+       Previous:=TriangleVertexIndex;
+       inc(TriangleVertexIndex);
+      end;
+      inc(Index,3);
+     end;
+    until not TryAgain;
+   finally
+    AABBTreeStack.Finalize;
    end;
-  until not TryAgain;
+  finally
+   FreeAndNil(VertexDynamicAABBTree);
+  end;
  finally
   RemoveDuplicateAndUnusedVertices;
  end;
