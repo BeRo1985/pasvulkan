@@ -121,6 +121,7 @@ type TpvCSGBSP=class
               function Add(const aFrom:{$ifdef fpc}TpvCSGBSP.{$endif}TDynamicArray<T>):TpvSizeInt; overload;
               function AddRangeFrom(const aFrom:{$ifdef fpc}TpvCSGBSP.{$endif}TDynamicArray<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt; overload;
               procedure Exchange(const aIndexA,aIndexB:TpvSizeInt); inline;
+              procedure Delete(const aIndex:TpvSizeInt);
             end;
             TDynamicStack<T>=record
              public
@@ -164,6 +165,7 @@ type TpvCSGBSP=class
               function SquaredLength:TFloat;
               function Lerp(const aWith:TVector3;const aTime:TFloat):TVector3;
               function Normalize:TVector3;
+              function Perpendicular:TVector3;
               function ToVector:TpvVector3;
             end;
             PVector3=^TVector3;
@@ -352,6 +354,7 @@ type TpvCSGBSP=class
               procedure CalculateNormals(const aSoftNormals:boolean=true);
               procedure RemoveDuplicateAndUnusedVertices;
               procedure FixTJunctions;
+              procedure MergeCoplanarPolygons;
               function ToNode(const aSplitSettings:PSplitSettings=nil):TNode;
              public
               property Vertices:TVertexList read fVertices write SetVertices;
@@ -537,6 +540,16 @@ begin
  Temp:=Items[aIndexA];
  Items[aIndexA]:=Items[aIndexB];
  Items[aIndexB]:=Temp;
+end;
+
+procedure TpvCSGBSP.TDynamicArray<T>.Delete(const aIndex:TpvSizeInt);
+begin
+ if (Count>0) and (aIndex<Count) then begin
+  dec(Count);
+  System.Finalize(Items[aIndex]);
+  Move(Items[aIndex+1],Items[aIndex],SizeOf(T)*(Count-aIndex));
+  FillChar(Items[Count],SizeOf(T),#0);
+ end;
 end;
 
 { TpvCSGBSP.TDynamicStack<T> }
@@ -740,6 +753,29 @@ end;
 function TpvCSGBSP.TVector3.Normalize:TVector3;
 begin
  result:=self/Length;
+end;
+
+function TpvCSGBSP.TVector3.Perpendicular:TVector3;
+var v,p:TVector3;
+begin
+ v:=self.Normalize;
+ p.x:=System.abs(v.x);
+ p.y:=System.abs(v.y);
+ p.z:=System.abs(v.z);
+ if (p.x<=p.y) and (p.x<=p.z) then begin
+  p.x:=1.0;
+  p.y:=0.0;
+  p.z:=0.0;
+ end else if (p.y<=p.x) and (p.y<=p.z) then begin
+  p.x:=0.0;
+  p.y:=1.0;
+  p.z:=0.0;
+ end else begin
+  p.x:=0.0;
+  p.y:=0.0;
+  p.z:=1.0;
+ end;
+ result:=p-(v*v.Dot(p));
 end;
 
 function TpvCSGBSP.TVector3.ToVector:TpvVector3;
@@ -2784,8 +2820,8 @@ type THashTableItem=record
      PHashTableItem=^THashTableItem;
      THashTableItems=array of THashTableItem;
      THashTable=array of TpvSizeInt;
-var Index,Count,HashIndex,CountHashTableItems,
-    CountPolygonVertices:TpvSizeInt;
+var Index,Count,CountPolygonVertices,
+    HashIndex,CountHashTableItems:TpvSizeInt;
     Vertex,OtherVertex:PVertex;
     VertexIndex:TIndex;
     NewVertices:TVertexList;
@@ -2994,6 +3030,380 @@ begin
  finally
   RemoveDuplicateAndUnusedVertices;
  end;
+end;
+
+procedure TpvCSGBSP.TMesh.MergeCoplanarPolygons;
+const HashBits=16;
+      HashSize=1 shl HashBits;
+      HashMask=HashSize-1;
+type TPolygon=record
+      Indices:TIndexList;
+      Plane:TPlane;
+     end;
+     PPolygon=^TPolygon;
+     TPolygons=TDynamicArray<TPolygon>;
+     TPolygonIndices=TDynamicArray<TpvSizeInt>;
+     TPolygonPlane=record
+      Plane:TPlane;
+      PolygonIndices:TPolygonIndices;
+     end;
+     PPolygonPlane=^TPolygonPlane;
+     TPolygonPlanes=TDynamicArray<TPolygonPlane>;
+     THashTableItem=record
+      Next:TpvSizeInt;
+      Hash:TpvUInt32;
+      PolygonPlaneIndex:TpvSizeInt;
+     end;
+     PHashTableItem=^THashTableItem;
+     THashTableItems=array of THashTableItem;
+     THashTable=array of TpvSizeInt;
+var Index,Count,CountPolygonVertices,
+    HashIndex,CountHashTableItems,
+    InputPolygonIndex,
+    PolygonPlaneIndex,
+    PolygonIndex,
+    IndexA,
+    IndexB:TpvSizeInt;
+    InputPolygons,OutputPolygons,
+    TemporaryPolygons:TPolygons;
+    InputPolygon,OutputPolygon:PPolygon;
+    TemporaryOutputPolygon:TPolygon;
+    PolygonPlanes:TPolygonPlanes;
+    PolygonPlane:PPolygonPlane;
+    NewIndices:TIndexList;
+    HashTable:THashTable;
+    HashTableItems:THashTableItems;
+    Hash:TpvUInt32;
+    HashTableItem:PHashTableItem;
+    DoTryAgain:boolean;
+ function Wrap(const aIndex,aCount:TpvSizeInt):TpvSizeInt;
+ begin
+  result:=aIndex;
+  if aCount>0 then begin
+   while result<0 do begin
+    inc(result,aCount);
+   end;
+   while result>=aCount do begin
+    dec(result,aCount);
+   end;
+  end;
+ end;
+ function IsPolygonConvex(const aPolygon:TPolygon):boolean;
+ var Index:TpvSizeInt;
+     n,p,q:TVector3;
+     a,k:TFloat;
+     Sign:boolean;
+     va,vb,vc:PVector3;
+     pa,pb,pc,pba,pcb:TVector2;
+ begin
+
+  result:=aPolygon.Indices.Count>2;
+
+  if result then begin
+
+   n:=aPolygon.Plane.Normal.Normalize;
+
+   if abs(n.z)>0.70710678118 then begin
+    a:=sqr(n.y)+sqr(n.z);
+    k:=1.0/sqrt(a);
+    p.x:=0.0;
+    p.y:=-(n.z*k);
+    p.z:=n.y*k;
+    q.x:=a*k;
+    q.y:=-(n.x*p.z);
+    q.z:=n.x*p.y;
+   end else begin
+    a:=sqr(n.x)+sqr(n.y);
+    k:=1.0/sqrt(a);
+    p.x:=-(n.y*k);
+    p.y:=n.x*k;
+    p.z:=0.0;
+    q.x:=-(n.z*p.y);
+    q.y:=n.z*p.x;
+    q.z:=a*k;
+   end;
+
+   p:=p.Normalize;
+   q:=q.Normalize;
+
+   Sign:=false;
+
+   for Index:=0 to aPolygon.Indices.Count-1 do begin
+    va:=@fVertices.Items[aPolygon.Indices.Items[Wrap(Index-1,aPolygon.Indices.Count)]].Position;
+    vb:=@fVertices.Items[aPolygon.Indices.Items[Index]].Position;
+    vc:=@fVertices.Items[aPolygon.Indices.Items[Wrap(Index+1,aPolygon.Indices.Count)]].Position;
+    pa.x:=p.Dot(va^);
+    pa.y:=q.Dot(va^);
+    pb.x:=p.Dot(vb^);
+    pb.y:=q.Dot(vb^);
+    pc.x:=p.Dot(vc^);
+    pc.y:=q.Dot(vc^);
+    pba:=pb-pa;
+    pcb:=pc-pb;
+    a:=(pba.x*pcb.y)-(pba.y*pcb.x);
+    if Index=0 then begin
+     Sign:=a>EPSILON;
+    end else if Sign<>(a>EPSILON) then begin
+     result:=false;
+     break;
+    end;
+   end;
+
+  end;
+
+ end;
+ function MergePolygons(const aPolygonA,aPolygonB:TPolygon;out aOutputPolygon:TPolygon):boolean;
+ var Index,OtherIndex,CurrentIndex,IndexA,IndexB:TpvSizeInt;
+     i0,i1,i2,i3,LastVertexIndex,VertexIndex:TIndex;
+     Found,KeepA,KeepB:boolean;
+ begin
+
+  result:=false;
+
+  if IsPolygonConvex(aPolygonA) and
+     IsPolygonConvex(aPolygonB) then begin
+
+   // Find shared edge
+   Found:=false;
+   i0:=0;
+   i1:=1;
+   IndexA:=0;
+   IndexB:=0;
+   for Index:=0 to aPolygonA.Indices.Count-1 do begin
+    i0:=aPolygonA.Indices.Items[Index];
+    i1:=aPolygonA.Indices.Items[Wrap(Index+1,aPolygonA.Indices.Count)];
+    for OtherIndex:=0 to aPolygonB.Indices.Count-1 do begin
+     i2:=aPolygonB.Indices.Items[OtherIndex];
+     i3:=aPolygonB.Indices.Items[Wrap(OtherIndex+1,aPolygonB.Indices.Count)];
+     if (i0=i3) and (i1=i2) then begin
+      IndexA:=Index;
+      IndexB:=OtherIndex;
+      Found:=true;
+      break;
+     end;
+    end;
+    if Found then begin
+     break;
+    end;
+   end;
+   if not Found then begin
+    exit;
+   end;
+
+   aOutputPolygon.Indices.Initialize;
+
+   aOutputPolygon.Plane:=aPolygonA.Plane;
+
+   // Check for convex polygons
+
+   KeepA:=abs((fVertices.Items[aPolygonB.Indices.Items[Wrap(IndexB+2,aPolygonB.Indices.Count)]].Position-
+               fVertices.Items[i0].Position).Dot(aPolygonA.Plane.Normal.Cross(fVertices.Items[i0].Position-fVertices.Items[aPolygonA.Indices.Items[Wrap(IndexA-1,aPolygonA.Indices.Count)]].Position).Normalize))>EPSILON;
+
+   KeepB:=abs((fVertices.Items[aPolygonB.Indices.Items[Wrap(IndexB-1,aPolygonB.Indices.Count)]].Position-
+               fVertices.Items[i1].Position).Dot(aPolygonA.Plane.Normal.Cross(fVertices.Items[aPolygonA.Indices.Items[Wrap(IndexA+2,aPolygonA.Indices.Count)]].Position-fVertices.Items[i1].Position).Normalize))>EPSILON;
+
+   // Construct hopefully then convex polygons
+
+   LastVertexIndex:=-1;
+   for CurrentIndex:=1+(ord(not KeepB) and 1) to aPolygonA.Indices.Count-1 do begin
+    Index:=Wrap(CurrentIndex+IndexA,aPolygonA.Indices.Count);
+    VertexIndex:=aPolygonA.Indices.Items[Index];
+    if not (((LastVertexIndex=i0) and (VertexIndex=i1)) or
+            ((LastVertexIndex=i1) and (VertexIndex=i0))) then begin
+     aOutputPolygon.Indices.Add(VertexIndex);
+     LastVertexIndex:=VertexIndex;
+    end;
+   end;
+   for CurrentIndex:=1+(ord(not KeepA) and 1) to aPolygonB.Indices.Count-1 do begin
+    Index:=Wrap(CurrentIndex+IndexB,aPolygonB.Indices.Count);
+    VertexIndex:=aPolygonB.Indices.Items[Index];
+    if not (((LastVertexIndex=i0) and (VertexIndex=i1)) or
+            ((LastVertexIndex=i1) and (VertexIndex=i0))) then begin
+     aOutputPolygon.Indices.Add(VertexIndex);
+     LastVertexIndex:=VertexIndex;
+    end;
+   end;
+   if (aOutputPolygon.Indices.Count>1) and
+      (((aOutputPolygon.Indices.Items[0]=i0) and (aOutputPolygon.Indices.Items[aOutputPolygon.Indices.Count-1]=i1)) or
+       ((aOutputPolygon.Indices.Items[0]=i1) and (aOutputPolygon.Indices.Items[aOutputPolygon.Indices.Count-1]=i0))) then begin
+    aOutputPolygon.Indices.Delete(aOutputPolygon.Indices.Count-1);
+   end;
+
+   result:=IsPolygonConvex(aOutputPolygon);
+
+  end;
+
+ end;
+ function HashPolygonPlane(const aPlane:TPlane):TpvSizeInt;
+ var HashIndex:TpvSizeInt;
+     Hash:TpvUInt32;
+     HashTableItem:PHashTableItem;
+     PolygonPlane:PPolygonPlane;
+ begin
+  Hash:=(trunc(aPlane.Normal.x*4096)*73856093) xor
+        (trunc(aPlane.Normal.y*4096)*19349653) xor
+        (trunc(aPlane.Normal.z*4096)*83492791) xor
+        (trunc(aPlane.Distance*4096)*41728657);
+  HashIndex:=HashTable[Hash and HashMask];
+  while HashIndex>=0 do begin
+   HashTableItem:=@HashTableItems[HashIndex];
+   if HashTableItem^.Hash=Hash then begin
+    PolygonPlane:=@PolygonPlanes.Items[HashTableItem^.PolygonPlaneIndex];
+    if (aPlane.Normal=PolygonPlane^.Plane.Normal) and
+       SameValue(aPlane.Distance,PolygonPlane^.Plane.Distance) then begin
+     result:=HashTableItem^.PolygonPlaneIndex;
+     exit;
+    end;
+   end;
+   HashIndex:=HashTableItem^.Next;
+  end;
+  result:=PolygonPlanes.AddNew;
+  PolygonPlane:=@PolygonPlanes.Items[result];
+  PolygonPlane^.Plane:=aPlane;
+  PolygonPlane^.PolygonIndices.Initialize;
+  HashIndex:=CountHashTableItems;
+  inc(CountHashTableItems);
+  if CountHashTableItems>length(HashTableItems) then begin
+   SetLength(HashTableItems,CountHashTableItems*2);
+  end;
+  HashTableItem:=@HashTableItems[HashIndex];
+  HashTableItem^.Next:=HashTable[Hash and HashMask];
+  HashTable[Hash and HashMask]:=HashIndex;
+  HashTableItem^.Hash:=Hash;
+  HashTableItem^.PolygonPlaneIndex:=result;
+ end;
+begin
+
+ RemoveDuplicateAndUnusedVertices;
+
+ SetMode(TMode.Polygons);
+
+ try
+
+  InputPolygons.Initialize;
+  try
+
+   PolygonPlanes.Initialize;
+   try
+
+    HashTable:=nil;
+    try
+
+     SetLength(HashTable,HashSize);
+
+     for Index:=0 to HashSize-1 do begin
+      HashTable[Index]:=-1;
+     end;
+
+     HashTableItems:=nil;
+     CountHashTableItems:=0;
+
+     try
+
+      Index:=0;
+      Count:=fIndices.Count;
+      while Index<Count do begin
+       CountPolygonVertices:=fIndices.Items[Index];
+       inc(Index);
+       if (CountPolygonVertices>0) and
+          ((Index+(CountPolygonVertices-1))<Count) then begin
+        if CountPolygonVertices>2 then begin
+         InputPolygonIndex:=InputPolygons.AddNew;
+         InputPolygon:=@InputPolygons.Items[InputPolygonIndex];
+         InputPolygon^.Indices.Initialize;
+         InputPolygon^.Indices.AddRangeFrom(fIndices,Index,CountPolygonVertices);
+         InputPolygon^.Plane:=TpvCSGBSP.TPlane.Create(fVertices.Items[InputPolygon^.Indices.Items[0]].Position,
+                                                      fVertices.Items[InputPolygon^.Indices.Items[1]].Position,
+                                                      fVertices.Items[InputPolygon^.Indices.Items[2]].Position);
+         PolygonPlane:=@PolygonPlanes.Items[HashPolygonPlane(InputPolygon^.Plane)];
+         PolygonPlane^.PolygonIndices.Add(InputPolygonIndex);
+        end;
+       end;
+       inc(Index,CountPolygonVertices);
+      end;
+
+     finally
+      HashTableItems:=nil;
+     end;
+
+    finally
+     HashTable:=nil;
+    end;
+
+    OutputPolygons.Initialize;
+    try
+
+     for PolygonPlaneIndex:=0 to PolygonPlanes.Count-1 do begin
+      PolygonPlane:=@PolygonPlanes.Items[PolygonPlaneIndex];
+      if PolygonPlane^.PolygonIndices.Count>0 then begin
+       if PolygonPlane^.PolygonIndices.Count<2 then begin
+        for PolygonIndex:=0 to PolygonPlane^.PolygonIndices.Count-1 do begin
+         OutputPolygons.Add(InputPolygons.Items[PolygonPlane^.PolygonIndices.Items[PolygonIndex]]);
+        end;
+       end else begin
+        TemporaryPolygons.Initialize;
+        try
+         for PolygonIndex:=0 to PolygonPlane^.PolygonIndices.Count-1 do begin
+          TemporaryPolygons.Add(InputPolygons.Items[PolygonPlane^.PolygonIndices.Items[PolygonIndex]]);
+         end;
+         repeat
+          DoTryAgain:=false;
+          for IndexA:=0 to TemporaryPolygons.Count-1 do begin
+           for IndexB:=IndexA+1 to TemporaryPolygons.Count-1 do begin
+            TemporaryOutputPolygon.Indices.Initialize;
+            if MergePolygons(TemporaryPolygons.Items[IndexA],
+                             TemporaryPolygons.Items[IndexB],
+                             TemporaryOutputPolygon) then begin
+             TemporaryPolygons.Items[IndexA]:=TemporaryOutputPolygon;
+             TemporaryPolygons.Delete(IndexB);
+             DoTryAgain:=true;
+             break;
+            end;
+           end;
+           if DoTryAgain then begin
+            break;
+           end;
+          end;
+         until not DoTryAgain;
+         OutputPolygons.Add(TemporaryPolygons);
+        finally
+         TemporaryPolygons.Finalize;
+        end;
+       end;
+      end;
+     end;
+
+     NewIndices.Initialize;
+     try
+
+      for PolygonIndex:=0 to OutputPolygons.Count-1 do begin
+       OutputPolygon:=@OutputPolygons.Items[PolygonIndex];
+       NewIndices.Add(OutputPolygon^.Indices.Count);
+       NewIndices.Add(OutputPolygon^.Indices);
+      end;
+
+      SetIndices(NewIndices);
+
+     finally
+      NewIndices.Finalize;
+     end;
+
+    finally
+     OutputPolygons.Finalize;
+    end;
+
+   finally
+    PolygonPlanes.Finalize;
+   end;
+
+  finally
+   InputPolygons.Finalize;
+  end;
+
+ finally
+  RemoveDuplicateAndUnusedVertices;
+ end;
+
 end;
 
 function TpvCSGBSP.TMesh.ToNode(const aSplitSettings:PSplitSettings=nil):TNode;
