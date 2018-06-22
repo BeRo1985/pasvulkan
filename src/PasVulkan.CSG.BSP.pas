@@ -2860,9 +2860,9 @@ begin
        dec(CountPolygonVertices);
        Vertex:=@fVertices.Items[fIndices.Items[Index]];
        VertexIndex:=-1;
-       Hash:=(trunc(Vertex.Position.x*4096)*73856093) xor
-             (trunc(Vertex.Position.y*4096)*19349653) xor
-             (trunc(Vertex.Position.z*4096)*83492791);
+       Hash:=(round(Vertex.Position.x*4096)*73856093) xor
+             (round(Vertex.Position.y*4096)*19349653) xor
+             (round(Vertex.Position.z*4096)*83492791);
        HashIndex:=HashTable[Hash and HashMask];
        while HashIndex>=0 do begin
         HashTableItem:=@HashTableItems[HashIndex];
@@ -3063,7 +3063,8 @@ var Index,Count,CountPolygonVertices,
     PolygonPlaneIndex,
     PolygonIndex,
     IndexA,
-    IndexB:TpvSizeInt;
+    IndexB,
+    Pass:TpvSizeInt;
     InputPolygons,OutputPolygons,
     TemporaryPolygons:TPolygons;
     InputPolygon,OutputPolygon:PPolygon;
@@ -3152,7 +3153,29 @@ var Index,Count,CountPolygonVertices,
   end;
 
  end;
- function MergePolygons(const aPolygonA,aPolygonB:TPolygon;out aOutputPolygon:TPolygon):boolean;
+ procedure RemoveCoplanarEdges(var aPolygon:TPolygon);
+ var Index:TpvSizeInt;
+     LastVertexIndex,VertexIndex,NextVertexIndex:TIndex;
+     v0,v1,v2:PVector3;
+ begin
+  // Remove coplanar edges
+  Index:=0;
+  while Index<aPolygon.Indices.Count do begin
+   LastVertexIndex:=aPolygon.Indices.Items[Wrap(Index-1,aPolygon.Indices.Count)];
+   VertexIndex:=aPolygon.Indices.Items[Index];
+   NextVertexIndex:=aPolygon.Indices.Items[Wrap(Index+1,aPolygon.Indices.Count)];
+   v0:=@fVertices.Items[LastVertexIndex].Position;
+   v1:=@fVertices.Items[VertexIndex].Position;
+   v2:=@fVertices.Items[NextVertexIndex].Position;
+   if (aPolygon.Indices.Count>3) and
+      (abs((v2^-v0^).Normalize.Dot((v1^-v0^).Normalize))>OneMinusEpsilon) then begin
+    aPolygon.Indices.Delete(Index);
+   end else begin
+    inc(Index);
+   end;
+  end;
+ end;
+ function MergeTwoPolygons(const aPolygonA,aPolygonB:TPolygon;out aOutputPolygon:TPolygon):boolean;
  var Index,OtherIndex,CurrentIndex,IndexA,IndexB:TpvSizeInt;
      i0,i1,i2,i3,LastVertexIndex,VertexIndex:TIndex;
      Found,KeepA,KeepB:boolean;
@@ -3232,6 +3255,10 @@ var Index,Count,CountPolygonVertices,
    result:=IsPolygonConvex(aOutputPolygon);
 
   end;
+
+ end;
+ procedure MergePolygons(var aPolygons:TPolygons);
+ begin
 
  end;
  function HashPolygonPlane(const aPlane:TPlane):TpvSizeInt;
@@ -3335,6 +3362,11 @@ begin
 
      for PolygonPlaneIndex:=0 to PolygonPlanes.Count-1 do begin
       PolygonPlane:=@PolygonPlanes.Items[PolygonPlaneIndex];
+    { if not (SameValue(PolygonPlane^.Plane.Normal.x,1.0) and
+              SameValue(PolygonPlane^.Plane.Normal.y,0.0) and
+              SameValue(PolygonPlane^.Plane.Normal.z,0.0)) then begin
+       continue;
+      end;{}
       if PolygonPlane^.PolygonIndices.Count>0 then begin
        if PolygonPlane^.PolygonIndices.Count<2 then begin
         for PolygonIndex:=0 to PolygonPlane^.PolygonIndices.Count-1 do begin
@@ -3346,27 +3378,33 @@ begin
          for PolygonIndex:=0 to PolygonPlane^.PolygonIndices.Count-1 do begin
           TemporaryPolygons.Add(InputPolygons.Items[PolygonPlane^.PolygonIndices.Items[PolygonIndex]]);
          end;
-         repeat
-          DoTryAgain:=false;
-          Count:=TemporaryPolygons.Count;
-          IndexA:=0;
-          while IndexA<Count do begin
-           IndexB:=IndexA+1;
-           while IndexB<Count do begin
-            TemporaryOutputPolygon.Indices.Initialize;
-            if MergePolygons(TemporaryPolygons.Items[IndexA],
-                             TemporaryPolygons.Items[IndexB],
-                             TemporaryOutputPolygon) then begin
-             TemporaryPolygons.Items[IndexA]:=TemporaryOutputPolygon;
-             TemporaryPolygons.Delete(IndexB);
-             Count:=TemporaryPolygons.Count;
-             DoTryAgain:=true;
+         for Pass:=0 to 1 do begin
+          repeat
+           DoTryAgain:=false;
+           Count:=TemporaryPolygons.Count;
+           IndexA:=0;
+           while IndexA<Count do begin
+            IndexB:=IndexA+1;
+            while IndexB<Count do begin
+             TemporaryOutputPolygon.Indices.Initialize;
+             if MergeTwoPolygons(TemporaryPolygons.Items[IndexA],
+                                 TemporaryPolygons.Items[IndexB],
+                                 TemporaryOutputPolygon) then begin
+              TemporaryPolygons.Items[IndexA]:=TemporaryOutputPolygon;
+              TemporaryPolygons.Delete(IndexB);
+              Count:=TemporaryPolygons.Count;
+              DoTryAgain:=true;
+             end;
+             inc(IndexB);
             end;
-            inc(IndexB);
+            inc(IndexA);
            end;
-           inc(IndexA);
+          until not DoTryAgain;
+          MergePolygons(TemporaryPolygons);
+          for PolygonIndex:=0 to TemporaryPolygons.Count-1 do begin
+           RemoveCoplanarEdges(TemporaryPolygons.Items[PolygonIndex]);
           end;
-         until not DoTryAgain;
+         end;
          OutputPolygons.Add(TemporaryPolygons);
         finally
          TemporaryPolygons.Finalize;
