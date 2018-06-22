@@ -3154,25 +3154,61 @@ var Index,Count,CountPolygonVertices,
 
  end;
  procedure RemoveCoplanarEdges(var aPolygon:TPolygon);
+ type TSideCrossPlaneNormals=TDynamicArray<TVector3>;
  var Index:TpvSizeInt;
      LastVertexIndex,VertexIndex,NextVertexIndex:TIndex;
      v0,v1,v2:PVector3;
+     Normal,v10,SideCrossPlaneNormal:TVector3;
+     SideCrossPlaneNormals:TSideCrossPlaneNormals;
  begin
   // Remove coplanar edges
-  Index:=0;
-  while Index<aPolygon.Indices.Count do begin
-   LastVertexIndex:=aPolygon.Indices.Items[Wrap(Index-1,aPolygon.Indices.Count)];
-   VertexIndex:=aPolygon.Indices.Items[Index];
-   NextVertexIndex:=aPolygon.Indices.Items[Wrap(Index+1,aPolygon.Indices.Count)];
-   v0:=@fVertices.Items[LastVertexIndex].Position;
-   v1:=@fVertices.Items[VertexIndex].Position;
-   v2:=@fVertices.Items[NextVertexIndex].Position;
-   if (aPolygon.Indices.Count>3) and
-      (abs((v2^-v0^).Normalize.Dot((v1^-v0^).Normalize))>OneMinusEpsilon) then begin
-    aPolygon.Indices.Delete(Index);
-   end else begin
-    inc(Index);
+  SideCrossPlaneNormals.Initialize;
+  try
+   Normal:=aPolygon.Plane.Normal.Normalize;
+   Index:=0;
+   while (aPolygon.Indices.Count>3) and
+         (Index<aPolygon.Indices.Count) do begin
+    LastVertexIndex:=aPolygon.Indices.Items[Wrap(Index-1,aPolygon.Indices.Count)];
+    VertexIndex:=aPolygon.Indices.Items[Index];
+    NextVertexIndex:=aPolygon.Indices.Items[Wrap(Index+1,aPolygon.Indices.Count)];
+    v0:=@fVertices.Items[LastVertexIndex].Position;
+    v1:=@fVertices.Items[VertexIndex].Position;
+    v2:=@fVertices.Items[NextVertexIndex].Position;
+    v10:=v1^-v0^;
+    SideCrossPlaneNormal:=v10.Cross(Normal);
+    if Index<SideCrossPlaneNormals.Count then begin
+     SideCrossPlaneNormals.Items[Index]:=SideCrossPlaneNormal;
+    end else begin
+     SideCrossPlaneNormals.Add(SideCrossPlaneNormal);
+    end;
+    if (abs((v2^-v0^).Normalize.Dot(v10.Normalize))>OneMinusEpsilon) or
+       (abs(SideCrossPlaneNormal.Length)<Epsilon) then begin
+     aPolygon.Indices.Delete(Index);
+     if Index>0 then begin
+      dec(Index);
+     end;
+    end else begin
+     inc(Index);
+    end;
    end;
+   for Index:=0 to SideCrossPlaneNormals.Count-1 do begin
+    SideCrossPlaneNormals.Items[Index]:=SideCrossPlaneNormals.Items[Index].Normalize;
+   end;
+   Index:=0;
+   while (aPolygon.Indices.Count>3) and
+         (Index<aPolygon.Indices.Count) do begin
+    if SideCrossPlaneNormals.Items[Index].Dot(SideCrossPlaneNormals.Items[Wrap(Index+1,aPolygon.Indices.Count)])>OneMinusEpsilon then begin
+     aPolygon.Indices.Delete(Index);
+     SideCrossPlaneNormals.Delete(Index);
+     if Index>0 then begin
+      dec(Index);
+     end;
+    end else begin
+     inc(Index);
+    end;
+   end;
+  finally
+   SideCrossPlaneNormals.Finalize;
   end;
  end;
  function MergeTwoPolygons(const aPolygonA,aPolygonB:TPolygon;out aOutputPolygon:TPolygon):boolean;
@@ -3217,7 +3253,7 @@ var Index,Count,CountPolygonVertices,
 
    aOutputPolygon.Plane:=aPolygonA.Plane;
 
-   // Check for convex polygon edges
+   // Check for coplanar edges near shared edges
 
    KeepA:=abs((fVertices.Items[aPolygonB.Indices.Items[Wrap(IndexB+2,aPolygonB.Indices.Count)]].Position-
                fVertices.Items[i0].Position).Dot(aPolygonA.Plane.Normal.Cross(fVertices.Items[i0].Position-fVertices.Items[aPolygonA.Indices.Items[Wrap(IndexA-1,aPolygonA.Indices.Count)]].Position).Normalize))>EPSILON;
