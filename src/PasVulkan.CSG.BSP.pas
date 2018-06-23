@@ -345,7 +345,8 @@ type TpvCSGBSP=class
               Min:TVector3;
               Max:TVector3;
               function Cost:TFloat;
-              function Combine(const aAABB:TAABB):TAABB;
+              function Combine(const aAABB:TAABB):TAABB; overload;
+              function Combine(const aVector:TVector3):TAABB; overload;
               function Contains(const aAABB:TAABB;const aThreshold:TFloat=0.0):boolean;
               function Intersects(const aAABB:TAABB;const aThreshold:TFloat=Epsilon):boolean;
             end;
@@ -491,7 +492,7 @@ type TpvCSGBSP=class
               procedure Canonicalize;
               procedure CalculateNormals(const aSoftNormals:boolean=true);
               procedure RemoveDuplicateAndUnusedVertices;
-              procedure FixTJunctions;
+              procedure FixTJunctions(const aConsistentInputVertices:boolean=false);
               procedure MergeCoplanarConvexPolygons;
               function ToNode(const aSplitSettings:PSplitSettings=nil):TNode;
              public
@@ -2264,6 +2265,16 @@ begin
  result.Max.z:=Math.Max(self.Max.z,aAABB.Max.z);
 end;
 
+function TpvCSGBSP.TAABB.Combine(const aVector:TVector3):TAABB;
+begin
+ result.Min.x:=Math.Min(self.Min.x,aVector.x);
+ result.Min.y:=Math.Min(self.Min.y,aVector.y);
+ result.Min.z:=Math.Min(self.Min.z,aVector.z);
+ result.Max.x:=Math.Max(self.Max.x,aVector.x);
+ result.Max.y:=Math.Max(self.Max.y,aVector.y);
+ result.Max.z:=Math.Max(self.Max.z,aVector.z);
+end;
+
 function TpvCSGBSP.TAABB.Contains(const aAABB:TAABB;const aThreshold:TFloat=0.0):boolean;
 begin
  result:=((self.Min.x-aThreshold)<=(aAABB.Min.x+aThreshold)) and ((self.Min.y-aThreshold)<=(aAABB.Min.y+aThreshold)) and ((self.Min.z-aThreshold)<=(aAABB.Min.z+aThreshold)) and
@@ -3724,46 +3735,7 @@ begin
  end;
 end;
 
-procedure TpvCSGBSP.TMesh.FixTJunctions;
-{$define NewFixTJunctions}
-{$ifdef NewFixTJunctions}
-type TPolygon=record
-      Indices:TIndexList;
-      Plane:TPlane;
-     end;
-     PPolygon=^TPolygon;
-     TPolygons=TDynamicArray<TPolygon>;
-     TEdgeVertexIndices=array[0..1] of TIndex;
-     PEdgeVertexIndices=^TEdgeVertexIndices;
-     TEdgeHashMap=THashMap<TEdgeVertexIndices,TpvSizeInt>;
-     TEdge=record
-      VertexIndices:TEdgeVertexIndices;
-      PolygonIndex:TpvSizeInT;
-     end;
-     PEdge=^TEdge;
-     TEdges=TDynamicArray<TEdge>;
-     PEdges=^TEdges;
-     TEdgesList=TDynamicArray<TEdges>;
-     TEdgeIndexList=TDynamicArray<TpvSizeInt>;
-     PEdgeIndexList=^TEdgeIndexList;
-     TEdgeVertexIndicesList=TDynamicArray<TEdgeVertexIndices>;
-     TVertexIndexToEdgeStartEndList=TDynamicArray<TEdgeVertexIndicesList>;
-     TVertexIndexToEdgeStartEndHashMap=THashMap<TIndex,TpvSizeInt>;
-     TEdgesToCheckHashMap=THashMap<TEdgeVertexIndices,boolean>;
-var Index,Count,CountPolygonVertices,
-    PolygonIndex:TpvSizeInt;
-    Polygons:TPolygons;
-    Polygon:PPolygon;
-    NewIndices:TIndexList;
-    EdgeHashMap:TEdgeHashMap;
-    EdgesList:TEdgesList;
-    VertexIndexToEdgeStartList:TVertexIndexToEdgeStartEndList;
-    VertexIndexToEdgeEndList:TVertexIndexToEdgeStartEndList;
-    VertexIndexToEdgeStartHashMap:TVertexIndexToEdgeStartEndHashMap;
-    VertexIndexToEdgeEndHashMap:TVertexIndexToEdgeStartEndHashMap;
-    EdgeMapIsEmpty:boolean;
-    EdgesToCheck:TEdgesToCheckHashMap;
-    OldMode:TMode;
+procedure TpvCSGBSP.TMesh.FixTJunctions(const aConsistentInputVertices:boolean=false);
  function Wrap(const aIndex,aCount:TpvSizeInt):TpvSizeInt;
  begin
   result:=aIndex;
@@ -3776,383 +3748,422 @@ var Index,Count,CountPolygonVertices,
    end;
   end;
  end;
- procedure ScanEdges;
- var PolygonIndex,PolygonIndicesIndex,EdgesIndex:TpvSizeInt;
-     VertexIndex,NextVertexIndex:TIndex;
+ procedure FixTJunctionsWithConsistentInputVertices;
+ type TPolygon=record
+       Indices:TIndexList;
+      end;
+      PPolygon=^TPolygon;
+      TPolygons=TDynamicArray<TPolygon>;
+      TEdgeVertexIndices=array[0..1] of TIndex;
+      PEdgeVertexIndices=^TEdgeVertexIndices;
+      TEdgeHashMap=THashMap<TEdgeVertexIndices,TpvSizeInt>;
+      TEdge=record
+       VertexIndices:TEdgeVertexIndices;
+       PolygonIndex:TpvSizeInT;
+      end;
+      PEdge=^TEdge;
+      TEdges=TDynamicArray<TEdge>;
+      PEdges=^TEdges;
+      TEdgesList=TDynamicArray<TEdges>;
+      TEdgeIndexList=TDynamicArray<TpvSizeInt>;
+      PEdgeIndexList=^TEdgeIndexList;
+      TEdgeVertexIndicesList=TDynamicArray<TEdgeVertexIndices>;
+      TVertexIndexToEdgeStartEndList=TDynamicArray<TEdgeVertexIndicesList>;
+      TVertexIndexToEdgeStartEndHashMap=THashMap<TIndex,TpvSizeInt>;
+      TEdgesToCheckHashMap=THashMap<TEdgeVertexIndices,boolean>;
+ var Index,Count,CountPolygonVertices,
+     PolygonIndex:TpvSizeInt;
+     Polygons:TPolygons;
      Polygon:PPolygon;
-     EdgeVertexIndices,
-     ReversedEdgeVertexIndices:TEdgeVertexIndices;
-     Edges:PEdges;
-     Edge:TEdge;
- begin
-  for PolygonIndex:=0 to Polygons.Count-1 do begin
-   Polygon:=@Polygons.Items[PolygonIndex];
-   if Polygon^.Indices.Count>2 then begin
-    for PolygonIndicesIndex:=0 to Polygon^.Indices.Count-1 do begin
-     VertexIndex:=Polygon^.Indices.Items[PolygonIndicesIndex];
-     NextVertexIndex:=Polygon^.Indices.Items[Wrap(PolygonIndicesIndex+1,Polygon^.Indices.Count)];
-     EdgeVertexIndices[0]:=VertexIndex;
-     EdgeVertexIndices[1]:=NextVertexIndex;
-     ReversedEdgeVertexIndices[1]:=VertexIndex;
-     ReversedEdgeVertexIndices[0]:=NextVertexIndex;
-     if EdgeHashMap.TryGet(ReversedEdgeVertexIndices,EdgesIndex) then begin
-      Edges:=@EdgesList.Items[EdgesIndex];
-      if Edges^.Count>0 then begin
-       Edges^.Delete(Edges^.Count-1);
-       if Edges^.Count=0 then begin
-        EdgeHashMap.Delete(ReversedEdgeVertexIndices);
-       end;
-      end;
-     end else begin
-      if not EdgeHashMap.TryGet(EdgeVertexIndices,EdgesIndex) then begin
-       EdgesIndex:=EdgesList.AddNew;
-       Edges:=@EdgesList.Items[EdgesIndex];
-       Edges^.Initialize;
-       EdgeHashMap.Add(EdgeVertexIndices,EdgesIndex);
-      end;
-      Edges:=@EdgesList.Items[EdgesIndex];
-      Edge.VertexIndices:=EdgeVertexIndices;
-      Edge.PolygonIndex:=PolygonIndex;
-      Edges^.Add(Edge);
-     end;
-    end;
-   end;
-  end;
- end;
- procedure ScanVertices;
- var EdgeHashMapKeyIndex,EdgesIndex,
-     VertexIndexToEdgeStartEndIndex:TpvSizeInt;
-     EdgeVertexIndices:PEdgeVertexIndices;
-     Entity:TEdgeHashMap.PHashMapEntity;
-     Edges:PEdges;
-     Edge:PEdge;
- begin
-  EdgeMapIsEmpty:=true;
-  for EdgeHashMapKeyIndex:=0 to EdgeHashMap.fSize-1 do begin
-   if EdgeHashMap.fEntityToCellIndex[EdgeHashMapKeyIndex]>=0 then begin
-    EdgeMapIsEmpty:=false;
-    Entity:=@EdgeHashMap.fEntities[EdgeHashMapKeyIndex];
-    EdgesToCheck.Add(Entity^.Key,true);
-    Edges:=@EdgesList.Items[Entity^.Value];
-    for EdgesIndex:=0 to Edges^.Count-1 do begin
-     Edge:=@Edges^.Items[EdgesIndex];
-     begin
-      if not VertexIndexToEdgeStartHashMap.TryGet(Edge^.VertexIndices[0],VertexIndexToEdgeStartEndIndex) then begin
-       VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeStartList.AddNew;
-       VertexIndexToEdgeStartHashMap.Add(Edge^.VertexIndices[0],VertexIndexToEdgeStartEndIndex);
-       VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
-      end;
-      VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex].Add(Entity^.Key);
-     end;
-     begin
-      if not VertexIndexToEdgeEndHashMap.TryGet(Edge^.VertexIndices[1],VertexIndexToEdgeStartEndIndex) then begin
-       VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeEndList.AddNew;
-       VertexIndexToEdgeEndHashMap.Add(Edge^.VertexIndices[1],VertexIndexToEdgeStartEndIndex);
-       VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
-      end;
-      VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex].Add(Entity^.Key);
-     end;
-    end;
-   end;
-  end;
- end;
- procedure Process;
- var EdgeHashMapKeyIndex,EdgesIndex,EdgeIndex,
-     VertexIndexToEdgeStartEndIndex,
-     EdgesToCheckIndex,
-     DirectionIndex,
-     MatchingEdgesListIndex,
-     PolygonIndicesIndex,
-     InsertionPolygonIndicesIndex:TpvSizeInt;
-     Entity:TEdgeHashMap.PHashMapEntity;
-     Edges:PEdges;
-     Edge,MatchingEdge:TEdge;
-     Done,DoneWithEdge:boolean;
-     EdgeVertexIndices,
-     NewEdgeVertexIndices0,
-     NewEdgeVertexIndices1:TEdgeVertexIndices;
-     StartVertexIndex,EndVertexIndex,
-     MatchingEdgeStartVertexIndex,
-     MatchingEdgeEndVertexIndex,
-     OtherIndex:TIndex;
-     MatchingEdgesList:TEdgeVertexIndicesList;
-     MatchingEdgeVertexIndices:TEdgeVertexIndices;
-     StartPosition,EndPosition,CheckPosition,
-     Direction,ClosestPoint:TVector3;
-     Time:TFloat;
-     Polygon:PPolygon;
-     NewPolygon:TPolygon;
-  procedure DeleteEdge(const aVertexIndex0,aVertexIndex1:TIndex;const aPolygonIndex:TpvSizeInt);
-  var Index,FoundIndex,EdgesIndex,OtherIndex:TpvSizeInt;
-      EdgeVertexIndices:TEdgeVertexIndices;
-      Edges:PEdges;
-      Edge:PEdge;
-  begin
-
-   EdgeVertexIndices[0]:=aVertexIndex0;
-   EdgeVertexIndices[1]:=aVertexIndex1;
-
-   EdgesIndex:=EdgeHashMap[EdgeVertexIndices];
-   Assert(EdgesIndex>=0);
-
-   Edges:=@EdgesList.Items[EdgesIndex];
-
-   FoundIndex:=-1;
-
-   for Index:=0 to Edges^.Count-1 do begin
-    Edge:=@Edges^.Items[Index];
-    if (Edge^.VertexIndices[0]<>aVertexIndex0) or
-       (Edge^.VertexIndices[1]<>aVertexIndex1) or
-       ((aPolygonIndex>=0) and
-        (Edge^.PolygonIndex<>aPolygonIndex)) then begin
-     continue;
-    end;
-    FoundIndex:=Index;
-    break;
-   end;
-   Assert(FoundIndex>=0);
-
-   Edges^.Delete(FoundIndex);
-
-   if Edges^.Count=0 then begin
-    EdgeHashMap.Delete(EdgeVertexIndices);
-   end;
-
-   Index:=VertexIndexToEdgeStartHashMap[aVertexIndex0];
-   Assert(Index>=0);
-   FoundIndex:=-1;
-   for OtherIndex:=0 to VertexIndexToEdgeStartList.Items[Index].Count-1 do begin
-    if (VertexIndexToEdgeStartList.Items[Index].Items[OtherIndex][0]=EdgeVertexIndices[0]) and
-       (VertexIndexToEdgeStartList.Items[Index].Items[OtherIndex][1]=EdgeVertexIndices[1]) then begin
-     FoundIndex:=OtherIndex;
-     break;
-    end;
-   end;
-   Assert(FoundIndex>=0);
-   VertexIndexToEdgeStartList.Items[Index].Delete(FoundIndex);
-   if VertexIndexToEdgeStartList.Items[Index].Count=0 then begin
-    VertexIndexToEdgeStartHashMap.Delete(aVertexIndex0);
-   end;
-
-   Index:=VertexIndexToEdgeEndHashMap[aVertexIndex1];
-   Assert(Index>=0);
-   FoundIndex:=-1;
-   for OtherIndex:=0 to VertexIndexToEdgeEndList.Items[Index].Count-1 do begin
-    if (VertexIndexToEdgeEndList.Items[Index].Items[OtherIndex][0]=EdgeVertexIndices[0]) and
-       (VertexIndexToEdgeEndList.Items[Index].Items[OtherIndex][1]=EdgeVertexIndices[1]) then begin
-     FoundIndex:=OtherIndex;
-     break;
-    end;
-   end;
-   Assert(FoundIndex>=0);
-   VertexIndexToEdgeEndList.Items[Index].Delete(FoundIndex);
-   if VertexIndexToEdgeEndList.Items[Index].Count=0 then begin
-    VertexIndexToEdgeEndHashMap.Delete(aVertexIndex1);
-   end;
-
-  end;
-  function AddEdge(const aVertexIndex0,aVertexIndex1:TIndex;const aPolygonIndex:TpvSizeInt):TEdgeVertexIndices;
-  var EdgesIndex,
-      VertexIndexToEdgeStartEndIndex:TpvSizeInt;
+     NewIndices:TIndexList;
+     EdgeHashMap:TEdgeHashMap;
+     EdgesList:TEdgesList;
+     VertexIndexToEdgeStartList:TVertexIndexToEdgeStartEndList;
+     VertexIndexToEdgeEndList:TVertexIndexToEdgeStartEndList;
+     VertexIndexToEdgeStartHashMap:TVertexIndexToEdgeStartEndHashMap;
+     VertexIndexToEdgeEndHashMap:TVertexIndexToEdgeStartEndHashMap;
+     EdgeMapIsEmpty:boolean;
+     EdgesToCheck:TEdgesToCheckHashMap;
+     OldMode:TMode;
+  procedure ScanEdges;
+  var PolygonIndex,PolygonIndicesIndex,EdgesIndex:TpvSizeInt;
+      VertexIndex,NextVertexIndex:TIndex;
+      Polygon:PPolygon;
       EdgeVertexIndices,
       ReversedEdgeVertexIndices:TEdgeVertexIndices;
       Edges:PEdges;
       Edge:TEdge;
   begin
-
-   result[0]:=-1;
-
-   Assert(aVertexIndex0<>aVertexIndex1);
-
-   EdgeVertexIndices[0]:=aVertexIndex0;
-   EdgeVertexIndices[1]:=aVertexIndex1;
-
-   if EdgeHashMap.ExistKey(ReversedEdgeVertexIndices) then begin
-    DeleteEdge(aVertexIndex1,aVertexIndex0,-1);
-    exit;
-   end;
-
-   if not EdgeHashMap.TryGet(EdgeVertexIndices,EdgesIndex) then begin
-    EdgesIndex:=EdgesList.AddNew;
-    Edges:=@EdgesList.Items[EdgesIndex];
-    Edges^.Initialize;
-    EdgeHashMap.Add(EdgeVertexIndices,EdgesIndex);
-   end;
-   Edges:=@EdgesList.Items[EdgesIndex];
-   Edge.VertexIndices:=EdgeVertexIndices;
-   Edge.PolygonIndex:=aPolygonIndex;
-   Edges^.Add(Edge);
-
-   begin
-    if not VertexIndexToEdgeStartHashMap.TryGet(Edge.VertexIndices[0],VertexIndexToEdgeStartEndIndex) then begin
-     VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeStartList.AddNew;
-     VertexIndexToEdgeStartHashMap.Add(Edge.VertexIndices[0],VertexIndexToEdgeStartEndIndex);
-     VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
+   for PolygonIndex:=0 to Polygons.Count-1 do begin
+    Polygon:=@Polygons.Items[PolygonIndex];
+    if Polygon^.Indices.Count>2 then begin
+     for PolygonIndicesIndex:=0 to Polygon^.Indices.Count-1 do begin
+      VertexIndex:=Polygon^.Indices.Items[PolygonIndicesIndex];
+      NextVertexIndex:=Polygon^.Indices.Items[Wrap(PolygonIndicesIndex+1,Polygon^.Indices.Count)];
+      EdgeVertexIndices[0]:=VertexIndex;
+      EdgeVertexIndices[1]:=NextVertexIndex;
+      ReversedEdgeVertexIndices[1]:=VertexIndex;
+      ReversedEdgeVertexIndices[0]:=NextVertexIndex;
+      if EdgeHashMap.TryGet(ReversedEdgeVertexIndices,EdgesIndex) then begin
+       Edges:=@EdgesList.Items[EdgesIndex];
+       if Edges^.Count>0 then begin
+        Edges^.Delete(Edges^.Count-1);
+        if Edges^.Count=0 then begin
+         EdgeHashMap.Delete(ReversedEdgeVertexIndices);
+        end;
+       end;
+      end else begin
+       if not EdgeHashMap.TryGet(EdgeVertexIndices,EdgesIndex) then begin
+        EdgesIndex:=EdgesList.AddNew;
+        Edges:=@EdgesList.Items[EdgesIndex];
+        Edges^.Initialize;
+        EdgeHashMap.Add(EdgeVertexIndices,EdgesIndex);
+       end;
+       Edges:=@EdgesList.Items[EdgesIndex];
+       Edge.VertexIndices:=EdgeVertexIndices;
+       Edge.PolygonIndex:=PolygonIndex;
+       Edges^.Add(Edge);
+      end;
+     end;
     end;
-    VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex].Add(EdgeVertexIndices);
    end;
-
-   begin
-    if not VertexIndexToEdgeEndHashMap.TryGet(Edge.VertexIndices[1],VertexIndexToEdgeStartEndIndex) then begin
-     VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeEndList.AddNew;
-     VertexIndexToEdgeEndHashMap.Add(Edge.VertexIndices[1],VertexIndexToEdgeStartEndIndex);
-     VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
-    end;
-    VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex].Add(EdgeVertexIndices);
-   end;
-
   end;
- begin
-
-  repeat
-
+  procedure ScanVertices;
+  var EdgeHashMapKeyIndex,EdgesIndex,
+      VertexIndexToEdgeStartEndIndex:TpvSizeInt;
+      EdgeVertexIndices:PEdgeVertexIndices;
+      Entity:TEdgeHashMap.PHashMapEntity;
+      Edges:PEdges;
+      Edge:PEdge;
+  begin
    EdgeMapIsEmpty:=true;
    for EdgeHashMapKeyIndex:=0 to EdgeHashMap.fSize-1 do begin
     if EdgeHashMap.fEntityToCellIndex[EdgeHashMapKeyIndex]>=0 then begin
      EdgeMapIsEmpty:=false;
      Entity:=@EdgeHashMap.fEntities[EdgeHashMapKeyIndex];
      EdgesToCheck.Add(Entity^.Key,true);
+     Edges:=@EdgesList.Items[Entity^.Value];
+     for EdgesIndex:=0 to Edges^.Count-1 do begin
+      Edge:=@Edges^.Items[EdgesIndex];
+      begin
+       if not VertexIndexToEdgeStartHashMap.TryGet(Edge^.VertexIndices[0],VertexIndexToEdgeStartEndIndex) then begin
+        VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeStartList.AddNew;
+        VertexIndexToEdgeStartHashMap.Add(Edge^.VertexIndices[0],VertexIndexToEdgeStartEndIndex);
+        VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
+       end;
+       VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex].Add(Entity^.Key);
+      end;
+      begin
+       if not VertexIndexToEdgeEndHashMap.TryGet(Edge^.VertexIndices[1],VertexIndexToEdgeStartEndIndex) then begin
+        VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeEndList.AddNew;
+        VertexIndexToEdgeEndHashMap.Add(Edge^.VertexIndices[1],VertexIndexToEdgeStartEndIndex);
+        VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
+       end;
+       VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex].Add(Entity^.Key);
+      end;
+     end;
     end;
    end;
-   if EdgeMapIsEmpty then begin
-    break;
-   end;
+  end;
+  procedure Process;
+  var EdgeHashMapKeyIndex,EdgesIndex,EdgeIndex,
+      VertexIndexToEdgeStartEndIndex,
+      EdgesToCheckIndex,
+      DirectionIndex,
+      MatchingEdgesListIndex,
+      PolygonIndicesIndex,
+      InsertionPolygonIndicesIndex:TpvSizeInt;
+      Entity:TEdgeHashMap.PHashMapEntity;
+      Edges:PEdges;
+      Edge,MatchingEdge:TEdge;
+      Done,DoneWithEdge:boolean;
+      EdgeVertexIndices,
+      NewEdgeVertexIndices0,
+      NewEdgeVertexIndices1:TEdgeVertexIndices;
+      StartVertexIndex,EndVertexIndex,
+      MatchingEdgeStartVertexIndex,
+      MatchingEdgeEndVertexIndex,
+      OtherIndex:TIndex;
+      MatchingEdgesList:TEdgeVertexIndicesList;
+      MatchingEdgeVertexIndices:TEdgeVertexIndices;
+      StartPosition,EndPosition,CheckPosition,
+      Direction,ClosestPoint:TVector3;
+      Time:TFloat;
+      Polygon:PPolygon;
+      NewPolygon:TPolygon;
+   procedure DeleteEdge(const aVertexIndex0,aVertexIndex1:TIndex;const aPolygonIndex:TpvSizeInt);
+   var Index,FoundIndex,EdgesIndex,OtherIndex:TpvSizeInt;
+       EdgeVertexIndices:TEdgeVertexIndices;
+       Edges:PEdges;
+       Edge:PEdge;
+   begin
 
-   Done:=false;
+    EdgeVertexIndices[0]:=aVertexIndex0;
+    EdgeVertexIndices[1]:=aVertexIndex1;
 
-   repeat
+    EdgesIndex:=EdgeHashMap[EdgeVertexIndices];
+    Assert(EdgesIndex>=0);
 
-    EdgeVertexIndices[0]:=-1;
-    EdgeVertexIndices[1]:=-1;
-    for EdgesToCheckIndex:=0 to EdgesToCheck.fSize-1 do begin
-     if EdgesToCheck.fEntityToCellIndex[EdgesToCheckIndex]>=0 then begin
-      EdgeVertexIndices:=EdgesToCheck.fEntities[EdgesToCheckIndex].Key;
+    Edges:=@EdgesList.Items[EdgesIndex];
+
+    FoundIndex:=-1;
+
+    for Index:=0 to Edges^.Count-1 do begin
+     Edge:=@Edges^.Items[Index];
+     if (Edge^.VertexIndices[0]<>aVertexIndex0) or
+        (Edge^.VertexIndices[1]<>aVertexIndex1) or
+        ((aPolygonIndex>=0) and
+         (Edge^.PolygonIndex<>aPolygonIndex)) then begin
+      continue;
+     end;
+     FoundIndex:=Index;
+     break;
+    end;
+    Assert(FoundIndex>=0);
+
+    Edges^.Delete(FoundIndex);
+
+    if Edges^.Count=0 then begin
+     EdgeHashMap.Delete(EdgeVertexIndices);
+    end;
+
+    Index:=VertexIndexToEdgeStartHashMap[aVertexIndex0];
+    Assert(Index>=0);
+    FoundIndex:=-1;
+    for OtherIndex:=0 to VertexIndexToEdgeStartList.Items[Index].Count-1 do begin
+     if (VertexIndexToEdgeStartList.Items[Index].Items[OtherIndex][0]=EdgeVertexIndices[0]) and
+        (VertexIndexToEdgeStartList.Items[Index].Items[OtherIndex][1]=EdgeVertexIndices[1]) then begin
+      FoundIndex:=OtherIndex;
       break;
      end;
     end;
-    if EdgeVertexIndices[0]<0 then begin
+    Assert(FoundIndex>=0);
+    VertexIndexToEdgeStartList.Items[Index].Delete(FoundIndex);
+    if VertexIndexToEdgeStartList.Items[Index].Count=0 then begin
+     VertexIndexToEdgeStartHashMap.Delete(aVertexIndex0);
+    end;
+
+    Index:=VertexIndexToEdgeEndHashMap[aVertexIndex1];
+    Assert(Index>=0);
+    FoundIndex:=-1;
+    for OtherIndex:=0 to VertexIndexToEdgeEndList.Items[Index].Count-1 do begin
+     if (VertexIndexToEdgeEndList.Items[Index].Items[OtherIndex][0]=EdgeVertexIndices[0]) and
+        (VertexIndexToEdgeEndList.Items[Index].Items[OtherIndex][1]=EdgeVertexIndices[1]) then begin
+      FoundIndex:=OtherIndex;
+      break;
+     end;
+    end;
+    Assert(FoundIndex>=0);
+    VertexIndexToEdgeEndList.Items[Index].Delete(FoundIndex);
+    if VertexIndexToEdgeEndList.Items[Index].Count=0 then begin
+     VertexIndexToEdgeEndHashMap.Delete(aVertexIndex1);
+    end;
+
+   end;
+   function AddEdge(const aVertexIndex0,aVertexIndex1:TIndex;const aPolygonIndex:TpvSizeInt):TEdgeVertexIndices;
+   var EdgesIndex,
+       VertexIndexToEdgeStartEndIndex:TpvSizeInt;
+       EdgeVertexIndices,
+       ReversedEdgeVertexIndices:TEdgeVertexIndices;
+       Edges:PEdges;
+       Edge:TEdge;
+   begin
+
+    result[0]:=-1;
+
+    Assert(aVertexIndex0<>aVertexIndex1);
+
+    EdgeVertexIndices[0]:=aVertexIndex0;
+    EdgeVertexIndices[1]:=aVertexIndex1;
+
+    if EdgeHashMap.ExistKey(ReversedEdgeVertexIndices) then begin
+     DeleteEdge(aVertexIndex1,aVertexIndex0,-1);
+     exit;
+    end;
+
+    if not EdgeHashMap.TryGet(EdgeVertexIndices,EdgesIndex) then begin
+     EdgesIndex:=EdgesList.AddNew;
+     Edges:=@EdgesList.Items[EdgesIndex];
+     Edges^.Initialize;
+     EdgeHashMap.Add(EdgeVertexIndices,EdgesIndex);
+    end;
+    Edges:=@EdgesList.Items[EdgesIndex];
+    Edge.VertexIndices:=EdgeVertexIndices;
+    Edge.PolygonIndex:=aPolygonIndex;
+    Edges^.Add(Edge);
+
+    begin
+     if not VertexIndexToEdgeStartHashMap.TryGet(Edge.VertexIndices[0],VertexIndexToEdgeStartEndIndex) then begin
+      VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeStartList.AddNew;
+      VertexIndexToEdgeStartHashMap.Add(Edge.VertexIndices[0],VertexIndexToEdgeStartEndIndex);
+      VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
+     end;
+     VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex].Add(EdgeVertexIndices);
+    end;
+
+    begin
+     if not VertexIndexToEdgeEndHashMap.TryGet(Edge.VertexIndices[1],VertexIndexToEdgeStartEndIndex) then begin
+      VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeEndList.AddNew;
+      VertexIndexToEdgeEndHashMap.Add(Edge.VertexIndices[1],VertexIndexToEdgeStartEndIndex);
+      VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
+     end;
+     VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex].Add(EdgeVertexIndices);
+    end;
+
+   end;
+  begin
+
+   repeat
+
+    EdgeMapIsEmpty:=true;
+    for EdgeHashMapKeyIndex:=0 to EdgeHashMap.fSize-1 do begin
+     if EdgeHashMap.fEntityToCellIndex[EdgeHashMapKeyIndex]>=0 then begin
+      EdgeMapIsEmpty:=false;
+      Entity:=@EdgeHashMap.fEntities[EdgeHashMapKeyIndex];
+      EdgesToCheck.Add(Entity^.Key,true);
+     end;
+    end;
+    if EdgeMapIsEmpty then begin
      break;
     end;
 
-    DoneWithEdge:=true;
+    Done:=false;
 
-    if EdgeHashMap.TryGet(EdgeVertexIndices,EdgesIndex) then begin
+    repeat
 
-     Edges:=@EdgesList.Items[EdgesIndex];
-     Assert(Edges^.Count>0);
-
-     Edge:=Edges^.Items[0];
-
-     for DirectionIndex:=0 to 1 do begin
-
-      if DirectionIndex=0 then begin
-       StartVertexIndex:=Edge.VertexIndices[0];
-       EndVertexIndex:=Edge.VertexIndices[1];
-      end else begin
-       StartVertexIndex:=Edge.VertexIndices[1];
-       EndVertexIndex:=Edge.VertexIndices[0];
+     EdgeVertexIndices[0]:=-1;
+     EdgeVertexIndices[1]:=-1;
+     for EdgesToCheckIndex:=0 to EdgesToCheck.fSize-1 do begin
+      if EdgesToCheck.fEntityToCellIndex[EdgesToCheckIndex]>=0 then begin
+       EdgeVertexIndices:=EdgesToCheck.fEntities[EdgesToCheckIndex].Key;
+       break;
       end;
+     end;
+     if EdgeVertexIndices[0]<0 then begin
+      break;
+     end;
 
-      MatchingEdgesList.Initialize;
+     DoneWithEdge:=true;
 
-      if DirectionIndex=0 then begin
-       if VertexIndexToEdgeEndHashMap.TryGet(StartVertexIndex,VertexIndexToEdgeStartEndIndex) then begin
-        MatchingEdgesList.Assign(VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex]);
-       end;
-      end else begin
-       if VertexIndexToEdgeStartHashMap.TryGet(StartVertexIndex,VertexIndexToEdgeStartEndIndex) then begin
-        MatchingEdgesList.Assign(VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex]);
-       end;
-      end;
+     if EdgeHashMap.TryGet(EdgeVertexIndices,EdgesIndex) then begin
 
-      for MatchingEdgesListIndex:=0 to MatchingEdgesList.Count-1 do begin
+      Edges:=@EdgesList.Items[EdgesIndex];
+      Assert(Edges^.Count>0);
 
-       MatchingEdgeVertexIndices:=MatchingEdgesList.Items[MatchingEdgesListIndex];
+      Edge:=Edges^.Items[0];
 
-       EdgesIndex:=EdgeHashMap[MatchingEdgeVertexIndices];
-
-       Assert(EdgesIndex>=0);
-
-       Edges:=@EdgesList.Items[EdgesIndex];
-
-       Assert(Edges^.Count>0);
-
-       MatchingEdge:=Edges^.Items[0];
+      for DirectionIndex:=0 to 1 do begin
 
        if DirectionIndex=0 then begin
-        MatchingEdgeStartVertexIndex:=MatchingEdge.VertexIndices[0];
-        MatchingEdgeEndVertexIndex:=MatchingEdge.VertexIndices[1];
+        StartVertexIndex:=Edge.VertexIndices[0];
+        EndVertexIndex:=Edge.VertexIndices[1];
        end else begin
-        MatchingEdgeStartVertexIndex:=MatchingEdge.VertexIndices[1];
-        MatchingEdgeEndVertexIndex:=MatchingEdge.VertexIndices[0];
+        StartVertexIndex:=Edge.VertexIndices[1];
+        EndVertexIndex:=Edge.VertexIndices[0];
        end;
 
-       Assert(MatchingEdgeEndVertexIndex=StartVertexIndex);
+       MatchingEdgesList.Initialize;
 
-       if MatchingEdgeStartVertexIndex=EndVertexIndex then begin
-
-        DeleteEdge(StartVertexIndex,EndVertexIndex,-1);
-
-        DeleteEdge(EndVertexIndex,StartVertexIndex,-1);
-
-        DoneWithEdge:=false;
-
-        Done:=true;
-
-        break;
-
+       if DirectionIndex=0 then begin
+        if VertexIndexToEdgeEndHashMap.TryGet(StartVertexIndex,VertexIndexToEdgeStartEndIndex) then begin
+         MatchingEdgesList.Assign(VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex]);
+        end;
        end else begin
+        if VertexIndexToEdgeStartHashMap.TryGet(StartVertexIndex,VertexIndexToEdgeStartEndIndex) then begin
+         MatchingEdgesList.Assign(VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex]);
+        end;
+       end;
 
-        StartPosition:=fVertices.Items[StartVertexIndex].Position;
+       for MatchingEdgesListIndex:=0 to MatchingEdgesList.Count-1 do begin
 
-        EndPosition:=fVertices.Items[EndVertexIndex].Position;
+        MatchingEdgeVertexIndices:=MatchingEdgesList.Items[MatchingEdgesListIndex];
 
-        CheckPosition:=fVertices.Items[MatchingEdgeStartVertexIndex].Position;
+        EdgesIndex:=EdgeHashMap[MatchingEdgeVertexIndices];
 
-        Direction:=CheckPosition-StartPosition;
+        Assert(EdgesIndex>=0);
 
-        Time:=(EndPosition-StartPosition).Dot(Direction)/Direction.Dot(Direction);
+        Edges:=@EdgesList.Items[EdgesIndex];
 
-        if (Time>0.0) and (Time<1.0) then begin
+        Assert(Edges^.Count>0);
 
-         ClosestPoint:=StartPosition.Lerp(CheckPosition,Time);
+        MatchingEdge:=Edges^.Items[0];
 
-         if (ClosestPoint-EndPosition).SquaredLength<1e-10 then begin
+        if DirectionIndex=0 then begin
+         MatchingEdgeStartVertexIndex:=MatchingEdge.VertexIndices[0];
+         MatchingEdgeEndVertexIndex:=MatchingEdge.VertexIndices[1];
+        end else begin
+         MatchingEdgeStartVertexIndex:=MatchingEdge.VertexIndices[1];
+         MatchingEdgeEndVertexIndex:=MatchingEdge.VertexIndices[0];
+        end;
 
-          PolygonIndex:=MatchingEdge.PolygonIndex;
+        Assert(MatchingEdgeEndVertexIndex=StartVertexIndex);
 
-          Polygon:=@Polygons.Items[PolygonIndex];
+        if MatchingEdgeStartVertexIndex=EndVertexIndex then begin
 
-          InsertionPolygonIndicesIndex:=-1;
-          for PolygonIndicesIndex:=0 to Polygon^.Indices.Count-1 do begin
-           if Polygon^.Indices.Items[PolygonIndicesIndex]=MatchingEdge.VertexIndices[1] then begin
-            InsertionPolygonIndicesIndex:=PolygonIndicesIndex;
-            break;
+         DeleteEdge(StartVertexIndex,EndVertexIndex,-1);
+
+         DeleteEdge(EndVertexIndex,StartVertexIndex,-1);
+
+         DoneWithEdge:=false;
+
+         Done:=true;
+
+         break;
+
+        end else begin
+
+         StartPosition:=fVertices.Items[StartVertexIndex].Position;
+
+         EndPosition:=fVertices.Items[EndVertexIndex].Position;
+
+         CheckPosition:=fVertices.Items[MatchingEdgeStartVertexIndex].Position;
+
+         Direction:=CheckPosition-StartPosition;
+
+         Time:=(EndPosition-StartPosition).Dot(Direction)/Direction.Dot(Direction);
+
+         if (Time>0.0) and (Time<1.0) then begin
+
+          ClosestPoint:=StartPosition.Lerp(CheckPosition,Time);
+
+          if (ClosestPoint-EndPosition).SquaredLength<1e-10 then begin
+
+           PolygonIndex:=MatchingEdge.PolygonIndex;
+
+           Polygon:=@Polygons.Items[PolygonIndex];
+
+           InsertionPolygonIndicesIndex:=-1;
+           for PolygonIndicesIndex:=0 to Polygon^.Indices.Count-1 do begin
+            if Polygon^.Indices.Items[PolygonIndicesIndex]=MatchingEdge.VertexIndices[1] then begin
+             InsertionPolygonIndicesIndex:=PolygonIndicesIndex;
+             break;
+            end;
            end;
+           Assert(InsertionPolygonIndicesIndex>=0);
+
+           Polygons.Items[PolygonIndex].Indices.Insert(InsertionPolygonIndicesIndex,EndVertexIndex);
+
+           DeleteEdge(MatchingEdge.VertexIndices[0],MatchingEdge.VertexIndices[1],PolygonIndex);
+
+           NewEdgeVertexIndices0:=AddEdge(MatchingEdge.VertexIndices[0],EndVertexIndex,PolygonIndex);
+
+           NewEdgeVertexIndices1:=AddEdge(EndVertexIndex,MatchingEdge.VertexIndices[1],PolygonIndex);
+
+           if NewEdgeVertexIndices0[0]>=0 then begin
+            EdgesToCheck[NewEdgeVertexIndices0]:=true;
+           end;
+
+           if NewEdgeVertexIndices1[0]>=0 then begin
+            EdgesToCheck[NewEdgeVertexIndices1]:=true;
+           end;
+
+           DoneWithEdge:=false;
+
+           Done:=true;
+
+           break;
+
           end;
-          Assert(InsertionPolygonIndicesIndex>=0);
-
-          Polygons.Items[PolygonIndex].Indices.Insert(InsertionPolygonIndicesIndex,EndVertexIndex);
-
-          DeleteEdge(MatchingEdge.VertexIndices[0],MatchingEdge.VertexIndices[1],PolygonIndex);
-
-          NewEdgeVertexIndices0:=AddEdge(MatchingEdge.VertexIndices[0],EndVertexIndex,PolygonIndex);
-
-          NewEdgeVertexIndices1:=AddEdge(EndVertexIndex,MatchingEdge.VertexIndices[1],PolygonIndex);
-
-          if NewEdgeVertexIndices0[0]>=0 then begin
-           EdgesToCheck[NewEdgeVertexIndices0]:=true;
-          end;
-
-          if NewEdgeVertexIndices1[0]>=0 then begin
-           EdgesToCheck[NewEdgeVertexIndices1]:=true;
-          end;
-
-          DoneWithEdge:=false;
-
-          Done:=true;
-
-          break;
 
          end;
 
@@ -4160,263 +4171,321 @@ var Index,Count,CountPolygonVertices,
 
        end;
 
-      end;
+       if Done then begin
+        break;
+       end;
 
-      if Done then begin
-       break;
       end;
 
      end;
 
-    end;
+     if DoneWithEdge then begin
+      EdgesToCheck.Delete(EdgeVertexIndices);
+     end;
 
-    if DoneWithEdge then begin
-     EdgesToCheck.Delete(EdgeVertexIndices);
-    end;
+    until false;
 
-   until false;
+   until Done;
 
-  until Done;
+  end;
+ begin
 
- end;
-begin
-
- OldMode:=fMode;
- try
-
-  SetMode(TMode.Polygons);
-
+  OldMode:=fMode;
   try
 
-   Polygons.Initialize;
+   SetMode(TMode.Polygons);
+
    try
 
-    Index:=0;
-    Count:=fIndices.Count;
-    while Index<Count do begin
-     CountPolygonVertices:=fIndices.Items[Index];
-     inc(Index);
-     if (CountPolygonVertices>0) and
-        ((Index+(CountPolygonVertices-1))<Count) then begin
-      if CountPolygonVertices>2 then begin
-       PolygonIndex:=Polygons.AddNew;
-       Polygon:=@Polygons.Items[PolygonIndex];
-       Polygon^.Indices.Initialize;
-       Polygon^.Indices.AddRangeFrom(fIndices,Index,CountPolygonVertices);
-       Polygon^.Plane:=TpvCSGBSP.TPlane.Create(fVertices.Items[Polygon^.Indices.Items[0]].Position,
-                                               fVertices.Items[Polygon^.Indices.Items[1]].Position,
-                                               fVertices.Items[Polygon^.Indices.Items[2]].Position);
-      end;
-     end;
-     inc(Index,CountPolygonVertices);
-    end;
-
-    EdgeHashMap:=TEdgeHashMap.Create(-1);
+    Polygons.Initialize;
     try
 
-     EdgesList.Initialize;
+     Index:=0;
+     Count:=fIndices.Count;
+     while Index<Count do begin
+      CountPolygonVertices:=fIndices.Items[Index];
+      inc(Index);
+      if (CountPolygonVertices>0) and
+         ((Index+(CountPolygonVertices-1))<Count) then begin
+       if CountPolygonVertices>2 then begin
+        PolygonIndex:=Polygons.AddNew;
+        Polygon:=@Polygons.Items[PolygonIndex];
+        Polygon^.Indices.Initialize;
+        Polygon^.Indices.AddRangeFrom(fIndices,Index,CountPolygonVertices);
+       end;
+      end;
+      inc(Index,CountPolygonVertices);
+     end;
+
+     EdgeHashMap:=TEdgeHashMap.Create(-1);
      try
 
-      ScanEdges;
-
-      VertexIndexToEdgeStartList.Initialize;
+      EdgesList.Initialize;
       try
 
-       VertexIndexToEdgeEndList.Initialize;
+       ScanEdges;
+
+       VertexIndexToEdgeStartList.Initialize;
        try
 
-        VertexIndexToEdgeStartHashMap:=TVertexIndexToEdgeStartEndHashMap.Create(-1);
+        VertexIndexToEdgeEndList.Initialize;
         try
 
-         VertexIndexToEdgeEndHashMap:=TVertexIndexToEdgeStartEndHashMap.Create(-1);
+         VertexIndexToEdgeStartHashMap:=TVertexIndexToEdgeStartEndHashMap.Create(-1);
          try
 
-          EdgesToCheck:=TEdgesToCheckHashMap.Create(false);
+          VertexIndexToEdgeEndHashMap:=TVertexIndexToEdgeStartEndHashMap.Create(-1);
           try
 
-           ScanVertices;
+           EdgesToCheck:=TEdgesToCheckHashMap.Create(false);
+           try
 
-           if not EdgeMapIsEmpty then begin
-            Process;
+            ScanVertices;
+
+            if not EdgeMapIsEmpty then begin
+             Process;
+            end;
+
+           finally
+            FreeAndNil(EdgesToCheck);
            end;
 
           finally
-           FreeAndNil(EdgesToCheck);
+           FreeAndNil(VertexIndexToEdgeEndHashMap);
           end;
 
          finally
-          FreeAndNil(VertexIndexToEdgeEndHashMap);
+          FreeAndNil(VertexIndexToEdgeStartHashMap);
          end;
 
         finally
-         FreeAndNil(VertexIndexToEdgeStartHashMap);
+         VertexIndexToEdgeEndList.Finalize;
         end;
 
        finally
-        VertexIndexToEdgeEndList.Finalize;
+        VertexIndexToEdgeStartList.Finalize;
        end;
 
       finally
-       VertexIndexToEdgeStartList.Finalize;
+       EdgesList.Finalize;
       end;
 
      finally
-      EdgesList.Finalize;
+      FreeAndNil(EdgeHashMap);
+     end;
+
+     NewIndices.Initialize;
+     try
+      for PolygonIndex:=0 to Polygons.Count-1 do begin
+       Polygon:=@Polygons.Items[PolygonIndex];
+       NewIndices.Add(Polygon^.Indices.Count);
+       NewIndices.Add(Polygon^.Indices);
+      end;
+      SetIndices(NewIndices);
+     finally
+      NewIndices.Finalize;
      end;
 
     finally
-     FreeAndNil(EdgeHashMap);
-    end;
-
-    NewIndices.Initialize;
-    try
-     for PolygonIndex:=0 to Polygons.Count-1 do begin
-      Polygon:=@Polygons.Items[PolygonIndex];
-      NewIndices.Add(Polygon^.Indices.Count);
-      NewIndices.Add(Polygon^.Indices);
-     end;
-     SetIndices(NewIndices);
-    finally
-     NewIndices.Finalize;
+     Polygons.Finalize;
     end;
 
    finally
-    Polygons.Finalize;
+    SetMode(OldMode);
    end;
 
   finally
-   SetMode(OldMode);
+   RemoveDuplicateAndUnusedVertices;
   end;
 
- finally
-  RemoveDuplicateAndUnusedVertices;
  end;
+ procedure FixTJunctionsWithNonConsistentInputVertices;
+ type TPolygon=record
+       Indices:TIndexList;
+       Plane:TPlane;
+       AABB:TAABB;
+      end;
+      PPolygon=^TPolygon;
+      TPolygons=TDynamicArray<TPolygon>;
+      TPolygonAABBTreeStack=TDynamicStack<TpvSizeInt>;
+ var Index,Count,CountPolygonVertices,
+     PolygonIndex,
+     PolygonIndicesIndex,
+     PolygonAABBTreeNodeID,
+     OtherPolygonIndex,
+     OtherPolygonIndicesIndex,
+     PolygonVertexIndexA,
+     PolygonVertexIndexB,
+     OtherPolygonVertexIndex:TpvSizeInt;
+     Polygons:TPolygons;
+     Polygon,
+     OtherPolygon:PPolygon;
+     PolygonAABBTree:TDynamicAABBTree;
+     PolygonAABBTreeNode:PDynamicAABBTreeNode;
+     PolygonAABBTreeStack:TPolygonAABBTreeStack;
+     NewIndices:TIndexList;
+     OldMode:TMode;
+     DoTryAgain:boolean;
+     PolygonVertexA,
+     PolygonVertexB,
+     OtherPolygonVertex:PVertex;
+     Direction,
+     NormalizedDirection,
+     FromPolygonVertexAToOtherPolygonVertex:TVector3;
+     Time:TFloat;
+ begin
 
-end;
-{$else}
-const Map:array[0..2,0..3] of TpvSizeInt=((3,1,2,2),(0,3,2,0),(0,1,3,1));
-type TAABBTreeStack=TDynamicStack<TpvSizeInt>;
-var Index,TriangleVertexIndex,VertexIndex,
-    CountIndices,CountVertices,Previous:TpvSizeInt;
-    TryAgain:boolean;
-    Position0,Position1,VertexPosition,
-    Direction,DifferenceToVertexPosition:TVector3;
-    Time:TFloat;
-    CurrentVertex:PVertex;
-    Vertex:TVertex;
-    VertexIndices:array[0..3] of TIndex;
-    Vertices:array[0..3] of PVertex;
-    VertexDynamicAABBTree:TDynamicAABBTree;
-    AABB,PointAABB:TAABB;
-    AABBTreeStack:TAABBTreeStack;
-    NodeID:TpvSizeInt;
-    Node:PDynamicAABBTreeNode;
-begin
- SetMode(TMode.Triangles);
- RemoveDuplicateAndUnusedVertices;
- try
-  VertexDynamicAABBTree:=TDynamicAABBTree.Create;
+  OldMode:=fMode;
   try
-   AABBTreeStack.Initialize;
+
+   SetMode(TMode.Polygons);
+
    try
-    for Index:=0 to fVertices.Count-1 do begin
-     CurrentVertex:=@fVertices.Items[Index];
-     PointAABB.Min:=CurrentVertex^.Position-ThresholdAABBVector;
-     PointAABB.Max:=CurrentVertex^.Position+ThresholdAABBVector;
-     VertexDynamicAABBTree.CreateProxy(PointAABB,Index);
-    end;
-    repeat
-     TryAgain:=false;
-     CountIndices:=fIndices.Count;
-     CountVertices:=fVertices.Count;
-     Index:=0;
-     while ((Index+2)<CountIndices) and not TryAgain do begin
-//    write(#13,Index:10,' ',CountIndices:10,'              ');
-      VertexIndices[0]:=fIndices.Items[Index+0];
-      VertexIndices[1]:=fIndices.Items[Index+1];
-      VertexIndices[2]:=fIndices.Items[Index+2];
-      Vertices[0]:=@fVertices.Items[VertexIndices[0]];
-      Vertices[1]:=@fVertices.Items[VertexIndices[1]];
-      Vertices[2]:=@fVertices.Items[VertexIndices[2]];
-      Previous:=2;
-      TriangleVertexIndex:=0;
-      while (TriangleVertexIndex<3) and not TryAgain do begin
-       Position0:=fVertices.Items[VertexIndices[Previous]].Position;
-       Position1:=fVertices.Items[VertexIndices[TriangleVertexIndex]].Position;
-       AABB.Min.x:=Min(Position0.x,Position1.x)-Epsilon;
-       AABB.Min.y:=Min(Position0.y,Position1.y)-Epsilon;
-       AABB.Min.z:=Min(Position0.z,Position1.z)-Epsilon;
-       AABB.Max.x:=Max(Position0.x,Position1.x)+Epsilon;
-       AABB.Max.y:=Max(Position0.y,Position1.y)+Epsilon;
-       AABB.Max.z:=Max(Position0.z,Position1.z)+Epsilon;
-       if VertexDynamicAABBTree.Root>=0 then begin
-        AABBTreeStack.Count:=0;
-        AABBTreeStack.Push(VertexDynamicAABBTree.Root);
-        while AABBTreeStack.Pop(NodeID) and not TryAgain do begin
-         Node:=@VertexDynamicAABBTree.Nodes[NodeID];
-         if Node^.AABB.Intersects(AABB) then begin
-          if Node^.Children[0]<0 then begin
-           VertexIndex:=Node^.UserData;
-           if VertexIndex>=0 then begin
-            CurrentVertex:=@fVertices.Items[VertexIndex];
-            if (VertexIndices[0]<>VertexIndex) and
-               (VertexIndices[1]<>VertexIndex) and
-               (VertexIndices[2]<>VertexIndex) and
-               (fVertices.Items[VertexIndices[0]].Position<>CurrentVertex^.Position) and
-               (fVertices.Items[VertexIndices[1]].Position<>CurrentVertex^.Position) and
-               (fVertices.Items[VertexIndices[2]].Position<>CurrentVertex^.Position) and
-               ((Position0-CurrentVertex^.Position).Normalize.Dot((CurrentVertex^.Position-Position1).Normalize)>=TJunctionOneMinusEpsilon) then begin
-             Direction:=Position1-Position0;
-             DifferenceToVertexPosition:=CurrentVertex^.Position-Position0;
-             Time:=DifferenceToVertexPosition.Dot(Direction)/Direction.Dot(Direction);
-             if ((Time>=TJunctionEpsilon) and (Time<=TJunctionOneMinusEpsilon)) and
-                (((Direction*Time)-DifferenceToVertexPosition).SquaredLength<TJunctionEpsilon) then begin
-              VertexPosition:=CurrentVertex^.Position;
-              Vertex:=fVertices.Items[fIndices.Items[Index+Previous]].Lerp(fVertices.Items[fIndices.Items[Index+TriangleVertexIndex]],Time);
-//            Vertex.Position:=VertexPosition;
-              VertexIndices[3]:=fVertices.Add(Vertex);
-              if Vertex.Position<>VertexPosition then begin
-               PointAABB.Min:=Vertex.Position-ThresholdAABBVector;
-               PointAABB.Max:=Vertex.Position+ThresholdAABBVector;
-               VertexDynamicAABBTree.CreateProxy(PointAABB,VertexIndices[3]);
+
+    Polygons.Initialize;
+    try
+
+     PolygonAABBTree:=TDynamicAABBTree.Create;
+     try
+
+      Index:=0;
+      Count:=fIndices.Count;
+      while Index<Count do begin
+       CountPolygonVertices:=fIndices.Items[Index];
+       inc(Index);
+       if (CountPolygonVertices>0) and
+          ((Index+(CountPolygonVertices-1))<Count) then begin
+        if CountPolygonVertices>2 then begin
+         PolygonIndex:=Polygons.AddNew;
+         Polygon:=@Polygons.Items[PolygonIndex];
+         Polygon^.Indices.Initialize;
+         Polygon^.Indices.AddRangeFrom(fIndices,Index,CountPolygonVertices);
+         Polygon^.Plane:=TpvCSGBSP.TPlane.Create(fVertices.Items[Polygon^.Indices.Items[0]].Position,
+                                                 fVertices.Items[Polygon^.Indices.Items[1]].Position,
+                                                 fVertices.Items[Polygon^.Indices.Items[2]].Position);
+         Polygon^.AABB.Min.x:=Infinity;
+         Polygon^.AABB.Min.y:=Infinity;
+         Polygon^.AABB.Min.z:=Infinity;
+         Polygon^.AABB.Max.x:=-Infinity;
+         Polygon^.AABB.Max.y:=-Infinity;
+         Polygon^.AABB.Max.z:=-Infinity;
+         for PolygonIndicesIndex:=0 to Polygon^.Indices.Count-1 do begin
+          Polygon^.AABB:=Polygon^.AABB.Combine(fVertices.Items[Polygon^.Indices.Items[PolygonIndicesIndex]].Position);
+         end;
+         PolygonAABBTree.CreateProxy(Polygon^.AABB,PolygonIndex);
+        end;
+       end;
+       inc(Index,CountPolygonVertices);
+      end;
+
+      PolygonAABBTreeStack.Initialize;
+      try
+       repeat
+        DoTryAgain:=false;
+        for PolygonIndex:=0 to Polygons.Count-1 do begin
+         Polygon:=@Polygons.Items[PolygonIndex];
+         if PolygonAABBTree.Root>=0 then begin
+          PolygonAABBTreeStack.Count:=0;
+          PolygonAABBTreeStack.Push(PolygonAABBTree.Root);
+          while PolygonAABBTreeStack.Pop(PolygonAABBTreeNodeID) and not DoTryAgain do begin
+           PolygonAABBTreeNode:=@PolygonAABBTree.Nodes[PolygonAABBTreeNodeID];
+           if PolygonAABBTreeNode^.AABB.Intersects(Polygon^.AABB) then begin
+            if PolygonAABBTreeNode^.Children[0]<0 then begin
+             OtherPolygonIndex:=PolygonAABBTreeNode^.UserData;
+             if PolygonIndex<>OtherPolygonIndex then begin
+              OtherPolygon:=@Polygons.Items[OtherPolygonIndex];
+              PolygonIndicesIndex:=0;
+              while PolygonIndicesIndex<Polygon^.Indices.Count do begin
+               PolygonVertexIndexA:=Polygon^.Indices.Items[PolygonIndicesIndex];
+               PolygonVertexIndexB:=Polygon^.Indices.Items[Wrap(PolygonIndicesIndex+1,Polygon^.Indices.Count)];
+               PolygonVertexA:=@fVertices.Items[PolygonVertexIndexA];
+               PolygonVertexB:=@fVertices.Items[PolygonVertexIndexB];
+               Direction:=PolygonVertexB^.Position-PolygonVertexA^.Position;
+               NormalizedDirection:=Direction.Normalize;
+               OtherPolygonIndicesIndex:=0;
+               while OtherPolygonIndicesIndex<OtherPolygon^.Indices.Count do begin
+                OtherPolygonVertexIndex:=OtherPolygon^.Indices.Items[OtherPolygonIndicesIndex];
+                OtherPolygonVertex:=@fVertices.Items[OtherPolygonVertexIndex];
+                if (PolygonVertexIndexA<>OtherPolygonVertexIndex) and
+                   (PolygonVertexIndexB<>OtherPolygonVertexIndex) and
+                   (PolygonVertexA^.Position<>OtherPolygonVertex^.Position) and
+                   (PolygonVertexB^.Position<>OtherPolygonVertex^.Position) then begin
+                 FromPolygonVertexAToOtherPolygonVertex:=OtherPolygonVertex^.Position-PolygonVertexA^.Position;
+                 if (NormalizedDirection.Dot(FromPolygonVertexAToOtherPolygonVertex.Normalize)>=TJunctionOneMinusEpsilon) and
+                    (NormalizedDirection.Dot((PolygonVertexB^.Position-OtherPolygonVertex^.Position).Normalize)>=TJunctionOneMinusEpsilon) then begin
+                  Time:=FromPolygonVertexAToOtherPolygonVertex.Dot(Direction)/Direction.Dot(Direction);
+                  if ((Time>=TJunctionEpsilon) and (Time<=TJunctionOneMinusEpsilon)) and
+                     (((Direction*Time)-FromPolygonVertexAToOtherPolygonVertex).SquaredLength<TJunctionEpsilon) then begin
+                   Polygon^.Indices.Insert(PolygonIndicesIndex+1,fVertices.Add(PolygonVertexA^.Lerp(PolygonVertexB^,Time)));
+                   begin
+                    // Reload polygon vertex pointers, because the old ones could be invalid here now
+                    PolygonVertexA:=@fVertices.Items[PolygonVertexIndexA];
+                    PolygonVertexB:=@fVertices.Items[PolygonVertexIndexB];
+                   end;
+                   // And we do not need update the AABB of the polygon, because the new inserted
+                   // vertex is coplanar between two end points of a old edge of the polygon
+                   DoTryAgain:=true;
+                  end;
+                 end;
+                end;
+                inc(OtherPolygonIndicesIndex);
+               end;
+               inc(PolygonIndicesIndex);
               end;
-              fIndices.Items[Index+Map[TriangleVertexIndex,3]]:=VertexIndices[3];
-              fIndices.Add([VertexIndices[Map[TriangleVertexIndex,0]],
-                            VertexIndices[Map[TriangleVertexIndex,1]],
-                            VertexIndices[Map[TriangleVertexIndex,2]]]);
-              TryAgain:=true;
-              break;
+             end;
+            end else begin
+             if PolygonAABBTreeNode^.Children[1]>=0 then begin
+              PolygonAABBTreeStack.Push(PolygonAABBTreeNode^.Children[1]);
+             end;
+             if PolygonAABBTreeNode^.Children[0]>=0 then begin
+              PolygonAABBTreeStack.Push(PolygonAABBTreeNode^.Children[0]);
              end;
             end;
-           end;
-          end else begin
-           if Node^.Children[1]>=0 then begin
-            AABBTreeStack.Push(Node^.Children[1]);
-           end;
-           if Node^.Children[0]>=0 then begin
-            AABBTreeStack.Push(Node^.Children[0]);
            end;
           end;
          end;
         end;
-       end;
-       Previous:=TriangleVertexIndex;
-       inc(TriangleVertexIndex);
+       until not DoTryAgain;
+      finally
+       PolygonAABBTreeStack.Finalize;
       end;
-      inc(Index,3);
+
+      NewIndices.Initialize;
+      try
+       for PolygonIndex:=0 to Polygons.Count-1 do begin
+        Polygon:=@Polygons.Items[PolygonIndex];
+        NewIndices.Add(Polygon^.Indices.Count);
+        NewIndices.Add(Polygon^.Indices);
+       end;
+       SetIndices(NewIndices);
+      finally
+       NewIndices.Finalize;
+      end;
+
+     finally
+      FreeAndNil(PolygonAABBTree);
      end;
-    until not TryAgain;
+
+    finally
+     Polygons.Finalize;
+    end;
+
    finally
-    AABBTreeStack.Finalize;
+    SetMode(OldMode);
    end;
+
   finally
-   FreeAndNil(VertexDynamicAABBTree);
+   RemoveDuplicateAndUnusedVertices;
   end;
- finally
-  RemoveDuplicateAndUnusedVertices;
+
+ end;
+begin
+ if aConsistentInputVertices then begin
+  FixTJunctionsWithConsistentInputVertices;
+ end else begin
+  FixTJunctionsWithNonConsistentInputVertices;
  end;
 end;
-{$endif}
 
 procedure TpvCSGBSP.TMesh.MergeCoplanarConvexPolygons;
 const HashBits=16;
