@@ -116,6 +116,7 @@ type TpvCSGBSP=class
               procedure Assign(const aFrom:{$ifdef fpc}TpvCSGBSP.{$endif}TDynamicArray<T>); overload;
               procedure Assign(const aItems:array of T); overload;
               function AddNew:TpvSizeInt; overload;
+              function Insert(const aIndex:TpvSizeInt;const aItem:T):TpvSizeInt; overload;
               function Add(const aItem:T):TpvSizeInt; overload;
               function Add(const aItems:array of T):TpvSizeInt; overload;
               function Add(const aFrom:{$ifdef fpc}TpvCSGBSP.{$endif}TDynamicArray<T>):TpvSizeInt; overload;
@@ -131,6 +132,143 @@ type TpvCSGBSP=class
               procedure Finalize;
               procedure Push(const aItem:T);
               function Pop(out aItem:T):boolean;
+            end;
+            THashMap<THashMapKey,THashMapValue>=class
+             public
+              const CELL_EMPTY=-1;
+                    CELL_DELETED=-2;
+                    ENT_EMPTY=-1;
+                    ENT_DELETED=-2;
+              type PHashMapEntity=^THashMapEntity;
+                   THashMapEntity=record
+                    Key:THashMapKey;
+                    Value:THashMapValue;
+                   end;
+                   THashMapEntities=array of THashMapEntity;
+                   THashMapEntityIndices=array of TpvSizeInt;
+             private
+{$ifndef fpc}
+              type THashMapEntityEnumerator=record
+                    private
+                     fHashMap:THashMap<THashMapKey,THashMapValue>;
+                     fIndex:TpvSizeInt;
+                     function GetCurrent:THashMapEntity; inline;
+                    public
+                     constructor Create(const aHashMap:THashMap<THashMapKey,THashMapValue>);
+                     function MoveNext:boolean; inline;
+                     property Current:THashMapEntity read GetCurrent;
+                   end;
+                   THashMapKeyEnumerator=record
+                    private
+                     fHashMap:THashMap<THashMapKey,THashMapValue>;
+                     fIndex:TpvSizeInt;
+                     function GetCurrent:THashMapKey; inline;
+                    public
+                     constructor Create(const aHashMap:THashMap<THashMapKey,THashMapValue>);
+                     function MoveNext:boolean; inline;
+                     property Current:THashMapKey read GetCurrent;
+                   end;
+                   THashMapValueEnumerator=record
+                    private
+                     fHashMap:THashMap<THashMapKey,THashMapValue>;
+                     fIndex:TpvSizeInt;
+                     function GetCurrent:THashMapValue; inline;
+                    public
+                     constructor Create(const aHashMap:THashMap<THashMapKey,THashMapValue>);
+                     function MoveNext:boolean; inline;
+                     property Current:THashMapValue read GetCurrent;
+                   end;
+                   THashMapEntitiesObject=class
+                    private
+                     fOwner:THashMap<THashMapKey,THashMapValue>;
+                    public
+                     constructor Create(const aOwner:THashMap<THashMapKey,THashMapValue>);
+                     function GetEnumerator:THashMapEntityEnumerator;
+                   end;
+                   THashMapKeysObject=class
+                    private
+                     fOwner:THashMap<THashMapKey,THashMapValue>;
+                    public
+                     constructor Create(const aOwner:THashMap<THashMapKey,THashMapValue>);
+                     function GetEnumerator:THashMapKeyEnumerator;
+                   end;
+                   THashMapValuesObject=class
+                    private
+                     fOwner:THashMap<THashMapKey,THashMapValue>;
+                     function GetValue(const aKey:THashMapKey):THashMapValue; inline;
+                     procedure SetValue(const aKey:THashMapKey;const aValue:THashMapValue); inline;
+                    public
+                     constructor Create(const aOwner:THashMap<THashMapKey,THashMapValue>);
+                     function GetEnumerator:THashMapValueEnumerator;
+                     property Values[const Key:THashMapKey]:THashMapValue read GetValue write SetValue; default;
+                   end;
+{$endif}
+             private
+              fRealSize:TpvSizeInt;
+              fLogSize:TpvSizeInt;
+              fSize:TpvSizeInt;
+              fEntities:THashMapEntities;
+              fEntityToCellIndex:THashMapEntityIndices;
+              fCellToEntityIndex:THashMapEntityIndices;
+              fDefaultValue:THashMapValue;
+              fCanShrink:boolean;
+{$ifndef fpc}
+              fEntitiesObject:THashMapEntitiesObject;
+              fKeysObject:THashMapKeysObject;
+              fValuesObject:THashMapValuesObject;
+{$endif}
+              function HashData(const aData:TpvPointer;const aDataLength:TpvUInt32):TpvUInt32;
+              function FindCell(const aKey:THashMapKey):TpvUInt32;
+              procedure Resize;
+             protected
+              function HashKey(const aKey:THashMapKey):TpvUInt32; virtual;
+              function CompareKey(const aKeyA,aKeyB:THashMapKey):boolean; virtual;
+              function GetValue(const aKey:THashMapKey):THashMapValue;
+              procedure SetValue(const aKey:THashMapKey;const aValue:THashMapValue);
+             public
+              constructor Create(const aDefaultValue:THashMapValue);
+              destructor Destroy; override;
+              procedure Clear;
+              function Add(const aKey:THashMapKey;const aValue:THashMapValue):PHashMapEntity;
+              function Get(const aKey:THashMapKey;const aCreateIfNotExist:boolean=false):PHashMapEntity;
+              function TryGet(const aKey:THashMapKey;out aValue:THashMapValue):boolean;
+              function ExistKey(const aKey:THashMapKey):boolean;
+              function Delete(const aKey:THashMapKey):boolean;
+              property EntityValues[const Key:THashMapKey]:THashMapValue read GetValue write SetValue; default;
+{$ifndef fpc}
+              property Entities:THashMapEntitiesObject read fEntitiesObject;
+              property Keys:THashMapKeysObject read fKeysObject;
+              property Values:THashMapValuesObject read fValuesObject;
+{$endif}
+              property CanShrink:boolean read fCanShrink write fCanShrink;
+            end;
+            TFloatHashMap<TFloatHashMapValue>=class(THashMap<TFloat,TFloatHashMapValue>)
+             protected
+              function HashKey(const aKey:TFloat):TpvUInt32; override;
+              function CompareKey(const aKeyA,aKeyB:TFloat):boolean; override;
+            end;
+            TSizeIntSparseSet=class
+             public
+              type TSizeIntArray=array of TpvSizeInt;
+             private
+              fSize:TpvSizeInt;
+              fMaximumSize:TpvSizeInt;
+              fSparseToDense:TSizeIntArray;
+              fDense:TSizeIntArray;
+              function GetValue(const aIndex:TpvSizeInt):TpvSizeInt; inline;
+              procedure SetValue(const aIndex:TpvSizeInt;const aValue:TpvSizeInt); inline;
+             public
+              constructor Create(const aMaximumSize:TpvSizeInt=0);
+              destructor Destroy; override;
+              procedure Clear;
+              procedure Resize(const aNewMaximumSize:TpvSizeInt);
+              function Contains(const aValue:TpvSizeInt):boolean;
+              procedure Add(const aValue:TpvSizeInt);
+              procedure AddNew(const aValue:TpvSizeInt);
+              procedure Remove(const aValue:TpvSizeInt);
+              property Size:TpvSizeInt read fSize;
+              property SparseToDense:TSizeIntArray read fSparseToDense;
+              property Dense:TSizeIntArray read fDense;
             end;
             TVector2=record
              public
@@ -468,6 +606,27 @@ begin
  end;
 end;
 
+function TpvCSGBSP.TDynamicArray<T>.Insert(const aIndex:TpvSizeInt;const aItem:T):TpvSizeInt;
+begin
+ result:=aIndex;
+ if aIndex>=0 then begin
+  if aIndex<Count then begin
+   inc(Count);
+   if length(Items)<Count then begin
+    SetLength(Items,Count*2);
+   end;
+   Move(Items[aIndex],Items[aIndex+1],(Count-(aIndex+1))*SizeOf(T));
+   FillChar(Items[aIndex],SizeOf(T),#0);
+  end else begin
+   Count:=aIndex+1;
+   if length(Items)<Count then begin
+    SetLength(Items,Count*2);
+   end;
+  end;
+  Items[aIndex]:=aItem;
+ end;
+end;
+
 function TpvCSGBSP.TDynamicArray<T>.AddNew:TpvSizeInt;
 begin
  result:=Count;
@@ -581,6 +740,663 @@ begin
  if result then begin
   dec(Count);
   aItem:=Items[Count];
+ end;
+end;
+
+{ TpvCSGBSP.THashMap }
+
+{$warnings off}
+{$hints off}
+
+{$ifndef fpc}
+constructor TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapEntityEnumerator.Create(const aHashMap:THashMap<THashMapKey,THashMapValue>);
+begin
+ fHashMap:=aHashMap;
+ fIndex:=-1;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapEntityEnumerator.GetCurrent:THashMapEntity;
+begin
+ result:=fHashMap.fEntities[fIndex];
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapEntityEnumerator.MoveNext:boolean;
+begin
+ repeat
+  inc(fIndex);
+  if fIndex<fHashMap.fSize then begin
+   if fHashMap.fEntityToCellIndex[fIndex]<>CELL_EMPTY then begin
+    result:=true;
+    exit;
+   end;
+  end else begin
+   break;
+  end;
+ until false;
+ result:=false;
+end;
+
+constructor TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapKeyEnumerator.Create(const aHashMap:THashMap<THashMapKey,THashMapValue>);
+begin
+ fHashMap:=aHashMap;
+ fIndex:=-1;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapKeyEnumerator.GetCurrent:THashMapKey;
+begin
+ result:=fHashMap.fEntities[fIndex].Key;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapKeyEnumerator.MoveNext:boolean;
+begin
+ repeat
+  inc(fIndex);
+  if fIndex<fHashMap.fSize then begin
+   if fHashMap.fEntityToCellIndex[fIndex]<>CELL_EMPTY then begin
+    result:=true;
+    exit;
+   end;
+  end else begin
+   break;
+  end;
+ until false;
+ result:=false;
+end;
+
+constructor TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapValueEnumerator.Create(const aHashMap:THashMap<THashMapKey,THashMapValue>);
+begin
+ fHashMap:=aHashMap;
+ fIndex:=-1;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapValueEnumerator.GetCurrent:THashMapValue;
+begin
+ result:=fHashMap.fEntities[fIndex].Value;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapValueEnumerator.MoveNext:boolean;
+begin
+ repeat
+  inc(fIndex);
+  if fIndex<fHashMap.fSize then begin
+   if fHashMap.fEntityToCellIndex[fIndex]<>CELL_EMPTY then begin
+    result:=true;
+    exit;
+   end;
+  end else begin
+   break;
+  end;
+ until false;
+ result:=false;
+end;
+
+constructor TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapEntitiesObject.Create(const aOwner:THashMap<THashMapKey,THashMapValue>);
+begin
+ inherited Create;
+ fOwner:=aOwner;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapEntitiesObject.GetEnumerator:THashMapEntityEnumerator;
+begin
+ result:=THashMapEntityEnumerator.Create(fOwner);
+end;
+
+constructor TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapKeysObject.Create(const aOwner:THashMap<THashMapKey,THashMapValue>);
+begin
+ inherited Create;
+ fOwner:=aOwner;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapKeysObject.GetEnumerator:THashMapKeyEnumerator;
+begin
+ result:=THashMapKeyEnumerator.Create(fOwner);
+end;
+
+constructor TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapValuesObject.Create(const aOwner:THashMap<THashMapKey,THashMapValue>);
+begin
+ inherited Create;
+ fOwner:=aOwner;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapValuesObject.GetEnumerator:THashMapValueEnumerator;
+begin
+ result:=THashMapValueEnumerator.Create(fOwner);
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapValuesObject.GetValue(const aKey:THashMapKey):THashMapValue;
+begin
+ result:=fOwner.GetValue(aKey);
+end;
+
+procedure TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.THashMapValuesObject.SetValue(const aKey:THashMapKey;const aValue:THashMapValue);
+begin
+ fOwner.SetValue(aKey,aValue);
+end;
+{$endif}
+
+constructor TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.Create(const aDefaultValue:THashMapValue);
+begin
+ inherited Create;
+ fRealSize:=0;
+ fLogSize:=0;
+ fSize:=0;
+ fEntities:=nil;
+ fEntityToCellIndex:=nil;
+ fCellToEntityIndex:=nil;
+ fDefaultValue:=aDefaultValue;
+ fCanShrink:=true;
+{$ifndef fpc}
+ fEntitiesObject:=THashMapEntitiesObject.Create(self);
+ fKeysObject:=THashMapKeysObject.Create(self);
+ fValuesObject:=THashMapValuesObject.Create(self);
+{$endif}
+ Resize;
+end;
+
+destructor TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.Destroy;
+var Counter:TpvInt32;
+begin
+ Clear;
+ for Counter:=0 to length(fEntities)-1 do begin
+  Finalize(fEntities[Counter].Key);
+  Finalize(fEntities[Counter].Value);
+ end;
+ SetLength(fEntities,0);
+ SetLength(fEntityToCellIndex,0);
+ SetLength(fCellToEntityIndex,0);
+{$ifndef fpc}
+ FreeAndNil(fEntitiesObject);
+ FreeAndNil(fKeysObject);
+ FreeAndNil(fValuesObject);
+{$endif}
+ inherited Destroy;
+end;
+
+procedure TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.Clear;
+var Counter:TpvInt32;
+begin
+ for Counter:=0 to length(fEntities)-1 do begin
+  Finalize(fEntities[Counter].Key);
+  Finalize(fEntities[Counter].Value);
+ end;
+ if fCanShrink then begin
+  fRealSize:=0;
+  fLogSize:=0;
+  fSize:=0;
+  SetLength(fEntities,0);
+  SetLength(fEntityToCellIndex,0);
+  SetLength(fCellToEntityIndex,0);
+  Resize;
+ end else begin
+  for Counter:=0 to length(fCellToEntityIndex)-1 do begin
+   fCellToEntityIndex[Counter]:=ENT_EMPTY;
+  end;
+  for Counter:=0 to length(fEntityToCellIndex)-1 do begin
+   fEntityToCellIndex[Counter]:=CELL_EMPTY;
+  end;
+ end;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.HashData(const aData:TpvPointer;const aDataLength:TpvUInt32):TpvUInt32;
+// xxHash32
+const PRIME32_1=TpvUInt32(2654435761);
+      PRIME32_2=TpvUInt32(2246822519);
+      PRIME32_3=TpvUInt32(3266489917);
+      PRIME32_4=TpvUInt32(668265263);
+      PRIME32_5=TpvUInt32(374761393);
+      Seed=TpvUInt32($1337c0d3);
+      v1Initialization=TpvUInt32(TpvUInt64(TpvUInt64(Seed)+TpvUInt64(PRIME32_1)+TpvUInt64(PRIME32_2)));
+      v2Initialization=TpvUInt32(TpvUInt64(TpvUInt64(Seed)+TpvUInt64(PRIME32_2)));
+      v3Initialization=TpvUInt32(TpvUInt64(TpvUInt64(Seed)+TpvUInt64(0)));
+      v4Initialization=TpvUInt32(TpvUInt64(TpvInt64(TpvInt64(Seed)-TpvInt64(PRIME32_1))));
+      HashInitialization=TpvUInt32(TpvUInt64(TpvUInt64(Seed)+TpvUInt64(PRIME32_5)));
+var v1,v2,v3,v4:TpvUInt32;
+    p,e,Limit:PpvUInt8;
+begin
+ p:=aData;
+ if aDataLength>=16 then begin
+  v1:=v1Initialization;
+  v2:=v2Initialization;
+  v3:=v3Initialization;
+  v4:=v4Initialization;
+  e:=@PpvUInt8Array(aData)^[aDataLength-16];
+  repeat
+{$if defined(fpc) or declared(ROLDWord)}
+   v1:=ROLDWord(v1+(TpvUInt32(TpvPointer(p)^)*TpvUInt32(PRIME32_2)),13)*TpvUInt32(PRIME32_1);
+{$else}
+   inc(v1,TpvUInt32(TpvPointer(p)^)*TpvUInt32(PRIME32_2));
+   v1:=((v1 shl 13) or (v1 shr 19))*TpvUInt32(PRIME32_1);
+{$ifend}
+   inc(p,SizeOf(TpvUInt32));
+{$if defined(fpc) or declared(ROLDWord)}
+   v2:=ROLDWord(v2+(TpvUInt32(TpvPointer(p)^)*TpvUInt32(PRIME32_2)),13)*TpvUInt32(PRIME32_1);
+{$else}
+   inc(v2,TpvUInt32(TpvPointer(p)^)*TpvUInt32(PRIME32_2));
+   v2:=((v2 shl 13) or (v2 shr 19))*TpvUInt32(PRIME32_1);
+{$ifend}
+   inc(p,SizeOf(TpvUInt32));
+{$if defined(fpc) or declared(ROLDWord)}
+   v3:=ROLDWord(v3+(TpvUInt32(TpvPointer(p)^)*TpvUInt32(PRIME32_2)),13)*TpvUInt32(PRIME32_1);
+{$else}
+   inc(v3,TpvUInt32(TpvPointer(p)^)*TpvUInt32(PRIME32_2));
+   v3:=((v3 shl 13) or (v3 shr 19))*TpvUInt32(PRIME32_1);
+{$ifend}
+   inc(p,SizeOf(TpvUInt32));
+{$if defined(fpc) or declared(ROLDWord)}
+   v4:=ROLDWord(v4+(TpvUInt32(TpvPointer(p)^)*TpvUInt32(PRIME32_2)),13)*TpvUInt32(PRIME32_1);
+{$else}
+   inc(v4,TpvUInt32(TpvPointer(p)^)*TpvUInt32(PRIME32_2));
+   v4:=((v4 shl 13) or (v4 shr 19))*TpvUInt32(PRIME32_1);
+{$ifend}
+   inc(p,SizeOf(TpvUInt32));
+  until {%H-}TpvPtrUInt(p)>{%H-}TpvPtrUInt(e);
+{$if defined(fpc) or declared(ROLDWord)}
+  result:=ROLDWord(v1,1)+ROLDWord(v2,7)+ROLDWord(v3,12)+ROLDWord(v4,18);
+{$else}
+  result:=((v1 shl 1) or (v1 shr 31))+
+          ((v2 shl 7) or (v2 shr 25))+
+          ((v3 shl 12) or (v3 shr 20))+
+          ((v4 shl 18) or (v4 shr 14));
+{$ifend}
+ end else begin
+  result:=HashInitialization;
+ end;
+ inc(result,aDataLength);
+ e:=@PpvUInt8Array(aData)^[aDataLength];
+ while ({%H-}TpvPtrUInt(p)+SizeOf(TpvUInt32))<={%H-}TpvPtrUInt(e) do begin
+{$if defined(fpc) or declared(ROLDWord)}
+  result:=ROLDWord(result+(TpvUInt32(TpvPointer(p)^)*TpvUInt32(PRIME32_3)),17)*TpvUInt32(PRIME32_4);
+{$else}
+  inc(result,TpvUInt32(TpvPointer(p)^)*TpvUInt32(PRIME32_3));
+  result:=((result shl 17) or (result shr 15))*TpvUInt32(PRIME32_4);
+{$ifend}
+  inc(p,SizeOf(TpvUInt32));
+ end;
+ while {%H-}TpvPtrUInt(p)<{%H-}TpvPtrUInt(e) do begin
+{$if defined(fpc) or declared(ROLDWord)}
+  result:=ROLDWord(result+(TpvUInt8(TpvPointer(p)^)*TpvUInt32(PRIME32_5)),11)*TpvUInt32(PRIME32_1);
+{$else}
+  inc(result,TpvUInt8(TpvPointer(p)^)*TpvUInt32(PRIME32_5));
+  result:=((result shl 11) or (result shr 21))*TpvUInt32(PRIME32_1);
+{$ifend}
+  inc(p,SizeOf(TpvUInt8));
+ end;
+ result:=(result xor (result shr 15))*TpvUInt32(PRIME32_2);
+ result:=(result xor (result shr 13))*TpvUInt32(PRIME32_3);
+ result:=result xor (result shr 16);
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.HashKey(const aKey:THashMapKey):TpvUInt32;
+var p:TpvUInt64;
+begin
+ // We're hoping here that the compiler is here so smart, so that the compiler optimizes the
+ // unused if-branches away
+ case SizeOf(THashMapKey) of
+  SizeOf(UInt16):begin
+   // 16-bit big => use 16-bit integer-rehashing
+   result:=TpvUInt16(TpvPointer(@aKey)^);
+   result:=(result or (((not result) and $ffff) shl 16));
+   dec(result,result shl 6);
+   result:=result xor (result shr 17);
+   dec(result,result shl 9);
+   result:=result xor (result shl 4);
+   dec(result,result shl 3);
+   result:=result xor (result shl 10);
+   result:=result xor (result shr 15);
+  end;
+  SizeOf(TpvUInt32):begin
+   // 32-bit big => use 32-bit integer-rehashing
+   result:=TpvUInt32(TpvPointer(@aKey)^);
+   dec(result,result shl 6);
+   result:=result xor (result shr 17);
+   dec(result,result shl 9);
+   result:=result xor (result shl 4);
+   dec(result,result shl 3);
+   result:=result xor (result shl 10);
+   result:=result xor (result shr 15);
+  end;
+  SizeOf(TpvUInt64):begin
+   // 64-bit big => use 64-bit to 32-bit integer-rehashing
+   p:=TpvUInt64(TpvPointer(@aKey)^);
+   p:=(not p)+(p shl 18); // p:=((p shl 18)-p-)1;
+   p:=p xor (p shr 31);
+   p:=p*21; // p:=(p+(p shl 2))+(p shl 4);
+   p:=p xor (p shr 11);
+   p:=p+(p shl 6);
+   result:=TpvUInt32(TpvPtrUInt(p xor (p shr 22)));
+  end;
+  else begin
+   result:=HashData(PpvUInt8(TpvPointer(@aKey)),SizeOf(THashMapKey));
+  end;
+ end;
+{$if defined(CPU386) or defined(CPUAMD64)}
+ // Special case: The hash value may be never zero
+ result:=result or (-TpvUInt32(ord(result=0) and 1));
+{$else}
+ if result=0 then begin
+  // Special case: The hash value may be never zero
+  result:=$ffffffff;
+ end;
+{$ifend}
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.CompareKey(const aKeyA,aKeyB:THashMapKey):boolean;
+var Index:TpvInt32;
+    pA,pB:PpvUInt8Array;
+begin
+ // We're hoping also here that the compiler is here so smart, so that the compiler optimizes the
+ // unused if-branches away
+ case SizeOf(THashMapKey) of
+  SizeOf(TpvUInt8):begin
+   result:=UInt8(TpvPointer(@aKeyA)^)=UInt8(TpvPointer(@aKeyB)^);
+  end;
+  SizeOf(TpvUInt16):begin
+   result:=UInt16(TpvPointer(@aKeyA)^)=UInt16(TpvPointer(@aKeyB)^);
+  end;
+  SizeOf(TpvUInt32):begin
+   result:=TpvUInt32(TpvPointer(@aKeyA)^)=TpvUInt32(TpvPointer(@aKeyB)^);
+  end;
+  SizeOf(TpvUInt64):begin
+   result:=TpvUInt64(TpvPointer(@aKeyA)^)=TpvUInt64(TpvPointer(@aKeyB)^);
+  end;
+  else begin
+   Index:=0;
+   pA:=@aKeyA;
+   pB:=@aKeyB;
+   while (Index+SizeOf(TpvUInt32))<SizeOf(THashMapKey) do begin
+    if TpvUInt32(TpvPointer(@pA^[Index])^)<>TpvUInt32(TpvPointer(@pB^[Index])^) then begin
+     result:=false;
+     exit;
+    end;
+    inc(Index,SizeOf(TpvUInt32));
+   end;
+   while (Index+SizeOf(UInt8))<SizeOf(THashMapKey) do begin
+    if UInt8(TpvPointer(@pA^[Index])^)<>UInt8(TpvPointer(@pB^[Index])^) then begin
+     result:=false;
+     exit;
+    end;
+    inc(Index,SizeOf(UInt8));
+   end;
+   result:=true;
+  end;
+ end;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.FindCell(const aKey:THashMapKey):TpvUInt32;
+var HashCode,Mask,Step:TpvUInt32;
+    Entity:TpvInt32;
+begin
+ HashCode:=HashKey(aKey);
+ Mask:=(2 shl fLogSize)-1;
+ Step:=((HashCode shl 1)+1) and Mask;
+ if fLogSize<>0 then begin
+  result:=HashCode shr (32-fLogSize);
+ end else begin
+  result:=0;
+ end;
+ repeat
+  Entity:=fCellToEntityIndex[result];
+  if (Entity=ENT_EMPTY) or ((Entity<>ENT_DELETED) and CompareKey(fEntities[Entity].Key,aKey)) then begin
+   exit;
+  end;
+  result:=(result+Step) and Mask;
+ until false;
+end;
+
+procedure TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.Resize;
+var NewLogSize,NewSize,Cell,Entity,Counter:TpvInt32;
+    OldEntities:THashMapEntities;
+    OldCellToEntityIndex:THashMapEntityIndices;
+    OldEntityToCellIndex:THashMapEntityIndices;
+begin
+ NewLogSize:=0;
+ NewSize:=fRealSize;
+ while NewSize<>0 do begin
+  NewSize:=NewSize shr 1;
+  inc(NewLogSize);
+ end;
+ if NewLogSize<1 then begin
+  NewLogSize:=1;
+ end;
+ fSize:=0;
+ fRealSize:=0;
+ fLogSize:=NewLogSize;
+ OldEntities:=fEntities;
+ OldCellToEntityIndex:=fCellToEntityIndex;
+ OldEntityToCellIndex:=fEntityToCellIndex;
+ fEntities:=nil;
+ fCellToEntityIndex:=nil;
+ fEntityToCellIndex:=nil;
+ SetLength(fEntities,2 shl fLogSize);
+ SetLength(fCellToEntityIndex,2 shl fLogSize);
+ SetLength(fEntityToCellIndex,2 shl fLogSize);
+ for Counter:=0 to length(fCellToEntityIndex)-1 do begin
+  fCellToEntityIndex[Counter]:=ENT_EMPTY;
+ end;
+ for Counter:=0 to length(fEntityToCellIndex)-1 do begin
+  fEntityToCellIndex[Counter]:=CELL_EMPTY;
+ end;
+ for Counter:=0 to length(OldEntityToCellIndex)-1 do begin
+  Cell:=OldEntityToCellIndex[Counter];
+  if Cell>=0 then begin
+   Entity:=OldCellToEntityIndex[Cell];
+   if Entity>=0 then begin
+    Add(OldEntities[Counter].Key,OldEntities[Counter].Value);
+   end;
+  end;
+ end;
+ for Counter:=0 to length(OldEntities)-1 do begin
+  Finalize(OldEntities[Counter].Key);
+  Finalize(OldEntities[Counter].Value);
+ end;
+ SetLength(OldEntities,0);
+ SetLength(OldCellToEntityIndex,0);
+ SetLength(OldEntityToCellIndex,0);
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.Add(const aKey:THashMapKey;const aValue:THashMapValue):PHashMapEntity;
+var Entity:TpvInt32;
+    Cell:TpvUInt32;
+begin
+ result:=nil;
+ while fRealSize>=(1 shl fLogSize) do begin
+  Resize;
+ end;
+ Cell:=FindCell(aKey);
+ Entity:=fCellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=@fEntities[Entity];
+  result^.Key:=aKey;
+  result^.Value:=aValue;
+  exit;
+ end;
+ Entity:=fSize;
+ inc(fSize);
+ if Entity<(2 shl fLogSize) then begin
+  fCellToEntityIndex[Cell]:=Entity;
+  fEntityToCellIndex[Entity]:=Cell;
+  inc(fRealSize);
+  result:=@fEntities[Entity];
+  result^.Key:=aKey;
+  result^.Value:=aValue;
+ end;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.Get(const aKey:THashMapKey;const aCreateIfNotExist:boolean=false):PHashMapEntity;
+var Entity:TpvInt32;
+    Cell:TpvUInt32;
+    Value:THashMapValue;
+begin
+ result:=nil;
+ Cell:=FindCell(aKey);
+ Entity:=fCellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=@fEntities[Entity];
+ end else if aCreateIfNotExist then begin
+  Initialize(Value);
+  result:=Add(aKey,Value);
+ end;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.TryGet(const aKey:THashMapKey;out aValue:THashMapValue):boolean;
+var Entity:TpvInt32;
+begin
+ Entity:=fCellToEntityIndex[FindCell(aKey)];
+ result:=Entity>=0;
+ if result then begin
+  aValue:=fEntities[Entity].Value;
+ end else begin
+  Initialize(aValue);
+ end;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.ExistKey(const aKey:THashMapKey):boolean;
+begin
+ result:=fCellToEntityIndex[FindCell(aKey)]>=0;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.Delete(const aKey:THashMapKey):boolean;
+var Entity:TpvInt32;
+    Cell:TpvUInt32;
+begin
+ result:=false;
+ Cell:=FindCell(aKey);
+ Entity:=fCellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  Finalize(fEntities[Entity].Key);
+  Finalize(fEntities[Entity].Value);
+  fEntityToCellIndex[Entity]:=CELL_DELETED;
+  fCellToEntityIndex[Cell]:=ENT_DELETED;
+  result:=true;
+ end;
+end;
+
+function TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.GetValue(const aKey:THashMapKey):THashMapValue;
+var Entity:TpvInt32;
+    Cell:TpvUInt32;
+begin
+ Cell:=FindCell(aKey);
+ Entity:=fCellToEntityIndex[Cell];
+ if Entity>=0 then begin
+  result:=fEntities[Entity].Value;
+ end else begin
+  result:=fDefaultValue;
+ end;
+end;
+
+procedure TpvCSGBSP.THashMap<THashMapKey,THashMapValue>.SetValue(const aKey:THashMapKey;const aValue:THashMapValue);
+begin
+ Add(aKey,aValue);
+end;
+
+{ TpvCSGBSP.TFloatHashMap }
+
+function TpvCSGBSP.TFloatHashMap<TFloatHashMapValue>.HashKey(const aKey:TFloat):TpvUInt32;
+begin
+ result:=trunc(aKey*4096)*73856093;
+ if result=0 then begin
+  result:=$ffffffff;
+ end;
+end;
+
+function TpvCSGBSP.TFloatHashMap<TFloatHashMapValue>.CompareKey(const aKeyA,aKeyB:TFloat):boolean;
+begin
+ result:=SameValue(aKeyA,aKeyB);
+end;
+
+{$warnings on}
+{$hints on}
+
+{ TpvCSGBSP.TSizeIntSparseSet }
+
+constructor TpvCSGBSP.TSizeIntSparseSet.Create(const aMaximumSize:TpvSizeInt=0);
+begin
+ inherited Create;
+ fSize:=0;
+ fMaximumSize:=aMaximumSize;
+ fSparseToDense:=nil;
+ fDense:=nil;
+ SetLength(fSparseToDense,fMaximumSize);
+ SetLength(fDense,fMaximumSize);
+ FillChar(fSparseToDense[0],fMaximumSize*SizeOf(longint),#$ff);
+ FillChar(fDense[0],fMaximumSize*SizeOf(TpvSizeInt),#$00);
+end;
+
+destructor TpvCSGBSP.TSizeIntSparseSet.Destroy;
+begin
+ SetLength(fSparseToDense,0);
+ SetLength(fDense,0);
+ inherited Destroy;
+end;
+
+procedure TpvCSGBSP.TSizeIntSparseSet.Clear;
+begin
+ fSize:=0;
+end;
+
+procedure TpvCSGBSP.TSizeIntSparseSet.Resize(const aNewMaximumSize:TpvSizeInt);
+begin
+ SetLength(fSparseToDense,aNewMaximumSize);
+ SetLength(fDense,aNewMaximumSize);
+ if fMaximumSize<aNewMaximumSize then begin
+  FillChar(fSparseToDense[fMaximumSize],(fMaximumSize-aNewMaximumSize)*SizeOf(longint),#$ff);
+  FillChar(fDense[fMaximumSize],(fMaximumSize-aNewMaximumSize)*SizeOf(TpvSizeInt),#$00);
+ end;
+ fMaximumSize:=aNewMaximumSize;
+end;
+
+function TpvCSGBSP.TSizeIntSparseSet.Contains(const aValue:TpvSizeInt):boolean;
+begin
+ result:=((aValue>=0) and (aValue<fMaximumSize) and
+         (fSparseToDense[aValue]<fSize)) and
+         (fDense[fSparseToDense[aValue]]=aValue);
+end;
+
+function TpvCSGBSP.TSizeIntSparseSet.GetValue(const aIndex:TpvSizeInt):TpvSizeInt;
+begin
+ if (aIndex>=0) and (aIndex<fSize) then begin
+  result:=fDense[aIndex];
+ end;
+end;
+
+procedure TpvCSGBSP.TSizeIntSparseSet.SetValue(const aIndex:TpvSizeInt;const aValue:TpvSizeInt);
+begin
+ if (aIndex>=0) and (aIndex<fSize) then begin
+  fDense[aIndex]:=aValue;
+ end;
+end;
+
+procedure TpvCSGBSP.TSizeIntSparseSet.Add(const aValue:TpvSizeInt);
+begin
+ if (aValue>=0) and (aValue<fMaximumSize) then begin
+  fSparseToDense[aValue]:=fSize;
+  fDense[fSize]:=aValue;
+  inc(fSize);
+ end;
+end;
+
+procedure TpvCSGBSP.TSizeIntSparseSet.AddNew(const aValue:TpvSizeInt);
+begin
+ if not Contains(aValue) then begin
+  Add(aValue);
+ end;
+end;
+
+procedure TpvCSGBSP.TSizeIntSparseSet.Remove(const aValue:TpvSizeInt);
+var OldIndex:TpvSizeInt;
+    NewValue:TpvSizeInt;
+begin
+ if Contains(aValue) then begin
+  OldIndex:=fSparseToDense[aValue];
+  fSparseToDense[aValue]:=-1;
+  dec(fSize);
+  if fSize>=0 then begin
+   NewValue:=fDense[fSize];
+   fSparseToDense[NewValue]:=OldIndex;
+   fDense[OldIndex]:=NewValue;
+  end else begin
+   fDense[OldIndex]:=0;
+  end;
  end;
 end;
 
@@ -2909,6 +3725,575 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.FixTJunctions;
+{$define NewFixTJunctions}
+{$ifdef NewFixTJunctions}
+type TPolygon=record
+      Indices:TIndexList;
+      Plane:TPlane;
+     end;
+     PPolygon=^TPolygon;
+     TPolygons=TDynamicArray<TPolygon>;
+     TEdgeVertexIndices=array[0..1] of TIndex;
+     PEdgeVertexIndices=^TEdgeVertexIndices;
+     TEdgeHashMap=THashMap<TEdgeVertexIndices,TpvSizeInt>;
+     TEdge=record
+      VertexIndices:TEdgeVertexIndices;
+      PolygonIndex:TpvSizeInT;
+     end;
+     PEdge=^TEdge;
+     TEdges=TDynamicArray<TEdge>;
+     PEdges=^TEdges;
+     TEdgesList=TDynamicArray<TEdges>;
+     TEdgeIndexList=TDynamicArray<TpvSizeInt>;
+     PEdgeIndexList=^TEdgeIndexList;
+     TEdgeVertexIndicesList=TDynamicArray<TEdgeVertexIndices>;
+     TVertexIndexToEdgeStartEndList=TDynamicArray<TEdgeVertexIndicesList>;
+     TVertexIndexToEdgeStartEndHashMap=THashMap<TIndex,TpvSizeInt>;
+     TEdgesToCheckHashMap=THashMap<TEdgeVertexIndices,boolean>;
+var Index,Count,CountPolygonVertices,
+    PolygonIndex:TpvSizeInt;
+    Polygons:TPolygons;
+    Polygon:PPolygon;
+    NewIndices:TIndexList;
+    EdgeHashMap:TEdgeHashMap;
+    EdgesList:TEdgesList;
+    VertexIndexToEdgeStartList:TVertexIndexToEdgeStartEndList;
+    VertexIndexToEdgeEndList:TVertexIndexToEdgeStartEndList;
+    VertexIndexToEdgeStartHashMap:TVertexIndexToEdgeStartEndHashMap;
+    VertexIndexToEdgeEndHashMap:TVertexIndexToEdgeStartEndHashMap;
+    EdgeMapIsEmpty:boolean;
+    EdgesToCheck:TEdgesToCheckHashMap;
+    OldMode:TMode;
+ function Wrap(const aIndex,aCount:TpvSizeInt):TpvSizeInt;
+ begin
+  result:=aIndex;
+  if aCount>0 then begin
+   while result<0 do begin
+    inc(result,aCount);
+   end;
+   while result>=aCount do begin
+    dec(result,aCount);
+   end;
+  end;
+ end;
+ procedure ScanEdges;
+ var PolygonIndex,PolygonIndicesIndex,EdgesIndex:TpvSizeInt;
+     VertexIndex,NextVertexIndex:TIndex;
+     Polygon:PPolygon;
+     EdgeVertexIndices,
+     ReversedEdgeVertexIndices:TEdgeVertexIndices;
+     Edges:PEdges;
+     Edge:TEdge;
+ begin
+  for PolygonIndex:=0 to Polygons.Count-1 do begin
+   Polygon:=@Polygons.Items[PolygonIndex];
+   if Polygon^.Indices.Count>2 then begin
+    for PolygonIndicesIndex:=0 to Polygon^.Indices.Count-1 do begin
+     VertexIndex:=Polygon^.Indices.Items[PolygonIndicesIndex];
+     NextVertexIndex:=Polygon^.Indices.Items[Wrap(PolygonIndicesIndex+1,Polygon^.Indices.Count)];
+     EdgeVertexIndices[0]:=VertexIndex;
+     EdgeVertexIndices[1]:=NextVertexIndex;
+     ReversedEdgeVertexIndices[1]:=VertexIndex;
+     ReversedEdgeVertexIndices[0]:=NextVertexIndex;
+     if EdgeHashMap.TryGet(ReversedEdgeVertexIndices,EdgesIndex) then begin
+      Edges:=@EdgesList.Items[EdgesIndex];
+      if Edges^.Count>0 then begin
+       Edges^.Delete(Edges^.Count-1);
+       if Edges^.Count=0 then begin
+        EdgeHashMap.Delete(ReversedEdgeVertexIndices);
+       end;
+      end;
+     end else begin
+      if not EdgeHashMap.TryGet(EdgeVertexIndices,EdgesIndex) then begin
+       EdgesIndex:=EdgesList.AddNew;
+       Edges:=@EdgesList.Items[EdgesIndex];
+       Edges^.Initialize;
+       EdgeHashMap.Add(EdgeVertexIndices,EdgesIndex);
+      end;
+      Edges:=@EdgesList.Items[EdgesIndex];
+      Edge.VertexIndices:=EdgeVertexIndices;
+      Edge.PolygonIndex:=PolygonIndex;
+      Edges^.Add(Edge);
+     end;
+    end;
+   end;
+  end;
+ end;
+ procedure ScanVertices;
+ var EdgeHashMapKeyIndex,EdgesIndex,
+     VertexIndexToEdgeStartEndIndex:TpvSizeInt;
+     EdgeVertexIndices:PEdgeVertexIndices;
+     Entity:TEdgeHashMap.PHashMapEntity;
+     Edges:PEdges;
+     Edge:PEdge;
+ begin
+  EdgeMapIsEmpty:=true;
+  for EdgeHashMapKeyIndex:=0 to EdgeHashMap.fSize-1 do begin
+   if EdgeHashMap.fEntityToCellIndex[EdgeHashMapKeyIndex]>=0 then begin
+    EdgeMapIsEmpty:=false;
+    Entity:=@EdgeHashMap.fEntities[EdgeHashMapKeyIndex];
+    EdgesToCheck.Add(Entity^.Key,true);
+    Edges:=@EdgesList.Items[Entity^.Value];
+    for EdgesIndex:=0 to Edges^.Count-1 do begin
+     Edge:=@Edges^.Items[EdgesIndex];
+     begin
+      if not VertexIndexToEdgeStartHashMap.TryGet(Edge^.VertexIndices[0],VertexIndexToEdgeStartEndIndex) then begin
+       VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeStartList.AddNew;
+       VertexIndexToEdgeStartHashMap.Add(Edge^.VertexIndices[0],VertexIndexToEdgeStartEndIndex);
+       VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
+      end;
+      VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex].Add(Entity^.Key);
+     end;
+     begin
+      if not VertexIndexToEdgeEndHashMap.TryGet(Edge^.VertexIndices[1],VertexIndexToEdgeStartEndIndex) then begin
+       VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeEndList.AddNew;
+       VertexIndexToEdgeEndHashMap.Add(Edge^.VertexIndices[1],VertexIndexToEdgeStartEndIndex);
+       VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
+      end;
+      VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex].Add(Entity^.Key);
+     end;
+    end;
+   end;
+  end;
+ end;
+ procedure Process;
+ var EdgeHashMapKeyIndex,EdgesIndex,EdgeIndex,
+     VertexIndexToEdgeStartEndIndex,
+     EdgesToCheckIndex,
+     DirectionIndex,
+     MatchingEdgesListIndex,
+     PolygonIndicesIndex,
+     InsertionPolygonIndicesIndex:TpvSizeInt;
+     Entity:TEdgeHashMap.PHashMapEntity;
+     Edges:PEdges;
+     Edge,MatchingEdge:TEdge;
+     Done,DoneWithEdge:boolean;
+     EdgeVertexIndices,
+     NewEdgeVertexIndices0,
+     NewEdgeVertexIndices1:TEdgeVertexIndices;
+     StartVertexIndex,EndVertexIndex,
+     MatchingEdgeStartVertexIndex,
+     MatchingEdgeEndVertexIndex,
+     OtherIndex:TIndex;
+     MatchingEdgesList:TEdgeVertexIndicesList;
+     MatchingEdgeVertexIndices:TEdgeVertexIndices;
+     StartPosition,EndPosition,CheckPosition,
+     Direction,ClosestPoint:TVector3;
+     Time:TFloat;
+     Polygon:PPolygon;
+     NewPolygon:TPolygon;
+  procedure DeleteEdge(const aVertexIndex0,aVertexIndex1:TIndex;const aPolygonIndex:TpvSizeInt);
+  var Index,FoundIndex,EdgesIndex,OtherIndex:TpvSizeInt;
+      EdgeVertexIndices:TEdgeVertexIndices;
+      Edges:PEdges;
+      Edge:PEdge;
+  begin
+
+   EdgeVertexIndices[0]:=aVertexIndex0;
+   EdgeVertexIndices[1]:=aVertexIndex1;
+
+   EdgesIndex:=EdgeHashMap[EdgeVertexIndices];
+   Assert(EdgesIndex>=0);
+
+   Edges:=@EdgesList.Items[EdgesIndex];
+
+   FoundIndex:=-1;
+
+   for Index:=0 to Edges^.Count-1 do begin
+    Edge:=@Edges^.Items[Index];
+    if (Edge^.VertexIndices[0]<>aVertexIndex0) or
+       (Edge^.VertexIndices[1]<>aVertexIndex1) or
+       ((aPolygonIndex>=0) and
+        (Edge^.PolygonIndex<>aPolygonIndex)) then begin
+     continue;
+    end;
+    FoundIndex:=Index;
+    break;
+   end;
+   Assert(FoundIndex>=0);
+
+   Edges^.Delete(FoundIndex);
+
+   if Edges^.Count=0 then begin
+    EdgeHashMap.Delete(EdgeVertexIndices);
+   end;
+
+   Index:=VertexIndexToEdgeStartHashMap[aVertexIndex0];
+   Assert(Index>=0);
+   FoundIndex:=-1;
+   for OtherIndex:=0 to VertexIndexToEdgeStartList.Items[Index].Count-1 do begin
+    if (VertexIndexToEdgeStartList.Items[Index].Items[OtherIndex][0]=EdgeVertexIndices[0]) and
+       (VertexIndexToEdgeStartList.Items[Index].Items[OtherIndex][1]=EdgeVertexIndices[1]) then begin
+     FoundIndex:=OtherIndex;
+     break;
+    end;
+   end;
+   Assert(FoundIndex>=0);
+   VertexIndexToEdgeStartList.Items[Index].Delete(FoundIndex);
+   if VertexIndexToEdgeStartList.Items[Index].Count=0 then begin
+    VertexIndexToEdgeStartHashMap.Delete(aVertexIndex0);
+   end;
+
+   Index:=VertexIndexToEdgeEndHashMap[aVertexIndex1];
+   Assert(Index>=0);
+   FoundIndex:=-1;
+   for OtherIndex:=0 to VertexIndexToEdgeEndList.Items[Index].Count-1 do begin
+    if (VertexIndexToEdgeEndList.Items[Index].Items[OtherIndex][0]=EdgeVertexIndices[0]) and
+       (VertexIndexToEdgeEndList.Items[Index].Items[OtherIndex][1]=EdgeVertexIndices[1]) then begin
+     FoundIndex:=OtherIndex;
+     break;
+    end;
+   end;
+   Assert(FoundIndex>=0);
+   VertexIndexToEdgeEndList.Items[Index].Delete(FoundIndex);
+   if VertexIndexToEdgeEndList.Items[Index].Count=0 then begin
+    VertexIndexToEdgeEndHashMap.Delete(aVertexIndex1);
+   end;
+
+  end;
+  function AddEdge(const aVertexIndex0,aVertexIndex1:TIndex;const aPolygonIndex:TpvSizeInt):TEdgeVertexIndices;
+  var EdgesIndex,
+      VertexIndexToEdgeStartEndIndex:TpvSizeInt;
+      EdgeVertexIndices,
+      ReversedEdgeVertexIndices:TEdgeVertexIndices;
+      Edges:PEdges;
+      Edge:TEdge;
+  begin
+
+   result[0]:=-1;
+
+   Assert(aVertexIndex0<>aVertexIndex1);
+
+   EdgeVertexIndices[0]:=aVertexIndex0;
+   EdgeVertexIndices[1]:=aVertexIndex1;
+
+   if EdgeHashMap.ExistKey(ReversedEdgeVertexIndices) then begin
+    DeleteEdge(aVertexIndex1,aVertexIndex0,-1);
+    exit;
+   end;
+
+   if not EdgeHashMap.TryGet(EdgeVertexIndices,EdgesIndex) then begin
+    EdgesIndex:=EdgesList.AddNew;
+    Edges:=@EdgesList.Items[EdgesIndex];
+    Edges^.Initialize;
+    EdgeHashMap.Add(EdgeVertexIndices,EdgesIndex);
+   end;
+   Edges:=@EdgesList.Items[EdgesIndex];
+   Edge.VertexIndices:=EdgeVertexIndices;
+   Edge.PolygonIndex:=aPolygonIndex;
+   Edges^.Add(Edge);
+
+   begin
+    if not VertexIndexToEdgeStartHashMap.TryGet(Edge.VertexIndices[0],VertexIndexToEdgeStartEndIndex) then begin
+     VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeStartList.AddNew;
+     VertexIndexToEdgeStartHashMap.Add(Edge.VertexIndices[0],VertexIndexToEdgeStartEndIndex);
+     VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
+    end;
+    VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex].Add(EdgeVertexIndices);
+   end;
+
+   begin
+    if not VertexIndexToEdgeEndHashMap.TryGet(Edge.VertexIndices[1],VertexIndexToEdgeStartEndIndex) then begin
+     VertexIndexToEdgeStartEndIndex:=VertexIndexToEdgeEndList.AddNew;
+     VertexIndexToEdgeEndHashMap.Add(Edge.VertexIndices[1],VertexIndexToEdgeStartEndIndex);
+     VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex].Initialize;
+    end;
+    VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex].Add(EdgeVertexIndices);
+   end;
+
+  end;
+ begin
+
+  repeat
+
+   EdgeMapIsEmpty:=true;
+   for EdgeHashMapKeyIndex:=0 to EdgeHashMap.fSize-1 do begin
+    if EdgeHashMap.fEntityToCellIndex[EdgeHashMapKeyIndex]>=0 then begin
+     EdgeMapIsEmpty:=false;
+     Entity:=@EdgeHashMap.fEntities[EdgeHashMapKeyIndex];
+     EdgesToCheck.Add(Entity^.Key,true);
+    end;
+   end;
+   if EdgeMapIsEmpty then begin
+    break;
+   end;
+
+   Done:=false;
+
+   repeat
+
+    EdgeVertexIndices[0]:=-1;
+    EdgeVertexIndices[1]:=-1;
+    for EdgesToCheckIndex:=0 to EdgesToCheck.fSize-1 do begin
+     if EdgesToCheck.fEntityToCellIndex[EdgesToCheckIndex]>=0 then begin
+      EdgeVertexIndices:=EdgesToCheck.fEntities[EdgesToCheckIndex].Key;
+      break;
+     end;
+    end;
+    if EdgeVertexIndices[0]<0 then begin
+     break;
+    end;
+
+    DoneWithEdge:=true;
+
+    if EdgeHashMap.TryGet(EdgeVertexIndices,EdgesIndex) then begin
+
+     Edges:=@EdgesList.Items[EdgesIndex];
+     Assert(Edges^.Count>0);
+
+     Edge:=Edges^.Items[0];
+
+     for DirectionIndex:=0 to 1 do begin
+
+      if DirectionIndex=0 then begin
+       StartVertexIndex:=Edge.VertexIndices[0];
+       EndVertexIndex:=Edge.VertexIndices[1];
+      end else begin
+       StartVertexIndex:=Edge.VertexIndices[1];
+       EndVertexIndex:=Edge.VertexIndices[0];
+      end;
+
+      MatchingEdgesList.Initialize;
+
+      if DirectionIndex=0 then begin
+       if VertexIndexToEdgeEndHashMap.TryGet(StartVertexIndex,VertexIndexToEdgeStartEndIndex) then begin
+        MatchingEdgesList.Assign(VertexIndexToEdgeEndList.Items[VertexIndexToEdgeStartEndIndex]);
+       end;
+      end else begin
+       if VertexIndexToEdgeStartHashMap.TryGet(StartVertexIndex,VertexIndexToEdgeStartEndIndex) then begin
+        MatchingEdgesList.Assign(VertexIndexToEdgeStartList.Items[VertexIndexToEdgeStartEndIndex]);
+       end;
+      end;
+
+      for MatchingEdgesListIndex:=0 to MatchingEdgesList.Count-1 do begin
+
+       MatchingEdgeVertexIndices:=MatchingEdgesList.Items[MatchingEdgesListIndex];
+
+       EdgesIndex:=EdgeHashMap[MatchingEdgeVertexIndices];
+
+       Assert(EdgesIndex>=0);
+
+       Edges:=@EdgesList.Items[EdgesIndex];
+
+       Assert(Edges^.Count>0);
+
+       MatchingEdge:=Edges^.Items[0];
+
+       if DirectionIndex=0 then begin
+        MatchingEdgeStartVertexIndex:=MatchingEdge.VertexIndices[0];
+        MatchingEdgeEndVertexIndex:=MatchingEdge.VertexIndices[1];
+       end else begin
+        MatchingEdgeStartVertexIndex:=MatchingEdge.VertexIndices[1];
+        MatchingEdgeEndVertexIndex:=MatchingEdge.VertexIndices[0];
+       end;
+
+       Assert(MatchingEdgeEndVertexIndex=StartVertexIndex);
+
+       if MatchingEdgeStartVertexIndex=EndVertexIndex then begin
+
+        DeleteEdge(StartVertexIndex,EndVertexIndex,-1);
+
+        DeleteEdge(EndVertexIndex,StartVertexIndex,-1);
+
+        DoneWithEdge:=false;
+
+        Done:=true;
+
+        break;
+
+       end else begin
+
+        StartPosition:=fVertices.Items[StartVertexIndex].Position;
+
+        EndPosition:=fVertices.Items[EndVertexIndex].Position;
+
+        CheckPosition:=fVertices.Items[MatchingEdgeStartVertexIndex].Position;
+
+        Direction:=CheckPosition-StartPosition;
+
+        Time:=(EndPosition-StartPosition).Dot(Direction)/Direction.Dot(Direction);
+
+        if (Time>0.0) and (Time<1.0) then begin
+
+         ClosestPoint:=StartPosition.Lerp(CheckPosition,Time);
+
+         if (ClosestPoint-EndPosition).SquaredLength<1e-10 then begin
+
+          PolygonIndex:=MatchingEdge.PolygonIndex;
+
+          Polygon:=@Polygons.Items[PolygonIndex];
+
+          InsertionPolygonIndicesIndex:=-1;
+          for PolygonIndicesIndex:=0 to Polygon^.Indices.Count-1 do begin
+           if Polygon^.Indices.Items[PolygonIndicesIndex]=MatchingEdge.VertexIndices[1] then begin
+            InsertionPolygonIndicesIndex:=PolygonIndicesIndex;
+            break;
+           end;
+          end;
+          Assert(InsertionPolygonIndicesIndex>=0);
+
+          Polygons.Items[PolygonIndex].Indices.Insert(InsertionPolygonIndicesIndex,EndVertexIndex);
+
+          DeleteEdge(MatchingEdge.VertexIndices[0],MatchingEdge.VertexIndices[1],PolygonIndex);
+
+          NewEdgeVertexIndices0:=AddEdge(MatchingEdge.VertexIndices[0],EndVertexIndex,PolygonIndex);
+
+          NewEdgeVertexIndices1:=AddEdge(EndVertexIndex,MatchingEdge.VertexIndices[1],PolygonIndex);
+
+          if NewEdgeVertexIndices0[0]>=0 then begin
+           EdgesToCheck[NewEdgeVertexIndices0]:=true;
+          end;
+
+          if NewEdgeVertexIndices1[0]>=0 then begin
+           EdgesToCheck[NewEdgeVertexIndices1]:=true;
+          end;
+
+          DoneWithEdge:=false;
+
+          Done:=true;
+
+          break;
+
+         end;
+
+        end;
+
+       end;
+
+      end;
+
+      if Done then begin
+       break;
+      end;
+
+     end;
+
+    end;
+
+    if DoneWithEdge then begin
+     EdgesToCheck.Delete(EdgeVertexIndices);
+    end;
+
+   until false;
+
+  until Done;
+
+ end;
+begin
+
+ OldMode:=fMode;
+ try
+
+  SetMode(TMode.Polygons);
+
+  try
+
+   Polygons.Initialize;
+   try
+
+    Index:=0;
+    Count:=fIndices.Count;
+    while Index<Count do begin
+     CountPolygonVertices:=fIndices.Items[Index];
+     inc(Index);
+     if (CountPolygonVertices>0) and
+        ((Index+(CountPolygonVertices-1))<Count) then begin
+      if CountPolygonVertices>2 then begin
+       PolygonIndex:=Polygons.AddNew;
+       Polygon:=@Polygons.Items[PolygonIndex];
+       Polygon^.Indices.Initialize;
+       Polygon^.Indices.AddRangeFrom(fIndices,Index,CountPolygonVertices);
+       Polygon^.Plane:=TpvCSGBSP.TPlane.Create(fVertices.Items[Polygon^.Indices.Items[0]].Position,
+                                               fVertices.Items[Polygon^.Indices.Items[1]].Position,
+                                               fVertices.Items[Polygon^.Indices.Items[2]].Position);
+      end;
+     end;
+     inc(Index,CountPolygonVertices);
+    end;
+
+    EdgeHashMap:=TEdgeHashMap.Create(-1);
+    try
+
+     EdgesList.Initialize;
+     try
+
+      ScanEdges;
+
+      VertexIndexToEdgeStartList.Initialize;
+      try
+
+       VertexIndexToEdgeEndList.Initialize;
+       try
+
+        VertexIndexToEdgeStartHashMap:=TVertexIndexToEdgeStartEndHashMap.Create(-1);
+        try
+
+         VertexIndexToEdgeEndHashMap:=TVertexIndexToEdgeStartEndHashMap.Create(-1);
+         try
+
+          EdgesToCheck:=TEdgesToCheckHashMap.Create(false);
+          try
+
+           ScanVertices;
+
+           if not EdgeMapIsEmpty then begin
+            Process;
+           end;
+
+          finally
+           FreeAndNil(EdgesToCheck);
+          end;
+
+         finally
+          FreeAndNil(VertexIndexToEdgeEndHashMap);
+         end;
+
+        finally
+         FreeAndNil(VertexIndexToEdgeStartHashMap);
+        end;
+
+       finally
+        VertexIndexToEdgeEndList.Finalize;
+       end;
+
+      finally
+       VertexIndexToEdgeStartList.Finalize;
+      end;
+
+     finally
+      EdgesList.Finalize;
+     end;
+
+    finally
+     FreeAndNil(EdgeHashMap);
+    end;
+
+    NewIndices.Initialize;
+    try
+     for PolygonIndex:=0 to Polygons.Count-1 do begin
+      Polygon:=@Polygons.Items[PolygonIndex];
+      NewIndices.Add(Polygon^.Indices.Count);
+      NewIndices.Add(Polygon^.Indices);
+     end;
+     SetIndices(NewIndices);
+    finally
+     NewIndices.Finalize;
+    end;
+
+   finally
+    Polygons.Finalize;
+   end;
+
+  finally
+   SetMode(OldMode);
+  end;
+
+ finally
+  RemoveDuplicateAndUnusedVertices;
+ end;
+
+end;
+{$else}
 const Map:array[0..2,0..3] of TpvSizeInt=((3,1,2,2),(0,3,2,0),(0,1,3,1));
 type TAABBTreeStack=TDynamicStack<TpvSizeInt>;
 var Index,TriangleVertexIndex,VertexIndex,
@@ -2946,7 +4331,7 @@ begin
      CountVertices:=fVertices.Count;
      Index:=0;
      while ((Index+2)<CountIndices) and not TryAgain do begin
-//    write(#13,Index:10,' ',CountIndices:10);
+//    write(#13,Index:10,' ',CountIndices:10,'              ');
       VertexIndices[0]:=fIndices.Items[Index+0];
       VertexIndices[1]:=fIndices.Items[Index+1];
       VertexIndices[2]:=fIndices.Items[Index+2];
@@ -3031,6 +4416,7 @@ begin
   RemoveDuplicateAndUnusedVertices;
  end;
 end;
+{$endif}
 
 procedure TpvCSGBSP.TMesh.MergeCoplanarConvexPolygons;
 const HashBits=16;
