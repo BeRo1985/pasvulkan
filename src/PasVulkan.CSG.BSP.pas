@@ -101,6 +101,8 @@ type TpvCSGBSP=class
              TJunctionEpsilon=1e-4;
              TJunctionOneMinusEpsilon=1.0-TJunctionEpsilon;
              TJunctionOnePlusEpsilon=1.0+TJunctionEpsilon;
+             NearPositionEpsilon=1e-5;
+             SquaredNearPositionEpsilon=NearPositionEpsilon*NearPositionEpsilon;
              daabbtNULLNODE=-1;
              AABBMULTIPLIER=2.0;
        type TFloat=TpvDouble;
@@ -3530,36 +3532,61 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.Canonicalize;
-var Index,Count,CountPolygonVertices:TpvSizeInt;
-    NewIndices:TIndexList;
+var Index,Count,CountPolygonVertices,WorkIndicesIndex:TpvSizeInt;
+    NewIndices,WorkIndices:TIndexList;
+    VertexIndices:array[0..1] of TIndex;
 begin
  NewIndices.Initialize;
  try
-  Index:=0;
-  Count:=fIndices.Count;
-  while Index<Count do begin
-   case fMode of
-    TMode.Triangles:begin
-     CountPolygonVertices:=3;
+  WorkIndices.Initialize;
+  try
+   Index:=0;
+   Count:=fIndices.Count;
+   while Index<Count do begin
+    case fMode of
+     TMode.Triangles:begin
+      CountPolygonVertices:=3;
+     end;
+     else {TMode.Polygons:}begin
+      CountPolygonVertices:=fIndices.Items[Index];
+      inc(Index);
+     end;
     end;
-    else {TMode.Polygons:}begin
-     CountPolygonVertices:=fIndices.Items[Index];
-     inc(Index);
-    end;
-   end;
-   if CountPolygonVertices>2 then begin
-    if (Index+(CountPolygonVertices-1))<Count then begin
-     case fMode of
-      TMode.Triangles:begin
+    if CountPolygonVertices>2 then begin
+     if (Index+(CountPolygonVertices-1))<Count then begin
+      WorkIndices.Count:=0;
+      WorkIndices.AddRangeFrom(fIndices,Index,CountPolygonVertices);
+      WorkIndicesIndex:=0;
+      while (WorkIndicesIndex<WorkIndices.Count) and
+            (WorkIndices.Count>3) do begin
+       VertexIndices[0]:=WorkIndices.Items[WorkIndicesIndex];
+       if (WorkIndicesIndex+1)<WorkIndices.Count then begin
+        VertexIndices[1]:=WorkIndices.Items[WorkIndicesIndex+1];
+       end else begin
+        VertexIndices[1]:=WorkIndices.Items[0];
+       end;
+       if (fVertices.Items[VertexIndices[0]].Position-fVertices.Items[VertexIndices[1]].Position).SquaredLength<SquaredNearPositionEpsilon then begin
+        WorkIndices.Delete(WorkIndicesIndex);
+       end else begin
+        inc(WorkIndicesIndex);
+       end;
       end;
-      else {TMode.Polygons:}begin
-       NewIndices.Add(CountPolygonVertices);
+      if WorkIndices.Count>2 then begin
+       case fMode of
+        TMode.Triangles:begin
+        end;
+        else {TMode.Polygons:}begin
+         NewIndices.Add(WorkIndices.Count);
+        end;
+       end;
+       NewIndices.Add(WorkIndices);
       end;
      end;
-     NewIndices.AddRangeFrom(fIndices,Index,CountPolygonVertices);
     end;
+    inc(Index,CountPolygonVertices);
    end;
-   inc(Index,CountPolygonVertices);
+  finally
+   WorkIndices.Finalize;
   end;
   SetIndices(NewIndices);
  finally
