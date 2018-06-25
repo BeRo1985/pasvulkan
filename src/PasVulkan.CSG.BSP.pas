@@ -4276,7 +4276,8 @@ begin
          InputPolygon^.Plane:=TpvCSGBSP.TPlane.Create(fVertices.Items[InputPolygon^.Indices.Items[0]].Position,
                                                       fVertices.Items[InputPolygon^.Indices.Items[1]].Position,
                                                       fVertices.Items[InputPolygon^.Indices.Items[2]].Position);
-         PolygonPlane:=@PolygonPlanes.Items[HashPolygonPlane(InputPolygon^.Plane)];
+         PolygonPlaneIndex:=HashPolygonPlane(InputPolygon^.Plane);
+         PolygonPlane:=@PolygonPlanes.Items[PolygonPlaneIndex];
          PolygonPlane^.PolygonIndices.Add(InputPolygonIndex);
         end;
        end;
