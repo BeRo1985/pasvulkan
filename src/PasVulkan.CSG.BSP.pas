@@ -135,6 +135,26 @@ type TpvCSGBSP=class
               procedure Push(const aItem:T);
               function Pop(out aItem:T):boolean;
             end;
+            TDynamicQueue<T>=record
+             public
+              type TQueueItems=array of T;
+             public
+              Items:TQueueItems;
+              Head:TpvSizeInt;
+              Tail:TpvSizeInt;
+              Count:TpvSizeInt;
+              Size:TpvSizeInt;
+              procedure Initialize;
+              procedure Finalize;
+              procedure GrowResize(const aSize:TpvSizeInt);
+              procedure Clear;
+              function IsEmpty:boolean;
+              procedure EnqueueAtFront(const aItem:T);
+              procedure Enqueue(const aItem:T);
+              function Dequeue(out aItem:T):boolean; overload;
+              function Dequeue:boolean; overload;
+              function Peek(out aItem:T):boolean;
+            end;
             THashMap<THashMapKey,THashMapValue>=class
              public
               const CELL_EMPTY=-1;
@@ -372,18 +392,6 @@ type TpvCSGBSP=class
               function IntersectWithPointToPoint(const aPointA,aPointB:TVertex;const aIntersectionPoint:PVertex=nil):boolean; overload;
               function OK:boolean;
               function Flip:TPlane;
-              procedure SplitTriangles(var aVertices:TVertexList;
-                                       const aIndices:TIndexList;
-                                       const aCoplanarBackList:PIndexList;
-                                       const aCoplanarFrontList:PIndexList;
-                                       const aBackList:PIndexList;
-                                       const aFrontList:PIndexList);
-              procedure SplitPolygons(var aVertices:TVertexList;
-                                      const aIndices:TIndexList;
-                                      const aCoplanarBackList:PIndexList;
-                                      const aCoplanarFrontList:PIndexList;
-                                      const aBackList:PIndexList;
-                                      const aFrontList:PIndexList);
             end;
             PPlane=^TPlane;
             PDynamicAABBTreeNode=^TDynamicAABBTreeNode;
@@ -439,7 +447,7 @@ type TpvCSGBSP=class
              PolygonImbalanceCost:TFloat;
             end;
             PSplitSettings=^TSplitSettings;
-            TNode=class;
+            TTree=class;
             TMesh=class
              public
               type TCSGOperation=
@@ -467,7 +475,7 @@ type TpvCSGBSP=class
              public
               constructor Create(const aMode:TMode=TMode.Triangles); reintroduce; overload;
               constructor Create(const aFrom:TMesh); reintroduce; overload;
-              constructor Create(const aFrom:TNode); reintroduce; overload;
+              constructor Create(const aFrom:TTree); reintroduce; overload;
               constructor CreateCube(const aCX,aCY,aCZ,aRX,aRY,aRZ:TFloat;const aMode:TMode=TMode.Triangles);
               constructor CreateSphere(const aCX,aCY,aCZ,aRadius:TFloat;const aSlices:TpvSizeInt=16;const aStacks:TpvSizeInt=8;const aMode:TMode=TMode.Triangles);
               constructor CreateFromCSGOperation(const aLeftMesh:TMesh;
@@ -491,12 +499,13 @@ type TpvCSGBSP=class
               procedure Invert;
               procedure ConvertToPolygons;
               procedure ConvertToTriangles;
+              procedure RemoveNearDuplicateIndices(var aIndices:TIndexList);
               procedure Canonicalize;
               procedure CalculateNormals(const aSoftNormals:boolean=true);
               procedure RemoveDuplicateAndUnusedVertices;
               procedure FixTJunctions(const aConsistentInputVertices:boolean=false);
               procedure MergeCoplanarConvexPolygons;
-              function ToNode(const aSplitSettings:PSplitSettings=nil):TNode;
+              function ToTree:TTree;
              public
               property Vertices:TVertexList read fVertices write SetVertices;
               property Indices:TIndexList read fIndices write SetIndices;
@@ -505,40 +514,83 @@ type TpvCSGBSP=class
              published
               property Mode:TMode read fMode write SetMode;
             end;
-            TNode=class
+            TTree=class
+             public
+              type TPolygon=record
+                    public
+                     Indices:TIndexList;
+                     procedure Invert;
+                   end;
+                   PPolygon=^TPolygon;
+                   TPolygonList=TDynamicArray<TPolygon>;
+                   PPolygonList=^TPolygonList;
+                   TPolygonNode=class;
+                   TPolygonNodeList=TDynamicArray<TPolygonNode>;
+                   PPolygonNodeList=^TPolygonNodeList;
+                   TPolygonNode=class
+                    private
+                     fTree:TTree;
+                     fParent:TTree.TPolygonNode;
+                     fParentPrevious:TTree.TPolygonNode;
+                     fParentNext:TTree.TPolygonNode;
+                     fAllPrevious:TTree.TPolygonNode;
+                     fAllNext:TTree.TPolygonNode;
+                     fFirstChild:TTree.TPolygonNode;
+                     fLastChild:TTree.TPolygonNode;
+                     fRemoved:boolean;
+                     fPolygon:TPolygon;
+                    public
+                     constructor Create(const aTree:TTree;const aParent:TTree.TPolygonNode); reintroduce;
+                     destructor Destroy; override;
+                     procedure RemoveFromParent;
+                     function AddPolygon(const aPolygon:TPolygon):TTree.TPolygonNode;
+                     function AddPolygonIndices(const aIndices:TIndexList):TTree.TPolygonNode;
+                     procedure Remove;
+                     procedure Invert;
+                     procedure SplitByPlane(const aPlane:TPlane;var aCoplanarBackList,aCoplanarFrontList,aBackList,aFrontList:TPolygonNodeList);
+                    published
+                     property Tree:TTree read fTree write fTree;
+                     property Parent:TTree.TPolygonNode read fParent;
+                     property Removed:boolean read fRemoved;
+                   end;
+                   TNode=class
+                    private
+                     fTree:TTree;
+                     fBack:TTree.TNode;
+                     fFront:TTree.TNode;
+                     fPlane:TPlane;
+                     fPolygonNodes:TPolygonNodeList;
+                    public
+                     constructor Create(const aTree:TTree); reintroduce;
+                     destructor Destroy; override;
+                     procedure Invert;
+                     procedure ClipPolygons(const aPolygonNodes:TPolygonNodeList;const aAlsoRemoveCoplanarFront:boolean=false);
+                     procedure ClipTo(const aTree:TTree;const aAlsoRemoveCoplanarFront:boolean=false);
+                     procedure AddPolygonNodes(const aPolygonNodes:TPolygonNodeList);
+                    public
+                     property Plane:TPlane read fPlane write fPlane;
+                    published
+                     property Tree:TTree read fTree write fTree;
+                     property Back:TTree.TNode read fBack write fBack;
+                     property Front:TTree.TNode read fFront write fFront;
+                   end;
              private
-              fIndices:TIndexList;
-              fPointerToIndices:PIndexList;
               fMesh:TMesh;
-              fBack:TNode;
-              fFront:TNode;
-              fPlane:TPlane;
-              procedure SetIndices(const aIndices:TIndexList);
+              fFirstPolygonNode:TTree.TPolygonNode;
+              fLastPolygonNode:TTree.TPolygonNode;
+              fPolygonRootNode:TTree.TPolygonNode;
+              fRootNode:TTree.TNode;
              public
               constructor Create(const aMesh:TMesh); reintroduce;
               destructor Destroy; override;
               procedure Invert;
-              procedure EvaluateSplitPlane(const aPlane:TPlane;
-                                           out aCountPolygonsSplits:TpvSizeInt;
-                                           out aCountBackPolygons:TpvSizeInt;
-                                           out aCountFrontPolygons:TpvSizeInt);
-              function FindSplitPlane(const aIndices:TIndexList;
-                                      const aSplitSettings:PSplitSettings):TPlane;
-              function ClipPolygons(var aVertices:TVertexList;const aIndices:TIndexList):TIndexList;
-              procedure ClipTo(const aNode:TNode);
-              procedure Merge(const aNode:TNode;
-                              const aSplitSettings:PSplitSettings=nil);
-              procedure Build(const aIndices:TIndexList;
-                              const aSplitSettings:PSplitSettings=nil);
+              procedure ClipTo(const aWithTree:TTree;const aAlsoRemoveCoplanarFront:boolean=false);
+              procedure AddPolygons(const aPolygons:TPolygonList);
+              procedure AddIndices(const aIndices:TIndexList);
+              procedure GetPolygons(var aPolygons:TPolygonList);
+              procedure GetIndices(var aIndices:TIndexList);
+              procedure Merge(const aTree:TTree);
               function ToMesh:TMesh;
-             public
-              property Plane:TPlane read fPlane write fPlane;
-              property Indices:TIndexList read fIndices write SetIndices;
-              property PointerToIndices:PIndexList read fPointerToIndices;
-             published
-              property Mesh:TMesh read fMesh write fMesh;
-              property Back:TNode read fBack write fBack;
-              property Front:TNode read fFront write fFront;
             end;
       public
        const DefaultSplitSettings:TSplitSettings=
@@ -743,6 +795,140 @@ begin
  if result then begin
   dec(Count);
   aItem:=Items[Count];
+ end;
+end;
+
+{ TpvCSGBSP.TDynamicQueue<T> }
+
+procedure TpvCSGBSP.TDynamicQueue<T>.Initialize;
+begin
+ Items:=nil;
+ Head:=0;
+ Tail:=0;
+ Count:=0;
+ Size:=0;
+end;
+
+procedure TpvCSGBSP.TDynamicQueue<T>.Finalize;
+begin
+ Clear;
+end;
+
+procedure TpvCSGBSP.TDynamicQueue<T>.GrowResize(const aSize:TpvSizeInt);
+var Index,OtherIndex:TpvSizeInt;
+    NewItems:TQueueItems;
+begin
+ SetLength(NewItems,aSize);
+ OtherIndex:=Head;
+ for Index:=0 to Count-1 do begin
+  NewItems[Index]:=Items[OtherIndex];
+  inc(OtherIndex);
+  if OtherIndex>=Size then begin
+   OtherIndex:=0;
+  end;
+ end;
+ Items:=NewItems;
+ Head:=0;
+ Tail:=Count;
+ Size:=aSize;
+end;
+
+procedure TpvCSGBSP.TDynamicQueue<T>.Clear;
+begin
+ while Count>0 do begin
+  dec(Count);
+  System.Finalize(Items[Head]);
+  inc(Head);
+  if Head>=Size then begin
+   Head:=0;
+  end;
+ end;
+ Items:=nil;
+ Head:=0;
+ Tail:=0;
+ Count:=0;
+ Size:=0;
+end;
+
+function TpvCSGBSP.TDynamicQueue<T>.IsEmpty:boolean;
+begin
+ result:=Count=0;
+end;
+
+procedure TpvCSGBSP.TDynamicQueue<T>.EnqueueAtFront(const aItem:T);
+var Index:TpvSizeInt;
+begin
+ if Size<=Count then begin
+  GrowResize(Count+1);
+ end;
+ dec(Head);
+ if Head<0 then begin
+  inc(Head,Size);
+ end;
+ Index:=Head;
+ Items[Index]:=aItem;
+ inc(Count);
+end;
+
+procedure TpvCSGBSP.TDynamicQueue<T>.Enqueue(const aItem:T);
+var Index:TpvSizeInt;
+begin
+ if Size<=Count then begin
+  GrowResize(Count+1);
+ end;
+ Index:=Tail;
+ inc(Tail);
+ if Tail>=Size then begin
+  Tail:=0;
+ end;
+ Items[Index]:=aItem;
+ inc(Count);
+end;
+
+function TpvCSGBSP.TDynamicQueue<T>.Dequeue(out aItem:T):boolean;
+begin
+ result:=Count>0;
+ if result then begin
+  dec(Count);
+  aItem:=Items[Head];
+  System.Finalize(Items[Head]);
+  FillChar(Items[Head],SizeOf(T),#0);
+  if Count=0 then begin
+   Head:=0;
+   Tail:=0;
+  end else begin
+   inc(Head);
+   if Head>=Size then begin
+    Head:=0;
+   end;
+  end;
+ end;
+end;
+
+function TpvCSGBSP.TDynamicQueue<T>.Dequeue:boolean;
+begin
+ result:=Count>0;
+ if result then begin
+  dec(Count);
+  System.Finalize(Items[Head]);
+  FillChar(Items[Head],SizeOf(T),#0);
+  if Count=0 then begin
+   Head:=0;
+   Tail:=0;
+  end else begin
+   inc(Head);
+   if Head>=Size then begin
+    Head:=0;
+   end;
+  end;
+ end;
+end;
+
+function TpvCSGBSP.TDynamicQueue<T>.Peek(out aItem:T):boolean;
+begin
+ result:=Count>0;
+ if result then begin
+  aItem:=Items[Head];
  end;
 end;
 
@@ -1859,396 +2045,6 @@ begin
  result.Distance:=-Distance;
 end;
 
-procedure TpvCSGBSP.TPlane.SplitTriangles(var aVertices:TVertexList;
-                                          const aIndices:TIndexList;
-                                          const aCoplanarBackList:PIndexList;
-                                          const aCoplanarFrontList:PIndexList;
-                                          const aBackList:PIndexList;
-                                          const aFrontList:PIndexList);
-var Index,Count,DummyIndex:TpvSizeInt;
-    Sides:array[0..2] of TpvSizeInt;
-    VertexIndices,PointIndices:array[0..2] of TIndex;
-    PlaneDistances:array[0..2] of TFloat;
-begin
-
- Index:=0;
- Count:=aIndices.Count;
-
- while (Index+2)<Count do begin
-
-  VertexIndices[0]:=aIndices.Items[Index+0];
-  VertexIndices[1]:=aIndices.Items[Index+1];
-  VertexIndices[2]:=aIndices.Items[Index+2];
-
-  PlaneDistances[0]:=DistanceTo(aVertices.Items[VertexIndices[0]].Position);
-  PlaneDistances[1]:=DistanceTo(aVertices.Items[VertexIndices[1]].Position);
-  PlaneDistances[2]:=DistanceTo(aVertices.Items[VertexIndices[2]].Position);
-
-  Sides[0]:=TpvCSGBSP.EpsilonSign(PlaneDistances[0]);
-  Sides[1]:=TpvCSGBSP.EpsilonSign(PlaneDistances[1]);
-  Sides[2]:=TpvCSGBSP.EpsilonSign(PlaneDistances[2]);
-
-  PlaneDistances[0]:=PlaneDistances[0]*abs(Sides[0]);
-  PlaneDistances[1]:=PlaneDistances[1]*abs(Sides[1]);
-  PlaneDistances[2]:=PlaneDistances[2]*abs(Sides[2]);
-
-  if (Sides[0]*Sides[1])<0 then begin
-   PointIndices[0]:=aVertices.Add(aVertices.Items[VertexIndices[0]].Lerp(aVertices.Items[VertexIndices[1]],abs(PlaneDistances[0])/(abs(PlaneDistances[0])+abs(PlaneDistances[1]))));
-  end;
-  if (Sides[1]*Sides[2])<0 then begin
-   PointIndices[1]:=aVertices.Add(aVertices.Items[VertexIndices[1]].Lerp(aVertices.Items[VertexIndices[2]],abs(PlaneDistances[1])/(abs(PlaneDistances[1])+abs(PlaneDistances[2]))));
-  end;
-  if (Sides[2]*Sides[0])<0 then begin
-   PointIndices[2]:=aVertices.Add(aVertices.Items[VertexIndices[2]].Lerp(aVertices.Items[VertexIndices[0]],abs(PlaneDistances[2])/(abs(PlaneDistances[2])+abs(PlaneDistances[0]))));
-  end;
-
-  case ((Sides[0]+1) shl 0) or
-       ((Sides[1]+1) shl 2) or
-       ((Sides[2]+1) shl 4) of
-
-   // All points are on one side of the plane (or on the plane)
-   // in this case we simply add the complete triangle to the proper halve of the subtree
-   (((-1)+1) shl 0) or (((-1)+1) shl 2) or (((-1)+1) shl 4),
-   (((-1)+1) shl 0) or (((-1)+1) shl 2) or (((0)+1) shl 4),
-   (((-1)+1) shl 0) or (((0)+1) shl 2) or (((-1)+1) shl 4),
-   (((-1)+1) shl 0) or (((0)+1) shl 2) or (((0)+1) shl 4),
-   (((0)+1) shl 0) or (((-1)+1) shl 2) or (((-1)+1) shl 4),
-   (((0)+1) shl 0) or (((-1)+1) shl 2) or (((0)+1) shl 4),
-   (((0)+1) shl 0) or (((0)+1) shl 2) or (((-1)+1) shl 4):begin
-    if assigned(aBackList) then begin
-     aBackList^.Add([VertexIndices[0],VertexIndices[1],VertexIndices[2]]);
-    end;
-   end;
-
-   (((0)+1) shl 0) or (((0)+1) shl 2) or (((1)+1) shl 4),
-   (((0)+1) shl 0) or (((1)+1) shl 2) or (((0)+1) shl 4),
-   (((0)+1) shl 0) or (((1)+1) shl 2) or (((1)+1) shl 4),
-   (((1)+1) shl 0) or (((0)+1) shl 2) or (((0)+1) shl 4),
-   (((1)+1) shl 0) or (((0)+1) shl 2) or (((1)+1) shl 4),
-   (((1)+1) shl 0) or (((1)+1) shl 2) or (((0)+1) shl 4),
-   (((1)+1) shl 0) or (((1)+1) shl 2) or (((1)+1) shl 4):begin
-    if assigned(aFrontList) then begin
-     aFrontList^.Add([VertexIndices[0],VertexIndices[1],VertexIndices[2]]);
-    end;
-   end;
-
-   // Triangle on the dividing plane
-   (((0)+1) shl 0) or (((0)+1) shl 2) or (((0)+1) shl 4):begin
-    if aCoplanarFrontList<>aCoplanarBackList then begin
-     if Normal.Dot(TPlane.Create(aVertices.Items[VertexIndices[0]].Position,
-                                 aVertices.Items[VertexIndices[1]].Position,
-                                 aVertices.Items[VertexIndices[2]].Position).Normal)>0.0 then begin
-      if assigned(aCoplanarFrontList) then begin
-       aCoplanarFrontList^.Add([VertexIndices[0],VertexIndices[1],VertexIndices[2]]);
-      end;
-     end else begin
-      if assigned(aCoplanarBackList) then begin
-       aCoplanarBackList^.Add([VertexIndices[0],VertexIndices[1],VertexIndices[2]]);
-      end;
-     end;
-    end else if assigned(aCoplanarFrontList) then begin
-     aCoplanarFrontList^.Add([VertexIndices[0],VertexIndices[1],VertexIndices[2]]);
-    end;
-   end;
-
-   // And now all the ways that the triangle can be cut by the plane
-
-   (((1)+1) shl 0) or (((-1)+1) shl 2) or (((0)+1) shl 4):begin
-    if assigned(aBackList) then begin
-     aBackList^.Add([VertexIndices[1],VertexIndices[2],PointIndices[0]]);
-    end;
-    if assigned(aFrontList) then begin
-     aFrontList^.Add([VertexIndices[2],VertexIndices[0],PointIndices[0]]);
-    end;
-   end;
-
-   (((-1)+1) shl 0) or (((0)+1) shl 2) or (((1)+1) shl 4):begin
-    if assigned(aBackList) then begin
-     aBackList^.Add([VertexIndices[0],VertexIndices[1],PointIndices[2]]);
-    end;
-    if assigned(aFrontList) then begin
-     aFrontList^.Add([VertexIndices[1],VertexIndices[2],PointIndices[2]]);
-    end;
-   end;
-
-   (((0)+1) shl 0) or (((1)+1) shl 2) or (((-1)+1) shl 4):begin
-    if assigned(aBackList) then begin
-     aBackList^.Add([VertexIndices[2],VertexIndices[0],PointIndices[1]]);
-    end;
-    if assigned(aFrontList) then begin
-     aFrontList^.Add([VertexIndices[0],VertexIndices[1],PointIndices[1]]);
-    end;
-   end;
-
-   (((-1)+1) shl 0) or (((1)+1) shl 2) or (((0)+1) shl 4):begin
-    if assigned(aBackList) then begin
-     aBackList^.Add([VertexIndices[2],VertexIndices[0],PointIndices[0]]);
-    end;
-    if assigned(aFrontList) then begin
-     aFrontList^.Add([VertexIndices[1],VertexIndices[2],PointIndices[0]]);
-    end;
-   end;
-
-   (((1)+1) shl 0) or (((0)+1) shl 2) or (((-1)+1) shl 4):begin
-    if assigned(aBackList) then begin
-     aBackList^.Add([VertexIndices[1],VertexIndices[2],PointIndices[2]]);
-    end;
-    if assigned(aFrontList) then begin
-     aFrontList^.Add([VertexIndices[0],VertexIndices[1],PointIndices[2]]);
-    end;
-   end;
-
-   (((0)+1) shl 0) or (((-1)+1) shl 2) or (((1)+1) shl 4):begin
-    if assigned(aBackList) then begin
-     aBackList^.Add([VertexIndices[0],VertexIndices[1],PointIndices[1]]);
-    end;
-    if assigned(aFrontList) then begin
-     aFrontList^.Add([VertexIndices[2],VertexIndices[0],PointIndices[1]]);
-    end;
-   end;
-
-   (((1)+1) shl 0) or (((-1)+1) shl 2) or (((-1)+1) shl 4):begin
-    if assigned(aFrontList) then begin
-     aFrontList^.Add([VertexIndices[0],PointIndices[0],PointIndices[2]]);
-    end;
-    if assigned(aBackList) then begin
-     aBackList^.Add([VertexIndices[1],PointIndices[2],PointIndices[0]]);
-     aBackList^.Add([VertexIndices[1],VertexIndices[2],PointIndices[2]]);
-    end;
-   end;
-
-   (((-1)+1) shl 0) or (((1)+1) shl 2) or (((-1)+1) shl 4):begin
-    if assigned(aFrontList) then begin
-     aFrontList^.Add([VertexIndices[1],PointIndices[1],PointIndices[0]]);
-    end;
-    if assigned(aBackList) then begin
-     aBackList^.Add([VertexIndices[2],PointIndices[0],PointIndices[1]]);
-     aBackList^.Add([VertexIndices[2],VertexIndices[0],PointIndices[0]]);
-    end;
-   end;
-
-   (((-1)+1) shl 0) or (((-1)+1) shl 2) or (((1)+1) shl 4):begin
-    if assigned(aFrontList) then begin
-     aFrontList^.Add([VertexIndices[2],PointIndices[2],PointIndices[1]]);
-    end;
-    if assigned(aBackList) then begin
-     aBackList^.Add([VertexIndices[0],PointIndices[1],PointIndices[2]]);
-     aBackList^.Add([VertexIndices[0],VertexIndices[1],PointIndices[1]]);
-    end;
-   end;
-
-   (((-1)+1) shl 0) or (((1)+1) shl 2) or (((1)+1) shl 4):begin
-    if assigned(aBackList) then begin
-     aBackList^.Add([VertexIndices[0],PointIndices[0],PointIndices[2]]);
-    end;
-    if assigned(aFrontList) then begin
-     aFrontList^.Add([VertexIndices[1],PointIndices[2],PointIndices[0]]);
-     aFrontList^.Add([VertexIndices[1],VertexIndices[2],PointIndices[2]]);
-    end;
-   end;
-
-   (((1)+1) shl 0) or (((-1)+1) shl 2) or (((1)+1) shl 4):begin
-    if assigned(aBackList) then begin
-     aBackList^.Add([VertexIndices[1],PointIndices[1],PointIndices[0]]);
-    end;
-    if assigned(aFrontList) then begin
-     aFrontList^.Add([VertexIndices[0],PointIndices[0],PointIndices[1]]);
-     aFrontList^.Add([VertexIndices[2],VertexIndices[0],PointIndices[1]]);
-    end;
-   end;
-
-   (((1)+1) shl 0) or (((1)+1) shl 2) or (((-1)+1) shl 4):begin
-    if assigned(aBackList) then begin
-     aBackList^.Add([VertexIndices[2],PointIndices[2],PointIndices[1]]);
-    end;
-    if assigned(aFrontList) then begin
-     aFrontList^.Add([VertexIndices[0],PointIndices[1],PointIndices[2]]);
-     aFrontList^.Add([VertexIndices[0],VertexIndices[1],PointIndices[1]]);
-    end;
-   end;
-
-   // Otherwise it is a error
-   else begin
-    Assert(false);
-   end;
-
-  end;
-
-  inc(Index,3);
-
- end;
-
-end;
-
-procedure TpvCSGBSP.TPlane.SplitPolygons(var aVertices:TVertexList;
-                                         const aIndices:TIndexList;
-                                         const aCoplanarBackList:PIndexList;
-                                         const aCoplanarFrontList:PIndexList;
-                                         const aBackList:PIndexList;
-                                         const aFrontList:PIndexList);
-const Coplanar=0;
-      Front=1;
-      Back=2;
-      Spanning=3;
-      EpsilonSignToOrientation:array[0..3] of TpvInt32=(Back,Coplanar,Front,Spanning);
-var Index,OtherIndex,Count,CountPolygonVertices,
-    IndexA,IndexB,
-    PolygonOrientation,
-    VertexOrientation,
-    VertexOrientationA,
-    VertexOrientationB:TpvSizeInt;
-    VertexOrientations:array of TpvSizeInt;
-    VectorDistance:TpvDouble;
-    BackVertexIndices,FrontVertexIndices:TIndexList;
-    VertexIndex:TIndex;
-    VertexA,VertexB:PVertex;
-begin
-
- VertexOrientations:=nil;
- try
-
-  BackVertexIndices.Initialize;
-  try
-
-   FrontVertexIndices.Initialize;
-   try
-
-    Index:=0;
-
-    Count:=aIndices.Count;
-
-    while Index<Count do begin
-
-     CountPolygonVertices:=aIndices.Items[Index];
-     inc(Index);
-
-     if (CountPolygonVertices>0) and
-        ((Index+(CountPolygonVertices-1))<Count) then begin
-
-      if CountPolygonVertices>2 then begin
-
-       PolygonOrientation:=0;
-
-       if length(VertexOrientations)<CountPolygonVertices then begin
-        SetLength(VertexOrientations,(CountPolygonVertices*3) shr 1);
-       end;
-
-       for IndexA:=0 to CountPolygonVertices-1 do begin
-        VertexIndex:=aIndices.Items[Index+IndexA];
-        VertexOrientation:=EpsilonSignToOrientation[(TpvCSGBSP.EpsilonSign(DistanceTo(aVertices.Items[VertexIndex].Position))+1) and 3];
-        PolygonOrientation:=PolygonOrientation or VertexOrientation;
-        VertexOrientations[IndexA]:=VertexOrientation;
-       end;
-
-       case PolygonOrientation of
-
-        Coplanar:begin
-         if assigned(aCoplanarFrontList) or assigned(aCoplanarBackList) then begin
-          if Normal.Dot(TPlane.Create(aVertices.Items[aIndices.Items[Index+0]].Position,
-                                      aVertices.Items[aIndices.Items[Index+1]].Position,
-                                      aVertices.Items[aIndices.Items[Index+2]].Position).Normal)>0.0 then begin
-           if assigned(aCoplanarFrontList) then begin
-            aCoplanarFrontList^.Add(CountPolygonVertices);
-            aCoplanarFrontList^.AddRangeFrom(aIndices,Index,CountPolygonVertices);
-           end;
-          end else begin
-           if assigned(aCoplanarBackList) then begin
-            aCoplanarBackList^.Add(CountPolygonVertices);
-            aCoplanarBackList^.AddRangeFrom(aIndices,Index,CountPolygonVertices);
-           end;
-          end;
-         end;
-        end;
-
-        Front:begin
-         if assigned(aFrontList) then begin
-          aFrontList^.Add(CountPolygonVertices);
-          aFrontList^.AddRangeFrom(aIndices,Index,CountPolygonVertices);
-         end;
-        end;
-
-        Back:begin
-         if assigned(aBackList) then begin
-          aBackList^.Add(CountPolygonVertices);
-          aBackList^.AddRangeFrom(aIndices,Index,CountPolygonVertices);
-         end;
-        end;
-
-        else {SPANNING:}begin
-
-         BackVertexIndices.Count:=0;
-
-         FrontVertexIndices.Count:=0;
-
-         for IndexA:=0 to CountPolygonVertices-1 do begin
-
-          IndexB:=IndexA+1;
-          if IndexB>=CountPolygonVertices then begin
-           IndexB:=0;
-          end;
-
-          VertexIndex:=aIndices.Items[Index+IndexA];
-
-          VertexA:=@aVertices.Items[VertexIndex];
-
-          VertexOrientationA:=VertexOrientations[IndexA];
-          VertexOrientationB:=VertexOrientations[IndexB];
-
-          if VertexOrientationA<>Front then begin
-           BackVertexIndices.Add(VertexIndex);
-          end;
-
-          if VertexOrientationA<>Back then begin
-           FrontVertexIndices.Add(VertexIndex);
-          end;
-
-          if (VertexOrientationA or VertexOrientationB)=Spanning then begin
-           VertexB:=@aVertices.Items[aIndices.Items[Index+IndexB]];
-           VertexIndex:=aVertices.Add(VertexA^.Lerp(VertexB^,-(DistanceTo(VertexA^.Position)/Normal.Dot(VertexB^.Position-VertexA^.Position))));
-           BackVertexIndices.Add(VertexIndex);
-           FrontVertexIndices.Add(VertexIndex);
-          end;
-
-         end;
-
-         if assigned(aBackList) and (BackVertexIndices.Count>2) then begin
-          aBackList^.Add(BackVertexIndices.Count);
-          aBackList^.Add(BackVertexIndices);
-         end;
-
-         if assigned(aFrontList) and (FrontVertexIndices.Count>2) then begin
-          aFrontList^.Add(FrontVertexIndices.Count);
-          aFrontList^.Add(FrontVertexIndices);
-         end;
-
-        end;
-
-       end;
-
-      end;
-
-     end else begin
-      Assert(false);
-     end;
-
-     inc(Index,CountPolygonVertices);
-
-    end;
-
-   finally
-    FrontVertexIndices.Finalize;
-   end;
-
-  finally
-   BackVertexIndices.Finalize;
-  end;
-
- finally
-  VertexOrientations:=nil;
- end;
-
-end;
-
 { TpvCSGBSP.TAABB }
 
 function TpvCSGBSP.TAABB.Cost:TFloat;
@@ -2671,7 +2467,7 @@ begin
  end;
 end;
 
-constructor TpvCSGBSP.TMesh.Create(const aFrom:TNode);
+constructor TpvCSGBSP.TMesh.Create(const aFrom:TTree);
 var Mesh:TMesh;
 begin
  Mesh:=aFrom.ToMesh;
@@ -2811,385 +2607,10 @@ constructor TpvCSGBSP.TMesh.CreateFromCSGOperation(const aLeftMesh:TMesh;
                                                    const aRightMesh:TMesh;
                                                    const aCSGOperation:TCSGOperation;
                                                    const aSplitSettings:PSplitSettings=nil);
- function ProcessTriangle(const aNode:TNode;
-                          const aVertex0:TVertex;
-                          const aVertex1:TVertex;
-                          const aVertex2:TVertex;
-                          const aInside:boolean;
-                          const aKeepEdge:boolean;
-                          const aKeepNow:boolean;
-                          const aInvert:boolean):boolean;
- type TWorkData=record
-       Node:TNode;
-       Vertex0:TVertex;
-       Vertex1:TVertex;
-       Vertex2:TVertex;
-       Inside:boolean;
-       KeepEdge:boolean;
-       KeepNow:boolean;
-       Invert:boolean;
-       Completed:boolean;
-       Clipped:boolean;
-       PreviousWorkData:TpvSizeInt;
-       OldCountVertices:TpvSizeInt;
-       OldCountIndices:TpvSizeInt;
-      end;
-      PWorkData=^TWorkData;
-      TJobStackItem=record
-       WorkData:TpvSizeInt;
-       Step:TpvSizeInt;
-      end;
-      TWorkDataArray=TDynamicArray<TWorkData>;
-      TJobStack=TDynamicStack<TJobStackItem>;
- var WorkDataArray:TWorkDataArray;
-     JobStack:TJobStack;
-  function NewWorkData(const aNode:TNode;
-                       const aVertex0:TVertex;
-                       const aVertex1:TVertex;
-                       const aVertex2:TVertex;
-                       const aInside:boolean;
-                       const aKeepEdge:boolean;
-                       const aKeepNow:boolean;
-                       const aInvert:boolean;
-                       const aPreviousWorkData:TpvSizeInt):TpvSizeInt;
-  var WorkData:TWorkData;
-  begin
-   WorkData.Node:=aNode;
-   WorkData.Vertex0:=aVertex0;
-   WorkData.Vertex1:=aVertex1;
-   WorkData.Vertex2:=aVertex2;
-   WorkData.Inside:=aInside;
-   WorkData.KeepEdge:=aKeepEdge;
-   WorkData.KeepNow:=aKeepEdge;
-   WorkData.Invert:=aInvert;
-   WorkData.PreviousWorkData:=aPreviousWorkData;
-   WorkData.Completed:=true;
-   WorkData.Clipped:=true;
-   result:=WorkDataArray.Add(WorkData);
-  end;
-  procedure NewJobStackItem(const aWorkData:TpvSizeInt;
-                            const aStep:TpvSizeInt);
-  var JobStackItem:TJobStackItem;
-  begin
-   JobStackItem.WorkData:=aWorkData;
-   JobStackItem.Step:=aStep;
-   JobStack.Push(JobStackItem);
-  end;
- var WorkDataIndex:TpvSizeInt;
-     JobStackItem:TJobStackItem;
-     WorkData,OtherWorkData:PWorkData;
-     FunctionResult:boolean;
-  procedure Append(const aVertex0,aVertex1,aVertex2:TVertex);
-  begin
-   fIndices.Add(fVertices.Add(aVertex0));
-   fIndices.Add(fVertices.Add(aVertex1));
-   fIndices.Add(fVertices.Add(aVertex2));
-  end;
-  function NextTriangle(const aNode:TNode;
-                        const aVertex0:TVertex;
-                        const aVertex1:TVertex;
-                        const aVertex2:TVertex;
-                        const aInside:boolean;
-                        const aKeepEdge:boolean;
-                        const aKeepNow:boolean;
-                        const aInvert:boolean):TpvSizeInt;
-  var Completed:boolean;
-  begin
-    if assigned(aNode) then begin
-     NewJobStackItem(NewWorkData(aNode,
-                                 aVertex0,
-                                 aVertex1,
-                                 aVertex2,
-                                 aInside,
-                                 aKeepEdge,
-                                 aKeepNow,
-                                 aInvert,
-                                 WorkDataIndex),
-                     0);
-    WorkData:=@WorkDataArray.Items[JobStackItem.WorkData];
-   end else begin
-    if aKeepNow then begin
-     if aInvert then begin
-      Append(aVertex2.CloneFlip,aVertex1.CloneFlip,aVertex0.CloneFlip);
-     end else begin
-      Append(aVertex0,aVertex1,aVertex2);
-     end;
-    end;
-    Completed:=aKeepNow;
-    if assigned(WorkData) then begin
-     WorkData^.Completed:=WorkData^.Completed and Completed;
-    end else begin
-     FunctionResult:=Completed;
-    end;
-   end;
-  end;
- var Sides:array[0..2] of TpvSizeInt;
-     Points:array[0..2] of TVertex;
-     PlaneDistances:array[0..2] of TFloat;
- begin
-
-  FunctionResult:=true;
-  try
-
-   WorkDataArray.Initialize;
-   try
-
-    JobStack.Initialize;
-    try
-
-     WorkDataIndex:=-1;
-
-     WorkData:=nil;
-
-     NextTriangle(aNode,
-                  aVertex0,
-                  aVertex1,
-                  aVertex2,
-                  aInside,
-                  aKeepEdge,
-                  aKeepNow,
-                  aInvert);
-
-     while JobStack.Pop(JobStackItem) do begin
-
-      WorkDataIndex:=JobStackItem.WorkData;
-
-      WorkData:=@WorkDataArray.Items[WorkDataIndex];
-
-      case JobStackItem.Step of
-
-       0:begin
-
-        PlaneDistances[0]:=WorkData^.Node.fPlane.DistanceTo(WorkData^.Vertex0.Position);
-        PlaneDistances[1]:=WorkData^.Node.fPlane.DistanceTo(WorkData^.Vertex1.Position);
-        PlaneDistances[2]:=WorkData^.Node.fPlane.DistanceTo(WorkData^.Vertex2.Position);
-
-        Sides[0]:=TpvCSGBSP.EpsilonSign(PlaneDistances[0]);
-        Sides[1]:=TpvCSGBSP.EpsilonSign(PlaneDistances[1]);
-        Sides[2]:=TpvCSGBSP.EpsilonSign(PlaneDistances[2]);
-
-        PlaneDistances[0]:=PlaneDistances[0]*abs(Sides[0]);
-        PlaneDistances[1]:=PlaneDistances[1]*abs(Sides[1]);
-        PlaneDistances[2]:=PlaneDistances[2]*abs(Sides[2]);
-
-        if (Sides[0]*Sides[1])<0 then begin
-         Points[0]:=WorkData^.Vertex0.Lerp(WorkData^.Vertex1,abs(PlaneDistances[0])/(abs(PlaneDistances[0])+abs(PlaneDistances[1])));
-        end;
-        if (Sides[1]*Sides[2])<0 then begin
-         Points[1]:=WorkData^.Vertex1.Lerp(WorkData^.Vertex2,abs(PlaneDistances[1])/(abs(PlaneDistances[1])+abs(PlaneDistances[2])));
-        end;
-        if (Sides[2]*Sides[0])<0 then begin
-         Points[2]:=WorkData^.Vertex2.Lerp(WorkData^.Vertex0,abs(PlaneDistances[2])/(abs(PlaneDistances[2])+abs(PlaneDistances[0])));
-        end;
-
-        WorkData^.OldCountVertices:=fVertices.Count;
-        WorkData^.OldCountIndices:=fIndices.Count;
-
-        WorkData^.Completed:=true;
-
-        WorkData^.Clipped:=true;
-
-        NewJobStackItem(JobStackItem.WorkData,1);
-
-        case ((Sides[0]+1) shl 0) or
-             ((Sides[1]+1) shl 2) or
-             ((Sides[2]+1) shl 4) of
-
-         // All points are on one side of the plane (or on the plane)
-         // in this case we simply add the complete triangle to the proper halve of the subtree
-         (((-1)+1) shl 0) or (((-1)+1) shl 2) or (((-1)+1) shl 4),
-         (((-1)+1) shl 0) or (((-1)+1) shl 2) or (((0)+1) shl 4),
-         (((-1)+1) shl 0) or (((0)+1) shl 2) or (((-1)+1) shl 4),
-         (((-1)+1) shl 0) or (((0)+1) shl 2) or (((0)+1) shl 4),
-         (((0)+1) shl 0) or (((-1)+1) shl 2) or (((-1)+1) shl 4),
-         (((0)+1) shl 0) or (((-1)+1) shl 2) or (((0)+1) shl 4),
-         (((0)+1) shl 0) or (((0)+1) shl 2) or (((-1)+1) shl 4):begin
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex0,WorkData^.Vertex1,WorkData^.Vertex2,WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-          WorkData^.Clipped:=false;
-         end;
-
-         (((0)+1) shl 0) or (((0)+1) shl 2) or (((1)+1) shl 4),
-         (((0)+1) shl 0) or (((1)+1) shl 2) or (((0)+1) shl 4),
-         (((0)+1) shl 0) or (((1)+1) shl 2) or (((1)+1) shl 4),
-         (((1)+1) shl 0) or (((0)+1) shl 2) or (((0)+1) shl 4),
-         (((1)+1) shl 0) or (((0)+1) shl 2) or (((1)+1) shl 4),
-         (((1)+1) shl 0) or (((1)+1) shl 2) or (((0)+1) shl 4),
-         (((1)+1) shl 0) or (((1)+1) shl 2) or (((1)+1) shl 4):begin
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex0,WorkData^.Vertex1,WorkData^.Vertex2,WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-          WorkData^.Clipped:=false;
-         end;
-
-         // Triangle on the dividing plane
-         (((0)+1) shl 0) or (((0)+1) shl 2) or (((0)+1) shl 4):begin
-          if WorkData^.KeepEdge then begin
-           Append(WorkData^.Vertex0,WorkData^.Vertex1,WorkData^.Vertex2);
-           WorkData^.Clipped:=false;
-          end;
-         end;
-
-         // And now all the ways that the triangle can be cut by the plane
-
-         (((1)+1) shl 0) or (((-1)+1) shl 2) or (((0)+1) shl 4):begin
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex1,WorkData^.Vertex2,Points[0],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex2,WorkData^.Vertex1,Points[0],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-         end;
-
-         (((-1)+1) shl 0) or (((0)+1) shl 2) or (((1)+1) shl 4):begin
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex0,WorkData^.Vertex1,Points[2],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex1,WorkData^.Vertex2,Points[2],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-         end;
-
-         (((0)+1) shl 0) or (((1)+1) shl 2) or (((-1)+1) shl 4):begin
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex2,WorkData^.Vertex0,Points[1],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex0,WorkData^.Vertex1,Points[1],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-         end;
-
-         (((-1)+1) shl 0) or (((1)+1) shl 2) or (((0)+1) shl 4):begin
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex2,WorkData^.Vertex0,Points[0],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex1,WorkData^.Vertex2,Points[0],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-         end;
-
-         (((1)+1) shl 0) or (((0)+1) shl 2) or (((-1)+1) shl 4):begin
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex1,WorkData^.Vertex2,Points[2],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex0,WorkData^.Vertex1,Points[2],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-         end;
-
-         (((0)+1) shl 0) or (((-1)+1) shl 2) or (((1)+1) shl 4):begin
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex0,WorkData^.Vertex1,Points[1],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex2,WorkData^.Vertex0,Points[1],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-         end;
-
-         (((1)+1) shl 0) or (((-1)+1) shl 2) or (((-1)+1) shl 4):begin
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex0,Points[0],Points[2],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex1,Points[2],Points[0],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex1,WorkData^.Vertex2,Points[2],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-         end;
-
-         (((-1)+1) shl 0) or (((1)+1) shl 2) or (((-1)+1) shl 4):begin
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex1,Points[1],Points[0],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex2,Points[0],Points[1],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex2,WorkData^.Vertex0,Points[0],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-         end;
-
-         (((-1)+1) shl 0) or (((-1)+1) shl 2) or (((1)+1) shl 4):begin
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex2,Points[2],Points[1],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex0,Points[1],Points[2],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex0,WorkData^.Vertex1,Points[1],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-         end;
-
-         (((-1)+1) shl 0) or (((1)+1) shl 2) or (((1)+1) shl 4):begin
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex0,Points[0],Points[2],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex1,Points[2],Points[0],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex1,WorkData^.Vertex2,Points[2],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-         end;
-
-         (((1)+1) shl 0) or (((-1)+1) shl 2) or (((1)+1) shl 4):begin
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex1,Points[1],Points[0],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex0,Points[0],Points[1],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex2,WorkData^.Vertex0,Points[1],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-         end;
-
-         (((1)+1) shl 0) or (((1)+1) shl 2) or (((-1)+1) shl 4):begin
-          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex2,Points[2],Points[1],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex0,Points[1],Points[2],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex0,WorkData^.Vertex1,Points[1],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
-         end;
-
-         // Otherwise it is a error
-         else begin
-          WorkData^.Completed:=false;
-         end;
-
-        end;
-
-       end;
-
-       1:begin
-
-        if WorkData^.Completed and WorkData^.Clipped then begin
-         fVertices.Count:=WorkData^.OldCountVertices;
-         fIndices.Count:=WorkData^.OldCountIndices;
-         if WorkData^.Invert then begin
-          Append(WorkData^.Vertex2.CloneFlip,WorkData^.Vertex1.CloneFlip,WorkData^.Vertex0.CloneFlip);
-         end else begin
-          Append(WorkData^.Vertex0,WorkData^.Vertex1,WorkData^.Vertex2);
-         end;
-        end;
-
-        if WorkData^.PreviousWorkData>=0 then begin
-         OtherWorkData:=@WorkDataArray.Items[WorkData^.PreviousWorkData];
-         OtherWorkData^.Completed:=OtherWorkData^.Completed and WorkData^.Completed;
-        end else begin
-         FunctionResult:=WorkData^.Completed;
-        end;
-        dec(WorkDataArray.Count);
-
-       end;
-
-      end;
-
-     end;
-
-    finally
-     JobStack.Finalize;
-    end;
-
-   finally
-    WorkDataArray.Finalize;
-   end;
-
-  finally
-   result:=FunctionResult;
-  end;
-
- end;
- procedure Process(const aLeftNode:TNode;
-                   const aRightNode:TNode;
-                   const aVertices:TVertexList;
-                   const aInside:boolean;
-                   const aKeepEdge:boolean;
-                   const aInvert:boolean);
- type TJobStack=TDynamicStack<TNode>;
- var JobStack:TJobStack;
-     Node:TNode;
-     Index,Count:TpvSizeInt;
- begin
-  if assigned(aLeftNode) and assigned(aRightNode) then begin
-   JobStack.Initialize;
-   try
-    JobStack.Push(aRightNode);
-    while JobStack.Pop(Node) do begin
-     if assigned(Node) then begin
-      Index:=0;
-      Count:=Node.fIndices.Count;
-      while (Index+2)<Count do begin
-       ProcessTriangle(aLeftNode,
-                        aVertices.Items[Node.fIndices.Items[Index+0]],
-                        aVertices.Items[Node.fIndices.Items[Index+1]],
-                        aVertices.Items[Node.fIndices.Items[Index+2]],
-                        aInside,
-                        aKeepEdge,
-                        false,
-                        aInvert);
-       inc(Index,3);
-      end;
-      if assigned(Node.fFront) then begin
-       JobStack.Push(Node.fFront);
-      end;
-      if assigned(Node.fBack) then begin
-       JobStack.Push(Node.fBack);
-      end;
-     end;
-    end;
-   finally
-    JobStack.Finalize;
-   end;
-  end;
- end;
- procedure AesignNodeToMesh(const aNode:TNode);
+ procedure AssignTreeToMesh(const aTree:TTree);
  var Mesh:TMesh;
  begin
-  Mesh:=aNode.ToMesh;
+  Mesh:=aTree.ToMesh;
   try
    fMode:=Mesh.fMode;
    fVertices.Assign(Mesh.fVertices);
@@ -3202,33 +2623,37 @@ constructor TpvCSGBSP.TMesh.CreateFromCSGOperation(const aLeftMesh:TMesh;
  end;
  procedure ProcessUnion(const aLeftMesh,aRightMesh:TMesh);
  var ma,mb:TMesh;
-     na,nb:TNode;
+     ta,tb:TTree;
  begin
   ma:=TMesh.Create(aLeftMesh);
   try
    ma.SetMode(TMode.Polygons);
-   na:=ma.ToNode(aSplitSettings);
+   ma.Canonicalize;
+   ma.MergeCoplanarConvexPolygons;
+   ta:=ma.ToTree;
    try
     mb:=TMesh.Create(aRightMesh);
     try
      mb.SetMode(TMode.Polygons);
-     nb:=mb.ToNode(aSplitSettings);
+     mb.Canonicalize;
+     mb.MergeCoplanarConvexPolygons;
+     tb:=mb.ToTree;
      try
-      na.ClipTo(nb);
-      nb.ClipTo(na);
-      nb.Invert;
-      nb.ClipTo(na);
-      nb.Invert;
-      na.Merge(nb,aSplitSettings);
+      ta.ClipTo(tb,false);
+      tb.ClipTo(ta,false);
+      tb.Invert;
+      tb.ClipTo(ta,false);
+      tb.Invert;
+      ta.Merge(tb);
      finally
-      FreeAndNil(nb);
+      FreeAndNil(tb);
      end;
     finally
      FreeAndNil(mb);
     end;
-    AesignNodeToMesh(na);
+    AssignTreeToMesh(ta);
    finally
-    FreeAndNil(na);
+    FreeAndNil(ta);
    end;
   finally
    FreeAndNil(ma);
@@ -3236,35 +2661,47 @@ constructor TpvCSGBSP.TMesh.CreateFromCSGOperation(const aLeftMesh:TMesh;
  end;
  procedure ProcessSubtraction(const aLeftMesh,aRightMesh:TMesh);
  var ma,mb:TMesh;
-     na,nb:TNode;
+     ta,tb:TTree;
  begin
   ma:=TMesh.Create(aLeftMesh);
   try
    ma.SetMode(TMode.Polygons);
-   na:=ma.ToNode(aSplitSettings);
+   ma.Canonicalize;
+   ma.MergeCoplanarConvexPolygons;
+   ta:=ma.ToTree;
    try
     mb:=TMesh.Create(aRightMesh);
     try
      mb.SetMode(TMode.Polygons);
-     nb:=mb.ToNode(aSplitSettings);
+     mb.Canonicalize;
+     mb.MergeCoplanarConvexPolygons;
+     tb:=mb.ToTree;
      try
-      na.Invert;
-      na.ClipTo(nb);
-      nb.ClipTo(na);
-      nb.Invert;
-      nb.ClipTo(na);
-      nb.Invert;
-      na.Merge(nb,aSplitSettings);
+{$undef UseReferenceBSPOperations}
+{$ifdef UseReferenceBSPOperations}
+      ta.Invert;
+      ta.ClipTo(tb,false);
+      tb.ClipTo(ta,false);
+      tb.Invert;
+      tb.ClipTo(ta,false);
+      tb.Invert;
+      ta.Merge(tb);
+{$else}
+      ta.Invert;
+      ta.ClipTo(tb,false);
+      tb.ClipTo(ta,true);
+      ta.Merge(tb);
+{$endif}
      finally
-      FreeAndNil(nb);
+      FreeAndNil(tb);
      end;
     finally
      FreeAndNil(mb);
     end;
-    na.Invert;
-    AesignNodeToMesh(na);
+    ta.Invert;
+    AssignTreeToMesh(ta);
    finally
-    FreeAndNil(na);
+    FreeAndNil(ta);
    end;
   finally
    FreeAndNil(ma);
@@ -3272,68 +2709,41 @@ constructor TpvCSGBSP.TMesh.CreateFromCSGOperation(const aLeftMesh:TMesh;
  end;
  procedure ProcessIntersection(const aLeftMesh,aRightMesh:TMesh);
  var ma,mb:TMesh;
-     na,nb:TNode;
+     ta,tb:TTree;
  begin
   ma:=TMesh.Create(aLeftMesh);
   try
    ma.SetMode(TMode.Polygons);
-   na:=ma.ToNode(aSplitSettings);
+   ma.Canonicalize;
+   ma.MergeCoplanarConvexPolygons;
+   ta:=ma.ToTree;
    try
     mb:=TMesh.Create(aRightMesh);
     try
      mb.SetMode(TMode.Polygons);
-     nb:=mb.ToNode(aSplitSettings);
+     mb.Canonicalize;
+     mb.MergeCoplanarConvexPolygons;
+     tb:=mb.ToTree;
      try
-      na.Invert;
-      nb.ClipTo(na);
-      nb.Invert;
-      na.ClipTo(nb);
-      nb.ClipTo(na);
-      na.Merge(nb,aSplitSettings);
+      ta.Invert;
+      tb.ClipTo(ta,false);
+      tb.Invert;
+      ta.ClipTo(tb,false);
+      tb.ClipTo(ta,false);
+      ta.Merge(tb);
      finally
-      FreeAndNil(nb);
+      FreeAndNil(tb);
      end;
     finally
      FreeAndNil(mb);
     end;
-    na.Invert;
-    AesignNodeToMesh(na);
+    ta.Invert;
+    AssignTreeToMesh(ta);
    finally
-    FreeAndNil(na);
+    FreeAndNil(ta);
    end;
   finally
    FreeAndNil(ma);
-  end;
- end;
- procedure ProcessTriangles;
- var LeftNode,RightNode:TNode;
- begin
-  LeftNode:=aLeftMesh.ToNode;
-  try
-   RightNode:=aRightMesh.ToNode;
-   try
-    case aCSGOperation of
-     TCSGOperation.Union:begin
-      Process(RightNode,LeftNode,aLeftMesh.fVertices,false,false,false);
-      Process(LeftNode,RightNode,aRightMesh.fVertices,false,true,false);
-     end;
-     TCSGOperation.Subtraction:begin
-      Process(RightNode,LeftNode,aLeftMesh.fVertices,false,false,false);
-      Process(LeftNode,RightNode,aRightMesh.fVertices,true,true,true);
-     end;
-     TCSGOperation.Intersection:begin
-      Process(RightNode,LeftNode,aLeftMesh.fVertices,true,false,false);
-      Process(LeftNode,RightNode,aRightMesh.fVertices,true,true,false);
-     end;
-     else begin
-      Assert(false);
-     end;
-    end;
-   finally
-    FreeAndNil(RightNode);
-   end;
-  finally
-   FreeAndNil(LeftNode);
   end;
  end;
  procedure ProcessPolygons;
@@ -3352,16 +2762,16 @@ constructor TpvCSGBSP.TMesh.CreateFromCSGOperation(const aLeftMesh:TMesh;
     Assert(false);
    end;
   end;
+  Canonicalize;
+  MergeCoplanarConvexPolygons;
  end;
 begin
  Create;
- if (aLeftMesh.fMode=TMode.Triangles) and
-    (aRightMesh.fMode=TMode.Triangles) then begin
-  ProcessTriangles;
- end else begin
-  ProcessPolygons;
- end;
+ ProcessPolygons;
  RemoveDuplicateAndUnusedVertices;
+ if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
+  SetMode(TMode.Triangles);
+ end;
 end;
 
 constructor TpvCSGBSP.TMesh.CreateUnion(const aLeftMesh:TMesh;
@@ -3531,10 +2941,30 @@ begin
  SetMode(TMode.Triangles);
 end;
 
-procedure TpvCSGBSP.TMesh.Canonicalize;
-var Index,Count,CountPolygonVertices,WorkIndicesIndex:TpvSizeInt;
-    NewIndices,WorkIndices:TIndexList;
+procedure TpvCSGBSP.TMesh.RemoveNearDuplicateIndices(var aIndices:TIndexList);
+var Index:TpvSizeInt;
     VertexIndices:array[0..1] of TIndex;
+begin
+ Index:=0;
+ while (Index<aIndices.Count) and
+       (aIndices.Count>3) do begin
+  VertexIndices[0]:=aIndices.Items[Index];
+  if (Index+1)<aIndices.Count then begin
+   VertexIndices[1]:=aIndices.Items[Index+1];
+  end else begin
+   VertexIndices[1]:=aIndices.Items[0];
+  end;
+  if (fVertices.Items[VertexIndices[0]].Position-fVertices.Items[VertexIndices[1]].Position).SquaredLength<SquaredNearPositionEpsilon then begin
+   aIndices.Delete(Index);
+  end else begin
+   inc(Index);
+  end;
+ end;
+end;
+
+procedure TpvCSGBSP.TMesh.Canonicalize;
+var Index,Count,CountPolygonVertices:TpvSizeInt;
+    NewIndices,WorkIndices:TIndexList;
 begin
  NewIndices.Initialize;
  try
@@ -3556,21 +2986,7 @@ begin
      if (Index+(CountPolygonVertices-1))<Count then begin
       WorkIndices.Count:=0;
       WorkIndices.AddRangeFrom(fIndices,Index,CountPolygonVertices);
-      WorkIndicesIndex:=0;
-      while (WorkIndicesIndex<WorkIndices.Count) and
-            (WorkIndices.Count>3) do begin
-       VertexIndices[0]:=WorkIndices.Items[WorkIndicesIndex];
-       if (WorkIndicesIndex+1)<WorkIndices.Count then begin
-        VertexIndices[1]:=WorkIndices.Items[WorkIndicesIndex+1];
-       end else begin
-        VertexIndices[1]:=WorkIndices.Items[0];
-       end;
-       if (fVertices.Items[VertexIndices[0]].Position-fVertices.Items[VertexIndices[1]].Position).SquaredLength<SquaredNearPositionEpsilon then begin
-        WorkIndices.Delete(WorkIndicesIndex);
-       end else begin
-        inc(WorkIndicesIndex);
-       end;
-      end;
+      RemoveNearDuplicateIndices(WorkIndices);
       if WorkIndices.Count>2 then begin
        case fMode of
         TMode.Triangles:begin
@@ -4964,30 +4380,312 @@ begin
 
 end;
 
-function TpvCSGBSP.TMesh.ToNode(const aSplitSettings:PSplitSettings=nil):TNode;
+function TpvCSGBSP.TMesh.ToTree:TTree;
 begin
- result:=TNode.Create(self);
- result.Build(fIndices,aSplitSettings);
+ result:=TTree.Create(self);
+ result.AddIndices(fIndices);
 end;
 
-{ TpvCSGBSP.TNode }
+{ TpvCSGBSP.TTree.TPolygon }
 
-constructor TpvCSGBSP.TNode.Create(const aMesh:TMesh);
+procedure TpvCSGBSP.TTree.TPolygon.Invert;
+var IndexA,IndexB:TpvSizeInt;
+begin
+ if Indices.Count>0 then begin
+  for IndexA:=0 to (Indices.Count shr 1)-1 do begin
+   IndexB:=(Indices.Count-(IndexA+1));
+   if IndexA<>IndexB then begin
+    Indices.Exchange(IndexA,IndexB);
+   end;
+  end;
+ end;
+end;
+
+{ TpvCSGBSP.TTree.TPolygonNode }
+
+constructor TpvCSGBSP.TTree.TPolygonNode.Create(const aTree:TTree;const aParent:TPolygonNode);
 begin
  inherited Create;
- fMesh:=aMesh;
- fIndices.Initialize;
- fPointerToIndices:=@fIndices;
+ fTree:=aTree;
+ if assigned(fTree.fLastPolygonNode) then begin
+  fAllPrevious:=fTree.fLastPolygonNode;
+  fAllPrevious.fAllNext:=self;
+ end else begin
+  fTree.fFirstPolygonNode:=self;
+  fAllPrevious:=nil;
+ end;
+ fTree.fLastPolygonNode:=self;
+ fAllNext:=nil;
+ fParent:=aParent;
+ if assigned(fParent) then begin
+  if assigned(fParent.fLastChild) then begin
+   fParentPrevious:=fParent.fLastChild;
+   fParentPrevious.fParentNext:=self;
+  end else begin
+   fParent.fFirstChild:=self;
+   fParentPrevious:=nil;
+  end;
+  fParent.fLastChild:=self;
+ end;
+ fRemoved:=false;
+ fPolygon.Indices.Initialize;
+end;
+
+destructor TpvCSGBSP.TTree.TPolygonNode.Destroy;
+begin
+ fPolygon.Indices.Finalize;
+ RemoveFromParent;
+ if assigned(fAllPrevious) then begin
+  fAllPrevious.fAllNext:=fAllNext;
+ end else if fTree.fFirstPolygonNode=self then begin
+  fTree.fFirstPolygonNode:=fAllNext;
+ end;
+ if assigned(fAllNext) then begin
+  fAllNext.fAllPrevious:=fAllPrevious;
+ end else if fTree.fLastPolygonNode=self then begin
+  fTree.fLastPolygonNode:=fAllPrevious;
+ end;
+ fAllPrevious:=nil;
+ fAllNext:=nil;
+ inherited Destroy;
+end;
+
+procedure TpvCSGBSP.TTree.TPolygonNode.RemoveFromParent;
+begin
+ if assigned(fParent) then begin
+  if assigned(fParentPrevious) then begin
+   fParentPrevious.fParentNext:=fParentNext;
+  end else if fParent.fFirstChild=self then begin
+   fParent.fFirstChild:=fParentNext;
+  end;
+  if assigned(fParentNext) then begin
+   fParentNext.fParentPrevious:=fParentPrevious;
+  end else if fParent.fLastChild=self then begin
+   fParent.fLastChild:=fParentPrevious;
+  end;
+  fParent:=nil;
+ end;
+ fParentPrevious:=nil;
+ fParentNext:=nil;
+end;
+
+function TpvCSGBSP.TTree.TPolygonNode.AddPolygon(const aPolygon:TPolygon):TPolygonNode;
+begin
+ result:=TPolygonNode.Create(fTree,self);
+ result.fPolygon:=aPolygon;
+end;
+
+function TpvCSGBSP.TTree.TPolygonNode.AddPolygonIndices(const aIndices:TIndexList):TTree.TPolygonNode;
+begin
+ result:=TPolygonNode.Create(fTree,self);
+ result.fPolygon.Indices.Assign(aIndices);
+end;
+
+procedure TpvCSGBSP.TTree.TPolygonNode.Remove;
+var Index:TpvSizeInt;
+    PolygonNode:TPolygonNode;
+begin
+ if not fRemoved then begin
+  fRemoved:=true;
+  PolygonNode:=self;
+  while assigned(PolygonNode) and
+        (PolygonNode.fPolygon.Indices.Count>0) do begin
+   PolygonNode.fPolygon.Indices.Clear;
+   PolygonNode:=PolygonNode.fParent;
+  end;
+  RemoveFromParent;
+ end;
+end;
+
+procedure TpvCSGBSP.TTree.TPolygonNode.Invert;
+type TJobQueue=TDynamicQueue<TPolygonNode>;
+var Index:TpvSizeInt;
+    JobQueue:TJobQueue;
+    PolygonNode:TPolygonNode;
+begin
+ JobQueue.Initialize;
+ try
+  JobQueue.Enqueue(self);
+  while JobQueue.Dequeue(PolygonNode) do begin
+   if not PolygonNode.fRemoved then begin
+    PolygonNode.fPolygon.Invert;
+    PolygonNode:=PolygonNode.fFirstChild;
+    while assigned(PolygonNode) do begin
+     if not PolygonNode.fRemoved then begin
+      JobQueue.Enqueue(PolygonNode);
+     end;
+     PolygonNode:=PolygonNode.fParentNext;
+    end;
+   end;
+  end;
+ finally
+  JobQueue.Finalize;
+ end;
+end;
+
+procedure TpvCSGBSP.TTree.TPolygonNode.SplitByPlane(const aPlane:TPlane;var aCoplanarBackList,aCoplanarFrontList,aBackList,aFrontList:TPolygonNodeList);
+const Coplanar=0;
+      Front=1;
+      Back=2;
+      Spanning=3;
+      EpsilonSignToOrientation:array[0..3] of TpvInt32=(Back,Coplanar,Front,Spanning);
+type TJobQueue=TDynamicQueue<TPolygonNode>;
+var Index,OtherIndex,Count,CountPolygonVertices,
+    IndexA,IndexB,
+    PolygonOrientation,
+    VertexOrientation,
+    VertexOrientationA,
+    VertexOrientationB:TpvSizeInt;
+    JobQueue:TJobQueue;
+    PolygonNode:TPolygonNode;
+    Polygon:PPolygon;
+    VertexOrientations:array of TpvSizeInt;
+    VectorDistance:TpvDouble;
+    BackVertexIndices,FrontVertexIndices:TIndexList;
+    VertexIndex:TIndex;
+    VertexA,VertexB:PVertex;
+    Vertices:PVertexList;
+    PolygonAABB:TAABB;
+    PolygonSphereRadius,
+    PolygonSphereDistance:TFloat;
+begin
+ VertexOrientations:=nil;
+ try
+  BackVertexIndices.Initialize;
+  try
+   FrontVertexIndices.Initialize;
+   try
+    Vertices:=@fTree.fMesh.fVertices;
+    JobQueue.Initialize;
+    try
+     JobQueue.Enqueue(self);
+     while JobQueue.Dequeue(PolygonNode) do begin
+      if not PolygonNode.fRemoved then begin
+       if assigned(PolygonNode.fFirstChild) then begin
+        PolygonNode:=PolygonNode.fFirstChild;
+        while assigned(PolygonNode) do begin
+         if not PolygonNode.fRemoved then begin
+          JobQueue.Enqueue(PolygonNode);
+         end;
+         PolygonNode:=PolygonNode.fParentNext;
+        end;
+       end else begin
+        Polygon:=@PolygonNode.fPolygon;
+        CountPolygonVertices:=Polygon^.Indices.Count;
+        if CountPolygonVertices>2 then begin
+         VertexA:=@Vertices^.Items[Polygon^.Indices.Items[0]];
+         PolygonAABB.Min:=VertexA^.Position;
+         PolygonAABB.Max:=VertexA^.Position;
+         for IndexA:=1 to CountPolygonVertices-1 do begin
+          PolygonAABB:=PolygonAABB.Combine(Vertices^.Items[Polygon^.Indices.Items[IndexA]].Position);
+         end;
+         PolygonSphereRadius:=((PolygonAABB.Max-PolygonAABB.Min)*0.5).Length+Epsilon;
+         PolygonSphereDistance:=aPlane.DistanceTo((PolygonAABB.Min+PolygonAABB.Max)*0.5);
+         if PolygonSphereDistance<-PolygonSphereRadius then begin
+          aBackList.Add(PolygonNode);
+         end else if PolygonSphereDistance>PolygonSphereRadius then begin
+          aFrontList.Add(PolygonNode);
+         end else begin
+          PolygonOrientation:=0;
+          if length(VertexOrientations)<CountPolygonVertices then begin
+           SetLength(VertexOrientations,(CountPolygonVertices*3) shr 1);
+          end;
+          for IndexA:=0 to CountPolygonVertices-1 do begin
+           VertexOrientation:=EpsilonSignToOrientation[(TpvCSGBSP.EpsilonSign(aPlane.DistanceTo(Vertices^.Items[Polygon^.Indices.Items[IndexA]].Position))+1) and 3];
+           PolygonOrientation:=PolygonOrientation or VertexOrientation;
+           VertexOrientations[IndexA]:=VertexOrientation;
+          end;
+          case PolygonOrientation of
+           Coplanar:begin
+            if aPlane.Normal.Dot(TPlane.Create(Vertices^.Items[Polygon^.Indices.Items[0]].Position,
+                                               Vertices^.Items[Polygon^.Indices.Items[1]].Position,
+                                               Vertices^.Items[Polygon^.Indices.Items[2]].Position).Normal)>0.0 then begin
+             aCoplanarFrontList.Add(PolygonNode);
+            end else begin
+             aCoplanarBackList.Add(PolygonNode);
+            end;
+           end;
+           Front:begin
+            aFrontList.Add(PolygonNode);
+           end;
+           Back:begin
+            aBackList.Add(PolygonNode);
+           end;
+           else {Spanning:}begin
+            BackVertexIndices.Count:=0;
+            FrontVertexIndices.Count:=0;
+            for IndexA:=0 to CountPolygonVertices-1 do begin
+             IndexB:=IndexA+1;
+             if IndexB>=CountPolygonVertices then begin
+              IndexB:=0;
+             end;
+             VertexIndex:=Polygon^.Indices.Items[IndexA];
+             VertexA:=@Vertices^.Items[VertexIndex];
+             VertexOrientationA:=VertexOrientations[IndexA];
+             VertexOrientationB:=VertexOrientations[IndexB];
+             if VertexOrientationA<>Front then begin
+              BackVertexIndices.Add(VertexIndex);
+             end;
+             if VertexOrientationA<>Back then begin
+              FrontVertexIndices.Add(VertexIndex);
+             end;
+             if (VertexOrientationA or VertexOrientationB)=Spanning then begin
+              VertexB:=@Vertices^.Items[Polygon^.Indices.Items[IndexB]];
+              VertexIndex:=Vertices^.Add(VertexA^.Lerp(VertexB^,-(aPlane.DistanceTo(VertexA^.Position)/aPlane.Normal.Dot(VertexB^.Position-VertexA^.Position))));
+              BackVertexIndices.Add(VertexIndex);
+              FrontVertexIndices.Add(VertexIndex);
+             end;
+            end;
+            if BackVertexIndices.Count>2 then begin
+             fTree.fMesh.RemoveNearDuplicateIndices(BackVertexIndices);
+             if BackVertexIndices.Count>2 then begin
+              aBackList.Add(PolygonNode.AddPolygonIndices(BackVertexIndices));
+             end;
+            end;
+            if FrontVertexIndices.Count>2 then begin
+             fTree.fMesh.RemoveNearDuplicateIndices(FrontVertexIndices);
+             if FrontVertexIndices.Count>2 then begin
+              aFrontList.Add(PolygonNode.AddPolygonIndices(FrontVertexIndices));
+             end;
+            end;
+           end;
+          end;
+         end;
+        end;
+       end;
+      end;
+     end;
+    finally
+     JobQueue.Finalize;
+    end;
+   finally
+    FrontVertexIndices.Finalize;
+   end;
+  finally
+   BackVertexIndices.Finalize;
+  end;
+ finally
+  VertexOrientations:=nil;
+ end;
+end;
+
+{ TpvCSGBSP.TTree.TNode }
+
+constructor TpvCSGBSP.TTree.TNode.Create(const aTree:TTree);
+begin
+ inherited Create;
+ fTree:=aTree;
+ fPolygonNodes.Initialize;
  fBack:=nil;
  fFront:=nil;
 end;
 
-destructor TpvCSGBSP.TNode.Destroy;
-type TJobStack=TDynamicStack<TNode>;
+destructor TpvCSGBSP.TTree.TNode.Destroy;
+type TJobStack=TDynamicStack<TTree.TNode>;
 var JobStack:TJobStack;
-    Node:TNode;
+    Node:TTree.TNode;
 begin
- fIndices.Finalize;
+ fPolygonNodes.Finalize;
  if assigned(fFront) or assigned(fBack) then begin
   JobStack.Initialize;
   try
@@ -5009,60 +4707,18 @@ begin
    JobStack.Finalize;
   end;
  end;
- fPointerToIndices:=nil;
  inherited Destroy;
 end;
 
-procedure TpvCSGBSP.TNode.SetIndices(const aIndices:TIndexList);
-begin
- fIndices.Assign(aIndices);
-end;
-
-procedure TpvCSGBSP.TNode.Invert;
-type TJobStack=TDynamicStack<TNode>;
+procedure TpvCSGBSP.TTree.TNode.Invert;
+type TJobStack=TDynamicStack<TTree.TNode>;
 var JobStack:TJobStack;
-    Node,TempNode:TNode;
-    Index,Count,
-    CountPolygonVertices,PolygonVertexIndex,
-    IndexA,IndexB:TpvSizeInt;
+    Node,TempNode:TTree.TNode;
 begin
- fMesh.Invert;
  JobStack.Initialize;
  try
   JobStack.Push(self);
   while JobStack.Pop(Node) do begin
-   case fMesh.fMode of
-    TMesh.TMode.Triangles:begin
-     Index:=0;
-     Count:=Node.fIndices.Count;
-     while (Index+2)<Count do begin
-      Node.fIndices.Exchange(Index+0,Index+2);
-      inc(Index,3);
-     end;
-    end;
-    else {TMesh.TMode.Polygons:}begin
-     Index:=0;
-     Count:=Node.fIndices.Count;
-     while Index<Count do begin
-      CountPolygonVertices:=Node.fIndices.Items[Index];
-      inc(Index);
-      if CountPolygonVertices>0 then begin
-       if (Index+(CountPolygonVertices-1))<Count then begin
-        for PolygonVertexIndex:=0 to (CountPolygonVertices shr 1)-1 do begin
-         IndexA:=Index+PolygonVertexIndex;
-         IndexB:=Index+(CountPolygonVertices-(PolygonVertexIndex+1));
-         if IndexA<>IndexB then begin
-          Node.fIndices.Exchange(IndexA,IndexB);
-         end;
-        end;
-       end else begin
-        Assert(false);
-       end;
-       inc(Index,CountPolygonVertices);
-      end;
-     end;
-    end;
-   end;
    Node.fPlane:=Node.fPlane.Flip;
    TempNode:=Node.fBack;
    Node.fBack:=Node.fFront;
@@ -5079,204 +4735,67 @@ begin
  end;
 end;
 
-procedure TpvCSGBSP.TNode.EvaluateSplitPlane(const aPlane:TPlane;
-                                             out aCountPolygonsSplits:TpvSizeInt;
-                                             out aCountBackPolygons:TpvSizeInt;
-                                             out aCountFrontPolygons:TpvSizeInt);
-const TriangleSplitMask=(0 shl 0) or (1 shl 2) or (1 shl 2) or (1 shl 3) or (1 shl 4) or (1 shl 5) or (1 shl 6) or (0 shl 7);
-      BackTriangleMask=(1 shl 0) or (2 shl 2) or (2 shl 4) or (1 shl (3 shl 1)) or (2 shl (4 shl 1)) or (1 shl (5 shl 1)) or (1 shl (6 shl 1)) or (0 shl (7 shl 1));
-      FrontTriangleMask=(0 shl 0) or (1 shl 2) or (1 shl 4) or (2 shl (3 shl 1)) or (1 shl (4 shl 1)) or (2 shl (5 shl 1)) or (2 shl (6 shl 1)) or (1 shl (7 shl 1));
-var Index,Count,CountPolygonVertices,Code:TpvSizeInt;
-    Vertices:TVertexList;
-begin
- aCountPolygonsSplits:=0;
- aCountBackPolygons:=0;
- aCountFrontPolygons:=0;
- Count:=fIndices.Count;
- if Count>0 then begin
-  Vertices:=fMesh.fVertices;
-  Index:=0;
-  while Index<Count do begin
-   case fMesh.fMode of
-    TMesh.TMode.Triangles:begin
-     CountPolygonVertices:=3;
-    end;
-    else {TMesh.TMode.Polygons:}begin
-     CountPolygonVertices:=fIndices.Items[Index];
-     inc(Index);
-    end;
-   end;
-   if (CountPolygonVertices>2) and ((Index+(CountPolygonVertices-1))<Count) then begin
-    Code:=((ord(aPlane.DistanceTo(Vertices.Items[fIndices.Items[Index+0]].Position)>0.0) and 1) shl 2) or
-          ((ord(aPlane.DistanceTo(Vertices.Items[fIndices.Items[Index+1]].Position)>0.0) and 1) shl 1) or
-          ((ord(aPlane.DistanceTo(Vertices.Items[fIndices.Items[Index+2]].Position)>0.0) and 1) shl 0);
-    inc(aCountPolygonsSplits,(TriangleSplitMask shr Code) and 1);
-    inc(aCountBackPolygons,(BackTriangleMask shr (Code shl 1)) and 3);
-    inc(aCountFrontPolygons,(FrontTriangleMask shr (Code shl 1)) and 3);
-   end;
-   inc(Index,CountPolygonVertices);
-  end;
- end;
-end;
-
-function TpvCSGBSP.TNode.FindSplitPlane(const aIndices:TIndexList;
-                                        const aSplitSettings:PSplitSettings):TPlane;
-var Index,Count,TriangleCount,VertexBaseIndex,
-    CountPolygonsSplits,CountBackPolygons,CountFrontPolygons,
-    CountPolygonVertices:TpvSizeInt;
-    Plane:TPlane;
-    Score,BestScore:TFloat;
-    Vertices:TVertexList;
-    SplitSettings:PSplitSettings;
-begin
- if assigned(aSplitSettings) then begin
-  SplitSettings:=aSplitSettings;
- end else begin
-  SplitSettings:=@DefaultSplitSettings;
- end;
- if SplitSettings^.SearchBestFactor<=0 then begin
-  if aIndices.Count>2 then begin
-   Index:=0;
-   case fMesh.fMode of
-    TMesh.TMode.Triangles:begin
-     CountPolygonVertices:=3;
-    end;
-    else {TMesh.TMode.Polygons:}begin
-     CountPolygonVertices:=aIndices.Items[Index];
-     inc(Index);
-    end;
-   end;
-   Count:=aIndices.Count;
-   if (CountPolygonVertices>2) and ((Index+(CountPolygonVertices-1))<Count) then begin
-    result:=TPlane.Create(fMesh.fVertices.Items[aIndices.Items[Index+0]].Position,
-                          fMesh.fVertices.Items[aIndices.Items[Index+1]].Position,
-                          fMesh.fVertices.Items[aIndices.Items[Index+2]].Position);
-   end;
-  end else begin
-   result:=TPlane.CreateEmpty;
-  end;
- end else begin
-  result:=TPlane.CreateEmpty;
-  case fMesh.fMode of
-   TMesh.TMode.Triangles:begin
-    Count:=aIndices.Count;
-    TriangleCount:=Count div 3;
-    Vertices:=fMesh.fVertices;
-    BestScore:=Infinity;
-    for Index:=0 to ((TriangleCount+(SplitSettings^.SearchBestFactor-1)) div SplitSettings^.SearchBestFactor)-1 do begin
-     if SplitSettings^.SearchBestFactor=1 then begin
-      VertexBaseIndex:=(Index mod TriangleCount)*3;
-     end else begin
-      VertexBaseIndex:=Random(TriangleCount)*3;
-     end;
-     Plane:=TPlane.Create(Vertices.Items[aIndices.Items[VertexBaseIndex+0]].Position,
-                          Vertices.Items[aIndices.Items[VertexBaseIndex+1]].Position,
-                          Vertices.Items[aIndices.Items[VertexBaseIndex+2]].Position);
-     EvaluateSplitPlane(Plane,CountPolygonsSplits,CountBackPolygons,CountFrontPolygons);
-     Score:=(CountPolygonsSplits*SplitSettings^.PolygonSplitCost)+
-            (abs(CountBackPolygons-CountFrontPolygons)*SplitSettings^.PolygonImbalanceCost);
-     if (Index=0) or (BestScore>Score) then begin
-      BestScore:=Score;
-      result:=Plane;
-     end;
-    end;
-   end;
-   else {TMesh.TMode.Polygons:}begin
-    Count:=aIndices.Count;
-    Vertices:=fMesh.fVertices;
-    BestScore:=Infinity;
-    Index:=0;
-    while Index<Count do begin
-     case fMesh.fMode of
-      TMesh.TMode.Triangles:begin
-       CountPolygonVertices:=3;
-      end;
-      else {TMesh.TMode.Polygons:}begin
-       CountPolygonVertices:=aIndices.Items[Index];
-       inc(Index);
-      end;
-     end;
-     if (CountPolygonVertices>2) and ((Index+(CountPolygonVertices-1))<Count) then begin
-      VertexBaseIndex:=Index;
-      Plane:=TPlane.Create(Vertices.Items[aIndices.Items[VertexBaseIndex+0]].Position,
-                           Vertices.Items[aIndices.Items[VertexBaseIndex+1]].Position,
-                           Vertices.Items[aIndices.Items[VertexBaseIndex+2]].Position);
-      EvaluateSplitPlane(Plane,CountPolygonsSplits,CountBackPolygons,CountFrontPolygons);
-      Score:=(CountPolygonsSplits*SplitSettings^.PolygonSplitCost)+
-             (abs(CountBackPolygons-CountFrontPolygons)*SplitSettings^.PolygonImbalanceCost);
-      if (Index=0) or (BestScore>Score) then begin
-       BestScore:=Score;
-       result:=Plane;
-      end;
-     end;
-     inc(Index,CountPolygonVertices);
-    end;
-   end;
-  end;
- end;
-end;
-
-procedure TpvCSGBSP.TNode.Build(const aIndices:TIndexList;
-                                const aSplitSettings:PSplitSettings=nil);
+procedure TpvCSGBSP.TTree.TNode.ClipPolygons(const aPolygonNodes:TPolygonNodeList;const aAlsoRemoveCoplanarFront:boolean=false);
 type TJobStackItem=record
-      Node:TNode;
-      Indices:TIndexList;
+      Node:TTree.TNode;
+      PolygonNodes:TPolygonNodeList;
      end;
      TJobStack=TDynamicStack<TJobStackItem>;
 var JobStack:TJobStack;
     JobStackItem,NewJobStackItem,FrontJobStackItem,BackJobStackItem:TJobStackItem;
-    Index,CountVertexIndices:TpvSizeInt;
+    Index,Count:TpvSizeInt;
+    CoplanarFrontNodes:PPolygonNodeList;
+    PolygonNode:TPolygonNode;
+    BackIndices:PIndexList;
 begin
  JobStack.Initialize;
  try
   NewJobStackItem.Node:=self;
-  NewJobStackItem.Indices:=aIndices;
+  NewJobStackItem.PolygonNodes:=aPolygonNodes;
   JobStack.Push(NewJobStackItem);
   while JobStack.Pop(JobStackItem) do begin
    try
-    CountVertexIndices:=JobStackItem.Indices.Count;
-    if ((fMesh.fMode=TMesh.TMode.Triangles) and (CountVertexIndices>2)) or
-       ((fMesh.fMode=TMesh.TMode.Polygons) and (CountVertexIndices>1)) then begin
-     FrontJobStackItem.Indices.Initialize;
-     BackJobStackItem.Indices.Initialize;
-     if not JobStackItem.Node.fPlane.OK then begin
-      JobStackItem.Node.fPlane:=FindSplitPlane(JobStackItem.Indices,aSplitSettings);
-     end;
-     case fMesh.fMode of
-      TMesh.TMode.Triangles:begin
-       JobStackItem.Node.fPlane.SplitTriangles(fMesh.fVertices,
-                                               JobStackItem.Indices,
-                                               @JobStackItem.Node.fIndices,
-                                               @JobStackItem.Node.fIndices,
-                                               @BackJobStackItem.Indices,
-                                               @FrontJobStackItem.Indices);
+    if JobStackItem.Node.fPlane.OK then begin
+     BackJobStackItem.PolygonNodes.Initialize;
+     try
+      FrontJobStackItem.PolygonNodes.Initialize;
+      try
+       if aAlsoRemoveCoplanarFront then begin
+        CoplanarFrontNodes:=@BackJobStackItem.PolygonNodes;
+       end else begin
+        CoplanarFrontNodes:=@FrontJobStackItem.PolygonNodes;
+       end;
+       for Index:=0 to JobStackItem.PolygonNodes.Count-1 do begin
+        PolygonNode:=JobStackItem.PolygonNodes.Items[Index];
+        if not PolygonNode.fRemoved then begin
+         PolygonNode.SplitByPlane(JobStackItem.Node.Plane,
+                                  BackJobStackItem.PolygonNodes,
+                                  CoplanarFrontNodes^,
+                                  BackJobStackItem.PolygonNodes,
+                                  FrontJobStackItem.PolygonNodes);
+        end;
+       end;
+       if assigned(JobStackItem.Node.fBack) and (BackJobStackItem.PolygonNodes.Count>0) then begin
+        BackJobStackItem.Node:=JobStackItem.Node.fBack;
+        JobStack.Push(BackJobStackItem);
+       end else begin
+        for Index:=0 to BackJobStackItem.PolygonNodes.Count-1 do begin
+         BackJobStackItem.PolygonNodes.Items[Index].Remove;
+        end;
+       end;
+       if assigned(JobStackItem.Node.fFront) and (FrontJobStackItem.PolygonNodes.Count>0) then begin
+        FrontJobStackItem.Node:=JobStackItem.Node.fFront;
+        JobStack.Push(FrontJobStackItem);
+       end;
+      finally
+       FrontJobStackItem.PolygonNodes.Finalize;
       end;
-      else {TMesh.TMode.Polygons:}begin
-       JobStackItem.Node.fPlane.SplitPolygons(fMesh.fVertices,
-                                              JobStackItem.Indices,
-                                              @JobStackItem.Node.fIndices,
-                                              @JobStackItem.Node.fIndices,
-                                              @BackJobStackItem.Indices,
-                                              @FrontJobStackItem.Indices);
-      end;
-     end;
-     if BackJobStackItem.Indices.Count>0 then begin
-      if not assigned(JobStackItem.Node.fBack) then begin
-       JobStackItem.Node.fBack:=TNode.Create(fMesh);
-      end;
-      BackJobStackItem.Node:=JobStackItem.Node.fBack;
-      JobStack.Push(BackJobStackItem);
-     end;
-     if FrontJobStackItem.Indices.Count>0 then begin
-      if not assigned(JobStackItem.Node.fFront) then begin
-       JobStackItem.Node.fFront:=TNode.Create(fMesh);
-      end;
-      FrontJobStackItem.Node:=JobStackItem.Node.fFront;
-      JobStack.Push(FrontJobStackItem);
+     finally
+      BackJobStackItem.PolygonNodes.Finalize;
      end;
     end;
    finally
-    JobStackItem.Indices.Finalize;
+    JobStackItem.PolygonNodes.Finalize;
    end;
   end;
  finally
@@ -5284,96 +4803,16 @@ begin
  end;
 end;
 
-function TpvCSGBSP.TNode.ClipPolygons(var aVertices:TVertexList;const aIndices:TIndexList):TIndexList;
-type TJobStackItem=record
-      Node:TNode;
-      Indices:TIndexList;
-     end;
-     TJobStack=TDynamicStack<TJobStackItem>;
+procedure TpvCSGBSP.TTree.TNode.ClipTo(const aTree:TTree;const aAlsoRemoveCoplanarFront:boolean=false);
+type TJobStack=TDynamicStack<TTree.TNode>;
 var JobStack:TJobStack;
-    JobStackItem,NewJobStackItem,FrontJobStackItem,BackJobStackItem:TJobStackItem;
-    Index,Count:TpvSizeInt;
-    BackIndices:PIndexList;
-begin
- result.Initialize;
- try
-  JobStack.Initialize;
-  try
-   NewJobStackItem.Node:=self;
-   NewJobStackItem.Indices.Assign(aIndices);
-   JobStack.Push(NewJobStackItem);
-   while JobStack.Pop(JobStackItem) do begin
-    try
-     if JobStackItem.Node.fPlane.OK then begin
-      FrontJobStackItem.Indices.Initialize;
-      try
-       if assigned(JobStackItem.Node.fBack) then begin
-        BackJobStackItem.Indices.Initialize;
-        BackIndices:=@BackJobStackItem.Indices;
-       end else begin
-        BackIndices:=nil;
-       end;
-       try
-        case fMesh.fMode of
-         TMesh.TMode.Triangles:begin
-          JobStackItem.Node.fPlane.SplitTriangles(aVertices,
-                                                  JobStackItem.Indices,
-                                                  BackIndices,
-                                                  @FrontJobStackItem.Indices,
-                                                  BackIndices,
-                                                  @FrontJobStackItem.Indices);
-         end;
-         else {TMesh.TMode.Polygons:}begin
-          JobStackItem.Node.fPlane.SplitPolygons(aVertices,
-                                                 JobStackItem.Indices,
-                                                 BackIndices,
-                                                 @FrontJobStackItem.Indices,
-                                                 BackIndices,
-                                                 @FrontJobStackItem.Indices);
-         end;
-        end;
-        if assigned(JobStackItem.Node.fBack) then begin
-         BackJobStackItem.Node:=JobStackItem.Node.fBack;
-         JobStack.Push(BackJobStackItem);
-        end;
-        if assigned(JobStackItem.Node.fFront) then begin
-         FrontJobStackItem.Node:=JobStackItem.Node.fFront;
-         JobStack.Push(FrontJobStackItem);
-        end else if FrontJobStackItem.Indices.Count>0 then begin
-         result.Add(FrontJobStackItem.Indices);
-        end;
-       finally
-        BackJobStackItem.Indices.Finalize;
-       end;
-      finally
-       FrontJobStackItem.Indices.Finalize;
-      end;
-     end else if JobStackItem.Indices.Count>0 then begin
-      result.Add(JobStackItem.Indices);
-     end;
-    finally
-     JobStackItem.Indices.Finalize;
-    end;
-   end;
-  finally
-   JobStack.Finalize;
-  end;
- except
-  result.Finalize;
-  raise;
- end;
-end;
-
-procedure TpvCSGBSP.TNode.ClipTo(const aNode:TNode);
-type TJobStack=TDynamicStack<TNode>;
-var JobStack:TJobStack;
-    Node:TNode;
+    Node:TTree.TNode;
 begin
  JobStack.Initialize;
  try
   JobStack.Push(self);
   while JobStack.Pop(Node) do begin
-   Node.SetIndices(aNode.ClipPolygons(Node.fMesh.fVertices,Node.fIndices));
+   aTree.fRootNode.ClipPolygons(Node.fPolygonNodes,aAlsoRemoveCoplanarFront);
    if assigned(Node.fFront) then begin
     JobStack.Push(Node.fFront);
    end;
@@ -5386,65 +4825,243 @@ begin
  end;
 end;
 
-procedure TpvCSGBSP.TNode.Merge(const aNode:TNode;
-                                const aSplitSettings:PSplitSettings=nil);
-var Index,Offset,Count,CountPolygonVertices:TpvSizeInt;
-    OtherMesh:TMesh;
+procedure TpvCSGBSP.TTree.TNode.AddPolygonNodes(const aPolygonNodes:TPolygonNodeList);
+type TJobStackItem=record
+      Node:TTree.TNode;
+      PolygonNodes:TPolygonNodeList;
+     end;
+     TJobStack=TDynamicStack<TJobStackItem>;
+var Index:TpvSizeInt;
+    JobStack:TJobStack;
+    JobStackItem,NewJobStackItem,BackJobStackItem,FrontJobStackItem:TJobStackItem;
 begin
- Offset:=fMesh.fVertices.Count;
- OtherMesh:=aNode.ToMesh;
+ JobStack.Initialize;
  try
-  OtherMesh.SetMode(fMesh.fMode);
-  fMesh.fVertices.Add(OtherMesh.fVertices);
-  case fMesh.fMode of
-   TMesh.TMode.Triangles:begin
-    for Index:=0 to OtherMesh.fIndices.Count-1 do begin
-     OtherMesh.fIndices.Items[Index]:=OtherMesh.fIndices.Items[Index]+Offset;
+  NewJobStackItem.Node:=self;
+  NewJobStackItem.PolygonNodes:=aPolygonNodes;
+  JobStack.Push(NewJobStackItem);
+  while JobStack.Pop(JobStackItem) do begin
+   if JobStackItem.PolygonNodes.Count>0 then begin
+    if not JobStackItem.Node.fPlane.OK then begin
+     JobStackItem.Node.fPlane:=TPlane.Create(fTree.fMesh.fVertices.Items[JobStackItem.PolygonNodes.Items[0].fPolygon.Indices.Items[0]].Position,
+                                             fTree.fMesh.fVertices.Items[JobStackItem.PolygonNodes.Items[0].fPolygon.Indices.Items[1]].Position,
+                                             fTree.fMesh.fVertices.Items[JobStackItem.PolygonNodes.Items[0].fPolygon.Indices.Items[2]].Position);
+    end;
+    BackJobStackItem.PolygonNodes.Initialize;
+    try
+     FrontJobStackItem.PolygonNodes.Initialize;
+     try
+      for Index:=0 to JobStackItem.PolygonNodes.Count-1 do begin
+       JobStackItem.PolygonNodes.Items[Index].SplitByPlane(JobStackItem.Node.Plane,
+                                                           BackJobStackItem.PolygonNodes,
+                                                           JobStackItem.Node.fPolygonNodes,
+                                                           BackJobStackItem.PolygonNodes,
+                                                           FrontJobStackItem.PolygonNodes);
+      end;
+      if FrontJobStackItem.PolygonNodes.Count>0 then begin
+       if not assigned(JobStackItem.Node.fFront) then begin
+        JobStackItem.Node.fFront:=TTree.TNode.Create(fTree);
+       end;
+       FrontJobStackItem.Node:=JobStackItem.Node.fFront;
+       JobStack.Push(FrontJobStackItem);
+      end;
+      if BackJobStackItem.PolygonNodes.Count>0 then begin
+       if not assigned(JobStackItem.Node.fBack) then begin
+        JobStackItem.Node.fBack:=TTree.TNode.Create(fTree);
+       end;
+       BackJobStackItem.Node:=JobStackItem.Node.fBack;
+       JobStack.Push(BackJobStackItem);
+      end;
+     finally
+      FrontJobStackItem.PolygonNodes.Finalize;
+     end;
+    finally
+     BackJobStackItem.PolygonNodes.Finalize;
     end;
    end;
-   else {TMesh.TMode.Polygons:}begin
-    Index:=0;
-    Count:=OtherMesh.fIndices.Count;
-    while Index<Count do begin
-     CountPolygonVertices:=OtherMesh.fIndices.Items[Index];
+  end;
+ finally
+  JobStack.Finalize;
+ end;
+end;
+
+{ TpvCSGBSP.TTree }
+
+constructor TpvCSGBSP.TTree.Create(const aMesh:TMesh);
+begin
+ inherited Create;
+ fMesh:=aMesh;
+ fFirstPolygonNode:=nil;
+ fLastPolygonNode:=nil;
+ fPolygonRootNode:=TTree.TPolygonNode.Create(self,nil);
+ fRootNode:=TTree.TNode.Create(self);
+end;
+
+destructor TpvCSGBSP.TTree.Destroy;
+begin
+ while assigned(fLastPolygonNode) do begin
+  fLastPolygonNode.Free;
+ end;
+ fPolygonRootNode:=nil;
+ FreeAndNil(fRootNode);
+ inherited Destroy;
+end;
+
+procedure TpvCSGBSP.TTree.Invert;
+begin
+ fMesh.Invert;
+ fPolygonRootNode.Invert;
+ fRootNode.Invert;
+end;
+
+procedure TpvCSGBSP.TTree.ClipTo(const aWithTree:TTree;const aAlsoRemoveCoplanarFront:boolean=false);
+begin
+ fRootNode.ClipTo(aWithTree,aAlsoRemoveCoplanarFront);
+end;
+
+procedure TpvCSGBSP.TTree.AddPolygons(const aPolygons:TPolygonList);
+var Index:TpvSizeInt;
+    PolygonNodes:TPolygonNodeList;
+begin
+ PolygonNodes.Initialize;
+ try
+  for Index:=0 to aPolygons.Count-1 do begin
+   PolygonNodes.Add(fPolygonRootNode.AddPolygon(aPolygons.Items[Index]));
+  end;
+  fRootNode.AddPolygonNodes(PolygonNodes);
+ finally
+  PolygonNodes.Finalize;
+ end;
+end;
+
+procedure TpvCSGBSP.TTree.AddIndices(const aIndices:TIndexList);
+var Index,Count,CountPolygonVertices:TpvSizeInt;
+    Polygon:TPolygon;
+    Polygons:TPolygonList;
+begin
+ Polygons.Initialize;
+ try
+  Index:=0;
+  Count:=aIndices.Count;
+  while Index<Count do begin
+   case fMesh.fMode of
+    TMesh.TMode.Triangles:begin
+     CountPolygonVertices:=3;
+    end;
+    else {TMesh.TMode.Polygons:}begin
+     CountPolygonVertices:=aIndices.Items[Index];
      inc(Index);
-     while (CountPolygonVertices>0) and (Index<Count) do begin
-      OtherMesh.fIndices.Items[Index]:=OtherMesh.fIndices.Items[Index]+Offset;
-      inc(Index);
-      dec(CountPolygonVertices);
+    end;
+   end;
+   if CountPolygonVertices>2 then begin
+    if (Index+(CountPolygonVertices-1))<Count then begin
+     Polygon.Indices.Initialize;
+     Polygon.Indices.AddRangeFrom(aIndices,Index,CountPolygonVertices);
+     Polygons.Add(Polygon);
+    end;
+   end;
+   inc(Index,CountPolygonVertices);
+  end;
+  AddPolygons(Polygons);
+ finally
+  Polygons.Finalize;
+ end;
+end;
+
+procedure TpvCSGBSP.TTree.GetPolygons(var aPolygons:TPolygonList);
+type TJobQueue=TDynamicQueue<TPolygonNode>;
+var Index:TpvSizeInt;
+    JobQueue:TJobQueue;
+    PolygonNode:TPolygonNode;
+begin
+ JobQueue.Initialize;
+ try
+  JobQueue.Enqueue(fPolygonRootNode);
+  while JobQueue.Dequeue(PolygonNode) do begin
+   if not PolygonNode.fRemoved then begin
+    if PolygonNode.fPolygon.Indices.Count>0 then begin
+     aPolygons.Add(PolygonNode.fPolygon);
+    end else begin
+     PolygonNode:=PolygonNode.fFirstChild;
+     while assigned(PolygonNode) do begin
+      if not PolygonNode.fRemoved then begin
+       JobQueue.Enqueue(PolygonNode);
+      end;
+      PolygonNode:=PolygonNode.fParentNext;
      end;
     end;
    end;
   end;
-  Build(OtherMesh.fIndices,aSplitSettings);
  finally
-  FreeAndNil(OtherMesh);
+  JobQueue.Finalize;
  end;
 end;
 
-function TpvCSGBSP.TNode.ToMesh:TMesh;
-type TJobStack=TDynamicStack<TNode>;
-var JobStack:TJobStack;
-    Node:TNode;
+procedure TpvCSGBSP.TTree.GetIndices(var aIndices:TIndexList);
+var PolygonIndex,IndicesIndex:TpvSizeInt;
+    Polygons:TPolygonList;
+    Polygon:PPolygon;
+begin
+ Polygons.Initialize;
+ try
+  GetPolygons(Polygons);
+  case fMesh.fMode of
+   TMesh.TMode.Triangles:begin
+    for PolygonIndex:=0 to Polygons.Count-1 do begin
+     Polygon:=@Polygons.Items[PolygonIndex];
+     if Polygon^.Indices.Count>2 then begin
+      for IndicesIndex:=2 to Polygon^.Indices.Count-1 do begin
+       aIndices.Add([Polygon^.Indices.Items[0],
+                     Polygon^.Indices.Items[IndicesIndex-1],
+                     Polygon^.Indices.Items[IndicesIndex]]);
+      end;
+     end;
+    end;
+   end;
+   else {TMesh.TMode.Polygons:}begin
+    for PolygonIndex:=0 to Polygons.Count-1 do begin
+     Polygon:=@Polygons.Items[PolygonIndex];
+     if Polygon^.Indices.Count>2 then begin
+      aIndices.Add(Polygon^.Indices.Count);
+      aIndices.Add(Polygon^.Indices);
+     end;
+    end;
+   end;
+  end;
+ finally
+  Polygons.Finalize;
+ end;
+end;
+
+procedure TpvCSGBSP.TTree.Merge(const aTree:TTree);
+var Index,OtherIndex,Offset,Count,CountPolygonVertices:TpvSizeInt;
+    Polygons:TPolygonList;
+    Polygon:PPolygon;
+    PolygonNodes:TPolygonNodeList;
+begin
+ Offset:=fMesh.fVertices.Count;
+ fMesh.fVertices.Add(aTree.fMesh.fVertices);
+ Polygons.Initialize;
+ try
+  aTree.GetPolygons(Polygons);
+  for Index:=0 to Polygons.Count-1 do begin
+   Polygon:=@Polygons.Items[Index];
+   for OtherIndex:=0 to Polygon^.Indices.Count-1 do begin
+    inc(Polygon^.Indices.Items[OtherIndex],Offset);
+   end;
+  end;
+  AddPolygons(Polygons);
+ finally
+  Polygons.Finalize;
+ end;
+end;
+
+function TpvCSGBSP.TTree.ToMesh:TMesh;
 begin
  result:=TMesh.Create(fMesh.fMode);
  try
   result.SetVertices(fMesh.fVertices);
-  JobStack.Initialize;
-  try
-   JobStack.Push(self);
-   while JobStack.Pop(Node) do begin
-    result.fIndices.Add(Node.fIndices);
-    if assigned(Node.fFront) then begin
-     JobStack.Push(Node.fFront);
-    end;
-    if assigned(Node.fBack) then begin
-     JobStack.Push(Node.fBack);
-    end;
-   end;
-  finally
-   JobStack.Finalize;
-  end;
+  GetIndices(result.fIndices);
  finally
   result.RemoveDuplicateAndUnusedVertices;
  end;
