@@ -517,7 +517,7 @@ type TpvCSGBSP=class
               procedure ConvertToTriangles;
               procedure RemoveNearDuplicateIndices(var aIndices:TIndexList);
               procedure Canonicalize;
-              procedure CalculateNormals(const aSoftNormals:boolean=true;const aAreaWeighting:boolean=true);
+              procedure CalculateNormals(const aSoftNormals:boolean=true;const aAreaWeighting:boolean=true;const aAngleWeighting:boolean=true);
               procedure RemoveDuplicateAndUnusedVertices;
               procedure FixTJunctions(const aConsistentInputVertices:boolean=false);
               procedure MergeCoplanarConvexPolygons;
@@ -3061,13 +3061,14 @@ begin
  RemoveDuplicateAndUnusedVertices;
 end;
 
-procedure TpvCSGBSP.TMesh.CalculateNormals(const aSoftNormals:boolean=true;const aAreaWeighting:boolean=true);
+procedure TpvCSGBSP.TMesh.CalculateNormals(const aSoftNormals:boolean=true;const aAreaWeighting:boolean=true;const aAngleWeighting:boolean=true);
 var Index,Count,CountPolygonVertices,OtherIndex:TpvSizeInt;
     Vertex0,Vertex1,Vertex2:PVertex;
+    Index0,Index1,Index2:TIndex;
     Vertex:TVertex;
     Normal:TVector3;
     Normals:array of TVector3;
-    Area,Sum:TFloat;
+    d01,d12,d20,s,r:TFloat;
     va,vb,vc:PVector3;
 begin
  Normals:=nil;
@@ -3093,41 +3094,57 @@ begin
     end;
    end;
    if CountPolygonVertices>2 then begin
-    Vertex0:=@fVertices.Items[fIndices.Items[Index+0]];
-    Vertex1:=@fVertices.Items[fIndices.Items[Index+1]];
-    Vertex2:=@fVertices.Items[fIndices.Items[Index+2]];
-    Normal:=(Vertex1^.Position-Vertex0^.Position).Cross(Vertex2^.Position-Vertex0^.Position);
-    if aAreaWeighting then begin
-     if (fMode=TMode.Polygons) and ((Index+(CountPolygonVertices-1))<Count) then begin
-      Area:=0.0;
-      va:=@fVertices.Items[fIndices.Items[Index]].Position;
-      vb:=@fVertices.Items[fIndices.Items[Index+1]].Position;
+    if aSoftNormals then begin
+     if (Index+(CountPolygonVertices-1))<Count then begin
+      Index0:=fIndices.Items[Index+0];
+      Index1:=fIndices.Items[Index+1];
+      Vertex0:=@fVertices.Items[Index0];
+      Vertex1:=@fVertices.Items[Index1];
       for OtherIndex:=2 to CountPolygonVertices-1 do begin
-       vc:=@fVertices.Items[fIndices.Items[Index+OtherIndex]].Position;
-       Area:=Area+((vb^-va^).Cross(vc^-va^)).Length;
-       vb:=vc;
+       Index2:=fIndices.Items[Index+OtherIndex];
+       Vertex2:=@fVertices.Items[Index2];
+       Normal:=(Vertex1^.Position-Vertex0^.Position).Cross(Vertex2^.Position-Vertex0^.Position);
+       if not aAreaWeighting then begin
+        Normal:=Normal.Normalize;
+       end;
+       if aAngleWeighting then begin
+        d01:=(Vertex0^.Position-Vertex1^.Position).Length;
+        d12:=(Vertex1^.Position-Vertex2^.Position).Length;
+        d20:=(Vertex2^.Position-Vertex0^.Position).Length;
+        if (d01>=Epsilon) and (d12>=Epsilon) and (d20>=Epsilon) then begin
+         s:=(d01+d12+d20)*0.5;
+         r:=sqrt(((s-d01)*(s-d12)*(s-d20))/s);
+         Normals[Index0]:=Normals[Index0]+(Normal*ArcTan2(r,s-d12));
+         Normals[Index1]:=Normals[Index1]+(Normal*ArcTan2(r,s-d20));
+         Normals[Index2]:=Normals[Index2]+(Normal*ArcTan2(r,s-d01));
+        end;
+       end else begin
+        Normals[Index0]:=Normals[Index0]+Normal;
+        Normals[Index1]:=Normals[Index1]+Normal;
+        Normals[Index2]:=Normals[Index2]+Normal;
+       end;
+       Index1:=Index2;
+       Vertex1:=Vertex2;
       end;
-      Normal:=Normal.Normalize*(Area*0.5);
      end;
     end else begin
-     Normal:=Normal.Normalize;
+     Vertex0:=@fVertices.Items[fIndices.Items[Index+0]];
+     Vertex1:=@fVertices.Items[fIndices.Items[Index+1]];
+     Vertex2:=@fVertices.Items[fIndices.Items[Index+2]];
+     Normal:=(Vertex1^.Position-Vertex0^.Position).Cross(Vertex2^.Position-Vertex0^.Position);
+     if aAreaWeighting then begin
+      Normal:=Normal.Normalize;
+     end;
+     while (CountPolygonVertices>0) and (Index<Count) do begin
+      Vertex:=fVertices.Items[fIndices.Items[Index]];
+      Vertex.Normal:=Normal;
+      fIndices.Items[Index]:=fVertices.Add(Vertex);
+      inc(Index);
+      dec(CountPolygonVertices);
+     end;
     end;
-   end else begin
-    Normal.x:=0.0;
-    Normal.y:=0.0;
-    Normal.z:=0.0;
    end;
-   while (CountPolygonVertices>0) and (Index<Count) do begin
-    if aSoftNormals then begin
-     Normals[fIndices.Items[Index]]:=Normals[fIndices.Items[Index]]+Normal;
-    end else begin
-     Vertex:=fVertices.Items[fIndices.Items[Index]];
-     Vertex.Normal:=Normal;
-     fIndices.Items[Index]:=fVertices.Add(Vertex);
-    end;
-    inc(Index);
-    dec(CountPolygonVertices);
-   end;
+   inc(Index,CountPolygonVertices);
   end;
   if aSoftNormals then begin
    for Index:=0 to length(Normals)-1 do begin
