@@ -501,7 +501,11 @@ type TpvCSGBSP=class
               procedure Assign(const aFrom:TMesh); overload;
               procedure Assign(const aFrom:TTree); overload;
               function AddVertex(const aVertex:TVertex):TIndex;
+              function AddVertices(const aVertices:array of TVertex):TIndex; overload;
+              function AddVertices(const aVertices:TVertexList):TIndex; overload;
               function AddIndex(const aIndex:TIndex):TpvSizeInt;
+              function AddIndices(const aIndices:array of TIndex):TpvSizeInt; overload;
+              function AddIndices(const aIndices:TIndexList):TpvSizeInt; overload;
               procedure Invert;
               procedure ConvertToPolygons;
               procedure ConvertToTriangles;
@@ -2839,9 +2843,29 @@ begin
  result:=fVertices.Add(aVertex);
 end;
 
+function TpvCSGBSP.TMesh.AddVertices(const aVertices:array of TVertex):TIndex;
+begin
+ result:=fVertices.Add(aVertices);
+end;
+
+function TpvCSGBSP.TMesh.AddVertices(const aVertices:TVertexList):TIndex;
+begin
+ result:=fVertices.Add(aVertices);
+end;
+
 function TpvCSGBSP.TMesh.AddIndex(const aIndex:TIndex):TpvSizeInt;
 begin
  result:=fIndices.Add(aIndex);
+end;
+
+function TpvCSGBSP.TMesh.AddIndices(const aIndices:array of TIndex):TpvSizeInt;
+begin
+ result:=fIndices.Add(aIndices);
+end;
+
+function TpvCSGBSP.TMesh.AddIndices(const aIndices:TIndexList):TpvSizeInt;
+begin
+ result:=fIndices.Add(aIndices);
 end;
 
 procedure TpvCSGBSP.TMesh.Invert;
