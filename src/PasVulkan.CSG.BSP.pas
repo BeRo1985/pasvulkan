@@ -295,7 +295,8 @@ type TpvCSGBSP=class
             TVector2=record
              public
               x,y:TFloat;
-              constructor Create(const aFrom:TpvVector2);
+              constructor Create(const aFrom:TpvVector2); overload;
+              constructor Create(const aX,aY:TFloat); overload;
               class operator Equal(const aLeft,aRight:TVector2):boolean;
               class operator NotEqual(const aLeft,aRight:TVector2):boolean;
               class operator Add(const aLeft,aRight:TVector2):TVector2;
@@ -310,7 +311,8 @@ type TpvCSGBSP=class
             TVector3=record
              public
               x,y,z:TFloat;
-              constructor Create(const aFrom:TpvVector3);
+              constructor Create(const aFrom:TpvVector3); overload;
+              constructor Create(const aX,aY,aZ:TFloat); overload;
               class operator Equal(const aLeft,aRight:TVector3):boolean;
               class operator NotEqual(const aLeft,aRight:TVector3):boolean;
               class operator Add(const aLeft,aRight:TVector3):TVector3;
@@ -332,7 +334,8 @@ type TpvCSGBSP=class
             TVector4=record
              public
               x,y,z,w:TFloat;
-              constructor Create(const aFrom:TpvVector4);
+              constructor Create(const aFrom:TpvVector4); overload;
+              constructor Create(const aX,aY,aZ,aW:TFloat); overload;
               class operator Equal(const aLeft,aRight:TVector4):boolean;
               class operator NotEqual(const aLeft,aRight:TVector4):boolean;
               class operator Add(const aLeft,aRight:TVector4):TVector4;
@@ -1602,6 +1605,12 @@ begin
  y:=aFrom.y;
 end;
 
+constructor TpvCSGBSP.TVector2.Create(const aX,aY:TFloat);
+begin
+ x:=aX;
+ y:=aY;
+end;
+
 class operator TpvCSGBSP.TVector2.Equal(const aLeft,aRight:TVector2):boolean;
 begin
  result:=SameValue(aLeft.x,aRight.x) and
@@ -1671,6 +1680,13 @@ begin
  x:=aFrom.x;
  y:=aFrom.y;
  z:=aFrom.z;
+end;
+
+constructor TpvCSGBSP.TVector3.Create(const aX,aY,aZ:TFloat);
+begin
+ x:=aX;
+ y:=aY;
+ z:=aZ;
 end;
 
 class operator TpvCSGBSP.TVector3.Equal(const aLeft,aRight:TVector3):boolean;
@@ -1803,6 +1819,14 @@ begin
  y:=aFrom.y;
  z:=aFrom.z;
  w:=aFrom.w;
+end;
+
+constructor TpvCSGBSP.TVector4.Create(const aX,aY,aZ,aW:TFloat);
+begin
+ x:=aX;
+ y:=aY;
+ z:=aZ;
+ w:=aW;
 end;
 
 class operator TpvCSGBSP.TVector4.Equal(const aLeft,aRight:TVector4):boolean;
