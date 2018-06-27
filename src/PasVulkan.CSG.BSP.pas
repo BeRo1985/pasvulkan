@@ -500,6 +500,8 @@ type TpvCSGBSP=class
               destructor Destroy; override;
               procedure Assign(const aFrom:TMesh); overload;
               procedure Assign(const aFrom:TTree); overload;
+              procedure Append(const aFrom:TMesh); overload;
+              procedure Append(const aFrom:TTree); overload;
               function AddVertex(const aVertex:TVertex):TIndex;
               function AddVertices(const aVertices:array of TVertex):TIndex; overload;
               function AddVertices(const aVertices:TVertexList):TIndex; overload;
@@ -2836,6 +2838,50 @@ begin
  fMode:=Mesh.fMode;
  fVertices.Assign(Mesh.fVertices);
  aFrom.GetIndices(fIndices);
+end;
+
+procedure TpvCSGBSP.TMesh.Append(const aFrom:TMesh);
+var Index,Count,CountPolygonVertices,Offset:TpvSizeInt;
+    Mesh:TMesh;
+begin
+ Mesh:=TMesh.Create(aFrom);
+ try
+  Mesh.SetMode(fMode);
+  Offset:=fVertices.Count;
+  fVertices.Add(Mesh.fVertices);
+  Index:=0;
+  Count:=Mesh.fIndices.Count;
+  while Index<Count do begin
+   case fMode of
+    TMesh.TMode.Triangles:begin
+     CountPolygonVertices:=3;
+    end;
+    else {TMesh.TMode.Polygons:}begin
+     CountPolygonVertices:=Mesh.fIndices.Items[Index];
+     inc(Index);
+     AddIndex(CountPolygonVertices);
+    end;
+   end;
+   while (Index<Count) and (CountPolygonVertices>0) do begin
+    AddIndex(Mesh.fIndices.Items[Index]+Offset);
+    dec(CountPolygonVertices);
+    inc(Index);
+   end;
+  end;
+ finally
+  FreeAndNil(Mesh);
+ end;
+end;
+
+procedure TpvCSGBSP.TMesh.Append(const aFrom:TTree);
+var Mesh:TMesh;
+begin
+ Mesh:=aFrom.ToMesh;
+ try
+  Append(Mesh);
+ finally
+  FreeAndNil(Mesh);
+ end;
 end;
 
 function TpvCSGBSP.TMesh.AddVertex(const aVertex:TVertex):TIndex;
