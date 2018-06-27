@@ -304,6 +304,8 @@ type TpvCSGBSP=class
               class operator Multiply(const aLeft:TVector2;const aRight:TFloat):TVector2;
               class operator Divide(const aLeft:TVector2;const aRight:TFloat):TVector2;
               class operator Negative(const aVector:TVector2):TVector2;
+              function Length:TFloat;
+              function SquaredLength:TFloat;
               function Lerp(const aWith:TVector2;const aTime:TFloat):TVector2;
               function ToVector:TpvVector2;
             end;
@@ -343,6 +345,8 @@ type TpvCSGBSP=class
               class operator Multiply(const aLeft:TVector4;const aRight:TFloat):TVector4;
               class operator Divide(const aLeft:TVector4;const aRight:TFloat):TVector4;
               class operator Negative(const aVector:TVector4):TVector4;
+              function Length:TFloat;
+              function SquaredLength:TFloat;
               function Lerp(const aWith:TVector4;const aTime:TFloat):TVector4;
               function ToVector:TpvVector4;
             end;
@@ -1661,6 +1665,16 @@ begin
  result.y:=-aVector.y;
 end;
 
+function TpvCSGBSP.TVector2.Length:TFloat;
+begin
+ result:=sqrt(sqr(x)+sqr(y));
+end;
+
+function TpvCSGBSP.TVector2.SquaredLength:TFloat;
+begin
+ result:=sqr(x)+sqr(y);
+end;
+
 function TpvCSGBSP.TVector2.Lerp(const aWith:TVector2;const aTime:TFloat):TVector2;
 var InverseTime:TFloat;
 begin
@@ -1891,6 +1905,16 @@ begin
  result.y:=-aVector.y;
  result.z:=-aVector.z;
  result.w:=-aVector.w;
+end;
+
+function TpvCSGBSP.TVector4.Length:TFloat;
+begin
+ result:=sqrt(sqr(x)+sqr(y)+sqr(z)+sqr(w));
+end;
+
+function TpvCSGBSP.TVector4.SquaredLength:TFloat;
+begin
+ result:=sqr(x)+sqr(y)+sqr(z)+sqr(w);
 end;
 
 function TpvCSGBSP.TVector4.Lerp(const aWith:TVector4;const aTime:TFloat):TVector4;
@@ -2977,7 +3001,10 @@ begin
   end else begin
    VertexIndices[1]:=aIndices.Items[0];
   end;
-  if (fVertices.Items[VertexIndices[0]].Position-fVertices.Items[VertexIndices[1]].Position).SquaredLength<SquaredNearPositionEpsilon then begin
+  if ((fVertices.Items[VertexIndices[0]].Position-fVertices.Items[VertexIndices[1]].Position).SquaredLength<SquaredNearPositionEpsilon) and
+     ((fVertices.Items[VertexIndices[0]].Normal-fVertices.Items[VertexIndices[1]].Normal).SquaredLength<SquaredNearPositionEpsilon) and
+     ((fVertices.Items[VertexIndices[0]].TexCoord-fVertices.Items[VertexIndices[1]].TexCoord).SquaredLength<SquaredNearPositionEpsilon) and
+     ((fVertices.Items[VertexIndices[0]].Color-fVertices.Items[VertexIndices[1]].Color).SquaredLength<SquaredNearPositionEpsilon) then begin
    aIndices.Delete(Index);
   end else begin
    inc(Index);
