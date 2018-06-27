@@ -517,7 +517,7 @@ type TpvCSGBSP=class
               procedure ConvertToTriangles;
               procedure RemoveNearDuplicateIndices(var aIndices:TIndexList);
               procedure Canonicalize;
-              procedure CalculateNormals(const aSoftNormals:boolean=true);
+              procedure CalculateNormals(const aSoftNormals:boolean=true;const aAreaWeighting:boolean=true);
               procedure RemoveDuplicateAndUnusedVertices;
               procedure FixTJunctions(const aConsistentInputVertices:boolean=false);
               procedure MergeCoplanarConvexPolygons;
@@ -3061,66 +3061,78 @@ begin
  RemoveDuplicateAndUnusedVertices;
 end;
 
-procedure TpvCSGBSP.TMesh.CalculateNormals(const aSoftNormals:boolean=true);
-var Index,Count,CountPolygonVertices:TpvSizeInt;
+procedure TpvCSGBSP.TMesh.CalculateNormals(const aSoftNormals:boolean=true;const aAreaWeighting:boolean=true);
+var Index,Count,CountPolygonVertices,OtherIndex:TpvSizeInt;
     Vertex0,Vertex1,Vertex2:PVertex;
     Vertex:TVertex;
     Normal:TVector3;
     Normals:array of TVector3;
+    Area,Sum:TFloat;
+    va,vb,vc:PVector3;
 begin
  Normals:=nil;
  try
-  RemoveDuplicateAndUnusedVertices;
-  try
-   if aSoftNormals then begin
-    SetLength(Normals,fVertices.Count);
-    for Index:=0 to fVertices.Count-1 do begin
-     Normals[Index].x:=0.0;
-     Normals[Index].y:=0.0;
-     Normals[Index].z:=0.0;
-    end;
+  if aSoftNormals then begin
+   SetLength(Normals,fVertices.Count);
+   for Index:=0 to fVertices.Count-1 do begin
+    Normals[Index].x:=0.0;
+    Normals[Index].y:=0.0;
+    Normals[Index].z:=0.0;
    end;
-   Index:=0;
-   Count:=fIndices.Count;
-   while Index<Count do begin
-    case fMode of
-     TMode.Triangles:begin
-      CountPolygonVertices:=3;
-     end;
-     else {TMode.Polygons:}begin
-      CountPolygonVertices:=fIndices.Items[Index];
-      inc(Index);
-     end;
+  end;
+  Index:=0;
+  Count:=fIndices.Count;
+  while Index<Count do begin
+   case fMode of
+    TMode.Triangles:begin
+     CountPolygonVertices:=3;
     end;
-    if CountPolygonVertices>2 then begin
-     Vertex0:=@fVertices.Items[fIndices.Items[Index+0]];
-     Vertex1:=@fVertices.Items[fIndices.Items[Index+1]];
-     Vertex2:=@fVertices.Items[fIndices.Items[Index+2]];
-     Normal:=(Vertex1^.Position-Vertex0^.Position).Cross(Vertex2^.Position-Vertex0^.Position).Normalize;
-    end else begin
-     Normal.x:=0.0;
-     Normal.y:=0.0;
-     Normal.z:=0.0;
-    end;
-    while (CountPolygonVertices>0) and (Index<Count) do begin
-     if aSoftNormals then begin
-      Normals[fIndices.Items[Index]]:=Normals[fIndices.Items[Index]]+Normal;
-     end else begin
-      Vertex:=fVertices.Items[fIndices.Items[Index]];
-      Vertex.Normal:=Normal;
-      fIndices.Items[Index]:=fVertices.Add(Vertex);
-     end;
+    else {TMode.Polygons:}begin
+     CountPolygonVertices:=fIndices.Items[Index];
      inc(Index);
-     dec(CountPolygonVertices);
     end;
    end;
-   if aSoftNormals then begin
-    for Index:=0 to length(Normals)-1 do begin
-     fVertices.Items[Index].Normal:=Normals[Index].Normalize;
+   if CountPolygonVertices>2 then begin
+    Vertex0:=@fVertices.Items[fIndices.Items[Index+0]];
+    Vertex1:=@fVertices.Items[fIndices.Items[Index+1]];
+    Vertex2:=@fVertices.Items[fIndices.Items[Index+2]];
+    Normal:=(Vertex1^.Position-Vertex0^.Position).Cross(Vertex2^.Position-Vertex0^.Position);
+    if aAreaWeighting then begin
+     if (fMode=TMode.Polygons) and ((Index+(CountPolygonVertices-1))<Count) then begin
+      Area:=0.0;
+      va:=@fVertices.Items[fIndices.Items[Index]].Position;
+      vb:=@fVertices.Items[fIndices.Items[Index+1]].Position;
+      for OtherIndex:=2 to CountPolygonVertices-1 do begin
+       vc:=@fVertices.Items[fIndices.Items[Index+OtherIndex]].Position;
+       Area:=Area+((vb^-va^).Cross(vc^-va^)).Length;
+       vb:=vc;
+      end;
+      Normal:=Normal.Normalize*(Area*0.5);
+     end;
+    end else begin
+     Normal:=Normal.Normalize;
     end;
+   end else begin
+    Normal.x:=0.0;
+    Normal.y:=0.0;
+    Normal.z:=0.0;
    end;
-  finally
-   RemoveDuplicateAndUnusedVertices;
+   while (CountPolygonVertices>0) and (Index<Count) do begin
+    if aSoftNormals then begin
+     Normals[fIndices.Items[Index]]:=Normals[fIndices.Items[Index]]+Normal;
+    end else begin
+     Vertex:=fVertices.Items[fIndices.Items[Index]];
+     Vertex.Normal:=Normal;
+     fIndices.Items[Index]:=fVertices.Add(Vertex);
+    end;
+    inc(Index);
+    dec(CountPolygonVertices);
+   end;
+  end;
+  if aSoftNormals then begin
+   for Index:=0 to length(Normals)-1 do begin
+    fVertices.Items[Index].Normal:=Normals[Index].Normalize;
+   end;
   end;
  finally
   SetLength(Normals,0);
