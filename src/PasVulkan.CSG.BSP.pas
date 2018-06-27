@@ -500,6 +500,8 @@ type TpvCSGBSP=class
               destructor Destroy; override;
               procedure Assign(const aFrom:TMesh); overload;
               procedure Assign(const aFrom:TTree); overload;
+              function AddVertex(const aVertex:TVertex):TIndex;
+              function AddIndex(const aIndex:TIndex):TpvSizeInt;
               procedure Invert;
               procedure ConvertToPolygons;
               procedure ConvertToTriangles;
@@ -2830,6 +2832,16 @@ begin
  fMode:=Mesh.fMode;
  fVertices.Assign(Mesh.fVertices);
  aFrom.GetIndices(fIndices);
+end;
+
+function TpvCSGBSP.TMesh.AddVertex(const aVertex:TVertex):TIndex;
+begin
+ result:=fVertices.Add(aVertex);
+end;
+
+function TpvCSGBSP.TMesh.AddIndex(const aIndex:TIndex):TpvSizeInt;
+begin
+ result:=fIndices.Add(aIndex);
 end;
 
 procedure TpvCSGBSP.TMesh.Invert;
