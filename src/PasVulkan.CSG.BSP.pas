@@ -3096,7 +3096,7 @@ var Index,Count,CountPolygonVertices,OtherIndex,NormalItemIndex:TpvSizeInt;
     NormalLists:array of TNormalList;
     NormalList:PNormalList;
     NormalListItem:PNormalItem;
-    d01,d12,d20,s,r,Factor,AngleThreshold:TFloat;
+    d01,d12,d20,s,r,Angle,AngleThreshold:TFloat;
 begin
 
  // Clear all normals on the input vertices
@@ -3306,15 +3306,17 @@ begin
        NormalList:=@NormalLists[Index0];
        for NormalItemIndex:=0 to NormalList^.Count-1 do begin
         NormalListItem:=@NormalList^.Items[NormalItemIndex];
-        Factor:=PolygonNormal.Dot(NormalListItem^.PolygonNormal);
+        Angle:=PolygonNormal.Dot(NormalListItem^.PolygonNormal);
         if (not aCheckForCreasedNormals) or
-           ((Factor/sqrt(PolygonNormal.SquaredLength*NormalListItem^.PolygonNormal.SquaredLength))>=AngleThreshold) then begin
+           (Angle>=AngleThreshold) then begin
          if aCreasedNormalAngleWeighting then begin
-          Factor:=Max(0.0,Factor);
+          if Angle<0.0 then begin
+           Angle:=0.0;
+          end;
          end else begin
-          Factor:=1.0;
+          Angle:=1.0;
          end;
-         CurrentNormal:=CurrentNormal+(NormalListItem^.VertexNormal*Factor);
+         CurrentNormal:=CurrentNormal+(NormalListItem^.VertexNormal*Angle);
         end;
        end;
        Vertex:=fVertices.Items[Index0];
