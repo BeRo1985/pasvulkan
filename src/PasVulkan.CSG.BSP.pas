@@ -539,21 +539,29 @@ type TpvCSGBSP=class
                               const aSplitSettings:PSplitSettings=nil); overload;
               procedure Union(const aWithMesh:TMesh;
                               const aSplitSettings:PSplitSettings=nil); overload;
+              procedure UnionOf(const aMeshs:array of TMesh;
+                                const aSplitSettings:PSplitSettings=nil);
               procedure Subtraction(const aLeftMesh:TMesh;
                                     const aRightMesh:TMesh;
                                     const aSplitSettings:PSplitSettings=nil); overload;
               procedure Subtraction(const aWithMesh:TMesh;
                                     const aSplitSettings:PSplitSettings=nil); overload;
+              procedure SubtractionOf(const aMeshs:array of TMesh;
+                                      const aSplitSettings:PSplitSettings=nil);
               procedure Intersection(const aLeftMesh:TMesh;
                                      const aRightMesh:TMesh;
                                      const aSplitSettings:PSplitSettings=nil); overload;
               procedure Intersection(const aWithMesh:TMesh;
                                      const aSplitSettings:PSplitSettings=nil); overload;
+              procedure IntersectionOf(const aMeshs:array of TMesh;
+                                       const aSplitSettings:PSplitSettings=nil);
               procedure SymmetricDifference(const aLeftMesh:TMesh;
                                             const aRightMesh:TMesh;
                                             const aSplitSettings:PSplitSettings=nil); overload;
               procedure SymmetricDifference(const aWithMesh:TMesh;
                                             const aSplitSettings:PSplitSettings=nil); overload;
+              procedure SymmetricDifferenceOf(const aMeshs:array of TMesh;
+                                              const aSplitSettings:PSplitSettings=nil);
               procedure Canonicalize;
               procedure CalculateNormals(const aCreasedNormalAngleThreshold:TFloat=90.0;
                                          const aSoftNormals:boolean=true;
@@ -3107,9 +3115,23 @@ begin
  end;
 end;
 
+procedure TpvCSGBSP.TMesh.UnionOf(const aMeshs:array of TMesh;
+                                  const aSplitSettings:PSplitSettings=nil);
+var Index:TpvSizeInt;
+begin
+ if length(aMeshs)>0 then begin
+  Assign(aMeshs[0]);
+  for Index:=1 to length(aMeshs)-1 do begin
+   Union(aMeshs[Index],aSplitSettings);
+  end;
+ end else begin
+  Clear;
+ end;
+end;
+
 procedure TpvCSGBSP.TMesh.DoSubtraction(const aLeftMesh:TMesh;
-                                       const aRightMesh:TMesh;
-                                       const aSplitSettings:PSplitSettings=nil);
+                                        const aRightMesh:TMesh;
+                                        const aSplitSettings:PSplitSettings=nil);
 var ma,mb:TMesh;
     ta,tb:TTree;
 begin
@@ -3183,6 +3205,20 @@ begin
  end;
 end;
 
+procedure TpvCSGBSP.TMesh.SubtractionOf(const aMeshs:array of TMesh;
+                                        const aSplitSettings:PSplitSettings=nil);
+var Index:TpvSizeInt;
+begin
+ if length(aMeshs)>0 then begin
+  Assign(aMeshs[0]);
+  for Index:=1 to length(aMeshs)-1 do begin
+   Subtraction(aMeshs[Index],aSplitSettings);
+  end;
+ end else begin
+  Clear;
+ end;
+end;
+
 procedure TpvCSGBSP.TMesh.DoIntersection(const aLeftMesh:TMesh;
                                          const aRightMesh:TMesh;
                                          const aSplitSettings:PSplitSettings=nil);
@@ -3252,6 +3288,20 @@ begin
  end;
 end;
 
+procedure TpvCSGBSP.TMesh.IntersectionOf(const aMeshs:array of TMesh;
+                                         const aSplitSettings:PSplitSettings=nil);
+var Index:TpvSizeInt;
+begin
+ if length(aMeshs)>0 then begin
+  Assign(aMeshs[0]);
+  for Index:=1 to length(aMeshs)-1 do begin
+   Intersection(aMeshs[Index],aSplitSettings);
+  end;
+ end else begin
+  Clear;
+ end;
+end;
+
 procedure TpvCSGBSP.TMesh.SymmetricDifference(const aLeftMesh:TMesh;
                                               const aRightMesh:TMesh;
                                               const aSplitSettings:PSplitSettings=nil);
@@ -3285,6 +3335,20 @@ begin
   Assign(TemporaryMesh);
  finally
   FreeAndNil(TemporaryMesh);
+ end;
+end;
+
+procedure TpvCSGBSP.TMesh.SymmetricDifferenceOf(const aMeshs:array of TMesh;
+                                                const aSplitSettings:PSplitSettings=nil);
+var Index:TpvSizeInt;
+begin
+ if length(aMeshs)>0 then begin
+  Assign(aMeshs[0]);
+  for Index:=1 to length(aMeshs)-1 do begin
+   SymmetricDifference(aMeshs[Index],aSplitSettings);
+  end;
+ end else begin
+  Clear;
  end;
 end;
 
