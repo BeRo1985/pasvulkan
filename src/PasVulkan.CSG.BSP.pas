@@ -456,6 +456,11 @@ type TpvCSGBSP=class
              PolygonImbalanceCost:TFloat;
             end;
             PSplitSettings=^TSplitSettings;
+            TVector3HashMap<TVector3HashMapValue>=class(THashMap<TVector3,TVector3HashMapValue>)
+             protected
+              function HashKey(const aKey:TVector3):TpvUInt32; override;
+              function CompareKey(const aKeyA,aKeyB:TVector3):boolean; override;
+            end;
             TTree=class;
             TMesh=class
              public
@@ -1524,6 +1529,25 @@ end;
 function TpvCSGBSP.TFloatHashMap<TFloatHashMapValue>.CompareKey(const aKeyA,aKeyB:TFloat):boolean;
 begin
  result:=SameValue(aKeyA,aKeyB);
+end;
+
+{ TpvCSGBSP.TVector3HashMap }
+
+function TpvCSGBSP.TVector3HashMap<TVector3HashMapValue>.HashKey(const aKey:TVector3):TpvUInt32;
+begin
+ result:=(trunc(aKey.x*4096)*73856093) xor
+         (trunc(aKey.y*4096)*19349653) xor
+         (trunc(aKey.z*4096)*83492791);
+ if result=0 then begin
+  result:=$ffffffff;
+ end;
+end;
+
+function TpvCSGBSP.TVector3HashMap<TVector3HashMapValue>.CompareKey(const aKeyA,aKeyB:TVector3):boolean;
+begin
+ result:=SameValue(aKeyA.x,aKeyB.x) and
+         SameValue(aKeyA.y,aKeyB.y) and
+         SameValue(aKeyA.z,aKeyB.z);
 end;
 
 {$warnings on}
@@ -3088,15 +3112,24 @@ type TNormalItem=record
      PNormalItem=^TNormalItem;
      TNormalList=TDynamicArray<TNormalItem>;
      PNormalList=^TNormalList;
+     TPositionUniqueVerticesHashMap=TVector3HashMap<TIndex>;
+     TPositionUniqueVerticesBuckets=TDynamicArray<TIndexList>;
+     TPositionUniqueVerticesReverseIndex=array of TpvSizeInt;
+     TPositionUniqueVerticesPositions=TDynamicArray<TVector3>;
 var Index,Count,CountPolygonVertices,OtherIndex,NormalItemIndex:TpvSizeInt;
-    Vertex0,Vertex1,Vertex2:PVertex;
+    Position0,Position1,Position2:PVector3;
     Index0,Index1,Index2:TIndex;
     Vertex:TVertex;
+    PointerToVertex:PVertex;
     CurrentNormal,PolygonNormal:TVector3;
     NormalLists:array of TNormalList;
     NormalList:PNormalList;
     NormalListItem:PNormalItem;
     d01,d12,d20,s,r,Angle,AngleThreshold:TFloat;
+    PositionUniqueVerticesHashMap:TPositionUniqueVerticesHashMap;
+    PositionUniqueVerticesBuckets:TPositionUniqueVerticesBuckets;
+    PositionUniqueVerticesReverseIndex:TPositionUniqueVerticesReverseIndex;
+    PositionUniqueVerticesPositions:TPositionUniqueVerticesPositions;
 begin
 
  // Clear all normals on the input vertices
@@ -3114,231 +3147,275 @@ begin
    AngleThreshold:=0.0;
   end;
 
-  NormalLists:=nil;
+  PositionUniqueVerticesHashMap:=TPositionUniqueVerticesHashMap.Create(-1);
   try
 
-   // Initialize
-   SetLength(NormalLists,fVertices.Count);
-   for Index:=0 to length(NormalLists)-1 do begin
-    NormalLists[Index].Initialize;
-    NormalLists[Index].Clear;
-   end;
+   PositionUniqueVerticesBuckets.Initialize;
+   try
 
-   // Pass 1 - Gathering
-   begin
+    SetLength(PositionUniqueVerticesReverseIndex,fVertices.Count);
+    try
 
-    Index:=0;
+     PositionUniqueVerticesPositions.Initialize;
+     try
 
-    Count:=fIndices.Count;
-
-    while Index<Count do begin
-
-     case fMode of
-      TMode.Triangles:begin
-       CountPolygonVertices:=3;
-      end;
-      else {TMode.Polygons:}begin
-       CountPolygonVertices:=fIndices.Items[Index];
-       inc(Index);
-      end;
-     end;
-
-     if (CountPolygonVertices>2) and ((Index+(CountPolygonVertices-1))<Count) then begin
-
-      // Calculate and find valid whole-polygon normal (where degenerated convex
-      // tessellated triangles will be ignored here)
-      PolygonNormal:=TVector3.Create(0.0,0.0,0.0);
-      Index0:=fIndices.Items[Index+0];
-      Index1:=fIndices.Items[Index+1];
-      Vertex0:=@fVertices.Items[Index0];
-      Vertex1:=@fVertices.Items[Index1];
-      for OtherIndex:=2 to CountPolygonVertices-1 do begin
-       Index2:=fIndices.Items[Index+OtherIndex];
-       Vertex2:=@fVertices.Items[Index2];
-       PolygonNormal:=(Vertex1^.Position-Vertex0^.Position).Cross(Vertex2^.Position-Vertex0^.Position);
-       if PolygonNormal.SquaredLength>SquaredEpsilon then begin
-        PolygonNormal:=PolygonNormal.Normalize;
-        break;
-       end else begin
-        Index1:=Index2;
-        Vertex1:=Vertex2;
+      // Gather all vertices with near-equal positions together
+      for Index:=0 to fVertices.Count-1 do begin
+       PointerToVertex:=@fVertices.Items[Index];
+       Index0:=PositionUniqueVerticesHashMap[PointerToVertex^.Position];
+       if Index0<0 then begin
+        Index0:=PositionUniqueVerticesBuckets.AddNew;
+        PositionUniqueVerticesBuckets.Items[Index0].Initialize;
+        PositionUniqueVerticesHashMap[PointerToVertex^.Position]:=Index0;
+        PositionUniqueVerticesPositions.Add(PointerToVertex^.Position);
        end;
+       PositionUniqueVerticesBuckets.Items[Index0].Add(Index);
+       PositionUniqueVerticesReverseIndex[Index]:=Index0;
       end;
 
-      // Gathering smooth normal information data
-      Index0:=fIndices.Items[Index+0];
-      Index1:=fIndices.Items[Index+1];
+      Assert(PositionUniqueVerticesBuckets.Count=PositionUniqueVerticesPositions.Count);
 
-      Vertex0:=@fVertices.Items[Index0];
-      Vertex1:=@fVertices.Items[Index1];
+      NormalLists:=nil;
+      try
 
-      for OtherIndex:=2 to CountPolygonVertices-1 do begin
-
-       Index2:=fIndices.Items[Index+OtherIndex];
-       Vertex2:=@fVertices.Items[Index2];
-
-       CurrentNormal:=(Vertex1^.Position-Vertex0^.Position).Cross(Vertex2^.Position-Vertex0^.Position);
-
-       if not aAreaWeighting then begin
-        CurrentNormal:=CurrentNormal.Normalize;
+       // Initialize
+       SetLength(NormalLists,PositionUniqueVerticesPositions.Count);
+       for Index:=0 to length(NormalLists)-1 do begin
+        NormalLists[Index].Initialize;
+        NormalLists[Index].Clear;
        end;
 
-       d01:=(Vertex0^.Position-Vertex1^.Position).Length;
-       d12:=(Vertex1^.Position-Vertex2^.Position).Length;
-       d20:=(Vertex2^.Position-Vertex0^.Position).Length;
+       // Pass 1 - Gathering
+       begin
 
-       if aAngleWeighting and (d01>=Epsilon) and (d12>=Epsilon) and (d20>=Epsilon) then begin
+        Index:=0;
 
-        s:=(d01+d12+d20)*0.5;
-        r:=sqrt(((s-d01)*(s-d12)*(s-d20))/s);
+        Count:=fIndices.Count;
 
-        begin
-         NormalList:=@NormalLists[Index0];
-         NormalItemIndex:=NormalList^.AddNew;
-         NormalListItem:=@NormalList^.Items[NormalItemIndex];
-         NormalListItem^.PolygonNormal:=PolygonNormal;
-         NormalListItem^.VertexNormal:=CurrentNormal*ArcTan2(r,s-d12);
-        end;
+        while Index<Count do begin
 
-        begin
-         NormalList:=@NormalLists[Index1];
-         NormalItemIndex:=NormalList^.AddNew;
-         NormalListItem:=@NormalList^.Items[NormalItemIndex];
-         NormalListItem^.PolygonNormal:=PolygonNormal;
-         NormalListItem^.VertexNormal:=CurrentNormal*ArcTan2(r,s-d20);
-        end;
-
-        begin
-         NormalList:=@NormalLists[Index2];
-         NormalItemIndex:=NormalList^.AddNew;
-         NormalListItem:=@NormalList^.Items[NormalItemIndex];
-         NormalListItem^.PolygonNormal:=PolygonNormal;
-         NormalListItem^.VertexNormal:=CurrentNormal*ArcTan2(r,s-d01);
-        end;
-
-       end else begin
-
-        begin
-         NormalList:=@NormalLists[Index0];
-         NormalItemIndex:=NormalList^.AddNew;
-         NormalListItem:=@NormalList^.Items[NormalItemIndex];
-         NormalListItem^.PolygonNormal:=PolygonNormal;
-         NormalListItem^.VertexNormal:=CurrentNormal;
-        end;
-
-        begin
-         NormalList:=@NormalLists[Index1];
-         NormalItemIndex:=NormalList^.AddNew;
-         NormalListItem:=@NormalList^.Items[NormalItemIndex];
-         NormalListItem^.PolygonNormal:=PolygonNormal;
-         NormalListItem^.VertexNormal:=CurrentNormal;
-        end;
-
-        begin
-         NormalList:=@NormalLists[Index2];
-         NormalItemIndex:=NormalList^.AddNew;
-         NormalListItem:=@NormalList^.Items[NormalItemIndex];
-         NormalListItem^.PolygonNormal:=PolygonNormal;
-         NormalListItem^.VertexNormal:=CurrentNormal;
-        end;
-
-       end;
-
-       Index1:=Index2;
-       Vertex1:=Vertex2;
-
-      end;
-
-     end;
-
-     inc(Index,CountPolygonVertices);
-
-    end;
-
-   end;
-
-   // Pass 2 - Applying
-   begin
-
-    Index:=0;
-
-    Count:=fIndices.Count;
-
-    while Index<Count do begin
-
-     case fMode of
-      TMode.Triangles:begin
-       CountPolygonVertices:=3;
-      end;
-      else {TMode.Polygons:}begin
-       CountPolygonVertices:=fIndices.Items[Index];
-       inc(Index);
-      end;
-     end;
-
-     if (CountPolygonVertices>2) and ((Index+(CountPolygonVertices-1))<Count) then begin
-
-      // Calculate and find valid whole-polygon normal (where degenerated convex
-      // tessellated triangles will be ignored here)
-      PolygonNormal:=TVector3.Create(0.0,0.0,0.0);
-      Index0:=fIndices.Items[Index+0];
-      Index1:=fIndices.Items[Index+1];
-      Vertex0:=@fVertices.Items[Index0];
-      Vertex1:=@fVertices.Items[Index1];
-      for OtherIndex:=2 to CountPolygonVertices-1 do begin
-       Index2:=fIndices.Items[Index+OtherIndex];
-       Vertex2:=@fVertices.Items[Index2];
-       PolygonNormal:=(Vertex1^.Position-Vertex0^.Position).Cross(Vertex2^.Position-Vertex0^.Position);
-       if PolygonNormal.SquaredLength>SquaredEpsilon then begin
-        PolygonNormal:=PolygonNormal.Normalize;
-        break;
-       end else begin
-        Index1:=Index2;
-        Vertex1:=Vertex2;
-       end;
-      end;
-
-      // Apply new ormals to all then-cloned vertices (they will be cloned for to be
-      // unique per polygon, the then old unused vertices will be removed later anyway)
-      for OtherIndex:=0 to CountPolygonVertices-1 do begin
-       Index0:=fIndices.Items[Index+OtherIndex];
-       CurrentNormal:=TVector3.Create(0.0,0.0,0.0);
-       NormalList:=@NormalLists[Index0];
-       for NormalItemIndex:=0 to NormalList^.Count-1 do begin
-        NormalListItem:=@NormalList^.Items[NormalItemIndex];
-        Angle:=PolygonNormal.Dot(NormalListItem^.PolygonNormal);
-        if (not aCheckForCreasedNormals) or
-           (Angle>=AngleThreshold) then begin
-         if aCreasedNormalAngleWeighting then begin
-          if Angle<0.0 then begin
-           Angle:=0.0;
+         case fMode of
+          TMode.Triangles:begin
+           CountPolygonVertices:=3;
           end;
-         end else begin
-          Angle:=1.0;
+          else {TMode.Polygons:}begin
+           CountPolygonVertices:=fIndices.Items[Index];
+           inc(Index);
+          end;
          end;
-         CurrentNormal:=CurrentNormal+(NormalListItem^.VertexNormal*Angle);
+
+         if (CountPolygonVertices>2) and ((Index+(CountPolygonVertices-1))<Count) then begin
+
+          // Calculate and find valid whole-polygon normal (where degenerated convex
+          // tessellated triangles will be ignored here)
+          PolygonNormal:=TVector3.Create(0.0,0.0,0.0);
+          Index0:=fIndices.Items[Index+0];
+          Index1:=fIndices.Items[Index+1];
+          Position0:=@PositionUniqueVerticesPositions.Items[PositionUniqueVerticesReverseIndex[Index0]];
+          Position1:=@PositionUniqueVerticesPositions.Items[PositionUniqueVerticesReverseIndex[Index1]];
+          for OtherIndex:=2 to CountPolygonVertices-1 do begin
+           Index2:=fIndices.Items[Index+OtherIndex];
+           Position2:=@PositionUniqueVerticesPositions.Items[PositionUniqueVerticesReverseIndex[Index2]];
+           PolygonNormal:=(Position1^-Position0^).Cross(Position2^-Position0^);
+           if PolygonNormal.SquaredLength>SquaredEpsilon then begin
+            PolygonNormal:=PolygonNormal.Normalize;
+            break;
+           end else begin
+            Index1:=Index2;
+            Position1:=Position2;
+           end;
+          end;
+
+          // Gathering smooth normal information data
+          Index0:=fIndices.Items[Index+0];
+          Index1:=fIndices.Items[Index+1];
+
+          Position0:=@PositionUniqueVerticesPositions.Items[PositionUniqueVerticesReverseIndex[Index0]];
+          Position1:=@PositionUniqueVerticesPositions.Items[PositionUniqueVerticesReverseIndex[Index1]];
+
+          for OtherIndex:=2 to CountPolygonVertices-1 do begin
+
+           Index2:=fIndices.Items[Index+OtherIndex];
+           Position2:=@PositionUniqueVerticesPositions.Items[PositionUniqueVerticesReverseIndex[Index2]];
+
+           CurrentNormal:=(Position1^-Position0^).Cross(Position2^-Position0^);
+
+           if not aAreaWeighting then begin
+            CurrentNormal:=CurrentNormal.Normalize;
+           end;
+
+           d01:=(Position0^-Position1^).Length;
+           d12:=(Position1^-Position2^).Length;
+           d20:=(Position2^-Position0^).Length;
+
+           if aAngleWeighting and (d01>=Epsilon) and (d12>=Epsilon) and (d20>=Epsilon) then begin
+
+            s:=(d01+d12+d20)*0.5;
+            r:=sqrt(((s-d01)*(s-d12)*(s-d20))/s);
+
+            begin
+             NormalList:=@NormalLists[PositionUniqueVerticesReverseIndex[Index0]];
+             NormalItemIndex:=NormalList^.AddNew;
+             NormalListItem:=@NormalList^.Items[NormalItemIndex];
+             NormalListItem^.PolygonNormal:=PolygonNormal;
+             NormalListItem^.VertexNormal:=CurrentNormal*ArcTan2(r,s-d12);
+            end;
+
+            begin
+             NormalList:=@NormalLists[PositionUniqueVerticesReverseIndex[Index1]];
+             NormalItemIndex:=NormalList^.AddNew;
+             NormalListItem:=@NormalList^.Items[NormalItemIndex];
+             NormalListItem^.PolygonNormal:=PolygonNormal;
+             NormalListItem^.VertexNormal:=CurrentNormal*ArcTan2(r,s-d20);
+            end;
+
+            begin
+             NormalList:=@NormalLists[PositionUniqueVerticesReverseIndex[Index2]];
+             NormalItemIndex:=NormalList^.AddNew;
+             NormalListItem:=@NormalList^.Items[NormalItemIndex];
+             NormalListItem^.PolygonNormal:=PolygonNormal;
+             NormalListItem^.VertexNormal:=CurrentNormal*ArcTan2(r,s-d01);
+            end;
+
+           end else begin
+
+            begin
+             NormalList:=@NormalLists[PositionUniqueVerticesReverseIndex[Index0]];
+             NormalItemIndex:=NormalList^.AddNew;
+             NormalListItem:=@NormalList^.Items[NormalItemIndex];
+             NormalListItem^.PolygonNormal:=PolygonNormal;
+             NormalListItem^.VertexNormal:=CurrentNormal;
+            end;
+
+            begin
+             NormalList:=@NormalLists[PositionUniqueVerticesReverseIndex[Index1]];
+             NormalItemIndex:=NormalList^.AddNew;
+             NormalListItem:=@NormalList^.Items[NormalItemIndex];
+             NormalListItem^.PolygonNormal:=PolygonNormal;
+             NormalListItem^.VertexNormal:=CurrentNormal;
+            end;
+
+            begin
+             NormalList:=@NormalLists[PositionUniqueVerticesReverseIndex[Index2]];
+             NormalItemIndex:=NormalList^.AddNew;
+             NormalListItem:=@NormalList^.Items[NormalItemIndex];
+             NormalListItem^.PolygonNormal:=PolygonNormal;
+             NormalListItem^.VertexNormal:=CurrentNormal;
+            end;
+
+           end;
+
+           Index1:=Index2;
+           Position1:=Position2;
+
+          end;
+
+         end;
+
+         inc(Index,CountPolygonVertices);
+
         end;
+
        end;
-       Vertex:=fVertices.Items[Index0];
-       Vertex.Normal:=CurrentNormal.Normalize;
-       fIndices.Items[Index+OtherIndex]:=fVertices.Add(Vertex);
+
+       // Pass 2 - Applying
+       begin
+
+        Index:=0;
+
+        Count:=fIndices.Count;
+
+        while Index<Count do begin
+
+         case fMode of
+          TMode.Triangles:begin
+           CountPolygonVertices:=3;
+          end;
+          else {TMode.Polygons:}begin
+           CountPolygonVertices:=fIndices.Items[Index];
+           inc(Index);
+          end;
+         end;
+
+         if (CountPolygonVertices>2) and ((Index+(CountPolygonVertices-1))<Count) then begin
+
+          // Calculate and find valid whole-polygon normal (where degenerated convex
+          // tessellated triangles will be ignored here)
+          PolygonNormal:=TVector3.Create(0.0,0.0,0.0);
+          Index0:=fIndices.Items[Index+0];
+          Index1:=fIndices.Items[Index+1];
+          Position0:=@PositionUniqueVerticesPositions.Items[PositionUniqueVerticesReverseIndex[Index0]];
+          Position1:=@PositionUniqueVerticesPositions.Items[PositionUniqueVerticesReverseIndex[Index1]];
+          for OtherIndex:=2 to CountPolygonVertices-1 do begin
+           Index2:=fIndices.Items[Index+OtherIndex];
+           Position2:=@PositionUniqueVerticesPositions.Items[PositionUniqueVerticesReverseIndex[Index2]];
+           PolygonNormal:=(Position1^-Position0^).Cross(Position2^-Position0^);
+           if PolygonNormal.SquaredLength>SquaredEpsilon then begin
+            PolygonNormal:=PolygonNormal.Normalize;
+            break;
+           end else begin
+            Index1:=Index2;
+            Position1:=Position2;
+           end;
+          end;
+
+          // Apply new ormals to all then-cloned vertices (they will be cloned for to be
+          // unique per polygon, the then old unused vertices will be removed later anyway)
+          for OtherIndex:=0 to CountPolygonVertices-1 do begin
+           Index0:=fIndices.Items[Index+OtherIndex];
+           CurrentNormal:=TVector3.Create(0.0,0.0,0.0);
+           NormalList:=@NormalLists[PositionUniqueVerticesReverseIndex[Index0]];
+           for NormalItemIndex:=0 to NormalList^.Count-1 do begin
+            NormalListItem:=@NormalList^.Items[NormalItemIndex];
+            Angle:=PolygonNormal.Dot(NormalListItem^.PolygonNormal);
+            if (not aCheckForCreasedNormals) or
+               (Angle>=AngleThreshold) then begin
+             if aCreasedNormalAngleWeighting then begin
+              if Angle<0.0 then begin
+               Angle:=0.0;
+              end;
+             end else begin
+              Angle:=1.0;
+             end;
+             CurrentNormal:=CurrentNormal+(NormalListItem^.VertexNormal*Angle);
+            end;
+           end;
+           Vertex:=fVertices.Items[Index0];
+           Vertex.Normal:=CurrentNormal.Normalize;
+           fIndices.Items[Index+OtherIndex]:=fVertices.Add(Vertex);
+          end;
+
+         end;
+
+         inc(Index,CountPolygonVertices);
+
+        end;
+
+       end;
+
+       // Clean up
+       for Index:=0 to length(NormalLists)-1 do begin
+        NormalLists[Index].Finalize;
+       end;
+
+      finally
+       SetLength(NormalLists,0);
       end;
 
+     finally
+      PositionUniqueVerticesPositions.Finalize;
      end;
 
-     inc(Index,CountPolygonVertices);
-
+    finally
+     PositionUniqueVerticesReverseIndex:=nil;
     end;
 
-   end;
-
-   // Clean up
-   for Index:=0 to length(NormalLists)-1 do begin
-    NormalLists[Index].Finalize;
+   finally
+    PositionUniqueVerticesBuckets.Finalize;
    end;
 
   finally
-   SetLength(NormalLists,0);
+   FreeAndNil(PositionUniqueVerticesHashMap);
   end;
 
  end else begin
@@ -3367,18 +3444,18 @@ begin
     PolygonNormal:=TVector3.Create(0.0,0.0,0.0);
     Index0:=fIndices.Items[Index+0];
     Index1:=fIndices.Items[Index+1];
-    Vertex0:=@fVertices.Items[Index0];
-    Vertex1:=@fVertices.Items[Index1];
+    Position0:=@fVertices.Items[Index0].Position;
+    Position1:=@fVertices.Items[Index1].Position;
     for OtherIndex:=2 to CountPolygonVertices-1 do begin
      Index2:=fIndices.Items[Index+OtherIndex];
-     Vertex2:=@fVertices.Items[Index2];
-     PolygonNormal:=(Vertex1^.Position-Vertex0^.Position).Cross(Vertex2^.Position-Vertex0^.Position);
+     Position2:=@fVertices.Items[Index2].Position;
+     PolygonNormal:=(Position1^-Position0^).Cross(Position2^-Position0^);
      if PolygonNormal.SquaredLength>SquaredEpsilon then begin
       PolygonNormal:=PolygonNormal.Normalize;
       break;
      end else begin
       Index1:=Index2;
-      Vertex1:=Vertex2;
+      Position1:=Position2;
      end;
     end;
 
