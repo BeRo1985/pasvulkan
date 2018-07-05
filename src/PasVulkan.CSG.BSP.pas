@@ -526,16 +526,24 @@ type TpvCSGBSP=class
               procedure RemoveNearDuplicateIndices(var aIndices:TIndexList);
               procedure Union(const aLeftMesh:TMesh;
                               const aRightMesh:TMesh;
-                              const aSplitSettings:PSplitSettings=nil);
+                              const aSplitSettings:PSplitSettings=nil); overload;
+              procedure Union(const aWithMesh:TMesh;
+                              const aSplitSettings:PSplitSettings=nil); overload;
               procedure Subtraction(const aLeftMesh:TMesh;
                                     const aRightMesh:TMesh;
-                                    const aSplitSettings:PSplitSettings=nil);
+                                    const aSplitSettings:PSplitSettings=nil); overload;
+              procedure Subtraction(const aWithMesh:TMesh;
+                                    const aSplitSettings:PSplitSettings=nil); overload;
               procedure Intersection(const aLeftMesh:TMesh;
                                      const aRightMesh:TMesh;
-                                     const aSplitSettings:PSplitSettings=nil);
+                                     const aSplitSettings:PSplitSettings=nil); overload;
+              procedure Intersection(const aWithMesh:TMesh;
+                                     const aSplitSettings:PSplitSettings=nil); overload;
               procedure SymmetricDifference(const aLeftMesh:TMesh;
                                             const aRightMesh:TMesh;
-                                            const aSplitSettings:PSplitSettings=nil);
+                                            const aSplitSettings:PSplitSettings=nil); overload;
+              procedure SymmetricDifference(const aWithMesh:TMesh;
+                                            const aSplitSettings:PSplitSettings=nil); overload;
               procedure Canonicalize;
               procedure CalculateNormals(const aCreasedNormalAngleThreshold:TFloat=90.0;
                                          const aSoftNormals:boolean=true;
@@ -3046,6 +3054,19 @@ begin
  end;
 end;
 
+procedure TpvCSGBSP.TMesh.Union(const aWithMesh:TMesh;
+                                const aSplitSettings:PSplitSettings=nil);
+var TemporaryMesh:TMesh;
+begin
+ TemporaryMesh:=TMesh.Create(fMode);
+ try
+  TemporaryMesh.Union(self,aWithMesh);
+  Assign(TemporaryMesh);
+ finally
+  FreeAndNil(TemporaryMesh);
+ end;
+end;
+
 procedure TpvCSGBSP.TMesh.Subtraction(const aLeftMesh:TMesh;
                                       const aRightMesh:TMesh;
                                       const aSplitSettings:PSplitSettings=nil);
@@ -3095,6 +3116,19 @@ begin
  end;
 end;
 
+procedure TpvCSGBSP.TMesh.Subtraction(const aWithMesh:TMesh;
+                                      const aSplitSettings:PSplitSettings=nil);
+var TemporaryMesh:TMesh;
+begin
+ TemporaryMesh:=TMesh.Create(fMode);
+ try
+  TemporaryMesh.Subtraction(self,aWithMesh);
+  Assign(TemporaryMesh);
+ finally
+  FreeAndNil(TemporaryMesh);
+ end;
+end;
+
 procedure TpvCSGBSP.TMesh.Intersection(const aLeftMesh:TMesh;
                                        const aRightMesh:TMesh;
                                        const aSplitSettings:PSplitSettings=nil);
@@ -3138,6 +3172,19 @@ begin
  end;
 end;
 
+procedure TpvCSGBSP.TMesh.Intersection(const aWithMesh:TMesh;
+                                       const aSplitSettings:PSplitSettings=nil);
+var TemporaryMesh:TMesh;
+begin
+ TemporaryMesh:=TMesh.Create(fMode);
+ try
+  TemporaryMesh.Intersection(self,aWithMesh);
+  Assign(TemporaryMesh);
+ finally
+  FreeAndNil(TemporaryMesh);
+ end;
+end;
+
 procedure TpvCSGBSP.TMesh.SymmetricDifference(const aLeftMesh:TMesh;
                                               const aRightMesh:TMesh;
                                               const aSplitSettings:PSplitSettings=nil);
@@ -3158,6 +3205,19 @@ begin
   end;
  finally
   FreeAndNil(a);
+ end;
+end;
+
+procedure TpvCSGBSP.TMesh.SymmetricDifference(const aWithMesh:TMesh;
+                                              const aSplitSettings:PSplitSettings=nil);
+var TemporaryMesh:TMesh;
+begin
+ TemporaryMesh:=TMesh.Create(fMode);
+ try
+  TemporaryMesh.SymmetricDifference(self,aWithMesh);
+  Assign(TemporaryMesh);
+ finally
+  FreeAndNil(TemporaryMesh);
  end;
 end;
 
