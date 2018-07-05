@@ -486,6 +486,15 @@ type TpvCSGBSP=class
               procedure SetMode(const aMode:TMode);
               procedure SetVertices(const aVertices:TVertexList);
               procedure SetIndices(const aIndices:TIndexList);
+              procedure DoUnion(const aLeftMesh:TMesh;
+                                const aRightMesh:TMesh;
+                                const aSplitSettings:PSplitSettings=nil);
+              procedure DoSubtraction(const aLeftMesh:TMesh;
+                                      const aRightMesh:TMesh;
+                                      const aSplitSettings:PSplitSettings=nil);
+              procedure DoIntersection(const aLeftMesh:TMesh;
+                                       const aRightMesh:TMesh;
+                                       const aSplitSettings:PSplitSettings=nil);
              public
               constructor Create(const aMode:TMode=TMode.Triangles); reintroduce; overload;
               constructor Create(const aFrom:TMesh); reintroduce; overload;
@@ -3028,50 +3037,56 @@ begin
  end;
 end;
 
+procedure TpvCSGBSP.TMesh.DoUnion(const aLeftMesh:TMesh;
+                                  const aRightMesh:TMesh;
+                                  const aSplitSettings:PSplitSettings=nil);
+var ma,mb:TMesh;
+    ta,tb:TTree;
+begin
+ ma:=TMesh.Create(aLeftMesh);
+ try
+  ma.SetMode(TMode.Polygons);
+  ta:=ma.ToTree(aSplitSettings);
+  try
+   mb:=TMesh.Create(aRightMesh);
+   try
+    mb.SetMode(TMode.Polygons);
+    tb:=mb.ToTree(aSplitSettings);
+    try
+     ta.ClipTo(tb,false);
+     tb.ClipTo(ta,false);
+     tb.Invert;
+     tb.ClipTo(ta,false);
+     tb.Invert;
+     ta.Merge(tb);
+    finally
+     FreeAndNil(tb);
+    end;
+   finally
+    FreeAndNil(mb);
+   end;
+   Assign(ta);
+  finally
+   FreeAndNil(ta);
+  end;
+ finally
+  FreeAndNil(ma);
+ end;
+ RemoveDuplicateAndUnusedVertices;
+ if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
+  SetMode(TMode.Triangles);
+ end;
+end;
+
 procedure TpvCSGBSP.TMesh.Union(const aLeftMesh:TMesh;
                                 const aRightMesh:TMesh;
                                 const aSplitSettings:PSplitSettings=nil);
 var AABBLeft,AABBRight:TAABB;
-    ma,mb:TMesh;
-    ta,tb:TTree;
 begin
- Clear;
  AABBLeft:=aLeftMesh.GetAxisAlignedBoundingBox;
  AABBRight:=aRightMesh.GetAxisAlignedBoundingBox;
  if AABBLeft.Intersects(AABBRight) then begin
-  ma:=TMesh.Create(aLeftMesh);
-  try
-   ma.SetMode(TMode.Polygons);
-   ta:=ma.ToTree(aSplitSettings);
-   try
-    mb:=TMesh.Create(aRightMesh);
-    try
-     mb.SetMode(TMode.Polygons);
-     tb:=mb.ToTree(aSplitSettings);
-     try
-      ta.ClipTo(tb,false);
-      tb.ClipTo(ta,false);
-      tb.Invert;
-      tb.ClipTo(ta,false);
-      tb.Invert;
-      ta.Merge(tb);
-     finally
-      FreeAndNil(tb);
-     end;
-    finally
-     FreeAndNil(mb);
-    end;
-    Assign(ta);
-   finally
-    FreeAndNil(ta);
-   end;
-  finally
-   FreeAndNil(ma);
-  end;
-  RemoveDuplicateAndUnusedVertices;
-  if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
-   SetMode(TMode.Triangles);
-  end;
+  DoUnion(aLeftMesh,aRightMesh,aSplitSettings);
  end else begin
   Assign(aLeftMesh);
   Append(aRightMesh);
@@ -3092,57 +3107,63 @@ begin
  end;
 end;
 
+procedure TpvCSGBSP.TMesh.DoSubtraction(const aLeftMesh:TMesh;
+                                       const aRightMesh:TMesh;
+                                       const aSplitSettings:PSplitSettings=nil);
+var ma,mb:TMesh;
+    ta,tb:TTree;
+begin
+ ma:=TMesh.Create(aLeftMesh);
+ try
+  ma.SetMode(TMode.Polygons);
+  ta:=ma.ToTree(aSplitSettings);
+  try
+   mb:=TMesh.Create(aRightMesh);
+   try
+    mb.SetMode(TMode.Polygons);
+    tb:=mb.ToTree(aSplitSettings);
+    try
+     ta.Invert;
+     ta.ClipTo(tb,false);
+{$undef UseReferenceBSPOperations}
+{$ifdef UseReferenceBSPOperations}
+     tb.ClipTo(ta,false);
+     tb.Invert;
+     tb.ClipTo(ta,false);
+     tb.Invert;
+{$else}
+     tb.ClipTo(ta,true);
+{$endif}
+     ta.Merge(tb);
+     ta.Invert;
+    finally
+     FreeAndNil(tb);
+    end;
+   finally
+    FreeAndNil(mb);
+   end;
+   Assign(ta);
+  finally
+   FreeAndNil(ta);
+  end;
+ finally
+  FreeAndNil(ma);
+ end;
+ RemoveDuplicateAndUnusedVertices;
+ if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
+  SetMode(TMode.Triangles);
+ end;
+end;
+
 procedure TpvCSGBSP.TMesh.Subtraction(const aLeftMesh:TMesh;
                                       const aRightMesh:TMesh;
                                       const aSplitSettings:PSplitSettings=nil);
 var AABBLeft,AABBRight:TAABB;
-    ma,mb:TMesh;
-    ta,tb:TTree;
 begin
- Clear;
  AABBLeft:=aLeftMesh.GetAxisAlignedBoundingBox;
  AABBRight:=aRightMesh.GetAxisAlignedBoundingBox;
  if AABBLeft.Intersects(AABBRight) then begin
-  ma:=TMesh.Create(aLeftMesh);
-  try
-   ma.SetMode(TMode.Polygons);
-   ta:=ma.ToTree(aSplitSettings);
-   try
-    mb:=TMesh.Create(aRightMesh);
-    try
-     mb.SetMode(TMode.Polygons);
-     tb:=mb.ToTree(aSplitSettings);
-     try
-      ta.Invert;
-      ta.ClipTo(tb,false);
- {$undef UseReferenceBSPOperations}
- {$ifdef UseReferenceBSPOperations}
-      tb.ClipTo(ta,false);
-      tb.Invert;
-      tb.ClipTo(ta,false);
-      tb.Invert;
- {$else}
-      tb.ClipTo(ta,true);
- {$endif}
-      ta.Merge(tb);
-      ta.Invert;
-     finally
-      FreeAndNil(tb);
-     end;
-    finally
-     FreeAndNil(mb);
-    end;
-    Assign(ta);
-   finally
-    FreeAndNil(ta);
-   end;
-  finally
-   FreeAndNil(ma);
-  end;
-  RemoveDuplicateAndUnusedVertices;
-  if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
-   SetMode(TMode.Triangles);
-  end;
+  DoSubtraction(aLeftMesh,aRightMesh,aSplitSettings);
  end else begin
   Assign(aLeftMesh);
   RemoveDuplicateAndUnusedVertices;
@@ -3162,53 +3183,59 @@ begin
  end;
 end;
 
+procedure TpvCSGBSP.TMesh.DoIntersection(const aLeftMesh:TMesh;
+                                         const aRightMesh:TMesh;
+                                         const aSplitSettings:PSplitSettings=nil);
+var ma,mb:TMesh;
+    ta,tb:TTree;
+begin
+ ma:=TMesh.Create(aLeftMesh);
+ try
+  ma.SetMode(TMode.Polygons);
+  ta:=ma.ToTree(aSplitSettings);
+  try
+   mb:=TMesh.Create(aRightMesh);
+   try
+    mb.SetMode(TMode.Polygons);
+    tb:=mb.ToTree(aSplitSettings);
+    try
+     ta.Invert;
+     tb.ClipTo(ta,false);
+     tb.Invert;
+     ta.ClipTo(tb,false);
+     tb.ClipTo(ta,false);
+     ta.Merge(tb);
+     ta.Invert;
+    finally
+     FreeAndNil(tb);
+    end;
+   finally
+    FreeAndNil(mb);
+   end;
+   Assign(ta);
+  finally
+   FreeAndNil(ta);
+  end;
+ finally
+  FreeAndNil(ma);
+ end;
+ RemoveDuplicateAndUnusedVertices;
+ if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
+  SetMode(TMode.Triangles);
+ end;
+end;
+
 procedure TpvCSGBSP.TMesh.Intersection(const aLeftMesh:TMesh;
                                        const aRightMesh:TMesh;
                                        const aSplitSettings:PSplitSettings=nil);
 var AABBLeft,AABBRight:TAABB;
-    ma,mb:TMesh;
-    ta,tb:TTree;
 begin
- Clear;
  AABBLeft:=aLeftMesh.GetAxisAlignedBoundingBox;
  AABBRight:=aRightMesh.GetAxisAlignedBoundingBox;
  if AABBLeft.Intersects(AABBRight) then begin
-  ma:=TMesh.Create(aLeftMesh);
-  try
-   ma.SetMode(TMode.Polygons);
-   ta:=ma.ToTree(aSplitSettings);
-   try
-    mb:=TMesh.Create(aRightMesh);
-    try
-     mb.SetMode(TMode.Polygons);
-     tb:=mb.ToTree(aSplitSettings);
-     try
-      ta.Invert;
-      tb.ClipTo(ta,false);
-      tb.Invert;
-      ta.ClipTo(tb,false);
-      tb.ClipTo(ta,false);
-      ta.Merge(tb);
-      ta.Invert;
-     finally
-      FreeAndNil(tb);
-     end;
-    finally
-     FreeAndNil(mb);
-    end;
-    Assign(ta);
-   finally
-    FreeAndNil(ta);
-   end;
-  finally
-   FreeAndNil(ma);
-  end;
-  RemoveDuplicateAndUnusedVertices;
-  if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
-   SetMode(TMode.Triangles);
-  end;
+  DoIntersection(aLeftMesh,aRightMesh,aSplitSettings);
  end else begin
-  // Do nothing in this special case
+  Clear;
  end;
 end;
 
