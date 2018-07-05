@@ -456,10 +456,10 @@ type TpvCSGBSP=class
              PolygonImbalanceCost:TFloat;
             end;
             PSplitSettings=^TSplitSettings;
-            TVector3HashMap<TVector3HashMapValue>=class(THashMap<TVector3,TVector3HashMapValue>)
+            TVector3HashMap<TVector3HashMapValue>=class(TpvCSGBSP.THashMap<TpvCSGBSP.TVector3,TVector3HashMapValue>)
              protected
-              function HashKey(const aKey:TVector3):TpvUInt32; override;
-              function CompareKey(const aKeyA,aKeyB:TVector3):boolean; override;
+              function HashKey(const aKey:TpvCSGBSP.TVector3):TpvUInt32; override;
+              function CompareKey(const aKeyA,aKeyB:TpvCSGBSP.TVector3):boolean; override;
             end;
             TTree=class;
             TMesh=class
