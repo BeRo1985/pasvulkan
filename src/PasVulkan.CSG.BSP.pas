@@ -520,6 +520,7 @@ type TpvCSGBSP=class
               function AddIndex(const aIndex:TIndex):TpvSizeInt;
               function AddIndices(const aIndices:array of TIndex):TpvSizeInt; overload;
               function AddIndices(const aIndices:TIndexList):TpvSizeInt; overload;
+              function GetAxisAlignedBoundingBox:TAABB;
               procedure Invert;
               procedure ConvertToPolygons;
               procedure ConvertToTriangles;
@@ -2936,6 +2937,21 @@ end;
 function TpvCSGBSP.TMesh.AddIndices(const aIndices:TIndexList):TpvSizeInt;
 begin
  result:=fIndices.Add(aIndices);
+end;
+
+function TpvCSGBSP.TMesh.GetAxisAlignedBoundingBox:TAABB;
+var Index:TpvSizeInt;
+begin
+ if fVertices.Count>0 then begin
+  result.Min:=fVertices.Items[0].Position;
+  result.Max:=fVertices.Items[0].Position;
+  for Index:=1 to fVertices.Count-1 do begin
+   result:=result.Combine(fVertices.Items[Index].Position);
+  end;
+ end else begin
+  result.Min:=TVector3.Create(Infinity,Infinity,Infinity);
+  result.Max:=TVector3.Create(-Infinity,-Infinity,-Infinity);
+ end;
 end;
 
 procedure TpvCSGBSP.TMesh.Invert;
