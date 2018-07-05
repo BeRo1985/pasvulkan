@@ -3031,42 +3031,51 @@ end;
 procedure TpvCSGBSP.TMesh.Union(const aLeftMesh:TMesh;
                                 const aRightMesh:TMesh;
                                 const aSplitSettings:PSplitSettings=nil);
-var ma,mb:TMesh;
+var AABBLeft,AABBRight:TAABB;
+    ma,mb:TMesh;
     ta,tb:TTree;
 begin
  Clear;
- ma:=TMesh.Create(aLeftMesh);
- try
-  ma.SetMode(TMode.Polygons);
-  ta:=ma.ToTree(aSplitSettings);
+ AABBLeft:=aLeftMesh.GetAxisAlignedBoundingBox;
+ AABBRight:=aRightMesh.GetAxisAlignedBoundingBox;
+ if AABBLeft.Intersects(AABBRight) then begin
+  ma:=TMesh.Create(aLeftMesh);
   try
-   mb:=TMesh.Create(aRightMesh);
+   ma.SetMode(TMode.Polygons);
+   ta:=ma.ToTree(aSplitSettings);
    try
-    mb.SetMode(TMode.Polygons);
-    tb:=mb.ToTree(aSplitSettings);
+    mb:=TMesh.Create(aRightMesh);
     try
-     ta.ClipTo(tb,false);
-     tb.ClipTo(ta,false);
-     tb.Invert;
-     tb.ClipTo(ta,false);
-     tb.Invert;
-     ta.Merge(tb);
+     mb.SetMode(TMode.Polygons);
+     tb:=mb.ToTree(aSplitSettings);
+     try
+      ta.ClipTo(tb,false);
+      tb.ClipTo(ta,false);
+      tb.Invert;
+      tb.ClipTo(ta,false);
+      tb.Invert;
+      ta.Merge(tb);
+     finally
+      FreeAndNil(tb);
+     end;
     finally
-     FreeAndNil(tb);
+     FreeAndNil(mb);
     end;
+    Assign(ta);
    finally
-    FreeAndNil(mb);
+    FreeAndNil(ta);
    end;
-   Assign(ta);
   finally
-   FreeAndNil(ta);
+   FreeAndNil(ma);
   end;
- finally
-  FreeAndNil(ma);
- end;
- RemoveDuplicateAndUnusedVertices;
- if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
-  SetMode(TMode.Triangles);
+  RemoveDuplicateAndUnusedVertices;
+  if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
+   SetMode(TMode.Triangles);
+  end;
+ end else begin
+  Assign(aLeftMesh);
+  Append(aRightMesh);
+  RemoveDuplicateAndUnusedVertices;
  end;
 end;
 
@@ -3086,49 +3095,57 @@ end;
 procedure TpvCSGBSP.TMesh.Subtraction(const aLeftMesh:TMesh;
                                       const aRightMesh:TMesh;
                                       const aSplitSettings:PSplitSettings=nil);
-var ma,mb:TMesh;
+var AABBLeft,AABBRight:TAABB;
+    ma,mb:TMesh;
     ta,tb:TTree;
 begin
  Clear;
- ma:=TMesh.Create(aLeftMesh);
- try
-  ma.SetMode(TMode.Polygons);
-  ta:=ma.ToTree(aSplitSettings);
+ AABBLeft:=aLeftMesh.GetAxisAlignedBoundingBox;
+ AABBRight:=aRightMesh.GetAxisAlignedBoundingBox;
+ if AABBLeft.Intersects(AABBRight) then begin
+  ma:=TMesh.Create(aLeftMesh);
   try
-   mb:=TMesh.Create(aRightMesh);
+   ma.SetMode(TMode.Polygons);
+   ta:=ma.ToTree(aSplitSettings);
    try
-    mb.SetMode(TMode.Polygons);
-    tb:=mb.ToTree(aSplitSettings);
+    mb:=TMesh.Create(aRightMesh);
     try
-     ta.Invert;
-     ta.ClipTo(tb,false);
-{$undef UseReferenceBSPOperations}
-{$ifdef UseReferenceBSPOperations}
-     tb.ClipTo(ta,false);
-     tb.Invert;
-     tb.ClipTo(ta,false);
-     tb.Invert;
-{$else}
-     tb.ClipTo(ta,true);
-{$endif}
-     ta.Merge(tb);
-     ta.Invert;
+     mb.SetMode(TMode.Polygons);
+     tb:=mb.ToTree(aSplitSettings);
+     try
+      ta.Invert;
+      ta.ClipTo(tb,false);
+ {$undef UseReferenceBSPOperations}
+ {$ifdef UseReferenceBSPOperations}
+      tb.ClipTo(ta,false);
+      tb.Invert;
+      tb.ClipTo(ta,false);
+      tb.Invert;
+ {$else}
+      tb.ClipTo(ta,true);
+ {$endif}
+      ta.Merge(tb);
+      ta.Invert;
+     finally
+      FreeAndNil(tb);
+     end;
     finally
-     FreeAndNil(tb);
+     FreeAndNil(mb);
     end;
+    Assign(ta);
    finally
-    FreeAndNil(mb);
+    FreeAndNil(ta);
    end;
-   Assign(ta);
   finally
-   FreeAndNil(ta);
+   FreeAndNil(ma);
   end;
- finally
-  FreeAndNil(ma);
- end;
- RemoveDuplicateAndUnusedVertices;
- if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
-  SetMode(TMode.Triangles);
+  RemoveDuplicateAndUnusedVertices;
+  if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
+   SetMode(TMode.Triangles);
+  end;
+ end else begin
+  Assign(aLeftMesh);
+  RemoveDuplicateAndUnusedVertices;
  end;
 end;
 
@@ -3148,43 +3165,50 @@ end;
 procedure TpvCSGBSP.TMesh.Intersection(const aLeftMesh:TMesh;
                                        const aRightMesh:TMesh;
                                        const aSplitSettings:PSplitSettings=nil);
-var ma,mb:TMesh;
+var AABBLeft,AABBRight:TAABB;
+    ma,mb:TMesh;
     ta,tb:TTree;
 begin
  Clear;
- ma:=TMesh.Create(aLeftMesh);
- try
-  ma.SetMode(TMode.Polygons);
-  ta:=ma.ToTree(aSplitSettings);
+ AABBLeft:=aLeftMesh.GetAxisAlignedBoundingBox;
+ AABBRight:=aRightMesh.GetAxisAlignedBoundingBox;
+ if AABBLeft.Intersects(AABBRight) then begin
+  ma:=TMesh.Create(aLeftMesh);
   try
-   mb:=TMesh.Create(aRightMesh);
+   ma.SetMode(TMode.Polygons);
+   ta:=ma.ToTree(aSplitSettings);
    try
-    mb.SetMode(TMode.Polygons);
-    tb:=mb.ToTree(aSplitSettings);
+    mb:=TMesh.Create(aRightMesh);
     try
-     ta.Invert;
-     tb.ClipTo(ta,false);
-     tb.Invert;
-     ta.ClipTo(tb,false);
-     tb.ClipTo(ta,false);
-     ta.Merge(tb);
-     ta.Invert;
+     mb.SetMode(TMode.Polygons);
+     tb:=mb.ToTree(aSplitSettings);
+     try
+      ta.Invert;
+      tb.ClipTo(ta,false);
+      tb.Invert;
+      ta.ClipTo(tb,false);
+      tb.ClipTo(ta,false);
+      ta.Merge(tb);
+      ta.Invert;
+     finally
+      FreeAndNil(tb);
+     end;
     finally
-     FreeAndNil(tb);
+     FreeAndNil(mb);
     end;
+    Assign(ta);
    finally
-    FreeAndNil(mb);
+    FreeAndNil(ta);
    end;
-   Assign(ta);
   finally
-   FreeAndNil(ta);
+   FreeAndNil(ma);
   end;
- finally
-  FreeAndNil(ma);
- end;
- RemoveDuplicateAndUnusedVertices;
- if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
-  SetMode(TMode.Triangles);
+  RemoveDuplicateAndUnusedVertices;
+  if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
+   SetMode(TMode.Triangles);
+  end;
+ end else begin
+  // Do nothing in this special case
  end;
 end;
 
