@@ -509,6 +509,7 @@ type TpvCSGBSP=class
                                                     const aRightMesh:TMesh;
                                                     const aSplitSettings:PSplitSettings=nil);
               destructor Destroy; override;
+              procedure Clear;
               procedure Assign(const aFrom:TMesh); overload;
               procedure Assign(const aFrom:TTree); overload;
               procedure Append(const aFrom:TMesh); overload;
@@ -523,6 +524,18 @@ type TpvCSGBSP=class
               procedure ConvertToPolygons;
               procedure ConvertToTriangles;
               procedure RemoveNearDuplicateIndices(var aIndices:TIndexList);
+              procedure Union(const aLeftMesh:TMesh;
+                              const aRightMesh:TMesh;
+                              const aSplitSettings:PSplitSettings=nil);
+              procedure Subtraction(const aLeftMesh:TMesh;
+                                    const aRightMesh:TMesh;
+                                    const aSplitSettings:PSplitSettings=nil);
+              procedure Intersection(const aLeftMesh:TMesh;
+                                     const aRightMesh:TMesh;
+                                     const aSplitSettings:PSplitSettings=nil);
+              procedure SymmetricDifference(const aLeftMesh:TMesh;
+                                            const aRightMesh:TMesh;
+                                            const aSplitSettings:PSplitSettings=nil);
               procedure Canonicalize;
               procedure CalculateNormals(const aCreasedNormalAngleThreshold:TFloat=90.0;
                                          const aSoftNormals:boolean=true;
@@ -2705,73 +2718,21 @@ constructor TpvCSGBSP.TMesh.CreateFromCSGOperation(const aLeftMesh:TMesh;
                                                    const aRightMesh:TMesh;
                                                    const aCSGOperation:TCSGOperation;
                                                    const aSplitSettings:PSplitSettings=nil);
-var ma,mb:TMesh;
-    ta,tb:TTree;
 begin
  Create;
- ma:=TMesh.Create(aLeftMesh);
- try
-  ma.SetMode(TMode.Polygons);
-  ta:=ma.ToTree(aSplitSettings);
-  try
-   mb:=TMesh.Create(aRightMesh);
-   try
-    mb.SetMode(TMode.Polygons);
-    tb:=mb.ToTree(aSplitSettings);
-    try
-     case aCSGOperation of
-      TCSGOperation.Union:begin
-       ta.ClipTo(tb,false);
-       tb.ClipTo(ta,false);
-       tb.Invert;
-       tb.ClipTo(ta,false);
-       tb.Invert;
-       ta.Merge(tb);
-      end;
-      TCSGOperation.Subtraction:begin
-       ta.Invert;
-       ta.ClipTo(tb,false);
-{$undef UseReferenceBSPOperations}
-{$ifdef UseReferenceBSPOperations}
-       tb.ClipTo(ta,false);
-       tb.Invert;
-       tb.ClipTo(ta,false);
-       tb.Invert;
-{$else}
-       tb.ClipTo(ta,true);
-{$endif}
-       ta.Merge(tb);
-       ta.Invert;
-      end;
-      TCSGOperation.Intersection:begin
-       ta.Invert;
-       tb.ClipTo(ta,false);
-       tb.Invert;
-       ta.ClipTo(tb,false);
-       tb.ClipTo(ta,false);
-       ta.Merge(tb);
-       ta.Invert;
-      end;
-      else begin
-       Assert(false);
-      end;
-     end;
-    finally
-     FreeAndNil(tb);
-    end;
-   finally
-    FreeAndNil(mb);
-   end;
-   Assign(ta);
-  finally
-   FreeAndNil(ta);
+ case aCSGOperation of
+  TCSGOperation.Union:begin
+   Union(aLeftMesh,aRightMesh,aSplitSettings);
   end;
- finally
-  FreeAndNil(ma);
- end;
- RemoveDuplicateAndUnusedVertices;
- if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
-  SetMode(TMode.Triangles);
+  TCSGOperation.Subtraction:begin
+   Subtraction(aLeftMesh,aRightMesh,aSplitSettings);
+  end;
+  TCSGOperation.Intersection:begin
+   Intersection(aLeftMesh,aRightMesh,aSplitSettings);
+  end;
+  else begin
+   Assert(false);
+  end;
  end;
 end;
 
@@ -2779,44 +2740,32 @@ constructor TpvCSGBSP.TMesh.CreateUnion(const aLeftMesh:TMesh;
                                         const aRightMesh:TMesh;
                                         const aSplitSettings:PSplitSettings=nil);
 begin
- CreateFromCSGOperation(aLeftMesh,aRightMesh,TCSGOperation.Union,aSplitSettings);
+ Create;
+ Union(aLeftMesh,aRightMesh,aSplitSettings);
 end;
 
 constructor TpvCSGBSP.TMesh.CreateSubtraction(const aLeftMesh:TMesh;
                                               const aRightMesh:TMesh;
                                               const aSplitSettings:PSplitSettings=nil);
 begin
- CreateFromCSGOperation(aLeftMesh,aRightMesh,TCSGOperation.Subtraction,aSplitSettings);
+ Create;
+ Subtraction(aLeftMesh,aRightMesh,aSplitSettings);
 end;
 
 constructor TpvCSGBSP.TMesh.CreateIntersection(const aLeftMesh:TMesh;
                                                const aRightMesh:TMesh;
                                                const aSplitSettings:PSplitSettings=nil);
 begin
- CreateFromCSGOperation(aLeftMesh,aRightMesh,TCSGOperation.Intersection,aSplitSettings);
+ Create;
+ Intersection(aLeftMesh,aRightMesh,aSplitSettings);
 end;
 
 constructor TpvCSGBSP.TMesh.CreateSymmetricDifference(const aLeftMesh:TMesh;
                                                       const aRightMesh:TMesh;
                                                       const aSplitSettings:PSplitSettings=nil);
-var a,b:TMesh;
 begin
- // Possible symmertic difference (boolean XOR) implementations:
- // Intersection(Union(A,B),Inverse(Intersection(A,B)))
- // Intersection(Union(A,B),Union(Inverse(A),Inverse(B)))
- // Union(Subtraction(A,B),Subtraction(B,A)) <= used here, because it seems the most robust mnethod in this BSP-based triangle-based CSG implementation!
- // Subtraction(Union(A,B),Intersection(A,B))
- a:=TMesh.CreateSubtraction(aLeftMesh,aRightMesh,aSplitSettings);
- try
-  b:=TMesh.CreateSubtraction(aRightMesh,aLeftMesh,aSplitSettings);
-  try
-   CreateUnion(a,b,aSplitSettings);
-  finally
-   FreeAndNil(b);
-  end;
- finally
-  FreeAndNil(a);
- end;
+ Create;
+ SymmetricDifference(aLeftMesh,aRightMesh,aSplitSettings);
 end;
 
 destructor TpvCSGBSP.TMesh.Destroy;
@@ -2883,6 +2832,12 @@ end;
 procedure TpvCSGBSP.TMesh.SetIndices(const aIndices:TIndexList);
 begin
  fIndices.Assign(aIndices);
+end;
+
+procedure TpvCSGBSP.TMesh.Clear;
+begin
+ fVertices.Clear;
+ fIndices.Clear;
 end;
 
 procedure TpvCSGBSP.TMesh.Assign(const aFrom:TMesh);
@@ -3046,6 +3001,163 @@ begin
   end else begin
    inc(Index);
   end;
+ end;
+end;
+
+procedure TpvCSGBSP.TMesh.Union(const aLeftMesh:TMesh;
+                                const aRightMesh:TMesh;
+                                const aSplitSettings:PSplitSettings=nil);
+var ma,mb:TMesh;
+    ta,tb:TTree;
+begin
+ Clear;
+ ma:=TMesh.Create(aLeftMesh);
+ try
+  ma.SetMode(TMode.Polygons);
+  ta:=ma.ToTree(aSplitSettings);
+  try
+   mb:=TMesh.Create(aRightMesh);
+   try
+    mb.SetMode(TMode.Polygons);
+    tb:=mb.ToTree(aSplitSettings);
+    try
+     ta.ClipTo(tb,false);
+     tb.ClipTo(ta,false);
+     tb.Invert;
+     tb.ClipTo(ta,false);
+     tb.Invert;
+     ta.Merge(tb);
+    finally
+     FreeAndNil(tb);
+    end;
+   finally
+    FreeAndNil(mb);
+   end;
+   Assign(ta);
+  finally
+   FreeAndNil(ta);
+  end;
+ finally
+  FreeAndNil(ma);
+ end;
+ RemoveDuplicateAndUnusedVertices;
+ if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
+  SetMode(TMode.Triangles);
+ end;
+end;
+
+procedure TpvCSGBSP.TMesh.Subtraction(const aLeftMesh:TMesh;
+                                      const aRightMesh:TMesh;
+                                      const aSplitSettings:PSplitSettings=nil);
+var ma,mb:TMesh;
+    ta,tb:TTree;
+begin
+ Clear;
+ ma:=TMesh.Create(aLeftMesh);
+ try
+  ma.SetMode(TMode.Polygons);
+  ta:=ma.ToTree(aSplitSettings);
+  try
+   mb:=TMesh.Create(aRightMesh);
+   try
+    mb.SetMode(TMode.Polygons);
+    tb:=mb.ToTree(aSplitSettings);
+    try
+     ta.Invert;
+     ta.ClipTo(tb,false);
+{$undef UseReferenceBSPOperations}
+{$ifdef UseReferenceBSPOperations}
+     tb.ClipTo(ta,false);
+     tb.Invert;
+     tb.ClipTo(ta,false);
+     tb.Invert;
+{$else}
+     tb.ClipTo(ta,true);
+{$endif}
+     ta.Merge(tb);
+     ta.Invert;
+    finally
+     FreeAndNil(tb);
+    end;
+   finally
+    FreeAndNil(mb);
+   end;
+   Assign(ta);
+  finally
+   FreeAndNil(ta);
+  end;
+ finally
+  FreeAndNil(ma);
+ end;
+ RemoveDuplicateAndUnusedVertices;
+ if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
+  SetMode(TMode.Triangles);
+ end;
+end;
+
+procedure TpvCSGBSP.TMesh.Intersection(const aLeftMesh:TMesh;
+                                       const aRightMesh:TMesh;
+                                       const aSplitSettings:PSplitSettings=nil);
+var ma,mb:TMesh;
+    ta,tb:TTree;
+begin
+ Clear;
+ ma:=TMesh.Create(aLeftMesh);
+ try
+  ma.SetMode(TMode.Polygons);
+  ta:=ma.ToTree(aSplitSettings);
+  try
+   mb:=TMesh.Create(aRightMesh);
+   try
+    mb.SetMode(TMode.Polygons);
+    tb:=mb.ToTree(aSplitSettings);
+    try
+     ta.Invert;
+     tb.ClipTo(ta,false);
+     tb.Invert;
+     ta.ClipTo(tb,false);
+     tb.ClipTo(ta,false);
+     ta.Merge(tb);
+     ta.Invert;
+    finally
+     FreeAndNil(tb);
+    end;
+   finally
+    FreeAndNil(mb);
+   end;
+   Assign(ta);
+  finally
+   FreeAndNil(ta);
+  end;
+ finally
+  FreeAndNil(ma);
+ end;
+ RemoveDuplicateAndUnusedVertices;
+ if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
+  SetMode(TMode.Triangles);
+ end;
+end;
+
+procedure TpvCSGBSP.TMesh.SymmetricDifference(const aLeftMesh:TMesh;
+                                              const aRightMesh:TMesh;
+                                              const aSplitSettings:PSplitSettings=nil);
+var a,b:TMesh;
+begin
+ // Possible symmertic difference (boolean XOR) implementations:
+ // Intersection(Union(A,B),Inverse(Intersection(A,B)))
+ // Intersection(Union(A,B),Union(Inverse(A),Inverse(B)))
+ // Union(Subtraction(A,B),Subtraction(B,A)) <= used here, because it seems the most robust mnethod in this BSP-based triangle-based CSG implementation!
+ // Subtraction(Union(A,B),Intersection(A,B))
+ a:=TMesh.CreateSubtraction(aLeftMesh,aRightMesh,aSplitSettings);
+ try
+  b:=TMesh.CreateSubtraction(aRightMesh,aLeftMesh,aSplitSettings);
+  try
+   Union(a,b,aSplitSettings);
+  finally
+   FreeAndNil(b);
+  end;
+ finally
+  FreeAndNil(a);
  end;
 end;
 
