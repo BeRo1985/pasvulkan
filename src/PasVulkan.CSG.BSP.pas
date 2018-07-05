@@ -3108,7 +3108,7 @@ var TemporaryMesh:TMesh;
 begin
  TemporaryMesh:=TMesh.Create(fMode);
  try
-  TemporaryMesh.Union(self,aWithMesh);
+  TemporaryMesh.Union(self,aWithMesh,aSplitSettings);
   Assign(TemporaryMesh);
  finally
   FreeAndNil(TemporaryMesh);
@@ -3198,7 +3198,7 @@ var TemporaryMesh:TMesh;
 begin
  TemporaryMesh:=TMesh.Create(fMode);
  try
-  TemporaryMesh.Subtraction(self,aWithMesh);
+  TemporaryMesh.Subtraction(self,aWithMesh,aSplitSettings);
   Assign(TemporaryMesh);
  finally
   FreeAndNil(TemporaryMesh);
@@ -3281,7 +3281,7 @@ var TemporaryMesh:TMesh;
 begin
  TemporaryMesh:=TMesh.Create(fMode);
  try
-  TemporaryMesh.Intersection(self,aWithMesh);
+  TemporaryMesh.Intersection(self,aWithMesh,aSplitSettings);
   Assign(TemporaryMesh);
  finally
   FreeAndNil(TemporaryMesh);
@@ -3331,7 +3331,7 @@ var TemporaryMesh:TMesh;
 begin
  TemporaryMesh:=TMesh.Create(fMode);
  try
-  TemporaryMesh.SymmetricDifference(self,aWithMesh);
+  TemporaryMesh.SymmetricDifference(self,aWithMesh,aSplitSettings);
   Assign(TemporaryMesh);
  finally
   FreeAndNil(TemporaryMesh);
