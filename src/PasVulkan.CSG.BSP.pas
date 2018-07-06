@@ -501,6 +501,9 @@ type TpvCSGBSP=class
               procedure SetMode(const aMode:TMode);
               procedure SetVertices(const aVertices:TVertexList);
               procedure SetIndices(const aIndices:TIndexList);
+              procedure FastSplitPolygonsIntoOuterAndInnerMeshsByInsideRangeAABB(const aOuterLeftMesh:TMesh;
+                                                                                 const aInnerLeftMesh:TMesh;
+                                                                                 const aInsideRangeAABB:TAABB);
               procedure DoUnion(const aLeftMesh:TMesh;
                                 const aRightMesh:TMesh;
                                 const aSplitSettings:PSplitSettings=nil);
@@ -3122,6 +3125,56 @@ begin
  SetMode(TMode.Triangles);
 end;
 
+procedure TpvCSGBSP.TMesh.FastSplitPolygonsIntoOuterAndInnerMeshsByInsideRangeAABB(const aOuterLeftMesh:TMesh;
+                                                                                   const aInnerLeftMesh:TMesh;
+                                                                                   const aInsideRangeAABB:TAABB);
+var Index,Count,CountPolygonVertices,
+    OtherIndex:TpvSizeInt;
+    PolygonAABB:TAABB;
+begin
+ aOuterLeftMesh.fMode:=fMode;
+ aInnerLeftMesh.fMode:=fMode;
+ aOuterLeftMesh.SetVertices(fVertices);
+ aInnerLeftMesh.SetVertices(fVertices);
+ aOuterLeftMesh.fIndices.Clear;
+ aInnerLeftMesh.fIndices.Clear;
+ Index:=0;
+ Count:=fIndices.Count;
+ while Index<Count do begin
+  case fMode of
+   TMode.Triangles:begin
+    CountPolygonVertices:=3;
+   end;
+   else {TMode.Polygons:}begin
+    CountPolygonVertices:=fIndices.Items[Index];
+    inc(Index);
+   end;
+  end;
+  if CountPolygonVertices>2 then begin
+   if (Index+(CountPolygonVertices-1))<Count then begin
+    PolygonAABB.Min:=fVertices.Items[fIndices.Items[Index]].Position;
+    PolygonAABB.Max:=fVertices.Items[fIndices.Items[Index]].Position;
+    for OtherIndex:=Index+1 to Index+(CountPolygonVertices-1) do begin
+     PolygonAABB:=PolygonAABB.Combine(fVertices.Items[fIndices.Items[OtherIndex]].Position);
+    end;
+    if aInsideRangeAABB.Intersects(PolygonAABB) then begin
+     if fMode=TMode.Polygons then begin
+      aInnerLeftMesh.fIndices.Add(CountPolygonVertices);
+     end;
+     aInnerLeftMesh.fIndices.AddRangeFrom(fIndices,Index,CountPolygonVertices);
+    end else begin
+     if fMode=TMode.Polygons then begin
+      aOuterLeftMesh.fIndices.Add(CountPolygonVertices);
+     end;
+     aOuterLeftMesh.fIndices.AddRangeFrom(fIndices,Index,CountPolygonVertices);
+    end;
+   end;
+  end;
+  inc(Index,CountPolygonVertices);
+ end;
+end;
+
+
 procedure TpvCSGBSP.TMesh.RemoveNearDuplicateIndices(var aIndices:TIndexList);
 var Index:TpvSizeInt;
     VertexIndices:array[0..1] of TIndex;
@@ -3231,6 +3284,34 @@ begin
      FreeAndNil(AABBIntersectionMesh);
     end;
    end;
+   TMesh.TCSGOptimization.Polygons:begin
+    AABBIntersection:=AABBLeft.Intersection(AABBRight);
+    OuterLeftMesh:=TMesh.Create;
+    try
+     InnerLeftMesh:=TMesh.Create;
+     try
+      aLeftMesh.FastSplitPolygonsIntoOuterAndInnerMeshsByInsideRangeAABB(OuterLeftMesh,InnerLeftMesh,AABBIntersection);
+      OuterRightMesh:=TMesh.Create;
+      try
+       InnerRightMesh:=TMesh.Create;
+       try
+        aRightMesh.FastSplitPolygonsIntoOuterAndInnerMeshsByInsideRangeAABB(OuterRightMesh,InnerRightMesh,AABBIntersection);
+        DoUnion(InnerLeftMesh,InnerRightMesh,aSplitSettings);
+       finally
+        FreeAndNil(InnerRightMesh);
+       end;
+       Append(OuterRightMesh);
+      finally
+       FreeAndNil(OuterRightMesh);
+      end;
+     finally
+      FreeAndNil(InnerLeftMesh);
+     end;
+     Append(OuterLeftMesh);
+    finally
+     FreeAndNil(OuterLeftMesh);
+    end;
+   end;
    else begin
     DoUnion(aLeftMesh,aRightMesh,aSplitSettings);
    end;
@@ -3326,7 +3407,7 @@ procedure TpvCSGBSP.TMesh.Subtraction(const aLeftMesh:TMesh;
 var AABBLeft,AABBRight,AABBIntersection:TAABB;
     AABBIntersectionMesh,
     OuterLeftMesh,InnerLeftMesh,
-    InnerRightMesh:TMesh;
+    OuterRightMesh,InnerRightMesh:TMesh;
 begin
  AABBLeft:=aLeftMesh.GetAxisAlignedBoundingBox;
  AABBRight:=aRightMesh.GetAxisAlignedBoundingBox;
@@ -3355,6 +3436,33 @@ begin
      end;
     finally
      FreeAndNil(AABBIntersectionMesh);
+    end;
+   end;
+   TMesh.TCSGOptimization.Polygons:begin
+    AABBIntersection:=AABBLeft.Intersection(AABBRight);
+    OuterLeftMesh:=TMesh.Create;
+    try
+     InnerLeftMesh:=TMesh.Create;
+     try
+      aLeftMesh.FastSplitPolygonsIntoOuterAndInnerMeshsByInsideRangeAABB(OuterLeftMesh,InnerLeftMesh,AABBIntersection);
+      OuterRightMesh:=TMesh.Create;
+      try
+       InnerRightMesh:=TMesh.Create;
+       try
+        aRightMesh.FastSplitPolygonsIntoOuterAndInnerMeshsByInsideRangeAABB(OuterRightMesh,InnerRightMesh,AABBIntersection);
+        DoSubtraction(InnerLeftMesh,InnerRightMesh,aSplitSettings);
+       finally
+        FreeAndNil(InnerRightMesh);
+       end;
+      finally
+       FreeAndNil(OuterRightMesh);
+      end;
+     finally
+      FreeAndNil(InnerLeftMesh);
+     end;
+     Append(OuterLeftMesh);
+    finally
+     FreeAndNil(OuterLeftMesh);
     end;
    end;
    else begin
@@ -3444,8 +3552,8 @@ procedure TpvCSGBSP.TMesh.Intersection(const aLeftMesh:TMesh;
                                        const aSplitSettings:PSplitSettings=nil);
 var AABBLeft,AABBRight,AABBIntersection:TAABB;
     AABBIntersectionMesh,
-    InnerLeftMesh,
-    InnerRightMesh:TMesh;
+    OuterLeftMesh,InnerLeftMesh,
+    OuterRightMesh,InnerRightMesh:TMesh;
 begin
  AABBLeft:=aLeftMesh.GetAxisAlignedBoundingBox;
  AABBRight:=aRightMesh.GetAxisAlignedBoundingBox;
@@ -3468,6 +3576,32 @@ begin
      end;
     finally
      FreeAndNil(AABBIntersectionMesh);
+    end;
+   end;
+   TMesh.TCSGOptimization.Polygons:begin
+    AABBIntersection:=AABBLeft.Intersection(AABBRight);
+    OuterLeftMesh:=TMesh.Create;
+    try
+     InnerLeftMesh:=TMesh.Create;
+     try
+      aLeftMesh.FastSplitPolygonsIntoOuterAndInnerMeshsByInsideRangeAABB(OuterLeftMesh,InnerLeftMesh,AABBIntersection);
+      OuterRightMesh:=TMesh.Create;
+      try
+       InnerRightMesh:=TMesh.Create;
+       try
+        aRightMesh.FastSplitPolygonsIntoOuterAndInnerMeshsByInsideRangeAABB(OuterRightMesh,InnerRightMesh,AABBIntersection);
+        DoIntersection(InnerLeftMesh,InnerRightMesh,aSplitSettings);
+       finally
+        FreeAndNil(InnerRightMesh);
+       end;
+      finally
+       FreeAndNil(OuterRightMesh);
+      end;
+     finally
+      FreeAndNil(InnerLeftMesh);
+     end;
+    finally
+     FreeAndNil(OuterLeftMesh);
     end;
    end;
    else begin
