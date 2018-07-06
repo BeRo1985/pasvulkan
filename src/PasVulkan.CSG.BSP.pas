@@ -104,6 +104,7 @@ type TpvCSGBSP=class
              TJunctionOnePlusEpsilon=1.0+TJunctionEpsilon;
              NearPositionEpsilon=1e-5;
              SquaredNearPositionEpsilon=NearPositionEpsilon*NearPositionEpsilon;
+             CSGOptimizationBoundEpsilon=1e-1;
              daabbtNULLNODE=-1;
              AABBMULTIPLIER=2.0;
        type TFloat=TpvDouble;
@@ -371,15 +372,23 @@ type TpvCSGBSP=class
               function CloneFlip:TVertex;
               function Normalize:TVertex;
             end;
-            TAABB=record
+            TAABB=packed record
              public
-              Min:TVector3;
-              Max:TVector3;
               function Cost:TFloat;
               function Combine(const aAABB:TAABB):TAABB; overload;
               function Combine(const aVector:TVector3):TAABB; overload;
               function Contains(const aAABB:TAABB;const aThreshold:TFloat=0.0):boolean;
               function Intersects(const aAABB:TAABB;const aThreshold:TFloat=Epsilon):boolean;
+              function Intersection(const aAABB:TAABB;const aThreshold:TFloat=0.0):TAABB;
+             public
+              case boolean of
+               false:(
+                Min:TVector3;
+                Max:TVector3;
+               );
+               true:(
+                MinMax:array[0..1] of TVector3;
+               );
             end;
             PAABB=^TAABB;
             PVertex=^TVertex;
@@ -471,6 +480,12 @@ type TpvCSGBSP=class
                      Intersection
                     );
                    PCSGOperation=^TCSGOperation;
+                   TCSGOptimization=(
+                    None,
+                    CSG,
+                    Polygons
+                   );
+                   PCSGOptimization=^TCSGOptimization;
                    TMode=
                     (
                      Triangles,
@@ -496,26 +511,32 @@ type TpvCSGBSP=class
                                        const aRightMesh:TMesh;
                                        const aSplitSettings:PSplitSettings=nil);
              public
-              constructor Create(const aMode:TMode=TMode.Triangles); reintroduce; overload;
+              constructor Create(const aMode:TMode=TMode.Polygons); reintroduce; overload;
               constructor Create(const aFrom:TMesh); reintroduce; overload;
               constructor Create(const aFrom:TTree); reintroduce; overload;
-              constructor CreateCube(const aCX,aCY,aCZ,aRX,aRY,aRZ:TFloat;const aMode:TMode=TMode.Triangles);
-              constructor CreateSphere(const aCX,aCY,aCZ,aRadius:TFloat;const aSlices:TpvSizeInt=16;const aStacks:TpvSizeInt=8;const aMode:TMode=TMode.Triangles);
+              constructor Create(const aFrom:TAABB;const aMode:TMode=TMode.Polygons;const aAdditionalBounds:TFloat=0.0); reintroduce; overload;
+              constructor CreateCube(const aCX,aCY,aCZ,aRX,aRY,aRZ:TFloat;const aMode:TMode=TMode.Polygons);
+              constructor CreateSphere(const aCX,aCY,aCZ,aRadius:TFloat;const aSlices:TpvSizeInt=16;const aStacks:TpvSizeInt=8;const aMode:TMode=TMode.Polygons);
               constructor CreateFromCSGOperation(const aLeftMesh:TMesh;
                                                  const aRightMesh:TMesh;
                                                  const aCSGOperation:TCSGOperation;
+                                                 const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                                  const aSplitSettings:PSplitSettings=nil);
               constructor CreateUnion(const aLeftMesh:TMesh;
                                       const aRightMesh:TMesh;
+                                      const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                       const aSplitSettings:PSplitSettings=nil);
               constructor CreateSubtraction(const aLeftMesh:TMesh;
                                             const aRightMesh:TMesh;
+                                            const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                             const aSplitSettings:PSplitSettings=nil);
               constructor CreateIntersection(const aLeftMesh:TMesh;
                                              const aRightMesh:TMesh;
+                                             const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                              const aSplitSettings:PSplitSettings=nil);
               constructor CreateSymmetricDifference(const aLeftMesh:TMesh;
                                                     const aRightMesh:TMesh;
+                                                    const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                                     const aSplitSettings:PSplitSettings=nil);
               destructor Destroy; override;
               procedure Clear;
@@ -536,31 +557,43 @@ type TpvCSGBSP=class
               procedure RemoveNearDuplicateIndices(var aIndices:TIndexList);
               procedure Union(const aLeftMesh:TMesh;
                               const aRightMesh:TMesh;
+                              const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                               const aSplitSettings:PSplitSettings=nil); overload;
               procedure Union(const aWithMesh:TMesh;
+                              const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                               const aSplitSettings:PSplitSettings=nil); overload;
               procedure UnionOf(const aMeshs:array of TMesh;
+                                const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                 const aSplitSettings:PSplitSettings=nil);
               procedure Subtraction(const aLeftMesh:TMesh;
                                     const aRightMesh:TMesh;
+                                    const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                     const aSplitSettings:PSplitSettings=nil); overload;
               procedure Subtraction(const aWithMesh:TMesh;
+                                    const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                     const aSplitSettings:PSplitSettings=nil); overload;
               procedure SubtractionOf(const aMeshs:array of TMesh;
+                                      const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                       const aSplitSettings:PSplitSettings=nil);
               procedure Intersection(const aLeftMesh:TMesh;
                                      const aRightMesh:TMesh;
+                                     const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                      const aSplitSettings:PSplitSettings=nil); overload;
               procedure Intersection(const aWithMesh:TMesh;
+                                     const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                      const aSplitSettings:PSplitSettings=nil); overload;
               procedure IntersectionOf(const aMeshs:array of TMesh;
+                                       const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                        const aSplitSettings:PSplitSettings=nil);
               procedure SymmetricDifference(const aLeftMesh:TMesh;
                                             const aRightMesh:TMesh;
+                                            const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                             const aSplitSettings:PSplitSettings=nil); overload;
               procedure SymmetricDifference(const aWithMesh:TMesh;
+                                            const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                             const aSplitSettings:PSplitSettings=nil); overload;
               procedure SymmetricDifferenceOf(const aMeshs:array of TMesh;
+                                              const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                               const aSplitSettings:PSplitSettings=nil);
               procedure Canonicalize;
               procedure CalculateNormals(const aCreasedNormalAngleThreshold:TFloat=90.0;
@@ -718,7 +751,7 @@ end;
 
 procedure TpvCSGBSP.TDynamicArray<T>.Assign(const aFrom:TpvCSGBSP.TDynamicArray<T>);
 begin
- Items:=aFrom.Items;
+ Items:=copy(aFrom.Items);
  Count:=aFrom.Count;
 end;
 
@@ -2225,6 +2258,16 @@ begin
          (((self.Max.z+aThreshold)>=(aAABB.Min.z-aThreshold)) and ((self.Min.z-aThreshold)<=(aAABB.Max.z+aThreshold)));
 end;
 
+function TpvCSGBSP.TAABB.Intersection(const aAABB:TAABB;const aThreshold:TFloat=0.0):TAABB;
+begin
+ result.Min.x:=Math.Max(Min.x,aAABB.Min.x)-aThreshold;
+ result.Min.y:=Math.Max(Min.y,aAABB.Min.y)-aThreshold;
+ result.Min.z:=Math.Max(Min.z,aAABB.Min.z)-aThreshold;
+ result.Max.x:=Math.Min(Max.x,aAABB.Max.x)+aThreshold;
+ result.Max.y:=Math.Min(Max.y,aAABB.Max.y)+aThreshold;
+ result.Max.z:=Math.Min(Max.z,aAABB.Max.z)+aThreshold;
+end;
+
 { TpvCSGBSP.TDynamicAABBTree }
 
 constructor TpvCSGBSP.TDynamicAABBTree.Create;
@@ -2585,7 +2628,7 @@ end;
 
 { TpvCSGBSP.TMesh }
 
-constructor TpvCSGBSP.TMesh.Create(const aMode:TMode=TMode.Triangles);
+constructor TpvCSGBSP.TMesh.Create(const aMode:TMode=TMode.Polygons);
 begin
  inherited Create;
  fMode:=aMode;
@@ -2619,7 +2662,59 @@ begin
  end;
 end;
 
-constructor TpvCSGBSP.TMesh.CreateCube(const aCX,aCY,aCZ,aRX,aRY,aRZ:TFloat;const aMode:TMode=TMode.Triangles);
+constructor TpvCSGBSP.TMesh.Create(const aFrom:TAABB;const aMode:TMode=TMode.Polygons;const aAdditionalBounds:TFloat=0.0);
+const SideVertexIndices:array[0..5,0..3] of TpvUInt8=
+       (
+        (0,4,6,2), // Left
+        (1,3,7,5), // Right
+        (0,1,5,4), // Bottom
+        (2,6,7,3), // Top
+        (0,2,3,1), // Back
+        (4,5,7,6)  // Front
+       );
+      SideNormals:array[0..5] of TVector3=
+       (
+        (x:-1.0;y:0.0;z:0.0),
+        (x:1.0;y:0.0;z:0.0),
+        (x:0.0;y:-1.0;z:0.0),
+        (x:0.0;y:1.0;z:0.0),
+        (x:0.0;y:0.0;z:-1.0),
+        (x:0.0;y:0.0;z:1.0)
+       );
+var SideIndex,SideVertexIndex,VertexIndex,BaseVertexIndex:TpvSizeInt;
+    Vertex:TVertex;
+begin
+ Create(aMode);
+ for SideIndex:=0 to 5 do begin
+  BaseVertexIndex:=fVertices.Count;
+  for SideVertexIndex:=0 to 3 do begin
+   VertexIndex:=SideVertexIndices[SideIndex,SideVertexIndex];
+   Vertex.Position.x:=aFrom.MinMax[(VertexIndex shr 0) and 1].x+(((((VertexIndex shr 0) and 1) shl 1)-1)*aAdditionalBounds);
+   Vertex.Position.y:=aFrom.MinMax[(VertexIndex shr 1) and 1].y+(((((VertexIndex shr 1) and 1) shl 1)-1)*aAdditionalBounds);
+   Vertex.Position.z:=aFrom.MinMax[(VertexIndex shr 2) and 1].z+(((((VertexIndex shr 2) and 1) shl 1)-1)*aAdditionalBounds);
+   Vertex.Normal:=SideNormals[SideIndex];
+   Vertex.TexCoord.x:=SideVertexIndex and 1;
+   Vertex.TexCoord.y:=((SideVertexIndex shr 1) and 1) xor (SideVertexIndex and 1);
+   Vertex.Color.x:=1.0;
+   Vertex.Color.y:=1.0;
+   Vertex.Color.z:=1.0;
+   Vertex.Color.w:=1.0;
+   fVertices.Add(Vertex);
+  end;
+  case fMode of
+   TMode.Triangles:begin
+    fIndices.Add([BaseVertexIndex+0,BaseVertexIndex+1,BaseVertexIndex+2,
+                  BaseVertexIndex+0,BaseVertexIndex+2,BaseVertexIndex+3]);
+   end;
+   else {TMode.Polygons:}begin
+    fIndices.Add([4,BaseVertexIndex+0,BaseVertexIndex+1,BaseVertexIndex+2,BaseVertexIndex+3]);
+   end;
+  end;
+ end;
+ RemoveDuplicateAndUnusedVertices;
+end;
+
+constructor TpvCSGBSP.TMesh.CreateCube(const aCX,aCY,aCZ,aRX,aRY,aRZ:TFloat;const aMode:TMode=TMode.Polygons);
 const SideVertexIndices:array[0..5,0..3] of TpvUInt8=
        (
         (0,4,6,2), // Left
@@ -2671,7 +2766,7 @@ begin
  RemoveDuplicateAndUnusedVertices;
 end;
 
-constructor TpvCSGBSP.TMesh.CreateSphere(const aCX,aCY,aCZ,aRadius:TFloat;const aSlices:TpvSizeInt=16;const aStacks:TpvSizeInt=8;const aMode:TMode=TMode.Triangles);
+constructor TpvCSGBSP.TMesh.CreateSphere(const aCX,aCY,aCZ,aRadius:TFloat;const aSlices:TpvSizeInt=16;const aStacks:TpvSizeInt=8;const aMode:TMode=TMode.Polygons);
  function AddVertex(const aTheta,aPhi:TpvDouble):TIndex;
  var Theta,Phi,dx,dy,dz:TFloat;
      Vertex:TVertex;
@@ -2743,18 +2838,19 @@ end;
 constructor TpvCSGBSP.TMesh.CreateFromCSGOperation(const aLeftMesh:TMesh;
                                                    const aRightMesh:TMesh;
                                                    const aCSGOperation:TCSGOperation;
+                                                   const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                                    const aSplitSettings:PSplitSettings=nil);
 begin
  Create;
  case aCSGOperation of
   TCSGOperation.Union:begin
-   Union(aLeftMesh,aRightMesh,aSplitSettings);
+   Union(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
   end;
   TCSGOperation.Subtraction:begin
-   Subtraction(aLeftMesh,aRightMesh,aSplitSettings);
+   Subtraction(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
   end;
   TCSGOperation.Intersection:begin
-   Intersection(aLeftMesh,aRightMesh,aSplitSettings);
+   Intersection(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
   end;
   else begin
    Assert(false);
@@ -2764,34 +2860,38 @@ end;
 
 constructor TpvCSGBSP.TMesh.CreateUnion(const aLeftMesh:TMesh;
                                         const aRightMesh:TMesh;
+                                        const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                         const aSplitSettings:PSplitSettings=nil);
 begin
  Create;
- Union(aLeftMesh,aRightMesh,aSplitSettings);
+ Union(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
 end;
 
 constructor TpvCSGBSP.TMesh.CreateSubtraction(const aLeftMesh:TMesh;
                                               const aRightMesh:TMesh;
+                                              const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                               const aSplitSettings:PSplitSettings=nil);
 begin
  Create;
- Subtraction(aLeftMesh,aRightMesh,aSplitSettings);
+ Subtraction(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
 end;
 
 constructor TpvCSGBSP.TMesh.CreateIntersection(const aLeftMesh:TMesh;
                                                const aRightMesh:TMesh;
+                                               const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                                const aSplitSettings:PSplitSettings=nil);
 begin
  Create;
- Intersection(aLeftMesh,aRightMesh,aSplitSettings);
+ Intersection(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
 end;
 
 constructor TpvCSGBSP.TMesh.CreateSymmetricDifference(const aLeftMesh:TMesh;
                                                       const aRightMesh:TMesh;
+                                                      const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                                       const aSplitSettings:PSplitSettings=nil);
 begin
  Create;
- SymmetricDifference(aLeftMesh,aRightMesh,aSplitSettings);
+ SymmetricDifference(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
 end;
 
 destructor TpvCSGBSP.TMesh.Destroy;
@@ -2879,6 +2979,7 @@ begin
  Mesh:=aFrom.fMesh;
  fMode:=Mesh.fMode;
  fVertices.Assign(Mesh.fVertices);
+ fIndices.Clear;
  aFrom.GetIndices(fIndices);
 end;
 
@@ -3088,13 +3189,52 @@ end;
 
 procedure TpvCSGBSP.TMesh.Union(const aLeftMesh:TMesh;
                                 const aRightMesh:TMesh;
+                                const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                 const aSplitSettings:PSplitSettings=nil);
-var AABBLeft,AABBRight:TAABB;
+var AABBLeft,AABBRight,AABBIntersection:TAABB;
+    AABBIntersectionMesh,
+    OuterLeftMesh,InnerLeftMesh,
+    OuterRightMesh,InnerRightMesh:TMesh;
 begin
  AABBLeft:=aLeftMesh.GetAxisAlignedBoundingBox;
  AABBRight:=aRightMesh.GetAxisAlignedBoundingBox;
  if AABBLeft.Intersects(AABBRight) then begin
-  DoUnion(aLeftMesh,aRightMesh,aSplitSettings);
+  case aCSGOptimization of
+   TMesh.TCSGOptimization.CSG:begin
+    AABBIntersection:=AABBLeft.Intersection(AABBRight);
+    AABBIntersectionMesh:=TMesh.Create(AABBIntersection,TMesh.TMode.Polygons,CSGOptimizationBoundEpsilon);
+    try
+     OuterLeftMesh:=TMesh.CreateSubtraction(aLeftMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+     try
+      InnerLeftMesh:=TMesh.CreateIntersection(aLeftMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+      try
+       OuterRightMesh:=TMesh.CreateSubtraction(aRightMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+       try
+        InnerRightMesh:=TMesh.CreateIntersection(aRightMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+        try
+         DoUnion(InnerLeftMesh,InnerRightMesh,aSplitSettings);
+        finally
+         FreeAndNil(InnerRightMesh);
+        end;
+        Union(OuterRightMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+       finally
+        FreeAndNil(OuterRightMesh);
+       end;
+       Union(OuterLeftMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+      finally
+       FreeAndNil(InnerLeftMesh);
+      end;
+     finally
+      FreeAndNil(OuterLeftMesh);
+     end;
+    finally
+     FreeAndNil(AABBIntersectionMesh);
+    end;
+   end;
+   else begin
+    DoUnion(aLeftMesh,aRightMesh,aSplitSettings);
+   end;
+  end;
  end else begin
   Assign(aLeftMesh);
   Append(aRightMesh);
@@ -3103,12 +3243,13 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.Union(const aWithMesh:TMesh;
+                                const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                 const aSplitSettings:PSplitSettings=nil);
 var TemporaryMesh:TMesh;
 begin
  TemporaryMesh:=TMesh.Create(fMode);
  try
-  TemporaryMesh.Union(self,aWithMesh,aSplitSettings);
+  TemporaryMesh.Union(self,aWithMesh,aCSGOptimization,aSplitSettings);
   Assign(TemporaryMesh);
  finally
   FreeAndNil(TemporaryMesh);
@@ -3116,13 +3257,14 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.UnionOf(const aMeshs:array of TMesh;
+                                  const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                   const aSplitSettings:PSplitSettings=nil);
 var Index:TpvSizeInt;
 begin
  if length(aMeshs)>0 then begin
   Assign(aMeshs[0]);
   for Index:=1 to length(aMeshs)-1 do begin
-   Union(aMeshs[Index],aSplitSettings);
+   Union(aMeshs[Index],aCSGOptimization,aSplitSettings);
   end;
  end else begin
   Clear;
@@ -3179,13 +3321,46 @@ end;
 
 procedure TpvCSGBSP.TMesh.Subtraction(const aLeftMesh:TMesh;
                                       const aRightMesh:TMesh;
+                                      const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                       const aSplitSettings:PSplitSettings=nil);
-var AABBLeft,AABBRight:TAABB;
+var AABBLeft,AABBRight,AABBIntersection:TAABB;
+    AABBIntersectionMesh,
+    OuterLeftMesh,InnerLeftMesh,
+    InnerRightMesh:TMesh;
 begin
  AABBLeft:=aLeftMesh.GetAxisAlignedBoundingBox;
  AABBRight:=aRightMesh.GetAxisAlignedBoundingBox;
  if AABBLeft.Intersects(AABBRight) then begin
-  DoSubtraction(aLeftMesh,aRightMesh,aSplitSettings);
+  case aCSGOptimization of
+   TMesh.TCSGOptimization.CSG:begin
+    AABBIntersection:=AABBLeft.Intersection(AABBRight);
+    AABBIntersectionMesh:=TMesh.Create(AABBIntersection,TMesh.TMode.Polygons,CSGOptimizationBoundEpsilon);
+    try
+     OuterLeftMesh:=TMesh.CreateSubtraction(aLeftMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+     try
+      InnerLeftMesh:=TMesh.CreateIntersection(aLeftMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+      try
+       InnerRightMesh:=TMesh.CreateIntersection(aRightMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+       try
+        DoSubtraction(InnerLeftMesh,InnerRightMesh,aSplitSettings);
+       finally
+        FreeAndNil(InnerRightMesh);
+       end;
+       Union(OuterLeftMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+      finally
+       FreeAndNil(InnerLeftMesh);
+      end;
+     finally
+      FreeAndNil(OuterLeftMesh);
+     end;
+    finally
+     FreeAndNil(AABBIntersectionMesh);
+    end;
+   end;
+   else begin
+    DoSubtraction(aLeftMesh,aRightMesh,aSplitSettings);
+   end;
+  end;
  end else begin
   Assign(aLeftMesh);
   RemoveDuplicateAndUnusedVertices;
@@ -3193,12 +3368,13 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.Subtraction(const aWithMesh:TMesh;
+                                      const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                       const aSplitSettings:PSplitSettings=nil);
 var TemporaryMesh:TMesh;
 begin
  TemporaryMesh:=TMesh.Create(fMode);
  try
-  TemporaryMesh.Subtraction(self,aWithMesh,aSplitSettings);
+  TemporaryMesh.Subtraction(self,aWithMesh,aCSGOptimization,aSplitSettings);
   Assign(TemporaryMesh);
  finally
   FreeAndNil(TemporaryMesh);
@@ -3206,13 +3382,14 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.SubtractionOf(const aMeshs:array of TMesh;
+                                        const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                         const aSplitSettings:PSplitSettings=nil);
 var Index:TpvSizeInt;
 begin
  if length(aMeshs)>0 then begin
   Assign(aMeshs[0]);
   for Index:=1 to length(aMeshs)-1 do begin
-   Subtraction(aMeshs[Index],aSplitSettings);
+   Subtraction(aMeshs[Index],aCSGOptimization,aSplitSettings);
   end;
  end else begin
   Clear;
@@ -3263,25 +3440,53 @@ end;
 
 procedure TpvCSGBSP.TMesh.Intersection(const aLeftMesh:TMesh;
                                        const aRightMesh:TMesh;
+                                       const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                        const aSplitSettings:PSplitSettings=nil);
-var AABBLeft,AABBRight:TAABB;
+var AABBLeft,AABBRight,AABBIntersection:TAABB;
+    AABBIntersectionMesh,
+    InnerLeftMesh,
+    InnerRightMesh:TMesh;
 begin
  AABBLeft:=aLeftMesh.GetAxisAlignedBoundingBox;
  AABBRight:=aRightMesh.GetAxisAlignedBoundingBox;
  if AABBLeft.Intersects(AABBRight) then begin
-  DoIntersection(aLeftMesh,aRightMesh,aSplitSettings);
+  case aCSGOptimization of
+   TMesh.TCSGOptimization.CSG:begin
+    AABBIntersection:=AABBLeft.Intersection(AABBRight);
+    AABBIntersectionMesh:=TMesh.Create(AABBIntersection,TMesh.TMode.Polygons,CSGOptimizationBoundEpsilon);
+    try
+     InnerLeftMesh:=TMesh.CreateIntersection(aLeftMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+     try
+      InnerRightMesh:=TMesh.CreateIntersection(aRightMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+      try
+       DoIntersection(InnerLeftMesh,InnerRightMesh,aSplitSettings);
+      finally
+       FreeAndNil(InnerRightMesh);
+      end;
+     finally
+      FreeAndNil(InnerLeftMesh);
+     end;
+    finally
+     FreeAndNil(AABBIntersectionMesh);
+    end;
+   end;
+   else begin
+    DoIntersection(aLeftMesh,aRightMesh,aSplitSettings);
+   end;
+  end;
  end else begin
   Clear;
  end;
 end;
 
 procedure TpvCSGBSP.TMesh.Intersection(const aWithMesh:TMesh;
+                                       const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                        const aSplitSettings:PSplitSettings=nil);
 var TemporaryMesh:TMesh;
 begin
  TemporaryMesh:=TMesh.Create(fMode);
  try
-  TemporaryMesh.Intersection(self,aWithMesh,aSplitSettings);
+  TemporaryMesh.Intersection(self,aWithMesh,aCSGOptimization,aSplitSettings);
   Assign(TemporaryMesh);
  finally
   FreeAndNil(TemporaryMesh);
@@ -3289,13 +3494,14 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.IntersectionOf(const aMeshs:array of TMesh;
+                                         const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                          const aSplitSettings:PSplitSettings=nil);
 var Index:TpvSizeInt;
 begin
  if length(aMeshs)>0 then begin
   Assign(aMeshs[0]);
   for Index:=1 to length(aMeshs)-1 do begin
-   Intersection(aMeshs[Index],aSplitSettings);
+   Intersection(aMeshs[Index],aCSGOptimization,aSplitSettings);
   end;
  end else begin
   Clear;
@@ -3304,6 +3510,7 @@ end;
 
 procedure TpvCSGBSP.TMesh.SymmetricDifference(const aLeftMesh:TMesh;
                                               const aRightMesh:TMesh;
+                                              const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                               const aSplitSettings:PSplitSettings=nil);
 var a,b:TMesh;
 begin
@@ -3312,11 +3519,11 @@ begin
  // Intersection(Union(A,B),Union(Inverse(A),Inverse(B)))
  // Union(Subtraction(A,B),Subtraction(B,A)) <= used here, because it seems the most robust mnethod in this BSP-based triangle-based CSG implementation!
  // Subtraction(Union(A,B),Intersection(A,B))
- a:=TMesh.CreateSubtraction(aLeftMesh,aRightMesh,aSplitSettings);
+ a:=TMesh.CreateSubtraction(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
  try
-  b:=TMesh.CreateSubtraction(aRightMesh,aLeftMesh,aSplitSettings);
+  b:=TMesh.CreateSubtraction(aRightMesh,aLeftMesh,aCSGOptimization,aSplitSettings);
   try
-   Union(a,b,aSplitSettings);
+   Union(a,b,aCSGOptimization,aSplitSettings);
   finally
    FreeAndNil(b);
   end;
@@ -3326,12 +3533,13 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.SymmetricDifference(const aWithMesh:TMesh;
+                                              const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                               const aSplitSettings:PSplitSettings=nil);
 var TemporaryMesh:TMesh;
 begin
  TemporaryMesh:=TMesh.Create(fMode);
  try
-  TemporaryMesh.SymmetricDifference(self,aWithMesh,aSplitSettings);
+  TemporaryMesh.SymmetricDifference(self,aWithMesh,aCSGOptimization,aSplitSettings);
   Assign(TemporaryMesh);
  finally
   FreeAndNil(TemporaryMesh);
@@ -3339,13 +3547,14 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.SymmetricDifferenceOf(const aMeshs:array of TMesh;
+                                                const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                                 const aSplitSettings:PSplitSettings=nil);
 var Index:TpvSizeInt;
 begin
  if length(aMeshs)>0 then begin
   Assign(aMeshs[0]);
   for Index:=1 to length(aMeshs)-1 do begin
-   SymmetricDifference(aMeshs[Index],aSplitSettings);
+   SymmetricDifference(aMeshs[Index],aCSGOptimization,aSplitSettings);
   end;
  end else begin
   Clear;
