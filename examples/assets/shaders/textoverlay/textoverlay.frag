@@ -35,14 +35,14 @@ const float SQRT_0_DOT_5 = sqrt(0.5),
 #endif
 
 #if BLENDMODE == 1
-vec4 convertLinearRGBToSRGB(const in vec4 pLinearRGB){
+vec4 convertLinearRGBToSRGB(in vec4 pLinearRGB){
   return vec4(mix((1.055 * pow(pLinearRGB.rgb, vec3(1.0 / 2.4))) - vec3(0.055), 
                   pLinearRGB.rgb * 12.92,
                   lessThan(pLinearRGB.rgb, vec3(0.0031308))),
               pLinearRGB.a);
 }
 
-vec4 convertSRGBToLinearRGB(const in vec4 pSRGB){
+vec4 convertSRGBToLinearRGB(in vec4 pSRGB){
   return vec4(mix(pow((pSRGB.rgb + vec3(0.055)) * (1.0 / 1.055), vec3(2.4)), 
                   pSRGB.rgb * (1.0 / 12.92),
                   lessThan(pSRGB.rgb, vec3(0.04045))),
