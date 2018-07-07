@@ -85,6 +85,10 @@ unit PasVulkan.CSG.BSP;
 
 {$define NonRecursive}
 
+{$ifndef fpc}
+ {$scopedenums on}
+{$endif}
+
 {$warnings off}
 
 interface
@@ -410,6 +414,18 @@ type TpvCSGBSP=class
               function IntersectWithPointToPoint(const aPointA,aPointB:TVertex;const aIntersectionPoint:PVertex=nil):boolean; overload;
               function OK:boolean;
               function Flip:TPlane;
+              procedure SplitTriangles(var aVertices:TVertexList;
+                                       const aIndices:TIndexList;
+                                       const aCoplanarBackList:PIndexList;
+                                       const aCoplanarFrontList:PIndexList;
+                                       const aBackList:PIndexList;
+                                       const aFrontList:PIndexList);
+              procedure SplitPolygons(var aVertices:TVertexList;
+                                      const aIndices:TIndexList;
+                                      const aCoplanarBackList:PIndexList;
+                                      const aCoplanarFrontList:PIndexList;
+                                      const aBackList:PIndexList;
+                                      const aFrontList:PIndexList);
             end;
             PPlane=^TPlane;
             PDynamicAABBTreeNode=^TDynamicAABBTreeNode;
@@ -470,7 +486,8 @@ type TpvCSGBSP=class
               function HashKey(const aKey:TpvCSGBSP.TVector3):TpvUInt32; override;
               function CompareKey(const aKeyA,aKeyB:TpvCSGBSP.TVector3):boolean; override;
             end;
-            TTree=class;
+            TSingleTreeNode=class;
+            TDualTree=class;
             TMesh=class
              public
               type TCSGOperation=
@@ -480,6 +497,12 @@ type TpvCSGBSP=class
                      Intersection
                     );
                    PCSGOperation=^TCSGOperation;
+                   TCSGMode=(
+                    SingleTree,
+                    DualTree,
+                    Triangles
+                   );
+                   PCSGMode=^TCSGMode;
                    TCSGOptimization=(
                     None,
                     CSG,
@@ -501,52 +524,69 @@ type TpvCSGBSP=class
               procedure SetMode(const aMode:TMode);
               procedure SetVertices(const aVertices:TVertexList);
               procedure SetIndices(const aIndices:TIndexList);
+              procedure TriangleCSGOperation(const aLeftNode:TSingleTreeNode;
+                                             const aRightNode:TSingleTreeNode;
+                                             const aVertices:TVertexList;
+                                             const aInside:boolean;
+                                             const aKeepEdge:boolean;
+                                             const aInvert:boolean);
               procedure FastSplitPolygonsIntoOuterAndInnerMeshsByInsideRangeAABB(const aOuterLeftMesh:TMesh;
                                                                                  const aInnerLeftMesh:TMesh;
                                                                                  const aInsideRangeAABB:TAABB);
               procedure DoUnion(const aLeftMesh:TMesh;
                                 const aRightMesh:TMesh;
+                                const aCSGMode:TCSGMode;
                                 const aSplitSettings:PSplitSettings=nil);
               procedure DoSubtraction(const aLeftMesh:TMesh;
                                       const aRightMesh:TMesh;
+                                      const aCSGMode:TCSGMode;
                                       const aSplitSettings:PSplitSettings=nil);
               procedure DoIntersection(const aLeftMesh:TMesh;
                                        const aRightMesh:TMesh;
+                                       const aCSGMode:TCSGMode;
                                        const aSplitSettings:PSplitSettings=nil);
              public
               constructor Create(const aMode:TMode=TMode.Polygons); reintroduce; overload;
               constructor Create(const aFrom:TMesh); reintroduce; overload;
-              constructor Create(const aFrom:TTree); reintroduce; overload;
+              constructor Create(const aFrom:TSingleTreeNode); reintroduce; overload;
+              constructor Create(const aFrom:TDualTree); reintroduce; overload;
               constructor Create(const aFrom:TAABB;const aMode:TMode=TMode.Polygons;const aAdditionalBounds:TFloat=0.0); reintroduce; overload;
               constructor CreateCube(const aCX,aCY,aCZ,aRX,aRY,aRZ:TFloat;const aMode:TMode=TMode.Polygons);
               constructor CreateSphere(const aCX,aCY,aCZ,aRadius:TFloat;const aSlices:TpvSizeInt=16;const aStacks:TpvSizeInt=8;const aMode:TMode=TMode.Polygons);
               constructor CreateFromCSGOperation(const aLeftMesh:TMesh;
                                                  const aRightMesh:TMesh;
                                                  const aCSGOperation:TCSGOperation;
+                                                 const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                                  const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                                  const aSplitSettings:PSplitSettings=nil);
               constructor CreateUnion(const aLeftMesh:TMesh;
                                       const aRightMesh:TMesh;
+                                      const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                       const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                       const aSplitSettings:PSplitSettings=nil);
               constructor CreateSubtraction(const aLeftMesh:TMesh;
                                             const aRightMesh:TMesh;
+                                            const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                             const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                             const aSplitSettings:PSplitSettings=nil);
               constructor CreateIntersection(const aLeftMesh:TMesh;
                                              const aRightMesh:TMesh;
+                                             const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                              const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                              const aSplitSettings:PSplitSettings=nil);
               constructor CreateSymmetricDifference(const aLeftMesh:TMesh;
                                                     const aRightMesh:TMesh;
+                                                    const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                                     const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                                     const aSplitSettings:PSplitSettings=nil);
               destructor Destroy; override;
               procedure Clear;
               procedure Assign(const aFrom:TMesh); overload;
-              procedure Assign(const aFrom:TTree); overload;
+              procedure Assign(const aFrom:TSingleTreeNode); overload;
+              procedure Assign(const aFrom:TDualTree); overload;
               procedure Append(const aFrom:TMesh); overload;
-              procedure Append(const aFrom:TTree); overload;
+              procedure Append(const aFrom:TSingleTreeNode); overload;
+              procedure Append(const aFrom:TDualTree); overload;
               function AddVertex(const aVertex:TVertex):TIndex;
               function AddVertices(const aVertices:array of TVertex):TIndex; overload;
               function AddVertices(const aVertices:TVertexList):TIndex; overload;
@@ -560,42 +600,54 @@ type TpvCSGBSP=class
               procedure RemoveNearDuplicateIndices(var aIndices:TIndexList);
               procedure Union(const aLeftMesh:TMesh;
                               const aRightMesh:TMesh;
+                              const aCSGMode:TCSGMode=TCSGMode.DualTree;
                               const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                               const aSplitSettings:PSplitSettings=nil); overload;
               procedure Union(const aWithMesh:TMesh;
+                              const aCSGMode:TCSGMode=TCSGMode.DualTree;
                               const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                               const aSplitSettings:PSplitSettings=nil); overload;
               procedure UnionOf(const aMeshs:array of TMesh;
+                                const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                 const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                 const aSplitSettings:PSplitSettings=nil);
               procedure Subtraction(const aLeftMesh:TMesh;
                                     const aRightMesh:TMesh;
+                                    const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                     const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                     const aSplitSettings:PSplitSettings=nil); overload;
               procedure Subtraction(const aWithMesh:TMesh;
+                                    const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                     const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                     const aSplitSettings:PSplitSettings=nil); overload;
               procedure SubtractionOf(const aMeshs:array of TMesh;
+                                      const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                       const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                       const aSplitSettings:PSplitSettings=nil);
               procedure Intersection(const aLeftMesh:TMesh;
                                      const aRightMesh:TMesh;
+                                     const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                      const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                      const aSplitSettings:PSplitSettings=nil); overload;
               procedure Intersection(const aWithMesh:TMesh;
+                                     const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                      const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                      const aSplitSettings:PSplitSettings=nil); overload;
               procedure IntersectionOf(const aMeshs:array of TMesh;
+                                       const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                        const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                        const aSplitSettings:PSplitSettings=nil);
               procedure SymmetricDifference(const aLeftMesh:TMesh;
                                             const aRightMesh:TMesh;
+                                            const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                             const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                             const aSplitSettings:PSplitSettings=nil); overload;
               procedure SymmetricDifference(const aWithMesh:TMesh;
+                                            const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                             const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                             const aSplitSettings:PSplitSettings=nil); overload;
               procedure SymmetricDifferenceOf(const aMeshs:array of TMesh;
+                                              const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                               const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                               const aSplitSettings:PSplitSettings=nil);
               procedure Canonicalize;
@@ -609,7 +661,8 @@ type TpvCSGBSP=class
               procedure FixTJunctions(const aConsistentInputVertices:boolean=false);
               procedure MergeCoplanarConvexPolygons;
               procedure Optimize;
-              function ToTree(const aSplitSettings:PSplitSettings=nil):TTree;
+              function ToSingleTreeNode(const aSplitSettings:PSplitSettings=nil):TSingleTreeNode;
+              function ToDualTree(const aSplitSettings:PSplitSettings=nil):TDualTree;
              public
               property Vertices:TVertexList read fVertices write SetVertices;
               property Indices:TIndexList read fIndices write SetIndices;
@@ -618,7 +671,42 @@ type TpvCSGBSP=class
              published
               property Mode:TMode read fMode write SetMode;
             end;
-            TTree=class
+            TSingleTreeNode=class
+             private
+              fIndices:TIndexList;
+              fPointerToIndices:PIndexList;
+              fMesh:TMesh;
+              fBack:TSingleTreeNode;
+              fFront:TSingleTreeNode;
+              fPlane:TPlane;
+              procedure SetIndices(const aIndices:TIndexList);
+             public
+              constructor Create(const aMesh:TMesh); reintroduce;
+              destructor Destroy; override;
+              procedure Invert;
+              procedure EvaluateSplitPlane(const aPlane:TPlane;
+                                           out aCountPolygonsSplits:TpvSizeInt;
+                                           out aCountBackPolygons:TpvSizeInt;
+                                           out aCountFrontPolygons:TpvSizeInt);
+              function FindSplitPlane(const aIndices:TIndexList;
+                                      const aSplitSettings:PSplitSettings):TPlane;
+              function ClipPolygons(var aVertices:TVertexList;const aIndices:TIndexList):TIndexList;
+              procedure ClipTo(const aNode:TSingleTreeNode);
+              procedure Merge(const aNode:TSingleTreeNode;
+                              const aSplitSettings:PSplitSettings=nil);
+              procedure Build(const aIndices:TIndexList;
+                              const aSplitSettings:PSplitSettings=nil);
+              function ToMesh:TMesh;
+             public
+              property Plane:TPlane read fPlane write fPlane;
+              property Indices:TIndexList read fIndices write SetIndices;
+              property PointerToIndices:PIndexList read fPointerToIndices;
+             published
+              property Mesh:TMesh read fMesh write fMesh;
+              property Back:TSingleTreeNode read fBack write fBack;
+              property Front:TSingleTreeNode read fFront write fFront;
+            end;
+            TDualTree=class
              public
               type TPolygon=record
                     public
@@ -633,70 +721,72 @@ type TpvCSGBSP=class
                    PPolygonNodeList=^TPolygonNodeList;
                    TPolygonNode=class
                     private
-                     fTree:TTree;
-                     fParent:TTree.TPolygonNode;
-                     fParentPrevious:TTree.TPolygonNode;
-                     fParentNext:TTree.TPolygonNode;
-                     fAllPrevious:TTree.TPolygonNode;
-                     fAllNext:TTree.TPolygonNode;
-                     fFirstChild:TTree.TPolygonNode;
-                     fLastChild:TTree.TPolygonNode;
+                     fTree:TDualTree;
+                     fParent:TDualTree.TPolygonNode;
+                     fParentPrevious:TDualTree.TPolygonNode;
+                     fParentNext:TDualTree.TPolygonNode;
+                     fAllPrevious:TDualTree.TPolygonNode;
+                     fAllNext:TDualTree.TPolygonNode;
+                     fFirstChild:TDualTree.TPolygonNode;
+                     fLastChild:TDualTree.TPolygonNode;
                      fRemoved:boolean;
                      fPolygon:TPolygon;
                     public
-                     constructor Create(const aTree:TTree;const aParent:TTree.TPolygonNode); reintroduce;
+                     constructor Create(const aTree:TDualTree;const aParent:TDualTree.TPolygonNode); reintroduce;
                      destructor Destroy; override;
                      procedure RemoveFromParent;
-                     function AddPolygon(const aPolygon:TPolygon):TTree.TPolygonNode;
-                     function AddPolygonIndices(const aIndices:TIndexList):TTree.TPolygonNode;
+                     function AddPolygon(const aPolygon:TPolygon):TDualTree.TPolygonNode;
+                     function AddPolygonIndices(const aIndices:TIndexList):TDualTree.TPolygonNode;
                      procedure Remove;
                      procedure Invert;
                      procedure DrySplitByPlane(const aPlane:TPlane;var aCountSplits,aCoplanarBackList,aCoplanarFrontList,aBackList,aFrontList:TpvSizeInt);
                      procedure SplitByPlane(const aPlane:TPlane;var aCoplanarBackList,aCoplanarFrontList,aBackList,aFrontList:TPolygonNodeList);
                     published
-                     property Tree:TTree read fTree write fTree;
-                     property Parent:TTree.TPolygonNode read fParent;
+                     property Tree:TDualTree read fTree write fTree;
+                     property Parent:TDualTree.TPolygonNode read fParent;
                      property Removed:boolean read fRemoved;
                    end;
                    TNode=class
                     private
-                     fTree:TTree;
-                     fBack:TTree.TNode;
-                     fFront:TTree.TNode;
+                     fTree:TDualTree;
+                     fBack:TDualTree.TNode;
+                     fFront:TDualTree.TNode;
                      fPlane:TPlane;
                      fPolygonNodes:TPolygonNodeList;
+                     fIndices:TIndexList;
                     public
-                     constructor Create(const aTree:TTree); reintroduce;
+                     constructor Create(const aTree:TDualTree); reintroduce;
                      destructor Destroy; override;
                      procedure Invert;
                      procedure ClipPolygons(const aPolygonNodes:TPolygonNodeList;const aAlsoRemoveCoplanarFront:boolean=false);
-                     procedure ClipTo(const aTree:TTree;const aAlsoRemoveCoplanarFront:boolean=false);
+                     procedure ClipTo(const aTree:TDualTree;const aAlsoRemoveCoplanarFront:boolean=false);
                      function FindSplitPlane(const aPolygonNodes:TPolygonNodeList):TPlane;
                      procedure AddPolygonNodes(const aPolygonNodes:TPolygonNodeList);
+                     procedure AddIndices(const aIndices:TIndexList);
                     public
                      property Plane:TPlane read fPlane write fPlane;
                     published
-                     property Tree:TTree read fTree write fTree;
-                     property Back:TTree.TNode read fBack write fBack;
-                     property Front:TTree.TNode read fFront write fFront;
+                     property Tree:TDualTree read fTree write fTree;
+                     property Back:TDualTree.TNode read fBack write fBack;
+                     property Front:TDualTree.TNode read fFront write fFront;
                    end;
              private
               fMesh:TMesh;
               fSplitSettings:TSplitSettings;
-              fFirstPolygonNode:TTree.TPolygonNode;
-              fLastPolygonNode:TTree.TPolygonNode;
-              fPolygonRootNode:TTree.TPolygonNode;
-              fRootNode:TTree.TNode;
+              fFirstPolygonNode:TDualTree.TPolygonNode;
+              fLastPolygonNode:TDualTree.TPolygonNode;
+              fPolygonRootNode:TDualTree.TPolygonNode;
+              fRootNode:TDualTree.TNode;
              public
               constructor Create(const aMesh:TMesh;const aSplitSettings:PSplitSettings=nil); reintroduce;
               destructor Destroy; override;
               procedure Invert;
-              procedure ClipTo(const aWithTree:TTree;const aAlsoRemoveCoplanarFront:boolean=false);
+              procedure ClipTo(const aWithTree:TDualTree;const aAlsoRemoveCoplanarFront:boolean=false);
               procedure AddPolygons(const aPolygons:TPolygonList);
               procedure AddIndices(const aIndices:TIndexList);
               procedure GetPolygons(var aPolygons:TPolygonList);
               procedure GetIndices(var aIndices:TIndexList);
-              procedure Merge(const aTree:TTree);
+              procedure Merge(const aTree:TDualTree);
               function ToMesh:TMesh;
             end;
       public
@@ -2218,6 +2308,396 @@ begin
  result.Distance:=-Distance;
 end;
 
+procedure TpvCSGBSP.TPlane.SplitTriangles(var aVertices:TVertexList;
+                                          const aIndices:TIndexList;
+                                          const aCoplanarBackList:PIndexList;
+                                          const aCoplanarFrontList:PIndexList;
+                                          const aBackList:PIndexList;
+                                          const aFrontList:PIndexList);
+var Index,Count,DummyIndex:TpvSizeInt;
+    Sides:array[0..2] of TpvSizeInt;
+    VertexIndices,PointIndices:array[0..2] of TIndex;
+    PlaneDistances:array[0..2] of TFloat;
+begin
+
+ Index:=0;
+ Count:=aIndices.Count;
+
+ while (Index+2)<Count do begin
+
+  VertexIndices[0]:=aIndices.Items[Index+0];
+  VertexIndices[1]:=aIndices.Items[Index+1];
+  VertexIndices[2]:=aIndices.Items[Index+2];
+
+  PlaneDistances[0]:=DistanceTo(aVertices.Items[VertexIndices[0]].Position);
+  PlaneDistances[1]:=DistanceTo(aVertices.Items[VertexIndices[1]].Position);
+  PlaneDistances[2]:=DistanceTo(aVertices.Items[VertexIndices[2]].Position);
+
+  Sides[0]:=TpvCSGBSP.EpsilonSign(PlaneDistances[0]);
+  Sides[1]:=TpvCSGBSP.EpsilonSign(PlaneDistances[1]);
+  Sides[2]:=TpvCSGBSP.EpsilonSign(PlaneDistances[2]);
+
+  PlaneDistances[0]:=PlaneDistances[0]*abs(Sides[0]);
+  PlaneDistances[1]:=PlaneDistances[1]*abs(Sides[1]);
+  PlaneDistances[2]:=PlaneDistances[2]*abs(Sides[2]);
+
+  if (Sides[0]*Sides[1])<0 then begin
+   PointIndices[0]:=aVertices.Add(aVertices.Items[VertexIndices[0]].Lerp(aVertices.Items[VertexIndices[1]],abs(PlaneDistances[0])/(abs(PlaneDistances[0])+abs(PlaneDistances[1]))));
+  end;
+  if (Sides[1]*Sides[2])<0 then begin
+   PointIndices[1]:=aVertices.Add(aVertices.Items[VertexIndices[1]].Lerp(aVertices.Items[VertexIndices[2]],abs(PlaneDistances[1])/(abs(PlaneDistances[1])+abs(PlaneDistances[2]))));
+  end;
+  if (Sides[2]*Sides[0])<0 then begin
+   PointIndices[2]:=aVertices.Add(aVertices.Items[VertexIndices[2]].Lerp(aVertices.Items[VertexIndices[0]],abs(PlaneDistances[2])/(abs(PlaneDistances[2])+abs(PlaneDistances[0]))));
+  end;
+
+  case ((Sides[0]+1) shl 0) or
+       ((Sides[1]+1) shl 2) or
+       ((Sides[2]+1) shl 4) of
+
+   // All points are on one side of the plane (or on the plane)
+   // in this case we simply add the complete triangle to the proper halve of the subtree
+   (((-1)+1) shl 0) or (((-1)+1) shl 2) or (((-1)+1) shl 4),
+   (((-1)+1) shl 0) or (((-1)+1) shl 2) or (((0)+1) shl 4),
+   (((-1)+1) shl 0) or (((0)+1) shl 2) or (((-1)+1) shl 4),
+   (((-1)+1) shl 0) or (((0)+1) shl 2) or (((0)+1) shl 4),
+   (((0)+1) shl 0) or (((-1)+1) shl 2) or (((-1)+1) shl 4),
+   (((0)+1) shl 0) or (((-1)+1) shl 2) or (((0)+1) shl 4),
+   (((0)+1) shl 0) or (((0)+1) shl 2) or (((-1)+1) shl 4):begin
+    if assigned(aBackList) then begin
+     aBackList^.Add([VertexIndices[0],VertexIndices[1],VertexIndices[2]]);
+    end;
+   end;
+
+   (((0)+1) shl 0) or (((0)+1) shl 2) or (((1)+1) shl 4),
+   (((0)+1) shl 0) or (((1)+1) shl 2) or (((0)+1) shl 4),
+   (((0)+1) shl 0) or (((1)+1) shl 2) or (((1)+1) shl 4),
+   (((1)+1) shl 0) or (((0)+1) shl 2) or (((0)+1) shl 4),
+   (((1)+1) shl 0) or (((0)+1) shl 2) or (((1)+1) shl 4),
+   (((1)+1) shl 0) or (((1)+1) shl 2) or (((0)+1) shl 4),
+   (((1)+1) shl 0) or (((1)+1) shl 2) or (((1)+1) shl 4):begin
+    if assigned(aFrontList) then begin
+     aFrontList^.Add([VertexIndices[0],VertexIndices[1],VertexIndices[2]]);
+    end;
+   end;
+
+   // Triangle on the dividing plane
+   (((0)+1) shl 0) or (((0)+1) shl 2) or (((0)+1) shl 4):begin
+    if aCoplanarFrontList<>aCoplanarBackList then begin
+     if Normal.Dot(TPlane.Create(aVertices.Items[VertexIndices[0]].Position,
+                                 aVertices.Items[VertexIndices[1]].Position,
+                                 aVertices.Items[VertexIndices[2]].Position).Normal)>0.0 then begin
+      if assigned(aCoplanarFrontList) then begin
+       aCoplanarFrontList^.Add([VertexIndices[0],VertexIndices[1],VertexIndices[2]]);
+      end;
+     end else begin
+      if assigned(aCoplanarBackList) then begin
+       aCoplanarBackList^.Add([VertexIndices[0],VertexIndices[1],VertexIndices[2]]);
+      end;
+     end;
+    end else if assigned(aCoplanarFrontList) then begin
+     aCoplanarFrontList^.Add([VertexIndices[0],VertexIndices[1],VertexIndices[2]]);
+    end;
+   end;
+
+   // And now all the ways that the triangle can be cut by the plane
+
+   (((1)+1) shl 0) or (((-1)+1) shl 2) or (((0)+1) shl 4):begin
+    if assigned(aBackList) then begin
+     aBackList^.Add([VertexIndices[1],VertexIndices[2],PointIndices[0]]);
+    end;
+    if assigned(aFrontList) then begin
+     aFrontList^.Add([VertexIndices[2],VertexIndices[0],PointIndices[0]]);
+    end;
+   end;
+
+   (((-1)+1) shl 0) or (((0)+1) shl 2) or (((1)+1) shl 4):begin
+    if assigned(aBackList) then begin
+     aBackList^.Add([VertexIndices[0],VertexIndices[1],PointIndices[2]]);
+    end;
+    if assigned(aFrontList) then begin
+     aFrontList^.Add([VertexIndices[1],VertexIndices[2],PointIndices[2]]);
+    end;
+   end;
+
+   (((0)+1) shl 0) or (((1)+1) shl 2) or (((-1)+1) shl 4):begin
+    if assigned(aBackList) then begin
+     aBackList^.Add([VertexIndices[2],VertexIndices[0],PointIndices[1]]);
+    end;
+    if assigned(aFrontList) then begin
+     aFrontList^.Add([VertexIndices[0],VertexIndices[1],PointIndices[1]]);
+    end;
+   end;
+
+   (((-1)+1) shl 0) or (((1)+1) shl 2) or (((0)+1) shl 4):begin
+    if assigned(aBackList) then begin
+     aBackList^.Add([VertexIndices[2],VertexIndices[0],PointIndices[0]]);
+    end;
+    if assigned(aFrontList) then begin
+     aFrontList^.Add([VertexIndices[1],VertexIndices[2],PointIndices[0]]);
+    end;
+   end;
+
+   (((1)+1) shl 0) or (((0)+1) shl 2) or (((-1)+1) shl 4):begin
+    if assigned(aBackList) then begin
+     aBackList^.Add([VertexIndices[1],VertexIndices[2],PointIndices[2]]);
+    end;
+    if assigned(aFrontList) then begin
+     aFrontList^.Add([VertexIndices[0],VertexIndices[1],PointIndices[2]]);
+    end;
+   end;
+
+   (((0)+1) shl 0) or (((-1)+1) shl 2) or (((1)+1) shl 4):begin
+    if assigned(aBackList) then begin
+     aBackList^.Add([VertexIndices[0],VertexIndices[1],PointIndices[1]]);
+    end;
+    if assigned(aFrontList) then begin
+     aFrontList^.Add([VertexIndices[2],VertexIndices[0],PointIndices[1]]);
+    end;
+   end;
+
+   (((1)+1) shl 0) or (((-1)+1) shl 2) or (((-1)+1) shl 4):begin
+    if assigned(aFrontList) then begin
+     aFrontList^.Add([VertexIndices[0],PointIndices[0],PointIndices[2]]);
+    end;
+    if assigned(aBackList) then begin
+     aBackList^.Add([VertexIndices[1],PointIndices[2],PointIndices[0]]);
+     aBackList^.Add([VertexIndices[1],VertexIndices[2],PointIndices[2]]);
+    end;
+   end;
+
+   (((-1)+1) shl 0) or (((1)+1) shl 2) or (((-1)+1) shl 4):begin
+    if assigned(aFrontList) then begin
+     aFrontList^.Add([VertexIndices[1],PointIndices[1],PointIndices[0]]);
+    end;
+    if assigned(aBackList) then begin
+     aBackList^.Add([VertexIndices[2],PointIndices[0],PointIndices[1]]);
+     aBackList^.Add([VertexIndices[2],VertexIndices[0],PointIndices[0]]);
+    end;
+   end;
+
+   (((-1)+1) shl 0) or (((-1)+1) shl 2) or (((1)+1) shl 4):begin
+    if assigned(aFrontList) then begin
+     aFrontList^.Add([VertexIndices[2],PointIndices[2],PointIndices[1]]);
+    end;
+    if assigned(aBackList) then begin
+     aBackList^.Add([VertexIndices[0],PointIndices[1],PointIndices[2]]);
+     aBackList^.Add([VertexIndices[0],VertexIndices[1],PointIndices[1]]);
+    end;
+   end;
+
+   (((-1)+1) shl 0) or (((1)+1) shl 2) or (((1)+1) shl 4):begin
+    if assigned(aBackList) then begin
+     aBackList^.Add([VertexIndices[0],PointIndices[0],PointIndices[2]]);
+    end;
+    if assigned(aFrontList) then begin
+     aFrontList^.Add([VertexIndices[1],PointIndices[2],PointIndices[0]]);
+     aFrontList^.Add([VertexIndices[1],VertexIndices[2],PointIndices[2]]);
+    end;
+   end;
+
+   (((1)+1) shl 0) or (((-1)+1) shl 2) or (((1)+1) shl 4):begin
+    if assigned(aBackList) then begin
+     aBackList^.Add([VertexIndices[1],PointIndices[1],PointIndices[0]]);
+    end;
+    if assigned(aFrontList) then begin
+     aFrontList^.Add([VertexIndices[0],PointIndices[0],PointIndices[1]]);
+     aFrontList^.Add([VertexIndices[2],VertexIndices[0],PointIndices[1]]);
+    end;
+   end;
+
+   (((1)+1) shl 0) or (((1)+1) shl 2) or (((-1)+1) shl 4):begin
+    if assigned(aBackList) then begin
+     aBackList^.Add([VertexIndices[2],PointIndices[2],PointIndices[1]]);
+    end;
+    if assigned(aFrontList) then begin
+     aFrontList^.Add([VertexIndices[0],PointIndices[1],PointIndices[2]]);
+     aFrontList^.Add([VertexIndices[0],VertexIndices[1],PointIndices[1]]);
+    end;
+   end;
+
+   // Otherwise it is a error
+   else begin
+    Assert(false);
+   end;
+
+  end;
+
+  inc(Index,3);
+
+ end;
+
+end;
+
+procedure TpvCSGBSP.TPlane.SplitPolygons(var aVertices:TVertexList;
+                                         const aIndices:TIndexList;
+                                         const aCoplanarBackList:PIndexList;
+                                         const aCoplanarFrontList:PIndexList;
+                                         const aBackList:PIndexList;
+                                         const aFrontList:PIndexList);
+const Coplanar=0;
+      Front=1;
+      Back=2;
+      Spanning=3;
+      EpsilonSignToOrientation:array[0..3] of TpvInt32=(Back,Coplanar,Front,Spanning);
+var Index,OtherIndex,Count,CountPolygonVertices,
+    IndexA,IndexB,
+    PolygonOrientation,
+    VertexOrientation,
+    VertexOrientationA,
+    VertexOrientationB:TpvSizeInt;
+    VertexOrientations:array of TpvSizeInt;
+    VectorDistance:TpvDouble;
+    BackVertexIndices,FrontVertexIndices:TIndexList;
+    VertexIndex:TIndex;
+    VertexA,VertexB:PVertex;
+begin
+
+ VertexOrientations:=nil;
+ try
+
+  BackVertexIndices.Initialize;
+  try
+
+   FrontVertexIndices.Initialize;
+   try
+
+    Index:=0;
+
+    Count:=aIndices.Count;
+
+    while Index<Count do begin
+
+     CountPolygonVertices:=aIndices.Items[Index];
+     inc(Index);
+
+     if (CountPolygonVertices>0) and
+        ((Index+(CountPolygonVertices-1))<Count) then begin
+
+      if CountPolygonVertices>2 then begin
+
+       PolygonOrientation:=0;
+
+       if length(VertexOrientations)<CountPolygonVertices then begin
+        SetLength(VertexOrientations,(CountPolygonVertices*3) shr 1);
+       end;
+
+       for IndexA:=0 to CountPolygonVertices-1 do begin
+        VertexIndex:=aIndices.Items[Index+IndexA];
+        VertexOrientation:=EpsilonSignToOrientation[(TpvCSGBSP.EpsilonSign(DistanceTo(aVertices.Items[VertexIndex].Position))+1) and 3];
+        PolygonOrientation:=PolygonOrientation or VertexOrientation;
+        VertexOrientations[IndexA]:=VertexOrientation;
+       end;
+
+       case PolygonOrientation of
+
+        Coplanar:begin
+         if assigned(aCoplanarFrontList) or assigned(aCoplanarBackList) then begin
+          if Normal.Dot(TPlane.Create(aVertices.Items[aIndices.Items[Index+0]].Position,
+                                      aVertices.Items[aIndices.Items[Index+1]].Position,
+                                      aVertices.Items[aIndices.Items[Index+2]].Position).Normal)>0.0 then begin
+           if assigned(aCoplanarFrontList) then begin
+            aCoplanarFrontList^.Add(CountPolygonVertices);
+            aCoplanarFrontList^.AddRangeFrom(aIndices,Index,CountPolygonVertices);
+           end;
+          end else begin
+           if assigned(aCoplanarBackList) then begin
+            aCoplanarBackList^.Add(CountPolygonVertices);
+            aCoplanarBackList^.AddRangeFrom(aIndices,Index,CountPolygonVertices);
+           end;
+          end;
+         end;
+        end;
+
+        Front:begin
+         if assigned(aFrontList) then begin
+          aFrontList^.Add(CountPolygonVertices);
+          aFrontList^.AddRangeFrom(aIndices,Index,CountPolygonVertices);
+         end;
+        end;
+
+        Back:begin
+         if assigned(aBackList) then begin
+          aBackList^.Add(CountPolygonVertices);
+          aBackList^.AddRangeFrom(aIndices,Index,CountPolygonVertices);
+         end;
+        end;
+
+        else {Spanning:}begin
+
+         BackVertexIndices.Count:=0;
+
+         FrontVertexIndices.Count:=0;
+
+         for IndexA:=0 to CountPolygonVertices-1 do begin
+
+          IndexB:=IndexA+1;
+          if IndexB>=CountPolygonVertices then begin
+           IndexB:=0;
+          end;
+
+          VertexIndex:=aIndices.Items[Index+IndexA];
+
+          VertexA:=@aVertices.Items[VertexIndex];
+
+          VertexOrientationA:=VertexOrientations[IndexA];
+          VertexOrientationB:=VertexOrientations[IndexB];
+
+          if VertexOrientationA<>Front then begin
+           BackVertexIndices.Add(VertexIndex);
+          end;
+
+          if VertexOrientationA<>Back then begin
+           FrontVertexIndices.Add(VertexIndex);
+          end;
+
+          if (VertexOrientationA or VertexOrientationB)=Spanning then begin
+           VertexB:=@aVertices.Items[aIndices.Items[Index+IndexB]];
+           VertexIndex:=aVertices.Add(VertexA^.Lerp(VertexB^,-(DistanceTo(VertexA^.Position)/Normal.Dot(VertexB^.Position-VertexA^.Position))));
+           BackVertexIndices.Add(VertexIndex);
+           FrontVertexIndices.Add(VertexIndex);
+          end;
+
+         end;
+
+         if assigned(aBackList) and (BackVertexIndices.Count>2) then begin
+          aBackList^.Add(BackVertexIndices.Count);
+          aBackList^.Add(BackVertexIndices);
+         end;
+
+         if assigned(aFrontList) and (FrontVertexIndices.Count>2) then begin
+          aFrontList^.Add(FrontVertexIndices.Count);
+          aFrontList^.Add(FrontVertexIndices);
+         end;
+
+        end;
+
+       end;
+
+      end;
+
+     end else begin
+      Assert(false);
+     end;
+
+     inc(Index,CountPolygonVertices);
+
+    end;
+
+   finally
+    FrontVertexIndices.Finalize;
+   end;
+
+  finally
+   BackVertexIndices.Finalize;
+  end;
+
+ finally
+  VertexOrientations:=nil;
+ end;
+
+end;
+
 { TpvCSGBSP.TAABB }
 
 function TpvCSGBSP.TAABB.Cost:TFloat;
@@ -2650,7 +3130,22 @@ begin
  end;
 end;
 
-constructor TpvCSGBSP.TMesh.Create(const aFrom:TTree);
+constructor TpvCSGBSP.TMesh.Create(const aFrom:TSingleTreeNode);
+var Mesh:TMesh;
+begin
+ Mesh:=aFrom.ToMesh;
+ try
+  Create(Mesh.fMode);
+  fVertices.Assign(Mesh.fVertices);
+  fIndices.Assign(Mesh.fIndices);
+  Mesh.fVertices.Clear;
+  Mesh.fIndices.Clear;
+ finally
+  FreeAndNil(Mesh);
+ end;
+end;
+
+constructor TpvCSGBSP.TMesh.Create(const aFrom:TDualTree);
 var Mesh:TMesh;
 begin
  Mesh:=aFrom.ToMesh;
@@ -2841,19 +3336,20 @@ end;
 constructor TpvCSGBSP.TMesh.CreateFromCSGOperation(const aLeftMesh:TMesh;
                                                    const aRightMesh:TMesh;
                                                    const aCSGOperation:TCSGOperation;
+                                                   const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                                    const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                                    const aSplitSettings:PSplitSettings=nil);
 begin
  Create;
  case aCSGOperation of
   TCSGOperation.Union:begin
-   Union(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
+   Union(aLeftMesh,aRightMesh,aCSGMode,aCSGOptimization,aSplitSettings);
   end;
   TCSGOperation.Subtraction:begin
-   Subtraction(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
+   Subtraction(aLeftMesh,aRightMesh,aCSGMode,aCSGOptimization,aSplitSettings);
   end;
   TCSGOperation.Intersection:begin
-   Intersection(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
+   Intersection(aLeftMesh,aRightMesh,aCSGMode,aCSGOptimization,aSplitSettings);
   end;
   else begin
    Assert(false);
@@ -2863,38 +3359,42 @@ end;
 
 constructor TpvCSGBSP.TMesh.CreateUnion(const aLeftMesh:TMesh;
                                         const aRightMesh:TMesh;
+                                        const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                         const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                         const aSplitSettings:PSplitSettings=nil);
 begin
  Create;
- Union(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
+ Union(aLeftMesh,aRightMesh,aCSGMode,aCSGOptimization,aSplitSettings);
 end;
 
 constructor TpvCSGBSP.TMesh.CreateSubtraction(const aLeftMesh:TMesh;
                                               const aRightMesh:TMesh;
+                                              const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                               const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                               const aSplitSettings:PSplitSettings=nil);
 begin
  Create;
- Subtraction(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
+ Subtraction(aLeftMesh,aRightMesh,aCSGMode,aCSGOptimization,aSplitSettings);
 end;
 
 constructor TpvCSGBSP.TMesh.CreateIntersection(const aLeftMesh:TMesh;
                                                const aRightMesh:TMesh;
+                                               const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                                const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                                const aSplitSettings:PSplitSettings=nil);
 begin
  Create;
- Intersection(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
+ Intersection(aLeftMesh,aRightMesh,aCSGMode,aCSGOptimization,aSplitSettings);
 end;
 
 constructor TpvCSGBSP.TMesh.CreateSymmetricDifference(const aLeftMesh:TMesh;
                                                       const aRightMesh:TMesh;
+                                                      const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                                       const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                                       const aSplitSettings:PSplitSettings=nil);
 begin
  Create;
- SymmetricDifference(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
+ SymmetricDifference(aLeftMesh,aRightMesh,aCSGMode,aCSGOptimization,aSplitSettings);
 end;
 
 destructor TpvCSGBSP.TMesh.Destroy;
@@ -2976,7 +3476,20 @@ begin
  SetIndices(aFrom.fIndices);
 end;
 
-procedure TpvCSGBSP.TMesh.Assign(const aFrom:TTree);
+procedure TpvCSGBSP.TMesh.Assign(const aFrom:TSingleTreeNode);
+var Mesh:TMesh;
+begin
+ Mesh:=aFrom.ToMesh;
+ try
+  fMode:=Mesh.fMode;
+  SetVertices(Mesh.fVertices);
+  SetIndices(Mesh.fIndices);
+ finally
+  FreeAndNil(Mesh);
+ end;
+end;
+
+procedure TpvCSGBSP.TMesh.Assign(const aFrom:TDualTree);
 var Mesh:TMesh;
 begin
  Mesh:=aFrom.fMesh;
@@ -3019,7 +3532,18 @@ begin
  end;
 end;
 
-procedure TpvCSGBSP.TMesh.Append(const aFrom:TTree);
+procedure TpvCSGBSP.TMesh.Append(const aFrom:TSingleTreeNode);
+var Mesh:TMesh;
+begin
+ Mesh:=aFrom.ToMesh;
+ try
+  Append(Mesh);
+ finally
+  FreeAndNil(Mesh);
+ end;
+end;
+
+procedure TpvCSGBSP.TMesh.Append(const aFrom:TDualTree);
 var Mesh:TMesh;
 begin
  Mesh:=aFrom.ToMesh;
@@ -3125,6 +3649,382 @@ begin
  SetMode(TMode.Triangles);
 end;
 
+procedure TpvCSGBSP.TMesh.TriangleCSGOperation(const aLeftNode:TSingleTreeNode;
+                                               const aRightNode:TSingleTreeNode;
+                                               const aVertices:TVertexList;
+                                               const aInside:boolean;
+                                               const aKeepEdge:boolean;
+                                               const aInvert:boolean);
+ function ProcessTriangle(const aNode:TSingleTreeNode;
+                          const aVertex0:TVertex;
+                          const aVertex1:TVertex;
+                          const aVertex2:TVertex;
+                          const aInside:boolean;
+                          const aKeepEdge:boolean;
+                          const aKeepNow:boolean;
+                          const aInvert:boolean):boolean;
+ type TWorkData=record
+       Node:TSingleTreeNode;
+       Vertex0:TVertex;
+       Vertex1:TVertex;
+       Vertex2:TVertex;
+       Inside:boolean;
+       KeepEdge:boolean;
+       KeepNow:boolean;
+       Invert:boolean;
+       Completed:boolean;
+       Clipped:boolean;
+       PreviousWorkData:TpvSizeInt;
+       OldCountVertices:TpvSizeInt;
+       OldCountIndices:TpvSizeInt;
+      end;
+      PWorkData=^TWorkData;
+      TJobStackItem=record
+       WorkData:TpvSizeInt;
+       Step:TpvSizeInt;
+      end;
+      TWorkDataArray=TDynamicArray<TWorkData>;
+      TJobStack=TDynamicStack<TJobStackItem>;
+ var WorkDataArray:TWorkDataArray;
+     JobStack:TJobStack;
+  function NewWorkData(const aNode:TSingleTreeNode;
+                       const aVertex0:TVertex;
+                       const aVertex1:TVertex;
+                       const aVertex2:TVertex;
+                       const aInside:boolean;
+                       const aKeepEdge:boolean;
+                       const aKeepNow:boolean;
+                       const aInvert:boolean;
+                       const aPreviousWorkData:TpvSizeInt):TpvSizeInt;
+  var WorkData:TWorkData;
+  begin
+   WorkData.Node:=aNode;
+   WorkData.Vertex0:=aVertex0;
+   WorkData.Vertex1:=aVertex1;
+   WorkData.Vertex2:=aVertex2;
+   WorkData.Inside:=aInside;
+   WorkData.KeepEdge:=aKeepEdge;
+   WorkData.KeepNow:=aKeepEdge;
+   WorkData.Invert:=aInvert;
+   WorkData.PreviousWorkData:=aPreviousWorkData;
+   WorkData.Completed:=true;
+   WorkData.Clipped:=true;
+   result:=WorkDataArray.Add(WorkData);
+  end;
+  procedure NewJobStackItem(const aWorkData:TpvSizeInt;
+                            const aStep:TpvSizeInt);
+  var JobStackItem:TJobStackItem;
+  begin
+   JobStackItem.WorkData:=aWorkData;
+   JobStackItem.Step:=aStep;
+   JobStack.Push(JobStackItem);
+  end;
+ var WorkDataIndex:TpvSizeInt;
+     JobStackItem:TJobStackItem;
+     WorkData,OtherWorkData:PWorkData;
+     FunctionResult:boolean;
+  procedure Append(const aVertex0,aVertex1,aVertex2:TVertex);
+  begin
+   fIndices.Add(fVertices.Add(aVertex0));
+   fIndices.Add(fVertices.Add(aVertex1));
+   fIndices.Add(fVertices.Add(aVertex2));
+  end;
+  procedure NextTriangle(const aNode:TSingleTreeNode;
+                         const aVertex0:TVertex;
+                         const aVertex1:TVertex;
+                         const aVertex2:TVertex;
+                         const aInside:boolean;
+                         const aKeepEdge:boolean;
+                         const aKeepNow:boolean;
+                         const aInvert:boolean);
+  var Completed:boolean;
+  begin
+    if assigned(aNode) then begin
+     NewJobStackItem(NewWorkData(aNode,
+                                 aVertex0,
+                                 aVertex1,
+                                 aVertex2,
+                                 aInside,
+                                 aKeepEdge,
+                                 aKeepNow,
+                                 aInvert,
+                                 WorkDataIndex),
+                     0);
+    WorkData:=@WorkDataArray.Items[JobStackItem.WorkData];
+   end else begin
+    if aKeepNow then begin
+     if aInvert then begin
+      Append(aVertex2.CloneFlip,aVertex1.CloneFlip,aVertex0.CloneFlip);
+     end else begin
+      Append(aVertex0,aVertex1,aVertex2);
+     end;
+    end;
+    Completed:=aKeepNow;
+    if assigned(WorkData) then begin
+     WorkData^.Completed:=WorkData^.Completed and Completed;
+    end else begin
+     FunctionResult:=Completed;
+    end;
+   end;
+  end;
+ var Sides:array[0..2] of TpvSizeInt;
+     Points:array[0..2] of TVertex;
+     PlaneDistances:array[0..2] of TFloat;
+ begin
+
+  FunctionResult:=true;
+  try
+
+   WorkDataArray.Initialize;
+   try
+
+    JobStack.Initialize;
+    try
+
+     WorkDataIndex:=-1;
+
+     WorkData:=nil;
+
+     NextTriangle(aNode,
+                  aVertex0,
+                  aVertex1,
+                  aVertex2,
+                  aInside,
+                  aKeepEdge,
+                  aKeepNow,
+                  aInvert);
+
+     while JobStack.Pop(JobStackItem) do begin
+
+      WorkDataIndex:=JobStackItem.WorkData;
+
+      WorkData:=@WorkDataArray.Items[WorkDataIndex];
+
+      case JobStackItem.Step of
+
+       0:begin
+
+        PlaneDistances[0]:=WorkData^.Node.fPlane.DistanceTo(WorkData^.Vertex0.Position);
+        PlaneDistances[1]:=WorkData^.Node.fPlane.DistanceTo(WorkData^.Vertex1.Position);
+        PlaneDistances[2]:=WorkData^.Node.fPlane.DistanceTo(WorkData^.Vertex2.Position);
+
+        Sides[0]:=TpvCSGBSP.EpsilonSign(PlaneDistances[0]);
+        Sides[1]:=TpvCSGBSP.EpsilonSign(PlaneDistances[1]);
+        Sides[2]:=TpvCSGBSP.EpsilonSign(PlaneDistances[2]);
+
+        PlaneDistances[0]:=PlaneDistances[0]*abs(Sides[0]);
+        PlaneDistances[1]:=PlaneDistances[1]*abs(Sides[1]);
+        PlaneDistances[2]:=PlaneDistances[2]*abs(Sides[2]);
+
+        if (Sides[0]*Sides[1])<0 then begin
+         Points[0]:=WorkData^.Vertex0.Lerp(WorkData^.Vertex1,abs(PlaneDistances[0])/(abs(PlaneDistances[0])+abs(PlaneDistances[1])));
+        end;
+        if (Sides[1]*Sides[2])<0 then begin
+         Points[1]:=WorkData^.Vertex1.Lerp(WorkData^.Vertex2,abs(PlaneDistances[1])/(abs(PlaneDistances[1])+abs(PlaneDistances[2])));
+        end;
+        if (Sides[2]*Sides[0])<0 then begin
+         Points[2]:=WorkData^.Vertex2.Lerp(WorkData^.Vertex0,abs(PlaneDistances[2])/(abs(PlaneDistances[2])+abs(PlaneDistances[0])));
+        end;
+
+        WorkData^.OldCountVertices:=fVertices.Count;
+        WorkData^.OldCountIndices:=fIndices.Count;
+
+        WorkData^.Completed:=true;
+
+        WorkData^.Clipped:=true;
+
+        NewJobStackItem(JobStackItem.WorkData,1);
+
+        case ((Sides[0]+1) shl 0) or
+             ((Sides[1]+1) shl 2) or
+             ((Sides[2]+1) shl 4) of
+
+         // All points are on one side of the plane (or on the plane)
+         // in this case we simply add the complete triangle to the proper halve of the subtree
+         (((-1)+1) shl 0) or (((-1)+1) shl 2) or (((-1)+1) shl 4),
+         (((-1)+1) shl 0) or (((-1)+1) shl 2) or (((0)+1) shl 4),
+         (((-1)+1) shl 0) or (((0)+1) shl 2) or (((-1)+1) shl 4),
+         (((-1)+1) shl 0) or (((0)+1) shl 2) or (((0)+1) shl 4),
+         (((0)+1) shl 0) or (((-1)+1) shl 2) or (((-1)+1) shl 4),
+         (((0)+1) shl 0) or (((-1)+1) shl 2) or (((0)+1) shl 4),
+         (((0)+1) shl 0) or (((0)+1) shl 2) or (((-1)+1) shl 4):begin
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex0,WorkData^.Vertex1,WorkData^.Vertex2,WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+          WorkData^.Clipped:=false;
+         end;
+
+         (((0)+1) shl 0) or (((0)+1) shl 2) or (((1)+1) shl 4),
+         (((0)+1) shl 0) or (((1)+1) shl 2) or (((0)+1) shl 4),
+         (((0)+1) shl 0) or (((1)+1) shl 2) or (((1)+1) shl 4),
+         (((1)+1) shl 0) or (((0)+1) shl 2) or (((0)+1) shl 4),
+         (((1)+1) shl 0) or (((0)+1) shl 2) or (((1)+1) shl 4),
+         (((1)+1) shl 0) or (((1)+1) shl 2) or (((0)+1) shl 4),
+         (((1)+1) shl 0) or (((1)+1) shl 2) or (((1)+1) shl 4):begin
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex0,WorkData^.Vertex1,WorkData^.Vertex2,WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+          WorkData^.Clipped:=false;
+         end;
+
+         // Triangle on the dividing plane
+         (((0)+1) shl 0) or (((0)+1) shl 2) or (((0)+1) shl 4):begin
+          if WorkData^.KeepEdge then begin
+           Append(WorkData^.Vertex0,WorkData^.Vertex1,WorkData^.Vertex2);
+           WorkData^.Clipped:=false;
+          end;
+         end;
+
+         // And now all the ways that the triangle can be cut by the plane
+
+         (((1)+1) shl 0) or (((-1)+1) shl 2) or (((0)+1) shl 4):begin
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex1,WorkData^.Vertex2,Points[0],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex2,WorkData^.Vertex1,Points[0],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+         end;
+
+         (((-1)+1) shl 0) or (((0)+1) shl 2) or (((1)+1) shl 4):begin
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex0,WorkData^.Vertex1,Points[2],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex1,WorkData^.Vertex2,Points[2],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+         end;
+
+         (((0)+1) shl 0) or (((1)+1) shl 2) or (((-1)+1) shl 4):begin
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex2,WorkData^.Vertex0,Points[1],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex0,WorkData^.Vertex1,Points[1],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+         end;
+
+         (((-1)+1) shl 0) or (((1)+1) shl 2) or (((0)+1) shl 4):begin
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex2,WorkData^.Vertex0,Points[0],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex1,WorkData^.Vertex2,Points[0],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+         end;
+
+         (((1)+1) shl 0) or (((0)+1) shl 2) or (((-1)+1) shl 4):begin
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex1,WorkData^.Vertex2,Points[2],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex0,WorkData^.Vertex1,Points[2],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+         end;
+
+         (((0)+1) shl 0) or (((-1)+1) shl 2) or (((1)+1) shl 4):begin
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex0,WorkData^.Vertex1,Points[1],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex2,WorkData^.Vertex0,Points[1],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+         end;
+
+         (((1)+1) shl 0) or (((-1)+1) shl 2) or (((-1)+1) shl 4):begin
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex0,Points[0],Points[2],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex1,Points[2],Points[0],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex1,WorkData^.Vertex2,Points[2],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+         end;
+
+         (((-1)+1) shl 0) or (((1)+1) shl 2) or (((-1)+1) shl 4):begin
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex1,Points[1],Points[0],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex2,Points[0],Points[1],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex2,WorkData^.Vertex0,Points[0],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+         end;
+
+         (((-1)+1) shl 0) or (((-1)+1) shl 2) or (((1)+1) shl 4):begin
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex2,Points[2],Points[1],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex0,Points[1],Points[2],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex0,WorkData^.Vertex1,Points[1],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+         end;
+
+         (((-1)+1) shl 0) or (((1)+1) shl 2) or (((1)+1) shl 4):begin
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex0,Points[0],Points[2],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex1,Points[2],Points[0],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex1,WorkData^.Vertex2,Points[2],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+         end;
+
+         (((1)+1) shl 0) or (((-1)+1) shl 2) or (((1)+1) shl 4):begin
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex1,Points[1],Points[0],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex0,Points[0],Points[1],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex2,WorkData^.Vertex0,Points[1],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+         end;
+
+         (((1)+1) shl 0) or (((1)+1) shl 2) or (((-1)+1) shl 4):begin
+          NextTriangle(WorkData^.Node.fBack,WorkData^.Vertex2,Points[2],Points[1],WorkData^.Inside,WorkData^.KeepEdge,WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex0,Points[1],Points[2],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+          NextTriangle(WorkData^.Node.fFront,WorkData^.Vertex0,WorkData^.Vertex1,Points[1],WorkData^.Inside,WorkData^.KeepEdge,not WorkData^.Inside,WorkData^.Invert);
+         end;
+
+         // Otherwise it is a error
+         else begin
+          WorkData^.Completed:=false;
+         end;
+
+        end;
+
+       end;
+
+       1:begin
+
+        if WorkData^.Completed and WorkData^.Clipped then begin
+         fVertices.Count:=WorkData^.OldCountVertices;
+         fIndices.Count:=WorkData^.OldCountIndices;
+         if WorkData^.Invert then begin
+          Append(WorkData^.Vertex2.CloneFlip,WorkData^.Vertex1.CloneFlip,WorkData^.Vertex0.CloneFlip);
+         end else begin
+          Append(WorkData^.Vertex0,WorkData^.Vertex1,WorkData^.Vertex2);
+         end;
+        end;
+
+        if WorkData^.PreviousWorkData>=0 then begin
+         OtherWorkData:=@WorkDataArray.Items[WorkData^.PreviousWorkData];
+         OtherWorkData^.Completed:=OtherWorkData^.Completed and WorkData^.Completed;
+        end else begin
+         FunctionResult:=WorkData^.Completed;
+        end;
+        dec(WorkDataArray.Count);
+
+       end;
+
+      end;
+
+     end;
+
+    finally
+     JobStack.Finalize;
+    end;
+
+   finally
+    WorkDataArray.Finalize;
+   end;
+
+  finally
+   result:=FunctionResult;
+  end;
+
+ end;
+type TJobStack=TDynamicStack<TSingleTreeNode>;
+var JobStack:TJobStack;
+    Node:TSingleTreeNode;
+    Index,Count:TpvSizeInt;
+begin
+ if assigned(aLeftNode) and assigned(aRightNode) then begin
+  JobStack.Initialize;
+  try
+   JobStack.Push(aRightNode);
+   while JobStack.Pop(Node) do begin
+    if assigned(Node) then begin
+     Index:=0;
+     Count:=Node.fIndices.Count;
+     while (Index+2)<Count do begin
+      ProcessTriangle(aLeftNode,
+                       aVertices.Items[Node.fIndices.Items[Index+0]],
+                       aVertices.Items[Node.fIndices.Items[Index+1]],
+                       aVertices.Items[Node.fIndices.Items[Index+2]],
+                       aInside,
+                       aKeepEdge,
+                       false,
+                       aInvert);
+      inc(Index,3);
+     end;
+     if assigned(Node.fFront) then begin
+      JobStack.Push(Node.fFront);
+     end;
+     if assigned(Node.fBack) then begin
+      JobStack.Push(Node.fBack);
+     end;
+    end;
+   end;
+  finally
+   JobStack.Finalize;
+  end;
+ end;
+end;
+
 procedure TpvCSGBSP.TMesh.FastSplitPolygonsIntoOuterAndInnerMeshsByInsideRangeAABB(const aOuterLeftMesh:TMesh;
                                                                                    const aInnerLeftMesh:TMesh;
                                                                                    const aInsideRangeAABB:TAABB);
@@ -3201,47 +4101,119 @@ end;
 
 procedure TpvCSGBSP.TMesh.DoUnion(const aLeftMesh:TMesh;
                                   const aRightMesh:TMesh;
+                                  const aCSGMode:TCSGMode;
                                   const aSplitSettings:PSplitSettings=nil);
-var ma,mb:TMesh;
-    ta,tb:TTree;
+var LeftMesh,RightMesh:TMesh;
+    LeftSingleTreeNode,RightSingleTreeNode:TSingleTreeNode;
+    LeftDualTree,RightDualTree:TDualTree;
 begin
- ma:=TMesh.Create(aLeftMesh);
- try
-  ma.SetMode(TMode.Polygons);
-  ta:=ma.ToTree(aSplitSettings);
-  try
-   mb:=TMesh.Create(aRightMesh);
+ case aCSGMode of
+  TCSGMode.SingleTree:begin
+   SetMode(TMode.Polygons);
+   LeftMesh:=TMesh.Create(aLeftMesh);
    try
-    mb.SetMode(TMode.Polygons);
-    tb:=mb.ToTree(aSplitSettings);
+    LeftMesh.SetMode(TMode.Polygons);
+    LeftSingleTreeNode:=LeftMesh.ToSingleTreeNode(aSplitSettings);
     try
-     ta.ClipTo(tb,false);
-     tb.ClipTo(ta,false);
-     tb.Invert;
-     tb.ClipTo(ta,false);
-     tb.Invert;
-     ta.Merge(tb);
+     RightMesh:=TMesh.Create(aRightMesh);
+     try
+      RightMesh.SetMode(TMode.Polygons);
+      RightSingleTreeNode:=RightMesh.ToSingleTreeNode(aSplitSettings);
+      try
+       LeftSingleTreeNode.ClipTo(RightSingleTreeNode);
+       RightSingleTreeNode.ClipTo(LeftSingleTreeNode);
+       RightSingleTreeNode.Invert;
+       RightSingleTreeNode.ClipTo(LeftSingleTreeNode);
+       RightSingleTreeNode.Invert;
+       LeftSingleTreeNode.Merge(RightSingleTreeNode,aSplitSettings);
+      finally
+       FreeAndNil(RightSingleTreeNode);
+      end;
+     finally
+      FreeAndNil(RightMesh);
+     end;
+     Assign(LeftSingleTreeNode);
     finally
-     FreeAndNil(tb);
+     FreeAndNil(LeftSingleTreeNode);
     end;
    finally
-    FreeAndNil(mb);
+    FreeAndNil(LeftMesh);
    end;
-   Assign(ta);
-  finally
-   FreeAndNil(ta);
   end;
- finally
-  FreeAndNil(ma);
+  TCSGMode.DualTree:begin
+   SetMode(TMode.Polygons);
+   LeftMesh:=TMesh.Create(aLeftMesh);
+   try
+    LeftMesh.SetMode(TMode.Polygons);
+    LeftDualTree:=LeftMesh.ToDualTree(aSplitSettings);
+    try
+     RightMesh:=TMesh.Create(aRightMesh);
+     try
+      RightMesh.SetMode(TMode.Polygons);
+      RightDualTree:=RightMesh.ToDualTree(aSplitSettings);
+      try
+       LeftDualTree.ClipTo(RightDualTree,false);
+       RightDualTree.ClipTo(LeftDualTree,false);
+       RightDualTree.Invert;
+       RightDualTree.ClipTo(LeftDualTree,false);
+       RightDualTree.Invert;
+       LeftDualTree.Merge(RightDualTree);
+      finally
+       FreeAndNil(RightDualTree);
+      end;
+     finally
+      FreeAndNil(RightMesh);
+     end;
+     Assign(LeftDualTree);
+    finally
+     FreeAndNil(LeftDualTree);
+    end;
+   finally
+    FreeAndNil(LeftMesh);
+   end;
+  end;
+  TCSGMode.Triangles:begin
+   SetMode(TMode.Triangles);
+   LeftMesh:=TMesh.Create(aLeftMesh);
+   try
+    LeftMesh.SetMode(TMode.Triangles);
+    LeftSingleTreeNode:=LeftMesh.ToSingleTreeNode(aSplitSettings);
+    try
+     RightMesh:=TMesh.Create(aRightMesh);
+     try
+      RightMesh.SetMode(TMode.Triangles);
+      RightSingleTreeNode:=RightMesh.ToSingleTreeNode(aSplitSettings);
+      try
+       TriangleCSGOperation(RightSingleTreeNode,LeftSingleTreeNode,LeftMesh.fVertices,false,false,false);
+       TriangleCSGOperation(LeftSingleTreeNode,RightSingleTreeNode,RightMesh.fVertices,false,true,false);
+      finally
+       FreeAndNil(RightSingleTreeNode);
+      end;
+     finally
+      FreeAndNil(RightMesh);
+     end;
+    finally
+     FreeAndNil(LeftSingleTreeNode);
+    end;
+   finally
+    FreeAndNil(LeftMesh);
+   end;
+  end;
+  else begin
+   Assert(false);
+  end;
  end;
  RemoveDuplicateAndUnusedVertices;
  if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
   SetMode(TMode.Triangles);
+ end else if (aLeftMesh.fMode=TMode.Polygons) and (aRightMesh.fMode=TMode.Polygons) then begin
+  SetMode(TMode.Polygons);
  end;
 end;
 
 procedure TpvCSGBSP.TMesh.Union(const aLeftMesh:TMesh;
                                 const aRightMesh:TMesh;
+                                const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                 const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                 const aSplitSettings:PSplitSettings=nil);
 var AABBLeft,AABBRight,AABBIntersection:TAABB;
@@ -3257,23 +4229,23 @@ begin
     AABBIntersection:=AABBLeft.Intersection(AABBRight);
     AABBIntersectionMesh:=TMesh.Create(AABBIntersection,TMesh.TMode.Polygons,CSGOptimizationBoundEpsilon);
     try
-     OuterLeftMesh:=TMesh.CreateSubtraction(aLeftMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+     OuterLeftMesh:=TMesh.CreateSubtraction(aLeftMesh,AABBIntersectionMesh,aCSGMode,TMesh.TCSGOptimization.None,aSplitSettings);
      try
-      InnerLeftMesh:=TMesh.CreateIntersection(aLeftMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+      InnerLeftMesh:=TMesh.CreateIntersection(aLeftMesh,AABBIntersectionMesh,aCSGMode,TMesh.TCSGOptimization.None,aSplitSettings);
       try
-       OuterRightMesh:=TMesh.CreateSubtraction(aRightMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+       OuterRightMesh:=TMesh.CreateSubtraction(aRightMesh,AABBIntersectionMesh,aCSGMode,TMesh.TCSGOptimization.None,aSplitSettings);
        try
-        InnerRightMesh:=TMesh.CreateIntersection(aRightMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+        InnerRightMesh:=TMesh.CreateIntersection(aRightMesh,AABBIntersectionMesh,aCSGMode,TMesh.TCSGOptimization.None,aSplitSettings);
         try
-         DoUnion(InnerLeftMesh,InnerRightMesh,aSplitSettings);
+         DoUnion(InnerLeftMesh,InnerRightMesh,aCSGMode,aSplitSettings);
         finally
          FreeAndNil(InnerRightMesh);
         end;
-        Union(OuterRightMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+        Union(OuterRightMesh,aCSGMode,TMesh.TCSGOptimization.None,aSplitSettings);
        finally
         FreeAndNil(OuterRightMesh);
        end;
-       Union(OuterLeftMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+       Union(OuterLeftMesh,aCSGMode,TMesh.TCSGOptimization.None,aSplitSettings);
       finally
        FreeAndNil(InnerLeftMesh);
       end;
@@ -3296,7 +4268,7 @@ begin
        InnerRightMesh:=TMesh.Create;
        try
         aRightMesh.FastSplitPolygonsIntoOuterAndInnerMeshsByInsideRangeAABB(OuterRightMesh,InnerRightMesh,AABBIntersection);
-        DoUnion(InnerLeftMesh,InnerRightMesh,aSplitSettings);
+        DoUnion(InnerLeftMesh,InnerRightMesh,aCSGMode,aSplitSettings);
        finally
         FreeAndNil(InnerRightMesh);
        end;
@@ -3313,7 +4285,7 @@ begin
     end;
    end;
    else begin
-    DoUnion(aLeftMesh,aRightMesh,aSplitSettings);
+    DoUnion(aLeftMesh,aRightMesh,aCSGMode,aSplitSettings);
    end;
   end;
  end else begin
@@ -3324,13 +4296,14 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.Union(const aWithMesh:TMesh;
+                                const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                 const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                 const aSplitSettings:PSplitSettings=nil);
 var TemporaryMesh:TMesh;
 begin
  TemporaryMesh:=TMesh.Create(fMode);
  try
-  TemporaryMesh.Union(self,aWithMesh,aCSGOptimization,aSplitSettings);
+  TemporaryMesh.Union(self,aWithMesh,aCSGMode,aCSGOptimization,aSplitSettings);
   Assign(TemporaryMesh);
  finally
   FreeAndNil(TemporaryMesh);
@@ -3338,6 +4311,7 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.UnionOf(const aMeshs:array of TMesh;
+                                  const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                   const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                   const aSplitSettings:PSplitSettings=nil);
 var Index:TpvSizeInt;
@@ -3345,7 +4319,7 @@ begin
  if length(aMeshs)>0 then begin
   Assign(aMeshs[0]);
   for Index:=1 to length(aMeshs)-1 do begin
-   Union(aMeshs[Index],aCSGOptimization,aSplitSettings);
+   Union(aMeshs[Index],aCSGMode,aCSGOptimization,aSplitSettings);
   end;
  end else begin
   Clear;
@@ -3354,54 +4328,128 @@ end;
 
 procedure TpvCSGBSP.TMesh.DoSubtraction(const aLeftMesh:TMesh;
                                         const aRightMesh:TMesh;
+                                        const aCSGMode:TCSGMode;
                                         const aSplitSettings:PSplitSettings=nil);
-var ma,mb:TMesh;
-    ta,tb:TTree;
+var LeftMesh,RightMesh:TMesh;
+    LeftSingleTreeNode,RightSingleTreeNode:TSingleTreeNode;
+    LeftDualTree,RightDualTree:TDualTree;
 begin
- ma:=TMesh.Create(aLeftMesh);
- try
-  ma.SetMode(TMode.Polygons);
-  ta:=ma.ToTree(aSplitSettings);
-  try
-   mb:=TMesh.Create(aRightMesh);
+ case aCSGMode of
+  TCSGMode.SingleTree:begin
+   SetMode(TMode.Polygons);
+   LeftMesh:=TMesh.Create(aLeftMesh);
    try
-    mb.SetMode(TMode.Polygons);
-    tb:=mb.ToTree(aSplitSettings);
+    LeftMesh.SetMode(TMode.Polygons);
+    LeftSingleTreeNode:=LeftMesh.ToSingleTreeNode(aSplitSettings);
     try
-     ta.Invert;
-     ta.ClipTo(tb,false);
-{$undef UseReferenceBSPOperations}
-{$ifdef UseReferenceBSPOperations}
-     tb.ClipTo(ta,false);
-     tb.Invert;
-     tb.ClipTo(ta,false);
-     tb.Invert;
-{$else}
-     tb.ClipTo(ta,true);
-{$endif}
-     ta.Merge(tb);
-     ta.Invert;
+     RightMesh:=TMesh.Create(aRightMesh);
+     try
+      RightMesh.SetMode(TMode.Polygons);
+      RightSingleTreeNode:=RightMesh.ToSingleTreeNode(aSplitSettings);
+      try
+       LeftSingleTreeNode.Invert;
+       LeftSingleTreeNode.ClipTo(RightSingleTreeNode);
+       RightSingleTreeNode.ClipTo(LeftSingleTreeNode);
+       RightSingleTreeNode.Invert;
+       RightSingleTreeNode.ClipTo(LeftSingleTreeNode);
+       RightSingleTreeNode.Invert;
+       LeftSingleTreeNode.Merge(RightSingleTreeNode,aSplitSettings);
+      finally
+       FreeAndNil(RightSingleTreeNode);
+      end;
+     finally
+      FreeAndNil(RightMesh);
+     end;
+     LeftSingleTreeNode.Invert;
+     Assign(LeftSingleTreeNode);
     finally
-     FreeAndNil(tb);
+     FreeAndNil(LeftSingleTreeNode);
     end;
    finally
-    FreeAndNil(mb);
+    FreeAndNil(LeftMesh);
    end;
-   Assign(ta);
-  finally
-   FreeAndNil(ta);
   end;
- finally
-  FreeAndNil(ma);
+  TCSGMode.DualTree:begin
+   SetMode(TMode.Polygons);
+   LeftMesh:=TMesh.Create(aLeftMesh);
+   try
+    LeftMesh.SetMode(TMode.Polygons);
+    LeftDualTree:=LeftMesh.ToDualTree(aSplitSettings);
+    try
+     RightMesh:=TMesh.Create(aRightMesh);
+     try
+      RightMesh.SetMode(TMode.Polygons);
+      RightDualTree:=RightMesh.ToDualTree(aSplitSettings);
+      try
+       LeftDualTree.Invert;
+       LeftDualTree.ClipTo(RightDualTree,false);
+  {$undef UseReferenceBSPOperations}
+  {$ifdef UseReferenceBSPOperations}
+       RightDualTree.ClipTo(LeftDualTree,false);
+       RightDualTree.Invert;
+       RightDualTree.ClipTo(LeftDualTree,false);
+       RightDualTree.Invert;
+  {$else}
+       RightDualTree.ClipTo(LeftDualTree,true);
+  {$endif}
+       LeftDualTree.Merge(RightDualTree);
+       LeftDualTree.Invert;
+      finally
+       FreeAndNil(RightDualTree);
+      end;
+     finally
+      FreeAndNil(RightMesh);
+     end;
+     Assign(LeftDualTree);
+    finally
+     FreeAndNil(LeftDualTree);
+    end;
+   finally
+    FreeAndNil(LeftMesh);
+   end;
+  end;
+  TCSGMode.Triangles:begin
+   SetMode(TMode.Triangles);
+   LeftMesh:=TMesh.Create(aLeftMesh);
+   try
+    LeftMesh.SetMode(TMode.Triangles);
+    LeftSingleTreeNode:=LeftMesh.ToSingleTreeNode(aSplitSettings);
+    try
+     RightMesh:=TMesh.Create(aRightMesh);
+     try
+      RightMesh.SetMode(TMode.Triangles);
+      RightSingleTreeNode:=RightMesh.ToSingleTreeNode(aSplitSettings);
+      try
+       TriangleCSGOperation(RightSingleTreeNode,LeftSingleTreeNode,LeftMesh.fVertices,false,false,false);
+       TriangleCSGOperation(LeftSingleTreeNode,RightSingleTreeNode,RightMesh.fVertices,true,true,true);
+      finally
+       FreeAndNil(RightSingleTreeNode);
+      end;
+     finally
+      FreeAndNil(RightMesh);
+     end;
+    finally
+     FreeAndNil(LeftSingleTreeNode);
+    end;
+   finally
+    FreeAndNil(LeftMesh);
+   end;
+  end;
+  else begin
+   Assert(false);
+  end;
  end;
  RemoveDuplicateAndUnusedVertices;
  if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
   SetMode(TMode.Triangles);
+ end else if (aLeftMesh.fMode=TMode.Polygons) and (aRightMesh.fMode=TMode.Polygons) then begin
+  SetMode(TMode.Polygons);
  end;
 end;
 
 procedure TpvCSGBSP.TMesh.Subtraction(const aLeftMesh:TMesh;
                                       const aRightMesh:TMesh;
+                                      const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                       const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                       const aSplitSettings:PSplitSettings=nil);
 var AABBLeft,AABBRight,AABBIntersection:TAABB;
@@ -3417,17 +4465,17 @@ begin
     AABBIntersection:=AABBLeft.Intersection(AABBRight);
     AABBIntersectionMesh:=TMesh.Create(AABBIntersection,TMesh.TMode.Polygons,CSGOptimizationBoundEpsilon);
     try
-     OuterLeftMesh:=TMesh.CreateSubtraction(aLeftMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+     OuterLeftMesh:=TMesh.CreateSubtraction(aLeftMesh,AABBIntersectionMesh,aCSGMode,TMesh.TCSGOptimization.None,aSplitSettings);
      try
-      InnerLeftMesh:=TMesh.CreateIntersection(aLeftMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+      InnerLeftMesh:=TMesh.CreateIntersection(aLeftMesh,AABBIntersectionMesh,aCSGMode,TMesh.TCSGOptimization.None,aSplitSettings);
       try
-       InnerRightMesh:=TMesh.CreateIntersection(aRightMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+       InnerRightMesh:=TMesh.CreateIntersection(aRightMesh,AABBIntersectionMesh,aCSGMode,TMesh.TCSGOptimization.None,aSplitSettings);
        try
-        DoSubtraction(InnerLeftMesh,InnerRightMesh,aSplitSettings);
+        DoSubtraction(InnerLeftMesh,InnerRightMesh,aCSGMode,aSplitSettings);
        finally
         FreeAndNil(InnerRightMesh);
        end;
-       Union(OuterLeftMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+       Union(OuterLeftMesh,aCSGMode,TMesh.TCSGOptimization.None,aSplitSettings);
       finally
        FreeAndNil(InnerLeftMesh);
       end;
@@ -3450,7 +4498,7 @@ begin
        InnerRightMesh:=TMesh.Create;
        try
         aRightMesh.FastSplitPolygonsIntoOuterAndInnerMeshsByInsideRangeAABB(OuterRightMesh,InnerRightMesh,AABBIntersection);
-        DoSubtraction(InnerLeftMesh,InnerRightMesh,aSplitSettings);
+        DoSubtraction(InnerLeftMesh,InnerRightMesh,aCSGMode,aSplitSettings);
        finally
         FreeAndNil(InnerRightMesh);
        end;
@@ -3466,7 +4514,7 @@ begin
     end;
    end;
    else begin
-    DoSubtraction(aLeftMesh,aRightMesh,aSplitSettings);
+    DoSubtraction(aLeftMesh,aRightMesh,aCSGMode,aSplitSettings);
    end;
   end;
  end else begin
@@ -3476,13 +4524,14 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.Subtraction(const aWithMesh:TMesh;
+                                      const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                       const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                       const aSplitSettings:PSplitSettings=nil);
 var TemporaryMesh:TMesh;
 begin
  TemporaryMesh:=TMesh.Create(fMode);
  try
-  TemporaryMesh.Subtraction(self,aWithMesh,aCSGOptimization,aSplitSettings);
+  TemporaryMesh.Subtraction(self,aWithMesh,aCSGMode,aCSGOptimization,aSplitSettings);
   Assign(TemporaryMesh);
  finally
   FreeAndNil(TemporaryMesh);
@@ -3490,6 +4539,7 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.SubtractionOf(const aMeshs:array of TMesh;
+                                        const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                         const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                         const aSplitSettings:PSplitSettings=nil);
 var Index:TpvSizeInt;
@@ -3497,7 +4547,7 @@ begin
  if length(aMeshs)>0 then begin
   Assign(aMeshs[0]);
   for Index:=1 to length(aMeshs)-1 do begin
-   Subtraction(aMeshs[Index],aCSGOptimization,aSplitSettings);
+   Subtraction(aMeshs[Index],aCSGMode,aCSGOptimization,aSplitSettings);
   end;
  end else begin
   Clear;
@@ -3506,48 +4556,121 @@ end;
 
 procedure TpvCSGBSP.TMesh.DoIntersection(const aLeftMesh:TMesh;
                                          const aRightMesh:TMesh;
+                                         const aCSGMode:TCSGMode;
                                          const aSplitSettings:PSplitSettings=nil);
-var ma,mb:TMesh;
-    ta,tb:TTree;
+var LeftMesh,RightMesh:TMesh;
+    LeftSingleTreeNode,RightSingleTreeNode:TSingleTreeNode;
+    LeftDualTree,RightDualTree:TDualTree;
 begin
- ma:=TMesh.Create(aLeftMesh);
- try
-  ma.SetMode(TMode.Polygons);
-  ta:=ma.ToTree(aSplitSettings);
-  try
-   mb:=TMesh.Create(aRightMesh);
+ case aCSGMode of
+  TCSGMode.SingleTree:begin
+   SetMode(TMode.Polygons);
+   LeftMesh:=TMesh.Create(aLeftMesh);
    try
-    mb.SetMode(TMode.Polygons);
-    tb:=mb.ToTree(aSplitSettings);
+    LeftMesh.SetMode(TMode.Polygons);
+    LeftSingleTreeNode:=LeftMesh.ToSingleTreeNode(aSplitSettings);
     try
-     ta.Invert;
-     tb.ClipTo(ta,false);
-     tb.Invert;
-     ta.ClipTo(tb,false);
-     tb.ClipTo(ta,false);
-     ta.Merge(tb);
-     ta.Invert;
+     RightMesh:=TMesh.Create(aRightMesh);
+     try
+      RightMesh.SetMode(TMode.Polygons);
+      RightSingleTreeNode:=RightMesh.ToSingleTreeNode(aSplitSettings);
+      try
+       LeftSingleTreeNode.Invert;
+       RightSingleTreeNode.ClipTo(LeftSingleTreeNode);
+       RightSingleTreeNode.Invert;
+       LeftSingleTreeNode.ClipTo(RightSingleTreeNode);
+       RightSingleTreeNode.ClipTo(LeftSingleTreeNode);
+       LeftSingleTreeNode.Merge(RightSingleTreeNode,aSplitSettings);
+      finally
+       FreeAndNil(RightSingleTreeNode);
+      end;
+     finally
+      FreeAndNil(RightMesh);
+     end;
+     LeftSingleTreeNode.Invert;
+     Assign(LeftSingleTreeNode);
     finally
-     FreeAndNil(tb);
+     FreeAndNil(LeftSingleTreeNode);
     end;
    finally
-    FreeAndNil(mb);
+    FreeAndNil(LeftMesh);
    end;
-   Assign(ta);
-  finally
-   FreeAndNil(ta);
   end;
- finally
-  FreeAndNil(ma);
+  TCSGMode.DualTree:begin
+   SetMode(TMode.Polygons);
+   LeftMesh:=TMesh.Create(aLeftMesh);
+   try
+    LeftMesh.SetMode(TMode.Polygons);
+    LeftDualTree:=LeftMesh.ToDualTree(aSplitSettings);
+    try
+     RightMesh:=TMesh.Create(aRightMesh);
+     try
+      RightMesh.SetMode(TMode.Polygons);
+      RightDualTree:=RightMesh.ToDualTree(aSplitSettings);
+      try
+       LeftDualTree.Invert;
+       RightDualTree.ClipTo(LeftDualTree,false);
+       RightDualTree.Invert;
+       LeftDualTree.ClipTo(RightDualTree,false);
+       RightDualTree.ClipTo(LeftDualTree,false);
+       LeftDualTree.Merge(RightDualTree);
+       LeftDualTree.Invert;
+      finally
+       FreeAndNil(RightDualTree);
+      end;
+     finally
+      FreeAndNil(RightMesh);
+     end;
+     Assign(LeftDualTree);
+    finally
+     FreeAndNil(LeftDualTree);
+    end;
+   finally
+    FreeAndNil(LeftMesh);
+   end;
+  end;
+  TCSGMode.Triangles:begin
+   SetMode(TMode.Triangles);
+   LeftMesh:=TMesh.Create(aLeftMesh);
+   try
+    LeftMesh.SetMode(TMode.Triangles);
+    LeftSingleTreeNode:=LeftMesh.ToSingleTreeNode(aSplitSettings);
+    try
+     RightMesh:=TMesh.Create(aRightMesh);
+     try
+      RightMesh.SetMode(TMode.Triangles);
+      RightSingleTreeNode:=RightMesh.ToSingleTreeNode(aSplitSettings);
+      try
+       TriangleCSGOperation(RightSingleTreeNode,LeftSingleTreeNode,LeftMesh.fVertices,true,false,false);
+       TriangleCSGOperation(LeftSingleTreeNode,RightSingleTreeNode,RightMesh.fVertices,true,true,false);
+      finally
+       FreeAndNil(RightSingleTreeNode);
+      end;
+     finally
+      FreeAndNil(RightMesh);
+     end;
+    finally
+     FreeAndNil(LeftSingleTreeNode);
+    end;
+   finally
+    FreeAndNil(LeftMesh);
+   end;
+  end;
+  else begin
+   Assert(false);
+  end;
  end;
  RemoveDuplicateAndUnusedVertices;
  if (aLeftMesh.fMode=TMode.Triangles) and (aRightMesh.fMode=TMode.Triangles) then begin
   SetMode(TMode.Triangles);
+ end else if (aLeftMesh.fMode=TMode.Polygons) and (aRightMesh.fMode=TMode.Polygons) then begin
+  SetMode(TMode.Polygons);
  end;
 end;
 
 procedure TpvCSGBSP.TMesh.Intersection(const aLeftMesh:TMesh;
                                        const aRightMesh:TMesh;
+                                       const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                        const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                        const aSplitSettings:PSplitSettings=nil);
 var AABBLeft,AABBRight,AABBIntersection:TAABB;
@@ -3563,11 +4686,11 @@ begin
     AABBIntersection:=AABBLeft.Intersection(AABBRight);
     AABBIntersectionMesh:=TMesh.Create(AABBIntersection,TMesh.TMode.Polygons,CSGOptimizationBoundEpsilon);
     try
-     InnerLeftMesh:=TMesh.CreateIntersection(aLeftMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+     InnerLeftMesh:=TMesh.CreateIntersection(aLeftMesh,AABBIntersectionMesh,aCSGMode,TMesh.TCSGOptimization.None,aSplitSettings);
      try
-      InnerRightMesh:=TMesh.CreateIntersection(aRightMesh,AABBIntersectionMesh,TMesh.TCSGOptimization.None,aSplitSettings);
+      InnerRightMesh:=TMesh.CreateIntersection(aRightMesh,AABBIntersectionMesh,aCSGMode,TMesh.TCSGOptimization.None,aSplitSettings);
       try
-       DoIntersection(InnerLeftMesh,InnerRightMesh,aSplitSettings);
+       DoIntersection(InnerLeftMesh,InnerRightMesh,aCSGMode,aSplitSettings);
       finally
        FreeAndNil(InnerRightMesh);
       end;
@@ -3590,7 +4713,7 @@ begin
        InnerRightMesh:=TMesh.Create;
        try
         aRightMesh.FastSplitPolygonsIntoOuterAndInnerMeshsByInsideRangeAABB(OuterRightMesh,InnerRightMesh,AABBIntersection);
-        DoIntersection(InnerLeftMesh,InnerRightMesh,aSplitSettings);
+        DoIntersection(InnerLeftMesh,InnerRightMesh,aCSGMode,aSplitSettings);
        finally
         FreeAndNil(InnerRightMesh);
        end;
@@ -3605,7 +4728,7 @@ begin
     end;
    end;
    else begin
-    DoIntersection(aLeftMesh,aRightMesh,aSplitSettings);
+    DoIntersection(aLeftMesh,aRightMesh,aCSGMode,aSplitSettings);
    end;
   end;
  end else begin
@@ -3614,13 +4737,14 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.Intersection(const aWithMesh:TMesh;
+                                       const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                        const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                        const aSplitSettings:PSplitSettings=nil);
 var TemporaryMesh:TMesh;
 begin
  TemporaryMesh:=TMesh.Create(fMode);
  try
-  TemporaryMesh.Intersection(self,aWithMesh,aCSGOptimization,aSplitSettings);
+  TemporaryMesh.Intersection(self,aWithMesh,aCSGMode,aCSGOptimization,aSplitSettings);
   Assign(TemporaryMesh);
  finally
   FreeAndNil(TemporaryMesh);
@@ -3628,6 +4752,7 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.IntersectionOf(const aMeshs:array of TMesh;
+                                         const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                          const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                          const aSplitSettings:PSplitSettings=nil);
 var Index:TpvSizeInt;
@@ -3635,7 +4760,7 @@ begin
  if length(aMeshs)>0 then begin
   Assign(aMeshs[0]);
   for Index:=1 to length(aMeshs)-1 do begin
-   Intersection(aMeshs[Index],aCSGOptimization,aSplitSettings);
+   Intersection(aMeshs[Index],aCSGMode,aCSGOptimization,aSplitSettings);
   end;
  end else begin
   Clear;
@@ -3644,6 +4769,7 @@ end;
 
 procedure TpvCSGBSP.TMesh.SymmetricDifference(const aLeftMesh:TMesh;
                                               const aRightMesh:TMesh;
+                                              const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                               const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                               const aSplitSettings:PSplitSettings=nil);
 var a,b:TMesh;
@@ -3653,11 +4779,11 @@ begin
  // Intersection(Union(A,B),Union(Inverse(A),Inverse(B)))
  // Union(Subtraction(A,B),Subtraction(B,A)) <= used here, because it seems the most robust mnethod in this BSP-based triangle-based CSG implementation!
  // Subtraction(Union(A,B),Intersection(A,B))
- a:=TMesh.CreateSubtraction(aLeftMesh,aRightMesh,aCSGOptimization,aSplitSettings);
+ a:=TMesh.CreateSubtraction(aLeftMesh,aRightMesh,aCSGMode,aCSGOptimization,aSplitSettings);
  try
-  b:=TMesh.CreateSubtraction(aRightMesh,aLeftMesh,aCSGOptimization,aSplitSettings);
+  b:=TMesh.CreateSubtraction(aRightMesh,aLeftMesh,aCSGMode,aCSGOptimization,aSplitSettings);
   try
-   Union(a,b,aCSGOptimization,aSplitSettings);
+   Union(a,b,aCSGMode,aCSGOptimization,aSplitSettings);
   finally
    FreeAndNil(b);
   end;
@@ -3667,13 +4793,14 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.SymmetricDifference(const aWithMesh:TMesh;
+                                              const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                               const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                               const aSplitSettings:PSplitSettings=nil);
 var TemporaryMesh:TMesh;
 begin
  TemporaryMesh:=TMesh.Create(fMode);
  try
-  TemporaryMesh.SymmetricDifference(self,aWithMesh,aCSGOptimization,aSplitSettings);
+  TemporaryMesh.SymmetricDifference(self,aWithMesh,aCSGMode,aCSGOptimization,aSplitSettings);
   Assign(TemporaryMesh);
  finally
   FreeAndNil(TemporaryMesh);
@@ -3681,6 +4808,7 @@ begin
 end;
 
 procedure TpvCSGBSP.TMesh.SymmetricDifferenceOf(const aMeshs:array of TMesh;
+                                                const aCSGMode:TCSGMode=TCSGMode.DualTree;
                                                 const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                                 const aSplitSettings:PSplitSettings=nil);
 var Index:TpvSizeInt;
@@ -3688,7 +4816,7 @@ begin
  if length(aMeshs)>0 then begin
   Assign(aMeshs[0]);
   for Index:=1 to length(aMeshs)-1 do begin
-   SymmetricDifference(aMeshs[Index],aCSGOptimization,aSplitSettings);
+   SymmetricDifference(aMeshs[Index],aCSGMode,aCSGOptimization,aSplitSettings);
   end;
  end else begin
   Clear;
@@ -5439,15 +6567,517 @@ begin
  MergeCoplanarConvexPolygons;
 end;
 
-function TpvCSGBSP.TMesh.ToTree(const aSplitSettings:PSplitSettings=nil):TTree;
+function TpvCSGBSP.TMesh.ToSingleTreeNode(const aSplitSettings:PSplitSettings=nil):TSingleTreeNode;
 begin
- result:=TTree.Create(self,aSplitSettings);
+ result:=TSingleTreeNode.Create(self);
+ result.Build(fIndices,aSplitSettings);
+end;
+
+function TpvCSGBSP.TMesh.ToDualTree(const aSplitSettings:PSplitSettings=nil):TDualTree;
+begin
+ result:=TDualTree.Create(self,aSplitSettings);
  result.AddIndices(fIndices);
+end;
+
+{ TpvCSGBSP.TNode }
+
+constructor TpvCSGBSP.TSingleTreeNode.Create(const aMesh:TMesh);
+begin
+ inherited Create;
+ fMesh:=aMesh;
+ fIndices.Initialize;
+ fPointerToIndices:=@fIndices;
+ fBack:=nil;
+ fFront:=nil;
+end;
+
+destructor TpvCSGBSP.TSingleTreeNode.Destroy;
+type TJobStack=TDynamicStack<TSingleTreeNode>;
+var JobStack:TJobStack;
+    Node:TSingleTreeNode;
+begin
+ fIndices.Finalize;
+ if assigned(fFront) or assigned(fBack) then begin
+  JobStack.Initialize;
+  try
+   JobStack.Push(self);
+   while JobStack.Pop(Node) do begin
+    if assigned(Node.fFront) then begin
+     JobStack.Push(Node.fFront);
+     Node.fFront:=nil;
+    end;
+    if assigned(Node.fBack) then begin
+     JobStack.Push(Node.fBack);
+     Node.fBack:=nil;
+    end;
+    if Node<>self then begin
+     FreeAndNil(Node);
+    end;
+   end;
+  finally
+   JobStack.Finalize;
+  end;
+ end;
+ fPointerToIndices:=nil;
+ inherited Destroy;
+end;
+
+procedure TpvCSGBSP.TSingleTreeNode.SetIndices(const aIndices:TIndexList);
+begin
+ fIndices.Assign(aIndices);
+end;
+
+procedure TpvCSGBSP.TSingleTreeNode.Invert;
+type TJobStack=TDynamicStack<TSingleTreeNode>;
+var JobStack:TJobStack;
+    Node,TempNode:TSingleTreeNode;
+    Index,Count,
+    CountPolygonVertices,PolygonVertexIndex,
+    IndexA,IndexB:TpvSizeInt;
+begin
+ fMesh.Invert;
+ JobStack.Initialize;
+ try
+  JobStack.Push(self);
+  while JobStack.Pop(Node) do begin
+   case fMesh.fMode of
+    TMesh.TMode.Triangles:begin
+     Index:=0;
+     Count:=Node.fIndices.Count;
+     while (Index+2)<Count do begin
+      Node.fIndices.Exchange(Index+0,Index+2);
+      inc(Index,3);
+     end;
+    end;
+    else {TMesh.TMode.Polygons:}begin
+     Index:=0;
+     Count:=Node.fIndices.Count;
+     while Index<Count do begin
+      CountPolygonVertices:=Node.fIndices.Items[Index];
+      inc(Index);
+      if CountPolygonVertices>0 then begin
+       if (Index+(CountPolygonVertices-1))<Count then begin
+        for PolygonVertexIndex:=0 to (CountPolygonVertices shr 1)-1 do begin
+         IndexA:=Index+PolygonVertexIndex;
+         IndexB:=Index+(CountPolygonVertices-(PolygonVertexIndex+1));
+         if IndexA<>IndexB then begin
+          Node.fIndices.Exchange(IndexA,IndexB);
+         end;
+        end;
+       end else begin
+        Assert(false);
+       end;
+       inc(Index,CountPolygonVertices);
+      end;
+     end;
+    end;
+   end;
+   Node.fPlane:=Node.fPlane.Flip;
+   TempNode:=Node.fBack;
+   Node.fBack:=Node.fFront;
+   Node.fFront:=TempNode;
+   if assigned(Node.fFront) then begin
+    JobStack.Push(Node.fFront);
+   end;
+   if assigned(Node.fBack) then begin
+    JobStack.Push(Node.fBack);
+   end;
+  end;
+ finally
+  JobStack.Finalize;
+ end;
+end;
+
+procedure TpvCSGBSP.TSingleTreeNode.EvaluateSplitPlane(const aPlane:TPlane;
+                                                       out aCountPolygonsSplits:TpvSizeInt;
+                                                       out aCountBackPolygons:TpvSizeInt;
+                                                       out aCountFrontPolygons:TpvSizeInt);
+const TriangleSplitMask=(0 shl 0) or (1 shl 2) or (1 shl 2) or (1 shl 3) or (1 shl 4) or (1 shl 5) or (1 shl 6) or (0 shl 7);
+      BackTriangleMask=(1 shl 0) or (2 shl 2) or (2 shl 4) or (1 shl (3 shl 1)) or (2 shl (4 shl 1)) or (1 shl (5 shl 1)) or (1 shl (6 shl 1)) or (0 shl (7 shl 1));
+      FrontTriangleMask=(0 shl 0) or (1 shl 2) or (1 shl 4) or (2 shl (3 shl 1)) or (1 shl (4 shl 1)) or (2 shl (5 shl 1)) or (2 shl (6 shl 1)) or (1 shl (7 shl 1));
+var Index,Count,CountPolygonVertices,Code:TpvSizeInt;
+    Vertices:TVertexList;
+begin
+ aCountPolygonsSplits:=0;
+ aCountBackPolygons:=0;
+ aCountFrontPolygons:=0;
+ Count:=fIndices.Count;
+ if Count>0 then begin
+  Vertices:=fMesh.fVertices;
+  Index:=0;
+  while Index<Count do begin
+   case fMesh.fMode of
+    TMesh.TMode.Triangles:begin
+     CountPolygonVertices:=3;
+    end;
+    else {TMesh.TMode.Polygons:}begin
+     CountPolygonVertices:=fIndices.Items[Index];
+     inc(Index);
+    end;
+   end;
+   if (CountPolygonVertices>2) and ((Index+(CountPolygonVertices-1))<Count) then begin
+    Code:=((ord(aPlane.DistanceTo(Vertices.Items[fIndices.Items[Index+0]].Position)>0.0) and 1) shl 2) or
+          ((ord(aPlane.DistanceTo(Vertices.Items[fIndices.Items[Index+1]].Position)>0.0) and 1) shl 1) or
+          ((ord(aPlane.DistanceTo(Vertices.Items[fIndices.Items[Index+2]].Position)>0.0) and 1) shl 0);
+    inc(aCountPolygonsSplits,(TriangleSplitMask shr Code) and 1);
+    inc(aCountBackPolygons,(BackTriangleMask shr (Code shl 1)) and 3);
+    inc(aCountFrontPolygons,(FrontTriangleMask shr (Code shl 1)) and 3);
+   end;
+   inc(Index,CountPolygonVertices);
+  end;
+ end;
+end;
+
+function TpvCSGBSP.TSingleTreeNode.FindSplitPlane(const aIndices:TIndexList;
+                                                  const aSplitSettings:PSplitSettings):TPlane;
+var Index,Count,TriangleCount,VertexBaseIndex,
+    CountPolygonsSplits,CountBackPolygons,CountFrontPolygons,
+    CountPolygonVertices,LoopCount:TpvSizeInt;
+    Plane:TPlane;
+    Score,BestScore:TFloat;
+    Vertices:TVertexList;
+    SplitSettings:PSplitSettings;
+    DoRandomPicking:boolean;
+begin
+ if assigned(aSplitSettings) then begin
+  SplitSettings:=aSplitSettings;
+ end else begin
+  SplitSettings:=@DefaultSplitSettings;
+ end;
+ if IsZero(SplitSettings^.SearchBestFactor) or (SplitSettings^.SearchBestFactor<=0.0) then begin
+  if aIndices.Count>2 then begin
+{  if SplitSettings^.SearchBestFactor<0.0 then begin
+    Index:=Random(aPolygonNodes.Count);
+    if Index>=aPolygonNodes.Count then begin
+     Index:=0;
+    end;
+   end else begin
+    Index:=0;
+   end;}
+   Index:=0;
+   case fMesh.fMode of
+    TMesh.TMode.Triangles:begin
+     CountPolygonVertices:=3;
+    end;
+    else {TMesh.TMode.Polygons:}begin
+     CountPolygonVertices:=aIndices.Items[Index];
+     inc(Index);
+    end;
+   end;
+   Count:=aIndices.Count;
+   if (CountPolygonVertices>2) and ((Index+(CountPolygonVertices-1))<Count) then begin
+    result:=TPlane.Create(fMesh.fVertices.Items[aIndices.Items[Index+0]].Position,
+                          fMesh.fVertices.Items[aIndices.Items[Index+1]].Position,
+                          fMesh.fVertices.Items[aIndices.Items[Index+2]].Position);
+   end;
+  end else begin
+   result:=TPlane.CreateEmpty;
+  end;
+ end else begin
+  result:=TPlane.CreateEmpty;
+  case fMesh.fMode of
+   TMesh.TMode.Triangles:begin
+    Count:=aIndices.Count;
+    TriangleCount:=Count div 3;
+    Vertices:=fMesh.fVertices;
+    BestScore:=Infinity;
+    if SameValue(SplitSettings^.SearchBestFactor,1.0) or (SplitSettings^.SearchBestFactor>=1.0) then begin
+     LoopCount:=TriangleCount;
+     DoRandomPicking:=false;
+    end else begin
+     LoopCount:=Min(Max(round(TriangleCount*SplitSettings^.SearchBestFactor),1),TriangleCount);
+     DoRandomPicking:=true;
+    end;
+    for Index:=0 to LoopCount-1 do begin
+     if DoRandomPicking then begin
+      VertexBaseIndex:=Random(TriangleCount)*3;
+     end else begin
+      VertexBaseIndex:=(Index mod TriangleCount)*3;
+     end;
+     Plane:=TPlane.Create(Vertices.Items[aIndices.Items[VertexBaseIndex+0]].Position,
+                          Vertices.Items[aIndices.Items[VertexBaseIndex+1]].Position,
+                          Vertices.Items[aIndices.Items[VertexBaseIndex+2]].Position);
+     EvaluateSplitPlane(Plane,CountPolygonsSplits,CountBackPolygons,CountFrontPolygons);
+     Score:=(CountPolygonsSplits*SplitSettings^.PolygonSplitCost)+
+            (abs(CountBackPolygons-CountFrontPolygons)*SplitSettings^.PolygonImbalanceCost);
+     if (Index=0) or (BestScore>Score) then begin
+      BestScore:=Score;
+      result:=Plane;
+     end;
+    end;
+   end;
+   else {TMesh.TMode.Polygons:}begin
+    Count:=aIndices.Count;
+    Vertices:=fMesh.fVertices;
+    BestScore:=Infinity;
+    Index:=0;
+    while Index<Count do begin
+     case fMesh.fMode of
+      TMesh.TMode.Triangles:begin
+       CountPolygonVertices:=3;
+      end;
+      else {TMesh.TMode.Polygons:}begin
+       CountPolygonVertices:=aIndices.Items[Index];
+       inc(Index);
+      end;
+     end;
+     if (CountPolygonVertices>2) and ((Index+(CountPolygonVertices-1))<Count) then begin
+      VertexBaseIndex:=Index;
+      Plane:=TPlane.Create(Vertices.Items[aIndices.Items[VertexBaseIndex+0]].Position,
+                           Vertices.Items[aIndices.Items[VertexBaseIndex+1]].Position,
+                           Vertices.Items[aIndices.Items[VertexBaseIndex+2]].Position);
+      EvaluateSplitPlane(Plane,CountPolygonsSplits,CountBackPolygons,CountFrontPolygons);
+      Score:=(CountPolygonsSplits*SplitSettings^.PolygonSplitCost)+
+             (abs(CountBackPolygons-CountFrontPolygons)*SplitSettings^.PolygonImbalanceCost);
+      if (Index=0) or (BestScore>Score) then begin
+       BestScore:=Score;
+       result:=Plane;
+      end;
+     end;
+     inc(Index,CountPolygonVertices);
+    end;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvCSGBSP.TSingleTreeNode.Build(const aIndices:TIndexList;
+                                          const aSplitSettings:PSplitSettings=nil);
+type TJobStackItem=record
+      Node:TSingleTreeNode;
+      Indices:TIndexList;
+     end;
+     TJobStack=TDynamicStack<TJobStackItem>;
+var JobStack:TJobStack;
+    JobStackItem,NewJobStackItem,FrontJobStackItem,BackJobStackItem:TJobStackItem;
+    Index,CountVertexIndices:TpvSizeInt;
+begin
+ JobStack.Initialize;
+ try
+  NewJobStackItem.Node:=self;
+  NewJobStackItem.Indices:=aIndices;
+  JobStack.Push(NewJobStackItem);
+  while JobStack.Pop(JobStackItem) do begin
+   try
+    CountVertexIndices:=JobStackItem.Indices.Count;
+    if ((fMesh.fMode=TMesh.TMode.Triangles) and (CountVertexIndices>2)) or
+       ((fMesh.fMode in [TMesh.TMode.Polygons]) and (CountVertexIndices>1)) then begin
+     FrontJobStackItem.Indices.Initialize;
+     BackJobStackItem.Indices.Initialize;
+     if not JobStackItem.Node.fPlane.OK then begin
+      JobStackItem.Node.fPlane:=FindSplitPlane(JobStackItem.Indices,aSplitSettings);
+     end;
+     case fMesh.fMode of
+      TMesh.TMode.Triangles:begin
+       JobStackItem.Node.fPlane.SplitTriangles(fMesh.fVertices,
+                                               JobStackItem.Indices,
+                                               @JobStackItem.Node.fIndices,
+                                               @JobStackItem.Node.fIndices,
+                                               @BackJobStackItem.Indices,
+                                               @FrontJobStackItem.Indices);
+      end;
+      else {TMesh.TMode.Polygons:}begin
+       JobStackItem.Node.fPlane.SplitPolygons(fMesh.fVertices,
+                                              JobStackItem.Indices,
+                                              @JobStackItem.Node.fIndices,
+                                              @JobStackItem.Node.fIndices,
+                                              @BackJobStackItem.Indices,
+                                              @FrontJobStackItem.Indices);
+      end;
+     end;
+     if BackJobStackItem.Indices.Count>0 then begin
+      if not assigned(JobStackItem.Node.fBack) then begin
+       JobStackItem.Node.fBack:=TSingleTreeNode.Create(fMesh);
+      end;
+      BackJobStackItem.Node:=JobStackItem.Node.fBack;
+      JobStack.Push(BackJobStackItem);
+     end;
+     if FrontJobStackItem.Indices.Count>0 then begin
+      if not assigned(JobStackItem.Node.fFront) then begin
+       JobStackItem.Node.fFront:=TSingleTreeNode.Create(fMesh);
+      end;
+      FrontJobStackItem.Node:=JobStackItem.Node.fFront;
+      JobStack.Push(FrontJobStackItem);
+     end;
+    end;
+   finally
+    JobStackItem.Indices.Finalize;
+   end;
+  end;
+ finally
+  JobStack.Finalize;
+ end;
+end;
+
+function TpvCSGBSP.TSingleTreeNode.ClipPolygons(var aVertices:TVertexList;const aIndices:TIndexList):TIndexList;
+type TJobStackItem=record
+      Node:TSingleTreeNode;
+      Indices:TIndexList;
+     end;
+     TJobStack=TDynamicStack<TJobStackItem>;
+var JobStack:TJobStack;
+    JobStackItem,NewJobStackItem,FrontJobStackItem,BackJobStackItem:TJobStackItem;
+    Index,Count:TpvSizeInt;
+    BackIndices:PIndexList;
+begin
+ result.Initialize;
+ try
+  JobStack.Initialize;
+  try
+   NewJobStackItem.Node:=self;
+   NewJobStackItem.Indices.Assign(aIndices);
+   JobStack.Push(NewJobStackItem);
+   while JobStack.Pop(JobStackItem) do begin
+    try
+     if JobStackItem.Node.fPlane.OK then begin
+      FrontJobStackItem.Indices.Initialize;
+      try
+       if assigned(JobStackItem.Node.fBack) then begin
+        BackJobStackItem.Indices.Initialize;
+        BackIndices:=@BackJobStackItem.Indices;
+       end else begin
+        BackIndices:=nil;
+       end;
+       try
+        case fMesh.fMode of
+         TMesh.TMode.Triangles:begin
+          JobStackItem.Node.fPlane.SplitTriangles(aVertices,
+                                                  JobStackItem.Indices,
+                                                  BackIndices,
+                                                  @FrontJobStackItem.Indices,
+                                                  BackIndices,
+                                                  @FrontJobStackItem.Indices);
+         end;
+         else {TMesh.TMode.Polygons:}begin
+          JobStackItem.Node.fPlane.SplitPolygons(aVertices,
+                                                 JobStackItem.Indices,
+                                                 BackIndices,
+                                                 @FrontJobStackItem.Indices,
+                                                 BackIndices,
+                                                 @FrontJobStackItem.Indices);
+         end;
+        end;
+        if assigned(JobStackItem.Node.fBack) then begin
+         BackJobStackItem.Node:=JobStackItem.Node.fBack;
+         JobStack.Push(BackJobStackItem);
+        end;
+        if assigned(JobStackItem.Node.fFront) then begin
+         FrontJobStackItem.Node:=JobStackItem.Node.fFront;
+         JobStack.Push(FrontJobStackItem);
+        end else if FrontJobStackItem.Indices.Count>0 then begin
+         result.Add(FrontJobStackItem.Indices);
+        end;
+       finally
+        BackJobStackItem.Indices.Finalize;
+       end;
+      finally
+       FrontJobStackItem.Indices.Finalize;
+      end;
+     end else if JobStackItem.Indices.Count>0 then begin
+      result.Add(JobStackItem.Indices);
+     end;
+    finally
+     JobStackItem.Indices.Finalize;
+    end;
+   end;
+  finally
+   JobStack.Finalize;
+  end;
+ except
+  result.Finalize;
+  raise;
+ end;
+end;
+
+procedure TpvCSGBSP.TSingleTreeNode.ClipTo(const aNode:TSingleTreeNode);
+type TJobStack=TDynamicStack<TSingleTreeNode>;
+var JobStack:TJobStack;
+    Node:TSingleTreeNode;
+begin
+ JobStack.Initialize;
+ try
+  JobStack.Push(self);
+  while JobStack.Pop(Node) do begin
+   Node.SetIndices(aNode.ClipPolygons(Node.fMesh.fVertices,Node.fIndices));
+   if assigned(Node.fFront) then begin
+    JobStack.Push(Node.fFront);
+   end;
+   if assigned(Node.fBack) then begin
+    JobStack.Push(Node.fBack);
+   end;
+  end;
+ finally
+  JobStack.Finalize;
+ end;
+end;
+
+procedure TpvCSGBSP.TSingleTreeNode.Merge(const aNode:TSingleTreeNode;
+                                          const aSplitSettings:PSplitSettings=nil);
+var Index,Offset,Count,CountPolygonVertices:TpvSizeInt;
+    OtherMesh:TMesh;
+begin
+ Offset:=fMesh.fVertices.Count;
+ OtherMesh:=aNode.ToMesh;
+ try
+  OtherMesh.SetMode(fMesh.fMode);
+  fMesh.fVertices.Add(OtherMesh.fVertices);
+  case fMesh.fMode of
+   TMesh.TMode.Triangles:begin
+    for Index:=0 to OtherMesh.fIndices.Count-1 do begin
+     OtherMesh.fIndices.Items[Index]:=OtherMesh.fIndices.Items[Index]+Offset;
+    end;
+   end;
+   else {TMesh.TMode.Polygons:}begin
+    Index:=0;
+    Count:=OtherMesh.fIndices.Count;
+    while Index<Count do begin
+     CountPolygonVertices:=OtherMesh.fIndices.Items[Index];
+     inc(Index);
+     while (CountPolygonVertices>0) and (Index<Count) do begin
+      OtherMesh.fIndices.Items[Index]:=OtherMesh.fIndices.Items[Index]+Offset;
+      inc(Index);
+      dec(CountPolygonVertices);
+     end;
+    end;
+   end;
+  end;
+  Build(OtherMesh.fIndices,aSplitSettings);
+ finally
+  FreeAndNil(OtherMesh);
+ end;
+end;
+
+function TpvCSGBSP.TSingleTreeNode.ToMesh:TMesh;
+type TJobStack=TDynamicStack<TSingleTreeNode>;
+var JobStack:TJobStack;
+    Node:TSingleTreeNode;
+begin
+ result:=TMesh.Create(fMesh.fMode);
+ try
+  result.SetVertices(fMesh.fVertices);
+  JobStack.Initialize;
+  try
+   JobStack.Push(self);
+   while JobStack.Pop(Node) do begin
+    result.fIndices.Add(Node.fIndices);
+    if assigned(Node.fFront) then begin
+     JobStack.Push(Node.fFront);
+    end;
+    if assigned(Node.fBack) then begin
+     JobStack.Push(Node.fBack);
+    end;
+   end;
+  finally
+   JobStack.Finalize;
+  end;
+ finally
+  result.RemoveDuplicateAndUnusedVertices;
+ end;
 end;
 
 { TpvCSGBSP.TTree.TPolygon }
 
-procedure TpvCSGBSP.TTree.TPolygon.Invert;
+procedure TpvCSGBSP.TDualTree.TPolygon.Invert;
 var IndexA,IndexB:TpvSizeInt;
 begin
  if Indices.Count>0 then begin
@@ -5462,7 +7092,7 @@ end;
 
 { TpvCSGBSP.TTree.TPolygonNode }
 
-constructor TpvCSGBSP.TTree.TPolygonNode.Create(const aTree:TTree;const aParent:TPolygonNode);
+constructor TpvCSGBSP.TDualTree.TPolygonNode.Create(const aTree:TDualTree;const aParent:TPolygonNode);
 begin
  inherited Create;
  fTree:=aTree;
@@ -5490,7 +7120,7 @@ begin
  fPolygon.Indices.Initialize;
 end;
 
-destructor TpvCSGBSP.TTree.TPolygonNode.Destroy;
+destructor TpvCSGBSP.TDualTree.TPolygonNode.Destroy;
 begin
  fPolygon.Indices.Finalize;
  RemoveFromParent;
@@ -5509,7 +7139,7 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvCSGBSP.TTree.TPolygonNode.RemoveFromParent;
+procedure TpvCSGBSP.TDualTree.TPolygonNode.RemoveFromParent;
 begin
  if assigned(fParent) then begin
   if assigned(fParentPrevious) then begin
@@ -5528,19 +7158,19 @@ begin
  fParentNext:=nil;
 end;
 
-function TpvCSGBSP.TTree.TPolygonNode.AddPolygon(const aPolygon:TPolygon):TPolygonNode;
+function TpvCSGBSP.TDualTree.TPolygonNode.AddPolygon(const aPolygon:TPolygon):TPolygonNode;
 begin
  result:=TPolygonNode.Create(fTree,self);
  result.fPolygon:=aPolygon;
 end;
 
-function TpvCSGBSP.TTree.TPolygonNode.AddPolygonIndices(const aIndices:TIndexList):TTree.TPolygonNode;
+function TpvCSGBSP.TDualTree.TPolygonNode.AddPolygonIndices(const aIndices:TIndexList):TDualTree.TPolygonNode;
 begin
  result:=TPolygonNode.Create(fTree,self);
  result.fPolygon.Indices.Assign(aIndices);
 end;
 
-procedure TpvCSGBSP.TTree.TPolygonNode.Remove;
+procedure TpvCSGBSP.TDualTree.TPolygonNode.Remove;
 var Index:TpvSizeInt;
     PolygonNode:TPolygonNode;
 begin
@@ -5556,7 +7186,7 @@ begin
  end;
 end;
 
-procedure TpvCSGBSP.TTree.TPolygonNode.Invert;
+procedure TpvCSGBSP.TDualTree.TPolygonNode.Invert;
 type TJobQueue=TDynamicQueue<TPolygonNode>;
 var Index:TpvSizeInt;
     JobQueue:TJobQueue;
@@ -5582,7 +7212,7 @@ begin
  end;
 end;
 
-procedure TpvCSGBSP.TTree.TPolygonNode.DrySplitByPlane(const aPlane:TPlane;var aCountSplits,aCoplanarBackList,aCoplanarFrontList,aBackList,aFrontList:TpvSizeInt);
+procedure TpvCSGBSP.TDualTree.TPolygonNode.DrySplitByPlane(const aPlane:TPlane;var aCountSplits,aCoplanarBackList,aCoplanarFrontList,aBackList,aFrontList:TpvSizeInt);
 const Coplanar=0;
       Front=1;
       Back=2;
@@ -5729,7 +7359,7 @@ begin
  end;
 end;
 
-procedure TpvCSGBSP.TTree.TPolygonNode.SplitByPlane(const aPlane:TPlane;var aCoplanarBackList,aCoplanarFrontList,aBackList,aFrontList:TPolygonNodeList);
+procedure TpvCSGBSP.TDualTree.TPolygonNode.SplitByPlane(const aPlane:TPlane;var aCoplanarBackList,aCoplanarFrontList,aBackList,aFrontList:TPolygonNodeList);
 const Coplanar=0;
       Front=1;
       Back=2;
@@ -5877,7 +7507,7 @@ end;
 
 { TpvCSGBSP.TTree.TNode }
 
-constructor TpvCSGBSP.TTree.TNode.Create(const aTree:TTree);
+constructor TpvCSGBSP.TDualTree.TNode.Create(const aTree:TDualTree);
 begin
  inherited Create;
  fTree:=aTree;
@@ -5886,10 +7516,10 @@ begin
  fFront:=nil;
 end;
 
-destructor TpvCSGBSP.TTree.TNode.Destroy;
-type TJobStack=TDynamicStack<TTree.TNode>;
+destructor TpvCSGBSP.TDualTree.TNode.Destroy;
+type TJobStack=TDynamicStack<TDualTree.TNode>;
 var JobStack:TJobStack;
-    Node:TTree.TNode;
+    Node:TDualTree.TNode;
 begin
  fPolygonNodes.Finalize;
  if assigned(fFront) or assigned(fBack) then begin
@@ -5916,10 +7546,10 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvCSGBSP.TTree.TNode.Invert;
-type TJobStack=TDynamicStack<TTree.TNode>;
+procedure TpvCSGBSP.TDualTree.TNode.Invert;
+type TJobStack=TDynamicStack<TDualTree.TNode>;
 var JobStack:TJobStack;
-    Node,TempNode:TTree.TNode;
+    Node,TempNode:TDualTree.TNode;
 begin
  JobStack.Initialize;
  try
@@ -5941,9 +7571,9 @@ begin
  end;
 end;
 
-procedure TpvCSGBSP.TTree.TNode.ClipPolygons(const aPolygonNodes:TPolygonNodeList;const aAlsoRemoveCoplanarFront:boolean=false);
+procedure TpvCSGBSP.TDualTree.TNode.ClipPolygons(const aPolygonNodes:TPolygonNodeList;const aAlsoRemoveCoplanarFront:boolean=false);
 type TJobStackItem=record
-      Node:TTree.TNode;
+      Node:TDualTree.TNode;
       PolygonNodes:TPolygonNodeList;
      end;
      TJobStack=TDynamicStack<TJobStackItem>;
@@ -6009,10 +7639,10 @@ begin
  end;
 end;
 
-procedure TpvCSGBSP.TTree.TNode.ClipTo(const aTree:TTree;const aAlsoRemoveCoplanarFront:boolean=false);
-type TJobStack=TDynamicStack<TTree.TNode>;
+procedure TpvCSGBSP.TDualTree.TNode.ClipTo(const aTree:TDualTree;const aAlsoRemoveCoplanarFront:boolean=false);
+type TJobStack=TDynamicStack<TDualTree.TNode>;
 var JobStack:TJobStack;
-    Node:TTree.TNode;
+    Node:TDualTree.TNode;
 begin
  JobStack.Initialize;
  try
@@ -6031,7 +7661,7 @@ begin
  end;
 end;
 
-function TpvCSGBSP.TTree.TNode.FindSplitPlane(const aPolygonNodes:TPolygonNodeList):TPlane;
+function TpvCSGBSP.TDualTree.TNode.FindSplitPlane(const aPolygonNodes:TPolygonNodeList):TPlane;
 var Index,OtherIndex,Count,
     CountPolygonsSplits,
     CountBackPolygons,CountFrontPolygons,CountSum,
@@ -6119,9 +7749,9 @@ begin
  end;
 end;
 
-procedure TpvCSGBSP.TTree.TNode.AddPolygonNodes(const aPolygonNodes:TPolygonNodeList);
+procedure TpvCSGBSP.TDualTree.TNode.AddPolygonNodes(const aPolygonNodes:TPolygonNodeList);
 type TJobStackItem=record
-      Node:TTree.TNode;
+      Node:TDualTree.TNode;
       PolygonNodes:TPolygonNodeList;
      end;
      TJobStack=TDynamicStack<TJobStackItem>;
@@ -6140,6 +7770,7 @@ begin
     JobStack.Push(NewJobStackItem);
     while JobStack.Pop(JobStackItem) do begin
      if JobStackItem.PolygonNodes.Count>0 then begin
+      //write(#13,JobStackItem.PolygonNodes.Count:10);
       if not JobStackItem.Node.fPlane.OK then begin
        JobStackItem.Node.fPlane:=FindSplitPlane(JobStackItem.PolygonNodes);
       end;
@@ -6154,14 +7785,14 @@ begin
       end;
       if FrontJobStackItem.PolygonNodes.Count>0 then begin
        if not assigned(JobStackItem.Node.fFront) then begin
-        JobStackItem.Node.fFront:=TTree.TNode.Create(fTree);
+        JobStackItem.Node.fFront:=TDualTree.TNode.Create(fTree);
        end;
        FrontJobStackItem.Node:=JobStackItem.Node.fFront;
        JobStack.Push(FrontJobStackItem);
       end;
       if BackJobStackItem.PolygonNodes.Count>0 then begin
        if not assigned(JobStackItem.Node.fBack) then begin
-        JobStackItem.Node.fBack:=TTree.TNode.Create(fTree);
+        JobStackItem.Node.fBack:=TDualTree.TNode.Create(fTree);
        end;
        BackJobStackItem.Node:=JobStackItem.Node.fBack;
        JobStack.Push(BackJobStackItem);
@@ -6179,9 +7810,14 @@ begin
  end;
 end;
 
+procedure TpvCSGBSP.TDualTree.TNode.AddIndices(const aIndices:TIndexList);
+begin
+
+end;
+
 { TpvCSGBSP.TTree }
 
-constructor TpvCSGBSP.TTree.Create(const aMesh:TMesh;const aSplitSettings:PSplitSettings=nil);
+constructor TpvCSGBSP.TDualTree.Create(const aMesh:TMesh;const aSplitSettings:PSplitSettings=nil);
 begin
  inherited Create;
  fMesh:=aMesh;
@@ -6192,11 +7828,11 @@ begin
  end;
  fFirstPolygonNode:=nil;
  fLastPolygonNode:=nil;
- fPolygonRootNode:=TTree.TPolygonNode.Create(self,nil);
- fRootNode:=TTree.TNode.Create(self);
+ fPolygonRootNode:=TDualTree.TPolygonNode.Create(self,nil);
+ fRootNode:=TDualTree.TNode.Create(self);
 end;
 
-destructor TpvCSGBSP.TTree.Destroy;
+destructor TpvCSGBSP.TDualTree.Destroy;
 begin
  while assigned(fLastPolygonNode) do begin
   fLastPolygonNode.Free;
@@ -6206,19 +7842,19 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvCSGBSP.TTree.Invert;
+procedure TpvCSGBSP.TDualTree.Invert;
 begin
  fMesh.Invert;
  fPolygonRootNode.Invert;
  fRootNode.Invert;
 end;
 
-procedure TpvCSGBSP.TTree.ClipTo(const aWithTree:TTree;const aAlsoRemoveCoplanarFront:boolean=false);
+procedure TpvCSGBSP.TDualTree.ClipTo(const aWithTree:TDualTree;const aAlsoRemoveCoplanarFront:boolean=false);
 begin
  fRootNode.ClipTo(aWithTree,aAlsoRemoveCoplanarFront);
 end;
 
-procedure TpvCSGBSP.TTree.AddPolygons(const aPolygons:TPolygonList);
+procedure TpvCSGBSP.TDualTree.AddPolygons(const aPolygons:TPolygonList);
 var Index:TpvSizeInt;
     PolygonNodes:TPolygonNodeList;
 begin
@@ -6233,7 +7869,7 @@ begin
  end;
 end;
 
-procedure TpvCSGBSP.TTree.AddIndices(const aIndices:TIndexList);
+procedure TpvCSGBSP.TDualTree.AddIndices(const aIndices:TIndexList);
 var Index,Count,CountPolygonVertices:TpvSizeInt;
     Polygon:TPolygon;
     Polygons:TPolygonList;
@@ -6267,7 +7903,7 @@ begin
  end;
 end;
 
-procedure TpvCSGBSP.TTree.GetPolygons(var aPolygons:TPolygonList);
+procedure TpvCSGBSP.TDualTree.GetPolygons(var aPolygons:TPolygonList);
 type TJobQueue=TDynamicQueue<TPolygonNode>;
 var Index:TpvSizeInt;
     JobQueue:TJobQueue;
@@ -6296,7 +7932,7 @@ begin
  end;
 end;
 
-procedure TpvCSGBSP.TTree.GetIndices(var aIndices:TIndexList);
+procedure TpvCSGBSP.TDualTree.GetIndices(var aIndices:TIndexList);
 var PolygonIndex,IndicesIndex:TpvSizeInt;
     Polygons:TPolygonList;
     Polygon:PPolygon;
@@ -6332,7 +7968,7 @@ begin
  end;
 end;
 
-procedure TpvCSGBSP.TTree.Merge(const aTree:TTree);
+procedure TpvCSGBSP.TDualTree.Merge(const aTree:TDualTree);
 var Index,OtherIndex,Offset,Count,CountPolygonVertices:TpvSizeInt;
     Polygons:TPolygonList;
     Polygon:PPolygon;
@@ -6355,7 +7991,7 @@ begin
  end;
 end;
 
-function TpvCSGBSP.TTree.ToMesh:TMesh;
+function TpvCSGBSP.TDualTree.ToMesh:TMesh;
 begin
  result:=TMesh.Create(fMesh.fMode);
  try
