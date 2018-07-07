@@ -4086,6 +4086,11 @@ begin
   LowValue:='unknown';
   HighValue:='unknown';
   Values:=TStringList.Create;
+  if Name='VkVendorId' then begin
+   if length(Expand)=0 then begin
+    Expand:='VK_VENDOR_ID';
+   end;
+  end;
   try
    j:=-1;
    SetLength(ValueItems,Tag.Items.Count);

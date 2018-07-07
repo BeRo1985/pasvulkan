@@ -258,7 +258,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=78;
+      VK_HEADER_VERSION=79;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -701,6 +701,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_210_EXTENSION_NAME='VK_KHR_extension_210';
       VK_KHR_EXTENSION_211_SPEC_VERSION=0;
       VK_KHR_EXTENSION_211_EXTENSION_NAME='VK_KHR_extension_211';
+      VK_KHR_EXTENSION_212_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_212_EXTENSION_NAME='VK_KHR_extension_212';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -3403,6 +3405,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT_EXT=$00000002,
        VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT_EXT=$00000004,
        VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT=$00000008
+      );
+
+     PPVkVendorId=^PVkVendorId;
+     PVkVendorId=^TVkVendorId;
+     TVkVendorId=
+      (
+       VK_VENDOR_ID_RANGE_SIZE=4,                                                //< (VK_VENDOR_ID_UNUSED_START-VK_VENDOR_ID_VIV)+1
+       VK_VENDOR_ID_VIV=65537,                                                   //< Vivante vendor ID
+       VK_VENDOR_ID_BEGIN_RANGE=65537,                                           //< VK_VENDOR_ID_VIV
+       VK_VENDOR_ID_VSI=65538,                                                   //< VeriSilicon vendor ID
+       VK_VENDOR_ID_KAZAN=65539,                                                 //< Kazan Software Renderer
+       VK_VENDOR_ID_UNUSED_START=65540,                                          //< This is the next unused available Khronos vendor ID
+       VK_VENDOR_ID_END_RANGE=65540,                                             //< VK_VENDOR_ID_UNUSED_START
+       VK_VENDOR_ID_MAX_ENUM=$7fffffff
       );
 
      PPVkDescriptorUpdateTemplateTypeKHR=PPVkDescriptorUpdateTemplateType;
