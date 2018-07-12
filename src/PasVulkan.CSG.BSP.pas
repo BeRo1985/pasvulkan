@@ -580,6 +580,8 @@ type TpvCSGBSP=class
                                                     const aCSGOptimization:TCSGOptimization=TCSGOptimization.None;
                                                     const aSplitSettings:PSplitSettings=nil);
               destructor Destroy; override;
+              procedure SaveOBJToStream(const aStream:TStream);
+              procedure SaveOBJToFile(const aFileName:string);
               procedure Clear;
               procedure Assign(const aFrom:TMesh); overload;
               procedure Assign(const aFrom:TSingleTreeNode); overload;
@@ -3404,6 +3406,62 @@ begin
  fPointerToVertices:=nil;
  fPointerToIndices:=nil;
  inherited Destroy;
+end;
+
+procedure TpvCSGBSP.TMesh.SaveOBJToStream(const aStream:TStream);
+ function FloatStr(const aValue:TpvDouble):TpvRawByteString;
+ var Index:TpvSizeInt;
+ begin
+  Str(aValue:1:10,result);
+  if pos('.',result)>0 then begin
+   Index:=length(result);
+   while (Index>3) and (result[Index]='0') and (result[Index-2]<>'.') do begin
+    dec(Index);
+   end;
+   SetLength(result,Index);
+  end;
+ end;
+ procedure WriteOut(const aValue:TpvRawByteString);
+ begin
+  if length(aValue)>0 then begin
+   aStream.Write(aValue[1],length(aValue));
+  end;
+ end;
+const NewLine={$ifdef Unix}#10{$else}#13#10{$endif};
+var Index,Count,CountPolygonVertices,i:TpvSizeInt;
+    v:PVertex;
+begin
+ for Index:=0 to fVertices.Count-1 do begin
+  v:=@fVertices.Items[Index];
+  WriteOut('v '+FloatStr(v^.Position.x)+' '+FloatStr(v^.Position.y)+' '+FloatStr(v^.Position.z)+NewLine);
+  WriteOut('vn '+FloatStr(v^.Normal.x)+' '+FloatStr(v^.Normal.y)+' '+FloatStr(v^.Normal.z)+NewLine);
+  WriteOut('vt '+FloatStr(v^.TexCoord.x)+' '+FloatStr(v^.TexCoord.y)+NewLine);
+ end;
+ Index:=0;
+ Count:=fIndices.Count;
+ while Index<Count do begin
+  CountPolygonVertices:=fIndices.Items[Index];
+  inc(Index);
+  WriteOut('f');
+  while (CountPolygonVertices>0) and (Index<Count) do begin
+   i:=fIndices.Items[Index]+1;
+   WriteOut(' '+IntToStr(i)+'/'+IntToStr(i)+'/'+IntToStr(i));
+   inc(Index);
+   dec(CountPolygonVertices);
+  end;
+  WriteOut(NewLine);
+ end;
+end;
+
+procedure TpvCSGBSP.TMesh.SaveOBJToFile(const aFileName:string);
+var FileStream:TFileStream;
+begin
+ FileStream:=TFileStream.Create(aFileName,fmCreate);
+ try
+  SaveOBJToStream(FileStream);
+ finally
+  FreeAndNil(FileStream);
+ end;
 end;
 
 procedure TpvCSGBSP.TMesh.SetMode(const aMode:TMode);
