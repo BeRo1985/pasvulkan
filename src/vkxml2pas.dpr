@@ -2790,6 +2790,7 @@ type TVendorID=class
        Name:ansistring;
        Value:ansistring;
        Offset:longint;
+       ExtNumber:longint;
        BitPos:longint;
        Dir:ansistring;
        Extends:ansistring;
@@ -3131,6 +3132,7 @@ begin
           ExtensionOrFeatureEnum.Name:=ChildChildChildTag.GetParameter('name','');
           ExtensionOrFeatureEnum.Value:=ChildChildChildTag.GetParameter('value','');
           ExtensionOrFeatureEnum.Offset:=StrToIntDef(ChildChildChildTag.GetParameter('offset','-1'),-1);
+          ExtensionOrFeatureEnum.ExtNumber:=StrToIntDef(ChildChildChildTag.GetParameter('extnumber','-1'),-1);
           ExtensionOrFeatureEnum.BitPos:=StrToIntDef(ChildChildChildTag.GetParameter('bitpos','-1'),-1);
           ExtensionOrFeatureEnum.Dir:=ChildChildChildTag.GetParameter('dir','');
           ExtensionOrFeatureEnum.Extends:=ChildChildChildTag.GetParameter('extends','');
@@ -3207,6 +3209,7 @@ begin
           ExtensionOrFeatureEnum.Name:=ChildChildChildTag.GetParameter('name','');
           ExtensionOrFeatureEnum.Value:=ChildChildChildTag.GetParameter('value','');
           ExtensionOrFeatureEnum.Offset:=StrToIntDef(ChildChildChildTag.GetParameter('offset','-1'),-1);
+          ExtensionOrFeatureEnum.ExtNumber:=StrToIntDef(ChildChildChildTag.GetParameter('extnumber','-1'),-1);
           ExtensionOrFeatureEnum.BitPos:=StrToIntDef(ChildChildChildTag.GetParameter('bitpos','-1'),-1);
           ExtensionOrFeatureEnum.Dir:=ChildChildChildTag.GetParameter('dir','');
           ExtensionOrFeatureEnum.Extends:=ChildChildChildTag.GetParameter('extends','');
@@ -3267,7 +3270,11 @@ begin
       ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+StringReplace(ExtensionOrFeatureEnum.Value,'"','''',[rfReplaceAll])+';');
      end;
     end else if ExtensionOrFeatureEnum.Offset>=0 then begin
-     ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+ExtensionOrFeatureEnum.Dir+IntToStr(1000000000+((ExtensionOrFeature.Number-1)*1000)+ExtensionOrFeatureEnum.Offset)+';');
+     if ExtensionOrFeatureEnum.ExtNumber>0 then begin
+      ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+ExtensionOrFeatureEnum.Dir+IntToStr(1000000000+((ExtensionOrFeatureEnum.ExtNumber-1)*1000)+ExtensionOrFeatureEnum.Offset)+';');
+     end else begin
+      ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+ExtensionOrFeatureEnum.Dir+IntToStr(1000000000+((ExtensionOrFeature.Number-1)*1000)+ExtensionOrFeatureEnum.Offset)+';');
+     end; 
     end else if ExtensionOrFeatureEnum.BitPos>=0 then begin
      ENumConstants.Add('      '+ExtensionOrFeatureEnum.Name+'='+ExtensionOrFeatureEnum.Dir+'$'+IntToHex(longword(1) shl ExtensionOrFeatureEnum.BitPos,8)+';');
     end;
@@ -3957,14 +3964,16 @@ begin
          ParameterLine:=ParameterLine+');'+MemberComment(TypeDefinition^.Members[j].Comment);
         end;
         if (TypeDefinition^.Name<>'VkBaseInStructure') and
-           (TypeDefinition^.Name<>'VkBaseOutStructure') then begin
+           (TypeDefinition^.Name<>'VkBaseOutStructure') and
+           (TypeDefinition^.Name<>'VkSubpassEndInfoKHR') then begin
          RecordConstructorCodeStringList.Add(CodeParameterLine);
          RecordConstructorStringList.Add(ParameterLine);
         end;
        end;
-      end;
+      end;  
       if (TypeDefinition^.Name<>'VkBaseInStructure') and
-         (TypeDefinition^.Name<>'VkBaseOutStructure') then begin
+         (TypeDefinition^.Name<>'VkBaseOutStructure') and
+         (TypeDefinition^.Name<>'VkSubpassEndInfoKHR') then begin
        if HasArray then begin
         RecordConstructorCodeStringList.Add('var ArrayItemCount:TVkInt32;');
        end;
@@ -4225,7 +4234,11 @@ begin
      end else if length(ExtensionOrFeatureEnum.Value)<>0 then begin
       ValueItem^.ValueStr:=ExtensionOrFeatureEnum.Value;
      end else if ExtensionOrFeatureEnum.Offset>=0 then begin
-      ValueItem^.ValueStr:=ExtensionOrFeatureEnum.Dir+IntToStr(1000000000+((Extension.Number-1)*1000)+ExtensionOrFeatureEnum.Offset);
+      if ExtensionOrFeatureEnum.ExtNumber>0 then begin
+       ValueItem^.ValueStr:=ExtensionOrFeatureEnum.Dir+IntToStr(1000000000+((ExtensionOrFeatureEnum.ExtNumber-1)*1000)+ExtensionOrFeatureEnum.Offset);
+      end else begin
+       ValueItem^.ValueStr:=ExtensionOrFeatureEnum.Dir+IntToStr(1000000000+((Extension.Number-1)*1000)+ExtensionOrFeatureEnum.Offset);
+      end;
      end else if ExtensionOrFeatureEnum.BitPos>=0 then begin
       ValueItem^.ValueStr:=ExtensionOrFeatureEnum.Dir+'$'+IntToHex(longword(1) shl ExtensionOrFeatureEnum.BitPos,8);
      end;
