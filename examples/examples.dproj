@@ -98,6 +98,7 @@
         <DCC_ExeOutput>.\DelphiOutput\$(Platform)\$(Config)</DCC_ExeOutput>
         <DCC_DcuOutput>.\DelphiOutput\$(Platform)\$(Config)</DCC_DcuOutput>
         <DCC_ConsoleTarget>true</DCC_ConsoleTarget>
+        <DCC_UnitSearchPath>..\src;..\externals\kraft\src;..\externals\pasdblstrutils\src;..\externals\pasjson\src;..\externals\pasmp\src;..\externals\pucu\src;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Android)'!=''">
         <Android_SplashImage960>$(BDS)\bin\Artwork\Android\FM_SplashImage_960x720.png</Android_SplashImage960>
@@ -200,7 +201,6 @@
     <PropertyGroup Condition="'$(Cfg_2_Win64)'!=''">
         <VerInfo_Locale>1033</VerInfo_Locale>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
-        <Manifest_File>(None)</Manifest_File>
         <Debugger_RunParams>/force-use-validation-layers</Debugger_RunParams>
     </PropertyGroup>
     <ItemGroup>
@@ -326,7 +326,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector2Helper.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
+                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector4.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
@@ -361,6 +361,12 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
+                <DeployFile LocalName="DelphiOutput\Win32\Debug\examples.exe" Configuration="Debug" Class="ProjectOutput">
+                    <Platform Name="Win32">
+                        <RemoteName>examples.exe</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector3.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
@@ -375,12 +381,6 @@
                 <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector3Helper.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
-                        <Overwrite>true</Overwrite>
-                    </Platform>
-                </DeployFile>
-                <DeployFile LocalName="DelphiOutput\Win32\Debug\examples.exe" Configuration="Debug" Class="ProjectOutput">
-                    <Platform Name="Win32">
-                        <RemoteName>examples.exe</RemoteName>
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
@@ -424,7 +424,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector4.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
+                <DeployFile LocalName="..\src\PasVulkan.Math.TpvVector2Helper.Swizzle.Implementations.inc" Configuration="Debug" Class="ProjectFile">
                     <Platform Name="Win32">
                         <RemoteDir>.\</RemoteDir>
                         <Overwrite>true</Overwrite>
