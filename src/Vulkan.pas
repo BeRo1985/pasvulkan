@@ -258,7 +258,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=80;
+      VK_HEADER_VERSION=82;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -659,7 +659,7 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_189_EXTENSION_NAME='VK_AMD_extension_189';
       VK_KHR_EXTENSION_190_SPEC_VERSION=0;
       VK_KHR_EXTENSION_190_EXTENSION_NAME='VK_AMD_extension_190';
-      VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_SPEC_VERSION=1;
+      VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_SPEC_VERSION=2;
       VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME='VK_EXT_vertex_attribute_divisor';
       VK_GOOGLE_EXTENSION_192_SPEC_VERSION=0;
       VK_GOOGLE_EXTENSION_192_EXTENSION_NAME='VK_GOOGLE_extension_192';
@@ -691,8 +691,8 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_205_EXTENSION_NAME='VK_NV_extension_205';
       VK_NV_EXTENSION_206_SPEC_VERSION=0;
       VK_NV_EXTENSION_206_EXTENSION_NAME='VK_NV_extension_206';
-      VK_NV_EXTENSION_207_SPEC_VERSION=0;
-      VK_NV_EXTENSION_207_EXTENSION_NAME='VK_NV_extension_207';
+      VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_SPEC_VERSION=2;
+      VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME='VK_NV_device_diagnostic_checkpoints';
       VK_KHR_EXTENSION_208_SPEC_VERSION=0;
       VK_KHR_EXTENSION_208_EXTENSION_NAME='VK_KHR_extension_208';
       VK_KHR_EXTENSION_209_SPEC_VERSION=0;
@@ -707,6 +707,12 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_213_EXTENSION_NAME='VK_KHR_extension_213';
       VK_KHR_EXTENSION_214_SPEC_VERSION=0;
       VK_KHR_EXTENSION_214_EXTENSION_NAME='VK_KHR_extension_214';
+      VK_KHR_EXTENSION_215_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_215_EXTENSION_NAME='VK_KHR_extension_215';
+      VK_KHR_EXTENSION_216_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_216_EXTENSION_NAME='VK_KHR_extension_216';
+      VK_KHR_EXTENSION_217_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_217_EXTENSION_NAME='VK_KHR_extension_217';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -2288,6 +2294,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD=1000185000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT=1000190000,
        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT=1000190001,
+       VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV=1000206000,
+       VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV=1000206001,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
        VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO,
@@ -2371,8 +2379,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_ERROR_OUT_OF_DATE_KHR=-1000001004,
        VK_ERROR_NATIVE_WINDOW_IN_USE_KHR=-1000000001,
        VK_ERROR_SURFACE_LOST_KHR=-1000000000,
+       _UNUSED_START=-13,                                                        //< This is the next unused available error code (negative value)
        VK_ERROR_FRAGMENTED_POOL=-12,                                             //< A requested pool allocation has failed due to fragmentation of the pool's memory
-       _UNUSED_START=-12,
        VK_ERROR_FORMAT_NOT_SUPPORTED=-11,                                        //< Requested format is not supported on this device
        VK_ERROR_TOO_MANY_OBJECTS=-10,                                            //< Too many objects of the type have already been created
        VK_ERROR_INCOMPATIBLE_DRIVER=-9,                                          //< Unable to find a Vulkan driver
@@ -10505,6 +10513,36 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkQueueFamilyCheckpointPropertiesNV=^PVkQueueFamilyCheckpointPropertiesNV;
+     PVkQueueFamilyCheckpointPropertiesNV=^TVkQueueFamilyCheckpointPropertiesNV;
+     TVkQueueFamilyCheckpointPropertiesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV
+       pNext:PVkVoid;
+       checkpointExecutionStageMask:TVkPipelineStageFlags;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aCheckpointExecutionStageMask:TVkPipelineStageFlags);
+{$endif}
+     end;
+
+     PPVkCheckpointDataNV=^PVkCheckpointDataNV;
+     PVkCheckpointDataNV=^TVkCheckpointDataNV;
+     TVkCheckpointDataNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV
+       pNext:PVkVoid;
+       stage:TVkPipelineStageFlagBits;
+       pCheckpointMarker:PVkVoid;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aStage:TVkPipelineStageFlagBits;
+                          const aPCheckpointMarker:PVkVoid);
+{$endif}
+     end;
+
      TvkCreateInstance=function(const pCreateInfo:PVkInstanceCreateInfo;const pAllocator:PVkAllocationCallbacks;pInstance:PVkInstance):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkDestroyInstance=procedure(instance:TVkInstance;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -11182,6 +11220,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkCmdDrawIndirectCountKHR=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCmdDrawIndexedIndirectCountKHR=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdSetCheckpointNV=procedure(commandBuffer:TVkCommandBuffer;const pCheckpointMarker:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetQueueCheckpointDataNV=procedure(queue:TVkQueue;pCheckpointDataCount:PVkUInt32;pCheckpointData:PVkCheckpointDataNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 
      PPVulkanCommands=^PVulkanCommands;
@@ -11864,6 +11906,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       CmdDrawIndirectCountKHR:TvkCmdDrawIndirectCountKHR;
 
       CmdDrawIndexedIndirectCountKHR:TvkCmdDrawIndexedIndirectCountKHR;
+
+      CmdSetCheckpointNV:TvkCmdSetCheckpointNV;
+
+      GetQueueCheckpointDataNV:TvkGetQueueCheckpointDataNV;
 
      end;
 
@@ -12552,6 +12598,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure CmdDrawIndexedIndirectCountKHR(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); virtual;
 
+       procedure CmdSetCheckpointNV(commandBuffer:TVkCommandBuffer;const pCheckpointMarker:PVkVoid); virtual;
+
+       procedure GetQueueCheckpointDataNV(queue:TVkQueue;pCheckpointDataCount:PVkUInt32;pCheckpointData:PVkCheckpointDataNV); virtual;
+
        property Commands:TVulkanCommands read fCommands;
      end;
 
@@ -13236,6 +13286,10 @@ var LibVulkan:pointer=nil;
     vkCmdDrawIndirectCountKHR:TvkCmdDrawIndirectCountKHR=nil;
 
     vkCmdDrawIndexedIndirectCountKHR:TvkCmdDrawIndexedIndirectCountKHR=nil;
+
+    vkCmdSetCheckpointNV:TvkCmdSetCheckpointNV=nil;
+
+    vkGetQueueCheckpointDataNV:TvkGetQueueCheckpointDataNV=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -14657,6 +14711,14 @@ begin
    @vkCmdDrawIndexedIndirectCountKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawIndexedIndirectCountKHR'));
    @vk.fCommands.CmdDrawIndexedIndirectCountKHR:=addr(vkCmdDrawIndexedIndirectCountKHR);
   end;
+  if not assigned(vkCmdSetCheckpointNV) then begin
+   @vkCmdSetCheckpointNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetCheckpointNV'));
+   @vk.fCommands.CmdSetCheckpointNV:=addr(vkCmdSetCheckpointNV);
+  end;
+  if not assigned(vkGetQueueCheckpointDataNV) then begin
+   @vkGetQueueCheckpointDataNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetQueueCheckpointDataNV'));
+   @vk.fCommands.GetQueueCheckpointDataNV:=addr(vkGetQueueCheckpointDataNV);
+  end;
   result:=assigned(vkCreateInstance);
  end;
 end;
@@ -15029,6 +15091,8 @@ begin
 {$endif}
   @InstanceCommands.CmdDrawIndirectCountKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawIndirectCountKHR')));
   @InstanceCommands.CmdDrawIndexedIndirectCountKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawIndexedIndirectCountKHR')));
+  @InstanceCommands.CmdSetCheckpointNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetCheckpointNV')));
+  @InstanceCommands.GetQueueCheckpointDataNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetQueueCheckpointDataNV')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -15296,6 +15360,8 @@ begin
 {$endif}
   @DeviceCommands.CmdDrawIndirectCountKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawIndirectCountKHR')));
   @DeviceCommands.CmdDrawIndexedIndirectCountKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawIndexedIndirectCountKHR')));
+  @DeviceCommands.CmdSetCheckpointNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetCheckpointNV')));
+  @DeviceCommands.GetQueueCheckpointDataNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetQueueCheckpointDataNV')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -19767,6 +19833,22 @@ begin
  conditionalRendering:=aConditionalRendering;
  inheritedConditionalRendering:=aInheritedConditionalRendering;
 end;
+
+constructor TVkQueueFamilyCheckpointPropertiesNV.Create(const aCheckpointExecutionStageMask:TVkPipelineStageFlags);
+begin
+ sType:=VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV;
+ pNext:=nil;
+ checkpointExecutionStageMask:=aCheckpointExecutionStageMask;
+end;
+
+constructor TVkCheckpointDataNV.Create(const aStage:TVkPipelineStageFlagBits;
+                                       const aPCheckpointMarker:PVkVoid);
+begin
+ sType:=VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV;
+ pNext:=nil;
+ stage:=aStage;
+ pCheckpointMarker:=aPCheckpointMarker;
+end;
 {$endif}
 
 constructor TVulkan.Create;
@@ -21407,6 +21489,16 @@ end;
 procedure TVulkan.CmdDrawIndexedIndirectCountKHR(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32);
 begin
  fCommands.CmdDrawIndexedIndirectCountKHR(commandBuffer,buffer,offset,countBuffer,countBufferOffset,maxDrawCount,stride);
+end;
+
+procedure TVulkan.CmdSetCheckpointNV(commandBuffer:TVkCommandBuffer;const pCheckpointMarker:PVkVoid);
+begin
+ fCommands.CmdSetCheckpointNV(commandBuffer,pCheckpointMarker);
+end;
+
+procedure TVulkan.GetQueueCheckpointDataNV(queue:TVkQueue;pCheckpointDataCount:PVkUInt32;pCheckpointData:PVkCheckpointDataNV);
+begin
+ fCommands.GetQueueCheckpointDataNV(queue,pCheckpointDataCount,pCheckpointData);
 end;
 
 initialization
