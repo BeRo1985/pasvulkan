@@ -146,6 +146,10 @@ begin
        WriteLn('Copying "',SourceFileName,'" to "',DestinationFileName,'" ...');
        if FileName='src'+DirectorySeparator+'projecttemplate.dpr' then begin
         CopyAndSubstituteTextFile(SourceFileName,DestinationFileName,['projecttemplate',CurrentProjectName]);
+       end else if FileName='src'+DirectorySeparator+'projecttemplate.dproj' then begin
+        CopyAndSubstituteTextFile(SourceFileName,DestinationFileName,['projecttemplate',CurrentProjectName]);
+       end else if FileName='src'+DirectorySeparator+'projecttemplate.lpi' then begin
+        CopyAndSubstituteTextFile(SourceFileName,DestinationFileName,['projecttemplate',CurrentProjectName]);
        end else begin
         CopyFile(SourceFileName,DestinationFileName);
        end;
