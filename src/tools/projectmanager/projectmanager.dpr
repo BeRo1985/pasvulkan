@@ -53,7 +53,7 @@ begin
  writeln('Options: -h / --help / -?           Show this help');
  writeln('         -i / --info                Show informations');
  writeln;
- writeln('Commands: create [projectname]      Create a new project');
+ writeln('Commands: create [projectname]      Create a new project (project name must be a valid pascal identifier)');
  writeln('          build [projectname]       Build an existent project');
  writeln('          run [projectname]         Run an existent project');
  writeln('          update [projectname]      Update the project base files of an existent project');
