@@ -14,6 +14,8 @@ uses SysUtils,Classes,UnitVersion;
 
 var OwnExecutableFileName:UnicodeString='';
     PasVulkanRootPath:UnicodeString='';
+    PasVulkanProjectsPath:UnicodeString='';
+    PasVulkanProjectTemplatePath:UnicodeString='';
 
     DoShowUsage:boolean=true;
     DoShowHelp:boolean=false;
@@ -28,6 +30,8 @@ procedure InitializeGlobals;
 begin
  OwnExecutableFileName:=UnicodeString(UTF8String(ParamStr(0)));
  PasVulkanRootPath:=IncludeTrailingPathDelimiter(ExtractFilePath(OwnExecutableFileName));
+ PasVulkanProjectsPath:=IncludeTrailingPathDelimiter(PasVulkanRootPath+'projects');
+ PasVulkanProjectTemplatePath:=IncludeTrailingPathDelimiter(PasVulkanProjectsPath+'template');
 end;
 
 procedure FinalizeGlobals;
