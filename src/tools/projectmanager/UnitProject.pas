@@ -175,6 +175,7 @@ begin
     SourceFileName:=PasVulkanProjectTemplatePath+FileName;
     DestinationFileName:=ProjectPath+FileName;
     if length(DestinationFileName)>0 then begin
+     DestinationFileName:=UnicodeString(StringReplace(String(DestinationFileName),'projecttemplate',String(CurrentProjectName),[rfReplaceAll,rfIgnoreCase]));
      if (DestinationFileName[length(DestinationFileName)]=DirectorySeparator) or
         (IncludeTrailingPathDelimiter(ExtractFilePath(DestinationFileName))=DestinationFileName) then begin
       WriteLn('Creating "',DestinationFileName,'" ...');
@@ -183,7 +184,6 @@ begin
        break;
       end;
      end else begin
-      DestinationFileName:=UnicodeString(StringReplace(String(DestinationFileName),'projecttemplate',String(CurrentProjectName),[rfReplaceAll,rfIgnoreCase]));
       WriteLn('Copying "',SourceFileName,'" to "',DestinationFileName,'" ...');
       if FileName='src'+DirectorySeparator+'projecttemplate.dpr' then begin
        CopyAndSubstituteTextFile(SourceFileName,
@@ -198,7 +198,10 @@ begin
        CopyAndSubstituteTextFile(SourceFileName,
                                  DestinationFileName,
                                  ['projecttemplate',CurrentProjectName]);
-      end else if ExtractFileExt(FileName)='.pas' then begin
+      end else if (ExtractFileExt(FileName)='.pas') or
+                  (ExtractFileExt(FileName)='.gradle') or
+                  (ExtractFileExt(FileName)='.xml') or
+                  (ExtractFileExt(FileName)='.java') then begin
        CopyAndSubstituteTextFile(SourceFileName,
                                  DestinationFileName,
                                  ['projecttemplate',CurrentProjectName]);
