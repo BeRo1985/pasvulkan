@@ -54,7 +54,7 @@ begin
  Writeln('Options: -h / --help / -?                      Show this help');
  Writeln('         -i / --info                           Show informations');
  Writeln;
- Writeln('Commands: create [projectname]                 Create a new project (project name must be a valid pascal identifier)');
+ Writeln('Commands: create [projectname]                 Create a new project (project name must be a valid lowercase pascal and java identifier)');
  Writeln('          build [projectname] ([target(s)])    Build an existent project');
  Writeln('          run [projectname]                    Run an existent project');
  Writeln('          update [projectname]                 Update the project base files of an existent project');

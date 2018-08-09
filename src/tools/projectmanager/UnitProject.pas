@@ -219,7 +219,24 @@ begin
 end;
 
 procedure UpdateProject;
+var ProjectPath:UnicodeString;
 begin
+
+ if not DirectoryExists(PasVulkanProjectTemplatePath) then begin
+  WriteLn(ErrOutput,'Fatal: "',PasVulkanProjectTemplatePath,'" doesn''t exist!');
+  exit;
+ end;
+
+ if length(CurrentProjectName)=0 then begin
+  WriteLn(ErrOutput,'Fatal: No valid project name!');
+  exit;
+ end;
+
+ ProjectPath:=IncludeTrailingPathDelimiter(PasVulkanProjectsPath+CurrentProjectName);
+ if not ForceDirectories(ProjectPath) then begin
+  WriteLn(ErrOutput,'Fatal: "',ProjectPath,'" not found!');
+ end;
+
 end;
 
 procedure BuildProject;
