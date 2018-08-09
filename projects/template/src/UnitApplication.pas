@@ -51,6 +51,8 @@ var Application:TApplication=nil;
 
 implementation
 
+uses UnitScreenBlank;
+
 constructor TApplication.Create;
 begin
  inherited Create;
@@ -69,9 +71,9 @@ begin
   VulkanDebugging:=true;
   VulkanValidation:=true;
  end;
- Title:='PasVulkan Application';
- PathName:='PasVulkanApplication';
- StartScreen:=nil;
+ Title:='projecttemplate';
+ PathName:='projecttemplate.pasvulkan';
+ StartScreen:=TScreenBlank;
  VisibleMouseCursor:=true;
  CatchMouse:=false;
  HideSystemBars:=true;

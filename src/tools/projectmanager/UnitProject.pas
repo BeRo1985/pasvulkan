@@ -180,8 +180,12 @@ begin
        CopyAndSubstituteTextFile(SourceFileName,
                                  DestinationFileName,
                                  ['projecttemplate',CurrentProjectName,
-                                  '{00000000-0000-0000-0000-000000000000}',ProjectUUID]);
+                                  '{00000000-0000-0000-0000-000000000000}',UnicodeString(ProjectUUID)]);
       end else if FileName='src'+DirectorySeparator+'projecttemplate.lpi' then begin
+       CopyAndSubstituteTextFile(SourceFileName,
+                                 DestinationFileName,
+                                 ['projecttemplate',CurrentProjectName]);
+      end else if ExtractFileExt(FileName)='.pas' then begin
        CopyAndSubstituteTextFile(SourceFileName,
                                  DestinationFileName,
                                  ['projecttemplate',CurrentProjectName]);
