@@ -27,36 +27,44 @@ function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDe
 
 procedure ShowTitle;
 begin
- WriteLn('PasVulkan project manager version ',ProjectManagerVersion);
- WriteLn(ProjectManagerCopyright);
+ Writeln('PasVulkan project manager version ',ProjectManagerVersion);
+ Writeln(ProjectManagerCopyright);
 end;
 
 procedure ShowUsage;
 begin
- WriteLn('Usage: ',ExtractFileName(OwnExecutableFileName),' ([options] ...) [command] ([command parameters])');
+ Writeln('Usage: ',ExtractFileName(OwnExecutableFileName),' ([options] ...) [command] ([command parameters])');
 end;
 
 procedure ShowInfos;
 begin
- WriteLn('Built with ',{$if defined(fpc)}
+ Writeln('Built with ',{$if defined(fpc)}
           'FreePascal compiler ',{$i %FPCVERSION%},' for ',{$i %FPCTARGETCPU%},' on ',{$i %FPCTARGETOS%},' at ',{$i %DATE%}
          {$else}
           'Delphi compiler'
          {$ifend});
- WriteLn('PasVulkan root path: ',PasVulkanRootPath);
+ Writeln('PasVulkan root path: ',PasVulkanRootPath);
 end;
 
 procedure ShowHelp;
 begin
+ Writeln;
  ShowUsage;
- writeln;
- writeln('Options: -h / --help / -?           Show this help');
- writeln('         -i / --info                Show informations');
- writeln;
- writeln('Commands: create [projectname]      Create a new project (project name must be a valid pascal identifier)');
- writeln('          build [projectname]       Build an existent project');
- writeln('          run [projectname]         Run an existent project');
- writeln('          update [projectname]      Update the project base files of an existent project');
+ Writeln;
+ Writeln('Options: -h / --help / -?                      Show this help');
+ Writeln('         -i / --info                           Show informations');
+ Writeln;
+ Writeln('Commands: create [projectname]                 Create a new project (project name must be a valid pascal identifier)');
+ Writeln('          build [projectname] ([target(s)])    Build an existent project');
+ Writeln('          run [projectname]                    Run an existent project');
+ Writeln('          update [projectname]                 Update the project base files of an existent project');
+ Writeln;
+ Writeln('Supported targets: allcpu-android');
+ Writeln('                   x86_32-linux');
+ Writeln('                   x86_64-linux');
+ Writeln('                   x86_32-windows');
+ Writeln('                   x86_64-windows');
+ Writeln;
 end;
 
 begin
@@ -85,14 +93,14 @@ ParseCommandLine;
   end else if CurrentCommand='run' then begin
    RunProject;
   end else begin
-   WriteLn('Unknown command: ',CurrentCommand);
+   Writeln('Unknown command: ',CurrentCommand);
   end;
  end;
 
 {$ifdef Windows}
  if {$ifdef fpc}IsDebuggerPresent{$else}DebugHook<>0{$endif} then begin
-  writeln('Press return to exit . . . ');
-  readln;
+  Writeln('Press return to exit . . . ');
+  ReadLn;
  end;
 {$endif}
 end.
