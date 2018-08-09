@@ -37,10 +37,10 @@ begin
    end else begin
     case NormalParameterCounter of
      0:begin
-      CurrentCommand:=Current;
+      CurrentCommand:=trim(Current);
      end;
      1:begin
-      CurrentProjectName:=Current;
+      CurrentProjectName:=trim(Current);
      end;
     end;
     inc(NormalParameterCounter);
