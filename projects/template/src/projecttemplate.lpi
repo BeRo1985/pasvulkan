@@ -40,8 +40,8 @@
       <Filename Value="projecttemplate"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir);..\src"/>
-      <OtherUnitFiles Value="..\..\..\..\src;..\..\..\..\externals\pucu\src;..\..\..\..\externals\pasdblstrutils\src;..\..\..\..\externals\pasmp\src"/>
+      <IncludeFiles Value="$(ProjOutDir);..\..\..\src"/>
+      <OtherUnitFiles Value="..\..\..\src;..\..\..\externals\pucu\src;..\..\..\externals\pasdblstrutils\src;..\..\..\externals\pasmp\src;..\..\..\externals\pasjson\src;..\..\..\externals\kraft\src"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Conditionals Value="if ((TargetOS='linux') or (TargetOS='freebsd') or (TargetOS='unix')) and not (TargetOS='android') then begin
