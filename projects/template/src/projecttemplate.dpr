@@ -66,11 +66,11 @@ end;
 procedure Java_org_libsdl_app_SDLActivity_nativeSetAssetManager(pJavaEnv:PJNIEnv;pJavaClass:jclass;pAssetManager:JObject); cdecl;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
- __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Java_org_libsdl_app_SDLActivity_nativeSetAssetManager . . .');
+ __android_log_write(ANDROID_LOG_VERBOSE,ApplicationTag,'Entering Java_org_libsdl_app_SDLActivity_nativeSetAssetManager . . .');
 {$ifend}
  AndroidAssetManager:=AAssetManager_fromJava(pJavaEnv,pAssetManager);
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
- __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Java_org_libsdl_app_SDLActivity_nativeSetAssetManager . . .');
+ __android_log_write(ANDROID_LOG_VERBOSE,ApplicationTag,'Leaving Java_org_libsdl_app_SDLActivity_nativeSetAssetManager . . .');
 {$ifend}
 end;
 {$ifend}
@@ -91,7 +91,7 @@ begin
  SDL_Android_Init(pJavaEnv,pJavaClass);
 {$ifend}
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
- __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering Java_org_libsdl_app_SDLActivity_nativeInit . . .');
+ __android_log_write(ANDROID_LOG_VERBOSE,ApplicationTag,'Entering Java_org_libsdl_app_SDLActivity_nativeInit . . .');
 {$ifend}
 {$if defined(fpc) and defined(android)}
  try
@@ -101,14 +101,14 @@ begin
  except
   on e:Exception do begin
    s:=DumpExceptionCallStack(e);
-   __android_log_write(ANDROID_LOG_FATAL,'PasVulkanApplication',PAnsiChar(AnsiString(s)));
-   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,'PasVulkanApplication',PAnsiChar(AnsiString(s)),nil);
+   __android_log_write(ANDROID_LOG_FATAL,ApplicationTag,PAnsiChar(AnsiString(s)));
+   SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,ApplicationTag,PAnsiChar(AnsiString(s)),nil);
    raise;
   end;
  end;
 {$ifend}
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
- __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving Java_org_libsdl_app_SDLActivity_nativeInit . . .');
+ __android_log_write(ANDROID_LOG_VERBOSE,ApplicationTag,'Leaving Java_org_libsdl_app_SDLActivity_nativeInit . . .');
 {$ifend}
 {$if defined(fpc) and defined(android)}
  SDL_Quit;

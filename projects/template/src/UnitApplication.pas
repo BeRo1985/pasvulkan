@@ -28,7 +28,10 @@ uses SysUtils,
      PasVulkan.Framework,
      PasVulkan.Application;
 
+const ApplicationTag='projecttemplate';      
+
 type TApplication=class(TpvApplication)
+      public
       private
       public
        constructor Create; override;
