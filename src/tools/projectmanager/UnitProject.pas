@@ -104,8 +104,12 @@ end;
 
 procedure CreateProject;
 var Index:Int32;
-    ProjectTemplateFileList:TStringList;
-    ProjectPath,FileName,SourceFileName,DestinationFileName:UnicodeString;
+    ProjectTemplateFileList,StringList:TStringList;
+    ProjectPath,ProjectMetaDataPath,
+    ProjectUUIDFileName,
+    FileName,SourceFileName,DestinationFileName:UnicodeString;
+    ProjectUUID:String;
+    GUID:TGUID;
 begin
 
  if not DirectoryExists(PasVulkanProjectTemplatePath) then begin
@@ -124,40 +128,68 @@ begin
   exit;
  end;
 
+ WriteLn('Creating "',ProjectPath,'" ...');
+ if not ForceDirectories(ProjectPath) then begin
+  WriteLn(ErrOutput,'Fatal: "',ProjectPath,'" couldn''t created!');
+ end;
+
+ ProjectMetaDataPath:=IncludeTrailingPathDelimiter(ProjectPath+'metadata');
+ WriteLn('Creating "',ProjectMetaDataPath,'" ...');
+ if not ForceDirectories(ProjectMetaDataPath) then begin
+  WriteLn(ErrOutput,'Fatal: "',ProjectMetaDataPath,'" couldn''t created!');
+  exit;
+ end;
+
+ CreateGUID(GUID);
+ ProjectUUID:=LowerCase(GUIDToString(GUID));
+
+ ProjectUUIDFileName:=ProjectMetaDataPath+'uuid';
+
+ WriteLn('Creating "',ProjectUUIDFileName,'" ...');
+ StringList:=TStringList.Create;
+ try
+  StringList.Text:=ProjectUUID;
+  StringList.SaveToFile(String(ProjectUUIDFileName));
+ finally
+  FreeAndNil(StringList);
+ end;
+
  ProjectTemplateFileList:=GetRelativeFileList(PasVulkanProjectTemplatePath);
  if assigned(ProjectTemplateFileList) then begin
   try
-   WriteLn('Creating "',ProjectPath,'" ...');
-   if ForceDirectories(ProjectPath) then begin
-    for Index:=0 to ProjectTemplateFileList.Count-1 do begin
-     FileName:=UnicodeString(ProjectTemplateFileList.Strings[Index]);
-     SourceFileName:=PasVulkanProjectTemplatePath+FileName;
-     DestinationFileName:=ProjectPath+FileName;
-     if length(DestinationFileName)>0 then begin
-      if (DestinationFileName[length(DestinationFileName)]=DirectorySeparator) or
-         (IncludeTrailingPathDelimiter(ExtractFilePath(DestinationFileName))=DestinationFileName) then begin
-       WriteLn('Creating "',DestinationFileName,'" ...');
-       if not ForceDirectories(DestinationFileName) then begin
-        WriteLn(ErrOutput,'Fatal: "',DestinationFileName,'" couldn''t created!');
-        break;
-       end;
+   for Index:=0 to ProjectTemplateFileList.Count-1 do begin
+    FileName:=UnicodeString(ProjectTemplateFileList.Strings[Index]);
+    SourceFileName:=PasVulkanProjectTemplatePath+FileName;
+    DestinationFileName:=ProjectPath+FileName;
+    if length(DestinationFileName)>0 then begin
+     if (DestinationFileName[length(DestinationFileName)]=DirectorySeparator) or
+        (IncludeTrailingPathDelimiter(ExtractFilePath(DestinationFileName))=DestinationFileName) then begin
+      WriteLn('Creating "',DestinationFileName,'" ...');
+      if not ForceDirectories(DestinationFileName) then begin
+       WriteLn(ErrOutput,'Fatal: "',DestinationFileName,'" couldn''t created!');
+       break;
+      end;
+     end else begin
+      DestinationFileName:=UnicodeString(StringReplace(String(DestinationFileName),'projecttemplate',String(CurrentProjectName),[rfReplaceAll,rfIgnoreCase]));
+      WriteLn('Copying "',SourceFileName,'" to "',DestinationFileName,'" ...');
+      if FileName='src'+DirectorySeparator+'projecttemplate.dpr' then begin
+       CopyAndSubstituteTextFile(SourceFileName,
+                                 DestinationFileName,
+                                 ['projecttemplate',CurrentProjectName]);
+      end else if FileName='src'+DirectorySeparator+'projecttemplate.dproj' then begin
+       CopyAndSubstituteTextFile(SourceFileName,
+                                 DestinationFileName,
+                                 ['projecttemplate',CurrentProjectName,
+                                  '{00000000-0000-0000-0000-000000000000}',ProjectUUID]);
+      end else if FileName='src'+DirectorySeparator+'projecttemplate.lpi' then begin
+       CopyAndSubstituteTextFile(SourceFileName,
+                                 DestinationFileName,
+                                 ['projecttemplate',CurrentProjectName]);
       end else begin
-       DestinationFileName:=UnicodeString(StringReplace(String(DestinationFileName),'projecttemplate',String(CurrentProjectName),[rfReplaceAll,rfIgnoreCase]));
-       WriteLn('Copying "',SourceFileName,'" to "',DestinationFileName,'" ...');
-       if FileName='src'+DirectorySeparator+'projecttemplate.dpr' then begin
-        CopyAndSubstituteTextFile(SourceFileName,DestinationFileName,['projecttemplate',CurrentProjectName]);
-       end else if FileName='src'+DirectorySeparator+'projecttemplate.dproj' then begin
-        CopyAndSubstituteTextFile(SourceFileName,DestinationFileName,['projecttemplate',CurrentProjectName]);
-       end else if FileName='src'+DirectorySeparator+'projecttemplate.lpi' then begin
-        CopyAndSubstituteTextFile(SourceFileName,DestinationFileName,['projecttemplate',CurrentProjectName]);
-       end else begin
-        CopyFile(SourceFileName,DestinationFileName);
-       end;
+       CopyFile(SourceFileName,DestinationFileName);
       end;
      end;
     end;
-   end else begin
-    WriteLn(ErrOutput,'Fatal: "',ProjectPath,'" couldn''t created!');
    end;
   finally
    FreeAndNil(ProjectTemplateFileList);
