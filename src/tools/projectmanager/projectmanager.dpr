@@ -19,7 +19,7 @@ uses {$if defined(fpc) and defined(Unix)}cthreads,{$ifend}
      Classes,
      UnitVersion,
      UnitGlobals,
-     UnitParameters;
+     UnitParameters, UnitProject;
 
 {$if defined(fpc) and defined(Windows)}
 function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
@@ -78,8 +78,11 @@ ParseCommandLine;
 
  if length(CurrentCommand)>0 then begin
   if CurrentCommand='create' then begin
+   CreateProject;
   end else if CurrentCommand='build' then begin
+   BuildProject;
   end else if CurrentCommand='run' then begin
+   RunProject;
   end else begin
    WriteLn('Unknown command: ',CurrentCommand);
   end;
