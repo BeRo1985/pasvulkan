@@ -4,6 +4,10 @@ Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (Free
 
 The Vulkan.pas binding header unit itself (including the vkxml2pas.dpr converter) is and stays also compatible with the old Delphi 7 version, but the PasVulkan.*.pas framework units are no more Delphi 7 compatible, because they are using new Object Pascal syntax features, as such as generics, operator overloading, advanced records and so on, which for these the old Delphi 7 compiler version have no support for.
 
+## Important information
+
+You must first compile the (yet incomplete) PasVulkan project manager under `src\tools\projectmanager` using makefpc (*nix), makefpc.bat (Windows) or makedelphi.bat (Windows) so that you can then use the PasVulkan project manager as a command line tool.
+
 ## Support me
 
 [Support me at Patreon](https://www.patreon.com/bero)
