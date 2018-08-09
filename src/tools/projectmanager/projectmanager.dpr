@@ -55,9 +55,8 @@ begin
  writeln;
  writeln('Commands: create [projectname]      Create a new project');
  writeln('          build [projectname]       Build an existent project');
-//writeln('          delete [projectname]      Delete an existent project');
-//writeln('          deploy [projectname]      Deploy an existent project');
  writeln('          run [projectname]         Run an existent project');
+ writeln('          update [projectname]      Update the project base files of an existent project');
 end;
 
 begin
@@ -79,6 +78,8 @@ ParseCommandLine;
  if length(CurrentCommand)>0 then begin
   if CurrentCommand='create' then begin
    CreateProject;
+  end else if CurrentCommand='update' then begin
+   UpdateProject;
   end else if CurrentCommand='build' then begin
    BuildProject;
   end else if CurrentCommand='run' then begin

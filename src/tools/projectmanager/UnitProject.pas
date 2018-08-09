@@ -13,12 +13,17 @@ interface
 uses SysUtils,Classes,UnitVersion,UnitGlobals;
 
 procedure CreateProject;
+procedure UpdateProject;
 procedure BuildProject;
 procedure RunProject;
 
 implementation
 
 procedure CreateProject;
+begin
+end;
+
+procedure UpdateProject;
 begin
 end;
 
