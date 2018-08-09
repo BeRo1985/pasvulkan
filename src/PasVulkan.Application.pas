@@ -5415,21 +5415,29 @@ end;
 
 procedure TpvApplication.VulkanDebugLn(const What:string);
 {$if defined(Windows)}
+{$if defined(Debug) or not defined(Release)}
 var StdOut:Windows.THandle;
+{$ifend}
 begin
+{$if defined(Debug) or not defined(Release)}
  StdOut:=GetStdHandle(Std_Output_Handle);
  Win32Check(StdOut<>Invalid_Handle_Value);
  if StdOut<>0 then begin
   WriteLn(What);
  end;
+{$ifend}
 end;
-{$elseif (defined(fpc) and defined(android)) and not defined(Release)}
+{$elseif defined(fpc) and defined(android)}
 begin
+{$if defined(Debug) or not defined(Release)}
  __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanApplication',PAnsiChar(TpvUTF8String(What)));
+{$ifend} 
 end;
 {$else}
 begin
+{$if defined(Debug) or not defined(Release)}
  WriteLn(What);
+{$ifend} 
 end;
 {$ifend}
 
@@ -7045,7 +7053,7 @@ begin
      LowMemory;
     end;                       
     SDL_APP_WILLENTERBACKGROUND:begin
-     writeln('SDL_APP_WILLENTERBACKGROUND');
+     //writeln('SDL_APP_WILLENTERBACKGROUND');
 {$if defined(fpc) and defined(android)}
      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERBACKGROUND')));
 {$ifend}
@@ -7056,19 +7064,19 @@ begin
      fHasLastTime:=false;
     end;
     SDL_APP_DIDENTERBACKGROUND:begin
-     writeln('SDL_APP_DIDENTERBACKGROUND');
+     //writeln('SDL_APP_DIDENTERBACKGROUND');
 {$if defined(fpc) and defined(android)}
      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERBACKGROUND')));
 {$ifend}
     end;
     SDL_APP_WILLENTERFOREGROUND:begin
-     writeln('SDL_APP_WILLENTERFOREGROUND');
+     //writeln('SDL_APP_WILLENTERFOREGROUND');
 {$if defined(fpc) and defined(android)}
      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERFOREGROUND')));
 {$ifend}
     end;
     SDL_APP_DIDENTERFOREGROUND:begin
-     writeln('SDL_APP_DIDENTERFOREGROUND');
+     //writeln('SDL_APP_DIDENTERFOREGROUND');
      InitializeGraphics;
      Resume;
      fActive:=true;
