@@ -19,6 +19,9 @@ var OwnExecutableFileName:UnicodeString='';
     DoShowHelp:boolean=false;
     DoShowInfos:boolean=false;
 
+    CurrentCommand:UnicodeString='';
+    CurrentProjectName:UnicodeString='';
+
 implementation
 
 procedure InitializeGlobals;
