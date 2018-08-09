@@ -19,6 +19,19 @@ procedure RunProject;
 
 implementation
 
+{$ifndef fpc}
+const DirectorySeparator=PathDelim;
+
+function ExcludeLeadingPathDelimiter(const s:string):string;
+begin
+ if (length(s)>0) and (s[1]=DirectorySeparator) then begin
+  result:=copy(s,2,length(s)-1);
+ end else begin
+  result:=s;
+ end;
+end;
+{$endif}
+
 function GetRelativeFileList(const aPath:UnicodeString;const aMask:UnicodeString={$ifdef Unix}'*'{$else}'*.*'{$endif};const aParentPath:UnicodeString=''):TStringList;
 var SearchRec:{$if declared(TUnicodeSearchRec)}TUnicodeSearchRec{$else}TSearchRec{$ifend};
     SubList:TStringList;
