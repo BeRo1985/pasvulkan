@@ -16,7 +16,11 @@
  {$endif}
 {$endif}
 {$if defined(win32) or defined(win64)}
- {$apptype console}
+ {$if defined(Debug) or not defined(Release)}
+  {$apptype console}
+ {$else}
+  {$apptype gui}
+ {$ifend}
  {$define Windows}
 {$ifend}
 
@@ -145,7 +149,7 @@ const ATTACH_PARENT_PROCESS=DWORD(-1);
 
 {$if not (defined(fpc) and defined(android))}
 begin
-{$if defined(Windows) and not defined(Release)}
+{$if defined(Windows) and (defined(Debug) or not defined(Release))}
  // Workaround for a random-console-missing-issue with Delphi 10.2 Tokyo
  if (GetStdHandle(STD_OUTPUT_HANDLE)=0) and not AttachConsole(ATTACH_PARENT_PROCESS) then begin
   AllocConsole;
@@ -156,12 +160,12 @@ begin
 {$else}
  TApplication.Main;
 {$ifend}
-{$ifdef Windows}
+{$if defined(Windows) and (defined(Debug) or not defined(Release))}
  if {$ifdef fpc}IsDebuggerPresent{$else}DebugHook<>0{$endif} then begin
   writeln('Press return to exit . . . ');
   readln;
  end;
-{$endif}
+{$ifend}
 {$if defined(PasVulkanUseSDL2)}
  SDL_Quit;
 {$ifend}
