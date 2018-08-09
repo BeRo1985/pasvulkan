@@ -34,6 +34,10 @@ uses
   {$ifend}
   SysUtils,
   Classes,
+  Vulkan,
+  PasVulkan.SDL2,
+  PasVulkan.Framework,
+  PasVulkan.Application,  
   UnitApplication;
 
 // {$if defined(fpc) and defined(android)}
