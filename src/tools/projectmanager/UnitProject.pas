@@ -712,11 +712,11 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
    WriteLn('Successful!');
    case BuildMode of
     TBuildMode.Debug:begin
-     CopyFile(ProjectSourceAndroidPath+'app'+DirectorySeparator+'build'+DirectorySeparator+'outputs'+DirectorySeparator+'apk'+DirectorySeparator+'app-debug.apk',
+     CopyFile(ProjectSourceAndroidPath+'app'+DirectorySeparator+'build'+DirectorySeparator+'outputs'+DirectorySeparator+'apk'+DirectorySeparator+'debug'+DirectorySeparator+'app-debug.apk',
               ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_debug.apk');
     end;
     else {TBuildMode.Release:}begin
-     CopyFile(ProjectSourceAndroidPath+'app'+DirectorySeparator+'build'+DirectorySeparator+'outputs'+DirectorySeparator+'apk'+DirectorySeparator+'app-release-unsigned.apk',
+     CopyFile(ProjectSourceAndroidPath+'app'+DirectorySeparator+'build'+DirectorySeparator+'outputs'+DirectorySeparator+'apk'+DirectorySeparator+'release'+DirectorySeparator+'app-release-unsigned.apk',
               ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_release_unsigned.apk');
     end;
    end;

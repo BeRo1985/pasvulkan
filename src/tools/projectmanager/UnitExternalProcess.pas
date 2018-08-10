@@ -25,15 +25,10 @@ implementation
 
 function ExecuteCommand(const aDirectory,aExecutable:UnicodeString;const aParameters:array of UnicodeString):boolean;
 {$if (defined(Win32) or defined(Win64) or defined(Windows))} // and not defined(fpc)}
-const BufferSize=4096;
 var SecurityAttributes:TSecurityAttributes;
-    ReadHandle,WriteHandle:THandle;
     StartupInfo:Windows.TStartupInfoW;
     ProcessInformation:TProcessInformation;
-    Buffer:array of AnsiChar;
     Index:Int32;
-    CountRead:UInt32;
-    WaitForSingleObjectResult:HRESULT;
     CommandLine,CurrentDirectory:WideString;
     Parameter:UnicodeString;
     ExitCode:DWORD;
@@ -42,69 +37,44 @@ begin
  SecurityAttributes.nLength:=SizeOf(TSecurityAttributes);
  SecurityAttributes.bInheritHandle:=true;
  SecurityAttributes.lpSecurityDescriptor:=nil;
- if CreatePipe(ReadHandle,WriteHandle,@SecurityAttributes,0) then begin
+ FillChar(StartupInfo,SizeOf(TStartupInfoW),#0);
+ StartupInfo.cb:=SizeOf(TStartupInfoW);
+ StartupInfo.dwFlags:=STARTF_USESHOWWINDOW;
+ StartupInfo.wShowWindow:=SW_HIDE;
+ CommandLine:='';
+ for Index:=-1 to length(aParameters)-1 do begin
+  if Index<0 then begin
+   Parameter:=aExecutable;
+  end else begin
+   Parameter:=aParameters[Index];
+  end;
+  if (pos(' ',Parameter)>0) and (pos('"',Parameter)=0) then begin
+   Parameter:='"'+Parameter+'"';
+  end;
+  if length(CommandLine)>0 then begin
+   CommandLine:=CommandLine+' ';
+  end;
+  CommandLine:=CommandLine+WideString(Parameter);
+ end;
+ CurrentDirectory:=aDirectory;
+ if CreateProcessW(nil,
+                   PWideChar(CommandLine),
+                   @SecurityAttributes,
+                   @SecurityAttributes,
+                   true,
+                   NORMAL_PRIORITY_CLASS,
+                   nil,
+                   PWideChar(CurrentDirectory),
+                   StartupInfo,
+                   ProcessInformation) then begin
   try
-   FillChar(StartupInfo,SizeOf(TStartupInfoW),#0);
-   StartupInfo.cb:=SizeOf(TStartupInfoW);
-   StartupInfo.hStdInput:=ReadHandle;
-   StartupInfo.hStdOutput:=WriteHandle;
-   StartupInfo.hStdError:=WriteHandle;
-   StartupInfo.dwFlags:=STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
-   StartupInfo.wShowWindow:=SW_HIDE;
-   CommandLine:='';
-   for Index:=-1 to length(aParameters)-1 do begin
-    if Index<0 then begin
-     Parameter:=aExecutable;
-    end else begin
-     Parameter:=aParameters[Index];
-    end;
-    if (pos(' ',Parameter)>0) and (pos('"',Parameter)=0) then begin
-     Parameter:='"'+Parameter+'"';
-    end;
-    if length(CommandLine)>0 then begin
-     CommandLine:=CommandLine+' ';
-    end;
-    CommandLine:=CommandLine+WideString(Parameter);
-   end;
-   CurrentDirectory:=aDirectory;
-   if CreateProcessW(nil,
-                     PWideChar(CommandLine),
-                     @SecurityAttributes,
-                     @SecurityAttributes,
-                     true,
-                     NORMAL_PRIORITY_CLASS,
-                     nil,
-                     PWideChar(CurrentDirectory),
-                     StartupInfo,
-                     ProcessInformation) then begin
-    Buffer:=nil;
-    try
-     SetLength(Buffer,BufferSize+1);
-     try
-      repeat
-       WaitForSingleObjectResult:=WaitForSingleObject(ProcessInformation.hProcess,100);
-       repeat
-        CountRead:=0;
-        ReadFile(ReadHandle,Buffer[0],BufferSize,CountRead,nil);
-        Buffer[CountRead]:=#0;
-        OemToAnsi(@Buffer[0],@Buffer[0]);
-        Write(PAnsiChar(@Buffer[0]));
-       until CountRead<BufferSize;
-      until WaitForSingleObjectResult<>WAIT_TIMEOUT;
-     finally
-      Buffer:=nil;
-     end;
-     if GetExitCodeProcess(ProcessInformation.hProcess,DWORD(ExitCode)) then begin
-      result:=ExitCode=0;
-     end;
-    finally
-     CloseHandle(ProcessInformation.hProcess);
-     CloseHandle(ProcessInformation.hThread);
-    end;
+   WaitForSingleObject(ProcessInformation.hProcess,INFINITE);
+   if GetExitCodeProcess(ProcessInformation.hProcess,DWORD(ExitCode)) then begin
+    result:=ExitCode=0;
    end;
   finally
-   CloseHandle(ReadHandle);
-   CloseHandle(WriteHandle);
+   CloseHandle(ProcessInformation.hProcess);
+   CloseHandle(ProcessInformation.hThread);
   end;
  end;
 end;
