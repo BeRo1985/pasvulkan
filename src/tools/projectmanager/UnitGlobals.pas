@@ -29,6 +29,8 @@ var OwnExecutableFileName:UnicodeString='';
 
     BuildMode:TBuildMode=TBuildMode.Release;
 
+    SDL2StaticLinking:boolean=false;
+
 implementation
 
 procedure InitializeGlobals;

@@ -349,8 +349,11 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
   end;
 
  end;
-
  procedure BuildWithFPC(const aTargetCPU:TTargetCPU;const aTargetOS:TTargetOS);
+  function HasFPCBin(const aBinaryName:String):boolean;
+  begin
+   result:=true;
+  end;
  var Parameters:TStringList;
      FPCExecutable:UnicodeString;
  begin
@@ -375,14 +378,22 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        //Parameters.Add('-dRELEASE');
       end;
      end;
-     Parameters.Add('-dPasVulkanPasMP');
-     Parameters.Add('-dPasVulkanUseSDL2');
      Parameters.Add('-XX');
      Parameters.Add('-CX');
      Parameters.Add('-Cg');
+     Parameters.Add('-dCompileForWithPIC');
+     Parameters.Add('-dPasVulkanPasMP');
+     Parameters.Add('-dPasVulkanUseSDL2');
      case aTargetCPU of
       TTargetCPU.ARM_32:begin
-       FPCExecutable:='ppcrossarm';
+       if HasFPCBin('ppcrossarm') then begin
+        FPCExecutable:='ppcrossarm';
+       end else if HasFPCBin('ppcarm') then begin
+        FPCExecutable:='ppcarm';
+       end else if HasFPCBin('fpc') then begin
+        FPCExecutable:='fpc';
+       end;
+       Parameters.Add('-PARMv7a');
        Parameters.Add('-CpARMv7A');
        Parameters.Add('-CfVFPv3');
        Parameters.Add('-OpARMv7a');
@@ -397,7 +408,14 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        Parameters.Add('-Fo.\..\..\..\libs\sdl20androidarm32');
       end;
       TTargetCPU.x86_32:begin
-       FPCExecutable:='ppcross386';
+       if HasFPCBin('ppcross386') then begin
+        FPCExecutable:='ppcross386';
+       end else if HasFPCBin('ppc386') then begin
+        FPCExecutable:='ppc386';
+       end else if HasFPCBin('fpc') then begin
+        FPCExecutable:='fpc';
+       end;
+       Parameters.Add('-Pi386');
        Parameters.Add('-Cpi386');
        Parameters.Add('-CfX87');
        Parameters.Add('-OpPENTIUMM');
@@ -410,6 +428,65 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        Parameters.Add('-Fo.\..\..\..\libs\libpngandroid\obj\local\x86');
        Parameters.Add('-Fl.\..\..\..\libs\sdl20androidi386');
        Parameters.Add('-Fo.\..\..\..\libs\sdl20androidi386');
+      end;
+     end;
+    end;
+    TTargetOS.Linux:begin
+     Parameters.Add('-Tlinux');
+     Parameters.Add('-dPasVulkanPasMP');
+     Parameters.Add('-dPasVulkanUseSDL2');
+     Parameters.Add('-dPasVulkanUseSDL2WithVulkanSupport');
+     Parameters.Add('-dXLIB');
+     Parameters.Add('-dXCB');
+     Parameters.Add('-dWayland');
+     Parameters.Add('-dMir');
+     Parameters.Add('-dUseCThreads');
+     Parameters.Add('-dSDL');
+     Parameters.Add('-dSDL20');
+     case BuildMode of
+      TBuildMode.Debug:begin
+       Parameters.Add('-g');
+       Parameters.Add('-gl');
+       Parameters.Add('-Xm');
+       Parameters.Add('-dDEBUG');
+      end;
+      else {TBuildMode.Release:}begin
+       Parameters.Add('-Xs');
+       Parameters.Add('-dRELEASE');
+      end;
+     end;
+     case aTargetCPU of
+      TTargetCPU.x86_32:begin
+       if HasFPCBin('ppcross386') then begin
+        FPCExecutable:='ppcross386';
+       end else if HasFPCBin('ppc386') then begin
+        FPCExecutable:='ppc386';
+       end else if HasFPCBin('fpc') then begin
+        FPCExecutable:='fpc';
+       end;
+       Parameters.Add('-Pi386');
+       Parameters.Add('-Cpi386');
+       Parameters.Add('-CfX87');
+       Parameters.Add('-OpPENTIUMM');
+       Parameters.Add('-O-');
+       Parameters.Add('-O1');
+       Parameters.Add('-dc_int64');
+       Parameters.Add('-Cg-');
+      end;
+      TTargetCPU.x86_64:begin
+       if HasFPCBin('ppcrossx64') then begin
+        FPCExecutable:='ppcrossx64';
+       end else if HasFPCBin('ppcx64') then begin
+        FPCExecutable:='ppcx64';
+       end else if HasFPCBin('fpc') then begin
+        FPCExecutable:='fpc';
+       end;
+       Parameters.Add('-Px86_64');
+       Parameters.Add('-CpCOREAVX');
+       Parameters.Add('-CfSSE');
+       Parameters.Add('-OpCOREAVX');
+       Parameters.Add('-O-');
+       Parameters.Add('-O1');
       end;
      end;
     end;

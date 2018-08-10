@@ -55,6 +55,7 @@ begin
  WriteLn('         -i / --info                           Show informations');
  WriteLn('          --debug                              Compile as debug build');
  WriteLn('          --release                            Compile as release build (default)');
+ WriteLn('          --sdl2-static-link                   Static linking of SDL2 (Windows-only)');
  WriteLn;
  WriteLn('Commands: create [projectname]                 Create a new project (project name must be a valid lowercase pascal and java identifier)');
  WriteLn('          build [projectname] ([target(s)])    Build an existent project');

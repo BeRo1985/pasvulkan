@@ -37,6 +37,8 @@ begin
      BuildMode:=TBuildMode.Debug;
     end else if (Current='--release') then begin
      BuildMode:=TBuildMode.Release;
+    end else if (Current='--sdl2-static-link') then begin
+     SDL2StaticLinking:=true;
     end;
    end else begin
     case NormalParameterCounter of
