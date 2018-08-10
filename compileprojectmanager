@@ -1,4 +1,4 @@
 #!/bin/bash
-cd src\tools\projectmanager
+cd src/tools/projectmanager
 ./makefpc
-cd ..\..\..
+cd ../../..
