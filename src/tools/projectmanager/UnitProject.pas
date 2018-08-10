@@ -119,7 +119,7 @@ end;
 function DeleteDirectory(const aName:UnicodeString;const aDeleteSelf:boolean=false):boolean;
 var SearchRec:{$if declared(TUnicodeSearchRec)}TUnicodeSearchRec{$else}TSearchRec{$ifend};
 begin
- result:=false;
+ result:=true;
  if FindFirst(IncludeTrailingPathDelimiter(aName)+{$ifdef Windows}'*.*'{$else}'*'{$endif},faAnyFile,SearchRec)=0 then begin
   try
    try
@@ -127,10 +127,12 @@ begin
      if (SearchRec.Name<>'.') and (SearchRec.Name<>'..') then begin
       if (SearchRec.Attr and faDirectory)<>0 then begin
        if not DeleteDirectory(IncludeTrailingPathDelimiter(aName)+SearchRec.Name,true) then begin
+        result:=false;
         exit;
        end;
       end else begin
        if DeleteFile(IncludeTrailingPathDelimiter(aName)+SearchRec.Name) then begin
+        result:=false;
         exit;
        end;
       end;
@@ -139,7 +141,6 @@ begin
    finally
     FindClose(SearchRec);
    end;
-   result:=true;
   finally
    if aDeleteSelf and not RemoveDir(aName) then begin
     result:=false;
@@ -782,7 +783,7 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
 
    result:=false;
 
-   ProjectAssetsPath:=UnicodeString(IncludeTrailingPathDelimiter(ProjectPath)+'assets');
+   ProjectAssetsPath:=UnicodeString(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ProjectPath)+'assets'));
    if not DirectoryExists(ProjectAssetsPath) then begin
     WriteLn(ErrOutput,'Fatal: "',ProjectAssetsPath,'" doesn''t exist!');
     exit;
@@ -832,10 +833,10 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
   end;
  begin
   result:=false;
+  ProjectSourceAndroidPath:=UnicodeString(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ProjectSourcePath)+'android'));
   if not CopyAssets then begin
    exit;
   end;
-  ProjectSourceAndroidPath:=UnicodeString(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ProjectSourcePath)+'android'));
   case BuildMode of
    TBuildMode.Debug:begin
     Task:='assembleDebug';
