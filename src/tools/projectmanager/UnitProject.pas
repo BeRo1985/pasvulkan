@@ -10,7 +10,9 @@ unit UnitProject;
 
 interface
 
-uses SysUtils,Classes,UnitVersion,UnitGlobals,UnitExternalProcess;
+uses {$if defined(fpc) and defined(Unix)}BaseUnix,{$ifend}
+     SysUtils,Classes,
+     UnitVersion,UnitGlobals,UnitExternalProcess;
 
 function CreateProject:boolean;
 function UpdateProject:boolean;
@@ -741,10 +743,22 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
         TTargetCPU.x86_32:begin
          CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_32-linux'+DirectorySeparator+CurrentProjectName+'_x86_32-linux',
                   ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_32-linux');
+{$if defined(fpc) and defined(Unix)}
+         fpchmod(RawByteString(UTF8String(ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_32-linux')),
+                 S_IRUSR or S_IWUSR or S_IXUSR or
+                 S_IRGRP or S_IXGRP or
+                 S_IROTH or S_IXOTH);
+{$ifend}
         end;
         TTargetCPU.x86_64:begin
          CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_64-linux'+DirectorySeparator+CurrentProjectName+'_x86_64-linux',
                   ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_64-linux');
+{$if defined(fpc) and defined(Unix)}
+         fpchmod(RawByteString(UTF8String(ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_64-linux')),
+                 S_IRUSR or S_IWUSR or S_IXUSR or
+                 S_IRGRP or S_IXGRP or
+                 S_IROTH or S_IXOTH);
+{$ifend}
         end;
        end;
       end;
