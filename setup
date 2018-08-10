@@ -1,0 +1,7 @@
+#!/bin/bash
+if [ -d ".git"]; then
+  ./initsubmodules
+else
+  ./create_externals_symlinks_for_with_svn  
+fi 
+./compileprojectmanager
