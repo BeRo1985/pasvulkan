@@ -23,6 +23,7 @@ var OwnExecutableFileName:UnicodeString='';
 
     CurrentCommand:UnicodeString='';
     CurrentProjectName:UnicodeString='';
+    CurrentTarget:UnicodeString='';
 
 implementation
 
@@ -32,6 +33,21 @@ begin
  PasVulkanRootPath:=IncludeTrailingPathDelimiter(ExtractFilePath(OwnExecutableFileName));
  PasVulkanProjectsPath:=IncludeTrailingPathDelimiter(PasVulkanRootPath+'projects');
  PasVulkanProjectTemplatePath:=IncludeTrailingPathDelimiter(PasVulkanProjectsPath+'template');
+
+{$if (defined(Win32) or defined(Win64) or defined(Windows)) and defined(cpu386)}
+ CurrentTarget:='x86_32-windows';
+{$elseif (defined(Win32) or defined(Win64) or defined(Windows)) and (defined(cpuamd64) or defined(cpux64))}
+ CurrentTarget:='x86_64-windows';
+{$elseif defined(Linux) and defined(cpu386)}
+ CurrentTarget:='x86_32-linux';
+{$elseif defined(Linux) and (defined(cpuamd64) or defined(cpux64))}
+ CurrentTarget:='x86_64-linux';
+{$elseif defined(Android)}
+ CurrentTarget:='allcpu-android';
+{$else}
+ CurrentTarget:='';
+{$ifend}
+
 end;
 
 procedure FinalizeGlobals;

@@ -42,6 +42,11 @@ begin
      1:begin
       CurrentProjectName:=trim(Current);
      end;
+     2:begin
+      if CurrentCommand='build' then begin
+       CurrentTarget:=trim(Current);
+      end;
+     end;
     end;
     inc(NormalParameterCounter);
    end;

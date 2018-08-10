@@ -279,7 +279,6 @@ begin
      DestinationFileName:=UnicodeString(StringReplace(String(DestinationFileName),'projecttemplate',String(CurrentProjectName),[rfReplaceAll,rfIgnoreCase]));
      if (DestinationFileName[length(DestinationFileName)]=DirectorySeparator) or
         (IncludeTrailingPathDelimiter(ExtractFilePath(DestinationFileName))=DestinationFileName) then begin
-      WriteLn('Checking "',DestinationFileName,'" ...');
       if not DirectoryExists(DestinationFileName) then begin
        WriteLn('Creating "',DestinationFileName,'" ...');
        if not ForceDirectories(DestinationFileName) then begin
@@ -308,7 +307,40 @@ begin
 end;
 
 procedure BuildProject;
+var ProjectPath:UnicodeString;
 begin
+
+ if not DirectoryExists(PasVulkanProjectTemplatePath) then begin
+  WriteLn(ErrOutput,'Fatal: "',PasVulkanProjectTemplatePath,'" doesn''t exist!');
+  exit;
+ end;
+
+ if length(CurrentProjectName)=0 then begin
+  WriteLn(ErrOutput,'Fatal: No valid project name!');
+  exit;
+ end;
+
+ ProjectPath:=IncludeTrailingPathDelimiter(PasVulkanProjectsPath+CurrentProjectName);
+ if not ForceDirectories(ProjectPath) then begin
+  WriteLn(ErrOutput,'Fatal: "',ProjectPath,'" not found!');
+ end;
+
+ UpdateProject;
+
+ if CurrentTarget='x86_32-windows' then begin
+
+ end else if CurrentTarget='x86_64-windows' then begin
+
+ end else if CurrentTarget='x86_32-linux' then begin
+
+ end else if CurrentTarget='x86_64-linux' then begin
+
+ end else if CurrentTarget='allcpu-android' then begin
+
+ end else begin
+  WriteLn(ErrOutput,'Fatal: Target "',CurrentTarget,'" not supported!');
+ end;
+
 end;
 
 procedure RunProject;
