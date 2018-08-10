@@ -308,33 +308,16 @@ begin
 end;
 
 procedure BuildProject;
-var ProjectPath,DelphiBatchFileName:UnicodeString;
-    Config,Platform:String;
-    DelphiBatchFile:TStringList;
-begin
+type TTargetCPU=(ARM_32,ARM_64,x86_32,x86_64);
+     TTargetOS=(Android,Linux,Windows);
+var ProjectPath,ProjectSourcePath:UnicodeString;
+ procedure BuildWithDelphi;
+ var DelphiBatchFileName:UnicodeString;
+     Config,Platform:String;
+     DelphiBatchFile:TStringList;
+ begin
 
- if not DirectoryExists(PasVulkanProjectTemplatePath) then begin
-  WriteLn(ErrOutput,'Fatal: "',PasVulkanProjectTemplatePath,'" doesn''t exist!');
-  exit;
- end;
-
- if length(CurrentProjectName)=0 then begin
-  WriteLn(ErrOutput,'Fatal: No valid project name!');
-  exit;
- end;
-
- ProjectPath:=IncludeTrailingPathDelimiter(PasVulkanProjectsPath+CurrentProjectName);
- if not DirectoryExists(ProjectPath) then begin
-  WriteLn(ErrOutput,'Fatal: "',ProjectPath,'" not found!');
-  exit;
- end;
-
- UpdateProject;
-
- if (CurrentTarget='delphi-x86_32-windows') or
-    (CurrentTarget='delphi-x86_64-windows') then begin
-
-  DelphiBatchFileName:=IncludeTrailingPathDelimiter(ProjectPath+'src')+'makedelphi.bat';
+  DelphiBatchFileName:=ProjectSourcePath+'makedelphi.bat';
 
   DelphiBatchFile:=TStringList.Create;
   try
@@ -359,21 +342,154 @@ begin
    FreeAndNil(DelphiBatchFile);
   end;
 
-  if ExecuteCommand(IncludeTrailingPathDelimiter(ProjectPath+'src'),'cmd',['/c',DelphiBatchFileName]) then begin
+  if ExecuteCommand(ProjectSourcePath,'cmd',['/c',DelphiBatchFileName]) then begin
    WriteLn('Successful!');
   end else begin
    WriteLn('Errors!');
   end;
 
+ end;
+
+ procedure BuildWithFPC(const aTargetCPU:TTargetCPU;const aTargetOS:TTargetOS);
+ var Parameters:TStringList;
+     FPCExecutable:UnicodeString;
+ begin
+  FPCExecutable:='';
+  Parameters:=TStringList.Create;
+  try
+   Parameters.Add('-Sd');
+   Parameters.Add('-B');
+   case aTargetOS of
+    TTargetOS.Android:begin
+     Parameters.Add('-Tandroid');
+     case BuildMode of
+      TBuildMode.Debug:begin
+       Parameters.Add('-g');
+       Parameters.Add('-gl');
+       Parameters.Add('-gw3');
+       Parameters.Add('-Xm');
+       Parameters.Add('-dDEBUG');
+      end;
+      else {TBuildMode.Release:}begin
+       Parameters.Add('-Xs');
+       //Parameters.Add('-dRELEASE');
+      end;
+     end;
+     Parameters.Add('-dPasVulkanPasMP');
+     Parameters.Add('-dPasVulkanUseSDL2');
+     Parameters.Add('-XX');
+     Parameters.Add('-CX');
+     Parameters.Add('-Cg');
+     case aTargetCPU of
+      TTargetCPU.ARM_32:begin
+       FPCExecutable:='ppcrossarm';
+       Parameters.Add('-CpARMv7A');
+       Parameters.Add('-CfVFPv3');
+       Parameters.Add('-OpARMv7a');
+       Parameters.Add('-O-');
+       Parameters.Add('-O1');
+       Parameters.Add('-olibmain.so');
+       Parameters.Add('-FUFPCOutput\arm-android');
+       Parameters.Add('-FEFPCOutput\arm-android');
+       Parameters.Add('-Fl.\..\..\..\libs\libpngandroid\obj\local\armeabi-v7a');
+       Parameters.Add('-Fo.\..\..\..\libs\libpngandroid\obj\local\armeabi-v7a');
+       Parameters.Add('-Fl.\..\..\..\libs\sdl20androidarm32');
+       Parameters.Add('-Fo.\..\..\..\libs\sdl20androidarm32');
+      end;
+      TTargetCPU.x86_32:begin
+       FPCExecutable:='ppcross386';
+       Parameters.Add('-Cpi386');
+       Parameters.Add('-CfX87');
+       Parameters.Add('-OpPENTIUMM');
+       Parameters.Add('-O-');
+       Parameters.Add('-O1');
+       Parameters.Add('-olibmain.so');
+       Parameters.Add('-FUFPCOutput\i386-android');
+       Parameters.Add('-FEFPCOutput\i386-android');
+       Parameters.Add('-Fl.\..\..\..\libs\libpngandroid\obj\local\x86');
+       Parameters.Add('-Fo.\..\..\..\libs\libpngandroid\obj\local\x86');
+       Parameters.Add('-Fl.\..\..\..\libs\sdl20androidi386');
+       Parameters.Add('-Fo.\..\..\..\libs\sdl20androidi386');
+      end;
+     end;
+    end;
+   end;
+   Parameters.Add(String(CurrentProjectName)+'.dpr');
+   if length(FPCExecutable)>0 then begin
+    if ExecuteCommand(ProjectSourcePath,FPCExecutable,Parameters) then begin
+     WriteLn('Successful!');
+     case aTargetOS of
+      TTargetOS.Android:begin
+       case aTargetCPU of
+        TTargetCPU.ARM_32:begin
+         CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'arm-android'+DirectorySeparator+'libmain.so',
+                  ProjectSourcePath+'android'+DirectorySeparator+'app'+DirectorySeparator+'src'+DirectorySeparator+'main'+DirectorySeparator+'jniLibs'+DirectorySeparator+'armeabi-v7a'+DirectorySeparator+'libmain.so');
+        end;
+        TTargetCPU.x86_32:begin
+         CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'i386-android'+DirectorySeparator+'libmain.so',
+                  ProjectSourcePath+'android'+DirectorySeparator+'app'+DirectorySeparator+'src'+DirectorySeparator+'main'+DirectorySeparator+'jniLibs'+DirectorySeparator+'x86'+DirectorySeparator+'libmain.so');
+        end;
+       end;
+      end;
+     end;
+    end else begin
+     WriteLn('Errors!');
+    end;
+   end else begin
+    WriteLn('Fatal: Target CPU and target OS combination not supported!');
+   end;
+  finally
+   FreeAndNil(Parameters);
+  end;
+ end;
+begin
+
+ if not DirectoryExists(PasVulkanProjectTemplatePath) then begin
+  WriteLn(ErrOutput,'Fatal: "',PasVulkanProjectTemplatePath,'" doesn''t exist!');
+  exit;
+ end;
+
+ if length(CurrentProjectName)=0 then begin
+  WriteLn(ErrOutput,'Fatal: No valid project name!');
+  exit;
+ end;
+
+ ProjectPath:=IncludeTrailingPathDelimiter(PasVulkanProjectsPath+CurrentProjectName);
+ if not DirectoryExists(ProjectPath) then begin
+  WriteLn(ErrOutput,'Fatal: "',ProjectPath,'" not found!');
+  exit;
+ end;
+
+ UpdateProject;
+
+ ProjectSourcePath:=IncludeTrailingPathDelimiter(ProjectPath+'src');
+
+ if (CurrentTarget='delphi-x86_32-windows') or
+    (CurrentTarget='delphi-x86_64-windows') then begin
+
+  BuildWithDelphi;
+
  end else if CurrentTarget='fpc-x86_32-windows' then begin
+
+  BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Windows);
 
  end else if CurrentTarget='fpc-x86_64-windows' then begin
 
+  BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Windows);
+
  end else if CurrentTarget='fpc-x86_32-linux' then begin
+
+  BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Linux);
 
  end else if CurrentTarget='fpc-x86_64-linux' then begin
 
+  BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Linux);
+
  end else if CurrentTarget='fpc-allcpu-android' then begin
+
+  BuildWithFPC(TTargetCPU.ARM_32,TTargetOS.Android);
+
+  BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Android);
 
  end else begin
   WriteLn(ErrOutput,'Fatal: Target "',CurrentTarget,'" not supported!');

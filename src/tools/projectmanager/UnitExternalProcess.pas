@@ -18,7 +18,8 @@ uses {$if defined(Win32) or defined(Win64) or defined(Windows)}
      {$endif}
      SysUtils,Classes,UnitVersion,UnitGlobals;
 
-function ExecuteCommand(const aDirectory,aExecutable:UnicodeString;const aParameters:array of UnicodeString):boolean;
+function ExecuteCommand(const aDirectory,aExecutable:UnicodeString;const aParameters:array of UnicodeString):boolean; overload;
+function ExecuteCommand(const aDirectory,aExecutable:UnicodeString;const aParameters:TStrings):boolean; overload;
 
 implementation
 
@@ -137,6 +138,22 @@ begin
  end;
 end;
 {$ifend}
+
+function ExecuteCommand(const aDirectory,aExecutable:UnicodeString;const aParameters:TStrings):boolean;
+var Index:Int32;
+    Parameters:array of UnicodeString;
+begin
+ Parameters:=nil;
+ try
+  SetLength(Parameters,aParameters.Count);
+  for Index:=0 to aParameters.Count-1 do begin
+   Parameters[Index]:=UnicodeString(aParameters.Strings[Index]);
+  end;
+  result:=ExecuteCommand(aDirectory,aExecutable,Parameters);
+ finally
+  Parameters:=nil;
+ end;
+end;
 
 end.
 
