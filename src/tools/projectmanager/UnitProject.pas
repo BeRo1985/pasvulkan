@@ -243,6 +243,7 @@ begin
  ProjectPath:=IncludeTrailingPathDelimiter(PasVulkanProjectsPath+CurrentProjectName);
  if not DirectoryExists(ProjectPath) then begin
   WriteLn(ErrOutput,'Fatal: "',ProjectPath,'" not found!');
+  exit;
  end;
 
  ProjectMetaDataPath:=IncludeTrailingPathDelimiter(ProjectPath+'metadata');
@@ -325,6 +326,7 @@ begin
  ProjectPath:=IncludeTrailingPathDelimiter(PasVulkanProjectsPath+CurrentProjectName);
  if not DirectoryExists(ProjectPath) then begin
   WriteLn(ErrOutput,'Fatal: "',ProjectPath,'" not found!');
+  exit;
  end;
 
  UpdateProject;
