@@ -113,7 +113,9 @@ begin
     ExitCode:=1;
    end;
   end else if CurrentCommand='run' then begin
-   RunProject;
+   if not RunProject then begin
+    ExitCode:=1;
+   end;
   end else begin
    WriteLn('Unknown command: ',CurrentCommand);
   end;

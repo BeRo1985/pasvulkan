@@ -16,7 +16,7 @@ function CreateProject:boolean;
 function UpdateProject:boolean;
 function CompileAssets:boolean;
 function BuildProject:boolean;
-procedure RunProject;
+function RunProject:boolean;
 
 implementation
 
@@ -887,7 +887,7 @@ begin
  end;
 
  if not UpdateProject then begin
-  exit
+  exit;
  end;
 
  ProjectSourcePath:=IncludeTrailingPathDelimiter(ProjectPath+'src');
@@ -933,8 +933,57 @@ begin
 
 end;
 
-procedure RunProject;
+function RunProject:boolean;
+var ProjectPath,ProjectBinaryPath,ProjectBinaryFileName:UnicodeString;
 begin
+
+ result:=false;
+
+ if length(CurrentProjectName)=0 then begin
+  WriteLn(ErrOutput,'Fatal: No valid project name!');
+  exit;
+ end;
+
+ ProjectPath:=IncludeTrailingPathDelimiter(PasVulkanProjectsPath+CurrentProjectName);
+ if not DirectoryExists(ProjectPath) then begin
+  WriteLn(ErrOutput,'Fatal: "',ProjectPath,'" not found!');
+  exit;
+ end;
+
+ ProjectBinaryPath:=IncludeTrailingPathDelimiter(ProjectPath+'bin');
+ if not DirectoryExists(ProjectBinaryPath) then begin
+  WriteLn(ErrOutput,'Fatal: "',ProjectBinaryPath,'" not found!');
+  exit;
+ end;
+
+ ProjectBinaryFileName:=ProjectBinaryPath+CurrentProjectName+
+                {$if (defined(Win32) or defined(Win64) or defined(Windows)) and defined(cpu386)}
+                 '_x86_32-windows'+
+                {$elseif (defined(Win32) or defined(Win64) or defined(Windows)) and (defined(cpuamd64) or defined(cpux64))}
+                 '_x86_64-windows'+
+                {$elseif defined(Linux) and defined(cpu386)}
+                 '_x86_32-linux'+
+                {$elseif defined(Linux) and (defined(cpuamd64) or defined(cpux64))}
+                 '_x86_64-linux'+
+                {$elseif defined(Android)}
+                 '_android'+
+                {$endif}
+                {$if defined(Win32) or defined(Win64) or defined(Windows)}
+                '.exe'+
+                {$endif}
+                '';
+
+ if not FileExists(ProjectBinaryFileName) then begin
+  WriteLn(ErrOutput,'Fatal: "',ProjectBinaryFileName,'" not found!');
+  exit;
+ end;
+
+ if not ExecuteCommand(ProjectBinaryPath,ProjectBinaryFileName,[]) then begin
+  exit;
+ end;
+
+ result:=true;
+
 end;
 
 end.
