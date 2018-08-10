@@ -60,7 +60,8 @@ begin
  WriteLn('          --sdl2-static-link                   Static linking of SDL2 (Windows-only)');
  WriteLn('          --fpc-binary-path [path]             Path to the SVN trunk version of the FreePascal Compiler');
  WriteLn;
- WriteLn('Commands: create [projectname]                 Create a new project (project name must be a valid lowercase pascal and java identifier)');
+ WriteLn('Commands: compileassets [projectname]          Compile assets');
+ WriteLn('          create [projectname]                 Create a new project (project name must be a valid lowercase pascal and java identifier)');
  WriteLn('          build [projectname] ([target(s)])    Build an existent project');
  WriteLn('          run [projectname]                    Run an existent project');
  WriteLn('          update [projectname]                 Update the project base files of an existent project');
@@ -101,6 +102,10 @@ begin
    end;
   end else if CurrentCommand='update' then begin
    if not UpdateProject then begin
+    ExitCode:=1;
+   end;
+  end else if CurrentCommand='compileassets' then begin
+   if not CompileAssets then begin
     ExitCode:=1;
    end;
   end else if CurrentCommand='build' then begin

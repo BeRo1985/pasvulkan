@@ -14,6 +14,7 @@ uses SysUtils,Classes,UnitVersion,UnitGlobals,UnitExternalProcess;
 
 function CreateProject:boolean;
 function UpdateProject:boolean;
+function CompileAssets:boolean;
 function BuildProject:boolean;
 procedure RunProject;
 
@@ -350,6 +351,41 @@ begin
  end;
 
  result:=true;
+
+end;
+
+function CompileAssets:boolean;
+var ProjectPath,ProjectAssetSourcePath:UnicodeString;
+begin
+
+ result:=false;
+
+ if UpdateProject then begin
+
+  ProjectPath:=IncludeTrailingPathDelimiter(PasVulkanProjectsPath+CurrentProjectName);
+  if not DirectoryExists(ProjectPath) then begin
+   WriteLn(ErrOutput,'Fatal: "',ProjectPath,'" not found!');
+   exit;
+  end;
+
+  ProjectAssetSourcePath:=IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ProjectPath+'src')+'assets');
+  if not DirectoryExists(ProjectAssetSourcePath) then begin
+   WriteLn(ErrOutput,'Fatal: "',ProjectAssetSourcePath,'" not found!');
+   exit;
+  end;
+
+  if {$ifdef Windows}
+      ExecuteCommand(ProjectAssetSourcePath,'cmd',['/c','compile.bat'])
+    {$else}
+      ExecuteCommand(ProjectAssetSourcePath,'bash'['compile'])
+    {$endif} then begin
+   WriteLn('Successful!');
+   result:=true;
+  end else begin
+   WriteLn('Errors!');
+  end;
+
+ end;
 
 end;
 
