@@ -87,7 +87,7 @@ begin
         ReadFile(ReadHandle,Buffer[0],BufferSize,CountRead,nil);
         Buffer[CountRead]:=#0;
         OemToAnsi(@Buffer[0],@Buffer[0]);
-        Write(PAnsiChar(@Buffer[0])^);
+        Write(PAnsiChar(@Buffer[0]));
        until CountRead<BufferSize;
       until WaitForSingleObjectResult<>WAIT_TIMEOUT;
      finally
