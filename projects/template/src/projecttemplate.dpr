@@ -41,6 +41,8 @@ uses
   SysUtils,
   Classes,
   Vulkan,
+  PasVulkan.Types,
+  PasVulkan.Android,
   PasVulkan.SDL2,
   PasVulkan.Framework,
   PasVulkan.Application,  

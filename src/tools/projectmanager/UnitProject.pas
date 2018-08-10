@@ -449,7 +449,9 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc'+ExecutableFileExtension,FPCbinaryPath) then begin
         FPCExecutable:='fpc';
        end;
-       Parameters.Add('-PARMv7a');
+       if FPCExecutable='fpc' then begin
+        Parameters.Add('-PARMv7a');
+       end;
        Parameters.Add('-CpARMv7A');
        Parameters.Add('-CfVFPv3');
        Parameters.Add('-OpARMv7a');
@@ -471,7 +473,9 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc'+ExecutableFileExtension,FPCbinaryPath) then begin
         FPCExecutable:='fpc';
        end;
-       Parameters.Add('-Pi386');
+       if FPCExecutable='fpc' then begin
+        Parameters.Add('-Pi386');
+       end;
        Parameters.Add('-CpPENTIUMM');
        Parameters.Add('-CfX87');
        Parameters.Add('-OpPENTIUMM');
@@ -520,7 +524,9 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc'+ExecutableFileExtension,FPCbinaryPath) then begin
         FPCExecutable:='fpc';
        end;
-       Parameters.Add('-Pi386');
+       if FPCExecutable='fpc' then begin
+        Parameters.Add('-Pi386');
+       end;
        Parameters.Add('-CpPENTIUMM');
        Parameters.Add('-CfX87');
        Parameters.Add('-OpPENTIUMM');
@@ -540,7 +546,9 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc'+ExecutableFileExtension,FPCbinaryPath) then begin
         FPCExecutable:='fpc';
        end;
-       Parameters.Add('-Px86_64');
+       if FPCExecutable='fpc' then begin
+        Parameters.Add('-Px86_64');
+       end;
        Parameters.Add('-CpCOREAVX');
        Parameters.Add('-CfSSE64');
        Parameters.Add('-OpCOREAVX');
@@ -583,7 +591,9 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc'+ExecutableFileExtension,FPCbinaryPath) then begin
         FPCExecutable:='fpc';
        end;
-       Parameters.Add('-Pi386');
+       if FPCExecutable='fpc' then begin
+        Parameters.Add('-Pi386');
+       end;
        Parameters.Add('-Twin32');
        Parameters.Add('-CpPENTIUMM');
        Parameters.Add('-CfX87');
@@ -608,7 +618,9 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc'+ExecutableFileExtension,FPCbinaryPath) then begin
         FPCExecutable:='fpc';
        end;
-       Parameters.Add('-Px86_64');
+       if FPCExecutable='fpc' then begin
+        Parameters.Add('-Px86_64');
+       end;
        Parameters.Add('-Twin64');
        Parameters.Add('-CpCOREAVX');
        Parameters.Add('-CfSSE64');
