@@ -48,7 +48,7 @@ begin
   PathStringList.StrictDelimiter:=true;
   PathStringList.DelimitedText:=String(PathString);
   for Index:=0 to PathStringList.Count-1 do begin
-   CurrentPath:=UnicodeString(IncludeLeadingPathDelimiter(PathStringList.Strings[Index]));
+   CurrentPath:=UnicodeString(IncludeTrailingPathDelimiter(PathStringList.Strings[Index]));
    if FileExists(CurrentPath+aBinaryName) then begin
     result:=true;
     break;
