@@ -4,10 +4,6 @@ Vulkan header generator and Vulkan OOP-style API wrapper for Object Pascal (Free
 
 The Vulkan.pas binding header unit itself (including the vkxml2pas.dpr converter) is and stays also compatible with the old Delphi 7 version, but the PasVulkan.*.pas framework units are no more Delphi 7 compatible, because they are using new Object Pascal syntax features, as such as generics, operator overloading, advanced records and so on, which for these the old Delphi 7 compiler version have no support for.
 
-## Important information
-
-You must first compile the (yet incomplete) PasVulkan project manager using compileprojectmanager (*nix) or compileprojectmanager.bat (Windows) so that you can then use the PasVulkan project manager as a command line tool named projectmanager(.exe) .
-
 ## Support me
 
 [Support me at Patreon](https://www.patreon.com/bero)
@@ -19,6 +15,36 @@ You must first compile the (yet incomplete) PasVulkan project manager using comp
 - [My Twitter account](https://twitter.com/coder)
 - [My Facebook account](https://www.facebook.com/benjamin.rosseaux)
 - [My Google+  account](https://plus.google.com/+BenjaminRosseaux)
+
+## Important information
+
+You must first compile the (yet incomplete) PasVulkan project manager using compileprojectmanager (*nix) or compileprojectmanager.bat (Windows) so that you can then use the PasVulkan project manager as a command line tool named projectmanager(.exe) .
+
+And you do need either the most current Delphi version or the most current SVN trunk version of the FreePascal compiler (and not just the stable version of the FreePascal compiler), including correct paths in your PATH environment variable to these compiler binaries. And if you also want to use the Android target, the same applies to Android Studio, the Java SDK, the Android SDK and the Android NDK, that these must be installed at their default locations (as Google prescribes or specifies these default locations, without exceptions) and must be correctly exist in the system environment variables.
+
+## How to build and to run the example project
+
+After you've compiled the projectmanager binary, you need to do the following: 
+  
+| Step | Windows                                  | *nix                                    | Description                                |
+| ---- | ---------------------------------------- | --------------------------------------- | ------------------------------------------ |
+| 1.   | `projectmanager compileassets examples`  | `projectmanager compileassets examples` | It compiles the asset files                |
+| 2.   | `projectmanager build examples`          | `projectmanager build examples`         | It compiles the example code itself        |
+| 3.   | `projectmanager run examples`            | `projectmanager run examples`           | It starts the example binary               |
+
+## How to create a new project
+
+After you've compiled the projectmanager binary, you need to do the following: 
+  
+| Step | Windows                                   | *nix                                      | Description                                |
+| ---- | ----------------------------------------- | ----------------------------------------- | ------------------------------------------ |
+| 1.   | `projectmanager create [yourprojectname]` | `projectmanager create [yourprojectname]` | It creates the new project                 |
+
+*Important:* Where the project name must be a valid lowercase pascal *and* java identifier *and* even a valid file name at the same time!
+
+## For further information regarding the project manager
+
+After you've compiled the projectmanager binary, just execute `projectmanager -h` in your shell or console for a detailed help output. 
 
 ## Features
 
