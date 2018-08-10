@@ -12,6 +12,8 @@ interface
 
 uses SysUtils,Classes,UnitVersion;
 
+type TBuildMode=(Debug,Release);
+
 var OwnExecutableFileName:UnicodeString='';
     PasVulkanRootPath:UnicodeString='';
     PasVulkanProjectsPath:UnicodeString='';
@@ -24,6 +26,8 @@ var OwnExecutableFileName:UnicodeString='';
     CurrentCommand:UnicodeString='';
     CurrentProjectName:UnicodeString='';
     CurrentTarget:UnicodeString='';
+
+    BuildMode:TBuildMode=TBuildMode.Release;
 
 implementation
 

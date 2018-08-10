@@ -33,6 +33,10 @@ begin
     end else if (Current='-i') or (Current='--info') then begin
      DoShowUsage:=false;
      DoShowInfos:=true;
+    end else if (Current='--debug') then begin
+     BuildMode:=TBuildMode.Debug;
+    end else if (Current='--release') then begin
+     BuildMode:=TBuildMode.Release;
     end;
    end else begin
     case NormalParameterCounter of

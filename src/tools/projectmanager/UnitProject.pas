@@ -10,7 +10,7 @@ unit UnitProject;
 
 interface
 
-uses SysUtils,Classes,UnitVersion,UnitGlobals;
+uses SysUtils,Classes,UnitVersion,UnitGlobals,UnitExternalProcess;
 
 procedure CreateProject;
 procedure UpdateProject;
@@ -307,7 +307,9 @@ begin
 end;
 
 procedure BuildProject;
-var ProjectPath:UnicodeString;
+var ProjectPath,DelphiBatchFileName:UnicodeString;
+    Config,Platform:String;
+    DelphiBatchFile:TStringList;
 begin
 
  if not DirectoryExists(PasVulkanProjectTemplatePath) then begin
@@ -327,9 +329,39 @@ begin
 
  UpdateProject;
 
- if CurrentTarget='delphi-x86_32-windows' then begin
+ if (CurrentTarget='delphi-x86_32-windows') or
+    (CurrentTarget='delphi-x86_64-windows') then begin
 
- end else if CurrentTarget='delphi-x86_64-windows' then begin
+  DelphiBatchFileName:=IncludeTrailingPathDelimiter(ProjectPath+'src')+'makedelphi.bat';
+
+  DelphiBatchFile:=TStringList.Create;
+  try
+   DelphiBatchFile.Add('@echo off');
+   DelphiBatchFile.Add('call rsvars.bat');
+   if CurrentTarget='delphi-x86_64-windows' then begin
+    Platform:='Win64';
+   end else begin
+    Platform:='Win32';
+   end;
+   case BuildMode of
+    TBuildMode.Debug:begin
+     Config:='Debug';
+    end;
+    else {TBuildMode.Release:}begin
+     Config:='Release';
+    end;
+   end;
+   DelphiBatchFile.Add('msbuild '+String(CurrentProjectName)+'.dproj /t:Rebuild /p:Config='+Config+';Platform='+Platform);
+   DelphiBatchFile.SaveToFile(String(DelphiBatchFileName));
+  finally
+   FreeAndNil(DelphiBatchFile);
+  end;
+
+  if ExecuteCommand(IncludeTrailingPathDelimiter(ProjectPath+'src'),'cmd',['/c',DelphiBatchFileName]) then begin
+   WriteLn('Successful!');
+  end else begin
+   WriteLn('Errors!');
+  end;
 
  end else if CurrentTarget='fpc-x86_32-windows' then begin
 

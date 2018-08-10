@@ -53,6 +53,8 @@ begin
  WriteLn;
  WriteLn('Options: -h / --help / -?                      Show this help');
  WriteLn('         -i / --info                           Show informations');
+ WriteLn('          --debug                              Compile as debug build');
+ WriteLn('          --release                            Compile as release build (default)');
  WriteLn;
  WriteLn('Commands: create [projectname]                 Create a new project (project name must be a valid lowercase pascal and java identifier)');
  WriteLn('          build [projectname] ([target(s)])    Build an existent project');
