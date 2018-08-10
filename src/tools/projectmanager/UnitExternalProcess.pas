@@ -40,7 +40,7 @@ begin
  FillChar(StartupInfo,SizeOf(TStartupInfoW),#0);
  StartupInfo.cb:=SizeOf(TStartupInfoW);
  StartupInfo.dwFlags:=STARTF_USESHOWWINDOW;
- StartupInfo.wShowWindow:=SW_HIDE;
+ StartupInfo.wShowWindow:=SW_NORMAL;
  CommandLine:='';
  for Index:=-1 to length(aParameters)-1 do begin
   if Index<0 then begin
