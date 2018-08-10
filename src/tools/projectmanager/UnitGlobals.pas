@@ -34,18 +34,28 @@ begin
  PasVulkanProjectsPath:=IncludeTrailingPathDelimiter(PasVulkanRootPath+'projects');
  PasVulkanProjectTemplatePath:=IncludeTrailingPathDelimiter(PasVulkanProjectsPath+'template');
 
+{$if defined(fpc)}
 {$if (defined(Win32) or defined(Win64) or defined(Windows)) and defined(cpu386)}
- CurrentTarget:='x86_32-windows';
+ CurrentTarget:='fpc-x86_32-windows';
 {$elseif (defined(Win32) or defined(Win64) or defined(Windows)) and (defined(cpuamd64) or defined(cpux64))}
- CurrentTarget:='x86_64-windows';
+ CurrentTarget:='fpc-x86_64-windows';
 {$elseif defined(Linux) and defined(cpu386)}
- CurrentTarget:='x86_32-linux';
+ CurrentTarget:='fpc-x86_32-linux';
 {$elseif defined(Linux) and (defined(cpuamd64) or defined(cpux64))}
- CurrentTarget:='x86_64-linux';
+ CurrentTarget:='fpc-x86_64-linux';
 {$elseif defined(Android)}
- CurrentTarget:='allcpu-android';
+ CurrentTarget:='fpc-allcpu-android';
 {$else}
  CurrentTarget:='';
+{$ifend}
+{$else}
+{$if (defined(Win32) or defined(Win64) or defined(Windows)) and defined(cpu386)}
+ CurrentTarget:='delphi-x86_32-windows';
+{$elseif (defined(Win32) or defined(Win64) or defined(Windows)) and (defined(cpuamd64) or defined(cpux64))}
+ CurrentTarget:='delphi-x86_64-windows';
+{$else}
+ CurrentTarget:='';
+{$ifend}
 {$ifend}
 
 end;

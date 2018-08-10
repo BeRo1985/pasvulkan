@@ -327,15 +327,19 @@ begin
 
  UpdateProject;
 
- if CurrentTarget='x86_32-windows' then begin
+ if CurrentTarget='delphi-x86_32-windows' then begin
 
- end else if CurrentTarget='x86_64-windows' then begin
+ end else if CurrentTarget='delphi-x86_64-windows' then begin
 
- end else if CurrentTarget='x86_32-linux' then begin
+ end else if CurrentTarget='fpc-x86_32-windows' then begin
 
- end else if CurrentTarget='x86_64-linux' then begin
+ end else if CurrentTarget='fpc-x86_64-windows' then begin
 
- end else if CurrentTarget='allcpu-android' then begin
+ end else if CurrentTarget='fpc-x86_32-linux' then begin
+
+ end else if CurrentTarget='fpc-x86_64-linux' then begin
+
+ end else if CurrentTarget='fpc-allcpu-android' then begin
 
  end else begin
   WriteLn(ErrOutput,'Fatal: Target "',CurrentTarget,'" not supported!');

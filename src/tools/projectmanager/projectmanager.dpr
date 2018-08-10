@@ -27,44 +27,46 @@ function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDe
 
 procedure ShowTitle;
 begin
- Writeln('PasVulkan project manager version ',ProjectManagerVersion);
- Writeln(ProjectManagerCopyright);
+ WriteLn('PasVulkan project manager version ',ProjectManagerVersion);
+ WriteLn(ProjectManagerCopyright);
 end;
 
 procedure ShowUsage;
 begin
- Writeln('Usage: ',ExtractFileName(OwnExecutableFileName),' ([options] ...) [command] ([command parameters])');
+ WriteLn('Usage: ',ExtractFileName(OwnExecutableFileName),' ([options] ...) [command] ([command parameters])');
 end;
 
 procedure ShowInfos;
 begin
- Writeln('Built with ',{$if defined(fpc)}
+ WriteLn('Built with ',{$if defined(fpc)}
           'FreePascal compiler ',{$i %FPCVERSION%},' for ',{$i %FPCTARGETCPU%},' on ',{$i %FPCTARGETOS%},' at ',{$i %DATE%}
          {$else}
           'Delphi compiler'
          {$ifend});
- Writeln('PasVulkan root path: ',PasVulkanRootPath);
+ WriteLn('PasVulkan root path: ',PasVulkanRootPath);
 end;
 
 procedure ShowHelp;
 begin
- Writeln;
+ WriteLn;
  ShowUsage;
- Writeln;
- Writeln('Options: -h / --help / -?                      Show this help');
- Writeln('         -i / --info                           Show informations');
- Writeln;
- Writeln('Commands: create [projectname]                 Create a new project (project name must be a valid lowercase pascal and java identifier)');
- Writeln('          build [projectname] ([target(s)])    Build an existent project');
- Writeln('          run [projectname]                    Run an existent project');
- Writeln('          update [projectname]                 Update the project base files of an existent project');
- Writeln;
- Writeln('Supported targets: allcpu-android');
- Writeln('                   x86_32-linux');
- Writeln('                   x86_64-linux');
- Writeln('                   x86_32-windows');
- Writeln('                   x86_64-windows');
- Writeln;
+ WriteLn;
+ WriteLn('Options: -h / --help / -?                      Show this help');
+ WriteLn('         -i / --info                           Show informations');
+ WriteLn;
+ WriteLn('Commands: create [projectname]                 Create a new project (project name must be a valid lowercase pascal and java identifier)');
+ WriteLn('          build [projectname] ([target(s)])    Build an existent project');
+ WriteLn('          run [projectname]                    Run an existent project');
+ WriteLn('          update [projectname]                 Update the project base files of an existent project');
+ WriteLn;
+ WriteLn('Supported targets: fpc-allcpu-android');
+ WriteLn('                   fpc-x86_32-linux');
+ WriteLn('                   fpc-x86_64-linux');
+ WriteLn('                   fpc-x86_32-windows');
+ WriteLn('                   fpc-x86_64-windows');
+ WriteLn('                   delphi-x86_32-windows');
+ WriteLn('                   delphi-x86_64-windows');
+ WriteLn;
 end;
 
 begin
@@ -93,13 +95,13 @@ ParseCommandLine;
   end else if CurrentCommand='run' then begin
    RunProject;
   end else begin
-   Writeln('Unknown command: ',CurrentCommand);
+   WriteLn('Unknown command: ',CurrentCommand);
   end;
  end;
 
 {$ifdef Windows}
  if {$ifdef fpc}IsDebuggerPresent{$else}DebugHook<>0{$endif} then begin
-  Writeln('Press return to exit . . . ');
+  WriteLn('Press return to exit . . . ');
   ReadLn;
  end;
 {$endif}
