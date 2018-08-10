@@ -39,6 +39,14 @@ begin
      BuildMode:=TBuildMode.Release;
     end else if (Current='--sdl2-static-link') then begin
      SDL2StaticLinking:=true;
+    end else if (Current='--fpc-binary-path') then begin
+     if (Index+1)<=Count then begin
+      inc(Index);
+      FPCBinaryPath:=UnicodeString(UTF8String(ParamStr(Index)));
+      if length(FPCBinaryPath)>0 then begin
+       FPCBinaryPath:=UnicodeString(IncludeTrailingPathDelimiter(String(FPCBinaryPath)));
+      end;
+     end;
     end;
    end else begin
     case NormalParameterCounter of

@@ -32,7 +32,7 @@ begin
 end;
 {$endif}
 
-function HasBinaryInExecutableEnviromentPath(const aBinaryName:UnicodeString;const aAdditionalPaths:UnicodeString=''):boolean;
+function FindBinaryInExecutableEnviromentPath(out aFoundExecutable:UnicodeString;const aBinaryName:UnicodeString;const aAdditionalPaths:UnicodeString=''):boolean;
 var Index:Int32;
     PathString,CurrentPath:UnicodeString;
     PathStringList:TStringList;
@@ -50,6 +50,7 @@ begin
   for Index:=0 to PathStringList.Count-1 do begin
    CurrentPath:=UnicodeString(IncludeTrailingPathDelimiter(PathStringList.Strings[Index]));
    if FileExists(CurrentPath+aBinaryName) then begin
+    aFoundExecutable:=CurrentPath+aBinaryName;
     result:=true;
     break;
    end;
@@ -378,9 +379,10 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
  end;
  procedure BuildWithFPC(const aTargetCPU:TTargetCPU;const aTargetOS:TTargetOS);
  var Parameters:TStringList;
-     FPCExecutable:UnicodeString;
+     FPCExecutable,FoundFPCExecutable:UnicodeString;
  begin
   FPCExecutable:='';
+  FoundFPCExecutable:='';
   Parameters:=TStringList.Create;
   try
    Parameters.Add('-Sd');
@@ -409,11 +411,11 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
      Parameters.Add('-dPasVulkanUseSDL2');
      case aTargetCPU of
       TTargetCPU.ARM_32:begin
-       if HasBinaryInExecutableEnviromentPath('ppcrossarm') then begin
+       if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcrossarm',FPCBinaryPath) then begin
         FPCExecutable:='ppcrossarm';
-       end else if HasBinaryInExecutableEnviromentPath('ppcarm') then begin
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcarm',FPCBinaryPath) then begin
         FPCExecutable:='ppcarm';
-       end else if HasBinaryInExecutableEnviromentPath('fpc') then begin
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc',FPCBinaryPath) then begin
         FPCExecutable:='fpc';
        end;
        Parameters.Add('-PARMv7a');
@@ -431,11 +433,11 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20androidarm32');
       end;
       TTargetCPU.x86_32:begin
-       if HasBinaryInExecutableEnviromentPath('ppcross386') then begin
+       if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcross386',FPCBinaryPath) then begin
         FPCExecutable:='ppcross386';
-       end else if HasBinaryInExecutableEnviromentPath('ppc386') then begin
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppc386',FPCBinaryPath) then begin
         FPCExecutable:='ppc386';
-       end else if HasBinaryInExecutableEnviromentPath('fpc') then begin
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc',FPCBinaryPath) then begin
         FPCExecutable:='fpc';
        end;
        Parameters.Add('-Pi386');
@@ -480,11 +482,11 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
      end;
      case aTargetCPU of
       TTargetCPU.x86_32:begin
-       if HasBinaryInExecutableEnviromentPath('ppcross386') then begin
+       if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcross386',FPCBinaryPath) then begin
         FPCExecutable:='ppcross386';
-       end else if HasBinaryInExecutableEnviromentPath('ppc386') then begin
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppc386',FPCBinaryPath) then begin
         FPCExecutable:='ppc386';
-       end else if HasBinaryInExecutableEnviromentPath('fpc') then begin
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc',FPCBinaryPath) then begin
         FPCExecutable:='fpc';
        end;
        Parameters.Add('-Pi386');
@@ -500,11 +502,11 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        Parameters.Add('-FEFPCOutput'+DirectorySeparator+'x86_32-linux');
       end;
       TTargetCPU.x86_64:begin
-       if HasBinaryInExecutableEnviromentPath('ppcrossx64') then begin
+       if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcrossx64',FPCBinaryPath) then begin
         FPCExecutable:='ppcrossx64';
-       end else if HasBinaryInExecutableEnviromentPath('ppcx64') then begin
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcx64',FPCBinaryPath) then begin
         FPCExecutable:='ppcx64';
-       end else if HasBinaryInExecutableEnviromentPath('fpc') then begin
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc',FPCBinaryPath) then begin
         FPCExecutable:='fpc';
        end;
        Parameters.Add('-Px86_64');
@@ -544,11 +546,11 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
      end;
      case aTargetCPU of
       TTargetCPU.x86_32:begin
-       if HasBinaryInExecutableEnviromentPath('ppcross386') then begin
+       if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcross386',FPCBinaryPath) then begin
         FPCExecutable:='ppcross386';
-       end else if HasBinaryInExecutableEnviromentPath('ppc386') then begin
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppc386',FPCBinaryPath) then begin
         FPCExecutable:='ppc386';
-       end else if HasBinaryInExecutableEnviromentPath('fpc') then begin
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc',FPCBinaryPath) then begin
         FPCExecutable:='fpc';
        end;
        Parameters.Add('-Pi386');
@@ -568,11 +570,11 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        end;
       end;
       TTargetCPU.x86_64:begin
-       if HasBinaryInExecutableEnviromentPath('ppcrossx64') then begin
+       if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcrossx64',FPCBinaryPath) then begin
         FPCExecutable:='ppcrossx64';
-       end else if HasBinaryInExecutableEnviromentPath('ppcx64') then begin
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'ppcx64',FPCBinaryPath) then begin
         FPCExecutable:='ppcx64';
-       end else if HasBinaryInExecutableEnviromentPath('fpc') then begin
+       end else if FindBinaryInExecutableEnviromentPath(FoundFPCExecutable,'fpc',FPCBinaryPath) then begin
         FPCExecutable:='fpc';
        end;
        Parameters.Add('-Px86_64');
@@ -595,8 +597,8 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
     end;
    end;
    Parameters.Add(String(CurrentProjectName)+'.dpr');
-   if length(FPCExecutable)>0 then begin
-    if ExecuteCommand(ProjectSourcePath,FPCExecutable,Parameters) then begin
+   if (length(FPCExecutable)>0) and (length(FoundFPCExecutable)>0) then begin
+    if ExecuteCommand(ProjectSourcePath,FoundFPCExecutable,Parameters) then begin
      WriteLn('Successful!');
      case aTargetOS of
       TTargetOS.Android:begin

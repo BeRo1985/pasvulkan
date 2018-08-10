@@ -56,6 +56,7 @@ begin
  WriteLn('          --debug                              Compile as debug build');
  WriteLn('          --release                            Compile as release build (default)');
  WriteLn('          --sdl2-static-link                   Static linking of SDL2 (Windows-only)');
+ WriteLn('          --fpc-binary-path [path]             Path to the SVN trunk version of the FreePascal Compiler');
  WriteLn;
  WriteLn('Commands: create [projectname]                 Create a new project (project name must be a valid lowercase pascal and java identifier)');
  WriteLn('          build [projectname] ([target(s)])    Build an existent project');

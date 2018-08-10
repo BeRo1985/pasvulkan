@@ -19,6 +19,8 @@ var OwnExecutableFileName:UnicodeString='';
     PasVulkanProjectsPath:UnicodeString='';
     PasVulkanProjectTemplatePath:UnicodeString='';
 
+    FPCBinaryPath:UnicodeString='';
+
     DoShowUsage:boolean=true;
     DoShowHelp:boolean=false;
     DoShowInfos:boolean=false;
