@@ -18,21 +18,23 @@ uses {$if defined(Win32) or defined(Win64) or defined(Windows)}
      {$endif}
      SysUtils,Classes,UnitVersion,UnitGlobals;
 
-function ExecuteCommand(const aCommand,aParameters:UnicodeString):boolean;
+function ExecuteCommand(const aDirectory,aExecutable:UnicodeString;const aParameters:array of UnicodeString):boolean;
 
 implementation
 
-function ExecuteCommand(const aCommand,aParameters:UnicodeString):boolean;
-{$if defined(Win32) or defined(Win64) or defined(Windows)}
+function ExecuteCommand(const aDirectory,aExecutable:UnicodeString;const aParameters:array of UnicodeString):boolean;
+{$if (defined(Win32) or defined(Win64) or defined(Windows))} // and not defined(fpc)}
 const BufferSize=4096;
 var SecurityAttributes:TSecurityAttributes;
     ReadHandle,WriteHandle:THandle;
     StartupInfo:Windows.TStartupInfoW;
     ProcessInformation:TProcessInformation;
     Buffer:array of AnsiChar;
+    Index:Int32;
     CountRead:UInt32;
     WaitForSingleObjectResult:HRESULT;
     CmdLine:WideString;
+    Parameter:UnicodeString;
     ExitCode:DWORD;
 begin
  result:=false;
@@ -48,7 +50,21 @@ begin
    StartupInfo.hStdError:=WriteHandle;
    StartupInfo.dwFlags:=STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
    StartupInfo.wShowWindow:=SW_HIDE;
-   CmdLine:=WideString(ACommand+' '+AParameters);
+   CmdLine:='';
+   for Index:=-1 to length(aParameters)-1 do begin
+    if Index<0 then begin
+     Parameter:=aExecutable;
+    end else begin
+     Parameter:=aParameters[Index];
+    end;
+    if (pos(' ',Parameter)>0) and (pos('"',Parameter)=0) then begin
+     Parameter:='"'+Parameter+'"';
+    end;
+    if length(CmdLine)>0 then begin
+     CmdLine:=CmdLine+' ';
+    end;
+    CmdLine:=CmdLine+WideString(Parameter);
+   end;
    if CreateProcessW(nil,
                      PWideChar(CmdLine),
                      @SecurityAttributes,
@@ -91,7 +107,33 @@ begin
  end;
 end;
 {$else}
+var ChildProcess:TProcess;
+    Index,Count:Int32;
+    TempString:UTF8String;
 begin
+ ChildProcess:=TProcess.Create(nil);
+ try
+  ChildProcess.Options:=[poUsePipes,poStderrToOutput];
+  ChildProcess.ShowWindow:=swoHide;
+  ChildProcess.CurrentDirectory:=String(aDirectory);
+  ChildProcess.Executable:=String(aExecutable);
+  for Index:=0 to length(aParameters)-1 do begin
+   ChildProcess.Parameters.Add(String(aParameters[Index]));
+  end;
+  ChildProcess.Execute;
+  while ChildProcess.Running do begin
+   Count:=ChildProcess.Output.NumBytesAvailable;
+   if Count>0 then begin
+    SetLength(TempString,Count);
+    ChildProcess.Output.ReadBuffer(TempString[1],Count);
+    Write(TempString);
+   end;
+  end;
+  ChildProcess.WaitOnExit;
+  result:=ChildProcess.ExitCode=0;
+ finally
+  ChildProcess.Free;
+ end;
 end;
 {$ifend}
 
