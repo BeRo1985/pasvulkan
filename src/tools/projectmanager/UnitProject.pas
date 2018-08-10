@@ -990,10 +990,10 @@ begin
                  '_x86_64-linux'+
                 {$elseif defined(Android)}
                  '_android'+
-                {$endif}
+                {$ifend}
                 {$if defined(Win32) or defined(Win64) or defined(Windows)}
                 '.exe'+
-                {$endif}
+                {$ifend}
                 '';
 
  if not FileExists(ProjectBinaryFileName) then begin
