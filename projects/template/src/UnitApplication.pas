@@ -138,7 +138,7 @@ end;
 
 procedure TApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 begin
- inherited Draw(aSwapChainImageIndex,aWaitSemaphore,nil);
+ inherited Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
 end;
 
 end.
