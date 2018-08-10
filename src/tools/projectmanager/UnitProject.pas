@@ -216,10 +216,18 @@ begin
   end;
  end;
 
+ UpdateProject;
+
 end;
 
 procedure UpdateProject;
-var ProjectPath:UnicodeString;
+var Index:Int32;
+    ProjectTemplateFileList,StringList:TStringList;
+    ProjectPath,ProjectMetaDataPath,
+    ProjectUUIDFileName,
+    FileName,SourceFileName,DestinationFileName:UnicodeString;
+    ProjectUUID:String;
+    GUID:TGUID;
 begin
 
  if not DirectoryExists(PasVulkanProjectTemplatePath) then begin
@@ -236,6 +244,30 @@ begin
  if not ForceDirectories(ProjectPath) then begin
   WriteLn(ErrOutput,'Fatal: "',ProjectPath,'" not found!');
  end;
+
+ ProjectMetaDataPath:=IncludeTrailingPathDelimiter(ProjectPath+'metadata');
+ WriteLn('Checking "',ProjectMetaDataPath,'" ...');
+ if not DirectoryExists(ProjectMetaDataPath) then begin
+  WriteLn(ErrOutput,'Fatal: "',ProjectMetaDataPath,'" not found!');
+  exit;
+ end;
+
+ ProjectUUIDFileName:=ProjectMetaDataPath+'uuid';
+ WriteLn('Reading "',ProjectUUIDFileName,'" ...');
+ if not FileExists(ProjectUUIDFileName) then begin
+  WriteLn(ErrOutput,'Fatal: "',ProjectUUIDFileName,'" not found!');
+  exit;
+ end;
+ StringList:=TStringList.Create;
+ try
+  StringList.LoadFromFile(String(ProjectUUIDFileName));
+  ProjectUUID:=trim(StringList.Text);
+  GUID:=StringToGUID(String(ProjectUUID));
+  ProjectUUID:=LowerCase(GUIDToString(GUID));
+ finally
+  FreeAndNil(StringList);
+ end;
+
 
 end;
 
