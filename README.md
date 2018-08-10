@@ -6,7 +6,7 @@ The Vulkan.pas binding header unit itself (including the vkxml2pas.dpr converter
 
 ## Important information
 
-You must first compile the (yet incomplete) PasVulkan project manager under `src\tools\projectmanager` using makefpc (*nix), makefpc.bat (Windows) or makedelphi.bat (Windows) so that you can then use the PasVulkan project manager as a command line tool.
+You must first compile the (yet incomplete) PasVulkan project manager using compileprojectmanager (*nix) or compileprojectmanager.bat (Windows) so that you can then use the PasVulkan project manager as a command line tool named projectmanager(.exe) .
 
 ## Support me
 
