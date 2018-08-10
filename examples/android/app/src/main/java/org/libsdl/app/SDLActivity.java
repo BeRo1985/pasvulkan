@@ -1197,6 +1197,7 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
     }
 
     // Called when we have a valid drawing surface
+    //@SuppressWarnings( "deprecation" )
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
         Log.v("SDL", "surfaceCreated()");
@@ -1218,6 +1219,7 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
     }
 
     // Called when the surface is resized
+    //@SuppressWarnings( "deprecation" )
     @Override
     public void surfaceChanged(SurfaceHolder holder,
                                int format, int width, int height) {
