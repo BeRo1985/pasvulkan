@@ -268,6 +268,42 @@ begin
   FreeAndNil(StringList);
  end;
 
+ ProjectTemplateFileList:=GetRelativeFileList(PasVulkanProjectTemplatePath);
+ if assigned(ProjectTemplateFileList) then begin
+  try
+   for Index:=0 to ProjectTemplateFileList.Count-1 do begin
+    FileName:=UnicodeString(ProjectTemplateFileList.Strings[Index]);
+    SourceFileName:=PasVulkanProjectTemplatePath+FileName;
+    DestinationFileName:=ProjectPath+FileName;
+    if length(DestinationFileName)>0 then begin
+     DestinationFileName:=UnicodeString(StringReplace(String(DestinationFileName),'projecttemplate',String(CurrentProjectName),[rfReplaceAll,rfIgnoreCase]));
+     if (DestinationFileName[length(DestinationFileName)]=DirectorySeparator) or
+        (IncludeTrailingPathDelimiter(ExtractFilePath(DestinationFileName))=DestinationFileName) then begin
+      WriteLn('Checking "',DestinationFileName,'" ...');
+      if not DirectoryExists(DestinationFileName) then begin
+       WriteLn('Creating "',DestinationFileName,'" ...');
+       if not ForceDirectories(DestinationFileName) then begin
+        WriteLn(ErrOutput,'Fatal: "',DestinationFileName,'" couldn''t created!');
+        break;
+       end;
+      end;
+     end else begin
+      if FileName='src'+DirectorySeparator+'projecttemplate.dpr' then begin
+       WriteLn('Overwriting "',DestinationFileName,'" with "',SourceFileName,'" ...');
+       CopyAndSubstituteTextFile(SourceFileName,
+                                 DestinationFileName,
+                                 ['projecttemplate',CurrentProjectName]);
+      end else if FileName='src'+DirectorySeparator+'projecttemplate.dproj' then begin
+      end else if FileName='src'+DirectorySeparator+'projecttemplate.lpi' then begin
+      end else begin
+      end;
+     end;
+    end;
+   end;
+  finally
+   FreeAndNil(ProjectTemplateFileList);
+  end;
+ end;
 
 end;
 
