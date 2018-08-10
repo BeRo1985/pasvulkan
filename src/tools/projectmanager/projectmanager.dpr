@@ -19,7 +19,7 @@ uses {$if defined(fpc) and defined(Unix)}cthreads,{$ifend}
      Classes,
      UnitVersion,
      UnitGlobals,
-     UnitParameters, UnitProject;
+     UnitParameters, UnitProject, UnitExternalProcess;
 
 {$if defined(fpc) and defined(Windows)}
 function IsDebuggerPresent:longbool; stdcall; external 'kernel32.dll' name 'IsDebuggerPresent';
