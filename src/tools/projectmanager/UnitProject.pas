@@ -463,6 +463,15 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
 
   if ExecuteCommand(ProjectSourcePath,'cmd',['/c',DelphiBatchFileName]) then begin
    WriteLn('Successful!');
+   if CurrentTarget='delphi-x86_64-windows' then begin
+    DeleteFile(ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_64-windows.exe');
+    RenameFile(ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'.exe',
+               ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_64-windows.exe');
+   end else begin
+    DeleteFile(ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_32-windows.exe');
+    RenameFile(ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'.exe',
+               ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_32-windows.exe');
+   end;
    result:=true;
   end else begin
    WriteLn('Errors!');
