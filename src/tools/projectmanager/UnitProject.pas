@@ -704,7 +704,11 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
     Task:='assembleRelease';
    end;
   end;
-  if ExecuteCommand(ProjectSourceAndroidPath,'gradlew'{$ifdef Windows}+'.bat'{$endif},Task) then begin
+  if {$ifdef Windows}
+      ExecuteCommand(ProjectSourceAndroidPath,'cmd',['/c','gradlew.bat',Task])
+    {$else}
+      ExecuteCommand(ProjectSourceAndroidPath,'bash',['gradlew',Task])
+    {$endif} then begin
    WriteLn('Successful!');
    case BuildMode of
     TBuildMode.Debug:begin
@@ -712,8 +716,8 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
               ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_debug.apk');
     end;
     else {TBuildMode.Release:}begin
-     CopyFile(ProjectSourceAndroidPath+'app'+DirectorySeparator+'build'+DirectorySeparator+'outputs'+DirectorySeparator+'apk'+DirectorySeparator+'app-release.apk',
-              ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_release.apk');
+     CopyFile(ProjectSourceAndroidPath+'app'+DirectorySeparator+'build'+DirectorySeparator+'outputs'+DirectorySeparator+'apk'+DirectorySeparator+'app-release-unsigned.apk',
+              ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_release_unsigned.apk');
     end;
    end;
   end else begin
