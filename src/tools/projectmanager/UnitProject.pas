@@ -668,6 +668,34 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
    FreeAndNil(Parameters);
   end;
  end;
+ procedure BuildForAndroid;
+ var ProjectSourceAndroidPath,Task:UnicodeString;
+ begin
+  ProjectSourceAndroidPath:=UnicodeString(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ProjectSourcePath)+'android'));
+  case BuildMode of
+   TBuildMode.Debug:begin
+    Task:='assembleDebug';
+   end;
+   else {TBuildMode.Release:}begin
+    Task:='assembleRelease';
+   end;
+  end;
+  if ExecuteCommand(ProjectSourceAndroidPath,'gradlew'{$ifdef Windows}+'.bat'{$endif},Task) then begin
+   WriteLn('Successful!');
+   case BuildMode of
+    TBuildMode.Debug:begin
+     CopyFile(ProjectSourceAndroidPath+'app'+DirectorySeparator+'build'+DirectorySeparator+'outputs'+DirectorySeparator+'apk'+DirectorySeparator+'app-debug.apk',
+              ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_debug.apk');
+    end;
+    else {TBuildMode.Release:}begin
+     CopyFile(ProjectSourceAndroidPath+'app'+DirectorySeparator+'build'+DirectorySeparator+'outputs'+DirectorySeparator+'apk'+DirectorySeparator+'app-release.apk',
+              ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_release.apk');
+    end;
+   end;
+  end else begin
+   WriteLn('Errors!');
+  end;
+ end;
 begin
 
  if not DirectoryExists(PasVulkanProjectTemplatePath) then begin
@@ -716,6 +744,8 @@ begin
   BuildWithFPC(TTargetCPU.ARM_32,TTargetOS.Android);
 
   BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Android);
+
+  BuildForAndroid;
 
  end else begin
   WriteLn(ErrOutput,'Fatal: Target "',CurrentTarget,'" not supported!');
