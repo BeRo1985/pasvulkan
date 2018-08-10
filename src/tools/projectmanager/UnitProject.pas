@@ -241,7 +241,7 @@ begin
  end;
 
  ProjectPath:=IncludeTrailingPathDelimiter(PasVulkanProjectsPath+CurrentProjectName);
- if not ForceDirectories(ProjectPath) then begin
+ if not DirectoryExists(ProjectPath) then begin
   WriteLn(ErrOutput,'Fatal: "',ProjectPath,'" not found!');
  end;
 
@@ -323,7 +323,7 @@ begin
  end;
 
  ProjectPath:=IncludeTrailingPathDelimiter(PasVulkanProjectsPath+CurrentProjectName);
- if not ForceDirectories(ProjectPath) then begin
+ if not DirectoryExists(ProjectPath) then begin
   WriteLn(ErrOutput,'Fatal: "',ProjectPath,'" not found!');
  end;
 
