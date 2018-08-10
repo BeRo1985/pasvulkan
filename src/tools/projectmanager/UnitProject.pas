@@ -253,7 +253,8 @@ var Index:Int32;
     ProjectTemplateFileList,StringList:TStringList;
     ProjectPath,ProjectMetaDataPath,
     ProjectUUIDFileName,
-    FileName,SourceFileName,DestinationFileName:UnicodeString;
+    FileName,SourceFileName,DestinationFileName,
+    AndroidSDKNDKParentPathDirectory:UnicodeString;
     ProjectUUID:String;
     GUID:TGUID;
 begin
@@ -323,6 +324,17 @@ begin
                                  ['projecttemplate',CurrentProjectName]);
       end else if FileName='src'+DirectorySeparator+'projecttemplate.dproj' then begin
       end else if FileName='src'+DirectorySeparator+'projecttemplate.lpi' then begin
+      end else if FileName='src'+DirectorySeparator+'android'+DirectorySeparator+'local.properties' then begin
+       WriteLn('Overwriting "',DestinationFileName,'" with "',SourceFileName,'" ...');
+{$ifdef Windows}
+       AndroidSDKNDKParentPathDirectory:=UnicodeString(StringReplace(StringReplace(IncludeTrailingPathDelimiter(GetEnvironmentVariable('LOCALAPPDATA')),'\','\\',[rfReplaceAll]),':','\:',[rfReplaceAll]));
+{$else}
+       AndroidSDKNDKParentPathDirectory:=UnicodeString(StringReplace(StringReplace(IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME')),'/','\/',[rfReplaceAll]),':','\:',[rfReplaceAll]));
+{$endif}
+       CopyAndSubstituteTextFile(SourceFileName,
+                                 DestinationFileName,
+                                 ['$NDKDIR',AndroidSDKNDKParentPathDirectory+'Android\'+DirectorySeparator+'sdk\'+DirectorySeparator+'ndk-bundle',
+                                  '$SDKDIR',AndroidSDKNDKParentPathDirectory+'Android\'+DirectorySeparator+'sdk']);
       end else begin
       end;
      end;
