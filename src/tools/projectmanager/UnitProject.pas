@@ -116,6 +116,38 @@ begin
  end;
 end;
 
+function DeleteDirectory(const aName:UnicodeString;const aDeleteSelf:boolean=false):boolean;
+var SearchRec:{$if declared(TUnicodeSearchRec)}TUnicodeSearchRec{$else}TSearchRec{$ifend};
+begin
+ result:=false;
+ if FindFirst(IncludeTrailingPathDelimiter(aName)+{$ifdef Windows}'*.*'{$else}'*'{$endif},faAnyFile,SearchRec)=0 then begin
+  try
+   try
+    repeat
+     if (SearchRec.Name<>'.') and (SearchRec.Name<>'..') then begin
+      if (SearchRec.Attr and faDirectory)<>0 then begin
+       if not DeleteDirectory(IncludeTrailingPathDelimiter(aName)+SearchRec.Name,true) then begin
+        exit;
+       end;
+      end else begin
+       if DeleteFile(IncludeTrailingPathDelimiter(aName)+SearchRec.Name) then begin
+        exit;
+       end;
+      end;
+     end;
+    until FindNext(SearchRec)<>0;
+   finally
+    FindClose(SearchRec);
+   end;
+   result:=true;
+  finally
+   if aDeleteSelf and not RemoveDir(aName) then begin
+    result:=false;
+   end;
+  end;
+ end;
+end;
+
 procedure CopyAndSubstituteTextFile(const aSourceFileName,aDestinationFileName:UnicodeString;const aSubstitutions:array of UnicodeString);
 var Index,SubstitutionIndex,CountSubstitutions:Int32;
     StringList:TStringList;
@@ -314,13 +346,13 @@ begin
      DestinationFileName:=UnicodeString(StringReplace(String(DestinationFileName),'projecttemplate',String(CurrentProjectName),[rfReplaceAll,rfIgnoreCase]));
      if (DestinationFileName[length(DestinationFileName)]=DirectorySeparator) or
         (IncludeTrailingPathDelimiter(ExtractFilePath(DestinationFileName))=DestinationFileName) then begin
-      if not DirectoryExists(DestinationFileName) then begin
+{     if not DirectoryExists(DestinationFileName) then begin
        WriteLn('Creating "',DestinationFileName,'" ...');
        if not ForceDirectories(DestinationFileName) then begin
         WriteLn(ErrOutput,'Fatal: "',DestinationFileName,'" couldn''t created!');
         exit;
        end;
-      end;
+      end;}
      end else begin
       if FileName='src'+DirectorySeparator+'projecttemplate.dpr' then begin
        WriteLn('Overwriting "',DestinationFileName,'" with "',SourceFileName,'" ...');
@@ -741,8 +773,68 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
  end;
  function BuildForAndroid:boolean;
  var ProjectSourceAndroidPath,Task:UnicodeString;
+  function CopyAssets:boolean;
+  var Index:Int32;
+      ProjectAssetsPath,ProjectSourceAndroidAssetsPath,
+      FileName,SourceFileName,DestinationFileName:UnicodeString;
+      FileStringList:TStringList;
+  begin
+
+   result:=false;
+
+   ProjectAssetsPath:=UnicodeString(IncludeTrailingPathDelimiter(ProjectPath)+'assets');
+   if not DirectoryExists(ProjectAssetsPath) then begin
+    WriteLn(ErrOutput,'Fatal: "',ProjectAssetsPath,'" doesn''t exist!');
+    exit;
+   end;
+
+   ProjectSourceAndroidAssetsPath:=UnicodeString(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ProjectSourceAndroidPath)+'app')+'src')+'main')+'assets'));
+   if not DirectoryExists(ProjectSourceAndroidAssetsPath) then begin
+    WriteLn(ErrOutput,'Fatal: "',ProjectSourceAndroidAssetsPath,'" doesn''t exist!');
+    exit;
+   end;
+
+   if not DeleteDirectory(ProjectSourceAndroidAssetsPath,false) then begin
+    WriteLn(ErrOutput,'Fatal: The old content of "',ProjectSourceAndroidAssetsPath,'" couldn''t deleted!');
+    exit;
+   end;
+
+   FileStringList:=GetRelativeFileList(ProjectAssetsPath);
+   if assigned(FileStringList) then begin
+    try
+     for Index:=0 to FileStringList.Count-1 do begin
+      FileName:=UnicodeString(FileStringList.Strings[Index]);
+      SourceFileName:=ProjectAssetsPath+FileName;
+      DestinationFileName:=ProjectSourceAndroidAssetsPath+FileName;
+      if length(DestinationFileName)>0 then begin
+       if (DestinationFileName[length(DestinationFileName)]=DirectorySeparator) or
+          (IncludeTrailingPathDelimiter(ExtractFilePath(DestinationFileName))=DestinationFileName) then begin
+        if not DirectoryExists(DestinationFileName) then begin
+         WriteLn('Creating "',DestinationFileName,'" ...');
+         if not ForceDirectories(DestinationFileName) then begin
+          WriteLn(ErrOutput,'Fatal: "',DestinationFileName,'" couldn''t created!');
+          exit;
+         end;
+        end;
+       end else begin
+        WriteLn('Copying "',SourceFileName,'" to "',DestinationFileName,'" ...');
+        CopyFile(SourceFileName,DestinationFileName);
+       end;
+      end;
+     end;
+    finally
+     FreeAndNil(FileStringList);
+    end;
+   end;
+
+   result:=true;
+
+  end;
  begin
   result:=false;
+  if not CopyAssets then begin
+   exit;
+  end;
   ProjectSourceAndroidPath:=UnicodeString(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ProjectSourcePath)+'android'));
   case BuildMode of
    TBuildMode.Debug:begin
