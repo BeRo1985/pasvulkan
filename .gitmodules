@@ -13,3 +13,9 @@
 [submodule "externals/pasjson"]
 	path = externals/pasjson
 	url = https://github.com/BeRo1985/pasjson.git
+[submodule "externals/rnl"]
+	path = externals/rnl
+	url = https://github.com/BeRo1985/rnl.git
+[submodule "externals/pasgltf"]
+	path = externals/pasgltf
+	url = https://github.com/BeRo1985/pasgltf.git
