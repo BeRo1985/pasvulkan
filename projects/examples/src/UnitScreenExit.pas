@@ -55,7 +55,7 @@ type TScreenExit=class(TScreenBlank)
 
 implementation
 
-uses UnitExampleApplication,UnitTextOverlay,UnitScreenMainMenu;
+uses UnitApplication,UnitTextOverlay,UnitScreenMainMenu;
 
 const FontSize=3.0;
 
@@ -139,7 +139,7 @@ begin
     fSelectedIndex:=-1;
     cy:=fStartY;
     for Index:=0 to 1 do begin
-     if (aPointerEvent.Position.y>=cy) and (aPointerEvent.Position.y<(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+     if (aPointerEvent.Position.y>=cy) and (aPointerEvent.Position.y<(cy+(Application.TextOverlay.FontCharHeight*FontSize))) then begin
       fSelectedIndex:=Index;
       if fSelectedIndex=0 then begin
        pvApplication.Terminate;
@@ -147,7 +147,7 @@ begin
        pvApplication.NextScreen:=TScreenMainMenu.Create;
       end;
      end;
-     cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
+     cy:=cy+((Application.TextOverlay.FontCharHeight+4)*FontSize);
     end;
    end;
    TpvApplicationInputPointerEventType.Up:begin
@@ -156,10 +156,10 @@ begin
     fSelectedIndex:=-1;
     cy:=fStartY;
     for Index:=0 to 1 do begin
-     if (aPointerEvent.Position.y>=cy) and (aPointerEvent.Position.y<(cy+(ExampleApplication.TextOverlay.FontCharHeight*FontSize))) then begin
+     if (aPointerEvent.Position.y>=cy) and (aPointerEvent.Position.y<(cy+(Application.TextOverlay.FontCharHeight*FontSize))) then begin
       fSelectedIndex:=Index;
      end;
-     cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
+     cy:=cy+((Application.TextOverlay.FontCharHeight+4)*FontSize);
     end;
    end;
    TpvApplicationInputPointerEventType.Drag:begin
@@ -187,8 +187,8 @@ var Index:TpvInt32;
     IsSelected:boolean;
 begin
  inherited Update(aDeltaTime);
- ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,ExampleApplication.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Are you sure to exit?');
- fStartY:=(pvApplication.Height-((((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize)*2)-(4*FontSize)))*0.5;
+ Application.TextOverlay.AddText(pvApplication.Width*0.5,Application.TextOverlay.FontCharHeight*1.0,2.0,toaCenter,'Are you sure to exit?');
+ fStartY:=(pvApplication.Height-((((Application.TextOverlay.FontCharHeight+4)*FontSize)*2)-(4*FontSize)))*0.5;
  cy:=fStartY;
  for Index:=0 to 1 do begin
   IsSelected:=fSelectedIndex=Index;
@@ -196,8 +196,8 @@ begin
   if IsSelected then begin
    s:='>'+s+'<';
   end;
-  ExampleApplication.TextOverlay.AddText(pvApplication.Width*0.5,cy,FontSize,toaCenter,TpvRawByteString(s),MenuColors[IsSelected,0,0],MenuColors[IsSelected,0,1],MenuColors[IsSelected,0,2],MenuColors[IsSelected,0,3],MenuColors[IsSelected,1,0],MenuColors[IsSelected,1,1],MenuColors[IsSelected,1,2],MenuColors[IsSelected,1,3]);
-  cy:=cy+((ExampleApplication.TextOverlay.FontCharHeight+4)*FontSize);
+  Application.TextOverlay.AddText(pvApplication.Width*0.5,cy,FontSize,toaCenter,TpvRawByteString(s),MenuColors[IsSelected,0,0],MenuColors[IsSelected,0,1],MenuColors[IsSelected,0,2],MenuColors[IsSelected,0,3],MenuColors[IsSelected,1,0],MenuColors[IsSelected,1,1],MenuColors[IsSelected,1,2],MenuColors[IsSelected,1,3]);
+  cy:=cy+((Application.TextOverlay.FontCharHeight+4)*FontSize);
  end;
  fReady:=true;
 end;
