@@ -400,12 +400,12 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        Parameters.Add('-O-');
        Parameters.Add('-O1');
        Parameters.Add('-olibmain.so');
-       Parameters.Add('-FUFPCOutput\arm-android');
-       Parameters.Add('-FEFPCOutput\arm-android');
-       Parameters.Add('-Fl.\..\..\..\libs\libpngandroid\obj\local\armeabi-v7a');
-       Parameters.Add('-Fo.\..\..\..\libs\libpngandroid\obj\local\armeabi-v7a');
-       Parameters.Add('-Fl.\..\..\..\libs\sdl20androidarm32');
-       Parameters.Add('-Fo.\..\..\..\libs\sdl20androidarm32');
+       Parameters.Add('-FUFPCOutput'+DirectorySeparator+'arm-android');
+       Parameters.Add('-FEFPCOutput'+DirectorySeparator+'arm-android');
+       Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'libpngandroid'+DirectorySeparator+'obj'+DirectorySeparator+'local'+DirectorySeparator+'armeabi-v7a');
+       Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'libpngandroid'+DirectorySeparator+'obj'+DirectorySeparator+'local'+DirectorySeparator+'armeabi-v7a');
+       Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20androidarm32');
+       Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20androidarm32');
       end;
       TTargetCPU.x86_32:begin
        if HasFPCBin('ppcross386') then begin
@@ -416,18 +416,18 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
         FPCExecutable:='fpc';
        end;
        Parameters.Add('-Pi386');
-       Parameters.Add('-Cpi386');
+       Parameters.Add('-CpPENTIUMM');
        Parameters.Add('-CfX87');
        Parameters.Add('-OpPENTIUMM');
        Parameters.Add('-O-');
        Parameters.Add('-O1');
        Parameters.Add('-olibmain.so');
-       Parameters.Add('-FUFPCOutput\i386-android');
-       Parameters.Add('-FEFPCOutput\i386-android');
-       Parameters.Add('-Fl.\..\..\..\libs\libpngandroid\obj\local\x86');
-       Parameters.Add('-Fo.\..\..\..\libs\libpngandroid\obj\local\x86');
-       Parameters.Add('-Fl.\..\..\..\libs\sdl20androidi386');
-       Parameters.Add('-Fo.\..\..\..\libs\sdl20androidi386');
+       Parameters.Add('-FUFPCOutput'+DirectorySeparator+'i386-android');
+       Parameters.Add('-FEFPCOutput'+DirectorySeparator+'i386-android');
+       Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'libpngandroid'+DirectorySeparator+'obj'+DirectorySeparator+'local'+DirectorySeparator+'x86');
+       Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'libpngandroid'+DirectorySeparator+'obj'+DirectorySeparator+'local'+DirectorySeparator+'x86');
+       Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20androidi386');
+       Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20androidi386');
       end;
      end;
     end;
@@ -465,13 +465,16 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
         FPCExecutable:='fpc';
        end;
        Parameters.Add('-Pi386');
-       Parameters.Add('-Cpi386');
+       Parameters.Add('-CpPENTIUMM');
        Parameters.Add('-CfX87');
        Parameters.Add('-OpPENTIUMM');
        Parameters.Add('-O-');
        Parameters.Add('-O1');
        Parameters.Add('-dc_int64');
        Parameters.Add('-Cg-');
+       Parameters.Add('-o'+String(CurrentProjectName)+'_x86_32-linux');
+       Parameters.Add('-FUFPCOutput'+DirectorySeparator+'x86_32-linux');
+       Parameters.Add('-FEFPCOutput'+DirectorySeparator+'x86_32-linux');
       end;
       TTargetCPU.x86_64:begin
        if HasFPCBin('ppcrossx64') then begin
@@ -487,6 +490,83 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        Parameters.Add('-OpCOREAVX');
        Parameters.Add('-O-');
        Parameters.Add('-O1');
+       Parameters.Add('-o'+String(CurrentProjectName)+'_x86_64-linux');
+       Parameters.Add('-FUFPCOutput'+DirectorySeparator+'x86_64-linux');
+       Parameters.Add('-FEFPCOutput'+DirectorySeparator+'x86_64-linux');
+      end;
+     end;
+    end;
+    TTargetOS.Windows:begin
+     Parameters.Add('-Twin32');
+     Parameters.Add('-dPasVulkanPasMP');
+     Parameters.Add('-dPasVulkanUseSDL2');
+     if SDL2StaticLinking then begin
+      Parameters.Add('-dSTATICLINK');
+     end else begin
+      Parameters.Add('-dPasVulkanUseSDL2WithVulkanSupport');
+     end;
+     Parameters.Add('-dSDL');
+     Parameters.Add('-dSDL20');
+     case BuildMode of
+      TBuildMode.Debug:begin
+       Parameters.Add('-g');
+       Parameters.Add('-gl');
+       Parameters.Add('-Xm');
+       Parameters.Add('-dDEBUG');
+      end;
+      else {TBuildMode.Release:}begin
+       Parameters.Add('-Xs');
+       Parameters.Add('-dRELEASE');
+      end;
+     end;
+     case aTargetCPU of
+      TTargetCPU.x86_32:begin
+       if HasFPCBin('ppcross386') then begin
+        FPCExecutable:='ppcross386';
+       end else if HasFPCBin('ppc386') then begin
+        FPCExecutable:='ppc386';
+       end else if HasFPCBin('fpc') then begin
+        FPCExecutable:='fpc';
+       end;
+       Parameters.Add('-Pi386');
+       Parameters.Add('-CpPENTIUMM');
+       Parameters.Add('-CfX87');
+       Parameters.Add('-OpPENTIUMM');
+       Parameters.Add('-O-');
+       Parameters.Add('-O1');
+       Parameters.Add('-dc_int64');
+       Parameters.Add('-Cg-');
+       Parameters.Add('-o'+String(CurrentProjectName)+'_x86_32-win32.exe');
+       Parameters.Add('-FUFPCOutput'+DirectorySeparator+'x86_32-win32');
+       Parameters.Add('-FEFPCOutput'+DirectorySeparator+'x86_32-win32');
+       if SDL2StaticLinking then begin
+        Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20win32');
+        Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20win32');
+       end;
+      end;
+      TTargetCPU.x86_64:begin
+       if HasFPCBin('ppcrossx64') then begin
+        FPCExecutable:='ppcrossx64';
+       end else if HasFPCBin('ppcx64') then begin
+        FPCExecutable:='ppcx64';
+       end else if HasFPCBin('fpc') then begin
+        FPCExecutable:='fpc';
+       end;
+       Parameters.Add('-Px86_64');
+       Parameters.Add('-CpCOREAVX');
+       Parameters.Add('-CfSSE');
+       Parameters.Add('-OpCOREAVX');
+       Parameters.Add('-O-');
+       Parameters.Add('-O1');
+       Parameters.Add('-o'+String(CurrentProjectName)+'_x86_64-win64.exe');
+       Parameters.Add('-FUFPCOutput'+DirectorySeparator+'x86_64-win64');
+       Parameters.Add('-FEFPCOutput'+DirectorySeparator+'x86_64-win64');
+       if SDL2StaticLinking then begin
+        Parameters.Add('-dc_int64');
+        Parameters.Add('-k--allow-multiple-definition');
+        Parameters.Add('-Fl.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20win64');
+        Parameters.Add('-Fo.'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'..'+DirectorySeparator+'libs'+DirectorySeparator+'sdl20win64');
+       end;
       end;
      end;
     end;
