@@ -580,7 +580,7 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        Parameters.Add('-O1');
        Parameters.Add('-dc_int64');
        Parameters.Add('-Cg-');
-       Parameters.Add('-o'+String(CurrentProjectName)+'_x86_32-win32.exe');
+       Parameters.Add('-o'+String(CurrentProjectName)+'_x86_32-windows.exe');
        Parameters.Add('-FUFPCOutput'+DirectorySeparator+'x86_32-win32');
        Parameters.Add('-FEFPCOutput'+DirectorySeparator+'x86_32-win32');
        if SDL2StaticLinking then begin
@@ -603,7 +603,7 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        Parameters.Add('-OpCOREAVX');
        Parameters.Add('-O-');
        Parameters.Add('-O1');
-       Parameters.Add('-o'+String(CurrentProjectName)+'_x86_64-win64.exe');
+       Parameters.Add('-o'+String(CurrentProjectName)+'_x86_64-windows.exe');
        Parameters.Add('-FUFPCOutput'+DirectorySeparator+'x86_64-win64');
        Parameters.Add('-FEFPCOutput'+DirectorySeparator+'x86_64-win64');
        if SDL2StaticLinking then begin
@@ -630,6 +630,30 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
         TTargetCPU.x86_32:begin
          CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'i386-android'+DirectorySeparator+'libmain.so',
                   ProjectSourcePath+'android'+DirectorySeparator+'app'+DirectorySeparator+'src'+DirectorySeparator+'main'+DirectorySeparator+'jniLibs'+DirectorySeparator+'x86'+DirectorySeparator+'libmain.so');
+        end;
+       end;
+      end;
+      TTargetOS.Linux:begin
+       case aTargetCPU of
+        TTargetCPU.x86_32:begin
+         CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_32-linux'+DirectorySeparator+CurrentProjectName+'_x86_32-linux',
+                  ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_32-linux');
+        end;
+        TTargetCPU.x86_64:begin
+         CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_64-linux'+DirectorySeparator+CurrentProjectName+'_x86_64-linux',
+                  ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_64-linux');
+        end;
+       end;
+      end;
+      TTargetOS.Windows:begin
+       case aTargetCPU of
+        TTargetCPU.x86_32:begin
+         CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_32-win32'+DirectorySeparator+CurrentProjectName+'_x86_32-windows.exe',
+                  ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_32-windows.exe');
+        end;
+        TTargetCPU.x86_64:begin
+         CopyFile(ProjectSourcePath+'FPCOutput'+DirectorySeparator+'x86_64-win64'+DirectorySeparator+CurrentProjectName+'_x86_64-windows.exe',
+                  ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_x86_64-windows.exe');
         end;
        end;
       end;
