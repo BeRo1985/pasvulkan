@@ -33,7 +33,7 @@ var SecurityAttributes:TSecurityAttributes;
     Index:Int32;
     CountRead:UInt32;
     WaitForSingleObjectResult:HRESULT;
-    CmdLine:WideString;
+    CommandLine,CurrentDirectory:WideString;
     Parameter:UnicodeString;
     ExitCode:DWORD;
 begin
@@ -50,7 +50,7 @@ begin
    StartupInfo.hStdError:=WriteHandle;
    StartupInfo.dwFlags:=STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
    StartupInfo.wShowWindow:=SW_HIDE;
-   CmdLine:='';
+   CommandLine:='';
    for Index:=-1 to length(aParameters)-1 do begin
     if Index<0 then begin
      Parameter:=aExecutable;
@@ -60,19 +60,20 @@ begin
     if (pos(' ',Parameter)>0) and (pos('"',Parameter)=0) then begin
      Parameter:='"'+Parameter+'"';
     end;
-    if length(CmdLine)>0 then begin
-     CmdLine:=CmdLine+' ';
+    if length(CommandLine)>0 then begin
+     CommandLine:=CommandLine+' ';
     end;
-    CmdLine:=CmdLine+WideString(Parameter);
+    CommandLine:=CommandLine+WideString(Parameter);
    end;
+   CurrentDirectory:=aDirectory;
    if CreateProcessW(nil,
-                     PWideChar(CmdLine),
+                     PWideChar(CommandLine),
                      @SecurityAttributes,
                      @SecurityAttributes,
                      true,
                      NORMAL_PRIORITY_CLASS,
                      nil,
-                     nil,
+                     PWideChar(CurrentDirectory),
                      StartupInfo,
                      ProcessInformation) then begin
     Buffer:=nil;
