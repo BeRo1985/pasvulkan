@@ -75,9 +75,12 @@ begin
  WriteLn;
 end;
 
+var ExitCode:Int32;
 begin
 
-ParseCommandLine;
+ ExitCode:=0;
+
+ ParseCommandLine;
 
  ShowTitle;
 
@@ -93,11 +96,17 @@ ParseCommandLine;
 
  if length(CurrentCommand)>0 then begin
   if CurrentCommand='create' then begin
-   CreateProject;
+   if not CreateProject then begin
+    ExitCode:=1;
+   end;
   end else if CurrentCommand='update' then begin
-   UpdateProject;
+   if not UpdateProject then begin
+    ExitCode:=1;
+   end;
   end else if CurrentCommand='build' then begin
-   BuildProject;
+   if not BuildProject then begin
+    ExitCode:=1;
+   end;
   end else if CurrentCommand='run' then begin
    RunProject;
   end else begin
@@ -111,6 +120,7 @@ ParseCommandLine;
   ReadLn;
  end;
 {$endif}
+ Halt(ExitCode);
 end.
 
 

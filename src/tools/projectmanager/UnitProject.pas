@@ -12,9 +12,9 @@ interface
 
 uses SysUtils,Classes,UnitVersion,UnitGlobals,UnitExternalProcess;
 
-procedure CreateProject;
-procedure UpdateProject;
-procedure BuildProject;
+function CreateProject:boolean;
+function UpdateProject:boolean;
+function BuildProject:boolean;
 procedure RunProject;
 
 implementation
@@ -143,7 +143,7 @@ begin
  end;
 end;
 
-procedure CreateProject;
+function CreateProject:boolean;
 var Index:Int32;
     ProjectTemplateFileList,StringList:TStringList;
     ProjectPath,ProjectMetaDataPath,
@@ -152,6 +152,8 @@ var Index:Int32;
     ProjectUUID:String;
     GUID:TGUID;
 begin
+
+ result:=false;
 
  if not DirectoryExists(PasVulkanProjectTemplatePath) then begin
   WriteLn(ErrOutput,'Fatal: "',PasVulkanProjectTemplatePath,'" doesn''t exist!');
@@ -209,7 +211,7 @@ begin
       WriteLn('Creating "',DestinationFileName,'" ...');
       if not ForceDirectories(DestinationFileName) then begin
        WriteLn(ErrOutput,'Fatal: "',DestinationFileName,'" couldn''t created!');
-       break;
+       exit;
       end;
      end else begin
       WriteLn('Copying "',SourceFileName,'" to "',DestinationFileName,'" ...');
@@ -244,11 +246,11 @@ begin
   end;
  end;
 
- UpdateProject;
+ result:=UpdateProject;
 
 end;
 
-procedure UpdateProject;
+function UpdateProject:boolean;
 var Index:Int32;
     ProjectTemplateFileList,StringList:TStringList;
     ProjectPath,ProjectMetaDataPath,
@@ -258,6 +260,8 @@ var Index:Int32;
     ProjectUUID:String;
     GUID:TGUID;
 begin
+
+ result:=false;
 
  if not DirectoryExists(PasVulkanProjectTemplatePath) then begin
   WriteLn(ErrOutput,'Fatal: "',PasVulkanProjectTemplatePath,'" doesn''t exist!');
@@ -313,7 +317,7 @@ begin
        WriteLn('Creating "',DestinationFileName,'" ...');
        if not ForceDirectories(DestinationFileName) then begin
         WriteLn(ErrOutput,'Fatal: "',DestinationFileName,'" couldn''t created!');
-        break;
+        exit;
        end;
       end;
      end else begin
@@ -345,17 +349,21 @@ begin
   end;
  end;
 
+ result:=true;
+
 end;
 
-procedure BuildProject;
+function BuildProject:boolean;
 type TTargetCPU=(ARM_32,ARM_64,x86_32,x86_64);
      TTargetOS=(Android,Linux,Windows);
 var ProjectPath,ProjectSourcePath:UnicodeString;
- procedure BuildWithDelphi;
+ function BuildWithDelphi:boolean;
  var DelphiBatchFileName:UnicodeString;
      Config,Platform:String;
      DelphiBatchFile:TStringList;
  begin
+
+  result:=false;
 
   DelphiBatchFileName:=ProjectSourcePath+'makedelphi.bat';
 
@@ -384,12 +392,13 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
 
   if ExecuteCommand(ProjectSourcePath,'cmd',['/c',DelphiBatchFileName]) then begin
    WriteLn('Successful!');
+   result:=true;
   end else begin
    WriteLn('Errors!');
   end;
 
  end;
- procedure BuildWithFPC(const aTargetCPU:TTargetCPU;const aTargetOS:TTargetOS);
+ function BuildWithFPC(const aTargetCPU:TTargetCPU;const aTargetOS:TTargetOS):boolean;
  const ExecutableFileExtension={$ifdef Windows}'.exe'{$else}''{$endif};
        SourcePaths:array[0..7] of String=
         (
@@ -406,6 +415,7 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
      Parameters:TStringList;
      FPCExecutable,FoundFPCExecutable:UnicodeString;
  begin
+  result:=false;
   FPCExecutable:='';
   FoundFPCExecutable:='';
   Parameters:=TStringList.Create;
@@ -682,6 +692,7 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
        end;
       end;
      end;
+     result:=true;
     end else begin
      WriteLn('Errors!');
     end;
@@ -692,9 +703,10 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
    FreeAndNil(Parameters);
   end;
  end;
- procedure BuildForAndroid;
+ function BuildForAndroid:boolean;
  var ProjectSourceAndroidPath,Task:UnicodeString;
  begin
+  result:=false;
   ProjectSourceAndroidPath:=UnicodeString(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ProjectSourcePath)+'android'));
   case BuildMode of
    TBuildMode.Debug:begin
@@ -720,11 +732,14 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
               ProjectPath+'bin'+DirectorySeparator+CurrentProjectName+'_release_unsigned.apk');
     end;
    end;
+   result:=true;
   end else begin
    WriteLn('Errors!');
   end;
  end;
 begin
+
+ result:=false;
 
  if not DirectoryExists(PasVulkanProjectTemplatePath) then begin
   WriteLn(ErrOutput,'Fatal: "',PasVulkanProjectTemplatePath,'" doesn''t exist!');
@@ -742,38 +757,46 @@ begin
   exit;
  end;
 
- UpdateProject;
+ if not UpdateProject then begin
+  exit
+ end;
 
  ProjectSourcePath:=IncludeTrailingPathDelimiter(ProjectPath+'src');
 
  if (CurrentTarget='delphi-x86_32-windows') or
     (CurrentTarget='delphi-x86_64-windows') then begin
 
-  BuildWithDelphi;
+  result:=BuildWithDelphi;
 
  end else if CurrentTarget='fpc-x86_32-windows' then begin
 
-  BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Windows);
+  result:=BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Windows);
 
  end else if CurrentTarget='fpc-x86_64-windows' then begin
 
-  BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Windows);
+  result:=BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Windows);
 
  end else if CurrentTarget='fpc-x86_32-linux' then begin
 
-  BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Linux);
+  result:=BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Linux);
 
  end else if CurrentTarget='fpc-x86_64-linux' then begin
 
-  BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Linux);
+  result:=BuildWithFPC(TTargetCPU.x86_64,TTargetOS.Linux);
 
  end else if CurrentTarget='fpc-allcpu-android' then begin
 
-  BuildWithFPC(TTargetCPU.ARM_32,TTargetOS.Android);
+  if not BuildWithFPC(TTargetCPU.ARM_32,TTargetOS.Android) then begin
+   exit;
+  end;
 
-  BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Android);
+  if not BuildWithFPC(TTargetCPU.x86_32,TTargetOS.Android) then begin
+   exit;
+  end;
 
-  BuildForAndroid;
+  if BuildForAndroid then begin
+   result:=true;
+  end;
 
  end else begin
   WriteLn(ErrOutput,'Fatal: Target "',CurrentTarget,'" not supported!');
