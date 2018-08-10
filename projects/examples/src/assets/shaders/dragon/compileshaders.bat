@@ -4,8 +4,8 @@
 for %%f in (*.spv) do (
   spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const %%f -o %%f
 )
-copy /y dragon_vert.spv ..\..\..\..\assets\dragon_vert.spv
-copy /y dragon_frag.spv ..\..\..\..\assets\dragon_frag.spv
+copy /y dragon_vert.spv ..\..\..\..\assets\shaders\dragon\dragon_vert.spv
+copy /y dragon_frag.spv ..\..\..\..\assets\shaders\dragon\dragon_frag.spv
 del /f /q *.spv
 
 

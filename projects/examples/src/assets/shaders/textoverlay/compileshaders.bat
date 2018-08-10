@@ -4,6 +4,6 @@
 for %%f in (*.spv) do (
   spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const %%f -o %%f
 )
-copy /y textoverlay_vert.spv ..\..\..\..\assets\textoverlay_vert.spv
-copy /y textoverlay_frag.spv ..\..\..\..\assets\textoverlay_frag.spv
+copy /y textoverlay_vert.spv ..\..\..\..\assets\shaders\textoverlay\textoverlay_vert.spv
+copy /y textoverlay_frag.spv ..\..\..\..\assets\shaders\textoverlay\textoverlay_frag.spv
 del /f /q *.spv

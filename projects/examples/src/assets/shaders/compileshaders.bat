@@ -16,5 +16,5 @@ cd dragon
 call compileshaders.bat
 cd ..
 
-echo.
-pause
+rem echo.
+rem pause
