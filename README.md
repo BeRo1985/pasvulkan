@@ -26,11 +26,11 @@ And you do need either the most current Delphi version or the most current SVN t
 
 After you've compiled the projectmanager binary, you need to do the following: 
   
-| Step | Windows                                  | *nix                                    | Description                                |
-| ---- | ---------------------------------------- | --------------------------------------- | ------------------------------------------ |
-| 1.   | `projectmanager compileassets examples`  | `projectmanager compileassets examples` | It compiles the asset files                |
-| 2.   | `projectmanager build examples`          | `projectmanager build examples`         | It compiles the example code itself        |
-| 3.   | `projectmanager run examples`            | `projectmanager run examples`           | It starts the example binary               |
+| Step | Windows                                  | *nix                                      | Description                                |
+| ---- | ---------------------------------------- | ----------------------------------------- | ------------------------------------------ |
+| 1.   | `projectmanager compileassets examples`  | `./projectmanager compileassets examples` | It compiles the asset files                |
+| 2.   | `projectmanager build examples`          | `./projectmanager build examples`         | It compiles the example code itself        |
+| 3.   | `projectmanager run examples`            | `./projectmanager run examples`           | It starts the example binary               |
 
 [![Video example](https://img.youtube.com/vi/GepQbRIjbeQ/0.jpg)](https://www.youtube.com/watch?v=GepQbRIjbeQ)
 
@@ -38,9 +38,9 @@ After you've compiled the projectmanager binary, you need to do the following:
 
 After you've compiled the projectmanager binary, you need to do the following: 
   
-| Step | Windows                                   | *nix                                      | Description                                |
-| ---- | ----------------------------------------- | ----------------------------------------- | ------------------------------------------ |
-| 1.   | `projectmanager create [yourprojectname]` | `projectmanager create [yourprojectname]` | It creates the new project                 |
+| Step | Windows                                   | *nix                                        | Description                                |
+| ---- | ----------------------------------------- | ------------------------------------------- | ------------------------------------------ |
+| 1.   | `projectmanager create [yourprojectname]` | `./projectmanager create [yourprojectname]` | It creates the new project                 |
 
 *Important:* Where the project name must be a valid lowercase pascal *and* java identifier *and* even a valid file name at the same time!
 
