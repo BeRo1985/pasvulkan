@@ -1,5 +1,5 @@
 #!/bin/bash
-if [ -d ".git"]; then
+if [ -d ".git" ]; then
   ./initsubmodules
 else
   ./create_externals_symlinks_for_with_svn  
