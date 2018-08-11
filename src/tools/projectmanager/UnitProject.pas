@@ -412,7 +412,7 @@ begin
   if {$ifdef Windows}
       ExecuteCommand(ProjectAssetSourcePath,'cmd',['/c','compile.bat'])
     {$else}
-      ExecuteCommand(ProjectAssetSourcePath,'bash'['compile'])
+      ExecuteCommand(ProjectAssetSourcePath,'bash',['compile'])
     {$endif} then begin
    WriteLn('Successful!');
    result:=true;
