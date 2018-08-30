@@ -1,5 +1,5 @@
 #!/bin/sh
 mkdir -p fpctemp
-fpc -Sd -B -FEfpctemp -o../../../projectmanager projectmanager.dpr
+fpc -Sd -B -FEfpctemp -FUfpctemp -o../../../projectmanager projectmanager.dpr
 rm -f fpctemp
 
