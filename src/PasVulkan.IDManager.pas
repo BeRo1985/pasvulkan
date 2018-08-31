@@ -66,10 +66,9 @@ uses SysUtils,
      Classes,
      PasMP,
      PasVulkan.Types,
-     PasVulkan.PooledObject,
      PasVulkan.Collections;
 
-type TpvIDManager<T>=class(TpvPooledObject)
+type TpvIDManager<T>=class
       private
        type TIDManagerIntegerList=TpvGenericList<T>;
       private
@@ -77,10 +76,10 @@ type TpvIDManager<T>=class(TpvPooledObject)
        fIDCounter:T;
        fIDFreeList:TIDManagerIntegerList;
       public
-       constructor Create;
+       constructor Create; reintroduce;
        destructor Destroy; override;
        function AllocateID:T;
-       procedure FreeID(ID:T);
+       procedure FreeID(aID:T);
        property IDCounter:T read fIDCounter;
        property IDFreeList:TIDManagerIntegerList read fIDFreeList;
      end;
@@ -134,11 +133,11 @@ begin
  end;
 end;
 
-procedure TpvIDManager<T>.FreeID(ID:T);
+procedure TpvIDManager<T>.FreeID(aID:T);
 begin
  fCriticalSection.Enter;
  try
-  fIDFreeList.Add(ID);
+  fIDFreeList.Add(aID);
  finally
   fCriticalSection.Leave;
  end;
