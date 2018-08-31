@@ -68,7 +68,9 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Collections;
 
-type TpvIDManager<T>=class
+type EpvIDManager=class(Exception);
+
+     TpvGenericIDManager<T>=class
       private
        type TIDManagerIntegerList=TpvGenericList<T>;
       private
@@ -84,9 +86,32 @@ type TpvIDManager<T>=class
        property IDFreeList:TIDManagerIntegerList read fIDFreeList;
      end;
 
+     TpvIDManager=class
+      private
+       type TIDManagerFreeStack=TPasMPUnboundedStack<TpvUInt32>;
+{$ifdef Debug}
+            TIDManagerGenerationArray=array of TpvUInt32;
+            TIDManagerUsedBitmap=array of TpvUInt32;
+{$endif}
+      private
+       fIDCounter:TpvUInt32;
+       fFreeStack:TIDManagerFreeStack;
+{$ifdef Debug}
+       fMultipleReaderSingleWriterLock:TPasMPMultipleReaderSingleWriterLock;
+       fGenerationArray:TIDManagerGenerationArray;
+       fUsedBitmap:TIDManagerUsedBitmap;
+{$endif}
+      public
+       constructor Create;
+       destructor Destroy; override;
+       function AllocateID:TpvID;
+       procedure FreeID(const aID:TpvID);
+       property IDCounter:TpvUInt32 read fIDCounter;
+     end;
+
 implementation
 
-constructor TpvIDManager<T>.Create;
+constructor TpvGenericIDManager<T>.Create;
 begin
  inherited Create;
  fCriticalSection:=TPasMPCriticalSection.Create;
@@ -94,14 +119,14 @@ begin
  fIDFreeList:=TIDManagerIntegerList.Create;
 end;
 
-destructor TpvIDManager<T>.Destroy;
+destructor TpvGenericIDManager<T>.Destroy;
 begin
  fIDFreeList.Free;
  fCriticalSection.Free;
  inherited Destroy;
 end;
 
-function TpvIDManager<T>.AllocateID:T;
+function TpvGenericIDManager<T>.AllocateID:T;
 begin
  fCriticalSection.Enter;
  try
@@ -133,7 +158,7 @@ begin
  end;
 end;
 
-procedure TpvIDManager<T>.FreeID(aID:T);
+procedure TpvGenericIDManager<T>.FreeID(aID:T);
 begin
  fCriticalSection.Enter;
  try
@@ -141,6 +166,122 @@ begin
  finally
   fCriticalSection.Leave;
  end;
+end;
+
+constructor TpvIDManager.Create;
+begin
+ inherited Create;
+ TPasMPInterlocked.Write(fIDCounter,0);
+ fFreeStack:=TIDManagerFreeStack.Create;
+{$ifdef Debug}
+ fMultipleReaderSingleWriterLock:=TPasMPMultipleReaderSingleWriterLock.Create;
+ fGenerationArray:=nil;
+ fUsedBitmap:=nil;
+{$endif}
+end;
+
+destructor TpvIDManager.Destroy;
+begin
+ fFreeStack.Free;
+{$ifdef Debug}
+ fMultipleReaderSingleWriterLock.Free;
+ fGenerationArray:=nil;
+ fUsedBitmap:=nil;
+{$endif}
+ inherited Destroy;
+end;
+
+function TpvIDManager.AllocateID:TpvID;
+{$ifdef Debug}
+var NewSize,OldSize:TpvUInt32;
+begin
+ result.Index:=0;
+ if fFreeStack.Pop(result.Index) then begin
+  fMultipleReaderSingleWriterLock.AcquireRead;
+  try
+   result.Generation:=fGenerationArray[result.Index];
+   TPasMPInterlocked.BitwiseOr(fUsedBitmap[result.Index shr 5],TpvUInt32(1) shl (result.Index and 31));
+  finally
+   fMultipleReaderSingleWriterLock.ReleaseRead;
+  end;
+ end else begin
+  result.Index:=TPasMPInterlocked.Increment(fIDCounter);
+  result.Generation:=0;
+  fMultipleReaderSingleWriterLock.AcquireRead;
+  try
+   begin
+    OldSize:=length(fGenerationArray);
+    if OldSize<=result.Index then begin
+     NewSize:=(result.Index+1) shl 1;
+     if OldSize<NewSize then begin
+      fMultipleReaderSingleWriterLock.ReadToWrite;
+      try
+       OldSize:=length(fGenerationArray);
+       if OldSize<NewSize then begin
+        SetLength(fGenerationArray,NewSize);
+        FillChar(fGenerationArray[OldSize],(NewSize-OldSize)*SizeOf(TpvUInt32),#$ff);
+       end;
+      finally
+       fMultipleReaderSingleWriterLock.WriteToRead;
+      end;
+     end;
+    end;
+   end;
+   begin
+    OldSize:=length(fUsedBitmap);
+    NewSize:=(result.Index+31) shr 5;
+    if OldSize<=NewSize then begin
+     NewSize:=(NewSize+1) shl 1;
+     if OldSize<NewSize then begin
+      fMultipleReaderSingleWriterLock.ReadToWrite;
+      try
+       OldSize:=length(fUsedBitmap);
+       if OldSize<NewSize then begin
+        SetLength(fUsedBitmap,NewSize);
+        FillChar(fUsedBitmap[OldSize],(NewSize-OldSize)*SizeOf(TpvUInt32),#$00);
+       end;
+      finally
+       fMultipleReaderSingleWriterLock.WriteToRead;
+      end;
+     end;
+    end;
+   end;
+   fGenerationArray[result.Index]:=0;
+   TPasMPInterlocked.BitwiseOr(fUsedBitmap[result.Index shr 5],TpvUInt32(1) shl (result.Index and 31));
+  finally
+   fMultipleReaderSingleWriterLock.ReleaseRead;
+  end;
+ end;
+end;
+{$else}
+begin
+ if not fFreeStack.Pop(result.Index) then begin
+  result.Index:=TPasMPInterlocked.Increment(fIDCounter);
+ end;
+ result.Generation:=0;
+end;
+{$endif}
+
+procedure TpvIDManager.FreeID(const aID:TpvID);
+begin
+{$ifdef Debug}
+ fMultipleReaderSingleWriterLock.AcquireRead;
+ try
+  if (aID.Index<TpvUInt32(length(fGenerationArray))) and
+     (aID.Generation=fGenerationArray[aID.Index]) and
+     ((fUsedBitmap[aID.Index shr 5] and (TpvUInt32(1) shl (aID.Index and 31)))<>0) then begin
+   inc(fGenerationArray[aID.Index]);
+   TPasMPInterlocked.BitwiseAnd(fUsedBitmap[aID.Index shr 5],not (TpvUInt32(1) shl (aID.Index and 31)));
+   fFreeStack.Push(aID.Index);
+  end else begin
+   raise EpvIDManager.Create('ID #'+IntToStr(aID.Index)+' has wrong generation #'+IntToStr(aID.Generation));
+  end;
+ finally
+  fMultipleReaderSingleWriterLock.ReleaseRead;
+ end;
+{$else}
+ fFreeStack.Push(ID.Index);
+{$endif}
 end;
 
 end.

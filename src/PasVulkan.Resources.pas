@@ -134,7 +134,7 @@ type TpvResourceManager=class;
 
      TpvResourceManager=class(TpvPooledObject)
       private
-       type TResourceHandleManager=class(TpvIDManager<TpvResourceHandle>);
+       type TResourceHandleManager=class(TpvGenericIDManager<TpvResourceHandle>);
             TResourceHandleMap=array of TpvResource;
             TpvMetaResourceList=class(TpvObjectGenericList<TpvMetaResource>);
             TpvMetaResourceUUIDMap=class(TpvHashMap<TpvUUID,TpvMetaResource>);
