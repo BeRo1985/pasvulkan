@@ -135,16 +135,16 @@ type PpvScalar=^TpvScalar;
      PpvVector2=^TpvVector2;
      TpvVector2=record
       public
-       constructor Create(const pX:TpvScalar); overload;
-       constructor Create(const pX,pY:TpvScalar); overload;
-       class function InlineableCreate(const pX:TpvScalar):TpvVector2; overload; inline; static;
-       class function InlineableCreate(const pX,pY:TpvScalar):TpvVector2; overload; inline; static;
-       class operator Implicit(const a:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Explicit(const a:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Equal(const a,b:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator NotEqual(const a,b:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Inc(const a:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Dec(const a:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       constructor Create(const aX:TpvScalar); overload;
+       constructor Create(const aX,aY:TpvScalar); overload;
+       class function InlineableCreate(const aX:TpvScalar):TpvVector2; overload; inline; static;
+       class function InlineableCreate(const aX,aY:TpvScalar):TpvVector2; overload; inline; static;
+       class operator Implicit(const aScalar:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Explicit(const aScalar:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Equal(const aLeft,aRight:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator NotEqual(const aLeft,aRight:TpvVector2):boolean; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Inc(const aValue:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Dec(const aValue:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Add(const a,b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Add(const a:TpvVector2;const b:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Add(const a:TpvScalar;const b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
@@ -163,28 +163,28 @@ type PpvScalar=^TpvScalar;
        class operator Modulus(const a,b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a:TpvVector2;const b:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Modulus(const a:TpvScalar;const b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Negative(const a:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       class operator Positive(const a:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Negative(const aValue:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       class operator Positive(const aValue:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
       private
        {$i PasVulkan.Math.TpvVector2.Swizzle.Definitions.inc}
       private
-       function GetComponent(const pIndex:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetComponent(const aIndex:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const aIndex:TpvInt32;const aValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
       public
        function Perpendicular:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
        function Length:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function SquaredLength:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Normalize:TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       function DistanceTo(const b:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Dot(const b:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Cross(const b:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       function Lerp(const b:TpvVector2;const t:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       function Nlerp(const b:TpvVector2;const t:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
-       function Slerp(const b:TpvVector2;const t:TpvScalar):TpvVector2;
-       function Angle(const b,c:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Rotate(const Angle:TpvScalar):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function Rotate(const Center:TpvVector2;const Angle:TpvScalar):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       property Components[const pIndex:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
+       function DistanceTo(const aToVector:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Dot(const aWithVector:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Cross(const aVector:TpvVector2):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Lerp(const aToVector:TpvVector2;const aTime:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const aToVector:TpvVector2;const aTime:TpvScalar):TpvVector2; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const aToVector:TpvVector2;const aTime:TpvScalar):TpvVector2;
+       function Angle(const aOtherFirstVector,aOtherSecondVector:TpvVector2):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Rotate(const aAngle:TpvScalar):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function Rotate(const aCenter:TpvVector2;const aAngle:TpvScalar):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       property Components[const aIndex:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
        case TpvUInt8 of
         0:(RawComponents:array[0..1] of TpvScalar);
         1:(x,y:TpvScalar);
@@ -196,12 +196,12 @@ type PpvScalar=^TpvScalar;
      PpvVector3=^TpvVector3;
      TpvVector3=record
       public
-       constructor Create(const pX:TpvScalar); overload;
-       constructor Create(const pX,pY,pZ:TpvScalar); overload;
-       constructor Create(const pXY:TpvVector2;const pZ:TpvScalar=0.0); overload;
-       class function InlineableCreate(const pX:TpvScalar):TpvVector3; overload; inline; static;
-       class function InlineableCreate(const pX,pY,pZ:TpvScalar):TpvVector3; overload; inline; static;
-       class function InlineableCreate(const pXY:TpvVector2;const pZ:TpvScalar=0.0):TpvVector3; overload; inline; static;
+       constructor Create(const aX:TpvScalar); overload;
+       constructor Create(const aX,aY,aZ:TpvScalar); overload;
+       constructor Create(const aXY:TpvVector2;const aZ:TpvScalar=0.0); overload;
+       class function InlineableCreate(const aX:TpvScalar):TpvVector3; overload; inline; static;
+       class function InlineableCreate(const aX,aY,aZ:TpvScalar):TpvVector3; overload; inline; static;
+       class function InlineableCreate(const aXY:TpvVector2;const aZ:TpvScalar=0.0):TpvVector3; overload; inline; static;
        class operator Implicit(const a:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvVector3):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -231,8 +231,8 @@ type PpvScalar=^TpvScalar;
       private
        {$i PasVulkan.Math.TpvVector3.Swizzle.Definitions.inc}
       private
-       function GetComponent(const pIndex:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetComponent(const aIndex:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const aIndex:TpvInt32;const aValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
       public
        function Flip:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Perpendicular:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
@@ -240,20 +240,20 @@ type PpvScalar=^TpvScalar;
        function Length:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function SquaredLength:TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function Normalize:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function DistanceTo({$ifdef fpc}constref{$else}const{$endif} aToVector:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function Abs:TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function AngleTo(const b:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Lerp(const b:TpvVector3;const t:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Nlerp(const b:TpvVector3;const t:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function Slerp(const b:TpvVector3;const t:TpvScalar):TpvVector3;
-       function Angle(const b,c:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function RotateX(const Angle:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function RotateY(const Angle:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function RotateZ(const Angle:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
-       function ProjectToBounds(const MinVector,MaxVector:TpvVector3):TpvScalar;
-       property Components[const pIndex:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
+       function Dot({$ifdef fpc}constref{$else}const{$endif} aWithVector:TpvVector3):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function AngleTo(const aToVector:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function Cross({$ifdef fpc}constref{$else}const{$endif} aOtherVector:TpvVector3):TpvVector3; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
+       function Lerp(const aToVector:TpvVector3;const aTime:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const aToVector:TpvVector3;const aTime:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const aToVector:TpvVector3;const aTime:TpvScalar):TpvVector3;
+       function Angle(const aOtherFirstVector,aOtherSecondVector:TpvVector3):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateX(const aAngle:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateY(const aAngle:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateZ(const aAngle:TpvScalar):TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
+       function ProjectToBounds(const aMinVector,aMaxVector:TpvVector3):TpvScalar;
+       property Components[const aIndex:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
        case TpvUInt8 of
         0:(RawComponents:array[0..2] of TpvScalar);
         1:(x,y,z:TpvScalar);
@@ -266,14 +266,14 @@ type PpvScalar=^TpvScalar;
      PpvVector4=^TpvVector4;
      TpvVector4=record
       public
-       constructor Create(const pX:TpvScalar); overload;
-       constructor Create(const pX,pY,pZ,pW:TpvScalar); overload;
-       constructor Create(const pXY:TpvVector2;const pZ:TpvScalar=0.0;const pW:TpvScalar=1.0); overload;
-       constructor Create(const pXYZ:TpvVector3;const pW:TpvScalar=1.0); overload;
-       class function InlineableCreate(const pX:TpvScalar):TpvVector4; overload; inline; static;
-       class function InlineableCreate(const pX,pY,pZ,pW:TpvScalar):TpvVector4; overload; inline; static;
-       class function InlineableCreate(const pXY:TpvVector2;const pZ:TpvScalar=0.0;const pW:TpvScalar=0.0):TpvVector4; overload; inline; static;
-       class function InlineableCreate(const pXYZ:TpvVector3;const pW:TpvScalar=0.0):TpvVector4; overload; inline; static;
+       constructor Create(const aX:TpvScalar); overload;
+       constructor Create(const aX,aY,aZ,aW:TpvScalar); overload;
+       constructor Create(const aXY:TpvVector2;const aZ:TpvScalar=0.0;const aW:TpvScalar=1.0); overload;
+       constructor Create(const aXYZ:TpvVector3;const aW:TpvScalar=1.0); overload;
+       class function InlineableCreate(const aX:TpvScalar):TpvVector4; overload; inline; static;
+       class function InlineableCreate(const aX,aY,aZ,aW:TpvScalar):TpvVector4; overload; inline; static;
+       class function InlineableCreate(const aXY:TpvVector2;const aZ:TpvScalar=0.0;const aW:TpvScalar=0.0):TpvVector4; overload; inline; static;
+       class function InlineableCreate(const aXYZ:TpvVector3;const aW:TpvScalar=0.0):TpvVector4; overload; inline; static;
        class operator Implicit(const a:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvVector4):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -303,8 +303,8 @@ type PpvScalar=^TpvScalar;
       private
        {$i PasVulkan.Math.TpvVector4.Swizzle.Definitions.inc}
       private
-       function GetComponent(const pIndex:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetComponent(const aIndex:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const aIndex:TpvInt32;const aValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
       public
        function Flip:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        function Perpendicular:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
@@ -316,17 +316,17 @@ type PpvScalar=^TpvScalar;
        function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function AngleTo(const b:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector4):TpvVector4; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Lerp(const b:TpvVector4;const t:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Nlerp(const b:TpvVector4;const t:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Slerp(const b:TpvVector4;const t:TpvScalar):TpvVector4;
-       function Angle(const b,c:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       function RotateX(const Angle:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function RotateY(const Angle:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function RotateZ(const Angle:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function Rotate(const Angle:TpvScalar;const Axis:TpvVector3):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
-       function ProjectToBounds(const MinVector,MaxVector:TpvVector4):TpvScalar;
+       function Lerp(const aToVector:TpvVector4;const aTime:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const aToVector:TpvVector4;const aTime:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const aToVector:TpvVector4;const aTime:TpvScalar):TpvVector4;
+       function Angle(const aOtherFirstVector,aOtherSecondVector:TpvVector4):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateX(const aAngle:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateY(const aAngle:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function RotateZ(const aAngle:TpvScalar):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function Rotate(const aAngle:TpvScalar;const aAxis:TpvVector3):TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
+       function ProjectToBounds(const aMinVector,aMaxVector:TpvVector4):TpvScalar;
       public
-       property Components[const pIndex:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
+       property Components[const aIndex:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
        case TpvUInt8 of
         0:(RawComponents:array[0..3] of TpvScalar);
         1:(x,y,z,w:TpvScalar);
@@ -429,18 +429,18 @@ type PpvScalar=^TpvScalar;
      PpvPlane=^TpvPlane;
      TpvPlane=record
       public
-       constructor Create(const pNormal:TpvVector3;const pDistance:TpvScalar); overload;
-       constructor Create(const x,y,z,pDistance:TpvScalar); overload;
-       constructor Create(const pA,pB,pC:TpvVector3); overload;
-       constructor Create(const pA,pB,pC:TpvVector4); overload;
-       constructor Create(const Vector:TpvVector4); overload;
+       constructor Create(const aNormal:TpvVector3;const aDistance:TpvScalar); overload;
+       constructor Create(const aX,aY,aZ,aDistance:TpvScalar); overload;
+       constructor Create(const aA,aB,aC:TpvVector3); overload;
+       constructor Create(const aA,aB,aC:TpvVector4); overload;
+       constructor Create(const aVector:TpvVector4); overload;
        function ToVector:TpvVector4; {$ifdef CAN_INLINE}inline;{$endif}
        function Normalize:TpvPlane; {$ifdef CAN_INLINE}inline;{$endif}
-       function DistanceTo(const Point:TpvVector3):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       function DistanceTo(const Point:TpvVector4):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure ClipSegment(const p0,p1:TpvVector3;out Clipped:TpvVector3); overload;
-       function ClipSegmentClosest(const p0,p1:TpvVector3;out Clipped0,Clipped1:TpvVector3):TpvInt32; overload;
-       function ClipSegmentLine(var p0,p1:TpvVector3):boolean;
+       function DistanceTo(const aPoint:TpvVector3):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       function DistanceTo(const aPoint:TpvVector4):TpvScalar; overload; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure ClipSegment(const aP0,aP1:TpvVector3;out aClipped:TpvVector3); overload;
+       function ClipSegmentClosest(const aP0,aP1:TpvVector3;out aClipped0,aClipped1:TpvVector3):TpvInt32; overload;
+       function ClipSegmentLine(var aP0,aP1:TpvVector3):boolean;
        case TpvUInt8 of
         0:(
          RawComponents:array[0..3] of TpvScalar;
@@ -457,14 +457,14 @@ type PpvScalar=^TpvScalar;
      PpvQuaternion=^TpvQuaternion;
      TpvQuaternion=record
       public
-       constructor Create(const pX:TpvScalar); overload;
-       constructor Create(const pX,pY,pZ,pW:TpvScalar); overload;
-       constructor Create(const pVector:TpvVector4); overload;
-       constructor CreateFromAngleAxis(const Angle:TpvScalar;const Axis:TpvVector3);
-       constructor CreateFromEuler(const Pitch,Yaw,Roll:TpvScalar); overload;
-       constructor CreateFromEuler(const Angles:TpvVector3); overload;
-       constructor CreateFromNormalizedSphericalCoordinates(const NormalizedSphericalCoordinates:TpvNormalizedSphericalCoordinates);
-       constructor CreateFromToRotation(const FromDirection,ToDirection:TpvVector3);
+       constructor Create(const aX:TpvScalar); overload;
+       constructor Create(const aX,aY,aZ,aW:TpvScalar); overload;
+       constructor Create(const aVector:TpvVector4); overload;
+       constructor CreateFromAngleAxis(const aAngle:TpvScalar;const aAxis:TpvVector3);
+       constructor CreateFromEuler(const aPitch,aYaw,aRoll:TpvScalar); overload;
+       constructor CreateFromEuler(const aAngles:TpvVector3); overload;
+       constructor CreateFromNormalizedSphericalCoordinates(const aNormalizedSphericalCoordinates:TpvNormalizedSphericalCoordinates);
+       constructor CreateFromToRotation(const aFromDirection,aToDirection:TpvVector3);
        class operator Implicit(const a:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Explicit(const a:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Equal(const a,b:TpvQuaternion):boolean; {$ifdef CAN_INLINE}inline;{$endif}
@@ -496,15 +496,15 @@ type PpvScalar=^TpvScalar;
        class operator Negative({$ifdef fpc}constref{$else}const{$endif} a:TpvQuaternion):TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        class operator Positive(const a:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
       private
-       function GetComponent(const pIndex:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
+       function GetComponent(const aIndex:TpvInt32):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+       procedure SetComponent(const aIndex:TpvInt32;const aValue:TpvScalar); {$ifdef CAN_INLINE}inline;{$endif}
       public
        function ToNormalizedSphericalCoordinates:TpvNormalizedSphericalCoordinates; {$ifdef CAN_INLINE}inline;{$endif}
        function ToEuler:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function ToPitch:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function ToYaw:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
        function ToRoll:TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
-       procedure ToAngleAxis(out Angle:TpvScalar;out Axis:TpvVector3); {$ifdef CAN_INLINE}inline;{$endif}
+       procedure ToAngleAxis(out aAngle:TpvScalar;out aAxis:TpvVector3); {$ifdef CAN_INLINE}inline;{$endif}
        function Generator:TpvVector3; {$ifdef CAN_INLINE}inline;{$endif}
        function Flip:TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
        function Perpendicular:TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
@@ -518,14 +518,14 @@ type PpvScalar=^TpvScalar;
        function Exp:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function Log:TpvQuaternion; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
        function Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvQuaternion):TpvScalar; {$if not (defined(cpu386) or defined(cpux64))}{$ifdef CAN_INLINE}inline;{$endif}{$ifend}
-       function Lerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Nlerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Slerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion;
-       function UnflippedSlerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion;
-       function RotateAroundAxis(const b:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Integrate(const Omega:TpvVector3;const DeltaTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       function Spin(const Omega:TpvVector3;const DeltaTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
-       property Components[const pIndex:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
+       function Lerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Nlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Slerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
+       function UnflippedSlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
+       function RotateAroundAxis(const aVector:TpvQuaternion):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Integrate(const aOmega:TpvVector3;const aDeltaTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       function Spin(const aOmega:TpvVector3;const aDeltaTime:TpvScalar):TpvQuaternion; {$ifdef CAN_INLINE}inline;{$endif}
+       property Components[const aIndex:TpvInt32]:TpvScalar read GetComponent write SetComponent; default;
        case TpvUInt8 of
         0:(RawComponents:array[0..3] of TpvScalar);
         1:(x,y,z,w:TpvScalar);
@@ -1384,7 +1384,7 @@ function LinearPolynomialRoot(const a,b:TpvScalar):TpvScalar; {$ifdef CAN_INLINE
 function QuadraticPolynomialRoot(const a,b,c:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 function CubicPolynomialRoot(const a,b,c,d:TpvScalar):TpvScalar;
 
-function FloatLerp(const v1,v2,w:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function FloatLerp(const aV1,aV2,aTime:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 
 function Cross(const a,b:TpvVector2):TpvVector2; overload; {$ifdef CAN_INLINE}inline;{$endif}
 function Cross(const a,b:TpvVector3):TpvVector3; overload; {$ifdef CAN_INLINE}inline;{$endif}
@@ -1921,73 +1921,73 @@ begin
  end;
 end;
 
-function FloatLerp(const v1,v2,w:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
+function FloatLerp(const aV1,aV2,aTime:TpvScalar):TpvScalar; {$ifdef CAN_INLINE}inline;{$endif}
 begin
- if w<0.0 then begin
-  result:=v1;
- end else if w>1.0 then begin
-  result:=v2;
+ if aTime<0.0 then begin
+  result:=aV1;
+ end else if aTime>1.0 then begin
+  result:=aV2;
  end else begin
-  result:=(v1*(1.0-w))+(v2*w);
+  result:=(aV1*(1.0-aTime))+(aV2*aTime);
  end;
 end;
 
-constructor TpvVector2.Create(const pX:TpvScalar);
+constructor TpvVector2.Create(const aX:TpvScalar);
 begin
- x:=pX;
- y:=pX;
+ x:=aX;
+ y:=aX;
 end;
 
-constructor TpvVector2.Create(const pX,pY:TpvScalar);
+constructor TpvVector2.Create(const aX,aY:TpvScalar);
 begin
- x:=pX;
- y:=pY;
+ x:=aX;
+ y:=aY;
 end;
 
-class function TpvVector2.InlineableCreate(const pX:TpvScalar):TpvVector2;
+class function TpvVector2.InlineableCreate(const aX:TpvScalar):TpvVector2;
 begin
- result.x:=pX;
- result.y:=pX;
+ result.x:=aX;
+ result.y:=aX;
 end;
 
-class function TpvVector2.InlineableCreate(const pX,pY:TpvScalar):TpvVector2;
+class function TpvVector2.InlineableCreate(const aX,aY:TpvScalar):TpvVector2;
 begin
- result.x:=pX;
- result.y:=pY;
+ result.x:=aX;
+ result.y:=aY;
 end;
 
-class operator TpvVector2.Implicit(const a:TpvScalar):TpvVector2;
+class operator TpvVector2.Implicit(const aScalar:TpvScalar):TpvVector2;
 begin
- result.x:=a;
- result.y:=a;
+ result.x:=aScalar;
+ result.y:=aScalar;
 end;
 
-class operator TpvVector2.Explicit(const a:TpvScalar):TpvVector2;
+class operator TpvVector2.Explicit(const aScalar:TpvScalar):TpvVector2;
 begin
- result.x:=a;
- result.y:=a;
+ result.x:=aScalar;
+ result.y:=aScalar;
 end;
 
-class operator TpvVector2.Equal(const a,b:TpvVector2):boolean;
+class operator TpvVector2.Equal(const aLeft,aRight:TpvVector2):boolean;
 begin
- result:=SameValue(a.x,b.x) and SameValue(a.y,b.y);
+ result:=SameValue(aLeft.x,aRight.x) and SameValue(aLeft.y,aRight.y);
 end;
 
-class operator TpvVector2.NotEqual(const a,b:TpvVector2):boolean;
+class operator TpvVector2.NotEqual(const aLeft,aRight:TpvVector2):boolean;
 begin
- result:=(not SameValue(a.x,b.x)) or (not SameValue(a.y,b.y));
+ result:=(not SameValue(aLeft.x,aRight.x)) or (not SameValue(aLeft.y,aRight.y));
 end;
 
-class operator TpvVector2.Inc(const a:TpvVector2):TpvVector2;
+class operator TpvVector2.Inc(const aValue:TpvVector2):TpvVector2;
 begin
- result.x:=a.x+1.0;
- result.y:=a.y+1.0;
+ result.x:=aValue.x+1.0;
+ result.y:=aValue.y+1.0;
 end;
 
-class operator TpvVector2.Dec(const a:TpvVector2):TpvVector2;
+class operator TpvVector2.Dec(const aValue:TpvVector2):TpvVector2;
 begin
- result.x:=a.x-1.0;
- result.y:=a.y-1.0;
+ result.x:=aValue.x-1.0;
+ result.y:=aValue.y-1.0;
 end;
 
 class operator TpvVector2.Add(const a,b:TpvVector2):TpvVector2;
@@ -2098,27 +2098,27 @@ begin
  result.y:=Modulus(a,b.y);
 end;
 
-class operator TpvVector2.Negative(const a:TpvVector2):TpvVector2;
+class operator TpvVector2.Negative(const aValue:TpvVector2):TpvVector2;
 begin
- result.x:=-a.x;
- result.y:=-a.y;
+ result.x:=-aValue.x;
+ result.y:=-aValue.y;
 end;
 
-class operator TpvVector2.Positive(const a:TpvVector2):TpvVector2;
+class operator TpvVector2.Positive(const aValue:TpvVector2):TpvVector2;
 begin
- result:=a;
+ result:=aValue;
 end;
 
 {$i PasVulkan.Math.TpvVector2.Swizzle.Implementations.inc}
 
-function TpvVector2.GetComponent(const pIndex:TpvInt32):TpvScalar;
+function TpvVector2.GetComponent(const aIndex:TpvInt32):TpvScalar;
 begin
- result:=RawComponents[pIndex];
+ result:=RawComponents[aIndex];
 end;
 
-procedure TpvVector2.SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar);
+procedure TpvVector2.SetComponent(const aIndex:TpvInt32;const aValue:TpvScalar);
 begin
- RawComponents[pIndex]:=pValue;
+ RawComponents[aIndex]:=aValue;
 end;
 
 function TpvVector2.Perpendicular:TpvVector2;
@@ -2151,71 +2151,71 @@ begin
  end;
 end;
 
-function TpvVector2.DistanceTo(const b:TpvVector2):TpvScalar;
+function TpvVector2.DistanceTo(const aToVector:TpvVector2):TpvScalar;
 begin
- result:=sqrt(sqr(x-b.x)+sqr(y-b.y));
+ result:=sqrt(sqr(x-aToVector.x)+sqr(y-aToVector.y));
 end;
 
-function TpvVector2.Dot(const b:TpvVector2):TpvScalar;
+function TpvVector2.Dot(const aWithVector:TpvVector2):TpvScalar;
 begin
- result:=(x*b.x)+(y*b.y);
+ result:=(x*aWithVector.x)+(y*aWithVector.y);
 end;
 
-function TpvVector2.Cross(const b:TpvVector2):TpvVector2;
+function TpvVector2.Cross(const aVector:TpvVector2):TpvVector2;
 begin
- result.x:=(y*b.x)-(x*b.y);
- result.y:=(x*b.y)-(y*b.x);
+ result.x:=(y*aVector.x)-(x*aVector.y);
+ result.y:=(x*aVector.y)-(y*aVector.x);
 end;
 
-function TpvVector2.Lerp(const b:TpvVector2;const t:TpvScalar):TpvVector2;
+function TpvVector2.Lerp(const aToVector:TpvVector2;const aTime:TpvScalar):TpvVector2;
 var InvT:TpvScalar;
 begin
- if t<=0.0 then begin
+ if aTime<=0.0 then begin
   result:=self;
- end else if t>=1.0 then begin
-  result:=b;
+ end else if aTime>=1.0 then begin
+  result:=aToVector;
  end else begin
-  InvT:=1.0-t;
-  result.x:=(x*InvT)+(b.x*t);
-  result.y:=(y*InvT)+(b.y*t);
+  InvT:=1.0-aTime;
+  result.x:=(x*InvT)+(aToVector.x*aTime);
+  result.y:=(y*InvT)+(aToVector.y*aTime);
  end;
 end;
 
-function TpvVector2.Nlerp(const b:TpvVector2;const t:TpvScalar):TpvVector2;
+function TpvVector2.Nlerp(const aToVector:TpvVector2;const aTime:TpvScalar):TpvVector2;
 begin
- result:=self.Lerp(b,t).Normalize;
+ result:=self.Lerp(aToVector,aTime).Normalize;
 end;
 
-function TpvVector2.Slerp(const b:TpvVector2;const t:TpvScalar):TpvVector2;
+function TpvVector2.Slerp(const aToVector:TpvVector2;const aTime:TpvScalar):TpvVector2;
 var DotProduct,Theta,Sinus,Cosinus:TpvScalar;
 begin
- if t<=0.0 then begin
+ if aTime<=0.0 then begin
   result:=self;
- end else if t>=1.0 then begin
-  result:=b;
- end else if self=b then begin
-  result:=b;
+ end else if aTime>=1.0 then begin
+  result:=aToVector;
+ end else if self=aToVector then begin
+  result:=aToVector;
  end else begin
-  DotProduct:=self.Dot(b);
+  DotProduct:=self.Dot(aToVector);
   if DotProduct<-1.0 then begin
    DotProduct:=-1.0;
   end else if DotProduct>1.0 then begin
    DotProduct:=1.0;
   end;
-  Theta:=ArcCos(DotProduct)*t;
+  Theta:=ArcCos(DotProduct)*aTime;
   Sinus:=0.0;
   Cosinus:=0.0;
   SinCos(Theta,Sinus,Cosinus);
-  result:=(self*Cosinus)+((b-(self*DotProduct)).Normalize*Sinus);
+  result:=(self*Cosinus)+((aToVector-(self*DotProduct)).Normalize*Sinus);
  end;
 end;
 
-function TpvVector2.Angle(const b,c:TpvVector2):TpvScalar;
+function TpvVector2.Angle(const aOtherFirstVector,aOtherSecondVector:TpvVector2):TpvScalar;
 var DeltaAB,DeltaCB:TpvVector2;
     LengthAB,LengthCB:TpvScalar;
 begin
- DeltaAB:=self-b;
- DeltaCB:=c-b;
+ DeltaAB:=self-aOtherFirstVector;
+ DeltaCB:=aOtherSecondVector-aOtherFirstVector;
  LengthAB:=DeltaAB.Length;
  LengthCB:=DeltaCB.Length;
  if (LengthAB=0.0) or (LengthCB=0.0) then begin
@@ -2225,64 +2225,64 @@ begin
  end;
 end;
 
-function TpvVector2.Rotate(const Angle:TpvScalar):TpvVector2;
+function TpvVector2.Rotate(const aAngle:TpvScalar):TpvVector2;
 var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
- SinCos(Angle,Sinus,Cosinus);
+ SinCos(aAngle,Sinus,Cosinus);
  result.x:=(x*Cosinus)-(y*Sinus);
  result.y:=(y*Cosinus)+(x*Sinus);
 end;
 
-function TpvVector2.Rotate(const Center:TpvVector2;const Angle:TpvScalar):TpvVector2;
+function TpvVector2.Rotate(const aCenter:TpvVector2;const aAngle:TpvScalar):TpvVector2;
 var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
- SinCos(Angle,Sinus,Cosinus);
- result.x:=(((x-Center.x)*Cosinus)-((y-Center.y)*Sinus))+Center.x;
- result.y:=(((y-Center.y)*Cosinus)+((x-Center.x)*Sinus))+Center.y;
+ SinCos(aAngle,Sinus,Cosinus);
+ result.x:=(((x-aCenter.x)*Cosinus)-((y-aCenter.y)*Sinus))+aCenter.x;
+ result.y:=(((y-aCenter.y)*Cosinus)+((x-aCenter.x)*Sinus))+aCenter.y;
 end;
 
-constructor TpvVector3.Create(const pX:TpvScalar);
+constructor TpvVector3.Create(const aX:TpvScalar);
 begin
- x:=pX;
- y:=pX;
- z:=pX;
+ x:=aX;
+ y:=aX;
+ z:=aX;
 end;
 
-constructor TpvVector3.Create(const pX,pY,pZ:TpvScalar);
+constructor TpvVector3.Create(const aX,aY,aZ:TpvScalar);
 begin
- x:=pX;
- y:=pY;
- z:=pZ;
+ x:=aX;
+ y:=aY;
+ z:=aZ;
 end;
 
-constructor TpvVector3.Create(const pXY:TpvVector2;const pZ:TpvScalar=0.0);
+constructor TpvVector3.Create(const aXY:TpvVector2;const aZ:TpvScalar=0.0);
 begin
- Vector2:=pXY;
- z:=pZ;
+ Vector2:=aXY;
+ z:=aZ;
 end;
 
-class function TpvVector3.InlineableCreate(const pX:TpvScalar):TpvVector3;
+class function TpvVector3.InlineableCreate(const aX:TpvScalar):TpvVector3;
 begin
- result.x:=pX;
- result.y:=pX;
- result.z:=pX;
+ result.x:=aX;
+ result.y:=aX;
+ result.z:=aX;
 end;
 
-class function TpvVector3.InlineableCreate(const pX,pY,pZ:TpvScalar):TpvVector3;
+class function TpvVector3.InlineableCreate(const aX,aY,aZ:TpvScalar):TpvVector3;
 begin
- result.x:=pX;
- result.y:=pY;
- result.z:=pZ;
+ result.x:=aX;
+ result.y:=aY;
+ result.z:=aZ;
 end;
 
-class function TpvVector3.InlineableCreate(const pXY:TpvVector2;const pZ:TpvScalar=0.0):TpvVector3;
+class function TpvVector3.InlineableCreate(const aXY:TpvVector2;const aZ:TpvScalar=0.0):TpvVector3;
 begin
- result.Vector2:=pXY;
- result.z:=pZ;
+ result.Vector2:=aXY;
+ result.z:=aZ;
 end;
 
 class operator TpvVector3.Implicit(const a:TpvScalar):TpvVector3;
@@ -2591,14 +2591,14 @@ end;
 
 {$i PasVulkan.Math.TpvVector3.Swizzle.Implementations.inc}
 
-function TpvVector3.GetComponent(const pIndex:TpvInt32):TpvScalar;
+function TpvVector3.GetComponent(const aIndex:TpvInt32):TpvScalar;
 begin
- result:=RawComponents[pIndex];
+ result:=RawComponents[aIndex];
 end;
 
-procedure TpvVector3.SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar);
+procedure TpvVector3.SetComponent(const aIndex:TpvInt32;const aValue:TpvScalar);
 begin
- RawComponents[pIndex]:=pValue;
+ RawComponents[aIndex]:=aValue;
 end;
 
 function TpvVector3.Flip:TpvVector3;
@@ -2840,7 +2840,7 @@ begin
 end;
 {$ifend}
 
-function TpvVector3.DistanceTo({$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvScalar;
+function TpvVector3.DistanceTo({$ifdef fpc}constref{$else}const{$endif} aToVector:TpvVector3):TpvScalar;
 {$if defined(SIMD) and defined(cpu386)}
 asm
  xorps xmm2,xmm2
@@ -2890,7 +2890,7 @@ asm
 end;
 {$else}
 begin
- result:=sqrt(sqr(x-b.x)+sqr(y-b.y)+sqr(z-b.z));
+ result:=sqrt(sqr(x-aToVector.x)+sqr(y-aToVector.y)+sqr(z-aToVector.z));
 end;
 {$ifend}
 
@@ -2945,7 +2945,7 @@ begin
 end;
 {$ifend}
 
-function TpvVector3.Dot({$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvScalar;
+function TpvVector3.Dot({$ifdef fpc}constref{$else}const{$endif} aWithVector:TpvVector3):TpvScalar;
 {$if defined(SIMD) and defined(cpu386)}
 asm
  movss xmm0,dword ptr [eax+0]
@@ -2981,23 +2981,23 @@ asm
 end;
 {$else}
 begin
- result:=(x*b.x)+(y*b.y)+(z*b.z);
+ result:=(x*aWithVector.x)+(y*aWithVector.y)+(z*aWithVector.z);
 end;
 {$ifend}
 
 
-function TpvVector3.AngleTo(const b:TpvVector3):TpvScalar;
+function TpvVector3.AngleTo(const aToVector:TpvVector3):TpvScalar;
 var d:single;
 begin
- d:=sqrt(SquaredLength*b.SquaredLength);
+ d:=sqrt(SquaredLength*aToVector.SquaredLength);
  if d<>0.0 then begin
-  result:=Dot(b)/d;
+  result:=Dot(aToVector)/d;
  end else begin
   result:=0.0;
  end
 end;
 
-function TpvVector3.Cross({$ifdef fpc}constref{$else}const{$endif} b:TpvVector3):TpvVector3;
+function TpvVector3.Cross({$ifdef fpc}constref{$else}const{$endif} aOtherVector:TpvVector3):TpvVector3;
 {$if defined(SIMD) and defined(cpu386)}
 asm
 {$ifdef SSEVector3CrossOtherVariant}
@@ -3166,60 +3166,60 @@ asm
 end;
 {$else}
 begin
- result.x:=(y*b.z)-(z*b.y);
- result.y:=(z*b.x)-(x*b.z);
- result.z:=(x*b.y)-(y*b.x);
+ result.x:=(y*aOtherVector.z)-(z*aOtherVector.y);
+ result.y:=(z*aOtherVector.x)-(x*aOtherVector.z);
+ result.z:=(x*aOtherVector.y)-(y*aOtherVector.x);
 end;
 {$ifend}
 
-function TpvVector3.Lerp(const b:TpvVector3;const t:TpvScalar):TpvVector3;
+function TpvVector3.Lerp(const aToVector:TpvVector3;const aTime:TpvScalar):TpvVector3;
 var InvT:TpvScalar;
 begin
- if t<=0.0 then begin
+ if aTime<=0.0 then begin
   result:=self;
- end else if t>=1.0 then begin
-  result:=b;
+ end else if aTime>=1.0 then begin
+  result:=aToVector;
  end else begin
-  InvT:=1.0-t;
-  result:=(self*InvT)+(b*t);
+  InvT:=1.0-aTime;
+  result:=(self*InvT)+(aToVector*aTime);
  end;
 end;
 
-function TpvVector3.Nlerp(const b:TpvVector3;const t:TpvScalar):TpvVector3;
+function TpvVector3.Nlerp(const aToVector:TpvVector3;const aTime:TpvScalar):TpvVector3;
 begin
- result:=self.Lerp(b,t).Normalize;
+ result:=self.Lerp(aToVector,aTime).Normalize;
 end;
 
-function TpvVector3.Slerp(const b:TpvVector3;const t:TpvScalar):TpvVector3;
+function TpvVector3.Slerp(const aToVector:TpvVector3;const aTime:TpvScalar):TpvVector3;
 var DotProduct,Theta,Sinus,Cosinus:TpvScalar;
 begin
- if t<=0.0 then begin
+ if aTime<=0.0 then begin
   result:=self;
- end else if t>=1.0 then begin
-  result:=b;
- end else if self=b then begin
-  result:=b;
+ end else if aTime>=1.0 then begin
+  result:=aToVector;
+ end else if self=aToVector then begin
+  result:=aToVector;
  end else begin
-  DotProduct:=self.Dot(b);
+  DotProduct:=self.Dot(aToVector);
   if DotProduct<-1.0 then begin
    DotProduct:=-1.0;
   end else if DotProduct>1.0 then begin
    DotProduct:=1.0;
   end;
-  Theta:=ArcCos(DotProduct)*t;
+  Theta:=ArcCos(DotProduct)*aTime;
   Sinus:=0.0;
   Cosinus:=0.0;
   SinCos(Theta,Sinus,Cosinus);
-  result:=(self*Cosinus)+((b-(self*DotProduct)).Normalize*Sinus);
+  result:=(self*Cosinus)+((aToVector-(self*DotProduct)).Normalize*Sinus);
  end;
 end;
 
-function TpvVector3.Angle(const b,c:TpvVector3):TpvScalar;
+function TpvVector3.Angle(const aOtherFirstVector,aOtherSecondVector:TpvVector3):TpvScalar;
 var DeltaAB,DeltaCB:TpvVector3;
     LengthAB,LengthCB:TpvScalar;
 begin
- DeltaAB:=self-b;
- DeltaCB:=c-b;
+ DeltaAB:=self-aOtherFirstVector;
+ DeltaCB:=aOtherSecondVector-aOtherFirstVector;
  LengthAB:=DeltaAB.Length;
  LengthCB:=DeltaCB.Length;
  if (LengthAB=0.0) or (LengthCB=0.0) then begin
@@ -3229,117 +3229,117 @@ begin
  end;
 end;
 
-function TpvVector3.RotateX(const Angle:TpvScalar):TpvVector3;
+function TpvVector3.RotateX(const aAngle:TpvScalar):TpvVector3;
 var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
- SinCos(Angle,Sinus,Cosinus);
+ SinCos(aAngle,Sinus,Cosinus);
  result.x:=x;
  result.y:=(y*Cosinus)-(z*Sinus);
  result.z:=(y*Sinus)+(z*Cosinus);
 end;
 
-function TpvVector3.RotateY(const Angle:TpvScalar):TpvVector3;
+function TpvVector3.RotateY(const aAngle:TpvScalar):TpvVector3;
 var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
- SinCos(Angle,Sinus,Cosinus);
+ SinCos(aAngle,Sinus,Cosinus);
  result.x:=(z*Sinus)+(x*Cosinus);
  result.y:=y;
  result.z:=(z*Cosinus)-(x*Sinus);
 end;
 
-function TpvVector3.RotateZ(const Angle:TpvScalar):TpvVector3;
+function TpvVector3.RotateZ(const aAngle:TpvScalar):TpvVector3;
 var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
- SinCos(Angle,Sinus,Cosinus);
+ SinCos(aAngle,Sinus,Cosinus);
  result.x:=(x*Cosinus)-(y*Sinus);
  result.y:=(x*Sinus)+(y*Cosinus);
  result.z:=z;
 end;
 
-function TpvVector3.ProjectToBounds(const MinVector,MaxVector:TpvVector3):TpvScalar;
+function TpvVector3.ProjectToBounds(const aMinVector,aMaxVector:TpvVector3):TpvScalar;
 begin
  if x<0.0 then begin
-  result:=x*MaxVector.x;
+  result:=x*aMaxVector.x;
  end else begin
-  result:=x*MinVector.x;
+  result:=x*aMinVector.x;
  end;
  if y<0.0 then begin
-  result:=result+(y*MaxVector.y);
+  result:=result+(y*aMaxVector.y);
  end else begin
-  result:=result+(y*MinVector.y);
+  result:=result+(y*aMinVector.y);
  end;
  if z<0.0 then begin
-  result:=result+(z*MaxVector.z);
+  result:=result+(z*aMaxVector.z);
  end else begin
-  result:=result+(z*MinVector.z);
+  result:=result+(z*aMinVector.z);
  end;
 end;
 
-constructor TpvVector4.Create(const pX:TpvScalar);
+constructor TpvVector4.Create(const aX:TpvScalar);
 begin
- x:=pX;
- y:=pX;
- z:=pX;
- w:=pX;
+ x:=aX;
+ y:=aX;
+ z:=aX;
+ w:=aX;
 end;
 
-constructor TpvVector4.Create(const pX,pY,pZ,pW:TpvScalar);
+constructor TpvVector4.Create(const aX,aY,aZ,aW:TpvScalar);
 begin
- x:=pX;
- y:=pY;
- z:=pZ;
- w:=pW;
+ x:=aX;
+ y:=aY;
+ z:=aZ;
+ w:=aW;
 end;
 
-constructor TpvVector4.Create(const pXY:TpvVector2;const pZ:TpvScalar=0.0;const pW:TpvScalar=1.0);
+constructor TpvVector4.Create(const aXY:TpvVector2;const aZ:TpvScalar=0.0;const aW:TpvScalar=1.0);
 begin
- x:=pXY.x;
- y:=pXY.y;
- z:=pZ;
- w:=pW;
+ x:=aXY.x;
+ y:=aXY.y;
+ z:=aZ;
+ w:=aW;
 end;
 
-constructor TpvVector4.Create(const pXYZ:TpvVector3;const pW:TpvScalar=1.0);
+constructor TpvVector4.Create(const aXYZ:TpvVector3;const aW:TpvScalar=1.0);
 begin
- x:=pXYZ.x;
- y:=pXYZ.y;
- z:=pXYZ.z;
- w:=pW;
+ x:=aXYZ.x;
+ y:=aXYZ.y;
+ z:=aXYZ.z;
+ w:=aW;
 end;
 
-class function TpvVector4.InlineableCreate(const pX:TpvScalar):TpvVector4;
+class function TpvVector4.InlineableCreate(const aX:TpvScalar):TpvVector4;
 begin
- result.x:=pX;
- result.y:=pX;
- result.z:=pX;
- result.w:=pX;
+ result.x:=aX;
+ result.y:=aX;
+ result.z:=aX;
+ result.w:=aX;
 end;
 
-class function TpvVector4.InlineableCreate(const pX,pY,pZ,pW:TpvScalar):TpvVector4;
+class function TpvVector4.InlineableCreate(const aX,aY,aZ,aW:TpvScalar):TpvVector4;
 begin
- result.x:=pX;
- result.y:=pY;
- result.z:=pZ;
- result.w:=pW;
+ result.x:=aX;
+ result.y:=aY;
+ result.z:=aZ;
+ result.w:=aW;
 end;
 
-class function TpvVector4.InlineableCreate(const pXY:TpvVector2;const pZ:TpvScalar=0.0;const pW:TpvScalar=0.0):TpvVector4;
+class function TpvVector4.InlineableCreate(const aXY:TpvVector2;const aZ:TpvScalar=0.0;const aW:TpvScalar=0.0):TpvVector4;
 begin
- result.Vector2:=pXY;
- result.z:=pZ;
- result.w:=pW;
+ result.Vector2:=aXY;
+ result.z:=aZ;
+ result.w:=aW;
 end;
 
-class function TpvVector4.InlineableCreate(const pXYZ:TpvVector3;const pW:TpvScalar=0.0):TpvVector4;
+class function TpvVector4.InlineableCreate(const aXYZ:TpvVector3;const aW:TpvScalar=0.0):TpvVector4;
 begin
- result.Vector3:=pXYZ;
- result.w:=pW;
+ result.Vector3:=aXYZ;
+ result.w:=aW;
 end;
 
 class operator TpvVector4.Implicit(const a:TpvScalar):TpvVector4;
@@ -3641,14 +3641,14 @@ end;
 
 {$i PasVulkan.Math.TpvVector4.Swizzle.Implementations.inc}
 
-function TpvVector4.GetComponent(const pIndex:TpvInt32):TpvScalar;
+function TpvVector4.GetComponent(const aIndex:TpvInt32):TpvScalar;
 begin
- result:=RawComponents[pIndex];
+ result:=RawComponents[aIndex];
 end;
 
-procedure TpvVector4.SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar);
+procedure TpvVector4.SetComponent(const aIndex:TpvInt32;const aValue:TpvScalar);
 begin
- RawComponents[pIndex]:=pValue;
+ RawComponents[aIndex]:=aValue;
 end;
 
 function TpvVector4.Flip:TpvVector4;
@@ -4080,57 +4080,57 @@ begin
 end;
 {$ifend}
 
-function TpvVector4.Lerp(const b:TpvVector4;const t:TpvScalar):TpvVector4;
+function TpvVector4.Lerp(const aToVector:TpvVector4;const aTime:TpvScalar):TpvVector4;
 var InvT:TpvScalar;
 begin
- if t<=0.0 then begin
+ if aTime<=0.0 then begin
   result:=self;
- end else if t>=1.0 then begin
-  result:=b;
+ end else if aTime>=1.0 then begin
+  result:=aToVector;
  end else begin
-  InvT:=1.0-t;
-  result.x:=(x*InvT)+(b.x*t);
-  result.y:=(y*InvT)+(b.y*t);
-  result.z:=(z*InvT)+(b.z*t);
-  result.w:=(w*InvT)+(b.w*t);
+  InvT:=1.0-aTime;
+  result.x:=(x*InvT)+(aToVector.x*aTime);
+  result.y:=(y*InvT)+(aToVector.y*aTime);
+  result.z:=(z*InvT)+(aToVector.z*aTime);
+  result.w:=(w*InvT)+(aToVector.w*aTime);
  end;
 end;
 
-function TpvVector4.Nlerp(const b:TpvVector4;const t:TpvScalar):TpvVector4;
+function TpvVector4.Nlerp(const aToVector:TpvVector4;const aTime:TpvScalar):TpvVector4;
 begin
- result:=self.Lerp(b,t).Normalize;
+ result:=self.Lerp(aToVector,aTime).Normalize;
 end;
 
-function TpvVector4.Slerp(const b:TpvVector4;const t:TpvScalar):TpvVector4;
+function TpvVector4.Slerp(const aToVector:TpvVector4;const aTime:TpvScalar):TpvVector4;
 var DotProduct,Theta,Sinus,Cosinus:TpvScalar;
 begin
- if t<=0.0 then begin
+ if aTime<=0.0 then begin
   result:=self;
- end else if t>=1.0 then begin
-  result:=b;
- end else if self=b then begin
-  result:=b;
+ end else if aTime>=1.0 then begin
+  result:=aToVector;
+ end else if self=aToVector then begin
+  result:=aToVector;
  end else begin
-  DotProduct:=self.Dot(b);
+  DotProduct:=self.Dot(aToVector);
   if DotProduct<-1.0 then begin
    DotProduct:=-1.0;
   end else if DotProduct>1.0 then begin
    DotProduct:=1.0;
   end;
-  Theta:=ArcCos(DotProduct)*t;
+  Theta:=ArcCos(DotProduct)*aTime;
   Sinus:=0.0;
   Cosinus:=0.0;
   SinCos(Theta,Sinus,Cosinus);
-  result:=(self*Cosinus)+((b-(self*DotProduct)).Normalize*Sinus);
+  result:=(self*Cosinus)+((aToVector-(self*DotProduct)).Normalize*Sinus);
  end;
 end;
 
-function TpvVector4.Angle(const b,c:TpvVector4):TpvScalar;
+function TpvVector4.Angle(const aOtherFirstVector,aOtherSecondVector:TpvVector4):TpvScalar;
 var DeltaAB,DeltaCB:TpvVector4;
     LengthAB,LengthCB:TpvScalar;
 begin
- DeltaAB:=self-b;
- DeltaCB:=c-b;
+ DeltaAB:=self-aOtherFirstVector;
+ DeltaCB:=aOtherSecondVector-aOtherFirstVector;
  LengthAB:=DeltaAB.Length;
  LengthCB:=DeltaCB.Length;
  if (LengthAB=0.0) or (LengthCB=0.0) then begin
@@ -4140,68 +4140,68 @@ begin
  end;
 end;
 
-function TpvVector4.RotateX(const Angle:TpvScalar):TpvVector4;
+function TpvVector4.RotateX(const aAngle:TpvScalar):TpvVector4;
 var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
- SinCos(Angle,Sinus,Cosinus);
+ SinCos(aAngle,Sinus,Cosinus);
  result.x:=x;
  result.y:=(y*Cosinus)-(z*Sinus);
  result.z:=(y*Sinus)+(z*Cosinus);
  result.w:=w;
 end;
 
-function TpvVector4.RotateY(const Angle:TpvScalar):TpvVector4;
+function TpvVector4.RotateY(const aAngle:TpvScalar):TpvVector4;
 var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
- SinCos(Angle,Sinus,Cosinus);
+ SinCos(aAngle,Sinus,Cosinus);
  result.x:=(z*Sinus)+(x*Cosinus);
  result.y:=y;
  result.z:=(z*Cosinus)-(x*Sinus);
  result.w:=w;
 end;
 
-function TpvVector4.RotateZ(const Angle:TpvScalar):TpvVector4;
+function TpvVector4.RotateZ(const aAngle:TpvScalar):TpvVector4;
 var Sinus,Cosinus:TpvScalar;
 begin
  Sinus:=0.0;
  Cosinus:=0.0;
- SinCos(Angle,Sinus,Cosinus);
+ SinCos(aAngle,Sinus,Cosinus);
  result.x:=(x*Cosinus)-(y*Sinus);
  result.y:=(x*Sinus)+(y*Cosinus);
  result.z:=z;
  result.w:=w;
 end;
 
-function TpvVector4.Rotate(const Angle:TpvScalar;const Axis:TpvVector3):TpvVector4;
+function TpvVector4.Rotate(const aAngle:TpvScalar;const aAxis:TpvVector3):TpvVector4;
 begin
- result:=TpvMatrix4x4.CreateRotate(Angle,Axis)*self;
+ result:=TpvMatrix4x4.CreateRotate(aAngle,aAxis)*self;
 end;
 
-function TpvVector4.ProjectToBounds(const MinVector,MaxVector:TpvVector4):TpvScalar;
+function TpvVector4.ProjectToBounds(const aMinVector,aMaxVector:TpvVector4):TpvScalar;
 begin
  if x<0.0 then begin
-  result:=x*MaxVector.x;
+  result:=x*aMaxVector.x;
  end else begin
-  result:=x*MinVector.x;
+  result:=x*aMinVector.x;
  end;
  if y<0.0 then begin
-  result:=result+(y*MaxVector.y);
+  result:=result+(y*aMaxVector.y);
  end else begin
-  result:=result+(y*MinVector.y);
+  result:=result+(y*aMinVector.y);
  end;
  if z<0.0 then begin
-  result:=result+(z*MaxVector.z);
+  result:=result+(z*aMaxVector.z);
  end else begin
-  result:=result+(z*MinVector.z);
+  result:=result+(z*aMinVector.z);
  end;
  if w<0.0 then begin
-  result:=result+(w*MaxVector.w);
+  result:=result+(w*aMaxVector.w);
  end else begin
-  result:=result+(w*MinVector.w);
+  result:=result+(w*aMinVector.w);
  end;
 end;
 
@@ -4209,38 +4209,38 @@ end;
 {$i PasVulkan.Math.TpvVector3Helper.Swizzle.Implementations.inc}
 {$i PasVulkan.Math.TpvVector4Helper.Swizzle.Implementations.inc}
 
-constructor TpvPlane.Create(const pNormal:TpvVector3;const pDistance:TpvScalar);
+constructor TpvPlane.Create(const aNormal:TpvVector3;const aDistance:TpvScalar);
 begin
- Normal:=pNormal;
- Distance:=pDistance;
+ Normal:=aNormal;
+ Distance:=aDistance;
 end;
 
-constructor TpvPlane.Create(const x,y,z,pDistance:TpvScalar);
+constructor TpvPlane.Create(const aX,aY,aZ,aDistance:TpvScalar);
 begin
- Normal.x:=x;
- Normal.y:=y;
- Normal.z:=z;
- Distance:=pDistance;
+ Normal.x:=aX;
+ Normal.y:=aY;
+ Normal.z:=aZ;
+ Distance:=aDistance;
 end;
 
-constructor TpvPlane.Create(const pA,pB,pC:TpvVector3);
+constructor TpvPlane.Create(const aA,aB,aC:TpvVector3);
 begin
- Normal:=((pB-pA).Cross(pC-pA)).Normalize;
- Distance:=-((Normal.x*pA.x)+(Normal.y*pA.y)+(Normal.z*pA.z));
+ Normal:=((aB-aA).Cross(aC-aA)).Normalize;
+ Distance:=-((Normal.x*aA.x)+(Normal.y*aA.y)+(Normal.z*aA.z));
 end;
 
-constructor TpvPlane.Create(const pA,pB,pC:TpvVector4);
+constructor TpvPlane.Create(const aA,aB,aC:TpvVector4);
 begin
- Normal:=((pB.xyz-pA.xyz).Cross(pC.xyz-pA.xyz)).Normalize;
- Distance:=-((Normal.x*pA.x)+(Normal.y*pA.y)+(Normal.z*pA.z));
+ Normal:=((aB.xyz-aA.xyz).Cross(aC.xyz-aA.xyz)).Normalize;
+ Distance:=-((Normal.x*aA.x)+(Normal.y*aA.y)+(Normal.z*aA.z));
 end;
 
-constructor TpvPlane.Create(const Vector:TpvVector4);
+constructor TpvPlane.Create(const aVector:TpvVector4);
 begin
- Normal.x:=Vector.x;
- Normal.y:=Vector.y;
- Normal.z:=Vector.z;
- Distance:=Vector.w;
+ Normal.x:=aVector.x;
+ Normal.y:=aVector.y;
+ Normal.z:=aVector.z;
+ Distance:=aVector.w;
 end;
 
 function TpvPlane.ToVector:TpvVector4;
@@ -4265,66 +4265,66 @@ begin
  end;
 end;
 
-function TpvPlane.DistanceTo(const Point:TpvVector3):TpvScalar;
+function TpvPlane.DistanceTo(const aPoint:TpvVector3):TpvScalar;
 begin
- result:=Normal.Dot(Point)+Distance;
+ result:=Normal.Dot(aPoint)+Distance;
 end;
 
-function TpvPlane.DistanceTo(const Point:TpvVector4):TpvScalar;
+function TpvPlane.DistanceTo(const aPoint:TpvVector4):TpvScalar;
 begin
- result:=Normal.Dot(Point.xyz)+(Point.w*Distance);
+ result:=Normal.Dot(aPoint.xyz)+(aPoint.w*Distance);
 end;
 
-procedure TpvPlane.ClipSegment(const p0,p1:TpvVector3;out Clipped:TpvVector3);
+procedure TpvPlane.ClipSegment(const aP0,aP1:TpvVector3;out aClipped:TpvVector3);
 begin
- Clipped:=p0+((p1-p0).Normalize*(-DistanceTo(p0)));
-//Clipped:=p0+((p1-p0)*((-DistanceTo(p0))/Normal.Dot(p1-p0)));
+ aClipped:=aP0+((aP1-aP0).Normalize*(-DistanceTo(aP0)));
+//aClipped:=aP0+((aP1-aP0)*((-DistanceTo(aP0))/Normal.Dot(aP1-aP0)));
 end;
 
-function TpvPlane.ClipSegmentClosest(const p0,p1:TpvVector3;out Clipped0,Clipped1:TpvVector3):TpvInt32;
+function TpvPlane.ClipSegmentClosest(const aP0,aP1:TpvVector3;out aClipped0,aClipped1:TpvVector3):TpvInt32;
 var d0,d1:TpvScalar;
 begin
- d0:=-DistanceTo(p0);
- d1:=-DistanceTo(p1);
+ d0:=-DistanceTo(aP0);
+ d1:=-DistanceTo(aP1);
  if (d0>(-EPSILON)) and (d1>(-EPSILON)) then begin
   if d0<d1 then begin
    result:=0;
-   Clipped0:=p0;
-   Clipped1:=p1;
+   aClipped0:=aP0;
+   aClipped1:=aP1;
   end else begin
    result:=1;
-   Clipped0:=p1;
-   Clipped1:=p0;
+   aClipped0:=aP1;
+   aClipped1:=aP0;
   end;
  end else if (d0<EPSILON) and (d1<EPSILON) then begin
   if d0>d1 then begin
    result:=2;
-   Clipped0:=p0;
-   Clipped1:=p1;
+   aClipped0:=aP0;
+   aClipped1:=aP1;
   end else begin
    result:=3;
-   Clipped0:=p1;
-   Clipped1:=p0;
+   aClipped0:=aP1;
+   aClipped1:=aP0;
   end;
  end else begin
   if d0<d1 then begin
    result:=4;
-   Clipped1:=p0;
+   aClipped1:=aP0;
   end else begin
    result:=5;
-   Clipped1:=p1;
+   aClipped1:=aP1;
   end;
-  Clipped0:=p1-p0;
-  Clipped0:=p0+(Clipped0*((-d0)/Normal.Dot(Clipped0)));
+  aClipped0:=aP1-aP0;
+  aClipped0:=aP0+(aClipped0*((-d0)/Normal.Dot(aClipped0)));
  end;
 end;
 
-function TpvPlane.ClipSegmentLine(var p0,p1:TpvVector3):boolean;
+function TpvPlane.ClipSegmentLine(var aP0,aP1:TpvVector3):boolean;
 var d0,d1:TpvScalar;
     o0,o1:boolean;
 begin
- d0:=DistanceTo(p0);
- d1:=DistanceTo(p1);
+ d0:=DistanceTo(aP0);
+ d1:=DistanceTo(aP1);
  o0:=d0<0.0;
  o1:=d1<0.0;
  if o0 and o1 then begin
@@ -4334,11 +4334,11 @@ begin
   // At least one point is above or in the plane which means that the line segment is above => return true
   if (o0<>o1) and (abs(d0-d1)>EPSILON) then begin
    if o0 then begin
-    // p1 is above or in the plane which means that the line segment is above => clip l0
-    p0:=p0+((p1-p0)*(d0/(d0-d1)));
+    // aP1 is above or in the plane which means that the line segment is above => clip l0
+    aP0:=aP0+((aP1-aP0)*(d0/(d0-d1)));
    end else begin
-    // p0 is above or in the plane which means that the line segment is above => clip l1
-    p1:=p0+((p1-p0)*(d0/(d0-d1)));
+    // aP0 is above or in the plane which means that the line segment is above => clip l1
+    aP1:=aP0+((aP1-aP0)*(d0/(d0-d1)));
    end;
   end else begin
    // Near parallel case => no clipping
@@ -4347,52 +4347,52 @@ begin
  end;
 end;
 
-constructor TpvQuaternion.Create(const pX:TpvScalar);
+constructor TpvQuaternion.Create(const aX:TpvScalar);
 begin
- x:=pX;
- y:=pX;
- z:=pX;
- w:=pX;
+ x:=aX;
+ y:=aX;
+ z:=aX;
+ w:=aX;
 end;
 
-constructor TpvQuaternion.Create(const pX,pY,pZ,pW:TpvScalar);
+constructor TpvQuaternion.Create(const aX,aY,aZ,aW:TpvScalar);
 begin
- x:=pX;
- y:=pY;
- z:=pZ;
- w:=pW;
+ x:=aX;
+ y:=aY;
+ z:=aZ;
+ w:=aW;
 end;
 
-constructor TpvQuaternion.Create(const pVector:TpvVector4);
+constructor TpvQuaternion.Create(const aVector:TpvVector4);
 begin
- Vector:=pVector;
+ Vector:=aVector;
 end;
 
-constructor TpvQuaternion.CreateFromAngleAxis(const Angle:TpvScalar;const Axis:TpvVector3);
+constructor TpvQuaternion.CreateFromAngleAxis(const aAngle:TpvScalar;const aAxis:TpvVector3);
 var s:TpvScalar;
 begin
-{s:=sin(Angle*0.5);
- w:=cos(Angle*0.5);}
- SinCos(Angle*0.5,s,w);
- x:=Axis.x*s;
- y:=Axis.y*s;
- z:=Axis.z*s;
+{s:=sin(aAngle*0.5);
+ w:=cos(aAngle*0.5);}
+ SinCos(aAngle*0.5,s,w);
+ x:=aAxis.x*s;
+ y:=aAxis.y*s;
+ z:=aAxis.z*s;
  self:=self.Normalize;
 end;
 
-constructor TpvQuaternion.CreateFromEuler(const Pitch,Yaw,Roll:TpvScalar);
+constructor TpvQuaternion.CreateFromEuler(const aPitch,aYaw,aRoll:TpvScalar);
 var sp,sy,sr,cp,cy,cr:TpvScalar;
 begin
- // Order of rotations: Roll (Z), Pitch (X), Yaw (Y)
- SinCos(Pitch*0.5,sp,cp);
- SinCos(Yaw*0.5,sy,cy);
- SinCos(Roll*0.5,sr,cr);
-{sp:=sin(Pitch*0.5);
- sy:=sin(Yaw*0.5);
- sr:=sin(Roll*0.5);
- cp:=cos(Pitch*0.5);
- cy:=cos(Yaw*0.5);
- cr:=cos(Roll*0.5);}
+ // Order of rotations: aRoll (Z), aPitch (X), aYaw (Y)
+ SinCos(aPitch*0.5,sp,cp);
+ SinCos(aYaw*0.5,sy,cy);
+ SinCos(aRoll*0.5,sr,cr);
+{sp:=sin(aPitch*0.5);
+ sy:=sin(aYaw*0.5);
+ sr:=sin(aRoll*0.5);
+ cp:=cos(aPitch*0.5);
+ cy:=cos(aYaw*0.5);
+ cr:=cos(aRoll*0.5);}
  Vector:=TpvVector4.Create((sp*cy*cr)+(cp*sy*sr),
                               (cp*sy*cr)-(sp*cy*sr),
                               (cp*cy*sr)-(sp*sy*cr),
@@ -4400,19 +4400,19 @@ begin
                              ).Normalize;
 end;
 
-constructor TpvQuaternion.CreateFromEuler(const Angles:TpvVector3);
+constructor TpvQuaternion.CreateFromEuler(const aAngles:TpvVector3);
 var sp,sy,sr,cp,cy,cr:TpvScalar;
 begin
  // Order of rotations: Roll (Z), Pitch (X), Yaw (Y)
- SinCos(Angles.Pitch*0.5,sp,cp);
- SinCos(Angles.Yaw*0.5,sy,cy);
- SinCos(Angles.Roll*0.5,sr,cr);
-{sp:=sin(Angles.Pitch*0.5);
- sy:=sin(Angles.Yaw*0.5);
- sr:=sin(Angles.Roll*0.5);
- cp:=cos(Angles.Pitch*0.5);
- cy:=cos(Angles.Yaw*0.5);
- cr:=cos(Angles.Roll*0.5);{}
+ SinCos(aAngles.Pitch*0.5,sp,cp);
+ SinCos(aAngles.Yaw*0.5,sy,cy);
+ SinCos(aAngles.Roll*0.5,sr,cr);
+{sp:=sin(aAngles.Pitch*0.5);
+ sy:=sin(aAngles.Yaw*0.5);
+ sr:=sin(aAngles.Roll*0.5);
+ cp:=cos(aAngles.Pitch*0.5);
+ cy:=cos(aAngles.Yaw*0.5);
+ cr:=cos(aAngles.Roll*0.5);{}
  Vector:=TpvVector4.Create((sp*cy*cr)+(cp*sy*sr),
                               (cp*sy*cr)-(sp*cy*sr),
                               (cp*cy*sr)-(sp*sy*cr),
@@ -4420,20 +4420,20 @@ begin
                              ).Normalize;
 end;
 
-constructor TpvQuaternion.CreateFromNormalizedSphericalCoordinates(const NormalizedSphericalCoordinates:TpvNormalizedSphericalCoordinates);
+constructor TpvQuaternion.CreateFromNormalizedSphericalCoordinates(const aNormalizedSphericalCoordinates:TpvNormalizedSphericalCoordinates);
 begin
- x:=cos(NormalizedSphericalCoordinates.Latitude)*sin(NormalizedSphericalCoordinates.Longitude);
- y:=sin(NormalizedSphericalCoordinates.Latitude);
- z:=cos(NormalizedSphericalCoordinates.Latitude)*cos(NormalizedSphericalCoordinates.Longitude);
+ x:=cos(aNormalizedSphericalCoordinates.Latitude)*sin(aNormalizedSphericalCoordinates.Longitude);
+ y:=sin(aNormalizedSphericalCoordinates.Latitude);
+ z:=cos(aNormalizedSphericalCoordinates.Latitude)*cos(aNormalizedSphericalCoordinates.Longitude);
  w:=0.0;
 end;
 
-constructor TpvQuaternion.CreateFromToRotation(const FromDirection,ToDirection:TpvVector3);
+constructor TpvQuaternion.CreateFromToRotation(const aFromDirection,aToDirection:TpvVector3);
 begin
- Vector.xyz:=FromDirection.Normalize.Cross(ToDirection.Normalize);
- Vector.w:=sqrt((sqr(FromDirection.x)+sqr(FromDirection.y)+sqr(FromDirection.z))*
-                (sqr(ToDirection.x)+sqr(ToDirection.y)+sqr(ToDirection.z)))+
-                ((FromDirection.x*ToDirection.x)+(FromDirection.y*ToDirection.y)+(FromDirection.z*ToDirection.z));
+ Vector.xyz:=aFromDirection.Normalize.Cross(aToDirection.Normalize);
+ Vector.w:=sqrt((sqr(aFromDirection.x)+sqr(aFromDirection.y)+sqr(aFromDirection.z))*
+                (sqr(aToDirection.x)+sqr(aToDirection.y)+sqr(aToDirection.z)))+
+                ((aFromDirection.x*aToDirection.x)+(aFromDirection.y*aToDirection.y)+(aFromDirection.z*aToDirection.z));
 end;
 
 class operator TpvQuaternion.Implicit(const a:TpvScalar):TpvQuaternion;
@@ -4977,14 +4977,14 @@ begin
  result:=a;
 end;
 
-function TpvQuaternion.GetComponent(const pIndex:TpvInt32):TpvScalar;
+function TpvQuaternion.GetComponent(const aIndex:TpvInt32):TpvScalar;
 begin
- result:=RawComponents[pIndex];
+ result:=RawComponents[aIndex];
 end;
 
-procedure TpvQuaternion.SetComponent(const pIndex:TpvInt32;const pValue:TpvScalar);
+procedure TpvQuaternion.SetComponent(const aIndex:TpvInt32;const aValue:TpvScalar);
 begin
- RawComponents[pIndex]:=pValue;
+ RawComponents[aIndex]:=aValue;
 end;
 
 function TpvQuaternion.ToNormalizedSphericalCoordinates:TpvNormalizedSphericalCoordinates;
@@ -5064,7 +5064,7 @@ begin
  end;
 end;
 
-procedure TpvQuaternion.ToAngleAxis(out Angle:TpvScalar;out Axis:TpvVector3);
+procedure TpvQuaternion.ToAngleAxis(out aAngle:TpvScalar;out aAxis:TpvVector3);
 var SinAngle:TpvScalar;
     Quaternion:TpvQuaternion;
 begin
@@ -5073,10 +5073,10 @@ begin
  if System.abs(SinAngle)<EPSILON then begin
   SinAngle:=1.0;
  end;
- Angle:=2.0*ArcCos(Quaternion.w);
- Axis.x:=Quaternion.x/SinAngle;
- Axis.y:=Quaternion.y/SinAngle;
- Axis.z:=Quaternion.z/SinAngle;
+ aAngle:=2.0*ArcCos(Quaternion.w);
+ aAxis.x:=Quaternion.x/SinAngle;
+ aAxis.y:=Quaternion.y/SinAngle;
+ aAxis.z:=Quaternion.z/SinAngle;
 end;
 
 function TpvQuaternion.Generator:TpvVector3;
@@ -5498,32 +5498,32 @@ begin
 end;
 {$ifend}
 
-function TpvQuaternion.Lerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion;
+function TpvQuaternion.Lerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
 var SignFactor:TpvScalar;
 begin
- if Dot(b)<0.0 then begin
+ if Dot(aToQuaternion)<0.0 then begin
   SignFactor:=-1.0;
  end else begin
   SignFactor:=1.0;
  end;
- if t<=0.0 then begin
+ if aTime<=0.0 then begin
   result:=self;
- end else if t>=1.0 then begin
-  result:=b*SignFactor;
+ end else if aTime>=1.0 then begin
+  result:=aToQuaternion*SignFactor;
  end else begin
-  result:=(self*(1.0-t))+(b*(t*SignFactor));
+  result:=(self*(1.0-aTime))+(aToQuaternion*(aTime*SignFactor));
  end;
 end;
 
-function TpvQuaternion.Nlerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion;
+function TpvQuaternion.Nlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
 begin
- result:=Lerp(b,t).Normalize;
+ result:=Lerp(aToQuaternion,aTime).Normalize;
 end;
 
-function TpvQuaternion.Slerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion;
+function TpvQuaternion.Slerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
 var Omega,co,so,s0,s1,s2:TpvScalar;
 begin
- co:=Dot(b);
+ co:=Dot(aToQuaternion);
  if co<0.0 then begin
   co:=-co;
   s2:=-1.0;
@@ -5533,44 +5533,44 @@ begin
  if (1.0-co)>EPSILON then begin
   Omega:=ArcCos(co);
   so:=sin(Omega);
-  s0:=sin((1.0-t)*Omega)/so;
-  s1:=sin(t*Omega)/so;
+  s0:=sin((1.0-aTime)*Omega)/so;
+  s1:=sin(aTime*Omega)/so;
  end else begin
-  s0:=1.0-t;
-  s1:=t;
+  s0:=1.0-aTime;
+  s1:=aTime;
  end;
- result:=(s0*self)+(b*(s1*s2));
+ result:=(s0*self)+(aToQuaternion*(s1*s2));
 end;
 
-function TpvQuaternion.UnflippedSlerp(const b:TpvQuaternion;const t:TpvScalar):TpvQuaternion;
+function TpvQuaternion.UnflippedSlerp(const aToQuaternion:TpvQuaternion;const aTime:TpvScalar):TpvQuaternion;
 var Omega,co,so,s0,s1:TpvScalar;
 begin
- co:=Dot(b);
+ co:=Dot(aToQuaternion);
  if (1.0-co)>EPSILON then begin
   Omega:=ArcCos(co);
   so:=sin(Omega);
-  s0:=sin((1.0-t)*Omega)/so;
-  s1:=sin(t*Omega)/so;
+  s0:=sin((1.0-aTime)*Omega)/so;
+  s1:=sin(aTime*Omega)/so;
  end else begin
-  s0:=1.0-t;
-  s1:=t;
+  s0:=1.0-aTime;
+  s1:=aTime;
  end;
- result:=(s0*self)+(b*s1);
+ result:=(s0*self)+(aToQuaternion*s1);
 end;
 
-function TpvQuaternion.RotateAroundAxis(const b:TpvQuaternion):TpvQuaternion;
+function TpvQuaternion.RotateAroundAxis(const aVector:TpvQuaternion):TpvQuaternion;
 begin
- result.x:=((x*b.w)+(z*b.y))-(y*b.z);
- result.y:=((x*b.z)+(y*b.w))-(z*b.x);
- result.z:=((y*b.x)+(z*b.w))-(x*b.y);
- result.w:=((x*b.x)+(y*b.y))+(z*b.z);
+ result.x:=((x*aVector.w)+(z*aVector.y))-(y*aVector.z);
+ result.y:=((x*aVector.z)+(y*aVector.w))-(z*aVector.x);
+ result.z:=((y*aVector.x)+(z*aVector.w))-(x*aVector.y);
+ result.w:=((x*aVector.x)+(y*aVector.y))+(z*aVector.z);
 end;
 
-function TpvQuaternion.Integrate(const Omega:TpvVector3;const DeltaTime:TpvScalar):TpvQuaternion;
+function TpvQuaternion.Integrate(const aOmega:TpvVector3;const aDeltaTime:TpvScalar):TpvQuaternion;
 var ThetaLenSquared,ThetaLen,s,w:TpvScalar;
     Theta:TpvVector3;
 begin
- Theta:=Omega*(DeltaTime*0.5);
+ Theta:=aOmega*(aDeltaTime*0.5);
  ThetaLenSquared:=Theta.SquaredLength;
  if (sqr(ThetaLenSquared)/24.0)<EPSILON then begin
   s:=1.0-(ThetaLenSquared/6.0);
@@ -5585,12 +5585,12 @@ begin
  result:=result*self;
 end;
 
-function TpvQuaternion.Spin(const Omega:TpvVector3;const DeltaTime:TpvScalar):TpvQuaternion;
+function TpvQuaternion.Spin(const aOmega:TpvVector3;const aDeltaTime:TpvScalar):TpvQuaternion;
 var wq:TpvQuaternion;
 begin
- wq.x:=Omega.x*DeltaTime;
- wq.y:=Omega.y*DeltaTime;
- wq.z:=Omega.z*DeltaTime;
+ wq.x:=aOmega.x*aDeltaTime;
+ wq.y:=aOmega.y*aDeltaTime;
+ wq.z:=aOmega.z*aDeltaTime;
  wq.w:=0.0;
  result:=(self+((wq*self)*0.5)).Normalize;
 end;
