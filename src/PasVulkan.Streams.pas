@@ -71,7 +71,8 @@ uses {$if defined(Windows)}
      SysUtils,
      Classes,
      Math,
-     PasVulkan.Types;
+     PasVulkan.Types,
+     PasVulkan.Math;
 
 const DefaultBufferSize=4096;
       DefaultBufferBucketCount=4096;
@@ -159,6 +160,50 @@ type EpvDataStream=class(Exception);
        function Seek(Offset:TpvInt32;Origin:TpvUInt16):TpvInt32; overload; override;
        function Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64; overload; override;
        procedure Flush;
+     end;
+
+     PpvChunkSignature=^TpvChunkSignature;
+     TpvChunkSignature=array[0..3] of ansichar;
+
+     PpvChunk=^TpvChunk;
+     TpvChunk=packed record
+      Signature:TpvChunkSignature;
+      Offset:TpvInt32;
+      Size:TpvInt32;
+      Reserved:TpvUInt32;
+     end;
+
+     TpvChunks=array of TpvChunk;
+
+     EpvChunkStream=class(Exception);
+
+     TpvChunkStream=class(TStream)
+      private
+       fStream:TStream;
+       fOffset:TpvInt64;
+       fSize:TpvInt64;
+       fPosition:TpvInt64;
+       fMemory:boolean;
+      public
+       constructor Create(const AStream:TStream;const AOffset,ASize:TpvInt64;const AMemory:boolean=true);
+       destructor Destroy; override;
+       function Read(var Buffer;Count:TpvInt32):TpvInt32; override;
+       function Write(const Buffer;Count:TpvInt32):TpvInt32; override;
+       function Seek(Offset:TpvInt32;Origin:word):TpvInt32; override;
+       function Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64; override;
+       procedure SetSize(NewSize:TpvInt32); override;
+       procedure SetSize(const NewSize:TpvInt64); override;
+       function ReadWithCheck(var Buffer;Count:TpvInt32):TpvInt32;
+       function ReadString:TpvUTF8String;
+       function ReadUInt8:TpvUInt8;
+       function ReadInt32:TpvInt32;
+       function ReadUInt32:TpvUInt32;
+       function ReadFloat:TpvFloat;
+       function ReadVector2:TpvVector2;
+       function ReadVector3:TpvVector3;
+       function ReadVector4:TpvVector4;
+       function ReadPlane:TpvPlane;
+       function ReadMatrix4x4:TpvMatrix4x4;
      end;
 
 implementation
@@ -826,6 +871,217 @@ begin
  if Position>NewSizeEx then begin
   Position:=NewSizeEx;
  end;
+end;
+
+constructor TpvChunkStream.Create(const AStream:TStream;const AOffset,ASize:TpvInt64;const AMemory:boolean=true);
+begin
+ inherited Create;
+ if (not assigned(AStream)) or ((AOffset<0) or ((AOffset+ASize)>AStream.Size)) then begin
+  raise EpvChunkStream.Create('Stream slice error');
+ end;
+ fPosition:=0;
+ fMemory:=AMemory;
+ if fMemory then begin
+  fStream:=TMemoryStream.Create;
+  fOffset:=0;
+  fSize:=ASize;
+  if AStream.Seek(AOffset,soBeginning)<>AOffset then begin
+   raise EpvChunkStream.Create('Stream seek error');
+  end;
+  if fStream.CopyFrom(AStream,ASize)<>ASize then begin
+   raise EpvChunkStream.Create('Stream copy error');
+  end;
+  if fStream.Seek(0,soBeginning)<>fOffset then begin
+   raise EpvChunkStream.Create('Stream seek error');
+  end;
+ end else begin
+  fStream:=AStream;
+  fOffset:=AOffset;
+  fSize:=ASize;
+ end;
+end;
+
+destructor TpvChunkStream.Destroy;
+begin
+ if fMemory then begin
+  fStream.Free;
+ end;
+ inherited Destroy;
+end;
+
+function TpvChunkStream.Read(var Buffer;Count:TpvInt32):TpvInt32;
+begin
+ if (fPosition+Count)>fSize then begin
+  Count:=fSize-fPosition;
+ end;
+ if Count>0 then begin
+  if fStream.Position<>(fOffset+fPosition) then begin
+   if fStream.Seek(fOffset+fPosition,soBeginning)<>(fOffset+fPosition) then begin
+    raise EpvChunkStream.Create('Stream seek error');
+   end;
+  end;
+  result:=fStream.Read(Buffer,Count);
+  inc(fPosition,result);
+ end else begin
+  result:=0;
+ end;
+end;
+
+function TpvChunkStream.Write(const Buffer;Count:TpvInt32):TpvInt32;
+begin
+ if (fPosition+Count)>fSize then begin
+  Count:=fSize-fPosition;
+ end;
+ if Count>0 then begin
+  if fStream.Position<>(fOffset+fPosition) then begin
+   if fStream.Seek(fOffset+fPosition,soBeginning)<>(fOffset+fPosition) then begin
+    raise EpvChunkStream.Create('Stream seek error');
+   end;
+  end;
+  result:=fStream.Write(Buffer,Count);
+  inc(fPosition,result);
+ end else begin
+  result:=0;
+ end;
+end;
+
+function TpvChunkStream.Seek(Offset:TpvInt32;Origin:word):TpvInt32;
+begin
+ case Origin of
+  soFromBeginning:begin
+   fPosition:=Offset;
+  end;
+  soFromCurrent:begin
+   inc(fPosition,Offset);
+  end;
+  soFromEnd:begin
+   fPosition:=fSize+Offset;
+  end;
+ end;
+ if (fPosition<0) or (fPosition>fSize) then begin
+  raise EpvChunkStream.Create('Stream seek error');
+ end;
+ result:=fPosition;
+end;
+
+function TpvChunkStream.Seek(const Offset:TpvInt64;Origin:TSeekOrigin):TpvInt64;
+begin
+ case Origin of
+  soBeginning:begin
+   fPosition:=Offset;
+  end;
+  soCurrent:begin
+   inc(fPosition,Offset);
+  end;
+  soEnd:begin
+   fPosition:=fSize+Offset;
+  end;
+ end;
+ if (fPosition<0) or (fPosition>fSize) then begin
+  raise EpvChunkStream.Create('Stream seek error');
+ end;
+ result:=fPosition;
+end;
+
+procedure TpvChunkStream.SetSize(NewSize:TpvInt32);
+begin
+ if fSize<>NewSize then begin
+  raise EpvChunkStream.Create('Stream set size error');
+ end;
+end;
+
+procedure TpvChunkStream.SetSize(const NewSize:TpvInt64);
+begin
+ if fSize<>NewSize then begin
+  raise EpvChunkStream.Create('Stream set size error');
+ end;
+end;
+
+function TpvChunkStream.ReadWithCheck(var Buffer;Count:TpvInt32):TpvInt32;
+begin
+ result:=Read(Buffer,Count);
+ if result<>Count then begin
+  raise EpvChunkStream.Create('Stream read error');
+ end;
+end;
+
+function TpvChunkStream.ReadString:TpvUTF8String;
+var Len:TpvInt32;
+begin
+ ReadWithCheck(Len,SizeOf(TpvInt32));
+ SetLength(result,Len);
+ if Len>0 then begin
+  ReadWithCheck(result[1],Len*SizeOf(AnsiChar));
+ end;
+end;
+
+function TpvChunkStream.ReadUInt8:TpvUInt8;
+begin
+ ReadWithCheck(result,SizeOf(TpvUInt8));
+end;
+
+function TpvChunkStream.ReadInt32:TpvInt32;
+begin
+ ReadWithCheck(result,SizeOf(TpvInt32));
+end;
+
+function TpvChunkStream.ReadUInt32:TpvUInt32;
+begin
+ ReadWithCheck(result,SizeOf(TpvUInt32));
+end;
+
+function TpvChunkStream.ReadFloat:TpvFloat;
+begin
+ ReadWithCheck(result,SizeOf(TpvFloat));
+end;
+
+function TpvChunkStream.ReadVector2:TpvVector2;
+begin
+ ReadWithCheck(result.x,SizeOf(TpvFloat));
+ ReadWithCheck(result.y,SizeOf(TpvFloat));
+end;
+
+function TpvChunkStream.ReadVector3:TpvVector3;
+begin
+ ReadWithCheck(result.x,SizeOf(TpvFloat));
+ ReadWithCheck(result.y,SizeOf(TpvFloat));
+ ReadWithCheck(result.z,SizeOf(TpvFloat));
+end;
+
+function TpvChunkStream.ReadVector4:TpvVector4;
+begin
+ ReadWithCheck(result.x,SizeOf(TpvFloat));
+ ReadWithCheck(result.y,SizeOf(TpvFloat));
+ ReadWithCheck(result.z,SizeOf(TpvFloat));
+ ReadWithCheck(result.w,SizeOf(TpvFloat));
+end;
+
+function TpvChunkStream.ReadPlane:TpvPlane;
+begin
+ ReadWithCheck(result.RawComponents[0],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[1],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[2],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[3],SizeOf(TpvFloat));
+end;
+
+function TpvChunkStream.ReadMatrix4x4:TpvMatrix4x4;
+begin
+ ReadWithCheck(result.RawComponents[0,0],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[0,1],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[0,2],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[0,3],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[1,0],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[1,1],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[1,2],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[1,3],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[2,0],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[2,1],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[2,2],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[2,3],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[3,0],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[3,1],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[3,2],SizeOf(TpvFloat));
+ ReadWithCheck(result.RawComponents[3,3],SizeOf(TpvFloat));
 end;
 
 end.
