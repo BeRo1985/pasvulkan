@@ -132,21 +132,21 @@ type PpvValueType=^TpvValueType;
        class operator Negative(const aInput:TpvValue):TpvValue;
        class operator Positive(const aInput:TpvValue):TpvValue;
       public
-       pvValueString:string;
+       ValueString:string;
        case ValueType:TpvValueType of
         TpvValueType.Unknown:(
         );
         TpvValueType.Boolean:(
-         pvValueBoolean:Boolean;
+         ValueBoolean:Boolean;
         );
         TpvValueType.Integer:(
-         pvValueInt64:Int64;
+         ValueInt64:Int64;
         );
         TpvValueType.Double:(
-         pvValueDouble:Double;
+         ValueDouble:Double;
         );
         TpvValueType.Char:(
-         pvValueChar:Char;
+         ValueChar:Char;
         );
      end;
 
@@ -155,31 +155,31 @@ implementation
 class operator TpvValue.Implicit(const aInput:boolean):TpvValue;
 begin
  result.ValueType:=TpvValueType.Boolean;
- result.pvValueBoolean:=aInput;
+ result.ValueBoolean:=aInput;
 end;
 
 class operator TpvValue.Implicit(const aInput:TpvInt64):TpvValue;
 begin
  result.ValueType:=TpvValueType.Integer;
- result.pvValueInt64:=aInput;
+ result.ValueInt64:=aInput;
 end;
 
 class operator TpvValue.Implicit(const aInput:TpvDouble):TpvValue;
 begin
  result.ValueType:=TpvValueType.Double;
- result.pvValueDouble:=aInput;
+ result.ValueDouble:=aInput;
 end;
 
 class operator TpvValue.Implicit(const aInput:Char):TpvValue;
 begin
  result.ValueType:=TpvValueType.Char;
- result.pvValueChar:=aInput;
+ result.ValueChar:=aInput;
 end;
 
 class operator TpvValue.Implicit(const aInput:String):TpvValue;
 begin
  result.ValueType:=TpvValueType.String_;
- result.pvValueString:=aInput;
+ result.ValueString:=aInput;
 end;
 
 class operator TpvValue.Implicit(const aInput:Variant):TpvValue;
@@ -187,19 +187,19 @@ begin
  case VarType(aInput) of
   varSmallInt,varInteger,varShortInt,varByte,varWord,varLongWord,varInt64{$ifdef fpc},varQWord{$endif}:begin
    result.ValueType:=TpvValueType.Integer;
-   result.pvValueInt64:=aInput;
+   result.ValueInt64:=aInput;
   end;
   varSingle,varDouble,varDATE,varCurrency:begin
    result.ValueType:=TpvValueType.Double;
-   result.pvValueDouble:=aInput;
+   result.ValueDouble:=aInput;
   end;
   varBoolean:begin
    result.ValueType:=TpvValueType.Boolean;
-   result.pvValueBoolean:=aInput;
+   result.ValueBoolean:=aInput;
   end;
   varString,varOleStr:begin
    result.ValueType:=TpvValueType.String_;
-   result.pvValueString:=aInput;
+   result.ValueString:=aInput;
   end;
   else begin
    result.ValueType:=TpvValueType.Unknown;
@@ -211,19 +211,19 @@ class operator TpvValue.Implicit(const aInput:TpvValue):boolean;
 begin
 case aInput.ValueType of
   TpvValueType.Boolean:begin
-   result:=aInput.pvValueBoolean;
+   result:=aInput.ValueBoolean;
   end;
   TpvValueType.Integer:begin
-   result:=aInput.pvValueInt64<>0;
+   result:=aInput.ValueInt64<>0;
   end;
   TpvValueType.Double:begin
-   result:=aInput.pvValueDouble<>0.0;
+   result:=aInput.ValueDouble<>0.0;
   end;
   TpvValueType.Char:begin
-   result:=aInput.pvValueChar<>#0;
+   result:=aInput.ValueChar<>#0;
   end;
   TpvValueType.String_:begin
-   result:=length(aInput.pvValueString)>0;
+   result:=length(aInput.ValueString)>0;
   end;
   else begin
    result:=false;
@@ -235,19 +235,19 @@ class operator TpvValue.Implicit(const aInput:TpvValue):TpvInt64;
 begin
  case aInput.ValueType of
   TpvValueType.Boolean:begin
-   result:=ord(aInput.pvValueBoolean) and 1;
+   result:=ord(aInput.ValueBoolean) and 1;
   end;
   TpvValueType.Integer:begin
-   result:=aInput.pvValueInt64;
+   result:=aInput.ValueInt64;
   end;
   TpvValueType.Double:begin
-   result:=trunc(aInput.pvValueDouble);
+   result:=trunc(aInput.ValueDouble);
   end;
   TpvValueType.Char:begin
-   result:=StrToIntDef(aInput.pvValueChar,0);
+   result:=StrToIntDef(aInput.ValueChar,0);
   end;
   TpvValueType.String_:begin
-   result:=StrToIntDef(aInput.pvValueString,0);
+   result:=StrToIntDef(aInput.ValueString,0);
   end;
   else begin
    result:=0;
@@ -259,19 +259,19 @@ class operator TpvValue.Implicit(const aInput:TpvValue):TpvDouble;
 begin
 case aInput.ValueType of
   TpvValueType.Boolean:begin
-   result:=ord(aInput.pvValueBoolean) and 1;
+   result:=ord(aInput.ValueBoolean) and 1;
   end;
   TpvValueType.Integer:begin
-   result:=aInput.pvValueInt64;
+   result:=aInput.ValueInt64;
   end;
   TpvValueType.Double:begin
-   result:=aInput.pvValueDouble;
+   result:=aInput.ValueDouble;
   end;
   TpvValueType.Char:begin
-   result:=ConvertStringToDouble(aInput.pvValueChar,rmNearest,nil,-1);
+   result:=ConvertStringToDouble(aInput.ValueChar,rmNearest,nil,-1);
   end;
   TpvValueType.String_:begin
-   result:=ConvertStringToDouble(aInput.pvValueString,rmNearest,nil,-1);
+   result:=ConvertStringToDouble(aInput.ValueString,rmNearest,nil,-1);
   end;
   else begin
    result:=0.0;
@@ -283,24 +283,24 @@ class operator TpvValue.Implicit(const aInput:TpvValue):Char;
 begin
  case aInput.ValueType of
   TpvValueType.Boolean:begin
-   if aInput.pvValueBoolean then begin
+   if aInput.ValueBoolean then begin
     result:=#1;
    end else begin
     result:=#0;
    end;
   end;
   TpvValueType.Integer:begin
-   result:=chr(aInput.pvValueInt64);
+   result:=chr(aInput.ValueInt64);
   end;
   TpvValueType.Double:begin
-   result:=chr(trunc(aInput.pvValueDouble));
+   result:=chr(trunc(aInput.ValueDouble));
   end;
   TpvValueType.Char:begin
-   result:=aInput.pvValueChar;
+   result:=aInput.ValueChar;
   end;
   TpvValueType.String_:begin
-   if length(aInput.pvValueString)>0 then begin
-    result:=aInput.pvValueString[1];
+   if length(aInput.ValueString)>0 then begin
+    result:=aInput.ValueString[1];
    end else begin
     result:=#0;
    end;
@@ -315,23 +315,23 @@ class operator TpvValue.Implicit(const aInput:TpvValue):String;
 begin
  case aInput.ValueType of
   TpvValueType.Boolean:begin
-   if aInput.pvValueBoolean then begin
+   if aInput.ValueBoolean then begin
     result:='true';
    end else begin
     result:='false';
    end;
   end;
   TpvValueType.Integer:begin
-   result:=IntToStr(aInput.pvValueInt64);
+   result:=IntToStr(aInput.ValueInt64);
   end;
   TpvValueType.Double:begin
-   result:=ConvertDoubleToString(aInput.pvValueDouble,omStandard,0);
+   result:=ConvertDoubleToString(aInput.ValueDouble,omStandard,0);
   end;
   TpvValueType.Char:begin
-   result:=aInput.pvValueChar;
+   result:=aInput.ValueChar;
   end;
   TpvValueType.String_:begin
-   result:=aInput.pvValueString;
+   result:=aInput.ValueString;
   end;
   else begin
    result:='';
@@ -343,19 +343,19 @@ class operator TpvValue.Implicit(const aInput:TpvValue):Variant;
 begin
  case aInput.ValueType of
   TpvValueType.Boolean:begin
-   result:=aInput.pvValueBoolean;
+   result:=aInput.ValueBoolean;
   end;
   TpvValueType.Integer:begin
-   result:=aInput.pvValueInt64;
+   result:=aInput.ValueInt64;
   end;
   TpvValueType.Double:begin
-   result:=aInput.pvValueDouble;
+   result:=aInput.ValueDouble;
   end;
   TpvValueType.Char:begin
-   result:=aInput.pvValueChar;
+   result:=aInput.ValueChar;
   end;
   TpvValueType.String_:begin
-   result:=aInput.pvValueString;
+   result:=aInput.ValueString;
   end;
   else begin
    result:=Variants.Unassigned;
@@ -366,31 +366,31 @@ end;
 class operator TpvValue.Explicit(const aInput:boolean):TpvValue;
 begin
  result.ValueType:=TpvValueType.Boolean;
- result.pvValueBoolean:=aInput;
+ result.ValueBoolean:=aInput;
 end;
 
 class operator TpvValue.Explicit(const aInput:TpvInt64):TpvValue;
 begin
  result.ValueType:=TpvValueType.Integer;
- result.pvValueInt64:=aInput;
+ result.ValueInt64:=aInput;
 end;
 
 class operator TpvValue.Explicit(const aInput:TpvDouble):TpvValue;
 begin
  result.ValueType:=TpvValueType.Double;
- result.pvValueDouble:=aInput;
+ result.ValueDouble:=aInput;
 end;
 
 class operator TpvValue.Explicit(const aInput:Char):TpvValue;
 begin
  result.ValueType:=TpvValueType.Char;
- result.pvValueChar:=aInput;
+ result.ValueChar:=aInput;
 end;
 
 class operator TpvValue.Explicit(const aInput:String):TpvValue;
 begin
  result.ValueType:=TpvValueType.String_;
- result.pvValueString:=aInput;
+ result.ValueString:=aInput;
 end;
 
 class operator TpvValue.Explicit(const aInput:Variant):TpvValue;
@@ -398,19 +398,19 @@ begin
  case VarType(aInput) of
   varSmallInt,varInteger,varShortInt,varByte,varWord,varLongWord,varInt64{$ifdef fpc},varQWord{$endif}:begin
    result.ValueType:=TpvValueType.Integer;
-   result.pvValueInt64:=aInput;
+   result.ValueInt64:=aInput;
   end;
   varSingle,varDouble,varDATE,varCurrency:begin
    result.ValueType:=TpvValueType.Double;
-   result.pvValueDouble:=aInput;
+   result.ValueDouble:=aInput;
   end;
   varBoolean:begin
    result.ValueType:=TpvValueType.Boolean;
-   result.pvValueBoolean:=aInput;
+   result.ValueBoolean:=aInput;
   end;
   varString,varOleStr:begin
    result.ValueType:=TpvValueType.String_;
-   result.pvValueString:=aInput;
+   result.ValueString:=aInput;
   end;
   else begin
    result.ValueType:=TpvValueType.Unknown;
@@ -422,19 +422,19 @@ class operator TpvValue.Explicit(const aInput:TpvValue):boolean;
 begin
 case aInput.ValueType of
   TpvValueType.Boolean:begin
-   result:=aInput.pvValueBoolean;
+   result:=aInput.ValueBoolean;
   end;
   TpvValueType.Integer:begin
-   result:=aInput.pvValueInt64<>0;
+   result:=aInput.ValueInt64<>0;
   end;
   TpvValueType.Double:begin
-   result:=aInput.pvValueDouble<>0.0;
+   result:=aInput.ValueDouble<>0.0;
   end;
   TpvValueType.Char:begin
-   result:=aInput.pvValueChar<>#0;
+   result:=aInput.ValueChar<>#0;
   end;
   TpvValueType.String_:begin
-   result:=length(aInput.pvValueString)>0;
+   result:=length(aInput.ValueString)>0;
   end;
   else begin
    result:=false;
@@ -446,19 +446,19 @@ class operator TpvValue.Explicit(const aInput:TpvValue):TpvInt64;
 begin
  case aInput.ValueType of
   TpvValueType.Boolean:begin
-   result:=ord(aInput.pvValueBoolean) and 1;
+   result:=ord(aInput.ValueBoolean) and 1;
   end;
   TpvValueType.Integer:begin
-   result:=aInput.pvValueInt64;
+   result:=aInput.ValueInt64;
   end;
   TpvValueType.Double:begin
-   result:=trunc(aInput.pvValueDouble);
+   result:=trunc(aInput.ValueDouble);
   end;
   TpvValueType.Char:begin
-   result:=StrToIntDef(aInput.pvValueChar,0);
+   result:=StrToIntDef(aInput.ValueChar,0);
   end;
   TpvValueType.String_:begin
-   result:=StrToIntDef(aInput.pvValueString,0);
+   result:=StrToIntDef(aInput.ValueString,0);
   end;
   else begin
    result:=0;
@@ -470,19 +470,19 @@ class operator TpvValue.Explicit(const aInput:TpvValue):TpvDouble;
 begin
 case aInput.ValueType of
   TpvValueType.Boolean:begin
-   result:=ord(aInput.pvValueBoolean) and 1;
+   result:=ord(aInput.ValueBoolean) and 1;
   end;
   TpvValueType.Integer:begin
-   result:=aInput.pvValueInt64;
+   result:=aInput.ValueInt64;
   end;
   TpvValueType.Double:begin
-   result:=aInput.pvValueDouble;
+   result:=aInput.ValueDouble;
   end;
   TpvValueType.Char:begin
-   result:=ConvertStringToDouble(aInput.pvValueChar,rmNearest,nil,-1);
+   result:=ConvertStringToDouble(aInput.ValueChar,rmNearest,nil,-1);
   end;
   TpvValueType.String_:begin
-   result:=ConvertStringToDouble(aInput.pvValueString,rmNearest,nil,-1);
+   result:=ConvertStringToDouble(aInput.ValueString,rmNearest,nil,-1);
   end;
   else begin
    result:=0.0;
@@ -494,24 +494,24 @@ class operator TpvValue.Explicit(const aInput:TpvValue):Char;
 begin
  case aInput.ValueType of
   TpvValueType.Boolean:begin
-   if aInput.pvValueBoolean then begin
+   if aInput.ValueBoolean then begin
     result:=#1;
    end else begin
     result:=#0;
    end;
   end;
   TpvValueType.Integer:begin
-   result:=chr(aInput.pvValueInt64);
+   result:=chr(aInput.ValueInt64);
   end;
   TpvValueType.Double:begin
-   result:=chr(trunc(aInput.pvValueDouble));
+   result:=chr(trunc(aInput.ValueDouble));
   end;
   TpvValueType.Char:begin
-   result:=aInput.pvValueChar;
+   result:=aInput.ValueChar;
   end;
   TpvValueType.String_:begin
-   if length(aInput.pvValueString)>0 then begin
-    result:=aInput.pvValueString[1];
+   if length(aInput.ValueString)>0 then begin
+    result:=aInput.ValueString[1];
    end else begin
     result:=#0;
    end;
@@ -526,23 +526,23 @@ class operator TpvValue.Explicit(const aInput:TpvValue):String;
 begin
  case aInput.ValueType of
   TpvValueType.Boolean:begin
-   if aInput.pvValueBoolean then begin
+   if aInput.ValueBoolean then begin
     result:='true';
    end else begin
     result:='false';
    end;
   end;
   TpvValueType.Integer:begin
-   result:=IntToStr(aInput.pvValueInt64);
+   result:=IntToStr(aInput.ValueInt64);
   end;
   TpvValueType.Double:begin
-   result:=ConvertDoubleToString(aInput.pvValueDouble,omStandard,0);
+   result:=ConvertDoubleToString(aInput.ValueDouble,omStandard,0);
   end;
   TpvValueType.Char:begin
-   result:=aInput.pvValueChar;
+   result:=aInput.ValueChar;
   end;
   TpvValueType.String_:begin
-   result:=aInput.pvValueString;
+   result:=aInput.ValueString;
   end;
   else begin
    result:='';
@@ -554,19 +554,19 @@ class operator TpvValue.Explicit(const aInput:TpvValue):Variant;
 begin
  case aInput.ValueType of
   TpvValueType.Boolean:begin
-   result:=aInput.pvValueBoolean;
+   result:=aInput.ValueBoolean;
   end;
   TpvValueType.Integer:begin
-   result:=aInput.pvValueInt64;
+   result:=aInput.ValueInt64;
   end;
   TpvValueType.Double:begin
-   result:=aInput.pvValueDouble;
+   result:=aInput.ValueDouble;
   end;
   TpvValueType.Char:begin
-   result:=aInput.pvValueChar;
+   result:=aInput.ValueChar;
   end;
   TpvValueType.String_:begin
-   result:=aInput.pvValueString;
+   result:=aInput.ValueString;
   end;
   else begin
    result:=Variants.Unassigned;
@@ -580,16 +580,16 @@ case aInputA.ValueType of
   TpvValueType.Boolean:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueBoolean=aInputB.pvValueBoolean;
+     result:=aInputA.ValueBoolean=aInputB.ValueBoolean;
     end;
     TpvValueType.Integer:begin
-     result:=(ord(aInputA.pvValueBoolean) and 1)=aInputB.pvValueInt64;
+     result:=(ord(aInputA.ValueBoolean) and 1)=aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=(ord(aInputA.pvValueBoolean) and 1)=aInputB.pvValueDouble;
+     result:=(ord(aInputA.ValueBoolean) and 1)=aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueBoolean=boolean(length(aInputB.pvValueString)>0);
+     result:=aInputA.ValueBoolean=boolean(length(aInputB.ValueString)>0);
     end;
     else begin
      result:=false;
@@ -599,16 +599,16 @@ case aInputA.ValueType of
   TpvValueType.Integer:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueInt64=(ord(aInputB.pvValueBoolean) and 1);
+     result:=aInputA.ValueInt64=(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
-     result:=aInputA.pvValueInt64=aInputB.pvValueInt64;
+     result:=aInputA.ValueInt64=aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=aInputA.pvValueInt64=aInputB.pvValueDouble;
+     result:=aInputA.ValueInt64=aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=IntToStr(aInputA.pvValueInt64)=aInputB.pvValueString;
+     result:=IntToStr(aInputA.ValueInt64)=aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -618,16 +618,16 @@ case aInputA.ValueType of
   TpvValueType.Double:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueDouble=(ord(aInputB.pvValueBoolean) and 1);
+     result:=aInputA.ValueDouble=(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
-     result:=aInputA.pvValueDouble=aInputB.pvValueInt64;
+     result:=aInputA.ValueDouble=aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=aInputA.pvValueDouble=aInputB.pvValueDouble;
+     result:=aInputA.ValueDouble=aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=ConvertDoubleToString(aInputA.pvValueDouble,omStandard,0)=aInputB.pvValueString;
+     result:=ConvertDoubleToString(aInputA.ValueDouble,omStandard,0)=aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -637,10 +637,10 @@ case aInputA.ValueType of
   TpvValueType.Char:begin
    case aInputB.ValueType of
     TpvValueType.Char:begin
-     result:=aInputA.pvValueChar=aInputB.pvValueChar;
+     result:=aInputA.ValueChar=aInputB.ValueChar;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueChar=aInputB.pvValueString;
+     result:=aInputA.ValueChar=aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -650,10 +650,10 @@ case aInputA.ValueType of
   TpvValueType.String_:begin
    case aInputB.ValueType of
     TpvValueType.Char:begin
-     result:=aInputA.pvValueChar=aInputB.pvValueString;
+     result:=aInputA.ValueChar=aInputB.ValueString;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueString=aInputB.pvValueString;
+     result:=aInputA.ValueString=aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -672,16 +672,16 @@ begin
   TpvValueType.Boolean:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueBoolean<>aInputB.pvValueBoolean;
+     result:=aInputA.ValueBoolean<>aInputB.ValueBoolean;
     end;
     TpvValueType.Integer:begin
-     result:=(ord(aInputA.pvValueBoolean) and 1)<>aInputB.pvValueInt64;
+     result:=(ord(aInputA.ValueBoolean) and 1)<>aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=(ord(aInputA.pvValueBoolean) and 1)<>aInputB.pvValueDouble;
+     result:=(ord(aInputA.ValueBoolean) and 1)<>aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueBoolean<>boolean(length(aInputB.pvValueString)>0);
+     result:=aInputA.ValueBoolean<>boolean(length(aInputB.ValueString)>0);
     end;
     else begin
      result:=false;
@@ -691,16 +691,16 @@ begin
   TpvValueType.Integer:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueInt64<>(ord(aInputB.pvValueBoolean) and 1);
+     result:=aInputA.ValueInt64<>(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
-     result:=aInputA.pvValueInt64<>aInputB.pvValueInt64;
+     result:=aInputA.ValueInt64<>aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=aInputA.pvValueInt64<>aInputB.pvValueDouble;
+     result:=aInputA.ValueInt64<>aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=IntToStr(aInputA.pvValueInt64)<>aInputB.pvValueString;
+     result:=IntToStr(aInputA.ValueInt64)<>aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -710,16 +710,16 @@ begin
   TpvValueType.Double:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueDouble<>(ord(aInputB.pvValueBoolean) and 1);
+     result:=aInputA.ValueDouble<>(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
-     result:=aInputA.pvValueDouble<>aInputB.pvValueInt64;
+     result:=aInputA.ValueDouble<>aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=aInputA.pvValueDouble<>aInputB.pvValueDouble;
+     result:=aInputA.ValueDouble<>aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=ConvertDoubleToString(aInputA.pvValueDouble,omStandard,0)<>aInputB.pvValueString;
+     result:=ConvertDoubleToString(aInputA.ValueDouble,omStandard,0)<>aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -729,10 +729,10 @@ begin
   TpvValueType.Char:begin
    case aInputB.ValueType of
     TpvValueType.Char:begin
-     result:=aInputA.pvValueChar<>aInputB.pvValueChar;
+     result:=aInputA.ValueChar<>aInputB.ValueChar;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueChar<>aInputB.pvValueString;
+     result:=aInputA.ValueChar<>aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -742,10 +742,10 @@ begin
   TpvValueType.String_:begin
    case aInputB.ValueType of
     TpvValueType.Char:begin
-     result:=aInputA.pvValueChar<>aInputB.pvValueString;
+     result:=aInputA.ValueChar<>aInputB.ValueString;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueString<>aInputB.pvValueString;
+     result:=aInputA.ValueString<>aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -764,16 +764,16 @@ begin
   TpvValueType.Boolean:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueBoolean>aInputB.pvValueBoolean;
+     result:=aInputA.ValueBoolean>aInputB.ValueBoolean;
     end;
     TpvValueType.Integer:begin
-     result:=(ord(aInputA.pvValueBoolean) and 1)>aInputB.pvValueInt64;
+     result:=(ord(aInputA.ValueBoolean) and 1)>aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=(ord(aInputA.pvValueBoolean) and 1)>aInputB.pvValueDouble;
+     result:=(ord(aInputA.ValueBoolean) and 1)>aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueBoolean>(length(aInputB.pvValueString)>0);
+     result:=aInputA.ValueBoolean>(length(aInputB.ValueString)>0);
     end;
     else begin
      result:=false;
@@ -783,16 +783,16 @@ begin
   TpvValueType.Integer:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueInt64>(ord(aInputB.pvValueBoolean) and 1);
+     result:=aInputA.ValueInt64>(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
-     result:=aInputA.pvValueInt64>aInputB.pvValueInt64;
+     result:=aInputA.ValueInt64>aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=aInputA.pvValueInt64>aInputB.pvValueDouble;
+     result:=aInputA.ValueInt64>aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=IntToStr(aInputA.pvValueInt64)>aInputB.pvValueString;
+     result:=IntToStr(aInputA.ValueInt64)>aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -802,16 +802,16 @@ begin
   TpvValueType.Double:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueDouble>(ord(aInputB.pvValueBoolean) and 1);
+     result:=aInputA.ValueDouble>(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
-     result:=aInputA.pvValueDouble>aInputB.pvValueInt64;
+     result:=aInputA.ValueDouble>aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=aInputA.pvValueDouble>aInputB.pvValueDouble;
+     result:=aInputA.ValueDouble>aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=ConvertDoubleToString(aInputA.pvValueDouble,omStandard,0)>aInputB.pvValueString;
+     result:=ConvertDoubleToString(aInputA.ValueDouble,omStandard,0)>aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -821,10 +821,10 @@ begin
   TpvValueType.Char:begin
    case aInputB.ValueType of
     TpvValueType.Char:begin
-     result:=aInputA.pvValueChar>aInputB.pvValueChar;
+     result:=aInputA.ValueChar>aInputB.ValueChar;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueChar>aInputB.pvValueString;
+     result:=aInputA.ValueChar>aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -834,10 +834,10 @@ begin
   TpvValueType.String_:begin
    case aInputB.ValueType of
     TpvValueType.Char:begin
-     result:=aInputA.pvValueChar>aInputB.pvValueString;
+     result:=aInputA.ValueChar>aInputB.ValueString;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueString>aInputB.pvValueString;
+     result:=aInputA.ValueString>aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -856,16 +856,16 @@ begin
   TpvValueType.Boolean:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueBoolean>=aInputB.pvValueBoolean;
+     result:=aInputA.ValueBoolean>=aInputB.ValueBoolean;
     end;
     TpvValueType.Integer:begin
-     result:=(ord(aInputA.pvValueBoolean) and 1)>=aInputB.pvValueInt64;
+     result:=(ord(aInputA.ValueBoolean) and 1)>=aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=(ord(aInputA.pvValueBoolean) and 1)>=aInputB.pvValueDouble;
+     result:=(ord(aInputA.ValueBoolean) and 1)>=aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueBoolean>=boolean(length(aInputB.pvValueString)>0);
+     result:=aInputA.ValueBoolean>=boolean(length(aInputB.ValueString)>0);
     end;
     else begin
      result:=false;
@@ -875,16 +875,16 @@ begin
   TpvValueType.Integer:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueInt64>=(ord(aInputB.pvValueBoolean) and 1);
+     result:=aInputA.ValueInt64>=(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
-     result:=aInputA.pvValueInt64>=aInputB.pvValueInt64;
+     result:=aInputA.ValueInt64>=aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=aInputA.pvValueInt64>=aInputB.pvValueDouble;
+     result:=aInputA.ValueInt64>=aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=IntToStr(aInputA.pvValueInt64)>=aInputB.pvValueString;
+     result:=IntToStr(aInputA.ValueInt64)>=aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -894,16 +894,16 @@ begin
   TpvValueType.Double:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueDouble>=(ord(aInputB.pvValueBoolean) and 1);
+     result:=aInputA.ValueDouble>=(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
-     result:=aInputA.pvValueDouble>=aInputB.pvValueInt64;
+     result:=aInputA.ValueDouble>=aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=aInputA.pvValueDouble>=aInputB.pvValueDouble;
+     result:=aInputA.ValueDouble>=aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=ConvertDoubleToString(aInputA.pvValueDouble,omStandard,0)>aInputB.pvValueString;
+     result:=ConvertDoubleToString(aInputA.ValueDouble,omStandard,0)>aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -913,10 +913,10 @@ begin
   TpvValueType.Char:begin
    case aInputB.ValueType of
     TpvValueType.Char:begin
-     result:=aInputA.pvValueChar>=aInputB.pvValueChar;
+     result:=aInputA.ValueChar>=aInputB.ValueChar;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueChar>=aInputB.pvValueString;
+     result:=aInputA.ValueChar>=aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -926,10 +926,10 @@ begin
   TpvValueType.String_:begin
    case aInputB.ValueType of
     TpvValueType.Char:begin
-     result:=aInputA.pvValueChar>=aInputB.pvValueString;
+     result:=aInputA.ValueChar>=aInputB.ValueString;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueString>=aInputB.pvValueString;
+     result:=aInputA.ValueString>=aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -948,16 +948,16 @@ begin
   TpvValueType.Boolean:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueBoolean<aInputB.pvValueBoolean;
+     result:=aInputA.ValueBoolean<aInputB.ValueBoolean;
     end;
     TpvValueType.Integer:begin
-     result:=(ord(aInputA.pvValueBoolean) and 1)<aInputB.pvValueInt64;
+     result:=(ord(aInputA.ValueBoolean) and 1)<aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=(ord(aInputA.pvValueBoolean) and 1)<aInputB.pvValueDouble;
+     result:=(ord(aInputA.ValueBoolean) and 1)<aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueBoolean<boolean(length(aInputB.pvValueString)>0);
+     result:=aInputA.ValueBoolean<boolean(length(aInputB.ValueString)>0);
     end;
     else begin
      result:=false;
@@ -967,16 +967,16 @@ begin
   TpvValueType.Integer:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueInt64<(ord(aInputB.pvValueBoolean) and 1);
+     result:=aInputA.ValueInt64<(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
-     result:=aInputA.pvValueInt64<aInputB.pvValueInt64;
+     result:=aInputA.ValueInt64<aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=aInputA.pvValueInt64<aInputB.pvValueDouble;
+     result:=aInputA.ValueInt64<aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=IntToStr(aInputA.pvValueInt64)<aInputB.pvValueString;
+     result:=IntToStr(aInputA.ValueInt64)<aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -986,16 +986,16 @@ begin
   TpvValueType.Double:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueDouble<(ord(aInputB.pvValueBoolean) and 1);
+     result:=aInputA.ValueDouble<(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
-     result:=aInputA.pvValueDouble<aInputB.pvValueInt64;
+     result:=aInputA.ValueDouble<aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=aInputA.pvValueDouble<aInputB.pvValueDouble;
+     result:=aInputA.ValueDouble<aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=ConvertDoubleToString(aInputA.pvValueDouble,omStandard,0)<aInputB.pvValueString;
+     result:=ConvertDoubleToString(aInputA.ValueDouble,omStandard,0)<aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -1005,10 +1005,10 @@ begin
   TpvValueType.Char:begin
    case aInputB.ValueType of
     TpvValueType.Char:begin
-     result:=aInputA.pvValueChar<aInputB.pvValueChar;
+     result:=aInputA.ValueChar<aInputB.ValueChar;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueChar<aInputB.pvValueString;
+     result:=aInputA.ValueChar<aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -1018,10 +1018,10 @@ begin
   TpvValueType.String_:begin
    case aInputB.ValueType of
     TpvValueType.Char:begin
-     result:=aInputA.pvValueChar<aInputB.pvValueString;
+     result:=aInputA.ValueChar<aInputB.ValueString;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueString<aInputB.pvValueString;
+     result:=aInputA.ValueString<aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -1040,16 +1040,16 @@ case aInputA.ValueType of
   TpvValueType.Boolean:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueBoolean<=aInputB.pvValueBoolean;
+     result:=aInputA.ValueBoolean<=aInputB.ValueBoolean;
     end;
     TpvValueType.Integer:begin
-     result:=(ord(aInputA.pvValueBoolean) and 1)<=aInputB.pvValueInt64;
+     result:=(ord(aInputA.ValueBoolean) and 1)<=aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=(ord(aInputA.pvValueBoolean) and 1)<=aInputB.pvValueDouble;
+     result:=(ord(aInputA.ValueBoolean) and 1)<=aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueBoolean<=boolean(length(aInputB.pvValueString)>0);
+     result:=aInputA.ValueBoolean<=boolean(length(aInputB.ValueString)>0);
     end;
     else begin
      result:=false;
@@ -1059,16 +1059,16 @@ case aInputA.ValueType of
   TpvValueType.Integer:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueInt64<=(ord(aInputB.pvValueBoolean) and 1);
+     result:=aInputA.ValueInt64<=(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
-     result:=aInputA.pvValueInt64<=aInputB.pvValueInt64;
+     result:=aInputA.ValueInt64<=aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=aInputA.pvValueInt64<=aInputB.pvValueDouble;
+     result:=aInputA.ValueInt64<=aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=IntToStr(aInputA.pvValueInt64)<=aInputB.pvValueString;
+     result:=IntToStr(aInputA.ValueInt64)<=aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -1078,16 +1078,16 @@ case aInputA.ValueType of
   TpvValueType.Double:begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
-     result:=aInputA.pvValueDouble<=(ord(aInputB.pvValueBoolean) and 1);
+     result:=aInputA.ValueDouble<=(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
-     result:=aInputA.pvValueDouble<=aInputB.pvValueInt64;
+     result:=aInputA.ValueDouble<=aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
-     result:=aInputA.pvValueDouble<=aInputB.pvValueDouble;
+     result:=aInputA.ValueDouble<=aInputB.ValueDouble;
     end;
     TpvValueType.String_:begin
-     result:=ConvertDoubleToString(aInputA.pvValueDouble,omStandard,0)<=aInputB.pvValueString;
+     result:=ConvertDoubleToString(aInputA.ValueDouble,omStandard,0)<=aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -1097,10 +1097,10 @@ case aInputA.ValueType of
   TpvValueType.Char:begin
    case aInputB.ValueType of
     TpvValueType.Char:begin
-     result:=aInputA.pvValueChar<=aInputB.pvValueChar;
+     result:=aInputA.ValueChar<=aInputB.ValueChar;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueChar<=aInputB.pvValueString;
+     result:=aInputA.ValueChar<=aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -1110,10 +1110,10 @@ case aInputA.ValueType of
   TpvValueType.String_:begin
    case aInputB.ValueType of
     TpvValueType.Char:begin
-     result:=aInputA.pvValueChar<=aInputB.pvValueString;
+     result:=aInputA.ValueChar<=aInputB.ValueString;
     end;
     TpvValueType.String_:begin
-     result:=aInputA.pvValueString<=aInputB.pvValueString;
+     result:=aInputA.ValueString<=aInputB.ValueString;
     end;
     else begin
      result:=false;
@@ -1131,20 +1131,20 @@ begin
  case aInput.ValueType of
   TpvValueType.Boolean:begin
    result.ValueType:=TpvValueType.Boolean;
-   result.pvValueBoolean:=not result.pvValueBoolean;
+   result.ValueBoolean:=not result.ValueBoolean;
   end;
   TpvValueType.Integer:begin
    result.ValueType:=TpvValueType.Integer;
-   result.pvValueInt64:=aInput.pvValueInt64+1;
+   result.ValueInt64:=aInput.ValueInt64+1;
   end;
   TpvValueType.Double:begin
    result.ValueType:=TpvValueType.Double;
-   result.pvValueDouble:=aInput.pvValueDouble+1;
+   result.ValueDouble:=aInput.ValueDouble+1;
   end;
   TpvValueType.Char:begin
    result.ValueType:=TpvValueType.Char;
-   result.pvValueChar:=aInput.pvValueChar;
-   inc(result.pvValueChar);
+   result.ValueChar:=aInput.ValueChar;
+   inc(result.ValueChar);
   end;
   TpvValueType.String_:begin
    result.ValueType:=TpvValueType.Unknown;
@@ -1160,20 +1160,20 @@ begin
  case aInput.ValueType of
   TpvValueType.Boolean:begin
    result.ValueType:=TpvValueType.Boolean;
-   result.pvValueBoolean:=not result.pvValueBoolean;
+   result.ValueBoolean:=not result.ValueBoolean;
   end;
   TpvValueType.Integer:begin
    result.ValueType:=TpvValueType.Integer;
-   result.pvValueInt64:=aInput.pvValueInt64-1;
+   result.ValueInt64:=aInput.ValueInt64-1;
   end;
   TpvValueType.Double:begin
    result.ValueType:=TpvValueType.Double;
-   result.pvValueDouble:=aInput.pvValueDouble-1;
+   result.ValueDouble:=aInput.ValueDouble-1;
   end;
   TpvValueType.Char:begin
    result.ValueType:=TpvValueType.Char;
-   result.pvValueChar:=aInput.pvValueChar;
-   dec(result.pvValueChar);
+   result.ValueChar:=aInput.ValueChar;
+   dec(result.ValueChar);
   end;
   TpvValueType.String_:begin
    result.ValueType:=TpvValueType.Unknown;
@@ -1191,30 +1191,30 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Boolean;
-     result.pvValueBoolean:=aInputA.pvValueBoolean xor aInputB.pvValueBoolean;
+     result.ValueBoolean:=aInputA.ValueBoolean xor aInputB.ValueBoolean;
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=(ord(aInputA.pvValueBoolean) and 1)+aInputB.pvValueInt64;
+     result.ValueInt64:=(ord(aInputA.ValueBoolean) and 1)+aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=(ord(aInputA.pvValueBoolean) and 1)+aInputB.pvValueDouble;
+     result.ValueDouble:=(ord(aInputA.ValueBoolean) and 1)+aInputB.ValueDouble;
     end;
     TpvValueType.Char:begin
      result.ValueType:=TpvValueType.String_;
-     if aInputA.pvValueBoolean then begin
-      result.pvValueString:='true'+aInputB.pvValueChar;
+     if aInputA.ValueBoolean then begin
+      result.ValueString:='true'+aInputB.ValueChar;
      end else begin
-      result.pvValueString:='false'+aInputB.pvValueChar;
+      result.ValueString:='false'+aInputB.ValueChar;
      end;
     end;
     TpvValueType.String_:begin
      result.ValueType:=TpvValueType.String_;
-     if aInputA.pvValueBoolean then begin
-      result.pvValueString:='true'+aInputB.pvValueString;
+     if aInputA.ValueBoolean then begin
+      result.ValueString:='true'+aInputB.ValueString;
      end else begin
-      result.pvValueString:='false'+aInputB.pvValueString;
+      result.ValueString:='false'+aInputB.ValueString;
      end;
     end;
     else begin
@@ -1226,23 +1226,23 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64+(ord(aInputB.pvValueBoolean) and 1);
+     result.ValueInt64:=aInputA.ValueInt64+(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64+aInputB.pvValueInt64;
+     result.ValueInt64:=aInputA.ValueInt64+aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueInt64+aInputB.pvValueDouble;
+     result.ValueDouble:=aInputA.ValueInt64+aInputB.ValueDouble;
     end;
     TpvValueType.Char:begin
      result.ValueType:=TpvValueType.String_;
-     result.pvValueString:=IntToStr(aInputA.pvValueInt64)+aInputB.pvValueChar;
+     result.ValueString:=IntToStr(aInputA.ValueInt64)+aInputB.ValueChar;
     end;
     TpvValueType.String_:begin
      result.ValueType:=TpvValueType.String_;
-     result.pvValueString:=IntToStr(aInputA.pvValueInt64)+aInputB.pvValueString;
+     result.ValueString:=IntToStr(aInputA.ValueInt64)+aInputB.ValueString;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1253,23 +1253,23 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble+(ord(aInputB.pvValueBoolean) and 1);
+     result.ValueDouble:=aInputA.ValueDouble+(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble+aInputB.pvValueInt64;
+     result.ValueDouble:=aInputA.ValueDouble+aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble+aInputB.pvValueDouble;
+     result.ValueDouble:=aInputA.ValueDouble+aInputB.ValueDouble;
     end;
     TpvValueType.Char:begin
      result.ValueType:=TpvValueType.String_;
-     result.pvValueString:=ConvertDoubleToString(aInputA.pvValueDouble,omStandard,0)+aInputB.pvValueChar;
+     result.ValueString:=ConvertDoubleToString(aInputA.ValueDouble,omStandard,0)+aInputB.ValueChar;
     end;
     TpvValueType.String_:begin
      result.ValueType:=TpvValueType.String_;
-     result.pvValueString:=ConvertDoubleToString(aInputA.pvValueDouble,omStandard,0)+aInputB.pvValueString;
+     result.ValueString:=ConvertDoubleToString(aInputA.ValueDouble,omStandard,0)+aInputB.ValueString;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1280,27 +1280,27 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.String_;
-     if aInputB.pvValueBoolean then begin
-      result.pvValueString:=aInputA.pvValueChar+'true';
+     if aInputB.ValueBoolean then begin
+      result.ValueString:=aInputA.ValueChar+'true';
      end else begin
-      result.pvValueString:=aInputA.pvValueChar+'false';
+      result.ValueString:=aInputA.ValueChar+'false';
      end;
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.String_;
-     result.pvValueString:=aInputA.pvValueChar+IntToStr(aInputB.pvValueInt64);
+     result.ValueString:=aInputA.ValueChar+IntToStr(aInputB.ValueInt64);
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.String_;
-     result.pvValueString:=aInputA.pvValueChar+ConvertDoubleToString(aInputB.pvValueDouble,omStandard,0);
+     result.ValueString:=aInputA.ValueChar+ConvertDoubleToString(aInputB.ValueDouble,omStandard,0);
     end;
     TpvValueType.Char:begin
      result.ValueType:=TpvValueType.String_;
-     result.pvValueString:=aInputA.pvValueChar+aInputB.pvValueChar;
+     result.ValueString:=aInputA.ValueChar+aInputB.ValueChar;
     end;
     TpvValueType.String_:begin
      result.ValueType:=TpvValueType.String_;
-     result.pvValueString:=aInputA.pvValueChar+aInputB.pvValueString;
+     result.ValueString:=aInputA.ValueChar+aInputB.ValueString;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1311,27 +1311,27 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.String_;
-     if aInputB.pvValueBoolean then begin
-      result.pvValueString:=aInputA.pvValueString+'true';
+     if aInputB.ValueBoolean then begin
+      result.ValueString:=aInputA.ValueString+'true';
      end else begin
-      result.pvValueString:=aInputA.pvValueString+'false';
+      result.ValueString:=aInputA.ValueString+'false';
      end;
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.String_;
-     result.pvValueString:=aInputA.pvValueString+IntToStr(aInputB.pvValueInt64);
+     result.ValueString:=aInputA.ValueString+IntToStr(aInputB.ValueInt64);
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.String_;
-     result.pvValueString:=aInputA.pvValueString+ConvertDoubleToString(aInputB.pvValueDouble,omStandard,0);
+     result.ValueString:=aInputA.ValueString+ConvertDoubleToString(aInputB.ValueDouble,omStandard,0);
     end;
     TpvValueType.Char:begin
      result.ValueType:=TpvValueType.String_;
-     result.pvValueString:=aInputA.pvValueString+aInputB.pvValueChar;
+     result.ValueString:=aInputA.ValueString+aInputB.ValueChar;
     end;
     TpvValueType.String_:begin
      result.ValueType:=TpvValueType.String_;
-     result.pvValueString:=aInputA.pvValueString+aInputB.pvValueString;
+     result.ValueString:=aInputA.ValueString+aInputB.ValueString;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1351,15 +1351,15 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Boolean;
-     result.pvValueBoolean:=aInputA.pvValueBoolean xor aInputB.pvValueBoolean;
+     result.ValueBoolean:=aInputA.ValueBoolean xor aInputB.ValueBoolean;
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=(ord(aInputA.pvValueBoolean) and 1)-aInputB.pvValueInt64;
+     result.ValueInt64:=(ord(aInputA.ValueBoolean) and 1)-aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=(ord(aInputA.pvValueBoolean) and 1)-aInputB.pvValueDouble;
+     result.ValueDouble:=(ord(aInputA.ValueBoolean) and 1)-aInputB.ValueDouble;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1370,15 +1370,15 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64-(ord(aInputB.pvValueBoolean) and 1);
+     result.ValueInt64:=aInputA.ValueInt64-(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64-aInputB.pvValueInt64;
+     result.ValueInt64:=aInputA.ValueInt64-aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueInt64-aInputB.pvValueDouble;
+     result.ValueDouble:=aInputA.ValueInt64-aInputB.ValueDouble;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1389,15 +1389,15 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble-(ord(aInputB.pvValueBoolean) and 1);
+     result.ValueDouble:=aInputA.ValueDouble-(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble-aInputB.pvValueInt64;
+     result.ValueDouble:=aInputA.ValueDouble-aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble-aInputB.pvValueDouble;
+     result.ValueDouble:=aInputA.ValueDouble-aInputB.ValueDouble;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1417,15 +1417,15 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64*(ord(aInputB.pvValueBoolean) and 1);
+     result.ValueInt64:=aInputA.ValueInt64*(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64*aInputB.pvValueInt64;
+     result.ValueInt64:=aInputA.ValueInt64*aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueInt64*aInputB.pvValueDouble;
+     result.ValueDouble:=aInputA.ValueInt64*aInputB.ValueDouble;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1436,15 +1436,15 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble*(ord(aInputB.pvValueBoolean) and 1);
+     result.ValueDouble:=aInputA.ValueDouble*(ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble*aInputB.pvValueInt64;
+     result.ValueDouble:=aInputA.ValueDouble*aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble*aInputB.pvValueDouble;
+     result.ValueDouble:=aInputA.ValueDouble*aInputB.ValueDouble;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1464,11 +1464,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueInt64/aInputB.pvValueInt64;
+     result.ValueDouble:=aInputA.ValueInt64/aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueInt64/aInputB.pvValueDouble;
+     result.ValueDouble:=aInputA.ValueInt64/aInputB.ValueDouble;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1479,11 +1479,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble/aInputB.pvValueInt64;
+     result.ValueDouble:=aInputA.ValueDouble/aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble/aInputB.pvValueDouble;
+     result.ValueDouble:=aInputA.ValueDouble/aInputB.ValueDouble;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1503,11 +1503,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 div aInputB.pvValueInt64;
+     result.ValueInt64:=aInputA.ValueInt64 div aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueInt64/aInputB.pvValueDouble;
+     result.ValueDouble:=aInputA.ValueInt64/aInputB.ValueDouble;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1518,11 +1518,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble/aInputB.pvValueInt64;
+     result.ValueDouble:=aInputA.ValueDouble/aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble/aInputB.pvValueDouble;
+     result.ValueDouble:=aInputA.ValueDouble/aInputB.ValueDouble;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1542,11 +1542,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 mod aInputB.pvValueInt64;
+     result.ValueInt64:=aInputA.ValueInt64 mod aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueInt64-(floor(aInputA.pvValueInt64*aInputB.pvValueDouble)/aInputB.pvValueDouble);
+     result.ValueDouble:=aInputA.ValueInt64-(floor(aInputA.ValueInt64*aInputB.ValueDouble)/aInputB.ValueDouble);
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1557,11 +1557,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble-(floor(aInputA.pvValueDouble*aInputB.pvValueInt64)/aInputB.pvValueInt64);
+     result.ValueDouble:=aInputA.ValueDouble-(floor(aInputA.ValueDouble*aInputB.ValueInt64)/aInputB.ValueInt64);
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble-(floor(aInputA.pvValueDouble*aInputB.pvValueDouble)/aInputB.pvValueDouble);
+     result.ValueDouble:=aInputA.ValueDouble-(floor(aInputA.ValueDouble*aInputB.ValueDouble)/aInputB.ValueDouble);
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1581,11 +1581,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=int64(ord(aInputA.pvValueBoolean) and 1) shl aInputB.pvValueInt64;
+     result.ValueInt64:=int64(ord(aInputA.ValueBoolean) and 1) shl aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=(ord(aInputA.pvValueBoolean) and 1)*power(2.0,aInputB.pvValueDouble);
+     result.ValueDouble:=(ord(aInputA.ValueBoolean) and 1)*power(2.0,aInputB.ValueDouble);
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1596,15 +1596,15 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 shl (ord(aInputB.pvValueBoolean) and 1);
+     result.ValueInt64:=aInputA.ValueInt64 shl (ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 shl aInputB.pvValueInt64;
+     result.ValueInt64:=aInputA.ValueInt64 shl aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueInt64*power(2.0,aInputB.pvValueDouble);
+     result.ValueDouble:=aInputA.ValueInt64*power(2.0,aInputB.ValueDouble);
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1615,15 +1615,15 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble*(2.0*(ord(aInputB.pvValueBoolean) and 1));
+     result.ValueDouble:=aInputA.ValueDouble*(2.0*(ord(aInputB.ValueBoolean) and 1));
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble*power(2.0,aInputB.pvValueInt64);
+     result.ValueDouble:=aInputA.ValueDouble*power(2.0,aInputB.ValueInt64);
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble*power(2.0,aInputB.pvValueDouble);
+     result.ValueDouble:=aInputA.ValueDouble*power(2.0,aInputB.ValueDouble);
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1643,11 +1643,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=int64(ord(aInputA.pvValueBoolean) and 1) shr aInputB.pvValueInt64;
+     result.ValueInt64:=int64(ord(aInputA.ValueBoolean) and 1) shr aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=(ord(aInputA.pvValueBoolean) and 1)/power(2.0,aInputB.pvValueDouble);
+     result.ValueDouble:=(ord(aInputA.ValueBoolean) and 1)/power(2.0,aInputB.ValueDouble);
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1658,15 +1658,15 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 shr (ord(aInputB.pvValueBoolean) and 1);
+     result.ValueInt64:=aInputA.ValueInt64 shr (ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 shr aInputB.pvValueInt64;
+     result.ValueInt64:=aInputA.ValueInt64 shr aInputB.ValueInt64;
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueInt64/power(2.0,aInputB.pvValueDouble);
+     result.ValueDouble:=aInputA.ValueInt64/power(2.0,aInputB.ValueDouble);
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1677,15 +1677,15 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble*(0.5*(ord(aInputB.pvValueBoolean) and 1));
+     result.ValueDouble:=aInputA.ValueDouble*(0.5*(ord(aInputB.ValueBoolean) and 1));
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble/power(2.0,aInputB.pvValueInt64);
+     result.ValueDouble:=aInputA.ValueDouble/power(2.0,aInputB.ValueInt64);
     end;
     TpvValueType.Double:begin
      result.ValueType:=TpvValueType.Double;
-     result.pvValueDouble:=aInputA.pvValueDouble/power(2.0,aInputB.pvValueDouble);
+     result.ValueDouble:=aInputA.ValueDouble/power(2.0,aInputB.ValueDouble);
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1705,11 +1705,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Boolean;
-     result.pvValueBoolean:=aInputA.pvValueBoolean and aInputB.pvValueBoolean;
+     result.ValueBoolean:=aInputA.ValueBoolean and aInputB.ValueBoolean;
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=(ord(aInputA.pvValueBoolean) and 1) and aInputB.pvValueInt64;
+     result.ValueInt64:=(ord(aInputA.ValueBoolean) and 1) and aInputB.ValueInt64;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1720,11 +1720,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 and (ord(aInputB.pvValueBoolean) and 1);
+     result.ValueInt64:=aInputA.ValueInt64 and (ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 and aInputB.pvValueInt64;
+     result.ValueInt64:=aInputA.ValueInt64 and aInputB.ValueInt64;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1744,11 +1744,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Boolean;
-     result.pvValueBoolean:=aInputA.pvValueBoolean or aInputB.pvValueBoolean;
+     result.ValueBoolean:=aInputA.ValueBoolean or aInputB.ValueBoolean;
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=(ord(aInputA.pvValueBoolean) and 1) or aInputB.pvValueInt64;
+     result.ValueInt64:=(ord(aInputA.ValueBoolean) and 1) or aInputB.ValueInt64;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1759,11 +1759,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 or (ord(aInputB.pvValueBoolean) and 1);
+     result.ValueInt64:=aInputA.ValueInt64 or (ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 or aInputB.pvValueInt64;
+     result.ValueInt64:=aInputA.ValueInt64 or aInputB.ValueInt64;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1783,11 +1783,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Boolean;
-     result.pvValueBoolean:=aInputA.pvValueBoolean xor aInputB.pvValueBoolean;
+     result.ValueBoolean:=aInputA.ValueBoolean xor aInputB.ValueBoolean;
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=(ord(aInputA.pvValueBoolean) and 1) xor aInputB.pvValueInt64;
+     result.ValueInt64:=(ord(aInputA.ValueBoolean) and 1) xor aInputB.ValueInt64;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1798,11 +1798,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 xor (ord(aInputB.pvValueBoolean) and 1);
+     result.ValueInt64:=aInputA.ValueInt64 xor (ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 xor aInputB.pvValueInt64;
+     result.ValueInt64:=aInputA.ValueInt64 xor aInputB.ValueInt64;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1822,11 +1822,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Boolean;
-     result.pvValueBoolean:=aInputA.pvValueBoolean and aInputB.pvValueBoolean;
+     result.ValueBoolean:=aInputA.ValueBoolean and aInputB.ValueBoolean;
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=(ord(aInputA.pvValueBoolean) and 1) and aInputB.pvValueInt64;
+     result.ValueInt64:=(ord(aInputA.ValueBoolean) and 1) and aInputB.ValueInt64;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1837,11 +1837,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 and (ord(aInputB.pvValueBoolean) and 1);
+     result.ValueInt64:=aInputA.ValueInt64 and (ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 and aInputB.pvValueInt64;
+     result.ValueInt64:=aInputA.ValueInt64 and aInputB.ValueInt64;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1861,11 +1861,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Boolean;
-     result.pvValueBoolean:=aInputA.pvValueBoolean or aInputB.pvValueBoolean;
+     result.ValueBoolean:=aInputA.ValueBoolean or aInputB.ValueBoolean;
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=(ord(aInputA.pvValueBoolean) and 1) or aInputB.pvValueInt64;
+     result.ValueInt64:=(ord(aInputA.ValueBoolean) and 1) or aInputB.ValueInt64;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1876,11 +1876,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 or (ord(aInputB.pvValueBoolean) and 1);
+     result.ValueInt64:=aInputA.ValueInt64 or (ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 or aInputB.pvValueInt64;
+     result.ValueInt64:=aInputA.ValueInt64 or aInputB.ValueInt64;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1900,11 +1900,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Boolean;
-     result.pvValueBoolean:=aInputA.pvValueBoolean xor aInputB.pvValueBoolean;
+     result.ValueBoolean:=aInputA.ValueBoolean xor aInputB.ValueBoolean;
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=(ord(aInputA.pvValueBoolean) and 1) xor aInputB.pvValueInt64;
+     result.ValueInt64:=(ord(aInputA.ValueBoolean) and 1) xor aInputB.ValueInt64;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1915,11 +1915,11 @@ begin
    case aInputB.ValueType of
     TpvValueType.Boolean:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 xor (ord(aInputB.pvValueBoolean) and 1);
+     result.ValueInt64:=aInputA.ValueInt64 xor (ord(aInputB.ValueBoolean) and 1);
     end;
     TpvValueType.Integer:begin
      result.ValueType:=TpvValueType.Integer;
-     result.pvValueInt64:=aInputA.pvValueInt64 xor aInputB.pvValueInt64;
+     result.ValueInt64:=aInputA.ValueInt64 xor aInputB.ValueInt64;
     end;
     else begin
      result.ValueType:=TpvValueType.Unknown;
@@ -1940,11 +1940,11 @@ begin
   end;
   TpvValueType.Integer:begin
    result.ValueType:=TpvValueType.Integer;
-   result.pvValueInt64:=-aInput.pvValueInt64;
+   result.ValueInt64:=-aInput.ValueInt64;
   end;
   TpvValueType.Double:begin
    result.ValueType:=TpvValueType.Double;
-   result.pvValueDouble:=-aInput.pvValueDouble;
+   result.ValueDouble:=-aInput.ValueDouble;
   end;
   TpvValueType.Char:begin
    result.ValueType:=TpvValueType.Unknown;
