@@ -886,6 +886,7 @@ type EpvApplication=class(Exception)
        function ExistAsset(const aFileName:string):boolean;
        function GetAssetStream(const aFileName:string):TStream;
        function GetAssetSize(const aFileName:string):int64;
+       property BasePath:string read fBasePath;
      end;
 
      TpvApplicationFiles=class

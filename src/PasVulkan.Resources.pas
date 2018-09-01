@@ -172,6 +172,8 @@ var ResourceManager:TpvResourceManager=nil;
 
 implementation
 
+uses PasVulkan.Application;
+
 constructor TpvMetaResource.Create;
 begin
 
@@ -439,6 +441,9 @@ begin
  fResourceHandleLock:=TPasMPMultipleReaderSingleWriterLock.Create;
  fResourceHandleManager:=TResourceHandleManager.Create;
  fResourceHandleMap:=nil;
+ if assigned(pvApplication) then begin
+  fBaseDataPath:=pvApplication.Assets.BasePath;
+ end;
 end;
 
 destructor TpvResourceManager.Destroy;

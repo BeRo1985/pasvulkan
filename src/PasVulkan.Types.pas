@@ -214,10 +214,7 @@ type PPpvInt8=^PpvInt8;
      end;
 
      PpvID=^TpvID;
-     TpvID={$ifdef fpc}bitpacked{$endif} record
-      Index:TpvUInt32;
-      Generation:TpvUInt32;
-     end;
+     TpvID=type {$ifdef Debug}TpvUInt64{$else}TpvUInt32{$endif};
 
      PPpvUInt128=^PpvUInt128;
      PpvUInt128=^TpvUInt128;
@@ -870,8 +867,8 @@ begin
  // (4 bits) as well as two reserved bits. All other bits (the remaining 122 bits) are set using a random
  // or pseudorandom data source. Version 4 UUIDs have the form xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx where
  // x is any hexadecimal digit and y is one of 8, 9, A, or B (e.g., f47ac10b-58cc-4372-a567-0e02b2c3d479).
- result.QuadTpvUInt16s[0]:=RandomGenerator.Get64;
- result.QuadTpvUInt16s[1]:=RandomGenerator.Get64;
+ result.UInt64s[0]:=RandomGenerator.Get64;
+ result.UInt64s[1]:=RandomGenerator.Get64;
  result.D3:=(D3 and $0fff) or $4000;
  result.D4[0]:=(D4[0] and $3f) or $80;
 {$endif}

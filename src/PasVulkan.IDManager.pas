@@ -91,6 +91,7 @@ type EpvIDManager=class(Exception);
        type TIDManagerFreeStack=TPasMPUnboundedStack<TpvUInt32>;
 {$ifdef Debug}
             TIDManagerGenerationArray=array of TpvUInt32;
+            TIDManagerTypeArray=array of TpvUInt32;
             TIDManagerUsedBitmap=array of TpvUInt32;
 {$endif}
       private
@@ -99,12 +100,13 @@ type EpvIDManager=class(Exception);
 {$ifdef Debug}
        fMultipleReaderSingleWriterLock:TPasMPMultipleReaderSingleWriterLock;
        fGenerationArray:TIDManagerGenerationArray;
+       fTypeArray:TIDManagerTypeArray;
        fUsedBitmap:TIDManagerUsedBitmap;
 {$endif}
       public
        constructor Create;
        destructor Destroy; override;
-       function AllocateID:TpvID;
+       function AllocateID(const aType:TpvUInt32=0):TpvID;
        procedure FreeID(const aID:TpvID);
        property IDCounter:TpvUInt32 read fIDCounter;
      end;
@@ -176,6 +178,7 @@ begin
 {$ifdef Debug}
  fMultipleReaderSingleWriterLock:=TPasMPMultipleReaderSingleWriterLock.Create;
  fGenerationArray:=nil;
+ fTypeArray:=nil;
  fUsedBitmap:=nil;
 {$endif}
 end;
@@ -186,33 +189,35 @@ begin
 {$ifdef Debug}
  fMultipleReaderSingleWriterLock.Free;
  fGenerationArray:=nil;
+ fTypeArray:=nil;
  fUsedBitmap:=nil;
 {$endif}
  inherited Destroy;
 end;
 
-function TpvIDManager.AllocateID:TpvID;
+function TpvIDManager.AllocateID(const aType:TpvUInt32=0):TpvID;
 {$ifdef Debug}
-var NewSize,OldSize:TpvUInt32;
+var NewSize,OldSize,Index,Generation:TpvUInt32;
 begin
- result.Index:=0;
- if fFreeStack.Pop(result.Index) then begin
+ Index:=0;
+ if fFreeStack.Pop(Index) then begin
   fMultipleReaderSingleWriterLock.AcquireRead;
   try
-   result.Generation:=fGenerationArray[result.Index];
-   TPasMPInterlocked.BitwiseOr(fUsedBitmap[result.Index shr 5],TpvUInt32(1) shl (result.Index and 31));
+   Generation:=fGenerationArray[Index];
+   fTypeArray[Index]:=aType;
+   TPasMPInterlocked.BitwiseOr(fUsedBitmap[Index shr 5],TpvUInt32(1) shl (Index and 31));
   finally
    fMultipleReaderSingleWriterLock.ReleaseRead;
   end;
  end else begin
-  result.Index:=TPasMPInterlocked.Increment(fIDCounter);
-  result.Generation:=0;
+  Index:=TPasMPInterlocked.Increment(fIDCounter);
+  Generation:=0;
   fMultipleReaderSingleWriterLock.AcquireRead;
   try
    begin
     OldSize:=length(fGenerationArray);
-    if OldSize<=result.Index then begin
-     NewSize:=(result.Index+1) shl 1;
+    if OldSize<=Index then begin
+     NewSize:=(Index+1) shl 1;
      if OldSize<NewSize then begin
       fMultipleReaderSingleWriterLock.ReadToWrite;
       try
@@ -228,8 +233,26 @@ begin
     end;
    end;
    begin
+    OldSize:=length(fTypeArray);
+    if OldSize<=Index then begin
+     NewSize:=(Index+1) shl 1;
+     if OldSize<NewSize then begin
+      fMultipleReaderSingleWriterLock.ReadToWrite;
+      try
+       OldSize:=length(fTypeArray);
+       if OldSize<NewSize then begin
+        SetLength(fTypeArray,NewSize);
+        FillChar(fTypeArray[OldSize],(NewSize-OldSize)*SizeOf(TpvUInt32),#$ff);
+       end;
+      finally
+       fMultipleReaderSingleWriterLock.WriteToRead;
+      end;
+     end;
+    end;
+   end;
+   begin
     OldSize:=length(fUsedBitmap);
-    NewSize:=(result.Index+31) shr 5;
+    NewSize:=(Index+31) shr 5;
     if OldSize<=NewSize then begin
      NewSize:=(NewSize+1) shl 1;
      if OldSize<NewSize then begin
@@ -246,42 +269,58 @@ begin
      end;
     end;
    end;
-   fGenerationArray[result.Index]:=0;
-   TPasMPInterlocked.BitwiseOr(fUsedBitmap[result.Index shr 5],TpvUInt32(1) shl (result.Index and 31));
+   fGenerationArray[Index]:=0;
+   fTypeArray[Index]:=aType;
+   TPasMPInterlocked.BitwiseOr(fUsedBitmap[Index shr 5],TpvUInt32(1) shl (Index and 31));
   finally
    fMultipleReaderSingleWriterLock.ReleaseRead;
   end;
  end;
+ result:=(Index and $ffffffff) or (TpvUInt64(Generation and $ffff) shl 32) or (TpvUInt64(aType and $ffff) shl 48);
 end;
 {$else}
+var Index:TpvUInt32;
 begin
- if not fFreeStack.Pop(result.Index) then begin
-  result.Index:=TPasMPInterlocked.Increment(fIDCounter);
+ if not fFreeStack.Pop(Index) then begin
+  Index:=TPasMPInterlocked.Increment(fIDCounter);
  end;
- result.Generation:=0;
+ result:=Index;
 end;
 {$endif}
 
 procedure TpvIDManager.FreeID(const aID:TpvID);
-begin
 {$ifdef Debug}
+var Index,Generation,Type_:TpvUInt32;
+begin
+ Index:=aID and $ffffffff;
+ Generation:=(aID shr 32) and $ffff;
+ Type_:=(aID shr 48) and $ffff;
  fMultipleReaderSingleWriterLock.AcquireRead;
  try
-  if (aID.Index<TpvUInt32(length(fGenerationArray))) and
-     (aID.Generation=fGenerationArray[aID.Index]) and
-     ((fUsedBitmap[aID.Index shr 5] and (TpvUInt32(1) shl (aID.Index and 31)))<>0) then begin
-   inc(fGenerationArray[aID.Index]);
-   TPasMPInterlocked.BitwiseAnd(fUsedBitmap[aID.Index shr 5],not (TpvUInt32(1) shl (aID.Index and 31)));
-   fFreeStack.Push(aID.Index);
+  if ((Index<TpvUInt32(length(fGenerationArray))) and (Generation=fGenerationArray[Index])) and
+     ((Index<TpvUInt32(length(fTypeArray))) and  (Type_=fTypeArray[Index])) and
+     ((fUsedBitmap[Index shr 5] and (TpvUInt32(1) shl (Index and 31)))<>0) then begin
+   fGenerationArray[Index]:=(fGenerationArray[Index]+1) and $ffff;
+   fTypeArray[Index]:=$ffffffff;
+   TPasMPInterlocked.BitwiseAnd(fUsedBitmap[Index shr 5],not (TpvUInt32(1) shl (Index and 31)));
+   fFreeStack.Push(Index);
   end else begin
-   raise EpvIDManager.Create('ID #'+IntToStr(aID.Index)+' has wrong generation #'+IntToStr(aID.Generation));
+   if (Index<TpvUInt32(length(fGenerationArray))) and (Generation<>fGenerationArray[Index]) then begin
+    raise EpvIDManager.Create('ID #'+IntToStr(Index)+' has wrong generation #'+IntToStr(Generation));
+   end else if (Index<TpvUInt32(length(fTypeArray))) and (Type_<>fTypeArray[Index]) then begin
+    raise EpvIDManager.Create('ID #'+IntToStr(Index)+' has wrong type #'+IntToStr(Type_));
+   end else begin
+    raise EpvIDManager.Create('ID #'+IntToStr(Index)+' lookup error');
+   end;
   end;
  finally
   fMultipleReaderSingleWriterLock.ReleaseRead;
  end;
-{$else}
- fFreeStack.Push(ID.Index);
-{$endif}
 end;
+{$else}
+begin
+ fFreeStack.Push(aID and $ffffffff);
+end;
+{$endif}
 
 end.
