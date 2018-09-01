@@ -3209,7 +3209,7 @@ begin
   if not assigned(result) then begin
    result:=TpvWorld.Create(self);
    if assigned(result) then begin
-    Stream:=pvApplication.Assets.GetAssetStream('materials/'+ExtractFileName(fFileName));
+    Stream:=pvApplication.Assets.GetAssetStream('worlds/'+ExtractFileName(fFileName));
     if not assigned(Stream) then begin
      Stream:=TFileStream.Create(fFileName,fmOpenRead or fmShareDenyWrite);
     end;
