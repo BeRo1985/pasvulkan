@@ -2058,8 +2058,8 @@ var PrefabEntityComponentIndex,PropIndex,PropCount,PrefabInstanceEntityComponent
 begin
  if not (TFlag.PrefabSynchronized in fFlags) then begin
   Include(fFlags,TFlag.PrefabSynchronized);
-  ComponentPrefabInstance:=TpvComponentPrefabInstance(GetComponent(TpvComponentPrefabInstance));
-  if assigned(ComponentPrefabInstance) then begin
+  if HasComponent(TpvComponentPrefabInstance) then begin
+   ComponentPrefabInstance:=TpvComponentPrefabInstance(GetComponent(TpvComponentPrefabInstance));
    PrefabMetaResource:=ResourceManager.MetaResourceByUUID[ComponentPrefabInstance.SourceWorldUUID];
    if assigned(PrefabMetaResource) and (PrefabMetaResource is TpvMetaWorld) then begin
     PrefabWorld:=PrefabMetaResource.Resource;
@@ -2291,40 +2291,36 @@ function TpvEntity.GetComponent(const aComponentClass:TpvComponentClass):TpvComp
 var ComponentClassID:TpvComponentClassID;
 begin
  ComponentClassID:=aComponentClass.ClassID;
- if (ComponentClassID>=0) and (ComponentClassID<length(fComponents)) then begin
-  result:=fComponents[ComponentClassID];
- end else begin
-  result:=nil;
- end;
+{$ifdef Debug}
+ Assert((ComponentClassID>=0) and (ComponentClassID<length(fComponents)));
+{$endif}
+ result:=fComponents[ComponentClassID];
 end;
 
 function TpvEntity.GetComponent(const aComponentClassID:TpvComponentClassID):TpvComponent;
 begin
- if (aComponentClassID>=0) and (aComponentClassID<length(fComponents)) then begin
-  result:=fComponents[aComponentClassID];
- end else begin
-  result:=nil;
- end;
+{$ifdef Debug}
+ Assert((aComponentClassID>=0) and (aComponentClassID<length(fComponents)));
+{$endif}
+ result:=fComponents[aComponentClassID];
 end;
 
 function TpvEntity.GetComponentByClass(const aComponentClass:TpvComponentClass):TpvComponent;
 var ComponentClassID:TpvComponentClassID;
 begin
  ComponentClassID:=aComponentClass.ClassID;
- if (ComponentClassID>=0) and (ComponentClassID<length(fComponents)) then begin
-  result:=fComponents[ComponentClassID];
- end else begin
-  result:=nil;
- end;
+{$ifdef Debug}
+ Assert((ComponentClassID>=0) and (ComponentClassID<length(fComponents)));
+{$endif}
+ result:=fComponents[ComponentClassID];
 end;
 
 function TpvEntity.GetComponentByClassID(const aComponentClassID:TpvComponentClassID):TpvComponent;
 begin
- if (aComponentClassID>=0) and (aComponentClassID<length(fComponents)) then begin
-  result:=fComponents[aComponentClassID];
- end else begin
-  result:=nil;
- end;
+{$ifdef Debug}
+ Assert((aComponentClassID>=0) and (aComponentClassID<length(fComponents)));
+{$endif}
+ result:=fComponents[aComponentClassID];
 end;
 
 constructor TpvEntityList.Create;
@@ -4221,13 +4217,15 @@ procedure TpvWorld.Defragment;
    for EntityID:=0 to fEntityIDCounter-1 do begin
     CurrentEntity:=fEntities[EntityID];
     if assigned(CurrentEntity) then begin
-     CurrentComponent:=CurrentEntity.ComponentByClassID[ComponentClassID];
-     if assigned(CurrentComponent) then begin
-      inc(Count);
-      if TpvPtrUInt(LastComponent)>TpvPtrUInt(CurrentComponent) then begin
-       MustDo:=true;
+     if CurrentEntity.HasComponent(ComponentClassID) then begin
+      CurrentComponent:=CurrentEntity.ComponentByClassID[ComponentClassID];
+      if assigned(CurrentComponent) then begin
+       inc(Count);
+       if TpvPtrUInt(LastComponent)>TpvPtrUInt(CurrentComponent) then begin
+        MustDo:=true;
+       end;
+       LastComponent:=CurrentComponent;
       end;
-      LastComponent:=CurrentComponent;
      end;
     end;
    end;
@@ -4242,11 +4240,13 @@ procedure TpvWorld.Defragment;
      for EntityID:=0 to fEntityIDCounter-1 do begin
       CurrentEntity:=fEntities[EntityID];
       if assigned(CurrentEntity) then begin
-       CurrentComponent:=CurrentEntity.ComponentByClassID[ComponentClassID];
-       if assigned(CurrentComponent) then begin
-        Components.fItems[Count]:=TObject(CurrentComponent);
-        Components.fEntities[Count]:=CurrentEntity;
-        inc(Count);
+       if CurrentEntity.HasComponent(ComponentClassID) then begin
+        CurrentComponent:=CurrentEntity.ComponentByClassID[ComponentClassID];
+        if assigned(CurrentComponent) then begin
+         Components.fItems[Count]:=TObject(CurrentComponent);
+         Components.fEntities[Count]:=CurrentEntity;
+         inc(Count);
+        end;
        end;
       end;
      end;
@@ -4455,10 +4455,15 @@ begin
        end;
        Entity:=fEntities[EntityID];
        if assigned(Entity) then begin
-        Component:=Entity.GetComponent(ComponentClass);
-        if assigned(Component) then begin
-         Entity.RemoveComponentFromEntity(Component);
-         Component.Free;
+        if Entity.HasComponent(ComponentClass) then begin
+         Component:=Entity.GetComponent(ComponentClass);
+         if assigned(Component) then begin
+          try
+           Entity.RemoveComponentFromEntity(Component);
+          finally
+           Component.Free;
+          end;
+         end;
         end;
        end;
        if WasActive then begin
