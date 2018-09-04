@@ -69,19 +69,18 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.EntityComponentSystem;
 
-type TpvComponentTransformFlag=
-      (
-       sctfStatic,
-       sctfRelativePosition,
-       sctfRelativeRotation,
-       sctfRelativeScale
-      );
-
-     TpvComponentTransformFlags=set of TpvComponentTransformFlag;
-
-     TpvComponentTransform=class(TpvComponent)
+type TpvComponentTransform=class(TpvComponent)
+      public
+       type TFlag=
+             (
+              Static,
+              RelativePosition,
+              RelativeRotation,
+              RelativeScale
+             );
+            TFlags=set of TFlag;
       private
-       fFlags:TpvComponentTransformFlags;
+       fFlags:TFlags;
        fPosition:TpvVector3Property;
        fRotation:TpvQuaternionProperty;
        fScale:TpvVector3Property;
@@ -100,7 +99,7 @@ type TpvComponentTransformFlag=
        property Rotation:TpvQuaternionProperty read fRotation write fRotation;
        property Scale:TpvVector3Property read fScale write fScale;
        property Parent:TpvEntityID read fParent write fParent;
-       property Flags:TpvComponentTransformFlags read fFlags write fFlags;
+       property Flags:TFlags read fFlags write fFlags;
      end;
 
 implementation

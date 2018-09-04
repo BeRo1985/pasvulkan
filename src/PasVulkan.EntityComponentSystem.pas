@@ -274,8 +274,10 @@ type EpvSystemCircularDependency=class(Exception);
        fUnknownData:TPasJSONItemObject;
        procedure AddComponentToEntity(const aComponent:TpvComponent);
        procedure RemoveComponentFromEntity(const aComponent:TpvComponent);
-       function GetComponentByClass(const aComponentClass:TpvComponentClass):TpvComponent; inline;
-       function GetComponentByClassID(const aComponentClassID:TpvComponentClassID):TpvComponent; inline;
+       function GetFastComponentByClass(const aComponentClass:TpvComponentClass):TpvComponent; inline;
+       function GetFastComponentByClassID(const aComponentClassID:TpvComponentClassID):TpvComponent; inline;
+       function GetSafeComponentByClass(const aComponentClass:TpvComponentClass):TpvComponent; inline;
+       function GetSafeComponentByClassID(const aComponentClassID:TpvComponentClassID):TpvComponent; inline;
       public
        constructor Create(const aWorld:TpvWorld);
        destructor Destroy; override;
@@ -290,8 +292,10 @@ type EpvSystemCircularDependency=class(Exception);
        procedure RemoveComponent(const aComponentClassID:TpvComponentClassID); overload; inline;
        function HasComponent(const aComponentClass:TpvComponentClass):boolean; overload; inline;
        function HasComponent(const aComponentClassID:TpvComponentClassID):boolean; overload; inline;
-       function GetComponent(const aComponentClass:TpvComponentClass):TpvComponent; overload; inline;
-       function GetComponent(const aComponentClassID:TpvComponentClassID):TpvComponent; overload; inline;
+       function GetFastComponent(const aComponentClass:TpvComponentClass):TpvComponent; overload; inline;
+       function GetFastComponent(const aComponentClassID:TpvComponentClassID):TpvComponent; overload; inline;
+       function GetSafeComponent(const aComponentClass:TpvComponentClass):TpvComponent; overload; inline;
+       function GetSafeComponent(const aComponentClassID:TpvComponentClassID):TpvComponent; overload; inline;
        property World:TpvWorld read fWorld;
        property UUID:TpvUUID read fUUID write fUUID;
        property Flags:TFlags read fFlags write fFlags;
@@ -299,8 +303,10 @@ type EpvSystemCircularDependency=class(Exception);
        property TreeNode:pointer read fTreeNode write fTreeNode;
 {$endif}
        property RawComponents:TpvEntityComponents read fComponents;
-       property ComponentByClass[const aComponentClass:TpvComponentClass]:TpvComponent read GetComponentByClass; default;
-       property ComponentByClassID[const aComponentClassID:TpvComponentClassID]:TpvComponent read GetComponentByClassID;
+       property FastComponentByClass[const aComponentClass:TpvComponentClass]:TpvComponent read GetFastComponentByClass; default;
+       property FastComponentByClassID[const aComponentClassID:TpvComponentClassID]:TpvComponent read GetFastComponentByClassID;
+       property SafeComponentByClass[const aComponentClass:TpvComponentClass]:TpvComponent read GetSafeComponentByClass;
+       property SafeComponentByClassID[const aComponentClassID:TpvComponentClassID]:TpvComponent read GetSafeComponentByClassID;
       published
        property ID:TpvEntityID read fID;
      end;
@@ -576,7 +582,7 @@ type EpvSystemCircularDependency=class(Exception);
        fSortKey:TpvInt32;
 {$ifdef PasVulkanEntityComponentSystemEditor}
        fTabsheet:pointer;
-       fForm:pointer;
+       fWindow:pointer;
 {$endif}
        fLock:TPasMPMultipleReaderSingleWriterLock;
        fComponentClassDataWrappers:TWorldComponentClassDataWrappers;
@@ -615,8 +621,10 @@ type EpvSystemCircularDependency=class(Exception);
        function GetUUID:TpvUUID;
        procedure AddDelayedManagementEvent(const aDelayedManagementEvent:TpvDelayedManagementEvent); {$ifdef caninline}inline;{$endif}
        function GetComponentClassDataWrapper(const aComponentClass:TpvComponentClass):TpvComponentClassDataWrapper;
-       function GetEntityByID(const aEntityID:TpvEntityID):TpvEntity; inline;
-       function GetEntityByUUID(const aEntityUUID:TpvUUID):TpvEntity;
+       function GetFastEntityByID(const aEntityID:TpvEntityID):TpvEntity; inline;
+       function GetFastEntityByUUID(const aEntityUUID:TpvUUID):TpvEntity;
+       function GetSafeEntityByID(const aEntityID:TpvEntityID):TpvEntity; inline;
+       function GetSafeEntityByUUID(const aEntityUUID:TpvUUID):TpvEntity;
        function DoCreateEntity(const aEntityID:TpvEntityID;const aEntityUUID:TpvUUID):boolean;
        function DoDestroyEntity(const aEntityID:TpvEntityID):boolean;
        procedure ProcessEvent(const aEvent:PpvEvent);
@@ -675,12 +683,14 @@ type EpvSystemCircularDependency=class(Exception);
        property SortKey:TpvInt32 read fSortKey write fSortKey;
 {$ifdef PasVulkanEntityComponentSystemEditor}
        property Tabsheet:pointer read fTabsheet write fTabsheet;
-       property Form:pointer read fForm write fForm;
+       property Window:pointer read fWindow write fWindow;
 {$endif}
        property Components[const aComponentClass:TpvComponentClass]:TpvComponentClassDataWrapper read GetComponentClassDataWrapper;
        property Entities:TpvEntities read fEntities;
-       property EntityByID[const aID:TpvEntityID]:TpvEntity read GetEntityByID;
-       property EntityByUUID[const aUUID:TpvUUID]:TpvEntity read GetEntityByUUID;
+       property FastEntityByID[const aID:TpvEntityID]:TpvEntity read GetFastEntityByID; default;
+       property FastEntityByUUID[const aUUID:TpvUUID]:TpvEntity read GetFastEntityByUUID;
+       property SafeEntityByID[const aID:TpvEntityID]:TpvEntity read GetSafeEntityByID;
+       property SafeEntityByUUID[const aUUID:TpvUUID]:TpvEntity read GetSafeEntityByUUID;
        property EntityIDCapacity:TpvInt32 read fEntityIDCounter;
        property CurrentTime:TpvTime read fCurrentTime;
        property OnEvent:TpvWorldOnEvent read fOnEvent write fOnEvent;
@@ -1874,11 +1884,11 @@ end;
 function TpvComponentClassDataWrapper.GetComponentByEntityID(const aEntityID:TpvEntityID):TpvComponent;
 var Entity:TpvEntity;
 begin
- Entity:=fWorld.EntityByID[aEntityID];
+ Entity:=fWorld.FastEntityByID[aEntityID];
 {$ifdef Debug}
  Assert(assigned(Entity));
 {$endif}
- result:=Entity.GetComponent(fComponentClass);
+ result:=Entity.GetFastComponentByClassID(fComponentClassID);
 end;
 
 constructor TpvRegisteredComponentClassList.Create;
@@ -2007,9 +2017,8 @@ begin
   if assigned(FromEntityComponent) and (FromEntityComponent is TpvComponent) then begin
    FromEntityComponentClass:=TpvComponentClass(FromEntityComponent.ClassType);
    if assigned(FromEntityComponentClass) then begin
-    if HasComponent(FromEntityComponentClass) then begin
-     EntityComponent:=GetComponent(FromEntityComponentClass);
-    end else begin
+    EntityComponent:=GetSafeComponentByClass(FromEntityComponentClass);
+    if not assigned(EntityComponent) then begin
      EntityComponent:=FromEntityComponentClass.Create;
      AddComponent(EntityComponent);
     end;
@@ -2057,15 +2066,15 @@ var PrefabEntityComponentIndex,PropIndex,PropCount,PrefabInstanceEntityComponent
 begin
  if not (TFlag.PrefabSynchronized in fFlags) then begin
   Include(fFlags,TFlag.PrefabSynchronized);
-  if HasComponent(TpvComponentPrefabInstance) then begin
-   ComponentPrefabInstance:=TpvComponentPrefabInstance(GetComponent(TpvComponentPrefabInstance));
+  ComponentPrefabInstance:=TpvComponentPrefabInstance(GetSafeComponentByClass(TpvComponentPrefabInstance));
+  if assigned(ComponentPrefabInstance) then begin
    PrefabMetaResource:=ResourceManager.MetaResourceByUUID[ComponentPrefabInstance.SourceWorldUUID];
    if assigned(PrefabMetaResource) and (PrefabMetaResource is TpvMetaWorld) then begin
     PrefabWorld:=PrefabMetaResource.Resource;
     if assigned(PrefabWorld) then begin
      try
       PrefabWorldInstance:=TpvWorld(PrefabWorld.GetReferenceCountedObject);
-      PrefabEntity:=PrefabWorldInstance.GetEntityByUUID(ComponentPrefabInstance.SourceEntityUUID);
+      PrefabEntity:=PrefabWorldInstance.GetSafeEntityByUUID(ComponentPrefabInstance.SourceEntityUUID);
       if assigned(PrefabEntity) then begin
        PrefabEntity.SynchronizeToPrefab;
        PrefabInstanceEntityComponentPropertyList:=ComponentPrefabInstance.EntityComponentProperties;
@@ -2074,9 +2083,8 @@ begin
         if assigned(PrefabEntityComponent) and (PrefabEntityComponent is TpvComponent) then begin
          PrefabEntityComponentClass:=TpvComponentClass(PrefabEntityComponent.ClassType);
          if assigned(PrefabEntityComponentClass) then begin
-          if HasComponent(PrefabEntityComponentClass) then begin
-           EntityComponent:=GetComponent(PrefabEntityComponentClass);
-          end else begin
+          EntityComponent:=GetSafeComponentByClass(PrefabEntityComponentClass);
+          if not assigned(EntityComponent) then begin
            EntityComponent:=PrefabEntityComponentClass.Create;
            AddComponent(EntityComponent);
            PropList:=nil;
@@ -2286,7 +2294,7 @@ begin
  result:=(aComponentClassID>=0) and (aComponentClassID<length(fComponents)) and assigned(fComponents[aComponentClassID]);
 end;
 
-function TpvEntity.GetComponent(const aComponentClass:TpvComponentClass):TpvComponent;
+function TpvEntity.GetFastComponentByClass(const aComponentClass:TpvComponentClass):TpvComponent;
 var ComponentClassID:TpvComponentClassID;
 begin
  ComponentClassID:=aComponentClass.ClassID;
@@ -2296,7 +2304,7 @@ begin
  result:=fComponents[ComponentClassID];
 end;
 
-function TpvEntity.GetComponent(const aComponentClassID:TpvComponentClassID):TpvComponent;
+function TpvEntity.GetFastComponentByClassID(const aComponentClassID:TpvComponentClassID):TpvComponent;
 begin
 {$ifdef Debug}
  Assert((aComponentClassID>=0) and (aComponentClassID<length(fComponents)));
@@ -2304,22 +2312,44 @@ begin
  result:=fComponents[aComponentClassID];
 end;
 
-function TpvEntity.GetComponentByClass(const aComponentClass:TpvComponentClass):TpvComponent;
+function TpvEntity.GetSafeComponentByClass(const aComponentClass:TpvComponentClass):TpvComponent;
 var ComponentClassID:TpvComponentClassID;
 begin
  ComponentClassID:=aComponentClass.ClassID;
-{$ifdef Debug}
- Assert((ComponentClassID>=0) and (ComponentClassID<length(fComponents)));
-{$endif}
- result:=fComponents[ComponentClassID];
+ if (ComponentClassID>=0) and (ComponentClassID<length(fComponents)) then begin
+  result:=fComponents[ComponentClassID];
+ end else begin
+  result:=nil;
+ end;
 end;
 
-function TpvEntity.GetComponentByClassID(const aComponentClassID:TpvComponentClassID):TpvComponent;
+function TpvEntity.GetSafeComponentByClassID(const aComponentClassID:TpvComponentClassID):TpvComponent;
 begin
-{$ifdef Debug}
- Assert((aComponentClassID>=0) and (aComponentClassID<length(fComponents)));
-{$endif}
- result:=fComponents[aComponentClassID];
+ if (aComponentClassID>=0) and (aComponentClassID<length(fComponents)) then begin
+  result:=fComponents[aComponentClassID];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvEntity.GetFastComponent(const aComponentClass:TpvComponentClass):TpvComponent;
+begin
+ result:=GetFastComponentByClass(aComponentClass);
+end;
+
+function TpvEntity.GetFastComponent(const aComponentClassID:TpvComponentClassID):TpvComponent;
+begin
+ result:=GetFastComponentByClassID(aComponentClassID);
+end;
+
+function TpvEntity.GetSafeComponent(const aComponentClass:TpvComponentClass):TpvComponent;
+begin
+ result:=GetSafeComponentByClass(aComponentClass);
+end;
+
+function TpvEntity.GetSafeComponent(const aComponentClassID:TpvComponentClassID):TpvComponent;
+begin
+ result:=GetSafeComponentByClassID(aComponentClassID);
 end;
 
 constructor TpvEntityList.Create;
@@ -2774,7 +2804,7 @@ end;
 function TpvSystem.AddEntityToSystem(const aEntityID:TpvEntityID):boolean;
 begin
  if fEntityIDs.IndexOf(aEntityID)<0 then begin
-  fEntities.Insert(fEntityIDs.Add(aEntityID),fWorld.GetEntityByID(aEntityID));
+  fEntities.Insert(fEntityIDs.Add(aEntityID),fWorld.GetFastEntityByID(aEntityID));
   inc(fCountEntities);
   fNeedToSort:=true;
   result:=true;
@@ -2804,7 +2834,7 @@ begin
   fNeedToSort:=false;
   fEntityIDs.Sort;
   for Index:=0 to fEntityIDs.Count-1 do begin
-   fEntities.fEntities[Index]:=fWorld.GetEntityByID(fEntityIDs[Index]);
+   fEntities.fEntities[Index]:=fWorld.GetFastEntityByID(fEntityIDs[Index]);
   end;
   fEntities.fSorted:=fEntityIDs.fSorted;
  end;
@@ -3306,7 +3336,7 @@ begin
  fSortKey:=0;
 {$ifdef PasVulkanEntityComponentSystemEditor}
  fTabsheet:=nil;
- fForm:=nil;
+ fWindow:=nil;
 {$endif}
  fLock:=TPasMPMultipleReaderSingleWriterLock.Create;
  fComponentClassDataWrappers:=nil;
@@ -3563,7 +3593,7 @@ begin
  end;
 end;
 
-function TpvWorld.GetEntityByID(const aEntityID:TpvEntityID):TpvEntity;
+function TpvWorld.GetFastEntityByID(const aEntityID:TpvEntityID):TpvEntity;
 begin
 {$ifdef Debug}
  Assert((aEntityID>=0) and
@@ -3573,9 +3603,25 @@ begin
  result:=fEntities[aEntityID];
 end;
 
-function TpvWorld.GetEntityByUUID(const aEntityUUID:TpvUUID):TpvEntity;
+function TpvWorld.GetFastEntityByUUID(const aEntityUUID:TpvUUID):TpvEntity;
 begin
- result:=GetEntityByID(fEntityUUIDHashMap.Values[aEntityUUID]);
+ result:=GetFastEntityByID(fEntityUUIDHashMap.Values[aEntityUUID]);
+end;
+
+function TpvWorld.GetSafeEntityByID(const aEntityID:TpvEntityID):TpvEntity;
+begin
+ if (aEntityID>=0) and
+    (aEntityID<fEntityIDCounter) and
+    ((fEntityIDUsedBitmap[aEntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID and 31)))<>0) then begin
+  result:=fEntities[aEntityID];
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvWorld.GetSafeEntityByUUID(const aEntityUUID:TpvUUID):TpvEntity;
+begin
+ result:=GetSafeEntityByID(fEntityUUIDHashMap.Values[aEntityUUID]);
 end;
 
 function TpvWorld.DoCreateEntity(const aEntityID:TpvEntityID;const aEntityUUID:TpvUUID):boolean;
@@ -4215,15 +4261,13 @@ procedure TpvWorld.Defragment;
    for EntityID:=0 to fEntityIDCounter-1 do begin
     CurrentEntity:=fEntities[EntityID];
     if assigned(CurrentEntity) then begin
-     if CurrentEntity.HasComponent(ComponentClassID) then begin
-      CurrentComponent:=CurrentEntity.ComponentByClassID[ComponentClassID];
-      if assigned(CurrentComponent) then begin
-       inc(Count);
-       if TpvPtrUInt(LastComponent)>TpvPtrUInt(CurrentComponent) then begin
+     CurrentComponent:=CurrentEntity.SafeComponentByClassID[ComponentClassID];
+     if assigned(CurrentComponent) then begin
+      inc(Count);
+      if TpvPtrUInt(LastComponent)>TpvPtrUInt(CurrentComponent) then begin
         MustDo:=true;
-       end;
-       LastComponent:=CurrentComponent;
       end;
+      LastComponent:=CurrentComponent;
      end;
     end;
    end;
@@ -4238,13 +4282,11 @@ procedure TpvWorld.Defragment;
      for EntityID:=0 to fEntityIDCounter-1 do begin
       CurrentEntity:=fEntities[EntityID];
       if assigned(CurrentEntity) then begin
-       if CurrentEntity.HasComponent(ComponentClassID) then begin
-        CurrentComponent:=CurrentEntity.ComponentByClassID[ComponentClassID];
-        if assigned(CurrentComponent) then begin
-         Components.fItems[Count]:=TObject(CurrentComponent);
-         Components.fEntities[Count]:=CurrentEntity;
-         inc(Count);
-        end;
+       CurrentComponent:=CurrentEntity.SafeComponentByClassID[ComponentClassID];
+       if assigned(CurrentComponent) then begin
+        Components.fItems[Count]:=TObject(CurrentComponent);
+        Components.fEntities[Count]:=CurrentEntity;
+        inc(Count);
        end;
       end;
      end;
@@ -4315,7 +4357,7 @@ procedure TpvWorld.Defragment;
     for SystemIndex:=0 to fSystemList.Count-1 do begin
      System:=TpvSystem(fSystemList.Items[SystemIndex]);
      for EntityIndex:=0 to System.fCountEntities-1 do begin
-      System.fEntities.fEntities[EntityIndex]:=EntityByID[System.fEntityIDs[EntityIndex]];
+      System.fEntities.fEntities[EntityIndex]:=FastEntityByID[System.fEntityIDs[EntityIndex]];
      end;
     end;
 
@@ -4453,14 +4495,12 @@ begin
        end;
        Entity:=fEntities[EntityID];
        if assigned(Entity) then begin
-        if Entity.HasComponent(ComponentClass) then begin
-         Component:=Entity.GetComponent(ComponentClass);
-         if assigned(Component) then begin
-          try
-           Entity.RemoveComponentFromEntity(Component);
-          finally
-           Component.Free;
-          end;
+        Component:=Entity.GetSafeComponentByClass(ComponentClass);
+        if assigned(Component) then begin
+         try
+          Entity.RemoveComponentFromEntity(Component);
+         finally
+          Component.Free;
          end;
         end;
        end;
@@ -4944,9 +4984,9 @@ begin
   end;
   WriteInt32(fEntityIDCounter);
   for EntityID:=0 to fEntityIDCounter-1 do begin
-   if HasEntity(EntityID) then begin
+   Entity:=SafeEntityByID[EntityID];
+   if assigned(Entity) then begin
     WriteBit(true);
-    Entity:=EntityByID[EntityID];
     WriteBit(Entity.Active);
     BufferedStream.Write(Entity.fUUID,SizeOf(TpvUUID));
     WriteInt32(length(Entity.fComponents));
@@ -5019,8 +5059,8 @@ begin
     if BufferedStream.Read(TempUUID,SizeOf(TpvUUID))<>SizeOf(TpvUUID) then begin
      raise EInOutError.Create('Stream read error');
     end;
-    if HasEntity(EntityID) then begin
-     Entity:=EntityByID[EntityID];
+    Entity:=SafeEntityByID[EntityID];
+    if assigned(Entity) then begin
      if TempUUID<>Entity.fUUID then begin
       fEntityUUIDHashMap.Delete(Entity.fUUID);
       Entity.fUUID:=TempUUID;
@@ -5029,7 +5069,7 @@ begin
     end else begin
      CreateEntity(EntityID,TempUUID);
      Refresh;
-     Entity:=EntityByID[EntityID];
+     Entity:=FastEntityByID[EntityID];
     end;
     ComponentClassCount:=ReadInt32;
     for ComponentClassID:=0 to Max(ComponentClassCount,length(Entity.fComponents))-1 do begin
@@ -5097,15 +5137,11 @@ function TpvWorld.SerializeToJSON(const aEntityIDs:array of TpvEntityID;const aR
        ItemValue:=nil;
        if PropInfo^.PropType=TypeInfo(TpvEntityID) then begin
         EntityID:=TypInfo.GetInt64Prop(AObject,PropInfo);
-        if HasEntity(EntityID) then begin
-         Entity:=EntityByID[EntityID];
-         if assigned(Entity) then begin
-          ItemValue:=TPasJSONItemString.Create(TPasJSONUTF8String(Entity.UUID.ToString));
-         end else begin
-          ItemValue:=TPasJSONItemNull.Create;
-         end;
+        Entity:=SafeEntityByID[EntityID];
+        if assigned(Entity) then begin
+         ItemValue:=TPasJSONItemString.Create(TPasJSONUTF8String(Entity.UUID.ToString));
         end else begin
-         ItemValue:=TPasJSONItemNull.Create;
+          ItemValue:=TPasJSONItemNull.Create;
         end;
        end else if PropInfo^.PropType=TypeInfo(TpvComponentDataEntityIDs) then begin
         ItemArray:=TPasJSONItemArray.Create;
@@ -5114,13 +5150,9 @@ function TpvWorld.SerializeToJSON(const aEntityIDs:array of TpvEntityID;const aR
         if assigned(EntityIDs) then begin
          for SubIndex:=0 to EntityIDs.Count-1 do begin
           EntityID:=EntityIDs.Items[SubIndex];
-          if HasEntity(EntityID) then begin
-           Entity:=EntityByID[EntityID];
-           if assigned(Entity) then begin
-            ItemArray.Add(TPasJSONItemString.Create(TPasJSONUTF8String(Entity.UUID.ToString)));
-           end else begin
-            ItemArray.Add(TPasJSONItemNull.Create);
-           end;
+          Entity:=SafeEntityByID[EntityID];
+          if assigned(Entity) then begin
+           ItemArray.Add(TPasJSONItemString.Create(TPasJSONUTF8String(Entity.UUID.ToString)));
           end else begin
            ItemArray.Add(TPasJSONItemNull.Create);
           end;
@@ -5213,14 +5245,12 @@ function TpvWorld.SerializeToJSON(const aEntityIDs:array of TpvEntityID;const aR
   RootObjectItem.Add(TPasJSONUTF8String(Entity.UUID.ToString),EntityObjectItem);
   for ComponentClassIndex:=0 to fUniverse.fRegisteredComponentClasses.Count-1 do begin
    ComponentClass:=TpvComponentClass(fUniverse.fRegisteredComponentClasses.Items[ComponentClassIndex]);
-   if HasEntityComponent(EntityID,ComponentClass) then begin
-    Component:=Entity.ComponentByClass[ComponentClass];
-    if assigned(Component) then begin
-     if ComponentClass.HasSpecialJSONSerialization then begin
-      EntityObjectItem.Add(TPasJSONUTF8String(ComponentClass.ClassUUID.ToString),Component.SpecialJSONSerialization);
-     end else begin
-      EntityObjectItem.Add(TPasJSONUTF8String(ComponentClass.ClassUUID.ToString),SerializeObjectToJSON(Component));
-     end;
+   Component:=Entity.SafeComponentByClass[ComponentClass];
+   if assigned(Component) then begin
+    if ComponentClass.HasSpecialJSONSerialization then begin
+     EntityObjectItem.Add(TPasJSONUTF8String(ComponentClass.ClassUUID.ToString),Component.SpecialJSONSerialization);
+    end else begin
+     EntityObjectItem.Add(TPasJSONUTF8String(ComponentClass.ClassUUID.ToString),SerializeObjectToJSON(Component));
     end;
    end;
   end;
@@ -5236,7 +5266,7 @@ begin
  RootObjectItem:=TPasJSONItemObject.Create;
  result:=RootObjectItem;
  if (aRootEntityID>=0) and HasEntity(aRootEntityID) then begin
-  Entity:=EntityByID[aRootEntityID];
+  Entity:=SafeEntityByID[aRootEntityID];
   if assigned(Entity) then begin
    RootObjectItem.Add('root',TPasJSONItemString.Create(TPasJSONUTF8String(Entity.UUID.ToString)));
   end;
@@ -5245,20 +5275,16 @@ begin
  if length(aEntityIDs)>0 then begin
   for EntityIndex:=0 to length(aEntityIDs)-1 do begin
    EntityID:=aEntityIDs[EntityIndex];
-   if HasEntity(EntityID) then begin
-    Entity:=EntityByID[EntityID];
-    if assigned(Entity) then begin
-     SerializeEntityToJSON(RootObjectItem,Entity);
-    end;
+   Entity:=SafeEntityByID[EntityID];
+   if assigned(Entity) then begin
+    SerializeEntityToJSON(RootObjectItem,Entity);
    end;
   end;
  end else begin
   for EntityID:=0 to fEntityIDMax do begin
-   if HasEntity(EntityID) then begin
-    Entity:=EntityByID[EntityID];
-    if assigned(Entity) then begin
-     SerializeEntityToJSON(RootObjectItem,Entity);
-    end;
+   Entity:=SafeEntityByID[EntityID];
+   if assigned(Entity) then begin
+    SerializeEntityToJSON(RootObjectItem,Entity);
    end;
   end;
  end;
@@ -5320,7 +5346,7 @@ var RootUUID:TpvUUIDString;
          DataUUID:=TpvUUID.CreateFromString(TpvUUIDString(TPasJSONItemString(ItemValue).Value));
          DataEntityID:=EntityUUIDHashMap.Values[DataUUID];
          if DataEntityID<0 then begin
-          DataEntity:=EntityByUUID[DataUUID];
+          DataEntity:=SafeEntityByUUID[DataUUID];
           if assigned(DataEntity) then begin
            DataEntityID:=DataEntity.ID;
           end;
@@ -5342,7 +5368,7 @@ var RootUUID:TpvUUIDString;
             DataUUID:=TpvUUID.CreateFromString(TpvUUIDString(TPasJSONItemString(TempItem).Value));
             DataEntityID:=EntityUUIDHashMap.Values[DataUUID];
             if DataEntityID<0 then begin
-             DataEntity:=EntityByUUID[DataUUID];
+             DataEntity:=SafeEntityByUUID[DataUUID];
              if assigned(DataEntity) then begin
               DataEntityID:=DataEntity.ID;
              end;
@@ -5595,14 +5621,10 @@ begin
          end;
          if EntityID>=0 then begin
           Refresh;
-          if HasEntity(EntityID) then begin
-           Entity:=EntityByID[EntityID];
-           if assigned(Entity) then begin
-            EntityIDs[RootObjectItemIndex]:=EntityID;
-            EntityUUIDHashMap.Add(EntityUUID,EntityID);
-           end else begin
-            raise EpvSystemUnserialization.Create('Internal error 2018-09-04-03-37-0000');
-           end;
+          Entity:=SafeEntityByID[EntityID];
+          if assigned(Entity) then begin
+           EntityIDs[RootObjectItemIndex]:=EntityID;
+           EntityUUIDHashMap.Add(EntityUUID,EntityID);
           end else begin
            raise EpvSystemUnserialization.Create('Internal error 2016-01-19-20-30-0000');
           end;
@@ -5656,7 +5678,7 @@ begin
                  AddComponentToEntity(EntityID,Component);
                  Refresh;
                  if HasEntityComponent(EntityID,ComponentClass) then begin
-                  Entity:=EntityByID[EntityID];
+                  Entity:=SafeEntityByID[EntityID];
                   if assigned(Entity) then begin
                    ParentObjectNames.Add(EntityObjectItemKey);
                    if ComponentClass.HasSpecialJSONSerialization then begin
@@ -5672,7 +5694,7 @@ begin
                end;
               end;
               if assigned(EntityObjectItemValue) and not OK then begin
-               Entity:=EntityByID[EntityID];
+               Entity:=SafeEntityByID[EntityID];
                if assigned(Entity) then begin
                 if not assigned(Entity.fUnknownData) then begin
                  Entity.fUnknownData:=TPasJSONItemObject.Create;
@@ -5689,11 +5711,9 @@ begin
               end;
              end;
             end;
-            if HasEntity(EntityID) then begin
-             Entity:=EntityByID[EntityID];
-             if assigned(Entity) then begin
-              Entity.Activate;
-             end;
+            Entity:=SafeEntityByID[EntityID];
+            if assigned(Entity) then begin
+             Entity.Activate;
             end;
            end;
           end;
@@ -5703,7 +5723,7 @@ begin
       end;
       Refresh;
       if length(RootUUID)>0 then begin
-       Entity:=EntityByUUID[TpvUUID.CreateFromString(RootUUID)];
+       Entity:=SafeEntityByUUID[TpvUUID.CreateFromString(RootUUID)];
        if assigned(Entity) then begin
         result:=Entity.ID;
        end;
@@ -5818,18 +5838,16 @@ begin
   if aAssignOp=TpvWorldAssignOp.Replace then begin
    DoRefresh:=false;
    for EntityID:=0 to fEntityIDCounter-1 do begin
-    if HasEntity(EntityID) then begin
-     Entity:=EntityByID[EntityID];
-     if assigned(Entity) then begin
-      FromEntity:=aFrom.EntityByUUID[Entity.UUID];
-      if (not assigned(FromEntity)) or
-         (assigned(FromEntity) and
-          ((length(FromEntityProcessBitmap)>0) and
-           (((FromEntity.ID>=0) and (FromEntity.ID<aFrom.fEntityIDCounter)) and
-            ((FromEntityProcessBitmap[FromEntity.ID shr 5] and (TpvUInt32(1) shl (FromEntity.ID and 31)))=0)))) then begin
-       Entity.Kill;
-       DoRefresh:=true;
-      end;
+    Entity:=SafeEntityByID[EntityID];
+    if assigned(Entity) then begin
+     FromEntity:=aFrom.SafeEntityByUUID[Entity.UUID];
+     if (not assigned(FromEntity)) or
+        (assigned(FromEntity) and
+         ((length(FromEntityProcessBitmap)>0) and
+          (((FromEntity.ID>=0) and (FromEntity.ID<aFrom.fEntityIDCounter)) and
+           ((FromEntityProcessBitmap[FromEntity.ID shr 5] and (TpvUInt32(1) shl (FromEntity.ID and 31)))=0)))) then begin
+      Entity.Kill;
+      DoRefresh:=true;
      end;
     end;
    end;
@@ -5845,30 +5863,26 @@ begin
 
    DoRefresh:=false;
    for FromEntityID:=0 to aFrom.fEntityIDCounter-1 do begin
-    if aFrom.HasEntity(FromEntityID) then begin
-     FromEntity:=aFrom.EntityByID[FromEntityID];
-     if assigned(FromEntity) and
-        ((length(FromEntityProcessBitmap)=0) or
-         (((FromEntity.ID>=0) and (FromEntity.ID<aFrom.fEntityIDCounter)) and
-          ((FromEntityProcessBitmap[FromEntity.ID shr 5] and (TpvUInt32(1) shl (FromEntity.ID and 31)))<>0))) then begin
-      if aAssignOp=TpvWorldAssignOp.Add then begin
-       EntityID:=CreateEntity;
-       DoRefresh:=true;
-      end else begin
-       Entity:=EntityByUUID[FromEntity.UUID];
-       if assigned(Entity) then begin
-        EntityID:=Entity.ID;
-       end else begin
-        EntityID:=CreateEntity(FromEntity.UUID);
-        DoRefresh:=true;
-       end;
-      end;
-      NewEntityIDs[FromEntityID]:=EntityID;
-      if (aRootEntityID>=0) and (aRootEntityID=FromEntityID) then begin
-       result:=EntityID;
-      end;
+    FromEntity:=aFrom.SafeEntityByID[FromEntityID];
+    if assigned(FromEntity) and
+       ((length(FromEntityProcessBitmap)=0) or
+        (((FromEntity.ID>=0) and (FromEntity.ID<aFrom.fEntityIDCounter)) and
+         ((FromEntityProcessBitmap[FromEntity.ID shr 5] and (TpvUInt32(1) shl (FromEntity.ID and 31)))<>0))) then begin
+     if aAssignOp=TpvWorldAssignOp.Add then begin
+      EntityID:=CreateEntity;
+      DoRefresh:=true;
      end else begin
-      NewEntityIDs[FromEntityID]:=-1;
+      Entity:=SafeEntityByUUID[FromEntity.UUID];
+      if assigned(Entity) then begin
+       EntityID:=Entity.ID;
+      end else begin
+       EntityID:=CreateEntity(FromEntity.UUID);
+       DoRefresh:=true;
+      end;
+     end;
+     NewEntityIDs[FromEntityID]:=EntityID;
+     if (aRootEntityID>=0) and (aRootEntityID=FromEntityID) then begin
+      result:=EntityID;
      end;
     end else begin
      NewEntityIDs[FromEntityID]:=-1;
@@ -5883,12 +5897,16 @@ begin
    for FromEntityID:=0 to aFrom.fEntityIDCounter-1 do begin
     EntityID:=NewEntityIDs[FromEntityID];
     if EntityID>=0 then begin
-     FromEntity:=aFrom.EntityByID[FromEntityID];
-     Entity:=EntityByID[EntityID];
-     if aAssignOp in [TpvWorldAssignOp.Replace,TpvWorldAssignOp.Add] then begin
-      Entity.Assign(FromEntity,TpvEntityAssignOp.Replace,NewEntityIDs,false);
-     end else begin
-      Entity.Assign(FromEntity,TpvEntityAssignOp.Combine,NewEntityIDs,false);
+     FromEntity:=aFrom.SafeEntityByID[FromEntityID];
+     if assigned(FromEntity) then begin
+      Entity:=SafeEntityByID[EntityID];
+      if assigned(Entity) then begin
+       if aAssignOp in [TpvWorldAssignOp.Replace,TpvWorldAssignOp.Add] then begin
+        Entity.Assign(FromEntity,TpvEntityAssignOp.Replace,NewEntityIDs,false);
+       end else begin
+        Entity.Assign(FromEntity,TpvEntityAssignOp.Combine,NewEntityIDs,false);
+       end;
+      end;
      end;
     end;
    end;
