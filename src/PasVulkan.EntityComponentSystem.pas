@@ -126,8 +126,8 @@ type EpvSystemCircularDependency=class(Exception);
      PpvEvent=^TpvEvent;
      TpvEvent=record
       LinkedListHead:TpvLinkedListHead;
-      TimeStamp:TTime;
-      RemainingTime:TTime;
+      TimeStamp:TpvTime;
+      RemainingTime:TpvTime;
       EventID:TpvEventID;
       EntityID:TpvEntityID;
       CountParameters:TpvInt32;
@@ -268,7 +268,7 @@ type EpvSystemCircularDependency=class(Exception);
        fUUID:TpvUUID;
        fFlags:TFlags;
        fComponents:TpvEntityComponents;
-{$ifdef SupraEditor}
+{$ifdef PasVulkanEntityComponentSystemEditor}
        fTreeNode:pointer;
 {$endif}
        fUnknownData:TPasJSONItemObject;
@@ -295,7 +295,7 @@ type EpvSystemCircularDependency=class(Exception);
        property World:TpvWorld read fWorld;
        property UUID:TpvUUID read fUUID write fUUID;
        property Flags:TFlags read fFlags write fFlags;
-{$ifdef SupraEditor}
+{$ifdef PasVulkanEntityComponentSystemEditor}
        property TreeNode:pointer read fTreeNode write fTreeNode;
 {$endif}
        property RawComponents:TpvEntityComponents read fComponents;
@@ -395,7 +395,7 @@ type EpvSystemCircularDependency=class(Exception);
        fCountEntities:TpvInt32;
        fEvents:TpvSystemEvents;
        fCountEvents:TpvInt32;
-       fDeltaTime:TTime;
+       fDeltaTime:TpvTime;
       protected
        function HaveDependencyOnSystem(const aOtherSystem:TpvSystem):boolean;
        function HaveDependencyOnSystemOrViceVersa(const aOtherSystem:TpvSystem):boolean;
@@ -434,7 +434,7 @@ type EpvSystemCircularDependency=class(Exception);
        property EntityGranularity:TpvInt32 read fEntityGranularity write fEntityGranularity;
        property Events:TpvSystemEvents read fEvents;
        property CountEvents:TpvInt32 read fCountEvents;
-       property DeltaTime:TTime read fDeltaTime;
+       property DeltaTime:TpvTime read fDeltaTime;
      end;
 
      TpvSystemChoreography=class
@@ -534,7 +534,7 @@ type EpvSystemCircularDependency=class(Exception);
 
      TpvDelayedManagementEvents=array of TpvDelayedManagementEvent;
 
-     TpvEntityIDUsedBitmap=array of longword;
+     TpvEntityIDUsedBitmap=array of TpvUInt32;
 
      TpvWorldOnEvent=procedure(const aWorld:TpvWorld;const aEvent:TpvEvent) of object;
 
@@ -574,7 +574,7 @@ type EpvSystemCircularDependency=class(Exception);
        fActive:longbool;
        fKilled:longbool;
        fSortKey:TpvInt32;
-{$ifdef SupraEditor}
+{$ifdef PasVulkanEntityComponentSystemEditor}
        fTabsheet:pointer;
        fForm:pointer;
 {$endif}
@@ -605,7 +605,7 @@ type EpvSystemCircularDependency=class(Exception);
        fDelayedFreeEventQueue:TpvLinkedListHead;
        fFreeEventQueueLock:TPasMPMultipleReaderSingleWriterLock;
        fFreeEventQueue:TpvLinkedListHead;
-       fCurrentTime:TTime;
+       fCurrentTime:TpvTime;
        fEventInProcessing:longbool;
        fEventRegistrationLock:TPasMPMultipleReaderSingleWriterLock;
        fEventRegistrationList:TList;
@@ -621,7 +621,7 @@ type EpvSystemCircularDependency=class(Exception);
        function DoDestroyEntity(const aEntityID:TpvEntityID):boolean;
        procedure ProcessEvent(const aEvent:PpvEvent);
        procedure ProcessEvents;
-       procedure ProcessDelayedEvents(const aDeltaTime:TTime);
+       procedure ProcessDelayedEvents(const aDeltaTime:TpvTime);
        function CreateEntity(const aEntityID:TpvEntityID;const aEntityUUID:TpvUUID):TpvEntityID; overload;
       protected
       public
@@ -651,9 +651,9 @@ type EpvSystemCircularDependency=class(Exception);
        procedure SortSystem(const aSystem:TpvSystem);
        procedure Defragment;
        procedure Refresh;
-       procedure QueueEvent(const aEventToQueue:TpvEvent;const aDeltaTime:TTime); overload;
+       procedure QueueEvent(const aEventToQueue:TpvEvent;const aDeltaTime:TpvTime); overload;
        procedure QueueEvent(const aEventToQueue:TpvEvent); overload;
-       procedure Update(const aDeltaTime:TTime);
+       procedure Update(const aDeltaTime:TpvTime);
        procedure Clear;
        procedure ClearEntities;
        procedure Activate;
@@ -673,7 +673,7 @@ type EpvSystemCircularDependency=class(Exception);
        property Active:longbool read fActive write fActive;
        property Killed:longbool read fKilled write fKilled;
        property SortKey:TpvInt32 read fSortKey write fSortKey;
-{$ifdef SupraEditor}
+{$ifdef PasVulkanEntityComponentSystemEditor}
        property Tabsheet:pointer read fTabsheet write fTabsheet;
        property Form:pointer read fForm write fForm;
 {$endif}
@@ -682,7 +682,7 @@ type EpvSystemCircularDependency=class(Exception);
        property EntityByID[const aID:TpvEntityID]:TpvEntity read GetEntityByID;
        property EntityByUUID[const aUUID:TpvUUID]:TpvEntity read GetEntityByUUID;
        property EntityIDCapacity:TpvInt32 read fEntityIDCounter;
-       property CurrentTime:TTime read fCurrentTime;
+       property CurrentTime:TpvTime read fCurrentTime;
        property OnEvent:TpvWorldOnEvent read fOnEvent write fOnEvent;
      end;
 
@@ -755,9 +755,9 @@ uses PasVulkan.Application,
 
 function NormalizePathForHashing(const Path:TpvUTF8String):TpvUTF8String;
 begin
- result:=ExpandFileName(Path);
+ result:=TpvUTF8String(ExpandFileName(String(Path)));
 {$if defined(Windows)}
- result:=LowerCase(result);
+ result:=TpvUTF8String(LowerCase(String(result)));
 {$ifend}
 end;
 
@@ -1058,7 +1058,7 @@ begin
  result:=Value+1;
 end;
 
-function IntLog2(x:longword):longword; {$ifdef cpu386}assembler; {$ifdef fpc}nostackframe;{$else}register;{$endif}
+function IntLog2(x:TpvUInt32):TpvUInt32; {$ifdef cpu386}assembler; {$ifdef fpc}nostackframe;{$else}register;{$endif}
 asm
  test eax,eax
  jz @Done
@@ -1679,7 +1679,7 @@ var MappedStream:TpvChunkStream;
          tkClass:begin
           SubObject:=TypInfo.GetObjectProp(AObject,PropInfo);
           if not assigned(SubObject) then begin
-           SubObject:=TypInfo.GetObjectPropClass(AObject,PropInfo^.Name).Create;
+           SubObject:=TypInfo.GetObjectPropClass(AObject,String(PropInfo^.Name)).Create;
            TypInfo.SetObjectProp(AObject,PropInfo,SubObject);
           end;
           UnserializeObject(SubObject);
@@ -1803,7 +1803,7 @@ procedure TpvComponent.Assign(const aFrom:TpvComponent;const aEntityIDs:TpvEntit
           if SubSrcObject is TPersistent then begin
            SubDstObject:=TypInfo.GetObjectProp(self,PropInfo);
            if not assigned(SubDstObject) then begin
-            SubDstObject:=TypInfo.GetObjectPropClass(self,PropInfo^.Name).Create;
+            SubDstObject:=TypInfo.GetObjectPropClass(self,String(PropInfo^.Name)).Create;
             TypInfo.SetObjectProp(self,PropInfo,SubDstObject);
            end;
            TPersistent(SubDstObject).Assign(TPersistent(SubSrcObject));
@@ -1912,7 +1912,7 @@ end;
 function TpvRegisteredComponentClassList.GetComponentClassByName(const aComponentClassName:TpvUTF8String):TpvComponentClass;
 var Index:TpvInt32;
 begin
- Index:=fComponentClassNameStringIntegerPairHashMap.Values[LowerCase(aComponentClassName)];
+ Index:=fComponentClassNameStringIntegerPairHashMap.Values[RawByteString(LowerCase(String(aComponentClassName)))];
  if Index>=0 then begin
   result:=GetComponentClass(Index);
  end else begin
@@ -1933,7 +1933,7 @@ end;
 
 procedure TpvRegisteredComponentClassList.SetComponentClassByName(const aComponentClassName:TpvUTF8String;const aComponentClass:TpvComponentClass);
 begin
- SetComponentClass(fComponentClassNameStringIntegerPairHashMap.Values[LowerCase(aComponentClassName)],aComponentClass);
+ SetComponentClass(fComponentClassNameStringIntegerPairHashMap.Values[RawByteString(LowerCase(String(aComponentClassName)))],aComponentClass);
 end;
 
 procedure TpvRegisteredComponentClassList.SetComponentClassByUUID(const aComponentClassUUID:TpvUUID;const aComponentClass:TpvComponentClass);
@@ -1961,7 +1961,7 @@ begin
  end else begin
   result:=inherited Add(aComponentClass);
  end;
- fComponentClassNameStringIntegerPairHashMap.Add(LowerCase(aComponentClass.ClassName),result);
+ fComponentClassNameStringIntegerPairHashMap.Add(RawByteString(LowerCase(String(aComponentClass.ClassName))),result);
  fComponentClassUUIDIntegerPairHashMap.Add(aComponentClass.ClassUUID,result);
  fComponentIDHashMap.Add(aComponentClass,result);
  aComponentClass.SetClassID(result);
@@ -1974,7 +1974,7 @@ begin
  aComponentClass.InitializeObjectClassMetaInfo;
  ComponentClassID:=inherited IndexOf(aComponentClass);
  if ComponentClassID>=0 then begin
-  fComponentClassNameStringIntegerPairHashMap.Delete(LowerCase(aComponentClass.ClassName));
+  fComponentClassNameStringIntegerPairHashMap.Delete(RawByteString(LowerCase(String(aComponentClass.ClassName))));
   fComponentClassUUIDIntegerPairHashMap.Delete(aComponentClass.ClassUUID);
   fComponentIDHashMap.Delete(aComponentClass);
   aComponentClass.SetClassID(-1);
@@ -2022,8 +2022,8 @@ begin
  if aAssignOp=TpvEntityAssignOp.Replace then begin
   for EntityComponentIndex:=0 to length(fComponents)-1 do begin
    if assigned(fComponents[EntityComponentIndex]) and
-      not ((FromEntityComponentIndex<length(aFrom.fComponents)) and
-           assigned(aFrom.fComponents[FromEntityComponentIndex])) then begin
+      not ((EntityComponentIndex<length(aFrom.fComponents)) and
+           assigned(aFrom.fComponents[EntityComponentIndex])) then begin
     RemoveComponent(EntityComponentIndex);
    end;
   end;
@@ -3209,9 +3209,9 @@ begin
   if not assigned(result) then begin
    result:=TpvWorld.Create(self);
    if assigned(result) then begin
-    Stream:=pvApplication.Assets.GetAssetStream('worlds/'+ExtractFileName(fFileName));
+    Stream:=pvApplication.Assets.GetAssetStream('worlds/'+ExtractFileName(String(fFileName)));
     if not assigned(Stream) then begin
-     Stream:=TFileStream.Create(fFileName,fmOpenRead or fmShareDenyWrite);
+     Stream:=TFileStream.Create(String(fFileName),fmOpenRead or fmShareDenyWrite);
     end;
     if assigned(Stream) then begin
      try
@@ -3244,7 +3244,7 @@ begin
    if assigned(RootItem) then begin
     try
      if RootItem is TPasJSONItemObject then begin
-      SetUUID(TpvUUID.CreateFromString(TPasJSON.GetString(TPasJSONItemObject(RootItem).Properties['uuid'],fUUID.ToString)));
+      SetUUID(TpvUUID.CreateFromString(TpvUUIDString(TPasJSON.GetString(TPasJSONItemObject(RootItem).Properties['uuid'],TPasJSONUTF8String(fUUID.ToString)))));
      end;
     finally
      RootItem.Free;
@@ -3309,7 +3309,7 @@ begin
  fActive:=false;
  fKilled:=false;
  fSortKey:=0;
-{$ifdef SupraEditor}
+{$ifdef PasVulkanEntityComponentSystemEditor}
  fTabsheet:=nil;
  fForm:=nil;
 {$endif}
@@ -3572,7 +3572,7 @@ function TpvWorld.GetEntityByID(const aEntityID:TpvEntityID):TpvEntity;
 begin
  if (aEntityID>=0) and
     (aEntityID<fEntityIDCounter) and
-    ((fEntityIDUsedBitmap[aEntityID shr 5] and longword(longword(1) shl longword(aEntityID and 31)))<>0) then begin
+    ((fEntityIDUsedBitmap[aEntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID and 31)))<>0) then begin
   result:=fEntities[aEntityID];
  end else begin
   result:=nil;
@@ -3627,14 +3627,14 @@ begin
    end;
 
    Bitmap:=@fEntityIDUsedBitmap[aEntityID shr 5];
-   Bitmap^:=Bitmap^ or longword(longword(1) shl longword(aEntityID and 31));
+   Bitmap^:=Bitmap^ or TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID and 31));
 
    fEntities[aEntityID]:=TpvEntity.Create(self);
    Entity:=fEntities[aEntityID];
    Entity.fID:=aEntityID;
    Entity.fFlags:=[TpvEntity.TFlag.Used];
    Entity.fUUID:=aEntityUUID;
-{$ifdef SupraEditor}
+{$ifdef PasVulkanEntityComponentSystemEditor}
    Entity.fTreeNode:=nil;
 {$endif}
    Entity.fUnknownData:=nil;
@@ -3656,14 +3656,14 @@ end;
 function TpvWorld.DoDestroyEntity(const aEntityID:TpvEntityID):boolean;
 var Index:TpvInt32;
     Bitmap:plongword;
-    Mask:longword;
+    Mask:TpvUInt32;
     Entity:TpvEntity;
     Component:TpvComponent;
 begin
  fLock.AcquireRead;
  try
   Bitmap:=@fEntityIDUsedBitmap[aEntityID shr 5];
-  Mask:=longword(longword(1) shl longword(aEntityID and 31));
+  Mask:=TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID and 31));
   if (aEntityID>=0) and (aEntityID<fEntityIDCounter) and ((Bitmap^ and Mask)<>0) then begin
    fLock.ReadToWrite;
    try
@@ -3835,7 +3835,7 @@ begin
  try
   result:=(aEntityID>=0) and
           (aEntityID<fEntityIDCounter) and
-          ((fEntityIDUsedBitmap[aEntityID shr 5] and longword(longword(1) shl longword(aEntityID and 31)))<>0);
+          ((fEntityIDUsedBitmap[aEntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID and 31)))<>0);
  finally
   fLock.ReleaseRead;
  end;
@@ -3847,7 +3847,7 @@ begin
  try
   result:=(aEntityID>=0) and
           (aEntityID<fEntityIDCounter) and
-          ((fEntityIDUsedBitmap[aEntityID shr 5] and longword(longword(1) shl longword(aEntityID and 31)))<>0) and
+          ((fEntityIDUsedBitmap[aEntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID and 31)))<>0) and
           (TpvEntity.TFlag.Active in fEntities[aEntityID].Flags);
  finally
   fLock.ReleaseRead;
@@ -3913,7 +3913,7 @@ begin
  try
   result:=(aEntityID>=0) and
           (aEntityID<fEntityIDCounter) and
-          ((fEntityIDUsedBitmap[aEntityID shr 5] and longword(longword(1) shl longword(aEntityID and 31)))<>0) and
+          ((fEntityIDUsedBitmap[aEntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID and 31)))<>0) and
           fEntities[aEntityID].HasComponent(aComponentClass);
  finally
   fLock.ReleaseRead;
@@ -3926,7 +3926,7 @@ begin
  try
   result:=(aEntityID>=0) and
           (aEntityID<fEntityIDCounter) and
-          ((fEntityIDUsedBitmap[aEntityID shr 5] and longword(longword(1) shl longword(aEntityID and 31)))<>0) and
+          ((fEntityIDUsedBitmap[aEntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID and 31)))<>0) and
           fEntities[aEntityID].HasComponent(aComponentClassID);
  finally
   fLock.ReleaseRead;
@@ -4365,7 +4365,7 @@ begin
      EntityID:=DelayedManagementEvent^.EntityID;
      if (EntityID>=0) and
         (EntityID<fEntityIDCounter) and
-        ((fEntityIDUsedBitmap[EntityID shr 5] and longword(longword(1) shl longword(EntityID and 31)))<>0) and
+        ((fEntityIDUsedBitmap[EntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityID and 31)))<>0) and
         not (TpvEntity.TFlag.Active in fEntities[EntityID].Flags) then begin
       for Index:=0 to fSystemList.Count-1 do begin
        System:=TpvSystem(fSystemList.Items[Index]);
@@ -4381,7 +4381,7 @@ begin
      EntityID:=DelayedManagementEvent^.EntityID;
      if (EntityID>=0) and
         (EntityID<fEntityIDCounter) and
-        ((fEntityIDUsedBitmap[EntityID shr 5] and longword(longword(1) shl longword(EntityID and 31)))<>0) and
+        ((fEntityIDUsedBitmap[EntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityID and 31)))<>0) and
         (TpvEntity.TFlag.Active in fEntities[EntityID].Flags) then begin
       Exclude(fEntities[EntityID].fFlags,TpvEntity.TFlag.Active);
       for Index:=0 to fSystemList.Count-1 do begin
@@ -4395,7 +4395,7 @@ begin
      EntityID:=DelayedManagementEvent^.EntityID;
      if (EntityID>=0) and
         (EntityID<fEntityIDCounter) and
-        ((fEntityIDUsedBitmap[EntityID shr 5] and longword(longword(1) shl longword(EntityID and 31)))<>0) then begin
+        ((fEntityIDUsedBitmap[EntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityID and 31)))<>0) then begin
       for Index:=0 to fSystemList.Count-1 do begin
        System:=TpvSystem(fSystemList.Items[Index]);
        System.RemoveEntityFromSystem(EntityID);
@@ -4413,7 +4413,7 @@ begin
      EntityID:=DelayedManagementEvent^.EntityID;
      if (EntityID>=0) and
         (EntityID<fEntityIDCounter) and
-        ((fEntityIDUsedBitmap[EntityID shr 5] and longword(longword(1) shl longword(EntityID and 31)))<>0) then begin
+        ((fEntityIDUsedBitmap[EntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityID and 31)))<>0) then begin
       Component:=DelayedManagementEvent^.Component;
       if assigned(Component) then begin
        WasActive:=TpvEntity.TFlag.Active in fEntities[EntityID].Flags;
@@ -4442,7 +4442,7 @@ begin
      EntityID:=DelayedManagementEvent^.EntityID;
      if (EntityID>=0) and
         (EntityID<fEntityIDCounter) and
-        ((fEntityIDUsedBitmap[EntityID shr 5] and longword(longword(1) shl longword(EntityID and 31)))<>0) then begin
+        ((fEntityIDUsedBitmap[EntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityID and 31)))<>0) then begin
       ComponentClass:=DelayedManagementEvent^.ComponentClass;
       if assigned(ComponentClass) then begin
        WasActive:=TpvEntity.TFlag.Active in fEntities[EntityID].Flags;
@@ -4482,7 +4482,7 @@ begin
       for EntityID:=0 to fEntityIDCounter-1 do begin
        if (EntityID>=0) and
            (EntityID<fEntityIDCounter) and
-           ((fEntityIDUsedBitmap[EntityID shr 5] and longword(longword(1) shl longword(EntityID and 31)))<>0) and
+           ((fEntityIDUsedBitmap[EntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(EntityID and 31)))<>0) and
            (TpvEntity.TFlag.Active in fEntities[EntityID].Flags) and
            System.FitsEntityToSystem(EntityID) then begin
         System.AddEntityToSystem(EntityID);
@@ -4605,7 +4605,7 @@ begin
  until false;
 end;
 
-procedure TpvWorld.ProcessDelayedEvents(const aDeltaTime:TTime);
+procedure TpvWorld.ProcessDelayedEvents(const aDeltaTime:TpvTime);
 var CurrentEvent,NextEvent:PpvEvent;
 begin
  fDelayedEventQueueLock.AcquireWrite;
@@ -4637,7 +4637,7 @@ begin
  end;
 end;
 
-procedure TpvWorld.QueueEvent(const aEventToQueue:TpvEvent;const aDeltaTime:TTime);
+procedure TpvWorld.QueueEvent(const aEventToQueue:TpvEvent;const aDeltaTime:TpvTime);
 var ParameterIndex:TpvInt32;
     Event:PpvEvent;
 begin
@@ -4658,13 +4658,15 @@ begin
   end;
  end;
  LinkedListInitialize(pointer(Event));
- if aDeltaTime>0 then begin
+ if aDeltaTime>=0.0 then begin
   fDelayedEventQueueLock.AcquireWrite;
   try
    LinkedListPushBack(@fDelayedEventQueue,pointer(Event));
   finally
    fDelayedEventQueueLock.ReleaseWrite;
   end;
+  Event^.TimeStamp:=fCurrentTime+aDeltaTime;
+  Event^.RemainingTime:=aDeltaTime;
  end else begin
   fEventQueueLock.AcquireWrite;
   try
@@ -4672,9 +4674,9 @@ begin
   finally
    fEventQueueLock.ReleaseWrite;
   end;
+  Event^.TimeStamp:=fCurrentTime;
+  Event^.RemainingTime:=0.0;
  end;
- Event^.TimeStamp:=fCurrentTime+aDeltaTime;
- Event^.RemainingTime:=aDeltaTime;
  Event^.EventID:=aEventToQueue.EventID;
  Event^.EntityID:=aEventToQueue.EntityID;
  Event^.CountParameters:=aEventToQueue.CountParameters;
@@ -4691,10 +4693,10 @@ end;
 
 procedure TpvWorld.QueueEvent(const aEventToQueue:TpvEvent);
 begin
- QueueEvent(aEventToQueue,1.0e-18); // one femtosecond
+ QueueEvent(aEventToQueue,-1.0);
 end;
 
-procedure TpvWorld.Update(const aDeltaTime:TTime);
+procedure TpvWorld.Update(const aDeltaTime:TpvTime);
 var SystemIndex:TpvInt32;
     System:TpvSystem;
 begin
@@ -4725,7 +4727,7 @@ begin
    fLock.ReleaseRead;
    try
     for Index:=0 to fEntityIDCounter-1 do begin
-     if (fEntityIDUsedBitmap[Index shr 5] and longword(longword(1) shl longword(Index and 31)))<>0 then begin
+     if (fEntityIDUsedBitmap[Index shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(Index and 31)))<>0 then begin
       KillEntity(Index);
      end;
     end;
@@ -4763,7 +4765,7 @@ begin
    fLock.ReleaseRead;
    try
     for Index:=0 to fEntityIDCounter-1 do begin
-     if (fEntityIDUsedBitmap[Index shr 5] and longword(longword(1) shl longword(Index and 31)))<>0 then begin
+     if (fEntityIDUsedBitmap[Index shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(Index and 31)))<>0 then begin
       KillEntity(Index);
      end;
     end;
@@ -4798,7 +4800,7 @@ type TWorldMementoBitmapArray=array of TpvUInt32;
        fBitmap:TWorldMementoBitmapArray;
        fCount:TpvInt32;
        function GetBit(const aIndex:TpvInt32):boolean;
-       procedure SetBit(const aIndex:TpvInt32;const pValue:boolean);
+       procedure SetBit(const aIndex:TpvInt32;const aValue:boolean);
       public
        constructor Create(const pCount:TpvInt32); reintroduce;
        destructor Destroy; override;
@@ -4832,10 +4834,10 @@ begin
          ((fBitmap[aIndex shr 5] and (TpvUInt32(1) shl (aIndex and 31)))<>0);
 end;
 
-procedure TWorldMementoBitmap.SetBit(const aIndex:TpvInt32;const pValue:boolean);
+procedure TWorldMementoBitmap.SetBit(const aIndex:TpvInt32;const aValue:boolean);
 begin
  if (aIndex>=0) and (aIndex<fCount) then begin
-  if pValue then begin
+  if aValue then begin
    fBitmap[aIndex shr 5]:=fBitmap[aIndex shr 5] or (TpvUInt32(1) shl (aIndex and 31));
   end else begin
    fBitmap[aIndex shr 5]:=fBitmap[aIndex shr 5] and not (TpvUInt32(1) shl (aIndex and 31));
@@ -4869,7 +4871,7 @@ var ComponentClassID,BitCounter:TpvInt32;
     Entity:TpvEntity;
     Component:TpvComponent;
     BufferedStream:TpvSimpleBufferedStream;
- procedure WriteBit(const pValue:boolean);
+ procedure WriteBit(const aValue:boolean);
  var OldPosition:TpvInt64;
  begin
   if BitCounter>=8 then begin
@@ -4892,7 +4894,7 @@ var ComponentClassID,BitCounter:TpvInt32;
     raise EInOutError.Create('Stream write error');
    end;
   end;
-  if pValue then begin
+  if aValue then begin
    BitTag:=BitTag or (TpvUInt8(1) shl BitCounter);
   end else begin
    BitTag:=BitTag and not (TpvUInt8(1) shl BitCounter);
@@ -5133,7 +5135,7 @@ function TpvWorld.SerializeToJSON(const aEntityIDs:array of TpvEntityID;const aR
              assigned(PrefabInstanceEntityComponentProperty.PropInfo) then begin
            ItemArrayObject:=TPasJSONItemObject.Create;
            ItemArray.Add(ItemArrayObject);
-           ItemArrayObject.Add('component',TPasJSONItemString.Create(PrefabInstanceEntityComponentProperty.ComponentClass.ClassUUID.ToString));
+           ItemArrayObject.Add('component',TPasJSONItemString.Create(TPasJSONUTF8String(PrefabInstanceEntityComponentProperty.ComponentClass.ClassUUID.ToString)));
            ItemArrayObject.Add('property',TPasJSONItemString.Create(PrefabInstanceEntityComponentProperty.PropInfo^.Name));
            ItemArrayObject.Add('overwritten',TPasJSONItemBoolean.Create(TpvComponentPrefabInstanceEntityComponentProperty.TpvComponentPrefabInstanceEntityComponentPropertyFlag.cpiecpfOverwritten in PrefabInstanceEntityComponentProperty.Flags));
           end;
@@ -5281,7 +5283,7 @@ var RootUUID:TpvUUIDString;
      PropCount,Index,SubIndex:TpvInt32;
      PropList:PPropList;
      PropInfo:PPropInfo;
-     ItemKey:AnsiString;
+     ItemKey:TpvRawByteString;
      ItemValue,TempItem:TPasJSONItem;
      OK:TPasDblStrUtilsBoolean;
      NewObject:TObject;
@@ -5302,9 +5304,9 @@ var RootUUID:TpvUUIDString;
      if assigned(ItemValue) then begin
       OK:=false;
       PropInfo:=nil;
-      ItemKey:=AnsiString(LowerCase(SourceItemObject.Keys[Index]));
+      ItemKey:=TpvRawByteString(LowerCase(String(SourceItemObject.Keys[Index])));
       for SubIndex:=0 to PropCount-1 do begin
-       if LowerCase(PropList^[SubIndex].Name)=ItemKey then begin
+       if TpvRawByteString(LowerCase(String(PropList^[SubIndex].Name)))=ItemKey then begin
         PropInfo:=PropList^[SubIndex];
         break;
        end;
@@ -5371,7 +5373,7 @@ var RootUUID:TpvUUIDString;
             end;
             PrefabInstanceEntityComponentProperty.ComponentClass:=TpvComponentClass(fUniverse.fRegisteredComponentClasses.ComponentByUUID[TpvUUID.CreateFromString(TpvUUIDString(TPasJSON.GetString(TempObject.Properties['overwritten'],'')))]);
             if assigned(PrefabInstanceEntityComponentProperty.ComponentClass) then begin
-             PrefabInstanceEntityComponentProperty.PropInfo:=GetPropInfo(PrefabInstanceEntityComponentProperty.ComponentClass,TPasJSON.GetString(TempObject.Properties['property'],''));
+             PrefabInstanceEntityComponentProperty.PropInfo:=GetPropInfo(PrefabInstanceEntityComponentProperty.ComponentClass,String(TPasJSON.GetString(TempObject.Properties['property'],'')));
              if assigned(PrefabInstanceEntityComponentProperty.PropInfo) then begin
               PrefabInstanceEntityComponentPropertyList.Add(PrefabInstanceEntityComponentProperty);
              end else begin
@@ -5427,7 +5429,7 @@ var RootUUID:TpvUUIDString;
            TypInfo.SetFloatProp(AObject,PropInfo,TPasJSONItemNumber(ItemValue).Value);
            OK:=true;
           end else if ItemValue is TPasJSONItemString then begin
-           TypInfo.SetFloatProp(AObject,PropInfo,ConvertStringToDouble(String(TPasJSONItemString(ItemValue).Value),rmNearest,@OK,-1));
+           TypInfo.SetFloatProp(AObject,PropInfo,ConvertStringToDouble(TPasDblStrUtilsString(TPasJSONItemString(ItemValue).Value),rmNearest,@OK,-1));
           end;
          end;
          tkSet:begin
@@ -5570,7 +5572,7 @@ begin
          end;
         end;
        end else if RootObjectItemKey='name' then begin
-        WorldName:=TpvUUIDString(TPasJSONItemString(RootObjectItemValue).Value);
+        WorldName:=TpvUTF8String(TPasJSONItemString(RootObjectItemValue).Value);
         if length(WorldName)>0 then begin
         end;
        end else if {pFullLoad and}
@@ -5639,7 +5641,7 @@ begin
                  (EntityObjectItemKey[20]='-') and
                  (EntityObjectItemKey[25]='-') and
                  (EntityObjectItemKey[38]='}') then begin
-               ComponentUUID:=TpvUUID.CreateFromString(EntityObjectItemKey);
+               ComponentUUID:=TpvUUID.CreateFromString(TpvUUIDString(EntityObjectItemKey));
                if ComponentUUID<>TpvUUID.Null then begin
                 ComponentClass:=TpvComponentClass(fUniverse.fRegisteredComponentClasses.ComponentByUUID[ComponentUUID]);
                 if assigned(ComponentClass) then begin
@@ -5760,7 +5762,7 @@ end;
 function TpvWorld.LoadFromFile(const aFileName:TpvUTF8String;const aCreateNewUUIDs:boolean=false):TpvEntityID;
 var FileStream:TFileStream;
 begin
- FileStream:=TFileStream.Create(aFileName,fmOpenRead or fmShareDenyWrite);
+ FileStream:=TFileStream.Create(String(aFileName),fmOpenRead or fmShareDenyWrite);
  try
   result:=LoadFromStream(FileStream,aCreateNewUUIDs);
  finally
@@ -5771,7 +5773,7 @@ end;
 procedure TpvWorld.SaveToFile(const aFileName:TpvUTF8String;const aEntityIDs:array of TpvEntityID;const aRootEntityID:TpvEntityID=-1);
 var FileStream:TFileStream;
 begin
- FileStream:=TFileStream.Create(aFileName,fmCreate);
+ FileStream:=TFileStream.Create(String(aFileName),fmCreate);
  try
   SaveToStream(FileStream,aEntityIDs,aRootEntityID);
  finally

@@ -376,6 +376,10 @@ type PPpvInt8=^PpvInt8;
        property ReferenceCounter:TpvInt32 read fReferenceCounter;
      end;
 
+     PPpvTime=^PpvTime;
+     PpvTime=^TpvTime;
+     TpvTime=TpvDouble;
+
 var FloatToHalfFloatBaseTable:array[0..511] of TpvUInt16;
     FloatToHalfFloatShiftTable:array[0..511] of TpvUInt8;
 
