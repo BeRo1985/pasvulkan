@@ -615,7 +615,7 @@ type EpvSystemCircularDependency=class(Exception);
        function GetUUID:TpvUUID;
        procedure AddDelayedManagementEvent(const aDelayedManagementEvent:TpvDelayedManagementEvent); {$ifdef caninline}inline;{$endif}
        function GetComponentClassDataWrapper(const aComponentClass:TpvComponentClass):TpvComponentClassDataWrapper;
-       function GetEntityByID(const aEntityID:TpvEntityID):TpvEntity;
+       function GetEntityByID(const aEntityID:TpvEntityID):TpvEntity; inline;
        function GetEntityByUUID(const aEntityUUID:TpvUUID):TpvEntity;
        function DoCreateEntity(const aEntityID:TpvEntityID;const aEntityUUID:TpvUUID):boolean;
        function DoDestroyEntity(const aEntityID:TpvEntityID):boolean;
@@ -1875,11 +1875,10 @@ function TpvComponentClassDataWrapper.GetComponentByEntityID(const aEntityID:Tpv
 var Entity:TpvEntity;
 begin
  Entity:=fWorld.EntityByID[aEntityID];
- if assigned(Entity) then begin
-  result:=Entity.GetComponent(fComponentClass);
- end else begin
-  result:=nil;
- end;
+{$ifdef Debug}
+ Assert(assigned(Entity));
+{$endif}
+ result:=Entity.GetComponent(fComponentClass);
 end;
 
 constructor TpvRegisteredComponentClassList.Create;
@@ -3566,13 +3565,12 @@ end;
 
 function TpvWorld.GetEntityByID(const aEntityID:TpvEntityID):TpvEntity;
 begin
- if (aEntityID>=0) and
-    (aEntityID<fEntityIDCounter) and
-    ((fEntityIDUsedBitmap[aEntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID and 31)))<>0) then begin
-  result:=fEntities[aEntityID];
- end else begin
-  result:=nil;
- end;
+{$ifdef Debug}
+ Assert((aEntityID>=0) and
+        (aEntityID<fEntityIDCounter) and
+        ((fEntityIDUsedBitmap[aEntityID shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityID and 31)))<>0));
+{$endif}
+ result:=fEntities[aEntityID];
 end;
 
 function TpvWorld.GetEntityByUUID(const aEntityUUID:TpvUUID):TpvEntity;
@@ -5597,10 +5595,14 @@ begin
          end;
          if EntityID>=0 then begin
           Refresh;
-          Entity:=EntityByID[EntityID];
-          if assigned(Entity) then begin
-           EntityIDs[RootObjectItemIndex]:=EntityID;
-           EntityUUIDHashMap.Add(EntityUUID,EntityID);
+          if HasEntity(EntityID) then begin
+           Entity:=EntityByID[EntityID];
+           if assigned(Entity) then begin
+            EntityIDs[RootObjectItemIndex]:=EntityID;
+            EntityUUIDHashMap.Add(EntityUUID,EntityID);
+           end else begin
+            raise EpvSystemUnserialization.Create('Internal error 2018-09-04-03-37-0000');
+           end;
           end else begin
            raise EpvSystemUnserialization.Create('Internal error 2016-01-19-20-30-0000');
           end;
@@ -5687,9 +5689,11 @@ begin
               end;
              end;
             end;
-            Entity:=EntityByID[EntityID];
-            if assigned(Entity) then begin
-             Entity.Activate;
+            if HasEntity(EntityID) then begin
+             Entity:=EntityByID[EntityID];
+             if assigned(Entity) then begin
+              Entity.Activate;
+             end;
             end;
            end;
           end;
