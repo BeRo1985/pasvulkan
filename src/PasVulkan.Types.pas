@@ -75,6 +75,8 @@ type PPpvInt8=^PpvInt8;
      PpvUInt8Array=^TpvUInt8Array;
      TpvUInt8Array=array[0..65535] of TpvUInt8;
 
+     TpvUInt8DynamicArray=array of TpvUInt8;
+
      PPpvInt16=^PpvInt16;
      PpvInt16=^TpvInt16;
      TpvInt16={$ifdef fpc}Int16{$else}smallint{$endif};
@@ -310,7 +312,9 @@ type PPpvInt8=^PpvInt8;
      TpvUUID=packed record
       public
        class function Create:TpvUUID; static;
-       constructor CreateFromString(const UUID:TpvUUIDString);
+       constructor CreateFromString(const aUUID:TpvUUIDString);
+       constructor CreateFromGUID(const aGUID:array of TpvUUIDString); overload;
+       constructor CreateFromGUID(const aGUID:TGUID); overload;
        function ToString:TpvUUIDString;
        class operator Implicit(const a:TpvUUID):TpvUUIDString; {$ifdef CAN_INLINE}inline;{$endif}
        class operator Implicit(const a:TpvUUIDString):TpvUUID; {$ifdef CAN_INLINE}inline;{$endif}
@@ -878,7 +882,7 @@ begin
 {$endif}
 end;
 
-constructor TpvUUID.CreateFromString(const UUID:TpvUUIDString);
+constructor TpvUUID.CreateFromString(const aUUID:TpvUUIDString);
  function StringToHex(const Hex:TpvUUIDString):TpvUInt32;
  var Counter:TpvInt32;
      Nibble:TpvUInt8;
@@ -905,28 +909,38 @@ constructor TpvUUID.CreateFromString(const UUID:TpvUUIDString);
   end;
  end;
 begin
- if (length(UUID)=38) and
-    (UUID[1]='{') and
-    (UUID[10]='-') and
-    (UUID[15]='-') and
-    (UUID[20]='-') and
-    (UUID[25]='-') and
-    (UUID[38]='}') then begin
-  D1:=StringToHex(copy(UUID,2,8));
-  D2:=StringToHex(copy(UUID,11,4));
-  D3:=StringToHex(copy(UUID,16,4));
-  D4[0]:=StringToHex(copy(UUID,21,2));
-  D4[1]:=StringToHex(copy(UUID,23,2));
-  D4[2]:=StringToHex(copy(UUID,26,2));
-  D4[3]:=StringToHex(copy(UUID,28,2));
-  D4[4]:=StringToHex(copy(UUID,30,2));
-  D4[5]:=StringToHex(copy(UUID,32,2));
-  D4[6]:=StringToHex(copy(UUID,34,2));
-  D4[7]:=StringToHex(copy(UUID,36,2));
+ if (length(aUUID)=38) and
+    (aUUID[1]='{') and
+    (aUUID[10]='-') and
+    (aUUID[15]='-') and
+    (aUUID[20]='-') and
+    (aUUID[25]='-') and
+    (aUUID[38]='}') then begin
+  D1:=StringToHex(copy(aUUID,2,8));
+  D2:=StringToHex(copy(aUUID,11,4));
+  D3:=StringToHex(copy(aUUID,16,4));
+  D4[0]:=StringToHex(copy(aUUID,21,2));
+  D4[1]:=StringToHex(copy(aUUID,23,2));
+  D4[2]:=StringToHex(copy(aUUID,26,2));
+  D4[3]:=StringToHex(copy(aUUID,28,2));
+  D4[4]:=StringToHex(copy(aUUID,30,2));
+  D4[5]:=StringToHex(copy(aUUID,32,2));
+  D4[6]:=StringToHex(copy(aUUID,34,2));
+  D4[7]:=StringToHex(copy(aUUID,36,2));
  end else begin
   UInt64s[0]:=0;
   UInt64s[1]:=0;
  end;
+end;
+
+constructor TpvUUID.CreateFromGUID(const aGUID:array of TpvUUIDString);
+begin
+ self:=TpvUUID.CreateFromString(aGUID[0]);
+end;
+
+constructor TpvUUID.CreateFromGUID(const aGUID:TGUID);
+begin
+ GUID:=aGUID;
 end;
 
 function TpvUUID.ToString:TpvUUIDString;
