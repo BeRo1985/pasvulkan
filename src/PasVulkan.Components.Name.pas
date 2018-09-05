@@ -68,28 +68,47 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.EntityComponentSystem;
 
-type TpvComponentName=class(TpvComponent)
-      private
-       fName:UTF8String;
+type PpvComponentName=^TpvComponentName;
+     TpvComponentName=record
       public
-       class function ClassPath:string; override;
-       class function ClassUUID:TpvUUID; override;
-      published
-       property Name:UTF8String read fName write fName;
+       Name:ShortString;
      end;
+
+const pvComponentNameDefault:TpvComponentName=
+       (
+        Name:'';
+       );
+
+var pvComponentName:TpvRegisteredComponentType=nil;
+
+    pvComponentNameID:TpvComponentTypeID=0;
 
 implementation
 
-class function TpvComponentName.ClassPath:string;
+procedure Register;
 begin
- result:='Name';
+
+ pvComponentName:=TpvRegisteredComponentType.Create('name',
+                                                    'Name',
+                                                    ['Base','Name'],
+                                                    SizeOf(TpvComponentName),
+                                                    @pvComponentNameDefault);
+
+ pvComponentNameID:=pvComponentName.ID;
+
+ pvComponentName.Add('name',
+                     'Name',
+                     TpvRegisteredComponentType.TField.TElementType.LengthPrefixedString,
+                     SizeOf(PpvComponentName(nil)^.Name),
+                     1,
+                     TpvPtrUInt(@PpvComponentName(nil)^.Name),
+                     SizeOf(PpvComponentName(nil)^.Name),
+                     []
+                    );
+
 end;
 
-class function TpvComponentName.ClassUUID:TpvUUID;
-begin
- result.UInt64s[0]:=TpvUInt64($0075b9def3584317);
- result.UInt64s[1]:=TpvUInt64($b20035a20fcff367);
-end;
-
+initialization
+ Register;
 end.
 

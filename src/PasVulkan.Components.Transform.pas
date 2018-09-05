@@ -69,72 +69,124 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.EntityComponentSystem;
 
-type TpvComponentTransform=class(TpvComponent)
+type PpvComponentTransform=^TpvComponentTransform;
+     TpvComponentTransform=record
       public
        type TFlag=
              (
-              Static,
-              RelativePosition,
-              RelativeRotation,
-              RelativeScale
+              Static=0,
+              RelativePosition=1,
+              RelativeRotation=2,
+              RelativeScale=3
              );
             TFlags=set of TFlag;
-      private
-       fFlags:TFlags;
-       fPosition:TpvVector3Property;
-       fRotation:TpvQuaternionProperty;
-       fScale:TpvVector3Property;
-       fParent:TpvEntityID;
       public
-       RawPosition:TpvVector3;
-       RawRotation:TpvQuaternion;
-       RawScale:TpvVector3;
-       RawMatrix:TpvMatrix4x4;
-       constructor Create; override;
-       destructor Destroy; override;
-       class function ClassPath:string; override;
-       class function ClassUUID:TpvUUID; override;
-      published
-       property Position:TpvVector3Property read fPosition write fPosition;
-       property Rotation:TpvQuaternionProperty read fRotation write fRotation;
-       property Scale:TpvVector3Property read fScale write fScale;
-       property Parent:TpvEntityID read fParent write fParent;
-       property Flags:TFlags read fFlags write fFlags;
+       Parent:TpvEntityID;
+       Flags:TFlags;
+       Position:TpvVector3;
+       Rotation:TpvQuaternion;
+       Scale:TpvVector3;
      end;
+
+const pvComponentTransformDefault:TpvComponentTransform=
+       (
+        Parent:-1;
+        Flags:[];
+        Position:(x:0.0;y:0.0;z:0.0);
+        Rotation:(x:0.0;y:0.0;z:0.0;w:1.0);
+        Scale:(x:1.0;y:1.0;z:1.0);
+       );
+
+var pvComponentTransform:TpvRegisteredComponentType=nil;
+
+    pvComponentTransformID:TpvComponentTypeID=0;
 
 implementation
 
-constructor TpvComponentTransform.Create;
+procedure Register;
+const Flags:array[TpvComponentTransform.TFlag] of TpvComponentTransform.TFlags=
+       (
+        [TpvComponentTransform.TFlag.Static],
+        [TpvComponentTransform.TFlag.RelativePosition],
+        [TpvComponentTransform.TFlag.RelativeRotation],
+        [TpvComponentTransform.TFlag.RelativeScale]
+       );
 begin
- inherited Create;
- RawPosition:=TpvVector3.Null;
- RawRotation:=TpvQuaternion.Identity;
- RawScale:=TpvVector3.Create(1.0,1.0,1.0);
- fFlags:=[];
- fPosition:=TpvVector3Property.Create(@RawPosition);
- fRotation:=TpvQuaternionProperty.Create(@RawRotation);
- fScale:=TpvVector3Property.Create(@RawScale);
- fParent:=-1;
+
+ pvComponentTransform:=TpvRegisteredComponentType.Create('transform',
+                                                         'Transform',
+                                                         ['Base','Transform'],
+                                                         SizeOf(TpvComponentTransform),
+                                                         @pvComponentTransformDefault);
+
+ pvComponentTransformID:=pvComponentTransform.ID;
+
+ pvComponentTransform.Add('parent',
+                          'Parent',
+                          TpvRegisteredComponentType.TField.TElementType.EntityID,
+                          SizeOf(PpvComponentTransform(nil)^.Parent),
+                          1,
+                          TpvPtrUInt(@PpvComponentTransform(nil)^.Parent),
+                          SizeOf(PpvComponentTransform(nil)^.Parent),
+                          []
+                         );
+
+ pvComponentTransform.Add('flags',
+                          'Flags',
+                          TpvRegisteredComponentType.TField.TElementType.Flags,
+                          SizeOf(PpvComponentTransform(nil)^.Flags),
+                          1,
+                          TpvPtrUInt(@PpvComponentTransform(nil)^.Flags),
+                          SizeOf(PpvComponentTransform(nil)^.Flags),
+                          [TpvRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.Static]),
+                                                                                       'static',
+                                                                                       'Static'),
+                           TpvRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.RelativePosition]),
+                                                                                       'relativeposition',
+                                                                                       'Relative position'),
+                           TpvRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.RelativeRotation]),
+                                                                                       'relativerotation',
+                                                                                       'Relative rotation'),
+                           TpvRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.RelativeScale]),
+                                                                                       'relativescale',
+                                                                                       'Relative scale')
+                          ]
+                         );
+
+ pvComponentTransform.Add('position',
+                          'Position',
+                          TpvRegisteredComponentType.TField.TElementType.FloatingPoint,
+                          SizeOf(PpvComponentTransform(nil)^.Position.x),
+                          3,
+                          TpvPtrUInt(@PpvComponentTransform(nil)^.Position),
+                          SizeOf(PpvComponentTransform(nil)^.Position),
+                          []
+                         );
+
+ pvComponentTransform.Add('rotation',
+                          'Rotation',
+                          TpvRegisteredComponentType.TField.TElementType.FloatingPoint,
+                          SizeOf(PpvComponentTransform(nil)^.Rotation.x),
+                          4,
+                          TpvPtrUInt(@PpvComponentTransform(nil)^.Rotation),
+                          SizeOf(PpvComponentTransform(nil)^.Rotation),
+                          []
+                         );
+
+ pvComponentTransform.Add('scale',
+                          'Scale',
+                          TpvRegisteredComponentType.TField.TElementType.FloatingPoint,
+                          SizeOf(PpvComponentTransform(nil)^.Scale.x),
+                          3,
+                          TpvPtrUInt(@PpvComponentTransform(nil)^.Scale),
+                          SizeOf(PpvComponentTransform(nil)^.Scale),
+                          []
+                         );
+
 end;
 
-destructor TpvComponentTransform.Destroy;
-begin
- fPosition.Free;
- fRotation.Free;
- fScale.Free;
- inherited Destroy;
-end;
-
-class function TpvComponentTransform.ClassPath:string;
-begin
- result:='Transform';
-end;
-
-class function TpvComponentTransform.ClassUUID:TpvUUID;
-begin
- result.UInt64s[0]:=TpvUInt64($9a22d45f4e3943d3);
- result.UInt64s[1]:=TpvUInt64($b1520b1ce1cabfe9);
-end;
-
+initialization
+ Register;
 end.
+
 

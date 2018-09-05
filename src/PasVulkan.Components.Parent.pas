@@ -68,47 +68,48 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.EntityComponentSystem;
 
-type TpvComponentParent=class(TpvComponent)
-      private
-       fParent:TpvEntityID;
+type PpvComponentParent=^TpvComponentParent;
+     TpvComponentParent=record
       public
-       constructor Create; override;
-       destructor Destroy; override;
-       class function ClassPath:string; override;
-       class function ClassUUID:TpvUUID; override;
-       class function ClassInstanceMemoryCopyable:boolean; override;
-      published
-       property Parent:TpvEntityID read fParent write fParent;
+       Parent:TpvEntityID;
      end;
+
+const pvComponentParentDefault:TpvComponentParent=
+       (
+        Parent:-1;
+       );
+
+var pvComponentParent:TpvRegisteredComponentType=nil;
+
+    pvComponentParentID:TpvComponentTypeID=0;
 
 implementation
 
-constructor TpvComponentParent.Create;
+procedure Register;
 begin
- inherited Create;
- fParent:=-1;
+
+ pvComponentParent:=TpvRegisteredComponentType.Create('parent',
+                                                      'Parent',
+                                                      ['Base','Parent'],
+                                                      SizeOf(TpvComponentParent),
+                                                      @pvComponentParentDefault);
+
+ pvComponentParentID:=pvComponentParent.ID;
+
+ pvComponentParent.Add('parent',
+                       'Parent',
+                       TpvRegisteredComponentType.TField.TElementType.EntityID,
+                       SizeOf(PpvComponentParent(nil)^.Parent),
+                       1,
+                       TpvPtrUInt(@PpvComponentParent(nil)^.Parent),
+                       SizeOf(PpvComponentParent(nil)^.Parent),
+                       []
+                      );
+
 end;
 
-destructor TpvComponentParent.Destroy;
-begin
- inherited Destroy;
-end;
-
-class function TpvComponentParent.ClassPath:string;
-begin
- result:='Parent';
-end;
-
-class function TpvComponentParent.ClassUUID:TpvUUID;
-begin
- result.UInt64s[0]:=TpvUInt64($54fe159df6d445b0);
- result.UInt64s[1]:=TpvUInt64($98b0a12e19b6ea3a);
-end;
-
-class function TpvComponentParent.ClassInstanceMemoryCopyable:boolean;
-begin
- result:=true;
-end;
-
+initialization
+ Register;
 end.
+
 

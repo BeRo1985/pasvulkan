@@ -68,34 +68,48 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.EntityComponentSystem;
 
-type TpvComponentSortKey=class(TpvComponent)
-      private
-       fSortKey:TpvInt32;
+type PpvComponentSortKey=^TpvComponentSortKey;
+     TpvComponentSortKey=record
       public
-       class function ClassPath:string; override;
-       class function ClassUUID:TpvUUID; override;
-       class function ClassInstanceMemoryCopyable:boolean; override;
-      published
-       property SortKey:TpvInt32 read fSortKey write fSortKey;
+       SortKey:TpvUInt32;
      end;
+
+const pvComponentSortKeyDefault:TpvComponentSortKey=
+       (
+        SortKey:0;
+       );
+
+var pvComponentSortKey:TpvRegisteredComponentType=nil;
+
+    pvComponentSortKeyID:TpvComponentTypeID=0;
 
 implementation
 
-class function TpvComponentSortKey.ClassPath:string;
+procedure Register;
 begin
- result:='SortKey';
+
+ pvComponentSortKey:=TpvRegisteredComponentType.Create('sortkey',
+                                                       'Sort key',
+                                                       ['Base','Sort key'],
+                                                       SizeOf(TpvComponentSortKey),
+                                                       @pvComponentSortKeyDefault);
+
+ pvComponentSortKeyID:=pvComponentSortKey.ID;
+
+ pvComponentSortKey.Add('sortkey',
+                        'Sort key',
+                        TpvRegisteredComponentType.TField.TElementType.UnsignedInteger,
+                        SizeOf(PpvComponentSortKey(nil)^.SortKey),
+                        1,
+                        TpvPtrUInt(@PpvComponentSortKey(nil)^.SortKey),
+                        SizeOf(PpvComponentSortKey(nil)^.SortKey),
+                        []
+                       );
+
 end;
 
-class function TpvComponentSortKey.ClassUUID:TpvUUID;
-begin
- result.UInt64s[0]:=TpvUInt64($a3a38321f6e44a43);
- result.UInt64s[1]:=TpvUInt64($a1056acf7f7d2d84);
-end;
-
-class function TpvComponentSortKey.ClassInstanceMemoryCopyable:boolean;
-begin
- result:=true;
-end;
-
+initialization
+ Register;
 end.
+
 
