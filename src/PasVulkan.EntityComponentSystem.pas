@@ -179,7 +179,15 @@ type EpvSystemCircularDependency=class(Exception);
 
 var RegisteredComponentTypeList:TpvRegisteredComponentTypeList=nil;
 
+procedure InitializeEntityComponentSystemGlobals;
+
 implementation
+
+uses PasVulkan.Components.Name,
+     PasVulkan.Components.Parent,
+     PasVulkan.Components.Renderer,
+     PasVulkan.Components.SortKey,
+     PasVulkan.Components.Transform;
 
 { TpvRegisteredComponentType.TField.TEnumerationOrFlag }
 
@@ -202,6 +210,7 @@ constructor TpvRegisteredComponentType.Create(const aName:TpvUTF8String;
 var Index:TpvSizeInt;
 begin
  inherited Create;
+ InitializeEntityComponentSystemGlobals;
  fID:=RegisteredComponentTypeList.Add(self);
  fName:=aName;
  fDisplayName:=aDisplayName;
@@ -888,9 +897,16 @@ begin
  halt(0);
 end;
 
+procedure InitializeEntityComponentSystemGlobals;
+begin
+ if not assigned(RegisteredComponentTypeList) then begin
+  RegisteredComponentTypeList:=TpvRegisteredComponentTypeList.Create;
+  RegisteredComponentTypeList.OwnsObjects:=true;
+ end;
+end;
+
 initialization
- RegisteredComponentTypeList:=TpvRegisteredComponentTypeList.Create;
- RegisteredComponentTypeList.OwnsObjects:=true;
+ InitializeEntityComponentSystemGlobals;
 finalization
  FreeAndNil(RegisteredComponentTypeList);
 end.
