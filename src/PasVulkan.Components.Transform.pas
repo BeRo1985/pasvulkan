@@ -90,7 +90,7 @@ type PpvComponentTransform=^TpvComponentTransform;
 
 const pvComponentTransformDefault:TpvComponentTransform=
        (
-        Parent:-1;
+        Parent:$ffffffff;
         Flags:[];
         Position:(x:0.0;y:0.0;z:0.0);
         Rotation:(x:0.0;y:0.0;z:0.0;w:1.0);

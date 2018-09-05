@@ -76,7 +76,7 @@ type PpvComponentParent=^TpvComponentParent;
 
 const pvComponentParentDefault:TpvComponentParent=
        (
-        Parent:-1;
+        Parent:$ffffffff;
        );
 
 var pvComponentParent:TpvRegisteredComponentType=nil;

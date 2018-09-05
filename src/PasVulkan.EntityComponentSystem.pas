@@ -86,9 +86,28 @@ type EpvSystemCircularDependency=class(Exception);
      TpvComponentTypeIDDynamicArray=array of TpvComponentTypeID;
 
      PpvEntityID=^TpvEntityID;
-     TpvEntityID=type TpvInt32;
+     TpvEntityID=type TpvUInt32;
 
      TpvEntityIDs=array of TpvEntityID;
+
+     TpvEntityIDHelper=record helper for TpvEntityID
+      public
+       const IndexBits=24; // including one sign bit
+             GenerationBits=8;
+             InverseIndexBits=32-IndexBits;
+             IndexBitsMinusOne=TpvUInt32(IndexBits-1);
+             IndexSignBitMask=TpvUInt32(1 shl IndexBitsMinusOne);
+             IndexMask=TpvUInt32((TpvUInt32(1) shl IndexBits)-1);
+             GenerationMask=TpvUInt32(not IndexMask);
+      public
+       function GetIndex:TpvInt32; inline;
+       procedure SetIndex(const aIndex:TpvInt32); inline;
+       function GetGeneration:TpvUInt8; inline;
+       procedure SetGeneration(const aGeneration:TpvUInt8); inline;
+      public
+       property Index:TpvInt32 read GetIndex write SetIndex;
+       property Generation:TpvUInt8 read GetGeneration write SetGeneration;
+     end;
 
      PpvWorldID=^TpvWorldID;
      TpvWorldID=type TpvInt32;
@@ -144,7 +163,6 @@ type EpvSystemCircularDependency=class(Exception);
        fDisplayName:TpvUTF8String;
        fPath:TPath;
        fSize:TpvSizeInt;
-       fUUID:TpvUUID;
        fFields:TFields;
        fCountFields:TpvSizeInt;
        fDefault:TpvUInt8DynamicArray;
@@ -156,6 +174,7 @@ type EpvSystemCircularDependency=class(Exception);
                           const aSize:TpvSizeInt;
                           const aDefault:pointer); reintroduce;
        destructor Destroy; override;
+       class function GetSetOrdValue(const Info:PTypeInfo;const SetParam):TpvUInt64; static;
        procedure Add(const aName:TpvUTF8String;
                      const aDisplayName:TpvUTF8String;
                      const aElementType:TField.TElementType;
@@ -169,13 +188,18 @@ type EpvSystemCircularDependency=class(Exception);
        procedure UnserializeFromJSON(const aJSON:TPasJSONItem;const aData:pointer);
        property Fields:TFields read fFields;
        property EditorWidget:pointer read fEditorWidget write fEditorWidget;
-       class function GetSetOrdValue(const Info:PTypeInfo;const SetParam):TpvUInt64; static;
+       property Path:TPath read fPath;
       published
        property ID:TpvSizeUInt read fID;
        property Default:TpvUInt8DynamicArray read fDefault;
      end;
 
      TpvRegisteredComponentTypeList=TpvObjectGenericList<TpvRegisteredComponentType>;
+
+     TpvComponentType=class
+      public
+
+     end;
 
 var RegisteredComponentTypeList:TpvRegisteredComponentTypeList=nil;
 
@@ -188,6 +212,35 @@ uses PasVulkan.Components.Name,
      PasVulkan.Components.Renderer,
      PasVulkan.Components.SortKey,
      PasVulkan.Components.Transform;
+
+{ TpvEntityIDHelper }
+
+function TpvEntityIDHelper.GetIndex:TpvInt32;
+begin
+ // Sign extend
+{$if declared(SARLongint)}
+ // When SARLongint exists, then do it over it
+ result:=SARLongint(self shl InverseIndexBits,InverseIndexBits);
+{$else}
+ // Otherwise with a bit more advanced bit-twiddling
+ result:=((self and IndexMask) xor IndexSignBitMask)-IndexSignBitMask;
+{$ifend}
+end;
+
+procedure TpvEntityIDHelper.SetIndex(const aIndex:TpvInt32);
+begin
+ self:=(self and GenerationMask) or (TpvUInt32(aIndex) and IndexMask);
+end;
+
+function TpvEntityIDHelper.GetGeneration:TpvUInt8;
+begin
+ result:=self shr IndexBits;
+end;
+
+procedure TpvEntityIDHelper.SetGeneration(const aGeneration:TpvUInt8);
+begin
+ self:=(self and IndexMask) or (aGeneration shl IndexBits);
+end;
 
 { TpvRegisteredComponentType.TField.TEnumerationOrFlag }
 
@@ -304,25 +357,25 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:pointer):TPasJSO
    TpvRegisteredComponentType.TField.TElementType.EntityID:begin
     case aField^.ElementSize of
      1:begin
-      SignedInteger:=PpvInt8(Data)^;
+      UnsignedInteger:=PpvUInt8(Data)^;
      end;
      2:begin
-      SignedInteger:=PpvInt16(Data)^;
+      UnsignedInteger:=PpvUInt16(Data)^;
      end;
      4:begin
-      SignedInteger:=PpvInt32(Data)^;
+      UnsignedInteger:=PpvUInt32(Data)^;
      end;
      8:begin
-      SignedInteger:=PpvInt64(Data)^;
+      UnsignedInteger:=PpvUInt64(Data)^;
      end;
      else begin
       raise EpvRegisteredComponentType.Create('Internal error 2018-09-04-23-58-0000');
      end;
     end;
     if abs(SignedInteger)<TpvInt64($0010000000000000) then begin
-     result:=TPasJSONItemNumber.Create(SignedInteger);
+     result:=TPasJSONItemNumber.Create(UnsignedInteger);
     end else begin
-     result:=TPasJSONItemString.Create(IntToStr(SignedInteger));
+     result:=TPasJSONItemString.Create(IntToStr(UnsignedInteger));
     end;
    end;
    TpvRegisteredComponentType.TField.TElementType.Enumeration:begin
@@ -530,26 +583,26 @@ procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONIte
   case aField^.ElementType of
    TpvRegisteredComponentType.TField.TElementType.EntityID:begin
     if aJSONItemValue is TPasJSONItemNumber then begin
-     SignedInteger:=trunc(TPasJSONItemNumber(aJSONItemValue).Value);
+     UnsignedInteger:=trunc(TPasJSONItemNumber(aJSONItemValue).Value);
     end else if aJSONItemValue is TPasJSONItemString then begin
-     SignedInteger:=StrToIntDef(TPasJSONItemString(aJSONItemValue).Value,0);
+     UnsignedInteger:=StrToIntDef(TPasJSONItemString(aJSONItemValue).Value,0);
     end else if aJSONItemValue is TPasJSONItemBoolean then begin
-     SignedInteger:=ord(TPasJSONItemBoolean(aJSONItemValue).Value) and 1;
+     UnsignedInteger:=ord(TPasJSONItemBoolean(aJSONItemValue).Value) and 1;
     end else begin
-     SignedInteger:=-1;
+     UnsignedInteger:=$ffffffff;
     end;
     case aField^.ElementSize of
      1:begin
-      PpvUInt8(aData)^:=SignedInteger;
+      PpvUInt8(aData)^:=UnsignedInteger;
      end;
      2:begin
-      PpvUInt16(aData)^:=SignedInteger;
+      PpvUInt16(aData)^:=UnsignedInteger;
      end;
      4:begin
-      PpvUInt32(aData)^:=SignedInteger;
+      PpvUInt32(aData)^:=UnsignedInteger;
      end;
      8:begin
-      PpvUInt64(aData)^:=SignedInteger;
+      PpvUInt64(aData)^:=UnsignedInteger;
      end;
      else begin
       raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-01-24-0000');
