@@ -68,27 +68,36 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.EntityComponentSystem;
 
-type TpvComponentRenderer=class(TpvComponent)
-      private
-       fTarget:TpvInt32;
+type PpvComponentRenderer=^TpvComponentRenderer;
+     TpvComponentRenderer=record
       public
-       class function ClassPath:string; override;
-       class function ClassUUID:TpvUUID; override;
-      published
+       Dummy:TpvUInt32;
      end;
+
+const pvComponentRendererDefault:TpvComponentRenderer=
+       (
+        Dummy:0;
+       );
+
+var pvComponentRenderer:TpvRegisteredComponentType=nil;
+
+    pvComponentRendererID:TpvComponentTypeID=0;
 
 implementation
 
-class function TpvComponentRenderer.ClassPath:string;
+procedure Register;
 begin
- result:='Renderer';
+
+ pvComponentRenderer:=TpvRegisteredComponentType.Create('renderer',
+                                                        'Renderer',
+                                                        ['Base','Renderer'],
+                                                        SizeOf(TpvComponentRenderer),
+                                                        @pvComponentRendererDefault);
+
+ pvComponentRendererID:=pvComponentRenderer.ID;
+
 end;
 
-class function TpvComponentRenderer.ClassUUID:TpvUUID;
-begin
- result.UInt64s[0]:=TpvUInt64($7aab7c9457584824);
- result.UInt64s[1]:=TpvUInt64($abe14af3b66ce47e);
-end;
-
+initialization
+ Register;
 end.
-
