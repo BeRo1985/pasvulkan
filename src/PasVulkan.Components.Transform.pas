@@ -114,10 +114,10 @@ const Flags:array[TpvComponentTransform.TFlag] of TpvComponentTransform.TFlags=
 begin
 
  pvComponentTransform:=TpvEntityComponentSystem.TRegisteredComponentType.Create('transform',
-                                                                                  'Transform',
-                                                                                  ['Base','Transform'],
-                                                                                  SizeOf(TpvComponentTransform),
-                                                                                  @pvComponentTransformDefault);
+                                                                                'Transform',
+                                                                                ['Base','Transform'],
+                                                                                SizeOf(TpvComponentTransform),
+                                                                                @pvComponentTransformDefault);
 
  pvComponentTransformID:=pvComponentTransform.ID;
 
@@ -139,17 +139,17 @@ begin
                           TpvPtrUInt(@PpvComponentTransform(nil)^.Flags),
                           SizeOf(PpvComponentTransform(nil)^.Flags),
                           [TpvEntityComponentSystem.TRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvEntityComponentSystem.TRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.Static]),
-                                                                                                                'static',
-                                                                                                                'Static'),
+                                                                                                              'static',
+                                                                                                              'Static'),
                            TpvEntityComponentSystem.TRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvEntityComponentSystem.TRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.RelativePosition]),
-                                                                                                                'relativeposition',
-                                                                                                                'Relative position'),
+                                                                                                              'relativeposition',
+                                                                                                              'Relative position'),
                            TpvEntityComponentSystem.TRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvEntityComponentSystem.TRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.RelativeRotation]),
-                                                                                                                'relativerotation',
-                                                                                                                'Relative rotation'),
+                                                                                                              'relativerotation',
+                                                                                                              'Relative rotation'),
                            TpvEntityComponentSystem.TRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvEntityComponentSystem.TRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.RelativeScale]),
-                                                                                                                'relativescale',
-                                                                                                                'Relative scale')
+                                                                                                              'relativescale',
+                                                                                                              'Relative scale')
                           ]
                          );
 

@@ -89,10 +89,10 @@ procedure Register;
 begin
 
  pvComponentName:=TpvEntityComponentSystem.TRegisteredComponentType.Create('name',
-                                                                             'Name',
-                                                                             ['Base','Name'],
-                                                                             SizeOf(TpvComponentName),
-                                                                             @pvComponentNameDefault);
+                                                                           'Name',
+                                                                           ['Base','Name'],
+                                                                           SizeOf(TpvComponentName),
+                                                                           @pvComponentNameDefault);
 
  pvComponentNameID:=pvComponentName.ID;
 

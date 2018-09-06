@@ -89,10 +89,10 @@ procedure Register;
 begin
 
  pvComponentRenderer:=TpvEntityComponentSystem.TRegisteredComponentType.Create('renderer',
-                                                                                 'Renderer',
-                                                                                 ['Base','Renderer'],
-                                                                                 SizeOf(TpvComponentRenderer),
-                                                                                 @pvComponentRendererDefault);
+                                                                               'Renderer',
+                                                                               ['Base','Renderer'],
+                                                                               SizeOf(TpvComponentRenderer),
+                                                                               @pvComponentRendererDefault);
 
  pvComponentRendererID:=pvComponentRenderer.ID;
 

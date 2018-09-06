@@ -323,8 +323,8 @@ end;
 { TpvEntityComponentSystem.TpvRegisteredComponentType.TField.TEnumerationOrFlag }
 
 constructor TpvEntityComponentSystem.TRegisteredComponentType.TField.TEnumerationOrFlag.Create(const aValue:TpvUInt64;
-                                                                                                 const aName:TpvUTF8String;
-                                                                                                 const aDisplayName:TpvUTF8String);
+                                                                                               const aName:TpvUTF8String;
+                                                                                               const aDisplayName:TpvUTF8String);
 begin
  Value:=aValue;
  Name:=aName;
@@ -334,10 +334,10 @@ end;
 { TpvRegisteredComponentType }
 
 constructor TpvEntityComponentSystem.TRegisteredComponentType.Create(const aName:TpvUTF8String;
-                                                                       const aDisplayName:TpvUTF8String;
-                                                                       const aPath:array of TpvUTF8String;
-                                                                       const aSize:TpvSizeInt;
-                                                                       const aDefault:TpvPointer);
+                                                                     const aDisplayName:TpvUTF8String;
+                                                                     const aPath:array of TpvUTF8String;
+                                                                     const aSize:TpvSizeInt;
+                                                                     const aDefault:TpvPointer);
 var Index:TpvSizeInt;
 begin
  inherited Create;
@@ -385,13 +385,13 @@ begin
 end;
 
 procedure TpvEntityComponentSystem.TRegisteredComponentType.Add(const aName:TpvUTF8String;
-                                                                  const aDisplayName:TpvUTF8String;
-                                                                  const aElementType:TField.TElementType;
-                                                                  const aElementSize:TpvSizeInt;
-                                                                  const aElementCount:TpvSizeInt;
-                                                                  const aOffset:TpvSizeInt;
-                                                                  const aSize:TpvSizeInt;
-                                                                  const aEnumerationsOrFlags:array of TField.TEnumerationOrFlag);
+                                                                const aDisplayName:TpvUTF8String;
+                                                                const aElementType:TField.TElementType;
+                                                                const aElementSize:TpvSizeInt;
+                                                                const aElementCount:TpvSizeInt;
+                                                                const aOffset:TpvSizeInt;
+                                                                const aSize:TpvSizeInt;
+                                                                const aEnumerationsOrFlags:array of TField.TEnumerationOrFlag);
 var Index:TpvSizeInt;
     Field:TRegisteredComponentType.PField;
 begin

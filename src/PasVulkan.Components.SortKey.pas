@@ -89,10 +89,10 @@ procedure Register;
 begin
 
  pvComponentSortKey:=TpvEntityComponentSystem.TRegisteredComponentType.Create('sortkey',
-                                                                                'Sort key',
-                                                                                ['Base','Sort key'],
-                                                                                SizeOf(TpvComponentSortKey),
-                                                                                @pvComponentSortKeyDefault);
+                                                                              'Sort key',
+                                                                              ['Base','Sort key'],
+                                                                              SizeOf(TpvComponentSortKey),
+                                                                              @pvComponentSortKeyDefault);
 
  pvComponentSortKeyID:=pvComponentSortKey.ID;
 

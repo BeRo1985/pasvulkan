@@ -89,10 +89,10 @@ procedure Register;
 begin
 
  pvComponentParent:=TpvEntityComponentSystem.TRegisteredComponentType.Create('parent',
-                                                                               'Parent',
-                                                                               ['Base','Parent'],
-                                                                               SizeOf(TpvComponentParent),
-                                                                               @pvComponentParentDefault);
+                                                                             'Parent',
+                                                                             ['Base','Parent'],
+                                                                             SizeOf(TpvComponentParent),
+                                                                             @pvComponentParentDefault);
 
  pvComponentParentID:=pvComponentParent.ID;
 
