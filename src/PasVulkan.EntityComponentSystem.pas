@@ -927,75 +927,6 @@ begin
  end;
 end;
 
-procedure TestCase;
-type TTest=record
-      public
-       Position:TpvVector3;
-       TestString:shortstring;
-      end;
-      PTest=^TTest;
-var RegisteredComponentType:TpvRegisteredComponentType;
-    Test:TTest;
-    k:TPasJSONItem;
-begin
- RegisteredComponentType:=TpvRegisteredComponentType.Create('test',
-                                                            'Test',
-                                                            ['Base','Test'],
-                                                            sizeof(TTest),
-                                                            @Test);
- try
-  RegisteredComponentType.Add('position',
-                              'Position',
-                              TpvRegisteredComponentType.TField.TElementType.FloatingPoint,
-                              SizeOf(TpvFloat),
-                              3,
-                              TpvPtrUInt(@PTest(nil)^.Position),
-                              SizeOf(TpvVector3),
-                              []);
-  RegisteredComponentType.Add('teststring',
-                              'Test string',
-                              TpvRegisteredComponentType.TField.TElementType.LengthPrefixedString,
-                              SizeOf(ShortString),
-                              1,
-                              TpvPtrUInt(@PTest(nil)^.TestString),
-                              SizeOf(ShortString),
-                              []);
-  RegisteredComponentType.Add('testblob',
-                              'Test blob',
-                              TpvRegisteredComponentType.TField.TElementType.Blob,
-                              SizeOf(ShortString),
-                              1,
-                              TpvPtrUInt(@PTest(nil)^.TestString),
-                              SizeOf(ShortString),
-                              []);
-  Test.Position.x:=1.0;
-  Test.Position.y:=2.0;
-  Test.Position.z:=3.0;
-  Test.TestString:='bla';
-  k:=RegisteredComponentType.SerializeToJSON(@Test);
-  writeln(TPasJSON.Stringify(k,true,TPasJSON.SimplifiedJSONModeFlags));
-  Test.Position.x:=0.0;
-  Test.Position.y:=0.0;
-  Test.Position.z:=0.0;
-  Test.TestString:='tzrterrt';
-  writeln(TPasJSON.Stringify(RegisteredComponentType.SerializeToJSON(@Test),true,TPasJSON.SimplifiedJSONModeFlags));
-  RegisteredComponentType.UnserializeFromJSON(k,@Test);
-  writeln(TPasJSON.Stringify(RegisteredComponentType.SerializeToJSON(@Test),true,TPasJSON.SimplifiedJSONModeFlags));
-  readln;
- finally
-  RegisteredComponentType.Free;
- end;
- halt(0);
-end;
-
-procedure InitializeEntityComponentSystemGlobals;
-begin
- if not assigned(RegisteredComponentTypeList) then begin
-  RegisteredComponentTypeList:=TpvRegisteredComponentTypeList.Create;
-  RegisteredComponentTypeList.OwnsObjects:=true;
- end;
-end;
-
 { TpvComponentType }
 
 constructor TpvComponentType.Create(const aRegisteredComponentType:TpvRegisteredComponentType);
@@ -1476,6 +1407,75 @@ begin
   if fCountFrees>(fPoolIndexCounter shr 2) then begin
    fNeedToDefragment:=true;
   end;
+ end;
+end;
+
+procedure TestCase;
+type TTest=record
+      public
+       Position:TpvVector3;
+       TestString:shortstring;
+      end;
+      PTest=^TTest;
+var RegisteredComponentType:TpvRegisteredComponentType;
+    Test:TTest;
+    k:TPasJSONItem;
+begin
+ RegisteredComponentType:=TpvRegisteredComponentType.Create('test',
+                                                            'Test',
+                                                            ['Base','Test'],
+                                                            sizeof(TTest),
+                                                            @Test);
+ try
+  RegisteredComponentType.Add('position',
+                              'Position',
+                              TpvRegisteredComponentType.TField.TElementType.FloatingPoint,
+                              SizeOf(TpvFloat),
+                              3,
+                              TpvPtrUInt(@PTest(nil)^.Position),
+                              SizeOf(TpvVector3),
+                              []);
+  RegisteredComponentType.Add('teststring',
+                              'Test string',
+                              TpvRegisteredComponentType.TField.TElementType.LengthPrefixedString,
+                              SizeOf(ShortString),
+                              1,
+                              TpvPtrUInt(@PTest(nil)^.TestString),
+                              SizeOf(ShortString),
+                              []);
+  RegisteredComponentType.Add('testblob',
+                              'Test blob',
+                              TpvRegisteredComponentType.TField.TElementType.Blob,
+                              SizeOf(ShortString),
+                              1,
+                              TpvPtrUInt(@PTest(nil)^.TestString),
+                              SizeOf(ShortString),
+                              []);
+  Test.Position.x:=1.0;
+  Test.Position.y:=2.0;
+  Test.Position.z:=3.0;
+  Test.TestString:='bla';
+  k:=RegisteredComponentType.SerializeToJSON(@Test);
+  writeln(TPasJSON.Stringify(k,true,TPasJSON.SimplifiedJSONModeFlags));
+  Test.Position.x:=0.0;
+  Test.Position.y:=0.0;
+  Test.Position.z:=0.0;
+  Test.TestString:='tzrterrt';
+  writeln(TPasJSON.Stringify(RegisteredComponentType.SerializeToJSON(@Test),true,TPasJSON.SimplifiedJSONModeFlags));
+  RegisteredComponentType.UnserializeFromJSON(k,@Test);
+  writeln(TPasJSON.Stringify(RegisteredComponentType.SerializeToJSON(@Test),true,TPasJSON.SimplifiedJSONModeFlags));
+  readln;
+ finally
+  RegisteredComponentType.Free;
+ end;
+ halt(0);
+end;
+
+procedure InitializeEntityComponentSystemGlobals;
+begin
+ if not assigned(RegisteredComponentTypeList) then begin
+  RegisteredComponentTypeList:=TpvRegisteredComponentTypeList.Create;
+  RegisteredComponentTypeList.OwnsObjects:=true;
  end;
 end;
 
