@@ -159,7 +159,7 @@ type TpvEntityComponentSystem=class
                    PField=^TField;
                    TFields=array of TField;
              private
-              fID:TpvSizeUInt;
+              fID:TpvSizeInt;
               fName:TpvUTF8String;
               fDisplayName:TpvUTF8String;
               fPath:TPath;
@@ -191,7 +191,7 @@ type TpvEntityComponentSystem=class
               property EditorWidget:TpvPointer read fEditorWidget write fEditorWidget;
               property Path:TPath read fPath;
              published
-              property ID:TpvSizeUInt read fID;
+              property ID:TpvSizeInt read fID;
               property Size:TpvSizeInt read fSize;
               property Default:TpvUInt8DynamicArray read fDefault;
             end;
