@@ -87,6 +87,8 @@ type TpvEntityComponentSystem=class
 
             TComponentIDDynamicArray=array of TComponentID;
 
+            TWorld=class;
+
             PEntityID=^TEntityID;
             TEntityID=type TpvUInt32;
 
@@ -247,6 +249,8 @@ type TpvEntityComponentSystem=class
               property RegisteredComponentType:TRegisteredComponentType read fRegisteredComponentType;
             end;
 
+            TComponentList=TpvObjectGenericList<TComponent>;
+
             PEntity=^TEntity;
             TEntity=record
              public
@@ -270,12 +274,13 @@ type TpvEntityComponentSystem=class
 
             TpvEntities=array of TEntity;
 
-            TpvWorld=class
+            TWorld=class
              public
               type TEntityIndexFreeList=TpvGenericList<TpvSizeInt>;
                    TEntityGenerationList=TpvDynamicArray<TpvUInt8>;
                    TUsedBitmap=array of TpvUInt32;
              private
+              fComponents:TComponentList;
               fEntities:TpvEntities;
               fEntityIndexFreeList:TEntityIndexFreeList;
               fEntityGenerationList:TEntityGenerationList;
@@ -283,7 +288,10 @@ type TpvEntityComponentSystem=class
               fEntityIndexCounter:TpvSizeInt;
               fMaxEntityIndex:TpvSizeInt;
              public
-
+              constructor Create; reintroduce;
+              destructor Destroy; override;
+             public
+              property Components:TComponentList read fComponents;
             end;
 
      end;
@@ -1469,6 +1477,52 @@ begin
    Exclude(fFlags,TFlag.Active);
   end;
  end;
+end;
+
+{ TpvEntityComponentSystem.TWorld }
+
+constructor TpvEntityComponentSystem.TWorld.Create;
+var Index:TpvSizeInt;
+begin
+
+ inherited Create;
+
+ fComponents:=TComponentList.Create;
+ fComponents.OwnsObjects:=true;
+
+ for Index:=0 to RegisteredComponentTypeList.Count-1 do begin
+  fComponents.Add(TpvEntityComponentSystem.TComponent.Create(RegisteredComponentTypeList.Items[Index]));
+ end;
+
+ fEntities:=nil;
+
+ fEntityIndexFreeList:=TEntityIndexFreeList.Create;
+
+ fEntityGenerationList:=TEntityGenerationList.Create;
+
+ fEntityUsedBitmap:=nil;
+
+ fEntityIndexCounter:=0;
+
+ fMaxEntityIndex:=-1;
+
+end;
+
+destructor TpvEntityComponentSystem.TWorld.Destroy;
+begin
+
+ FreeAndNil(fComponents);
+
+ fEntities:=nil;
+
+ FreeAndNil(fEntityIndexFreeList);
+
+ FreeAndNil(fEntityGenerationList);
+
+ fEntityUsedBitmap:=nil;
+
+ inherited Destroy;
+
 end;
 
 procedure InitializeEntityComponentSystemGlobals;
