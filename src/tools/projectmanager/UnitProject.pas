@@ -36,6 +36,7 @@ end;
 {$endif}
 
 function FindBinaryInExecutableEnviromentPath(out aFoundExecutable:UnicodeString;const aBinaryName:UnicodeString;const aAdditionalPaths:UnicodeString=''):boolean;
+const EnvPathSeperator={$ifdef Unix}':'{$else}';'{$endif};
 var Index:Int32;
     PathString,CurrentPath:UnicodeString;
     PathStringList:TStringList;
@@ -43,11 +44,11 @@ begin
  result:=false;
  PathString:=UnicodeString(GetEnvironmentVariable('PATH'));
  if length(aAdditionalPaths)>0 then begin
-  PathString:=aAdditionalPaths+';'+PathString;
+  PathString:=aAdditionalPaths+EnvPathSeperator+PathString;
  end;
  PathStringList:=TStringList.Create;
  try
-  PathStringList.Delimiter:=';';
+  PathStringList.Delimiter:=EnvPathSeperator;
   PathStringList.StrictDelimiter:=true;
   PathStringList.DelimitedText:=String(PathString);
   for Index:=0 to PathStringList.Count-1 do begin
