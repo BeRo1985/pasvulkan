@@ -91,15 +91,14 @@ type EpvSystemCircularDependency=class(Exception);
      TpvEntityIDs=array of TpvEntityID;
 
      TpvEntityIDHelper=record helper for TpvEntityID
-      public
-       const IndexBits=24; // including one sign bit
+      private
+       const IndexBits=24; // when all these bits set, then => -1
              GenerationBits=8;
              InverseIndexBits=32-IndexBits;
              IndexBitsMinusOne=TpvUInt32(IndexBits-1);
              IndexSignBitMask=TpvUInt32(1 shl IndexBitsMinusOne);
              IndexMask=TpvUInt32((TpvUInt32(1) shl IndexBits)-1);
              GenerationMask=TpvUInt32(not IndexMask);
-      public
        function GetIndex:TpvInt32; inline;
        procedure SetIndex(const aIndex:TpvInt32); inline;
        function GetGeneration:TpvUInt8; inline;
@@ -166,13 +165,13 @@ type EpvSystemCircularDependency=class(Exception);
        fFields:TFields;
        fCountFields:TpvSizeInt;
        fDefault:TpvUInt8DynamicArray;
-       fEditorWidget:pointer;
+       fEditorWidget:TpvPointer;
       public
        constructor Create(const aName:TpvUTF8String;
                           const aDisplayName:TpvUTF8String;
                           const aPath:array of TpvUTF8String;
                           const aSize:TpvSizeInt;
-                          const aDefault:pointer); reintroduce;
+                          const aDefault:TpvPointer); reintroduce;
        destructor Destroy; override;
        class function GetSetOrdValue(const Info:PTypeInfo;const SetParam):TpvUInt64; static;
        procedure Add(const aName:TpvUTF8String;
@@ -184,13 +183,14 @@ type EpvSystemCircularDependency=class(Exception);
                      const aSize:TpvSizeInt;
                      const aEnumerationsOrFlags:array of TField.TEnumerationOrFlag);
        procedure Finish;
-       function SerializeToJSON(const aData:pointer):TPasJSONItemObject;
-       procedure UnserializeFromJSON(const aJSON:TPasJSONItem;const aData:pointer);
+       function SerializeToJSON(const aData:TpvPointer):TPasJSONItemObject;
+       procedure UnserializeFromJSON(const aJSON:TPasJSONItem;const aData:TpvPointer);
        property Fields:TFields read fFields;
-       property EditorWidget:pointer read fEditorWidget write fEditorWidget;
+       property EditorWidget:TpvPointer read fEditorWidget write fEditorWidget;
        property Path:TPath read fPath;
       published
        property ID:TpvSizeUInt read fID;
+       property Size:TpvSizeInt read fSize;
        property Default:TpvUInt8DynamicArray read fDefault;
      end;
 
@@ -198,7 +198,51 @@ type EpvSystemCircularDependency=class(Exception);
 
      TpvComponentType=class
       public
-
+       type TIndexMapArray=array of TpvSizeInt;
+            TUsedBitmap=array of TpvUInt32;
+            TPointers=array of TpvPointer;
+      private
+       fRegisteredComponentType:TpvRegisteredComponentType;
+       fComponentPoolIndexToEntityIndex:TIndexMapArray;
+       fEntityIndexToComponentPoolIndex:TIndexMapArray;
+       fUsedBitmap:TUsedBitmap;
+       fSize:TpvSizeInt;
+       fPoolUnaligned:TpvPointer;
+       fPool:TpvPointer;
+       fPoolSize:TpvSizeInt;
+       fCountPoolItems:TpvSizeInt;
+       fCapacity:TpvSizeInt;
+       fPoolIndexCounter:TpvSizeInt;
+       fMaxEntityIndex:TpvSizeInt;
+       fCountFrees:TpvSizeInt;
+       fNeedToDefragment:boolean;
+       fPointers:TPointers;
+       fDataPointer:TpvPointer;
+       procedure FinalizeComponentByPoolIndex(const aPoolIndex:TpvSizeInt);
+       function GetEntityIndexByPoolIndex(const aPoolIndex:TpvSizeInt):TpvSizeInt; inline;
+       function GetComponentByPoolIndex(const aPoolIndex:TpvSizeInt):TpvPointer; inline;
+       function GetComponentByEntityIndex(const aEntityIndex:TpvSizeInt):TpvPointer; inline;
+       procedure SetMaxEntities(const aCount:TpvSizeInt);
+      public
+       constructor Create(const aRegisteredComponentType:TpvRegisteredComponentType); reintroduce;
+       destructor Destroy; override;
+       procedure Defragment;
+       procedure DefragmentIfNeeded;
+       function IsComponentInEntityIndex(const aEntityIndex:TpvSizeInt):boolean; inline;
+       function GetComponentPoolIndexForEntityIndex(const aEntityIndex:TpvSizeInt):TpvSizeInt; inline;
+       function AllocateComponentForEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
+       function FreeComponentFromEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
+      public
+       property Pool:TpvPointer read fPool;
+       property PoolSize:TpvSizeInt read fPoolSize;
+       property CountPoolItems:TpvSizeInt read fCountPoolItems;
+       property EntityIndexByPoolIndex[const aPoolIndex:TpvSizeInt]:TpvSizeInt read GetEntityIndexByPoolIndex;
+       property ComponentByPoolIndex[const aPoolIndex:TpvSizeInt]:pointer read GetComponentByPoolIndex;
+       property ComponentByEntityIndex[const aEntityIndex:TpvSizeInt]:pointer read GetComponentByEntityIndex;
+       property Pointers:TPointers read fPointers;
+       property DataPointer:pointer read fDataPointer;
+      published
+       property RegisteredComponentType:TpvRegisteredComponentType read fRegisteredComponentType;
      end;
 
 var RegisteredComponentTypeList:TpvRegisteredComponentTypeList=nil;
@@ -217,14 +261,8 @@ uses PasVulkan.Components.Name,
 
 function TpvEntityIDHelper.GetIndex:TpvInt32;
 begin
- // Sign extend
-{$if declared(SARLongint)}
- // When SARLongint exists, then do it over it
- result:=SARLongint(self shl InverseIndexBits,InverseIndexBits);
-{$else}
- // Otherwise with a bit more advanced bit-twiddling
- result:=((self and IndexMask) xor IndexSignBitMask)-IndexSignBitMask;
-{$ifend}
+ result:=self and IndexMask;
+ result:=result or (-(ord(result=IndexMask) and 1));
 end;
 
 procedure TpvEntityIDHelper.SetIndex(const aIndex:TpvInt32);
@@ -259,7 +297,7 @@ constructor TpvRegisteredComponentType.Create(const aName:TpvUTF8String;
                                               const aDisplayName:TpvUTF8String;
                                               const aPath:array of TpvUTF8String;
                                               const aSize:TpvSizeInt;
-                                              const aDefault:pointer);
+                                              const aDefault:TpvPointer);
 var Index:TpvSizeInt;
 begin
  inherited Create;
@@ -341,10 +379,10 @@ begin
  SetLength(fFields,fCountFields);
 end;
 
-function TpvRegisteredComponentType.SerializeToJSON(const aData:pointer):TPasJSONItemObject;
+function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPasJSONItemObject;
  function GetElementValue(const aField:PField;
-                          const aValueData:pointer):TPasJSONItem;
- var Data:pointer;
+                          const aValueData:TpvPointer):TPasJSONItem;
+ var Data:TpvPointer;
      EnumerationFlagIndex:TpvSizeInt;
      SignedInteger:TpvInt64;
      UnsignedInteger:TpvUInt64;
@@ -540,7 +578,7 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:pointer):TPasJSO
   end;
  end;
  function GetFieldValue(const aField:PField;
-                        const aData:pointer):TPasJSONItem;
+                        const aData:TpvPointer):TPasJSONItem;
  var ElementIndex:TpvSizeInt;
  begin
   if aField^.ElementCount>1 then begin
@@ -567,9 +605,9 @@ begin
  end;
 end;
 
-procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONItem;const aData:pointer);
+procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONItem;const aData:TpvPointer);
  procedure SetField(const aField:PField;
-                    const aData:pointer;
+                    const aData:TpvPointer;
                     const aJSONItemValue:TPasJSONItem);
  var EnumerationFlagIndex,ArrayItemIndex:TpvSizeInt;
      Code:TpvInt32;
@@ -842,7 +880,7 @@ procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONIte
  end;
 var FieldIndex,ElementIndex:TpvSizeInt;
     Field:PField;
-    Data:pointer;
+    Data:TpvPointer;
     JSONItemObject:TPasJSONItemObject;
     ValueJSONItem:TPasJSONItem;
     ValueJSONItemArray:TPasJSONItemArray;
@@ -955,6 +993,489 @@ begin
  if not assigned(RegisteredComponentTypeList) then begin
   RegisteredComponentTypeList:=TpvRegisteredComponentTypeList.Create;
   RegisteredComponentTypeList.OwnsObjects:=true;
+ end;
+end;
+
+{ TpvComponentType }
+
+constructor TpvComponentType.Create(const aRegisteredComponentType:TpvRegisteredComponentType);
+begin
+ inherited Create;
+
+ fRegisteredComponentType:=aRegisteredComponentType;
+
+ fSize:=fRegisteredComponentType.fSize;
+
+ fPoolUnaligned:=nil;
+
+ fPool:=nil;
+
+ fPoolSize:=0;
+
+ fCountPoolItems:=0;
+
+ fCapacity:=0;
+
+ fPoolIndexCounter:=0;
+
+ fMaxEntityIndex:=-1;
+
+ fCountFrees:=0;
+
+ fNeedToDefragment:=false;
+
+ fEntityIndexToComponentPoolIndex:=nil;
+
+ fComponentPoolIndexToEntityIndex:=nil;
+
+ fPointers:=nil;
+
+ fDataPointer:=nil;
+
+ fUsedBitmap:=nil;
+
+end;
+
+destructor TpvComponentType.Destroy;
+begin
+
+ if assigned(fPoolUnaligned) then begin
+  FreeMem(fPoolUnaligned);
+ end;
+
+ fPointers:=nil;
+
+ fEntityIndexToComponentPoolIndex:=nil;
+
+ fComponentPoolIndexToEntityIndex:=nil;
+
+ fPointers:=nil;
+
+ fUsedBitmap:=nil;
+
+ inherited Destroy;
+
+end;
+
+procedure TpvComponentType.FinalizeComponentByPoolIndex(const aPoolIndex:TpvSizeInt);
+begin
+end;
+
+procedure TpvComponentType.SetMaxEntities(const aCount:TpvSizeInt);
+var OldCount:TpvSizeInt;
+begin
+ OldCount:=length(fPointers);
+ if OldCount<aCount then begin
+  SetLength(fPointers,aCount*2);
+  FillChar(fPointers[OldCount],(length(fPointers)-OldCount)*SizeOf(TpvPointer),#0);
+  fDataPointer:=@fPointers[0];
+ end;
+end;
+
+procedure TpvComponentType.Defragment;
+ function CompareFunction(const a,b:TpvSizeInt):TpvSizeInt;
+ begin
+  if (a>=0) and (b>=0) then begin
+   result:=a-b;
+  end else if a<>b then begin
+   if a<0 then begin
+    result:=1;
+   end else begin
+    result:=-1;
+   end;
+  end else begin
+   result:=0;
+  end;
+ end;
+ procedure IntroSort(Left,Right:TpvSizeInt);
+ type PByteArray=^TByteArray;
+      TByteArray=array[0..$3fffffff] of byte;
+      PStackItem=^TStackItem;
+      TStackItem=record
+       Left,Right,Depth:TpvSizeInt;
+      end;
+ var Depth,i,j,Middle,Size,Parent,Child,TempPoolIndex,PivotPoolIndex:TpvSizeInt;
+     Items,Pivot,Temp:TpvPointer;
+     StackItem:PStackItem;
+     Stack:array[0..31] of TStackItem;
+ begin
+  if Left<Right then begin
+   GetMem(Temp,fSize);
+   GetMem(Pivot,fSize);
+   try
+    Items:=fPool;
+    StackItem:=@Stack[0];
+    StackItem^.Left:=Left;
+    StackItem^.Right:=Right;
+    StackItem^.Depth:=IntLog2((Right-Left)+1) shl 1;
+    inc(StackItem);
+    while TpvPtrUInt(TpvPointer(StackItem))>TpvPtrUInt(TpvPointer(@Stack[0])) do begin
+     dec(StackItem);
+     Left:=StackItem^.Left;
+     Right:=StackItem^.Right;
+     Depth:=StackItem^.Depth;
+     if (Right-Left)<16 then begin
+      // Insertion sort
+      for i:=Left+1 to Right do begin
+       j:=i-1;
+       if (j>=Left) and (CompareFunction(fComponentPoolIndexToEntityIndex[j],fComponentPoolIndexToEntityIndex[i])>0) then begin
+        Move(PByteArray(Items)^[i*fSize],Temp^,fSize);
+        TempPoolIndex:=fComponentPoolIndexToEntityIndex[i];
+        repeat
+         Move(PByteArray(Items)^[j*fSize],PByteArray(Items)^[(j+1)*fSize],fSize);
+         fComponentPoolIndexToEntityIndex[j+1]:=fComponentPoolIndexToEntityIndex[j];
+         dec(j);
+        until not ((j>=Left) and (CompareFunction(fComponentPoolIndexToEntityIndex[j],TempPoolIndex)>0));
+        Move(Temp^,PByteArray(Items)^[(j+1)*fSize],fSize);
+        fComponentPoolIndexToEntityIndex[j+1]:=TempPoolIndex;
+       end;
+      end;
+     end else begin
+      if (Depth=0) or (TpvPtrUInt(TpvPointer(StackItem))>=TpvPtrUInt(TpvPointer(@Stack[high(Stack)-1]))) then begin
+       // Heap sort
+       Size:=(Right-Left)+1;
+       i:=Size div 2;
+       TempPoolIndex:=0;
+       repeat
+        if i>Left then begin
+         dec(i);
+         Move(PByteArray(Items)^[(Left+i)*fSize],Temp^,fSize);
+         TempPoolIndex:=fComponentPoolIndexToEntityIndex[Left+i];
+        end else begin
+         if Size=0 then begin
+          break;
+         end else begin
+          dec(Size);
+          Move(PByteArray(Items)^[(Left+Size)*fSize],Temp^,fSize);
+          Move(PByteArray(Items)^[Left*fSize],PByteArray(Items)^[(Left+Size)*fSize],fSize);
+          TempPoolIndex:=fComponentPoolIndexToEntityIndex[Left+Size];
+          fComponentPoolIndexToEntityIndex[Left+Size]:=fComponentPoolIndexToEntityIndex[Left];
+         end;
+        end;
+        Parent:=i;
+        Child:=(i*2)+1;
+        while Child<Size do begin
+         if ((Child+1)<Size) and (CompareFunction(fComponentPoolIndexToEntityIndex[(Left+Child)+1],fComponentPoolIndexToEntityIndex[Left+Child])>0) then begin
+          inc(Child);
+         end;
+         if CompareFunction(fComponentPoolIndexToEntityIndex[Left+Child],TempPoolIndex)>0 then begin
+          Move(PByteArray(Items)^[(Left+Child)*fSize],PByteArray(Items)^[(Left+Parent)*fSize],fSize);
+          fComponentPoolIndexToEntityIndex[Left+Parent]:=fComponentPoolIndexToEntityIndex[Left+Child];
+          Parent:=Child;
+          Child:=(Parent*2)+1;
+         end else begin
+          break;
+         end;
+        end;
+        Move(Temp^,PByteArray(fPool)^[(Left+Parent)*fSize],fSize);
+        fComponentPoolIndexToEntityIndex[Left+Parent]:=TempPoolIndex;
+       until false;
+      end else begin
+       // Quick sort width median-of-three optimization
+       Middle:=Left+((Right-Left) shr 1);
+       if (Right-Left)>3 then begin
+        if CompareFunction(fComponentPoolIndexToEntityIndex[Left],fComponentPoolIndexToEntityIndex[Middle])>0 then begin
+         Move(PByteArray(Items)^[Left*fSize],Temp^,fSize);
+         Move(PByteArray(Items)^[Middle*fSize],PByteArray(Items)^[Left*fSize],fSize);
+         Move(Temp^,PByteArray(Items)^[Middle*fSize],fSize);
+         TempPoolIndex:=fComponentPoolIndexToEntityIndex[Left];
+         fComponentPoolIndexToEntityIndex[Left]:=fComponentPoolIndexToEntityIndex[Middle];
+         fComponentPoolIndexToEntityIndex[Middle]:=TempPoolIndex;
+        end;
+        if CompareFunction(fComponentPoolIndexToEntityIndex[Left],fComponentPoolIndexToEntityIndex[Right])>0 then begin
+         Move(PByteArray(Items)^[Left*fSize],Temp^,fSize);
+         Move(PByteArray(Items)^[Right*fSize],PByteArray(Items)^[Left*fSize],fSize);
+         Move(Temp^,PByteArray(Items)^[Right*fSize],fSize);
+         TempPoolIndex:=fComponentPoolIndexToEntityIndex[Left];
+         fComponentPoolIndexToEntityIndex[Left]:=fComponentPoolIndexToEntityIndex[Right];
+         fComponentPoolIndexToEntityIndex[Right]:=TempPoolIndex;
+        end;
+        if CompareFunction(fComponentPoolIndexToEntityIndex[Middle],fComponentPoolIndexToEntityIndex[Right])>0 then begin
+         Move(PByteArray(Items)^[Middle*fSize],Temp^,fSize);
+         Move(PByteArray(Items)^[Right*fSize],PByteArray(Items)^[Middle*fSize],fSize);
+         Move(Temp^,PByteArray(Items)^[Right*fSize],fSize);
+         TempPoolIndex:=fComponentPoolIndexToEntityIndex[Middle];
+         fComponentPoolIndexToEntityIndex[Middle]:=fComponentPoolIndexToEntityIndex[Right];
+         fComponentPoolIndexToEntityIndex[Right]:=TempPoolIndex;
+        end;
+       end;
+       Move(PByteArray(Items)^[Middle*fSize],Pivot^,fSize);
+       PivotPoolIndex:=fComponentPoolIndexToEntityIndex[Middle];
+       i:=Left;
+       j:=Right;
+       repeat
+        while (i<Right) and (CompareFunction(fComponentPoolIndexToEntityIndex[i],PivotPoolIndex)<0) do begin
+         inc(i);
+        end;
+        while (j>=i) and (CompareFunction(fComponentPoolIndexToEntityIndex[j],PivotPoolIndex)>0) do begin
+         dec(j);
+        end;
+        if i>j then begin
+         break;
+        end else begin
+         if i<>j then begin
+          Move(PByteArray(Items)^[i*fSize],Temp^,fSize);
+          Move(PByteArray(Items)^[j*fSize],PByteArray(Items)^[i*fSize],fSize);
+          Move(Temp^,PByteArray(Items)^[j*fSize],fSize);
+          TempPoolIndex:=fComponentPoolIndexToEntityIndex[i];
+          fComponentPoolIndexToEntityIndex[i]:=fComponentPoolIndexToEntityIndex[j];
+          fComponentPoolIndexToEntityIndex[j]:=TempPoolIndex;
+         end;
+         inc(i);
+         dec(j);
+        end;
+       until false;
+       if i<Right then begin
+        StackItem^.Left:=i;
+        StackItem^.Right:=Right;
+        StackItem^.Depth:=Depth-1;
+        inc(StackItem);
+       end;
+       if Left<j then begin
+        StackItem^.Left:=Left;
+        StackItem^.Right:=j;
+        StackItem^.Depth:=Depth-1;
+        inc(StackItem);
+       end;
+      end;
+     end;
+    end;
+   finally
+    FreeMem(Pivot);
+    FreeMem(Temp);
+   end;
+  end;
+ end;
+var Index,OtherIndex:TpvSizeInt;
+    NeedToSort:boolean;
+begin
+ NeedToSort:=false;
+ for Index:=0 to fPoolIndexCounter-2 do begin
+  if fComponentPoolIndexToEntityIndex[Index]>fComponentPoolIndexToEntityIndex[Index+1] then begin
+   NeedToSort:=true;
+   break;
+  end;
+ end;
+ if NeedToSort then begin
+  IntroSort(0,fPoolIndexCounter-1);
+  for Index:=0 to fMaxEntityIndex do begin
+   fEntityIndexToComponentPoolIndex[Index]:=-1;
+  end;
+  for Index:=0 to fPoolIndexCounter-1 do begin
+   OtherIndex:=fComponentPoolIndexToEntityIndex[Index];
+   if OtherIndex>=0 then begin
+    fEntityIndexToComponentPoolIndex[OtherIndex]:=Index;
+   end;
+  end;
+  for Index:=0 to fMaxEntityIndex do begin
+   OtherIndex:=fEntityIndexToComponentPoolIndex[Index];
+   if OtherIndex>=0 then begin
+    fPointers[Index]:=TpvPointer(TpvPtrUInt(TpvPtrUInt(fPool)+TpvPtrUInt(TpvPtrUInt(OtherIndex)*TpvPtrUInt(fSize))));
+   end else begin
+    fPointers[Index]:=nil;
+   end;
+  end;
+  fCountFrees:=0;
+  fNeedToDefragment:=false;
+ end;
+end;
+
+procedure TpvComponentType.DefragmentIfNeeded;
+begin
+ if fNeedToDefragment then begin
+  fNeedToDefragment:=false;
+  Defragment;
+ end;
+end;
+
+function TpvComponentType.GetComponentPoolIndexForEntityIndex(const aEntityIndex:TpvSizeInt):TpvSizeInt;
+begin
+ if (aEntityIndex>=0) and
+    (aEntityIndex<=fMaxEntityIndex) and
+    ((fUsedBitmap[aEntityIndex shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityIndex and 31)))<>0) then begin
+  result:=fEntityIndexToComponentPoolIndex[aEntityIndex];
+ end else begin
+  result:=-1;
+ end;
+end;
+
+function TpvComponentType.IsComponentInEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
+begin
+ result:=(aEntityIndex>=0) and
+         (aEntityIndex<=fMaxEntityIndex) and
+         ((fUsedBitmap[aEntityIndex shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityIndex and 31)))<>0) and
+         (fEntityIndexToComponentPoolIndex[aEntityIndex]>=0);
+end;
+
+function TpvComponentType.GetEntityIndexByPoolIndex(const aPoolIndex:TpvSizeInt):TpvSizeInt;
+begin
+ if (aPoolIndex>=0) and
+    (aPoolIndex<fPoolIndexCounter) then begin
+  result:=fComponentPoolIndexToEntityIndex[aPoolIndex];
+ end else begin
+  result:=-1;
+ end;
+end;
+
+function TpvComponentType.GetComponentByPoolIndex(const aPoolIndex:TpvSizeInt):TpvPointer;
+begin
+ if (aPoolIndex>=0) and
+    (aPoolIndex<fPoolIndexCounter) then begin
+  result:=TpvPointer(TpvPtrUInt(TpvPtrUInt(fPool)+TpvPtrUInt(TpvPtrUInt(aPoolIndex)*TpvPtrUInt(fSize))));
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvComponentType.GetComponentByEntityIndex(const aEntityIndex:TpvSizeInt):TpvPointer;
+var PoolIndex:TpvSizeInt;
+begin
+ result:=nil;
+ if (aEntityIndex>=0) and
+    (aEntityIndex<=fMaxEntityIndex) and
+    ((fUsedBitmap[aEntityIndex shr 5] and TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityIndex and 31)))<>0) then begin
+  PoolIndex:=fComponentPoolIndexToEntityIndex[aEntityIndex];
+  if (PoolIndex>=0) and
+     (PoolIndex<fPoolIndexCounter) then begin
+   result:=TpvPointer(TpvPtrUInt(TpvPtrUInt(fPool)+TpvPtrUInt(TpvPtrUInt(PoolIndex)*TpvPtrUInt(fSize))));
+  end;
+ end;
+end;
+
+function TpvComponentType.AllocateComponentForEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
+var Index,PoolIndex,NewMaxEntityIndex,OldCapacity,OldCount,Count,OtherIndex,
+    OldPoolSize,NewPoolSize:TpvSizeInt;
+    Bitmap:PpvUInt32;
+    OldPoolAlignmentOffset:TpvPtrUInt;
+begin
+
+ result:=false;
+
+ if (aEntityIndex>=0) and
+    not ((aEntityIndex<=fMaxEntityIndex) and
+         (fEntityIndexToComponentPoolIndex[aEntityIndex]>=0)) then begin
+
+  if fMaxEntityIndex<aEntityIndex then begin
+   NewMaxEntityIndex:=(aEntityIndex+1)*2;
+   SetLength(fEntityIndexToComponentPoolIndex,NewMaxEntityIndex+1);
+   for Index:=fMaxEntityIndex+1 to NewMaxEntityIndex do begin
+    fEntityIndexToComponentPoolIndex[Index]:=-1;
+   end;
+   fMaxEntityIndex:=NewMaxEntityIndex;
+  end;
+
+  PoolIndex:=fPoolIndexCounter;
+  inc(fPoolIndexCounter);
+
+  if fCapacity<fPoolIndexCounter then begin
+   OldCapacity:=fCapacity;
+   fCapacity:=fPoolIndexCounter*2;
+   SetLength(fComponentPoolIndexToEntityIndex,fCapacity);
+   for Index:=OldCapacity to fCapacity-1 do begin
+    fComponentPoolIndexToEntityIndex[Index]:=-1;
+   end;
+  end;
+
+  NewPoolSize:=TpvSizeInt(fCapacity)*TpvSizeInt(fSize);
+  if fPoolSize<NewPoolSize then begin
+   OldPoolSize:=fPoolSize;
+   fPoolSize:=NewPoolSize*2;
+   if assigned(fPoolUnaligned) then begin
+    OldPoolAlignmentOffset:=TpvPtrUInt(TpvPtrUInt(fPool)-TpvPtrUInt(fPoolUnaligned));
+    ReallocMem(fPoolUnaligned,fPoolSize+(4096*2));
+    fPool:=TpvPointer(TpvPtrUInt(TpvPtrUInt(TpvPtrUInt(fPoolUnaligned)+4095) and not 4095));
+    if OldPoolAlignmentOffset<>TpvPtrUInt(TpvPtrUInt(fPool)-TpvPtrUInt(fPoolUnaligned)) then begin
+     // Move the old existent data to the new alignment offset
+     Move(TpvPointer(TpvPtrUInt(TpvPtrUInt(fPoolUnaligned)+TpvPtrUInt(OldPoolAlignmentOffset)))^,fPool^,fPoolSize);
+    end;
+    if OldPoolSize<fPoolSize then begin
+     FillChar(TpvPointer(TpvPtrUInt(TpvPtrUInt(fPool)+TpvPtrUInt(OldPoolSize)))^,fPoolSize-OldPoolSize,#0);
+    end;
+    for Index:=0 to fMaxEntityIndex do begin
+     OtherIndex:=fEntityIndexToComponentPoolIndex[Index];
+     if OtherIndex>=0 then begin
+      fPointers[Index]:=TpvPointer(TpvPtrUInt(TpvPtrUInt(fPool)+TpvPtrUInt(TpvPtrUInt(OtherIndex)*TpvPtrUInt(fSize))));
+     end else begin
+      fPointers[Index]:=nil;
+     end;
+    end;
+   end else begin
+    GetMem(fPoolUnaligned,fPoolSize+(4096*2));
+    fPool:=TpvPointer(TpvPtrUInt(TpvPtrUInt(TpvPtrUInt(fPoolUnaligned)+4095) and not 4095));
+    FillChar(fPool^,fPoolSize,#0);
+   end;
+  end;
+
+  OldCount:=length(fUsedBitmap);
+  Count:=((fMaxEntityIndex+1)+31) shr 5;
+  if OldCount<Count then begin
+   SetLength(fUsedBitmap,Count*2);
+   for Index:=OldCount to length(fUsedBitmap)-1 do begin
+    fUsedBitmap[Index]:=0;
+   end;
+  end;
+
+  OldCount:=length(fPointers);
+  Count:=fMaxEntityIndex+1;
+  if OldCount<Count then begin
+   SetLength(fPointers,Count*2);
+   for Index:=OldCount to length(fPointers)-1 do begin
+    fPointers[Index]:=nil;
+   end;
+   fDataPointer:=@fPointers[0];
+  end;
+
+  fEntityIndexToComponentPoolIndex[aEntityIndex]:=PoolIndex;
+  fComponentPoolIndexToEntityIndex[PoolIndex]:=aEntityIndex;
+
+  fPointers[aEntityIndex]:=TpvPointer(TpvPtrUInt(TpvPtrUInt(fPool)+TpvPtrUInt(TpvPtrUInt(PoolIndex)*TpvPtrUInt(fSize))));
+
+//FillChar(TpvPointer(TpvPtrUInt(TpvPtrUInt(fPool)+TpvPtrUInt(TpvPtrUInt(PoolIndex)*TpvPtrUInt(fSize))))^,fSize,#0);
+
+  Bitmap:=@fUsedBitmap[aEntityIndex shr 5];
+  Bitmap^:=Bitmap^ or TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityIndex and 31));
+
+  result:=true;
+
+ end;
+
+end;
+
+function TpvComponentType.FreeComponentFromEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
+var PoolIndex,OtherPoolIndex,OtherEntityID:longint;
+    Mask:TpvUInt32;
+    Bitmap:PpvUInt32;
+begin
+ result:=false;
+ Bitmap:=@fUsedBitmap[aEntityIndex shr 5];
+ Mask:=TpvUInt32(TpvUInt32(1) shl TpvUInt32(aEntityIndex and 31));
+ if (aEntityIndex>=0) and
+    (aEntityIndex<=fMaxEntityIndex) and
+    ((Bitmap^ and Mask)<>0) and
+    (fEntityIndexToComponentPoolIndex[aEntityIndex]>=0) then begin
+  Bitmap^:=Bitmap^ and not Mask;
+  PoolIndex:=fEntityIndexToComponentPoolIndex[aEntityIndex];
+  FinalizeComponentByPoolIndex(PoolIndex);
+  fPointers[aEntityIndex]:=nil;
+  dec(fPoolIndexCounter);
+  if fPoolIndexCounter>0 then begin
+   OtherPoolIndex:=fPoolIndexCounter;
+   OtherEntityID:=fComponentPoolIndexToEntityIndex[OtherPoolIndex];
+   fEntityIndexToComponentPoolIndex[OtherEntityID]:=PoolIndex;
+   fComponentPoolIndexToEntityIndex[PoolIndex]:=OtherEntityID;
+   fComponentPoolIndexToEntityIndex[OtherPoolIndex]:=-1;
+   Move(TpvPointer(TpvPtrUInt(TpvPtrUInt(fPool)+TpvPtrUInt(TpvPtrUInt(OtherPoolIndex)*TpvPtrUInt(fSize))))^,
+        TpvPointer(TpvPtrUInt(TpvPtrUInt(fPool)+TpvPtrUInt(TpvPtrUInt(PoolIndex)*TpvPtrUInt(fSize))))^,
+        fSize);
+   fPointers[OtherEntityID]:=TpvPointer(TpvPtrUInt(TpvPtrUInt(fPool)+TpvPtrUInt(TpvPtrUInt(PoolIndex)*TpvPtrUInt(fSize))));
+  end else begin
+   fComponentPoolIndexToEntityIndex[PoolIndex]:=-1;
+  end;
+  fEntityIndexToComponentPoolIndex[aEntityIndex]:=-1;
+  inc(fCountFrees);
+  if fCountFrees>(fPoolIndexCounter shr 2) then begin
+   fNeedToDefragment:=true;
+  end;
  end;
 end;
 
