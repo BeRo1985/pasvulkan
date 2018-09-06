@@ -79,26 +79,26 @@ const pvComponentSortKeyDefault:TpvComponentSortKey=
         SortKey:0;
        );
 
-var pvComponentSortKey:TpvRegisteredComponentType=nil;
+var pvComponentSortKey:TpvEntityComponentSystem.TRegisteredComponentType=nil;
 
-    pvComponentSortKeyID:TpvComponentTypeID=0;
+    pvComponentSortKeyID:TpvEntityComponentSystem.TComponentID=0;
 
 implementation
 
 procedure Register;
 begin
 
- pvComponentSortKey:=TpvRegisteredComponentType.Create('sortkey',
-                                                       'Sort key',
-                                                       ['Base','Sort key'],
-                                                       SizeOf(TpvComponentSortKey),
-                                                       @pvComponentSortKeyDefault);
+ pvComponentSortKey:=TpvEntityComponentSystem.TRegisteredComponentType.Create('sortkey',
+                                                                                'Sort key',
+                                                                                ['Base','Sort key'],
+                                                                                SizeOf(TpvComponentSortKey),
+                                                                                @pvComponentSortKeyDefault);
 
  pvComponentSortKeyID:=pvComponentSortKey.ID;
 
  pvComponentSortKey.Add('sortkey',
                         'Sort key',
-                        TpvRegisteredComponentType.TField.TElementType.UnsignedInteger,
+                        TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.UnsignedInteger,
                         SizeOf(PpvComponentSortKey(nil)^.SortKey),
                         1,
                         TpvPtrUInt(@PpvComponentSortKey(nil)^.SortKey),

@@ -71,7 +71,7 @@ uses SysUtils,
 type PpvComponentParent=^TpvComponentParent;
      TpvComponentParent=record
       public
-       Parent:TpvEntityID;
+       Parent:TpvEntityComponentSystem.TEntityID;
      end;
 
 const pvComponentParentDefault:TpvComponentParent=
@@ -79,26 +79,26 @@ const pvComponentParentDefault:TpvComponentParent=
         Parent:$ffffffff;
        );
 
-var pvComponentParent:TpvRegisteredComponentType=nil;
+var pvComponentParent:TpvEntityComponentSystem.TRegisteredComponentType=nil;
 
-    pvComponentParentID:TpvComponentTypeID=0;
+    pvComponentParentID:TpvEntityComponentSystem.TComponentID=0;
 
 implementation
 
 procedure Register;
 begin
 
- pvComponentParent:=TpvRegisteredComponentType.Create('parent',
-                                                      'Parent',
-                                                      ['Base','Parent'],
-                                                      SizeOf(TpvComponentParent),
-                                                      @pvComponentParentDefault);
+ pvComponentParent:=TpvEntityComponentSystem.TRegisteredComponentType.Create('parent',
+                                                                               'Parent',
+                                                                               ['Base','Parent'],
+                                                                               SizeOf(TpvComponentParent),
+                                                                               @pvComponentParentDefault);
 
  pvComponentParentID:=pvComponentParent.ID;
 
  pvComponentParent.Add('parent',
                        'Parent',
-                       TpvRegisteredComponentType.TField.TElementType.EntityID,
+                       TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.EntityID,
                        SizeOf(PpvComponentParent(nil)^.Parent),
                        1,
                        TpvPtrUInt(@PpvComponentParent(nil)^.Parent),

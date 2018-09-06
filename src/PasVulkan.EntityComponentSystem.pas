@@ -72,180 +72,220 @@ uses {$ifdef Windows}Windows,{$endif}SysUtils,Classes,Math,Variants,TypInfo,
      PasVulkan.Base64,
      PasVulkan.Collections;
 
-type EpvSystemCircularDependency=class(Exception);
-
-     EpvSystemSerialization=class(Exception);
-
-     EpvSystemUnserialization=class(Exception);
-
-     EpvDuplicateComponentInEntity=class(Exception);
-
-     PpvComponentTypeID=^TpvComponentTypeID;
-     TpvComponentTypeID=type TpvSizeUInt;
-
-     TpvComponentTypeIDDynamicArray=array of TpvComponentTypeID;
-
-     PpvEntityID=^TpvEntityID;
-     TpvEntityID=type TpvUInt32;
-
-     TpvEntityIDs=array of TpvEntityID;
-
-     TpvEntityIDHelper=record helper for TpvEntityID
-      private
-       const IndexBits=24; // when all these bits set, then => -1
-             GenerationBits=8;
-             InverseIndexBits=32-IndexBits;
-             IndexBitsMinusOne=TpvUInt32(IndexBits-1);
-             IndexSignBitMask=TpvUInt32(1 shl IndexBitsMinusOne);
-             IndexMask=TpvUInt32((TpvUInt32(1) shl IndexBits)-1);
-             GenerationMask=TpvUInt32(not IndexMask);
-       function GetIndex:TpvInt32; inline;
-       procedure SetIndex(const aIndex:TpvInt32); inline;
-       function GetGeneration:TpvUInt8; inline;
-       procedure SetGeneration(const aGeneration:TpvUInt8); inline;
+type TpvEntityComponentSystem=class
       public
-       property Index:TpvInt32 read GetIndex write SetIndex;
-       property Generation:TpvUInt8 read GetGeneration write SetGeneration;
-     end;
+       type ESystemCircularDependency=class(Exception);
 
-     PpvWorldID=^TpvWorldID;
-     TpvWorldID=type TpvInt32;
+            ESystemSerialization=class(Exception);
 
-     PpvEventID=^TpvEventID;
-     TpvEventID=type TpvInt32;
+            ESystemUnserialization=class(Exception);
 
-     EpvRegisteredComponentType=class(Exception);
+            EDuplicateComponentInEntity=class(Exception);
 
-     TpvRegisteredComponentType=class
-      public
-       type TPath=array of TpvUTF8String;
-            TField=record
+            PComponentID=^TComponentID;
+            TComponentID=type TpvSizeUInt;
+
+            TComponentIDDynamicArray=array of TComponentID;
+
+            PEntityID=^TEntityID;
+            TEntityID=type TpvUInt32;
+
+            TEntityIDDynamicArray=array of TEntityID;
+
+            TEntityIDHelper=record helper for TEntityID
+             private
+              const IndexBits=24; // when all these bits set, then => -1
+                    GenerationBits=8;
+                    InverseIndexBits=32-IndexBits;
+                    IndexBitsMinusOne=TpvUInt32(IndexBits-1);
+                    IndexSignBitMask=TpvUInt32(1 shl IndexBitsMinusOne);
+                    IndexMask=TpvUInt32((TpvUInt32(1) shl IndexBits)-1);
+                    GenerationMask=TpvUInt32(not IndexMask);
+              function GetIndex:TpvInt32; inline;
+              procedure SetIndex(const aIndex:TpvInt32); inline;
+              function GetGeneration:TpvUInt8; inline;
+              procedure SetGeneration(const aGeneration:TpvUInt8); inline;
              public
-              type TElementType=
-                    (
-                     EntityID,
-                     Enumeration,
-                     Flags,
-                     Boolean,
-                     SignedInteger,
-                     UnsignedInteger,
-                     FloatingPoint,
-                     LengthPrefixedString,
-                     ZeroTerminatedString,
-                     Blob
-                    );
-                   PElementType=^TElementType;
-                   TEnumerationOrFlag=record
-                    Value:TpvUInt64;
-                    Name:TpvUTF8String;
-                    DisplayName:TpvUTF8String;
-                    constructor Create(const aValue:TpvUInt64;
-                                       const aName:TpvUTF8String;
-                                       const aDisplayName:TpvUTF8String);
-                   end;
-                   TEnumerationsOrFlags=array of TEnumerationOrFlag;
-             public
-              Name:TpvUTF8String;
-              DisplayName:TpvUTF8String;
-              ElementType:TElementType;
-              ElementSize:TpvSizeInt;
-              ElementCount:TpvSizeInt;
-              Offset:TpvSizeInt;
-              Size:TpvSizeInt;
-              EnumerationsOrFlags:TEnumerationsOrFlags;
+              property Index:TpvInt32 read GetIndex write SetIndex;
+              property Generation:TpvUInt8 read GetGeneration write SetGeneration;
             end;
-            PField=^TField;
-            TFields=array of TField;
-      private
-       fID:TpvSizeUInt;
-       fName:TpvUTF8String;
-       fDisplayName:TpvUTF8String;
-       fPath:TPath;
-       fSize:TpvSizeInt;
-       fFields:TFields;
-       fCountFields:TpvSizeInt;
-       fDefault:TpvUInt8DynamicArray;
-       fEditorWidget:TpvPointer;
-      public
-       constructor Create(const aName:TpvUTF8String;
-                          const aDisplayName:TpvUTF8String;
-                          const aPath:array of TpvUTF8String;
-                          const aSize:TpvSizeInt;
-                          const aDefault:TpvPointer); reintroduce;
-       destructor Destroy; override;
-       class function GetSetOrdValue(const Info:PTypeInfo;const SetParam):TpvUInt64; static;
-       procedure Add(const aName:TpvUTF8String;
-                     const aDisplayName:TpvUTF8String;
-                     const aElementType:TField.TElementType;
-                     const aElementSize:TpvSizeInt;
-                     const aElementCount:TpvSizeInt;
-                     const aOffset:TpvSizeInt;
-                     const aSize:TpvSizeInt;
-                     const aEnumerationsOrFlags:array of TField.TEnumerationOrFlag);
-       procedure Finish;
-       function SerializeToJSON(const aData:TpvPointer):TPasJSONItemObject;
-       procedure UnserializeFromJSON(const aJSON:TPasJSONItem;const aData:TpvPointer);
-       property Fields:TFields read fFields;
-       property EditorWidget:TpvPointer read fEditorWidget write fEditorWidget;
-       property Path:TPath read fPath;
-      published
-       property ID:TpvSizeUInt read fID;
-       property Size:TpvSizeInt read fSize;
-       property Default:TpvUInt8DynamicArray read fDefault;
+
+            PWorldID=^TWorldID;
+            TWorldID=type TpvInt32;
+
+            PEventID=^TEventID;
+            TEventID=type TpvInt32;
+
+            ERegisteredComponentType=class(Exception);
+
+            TRegisteredComponentType=class
+             public
+              type TPath=array of TpvUTF8String;
+                   TField=record
+                    public
+                     type TElementType=
+                           (
+                            EntityID,
+                            Enumeration,
+                            Flags,
+                            Boolean,
+                            SignedInteger,
+                            UnsignedInteger,
+                            FloatingPoint,
+                            LengthPrefixedString,
+                            ZeroTerminatedString,
+                            Blob
+                           );
+                          PElementType=^TElementType;
+                          TEnumerationOrFlag=record
+                           Value:TpvUInt64;
+                           Name:TpvUTF8String;
+                           DisplayName:TpvUTF8String;
+                           constructor Create(const aValue:TpvUInt64;
+                                              const aName:TpvUTF8String;
+                                              const aDisplayName:TpvUTF8String);
+                          end;
+                          TEnumerationsOrFlags=array of TEnumerationOrFlag;
+                    public
+                     Name:TpvUTF8String;
+                     DisplayName:TpvUTF8String;
+                     ElementType:TElementType;
+                     ElementSize:TpvSizeInt;
+                     ElementCount:TpvSizeInt;
+                     Offset:TpvSizeInt;
+                     Size:TpvSizeInt;
+                     EnumerationsOrFlags:TEnumerationsOrFlags;
+                   end;
+                   PField=^TField;
+                   TFields=array of TField;
+             private
+              fID:TpvSizeUInt;
+              fName:TpvUTF8String;
+              fDisplayName:TpvUTF8String;
+              fPath:TPath;
+              fSize:TpvSizeInt;
+              fFields:TFields;
+              fCountFields:TpvSizeInt;
+              fDefault:TpvUInt8DynamicArray;
+              fEditorWidget:TpvPointer;
+             public
+              constructor Create(const aName:TpvUTF8String;
+                                 const aDisplayName:TpvUTF8String;
+                                 const aPath:array of TpvUTF8String;
+                                 const aSize:TpvSizeInt;
+                                 const aDefault:TpvPointer); reintroduce;
+              destructor Destroy; override;
+              class function GetSetOrdValue(const Info:PTypeInfo;const SetParam):TpvUInt64; static;
+              procedure Add(const aName:TpvUTF8String;
+                            const aDisplayName:TpvUTF8String;
+                            const aElementType:TField.TElementType;
+                            const aElementSize:TpvSizeInt;
+                            const aElementCount:TpvSizeInt;
+                            const aOffset:TpvSizeInt;
+                            const aSize:TpvSizeInt;
+                            const aEnumerationsOrFlags:array of TField.TEnumerationOrFlag);
+              procedure Finish;
+              function SerializeToJSON(const aData:TpvPointer):TPasJSONItemObject;
+              procedure UnserializeFromJSON(const aJSON:TPasJSONItem;const aData:TpvPointer);
+              property Fields:TFields read fFields;
+              property EditorWidget:TpvPointer read fEditorWidget write fEditorWidget;
+              property Path:TPath read fPath;
+             published
+              property ID:TpvSizeUInt read fID;
+              property Size:TpvSizeInt read fSize;
+              property Default:TpvUInt8DynamicArray read fDefault;
+            end;
+
+            TRegisteredComponentTypeList=TpvObjectGenericList<TRegisteredComponentType>;
+
+            TComponent=class
+             public
+              type TIndexMapArray=array of TpvSizeInt;
+                   TUsedBitmap=array of TpvUInt32;
+                   TPointers=array of TpvPointer;
+             private
+              fRegisteredComponentType:TRegisteredComponentType;
+              fComponentPoolIndexToEntityIndex:TIndexMapArray;
+              fEntityIndexToComponentPoolIndex:TIndexMapArray;
+              fUsedBitmap:TUsedBitmap;
+              fSize:TpvSizeInt;
+              fPoolUnaligned:TpvPointer;
+              fPool:TpvPointer;
+              fPoolSize:TpvSizeInt;
+              fCountPoolItems:TpvSizeInt;
+              fCapacity:TpvSizeInt;
+              fPoolIndexCounter:TpvSizeInt;
+              fMaxEntityIndex:TpvSizeInt;
+              fCountFrees:TpvSizeInt;
+              fNeedToDefragment:boolean;
+              fPointers:TPointers;
+              fDataPointer:TpvPointer;
+              procedure FinalizeComponentByPoolIndex(const aPoolIndex:TpvSizeInt);
+              function GetEntityIndexByPoolIndex(const aPoolIndex:TpvSizeInt):TpvSizeInt; inline;
+              function GetComponentByPoolIndex(const aPoolIndex:TpvSizeInt):TpvPointer; inline;
+              function GetComponentByEntityIndex(const aEntityIndex:TpvSizeInt):TpvPointer; inline;
+              procedure SetMaxEntities(const aCount:TpvSizeInt);
+             public
+              constructor Create(const aRegisteredComponentType:TRegisteredComponentType); reintroduce;
+              destructor Destroy; override;
+              procedure Defragment;
+              procedure DefragmentIfNeeded;
+              function IsComponentInEntityIndex(const aEntityIndex:TpvSizeInt):boolean; inline;
+              function GetComponentPoolIndexForEntityIndex(const aEntityIndex:TpvSizeInt):TpvSizeInt; inline;
+              function AllocateComponentForEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
+              function FreeComponentFromEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
+             public
+              property Pool:TpvPointer read fPool;
+              property PoolSize:TpvSizeInt read fPoolSize;
+              property CountPoolItems:TpvSizeInt read fCountPoolItems;
+              property EntityIndexByPoolIndex[const aPoolIndex:TpvSizeInt]:TpvSizeInt read GetEntityIndexByPoolIndex;
+              property ComponentByPoolIndex[const aPoolIndex:TpvSizeInt]:pointer read GetComponentByPoolIndex;
+              property ComponentByEntityIndex[const aEntityIndex:TpvSizeInt]:pointer read GetComponentByEntityIndex;
+              property Pointers:TPointers read fPointers;
+              property DataPointer:pointer read fDataPointer;
+             published
+              property RegisteredComponentType:TRegisteredComponentType read fRegisteredComponentType;
+            end;
+
+            PEntity=^TEntity;
+            TEntity=record
+             public
+              type TFlag=
+                    (
+                     Used,
+                     Active,
+                     Killed
+                    );
+                    TFlags=set of TFlag;
+             private
+              fID:TEntityID;
+              fFlags:TFlags;
+             public
+              property ID:TEntityID read fID write fID;
+              property Flags:TFlags read fFlags write fFlags;
+            end;
+
+            TpvEntities=array of TEntity;
+
+            TpvWorld=class
+             public
+              type TEntityIndexFreeList=TpvGenericList<TpvSizeInt>;
+                   TEntityGenerationList=TpvDynamicArray<TpvUInt8>;
+                   TUsedBitmap=array of TpvUInt32;
+             private
+              fEntities:TpvEntities;
+              fEntityIndexFreeList:TEntityIndexFreeList;
+              fEntityGenerationList:TEntityGenerationList;
+              fEntityUsedBitmap:TUsedBitmap;
+              fEntityIndexCounter:TpvSizeInt;
+              fMaxEntityIndex:TpvSizeInt;
+             public
+
+            end;
+
      end;
 
-     TpvRegisteredComponentTypeList=TpvObjectGenericList<TpvRegisteredComponentType>;
-
-     TpvComponentType=class
-      public
-       type TIndexMapArray=array of TpvSizeInt;
-            TUsedBitmap=array of TpvUInt32;
-            TPointers=array of TpvPointer;
-      private
-       fRegisteredComponentType:TpvRegisteredComponentType;
-       fComponentPoolIndexToEntityIndex:TIndexMapArray;
-       fEntityIndexToComponentPoolIndex:TIndexMapArray;
-       fUsedBitmap:TUsedBitmap;
-       fSize:TpvSizeInt;
-       fPoolUnaligned:TpvPointer;
-       fPool:TpvPointer;
-       fPoolSize:TpvSizeInt;
-       fCountPoolItems:TpvSizeInt;
-       fCapacity:TpvSizeInt;
-       fPoolIndexCounter:TpvSizeInt;
-       fMaxEntityIndex:TpvSizeInt;
-       fCountFrees:TpvSizeInt;
-       fNeedToDefragment:boolean;
-       fPointers:TPointers;
-       fDataPointer:TpvPointer;
-       procedure FinalizeComponentByPoolIndex(const aPoolIndex:TpvSizeInt);
-       function GetEntityIndexByPoolIndex(const aPoolIndex:TpvSizeInt):TpvSizeInt; inline;
-       function GetComponentByPoolIndex(const aPoolIndex:TpvSizeInt):TpvPointer; inline;
-       function GetComponentByEntityIndex(const aEntityIndex:TpvSizeInt):TpvPointer; inline;
-       procedure SetMaxEntities(const aCount:TpvSizeInt);
-      public
-       constructor Create(const aRegisteredComponentType:TpvRegisteredComponentType); reintroduce;
-       destructor Destroy; override;
-       procedure Defragment;
-       procedure DefragmentIfNeeded;
-       function IsComponentInEntityIndex(const aEntityIndex:TpvSizeInt):boolean; inline;
-       function GetComponentPoolIndexForEntityIndex(const aEntityIndex:TpvSizeInt):TpvSizeInt; inline;
-       function AllocateComponentForEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
-       function FreeComponentFromEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
-      public
-       property Pool:TpvPointer read fPool;
-       property PoolSize:TpvSizeInt read fPoolSize;
-       property CountPoolItems:TpvSizeInt read fCountPoolItems;
-       property EntityIndexByPoolIndex[const aPoolIndex:TpvSizeInt]:TpvSizeInt read GetEntityIndexByPoolIndex;
-       property ComponentByPoolIndex[const aPoolIndex:TpvSizeInt]:pointer read GetComponentByPoolIndex;
-       property ComponentByEntityIndex[const aEntityIndex:TpvSizeInt]:pointer read GetComponentByEntityIndex;
-       property Pointers:TPointers read fPointers;
-       property DataPointer:pointer read fDataPointer;
-      published
-       property RegisteredComponentType:TpvRegisteredComponentType read fRegisteredComponentType;
-     end;
-
-var RegisteredComponentTypeList:TpvRegisteredComponentTypeList=nil;
+var RegisteredComponentTypeList:TpvEntityComponentSystem.TRegisteredComponentTypeList=nil;
 
 procedure InitializeEntityComponentSystemGlobals;
 
@@ -257,34 +297,34 @@ uses PasVulkan.Components.Name,
      PasVulkan.Components.SortKey,
      PasVulkan.Components.Transform;
 
-{ TpvEntityIDHelper }
+{ TpvEntityComponentSystem.TpvEntityIDHelper }
 
-function TpvEntityIDHelper.GetIndex:TpvInt32;
+function TpvEntityComponentSystem.TEntityIDHelper.GetIndex:TpvInt32;
 begin
  result:=self and IndexMask;
  result:=result or (-(ord(result=IndexMask) and 1));
 end;
 
-procedure TpvEntityIDHelper.SetIndex(const aIndex:TpvInt32);
+procedure TpvEntityComponentSystem.TEntityIDHelper.SetIndex(const aIndex:TpvInt32);
 begin
  self:=(self and GenerationMask) or (TpvUInt32(aIndex) and IndexMask);
 end;
 
-function TpvEntityIDHelper.GetGeneration:TpvUInt8;
+function TpvEntityComponentSystem.TEntityIDHelper.GetGeneration:TpvUInt8;
 begin
  result:=self shr IndexBits;
 end;
 
-procedure TpvEntityIDHelper.SetGeneration(const aGeneration:TpvUInt8);
+procedure TpvEntityComponentSystem.TEntityIDHelper.SetGeneration(const aGeneration:TpvUInt8);
 begin
  self:=(self and IndexMask) or (aGeneration shl IndexBits);
 end;
 
-{ TpvRegisteredComponentType.TField.TEnumerationOrFlag }
+{ TpvEntityComponentSystem.TpvRegisteredComponentType.TField.TEnumerationOrFlag }
 
-constructor TpvRegisteredComponentType.TField.TEnumerationOrFlag.Create(const aValue:TpvUInt64;
-                                                                        const aName:TpvUTF8String;
-                                                                        const aDisplayName:TpvUTF8String);
+constructor TpvEntityComponentSystem.TRegisteredComponentType.TField.TEnumerationOrFlag.Create(const aValue:TpvUInt64;
+                                                                                                 const aName:TpvUTF8String;
+                                                                                                 const aDisplayName:TpvUTF8String);
 begin
  Value:=aValue;
  Name:=aName;
@@ -293,11 +333,11 @@ end;
 
 { TpvRegisteredComponentType }
 
-constructor TpvRegisteredComponentType.Create(const aName:TpvUTF8String;
-                                              const aDisplayName:TpvUTF8String;
-                                              const aPath:array of TpvUTF8String;
-                                              const aSize:TpvSizeInt;
-                                              const aDefault:TpvPointer);
+constructor TpvEntityComponentSystem.TRegisteredComponentType.Create(const aName:TpvUTF8String;
+                                                                       const aDisplayName:TpvUTF8String;
+                                                                       const aPath:array of TpvUTF8String;
+                                                                       const aSize:TpvSizeInt;
+                                                                       const aDefault:TpvPointer);
 var Index:TpvSizeInt;
 begin
  inherited Create;
@@ -321,14 +361,14 @@ begin
  end;
 end;
 
-destructor TpvRegisteredComponentType.Destroy;
+destructor TpvEntityComponentSystem.TRegisteredComponentType.Destroy;
 begin
  fFields:=nil;
  fDefault:=nil;
  inherited Destroy;
 end;
 
-class function TpvRegisteredComponentType.GetSetOrdValue(const Info:PTypeInfo;const SetParam):TpvUInt64;
+class function TpvEntityComponentSystem.TRegisteredComponentType.GetSetOrdValue(const Info:PTypeInfo;const SetParam):TpvUInt64;
 begin
  result:=0;
  case GetTypeData(Info)^.OrdType of
@@ -344,16 +384,16 @@ begin
  end;
 end;
 
-procedure TpvRegisteredComponentType.Add(const aName:TpvUTF8String;
-                                         const aDisplayName:TpvUTF8String;
-                                         const aElementType:TField.TElementType;
-                                         const aElementSize:TpvSizeInt;
-                                         const aElementCount:TpvSizeInt;
-                                         const aOffset:TpvSizeInt;
-                                         const aSize:TpvSizeInt;
-                                         const aEnumerationsOrFlags:array of TField.TEnumerationOrFlag);
+procedure TpvEntityComponentSystem.TRegisteredComponentType.Add(const aName:TpvUTF8String;
+                                                                  const aDisplayName:TpvUTF8String;
+                                                                  const aElementType:TField.TElementType;
+                                                                  const aElementSize:TpvSizeInt;
+                                                                  const aElementCount:TpvSizeInt;
+                                                                  const aOffset:TpvSizeInt;
+                                                                  const aSize:TpvSizeInt;
+                                                                  const aEnumerationsOrFlags:array of TField.TEnumerationOrFlag);
 var Index:TpvSizeInt;
-    Field:TpvRegisteredComponentType.PField;
+    Field:TRegisteredComponentType.PField;
 begin
  Index:=fCountFields;
  inc(fCountFields);
@@ -374,12 +414,12 @@ begin
  end;
 end;
 
-procedure TpvRegisteredComponentType.Finish;
+procedure TpvEntityComponentSystem.TRegisteredComponentType.Finish;
 begin
  SetLength(fFields,fCountFields);
 end;
 
-function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPasJSONItemObject;
+function TpvEntityComponentSystem.TRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPasJSONItemObject;
  function GetElementValue(const aField:PField;
                           const aValueData:TpvPointer):TPasJSONItem;
  var Data:TpvPointer;
@@ -392,7 +432,7 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPas
   result:=nil;
   Data:=aValueData;
   case aField^.ElementType of
-   TpvRegisteredComponentType.TField.TElementType.EntityID:begin
+   TRegisteredComponentType.TField.TElementType.EntityID:begin
     case aField^.ElementSize of
      1:begin
       UnsignedInteger:=PpvUInt8(Data)^;
@@ -407,7 +447,7 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPas
       UnsignedInteger:=PpvUInt64(Data)^;
      end;
      else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-04-23-58-0000');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-04-23-58-0000');
      end;
     end;
     if abs(SignedInteger)<TpvInt64($0010000000000000) then begin
@@ -416,7 +456,7 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPas
      result:=TPasJSONItemString.Create(IntToStr(UnsignedInteger));
     end;
    end;
-   TpvRegisteredComponentType.TField.TElementType.Enumeration:begin
+   TRegisteredComponentType.TField.TElementType.Enumeration:begin
     case aField^.ElementSize of
      1:begin
       UnsignedInteger:=PpvUInt8(Data)^;
@@ -431,7 +471,7 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPas
       UnsignedInteger:=PpvUInt64(Data)^;
      end;
      else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-04-23-36-0000');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-04-23-36-0000');
      end;
     end;
     EnumerationFlagIndex:=0;
@@ -446,7 +486,7 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPas
      result:=TPasJSONItemString.Create('');
     end;
    end;
-   TpvRegisteredComponentType.TField.TElementType.Flags:begin
+   TRegisteredComponentType.TField.TElementType.Flags:begin
     case aField^.ElementSize of
      1:begin
       UnsignedInteger:=PpvUInt8(Data)^;
@@ -461,7 +501,7 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPas
       UnsignedInteger:=PpvUInt64(Data)^;
      end;
      else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-04-23-36-0000');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-04-23-36-0000');
      end;
     end;
     result:=TPasJSONItemArray.Create;
@@ -471,7 +511,7 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPas
      end;
     end;
    end;
-   TpvRegisteredComponentType.TField.TElementType.Boolean:begin
+   TRegisteredComponentType.TField.TElementType.Boolean:begin
     case aField^.ElementSize of
      1:begin
       UnsignedInteger:=PpvUInt8(Data)^;
@@ -486,12 +526,12 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPas
       UnsignedInteger:=PpvUInt64(Data)^;
      end;
      else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-00-25-0000');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-05-00-25-0000');
      end;
     end;
     result:=TPasJSONItemBoolean.Create(UnsignedInteger<>0);
    end;
-   TpvRegisteredComponentType.TField.TElementType.SignedInteger:begin
+   TRegisteredComponentType.TField.TElementType.SignedInteger:begin
     case aField^.ElementSize of
      1:begin
       SignedInteger:=PpvInt8(Data)^;
@@ -506,7 +546,7 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPas
       SignedInteger:=PpvInt64(Data)^;
      end;
      else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-00-15-0001');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-05-00-15-0001');
      end;
     end;
     if abs(SignedInteger)<TpvUInt64($0010000000000000) then begin
@@ -515,7 +555,7 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPas
      result:=TPasJSONItemString.Create(IntToStr(SignedInteger));
     end;
    end;
-   TpvRegisteredComponentType.TField.TElementType.UnsignedInteger:begin
+   TRegisteredComponentType.TField.TElementType.UnsignedInteger:begin
     case aField^.ElementSize of
      1:begin
       UnsignedInteger:=PpvUInt8(Data)^;
@@ -530,7 +570,7 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPas
       UnsignedInteger:=PpvUInt64(Data)^;
      end;
      else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-00-15-0000');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-05-00-15-0000');
      end;
     end;
     if UnsignedInteger<TpvUInt64($0010000000000000) then begin
@@ -539,7 +579,7 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPas
      result:=TPasJSONItemString.Create(IntToStr(UnsignedInteger));
     end;
    end;
-   TpvRegisteredComponentType.TField.TElementType.FloatingPoint:begin
+   TRegisteredComponentType.TField.TElementType.FloatingPoint:begin
     case aField^.ElementSize of
      2:begin
       FloatValue:=PpvHalfFloat(Data)^;
@@ -551,12 +591,12 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPas
       FloatValue:=PpvDouble(Data)^;
      end;
      else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-00-22-0000');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-05-00-22-0000');
      end;
     end;
     result:=TPasJSONItemNumber.Create(FloatValue);
    end;
-   TpvRegisteredComponentType.TField.TElementType.LengthPrefixedString:begin
+   TRegisteredComponentType.TField.TElementType.LengthPrefixedString:begin
     UnsignedInteger:=PpvUInt8(Data)^;
     StringValue:='';
     if UnsignedInteger>0 then begin
@@ -565,15 +605,15 @@ function TpvRegisteredComponentType.SerializeToJSON(const aData:TpvPointer):TPas
     end;
     result:=TPasJSONItemString.Create(StringValue);
    end;
-   TpvRegisteredComponentType.TField.TElementType.ZeroTerminatedString:begin
+   TRegisteredComponentType.TField.TElementType.ZeroTerminatedString:begin
     StringValue:=PAnsiChar(Data);
     result:=TPasJSONItemString.Create(StringValue);
    end;
-   TpvRegisteredComponentType.TField.TElementType.Blob:begin
+   TRegisteredComponentType.TField.TElementType.Blob:begin
     result:=TPasJSONItemString.Create(TpvBase64.Encode(Data^,aField^.ElementSize));
    end;
    else begin
-    raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-00-11-0000');
+    raise ERegisteredComponentType.Create('Internal error 2018-09-05-00-11-0000');
    end;
   end;
  end;
@@ -605,7 +645,7 @@ begin
  end;
 end;
 
-procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONItem;const aData:TpvPointer);
+procedure TpvEntityComponentSystem.TRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONItem;const aData:TpvPointer);
  procedure SetField(const aField:PField;
                     const aData:TpvPointer;
                     const aJSONItemValue:TPasJSONItem);
@@ -619,7 +659,7 @@ procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONIte
      Stream:TMemoryStream;
  begin
   case aField^.ElementType of
-   TpvRegisteredComponentType.TField.TElementType.EntityID:begin
+   TRegisteredComponentType.TField.TElementType.EntityID:begin
     if aJSONItemValue is TPasJSONItemNumber then begin
      UnsignedInteger:=trunc(TPasJSONItemNumber(aJSONItemValue).Value);
     end else if aJSONItemValue is TPasJSONItemString then begin
@@ -643,11 +683,11 @@ procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONIte
       PpvUInt64(aData)^:=UnsignedInteger;
      end;
      else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-01-24-0000');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-05-01-24-0000');
      end;
     end;
    end;
-   TpvRegisteredComponentType.TField.TElementType.Enumeration:begin
+   TRegisteredComponentType.TField.TElementType.Enumeration:begin
     if aJSONItemValue is TPasJSONItemString then begin
      StringValue:=TPasJSONItemString(aJSONItemValue).Value;
     end else begin
@@ -674,11 +714,11 @@ procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONIte
       PpvUInt64(aData)^:=UnsignedInteger;
      end;
      else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-01-29-0000');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-05-01-29-0000');
      end;
     end;
    end;
-   TpvRegisteredComponentType.TField.TElementType.Flags:begin
+   TRegisteredComponentType.TField.TElementType.Flags:begin
     UnsignedInteger:=0;
     if aJSONItemValue is TPasJSONItemArray then begin
      for ArrayItemIndex:=0 to TPasJSONItemArray(aJSONItemValue).Count-1 do begin
@@ -711,11 +751,11 @@ procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONIte
       PpvUInt64(aData)^:=UnsignedInteger;
      end;
      else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-01-33-0000');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-05-01-33-0000');
      end;
     end;
    end;
-   TpvRegisteredComponentType.TField.TElementType.Boolean:begin
+   TRegisteredComponentType.TField.TElementType.Boolean:begin
     if aJSONItemValue is TPasJSONItemNumber then begin
      UnsignedInteger:=trunc(TPasJSONItemNumber(aJSONItemValue).Value) and 1;
     end else if aJSONItemValue is TPasJSONItemString then begin
@@ -739,11 +779,11 @@ procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONIte
       PpvUInt64(aData)^:=UnsignedInteger;
      end;
      else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-01-37-0000');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-05-01-37-0000');
      end;
     end;
    end;
-   TpvRegisteredComponentType.TField.TElementType.SignedInteger:begin
+   TRegisteredComponentType.TField.TElementType.SignedInteger:begin
     if aJSONItemValue is TPasJSONItemNumber then begin
      SignedInteger:=trunc(TPasJSONItemNumber(aJSONItemValue).Value);
     end else if aJSONItemValue is TPasJSONItemString then begin
@@ -767,11 +807,11 @@ procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONIte
       PpvInt64(aData)^:=SignedInteger;
      end;
      else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-01-38-0000');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-05-01-38-0000');
      end;
     end;
    end;
-   TpvRegisteredComponentType.TField.TElementType.UnsignedInteger:begin
+   TRegisteredComponentType.TField.TElementType.UnsignedInteger:begin
     if aJSONItemValue is TPasJSONItemNumber then begin
      UnsignedInteger:=trunc(TPasJSONItemNumber(aJSONItemValue).Value);
     end else if aJSONItemValue is TPasJSONItemString then begin
@@ -795,11 +835,11 @@ procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONIte
       PpvUInt64(aData)^:=UnsignedInteger;
      end;
      else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-01-38-0001');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-05-01-38-0001');
      end;
     end;
    end;
-   TpvRegisteredComponentType.TField.TElementType.FloatingPoint:begin
+   TRegisteredComponentType.TField.TElementType.FloatingPoint:begin
     if aJSONItemValue is TPasJSONItemNumber then begin
      FloatValue:=TPasJSONItemNumber(aJSONItemValue).Value;
     end else if aJSONItemValue is TPasJSONItemString then begin
@@ -821,11 +861,11 @@ procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONIte
       PpvDouble(aData)^:=FloatValue;
      end;
      else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-01-38-0002');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-05-01-38-0002');
      end;
     end;
    end;
-   TpvRegisteredComponentType.TField.TElementType.LengthPrefixedString:begin
+   TRegisteredComponentType.TField.TElementType.LengthPrefixedString:begin
     if aJSONItemValue is TPasJSONItemString then begin
      StringValue:=TPasJSONItemString(aJSONItemValue).Value;
     end else begin
@@ -839,7 +879,7 @@ procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONIte
      Move(StringValue[1],PAnsiChar(aData)[1],length(StringValue));
     end;
    end;
-   TpvRegisteredComponentType.TField.TElementType.ZeroTerminatedString:begin
+   TRegisteredComponentType.TField.TElementType.ZeroTerminatedString:begin
     if aJSONItemValue is TPasJSONItemString then begin
      StringValue:=TPasJSONItemString(aJSONItemValue).Value;
     end else begin
@@ -853,7 +893,7 @@ procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONIte
     end;
     PAnsiChar(aData)[length(StringValue)]:=#0;
    end;
-   TpvRegisteredComponentType.TField.TElementType.Blob:begin
+   TRegisteredComponentType.TField.TElementType.Blob:begin
     if aJSONItemValue is TPasJSONItemString then begin
      StringValue:=TPasJSONItemString(aJSONItemValue).Value;
     end else begin
@@ -867,14 +907,14 @@ procedure TpvRegisteredComponentType.UnserializeFromJSON(const aJSON:TPasJSONIte
        Move(Stream.Memory^,aData^,Min(Stream.Size,aField^.ElementSize));
       end;
      end else begin
-      raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-00-53-0001');
+      raise ERegisteredComponentType.Create('Internal error 2018-09-05-00-53-0001');
      end;
     finally
      FreeAndNil(Stream);
     end;
    end;
    else begin
-    raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-00-53-0000');
+    raise ERegisteredComponentType.Create('Internal error 2018-09-05-00-53-0000');
    end;
   end;
  end;
@@ -915,7 +955,7 @@ begin
      SetField(Field,Data,ValueJSONItem);
     end;
    end else begin
-    if Field^.ElementType=TpvRegisteredComponentType.TField.TElementType.EntityID then begin
+    if Field^.ElementType=TRegisteredComponentType.TField.TElementType.EntityID then begin
      FillChar(Data^,Field^.Size,#$ff);
     end else begin
      FillChar(Data^,Field^.Size,#0);
@@ -923,13 +963,13 @@ begin
    end;
   end;
  end else begin
-  raise EpvRegisteredComponentType.Create('Internal error 2018-09-05-01-08-0000');
+  raise ERegisteredComponentType.Create('Internal error 2018-09-05-01-08-0000');
  end;
 end;
 
 { TpvComponentType }
 
-constructor TpvComponentType.Create(const aRegisteredComponentType:TpvRegisteredComponentType);
+constructor TpvEntityComponentSystem.TComponent.Create(const aRegisteredComponentType:TRegisteredComponentType);
 begin
  inherited Create;
 
@@ -967,7 +1007,7 @@ begin
 
 end;
 
-destructor TpvComponentType.Destroy;
+destructor TpvEntityComponentSystem.TComponent.Destroy;
 begin
 
  if assigned(fPoolUnaligned) then begin
@@ -988,11 +1028,11 @@ begin
 
 end;
 
-procedure TpvComponentType.FinalizeComponentByPoolIndex(const aPoolIndex:TpvSizeInt);
+procedure TpvEntityComponentSystem.TComponent.FinalizeComponentByPoolIndex(const aPoolIndex:TpvSizeInt);
 begin
 end;
 
-procedure TpvComponentType.SetMaxEntities(const aCount:TpvSizeInt);
+procedure TpvEntityComponentSystem.TComponent.SetMaxEntities(const aCount:TpvSizeInt);
 var OldCount:TpvSizeInt;
 begin
  OldCount:=length(fPointers);
@@ -1003,7 +1043,7 @@ begin
  end;
 end;
 
-procedure TpvComponentType.Defragment;
+procedure TpvEntityComponentSystem.TComponent.Defragment;
  function CompareFunction(const a,b:TpvSizeInt):TpvSizeInt;
  begin
   if (a>=0) and (b>=0) then begin
@@ -1211,7 +1251,7 @@ begin
  end;
 end;
 
-procedure TpvComponentType.DefragmentIfNeeded;
+procedure TpvEntityComponentSystem.TComponent.DefragmentIfNeeded;
 begin
  if fNeedToDefragment then begin
   fNeedToDefragment:=false;
@@ -1219,7 +1259,7 @@ begin
  end;
 end;
 
-function TpvComponentType.GetComponentPoolIndexForEntityIndex(const aEntityIndex:TpvSizeInt):TpvSizeInt;
+function TpvEntityComponentSystem.TComponent.GetComponentPoolIndexForEntityIndex(const aEntityIndex:TpvSizeInt):TpvSizeInt;
 begin
  if (aEntityIndex>=0) and
     (aEntityIndex<=fMaxEntityIndex) and
@@ -1230,7 +1270,7 @@ begin
  end;
 end;
 
-function TpvComponentType.IsComponentInEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
+function TpvEntityComponentSystem.TComponent.IsComponentInEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
 begin
  result:=(aEntityIndex>=0) and
          (aEntityIndex<=fMaxEntityIndex) and
@@ -1238,7 +1278,7 @@ begin
          (fEntityIndexToComponentPoolIndex[aEntityIndex]>=0);
 end;
 
-function TpvComponentType.GetEntityIndexByPoolIndex(const aPoolIndex:TpvSizeInt):TpvSizeInt;
+function TpvEntityComponentSystem.TComponent.GetEntityIndexByPoolIndex(const aPoolIndex:TpvSizeInt):TpvSizeInt;
 begin
  if (aPoolIndex>=0) and
     (aPoolIndex<fPoolIndexCounter) then begin
@@ -1248,7 +1288,7 @@ begin
  end;
 end;
 
-function TpvComponentType.GetComponentByPoolIndex(const aPoolIndex:TpvSizeInt):TpvPointer;
+function TpvEntityComponentSystem.TComponent.GetComponentByPoolIndex(const aPoolIndex:TpvSizeInt):TpvPointer;
 begin
  if (aPoolIndex>=0) and
     (aPoolIndex<fPoolIndexCounter) then begin
@@ -1258,7 +1298,7 @@ begin
  end;
 end;
 
-function TpvComponentType.GetComponentByEntityIndex(const aEntityIndex:TpvSizeInt):TpvPointer;
+function TpvEntityComponentSystem.TComponent.GetComponentByEntityIndex(const aEntityIndex:TpvSizeInt):TpvPointer;
 var PoolIndex:TpvSizeInt;
 begin
  result:=nil;
@@ -1273,7 +1313,7 @@ begin
  end;
 end;
 
-function TpvComponentType.AllocateComponentForEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
+function TpvEntityComponentSystem.TComponent.AllocateComponentForEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
 var Index,PoolIndex,NewMaxEntityIndex,OldCapacity,OldCount,Count,OtherIndex,
     OldPoolSize,NewPoolSize:TpvSizeInt;
     Bitmap:PpvUInt32;
@@ -1372,7 +1412,7 @@ begin
 
 end;
 
-function TpvComponentType.FreeComponentFromEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
+function TpvEntityComponentSystem.TComponent.FreeComponentFromEntityIndex(const aEntityIndex:TpvSizeInt):boolean;
 var PoolIndex,OtherPoolIndex,OtherEntityID:longint;
     Mask:TpvUInt32;
     Bitmap:PpvUInt32;
@@ -1410,71 +1450,10 @@ begin
  end;
 end;
 
-procedure TestCase;
-type TTest=record
-      public
-       Position:TpvVector3;
-       TestString:shortstring;
-      end;
-      PTest=^TTest;
-var RegisteredComponentType:TpvRegisteredComponentType;
-    Test:TTest;
-    k:TPasJSONItem;
-begin
- RegisteredComponentType:=TpvRegisteredComponentType.Create('test',
-                                                            'Test',
-                                                            ['Base','Test'],
-                                                            sizeof(TTest),
-                                                            @Test);
- try
-  RegisteredComponentType.Add('position',
-                              'Position',
-                              TpvRegisteredComponentType.TField.TElementType.FloatingPoint,
-                              SizeOf(TpvFloat),
-                              3,
-                              TpvPtrUInt(@PTest(nil)^.Position),
-                              SizeOf(TpvVector3),
-                              []);
-  RegisteredComponentType.Add('teststring',
-                              'Test string',
-                              TpvRegisteredComponentType.TField.TElementType.LengthPrefixedString,
-                              SizeOf(ShortString),
-                              1,
-                              TpvPtrUInt(@PTest(nil)^.TestString),
-                              SizeOf(ShortString),
-                              []);
-  RegisteredComponentType.Add('testblob',
-                              'Test blob',
-                              TpvRegisteredComponentType.TField.TElementType.Blob,
-                              SizeOf(ShortString),
-                              1,
-                              TpvPtrUInt(@PTest(nil)^.TestString),
-                              SizeOf(ShortString),
-                              []);
-  Test.Position.x:=1.0;
-  Test.Position.y:=2.0;
-  Test.Position.z:=3.0;
-  Test.TestString:='bla';
-  k:=RegisteredComponentType.SerializeToJSON(@Test);
-  writeln(TPasJSON.Stringify(k,true,TPasJSON.SimplifiedJSONModeFlags));
-  Test.Position.x:=0.0;
-  Test.Position.y:=0.0;
-  Test.Position.z:=0.0;
-  Test.TestString:='tzrterrt';
-  writeln(TPasJSON.Stringify(RegisteredComponentType.SerializeToJSON(@Test),true,TPasJSON.SimplifiedJSONModeFlags));
-  RegisteredComponentType.UnserializeFromJSON(k,@Test);
-  writeln(TPasJSON.Stringify(RegisteredComponentType.SerializeToJSON(@Test),true,TPasJSON.SimplifiedJSONModeFlags));
-  readln;
- finally
-  RegisteredComponentType.Free;
- end;
- halt(0);
-end;
-
 procedure InitializeEntityComponentSystemGlobals;
 begin
  if not assigned(RegisteredComponentTypeList) then begin
-  RegisteredComponentTypeList:=TpvRegisteredComponentTypeList.Create;
+  RegisteredComponentTypeList:=TpvEntityComponentSystem.TRegisteredComponentTypeList.Create;
   RegisteredComponentTypeList.OwnsObjects:=true;
  end;
 end;

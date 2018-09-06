@@ -79,26 +79,26 @@ const pvComponentNameDefault:TpvComponentName=
         Name:'';
        );
 
-var pvComponentName:TpvRegisteredComponentType=nil;
+var pvComponentName:TpvEntityComponentSystem.TRegisteredComponentType=nil;
 
-    pvComponentNameID:TpvComponentTypeID=0;
+    pvComponentNameID:TpvEntityComponentSystem.TComponentID=0;
 
 implementation
 
 procedure Register;
 begin
 
- pvComponentName:=TpvRegisteredComponentType.Create('name',
-                                                    'Name',
-                                                    ['Base','Name'],
-                                                    SizeOf(TpvComponentName),
-                                                    @pvComponentNameDefault);
+ pvComponentName:=TpvEntityComponentSystem.TRegisteredComponentType.Create('name',
+                                                                             'Name',
+                                                                             ['Base','Name'],
+                                                                             SizeOf(TpvComponentName),
+                                                                             @pvComponentNameDefault);
 
  pvComponentNameID:=pvComponentName.ID;
 
  pvComponentName.Add('name',
                      'Name',
-                     TpvRegisteredComponentType.TField.TElementType.LengthPrefixedString,
+                     TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.LengthPrefixedString,
                      SizeOf(PpvComponentName(nil)^.Name),
                      1,
                      TpvPtrUInt(@PpvComponentName(nil)^.Name),

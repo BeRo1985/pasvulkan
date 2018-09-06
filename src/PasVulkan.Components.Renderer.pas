@@ -79,20 +79,20 @@ const pvComponentRendererDefault:TpvComponentRenderer=
         Dummy:0;
        );
 
-var pvComponentRenderer:TpvRegisteredComponentType=nil;
+var pvComponentRenderer:TpvEntityComponentSystem.TRegisteredComponentType=nil;
 
-    pvComponentRendererID:TpvComponentTypeID=0;
+    pvComponentRendererID:TpvEntityComponentSystem.TComponentID=0;
 
 implementation
 
 procedure Register;
 begin
 
- pvComponentRenderer:=TpvRegisteredComponentType.Create('renderer',
-                                                        'Renderer',
-                                                        ['Base','Renderer'],
-                                                        SizeOf(TpvComponentRenderer),
-                                                        @pvComponentRendererDefault);
+ pvComponentRenderer:=TpvEntityComponentSystem.TRegisteredComponentType.Create('renderer',
+                                                                                 'Renderer',
+                                                                                 ['Base','Renderer'],
+                                                                                 SizeOf(TpvComponentRenderer),
+                                                                                 @pvComponentRendererDefault);
 
  pvComponentRendererID:=pvComponentRenderer.ID;
 

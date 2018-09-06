@@ -81,7 +81,7 @@ type PpvComponentTransform=^TpvComponentTransform;
              );
             TFlags=set of TFlag;
       public
-       Parent:TpvEntityID;
+       Parent:TpvEntityComponentSystem.TEntityID;
        Flags:TFlags;
        Position:TpvVector3;
        Rotation:TpvQuaternion;
@@ -97,9 +97,9 @@ const pvComponentTransformDefault:TpvComponentTransform=
         Scale:(x:1.0;y:1.0;z:1.0);
        );
 
-var pvComponentTransform:TpvRegisteredComponentType=nil;
+var pvComponentTransform:TpvEntityComponentSystem.TRegisteredComponentType=nil;
 
-    pvComponentTransformID:TpvComponentTypeID=0;
+    pvComponentTransformID:TpvEntityComponentSystem.TComponentID=0;
 
 implementation
 
@@ -113,17 +113,17 @@ const Flags:array[TpvComponentTransform.TFlag] of TpvComponentTransform.TFlags=
        );
 begin
 
- pvComponentTransform:=TpvRegisteredComponentType.Create('transform',
-                                                         'Transform',
-                                                         ['Base','Transform'],
-                                                         SizeOf(TpvComponentTransform),
-                                                         @pvComponentTransformDefault);
+ pvComponentTransform:=TpvEntityComponentSystem.TRegisteredComponentType.Create('transform',
+                                                                                  'Transform',
+                                                                                  ['Base','Transform'],
+                                                                                  SizeOf(TpvComponentTransform),
+                                                                                  @pvComponentTransformDefault);
 
  pvComponentTransformID:=pvComponentTransform.ID;
 
  pvComponentTransform.Add('parent',
                           'Parent',
-                          TpvRegisteredComponentType.TField.TElementType.EntityID,
+                          TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.EntityID,
                           SizeOf(PpvComponentTransform(nil)^.Parent),
                           1,
                           TpvPtrUInt(@PpvComponentTransform(nil)^.Parent),
@@ -133,29 +133,29 @@ begin
 
  pvComponentTransform.Add('flags',
                           'Flags',
-                          TpvRegisteredComponentType.TField.TElementType.Flags,
+                          TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.Flags,
                           SizeOf(PpvComponentTransform(nil)^.Flags),
                           1,
                           TpvPtrUInt(@PpvComponentTransform(nil)^.Flags),
                           SizeOf(PpvComponentTransform(nil)^.Flags),
-                          [TpvRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.Static]),
-                                                                                       'static',
-                                                                                       'Static'),
-                           TpvRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.RelativePosition]),
-                                                                                       'relativeposition',
-                                                                                       'Relative position'),
-                           TpvRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.RelativeRotation]),
-                                                                                       'relativerotation',
-                                                                                       'Relative rotation'),
-                           TpvRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.RelativeScale]),
-                                                                                       'relativescale',
-                                                                                       'Relative scale')
+                          [TpvEntityComponentSystem.TRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvEntityComponentSystem.TRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.Static]),
+                                                                                                                'static',
+                                                                                                                'Static'),
+                           TpvEntityComponentSystem.TRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvEntityComponentSystem.TRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.RelativePosition]),
+                                                                                                                'relativeposition',
+                                                                                                                'Relative position'),
+                           TpvEntityComponentSystem.TRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvEntityComponentSystem.TRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.RelativeRotation]),
+                                                                                                                'relativerotation',
+                                                                                                                'Relative rotation'),
+                           TpvEntityComponentSystem.TRegisteredComponentType.TField.TEnumerationOrFlag.Create(TpvEntityComponentSystem.TRegisteredComponentType.GetSetOrdValue(TypeInfo(TpvComponentTransform.TFlags),Flags[TpvComponentTransform.TFlag.RelativeScale]),
+                                                                                                                'relativescale',
+                                                                                                                'Relative scale')
                           ]
                          );
 
  pvComponentTransform.Add('position',
                           'Position',
-                          TpvRegisteredComponentType.TField.TElementType.FloatingPoint,
+                          TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.FloatingPoint,
                           SizeOf(PpvComponentTransform(nil)^.Position.x),
                           3,
                           TpvPtrUInt(@PpvComponentTransform(nil)^.Position),
@@ -165,7 +165,7 @@ begin
 
  pvComponentTransform.Add('rotation',
                           'Rotation',
-                          TpvRegisteredComponentType.TField.TElementType.FloatingPoint,
+                          TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.FloatingPoint,
                           SizeOf(PpvComponentTransform(nil)^.Rotation.x),
                           4,
                           TpvPtrUInt(@PpvComponentTransform(nil)^.Rotation),
@@ -175,7 +175,7 @@ begin
 
  pvComponentTransform.Add('scale',
                           'Scale',
-                          TpvRegisteredComponentType.TField.TElementType.FloatingPoint,
+                          TpvEntityComponentSystem.TRegisteredComponentType.TField.TElementType.FloatingPoint,
                           SizeOf(PpvComponentTransform(nil)^.Scale.x),
                           3,
                           TpvPtrUInt(@PpvComponentTransform(nil)^.Scale),
