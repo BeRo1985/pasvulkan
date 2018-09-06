@@ -260,9 +260,12 @@ type TpvEntityComponentSystem=class
              private
               fID:TEntityID;
               fFlags:TFlags;
+              function GetActive:boolean; inline;
+              procedure SetActive(const aActive:boolean); inline;
              public
               property ID:TEntityID read fID write fID;
               property Flags:TFlags read fFlags write fFlags;
+              property Active:boolean read GetActive write SetActive;
             end;
 
             TpvEntities=array of TEntity;
@@ -1446,6 +1449,24 @@ begin
   inc(fCountFrees);
   if fCountFrees>(fPoolIndexCounter shr 2) then begin
    fNeedToDefragment:=true;
+  end;
+ end;
+end;
+
+{ TpvEntityComponentSystem.TEntity }
+
+function TpvEntityComponentSystem.TEntity.GetActive:boolean;
+begin
+ result:=TFlag.Active in fFlags;
+end;
+
+procedure TpvEntityComponentSystem.TEntity.SetActive(const aActive:boolean);
+begin
+ if aActive<>(TFlag.Active in fFlags) then begin
+  if aActive then begin
+   Include(fFlags,TFlag.Active);
+  end else begin
+   Exclude(fFlags,TFlag.Active);
   end;
  end;
 end;
