@@ -1358,7 +1358,7 @@ const PNGHeaderTemplate:TPNGHeader=
    2:begin
     // Up
     for Index:=1 to aRowSize do begin
-     aOutput^[OutByteIndex]:=aInput^[InByteIndex]-aInput^[InByteIndex-TpvUInt32(aRowSize)];
+     aOutput^[OutByteIndex]:=aInput^[InByteIndex]-aInput^[TpvSizeInt(InByteIndex)-TpvSizeInt(aRowSize)];
      inc(InByteIndex);
      inc(OutByteIndex);
     end;
@@ -1367,9 +1367,9 @@ const PNGHeaderTemplate:TPNGHeader=
     // Average
     for Index:=1 to aRowSize do begin
      if Index<=aByteWidth then begin
-      aOutput^[OutByteIndex]:=aInput^[InByteIndex]-(aInput^[InByteIndex-aRowSize] shr 1);
+      aOutput^[OutByteIndex]:=aInput^[InByteIndex]-(aInput^[TpvSizeInt(InByteIndex)-TpvSizeInt(aRowSize)] shr 1);
      end else begin
-      aOutput^[OutByteIndex]:=aInput^[InByteIndex]-((aInput^[InByteIndex-aByteWidth]+aInput^[InByteIndex-aRowSize]) shr 1);
+      aOutput^[OutByteIndex]:=aInput^[InByteIndex]-((aInput^[InByteIndex-aByteWidth]+aInput^[TpvSizeInt(InByteIndex)-TpvSizeInt(aRowSize)]) shr 1);
      end;
      inc(InByteIndex);
      inc(OutByteIndex);
@@ -1379,9 +1379,9 @@ const PNGHeaderTemplate:TPNGHeader=
     // Paeth
     for Index:=1 to aRowSize do begin
      if Index<=aByteWidth then begin
-      aOutput^[OutByteIndex]:=aInput^[InByteIndex]-aInput^[InByteIndex-aRowSize];
+      aOutput^[OutByteIndex]:=aInput^[InByteIndex]-aInput^[TpvSizeInt(InByteIndex)-TpvSizeInt(aRowSize)];
      end else begin
-      aOutput^[OutByteIndex]:=aInput^[InByteIndex]-Paeth(aInput^[InByteIndex-aByteWidth],aInput^[InByteIndex-aRowSize],aInput^[InByteIndex-(aRowSize+aByteWidth)]);
+      aOutput^[OutByteIndex]:=aInput^[InByteIndex]-Paeth(aInput^[InByteIndex-aByteWidth],aInput^[TpvSizeInt(InByteIndex)-TpvSizeInt(aRowSize)],aInput^[TpvSizeInt(InByteIndex)-TpvSizeInt(aRowSize+aByteWidth)]);
      end;
      inc(InByteIndex);
      inc(OutByteIndex);
