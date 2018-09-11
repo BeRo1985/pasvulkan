@@ -968,7 +968,7 @@ type EpvVulkanException=class(Exception);
        fMemoryManager:TpvVulkanDeviceMemoryManager;
        fPreviousMemoryChunk:TpvVulkanDeviceMemoryChunk;
        fNextMemoryChunk:TpvVulkanDeviceMemoryChunk;
-       fLock:TCriticalSection;
+       fLock:TPasMPCriticalSection;
        fMemoryChunkFlags:TpvVulkanDeviceMemoryChunkFlags;
        fMemoryChunkList:PpvVulkanDeviceMemoryManagerChunkList;
        fSize:TVkDeviceSize;
@@ -1081,7 +1081,7 @@ type EpvVulkanException=class(Exception);
      TpvVulkanDeviceMemoryManager=class(TpvVulkanObject)
       private
        fDevice:TpvVulkanDevice;
-       fLock:TCriticalSection;
+       fLock:TPasMPCriticalSection;
        fMemoryChunkList:TpvVulkanDeviceMemoryManagerChunkList;
        fFirstMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fLastMemoryBlock:TpvVulkanDeviceMemoryBlock;
@@ -9336,7 +9336,7 @@ begin
 
  TpvVulkanDeviceMemoryChunkBlock.Create(self,0,BestWantedChunkSize,1,TpvVulkanDeviceMemoryAllocationType.Free);
 
- fLock:=TCriticalSection.Create;
+ fLock:=TPasMPCriticalSection.Create;
 
  if assigned(fMemoryChunkList^.First) then begin
   fMemoryChunkList^.First.fPreviousMemoryChunk:=self;
@@ -10358,7 +10358,7 @@ begin
 
  fDevice:=aDevice;
 
- fLock:=TCriticalSection.Create;
+ fLock:=TPasMPCriticalSection.Create;
 
  FillChar(fMemoryChunkList,SizeOf(TpvVulkanDeviceMemoryManagerChunkList),#0);
 
