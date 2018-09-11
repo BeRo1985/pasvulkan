@@ -855,7 +855,8 @@ type EpvVulkanException=class(Exception);
      PpvVulkanDeviceMemoryChunkFlag=^TpvVulkanDeviceMemoryChunkFlag;
      TpvVulkanDeviceMemoryChunkFlag=
       (
-       PersistentMapped
+       PersistentMapped,
+       DedicatedAllocation
       );
 
      PpvVulkanDeviceMemoryChunkFlags=^TpvVulkanDeviceMemoryChunkFlags;
@@ -982,7 +983,10 @@ type EpvVulkanException=class(Exception);
        fMemoryPropertyFlags:TVkMemoryPropertyFlags;
        fMemoryHeapFlags:TVkMemoryHeapFlags;
        fMemoryHandle:TVkDeviceMemory;
+       fMemoryMinimumAlignment:TVkDeviceSize;
+       fMemoryMustBeAwareOfNonCoherentAtomSize:boolean;
        fMemory:PVkVoid;
+       procedure AdjustMappedMemoryRange(var aMappedMemoryRange:TVkMappedMemoryRange);
        procedure Defragment;
       public
        constructor Create(const aMemoryManager:TpvVulkanDeviceMemoryManager;
@@ -1016,14 +1020,15 @@ type EpvVulkanException=class(Exception);
        property MemoryTypeIndex:TpvUInt32 read fMemoryTypeIndex;
        property MemoryTypeBits:TpvUInt32 read fMemoryTypeBits;
        property MemoryHeapIndex:TpvUInt32 read fMemoryHeapIndex;
+       property MemoryMinimumAlignment:TVkDeviceSize read fMemoryMinimumAlignment;
        property Handle:TVkDeviceMemory read fMemoryHandle;
      end;
 
      PpvVulkanDeviceMemoryBlockFlag=^TpvVulkanDeviceMemoryBlockFlag;
      TpvVulkanDeviceMemoryBlockFlag=
       (
-       OwnSingleMemoryChunk,
-       PersistentMapped
+       PersistentMapped,
+       DedicatedAllocation
       );
 
      PpvVulkanDeviceMemoryBlockFlags=^TpvVulkanDeviceMemoryBlockFlags;
@@ -1136,8 +1141,8 @@ type EpvVulkanException=class(Exception);
      PpvVulkanBufferFlag=^TpvVulkanBufferFlag;
      TpvVulkanBufferFlag=
       (
-       OwnSingleMemoryChunk,
-       PersistentMapped
+       PersistentMapped,
+       DedicatedAllocation
       );
 
      PpvVulkanBufferFlags=^TpvVulkanBufferFlags;
@@ -5499,6 +5504,16 @@ begin
  result:=Value+1;
 end;
 
+function VulkanDeviceSizeAlignDown(Value,Alignment:TVkDeviceSize):TVkDeviceSize;
+begin
+ result:=(Value div Alignment)*Alignment;
+end;
+
+function VulkanDeviceSizeAlignUp(Value,Alignment:TVkDeviceSize):TVkDeviceSize;
+begin
+ result:=((Value+(Alignment-1)) div Alignment)*Alignment;
+end;
+
 {$if defined(fpc)}
 function CTZDWord(Value:TpvUInt32):TpvUInt8; inline;
 begin
@@ -8451,11 +8466,11 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Overrided transfer queue family index');
 {$ifend}
-  if (fUniversalQueueFamilyIndex<0) and ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or not assigned(aSurface)) then begin
+  if (fUniversalQueueFamilyIndex<0) and ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(fTransferQueueFamilyIndex,aSurface)) or not assigned(aSurface)) then begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
    __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Overriding universal queue family index');
 {$ifend}
-   fUniversalQueueFamilyIndex:=Index;
+   fUniversalQueueFamilyIndex:=fTransferQueueFamilyIndex;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
    __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Overrided universal queue family index');
 {$ifend}
@@ -9180,6 +9195,10 @@ begin
 
  fMemory:=nil;
 
+ fMemoryMustBeAwareOfNonCoherentAtomSize:=false;
+
+ fMemoryMinimumAlignment:=1;
+
  LastResultCode:=VK_SUCCESS;
 
  BlacklistedHeaps:=nil;
@@ -9268,6 +9287,17 @@ begin
    fMemoryPropertyFlags:=PhysicalDevice.fMemoryProperties.memoryTypes[fMemoryTypeIndex].propertyFlags;
 
    fMemoryHeapFlags:=PhysicalDevice.fMemoryProperties.memoryHeaps[fMemoryHeapIndex].flags;
+
+   if ((fMemoryPropertyFlags and
+        (aMemoryRequiredPropertyFlags or aMemoryPreferredPropertyFlags)) and
+       (TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or
+        TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)))=
+      TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) then begin
+    fMemoryMustBeAwareOfNonCoherentAtomSize:=true;
+    if fMemoryMinimumAlignment<fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize then begin
+     fMemoryMinimumAlignment:=fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize;
+    end;
+   end;
 
    FillChar(MemoryAllocateInfo,SizeOf(TVkMemoryAllocateInfo),#0);
    MemoryAllocateInfo.sType:=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -9406,7 +9436,7 @@ begin
 
  if aSize>0 then begin
 
-  Alignment:=Max(1,VulkanDeviceSizeRoundUpToPowerOfTwo(aAlignment));
+  Alignment:=Max(fMemoryMinimumAlignment,VulkanDeviceSizeRoundUpToPowerOfTwo(aAlignment));
 
   BufferImageGranularity:=Max(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
 
@@ -9784,6 +9814,32 @@ begin
  end;
 end;
 
+procedure TpvVulkanDeviceMemoryChunk.AdjustMappedMemoryRange(var aMappedMemoryRange:TVkMappedMemoryRange);
+var NonCoherentAtomSize,
+    Offset,Size,
+    NewOffset,NewSize,
+    MaximumSize:TVkDeviceSize;
+begin
+ if fMemoryMustBeAwareOfNonCoherentAtomSize then begin
+  NonCoherentAtomSize:=fMemoryManager.fDevice.fPhysicalDevice.fProperties.limits.nonCoherentAtomSize;
+  Offset:=aMappedMemoryRange.offset;
+  Size:=aMappedMemoryRange.size;
+  NewOffset:=VulkanDeviceSizeAlignDown(Offset,NonCoherentAtomSize);
+  if (Size=TVkDeviceSize(VK_WHOLE_SIZE)) or ((Offset+Size)=fSize) then begin
+   NewSize:=TpvInt64(Max(0,TpvInt64(fSize-Offset)));
+  end else begin
+   Assert((Offset+Size)<=fSize);
+   NewSize:=VulkanDeviceSizeAlignUp(Size+(Offset-aMappedMemoryRange.offset),NonCoherentAtomSize);
+   MaximumSize:=TpvInt64(Max(0,TpvInt64(fSize-Offset)));
+   if NewSize>MaximumSize then begin
+    NewSize:=MaximumSize;
+   end;
+  end;
+  aMappedMemoryRange.offset:=NewOffset;
+  aMappedMemoryRange.size:=NewSize;
+ end;
+end;
+
 procedure TpvVulkanDeviceMemoryChunk.FlushMappedMemory;
 var MappedMemoryRange:TVkMappedMemoryRange;
 begin
@@ -9796,6 +9852,7 @@ begin
    MappedMemoryRange.memory:=fMemoryHandle;
    MappedMemoryRange.offset:=fMappedOffset;
    MappedMemoryRange.size:=fMappedSize;
+   AdjustMappedMemoryRange(MappedMemoryRange);
    HandleResultCode(vkFlushMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
   end else begin
    raise EpvVulkanException.Create('Non-mapped memory can''t be flushed');
@@ -9824,6 +9881,7 @@ begin
    MappedMemoryRange.memory:=fMemoryHandle;
    MappedMemoryRange.offset:=Offset;
    MappedMemoryRange.size:=Size;
+   AdjustMappedMemoryRange(MappedMemoryRange);
    HandleResultCode(vkFlushMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
   end else begin
    raise EpvVulkanException.Create('Non-mapped memory can''t be flushed');
@@ -9845,6 +9903,7 @@ begin
    MappedMemoryRange.memory:=fMemoryHandle;
    MappedMemoryRange.offset:=fMappedOffset;
    MappedMemoryRange.size:=fMappedSize;
+   AdjustMappedMemoryRange(MappedMemoryRange);
    HandleResultCode(vkInvalidateMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
   end else begin
    raise EpvVulkanException.Create('Non-mapped memory can''t be invalidated');
@@ -9873,6 +9932,7 @@ begin
    MappedMemoryRange.memory:=fMemoryHandle;
    MappedMemoryRange.offset:=Offset;
    MappedMemoryRange.size:=Size;
+   AdjustMappedMemoryRange(MappedMemoryRange);
    HandleResultCode(vkInvalidateMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
   end else begin
    raise EpvVulkanException.Create('Non-mapped memory can''t be invalidated');
@@ -10351,26 +10411,28 @@ begin
   Include(MemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.PersistentMapped);
  end;
 
- if TpvVulkanDeviceMemoryBlockFlag.OwnSingleMemoryChunk in aMemoryBlockFlags then begin
+ if TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation in aMemoryBlockFlags then begin
 
-  // New allocated device memory blocks are always perfectly aligned already, so set Alignment here to 1 
+  Include(MemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.DedicatedAllocation);
+
+  // New allocated device memory blocks are always perfectly aligned already, so set Alignment here to 1
   Alignment:=1;
 
   fLock.Acquire;
   try
    // Allocate a block inside a new chunk
    MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,
-                                                MemoryChunkFlags,
-                                                aMemoryBlockSize,
-                                                false,
-                                                aMemoryTypeBits,
-                                                aMemoryRequiredPropertyFlags,
-                                                aMemoryPreferredPropertyFlags,
-                                                aMemoryAvoidPropertyFlags,
-                                                aMemoryRequiredHeapFlags,
-                                                aMemoryPreferredHeapFlags,
-                                                aMemoryAvoidHeapFlags,
-                                                @fMemoryChunkList);
+                                                  MemoryChunkFlags,
+                                                  aMemoryBlockSize,
+                                                  false,
+                                                  aMemoryTypeBits,
+                                                  aMemoryRequiredPropertyFlags,
+                                                  aMemoryPreferredPropertyFlags,
+                                                  aMemoryAvoidPropertyFlags,
+                                                  aMemoryRequiredHeapFlags,
+                                                  aMemoryPreferredHeapFlags,
+                                                  aMemoryAvoidHeapFlags,
+                                                  @fMemoryChunkList);
    if MemoryChunk.AllocateMemory(MemoryChunkBlock,Offset,aMemoryBlockSize,Alignment,aMemoryAllocationType) then begin
     result:=TpvVulkanDeviceMemoryBlock.Create(self,MemoryChunk,MemoryChunkBlock,Offset,aMemoryBlockSize);
    end;
@@ -10562,11 +10624,11 @@ begin
   fDevice.Commands.GetBufferMemoryRequirements(fDevice.fDeviceHandle,fBufferHandle,@fMemoryRequirements);
 
   MemoryBlockFlags:=[];
-  if TpvVulkanBufferFlag.OwnSingleMemoryChunk in fBufferFlags then begin
-   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.OwnSingleMemoryChunk);
-  end;
   if TpvVulkanBufferFlag.PersistentMapped in fBufferFlags then begin
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PersistentMapped);
+  end;
+  if TpvVulkanBufferFlag.DedicatedAllocation in fBufferFlags then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
   end;
 
   fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
@@ -10659,7 +10721,7 @@ begin
                                         0,
                                         0,
                                         0,
-                                        [TpvVulkanBufferFlag.OwnSingleMemoryChunk]);
+                                        [TpvVulkanBufferFlag.DedicatedAllocation]);
   try
 
    p:=StagingBuffer.Memory.MapMemory;
@@ -19647,7 +19709,7 @@ begin
                                          0,
                                          0,
                                          0,
-                                         [TpvVulkanBufferFlag.OwnSingleMemoryChunk]);
+                                         [TpvVulkanBufferFlag.DedicatedAllocation]);
   end;
 
   try
