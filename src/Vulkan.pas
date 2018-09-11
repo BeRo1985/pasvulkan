@@ -258,7 +258,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=82;
+      VK_HEADER_VERSION=84;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -417,8 +417,8 @@ const VK_NULL_HANDLE=0;
       VK_EXT_SHADER_SUBGROUP_VOTE_EXTENSION_NAME='VK_EXT_shader_subgroup_vote';
       VK_ARM_EXTENSION_01_SPEC_VERSION=0;
       VK_ARM_EXTENSION_01_EXTENSION_NAME='VK_ARM_extension_01';
-      VK_ARM_EXTENSION_02_SPEC_VERSION=0;
-      VK_ARM_EXTENSION_02_EXTENSION_NAME='VK_ARM_extension_02';
+      VK_EXT_ASTC_DECODE_MODE_SPEC_VERSION=1;
+      VK_EXT_ASTC_DECODE_MODE_EXTENSION_NAME='VK_EXT_astc_decode_mode';
       VK_IMG_EXTENSION_69_SPEC_VERSION=0;
       VK_IMG_EXTENSION_69_EXTENSION_NAME='VK_IMG_extension_69';
       VK_KHR_MAINTENANCE1_SPEC_VERSION=2;
@@ -557,8 +557,8 @@ const VK_NULL_HANDLE=0;
       VK_AMD_MIXED_ATTACHMENT_SAMPLES_EXTENSION_NAME='VK_AMD_mixed_attachment_samples';
       VK_AMD_SHADER_FRAGMENT_MASK_SPEC_VERSION=1;
       VK_AMD_SHADER_FRAGMENT_MASK_EXTENSION_NAME='VK_AMD_shader_fragment_mask';
-      VK_AMD_EXTENSION_139_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_139_EXTENSION_NAME='VK_AMD_extension_139';
+      VK_EXT_INLINE_UNIFORM_BLOCK_SPEC_VERSION=1;
+      VK_EXT_INLINE_UNIFORM_BLOCK_EXTENSION_NAME='VK_EXT_inline_uniform_block';
       VK_AMD_EXTENSION_140_SPEC_VERSION=0;
       VK_AMD_EXTENSION_140_EXTENSION_NAME='VK_AMD_extension_140';
       VK_EXT_SHADER_STENCIL_EXPORT_SPEC_VERSION=1;
@@ -659,7 +659,7 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_189_EXTENSION_NAME='VK_AMD_extension_189';
       VK_KHR_EXTENSION_190_SPEC_VERSION=0;
       VK_KHR_EXTENSION_190_EXTENSION_NAME='VK_AMD_extension_190';
-      VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_SPEC_VERSION=2;
+      VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_SPEC_VERSION=3;
       VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME='VK_EXT_vertex_attribute_divisor';
       VK_GOOGLE_EXTENSION_192_SPEC_VERSION=0;
       VK_GOOGLE_EXTENSION_192_EXTENSION_NAME='VK_GOOGLE_extension_192';
@@ -701,8 +701,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_210_EXTENSION_NAME='VK_KHR_extension_210';
       VK_KHR_EXTENSION_211_SPEC_VERSION=0;
       VK_KHR_EXTENSION_211_EXTENSION_NAME='VK_KHR_extension_211';
-      VK_KHR_EXTENSION_212_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_212_EXTENSION_NAME='VK_KHR_extension_212';
+      VK_KHR_VULKAN_MEMORY_MODEL_SPEC_VERSION=2;
+      VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME='VK_KHR_vulkan_memory_model';
       VK_KHR_EXTENSION_213_SPEC_VERSION=0;
       VK_KHR_EXTENSION_213_EXTENSION_NAME='VK_KHR_extension_213';
       VK_KHR_EXTENSION_214_SPEC_VERSION=0;
@@ -713,6 +713,12 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_216_EXTENSION_NAME='VK_KHR_extension_216';
       VK_KHR_EXTENSION_217_SPEC_VERSION=0;
       VK_KHR_EXTENSION_217_EXTENSION_NAME='VK_KHR_extension_217';
+      VK_EXT_MACOS_IOS_WINDOW_SPEC_VERSION=0;
+      VK_EXT_MACOS_IOS_WINDOW_EXTENSION_NAME='VK_EXT_macos_ios_window';
+      VK_EXT_EXTENSION_219_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_219_EXTENSION_NAME='VK_EXT_extension_219';
+      VK_EXT_EXTENSION_220_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_220_EXTENSION_NAME='VK_EXT_extension_220';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1475,7 +1481,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER=7,
        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC=8,
        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC=9,
-       VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT=10
+       VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT=10,
+       VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT=1000138000
       );
 
      PPVkQueryType=^PVkQueryType;
@@ -2105,7 +2112,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR=1000009000,
        VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID=1000010000,
        VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT=1000011000,
-       VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT=1000011000,
        VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD=1000018000,
        VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT=1000022000,
        VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT=1000022001,
@@ -2147,6 +2153,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT=1000061000,
        VK_STRUCTURE_TYPE_VI_SURFACE_CREATE_INFO_NN=1000062000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETER_FEATURES=1000063000,
+       VK_STRUCTURE_TYPE_IMAGE_VIEW_ASTC_DECODE_MODE_EXT=1000067000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ASTC_DECODE_FEATURES_EXT=1000067001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES=1000070000,
        VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO=1000070001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO=1000071000,
@@ -2189,7 +2197,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_DEVICE_GENERATED_COMMANDS_FEATURES_NVX=1000086005,
        VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_W_SCALING_STATE_CREATE_INFO_NV=1000087000,
        VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_EXT=1000090000,
-       VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES2_EXT=1000090000,
        VK_STRUCTURE_TYPE_DISPLAY_POWER_INFO_EXT=1000091000,
        VK_STRUCTURE_TYPE_DEVICE_EVENT_INFO_EXT=1000091001,
        VK_STRUCTURE_TYPE_DISPLAY_EVENT_INFO_EXT=1000091002,
@@ -2249,6 +2256,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID=1000129005,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT=1000130000,
        VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT=1000130001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT=1000138000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT=1000138001,
+       VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT=1000138002,
+       VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO_EXT=1000138003,
        VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT=1000143000,
        VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT=1000143001,
        VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT=1000143002,
@@ -2294,14 +2305,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD=1000185000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT=1000190000,
        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT=1000190001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT=1000190002,
        VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV=1000206000,
        VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV=1000206001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR=1000211000,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
        VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO,
        VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO_KHR=VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
        VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO_KHR=VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO,
        VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2_KHR=VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2,
+       VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT=VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT,
        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT_KHR=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT,
        VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO_KHR=VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO,
        VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO_KHR=VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO,
@@ -2354,7 +2368,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES_KHR=VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES,
        VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO_KHR=VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO,
        VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2_KHR=VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2,
-       VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2_KHR=VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2
+       VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2_KHR=VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2,
+       VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES2_EXT=VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_EXT
       );
 
      PPVkSubpassContents=^PVkSubpassContents;
@@ -2538,7 +2553,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_ACCESS_COMMAND_PROCESS_READ_BIT_NVX=$00020000,
        VK_ACCESS_COMMAND_PROCESS_WRITE_BIT_NVX=$00040000,
        VK_ACCESS_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT=$00080000,
-       VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT=$00100000
+       VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT=$00100000,
+       VK_ACCESS_RESERVED_21_BIT_NV=$00200000,
+       VK_ACCESS_RESERVED_22_BIT_NV=$00400000,
+       VK_ACCESS_RESERVED_23_BIT_NV=$00800000,
+       VK_ACCESS_RESERVED_24_BIT_EXT=$01000000
       );
 
      PPVkBufferUsageFlagBits=^PVkBufferUsageFlagBits;
@@ -2554,7 +2573,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_BUFFER_USAGE_INDEX_BUFFER_BIT=$00000040,                               //< Can be used as source of fixed-function index fetch (index buffer)
        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT=$00000080,                              //< Can be used as source of fixed-function vertex fetch (VBO)
        VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT=$00000100,                            //< Can be the source of indirect parameters (e.g. indirect buffer, parameter buffer)
-       VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT=$00000200
+       VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT=$00000200,
+       VK_BUFFER_USAGE_RESERVED_10_BIT_NV=$00000400
       );
 
      PPVkBufferCreateFlagBits=^PVkBufferCreateFlagBits;
@@ -2578,6 +2598,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_SHADER_STAGE_FRAGMENT_BIT=$00000010,
        VK_SHADER_STAGE_ALL_GRAPHICS=31,
        VK_SHADER_STAGE_COMPUTE_BIT=$00000020,
+       VK_SHADER_STAGE_RESERVED_6_BIT_NV=$00000040,
+       VK_SHADER_STAGE_RESERVED_7_BIT_NV=$00000080,
+       VK_SHADER_STAGE_RESERVED_8_BIT_NV=$00000100,
+       VK_SHADER_STAGE_RESERVED_9_BIT_NV=$00000200,
+       VK_SHADER_STAGE_RESERVED_10_BIT_NV=$00000400,
+       VK_SHADER_STAGE_RESERVED_11_BIT_NV=$00000800,
+       VK_SHADER_STAGE_RESERVED_12_BIT_NV=$00001000,
+       VK_SHADER_STAGE_RESERVED_13_BIT_NV=$00002000,
        VK_SHADER_STAGE_ALL=2147483647
       );
 
@@ -2592,7 +2620,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT=$00000010,                            //< Can be used as framebuffer color attachment
        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT=$00000020,                    //< Can be used as framebuffer depth/stencil attachment
        VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT=$00000040,                        //< Image data not needed outside of rendering
-       VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT=$00000080                             //< Can be used as framebuffer input attachment
+       VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT=$00000080,                            //< Can be used as framebuffer input attachment
+       VK_IMAGE_USAGE_RESERVED_8_BIT_NV=$00000100,
+       VK_IMAGE_USAGE_RESERVED_9_BIT_EXT=$00000200
       );
 
      PPVkImageCreateFlagBits=^PVkImageCreateFlagBits;
@@ -2612,6 +2642,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_CREATE_ALIAS_BIT=$00000400,
        VK_IMAGE_CREATE_PROTECTED_BIT=$00000800,
        VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT=$00001000,
+       VK_IMAGE_CREATE_RESERVED_13_BIT_NV=$00002000,
+       VK_IMAGE_CREATE_RESERVED_14_BIT_EXT=$00004000,
        VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR=VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT,
        VK_IMAGE_CREATE_ALIAS_BIT_KHR=VK_IMAGE_CREATE_ALIAS_BIT,
        VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT_KHR=VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT,
@@ -2629,6 +2661,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_PIPELINE_CREATE_DERIVATIVE_BIT=$00000004,
        VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT=$00000008,
        VK_PIPELINE_CREATE_DISPATCH_BASE=$00000010,
+       VK_PIPELINE_CREATE_RESERVED_5_BIT_NV=$00000020,
        VK_PIPELINE_CREATE_DISPATCH_BASE_KHR=VK_PIPELINE_CREATE_DISPATCH_BASE,
        VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT_KHR=VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT
       );
@@ -2678,6 +2711,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT=$00200000,
        VK_FORMAT_FEATURE_DISJOINT_BIT=$00400000,
        VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT=$00800000,
+       VK_FORMAT_FEATURE_RESERVED_24_BIT_EXT=$01000000,
        VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT_KHR=VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT,
        VK_FORMAT_FEATURE_DISJOINT_BIT_KHR=VK_FORMAT_FEATURE_DISJOINT_BIT,
        VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT_KHR=VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT,
@@ -2786,7 +2820,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT=$00008000,                             //< All stages of the graphics pipeline
        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT=$00010000,                             //< All stages supported on the queue
        VK_PIPELINE_STAGE_COMMAND_PROCESS_BIT_NVX=$00020000,
-       VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT=$00040000
+       VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT=$00040000,
+       VK_PIPELINE_STAGE_RESERVED_19_BIT_NV=$00080000,
+       VK_PIPELINE_STAGE_RESERVED_20_BIT_NV=$00100000,
+       VK_PIPELINE_STAGE_RESERVED_21_BIT_NV=$00200000,
+       VK_PIPELINE_STAGE_RESERVED_22_BIT_NV=$00400000,
+       VK_PIPELINE_STAGE_RESERVED_23_BIT_EXT=$00800000
       );
 
      PPVkCommandPoolCreateFlagBits=^PVkCommandPoolCreateFlagBits;
@@ -2877,7 +2916,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkColorSpaceKHR=
       (
        VK_COLOR_SPACE_SRGB_NONLINEAR_KHR=0,
-       VK_COLORSPACE_SRGB_NONLINEAR_KHR=0,
        VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT=1000104001,
        VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT=1000104002,
        VK_COLOR_SPACE_DCI_P3_LINEAR_EXT=1000104003,
@@ -2891,7 +2929,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_COLOR_SPACE_ADOBERGB_LINEAR_EXT=1000104011,
        VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT=1000104012,
        VK_COLOR_SPACE_PASS_THROUGH_EXT=1000104013,
-       VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT=1000104014
+       VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT=1000104014,
+       VK_COLORSPACE_SRGB_NONLINEAR_KHR=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR        //< Backwards-compatible alias containing a typo
       );
 
      PPVkDisplayPlaneAlphaFlagBitsKHR=^PVkDisplayPlaneAlphaFlagBitsKHR;
@@ -2973,17 +3012,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT=26,
        VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT=27,
        VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT_EXT=28,
-       VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT=28,
        VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_KHR_EXT=29,
        VK_DEBUG_REPORT_OBJECT_TYPE_DISPLAY_MODE_KHR_EXT=30,
        VK_DEBUG_REPORT_OBJECT_TYPE_OBJECT_TABLE_NVX_EXT=31,
        VK_DEBUG_REPORT_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NVX_EXT=32,
        VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT_EXT=33,
-       VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT=33,
        VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT=1000085000,
        VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT=1000156000,
+       VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT=VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT_EXT, //< Backwards-compatible alias containing a typo
        VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR_EXT=VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT,
-       VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR_EXT=VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT
+       VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR_EXT=VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT,
+       VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT=VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT_EXT //< Backwards-compatible alias containing a typo
       );
 
      PPVkRasterizationOrderAMD=^PVkRasterizationOrderAMD;
@@ -9557,6 +9596,74 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkPhysicalDeviceInlineUniformBlockFeaturesEXT=^PVkPhysicalDeviceInlineUniformBlockFeaturesEXT;
+     PVkPhysicalDeviceInlineUniformBlockFeaturesEXT=^TVkPhysicalDeviceInlineUniformBlockFeaturesEXT;
+     TVkPhysicalDeviceInlineUniformBlockFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT
+       pNext:PVkVoid;
+       inlineUniformBlock:TVkBool32;
+       descriptorBindingInlineUniformBlockUpdateAfterBind:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aInlineUniformBlock:TVkBool32;
+                          const aDescriptorBindingInlineUniformBlockUpdateAfterBind:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceInlineUniformBlockPropertiesEXT=^PVkPhysicalDeviceInlineUniformBlockPropertiesEXT;
+     PVkPhysicalDeviceInlineUniformBlockPropertiesEXT=^TVkPhysicalDeviceInlineUniformBlockPropertiesEXT;
+     TVkPhysicalDeviceInlineUniformBlockPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT
+       pNext:PVkVoid;
+       maxInlineUniformBlockSize:TVkUInt32;
+       maxPerStageDescriptorInlineUniformBlocks:TVkUInt32;
+       maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks:TVkUInt32;
+       maxDescriptorSetInlineUniformBlocks:TVkUInt32;
+       maxDescriptorSetUpdateAfterBindInlineUniformBlocks:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMaxInlineUniformBlockSize:TVkUInt32;
+                          const aMaxPerStageDescriptorInlineUniformBlocks:TVkUInt32;
+                          const aMaxPerStageDescriptorUpdateAfterBindInlineUniformBlocks:TVkUInt32;
+                          const aMaxDescriptorSetInlineUniformBlocks:TVkUInt32;
+                          const aMaxDescriptorSetUpdateAfterBindInlineUniformBlocks:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkWriteDescriptorSetInlineUniformBlockEXT=^PVkWriteDescriptorSetInlineUniformBlockEXT;
+     PVkWriteDescriptorSetInlineUniformBlockEXT=^TVkWriteDescriptorSetInlineUniformBlockEXT;
+     TVkWriteDescriptorSetInlineUniformBlockEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT
+       pNext:PVkVoid;
+       dataSize:TVkUInt32;
+       pData:PVkVoid;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDataSize:TVkUInt32;
+                          const aPData:PVkVoid);
+{$endif}
+     end;
+
+     PPVkDescriptorPoolInlineUniformBlockCreateInfoEXT=^PVkDescriptorPoolInlineUniformBlockCreateInfoEXT;
+     PVkDescriptorPoolInlineUniformBlockCreateInfoEXT=^TVkDescriptorPoolInlineUniformBlockCreateInfoEXT;
+     TVkDescriptorPoolInlineUniformBlockCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO_EXT
+       pNext:PVkVoid;
+       maxInlineUniformBlockBindings:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMaxInlineUniformBlockBindings:TVkUInt32);
+{$endif}
+     end;
+
      PPVkPipelineCoverageModulationStateCreateInfoNV=^PVkPipelineCoverageModulationStateCreateInfoNV;
      PVkPipelineCoverageModulationStateCreateInfoNV=^TVkPipelineCoverageModulationStateCreateInfoNV;
      TVkPipelineCoverageModulationStateCreateInfoNV=record
@@ -10513,6 +10620,38 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkPhysicalDeviceVulkanMemoryModelFeaturesKHR=^PVkPhysicalDeviceVulkanMemoryModelFeaturesKHR;
+     PVkPhysicalDeviceVulkanMemoryModelFeaturesKHR=^TVkPhysicalDeviceVulkanMemoryModelFeaturesKHR;
+     TVkPhysicalDeviceVulkanMemoryModelFeaturesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR
+       pNext:PVkVoid;
+       vulkanMemoryModel:TVkBool32;
+       vulkanMemoryModelDeviceScope:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aVulkanMemoryModel:TVkBool32;
+                          const aVulkanMemoryModelDeviceScope:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT=^PVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT;
+     PVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT=^TVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT;
+     TVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT
+       pNext:PVkVoid;
+       vertexAttributeInstanceRateDivisor:TVkBool32;
+       vertexAttributeInstanceRateZeroDivisor:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aVertexAttributeInstanceRateDivisor:TVkBool32;
+                          const aVertexAttributeInstanceRateZeroDivisor:TVkBool32);
+{$endif}
+     end;
+
      PPVkQueueFamilyCheckpointPropertiesNV=^PVkQueueFamilyCheckpointPropertiesNV;
      PVkQueueFamilyCheckpointPropertiesNV=^TVkQueueFamilyCheckpointPropertiesNV;
      TVkQueueFamilyCheckpointPropertiesNV=record
@@ -10540,6 +10679,34 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aStage:TVkPipelineStageFlagBits;
                           const aPCheckpointMarker:PVkVoid);
+{$endif}
+     end;
+
+     PPVkImageViewASTCDecodeModeEXT=^PVkImageViewASTCDecodeModeEXT;
+     PVkImageViewASTCDecodeModeEXT=^TVkImageViewASTCDecodeModeEXT;
+     TVkImageViewASTCDecodeModeEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_VIEW_ASTC_DECODE_MODE_EXT
+       pNext:PVkVoid;
+       decodeMode:TVkFormat;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDecodeMode:TVkFormat);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceASTCDecodeFeaturesEXT=^PVkPhysicalDeviceASTCDecodeFeaturesEXT;
+     PVkPhysicalDeviceASTCDecodeFeaturesEXT=^TVkPhysicalDeviceASTCDecodeFeaturesEXT;
+     TVkPhysicalDeviceASTCDecodeFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ASTC_DECODE_FEATURES_EXT
+       pNext:PVkVoid;
+       decodeModeSharedExponent:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDecodeModeSharedExponent:TVkBool32);
 {$endif}
      end;
 
@@ -19194,6 +19361,46 @@ begin
  blendOverlap:=aBlendOverlap;
 end;
 
+constructor TVkPhysicalDeviceInlineUniformBlockFeaturesEXT.Create(const aInlineUniformBlock:TVkBool32;
+                                                                  const aDescriptorBindingInlineUniformBlockUpdateAfterBind:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT;
+ pNext:=nil;
+ inlineUniformBlock:=aInlineUniformBlock;
+ descriptorBindingInlineUniformBlockUpdateAfterBind:=aDescriptorBindingInlineUniformBlockUpdateAfterBind;
+end;
+
+constructor TVkPhysicalDeviceInlineUniformBlockPropertiesEXT.Create(const aMaxInlineUniformBlockSize:TVkUInt32;
+                                                                    const aMaxPerStageDescriptorInlineUniformBlocks:TVkUInt32;
+                                                                    const aMaxPerStageDescriptorUpdateAfterBindInlineUniformBlocks:TVkUInt32;
+                                                                    const aMaxDescriptorSetInlineUniformBlocks:TVkUInt32;
+                                                                    const aMaxDescriptorSetUpdateAfterBindInlineUniformBlocks:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT;
+ pNext:=nil;
+ maxInlineUniformBlockSize:=aMaxInlineUniformBlockSize;
+ maxPerStageDescriptorInlineUniformBlocks:=aMaxPerStageDescriptorInlineUniformBlocks;
+ maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks:=aMaxPerStageDescriptorUpdateAfterBindInlineUniformBlocks;
+ maxDescriptorSetInlineUniformBlocks:=aMaxDescriptorSetInlineUniformBlocks;
+ maxDescriptorSetUpdateAfterBindInlineUniformBlocks:=aMaxDescriptorSetUpdateAfterBindInlineUniformBlocks;
+end;
+
+constructor TVkWriteDescriptorSetInlineUniformBlockEXT.Create(const aDataSize:TVkUInt32;
+                                                              const aPData:PVkVoid);
+begin
+ sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT;
+ pNext:=nil;
+ dataSize:=aDataSize;
+ pData:=aPData;
+end;
+
+constructor TVkDescriptorPoolInlineUniformBlockCreateInfoEXT.Create(const aMaxInlineUniformBlockBindings:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO_EXT;
+ pNext:=nil;
+ maxInlineUniformBlockBindings:=aMaxInlineUniformBlockBindings;
+end;
+
 constructor TVkPipelineCoverageModulationStateCreateInfoNV.Create(const aFlags:TVkPipelineCoverageModulationStateCreateFlagsNV;
                                                                   const aCoverageModulationMode:TVkCoverageModulationModeNV;
                                                                   const aCoverageModulationTableEnable:TVkBool32;
@@ -19834,6 +20041,24 @@ begin
  inheritedConditionalRendering:=aInheritedConditionalRendering;
 end;
 
+constructor TVkPhysicalDeviceVulkanMemoryModelFeaturesKHR.Create(const aVulkanMemoryModel:TVkBool32;
+                                                                 const aVulkanMemoryModelDeviceScope:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR;
+ pNext:=nil;
+ vulkanMemoryModel:=aVulkanMemoryModel;
+ vulkanMemoryModelDeviceScope:=aVulkanMemoryModelDeviceScope;
+end;
+
+constructor TVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT.Create(const aVertexAttributeInstanceRateDivisor:TVkBool32;
+                                                                      const aVertexAttributeInstanceRateZeroDivisor:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
+ pNext:=nil;
+ vertexAttributeInstanceRateDivisor:=aVertexAttributeInstanceRateDivisor;
+ vertexAttributeInstanceRateZeroDivisor:=aVertexAttributeInstanceRateZeroDivisor;
+end;
+
 constructor TVkQueueFamilyCheckpointPropertiesNV.Create(const aCheckpointExecutionStageMask:TVkPipelineStageFlags);
 begin
  sType:=VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV;
@@ -19848,6 +20073,20 @@ begin
  pNext:=nil;
  stage:=aStage;
  pCheckpointMarker:=aPCheckpointMarker;
+end;
+
+constructor TVkImageViewASTCDecodeModeEXT.Create(const aDecodeMode:TVkFormat);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMAGE_VIEW_ASTC_DECODE_MODE_EXT;
+ pNext:=nil;
+ decodeMode:=aDecodeMode;
+end;
+
+constructor TVkPhysicalDeviceASTCDecodeFeaturesEXT.Create(const aDecodeModeSharedExponent:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ASTC_DECODE_FEATURES_EXT;
+ pNext:=nil;
+ decodeModeSharedExponent:=aDecodeModeSharedExponent;
 end;
 {$endif}
 
