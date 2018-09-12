@@ -5509,6 +5509,15 @@ begin
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Creating vulkan device');
 {$ifend}
   fVulkanDevice:=TpvVulkanDevice.Create(VulkanInstance,nil,aSurface,nil);
+
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
+  end;
+
+  if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME)>=0 then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
+  end;
+
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Created vulkan device');
 {$ifend}

@@ -856,6 +856,7 @@ type EpvVulkanException=class(Exception);
      TpvVulkanDeviceMemoryChunkFlag=
       (
        PersistentMapped,
+       OwnSingleMemoryChunk,
        DedicatedAllocation
       );
 
@@ -1028,6 +1029,7 @@ type EpvVulkanException=class(Exception);
      TpvVulkanDeviceMemoryBlockFlag=
       (
        PersistentMapped,
+       OwnSingleMemoryChunk,
        DedicatedAllocation
       );
 
@@ -1080,14 +1082,33 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDeviceMemoryManager=class(TpvVulkanObject)
       private
+       type TDedicatedAllocationSupport=
+             (
+              None,
+              KHR,
+              Core
+             );
+      private
        fDevice:TpvVulkanDevice;
        fLock:TPasMPCriticalSection;
        fMemoryChunkList:TpvVulkanDeviceMemoryManagerChunkList;
        fFirstMemoryBlock:TpvVulkanDeviceMemoryBlock;
        fLastMemoryBlock:TpvVulkanDeviceMemoryBlock;
+       fDedicatedAllocationSupport:TDedicatedAllocationSupport;
       public
        constructor Create(const aDevice:TpvVulkanDevice);
        destructor Destroy; override;
+
+       procedure Initialize;
+
+       function GetBufferMemoryRequirements(const aBufferHandle:TVkBuffer;
+                                            out aRequiresDedicatedAllocation:boolean;
+                                            out aPrefersDedicatedAllocation:boolean):TVkMemoryRequirements;
+
+       function GetImageMemoryRequirements(const aImageHandle:TVkImage;
+                                           out aRequiresDedicatedAllocation:boolean;
+                                           out aPrefersDedicatedAllocation:boolean):TVkMemoryRequirements;
+
        function AllocateMemoryBlock(const aMemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
                                     const aMemoryBlockSize:TVkDeviceSize;
                                     const aMemoryBlockAlignment:TVkDeviceSize;
@@ -1098,7 +1119,8 @@ type EpvVulkanException=class(Exception);
                                     const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
                                     const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
                                     const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
-                                    const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType):TpvVulkanDeviceMemoryBlock;
+                                    const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
+                                    const aMemoryDedicatedAllocationData:TpvPointer=nil):TpvVulkanDeviceMemoryBlock;
        function FreeMemoryBlock(const aMemoryBlock:TpvVulkanDeviceMemoryBlock):boolean;
 
        (* Warning! This function is not correct according to Vulkan specification, therefore use it
@@ -1142,6 +1164,7 @@ type EpvVulkanException=class(Exception);
      TpvVulkanBufferFlag=
       (
        PersistentMapped,
+       OwnSingleMemoryChunk,
        DedicatedAllocation
       );
 
@@ -8527,6 +8550,7 @@ var Index:TpvInt32;
     Queue:TVkQueue;
     DeviceCreateInfo:TVkDeviceCreateInfo;
 begin
+
  if fDeviceHandle=VK_NULL_HANDLE then begin
 
   SetLength(fEnabledLayerNameStrings,fEnabledLayerNames.Count);
@@ -8643,7 +8667,10 @@ begin
    fTransferQueue:=nil;
   end;
 
+  fMemoryManager.Initialize;
+
  end;
+
 end;
 
 procedure TpvVulkanDevice.WaitIdle;
@@ -10365,6 +10392,8 @@ begin
  fFirstMemoryBlock:=nil;
  fLastMemoryBlock:=nil;
 
+ fDedicatedAllocationSupport:=TDedicatedAllocationSupport.None;
+
 end;
 
 destructor TpvVulkanDeviceMemoryManager.Destroy;
@@ -10380,6 +10409,140 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvVulkanDeviceMemoryManager.Initialize;
+begin
+
+ if (((fDevice.fInstance.APIVersion shr 22)=1) or
+    (((fDevice.fInstance.APIVersion shr 12) and $3ff)=0)) and
+    (((fDevice.fEnabledExtensionNames.IndexOf(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME)>=0) and
+      (fDevice.fEnabledExtensionNames.IndexOf(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME)>=0)) and
+      (assigned(fDevice.fDeviceVulkan) and
+       assigned(fDevice.fDeviceVulkan.Commands.GetBufferMemoryRequirements2KHR) and
+       assigned(fDevice.fDeviceVulkan.Commands.GetImageMemoryRequirements2KHR))) then begin
+  fDedicatedAllocationSupport:=TDedicatedAllocationSupport.KHR;
+ end else if (((fDevice.fInstance.APIVersion shr 22)>1) or
+             (((fDevice.fInstance.APIVersion shr 22)=1) or
+              (((fDevice.fInstance.APIVersion shr 12) and $3ff)>=1))) and
+             (assigned(fDevice.fDeviceVulkan) and
+              assigned(fDevice.fDeviceVulkan.Commands.GetBufferMemoryRequirements2) and
+              assigned(fDevice.fDeviceVulkan.Commands.GetImageMemoryRequirements2)) then begin
+  fDedicatedAllocationSupport:=TDedicatedAllocationSupport.Core;
+ end else begin
+  fDedicatedAllocationSupport:=TDedicatedAllocationSupport.None;
+ end;
+
+end;
+
+function TpvVulkanDeviceMemoryManager.GetBufferMemoryRequirements(const aBufferHandle:TVkBuffer;
+                                                                  out aRequiresDedicatedAllocation:boolean;
+                                                                  out aPrefersDedicatedAllocation:boolean):TVkMemoryRequirements;
+var BufferMemoryRequirementsInfo2KHR:TVkBufferMemoryRequirementsInfo2KHR;
+    MemoryRequirements2KHR:TVkMemoryRequirements2KHR;
+    MemoryDedicatedRequirementsKHR:TVkMemoryDedicatedRequirementsKHR;
+begin
+
+ case fDedicatedAllocationSupport of
+
+  TDedicatedAllocationSupport.KHR,
+  TDedicatedAllocationSupport.Core:begin
+
+   FillChar(BufferMemoryRequirementsInfo2KHR,SizeOf(TVkBufferMemoryRequirementsInfo2KHR),#0);
+   BufferMemoryRequirementsInfo2KHR.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2_KHR;
+   BufferMemoryRequirementsInfo2KHR.Buffer:=aBufferHandle;
+
+   FillChar(MemoryDedicatedRequirementsKHR,SizeOf(TVkMemoryDedicatedRequirementsKHR),#0);
+   MemoryDedicatedRequirementsKHR.sType:=VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR;
+
+   FillChar(MemoryRequirements2KHR,SizeOf(TVkMemoryRequirements2KHR),#0);
+   MemoryRequirements2KHR.sType:=VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2_KHR;
+   MemoryRequirements2KHR.pNext:=@MemoryDedicatedRequirementsKHR;
+
+   if fDedicatedAllocationSupport=TDedicatedAllocationSupport.KHR then begin
+    fDevice.fDeviceVulkan.GetBufferMemoryRequirements2KHR(fDevice.fDeviceHandle,
+                                                          TpvPointer(@BufferMemoryRequirementsInfo2KHR),
+                                                          TpvPointer(@MemoryRequirements2KHR));
+   end else begin
+    fDevice.fDeviceVulkan.GetBufferMemoryRequirements2(fDevice.fDeviceHandle,
+                                                       TpvPointer(@BufferMemoryRequirementsInfo2KHR),
+                                                       TpvPointer(@MemoryRequirements2KHR));
+   end;
+
+   result:=MemoryRequirements2KHR.memoryRequirements;
+
+   aRequiresDedicatedAllocation:=MemoryDedicatedRequirementsKHR.requiresDedicatedAllocation<>VK_FALSE;
+
+   aPrefersDedicatedAllocation:=MemoryDedicatedRequirementsKHR.prefersDedicatedAllocation<>VK_FALSE;
+
+  end;
+  else {TDedicatedAllocationSupport.None:}begin
+
+   fDevice.fDeviceVulkan.GetBufferMemoryRequirements(fDevice.fDeviceHandle,aBufferHandle,@result);
+
+   aRequiresDedicatedAllocation:=false;
+
+   aPrefersDedicatedAllocation:=false;
+
+  end;
+
+ end;
+
+end;
+
+function TpvVulkanDeviceMemoryManager.GetImageMemoryRequirements(const aImageHandle:TVkImage;
+                                                                 out aRequiresDedicatedAllocation:boolean;
+                                                                 out aPrefersDedicatedAllocation:boolean):TVkMemoryRequirements;
+var ImageMemoryRequirementsInfo2KHR:TVkImageMemoryRequirementsInfo2KHR;
+    MemoryRequirements2KHR:TVkMemoryRequirements2KHR;
+    MemoryDedicatedRequirementsKHR:TVkMemoryDedicatedRequirementsKHR;
+begin
+
+ case fDedicatedAllocationSupport of
+
+  TDedicatedAllocationSupport.KHR,
+  TDedicatedAllocationSupport.Core:begin
+
+   FillChar(ImageMemoryRequirementsInfo2KHR,SizeOf(TVkImageMemoryRequirementsInfo2KHR),#0);
+   ImageMemoryRequirementsInfo2KHR.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2_KHR;
+   ImageMemoryRequirementsInfo2KHR.Image:=aImageHandle;
+
+   FillChar(MemoryDedicatedRequirementsKHR,SizeOf(TVkMemoryDedicatedRequirementsKHR),#0);
+   MemoryDedicatedRequirementsKHR.sType:=VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR;
+
+   FillChar(MemoryRequirements2KHR,SizeOf(TVkMemoryRequirements2KHR),#0);
+   MemoryRequirements2KHR.sType:=VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2_KHR;
+   MemoryRequirements2KHR.pNext:=@MemoryDedicatedRequirementsKHR;
+
+   if fDedicatedAllocationSupport=TDedicatedAllocationSupport.KHR then begin
+    fDevice.fDeviceVulkan.GetImageMemoryRequirements2KHR(fDevice.fDeviceHandle,
+                                                         TpvPointer(@ImageMemoryRequirementsInfo2KHR),
+                                                         TpvPointer(@MemoryRequirements2KHR));
+   end else begin
+    fDevice.fDeviceVulkan.GetImageMemoryRequirements2(fDevice.fDeviceHandle,
+                                                      TpvPointer(@ImageMemoryRequirementsInfo2KHR),
+                                                      TpvPointer(@MemoryRequirements2KHR));
+   end;
+
+   result:=MemoryRequirements2KHR.memoryRequirements;
+
+   aRequiresDedicatedAllocation:=MemoryDedicatedRequirementsKHR.requiresDedicatedAllocation<>VK_FALSE;
+
+   aPrefersDedicatedAllocation:=MemoryDedicatedRequirementsKHR.prefersDedicatedAllocation<>VK_FALSE;
+
+  end;
+  else {TDedicatedAllocationSupport.None:}begin
+
+   fDevice.fDeviceVulkan.GetImageMemoryRequirements(fDevice.fDeviceHandle,aImageHandle,@result);
+
+   aRequiresDedicatedAllocation:=false;
+
+   aPrefersDedicatedAllocation:=false;
+
+  end;
+
+ end;
+
+end;
+
 function TpvVulkanDeviceMemoryManager.AllocateMemoryBlock(const aMemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
                                                           const aMemoryBlockSize:TVkDeviceSize;
                                                           const aMemoryBlockAlignment:TVkDeviceSize;
@@ -10390,7 +10553,8 @@ function TpvVulkanDeviceMemoryManager.AllocateMemoryBlock(const aMemoryBlockFlag
                                                           const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
                                                           const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
                                                           const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
-                                                          const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType):TpvVulkanDeviceMemoryBlock;
+                                                          const aMemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
+                                                          const aMemoryDedicatedAllocationData:TpvPointer=nil):TpvVulkanDeviceMemoryBlock;
 var TryIteration:TpvInt32;
     MemoryChunk:TpvVulkanDeviceMemoryChunk;
     MemoryChunkBlock:TpvVulkanDeviceMemoryChunkBlock;
@@ -10410,13 +10574,39 @@ begin
  if TpvVulkanDeviceMemoryBlockFlag.PersistentMapped in aMemoryBlockFlags then begin
   Include(MemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.PersistentMapped);
  end;
-
- if TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation in aMemoryBlockFlags then begin
-
+ if TpvVulkanDeviceMemoryBlockFlag.OwnSingleMemoryChunk in aMemoryBlockFlags then begin
+  Include(MemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk);
+ end;
+ if (TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation in aMemoryBlockFlags) and
+    (fDedicatedAllocationSupport<>TDedicatedAllocationSupport.None) and
+    (aMemoryAllocationType in [TpvVulkanDeviceMemoryAllocationType.Buffer,
+                               TpvVulkanDeviceMemoryAllocationType.ImageLinear,
+                               TpvVulkanDeviceMemoryAllocationType.ImageOptimal]) and
+    assigned(aMemoryDedicatedAllocationData) then begin
   Include(MemoryChunkFlags,TpvVulkanDeviceMemoryChunkFlag.DedicatedAllocation);
+ end;
+
+ if ([TpvVulkanDeviceMemoryChunkFlag.OwnSingleMemoryChunk,
+      TpvVulkanDeviceMemoryChunkFlag.DedicatedAllocation]*MemoryChunkFlags)<>[] then begin
 
   // New allocated device memory blocks are always perfectly aligned already, so set Alignment here to 1
   Alignment:=1;
+
+  if TpvVulkanDeviceMemoryChunkFlag.DedicatedAllocation in MemoryChunkFlags then begin
+
+   case aMemoryAllocationType of
+    TpvVulkanDeviceMemoryAllocationType.Buffer:begin
+
+    end;
+    TpvVulkanDeviceMemoryAllocationType.ImageLinear,
+    TpvVulkanDeviceMemoryAllocationType.ImageOptimal:begin
+    end;
+    else begin
+     raise EpvVulkanMemoryAllocationException.Create('Couldn''t allocate memory block');
+    end;
+   end;
+
+  end;
 
   fLock.Acquire;
   try
@@ -10583,6 +10773,8 @@ constructor TpvVulkanBuffer.Create(const aDevice:TpvVulkanDevice;
 var Index:TpvInt32;
     BufferCreateInfo:TVkBufferCreateInfo;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
+    RequiresDedicatedAllocation,
+    PrefersDedicatedAllocation:boolean;
 begin
  inherited Create;
 
@@ -10621,13 +10813,20 @@ begin
 
   HandleResultCode(fDevice.Commands.CreateBuffer(fDevice.fDeviceHandle,@BufferCreateInfo,fDevice.fAllocationCallbacks,@fBufferHandle));
 
-  fDevice.Commands.GetBufferMemoryRequirements(fDevice.fDeviceHandle,fBufferHandle,@fMemoryRequirements);
+  fMemoryRequirements:=fDevice.fMemoryManager.GetBufferMemoryRequirements(fBufferHandle,
+                                                                          RequiresDedicatedAllocation,
+                                                                          PrefersDedicatedAllocation);
 
   MemoryBlockFlags:=[];
   if TpvVulkanBufferFlag.PersistentMapped in fBufferFlags then begin
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.PersistentMapped);
   end;
-  if TpvVulkanBufferFlag.DedicatedAllocation in fBufferFlags then begin
+  if TpvVulkanBufferFlag.OwnSingleMemoryChunk in fBufferFlags then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.OwnSingleMemoryChunk);
+  end;
+  if RequiresDedicatedAllocation or
+     PrefersDedicatedAllocation then begin
+   Include(fBufferFlags,TpvVulkanBufferFlag.DedicatedAllocation);
    Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
   end;
 
@@ -10721,7 +10920,8 @@ begin
                                         0,
                                         0,
                                         0,
-                                        [TpvVulkanBufferFlag.DedicatedAllocation]);
+                                        [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
+                                         TpvVulkanBufferFlag.DedicatedAllocation]);
   try
 
    p:=StagingBuffer.Memory.MapMemory;
@@ -12408,6 +12608,9 @@ constructor TpvVulkanFrameBufferAttachment.Create(const aDevice:TpvVulkanDevice;
 var MemoryRequirements:TVkMemoryRequirements;
     AspectMask:TVkImageAspectFlags;
     ImageLayout:TVkImageLayout;
+    RequiresDedicatedAllocation,
+    PrefersDedicatedAllocation:boolean;
+    MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
 begin
  inherited Create;
 
@@ -12459,9 +12662,17 @@ begin
                               [],
                               VK_IMAGE_LAYOUT_UNDEFINED);
 
-  fDevice.fDeviceVulkan.GetImageMemoryRequirements(fDevice.fDeviceHandle,fImage.fImageHandle,@MemoryRequirements);
+  MemoryRequirements:=fDevice.fMemoryManager.GetImageMemoryRequirements(fImage.fImageHandle,
+                                                                        RequiresDedicatedAllocation,
+                                                                        PrefersDedicatedAllocation);
 
-  fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([],
+  MemoryBlockFlags:=[];
+
+  if RequiresDedicatedAllocation or PrefersDedicatedAllocation then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+  end;
+
+  fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
                                                            MemoryRequirements.size,
                                                            MemoryRequirements.alignment,
                                                            MemoryRequirements.memoryTypeBits,
@@ -13198,6 +13409,9 @@ var x,y:TpvInt32;
     CommandPool:TpvVulkanCommandPool;
     CommandBuffer:TpvVulkanCommandBuffer;
     Fence:TpvVulkanFence;
+    RequiresDedicatedAllocation,
+    PrefersDedicatedAllocation:boolean;
+    MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
 begin
 
  if assigned(aSwapChainImage) then begin
@@ -13255,10 +13469,18 @@ begin
                                    VK_IMAGE_LAYOUT_UNDEFINED);
  try
 
-  fDevice.fDeviceVulkan.GetImageMemoryRequirements(fDevice.fDeviceHandle,FirstImage.fImageHandle,@MemoryRequirements);
+  MemoryRequirements:=fDevice.fMemoryManager.GetImageMemoryRequirements(FirstImage.fImageHandle,
+                                                                        RequiresDedicatedAllocation,
+                                                                        PrefersDedicatedAllocation);
+
+  MemoryBlockFlags:=[];
+
+  if RequiresDedicatedAllocation or PrefersDedicatedAllocation then begin
+   Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+  end;
 
   if NeedTwoSteps then begin
-   FirstMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([],
+   FirstMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
                                                                 MemoryRequirements.size,
                                                                 MemoryRequirements.alignment,
                                                                 MemoryRequirements.memoryTypeBits,
@@ -13315,9 +13537,17 @@ begin
 
     if assigned(SecondImage) then begin
 
-     fDevice.fDeviceVulkan.GetImageMemoryRequirements(fDevice.fDeviceHandle,SecondImage.fImageHandle,@MemoryRequirements);
+     MemoryRequirements:=fDevice.fMemoryManager.GetImageMemoryRequirements(SecondImage.fImageHandle,
+                                                                           RequiresDedicatedAllocation,
+                                                                           PrefersDedicatedAllocation);
 
-     SecondMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([TpvVulkanDeviceMemoryBlockFlag.PersistentMapped],
+     MemoryBlockFlags:=[TpvVulkanDeviceMemoryBlockFlag.PersistentMapped];
+
+     if RequiresDedicatedAllocation or PrefersDedicatedAllocation then begin
+      Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+     end;
+
+     SecondMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
                                                                    MemoryRequirements.size,
                                                                    MemoryRequirements.alignment,
                                                                    MemoryRequirements.memoryTypeBits,
@@ -17057,6 +17287,9 @@ var MaxDimension,MaxMipMapLevels:TpvInt32;
     ImageType:TVkImageType;
     MemoryRequirements:TVkMemoryRequirements;
     ImageBlit:TVkImageBlit;
+    RequiresDedicatedAllocation,
+    PrefersDedicatedAllocation:boolean;
+    MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
 begin
 
  inherited Create;
@@ -17216,9 +17449,17 @@ begin
                                VK_IMAGE_LAYOUT_UNDEFINED
                               );
 
- fDevice.Commands.GetImageMemoryRequirements(fDevice.fDeviceHandle,fImage.fImageHandle,@MemoryRequirements);
+ MemoryRequirements:=fDevice.fMemoryManager.GetImageMemoryRequirements(fImage.fImageHandle,
+                                                                       RequiresDedicatedAllocation,
+                                                                       PrefersDedicatedAllocation);
 
- fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock([],
+ MemoryBlockFlags:=[];
+
+ if RequiresDedicatedAllocation or PrefersDedicatedAllocation then begin
+  Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+ end;
+
+ fMemoryBlock:=fDevice.fMemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
                                                           MemoryRequirements.size,
                                                           MemoryRequirements.alignment,
                                                           MemoryRequirements.memoryTypeBits,
@@ -19709,7 +19950,8 @@ begin
                                          0,
                                          0,
                                          0,
-                                         [TpvVulkanBufferFlag.DedicatedAllocation]);
+                                         [TpvVulkanBufferFlag.OwnSingleMemoryChunk,
+                                          TpvVulkanBufferFlag.DedicatedAllocation]);
   end;
 
   try
