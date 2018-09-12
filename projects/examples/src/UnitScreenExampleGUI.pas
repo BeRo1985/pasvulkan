@@ -2253,6 +2253,7 @@ begin
    aWaitSemaphore:=fVulkanRenderSemaphores[aSwapChainImageIndex];
 
   end;
+
  end;
 
 end;
