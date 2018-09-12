@@ -594,6 +594,7 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
        fVulkanCanvasBuffers:TpvCanvasBuffers;
        fCountBuffers:TpvInt32;
        fCurrentFillBuffer:PpvCanvasBuffer;
+       fCountProcessingBuffers:TpvInt32;
        fCurrentFrameNumber:TpvNativeUInt;
        fWidth:TpvInt32;
        fHeight:TpvInt32;
@@ -672,7 +673,8 @@ type PpvCanvasRenderingMode=^TpvCanvasRenderingMode;
                           const aTransferQueue:TpvVulkanQueue;
                           const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                           const aTransferFence:TpvVulkanFence;
-                          const aPipelineCache:TpvVulkanPipelineCache); reintroduce;
+                          const aPipelineCache:TpvVulkanPipelineCache;
+                          const aCountProcessingBuffers:TpvInt32=4); reintroduce;
        destructor Destroy; override;
        procedure Start(const aBufferIndex:TpvInt32);
        procedure Stop;
@@ -3168,7 +3170,8 @@ constructor TpvCanvas.Create(const aDevice:TpvVulkanDevice;
                              const aTransferQueue:TpvVulkanQueue;
                              const aTransferCommandBuffer:TpvVulkanCommandBuffer;
                              const aTransferFence:TpvVulkanFence;
-                             const aPipelineCache:TpvVulkanPipelineCache);
+                             const aPipelineCache:TpvVulkanPipelineCache;
+                             const aCountProcessingBuffers:TpvInt32);
 var Index,TextureModeIndex:TpvInt32;
     RenderingModeIndex:TpvCanvasRenderingMode;
     BlendingModeIndex:TpvCanvasBlendingMode;
@@ -3193,6 +3196,8 @@ begin
  fCountBuffers:=0;
 
  fVulkanCanvasBuffers:=nil;
+
+ fCountProcessingBuffers:=aCountProcessingBuffers;
 
  fShape:=TpvCanvasShape.Create;
 
@@ -3902,13 +3907,15 @@ end;
 procedure TpvCanvas.GarbageCollectDescriptors;
 var DescriptorLinkedListNode,PreviousDescriptorLinkedListNode:TpvCanvasVulkanDescriptorLinkedListNode;
     Descriptor:TpvCanvasVulkanDescriptor;
+    CountProcessingBuffers:TpvNativeInt;
 begin
+ CountProcessingBuffers:=Max(2,fCountProcessingBuffers)+1;
  DescriptorLinkedListNode:=fVulkanDescriptors.Back;
  while DescriptorLinkedListNode<>fVulkanDescriptors do begin
   PreviousDescriptorLinkedListNode:=DescriptorLinkedListNode.Previous;
   Descriptor:=DescriptorLinkedListNode.Value;
   if assigned(Descriptor) and
-     (TpvNativeInt(TpvNativeUInt(fCurrentFrameNumber-Descriptor.fLastUsedFrameNumber))>2) then begin
+     (TpvNativeInt(TpvNativeUInt(fCurrentFrameNumber-Descriptor.fLastUsedFrameNumber))>CountProcessingBuffers) then begin
    try
     fVulkanTextureDescriptorSetHashMap.Delete(Descriptor.fDescriptorTexture);
    finally

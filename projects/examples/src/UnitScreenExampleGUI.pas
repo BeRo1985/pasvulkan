@@ -1611,7 +1611,8 @@ begin
                                  pvApplication.VulkanDevice.TransferQueue,
                                  pvApplication.VulkanTransferCommandBuffers[0,0],
                                  pvApplication.VulkanTransferCommandBufferFences[0,0],
-                                 pvApplication.VulkanPipelineCache);
+                                 pvApplication.VulkanPipelineCache,
+                                 MaxSwapChainImages);
 
  fGUIInstance:=TpvGUIInstance.Create(pvApplication.VulkanDevice,fVulkanCanvas);
 
