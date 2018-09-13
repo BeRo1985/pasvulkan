@@ -5497,7 +5497,7 @@ begin
 end;
 
 procedure TpvApplication.CreateVulkanDevice(const aSurface:TpvVulkanSurface=nil);
-var QueueFamilyIndex,ThreadIndex,SwapChainImageIndex:TpvInt32;
+var QueueFamilyIndex,ThreadIndex,SwapChainImageIndex,Index:TpvInt32;
     FormatProperties:TVkFormatProperties;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -5509,6 +5509,25 @@ begin
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Creating vulkan device');
 {$ifend}
   fVulkanDevice:=TpvVulkanDevice.Create(VulkanInstance,nil,aSurface,nil);
+
+  VulkanDebugLn('Device name: '+string(fVulkanDevice.PhysicalDevice.DeviceName));
+
+  VulkanDebugLn('Device Vendor ID: 0x'+
+                IntToHex(fVulkanDevice.PhysicalDevice.Properties.vendorID,8));
+
+  VulkanDebugLn('Device ID: 0x'+
+                IntToHex(fVulkanDevice.PhysicalDevice.Properties.deviceID,8));
+
+  VulkanDebugLn('Device Vulkan API version: '+string(fVulkanDevice.PhysicalDevice.GetAPIVersionString));
+
+  VulkanDebugLn('Device driver version: '+string(fVulkanDevice.PhysicalDevice.GetDriverVersionString));
+
+  for Index:=0 to fVulkanDevice.PhysicalDevice.AvailableLayerNames.Count-1 do begin
+   VulkanDebugLn('Device layer: '+fVulkanDevice.PhysicalDevice.AvailableLayerNames[Index]);
+  end;
+  for Index:=0 to fVulkanDevice.PhysicalDevice.AvailableExtensionNames.Count-1 do begin
+   VulkanDebugLn('Device extension: '+fVulkanDevice.PhysicalDevice.AvailableExtensionNames[Index]);
+  end;
 
   if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME)>=0 then begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
@@ -5669,10 +5688,10 @@ begin
                                              'PasVulkanApplication',$0100,
                                               VK_API_VERSION_1_0,false,nil);
    for i:=0 to fVulkanInstance.AvailableLayerNames.Count-1 do begin
-    VulkanDebugLn('Layer: '+fVulkanInstance.AvailableLayerNames[i]);
+    VulkanDebugLn('Instance layer: '+fVulkanInstance.AvailableLayerNames[i]);
    end;
    for i:=0 to fVulkanInstance.AvailableExtensionNames.Count-1 do begin
-    VulkanDebugLn('Extension: '+fVulkanInstance.AvailableExtensionNames[i]);
+    VulkanDebugLn('Instance extension: '+fVulkanInstance.AvailableExtensionNames[i]);
    end;
 {$if defined(PasVulkanUseSDL2WithVulkanSupport)}
    if fSDLVersionWithVulkanSupport then begin

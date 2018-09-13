@@ -126,6 +126,22 @@ type EpvVulkanException=class(Exception);
      PpvVulkanBytes=^TpvVulkanBytes;
      TpvVulkanBytes=array[0..65535] of TpvUInt8;
 
+     PpvVulkanVendorID=^TpvVulkanVendorID;
+     TpvVulkanVendorID=
+      (
+       Minimum=0,
+       AMD=$1002,
+       ImgTec=$1010,
+       NVIDIA=$10de,
+       ARM=$13b5,
+       Qualcomm=$5143,
+       Intel=$8086,
+       Vivante=$10001,
+       VeriSilicon=$10002,
+       Kazan=$10003,
+       Maximum=$7fffffff
+      );
+
      TpvVulkanFormatSizeFlag=
       (
        PackedFormat,
@@ -570,10 +586,12 @@ type EpvVulkanException=class(Exception);
        fAvailableExtensions:TpvVulkanAvailableExtensions;
        fAvailableLayerNames:TStringList;
        fAvailableExtensionNames:TStringList;
-        fPipelineStageAllShaderBits:TpvUInt32;
+       fPipelineStageAllShaderBits:TpvUInt32;
       public
        constructor Create(const aInstance:TpvVulkanInstance;const aPhysicalDevice:TVkPhysicalDevice);
        destructor Destroy; override;
+       function GetAPIVersionString:TpvRawByteString;
+       function GetDriverVersionString:TpvRawByteString;
        function HasQueueSupportForSparseBindings(const aQueueFamilyIndex:TpvUInt32):boolean;
        function GetFormatProperties(const aFormat:TVkFormat):TVkFormatProperties;
        function GetImageFormatProperties(const aFormat:TVkFormat;
@@ -7625,6 +7643,60 @@ begin
  SetLength(fAvailableLayers,0);
  SetLength(fAvailableExtensions,0);
  inherited Destroy;
+end;
+
+function TpvVulkanPhysicalDevice.GetAPIVersionString:TpvRawByteString;
+begin
+ result:=TpvRawByteString(IntToStr((fProperties.apiVersion and $7fffffff) shr 22)+'.'+
+                          IntToStr((fProperties.apiVersion shr 12) and $3ff)+'.'+
+                          IntToStr(fProperties.apiVersion and $fff));
+end;
+
+function TpvVulkanPhysicalDevice.GetDriverVersionString:TpvRawByteString;
+begin
+ case TpvVulkanVendorID(fProperties.vendorID) of
+  TpvVulkanVendorID.AMD:begin
+   result:=TpvRawByteString(IntToStr(fProperties.driverVersion shr 22)+'.'+
+                            IntToStr((fProperties.driverVersion shr 12) and $3ff)+'.'+
+                            IntToStr(fProperties.driverVersion and $fff));
+  end;
+  TpvVulkanVendorID.ImgTec:begin
+   result:=TpvRawByteString(IntToStr(fProperties.driverVersion));
+  end;
+  TpvVulkanVendorID.NVIDIA:begin
+   result:=TpvRawByteString(IntToStr(fProperties.driverVersion shr 22)+'.'+
+                            IntToStr((fProperties.driverVersion shr 14) and $ff)+'.'+
+                            IntToStr((fProperties.driverVersion shr 6) and $ff)+'.'+
+                            IntToStr(fProperties.driverVersion and $3f));
+  end;
+  TpvVulkanVendorID.ARM:begin
+   result:=TpvRawByteString(IntToStr(fProperties.driverVersion));
+  end;
+  TpvVulkanVendorID.Qualcomm:begin
+   if (fProperties.driverVersion and $80000000)<>0 then begin
+    result:=TpvRawByteString(IntToStr((fProperties.driverVersion and $7fffffff) shr 22)+'.'+
+                             IntToStr((fProperties.driverVersion shr 12) and $3ff)+'.'+
+                             IntToStr(fProperties.driverVersion and $fff));
+   end else begin
+    result:=TpvRawByteString(IntToStr(fProperties.driverVersion));
+   end;
+  end;
+  TpvVulkanVendorID.Intel:begin
+   result:=TpvRawByteString(IntToStr(fProperties.driverVersion));
+  end;
+  TpvVulkanVendorID.Vivante:begin
+   result:=TpvRawByteString(IntToStr(fProperties.driverVersion));
+  end;
+  TpvVulkanVendorID.VeriSilicon:begin
+   result:=TpvRawByteString(IntToStr(fProperties.driverVersion));
+  end;
+  TpvVulkanVendorID.Kazan:begin
+   result:=TpvRawByteString(IntToStr(fProperties.driverVersion));
+  end;
+  else begin
+   result:=TpvRawByteString(IntToStr(fProperties.driverVersion));
+  end;
+ end;
 end;
 
 function TpvVulkanPhysicalDevice.HasQueueSupportForSparseBindings(const aQueueFamilyIndex:TpvUInt32):boolean;
