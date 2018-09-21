@@ -1642,6 +1642,29 @@ type EpvVulkanException=class(Exception);
                                  const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
                                  const aFilterLinear:boolean=true;
                                  const aAspectMask:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT));
+       procedure Blit(const aDestination:TpvVulkanImage;
+                      const aSrcInitialImageLayout:TVkImageLayout;
+                      const aSrcFinalImageLayout:TVkImageLayout;
+                      const aSrcWidth:TpvSizeInt;
+                      const aSrcHeight:TpvSizeInt;
+                      const aSrcDepth:TpvSizeInt;
+                      const aSrcMipMapLevel:TpvSizeInt;
+                      const aSrcArrayLayer:TpvSizeInt;
+                      const aDstInitialImageLayout:TVkImageLayout;
+                      const aDstFinalImageLayout:TVkImageLayout;
+                      const aDstWidth:TpvSizeInt;
+                      const aDstHeight:TpvSizeInt;
+                      const aDstDepth:TpvSizeInt;
+                      const aDstMipMapLevel:TpvSizeInt;
+                      const aDstArrayLayer:TpvSizeInt;
+                      const aCommandBuffer:TpvVulkanCommandBuffer;
+                      const aQueue:TpvVulkanQueue=nil;
+                      const aFence:TpvVulkanFence=nil;
+                      const aBeginAndExecuteCommandBuffer:boolean=false;
+                      const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                      const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                      const aFilterLinear:boolean=true;
+                      const aAspectMask:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT));
       published
        property Device:TpvVulkanDevice read fDevice;
        property Handle:TVkImage read fImageHandle;
@@ -12679,7 +12702,7 @@ begin
 
  if aSrcImageLayout<>TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) then begin
   FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
-  ImageSubresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  ImageSubresourceRange.aspectMask:=aAspectMask;
   ImageSubresourceRange.baseMipLevel:=aStartMipMapLevel;
   ImageSubresourceRange.levelCount:=1;
   ImageSubresourceRange.baseArrayLayer:=aStartArrayLayer;
@@ -12757,6 +12780,156 @@ begin
                        aAspectMask,
                        TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
                        aDstImageLayout,
+                       @ImageSubresourceRange,
+                       aCommandBuffer,
+                       nil,
+                       nil,
+                       false,
+                       aSrcQueueFamilyIndex,
+                       aDstQueueFamilyIndex);
+ end;
+
+ if aBeginAndExecuteCommandBuffer then begin
+  aCommandBuffer.EndRecording;
+  aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),nil,nil,aFence,true);
+ end;
+
+end;
+
+procedure TpvVulkanImage.Blit(const aDestination:TpvVulkanImage;
+                              const aSrcInitialImageLayout:TVkImageLayout;
+                              const aSrcFinalImageLayout:TVkImageLayout;
+                              const aSrcWidth:TpvSizeInt;
+                              const aSrcHeight:TpvSizeInt;
+                              const aSrcDepth:TpvSizeInt;
+                              const aSrcMipMapLevel:TpvSizeInt;
+                              const aSrcArrayLayer:TpvSizeInt;
+                              const aDstInitialImageLayout:TVkImageLayout;
+                              const aDstFinalImageLayout:TVkImageLayout;
+                              const aDstWidth:TpvSizeInt;
+                              const aDstHeight:TpvSizeInt;
+                              const aDstDepth:TpvSizeInt;
+                              const aDstMipMapLevel:TpvSizeInt;
+                              const aDstArrayLayer:TpvSizeInt;
+                              const aCommandBuffer:TpvVulkanCommandBuffer;
+                              const aQueue:TpvVulkanQueue=nil;
+                              const aFence:TpvVulkanFence=nil;
+                              const aBeginAndExecuteCommandBuffer:boolean=false;
+                              const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                              const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                              const aFilterLinear:boolean=true;
+                              const aAspectMask:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT));
+var ImageSubresourceRange:TVkImageSubresourceRange;
+    ImageBlit:TVkImageBlit;
+begin
+
+ if aBeginAndExecuteCommandBuffer then begin
+  aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  aCommandBuffer.BeginRecording;
+ end;
+
+ if aSrcInitialImageLayout<>TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) then begin
+  FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
+  ImageSubresourceRange.aspectMask:=aAspectMask;
+  ImageSubresourceRange.baseMipLevel:=aSrcMipMapLevel;
+  ImageSubresourceRange.levelCount:=1;
+  ImageSubresourceRange.baseArrayLayer:=aSrcArrayLayer;
+  ImageSubresourceRange.layerCount:=1;
+  VulkanSetImageLayout(fImageHandle,
+                       aAspectMask,
+                       aSrcInitialImageLayout,
+                       TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+                       @ImageSubresourceRange,
+                       aCommandBuffer,
+                       nil,
+                       nil,
+                       false,
+                       aSrcQueueFamilyIndex,
+                       aDstQueueFamilyIndex);
+ end;
+
+ if aDstInitialImageLayout<>TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) then begin
+  FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
+  ImageSubresourceRange.aspectMask:=aAspectMask;
+  ImageSubresourceRange.baseMipLevel:=aSrcMipMapLevel;
+  ImageSubresourceRange.levelCount:=1;
+  ImageSubresourceRange.baseArrayLayer:=aSrcArrayLayer;
+  ImageSubresourceRange.layerCount:=1;
+  VulkanSetImageLayout(aDestination.fImageHandle,
+                       aAspectMask,
+                       aDstInitialImageLayout,
+                       TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+                       @ImageSubresourceRange,
+                       aCommandBuffer,
+                       nil,
+                       nil,
+                       false,
+                       aSrcQueueFamilyIndex,
+                       aDstQueueFamilyIndex);
+ end;
+
+ begin
+
+  FillChar(ImageBlit,SizeOf(TVkImageBlit),#0);
+  ImageBlit.srcSubresource.aspectMask:=aAspectMask;
+  ImageBlit.srcSubresource.mipLevel:=aSrcMipMapLevel;
+  ImageBlit.srcSubresource.baseArrayLayer:=aSrcArrayLayer;
+  ImageBlit.srcSubresource.layerCount:=1;
+  ImageBlit.srcOffsets[0].x:=0;
+  ImageBlit.srcOffsets[0].y:=0;
+  ImageBlit.srcOffsets[0].z:=0;
+  ImageBlit.srcOffsets[1].x:=Max(1,aSrcWidth shr aSrcMipMapLevel);
+  ImageBlit.srcOffsets[1].y:=Max(1,aSrcHeight shr aSrcMipMapLevel);
+  ImageBlit.srcOffsets[1].z:=Max(1,aSrcDepth shr aSrcMipMapLevel);
+  ImageBlit.dstSubresource.aspectMask:=aAspectMask;
+  ImageBlit.dstSubresource.mipLevel:=aDstMipMapLevel;
+  ImageBlit.dstSubresource.baseArrayLayer:=aDstArrayLayer;
+  ImageBlit.dstSubresource.layerCount:=1;
+  ImageBlit.dstOffsets[0].x:=0;
+  ImageBlit.dstOffsets[0].y:=0;
+  ImageBlit.dstOffsets[0].z:=0;
+  ImageBlit.dstOffsets[1].x:=Max(1,aDstWidth shr aDstMipMapLevel);
+  ImageBlit.dstOffsets[1].y:=Max(1,aDstHeight shr aDstMipMapLevel);
+  ImageBlit.dstOffsets[1].z:=Max(1,aDstDepth shr aDstMipMapLevel);
+
+  aCommandBuffer.CmdBlitImage(fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                              aDestination.fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                              1,@ImageBlit,
+                              TVkFilter(IfThen(aFilterLinear,TpvInt32(TVkFilter(VK_FILTER_LINEAR)),TpvInt32(TVkFilter(VK_FILTER_NEAREST)))));
+
+ end;
+
+ if aSrcFinalImageLayout<>TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) then begin
+  FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
+  ImageSubresourceRange.aspectMask:=aAspectMask;
+  ImageSubresourceRange.baseMipLevel:=aSrcMipMapLevel;
+  ImageSubresourceRange.levelCount:=1;
+  ImageSubresourceRange.baseArrayLayer:=aSrcArrayLayer;
+  ImageSubresourceRange.layerCount:=1;
+  VulkanSetImageLayout(fImageHandle,
+                       aAspectMask,
+                       TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+                       aSrcFinalImageLayout,
+                       @ImageSubresourceRange,
+                       aCommandBuffer,
+                       nil,
+                       nil,
+                       false,
+                       aSrcQueueFamilyIndex,
+                       aDstQueueFamilyIndex);
+ end;
+
+ if aDstFinalImageLayout<>TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) then begin
+  FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
+  ImageSubresourceRange.aspectMask:=aAspectMask;
+  ImageSubresourceRange.baseMipLevel:=aSrcMipMapLevel;
+  ImageSubresourceRange.levelCount:=1;
+  ImageSubresourceRange.baseArrayLayer:=aSrcArrayLayer;
+  ImageSubresourceRange.layerCount:=1;
+  VulkanSetImageLayout(aDestination.fImageHandle,
+                       aAspectMask,
+                       TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+                       aDstFinalImageLayout,
                        @ImageSubresourceRange,
                        aCommandBuffer,
                        nil,
