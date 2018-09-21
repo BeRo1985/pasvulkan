@@ -40,7 +40,8 @@ set FILLTYPE_ATLAS_TEXTURE=2
 for %%f in (*.spv) do (
   rem spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const %%f -o %%f
   rem spirv-opt --strip-debug --unify-const --flatten-decorations --strength-reduction --simplify-instructions --remove-duplicates --redundancy-elimination --eliminate-dead-code-aggressive --eliminate-dead-branches --eliminate-dead-const %%f -o %%f
-  spirv-opt -O %%f -o %%f
+  rem spirv-opt -O %%f -o %%f
+  spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const --strength-reduction --simplify-instructions --remove-duplicates -O %%f -o %%f
 )
 
 
