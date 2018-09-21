@@ -936,6 +936,12 @@ type EpvApplication=class(Exception)
        Vsync={$ifdef fpc}2{$else}TpvApplicationPresentMode.FIFO{$endif}
       );
 
+     TpvApplicationSwapChainColorSpace=
+      (
+       RGB=0,
+       SRGB=1
+      );
+
      TpvApplication=class
       private
        type //PpvApplicationVulkanRecreationKind=^TpvApplicationVulkanRecreationKind;
@@ -999,6 +1005,8 @@ type EpvApplication=class(Exception)
        fCurrentCatchMouse:TpvInt32;
        fCurrentHideSystemBars:TpvInt32;
        fCurrentBlocking:TpvInt32;
+
+       fSwapChainColorSpace:TpvApplicationSwapChainColorSpace;
 
        fWidth:TpvInt32;
        fHeight:TpvInt32;
@@ -5226,6 +5234,8 @@ begin
  fCurrentHideSystemBars:=-1;
  fCurrentBlocking:=-1;
 
+ fSwapChainColorSpace:=TpvApplicationSwapChainColorSpace.SRGB;
+
  fWidth:=1280;
  fHeight:=720;
  fFullscreen:=false;
@@ -5996,7 +6006,7 @@ begin
                                              PresentModeToVulkanPresentMode[fPresentMode],
                                              true,
                                              TVkSurfaceTransformFlagsKHR($ffffffff),
-                                             true);
+                                             fSwapChainColorSpace=TpvApplicationSwapChainColorSpace.SRGB);
 
  fCountSwapChainImages:=fVulkanSwapChain.CountImages;
 
