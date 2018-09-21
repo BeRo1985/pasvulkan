@@ -1353,6 +1353,8 @@ type EpvApplication=class(Exception)
 
        property PathName:string read fPathName write fPathName;
 
+       property SwapChainColorSpace:TpvApplicationSwapChainColorSpace read fSwapChainColorSpace write fSwapChainColorSpace;
+
        property Width:TpvInt32 read fWidth write fWidth;
        property Height:TpvInt32 read fHeight write fHeight;
 
@@ -1397,7 +1399,7 @@ type EpvApplication=class(Exception)
 
        property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
 
-       property VulkanPipelineCacheFileName:string read fVulkanPipelineCacheFileName write fVulkanPipelineCacheFileName; 
+       property VulkanPipelineCacheFileName:string read fVulkanPipelineCacheFileName write fVulkanPipelineCacheFileName;
 
        property VulkanUniversalCommandPools:TpvApplicationCommandPools read fVulkanUniversalCommandPools;
        property VulkanUniversalCommandBuffers:TpvApplicationCommandBuffers read fVulkanUniversalCommandBuffers;
