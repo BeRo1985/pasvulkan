@@ -38,7 +38,9 @@ set FILLTYPE_ATLAS_TEXTURE=2
 "%VULKAN_SDK%/Bin32/glslc.exe" -x glsl --target-env=vulkan -fshader-stage=fragment -DFILLTYPE=%FILLTYPE_NO_TEXTURE% -DBLENDING=0 -DUSECLIPDISTANCE=1 -DUSENODISCARD=1 -DGUI_ELEMENTS -o canvas_frag_gui_no_texture_no_blending_clip_distance_no_discard.spv canvas.frag
 
 for %%f in (*.spv) do (
-  spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const %%f -o %%f
+  rem spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const %%f -o %%f
+  rem spirv-opt --strip-debug --unify-const --flatten-decorations --strength-reduction --simplify-instructions --remove-duplicates --redundancy-elimination --eliminate-dead-code-aggressive --eliminate-dead-branches --eliminate-dead-const %%f -o %%f
+  spirv-opt -O %%f -o %%f
 )
 
 
