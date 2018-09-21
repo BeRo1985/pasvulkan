@@ -1625,6 +1625,23 @@ type EpvVulkanException=class(Exception);
                            const aBeginAndExecuteCommandBuffer:boolean=false;
                            const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
                            const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED)); overload;
+       procedure GenerateMipMaps(const aSrcImageLayout:TVkImageLayout;
+                                 const aDstImageLayout:TVkImageLayout;
+                                 const aWidth:TpvSizeInt;
+                                 const aHeight:TpvSizeInt;
+                                 const aDepth:TpvSizeInt;
+                                 const aStartMipMapLevel:TpvSizeInt;
+                                 const aCountMipMaps:TpvSizeInt;
+                                 const aStartArrayLayer:TpvSizeInt;
+                                 const aCountArrayLayers:TpvSizeInt;
+                                 const aCommandBuffer:TpvVulkanCommandBuffer;
+                                 const aQueue:TpvVulkanQueue=nil;
+                                 const aFence:TpvVulkanFence=nil;
+                                 const aBeginAndExecuteCommandBuffer:boolean=false;
+                                 const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                                 const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                                 const aFilterLinear:boolean=true;
+                                 const aAspectMask:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT));
       published
        property Device:TpvVulkanDevice read fDevice;
        property Handle:TVkImage read fImageHandle;
@@ -12619,6 +12636,142 @@ begin
                       aDstQueueFamilyIndex);
 end;
 
+procedure TpvVulkanImage.GenerateMipMaps(const aSrcImageLayout:TVkImageLayout;
+                                         const aDstImageLayout:TVkImageLayout;
+                                         const aWidth:TpvSizeInt;
+                                         const aHeight:TpvSizeInt;
+                                         const aDepth:TpvSizeInt;
+                                         const aStartMipMapLevel:TpvSizeInt;
+                                         const aCountMipMaps:TpvSizeInt;
+                                         const aStartArrayLayer:TpvSizeInt;
+                                         const aCountArrayLayers:TpvSizeInt;
+                                         const aCommandBuffer:TpvVulkanCommandBuffer;
+                                         const aQueue:TpvVulkanQueue=nil;
+                                         const aFence:TpvVulkanFence=nil;
+                                         const aBeginAndExecuteCommandBuffer:boolean=false;
+                                         const aSrcQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                                         const aDstQueueFamilyIndex:TVkQueue=TVkQueue(VK_QUEUE_FAMILY_IGNORED);
+                                         const aFilterLinear:boolean=true;
+                                         const aAspectMask:TVkImageAspectFlags=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT));
+var CountMipMaps,MipMapIndex:TpvSizeInt;
+    ImageSubresourceRange:TVkImageSubresourceRange;
+    ImageBlit:TVkImageBlit;
+begin
+
+ if aBeginAndExecuteCommandBuffer then begin
+  aCommandBuffer.Reset(TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+  aCommandBuffer.BeginRecording;
+ end;
+
+ if aCountMipMaps>0 then begin
+  CountMipMaps:=aCountMipMaps;
+ end else begin
+  if aHeight>0 then begin
+   if aDepth>0 then begin
+    CountMipMaps:=trunc(floor(log2(Min(Min(aWidth,aHeight),aDepth))));
+   end else begin
+    CountMipMaps:=trunc(floor(log2(Min(aWidth,aHeight))));
+   end;
+  end else begin
+   CountMipMaps:=trunc(floor(log2(aWidth)));
+  end;
+ end;
+
+ if aSrcImageLayout<>TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) then begin
+  FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
+  ImageSubresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  ImageSubresourceRange.baseMipLevel:=aStartMipMapLevel;
+  ImageSubresourceRange.levelCount:=1;
+  ImageSubresourceRange.baseArrayLayer:=aStartArrayLayer;
+  ImageSubresourceRange.layerCount:=aCountArrayLayers;
+  VulkanSetImageLayout(fImageHandle,
+                       aAspectMask,
+                       aSrcImageLayout,
+                       TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+                       @ImageSubresourceRange,
+                       aCommandBuffer,
+                       nil,
+                       nil,
+                       false,
+                       aSrcQueueFamilyIndex,
+                       aDstQueueFamilyIndex);
+ end;
+
+ for MipMapIndex:=aStartMipMapLevel+1 to aCountMipMaps-1 do begin
+
+  FillChar(ImageBlit,SizeOf(TVkImageBlit),#0);
+  ImageBlit.srcSubresource.aspectMask:=aAspectMask;
+  ImageBlit.srcSubresource.mipLevel:=MipMapIndex-1;
+  ImageBlit.srcSubresource.baseArrayLayer:=aStartArrayLayer;
+  ImageBlit.srcSubresource.layerCount:=aCountArrayLayers;
+  ImageBlit.srcOffsets[0].x:=0;
+  ImageBlit.srcOffsets[0].y:=0;
+  ImageBlit.srcOffsets[0].z:=0;
+  ImageBlit.srcOffsets[1].x:=Max(1,aWidth shr (MipMapIndex-1));
+  ImageBlit.srcOffsets[1].y:=Max(1,aHeight shr (MipMapIndex-1));
+  ImageBlit.srcOffsets[1].z:=Max(1,aDepth shr (MipMapIndex-1));
+  ImageBlit.dstSubresource.aspectMask:=aAspectMask;
+  ImageBlit.dstSubresource.mipLevel:=MipMapIndex;
+  ImageBlit.dstSubresource.baseArrayLayer:=aStartArrayLayer;
+  ImageBlit.dstSubresource.layerCount:=aCountArrayLayers;
+  ImageBlit.dstOffsets[0].x:=0;
+  ImageBlit.dstOffsets[0].y:=0;
+  ImageBlit.dstOffsets[0].z:=0;
+  ImageBlit.dstOffsets[1].x:=Max(1,aWidth shr MipMapIndex);
+  ImageBlit.dstOffsets[1].y:=Max(1,aHeight shr MipMapIndex);
+  ImageBlit.dstOffsets[1].z:=Max(1,aDepth shr MipMapIndex);
+
+  aCommandBuffer.CmdBlitImage(fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                              fImageHandle,VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                              1,@ImageBlit,
+                              TVkFilter(IfThen(aFilterLinear,TpvInt32(TVkFilter(VK_FILTER_LINEAR)),TpvInt32(TVkFilter(VK_FILTER_NEAREST)))));
+
+  FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
+  ImageSubresourceRange.aspectMask:=aAspectMask;
+  ImageSubresourceRange.baseMipLevel:=MipMapIndex;
+  ImageSubresourceRange.levelCount:=1;
+  ImageSubresourceRange.baseArrayLayer:=aStartArrayLayer;
+  ImageSubresourceRange.layerCount:=aCountArrayLayers;
+
+  VulkanSetImageLayout(fImageHandle,
+                       aAspectMask,
+                       TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+                       TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+                       @ImageSubresourceRange,
+                       aCommandBuffer,
+                       nil,
+                       nil,
+                       false,
+                       aSrcQueueFamilyIndex,
+                       aDstQueueFamilyIndex);
+ end;
+
+ if aDstImageLayout<>TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) then begin
+  FillChar(ImageSubresourceRange,SizeOf(TVkImageSubresourceRange),#0);
+  ImageSubresourceRange.aspectMask:=aAspectMask;
+  ImageSubresourceRange.baseMipLevel:=aStartMipMapLevel;
+  ImageSubresourceRange.levelCount:=aCountMipMaps-aStartMipMapLevel;
+  ImageSubresourceRange.baseArrayLayer:=aStartArrayLayer;
+  ImageSubresourceRange.layerCount:=aCountArrayLayers;
+  VulkanSetImageLayout(fImageHandle,
+                       aAspectMask,
+                       TVkImageLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+                       aDstImageLayout,
+                       @ImageSubresourceRange,
+                       aCommandBuffer,
+                       nil,
+                       nil,
+                       false,
+                       aSrcQueueFamilyIndex,
+                       aDstQueueFamilyIndex);
+ end;
+
+ if aBeginAndExecuteCommandBuffer then begin
+  aCommandBuffer.EndRecording;
+  aCommandBuffer.Execute(aQueue,TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),nil,nil,aFence,true);
+ end;
+
+end;
 
 constructor TpvVulkanImageView.Create(const aDevice:TpvVulkanDevice;
                                       const aImageView:TVkImageView;
