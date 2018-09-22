@@ -356,15 +356,25 @@ type EpvFrameGraph=class(Exception);
               property AccessFlags:TVkAccessFlags read fAccessFlags write fAccessFlags;
             end;
             TResourceTransitionList=TpvObjectGenericList<TResourceTransition>;
+            TPassArray=array of TPass;
+            TPassArrayArray=array of TPassArray;
             TPass=class
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
+              fRequiredPasses:TPassArrayArray;
+              fCountRequiredPasses:TpvSizeInt;
+              fConflictedPasses:TPassArray;
+              fCountConflictedPasses:TpvSizeInt;
               fEnabled:boolean;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString); reintroduce; virtual;
               destructor Destroy; override;
+              procedure RequiresPass(const aPasses:array of TPass); overload;
+              procedure RequiresPass(const aPasses:array of TpvRawByteString); overload;
+              procedure ConflictsWithPass(const aPass:TPass); overload;
+              procedure ConflictsWithPass(const aPass:TpvRawByteString); overload;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName;
@@ -552,7 +562,7 @@ constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                const aAttachmentData:TAttachmentData);
 begin
  inherited Create;
- if length(trim(fName))=0 then begin
+ if length(trim(String(fName)))=0 then begin
   raise EpvFrameGraphEmptyName.Create('Empty name');
  end;
  if aFrameGraph.fResourceTypeNameHashMap.ExistKey(aName) then begin
@@ -641,7 +651,7 @@ constructor TpvFrameGraph.TResource.Create(const aFrameGraph:TpvFrameGraph;
                                            const aResourceType:TResourceType=nil);
 begin
  inherited Create;
- if length(trim(fName))=0 then begin
+ if length(trim(String(fName)))=0 then begin
   raise EpvFrameGraphEmptyName.Create('Empty name');
  end;
  if aFrameGraph.fResourceNameHashMap.ExistKey(aName) then begin
@@ -735,27 +745,96 @@ end;
 constructor TpvFrameGraph.TPass.Create(const aFrameGraph:TpvFrameGraph;
                                        const aName:TpvRawByteString);
 begin
+
  inherited Create;
- if length(trim(fName))=0 then begin
+
+ if length(trim(String(fName)))=0 then begin
   raise EpvFrameGraphEmptyName.Create('Empty name');
  end;
+
  if aFrameGraph.fResourceTypeNameHashMap.ExistKey(aName) then begin
   raise EpvFrameGraphDuplicateName.Create('Duplicate name');
  end;
+
  fFrameGraph:=aFrameGraph;
  fName:=aName;
+
  fFrameGraph.fPassList.Add(self);
  fFrameGraph.fPassNameHashMap.Add(fName,self);
+
+ fRequiredPasses:=nil;
+ fCountRequiredPasses:=0;
+
+ fConflictedPasses:=nil;
+ fCountConflictedPasses:=0;
+
  fEnabled:=true;
+
 end;
 
 destructor TpvFrameGraph.TPass.Destroy;
 begin
+
+ fRequiredPasses:=nil;
+
+ fConflictedPasses:=nil;
+
  if assigned(fFrameGraph) then begin
   fFrameGraph.fPassList.Remove(self);
   fFrameGraph.fPassNameHashMap.Delete(fName);
  end;
+
  inherited Destroy;
+
+end;
+
+procedure TpvFrameGraph.TPass.RequiresPass(const aPasses:array of TPass);
+var Index:TpvSizeInt;
+begin
+ if length(aPasses)>0 then begin
+  for Index:=0 to length(aPasses)-1 do begin
+   if not assigned(aPasses[Index]) then begin
+    raise EpvFrameGraph.Create('Invalid pass argument');
+   end;
+  end;
+  Index:=fCountRequiredPasses;
+  if length(fRequiredPasses)<=fCountRequiredPasses then begin
+   SetLength(fRequiredPasses,(fCountRequiredPasses*3) div 2);
+  end;
+  SetLength(fRequiredPasses[Index],length(aPasses));
+  Move(aPasses[0],fRequiredPasses[Index,0],length(aPasses)*SizeOf(TPass));
+ end;
+end;
+
+procedure TpvFrameGraph.TPass.RequiresPass(const aPasses:array of TpvRawByteString);
+var Index:TpvSizeInt;
+    Passes:TPassArray;
+begin
+ if length(aPasses)>0 then begin
+  SetLength(Passes,length(aPasses));
+  for Index:=0 to length(aPasses)-1 do begin
+   Passes[Index]:=fFrameGraph.fPassNameHashMap[aPasses[Index]];
+  end;
+  RequiresPass(Passes);
+ end;
+end;
+
+procedure TpvFrameGraph.TPass.ConflictsWithPass(const aPass:TPass);
+var Index:TpvSizeInt;
+begin
+ if not assigned(aPass) then begin
+  raise EpvFrameGraph.Create('Invalid pass argument');
+ end;
+ Index:=fCountConflictedPasses;
+ if length(fConflictedPasses)<=fCountConflictedPasses then begin
+  SetLength(fConflictedPasses,(fCountConflictedPasses*3) div 2);
+ end;
+ fConflictedPasses[Index]:=aPass;
+end;
+
+procedure TpvFrameGraph.TPass.ConflictsWithPass(const aPass:TpvRawByteString);
+begin
+ ConflictsWithPass(fFrameGraph.fPassNameHashMap[aPass]);
 end;
 
 { TpvFrameGraph.TRenderPass }
