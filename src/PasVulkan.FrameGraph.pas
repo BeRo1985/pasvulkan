@@ -1078,7 +1078,7 @@ begin
  if not assigned(ResourceType) then begin
   raise EpvFrameGraph.Create('Invalid resource type');
  end;
- Resource:=fResourceNameHashMap[aResourceTypeName];
+ Resource:=fResourceNameHashMap[aResourceName];
  if assigned(Resource) then begin
   if Resource.fResourceType<>ResourceType then begin
    raise EpvFrameGraph.Create('Resource type mismatch');
@@ -1115,7 +1115,7 @@ begin
  if not assigned(ResourceType) then begin
   raise EpvFrameGraph.Create('Invalid resource type');
  end;
- Resource:=fResourceNameHashMap[aResourceTypeName];
+ Resource:=fResourceNameHashMap[aResourceName];
  if assigned(Resource) then begin
   if Resource.fResourceType<>ResourceType then begin
    raise EpvFrameGraph.Create('Resource type mismatch');
@@ -1141,14 +1141,77 @@ procedure TpvFrameGraph.AddAttachmentResolveOutput(const aPassName:TpvRawByteStr
                                                    const aResourceSourceName:TpvRawByteString;
                                                    const aLayout:TVkImageLayout;
                                                    const aLoadOp:TLoadOp);
+var Pass:TPass;
+    ResourceType:TResourceType;
+    Resource:TResource;
+    ResourceSource:TResource;
 begin
+ Pass:=fPassNameHashMap[aPassName];
+ if not assigned(Pass) then begin
+  raise EpvFrameGraph.Create('Invalid pass');
+ end;
+ ResourceType:=fResourceTypeNameHashMap[aResourceTypeName];
+ if not assigned(ResourceType) then begin
+  raise EpvFrameGraph.Create('Invalid resource type');
+ end;
+ Resource:=fResourceNameHashMap[aResourceName];
+ if assigned(Resource) then begin
+  if Resource.fResourceType<>ResourceType then begin
+   raise EpvFrameGraph.Create('Resource type mismatch');
+  end;
+ end else begin
+  Resource:=TResource.Create(self,aResourceName,ResourceType);
+ end;
+ ResourceSource:=fResourceNameHashMap[aResourceSourceName];
+ if not assigned(ResourceSource) then begin
+  raise EpvFrameGraph.Create('Invalid source resource');
+ end;
+ if ResourceType.fMetaType<>TResourceType.TMetaType.Attachment then begin
+  raise EpvFrameGraph.Create('Resource meta type mismatch');
+ end;
+ TResourceTransition.Create(self,
+                            Pass,
+                            Resource,
+                            [TResourceTransition.TFlag.AttachmentResolveOutput],
+                            aLayout,
+                            aLoadOp).fResolveResource:=ResourceSource;
+ fValid:=false;
 end;
 
 procedure TpvFrameGraph.AddAttachmentDepthInput(const aPassName:TpvRawByteString;
                                                 const aResourceTypeName:TpvRawByteString;
                                                 const aResourceName:TpvRawByteString;
                                                 const aLayout:TVkImageLayout);
+var Pass:TPass;
+    ResourceType:TResourceType;
+    Resource:TResource;
 begin
+ Pass:=fPassNameHashMap[aPassName];
+ if not assigned(Pass) then begin
+  raise EpvFrameGraph.Create('Invalid pass');
+ end;
+ ResourceType:=fResourceTypeNameHashMap[aResourceTypeName];
+ if not assigned(ResourceType) then begin
+  raise EpvFrameGraph.Create('Invalid resource type');
+ end;
+ Resource:=fResourceNameHashMap[aResourceName];
+ if assigned(Resource) then begin
+  if Resource.fResourceType<>ResourceType then begin
+   raise EpvFrameGraph.Create('Resource type mismatch');
+  end;
+ end else begin
+  Resource:=TResource.Create(self,aResourceName,ResourceType);
+ end;
+ if ResourceType.fMetaType<>TResourceType.TMetaType.Attachment then begin
+  raise EpvFrameGraph.Create('Resource meta type mismatch');
+ end;
+ TResourceTransition.Create(self,
+                            Pass,
+                            Resource,
+                            [TResourceTransition.TFlag.AttachmentDepthInput],
+                            aLayout,
+                            TLoadOp.Create(TLoadOp.TKind.Load));
+ fValid:=false;
 end;
 
 procedure TpvFrameGraph.AddAttachmentDepthOutput(const aPassName:TpvRawByteString;
@@ -1156,7 +1219,36 @@ procedure TpvFrameGraph.AddAttachmentDepthOutput(const aPassName:TpvRawByteStrin
                                                  const aResourceName:TpvRawByteString;
                                                  const aLayout:TVkImageLayout;
                                                  const aLoadOp:TLoadOp);
+var Pass:TPass;
+    ResourceType:TResourceType;
+    Resource:TResource;
 begin
+ Pass:=fPassNameHashMap[aPassName];
+ if not assigned(Pass) then begin
+  raise EpvFrameGraph.Create('Invalid pass');
+ end;
+ ResourceType:=fResourceTypeNameHashMap[aResourceTypeName];
+ if not assigned(ResourceType) then begin
+  raise EpvFrameGraph.Create('Invalid resource type');
+ end;
+ Resource:=fResourceNameHashMap[aResourceName];
+ if assigned(Resource) then begin
+  if Resource.fResourceType<>ResourceType then begin
+   raise EpvFrameGraph.Create('Resource type mismatch');
+  end;
+ end else begin
+  Resource:=TResource.Create(self,aResourceName,ResourceType);
+ end;
+ if ResourceType.fMetaType<>TResourceType.TMetaType.Attachment then begin
+  raise EpvFrameGraph.Create('Resource meta type mismatch');
+ end;
+ TResourceTransition.Create(self,
+                            Pass,
+                            Resource,
+                            [TResourceTransition.TFlag.AttachmentDepthOutput],
+                            aLayout,
+                            aLoadOp);
+ fValid:=false;
 end;
 
 procedure TpvFrameGraph.Setup;
