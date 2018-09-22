@@ -109,7 +109,7 @@ type TpvFrameGraph=class
                      None,
                      Attachment,
                      Image,
-                     BUffer
+                     Buffer
                     );
                     PMetaType=^TMetaType;
                     TAttachmentData=record
