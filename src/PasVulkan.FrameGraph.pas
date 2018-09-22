@@ -452,6 +452,35 @@ type EpvFrameGraph=class(Exception);
        function AddRenderPass(const aName:TpvRawByteString;
                               const aMultiViewMask:TpvUInt32=0):TRenderPass; overload;
       public
+       procedure AddAttachmentInput(const aRenderPassName:TpvRawByteString;
+                                    const aResourceTypeName:TpvRawByteString;
+                                    const aResourceName:TpvRawByteString;
+                                    const aLayout:TVkImageLayout);
+      public
+       procedure AddAttachmentOutput(const aRenderPassName:TpvRawByteString;
+                                     const aResourceTypeName:TpvRawByteString;
+                                     const aResourceName:TpvRawByteString;
+                                     const aLayout:TVkImageLayout;
+                                     const aLoadOp:TLoadOp);
+      public
+       procedure AddAttachmentResolveOutput(const aRenderPassName:TpvRawByteString;
+                                            const aResourceTypeName:TpvRawByteString;
+                                            const aResourceName:TpvRawByteString;
+                                            const aResourceSourceName:TpvRawByteString;
+                                            const aLayout:TVkImageLayout;
+                                            const aLoadOp:TLoadOp);
+      public
+       procedure AddAttachmentDepthInput(const aRenderPassName:TpvRawByteString;
+                                         const aResourceTypeName:TpvRawByteString;
+                                         const aResourceName:TpvRawByteString;
+                                         const aLayout:TVkImageLayout);
+      public
+       procedure AddAttachmentDepthOutput(const aRenderPassName:TpvRawByteString;
+                                          const aResourceTypeName:TpvRawByteString;
+                                          const aResourceName:TpvRawByteString;
+                                          const aLayout:TVkImageLayout;
+                                          const aLoadOp:TLoadOp);
+      public
        procedure Setup; virtual;
        procedure Compile; virtual;
        procedure AfterCreateSwapChain; virtual;
@@ -1027,6 +1056,45 @@ function TpvFrameGraph.AddRenderPass(const aName:TpvRawByteString;
                                      const aMultiViewMask:TpvUInt32=0):TRenderPass;
 begin
  result:=TRenderPass.Create(self,aName,aMultiViewMask);
+end;
+
+procedure TpvFrameGraph.AddAttachmentInput(const aRenderPassName:TpvRawByteString;
+                                           const aResourceTypeName:TpvRawByteString;
+                                           const aResourceName:TpvRawByteString;
+                                           const aLayout:TVkImageLayout);
+begin
+end;
+
+procedure TpvFrameGraph.AddAttachmentOutput(const aRenderPassName:TpvRawByteString;
+                                            const aResourceTypeName:TpvRawByteString;
+                                            const aResourceName:TpvRawByteString;
+                                            const aLayout:TVkImageLayout;
+                                            const aLoadOp:TLoadOp);
+begin
+end;
+
+procedure TpvFrameGraph.AddAttachmentResolveOutput(const aRenderPassName:TpvRawByteString;
+                                                   const aResourceTypeName:TpvRawByteString;
+                                                   const aResourceName:TpvRawByteString;
+                                                   const aResourceSourceName:TpvRawByteString;
+                                                   const aLayout:TVkImageLayout;
+                                                   const aLoadOp:TLoadOp);
+begin
+end;
+
+procedure TpvFrameGraph.AddAttachmentDepthInput(const aRenderPassName:TpvRawByteString;
+                                                const aResourceTypeName:TpvRawByteString;
+                                                const aResourceName:TpvRawByteString;
+                                                const aLayout:TVkImageLayout);
+begin
+end;
+
+procedure TpvFrameGraph.AddAttachmentDepthOutput(const aRenderPassName:TpvRawByteString;
+                                                 const aResourceTypeName:TpvRawByteString;
+                                                 const aResourceName:TpvRawByteString;
+                                                 const aLayout:TVkImageLayout;
+                                                 const aLoadOp:TLoadOp);
+begin
 end;
 
 procedure TpvFrameGraph.Setup;
