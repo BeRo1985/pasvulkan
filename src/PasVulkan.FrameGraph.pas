@@ -93,11 +93,11 @@ type TpvFrameGraph=class
                    PKind=^TKind;
              public
               Kind:TKind;
-              Size:TpvVector3;
+              Size:TVkExtent3D;
               class function CreateEmpty:TAttachmentSize; static;
-              constructor Create(const aKind:TAttachmentSize.TKind;const aSize:TpvFloat); overload;
-              constructor Create(const aKind:TAttachmentSize.TKind;const aSize:TpvVector2); overload;
-              constructor Create(const aKind:TAttachmentSize.TKind;const aSize:TpvVector3); overload;
+              constructor Create(const aKind:TAttachmentSize.TKind;const aSize:TpvUInt32); overload;
+              constructor Create(const aKind:TAttachmentSize.TKind;const aSize:TVkExtent2D); overload;
+              constructor Create(const aKind:TAttachmentSize.TKind;const aSize:TVkExtent3D); overload;
               class operator Equal(const aLeft,aRight:TAttachmentSize):boolean;
               class operator NotEqual(const aLeft,aRight:TAttachmentSize):boolean;
             end;
@@ -160,22 +160,22 @@ implementation
 class function TpvFrameGraph.TAttachmentSize.CreateEmpty:TAttachmentSize;
 begin
  result.Kind:=TpvFrameGraph.TAttachmentSize.TKind.Undefined;
- result.Size:=TpvVector3.Null;
+ result.Size:=TVkExtent3D.Create(0,0,0);
 end;
 
-constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;const aSize:TpvFloat);
+constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;const aSize:TpvUInt32);
 begin
  Kind:=aKind;
- Size:=TpvVector3.InlineableCreate(aSize,1.0,1.0);
+ Size:=TVkExtent3D.Create(aSize,1,1);
 end;
 
-constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;const aSize:TpvVector2);
+constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;const aSize:TVkExtent2D);
 begin
  Kind:=aKind;
- Size:=TpvVector3.InlineableCreate(aSize,1.0);
+ Size:=TVkExtent3D.Create(aSize.Width,aSize.Height,1);
 end;
 
-constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;const aSize:TpvVector3);
+constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;const aSize:TVkExtent3D);
 begin
  Kind:=aKind;
  Size:=aSize;
@@ -183,12 +183,18 @@ end;
 
 class operator TpvFrameGraph.TAttachmentSize.Equal(const aLeft,aRight:TAttachmentSize):boolean;
 begin
- result:=(aLeft.Kind=aRight.Kind) and (aLeft.Size=aRight.Size);
+ result:=(aLeft.Kind=aRight.Kind) and
+         (aLeft.Size.Width=aRight.Size.Width) and
+         (aLeft.Size.Height=aRight.Size.Height) and
+         (aLeft.Size.Depth=aRight.Size.Depth);
 end;
 
 class operator TpvFrameGraph.TAttachmentSize.NotEqual(const aLeft,aRight:TAttachmentSize):boolean;
 begin
- result:=(aLeft.Kind<>aRight.Kind) or (aLeft.Size<>aRight.Size);
+ result:=(aLeft.Kind<>aRight.Kind) or
+         (aLeft.Size.Width<>aRight.Size.Width) or
+         (aLeft.Size.Height<>aRight.Size.Height) or
+         (aLeft.Size.Depth<>aRight.Size.Depth);
 end;
 
 { TpvFrameGraph.TResourceType.TAttachmentData }
