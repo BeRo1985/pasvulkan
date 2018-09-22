@@ -138,21 +138,48 @@ type TpvFrameGraph=class
                     end;
                     PAttachmentData=^TAttachmentData;
              private
+              fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
-              fMetaType:TMetaType;
               fPersientent:boolean;
+              fMetaType:TMetaType;
               fAttachmentData:TAttachmentData;
               fPointerToAttachmentData:PAttachmentData;
              public
-              constructor Create;
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aName:TpvRawByteString;
+                                 const aPersientent:boolean;
+                                 const aMetaType:TMetaType;
+                                 const aAttachmentData:TAttachmentData); overload;
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aName:TpvRawByteString;
+                                 const aPersientent:boolean;
+                                 const aMetaType:TMetaType); overload;
+              constructor CreateAttachment(const aFrameGraph:TpvFrameGraph;
+                                           const aName:TpvRawByteString;
+                                           const aPersientent:boolean;
+                                           const aFormat:TVkFormat;
+                                           const aSamples:TVkSampleCountFlagBits;
+                                           const aAttachmentType:TAttachmentType;
+                                           const aAttachmentSize:TAttachmentSize;
+                                           const aImageUsage:TVkImageUsageFlags;
+                                           const aComponents:TVkComponentMapping); overload;
+              constructor CreateAttachment(const aFrameGraph:TpvFrameGraph;
+                                           const aName:TpvRawByteString;
+                                           const aPersientent:boolean;
+                                           const aFormat:TVkFormat;
+                                           const aSamples:TVkSampleCountFlagBits;
+                                           const aAttachmentType:TAttachmentType;
+                                           const aAttachmentSize:TAttachmentSize;
+                                           const aImageUsage:TVkImageUsageFlags); overload;
               destructor Destroy; override;
              public
               property AttachmentData:TAttachmentData read fAttachmentData write fAttachmentData;
               property PointerToAttachmentData:PAttachmentData read fPointerToAttachmentData write fPointerToAttachmentData;
              published
+              property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName write fName;
-              property MetaType:TMetaType read fMetaType write fMetaType;
               property Persientent:boolean read fPersientent write fPersientent;
+              property MetaType:TMetaType read fMetaType write fMetaType;
             end;
       public
        constructor Create;
@@ -267,11 +294,76 @@ end;
 
 { TpvFrameGraph.TResourceType }
 
-constructor TpvFrameGraph.TResourceType.Create;
+constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
+                                               const aName:TpvRawByteString;
+                                               const aPersientent:boolean;
+                                               const aMetaType:TMetaType;
+                                               const aAttachmentData:TAttachmentData);
 begin
  inherited Create;
- fAttachmentData:=TAttachmentData.CreateEmpty;
+ fFrameGraph:=aFrameGraph;
+ fName:=aName;
+ fPersientent:=aPersientent;
+ fMetaType:=aMetaType;
+ fAttachmentData:=aAttachmentData;
  fPointerToAttachmentData:=@fAttachmentData;
+end;
+
+constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
+                                               const aName:TpvRawByteString;
+                                               const aPersientent:boolean;
+                                               const aMetaType:TMetaType);
+begin
+ Create(aFrameGraph,
+        aName,
+        aPersientent,
+        aMetaType,
+        TAttachmentData.CreateEmpty);
+end;
+
+constructor TpvFrameGraph.TResourceType.CreateAttachment(const aFrameGraph:TpvFrameGraph;
+                                                         const aName:TpvRawByteString;
+                                                         const aPersientent:boolean;
+                                                         const aFormat:TVkFormat;
+                                                         const aSamples:TVkSampleCountFlagBits;
+                                                         const aAttachmentType:TAttachmentType;
+                                                         const aAttachmentSize:TAttachmentSize;
+                                                         const aImageUsage:TVkImageUsageFlags;
+                                                         const aComponents:TVkComponentMapping);
+begin
+ Create(aFrameGraph,
+        aName,
+        aPersientent,
+        TMetaType.Attachment,
+        TAttachmentData.Create(aFormat,
+                               aSamples,
+                               aAttachmentType,
+                               aAttachmentSize,
+                               aImageUsage,
+                               aComponents));
+end;
+
+constructor TpvFrameGraph.TResourceType.CreateAttachment(const aFrameGraph:TpvFrameGraph;
+                                                         const aName:TpvRawByteString;
+                                                         const aPersientent:boolean;
+                                                         const aFormat:TVkFormat;
+                                                         const aSamples:TVkSampleCountFlagBits;
+                                                         const aAttachmentType:TAttachmentType;
+                                                         const aAttachmentSize:TAttachmentSize;
+                                                         const aImageUsage:TVkImageUsageFlags);
+begin
+ CreateAttachment(aFrameGraph,
+                  aName,
+                  aPersientent,
+                  aFormat,
+                  aSamples,
+                  aAttachmentType,
+                  aAttachmentSize,
+                  aImageUsage,
+                  TVkComponentMapping.Create(VK_COMPONENT_SWIZZLE_R,
+                                             VK_COMPONENT_SWIZZLE_G,
+                                             VK_COMPONENT_SWIZZLE_B,
+                                             VK_COMPONENT_SWIZZLE_A));
 end;
 
 destructor TpvFrameGraph.TResourceType.Destroy;
