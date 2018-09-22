@@ -121,17 +121,17 @@ type EpvFrameGraph=class(Exception);
                    PKind=^TKind;
              public
               Kind:TKind;
-              Size:TVkExtent3D;
+              Size:TpvVector3;
               class function CreateEmpty:TAttachmentSize; static;
               constructor Create(const aKind:TAttachmentSize.TKind;
-                                 const aWidth:TpvUInt32=1;
-                                 const aHeight:TpvUInt32=1;
-                                 const aDepth:TpvUInt32=1); overload;
+                                 const aWidth:tpvFloat=1.0;
+                                 const aHeight:TpvFloat=1.0;
+                                 const aDepth:TpvFloat=1.0); overload;
               constructor Create(const aKind:TAttachmentSize.TKind;
-                                 const aSize:TVkExtent2D;
-                                 const aDepth:TpvUInt32=1); overload;
+                                 const aSize:TpvVector2;
+                                 const aDepth:TpvFloat=1.0); overload;
               constructor Create(const aKind:TAttachmentSize.TKind;
-                                 const aSize:TVkExtent3D); overload;
+                                 const aSize:TpvVector3); overload;
               class operator Equal(const aLeft,aRight:TAttachmentSize):boolean;
               class operator NotEqual(const aLeft,aRight:TAttachmentSize):boolean;
             end;
@@ -207,12 +207,36 @@ type EpvFrameGraph=class(Exception);
             end;
             TPass=class(TFrameGraphObject)
              private
+              fEnabled:boolean;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aName:TpvRawByteString); override;
+              destructor Destroy; override;
+             published
+              property Enabled:boolean read fEnabled write fEnabled;
+            end;
+            TComputePass=class(TPass)
+             private
              public
              published
             end;
-            TComputePass=class(TPass)
-            end;
             TRenderPass=class(TPass)
+             private
+              fMultiViewMask:TpvUInt32;
+              fAttachmentSize:TAttachmentSize;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aName:TpvRawByteString;
+                                 const aMultiViewMask:TpvUInt32;
+                                 const aAttachmentSize:TAttachmentSize); reintroduce; overload;
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aName:TpvRawByteString;
+                                 const aMultiViewMask:TpvUInt32=0); reintroduce; overload;
+              destructor Destroy; override;
+             public
+              property AttachmentSize:TAttachmentSize read fAttachmentSize write fAttachmentSize;
+             published
+              property MultiViewMask:TpvUInt32 read fMultiViewMask write fMultiViewMask;
             end;
       private
        fObjectList:TFrameGraphObjectList;
@@ -257,28 +281,28 @@ end;
 class function TpvFrameGraph.TAttachmentSize.CreateEmpty:TAttachmentSize;
 begin
  result.Kind:=TpvFrameGraph.TAttachmentSize.TKind.Undefined;
- result.Size:=TVkExtent3D.Create(0,0,0);
+ result.Size:=TpvVector3.Null;
 end;
 
 constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;
-                                                 const aWidth:TpvUInt32=1;
-                                                 const aHeight:TpvUInt32=1;
-                                                 const aDepth:TpvUInt32=1);
+                                                 const aWidth:TpvFloat=1.0;
+                                                 const aHeight:TpvFloat=1.0;
+                                                 const aDepth:TpvFloat=1.0);
 begin
  Kind:=aKind;
- Size:=TVkExtent3D.Create(aWidth,aHeight,aDepth);
+ Size:=TpvVector3.InlineableCreate(aWidth,aHeight,aDepth);
 end;
 
 constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;
-                                                 const aSize:TVkExtent2D;
-                                                 const aDepth:TpvUInt32=1);
+                                                 const aSize:TpvVector2;
+                                                 const aDepth:TpvFloat=1.0);
 begin
  Kind:=aKind;
- Size:=TVkExtent3D.Create(aSize.Width,aSize.Height,aDepth);
+ Size:=TpvVector3.InlineableCreate(aSize.x,aSize.y,aDepth);
 end;
 
 constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;
-                                                 const aSize:TVkExtent3D);
+                                                 const aSize:TpvVector3);
 begin
  Kind:=aKind;
  Size:=aSize;
@@ -287,17 +311,13 @@ end;
 class operator TpvFrameGraph.TAttachmentSize.Equal(const aLeft,aRight:TAttachmentSize):boolean;
 begin
  result:=(aLeft.Kind=aRight.Kind) and
-         (aLeft.Size.Width=aRight.Size.Width) and
-         (aLeft.Size.Height=aRight.Size.Height) and
-         (aLeft.Size.Depth=aRight.Size.Depth);
+         (aLeft.Size=aRight.Size);
 end;
 
 class operator TpvFrameGraph.TAttachmentSize.NotEqual(const aLeft,aRight:TAttachmentSize):boolean;
 begin
  result:=(aLeft.Kind<>aRight.Kind) or
-         (aLeft.Size.Width<>aRight.Size.Width) or
-         (aLeft.Size.Height<>aRight.Size.Height) or
-         (aLeft.Size.Depth<>aRight.Size.Depth);
+         (aLeft.Size<>aRight.Size);
 end;
 
 { TpvFrameGraph.TResourceType.TAttachmentData }
@@ -429,6 +449,47 @@ begin
 end;
 
 destructor TpvFrameGraph.TResourceType.Destroy;
+begin
+ inherited Destroy;
+end;
+
+{ TpvFrameGraph.TPass }
+
+constructor TpvFrameGraph.TPass.Create(const aFrameGraph:TpvFrameGraph;
+                                       const aName:TpvRawByteString);
+begin
+ inherited Create(aFrameGraph,aName);
+ fEnabled:=true;
+end;
+
+destructor TpvFrameGraph.TPass.Destroy;
+begin
+ inherited Destroy;
+end;
+
+{ TpvFrameGraph.TRenderPass }
+
+constructor TpvFrameGraph.TRenderPass.Create(const aFrameGraph:TpvFrameGraph;
+                                             const aName:TpvRawByteString;
+                                             const aMultiViewMask:TpvUInt32;
+                                             const aAttachmentSize:TAttachmentSize);
+begin
+ inherited Create(aFrameGraph,aName);
+ fMultiViewMask:=aMultiViewMask;
+ fAttachmentSize:=aAttachmentSize;
+end;
+
+constructor TpvFrameGraph.TRenderPass.Create(const aFrameGraph:TpvFrameGraph;
+                                             const aName:TpvRawByteString;
+                                             const aMultiViewMask:TpvUInt32=0);
+begin
+ Create(aFrameGraph,
+        aName,
+        aMultiViewMask,
+        TAttachmentSize.Create(TAttachmentSize.TKind.SurfaceDependent,1.0,1.0));
+end;
+
+destructor TpvFrameGraph.TRenderPass.Destroy;
 begin
  inherited Destroy;
 end;
