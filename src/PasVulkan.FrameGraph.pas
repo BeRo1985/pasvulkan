@@ -70,9 +70,37 @@ uses SysUtils,
      PasVulkan.Collections,
      PasVulkan.Framework;
 
-type TpvFrameGraph=class
+// Inspired from:
+//   https://www.ea.com/frostbite/news/framegraph-extensible-rendering-architecture-in-frostbite
+//   https://www.gdcvault.com/play/1024612/FrameGraph-Extensible-Rendering-Architecture-in
+//   https://www.slideshare.net/DICEStudio/framegraph-extensible-rendering-architecture-in-frostbite
+//   http://themaister.net/blog/2017/08/15/render-graphs-and-vulkan-a-deep-dive/
+
+// Attention: It is still work in progress
+
+type EpvFrameGraph=class(Exception);
+
+     EpvFrameGraphEmptyName=class(EpvFrameGraph);
+
+     EpvFrameGraphDuplicateName=class(EpvFrameGraph);
+
+     TpvFrameGraph=class
       public
-       type TAttachmentType=
+       type TFrameGraphObject=class
+             private
+              fFrameGraph:TpvFrameGraph;
+              fName:TpvRawByteString;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aName:TpvRawByteString); virtual;
+              destructor Destroy; override;
+             published
+              property FrameGraph:TpvFrameGraph read fFrameGraph;
+              property Name:TpvRawByteString read fName write fName;
+            end;
+            TFrameGraphObjectList=TpvObjectGenericList<TFrameGraphObject>;
+            TFrameGraphObjectNameHashMap=TpvStringHashMap<TFrameGraphObject>;
+            TAttachmentType=
              (
               Undefined,
               Surface,
@@ -108,7 +136,7 @@ type TpvFrameGraph=class
               class operator NotEqual(const aLeft,aRight:TAttachmentSize):boolean;
             end;
             PAttachmentSize=^TAttachmentSize;
-            TResourceType=class
+            TResourceType=class(TFrameGraphObject)
              public
               type TMetaType=
                     (
@@ -138,8 +166,6 @@ type TpvFrameGraph=class
                     end;
                     PAttachmentData=^TAttachmentData;
              private
-              fFrameGraph:TpvFrameGraph;
-              fName:TpvRawByteString;
               fPersientent:boolean;
               fMetaType:TMetaType;
               fAttachmentData:TAttachmentData;
@@ -149,11 +175,11 @@ type TpvFrameGraph=class
                                  const aName:TpvRawByteString;
                                  const aPersientent:boolean;
                                  const aMetaType:TMetaType;
-                                 const aAttachmentData:TAttachmentData); overload;
+                                 const aAttachmentData:TAttachmentData); reintroduce; overload;
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
                                  const aPersientent:boolean;
-                                 const aMetaType:TMetaType); overload;
+                                 const aMetaType:TMetaType); reintroduce; overload;
               constructor CreateAttachment(const aFrameGraph:TpvFrameGraph;
                                            const aName:TpvRawByteString;
                                            const aPersientent:boolean;
@@ -162,7 +188,7 @@ type TpvFrameGraph=class
                                            const aAttachmentType:TAttachmentType;
                                            const aAttachmentSize:TAttachmentSize;
                                            const aImageUsage:TVkImageUsageFlags;
-                                           const aComponents:TVkComponentMapping); overload;
+                                           const aComponents:TVkComponentMapping); reintroduce; overload;
               constructor CreateAttachment(const aFrameGraph:TpvFrameGraph;
                                            const aName:TpvRawByteString;
                                            const aPersientent:boolean;
@@ -170,23 +196,61 @@ type TpvFrameGraph=class
                                            const aSamples:TVkSampleCountFlagBits;
                                            const aAttachmentType:TAttachmentType;
                                            const aAttachmentSize:TAttachmentSize;
-                                           const aImageUsage:TVkImageUsageFlags); overload;
+                                           const aImageUsage:TVkImageUsageFlags); reintroduce; overload;
               destructor Destroy; override;
              public
               property AttachmentData:TAttachmentData read fAttachmentData write fAttachmentData;
               property PointerToAttachmentData:PAttachmentData read fPointerToAttachmentData write fPointerToAttachmentData;
              published
-              property FrameGraph:TpvFrameGraph read fFrameGraph;
-              property Name:TpvRawByteString read fName write fName;
               property Persientent:boolean read fPersientent write fPersientent;
               property MetaType:TMetaType read fMetaType write fMetaType;
             end;
+            TPass=class(TFrameGraphObject)
+             private
+             public
+             published
+            end;
+            TComputePass=class(TPass)
+            end;
+            TRenderPass=class(TPass)
+            end;
+      private
+       fObjectList:TFrameGraphObjectList;
+       fObjectNameHashMap:TFrameGraphObjectNameHashMap;
       public
        constructor Create;
        destructor Destroy; override;
      end;
 
 implementation
+
+{ TpvFrameGraph.TFrameGraphObject }
+
+constructor TpvFrameGraph.TFrameGraphObject.Create(const aFrameGraph:TpvFrameGraph;
+                                              const aName:TpvRawByteString);
+begin
+ inherited Create;
+ if length(trim(fName))=0 then begin
+  raise EpvFrameGraphEmptyName.Create('Empty name');
+ end;
+ if aFrameGraph.fObjectNameHashMap.ExistKey(aName) then begin
+  raise EpvFrameGraphDuplicateName.Create('Duplicate name');
+ end;
+ fFrameGraph:=aFrameGraph;
+ fName:=aName;
+ fFrameGraph.fObjectList.Add(self);
+ fFrameGraph.fObjectNameHashMap.Add(fName,self);
+end;
+
+destructor TpvFrameGraph.TFrameGraphObject.Destroy;
+begin
+ if assigned(fFrameGraph) then begin
+  fFrameGraph.fObjectList.Remove(self);
+  fFrameGraph.fObjectNameHashMap.Delete(fName);
+ end;
+ fFrameGraph:=nil;
+ inherited Destroy;
+end;
 
 { TpvFrameGraph.TAttachmentSize }
 
@@ -300,9 +364,7 @@ constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                const aMetaType:TMetaType;
                                                const aAttachmentData:TAttachmentData);
 begin
- inherited Create;
- fFrameGraph:=aFrameGraph;
- fName:=aName;
+ inherited Create(fFrameGraph,fName);
  fPersientent:=aPersientent;
  fMetaType:=aMetaType;
  fAttachmentData:=aAttachmentData;
@@ -376,10 +438,18 @@ end;
 constructor TpvFrameGraph.Create;
 begin
  inherited Create;
+ fObjectList:=TFrameGraphObjectList.Create;
+ fObjectList.OwnsObjects:=false;
+ fObjectNameHashMap:=TFrameGraphObjectNameHashMap.Create(nil);
 end;
 
 destructor TpvFrameGraph.Destroy;
 begin
+ while fObjectList.Count>0 do begin
+  fObjectList.Items[fObjectList.Count-1].Free;
+ end;
+ FreeAndNil(fObjectList);
+ FreeAndNil(fObjectNameHashMap);
  inherited Destroy;
 end;
 
