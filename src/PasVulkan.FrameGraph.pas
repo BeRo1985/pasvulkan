@@ -86,21 +86,7 @@ type EpvFrameGraph=class(Exception);
 
      TpvFrameGraph=class
       public
-       type TFrameGraphObject=class
-             private
-              fFrameGraph:TpvFrameGraph;
-              fName:TpvRawByteString;
-             public
-              constructor Create(const aFrameGraph:TpvFrameGraph;
-                                 const aName:TpvRawByteString); virtual;
-              destructor Destroy; override;
-             published
-              property FrameGraph:TpvFrameGraph read fFrameGraph;
-              property Name:TpvRawByteString read fName write fName;
-            end;
-            TFrameGraphObjectList=TpvObjectGenericList<TFrameGraphObject>;
-            TFrameGraphObjectNameHashMap=TpvStringHashMap<TFrameGraphObject>;
-            TAttachmentType=
+       type TAttachmentType=
              (
               Undefined,
               Surface,
@@ -136,7 +122,7 @@ type EpvFrameGraph=class(Exception);
               class operator NotEqual(const aLeft,aRight:TAttachmentSize):boolean;
             end;
             PAttachmentSize=^TAttachmentSize;
-            TResourceType=class(TFrameGraphObject)
+            TResourceType=class
              public
               type TMetaType=
                     (
@@ -166,6 +152,8 @@ type EpvFrameGraph=class(Exception);
                     end;
                     PAttachmentData=^TAttachmentData;
              private
+              fFrameGraph:TpvFrameGraph;
+              fName:TpvRawByteString;
               fPersientent:boolean;
               fMetaType:TMetaType;
               fAttachmentData:TAttachmentData;
@@ -202,19 +190,49 @@ type EpvFrameGraph=class(Exception);
               property AttachmentData:TAttachmentData read fAttachmentData write fAttachmentData;
               property PointerToAttachmentData:PAttachmentData read fPointerToAttachmentData write fPointerToAttachmentData;
              published
+              property FrameGraph:TpvFrameGraph read fFrameGraph;
+              property Name:TpvRawByteString read fName;
               property Persientent:boolean read fPersientent write fPersientent;
               property MetaType:TMetaType read fMetaType write fMetaType;
             end;
-            TPass=class(TFrameGraphObject)
+            TResourceTypeList=TpvObjectGenericList<TResourceType>;
+            TResourceTypeNameHashMap=TpvStringHashMap<TResourceType>;
+            TResource=class
              private
+              fFrameGraph:TpvFrameGraph;
+              fName:TpvRawByteString;
+              fResourceType:TResourceType;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aName:TpvRawByteString;
+                                 const aResourceType:TResourceType=nil); reintroduce; overload;
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aName:TpvRawByteString;
+                                 const aResourceTypeName:TpvRawByteString); reintroduce; overload;
+              destructor Destroy; override;
+             published
+              property FrameGraph:TpvFrameGraph read fFrameGraph;
+              property Name:TpvRawByteString read fName;
+              property ResourceType:TResourceType read fResourceType;
+            end;
+            TResourceList=TpvObjectGenericList<TResource>;
+            TResourceNameHashMap=TpvStringHashMap<TResource>;
+            TPass=class
+             private
+              fFrameGraph:TpvFrameGraph;
+              fName:TpvRawByteString;
               fEnabled:boolean;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
-                                 const aName:TpvRawByteString); override;
+                                 const aName:TpvRawByteString); reintroduce; virtual;
               destructor Destroy; override;
              published
+              property FrameGraph:TpvFrameGraph read fFrameGraph;
+              property Name:TpvRawByteString read fName;
               property Enabled:boolean read fEnabled write fEnabled;
             end;
+            TPassList=TpvObjectGenericList<TPass>;
+            TPassNameHashMap=TpvStringHashMap<TPass>;
             TComputePass=class(TPass)
              private
              public
@@ -239,42 +257,25 @@ type EpvFrameGraph=class(Exception);
               property MultiViewMask:TpvUInt32 read fMultiViewMask write fMultiViewMask;
             end;
       private
-       fObjectList:TFrameGraphObjectList;
-       fObjectNameHashMap:TFrameGraphObjectNameHashMap;
+       fResourceTypeList:TResourceTypeList;
+       fResourceTypeNameHashMap:TResourceTypeNameHashMap;
+       fResourceList:TResourceList;
+       fResourceNameHashMap:TResourceNameHashMap;
+       fPassList:TPassList;
+       fPassNameHashMap:TPassNameHashMap;
       public
        constructor Create;
        destructor Destroy; override;
+      published
+       property ResourceTypes:TResourceTypeList read fResourceTypeList;
+       property ResourceTypeByName:TResourceTypeNameHashMap read fResourceTypeNameHashMap;
+       property Resources:TResourceList read fResourceList;
+       property ResourceByName:TResourceNameHashMap read fResourceNameHashMap;
+       property Passes:TPassList read fPassList;
+       property PassByName:TPassNameHashMap read fPassNameHashMap;
      end;
 
 implementation
-
-{ TpvFrameGraph.TFrameGraphObject }
-
-constructor TpvFrameGraph.TFrameGraphObject.Create(const aFrameGraph:TpvFrameGraph;
-                                              const aName:TpvRawByteString);
-begin
- inherited Create;
- if length(trim(fName))=0 then begin
-  raise EpvFrameGraphEmptyName.Create('Empty name');
- end;
- if aFrameGraph.fObjectNameHashMap.ExistKey(aName) then begin
-  raise EpvFrameGraphDuplicateName.Create('Duplicate name');
- end;
- fFrameGraph:=aFrameGraph;
- fName:=aName;
- fFrameGraph.fObjectList.Add(self);
- fFrameGraph.fObjectNameHashMap.Add(fName,self);
-end;
-
-destructor TpvFrameGraph.TFrameGraphObject.Destroy;
-begin
- if assigned(fFrameGraph) then begin
-  fFrameGraph.fObjectList.Remove(self);
-  fFrameGraph.fObjectNameHashMap.Delete(fName);
- end;
- fFrameGraph:=nil;
- inherited Destroy;
-end;
 
 { TpvFrameGraph.TAttachmentSize }
 
@@ -384,7 +385,17 @@ constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                const aMetaType:TMetaType;
                                                const aAttachmentData:TAttachmentData);
 begin
- inherited Create(fFrameGraph,fName);
+ inherited Create;
+ if length(trim(fName))=0 then begin
+  raise EpvFrameGraphEmptyName.Create('Empty name');
+ end;
+ if aFrameGraph.fResourceTypeNameHashMap.ExistKey(aName) then begin
+  raise EpvFrameGraphDuplicateName.Create('Duplicate name');
+ end;
+ fFrameGraph:=aFrameGraph;
+ fName:=aName;
+ fFrameGraph.fResourceTypeList.Add(self);
+ fFrameGraph.fResourceTypeNameHashMap.Add(fName,self);
  fPersientent:=aPersientent;
  fMetaType:=aMetaType;
  fAttachmentData:=aAttachmentData;
@@ -450,6 +461,45 @@ end;
 
 destructor TpvFrameGraph.TResourceType.Destroy;
 begin
+ if assigned(fFrameGraph) then begin
+  fFrameGraph.fResourceTypeList.Remove(self);
+  fFrameGraph.fResourceTypeNameHashMap.Delete(fName);
+ end;
+ inherited Destroy;
+end;
+
+{ TpvFrameGraph.TResource }
+
+constructor TpvFrameGraph.TResource.Create(const aFrameGraph:TpvFrameGraph;
+                                           const aName:TpvRawByteString;
+                                           const aResourceType:TResourceType=nil);
+begin
+ inherited Create;
+ if length(trim(fName))=0 then begin
+  raise EpvFrameGraphEmptyName.Create('Empty name');
+ end;
+ if aFrameGraph.fResourceNameHashMap.ExistKey(aName) then begin
+  raise EpvFrameGraphDuplicateName.Create('Duplicate name');
+ end;
+ fFrameGraph:=aFrameGraph;
+ fName:=aName;
+ fFrameGraph.fResourceList.Add(self);
+ fFrameGraph.fResourceNameHashMap.Add(fName,self);
+end;
+
+constructor TpvFrameGraph.TResource.Create(const aFrameGraph:TpvFrameGraph;
+                                           const aName:TpvRawByteString;
+                                           const aResourceTypeName:TpvRawByteString);
+begin
+ Create(aFrameGraph,aName,aFrameGraph.ResourceTypeByName[aResourceTypeName]);
+end;
+
+destructor TpvFrameGraph.TResource.Destroy;
+begin
+ if assigned(fFrameGraph) then begin
+  fFrameGraph.fResourceList.Remove(self);
+  fFrameGraph.fResourceNameHashMap.Delete(fName);
+ end;
  inherited Destroy;
 end;
 
@@ -458,12 +508,26 @@ end;
 constructor TpvFrameGraph.TPass.Create(const aFrameGraph:TpvFrameGraph;
                                        const aName:TpvRawByteString);
 begin
- inherited Create(aFrameGraph,aName);
+ inherited Create;
+ if length(trim(fName))=0 then begin
+  raise EpvFrameGraphEmptyName.Create('Empty name');
+ end;
+ if aFrameGraph.fResourceTypeNameHashMap.ExistKey(aName) then begin
+  raise EpvFrameGraphDuplicateName.Create('Duplicate name');
+ end;
+ fFrameGraph:=aFrameGraph;
+ fName:=aName;
+ fFrameGraph.fPassList.Add(self);
+ fFrameGraph.fPassNameHashMap.Add(fName,self);
  fEnabled:=true;
 end;
 
 destructor TpvFrameGraph.TPass.Destroy;
 begin
+ if assigned(fFrameGraph) then begin
+  fFrameGraph.fPassList.Remove(self);
+  fFrameGraph.fPassNameHashMap.Delete(fName);
+ end;
  inherited Destroy;
 end;
 
@@ -498,20 +562,52 @@ end;
 
 constructor TpvFrameGraph.Create;
 begin
+
  inherited Create;
- fObjectList:=TFrameGraphObjectList.Create;
- fObjectList.OwnsObjects:=false;
- fObjectNameHashMap:=TFrameGraphObjectNameHashMap.Create(nil);
+
+ fResourceTypeList:=TResourceTypeList.Create;
+ fResourceTypeList.OwnsObjects:=false;
+
+ fResourceTypeNameHashMap:=TResourceTypeNameHashMap.Create(nil);
+
+ fResourceList:=TResourceList.Create;
+ fResourceList.OwnsObjects:=false;
+
+ fResourceNameHashMap:=TResourceNameHashMap.Create(nil);
+
+ fPassList:=TPassList.Create;
+ fPassList.OwnsObjects:=false;
+
+ fPassNameHashMap:=TPassNameHashMap.Create(nil);
+
 end;
 
 destructor TpvFrameGraph.Destroy;
 begin
- while fObjectList.Count>0 do begin
-  fObjectList.Items[fObjectList.Count-1].Free;
+
+ while fResourceTypeList.Count>0 do begin
+  fResourceTypeList.Items[fResourceTypeList.Count-1].Free;
  end;
- FreeAndNil(fObjectList);
- FreeAndNil(fObjectNameHashMap);
+ FreeAndNil(fResourceTypeList);
+
+ FreeAndNil(fResourceTypeNameHashMap);
+
+ while fResourceList.Count>0 do begin
+  fResourceList.Items[fResourceList.Count-1].Free;
+ end;
+ FreeAndNil(fResourceList);
+
+ FreeAndNil(fResourceNameHashMap);
+
+ while fPassList.Count>0 do begin
+  fPassList.Items[fPassList.Count-1].Free;
+ end;
+ FreeAndNil(fPassList);
+
+ FreeAndNil(fPassNameHashMap);
+
  inherited Destroy;
+
 end;
 
 end.
