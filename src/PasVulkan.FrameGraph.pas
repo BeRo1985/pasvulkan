@@ -86,7 +86,40 @@ type EpvFrameGraph=class(Exception);
 
      TpvFrameGraph=class
       public
-       type TAttachmentType=
+       type TBufferSubresourceRange=record
+             Offset:TVkDeviceSize;
+             Range:TVkDeviceSize;
+            end;
+            PBufferSubresourceRange=^TBufferSubresourceRange;
+            TLoadOp=record
+             public
+              type TKind=
+                    (
+                     Load,
+                     Clear,
+                     DontCare
+                    );
+             public
+              Kind:TKind;
+              ClearColor:TpvVector4;
+              constructor Create(const aKind:TKind); overload;
+              constructor Create(const aKind:TKind;
+                                 const aClearColor:TpvVector4); overload;
+            end;
+            PLoadOp=^TLoadOp;
+            TStoreOp=record
+             public
+              type TKind=
+                    (
+                     Store,
+                     DontCare
+                    );
+             public
+              Kind:TKind;
+              constructor Create(const aKind:TKind);
+            end;
+            PStoreOp=^TStoreOp;
+            TAttachmentType=
              (
               Undefined,
               Surface,
@@ -217,6 +250,87 @@ type EpvFrameGraph=class(Exception);
             end;
             TResourceList=TpvObjectGenericList<TResource>;
             TResourceNameHashMap=TpvStringHashMap<TResource>;
+            TPass=class;
+            TResourceTransition=class
+             public
+              type TFlag=
+                    (
+                     AttachmentInput,
+                     AttachmentOutput,
+                     AttachmentResolveOutput,
+                     AttachmentDepthOutput,
+                     AttachmentDepthInput,
+                     BufferInput,
+                     BufferOutput,
+                     ImageInput,
+                     ImageOutput
+                    );
+                    PFlag=^TFlag;
+                    TFlags=set of TFlag;
+                    PFlags=^TFlags;
+                const AllAttachments=
+                       [
+                        TFlag.AttachmentInput,
+                        TFlag.AttachmentOutput,
+                        TFlag.AttachmentResolveOutput,
+                        TFlag.AttachmentDepthOutput,
+                        TFlag.AttachmentDepthInput
+                       ];
+                      AllAttachmentInputs=
+                       [
+                        TFlag.AttachmentInput,
+                        TFlag.AttachmentDepthInput
+                       ];
+                      AllAttachmentOutputs=
+                       [
+                        TFlag.AttachmentOutput,
+                        TFlag.AttachmentResolveOutput,
+                        TFlag.AttachmentDepthOutput
+                       ];
+                      AllInputs=
+                       [
+                        TFlag.AttachmentInput,
+                        TFlag.AttachmentDepthInput,
+                        TFlag.BufferInput,
+                        TFlag.ImageInput
+                       ];
+                      AllOutputs=
+                       [
+                        TFlag.AttachmentOutput,
+                        TFlag.AttachmentResolveOutput,
+                        TFlag.AttachmentDepthOutput,
+                        TFlag.BufferOutput,
+                        TFlag.ImageOutput
+                       ];
+                      AllInputsOutputs=AllInputs+AllOutputs;
+             private
+              fFrameGraph:TpvFrameGraph;
+              fPass:TPass;
+              fResource:TResource;
+              fLayout:TVkImageLayout;
+              fLoad:TLoadOp;
+              fResolveResource:TResource;
+              fImageSubresourceRange:TVkImageSubresourceRange;
+              fPipelineStage:TVkPipelineStageFlags;
+              fAccessFlags:TVkAccessFlags;
+              fBufferSubresourceRange:TBufferSubresourceRange;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce;
+              destructor Destroy; override;
+             public
+              property Load:TLoadOp read fLoad write fLoad;
+              property ImageSubresourceRange:TVkImageSubresourceRange read fImageSubresourceRange write fImageSubresourceRange;
+              property BufferSubresourceRange:TBufferSubresourceRange read fBufferSubresourceRange write fBufferSubresourceRange;
+             published
+              property FrameGraph:TpvFrameGraph read fFrameGraph;
+              property Pass:TPass read fPass;
+              property Resource:TResource read fResource;
+              property Layout:TVkImageLayout read fLayout write fLayout;
+              property ResolveResource:TResource read fResolveResource;
+              property PipelineStage:TVkPipelineStageFlags read fPipelineStage write fPipelineStage;
+              property AccessFlags:TVkAccessFlags read fAccessFlags write fAccessFlags;
+            end;
+            TResourceTransitionList=TpvObjectGenericList<TResourceTransition>;
             TPass=class
              private
               fFrameGraph:TpvFrameGraph;
@@ -261,6 +375,7 @@ type EpvFrameGraph=class(Exception);
        fResourceTypeNameHashMap:TResourceTypeNameHashMap;
        fResourceList:TResourceList;
        fResourceNameHashMap:TResourceNameHashMap;
+       fResourceTransitionList:TResourceTransitionList;
        fPassList:TPassList;
        fPassNameHashMap:TPassNameHashMap;
       public
@@ -281,6 +396,27 @@ type EpvFrameGraph=class(Exception);
      end;
 
 implementation
+
+{ TpvFrameGraph.TLoadOp }
+
+constructor TpvFrameGraph.TLoadOp.Create(const aKind:TKind);
+begin
+ Kind:=aKind;
+ ClearColor:=TpvVector4.InlineableCreate(1.0,1.0,1.0,1.0);
+end;
+
+constructor TpvFrameGraph.TLoadOp.Create(const aKind:TKind;const aClearColor:TpvVector4);
+begin
+ Kind:=aKind;
+ ClearColor:=aClearColor;
+end;
+
+{ TpvFrameGraph.TStoreOp }
+
+constructor TpvFrameGraph.TStoreOp.Create(const aKind:TKind);
+begin
+ Kind:=aKind;
+end;
 
 { TpvFrameGraph.TAttachmentSize }
 
@@ -508,6 +644,23 @@ begin
  inherited Destroy;
 end;
 
+{ TpvFrameGraph.TResourceTransition }
+
+constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameGraph);
+begin
+ inherited Create;
+ fFrameGraph:=aFrameGraph;
+ fFrameGraph.fResourceTransitionList.Add(self);
+end;
+
+destructor TpvFrameGraph.TResourceTransition.Destroy;
+begin
+ if assigned(fFrameGraph) then begin
+  fFrameGraph.fResourceTransitionList.Remove(self);
+ end;
+ inherited Destroy;
+end;
+
 { TpvFrameGraph.TPass }
 
 constructor TpvFrameGraph.TPass.Create(const aFrameGraph:TpvFrameGraph;
@@ -580,6 +733,9 @@ begin
 
  fResourceNameHashMap:=TResourceNameHashMap.Create(nil);
 
+ fResourceTransitionList:=TResourceTransitionList.Create;
+ fResourceTransitionList.OwnsObjects:=true;
+
  fPassList:=TPassList.Create;
  fPassList.OwnsObjects:=false;
 
@@ -603,6 +759,8 @@ begin
  FreeAndNil(fResourceList);
 
  FreeAndNil(fResourceNameHashMap);
+
+ FreeAndNil(fResourceTransitionList);
 
  while fPassList.Count>0 do begin
   fPassList.Items[fPassList.Count-1].Free;
