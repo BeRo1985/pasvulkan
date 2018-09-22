@@ -266,6 +266,11 @@ type EpvFrameGraph=class(Exception);
       public
        constructor Create;
        destructor Destroy; override;
+       procedure Setup; virtual;
+       procedure Compile; virtual;
+       procedure AfterCreateSwapChain; virtual;
+       procedure BeforeDestroySwapChain; virtual;
+       procedure Execute; virtual;
       published
        property ResourceTypes:TResourceTypeList read fResourceTypeList;
        property ResourceTypeByName:TResourceTypeNameHashMap read fResourceTypeNameHashMap;
@@ -607,6 +612,31 @@ begin
  FreeAndNil(fPassNameHashMap);
 
  inherited Destroy;
+
+end;
+
+procedure TpvFrameGraph.Setup;
+begin
+
+end;
+
+procedure TpvFrameGraph.Compile;
+begin
+
+end;
+
+procedure TpvFrameGraph.AfterCreateSwapChain;
+begin
+
+end;
+
+procedure TpvFrameGraph.BeforeDestroySwapChain;
+begin
+
+end;
+
+procedure TpvFrameGraph.Execute;
+begin
 
 end;
 
