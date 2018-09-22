@@ -307,6 +307,7 @@ type EpvFrameGraph=class(Exception);
               fFrameGraph:TpvFrameGraph;
               fPass:TPass;
               fResource:TResource;
+              fFlags:TFlags;
               fLayout:TVkImageLayout;
               fLoad:TLoadOp;
               fResolveResource:TResource;
@@ -315,7 +316,30 @@ type EpvFrameGraph=class(Exception);
               fAccessFlags:TVkAccessFlags;
               fBufferSubresourceRange:TBufferSubresourceRange;
              public
-              constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce;
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aPass:TPass;
+                                 const aResource:TResource;
+                                 const aFlags:TFlags); reintroduce; overload;
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aPass:TPass;
+                                 const aResource:TResource;
+                                 const aFlags:TFlags;
+                                 const aLayout:TVkImageLayout;
+                                 const aLoad:TLoadOp;
+                                 const aImageSubresourceRange:TVkImageSubresourceRange); reintroduce; overload;
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aPass:TPass;
+                                 const aResource:TResource;
+                                 const aFlags:TFlags;
+                                 const aLayout:TVkImageLayout;
+                                 const aLoad:TLoadOp); reintroduce; overload;
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aPass:TPass;
+                                 const aResource:TResource;
+                                 const aFlags:TFlags;
+                                 const aPipelineStage:TVkPipelineStageFlags;
+                                 const aAccessFlags:TVkAccessFlags;
+                                 const aBufferSubresourceRange:TBufferSubresourceRange); reintroduce; overload;
               destructor Destroy; override;
              public
               property Load:TLoadOp read fLoad write fLoad;
@@ -325,6 +349,7 @@ type EpvFrameGraph=class(Exception);
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Pass:TPass read fPass;
               property Resource:TResource read fResource;
+              property Flags:TFlags read fFlags;
               property Layout:TVkImageLayout read fLayout write fLayout;
               property ResolveResource:TResource read fResolveResource;
               property PipelineStage:TVkPipelineStageFlags read fPipelineStage write fPipelineStage;
@@ -646,11 +671,55 @@ end;
 
 { TpvFrameGraph.TResourceTransition }
 
-constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameGraph);
+constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameGraph;
+                                                     const aPass:TPass;
+                                                     const aResource:TResource;
+                                                     const aFlags:TFlags);
 begin
  inherited Create;
  fFrameGraph:=aFrameGraph;
  fFrameGraph.fResourceTransitionList.Add(self);
+ fPass:=aPass;
+ fResource:=aResource;
+ fFlags:=aFlags;
+end;
+
+constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameGraph;
+                                                     const aPass:TPass;
+                                                     const aResource:TResource;
+                                                     const aFlags:TFlags;
+                                                     const aLayout:TVkImageLayout;
+                                                     const aLoad:TLoadOp;
+                                                     const aImageSubresourceRange:TVkImageSubresourceRange);
+begin
+ Create(aFrameGraph,aPass,aResource,aFlags);
+ fLayout:=aLayout;
+ fLoad:=aLoad;
+ fImageSubresourceRange:=aImageSubresourceRange;
+end;
+
+constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameGraph;
+                                                     const aPass:TPass;
+                                                     const aResource:TResource;
+                                                     const aFlags:TFlags;
+                                                     const aLayout:TVkImageLayout;
+                                                     const aLoad:TLoadOp);
+begin
+ Create(aFrameGraph,aPass,aResource,aFlags,aLayout,aLoad,TVkImageSubresourceRange.Create(0,0,1,0,1));
+end;
+
+constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameGraph;
+                                                     const aPass:TPass;
+                                                     const aResource:TResource;
+                                                     const aFlags:TFlags;
+                                                     const aPipelineStage:TVkPipelineStageFlags;
+                                                     const aAccessFlags:TVkAccessFlags;
+                                                     const aBufferSubresourceRange:TBufferSubresourceRange);
+begin
+ Create(aFrameGraph,aPass,aResource,aFlags);
+ fPipelineStage:=aPipelineStage;
+ fAccessFlags:=aAccessFlags;
+ fBufferSubresourceRange:=aBufferSubresourceRange;
 end;
 
 destructor TpvFrameGraph.TResourceTransition.Destroy;
