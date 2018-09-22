@@ -366,6 +366,7 @@ type EpvFrameGraph=class(Exception);
               fCountRequiredPasses:TpvSizeInt;
               fConflictedPasses:TPassArray;
               fCountConflictedPasses:TpvSizeInt;
+              fResourceTransitionList:TResourceTransitionList;
               fEnabled:boolean;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
@@ -692,6 +693,7 @@ begin
  fPass:=aPass;
  fResource:=aResource;
  fFlags:=aFlags;
+ fPass.fResourceTransitionList.Add(self);
 end;
 
 constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameGraph;
@@ -768,6 +770,9 @@ begin
  fConflictedPasses:=nil;
  fCountConflictedPasses:=0;
 
+ fResourceTransitionList:=TResourceTransitionList.Create;
+ fResourceTransitionList.OwnsObjects:=false;
+
  fEnabled:=true;
 
 end;
@@ -778,6 +783,8 @@ begin
  fRequiredPasses:=nil;
 
  fConflictedPasses:=nil;
+
+ FreeAndNil(fResourceTransitionList);
 
  if assigned(fFrameGraph) then begin
   fFrameGraph.fPassList.Remove(self);
