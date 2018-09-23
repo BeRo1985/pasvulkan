@@ -757,6 +757,7 @@ begin
  end;
  fFrameGraph:=aFrameGraph;
  fName:=aName;
+ fResourceType:=aResourceType;
  fFrameGraph.fResourceList.Add(self);
  fFrameGraph.fResourceNameHashMap.Add(fName,self);
 end;
