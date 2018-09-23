@@ -86,7 +86,9 @@ type EpvFrameGraph=class(Exception);
 
      EpvFrameGraphMismatchAttachmentSize=class(EpvFrameGraph);
 
-     EpvFrameGraphMissedGeneratorPassFoprResource=class(EpvFrameGraph);
+     EpvFrameGraphMissedGeneratorPassForResource=class(EpvFrameGraph);
+
+     EpvFrameGraphResourceUsedAsInputAndOutputInTheSamePassAtTheSameTime=class(EpvFrameGraph);
 
      EpvFrameGraphRecursion=class(EpvFrameGraph);
 
@@ -1365,6 +1367,7 @@ type TAction=
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicStack<TStackItem>;
+     TResourceDynamicArray=TpvDynamicArray<TResource>;
  function NewStackItem(const aAction:TAction;const aPass:TPass):TStackItem;
  begin
   result.Action:=aAction;
@@ -1379,6 +1382,7 @@ var Temporary,Index,BaseStackCount:TpvSizeInt;
     Stack:TStack;
     StackItem:TStackItem;
     OK:boolean;
+    ResourceDynamicArray:TResourceDynamicArray;
 begin
 
  // Validate that all attachments have the same size as defined in the render pass
@@ -1388,7 +1392,7 @@ begin
    for ResourceTransition in RenderPass.fResourceTransitions do begin
     if ((ResourceTransition.fFlags*TResourceTransition.AllAttachments)<>[]) and
        (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentSize<>RenderPass.fAttachmentSize) then begin
-     raise EpvFrameGraphMismatchAttachmentSize.Create('Mismatch attachment size between pass "'+String(Pass.fName)+'" and resource "'+String(ResourceTransition.fResource.Name)+'"');
+     raise EpvFrameGraphMismatchAttachmentSize.Create('Mismatch attachment size between pass "'+String(Pass.fName)+'" and resource "'+String(ResourceTransition.fResource.fName)+'"');
     end;
    end;
   end;
@@ -1404,8 +1408,32 @@ begin
    end;
   end;
   if not OK then begin
-   raise EpvFrameGraphMissedGeneratorPassFoprResource.Create('Missed generator pass for resource "'+String(Resource.Name)+'"');
+   raise EpvFrameGraphMissedGeneratorPassForResource.Create('Missed generator pass for resource "'+String(Resource.fName)+'"');
   end;
+ end;
+
+ // Validate that all resources do not have input and output transitions at a same pass at the same time
+ ResourceDynamicArray.Initialize;
+ try
+  for Pass in fPassList do begin
+   ResourceDynamicArray.Clear;
+   for ResourceTransition in Pass.fResourceTransitions do begin
+    if (ResourceTransition.fFlags*TResourceTransition.AllInputs)<>[] then begin
+     ResourceDynamicArray.Add(ResourceTransition.fResource);
+    end;
+   end;
+   for ResourceTransition in Pass.fResourceTransitions do begin
+    if (ResourceTransition.fFlags*TResourceTransition.AllOutputs)<>[] then begin
+     for Resource in ResourceDynamicArray.Items do begin
+      if Resource=ResourceTransition.fResource then begin
+       raise EpvFrameGraphResourceUsedAsInputAndOutputInTheSamePassAtTheSameTime.Create('Resource "'+String(Resource.Name)+'" is used as input and output in pass "'+String(Pass.fName)+'" at the same time');
+      end;
+     end;
+    end;
+   end;
+  end;
+ finally
+  ResourceDynamicArray.Finalize;
  end;
 
  // Find root pass (a render pass, which have only a single attachment output to a surface/swapchain)
