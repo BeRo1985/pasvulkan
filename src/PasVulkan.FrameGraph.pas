@@ -364,6 +364,7 @@ type EpvFrameGraph=class(Exception);
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
+              fResourceList:TResourceList;
               fResourceTransitionList:TResourceTransitionList;
               fEnabled:boolean;
               procedure SetName(const aName:TpvRawByteString);
@@ -475,6 +476,7 @@ type EpvFrameGraph=class(Exception);
        fResourceTransitionList:TResourceTransitionList;
        fPassList:TPassList;
        fPassNameHashMap:TPassNameHashMap;
+       fRootPass:TPass;
        fValid:boolean;
       public
        constructor Create;
@@ -515,6 +517,7 @@ type EpvFrameGraph=class(Exception);
        property ResourceByName:TResourceNameHashMap read fResourceNameHashMap;
        property Passes:TPassList read fPassList;
        property PassByName:TPassNameHashMap read fPassNameHashMap;
+       property RootPass:TPass read fRootPass;
      end;
 
 implementation
@@ -848,6 +851,9 @@ begin
 
  fFrameGraph.fPassList.Add(self);
 
+ fResourceList:=TResourceList.Create;
+ fResourceList.OwnsObjects:=false;
+
  fResourceTransitionList:=TResourceTransitionList.Create;
  fResourceTransitionList.OwnsObjects:=false;
 
@@ -857,6 +863,8 @@ end;
 
 destructor TpvFrameGraph.TPass.Destroy;
 begin
+
+ FreeAndNil(fResourceList);
 
  FreeAndNil(fResourceTransitionList);
 
@@ -1286,8 +1294,41 @@ begin
 end;
 
 procedure TpvFrameGraph.Compile;
+var Temporary:TpvUInt32;
+    Pass:TPass;
+    RenderPass:TRenderPass;
+    ResourceTransition:TResourceTransition;
+    Resource:TResource;
 begin
 
+ // Find root pass (a render pass, which have only a single attachment output to a surface/swapchain)
+ fRootPass:=nil;
+ for Pass in fPassList do begin
+  if Pass is TRenderPass then begin
+   RenderPass:=Pass as TRenderPass;
+   Temporary:=0;
+   for ResourceTransition in RenderPass.fResourceTransitionList do begin
+    if (ResourceTransition.fFlags*TResourceTransition.AllAttachmentOutputs)<>[] then begin
+     Resource:=ResourceTransition.fResource;
+     if (Resource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
+        (Resource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface) then begin
+      Temporary:=Temporary or 1;
+     end else begin
+      Temporary:=Temporary or 2;
+      break;
+     end;
+    end;
+   end;
+   if Temporary=1 then begin
+    fRootPass:=Pass;
+    break;
+   end;
+  end;
+ end;
+ if not assigned(fRootPass) then begin
+  raise EpvFrameGraph.Create('No root pass found');
+ end;
+ 
 end;
 
 procedure TpvFrameGraph.AfterCreateSwapChain;
