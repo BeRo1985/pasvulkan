@@ -381,6 +381,7 @@ type EpvFrameGraph=class(Exception);
               fPreviousPasses:TPassList;
               fNextPasses:TPassList;
               fTag:TpvSizeInt;
+              fStepIndex:TpvSizeInt;
               fEnabled:boolean;
               fProcessed:boolean;
               fMarked:boolean;
@@ -1365,15 +1366,17 @@ type TAction=
      TStackItem=record
       Action:TAction;
       Pass:TPass;
+      Step:TpvSizeInt;
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicStack<TStackItem>;
      TResourceDynamicArray=TpvDynamicArray<TResource>;
      TAttachmentSizeTagHashMap=TpvHashMap<TAttachmentSize,TpvSizeInt>;
- function NewStackItem(const aAction:TAction;const aPass:TPass):TStackItem;
+ function NewStackItem(const aAction:TAction;const aPass:TPass;const aStep:TpvSizeInt):TStackItem;
  begin
   result.Action:=aAction;
   result.Pass:=aPass;
+  result.Step:=aStep;
  end;
 var Temporary,Index,BaseStackCount,TagCounter,
     FoundTag:TpvSizeInt;
@@ -1475,12 +1478,13 @@ begin
  Stack.Initialize;
  try
   for Pass in fPassList do begin
+   Pass.fStepIndex:=-1;
    Pass.fProcessed:=false;
    Pass.fMarked:=false;
    Pass.fPreviousPasses.Clear;
    Pass.fNextPasses.Clear;
   end;
-  Stack.Push(NewStackItem(TAction.Process,fRootPass));
+  Stack.Push(NewStackItem(TAction.Process,fRootPass,0));
   while Stack.Pop(StackItem) do begin
    Pass:=StackItem.Pass;
    case StackItem.Action of
@@ -1490,7 +1494,8 @@ begin
      end;
      if not Pass.fProcessed then begin
       Pass.fMarked:=true;
-      Stack.Push(NewStackItem(TAction.Unmark,Pass));
+      StackItem.Pass.fStepIndex:=StackItem.Step;
+      Stack.Push(NewStackItem(TAction.Unmark,Pass,StackItem.Step));
       BaseStackCount:=Stack.Count;
       for ResourceTransition in Pass.fResourceTransitions do begin
        if ((ResourceTransition.Flags*TResourceTransition.AllInputs)<>[]) and
@@ -1514,7 +1519,7 @@ begin
            end;
           end;
           if OK then begin
-           Stack.Push(NewStackItem(TAction.Process,OtherResourceTransition.fPass));
+           Stack.Push(NewStackItem(TAction.Process,OtherResourceTransition.fPass,StackItem.Step+1));
           end;
          end;
         end;
