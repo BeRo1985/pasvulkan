@@ -84,6 +84,8 @@ type EpvFrameGraph=class(Exception);
 
      EpvFrameGraphDuplicateName=class(EpvFrameGraph);
 
+     EpvFrameGraphRecursion=class(EpvFrameGraph);
+
      TpvFrameGraph=class
       public
        type TBufferSubresourceRange=record
@@ -371,7 +373,7 @@ type EpvFrameGraph=class(Exception);
               fPreviousPasses:TPassList;
               fNextPasses:TPassList;
               fEnabled:boolean;
-              fProcessed:boolean;
+              fMarked:boolean;
               procedure SetName(const aName:TpvRawByteString);
               function AddResource(const aResourceTypeName:TpvRawByteString;
                                    const aResourceName:TpvRawByteString;
@@ -905,11 +907,12 @@ begin
   if length(fName)>0 then begin
    fFrameGraph.fPassNameHashMap.Delete(fName);
   end;
-  if length(aName)>0 then begin
-   if fFrameGraph.fPassNameHashMap.ExistKey(aName) then begin
+  fName:=aName;
+  if length(fName)>0 then begin
+   if fFrameGraph.fPassNameHashMap.ExistKey(fName) then begin
     raise EpvFrameGraphDuplicateName.Create('Duplicate name');
    end;
-   fFrameGraph.fPassNameHashMap.Add(aName,self);
+   fFrameGraph.fPassNameHashMap.Add(fName,self);
   end;
  end;
 end;
@@ -1314,13 +1317,23 @@ begin
 end;
 
 procedure TpvFrameGraph.Compile;
-type TStackItem=record
+type TAction=
+      (
+       Process,
+       Unmark
+      );
+     TStackItem=record
+      Action:TAction;
       Pass:TPass;
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicStack<TStackItem>;
-     TPassDynamicArray=TpvDynamicArray<TPass>;
-var Temporary:TpvUInt32;
+ function NewStackItem(const aAction:TAction;const aPass:TPass):TStackItem;
+ begin
+  result.Action:=aAction;
+  result.Pass:=aPass;
+ end;
+var Temporary,Index,BaseStackCount:TpvSizeInt;
     Pass:TPass;
     RenderPass:TRenderPass;
     ResourceTransition,
@@ -1328,7 +1341,7 @@ var Temporary:TpvUInt32;
     Resource:TResource;
     Stack:TStack;
     StackItem:TStackItem;
-    PassDependencies:TPassDynamicArray;
+    OK:boolean;
 begin
 
  // Find root pass (a render pass, which have only a single attachment output to a surface/swapchain)
@@ -1362,46 +1375,56 @@ begin
   end;
  end;
 
+ // Construct the directed acyclic graph
  Stack.Initialize;
  try
-  PassDependencies.Initialize;
-  try
-   for Pass in fPassList do begin
-    Pass.fProcessed:=false;
-    Pass.fPreviousPasses.Clear;
-    Pass.fNextPasses.Clear;
-   end;
-   StackItem.Pass:=fRootPass;
-   Stack.Push(StackItem);
-   while Stack.Pop(StackItem) do begin
-    Pass:=StackItem.Pass;
-    if not Pass.fProcessed then begin
-     Pass.fProcessed:=true;
-     PassDependencies.Clear;
-     for ResourceTransition in RenderPass.fResourceTransitions do begin
+  for Pass in fPassList do begin
+   Pass.fMarked:=false;
+   Pass.fPreviousPasses.Clear;
+   Pass.fNextPasses.Clear;
+  end;
+  Stack.Push(NewStackItem(TAction.Process,fRootPass));
+  while Stack.Pop(StackItem) do begin
+   Pass:=StackItem.Pass;
+   case StackItem.Action of
+    TAction.Process:begin
+     if Pass.fMarked then begin
+      raise EpvFrameGraphRecursion.Create('Recursion detected');
+     end;
+     Pass.fMarked:=true;
+     Stack.Push(NewStackItem(TAction.Unmark,Pass));
+     BaseStackCount:=Stack.Count;
+     for ResourceTransition in Pass.fResourceTransitions do begin
       if (ResourceTransition.Flags*TResourceTransition.AllInputs)<>[] then begin
        Resource:=ResourceTransition.Resource;
        for OtherResourceTransition in Resource.fResourceTransitions do begin
         if (ResourceTransition<>OtherResourceTransition) and
            ((OtherResourceTransition.fFlags*TResourceTransition.AllOutputs)<>[]) then begin
-         if not OtherResourceTransition.fPass.fProcessed then begin
-          if Pass.fPreviousPasses.IndexOf(OtherResourceTransition.fPass)<0 then begin
-           Pass.fPreviousPasses.Add(OtherResourceTransition.fPass);
+         if Pass.fPreviousPasses.IndexOf(OtherResourceTransition.fPass)<0 then begin
+          Pass.fPreviousPasses.Add(OtherResourceTransition.fPass);
+         end;
+         if OtherResourceTransition.fPass.fNextPasses.IndexOf(Pass)<0 then begin
+          OtherResourceTransition.fPass.fNextPasses.Add(Pass);
+         end;
+         OK:=true;
+         for Index:=Stack.Count-1 downto BaseStackCount do begin
+          if Stack.Items[Index].Pass=OtherResourceTransition.fPass then begin
+           OK:=false;
+           break;
           end;
-          if OtherResourceTransition.fPass.fNextPasses.IndexOf(Pass)<0 then begin
-           OtherResourceTransition.fPass.fNextPasses.Add(Pass);
-          end;
-          StackItem.Pass:=OtherResourceTransition.fPass;
-          Stack.Push(StackItem);
+         end;
+         if OK then begin
+          Stack.Push(NewStackItem(TAction.Process,OtherResourceTransition.fPass));
          end;
         end;
        end;
       end;
      end;
     end;
+    TAction.Unmark:begin
+     Pass.fMarked:=false;
+    end;
    end;
-  finally
-   PassDependencies.Finalize;
   end;
  finally
   Stack.Finalize;
