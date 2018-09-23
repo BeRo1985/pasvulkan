@@ -373,6 +373,7 @@ type EpvFrameGraph=class(Exception);
               fPreviousPasses:TPassList;
               fNextPasses:TPassList;
               fEnabled:boolean;
+              fProcessed:boolean;
               fMarked:boolean;
               procedure SetName(const aName:TpvRawByteString);
               function AddResource(const aResourceTypeName:TpvRawByteString;
@@ -1379,6 +1380,7 @@ begin
  Stack.Initialize;
  try
   for Pass in fPassList do begin
+   Pass.fProcessed:=false;
    Pass.fMarked:=false;
    Pass.fPreviousPasses.Clear;
    Pass.fNextPasses.Clear;
@@ -1391,34 +1393,37 @@ begin
      if Pass.fMarked then begin
       raise EpvFrameGraphRecursion.Create('Recursion detected');
      end;
-     Pass.fMarked:=true;
-     Stack.Push(NewStackItem(TAction.Unmark,Pass));
-     BaseStackCount:=Stack.Count;
-     for ResourceTransition in Pass.fResourceTransitions do begin
-      if (ResourceTransition.Flags*TResourceTransition.AllInputs)<>[] then begin
-       Resource:=ResourceTransition.Resource;
-       for OtherResourceTransition in Resource.fResourceTransitions do begin
-        if (ResourceTransition<>OtherResourceTransition) and
-           ((OtherResourceTransition.fFlags*TResourceTransition.AllOutputs)<>[]) then begin
-         if Pass.fPreviousPasses.IndexOf(OtherResourceTransition.fPass)<0 then begin
-          Pass.fPreviousPasses.Add(OtherResourceTransition.fPass);
-         end;
-         if OtherResourceTransition.fPass.fNextPasses.IndexOf(Pass)<0 then begin
-          OtherResourceTransition.fPass.fNextPasses.Add(Pass);
-         end;
-         OK:=true;
-         for Index:=Stack.Count-1 downto BaseStackCount do begin
-          if Stack.Items[Index].Pass=OtherResourceTransition.fPass then begin
-           OK:=false;
-           break;
+     if not Pass.fProcessed then begin
+      Pass.fMarked:=true;
+      Stack.Push(NewStackItem(TAction.Unmark,Pass));
+      BaseStackCount:=Stack.Count;
+      for ResourceTransition in Pass.fResourceTransitions do begin
+       if (ResourceTransition.Flags*TResourceTransition.AllInputs)<>[] then begin
+        Resource:=ResourceTransition.Resource;
+        for OtherResourceTransition in Resource.fResourceTransitions do begin
+         if (ResourceTransition<>OtherResourceTransition) and
+            ((OtherResourceTransition.fFlags*TResourceTransition.AllOutputs)<>[]) then begin
+          if Pass.fPreviousPasses.IndexOf(OtherResourceTransition.fPass)<0 then begin
+           Pass.fPreviousPasses.Add(OtherResourceTransition.fPass);
           end;
-         end;
-         if OK then begin
-          Stack.Push(NewStackItem(TAction.Process,OtherResourceTransition.fPass));
+          if OtherResourceTransition.fPass.fNextPasses.IndexOf(Pass)<0 then begin
+           OtherResourceTransition.fPass.fNextPasses.Add(Pass);
+          end;
+          OK:=true;
+          for Index:=Stack.Count-1 downto BaseStackCount do begin
+           if Stack.Items[Index].Pass=OtherResourceTransition.fPass then begin
+            OK:=false;
+            break;
+           end;
+          end;
+          if OK then begin
+           Stack.Push(NewStackItem(TAction.Process,OtherResourceTransition.fPass));
+          end;
          end;
         end;
        end;
       end;
+      Pass.fProcessed:=true;
      end;
     end;
     TAction.Unmark:begin
