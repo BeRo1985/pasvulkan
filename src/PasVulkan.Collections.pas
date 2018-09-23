@@ -68,15 +68,67 @@ uses SysUtils,
      PasVulkan.Math,
      Generics.Collections;
 
-type TpvDynamicArray<T>=class
+type TpvDynamicArray<T>=record
+      public
+       Items:array of T;
+       Count:TpvSizeInt;
+       procedure Initialize;
+       procedure Finalize;
+       procedure Clear;
+       procedure Finish;
+       procedure Assign(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArray<T>); overload;
+       procedure Assign(const aItems:array of T); overload;
+       function AddNew:TpvSizeInt; overload;
+       function Insert(const aIndex:TpvSizeInt;const aItem:T):TpvSizeInt; overload;
+       function Add(const aItem:T):TpvSizeInt; overload;
+       function Add(const aItems:array of T):TpvSizeInt; overload;
+       function Add(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArray<T>):TpvSizeInt; overload;
+       function AddRangeFrom(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArray<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt; overload;
+       function AssignRangeFrom(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArray<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt; overload;
+       procedure Exchange(const aIndexA,aIndexB:TpvSizeInt); inline;
+       procedure Delete(const aIndex:TpvSizeInt);
+     end;
+
+     TpvDynamicStack<T>=record
+      public
+       Items:array of T;
+       Count:TpvSizeInt;
+       procedure Initialize;
+       procedure Finalize;
+       procedure Push(const aItem:T);
+       function Pop(out aItem:T):boolean;
+     end;
+
+     TpvDynamicQueue<T>=record
+      public
+       type TQueueItems=array of T;
+      public
+       Items:TQueueItems;
+       Head:TpvSizeInt;
+       Tail:TpvSizeInt;
+       Count:TpvSizeInt;
+       Size:TpvSizeInt;
+       procedure Initialize;
+       procedure Finalize;
+       procedure GrowResize(const aSize:TpvSizeInt);
+       procedure Clear;
+       function IsEmpty:boolean;
+       procedure EnqueueAtFront(const aItem:T);
+       procedure Enqueue(const aItem:T);
+       function Dequeue(out aItem:T):boolean; overload;
+       function Dequeue:boolean; overload;
+       function Peek(out aItem:T):boolean;
+     end;
+
+     TpvDynamicArrayList<T>=class
       private
        type TValueEnumerator=record
              private
-              fDynamicArray:TpvDynamicArray<T>;
+              fDynamicArray:TpvDynamicArrayList<T>;
               fIndex:TpvSizeInt;
               function GetCurrent:T; inline;
              public
-              constructor Create(const aDynamicArray:TpvDynamicArray<T>);
+              constructor Create(const aDynamicArray:TpvDynamicArrayList<T>);
               function MoveNext:boolean; inline;
               property Current:T read GetCurrent;
             end;
@@ -576,24 +628,342 @@ implementation
 uses Generics.Defaults,
      PasVulkan.Utils;
 
-constructor TpvDynamicArray<T>.TValueEnumerator.Create(const aDynamicArray:TpvDynamicArray<T>);
+{ TpvDynamicArray<T> }
+
+procedure TpvDynamicArray<T>.Initialize;
+begin
+ Items:=nil;
+ Count:=0;
+end;
+
+procedure TpvDynamicArray<T>.Finalize;
+begin
+ Items:=nil;
+ Count:=0;
+end;
+
+procedure TpvDynamicArray<T>.Clear;
+begin
+ Items:=nil;
+ Count:=0;
+end;
+
+procedure TpvDynamicArray<T>.Finish;
+begin
+ SetLength(Items,Count);
+end;
+
+procedure TpvDynamicArray<T>.Assign(const aFrom:TpvDynamicArray<T>);
+begin
+ Items:=copy(aFrom.Items);
+ Count:=aFrom.Count;
+end;
+
+procedure TpvDynamicArray<T>.Assign(const aItems:array of T);
+var Index:TpvSizeInt;
+begin
+ Count:=length(aItems);
+ SetLength(Items,Count);
+ for Index:=0 to Count-1 do begin
+  Items[Index]:=aItems[Index];
+ end;
+end;
+
+function TpvDynamicArray<T>.Insert(const aIndex:TpvSizeInt;const aItem:T):TpvSizeInt;
+begin
+ result:=aIndex;
+ if aIndex>=0 then begin
+  if aIndex<Count then begin
+   inc(Count);
+   if length(Items)<Count then begin
+    SetLength(Items,Count*2);
+   end;
+   Move(Items[aIndex],Items[aIndex+1],(Count-(aIndex+1))*SizeOf(T));
+   FillChar(Items[aIndex],SizeOf(T),#0);
+  end else begin
+   Count:=aIndex+1;
+   if length(Items)<Count then begin
+    SetLength(Items,Count*2);
+   end;
+  end;
+  Items[aIndex]:=aItem;
+ end;
+end;
+
+function TpvDynamicArray<T>.AddNew:TpvSizeInt;
+begin
+ result:=Count;
+ if length(Items)<(Count+1) then begin
+  SetLength(Items,(Count+1)+((Count+1) shr 1));
+ end;
+ System.Initialize(Items[Count]);
+ inc(Count);
+end;
+
+function TpvDynamicArray<T>.Add(const aItem:T):TpvSizeInt;
+begin
+ result:=Count;
+ if length(Items)<(Count+1) then begin
+  SetLength(Items,(Count+1)+((Count+1) shr 1));
+ end;
+ Items[Count]:=aItem;
+ inc(Count);
+end;
+
+function TpvDynamicArray<T>.Add(const aItems:array of T):TpvSizeInt;
+var Index,FromCount:TpvSizeInt;
+begin
+ result:=Count;
+ FromCount:=length(aItems);
+ if FromCount>0 then begin
+  if length(Items)<(Count+FromCount) then begin
+   SetLength(Items,(Count+FromCount)+((Count+FromCount) shr 1));
+  end;
+  for Index:=0 to FromCount-1 do begin
+   Items[Count]:=aItems[Index];
+   inc(Count);
+  end;
+ end;
+end;
+
+function TpvDynamicArray<T>.Add(const aFrom:TpvDynamicArray<T>):TpvSizeInt;
+var Index:TpvSizeInt;
+begin
+ result:=Count;
+ if aFrom.Count>0 then begin
+  if length(Items)<(Count+aFrom.Count) then begin
+   SetLength(Items,(Count+aFrom.Count)+((Count+aFrom.Count) shr 1));
+  end;
+  for Index:=0 to aFrom.Count-1 do begin
+   Items[Count]:=aFrom.Items[Index];
+   inc(Count);
+  end;
+ end;
+end;
+
+function TpvDynamicArray<T>.AddRangeFrom(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArray<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt;
+var Index:TpvSizeInt;
+begin
+ result:=Count;
+ if aCount>0 then begin
+  if length(Items)<(Count+aCount) then begin
+   SetLength(Items,(Count+aCount)+((Count+aCount) shr 1));
+  end;
+  for Index:=0 to aCount-1 do begin
+   Items[Count]:=aFrom.Items[aStartIndex+Index];
+   inc(Count);
+  end;
+ end;
+end;
+
+function TpvDynamicArray<T>.AssignRangeFrom(const aFrom:{$ifdef fpc}{$endif}TpvDynamicArray<T>;const aStartIndex,aCount:TpvSizeInt):TpvSizeInt;
+begin
+ Clear;
+ result:=AddRangeFrom(aFrom,aStartIndex,aCount);
+end;
+
+procedure TpvDynamicArray<T>.Exchange(const aIndexA,aIndexB:TpvSizeInt);
+var Temp:T;
+begin
+ Temp:=Items[aIndexA];
+ Items[aIndexA]:=Items[aIndexB];
+ Items[aIndexB]:=Temp;
+end;
+
+procedure TpvDynamicArray<T>.Delete(const aIndex:TpvSizeInt);
+begin
+ if (Count>0) and (aIndex<Count) then begin
+  dec(Count);
+  System.Finalize(Items[aIndex]);
+  Move(Items[aIndex+1],Items[aIndex],SizeOf(T)*(Count-aIndex));
+  FillChar(Items[Count],SizeOf(T),#0);
+ end;
+end;
+
+{ TpvDynamicStack<T> }
+
+procedure TpvDynamicStack<T>.Initialize;
+begin
+ Items:=nil;
+ Count:=0;
+end;
+
+procedure TpvDynamicStack<T>.Finalize;
+begin
+ Items:=nil;
+ Count:=0;
+end;
+
+procedure TpvDynamicStack<T>.Push(const aItem:T);
+begin
+ if length(Items)<(Count+1) then begin
+  SetLength(Items,(Count+1)+((Count+1) shr 1));
+ end;
+ Items[Count]:=aItem;
+ inc(Count);
+end;
+
+function TpvDynamicStack<T>.Pop(out aItem:T):boolean;
+begin
+ result:=Count>0;
+ if result then begin
+  dec(Count);
+  aItem:=Items[Count];
+ end;
+end;
+
+{ TpvDynamicQueue<T> }
+
+procedure TpvDynamicQueue<T>.Initialize;
+begin
+ Items:=nil;
+ Head:=0;
+ Tail:=0;
+ Count:=0;
+ Size:=0;
+end;
+
+procedure TpvDynamicQueue<T>.Finalize;
+begin
+ Clear;
+end;
+
+procedure TpvDynamicQueue<T>.GrowResize(const aSize:TpvSizeInt);
+var Index,OtherIndex:TpvSizeInt;
+    NewItems:TQueueItems;
+begin
+ SetLength(NewItems,aSize);
+ OtherIndex:=Head;
+ for Index:=0 to Count-1 do begin
+  NewItems[Index]:=Items[OtherIndex];
+  inc(OtherIndex);
+  if OtherIndex>=Size then begin
+   OtherIndex:=0;
+  end;
+ end;
+ Items:=NewItems;
+ Head:=0;
+ Tail:=Count;
+ Size:=aSize;
+end;
+
+procedure TpvDynamicQueue<T>.Clear;
+begin
+ while Count>0 do begin
+  dec(Count);
+  System.Finalize(Items[Head]);
+  inc(Head);
+  if Head>=Size then begin
+   Head:=0;
+  end;
+ end;
+ Items:=nil;
+ Head:=0;
+ Tail:=0;
+ Count:=0;
+ Size:=0;
+end;
+
+function TpvDynamicQueue<T>.IsEmpty:boolean;
+begin
+ result:=Count=0;
+end;
+
+procedure TpvDynamicQueue<T>.EnqueueAtFront(const aItem:T);
+var Index:TpvSizeInt;
+begin
+ if Size<=Count then begin
+  GrowResize(Count+1);
+ end;
+ dec(Head);
+ if Head<0 then begin
+  inc(Head,Size);
+ end;
+ Index:=Head;
+ Items[Index]:=aItem;
+ inc(Count);
+end;
+
+procedure TpvDynamicQueue<T>.Enqueue(const aItem:T);
+var Index:TpvSizeInt;
+begin
+ if Size<=Count then begin
+  GrowResize(Count+1);
+ end;
+ Index:=Tail;
+ inc(Tail);
+ if Tail>=Size then begin
+  Tail:=0;
+ end;
+ Items[Index]:=aItem;
+ inc(Count);
+end;
+
+function TpvDynamicQueue<T>.Dequeue(out aItem:T):boolean;
+begin
+ result:=Count>0;
+ if result then begin
+  dec(Count);
+  aItem:=Items[Head];
+  System.Finalize(Items[Head]);
+  FillChar(Items[Head],SizeOf(T),#0);
+  if Count=0 then begin
+   Head:=0;
+   Tail:=0;
+  end else begin
+   inc(Head);
+   if Head>=Size then begin
+    Head:=0;
+   end;
+  end;
+ end;
+end;
+
+function TpvDynamicQueue<T>.Dequeue:boolean;
+begin
+ result:=Count>0;
+ if result then begin
+  dec(Count);
+  System.Finalize(Items[Head]);
+  FillChar(Items[Head],SizeOf(T),#0);
+  if Count=0 then begin
+   Head:=0;
+   Tail:=0;
+  end else begin
+   inc(Head);
+   if Head>=Size then begin
+    Head:=0;
+   end;
+  end;
+ end;
+end;
+
+function TpvDynamicQueue<T>.Peek(out aItem:T):boolean;
+begin
+ result:=Count>0;
+ if result then begin
+  aItem:=Items[Head];
+ end;
+end;
+
+constructor TpvDynamicArrayList<T>.TValueEnumerator.Create(const aDynamicArray:TpvDynamicArrayList<T>);
 begin
  fDynamicArray:=aDynamicArray;
  fIndex:=-1;
 end;
 
-function TpvDynamicArray<T>.TValueEnumerator.MoveNext:boolean;
+function TpvDynamicArrayList<T>.TValueEnumerator.MoveNext:boolean;
 begin
  inc(fIndex);
  result:=fIndex<fDynamicArray.fCount;
 end;
 
-function TpvDynamicArray<T>.TValueEnumerator.GetCurrent:T;
+function TpvDynamicArrayList<T>.TValueEnumerator.GetCurrent:T;
 begin
  result:=fDynamicArray.fItems[fIndex];
 end;
 
-constructor TpvDynamicArray<T>.Create;
+constructor TpvDynamicArrayList<T>.Create;
 begin
  fItems:=nil;
  fCount:=0;
@@ -601,7 +971,7 @@ begin
  inherited Create;
 end;
 
-destructor TpvDynamicArray<T>.Destroy;
+destructor TpvDynamicArrayList<T>.Destroy;
 begin
  SetLength(fItems,0);
  fCount:=0;
@@ -609,14 +979,14 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvDynamicArray<T>.Clear;
+procedure TpvDynamicArrayList<T>.Clear;
 begin
  SetLength(fItems,0);
  fCount:=0;
  fAllocated:=0;
 end;
 
-procedure TpvDynamicArray<T>.SetCount(const pNewCount:TpvSizeInt);
+procedure TpvDynamicArrayList<T>.SetCount(const pNewCount:TpvSizeInt);
 begin
  if pNewCount<=0 then begin
   SetLength(fItems,0);
@@ -639,17 +1009,17 @@ begin
  end;
 end;
 
-function TpvDynamicArray<T>.GetItem(const pIndex:TpvSizeInt):T;
+function TpvDynamicArrayList<T>.GetItem(const pIndex:TpvSizeInt):T;
 begin
  result:=fItems[pIndex];
 end;
 
-procedure TpvDynamicArray<T>.SetItem(const pIndex:TpvSizeInt;const pItem:T);
+procedure TpvDynamicArrayList<T>.SetItem(const pIndex:TpvSizeInt;const pItem:T);
 begin
  fItems[pIndex]:=pItem;
 end;
 
-function TpvDynamicArray<T>.Add(const pItem:T):TpvSizeInt;
+function TpvDynamicArrayList<T>.Add(const pItem:T):TpvSizeInt;
 begin
  result:=fCount;
  inc(fCount);
@@ -660,7 +1030,7 @@ begin
  fItems[result]:=pItem;
 end;
 
-procedure TpvDynamicArray<T>.Insert(const pIndex:TpvSizeInt;const pItem:T);
+procedure TpvDynamicArrayList<T>.Insert(const pIndex:TpvSizeInt;const pItem:T);
 begin
  if pIndex>=0 then begin
   if pIndex<fCount then begin
@@ -682,7 +1052,7 @@ begin
  end;
 end;
 
-procedure TpvDynamicArray<T>.Delete(const pIndex:TpvSizeInt);
+procedure TpvDynamicArrayList<T>.Delete(const pIndex:TpvSizeInt);
 begin
  Finalize(fItems[pIndex]);
  Move(fItems[pIndex+1],fItems[pIndex],(fCount-pIndex)*SizeOf(T));
@@ -694,7 +1064,7 @@ begin
  end;
 end;
 
-procedure TpvDynamicArray<T>.Exchange(const pIndex,pWithIndex:TpvSizeInt);
+procedure TpvDynamicArrayList<T>.Exchange(const pIndex,pWithIndex:TpvSizeInt);
 var Temporary:T;
 begin
  Temporary:=fItems[pIndex];
@@ -702,12 +1072,12 @@ begin
  fItems[pWithIndex]:=Temporary;
 end;
 
-function TpvDynamicArray<T>.Memory:TpvPointer;
+function TpvDynamicArrayList<T>.Memory:TpvPointer;
 begin
  result:=@fItems[0];
 end;
 
-function TpvDynamicArray<T>.GetEnumerator:TpvDynamicArray<T>.TValueEnumerator;
+function TpvDynamicArrayList<T>.GetEnumerator:TpvDynamicArrayList<T>.TValueEnumerator;
 begin
  result:=TValueEnumerator.Create(self);
 end;

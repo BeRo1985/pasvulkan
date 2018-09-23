@@ -277,7 +277,7 @@ type TpvEntityComponentSystem=class
             TWorld=class
              public
               type TEntityIndexFreeList=TpvGenericList<TpvSizeInt>;
-                   TEntityGenerationList=TpvDynamicArray<TpvUInt8>;
+                   TEntityGenerationList=TpvDynamicArraList<TpvUInt8>;
                    TUsedBitmap=array of TpvUInt32;
              private
               fComponents:TComponentList;
