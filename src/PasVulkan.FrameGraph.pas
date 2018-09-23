@@ -87,8 +87,10 @@ type EpvFrameGraph=class(Exception);
      TpvFrameGraph=class
       public
        type TBufferSubresourceRange=record
-             Offset:TVkDeviceSize;
-             Range:TVkDeviceSize;
+             public
+              Offset:TVkDeviceSize;
+              Range:TVkDeviceSize;
+              constructor Create(const aOffset,aRange:TVkDeviceSize);
             end;
             PBufferSubresourceRange=^TBufferSubresourceRange;
             TLoadOp=record
@@ -365,11 +367,17 @@ type EpvFrameGraph=class(Exception);
               fResourceTransitionList:TResourceTransitionList;
               fEnabled:boolean;
               procedure SetName(const aName:TpvRawByteString);
-              function AddAttachment(const aResourceTypeName:TpvRawByteString;
-                                     const aResourceName:TpvRawByteString;
-                                     const aLayout:TVkImageLayout;
-                                     const aFlags:TResourceTransition.TFlags;
-                                     const aLoadOp:TLoadOp):TResourceTransition;
+              function AddResource(const aResourceTypeName:TpvRawByteString;
+                                   const aResourceName:TpvRawByteString;
+                                   const aFlags:TResourceTransition.TFlags;
+                                   const aLayout:TVkImageLayout;
+                                   const aLoadOp:TLoadOp):TResourceTransition; overload;
+              function AddResource(const aResourceTypeName:TpvRawByteString;
+                                   const aResourceName:TpvRawByteString;
+                                   const aFlags:TResourceTransition.TFlags;
+                                   const aPipelineStage:TVkPipelineStageFlags;
+                                   const aAccessFlags:TVkAccessFlags;
+                                   const aBufferSubresourceRange:TBufferSubresourceRange):TResourceTransition; overload;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
@@ -392,6 +400,24 @@ type EpvFrameGraph=class(Exception);
                                                  const aResourceName:TpvRawByteString;
                                                  const aLayout:TVkImageLayout;
                                                  const aLoadOp:TLoadOp);
+              procedure AddBufferInput(const aResourceTypeName:TpvRawByteString;
+                                       const aResourceName:TpvRawByteString;
+                                       const aPipelineStage:TVkPipelineStageFlags;
+                                       const aAccessFlags:TVkAccessFlags;
+                                       const aBufferSubresourceRange:TBufferSubresourceRange); overload;
+              procedure AddBufferInput(const aResourceTypeName:TpvRawByteString;
+                                       const aResourceName:TpvRawByteString;
+                                       const aPipelineStage:TVkPipelineStageFlags;
+                                       const aAccessFlags:TVkAccessFlags); overload;
+              procedure AddBufferOutput(const aResourceTypeName:TpvRawByteString;
+                                        const aResourceName:TpvRawByteString;
+                                        const aPipelineStage:TVkPipelineStageFlags;
+                                        const aAccessFlags:TVkAccessFlags;
+                                        const aBufferSubresourceRange:TBufferSubresourceRange); overload;
+              procedure AddBufferOutput(const aResourceTypeName:TpvRawByteString;
+                                        const aResourceName:TpvRawByteString;
+                                        const aPipelineStage:TVkPipelineStageFlags;
+                                        const aAccessFlags:TVkAccessFlags); overload;
              public
               procedure Setup; virtual;
               procedure Execute; virtual;
@@ -470,6 +496,14 @@ type EpvFrameGraph=class(Exception);
      end;
 
 implementation
+
+{ TpvFrameGraph.TBufferSubresourceRange }
+
+constructor TpvFrameGraph.TBufferSubresourceRange.Create(const aOffset,aRange:TVkDeviceSize);
+begin
+ Offset:=aOffset;
+ Range:=aRange;
+end;
 
 { TpvFrameGraph.TLoadOp }
 
@@ -830,11 +864,11 @@ begin
  end;
 end;
 
-function TpvFrameGraph.TPass.AddAttachment(const aResourceTypeName:TpvRawByteString;
-                                           const aResourceName:TpvRawByteString;
-                                           const aLayout:TVkImageLayout;
-                                           const aFlags:TResourceTransition.TFlags;
-                                           const aLoadOp:TLoadOp):TResourceTransition;
+function TpvFrameGraph.TPass.AddResource(const aResourceTypeName:TpvRawByteString;
+                                         const aResourceName:TpvRawByteString;
+                                         const aFlags:TResourceTransition.TFlags;
+                                         const aLayout:TVkImageLayout;
+                                         const aLoadOp:TLoadOp):TResourceTransition;
 var ResourceType:TResourceType;
     Resource:TResource;
 begin
@@ -862,15 +896,49 @@ begin
  fFrameGraph.fValid:=false;
 end;
 
+function TpvFrameGraph.TPass.AddResource(const aResourceTypeName:TpvRawByteString;
+                                         const aResourceName:TpvRawByteString;
+                                         const aFlags:TResourceTransition.TFlags;
+                                         const aPipelineStage:TVkPipelineStageFlags;
+                                         const aAccessFlags:TVkAccessFlags;
+                                         const aBufferSubresourceRange:TBufferSubresourceRange):TResourceTransition;
+var ResourceType:TResourceType;
+    Resource:TResource;
+begin
+ ResourceType:=fFrameGraph.fResourceTypeNameHashMap[aResourceTypeName];
+ if not assigned(ResourceType) then begin
+  raise EpvFrameGraph.Create('Invalid resource type');
+ end;
+ Resource:=fFrameGraph.fResourceNameHashMap[aResourceName];
+ if assigned(Resource) then begin
+  if Resource.fResourceType<>ResourceType then begin
+   raise EpvFrameGraph.Create('Resource type mismatch');
+  end;
+ end else begin
+  Resource:=TResource.Create(fFrameGraph,aResourceName,ResourceType);
+ end;
+ if ResourceType.fMetaType<>TResourceType.TMetaType.Buffer then begin
+  raise EpvFrameGraph.Create('Resource meta type mismatch');
+ end;
+ result:=TResourceTransition.Create(fFrameGraph,
+                                    self,
+                                    Resource,
+                                    aFlags,
+                                    aPipelineStage,
+                                    aAccessFlags,
+                                    aBufferSubresourceRange);
+ fFrameGraph.fValid:=false;
+end;
+
 procedure TpvFrameGraph.TPass.AddAttachmentInput(const aResourceTypeName:TpvRawByteString;
                                                  const aResourceName:TpvRawByteString;
                                                  const aLayout:TVkImageLayout);
 begin
- AddAttachment(aResourceTypeName,
-               aResourceName,
-               aLayout,
-               [TResourceTransition.TFlag.AttachmentInput],
-               TLoadOp.Create(TLoadOp.TKind.Load));
+ AddResource(aResourceTypeName,
+             aResourceName,
+             [TResourceTransition.TFlag.AttachmentInput],
+             aLayout,
+             TLoadOp.Create(TLoadOp.TKind.Load));
 end;
 
 procedure TpvFrameGraph.TPass.AddAttachmentOutput(const aResourceTypeName:TpvRawByteString;
@@ -878,11 +946,11 @@ procedure TpvFrameGraph.TPass.AddAttachmentOutput(const aResourceTypeName:TpvRaw
                                                   const aLayout:TVkImageLayout;
                                                   const aLoadOp:TLoadOp);
 begin
- AddAttachment(aResourceTypeName,
-               aResourceName,
-               aLayout,
-               [TResourceTransition.TFlag.AttachmentOutput],
-               aLoadOp);
+ AddResource(aResourceTypeName,
+             aResourceName,
+             [TResourceTransition.TFlag.AttachmentOutput],
+             aLayout,
+             aLoadOp);
 end;
 
 procedure TpvFrameGraph.TPass.AddAttachmentResolveOutput(const aResourceTypeName:TpvRawByteString;
@@ -896,22 +964,22 @@ begin
  if not assigned(ResourceSource) then begin
   raise EpvFrameGraph.Create('Invalid source resource');
  end;
- AddAttachment(aResourceTypeName,
-               aResourceName,
-               aLayout,
-               [TResourceTransition.TFlag.AttachmentResolveOutput],
-               aLoadOp).fResolveResource:=ResourceSource;
+ AddResource(aResourceTypeName,
+             aResourceName,
+             [TResourceTransition.TFlag.AttachmentResolveOutput],
+             aLayout,
+             aLoadOp).fResolveResource:=ResourceSource;
 end;
 
 procedure TpvFrameGraph.TPass.AddAttachmentDepthInput(const aResourceTypeName:TpvRawByteString;
                                                       const aResourceName:TpvRawByteString;
                                                       const aLayout:TVkImageLayout);
 begin
- AddAttachment(aResourceTypeName,
-               aResourceName,
-               aLayout,
-               [TResourceTransition.TFlag.AttachmentDepthInput],
-               TLoadOp.Create(TLoadOp.TKind.Load));
+ AddResource(aResourceTypeName,
+             aResourceName,
+             [TResourceTransition.TFlag.AttachmentDepthInput],
+             aLayout,
+             TLoadOp.Create(TLoadOp.TKind.Load));
 end;
 
 procedure TpvFrameGraph.TPass.AddAttachmentDepthOutput(const aResourceTypeName:TpvRawByteString;
@@ -919,11 +987,63 @@ procedure TpvFrameGraph.TPass.AddAttachmentDepthOutput(const aResourceTypeName:T
                                                        const aLayout:TVkImageLayout;
                                                        const aLoadOp:TLoadOp);
 begin
- AddAttachment(aResourceTypeName,
-               aResourceName,
-               aLayout,
-               [TResourceTransition.TFlag.AttachmentDepthOutput],
-               aLoadOp);
+ AddResource(aResourceTypeName,
+             aResourceName,
+             [TResourceTransition.TFlag.AttachmentDepthOutput],
+             aLayout,
+             aLoadOp);
+end;
+
+procedure TpvFrameGraph.TPass.AddBufferInput(const aResourceTypeName:TpvRawByteString;
+                                             const aResourceName:TpvRawByteString;
+                                             const aPipelineStage:TVkPipelineStageFlags;
+                                             const aAccessFlags:TVkAccessFlags;
+                                             const aBufferSubresourceRange:TBufferSubresourceRange);
+begin
+ AddResource(aResourceTypeName,
+             aResourceName,
+             [TResourceTransition.TFlag.BufferInput],
+             aPipelineStage,
+             aAccessFlags,
+             aBufferSubresourceRange);
+end;
+
+procedure TpvFrameGraph.TPass.AddBufferInput(const aResourceTypeName:TpvRawByteString;
+                                             const aResourceName:TpvRawByteString;
+                                             const aPipelineStage:TVkPipelineStageFlags;
+                                             const aAccessFlags:TVkAccessFlags);
+begin
+ AddBufferInput(aResourceTypeName,
+                aResourceName,
+                aPipelineStage,
+                aAccessFlags,
+                TBufferSubresourceRange.Create(0,VK_WHOLE_SIZE));
+end;
+
+procedure TpvFrameGraph.TPass.AddBufferOutput(const aResourceTypeName:TpvRawByteString;
+                                              const aResourceName:TpvRawByteString;
+                                              const aPipelineStage:TVkPipelineStageFlags;
+                                              const aAccessFlags:TVkAccessFlags;
+                                              const aBufferSubresourceRange:TBufferSubresourceRange);
+begin
+ AddResource(aResourceTypeName,
+             aResourceName,
+             [TResourceTransition.TFlag.BufferOutput],
+             aPipelineStage,
+             aAccessFlags,
+             aBufferSubresourceRange);
+end;
+
+procedure TpvFrameGraph.TPass.AddBufferOutput(const aResourceTypeName:TpvRawByteString;
+                                              const aResourceName:TpvRawByteString;
+                                              const aPipelineStage:TVkPipelineStageFlags;
+                                              const aAccessFlags:TVkAccessFlags);
+begin
+ AddBufferOutput(aResourceTypeName,
+                 aResourceName,
+                 aPipelineStage,
+                 aAccessFlags,
+                 TBufferSubresourceRange.Create(0,VK_WHOLE_SIZE));
 end;
 
 procedure TpvFrameGraph.TPass.Setup;
