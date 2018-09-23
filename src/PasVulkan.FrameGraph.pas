@@ -270,7 +270,9 @@ type EpvFrameGraph=class(Exception);
                      BufferInput,
                      BufferOutput,
                      ImageInput,
-                     ImageOutput
+                     ImageOutput,
+                     PreviousFrameInput,
+                     NextFrameOutput
                     );
                     PFlag=^TFlag;
                     TFlags=set of TFlag;
@@ -398,57 +400,70 @@ type EpvFrameGraph=class(Exception);
               destructor Destroy; override;
               procedure AddAttachmentInput(const aResourceTypeName:TpvRawByteString;
                                            const aResourceName:TpvRawByteString;
-                                           const aLayout:TVkImageLayout);
+                                           const aLayout:TVkImageLayout;
+                                           const aFlags:TResourceTransition.TFlags=[]);
               procedure AddAttachmentOutput(const aResourceTypeName:TpvRawByteString;
                                             const aResourceName:TpvRawByteString;
                                             const aLayout:TVkImageLayout;
-                                            const aLoadOp:TLoadOp);
+                                            const aLoadOp:TLoadOp;
+                                            const aFlags:TResourceTransition.TFlags=[]);
               procedure AddAttachmentResolveOutput(const aResourceTypeName:TpvRawByteString;
                                                    const aResourceName:TpvRawByteString;
                                                    const aResourceSourceName:TpvRawByteString;
                                                    const aLayout:TVkImageLayout;
-                                                   const aLoadOp:TLoadOp);
+                                                   const aLoadOp:TLoadOp;
+                                                   const aFlags:TResourceTransition.TFlags=[]);
               procedure AddAttachmentDepthInput(const aResourceTypeName:TpvRawByteString;
                                                 const aResourceName:TpvRawByteString;
-                                                const aLayout:TVkImageLayout);
-              procedure AddAttachmentDepthOutput(const aResourceTypeName:TpvRawByteString;
+                                                const aLayout:TVkImageLayout;
+                                                const aFlags:TResourceTransition.TFlags=[]);
+               procedure AddAttachmentDepthOutput(const aResourceTypeName:TpvRawByteString;
                                                  const aResourceName:TpvRawByteString;
                                                  const aLayout:TVkImageLayout;
-                                                 const aLoadOp:TLoadOp);
+                                                 const aLoadOp:TLoadOp;
+                                                 const aFlags:TResourceTransition.TFlags=[]);
               procedure AddBufferInput(const aResourceTypeName:TpvRawByteString;
                                        const aResourceName:TpvRawByteString;
                                        const aPipelineStage:TVkPipelineStageFlags;
                                        const aAccessFlags:TVkAccessFlags;
-                                       const aBufferSubresourceRange:TBufferSubresourceRange); overload;
+                                       const aBufferSubresourceRange:TBufferSubresourceRange;
+                                       const aFlags:TResourceTransition.TFlags=[]); overload;
               procedure AddBufferInput(const aResourceTypeName:TpvRawByteString;
                                        const aResourceName:TpvRawByteString;
                                        const aPipelineStage:TVkPipelineStageFlags;
-                                       const aAccessFlags:TVkAccessFlags); overload;
+                                       const aAccessFlags:TVkAccessFlags;
+                                       const aFlags:TResourceTransition.TFlags=[]); overload;
               procedure AddBufferOutput(const aResourceTypeName:TpvRawByteString;
                                         const aResourceName:TpvRawByteString;
                                         const aPipelineStage:TVkPipelineStageFlags;
                                         const aAccessFlags:TVkAccessFlags;
-                                        const aBufferSubresourceRange:TBufferSubresourceRange); overload;
+                                        const aBufferSubresourceRange:TBufferSubresourceRange;
+                                        const aFlags:TResourceTransition.TFlags=[]); overload;
               procedure AddBufferOutput(const aResourceTypeName:TpvRawByteString;
                                         const aResourceName:TpvRawByteString;
                                         const aPipelineStage:TVkPipelineStageFlags;
-                                        const aAccessFlags:TVkAccessFlags); overload;
+                                        const aAccessFlags:TVkAccessFlags;
+                                        const aFlags:TResourceTransition.TFlags=[]); overload;
               procedure AddImageInput(const aResourceTypeName:TpvRawByteString;
                                       const aResourceName:TpvRawByteString;
                                       const aLayout:TVkImageLayout;
-                                      const aImageSubresourceRange:TVkImageSubresourceRange); overload;
+                                      const aImageSubresourceRange:TVkImageSubresourceRange;
+                                      const aFlags:TResourceTransition.TFlags=[]); overload;
               procedure AddImageInput(const aResourceTypeName:TpvRawByteString;
                                       const aResourceName:TpvRawByteString;
-                                      const aLayout:TVkImageLayout); overload;
+                                      const aLayout:TVkImageLayout;
+                                      const aFlags:TResourceTransition.TFlags=[]); overload;
               procedure AddImageOutput(const aResourceTypeName:TpvRawByteString;
                                        const aResourceName:TpvRawByteString;
                                        const aLayout:TVkImageLayout;
                                        const aLoadOp:TLoadOp;
-                                       const aImageSubresourceRange:TVkImageSubresourceRange); overload;
+                                       const aImageSubresourceRange:TVkImageSubresourceRange;
+                                       const aFlags:TResourceTransition.TFlags=[]); overload;
               procedure AddImageOutput(const aResourceTypeName:TpvRawByteString;
                                        const aResourceName:TpvRawByteString;
                                        const aLayout:TVkImageLayout;
-                                       const aLoadOp:TLoadOp); overload;
+                                       const aLoadOp:TLoadOp;
+                                       const aFlags:TResourceTransition.TFlags=[]); overload;
              public
               procedure Setup; virtual;
               procedure Execute; virtual;
@@ -1021,11 +1036,12 @@ end;
 
 procedure TpvFrameGraph.TPass.AddAttachmentInput(const aResourceTypeName:TpvRawByteString;
                                                  const aResourceName:TpvRawByteString;
-                                                 const aLayout:TVkImageLayout);
+                                                 const aLayout:TVkImageLayout;
+                                                 const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddResource(aResourceTypeName,
              aResourceName,
-             [TResourceTransition.TFlag.AttachmentInput],
+             [TResourceTransition.TFlag.AttachmentInput]+aFlags,
              aLayout,
              TLoadOp.Create(TLoadOp.TKind.Load));
 end;
@@ -1033,11 +1049,12 @@ end;
 procedure TpvFrameGraph.TPass.AddAttachmentOutput(const aResourceTypeName:TpvRawByteString;
                                                   const aResourceName:TpvRawByteString;
                                                   const aLayout:TVkImageLayout;
-                                                  const aLoadOp:TLoadOp);
+                                                  const aLoadOp:TLoadOp;
+                                                  const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddResource(aResourceTypeName,
              aResourceName,
-             [TResourceTransition.TFlag.AttachmentOutput],
+             [TResourceTransition.TFlag.AttachmentOutput]+aFlags,
              aLayout,
              aLoadOp);
 end;
@@ -1046,7 +1063,8 @@ procedure TpvFrameGraph.TPass.AddAttachmentResolveOutput(const aResourceTypeName
                                                          const aResourceName:TpvRawByteString;
                                                          const aResourceSourceName:TpvRawByteString;
                                                          const aLayout:TVkImageLayout;
-                                                         const aLoadOp:TLoadOp);
+                                                         const aLoadOp:TLoadOp;
+                                                         const aFlags:TResourceTransition.TFlags=[]);
 var ResourceSource:TResource;
 begin
  ResourceSource:=fFrameGraph.fResourceNameHashMap[aResourceSourceName];
@@ -1055,18 +1073,19 @@ begin
  end;
  AddResource(aResourceTypeName,
              aResourceName,
-             [TResourceTransition.TFlag.AttachmentResolveOutput],
+             [TResourceTransition.TFlag.AttachmentResolveOutput]+aFlags,
              aLayout,
              aLoadOp).fResolveResource:=ResourceSource;
 end;
 
 procedure TpvFrameGraph.TPass.AddAttachmentDepthInput(const aResourceTypeName:TpvRawByteString;
                                                       const aResourceName:TpvRawByteString;
-                                                      const aLayout:TVkImageLayout);
+                                                      const aLayout:TVkImageLayout;
+                                                      const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddResource(aResourceTypeName,
              aResourceName,
-             [TResourceTransition.TFlag.AttachmentDepthInput],
+             [TResourceTransition.TFlag.AttachmentDepthInput]+aFlags,
              aLayout,
              TLoadOp.Create(TLoadOp.TKind.Load));
 end;
@@ -1074,11 +1093,12 @@ end;
 procedure TpvFrameGraph.TPass.AddAttachmentDepthOutput(const aResourceTypeName:TpvRawByteString;
                                                        const aResourceName:TpvRawByteString;
                                                        const aLayout:TVkImageLayout;
-                                                       const aLoadOp:TLoadOp);
+                                                       const aLoadOp:TLoadOp;
+                                                       const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddResource(aResourceTypeName,
              aResourceName,
-             [TResourceTransition.TFlag.AttachmentDepthOutput],
+             [TResourceTransition.TFlag.AttachmentDepthOutput]+aFlags,
              aLayout,
              aLoadOp);
 end;
@@ -1087,11 +1107,12 @@ procedure TpvFrameGraph.TPass.AddBufferInput(const aResourceTypeName:TpvRawByteS
                                              const aResourceName:TpvRawByteString;
                                              const aPipelineStage:TVkPipelineStageFlags;
                                              const aAccessFlags:TVkAccessFlags;
-                                             const aBufferSubresourceRange:TBufferSubresourceRange);
+                                             const aBufferSubresourceRange:TBufferSubresourceRange;
+                                             const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddResource(aResourceTypeName,
              aResourceName,
-             [TResourceTransition.TFlag.BufferInput],
+             [TResourceTransition.TFlag.BufferInput]+aFlags,
              aPipelineStage,
              aAccessFlags,
              aBufferSubresourceRange);
@@ -1100,24 +1121,27 @@ end;
 procedure TpvFrameGraph.TPass.AddBufferInput(const aResourceTypeName:TpvRawByteString;
                                              const aResourceName:TpvRawByteString;
                                              const aPipelineStage:TVkPipelineStageFlags;
-                                             const aAccessFlags:TVkAccessFlags);
+                                             const aAccessFlags:TVkAccessFlags;
+                                             const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddBufferInput(aResourceTypeName,
                 aResourceName,
                 aPipelineStage,
                 aAccessFlags,
-                TBufferSubresourceRange.Create(0,VK_WHOLE_SIZE));
+                TBufferSubresourceRange.Create(0,VK_WHOLE_SIZE),
+                aFlags);
 end;
 
 procedure TpvFrameGraph.TPass.AddBufferOutput(const aResourceTypeName:TpvRawByteString;
                                               const aResourceName:TpvRawByteString;
                                               const aPipelineStage:TVkPipelineStageFlags;
                                               const aAccessFlags:TVkAccessFlags;
-                                              const aBufferSubresourceRange:TBufferSubresourceRange);
+                                              const aBufferSubresourceRange:TBufferSubresourceRange;
+                                              const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddResource(aResourceTypeName,
              aResourceName,
-             [TResourceTransition.TFlag.BufferOutput],
+             [TResourceTransition.TFlag.BufferOutput]+aFlags,
              aPipelineStage,
              aAccessFlags,
              aBufferSubresourceRange);
@@ -1126,23 +1150,26 @@ end;
 procedure TpvFrameGraph.TPass.AddBufferOutput(const aResourceTypeName:TpvRawByteString;
                                               const aResourceName:TpvRawByteString;
                                               const aPipelineStage:TVkPipelineStageFlags;
-                                              const aAccessFlags:TVkAccessFlags);
+                                              const aAccessFlags:TVkAccessFlags;
+                                              const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddBufferOutput(aResourceTypeName,
                  aResourceName,
                  aPipelineStage,
                  aAccessFlags,
-                 TBufferSubresourceRange.Create(0,VK_WHOLE_SIZE));
+                 TBufferSubresourceRange.Create(0,VK_WHOLE_SIZE),
+                 aFlags);
 end;
 
 procedure TpvFrameGraph.TPass.AddImageInput(const aResourceTypeName:TpvRawByteString;
                                             const aResourceName:TpvRawByteString;
                                             const aLayout:TVkImageLayout;
-                                            const aImageSubresourceRange:TVkImageSubresourceRange);
+                                            const aImageSubresourceRange:TVkImageSubresourceRange;
+                                            const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddResource(aResourceTypeName,
              aResourceName,
-             [TResourceTransition.TFlag.ImageInput],
+             [TResourceTransition.TFlag.ImageInput]+aFlags,
              aLayout,
              TLoadOp.Create(TLoadOp.TKind.Load),
              aImageSubresourceRange);
@@ -1150,7 +1177,8 @@ end;
 
 procedure TpvFrameGraph.TPass.AddImageInput(const aResourceTypeName:TpvRawByteString;
                                             const aResourceName:TpvRawByteString;
-                                            const aLayout:TVkImageLayout);
+                                            const aLayout:TVkImageLayout;
+                                            const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddImageInput(aResourceTypeName,
                aResourceName,
@@ -1159,18 +1187,20 @@ begin
                                                0,
                                                VK_REMAINING_MIP_LEVELS,
                                                0,
-                                               VK_REMAINING_ARRAY_LAYERS));
+                                               VK_REMAINING_ARRAY_LAYERS),
+               aFlags);
 end;
 
 procedure TpvFrameGraph.TPass.AddImageOutput(const aResourceTypeName:TpvRawByteString;
                                              const aResourceName:TpvRawByteString;
                                              const aLayout:TVkImageLayout;
                                              const aLoadOp:TLoadOp;
-                                             const aImageSubresourceRange:TVkImageSubresourceRange);
+                                             const aImageSubresourceRange:TVkImageSubresourceRange;
+                                             const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddResource(aResourceTypeName,
              aResourceName,
-             [TResourceTransition.TFlag.ImageOutput],
+             [TResourceTransition.TFlag.ImageOutput]+aFlags,
              aLayout,
              aLoadOp,
              aImageSubresourceRange);
@@ -1179,7 +1209,8 @@ end;
 procedure TpvFrameGraph.TPass.AddImageOutput(const aResourceTypeName:TpvRawByteString;
                                              const aResourceName:TpvRawByteString;
                                              const aLayout:TVkImageLayout;
-                                             const aLoadOp:TLoadOp);
+                                             const aLoadOp:TLoadOp;
+                                             const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddImageOutput(aResourceTypeName,
                 aResourceName,
@@ -1189,7 +1220,8 @@ begin
                                                 0,
                                                 VK_REMAINING_MIP_LEVELS,
                                                 0,
-                                                VK_REMAINING_ARRAY_LAYERS));
+                                                VK_REMAINING_ARRAY_LAYERS),
+                aFlags);
 end;
 
 procedure TpvFrameGraph.TPass.Setup;
@@ -1398,10 +1430,12 @@ begin
       Stack.Push(NewStackItem(TAction.Unmark,Pass));
       BaseStackCount:=Stack.Count;
       for ResourceTransition in Pass.fResourceTransitions do begin
-       if (ResourceTransition.Flags*TResourceTransition.AllInputs)<>[] then begin
+       if ((ResourceTransition.Flags*TResourceTransition.AllInputs)<>[]) and
+          not (TResourceTransition.TFlag.PreviousFrameInput in ResourceTransition.Flags) then begin
         Resource:=ResourceTransition.Resource;
         for OtherResourceTransition in Resource.fResourceTransitions do begin
          if (ResourceTransition<>OtherResourceTransition) and
+            (Pass<>OtherResourceTransition.fPass) and
             ((OtherResourceTransition.fFlags*TResourceTransition.AllOutputs)<>[]) then begin
           if Pass.fPreviousPasses.IndexOf(OtherResourceTransition.fPass)<0 then begin
            Pass.fPreviousPasses.Add(OtherResourceTransition.fPass);
