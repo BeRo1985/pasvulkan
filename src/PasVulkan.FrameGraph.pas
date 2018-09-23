@@ -232,11 +232,14 @@ type EpvFrameGraph=class(Exception);
             end;
             TResourceTypeList=TpvObjectGenericList<TResourceType>;
             TResourceTypeNameHashMap=TpvStringHashMap<TResourceType>;
+            TResourceTransition=class;
+            TResourceTransitionList=TpvObjectGenericList<TResourceTransition>;
             TResource=class
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
               fResourceType:TResourceType;
+              fResourceTransitions:TResourceTransitionList;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
@@ -357,7 +360,6 @@ type EpvFrameGraph=class(Exception);
               property PipelineStage:TVkPipelineStageFlags read fPipelineStage write fPipelineStage;
               property AccessFlags:TVkAccessFlags read fAccessFlags write fAccessFlags;
             end;
-            TResourceTransitionList=TpvObjectGenericList<TResourceTransition>;
             TPassArray=array of TPass;
             TPassArrayArray=array of TPassArray;
             TPass=class
@@ -365,7 +367,7 @@ type EpvFrameGraph=class(Exception);
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
               fResourceList:TResourceList;
-              fResourceTransitionList:TResourceTransitionList;
+              fResourceTransitions:TResourceTransitionList;
               fEnabled:boolean;
               fProcessed:boolean;
               procedure SetName(const aName:TpvRawByteString);
@@ -474,7 +476,7 @@ type EpvFrameGraph=class(Exception);
        fResourceTypeNameHashMap:TResourceTypeNameHashMap;
        fResourceList:TResourceList;
        fResourceNameHashMap:TResourceNameHashMap;
-       fResourceTransitionList:TResourceTransitionList;
+       fResourceTransitions:TResourceTransitionList;
        fPassList:TPassList;
        fPassNameHashMap:TPassNameHashMap;
        fRootPass:TPass;
@@ -761,6 +763,8 @@ begin
  fFrameGraph:=aFrameGraph;
  fName:=aName;
  fResourceType:=aResourceType;
+ fResourceTransitions:=TResourceTransitionList.Create;
+ fResourceTransitions.OwnsObjects:=false;
  fFrameGraph.fResourceList.Add(self);
  fFrameGraph.fResourceNameHashMap.Add(fName,self);
 end;
@@ -774,6 +778,7 @@ end;
 
 destructor TpvFrameGraph.TResource.Destroy;
 begin
+ FreeAndNil(fResourceTransitions);
  if assigned(fFrameGraph) then begin
   fFrameGraph.fResourceList.Remove(self);
   fFrameGraph.fResourceNameHashMap.Delete(fName);
@@ -790,11 +795,12 @@ constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameG
 begin
  inherited Create;
  fFrameGraph:=aFrameGraph;
- fFrameGraph.fResourceTransitionList.Add(self);
+ fFrameGraph.fResourceTransitions.Add(self);
  fPass:=aPass;
  fResource:=aResource;
  fFlags:=aFlags;
- fPass.fResourceTransitionList.Add(self);
+ fResource.fResourceTransitions.Add(self);
+ fPass.fResourceTransitions.Add(self);
 end;
 
 constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameGraph;
@@ -838,7 +844,7 @@ end;
 destructor TpvFrameGraph.TResourceTransition.Destroy;
 begin
  if assigned(fFrameGraph) then begin
-  fFrameGraph.fResourceTransitionList.Remove(self);
+  fFrameGraph.fResourceTransitions.Remove(self);
  end;
  inherited Destroy;
 end;
@@ -858,8 +864,8 @@ begin
  fResourceList:=TResourceList.Create;
  fResourceList.OwnsObjects:=false;
 
- fResourceTransitionList:=TResourceTransitionList.Create;
- fResourceTransitionList.OwnsObjects:=false;
+ fResourceTransitions:=TResourceTransitionList.Create;
+ fResourceTransitions.OwnsObjects:=false;
 
  fEnabled:=true;
 
@@ -870,7 +876,7 @@ begin
 
  FreeAndNil(fResourceList);
 
- FreeAndNil(fResourceTransitionList);
+ FreeAndNil(fResourceTransitions);
 
  if assigned(fFrameGraph) then begin
   fFrameGraph.fPassList.Remove(self);
@@ -1211,8 +1217,8 @@ begin
 
  fResourceNameHashMap:=TResourceNameHashMap.Create(nil);
 
- fResourceTransitionList:=TResourceTransitionList.Create;
- fResourceTransitionList.OwnsObjects:=false;
+ fResourceTransitions:=TResourceTransitionList.Create;
+ fResourceTransitions.OwnsObjects:=false;
 
  fPassList:=TPassList.Create;
  fPassList.OwnsObjects:=false;
@@ -1238,10 +1244,10 @@ begin
 
  FreeAndNil(fResourceNameHashMap);
 
- while fResourceTransitionList.Count>0 do begin
-  fResourceTransitionList.Items[fResourceTransitionList.Count-1].Free;
+ while fResourceTransitions.Count>0 do begin
+  fResourceTransitions.Items[fResourceTransitions.Count-1].Free;
  end;
- FreeAndNil(fResourceTransitionList);
+ FreeAndNil(fResourceTransitions);
 
  while fPassList.Count>0 do begin
   fPassList.Items[fPassList.Count-1].Free;
@@ -1307,7 +1313,8 @@ type TStackItem=record
 var Temporary:TpvUInt32;
     Pass:TPass;
     RenderPass:TRenderPass;
-    ResourceTransition:TResourceTransition;
+    ResourceTransition,
+    OtherResourceTransition:TResourceTransition;
     Resource:TResource;
     Stack:TStack;
     StackItem:TStackItem;
@@ -1321,7 +1328,7 @@ begin
    if Pass is TRenderPass then begin
     RenderPass:=Pass as TRenderPass;
     Temporary:=0;
-    for ResourceTransition in RenderPass.fResourceTransitionList do begin
+    for ResourceTransition in RenderPass.fResourceTransitions do begin
      if (ResourceTransition.fFlags*TResourceTransition.AllAttachmentOutputs)<>[] then begin
       Resource:=ResourceTransition.fResource;
       if (Resource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
@@ -1359,8 +1366,19 @@ begin
     if not Pass.fProcessed then begin
      Pass.fProcessed:=true;
      PassDependencies.Clear;
-     for ResourceTransition in RenderPass.fResourceTransitionList do begin
-
+     for ResourceTransition in RenderPass.fResourceTransitions do begin
+      if (ResourceTransition.Flags*TResourceTransition.AllInputs)<>[] then begin
+       Resource:=ResourceTransition.Resource;
+       for OtherResourceTransition in Resource.fResourceTransitions do begin
+        if (ResourceTransition<>OtherResourceTransition) and
+           ((OtherResourceTransition.fFlags*TResourceTransition.AllOutputs)<>[]) then begin
+         if not OtherResourceTransition.fPass.fProcessed then begin
+          StackItem.Pass:=OtherResourceTransition.fPass;
+          Stack.Push(StackItem);
+         end;
+        end;
+       end;
+      end;
      end;
     end;
    end;
