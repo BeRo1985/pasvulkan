@@ -84,6 +84,8 @@ type EpvFrameGraph=class(Exception);
 
      EpvFrameGraphDuplicateName=class(EpvFrameGraph);
 
+     EpvFrameGraphMismatchAttachmentSize=class(EpvFrameGraph);
+
      EpvFrameGraphRecursion=class(EpvFrameGraph);
 
      TpvFrameGraph=class
@@ -1376,6 +1378,19 @@ var Temporary,Index,BaseStackCount:TpvSizeInt;
     StackItem:TStackItem;
     OK:boolean;
 begin
+
+ // Validate that all attachments have the same size as defined in the render pass
+ for Pass in fPassList do begin
+  if Pass is TRenderPass then begin
+   RenderPass:=Pass as TRenderPass;
+   for ResourceTransition in RenderPass.fResourceTransitions do begin
+    if ((ResourceTransition.fFlags*TResourceTransition.AllAttachments)<>[]) and
+       (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentSize<>RenderPass.fAttachmentSize) then begin
+     raise EpvFrameGraphMismatchAttachmentSize.Create('Mismatch attachment size');
+    end;
+   end;
+  end;
+ end;
 
  // Find root pass (a render pass, which have only a single attachment output to a surface/swapchain)
  fRootPass:=fEnforcedRootPass;
