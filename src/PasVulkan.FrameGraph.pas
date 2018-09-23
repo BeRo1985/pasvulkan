@@ -139,7 +139,7 @@ type EpvFrameGraph=class(Exception);
               Stencil
              );
             PAttachmentType=^TAttachmentType;
-            TAttachmentSize=record
+            TAttachmentSize=packed record
              public
               type TKind=
                     (
@@ -380,6 +380,7 @@ type EpvFrameGraph=class(Exception);
               fResourceTransitions:TResourceTransitionList;
               fPreviousPasses:TPassList;
               fNextPasses:TPassList;
+              fTag:TpvSizeInt;
               fEnabled:boolean;
               fProcessed:boolean;
               fMarked:boolean;
@@ -1368,12 +1369,14 @@ type TAction=
      PStackItem=^TStackItem;
      TStack=TpvDynamicStack<TStackItem>;
      TResourceDynamicArray=TpvDynamicArray<TResource>;
+     TAttachmentSizeTagHashMap=TpvHashMap<TAttachmentSize,TpvSizeInt>;
  function NewStackItem(const aAction:TAction;const aPass:TPass):TStackItem;
  begin
   result.Action:=aAction;
   result.Pass:=aPass;
  end;
-var Temporary,Index,BaseStackCount:TpvSizeInt;
+var Temporary,Index,BaseStackCount,TagCounter,
+    FoundTag:TpvSizeInt;
     Pass:TPass;
     RenderPass:TRenderPass;
     ResourceTransition,
@@ -1383,6 +1386,7 @@ var Temporary,Index,BaseStackCount:TpvSizeInt;
     StackItem:TStackItem;
     OK:boolean;
     ResourceDynamicArray:TResourceDynamicArray;
+    AttachmentSizeTagHashMap:TAttachmentSizeTagHashMap;
 begin
 
  // Validate that all attachments have the same size as defined in the render pass
@@ -1526,6 +1530,28 @@ begin
   end;
  finally
   Stack.Finalize;
+ end;
+
+ // Try to tag passes with same atachment sizes (for example for subpass grouping), but where
+ // compute passes gets always their own tags
+ AttachmentSizeTagHashMap:=TAttachmentSizeTagHashMap.Create(-1);
+ try
+  TagCounter:=0;
+  for Pass in fPassList do begin
+   if Pass is TComputePass then begin
+    Pass.fTag:=TagCounter;
+    inc(TagCounter);
+   end else if Pass is TRenderPass then begin
+    if not AttachmentSizeTagHashMap.TryGet(TRenderPass(Pass).fAttachmentSize,FoundTag) then begin
+     FoundTag:=TagCounter;
+     inc(TagCounter);
+     AttachmentSizeTagHashMap.Add(TRenderPass(Pass).fAttachmentSize,FoundTag);
+    end;
+    Pass.fTag:=FoundTag;
+   end;
+  end;
+ finally
+  FreeAndNil(AttachmentSizeTagHashMap);
  end;
 
 end;
