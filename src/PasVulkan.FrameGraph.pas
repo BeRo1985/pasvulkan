@@ -360,14 +360,16 @@ type EpvFrameGraph=class(Exception);
               property PipelineStage:TVkPipelineStageFlags read fPipelineStage write fPipelineStage;
               property AccessFlags:TVkAccessFlags read fAccessFlags write fAccessFlags;
             end;
-            TPassArray=array of TPass;
-            TPassArrayArray=array of TPassArray;
+            TPassList=TpvObjectGenericList<TPass>;
+            TPassNameHashMap=TpvStringHashMap<TPass>;
             TPass=class
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
               fResourceList:TResourceList;
               fResourceTransitions:TResourceTransitionList;
+              fPreviousPasses:TPassList;
+              fNextPasses:TPassList;
               fEnabled:boolean;
               fProcessed:boolean;
               procedure SetName(const aName:TpvRawByteString);
@@ -452,8 +454,6 @@ type EpvFrameGraph=class(Exception);
               property Name:TpvRawByteString read fName write SetName;
               property Enabled:boolean read fEnabled write fEnabled;
             end;
-            TPassList=TpvObjectGenericList<TPass>;
-            TPassNameHashMap=TpvStringHashMap<TPass>;
             TComputePass=class(TPass)
              private
              public
@@ -867,6 +867,12 @@ begin
  fResourceTransitions:=TResourceTransitionList.Create;
  fResourceTransitions.OwnsObjects:=false;
 
+ fPreviousPasses:=TPassList.Create;
+ fPreviousPasses.OwnsObjects:=false;
+
+ fNextPasses:=TPassList.Create;
+ fNextPasses.OwnsObjects:=false;
+
  fEnabled:=true;
 
 end;
@@ -877,6 +883,10 @@ begin
  FreeAndNil(fResourceList);
 
  FreeAndNil(fResourceTransitions);
+
+ FreeAndNil(fPreviousPasses);
+
+ FreeAndNil(fNextPasses);
 
  if assigned(fFrameGraph) then begin
   fFrameGraph.fPassList.Remove(self);
@@ -1358,6 +1368,8 @@ begin
   try
    for Pass in fPassList do begin
     Pass.fProcessed:=false;
+    Pass.fPreviousPasses.Clear;
+    Pass.fNextPasses.Clear;
    end;
    StackItem.Pass:=fRootPass;
    Stack.Push(StackItem);
@@ -1373,6 +1385,12 @@ begin
         if (ResourceTransition<>OtherResourceTransition) and
            ((OtherResourceTransition.fFlags*TResourceTransition.AllOutputs)<>[]) then begin
          if not OtherResourceTransition.fPass.fProcessed then begin
+          if Pass.fPreviousPasses.IndexOf(OtherResourceTransition.fPass)<0 then begin
+           Pass.fPreviousPasses.Add(OtherResourceTransition.fPass);
+          end;
+          if OtherResourceTransition.fPass.fNextPasses.IndexOf(Pass)<0 then begin
+           OtherResourceTransition.fPass.fNextPasses.Add(Pass);
+          end;
           StackItem.Pass:=OtherResourceTransition.fPass;
           Stack.Push(StackItem);
          end;
