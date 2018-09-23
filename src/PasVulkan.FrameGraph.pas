@@ -248,6 +248,8 @@ type EpvFrameGraph=class(Exception);
               fName:TpvRawByteString;
               fResourceType:TResourceType;
               fResourceTransitions:TResourceTransitionList;
+              fMinimumPassStepIndex:TpvSizeInt;
+              fMaximumPassStepIndex:TpvSizeInt;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
@@ -1379,7 +1381,8 @@ type TAction=
   result.Step:=aStep;
  end;
 var Temporary,Index,BaseStackCount,TagCounter,
-    FoundTag:TpvSizeInt;
+    FoundTag,
+    MinimumPassStepIndex,MaximumPassStepIndex:TpvSizeInt;
     Pass:TPass;
     RenderPass:TRenderPass;
     ResourceTransition,
@@ -1557,6 +1560,36 @@ begin
   end;
  finally
   FreeAndNil(AttachmentSizeTagHashMap);
+ end;
+
+ // Calculate resource lifetimes (from minimum pass step index to maximum pass step index) for
+ // calculating aliasing and reusing of resources at a later point
+ for Resource in fResourceList do begin
+  MinimumPassStepIndex:=High(TpvSizeInt);
+  MaximumPassStepIndex:=Low(TpvSizeInt);
+  for ResourceTransition in Resource.fResourceTransitions do begin
+   Pass:=ResourceTransition.fPass;
+   if Pass.fStepIndex>=0 then begin
+    if (ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
+                                   TResourceTransition.TFlag.NextFrameOutput])<>[] then begin
+     // In this case, this one resource must life from the begin to the end of the whole
+     // directed acyclic graph for the simplicity of safety, because it can be optimized in
+     // a better way later still
+     MinimumPassStepIndex:=Low(TpvSizeInt);
+     MaximumPassStepIndex:=High(TpvSizeInt);
+     break;
+    end else begin
+     if (ResourceTransition.fFlags*TResourceTransition.AllInputs)<>[] then begin
+      MaximumPassStepIndex:=Max(MaximumPassStepIndex,Pass.fStepIndex);
+     end;
+     if (ResourceTransition.fFlags*TResourceTransition.AllOutputs)<>[] then begin
+      MinimumPassStepIndex:=Min(MinimumPassStepIndex,Pass.fStepIndex);
+     end;
+    end;
+   end;
+  end;
+  Resource.fMinimumPassStepIndex:=MinimumPassStepIndex;
+  Resource.fMaximumPassStepIndex:=MaximumPassStepIndex;
  end;
 
 end;
