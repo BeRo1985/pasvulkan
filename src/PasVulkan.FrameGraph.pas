@@ -86,6 +86,8 @@ type EpvFrameGraph=class(Exception);
 
      EpvFrameGraphMismatchAttachmentSize=class(EpvFrameGraph);
 
+     EpvFrameGraphMissedGeneratorPassFoprResource=class(EpvFrameGraph);
+
      EpvFrameGraphRecursion=class(EpvFrameGraph);
 
      TpvFrameGraph=class
@@ -1386,9 +1388,23 @@ begin
    for ResourceTransition in RenderPass.fResourceTransitions do begin
     if ((ResourceTransition.fFlags*TResourceTransition.AllAttachments)<>[]) and
        (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentSize<>RenderPass.fAttachmentSize) then begin
-     raise EpvFrameGraphMismatchAttachmentSize.Create('Mismatch attachment size');
+     raise EpvFrameGraphMismatchAttachmentSize.Create('Mismatch attachment size between pass "'+String(Pass.fName)+'" and resource "'+String(ResourceTransition.fResource.Name)+'"');
     end;
    end;
+  end;
+ end;
+
+ // Validate that all resources have at least one pass, which outputs this one resource
+ for Resource in fResourceList do begin
+  OK:=false;
+  for ResourceTransition in Resource.fResourceTransitions do begin
+   if (ResourceTransition.fFlags*TResourceTransition.AllOutputs)<>[] then begin
+    OK:=true;
+    break;
+   end;
+  end;
+  if not OK then begin
+   raise EpvFrameGraphMissedGeneratorPassFoprResource.Create('Missed generator pass for resource "'+String(Resource.Name)+'"');
   end;
  end;
 
