@@ -367,6 +367,7 @@ type EpvFrameGraph=class(Exception);
               fResourceList:TResourceList;
               fResourceTransitionList:TResourceTransitionList;
               fEnabled:boolean;
+              fProcessed:boolean;
               procedure SetName(const aName:TpvRawByteString);
               function AddResource(const aResourceTypeName:TpvRawByteString;
                                    const aResourceName:TpvRawByteString;
@@ -477,6 +478,7 @@ type EpvFrameGraph=class(Exception);
        fPassList:TPassList;
        fPassNameHashMap:TPassNameHashMap;
        fRootPass:TPass;
+       fEnforcedRootPass:TPass;
        fValid:boolean;
       public
        constructor Create;
@@ -518,6 +520,7 @@ type EpvFrameGraph=class(Exception);
        property Passes:TPassList read fPassList;
        property PassByName:TPassNameHashMap read fPassNameHashMap;
        property RootPass:TPass read fRootPass;
+       property EnforcedRootPass:TPass read fEnforcedRootPass write fEnforcedRootPass;
      end;
 
 implementation
@@ -1295,41 +1298,79 @@ begin
 end;
 
 procedure TpvFrameGraph.Compile;
+type TStackItem=record
+      Pass:TPass;
+     end;
+     PStackItem=^TStackItem;
+     TStack=TpvDynamicStack<TStackItem>;
+     TPassDynamicArray=TpvDynamicArray<TPass>;
 var Temporary:TpvUInt32;
     Pass:TPass;
     RenderPass:TRenderPass;
     ResourceTransition:TResourceTransition;
     Resource:TResource;
+    Stack:TStack;
+    StackItem:TStackItem;
+    PassDependencies:TPassDynamicArray;
 begin
 
  // Find root pass (a render pass, which have only a single attachment output to a surface/swapchain)
- fRootPass:=nil;
- for Pass in fPassList do begin
-  if Pass is TRenderPass then begin
-   RenderPass:=Pass as TRenderPass;
-   Temporary:=0;
-   for ResourceTransition in RenderPass.fResourceTransitionList do begin
-    if (ResourceTransition.fFlags*TResourceTransition.AllAttachmentOutputs)<>[] then begin
-     Resource:=ResourceTransition.fResource;
-     if (Resource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
-        (Resource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface) then begin
-      Temporary:=Temporary or 1;
-     end else begin
-      Temporary:=Temporary or 2;
-      break;
+ fRootPass:=fEnforcedRootPass;
+ if not assigned(fRootPass) then begin
+  for Pass in fPassList do begin
+   if Pass is TRenderPass then begin
+    RenderPass:=Pass as TRenderPass;
+    Temporary:=0;
+    for ResourceTransition in RenderPass.fResourceTransitionList do begin
+     if (ResourceTransition.fFlags*TResourceTransition.AllAttachmentOutputs)<>[] then begin
+      Resource:=ResourceTransition.fResource;
+      if (Resource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
+         (Resource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface) then begin
+       Temporary:=Temporary or 1;
+      end else if not ((Resource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
+                       (Resource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Depth)) then begin
+       Temporary:=Temporary or 2;
+       break;
+      end;
+     end;
+    end;
+    if Temporary=1 then begin
+     fRootPass:=Pass;
+     break;
+    end;
+   end;
+  end;
+  if not assigned(fRootPass) then begin
+   raise EpvFrameGraph.Create('No root pass found');
+  end;
+ end;
+
+ Stack.Initialize;
+ try
+  PassDependencies.Initialize;
+  try
+   for Pass in fPassList do begin
+    Pass.fProcessed:=false;
+   end;
+   StackItem.Pass:=fRootPass;
+   Stack.Push(StackItem);
+   while Stack.Pop(StackItem) do begin
+    Pass:=StackItem.Pass;
+    if not Pass.fProcessed then begin
+     Pass.fProcessed:=true;
+     PassDependencies.Clear;
+     for ResourceTransition in RenderPass.fResourceTransitionList do begin
+
      end;
     end;
    end;
-   if Temporary=1 then begin
-    fRootPass:=Pass;
-    break;
-   end;
+  finally
+   PassDependencies.Finalize;
   end;
+ finally
+  Stack.Finalize;
  end;
- if not assigned(fRootPass) then begin
-  raise EpvFrameGraph.Create('No root pass found');
- end;
- 
+
 end;
 
 procedure TpvFrameGraph.AfterCreateSwapChain;
