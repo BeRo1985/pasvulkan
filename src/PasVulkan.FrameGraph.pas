@@ -1678,6 +1678,7 @@ begin
  for Resource in fResources do begin
   Resource.fResourceReuseGroup:=nil;
  end;
+ fResourceReuseGroups.Clear;
  for Index:=0 to fResources.Count-1 do begin
   Resource:=fResources.Items[Index];
   if not assigned(Resource.fResourceReuseGroup) then begin
