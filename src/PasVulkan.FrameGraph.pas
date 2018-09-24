@@ -250,6 +250,7 @@ type EpvFrameGraph=class(Exception);
               fResourceTransitions:TResourceTransitionList;
               fMinimumPassStepIndex:TpvSizeInt;
               fMaximumPassStepIndex:TpvSizeInt;
+              fUsed:boolean;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
@@ -262,6 +263,9 @@ type EpvFrameGraph=class(Exception);
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName;
               property ResourceType:TResourceType read fResourceType;
+              property MinimumPassStepIndex:TpvSizeInt read fMinimumPassStepIndex;
+              property MaximumPassStepIndex:TpvSizeInt read fMaximumPassStepIndex;
+              property Used:boolean read fUsed;
             end;
             TResourceList=TpvObjectGenericList<TResource>;
             TResourceNameHashMap=TpvStringHashMap<TResource>;
@@ -509,6 +513,7 @@ type EpvFrameGraph=class(Exception);
        fPassNameHashMap:TPassNameHashMap;
        fRootPass:TPass;
        fEnforcedRootPass:TPass;
+       fMaximumOverallPassStepIndex:TpvSizeInt;
        fValid:boolean;
       public
        constructor Create;
@@ -781,19 +786,33 @@ constructor TpvFrameGraph.TResource.Create(const aFrameGraph:TpvFrameGraph;
                                            const aName:TpvRawByteString;
                                            const aResourceType:TResourceType=nil);
 begin
+
  inherited Create;
+
  if length(trim(String(aName)))=0 then begin
   raise EpvFrameGraphEmptyName.Create('Empty name');
  end;
+
  if aFrameGraph.fResourceNameHashMap.ExistKey(aName) then begin
   raise EpvFrameGraphDuplicateName.Create('Duplicate name');
  end;
+
  fFrameGraph:=aFrameGraph;
+
  fName:=aName;
+
  fResourceType:=aResourceType;
+
  fResourceTransitions:=TResourceTransitionList.Create;
  fResourceTransitions.OwnsObjects:=false;
+
+ fMinimumPassStepIndex:=High(TpvSizeInt);
+ fMaximumPassStepIndex:=Low(TpvSizeInt);
+
+ fUsed:=false;
+
  fFrameGraph.fResourceList.Add(self);
+
  fFrameGraph.fResourceNameHashMap.Add(fName,self);
 end;
 
@@ -1368,7 +1387,7 @@ type TAction=
      TStackItem=record
       Action:TAction;
       Pass:TPass;
-      Step:TpvSizeInt;
+      StepIndex:TpvSizeInt;
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicStack<TStackItem>;
@@ -1378,11 +1397,16 @@ type TAction=
  begin
   result.Action:=aAction;
   result.Pass:=aPass;
-  result.Step:=aStep;
+  result.StepIndex:=aStep;
  end;
-var Temporary,Index,BaseStackCount,TagCounter,
+var Temporary,
+    Index,
+    BaseStackCount,
+    TagCounter,
     FoundTag,
-    MinimumPassStepIndex,MaximumPassStepIndex:TpvSizeInt;
+    MaximumOverallPassStepIndex,
+    MinimumPassStepIndex,
+    MaximumPassStepIndex:TpvSizeInt;
     Pass:TPass;
     RenderPass:TRenderPass;
     ResourceTransition,
@@ -1480,6 +1504,7 @@ begin
  // Construct the directed acyclic graph
  Stack.Initialize;
  try
+  MaximumOverallPassStepIndex:=0;
   for Pass in fPassList do begin
    Pass.fStepIndex:=-1;
    Pass.fProcessed:=false;
@@ -1497,8 +1522,9 @@ begin
      end;
      if not Pass.fProcessed then begin
       Pass.fMarked:=true;
-      StackItem.Pass.fStepIndex:=StackItem.Step;
-      Stack.Push(NewStackItem(TAction.Unmark,Pass,StackItem.Step));
+      Pass.fStepIndex:=StackItem.StepIndex;
+      MaximumOverallPassStepIndex:=Max(MaximumOverallPassStepIndex,StackItem.StepIndex);
+      Stack.Push(NewStackItem(TAction.Unmark,Pass,StackItem.StepIndex));
       BaseStackCount:=Stack.Count;
       for ResourceTransition in Pass.fResourceTransitions do begin
        if ((ResourceTransition.Flags*TResourceTransition.AllInputs)<>[]) and
@@ -1522,7 +1548,7 @@ begin
            end;
           end;
           if OK then begin
-           Stack.Push(NewStackItem(TAction.Process,OtherResourceTransition.fPass,StackItem.Step+1));
+           Stack.Push(NewStackItem(TAction.Process,OtherResourceTransition.fPass,StackItem.StepIndex+1));
           end;
          end;
         end;
@@ -1570,20 +1596,24 @@ begin
   for ResourceTransition in Resource.fResourceTransitions do begin
    Pass:=ResourceTransition.fPass;
    if Pass.fStepIndex>=0 then begin
-    if (ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
-                                   TResourceTransition.TFlag.NextFrameOutput])<>[] then begin
-     // In this case, this one resource must life from the begin to the end of the whole
+    if ((ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
+                                    TResourceTransition.TFlag.NextFrameOutput])<>[]) or
+       ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
+        (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface)) then begin
+     // In this cases, this one resource must life from the begin to the end of the whole
      // directed acyclic graph for the simplicity of safety, because it can be optimized in
      // a better way later still
-     MinimumPassStepIndex:=Low(TpvSizeInt);
-     MaximumPassStepIndex:=High(TpvSizeInt);
+     MinimumPassStepIndex:=0;
+     MaximumPassStepIndex:=MaximumOverallPassStepIndex;
      break;
     end else begin
-     if (ResourceTransition.fFlags*TResourceTransition.AllInputs)<>[] then begin
-      MaximumPassStepIndex:=Max(MaximumPassStepIndex,Pass.fStepIndex);
-     end;
-     if (ResourceTransition.fFlags*TResourceTransition.AllOutputs)<>[] then begin
+     if Resource.fUsed then begin
       MinimumPassStepIndex:=Min(MinimumPassStepIndex,Pass.fStepIndex);
+      MaximumPassStepIndex:=Max(MaximumPassStepIndex,Pass.fStepIndex);
+     end else begin
+      Resource.fUsed:=true;
+      MinimumPassStepIndex:=Pass.fStepIndex;
+      MaximumPassStepIndex:=Pass.fStepIndex;
      end;
     end;
    end;
@@ -1591,6 +1621,8 @@ begin
   Resource.fMinimumPassStepIndex:=MinimumPassStepIndex;
   Resource.fMaximumPassStepIndex:=MaximumPassStepIndex;
  end;
+
+ fMaximumOverallPassStepIndex:=MaximumOverallPassStepIndex;
 
 end;
 
