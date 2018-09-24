@@ -1459,6 +1459,7 @@ var Temporary,
     OK:boolean;
     ResourceDynamicArray:TResourceDynamicArray;
     AttachmentSizeTagHashMap:TAttachmentSizeTagHashMap;
+    ResourceReuseGroup:TResourceReuseGroup;
 begin
 
  // Validate that all attachments have the same size as defined in the render pass
@@ -1698,7 +1699,9 @@ begin
 
  // Create meta data for Vulkan images, image views, frame buffers, render passes and so on, for
  // processing this data in AfterCreateSwapChain and BeforeDestroySwapChain
+ for ResourceReuseGroup in fResourceReuseGroups do begin
 
+ end;
 
 end;
 
