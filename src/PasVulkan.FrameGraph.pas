@@ -1601,8 +1601,8 @@ begin
        ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
         (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface)) then begin
      // In this cases, this one resource must life from the begin to the end of the whole
-     // directed acyclic graph for the simplicity of safety, because it can be optimized in
-     // a better way later still
+     // directed acyclic graph for the simplicity of safety, because it can be still optimized
+     // in a better way later
      MinimumPassStepIndex:=0;
      MaximumPassStepIndex:=MaximumOverallPassStepIndex;
      break;
