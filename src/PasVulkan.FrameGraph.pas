@@ -1562,6 +1562,7 @@ begin
     end;
    end;
   end;
+  fMaximumOverallPassStepIndex:=MaximumOverallPassStepIndex;
  finally
   Stack.Finalize;
  end;
@@ -1624,7 +1625,9 @@ begin
   Resource.fMaximumPassStepIndex:=MaximumPassStepIndex;
  end;
 
- fMaximumOverallPassStepIndex:=MaximumOverallPassStepIndex;
+ // Create meta data for Vulkan images, image views, frame buffers, render passes and so on, for
+ // processing this data in AfterCreateSwapChain and BeforeDestroySwapChain
+
 
 end;
 
