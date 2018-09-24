@@ -399,7 +399,8 @@ type EpvFrameGraph=class(Exception);
               fPreviousPasses:TPassList;
               fNextPasses:TPassList;
               fTag:TpvSizeInt;
-              fStepIndex:TpvSizeInt;
+              fMinimumStepIndex:TpvSizeInt;
+              fMaximumStepIndex:TpvSizeInt;
               fEnabled:boolean;
               fProcessed:boolean;
               fMarked:boolean;
@@ -1411,9 +1412,7 @@ var Temporary,
     BaseStackCount,
     TagCounter,
     FoundTag,
-    MaximumOverallPassStepIndex,
-    MinimumPassStepIndex,
-    MaximumPassStepIndex:TpvSizeInt;
+    MaximumOverallPassStepIndex:TpvSizeInt;
     Pass:TPass;
     RenderPass:TRenderPass;
     ResourceTransition,
@@ -1514,7 +1513,8 @@ begin
  try
   MaximumOverallPassStepIndex:=0;
   for Pass in fPasses do begin
-   Pass.fStepIndex:=-1;
+   Pass.fMinimumStepIndex:=-1;
+   Pass.fMaximumStepIndex:=-1;
    Pass.fProcessed:=false;
    Pass.fMarked:=false;
    Pass.fPreviousPasses.Clear;
@@ -1528,36 +1528,42 @@ begin
      if Pass.fMarked then begin
       raise EpvFrameGraphRecursion.Create('Recursion detected');
      end;
-     if not Pass.fProcessed then begin
+     if Pass.fProcessed then begin
+      Pass.fMinimumStepIndex:=Min(Pass.fMinimumStepIndex,StackItem.StepIndex);
+      Pass.fMaximumStepIndex:=Max(Pass.fMaximumStepIndex,StackItem.StepIndex);
+     end else begin
       Pass.fMarked:=true;
-      Pass.fStepIndex:=StackItem.StepIndex;
-      MaximumOverallPassStepIndex:=Max(MaximumOverallPassStepIndex,StackItem.StepIndex);
-      Stack.Push(NewStackItem(TAction.Unmark,Pass,StackItem.StepIndex));
-      BaseStackCount:=Stack.Count;
-      for ResourceTransition in Pass.fResourceTransitions do begin
-       if ((ResourceTransition.Flags*TResourceTransition.AllInputs)<>[]) and
-          not (TResourceTransition.TFlag.PreviousFrameInput in ResourceTransition.Flags) then begin
-        Resource:=ResourceTransition.Resource;
-        for OtherResourceTransition in Resource.fResourceTransitions do begin
-         if (ResourceTransition<>OtherResourceTransition) and
-            (Pass<>OtherResourceTransition.fPass) and
-            ((OtherResourceTransition.fFlags*TResourceTransition.AllOutputs)<>[]) then begin
+      Pass.fMinimumStepIndex:=StackItem.StepIndex;
+      Pass.fMaximumStepIndex:=StackItem.StepIndex;
+     end;
+     MaximumOverallPassStepIndex:=Max(MaximumOverallPassStepIndex,StackItem.StepIndex);
+     Stack.Push(NewStackItem(TAction.Unmark,Pass,StackItem.StepIndex));
+     BaseStackCount:=Stack.Count;
+     for ResourceTransition in Pass.fResourceTransitions do begin
+      if ((ResourceTransition.Flags*TResourceTransition.AllInputs)<>[]) and
+         not (TResourceTransition.TFlag.PreviousFrameInput in ResourceTransition.Flags) then begin
+       Resource:=ResourceTransition.Resource;
+       for OtherResourceTransition in Resource.fResourceTransitions do begin
+        if (ResourceTransition<>OtherResourceTransition) and
+           (Pass<>OtherResourceTransition.fPass) and
+           ((OtherResourceTransition.fFlags*TResourceTransition.AllOutputs)<>[]) then begin
+         if not Pass.fProcessed then begin
           if Pass.fPreviousPasses.IndexOf(OtherResourceTransition.fPass)<0 then begin
            Pass.fPreviousPasses.Add(OtherResourceTransition.fPass);
           end;
           if OtherResourceTransition.fPass.fNextPasses.IndexOf(Pass)<0 then begin
            OtherResourceTransition.fPass.fNextPasses.Add(Pass);
           end;
-          OK:=true;
-          for Index:=Stack.Count-1 downto BaseStackCount do begin
-           if Stack.Items[Index].Pass=OtherResourceTransition.fPass then begin
-            OK:=false;
-            break;
-           end;
+         end;
+         OK:=true;
+         for Index:=Stack.Count-1 downto BaseStackCount do begin
+          if Stack.Items[Index].Pass=OtherResourceTransition.fPass then begin
+           OK:=false;
+           break;
           end;
-          if OK then begin
-           Stack.Push(NewStackItem(TAction.Process,OtherResourceTransition.fPass,StackItem.StepIndex+1));
-          end;
+         end;
+         if OK then begin
+          Stack.Push(NewStackItem(TAction.Process,OtherResourceTransition.fPass,StackItem.StepIndex+1));
          end;
         end;
        end;
@@ -1600,11 +1606,11 @@ begin
  // Calculate resource lifetimes (from minimum pass step index to maximum pass step index) for
  // calculating aliasing and reusing of resources at a later point
  for Resource in fResources do begin
-  MinimumPassStepIndex:=High(TpvSizeInt);
-  MaximumPassStepIndex:=Low(TpvSizeInt);
+  Resource.fMinimumPassStepIndex:=High(TpvSizeInt);
+  Resource.fMaximumPassStepIndex:=Low(TpvSizeInt);
   for ResourceTransition in Resource.fResourceTransitions do begin
    Pass:=ResourceTransition.fPass;
-   if Pass.fStepIndex>=0 then begin
+   if Pass.fMinimumStepIndex>=0 then begin
     if ((ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
                                     TResourceTransition.TFlag.NextFrameOutput])<>[]) or
        ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
@@ -1614,23 +1620,21 @@ begin
      // in a better way later
      if not Resource.fUsed then begin
       Resource.fUsed:=true;
-      MinimumPassStepIndex:=0;
-      MaximumPassStepIndex:=MaximumOverallPassStepIndex;
+      Resource.fMinimumPassStepIndex:=0;
+      Resource.fMaximumPassStepIndex:=MaximumOverallPassStepIndex;
      end;
     end else begin
      if Resource.fUsed then begin
-      MinimumPassStepIndex:=Min(MinimumPassStepIndex,Pass.fStepIndex);
-      MaximumPassStepIndex:=Max(MaximumPassStepIndex,Pass.fStepIndex);
+      Resource.fMinimumPassStepIndex:=Min(Resource.fMinimumPassStepIndex,Pass.fMinimumStepIndex);
+      Resource.fMaximumPassStepIndex:=Max(Resource.fMaximumPassStepIndex,Pass.fMaximumStepIndex);
      end else begin
       Resource.fUsed:=true;
-      MinimumPassStepIndex:=Pass.fStepIndex;
-      MaximumPassStepIndex:=Pass.fStepIndex;
+      Resource.fMinimumPassStepIndex:=Pass.fMinimumStepIndex;
+      Resource.fMaximumPassStepIndex:=Pass.fMaximumStepIndex;
      end;
     end;
    end;
   end;
-  Resource.fMinimumPassStepIndex:=MinimumPassStepIndex;
-  Resource.fMaximumPassStepIndex:=MaximumPassStepIndex;
  end;
 
  // Calculate resource reuse groups, depending on the non-intersecting resource lifetime span
