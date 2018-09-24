@@ -414,6 +414,7 @@ type EpvFrameGraph=class(Exception);
               fMinimumStepIndex:TpvSizeInt;
               fMaximumStepIndex:TpvSizeInt;
               fEnabled:boolean;
+              fUsed:boolean;
               fProcessed:boolean;
               fMarked:boolean;
               procedure SetName(const aName:TpvRawByteString);
@@ -1460,6 +1461,7 @@ var Temporary,
     ResourceDynamicArray:TResourceDynamicArray;
     AttachmentSizeTagHashMap:TAttachmentSizeTagHashMap;
     ResourceReuseGroup:TResourceReuseGroup;
+    ResourceType:TResourceType;
 begin
 
  // Validate that all attachments have the same size as defined in the render pass
@@ -1551,6 +1553,7 @@ begin
   for Pass in fPasses do begin
    Pass.fMinimumStepIndex:=-1;
    Pass.fMaximumStepIndex:=-1;
+   Pass.fUsed:=false;
    Pass.fProcessed:=false;
    Pass.fMarked:=false;
    Pass.fPreviousPasses.Clear;
@@ -1569,6 +1572,7 @@ begin
       Pass.fMaximumStepIndex:=Max(Pass.fMaximumStepIndex,StackItem.StepIndex);
      end else begin
       Pass.fMarked:=true;
+      Pass.fUsed:=true;
       Pass.fMinimumStepIndex:=StackItem.StepIndex;
       Pass.fMaximumStepIndex:=StackItem.StepIndex;
      end;
@@ -1701,7 +1705,34 @@ begin
  // Create meta data for Vulkan images, image views, frame buffers, render passes and so on, for
  // processing this data in AfterCreateSwapChain and BeforeDestroySwapChain
  for ResourceReuseGroup in fResourceReuseGroups do begin
-
+  ResourceType:=ResourceReuseGroup.fResourceType;
+  case ResourceType.fMetaType of
+   TpvFrameGraph.TResourceType.TMetaType.Attachment:begin
+    case ResourceType.fAttachmentData.AttachmentType of
+     TpvFrameGraph.TAttachmentType.Surface:begin
+     end;
+     TpvFrameGraph.TAttachmentType.Color,
+     TpvFrameGraph.TAttachmentType.Depth,
+     TpvFrameGraph.TAttachmentType.DepthStencil,
+     TpvFrameGraph.TAttachmentType.Stencil:begin
+     end;
+     else {TpvFrameGraph.TAttachmentType.Undefined:}begin
+     end;
+    end;
+   end;
+   TpvFrameGraph.TResourceType.TMetaType.Image,
+   TpvFrameGraph.TResourceType.TMetaType.Buffer:begin
+   end;
+   else {TpvFrameGraph.TResourceType.TMetaType.None:}begin
+   end;
+  end;
+ end;
+ for Pass in fPasses do begin
+  if Pass.fUsed then begin
+   if Pass is TComputePass then begin
+   end else if Pass is TRenderPass then begin
+   end;
+  end;
  end;
 
 end;
