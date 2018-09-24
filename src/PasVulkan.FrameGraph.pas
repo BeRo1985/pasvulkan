@@ -238,10 +238,23 @@ type EpvFrameGraph=class(Exception);
               property Persientent:boolean read fPersientent write fPersientent;
               property MetaType:TMetaType read fMetaType write fMetaType;
             end;
+            TResource=class;
+            TResourceList=TpvObjectGenericList<TResource>;
+            TResourceNameHashMap=TpvStringHashMap<TResource>;
             TResourceTypeList=TpvObjectGenericList<TResourceType>;
             TResourceTypeNameHashMap=TpvStringHashMap<TResourceType>;
             TResourceTransition=class;
             TResourceTransitionList=TpvObjectGenericList<TResourceTransition>;
+            TResourceReuseGroup=class
+             private
+              fFrameGraph:TpvFrameGraph;
+              fResourceType:TResourceType;
+              fResources:TResourceList;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce;
+              destructor Destroy; override;
+            end;
+            TResourceReuseGroupList=TpvObjectGenericList<TResourceReuseGroup>;
             TResource=class
              private
               fFrameGraph:TpvFrameGraph;
@@ -250,6 +263,7 @@ type EpvFrameGraph=class(Exception);
               fResourceTransitions:TResourceTransitionList;
               fMinimumPassStepIndex:TpvSizeInt;
               fMaximumPassStepIndex:TpvSizeInt;
+              fResourceReuseGroup:TResourceReuseGroup;
               fUsed:boolean;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
@@ -267,8 +281,6 @@ type EpvFrameGraph=class(Exception);
               property MaximumPassStepIndex:TpvSizeInt read fMaximumPassStepIndex;
               property Used:boolean read fUsed;
             end;
-            TResourceList=TpvObjectGenericList<TResource>;
-            TResourceNameHashMap=TpvStringHashMap<TResource>;
             TPass=class;
             TResourceTransition=class
              public
@@ -382,7 +394,7 @@ type EpvFrameGraph=class(Exception);
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
-              fResourceList:TResourceList;
+              fResources:TResourceList;
               fResourceTransitions:TResourceTransitionList;
               fPreviousPasses:TPassList;
               fNextPasses:TPassList;
@@ -504,12 +516,13 @@ type EpvFrameGraph=class(Exception);
               property MultiViewMask:TpvUInt32 read fMultiViewMask write fMultiViewMask;
             end;
       private
-       fResourceTypeList:TResourceTypeList;
+       fResourceTypes:TResourceTypeList;
        fResourceTypeNameHashMap:TResourceTypeNameHashMap;
-       fResourceList:TResourceList;
+       fResources:TResourceList;
        fResourceNameHashMap:TResourceNameHashMap;
        fResourceTransitions:TResourceTransitionList;
-       fPassList:TPassList;
+       fResourceReuseGroups:TResourceReuseGroupList;
+       fPasses:TPassList;
        fPassNameHashMap:TPassNameHashMap;
        fRootPass:TPass;
        fEnforcedRootPass:TPass;
@@ -548,11 +561,11 @@ type EpvFrameGraph=class(Exception);
        procedure BeforeDestroySwapChain; virtual;
        procedure Execute; virtual;
       published
-       property ResourceTypes:TResourceTypeList read fResourceTypeList;
+       property ResourceTypes:TResourceTypeList read fResourceTypes;
        property ResourceTypeByName:TResourceTypeNameHashMap read fResourceTypeNameHashMap;
-       property Resources:TResourceList read fResourceList;
+       property Resources:TResourceList read fResources;
        property ResourceByName:TResourceNameHashMap read fResourceNameHashMap;
-       property Passes:TPassList read fPassList;
+       property Passes:TPassList read fPasses;
        property PassByName:TPassNameHashMap read fPassNameHashMap;
        property RootPass:TPass read fRootPass;
        property EnforcedRootPass:TPass read fEnforcedRootPass write fEnforcedRootPass;
@@ -706,7 +719,7 @@ begin
  end;
  fFrameGraph:=aFrameGraph;
  fName:=aName;
- fFrameGraph.fResourceTypeList.Add(self);
+ fFrameGraph.fResourceTypes.Add(self);
  fFrameGraph.fResourceTypeNameHashMap.Add(fName,self);
  fPersientent:=aPersientent;
  fMetaType:=aMetaType;
@@ -773,10 +786,24 @@ end;
 
 destructor TpvFrameGraph.TResourceType.Destroy;
 begin
- if assigned(fFrameGraph) then begin
-  fFrameGraph.fResourceTypeList.Remove(self);
-  fFrameGraph.fResourceTypeNameHashMap.Delete(fName);
- end;
+ inherited Destroy;
+end;
+
+{ TpvFrameGraph.TResourceReuseGroup }
+
+constructor TpvFrameGraph.TResourceReuseGroup.Create(const aFrameGraph:TpvFrameGraph);
+begin
+ inherited Create;
+ fFrameGraph:=aFrameGraph;
+ fFrameGraph.fResourceReuseGroups.Add(self);
+ fResourceType:=nil;
+ fResources:=TResourceList.Create;
+ fResources.OwnsObjects:=false;
+end;
+
+destructor TpvFrameGraph.TResourceReuseGroup.Destroy;
+begin
+ FreeAndNil(fResources);
  inherited Destroy;
 end;
 
@@ -811,7 +838,7 @@ begin
 
  fUsed:=false;
 
- fFrameGraph.fResourceList.Add(self);
+ fFrameGraph.fResources.Add(self);
 
  fFrameGraph.fResourceNameHashMap.Add(fName,self);
 end;
@@ -826,10 +853,6 @@ end;
 destructor TpvFrameGraph.TResource.Destroy;
 begin
  FreeAndNil(fResourceTransitions);
- if assigned(fFrameGraph) then begin
-  fFrameGraph.fResourceList.Remove(self);
-  fFrameGraph.fResourceNameHashMap.Delete(fName);
- end;
  inherited Destroy;
 end;
 
@@ -890,9 +913,6 @@ end;
 
 destructor TpvFrameGraph.TResourceTransition.Destroy;
 begin
- if assigned(fFrameGraph) then begin
-  fFrameGraph.fResourceTransitions.Remove(self);
- end;
  inherited Destroy;
 end;
 
@@ -906,10 +926,10 @@ begin
  fFrameGraph:=aFrameGraph;
  fName:='';
 
- fFrameGraph.fPassList.Add(self);
+ fFrameGraph.fPasses.Add(self);
 
- fResourceList:=TResourceList.Create;
- fResourceList.OwnsObjects:=false;
+ fResources:=TResourceList.Create;
+ fResources.OwnsObjects:=false;
 
  fResourceTransitions:=TResourceTransitionList.Create;
  fResourceTransitions.OwnsObjects:=false;
@@ -927,20 +947,13 @@ end;
 destructor TpvFrameGraph.TPass.Destroy;
 begin
 
- FreeAndNil(fResourceList);
+ FreeAndNil(fResources);
 
  FreeAndNil(fResourceTransitions);
 
  FreeAndNil(fPreviousPasses);
 
  FreeAndNil(fNextPasses);
-
- if assigned(fFrameGraph) then begin
-  fFrameGraph.fPassList.Remove(self);
-  if length(fName)>0 then begin
-   fFrameGraph.fPassNameHashMap.Delete(fName);
-  end;
- end;
 
  inherited Destroy;
 
@@ -1282,21 +1295,24 @@ begin
 
  inherited Create;
 
- fResourceTypeList:=TResourceTypeList.Create;
- fResourceTypeList.OwnsObjects:=false;
+ fResourceTypes:=TResourceTypeList.Create;
+ fResourceTypes.OwnsObjects:=true;
 
  fResourceTypeNameHashMap:=TResourceTypeNameHashMap.Create(nil);
 
- fResourceList:=TResourceList.Create;
- fResourceList.OwnsObjects:=false;
+ fResources:=TResourceList.Create;
+ fResources.OwnsObjects:=true;
 
  fResourceNameHashMap:=TResourceNameHashMap.Create(nil);
 
  fResourceTransitions:=TResourceTransitionList.Create;
- fResourceTransitions.OwnsObjects:=false;
+ fResourceTransitions.OwnsObjects:=true;
 
- fPassList:=TPassList.Create;
- fPassList.OwnsObjects:=false;
+ fResourceReuseGroups:=TResourceReuseGroupList.Create;
+ fResourceReuseGroups.OwnsObjects:=true;
+
+ fPasses:=TPassList.Create;
+ fPasses.OwnsObjects:=true;
 
  fPassNameHashMap:=TPassNameHashMap.Create(nil);
 
@@ -1305,29 +1321,19 @@ end;
 destructor TpvFrameGraph.Destroy;
 begin
 
- while fResourceTypeList.Count>0 do begin
-  fResourceTypeList.Items[fResourceTypeList.Count-1].Free;
- end;
- FreeAndNil(fResourceTypeList);
+ FreeAndNil(fResourceTypes);
 
  FreeAndNil(fResourceTypeNameHashMap);
 
- while fResourceList.Count>0 do begin
-  fResourceList.Items[fResourceList.Count-1].Free;
- end;
- FreeAndNil(fResourceList);
+ FreeAndNil(fResources);
 
  FreeAndNil(fResourceNameHashMap);
 
- while fResourceTransitions.Count>0 do begin
-  fResourceTransitions.Items[fResourceTransitions.Count-1].Free;
- end;
  FreeAndNil(fResourceTransitions);
 
- while fPassList.Count>0 do begin
-  fPassList.Items[fPassList.Count-1].Free;
- end;
- FreeAndNil(fPassList);
+ FreeAndNil(fResourceReuseGroups);
+
+ FreeAndNil(fPasses);
 
  FreeAndNil(fPassNameHashMap);
 
@@ -1401,6 +1407,7 @@ type TAction=
  end;
 var Temporary,
     Index,
+    OtherIndex,
     BaseStackCount,
     TagCounter,
     FoundTag,
@@ -1411,7 +1418,8 @@ var Temporary,
     RenderPass:TRenderPass;
     ResourceTransition,
     OtherResourceTransition:TResourceTransition;
-    Resource:TResource;
+    Resource,
+    OtherResource:TResource;
     Stack:TStack;
     StackItem:TStackItem;
     OK:boolean;
@@ -1420,7 +1428,7 @@ var Temporary,
 begin
 
  // Validate that all attachments have the same size as defined in the render pass
- for Pass in fPassList do begin
+ for Pass in fPasses do begin
   if Pass is TRenderPass then begin
    RenderPass:=Pass as TRenderPass;
    for ResourceTransition in RenderPass.fResourceTransitions do begin
@@ -1433,7 +1441,7 @@ begin
  end;
 
  // Validate that all resources have at least one pass, which outputs this one resource
- for Resource in fResourceList do begin
+ for Resource in fResources do begin
   OK:=false;
   for ResourceTransition in Resource.fResourceTransitions do begin
    if (ResourceTransition.fFlags*TResourceTransition.AllOutputs)<>[] then begin
@@ -1449,7 +1457,7 @@ begin
  // Validate that all resources do not have input and output transitions at a same pass at the same time
  ResourceDynamicArray.Initialize;
  try
-  for Pass in fPassList do begin
+  for Pass in fPasses do begin
    ResourceDynamicArray.Clear;
    for ResourceTransition in Pass.fResourceTransitions do begin
     if (ResourceTransition.fFlags*TResourceTransition.AllInputs)<>[] then begin
@@ -1473,7 +1481,7 @@ begin
  // Find root pass (a render pass, which have only a single attachment output to a surface/swapchain)
  fRootPass:=fEnforcedRootPass;
  if not assigned(fRootPass) then begin
-  for Pass in fPassList do begin
+  for Pass in fPasses do begin
    if Pass is TRenderPass then begin
     RenderPass:=Pass as TRenderPass;
     Temporary:=0;
@@ -1505,7 +1513,7 @@ begin
  Stack.Initialize;
  try
   MaximumOverallPassStepIndex:=0;
-  for Pass in fPassList do begin
+  for Pass in fPasses do begin
    Pass.fStepIndex:=-1;
    Pass.fProcessed:=false;
    Pass.fMarked:=false;
@@ -1572,7 +1580,7 @@ begin
  AttachmentSizeTagHashMap:=TAttachmentSizeTagHashMap.Create(-1);
  try
   TagCounter:=0;
-  for Pass in fPassList do begin
+  for Pass in fPasses do begin
    if Pass is TComputePass then begin
     Pass.fTag:=TagCounter;
     inc(TagCounter);
@@ -1591,7 +1599,7 @@ begin
 
  // Calculate resource lifetimes (from minimum pass step index to maximum pass step index) for
  // calculating aliasing and reusing of resources at a later point
- for Resource in fResourceList do begin
+ for Resource in fResources do begin
   MinimumPassStepIndex:=High(TpvSizeInt);
   MaximumPassStepIndex:=Low(TpvSizeInt);
   for ResourceTransition in Resource.fResourceTransitions do begin
@@ -1623,6 +1631,30 @@ begin
   end;
   Resource.fMinimumPassStepIndex:=MinimumPassStepIndex;
   Resource.fMaximumPassStepIndex:=MaximumPassStepIndex;
+ end;
+
+ // Calculate resource reuse groups, depending on the non-intersecting resource lifetime span
+ // segments and resource types
+ for Resource in fResources do begin
+  Resource.fResourceReuseGroup:=nil;
+ end;
+ for Index:=0 to fResources.Count-1 do begin
+  Resource:=fResources.Items[Index];
+  if not assigned(Resource.fResourceReuseGroup) then begin
+   Resource.fResourceReuseGroup:=TResourceReuseGroup.Create(self);
+   Resource.fResourceReuseGroup.fResources.Add(Resource);
+   for OtherIndex:=Index+1 to fResources.Count-1 do begin
+    OtherResource:=fResources.Items[OtherIndex];
+    if (not assigned(OtherResource.fResourceReuseGroup)) and
+       (Resource.fResourceType=OtherResource.fResourceType) and
+       (Min(Resource.MaximumPassStepIndex,
+            OtherResource.MaximumPassStepIndex)>Max(Resource.MinimumPassStepIndex,
+                                                    OtherResource.MinimumPassStepIndex)) then begin
+     OtherResource.fResourceReuseGroup:=Resource.fResourceReuseGroup;
+     OtherResource.fResourceReuseGroup.fResources.Add(OtherResource);
+    end;
+   end;
+  end;
  end;
 
  // Create meta data for Vulkan images, image views, frame buffers, render passes and so on, for
