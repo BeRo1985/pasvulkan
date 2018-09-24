@@ -1603,9 +1603,11 @@ begin
      // In this cases, this one resource must life from the begin to the end of the whole
      // directed acyclic graph for the simplicity of safety, because it can be still optimized
      // in a better way later
-     MinimumPassStepIndex:=0;
-     MaximumPassStepIndex:=MaximumOverallPassStepIndex;
-     break;
+     if not Resource.fUsed then begin
+      Resource.fUsed:=true;
+      MinimumPassStepIndex:=0;
+      MaximumPassStepIndex:=MaximumOverallPassStepIndex;
+     end;
     end else begin
      if Resource.fUsed then begin
       MinimumPassStepIndex:=Min(MinimumPassStepIndex,Pass.fStepIndex);
