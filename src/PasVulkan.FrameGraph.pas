@@ -68,7 +68,8 @@ uses SysUtils,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Collections,
-     PasVulkan.Framework;
+     PasVulkan.Framework,
+     PasVulkan.Application;
 
 // Inspired from:
 //   https://www.ea.com/frostbite/news/framegraph-extensible-rendering-architecture-in-frostbite
@@ -403,9 +404,20 @@ type EpvFrameGraph=class(Exception);
             TPassList=TpvObjectGenericList<TPass>;
             TPassNameHashMap=TpvStringHashMap<TPass>;
             TPass=class
+             public
+              type TFlag=
+                    (
+                     Enabled,
+                     Used,
+                     Processed,
+                     Marked
+                    );
+                   PFlag=^TFlag;
+                   TFlags=set of TFlag;
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
+              fFlags:TFlags;
               fResources:TResourceList;
               fResourceTransitions:TResourceTransitionList;
               fPreviousPasses:TPassList;
@@ -413,10 +425,8 @@ type EpvFrameGraph=class(Exception);
               fTag:TpvSizeInt;
               fMinimumStepIndex:TpvSizeInt;
               fMaximumStepIndex:TpvSizeInt;
-              fEnabled:boolean;
-              fUsed:boolean;
-              fProcessed:boolean;
-              fMarked:boolean;
+              function GetEnabled:boolean;
+              procedure SetEnabled(const aEnabled:boolean);
               procedure SetName(const aName:TpvRawByteString);
               function AddResource(const aResourceTypeName:TpvRawByteString;
                                    const aResourceName:TpvRawByteString;
@@ -513,7 +523,7 @@ type EpvFrameGraph=class(Exception);
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName write SetName;
-              property Enabled:boolean read fEnabled write fEnabled;
+              property Enabled:boolean read GetEnabled write SetEnabled;
             end;
             TComputePass=class(TPass)
              private
@@ -524,6 +534,7 @@ type EpvFrameGraph=class(Exception);
              private
               fMultiViewMask:TpvUInt32;
               fAttachmentSize:TAttachmentSize;
+              fRenderPass:TpvVulkanRenderPass;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); override;
               destructor Destroy; override;
@@ -962,7 +973,7 @@ begin
  fNextPasses:=TPassList.Create;
  fNextPasses.OwnsObjects:=false;
 
- fEnabled:=true;
+ fFlags:=[TFlag.Enabled];
 
 end;
 
@@ -979,6 +990,22 @@ begin
 
  inherited Destroy;
 
+end;
+
+function TpvFrameGraph.TPass.GetEnabled:boolean;
+begin
+ result:=TFlag.Enabled in fFlags;
+end;
+
+procedure TpvFrameGraph.TPass.SetEnabled(const aEnabled:boolean);
+begin
+ if aEnabled<>(TFlag.Enabled in fFlags) then begin
+  if aEnabled then begin
+   Include(fFlags,TFlag.Enabled);
+  end else begin
+   Exclude(fFlags,TFlag.Enabled);
+  end;
+ end;
 end;
 
 procedure TpvFrameGraph.TPass.SetName(const aName:TpvRawByteString);
@@ -1457,7 +1484,7 @@ var Temporary,
     OtherResource:TResource;
     Stack:TStack;
     StackItem:TStackItem;
-    OK:boolean;
+    OK,FirstProcessed:boolean;
     ResourceDynamicArray:TResourceDynamicArray;
     AttachmentSizeTagHashMap:TAttachmentSizeTagHashMap;
     ResourceReuseGroup:TResourceReuseGroup;
@@ -1553,9 +1580,7 @@ begin
   for Pass in fPasses do begin
    Pass.fMinimumStepIndex:=-1;
    Pass.fMaximumStepIndex:=-1;
-   Pass.fUsed:=false;
-   Pass.fProcessed:=false;
-   Pass.fMarked:=false;
+   Pass.fFlags:=Pass.fFlags-[TPass.TFlag.Used,TPass.TFlag.Processed,TPass.TFlag.Marked];
    Pass.fPreviousPasses.Clear;
    Pass.fNextPasses.Clear;
   end;
@@ -1564,18 +1589,19 @@ begin
    Pass:=StackItem.Pass;
    case StackItem.Action of
     TAction.Process:begin
-     if Pass.fMarked then begin
+     if TPass.TFlag.Marked in Pass.fFlags then begin
       raise EpvFrameGraphRecursion.Create('Recursion detected');
      end;
-     if Pass.fProcessed then begin
-      Pass.fMinimumStepIndex:=Min(Pass.fMinimumStepIndex,StackItem.StepIndex);
-      Pass.fMaximumStepIndex:=Max(Pass.fMaximumStepIndex,StackItem.StepIndex);
-     end else begin
-      Pass.fMarked:=true;
-      Pass.fUsed:=true;
+     FirstProcessed:=not (TPass.TFlag.Processed in Pass.fFlags);
+     if FirstProcessed then begin
+      Pass.fFlags:=Pass.fFlags+[TPass.TFlag.Used,TPass.TFlag.Processed];
       Pass.fMinimumStepIndex:=StackItem.StepIndex;
       Pass.fMaximumStepIndex:=StackItem.StepIndex;
+     end else begin
+      Pass.fMinimumStepIndex:=Min(Pass.fMinimumStepIndex,StackItem.StepIndex);
+      Pass.fMaximumStepIndex:=Max(Pass.fMaximumStepIndex,StackItem.StepIndex);
      end;
+     Include(Pass.fFlags,TPass.TFlag.Marked);
      MaximumOverallPassStepIndex:=Max(MaximumOverallPassStepIndex,StackItem.StepIndex);
      Stack.Push(NewStackItem(TAction.Unmark,Pass,StackItem.StepIndex));
      BaseStackCount:=Stack.Count;
@@ -1587,7 +1613,7 @@ begin
         if (ResourceTransition<>OtherResourceTransition) and
            (Pass<>OtherResourceTransition.fPass) and
            (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
-         if not Pass.fProcessed then begin
+         if FirstProcessed then begin
           if Pass.fPreviousPasses.IndexOf(OtherResourceTransition.fPass)<0 then begin
            Pass.fPreviousPasses.Add(OtherResourceTransition.fPass);
           end;
@@ -1608,11 +1634,10 @@ begin
         end;
        end;
       end;
-      Pass.fProcessed:=true;
      end;
     end;
     TAction.Unmark:begin
-     Pass.fMarked:=false;
+     Exclude(Pass.fFlags,TPass.TFlag.Marked);
     end;
    end;
   end;
@@ -1687,6 +1712,7 @@ begin
   Resource:=fResources.Items[Index];
   if not assigned(Resource.fResourceReuseGroup) then begin
    Resource.fResourceReuseGroup:=TResourceReuseGroup.Create(self);
+   Resource.fResourceReuseGroup.fResourceType:=Resource.fResourceType;
    Resource.fResourceReuseGroup.fResources.Add(Resource);
    for OtherIndex:=Index+1 to fResources.Count-1 do begin
     OtherResource:=fResources.Items[OtherIndex];
@@ -1727,8 +1753,9 @@ begin
    end;
   end;
  end;
+
  for Pass in fPasses do begin
-  if Pass.fUsed then begin
+  if TPass.TFlag.Used in Pass.fFlags then begin
    if Pass is TComputePass then begin
    end else if Pass is TRenderPass then begin
    end;
@@ -1738,12 +1765,115 @@ begin
 end;
 
 procedure TpvFrameGraph.AfterCreateSwapChain;
+type TInt32AttachmentLists=TpvDynamicArray<TpvInt32>;
+     TUInt32AttachmentLists=TpvDynamicArray<TpvUInt32>;
+var Pass:TPass;
+    RenderPass:TRenderPass;
+    ResourceTransition:TResourceTransition;
+    VulkanRenderPass:TpvVulkanRenderPass;
+    InputAttachments,
+    ColorAttachments,
+    ResolveAttachments:TInt32AttachmentLists;
+    PreserveAttachments:TUInt32AttachmentLists;
+    DepthStencilAttachment:TpvInt32;
 begin
+
+ for Pass in fPasses do begin
+  if TPass.TFlag.Used in Pass.fFlags then begin
+   if Pass is TComputePass then begin
+   end else if Pass is TRenderPass then begin
+
+    RenderPass:=TRenderPass(Pass);
+
+    VulkanRenderPass:=TpvVulkanRenderPass.Create(pvApplication.VulkanDevice);
+    try
+
+     InputAttachments.Initialize;
+     ColorAttachments.Initialize;
+     ResolveAttachments.Initialize;
+     PreserveAttachments.Initialize;
+     try
+
+      DepthStencilAttachment:=-1;
+
+      for ResourceTransition in RenderPass.fResourceTransitions do begin
+       case ResourceTransition.Kind of
+        TpvFrameGraph.TResourceTransition.TKind.AttachmentInput,
+        TpvFrameGraph.TResourceTransition.TKind.AttachmentOutput,
+        TpvFrameGraph.TResourceTransition.TKind.AttachmentResolveOutput,
+        TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthOutput,
+        TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthInput:begin
+        // ResourceTransition.
+        end;
+       end;
+      end;
+
+
+      InputAttachments.Finish;
+      ColorAttachments.Finish;
+      ResolveAttachments.Finish;
+      PreserveAttachments.Finish;
+
+      VulkanRenderPass.AddSubpassDescription(0,
+                                             VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             InputAttachments.Items,
+                                             ColorAttachments.Items,
+                                             ResolveAttachments.Items,
+                                             DepthStencilAttachment,
+                                             PreserveAttachments.Items);
+
+      VulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
+                                            0,
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                            TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                            TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                            TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+
+      VulkanRenderPass.AddSubpassDependency(0,
+                                            VK_SUBPASS_EXTERNAL,
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                            TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                            TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                            TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+
+      VulkanRenderPass.Initialize;
+
+ { fSceneContentVulkanRenderPass.ClearValues[0].color.float32[0]:=0.0;
+  fSceneContentVulkanRenderPass.ClearValues[0].color.float32[1]:=0.0;
+  fSceneContentVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
+  fSceneContentVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
+  }
+     finally
+      InputAttachments.Finalize;
+      ColorAttachments.Finalize;
+      ResolveAttachments.Finalize;
+      PreserveAttachments.Finalize;
+     end;
+
+    finally
+     TRenderPass(Pass).fRenderPass:=VulkanRenderPass;
+    end;
+
+   end;
+  end;
+ end;
 
 end;
 
 procedure TpvFrameGraph.BeforeDestroySwapChain;
+var Pass:TPass;
 begin
+
+ for Pass in fPasses do begin
+  if TPass.TFlag.Used in Pass.fFlags then begin
+   if Pass is TComputePass then begin
+   end else if Pass is TRenderPass then begin
+    FreeAndNil(TRenderPass(Pass).fRenderPass);
+   end;
+  end;
+ end;
 
 end;
 
