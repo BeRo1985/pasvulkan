@@ -426,6 +426,7 @@ type EpvFrameGraph=class(Exception);
               fIndex:TpvSizeInt;
               fTag:TpvSizeInt;
               fChoreographyStepIndex:TpvSizeInt;
+              fChoreographyStepSubPassIndex:TpvSizeInt;
               function GetEnabled:boolean;
               procedure SetEnabled(const aEnabled:boolean);
               procedure SetName(const aName:TpvRawByteString);
@@ -1685,6 +1686,7 @@ begin
   try
    for Pass in fPasses do begin
     Pass.fChoreographyStepIndex:=-1;
+    Pass.fChoreographyStepSubPassIndex:=-1;
     Pass.fFlags:=Pass.fFlags-[TPass.TFlag.Used,TPass.TFlag.Processed,TPass.TFlag.Marked];
     Pass.fPreviousPasses.Clear;
     Pass.fNextPasses.Clear;
@@ -1774,13 +1776,14 @@ begin
    end else if Pass is TRenderPass then begin
     ChoreographyStepRenderPass:=TChoreographyStepRenderPass.Create(self);
     Pass.fChoreographyStepIndex:=fChoreography.Add(ChoreographyStepRenderPass);
-    ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(Pass)));
+    TRenderPass(Pass).fChoreographyStepSubPassIndex:=ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(Pass)));
     inc(Index);
-    while ((Index+1)<Count) and
-          (TopologicalSortedPasses[Index+1] is TRenderPass) and
-          (TRenderPass(TopologicalSortedPasses[Index+1]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) do begin
-     TopologicalSortedPasses[Index+1].fChoreographyStepIndex:=Pass.fChoreographyStepIndex;
-     ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(TopologicalSortedPasses[Index+1])));
+    while (Index<Count) and
+          (TopologicalSortedPasses[Index] is TRenderPass) and
+          (TRenderPass(TopologicalSortedPasses[Index]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) do begin
+     OtherPass:=TopologicalSortedPasses[Index];
+     OtherPass.fChoreographyStepIndex:=Pass.fChoreographyStepIndex;
+     TRenderPass(OtherPass).fChoreographyStepSubPassIndex:=ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(OtherPass)));
      inc(Index);
     end;
    end else begin
