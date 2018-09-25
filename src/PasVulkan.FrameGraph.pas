@@ -69,7 +69,8 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Collections,
      PasVulkan.Framework,
-     PasVulkan.Application;
+     PasVulkan.Application,
+     PasVulkan.Utils;
 
 // Inspired from:
 //   https://www.ea.com/frostbite/news/framegraph-extensible-rendering-architecture-in-frostbite
@@ -262,8 +263,8 @@ type EpvFrameGraph=class(Exception);
               fName:TpvRawByteString;
               fResourceType:TResourceType;
               fResourceTransitions:TResourceTransitionList;
-              fMinimumPassStepIndex:TpvSizeInt;
-              fMaximumPassStepIndex:TpvSizeInt;
+              fMinimumChoreographyStepIndex:TpvSizeInt;
+              fMaximumChoreographyStepIndex:TpvSizeInt;
               fResourceReuseGroup:TResourceReuseGroup;
               fUsed:boolean;
              public
@@ -278,8 +279,8 @@ type EpvFrameGraph=class(Exception);
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName;
               property ResourceType:TResourceType read fResourceType;
-              property MinimumPassStepIndex:TpvSizeInt read fMinimumPassStepIndex;
-              property MaximumPassStepIndex:TpvSizeInt read fMaximumPassStepIndex;
+              property MinimumChoreographyStepIndex:TpvSizeInt read fMinimumChoreographyStepIndex;
+              property MaximumChoreographyStepIndex:TpvSizeInt read fMaximumChoreographyStepIndex;
               property Used:boolean read fUsed;
             end;
             TPass=class;
@@ -422,9 +423,9 @@ type EpvFrameGraph=class(Exception);
               fResourceTransitions:TResourceTransitionList;
               fPreviousPasses:TPassList;
               fNextPasses:TPassList;
+              fIndex:TpvSizeInt;
               fTag:TpvSizeInt;
-              fMinimumStepIndex:TpvSizeInt;
-              fMaximumStepIndex:TpvSizeInt;
+              fChoreographyStepIndex:TpvSizeInt;
               function GetEnabled:boolean;
               procedure SetEnabled(const aEnabled:boolean);
               procedure SetName(const aName:TpvRawByteString);
@@ -587,7 +588,7 @@ type EpvFrameGraph=class(Exception);
        fPassNameHashMap:TPassNameHashMap;
        fRootPass:TPass;
        fEnforcedRootPass:TPass;
-       fMaximumOverallPassStepIndex:TpvSizeInt;
+       fMaximumOverallChoreographyStepIndex:TpvSizeInt;
        fValid:boolean;
        fChoreography:TChoreography;
       public
@@ -895,8 +896,8 @@ begin
  fResourceTransitions:=TResourceTransitionList.Create;
  fResourceTransitions.OwnsObjects:=false;
 
- fMinimumPassStepIndex:=High(TpvSizeInt);
- fMaximumPassStepIndex:=Low(TpvSizeInt);
+ fMinimumChoreographyStepIndex:=High(TpvSizeInt);
+ fMaximumChoreographyStepIndex:=Low(TpvSizeInt);
 
  fUsed:=false;
 
@@ -1548,31 +1549,31 @@ procedure TpvFrameGraph.Compile;
 type TAction=
       (
        Process,
-       Unmark
+       Unmark,
+       Add
       );
      TStackItem=record
       Action:TAction;
       Pass:TPass;
-      StepIndex:TpvSizeInt;
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicStack<TStackItem>;
      TResourceDynamicArray=TpvDynamicArray<TResource>;
-     TAttachmentSizeTagHashMap=TpvHashMap<TAttachmentSize,TpvSizeInt>;
- function NewStackItem(const aAction:TAction;const aPass:TPass;const aStep:TpvSizeInt):TStackItem;
+ function NewStackItem(const aAction:TAction;const aPass:TPass):TStackItem;
  begin
   result.Action:=aAction;
   result.Pass:=aPass;
-  result.StepIndex:=aStep;
  end;
 var Temporary,
     Index,
     OtherIndex,
+    Count,
     BaseStackCount,
     TagCounter,
-    FoundTag,
-    MaximumOverallPassStepIndex:TpvSizeInt;
-    Pass:TPass;
+    FoundTag:TpvSizeInt;
+    Pass,
+    OtherPass:TPass;
+    Passes:array[0..1] of TPass;
     RenderPass:TRenderPass;
     ResourceTransition,
     OtherResourceTransition:TResourceTransition;
@@ -1580,12 +1581,18 @@ var Temporary,
     OtherResource:TResource;
     Stack:TStack;
     StackItem:TStackItem;
-    OK,FirstProcessed:boolean;
+    OK:boolean;
     ResourceDynamicArray:TResourceDynamicArray;
-    AttachmentSizeTagHashMap:TAttachmentSizeTagHashMap;
     ResourceReuseGroup:TResourceReuseGroup;
     ResourceType:TResourceType;
+    TopologicalSortedPasses:TPassList;
+    ChoreographyStepRenderPass:TChoreographyStepRenderPass;
 begin
+
+ // Indexing passes
+ for Index:=0 to fPasses.Count-1 do begin
+  fPasses[Index].fIndex:=Index;
+ end;
 
  // Validate that all attachments have the same size as defined in the render pass
  for Pass in fPasses do begin
@@ -1669,138 +1676,155 @@ begin
   end;
  end;
 
- // Construct the directed acyclic graph
- Stack.Initialize;
+ TopologicalSortedPasses:=TPassList.Create;
  try
-  MaximumOverallPassStepIndex:=0;
-  for Pass in fPasses do begin
-   Pass.fMinimumStepIndex:=-1;
-   Pass.fMaximumStepIndex:=-1;
-   Pass.fFlags:=Pass.fFlags-[TPass.TFlag.Used,TPass.TFlag.Processed,TPass.TFlag.Marked];
-   Pass.fPreviousPasses.Clear;
-   Pass.fNextPasses.Clear;
-  end;
-  Stack.Push(NewStackItem(TAction.Process,fRootPass,0));
-  while Stack.Pop(StackItem) do begin
-   Pass:=StackItem.Pass;
-   case StackItem.Action of
-    TAction.Process:begin
-     if TPass.TFlag.Marked in Pass.fFlags then begin
-      raise EpvFrameGraphRecursion.Create('Recursion detected');
-     end;
-     FirstProcessed:=not (TPass.TFlag.Processed in Pass.fFlags);
-     if FirstProcessed then begin
-      Pass.fFlags:=Pass.fFlags+[TPass.TFlag.Used,TPass.TFlag.Processed];
-      Pass.fMinimumStepIndex:=StackItem.StepIndex;
-      Pass.fMaximumStepIndex:=StackItem.StepIndex;
-     end else begin
-      Pass.fMinimumStepIndex:=Min(Pass.fMinimumStepIndex,StackItem.StepIndex);
-      Pass.fMaximumStepIndex:=Max(Pass.fMaximumStepIndex,StackItem.StepIndex);
-     end;
-     Include(Pass.fFlags,TPass.TFlag.Marked);
-     MaximumOverallPassStepIndex:=Max(MaximumOverallPassStepIndex,StackItem.StepIndex);
-     Stack.Push(NewStackItem(TAction.Unmark,Pass,StackItem.StepIndex));
-     BaseStackCount:=Stack.Count;
-     for ResourceTransition in Pass.fResourceTransitions do begin
-      if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
-         not (TResourceTransition.TFlag.PreviousFrameInput in ResourceTransition.Flags) then begin
-       Resource:=ResourceTransition.Resource;
-       for OtherResourceTransition in Resource.fResourceTransitions do begin
-        if (ResourceTransition<>OtherResourceTransition) and
-           (Pass<>OtherResourceTransition.fPass) and
-           (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
-         if FirstProcessed then begin
-          if Pass.fPreviousPasses.IndexOf(OtherResourceTransition.fPass)<0 then begin
-           Pass.fPreviousPasses.Add(OtherResourceTransition.fPass);
+  TopologicalSortedPasses.OwnsObjects:=false;
+
+  // Construct the directed acyclic graph by doing a modified-DFS-based topological sort at the same time
+  Stack.Initialize;
+  try
+   for Pass in fPasses do begin
+    Pass.fChoreographyStepIndex:=-1;
+    Pass.fFlags:=Pass.fFlags-[TPass.TFlag.Used,TPass.TFlag.Processed,TPass.TFlag.Marked];
+    Pass.fPreviousPasses.Clear;
+    Pass.fNextPasses.Clear;
+   end;
+   Stack.Push(NewStackItem(TAction.Process,fRootPass));
+   while Stack.Pop(StackItem) do begin
+    Pass:=StackItem.Pass;
+    case StackItem.Action of
+     TAction.Process:begin
+      if TPass.TFlag.Marked in Pass.fFlags then begin
+       raise EpvFrameGraphRecursion.Create('Recursion detected');
+      end;
+      Include(Pass.fFlags,TPass.TFlag.Marked);
+      if not (TPass.TFlag.Processed in Pass.fFlags) then begin
+       Pass.fFlags:=Pass.fFlags+[TPass.TFlag.Used,TPass.TFlag.Processed];
+       for ResourceTransition in Pass.fResourceTransitions do begin
+        if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
+           not (TResourceTransition.TFlag.PreviousFrameInput in ResourceTransition.Flags) then begin
+         Resource:=ResourceTransition.Resource;
+         for OtherResourceTransition in Resource.fResourceTransitions do begin
+          if (ResourceTransition<>OtherResourceTransition) and
+             (Pass<>OtherResourceTransition.fPass) and
+             (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
+           if Pass.fPreviousPasses.IndexOf(OtherResourceTransition.fPass)<0 then begin
+            Pass.fPreviousPasses.Add(OtherResourceTransition.fPass);
+           end;
+           if OtherResourceTransition.fPass.fNextPasses.IndexOf(Pass)<0 then begin
+            OtherResourceTransition.fPass.fNextPasses.Add(Pass);
+           end;
           end;
-          if OtherResourceTransition.fPass.fNextPasses.IndexOf(Pass)<0 then begin
-           OtherResourceTransition.fPass.fNextPasses.Add(Pass);
-          end;
-         end;
-         OK:=true;
-         for Index:=Stack.Count-1 downto BaseStackCount do begin
-          if Stack.Items[Index].Pass=OtherResourceTransition.fPass then begin
-           OK:=false;
-           break;
-          end;
-         end;
-         if OK then begin
-          Stack.Push(NewStackItem(TAction.Process,OtherResourceTransition.fPass,StackItem.StepIndex+1));
          end;
         end;
        end;
+       if Pass is TRenderPass then begin
+        // Pre-sort for better subpass grouping at a later point
+        Index:=0;
+        Count:=Pass.fPreviousPasses.Count;
+        while (Index+1)<Count do begin
+         Passes[0]:=Pass.fPreviousPasses[Index];
+         Passes[1]:=Pass.fPreviousPasses[Index+1];
+         if not ((Passes[1] is TRenderPass) and
+                 (((Passes[0] is TRenderPass) and
+                   ((TRenderPass(Passes[0]).fAttachmentSize<>TRenderPass(Pass).fAttachmentSize) and
+                    (TRenderPass(Passes[1]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize))) or
+                  not (Passes[0] is TRenderPass))) then begin
+          Pass.fPreviousPasses.Exchange(Index,Index+1);
+          if Index>0 then begin
+           dec(Index);
+          end else begin
+           inc(Index);
+          end;
+         end else begin
+          inc(Index);
+         end;
+        end;
+       end;
+       Stack.Push(NewStackItem(TAction.Add,Pass));
+      end;
+      Stack.Push(NewStackItem(TAction.Unmark,Pass));
+      for OtherPass in Pass.fPreviousPasses do begin
+       Stack.Push(NewStackItem(TAction.Process,OtherPass));
+      end;
+     end;
+     TAction.Unmark:begin
+      Exclude(Pass.fFlags,TPass.TFlag.Marked);
+     end;
+     TAction.Add:begin
+      TopologicalSortedPasses.Add(Pass);
+     end;
+    end;
+   end;
+  finally
+   Stack.Finalize;
+  end;
+
+  // Construct choreography together with merging render passes to sub passes of a real
+  // Vulkan render pass
+  fChoreography.Clear;
+  fMaximumOverallChoreographyStepIndex:=0;
+  Index:=0;
+  Count:=TopologicalSortedPasses.Count;
+  while Index<Count do begin
+   Pass:=TopologicalSortedPasses[Index];
+   if Pass is TComputePass then begin
+    Pass.fChoreographyStepIndex:=fChoreography.Add(TChoreographyStepComputePass.Create(self,TComputePass(Pass)));
+    inc(Index);
+   end else if Pass is TRenderPass then begin
+    ChoreographyStepRenderPass:=TChoreographyStepRenderPass.Create(self);
+    Pass.fChoreographyStepIndex:=fChoreography.Add(ChoreographyStepRenderPass);
+    ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(Pass)));
+    inc(Index);
+    while ((Index+1)<Count) and
+          (TopologicalSortedPasses[Index+1] is TRenderPass) and
+          (TRenderPass(TopologicalSortedPasses[Index+1]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) do begin
+     TopologicalSortedPasses[Index+1].fChoreographyStepIndex:=Pass.fChoreographyStepIndex;
+     ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(TopologicalSortedPasses[Index+1])));
+     inc(Index);
+    end;
+   end else begin
+    inc(Index);
+   end;
+   fMaximumOverallChoreographyStepIndex:=Max(fMaximumOverallChoreographyStepIndex,Pass.fChoreographyStepIndex);
+  end;
+
+  // Calculate resource lifetimes (from minimum choreography step index to maximum
+  // choreography step index) for calculating aliasing and reusing of resources at a later point
+  for Resource in fResources do begin
+   Resource.fMinimumChoreographyStepIndex:=High(TpvSizeInt);
+   Resource.fMaximumChoreographyStepIndex:=Low(TpvSizeInt);
+   for ResourceTransition in Resource.fResourceTransitions do begin
+    Pass:=ResourceTransition.fPass;
+    if Pass.fChoreographyStepIndex>=0 then begin
+     if ((ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
+                                     TResourceTransition.TFlag.NextFrameOutput])<>[]) or
+        ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
+         (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface)) then begin
+      // In this cases, this one resource must life from the begin to the end of the whole
+      // directed acyclic graph for the simplicity of safety, because it can be still optimized
+      // in a better way later
+      if not Resource.fUsed then begin
+       Resource.fUsed:=true;
+       Resource.fMinimumChoreographyStepIndex:=0;
+       Resource.fMaximumChoreographyStepIndex:=fMaximumOverallChoreographyStepIndex;
+      end;
+     end else begin
+      if Resource.fUsed then begin
+       Resource.fMinimumChoreographyStepIndex:=Min(Resource.fMinimumChoreographyStepIndex,Pass.fChoreographyStepIndex);
+       Resource.fMaximumChoreographyStepIndex:=Max(Resource.fMaximumChoreographyStepIndex,Pass.fChoreographyStepIndex);
+      end else begin
+       Resource.fUsed:=true;
+       Resource.fMinimumChoreographyStepIndex:=Pass.fChoreographyStepIndex;
+       Resource.fMaximumChoreographyStepIndex:=Pass.fChoreographyStepIndex;
       end;
      end;
     end;
-    TAction.Unmark:begin
-     Exclude(Pass.fFlags,TPass.TFlag.Marked);
-    end;
    end;
   end;
-  fMaximumOverallPassStepIndex:=MaximumOverallPassStepIndex;
+
  finally
-  Stack.Finalize;
- end;
-
- // Construct choreography
- fChoreography.Clear;
-
-
- // Try to tag passes with same atachment sizes (for example for subpass grouping), but where
- // compute passes gets always their own tags
- AttachmentSizeTagHashMap:=TAttachmentSizeTagHashMap.Create(-1);
- try
-  TagCounter:=0;
-  for Pass in fPasses do begin
-   if Pass is TComputePass then begin
-    Pass.fTag:=TagCounter;
-    inc(TagCounter);
-   end else if Pass is TRenderPass then begin
-    if not AttachmentSizeTagHashMap.TryGet(TRenderPass(Pass).fAttachmentSize,FoundTag) then begin
-     FoundTag:=TagCounter;
-     inc(TagCounter);
-     AttachmentSizeTagHashMap.Add(TRenderPass(Pass).fAttachmentSize,FoundTag);
-    end;
-    Pass.fTag:=FoundTag;
-   end;
-  end;
- finally
-  FreeAndNil(AttachmentSizeTagHashMap);
- end;
-
-
- // Calculate resource lifetimes (from minimum pass step index to maximum pass step index) for
- // calculating aliasing and reusing of resources at a later point
- for Resource in fResources do begin
-  Resource.fMinimumPassStepIndex:=High(TpvSizeInt);
-  Resource.fMaximumPassStepIndex:=Low(TpvSizeInt);
-  for ResourceTransition in Resource.fResourceTransitions do begin
-   Pass:=ResourceTransition.fPass;
-   if Pass.fMinimumStepIndex>=0 then begin
-    if ((ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
-                                    TResourceTransition.TFlag.NextFrameOutput])<>[]) or
-       ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
-        (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface)) then begin
-     // In this cases, this one resource must life from the begin to the end of the whole
-     // directed acyclic graph for the simplicity of safety, because it can be still optimized
-     // in a better way later
-     if not Resource.fUsed then begin
-      Resource.fUsed:=true;
-      Resource.fMinimumPassStepIndex:=0;
-      Resource.fMaximumPassStepIndex:=MaximumOverallPassStepIndex;
-     end;
-    end else begin
-     if Resource.fUsed then begin
-      Resource.fMinimumPassStepIndex:=Min(Resource.fMinimumPassStepIndex,Pass.fMinimumStepIndex);
-      Resource.fMaximumPassStepIndex:=Max(Resource.fMaximumPassStepIndex,Pass.fMaximumStepIndex);
-     end else begin
-      Resource.fUsed:=true;
-      Resource.fMinimumPassStepIndex:=Pass.fMinimumStepIndex;
-      Resource.fMaximumPassStepIndex:=Pass.fMaximumStepIndex;
-     end;
-    end;
-   end;
-  end;
+  FreeAndNil(TopologicalSortedPasses);
  end;
 
  // Calculate resource reuse groups, depending on the non-intersecting resource lifetime span
@@ -1819,9 +1843,9 @@ begin
     OtherResource:=fResources.Items[OtherIndex];
     if (not assigned(OtherResource.fResourceReuseGroup)) and
        (Resource.fResourceType=OtherResource.fResourceType) and
-       (Min(Resource.MaximumPassStepIndex,
-            OtherResource.MaximumPassStepIndex)>Max(Resource.MinimumPassStepIndex,
-                                                    OtherResource.MinimumPassStepIndex)) then begin
+       (Min(Resource.MaximumChoreographyStepIndex,
+            OtherResource.MaximumChoreographyStepIndex)>Max(Resource.MinimumChoreographyStepIndex,
+                                                            OtherResource.MinimumChoreographyStepIndex)) then begin
      OtherResource.fResourceReuseGroup:=Resource.fResourceReuseGroup;
      OtherResource.fResourceReuseGroup.fResources.Add(OtherResource);
     end;
