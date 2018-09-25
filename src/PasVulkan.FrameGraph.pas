@@ -543,6 +543,39 @@ type EpvFrameGraph=class(Exception);
              published
               property MultiViewMask:TpvUInt32 read fMultiViewMask write fMultiViewMask;
             end;
+            TChoreographyStep=class
+             private
+              fFrameGraph:TpvFrameGraph;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
+              destructor Destroy; override;
+            end;
+            TChoreographyStepComputePass=class(TChoreographyStep)
+             private
+              fComputePass:TComputePass;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph;const aComputePass:TComputePass); reintroduce;
+              destructor Destroy; override;
+            end;
+            TChoreographyStepRenderPass=class(TChoreographyStep)
+             public
+              type TSubPass=class
+                    private
+                     fChoreographyStepRenderPass:TChoreographyStepRenderPass;
+                     fRenderPass:TRenderPass;
+                    public
+                     constructor Create(const aChoreographyStepRenderPass:TChoreographyStepRenderPass;
+                                        const aRenderPass:TRenderPass); reintroduce;
+                     destructor Destroy; override;
+                   end;
+                   TSubPasses=TpvObjectGenericList<TSubPass>;
+             private
+              fSubPasses:TSubPasses;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph); overload;
+              destructor Destroy; override;
+            end;
+            TChoreography=TpvObjectGenericList<TChoreographyStep>;
       private
        fResourceTypes:TResourceTypeList;
        fResourceTypeNameHashMap:TResourceTypeNameHashMap;
@@ -556,6 +589,7 @@ type EpvFrameGraph=class(Exception);
        fEnforcedRootPass:TPass;
        fMaximumOverallPassStepIndex:TpvSizeInt;
        fValid:boolean;
+       fChoreography:TChoreography;
       public
        constructor Create;
        destructor Destroy; override;
@@ -1352,6 +1386,63 @@ begin
  inherited Destroy;
 end;
 
+{ TpvFrameGraph.TChoreographyStep }
+
+constructor TpvFrameGraph.TChoreographyStep.Create(const aFrameGraph:TpvFrameGraph);
+begin
+ inherited Create;
+ fFrameGraph:=aFrameGraph;
+end;
+
+destructor TpvFrameGraph.TChoreographyStep.Destroy;
+begin
+ inherited Destroy;
+end;
+
+{ TpvFrameGraph.TChoreographyStepComputePass }
+
+constructor TpvFrameGraph.TChoreographyStepComputePass.Create(const aFrameGraph:TpvFrameGraph;
+                                                              const aComputePass:TComputePass);
+begin
+ inherited Create(aFrameGraph);
+ fComputePass:=aComputePass;
+end;
+
+destructor TpvFrameGraph.TChoreographyStepComputePass.Destroy;
+begin
+ inherited Destroy;
+end;
+
+{ TpvFrameGraph.TChoreographyStepRenderPass.TSubPass }
+
+constructor TpvFrameGraph.TChoreographyStepRenderPass.TSubPass.Create(const aChoreographyStepRenderPass:TChoreographyStepRenderPass;
+                                                                      const aRenderPass:TRenderPass);
+begin
+ inherited Create;
+ fChoreographyStepRenderPass:=aChoreographyStepRenderPass;
+ fRenderPass:=aRenderPass;
+end;
+
+destructor TpvFrameGraph.TChoreographyStepRenderPass.TSubPass.Destroy;
+begin
+ inherited Destroy;
+end;
+
+{ TpvFrameGraph.TChoreographyStepRenderPass }
+
+constructor TpvFrameGraph.TChoreographyStepRenderPass.Create(const aFrameGraph:TpvFrameGraph);
+begin
+ inherited Create(aFrameGraph);
+ fSubPasses:=TSubPasses.Create;
+ fSubPasses.OwnsObjects:=true;
+end;
+
+destructor TpvFrameGraph.TChoreographyStepRenderPass.Destroy;
+begin
+ FreeAndNil(fSubPasses);
+ inherited Destroy;
+end;
+
 { TpvFrameGraph }
 
 constructor TpvFrameGraph.Create;
@@ -1380,10 +1471,15 @@ begin
 
  fPassNameHashMap:=TPassNameHashMap.Create(nil);
 
+ fChoreography:=TChoreography.Create;
+ fChoreography.OwnsObjects:=true;
+
 end;
 
 destructor TpvFrameGraph.Destroy;
 begin
+
+ FreeAndNil(fChoreography);
 
  FreeAndNil(fResourceTypes);
 
@@ -1646,6 +1742,10 @@ begin
   Stack.Finalize;
  end;
 
+ // Construct choreography
+ fChoreography.Clear;
+
+
  // Try to tag passes with same atachment sizes (for example for subpass grouping), but where
  // compute passes gets always their own tags
  AttachmentSizeTagHashMap:=TAttachmentSizeTagHashMap.Create(-1);
@@ -1667,6 +1767,7 @@ begin
  finally
   FreeAndNil(AttachmentSizeTagHashMap);
  end;
+
 
  // Calculate resource lifetimes (from minimum pass step index to maximum pass step index) for
  // calculating aliasing and reusing of resources at a later point
