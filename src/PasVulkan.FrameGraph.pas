@@ -408,6 +408,7 @@ type EpvFrameGraph=class(Exception);
              public
               type TFlag=
                     (
+                     Toggleable,
                      Enabled,
                      Used,
                      Processed,
@@ -1778,15 +1779,18 @@ begin
     Pass.fChoreographyStepIndex:=fChoreography.Add(ChoreographyStepRenderPass);
     TRenderPass(Pass).fChoreographyStepSubPassIndex:=ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(Pass)));
     inc(Index);
-    while Index<Count do begin
-     OtherPass:=TopologicalSortedPasses[Index];
-     if (OtherPass is TRenderPass) and
-        (TRenderPass(OtherPass).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) then begin
-      OtherPass.fChoreographyStepIndex:=Pass.fChoreographyStepIndex;
-      TRenderPass(OtherPass).fChoreographyStepSubPassIndex:=ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(OtherPass)));
-      inc(Index);
-     end else begin
-      break;
+    if not (TPass.TFlag.Toggleable in Pass.fFlags) then begin
+     while Index<Count do begin
+      OtherPass:=TopologicalSortedPasses[Index];
+      if (not (TPass.TFlag.Toggleable in OtherPass.fFlags)) and
+         (OtherPass is TRenderPass) and
+         (TRenderPass(OtherPass).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) then begin
+       OtherPass.fChoreographyStepIndex:=Pass.fChoreographyStepIndex;
+       TRenderPass(OtherPass).fChoreographyStepSubPassIndex:=ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(OtherPass)));
+       inc(Index);
+      end else begin
+       break;
+      end;
      end;
     end;
    end else begin
