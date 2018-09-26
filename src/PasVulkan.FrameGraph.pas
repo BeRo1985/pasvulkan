@@ -1778,13 +1778,16 @@ begin
     Pass.fChoreographyStepIndex:=fChoreography.Add(ChoreographyStepRenderPass);
     TRenderPass(Pass).fChoreographyStepSubPassIndex:=ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(Pass)));
     inc(Index);
-    while (Index<Count) and
-          (TopologicalSortedPasses[Index] is TRenderPass) and
-          (TRenderPass(TopologicalSortedPasses[Index]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) do begin
+    while Index<Count do begin
      OtherPass:=TopologicalSortedPasses[Index];
-     OtherPass.fChoreographyStepIndex:=Pass.fChoreographyStepIndex;
-     TRenderPass(OtherPass).fChoreographyStepSubPassIndex:=ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(OtherPass)));
-     inc(Index);
+     if (OtherPass is TRenderPass) and
+        (TRenderPass(OtherPass).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) then begin
+      OtherPass.fChoreographyStepIndex:=Pass.fChoreographyStepIndex;
+      TRenderPass(OtherPass).fChoreographyStepSubPassIndex:=ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(OtherPass)));
+      inc(Index);
+     end else begin
+      break;
+     end;
     end;
    end else begin
     inc(Index);
