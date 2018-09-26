@@ -1787,6 +1787,7 @@ begin
          (TRenderPass(OtherPass).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) then begin
        OtherPass.fChoreographyStepIndex:=Pass.fChoreographyStepIndex;
        TRenderPass(OtherPass).fChoreographyStepSubPassIndex:=ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(OtherPass)));
+       fMaximumOverallChoreographyStepIndex:=Max(fMaximumOverallChoreographyStepIndex,OtherPass.fChoreographyStepIndex);
        inc(Index);
       end else begin
        break;
