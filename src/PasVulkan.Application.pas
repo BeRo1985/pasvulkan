@@ -1084,11 +1084,11 @@ type EpvApplication=class(Exception)
 
        fAvailableCPUCores:TPasMPAvailableCPUCores;
 
-       fVulkanCountCommandQueues:TpvInt32;
-
        fInternalUniversalQueueCommandPool:TpvVulkanCommandPool;
        fInternalUniversalQueueCommandBuffer:TpvVulkanCommandBuffer;
        fInternalUniversalQueueCommandBufferFence:TpvVulkanFence;
+
+{      fVulkanCountCommandQueues:TpvInt32;
 
        fVulkanCommandPools:array of TpvApplicationCommandPools;
        fVulkanCommandBuffers:array of TpvApplicationCommandBuffers;
@@ -1113,6 +1113,7 @@ type EpvApplication=class(Exception)
        fVulkanTransferCommandPools:TpvApplicationCommandPools;
        fVulkanTransferCommandBuffers:TpvApplicationCommandBuffers;
        fVulkanTransferCommandBufferFences:TpvApplicationCommandBufferFences;
+}
 
        fVulkanSurface:TpvVulkanSurface;
 
@@ -5280,7 +5281,7 @@ begin
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('Detected CPU thread count: '+IntToStr(fCountCPUThreads))));
 {$ifend}
 
- fVulkanCountCommandQueues:=0;
+{fVulkanCountCommandQueues:=0;
 
  fVulkanCommandPools:=nil;
  fVulkanCommandBuffers:=nil;
@@ -5304,7 +5305,7 @@ begin
 
  fVulkanTransferCommandPools:=nil;
  fVulkanTransferCommandBuffers:=nil;
- fVulkanTransferCommandBufferFences:=nil;
+ fVulkanTransferCommandBufferFences:=nil;}
 
  fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.None;
 
@@ -5614,7 +5615,7 @@ begin
 
   fInternalUniversalQueueCommandBufferFence:=TpvVulkanFence.Create(fVulkanDevice);
 
-  fVulkanCountCommandQueues:=length(fVulkanDevice.PhysicalDevice.QueueFamilyProperties);
+{ fVulkanCountCommandQueues:=length(fVulkanDevice.PhysicalDevice.QueueFamilyProperties);
   SetLength(fVulkanCommandPools,fVulkanCountCommandQueues,fCountCPUThreads+1,MaxSwapChainImages);
   SetLength(fVulkanCommandBuffers,fVulkanCountCommandQueues,fCountCPUThreads+1,MaxSwapChainImages);
   SetLength(fVulkanCommandBufferFences,fVulkanCountCommandQueues,fCountCPUThreads+1,MaxSwapChainImages);
@@ -5682,7 +5683,7 @@ begin
    fVulkanTransferCommandPools:=nil;
    fVulkanTransferCommandBuffers:=nil;
    fVulkanTransferCommandBufferFences:=nil;
-  end;
+  end;}
 
   fVulkanDepthImageFormat:=fVulkanDevice.PhysicalDevice.GetBestSupportedDepthFormat(false);
 
@@ -5833,7 +5834,7 @@ begin
   end;
  end;
 
- fVulkanUniversalCommandPools:=nil;
+{fVulkanUniversalCommandPools:=nil;
  fVulkanUniversalCommandBuffers:=nil;
  fVulkanUniversalCommandBufferFences:=nil;
 
@@ -5865,7 +5866,7 @@ begin
 
  fVulkanCommandPools:=nil;
  fVulkanCommandBuffers:=nil;
- fVulkanCommandBufferFences:=nil;
+ fVulkanCommandBufferFences:=nil;}
 
  FreeAndNil(fInternalUniversalQueueCommandBufferFence);
  FreeAndNil(fInternalUniversalQueueCommandBuffer);

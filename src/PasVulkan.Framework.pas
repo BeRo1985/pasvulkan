@@ -20678,7 +20678,7 @@ begin
 
   finally
    if (StagingBuffer<>aStagingBuffer) or not assigned(aStagingBuffer) then begin
-    StagingBuffer.Free;
+    FreeAndNil(StagingBuffer);
    end;
   end;
 
