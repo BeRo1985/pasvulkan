@@ -412,7 +412,8 @@ type EpvFrameGraph=class(Exception);
                      Enabled,
                      Used,
                      Processed,
-                     Marked
+                     Marked,
+                     SubPass
                     );
                    PFlag=^TFlag;
                    TFlags=set of TFlag;
@@ -426,8 +427,8 @@ type EpvFrameGraph=class(Exception);
               fNextPasses:TPassList;
               fIndex:TpvSizeInt;
               fTag:TpvSizeInt;
-              fChoreographyStepIndex:TpvSizeInt;
-              fChoreographyStepSubPassIndex:TpvSizeInt;
+              fVulkanPassIndex:TpvSizeInt;
+              fVulkanSubPassIndex:TpvSizeInt;
               function GetEnabled:boolean;
               procedure SetEnabled(const aEnabled:boolean);
               procedure SetName(const aName:TpvRawByteString);
@@ -537,7 +538,6 @@ type EpvFrameGraph=class(Exception);
              private
               fMultiViewMask:TpvUInt32;
               fAttachmentSize:TAttachmentSize;
-              fRenderPass:TpvVulkanRenderPass;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); override;
               destructor Destroy; override;
@@ -546,28 +546,28 @@ type EpvFrameGraph=class(Exception);
              published
               property MultiViewMask:TpvUInt32 read fMultiViewMask write fMultiViewMask;
             end;
-            TChoreographyStep=class
+            TVulkanPass=class
              private
               fFrameGraph:TpvFrameGraph;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
             end;
-            TChoreographyStepComputePass=class(TChoreographyStep)
+            TVulkanComputePass=class(TVulkanPass)
              private
               fComputePass:TComputePass;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aComputePass:TComputePass); reintroduce;
               destructor Destroy; override;
             end;
-            TChoreographyStepRenderPass=class(TChoreographyStep)
+            TVulkanRenderPass=class(TVulkanPass)
              public
               type TSubPass=class
                     private
-                     fChoreographyStepRenderPass:TChoreographyStepRenderPass;
+                     fChoreographyStepRenderPass:TVulkanRenderPass;
                      fRenderPass:TRenderPass;
                     public
-                     constructor Create(const aChoreographyStepRenderPass:TChoreographyStepRenderPass;
+                     constructor Create(const aChoreographyStepRenderPass:TVulkanRenderPass;
                                         const aRenderPass:TRenderPass); reintroduce;
                      destructor Destroy; override;
                    end;
@@ -578,7 +578,7 @@ type EpvFrameGraph=class(Exception);
               constructor Create(const aFrameGraph:TpvFrameGraph); overload;
               destructor Destroy; override;
             end;
-            TChoreography=TpvObjectGenericList<TChoreographyStep>;
+            TVulkanPasses=TpvObjectGenericList<TVulkanPass>;
       private
        fResourceTypes:TResourceTypeList;
        fResourceTypeNameHashMap:TResourceTypeNameHashMap;
@@ -590,9 +590,9 @@ type EpvFrameGraph=class(Exception);
        fPassNameHashMap:TPassNameHashMap;
        fRootPass:TPass;
        fEnforcedRootPass:TPass;
-       fMaximumOverallChoreographyStepIndex:TpvSizeInt;
+       fMaximumOverallVulkanPassIndex:TpvSizeInt;
        fValid:boolean;
-       fChoreography:TChoreography;
+       fVulkanPasses:TVulkanPasses;
       public
        constructor Create;
        destructor Destroy; override;
@@ -1012,6 +1012,10 @@ begin
 
  fFlags:=[TFlag.Enabled];
 
+ fVulkanPassIndex:=-1;
+
+ fVulkanSubPassIndex:=-1;
+
 end;
 
 destructor TpvFrameGraph.TPass.Destroy;
@@ -1389,36 +1393,36 @@ begin
  inherited Destroy;
 end;
 
-{ TpvFrameGraph.TChoreographyStep }
+{ TpvFrameGraph.TVulkanPass }
 
-constructor TpvFrameGraph.TChoreographyStep.Create(const aFrameGraph:TpvFrameGraph);
+constructor TpvFrameGraph.TVulkanPass.Create(const aFrameGraph:TpvFrameGraph);
 begin
  inherited Create;
  fFrameGraph:=aFrameGraph;
 end;
 
-destructor TpvFrameGraph.TChoreographyStep.Destroy;
+destructor TpvFrameGraph.TVulkanPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-{ TpvFrameGraph.TChoreographyStepComputePass }
+{ TpvFrameGraph.TVulkanComputePass }
 
-constructor TpvFrameGraph.TChoreographyStepComputePass.Create(const aFrameGraph:TpvFrameGraph;
+constructor TpvFrameGraph.TVulkanComputePass.Create(const aFrameGraph:TpvFrameGraph;
                                                               const aComputePass:TComputePass);
 begin
  inherited Create(aFrameGraph);
  fComputePass:=aComputePass;
 end;
 
-destructor TpvFrameGraph.TChoreographyStepComputePass.Destroy;
+destructor TpvFrameGraph.TVulkanComputePass.Destroy;
 begin
  inherited Destroy;
 end;
 
-{ TpvFrameGraph.TChoreographyStepRenderPass.TSubPass }
+{ TpvFrameGraph.TVulkanRenderPass.TSubPass }
 
-constructor TpvFrameGraph.TChoreographyStepRenderPass.TSubPass.Create(const aChoreographyStepRenderPass:TChoreographyStepRenderPass;
+constructor TpvFrameGraph.TVulkanRenderPass.TSubPass.Create(const aChoreographyStepRenderPass:TVulkanRenderPass;
                                                                       const aRenderPass:TRenderPass);
 begin
  inherited Create;
@@ -1426,21 +1430,21 @@ begin
  fRenderPass:=aRenderPass;
 end;
 
-destructor TpvFrameGraph.TChoreographyStepRenderPass.TSubPass.Destroy;
+destructor TpvFrameGraph.TVulkanRenderPass.TSubPass.Destroy;
 begin
  inherited Destroy;
 end;
 
-{ TpvFrameGraph.TChoreographyStepRenderPass }
+{ TpvFrameGraph.TVulkanRenderPass }
 
-constructor TpvFrameGraph.TChoreographyStepRenderPass.Create(const aFrameGraph:TpvFrameGraph);
+constructor TpvFrameGraph.TVulkanRenderPass.Create(const aFrameGraph:TpvFrameGraph);
 begin
  inherited Create(aFrameGraph);
  fSubPasses:=TSubPasses.Create;
  fSubPasses.OwnsObjects:=true;
 end;
 
-destructor TpvFrameGraph.TChoreographyStepRenderPass.Destroy;
+destructor TpvFrameGraph.TVulkanRenderPass.Destroy;
 begin
  FreeAndNil(fSubPasses);
  inherited Destroy;
@@ -1474,15 +1478,15 @@ begin
 
  fPassNameHashMap:=TPassNameHashMap.Create(nil);
 
- fChoreography:=TChoreography.Create;
- fChoreography.OwnsObjects:=true;
+ fVulkanPasses:=TVulkanPasses.Create;
+ fVulkanPasses.OwnsObjects:=true;
 
 end;
 
 destructor TpvFrameGraph.Destroy;
 begin
 
- FreeAndNil(fChoreography);
+ FreeAndNil(fVulkanPasses);
 
  FreeAndNil(fResourceTypes);
 
@@ -1588,7 +1592,7 @@ var Temporary,
     ResourceReuseGroup:TResourceReuseGroup;
     ResourceType:TResourceType;
     TopologicalSortedPasses:TPassList;
-    ChoreographyStepRenderPass:TChoreographyStepRenderPass;
+    VulkanRenderPass:TVulkanRenderPass;
 begin
 
  // Indexing passes
@@ -1686,8 +1690,8 @@ begin
   Stack.Initialize;
   try
    for Pass in fPasses do begin
-    Pass.fChoreographyStepIndex:=-1;
-    Pass.fChoreographyStepSubPassIndex:=-1;
+    Pass.fVulkanPassIndex:=-1;
+    Pass.fVulkanSubPassIndex:=-1;
     Pass.fFlags:=Pass.fFlags-[TPass.TFlag.Used,TPass.TFlag.Processed,TPass.TFlag.Marked];
     Pass.fPreviousPasses.Clear;
     Pass.fNextPasses.Clear;
@@ -1765,19 +1769,19 @@ begin
 
   // Construct choreography together with merging render passes to sub passes of a real
   // Vulkan render pass
-  fChoreography.Clear;
-  fMaximumOverallChoreographyStepIndex:=0;
+  fVulkanPasses.Clear;
+  fMaximumOverallVulkanPassIndex:=0;
   Index:=0;
   Count:=TopologicalSortedPasses.Count;
   while Index<Count do begin
    Pass:=TopologicalSortedPasses[Index];
    if Pass is TComputePass then begin
-    Pass.fChoreographyStepIndex:=fChoreography.Add(TChoreographyStepComputePass.Create(self,TComputePass(Pass)));
+    Pass.fVulkanPassIndex:=fVulkanPasses.Add(TVulkanComputePass.Create(self,TComputePass(Pass)));
     inc(Index);
    end else if Pass is TRenderPass then begin
-    ChoreographyStepRenderPass:=TChoreographyStepRenderPass.Create(self);
-    Pass.fChoreographyStepIndex:=fChoreography.Add(ChoreographyStepRenderPass);
-    TRenderPass(Pass).fChoreographyStepSubPassIndex:=ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(Pass)));
+    VulkanRenderPass:=TVulkanRenderPass.Create(self);
+    Pass.fVulkanPassIndex:=fVulkanPasses.Add(VulkanRenderPass);
+    TRenderPass(Pass).fVulkanSubPassIndex:=VulkanRenderPass.fSubPasses.Add(TVulkanRenderPass.TSubPass.Create(VulkanRenderPass,TRenderPass(Pass)));
     inc(Index);
     if not (TPass.TFlag.Toggleable in Pass.fFlags) then begin
      while Index<Count do begin
@@ -1785,9 +1789,9 @@ begin
       if (not (TPass.TFlag.Toggleable in OtherPass.fFlags)) and
          (OtherPass is TRenderPass) and
          (TRenderPass(OtherPass).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) then begin
-       OtherPass.fChoreographyStepIndex:=Pass.fChoreographyStepIndex;
-       TRenderPass(OtherPass).fChoreographyStepSubPassIndex:=ChoreographyStepRenderPass.fSubPasses.Add(TChoreographyStepRenderPass.TSubPass.Create(ChoreographyStepRenderPass,TRenderPass(OtherPass)));
-       fMaximumOverallChoreographyStepIndex:=Max(fMaximumOverallChoreographyStepIndex,OtherPass.fChoreographyStepIndex);
+       OtherPass.fVulkanPassIndex:=Pass.fVulkanPassIndex;
+       TRenderPass(OtherPass).fVulkanSubPassIndex:=VulkanRenderPass.fSubPasses.Add(TVulkanRenderPass.TSubPass.Create(VulkanRenderPass,TRenderPass(OtherPass)));
+       fMaximumOverallVulkanPassIndex:=Max(fMaximumOverallVulkanPassIndex,OtherPass.fVulkanPassIndex);
        inc(Index);
       end else begin
        break;
@@ -1797,7 +1801,7 @@ begin
    end else begin
     inc(Index);
    end;
-   fMaximumOverallChoreographyStepIndex:=Max(fMaximumOverallChoreographyStepIndex,Pass.fChoreographyStepIndex);
+   fMaximumOverallVulkanPassIndex:=Max(fMaximumOverallVulkanPassIndex,Pass.fVulkanPassIndex);
   end;
 
   // Calculate resource lifetimes (from minimum choreography step index to maximum
@@ -1807,7 +1811,7 @@ begin
    Resource.fMaximumChoreographyStepIndex:=Low(TpvSizeInt);
    for ResourceTransition in Resource.fResourceTransitions do begin
     Pass:=ResourceTransition.fPass;
-    if Pass.fChoreographyStepIndex>=0 then begin
+    if Pass.fVulkanPassIndex>=0 then begin
      if ((ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
                                      TResourceTransition.TFlag.NextFrameOutput])<>[]) or
         ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
@@ -1818,16 +1822,16 @@ begin
       if not Resource.fUsed then begin
        Resource.fUsed:=true;
        Resource.fMinimumChoreographyStepIndex:=0;
-       Resource.fMaximumChoreographyStepIndex:=fMaximumOverallChoreographyStepIndex;
+       Resource.fMaximumChoreographyStepIndex:=fMaximumOverallVulkanPassIndex;
       end;
      end else begin
       if Resource.fUsed then begin
-       Resource.fMinimumChoreographyStepIndex:=Min(Resource.fMinimumChoreographyStepIndex,Pass.fChoreographyStepIndex);
-       Resource.fMaximumChoreographyStepIndex:=Max(Resource.fMaximumChoreographyStepIndex,Pass.fChoreographyStepIndex);
+       Resource.fMinimumChoreographyStepIndex:=Min(Resource.fMinimumChoreographyStepIndex,Pass.fVulkanPassIndex);
+       Resource.fMaximumChoreographyStepIndex:=Max(Resource.fMaximumChoreographyStepIndex,Pass.fVulkanPassIndex);
       end else begin
        Resource.fUsed:=true;
-       Resource.fMinimumChoreographyStepIndex:=Pass.fChoreographyStepIndex;
-       Resource.fMaximumChoreographyStepIndex:=Pass.fChoreographyStepIndex;
+       Resource.fMinimumChoreographyStepIndex:=Pass.fVulkanPassIndex;
+       Resource.fMaximumChoreographyStepIndex:=Pass.fVulkanPassIndex;
       end;
      end;
     end;
@@ -1989,7 +1993,7 @@ begin
      end;
 
     finally
-     TRenderPass(Pass).fRenderPass:=VulkanRenderPass;
+//     TRenderPass(Pass).fRenderPass:=VulkanRenderPass;
     end;
 
    end;
@@ -2006,7 +2010,7 @@ begin
   if TPass.TFlag.Used in Pass.fFlags then begin
    if Pass is TComputePass then begin
    end else if Pass is TRenderPass then begin
-    FreeAndNil(TRenderPass(Pass).fRenderPass);
+//    FreeAndNil(TRenderPass(Pass).fRenderPass);
    end;
   end;
  end;

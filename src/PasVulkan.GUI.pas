@@ -6414,6 +6414,12 @@ var Stream:TStream;
     CacheStoragePath,CacheStorageFile:string;
     FileStream:TFileStream;
     CacheStorageCacheVersionGUID:TGUID;
+    VulkanGraphicsCommandPool:TpvVulkanCommandPool;
+    VulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+    VulkanGraphicsCommandBufferFence:TpvVulkanFence;
+    VulkanTransferCommandPool:TpvVulkanCommandPool;
+    VulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
+    VulkanTransferCommandBufferFence:TpvVulkanFence;
 begin
 
  fSpacing:=4.0;
@@ -7147,13 +7153,59 @@ begin
 
  end;
 
- fSignedDistanceFieldSpriteAtlas.MipMaps:=false;
- fSignedDistanceFieldSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
-                                        pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                                        pvApplication.VulkanGraphicsCommandBufferFences[0,0],
-                                        pvApplication.VulkanDevice.TransferQueue,
-                                        pvApplication.VulkanTransferCommandBuffers[0,0],
-                                        pvApplication.VulkanTransferCommandBufferFences[0,0]);
+ VulkanGraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                        pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+                                                        TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+ try
+
+  VulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(VulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  try
+
+   VulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+   try
+
+    VulkanTransferCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                           pvApplication.VulkanDevice.TransferQueueFamilyIndex,
+                                                           TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+    try
+
+     VulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(VulkanTransferCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+     try
+
+      VulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+      try
+
+       fSignedDistanceFieldSpriteAtlas.MipMaps:=false;
+       fSignedDistanceFieldSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
+                                              VulkanGraphicsCommandBuffer,
+                                              VulkanGraphicsCommandBufferFence,
+                                              pvApplication.VulkanDevice.TransferQueue,
+                                              VulkanTransferCommandBuffer,
+                                              VulkanTransferCommandBufferFence);
+
+      finally
+       FreeAndNil(VulkanTransferCommandBufferFence);
+      end;
+
+     finally
+      FreeAndNil(VulkanTransferCommandBuffer);
+     end;
+
+    finally
+     FreeAndNil(VulkanTransferCommandPool);
+    end;
+
+   finally
+    FreeAndNil(VulkanGraphicsCommandBufferFence);
+   end;
+
+  finally
+   FreeAndNil(VulkanGraphicsCommandBuffer);
+  end;
+
+ finally
+  FreeAndNil(VulkanGraphicsCommandPool);
+ end;
 
 {SignedDistanceFieldSpriteAtlas.SaveToFile('testbla.zip');
 

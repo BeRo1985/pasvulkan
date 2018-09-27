@@ -1086,6 +1086,10 @@ type EpvApplication=class(Exception)
 
        fVulkanCountCommandQueues:TpvInt32;
 
+       fInternalUniversalQueueCommandPool:TpvVulkanCommandPool;
+       fInternalUniversalQueueCommandBuffer:TpvVulkanCommandBuffer;
+       fInternalUniversalQueueCommandBufferFence:TpvVulkanFence;
+
        fVulkanCommandPools:array of TpvApplicationCommandPools;
        fVulkanCommandBuffers:array of TpvApplicationCommandBuffers;
        fVulkanCommandBufferFences:array of TpvApplicationCommandBufferFences;
@@ -1400,7 +1404,7 @@ type EpvApplication=class(Exception)
        property VulkanPipelineCache:TpvVulkanPipelineCache read fVulkanPipelineCache;
 
        property VulkanPipelineCacheFileName:string read fVulkanPipelineCacheFileName write fVulkanPipelineCacheFileName;
-
+{
        property VulkanUniversalCommandPools:TpvApplicationCommandPools read fVulkanUniversalCommandPools;
        property VulkanUniversalCommandBuffers:TpvApplicationCommandBuffers read fVulkanUniversalCommandBuffers;
        property VulkamUniversalCommandBufferFences:TpvApplicationCommandBufferFences read fVulkanUniversalCommandBufferFences;
@@ -1420,6 +1424,7 @@ type EpvApplication=class(Exception)
        property VulkanTransferCommandPools:TpvApplicationCommandPools read fVulkanTransferCommandPools;
        property VulkanTransferCommandBuffers:TpvApplicationCommandBuffers read fVulkanTransferCommandBuffers;
        property VulkanTransferCommandBufferFences:TpvApplicationCommandBufferFences read fVulkanTransferCommandBufferFences;
+ }
 
        property VulkanSwapChain:TpvVulkanSwapChain read fVulkanSwapChain;
 
@@ -5601,6 +5606,14 @@ begin
 {$ifend}
   end;
 
+  fInternalUniversalQueueCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                    fVulkanDevice.UniversalQueueFamilyIndex,
+                                                    TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+  fInternalUniversalQueueCommandBuffer:=TpvVulkanCommandBuffer.Create(fInternalUniversalQueueCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+  fInternalUniversalQueueCommandBufferFence:=TpvVulkanFence.Create(fVulkanDevice);
+
   fVulkanCountCommandQueues:=length(fVulkanDevice.PhysicalDevice.QueueFamilyProperties);
   SetLength(fVulkanCommandPools,fVulkanCountCommandQueues,fCountCPUThreads+1,MaxSwapChainImages);
   SetLength(fVulkanCommandBuffers,fVulkanCountCommandQueues,fCountCPUThreads+1,MaxSwapChainImages);
@@ -5853,6 +5866,10 @@ begin
  fVulkanCommandPools:=nil;
  fVulkanCommandBuffers:=nil;
  fVulkanCommandBufferFences:=nil;
+
+ FreeAndNil(fInternalUniversalQueueCommandBufferFence);
+ FreeAndNil(fInternalUniversalQueueCommandBuffer);
+ FreeAndNil(fInternalUniversalQueueCommandPool);
 
  //FreeAndNil(VulkanPresentationSurface);
  FreeAndNil(fVulkanPipelineCache);
@@ -6161,9 +6178,9 @@ begin
                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                   nil,
-                                  VulkanPresentCommandBuffers[0,0],
-                                  fVulkanDevice.PresentQueue,
-                                  VulkanPresentCommandBufferFences[0,0],
+                                  fInternalUniversalQueueCommandBuffer,
+                                  fVulkanDevice.UniversalQueue, //.PresentQueue,
+                                  fInternalUniversalQueueCommandBufferFence,
                                   true);
 
    ColorAttachmentImageView:=TpvVulkanImageView.Create(fVulkanDevice,
@@ -6201,9 +6218,9 @@ begin
  end;
 
  fVulkanDepthFrameBufferAttachment:=TpvVulkanFrameBufferAttachment.Create(fVulkanDevice,
-                                                                          fVulkanDevice.GraphicsQueue,
-                                                                          VulkanGraphicsCommandBuffers[0,0],
-                                                                          VulkanGraphicsCommandBufferFences[0,0],
+                                                                          fVulkanDevice.UniversalQueue, //.GraphicsQueue,
+                                                                          fInternalUniversalQueueCommandBuffer,
+                                                                          fInternalUniversalQueueCommandBufferFence,
                                                                           fVulkanSwapChain.Width,
                                                                           fVulkanSwapChain.Height,
                                                                           fVulkanDepthImageFormat,
@@ -6574,11 +6591,11 @@ begin
   if assigned(fVulkanPresentToDrawImageBarrierCommandBuffers[fRealUsedDrawSwapChainImageIndex]) then begin
    // If present and graphics queue families are different, then a image barrier is required
    fVulkanPresentToDrawImageBarrierCommandBuffers[fRealUsedDrawSwapChainImageIndex].Execute(fVulkanDevice.GraphicsQueue,
-                                                                                       TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                                                       fVulkanWaitSemaphore,
-                                                                                       fVulkanPresentToDrawImageBarrierCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex],
-                                                                                       nil,
-                                                                                       false);
+                                                                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                            fVulkanWaitSemaphore,
+                                                                                            fVulkanPresentToDrawImageBarrierCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex],
+                                                                                            nil,
+                                                                                            false);
    fVulkanWaitSemaphore:=fVulkanPresentToDrawImageBarrierCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex];
   end;
 

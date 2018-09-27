@@ -35,6 +35,12 @@ uses SysUtils,
 
 type TScreenExampleCanvas=class(TpvApplicationScreen)
       private
+       fVulkanGraphicsCommandPool:TpvVulkanCommandPool;
+       fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+       fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
+       fVulkanTransferCommandPool:TpvVulkanCommandPool;
+       fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
+       fVulkanTransferCommandBufferFence:TpvVulkanFence;
        fVulkanRenderPass:TpvVulkanRenderPass;
        fVulkanCommandPool:TpvVulkanCommandPool;
        fVulkanRenderCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
@@ -135,6 +141,22 @@ var Stream:TStream;
 begin
  inherited Show;
 
+ fVulkanGraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                         pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+                                                         TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+ fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+ fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+
+ fVulkanTransferCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                         pvApplication.VulkanDevice.TransferQueueFamilyIndex,
+                                                         TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+ fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanTransferCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+ fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
                                                  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
@@ -147,11 +169,11 @@ begin
 
  fVulkanCanvas:=TpvCanvas.Create(pvApplication.VulkanDevice,
                                  pvApplication.VulkanDevice.GraphicsQueue,
-                                 pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                                 pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                 fVulkanGraphicsCommandBuffer,
+                                 fVulkanGraphicsCommandBufferFence,
                                  pvApplication.VulkanDevice.TransferQueue,
-                                 pvApplication.VulkanTransferCommandBuffers[0,0],
-                                 pvApplication.VulkanTransferCommandBufferFences[0,0],
+                                 fVulkanTransferCommandBuffer,
+                                 fVulkanTransferCommandBufferFence,
                                  pvApplication.VulkanPipelineCache,
                                  MaxSwapChainImages);
 
@@ -298,28 +320,28 @@ begin
  end;
 
  fVulkanFontSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
-                               pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                               pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                               fVulkanGraphicsCommandBuffer,
+                               fVulkanGraphicsCommandBufferFence,
                                pvApplication.VulkanDevice.TransferQueue,
-                               pvApplication.VulkanTransferCommandBuffers[0,0],
-                               pvApplication.VulkanTransferCommandBufferFences[0,0]);
+                               fVulkanTransferCommandBuffer,
+                               fVulkanTransferCommandBufferFence);
 
  fVulkanSpriteAtlas.Upload(pvApplication.VulkanDevice.GraphicsQueue,
-                           pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                           pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                           fVulkanGraphicsCommandBuffer,
+                           fVulkanGraphicsCommandBufferFence,
                            pvApplication.VulkanDevice.TransferQueue,
-                           pvApplication.VulkanTransferCommandBuffers[0,0],
-                           pvApplication.VulkanTransferCommandBufferFences[0,0]);
+                           fVulkanTransferCommandBuffer,
+                           fVulkanTransferCommandBufferFence);
 
  Stream:=pvApplication.Assets.GetAssetStream('textures/treeleafs.jpg');
  try
   fTextureTreeLeafs:=TpvVulkanTexture.CreateFromJPEG(pvApplication.VulkanDevice,
                                                      pvApplication.VulkanDevice.GraphicsQueue,
-                                                     pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                                                     pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                                     fVulkanGraphicsCommandBuffer,
+                                                     fVulkanGraphicsCommandBufferFence,
                                                      pvApplication.VulkanDevice.TransferQueue,
-                                                     pvApplication.VulkanTransferCommandBuffers[0,0],
-                                                     pvApplication.VulkanTransferCommandBufferFences[0,0],
+                                                     fVulkanTransferCommandBuffer,
+                                                     fVulkanTransferCommandBufferFence,
                                                      Stream,
                                                      true,
                                                      true);
@@ -351,6 +373,12 @@ begin
   FreeAndNil(fVulkanRenderSemaphores[Index]);
  end;
  FreeAndNil(fVulkanCommandPool);
+ FreeAndNil(fVulkanTransferCommandBufferFence);
+ FreeAndNil(fVulkanTransferCommandBuffer);
+ FreeAndNil(fVulkanTransferCommandPool);
+ FreeAndNil(fVulkanGraphicsCommandBufferFence);
+ FreeAndNil(fVulkanGraphicsCommandBuffer);
+ FreeAndNil(fVulkanGraphicsCommandPool);
  inherited Hide;
 end;
 

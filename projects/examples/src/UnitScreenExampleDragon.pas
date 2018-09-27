@@ -48,6 +48,12 @@ type PScreenExampleDragonUniformBuffer=^TScreenExampleDragonUniformBuffer;
 
      TScreenExampleDragon=class(TpvApplicationScreen)
       private
+       fVulkanGraphicsCommandPool:TpvVulkanCommandPool;
+       fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+       fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
+       fVulkanTransferCommandPool:TpvVulkanCommandPool;
+       fVulkanTransferCommandBuffer:TpvVulkanCommandBuffer;
+       fVulkanTransferCommandBufferFence:TpvVulkanFence;
        fDragonVertexShaderModule:TpvVulkanShaderModule;
        fDragonFragmentShaderModule:TpvVulkanShaderModule;
        fVulkanPipelineShaderStageDragonVertex:TpvVulkanPipelineShaderStage;
@@ -132,6 +138,22 @@ var Stream:TStream;
 begin
  inherited Show;
 
+ fVulkanGraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                         pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+                                                         TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+ fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+ fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+
+ fVulkanTransferCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                         pvApplication.VulkanDevice.TransferQueueFamilyIndex,
+                                                         TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+ fVulkanTransferCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanTransferCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+ fVulkanTransferCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+
  fVulkanCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
                                                  pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
                                                  TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
@@ -156,11 +178,11 @@ begin
 
  fBoxAlbedoTexture:=TpvVulkanTexture.CreateDefault(pvApplication.VulkanDevice,
                                                    pvApplication.VulkanDevice.GraphicsQueue,
-                                                   pvApplication.VulkanGraphicsCommandBuffers[0,0],
-                                                   pvApplication.VulkanGraphicsCommandBufferFences[0,0],
+                                                   fVulkanGraphicsCommandBuffer,
+                                                   fVulkanGraphicsCommandBufferFence,
                                                    pvApplication.VulkanDevice.TransferQueue,
-                                                   pvApplication.VulkanTransferCommandBuffers[0,0],
-                                                   pvApplication.VulkanTransferCommandBufferFences[0,0],
+                                                   fVulkanTransferCommandBuffer,
+                                                   fVulkanTransferCommandBufferFence,
                                                    TpvVulkanTextureDefaultType.Checkerboard,
                                                    512,
                                                    512,
@@ -190,8 +212,8 @@ begin
  try
   fVulkanModel.LoadFromStream(Stream);
   fVulkanModel.Upload(pvApplication.VulkanDevice.TransferQueue,
-                      pvApplication.VulkanTransferCommandBuffers[0,0],
-                      pvApplication.VulkanTransferCommandBufferFences[0,0]);
+                      fVulkanTransferCommandBuffer,
+                      fVulkanTransferCommandBufferFence);
  finally
   Stream.Free;
  end;
@@ -211,8 +233,8 @@ begin
                                                        [TpvVulkanBufferFlag.PersistentMapped]
                                                       );
   fVulkanUniformBuffers[Index].UploadData(pvApplication.VulkanDevice.TransferQueue,
-                                          pvApplication.VulkanTransferCommandBuffers[0,0],
-                                          pvApplication.VulkanTransferCommandBufferFences[0,0],
+                                          fVulkanTransferCommandBuffer,
+                                          fVulkanTransferCommandBufferFence,
                                           fUniformBuffer,
                                           0,
                                           SizeOf(TScreenExampleDragonUniformBuffer),
@@ -295,6 +317,12 @@ begin
   FreeAndNil(fVulkanRenderSemaphores[Index]);
  end;
  FreeAndNil(fVulkanCommandPool);
+ FreeAndNil(fVulkanTransferCommandBufferFence);
+ FreeAndNil(fVulkanTransferCommandBuffer);
+ FreeAndNil(fVulkanTransferCommandPool);
+ FreeAndNil(fVulkanGraphicsCommandBufferFence);
+ FreeAndNil(fVulkanGraphicsCommandBuffer);
+ FreeAndNil(fVulkanGraphicsCommandPool);
  inherited Hide;
 end;
 
