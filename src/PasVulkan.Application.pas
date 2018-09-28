@@ -1275,6 +1275,8 @@ type EpvApplication=class(Exception)
 
        class procedure Log(const aLevel:TpvInt32;const aWhere,aWhat:string); static;
 
+       procedure AddQueues; virtual;
+
        procedure ReadConfig; virtual;
        procedure SaveConfig; virtual;
 
@@ -5516,6 +5518,11 @@ begin
  end;
 end;
 
+procedure TpvApplication.AddQueues;
+begin
+ fVulkanDevice.AddQueues;
+end;
+
 procedure TpvApplication.CreateVulkanDevice(const aSurface:TpvVulkanSurface=nil);
 var QueueFamilyIndex,ThreadIndex,SwapChainImageIndex,Index:TpvInt32;
     FormatProperties:TVkFormatProperties;
@@ -5564,7 +5571,7 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Adding vulkan device queues');
 {$ifend}
-  fVulkanDevice.AddQueues;
+  AddQueues;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Added vulkan device queues');
 {$ifend}
