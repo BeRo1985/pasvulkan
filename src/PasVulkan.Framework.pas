@@ -782,6 +782,11 @@ type EpvVulkanException=class(Exception);
        fGraphicsQueue:TpvVulkanQueue;
        fComputeQueue:TpvVulkanQueue;
        fTransferQueue:TpvVulkanQueue;
+       fUniversalQueues:TpvVulkanQueues;
+       fPresentQueues:TpvVulkanQueues;
+       fGraphicsQueues:TpvVulkanQueues;
+       fComputeQueues:TpvVulkanQueues;
+       fTransferQueues:TpvVulkanQueues;
        fMemoryManager:TpvVulkanDeviceMemoryManager;
        fCanvasCommon:TObject;
       protected
@@ -825,6 +830,11 @@ type EpvVulkanException=class(Exception);
        property GraphicsQueue:TpvVulkanQueue read fGraphicsQueue;
        property ComputeQueue:TpvVulkanQueue read fComputeQueue;
        property TransferQueue:TpvVulkanQueue read fTransferQueue;
+       property UniversalQueues:TpvVulkanQueues read fUniversalQueues;
+       property PresentQueues:TpvVulkanQueues read fPresentQueues;
+       property GraphicsQueues:TpvVulkanQueues read fGraphicsQueues;
+       property ComputeQueues:TpvVulkanQueues read fComputeQueues;
+       property TransferQueues:TpvVulkanQueues read fTransferQueues;
        property MemoryManager:TpvVulkanDeviceMemoryManager read fMemoryManager;
        property CanvasCommon:TObject read fCanvasCommon write fCanvasCommon;
      end;
@@ -8296,6 +8306,12 @@ begin
  fComputeQueue:=nil;
  fTransferQueue:=nil;
 
+ fUniversalQueues:=nil;
+ fPresentQueues:=nil;
+ fGraphicsQueues:=nil;
+ fComputeQueues:=nil;
+ fTransferQueues:=nil;
+
  if assigned(aPhysicalDevice) then begin
   fPhysicalDevice:=aPhysicalDevice;
  end else begin
@@ -8401,6 +8417,11 @@ begin
   end;
  end;
  fQueueFamilyQueues:=nil;
+ fUniversalQueues:=nil;
+ fPresentQueues:=nil;
+ fGraphicsQueues:=nil;
+ fComputeQueues:=nil;
+ fTransferQueues:=nil;
  FreeAndNil(fMemoryManager);
  FreeAndNil(fDeviceVulkan);
  if fDeviceHandle<>VK_NULL_HANDLE then begin
@@ -8784,32 +8805,42 @@ begin
 
   if fUniversalQueueFamilyIndex>=0 then begin
    fUniversalQueue:=fQueueFamilyQueues[fUniversalQueueFamilyIndex,0];
+   fUniversalQueues:=fQueueFamilyQueues[fUniversalQueueFamilyIndex];
   end else begin
    fUniversalQueue:=nil;
+   fUniversalQueues:=nil;
   end;
 
   if fPresentQueueFamilyIndex>=0 then begin
    fPresentQueue:=fQueueFamilyQueues[fPresentQueueFamilyIndex,0];
+   fPresentQueues:=fQueueFamilyQueues[fPresentQueueFamilyIndex];
   end else begin
    fPresentQueue:=nil;
+   fPresentQueues:=nil;
   end;
 
   if fGraphicsQueueFamilyIndex>=0 then begin
    fGraphicsQueue:=fQueueFamilyQueues[fGraphicsQueueFamilyIndex,0];
+   fGraphicsQueues:=fQueueFamilyQueues[fGraphicsQueueFamilyIndex];
   end else begin
    fGraphicsQueue:=nil;
+   fGraphicsQueues:=nil;
   end;
 
   if fComputeQueueFamilyIndex>=0 then begin
    fComputeQueue:=fQueueFamilyQueues[fComputeQueueFamilyIndex,0];
+   fComputeQueues:=fQueueFamilyQueues[fComputeQueueFamilyIndex];
   end else begin
    fComputeQueue:=nil;
+   fComputeQueues:=nil;
   end;
 
   if fTransferQueueFamilyIndex>=0 then begin
    fTransferQueue:=fQueueFamilyQueues[fTransferQueueFamilyIndex,0];
+   fTransferQueues:=fQueueFamilyQueues[fTransferQueueFamilyIndex];
   end else begin
    fTransferQueue:=nil;
+   fTransferQueues:=nil;
   end;
 
   fMemoryManager.Initialize;
