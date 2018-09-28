@@ -5489,7 +5489,7 @@ begin
 end;
 
 procedure TpvApplication.VulkanWaitIdle;
-var Index:TpvInt32;
+var Index,SubIndex:TpvInt32;
 begin
  if assigned(fVulkanDevice) then begin
   fVulkanDevice.WaitIdle;
@@ -5505,9 +5505,11 @@ begin
     fVulkanWaitFencesReady[Index]:=false;
    end;
   end;
-  for Index:=0 to length(fVulkanDevice.Queues)-1 do begin
-   if assigned(fVulkanDevice.Queues[Index]) then begin
-    fVulkanDevice.Queues[Index].WaitIdle;
+  for Index:=0 to length(fVulkanDevice.QueueFamilyQueues)-1 do begin
+   for SubIndex:=0 to length(fVulkanDevice.QueueFamilyQueues[Index])-1 do begin
+    if assigned(fVulkanDevice.QueueFamilyQueues[Index,SubIndex]) then begin
+     fVulkanDevice.QueueFamilyQueues[Index,SubIndex].WaitIdle;
+    end;
    end;
   end;
   fVulkanDevice.WaitIdle;

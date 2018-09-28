@@ -750,6 +750,8 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanQueues=array of TpvVulkanQueue;
 
+     TpvVulkanQueueFamilyQueues=array of TpvVulkanQueues;
+
      TpvVulkanDevice=class(TpvVulkanObject)
       private
        fInstance:TpvVulkanInstance;
@@ -774,7 +776,7 @@ type EpvVulkanException=class(Exception);
        fGraphicsQueueFamilyIndex:TpvInt32;
        fComputeQueueFamilyIndex:TpvInt32;
        fTransferQueueFamilyIndex:TpvInt32;
-       fQueues:TpvVulkanQueues;
+       fQueueFamilyQueues:TpvVulkanQueueFamilyQueues;
        fUniversalQueue:TpvVulkanQueue;
        fPresentQueue:TpvVulkanQueue;
        fGraphicsQueue:TpvVulkanQueue;
@@ -817,7 +819,7 @@ type EpvVulkanException=class(Exception);
        property GraphicsQueueFamilyIndex:TpvInt32 read fGraphicsQueueFamilyIndex;
        property ComputeQueueFamilyIndex:TpvInt32 read fComputeQueueFamilyIndex;
        property TransferQueueFamilyIndex:TpvInt32 read fTransferQueueFamilyIndex;
-       property Queues:TpvVulkanQueues read fQueues;
+       property QueueFamilyQueues:TpvVulkanQueueFamilyQueues read fQueueFamilyQueues;
        property UniversalQueue:TpvVulkanQueue read fUniversalQueue;
        property PresentQueue:TpvVulkanQueue read fPresentQueue;
        property GraphicsQueue:TpvVulkanQueue read fGraphicsQueue;
@@ -8280,7 +8282,7 @@ begin
 
  fDeviceVulkan:=nil;
 
- fQueues:=nil;
+ fQueueFamilyQueues:=nil;
 
  fUniversalQueueFamilyIndex:=-1;
  fPresentQueueFamilyIndex:=-1;
@@ -8390,18 +8392,17 @@ begin
 end;
 
 destructor TpvVulkanDevice.Destroy;
-var Index:TpvInt32;
+var Index,SubIndex:TpvInt32;
 begin
  FreeAndNil(fCanvasCommon);
- for Index:=0 to length(fQueues)-1 do begin
-  if assigned(fQueues[Index]) then begin
-   fQueues[Index].Free;
-   fQueues[Index]:=nil;
+ for Index:=0 to length(fQueueFamilyQueues)-1 do begin
+  for SubIndex:=0 to length(fQueueFamilyQueues[Index])-1 do begin
+   FreeAndNil(fQueueFamilyQueues[Index,SubIndex]);
   end;
  end;
- SetLength(fQueues,0);
- fMemoryManager.Free;
- fDeviceVulkan.Free;
+ fQueueFamilyQueues:=nil;
+ FreeAndNil(fMemoryManager);
+ FreeAndNil(fDeviceVulkan);
  if fDeviceHandle<>VK_NULL_HANDLE then begin
   fInstance.Commands.DestroyDevice(fDeviceHandle,fAllocationCallbacks);
   fDeviceHandle:=VK_NULL_HANDLE;
@@ -8418,7 +8419,9 @@ begin
 end;
 
 procedure TpvVulkanDevice.AddQueue(const aQueueFamilyIndex:TpvUInt32;const aQueuePriorities:array of TpvFloat;const aSurface:TpvVulkanSurface=nil);
-var QueueFamilyProperties:PVkQueueFamilyProperties;
+var Index:TpvSizeInt;
+    QueueFamilyProperties:PVkQueueFamilyProperties;
+    VulkanDeviceQueueCreateInfo:TpvVulkanDeviceQueueCreateInfo;
 begin
  if aQueueFamilyIndex<TpvUInt32(length(fPhysicalDevice.fQueueFamilyProperties)) then begin
   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[aQueueFamilyIndex];
@@ -8442,7 +8445,22 @@ begin
   if ((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueFamilyIndex<0) then begin
    fTransferQueueFamilyIndex:=aQueueFamilyIndex;
   end;
-  fDeviceQueueCreateInfoList.Add(TpvVulkanDeviceQueueCreateInfo.Create(aQueueFamilyIndex,aQueuePriorities));
+  VulkanDeviceQueueCreateInfo:=nil;
+  for Index:=0 to fDeviceQueueCreateInfoList.Count-1 do begin
+   if fDeviceQueueCreateInfoList[Index].fQueueFamilyIndex=aQueueFamilyIndex then begin
+    VulkanDeviceQueueCreateInfo:=fDeviceQueueCreateInfoList[Index];
+    break;
+   end;
+  end;
+  if assigned(VulkanDeviceQueueCreateInfo) then begin
+   if length(aQueuePriorities)>0 then begin
+    Index:=length(VulkanDeviceQueueCreateInfo.fQueuePriorities);
+    SetLength(VulkanDeviceQueueCreateInfo.fQueuePriorities,Index+length(aQueuePriorities));
+    Move(aQueuePriorities[0],VulkanDeviceQueueCreateInfo.fQueuePriorities[Index],length(aQueuePriorities)*SizeOf(TVkFloat));
+   end;
+  end else begin
+   fDeviceQueueCreateInfoList.Add(TpvVulkanDeviceQueueCreateInfo.Create(aQueueFamilyIndex,aQueuePriorities));
+  end;
  end else begin
   raise EpvVulkanException.Create('Queue family index out of bounds');
  end;
@@ -8460,7 +8478,7 @@ procedure TpvVulkanDevice.AddQueues(const aScanUniversal:boolean=true;
                                     const aNeedTransfer:boolean=true;
                                     const aNeedSparseBinding:boolean=false;
                                     const aSurface:TpvVulkanSurface=nil);
-var Index:TpvInt32;
+var Index:TpvSizeInt;
     DoAdd:boolean;
     QueueFamilyProperties:PVkQueueFamilyProperties;
 begin
@@ -8656,7 +8674,7 @@ begin
 end;
 
 procedure TpvVulkanDevice.Initialize;
-var Index:TpvInt32;
+var Index,SubIndex:TpvSizeInt;
     DeviceQueueCreateInfo:PVkDeviceQueueCreateInfo;
     SrcDeviceQueueCreateInfo:TpvVulkanDeviceQueueCreateInfo;
     DeviceCommands:PVulkanCommands;
@@ -8736,46 +8754,60 @@ begin
    end;
   end;
 
-  SetLength(fQueues,length(fPhysicalDevice.fQueueFamilyProperties));
+  SetLength(fQueueFamilyQueues,length(fPhysicalDevice.fQueueFamilyProperties));
   for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
    if (Index=fUniversalQueueFamilyIndex) or
       (Index=fPresentQueueFamilyIndex) or
       (Index=fGraphicsQueueFamilyIndex) or
       (Index=fComputeQueueFamilyIndex) or
       (Index=fTransferQueueFamilyIndex) then begin
-    fDeviceVulkan.GetDeviceQueue(fDeviceHandle,Index,0,@Queue);
-    fQueues[Index]:=TpvVulkanQueue.Create(self,Queue,Index);
+    DeviceQueueCreateInfo:=nil;
+    for SubIndex:=0 to length(fDeviceQueueCreateInfos)-1 do begin
+     if fDeviceQueueCreateInfos[SubIndex].queueFamilyIndex=Index then begin
+      DeviceQueueCreateInfo:=@fDeviceQueueCreateInfos[SubIndex];
+      break;
+     end;
+    end;
+    if assigned(DeviceQueueCreateInfo) and (DeviceQueueCreateInfo^.queueCount>0) then begin
+     SetLength(fQueueFamilyQueues[Index],DeviceQueueCreateInfo^.queueCount);
+     for SubIndex:=0 to length(fQueueFamilyQueues[Index])-1 do begin
+      fDeviceVulkan.GetDeviceQueue(fDeviceHandle,Index,SubIndex,@Queue);
+      fQueueFamilyQueues[Index,SubIndex]:=TpvVulkanQueue.Create(self,Queue,Index);
+     end;
+    end else begin
+     raise EpvVulkanException.Create('Couldn''t create requested Vulkan queue');
+    end;
    end else begin
-    fQueues[Index]:=nil;
+    fQueueFamilyQueues[Index]:=nil;
    end;
   end;
 
   if fUniversalQueueFamilyIndex>=0 then begin
-   fUniversalQueue:=fQueues[fUniversalQueueFamilyIndex];
+   fUniversalQueue:=fQueueFamilyQueues[fUniversalQueueFamilyIndex,0];
   end else begin
    fUniversalQueue:=nil;
   end;
 
   if fPresentQueueFamilyIndex>=0 then begin
-   fPresentQueue:=fQueues[fPresentQueueFamilyIndex];
+   fPresentQueue:=fQueueFamilyQueues[fPresentQueueFamilyIndex,0];
   end else begin
    fPresentQueue:=nil;
   end;
 
   if fGraphicsQueueFamilyIndex>=0 then begin
-   fGraphicsQueue:=fQueues[fGraphicsQueueFamilyIndex];
+   fGraphicsQueue:=fQueueFamilyQueues[fGraphicsQueueFamilyIndex,0];
   end else begin
    fGraphicsQueue:=nil;
   end;
 
   if fComputeQueueFamilyIndex>=0 then begin
-   fComputeQueue:=fQueues[fComputeQueueFamilyIndex];
+   fComputeQueue:=fQueueFamilyQueues[fComputeQueueFamilyIndex,0];
   end else begin
    fComputeQueue:=nil;
   end;
 
   if fTransferQueueFamilyIndex>=0 then begin
-   fTransferQueue:=fQueues[fTransferQueueFamilyIndex];
+   fTransferQueue:=fQueueFamilyQueues[fTransferQueueFamilyIndex,0];
   end else begin
    fTransferQueue:=nil;
   end;
