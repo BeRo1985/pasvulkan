@@ -800,7 +800,8 @@ type EpvVulkanException=class(Exception);
        procedure AddQueue(const aQueueFamilyIndex:TpvUInt32;
                           const aQueuePriorities:array of TpvFloat;
                           const aQueueFlags:TVkQueueFlags=High(TVkQueueFlags);
-                          const aSurface:TpvVulkanSurface=nil);
+                          const aSurface:TpvVulkanSurface=nil;
+                          const aPresentQueue:boolean=true);
        procedure AddQueues(const aSurface:TpvVulkanSurface=nil;
                            const aPreferQueueFamilyVariety:boolean=true;
                            const aNeedSparseBinding:boolean=false);
@@ -8443,7 +8444,8 @@ end;
 procedure TpvVulkanDevice.AddQueue(const aQueueFamilyIndex:TpvUInt32;
                                    const aQueuePriorities:array of TpvFloat;
                                    const aQueueFlags:TVkQueueFlags=High(TVkQueueFlags);
-                                   const aSurface:TpvVulkanSurface=nil);
+                                   const aSurface:TpvVulkanSurface=nil;
+                                   const aPresentQueue:boolean=true);
 var Index:TpvSizeInt;
     QueueFamilyProperties:PVkQueueFamilyProperties;
     VulkanDeviceQueueCreateInfo:TpvVulkanDeviceQueueCreateInfo;
@@ -8470,7 +8472,7 @@ begin
      ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(aQueueFamilyIndex,aSurface)) or not assigned(aSurface)) then begin
    fUniversalQueueFamilyIndex:=aQueueFamilyIndex;
   end;
-  if (fPresentQueueFamilyIndex<0) and ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(aQueueFamilyIndex,aSurface)) or not assigned(aSurface)) then begin
+  if aPresentQueue and (fPresentQueueFamilyIndex<0) and ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(aQueueFamilyIndex,aSurface)) or not assigned(aSurface)) then begin
    fPresentQueueFamilyIndex:=aQueueFamilyIndex;
   end;
   if ((QueueFlags and TpvUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicsQueueFamilyIndex<0) then begin
