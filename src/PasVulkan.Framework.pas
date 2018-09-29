@@ -800,24 +800,9 @@ type EpvVulkanException=class(Exception);
        procedure AddQueue(const aQueueFamilyIndex:TpvUInt32;
                           const aQueuePriorities:array of TpvFloat;
                           const aSurface:TpvVulkanSurface=nil);
-       procedure AddQueues(const aScanUniversal:boolean=true;
-                           const aScanPresent:boolean=true;
-                           const aScanGraphics:boolean=true;
-                           const aScanCompute:boolean=true;
-                           const aScanTransfer:boolean=true;
-                           const aNeedUniversal:boolean=true;
-                           const aNeedPresent:boolean=true;
-                           const aNeedGraphics:boolean=true;
-                           const aNeedCompute:boolean=true;
-                           const aNeedTransfer:boolean=true;
-                           const aNeedSparseBinding:boolean=false;
+       procedure AddQueues(const aSurface:TpvVulkanSurface=nil;
                            const aPreferQueueFamilyVariety:boolean=true;
-                           const aSurface:TpvVulkanSurface=nil;
-                           const aMaximalCountUniversalQueues:TpvSizeInt=1;
-                           const aMaximalCountPresentQueues:TpvSizeInt=1;
-                           const aMaximalCountGraphicsQueues:TpvSizeInt=1;
-                           const aMaximalCountComputeQueues:TpvSizeInt=1;
-                           const aMaximalCountTransferQueues:TpvSizeInt=1);
+                           const aNeedSparseBinding:boolean=false);
        procedure Initialize;
        procedure WaitIdle;
        property EnabledFeatures:PVkPhysicalDeviceFeatures read fPointerToEnabledFeatures;
@@ -1740,7 +1725,9 @@ type EpvVulkanException=class(Exception);
                           const aWidth:TpvUInt32;
                           const aHeight:TpvUInt32;
                           const aFormat:TVkFormat;
-                          const aUsage:TVkBufferUsageFlags); reintroduce; overload;
+                          const aUsage:TVkBufferUsageFlags;
+                          const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                          const aQueueFamilyIndices:TVkUInt32List=nil); reintroduce; overload;
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aImage:TpvVulkanImage;
                           const aImageView:TpvVulkanImageView;
@@ -8502,24 +8489,9 @@ begin
  end;
 end;
 
-procedure TpvVulkanDevice.AddQueues(const aScanUniversal:boolean=true;
-                                    const aScanPresent:boolean=true;
-                                    const aScanGraphics:boolean=true;
-                                    const aScanCompute:boolean=true;
-                                    const aScanTransfer:boolean=true;
-                                    const aNeedUniversal:boolean=true;
-                                    const aNeedPresent:boolean=true;
-                                    const aNeedGraphics:boolean=true;
-                                    const aNeedCompute:boolean=true;
-                                    const aNeedTransfer:boolean=true;
-                                    const aNeedSparseBinding:boolean=false;
+procedure TpvVulkanDevice.AddQueues(const aSurface:TpvVulkanSurface=nil;
                                     const aPreferQueueFamilyVariety:boolean=true;
-                                    const aSurface:TpvVulkanSurface=nil;
-                                    const aMaximalCountUniversalQueues:TpvSizeInt=1;
-                                    const aMaximalCountPresentQueues:TpvSizeInt=1;
-                                    const aMaximalCountGraphicsQueues:TpvSizeInt=1;
-                                    const aMaximalCountComputeQueues:TpvSizeInt=1;
-                                    const aMaximalCountTransferQueues:TpvSizeInt=1);
+                                    const aNeedSparseBinding:boolean=false);
 type TQueueKind=
       (
        Universal,
@@ -8530,7 +8502,7 @@ type TQueueKind=
       );
      TQueueKinds=set of TQueueKind;
      TQueueKindQueueFamilyIndices=array[TQueueKind] of TpvInt32;
-     TQueueKindQueueCount=array[TQueueKind] of TpvSizeInt;
+     TQueueKindQueueCount=array[TQueueKind] of TpvInt32;
 const RequiredFlags:array[TQueueKind,0..1] of TpvUInt32=
        (
         (TpvUInt32(VK_QUEUE_GRAPHICS_BIT) or TpvUInt32(VK_QUEUE_COMPUTE_BIT) or TpvUInt32(VK_QUEUE_TRANSFER_BIT),
@@ -8545,12 +8517,20 @@ const RequiredFlags:array[TQueueKind,0..1] of TpvUInt32=
          TpvUInt32(VK_QUEUE_TRANSFER_BIT)
         )
        );
-       QueueKindNeedSparseBindingSupport=[TQueueKind.Universal,TQueueKind.Present,TQueueKind.Graphics,TQueueKind.Compute,TQueueKind.Transfer];
-       QueueKindNeedSurfaceSupport=[TQueueKind.Universal,TQueueKind.Present];
+       QueueKindNeedSparseBindingSupport=[TQueueKind.Universal,
+                                          TQueueKind.Present,
+                                          TQueueKind.Graphics,
+                                          TQueueKind.Compute,
+                                          TQueueKind.Transfer];
+       QueueKindNeedSurfaceSupport=[TQueueKind.Universal,
+                                    TQueueKind.Present];
+       ScanQueueKinds=[TQueueKind.Universal,
+                       TQueueKind.Present,
+                       TQueueKind.Graphics,
+                       TQueueKind.Compute,
+                       TQueueKind.Transfer];
 var Index,QueueIndex,MaximalCountQueues,PassIndex:TpvSizeInt;
-    DoAdd:boolean;
     QueueKind,OtherQueueKind:TQueueKind;
-    ScanQueueKinds:TQueueKinds;
     QueueKindQueueFamilyIndices:TQueueKindQueueFamilyIndices;
     QueueKindQueueCounts:TQueueKindQueueCount;
     QueueFamilyProperties:PVkQueueFamilyProperties;
@@ -8561,304 +8541,148 @@ begin
  __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Entering TpvVulkanDevice.AddQueues');
 {$ifend}
 
- if aPreferQueueFamilyVariety then begin
+ QueueKindQueueCounts[TQueueKind.Universal]:=High(TpvInt32);
+ QueueKindQueueCounts[TQueueKind.Present]:=High(TpvInt32);
+ QueueKindQueueCounts[TQueueKind.Graphics]:=High(TpvInt32);
+ QueueKindQueueCounts[TQueueKind.Compute]:=High(TpvInt32);
+ QueueKindQueueCounts[TQueueKind.Transfer]:=High(TpvInt32);
 
-  ScanQueueKinds:=[];
-  if aScanUniversal then begin
-   Include(ScanQueueKinds,TQueueKind.Universal);
-  end;
-  if aScanPresent then begin
-   Include(ScanQueueKinds,TQueueKind.Present);
-  end;
-  if aScanGraphics then begin
-   Include(ScanQueueKinds,TQueueKind.Graphics);
-  end;
-  if aScanCompute then begin
-   Include(ScanQueueKinds,TQueueKind.Compute);
-  end;
-  if aScanTransfer then begin
-   Include(ScanQueueKinds,TQueueKind.Transfer);
-  end;
-
-  QueueKindQueueCounts[TQueueKind.Universal]:=aMaximalCountUniversalQueues;
-  QueueKindQueueCounts[TQueueKind.Present]:=aMaximalCountPresentQueues;
-  QueueKindQueueCounts[TQueueKind.Graphics]:=aMaximalCountGraphicsQueues;
-  QueueKindQueueCounts[TQueueKind.Compute]:=aMaximalCountComputeQueues;
-  QueueKindQueueCounts[TQueueKind.Transfer]:=aMaximalCountTransferQueues;
-
-  for QueueKind:=Low(TQueueKind) to High(TQueueKind) do begin
-   QueueKindQueueFamilyIndices[QueueKind]:=-1;
-  end;
-
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-  __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Scanning queue family properties');
- {$ifend}
-  for QueueKind:=Low(TQueueKind) to High(TQueueKind) do begin
-   if QueueKind in ScanQueueKinds then begin
-    for PassIndex:=0 to 1 do begin
-     if QueueKindQueueFamilyIndices[QueueKind]<0 then begin
-      for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
-       QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
-       if ((QueueFamilyProperties.queueFlags and RequiredFlags[QueueKind,PassIndex])=RequiredFlags[QueueKind,PassIndex]) and
-          (((QueueKind in QueueKindNeedSparseBindingSupport) and
-           ((((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_SPARSE_BINDING_BIT))=0) and aNeedSparseBinding) or
-           not aNeedSparseBinding)) or
-           not (QueueKind in QueueKindNeedSparseBindingSupport)) and
-          (((QueueKind in QueueKindNeedSurfaceSupport) and
-             ((assigned(aSurface) and
-            fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or
-            not assigned(aSurface))) or not (QueueKind in QueueKindNeedSurfaceSupport)) then begin
-        if (QueueKindQueueFamilyIndices[TQueueKind.Universal]<>Index) and
-           (QueueKindQueueFamilyIndices[TQueueKind.Present]<>Index) and
-           (QueueKindQueueFamilyIndices[TQueueKind.Graphics]<>Index) and
-           (QueueKindQueueFamilyIndices[TQueueKind.Compute]<>Index) and
-           (QueueKindQueueFamilyIndices[TQueueKind.Transfer]<>Index) then begin
-         QueueKindQueueFamilyIndices[QueueKind]:=Index;
-         break;
-        end;
-       end;
-      end;
-     end;
-    end;
-   end;
-  end;
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-  __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Scanned queue family properties');
- {$ifend}
-
-  if (QueueKindQueueFamilyIndices[TQueueKind.Graphics]<0) and aNeedGraphics then begin
-   if QueueKindQueueFamilyIndices[TQueueKind.Universal]>=0 then begin
-    QueueKindQueueFamilyIndices[TQueueKind.Graphics]:=QueueKindQueueFamilyIndices[TQueueKind.Universal];
-   end else begin
-    QueueKindQueueFamilyIndices[TQueueKind.Graphics]:=QueueKindQueueFamilyIndices[TQueueKind.Present];
-   end;
-  end;
-
-  if (QueueKindQueueFamilyIndices[TQueueKind.Present]<0) and aNeedPresent then begin
-   if QueueKindQueueFamilyIndices[TQueueKind.Universal]>=0 then begin
-    QueueKindQueueFamilyIndices[TQueueKind.Present]:=QueueKindQueueFamilyIndices[TQueueKind.Universal];
-   end else begin
-    QueueKindQueueFamilyIndices[TQueueKind.Present]:=QueueKindQueueFamilyIndices[TQueueKind.Graphics];
-   end;
-  end;
-
-  if (QueueKindQueueFamilyIndices[TQueueKind.Transfer]<0) and aNeedUniversal then begin
-   // https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkQueueFamilyProperties.html
-   // Quote: "All commands that are allowed on a queue that supports transfer operations are
-   //         also allowed on a queue that supports either graphics or compute operations thus
-   //         if the capabilities of a queue family include VK_QUEUE_GRAPHICS_BIT or
-   //         VK_QUEUE_COMPUTE_BIT then reporting the VK_QUEUE_TRANSFER_BIT capability separately
-   //         for that queue family is optional."
-   if QueueKindQueueFamilyIndices[TQueueKind.Graphics]>=0 then begin
-    QueueKindQueueFamilyIndices[TQueueKind.Transfer]:=QueueKindQueueFamilyIndices[TQueueKind.Graphics];
-   end else begin
-    QueueKindQueueFamilyIndices[TQueueKind.Transfer]:=QueueKindQueueFamilyIndices[TQueueKind.Compute];
-   end;
-  end;
-
-  for QueueKind:=Low(TQueueKind) to High(TQueueKind) do begin
-   Index:=QueueKindQueueFamilyIndices[QueueKind];
-   if Index>=0 then begin
-    MaximalCountQueues:=0;
-    for OtherQueueKind:=QueueKind to High(TQueueKind) do begin
-     if QueueKindQueueFamilyIndices[OtherQueueKind]=Index then begin
-      inc(MaximalCountQueues,QueueKindQueueCounts[OtherQueueKind]);
-     end;
-    end;
-    QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
-    if MaximalCountQueues>QueueFamilyProperties^.queueCount then begin
-     MaximalCountQueues:=QueueFamilyProperties^.queueCount;
-    end;
-    if MaximalCountQueues>0 then begin
-     FloatArray:=nil;
-     try
-      SetLength(FloatArray,MaximalCountQueues);
-      for QueueIndex:=0 to MaximalCountQueues-1 do begin
-       FloatArray[QueueIndex]:=1.0;
-      end;
-      fDeviceQueueCreateInfoList.Add(TpvVulkanDeviceQueueCreateInfo.Create(Index,FloatArray));
-     finally
-      FloatArray:=nil;
-     end;
-    end else begin
-     raise EpvVulkanException.Create('Queue family with no available queues found');
-    end;
-    for OtherQueueKind:=QueueKind to High(TQueueKind) do begin
-     if QueueKindQueueFamilyIndices[OtherQueueKind]=Index then begin
-      QueueKindQueueFamilyIndices[OtherQueueKind]:=-1;
-      case OtherQueueKind of
-       TQueueKind.Universal:begin
-        fUniversalQueueFamilyIndex:=Index;
-       end;
-       TQueueKind.Present:begin
-        fPresentQueueFamilyIndex:=Index;
-       end;
-       TQueueKind.Graphics:begin
-        fGraphicsQueueFamilyIndex:=Index;
-       end;
-       TQueueKind.Compute:begin
-        fComputeQueueFamilyIndex:=Index;
-       end;
-       TQueueKind.Transfer:begin
-        fTransferQueueFamilyIndex:=Index;
-       end;
-       else begin
-        Assert(false);
-       end;
-      end;
-     end;
-    end;
-   end;
-  end;
-
- end else begin
-
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-  __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Scanning queue family properties');
- {$ifend}
-  for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework',PAnsiChar(AnsiString('Queue family property number '+IntToStr(Index))));
- {$ifend}
-   DoAdd:=false;
-   MaximalCountQueues:=1;
-   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Checking universal queue family');
- {$ifend}
-   if (((QueueFamilyProperties.queueFlags and (TpvUInt32(VK_QUEUE_GRAPHICS_BIT) or
-                                               TpvUInt32(VK_QUEUE_COMPUTE_BIT) or
-                                               TpvUInt32(VK_QUEUE_TRANSFER_BIT)))=(TpvUInt32(VK_QUEUE_GRAPHICS_BIT) or
-                                                                                   TpvUInt32(VK_QUEUE_COMPUTE_BIT) or
-                                                                                   TpvUInt32(VK_QUEUE_TRANSFER_BIT))) and (fUniversalQueueFamilyIndex<0)) and
-      ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or not assigned(aSurface)) then begin
-    fUniversalQueueFamilyIndex:=Index;
-    if aScanUniversal then begin
-     MaximalCountQueues:=Max(MaximalCountQueues,aMaximalCountUniversalQueues);
-     DoAdd:=true;
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-     __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Found universal queue family');
- {$ifend}
-    end;
-   end;
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Checked universal queue family');
- {$ifend}
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Checking present queue family');
- {$ifend}
-   if (fPresentQueueFamilyIndex<0) and ((assigned(aSurface) and fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or not assigned(aSurface)) then begin
-    fPresentQueueFamilyIndex:=Index;
-    if aScanPresent then begin
-     MaximalCountQueues:=Max(MaximalCountQueues,aMaximalCountPresentQueues);
-     DoAdd:=true;
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-     __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Found present queue family');
- {$ifend}
-    end;
-   end;
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Checked present queue family');
- {$ifend}
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Checking graphics queue family');
- {$ifend}
-   if ((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) and (fGraphicsQueueFamilyIndex<0) then begin
-    fGraphicsQueueFamilyIndex:=Index;
-    if aScanGraphics then begin
-     MaximalCountQueues:=Max(MaximalCountQueues,aMaximalCountGraphicsQueues);
-     DoAdd:=true;
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-     __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Found graphics queue family');
- {$ifend}
-    end;
-   end;
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Checked graphics queue family');
- {$ifend}
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Checking compute queue family');
- {$ifend}
-   if ((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_COMPUTE_BIT))<>0) and (fComputeQueueFamilyIndex<0) then begin
-    fComputeQueueFamilyIndex:=Index;
-    if aScanCompute then begin
-     MaximalCountQueues:=Max(MaximalCountQueues,aMaximalCountComputeQueues);
-     DoAdd:=true;
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-     __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Found compute queue family');
- {$ifend}
-    end;
-   end;
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Checked compute queue family');
- {$ifend}
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Checking transfer queue family');
- {$ifend}
-   if ((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_TRANSFER_BIT))<>0) and (fTransferQueueFamilyIndex<0) then begin
-    fTransferQueueFamilyIndex:=Index;
-    if aScanTransfer then begin
-     MaximalCountQueues:=Max(MaximalCountQueues,aMaximalCountTransferQueues);
-     DoAdd:=true;
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-     __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Found transfer queue family');
- {$ifend}
-    end;
-   end;
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Checked transfer queue family');
- {$ifend}
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Checking for VK_QUEUE_SPARSE_BINDING_BIT support');
- {$ifend}
-   if ((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_SPARSE_BINDING_BIT))=0) and aNeedSparseBinding then begin
- {$if (defined(fpc) and defined(android))}
-    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Only unsatisfactory device queue families available');
-    __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','No VK_QUEUE_SPARSE_BINDING_BIT support found');
- {$ifend}
-    raise EpvVulkanException.Create('Only unsatisfactory device queue families available');
-   end;
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Checked for VK_QUEUE_SPARSE_BINDING_BIT support');
- {$ifend}
-   if DoAdd then begin
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-    __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Adding device queue create info');
- {$ifend}
-    if MaximalCountQueues>QueueFamilyProperties.queueCount then begin
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-     __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Trimming available queue count');
- {$ifend}
-     MaximalCountQueues:=QueueFamilyProperties.queueCount;
-    end;
-    if MaximalCountQueues>0 then begin
-     FloatArray:=nil;
-     try
-      SetLength(FloatArray,MaximalCountQueues);
-      for QueueIndex:=0 to MaximalCountQueues-1 do begin
-       FloatArray[QueueIndex]:=1.0;
-      end;
-      fDeviceQueueCreateInfoList.Add(TpvVulkanDeviceQueueCreateInfo.Create(Index,FloatArray));
-     finally
-      FloatArray:=nil;
-     end;
-    end else begin
-     raise EpvVulkanException.Create('Queue family with no available queues found');
-    end;
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-    __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Added device queue create info');
- {$ifend}
-   end;
-  end;
- {$if (defined(fpc) and defined(android)) and not defined(Release)}
-  __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Scanned queue family properties');
- {$ifend}
-
+ for QueueKind:=Low(TQueueKind) to High(TQueueKind) do begin
+  QueueKindQueueFamilyIndices[QueueKind]:=-1;
  end;
 
- if ((fTransferQueueFamilyIndex<0) and aNeedTransfer) and
-    (((fGraphicsQueueFamilyIndex>=0) and aScanGraphics) or
-     ((fComputeQueueFamilyIndex>=0) and aScanCompute)) then begin
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Scanning queue family properties');
+{$ifend}
+ for QueueKind:=Low(TQueueKind) to High(TQueueKind) do begin
+  if QueueKind in ScanQueueKinds then begin
+   for PassIndex:=0 to 1 do begin
+    if QueueKindQueueFamilyIndices[QueueKind]<0 then begin
+     for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
+      QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
+      if ((QueueFamilyProperties.queueFlags and RequiredFlags[QueueKind,PassIndex])=RequiredFlags[QueueKind,PassIndex]) and
+         (((QueueKind in QueueKindNeedSparseBindingSupport) and
+          ((((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_SPARSE_BINDING_BIT))=0) and aNeedSparseBinding) or
+          not aNeedSparseBinding)) or
+          not (QueueKind in QueueKindNeedSparseBindingSupport)) and
+         (((QueueKind in QueueKindNeedSurfaceSupport) and
+            ((assigned(aSurface) and
+           fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or
+           not assigned(aSurface))) or not (QueueKind in QueueKindNeedSurfaceSupport)) then begin
+       if (not aPreferQueueFamilyVariety) or
+          (aPreferQueueFamilyVariety and
+           ((QueueKindQueueFamilyIndices[TQueueKind.Universal]<>Index) and
+            (QueueKindQueueFamilyIndices[TQueueKind.Present]<>Index) and
+            (QueueKindQueueFamilyIndices[TQueueKind.Graphics]<>Index) and
+            (QueueKindQueueFamilyIndices[TQueueKind.Compute]<>Index) and
+            (QueueKindQueueFamilyIndices[TQueueKind.Transfer]<>Index))) then begin
+        QueueKindQueueFamilyIndices[QueueKind]:=Index;
+        break;
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Scanned queue family properties');
+{$ifend}
+
+ if QueueKindQueueFamilyIndices[TQueueKind.Graphics]<0 then begin
+  if QueueKindQueueFamilyIndices[TQueueKind.Universal]>=0 then begin
+   QueueKindQueueFamilyIndices[TQueueKind.Graphics]:=QueueKindQueueFamilyIndices[TQueueKind.Universal];
+  end else begin
+   QueueKindQueueFamilyIndices[TQueueKind.Graphics]:=QueueKindQueueFamilyIndices[TQueueKind.Present];
+  end;
+ end;
+
+ if QueueKindQueueFamilyIndices[TQueueKind.Present]<0 then begin
+  if QueueKindQueueFamilyIndices[TQueueKind.Universal]>=0 then begin
+   QueueKindQueueFamilyIndices[TQueueKind.Present]:=QueueKindQueueFamilyIndices[TQueueKind.Universal];
+  end else begin
+   QueueKindQueueFamilyIndices[TQueueKind.Present]:=QueueKindQueueFamilyIndices[TQueueKind.Graphics];
+  end;
+ end;
+
+ if QueueKindQueueFamilyIndices[TQueueKind.Transfer]<0 then begin
+  // https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkQueueFamilyProperties.html
+  // Quote: "All commands that are allowed on a queue that supports transfer operations are
+  //         also allowed on a queue that supports either graphics or compute operations thus
+  //         if the capabilities of a queue family include VK_QUEUE_GRAPHICS_BIT or
+  //         VK_QUEUE_COMPUTE_BIT then reporting the VK_QUEUE_TRANSFER_BIT capability separately
+  //         for that queue family is optional."
+  if QueueKindQueueFamilyIndices[TQueueKind.Graphics]>=0 then begin
+   QueueKindQueueFamilyIndices[TQueueKind.Transfer]:=QueueKindQueueFamilyIndices[TQueueKind.Graphics];
+  end else begin
+   QueueKindQueueFamilyIndices[TQueueKind.Transfer]:=QueueKindQueueFamilyIndices[TQueueKind.Compute];
+  end;
+ end;
+
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Adding queue families');
+{$ifend}
+ for QueueKind:=Low(TQueueKind) to High(TQueueKind) do begin
+  Index:=QueueKindQueueFamilyIndices[QueueKind];
+  if Index>=0 then begin
+   MaximalCountQueues:=0;
+   for OtherQueueKind:=QueueKind to High(TQueueKind) do begin
+    if QueueKindQueueFamilyIndices[OtherQueueKind]=Index then begin
+     inc(MaximalCountQueues,QueueKindQueueCounts[OtherQueueKind]);
+    end;
+   end;
+   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
+   if MaximalCountQueues>QueueFamilyProperties^.queueCount then begin
+    MaximalCountQueues:=QueueFamilyProperties^.queueCount;
+   end;
+   if MaximalCountQueues>0 then begin
+    FloatArray:=nil;
+    try
+     SetLength(FloatArray,MaximalCountQueues);
+     for QueueIndex:=0 to MaximalCountQueues-1 do begin
+      FloatArray[QueueIndex]:=1.0;
+     end;
+     fDeviceQueueCreateInfoList.Add(TpvVulkanDeviceQueueCreateInfo.Create(Index,FloatArray));
+    finally
+     FloatArray:=nil;
+    end;
+   end else begin
+    raise EpvVulkanException.Create('Queue family with no available queues found');
+   end;
+   for OtherQueueKind:=QueueKind to High(TQueueKind) do begin
+    if QueueKindQueueFamilyIndices[OtherQueueKind]=Index then begin
+     QueueKindQueueFamilyIndices[OtherQueueKind]:=-1;
+     case OtherQueueKind of
+      TQueueKind.Universal:begin
+       fUniversalQueueFamilyIndex:=Index;
+      end;
+      TQueueKind.Present:begin
+       fPresentQueueFamilyIndex:=Index;
+      end;
+      TQueueKind.Graphics:begin
+       fGraphicsQueueFamilyIndex:=Index;
+      end;
+      TQueueKind.Compute:begin
+       fComputeQueueFamilyIndex:=Index;
+      end;
+      TQueueKind.Transfer:begin
+       fTransferQueueFamilyIndex:=Index;
+      end;
+      else begin
+       Assert(false);
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+{$if (defined(fpc) and defined(android)) and not defined(Release)}
+ __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Added queue families');
+{$ifend}
+
+ if (fTransferQueueFamilyIndex<0) and
+    ((fGraphicsQueueFamilyIndex>=0) or
+     (fComputeQueueFamilyIndex>=0)) then begin
   // https://www.khronos.org/registry/vulkan/specs/1.0/man/html/VkQueueFamilyProperties.html
   // Quote: "All commands that are allowed on a queue that supports transfer operations are
   //         also allowed on a queue that supports either graphics or compute operations thus
@@ -8868,9 +8692,9 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Overriding transfer queue family index');
 {$ifend}
-  if (fGraphicsQueueFamilyIndex>=0) and aScanGraphics then begin
+  if fGraphicsQueueFamilyIndex>=0 then begin
    fTransferQueueFamilyIndex:=fGraphicsQueueFamilyIndex;
-  end else if (fComputeQueueFamilyIndex>=0) and aScanCompute then begin
+  end else if fComputeQueueFamilyIndex>=0 then begin
    fTransferQueueFamilyIndex:=fComputeQueueFamilyIndex;
   end;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -8887,8 +8711,9 @@ begin
   end;
  end;
 
- if ((fUniversalQueueFamilyIndex<0) and aNeedUniversal) and
+ if (fUniversalQueueFamilyIndex<0) and
     (fPresentQueueFamilyIndex>=0) and
+    (fUniversalQueueFamilyIndex<>fPresentQueueFamilyIndex) and
     (fGraphicsQueueFamilyIndex=fPresentQueueFamilyIndex) and
     (fComputeQueueFamilyIndex=fPresentQueueFamilyIndex) and
     (fTransferQueueFamilyIndex=fPresentQueueFamilyIndex) then begin
@@ -8900,28 +8725,24 @@ begin
   __android_log_write(ANDROID_LOG_DEBUG,'PasVulkanFramework','Overrided universal queue family index');
 {$ifend}
  end;
- if ((fUniversalQueueFamilyIndex<0) and aNeedUniversal) or
-    ((fPresentQueueFamilyIndex<0) and aNeedPresent) or
-    ((fGraphicsQueueFamilyIndex<0) and aNeedGraphics) or
-    ((fComputeQueueFamilyIndex<0) and aNeedCompute) or
-    ((fTransferQueueFamilyIndex<0) and aNeedTransfer) then begin
+
+ if (fUniversalQueueFamilyIndex<0) or
+    (fPresentQueueFamilyIndex<0) or
+    (fGraphicsQueueFamilyIndex<0) or
+    (fComputeQueueFamilyIndex<0) or
+    (fTransferQueueFamilyIndex<0) then begin
 {$if (defined(fpc) and defined(android))}
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework','Only unsatisfactory device queue families available');
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework',PAnsiChar(AnsiString('Universal device queue family: '+
-                                                                                    'Found: '+IntToStr(ord(fUniversalQueueFamilyIndex>=0) and 1)+', '+
-                                                                                    'Needed: '+IntToStr(ord(aNeedUniversal) and 1))));
+                                                                                    'Found: '+IntToStr(ord(fUniversalQueueFamilyIndex>=0) and 1))));
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework',PAnsiChar(AnsiString('Present device queue family: '+
-                                                                                    'Found: '+IntToStr(ord(fPresentQueueFamilyIndex>=0) and 1)+', '+
-                                                                                    'Needed: '+IntToStr(ord(aNeedPresent) and 1))));
+                                                                                    'Found: '+IntToStr(ord(fPresentQueueFamilyIndex>=0) and 1))));
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework',PAnsiChar(AnsiString('Graphics device queue family: '+
-                                                                                    'Found: '+IntToStr(ord(fGraphicsQueueFamilyIndex>=0) and 1)+', '+
-                                                                                    'Needed: '+IntToStr(ord(aNeedGraphics) and 1))));
+                                                                                    'Found: '+IntToStr(ord(fGraphicsQueueFamilyIndex>=0) and 1))));
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework',PAnsiChar(AnsiString('Compute device queue family: '+
-                                                                                    'Found: '+IntToStr(ord(fComputeQueueFamilyIndex>=0) and 1)+', '+
-                                                                                    'Needed: '+IntToStr(ord(aNeedCompute) and 1))));
+                                                                                    'Found: '+IntToStr(ord(fComputeQueueFamilyIndex>=0) and 1))));
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanFramework',PAnsiChar(AnsiString('Transfer device queue family: '+
-                                                                                    'Found: '+IntToStr(ord(fTransferQueueFamilyIndex>=0) and 1)+', '+
-                                                                                    'Needed: '+IntToStr(ord(aNeedTransfer) and 1))));
+                                                                                    'Found: '+IntToStr(ord(fTransferQueueFamilyIndex>=0) and 1))));
 {$ifend}
   raise EpvVulkanException.Create('Only unsatisfactory device queue families available');
  end;
@@ -13330,13 +13151,16 @@ constructor TpvVulkanFrameBufferAttachment.Create(const aDevice:TpvVulkanDevice;
                                                   const aWidth:TpvUInt32;
                                                   const aHeight:TpvUInt32;
                                                   const aFormat:TVkFormat;
-                                                  const aUsage:TVkBufferUsageFlags);
+                                                  const aUsage:TVkBufferUsageFlags;
+                                                  const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                                                  const aQueueFamilyIndices:TVkUInt32List=nil);
 var MemoryRequirements:TVkMemoryRequirements;
     AspectMask:TVkImageAspectFlags;
     ImageLayout:TVkImageLayout;
     RequiresDedicatedAllocation,
     PrefersDedicatedAllocation:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
+    QueueFamilyIndices:array of TVkUInt32;
 begin
  inherited Create;
 
@@ -13372,21 +13196,33 @@ begin
 
  try
 
-  fImage:=TpvVulkanImage.Create(fDevice,
-                                0,
-                                VK_IMAGE_TYPE_2D,
-                                fFormat,
-                                aWidth,
-                                aHeight,
-                                1,
-                                1,
-                                1,
-                                VK_SAMPLE_COUNT_1_BIT,
-                                VK_IMAGE_TILING_OPTIMAL,
-                                aUsage {or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT)},
-                                VK_SHARING_MODE_EXCLUSIVE,
-                                [],
-                                VK_IMAGE_LAYOUT_UNDEFINED);
+  QueueFamilyIndices:=nil;
+  try
+
+   if assigned(aQueueFamilyIndices) and (aQueueFamilyIndices.Count>0) then begin
+    SetLength(QueueFamilyIndices,aQueueFamilyIndices.Count);
+    Move(aQueueFamilyIndices.Memory^,QueueFamilyIndices[0],aQueueFamilyIndices.Count*SizeOf(TVkUInt32));
+   end;
+
+   fImage:=TpvVulkanImage.Create(fDevice,
+                                 0,
+                                 VK_IMAGE_TYPE_2D,
+                                 fFormat,
+                                 aWidth,
+                                 aHeight,
+                                 1,
+                                 1,
+                                 1,
+                                 VK_SAMPLE_COUNT_1_BIT,
+                                 VK_IMAGE_TILING_OPTIMAL,
+                                 aUsage {or TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT)},
+                                 aSharingMode,
+                                 QueueFamilyIndices,
+                                 VK_IMAGE_LAYOUT_UNDEFINED);
+
+  finally
+   QueueFamilyIndices:=nil;
+  end;
 
   MemoryRequirements:=fDevice.fMemoryManager.GetImageMemoryRequirements(fImage.fImageHandle,
                                                                         RequiresDedicatedAllocation,
@@ -13495,6 +13331,8 @@ begin
    fDevice.fMemoryManager.FreeMemoryBlock(fMemoryBlock);
    fMemoryBlock:=nil;
   end;
+
+  QueueFamilyIndices:=nil;
 
   raise;
 
