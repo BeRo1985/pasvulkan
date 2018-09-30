@@ -1858,7 +1858,7 @@ begin
   end;
 
   // Calculate resource lifetimes (from minimum choreography step index to maximum
-  // choreography step index) for calculating aliasing and reusing of resources at a later point
+  // physical pass step index) for calculating aliasing and reusing of resources at a later point
   for Resource in fResources do begin
    Resource.fMinimumPhysicalPassStepIndex:=High(TpvSizeInt);
    Resource.fMaximumPhysicalPassStepIndex:=Low(TpvSizeInt);
