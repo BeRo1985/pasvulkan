@@ -258,7 +258,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=84;
+      VK_HEADER_VERSION=86;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -282,6 +282,8 @@ const VK_NULL_HANDLE=0;
       VK_SUBPASS_EXTERNAL=TVkUInt32($ffffffff);
       VK_MAX_DEVICE_GROUP_SIZE=32;
       VK_MAX_DEVICE_GROUP_SIZE_KHR=VK_MAX_DEVICE_GROUP_SIZE;
+      VK_MAX_DRIVER_NAME_SIZE_KHR=256;
+      VK_MAX_DRIVER_INFO_SIZE_KHR=256;
       VK_KHR_SURFACE_SPEC_VERSION=25;
       VK_KHR_SURFACE_EXTENSION_NAME='VK_KHR_surface';
       VK_KHR_SWAPCHAIN_SPEC_VERSION=70;
@@ -383,8 +385,8 @@ const VK_NULL_HANDLE=0;
       VK_GOOGLE_EXTENSION_49_EXTENSION_NAME='VK_GOOGLE_extension_49';
       VK_GOOGLE_EXTENSION_50_SPEC_VERSION=0;
       VK_GOOGLE_EXTENSION_50_EXTENSION_NAME='VK_GOOGLE_extension_50';
-      VK_NVX_EXTENSION_51_SPEC_VERSION=0;
-      VK_NVX_EXTENSION_51_EXTENSION_NAME='VK_NVX_extension_51';
+      VK_NV_CORNER_SAMPLED_IMAGE_SPEC_VERSION=2;
+      VK_NV_CORNER_SAMPLED_IMAGE_EXTENSION_NAME='VK_NV_corner_sampled_image';
       VK_NVX_EXTENSION_52_SPEC_VERSION=0;
       VK_NVX_EXTENSION_52_EXTENSION_NAME='VK_NVX_extension_52';
       VK_NV_EXTENSION_53_SPEC_VERSION=0;
@@ -597,6 +599,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_BIND_MEMORY_2_EXTENSION_NAME='VK_KHR_bind_memory2';
       VK_EXT_EXTENSION_159_SPEC_VERSION=0;
       VK_EXT_EXTENSION_159_EXTENSION_NAME='VK_EXT_extension_159';
+      VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_SPEC_VERSION=1;
+      VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME='VK_EXT_image_drm_format_modifier';
       VK_EXT_EXTENSION_160_SPEC_VERSION=0;
       VK_EXT_EXTENSION_160_EXTENSION_NAME='VK_EXT_extension_160';
       VK_EXT_VALIDATION_CACHE_SPEC_VERSION=1;
@@ -607,12 +611,12 @@ const VK_NULL_HANDLE=0;
       VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME='VK_EXT_shader_viewport_index_layer';
       VK_EXT_EXTENSION_164_SPEC_VERSION=0;
       VK_EXT_EXTENSION_164_EXTENSION_NAME='VK_NV_extension_164';
-      VK_EXT_EXTENSION_165_SPEC_VERSION=0;
-      VK_EXT_EXTENSION_165_EXTENSION_NAME='VK_NV_extension_165';
-      VK_EXT_EXTENSION_166_SPEC_VERSION=0;
-      VK_EXT_EXTENSION_166_EXTENSION_NAME='VK_NV_extension_166';
-      VK_EXT_EXTENSION_167_SPEC_VERSION=0;
-      VK_EXT_EXTENSION_167_EXTENSION_NAME='VK_NV_extension_167';
+      VK_NV_SHADING_RATE_IMAGE_SPEC_VERSION=3;
+      VK_NV_SHADING_RATE_IMAGE_EXTENSION_NAME='VK_NV_shading_rate_image';
+      VK_NVX_RAYTRACING_SPEC_VERSION=1;
+      VK_NVX_RAYTRACING_EXTENSION_NAME='VK_NVX_raytracing';
+      VK_NV_REPRESENTATIVE_FRAGMENT_TEST_SPEC_VERSION=1;
+      VK_NV_REPRESENTATIVE_FRAGMENT_TEST_EXTENSION_NAME='VK_NV_representative_fragment_test';
       VK_EXT_EXTENSION_168_SPEC_VERSION=0;
       VK_EXT_EXTENSION_168_EXTENSION_NAME='VK_NV_extension_168';
       VK_KHR_MAINTENANCE3_SPEC_VERSION=1;
@@ -639,8 +643,8 @@ const VK_NULL_HANDLE=0;
       VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME='VK_EXT_external_memory_host';
       VK_AMD_BUFFER_MARKER_SPEC_VERSION=1;
       VK_AMD_BUFFER_MARKER_EXTENSION_NAME='VK_AMD_buffer_marker';
-      VK_KHR_EXTENSION_181_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_181_EXTENSION_NAME='VK_AMD_extension_181';
+      VK_KHR_SHADER_ATOMIC_INT64_SPEC_VERSION=1;
+      VK_KHR_SHADER_ATOMIC_INT64_EXTENSION_NAME='VK_KHR_shader_atomic_int64';
       VK_KHR_EXTENSION_182_SPEC_VERSION=0;
       VK_KHR_EXTENSION_182_EXTENSION_NAME='VK_AMD_extension_182';
       VK_KHR_EXTENSION_183_SPEC_VERSION=0;
@@ -671,8 +675,8 @@ const VK_NULL_HANDLE=0;
       VK_GOOGLE_EXTENSION_195_EXTENSION_NAME='VK_GOOGLE_extension_195';
       VK_GOOGLE_EXTENSION_196_SPEC_VERSION=0;
       VK_GOOGLE_EXTENSION_196_EXTENSION_NAME='VK_GOOGLE_extension_196';
-      VK_EXT_EXTENSION_197_SPEC_VERSION=0;
-      VK_EXT_EXTENSION_197_EXTENSION_NAME='VK_EXT_extension_197';
+      VK_KHR_DRIVER_PROPERTIES_SPEC_VERSION=1;
+      VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME='VK_KHR_driver_properties';
       VK_ARM_EXTENSION_198_SPEC_VERSION=0;
       VK_ARM_EXTENSION_198_EXTENSION_NAME='VK_EXT_extension_198';
       VK_NV_SHADER_SUBGROUP_PARTITIONED_SPEC_VERSION=1;
@@ -681,16 +685,16 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_200_EXTENSION_NAME='VK_KHR_extension_200';
       VK_KHR_EXTENSION_201_SPEC_VERSION=0;
       VK_KHR_EXTENSION_201_EXTENSION_NAME='VK_KHR_extension_201';
-      VK_NV_EXTENSION_202_SPEC_VERSION=0;
-      VK_NV_EXTENSION_202_EXTENSION_NAME='VK_NV_extension_202';
-      VK_NV_EXTENSION_203_SPEC_VERSION=0;
-      VK_NV_EXTENSION_203_EXTENSION_NAME='VK_NV_extension_203';
-      VK_NV_EXTENSION_204_SPEC_VERSION=0;
-      VK_NV_EXTENSION_204_EXTENSION_NAME='VK_NV_extension_204';
-      VK_NV_EXTENSION_205_SPEC_VERSION=0;
-      VK_NV_EXTENSION_205_EXTENSION_NAME='VK_NV_extension_205';
-      VK_NV_EXTENSION_206_SPEC_VERSION=0;
-      VK_NV_EXTENSION_206_EXTENSION_NAME='VK_NV_extension_206';
+      VK_NV_COMPUTE_SHADER_DERIVATIVES_SPEC_VERSION=1;
+      VK_NV_COMPUTE_SHADER_DERIVATIVES_EXTENSION_NAME='VK_NV_compute_shader_derivatives';
+      VK_NV_MESH_SHADER_SPEC_VERSION=1;
+      VK_NV_MESH_SHADER_EXTENSION_NAME='VK_NV_mesh_shader';
+      VK_NV_FRAGMENT_SHADER_BARYCENTRIC_SPEC_VERSION=1;
+      VK_NV_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME='VK_NV_fragment_shader_barycentric';
+      VK_NV_SHADER_IMAGE_FOOTPRINT_SPEC_VERSION=1;
+      VK_NV_SHADER_IMAGE_FOOTPRINT_EXTENSION_NAME='VK_NV_shader_image_footprint';
+      VK_NV_SCISSOR_EXCLUSIVE_SPEC_VERSION=1;
+      VK_NV_SCISSOR_EXCLUSIVE_EXTENSION_NAME='VK_NV_scissor_exclusive';
       VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_SPEC_VERSION=2;
       VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME='VK_NV_device_diagnostic_checkpoints';
       VK_KHR_EXTENSION_208_SPEC_VERSION=0;
@@ -719,6 +723,40 @@ const VK_NULL_HANDLE=0;
       VK_EXT_EXTENSION_219_EXTENSION_NAME='VK_EXT_extension_219';
       VK_EXT_EXTENSION_220_SPEC_VERSION=0;
       VK_EXT_EXTENSION_220_EXTENSION_NAME='VK_EXT_extension_220';
+      VK_KHR_EXTENSION_221_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_221_EXTENSION_NAME='VK_KHR_extension_221';
+      VK_EXT_EXTENSION_222_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_222_EXTENSION_NAME='VK_EXT_extension_222';
+      VK_EXT_EXTENSION_223_SPEC_VERSION=0;
+      VK_EXT_EXTENSION_223_EXTENSION_NAME='VK_EXT_extension_223';
+      VK_AMD_EXTENSION_224_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_224_EXTENSION_NAME='VK_AMD_extension_224';
+      VK_AMD_EXTENSION_225_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_225_EXTENSION_NAME='VK_AMD_extension_225';
+      VK_AMD_EXTENSION_226_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_226_EXTENSION_NAME='VK_AMD_extension_226';
+      VK_AMD_EXTENSION_227_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_227_EXTENSION_NAME='VK_AMD_extension_227';
+      VK_AMD_EXTENSION_228_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_228_EXTENSION_NAME='VK_AMD_extension_228';
+      VK_AMD_EXTENSION_229_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_229_EXTENSION_NAME='VK_AMD_extension_229';
+      VK_AMD_EXTENSION_230_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_230_EXTENSION_NAME='VK_AMD_extension_230';
+      VK_AMD_EXTENSION_231_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_231_EXTENSION_NAME='VK_AMD_extension_231';
+      VK_AMD_EXTENSION_232_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_232_EXTENSION_NAME='VK_AMD_extension_232';
+      VK_AMD_EXTENSION_233_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_233_EXTENSION_NAME='VK_AMD_extension_233';
+      VK_AMD_EXTENSION_234_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_234_EXTENSION_NAME='VK_AMD_extension_234';
+      VK_AMD_EXTENSION_235_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_235_EXTENSION_NAME='VK_AMD_extension_235';
+      VK_AMD_EXTENSION_236_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_236_EXTENSION_NAME='VK_AMD_extension_236';
+      VK_AMD_EXTENSION_237_SPEC_VERSION=0;
+      VK_AMD_EXTENSION_237_EXTENSION_NAME='VK_KHR_extension_237';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1001,6 +1039,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkObjectEntryUsageFlagsNVX=^PVkObjectEntryUsageFlagsNVX;
      PVkObjectEntryUsageFlagsNVX=^TVkObjectEntryUsageFlagsNVX;
      TVkObjectEntryUsageFlagsNVX=TVkFlags;
+
+     PPVkGeometryFlagsNVX=^PVkGeometryFlagsNVX;
+     PVkGeometryFlagsNVX=^TVkGeometryFlagsNVX;
+     TVkGeometryFlagsNVX=TVkFlags;
+
+     PPVkGeometryInstanceFlagsNVX=^PVkGeometryInstanceFlagsNVX;
+     PVkGeometryInstanceFlagsNVX=^TVkGeometryInstanceFlagsNVX;
+     TVkGeometryInstanceFlagsNVX=TVkFlags;
+
+     PPVkBuildAccelerationStructureFlagsNVX=^PVkBuildAccelerationStructureFlagsNVX;
+     PVkBuildAccelerationStructureFlagsNVX=^TVkBuildAccelerationStructureFlagsNVX;
+     TVkBuildAccelerationStructureFlagsNVX=TVkFlags;
 
      PPVkDescriptorUpdateTemplateCreateFlags=^PVkDescriptorUpdateTemplateCreateFlags;
      PVkDescriptorUpdateTemplateCreateFlags=^TVkDescriptorUpdateTemplateCreateFlags;
@@ -1354,6 +1404,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkValidationCacheEXT=^TVkValidationCacheEXT;
      TVkValidationCacheEXT=TVkNonDispatchableHandle;
 
+     PPVkAccelerationStructureNVX=^PVkAccelerationStructureNVX;
+     PVkAccelerationStructureNVX=^TVkAccelerationStructureNVX;
+     TVkAccelerationStructureNVX=TVkNonDispatchableHandle;
+
      PPVkDisplayKHR=^PVkDisplayKHR;
      PVkDisplayKHR=^TVkDisplayKHR;
      TVkDisplayKHR=TVkNonDispatchableHandle;
@@ -1395,6 +1449,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR=1000111000,
        VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL=1000117000,
        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL=1000117001,
+       VK_IMAGE_LAYOUT_SHADING_RATE_OPTIMAL_NV=1000164003,
        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR=VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
        VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR=VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
       );
@@ -1430,7 +1485,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkImageTiling=
       (
        VK_IMAGE_TILING_OPTIMAL=0,
-       VK_IMAGE_TILING_LINEAR=1
+       VK_IMAGE_TILING_LINEAR=1,
+       VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT=1000158000
       );
 
      PPVkImageViewType=^PVkImageViewType;
@@ -1482,7 +1538,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC=8,
        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC=9,
        VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT=10,
-       VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT=1000138000
+       VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT=1000138000,
+       VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NVX=1000165000
       );
 
      PPVkQueryType=^PVkQueryType;
@@ -1491,7 +1548,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       (
        VK_QUERY_TYPE_OCCLUSION=0,
        VK_QUERY_TYPE_PIPELINE_STATISTICS=1,                                      //< Optional
-       VK_QUERY_TYPE_TIMESTAMP=2
+       VK_QUERY_TYPE_TIMESTAMP=2,
+       VK_QUERY_TYPE_COMPACTED_SIZE_NVX=1000165000
       );
 
      PPVkBorderColor=^PVkBorderColor;
@@ -1511,7 +1569,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkPipelineBindPoint=
       (
        VK_PIPELINE_BIND_POINT_GRAPHICS=0,
-       VK_PIPELINE_BIND_POINT_COMPUTE=1
+       VK_PIPELINE_BIND_POINT_COMPUTE=1,
+       VK_PIPELINE_BIND_POINT_RAYTRACING_NVX=1000165000
       );
 
      PPVkPipelineCacheHeaderVersion=^PVkPipelineCacheHeaderVersion;
@@ -2120,6 +2179,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV=1000026001,
        VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV=1000026002,
        VK_STRUCTURE_TYPE_TEXTURE_LOD_GATHER_FORMAT_PROPERTIES_AMD=1000041000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV=1000050000,
        VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO=1000053000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES=1000053001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES=1000053002,
@@ -2288,6 +2348,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES=1000156005,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO=1000157000,
        VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO=1000157001,
+       VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT=1000158000,
+       VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT=1000158001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT=1000158002,
+       VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT=1000158003,
+       VK_STRUCTURE_TYPE_IMAGE_EXCPLICIT_DRM_FORMAT_MODIFIER_CREATE_INFO_EXT=1000158004,
+       VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT=1000158005,
        VK_STRUCTURE_TYPE_VALIDATION_CACHE_CREATE_INFO_EXT=1000160000,
        VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT=1000160001,
        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT=1000161000,
@@ -2295,6 +2361,23 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT=1000161002,
        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT=1000161003,
        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT_EXT=1000161004,
+       VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SHADING_RATE_IMAGE_STATE_CREATE_INFO_NV=1000164000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_FEATURES_NV=1000164001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_PROPERTIES_NV=1000164002,
+       VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_COARSE_SAMPLE_ORDER_STATE_CREATE_INFO_NV=1000164005,
+       VK_STRUCTURE_TYPE_RAYTRACING_PIPELINE_CREATE_INFO_NVX=1000165000,
+       VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NVX=1000165001,
+       VK_STRUCTURE_TYPE_GEOMETRY_INSTANCE_NVX=1000165002,
+       VK_STRUCTURE_TYPE_GEOMETRY_NVX=1000165003,
+       VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NVX=1000165004,
+       VK_STRUCTURE_TYPE_GEOMETRY_AABB_NVX=1000165005,
+       VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NVX=1000165006,
+       VK_STRUCTURE_TYPE_DESCRIPTOR_ACCELERATION_STRUCTURE_INFO_NVX=1000165007,
+       VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NVX=1000165008,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAYTRACING_PROPERTIES_NVX=1000165009,
+       VK_STRUCTURE_TYPE_HIT_SHADER_MODULE_CREATE_INFO_NVX=1000165010,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV=1000166000,
+       VK_STRUCTURE_TYPE_PIPELINE_REPRESENTATIVE_FRAGMENT_TEST_STATE_CREATE_INFO_NV=1000166001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES=1000168000,
        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT=1000168001,
        VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT=1000174000,
@@ -2302,10 +2385,19 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT=1000178000,
        VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT=1000178001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT=1000178002,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR=1000180000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD=1000185000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT=1000190000,
        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT=1000190001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT=1000190002,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR=1000196000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_NV=1000201000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV=1000202000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV=1000202001,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_NV=1000203000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_FOOTPRINT_FEATURES_NV=1000204000,
+       VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_EXCLUSIVE_SCISSOR_STATE_CREATE_INFO_NV=1000205000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXCLUSIVE_SCISSOR_FEATURES_NV=1000205002,
        VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV=1000206000,
        VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV=1000206001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR=1000211000,
@@ -2386,6 +2478,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       (
        VK_ERROR_NOT_PERMITTED_EXT=-1000174001,
        VK_ERROR_FRAGMENTATION_EXT=-1000161000,
+       VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT=-1000158000,
        VK_ERROR_INVALID_EXTERNAL_HANDLE=-1000072003,
        VK_ERROR_OUT_OF_POOL_MEMORY=-1000069000,
        VK_ERROR_INVALID_SHADER_NV=-1000012000,
@@ -2433,7 +2526,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DYNAMIC_STATE_STENCIL_REFERENCE=8,
        VK_DYNAMIC_STATE_VIEWPORT_W_SCALING_NV=1000087000,
        VK_DYNAMIC_STATE_DISCARD_RECTANGLE_EXT=1000099000,
-       VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT=1000143000
+       VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT=1000143000,
+       VK_DYNAMIC_STATE_VIEWPORT_SHADING_RATE_PALETTE_NV=1000164004,
+       VK_DYNAMIC_STATE_VIEWPORT_COARSE_SAMPLE_ORDER_NV=1000164006,
+       VK_DYNAMIC_STATE_EXCLUSIVE_SCISSOR_NV=1000205001
       );
 
      PPVkDescriptorUpdateTemplateType=^PVkDescriptorUpdateTemplateType;
@@ -2486,6 +2582,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT=1000128000,
        VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION=1000156000,
        VK_OBJECT_TYPE_VALIDATION_CACHE_EXT=1000160000,
+       VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NVX=1000165000,
        VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR=VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE,
        VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR=VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION
       );
@@ -2499,6 +2596,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_QUEUE_TRANSFER_BIT=$00000004,                                          //< Queue supports transfer operations
        VK_QUEUE_SPARSE_BINDING_BIT=$00000008,                                    //< Queue supports sparse resource memory management operations
        VK_QUEUE_PROTECTED_BIT=$00000010
+      );
+
+     PPVkRenderPassCreateFlagBits=^PVkRenderPassCreateFlagBits;
+     PVkRenderPassCreateFlagBits=^TVkRenderPassCreateFlagBits;
+     TVkRenderPassCreateFlagBits=
+      (
+       VK_RENDER_PASS_CREATE_RESERVED_0_BIT_KHR=$00000001
       );
 
      PPVkDeviceQueueCreateFlagBits=^PVkDeviceQueueCreateFlagBits;
@@ -2554,9 +2658,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_ACCESS_COMMAND_PROCESS_WRITE_BIT_NVX=$00040000,
        VK_ACCESS_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT=$00080000,
        VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT=$00100000,
-       VK_ACCESS_RESERVED_21_BIT_NV=$00200000,
-       VK_ACCESS_RESERVED_22_BIT_NV=$00400000,
-       VK_ACCESS_RESERVED_23_BIT_NV=$00800000,
+       VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NVX=$00200000,
+       VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NVX=$00400000,
+       VK_ACCESS_SHADING_RATE_IMAGE_READ_BIT_NV=$00800000,
        VK_ACCESS_RESERVED_24_BIT_EXT=$01000000
       );
 
@@ -2574,7 +2678,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT=$00000080,                              //< Can be used as source of fixed-function vertex fetch (VBO)
        VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT=$00000100,                            //< Can be the source of indirect parameters (e.g. indirect buffer, parameter buffer)
        VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT=$00000200,
-       VK_BUFFER_USAGE_RESERVED_10_BIT_NV=$00000400
+       VK_BUFFER_USAGE_RAYTRACING_BIT_NVX=$00000400
       );
 
      PPVkBufferCreateFlagBits=^PVkBufferCreateFlagBits;
@@ -2598,14 +2702,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_SHADER_STAGE_FRAGMENT_BIT=$00000010,
        VK_SHADER_STAGE_ALL_GRAPHICS=31,
        VK_SHADER_STAGE_COMPUTE_BIT=$00000020,
-       VK_SHADER_STAGE_RESERVED_6_BIT_NV=$00000040,
-       VK_SHADER_STAGE_RESERVED_7_BIT_NV=$00000080,
-       VK_SHADER_STAGE_RESERVED_8_BIT_NV=$00000100,
-       VK_SHADER_STAGE_RESERVED_9_BIT_NV=$00000200,
-       VK_SHADER_STAGE_RESERVED_10_BIT_NV=$00000400,
-       VK_SHADER_STAGE_RESERVED_11_BIT_NV=$00000800,
-       VK_SHADER_STAGE_RESERVED_12_BIT_NV=$00001000,
-       VK_SHADER_STAGE_RESERVED_13_BIT_NV=$00002000,
+       VK_SHADER_STAGE_TASK_BIT_NV=$00000040,
+       VK_SHADER_STAGE_MESH_BIT_NV=$00000080,
+       VK_SHADER_STAGE_RAYGEN_BIT_NVX=$00000100,
+       VK_SHADER_STAGE_ANY_HIT_BIT_NVX=$00000200,
+       VK_SHADER_STAGE_CLOSEST_HIT_BIT_NVX=$00000400,
+       VK_SHADER_STAGE_MISS_BIT_NVX=$00000800,
+       VK_SHADER_STAGE_INTERSECTION_BIT_NVX=$00001000,
+       VK_SHADER_STAGE_CALLABLE_BIT_NVX=$00002000,
        VK_SHADER_STAGE_ALL=2147483647
       );
 
@@ -2621,7 +2725,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT=$00000020,                    //< Can be used as framebuffer depth/stencil attachment
        VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT=$00000040,                        //< Image data not needed outside of rendering
        VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT=$00000080,                            //< Can be used as framebuffer input attachment
-       VK_IMAGE_USAGE_RESERVED_8_BIT_NV=$00000100,
+       VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV=$00000100,
        VK_IMAGE_USAGE_RESERVED_9_BIT_EXT=$00000200
       );
 
@@ -2642,7 +2746,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_CREATE_ALIAS_BIT=$00000400,
        VK_IMAGE_CREATE_PROTECTED_BIT=$00000800,
        VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT=$00001000,
-       VK_IMAGE_CREATE_RESERVED_13_BIT_NV=$00002000,
+       VK_IMAGE_CREATE_CORNER_SAMPLED_BIT_NV=$00002000,
        VK_IMAGE_CREATE_RESERVED_14_BIT_EXT=$00004000,
        VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR=VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT,
        VK_IMAGE_CREATE_ALIAS_BIT_KHR=VK_IMAGE_CREATE_ALIAS_BIT,
@@ -2661,7 +2765,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_PIPELINE_CREATE_DERIVATIVE_BIT=$00000004,
        VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT=$00000008,
        VK_PIPELINE_CREATE_DISPATCH_BASE=$00000010,
-       VK_PIPELINE_CREATE_RESERVED_5_BIT_NV=$00000020,
+       VK_PIPELINE_CREATE_DEFER_COMPILE_BIT_NVX=$00000020,
        VK_PIPELINE_CREATE_DISPATCH_BASE_KHR=VK_PIPELINE_CREATE_DISPATCH_BASE,
        VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT_KHR=VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT
       );
@@ -2777,6 +2881,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_IMAGE_ASPECT_PLANE_0_BIT=$00000010,
        VK_IMAGE_ASPECT_PLANE_1_BIT=$00000020,
        VK_IMAGE_ASPECT_PLANE_2_BIT=$00000040,
+       VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT=$00000080,
+       VK_IMAGE_ASPECT_MEMORY_PLANE_1_BIT_EXT=$00000100,
+       VK_IMAGE_ASPECT_MEMORY_PLANE_2_BIT_EXT=$00000200,
+       VK_IMAGE_ASPECT_MEMORY_PLANE_3_BIT_EXT=$00000400,
        VK_IMAGE_ASPECT_PLANE_0_BIT_KHR=VK_IMAGE_ASPECT_PLANE_0_BIT,
        VK_IMAGE_ASPECT_PLANE_1_BIT_KHR=VK_IMAGE_ASPECT_PLANE_1_BIT,
        VK_IMAGE_ASPECT_PLANE_2_BIT_KHR=VK_IMAGE_ASPECT_PLANE_2_BIT
@@ -2821,10 +2929,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT=$00010000,                             //< All stages supported on the queue
        VK_PIPELINE_STAGE_COMMAND_PROCESS_BIT_NVX=$00020000,
        VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT=$00040000,
-       VK_PIPELINE_STAGE_RESERVED_19_BIT_NV=$00080000,
-       VK_PIPELINE_STAGE_RESERVED_20_BIT_NV=$00100000,
-       VK_PIPELINE_STAGE_RESERVED_21_BIT_NV=$00200000,
-       VK_PIPELINE_STAGE_RESERVED_22_BIT_NV=$00400000,
+       VK_PIPELINE_STAGE_TASK_SHADER_BIT_NV=$00080000,
+       VK_PIPELINE_STAGE_MESH_SHADER_BIT_NV=$00100000,
+       VK_PIPELINE_STAGE_RAYTRACING_BIT_NVX=$00200000,
+       VK_PIPELINE_STAGE_SHADING_RATE_IMAGE_BIT_NV=$00400000,
        VK_PIPELINE_STAGE_RESERVED_23_BIT_EXT=$00800000
       );
 
@@ -3019,6 +3127,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT_EXT=33,
        VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT=1000085000,
        VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT=1000156000,
+       VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_NVX_EXT=1000165000,
        VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT=VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT_EXT, //< Backwards-compatible alias containing a typo
        VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR_EXT=VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT,
        VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR_EXT=VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT,
@@ -3490,11 +3599,107 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_VENDOR_ID_MAX_ENUM=$7fffffff
       );
 
+     PPVkDriverIdKHR=^PVkDriverIdKHR;
+     PVkDriverIdKHR=^TVkDriverIdKHR;
+     TVkDriverIdKHR=
+      (
+       VK_DRIVER_ID_AMD_PROPRIETARY_KHR=1,                                       //< Advanced Micro Devices, Inc.
+       VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR=2,                                       //< Advanced Micro Devices, Inc.
+       VK_DRIVER_ID_MESA_RADV_KHR=3,                                             //< Mesa open source project
+       VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR=4,                                    //< NVIDIA Corporation
+       VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS_KHR=5,                             //< Intel Corporation
+       VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA_KHR=6,                                //< Intel Corporation
+       VK_DRIVER_ID_IMAGINATION_PROPRIETARY_KHR=7,                               //< Imagination Technologies
+       VK_DRIVER_ID_QUALCOMM_PROPRIETARY_KHR=8,                                  //< Qualcomm Technologies, Inc.
+       VK_DRIVER_ID_ARM_PROPRIETARY_KHR=9                                        //< Arm Limited
+      );
+
      PPVkConditionalRenderingFlagBitsEXT=^PVkConditionalRenderingFlagBitsEXT;
      PVkConditionalRenderingFlagBitsEXT=^TVkConditionalRenderingFlagBitsEXT;
      TVkConditionalRenderingFlagBitsEXT=
       (
        VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT=$00000001
+      );
+
+     PPVkShadingRatePaletteEntryNV=^PVkShadingRatePaletteEntryNV;
+     PVkShadingRatePaletteEntryNV=^TVkShadingRatePaletteEntryNV;
+     TVkShadingRatePaletteEntryNV=
+      (
+       VK_SHADING_RATE_PALETTE_ENTRY_NO_INVOCATIONS_NV=0,
+       VK_SHADING_RATE_PALETTE_ENTRY_16_INVOCATIONS_PER_PIXEL_NV=1,
+       VK_SHADING_RATE_PALETTE_ENTRY_8_INVOCATIONS_PER_PIXEL_NV=2,
+       VK_SHADING_RATE_PALETTE_ENTRY_4_INVOCATIONS_PER_PIXEL_NV=3,
+       VK_SHADING_RATE_PALETTE_ENTRY_2_INVOCATIONS_PER_PIXEL_NV=4,
+       VK_SHADING_RATE_PALETTE_ENTRY_1_INVOCATION_PER_PIXEL_NV=5,
+       VK_SHADING_RATE_PALETTE_ENTRY_1_INVOCATION_PER_2X1_PIXELS_NV=6,
+       VK_SHADING_RATE_PALETTE_ENTRY_1_INVOCATION_PER_1X2_PIXELS_NV=7,
+       VK_SHADING_RATE_PALETTE_ENTRY_1_INVOCATION_PER_2X2_PIXELS_NV=8,
+       VK_SHADING_RATE_PALETTE_ENTRY_1_INVOCATION_PER_4X2_PIXELS_NV=9,
+       VK_SHADING_RATE_PALETTE_ENTRY_1_INVOCATION_PER_2X4_PIXELS_NV=10,
+       VK_SHADING_RATE_PALETTE_ENTRY_1_INVOCATION_PER_4X4_PIXELS_NV=11
+      );
+
+     PPVkCoarseSampleOrderTypeNV=^PVkCoarseSampleOrderTypeNV;
+     PVkCoarseSampleOrderTypeNV=^TVkCoarseSampleOrderTypeNV;
+     TVkCoarseSampleOrderTypeNV=
+      (
+       VK_COARSE_SAMPLE_ORDER_TYPE_DEFAULT_NV=0,
+       VK_COARSE_SAMPLE_ORDER_TYPE_CUSTOM_NV=1,
+       VK_COARSE_SAMPLE_ORDER_TYPE_PIXEL_MAJOR_NV=2,
+       VK_COARSE_SAMPLE_ORDER_TYPE_SAMPLE_MAJOR_NV=3
+      );
+
+     PPVkGeometryInstanceFlagBitsNVX=^PVkGeometryInstanceFlagBitsNVX;
+     PVkGeometryInstanceFlagBitsNVX=^TVkGeometryInstanceFlagBitsNVX;
+     TVkGeometryInstanceFlagBitsNVX=
+      (
+       VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_DISABLE_BIT_NVX=$00000001,
+       VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_FLIP_WINDING_BIT_NVX=$00000002,
+       VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_NVX=$00000004,
+       VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_NVX=$00000008
+      );
+
+     PPVkGeometryFlagBitsNVX=^PVkGeometryFlagBitsNVX;
+     PVkGeometryFlagBitsNVX=^TVkGeometryFlagBitsNVX;
+     TVkGeometryFlagBitsNVX=
+      (
+       VK_GEOMETRY_OPAQUE_BIT_NVX=$00000001,
+       VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_NVX=$00000002
+      );
+
+     PPVkBuildAccelerationStructureFlagBitsNVX=^PVkBuildAccelerationStructureFlagBitsNVX;
+     PVkBuildAccelerationStructureFlagBitsNVX=^TVkBuildAccelerationStructureFlagBitsNVX;
+     TVkBuildAccelerationStructureFlagBitsNVX=
+      (
+       VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_NVX=$00000001,
+       VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_NVX=$00000002,
+       VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_NVX=$00000004,
+       VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_NVX=$00000008,
+       VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_NVX=$00000010
+      );
+
+     PPVkCopyAccelerationStructureModeNVX=^PVkCopyAccelerationStructureModeNVX;
+     PVkCopyAccelerationStructureModeNVX=^TVkCopyAccelerationStructureModeNVX;
+     TVkCopyAccelerationStructureModeNVX=
+      (
+       VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_NVX=0,
+       VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_NVX=1
+      );
+
+     PPVkAccelerationStructureTypeNVX=^PVkAccelerationStructureTypeNVX;
+     PVkAccelerationStructureTypeNVX=^TVkAccelerationStructureTypeNVX;
+     TVkAccelerationStructureTypeNVX=
+      (
+       VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_NVX=0,
+       VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_NVX=1
+      );
+
+     PPVkGeometryTypeNVX=^PVkGeometryTypeNVX;
+     PVkGeometryTypeNVX=^TVkGeometryTypeNVX;
+     TVkGeometryTypeNVX=
+      (
+       VK_GEOMETRY_TYPE_TRIANGLES_NVX=0,
+       VK_GEOMETRY_TYPE_AABBS_NVX=1
       );
 
      PPVkDescriptorUpdateTemplateTypeKHR=PPVkDescriptorUpdateTemplateType;
@@ -7230,6 +7435,44 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkConformanceVersionKHR=^PVkConformanceVersionKHR;
+     PVkConformanceVersionKHR=^TVkConformanceVersionKHR;
+     TVkConformanceVersionKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       major:TVkUInt8;
+       minor:TVkUInt8;
+       subminor:TVkUInt8;
+       patch:TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMajor:TVkUInt8;
+                          const aMinor:TVkUInt8;
+                          const aSubminor:TVkUInt8;
+                          const aPatch:TVkUInt8);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceDriverPropertiesKHR=^PVkPhysicalDeviceDriverPropertiesKHR;
+     PVkPhysicalDeviceDriverPropertiesKHR=^TVkPhysicalDeviceDriverPropertiesKHR;
+     TVkPhysicalDeviceDriverPropertiesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR
+       pNext:PVkVoid;
+       driverID:TVkUInt32;
+       driverName:array[0..VK_MAX_DRIVER_NAME_SIZE_KHR-1] of TVkChar;
+       driverInfo:array[0..VK_MAX_DRIVER_INFO_SIZE_KHR-1] of TVkChar;
+       conformanceVersion:TVkConformanceVersionKHR;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDriverID:TVkUInt32;
+                          const aDriverName:TVkCharString;
+                          const aDriverInfo:TVkCharString;
+                          const aConformanceVersion:TVkConformanceVersionKHR);
+{$endif}
+     end;
+
      PPVkRectLayerKHR=^PVkRectLayerKHR;
      PVkRectLayerKHR=^TVkRectLayerKHR;
      TVkRectLayerKHR=record
@@ -10636,6 +10879,22 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkPhysicalDeviceShaderAtomicInt64FeaturesKHR=^PVkPhysicalDeviceShaderAtomicInt64FeaturesKHR;
+     PVkPhysicalDeviceShaderAtomicInt64FeaturesKHR=^TVkPhysicalDeviceShaderAtomicInt64FeaturesKHR;
+     TVkPhysicalDeviceShaderAtomicInt64FeaturesKHR=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR
+       pNext:PVkVoid;
+       shaderBufferInt64Atomics:TVkBool32;
+       shaderSharedInt64Atomics:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShaderBufferInt64Atomics:TVkBool32;
+                          const aShaderSharedInt64Atomics:TVkBool32);
+{$endif}
+     end;
+
      PPVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT=^PVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT;
      PVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT=^TVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT;
      TVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT=record
@@ -10707,6 +10966,610 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        decodeModeSharedExponent:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aDecodeModeSharedExponent:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceRepresentativeFragmentTestFeaturesNV=^PVkPhysicalDeviceRepresentativeFragmentTestFeaturesNV;
+     PVkPhysicalDeviceRepresentativeFragmentTestFeaturesNV=^TVkPhysicalDeviceRepresentativeFragmentTestFeaturesNV;
+     TVkPhysicalDeviceRepresentativeFragmentTestFeaturesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV
+       pNext:PVkVoid;
+       representativeFragmentTest:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aRepresentativeFragmentTest:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPipelineRepresentativeFragmentTestStateCreateInfoNV=^PVkPipelineRepresentativeFragmentTestStateCreateInfoNV;
+     PVkPipelineRepresentativeFragmentTestStateCreateInfoNV=^TVkPipelineRepresentativeFragmentTestStateCreateInfoNV;
+     TVkPipelineRepresentativeFragmentTestStateCreateInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_REPRESENTATIVE_FRAGMENT_TEST_STATE_CREATE_INFO_NV
+       pNext:PVkVoid;
+       representativeFragmentTestEnable:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aRepresentativeFragmentTestEnable:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceExclusiveScissorFeaturesNV=^PVkPhysicalDeviceExclusiveScissorFeaturesNV;
+     PVkPhysicalDeviceExclusiveScissorFeaturesNV=^TVkPhysicalDeviceExclusiveScissorFeaturesNV;
+     TVkPhysicalDeviceExclusiveScissorFeaturesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXCLUSIVE_SCISSOR_FEATURES_NV
+       pNext:PVkVoid;
+       exclusiveScissor:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aExclusiveScissor:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPipelineViewportExclusiveScissorStateCreateInfoNV=^PVkPipelineViewportExclusiveScissorStateCreateInfoNV;
+     PVkPipelineViewportExclusiveScissorStateCreateInfoNV=^TVkPipelineViewportExclusiveScissorStateCreateInfoNV;
+     TVkPipelineViewportExclusiveScissorStateCreateInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_EXCLUSIVE_SCISSOR_STATE_CREATE_INFO_NV
+       pNext:PVkVoid;
+       exclusiveScissorCount:TVkUInt32;
+       pExclusiveScissors:PVkRect2D;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aExclusiveScissorCount:TVkUInt32;
+                          const aPExclusiveScissors:PVkRect2D);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceCornerSampledImageFeaturesNV=^PVkPhysicalDeviceCornerSampledImageFeaturesNV;
+     PVkPhysicalDeviceCornerSampledImageFeaturesNV=^TVkPhysicalDeviceCornerSampledImageFeaturesNV;
+     TVkPhysicalDeviceCornerSampledImageFeaturesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV
+       pNext:PVkVoid;
+       cornerSampledImage:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aCornerSampledImage:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceComputeShaderDerivativesFeaturesNV=^PVkPhysicalDeviceComputeShaderDerivativesFeaturesNV;
+     PVkPhysicalDeviceComputeShaderDerivativesFeaturesNV=^TVkPhysicalDeviceComputeShaderDerivativesFeaturesNV;
+     TVkPhysicalDeviceComputeShaderDerivativesFeaturesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_NV
+       pNext:PVkVoid;
+       computeDerivativeGroupQuads:TVkBool32;
+       computeDerivativeGroupLinear:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aComputeDerivativeGroupQuads:TVkBool32;
+                          const aComputeDerivativeGroupLinear:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceFragmentShaderBarycentricFeaturesNV=^PVkPhysicalDeviceFragmentShaderBarycentricFeaturesNV;
+     PVkPhysicalDeviceFragmentShaderBarycentricFeaturesNV=^TVkPhysicalDeviceFragmentShaderBarycentricFeaturesNV;
+     TVkPhysicalDeviceFragmentShaderBarycentricFeaturesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_NV
+       pNext:PVkVoid;
+       fragmentShaderBarycentric:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFragmentShaderBarycentric:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceShaderImageFootprintFeaturesNV=^PVkPhysicalDeviceShaderImageFootprintFeaturesNV;
+     PVkPhysicalDeviceShaderImageFootprintFeaturesNV=^TVkPhysicalDeviceShaderImageFootprintFeaturesNV;
+     TVkPhysicalDeviceShaderImageFootprintFeaturesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_FOOTPRINT_FEATURES_NV
+       pNext:PVkVoid;
+       imageFootprint:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aImageFootprint:TVkBool32);
+{$endif}
+     end;
+
+     PPVkShadingRatePaletteNV=^PVkShadingRatePaletteNV;
+     PVkShadingRatePaletteNV=^TVkShadingRatePaletteNV;
+     TVkShadingRatePaletteNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       shadingRatePaletteEntryCount:TVkUInt32;
+       pShadingRatePaletteEntries:PVkShadingRatePaletteEntryNV;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShadingRatePaletteEntryCount:TVkUInt32;
+                          const aPShadingRatePaletteEntries:PVkShadingRatePaletteEntryNV);
+{$endif}
+     end;
+
+     PPVkPipelineViewportShadingRateImageStateCreateInfoNV=^PVkPipelineViewportShadingRateImageStateCreateInfoNV;
+     PVkPipelineViewportShadingRateImageStateCreateInfoNV=^TVkPipelineViewportShadingRateImageStateCreateInfoNV;
+     TVkPipelineViewportShadingRateImageStateCreateInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SHADING_RATE_IMAGE_STATE_CREATE_INFO_NV
+       pNext:PVkVoid;
+       shadingRateImageEnable:TVkBool32;
+       viewportCount:TVkUInt32;
+       pShadingRatePalettes:PVkShadingRatePaletteNV;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShadingRateImageEnable:TVkBool32;
+                          const aViewportCount:TVkUInt32;
+                          const aPShadingRatePalettes:PVkShadingRatePaletteNV);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceShadingRateImageFeaturesNV=^PVkPhysicalDeviceShadingRateImageFeaturesNV;
+     PVkPhysicalDeviceShadingRateImageFeaturesNV=^TVkPhysicalDeviceShadingRateImageFeaturesNV;
+     TVkPhysicalDeviceShadingRateImageFeaturesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_FEATURES_NV
+       pNext:PVkVoid;
+       shadingRateImage:TVkBool32;
+       shadingRateCoarseSampleOrder:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShadingRateImage:TVkBool32;
+                          const aShadingRateCoarseSampleOrder:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceShadingRateImagePropertiesNV=^PVkPhysicalDeviceShadingRateImagePropertiesNV;
+     PVkPhysicalDeviceShadingRateImagePropertiesNV=^TVkPhysicalDeviceShadingRateImagePropertiesNV;
+     TVkPhysicalDeviceShadingRateImagePropertiesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_PROPERTIES_NV
+       pNext:PVkVoid;
+       shadingRateTexelSize:TVkExtent2D;
+       shadingRatePaletteSize:TVkUInt32;
+       shadingRateMaxCoarseSamples:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShadingRateTexelSize:TVkExtent2D;
+                          const aShadingRatePaletteSize:TVkUInt32;
+                          const aShadingRateMaxCoarseSamples:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkCoarseSampleLocationNV=^PVkCoarseSampleLocationNV;
+     PVkCoarseSampleLocationNV=^TVkCoarseSampleLocationNV;
+     TVkCoarseSampleLocationNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       pixelX:TVkUInt32;
+       pixelY:TVkUInt32;
+       sample:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aPixelX:TVkUInt32;
+                          const aPixelY:TVkUInt32;
+                          const aSample:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkCoarseSampleOrderCustomNV=^PVkCoarseSampleOrderCustomNV;
+     PVkCoarseSampleOrderCustomNV=^TVkCoarseSampleOrderCustomNV;
+     TVkCoarseSampleOrderCustomNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       shadingRate:TVkShadingRatePaletteEntryNV;
+       sampleCount:TVkUInt32;
+       sampleLocationCount:TVkUInt32;
+       pSampleLocations:PVkCoarseSampleLocationNV;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShadingRate:TVkShadingRatePaletteEntryNV;
+                          const aSampleCount:TVkUInt32;
+                          const aSampleLocationCount:TVkUInt32;
+                          const aPSampleLocations:PVkCoarseSampleLocationNV);
+{$endif}
+     end;
+
+     PPVkPipelineViewportCoarseSampleOrderStateCreateInfoNV=^PVkPipelineViewportCoarseSampleOrderStateCreateInfoNV;
+     PVkPipelineViewportCoarseSampleOrderStateCreateInfoNV=^TVkPipelineViewportCoarseSampleOrderStateCreateInfoNV;
+     TVkPipelineViewportCoarseSampleOrderStateCreateInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_COARSE_SAMPLE_ORDER_STATE_CREATE_INFO_NV
+       pNext:PVkVoid;
+       sampleOrderType:TVkCoarseSampleOrderTypeNV;
+       customSampleOrderCount:TVkUInt32;
+       pCustomSampleOrders:PVkCoarseSampleOrderCustomNV;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aSampleOrderType:TVkCoarseSampleOrderTypeNV;
+                          const aCustomSampleOrderCount:TVkUInt32;
+                          const aPCustomSampleOrders:PVkCoarseSampleOrderCustomNV);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceMeshShaderFeaturesNV=^PVkPhysicalDeviceMeshShaderFeaturesNV;
+     PVkPhysicalDeviceMeshShaderFeaturesNV=^TVkPhysicalDeviceMeshShaderFeaturesNV;
+     TVkPhysicalDeviceMeshShaderFeaturesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV
+       pNext:PVkVoid;
+       taskShader:TVkBool32;
+       meshShader:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aTaskShader:TVkBool32;
+                          const aMeshShader:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceMeshShaderPropertiesNV=^PVkPhysicalDeviceMeshShaderPropertiesNV;
+     PVkPhysicalDeviceMeshShaderPropertiesNV=^TVkPhysicalDeviceMeshShaderPropertiesNV;
+     TVkPhysicalDeviceMeshShaderPropertiesNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV
+       pNext:PVkVoid;
+       maxDrawMeshTasksCount:TVkUInt32;
+       maxTaskWorkGroupInvocations:TVkUInt32;
+       maxTaskWorkGroupSize:array[0..2] of TVkUInt32;
+       maxTaskTotalMemorySize:TVkUInt32;
+       maxTaskOutputCount:TVkUInt32;
+       maxMeshWorkGroupInvocations:TVkUInt32;
+       maxMeshWorkGroupSize:array[0..2] of TVkUInt32;
+       maxMeshTotalMemorySize:TVkUInt32;
+       maxMeshOutputVertices:TVkUInt32;
+       maxMeshOutputPrimitives:TVkUInt32;
+       maxMeshMultiviewViewCount:TVkUInt32;
+       meshOutputPerVertexGranularity:TVkUInt32;
+       meshOutputPerPrimitiveGranularity:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMaxDrawMeshTasksCount:TVkUInt32;
+                          const aMaxTaskWorkGroupInvocations:TVkUInt32;
+                          const aMaxTaskWorkGroupSize:array of TVkUInt32;
+                          const aMaxTaskTotalMemorySize:TVkUInt32;
+                          const aMaxTaskOutputCount:TVkUInt32;
+                          const aMaxMeshWorkGroupInvocations:TVkUInt32;
+                          const aMaxMeshWorkGroupSize:array of TVkUInt32;
+                          const aMaxMeshTotalMemorySize:TVkUInt32;
+                          const aMaxMeshOutputVertices:TVkUInt32;
+                          const aMaxMeshOutputPrimitives:TVkUInt32;
+                          const aMaxMeshMultiviewViewCount:TVkUInt32;
+                          const aMeshOutputPerVertexGranularity:TVkUInt32;
+                          const aMeshOutputPerPrimitiveGranularity:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkDrawMeshTasksIndirectCommandNV=^PVkDrawMeshTasksIndirectCommandNV;
+     PVkDrawMeshTasksIndirectCommandNV=^TVkDrawMeshTasksIndirectCommandNV;
+     TVkDrawMeshTasksIndirectCommandNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       taskCount:TVkUInt32;
+       firstTask:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aTaskCount:TVkUInt32;
+                          const aFirstTask:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkRaytracingPipelineCreateInfoNVX=^PVkRaytracingPipelineCreateInfoNVX;
+     PVkRaytracingPipelineCreateInfoNVX=^TVkRaytracingPipelineCreateInfoNVX;
+     TVkRaytracingPipelineCreateInfoNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RAYTRACING_PIPELINE_CREATE_INFO_NVX
+       pNext:PVkVoid;
+       flags:TVkPipelineCreateFlags;
+       stageCount:TVkUInt32;
+       pStages:PVkPipelineShaderStageCreateInfo;
+       pGroupNumbers:PVkUInt32;
+       maxRecursionDepth:TVkUInt32;
+       layout:TVkPipelineLayout;
+       basePipelineHandle:TVkPipeline;
+       basePipelineIndex:TVkInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TVkPipelineCreateFlags;
+                          const aStageCount:TVkUInt32;
+                          const aPStages:PVkPipelineShaderStageCreateInfo;
+                          const aPGroupNumbers:PVkUInt32;
+                          const aMaxRecursionDepth:TVkUInt32;
+                          const aLayout:TVkPipelineLayout;
+                          const aBasePipelineHandle:TVkPipeline;
+                          const aBasePipelineIndex:TVkInt32);
+{$endif}
+     end;
+
+     PPVkGeometryTrianglesNVX=^PVkGeometryTrianglesNVX;
+     PVkGeometryTrianglesNVX=^TVkGeometryTrianglesNVX;
+     TVkGeometryTrianglesNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NVX
+       pNext:PVkVoid;
+       vertexData:TVkBuffer;
+       vertexOffset:TVkDeviceSize;
+       vertexCount:TVkUInt32;
+       vertexStride:TVkDeviceSize;
+       vertexFormat:TVkFormat;
+       indexData:TVkBuffer;
+       indexOffset:TVkDeviceSize;
+       indexCount:TVkUInt32;
+       indexType:TVkIndexType;
+       transformData:TVkBuffer;
+       transformOffset:TVkDeviceSize;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aVertexData:TVkBuffer;
+                          const aVertexOffset:TVkDeviceSize;
+                          const aVertexCount:TVkUInt32;
+                          const aVertexStride:TVkDeviceSize;
+                          const aVertexFormat:TVkFormat;
+                          const aIndexData:TVkBuffer;
+                          const aIndexOffset:TVkDeviceSize;
+                          const aIndexCount:TVkUInt32;
+                          const aIndexType:TVkIndexType;
+                          const aTransformData:TVkBuffer;
+                          const aTransformOffset:TVkDeviceSize);
+{$endif}
+     end;
+
+     PPVkGeometryAABBNVX=^PVkGeometryAABBNVX;
+     PVkGeometryAABBNVX=^TVkGeometryAABBNVX;
+     TVkGeometryAABBNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_GEOMETRY_AABB_NVX
+       pNext:PVkVoid;
+       aabbData:TVkBuffer;
+       numAABBs:TVkUInt32;
+       stride:TVkUInt32;
+       offset:TVkDeviceSize;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aAabbData:TVkBuffer;
+                          const aNumAABBs:TVkUInt32;
+                          const aStride:TVkUInt32;
+                          const aOffset:TVkDeviceSize);
+{$endif}
+     end;
+
+     PPVkGeometryDataNVX=^PVkGeometryDataNVX;
+     PVkGeometryDataNVX=^TVkGeometryDataNVX;
+     TVkGeometryDataNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       triangles:TVkGeometryTrianglesNVX;
+       aabbs:TVkGeometryAABBNVX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aTriangles:TVkGeometryTrianglesNVX;
+                          const aAabbs:TVkGeometryAABBNVX);
+{$endif}
+     end;
+
+     PPVkGeometryNVX=^PVkGeometryNVX;
+     PVkGeometryNVX=^TVkGeometryNVX;
+     TVkGeometryNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_GEOMETRY_NVX
+       pNext:PVkVoid;
+       geometryType:TVkGeometryTypeNVX;
+       geometry:TVkGeometryDataNVX;
+       flags:TVkGeometryFlagsNVX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aGeometryType:TVkGeometryTypeNVX;
+                          const aGeometry:TVkGeometryDataNVX;
+                          const aFlags:TVkGeometryFlagsNVX);
+{$endif}
+     end;
+
+     PPVkAccelerationStructureCreateInfoNVX=^PVkAccelerationStructureCreateInfoNVX;
+     PVkAccelerationStructureCreateInfoNVX=^TVkAccelerationStructureCreateInfoNVX;
+     TVkAccelerationStructureCreateInfoNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NVX
+       pNext:PVkVoid;
+       type_:TVkAccelerationStructureTypeNVX;
+       flags:TVkBuildAccelerationStructureFlagsNVX;
+       compactedSize:TVkDeviceSize;
+       instanceCount:TVkUInt32;
+       geometryCount:TVkUInt32;
+       pGeometries:PVkGeometryNVX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aType_:TVkAccelerationStructureTypeNVX;
+                          const aFlags:TVkBuildAccelerationStructureFlagsNVX;
+                          const aCompactedSize:TVkDeviceSize;
+                          const aInstanceCount:TVkUInt32;
+                          const aGeometryCount:TVkUInt32;
+                          const aPGeometries:PVkGeometryNVX);
+{$endif}
+     end;
+
+     PPVkBindAccelerationStructureMemoryInfoNVX=^PVkBindAccelerationStructureMemoryInfoNVX;
+     PVkBindAccelerationStructureMemoryInfoNVX=^TVkBindAccelerationStructureMemoryInfoNVX;
+     TVkBindAccelerationStructureMemoryInfoNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NVX
+       pNext:PVkVoid;
+       accelerationStructure:TVkAccelerationStructureNVX;
+       memory:TVkDeviceMemory;
+       memoryOffset:TVkDeviceSize;
+       deviceIndexCount:TVkUInt32;
+       pDeviceIndices:PVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aAccelerationStructure:TVkAccelerationStructureNVX;
+                          const aMemory:TVkDeviceMemory;
+                          const aMemoryOffset:TVkDeviceSize;
+                          const aDeviceIndexCount:TVkUInt32;
+                          const aPDeviceIndices:PVkUInt32);
+{$endif}
+     end;
+
+     PPVkDescriptorAccelerationStructureInfoNVX=^PVkDescriptorAccelerationStructureInfoNVX;
+     PVkDescriptorAccelerationStructureInfoNVX=^TVkDescriptorAccelerationStructureInfoNVX;
+     TVkDescriptorAccelerationStructureInfoNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_ACCELERATION_STRUCTURE_INFO_NVX
+       pNext:PVkVoid;
+       accelerationStructureCount:TVkUInt32;
+       pAccelerationStructures:PVkAccelerationStructureNVX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aAccelerationStructureCount:TVkUInt32;
+                          const aPAccelerationStructures:PVkAccelerationStructureNVX);
+{$endif}
+     end;
+
+     PPVkAccelerationStructureMemoryRequirementsInfoNVX=^PVkAccelerationStructureMemoryRequirementsInfoNVX;
+     PVkAccelerationStructureMemoryRequirementsInfoNVX=^TVkAccelerationStructureMemoryRequirementsInfoNVX;
+     TVkAccelerationStructureMemoryRequirementsInfoNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NVX
+       pNext:PVkVoid;
+       accelerationStructure:TVkAccelerationStructureNVX;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aAccelerationStructure:TVkAccelerationStructureNVX);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceRaytracingPropertiesNVX=^PVkPhysicalDeviceRaytracingPropertiesNVX;
+     PVkPhysicalDeviceRaytracingPropertiesNVX=^TVkPhysicalDeviceRaytracingPropertiesNVX;
+     TVkPhysicalDeviceRaytracingPropertiesNVX=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAYTRACING_PROPERTIES_NVX
+       pNext:PVkVoid;
+       shaderHeaderSize:TVkUInt32;
+       maxRecursionDepth:TVkUInt32;
+       maxGeometryCount:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aShaderHeaderSize:TVkUInt32;
+                          const aMaxRecursionDepth:TVkUInt32;
+                          const aMaxGeometryCount:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkDrmFormatModifierPropertiesEXT=^PVkDrmFormatModifierPropertiesEXT;
+     PVkDrmFormatModifierPropertiesEXT=^TVkDrmFormatModifierPropertiesEXT;
+     TVkDrmFormatModifierPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       drmFormatModifier:TVkUInt64;
+       drmFormatModifierPlaneCount:TVkUInt32;
+       drmFormatModifierTilingFeatures:TVkFormatFeatureFlags;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDrmFormatModifier:TVkUInt64;
+                          const aDrmFormatModifierPlaneCount:TVkUInt32;
+                          const aDrmFormatModifierTilingFeatures:TVkFormatFeatureFlags);
+{$endif}
+     end;
+
+     PPVkDrmFormatModifierPropertiesListEXT=^PVkDrmFormatModifierPropertiesListEXT;
+     PVkDrmFormatModifierPropertiesListEXT=^TVkDrmFormatModifierPropertiesListEXT;
+     TVkDrmFormatModifierPropertiesListEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT
+       pNext:PVkVoid;
+       drmFormatModifierCount:TVkUInt32;
+       pDrmFormatModifierProperties:PVkDrmFormatModifierPropertiesEXT;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDrmFormatModifierCount:TVkUInt32;
+                          const aPDrmFormatModifierProperties:PVkDrmFormatModifierPropertiesEXT);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceImageDrmFormatModifierInfoEXT=^PVkPhysicalDeviceImageDrmFormatModifierInfoEXT;
+     PVkPhysicalDeviceImageDrmFormatModifierInfoEXT=^TVkPhysicalDeviceImageDrmFormatModifierInfoEXT;
+     TVkPhysicalDeviceImageDrmFormatModifierInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT
+       pNext:PVkVoid;
+       drmFormatModifier:TVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDrmFormatModifier:TVkUInt64);
+{$endif}
+     end;
+
+     PPVkImageDrmFormatModifierListCreateInfoEXT=^PVkImageDrmFormatModifierListCreateInfoEXT;
+     PVkImageDrmFormatModifierListCreateInfoEXT=^TVkImageDrmFormatModifierListCreateInfoEXT;
+     TVkImageDrmFormatModifierListCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT
+       pNext:PVkVoid;
+       drmFormatModifierCount:TVkUInt32;
+       pDrmFormatModifiers:PVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDrmFormatModifierCount:TVkUInt32;
+                          const aPDrmFormatModifiers:PVkUInt64);
+{$endif}
+     end;
+
+     PPVkImageDrmFormatModifierExplicitCreateInfoEXT=^PVkImageDrmFormatModifierExplicitCreateInfoEXT;
+     PVkImageDrmFormatModifierExplicitCreateInfoEXT=^TVkImageDrmFormatModifierExplicitCreateInfoEXT;
+     TVkImageDrmFormatModifierExplicitCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_EXCPLICIT_DRM_FORMAT_MODIFIER_CREATE_INFO_EXT
+       pNext:PVkVoid;
+       drmFormatModifier:TVkUInt64;
+       drmFormatModifierPlaneCount:TVkUInt32;
+       pPlaneLayouts:PVkSubresourceLayout;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDrmFormatModifier:TVkUInt64;
+                          const aDrmFormatModifierPlaneCount:TVkUInt32;
+                          const aPPlaneLayouts:PVkSubresourceLayout);
+{$endif}
+     end;
+
+     PPVkImageDrmFormatModifierPropertiesEXT=^PVkImageDrmFormatModifierPropertiesEXT;
+     PVkImageDrmFormatModifierPropertiesEXT=^TVkImageDrmFormatModifierPropertiesEXT;
+     TVkImageDrmFormatModifierPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT
+       pNext:PVkVoid;
+       drmFormatModifier:TVkUInt64;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aDrmFormatModifier:TVkUInt64);
 {$endif}
      end;
 
@@ -11391,6 +12254,48 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkCmdSetCheckpointNV=procedure(commandBuffer:TVkCommandBuffer;const pCheckpointMarker:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetQueueCheckpointDataNV=procedure(queue:TVkQueue;pCheckpointDataCount:PVkUInt32;pCheckpointData:PVkCheckpointDataNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdSetExclusiveScissorNV=procedure(commandBuffer:TVkCommandBuffer;firstExclusiveScissor:TVkUInt32;exclusiveScissorCount:TVkUInt32;const pExclusiveScissors:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdBindShadingRateImageNV=procedure(commandBuffer:TVkCommandBuffer;imageView:TVkImageView;imageLayout:TVkImageLayout); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdSetViewportShadingRatePaletteNV=procedure(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pShadingRatePalettes:PVkShadingRatePaletteNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdSetCoarseSampleOrderNV=procedure(commandBuffer:TVkCommandBuffer;sampleOrderType:TVkCoarseSampleOrderTypeNV;customSampleOrderCount:TVkUInt32;const pCustomSampleOrders:PVkCoarseSampleOrderCustomNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdDrawMeshTasksNV=procedure(commandBuffer:TVkCommandBuffer;taskCount:TVkUInt32;firstTask:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdDrawMeshTasksIndirectNV=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdDrawMeshTasksIndirectCountNV=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCompileDeferredNVX=function(device:TVkDevice;pipeline:TVkPipeline;shader:TVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCreateAccelerationStructureNVX=function(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureNVX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkDestroyAccelerationStructureNVX=procedure(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNVX;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetAccelerationStructureMemoryRequirementsNVX=procedure(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNVX;pMemoryRequirements:PVkMemoryRequirements2KHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetAccelerationStructureScratchMemoryRequirementsNVX=procedure(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNVX;pMemoryRequirements:PVkMemoryRequirements2KHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkBindAccelerationStructureMemoryNVX=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindAccelerationStructureMemoryInfoNVX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdCopyAccelerationStructureNVX=procedure(commandBuffer:TVkCommandBuffer;dst:TVkAccelerationStructureNVX;src:TVkAccelerationStructureNVX;mode:TVkCopyAccelerationStructureModeNVX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdWriteAccelerationStructurePropertiesNVX=procedure(commandBuffer:TVkCommandBuffer;accelerationStructure:TVkAccelerationStructureNVX;queryType:TVkQueryType;queryPool:TVkQueryPool;query:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdBuildAccelerationStructureNVX=procedure(commandBuffer:TVkCommandBuffer;type_:TVkAccelerationStructureTypeNVX;instanceCount:TVkUInt32;instanceData:TVkBuffer;instanceOffset:TVkDeviceSize;geometryCount:TVkUInt32;const pGeometries:PVkGeometryNVX;flags:TVkBuildAccelerationStructureFlagsNVX;update:TVkBool32;dst:TVkAccelerationStructureNVX;src:TVkAccelerationStructureNVX;scratch:TVkBuffer;scratchOffset:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdTraceRaysNVX=procedure(commandBuffer:TVkCommandBuffer;raygenShaderBindingTableBuffer:TVkBuffer;raygenShaderBindingOffset:TVkDeviceSize;missShaderBindingTableBuffer:TVkBuffer;missShaderBindingOffset:TVkDeviceSize;missShaderBindingStride:TVkDeviceSize;hitShaderBindingTableBuffer:TVkBuffer;hitShaderBindingOffset:TVkDeviceSize;hitShaderBindingStride:TVkDeviceSize;width:TVkUInt32;height:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetRaytracingShaderHandlesNVX=function(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetAccelerationStructureHandleNVX=function(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNVX;dataSize:TVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCreateRaytracingPipelinesNVX=function(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkRaytracingPipelineCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetImageDrmFormatModifierPropertiesEXT=function(device:TVkDevice;image:TVkImage;pProperties:PVkImageDrmFormatModifierPropertiesEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
 
      PPVulkanCommands=^PVulkanCommands;
@@ -12077,6 +12982,48 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       CmdSetCheckpointNV:TvkCmdSetCheckpointNV;
 
       GetQueueCheckpointDataNV:TvkGetQueueCheckpointDataNV;
+
+      CmdSetExclusiveScissorNV:TvkCmdSetExclusiveScissorNV;
+
+      CmdBindShadingRateImageNV:TvkCmdBindShadingRateImageNV;
+
+      CmdSetViewportShadingRatePaletteNV:TvkCmdSetViewportShadingRatePaletteNV;
+
+      CmdSetCoarseSampleOrderNV:TvkCmdSetCoarseSampleOrderNV;
+
+      CmdDrawMeshTasksNV:TvkCmdDrawMeshTasksNV;
+
+      CmdDrawMeshTasksIndirectNV:TvkCmdDrawMeshTasksIndirectNV;
+
+      CmdDrawMeshTasksIndirectCountNV:TvkCmdDrawMeshTasksIndirectCountNV;
+
+      CompileDeferredNVX:TvkCompileDeferredNVX;
+
+      CreateAccelerationStructureNVX:TvkCreateAccelerationStructureNVX;
+
+      DestroyAccelerationStructureNVX:TvkDestroyAccelerationStructureNVX;
+
+      GetAccelerationStructureMemoryRequirementsNVX:TvkGetAccelerationStructureMemoryRequirementsNVX;
+
+      GetAccelerationStructureScratchMemoryRequirementsNVX:TvkGetAccelerationStructureScratchMemoryRequirementsNVX;
+
+      BindAccelerationStructureMemoryNVX:TvkBindAccelerationStructureMemoryNVX;
+
+      CmdCopyAccelerationStructureNVX:TvkCmdCopyAccelerationStructureNVX;
+
+      CmdWriteAccelerationStructurePropertiesNVX:TvkCmdWriteAccelerationStructurePropertiesNVX;
+
+      CmdBuildAccelerationStructureNVX:TvkCmdBuildAccelerationStructureNVX;
+
+      CmdTraceRaysNVX:TvkCmdTraceRaysNVX;
+
+      GetRaytracingShaderHandlesNVX:TvkGetRaytracingShaderHandlesNVX;
+
+      GetAccelerationStructureHandleNVX:TvkGetAccelerationStructureHandleNVX;
+
+      CreateRaytracingPipelinesNVX:TvkCreateRaytracingPipelinesNVX;
+
+      GetImageDrmFormatModifierPropertiesEXT:TvkGetImageDrmFormatModifierPropertiesEXT;
 
      end;
 
@@ -12769,6 +13716,48 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure GetQueueCheckpointDataNV(queue:TVkQueue;pCheckpointDataCount:PVkUInt32;pCheckpointData:PVkCheckpointDataNV); virtual;
 
+       procedure CmdSetExclusiveScissorNV(commandBuffer:TVkCommandBuffer;firstExclusiveScissor:TVkUInt32;exclusiveScissorCount:TVkUInt32;const pExclusiveScissors:PVkRect2D); virtual;
+
+       procedure CmdBindShadingRateImageNV(commandBuffer:TVkCommandBuffer;imageView:TVkImageView;imageLayout:TVkImageLayout); virtual;
+
+       procedure CmdSetViewportShadingRatePaletteNV(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pShadingRatePalettes:PVkShadingRatePaletteNV); virtual;
+
+       procedure CmdSetCoarseSampleOrderNV(commandBuffer:TVkCommandBuffer;sampleOrderType:TVkCoarseSampleOrderTypeNV;customSampleOrderCount:TVkUInt32;const pCustomSampleOrders:PVkCoarseSampleOrderCustomNV); virtual;
+
+       procedure CmdDrawMeshTasksNV(commandBuffer:TVkCommandBuffer;taskCount:TVkUInt32;firstTask:TVkUInt32); virtual;
+
+       procedure CmdDrawMeshTasksIndirectNV(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32); virtual;
+
+       procedure CmdDrawMeshTasksIndirectCountNV(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); virtual;
+
+       function CompileDeferredNVX(device:TVkDevice;pipeline:TVkPipeline;shader:TVkUInt32):TVkResult; virtual;
+
+       function CreateAccelerationStructureNVX(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureNVX):TVkResult; virtual;
+
+       procedure DestroyAccelerationStructureNVX(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNVX;const pAllocator:PVkAllocationCallbacks); virtual;
+
+       procedure GetAccelerationStructureMemoryRequirementsNVX(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNVX;pMemoryRequirements:PVkMemoryRequirements2KHR); virtual;
+
+       procedure GetAccelerationStructureScratchMemoryRequirementsNVX(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNVX;pMemoryRequirements:PVkMemoryRequirements2KHR); virtual;
+
+       function BindAccelerationStructureMemoryNVX(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindAccelerationStructureMemoryInfoNVX):TVkResult; virtual;
+
+       procedure CmdCopyAccelerationStructureNVX(commandBuffer:TVkCommandBuffer;dst:TVkAccelerationStructureNVX;src:TVkAccelerationStructureNVX;mode:TVkCopyAccelerationStructureModeNVX); virtual;
+
+       procedure CmdWriteAccelerationStructurePropertiesNVX(commandBuffer:TVkCommandBuffer;accelerationStructure:TVkAccelerationStructureNVX;queryType:TVkQueryType;queryPool:TVkQueryPool;query:TVkUInt32); virtual;
+
+       procedure CmdBuildAccelerationStructureNVX(commandBuffer:TVkCommandBuffer;type_:TVkAccelerationStructureTypeNVX;instanceCount:TVkUInt32;instanceData:TVkBuffer;instanceOffset:TVkDeviceSize;geometryCount:TVkUInt32;const pGeometries:PVkGeometryNVX;flags:TVkBuildAccelerationStructureFlagsNVX;update:TVkBool32;dst:TVkAccelerationStructureNVX;src:TVkAccelerationStructureNVX;scratch:TVkBuffer;scratchOffset:TVkDeviceSize); virtual;
+
+       procedure CmdTraceRaysNVX(commandBuffer:TVkCommandBuffer;raygenShaderBindingTableBuffer:TVkBuffer;raygenShaderBindingOffset:TVkDeviceSize;missShaderBindingTableBuffer:TVkBuffer;missShaderBindingOffset:TVkDeviceSize;missShaderBindingStride:TVkDeviceSize;hitShaderBindingTableBuffer:TVkBuffer;hitShaderBindingOffset:TVkDeviceSize;hitShaderBindingStride:TVkDeviceSize;width:TVkUInt32;height:TVkUInt32); virtual;
+
+       function GetRaytracingShaderHandlesNVX(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult; virtual;
+
+       function GetAccelerationStructureHandleNVX(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNVX;dataSize:TVkSize;pData:PVkVoid):TVkResult; virtual;
+
+       function CreateRaytracingPipelinesNVX(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkRaytracingPipelineCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; virtual;
+
+       function GetImageDrmFormatModifierPropertiesEXT(device:TVkDevice;image:TVkImage;pProperties:PVkImageDrmFormatModifierPropertiesEXT):TVkResult; virtual;
+
        property Commands:TVulkanCommands read fCommands;
      end;
 
@@ -13457,6 +14446,48 @@ var LibVulkan:pointer=nil;
     vkCmdSetCheckpointNV:TvkCmdSetCheckpointNV=nil;
 
     vkGetQueueCheckpointDataNV:TvkGetQueueCheckpointDataNV=nil;
+
+    vkCmdSetExclusiveScissorNV:TvkCmdSetExclusiveScissorNV=nil;
+
+    vkCmdBindShadingRateImageNV:TvkCmdBindShadingRateImageNV=nil;
+
+    vkCmdSetViewportShadingRatePaletteNV:TvkCmdSetViewportShadingRatePaletteNV=nil;
+
+    vkCmdSetCoarseSampleOrderNV:TvkCmdSetCoarseSampleOrderNV=nil;
+
+    vkCmdDrawMeshTasksNV:TvkCmdDrawMeshTasksNV=nil;
+
+    vkCmdDrawMeshTasksIndirectNV:TvkCmdDrawMeshTasksIndirectNV=nil;
+
+    vkCmdDrawMeshTasksIndirectCountNV:TvkCmdDrawMeshTasksIndirectCountNV=nil;
+
+    vkCompileDeferredNVX:TvkCompileDeferredNVX=nil;
+
+    vkCreateAccelerationStructureNVX:TvkCreateAccelerationStructureNVX=nil;
+
+    vkDestroyAccelerationStructureNVX:TvkDestroyAccelerationStructureNVX=nil;
+
+    vkGetAccelerationStructureMemoryRequirementsNVX:TvkGetAccelerationStructureMemoryRequirementsNVX=nil;
+
+    vkGetAccelerationStructureScratchMemoryRequirementsNVX:TvkGetAccelerationStructureScratchMemoryRequirementsNVX=nil;
+
+    vkBindAccelerationStructureMemoryNVX:TvkBindAccelerationStructureMemoryNVX=nil;
+
+    vkCmdCopyAccelerationStructureNVX:TvkCmdCopyAccelerationStructureNVX=nil;
+
+    vkCmdWriteAccelerationStructurePropertiesNVX:TvkCmdWriteAccelerationStructurePropertiesNVX=nil;
+
+    vkCmdBuildAccelerationStructureNVX:TvkCmdBuildAccelerationStructureNVX=nil;
+
+    vkCmdTraceRaysNVX:TvkCmdTraceRaysNVX=nil;
+
+    vkGetRaytracingShaderHandlesNVX:TvkGetRaytracingShaderHandlesNVX=nil;
+
+    vkGetAccelerationStructureHandleNVX:TvkGetAccelerationStructureHandleNVX=nil;
+
+    vkCreateRaytracingPipelinesNVX:TvkCreateRaytracingPipelinesNVX=nil;
+
+    vkGetImageDrmFormatModifierPropertiesEXT:TvkGetImageDrmFormatModifierPropertiesEXT=nil;
 
 
 function VK_MAKE_VERSION(const VersionMajor,VersionMinor,VersionPatch:longint):longint; {$ifdef CAN_INLINE}inline;{$endif}
@@ -14886,6 +15917,90 @@ begin
    @vkGetQueueCheckpointDataNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetQueueCheckpointDataNV'));
    @vk.fCommands.GetQueueCheckpointDataNV:=addr(vkGetQueueCheckpointDataNV);
   end;
+  if not assigned(vkCmdSetExclusiveScissorNV) then begin
+   @vkCmdSetExclusiveScissorNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetExclusiveScissorNV'));
+   @vk.fCommands.CmdSetExclusiveScissorNV:=addr(vkCmdSetExclusiveScissorNV);
+  end;
+  if not assigned(vkCmdBindShadingRateImageNV) then begin
+   @vkCmdBindShadingRateImageNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBindShadingRateImageNV'));
+   @vk.fCommands.CmdBindShadingRateImageNV:=addr(vkCmdBindShadingRateImageNV);
+  end;
+  if not assigned(vkCmdSetViewportShadingRatePaletteNV) then begin
+   @vkCmdSetViewportShadingRatePaletteNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetViewportShadingRatePaletteNV'));
+   @vk.fCommands.CmdSetViewportShadingRatePaletteNV:=addr(vkCmdSetViewportShadingRatePaletteNV);
+  end;
+  if not assigned(vkCmdSetCoarseSampleOrderNV) then begin
+   @vkCmdSetCoarseSampleOrderNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetCoarseSampleOrderNV'));
+   @vk.fCommands.CmdSetCoarseSampleOrderNV:=addr(vkCmdSetCoarseSampleOrderNV);
+  end;
+  if not assigned(vkCmdDrawMeshTasksNV) then begin
+   @vkCmdDrawMeshTasksNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawMeshTasksNV'));
+   @vk.fCommands.CmdDrawMeshTasksNV:=addr(vkCmdDrawMeshTasksNV);
+  end;
+  if not assigned(vkCmdDrawMeshTasksIndirectNV) then begin
+   @vkCmdDrawMeshTasksIndirectNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawMeshTasksIndirectNV'));
+   @vk.fCommands.CmdDrawMeshTasksIndirectNV:=addr(vkCmdDrawMeshTasksIndirectNV);
+  end;
+  if not assigned(vkCmdDrawMeshTasksIndirectCountNV) then begin
+   @vkCmdDrawMeshTasksIndirectCountNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawMeshTasksIndirectCountNV'));
+   @vk.fCommands.CmdDrawMeshTasksIndirectCountNV:=addr(vkCmdDrawMeshTasksIndirectCountNV);
+  end;
+  if not assigned(vkCompileDeferredNVX) then begin
+   @vkCompileDeferredNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCompileDeferredNVX'));
+   @vk.fCommands.CompileDeferredNVX:=addr(vkCompileDeferredNVX);
+  end;
+  if not assigned(vkCreateAccelerationStructureNVX) then begin
+   @vkCreateAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateAccelerationStructureNVX'));
+   @vk.fCommands.CreateAccelerationStructureNVX:=addr(vkCreateAccelerationStructureNVX);
+  end;
+  if not assigned(vkDestroyAccelerationStructureNVX) then begin
+   @vkDestroyAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyAccelerationStructureNVX'));
+   @vk.fCommands.DestroyAccelerationStructureNVX:=addr(vkDestroyAccelerationStructureNVX);
+  end;
+  if not assigned(vkGetAccelerationStructureMemoryRequirementsNVX) then begin
+   @vkGetAccelerationStructureMemoryRequirementsNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetAccelerationStructureMemoryRequirementsNVX'));
+   @vk.fCommands.GetAccelerationStructureMemoryRequirementsNVX:=addr(vkGetAccelerationStructureMemoryRequirementsNVX);
+  end;
+  if not assigned(vkGetAccelerationStructureScratchMemoryRequirementsNVX) then begin
+   @vkGetAccelerationStructureScratchMemoryRequirementsNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetAccelerationStructureScratchMemoryRequirementsNVX'));
+   @vk.fCommands.GetAccelerationStructureScratchMemoryRequirementsNVX:=addr(vkGetAccelerationStructureScratchMemoryRequirementsNVX);
+  end;
+  if not assigned(vkBindAccelerationStructureMemoryNVX) then begin
+   @vkBindAccelerationStructureMemoryNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBindAccelerationStructureMemoryNVX'));
+   @vk.fCommands.BindAccelerationStructureMemoryNVX:=addr(vkBindAccelerationStructureMemoryNVX);
+  end;
+  if not assigned(vkCmdCopyAccelerationStructureNVX) then begin
+   @vkCmdCopyAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdCopyAccelerationStructureNVX'));
+   @vk.fCommands.CmdCopyAccelerationStructureNVX:=addr(vkCmdCopyAccelerationStructureNVX);
+  end;
+  if not assigned(vkCmdWriteAccelerationStructurePropertiesNVX) then begin
+   @vkCmdWriteAccelerationStructurePropertiesNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdWriteAccelerationStructurePropertiesNVX'));
+   @vk.fCommands.CmdWriteAccelerationStructurePropertiesNVX:=addr(vkCmdWriteAccelerationStructurePropertiesNVX);
+  end;
+  if not assigned(vkCmdBuildAccelerationStructureNVX) then begin
+   @vkCmdBuildAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBuildAccelerationStructureNVX'));
+   @vk.fCommands.CmdBuildAccelerationStructureNVX:=addr(vkCmdBuildAccelerationStructureNVX);
+  end;
+  if not assigned(vkCmdTraceRaysNVX) then begin
+   @vkCmdTraceRaysNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdTraceRaysNVX'));
+   @vk.fCommands.CmdTraceRaysNVX:=addr(vkCmdTraceRaysNVX);
+  end;
+  if not assigned(vkGetRaytracingShaderHandlesNVX) then begin
+   @vkGetRaytracingShaderHandlesNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetRaytracingShaderHandlesNVX'));
+   @vk.fCommands.GetRaytracingShaderHandlesNVX:=addr(vkGetRaytracingShaderHandlesNVX);
+  end;
+  if not assigned(vkGetAccelerationStructureHandleNVX) then begin
+   @vkGetAccelerationStructureHandleNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetAccelerationStructureHandleNVX'));
+   @vk.fCommands.GetAccelerationStructureHandleNVX:=addr(vkGetAccelerationStructureHandleNVX);
+  end;
+  if not assigned(vkCreateRaytracingPipelinesNVX) then begin
+   @vkCreateRaytracingPipelinesNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateRaytracingPipelinesNVX'));
+   @vk.fCommands.CreateRaytracingPipelinesNVX:=addr(vkCreateRaytracingPipelinesNVX);
+  end;
+  if not assigned(vkGetImageDrmFormatModifierPropertiesEXT) then begin
+   @vkGetImageDrmFormatModifierPropertiesEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetImageDrmFormatModifierPropertiesEXT'));
+   @vk.fCommands.GetImageDrmFormatModifierPropertiesEXT:=addr(vkGetImageDrmFormatModifierPropertiesEXT);
+  end;
   result:=assigned(vkCreateInstance);
  end;
 end;
@@ -15260,6 +16375,27 @@ begin
   @InstanceCommands.CmdDrawIndexedIndirectCountKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawIndexedIndirectCountKHR')));
   @InstanceCommands.CmdSetCheckpointNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetCheckpointNV')));
   @InstanceCommands.GetQueueCheckpointDataNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetQueueCheckpointDataNV')));
+  @InstanceCommands.CmdSetExclusiveScissorNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetExclusiveScissorNV')));
+  @InstanceCommands.CmdBindShadingRateImageNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdBindShadingRateImageNV')));
+  @InstanceCommands.CmdSetViewportShadingRatePaletteNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetViewportShadingRatePaletteNV')));
+  @InstanceCommands.CmdSetCoarseSampleOrderNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetCoarseSampleOrderNV')));
+  @InstanceCommands.CmdDrawMeshTasksNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawMeshTasksNV')));
+  @InstanceCommands.CmdDrawMeshTasksIndirectNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawMeshTasksIndirectNV')));
+  @InstanceCommands.CmdDrawMeshTasksIndirectCountNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawMeshTasksIndirectCountNV')));
+  @InstanceCommands.CompileDeferredNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCompileDeferredNVX')));
+  @InstanceCommands.CreateAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateAccelerationStructureNVX')));
+  @InstanceCommands.DestroyAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyAccelerationStructureNVX')));
+  @InstanceCommands.GetAccelerationStructureMemoryRequirementsNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetAccelerationStructureMemoryRequirementsNVX')));
+  @InstanceCommands.GetAccelerationStructureScratchMemoryRequirementsNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetAccelerationStructureScratchMemoryRequirementsNVX')));
+  @InstanceCommands.BindAccelerationStructureMemoryNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkBindAccelerationStructureMemoryNVX')));
+  @InstanceCommands.CmdCopyAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdCopyAccelerationStructureNVX')));
+  @InstanceCommands.CmdWriteAccelerationStructurePropertiesNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdWriteAccelerationStructurePropertiesNVX')));
+  @InstanceCommands.CmdBuildAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdBuildAccelerationStructureNVX')));
+  @InstanceCommands.CmdTraceRaysNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdTraceRaysNVX')));
+  @InstanceCommands.GetRaytracingShaderHandlesNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetRaytracingShaderHandlesNVX')));
+  @InstanceCommands.GetAccelerationStructureHandleNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetAccelerationStructureHandleNVX')));
+  @InstanceCommands.CreateRaytracingPipelinesNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateRaytracingPipelinesNVX')));
+  @InstanceCommands.GetImageDrmFormatModifierPropertiesEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetImageDrmFormatModifierPropertiesEXT')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
   end;
@@ -15529,6 +16665,27 @@ begin
   @DeviceCommands.CmdDrawIndexedIndirectCountKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawIndexedIndirectCountKHR')));
   @DeviceCommands.CmdSetCheckpointNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetCheckpointNV')));
   @DeviceCommands.GetQueueCheckpointDataNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetQueueCheckpointDataNV')));
+  @DeviceCommands.CmdSetExclusiveScissorNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetExclusiveScissorNV')));
+  @DeviceCommands.CmdBindShadingRateImageNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdBindShadingRateImageNV')));
+  @DeviceCommands.CmdSetViewportShadingRatePaletteNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetViewportShadingRatePaletteNV')));
+  @DeviceCommands.CmdSetCoarseSampleOrderNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetCoarseSampleOrderNV')));
+  @DeviceCommands.CmdDrawMeshTasksNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawMeshTasksNV')));
+  @DeviceCommands.CmdDrawMeshTasksIndirectNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawMeshTasksIndirectNV')));
+  @DeviceCommands.CmdDrawMeshTasksIndirectCountNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawMeshTasksIndirectCountNV')));
+  @DeviceCommands.CompileDeferredNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCompileDeferredNVX')));
+  @DeviceCommands.CreateAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateAccelerationStructureNVX')));
+  @DeviceCommands.DestroyAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkDestroyAccelerationStructureNVX')));
+  @DeviceCommands.GetAccelerationStructureMemoryRequirementsNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetAccelerationStructureMemoryRequirementsNVX')));
+  @DeviceCommands.GetAccelerationStructureScratchMemoryRequirementsNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetAccelerationStructureScratchMemoryRequirementsNVX')));
+  @DeviceCommands.BindAccelerationStructureMemoryNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkBindAccelerationStructureMemoryNVX')));
+  @DeviceCommands.CmdCopyAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdCopyAccelerationStructureNVX')));
+  @DeviceCommands.CmdWriteAccelerationStructurePropertiesNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdWriteAccelerationStructurePropertiesNVX')));
+  @DeviceCommands.CmdBuildAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdBuildAccelerationStructureNVX')));
+  @DeviceCommands.CmdTraceRaysNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdTraceRaysNVX')));
+  @DeviceCommands.GetRaytracingShaderHandlesNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetRaytracingShaderHandlesNVX')));
+  @DeviceCommands.GetAccelerationStructureHandleNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetAccelerationStructureHandleNVX')));
+  @DeviceCommands.CreateRaytracingPipelinesNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateRaytracingPipelinesNVX')));
+  @DeviceCommands.GetImageDrmFormatModifierPropertiesEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetImageDrmFormatModifierPropertiesEXT')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
 end;
@@ -18058,6 +19215,44 @@ begin
  maxPushDescriptors:=aMaxPushDescriptors;
 end;
 
+constructor TVkConformanceVersionKHR.Create(const aMajor:TVkUInt8;
+                                            const aMinor:TVkUInt8;
+                                            const aSubminor:TVkUInt8;
+                                            const aPatch:TVkUInt8);
+begin
+ major:=aMajor;
+ minor:=aMinor;
+ subminor:=aSubminor;
+ patch:=aPatch;
+end;
+
+constructor TVkPhysicalDeviceDriverPropertiesKHR.Create(const aDriverID:TVkUInt32;
+                                                        const aDriverName:TVkCharString;
+                                                        const aDriverInfo:TVkCharString;
+                                                        const aConformanceVersion:TVkConformanceVersionKHR);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TVkPhysicalDeviceDriverPropertiesKHR),#0);
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR;
+ pNext:=nil;
+ driverID:=aDriverID;
+ ArrayItemCount:=length(aDriverName);
+ if ArrayItemCount>length(driverName) then begin
+  ArrayItemCount:=length(driverName);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aDriverName[1],driverName[0],ArrayItemCount*SizeOf(TVkChar));
+ end;
+ ArrayItemCount:=length(aDriverInfo);
+ if ArrayItemCount>length(driverInfo) then begin
+  ArrayItemCount:=length(driverInfo);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aDriverInfo[1],driverInfo[0],ArrayItemCount*SizeOf(TVkChar));
+ end;
+ conformanceVersion:=aConformanceVersion;
+end;
+
 constructor TVkRectLayerKHR.Create(const aOffset:TVkOffset2D;
                                    const aExtent:TVkExtent2D;
                                    const aLayer:TVkUInt32);
@@ -20050,6 +21245,15 @@ begin
  vulkanMemoryModelDeviceScope:=aVulkanMemoryModelDeviceScope;
 end;
 
+constructor TVkPhysicalDeviceShaderAtomicInt64FeaturesKHR.Create(const aShaderBufferInt64Atomics:TVkBool32;
+                                                                 const aShaderSharedInt64Atomics:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR;
+ pNext:=nil;
+ shaderBufferInt64Atomics:=aShaderBufferInt64Atomics;
+ shaderSharedInt64Atomics:=aShaderSharedInt64Atomics;
+end;
+
 constructor TVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT.Create(const aVertexAttributeInstanceRateDivisor:TVkBool32;
                                                                       const aVertexAttributeInstanceRateZeroDivisor:TVkBool32);
 begin
@@ -20087,6 +21291,386 @@ begin
  sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ASTC_DECODE_FEATURES_EXT;
  pNext:=nil;
  decodeModeSharedExponent:=aDecodeModeSharedExponent;
+end;
+
+constructor TVkPhysicalDeviceRepresentativeFragmentTestFeaturesNV.Create(const aRepresentativeFragmentTest:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV;
+ pNext:=nil;
+ representativeFragmentTest:=aRepresentativeFragmentTest;
+end;
+
+constructor TVkPipelineRepresentativeFragmentTestStateCreateInfoNV.Create(const aRepresentativeFragmentTestEnable:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_REPRESENTATIVE_FRAGMENT_TEST_STATE_CREATE_INFO_NV;
+ pNext:=nil;
+ representativeFragmentTestEnable:=aRepresentativeFragmentTestEnable;
+end;
+
+constructor TVkPhysicalDeviceExclusiveScissorFeaturesNV.Create(const aExclusiveScissor:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXCLUSIVE_SCISSOR_FEATURES_NV;
+ pNext:=nil;
+ exclusiveScissor:=aExclusiveScissor;
+end;
+
+constructor TVkPipelineViewportExclusiveScissorStateCreateInfoNV.Create(const aExclusiveScissorCount:TVkUInt32;
+                                                                        const aPExclusiveScissors:PVkRect2D);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_EXCLUSIVE_SCISSOR_STATE_CREATE_INFO_NV;
+ pNext:=nil;
+ exclusiveScissorCount:=aExclusiveScissorCount;
+ pExclusiveScissors:=aPExclusiveScissors;
+end;
+
+constructor TVkPhysicalDeviceCornerSampledImageFeaturesNV.Create(const aCornerSampledImage:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV;
+ pNext:=nil;
+ cornerSampledImage:=aCornerSampledImage;
+end;
+
+constructor TVkPhysicalDeviceComputeShaderDerivativesFeaturesNV.Create(const aComputeDerivativeGroupQuads:TVkBool32;
+                                                                       const aComputeDerivativeGroupLinear:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_NV;
+ pNext:=nil;
+ computeDerivativeGroupQuads:=aComputeDerivativeGroupQuads;
+ computeDerivativeGroupLinear:=aComputeDerivativeGroupLinear;
+end;
+
+constructor TVkPhysicalDeviceFragmentShaderBarycentricFeaturesNV.Create(const aFragmentShaderBarycentric:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_NV;
+ pNext:=nil;
+ fragmentShaderBarycentric:=aFragmentShaderBarycentric;
+end;
+
+constructor TVkPhysicalDeviceShaderImageFootprintFeaturesNV.Create(const aImageFootprint:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_FOOTPRINT_FEATURES_NV;
+ pNext:=nil;
+ imageFootprint:=aImageFootprint;
+end;
+
+constructor TVkShadingRatePaletteNV.Create(const aShadingRatePaletteEntryCount:TVkUInt32;
+                                           const aPShadingRatePaletteEntries:PVkShadingRatePaletteEntryNV);
+begin
+ shadingRatePaletteEntryCount:=aShadingRatePaletteEntryCount;
+ pShadingRatePaletteEntries:=aPShadingRatePaletteEntries;
+end;
+
+constructor TVkPipelineViewportShadingRateImageStateCreateInfoNV.Create(const aShadingRateImageEnable:TVkBool32;
+                                                                        const aViewportCount:TVkUInt32;
+                                                                        const aPShadingRatePalettes:PVkShadingRatePaletteNV);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SHADING_RATE_IMAGE_STATE_CREATE_INFO_NV;
+ pNext:=nil;
+ shadingRateImageEnable:=aShadingRateImageEnable;
+ viewportCount:=aViewportCount;
+ pShadingRatePalettes:=aPShadingRatePalettes;
+end;
+
+constructor TVkPhysicalDeviceShadingRateImageFeaturesNV.Create(const aShadingRateImage:TVkBool32;
+                                                               const aShadingRateCoarseSampleOrder:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_FEATURES_NV;
+ pNext:=nil;
+ shadingRateImage:=aShadingRateImage;
+ shadingRateCoarseSampleOrder:=aShadingRateCoarseSampleOrder;
+end;
+
+constructor TVkPhysicalDeviceShadingRateImagePropertiesNV.Create(const aShadingRateTexelSize:TVkExtent2D;
+                                                                 const aShadingRatePaletteSize:TVkUInt32;
+                                                                 const aShadingRateMaxCoarseSamples:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_PROPERTIES_NV;
+ pNext:=nil;
+ shadingRateTexelSize:=aShadingRateTexelSize;
+ shadingRatePaletteSize:=aShadingRatePaletteSize;
+ shadingRateMaxCoarseSamples:=aShadingRateMaxCoarseSamples;
+end;
+
+constructor TVkCoarseSampleLocationNV.Create(const aPixelX:TVkUInt32;
+                                             const aPixelY:TVkUInt32;
+                                             const aSample:TVkUInt32);
+begin
+ pixelX:=aPixelX;
+ pixelY:=aPixelY;
+ sample:=aSample;
+end;
+
+constructor TVkCoarseSampleOrderCustomNV.Create(const aShadingRate:TVkShadingRatePaletteEntryNV;
+                                                const aSampleCount:TVkUInt32;
+                                                const aSampleLocationCount:TVkUInt32;
+                                                const aPSampleLocations:PVkCoarseSampleLocationNV);
+begin
+ shadingRate:=aShadingRate;
+ sampleCount:=aSampleCount;
+ sampleLocationCount:=aSampleLocationCount;
+ pSampleLocations:=aPSampleLocations;
+end;
+
+constructor TVkPipelineViewportCoarseSampleOrderStateCreateInfoNV.Create(const aSampleOrderType:TVkCoarseSampleOrderTypeNV;
+                                                                         const aCustomSampleOrderCount:TVkUInt32;
+                                                                         const aPCustomSampleOrders:PVkCoarseSampleOrderCustomNV);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_COARSE_SAMPLE_ORDER_STATE_CREATE_INFO_NV;
+ pNext:=nil;
+ sampleOrderType:=aSampleOrderType;
+ customSampleOrderCount:=aCustomSampleOrderCount;
+ pCustomSampleOrders:=aPCustomSampleOrders;
+end;
+
+constructor TVkPhysicalDeviceMeshShaderFeaturesNV.Create(const aTaskShader:TVkBool32;
+                                                         const aMeshShader:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV;
+ pNext:=nil;
+ taskShader:=aTaskShader;
+ meshShader:=aMeshShader;
+end;
+
+constructor TVkPhysicalDeviceMeshShaderPropertiesNV.Create(const aMaxDrawMeshTasksCount:TVkUInt32;
+                                                           const aMaxTaskWorkGroupInvocations:TVkUInt32;
+                                                           const aMaxTaskWorkGroupSize:array of TVkUInt32;
+                                                           const aMaxTaskTotalMemorySize:TVkUInt32;
+                                                           const aMaxTaskOutputCount:TVkUInt32;
+                                                           const aMaxMeshWorkGroupInvocations:TVkUInt32;
+                                                           const aMaxMeshWorkGroupSize:array of TVkUInt32;
+                                                           const aMaxMeshTotalMemorySize:TVkUInt32;
+                                                           const aMaxMeshOutputVertices:TVkUInt32;
+                                                           const aMaxMeshOutputPrimitives:TVkUInt32;
+                                                           const aMaxMeshMultiviewViewCount:TVkUInt32;
+                                                           const aMeshOutputPerVertexGranularity:TVkUInt32;
+                                                           const aMeshOutputPerPrimitiveGranularity:TVkUInt32);
+var ArrayItemCount:TVkInt32;
+begin
+ FillChar(self,SizeOf(TVkPhysicalDeviceMeshShaderPropertiesNV),#0);
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV;
+ pNext:=nil;
+ maxDrawMeshTasksCount:=aMaxDrawMeshTasksCount;
+ maxTaskWorkGroupInvocations:=aMaxTaskWorkGroupInvocations;
+ ArrayItemCount:=length(aMaxTaskWorkGroupSize);
+ if ArrayItemCount>length(maxTaskWorkGroupSize) then begin
+  ArrayItemCount:=length(maxTaskWorkGroupSize);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aMaxTaskWorkGroupSize[0],maxTaskWorkGroupSize[0],ArrayItemCount*SizeOf(TVkUInt32));
+ end;
+ maxTaskTotalMemorySize:=aMaxTaskTotalMemorySize;
+ maxTaskOutputCount:=aMaxTaskOutputCount;
+ maxMeshWorkGroupInvocations:=aMaxMeshWorkGroupInvocations;
+ ArrayItemCount:=length(aMaxMeshWorkGroupSize);
+ if ArrayItemCount>length(maxMeshWorkGroupSize) then begin
+  ArrayItemCount:=length(maxMeshWorkGroupSize);
+ end;
+ if ArrayItemCount>0 then begin
+  Move(aMaxMeshWorkGroupSize[0],maxMeshWorkGroupSize[0],ArrayItemCount*SizeOf(TVkUInt32));
+ end;
+ maxMeshTotalMemorySize:=aMaxMeshTotalMemorySize;
+ maxMeshOutputVertices:=aMaxMeshOutputVertices;
+ maxMeshOutputPrimitives:=aMaxMeshOutputPrimitives;
+ maxMeshMultiviewViewCount:=aMaxMeshMultiviewViewCount;
+ meshOutputPerVertexGranularity:=aMeshOutputPerVertexGranularity;
+ meshOutputPerPrimitiveGranularity:=aMeshOutputPerPrimitiveGranularity;
+end;
+
+constructor TVkDrawMeshTasksIndirectCommandNV.Create(const aTaskCount:TVkUInt32;
+                                                     const aFirstTask:TVkUInt32);
+begin
+ taskCount:=aTaskCount;
+ firstTask:=aFirstTask;
+end;
+
+constructor TVkRaytracingPipelineCreateInfoNVX.Create(const aFlags:TVkPipelineCreateFlags;
+                                                      const aStageCount:TVkUInt32;
+                                                      const aPStages:PVkPipelineShaderStageCreateInfo;
+                                                      const aPGroupNumbers:PVkUInt32;
+                                                      const aMaxRecursionDepth:TVkUInt32;
+                                                      const aLayout:TVkPipelineLayout;
+                                                      const aBasePipelineHandle:TVkPipeline;
+                                                      const aBasePipelineIndex:TVkInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_RAYTRACING_PIPELINE_CREATE_INFO_NVX;
+ pNext:=nil;
+ flags:=aFlags;
+ stageCount:=aStageCount;
+ pStages:=aPStages;
+ pGroupNumbers:=aPGroupNumbers;
+ maxRecursionDepth:=aMaxRecursionDepth;
+ layout:=aLayout;
+ basePipelineHandle:=aBasePipelineHandle;
+ basePipelineIndex:=aBasePipelineIndex;
+end;
+
+constructor TVkGeometryTrianglesNVX.Create(const aVertexData:TVkBuffer;
+                                           const aVertexOffset:TVkDeviceSize;
+                                           const aVertexCount:TVkUInt32;
+                                           const aVertexStride:TVkDeviceSize;
+                                           const aVertexFormat:TVkFormat;
+                                           const aIndexData:TVkBuffer;
+                                           const aIndexOffset:TVkDeviceSize;
+                                           const aIndexCount:TVkUInt32;
+                                           const aIndexType:TVkIndexType;
+                                           const aTransformData:TVkBuffer;
+                                           const aTransformOffset:TVkDeviceSize);
+begin
+ sType:=VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NVX;
+ pNext:=nil;
+ vertexData:=aVertexData;
+ vertexOffset:=aVertexOffset;
+ vertexCount:=aVertexCount;
+ vertexStride:=aVertexStride;
+ vertexFormat:=aVertexFormat;
+ indexData:=aIndexData;
+ indexOffset:=aIndexOffset;
+ indexCount:=aIndexCount;
+ indexType:=aIndexType;
+ transformData:=aTransformData;
+ transformOffset:=aTransformOffset;
+end;
+
+constructor TVkGeometryAABBNVX.Create(const aAabbData:TVkBuffer;
+                                      const aNumAABBs:TVkUInt32;
+                                      const aStride:TVkUInt32;
+                                      const aOffset:TVkDeviceSize);
+begin
+ sType:=VK_STRUCTURE_TYPE_GEOMETRY_AABB_NVX;
+ pNext:=nil;
+ aabbData:=aAabbData;
+ numAABBs:=aNumAABBs;
+ stride:=aStride;
+ offset:=aOffset;
+end;
+
+constructor TVkGeometryDataNVX.Create(const aTriangles:TVkGeometryTrianglesNVX;
+                                      const aAabbs:TVkGeometryAABBNVX);
+begin
+ triangles:=aTriangles;
+ aabbs:=aAabbs;
+end;
+
+constructor TVkGeometryNVX.Create(const aGeometryType:TVkGeometryTypeNVX;
+                                  const aGeometry:TVkGeometryDataNVX;
+                                  const aFlags:TVkGeometryFlagsNVX);
+begin
+ sType:=VK_STRUCTURE_TYPE_GEOMETRY_NVX;
+ pNext:=nil;
+ geometryType:=aGeometryType;
+ geometry:=aGeometry;
+ flags:=aFlags;
+end;
+
+constructor TVkAccelerationStructureCreateInfoNVX.Create(const aType_:TVkAccelerationStructureTypeNVX;
+                                                         const aFlags:TVkBuildAccelerationStructureFlagsNVX;
+                                                         const aCompactedSize:TVkDeviceSize;
+                                                         const aInstanceCount:TVkUInt32;
+                                                         const aGeometryCount:TVkUInt32;
+                                                         const aPGeometries:PVkGeometryNVX);
+begin
+ sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NVX;
+ pNext:=nil;
+ type_:=aType_;
+ flags:=aFlags;
+ compactedSize:=aCompactedSize;
+ instanceCount:=aInstanceCount;
+ geometryCount:=aGeometryCount;
+ pGeometries:=aPGeometries;
+end;
+
+constructor TVkBindAccelerationStructureMemoryInfoNVX.Create(const aAccelerationStructure:TVkAccelerationStructureNVX;
+                                                             const aMemory:TVkDeviceMemory;
+                                                             const aMemoryOffset:TVkDeviceSize;
+                                                             const aDeviceIndexCount:TVkUInt32;
+                                                             const aPDeviceIndices:PVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NVX;
+ pNext:=nil;
+ accelerationStructure:=aAccelerationStructure;
+ memory:=aMemory;
+ memoryOffset:=aMemoryOffset;
+ deviceIndexCount:=aDeviceIndexCount;
+ pDeviceIndices:=aPDeviceIndices;
+end;
+
+constructor TVkDescriptorAccelerationStructureInfoNVX.Create(const aAccelerationStructureCount:TVkUInt32;
+                                                             const aPAccelerationStructures:PVkAccelerationStructureNVX);
+begin
+ sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_ACCELERATION_STRUCTURE_INFO_NVX;
+ pNext:=nil;
+ accelerationStructureCount:=aAccelerationStructureCount;
+ pAccelerationStructures:=aPAccelerationStructures;
+end;
+
+constructor TVkAccelerationStructureMemoryRequirementsInfoNVX.Create(const aAccelerationStructure:TVkAccelerationStructureNVX);
+begin
+ sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NVX;
+ pNext:=nil;
+ accelerationStructure:=aAccelerationStructure;
+end;
+
+constructor TVkPhysicalDeviceRaytracingPropertiesNVX.Create(const aShaderHeaderSize:TVkUInt32;
+                                                            const aMaxRecursionDepth:TVkUInt32;
+                                                            const aMaxGeometryCount:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAYTRACING_PROPERTIES_NVX;
+ pNext:=nil;
+ shaderHeaderSize:=aShaderHeaderSize;
+ maxRecursionDepth:=aMaxRecursionDepth;
+ maxGeometryCount:=aMaxGeometryCount;
+end;
+
+constructor TVkDrmFormatModifierPropertiesEXT.Create(const aDrmFormatModifier:TVkUInt64;
+                                                     const aDrmFormatModifierPlaneCount:TVkUInt32;
+                                                     const aDrmFormatModifierTilingFeatures:TVkFormatFeatureFlags);
+begin
+ drmFormatModifier:=aDrmFormatModifier;
+ drmFormatModifierPlaneCount:=aDrmFormatModifierPlaneCount;
+ drmFormatModifierTilingFeatures:=aDrmFormatModifierTilingFeatures;
+end;
+
+constructor TVkDrmFormatModifierPropertiesListEXT.Create(const aDrmFormatModifierCount:TVkUInt32;
+                                                         const aPDrmFormatModifierProperties:PVkDrmFormatModifierPropertiesEXT);
+begin
+ sType:=VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT;
+ pNext:=nil;
+ drmFormatModifierCount:=aDrmFormatModifierCount;
+ pDrmFormatModifierProperties:=aPDrmFormatModifierProperties;
+end;
+
+constructor TVkPhysicalDeviceImageDrmFormatModifierInfoEXT.Create(const aDrmFormatModifier:TVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT;
+ pNext:=nil;
+ drmFormatModifier:=aDrmFormatModifier;
+end;
+
+constructor TVkImageDrmFormatModifierListCreateInfoEXT.Create(const aDrmFormatModifierCount:TVkUInt32;
+                                                              const aPDrmFormatModifiers:PVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT;
+ pNext:=nil;
+ drmFormatModifierCount:=aDrmFormatModifierCount;
+ pDrmFormatModifiers:=aPDrmFormatModifiers;
+end;
+
+constructor TVkImageDrmFormatModifierExplicitCreateInfoEXT.Create(const aDrmFormatModifier:TVkUInt64;
+                                                                  const aDrmFormatModifierPlaneCount:TVkUInt32;
+                                                                  const aPPlaneLayouts:PVkSubresourceLayout);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMAGE_EXCPLICIT_DRM_FORMAT_MODIFIER_CREATE_INFO_EXT;
+ pNext:=nil;
+ drmFormatModifier:=aDrmFormatModifier;
+ drmFormatModifierPlaneCount:=aDrmFormatModifierPlaneCount;
+ pPlaneLayouts:=aPPlaneLayouts;
+end;
+
+constructor TVkImageDrmFormatModifierPropertiesEXT.Create(const aDrmFormatModifier:TVkUInt64);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT;
+ pNext:=nil;
+ drmFormatModifier:=aDrmFormatModifier;
 end;
 {$endif}
 
@@ -21738,6 +23322,111 @@ end;
 procedure TVulkan.GetQueueCheckpointDataNV(queue:TVkQueue;pCheckpointDataCount:PVkUInt32;pCheckpointData:PVkCheckpointDataNV);
 begin
  fCommands.GetQueueCheckpointDataNV(queue,pCheckpointDataCount,pCheckpointData);
+end;
+
+procedure TVulkan.CmdSetExclusiveScissorNV(commandBuffer:TVkCommandBuffer;firstExclusiveScissor:TVkUInt32;exclusiveScissorCount:TVkUInt32;const pExclusiveScissors:PVkRect2D);
+begin
+ fCommands.CmdSetExclusiveScissorNV(commandBuffer,firstExclusiveScissor,exclusiveScissorCount,pExclusiveScissors);
+end;
+
+procedure TVulkan.CmdBindShadingRateImageNV(commandBuffer:TVkCommandBuffer;imageView:TVkImageView;imageLayout:TVkImageLayout);
+begin
+ fCommands.CmdBindShadingRateImageNV(commandBuffer,imageView,imageLayout);
+end;
+
+procedure TVulkan.CmdSetViewportShadingRatePaletteNV(commandBuffer:TVkCommandBuffer;firstViewport:TVkUInt32;viewportCount:TVkUInt32;const pShadingRatePalettes:PVkShadingRatePaletteNV);
+begin
+ fCommands.CmdSetViewportShadingRatePaletteNV(commandBuffer,firstViewport,viewportCount,pShadingRatePalettes);
+end;
+
+procedure TVulkan.CmdSetCoarseSampleOrderNV(commandBuffer:TVkCommandBuffer;sampleOrderType:TVkCoarseSampleOrderTypeNV;customSampleOrderCount:TVkUInt32;const pCustomSampleOrders:PVkCoarseSampleOrderCustomNV);
+begin
+ fCommands.CmdSetCoarseSampleOrderNV(commandBuffer,sampleOrderType,customSampleOrderCount,pCustomSampleOrders);
+end;
+
+procedure TVulkan.CmdDrawMeshTasksNV(commandBuffer:TVkCommandBuffer;taskCount:TVkUInt32;firstTask:TVkUInt32);
+begin
+ fCommands.CmdDrawMeshTasksNV(commandBuffer,taskCount,firstTask);
+end;
+
+procedure TVulkan.CmdDrawMeshTasksIndirectNV(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;drawCount:TVkUInt32;stride:TVkUInt32);
+begin
+ fCommands.CmdDrawMeshTasksIndirectNV(commandBuffer,buffer,offset,drawCount,stride);
+end;
+
+procedure TVulkan.CmdDrawMeshTasksIndirectCountNV(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32);
+begin
+ fCommands.CmdDrawMeshTasksIndirectCountNV(commandBuffer,buffer,offset,countBuffer,countBufferOffset,maxDrawCount,stride);
+end;
+
+function TVulkan.CompileDeferredNVX(device:TVkDevice;pipeline:TVkPipeline;shader:TVkUInt32):TVkResult;
+begin
+ result:=fCommands.CompileDeferredNVX(device,pipeline,shader);
+end;
+
+function TVulkan.CreateAccelerationStructureNVX(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureNVX):TVkResult;
+begin
+ result:=fCommands.CreateAccelerationStructureNVX(device,pCreateInfo,pAllocator,pAccelerationStructure);
+end;
+
+procedure TVulkan.DestroyAccelerationStructureNVX(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNVX;const pAllocator:PVkAllocationCallbacks);
+begin
+ fCommands.DestroyAccelerationStructureNVX(device,accelerationStructure,pAllocator);
+end;
+
+procedure TVulkan.GetAccelerationStructureMemoryRequirementsNVX(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNVX;pMemoryRequirements:PVkMemoryRequirements2KHR);
+begin
+ fCommands.GetAccelerationStructureMemoryRequirementsNVX(device,pInfo,pMemoryRequirements);
+end;
+
+procedure TVulkan.GetAccelerationStructureScratchMemoryRequirementsNVX(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNVX;pMemoryRequirements:PVkMemoryRequirements2KHR);
+begin
+ fCommands.GetAccelerationStructureScratchMemoryRequirementsNVX(device,pInfo,pMemoryRequirements);
+end;
+
+function TVulkan.BindAccelerationStructureMemoryNVX(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindAccelerationStructureMemoryInfoNVX):TVkResult;
+begin
+ result:=fCommands.BindAccelerationStructureMemoryNVX(device,bindInfoCount,pBindInfos);
+end;
+
+procedure TVulkan.CmdCopyAccelerationStructureNVX(commandBuffer:TVkCommandBuffer;dst:TVkAccelerationStructureNVX;src:TVkAccelerationStructureNVX;mode:TVkCopyAccelerationStructureModeNVX);
+begin
+ fCommands.CmdCopyAccelerationStructureNVX(commandBuffer,dst,src,mode);
+end;
+
+procedure TVulkan.CmdWriteAccelerationStructurePropertiesNVX(commandBuffer:TVkCommandBuffer;accelerationStructure:TVkAccelerationStructureNVX;queryType:TVkQueryType;queryPool:TVkQueryPool;query:TVkUInt32);
+begin
+ fCommands.CmdWriteAccelerationStructurePropertiesNVX(commandBuffer,accelerationStructure,queryType,queryPool,query);
+end;
+
+procedure TVulkan.CmdBuildAccelerationStructureNVX(commandBuffer:TVkCommandBuffer;type_:TVkAccelerationStructureTypeNVX;instanceCount:TVkUInt32;instanceData:TVkBuffer;instanceOffset:TVkDeviceSize;geometryCount:TVkUInt32;const pGeometries:PVkGeometryNVX;flags:TVkBuildAccelerationStructureFlagsNVX;update:TVkBool32;dst:TVkAccelerationStructureNVX;src:TVkAccelerationStructureNVX;scratch:TVkBuffer;scratchOffset:TVkDeviceSize);
+begin
+ fCommands.CmdBuildAccelerationStructureNVX(commandBuffer,type_,instanceCount,instanceData,instanceOffset,geometryCount,pGeometries,flags,update,dst,src,scratch,scratchOffset);
+end;
+
+procedure TVulkan.CmdTraceRaysNVX(commandBuffer:TVkCommandBuffer;raygenShaderBindingTableBuffer:TVkBuffer;raygenShaderBindingOffset:TVkDeviceSize;missShaderBindingTableBuffer:TVkBuffer;missShaderBindingOffset:TVkDeviceSize;missShaderBindingStride:TVkDeviceSize;hitShaderBindingTableBuffer:TVkBuffer;hitShaderBindingOffset:TVkDeviceSize;hitShaderBindingStride:TVkDeviceSize;width:TVkUInt32;height:TVkUInt32);
+begin
+ fCommands.CmdTraceRaysNVX(commandBuffer,raygenShaderBindingTableBuffer,raygenShaderBindingOffset,missShaderBindingTableBuffer,missShaderBindingOffset,missShaderBindingStride,hitShaderBindingTableBuffer,hitShaderBindingOffset,hitShaderBindingStride,width,height);
+end;
+
+function TVulkan.GetRaytracingShaderHandlesNVX(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult;
+begin
+ result:=fCommands.GetRaytracingShaderHandlesNVX(device,pipeline,firstGroup,groupCount,dataSize,pData);
+end;
+
+function TVulkan.GetAccelerationStructureHandleNVX(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNVX;dataSize:TVkSize;pData:PVkVoid):TVkResult;
+begin
+ result:=fCommands.GetAccelerationStructureHandleNVX(device,accelerationStructure,dataSize,pData);
+end;
+
+function TVulkan.CreateRaytracingPipelinesNVX(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkRaytracingPipelineCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult;
+begin
+ result:=fCommands.CreateRaytracingPipelinesNVX(device,pipelineCache,createInfoCount,pCreateInfos,pAllocator,pPipelines);
+end;
+
+function TVulkan.GetImageDrmFormatModifierPropertiesEXT(device:TVkDevice;image:TVkImage;pProperties:PVkImageDrmFormatModifierPropertiesEXT):TVkResult;
+begin
+ result:=fCommands.GetImageDrmFormatModifierPropertiesEXT(device,image,pProperties);
 end;
 
 initialization
