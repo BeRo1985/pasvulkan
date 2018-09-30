@@ -406,10 +406,14 @@ type EpvFrameGraph=class(Exception);
             TPassNameHashMap=TpvStringHashMap<TPass>;
             TComputePass=class;
             TRenderPass=class;
+            TPhysicalPass=class;
+            TPhysicalPasses=TpvObjectGenericList<TPhysicalPass>;
             TPhysicalPass=class
              private
               fFrameGraph:TpvFrameGraph;
               fIndex:TpvSizeInt;
+              fInputDependencies:TPhysicalPasses;
+              fOutputDependencies:TPhysicalPasses;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
@@ -440,7 +444,6 @@ type EpvFrameGraph=class(Exception);
               constructor Create(const aFrameGraph:TpvFrameGraph); overload;
               destructor Destroy; override;
             end;
-            TPhysicalPasses=TpvObjectGenericList<TPhysicalPass>;
             TPass=class
              public
               type TFlag=
@@ -1400,12 +1403,23 @@ end;
 
 constructor TpvFrameGraph.TPhysicalPass.Create(const aFrameGraph:TpvFrameGraph);
 begin
+
  inherited Create;
+
  fFrameGraph:=aFrameGraph;
+
+ fInputDependencies:=TPhysicalPasses.Create;
+ fInputDependencies.OwnsObjects:=false;
+
+ fOutputDependencies:=TPhysicalPasses.Create;
+ fOutputDependencies.OwnsObjects:=false;
+
 end;
 
 destructor TpvFrameGraph.TPhysicalPass.Destroy;
 begin
+ FreeAndNil(fInputDependencies);
+ FreeAndNil(fOutputDependencies);
  inherited Destroy;
 end;
 
@@ -1813,6 +1827,34 @@ begin
    fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,Pass.fPhysicalPass.fIndex);
   end;
 
+  // Construct new directed acyclic graph from the physical passes by transfering the
+  // dependency informations from the graph passes to the physical passes
+  for Pass in fPasses do begin
+   if (TPass.TFlag.Used in Pass.fFlags) and
+      assigned(Pass.fPhysicalPass) then begin
+    for ResourceTransition in Pass.fResourceTransitions do begin
+     Resource:=ResourceTransition.fResource;
+     for OtherResourceTransition in Resource.fResourceTransitions do begin
+      if (ResourceTransition<>OtherResourceTransition) and
+         (ResourceTransition.fPass<>OtherResourceTransition.fPass) and
+         (TPass.TFlag.Used in OtherResourceTransition.fPass.fFlags) and
+         assigned(OtherResourceTransition.fPass.fPhysicalPass) then begin
+       OtherPass:=OtherResourceTransition.fPass;
+       if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
+          (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) and
+          (Pass.fPhysicalPass.fInputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
+        Pass.fPhysicalPass.fInputDependencies.Add(OtherPass.fPhysicalPass);
+       end;
+       if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+          (OtherResourceTransition.fKind in TResourceTransition.AllInputs) and
+          (Pass.fPhysicalPass.fOutputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
+        Pass.fPhysicalPass.fOutputDependencies.Add(OtherPass.fPhysicalPass);
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
 
   // Calculate resource lifetimes (from minimum choreography step index to maximum
   // choreography step index) for calculating aliasing and reusing of resources at a later point
