@@ -6741,7 +6741,7 @@ begin
 //fVulkanDevice.GraphicsQueue.WaitIdle; // A GPU/CPU graphics queue synchronization point only for debug cases here, when something got run wrong
 
  try
-  case fVulkanSwapChain.QueuePresent(fVulkanDevice.GraphicsQueue,fVulkanWaitSemaphore) of
+  case fVulkanSwapChain.QueuePresent(fVulkanDevice.PresentQueue,fVulkanWaitSemaphore) of
    VK_SUCCESS:begin
     //fVulkanDevice.WaitIdle; // A GPU/CPU frame synchronization point only for debug cases here, when something got run wrong
     inc(fDrawSwapChainImageIndex);

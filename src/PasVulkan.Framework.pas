@@ -8545,7 +8545,8 @@ const RequiredFlags:array[TQueueKind,0..1] of TpvUInt32=
                        TQueueKind.Graphics,
                        TQueueKind.Compute,
                        TQueueKind.Transfer];
-var Index,QueueIndex,MaximalCountQueues,PassIndex:TpvSizeInt;
+var Index,QueueIndex,MaximalCountQueues,
+    PassIndex,SurfaceCheckPassIndex:TpvSizeInt;
     QueueKind,OtherQueueKind:TQueueKind;
     QueueKindQueueFamilyIndices:TQueueKindQueueFamilyIndices;
     QueueKindQueueCounts:TQueueKindQueueCount;
@@ -8572,28 +8573,31 @@ begin
 {$ifend}
  for QueueKind:=Low(TQueueKind) to High(TQueueKind) do begin
   if QueueKind in ScanQueueKinds then begin
-   for PassIndex:=0 to 1 do begin
-    if QueueKindQueueFamilyIndices[QueueKind]<0 then begin
-     for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
-      QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
-      if ((QueueFamilyProperties.queueFlags and RequiredFlags[QueueKind,PassIndex])=RequiredFlags[QueueKind,PassIndex]) and
-         (((QueueKind in QueueKindNeedSparseBindingSupport) and
-          ((((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_SPARSE_BINDING_BIT))=0) and aNeedSparseBinding) or
-          not aNeedSparseBinding)) or
-          not (QueueKind in QueueKindNeedSparseBindingSupport)) and
-         (((QueueKind in QueueKindNeedSurfaceSupport) and
-            ((assigned(aSurface) and
-           fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or
-           not assigned(aSurface))) or not (QueueKind in QueueKindNeedSurfaceSupport)) then begin
-       if (not aPreferQueueFamilyVariety) or
-          (aPreferQueueFamilyVariety and
-           ((QueueKindQueueFamilyIndices[TQueueKind.Universal]<>Index) and
-            (QueueKindQueueFamilyIndices[TQueueKind.Present]<>Index) and
-            (QueueKindQueueFamilyIndices[TQueueKind.Graphics]<>Index) and
-            (QueueKindQueueFamilyIndices[TQueueKind.Compute]<>Index) and
-            (QueueKindQueueFamilyIndices[TQueueKind.Transfer]<>Index))) then begin
-        QueueKindQueueFamilyIndices[QueueKind]:=Index;
-        break;
+   for SurfaceCheckPassIndex:=0 to (ord(QueueKind=TQueueKind.Universal) and 1) do begin
+    for PassIndex:=0 to 1 do begin
+     if QueueKindQueueFamilyIndices[QueueKind]<0 then begin
+      for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
+       QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
+       if ((QueueFamilyProperties.queueFlags and RequiredFlags[QueueKind,PassIndex])=RequiredFlags[QueueKind,PassIndex]) and
+          (((QueueKind in QueueKindNeedSparseBindingSupport) and
+           ((((QueueFamilyProperties.queueFlags and TpvUInt32(VK_QUEUE_SPARSE_BINDING_BIT))=0) and aNeedSparseBinding) or
+           not aNeedSparseBinding)) or
+           not (QueueKind in QueueKindNeedSparseBindingSupport)) and
+          ((SurfaceCheckPassIndex<>0) or
+           (((QueueKind in QueueKindNeedSurfaceSupport) and
+              ((assigned(aSurface) and
+             fPhysicalDevice.GetSurfaceSupport(Index,aSurface)) or
+             not assigned(aSurface))) or not (QueueKind in QueueKindNeedSurfaceSupport))) then begin
+        if (not aPreferQueueFamilyVariety) or
+           (aPreferQueueFamilyVariety and
+            ((QueueKindQueueFamilyIndices[TQueueKind.Universal]<>Index) and
+             (QueueKindQueueFamilyIndices[TQueueKind.Present]<>Index) and
+             (QueueKindQueueFamilyIndices[TQueueKind.Graphics]<>Index) and
+             (QueueKindQueueFamilyIndices[TQueueKind.Compute]<>Index) and
+             (QueueKindQueueFamilyIndices[TQueueKind.Transfer]<>Index))) then begin
+         QueueKindQueueFamilyIndices[QueueKind]:=Index;
+         break;
+        end;
        end;
       end;
      end;
@@ -8611,7 +8615,10 @@ begin
    QueueKindQueueFamilyIndices[TQueueKind.Graphics]:=QueueKindQueueFamilyIndices[TQueueKind.Universal];
   end;
 
-  if QueueKindQueueFamilyIndices[TQueueKind.Present]<0 then begin
+  if (QueueKindQueueFamilyIndices[TQueueKind.Present]<0) and
+     ((assigned(aSurface) and
+       fPhysicalDevice.GetSurfaceSupport(QueueKindQueueFamilyIndices[TQueueKind.Universal],aSurface)) or
+      not assigned(aSurface)) then begin
    QueueKindQueueFamilyIndices[TQueueKind.Present]:=QueueKindQueueFamilyIndices[TQueueKind.Universal];
   end;
 
@@ -8619,6 +8626,18 @@ begin
    QueueKindQueueFamilyIndices[TQueueKind.Compute]:=QueueKindQueueFamilyIndices[TQueueKind.Universal];
   end;
 
+ end;
+
+ if (QueueKindQueueFamilyIndices[TQueueKind.Present]<0) and assigned(aSurface) then begin
+  // If we haven't found a queue that supports both graphics and present, then we have
+  // to find a separate present queue, independently of the queue flags.
+  for Index:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
+   QueueFamilyProperties:=@fPhysicalDevice.fQueueFamilyProperties[Index];
+   if fPhysicalDevice.GetSurfaceSupport(Index,aSurface) then begin
+    QueueKindQueueFamilyIndices[TQueueKind.Present]:=Index;
+    break;
+   end;
+  end;
  end;
 
  if QueueKindQueueFamilyIndices[TQueueKind.Transfer]<0 then begin
