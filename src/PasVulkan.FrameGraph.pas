@@ -1827,72 +1827,72 @@ begin
    fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,Pass.fPhysicalPass.fIndex);
   end;
 
-  // Construct new directed acyclic graph from the physical passes by transfering the
-  // dependency informations from the graph passes to the physical passes
-  for Pass in fPasses do begin
-   if (TPass.TFlag.Used in Pass.fFlags) and
-      assigned(Pass.fPhysicalPass) then begin
-    for ResourceTransition in Pass.fResourceTransitions do begin
-     Resource:=ResourceTransition.fResource;
-     for OtherResourceTransition in Resource.fResourceTransitions do begin
-      if (ResourceTransition<>OtherResourceTransition) and
-         (ResourceTransition.fPass<>OtherResourceTransition.fPass) and
-         (ResourceTransition.fPass.fPhysicalPass<>OtherResourceTransition.fPass.fPhysicalPass) and
-         (TPass.TFlag.Used in OtherResourceTransition.fPass.fFlags) and
-         assigned(OtherResourceTransition.fPass.fPhysicalPass) then begin
-       OtherPass:=OtherResourceTransition.fPass;
-       if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
-          (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) and
-          (Pass.fPhysicalPass.fInputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
-        Pass.fPhysicalPass.fInputDependencies.Add(OtherPass.fPhysicalPass);
-       end;
-       if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
-          (OtherResourceTransition.fKind in TResourceTransition.AllInputs) and
-          (Pass.fPhysicalPass.fOutputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
-        Pass.fPhysicalPass.fOutputDependencies.Add(OtherPass.fPhysicalPass);
-       end;
-      end;
-     end;
-    end;
-   end;
-  end;
-
-  // Calculate resource lifetimes (from minimum choreography step index to maximum
-  // physical pass step index) for calculating aliasing and reusing of resources at a later point
-  for Resource in fResources do begin
-   Resource.fMinimumPhysicalPassStepIndex:=High(TpvSizeInt);
-   Resource.fMaximumPhysicalPassStepIndex:=Low(TpvSizeInt);
-   for ResourceTransition in Resource.fResourceTransitions do begin
-    Pass:=ResourceTransition.fPass;
-    if assigned(Pass.fPhysicalPass) then begin
-     if ((ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
-                                     TResourceTransition.TFlag.NextFrameOutput])<>[]) or
-        ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
-         (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface)) then begin
-      // In this cases, this one resource must life from the begin to the end of the whole
-      // directed acyclic graph for the simplicity of safety, because it can be still optimized
-      // in a better way later
-      if not Resource.fUsed then begin
-       Resource.fUsed:=true;
-       Resource.fMinimumPhysicalPassStepIndex:=0;
-       Resource.fMaximumPhysicalPassStepIndex:=fMaximumOverallPhysicalPassIndex;
-      end;
-     end else begin
-      if Resource.fUsed then begin
-       Resource.fMinimumPhysicalPassStepIndex:=Min(Resource.fMinimumPhysicalPassStepIndex,Pass.fPhysicalPass.fIndex);
-       Resource.fMaximumPhysicalPassStepIndex:=Max(Resource.fMaximumPhysicalPassStepIndex,Pass.fPhysicalPass.fIndex);
-      end else begin
-       Resource.fUsed:=true;
-       Resource.fMinimumPhysicalPassStepIndex:=Pass.fPhysicalPass.fIndex;
-       Resource.fMaximumPhysicalPassStepIndex:=Pass.fPhysicalPass.fIndex;
-      end;
-     end;
-    end;
-   end;
-  end;
-
  finally
   FreeAndNil(TopologicalSortedPasses);
+ end;
+
+ // Construct new directed acyclic graph from the physical passes by transfering the
+ // dependency informations from the graph passes to the physical passes
+ for Pass in fPasses do begin
+  if (TPass.TFlag.Used in Pass.fFlags) and
+     assigned(Pass.fPhysicalPass) then begin
+   for ResourceTransition in Pass.fResourceTransitions do begin
+    Resource:=ResourceTransition.fResource;
+    for OtherResourceTransition in Resource.fResourceTransitions do begin
+     if (ResourceTransition<>OtherResourceTransition) and
+        (ResourceTransition.fPass<>OtherResourceTransition.fPass) and
+        (ResourceTransition.fPass.fPhysicalPass<>OtherResourceTransition.fPass.fPhysicalPass) and
+        (TPass.TFlag.Used in OtherResourceTransition.fPass.fFlags) and
+        assigned(OtherResourceTransition.fPass.fPhysicalPass) then begin
+      OtherPass:=OtherResourceTransition.fPass;
+      if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
+         (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) and
+         (Pass.fPhysicalPass.fInputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
+       Pass.fPhysicalPass.fInputDependencies.Add(OtherPass.fPhysicalPass);
+      end;
+      if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+         (OtherResourceTransition.fKind in TResourceTransition.AllInputs) and
+         (Pass.fPhysicalPass.fOutputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
+       Pass.fPhysicalPass.fOutputDependencies.Add(OtherPass.fPhysicalPass);
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+
+ // Calculate resource lifetimes (from minimum choreography step index to maximum
+ // physical pass step index) for calculating aliasing and reusing of resources at a later point
+ for Resource in fResources do begin
+  Resource.fMinimumPhysicalPassStepIndex:=High(TpvSizeInt);
+  Resource.fMaximumPhysicalPassStepIndex:=Low(TpvSizeInt);
+  for ResourceTransition in Resource.fResourceTransitions do begin
+   Pass:=ResourceTransition.fPass;
+   if assigned(Pass.fPhysicalPass) then begin
+    if ((ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
+                                    TResourceTransition.TFlag.NextFrameOutput])<>[]) or
+       ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
+        (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface)) then begin
+     // In this cases, this one resource must life from the begin to the end of the whole
+     // directed acyclic graph for the simplicity of safety, because it can be still optimized
+     // in a better way later
+     if not Resource.fUsed then begin
+      Resource.fUsed:=true;
+      Resource.fMinimumPhysicalPassStepIndex:=0;
+      Resource.fMaximumPhysicalPassStepIndex:=fMaximumOverallPhysicalPassIndex;
+     end;
+    end else begin
+     if Resource.fUsed then begin
+      Resource.fMinimumPhysicalPassStepIndex:=Min(Resource.fMinimumPhysicalPassStepIndex,Pass.fPhysicalPass.fIndex);
+      Resource.fMaximumPhysicalPassStepIndex:=Max(Resource.fMaximumPhysicalPassStepIndex,Pass.fPhysicalPass.fIndex);
+     end else begin
+      Resource.fUsed:=true;
+      Resource.fMinimumPhysicalPassStepIndex:=Pass.fPhysicalPass.fIndex;
+      Resource.fMaximumPhysicalPassStepIndex:=Pass.fPhysicalPass.fIndex;
+     end;
+    end;
+   end;
+  end;
  end;
 
  // Calculate resource reuse groups, depending on the non-intersecting resource lifetime span
