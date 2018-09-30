@@ -1837,6 +1837,7 @@ begin
      for OtherResourceTransition in Resource.fResourceTransitions do begin
       if (ResourceTransition<>OtherResourceTransition) and
          (ResourceTransition.fPass<>OtherResourceTransition.fPass) and
+         (ResourceTransition.fPass.fPhysicalPass<>OtherResourceTransition.fPass.fPhysicalPass) and
          (TPass.TFlag.Used in OtherResourceTransition.fPass.fFlags) and
          assigned(OtherResourceTransition.fPass.fPhysicalPass) then begin
        OtherPass:=OtherResourceTransition.fPass;
