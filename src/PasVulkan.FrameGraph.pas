@@ -471,6 +471,7 @@ type EpvFrameGraph=class(Exception);
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
               fFlags:TFlags;
+              fQueue:TQueue;
               fResources:TResourceList;
               fResourceTransitions:TResourceTransitionList;
               fPreviousPasses:TPassList;
@@ -576,6 +577,7 @@ type EpvFrameGraph=class(Exception);
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName write SetName;
+              property Queue:TQueue read fQueue write fQueue;
               property Enabled:boolean read GetEnabled write SetEnabled;
             end;
             TComputePass=class(TPass)
@@ -1032,6 +1034,8 @@ begin
  fName:='';
 
  fFrameGraph.fPasses.Add(self);
+
+ fQueue:=nil;
 
  fResources:=TResourceList.Create;
  fResources.OwnsObjects:=false;
@@ -1570,6 +1574,7 @@ begin
  end;
  if not assigned(result) then begin
   result:=TQueue.Create(self,aPhysicalQueue);
+  fQueues.Add(result);
  end;
 end;
 
