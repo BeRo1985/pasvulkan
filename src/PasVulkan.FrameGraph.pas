@@ -167,6 +167,16 @@ type EpvFrameGraph=class(Exception);
               class operator NotEqual(const aLeft,aRight:TAttachmentSize):boolean;
             end;
             PAttachmentSize=^TAttachmentSize;
+            TQueue=class
+             private
+              fFrameGraph:TpvFrameGraph;
+              fPhysicalQueue:TpvVulkanQueue;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aPhysicalQueue:TpvVulkanQueue); reintroduce;
+              destructor Destroy; override;
+            end;
+            TQueues=TpvObjectGenericList<TQueue>;
             TResourceType=class
              public
               type TMetaType=
@@ -587,6 +597,7 @@ type EpvFrameGraph=class(Exception);
               property MultiViewMask:TpvUInt32 read fMultiViewMask write fMultiViewMask;
             end;
       private
+       fQueues:TQueues;
        fResourceTypes:TResourceTypeList;
        fResourceTypeNameHashMap:TResourceTypeNameHashMap;
        fResources:TResourceList;
@@ -604,6 +615,7 @@ type EpvFrameGraph=class(Exception);
        constructor Create;
        destructor Destroy; override;
       public
+       function AddQueue(const aPhysicalQueue:TpvVulkanQueue):TQueue;
        function AddResourceType(const aName:TpvRawByteString;
                                 const aPersientent:boolean;
                                 const aMetaType:TResourceType.TMetaType;
@@ -633,6 +645,7 @@ type EpvFrameGraph=class(Exception);
        procedure BeforeDestroySwapChain; virtual;
        procedure Execute; virtual;
       published
+       property Queues:TQueues read fQueues;
        property ResourceTypes:TResourceTypeList read fResourceTypes;
        property ResourceTypeByName:TResourceTypeNameHashMap read fResourceTypeNameHashMap;
        property Resources:TResourceList read fResources;
@@ -716,6 +729,21 @@ class operator TpvFrameGraph.TAttachmentSize.NotEqual(const aLeft,aRight:TAttach
 begin
  result:=(aLeft.Kind<>aRight.Kind) or
          (aLeft.Size<>aRight.Size);
+end;
+
+{ TpvFrameGraph.TQueue }
+
+constructor TpvFrameGraph.TQueue.Create(const aFrameGraph:TpvFrameGraph;
+                                        const aPhysicalQueue:TpvVulkanQueue);
+begin
+ inherited Create;
+ fFrameGraph:=aFrameGraph;
+ fPhysicalQueue:=aPhysicalQueue;
+end;
+
+destructor TpvFrameGraph.TQueue.Destroy;
+begin
+ inherited Destroy;
 end;
 
 { TpvFrameGraph.TResourceType.TAttachmentData }
@@ -1474,6 +1502,9 @@ begin
 
  inherited Create;
 
+ fQueues:=TQueues.Create;
+ fQueues.OwnsObjects:=true;
+
  fResourceTypes:=TResourceTypeList.Create;
  fResourceTypes.OwnsObjects:=true;
 
@@ -1521,8 +1552,25 @@ begin
 
  FreeAndNil(fPassNameHashMap);
 
+ FreeAndNil(fQueues);
+
  inherited Destroy;
 
+end;
+
+function TpvFrameGraph.AddQueue(const aPhysicalQueue:TpvVulkanQueue):TQueue;
+var Queue:TQueue;
+begin
+ result:=nil;
+ for Queue in fQueues do begin
+  if Queue.fPhysicalQueue=aPhysicalQueue then begin
+   result:=Queue;
+   break;
+  end;
+ end;
+ if not assigned(result) then begin
+  result:=TQueue.Create(self,aPhysicalQueue);
+ end;
 end;
 
 function TpvFrameGraph.AddResourceType(const aName:TpvRawByteString;
