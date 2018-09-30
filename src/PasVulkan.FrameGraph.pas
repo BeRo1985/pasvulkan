@@ -263,8 +263,8 @@ type EpvFrameGraph=class(Exception);
               fName:TpvRawByteString;
               fResourceType:TResourceType;
               fResourceTransitions:TResourceTransitionList;
-              fMinimumChoreographyStepIndex:TpvSizeInt;
-              fMaximumChoreographyStepIndex:TpvSizeInt;
+              fMinimumPhysicalPassStepIndex:TpvSizeInt;
+              fMaximumPhysicalPassStepIndex:TpvSizeInt;
               fResourceReuseGroup:TResourceReuseGroup;
               fUsed:boolean;
              public
@@ -279,8 +279,8 @@ type EpvFrameGraph=class(Exception);
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName;
               property ResourceType:TResourceType read fResourceType;
-              property MinimumChoreographyStepIndex:TpvSizeInt read fMinimumChoreographyStepIndex;
-              property MaximumChoreographyStepIndex:TpvSizeInt read fMaximumChoreographyStepIndex;
+              property MinimumPhysicalPassStepIndex:TpvSizeInt read fMinimumPhysicalPassStepIndex;
+              property MaximumPhysicalPassStepIndex:TpvSizeInt read fMaximumPhysicalPassStepIndex;
               property Used:boolean read fUsed;
             end;
             TPass=class;
@@ -427,7 +427,7 @@ type EpvFrameGraph=class(Exception);
               fNextPasses:TPassList;
               fIndex:TpvSizeInt;
               fTag:TpvSizeInt;
-              fVulkanPassIndex:TpvSizeInt;
+              fPhysicalPassIndex:TpvSizeInt;
               fVulkanSubPassIndex:TpvSizeInt;
               function GetEnabled:boolean;
               procedure SetEnabled(const aEnabled:boolean);
@@ -546,28 +546,28 @@ type EpvFrameGraph=class(Exception);
              published
               property MultiViewMask:TpvUInt32 read fMultiViewMask write fMultiViewMask;
             end;
-            TVulkanPass=class
+            TPhysicalPass=class
              private
               fFrameGraph:TpvFrameGraph;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
             end;
-            TVulkanComputePass=class(TVulkanPass)
+            TPhysicalComputePass=class(TPhysicalPass)
              private
               fComputePass:TComputePass;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aComputePass:TComputePass); reintroduce;
               destructor Destroy; override;
             end;
-            TVulkanRenderPass=class(TVulkanPass)
+            TPhysicalRenderPass=class(TPhysicalPass)
              public
               type TSubPass=class
                     private
-                     fChoreographyStepRenderPass:TVulkanRenderPass;
+                     fPhysicalRenderPass:TPhysicalRenderPass;
                      fRenderPass:TRenderPass;
                     public
-                     constructor Create(const aChoreographyStepRenderPass:TVulkanRenderPass;
+                     constructor Create(const aPhysicalRenderPass:TPhysicalRenderPass;
                                         const aRenderPass:TRenderPass); reintroduce;
                      destructor Destroy; override;
                    end;
@@ -578,7 +578,7 @@ type EpvFrameGraph=class(Exception);
               constructor Create(const aFrameGraph:TpvFrameGraph); overload;
               destructor Destroy; override;
             end;
-            TVulkanPasses=TpvObjectGenericList<TVulkanPass>;
+            TPhysicalPasses=TpvObjectGenericList<TPhysicalPass>;
       private
        fResourceTypes:TResourceTypeList;
        fResourceTypeNameHashMap:TResourceTypeNameHashMap;
@@ -590,9 +590,9 @@ type EpvFrameGraph=class(Exception);
        fPassNameHashMap:TPassNameHashMap;
        fRootPass:TPass;
        fEnforcedRootPass:TPass;
-       fMaximumOverallVulkanPassIndex:TpvSizeInt;
+       fMaximumOverallPhysicalPassIndex:TpvSizeInt;
        fValid:boolean;
-       fVulkanPasses:TVulkanPasses;
+       fPhysicalPasses:TPhysicalPasses;
       public
        constructor Create;
        destructor Destroy; override;
@@ -898,8 +898,8 @@ begin
  fResourceTransitions:=TResourceTransitionList.Create;
  fResourceTransitions.OwnsObjects:=false;
 
- fMinimumChoreographyStepIndex:=High(TpvSizeInt);
- fMaximumChoreographyStepIndex:=Low(TpvSizeInt);
+ fMinimumPhysicalPassStepIndex:=High(TpvSizeInt);
+ fMaximumPhysicalPassStepIndex:=Low(TpvSizeInt);
 
  fUsed:=false;
 
@@ -1012,7 +1012,7 @@ begin
 
  fFlags:=[TFlag.Enabled];
 
- fVulkanPassIndex:=-1;
+ fPhysicalPassIndex:=-1;
 
  fVulkanSubPassIndex:=-1;
 
@@ -1393,58 +1393,58 @@ begin
  inherited Destroy;
 end;
 
-{ TpvFrameGraph.TVulkanPass }
+{ TpvFrameGraph.TPhysicalPass }
 
-constructor TpvFrameGraph.TVulkanPass.Create(const aFrameGraph:TpvFrameGraph);
+constructor TpvFrameGraph.TPhysicalPass.Create(const aFrameGraph:TpvFrameGraph);
 begin
  inherited Create;
  fFrameGraph:=aFrameGraph;
 end;
 
-destructor TpvFrameGraph.TVulkanPass.Destroy;
+destructor TpvFrameGraph.TPhysicalPass.Destroy;
 begin
  inherited Destroy;
 end;
 
 { TpvFrameGraph.TVulkanComputePass }
 
-constructor TpvFrameGraph.TVulkanComputePass.Create(const aFrameGraph:TpvFrameGraph;
+constructor TpvFrameGraph.TPhysicalComputePass.Create(const aFrameGraph:TpvFrameGraph;
                                                               const aComputePass:TComputePass);
 begin
  inherited Create(aFrameGraph);
  fComputePass:=aComputePass;
 end;
 
-destructor TpvFrameGraph.TVulkanComputePass.Destroy;
+destructor TpvFrameGraph.TPhysicalComputePass.Destroy;
 begin
  inherited Destroy;
 end;
 
 { TpvFrameGraph.TVulkanRenderPass.TSubPass }
 
-constructor TpvFrameGraph.TVulkanRenderPass.TSubPass.Create(const aChoreographyStepRenderPass:TVulkanRenderPass;
-                                                                      const aRenderPass:TRenderPass);
+constructor TpvFrameGraph.TPhysicalRenderPass.TSubPass.Create(const aPhysicalRenderPass:TPhysicalRenderPass;
+                                                              const aRenderPass:TRenderPass);
 begin
  inherited Create;
- fChoreographyStepRenderPass:=aChoreographyStepRenderPass;
+ fPhysicalRenderPass:=aPhysicalRenderPass;
  fRenderPass:=aRenderPass;
 end;
 
-destructor TpvFrameGraph.TVulkanRenderPass.TSubPass.Destroy;
+destructor TpvFrameGraph.TPhysicalRenderPass.TSubPass.Destroy;
 begin
  inherited Destroy;
 end;
 
 { TpvFrameGraph.TVulkanRenderPass }
 
-constructor TpvFrameGraph.TVulkanRenderPass.Create(const aFrameGraph:TpvFrameGraph);
+constructor TpvFrameGraph.TPhysicalRenderPass.Create(const aFrameGraph:TpvFrameGraph);
 begin
  inherited Create(aFrameGraph);
  fSubPasses:=TSubPasses.Create;
  fSubPasses.OwnsObjects:=true;
 end;
 
-destructor TpvFrameGraph.TVulkanRenderPass.Destroy;
+destructor TpvFrameGraph.TPhysicalRenderPass.Destroy;
 begin
  FreeAndNil(fSubPasses);
  inherited Destroy;
@@ -1478,15 +1478,15 @@ begin
 
  fPassNameHashMap:=TPassNameHashMap.Create(nil);
 
- fVulkanPasses:=TVulkanPasses.Create;
- fVulkanPasses.OwnsObjects:=true;
+ fPhysicalPasses:=TPhysicalPasses.Create;
+ fPhysicalPasses.OwnsObjects:=true;
 
 end;
 
 destructor TpvFrameGraph.Destroy;
 begin
 
- FreeAndNil(fVulkanPasses);
+ FreeAndNil(fPhysicalPasses);
 
  FreeAndNil(fResourceTypes);
 
@@ -1592,7 +1592,7 @@ var Temporary,
     ResourceReuseGroup:TResourceReuseGroup;
     ResourceType:TResourceType;
     TopologicalSortedPasses:TPassList;
-    VulkanRenderPass:TVulkanRenderPass;
+    PhysicalRenderPass:TPhysicalRenderPass;
 begin
 
  // Indexing passes
@@ -1690,7 +1690,7 @@ begin
   Stack.Initialize;
   try
    for Pass in fPasses do begin
-    Pass.fVulkanPassIndex:=-1;
+    Pass.fPhysicalPassIndex:=-1;
     Pass.fVulkanSubPassIndex:=-1;
     Pass.fFlags:=Pass.fFlags-[TPass.TFlag.Used,TPass.TFlag.Processed,TPass.TFlag.Marked];
     Pass.fPreviousPasses.Clear;
@@ -1768,20 +1768,20 @@ begin
   end;
 
   // Construct choreography together with merging render passes to sub passes of a real
-  // Vulkan render pass
-  fVulkanPasses.Clear;
-  fMaximumOverallVulkanPassIndex:=0;
+  // physical render pass
+  fPhysicalPasses.Clear;
+  fMaximumOverallPhysicalPassIndex:=0;
   Index:=0;
   Count:=TopologicalSortedPasses.Count;
   while Index<Count do begin
    Pass:=TopologicalSortedPasses[Index];
    if Pass is TComputePass then begin
-    Pass.fVulkanPassIndex:=fVulkanPasses.Add(TVulkanComputePass.Create(self,TComputePass(Pass)));
+    Pass.fPhysicalPassIndex:=fPhysicalPasses.Add(TPhysicalComputePass.Create(self,TComputePass(Pass)));
     inc(Index);
    end else if Pass is TRenderPass then begin
-    VulkanRenderPass:=TVulkanRenderPass.Create(self);
-    Pass.fVulkanPassIndex:=fVulkanPasses.Add(VulkanRenderPass);
-    TRenderPass(Pass).fVulkanSubPassIndex:=VulkanRenderPass.fSubPasses.Add(TVulkanRenderPass.TSubPass.Create(VulkanRenderPass,TRenderPass(Pass)));
+    PhysicalRenderPass:=TPhysicalRenderPass.Create(self);
+    Pass.fPhysicalPassIndex:=fPhysicalPasses.Add(PhysicalRenderPass);
+    TRenderPass(Pass).fVulkanSubPassIndex:=PhysicalRenderPass.fSubPasses.Add(TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(Pass)));
     inc(Index);
     if not (TPass.TFlag.Toggleable in Pass.fFlags) then begin
      while Index<Count do begin
@@ -1789,9 +1789,9 @@ begin
       if (not (TPass.TFlag.Toggleable in OtherPass.fFlags)) and
          (OtherPass is TRenderPass) and
          (TRenderPass(OtherPass).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) then begin
-       OtherPass.fVulkanPassIndex:=Pass.fVulkanPassIndex;
-       TRenderPass(OtherPass).fVulkanSubPassIndex:=VulkanRenderPass.fSubPasses.Add(TVulkanRenderPass.TSubPass.Create(VulkanRenderPass,TRenderPass(OtherPass)));
-       fMaximumOverallVulkanPassIndex:=Max(fMaximumOverallVulkanPassIndex,OtherPass.fVulkanPassIndex);
+       OtherPass.fPhysicalPassIndex:=Pass.fPhysicalPassIndex;
+       TRenderPass(OtherPass).fVulkanSubPassIndex:=PhysicalRenderPass.fSubPasses.Add(TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(OtherPass)));
+       fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,OtherPass.fPhysicalPassIndex);
        inc(Index);
       end else begin
        break;
@@ -1801,17 +1801,17 @@ begin
    end else begin
     inc(Index);
    end;
-   fMaximumOverallVulkanPassIndex:=Max(fMaximumOverallVulkanPassIndex,Pass.fVulkanPassIndex);
+   fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,Pass.fPhysicalPassIndex);
   end;
 
   // Calculate resource lifetimes (from minimum choreography step index to maximum
   // choreography step index) for calculating aliasing and reusing of resources at a later point
   for Resource in fResources do begin
-   Resource.fMinimumChoreographyStepIndex:=High(TpvSizeInt);
-   Resource.fMaximumChoreographyStepIndex:=Low(TpvSizeInt);
+   Resource.fMinimumPhysicalPassStepIndex:=High(TpvSizeInt);
+   Resource.fMaximumPhysicalPassStepIndex:=Low(TpvSizeInt);
    for ResourceTransition in Resource.fResourceTransitions do begin
     Pass:=ResourceTransition.fPass;
-    if Pass.fVulkanPassIndex>=0 then begin
+    if Pass.fPhysicalPassIndex>=0 then begin
      if ((ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
                                      TResourceTransition.TFlag.NextFrameOutput])<>[]) or
         ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
@@ -1821,17 +1821,17 @@ begin
       // in a better way later
       if not Resource.fUsed then begin
        Resource.fUsed:=true;
-       Resource.fMinimumChoreographyStepIndex:=0;
-       Resource.fMaximumChoreographyStepIndex:=fMaximumOverallVulkanPassIndex;
+       Resource.fMinimumPhysicalPassStepIndex:=0;
+       Resource.fMaximumPhysicalPassStepIndex:=fMaximumOverallPhysicalPassIndex;
       end;
      end else begin
       if Resource.fUsed then begin
-       Resource.fMinimumChoreographyStepIndex:=Min(Resource.fMinimumChoreographyStepIndex,Pass.fVulkanPassIndex);
-       Resource.fMaximumChoreographyStepIndex:=Max(Resource.fMaximumChoreographyStepIndex,Pass.fVulkanPassIndex);
+       Resource.fMinimumPhysicalPassStepIndex:=Min(Resource.fMinimumPhysicalPassStepIndex,Pass.fPhysicalPassIndex);
+       Resource.fMaximumPhysicalPassStepIndex:=Max(Resource.fMaximumPhysicalPassStepIndex,Pass.fPhysicalPassIndex);
       end else begin
        Resource.fUsed:=true;
-       Resource.fMinimumChoreographyStepIndex:=Pass.fVulkanPassIndex;
-       Resource.fMaximumChoreographyStepIndex:=Pass.fVulkanPassIndex;
+       Resource.fMinimumPhysicalPassStepIndex:=Pass.fPhysicalPassIndex;
+       Resource.fMaximumPhysicalPassStepIndex:=Pass.fPhysicalPassIndex;
       end;
      end;
     end;
@@ -1858,9 +1858,9 @@ begin
     OtherResource:=fResources.Items[OtherIndex];
     if (not assigned(OtherResource.fResourceReuseGroup)) and
        (Resource.fResourceType=OtherResource.fResourceType) and
-       (Min(Resource.MaximumChoreographyStepIndex,
-            OtherResource.MaximumChoreographyStepIndex)>Max(Resource.MinimumChoreographyStepIndex,
-                                                            OtherResource.MinimumChoreographyStepIndex)) then begin
+       (Min(Resource.fMaximumPhysicalPassStepIndex,
+            OtherResource.fMaximumPhysicalPassStepIndex)>Max(Resource.fMinimumPhysicalPassStepIndex,
+                                                             OtherResource.fMinimumPhysicalPassStepIndex)) then begin
      OtherResource.fResourceReuseGroup:=Resource.fResourceReuseGroup;
      OtherResource.fResourceReuseGroup.fResources.Add(OtherResource);
     end;
