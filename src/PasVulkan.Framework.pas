@@ -8320,72 +8320,82 @@ begin
   BestScore:=0;
   for Index:=0 to fInstance.fPhysicalDevices.Count-1 do begin
    CurrentPhysicalDevice:=fInstance.fPhysicalDevices[Index];
-   CurrentScore:=0;
    begin
-    // Include the device type into the scoring
-    // CPU(/Unknown) < other < Virtual GPU (for example inside virtual machines) < Integrated GPU < Discrete GPU
-    case CurrentPhysicalDevice.fProperties.deviceType of
-     VK_PHYSICAL_DEVICE_TYPE_OTHER:begin
-      CurrentScore:=CurrentScore or (TpvUInt64(1) shl 60);
+    // Check for surface support, if needed
+    if assigned(aSurface) then begin
+     OK:=false;
+     for SubIndex:=0 to length(CurrentPhysicalDevice.fQueueFamilyProperties)-1 do begin
+      if CurrentPhysicalDevice.GetSurfaceSupport(SubIndex,aSurface) then begin
+       OK:=true;
+       break;
+      end;
      end;
-     VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:begin
-      CurrentScore:=CurrentScore or (TpvUInt64(3) shl 60);
-     end;
-     VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:begin
-      CurrentScore:=CurrentScore or (TpvUInt64(4) shl 60);
-     end;
-     VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:begin
-      CurrentScore:=CurrentScore or (TpvUInt64(2) shl 60);
-     end;
-     else {VK_PHYSICAL_DEVICE_TYPE_CPU:}begin
-      CurrentScore:=CurrentScore or (TpvUInt64(0) shl 60);
-     end;
-    end;
-   end;
-   begin
-    // Include the available queue families into the scoring
-    OK:=false;
-    for SubIndex:=0 to length(CurrentPhysicalDevice.fQueueFamilyProperties)-1 do begin
-     if assigned(aSurface) and not CurrentPhysicalDevice.GetSurfaceSupport(SubIndex,aSurface) then begin
+     if not OK then begin
       continue;
      end;
-     OK:=true;
-     Temp:=0;
-     if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TpvInt32(VK_QUEUE_GRAPHICS_BIT))<>0 then begin
-      inc(Temp);
-     end;
-     if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TpvInt32(VK_QUEUE_COMPUTE_BIT))<>0 then begin
-      inc(Temp);
-     end;
-     if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TpvInt32(VK_QUEUE_TRANSFER_BIT))<>0 then begin
-      inc(Temp);
-     end;
-     if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TpvInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0 then begin
-      inc(Temp);
-     end;
-     CurrentScore:=CurrentScore or (TpvUInt64(Temp) shl 57);
-    end;
-    if not OK then begin
-     continue;
     end;
    end;
    begin
-    // Include the available total memory heap size into the scoring
-    Temp:=0;
-    for SubIndex:=0 to TpvInt32(CurrentPhysicalDevice.fMemoryProperties.memoryHeapCount)-1 do begin
-     NewTemp:=Temp+CurrentPhysicalDevice.fMemoryProperties.memoryHeaps[SubIndex].size;
-     if Temp<NewTemp then begin
-      Temp:=NewTemp;
-     end else begin
-      Temp:=TpvUInt64(TpvInt64(-1));
-      break;
+    // Do scoring . . .
+    CurrentScore:=0;
+    begin
+     // Include the device type into the scoring
+     // CPU(/Unknown) < other < Virtual GPU (for example inside virtual machines) < Integrated GPU < Discrete GPU
+     case CurrentPhysicalDevice.fProperties.deviceType of
+      VK_PHYSICAL_DEVICE_TYPE_OTHER:begin
+       CurrentScore:=CurrentScore or (TpvUInt64(1) shl 60);
+      end;
+      VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:begin
+       CurrentScore:=CurrentScore or (TpvUInt64(3) shl 60);
+      end;
+      VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:begin
+       CurrentScore:=CurrentScore or (TpvUInt64(4) shl 60);
+      end;
+      VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:begin
+       CurrentScore:=CurrentScore or (TpvUInt64(2) shl 60);
+      end;
+      else {VK_PHYSICAL_DEVICE_TYPE_CPU:}begin
+       CurrentScore:=CurrentScore or (TpvUInt64(0) shl 60);
+      end;
      end;
     end;
-    CurrentScore:=CurrentScore or (TpvUInt64(Temp) shr 16);
-   end;
-   if (BestScore<CurrentScore) or not assigned(BestPhysicalDevice) then begin
-    BestPhysicalDevice:=CurrentPhysicalDevice;
-    BestScore:=CurrentScore;
+    begin
+     // Include the available queue families into the scoring
+     for SubIndex:=0 to length(CurrentPhysicalDevice.fQueueFamilyProperties)-1 do begin
+      Temp:=0;
+      if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TpvInt32(VK_QUEUE_GRAPHICS_BIT))<>0 then begin
+       inc(Temp);
+      end;
+      if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TpvInt32(VK_QUEUE_COMPUTE_BIT))<>0 then begin
+       inc(Temp);
+      end;
+      if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TpvInt32(VK_QUEUE_TRANSFER_BIT))<>0 then begin
+       inc(Temp);
+      end;
+      if (CurrentPhysicalDevice.fQueueFamilyProperties[SubIndex].queueFlags and TpvInt32(VK_QUEUE_SPARSE_BINDING_BIT))<>0 then begin
+       inc(Temp);
+      end;
+      CurrentScore:=CurrentScore or (TpvUInt64(Temp) shl 57);
+     end;
+    end;
+    begin
+     // Include the available total memory heap size into the scoring
+     Temp:=0;
+     for SubIndex:=0 to TpvInt32(CurrentPhysicalDevice.fMemoryProperties.memoryHeapCount)-1 do begin
+      NewTemp:=Temp+CurrentPhysicalDevice.fMemoryProperties.memoryHeaps[SubIndex].size;
+      if Temp<NewTemp then begin
+       Temp:=NewTemp;
+      end else begin
+       Temp:=TpvUInt64(TpvInt64(-1));
+       break;
+      end;
+     end;
+     CurrentScore:=CurrentScore or (TpvUInt64(Temp) shr 16);
+    end;
+    if (BestScore<CurrentScore) or not assigned(BestPhysicalDevice) then begin
+     BestPhysicalDevice:=CurrentPhysicalDevice;
+     BestScore:=CurrentScore;
+    end;
    end;
   end;
   if assigned(BestPhysicalDevice) then begin
