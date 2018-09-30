@@ -8534,10 +8534,7 @@ const RequiredFlags:array[TQueueKind,0..1] of TpvUInt32=
         )
        );
        QueueKindNeedSparseBindingSupport=[TQueueKind.Universal,
-                                          TQueueKind.Present,
-                                          TQueueKind.Graphics,
-                                          TQueueKind.Compute,
-                                          TQueueKind.Transfer];
+                                          TQueueKind.Graphics];
        QueueKindNeedSurfaceSupport=[TQueueKind.Universal,
                                     TQueueKind.Present];
        ScanQueueKinds=[TQueueKind.Universal,
