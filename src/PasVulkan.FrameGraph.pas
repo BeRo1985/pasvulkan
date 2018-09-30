@@ -1646,7 +1646,8 @@ var Temporary,
     Count,
     BaseStackCount,
     TagCounter,
-    FoundTag:TpvSizeInt;
+    FoundTag,
+    Weight:TpvSizeInt;
     Pass,
     OtherPass:TPass;
     Passes:array[0..1] of TPass;
@@ -1804,11 +1805,23 @@ begin
         while (Index+1)<Count do begin
          Passes[0]:=Pass.fPreviousPasses[Index];
          Passes[1]:=Pass.fPreviousPasses[Index+1];
-         if not ((Passes[1] is TRenderPass) and
-                 (((Passes[0] is TRenderPass) and
-                   ((TRenderPass(Passes[0]).fAttachmentSize<>TRenderPass(Pass).fAttachmentSize) and
-                    (TRenderPass(Passes[1]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize))) or
-                  not (Passes[0] is TRenderPass))) then begin
+         if Passes[0].fQueue<>Passes[1].fQueue then begin
+          Weight:=(ord(Passes[0].fQueue=Pass.fQueue) and 1)-(ord(Passes[1].fQueue=Pass.fQueue) and 1);
+          if Weight=0 then begin
+           if TpvPtrUInt(Passes[0].fQueue)<TpvPtrUInt(Passes[1].fQueue) then begin
+            Weight:=-1;
+           end else begin
+            Weight:=1;
+           end;
+          end;
+         end else begin
+          Weight:=(ord(Passes[0] is TRenderPass) and 1)-(ord(Passes[1] is TRenderPass) and 1);
+          if Weight=0 then begin
+           Weight:=(ord(TRenderPass(Passes[0]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) and 1)-
+                   (ord(TRenderPass(Passes[1]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) and 1);
+          end;
+         end;
+         if Weight<0 then begin
           Pass.fPreviousPasses.Exchange(Index,Index+1);
           if Index>0 then begin
            dec(Index);
@@ -1863,6 +1876,7 @@ begin
       OtherPass:=TopologicalSortedPasses[Index];
       if (not (TPass.TFlag.Toggleable in OtherPass.fFlags)) and
          (OtherPass is TRenderPass) and
+         (TRenderPass(OtherPass).fQueue=TRenderPass(Pass).fQueue) and
          (TRenderPass(OtherPass).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) then begin
        OtherPass.fPhysicalPass:=Pass.fPhysicalPass;
        TRenderPass(OtherPass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(OtherPass));
