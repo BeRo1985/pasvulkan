@@ -86,6 +86,8 @@ type EpvFrameGraph=class(Exception);
 
      EpvFrameGraphDuplicateName=class(EpvFrameGraph);
 
+     EpvFrameGraphMissingQueue=class(EpvFrameGraph);
+
      EpvFrameGraphMismatchAttachmentSize=class(EpvFrameGraph);
 
      EpvFrameGraphMissedGeneratorPassForResource=class(EpvFrameGraph);
@@ -167,10 +169,13 @@ type EpvFrameGraph=class(Exception);
               class operator NotEqual(const aLeft,aRight:TAttachmentSize):boolean;
             end;
             PAttachmentSize=^TAttachmentSize;
+            TPhysicalPass=class;
+            TPhysicalPasses=TpvObjectGenericList<TPhysicalPass>;
             TQueue=class
              private
               fFrameGraph:TpvFrameGraph;
               fPhysicalQueue:TpvVulkanQueue;
+              fPhysicalPasses:TPhysicalPasses;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aPhysicalQueue:TpvVulkanQueue); reintroduce;
@@ -416,16 +421,16 @@ type EpvFrameGraph=class(Exception);
             TPassNameHashMap=TpvStringHashMap<TPass>;
             TComputePass=class;
             TRenderPass=class;
-            TPhysicalPass=class;
-            TPhysicalPasses=TpvObjectGenericList<TPhysicalPass>;
             TPhysicalPass=class
              private
               fFrameGraph:TpvFrameGraph;
               fIndex:TpvSizeInt;
+              fProcessed:boolean;
+              fQueue:TQueue;
               fInputDependencies:TPhysicalPasses;
               fOutputDependencies:TPhysicalPasses;
              public
-              constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
+              constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); reintroduce; virtual;
               destructor Destroy; override;
             end;
             TPhysicalComputePass=class(TPhysicalPass)
@@ -451,7 +456,7 @@ type EpvFrameGraph=class(Exception);
              private
               fSubPasses:TSubPasses;
              public
-              constructor Create(const aFrameGraph:TpvFrameGraph); overload;
+              constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); override;
               destructor Destroy; override;
             end;
             TPass=class
@@ -613,6 +618,7 @@ type EpvFrameGraph=class(Exception);
        fMaximumOverallPhysicalPassIndex:TpvSizeInt;
        fValid:boolean;
        fPhysicalPasses:TPhysicalPasses;
+       fRootPhysicalPass:TPhysicalPass;
       public
        constructor Create;
        destructor Destroy; override;
@@ -656,6 +662,7 @@ type EpvFrameGraph=class(Exception);
        property PassByName:TPassNameHashMap read fPassNameHashMap;
        property RootPass:TPass read fRootPass;
        property EnforcedRootPass:TPass read fEnforcedRootPass write fEnforcedRootPass;
+       property RootPhysicalPass:TPhysicalPass read fRootPhysicalPass;
      end;
 
 implementation
@@ -741,10 +748,13 @@ begin
  inherited Create;
  fFrameGraph:=aFrameGraph;
  fPhysicalQueue:=aPhysicalQueue;
+ fPhysicalPasses:=TPhysicalPasses.Create;
+ fPhysicalPasses.OwnsObjects:=false;
 end;
 
 destructor TpvFrameGraph.TQueue.Destroy;
 begin
+ FreeAndNil(fPhysicalPasses);
  inherited Destroy;
 end;
 
@@ -1433,12 +1443,14 @@ end;
 
 { TpvFrameGraph.TPhysicalPass }
 
-constructor TpvFrameGraph.TPhysicalPass.Create(const aFrameGraph:TpvFrameGraph);
+constructor TpvFrameGraph.TPhysicalPass.Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue);
 begin
 
  inherited Create;
 
  fFrameGraph:=aFrameGraph;
+
+ fQueue:=aQueue;
 
  fInputDependencies:=TPhysicalPasses.Create;
  fInputDependencies.OwnsObjects:=false;
@@ -1458,9 +1470,9 @@ end;
 { TpvFrameGraph.TVulkanComputePass }
 
 constructor TpvFrameGraph.TPhysicalComputePass.Create(const aFrameGraph:TpvFrameGraph;
-                                                              const aComputePass:TComputePass);
+                                                      const aComputePass:TComputePass);
 begin
- inherited Create(aFrameGraph);
+ inherited Create(aFrameGraph,aComputePass.fQueue);
  fComputePass:=aComputePass;
 end;
 
@@ -1486,9 +1498,9 @@ end;
 
 { TpvFrameGraph.TVulkanRenderPass }
 
-constructor TpvFrameGraph.TPhysicalRenderPass.Create(const aFrameGraph:TpvFrameGraph);
+constructor TpvFrameGraph.TPhysicalRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue);
 begin
- inherited Create(aFrameGraph);
+ inherited Create(aFrameGraph,aQueue);
  fSubPasses:=TSubPasses.Create;
  fSubPasses.OwnsObjects:=true;
 end;
@@ -1634,6 +1646,7 @@ type TAction=
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicStack<TStackItem>;
+     TPhysicalPassStack=TpvDynamicStack<TPhysicalPass>;
      TResourceDynamicArray=TpvDynamicArray<TResource>;
  function NewStackItem(const aAction:TAction;const aPass:TPass):TStackItem;
  begin
@@ -1663,7 +1676,11 @@ var Temporary,
     ResourceReuseGroup:TResourceReuseGroup;
     ResourceType:TResourceType;
     TopologicalSortedPasses:TPassList;
+    PhysicalPass,
+    OtherPhysicalPass:TPhysicalPass;
     PhysicalRenderPass:TPhysicalRenderPass;
+    PhysicalPassStack:TPhysicalPassStack;
+    Queue:TQueue;
 begin
 
  // Indexing passes
@@ -1671,8 +1688,11 @@ begin
   fPasses[Index].fIndex:=Index;
  end;
 
- // Validate that all attachments have the same size as defined in the render pass
+ // Validate that all attachments have the same size as defined in the render pass and that alll passes have a assigned queue
  for Pass in fPasses do begin
+  if not assigned(Pass.fQueue) then begin
+   raise EpvFrameGraphMissingQueue.Create('Pass "'+String(Pass.fName)+'" is without assigned queue');
+  end;
   if Pass is TRenderPass then begin
    RenderPass:=Pass as TRenderPass;
    for ResourceTransition in RenderPass.fResourceTransitions do begin
@@ -1865,7 +1885,7 @@ begin
     Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
     inc(Index);
    end else if Pass is TRenderPass then begin
-    PhysicalRenderPass:=TPhysicalRenderPass.Create(self);
+    PhysicalRenderPass:=TPhysicalRenderPass.Create(self,Pass.fQueue);
     Pass.fPhysicalPass:=PhysicalRenderPass;
     Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
     TRenderPass(Pass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(Pass));
@@ -1900,9 +1920,13 @@ begin
 
  // Construct new directed acyclic graph from the physical passes by transfering the
  // dependency informations from the graph passes to the physical passes
+ fRootPhysicalPass:=nil;
  for Pass in fPasses do begin
   if (TPass.TFlag.Used in Pass.fFlags) and
      assigned(Pass.fPhysicalPass) then begin
+   if Pass=fRootPass then begin
+    fRootPhysicalPass:=Pass.fPhysicalPass;
+   end;
    for ResourceTransition in Pass.fResourceTransitions do begin
     Resource:=ResourceTransition.fResource;
     for OtherResourceTransition in Resource.fResourceTransitions do begin
@@ -1926,6 +1950,9 @@ begin
     end;
    end;
   end;
+ end;
+ if not assigned(fRootPhysicalPass) then begin
+  raise EpvFrameGraph.Create('No root physical pass found');
  end;
 
  // Calculate resource lifetimes (from minimum choreography step index to maximum
@@ -1986,6 +2013,28 @@ begin
     end;
    end;
   end;
+ end;
+
+ // Create sequences of queue physical passes
+ PhysicalPassStack.Initialize;
+ try
+  for PhysicalPass in fPhysicalPasses do begin
+   PhysicalPass.fProcessed:=false;
+  end;
+  PhysicalPassStack.Push(fRootPhysicalPass);
+  while PhysicalPassStack.Pop(PhysicalPass) do begin
+   if not PhysicalPass.fProcessed then begin
+    PhysicalPass.fProcessed:=true;
+    PhysicalPass.fQueue.fPhysicalPasses.Add(PhysicalPass);
+    for OtherPhysicalPass in PhysicalPass.fInputDependencies do begin
+     if (PhysicalPass<>OtherPhysicalPass) and not OtherPhysicalPass.fProcessed then begin
+      PhysicalPassStack.Push(OtherPhysicalPass);
+     end;
+    end;
+   end;
+  end;
+ finally
+  PhysicalPassStack.Finalize;
  end;
 
  // Create meta data for Vulkan images, image views, frame buffers, render passes and so on, for
