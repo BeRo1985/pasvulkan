@@ -65,6 +65,7 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     PasMP,
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Collections,
@@ -529,7 +530,7 @@ type EpvFrameGraph=class(Exception);
                                                 const aResourceName:TpvRawByteString;
                                                 const aLayout:TVkImageLayout;
                                                 const aFlags:TResourceTransition.TFlags=[]);
-               procedure AddAttachmentDepthOutput(const aResourceTypeName:TpvRawByteString;
+              procedure AddAttachmentDepthOutput(const aResourceTypeName:TpvRawByteString;
                                                  const aResourceName:TpvRawByteString;
                                                  const aLayout:TVkImageLayout;
                                                  const aLoadOp:TLoadOp;
@@ -617,6 +618,7 @@ type EpvFrameGraph=class(Exception);
        fEnforcedRootPass:TPass;
        fMaximumOverallPhysicalPassIndex:TpvSizeInt;
        fValid:boolean;
+       fCanDoParallelProcessing:boolean;
        fPhysicalPasses:TPhysicalPasses;
        fRootPhysicalPass:TPhysicalPass;
       public
@@ -651,8 +653,13 @@ type EpvFrameGraph=class(Exception);
        procedure Compile; virtual;
        procedure AfterCreateSwapChain; virtual;
        procedure BeforeDestroySwapChain; virtual;
+      private
+       procedure ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
+       procedure ExecuteQueueParallelForJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+      public
        procedure Execute; virtual;
       published
+       property CanDoParallelProcessing:boolean read fCanDoParallelProcessing write fCanDoParallelProcessing;
        property Queues:TQueues read fQueues;
        property ResourceTypes:TResourceTypeList read fResourceTypes;
        property ResourceTypeByName:TResourceTypeNameHashMap read fResourceTypeNameHashMap;
@@ -1518,6 +1525,8 @@ begin
 
  inherited Create;
 
+ fCanDoParallelProcessing:=false;
+
  fQueues:=TQueues.Create;
  fQueues.OwnsObjects:=true;
 
@@ -2186,9 +2195,33 @@ begin
 
 end;
 
+procedure TpvFrameGraph.ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
+var Index:TpvSizeInt;
+    PhysicalPass:TPhysicalPass;
+begin
+ for Index:=0 to aQueue.fPhysicalPasses.Count-1 do begin
+  PhysicalPass:=aQueue.fPhysicalPasses[Index];
+  if assigned(PhysicalPass) then begin
+   // TODO
+  end;
+ end;
+end;
+
+procedure TpvFrameGraph.ExecuteQueueParallelForJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var Index:TPasMPNativeInt;
+begin
+ for Index:=aFromIndex to aToIndex do begin
+  ExecuteQueue(aJob,aThreadIndex,fQueues[Index]);
+ end;
+end;
+
 procedure TpvFrameGraph.Execute;
 begin
-
+ if fCanDoParallelProcessing then begin
+  pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0);
+ end else begin
+  ExecuteQueueParallelForJobMethod(nil,0,nil,0,fQueues.Count-1);
+ end;
 end;
 
 end.
