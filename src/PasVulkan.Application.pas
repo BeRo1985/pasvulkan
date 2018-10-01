@@ -1217,6 +1217,9 @@ type EpvApplication=class(Exception)
        fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
        fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
 
+       fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
+       fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
+
        fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
        fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
 
@@ -5575,6 +5578,13 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
   end;
 
+  if fVulkanDebugging and
+     fVulkanDebuggingEnabled and
+     fVulkanValidation and
+     (fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)>=0) then begin
+   fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
+  end;
+
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Created vulkan device');
 {$ifend}
@@ -6187,6 +6197,7 @@ procedure TpvApplication.CreateVulkanFrameBuffers;
 var Index:TpvInt32;
     ColorAttachmentImage:TpvVulkanImage;
     ColorAttachmentImageView:TpvVulkanImageView;
+    SrcPipelineStageFlags:TVkPipelineStageFlags;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.CreateVulkanFrameBuffers');
@@ -6213,12 +6224,20 @@ begin
                                                nil,
                                                false);
 
+
+   if (fVulkanDevice.GraphicsQueue=fVulkanDevice.PresentQueue) or
+      ((fVulkanDevice.PhysicalDevice.QueueFamilyProperties[fVulkanDevice.PresentQueue.QueueFamilyIndex].queueFlags and TpvUInt32(VK_QUEUE_GRAPHICS_BIT))<>0) then begin
+    SrcPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+   end else begin
+    SrcPipelineStageFlags:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+   end;
+
    ColorAttachmentImage.SetLayout(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
                                   VK_IMAGE_LAYOUT_UNDEFINED,
                                   VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
                                   TVkAccessFlags(0),
                                   TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
-                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                  SrcPipelineStageFlags,
                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                   nil,
                                   fInternalPresentQueueCommandBuffer,
@@ -6341,14 +6360,10 @@ begin
 
    begin
     // Present => graphics on graphics queue
-    // Queue ownership transfer is only required when we need the content to remain valid across queues.
-    // Since we are transitioning from UNDEFINED and therefore discarding the image contents to begin
-    // with, so we are not required to perform an ownership transfer from the presentation queue to
-    // the graphics queue.
     FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
     ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     ImageMemoryBarrier.pNext:=nil;
-    ImageMemoryBarrier.srcAccessMask:=0;
+    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
     ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
     ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
     ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
@@ -6362,6 +6377,9 @@ begin
     ImageMemoryBarrier.subresourceRange.layerCount:=1;
 
     fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    fVulkanDevice.DebugMarker.SetObjectName(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index].Handle,
+                                            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
+                                            'PresentToGraphics_GraphicsQueue');
     fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
     fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
     fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
@@ -6371,6 +6389,41 @@ begin
                                                                                           0,nil,
                                                                                           1,@ImageMemoryBarrier);
     fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index].EndRecording;
+
+   end;
+
+   begin
+    // Present => graphics on present queue
+    FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+    ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    ImageMemoryBarrier.pNext:=nil;
+    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+    ImageMemoryBarrier.dstAccessMask:=0;
+    ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+    ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    ImageMemoryBarrier.srcQueueFamilyIndex:=fVulkanDevice.PresentQueueFamilyIndex;
+    ImageMemoryBarrier.dstQueueFamilyIndex:=fVulkanDevice.GraphicsQueueFamilyIndex;
+    ImageMemoryBarrier.image:=fVulkanFrameBufferColorAttachments[Index].Image.Handle;
+    ImageMemoryBarrier.subresourceRange.aspectMask:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+    ImageMemoryBarrier.subresourceRange.baseMipLevel:=0;
+    ImageMemoryBarrier.subresourceRange.levelCount:=1;
+    ImageMemoryBarrier.subresourceRange.baseArrayLayer:=0;
+    ImageMemoryBarrier.subresourceRange.layerCount:=1;
+
+    fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanPresentCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    fVulkanDevice.DebugMarker.SetObjectName(fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index].Handle,
+                                            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
+                                            'PresentToGraphics_PresentQueue');
+    fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
+    fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
+    fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                                                                         0,
+                                                                                         0,nil,
+                                                                                         0,nil,
+                                                                                         1,@ImageMemoryBarrier);
+    fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index].EndRecording;
+
    end;
 
    begin
@@ -6392,6 +6445,9 @@ begin
     ImageMemoryBarrier.subresourceRange.layerCount:=1;
 
     fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    fVulkanDevice.DebugMarker.SetObjectName(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index].Handle,
+                                            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
+                                            'GraphicsToPresent_GraphicsQueue');
     fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
     fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
     fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
@@ -6401,6 +6457,7 @@ begin
                                                                                           0,nil,
                                                                                           1,@ImageMemoryBarrier);
     fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index].EndRecording;
+
    end;
 
    begin
@@ -6424,6 +6481,9 @@ begin
     ImageMemoryBarrier.subresourceRange.layerCount:=1;
 
     fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index]:=TpvVulkanCommandBuffer.Create(fVulkanPresentCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+    fVulkanDevice.DebugMarker.SetObjectName(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index].Handle,
+                                            VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT,
+                                            'GraphicsToPresent_PresentQueue');
     fVulkanDrawToPresentImageBarrierPresentQueueCommandBufferSemaphores[Index]:=TpvVulkanSemaphore.Create(fVulkanDevice);
     fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index].BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT));
     fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index].CmdPipelineBarrier(TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
@@ -6433,12 +6493,16 @@ begin
                                                                                          0,nil,
                                                                                          1,@ImageMemoryBarrier);
     fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index].EndRecording;
+
    end;
 
   end else begin
 
    fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index]:=nil;
    fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[Index]:=nil;
+
+   fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index]:=nil;
+   fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[Index]:=nil;
 
    fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index]:=nil;
    fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[Index]:=nil;
@@ -6466,6 +6530,8 @@ begin
   FreeAndNil(fVulkanBlankCommandBufferSemaphores[Index]);
   FreeAndNil(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[Index]);
   FreeAndNil(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[Index]);
+  FreeAndNil(fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[Index]);
+  FreeAndNil(fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[Index]);
   FreeAndNil(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[Index]);
   FreeAndNil(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBufferSemaphores[Index]);
   FreeAndNil(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[Index]);
@@ -6686,7 +6752,17 @@ begin
   fVulkanWaitSemaphore:=fVulkanPresentCompleteSemaphores[fDrawSwapChainImageIndex];
 
   if assigned(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex]) then begin
+
    // If present and graphics queue families are different, then a image barrier is required
+
+   fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex].Execute(fVulkanDevice.PresentQueue,
+                                                                                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                                        fVulkanWaitSemaphore,
+                                                                                                        fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex],
+                                                                                                        nil,
+                                                                                                        false);
+   fVulkanWaitSemaphore:=fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex];
+
    fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex].Execute(fVulkanDevice.GraphicsQueue,
                                                                                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
                                                                                                          fVulkanWaitSemaphore,
@@ -6694,6 +6770,7 @@ begin
                                                                                                          nil,
                                                                                                          false);
    fVulkanWaitSemaphore:=fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex];
+
   end;
 
   if assigned(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex]) and

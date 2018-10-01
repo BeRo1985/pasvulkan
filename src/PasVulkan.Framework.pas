@@ -752,6 +752,10 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanQueueFamilyQueues=array of TpvVulkanQueues;
 
+     TpvVulkanCommandBuffer=class;
+
+     TpvVulkanDeviceDebugMarker=class;
+
      TpvVulkanDevice=class(TpvVulkanObject)
       private
        fInstance:TpvVulkanInstance;
@@ -789,6 +793,7 @@ type EpvVulkanException=class(Exception);
        fComputeQueues:TpvVulkanQueues;
        fTransferQueues:TpvVulkanQueues;
        fMemoryManager:TpvVulkanDeviceMemoryManager;
+       fDebugMarker:TpvVulkanDeviceDebugMarker;
        fCanvasCommon:TObject;
       protected
       public
@@ -833,7 +838,35 @@ type EpvVulkanException=class(Exception);
        property ComputeQueues:TpvVulkanQueues read fComputeQueues;
        property TransferQueues:TpvVulkanQueues read fTransferQueues;
        property MemoryManager:TpvVulkanDeviceMemoryManager read fMemoryManager;
+       property DebugMarker:TpvVulkanDeviceDebugMarker read fDebugMarker;
        property CanvasCommon:TObject read fCanvasCommon write fCanvasCommon;
+     end;
+
+     TpvVulkanDeviceDebugMarker=class
+      private
+       fDevice:TpvVulkanDevice;
+       fEnabled:boolean;
+      public
+       constructor Create(const aDevice:TpvVulkanDevice); reintroduce;
+       destructor Destroy; override;
+       procedure Initialize;
+       procedure SetObjectName(const aObject:TVkUInt64;
+                               const aObjectType:TVkDebugReportObjectTypeEXT;
+                               const aName:TpvRawByteString);
+       procedure SetObjectTag(const aObject:TVkUInt64;
+                              const aObjectType:TVkDebugReportObjectTypeEXT;
+                              const aTagName:TVkUInt64;
+                              const aTagSize:TVkSize;
+                              const aTagData:pointer);
+       procedure BeginRegion(const aCommandBuffer:TpvVulkanCommandBuffer;
+                             const aMarkerName:TpvRawByteString;
+                             const aColor:array of TVkFloat);
+       procedure Insert(const aCommandBuffer:TpvVulkanCommandBuffer;
+                        const aMarkerName:TpvRawByteString;
+                        const aColor:array of TVkFloat);
+       procedure EndRegion(const aCommandBuffer:TpvVulkanCommandBuffer;
+                           const aMarkerName:TpvRawByteString;
+                           const aColor:array of TVkFloat);
      end;
 
      TpvVulkanDeviceQueueCreateInfo=class(TpvVulkanObject)
@@ -1178,8 +1211,6 @@ type EpvVulkanException=class(Exception);
      TpvVulkanQueueFamilyIndices=array of TpvUInt32;
 
      TpvVulkanFence=class;
-
-     TpvVulkanCommandBuffer=class;
 
      TpvVulkanBufferUseTemporaryStagingBufferMode=
       (
@@ -2999,6 +3030,8 @@ const VulkanImageViewTypeToImageTiling:array[TVkImageViewType] of TVkImageTiling
         VK_IMAGE_TILING_OPTIMAL, // VK_IMAGE_VIEW_TYPE_2D_ARRAY
         VK_IMAGE_TILING_LINEAR   // VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
        );
+
+procedure VulkanCheckResult(const ResultCode:TVkResult);
 
 function VulkanGetFormatFromOpenGLFormat(const aFormat,aType:TpvUInt32):TVkFormat;
 function VulkanGetFormatFromOpenGLType(const aType,aNumComponents:TpvUInt32;const aNormalized:boolean):TVkFormat;
@@ -5957,7 +5990,7 @@ begin
  end;
 end;
 
-procedure HandleResultCode(const ResultCode:TVkResult);
+procedure VulkanCheckResult(const ResultCode:TVkResult);
 begin
  if ResultCode<>VK_SUCCESS then begin
   raise EpvVulkanResultException.Create(ResultCode);
@@ -7343,11 +7376,11 @@ begin
  LayerProperties:=nil;
  try
   fAvailableLayers:=nil;
-  HandleResultCode(fVulkan.EnumerateInstanceLayerProperties(@Count,nil));
+  VulkanCheckResult(fVulkan.EnumerateInstanceLayerProperties(@Count,nil));
   if Count>0 then begin
    SetLength(LayerProperties,Count);
    SetLength(fAvailableLayers,Count);
-   HandleResultCode(fVulkan.EnumerateInstanceLayerProperties(@Count,@LayerProperties[0]));
+   VulkanCheckResult(fVulkan.EnumerateInstanceLayerProperties(@Count,@LayerProperties[0]));
    for Index:=0 to Count-1 do begin
     LayerProperty:=@fAvailableLayers[Index];
     LayerProperty^.LayerName:=LayerProperties[Index].layerName;
@@ -7371,13 +7404,13 @@ begin
    end else begin
     LayerName:=PVkChar(fAvailableLayers[Index].layerName);
    end;
-   HandleResultCode(fVulkan.EnumerateInstanceExtensionProperties(LayerName,@SubCount,nil));
+   VulkanCheckResult(fVulkan.EnumerateInstanceExtensionProperties(LayerName,@SubCount,nil));
    if SubCount>0 then begin
     if SubCount>TpvUInt32(length(ExtensionProperties)) then begin
      SetLength(ExtensionProperties,SubCount);
     end;
     SetLength(fAvailableExtensions,Count+SubCount);
-    HandleResultCode(fVulkan.EnumerateInstanceExtensionProperties(LayerName,@SubCount,@ExtensionProperties[0]));
+    VulkanCheckResult(fVulkan.EnumerateInstanceExtensionProperties(LayerName,@SubCount,@ExtensionProperties[0]));
     for SubIndex:=0 to SubCount-1 do begin
      ExtensionProperty:=@fAvailableExtensions[Count+TpvUInt32(SubIndex)];
      ExtensionProperty^.LayerIndex:=Index;
@@ -7524,7 +7557,7 @@ begin
    InstanceCreateInfo.ppEnabledExtensionNames:=@fRawEnabledExtensionNameStrings[0];
   end;
 
-  HandleResultCode(fVulkan.CreateInstance(@InstanceCreateInfo,fAllocationCallbacks,@fInstanceHandle));
+  VulkanCheckResult(fVulkan.CreateInstance(@InstanceCreateInfo,fAllocationCallbacks,@fInstanceHandle));
 
   GetMem(InstanceCommands,SizeOf(TVulkanCommands));
   try
@@ -7553,10 +7586,10 @@ begin
  PhysicalDevices:=nil;
  try
   Count:=0;
-  HandleResultCode(fInstanceVulkan.EnumeratePhysicalDevices(fInstanceHandle,@Count,nil));
+  VulkanCheckResult(fInstanceVulkan.EnumeratePhysicalDevices(fInstanceHandle,@Count,nil));
   if Count>0 then begin
    SetLength(PhysicalDevices,Count);
-   HandleResultCode(fInstanceVulkan.EnumeratePhysicalDevices(fInstanceHandle,@Count,@PhysicalDevices[0]));
+   VulkanCheckResult(fInstanceVulkan.EnumeratePhysicalDevices(fInstanceHandle,@Count,@PhysicalDevices[0]));
    for Index:=fPhysicalDevices.Count-1 downto 0 do begin
     Found:=false;
     for SubIndex:=0 to Count-1 do begin
@@ -7610,7 +7643,7 @@ begin
   fDebugReportCallbackCreateInfoEXT.flags:=TpvUInt32(VK_DEBUG_REPORT_ERROR_BIT_EXT) or TpvUInt32(VK_DEBUG_REPORT_WARNING_BIT_EXT) or TpvUInt32(VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT);
   fDebugReportCallbackCreateInfoEXT.pfnCallback:=@TpvVulkanInstanceDebugReportCallbackFunction;
   fDebugReportCallbackCreateInfoEXT.pUserData:=self;
-  HandleResultCode(fInstanceVulkan.CreateDebugReportCallbackEXT(fInstanceHandle,@fDebugReportCallbackCreateInfoEXT,fAllocationCallbacks,@fDebugReportCallbackEXT));
+  VulkanCheckResult(fInstanceVulkan.CreateDebugReportCallbackEXT(fInstanceHandle,@fDebugReportCallbackCreateInfoEXT,fAllocationCallbacks,@fDebugReportCallbackEXT));
  end;
 end;
 
@@ -7656,11 +7689,11 @@ begin
  LayerProperties:=nil;
  try
   fAvailableLayers:=nil;
-  HandleResultCode(fInstance.fVulkan.EnumerateDeviceLayerProperties(fPhysicalDeviceHandle,@Count,nil));
+  VulkanCheckResult(fInstance.fVulkan.EnumerateDeviceLayerProperties(fPhysicalDeviceHandle,@Count,nil));
   if Count>0 then begin
    SetLength(LayerProperties,Count);
    SetLength(fAvailableLayers,Count);
-   HandleResultCode(fInstance.fVulkan.EnumerateDeviceLayerProperties(fPhysicalDeviceHandle,@Count,@LayerProperties[0]));
+   VulkanCheckResult(fInstance.fVulkan.EnumerateDeviceLayerProperties(fPhysicalDeviceHandle,@Count,@LayerProperties[0]));
    for Index:=0 to Count-1 do begin
     LayerProperty:=@fAvailableLayers[Index];
     LayerProperty^.LayerName:=LayerProperties[Index].layerName;
@@ -7684,13 +7717,13 @@ begin
    end else begin
     LayerName:=PVkChar(fAvailableLayers[Index].layerName);
    end;
-   HandleResultCode(fInstance.fVulkan.EnumerateDeviceExtensionProperties(fPhysicalDeviceHandle,LayerName,@SubCount,nil));
+   VulkanCheckResult(fInstance.fVulkan.EnumerateDeviceExtensionProperties(fPhysicalDeviceHandle,LayerName,@SubCount,nil));
    if SubCount>0 then begin
     if SubCount>TpvUInt32(length(ExtensionProperties)) then begin
      SetLength(ExtensionProperties,SubCount);
     end;
     SetLength(fAvailableExtensions,Count+SubCount);
-    HandleResultCode(fInstance.fVulkan.EnumerateDeviceExtensionProperties(fPhysicalDeviceHandle,LayerName,@SubCount,@ExtensionProperties[0]));
+    VulkanCheckResult(fInstance.fVulkan.EnumerateDeviceExtensionProperties(fPhysicalDeviceHandle,LayerName,@SubCount,@ExtensionProperties[0]));
     for SubIndex:=0 to SubCount-1 do begin
      ExtensionProperty:=@fAvailableExtensions[Count+TpvUInt32(SubIndex)];
      ExtensionProperty^.LayerIndex:=Index;
@@ -7850,7 +7883,7 @@ begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstance.Commands.GetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@Count,@result[0]));
+    VulkanCheckResult(fInstance.Commands.GetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -7868,7 +7901,7 @@ begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstance.Commands.GetPhysicalDeviceSurfacePresentModesKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@Count,@result[0]));
+    VulkanCheckResult(fInstance.Commands.GetPhysicalDeviceSurfacePresentModesKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -7886,7 +7919,7 @@ begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstance.Commands.GetPhysicalDeviceDisplayPropertiesKHR(fPhysicalDeviceHandle,@Count,@result[0]));
+    VulkanCheckResult(fInstance.Commands.GetPhysicalDeviceDisplayPropertiesKHR(fPhysicalDeviceHandle,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -7904,7 +7937,7 @@ begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstance.Commands.GetPhysicalDeviceDisplayPlanePropertiesKHR(fPhysicalDeviceHandle,@Count,@result[0]));
+    VulkanCheckResult(fInstance.Commands.GetPhysicalDeviceDisplayPlanePropertiesKHR(fPhysicalDeviceHandle,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -7922,7 +7955,7 @@ begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstance.Commands.GetDisplayPlaneSupportedDisplaysKHR(fPhysicalDeviceHandle,aPlaneIndex,@Count,@result[0]));
+    VulkanCheckResult(fInstance.Commands.GetDisplayPlaneSupportedDisplaysKHR(fPhysicalDeviceHandle,aPlaneIndex,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -7940,7 +7973,7 @@ begin
   if Count>0 then begin
    try
     SetLength(result,Count);
-    HandleResultCode(fInstance.Commands.GetDisplayModePropertiesKHR(fPhysicalDeviceHandle,aDisplay,@Count,@result[0]));
+    VulkanCheckResult(fInstance.Commands.GetDisplayModePropertiesKHR(fPhysicalDeviceHandle,aDisplay,@Count,@result[0]));
    except
     SetLength(result,0);
     raise;
@@ -8032,11 +8065,11 @@ begin
  try
 
   FormatCount:=0;
-  HandleResultCode(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@FormatCount,nil));
+  VulkanCheckResult(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@FormatCount,nil));
 
   if FormatCount>0 then begin
    SetLength(SurfaceFormats,FormatCount);
-   HandleResultCode(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@FormatCount,@SurfaceFormats[0]));
+   VulkanCheckResult(vkGetPhysicalDeviceSurfaceFormatsKHR(fPhysicalDeviceHandle,aSurface.fSurfaceHandle,@FormatCount,@SurfaceFormats[0]));
   end;
 
   if FormatCount=0 then begin
@@ -8126,46 +8159,46 @@ begin
  case fSurfaceCreateInfo.sType of
 {$if defined(Android)}
   VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR:begin
-   HandleResultCode(fInstance.fVulkan.CreateAndroidSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Android,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+   VulkanCheckResult(fInstance.fVulkan.CreateAndroidSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Android,fInstance.fAllocationCallbacks,@fSurfaceHandle));
   end;
 {$ifend}
 {$if defined(Mir) and defined(Unix)}
   VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR:begin
-   HandleResultCode(fInstance.fVulkan.CreateMirSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Mir,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+   VulkanCheckResult(fInstance.fVulkan.CreateMirSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Mir,fInstance.fAllocationCallbacks,@fSurfaceHandle));
   end;
 {$ifend}
 {$if defined(Wayland) and defined(Unix)}
   VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR:begin
-   HandleResultCode(fInstance.fVulkan.CreateWaylandSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Wayland,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+   VulkanCheckResult(fInstance.fVulkan.CreateWaylandSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Wayland,fInstance.fAllocationCallbacks,@fSurfaceHandle));
   end;
 {$ifend}
 {$if defined(Windows)}
   VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR:begin
-   HandleResultCode(fInstance.fVulkan.CreateWin32SurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Win32,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+   VulkanCheckResult(fInstance.fVulkan.CreateWin32SurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Win32,fInstance.fAllocationCallbacks,@fSurfaceHandle));
   end;
 {$ifend}
 {$if defined(XCB) and defined(Unix)}
   VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR:begin
-   HandleResultCode(fInstance.fVulkan.CreateXCBSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.XCB,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+   VulkanCheckResult(fInstance.fVulkan.CreateXCBSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.XCB,fInstance.fAllocationCallbacks,@fSurfaceHandle));
   end;
 {$ifend}
 {$if defined(XLIB) and defined(Unix)}
   VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR:begin
-   HandleResultCode(fInstance.fVulkan.CreateXLIBSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.XLIB,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+   VulkanCheckResult(fInstance.fVulkan.CreateXLIBSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.XLIB,fInstance.fAllocationCallbacks,@fSurfaceHandle));
   end;
 {$ifend}
 {$if defined(MoltenVK_IOS) and defined(Darwin)}
   VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK:begin
-   HandleResultCode(fInstance.fVulkan.CreateIOSSurfaceMVK(fInstance.fInstanceHandle,@fSurfaceCreateInfo.MoltenVK_IOS,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+   VulkanCheckResult(fInstance.fVulkan.CreateIOSSurfaceMVK(fInstance.fInstanceHandle,@fSurfaceCreateInfo.MoltenVK_IOS,fInstance.fAllocationCallbacks,@fSurfaceHandle));
   end;
 {$ifend}
 {$if defined(MoltenVK_MacOS) and defined(Darwin)}
   VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK:begin
-   HandleResultCode(fInstance.fVulkan.CreateMacOSSurfaceMVK(fInstance.fInstanceHandle,@fSurfaceCreateInfo.MoltenVK_MacOS,fInstance.fAllocationCallbacks,@fSurfaceHandle));
+   VulkanCheckResult(fInstance.fVulkan.CreateMacOSSurfaceMVK(fInstance.fInstanceHandle,@fSurfaceCreateInfo.MoltenVK_MacOS,fInstance.fAllocationCallbacks,@fSurfaceHandle));
   end;
 {$ifend}
   else begin
-   HandleResultCode(VK_ERROR_INCOMPATIBLE_DRIVER);
+   VulkanCheckResult(VK_ERROR_INCOMPATIBLE_DRIVER);
   end;
  end;
 
@@ -8284,6 +8317,132 @@ begin
   fSurfaceHandle:=VK_NULL_HANDLE;
  end;
  inherited Destroy;
+end;
+
+constructor TpvVulkanDeviceDebugMarker.Create(const aDevice:TpvVulkanDevice);
+begin
+ inherited Create;
+ fDevice:=aDevice;
+ fEnabled:=fDevice.EnabledExtensionNames.IndexOf(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)>=0;
+end;
+
+destructor TpvVulkanDeviceDebugMarker.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvVulkanDeviceDebugMarker.Initialize;
+begin
+ fEnabled:=fDevice.EnabledExtensionNames.IndexOf(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)>=0;
+end;
+
+procedure TpvVulkanDeviceDebugMarker.SetObjectName(const aObject:TVkUInt64;
+                                                   const aObjectType:TVkDebugReportObjectTypeEXT;
+                                                   const aName:TpvRawByteString);
+var DebugMarkerObjectNameInfoEXT:TVkDebugMarkerObjectNameInfoEXT;
+begin
+ if fEnabled and assigned(fDevice.Commands.Commands.DebugMarkerSetObjectNameEXT) then begin
+  FillChar(DebugMarkerObjectNameInfoEXT,SizeOf(TVkDebugMarkerObjectNameInfoEXT),#0);
+  DebugMarkerObjectNameInfoEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
+  DebugMarkerObjectNameInfoEXT.objectType:=aObjectType;
+  DebugMarkerObjectNameInfoEXT.object_:=aObject;
+  DebugMarkerObjectNameInfoEXT.pObjectName:=PAnsiChar(aName);
+  VulkanCheckResult(fDevice.Commands.DebugMarkerSetObjectNameEXT(fDevice.Handle,@DebugMarkerObjectNameInfoEXT));
+ end;
+end;
+
+procedure TpvVulkanDeviceDebugMarker.SetObjectTag(const aObject:TVkUInt64;
+                                                  const aObjectType:TVkDebugReportObjectTypeEXT;
+                                                  const aTagName:TVkUInt64;
+                                                  const aTagSize:TVkSize;
+                                                  const aTagData:pointer);
+var DebugMarkerObjectTagInfoEXT:TVkDebugMarkerObjectTagInfoEXT;
+begin
+ if fEnabled and assigned(fDevice.Commands.Commands.DebugMarkerSetObjectTagEXT) then begin
+  FillChar(DebugMarkerObjectTagInfoEXT,SizeOf(TVkDebugMarkerObjectTagInfoEXT),#0);
+  DebugMarkerObjectTagInfoEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
+  DebugMarkerObjectTagInfoEXT.objectType:=aObjectType;
+  DebugMarkerObjectTagInfoEXT.object_:=aObject;
+  DebugMarkerObjectTagInfoEXT.tagName:=aTagName;
+  DebugMarkerObjectTagInfoEXT.tagSize:=aTagSize;
+  DebugMarkerObjectTagInfoEXT.pTag:=aTagData;
+  VulkanCheckResult(fDevice.Commands.DebugMarkerSetObjectTagEXT(fDevice.Handle,@DebugMarkerObjectTagInfoEXT));
+ end;
+end;
+
+procedure TpvVulkanDeviceDebugMarker.BeginRegion(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                                 const aMarkerName:TpvRawByteString;
+                                                 const aColor:array of TVkFloat);
+var DebugMarkerMarkerInfoEXT:TVkDebugMarkerMarkerInfoEXT;
+begin
+ if fEnabled and assigned(fDevice.Commands.Commands.CmdDebugMarkerBeginEXT) then begin
+  FillChar(DebugMarkerMarkerInfoEXT,SizeOf(TVkDebugMarkerMarkerInfoEXT),#0);
+  DebugMarkerMarkerInfoEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
+  DebugMarkerMarkerInfoEXT.pMarkerName:=PAnsiChar(aMarkerName);
+  if length(aColor)<1 then begin
+   DebugMarkerMarkerInfoEXT.color[0]:=aColor[0];
+  end else begin
+   DebugMarkerMarkerInfoEXT.color[0]:=1.0;
+  end;
+  if length(aColor)<2 then begin
+   DebugMarkerMarkerInfoEXT.color[1]:=aColor[1];
+  end else begin
+   DebugMarkerMarkerInfoEXT.color[1]:=1.0;
+  end;
+  if length(aColor)<3 then begin
+   DebugMarkerMarkerInfoEXT.color[2]:=aColor[2];
+  end else begin
+   DebugMarkerMarkerInfoEXT.color[2]:=1.0;
+  end;
+  if length(aColor)<4 then begin
+   DebugMarkerMarkerInfoEXT.color[3]:=aColor[3];
+  end else begin
+   DebugMarkerMarkerInfoEXT.color[3]:=1.0;
+  end;
+  fDevice.Commands.CmdDebugMarkerBeginEXT(aCommandBuffer.Handle,@DebugMarkerMarkerInfoEXT);
+ end;
+end;
+
+procedure TpvVulkanDeviceDebugMarker.Insert(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                            const aMarkerName:TpvRawByteString;
+                                            const aColor:array of TVkFloat);
+var DebugMarkerMarkerInfoEXT:TVkDebugMarkerMarkerInfoEXT;
+begin
+ if fEnabled and assigned(fDevice.Commands.Commands.CmdDebugMarkerInsertEXT) then begin
+  FillChar(DebugMarkerMarkerInfoEXT,SizeOf(TVkDebugMarkerMarkerInfoEXT),#0);
+  DebugMarkerMarkerInfoEXT.sType:=VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT;
+  DebugMarkerMarkerInfoEXT.pMarkerName:=PAnsiChar(aMarkerName);
+  if length(aColor)<1 then begin
+   DebugMarkerMarkerInfoEXT.color[0]:=aColor[0];
+  end else begin
+   DebugMarkerMarkerInfoEXT.color[0]:=1.0;
+  end;
+  if length(aColor)<2 then begin
+   DebugMarkerMarkerInfoEXT.color[1]:=aColor[1];
+  end else begin
+   DebugMarkerMarkerInfoEXT.color[1]:=1.0;
+  end;
+  if length(aColor)<3 then begin
+   DebugMarkerMarkerInfoEXT.color[2]:=aColor[2];
+  end else begin
+   DebugMarkerMarkerInfoEXT.color[2]:=1.0;
+  end;
+  if length(aColor)<4 then begin
+   DebugMarkerMarkerInfoEXT.color[3]:=aColor[3];
+  end else begin
+   DebugMarkerMarkerInfoEXT.color[3]:=1.0;
+  end;
+  fDevice.Commands.CmdDebugMarkerInsertEXT(aCommandBuffer.Handle,@DebugMarkerMarkerInfoEXT);
+ end;
+end;
+
+procedure TpvVulkanDeviceDebugMarker.EndRegion(const aCommandBuffer:TpvVulkanCommandBuffer;
+                                               const aMarkerName:TpvRawByteString;
+                                               const aColor:array of TVkFloat);
+begin
+ if fEnabled and assigned(fDevice.Commands.Commands.CmdDebugMarkerEndEXT) then begin
+  fDevice.Commands.CmdDebugMarkerEndEXT(aCommandBuffer.Handle);
+ end;
 end;
 
 constructor TpvVulkanDevice.Create(const aInstance:TpvVulkanInstance;
@@ -8450,6 +8609,8 @@ begin
 
  fMemoryManager:=TpvVulkanDeviceMemoryManager.Create(self);
 
+ fDebugMarker:=TpvVulkanDeviceDebugMarker.Create(self);
+
  fCanvasCommon:=nil;
 
 end;
@@ -8471,6 +8632,7 @@ begin
  fComputeQueues:=nil;
  fTransferQueues:=nil;
  FreeAndNil(fMemoryManager);
+ FreeAndNil(fDebugMarker);
  FreeAndNil(fDeviceVulkan);
  if fDeviceHandle<>VK_NULL_HANDLE then begin
   fInstance.Commands.DestroyDevice(fDeviceHandle,fAllocationCallbacks);
@@ -8839,7 +9001,7 @@ begin
    DeviceCreateInfo.ppEnabledExtensionNames:=@fRawEnabledExtensionNameStrings[0];
   end;
   DeviceCreateInfo.pEnabledFeatures:=@fEnabledFeatures;
-  HandleResultCode(fInstance.Commands.CreateDevice(fPhysicalDevice.fPhysicalDeviceHandle,@DeviceCreateInfo,fAllocationCallbacks,@fDeviceHandle));
+  VulkanCheckResult(fInstance.Commands.CreateDevice(fPhysicalDevice.fPhysicalDeviceHandle,@DeviceCreateInfo,fAllocationCallbacks,@fDeviceHandle));
 
   GetMem(DeviceCommands,SizeOf(TVulkanCommands));
   try
@@ -8936,6 +9098,8 @@ begin
   end;
 
   fMemoryManager.Initialize;
+
+  fDebugMarker.Initialize;
 
  end;
 
@@ -9575,7 +9739,7 @@ begin
    end;
    if not Found then begin
     if LastResultCode<>VK_SUCCESS then begin
-     HandleResultCode(LastResultCode);
+     VulkanCheckResult(LastResultCode);
     end;
     raise EpvVulkanException.Create('No suitable device memory heap available');
    end;
@@ -9616,7 +9780,7 @@ begin
      continue;
     end;
     else begin
-     HandleResultCode(ResultCode);
+     VulkanCheckResult(ResultCode);
      break;
     end;
    end;
@@ -9653,7 +9817,7 @@ begin
     end else begin
      fMappedOffset:=0;
      fMappedSize:=BestWantedChunkSize;
-     HandleResultCode(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,0,aSize,0,@fMemory));
+     VulkanCheckResult(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,0,aSize,0,@fMemory));
     end;
    end else begin
     raise EpvVulkanException.Create('Memory can''t mapped');
@@ -10073,7 +10237,7 @@ begin
     end else begin
      fMappedOffset:=aOffset;
      fMappedSize:=aSize;
-     HandleResultCode(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,aOffset,aSize,0,@result));
+     VulkanCheckResult(fMemoryManager.fDevice.Commands.MapMemory(fMemoryManager.fDevice.fDeviceHandle,fMemoryHandle,aOffset,aSize,0,@result));
      fMemory:=result;
     end;
    end else begin
@@ -10149,7 +10313,7 @@ begin
    MappedMemoryRange.offset:=fMappedOffset;
    MappedMemoryRange.size:=fMappedSize;
    AdjustMappedMemoryRange(MappedMemoryRange);
-   HandleResultCode(vkFlushMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
+   VulkanCheckResult(vkFlushMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
   end else begin
    raise EpvVulkanException.Create('Non-mapped memory can''t be flushed');
   end;
@@ -10178,7 +10342,7 @@ begin
    MappedMemoryRange.offset:=Offset;
    MappedMemoryRange.size:=Size;
    AdjustMappedMemoryRange(MappedMemoryRange);
-   HandleResultCode(vkFlushMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
+   VulkanCheckResult(vkFlushMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
   end else begin
    raise EpvVulkanException.Create('Non-mapped memory can''t be flushed');
   end;
@@ -10200,7 +10364,7 @@ begin
    MappedMemoryRange.offset:=fMappedOffset;
    MappedMemoryRange.size:=fMappedSize;
    AdjustMappedMemoryRange(MappedMemoryRange);
-   HandleResultCode(vkInvalidateMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
+   VulkanCheckResult(vkInvalidateMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
   end else begin
    raise EpvVulkanException.Create('Non-mapped memory can''t be invalidated');
   end;
@@ -10229,7 +10393,7 @@ begin
    MappedMemoryRange.offset:=Offset;
    MappedMemoryRange.size:=Size;
    AdjustMappedMemoryRange(MappedMemoryRange);
-   HandleResultCode(vkInvalidateMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
+   VulkanCheckResult(vkInvalidateMappedMemoryRanges(fMemoryManager.fDevice.fDeviceHandle,1,@MappedMemoryRange));
   end else begin
    raise EpvVulkanException.Create('Non-mapped memory can''t be invalidated');
   end;
@@ -11097,7 +11261,7 @@ begin
 
  try
 
-  HandleResultCode(fDevice.Commands.CreateBuffer(fDevice.fDeviceHandle,@BufferCreateInfo,fDevice.fAllocationCallbacks,@fBufferHandle));
+  VulkanCheckResult(fDevice.Commands.CreateBuffer(fDevice.fDeviceHandle,@BufferCreateInfo,fDevice.fAllocationCallbacks,@fBufferHandle));
 
   fMemoryRequirements:=fDevice.fMemoryManager.GetBufferMemoryRequirements(fBufferHandle,
                                                                           RequiresDedicatedAllocation,
@@ -11183,7 +11347,7 @@ end;
 
 procedure TpvVulkanBuffer.Bind;
 begin
- HandleResultCode(fDevice.Commands.BindBufferMemory(fDevice.fDeviceHandle,fBufferHandle,fMemoryBlock.fMemoryChunk.fMemoryHandle,fMemoryBlock.fOffset));
+ VulkanCheckResult(fDevice.Commands.BindBufferMemory(fDevice.fDeviceHandle,fBufferHandle,fMemoryBlock.fMemoryChunk.fMemoryHandle,fMemoryBlock.fOffset));
 end;
 
 procedure TpvVulkanBuffer.UploadData(const aTransferQueue:TpvVulkanQueue;
@@ -11315,7 +11479,7 @@ begin
  BufferViewCreateInfo.offset:=aOffset;
  BufferViewCreateInfo.range:=aRange;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreateBufferView(fDevice.fDeviceHandle,@BufferViewCreateInfo,fDevice.fAllocationCallbacks,@fBufferViewHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.CreateBufferView(fDevice.fDeviceHandle,@BufferViewCreateInfo,fDevice.fAllocationCallbacks,@fBufferViewHandle));
 
 end;
 
@@ -11359,7 +11523,7 @@ begin
  EventCreateInfo.pNext:=nil;
  EventCreateInfo.flags:=aFlags;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreateEvent(fDevice.fDeviceHandle,@EventCreateInfo,fDevice.fAllocationCallbacks,@fEventHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.CreateEvent(fDevice.fDeviceHandle,@EventCreateInfo,fDevice.fAllocationCallbacks,@fEventHandle));
 
 end;
 
@@ -11381,7 +11545,7 @@ function TpvVulkanEvent.SetEvent:TVkResult;
 begin
  result:=fDevice.fDeviceVulkan.SetEvent(fDevice.fDeviceHandle,fEventHandle);
  if result<VK_SUCCESS then begin
-  HandleResultCode(result);
+  VulkanCheckResult(result);
  end;
 end;
 
@@ -11389,7 +11553,7 @@ function TpvVulkanEvent.Reset:TVkResult;
 begin
  result:=fDevice.fDeviceVulkan.ResetEvent(fDevice.fDeviceHandle,fEventHandle);
  if result<VK_SUCCESS then begin
-  HandleResultCode(result);
+  VulkanCheckResult(result);
  end;
 end;
 
@@ -11408,7 +11572,7 @@ begin
  FenceCreateInfo.pNext:=nil;
  FenceCreateInfo.flags:=aFlags;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreateFence(fDevice.fDeviceHandle,@FenceCreateInfo,fDevice.fAllocationCallbacks,@fFenceHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.CreateFence(fDevice.fDeviceHandle,@FenceCreateInfo,fDevice.fAllocationCallbacks,@fFenceHandle));
 
 end;
 
@@ -11430,7 +11594,7 @@ function TpvVulkanFence.Reset:TVkResult;
 begin
  result:=fDevice.fDeviceVulkan.ResetFences(fDevice.fDeviceHandle,1,@fFenceHandle);
  if result<VK_SUCCESS then begin
-  HandleResultCode(result);
+  VulkanCheckResult(result);
  end;
 end;
 
@@ -11451,7 +11615,7 @@ begin
    SetLength(Handles,0);
   end;
   if result<VK_SUCCESS then begin
-   HandleResultCode(result);
+   VulkanCheckResult(result);
   end;
  end;
 end;
@@ -11460,7 +11624,7 @@ function TpvVulkanFence.WaitFor(const aTimeOut:TpvUInt64=TpvUInt64(TpvInt64(-1))
 begin
  result:=fDevice.fDeviceVulkan.WaitForFences(fDevice.fDeviceHandle,1,@fFenceHandle,VK_TRUE,aTimeOut);
  if result<VK_SUCCESS then begin
-  HandleResultCode(result);
+  VulkanCheckResult(result);
  end;
 end;
 
@@ -11485,7 +11649,7 @@ begin
    SetLength(Handles,0);
   end;
   if result<VK_SUCCESS then begin
-   HandleResultCode(result);
+   VulkanCheckResult(result);
   end;
  end;
 end;
@@ -11505,7 +11669,7 @@ begin
  SemaphoreCreateInfo.pNext:=nil;
  SemaphoreCreateInfo.flags:=aFlags;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreateSemaphore(fDevice.fDeviceHandle,@SemaphoreCreateInfo,fDevice.fAllocationCallbacks,@fSemaphoreHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.CreateSemaphore(fDevice.fDeviceHandle,@SemaphoreCreateInfo,fDevice.fAllocationCallbacks,@fSemaphoreHandle));
 
 end;
 
@@ -11542,24 +11706,24 @@ end;
 procedure TpvVulkanQueue.Submit(const aSubmitCount:TpvUInt32;const aSubmits:PVkSubmitInfo;const aFence:TpvVulkanFence=nil);
 begin
  if assigned(aFence) then begin
-  HandleResultCode(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,aSubmitCount,aSubmits,aFence.fFenceHandle));
+  VulkanCheckResult(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,aSubmitCount,aSubmits,aFence.fFenceHandle));
  end else begin
-  HandleResultCode(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,aSubmitCount,aSubmits,VK_NULL_HANDLE));
+  VulkanCheckResult(fDevice.fDeviceVulkan.QueueSubmit(fQueueHandle,aSubmitCount,aSubmits,VK_NULL_HANDLE));
  end;
 end;
 
 procedure TpvVulkanQueue.BindSparse(const aBindInfoCount:TpvUInt32;const aBindInfo:PVkBindSparseInfo;const aFence:TpvVulkanFence=nil);
 begin
  if assigned(aFence) then begin
-  HandleResultCode(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,aBindInfoCount,aBindInfo,aFence.fFenceHandle));
+  VulkanCheckResult(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,aBindInfoCount,aBindInfo,aFence.fFenceHandle));
  end else begin
-  HandleResultCode(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,aBindInfoCount,aBindInfo,VK_NULL_HANDLE));
+  VulkanCheckResult(fDevice.fDeviceVulkan.QueueBindSparse(fQueueHandle,aBindInfoCount,aBindInfo,VK_NULL_HANDLE));
  end;
 end;
 
 procedure TpvVulkanQueue.WaitIdle;
 begin
- HandleResultCode(fDevice.fDeviceVulkan.QueueWaitIdle(fQueueHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.QueueWaitIdle(fQueueHandle));
 end;
 
 constructor TpvVulkanCommandPool.Create(const aDevice:TpvVulkanDevice;
@@ -11581,7 +11745,7 @@ begin
  CommandPoolCreateInfo.sType:=VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
  CommandPoolCreateInfo.queueFamilyIndex:=fQueueFamilyIndex;
  CommandPoolCreateInfo.flags:=fFlags;
- HandleResultCode(fDevice.fDeviceVulkan.CreateCommandPool(fDevice.fDeviceHandle,@CommandPoolCreateInfo,fDevice.fAllocationCallbacks,@fCommandPoolHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.CreateCommandPool(fDevice.fDeviceHandle,@CommandPoolCreateInfo,fDevice.fAllocationCallbacks,@fCommandPoolHandle));
 
 end;
 
@@ -11641,7 +11805,7 @@ begin
  CommandBufferAllocateInfo.level:=aLevel;
  CommandBufferAllocateInfo.commandBufferCount:=1;
 
- HandleResultCode(fDevice.fDeviceVulkan.AllocateCommandBuffers(fDevice.fDeviceHandle,@CommandBufferAllocateInfo,@fCommandBufferHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.AllocateCommandBuffers(fDevice.fDeviceHandle,@CommandBufferAllocateInfo,@fCommandBufferHandle));
 
 end;
 
@@ -11673,7 +11837,7 @@ begin
   CommandBufferAllocateInfo.level:=aLevel;
   CommandBufferAllocateInfo.commandBufferCount:=aCommandBufferCount;
 
-  HandleResultCode(aCommandPool.fDevice.fDeviceVulkan.AllocateCommandBuffers(aCommandPool.fDevice.fDeviceHandle,@CommandBufferAllocateInfo,@CommandBufferHandles[0]));
+  VulkanCheckResult(aCommandPool.fDevice.fDeviceVulkan.AllocateCommandBuffers(aCommandPool.fDevice.fDeviceHandle,@CommandBufferAllocateInfo,@CommandBufferHandles[0]));
 
   result:=TpvVulkanObjectList.Create;
   for Index:=0 to aCommandBufferCount-1 do begin
@@ -11693,7 +11857,7 @@ begin
  CommandBufferBeginInfo.pNext:=nil;
  CommandBufferBeginInfo.flags:=aFlags;
  CommandBufferBeginInfo.pInheritanceInfo:=aInheritanceInfo;
- HandleResultCode(fDevice.fDeviceVulkan.BeginCommandBuffer(fCommandBufferHandle,@CommandBufferBeginInfo));
+ VulkanCheckResult(fDevice.fDeviceVulkan.BeginCommandBuffer(fCommandBufferHandle,@CommandBufferBeginInfo));
 end;
 
 procedure TpvVulkanCommandBuffer.BeginRecordingPrimary;
@@ -11705,7 +11869,7 @@ begin
   CommandBufferBeginInfo.pNext:=nil;
   CommandBufferBeginInfo.flags:=0;
   CommandBufferBeginInfo.pInheritanceInfo:=nil;
-  HandleResultCode(fDevice.fDeviceVulkan.BeginCommandBuffer(fCommandBufferHandle,@CommandBufferBeginInfo));
+  VulkanCheckResult(fDevice.fDeviceVulkan.BeginCommandBuffer(fCommandBufferHandle,@CommandBufferBeginInfo));
  end else begin
   raise EpvVulkanException.Create('BeginRecordingPrimary called from a non-primary command buffer!');
  end;
@@ -11734,7 +11898,7 @@ begin
   CommandBufferBeginInfo.pNext:=nil;
   CommandBufferBeginInfo.flags:=aFlags;
   CommandBufferBeginInfo.pInheritanceInfo:=@InheritanceInfo;
-  HandleResultCode(fDevice.fDeviceVulkan.BeginCommandBuffer(fCommandBufferHandle,@CommandBufferBeginInfo));
+  VulkanCheckResult(fDevice.fDeviceVulkan.BeginCommandBuffer(fCommandBufferHandle,@CommandBufferBeginInfo));
  end else begin
   raise EpvVulkanException.Create('BeginRecordingSecondary called from a non-secondary command buffer!');
  end;
@@ -11742,12 +11906,12 @@ end;
 
 procedure TpvVulkanCommandBuffer.EndRecording;
 begin
- HandleResultCode(fDevice.fDeviceVulkan.EndCommandBuffer(fCommandBufferHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.EndCommandBuffer(fCommandBufferHandle));
 end;
 
 procedure TpvVulkanCommandBuffer.Reset(const aFlags:TVkCommandBufferResetFlags=TVkCommandBufferResetFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
 begin
- HandleResultCode(fDevice.fDeviceVulkan.ResetCommandBuffer(fCommandBufferHandle,aFlags));
+ VulkanCheckResult(fDevice.fDeviceVulkan.ResetCommandBuffer(fCommandBufferHandle,aFlags));
 end;
 
 procedure TpvVulkanCommandBuffer.CmdBindPipeline(pipelineBindPoint:TVkPipelineBindPoint;pipeline:TVkPipeline);
@@ -12497,7 +12661,7 @@ begin
   RenderPassCreateInfo.pDependencies:=@fSubpassDependencies[0];
  end;
  
- HandleResultCode(fDevice.fDeviceVulkan.CreateRenderPass(fDevice.fDeviceHandle,@RenderPassCreateInfo,fDevice.fAllocationCallbacks,@fRenderPassHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.CreateRenderPass(fDevice.fDeviceHandle,@RenderPassCreateInfo,fDevice.fAllocationCallbacks,@fRenderPassHandle));
 
 end;
 
@@ -12601,7 +12765,7 @@ begin
   SamplerCreateInfo.unnormalizedCoordinates:=VK_FALSE;
  end;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreateSampler(fDevice.fDeviceHandle,@SamplerCreateInfo,fDevice.fAllocationCallbacks,@fSamplerHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.CreateSampler(fDevice.fDeviceHandle,@SamplerCreateInfo,fDevice.fAllocationCallbacks,@fSamplerHandle));
 
 end;
 
@@ -12682,7 +12846,7 @@ begin
  ImageCreateInfo.pQueueFamilyIndices:=TpvPointer(aQueueFamilyIndices);
  ImageCreateInfo.initialLayout:=aInitialLayout;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreateImage(fDevice.fDeviceHandle,@ImageCreateInfo,fDevice.fAllocationCallbacks,@fImageHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.CreateImage(fDevice.fDeviceHandle,@ImageCreateInfo,fDevice.fAllocationCallbacks,@fImageHandle));
 
 end;
 
@@ -12737,7 +12901,7 @@ begin
  end;
  ImageCreateInfo.initialLayout:=aInitialLayout;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreateImage(fDevice.fDeviceHandle,@ImageCreateInfo,fDevice.fAllocationCallbacks,@fImageHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.CreateImage(fDevice.fDeviceHandle,@ImageCreateInfo,fDevice.fAllocationCallbacks,@fImageHandle));
 
 end;
 
@@ -13157,7 +13321,7 @@ begin
  ImageViewCreateInfo.subresourceRange.baseArrayLayer:=aBaseArrayLayer;
  ImageViewCreateInfo.subresourceRange.layerCount:=aCountArrayLayers;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreateImageView(fDevice.fDeviceHandle,@ImageViewCreateInfo,fDevice.fAllocationCallbacks,@fImageViewHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.CreateImageView(fDevice.fDeviceHandle,@ImageViewCreateInfo,fDevice.fAllocationCallbacks,@fImageViewHandle));
 
 end;
 
@@ -13284,7 +13448,7 @@ begin
 
   fMemoryBlock.fAssociatedObject:=self;
 
-  HandleResultCode(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,fImage.fImageHandle,fMemoryBlock.fMemoryChunk.fMemoryHandle,fMemoryBlock.fOffset));
+  VulkanCheckResult(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,fImage.fImageHandle,fMemoryBlock.fMemoryChunk.fMemoryHandle,fMemoryBlock.fOffset));
 
   if (aUsage and TVkBufferUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))<>0 then begin
    fImage.SetLayout(AspectMask,
@@ -13612,7 +13776,7 @@ begin
   FrameBufferCreateInfo.height:=fHeight;
   FrameBufferCreateInfo.layers:=fLayers;
 
-  HandleResultCode(fDevice.fDeviceVulkan.CreateFramebuffer(fDevice.fDeviceHandle,@FrameBufferCreateInfo,fDevice.fAllocationCallbacks,@fFrameBufferHandle));
+  VulkanCheckResult(fDevice.fDeviceVulkan.CreateFramebuffer(fDevice.fDeviceHandle,@FrameBufferCreateInfo,fDevice.fAllocationCallbacks,@fFrameBufferHandle));
 
  end;
 end;
@@ -13860,15 +14024,15 @@ begin
    SwapChainCreateInfo.oldSwapchain:=VK_NULL_HANDLE;
   end;
 
-  HandleResultCode(fDevice.fDeviceVulkan.CreateSwapChainKHR(fDevice.fDeviceHandle,@SwapChainCreateInfo,fDevice.fAllocationCallbacks,@fSwapChainHandle));
+  VulkanCheckResult(fDevice.fDeviceVulkan.CreateSwapChainKHR(fDevice.fDeviceHandle,@SwapChainCreateInfo,fDevice.fAllocationCallbacks,@fSwapChainHandle));
 
-  HandleResultCode(fDevice.fDeviceVulkan.GetSwapchainImagesKHR(fDevice.fDeviceHandle,fSwapChainHandle,@fCountImages,nil));
+  VulkanCheckResult(fDevice.fDeviceVulkan.GetSwapchainImagesKHR(fDevice.fDeviceHandle,fSwapChainHandle,@fCountImages,nil));
 
   SwapChainImages:=nil;
   try
    SetLength(SwapChainImages,fCountImages);
 
-   HandleResultCode(fDevice.fDeviceVulkan.GetSwapchainImagesKHR(fDevice.fDeviceHandle,fSwapChainHandle,@fCountImages,@SwapChainImages[0]));
+   VulkanCheckResult(fDevice.fDeviceVulkan.GetSwapchainImagesKHR(fDevice.fDeviceHandle,fSwapChainHandle,@fCountImages,@SwapChainImages[0]));
 
    SetLength(fImages,fCountImages);
    for Index:=0 to fCountImages-1 do begin
@@ -13941,7 +14105,7 @@ begin
  end;
  result:=fDevice.fInstance.fInstanceVulkan.QueuePresentKHR(aQueue.fQueueHandle,@PresentInfo);
  if result<VK_SUCCESS then begin
-  HandleResultCode(result);
+  VulkanCheckResult(result);
  end;
 end;
 
@@ -13962,7 +14126,7 @@ begin
  end;
  result:=fDevice.fDeviceVulkan.AcquireNextImageKHR(fDevice.fDeviceHandle,fSwapChainHandle,aTimeOut,SemaphoreHandle,FenceHandle,@fCurrentImageIndex);
  if result<VK_SUCCESS then begin
-  HandleResultCode(result);
+  VulkanCheckResult(result);
  end;
 end;
 
@@ -14110,7 +14274,7 @@ begin
     raise EpvVulkanMemoryAllocationException.Create('Memory for screenshot couldn''t be allocated!');
    end;
 
-   HandleResultCode(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,FirstImage.fImageHandle,FirstMemoryBlock.fMemoryChunk.fMemoryHandle,FirstMemoryBlock.fOffset));
+   VulkanCheckResult(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,FirstImage.fImageHandle,FirstMemoryBlock.fMemoryChunk.fMemoryHandle,FirstMemoryBlock.fOffset));
 
    if NeedTwoSteps then begin
     SecondImage:=TpvVulkanImage.Create(fDevice,
@@ -14173,7 +14337,7 @@ begin
        raise EpvVulkanMemoryAllocationException.Create('Memory for screenshot couldn''t be allocated!');
       end;
 
-      HandleResultCode(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,SecondImage.fImageHandle,SecondMemoryBlock.fMemoryChunk.fMemoryHandle,SecondMemoryBlock.fOffset));
+      VulkanCheckResult(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,SecondImage.fImageHandle,SecondMemoryBlock.fMemoryChunk.fMemoryHandle,SecondMemoryBlock.fOffset));
 
      end;
 
@@ -14884,7 +15048,7 @@ begin
   ShaderModuleCreateInfo.sType:=VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
   ShaderModuleCreateInfo.codeSize:=fDataSize;
   ShaderModuleCreateInfo.pCode:=fData;
-  HandleResultCode(fDevice.fDeviceVulkan.CreateShaderModule(fDevice.fDeviceHandle,@ShaderModuleCreateInfo,fDevice.fAllocationCallbacks,@fShaderModuleHandle));
+  VulkanCheckResult(fDevice.fDeviceVulkan.CreateShaderModule(fDevice.fDeviceHandle,@ShaderModuleCreateInfo,fDevice.fAllocationCallbacks,@fShaderModuleHandle));
  end;
 end;
 
@@ -15085,7 +15249,7 @@ begin
    DescriptorPoolCreateInfo.poolSizeCount:=length(fDescriptorPoolSizes);
    DescriptorPoolCreateInfo.pPoolSizes:=@fDescriptorPoolSizes[0];
   end;
-  HandleResultCode(fDevice.fDeviceVulkan.CreateDescriptorPool(fDevice.fDeviceHandle,@DescriptorPoolCreateInfo,fDevice.fAllocationCallbacks,@fDescriptorPoolHandle));
+  VulkanCheckResult(fDevice.fDeviceVulkan.CreateDescriptorPool(fDevice.fDeviceHandle,@DescriptorPoolCreateInfo,fDevice.fAllocationCallbacks,@fDescriptorPoolHandle));
  end;
 end;
 
@@ -15232,7 +15396,7 @@ begin
    DescriptorSetLayoutCreateInfo.bindingCount:=length(fDescriptorSetLayoutBindingArray);
    DescriptorSetLayoutCreateInfo.pBindings:=@fDescriptorSetLayoutBindingArray[0];
   end;
-  HandleResultCode(fDevice.fDeviceVulkan.CreateDescriptorSetLayout(fDevice.fDeviceHandle,@DescriptorSetLayoutCreateInfo,fDevice.fAllocationCallbacks,@fDescriptorSetLayoutHandle));
+  VulkanCheckResult(fDevice.fDeviceVulkan.CreateDescriptorSetLayout(fDevice.fDeviceHandle,@DescriptorSetLayoutCreateInfo,fDevice.fAllocationCallbacks,@fDescriptorSetLayoutHandle));
  end;
 end;
 
@@ -15601,7 +15765,7 @@ begin
    PipelineLayoutCreateInfo.pPushConstantRanges:=nil;
   end;
 
-  HandleResultCode(fDevice.fDeviceVulkan.CreatePipelineLayout(fDevice.fDeviceHandle,@PipelineLayoutCreateInfo,fDevice.fAllocationCallbacks,@fPipelineLayoutHandle));
+  VulkanCheckResult(fDevice.fDeviceVulkan.CreatePipelineLayout(fDevice.fDeviceHandle,@PipelineLayoutCreateInfo,fDevice.fAllocationCallbacks,@fPipelineLayoutHandle));
 
  end;
 
@@ -15782,7 +15946,7 @@ begin
  PipelineCacheCreateInfo.pInitialData:=aInitialData;
  PipelineCacheCreateInfo.initialDataSize:=aInitialDataSize;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreatePipelineCache(fDevice.fDeviceHandle,@PipelineCacheCreateInfo,fDevice.fAllocationCallbacks,@fPipelineCacheHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.CreatePipelineCache(fDevice.fDeviceHandle,@PipelineCacheCreateInfo,fDevice.fAllocationCallbacks,@fPipelineCacheHandle));
 
 end;
 
@@ -15853,11 +16017,11 @@ procedure TpvVulkanPipelineCache.SaveToStream(const aStream:TStream);
 var Data:TpvPointer;
     DataSize:TVKSize;
 begin
- HandleResultCode(fDevice.fDeviceVulkan.GetPipelineCacheData(fDevice.fDeviceHandle,fPipelineCacheHandle,@DataSize,nil));
+ VulkanCheckResult(fDevice.fDeviceVulkan.GetPipelineCacheData(fDevice.fDeviceHandle,fPipelineCacheHandle,@DataSize,nil));
  if DataSize>0 then begin
   GetMem(Data,DataSize);
   try
-   HandleResultCode(fDevice.fDeviceVulkan.GetPipelineCacheData(fDevice.fDeviceHandle,fPipelineCacheHandle,@DataSize,Data));
+   VulkanCheckResult(fDevice.fDeviceVulkan.GetPipelineCacheData(fDevice.fDeviceHandle,fPipelineCacheHandle,@DataSize,Data));
    if aStream.Write(fDevice.fPhysicalDevice.fProperties.pipelineCacheUUID,SizeOf(TpvVulkanUUID))<>SizeOf(TpvVulkanUUID) then begin
     raise EInOutError.Create('Stream write error');
    end;
@@ -15883,7 +16047,7 @@ end;
 
 procedure TpvVulkanPipelineCache.Merge(const aSourcePipelineCache:TpvVulkanPipelineCache);
 begin
- HandleResultCode(fDevice.fDeviceVulkan.MergePipelineCaches(fDevice.fDeviceHandle,fPipelineCacheHandle,1,@aSourcePipelineCache.fPipelineCacheHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.MergePipelineCaches(fDevice.fDeviceHandle,fPipelineCacheHandle,1,@aSourcePipelineCache.fPipelineCacheHandle));
 end;
 
 procedure TpvVulkanPipelineCache.Merge(const aSourcePipelineCaches:array of TpvVulkanPipelineCache);
@@ -15897,7 +16061,7 @@ begin
    for Index:=0 to length(aSourcePipelineCaches)-1 do begin
     SourcePipelineCaches[Index]:=aSourcePipelineCaches[Index].fPipelineCacheHandle;
    end;
-   HandleResultCode(fDevice.fDeviceVulkan.MergePipelineCaches(fDevice.fDeviceHandle,fPipelineCacheHandle,length(SourcePipelineCaches),@SourcePipelineCaches[0]));
+   VulkanCheckResult(fDevice.fDeviceVulkan.MergePipelineCaches(fDevice.fDeviceHandle,fPipelineCacheHandle,length(SourcePipelineCaches),@SourcePipelineCaches[0]));
   finally
    SetLength(SourcePipelineCaches,0);
   end;
@@ -15958,7 +16122,7 @@ begin
   PipelineCache:=VK_NULL_HANDLE;
  end;
 
- HandleResultCode(fDevice.fDeviceVulkan.CreateComputePipelines(fDevice.fDeviceHandle,PipelineCache,1,@ComputePipelineCreateInfo,fDevice.fAllocationCallbacks,@fPipelineHandle));
+ VulkanCheckResult(fDevice.fDeviceVulkan.CreateComputePipelines(fDevice.fDeviceHandle,PipelineCache,1,@ComputePipelineCreateInfo,fDevice.fAllocationCallbacks,@fPipelineHandle));
 
 end;
 
@@ -17531,7 +17695,7 @@ begin
    fGraphicsPipelineCreateInfo.pDynamicState:=@fDynamicState.fDynamicStateCreateInfo;
   end;
 
-  HandleResultCode(fDevice.fDeviceVulkan.CreateGraphicsPipelines(fDevice.fDeviceHandle,fPipelineCache,1,@fGraphicsPipelineCreateInfo,fDevice.fAllocationCallbacks,@fPipelineHandle));
+  VulkanCheckResult(fDevice.fDeviceVulkan.CreateGraphicsPipelines(fDevice.fDeviceHandle,fPipelineCache,1,@fGraphicsPipelineCreateInfo,fDevice.fAllocationCallbacks,@fPipelineHandle));
 
  end;
 
@@ -18081,10 +18245,10 @@ begin
 
  fMemoryBlock.fAssociatedObject:=self;
 
- HandleResultCode(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,
-                                                        fImage.fImageHandle,
-                                                        fMemoryBlock.fMemoryChunk.fMemoryHandle,
-                                                        fMemoryBlock.fOffset));
+ VulkanCheckResult(fDevice.fDeviceVulkan.BindImageMemory(fDevice.fDeviceHandle,
+                                                         fImage.fImageHandle,
+                                                         fMemoryBlock.fMemoryChunk.fMemoryHandle,
+                                                         fMemoryBlock.fOffset));
 
  Upload(aGraphicsQueue,
         aGraphicsCommandBuffer,
