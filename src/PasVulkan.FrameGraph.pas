@@ -1655,12 +1655,21 @@ type TAction=
      end;
      PStackItem=^TStackItem;
      TStack=TpvDynamicStack<TStackItem>;
-     TPhysicalPassStack=TpvDynamicStack<TPhysicalPass>;
+     TPhysicalPassStackItem=record
+      Action:TAction;
+      PhysicalPass:TPhysicalPass;
+     end;
+     TPhysicalPassStack=TpvDynamicStack<TPhysicalPassStackItem>;
      TResourceDynamicArray=TpvDynamicArray<TResource>;
  function NewStackItem(const aAction:TAction;const aPass:TPass):TStackItem;
  begin
   result.Action:=aAction;
   result.Pass:=aPass;
+ end;
+ function NewPhysicalPassStackItem(const aAction:TAction;const aPhysicalPass:TPhysicalPass):TPhysicalPassStackItem;
+ begin
+  result.Action:=aAction;
+  result.PhysicalPass:=aPhysicalPass;
  end;
 var Temporary,
     Index,
@@ -1689,6 +1698,7 @@ var Temporary,
     OtherPhysicalPass:TPhysicalPass;
     PhysicalRenderPass:TPhysicalRenderPass;
     PhysicalPassStack:TPhysicalPassStack;
+    PhysicalPassStackItem:TPhysicalPassStackItem;
     Queue:TQueue;
 begin
 
@@ -2030,15 +2040,22 @@ begin
   for PhysicalPass in fPhysicalPasses do begin
    PhysicalPass.fProcessed:=false;
   end;
-  PhysicalPassStack.Push(fRootPhysicalPass);
-  while PhysicalPassStack.Pop(PhysicalPass) do begin
-   if not PhysicalPass.fProcessed then begin
-    PhysicalPass.fProcessed:=true;
-    PhysicalPass.fQueue.fPhysicalPasses.Add(PhysicalPass);
-    for OtherPhysicalPass in PhysicalPass.fInputDependencies do begin
-     if (PhysicalPass<>OtherPhysicalPass) and not OtherPhysicalPass.fProcessed then begin
-      PhysicalPassStack.Push(OtherPhysicalPass);
+  PhysicalPassStack.Push(NewPhysicalPassStackItem(TAction.Process,fRootPhysicalPass));
+  while PhysicalPassStack.Pop(PhysicalPassStackItem) do begin
+   case PhysicalPassStackItem.Action of
+    TAction.Process:begin
+     if not PhysicalPassStackItem.PhysicalPass.fProcessed then begin
+      PhysicalPassStackItem.PhysicalPass.fProcessed:=true;
+      PhysicalPassStack.Push(NewPhysicalPassStackItem(TAction.Add,PhysicalPassStackItem.PhysicalPass));
+      for OtherPhysicalPass in PhysicalPassStackItem.PhysicalPass.fInputDependencies do begin
+       if (PhysicalPassStackItem.PhysicalPass<>OtherPhysicalPass) and not OtherPhysicalPass.fProcessed then begin
+        PhysicalPassStack.Push(NewPhysicalPassStackItem(TAction.Process,OtherPhysicalPass));
+       end;
+      end;
      end;
+    end;
+    TAction.Add:begin
+     PhysicalPassStackItem.PhysicalPass.fQueue.fPhysicalPasses.Add(PhysicalPassStackItem.PhysicalPass);
     end;
    end;
   end;
