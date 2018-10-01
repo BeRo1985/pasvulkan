@@ -5525,6 +5525,42 @@ begin
 end;
 {$endif}
 
+function MinInt64(const aValueA,aValueB:TpvInt64):TpvInt64;
+begin
+ if aValueA<aValueB then begin
+  result:=aValueA;
+ end else begin
+  result:=aValueB;
+ end;
+end;
+
+function MaxInt64(const aValueA,aValueB:TpvInt64):TpvInt64;
+begin
+ if aValueA<aValueB then begin
+  result:=aValueB;
+ end else begin
+  result:=aValueA;
+ end;
+end;
+
+function MinUInt64(const aValueA,aValueB:TpvUInt64):TpvUInt64;
+begin
+ if aValueA<aValueB then begin
+  result:=aValueA;
+ end else begin
+  result:=aValueB;
+ end;
+end;
+
+function MaxUInt64(const aValueA,aValueB:TpvUInt64):TpvUInt64;
+begin
+ if aValueA<aValueB then begin
+  result:=aValueB;
+ end else begin
+  result:=aValueA;
+ end;
+end;
+
 function VulkanIntLog2(aValue:TpvUInt32):TpvUInt32;{$ifdef fpc}{$ifdef caninline}inline;{$endif}
 begin
  if aValue<>0 then begin
@@ -9696,9 +9732,9 @@ begin
 
  if aSize>0 then begin
 
-  Alignment:=Max(fMemoryMinimumAlignment,VulkanDeviceSizeRoundUpToPowerOfTwo(aAlignment));
+  Alignment:=MaxUInt64(fMemoryMinimumAlignment,VulkanDeviceSizeRoundUpToPowerOfTwo(aAlignment));
 
-  BufferImageGranularity:=Max(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
+  BufferImageGranularity:=MaxUInt64(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
 
   BufferImageGranularityInvertedMask:=not (BufferImageGranularity-1);
 
@@ -10086,11 +10122,11 @@ begin
   Size:=aMappedMemoryRange.size;
   NewOffset:=VulkanDeviceSizeAlignDown(Offset,NonCoherentAtomSize);
   if (Size=TVkDeviceSize(VK_WHOLE_SIZE)) or ((Offset+Size)=fSize) then begin
-   NewSize:=TpvInt64(Max(0,TpvInt64(fSize-Offset)));
+   NewSize:=TpvInt64(MaxInt64(0,TpvInt64(fSize-Offset)));
   end else begin
    Assert((Offset+Size)<=fSize);
    NewSize:=VulkanDeviceSizeAlignUp(Size+(Offset-aMappedMemoryRange.offset),NonCoherentAtomSize);
-   MaximumSize:=TpvInt64(Max(0,TpvInt64(fSize-Offset)));
+   MaximumSize:=TpvInt64(MaxInt64(0,TpvInt64(fSize-Offset)));
    if NewSize>MaximumSize then begin
     NewSize:=MaximumSize;
    end;
@@ -10131,9 +10167,9 @@ begin
   if assigned(fMemory) then begin
    Offset:=fMappedOffset+TVkDeviceSize(TpvPtrUInt(aBase)-TpvPtrUInt(fMemory));
    if aSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
-    Size:=TpvInt64(Max(0,TpvInt64((fMappedOffset+fMappedSize)-Offset)));
+    Size:=TpvUInt64(MaxInt64(0,TpvInt64((fMappedOffset+fMappedSize)-Offset)));
    end else begin
-    Size:=Min(TpvInt64(Max(TpvInt64(aSize),0)),TpvInt64(Max(0,TpvInt64((fMappedOffset+fMappedSize)-Offset))));
+    Size:=MinUInt64(aSize,TpvUInt64(MaxInt64(0,TpvInt64((fMappedOffset+fMappedSize)-Offset))));
    end;
    FillChar(MappedMemoryRange,SizeOf(TVkMappedMemoryRange),#0);
    MappedMemoryRange.sType:=VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
@@ -10182,9 +10218,9 @@ begin
   if assigned(fMemory) then begin
    Offset:=fMappedOffset+TVkDeviceSize(TpvPtrUInt(aBase)-TpvPtrUInt(fMemory));
    if aSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
-    Size:=TpvInt64(Max(0,TpvInt64((fMappedOffset+fMappedSize)-Offset)));
+    Size:=TpvUInt64(MaxInt64(0,TpvInt64((fMappedOffset+fMappedSize)-Offset)));
    end else begin
-    Size:=Min(TpvInt64(Max(TpvInt64(aSize),0)),TpvInt64(Max(0,TpvInt64((fMappedOffset+fMappedSize)-Offset))));
+    Size:=MinUInt64(aSize,TpvUInt64(MaxInt64(0,TpvInt64((fMappedOffset+fMappedSize)-Offset))));
    end;
    FillChar(MappedMemoryRange,SizeOf(TVkMappedMemoryRange),#0);
    MappedMemoryRange.sType:=VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
@@ -10311,7 +10347,7 @@ begin
 
       // Initialize BufferImageGranularity values
 
-      BufferImageGranularity:=Max(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
+      BufferImageGranularity:=MaxUInt64(1,VulkanDeviceSizeRoundUpToPowerOfTwo(MemoryManager.fDevice.fPhysicalDevice.fProperties.limits.bufferImageGranularity));
 
       BufferImageGranularityInvertedMask:=not (BufferImageGranularity-1);
 
@@ -10562,9 +10598,9 @@ var Offset,Size:TVkDeviceSize;
 begin
  Offset:=fOffset+aOffset;
  if aSize=TVkDeviceSize(VK_WHOLE_SIZE) then begin
-  Size:=TpvInt64(Max(0,TpvInt64((fOffset+fSize)-Offset)));
+  Size:=TpvInt64(MaxInt64(0,TpvInt64((fOffset+fSize)-Offset)));
  end else begin
-  Size:=Min(TpvInt64(Max(TpvInt64(aSize),0)),TpvInt64(Max(0,TpvInt64((fOffset+fSize)-Offset))));
+  Size:=MinUInt64(aSize,TpvUInt64(MaxInt64(0,TpvInt64((fOffset+fSize)-Offset))));
  end;
  result:=fMemoryChunk.MapMemory(Offset,Size);
 end;
@@ -10942,7 +10978,7 @@ begin
 
     MemoryChunk:=TpvVulkanDeviceMemoryChunk.Create(self,
                                                    MemoryChunkFlags,
-                                                   VulkanDeviceSizeRoundUpToPowerOfTwo(Max(TpvInt64(VulkanMinimumMemoryChunkSize),TpvInt64(aMemoryBlockSize shl 1))),
+                                                   VulkanDeviceSizeRoundUpToPowerOfTwo(MaxUInt64(VulkanMinimumMemoryChunkSize,aMemoryBlockSize shl 1)),
                                                    true,
                                                    aMemoryTypeBits,
                                                    aMemoryRequiredPropertyFlags,
