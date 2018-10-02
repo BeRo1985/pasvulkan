@@ -590,7 +590,6 @@ var ProjectPath,ProjectSourcePath:UnicodeString;
      Parameters.Add('-dXLIB');
      Parameters.Add('-dXCB');
      Parameters.Add('-dWayland');
-     Parameters.Add('-dMir');
      Parameters.Add('-dUseCThreads');
      Parameters.Add('-dSDL');
      Parameters.Add('-dSDL20');

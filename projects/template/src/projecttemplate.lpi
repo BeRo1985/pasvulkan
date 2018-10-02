@@ -45,7 +45,7 @@
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Conditionals Value="if ((TargetOS='linux') or (TargetOS='freebsd') or (TargetOS='unix')) and not (TargetOS='android') then begin
- CustomOptions += ' -dMir -dWayland -dXCB -dXLIB';
+ CustomOptions += ' -dWayland -dXCB -dXLIB';
 end;
 
 if TargetOS&lt;>'android' then begin
