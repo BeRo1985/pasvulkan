@@ -8750,8 +8750,9 @@ const RequiredFlags:array[TQueueKind,0..1] of TpvUInt32=
                        TQueueKind.Graphics,
                        TQueueKind.Compute,
                        TQueueKind.Transfer];
-var Index,QueueIndex,MaximalCountQueues,
-    PassIndex,SurfaceCheckPassIndex:TpvSizeInt;
+var Index,QueueIndex,PassIndex,
+    SurfaceCheckPassIndex:TpvSizeInt;
+    MaximalCountQueues:TpvInt64;
     QueueKind,OtherQueueKind:TQueueKind;
     QueueKindQueueFamilyIndices:TQueueKindQueueFamilyIndices;
     QueueKindQueueCounts:TQueueKindQueueCount;
