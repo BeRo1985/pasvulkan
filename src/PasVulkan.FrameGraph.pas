@@ -456,6 +456,7 @@ type EpvFrameGraph=class(Exception);
                    TSubPasses=TpvObjectGenericList<TSubPass>;
              private
               fSubPasses:TSubPasses;
+              fMultiView:boolean;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); override;
               destructor Destroy; override;
@@ -1909,6 +1910,7 @@ begin
     Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
     TRenderPass(Pass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(Pass));
     TRenderPass(Pass).fPhysicalRenderPassSubPass.fIndex:=PhysicalRenderPass.fSubPasses.Add(TRenderPass(Pass).fPhysicalRenderPassSubPass);
+    PhysicalRenderPass.fMultiView:=TRenderPass(Pass).fMultiViewMask<>0;
     inc(Index);
     if not (TPass.TFlag.Toggleable in Pass.fFlags) then begin
      while Index<Count do begin
@@ -1920,6 +1922,7 @@ begin
        OtherPass.fPhysicalPass:=Pass.fPhysicalPass;
        TRenderPass(OtherPass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(OtherPass));
        TRenderPass(OtherPass).fPhysicalRenderPassSubPass.fIndex:=PhysicalRenderPass.fSubPasses.Add(TRenderPass(OtherPass).fPhysicalRenderPassSubPass);
+       PhysicalRenderPass.fMultiView:=PhysicalRenderPass.fMultiView or (TRenderPass(OtherPass).fMultiViewMask<>0);
        fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,OtherPass.fPhysicalPass.fIndex);
        inc(Index);
       end else begin
