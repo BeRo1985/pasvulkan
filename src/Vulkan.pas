@@ -89,7 +89,7 @@ uses {$if defined(Windows)}
      {$if defined(Android) and defined(VulkanUseAndroidUnits)}Android,{$ifend}
      SysUtils;
 
-const VK_DEFAULT_LIB_NAME={$ifdef Windows}'vulkan-1.dll'{$else}{$ifdef Unix}'libvulkan.so'{$else}'libvulkan'{$endif}{$endif};
+const VK_DEFAULT_LIB_NAME={$ifdef Windows}'vulkan-1.dll'{$else}{$ifdef Android}'libvulkan.so'{$else}{$ifdef Unix}'libvulkan.so.1'{$else}'libvulkan'{$endif}{$endif}{$endif};
 
 type PPVkInt8=^PVkInt8;
      PVkInt8=^TVkInt8;
