@@ -7654,6 +7654,9 @@ end;
 
 procedure TpvApplication.Run;
 var Index:TpvInt32;
+{$if defined(PasVulkanUseSDL2)}
+    SDL2Flags:TpvUInt32;
+{$ifend}
 {$if defined(Android)}
     AndroidEnv:PJNIEnv;
     AndroidActivity,AndroidFile,AndroidNull:jobject;
@@ -7823,12 +7826,6 @@ begin
                                  (fSDLVersion.Minor>=1)
                                 )
                                );
-
- if fSDLVersionWithVulkanSupport then begin
-  if SDL_Vulkan_LoadLibrary(VK_DEFAULT_LIB_NAME)<0 then begin
-   fSDLVersionWithVulkanSupport:=false;
-  end;
- end;
 {$ifend}
 {$ifend}
 
@@ -7854,9 +7851,24 @@ begin
  if WaitForReadyState then begin
 
 {$if defined(PasVulkanUseSDL2)}
-  if SDL_Init(SDL_INIT_VIDEO or SDL_INIT_EVENTS or SDL_INIT_TIMER)<0 then begin
+  SDL2Flags:=SDL_INIT_VIDEO or SDL_INIT_EVENTS or SDL_INIT_TIMER;
+  if fUseAudio then begin
+   SDL2Flags:=SDL2Flags or SDL_INIT_AUDIO;
+  end;
+  if SDL_Init(SDL2Flags)<0 then begin
    raise EpvApplication.Create('SDL','Unable to initialize SDL: '+SDL_GetError,LOG_ERROR);
   end;
+
+{$if defined(PasVulkanUseSDL2WithVulkanSupport)}
+  // For faulty SDL2 >= 2.0.6 builds with corrupt or missing builtin Vulkan support
+  if fSDLVersionWithVulkanSupport and
+     ((assigned(SDL_Vulkan_LoadLibrary) and
+       (SDL_Vulkan_LoadLibrary(VK_DEFAULT_LIB_NAME)<0)) or
+      not assigned(SDL_Vulkan_LoadLibrary)) then begin
+   fSDLVersionWithVulkanSupport:=false;
+  end;
+{$ifend}
+
 {$else}
 {$ifend}
 
