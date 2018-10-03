@@ -7825,7 +7825,9 @@ begin
                                );
 
  if fSDLVersionWithVulkanSupport then begin
-  SDL_Vulkan_LoadLibrary(VK_DEFAULT_LIB_NAME);
+  if SDL_Vulkan_LoadLibrary(VK_DEFAULT_LIB_NAME)<0 then begin
+   fSDLVersionWithVulkanSupport:=false;
+  end;
  end;
 {$ifend}
 {$ifend}
