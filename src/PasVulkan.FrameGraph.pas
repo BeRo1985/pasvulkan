@@ -1067,7 +1067,7 @@ begin
                                      fCountArrayLayers,
                                      fSamples,
                                      fTiling,
-                                     fImageUsageFlags,
+                                     fImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
                                      fSharingMode,
                                      0,
                                      nil,
