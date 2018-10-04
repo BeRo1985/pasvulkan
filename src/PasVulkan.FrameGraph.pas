@@ -1055,6 +1055,7 @@ begin
   else {TpvFrameGraph.TAttachmentSize.TKind.Undefined:}begin
   end;
  end;
+
  fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
                                      0,
                                      fImageType,
@@ -1071,6 +1072,7 @@ begin
                                      0,
                                      nil,
                                      VK_IMAGE_LAYOUT_UNDEFINED);
+
  MemoryRequirements:=pvApplication.VulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
                                                                                          RequiresDedicatedAllocation,
                                                                                          PrefersDedicatedAllocation);
@@ -1116,7 +1118,7 @@ begin
                                              fComponents.g,
                                              fComponents.b,
                                              fComponents.a,
-                                             1,
+                                             fImageSubresourceRange.aspectMask,
                                              0,
                                              fCountMipMaps,
                                              0,
