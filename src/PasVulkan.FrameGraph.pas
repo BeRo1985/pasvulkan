@@ -143,6 +143,10 @@ type EpvFrameGraph=class(Exception);
               DepthStencil,
               Stencil
              );
+            TAttachmentTypeHelper=record helper for TAttachmentType
+             public
+              function GetAspectMask:TVkImageAspectFlags;
+            end;
             PAttachmentType=^TAttachmentType;
             TAttachmentSize=packed record
              public
@@ -263,14 +267,57 @@ type EpvFrameGraph=class(Exception);
             TResourceTypeNameHashMap=TpvStringHashMap<TResourceType>;
             TResourceTransition=class;
             TResourceTransitionList=TpvObjectGenericList<TResourceTransition>;
+            TResourcePhysicalData=class
+             private
+              fFrameGraph:TpvFrameGraph;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
+              destructor Destroy; override;
+              procedure AfterCreateSwapChain; virtual;
+              procedure BeforeDestroySwapChain; virtual;
+            end;
+            TResourcePhysicalAttachmentData=class(TResourcePhysicalData)
+             private
+              fResourceType:TResourceType;
+              fImageUsageFlags:TVkImageUsageFlags;
+              fFormat:TVkFormat;
+              fExtent:TVkExtent3D;
+              fCountMipMaps:TpvSizeInt;
+              fCountArrayLayers:TpvSizeInt;
+              fSamples:TVkSampleCountFlagBits;
+              fTiling:TVkImageTiling;
+              fInitialLayout:TVkImageLayout;
+              fFirstInitialLayout:TVkImageLayout;
+              fImageCreateFlags:TVkImageCreateFlags;
+              fImageType:TVkImageType;
+              fSharingMode:TVkSharingMode;
+              fImageSubresourceRange:TVkImageSubresourceRange;
+              fImageViewType:TVkImageViewType;
+              fComponents:TVkComponentMapping;
+              fVulkanImage:TpvVulkanImage;
+              fVulkanImageView:TpvVulkanImageView;
+              fVulkanMemoryBlock:TpvVulkanDeviceMemoryBlock;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph); override;
+              destructor Destroy; override;
+              procedure AfterCreateSwapChain; override;
+              procedure BeforeDestroySwapChain; override;
+             published
+              property VulkanImage:TpvVulkanImage read fVulkanImage write fVulkanImage;
+              property VulkanImageView:TpvVulkanImageView read fVulkanImageView write fVulkanImageView;
+              property VulkanMemoryBlock:TpvVulkanDeviceMemoryBlock read fVulkanMemoryBlock write fVulkanMemoryBlock;
+            end;
             TResourceReuseGroup=class
              private
               fFrameGraph:TpvFrameGraph;
               fResourceType:TResourceType;
               fResources:TResourceList;
+              fResourcePhysicalData:TResourcePhysicalData;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce;
               destructor Destroy; override;
+              procedure AfterCreateSwapChain; virtual;
+              procedure BeforeDestroySwapChain; virtual;
             end;
             TResourceReuseGroupList=TpvObjectGenericList<TResourceReuseGroup>;
             TResource=class
@@ -486,6 +533,7 @@ type EpvFrameGraph=class(Exception);
               fIndex:TpvSizeInt;
               fTag:TpvSizeInt;
               fPhysicalPass:TPhysicalPass;
+              fTopologicalSortIndex:TpvSizeInt;
               function GetEnabled:boolean;
               procedure SetEnabled(const aEnabled:boolean);
               procedure SetName(const aName:TpvRawByteString);
@@ -622,6 +670,9 @@ type EpvFrameGraph=class(Exception);
        fCanDoParallelProcessing:boolean;
        fPhysicalPasses:TPhysicalPasses;
        fRootPhysicalPass:TPhysicalPass;
+       fVulkanGraphicsCommandPool:TpvVulkanCommandPool;
+       fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+       fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
       public
        constructor Create;
        destructor Destroy; override;
@@ -702,6 +753,32 @@ end;
 constructor TpvFrameGraph.TStoreOp.Create(const aKind:TKind);
 begin
  Kind:=aKind;
+end;
+
+{ TpvFrameGraph.TAttachmentTypeHelper }
+
+function TpvFrameGraph.TAttachmentTypeHelper.GetAspectMask:TVkImageAspectFlags;
+begin
+ case self of
+  TpvFrameGraph.TAttachmentType.Surface:begin
+   result:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  end;
+  TpvFrameGraph.TAttachmentType.Color:begin
+   result:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
+  end;
+  TpvFrameGraph.TAttachmentType.Depth:begin
+   result:=TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT);
+  end;
+  TpvFrameGraph.TAttachmentType.DepthStencil:begin
+   result:=TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT) or TVkImageAspectFlags(VK_IMAGE_ASPECT_STENCIL_BIT);
+  end;
+  TpvFrameGraph.TAttachmentType.Stencil:begin
+   result:=TVkImageAspectFlags(VK_IMAGE_ASPECT_STENCIL_BIT);
+  end;
+  else {TpvFrameGraph.TAttachmentType.Undefined:}begin
+   result:=TVkImageAspectFlags(0);
+  end;
+ end;
 end;
 
 { TpvFrameGraph.TAttachmentSize }
@@ -909,6 +986,204 @@ begin
  inherited Destroy;
 end;
 
+{ TpvFrameGraph.TResourcePhysicalData }
+
+constructor TpvFrameGraph.TResourcePhysicalData.Create(const aFrameGraph:TpvFrameGraph);
+begin
+ inherited Create;
+ fFrameGraph:=aFrameGraph;
+end;
+
+destructor TpvFrameGraph.TResourcePhysicalData.Destroy;
+begin
+ inherited Destroy;
+end;
+
+procedure TpvFrameGraph.TResourcePhysicalData.AfterCreateSwapChain;
+begin
+end;
+
+procedure TpvFrameGraph.TResourcePhysicalData.BeforeDestroySwapChain;
+begin
+end;
+
+{ TpvFrameGraph.TResourcePhysicalAttachmentData }
+
+constructor TpvFrameGraph.TResourcePhysicalAttachmentData.Create(const aFrameGraph:TpvFrameGraph);
+begin
+ inherited Create(aFrameGraph);
+ fImageUsageFlags:=TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT);
+ fFormat:=VK_FORMAT_B8G8R8A8_UNORM;
+ fExtent:=TVkExtent3D.Create(1,1,1);
+ fCountMipMaps:=1;
+ fCountArrayLayers:=1;
+ fSamples:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
+ fTiling:=VK_IMAGE_TILING_OPTIMAL;
+ fInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+ fImageCreateFlags:=TVkImageCreateFlags(0);
+ fImageType:=VK_IMAGE_TYPE_2D;
+ fSharingMode:=VK_SHARING_MODE_EXCLUSIVE;
+ fVulkanImage:=nil;
+ fVulkanImageView:=nil;
+ fVulkanMemoryBlock:=nil;
+end;
+
+destructor TpvFrameGraph.TResourcePhysicalAttachmentData.Destroy;
+begin
+ FreeAndNil(fVulkanImageView);
+ FreeAndNil(fVulkanImage);
+ FreeAndNil(fVulkanMemoryBlock);
+ inherited Destroy;
+end;
+
+procedure TpvFrameGraph.TResourcePhysicalAttachmentData.AfterCreateSwapChain;
+var MemoryRequirements:TVkMemoryRequirements;
+    RequiresDedicatedAllocation,
+    PrefersDedicatedAllocation:boolean;
+    MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
+    MemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
+begin
+ case fResourceType.fAttachmentData.AttachmentSize.Kind of
+  TpvFrameGraph.TAttachmentSize.TKind.Absolute:begin
+   fExtent.width:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.x));
+   fExtent.height:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.y));
+  end;
+  TpvFrameGraph.TAttachmentSize.TKind.SurfaceDependent:begin
+   fExtent.width:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.x*pvApplication.Width));
+   fExtent.height:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.y*pvApplication.Height));
+  end;
+  else {TpvFrameGraph.TAttachmentSize.TKind.Undefined:}begin
+  end;
+ end;
+ fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
+                                     0,
+                                     fImageType,
+                                     fFormat,
+                                     fExtent.width,
+                                     fExtent.height,
+                                     fExtent.depth,
+                                     fCountMipMaps,
+                                     fCountArrayLayers,
+                                     fSamples,
+                                     fTiling,
+                                     fImageUsageFlags,
+                                     fSharingMode,
+                                     0,
+                                     nil,
+                                     VK_IMAGE_LAYOUT_UNDEFINED);
+ MemoryRequirements:=pvApplication.VulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
+                                                                                         RequiresDedicatedAllocation,
+                                                                                         PrefersDedicatedAllocation);
+
+ MemoryBlockFlags:=[];
+
+ if RequiresDedicatedAllocation or PrefersDedicatedAllocation then begin
+  Include(MemoryBlockFlags,TpvVulkanDeviceMemoryBlockFlag.DedicatedAllocation);
+ end;
+
+ if fTiling=VK_IMAGE_TILING_OPTIMAL then begin
+  MemoryAllocationType:=TpvVulkanDeviceMemoryAllocationType.ImageOptimal;
+ end else begin
+  MemoryAllocationType:=TpvVulkanDeviceMemoryAllocationType.ImageLinear;
+ end;
+
+ fVulkanMemoryBlock:=fVulkanImage.Device.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
+                                                                           MemoryRequirements.size,
+                                                                           MemoryRequirements.alignment,
+                                                                           MemoryRequirements.memoryTypeBits,
+                                                                           TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                           0,
+                                                                           0,
+                                                                           0,
+                                                                           0,
+                                                                           0,
+                                                                           MemoryAllocationType,
+                                                                           @fVulkanImage.Handle);
+ if not assigned(fVulkanMemoryBlock) then begin
+  raise EpvVulkanMemoryAllocationException.Create('Memory for frame buffer attachment couldn''t be allocated!');
+ end;
+
+ VulkanCheckResult(fVulkanImage.Device.Commands.BindImageMemory(fVulkanImage.Device.Handle,
+                                                                fVulkanImage.Handle,
+                                                                fVulkanMemoryBlock.MemoryChunk.Handle,
+                                                                fVulkanMemoryBlock.Offset));
+
+ fVulkanImageView:=TpvVulkanImageView.Create(fVulkanImage.Device,
+                                             fVulkanImage,
+                                             fImageViewType,
+                                             fFormat,
+                                             fComponents.r,
+                                             fComponents.g,
+                                             fComponents.b,
+                                             fComponents.a,
+                                             1,
+                                             0,
+                                             fCountMipMaps,
+                                             0,
+                                             fCountArrayLayers);
+
+ if fFirstInitialLayout<>VK_IMAGE_LAYOUT_UNDEFINED then begin
+  if (fImageUsageFlags and TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))<>0 then begin
+   fVulkanImage.SetLayout(fImageSubresourceRange.aspectMask,
+                          VK_IMAGE_LAYOUT_UNDEFINED,
+                          fFirstInitialLayout,
+                          TVkAccessFlags(0),
+                          TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or
+                          TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT),
+                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                          fVulkanImage.Device.PhysicalDevice.PipelineStageAllShaderBits,
+                          nil,
+                          fFrameGraph.fVulkanGraphicsCommandBuffer,
+                          fVulkanImage.Device.GraphicsQueue,
+                          fFrameGraph.fVulkanGraphicsCommandBufferFence,
+                          true);
+  end else begin
+   case fFirstInitialLayout of
+    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
+     fVulkanImage.SetLayout(fImageSubresourceRange.aspectMask,
+                            VK_IMAGE_LAYOUT_UNDEFINED,
+                            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                            TVkAccessFlags(0),
+                            TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                            nil,
+                            fFrameGraph.fVulkanGraphicsCommandBuffer,
+                            fVulkanImage.Device.GraphicsQueue,
+                            fFrameGraph.fVulkanGraphicsCommandBufferFence,
+                            true);
+    end;
+    VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:begin
+     fVulkanImage.SetLayout(fImageSubresourceRange.aspectMask,
+                            VK_IMAGE_LAYOUT_UNDEFINED,
+                            VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                            TVkAccessFlags(0),
+                            TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
+                            nil,
+                            fFrameGraph.fVulkanGraphicsCommandBuffer,
+                            fVulkanImage.Device.GraphicsQueue,
+                            fFrameGraph.fVulkanGraphicsCommandBufferFence,
+                            true);
+    end;
+    else begin
+     raise EpvVulkanException.Create('Invalid frame buffer attachment');
+    end;
+   end;
+  end;
+ end;
+
+end;
+
+procedure TpvFrameGraph.TResourcePhysicalAttachmentData.BeforeDestroySwapChain;
+begin
+ FreeAndNil(fVulkanImageView);
+ FreeAndNil(fVulkanImage);
+ FreeAndNil(fVulkanMemoryBlock);
+end;
+
 { TpvFrameGraph.TResourceReuseGroup }
 
 constructor TpvFrameGraph.TResourceReuseGroup.Create(const aFrameGraph:TpvFrameGraph);
@@ -919,12 +1194,28 @@ begin
  fResourceType:=nil;
  fResources:=TResourceList.Create;
  fResources.OwnsObjects:=false;
+ fResourcePhysicalData:=nil;
 end;
 
 destructor TpvFrameGraph.TResourceReuseGroup.Destroy;
 begin
  FreeAndNil(fResources);
+ FreeAndNil(fResourcePhysicalData);
  inherited Destroy;
+end;
+
+procedure TpvFrameGraph.TResourceReuseGroup.AfterCreateSwapChain;
+begin
+ if assigned(fResourcePhysicalData) then begin
+  fResourcePhysicalData.AfterCreateSwapChain;
+ end;
+end;
+
+procedure TpvFrameGraph.TResourceReuseGroup.BeforeDestroySwapChain;
+begin
+ if assigned(fResourcePhysicalData) then begin
+  fResourcePhysicalData.BeforeDestroySwapChain;
+ end;
 end;
 
 { TpvFrameGraph.TResource }
@@ -1555,6 +1846,14 @@ begin
  fPhysicalPasses:=TPhysicalPasses.Create;
  fPhysicalPasses.OwnsObjects:=true;
 
+ fVulkanGraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
+                                                         pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+                                                         TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
+ fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+
+ fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+
 end;
 
 destructor TpvFrameGraph.Destroy;
@@ -1579,6 +1878,12 @@ begin
  FreeAndNil(fPassNameHashMap);
 
  FreeAndNil(fQueues);
+
+ FreeAndNil(fVulkanGraphicsCommandBufferFence);
+
+ FreeAndNil(fVulkanGraphicsCommandBuffer);
+
+ FreeAndNil(fVulkanGraphicsCommandPool);
 
  inherited Destroy;
 
@@ -1693,6 +1998,7 @@ var Temporary,
     OK:boolean;
     ResourceDynamicArray:TResourceDynamicArray;
     ResourceReuseGroup:TResourceReuseGroup;
+    ResourcePhysicalAttachmentData:TResourcePhysicalAttachmentData;
     ResourceType:TResourceType;
     TopologicalSortedPasses:TPassList;
     PhysicalPass,
@@ -1701,6 +2007,7 @@ var Temporary,
     PhysicalPassStack:TPhysicalPassStack;
     PhysicalPassStackItem:TPhysicalPassStackItem;
     Queue:TQueue;
+    MinimumTopologicalSortIndex:TpvSizeInt;
 begin
 
  // Indexing passes
@@ -1884,7 +2191,7 @@ begin
       Exclude(Pass.fFlags,TPass.TFlag.Marked);
      end;
      TAction.Add:begin
-      TopologicalSortedPasses.Add(Pass);
+      Pass.fTopologicalSortIndex:=TopologicalSortedPasses.Add(Pass);
      end;
     end;
    end;
@@ -2072,22 +2379,52 @@ begin
   ResourceType:=ResourceReuseGroup.fResourceType;
   case ResourceType.fMetaType of
    TpvFrameGraph.TResourceType.TMetaType.Attachment:begin
-    case ResourceType.fAttachmentData.AttachmentType of
-     TpvFrameGraph.TAttachmentType.Surface:begin
+    if not assigned(ResourceReuseGroup.fResourcePhysicalData) then begin
+     ResourceReuseGroup.fResourcePhysicalData:=TResourcePhysicalAttachmentData.Create(self);
+     ResourcePhysicalAttachmentData:=TResourcePhysicalAttachmentData(ResourceReuseGroup.fResourcePhysicalData);
+     ResourcePhysicalAttachmentData.fResourceType:=ResourceType;
+     ResourcePhysicalAttachmentData.fImageUsageFlags:=TVkImageUsageFlags(ResourceType.AttachmentData.ImageUsage);
+     ResourcePhysicalAttachmentData.fFormat:=ResourceType.AttachmentData.Format;
+     ResourcePhysicalAttachmentData.fExtent.width:=1;
+     ResourcePhysicalAttachmentData.fExtent.height:=1;
+     ResourcePhysicalAttachmentData.fExtent.depth:=1;
+     ResourcePhysicalAttachmentData.fCountMipMaps:=1;
+     ResourcePhysicalAttachmentData.fCountArrayLayers:=trunc(ResourceType.AttachmentData.AttachmentSize.Size.z);
+     ResourcePhysicalAttachmentData.fSamples:=ResourceType.AttachmentData.Samples;
+     ResourcePhysicalAttachmentData.fTiling:=VK_IMAGE_TILING_OPTIMAL;
+     ResourcePhysicalAttachmentData.fInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+     ResourcePhysicalAttachmentData.fFirstInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+     MinimumTopologicalSortIndex:=High(TpvSizeInt);
+     for Resource in ResourceReuseGroup.fResources do begin
+      for ResourceTransition in Resource.fResourceTransitions do begin
+       if ResourceTransition.fPass.fTopologicalSortIndex<MinimumTopologicalSortIndex then begin
+        MinimumTopologicalSortIndex:=ResourceTransition.fPass.fTopologicalSortIndex;
+        ResourcePhysicalAttachmentData.fFirstInitialLayout:=ResourceTransition.fLayout;
+       end;
+      end;
      end;
-     TpvFrameGraph.TAttachmentType.Color,
-     TpvFrameGraph.TAttachmentType.Depth,
-     TpvFrameGraph.TAttachmentType.DepthStencil,
-     TpvFrameGraph.TAttachmentType.Stencil:begin
+     ResourcePhysicalAttachmentData.fImageCreateFlags:=0;
+     ResourcePhysicalAttachmentData.fImageType:=VK_IMAGE_TYPE_2D;
+     ResourcePhysicalAttachmentData.fSharingMode:=VK_SHARING_MODE_EXCLUSIVE;
+     ResourcePhysicalAttachmentData.fImageSubresourceRange.aspectMask:=ResourceType.AttachmentData.AttachmentType.GetAspectMask;
+     ResourcePhysicalAttachmentData.fImageSubresourceRange.baseMipLevel:=0;
+     ResourcePhysicalAttachmentData.fImageSubresourceRange.levelCount:=1;
+     ResourcePhysicalAttachmentData.fImageSubresourceRange.baseArrayLayer:=0;
+     ResourcePhysicalAttachmentData.fImageSubresourceRange.layerCount:=ResourcePhysicalAttachmentData.fCountArrayLayers;
+     if ResourcePhysicalAttachmentData.fImageSubresourceRange.layerCount>1 then begin
+      ResourcePhysicalAttachmentData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+     end else begin
+      ResourcePhysicalAttachmentData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D;
      end;
-     else {TpvFrameGraph.TAttachmentType.Undefined:}begin
-     end;
+     ResourcePhysicalAttachmentData.fComponents:=ResourceType.fAttachmentData.Components;
     end;
    end;
-   TpvFrameGraph.TResourceType.TMetaType.Image,
+   TpvFrameGraph.TResourceType.TMetaType.Image:begin
+   end;
    TpvFrameGraph.TResourceType.TMetaType.Buffer:begin
    end;
    else {TpvFrameGraph.TResourceType.TMetaType.None:}begin
+//  raise EpvFrameGraph.Create('Invalid meta type');
    end;
   end;
  end;
@@ -2103,116 +2440,19 @@ begin
 end;
 
 procedure TpvFrameGraph.AfterCreateSwapChain;
-type TInt32AttachmentLists=TpvDynamicArray<TpvInt32>;
-     TUInt32AttachmentLists=TpvDynamicArray<TpvUInt32>;
-var Pass:TPass;
-    RenderPass:TRenderPass;
-    ResourceTransition:TResourceTransition;
-    VulkanRenderPass:TpvVulkanRenderPass;
-    InputAttachments,
-    ColorAttachments,
-    ResolveAttachments:TInt32AttachmentLists;
-    PreserveAttachments:TUInt32AttachmentLists;
-    DepthStencilAttachment:TpvInt32;
+var ResourceReuseGroup:TResourceReuseGroup;
 begin
-
- for Pass in fPasses do begin
-  if TPass.TFlag.Used in Pass.fFlags then begin
-   if Pass is TComputePass then begin
-   end else if Pass is TRenderPass then begin
-
-    RenderPass:=TRenderPass(Pass);
-
-    VulkanRenderPass:=TpvVulkanRenderPass.Create(pvApplication.VulkanDevice);
-    try
-
-     InputAttachments.Initialize;
-     ColorAttachments.Initialize;
-     ResolveAttachments.Initialize;
-     PreserveAttachments.Initialize;
-     try
-
-      DepthStencilAttachment:=-1;
-
-      for ResourceTransition in RenderPass.fResourceTransitions do begin
-       case ResourceTransition.Kind of
-        TpvFrameGraph.TResourceTransition.TKind.AttachmentInput,
-        TpvFrameGraph.TResourceTransition.TKind.AttachmentOutput,
-        TpvFrameGraph.TResourceTransition.TKind.AttachmentResolveOutput,
-        TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthOutput,
-        TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthInput:begin
-        // ResourceTransition.
-        end;
-       end;
-      end;
-
-
-      InputAttachments.Finish;
-      ColorAttachments.Finish;
-      ResolveAttachments.Finish;
-      PreserveAttachments.Finish;
-
-      VulkanRenderPass.AddSubpassDescription(0,
-                                             VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                             InputAttachments.Items,
-                                             ColorAttachments.Items,
-                                             ResolveAttachments.Items,
-                                             DepthStencilAttachment,
-                                             PreserveAttachments.Items);
-
-      VulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
-                                            0,
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                            TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
-                                            TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
-                                            TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
-
-      VulkanRenderPass.AddSubpassDependency(0,
-                                            VK_SUBPASS_EXTERNAL,
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                            TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
-                                            TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
-                                            TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
-
-      VulkanRenderPass.Initialize;
-
- { fSceneContentVulkanRenderPass.ClearValues[0].color.float32[0]:=0.0;
-  fSceneContentVulkanRenderPass.ClearValues[0].color.float32[1]:=0.0;
-  fSceneContentVulkanRenderPass.ClearValues[0].color.float32[2]:=0.0;
-  fSceneContentVulkanRenderPass.ClearValues[0].color.float32[3]:=1.0;
-  }
-     finally
-      InputAttachments.Finalize;
-      ColorAttachments.Finalize;
-      ResolveAttachments.Finalize;
-      PreserveAttachments.Finalize;
-     end;
-
-    finally
-//     TRenderPass(Pass).fRenderPass:=VulkanRenderPass;
-    end;
-
-   end;
-  end;
+ for ResourceReuseGroup in fResourceReuseGroups do begin
+  ResourceReuseGroup.AfterCreateSwapChain;
  end;
-
 end;
 
 procedure TpvFrameGraph.BeforeDestroySwapChain;
-var Pass:TPass;
+var ResourceReuseGroup:TResourceReuseGroup;
 begin
-
- for Pass in fPasses do begin
-  if TPass.TFlag.Used in Pass.fFlags then begin
-   if Pass is TComputePass then begin
-   end else if Pass is TRenderPass then begin
-//    FreeAndNil(TRenderPass(Pass).fRenderPass);
-   end;
-  end;
+ for ResourceReuseGroup in fResourceReuseGroups do begin
+  ResourceReuseGroup.BeforeDestroySwapChain;
  end;
-
 end;
 
 procedure TpvFrameGraph.ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
