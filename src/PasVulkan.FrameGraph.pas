@@ -2822,54 +2822,11 @@ procedure TpvFrameGraph.Compile;
   end;
  end;
  procedure CreatePhysicalPassQueueSequences;
- type TAction=
-       (
-        Process,
-        Unmark,
-        Add
-       );
-      TPhysicalPassStackItem=record
-       Action:TAction;
-       PhysicalPass:TPhysicalPass;
-      end;
-      TPhysicalPassStack=TpvDynamicStack<TPhysicalPassStackItem>;
-  function NewPhysicalPassStackItem(const aAction:TAction;const aPhysicalPass:TPhysicalPass):TPhysicalPassStackItem;
-  begin
-   result.Action:=aAction;
-   result.PhysicalPass:=aPhysicalPass;
-  end;
- var PhysicalPassStack:TPhysicalPassStack;
-     PhysicalPass,
-     OtherPhysicalPass:TPhysicalPass;
-     PhysicalPassStackItem:TPhysicalPassStackItem;
+ var PhysicalPass:TPhysicalPass;
  begin
-  // Create sequences of queue physical passes
-  PhysicalPassStack.Initialize;
-  try
-   for PhysicalPass in fPhysicalPasses do begin
-    PhysicalPass.fProcessed:=false;
-   end;
-   PhysicalPassStack.Push(NewPhysicalPassStackItem(TAction.Process,fRootPhysicalPass));
-   while PhysicalPassStack.Pop(PhysicalPassStackItem) do begin
-    case PhysicalPassStackItem.Action of
-     TAction.Process:begin
-      if not PhysicalPassStackItem.PhysicalPass.fProcessed then begin
-       PhysicalPassStackItem.PhysicalPass.fProcessed:=true;
-       PhysicalPassStack.Push(NewPhysicalPassStackItem(TAction.Add,PhysicalPassStackItem.PhysicalPass));
-       for OtherPhysicalPass in PhysicalPassStackItem.PhysicalPass.fInputDependencies do begin
-        if (PhysicalPassStackItem.PhysicalPass<>OtherPhysicalPass) and not OtherPhysicalPass.fProcessed then begin
-         PhysicalPassStack.Push(NewPhysicalPassStackItem(TAction.Process,OtherPhysicalPass));
-        end;
-       end;
-      end;
-     end;
-     TAction.Add:begin
-      PhysicalPassStackItem.PhysicalPass.fQueue.fPhysicalPasses.Add(PhysicalPassStackItem.PhysicalPass);
-     end;
-    end;
-   end;
-  finally
-   PhysicalPassStack.Finalize;
+  // fPhysicalPasses is already toplogically sorted, so it's easy here
+  for PhysicalPass in fPhysicalPasses do begin
+   PhysicalPass.fQueue.fPhysicalPasses.Add(PhysicalPass);
   end;
  end;
  procedure CreateResourceReuseGroupData;
