@@ -2736,10 +2736,10 @@ procedure TpvFrameGraph.Compile;
    end;
    if assigned(SubPassDependency) then begin
     SubPassDependency^.SrcStageMask:=SubPassDependency^.SrcStageMask or aSubPassDependency.SrcStageMask;
-    SubPassDependency^.DstStageMask:=SubPassDependency^.SrcStageMask or aSubPassDependency.DstStageMask;
-    SubPassDependency^.SrcAccessMask:=SubPassDependency^.SrcStageMask or aSubPassDependency.SrcAccessMask;
-    SubPassDependency^.DstAccessMask:=SubPassDependency^.SrcStageMask or aSubPassDependency.DstAccessMask;
-    SubPassDependency^.DependencyFlags:=SubPassDependency^.SrcStageMask or aSubPassDependency.DependencyFlags;
+    SubPassDependency^.DstStageMask:=SubPassDependency^.DstStageMask or aSubPassDependency.DstStageMask;
+    SubPassDependency^.SrcAccessMask:=SubPassDependency^.SrcAccessMask or aSubPassDependency.SrcAccessMask;
+    SubPassDependency^.DstAccessMask:=SubPassDependency^.DstAccessMask or aSubPassDependency.DstAccessMask;
+    SubPassDependency^.DependencyFlags:=SubPassDependency^.DependencyFlags or aSubPassDependency.DependencyFlags;
    end else begin
     aSubPassDependencies.Add(aSubPassDependency);
    end;
