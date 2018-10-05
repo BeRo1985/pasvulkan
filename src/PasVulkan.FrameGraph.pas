@@ -511,11 +511,15 @@ type EpvFrameGraph=class(Exception);
             end;
             TPhysicalRenderPass=class(TPhysicalPass)
              public
-              type TSubPass=class
+              type TSubPass=class;
+                   TSubPasses=TpvObjectGenericList<TSubPass>;
+                   TSubPass=class
                     private
                      fPhysicalRenderPass:TPhysicalRenderPass;
                      fIndex:TpvSizeInt;
                      fRenderPass:TRenderPass;
+                     fInputSubPassDependencies:TSubPasses;
+                     fOutputSubPassDependencies:TSubPasses;
                     public
                      constructor Create(const aPhysicalRenderPass:TPhysicalRenderPass;
                                         const aRenderPass:TRenderPass); reintroduce;
@@ -525,10 +529,10 @@ type EpvFrameGraph=class(Exception);
                      procedure AfterCreateSwapChain; virtual;
                      procedure BeforeDestroySwapChain; virtual;
                    end;
-                   TSubPasses=TpvObjectGenericList<TSubPass>;
              private
               fSubPasses:TSubPasses;
               fMultiView:boolean;
+              fVulkanRenderPass:TpvVulkanRenderPass;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); override;
               destructor Destroy; override;
@@ -1921,10 +1925,16 @@ begin
  inherited Create;
  fPhysicalRenderPass:=aPhysicalRenderPass;
  fRenderPass:=aRenderPass;
+ fInputSubPassDependencies:=TSubPasses.Create;
+ fInputSubPassDependencies.OwnsObjects:=false;
+ fOutputSubPassDependencies:=TSubPasses.Create;
+ fOutputSubPassDependencies.OwnsObjects:=false;
 end;
 
 destructor TpvFrameGraph.TPhysicalRenderPass.TSubPass.Destroy;
 begin
+ FreeAndNil(fInputSubPassDependencies);
+ FreeAndNil(fOutputSubPassDependencies);
  inherited Destroy;
 end;
 
@@ -1951,10 +1961,12 @@ begin
  inherited Create(aFrameGraph,aQueue);
  fSubPasses:=TSubPasses.Create;
  fSubPasses.OwnsObjects:=true;
+ fVulkanRenderPass:=nil;
 end;
 
 destructor TpvFrameGraph.TPhysicalRenderPass.Destroy;
 begin
+ FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fSubPasses);
  inherited Destroy;
 end;
@@ -1976,16 +1988,135 @@ begin
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.AfterCreateSwapChain;
-var SubPass:TSubPass;
+type TInt32AttachmentLists=TpvDynamicArray<TpvInt32>;
+     TUInt32AttachmentLists=TpvDynamicArray<TpvUInt32>;
+var SubPass,
+    OtherSubPass,
+    FirstSubPass,
+    LastSubPass:TSubPass;
+    RenderPass:TRenderPass;
+    ResourceTransition:TResourceTransition;
+    InputAttachments,
+    ColorAttachments,
+    ResolveAttachments:TInt32AttachmentLists;
+    PreserveAttachments:TUInt32AttachmentLists;
+    DepthStencilAttachment:TpvInt32;
 begin
+
  for SubPass in fSubPasses do begin
   SubPass.AfterCreateSwapChain;
  end;
+
+{fVulkanRenderPass:=TpvVulkanRenderPass.Create(fFrameGraph.fVulkanDevice);
+ fVulkanRenderPass.}
+
+ InputAttachments.Initialize;
+ ColorAttachments.Initialize;
+ ResolveAttachments.Initialize;
+ PreserveAttachments.Initialize;
+ try
+
+  DepthStencilAttachment:=-1;
+
+  for SubPass in fSubPasses do begin
+   RenderPass:=SubPass.fRenderPass;
+   for ResourceTransition in RenderPass.fResourceTransitions do begin
+    case ResourceTransition.Kind of
+     TpvFrameGraph.TResourceTransition.TKind.AttachmentInput,
+     TpvFrameGraph.TResourceTransition.TKind.AttachmentOutput,
+     TpvFrameGraph.TResourceTransition.TKind.AttachmentResolveOutput,
+     TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthOutput,
+     TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthInput:begin
+     // ResourceTransition.
+     end;
+    end;
+   end;
+  end;
+
+  InputAttachments.Finish;
+  ColorAttachments.Finish;
+  ResolveAttachments.Finish;
+  PreserveAttachments.Finish;
+
+  fVulkanRenderPass:=nil;
+
+  if assigned(fVulkanRenderPass) then begin
+
+   FirstSubPass:=nil;
+   LastSubPass:=nil;
+   for SubPass in fSubPasses do begin
+    if FirstSubPass.fInputSubPassDependencies.Count=0 then begin
+     FirstSubPass:=SubPass;
+    end;
+    if LastSubPass.fOutputSubPassDependencies.Count=0 then begin
+     LastSubPass:=SubPass;
+    end;
+    if assigned(FirstSubPass) and assigned(LastSubPass) then begin
+     break;
+    end;
+   end;
+   if not (assigned(FirstSubPass) and assigned(LastSubPass)) then begin
+    for SubPass in fSubPasses do begin
+     if (not assigned(FirstSubPass)) or
+        (FirstSubPass.fRenderPass.fTopologicalSortIndex<SubPass.fRenderPass.fTopologicalSortIndex) then begin
+      FirstSubPass:=SubPass;
+     end;
+     if (not assigned(LastSubPass)) or
+        (LastSubPass.fRenderPass.fTopologicalSortIndex>SubPass.fRenderPass.fTopologicalSortIndex) then begin
+      LastSubPass:=SubPass;
+     end;
+    end;
+   end;
+
+   if assigned(FirstSubPass) then begin
+    fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
+                                           FirstSubPass.fIndex,
+                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                           TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                           TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                           TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+   end;
+
+   for SubPass in fSubPasses do begin
+    for OtherSubPass in SubPass.fInputSubPassDependencies do begin
+     fVulkanRenderPass.AddSubpassDependency(OtherSubPass.fIndex,
+                                            SubPass.fIndex,
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                            TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                            TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                            TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+    end;
+   end;
+
+   if assigned(LastSubPass) then begin
+    fVulkanRenderPass.AddSubpassDependency(FirstSubPass.fIndex,
+                                           VK_SUBPASS_EXTERNAL,
+                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                           TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                           TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
+                                           TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+   end;
+
+  end;
+
+ finally
+  InputAttachments.Finalize;
+  ColorAttachments.Finalize;
+  ResolveAttachments.Finalize;
+  PreserveAttachments.Finalize;
+ end;
+
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.BeforeDestroySwapChain;
 var SubPass:TSubPass;
 begin
+
+ FreeAndNil(fVulkanRenderPass);
+
  for SubPass in fSubPasses do begin
   SubPass.BeforeDestroySwapChain;
  end;
