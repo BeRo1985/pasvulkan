@@ -661,6 +661,9 @@ type EpvFrameGraph=class(Exception);
               property MultiViewMask:TpvUInt32 read fMultiViewMask write fMultiViewMask;
             end;
       private
+       fVulkanDevice:TpvVulkanDevice;
+       fSurfaceWidth:TpvSizeInt;
+       fSurfaceHeight:TpvSizeInt;
        fQueues:TQueues;
        fResourceTypes:TResourceTypeList;
        fResourceTypeNameHashMap:TResourceTypeNameHashMap;
@@ -681,7 +684,7 @@ type EpvFrameGraph=class(Exception);
        fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
       public
-       constructor Create;
+       constructor Create(const aVulkanDevice:TpvVulkanDevice);
        destructor Destroy; override;
       public
        function AddQueue(const aPhysicalQueue:TpvVulkanQueue):TQueue;
@@ -719,6 +722,9 @@ type EpvFrameGraph=class(Exception);
        procedure Execute; virtual;
       published
        property CanDoParallelProcessing:boolean read fCanDoParallelProcessing write fCanDoParallelProcessing;
+       property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
+       property SurfaceWidth:TpvSizeInt read fSurfaceWidth write fSurfaceWidth;
+       property SurfaceHeight:TpvSizeInt read fSurfaceHeight write fSurfaceHeight;
        property Queues:TQueues read fQueues;
        property ResourceTypes:TResourceTypeList read fResourceTypes;
        property ResourceTypeByName:TResourceTypeNameHashMap read fResourceTypeNameHashMap;
@@ -1060,6 +1066,7 @@ var MemoryRequirements:TVkMemoryRequirements;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
     MemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
 begin
+
  case fResourceType.fAttachmentData.AttachmentSize.Kind of
   TpvFrameGraph.TAttachmentSize.TKind.Absolute:begin
    fExtent.width:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.x));
@@ -1067,15 +1074,15 @@ begin
    fExtent.depth:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.z));
   end;
   TpvFrameGraph.TAttachmentSize.TKind.SurfaceDependent:begin
-   fExtent.width:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.x*pvApplication.Width));
-   fExtent.height:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.y*pvApplication.Height));
+   fExtent.width:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.x*fFrameGraph.fSurfaceWidth));
+   fExtent.height:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.y*fFrameGraph.fSurfaceHeight));
    fExtent.depth:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.z));
   end;
   else {TpvFrameGraph.TAttachmentSize.TKind.Undefined:}begin
   end;
  end;
 
- fVulkanImage:=TpvVulkanImage.Create(pvApplication.VulkanDevice,
+ fVulkanImage:=TpvVulkanImage.Create(fFrameGraph.fVulkanDevice,
                                      0,
                                      fImageType,
                                      fFormat,
@@ -1092,9 +1099,9 @@ begin
                                      nil,
                                      VK_IMAGE_LAYOUT_UNDEFINED);
 
- MemoryRequirements:=pvApplication.VulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
-                                                                                         RequiresDedicatedAllocation,
-                                                                                         PrefersDedicatedAllocation);
+ MemoryRequirements:=fFrameGraph.fVulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage.Handle,
+                                                                                        RequiresDedicatedAllocation,
+                                                                                        PrefersDedicatedAllocation);
 
  MemoryBlockFlags:=[];
 
@@ -1833,10 +1840,15 @@ end;
 
 { TpvFrameGraph }
 
-constructor TpvFrameGraph.Create;
+constructor TpvFrameGraph.Create(const aVulkanDevice:TpvVulkanDevice);
 begin
 
  inherited Create;
+
+ fVulkanDevice:=aVulkanDevice;
+
+ fSurfaceWidth:=1;
+ fSurfaceHeight:=1;
 
  fCanDoParallelProcessing:=false;
 
@@ -1867,13 +1879,13 @@ begin
  fPhysicalPasses:=TPhysicalPasses.Create;
  fPhysicalPasses.OwnsObjects:=true;
 
- fVulkanGraphicsCommandPool:=TpvVulkanCommandPool.Create(pvApplication.VulkanDevice,
-                                                         pvApplication.VulkanDevice.GraphicsQueueFamilyIndex,
+ fVulkanGraphicsCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
+                                                         fVulkanDevice.GraphicsQueueFamilyIndex,
                                                          TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
  fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
- fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(pvApplication.VulkanDevice);
+ fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(fVulkanDevice);
 
 end;
 
@@ -2577,7 +2589,7 @@ end;
 
 procedure TpvFrameGraph.Execute;
 begin
- if fCanDoParallelProcessing then begin
+ if fCanDoParallelProcessing and assigned(pvApplication) then begin
   pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0);
  end else begin
   ExecuteQueueParallelForJobMethod(nil,0,nil,0,fQueues.Count-1);
