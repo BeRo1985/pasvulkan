@@ -2478,17 +2478,29 @@ procedure TpvFrameGraph.Compile;
        end;
       end;
       ResourcePhysicalAttachmentData.fImageCreateFlags:=0;
-      ResourcePhysicalAttachmentData.fImageType:=VK_IMAGE_TYPE_2D;
+      if ResourcePhysicalAttachmentData.fExtent.depth>1 then begin
+       ResourcePhysicalAttachmentData.fImageType:=VK_IMAGE_TYPE_3D;
+      end else begin
+       ResourcePhysicalAttachmentData.fImageType:=VK_IMAGE_TYPE_2D;
+      end;
       ResourcePhysicalAttachmentData.fSharingMode:=VK_SHARING_MODE_EXCLUSIVE;
       ResourcePhysicalAttachmentData.fImageSubresourceRange.aspectMask:=ResourceType.AttachmentData.AttachmentType.GetAspectMask;
       ResourcePhysicalAttachmentData.fImageSubresourceRange.baseMipLevel:=0;
       ResourcePhysicalAttachmentData.fImageSubresourceRange.levelCount:=1;
       ResourcePhysicalAttachmentData.fImageSubresourceRange.baseArrayLayer:=0;
       ResourcePhysicalAttachmentData.fImageSubresourceRange.layerCount:=ResourcePhysicalAttachmentData.fCountArrayLayers;
-      if ResourcePhysicalAttachmentData.fImageSubresourceRange.layerCount>1 then begin
-       ResourcePhysicalAttachmentData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+      if ResourcePhysicalAttachmentData.fExtent.depth>1 then begin
+       if ResourcePhysicalAttachmentData.fImageSubresourceRange.layerCount>1 then begin
+        raise EpvFrameGraph.Create('3D array image not supported');
+       end else begin
+        ResourcePhysicalAttachmentData.fImageViewType:=VK_IMAGE_VIEW_TYPE_3D;
+       end;
       end else begin
-       ResourcePhysicalAttachmentData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D;
+       if ResourcePhysicalAttachmentData.fImageSubresourceRange.layerCount>1 then begin
+        ResourcePhysicalAttachmentData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+       end else begin
+        ResourcePhysicalAttachmentData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D;
+       end;
       end;
       ResourcePhysicalAttachmentData.fComponents:=ResourceType.fAttachmentData.Components;
      end;
