@@ -2721,7 +2721,7 @@ procedure TpvFrameGraph.Compile;
    FreeAndNil(TopologicalSortedPasses);
   end;
  end;
- procedure ConstructPhysicalPassDirectedAcyclicGraph;
+ procedure ConstructPhysicalPassDirectedAcyclicGraphAndPipelineBarriers;
   procedure AddSubPassDependency(const aSubPassDependencies:TPhysicalRenderPass.TSubPassDependencies;
                                  const aSubPassDependency:TPhysicalRenderPass.TSubPassDependency);
   var Index:TpvSizeInt;
@@ -3041,7 +3041,7 @@ begin
 
  ConstructDirectedAcyclicGraphAndPhysicalPassChoreography;
 
- ConstructPhysicalPassDirectedAcyclicGraph;
+ ConstructPhysicalPassDirectedAcyclicGraphAndPipelineBarriers;
 
  CalculateResourceLifetimes;
 
