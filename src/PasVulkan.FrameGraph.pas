@@ -2685,7 +2685,51 @@ procedure TpvFrameGraph.Compile;
    FreeAndNil(TopologicalSortedPasses);
   end;
  end;
- procedure ConstructPhysicalPassDirectedAcyclicGraphAndPipelineBarriers;
+ procedure ConstructPhysicalPassDirectedAcyclicGraph;
+ var Pass,
+     OtherPass:TPass;
+     ResourceTransition,
+     OtherResourceTransition:TResourceTransition;
+     Resource:TResource;
+ begin
+  // Construct new directed acyclic graph from the physical passes by transfering the
+  // dependency informations from the graph passes to the physical passes
+  fRootPhysicalPass:=nil;
+  for Pass in fPasses do begin
+   if (TPass.TFlag.Used in Pass.fFlags) and
+      assigned(Pass.fPhysicalPass) then begin
+    if Pass=fRootPass then begin
+     fRootPhysicalPass:=Pass.fPhysicalPass;
+    end;
+    for ResourceTransition in Pass.fResourceTransitions do begin
+     Resource:=ResourceTransition.fResource;
+     for OtherResourceTransition in Resource.fResourceTransitions do begin
+      if (ResourceTransition<>OtherResourceTransition) and
+         (ResourceTransition.fPass<>OtherResourceTransition.fPass) and
+         (ResourceTransition.fPass.fPhysicalPass<>OtherResourceTransition.fPass.fPhysicalPass) and
+         (TPass.TFlag.Used in OtherResourceTransition.fPass.fFlags) and
+         assigned(OtherResourceTransition.fPass.fPhysicalPass) then begin
+       OtherPass:=OtherResourceTransition.fPass;
+       if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
+          (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) and
+          (Pass.fPhysicalPass.fInputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
+        Pass.fPhysicalPass.fInputDependencies.Add(OtherPass.fPhysicalPass);
+       end;
+       if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+          (OtherResourceTransition.fKind in TResourceTransition.AllInputs) and
+          (Pass.fPhysicalPass.fOutputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
+        Pass.fPhysicalPass.fOutputDependencies.Add(OtherPass.fPhysicalPass);
+       end;
+      end;
+     end;
+    end;
+   end;
+  end;
+  if not assigned(fRootPhysicalPass) then begin
+   raise EpvFrameGraph.Create('No root physical pass found');
+  end;
+ end;
+ procedure ConstructPhysicalPassPipelineBarriers;
   procedure AddSubPassDependency(const aSubPassDependencies:TPhysicalRenderPass.TSubPassDependencies;
                                  const aSubPassDependency:TPhysicalRenderPass.TSubPassDependency);
   var Index:TpvSizeInt;
@@ -2715,75 +2759,52 @@ procedure TpvFrameGraph.Compile;
      Resource:TResource;
      SubPassDependency:TPhysicalRenderPass.TSubPassDependency;
  begin
-  // Construct new directed acyclic graph from the physical passes by transfering the
-  // dependency informations from the graph passes to the physical passes
-  fRootPhysicalPass:=nil;
   for Pass in fPasses do begin
    if (TPass.TFlag.Used in Pass.fFlags) and
       assigned(Pass.fPhysicalPass) then begin
-    if Pass=fRootPass then begin
-     fRootPhysicalPass:=Pass.fPhysicalPass;
-    end;
     for ResourceTransition in Pass.fResourceTransitions do begin
      Resource:=ResourceTransition.fResource;
      for OtherResourceTransition in Resource.fResourceTransitions do begin
       if (ResourceTransition<>OtherResourceTransition) and
          (ResourceTransition.fPass<>OtherResourceTransition.fPass) and
          (TPass.TFlag.Used in OtherResourceTransition.fPass.fFlags) and
-         assigned(OtherResourceTransition.fPass.fPhysicalPass) then begin
-       if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
-          (OtherResourceTransition.fKind in TResourceTransition.AllInputs) then begin
-        if (ResourceTransition.fPass is TRenderPass) and
-           (OtherResourceTransition.fPass is TRenderPass) and
-           (ResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
-           (OtherResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) then begin
-         GetPipelineStageMasks(ResourceTransition,
-                               OtherResourceTransition,
-                               SubPassDependency.SrcStageMask,
-                               SubPassDependency.DstStageMask
-                              );
-         GetAccessMasks(ResourceTransition,
-                        OtherResourceTransition,
-                        SubPassDependency.SrcAccessMask,
-                        SubPassDependency.DstAccessMask
-                       );
-         SubPassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
-         if ResourceTransition.fPass.fPhysicalPass=OtherResourceTransition.fPass.fPhysicalPass then begin
-          SubPassDependency.SrcSubPass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass;
-          SubPassDependency.DstSubPass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass;
-          AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
-         end else begin
-          SubPassDependency.SrcSubPass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass;
-          SubPassDependency.DstSubPass:=nil;
-          AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
-          SubPassDependency.SrcSubPass:=nil;
-          SubPassDependency.DstSubPass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass;
-          AddSubPassDependency(TPhysicalRenderPass(OtherResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
-         end;
+         assigned(OtherResourceTransition.fPass.fPhysicalPass) and
+         (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+         (OtherResourceTransition.fKind in TResourceTransition.AllInputs) then begin
+       if (ResourceTransition.fPass is TRenderPass) and
+          (OtherResourceTransition.fPass is TRenderPass) and
+          (ResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
+          (OtherResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) then begin
+        GetPipelineStageMasks(ResourceTransition,
+                              OtherResourceTransition,
+                              SubPassDependency.SrcStageMask,
+                              SubPassDependency.DstStageMask
+                             );
+        GetAccessMasks(ResourceTransition,
+                       OtherResourceTransition,
+                       SubPassDependency.SrcAccessMask,
+                       SubPassDependency.DstAccessMask
+                      );
+        SubPassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+        if ResourceTransition.fPass.fPhysicalPass=OtherResourceTransition.fPass.fPhysicalPass then begin
+         SubPassDependency.SrcSubPass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass;
+         SubPassDependency.DstSubPass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass;
+         AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
         end else begin
-         // TODO: Pipeline barrier
+         SubPassDependency.SrcSubPass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass;
+         SubPassDependency.DstSubPass:=nil;
+         AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
+         SubPassDependency.SrcSubPass:=nil;
+         SubPassDependency.DstSubPass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass;
+         AddSubPassDependency(TPhysicalRenderPass(OtherResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
         end;
-       end;
-       if ResourceTransition.fPass.fPhysicalPass<>OtherResourceTransition.fPass.fPhysicalPass then begin
-        OtherPass:=OtherResourceTransition.fPass;
-        if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
-           (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) and
-           (Pass.fPhysicalPass.fInputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
-         Pass.fPhysicalPass.fInputDependencies.Add(OtherPass.fPhysicalPass);
-        end;
-        if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
-           (OtherResourceTransition.fKind in TResourceTransition.AllInputs) and
-           (Pass.fPhysicalPass.fOutputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
-         Pass.fPhysicalPass.fOutputDependencies.Add(OtherPass.fPhysicalPass);
-        end;
+       end else begin
+        // TODO: Pipeline barrier
        end;
       end;
      end;
     end;
    end;
-  end;
-  if not assigned(fRootPhysicalPass) then begin
-   raise EpvFrameGraph.Create('No root physical pass found');
   end;
  end;
  procedure CalculateResourceLifetimes;
@@ -3005,7 +3026,9 @@ begin
 
  ConstructDirectedAcyclicGraphAndPhysicalPassChoreography;
 
- ConstructPhysicalPassDirectedAcyclicGraphAndPipelineBarriers;
+ ConstructPhysicalPassDirectedAcyclicGraph;
+
+ ConstructPhysicalPassPipelineBarriers;
 
  CalculateResourceLifetimes;
 
