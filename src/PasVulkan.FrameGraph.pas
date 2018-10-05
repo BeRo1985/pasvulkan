@@ -278,6 +278,8 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
+              procedure Show; virtual;
+              procedure Hide; virtual;
               procedure AfterCreateSwapChain; virtual;
               procedure BeforeDestroySwapChain; virtual;
             end;
@@ -305,6 +307,8 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); override;
               destructor Destroy; override;
+              procedure Show; override;
+              procedure Hide; override;
               procedure AfterCreateSwapChain; override;
               procedure BeforeDestroySwapChain; override;
              published
@@ -321,6 +325,8 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce;
               destructor Destroy; override;
+              procedure Show; virtual;
+              procedure Hide; virtual;
               procedure AfterCreateSwapChain; virtual;
               procedure BeforeDestroySwapChain; virtual;
             end;
@@ -715,6 +721,8 @@ type EpvFrameGraph=class(Exception);
       public
        procedure Setup; virtual;
        procedure Compile; virtual;
+       procedure Show; virtual;
+       procedure Hide; virtual;
        procedure AfterCreateSwapChain; virtual;
        procedure BeforeDestroySwapChain; virtual;
       private
@@ -1025,6 +1033,14 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvFrameGraph.TResourcePhysicalData.Show;
+begin
+end;
+
+procedure TpvFrameGraph.TResourcePhysicalData.Hide;
+begin
+end;
+
 procedure TpvFrameGraph.TResourcePhysicalData.AfterCreateSwapChain;
 begin
 end;
@@ -1060,6 +1076,16 @@ begin
  FreeAndNil(fVulkanImage);
  FreeAndNil(fVulkanMemoryBlock);
  inherited Destroy;
+end;
+
+procedure TpvFrameGraph.TResourcePhysicalAttachmentData.Show;
+begin
+
+end;
+
+procedure TpvFrameGraph.TResourcePhysicalAttachmentData.Hide;
+begin
+
 end;
 
 procedure TpvFrameGraph.TResourcePhysicalAttachmentData.AfterCreateSwapChain;
@@ -1233,6 +1259,20 @@ begin
  FreeAndNil(fResources);
  FreeAndNil(fResourcePhysicalData);
  inherited Destroy;
+end;
+
+procedure TpvFrameGraph.TResourceReuseGroup.Show;
+begin
+ if assigned(fResourcePhysicalData) then begin
+  fResourcePhysicalData.Show;
+ end;
+end;
+
+procedure TpvFrameGraph.TResourceReuseGroup.Hide;
+begin
+ if assigned(fResourcePhysicalData) then begin
+  fResourcePhysicalData.Hide;
+ end;
 end;
 
 procedure TpvFrameGraph.TResourceReuseGroup.AfterCreateSwapChain;
@@ -2554,6 +2594,22 @@ begin
 
 end;
 
+procedure TpvFrameGraph.Show;
+var ResourceReuseGroup:TResourceReuseGroup;
+begin
+ for ResourceReuseGroup in fResourceReuseGroups do begin
+  ResourceReuseGroup.Show;
+ end;
+end;
+
+procedure TpvFrameGraph.Hide;
+var ResourceReuseGroup:TResourceReuseGroup;
+begin
+ for ResourceReuseGroup in fResourceReuseGroups do begin
+  ResourceReuseGroup.Hide;
+ end;
+end;
+
 procedure TpvFrameGraph.AfterCreateSwapChain;
 var ResourceReuseGroup:TResourceReuseGroup;
 begin
@@ -2567,6 +2623,34 @@ var ResourceReuseGroup:TResourceReuseGroup;
 begin
  for ResourceReuseGroup in fResourceReuseGroups do begin
   ResourceReuseGroup.BeforeDestroySwapChain;
+ end;
+end;
+
+procedure TpvFrameGraph.Update(const aUpdateFrameIndex:TpvSizeInt);
+var QueueIndex,Index,SubPassIndex:TpvSizeInt;
+    Queue:TQueue;
+    PhysicalPass:TPhysicalPass;
+    PhysicalComputePass:TPhysicalComputePass;
+    PhysicalRenderPass:TPhysicalRenderPass;
+    PhysicalRenderPassSubPass:TPhysicalRenderPass.TSubPass;
+begin
+ for QueueIndex:=0 to fQueues.Count-1 do begin
+  Queue:=fQueues[QueueIndex];
+  for Index:=0 to Queue.fPhysicalPasses.Count-1 do begin
+   PhysicalPass:=Queue.fPhysicalPasses[Index];
+   if assigned(PhysicalPass) then begin
+    if PhysicalPass is TPhysicalComputePass then begin
+     PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
+     PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalComputePass.fComputePass.fFlags;
+    end else if PhysicalPass is TPhysicalRenderPass then begin
+     PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
+     for SubPassIndex:=0 to PhysicalRenderPass.fSubPasses.Count-1 do begin
+      PhysicalRenderPassSubPass:=PhysicalRenderPass.fSubPasses[SubPassIndex];
+      PhysicalRenderPassSubPass.fRenderPass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalRenderPassSubPass.fRenderPass.fFlags;
+     end;
+    end;
+   end;
+  end;
  end;
 end;
 
@@ -2603,34 +2687,6 @@ var Index:TPasMPNativeInt;
 begin
  for Index:=aFromIndex to aToIndex do begin
   ExecuteQueue(aJob,aThreadIndex,fQueues[Index]);
- end;
-end;
-
-procedure TpvFrameGraph.Update(const aUpdateFrameIndex:TpvSizeInt);
-var QueueIndex,Index,SubPassIndex:TpvSizeInt;
-    Queue:TQueue;
-    PhysicalPass:TPhysicalPass;
-    PhysicalComputePass:TPhysicalComputePass;
-    PhysicalRenderPass:TPhysicalRenderPass;
-    PhysicalRenderPassSubPass:TPhysicalRenderPass.TSubPass;
-begin
- for QueueIndex:=0 to fQueues.Count-1 do begin
-  Queue:=fQueues[QueueIndex];
-  for Index:=0 to Queue.fPhysicalPasses.Count-1 do begin
-   PhysicalPass:=Queue.fPhysicalPasses[Index];
-   if assigned(PhysicalPass) then begin
-    if PhysicalPass is TPhysicalComputePass then begin
-     PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
-     PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalComputePass.fComputePass.fFlags;
-    end else if PhysicalPass is TPhysicalRenderPass then begin
-     PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
-     for SubPassIndex:=0 to PhysicalRenderPass.fSubPasses.Count-1 do begin
-      PhysicalRenderPassSubPass:=PhysicalRenderPass.fSubPasses[SubPassIndex];
-      PhysicalRenderPassSubPass.fRenderPass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalRenderPassSubPass.fRenderPass.fFlags;
-     end;
-    end;
-   end;
-  end;
  end;
 end;
 
