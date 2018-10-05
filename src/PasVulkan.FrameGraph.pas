@@ -2583,19 +2583,36 @@ procedure TpvFrameGraph.Compile;
      for OtherResourceTransition in Resource.fResourceTransitions do begin
       if (ResourceTransition<>OtherResourceTransition) and
          (ResourceTransition.fPass<>OtherResourceTransition.fPass) and
-         (ResourceTransition.fPass.fPhysicalPass<>OtherResourceTransition.fPass.fPhysicalPass) and
          (TPass.TFlag.Used in OtherResourceTransition.fPass.fFlags) and
          assigned(OtherResourceTransition.fPass.fPhysicalPass) then begin
-       OtherPass:=OtherResourceTransition.fPass;
-       if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
-          (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) and
-          (Pass.fPhysicalPass.fInputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
-        Pass.fPhysicalPass.fInputDependencies.Add(OtherPass.fPhysicalPass);
-       end;
-       if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
-          (OtherResourceTransition.fKind in TResourceTransition.AllInputs) and
-          (Pass.fPhysicalPass.fOutputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
-        Pass.fPhysicalPass.fOutputDependencies.Add(OtherPass.fPhysicalPass);
+       if ResourceTransition.fPass.fPhysicalPass=OtherResourceTransition.fPass.fPhysicalPass then begin
+        if (ResourceTransition.fPass is TRenderPass) and
+           (OtherResourceTransition.fPass is TRenderPass) and
+           (ResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
+           (OtherResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) then begin
+         if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
+            (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) and
+            (TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fInputSubPassDependencies.IndexOf(TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass)<0) then begin
+          TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fInputSubPassDependencies.Add(TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass);
+         end;
+         if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+            (OtherResourceTransition.fKind in TResourceTransition.AllInputs) and
+            (TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fOutputSubPassDependencies.IndexOf(TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass)<0) then begin
+          TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fOutputSubPassDependencies.Add(TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass);
+         end;
+        end;
+       end else begin
+        OtherPass:=OtherResourceTransition.fPass;
+        if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
+           (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) and
+           (Pass.fPhysicalPass.fInputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
+         Pass.fPhysicalPass.fInputDependencies.Add(OtherPass.fPhysicalPass);
+        end;
+        if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+           (OtherResourceTransition.fKind in TResourceTransition.AllInputs) and
+           (Pass.fPhysicalPass.fOutputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
+         Pass.fPhysicalPass.fOutputDependencies.Add(OtherPass.fPhysicalPass);
+        end;
        end;
       end;
      end;
