@@ -159,17 +159,22 @@ type EpvFrameGraph=class(Exception);
                    PKind=^TKind;
              public
               Kind:TKind;
-              Size:TpvVector3;
+              Size:TpvVector4;
               class function CreateEmpty:TAttachmentSize; static;
               constructor Create(const aKind:TAttachmentSize.TKind;
                                  const aWidth:tpvFloat=1.0;
                                  const aHeight:TpvFloat=1.0;
-                                 const aDepth:TpvFloat=1.0); overload;
+                                 const aDepth:TpvFloat=1.0;
+                                 const aLayers:TpvFloat=1.0); overload;
               constructor Create(const aKind:TAttachmentSize.TKind;
                                  const aSize:TpvVector2;
-                                 const aDepth:TpvFloat=1.0); overload;
+                                 const aDepth:TpvFloat=1.0;
+                                 const aLayers:TpvFloat=1.0); overload;
               constructor Create(const aKind:TAttachmentSize.TKind;
-                                 const aSize:TpvVector3); overload;
+                                 const aSize:TpvVector3;
+                                 const aLayers:TpvFloat=1.0); overload;
+              constructor Create(const aKind:TAttachmentSize.TKind;
+                                 const aSize:TpvVector4); overload;
               class operator Equal(const aLeft,aRight:TAttachmentSize):boolean;
               class operator NotEqual(const aLeft,aRight:TAttachmentSize):boolean;
             end;
@@ -788,28 +793,38 @@ end;
 class function TpvFrameGraph.TAttachmentSize.CreateEmpty:TAttachmentSize;
 begin
  result.Kind:=TpvFrameGraph.TAttachmentSize.TKind.Undefined;
- result.Size:=TpvVector3.Null;
+ result.Size:=TpvVector4.Null;
 end;
 
 constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;
                                                  const aWidth:TpvFloat=1.0;
                                                  const aHeight:TpvFloat=1.0;
-                                                 const aDepth:TpvFloat=1.0);
+                                                 const aDepth:TpvFloat=1.0;
+                                                 const aLayers:TpvFloat=1.0);
 begin
  Kind:=aKind;
- Size:=TpvVector3.InlineableCreate(aWidth,aHeight,aDepth);
+ Size:=TpvVector4.InlineableCreate(aWidth,aHeight,aDepth,aLayers);
 end;
 
 constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;
                                                  const aSize:TpvVector2;
-                                                 const aDepth:TpvFloat=1.0);
+                                                 const aDepth:TpvFloat=1.0;
+                                                 const aLayers:TpvFloat=1.0);
 begin
  Kind:=aKind;
- Size:=TpvVector3.InlineableCreate(aSize.x,aSize.y,aDepth);
+ Size:=TpvVector4.InlineableCreate(aSize.x,aSize.y,aDepth,aLayers);
 end;
 
 constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;
-                                                 const aSize:TpvVector3);
+                                                 const aSize:TpvVector3;
+                                                 const aLayers:TpvFloat=1.0);
+begin
+ Kind:=aKind;
+ Size:=TpvVector4.InlineableCreate(aSize,aLayers);
+end;
+
+constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;
+                                                 const aSize:TpvVector4);
 begin
  Kind:=aKind;
  Size:=aSize;
@@ -1049,10 +1064,12 @@ begin
   TpvFrameGraph.TAttachmentSize.TKind.Absolute:begin
    fExtent.width:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.x));
    fExtent.height:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.y));
+   fExtent.depth:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.z));
   end;
   TpvFrameGraph.TAttachmentSize.TKind.SurfaceDependent:begin
    fExtent.width:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.x*pvApplication.Width));
    fExtent.height:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.y*pvApplication.Height));
+   fExtent.depth:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.z));
   end;
   else {TpvFrameGraph.TAttachmentSize.TKind.Undefined:}begin
   end;
@@ -2431,8 +2448,7 @@ procedure TpvFrameGraph.Compile;
      Resource:TResource;
      ResourceTransition:TResourceTransition;
  begin
-  // Create meta data for Vulkan images, image views, frame buffers, render passes and so on, for
-  // processing this data in AfterCreateSwapChain and BeforeDestroySwapChain
+  // Create data for the resource reuse groups
   for ResourceReuseGroup in fResourceReuseGroups do begin
    ResourceType:=ResourceReuseGroup.fResourceType;
    case ResourceType.fMetaType of
@@ -2443,11 +2459,11 @@ procedure TpvFrameGraph.Compile;
       ResourcePhysicalAttachmentData.fResourceType:=ResourceType;
       ResourcePhysicalAttachmentData.fImageUsageFlags:=TVkImageUsageFlags(ResourceType.AttachmentData.ImageUsage);
       ResourcePhysicalAttachmentData.fFormat:=ResourceType.AttachmentData.Format;
-      ResourcePhysicalAttachmentData.fExtent.width:=1;
-      ResourcePhysicalAttachmentData.fExtent.height:=1;
-      ResourcePhysicalAttachmentData.fExtent.depth:=1;
+      ResourcePhysicalAttachmentData.fExtent.width:=Max(1,trunc(ResourceType.AttachmentData.AttachmentSize.Size.x));
+      ResourcePhysicalAttachmentData.fExtent.height:=Max(1,trunc(ResourceType.AttachmentData.AttachmentSize.Size.y));
+      ResourcePhysicalAttachmentData.fExtent.depth:=Max(1,trunc(ResourceType.AttachmentData.AttachmentSize.Size.z));
       ResourcePhysicalAttachmentData.fCountMipMaps:=1;
-      ResourcePhysicalAttachmentData.fCountArrayLayers:=trunc(ResourceType.AttachmentData.AttachmentSize.Size.z);
+      ResourcePhysicalAttachmentData.fCountArrayLayers:=trunc(ResourceType.AttachmentData.AttachmentSize.Size.w);
       ResourcePhysicalAttachmentData.fSamples:=ResourceType.AttachmentData.Samples;
       ResourcePhysicalAttachmentData.fTiling:=VK_IMAGE_TILING_OPTIMAL;
       ResourcePhysicalAttachmentData.fInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
