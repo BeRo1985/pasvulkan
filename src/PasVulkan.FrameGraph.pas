@@ -329,6 +329,7 @@ type EpvFrameGraph=class(Exception);
               fMinimumPhysicalPassStepIndex:TpvSizeInt;
               fMaximumPhysicalPassStepIndex:TpvSizeInt;
               fResourceReuseGroup:TResourceReuseGroup;
+              fAssociatedMemoryData:TObject;
               fUsed:boolean;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
@@ -344,6 +345,7 @@ type EpvFrameGraph=class(Exception);
               property ResourceType:TResourceType read fResourceType;
               property MinimumPhysicalPassStepIndex:TpvSizeInt read fMinimumPhysicalPassStepIndex;
               property MaximumPhysicalPassStepIndex:TpvSizeInt read fMaximumPhysicalPassStepIndex;
+              property AssociatedMemoryData:TObject read fAssociatedMemoryData write fAssociatedMemoryData;
               property Used:boolean read fUsed;
             end;
             TPass=class;
@@ -1951,493 +1953,561 @@ begin
 end;
 
 procedure TpvFrameGraph.Compile;
-type TAction=
-      (
-       Process,
-       Unmark,
-       Add
-      );
-     TStackItem=record
-      Action:TAction;
-      Pass:TPass;
-     end;
-     PStackItem=^TStackItem;
-     TStack=TpvDynamicStack<TStackItem>;
-     TPhysicalPassStackItem=record
-      Action:TAction;
-      PhysicalPass:TPhysicalPass;
-     end;
-     TPhysicalPassStack=TpvDynamicStack<TPhysicalPassStackItem>;
-     TResourceDynamicArray=TpvDynamicArray<TResource>;
- function NewStackItem(const aAction:TAction;const aPass:TPass):TStackItem;
+ function CanResourceReused(const aResource:TResource):boolean;
  begin
-  result.Action:=aAction;
-  result.Pass:=aPass;
+  result:=(aResource.fResourceType.fAttachmentData.AttachmentType<>TAttachmentType.Surface) and
+          (not ((aResource.fResourceType.fMetaType<>TResourceType.TMetaType.Attachment) and
+                assigned(aResource.fAssociatedMemoryData)));
  end;
- function NewPhysicalPassStackItem(const aAction:TAction;const aPhysicalPass:TPhysicalPass):TPhysicalPassStackItem;
+ procedure IndexingPasses;
+ var Index:TpvSizeInt;
  begin
-  result.Action:=aAction;
-  result.PhysicalPass:=aPhysicalPass;
- end;
-var Temporary,
-    Index,
-    OtherIndex,
-    Count,
-    BaseStackCount,
-    TagCounter,
-    FoundTag,
-    Weight:TpvSizeInt;
-    Pass,
-    OtherPass:TPass;
-    Passes:array[0..1] of TPass;
-    RenderPass:TRenderPass;
-    ResourceTransition,
-    OtherResourceTransition:TResourceTransition;
-    Resource,
-    OtherResource:TResource;
-    Stack:TStack;
-    StackItem:TStackItem;
-    OK:boolean;
-    ResourceDynamicArray:TResourceDynamicArray;
-    ResourceReuseGroup:TResourceReuseGroup;
-    ResourcePhysicalAttachmentData:TResourcePhysicalAttachmentData;
-    ResourceType:TResourceType;
-    TopologicalSortedPasses:TPassList;
-    PhysicalPass,
-    OtherPhysicalPass:TPhysicalPass;
-    PhysicalRenderPass:TPhysicalRenderPass;
-    PhysicalPassStack:TPhysicalPassStack;
-    PhysicalPassStackItem:TPhysicalPassStackItem;
-    Queue:TQueue;
-    MinimumTopologicalSortIndex:TpvSizeInt;
-begin
-
- // Indexing passes
- for Index:=0 to fPasses.Count-1 do begin
-  fPasses[Index].fIndex:=Index;
- end;
-
- // Validate that all attachments have the same size as defined in the render pass and that alll passes have a assigned queue
- for Pass in fPasses do begin
-  if not assigned(Pass.fQueue) then begin
-   raise EpvFrameGraphMissingQueue.Create('Pass "'+String(Pass.fName)+'" is without assigned queue');
-  end;
-  if Pass is TRenderPass then begin
-   RenderPass:=Pass as TRenderPass;
-   for ResourceTransition in RenderPass.fResourceTransitions do begin
-    if (ResourceTransition.fKind in TResourceTransition.AllAttachments) and
-       (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentSize<>RenderPass.fAttachmentSize) then begin
-     raise EpvFrameGraphMismatchAttachmentSize.Create('Mismatch attachment size between pass "'+String(Pass.fName)+'" and resource "'+String(ResourceTransition.fResource.fName)+'"');
-    end;
-   end;
+  // Indexing passes
+  for Index:=0 to fPasses.Count-1 do begin
+   fPasses[Index].fIndex:=Index;
   end;
  end;
-
- // Validate that all resources have at least one pass, which outputs this one resource
- for Resource in fResources do begin
-  OK:=false;
-  for ResourceTransition in Resource.fResourceTransitions do begin
-   if ResourceTransition.fKind in TResourceTransition.AllOutputs then begin
-    OK:=true;
-    break;
-   end;
-  end;
-  if not OK then begin
-   raise EpvFrameGraphMissedGeneratorPassForResource.Create('Missed generator pass for resource "'+String(Resource.fName)+'"');
-  end;
- end;
-
- // Validate that all resources do not have input and output transitions at a same pass at the same time
- ResourceDynamicArray.Initialize;
- try
+ procedure ValidateAttachments;
+ var Pass:TPass;
+     RenderPass:TRenderPass;
+     ResourceTransition:TResourceTransition;
+ begin
+  // Validate that all attachments have the same size as defined in the render pass and that alll passes have a assigned queue
   for Pass in fPasses do begin
-   ResourceDynamicArray.Clear;
-   for ResourceTransition in Pass.fResourceTransitions do begin
-    if ResourceTransition.fKind in TResourceTransition.AllInputs then begin
-     ResourceDynamicArray.Add(ResourceTransition.fResource);
-    end;
+   if not assigned(Pass.fQueue) then begin
+    raise EpvFrameGraphMissingQueue.Create('Pass "'+String(Pass.fName)+'" is without assigned queue');
    end;
-   for ResourceTransition in Pass.fResourceTransitions do begin
-    if ResourceTransition.fKind in TResourceTransition.AllOutputs then begin
-     for Resource in ResourceDynamicArray.Items do begin
-      if Resource=ResourceTransition.fResource then begin
-       raise EpvFrameGraphResourceUsedAsInputAndOutputInTheSamePassAtTheSameTime.Create('Resource "'+String(Resource.Name)+'" is used as input and output in pass "'+String(Pass.fName)+'" at the same time');
-      end;
-     end;
-    end;
-   end;
-  end;
- finally
-  ResourceDynamicArray.Finalize;
- end;
-
- // Find root pass (a render pass, which have only a single attachment output to a surface/swapchain)
- fRootPass:=fEnforcedRootPass;
- if not assigned(fRootPass) then begin
-  for Pass in fPasses do begin
    if Pass is TRenderPass then begin
     RenderPass:=Pass as TRenderPass;
-    Temporary:=0;
     for ResourceTransition in RenderPass.fResourceTransitions do begin
-     if ResourceTransition.fKind in TResourceTransition.AllAttachmentOutputs then begin
-      Resource:=ResourceTransition.fResource;
-      if (Resource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
-         (Resource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface) then begin
-       Temporary:=Temporary or 1;
-      end else if not ((Resource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
-                       (Resource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Depth)) then begin
-       Temporary:=Temporary or 2;
-       break;
-      end;
+     if (ResourceTransition.fKind in TResourceTransition.AllAttachments) and
+        (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentSize<>RenderPass.fAttachmentSize) then begin
+      raise EpvFrameGraphMismatchAttachmentSize.Create('Mismatch attachment size between pass "'+String(Pass.fName)+'" and resource "'+String(ResourceTransition.fResource.fName)+'"');
      end;
     end;
-    if Temporary=1 then begin
-     fRootPass:=Pass;
+   end;
+  end;
+ end;
+ procedure ValidateResources;
+ type TResourceDynamicArray=TpvDynamicArray<TResource>;
+ var Pass:TPass;
+     Resource:TResource;
+     ResourceTransition:TResourceTransition;
+     ResourceDynamicArray:TResourceDynamicArray;
+     OK:boolean;
+ begin
+
+  // Validate that all resources have at least one pass, which outputs this one resource
+  for Resource in fResources do begin
+   OK:=false;
+   for ResourceTransition in Resource.fResourceTransitions do begin
+    if ResourceTransition.fKind in TResourceTransition.AllOutputs then begin
+     OK:=true;
      break;
     end;
    end;
+   if not OK then begin
+    raise EpvFrameGraphMissedGeneratorPassForResource.Create('Missed generator pass for resource "'+String(Resource.fName)+'"');
+   end;
   end;
-  if not assigned(fRootPass) then begin
-   raise EpvFrameGraph.Create('No root pass found');
-  end;
- end;
 
- TopologicalSortedPasses:=TPassList.Create;
- try
-  TopologicalSortedPasses.OwnsObjects:=false;
-
-  // Construct the directed acyclic graph by doing a modified-DFS-based topological sort at the same time
-  Stack.Initialize;
+  // Validate that all resources do not have input and output transitions at a same pass at the same time
+  ResourceDynamicArray.Initialize;
   try
    for Pass in fPasses do begin
-    Pass.fPhysicalPass:=nil;
-    if Pass is TRenderPass then begin
-     TRenderPass(Pass).fPhysicalRenderPassSubPass:=nil;
+    ResourceDynamicArray.Clear;
+    for ResourceTransition in Pass.fResourceTransitions do begin
+     if ResourceTransition.fKind in TResourceTransition.AllInputs then begin
+      ResourceDynamicArray.Add(ResourceTransition.fResource);
+     end;
     end;
-    Pass.fFlags:=Pass.fFlags-[TPass.TFlag.Used,TPass.TFlag.Processed,TPass.TFlag.Marked];
-    Pass.fPreviousPasses.Clear;
-    Pass.fNextPasses.Clear;
-   end;
-   Stack.Push(NewStackItem(TAction.Process,fRootPass));
-   while Stack.Pop(StackItem) do begin
-    Pass:=StackItem.Pass;
-    case StackItem.Action of
-     TAction.Process:begin
-      if TPass.TFlag.Marked in Pass.fFlags then begin
-       raise EpvFrameGraphRecursion.Create('Recursion detected');
-      end;
-      Include(Pass.fFlags,TPass.TFlag.Marked);
-      if not (TPass.TFlag.Processed in Pass.fFlags) then begin
-       Pass.fFlags:=Pass.fFlags+[TPass.TFlag.Used,TPass.TFlag.Processed];
-       for ResourceTransition in Pass.fResourceTransitions do begin
-        if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
-           not (TResourceTransition.TFlag.PreviousFrameInput in ResourceTransition.Flags) then begin
-         Resource:=ResourceTransition.Resource;
-         for OtherResourceTransition in Resource.fResourceTransitions do begin
-          if (ResourceTransition<>OtherResourceTransition) and
-             (Pass<>OtherResourceTransition.fPass) and
-             (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
-           if Pass.fPreviousPasses.IndexOf(OtherResourceTransition.fPass)<0 then begin
-            Pass.fPreviousPasses.Add(OtherResourceTransition.fPass);
-           end;
-           if OtherResourceTransition.fPass.fNextPasses.IndexOf(Pass)<0 then begin
-            OtherResourceTransition.fPass.fNextPasses.Add(Pass);
-           end;
-          end;
-         end;
-        end;
+    for ResourceTransition in Pass.fResourceTransitions do begin
+     if ResourceTransition.fKind in TResourceTransition.AllOutputs then begin
+      for Resource in ResourceDynamicArray.Items do begin
+       if Resource=ResourceTransition.fResource then begin
+        raise EpvFrameGraphResourceUsedAsInputAndOutputInTheSamePassAtTheSameTime.Create('Resource "'+String(Resource.Name)+'" is used as input and output in pass "'+String(Pass.fName)+'" at the same time');
        end;
-       if Pass is TRenderPass then begin
-        // Pre-sort for better subpass grouping at a later point
-        Index:=0;
-        Count:=Pass.fPreviousPasses.Count;
-        while (Index+1)<Count do begin
-         Passes[0]:=Pass.fPreviousPasses[Index];
-         Passes[1]:=Pass.fPreviousPasses[Index+1];
-         if Passes[0].fQueue<>Passes[1].fQueue then begin
-          Weight:=(ord(Passes[0].fQueue=Pass.fQueue) and 1)-(ord(Passes[1].fQueue=Pass.fQueue) and 1);
-          if Weight=0 then begin
-           if TpvPtrUInt(Passes[0].fQueue)<TpvPtrUInt(Passes[1].fQueue) then begin
-            Weight:=-1;
-           end else begin
-            Weight:=1;
-           end;
-          end;
-         end else begin
-          Weight:=(ord(Passes[0] is TRenderPass) and 1)-(ord(Passes[1] is TRenderPass) and 1);
-          if Weight=0 then begin
-           Weight:=(ord(TRenderPass(Passes[0]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) and 1)-
-                   (ord(TRenderPass(Passes[1]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) and 1);
-          end;
-         end;
-         if Weight<0 then begin
-          Pass.fPreviousPasses.Exchange(Index,Index+1);
-          if Index>0 then begin
-           dec(Index);
-          end else begin
-           inc(Index);
-          end;
-         end else begin
-          inc(Index);
-         end;
-        end;
-       end;
-       Stack.Push(NewStackItem(TAction.Add,Pass));
       end;
-      Stack.Push(NewStackItem(TAction.Unmark,Pass));
-      for OtherPass in Pass.fPreviousPasses do begin
-       Stack.Push(NewStackItem(TAction.Process,OtherPass));
-      end;
-     end;
-     TAction.Unmark:begin
-      Exclude(Pass.fFlags,TPass.TFlag.Marked);
-     end;
-     TAction.Add:begin
-      Pass.fTopologicalSortIndex:=TopologicalSortedPasses.Add(Pass);
      end;
     end;
    end;
   finally
-   Stack.Finalize;
+   ResourceDynamicArray.Finalize;
   end;
 
-  // Construct choreography together with merging render passes to sub passes of a real
-  // physical render pass
-  fPhysicalPasses.Clear;
-  fMaximumOverallPhysicalPassIndex:=0;
-  Index:=0;
-  Count:=TopologicalSortedPasses.Count;
-  while Index<Count do begin
-   Pass:=TopologicalSortedPasses[Index];
-   if Pass is TComputePass then begin
-    Pass.fPhysicalPass:=TPhysicalComputePass.Create(self,TComputePass(Pass));
-    Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
-    inc(Index);
-   end else if Pass is TRenderPass then begin
-    PhysicalRenderPass:=TPhysicalRenderPass.Create(self,Pass.fQueue);
-    Pass.fPhysicalPass:=PhysicalRenderPass;
-    Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
-    TRenderPass(Pass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(Pass));
-    TRenderPass(Pass).fPhysicalRenderPassSubPass.fIndex:=PhysicalRenderPass.fSubPasses.Add(TRenderPass(Pass).fPhysicalRenderPassSubPass);
-    PhysicalRenderPass.fMultiView:=TRenderPass(Pass).fMultiViewMask<>0;
-    inc(Index);
-    if not (TPass.TFlag.Toggleable in Pass.fFlags) then begin
-     while Index<Count do begin
-      OtherPass:=TopologicalSortedPasses[Index];
-      if (not (TPass.TFlag.Toggleable in OtherPass.fFlags)) and
-         (OtherPass is TRenderPass) and
-         (TRenderPass(OtherPass).fQueue=TRenderPass(Pass).fQueue) and
-         (TRenderPass(OtherPass).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) then begin
-       OtherPass.fPhysicalPass:=Pass.fPhysicalPass;
-       TRenderPass(OtherPass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(OtherPass));
-       TRenderPass(OtherPass).fPhysicalRenderPassSubPass.fIndex:=PhysicalRenderPass.fSubPasses.Add(TRenderPass(OtherPass).fPhysicalRenderPassSubPass);
-       PhysicalRenderPass.fMultiView:=PhysicalRenderPass.fMultiView or (TRenderPass(OtherPass).fMultiViewMask<>0);
-       fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,OtherPass.fPhysicalPass.fIndex);
-       inc(Index);
-      end else begin
-       break;
+ end;
+ procedure FindRootPass;
+ var Pass:TPass;
+     RenderPass:TRenderPass;
+     Resource:TResource;
+     ResourceTransition:TResourceTransition;
+     Temporary:TpvSizeUInt;
+ begin
+  // Find root pass (a render pass, which have only a single attachment output to a surface/swapchain)
+  fRootPass:=fEnforcedRootPass;
+  if not assigned(fRootPass) then begin
+   for Pass in fPasses do begin
+    if Pass is TRenderPass then begin
+     RenderPass:=Pass as TRenderPass;
+     Temporary:=0;
+     for ResourceTransition in RenderPass.fResourceTransitions do begin
+      if ResourceTransition.fKind in TResourceTransition.AllAttachmentOutputs then begin
+       Resource:=ResourceTransition.fResource;
+       if (Resource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
+          (Resource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface) then begin
+        Temporary:=Temporary or 1;
+       end else if not ((Resource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
+                        (Resource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Depth)) then begin
+        Temporary:=Temporary or 2;
+        break;
+       end;
       end;
      end;
-    end;
-   end else begin
-    inc(Index);
-   end;
-   fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,Pass.fPhysicalPass.fIndex);
-  end;
-
- finally
-  FreeAndNil(TopologicalSortedPasses);
- end;
-
- // Construct new directed acyclic graph from the physical passes by transfering the
- // dependency informations from the graph passes to the physical passes
- fRootPhysicalPass:=nil;
- for Pass in fPasses do begin
-  if (TPass.TFlag.Used in Pass.fFlags) and
-     assigned(Pass.fPhysicalPass) then begin
-   if Pass=fRootPass then begin
-    fRootPhysicalPass:=Pass.fPhysicalPass;
-   end;
-   for ResourceTransition in Pass.fResourceTransitions do begin
-    Resource:=ResourceTransition.fResource;
-    for OtherResourceTransition in Resource.fResourceTransitions do begin
-     if (ResourceTransition<>OtherResourceTransition) and
-        (ResourceTransition.fPass<>OtherResourceTransition.fPass) and
-        (ResourceTransition.fPass.fPhysicalPass<>OtherResourceTransition.fPass.fPhysicalPass) and
-        (TPass.TFlag.Used in OtherResourceTransition.fPass.fFlags) and
-        assigned(OtherResourceTransition.fPass.fPhysicalPass) then begin
-      OtherPass:=OtherResourceTransition.fPass;
-      if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
-         (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) and
-         (Pass.fPhysicalPass.fInputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
-       Pass.fPhysicalPass.fInputDependencies.Add(OtherPass.fPhysicalPass);
-      end;
-      if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
-         (OtherResourceTransition.fKind in TResourceTransition.AllInputs) and
-         (Pass.fPhysicalPass.fOutputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
-       Pass.fPhysicalPass.fOutputDependencies.Add(OtherPass.fPhysicalPass);
-      end;
+     if Temporary=1 then begin
+      fRootPass:=Pass;
+      break;
      end;
     end;
    end;
+   if not assigned(fRootPass) then begin
+    raise EpvFrameGraph.Create('No root pass found');
+   end;
   end;
  end;
- if not assigned(fRootPhysicalPass) then begin
-  raise EpvFrameGraph.Create('No root physical pass found');
- end;
+ procedure ConstructDirectedAcyclicGraphAndPhysicalPassChoreography;
+ type TAction=
+       (
+        Process,
+        Unmark,
+        Add
+       );
+      TStackItem=record
+       Action:TAction;
+       Pass:TPass;
+      end;
+      PStackItem=^TStackItem;
+      TStack=TpvDynamicStack<TStackItem>;
+  function NewStackItem(const aAction:TAction;const aPass:TPass):TStackItem;
+  begin
+   result.Action:=aAction;
+   result.Pass:=aPass;
+  end;
+ var Index,
+     Count,
+     Weight:TpvSizeInt;
+     TopologicalSortedPasses:TPassList;
+     Stack:TStack;
+     StackItem:TStackItem;
+     Pass,
+     OtherPass:TPass;
+     ResourceTransition,
+     OtherResourceTransition:TResourceTransition;
+     Resource:TResource;
+     PhysicalRenderPass:TPhysicalRenderPass;
+ begin
 
- // Calculate resource lifetimes (from minimum choreography step index to maximum
- // physical pass step index) for calculating aliasing and reusing of resources at a later point
- for Resource in fResources do begin
-  Resource.fMinimumPhysicalPassStepIndex:=High(TpvSizeInt);
-  Resource.fMaximumPhysicalPassStepIndex:=Low(TpvSizeInt);
-  for ResourceTransition in Resource.fResourceTransitions do begin
-   Pass:=ResourceTransition.fPass;
-   if assigned(Pass.fPhysicalPass) then begin
-    if ((ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
-                                    TResourceTransition.TFlag.NextFrameOutput])<>[]) or
-       ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
-        (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface)) then begin
-     // In this cases, this one resource must life from the begin to the end of the whole
-     // directed acyclic graph for the simplicity of safety, because it can be still optimized
-     // in a better way later
-     if not Resource.fUsed then begin
-      Resource.fUsed:=true;
-      Resource.fMinimumPhysicalPassStepIndex:=0;
-      Resource.fMaximumPhysicalPassStepIndex:=fMaximumOverallPhysicalPassIndex;
+  TopologicalSortedPasses:=TPassList.Create;
+  try
+   TopologicalSortedPasses.OwnsObjects:=false;
+
+   // Construct the directed acyclic graph by doing a modified-DFS-based topological sort at the same time
+   Stack.Initialize;
+   try
+    for Pass in fPasses do begin
+     Pass.fPhysicalPass:=nil;
+     if Pass is TRenderPass then begin
+      TRenderPass(Pass).fPhysicalRenderPassSubPass:=nil;
+     end;
+     Pass.fFlags:=Pass.fFlags-[TPass.TFlag.Used,TPass.TFlag.Processed,TPass.TFlag.Marked];
+     Pass.fPreviousPasses.Clear;
+     Pass.fNextPasses.Clear;
+    end;
+    Stack.Push(NewStackItem(TAction.Process,fRootPass));
+    while Stack.Pop(StackItem) do begin
+     Pass:=StackItem.Pass;
+     case StackItem.Action of
+      TAction.Process:begin
+       if TPass.TFlag.Marked in Pass.fFlags then begin
+        raise EpvFrameGraphRecursion.Create('Recursion detected');
+       end;
+       Include(Pass.fFlags,TPass.TFlag.Marked);
+       if not (TPass.TFlag.Processed in Pass.fFlags) then begin
+        Pass.fFlags:=Pass.fFlags+[TPass.TFlag.Used,TPass.TFlag.Processed];
+        for ResourceTransition in Pass.fResourceTransitions do begin
+         if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
+            not (TResourceTransition.TFlag.PreviousFrameInput in ResourceTransition.Flags) then begin
+          Resource:=ResourceTransition.Resource;
+          for OtherResourceTransition in Resource.fResourceTransitions do begin
+           if (ResourceTransition<>OtherResourceTransition) and
+              (Pass<>OtherResourceTransition.fPass) and
+              (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
+            if Pass.fPreviousPasses.IndexOf(OtherResourceTransition.fPass)<0 then begin
+             Pass.fPreviousPasses.Add(OtherResourceTransition.fPass);
+            end;
+            if OtherResourceTransition.fPass.fNextPasses.IndexOf(Pass)<0 then begin
+             OtherResourceTransition.fPass.fNextPasses.Add(Pass);
+            end;
+           end;
+          end;
+         end;
+        end;
+        if Pass is TRenderPass then begin
+         // Pre-sort for better subpass grouping at a later point
+         Index:=0;
+         Count:=Pass.fPreviousPasses.Count;
+         while (Index+1)<Count do begin
+          Passes[0]:=Pass.fPreviousPasses[Index];
+          Passes[1]:=Pass.fPreviousPasses[Index+1];
+          if Passes[0].fQueue<>Passes[1].fQueue then begin
+           Weight:=(ord(Passes[0].fQueue=Pass.fQueue) and 1)-(ord(Passes[1].fQueue=Pass.fQueue) and 1);
+           if Weight=0 then begin
+            if TpvPtrUInt(Passes[0].fQueue)<TpvPtrUInt(Passes[1].fQueue) then begin
+             Weight:=-1;
+            end else begin
+             Weight:=1;
+            end;
+           end;
+          end else begin
+           Weight:=(ord(Passes[0] is TRenderPass) and 1)-(ord(Passes[1] is TRenderPass) and 1);
+           if Weight=0 then begin
+            Weight:=(ord(TRenderPass(Passes[0]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) and 1)-
+                    (ord(TRenderPass(Passes[1]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) and 1);
+           end;
+          end;
+          if Weight<0 then begin
+           Pass.fPreviousPasses.Exchange(Index,Index+1);
+           if Index>0 then begin
+            dec(Index);
+           end else begin
+            inc(Index);
+           end;
+          end else begin
+           inc(Index);
+          end;
+         end;
+        end;
+        Stack.Push(NewStackItem(TAction.Add,Pass));
+       end;
+       Stack.Push(NewStackItem(TAction.Unmark,Pass));
+       for OtherPass in Pass.fPreviousPasses do begin
+        Stack.Push(NewStackItem(TAction.Process,OtherPass));
+       end;
+      end;
+      TAction.Unmark:begin
+       Exclude(Pass.fFlags,TPass.TFlag.Marked);
+      end;
+      TAction.Add:begin
+       Pass.fTopologicalSortIndex:=TopologicalSortedPasses.Add(Pass);
+      end;
+     end;
+    end;
+   finally
+    Stack.Finalize;
+   end;
+
+   // Construct choreography together with merging render passes to sub passes of a real
+   // physical render pass
+   fPhysicalPasses.Clear;
+   fMaximumOverallPhysicalPassIndex:=0;
+   Index:=0;
+   Count:=TopologicalSortedPasses.Count;
+   while Index<Count do begin
+    Pass:=TopologicalSortedPasses[Index];
+    if Pass is TComputePass then begin
+     Pass.fPhysicalPass:=TPhysicalComputePass.Create(self,TComputePass(Pass));
+     Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
+     inc(Index);
+    end else if Pass is TRenderPass then begin
+     PhysicalRenderPass:=TPhysicalRenderPass.Create(self,Pass.fQueue);
+     Pass.fPhysicalPass:=PhysicalRenderPass;
+     Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
+     TRenderPass(Pass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(Pass));
+     TRenderPass(Pass).fPhysicalRenderPassSubPass.fIndex:=PhysicalRenderPass.fSubPasses.Add(TRenderPass(Pass).fPhysicalRenderPassSubPass);
+     PhysicalRenderPass.fMultiView:=TRenderPass(Pass).fMultiViewMask<>0;
+     inc(Index);
+     if not (TPass.TFlag.Toggleable in Pass.fFlags) then begin
+      while Index<Count do begin
+       OtherPass:=TopologicalSortedPasses[Index];
+       if (not (TPass.TFlag.Toggleable in OtherPass.fFlags)) and
+          (OtherPass is TRenderPass) and
+          (TRenderPass(OtherPass).fQueue=TRenderPass(Pass).fQueue) and
+          (TRenderPass(OtherPass).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) then begin
+        OtherPass.fPhysicalPass:=Pass.fPhysicalPass;
+        TRenderPass(OtherPass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(OtherPass));
+        TRenderPass(OtherPass).fPhysicalRenderPassSubPass.fIndex:=PhysicalRenderPass.fSubPasses.Add(TRenderPass(OtherPass).fPhysicalRenderPassSubPass);
+        PhysicalRenderPass.fMultiView:=PhysicalRenderPass.fMultiView or (TRenderPass(OtherPass).fMultiViewMask<>0);
+        fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,OtherPass.fPhysicalPass.fIndex);
+        inc(Index);
+       end else begin
+        break;
+       end;
+      end;
      end;
     end else begin
-     if Resource.fUsed then begin
-      Resource.fMinimumPhysicalPassStepIndex:=Min(Resource.fMinimumPhysicalPassStepIndex,Pass.fPhysicalPass.fIndex);
-      Resource.fMaximumPhysicalPassStepIndex:=Max(Resource.fMaximumPhysicalPassStepIndex,Pass.fPhysicalPass.fIndex);
-     end else begin
-      Resource.fUsed:=true;
-      Resource.fMinimumPhysicalPassStepIndex:=Pass.fPhysicalPass.fIndex;
-      Resource.fMaximumPhysicalPassStepIndex:=Pass.fPhysicalPass.fIndex;
-     end;
+     inc(Index);
     end;
+    fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,Pass.fPhysicalPass.fIndex);
    end;
+
+  finally
+   FreeAndNil(TopologicalSortedPasses);
   end;
  end;
-
- // Calculate resource reuse groups, depending on the non-intersecting resource lifetime span
- // segments and resource types
- for Resource in fResources do begin
-  Resource.fResourceReuseGroup:=nil;
- end;
- fResourceReuseGroups.Clear;
- for Index:=0 to fResources.Count-1 do begin
-  Resource:=fResources.Items[Index];
-  if not assigned(Resource.fResourceReuseGroup) then begin
-   Resource.fResourceReuseGroup:=TResourceReuseGroup.Create(self);
-   Resource.fResourceReuseGroup.fResourceType:=Resource.fResourceType;
-   Resource.fResourceReuseGroup.fResources.Add(Resource);
-   for OtherIndex:=Index+1 to fResources.Count-1 do begin
-    OtherResource:=fResources.Items[OtherIndex];
-    if (not assigned(OtherResource.fResourceReuseGroup)) and
-       (Resource.fResourceType=OtherResource.fResourceType) and
-       (Min(Resource.fMaximumPhysicalPassStepIndex,
-            OtherResource.fMaximumPhysicalPassStepIndex)>Max(Resource.fMinimumPhysicalPassStepIndex,
-                                                             OtherResource.fMinimumPhysicalPassStepIndex)) then begin
-     OtherResource.fResourceReuseGroup:=Resource.fResourceReuseGroup;
-     OtherResource.fResourceReuseGroup.fResources.Add(OtherResource);
+ procedure ConstructPhysicalPassDirectedAcyclicGraph;
+ var Pass,
+     OtherPass:TPass;
+     ResourceTransition,
+     OtherResourceTransition:TResourceTransition;
+     Resource:TResource;
+ begin
+  // Construct new directed acyclic graph from the physical passes by transfering the
+  // dependency informations from the graph passes to the physical passes
+  fRootPhysicalPass:=nil;
+  for Pass in fPasses do begin
+   if (TPass.TFlag.Used in Pass.fFlags) and
+      assigned(Pass.fPhysicalPass) then begin
+    if Pass=fRootPass then begin
+     fRootPhysicalPass:=Pass.fPhysicalPass;
     end;
-   end;
-  end;
- end;
-
- // Create sequences of queue physical passes
- PhysicalPassStack.Initialize;
- try
-  for PhysicalPass in fPhysicalPasses do begin
-   PhysicalPass.fProcessed:=false;
-  end;
-  PhysicalPassStack.Push(NewPhysicalPassStackItem(TAction.Process,fRootPhysicalPass));
-  while PhysicalPassStack.Pop(PhysicalPassStackItem) do begin
-   case PhysicalPassStackItem.Action of
-    TAction.Process:begin
-     if not PhysicalPassStackItem.PhysicalPass.fProcessed then begin
-      PhysicalPassStackItem.PhysicalPass.fProcessed:=true;
-      PhysicalPassStack.Push(NewPhysicalPassStackItem(TAction.Add,PhysicalPassStackItem.PhysicalPass));
-      for OtherPhysicalPass in PhysicalPassStackItem.PhysicalPass.fInputDependencies do begin
-       if (PhysicalPassStackItem.PhysicalPass<>OtherPhysicalPass) and not OtherPhysicalPass.fProcessed then begin
-        PhysicalPassStack.Push(NewPhysicalPassStackItem(TAction.Process,OtherPhysicalPass));
+    for ResourceTransition in Pass.fResourceTransitions do begin
+     Resource:=ResourceTransition.fResource;
+     for OtherResourceTransition in Resource.fResourceTransitions do begin
+      if (ResourceTransition<>OtherResourceTransition) and
+         (ResourceTransition.fPass<>OtherResourceTransition.fPass) and
+         (ResourceTransition.fPass.fPhysicalPass<>OtherResourceTransition.fPass.fPhysicalPass) and
+         (TPass.TFlag.Used in OtherResourceTransition.fPass.fFlags) and
+         assigned(OtherResourceTransition.fPass.fPhysicalPass) then begin
+       OtherPass:=OtherResourceTransition.fPass;
+       if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
+          (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) and
+          (Pass.fPhysicalPass.fInputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
+        Pass.fPhysicalPass.fInputDependencies.Add(OtherPass.fPhysicalPass);
+       end;
+       if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+          (OtherResourceTransition.fKind in TResourceTransition.AllInputs) and
+          (Pass.fPhysicalPass.fOutputDependencies.IndexOf(OtherPass.fPhysicalPass)<0) then begin
+        Pass.fPhysicalPass.fOutputDependencies.Add(OtherPass.fPhysicalPass);
        end;
       end;
      end;
     end;
-    TAction.Add:begin
-     PhysicalPassStackItem.PhysicalPass.fQueue.fPhysicalPasses.Add(PhysicalPassStackItem.PhysicalPass);
+   end;
+  end;
+  if not assigned(fRootPhysicalPass) then begin
+   raise EpvFrameGraph.Create('No root physical pass found');
+  end;
+ end;
+ procedure CalculateResourceLifetimes;
+ var Pass:TPass;
+     Resource:TResource;
+     ResourceTransition:TResourceTransition;
+ begin
+  // Calculate resource lifetimes (from minimum physical pass step index to maximum
+  // physical pass step index) for calculating aliasing and reusing of resources at a later point
+  for Resource in fResources do begin
+   Resource.fMinimumPhysicalPassStepIndex:=High(TpvSizeInt);
+   Resource.fMaximumPhysicalPassStepIndex:=Low(TpvSizeInt);
+   for ResourceTransition in Resource.fResourceTransitions do begin
+    Pass:=ResourceTransition.fPass;
+    if assigned(Pass.fPhysicalPass) then begin
+     if ((ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
+                                     TResourceTransition.TFlag.NextFrameOutput])<>[]) or
+        ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
+         (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface)) then begin
+      // In this cases, this one resource must life from the begin to the end of the whole
+      // directed acyclic graph for the simplicity of safety, because it can be still optimized
+      // in a better way later
+      if not Resource.fUsed then begin
+       Resource.fUsed:=true;
+       Resource.fMinimumPhysicalPassStepIndex:=0;
+       Resource.fMaximumPhysicalPassStepIndex:=fMaximumOverallPhysicalPassIndex;
+      end;
+     end else begin
+      if Resource.fUsed then begin
+       Resource.fMinimumPhysicalPassStepIndex:=Min(Resource.fMinimumPhysicalPassStepIndex,Pass.fPhysicalPass.fIndex);
+       Resource.fMaximumPhysicalPassStepIndex:=Max(Resource.fMaximumPhysicalPassStepIndex,Pass.fPhysicalPass.fIndex);
+      end else begin
+       Resource.fUsed:=true;
+       Resource.fMinimumPhysicalPassStepIndex:=Pass.fPhysicalPass.fIndex;
+       Resource.fMaximumPhysicalPassStepIndex:=Pass.fPhysicalPass.fIndex;
+      end;
+     end;
     end;
    end;
   end;
- finally
-  PhysicalPassStack.Finalize;
  end;
-
- // Create meta data for Vulkan images, image views, frame buffers, render passes and so on, for
- // processing this data in AfterCreateSwapChain and BeforeDestroySwapChain
- for ResourceReuseGroup in fResourceReuseGroups do begin
-  ResourceType:=ResourceReuseGroup.fResourceType;
-  case ResourceType.fMetaType of
-   TpvFrameGraph.TResourceType.TMetaType.Attachment:begin
-    if not assigned(ResourceReuseGroup.fResourcePhysicalData) then begin
-     ResourceReuseGroup.fResourcePhysicalData:=TResourcePhysicalAttachmentData.Create(self);
-     ResourcePhysicalAttachmentData:=TResourcePhysicalAttachmentData(ResourceReuseGroup.fResourcePhysicalData);
-     ResourcePhysicalAttachmentData.fResourceType:=ResourceType;
-     ResourcePhysicalAttachmentData.fImageUsageFlags:=TVkImageUsageFlags(ResourceType.AttachmentData.ImageUsage);
-     ResourcePhysicalAttachmentData.fFormat:=ResourceType.AttachmentData.Format;
-     ResourcePhysicalAttachmentData.fExtent.width:=1;
-     ResourcePhysicalAttachmentData.fExtent.height:=1;
-     ResourcePhysicalAttachmentData.fExtent.depth:=1;
-     ResourcePhysicalAttachmentData.fCountMipMaps:=1;
-     ResourcePhysicalAttachmentData.fCountArrayLayers:=trunc(ResourceType.AttachmentData.AttachmentSize.Size.z);
-     ResourcePhysicalAttachmentData.fSamples:=ResourceType.AttachmentData.Samples;
-     ResourcePhysicalAttachmentData.fTiling:=VK_IMAGE_TILING_OPTIMAL;
-     ResourcePhysicalAttachmentData.fInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
-     ResourcePhysicalAttachmentData.fFirstInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
-     MinimumTopologicalSortIndex:=High(TpvSizeInt);
-     for Resource in ResourceReuseGroup.fResources do begin
-      for ResourceTransition in Resource.fResourceTransitions do begin
-       if ResourceTransition.fPass.fTopologicalSortIndex<MinimumTopologicalSortIndex then begin
-        MinimumTopologicalSortIndex:=ResourceTransition.fPass.fTopologicalSortIndex;
-        ResourcePhysicalAttachmentData.fFirstInitialLayout:=ResourceTransition.fLayout;
+ procedure CalculateResourceReuseGroups;
+ var Index,
+     OtherIndex:TpvSizeInt;
+     Resource,
+     OtherResource:TResource;
+     ResourceTransition:TResourceTransition;
+ begin
+  // Calculate resource reuse groups, depending on the non-intersecting resource lifetime span
+  // segments and resource types
+  for Resource in fResources do begin
+   Resource.fResourceReuseGroup:=nil;
+  end;
+  fResourceReuseGroups.Clear;
+  for Index:=0 to fResources.Count-1 do begin
+   Resource:=fResources.Items[Index];
+   if not assigned(Resource.fResourceReuseGroup) then begin
+    Resource.fResourceReuseGroup:=TResourceReuseGroup.Create(self);
+    Resource.fResourceReuseGroup.fResourceType:=Resource.fResourceType;
+    Resource.fResourceReuseGroup.fResources.Add(Resource);
+    if CanResourceReused(Resource) then begin
+     for OtherIndex:=Index+1 to fResources.Count-1 do begin
+      OtherResource:=fResources.Items[OtherIndex];
+      if (not assigned(OtherResource.fResourceReuseGroup)) and
+         (Resource.fResourceType=OtherResource.fResourceType) and
+         CanResourceReused(OtherResource) and
+         (Min(Resource.fMaximumPhysicalPassStepIndex,
+              OtherResource.fMaximumPhysicalPassStepIndex)>Max(Resource.fMinimumPhysicalPassStepIndex,
+                                                               OtherResource.fMinimumPhysicalPassStepIndex)) then begin
+       OtherResource.fResourceReuseGroup:=Resource.fResourceReuseGroup;
+       OtherResource.fResourceReuseGroup.fResources.Add(OtherResource);
+      end;
+     end;
+    end;
+   end;
+  end;
+ end;
+ procedure CreatePhysicalPassQueueSequences;
+ type TAction=
+       (
+        Process,
+        Unmark,
+        Add
+       );
+      TPhysicalPassStackItem=record
+       Action:TAction;
+       PhysicalPass:TPhysicalPass;
+      end;
+      TPhysicalPassStack=TpvDynamicStack<TPhysicalPassStackItem>;
+  function NewPhysicalPassStackItem(const aAction:TAction;const aPhysicalPass:TPhysicalPass):TPhysicalPassStackItem;
+  begin
+   result.Action:=aAction;
+   result.PhysicalPass:=aPhysicalPass;
+  end;
+ var PhysicalPassStack:TPhysicalPassStack;
+     PhysicalPass,
+     OtherPhysicalPass:TPhysicalPass;
+     PhysicalPassStackItem:TPhysicalPassStackItem;
+ begin
+  // Create sequences of queue physical passes
+  PhysicalPassStack.Initialize;
+  try
+   for PhysicalPass in fPhysicalPasses do begin
+    PhysicalPass.fProcessed:=false;
+   end;
+   PhysicalPassStack.Push(NewPhysicalPassStackItem(TAction.Process,fRootPhysicalPass));
+   while PhysicalPassStack.Pop(PhysicalPassStackItem) do begin
+    case PhysicalPassStackItem.Action of
+     TAction.Process:begin
+      if not PhysicalPassStackItem.PhysicalPass.fProcessed then begin
+       PhysicalPassStackItem.PhysicalPass.fProcessed:=true;
+       PhysicalPassStack.Push(NewPhysicalPassStackItem(TAction.Add,PhysicalPassStackItem.PhysicalPass));
+       for OtherPhysicalPass in PhysicalPassStackItem.PhysicalPass.fInputDependencies do begin
+        if (PhysicalPassStackItem.PhysicalPass<>OtherPhysicalPass) and not OtherPhysicalPass.fProcessed then begin
+         PhysicalPassStack.Push(NewPhysicalPassStackItem(TAction.Process,OtherPhysicalPass));
+        end;
        end;
       end;
      end;
-     ResourcePhysicalAttachmentData.fImageCreateFlags:=0;
-     ResourcePhysicalAttachmentData.fImageType:=VK_IMAGE_TYPE_2D;
-     ResourcePhysicalAttachmentData.fSharingMode:=VK_SHARING_MODE_EXCLUSIVE;
-     ResourcePhysicalAttachmentData.fImageSubresourceRange.aspectMask:=ResourceType.AttachmentData.AttachmentType.GetAspectMask;
-     ResourcePhysicalAttachmentData.fImageSubresourceRange.baseMipLevel:=0;
-     ResourcePhysicalAttachmentData.fImageSubresourceRange.levelCount:=1;
-     ResourcePhysicalAttachmentData.fImageSubresourceRange.baseArrayLayer:=0;
-     ResourcePhysicalAttachmentData.fImageSubresourceRange.layerCount:=ResourcePhysicalAttachmentData.fCountArrayLayers;
-     if ResourcePhysicalAttachmentData.fImageSubresourceRange.layerCount>1 then begin
-      ResourcePhysicalAttachmentData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-     end else begin
-      ResourcePhysicalAttachmentData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D;
+     TAction.Add:begin
+      PhysicalPassStackItem.PhysicalPass.fQueue.fPhysicalPasses.Add(PhysicalPassStackItem.PhysicalPass);
      end;
-     ResourcePhysicalAttachmentData.fComponents:=ResourceType.fAttachmentData.Components;
     end;
    end;
-   TpvFrameGraph.TResourceType.TMetaType.Image:begin
-   end;
-   TpvFrameGraph.TResourceType.TMetaType.Buffer:begin
-   end;
-   else {TpvFrameGraph.TResourceType.TMetaType.None:}begin
-//  raise EpvFrameGraph.Create('Invalid meta type');
+  finally
+   PhysicalPassStack.Finalize;
+  end;
+ end;
+ procedure CreateResourceReuseGroupData;
+ var MinimumTopologicalSortIndex:TpvSizeInt;
+     ResourceReuseGroup:TResourceReuseGroup;
+     ResourceType:TResourceType;
+     ResourcePhysicalAttachmentData:TResourcePhysicalAttachmentData;
+     Resource:TResource;
+     ResourceTransition:TResourceTransition;
+ begin
+  // Create meta data for Vulkan images, image views, frame buffers, render passes and so on, for
+  // processing this data in AfterCreateSwapChain and BeforeDestroySwapChain
+  for ResourceReuseGroup in fResourceReuseGroups do begin
+   ResourceType:=ResourceReuseGroup.fResourceType;
+   case ResourceType.fMetaType of
+    TpvFrameGraph.TResourceType.TMetaType.Attachment:begin
+     if not assigned(ResourceReuseGroup.fResourcePhysicalData) then begin
+      ResourceReuseGroup.fResourcePhysicalData:=TResourcePhysicalAttachmentData.Create(self);
+      ResourcePhysicalAttachmentData:=TResourcePhysicalAttachmentData(ResourceReuseGroup.fResourcePhysicalData);
+      ResourcePhysicalAttachmentData.fResourceType:=ResourceType;
+      ResourcePhysicalAttachmentData.fImageUsageFlags:=TVkImageUsageFlags(ResourceType.AttachmentData.ImageUsage);
+      ResourcePhysicalAttachmentData.fFormat:=ResourceType.AttachmentData.Format;
+      ResourcePhysicalAttachmentData.fExtent.width:=1;
+      ResourcePhysicalAttachmentData.fExtent.height:=1;
+      ResourcePhysicalAttachmentData.fExtent.depth:=1;
+      ResourcePhysicalAttachmentData.fCountMipMaps:=1;
+      ResourcePhysicalAttachmentData.fCountArrayLayers:=trunc(ResourceType.AttachmentData.AttachmentSize.Size.z);
+      ResourcePhysicalAttachmentData.fSamples:=ResourceType.AttachmentData.Samples;
+      ResourcePhysicalAttachmentData.fTiling:=VK_IMAGE_TILING_OPTIMAL;
+      ResourcePhysicalAttachmentData.fInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+      ResourcePhysicalAttachmentData.fFirstInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+      MinimumTopologicalSortIndex:=High(TpvSizeInt);
+      for Resource in ResourceReuseGroup.fResources do begin
+       for ResourceTransition in Resource.fResourceTransitions do begin
+        if ResourceTransition.fPass.fTopologicalSortIndex<MinimumTopologicalSortIndex then begin
+         MinimumTopologicalSortIndex:=ResourceTransition.fPass.fTopologicalSortIndex;
+         ResourcePhysicalAttachmentData.fFirstInitialLayout:=ResourceTransition.fLayout;
+        end;
+       end;
+      end;
+      ResourcePhysicalAttachmentData.fImageCreateFlags:=0;
+      ResourcePhysicalAttachmentData.fImageType:=VK_IMAGE_TYPE_2D;
+      ResourcePhysicalAttachmentData.fSharingMode:=VK_SHARING_MODE_EXCLUSIVE;
+      ResourcePhysicalAttachmentData.fImageSubresourceRange.aspectMask:=ResourceType.AttachmentData.AttachmentType.GetAspectMask;
+      ResourcePhysicalAttachmentData.fImageSubresourceRange.baseMipLevel:=0;
+      ResourcePhysicalAttachmentData.fImageSubresourceRange.levelCount:=1;
+      ResourcePhysicalAttachmentData.fImageSubresourceRange.baseArrayLayer:=0;
+      ResourcePhysicalAttachmentData.fImageSubresourceRange.layerCount:=ResourcePhysicalAttachmentData.fCountArrayLayers;
+      if ResourcePhysicalAttachmentData.fImageSubresourceRange.layerCount>1 then begin
+       ResourcePhysicalAttachmentData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+      end else begin
+       ResourcePhysicalAttachmentData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D;
+      end;
+      ResourcePhysicalAttachmentData.fComponents:=ResourceType.fAttachmentData.Components;
+     end;
+    end;
+    TpvFrameGraph.TResourceType.TMetaType.Image:begin
+    end;
+    TpvFrameGraph.TResourceType.TMetaType.Buffer:begin
+    end;
+    else {TpvFrameGraph.TResourceType.TMetaType.None:}begin
+ //  raise EpvFrameGraph.Create('Invalid meta type');
+    end;
    end;
   end;
  end;
+begin
 
- for Pass in fPasses do begin
-  if TPass.TFlag.Used in Pass.fFlags then begin
-   if Pass is TComputePass then begin
-   end else if Pass is TRenderPass then begin
-   end;
-  end;
- end;
+ IndexingPasses;
+
+ ValidateAttachments;
+
+ ValidateResources;
+
+ FindRootPass;
+
+ ConstructDirectedAcyclicGraphAndPhysicalPassChoreography;
+
+ ConstructPhysicalPassDirectedAcyclicGraph;
+
+ CalculateResourceLifetimes;
+
+ CalculateResourceReuseGroups;
+
+ CreatePhysicalPassQueueSequences;
+
+ CreateResourceReuseGroupData;
 
 end;
 
