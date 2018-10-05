@@ -1988,6 +1988,75 @@ begin
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.AfterCreateSwapChain;
+ function GetPipelineStageMask(const aResourceTransition:TResourceTransition):TVkPipelineStageFlags;
+ begin
+  case aResourceTransition.fKind of
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentInput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentOutput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentResolveOutput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthInput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthOutput:begin
+    case aResourceTransition.fLayout of
+     VK_IMAGE_LAYOUT_GENERAL,
+     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:begin
+      result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+     end;
+     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
+      result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+     end;
+     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
+      result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
+     end;
+     else {VK_IMAGE_LAYOUT_UNDEFINED:}begin
+      result:=0;
+     end;
+    end;
+   end;
+   TpvFrameGraph.TResourceTransition.TKind.BufferInput,
+   TpvFrameGraph.TResourceTransition.TKind.BufferOutput:begin
+    result:=aResourceTransition.PipelineStage;
+   end;
+   else begin
+    result:=0;
+   end;
+  end;
+ end;
+ procedure GetPipelineStageMasks(const aFromResourceTransition:TResourceTransition;
+                                 const aToResourceTransition:TResourceTransition;
+                                 out aSrcStageMask:TVkPipelineStageFlags;
+                                 out aDstStageMask:TVkPipelineStageFlags);
+ begin
+  case aFromResourceTransition.fKind of
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentOutput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentResolveOutput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthOutput,
+   TpvFrameGraph.TResourceTransition.TKind.BufferOutput:begin
+    aSrcStageMask:=GetPipelineStageMask(aFromResourceTransition);
+   end;
+   else begin
+    aSrcStageMask:=0;
+   end;
+  end;
+  case aToResourceTransition.fKind of
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentInput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthInput,
+   TpvFrameGraph.TResourceTransition.TKind.BufferInput:begin
+    aDstStageMask:=GetPipelineStageMask(aToResourceTransition);
+   end;
+   else begin
+    aDstStageMask:=0;
+   end;
+  end;
+ end;
 type TInt32AttachmentLists=TpvDynamicArray<TpvInt32>;
      TUInt32AttachmentLists=TpvDynamicArray<TpvUInt32>;
 var SubPass,
@@ -1995,12 +2064,16 @@ var SubPass,
     FirstSubPass,
     LastSubPass:TSubPass;
     RenderPass:TRenderPass;
-    ResourceTransition:TResourceTransition;
+    ResourceTransition,
+    FromResourceTransition,
+    ToResourceTransition:TResourceTransition;
     InputAttachments,
     ColorAttachments,
     ResolveAttachments:TInt32AttachmentLists;
     PreserveAttachments:TUInt32AttachmentLists;
     DepthStencilAttachment:TpvInt32;
+    SrcStageMask,
+    DstStageMask:TVkPipelineStageFlags;
 begin
 
  for SubPass in fSubPasses do begin
@@ -2069,10 +2142,14 @@ begin
    end;
 
    if assigned(FirstSubPass) then begin
+     GetPipelineStageMasks(FromResourceTransition,
+                           FromResourceTransition,
+                           SrcStageMask,
+                           DstStageMask);
     fVulkanRenderPass.AddSubpassDependency(VK_SUBPASS_EXTERNAL,
                                            FirstSubPass.fIndex,
                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
-                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                           DstStageMask,
                                            TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
                                            TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
                                            TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
@@ -2080,10 +2157,14 @@ begin
 
    for SubPass in fSubPasses do begin
     for OtherSubPass in SubPass.fInputSubPassDependencies do begin
+     GetPipelineStageMasks(FromResourceTransition,
+                           ToResourceTransition,
+                           SrcStageMask,
+                           DstStageMask);
      fVulkanRenderPass.AddSubpassDependency(OtherSubPass.fIndex,
                                             SubPass.fIndex,
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                            SrcStageMask,
+                                            DstStageMask,
                                             TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
                                             TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
                                             TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
@@ -2091,9 +2172,13 @@ begin
    end;
 
    if assigned(LastSubPass) then begin
+     GetPipelineStageMasks(ToResourceTransition,
+                           ToResourceTransition,
+                           SrcStageMask,
+                           DstStageMask);
     fVulkanRenderPass.AddSubpassDependency(FirstSubPass.fIndex,
                                            VK_SUBPASS_EXTERNAL,
-                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                           SrcStageMask,
                                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                                            TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
                                            TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT),
