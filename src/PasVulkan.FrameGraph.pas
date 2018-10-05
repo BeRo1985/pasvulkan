@@ -783,6 +783,21 @@ type EpvFrameGraph=class(Exception);
 
 implementation
 
+function ComparePhysicalRenderPassSubPassDependencies(const a,b:TpvFrameGraph.TPhysicalRenderPass.TSubpassDependency):TpvInt32;
+begin
+ if a.SrcSubPass.fIndex<b.SrcSubPass.fIndex then begin
+  result:=-1;
+ end else if a.SrcSubPass.fIndex>b.SrcSubPass.fIndex then begin
+  result:=1;
+ end else if a.DstSubPass.fIndex<b.DstSubPass.fIndex then begin
+  result:=-1;
+ end else if a.DstSubPass.fIndex>b.DstSubPass.fIndex then begin
+  result:=1;
+ end else begin
+  result:=0;
+ end;
+end;
+
 { TpvFrameGraph.TBufferSubresourceRange }
 
 constructor TpvFrameGraph.TBufferSubresourceRange.Create(const aOffset,aRange:TVkDeviceSize);
@@ -2904,7 +2919,7 @@ procedure TpvFrameGraph.Compile;
    end;
   end;
  end;
- procedure CreatePhysicalPassSubPassDependencies;
+ procedure CreatePhysicalRenderPassSubPassDependencies;
   procedure AddSubPassDependency(const aSubPassDependencies:TPhysicalRenderPass.TSubPassDependencies;
                                  const aSubPassDependency:TPhysicalRenderPass.TSubPassDependency);
   var Index:TpvSizeInt;
@@ -2983,6 +2998,22 @@ procedure TpvFrameGraph.Compile;
    end;
   end;
  end;
+ procedure SortPhysicalRenderPassSubPassDependencies;
+ var PhysicalPass:TPhysicalPass;
+     PhysicalRenderPass:TPhysicalRenderPass;
+ begin
+  for PhysicalPass in fPhysicalPasses do begin
+   if PhysicalPass is TPhysicalRenderPass then begin
+    PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
+    if PhysicalRenderPass.fSubPassDependencies.Count>1 then begin
+     TpvTypedSort<TPhysicalRenderPass.TSubPassDependency>.IntroSort(@PhysicalRenderPass.fSubPassDependencies.Items[0],
+                                                                    0,
+                                                                    PhysicalRenderPass.fSubPassDependencies.Count-1,
+                                                                    ComparePhysicalRenderPassSubPassDependencies);
+    end;
+   end;
+  end;
+ end;
 begin
 
  IndexingPasses;
@@ -3009,7 +3040,9 @@ begin
 
  CreateResourceReuseGroupData;
 
- CreatePhysicalPassSubPassDependencies;
+ CreatePhysicalRenderPassSubPassDependencies;
+
+ SortPhysicalRenderPassSubPassDependencies;
 
 end;
 
