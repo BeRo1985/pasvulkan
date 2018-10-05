@@ -2752,54 +2752,55 @@ procedure TpvFrameGraph.Compile;
     aSubPassDependencies.Add(aSubPassDependency);
    end;
   end;
- var Pass,
-     OtherPass:TPass;
+ var ResourceTransitionIndex,
+     OtherResourceTransitionIndex:TpvSizeInt;
+     Resource:TResource;
      ResourceTransition,
      OtherResourceTransition:TResourceTransition;
-     Resource:TResource;
      SubPassDependency:TPhysicalRenderPass.TSubPassDependency;
  begin
-  for Pass in fPasses do begin
-   if (TPass.TFlag.Used in Pass.fFlags) and
-      assigned(Pass.fPhysicalPass) then begin
-    for ResourceTransition in Pass.fResourceTransitions do begin
-     Resource:=ResourceTransition.fResource;
-     for OtherResourceTransition in Resource.fResourceTransitions do begin
-      if (ResourceTransition<>OtherResourceTransition) and
-         (ResourceTransition.fPass<>OtherResourceTransition.fPass) and
-         (TPass.TFlag.Used in OtherResourceTransition.fPass.fFlags) and
-         assigned(OtherResourceTransition.fPass.fPhysicalPass) and
-         (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
-         (OtherResourceTransition.fKind in TResourceTransition.AllInputs) then begin
-       if (ResourceTransition.fPass is TRenderPass) and
-          (OtherResourceTransition.fPass is TRenderPass) and
-          (ResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
-          (OtherResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) then begin
-        GetPipelineStageMasks(ResourceTransition,
-                              OtherResourceTransition,
-                              SubPassDependency.SrcStageMask,
-                              SubPassDependency.DstStageMask
-                             );
-        GetAccessMasks(ResourceTransition,
-                       OtherResourceTransition,
-                       SubPassDependency.SrcAccessMask,
-                       SubPassDependency.DstAccessMask
-                      );
-        SubPassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
-        if ResourceTransition.fPass.fPhysicalPass=OtherResourceTransition.fPass.fPhysicalPass then begin
-         SubPassDependency.SrcSubPass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass;
-         SubPassDependency.DstSubPass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass;
-         AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
-        end else begin
-         SubPassDependency.SrcSubPass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass;
-         SubPassDependency.DstSubPass:=nil;
-         AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
-         SubPassDependency.SrcSubPass:=nil;
-         SubPassDependency.DstSubPass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass;
-         AddSubPassDependency(TPhysicalRenderPass(OtherResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
+  for Resource in fResources do begin
+   for ResourceTransitionIndex:=0 to Resource.fResourceTransitions.Count-1 do begin
+    ResourceTransition:=Resource.fResourceTransitions[ResourceTransitionIndex];
+    if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+       (TPass.TFlag.Used in ResourceTransition.fPass.fFlags) and
+       assigned(ResourceTransition.fPass.fPhysicalPass) then begin
+     for OtherResourceTransitionIndex:=0 to Resource.fResourceTransitions.Count-1 do begin
+      if ResourceTransitionIndex<>OtherResourceTransitionIndex then begin
+       OtherResourceTransition:=Resource.fResourceTransitions[OtherResourceTransitionIndex];
+       if (ResourceTransition<>OtherResourceTransition) and
+          (ResourceTransition.fPass<>OtherResourceTransition.fPass) and
+          (OtherResourceTransition.fKind in TResourceTransition.AllInputs) and
+          (TPass.TFlag.Used in OtherResourceTransition.fPass.fFlags) and
+          assigned(OtherResourceTransition.fPass.fPhysicalPass) then begin
+        if (ResourceTransition.fPass is TRenderPass) and
+           (OtherResourceTransition.fPass is TRenderPass) and
+           (ResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
+           (OtherResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) then begin
+         GetPipelineStageMasks(ResourceTransition,
+                               OtherResourceTransition,
+                               SubPassDependency.SrcStageMask,
+                               SubPassDependency.DstStageMask
+                              );
+         GetAccessMasks(ResourceTransition,
+                        OtherResourceTransition,
+                        SubPassDependency.SrcAccessMask,
+                        SubPassDependency.DstAccessMask
+                       );
+         SubPassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+         if ResourceTransition.fPass.fPhysicalPass=OtherResourceTransition.fPass.fPhysicalPass then begin
+          SubPassDependency.SrcSubPass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass;
+          SubPassDependency.DstSubPass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass;
+          AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
+         end else begin
+          SubPassDependency.SrcSubPass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass;
+          SubPassDependency.DstSubPass:=nil;
+          AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
+          SubPassDependency.SrcSubPass:=nil;
+          SubPassDependency.DstSubPass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass;
+          AddSubPassDependency(TPhysicalRenderPass(OtherResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
+         end;
         end;
-       end else begin
-        // TODO: Pipeline barrier
        end;
       end;
      end;
