@@ -541,6 +541,7 @@ type EpvFrameGraph=class(Exception);
               fTag:TpvSizeInt;
               fPhysicalPass:TPhysicalPass;
               fTopologicalSortIndex:TpvSizeInt;
+              fDoubleBufferedEnabledState:array[0..1] of longbool;
               function GetEnabled:boolean;
               procedure SetEnabled(const aEnabled:boolean);
               procedure SetName(const aName:TpvRawByteString);
@@ -683,6 +684,7 @@ type EpvFrameGraph=class(Exception);
        fVulkanGraphicsCommandPool:TpvVulkanCommandPool;
        fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
+       fDrawFrameIndex:TpvSizeInt;
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice);
        destructor Destroy; override;
@@ -719,7 +721,8 @@ type EpvFrameGraph=class(Exception);
        procedure ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
        procedure ExecuteQueueParallelForJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
       public
-       procedure Execute; virtual;
+       procedure Update(const aUpdateFrameIndex:TpvSizeInt); virtual;
+       procedure Draw(const aDrawFrameIndex:TpvSizeInt); virtual;
       published
        property CanDoParallelProcessing:boolean read fCanDoParallelProcessing write fCanDoParallelProcessing;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
@@ -2568,13 +2571,29 @@ begin
 end;
 
 procedure TpvFrameGraph.ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
-var Index:TpvSizeInt;
+var Index,SubPassIndex:TpvSizeInt;
     PhysicalPass:TPhysicalPass;
+    PhysicalComputePass:TPhysicalComputePass;
+    PhysicalRenderPass:TPhysicalRenderPass;
+    PhysicalRenderPassSubPass:TPhysicalRenderPass.TSubPass;
 begin
  for Index:=0 to aQueue.fPhysicalPasses.Count-1 do begin
   PhysicalPass:=aQueue.fPhysicalPasses[Index];
   if assigned(PhysicalPass) then begin
-   // TODO
+   if PhysicalPass is TPhysicalComputePass then begin
+    PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
+    if PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
+     // TODO
+    end;
+   end else if PhysicalPass is TPhysicalRenderPass then begin
+    PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
+    for SubPassIndex:=0 to PhysicalRenderPass.fSubPasses.Count-1 do begin
+     PhysicalRenderPassSubPass:=PhysicalRenderPass.fSubPasses[SubPassIndex];
+     if PhysicalRenderPassSubPass.fRenderPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
+      // TODO
+     end;
+    end;
+   end;
   end;
  end;
 end;
@@ -2587,8 +2606,37 @@ begin
  end;
 end;
 
-procedure TpvFrameGraph.Execute;
+procedure TpvFrameGraph.Update(const aUpdateFrameIndex:TpvSizeInt);
+var QueueIndex,Index,SubPassIndex:TpvSizeInt;
+    Queue:TQueue;
+    PhysicalPass:TPhysicalPass;
+    PhysicalComputePass:TPhysicalComputePass;
+    PhysicalRenderPass:TPhysicalRenderPass;
+    PhysicalRenderPassSubPass:TPhysicalRenderPass.TSubPass;
 begin
+ for QueueIndex:=0 to fQueues.Count-1 do begin
+  Queue:=fQueues[QueueIndex];
+  for Index:=0 to Queue.fPhysicalPasses.Count-1 do begin
+   PhysicalPass:=Queue.fPhysicalPasses[Index];
+   if assigned(PhysicalPass) then begin
+    if PhysicalPass is TPhysicalComputePass then begin
+     PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
+     PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalComputePass.fComputePass.fFlags;
+    end else if PhysicalPass is TPhysicalRenderPass then begin
+     PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
+     for SubPassIndex:=0 to PhysicalRenderPass.fSubPasses.Count-1 do begin
+      PhysicalRenderPassSubPass:=PhysicalRenderPass.fSubPasses[SubPassIndex];
+      PhysicalRenderPassSubPass.fRenderPass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalRenderPassSubPass.fRenderPass.fFlags;
+     end;
+    end;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvFrameGraph.Draw(const aDrawFrameIndex:TpvSizeInt);
+begin
+ fDrawFrameIndex:=aDrawFrameIndex;
  if fCanDoParallelProcessing and assigned(pvApplication) then begin
   pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0);
  end else begin
