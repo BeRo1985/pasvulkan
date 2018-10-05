@@ -2305,7 +2305,7 @@ procedure TpvFrameGraph.Compile;
      VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
      VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
       result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
-                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
      end;
      else {VK_IMAGE_LAYOUT_UNDEFINED:}begin
       result:=0;
@@ -2345,6 +2345,85 @@ procedure TpvFrameGraph.Compile;
    end;
    else begin
     aDstStageMask:=0;
+   end;
+  end;
+ end;
+ procedure GetAccessMasks(const aFromResourceTransition:TResourceTransition;
+                          const aToResourceTransition:TResourceTransition;
+                          out aSrcAccessMask:TVkAccessFlags;
+                          out aDstAccessMask:TVkAccessFlags);
+ begin
+  case aFromResourceTransition.fKind of
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentOutput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentResolveOutput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthOutput:begin
+    case aFromResourceTransition.fLayout of
+     VK_IMAGE_LAYOUT_GENERAL:begin
+      aSrcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
+     end;
+     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
+      aSrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+     end;
+     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:begin
+      aSrcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+     end;
+     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:begin
+      aSrcAccessMask:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+     end;
+     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:begin
+      aSrcAccessMask:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT);
+     end;
+     VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
+      aSrcAccessMask:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT) or
+                      TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT);
+     end;
+     else {VK_IMAGE_LAYOUT_UNDEFINED:}begin
+      aSrcAccessMask:=0;
+     end;
+    end;
+   end;
+   TpvFrameGraph.TResourceTransition.TKind.BufferOutput:begin
+    aSrcAccessMask:=aFromResourceTransition.fAccessFlags;
+   end;
+   else begin
+    aSrcAccessMask:=0;
+   end;
+  end;
+  case aToResourceTransition.fKind of
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentInput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthInput:begin
+    case aToResourceTransition.fLayout of
+     VK_IMAGE_LAYOUT_GENERAL:begin
+      aDstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+     end;
+     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
+      aDstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+     end;
+     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:begin
+      aDstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+     end;
+     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:begin
+      aDstAccessMask:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+     end;
+     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:begin
+      aDstAccessMask:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT);
+     end;
+     VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
+      aDstAccessMask:=TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT) or
+                      TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT);
+     end;
+     else {VK_IMAGE_LAYOUT_UNDEFINED:}begin
+      aDstAccessMask:=0;
+     end;
+    end;
+   end;
+   TpvFrameGraph.TResourceTransition.TKind.BufferInput:begin
+    aDstAccessMask:=aFromResourceTransition.fAccessFlags;
+   end;
+   else begin
+    aDstAccessMask:=0;
    end;
   end;
  end;
@@ -2688,29 +2767,34 @@ procedure TpvFrameGraph.Compile;
          (ResourceTransition.fPass<>OtherResourceTransition.fPass) and
          (TPass.TFlag.Used in OtherResourceTransition.fPass.fFlags) and
          assigned(OtherResourceTransition.fPass.fPhysicalPass) then begin
-       if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
-          (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
+       if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+          (OtherResourceTransition.fKind in TResourceTransition.AllInputs) then begin
         if (ResourceTransition.fPass is TRenderPass) and
            (OtherResourceTransition.fPass is TRenderPass) and
            (ResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
            (OtherResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) then begin
-         GetPipelineStageMasks(OtherResourceTransition,
-                               ResourceTransition,
+         GetPipelineStageMasks(ResourceTransition,
+                               OtherResourceTransition,
                                SubPassDependency.SrcStageMask,
                                SubPassDependency.DstStageMask
                               );
+         GetAccessMasks(ResourceTransition,
+                        OtherResourceTransition,
+                        SubPassDependency.SrcAccessMask,
+                        SubPassDependency.DstAccessMask
+                       );
          SubPassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
          if ResourceTransition.fPass.fPhysicalPass=OtherResourceTransition.fPass.fPhysicalPass then begin
-          SubPassDependency.SrcSubPassIndex:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass.fIndex;
-          SubPassDependency.DstSubPassIndex:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fIndex;
-          AddSubPassDependency(TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fPhysicalRenderPass.fSubPassDependencies,SubPassDependency);
+          SubPassDependency.SrcSubPassIndex:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fIndex;
+          SubPassDependency.DstSubPassIndex:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass.fIndex;
+          AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
          end else begin
-          SubPassDependency.SrcSubPassIndex:=VK_SUBPASS_EXTERNAL;
-          SubPassDependency.DstSubPassIndex:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fIndex;
-          AddSubPassDependency(TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fPhysicalRenderPass.fSubPassDependencies,SubPassDependency);
-          SubPassDependency.SrcSubPassIndex:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass.fIndex;
+          SubPassDependency.SrcSubPassIndex:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fIndex;
           SubPassDependency.DstSubPassIndex:=VK_SUBPASS_EXTERNAL;
-          AddSubPassDependency(TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fPhysicalRenderPass.fSubPassDependencies,SubPassDependency);
+          AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
+          SubPassDependency.SrcSubPassIndex:=VK_SUBPASS_EXTERNAL;
+          SubPassDependency.DstSubPassIndex:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass.fIndex;
+          AddSubPassDependency(TPhysicalRenderPass(OtherResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
          end;
         end else begin
          // TODO: Pipeline barrier
