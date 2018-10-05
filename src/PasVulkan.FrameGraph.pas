@@ -514,21 +514,21 @@ type EpvFrameGraph=class(Exception);
               type TSubPass=class;
                    TSubPasses=TpvObjectGenericList<TSubPass>;
                    TSubPassDependency=record
-                    FromSubPass:TSubPass;
-                    ToSubPass:TSubPass;
-                    FromResourceTransition:TResourceTransition;
-                    ToResourceTransition:TResourceTransition;
+                    SrcSubPassIndex:TVkUInt32;
+                    DstSubPassIndex:TVkUInt32;
+                    SrcStageMask:TVkPipelineStageFlags;
+                    DstStageMask:TVkPipelineStageFlags;
+                    SrcAccessMask:TVkAccessFlags;
+                    DstAccessMask:TVkAccessFlags;
+                    DependencyFlags:TVkDependencyFlags;
                    end;
                    PSubPassDependency=^TSubPassDependency;
-                   TSubPassDependencies=TpvGenericList<TSubPassDependency>;
+                   TSubPassDependencies=TpvDynamicArray<TSubPassDependency>;
                    TSubPass=class
                     private
                      fPhysicalRenderPass:TPhysicalRenderPass;
                      fIndex:TpvSizeInt;
                      fRenderPass:TRenderPass;
-                     fSubPassDependencies:TSubPassDependencies;
-                     fInputSubPassDependencies:TSubPasses;
-                     fOutputSubPassDependencies:TSubPasses;
                     public
                      constructor Create(const aPhysicalRenderPass:TPhysicalRenderPass;
                                         const aRenderPass:TRenderPass); reintroduce;
@@ -540,6 +540,7 @@ type EpvFrameGraph=class(Exception);
                    end;
              private
               fSubPasses:TSubPasses;
+              fSubPassDependencies:TSubPassDependencies;
               fMultiView:boolean;
               fVulkanRenderPass:TpvVulkanRenderPass;
              public
@@ -1934,18 +1935,10 @@ begin
  inherited Create;
  fPhysicalRenderPass:=aPhysicalRenderPass;
  fRenderPass:=aRenderPass;
- fSubPassDependencies:=TSubPassDependencies.Create;
- fInputSubPassDependencies:=TSubPasses.Create;
- fInputSubPassDependencies.OwnsObjects:=false;
- fOutputSubPassDependencies:=TSubPasses.Create;
- fOutputSubPassDependencies.OwnsObjects:=false;
 end;
 
 destructor TpvFrameGraph.TPhysicalRenderPass.TSubPass.Destroy;
 begin
- FreeAndNil(fSubPassDependencies);
- FreeAndNil(fInputSubPassDependencies);
- FreeAndNil(fOutputSubPassDependencies);
  inherited Destroy;
 end;
 
@@ -1972,11 +1965,13 @@ begin
  inherited Create(aFrameGraph,aQueue);
  fSubPasses:=TSubPasses.Create;
  fSubPasses.OwnsObjects:=true;
+ fSubPassDependencies.Initialize;
  fVulkanRenderPass:=nil;
 end;
 
 destructor TpvFrameGraph.TPhysicalRenderPass.Destroy;
 begin
+ fSubPassDependencies.Finalize;
  FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fSubPasses);
  inherited Destroy;
@@ -1999,75 +1994,6 @@ begin
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.AfterCreateSwapChain;
- function GetPipelineStageMask(const aResourceTransition:TResourceTransition):TVkPipelineStageFlags;
- begin
-  case aResourceTransition.fKind of
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentInput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentOutput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentResolveOutput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthInput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthOutput:begin
-    case aResourceTransition.fLayout of
-     VK_IMAGE_LAYOUT_GENERAL,
-     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:begin
-      result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
-              TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
-              TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
-              TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
-              TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
-              TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
-     end;
-     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
-      result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-     end;
-     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
-     VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
-     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
-      result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
-                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
-     end;
-     else {VK_IMAGE_LAYOUT_UNDEFINED:}begin
-      result:=0;
-     end;
-    end;
-   end;
-   TpvFrameGraph.TResourceTransition.TKind.BufferInput,
-   TpvFrameGraph.TResourceTransition.TKind.BufferOutput:begin
-    result:=aResourceTransition.PipelineStage;
-   end;
-   else begin
-    result:=0;
-   end;
-  end;
- end;
- procedure GetPipelineStageMasks(const aFromResourceTransition:TResourceTransition;
-                                 const aToResourceTransition:TResourceTransition;
-                                 out aSrcStageMask:TVkPipelineStageFlags;
-                                 out aDstStageMask:TVkPipelineStageFlags);
- begin
-  case aFromResourceTransition.fKind of
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentOutput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentResolveOutput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthOutput,
-   TpvFrameGraph.TResourceTransition.TKind.BufferOutput:begin
-    aSrcStageMask:=GetPipelineStageMask(aFromResourceTransition);
-   end;
-   else begin
-    aSrcStageMask:=0;
-   end;
-  end;
-  case aToResourceTransition.fKind of
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentInput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthInput,
-   TpvFrameGraph.TResourceTransition.TKind.BufferInput:begin
-    aDstStageMask:=GetPipelineStageMask(aToResourceTransition);
-   end;
-   else begin
-    aDstStageMask:=0;
-   end;
-  end;
- end;
 type TInt32AttachmentLists=TpvDynamicArray<TpvInt32>;
      TUInt32AttachmentLists=TpvDynamicArray<TpvUInt32>;
 var SubPass,
@@ -2125,9 +2051,17 @@ begin
 
   if assigned(fVulkanRenderPass) then begin
 
-   for SubPass in fSubPasses do begin
-    for SubPassDependency in SubPass.fSubPassDependencies do begin
-     if assigned(SubPassDependency.FromSubPass) then begin
+   for SubPassDependency in fSubPassDependencies.Items do begin
+    fVulkanRenderPass.AddSubpassDependency(SubPassDependency.SrcSubPassIndex,
+                                           SubPassDependency.DstSubPassIndex,
+                                           SubPassDependency.SrcStageMask,
+                                           SubPassDependency.DstStageMask,
+                                           SubPassDependency.SrcAccessMask,
+                                           SubPassDependency.DstAccessMask,
+                                           SubPassDependency.DependencyFlags);
+   end;
+
+{    if assigned(SubPassDependency.FromSubPass) then begin
       if assigned(SubPassDependency.ToSubPass) then begin
        if (SubPassDependency.FromSubPass<>SubPass) and (SubPassDependency.ToSubPass=SubPass) then begin
         GetPipelineStageMasks(SubPassDependency.FromResourceTransition,
@@ -2175,9 +2109,7 @@ begin
       end else begin
        Assert(false);
       end;
-     end;
-    end;
-   end;
+     end;   }
 
   end;
 
@@ -2347,6 +2279,75 @@ begin
 end;
 
 procedure TpvFrameGraph.Compile;
+ function GetPipelineStageMask(const aResourceTransition:TResourceTransition):TVkPipelineStageFlags;
+ begin
+  case aResourceTransition.fKind of
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentInput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentOutput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentResolveOutput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthInput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthOutput:begin
+    case aResourceTransition.fLayout of
+     VK_IMAGE_LAYOUT_GENERAL,
+     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:begin
+      result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT) or
+              TVkPipelineStageFlags(VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+     end;
+     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
+      result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+     end;
+     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+     VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
+      result:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
+     end;
+     else {VK_IMAGE_LAYOUT_UNDEFINED:}begin
+      result:=0;
+     end;
+    end;
+   end;
+   TpvFrameGraph.TResourceTransition.TKind.BufferInput,
+   TpvFrameGraph.TResourceTransition.TKind.BufferOutput:begin
+    result:=aResourceTransition.PipelineStage;
+   end;
+   else begin
+    result:=0;
+   end;
+  end;
+ end;
+ procedure GetPipelineStageMasks(const aFromResourceTransition:TResourceTransition;
+                                 const aToResourceTransition:TResourceTransition;
+                                 out aSrcStageMask:TVkPipelineStageFlags;
+                                 out aDstStageMask:TVkPipelineStageFlags);
+ begin
+  case aFromResourceTransition.fKind of
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentOutput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentResolveOutput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthOutput,
+   TpvFrameGraph.TResourceTransition.TKind.BufferOutput:begin
+    aSrcStageMask:=GetPipelineStageMask(aFromResourceTransition);
+   end;
+   else begin
+    aSrcStageMask:=0;
+   end;
+  end;
+  case aToResourceTransition.fKind of
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentInput,
+   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthInput,
+   TpvFrameGraph.TResourceTransition.TKind.BufferInput:begin
+    aDstStageMask:=GetPipelineStageMask(aToResourceTransition);
+   end;
+   else begin
+    aDstStageMask:=0;
+   end;
+  end;
+ end;
  procedure IndexingPasses;
  var Index:TpvSizeInt;
  begin
@@ -2642,6 +2643,28 @@ procedure TpvFrameGraph.Compile;
   end;
  end;
  procedure ConstructPhysicalPassDirectedAcyclicGraph;
+  procedure AddSubPassDependency(const aSubPassDependencies:TPhysicalRenderPass.TSubPassDependencies;
+                                 const aSubPassDependency:TPhysicalRenderPass.TSubPassDependency);
+  var Index:TpvSizeInt;
+      SubPassDependency:TPhysicalRenderPass.PSubPassDependency;
+  begin
+   SubPassDependency:=nil;
+   for Index:=0 to aSubPassDependencies.Count-1 do begin
+    if (aSubPassDependencies.Items[Index].SrcSubPassIndex=aSubPassDependency.SrcSubPassIndex) and
+       (aSubPassDependencies.Items[Index].DstSubPassIndex=aSubPassDependency.DstSubPassIndex) then begin
+     SubPassDependency:=@aSubPassDependencies.Items[Index];
+    end;
+   end;
+   if assigned(SubPassDependency) then begin
+    SubPassDependency^.SrcStageMask:=SubPassDependency^.SrcStageMask or aSubPassDependency.SrcStageMask;
+    SubPassDependency^.DstStageMask:=SubPassDependency^.SrcStageMask or aSubPassDependency.DstStageMask;
+    SubPassDependency^.SrcAccessMask:=SubPassDependency^.SrcStageMask or aSubPassDependency.SrcAccessMask;
+    SubPassDependency^.DstAccessMask:=SubPassDependency^.SrcStageMask or aSubPassDependency.DstAccessMask;
+    SubPassDependency^.DependencyFlags:=SubPassDependency^.SrcStageMask or aSubPassDependency.DependencyFlags;
+   end else begin
+    aSubPassDependencies.Add(aSubPassDependency);
+   end;
+  end;
  var Pass,
      OtherPass:TPass;
      ResourceTransition,
@@ -2671,27 +2694,50 @@ procedure TpvFrameGraph.Compile;
            (ResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
            (OtherResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) then begin
          if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
-            (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) and
-            (TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fInputSubPassDependencies.IndexOf(TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass)<0) then begin
-          TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fInputSubPassDependencies.Add(TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass);
-          SubPassDependency.FromSubPass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass;
-          SubPassDependency.ToSubPass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass;
-          SubPassDependency.FromResourceTransition:=OtherResourceTransition;
-          SubPassDependency.ToResourceTransition:=ResourceTransition;
-          TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fSubPassDependencies.Add(SubPassDependency);
+            (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
+          SubPassDependency.SrcSubPassIndex:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass.fIndex;
+          SubPassDependency.DstSubPassIndex:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fIndex;
+          GetPipelineStageMasks(OtherResourceTransition,
+                                ResourceTransition,
+                                SubPassDependency.SrcStageMask,
+                                SubPassDependency.DstStageMask
+                               );
+          SubPassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+          AddSubPassDependency(TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fPhysicalRenderPass.fSubPassDependencies,SubPassDependency);
          end;
          if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
-            (OtherResourceTransition.fKind in TResourceTransition.AllInputs) and
-            (TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fOutputSubPassDependencies.IndexOf(TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass)<0) then begin
-          TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fOutputSubPassDependencies.Add(TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass);
-          SubPassDependency.FromSubPass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass;
-          SubPassDependency.ToSubPass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass;
-          SubPassDependency.FromResourceTransition:=ResourceTransition;
-          SubPassDependency.ToResourceTransition:=OtherResourceTransition;
-          TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fSubPassDependencies.Add(SubPassDependency);
+            (OtherResourceTransition.fKind in TResourceTransition.AllInputs) then begin
+          SubPassDependency.SrcSubPassIndex:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fIndex;
+          SubPassDependency.DstSubPassIndex:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass.fIndex;
+          GetPipelineStageMasks(ResourceTransition,
+                                OtherResourceTransition,
+                                SubPassDependency.SrcStageMask,
+                                SubPassDependency.DstStageMask
+                               );
+          SubPassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+          AddSubPassDependency(TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fPhysicalRenderPass.fSubPassDependencies,SubPassDependency);
          end;
         end;
        end else begin
+        if (ResourceTransition.fPass is TRenderPass) and
+           (ResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) then begin
+         if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
+            (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
+{         SubPassDependency.FromSubPass:=nil;
+          SubPassDependency.ToSubPass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass;
+          SubPassDependency.FromResourceTransition:=OtherResourceTransition;
+          SubPassDependency.ToResourceTransition:=ResourceTransition;
+          AddSubPassDependency(TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fPhysicalRenderPass.fSubPassDependencies,SubPassDependency);}
+         end;
+         if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+            (OtherResourceTransition.fKind in TResourceTransition.AllInputs) then begin
+{         SubPassDependency.FromSubPass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass;
+          SubPassDependency.ToSubPass:=nil;
+          SubPassDependency.FromResourceTransition:=ResourceTransition;
+          SubPassDependency.ToResourceTransition:=OtherResourceTransition;
+          AddSubPassDependency(TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass.fPhysicalRenderPass.fSubPassDependencies,SubPassDependency);}
+         end;
+        end;
         OtherPass:=OtherResourceTransition.fPass;
         if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
            (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) and
