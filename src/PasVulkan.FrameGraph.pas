@@ -493,6 +493,10 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); reintroduce; virtual;
               destructor Destroy; override;
+              procedure Show; virtual;
+              procedure Hide; virtual;
+              procedure AfterCreateSwapChain; virtual;
+              procedure BeforeDestroySwapChain; virtual;
             end;
             TPhysicalComputePass=class(TPhysicalPass)
              private
@@ -500,6 +504,10 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aComputePass:TComputePass); reintroduce;
               destructor Destroy; override;
+              procedure Show; override;
+              procedure Hide; override;
+              procedure AfterCreateSwapChain; override;
+              procedure BeforeDestroySwapChain; override;
             end;
             TPhysicalRenderPass=class(TPhysicalPass)
              public
@@ -512,6 +520,10 @@ type EpvFrameGraph=class(Exception);
                      constructor Create(const aPhysicalRenderPass:TPhysicalRenderPass;
                                         const aRenderPass:TRenderPass); reintroduce;
                      destructor Destroy; override;
+                     procedure Show; virtual;
+                     procedure Hide; virtual;
+                     procedure AfterCreateSwapChain; virtual;
+                     procedure BeforeDestroySwapChain; virtual;
                    end;
                    TSubPasses=TpvObjectGenericList<TSubPass>;
              private
@@ -520,6 +532,10 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); override;
               destructor Destroy; override;
+              procedure Show; override;
+              procedure Hide; override;
+              procedure AfterCreateSwapChain; override;
+              procedure BeforeDestroySwapChain; override;
             end;
             TPass=class
              public
@@ -1847,6 +1863,26 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvFrameGraph.TPhysicalPass.Show;
+begin
+
+end;
+
+procedure TpvFrameGraph.TPhysicalPass.Hide;
+begin
+
+end;
+
+procedure TpvFrameGraph.TPhysicalPass.AfterCreateSwapChain;
+begin
+
+end;
+
+procedure TpvFrameGraph.TPhysicalPass.BeforeDestroySwapChain;
+begin
+
+end;
+
 { TpvFrameGraph.TVulkanComputePass }
 
 constructor TpvFrameGraph.TPhysicalComputePass.Create(const aFrameGraph:TpvFrameGraph;
@@ -1859,6 +1895,22 @@ end;
 destructor TpvFrameGraph.TPhysicalComputePass.Destroy;
 begin
  inherited Destroy;
+end;
+
+procedure TpvFrameGraph.TPhysicalComputePass.Show;
+begin
+end;
+
+procedure TpvFrameGraph.TPhysicalComputePass.Hide;
+begin
+end;
+
+procedure TpvFrameGraph.TPhysicalComputePass.AfterCreateSwapChain;
+begin
+end;
+
+procedure TpvFrameGraph.TPhysicalComputePass.BeforeDestroySwapChain;
+begin
 end;
 
 { TpvFrameGraph.TVulkanRenderPass.TSubPass }
@@ -1876,6 +1928,22 @@ begin
  inherited Destroy;
 end;
 
+procedure TpvFrameGraph.TPhysicalRenderPass.TSubPass.Show;
+begin
+end;
+
+procedure TpvFrameGraph.TPhysicalRenderPass.TSubPass.Hide;
+begin
+end;
+
+procedure TpvFrameGraph.TPhysicalRenderPass.TSubPass.AfterCreateSwapChain;
+begin
+end;
+
+procedure TpvFrameGraph.TPhysicalRenderPass.TSubPass.BeforeDestroySwapChain;
+begin
+end;
+
 { TpvFrameGraph.TVulkanRenderPass }
 
 constructor TpvFrameGraph.TPhysicalRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue);
@@ -1889,6 +1957,38 @@ destructor TpvFrameGraph.TPhysicalRenderPass.Destroy;
 begin
  FreeAndNil(fSubPasses);
  inherited Destroy;
+end;
+
+procedure TpvFrameGraph.TPhysicalRenderPass.Show;
+var SubPass:TSubPass;
+begin
+ for SubPass in fSubPasses do begin
+  SubPass.Show;
+ end;
+end;
+
+procedure TpvFrameGraph.TPhysicalRenderPass.Hide;
+var SubPass:TSubPass;
+begin
+ for SubPass in fSubPasses do begin
+  SubPass.Hide;
+ end;
+end;
+
+procedure TpvFrameGraph.TPhysicalRenderPass.AfterCreateSwapChain;
+var SubPass:TSubPass;
+begin
+ for SubPass in fSubPasses do begin
+  SubPass.AfterCreateSwapChain;
+ end;
+end;
+
+procedure TpvFrameGraph.TPhysicalRenderPass.BeforeDestroySwapChain;
+var SubPass:TSubPass;
+begin
+ for SubPass in fSubPasses do begin
+  SubPass.BeforeDestroySwapChain;
+ end;
 end;
 
 { TpvFrameGraph }
@@ -2608,15 +2708,23 @@ end;
 
 procedure TpvFrameGraph.Show;
 var ResourceReuseGroup:TResourceReuseGroup;
+    PhysicalPass:TPhysicalPass;
 begin
  for ResourceReuseGroup in fResourceReuseGroups do begin
   ResourceReuseGroup.Show;
+ end;
+ for PhysicalPass in fPhysicalPasses do begin
+  PhysicalPass.Show;
  end;
 end;
 
 procedure TpvFrameGraph.Hide;
 var ResourceReuseGroup:TResourceReuseGroup;
+    PhysicalPass:TPhysicalPass;
 begin
+ for PhysicalPass in fPhysicalPasses do begin
+  PhysicalPass.Hide;
+ end;
  for ResourceReuseGroup in fResourceReuseGroups do begin
   ResourceReuseGroup.Hide;
  end;
@@ -2624,15 +2732,23 @@ end;
 
 procedure TpvFrameGraph.AfterCreateSwapChain;
 var ResourceReuseGroup:TResourceReuseGroup;
+    PhysicalPass:TPhysicalPass;
 begin
  for ResourceReuseGroup in fResourceReuseGroups do begin
   ResourceReuseGroup.AfterCreateSwapChain;
+ end;
+ for PhysicalPass in fPhysicalPasses do begin
+  PhysicalPass.AfterCreateSwapChain;
  end;
 end;
 
 procedure TpvFrameGraph.BeforeDestroySwapChain;
 var ResourceReuseGroup:TResourceReuseGroup;
+    PhysicalPass:TPhysicalPass;
 begin
+ for PhysicalPass in fPhysicalPasses do begin
+  PhysicalPass.BeforeDestroySwapChain;
+ end;
  for ResourceReuseGroup in fResourceReuseGroups do begin
   ResourceReuseGroup.BeforeDestroySwapChain;
  end;
