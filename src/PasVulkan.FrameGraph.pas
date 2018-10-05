@@ -1953,12 +1953,6 @@ begin
 end;
 
 procedure TpvFrameGraph.Compile;
- function CanResourceReused(const aResource:TResource):boolean;
- begin
-  result:=(aResource.fResourceType.fAttachmentData.AttachmentType<>TAttachmentType.Surface) and
-          (not ((aResource.fResourceType.fMetaType<>TResourceType.TMetaType.Attachment) and
-                assigned(aResource.fAssociatedMemoryData)));
- end;
  procedure IndexingPasses;
  var Index:TpvSizeInt;
  begin
@@ -2337,6 +2331,12 @@ procedure TpvFrameGraph.Compile;
   end;
  end;
  procedure CalculateResourceReuseGroups;
+  function CanResourceReused(const aResource:TResource):boolean;
+  begin
+   result:=(aResource.fResourceType.fAttachmentData.AttachmentType<>TAttachmentType.Surface) and
+           (not ((aResource.fResourceType.fMetaType<>TResourceType.TMetaType.Attachment) and
+                 assigned(aResource.fAssociatedMemoryData)));
+  end;
  var Index,
      OtherIndex:TpvSizeInt;
      Resource,
