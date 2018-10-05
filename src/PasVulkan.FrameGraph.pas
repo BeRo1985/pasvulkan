@@ -711,6 +711,7 @@ type EpvFrameGraph=class(Exception);
        fResourceReuseGroups:TResourceReuseGroupList;
        fPasses:TPassList;
        fPassNameHashMap:TPassNameHashMap;
+       fTopologicalSortedPasses:TPassList;
        fRootPass:TPass;
        fEnforcedRootPass:TPass;
        fMaximumOverallPhysicalPassIndex:TpvSizeInt;
@@ -2137,6 +2138,9 @@ begin
 
  fPassNameHashMap:=TPassNameHashMap.Create(nil);
 
+ fTopologicalSortedPasses:=TPassList.Create;
+ fTopologicalSortedPasses.OwnsObjects:=false;
+
  fPhysicalPasses:=TPhysicalPasses.Create;
  fPhysicalPasses.OwnsObjects:=true;
 
@@ -2166,6 +2170,8 @@ begin
  FreeAndNil(fResourceTransitions);
 
  FreeAndNil(fResourceReuseGroups);
+
+ FreeAndNil(fTopologicalSortedPasses);
 
  FreeAndNil(fPasses);
 
@@ -2506,7 +2512,7 @@ procedure TpvFrameGraph.Compile;
    end;
   end;
  end;
- procedure ConstructDirectedAcyclicGraphAndPhysicalPassChoreography;
+ procedure ConstructDirectedAcyclicGraph;
  type TAction=
        (
         Process,
@@ -2527,7 +2533,6 @@ procedure TpvFrameGraph.Compile;
  var Index,
      Count,
      Weight:TpvSizeInt;
-     TopologicalSortedPasses:TPassList;
      Stack:TStack;
      StackItem:TStackItem;
      Pass,
@@ -2535,154 +2540,152 @@ procedure TpvFrameGraph.Compile;
      ResourceTransition,
      OtherResourceTransition:TResourceTransition;
      Resource:TResource;
-     PhysicalRenderPass:TPhysicalRenderPass;
  begin
-
-  TopologicalSortedPasses:=TPassList.Create;
+  // Construct the directed acyclic graph by doing a modified-DFS-based topological sort at the same time
+  Stack.Initialize;
   try
-   TopologicalSortedPasses.OwnsObjects:=false;
-
-   // Construct the directed acyclic graph by doing a modified-DFS-based topological sort at the same time
-   Stack.Initialize;
-   try
-    for Pass in fPasses do begin
-     Pass.fPhysicalPass:=nil;
-     if Pass is TRenderPass then begin
-      TRenderPass(Pass).fPhysicalRenderPassSubPass:=nil;
-     end;
-     Pass.fFlags:=Pass.fFlags-[TPass.TFlag.Used,TPass.TFlag.Processed,TPass.TFlag.Marked];
-     Pass.fPreviousPasses.Clear;
-     Pass.fNextPasses.Clear;
+   fTopologicalSortedPasses.Clear;
+   for Pass in fPasses do begin
+    Pass.fPhysicalPass:=nil;
+    if Pass is TRenderPass then begin
+     TRenderPass(Pass).fPhysicalRenderPassSubPass:=nil;
     end;
-    Stack.Push(NewStackItem(TAction.Process,fRootPass));
-    while Stack.Pop(StackItem) do begin
-     Pass:=StackItem.Pass;
-     case StackItem.Action of
-      TAction.Process:begin
-       if TPass.TFlag.Marked in Pass.fFlags then begin
-        raise EpvFrameGraphRecursion.Create('Recursion detected');
-       end;
-       Include(Pass.fFlags,TPass.TFlag.Marked);
-       if not (TPass.TFlag.Processed in Pass.fFlags) then begin
-        Pass.fFlags:=Pass.fFlags+[TPass.TFlag.Used,TPass.TFlag.Processed];
-        for ResourceTransition in Pass.fResourceTransitions do begin
-         if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
-            not (TResourceTransition.TFlag.PreviousFrameInput in ResourceTransition.Flags) then begin
-          Resource:=ResourceTransition.Resource;
-          for OtherResourceTransition in Resource.fResourceTransitions do begin
-           if (ResourceTransition<>OtherResourceTransition) and
-              (Pass<>OtherResourceTransition.fPass) and
-              (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
-            if Pass.fPreviousPasses.IndexOf(OtherResourceTransition.fPass)<0 then begin
-             Pass.fPreviousPasses.Add(OtherResourceTransition.fPass);
-            end;
-            if OtherResourceTransition.fPass.fNextPasses.IndexOf(Pass)<0 then begin
-             OtherResourceTransition.fPass.fNextPasses.Add(Pass);
-            end;
+    Pass.fFlags:=Pass.fFlags-[TPass.TFlag.Used,TPass.TFlag.Processed,TPass.TFlag.Marked];
+    Pass.fPreviousPasses.Clear;
+    Pass.fNextPasses.Clear;
+   end;
+   Stack.Push(NewStackItem(TAction.Process,fRootPass));
+   while Stack.Pop(StackItem) do begin
+    Pass:=StackItem.Pass;
+    case StackItem.Action of
+     TAction.Process:begin
+      if TPass.TFlag.Marked in Pass.fFlags then begin
+       raise EpvFrameGraphRecursion.Create('Recursion detected');
+      end;
+      Include(Pass.fFlags,TPass.TFlag.Marked);
+      if not (TPass.TFlag.Processed in Pass.fFlags) then begin
+       Pass.fFlags:=Pass.fFlags+[TPass.TFlag.Used,TPass.TFlag.Processed];
+       for ResourceTransition in Pass.fResourceTransitions do begin
+        if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
+           not (TResourceTransition.TFlag.PreviousFrameInput in ResourceTransition.Flags) then begin
+         Resource:=ResourceTransition.Resource;
+         for OtherResourceTransition in Resource.fResourceTransitions do begin
+          if (ResourceTransition<>OtherResourceTransition) and
+             (Pass<>OtherResourceTransition.fPass) and
+             (OtherResourceTransition.fKind in TResourceTransition.AllOutputs) then begin
+           if Pass.fPreviousPasses.IndexOf(OtherResourceTransition.fPass)<0 then begin
+            Pass.fPreviousPasses.Add(OtherResourceTransition.fPass);
+           end;
+           if OtherResourceTransition.fPass.fNextPasses.IndexOf(Pass)<0 then begin
+            OtherResourceTransition.fPass.fNextPasses.Add(Pass);
            end;
           end;
          end;
         end;
-        if Pass is TRenderPass then begin
-         // Pre-sort for better subpass grouping at a later point
-         Index:=0;
-         Count:=Pass.fPreviousPasses.Count;
-         while (Index+1)<Count do begin
-          Passes[0]:=Pass.fPreviousPasses[Index];
-          Passes[1]:=Pass.fPreviousPasses[Index+1];
-          if Passes[0].fQueue<>Passes[1].fQueue then begin
-           Weight:=(ord(Passes[0].fQueue=Pass.fQueue) and 1)-(ord(Passes[1].fQueue=Pass.fQueue) and 1);
-           if Weight=0 then begin
-            if TpvPtrUInt(Passes[0].fQueue)<TpvPtrUInt(Passes[1].fQueue) then begin
-             Weight:=-1;
-            end else begin
-             Weight:=1;
-            end;
-           end;
-          end else begin
-           Weight:=(ord(Passes[0] is TRenderPass) and 1)-(ord(Passes[1] is TRenderPass) and 1);
-           if Weight=0 then begin
-            Weight:=(ord(TRenderPass(Passes[0]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) and 1)-
-                    (ord(TRenderPass(Passes[1]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) and 1);
+       end;
+       if Pass is TRenderPass then begin
+        // Pre-sort for better subpass grouping at a later point
+        Index:=0;
+        Count:=Pass.fPreviousPasses.Count;
+        while (Index+1)<Count do begin
+         Passes[0]:=Pass.fPreviousPasses[Index];
+         Passes[1]:=Pass.fPreviousPasses[Index+1];
+         if Passes[0].fQueue<>Passes[1].fQueue then begin
+          Weight:=(ord(Passes[0].fQueue=Pass.fQueue) and 1)-(ord(Passes[1].fQueue=Pass.fQueue) and 1);
+          if Weight=0 then begin
+           if TpvPtrUInt(Passes[0].fQueue)<TpvPtrUInt(Passes[1].fQueue) then begin
+            Weight:=-1;
+           end else begin
+            Weight:=1;
            end;
           end;
-          if Weight<0 then begin
-           Pass.fPreviousPasses.Exchange(Index,Index+1);
-           if Index>0 then begin
-            dec(Index);
-           end else begin
-            inc(Index);
-           end;
+         end else begin
+          Weight:=(ord(Passes[0] is TRenderPass) and 1)-(ord(Passes[1] is TRenderPass) and 1);
+          if Weight=0 then begin
+           Weight:=(ord(TRenderPass(Passes[0]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) and 1)-
+                   (ord(TRenderPass(Passes[1]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) and 1);
+          end;
+         end;
+         if Weight<0 then begin
+          Pass.fPreviousPasses.Exchange(Index,Index+1);
+          if Index>0 then begin
+           dec(Index);
           end else begin
            inc(Index);
           end;
+         end else begin
+          inc(Index);
          end;
         end;
-        Stack.Push(NewStackItem(TAction.Add,Pass));
        end;
-       Stack.Push(NewStackItem(TAction.Unmark,Pass));
-       for OtherPass in Pass.fPreviousPasses do begin
-        Stack.Push(NewStackItem(TAction.Process,OtherPass));
-       end;
+       Stack.Push(NewStackItem(TAction.Add,Pass));
       end;
-      TAction.Unmark:begin
-       Exclude(Pass.fFlags,TPass.TFlag.Marked);
-      end;
-      TAction.Add:begin
-       Pass.fTopologicalSortIndex:=TopologicalSortedPasses.Add(Pass);
+      Stack.Push(NewStackItem(TAction.Unmark,Pass));
+      for OtherPass in Pass.fPreviousPasses do begin
+       Stack.Push(NewStackItem(TAction.Process,OtherPass));
       end;
      end;
-    end;
-   finally
-    Stack.Finalize;
-   end;
-
-   // Construct choreography together with merging render passes to sub passes of a real
-   // physical render pass
-   fPhysicalPasses.Clear;
-   fMaximumOverallPhysicalPassIndex:=0;
-   Index:=0;
-   Count:=TopologicalSortedPasses.Count;
-   while Index<Count do begin
-    Pass:=TopologicalSortedPasses[Index];
-    if Pass is TComputePass then begin
-     Pass.fPhysicalPass:=TPhysicalComputePass.Create(self,TComputePass(Pass));
-     Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
-     inc(Index);
-    end else if Pass is TRenderPass then begin
-     PhysicalRenderPass:=TPhysicalRenderPass.Create(self,Pass.fQueue);
-     Pass.fPhysicalPass:=PhysicalRenderPass;
-     Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
-     TRenderPass(Pass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(Pass));
-     TRenderPass(Pass).fPhysicalRenderPassSubPass.fIndex:=PhysicalRenderPass.fSubPasses.Add(TRenderPass(Pass).fPhysicalRenderPassSubPass);
-     PhysicalRenderPass.fMultiView:=TRenderPass(Pass).fMultiViewMask<>0;
-     inc(Index);
-     if not (TPass.TFlag.Toggleable in Pass.fFlags) then begin
-      while Index<Count do begin
-       OtherPass:=TopologicalSortedPasses[Index];
-       if (not (TPass.TFlag.Toggleable in OtherPass.fFlags)) and
-          (OtherPass is TRenderPass) and
-          (TRenderPass(OtherPass).fQueue=TRenderPass(Pass).fQueue) and
-          (TRenderPass(OtherPass).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) then begin
-        OtherPass.fPhysicalPass:=Pass.fPhysicalPass;
-        TRenderPass(OtherPass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(OtherPass));
-        TRenderPass(OtherPass).fPhysicalRenderPassSubPass.fIndex:=PhysicalRenderPass.fSubPasses.Add(TRenderPass(OtherPass).fPhysicalRenderPassSubPass);
-        PhysicalRenderPass.fMultiView:=PhysicalRenderPass.fMultiView or (TRenderPass(OtherPass).fMultiViewMask<>0);
-        fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,OtherPass.fPhysicalPass.fIndex);
-        inc(Index);
-       end else begin
-        break;
-       end;
-      end;
+     TAction.Unmark:begin
+      Exclude(Pass.fFlags,TPass.TFlag.Marked);
      end;
-    end else begin
-     inc(Index);
+     TAction.Add:begin
+      Pass.fTopologicalSortIndex:=fTopologicalSortedPasses.Add(Pass);
+     end;
     end;
-    fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,Pass.fPhysicalPass.fIndex);
    end;
-
   finally
-   FreeAndNil(TopologicalSortedPasses);
+   Stack.Finalize;
+  end;
+ end;
+ procedure ConstructPhysicalPassChoreography;
+ var Index,
+     Count:TpvSizeInt;
+     Pass,
+     OtherPass:TPass;
+     PhysicalRenderPass:TPhysicalRenderPass;
+ begin
+  // Construct choreography together with merging render passes to sub passes of a real
+  // physical render pass
+  fPhysicalPasses.Clear;
+  fMaximumOverallPhysicalPassIndex:=0;
+  Index:=0;
+  Count:=fTopologicalSortedPasses.Count;
+  while Index<Count do begin
+   Pass:=fTopologicalSortedPasses[Index];
+   if Pass is TComputePass then begin
+    Pass.fPhysicalPass:=TPhysicalComputePass.Create(self,TComputePass(Pass));
+    Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
+    inc(Index);
+   end else if Pass is TRenderPass then begin
+    PhysicalRenderPass:=TPhysicalRenderPass.Create(self,Pass.fQueue);
+    Pass.fPhysicalPass:=PhysicalRenderPass;
+    Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
+    TRenderPass(Pass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(Pass));
+    TRenderPass(Pass).fPhysicalRenderPassSubPass.fIndex:=PhysicalRenderPass.fSubPasses.Add(TRenderPass(Pass).fPhysicalRenderPassSubPass);
+    PhysicalRenderPass.fMultiView:=TRenderPass(Pass).fMultiViewMask<>0;
+    inc(Index);
+    if not (TPass.TFlag.Toggleable in Pass.fFlags) then begin
+     while Index<Count do begin
+      OtherPass:=fTopologicalSortedPasses[Index];
+      if (not (TPass.TFlag.Toggleable in OtherPass.fFlags)) and
+         (OtherPass is TRenderPass) and
+         (TRenderPass(OtherPass).fQueue=TRenderPass(Pass).fQueue) and
+         (TRenderPass(OtherPass).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) then begin
+       OtherPass.fPhysicalPass:=Pass.fPhysicalPass;
+       TRenderPass(OtherPass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(OtherPass));
+       TRenderPass(OtherPass).fPhysicalRenderPassSubPass.fIndex:=PhysicalRenderPass.fSubPasses.Add(TRenderPass(OtherPass).fPhysicalRenderPassSubPass);
+       PhysicalRenderPass.fMultiView:=PhysicalRenderPass.fMultiView or (TRenderPass(OtherPass).fMultiViewMask<>0);
+       fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,OtherPass.fPhysicalPass.fIndex);
+       inc(Index);
+      end else begin
+       break;
+      end;
+     end;
+    end;
+   end else begin
+    inc(Index);
+   end;
+   fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,Pass.fPhysicalPass.fIndex);
   end;
  end;
  procedure ConstructPhysicalPassDirectedAcyclicGraph;
@@ -3025,7 +3028,9 @@ begin
 
  FindRootPass;
 
- ConstructDirectedAcyclicGraphAndPhysicalPassChoreography;
+ ConstructDirectedAcyclicGraph;
+
+ ConstructPhysicalPassChoreography;
 
  ConstructPhysicalPassDirectedAcyclicGraph;
 
