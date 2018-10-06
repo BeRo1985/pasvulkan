@@ -509,7 +509,8 @@ type EpvFrameGraph=class(Exception);
               fQueue:TQueue;
               fInputDependencies:TPhysicalPasses;
               fOutputDependencies:TPhysicalPasses;
-              fPipelineBarrierGroups:TPipelineBarrierGroups;
+              fBeforePipelineBarrierGroups:TPipelineBarrierGroups;
+              fAfterPipelineBarrierGroups:TPipelineBarrierGroups;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); reintroduce; virtual;
               destructor Destroy; override;
@@ -1921,14 +1922,18 @@ begin
  fOutputDependencies:=TPhysicalPasses.Create;
  fOutputDependencies.OwnsObjects:=false;
 
- fPipelineBarrierGroups:=TPipelineBarrierGroups.Create;
- fPipelineBarrierGroups.OwnsObjects:=false;
+ fBeforePipelineBarrierGroups:=TPipelineBarrierGroups.Create;
+ fBeforePipelineBarrierGroups.OwnsObjects:=false;
+
+ fAfterPipelineBarrierGroups:=TPipelineBarrierGroups.Create;
+ fAfterPipelineBarrierGroups.OwnsObjects:=false;
 
 end;
 
 destructor TpvFrameGraph.TPhysicalPass.Destroy;
 begin
- FreeAndNil(fPipelineBarrierGroups);
+ FreeAndNil(fBeforePipelineBarrierGroups);
+ FreeAndNil(fAfterPipelineBarrierGroups);
  FreeAndNil(fInputDependencies);
  FreeAndNil(fOutputDependencies);
  inherited Destroy;
@@ -2994,26 +2999,43 @@ procedure TpvFrameGraph.Compile;
                                const aDstStageMask:TVkPipelineStageFlags;
                                const aSrcAccessMask:TVkAccessFlags;
                                const aDstAccessMask:TVkAccessFlags;
-                               const aDependencyFlags:TVkDependencyFlags);
-  var PipelineBarrierGroupIndex:TVkSizeINt;
+                               const aDependencyFlags:TVkDependencyFlags;
+                               const aBeforeBeginning:boolean);
+  var PipelineBarrierGroupIndex:TpvSizeInt;
       PipelineBarrierGroup,
       FoundPipelineBarrierGroup:TPhysicalPass.TPipelineBarrierGroup;
   begin
    FoundPipelineBarrierGroup:=nil;
-   for PipelineBarrierGroupIndex:=0 to aPhysicalPass.fPipelineBarrierGroups.Count-1 do begin
-    PipelineBarrierGroup:=aPhysicalPass.fPipelineBarrierGroups[PipelineBarrierGroupIndex];
-    if (PipelineBarrierGroup.fSrcStageMask=aSrcStageMask) and
-       (PipelineBarrierGroup.fDstStageMask=aDstStageMask) and
-       (PipelineBarrierGroup.fDependencyFlags=aDependencyFlags) then begin
-     FoundPipelineBarrierGroup:=PipelineBarrierGroup;
-     break;
+   if aBeforeBeginning then begin
+    for PipelineBarrierGroupIndex:=0 to aPhysicalPass.fBeforePipelineBarrierGroups.Count-1 do begin
+     PipelineBarrierGroup:=aPhysicalPass.fBeforePipelineBarrierGroups[PipelineBarrierGroupIndex];
+     if (PipelineBarrierGroup.fSrcStageMask=aSrcStageMask) and
+        (PipelineBarrierGroup.fDstStageMask=aDstStageMask) and
+        (PipelineBarrierGroup.fDependencyFlags=aDependencyFlags) then begin
+      FoundPipelineBarrierGroup:=PipelineBarrierGroup;
+      break;
+     end;
+    end;
+   end else begin
+    for PipelineBarrierGroupIndex:=0 to aPhysicalPass.fAfterPipelineBarrierGroups.Count-1 do begin
+     PipelineBarrierGroup:=aPhysicalPass.fAfterPipelineBarrierGroups[PipelineBarrierGroupIndex];
+     if (PipelineBarrierGroup.fSrcStageMask=aSrcStageMask) and
+        (PipelineBarrierGroup.fDstStageMask=aDstStageMask) and
+        (PipelineBarrierGroup.fDependencyFlags=aDependencyFlags) then begin
+      FoundPipelineBarrierGroup:=PipelineBarrierGroup;
+      break;
+     end;
     end;
    end;
    if assigned(FoundPipelineBarrierGroup) then begin
     PipelineBarrierGroup:=FoundPipelineBarrierGroup;
    end else begin
     PipelineBarrierGroup:=TPhysicalPass.TPipelineBarrierGroup.Create(aSrcStageMask,aDstStageMask,aDependencyFlags);
-    aPhysicalPass.fPipelineBarrierGroups.Add(PipelineBarrierGroup);
+    if aBeforeBeginning then begin
+     aPhysicalPass.fBeforePipelineBarrierGroups.Add(PipelineBarrierGroup);
+    end else begin
+     aPhysicalPass.fAfterPipelineBarrierGroups.Add(PipelineBarrierGroup);
+    end;
    end;
    // TODO
   end;
@@ -3104,7 +3126,8 @@ procedure TpvFrameGraph.Compile;
                             DstStageMask,
                             SrcAccessMask,
                             DstAccessMask,
-                            DependencyFlags
+                            DependencyFlags,
+                            true
                            );
         end;
        end;
