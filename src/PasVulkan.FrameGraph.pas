@@ -495,10 +495,24 @@ type EpvFrameGraph=class(Exception);
                      type TVkMemoryBarrierDynamicArray=TpvDynamicArray<TVkMemoryBarrier>;
                           TVkBufferMemoryBarrierDynamicArray=TpvDynamicArray<TVkBufferMemoryBarrier>;
                           TVkImageMemoryBarrierDynamicArray=TpvDynamicArray<TVkImageMemoryBarrier>;
+                          TBarrierMapItemKind=
+                           (
+                            Memory,
+                            Buffer,
+                            Image
+                           );
+                          TBarrierMapItem=record
+                           Kind:TBarrierMapItemKind;
+                           BarrierIndex:TpvSizeInt;
+                           ResourcePhysicalData:TResourcePhysicalData;
+                          end;
+                          PBarrierMapItem=^TBarrierMapItem;
+                          TBarrierMapItemDynamicArray=TpvDynamicArray<TBarrierMapItem>;
                     private
                      fSrcStageMask:TVkPipelineStageFlags;
                      fDstStageMask:TVkPipelineStageFlags;
                      fDependencyFlags:TVkDependencyFlags;
+                     fBarrierMapItemDynamicArray:TBarrierMapItemDynamicArray;
                      fMemoryBarrierDynamicArray:TVkMemoryBarrierDynamicArray;
                      fBufferMemoryBarrierDynamicArray:TVkBufferMemoryBarrierDynamicArray;
                      fImageMemoryBarrierDynamicArray:TVkImageMemoryBarrierDynamicArray;
@@ -1913,6 +1927,7 @@ begin
  fSrcStageMask:=aSrcStageMask;
  fDstStageMask:=aDstStageMask;
  fDependencyFlags:=aDependencyFlags;
+ fBarrierMapItemDynamicArray.Initialize;
  fMemoryBarrierDynamicArray.Initialize;
  fBufferMemoryBarrierDynamicArray.Initialize;
  fImageMemoryBarrierDynamicArray.Initialize;
@@ -1926,6 +1941,7 @@ end;
 destructor TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Destroy;
 var Index:TpvSizeInt;
 begin
+ fBarrierMapItemDynamicArray.Finalize;
  fMemoryBarrierDynamicArray.Finalize;
  fBufferMemoryBarrierDynamicArray.Finalize;
  fImageMemoryBarrierDynamicArray.Finalize;
@@ -3039,6 +3055,7 @@ procedure TpvFrameGraph.Compile;
   var PipelineBarrierGroupIndex:TpvSizeInt;
       PipelineBarrierGroup,
       FoundPipelineBarrierGroup:TPhysicalPass.TPipelineBarrierGroup;
+      BarrierMapItem:TPhysicalPass.TPipelineBarrierGroup.TBarrierMapItem;
       BufferMemoryBarrier:TVkBufferMemoryBarrier;
       ImageMemoryBarrier:TVkImageMemoryBarrier;
   begin
@@ -3086,7 +3103,10 @@ procedure TpvFrameGraph.Compile;
     ImageMemoryBarrier.dstQueueFamilyIndex:=aDstQueueFamilyIndex;
     ImageMemoryBarrier.image:=0;
     ImageMemoryBarrier.subresourceRange:=TResourcePhysicalAttachmentData(aResourcePhysicalData).fImageSubresourceRange;
-    PipelineBarrierGroup.fImageMemoryBarrierDynamicArray.Add(ImageMemoryBarrier);
+    BarrierMapItem.Kind:=TPhysicalPass.TPipelineBarrierGroup.TBarrierMapItemKind.Image;
+    BarrierMapItem.BarrierIndex:=PipelineBarrierGroup.fImageMemoryBarrierDynamicArray.Add(ImageMemoryBarrier);
+    BarrierMapItem.ResourcePhysicalData:=aResourcePhysicalData;
+    PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
    end else if aResourcePhysicalData is TResourcePhysicalBufferData then begin
     FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
     BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -3102,9 +3122,14 @@ procedure TpvFrameGraph.Compile;
      BufferMemoryBarrier.offset:=aToResourceTransition.fBufferSubresourceRange.Offset;
      BufferMemoryBarrier.size:=aToResourceTransition.fBufferSubresourceRange.Range;
     end;
-    PipelineBarrierGroup.fBufferMemoryBarrierDynamicArray.Add(BufferMemoryBarrier);
-   end else begin
+    BarrierMapItem.Kind:=TPhysicalPass.TPipelineBarrierGroup.TBarrierMapItemKind.Buffer;
+    BarrierMapItem.BarrierIndex:=PipelineBarrierGroup.fBufferMemoryBarrierDynamicArray.Add(BufferMemoryBarrier);
+    BarrierMapItem.ResourcePhysicalData:=aResourcePhysicalData;
+    PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+   end else if aResourcePhysicalData is TResourcePhysicalImageData then begin
     // TODO
+   end else begin
+    Assert(false);
    end;
   end;
  var ResourceTransitionIndex,
