@@ -1995,17 +1995,29 @@ begin
 end;
 
 procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.AfterCreateSwapChain;
-var SwapChainImageIndex:TpvSizeInt;
+var SwapChainImageIndex,
+    BarrierMapItemIndex:TpvSizeInt;
+    BarrierMapItem:PBarrierMapItem;
 begin
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fWorkMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
-  fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
-  fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
-  // TODO
-  fWorkMemoryBarrierDynamicArray[SwapChainImageIndex].Finish;
-  fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Finish;
-  fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Finish;
-  // TODO
+  fWorkMemoryBarrierDynamicArray[SwapChainImageIndex].Resize(fMemoryBarrierDynamicArray.Count);
+  fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Resize(fBufferMemoryBarrierDynamicArray.Count);
+  fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Resize(fImageMemoryBarrierDynamicArray.Count);
+  for BarrierMapItemIndex:=0 to fBarrierMapItemDynamicArray.Count-1 do begin
+   BarrierMapItem:=@fBarrierMapItemDynamicArray.Items[BarrierMapItemIndex];
+   case BarrierMapItem^.Kind of
+    TBarrierMapItemKind.Memory:begin
+
+    end;
+    TBarrierMapItemKind.Buffer:begin
+    end;
+    TBarrierMapItemKind.Image:begin
+    end;
+    else begin
+     Assert(false);
+    end;
+   end;
+  end;
  end;
 end;
 
