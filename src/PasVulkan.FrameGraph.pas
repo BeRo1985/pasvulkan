@@ -530,6 +530,12 @@ type EpvFrameGraph=class(Exception);
                      property DependencyFlags:TVkDependencyFlags read fDependencyFlags write fDependencyFlags;
                    end;
                    TPipelineBarrierGroups=TpvObjectGenericList<TPipelineBarrierGroup>;
+                   TWaitingSemaphore=record
+                    SignallingSemaphore:TpvVulkanSemaphore;
+                    DstStageMask:TVkPipelineStageFlags;
+                   end;
+                   PWaitingSemaphore=^TWaitingSemaphore;
+                   TWaitingSemaphores=TpvDynamicArray<TWaitingSemaphore>;
              private
               fFrameGraph:TpvFrameGraph;
               fIndex:TpvSizeInt;
@@ -539,6 +545,8 @@ type EpvFrameGraph=class(Exception);
               fOutputDependencies:TPhysicalPasses;
               fBeforePipelineBarrierGroups:TPipelineBarrierGroups;
               fAfterPipelineBarrierGroups:TPipelineBarrierGroups;
+              fSignallingSemaphore:TpvVulkanSemaphore;
+              fWaitingSemaphores:TWaitingSemaphores;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); reintroduce; virtual;
               destructor Destroy; override;
@@ -1976,10 +1984,16 @@ begin
  fAfterPipelineBarrierGroups:=TPipelineBarrierGroups.Create;
  fAfterPipelineBarrierGroups.OwnsObjects:=false;
 
+ fSignallingSemaphore:=TpvVulkanSemaphore.Create(fFrameGraph.fVulkanDevice);
+
+ fWaitingSemaphores.Initialize;
+
 end;
 
 destructor TpvFrameGraph.TPhysicalPass.Destroy;
 begin
+ fWaitingSemaphores.Finalize;
+ FreeAndNil(fSignallingSemaphore);
  FreeAndNil(fBeforePipelineBarrierGroups);
  FreeAndNil(fAfterPipelineBarrierGroups);
  FreeAndNil(fInputDependencies);
@@ -3041,6 +3055,33 @@ type TBeforeAfter=(Before,After);
     aSubPassDependencies.Add(aSubPassDependency);
    end;
   end;
+  procedure AddSemaphoreSignalWait(const aSignallingPhysicalPass:TPhysicalPass;
+                                   const aWaitingPhysicalPass:TPhysicalPass;
+                                   const aDstStageMask:TVkPipelineStageFlags);
+  var WaitingSemaphoreIndex:TpvSizeInt;
+      SignallingSemaphore:TpvVulkanSemaphore;
+      WaitingSemaphore:TPhysicalPass.PWaitingSemaphore;
+  begin
+   SignallingSemaphore:=aSignallingPhysicalPass.fSignallingSemaphore;
+   if not assigned(SignallingSemaphore) then begin
+    SignallingSemaphore:=TpvVulkanSemaphore.Create(fVulkanDevice);
+    aSignallingPhysicalPass.fSignallingSemaphore:=SignallingSemaphore;
+   end;
+   WaitingSemaphore:=nil;
+   for WaitingSemaphoreIndex:=0 to aWaitingPhysicalPass.fWaitingSemaphores.Count-1 do begin
+    if aWaitingPhysicalPass.fWaitingSemaphores.Items[WaitingSemaphoreIndex].SignallingSemaphore=SignallingSemaphore then begin
+     WaitingSemaphore:=@aWaitingPhysicalPass.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
+     break;
+    end;
+   end;
+   if not assigned(WaitingSemaphore) then begin
+     WaitingSemaphoreIndex:=aWaitingPhysicalPass.fWaitingSemaphores.AddNew;
+     WaitingSemaphore:=@aWaitingPhysicalPass.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
+     WaitingSemaphore^.SignallingSemaphore:=SignallingSemaphore;
+     WaitingSemaphore^.DstStageMask:=0;
+   end;
+   WaitingSemaphore^.DstStageMask:=WaitingSemaphore^.DstStageMask or aDstStageMask;
+  end;
   procedure AddPipelineBarrier(const aBeforeAfter:TBeforeAfter;
                                const aPhysicalPass:TPhysicalPass;
                                const aResourcePhysicalData:TResourcePhysicalData;
@@ -3241,13 +3282,10 @@ type TBeforeAfter=(Before,After);
                              DstAccessMask,
                              DependencyFlags
                             );
-          {
-          // TODO
           AddSemaphoreSignalWait(ResourceTransition.fPass.fPhysicalPass, // Signalling / After
                                  OtherResourceTransition.fPass.fPhysicalPass, // Waiting / Before
                                  DstStageMask
                                 );
-          }
          end else begin
           AddPipelineBarrier(TBeforeAfter.Before,
                              OtherResourceTransition.fPass.fPhysicalPass,
@@ -3288,6 +3326,8 @@ type TBeforeAfter=(Before,After);
   end;
  end;
 begin
+
+ fPhysicalPasses.Clear;
 
  IndexingPasses;
 
