@@ -2358,6 +2358,7 @@ begin
 end;
 
 procedure TpvFrameGraph.Compile;
+type TBeforeAfter=(Before,After);
  function GetPipelineStageMask(const aResourceTransition:TResourceTransition):TVkPipelineStageFlags;
  begin
   case aResourceTransition.fKind of
@@ -3040,56 +3041,55 @@ procedure TpvFrameGraph.Compile;
     aSubPassDependencies.Add(aSubPassDependency);
    end;
   end;
-  procedure AddPipelineBarrier(const aPhysicalPass:TPhysicalPass;
+  procedure AddPipelineBarrier(const aBeforeAfter:TBeforeAfter;
+                               const aPhysicalPass:TPhysicalPass;
+                               const aResourcePhysicalData:TResourcePhysicalData;
+                               const aFromResourceTransition:TResourceTransition;
+                               const aToResourceTransition:TResourceTransition;
                                const aSrcQueueFamilyIndex:TVkUInt32;
                                const aDstQueueFamilyIndex:TVkUInt32;
                                const aSrcStageMask:TVkPipelineStageFlags;
                                const aDstStageMask:TVkPipelineStageFlags;
                                const aSrcAccessMask:TVkAccessFlags;
                                const aDstAccessMask:TVkAccessFlags;
-                               const aDependencyFlags:TVkDependencyFlags;
-                               const aBeforeBeginning:boolean;
-                               const aResourcePhysicalData:TResourcePhysicalData;
-                               const aFromResourceTransition:TResourceTransition;
-                               const aToResourceTransition:TResourceTransition);
+                               const aDependencyFlags:TVkDependencyFlags);
   var PipelineBarrierGroupIndex:TpvSizeInt;
+      PipelineBarrierGroups:TPhysicalPass.TPipelineBarrierGroups;
       PipelineBarrierGroup,
       FoundPipelineBarrierGroup:TPhysicalPass.TPipelineBarrierGroup;
       BarrierMapItem:TPhysicalPass.TPipelineBarrierGroup.TBarrierMapItem;
       BufferMemoryBarrier:TVkBufferMemoryBarrier;
       ImageMemoryBarrier:TVkImageMemoryBarrier;
   begin
-   FoundPipelineBarrierGroup:=nil;
-   if aBeforeBeginning then begin
-    for PipelineBarrierGroupIndex:=0 to aPhysicalPass.fBeforePipelineBarrierGroups.Count-1 do begin
-     PipelineBarrierGroup:=aPhysicalPass.fBeforePipelineBarrierGroups[PipelineBarrierGroupIndex];
-     if (PipelineBarrierGroup.fSrcStageMask=aSrcStageMask) and
-        (PipelineBarrierGroup.fDstStageMask=aDstStageMask) and
-        (PipelineBarrierGroup.fDependencyFlags=aDependencyFlags) then begin
-      FoundPipelineBarrierGroup:=PipelineBarrierGroup;
-      break;
-     end;
+   case aBeforeAfter of
+    TBeforeAfter.Before:begin
+     PipelineBarrierGroups:=aPhysicalPass.fBeforePipelineBarrierGroups;
     end;
-   end else begin
-    for PipelineBarrierGroupIndex:=0 to aPhysicalPass.fAfterPipelineBarrierGroups.Count-1 do begin
-     PipelineBarrierGroup:=aPhysicalPass.fAfterPipelineBarrierGroups[PipelineBarrierGroupIndex];
-     if (PipelineBarrierGroup.fSrcStageMask=aSrcStageMask) and
-        (PipelineBarrierGroup.fDstStageMask=aDstStageMask) and
-        (PipelineBarrierGroup.fDependencyFlags=aDependencyFlags) then begin
-      FoundPipelineBarrierGroup:=PipelineBarrierGroup;
-      break;
-     end;
+    TBeforeAfter.After:begin
+     PipelineBarrierGroups:=aPhysicalPass.fAfterPipelineBarrierGroups;
+    end;
+    else begin
+     PipelineBarrierGroups:=nil;
+    end;
+   end;
+   if not assigned(PipelineBarrierGroups) then begin
+    raise EpvFrameGraph.Create('Invalid error 2018-10-06-23-37-0000');
+   end;
+   FoundPipelineBarrierGroup:=nil;
+   for PipelineBarrierGroupIndex:=0 to PipelineBarrierGroups.Count-1 do begin
+    PipelineBarrierGroup:=PipelineBarrierGroups[PipelineBarrierGroupIndex];
+    if (PipelineBarrierGroup.fSrcStageMask=aSrcStageMask) and
+       (PipelineBarrierGroup.fDstStageMask=aDstStageMask) and
+       (PipelineBarrierGroup.fDependencyFlags=aDependencyFlags) then begin
+     FoundPipelineBarrierGroup:=PipelineBarrierGroup;
+     break;
     end;
    end;
    if assigned(FoundPipelineBarrierGroup) then begin
     PipelineBarrierGroup:=FoundPipelineBarrierGroup;
    end else begin
     PipelineBarrierGroup:=TPhysicalPass.TPipelineBarrierGroup.Create(aSrcStageMask,aDstStageMask,aDependencyFlags);
-    if aBeforeBeginning then begin
-     aPhysicalPass.fBeforePipelineBarrierGroups.Add(PipelineBarrierGroup);
-    end else begin
-     aPhysicalPass.fAfterPipelineBarrierGroups.Add(PipelineBarrierGroup);
-    end;
+    PipelineBarrierGroups.Add(PipelineBarrierGroup);
    end;
    // TODO
    if aResourcePhysicalData is TResourcePhysicalAttachmentData then begin
@@ -3115,12 +3115,15 @@ procedure TpvFrameGraph.Compile;
     BufferMemoryBarrier.srcQueueFamilyIndex:=aSrcQueueFamilyIndex;
     BufferMemoryBarrier.dstQueueFamilyIndex:=aDstQueueFamilyIndex;
     BufferMemoryBarrier.buffer:=0;
-    if aBeforeBeginning then begin
-     BufferMemoryBarrier.offset:=aFromResourceTransition.fBufferSubresourceRange.Offset;
-     BufferMemoryBarrier.size:=aFromResourceTransition.fBufferSubresourceRange.Range;
-    end else begin
-     BufferMemoryBarrier.offset:=aToResourceTransition.fBufferSubresourceRange.Offset;
-     BufferMemoryBarrier.size:=aToResourceTransition.fBufferSubresourceRange.Range;
+    case aBeforeAfter of
+     TBeforeAfter.Before:begin
+      BufferMemoryBarrier.offset:=aFromResourceTransition.fBufferSubresourceRange.Offset;
+      BufferMemoryBarrier.size:=aFromResourceTransition.fBufferSubresourceRange.Range;
+     end;
+     TBeforeAfter.After:begin
+      BufferMemoryBarrier.offset:=aToResourceTransition.fBufferSubresourceRange.Offset;
+      BufferMemoryBarrier.size:=aToResourceTransition.fBufferSubresourceRange.Range;
+     end;
     end;
     BarrierMapItem.Kind:=TPhysicalPass.TPipelineBarrierGroup.TBarrierMapItemKind.Buffer;
     BarrierMapItem.BarrierIndex:=PipelineBarrierGroup.fBufferMemoryBarrierDynamicArray.Add(BufferMemoryBarrier);
@@ -3212,45 +3215,52 @@ procedure TpvFrameGraph.Compile;
                        );
          DependencyFlags:=0;
          if ResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex<>OtherResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex then begin
-          AddPipelineBarrier(ResourceTransition.fPass.fPhysicalPass, // Release
+          AddPipelineBarrier(TBeforeAfter.After, // Release
+                             ResourceTransition.fPass.fPhysicalPass,
+                             Resource.fResourceReuseGroup.fResourcePhysicalData,
+                             ResourceTransition,
+                             OtherResourceTransition,
                              SrcQueueFamilyIndex,
                              DstQueueFamilyIndex,
                              SrcStageMask,
-                             DstStageMask,
+                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
                              SrcAccessMask,
-                             DstAccessMask,
-                             DependencyFlags,
-                             false,
+                             0,
+                             DependencyFlags
+                            );
+          AddPipelineBarrier(TBeforeAfter.Before, // Acquire
+                             OtherResourceTransition.fPass.fPhysicalPass,
                              Resource.fResourceReuseGroup.fResourcePhysicalData,
                              ResourceTransition,
-                             OtherResourceTransition
-                            );
-          AddPipelineBarrier(OtherResourceTransition.fPass.fPhysicalPass, // Acquire
+                             OtherResourceTransition,
                              SrcQueueFamilyIndex,
                              DstQueueFamilyIndex,
-                             SrcStageMask,
+                             TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
                              DstStageMask,
-                             SrcAccessMask,
+                             0,
                              DstAccessMask,
-                             DependencyFlags,
-                             true,
-                             Resource.fResourceReuseGroup.fResourcePhysicalData,
-                             ResourceTransition,
-                             OtherResourceTransition
+                             DependencyFlags
                             );
+          {
+          // TODO
+          AddSemaphoreSignalWait(ResourceTransition.fPass.fPhysicalPass, // Signalling / After
+                                 OtherResourceTransition.fPass.fPhysicalPass, // Waiting / Before
+                                 DstStageMask
+                                );
+          }
          end else begin
-          AddPipelineBarrier(OtherResourceTransition.fPass.fPhysicalPass,
+          AddPipelineBarrier(TBeforeAfter.Before,
+                             OtherResourceTransition.fPass.fPhysicalPass,
+                             Resource.fResourceReuseGroup.fResourcePhysicalData,
+                             ResourceTransition,
+                             OtherResourceTransition,
                              SrcQueueFamilyIndex,
                              DstQueueFamilyIndex,
                              SrcStageMask,
                              DstStageMask,
                              SrcAccessMask,
                              DstAccessMask,
-                             DependencyFlags,
-                             true,
-                             Resource.fResourceReuseGroup.fResourcePhysicalData,
-                             ResourceTransition,
-                             OtherResourceTransition
+                             DependencyFlags
                             );
          end;
         end;
