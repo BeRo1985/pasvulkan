@@ -186,6 +186,7 @@ type EpvFrameGraph=class(Exception);
               fFrameGraph:TpvFrameGraph;
               fPhysicalQueue:TpvVulkanQueue;
               fPhysicalPasses:TPhysicalPasses;
+              fCommandPool:TpvVulkanCommandPool;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aPhysicalQueue:TpvVulkanQueue); reintroduce;
@@ -545,6 +546,7 @@ type EpvFrameGraph=class(Exception);
               fOutputDependencies:TPhysicalPasses;
               fBeforePipelineBarrierGroups:TPipelineBarrierGroups;
               fAfterPipelineBarrierGroups:TPipelineBarrierGroups;
+              fCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
               fSignallingSemaphore:TpvVulkanSemaphore;
               fWaitingSemaphores:TWaitingSemaphores;
              public
@@ -969,17 +971,31 @@ end;
 constructor TpvFrameGraph.TQueue.Create(const aFrameGraph:TpvFrameGraph;
                                         const aPhysicalQueue:TpvVulkanQueue);
 begin
+
  inherited Create;
+
  fFrameGraph:=aFrameGraph;
+
  fPhysicalQueue:=aPhysicalQueue;
+
  fPhysicalPasses:=TPhysicalPasses.Create;
  fPhysicalPasses.OwnsObjects:=false;
+
+ fCommandPool:=TpvVulkanCommandPool.Create(fFrameGraph.fVulkanDevice,
+                                           fPhysicalQueue.QueueFamilyIndex,
+                                           TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+
 end;
 
 destructor TpvFrameGraph.TQueue.Destroy;
 begin
+
  FreeAndNil(fPhysicalPasses);
+
+ FreeAndNil(fCommandPool);
+
  inherited Destroy;
+
 end;
 
 { TpvFrameGraph.TResourceType.TAttachmentData }
@@ -1964,6 +1980,7 @@ end;
 { TpvFrameGraph.TPhysicalPass }
 
 constructor TpvFrameGraph.TPhysicalPass.Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue);
+var SwapChainImageIndex:TpvSizeInt;
 begin
 
  inherited Create;
@@ -1984,6 +2001,10 @@ begin
  fAfterPipelineBarrierGroups:=TPipelineBarrierGroups.Create;
  fAfterPipelineBarrierGroups.OwnsObjects:=false;
 
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  fCommandBuffers[SwapChainImageIndex]:=nil;
+ end;
+
  fSignallingSemaphore:=TpvVulkanSemaphore.Create(fFrameGraph.fVulkanDevice);
 
  fWaitingSemaphores.Initialize;
@@ -1991,9 +2012,13 @@ begin
 end;
 
 destructor TpvFrameGraph.TPhysicalPass.Destroy;
+var SwapChainImageIndex:TpvSizeInt;
 begin
  fWaitingSemaphores.Finalize;
  FreeAndNil(fSignallingSemaphore);
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  FreeAndNil(fCommandBuffers[SwapChainImageIndex]);
+ end;
  FreeAndNil(fBeforePipelineBarrierGroups);
  FreeAndNil(fAfterPipelineBarrierGroups);
  FreeAndNil(fInputDependencies);
@@ -2012,13 +2037,19 @@ begin
 end;
 
 procedure TpvFrameGraph.TPhysicalPass.AfterCreateSwapChain;
+var SwapChainImageIndex:TpvSizeInt;
 begin
-
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  fCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fQueue.fCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+ end;
 end;
 
 procedure TpvFrameGraph.TPhysicalPass.BeforeDestroySwapChain;
+var SwapChainImageIndex:TpvSizeInt;
 begin
-
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  FreeAndNil(fCommandBuffers[SwapChainImageIndex]);
+ end;
 end;
 
 { TpvFrameGraph.TVulkanComputePass }
@@ -2037,18 +2068,22 @@ end;
 
 procedure TpvFrameGraph.TPhysicalComputePass.Show;
 begin
+ inherited Show;
 end;
 
 procedure TpvFrameGraph.TPhysicalComputePass.Hide;
 begin
+ inherited Hide;
 end;
 
 procedure TpvFrameGraph.TPhysicalComputePass.AfterCreateSwapChain;
 begin
+ inherited AfterCreateSwapChain;
 end;
 
 procedure TpvFrameGraph.TPhysicalComputePass.BeforeDestroySwapChain;
 begin
+ inherited BeforeDestroySwapChain;
 end;
 
 { TpvFrameGraph.TVulkanRenderPass.TSubPass }
@@ -2104,6 +2139,7 @@ end;
 procedure TpvFrameGraph.TPhysicalRenderPass.Show;
 var SubPass:TSubPass;
 begin
+ inherited Show;
  for SubPass in fSubPasses do begin
   SubPass.Show;
  end;
@@ -2115,6 +2151,7 @@ begin
  for SubPass in fSubPasses do begin
   SubPass.Hide;
  end;
+ inherited Hide;
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.AfterCreateSwapChain;
@@ -2138,6 +2175,8 @@ var SubPassDependencyIndex:TpvSizeInt;
     DstStageMask:TVkPipelineStageFlags;
     SubPassDependency:PSubPassDependency;
 begin
+
+ inherited AfterCreateSwapChain;
 
  for SubPass in fSubPasses do begin
   SubPass.AfterCreateSwapChain;
@@ -2219,6 +2258,9 @@ begin
  for SubPass in fSubPasses do begin
   SubPass.BeforeDestroySwapChain;
  end;
+
+ inherited BeforeDestroySwapChain;
+
 end;
 
 { TpvFrameGraph }
@@ -3075,10 +3117,10 @@ type TBeforeAfter=(Before,After);
     end;
    end;
    if not assigned(WaitingSemaphore) then begin
-     WaitingSemaphoreIndex:=aWaitingPhysicalPass.fWaitingSemaphores.AddNew;
-     WaitingSemaphore:=@aWaitingPhysicalPass.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
-     WaitingSemaphore^.SignallingSemaphore:=SignallingSemaphore;
-     WaitingSemaphore^.DstStageMask:=0;
+    WaitingSemaphoreIndex:=aWaitingPhysicalPass.fWaitingSemaphores.AddNew;
+    WaitingSemaphore:=@aWaitingPhysicalPass.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
+    WaitingSemaphore^.SignallingSemaphore:=SignallingSemaphore;
+    WaitingSemaphore^.DstStageMask:=0;
    end;
    WaitingSemaphore^.DstStageMask:=WaitingSemaphore^.DstStageMask or aDstStageMask;
   end;
