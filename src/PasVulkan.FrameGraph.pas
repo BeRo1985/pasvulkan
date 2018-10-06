@@ -316,6 +316,12 @@ type EpvFrameGraph=class(Exception);
               property VulkanImageView:TpvVulkanImageView read fVulkanImageView write fVulkanImageView;
               property VulkanMemoryBlock:TpvVulkanDeviceMemoryBlock read fVulkanMemoryBlock write fVulkanMemoryBlock;}
             end;
+            TResourcePhysicalImageData=class(TResourcePhysicalData)
+             // TODO
+            end;
+            TResourcePhysicalBufferData=class(TResourcePhysicalData)
+             // TODO
+            end;
             TResourceReuseGroup=class
              private
               fFrameGraph:TpvFrameGraph;
@@ -486,14 +492,19 @@ type EpvFrameGraph=class(Exception);
              public
               type TPipelineBarrierGroup=class
                     public
-                     type TVkBufferMemoryBarrierDynamicArray=TpvDynamicArray<TVkBufferMemoryBarrier>;
+                     type TVkMemoryBarrierDynamicArray=TpvDynamicArray<TVkMemoryBarrier>;
+                          TVkBufferMemoryBarrierDynamicArray=TpvDynamicArray<TVkBufferMemoryBarrier>;
                           TVkImageMemoryBarrierDynamicArray=TpvDynamicArray<TVkImageMemoryBarrier>;
                     private
                      fSrcStageMask:TVkPipelineStageFlags;
                      fDstStageMask:TVkPipelineStageFlags;
                      fDependencyFlags:TVkDependencyFlags;
+                     fMemoryBarrierDynamicArray:TVkMemoryBarrierDynamicArray;
                      fBufferMemoryBarrierDynamicArray:TVkBufferMemoryBarrierDynamicArray;
                      fImageMemoryBarrierDynamicArray:TVkImageMemoryBarrierDynamicArray;
+                     fWorkMemoryBarrierDynamicArray:array[0..MaxSwapChainImages-1] of TVkMemoryBarrierDynamicArray;
+                     fWorkBufferMemoryBarrierDynamicArray:array[0..MaxSwapChainImages-1] of TVkBufferMemoryBarrierDynamicArray;
+                     fWorkImageMemoryBarrierDynamicArray:array[0..MaxSwapChainImages-1] of TVkImageMemoryBarrierDynamicArray;
                     public
                      constructor Create(const aSrcStageMask:TVkPipelineStageFlags;
                                         const aDstStageMask:TVkPipelineStageFlags;
@@ -1896,19 +1907,33 @@ end;
 constructor TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Create(const aSrcStageMask:TVkPipelineStageFlags;
                                                                      const aDstStageMask:TVkPipelineStageFlags;
                                                                      const aDependencyFlags:TVkDependencyFlags);
+var Index:TpvSizeInt;
 begin
  inherited Create;
  fSrcStageMask:=aSrcStageMask;
  fDstStageMask:=aDstStageMask;
  fDependencyFlags:=aDependencyFlags;
+ fMemoryBarrierDynamicArray.Initialize;
  fBufferMemoryBarrierDynamicArray.Initialize;
  fImageMemoryBarrierDynamicArray.Initialize;
+ for Index:=0 to MaxSwapChainImages-1 do begin
+  fWorkMemoryBarrierDynamicArray[Index].Initialize;
+  fWorkBufferMemoryBarrierDynamicArray[Index].Initialize;
+  fWorkImageMemoryBarrierDynamicArray[Index].Initialize;
+ end;
 end;
 
 destructor TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Destroy;
+var Index:TpvSizeInt;
 begin
+ fMemoryBarrierDynamicArray.Finalize;
  fBufferMemoryBarrierDynamicArray.Finalize;
  fImageMemoryBarrierDynamicArray.Finalize;
+ for Index:=0 to MaxSwapChainImages-1 do begin
+  fWorkMemoryBarrierDynamicArray[Index].Finalize;
+  fWorkBufferMemoryBarrierDynamicArray[Index].Finalize;
+  fWorkImageMemoryBarrierDynamicArray[Index].Finalize;
+ end;
  inherited Destroy;
 end;
 
@@ -3014,6 +3039,7 @@ procedure TpvFrameGraph.Compile;
   var PipelineBarrierGroupIndex:TpvSizeInt;
       PipelineBarrierGroup,
       FoundPipelineBarrierGroup:TPhysicalPass.TPipelineBarrierGroup;
+      BufferMemoryBarrier:TVkBufferMemoryBarrier;
       ImageMemoryBarrier:TVkImageMemoryBarrier;
   begin
    FoundPipelineBarrierGroup:=nil;
@@ -3061,7 +3087,24 @@ procedure TpvFrameGraph.Compile;
     ImageMemoryBarrier.image:=0;
     ImageMemoryBarrier.subresourceRange:=TResourcePhysicalAttachmentData(aResourcePhysicalData).fImageSubresourceRange;
     PipelineBarrierGroup.fImageMemoryBarrierDynamicArray.Add(ImageMemoryBarrier);
+   end else if aResourcePhysicalData is TResourcePhysicalBufferData then begin
+    FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
+    BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    BufferMemoryBarrier.srcAccessMask:=aSrcAccessMask;
+    BufferMemoryBarrier.dstAccessMask:=aDstAccessMask;
+    BufferMemoryBarrier.srcQueueFamilyIndex:=aSrcQueueFamilyIndex;
+    BufferMemoryBarrier.dstQueueFamilyIndex:=aDstQueueFamilyIndex;
+    BufferMemoryBarrier.buffer:=0;
+    if aBeforeBeginning then begin
+     BufferMemoryBarrier.offset:=aFromResourceTransition.fBufferSubresourceRange.Offset;
+     BufferMemoryBarrier.size:=aFromResourceTransition.fBufferSubresourceRange.Range;
+    end else begin
+     BufferMemoryBarrier.offset:=aToResourceTransition.fBufferSubresourceRange.Offset;
+     BufferMemoryBarrier.size:=aToResourceTransition.fBufferSubresourceRange.Range;
+    end;
+    PipelineBarrierGroup.fBufferMemoryBarrierDynamicArray.Add(BufferMemoryBarrier);
    end else begin
+    // TODO
    end;
   end;
  var ResourceTransitionIndex,
