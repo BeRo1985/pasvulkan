@@ -537,6 +537,8 @@ type EpvFrameGraph=class(Exception);
                    end;
                    PWaitingSemaphore=^TWaitingSemaphore;
                    TWaitingSemaphores=TpvDynamicArray<TWaitingSemaphore>;
+                   TWaitingSemaphoreHandles=TpvDynamicArray<TVkSemaphore>;
+                   TWaitingSemaphoreDstStageMasks=TpvDynamicArray<TVkPipelineStageFlags>;
              private
               fFrameGraph:TpvFrameGraph;
               fIndex:TpvSizeInt;
@@ -549,8 +551,8 @@ type EpvFrameGraph=class(Exception);
               fCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
               fSignallingSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
               fWaitingSemaphores:TWaitingSemaphores;
-              fWaitingSemaphoreHandles:TpvDynamicArray<TVkSemaphore>;
-              fWaitingSemaphoreDstStageMasks:TpvDynamicArray<TVkPipelineStageFlags>;
+              fWaitingSemaphoreHandles:TWaitingSemaphoreHandles;
+              fWaitingSemaphoreDstStageMasks:TWaitingSemaphoreDstStageMasks;
               fSubmitInfos:array[0..MaxSwapChainImages-1] of TVkSubmitInfo;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); reintroduce; virtual;
