@@ -2010,21 +2010,36 @@ begin
    BarrierMapItem:=@fBarrierMapItemDynamicArray.Items[BarrierMapItemIndex];
    case BarrierMapItem^.Kind of
     TBarrierMapItemKind.Memory:begin
+     Assert((BarrierMapItem^.BarrierIndex>=0) and (BarrierMapItem^.BarrierIndex<fMemoryBarrierDynamicArray.Count));
      MemoryBarrier:=@fWorkMemoryBarrierDynamicArray[SwapChainImageIndex].Items[BarrierMapItem^.BarrierIndex];
      if assigned(MemoryBarrier) then begin
       // Nothing needed to do
      end;
     end;
     TBarrierMapItemKind.Buffer:begin
+     Assert((BarrierMapItem^.BarrierIndex>=0) and (BarrierMapItem^.BarrierIndex<fBufferMemoryBarrierDynamicArray.Count));
      BufferMemoryBarrier:=@fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Items[BarrierMapItem^.BarrierIndex];
-     if assigned(BufferMemoryBarrier) then begin
+     Assert(assigned(BarrierMapItem^.ResourcePhysicalData));
+     if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalBufferData then begin
       // TODO
+//    BufferMemoryBarrier^.buffer:=TResourcePhysicalBufferData(BarrierMapItem^.ResourcePhysicalData).fBufferHandles[SwapChainImageIndex];
+      Assert(false,'TODO');
+     end else begin
+      Assert(false);
      end;
     end;
     TBarrierMapItemKind.Image:begin
+     Assert((BarrierMapItem^.BarrierIndex>=0) and (BarrierMapItem^.BarrierIndex<fImageMemoryBarrierDynamicArray.Count));
      ImageMemoryBarrier:=@fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Items[BarrierMapItem^.BarrierIndex];
-     if assigned(ImageMemoryBarrier) then begin
+     Assert(assigned(BarrierMapItem^.ResourcePhysicalData));
+     if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalAttachmentData then begin
+      ImageMemoryBarrier^.image:=TResourcePhysicalAttachmentData(BarrierMapItem^.ResourcePhysicalData).fVulkanImage[SwapChainImageIndex].Handle;
+     end else if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalImageData then begin
       // TODO
+//    ImageMemoryBarrier^.image:=TResourcePhysicalImageData(BarrierMapItem^.ResourcePhysicalData).fImageHandles[SwapChainImageIndex];
+      Assert(false,'TODO');
+     end else begin
+      Assert(false);
      end;
     end;
     else begin
