@@ -532,7 +532,7 @@ type EpvFrameGraph=class(Exception);
                    end;
                    TPipelineBarrierGroups=TpvObjectGenericList<TPipelineBarrierGroup>;
                    TWaitingSemaphore=record
-                    SignallingSemaphore:TpvVulkanSemaphore;
+                    SignallingPhysicalPass:TPhysicalPass;
                     DstStageMask:TVkPipelineStageFlags;
                    end;
                    PWaitingSemaphore=^TWaitingSemaphore;
@@ -547,7 +547,7 @@ type EpvFrameGraph=class(Exception);
               fBeforePipelineBarrierGroups:TPipelineBarrierGroups;
               fAfterPipelineBarrierGroups:TPipelineBarrierGroups;
               fCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-              fSignallingSemaphore:TpvVulkanSemaphore;
+              fSignallingSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
               fWaitingSemaphores:TWaitingSemaphores;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); reintroduce; virtual;
@@ -2003,9 +2003,8 @@ begin
 
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   fCommandBuffers[SwapChainImageIndex]:=nil;
+  fSignallingSemaphores[SwapChainImageIndex]:=nil;
  end;
-
- fSignallingSemaphore:=TpvVulkanSemaphore.Create(fFrameGraph.fVulkanDevice);
 
  fWaitingSemaphores.Initialize;
 
@@ -2015,9 +2014,9 @@ destructor TpvFrameGraph.TPhysicalPass.Destroy;
 var SwapChainImageIndex:TpvSizeInt;
 begin
  fWaitingSemaphores.Finalize;
- FreeAndNil(fSignallingSemaphore);
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fCommandBuffers[SwapChainImageIndex]);
+  FreeAndNil(fSignallingSemaphores[SwapChainImageIndex]);
  end;
  FreeAndNil(fBeforePipelineBarrierGroups);
  FreeAndNil(fAfterPipelineBarrierGroups);
@@ -2041,6 +2040,7 @@ var SwapChainImageIndex:TpvSizeInt;
 begin
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   fCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fQueue.fCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+  fSignallingSemaphores[SwapChainImageIndex]:=TpvVulkanSemaphore.Create(fFrameGraph.fVulkanDevice);
  end;
 end;
 
@@ -2049,6 +2049,7 @@ var SwapChainImageIndex:TpvSizeInt;
 begin
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fCommandBuffers[SwapChainImageIndex]);
+  FreeAndNil(fSignallingSemaphores[SwapChainImageIndex]);
  end;
 end;
 
@@ -3101,17 +3102,11 @@ type TBeforeAfter=(Before,After);
                                    const aWaitingPhysicalPass:TPhysicalPass;
                                    const aDstStageMask:TVkPipelineStageFlags);
   var WaitingSemaphoreIndex:TpvSizeInt;
-      SignallingSemaphore:TpvVulkanSemaphore;
       WaitingSemaphore:TPhysicalPass.PWaitingSemaphore;
   begin
-   SignallingSemaphore:=aSignallingPhysicalPass.fSignallingSemaphore;
-   if not assigned(SignallingSemaphore) then begin
-    SignallingSemaphore:=TpvVulkanSemaphore.Create(fVulkanDevice);
-    aSignallingPhysicalPass.fSignallingSemaphore:=SignallingSemaphore;
-   end;
    WaitingSemaphore:=nil;
    for WaitingSemaphoreIndex:=0 to aWaitingPhysicalPass.fWaitingSemaphores.Count-1 do begin
-    if aWaitingPhysicalPass.fWaitingSemaphores.Items[WaitingSemaphoreIndex].SignallingSemaphore=SignallingSemaphore then begin
+    if aWaitingPhysicalPass.fWaitingSemaphores.Items[WaitingSemaphoreIndex].SignallingPhysicalPass=aSignallingPhysicalPass then begin
      WaitingSemaphore:=@aWaitingPhysicalPass.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
      break;
     end;
@@ -3119,7 +3114,7 @@ type TBeforeAfter=(Before,After);
    if not assigned(WaitingSemaphore) then begin
     WaitingSemaphoreIndex:=aWaitingPhysicalPass.fWaitingSemaphores.AddNew;
     WaitingSemaphore:=@aWaitingPhysicalPass.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
-    WaitingSemaphore^.SignallingSemaphore:=SignallingSemaphore;
+    WaitingSemaphore^.SignallingPhysicalPass:=aSignallingPhysicalPass;
     WaitingSemaphore^.DstStageMask:=0;
    end;
    WaitingSemaphore^.DstStageMask:=WaitingSemaphore^.DstStageMask or aDstStageMask;
