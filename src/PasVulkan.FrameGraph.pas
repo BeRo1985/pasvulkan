@@ -483,6 +483,25 @@ type EpvFrameGraph=class(Exception);
             TComputePass=class;
             TRenderPass=class;
             TPhysicalPass=class
+             public
+              type TPipelineBarrierGroup=class
+                    public
+///                   type
+                    private
+                     fSrcStageMask:TVkPipelineStageFlags;
+                     fDstStageMask:TVkPipelineStageFlags;
+                     fDependencyFlags:TVkDependencyFlags;
+                    public
+                     constructor Create(const aSrcStageMask:TVkPipelineStageFlags;
+                                        const aDstStageMask:TVkPipelineStageFlags;
+                                        const aDependencyFlags:TVkDependencyFlags);
+                     destructor Destroy; override;
+                    published
+                     property SrcStageMask:TVkPipelineStageFlags read fSrcStageMask write fSrcStageMask;
+                     property DstStageMask:TVkPipelineStageFlags read fDstStageMask write fDstStageMask;
+                     property DependencyFlags:TVkDependencyFlags read fDependencyFlags write fDependencyFlags;
+                   end;
+                   TPipelineBarrierGroups=TpvObjectGenericList<TPipelineBarrierGroup>;
              private
               fFrameGraph:TpvFrameGraph;
               fIndex:TpvSizeInt;
@@ -490,6 +509,7 @@ type EpvFrameGraph=class(Exception);
               fQueue:TQueue;
               fInputDependencies:TPhysicalPasses;
               fOutputDependencies:TPhysicalPasses;
+              fPipelineBarrierGroups:TPipelineBarrierGroups;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); reintroduce; virtual;
               destructor Destroy; override;
@@ -1867,6 +1887,23 @@ begin
  inherited Destroy;
 end;
 
+{ TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup }
+
+constructor TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Create(const aSrcStageMask:TVkPipelineStageFlags;
+                                                                     const aDstStageMask:TVkPipelineStageFlags;
+                                                                     const aDependencyFlags:TVkDependencyFlags);
+begin
+ inherited Create;
+ fSrcStageMask:=aSrcStageMask;
+ fDstStageMask:=aDstStageMask;
+ fDependencyFlags:=aDependencyFlags;
+end;
+
+destructor TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Destroy;
+begin
+ inherited Destroy;
+end;
+
 { TpvFrameGraph.TPhysicalPass }
 
 constructor TpvFrameGraph.TPhysicalPass.Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue);
@@ -1884,10 +1921,14 @@ begin
  fOutputDependencies:=TPhysicalPasses.Create;
  fOutputDependencies.OwnsObjects:=false;
 
+ fPipelineBarrierGroups:=TPipelineBarrierGroups.Create;
+ fPipelineBarrierGroups.OwnsObjects:=false;
+
 end;
 
 destructor TpvFrameGraph.TPhysicalPass.Destroy;
 begin
+ FreeAndNil(fPipelineBarrierGroups);
  FreeAndNil(fInputDependencies);
  FreeAndNil(fOutputDependencies);
  inherited Destroy;
@@ -2946,8 +2987,39 @@ procedure TpvFrameGraph.Compile;
     aSubPassDependencies.Add(aSubPassDependency);
    end;
   end;
+  procedure AddPipelineBarrier(const aPhysicalPass:TPhysicalPass;
+                               const aSrcQueueFamilyIndex:TVkUInt32;
+                               const aDstQueueFamilyIndex:TVkUInt32;
+                               const aSrcStageMask:TVkPipelineStageFlags;
+                               const aDstStageMask:TVkPipelineStageFlags;
+                               const aSrcAccessMask:TVkAccessFlags;
+                               const aDstAccessMask:TVkAccessFlags;
+                               const aDependencyFlags:TVkDependencyFlags);
+  var PipelineBarrierGroupIndex:TVkSizeINt;
+      PipelineBarrierGroup,
+      FoundPipelineBarrierGroup:TPhysicalPass.TPipelineBarrierGroup;
+  begin
+   FoundPipelineBarrierGroup:=nil;
+   for PipelineBarrierGroupIndex:=0 to aPhysicalPass.fPipelineBarrierGroups.Count-1 do begin
+    PipelineBarrierGroup:=aPhysicalPass.fPipelineBarrierGroups[PipelineBarrierGroupIndex];
+    if (PipelineBarrierGroup.fSrcStageMask=aSrcStageMask) and
+       (PipelineBarrierGroup.fDstStageMask=aDstStageMask) and
+       (PipelineBarrierGroup.fDependencyFlags=aDependencyFlags) then begin
+     FoundPipelineBarrierGroup:=PipelineBarrierGroup;
+     break;
+    end;
+   end;
+   if assigned(FoundPipelineBarrierGroup) then begin
+    PipelineBarrierGroup:=FoundPipelineBarrierGroup;
+   end else begin
+    PipelineBarrierGroup:=TPhysicalPass.TPipelineBarrierGroup.Create(aSrcStageMask,aDstStageMask,aDependencyFlags);
+    aPhysicalPass.fPipelineBarrierGroups.Add(PipelineBarrierGroup);
+   end;
+   // TODO
+  end;
  var ResourceTransitionIndex,
-     OtherResourceTransitionIndex:TpvSizeInt;
+     OtherResourceTransitionIndex,
+     PipelineBarrierGroupIndex:TpvSizeInt;
      Resource:TResource;
      ResourceTransition,
      OtherResourceTransition:TResourceTransition;
@@ -2958,6 +3030,9 @@ procedure TpvFrameGraph.Compile;
      DstStageMask:TVkPipelineStageFlags;
      SrcAccessMask,
      DstAccessMask:TVkAccessFlags;
+     PipelineBarrierGroup,
+     FoundPipelineBarrierGroup:TPhysicalPass.TPipelineBarrierGroup;
+     DependencyFlags:TVkDependencyFlags;
  begin
   for Resource in fResources do begin
    for ResourceTransitionIndex:=0 to Resource.fResourceTransitions.Count-1 do begin
@@ -3020,7 +3095,17 @@ procedure TpvFrameGraph.Compile;
                         SrcAccessMask,
                         DstAccessMask
                        );
+         DependencyFlags:=0;
          // TODO: Create pipeline barrier
+         AddPipelineBarrier(OtherResourceTransition.fPass.fPhysicalPass,
+                            SrcQueueFamilyIndex,
+                            DstQueueFamilyIndex,
+                            SrcStageMask,
+                            DstStageMask,
+                            SrcAccessMask,
+                            DstAccessMask,
+                            DependencyFlags
+                           );
         end;
        end;
       end;
