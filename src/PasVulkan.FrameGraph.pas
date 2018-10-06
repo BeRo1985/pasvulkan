@@ -525,6 +525,10 @@ type EpvFrameGraph=class(Exception);
                                         const aDstStageMask:TVkPipelineStageFlags;
                                         const aDependencyFlags:TVkDependencyFlags);
                      destructor Destroy; override;
+                     procedure Show;
+                     procedure Hide;
+                     procedure AfterCreateSwapChain;
+                     procedure BeforeDestroySwapChain;
                     published
                      property SrcStageMask:TVkPipelineStageFlags read fSrcStageMask write fSrcStageMask;
                      property DstStageMask:TVkPipelineStageFlags read fDstStageMask write fDstStageMask;
@@ -1968,18 +1972,51 @@ begin
 end;
 
 destructor TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Destroy;
-var Index:TpvSizeInt;
+var SwapChainImageIndex:TpvSizeInt;
 begin
  fBarrierMapItemDynamicArray.Finalize;
  fMemoryBarrierDynamicArray.Finalize;
  fBufferMemoryBarrierDynamicArray.Finalize;
  fImageMemoryBarrierDynamicArray.Finalize;
- for Index:=0 to MaxSwapChainImages-1 do begin
-  fWorkMemoryBarrierDynamicArray[Index].Finalize;
-  fWorkBufferMemoryBarrierDynamicArray[Index].Finalize;
-  fWorkImageMemoryBarrierDynamicArray[Index].Finalize;
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  fWorkMemoryBarrierDynamicArray[SwapChainImageIndex].Finalize;
+  fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Finalize;
+  fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Finalize;
  end;
  inherited Destroy;
+end;
+
+procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Show;
+begin
+end;
+
+procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Hide;
+begin
+end;
+
+procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.AfterCreateSwapChain;
+var SwapChainImageIndex:TpvSizeInt;
+begin
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  fWorkMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
+  fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
+  fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
+  // TODO
+  fWorkMemoryBarrierDynamicArray[SwapChainImageIndex].Finish;
+  fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Finish;
+  fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Finish;
+  // TODO
+ end;
+end;
+
+procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.BeforeDestroySwapChain;
+var SwapChainImageIndex:TpvSizeInt;
+begin
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  fWorkMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
+  fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
+  fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
+ end;
 end;
 
 { TpvFrameGraph.TPhysicalPass }
@@ -2037,30 +2074,56 @@ begin
 end;
 
 procedure TpvFrameGraph.TPhysicalPass.Show;
+var PipelineBarrierGroup:TPipelineBarrierGroup;
 begin
-
+ for PipelineBarrierGroup in fBeforePipelineBarrierGroups do begin
+  PipelineBarrierGroup.Show;
+ end;
+ for PipelineBarrierGroup in fAfterPipelineBarrierGroups do begin
+  PipelineBarrierGroup.Show;
+ end;
 end;
 
 procedure TpvFrameGraph.TPhysicalPass.Hide;
+var PipelineBarrierGroup:TPipelineBarrierGroup;
 begin
-
+ for PipelineBarrierGroup in fBeforePipelineBarrierGroups do begin
+  PipelineBarrierGroup.Hide;
+ end;
+ for PipelineBarrierGroup in fAfterPipelineBarrierGroups do begin
+  PipelineBarrierGroup.Hide;
+ end;
 end;
 
 procedure TpvFrameGraph.TPhysicalPass.AfterCreateSwapChain;
 var SwapChainImageIndex:TpvSizeInt;
+    PipelineBarrierGroup:TPipelineBarrierGroup;
 begin
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   fCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fQueue.fCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
   fSignallingSemaphores[SwapChainImageIndex]:=TpvVulkanSemaphore.Create(fFrameGraph.fVulkanDevice);
  end;
+ for PipelineBarrierGroup in fBeforePipelineBarrierGroups do begin
+  PipelineBarrierGroup.AfterCreateSwapChain;
+ end;
+ for PipelineBarrierGroup in fAfterPipelineBarrierGroups do begin
+  PipelineBarrierGroup.AfterCreateSwapChain;
+ end;
 end;
 
 procedure TpvFrameGraph.TPhysicalPass.BeforeDestroySwapChain;
 var SwapChainImageIndex:TpvSizeInt;
+    PipelineBarrierGroup:TPipelineBarrierGroup;
 begin
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fCommandBuffers[SwapChainImageIndex]);
   FreeAndNil(fSignallingSemaphores[SwapChainImageIndex]);
+ end;
+ for PipelineBarrierGroup in fBeforePipelineBarrierGroups do begin
+  PipelineBarrierGroup.BeforeDestroySwapChain;
+ end;
+ for PipelineBarrierGroup in fAfterPipelineBarrierGroups do begin
+  PipelineBarrierGroup.BeforeDestroySwapChain;
  end;
 end;
 
