@@ -3118,17 +3118,39 @@ procedure TpvFrameGraph.Compile;
                         DstAccessMask
                        );
          DependencyFlags:=0;
-         // TODO: Create pipeline barrier
-         AddPipelineBarrier(OtherResourceTransition.fPass.fPhysicalPass,
-                            SrcQueueFamilyIndex,
-                            DstQueueFamilyIndex,
-                            SrcStageMask,
-                            DstStageMask,
-                            SrcAccessMask,
-                            DstAccessMask,
-                            DependencyFlags,
-                            true
-                           );
+         if ResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex<>OtherResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex then begin
+          AddPipelineBarrier(ResourceTransition.fPass.fPhysicalPass, // Release
+                             SrcQueueFamilyIndex,
+                             DstQueueFamilyIndex,
+                             SrcStageMask,
+                             DstStageMask,
+                             SrcAccessMask,
+                             DstAccessMask,
+                             DependencyFlags,
+                             false
+                            );
+          AddPipelineBarrier(OtherResourceTransition.fPass.fPhysicalPass, // Acquire
+                             SrcQueueFamilyIndex,
+                             DstQueueFamilyIndex,
+                             SrcStageMask,
+                             DstStageMask,
+                             SrcAccessMask,
+                             DstAccessMask,
+                             DependencyFlags,
+                             true
+                            );
+         end else begin
+          AddPipelineBarrier(OtherResourceTransition.fPass.fPhysicalPass,
+                             SrcQueueFamilyIndex,
+                             DstQueueFamilyIndex,
+                             SrcStageMask,
+                             DstStageMask,
+                             SrcAccessMask,
+                             DstAccessMask,
+                             DependencyFlags,
+                             true
+                            );
+         end;
         end;
        end;
       end;
