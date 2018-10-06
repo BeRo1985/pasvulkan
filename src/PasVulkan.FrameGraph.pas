@@ -486,11 +486,14 @@ type EpvFrameGraph=class(Exception);
              public
               type TPipelineBarrierGroup=class
                     public
-///                   type
+                     type TVkBufferMemoryBarrierDynamicArray=TpvDynamicArray<TVkBufferMemoryBarrier>;
+                          TVkImageMemoryBarrierDynamicArray=TpvDynamicArray<TVkImageMemoryBarrier>;
                     private
                      fSrcStageMask:TVkPipelineStageFlags;
                      fDstStageMask:TVkPipelineStageFlags;
                      fDependencyFlags:TVkDependencyFlags;
+                     fBufferMemoryBarrierDynamicArray:TVkBufferMemoryBarrierDynamicArray;
+                     fImageMemoryBarrierDynamicArray:TVkImageMemoryBarrierDynamicArray;
                     public
                      constructor Create(const aSrcStageMask:TVkPipelineStageFlags;
                                         const aDstStageMask:TVkPipelineStageFlags;
@@ -1898,10 +1901,14 @@ begin
  fSrcStageMask:=aSrcStageMask;
  fDstStageMask:=aDstStageMask;
  fDependencyFlags:=aDependencyFlags;
+ fBufferMemoryBarrierDynamicArray.Initialize;
+ fImageMemoryBarrierDynamicArray.Initialize;
 end;
 
 destructor TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Destroy;
 begin
+ fBufferMemoryBarrierDynamicArray.Finalize;
+ fImageMemoryBarrierDynamicArray.Finalize;
  inherited Destroy;
 end;
 
@@ -3000,10 +3007,14 @@ procedure TpvFrameGraph.Compile;
                                const aSrcAccessMask:TVkAccessFlags;
                                const aDstAccessMask:TVkAccessFlags;
                                const aDependencyFlags:TVkDependencyFlags;
-                               const aBeforeBeginning:boolean);
+                               const aBeforeBeginning:boolean;
+                               const aResourcePhysicalData:TResourcePhysicalData;
+                               const aFromResourceTransition:TResourceTransition;
+                               const aToResourceTransition:TResourceTransition);
   var PipelineBarrierGroupIndex:TpvSizeInt;
       PipelineBarrierGroup,
       FoundPipelineBarrierGroup:TPhysicalPass.TPipelineBarrierGroup;
+      ImageMemoryBarrier:TVkImageMemoryBarrier;
   begin
    FoundPipelineBarrierGroup:=nil;
    if aBeforeBeginning then begin
@@ -3038,6 +3049,20 @@ procedure TpvFrameGraph.Compile;
     end;
    end;
    // TODO
+   if aResourcePhysicalData is TResourcePhysicalAttachmentData then begin
+    FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+    ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    ImageMemoryBarrier.srcAccessMask:=aSrcAccessMask;
+    ImageMemoryBarrier.dstAccessMask:=aDstAccessMask;
+    ImageMemoryBarrier.oldLayout:=aFromResourceTransition.fLayout;
+    ImageMemoryBarrier.newLayout:=aToResourceTransition.fLayout;
+    ImageMemoryBarrier.srcQueueFamilyIndex:=aSrcQueueFamilyIndex;
+    ImageMemoryBarrier.dstQueueFamilyIndex:=aDstQueueFamilyIndex;
+    ImageMemoryBarrier.image:=0;
+    ImageMemoryBarrier.subresourceRange:=TResourcePhysicalAttachmentData(aResourcePhysicalData).fImageSubresourceRange;
+    PipelineBarrierGroup.fImageMemoryBarrierDynamicArray.Add(ImageMemoryBarrier);
+   end else begin
+   end;
   end;
  var ResourceTransitionIndex,
      OtherResourceTransitionIndex,
@@ -3127,7 +3152,10 @@ procedure TpvFrameGraph.Compile;
                              SrcAccessMask,
                              DstAccessMask,
                              DependencyFlags,
-                             false
+                             false,
+                             Resource.fResourceReuseGroup.fResourcePhysicalData,
+                             ResourceTransition,
+                             OtherResourceTransition
                             );
           AddPipelineBarrier(OtherResourceTransition.fPass.fPhysicalPass, // Acquire
                              SrcQueueFamilyIndex,
@@ -3137,7 +3165,10 @@ procedure TpvFrameGraph.Compile;
                              SrcAccessMask,
                              DstAccessMask,
                              DependencyFlags,
-                             true
+                             true,
+                             Resource.fResourceReuseGroup.fResourcePhysicalData,
+                             ResourceTransition,
+                             OtherResourceTransition
                             );
          end else begin
           AddPipelineBarrier(OtherResourceTransition.fPass.fPhysicalPass,
@@ -3148,7 +3179,10 @@ procedure TpvFrameGraph.Compile;
                              SrcAccessMask,
                              DstAccessMask,
                              DependencyFlags,
-                             true
+                             true,
+                             Resource.fResourceReuseGroup.fResourcePhysicalData,
+                             ResourceTransition,
+                             OtherResourceTransition
                             );
          end;
         end;
