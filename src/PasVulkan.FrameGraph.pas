@@ -2923,7 +2923,7 @@ procedure TpvFrameGraph.Compile;
    end;
   end;
  end;
- procedure CreatePhysicalRenderPassSubPassDependencies;
+ procedure CreatePhysicalPassPipelineBarriersAndPhysicalRenderPassSubPassDependencies;
   procedure AddSubPassDependency(const aSubPassDependencies:TPhysicalRenderPass.TSubPassDependencies;
                                  const aSubPassDependency:TPhysicalRenderPass.TSubPassDependency);
   var Index:TpvSizeInt;
@@ -2970,7 +2970,9 @@ procedure TpvFrameGraph.Compile;
         if (ResourceTransition.fPass is TRenderPass) and
            (OtherResourceTransition.fPass is TRenderPass) and
            (ResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
-           (OtherResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) then begin
+           (OtherResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
+           (ResourceTransition.fKind in TResourceTransition.AllAttachmentOutputs) and
+           (OtherResourceTransition.fKind in TResourceTransition.AllAttachmentInputs) then begin
          GetPipelineStageMasks(ResourceTransition,
                                OtherResourceTransition,
                                SubPassDependency.SrcStageMask,
@@ -2994,6 +2996,8 @@ procedure TpvFrameGraph.Compile;
           SubPassDependency.DstSubPass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass;
           AddSubPassDependency(TPhysicalRenderPass(OtherResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
          end;
+        end else begin
+         // TODO: Create pipeline barrier
         end;
        end;
       end;
@@ -3044,7 +3048,7 @@ begin
 
  CreateResourceReuseGroupData;
 
- CreatePhysicalRenderPassSubPassDependencies;
+ CreatePhysicalPassPipelineBarriersAndPhysicalRenderPassSubPassDependencies;
 
  SortPhysicalRenderPassSubPassDependencies;
 
