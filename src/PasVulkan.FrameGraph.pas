@@ -2952,6 +2952,12 @@ procedure TpvFrameGraph.Compile;
      ResourceTransition,
      OtherResourceTransition:TResourceTransition;
      SubPassDependency:TPhysicalRenderPass.TSubPassDependency;
+     SrcQueueFamilyIndex,
+     DstQueueFamilyIndex:TVkUInt32;
+     SrcStageMask,
+     DstStageMask:TVkPipelineStageFlags;
+     SrcAccessMask,
+     DstAccessMask:TVkAccessFlags;
  begin
   for Resource in fResources do begin
    for ResourceTransitionIndex:=0 to Resource.fResourceTransitions.Count-1 do begin
@@ -2997,6 +3003,23 @@ procedure TpvFrameGraph.Compile;
           AddSubPassDependency(TPhysicalRenderPass(OtherResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
          end;
         end else begin
+         if ResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex<>OtherResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex then begin
+          SrcQueueFamilyIndex:=ResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex;
+          DstQueueFamilyIndex:=OtherResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex;
+         end else begin
+          SrcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+          DstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+         end;
+         GetPipelineStageMasks(ResourceTransition,
+                               OtherResourceTransition,
+                               SrcStageMask,
+                               DstStageMask
+                              );
+         GetAccessMasks(ResourceTransition,
+                        OtherResourceTransition,
+                        SrcAccessMask,
+                        DstAccessMask
+                       );
          // TODO: Create pipeline barrier
         end;
        end;
