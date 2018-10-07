@@ -2630,8 +2630,8 @@ type TBeforeAfter=(Before,After);
        if (Resource.fResourceType is TImageResourceType) and
           (TImageResourceType(Resource.fResourceType).fImageType=TImageType.Surface) then begin
         Temporary:=Temporary or 1;
-       end else if not ((Resource.fResourceType is TImageResourceType) and
-                        (TImageResourceType(Resource.fResourceType).fImageType=TImageType.Depth)) then begin
+       end else if (Resource.fResourceType is TImageResourceType) and
+                   (TImageResourceType(Resource.fResourceType).fImageType=TImageType.Depth) then begin
         Temporary:=Temporary or 2;
         break;
        end;
