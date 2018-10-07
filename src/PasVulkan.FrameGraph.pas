@@ -414,7 +414,7 @@ type EpvFrameGraph=class(Exception);
               fKind:TKind;
               fFlags:TFlags;
               fLayout:TVkImageLayout;
-              fLoad:TLoadOp;
+              fLoadOp:TLoadOp;
               fResolveResource:TResource;
               fPipelineStage:TVkPipelineStageFlags;
               fAccessFlags:TVkAccessFlags;
@@ -442,7 +442,7 @@ type EpvFrameGraph=class(Exception);
                                  const aBufferSubresourceRange:TBufferSubresourceRange); reintroduce; overload;
               destructor Destroy; override;
              public
-              property Load:TLoadOp read fLoad write fLoad;
+              property Load:TLoadOp read fLoadOp write fLoadOp;
               property BufferSubresourceRange:TBufferSubresourceRange read fBufferSubresourceRange write fBufferSubresourceRange;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
@@ -1444,7 +1444,9 @@ constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameG
                                                      const aLayout:TVkImageLayout;
                                                      const aLoadOp:TLoadOp);
 begin
- Create(aFrameGraph,aPass,aResource,aKind,aFlags,aLayout,aLoadOp);
+ Create(aFrameGraph,aPass,aResource,aKind,aFlags);
+ fLayout:=aLayout;
+ fLoadOp:=aLoadOp;
 end;
 
 constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameGraph;
