@@ -2383,8 +2383,7 @@ begin
       UsedAfter:=SubPass.fRenderPass.fTopologicalSortIndex<Resource.fMaximumTopologicalSortPassIndex;
       IsSurfaceOrPersistent:=(Attachment^.ImageResourceType.fImageType=TImageType.Surface) or Attachment^.ImageResourceType.fPersientent;
       if UsedBefore and (not UsedNow) and (UsedAfter or IsSurfaceOrPersistent) then begin
-       PreserveAttachments.Add(fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,
-                                                                        Attachments.Items[AttachmentIndex].FinalLayout));
+       PreserveAttachments.Add(AttachmentIndex);
       end;
       if (SubPassIndex>0) and (UsedAfter or isSurfaceOrPersistent) then begin
        case Attachment^.ImageResourceType.fImageType of
