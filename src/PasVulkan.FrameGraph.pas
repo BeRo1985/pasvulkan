@@ -548,6 +548,7 @@ type EpvFrameGraph=class(Exception);
               procedure Hide; virtual;
               procedure AfterCreateSwapChain; virtual;
               procedure BeforeDestroySwapChain; virtual;
+              procedure Execute; virtual;
             end;
             TPhysicalComputePass=class(TPhysicalPass)
              private
@@ -559,6 +560,7 @@ type EpvFrameGraph=class(Exception);
               procedure Hide; override;
               procedure AfterCreateSwapChain; override;
               procedure BeforeDestroySwapChain; override;
+              procedure Execute; override;
             end;
             TPhysicalRenderPass=class(TPhysicalPass)
              public
@@ -601,6 +603,7 @@ type EpvFrameGraph=class(Exception);
               procedure Hide; override;
               procedure AfterCreateSwapChain; override;
               procedure BeforeDestroySwapChain; override;
+              procedure Execute; override;
             end;
             TPass=class
              public
@@ -696,7 +699,7 @@ type EpvFrameGraph=class(Exception);
                                         const aFlags:TResourceTransition.TFlags=[]); overload;
              public
               procedure Setup; virtual;
-              procedure Execute; virtual;
+              procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt); virtual;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName write SetName;
@@ -754,6 +757,7 @@ type EpvFrameGraph=class(Exception);
        fRootPhysicalPass:TPhysicalPass;
        fVulkanUniversalQueueCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanUniversalQueueCommandBufferFence:TpvVulkanFence;
+       fDrawSwapChainImageIndex:TpvSizeInt;
        fDrawFrameIndex:TpvSizeInt;
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice);
@@ -790,8 +794,8 @@ type EpvFrameGraph=class(Exception);
        procedure ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
        procedure ExecuteQueueParallelForJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
       public
-       procedure Update(const aUpdateFrameIndex:TpvSizeInt); virtual;
-       procedure Draw(const aDrawFrameIndex:TpvSizeInt); virtual;
+       procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); virtual;
+       procedure Draw(const aDrawSwapChainImageIndex,aDrawFrameIndex:TpvSizeInt); virtual;
       published
        property CanDoParallelProcessing:boolean read fCanDoParallelProcessing write fCanDoParallelProcessing;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
@@ -1773,7 +1777,7 @@ begin
 
 end;
 
-procedure TpvFrameGraph.TPass.Execute;
+procedure TpvFrameGraph.TPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
 begin
 
 end;
@@ -2006,6 +2010,11 @@ begin
  end;
 end;
 
+procedure TpvFrameGraph.TPhysicalPass.Execute;
+begin
+
+end;
+
 { TpvFrameGraph.TVulkanComputePass }
 
 constructor TpvFrameGraph.TPhysicalComputePass.Create(const aFrameGraph:TpvFrameGraph;
@@ -2038,6 +2047,18 @@ end;
 procedure TpvFrameGraph.TPhysicalComputePass.BeforeDestroySwapChain;
 begin
  inherited BeforeDestroySwapChain;
+end;
+
+procedure TpvFrameGraph.TPhysicalComputePass.Execute;
+var CommandBuffer:TpvVulkanCommandBuffer;
+begin
+ inherited Execute;
+ CommandBuffer:=fCommandBuffers[fFrameGraph.fDrawSwapChainImageIndex];
+ CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+ if fComputePass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
+  fComputePass.Execute(CommandBuffer,fFrameGraph.fDrawSwapChainImageIndex,fFrameGraph.fDrawFrameIndex);
+ end;
+ CommandBuffer.EndRecording;
 end;
 
 { TpvFrameGraph.TVulkanRenderPass.TSubPass }
@@ -2492,6 +2513,24 @@ begin
 
  inherited BeforeDestroySwapChain;
 
+end;
+
+procedure TpvFrameGraph.TPhysicalRenderPass.Execute;
+var SubPassIndex:TpvSizeInt;
+    SubPass:TSubPass;
+    CommandBuffer:TpvVulkanCommandBuffer;
+begin
+ inherited Execute;
+ CommandBuffer:=fCommandBuffers[fFrameGraph.fDrawSwapChainImageIndex];
+ CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+ for SubPassIndex:=0 to fSubPasses.Count-1 do begin
+  SubPass:=fSubPasses[SubPassIndex];
+  if SubPass.fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
+   SubPass.fRenderPass.Execute(CommandBuffer,fFrameGraph.fDrawSwapChainImageIndex,fFrameGraph.fDrawFrameIndex);
+  end;
+  CommandBuffer.CmdNextSubpass(VK_SUBPASS_CONTENTS_INLINE);
+ end;
+ CommandBuffer.EndRecording;
 end;
 
 { TpvFrameGraph }
@@ -3751,7 +3790,7 @@ begin
  end;
 end;
 
-procedure TpvFrameGraph.Update(const aUpdateFrameIndex:TpvSizeInt);
+procedure TpvFrameGraph.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
 var QueueIndex,Index,SubPassIndex:TpvSizeInt;
     Queue:TQueue;
     PhysicalPass:TPhysicalPass;
@@ -3792,14 +3831,15 @@ begin
    if PhysicalPass is TPhysicalComputePass then begin
     PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
     if PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
-     // TODO
+     PhysicalComputePass.Execute;
     end;
    end else if PhysicalPass is TPhysicalRenderPass then begin
     PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
     for SubPassIndex:=0 to PhysicalRenderPass.fSubPasses.Count-1 do begin
      PhysicalRenderPassSubPass:=PhysicalRenderPass.fSubPasses[SubPassIndex];
      if PhysicalRenderPassSubPass.fRenderPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
-      // TODO
+      PhysicalRenderPass.Execute;
+      break;
      end;
     end;
    end;
@@ -3815,8 +3855,9 @@ begin
  end;
 end;
 
-procedure TpvFrameGraph.Draw(const aDrawFrameIndex:TpvSizeInt);
+procedure TpvFrameGraph.Draw(const aDrawSwapChainImageIndex,aDrawFrameIndex:TpvSizeInt);
 begin
+ fDrawSwapChainImageIndex:=aDrawSwapChainImageIndex;
  fDrawFrameIndex:=aDrawFrameIndex;
  if fCanDoParallelProcessing and assigned(pvApplication) then begin
   pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0);
