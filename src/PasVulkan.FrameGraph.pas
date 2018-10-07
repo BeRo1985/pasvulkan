@@ -712,7 +712,8 @@ type EpvFrameGraph=class(Exception);
        fVulkanDevice:TpvVulkanDevice;
        fSurfaceWidth:TpvSizeInt;
        fSurfaceHeight:TpvSizeInt;
-       fSurfaceFormat:TVkFormat;
+       fSurfaceColorFormat:TVkFormat;
+       fSurfaceDepthFormat:TVkFormat;
        fSurfaceImages:array[0..MaxSwapChainImages-1] of TpvVulkanImage;
        fCountSwapChainImages:TpvSizeInt;
        fQueues:TQueues;
@@ -745,7 +746,8 @@ type EpvFrameGraph=class(Exception);
        constructor Create(const aVulkanDevice:TpvVulkanDevice);
        destructor Destroy; override;
       public
-       procedure SetSwapChain(const aSwapChain:TpvVulkanSwapChain);
+       procedure SetSwapChain(const aSwapChain:TpvVulkanSwapChain;
+                              const aSurfaceDepthFormat:TVkFormat);
        function AddQueue(const aPhysicalQueue:TpvVulkanQueue):TQueue;
        function AddImageResourceType(const aName:TpvRawByteString;
                                      const aPersientent:boolean;
@@ -782,7 +784,8 @@ type EpvFrameGraph=class(Exception);
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
        property SurfaceWidth:TpvSizeInt read fSurfaceWidth write fSurfaceWidth;
        property SurfaceHeight:TpvSizeInt read fSurfaceHeight write fSurfaceHeight;
-       property SurfaceFormat:TVkFormat read fSurfaceFormat write fSurfaceFormat;
+       property SurfaceColorFormat:TVkFormat read fSurfaceColorFormat write fSurfaceColorFormat;
+       property SurfaceDepthFormat:TVkFormat read fSurfaceDepthFormat write fSurfaceDepthFormat;
        property CountSwapChainImages:TpvSizeInt read fCountSwapChainImages write fCountSwapChainImages;
        property Queues:TQueues read fQueues;
        property UniversalQueue:TQueue read fUniversalQueue;
@@ -1123,6 +1126,7 @@ var SwapChainImageIndex:TpvSizeInt;
     PrefersDedicatedAllocation:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
     MemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
+    Format:TVkFormat;
 begin
 
  Assert(fResourceType is TImageResourceType);
@@ -1154,12 +1158,27 @@ begin
 
  end else begin
 
+  Format:=fFormat;
+
+  if Format=VK_FORMAT_UNDEFINED then begin
+   case (fResourceType as TImageResourceType).fImageType of
+    TImageType.Color:begin
+     Format:=fFrameGraph.fSurfaceColorFormat;
+    end;
+    TImageType.Depth,
+    TImageType.DepthStencil,
+    TImageType.Stencil:begin
+     Format:=fFrameGraph.fSurfaceDepthFormat;
+    end;
+   end;
+  end;
+
   for SwapChainImageIndex:=0 to Min(Max(fFrameGraph.fCountSwapChainImages,1),MaxSwapChainImages)-1 do begin
 
    fVulkanImages[SwapChainImageIndex]:=TpvVulkanImage.Create(fFrameGraph.fVulkanDevice,
                                                              0,
                                                              fImageType,
-                                                             fFormat,
+                                                             Format,
                                                              fExtent.width,
                                                              fExtent.height,
                                                              fExtent.depth,
@@ -1213,7 +1232,7 @@ begin
    fVulkanImageViews[SwapChainImageIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
                                                                      fVulkanImages[SwapChainImageIndex],
                                                                      fImageViewType,
-                                                                     fFormat,
+                                                                     Format,
                                                                      fComponents.r,
                                                                      fComponents.g,
                                                                      fComponents.b,
@@ -2192,7 +2211,9 @@ begin
  fSurfaceWidth:=1;
  fSurfaceHeight:=1;
 
- fSurfaceFormat:=VK_FORMAT_B8G8R8A8_UNORM;
+ fSurfaceColorFormat:=VK_FORMAT_B8G8R8A8_UNORM;
+
+ fSurfaceDepthFormat:=VK_FORMAT_D32_SFLOAT;
 
  fCountSwapChainImages:=MaxSwapChainImages;
 
@@ -2282,12 +2303,15 @@ begin
 
 end;
 
-procedure TpvFrameGraph.SetSwapChain(const aSwapChain:TpvVulkanSwapChain);
+procedure TpvFrameGraph.SetSwapChain(const aSwapChain:TpvVulkanSwapChain;
+                                     const aSurfaceDepthFormat:TVkFormat);
 var SwapChainImageIndex:TpvSizeInt;
 begin
  fSurfaceWidth:=aSwapChain.Width;
  fSurfaceHeight:=aSwapChain.Height;
  fCountSwapChainImages:=aSwapChain.CountImages;
+ fSurfaceColorFormat:=aSwapChain.ImageFormat;
+ fSurfaceDepthFormat:=aSurfaceDepthFormat;
  for SwapChainImageIndex:=0 to fCountSwapChainImages-1 do begin
   fSurfaceImages[SwapChainImageIndex]:=aSwapChain.Images[SwapChainImageIndex];
  end;
