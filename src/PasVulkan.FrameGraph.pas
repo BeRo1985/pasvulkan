@@ -1115,7 +1115,7 @@ var SwapChainImageIndex:TpvSizeInt;
 begin
  if fIsSurface then begin
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   fVulkanImageViews[SwapChainImageIndex]:=nil;
+   FreeAndNil(fVulkanImageViews[SwapChainImageIndex]);
    fVulkanImages[SwapChainImageIndex]:=nil;
    fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
   end;
@@ -1172,9 +1172,22 @@ begin
  if fIsSurface then begin
 
   for SwapChainImageIndex:=0 to Min(Max(fFrameGraph.fCountSwapChainImages,1),MaxSwapChainImages)-1 do begin
-   fVulkanImageViews[SwapChainImageIndex]:=fFrameGraph.fSurfaceImages[SwapChainImageIndex].ImageView;
    fVulkanImages[SwapChainImageIndex]:=fFrameGraph.fSurfaceImages[SwapChainImageIndex];
    fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
+   fVulkanImageViews[SwapChainImageIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
+                                                                     fVulkanImages[SwapChainImageIndex],
+                                                                     fImageViewType,
+                                                                     Format,
+                                                                     fComponents.r,
+                                                                     fComponents.g,
+                                                                     fComponents.b,
+                                                                     fComponents.a,
+                                                                     fImageSubresourceRange.aspectMask,
+                                                                     0,
+                                                                     fCountMipMaps,
+                                                                     0,
+                                                                     fCountArrayLayers);
+
   end;
 
  end else begin
@@ -1328,7 +1341,7 @@ var SwapChainImageIndex:TpvSizeInt;
 begin
  if fIsSurface then begin
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   fVulkanImageViews[SwapChainImageIndex]:=nil;
+   FreeAndNil(fVulkanImageViews[SwapChainImageIndex]);
    fVulkanImages[SwapChainImageIndex]:=nil;
    fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
   end;
@@ -2165,7 +2178,10 @@ var AttachmentIndex,
     OtherAttachmentIndex,
     SubPassDependencyIndex,
     SubPassIndex,
-    SwapChainImageIndex:TpvSizeInt;
+    SwapChainImageIndex,
+    Width,
+    Height,
+    Layers:TpvSizeInt;
     SubPass,
     OtherSubPass:TSubPass;
     RenderPass:TRenderPass;
@@ -2196,12 +2212,36 @@ var AttachmentIndex,
     HasResolveOutputs,
     Found:boolean;
     AttachmentDescriptionFlags:TVkAttachmentDescriptionFlags;
+    ResourcePhysicalImageData:TResourcePhysicalImageData;
 begin
 
  inherited AfterCreateSwapChain;
 
  for SubPass in fSubPasses do begin
   SubPass.AfterCreateSwapChain;
+ end;
+
+ Width:=1;
+ Height:=1;
+ Layers:=1;
+
+ for SubPass in fSubPasses do begin
+  RenderPass:=SubPass.fRenderPass;
+  case RenderPass.fSize.Kind of
+   TpvFrameGraph.TImageSize.TKind.Absolute:begin
+    Width:=Max(1,trunc(RenderPass.fSize.Size.x));
+    Height:=Max(1,trunc(RenderPass.fSize.Size.y));
+    Layers:=Max(1,trunc(RenderPass.fSize.Size.w));
+   end;
+   TpvFrameGraph.TImageSize.TKind.SurfaceDependent:begin
+    Width:=Max(1,trunc(RenderPass.fSize.Size.x*fFrameGraph.fSurfaceWidth));
+    Height:=Max(1,trunc(RenderPass.fSize.Size.y*fFrameGraph.fSurfaceHeight));
+    Layers:=Max(1,trunc(RenderPass.fSize.Size.w));
+   end;
+   else {TpvFrameGraph.TImageSize.TKind.Undefined:}begin
+   end;
+  end;
+  break;
  end;
 
  fVulkanRenderPass:=TpvVulkanRenderPass.Create(fFrameGraph.fVulkanDevice);
@@ -2506,16 +2546,31 @@ begin
     fVulkanRenderPass.ClearValues[0]^:=Attachment^.ClearValue;
    end;
 
+   for SwapChainImageIndex:=0 to fFrameGraph.fCountSwapChainImages-1 do begin
+    fVulkanFrameBuffers[SwapChainImageIndex]:=TpvVulkanFrameBuffer.Create(fFrameGraph.fVulkanDevice,
+                                                                          fVulkanRenderPass,
+                                                                          Width,
+                                                                          Height,
+                                                                          Layers);
+    for AttachmentIndex:=0 to Attachments.Count-1 do begin
+     Attachment:=@Attachments.Items[AttachmentIndex];
+     ResourcePhysicalImageData:=TResourcePhysicalImageData(Attachment^.Resource.fResourceReuseGroup.fResourcePhysicalData);
+     fVulkanFrameBuffers[SwapChainImageIndex].AddAttachment(TpvVulkanFrameBufferAttachment.Create(fFrameGraph.fVulkanDevice,
+                                                                                                  ResourcePhysicalImageData.fVulkanImages[SwapChainImageIndex],
+                                                                                                  ResourcePhysicalImageData.fVulkanImageViews[SwapChainImageIndex],
+                                                                                                  ResourcePhysicalImageData.fExtent.width,
+                                                                                                  ResourcePhysicalImageData.fExtent.height,
+                                                                                                  Attachment^.Format,
+                                                                                                  false));
+    end;
+    fVulkanFrameBuffers[SwapChainImageIndex].Initialize;
+   end;
+
   finally
    Attachments.Finalize;
   end;
 
  end;
-
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fVulkanFrameBuffers[SwapChainImageIndex]:=nil;
- end;
-
 
 end;
 
