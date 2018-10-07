@@ -1331,7 +1331,7 @@ begin
                                                  fFrameGraph.fVulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
                                                  nil,
                                                  fFrameGraph.fVulkanUniversalQueueCommandBuffer,
-                                                 fFrameGraph.fVulkanDevice.GraphicsQueue,
+                                                 fFrameGraph.fUniversalQueue.fPhysicalQueue,
                                                  fFrameGraph.fVulkanUniversalQueueCommandBufferFence,
                                                  true);
    end else begin
@@ -1346,7 +1346,7 @@ begin
                                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
                                                    nil,
                                                    fFrameGraph.fVulkanUniversalQueueCommandBuffer,
-                                                   fFrameGraph.fVulkanDevice.GraphicsQueue,
+                                                   fFrameGraph.fUniversalQueue.fPhysicalQueue,
                                                    fFrameGraph.fVulkanUniversalQueueCommandBufferFence,
                                                    true);
      end;
@@ -1361,7 +1361,7 @@ begin
                                                    TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
                                                    nil,
                                                    fFrameGraph.fVulkanUniversalQueueCommandBuffer,
-                                                   fFrameGraph.fVulkanDevice.GraphicsQueue,
+                                                   fFrameGraph.fUniversalQueue.fPhysicalQueue,
                                                    fFrameGraph.fVulkanUniversalQueueCommandBufferFence,
                                                    true);
      end;
