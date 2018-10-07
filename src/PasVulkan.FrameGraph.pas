@@ -193,11 +193,14 @@ type EpvFrameGraph=class(Exception);
             TPhysicalPass=class;
             TPhysicalPasses=TpvObjectGenericList<TPhysicalPass>;
             TQueue=class
+             public
+              type TVkSubmitInfos=array of TVkSubmitInfo;
              private
               fFrameGraph:TpvFrameGraph;
               fPhysicalQueue:TpvVulkanQueue;
               fPhysicalPasses:TPhysicalPasses;
               fCommandPool:TpvVulkanCommandPool;
+              fSubmitInfos:TVkSubmitInfos;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aPhysicalQueue:TpvVulkanQueue); reintroduce;
@@ -3819,12 +3822,16 @@ begin
 end;
 
 procedure TpvFrameGraph.ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
-var Index,SubPassIndex:TpvSizeInt;
+var Index,SubPassIndex,CountSubmitInfos:TpvSizeInt;
     PhysicalPass:TPhysicalPass;
     PhysicalComputePass:TPhysicalComputePass;
     PhysicalRenderPass:TPhysicalRenderPass;
     PhysicalRenderPassSubPass:TPhysicalRenderPass.TSubPass;
 begin
+ CountSubmitInfos:=0;
+ if length(aQueue.fSubmitInfos)<aQueue.fPhysicalPasses.Count then begin
+  SetLength(aQueue.fSubmitInfos,aQueue.fPhysicalPasses.Count);
+ end;
  for Index:=0 to aQueue.fPhysicalPasses.Count-1 do begin
   PhysicalPass:=aQueue.fPhysicalPasses[Index];
   if assigned(PhysicalPass) then begin
@@ -3832,6 +3839,8 @@ begin
     PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
     if PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
      PhysicalComputePass.Execute;
+     aQueue.fSubmitInfos[CountSubmitInfos]:=PhysicalComputePass.fSubmitInfos[fDrawSwapChainImageIndex];
+     inc(CountSubmitInfos);
     end;
    end else if PhysicalPass is TPhysicalRenderPass then begin
     PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
@@ -3839,11 +3848,16 @@ begin
      PhysicalRenderPassSubPass:=PhysicalRenderPass.fSubPasses[SubPassIndex];
      if PhysicalRenderPassSubPass.fRenderPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
       PhysicalRenderPass.Execute;
+      aQueue.fSubmitInfos[CountSubmitInfos]:=PhysicalRenderPass.fSubmitInfos[fDrawSwapChainImageIndex];
+      inc(CountSubmitInfos);
       break;
      end;
     end;
    end;
   end;
+ end;
+ if CountSubmitInfos>0 then begin
+  aQueue.fPhysicalQueue.Submit(CountSubmitInfos,@aQueue.fSubmitInfos[0]);
  end;
 end;
 
