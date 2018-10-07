@@ -89,7 +89,7 @@ type EpvFrameGraph=class(Exception);
 
      EpvFrameGraphMissingQueue=class(EpvFrameGraph);
 
-     EpvFrameGraphMismatchAttachmentSize=class(EpvFrameGraph);
+     EpvFrameGraphMismatchImageSize=class(EpvFrameGraph);
 
      EpvFrameGraphMissedGeneratorPassForResource=class(EpvFrameGraph);
 
@@ -134,7 +134,7 @@ type EpvFrameGraph=class(Exception);
               constructor Create(const aKind:TKind);
             end;
             PStoreOp=^TStoreOp;
-            TAttachmentType=
+            TImageType=
              (
               Undefined,
               Surface,
@@ -143,12 +143,12 @@ type EpvFrameGraph=class(Exception);
               DepthStencil,
               Stencil
              );
-            TAttachmentTypeHelper=record helper for TAttachmentType
+            TImageTypeHelper=record helper for TImageType
              public
               function GetAspectMask:TVkImageAspectFlags;
             end;
-            PAttachmentType=^TAttachmentType;
-            TAttachmentSize=packed record
+            PImageType=^TImageType;
+            TImageSize=packed record
              public
               type TKind=
                     (
@@ -160,25 +160,25 @@ type EpvFrameGraph=class(Exception);
              public
               Kind:TKind;
               Size:TpvVector4;
-              class function CreateEmpty:TAttachmentSize; static;
-              constructor Create(const aKind:TAttachmentSize.TKind;
+              class function CreateEmpty:TImageSize; static;
+              constructor Create(const aKind:TImageSize.TKind;
                                  const aWidth:tpvFloat=1.0;
                                  const aHeight:TpvFloat=1.0;
                                  const aDepth:TpvFloat=1.0;
                                  const aLayers:TpvFloat=1.0); overload;
-              constructor Create(const aKind:TAttachmentSize.TKind;
+              constructor Create(const aKind:TImageSize.TKind;
                                  const aSize:TpvVector2;
                                  const aDepth:TpvFloat=1.0;
                                  const aLayers:TpvFloat=1.0); overload;
-              constructor Create(const aKind:TAttachmentSize.TKind;
+              constructor Create(const aKind:TImageSize.TKind;
                                  const aSize:TpvVector3;
                                  const aLayers:TpvFloat=1.0); overload;
-              constructor Create(const aKind:TAttachmentSize.TKind;
+              constructor Create(const aKind:TImageSize.TKind;
                                  const aSize:TpvVector4); overload;
-              class operator Equal(const aLeft,aRight:TAttachmentSize):boolean;
-              class operator NotEqual(const aLeft,aRight:TAttachmentSize):boolean;
+              class operator Equal(const aLeft,aRight:TImageSize):boolean;
+              class operator NotEqual(const aLeft,aRight:TImageSize):boolean;
             end;
-            PAttachmentSize=^TAttachmentSize;
+            PImageSize=^TImageSize;
             TPhysicalPass=class;
             TPhysicalPasses=TpvObjectGenericList<TPhysicalPass>;
             TQueue=class
@@ -204,38 +204,38 @@ type EpvFrameGraph=class(Exception);
                      Buffer
                     );
                     PMetaType=^TMetaType;
-                    TAttachmentData=record
+                    TImageData=record
                      public
                       Format:TVkFormat;
                       Samples:TVkSampleCountFlagBits;
-                      AttachmentType:TAttachmentType;
-                      AttachmentSize:TAttachmentSize;
+                      ImageType:TImageType;
+                      ImageSize:TImageSize;
                       ImageUsage:TVkImageUsageFlags;
                       Components:TVkComponentMapping;
-                      class function CreateEmpty:TAttachmentData; static;
+                      class function CreateEmpty:TImageData; static;
                       constructor Create(const aFormat:TVkFormat;
                                          const aSamples:TVkSampleCountFlagBits;
-                                         const aAttachmentType:TAttachmentType;
-                                         const aAttachmentSize:TAttachmentSize;
+                                         const aImageType:TImageType;
+                                         const aImageSize:TImageSize;
                                          const aImageUsage:TVkImageUsageFlags;
                                          const aComponents:TVkComponentMapping); overload;
-                      class operator Equal(const aLeft,aRight:TAttachmentData):boolean;
-                      class operator NotEqual(const aLeft,aRight:TAttachmentData):boolean;
+                      class operator Equal(const aLeft,aRight:TImageData):boolean;
+                      class operator NotEqual(const aLeft,aRight:TImageData):boolean;
                     end;
-                    PAttachmentData=^TAttachmentData;
+                    PImageData=^TImageData;
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
               fPersientent:boolean;
               fMetaType:TMetaType;
-              fAttachmentData:TAttachmentData;
-              fPointerToAttachmentData:PAttachmentData;
+              fImageData:TImageData;
+              fPointerToImageData:PImageData;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
                                  const aPersientent:boolean;
                                  const aMetaType:TMetaType;
-                                 const aAttachmentData:TAttachmentData); reintroduce; overload;
+                                 const aImageData:TImageData); reintroduce; overload;
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
                                  const aPersientent:boolean;
@@ -245,8 +245,8 @@ type EpvFrameGraph=class(Exception);
                                  const aPersientent:boolean;
                                  const aFormat:TVkFormat;
                                  const aSamples:TVkSampleCountFlagBits;
-                                 const aAttachmentType:TAttachmentType;
-                                 const aAttachmentSize:TAttachmentSize;
+                                 const aImageType:TImageType;
+                                 const aImageSize:TImageSize;
                                  const aImageUsage:TVkImageUsageFlags;
                                  const aComponents:TVkComponentMapping); reintroduce; overload;
               constructor Create(const aFrameGraph:TpvFrameGraph;
@@ -254,13 +254,13 @@ type EpvFrameGraph=class(Exception);
                                  const aPersientent:boolean;
                                  const aFormat:TVkFormat;
                                  const aSamples:TVkSampleCountFlagBits;
-                                 const aAttachmentType:TAttachmentType;
-                                 const aAttachmentSize:TAttachmentSize;
+                                 const aImageType:TImageType;
+                                 const aImageSize:TImageSize;
                                  const aImageUsage:TVkImageUsageFlags); reintroduce; overload;
               destructor Destroy; override;
              public
-              property AttachmentData:TAttachmentData read fAttachmentData write fAttachmentData;
-              property PointerToAttachmentData:PAttachmentData read fPointerToAttachmentData write fPointerToAttachmentData;
+              property ImageData:TImageData read fImageData write fImageData;
+              property PointerToImageData:PImageData read fPointerToImageData write fPointerToImageData;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName;
@@ -285,7 +285,7 @@ type EpvFrameGraph=class(Exception);
               procedure AfterCreateSwapChain; virtual;
               procedure BeforeDestroySwapChain; virtual;
             end;
-            TResourcePhysicalAttachmentData=class(TResourcePhysicalData)
+            TResourcePhysicalImageData=class(TResourcePhysicalData)
              private
               fResourceType:TResourceType;
               fImageUsageFlags:TVkImageUsageFlags;
@@ -317,9 +317,6 @@ type EpvFrameGraph=class(Exception);
 {             property VulkanImage:TpvVulkanImage read fVulkanImage write fVulkanImage;
               property VulkanImageView:TpvVulkanImageView read fVulkanImageView write fVulkanImageView;
               property VulkanMemoryBlock:TpvVulkanDeviceMemoryBlock read fVulkanMemoryBlock write fVulkanMemoryBlock;}
-            end;
-            TResourcePhysicalImageData=class(TResourcePhysicalData)
-             // TODO
             end;
             TResourcePhysicalBufferData=class(TResourcePhysicalData)
              // TODO
@@ -756,13 +753,13 @@ type EpvFrameGraph=class(Exception);
             TRenderPass=class(TPass)
              private
               fMultiViewMask:TpvUInt32;
-              fAttachmentSize:TAttachmentSize;
+              fSize:TImageSize;
               fPhysicalRenderPassSubPass:TPhysicalRenderPass.TSubPass;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); override;
               destructor Destroy; override;
              public
-              property AttachmentSize:TAttachmentSize read fAttachmentSize write fAttachmentSize;
+              property Size:TImageSize read fSize write fSize;
              published
               property MultiViewMask:TpvUInt32 read fMultiViewMask write fMultiViewMask;
             end;
@@ -805,7 +802,7 @@ type EpvFrameGraph=class(Exception);
        function AddResourceType(const aName:TpvRawByteString;
                                 const aPersientent:boolean;
                                 const aMetaType:TResourceType.TMetaType;
-                                const aAttachmentData:TResourceType.TAttachmentData):TResourceType; overload;
+                                const aImageData:TResourceType.TImageData):TResourceType; overload;
        function AddResourceType(const aName:TpvRawByteString;
                                 const aPersientent:boolean;
                                 const aMetaType:TResourceType.TMetaType):TResourceType; overload;
@@ -813,16 +810,16 @@ type EpvFrameGraph=class(Exception);
                                 const aPersientent:boolean;
                                 const aFormat:TVkFormat;
                                 const aSamples:TVkSampleCountFlagBits;
-                                const aAttachmentType:TAttachmentType;
-                                const aAttachmentSize:TAttachmentSize;
+                                const aImageType:TImageType;
+                                const aImageSize:TImageSize;
                                 const aImageUsage:TVkImageUsageFlags;
                                 const aComponents:TVkComponentMapping):TResourceType; overload;
        function AddResourceType(const aName:TpvRawByteString;
                                 const aPersientent:boolean;
                                 const aFormat:TVkFormat;
                                 const aSamples:TVkSampleCountFlagBits;
-                                const aAttachmentType:TAttachmentType;
-                                const aAttachmentSize:TAttachmentSize;
+                                const aImageType:TImageType;
+                                const aImageSize:TImageSize;
                                 const aImageUsage:TVkImageUsageFlags):TResourceType; overload;
       public
        procedure Setup; virtual;
@@ -906,41 +903,41 @@ begin
  Kind:=aKind;
 end;
 
-{ TpvFrameGraph.TAttachmentTypeHelper }
+{ TpvFrameGraph.TImageTypeHelper }
 
-function TpvFrameGraph.TAttachmentTypeHelper.GetAspectMask:TVkImageAspectFlags;
+function TpvFrameGraph.TImageTypeHelper.GetAspectMask:TVkImageAspectFlags;
 begin
  case self of
-  TpvFrameGraph.TAttachmentType.Surface:begin
+  TpvFrameGraph.TImageType.Surface:begin
    result:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
   end;
-  TpvFrameGraph.TAttachmentType.Color:begin
+  TpvFrameGraph.TImageType.Color:begin
    result:=TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT);
   end;
-  TpvFrameGraph.TAttachmentType.Depth:begin
+  TpvFrameGraph.TImageType.Depth:begin
    result:=TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT);
   end;
-  TpvFrameGraph.TAttachmentType.DepthStencil:begin
+  TpvFrameGraph.TImageType.DepthStencil:begin
    result:=TVkImageAspectFlags(VK_IMAGE_ASPECT_DEPTH_BIT) or TVkImageAspectFlags(VK_IMAGE_ASPECT_STENCIL_BIT);
   end;
-  TpvFrameGraph.TAttachmentType.Stencil:begin
+  TpvFrameGraph.TImageType.Stencil:begin
    result:=TVkImageAspectFlags(VK_IMAGE_ASPECT_STENCIL_BIT);
   end;
-  else {TpvFrameGraph.TAttachmentType.Undefined:}begin
+  else {TpvFrameGraph.TImageType.Undefined:}begin
    result:=TVkImageAspectFlags(0);
   end;
  end;
 end;
 
-{ TpvFrameGraph.TAttachmentSize }
+{ TpvFrameGraph.TImageSize }
 
-class function TpvFrameGraph.TAttachmentSize.CreateEmpty:TAttachmentSize;
+class function TpvFrameGraph.TImageSize.CreateEmpty:TImageSize;
 begin
- result.Kind:=TpvFrameGraph.TAttachmentSize.TKind.Undefined;
+ result.Kind:=TpvFrameGraph.TImageSize.TKind.Undefined;
  result.Size:=TpvVector4.Null;
 end;
 
-constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;
+constructor TpvFrameGraph.TImageSize.Create(const aKind:TImageSize.TKind;
                                                  const aWidth:TpvFloat=1.0;
                                                  const aHeight:TpvFloat=1.0;
                                                  const aDepth:TpvFloat=1.0;
@@ -950,7 +947,7 @@ begin
  Size:=TpvVector4.InlineableCreate(aWidth,aHeight,aDepth,aLayers);
 end;
 
-constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;
+constructor TpvFrameGraph.TImageSize.Create(const aKind:TImageSize.TKind;
                                                  const aSize:TpvVector2;
                                                  const aDepth:TpvFloat=1.0;
                                                  const aLayers:TpvFloat=1.0);
@@ -959,7 +956,7 @@ begin
  Size:=TpvVector4.InlineableCreate(aSize.x,aSize.y,aDepth,aLayers);
 end;
 
-constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;
+constructor TpvFrameGraph.TImageSize.Create(const aKind:TImageSize.TKind;
                                                  const aSize:TpvVector3;
                                                  const aLayers:TpvFloat=1.0);
 begin
@@ -967,20 +964,20 @@ begin
  Size:=TpvVector4.InlineableCreate(aSize,aLayers);
 end;
 
-constructor TpvFrameGraph.TAttachmentSize.Create(const aKind:TAttachmentSize.TKind;
+constructor TpvFrameGraph.TImageSize.Create(const aKind:TImageSize.TKind;
                                                  const aSize:TpvVector4);
 begin
  Kind:=aKind;
  Size:=aSize;
 end;
 
-class operator TpvFrameGraph.TAttachmentSize.Equal(const aLeft,aRight:TAttachmentSize):boolean;
+class operator TpvFrameGraph.TImageSize.Equal(const aLeft,aRight:TImageSize):boolean;
 begin
  result:=(aLeft.Kind=aRight.Kind) and
          (aLeft.Size=aRight.Size);
 end;
 
-class operator TpvFrameGraph.TAttachmentSize.NotEqual(const aLeft,aRight:TAttachmentSize):boolean;
+class operator TpvFrameGraph.TImageSize.NotEqual(const aLeft,aRight:TImageSize):boolean;
 begin
  result:=(aLeft.Kind<>aRight.Kind) or
          (aLeft.Size<>aRight.Size);
@@ -1018,14 +1015,14 @@ begin
 
 end;
 
-{ TpvFrameGraph.TResourceType.TAttachmentData }
+{ TpvFrameGraph.TResourceType.TImageData }
 
-class function TpvFrameGraph.TResourceType.TAttachmentData.CreateEmpty:TAttachmentData;
+class function TpvFrameGraph.TResourceType.TImageData.CreateEmpty:TImageData;
 begin
  result.Format:=VK_FORMAT_UNDEFINED;
  result.Samples:=VK_SAMPLE_COUNT_1_BIT;
- result.AttachmentType:=TAttachmentType.Undefined;
- result.AttachmentSize:=TAttachmentSize.CreateEmpty;
+ result.ImageType:=TImageType.Undefined;
+ result.ImageSize:=TImageSize.CreateEmpty;
  result.ImageUsage:=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
  result.Components:=TVkComponentMapping.Create(VK_COMPONENT_SWIZZLE_R,
                                                VK_COMPONENT_SWIZZLE_G,
@@ -1033,27 +1030,27 @@ begin
                                                VK_COMPONENT_SWIZZLE_A);
 end;
 
-constructor TpvFrameGraph.TResourceType.TAttachmentData.Create(const aFormat:TVkFormat;
+constructor TpvFrameGraph.TResourceType.TImageData.Create(const aFormat:TVkFormat;
                                                                const aSamples:TVkSampleCountFlagBits;
-                                                               const aAttachmentType:TAttachmentType;
-                                                               const aAttachmentSize:TAttachmentSize;
+                                                               const aImageType:TImageType;
+                                                               const aImageSize:TImageSize;
                                                                const aImageUsage:TVkImageUsageFlags;
                                                                const aComponents:TVkComponentMapping);
 begin
  Format:=aFormat;
  Samples:=aSamples;
- AttachmentType:=aAttachmentType;
- AttachmentSize:=aAttachmentSize;
+ ImageType:=aImageType;
+ ImageSize:=aImageSize;
  ImageUsage:=aImageUsage;
  Components:=aComponents;
 end;
 
-class operator TpvFrameGraph.TResourceType.TAttachmentData.Equal(const aLeft,aRight:TAttachmentData):boolean;
+class operator TpvFrameGraph.TResourceType.TImageData.Equal(const aLeft,aRight:TImageData):boolean;
 begin
  result:=(aLeft.Format=aRight.Format) and
          (aLeft.Samples=aRight.Samples) and
-         (aLeft.AttachmentType=aRight.AttachmentType) and
-         (aLeft.AttachmentSize=aRight.AttachmentSize) and
+         (aLeft.ImageType=aRight.ImageType) and
+         (aLeft.ImageSize=aRight.ImageSize) and
          (aLeft.ImageUsage=aRight.ImageUsage) and
          (aLeft.Components.r=aRight.Components.r) and
          (aLeft.Components.g=aRight.Components.g) and
@@ -1061,12 +1058,12 @@ begin
          (aLeft.Components.a=aRight.Components.a);
 end;
 
-class operator TpvFrameGraph.TResourceType.TAttachmentData.NotEqual(const aLeft,aRight:TAttachmentData):boolean;
+class operator TpvFrameGraph.TResourceType.TImageData.NotEqual(const aLeft,aRight:TImageData):boolean;
 begin
  result:=(aLeft.Format<>aRight.Format) or
          (aLeft.Samples<>aRight.Samples) or
-         (aLeft.AttachmentType<>aRight.AttachmentType) or
-         (aLeft.AttachmentSize<>aRight.AttachmentSize) or
+         (aLeft.ImageType<>aRight.ImageType) or
+         (aLeft.ImageSize<>aRight.ImageSize) or
          (aLeft.ImageUsage<>aRight.ImageUsage) or
          (aLeft.Components.r<>aRight.Components.r) or
          (aLeft.Components.g<>aRight.Components.g) or
@@ -1080,7 +1077,7 @@ constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                const aName:TpvRawByteString;
                                                const aPersientent:boolean;
                                                const aMetaType:TMetaType;
-                                               const aAttachmentData:TAttachmentData);
+                                               const aImageData:TImageData);
 begin
  inherited Create;
  if length(trim(String(aName)))=0 then begin
@@ -1095,8 +1092,8 @@ begin
  fFrameGraph.fResourceTypeNameHashMap.Add(fName,self);
  fPersientent:=aPersientent;
  fMetaType:=aMetaType;
- fAttachmentData:=aAttachmentData;
- fPointerToAttachmentData:=@fAttachmentData;
+ fImageData:=aImageData;
+ fPointerToImageData:=@fImageData;
 end;
 
 constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
@@ -1108,7 +1105,7 @@ begin
         aName,
         aPersientent,
         aMetaType,
-        TAttachmentData.CreateEmpty);
+        TImageData.CreateEmpty);
 end;
 
 constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
@@ -1116,8 +1113,8 @@ constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                const aPersientent:boolean;
                                                const aFormat:TVkFormat;
                                                const aSamples:TVkSampleCountFlagBits;
-                                               const aAttachmentType:TAttachmentType;
-                                               const aAttachmentSize:TAttachmentSize;
+                                               const aImageType:TImageType;
+                                               const aImageSize:TImageSize;
                                                const aImageUsage:TVkImageUsageFlags;
                                                const aComponents:TVkComponentMapping);
 begin
@@ -1125,10 +1122,10 @@ begin
         aName,
         aPersientent,
         TMetaType.Attachment,
-        TAttachmentData.Create(aFormat,
+        TImageData.Create(aFormat,
                                aSamples,
-                               aAttachmentType,
-                               aAttachmentSize,
+                               aImageType,
+                               aImageSize,
                                aImageUsage,
                                aComponents));
 end;
@@ -1138,8 +1135,8 @@ constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                const aPersientent:boolean;
                                                const aFormat:TVkFormat;
                                                const aSamples:TVkSampleCountFlagBits;
-                                               const aAttachmentType:TAttachmentType;
-                                               const aAttachmentSize:TAttachmentSize;
+                                               const aImageType:TImageType;
+                                               const aImageSize:TImageSize;
                                                const aImageUsage:TVkImageUsageFlags);
 begin
  Create(aFrameGraph,
@@ -1147,8 +1144,8 @@ begin
         aPersientent,
         aFormat,
         aSamples,
-        aAttachmentType,
-        aAttachmentSize,
+        aImageType,
+        aImageSize,
         aImageUsage,
         TVkComponentMapping.Create(VK_COMPONENT_SWIZZLE_R,
                                    VK_COMPONENT_SWIZZLE_G,
@@ -1190,9 +1187,9 @@ procedure TpvFrameGraph.TResourcePhysicalData.BeforeDestroySwapChain;
 begin
 end;
 
-{ TpvFrameGraph.TResourcePhysicalAttachmentData }
+{ TpvFrameGraph.TResourcePhysicalImageData }
 
-constructor TpvFrameGraph.TResourcePhysicalAttachmentData.Create(const aFrameGraph:TpvFrameGraph);
+constructor TpvFrameGraph.TResourcePhysicalImageData.Create(const aFrameGraph:TpvFrameGraph);
 begin
  inherited Create(aFrameGraph);
  fImageUsageFlags:=TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT);
@@ -1208,7 +1205,7 @@ begin
  fSharingMode:=VK_SHARING_MODE_EXCLUSIVE;
 end;
 
-destructor TpvFrameGraph.TResourcePhysicalAttachmentData.Destroy;
+destructor TpvFrameGraph.TResourcePhysicalImageData.Destroy;
 var SwapChainImageIndex:TpvSizeInt;
 begin
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
@@ -1219,17 +1216,17 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalAttachmentData.Show;
+procedure TpvFrameGraph.TResourcePhysicalImageData.Show;
 begin
 
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalAttachmentData.Hide;
+procedure TpvFrameGraph.TResourcePhysicalImageData.Hide;
 begin
 
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalAttachmentData.AfterCreateSwapChain;
+procedure TpvFrameGraph.TResourcePhysicalImageData.AfterCreateSwapChain;
 var SwapChainImageIndex:TpvSizeInt;
     MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
@@ -1238,18 +1235,18 @@ var SwapChainImageIndex:TpvSizeInt;
     MemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
 begin
 
- case fResourceType.fAttachmentData.AttachmentSize.Kind of
-  TpvFrameGraph.TAttachmentSize.TKind.Absolute:begin
-   fExtent.width:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.x));
-   fExtent.height:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.y));
-   fExtent.depth:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.z));
+ case fResourceType.fImageData.ImageSize.Kind of
+  TpvFrameGraph.TImageSize.TKind.Absolute:begin
+   fExtent.width:=Max(1,trunc(fResourceType.fImageData.ImageSize.Size.x));
+   fExtent.height:=Max(1,trunc(fResourceType.fImageData.ImageSize.Size.y));
+   fExtent.depth:=Max(1,trunc(fResourceType.fImageData.ImageSize.Size.z));
   end;
-  TpvFrameGraph.TAttachmentSize.TKind.SurfaceDependent:begin
-   fExtent.width:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.x*fFrameGraph.fSurfaceWidth));
-   fExtent.height:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.y*fFrameGraph.fSurfaceHeight));
-   fExtent.depth:=Max(1,trunc(fResourceType.fAttachmentData.AttachmentSize.Size.z));
+  TpvFrameGraph.TImageSize.TKind.SurfaceDependent:begin
+   fExtent.width:=Max(1,trunc(fResourceType.fImageData.ImageSize.Size.x*fFrameGraph.fSurfaceWidth));
+   fExtent.height:=Max(1,trunc(fResourceType.fImageData.ImageSize.Size.y*fFrameGraph.fSurfaceHeight));
+   fExtent.depth:=Max(1,trunc(fResourceType.fImageData.ImageSize.Size.z));
   end;
-  else {TpvFrameGraph.TAttachmentSize.TKind.Undefined:}begin
+  else {TpvFrameGraph.TImageSize.TKind.Undefined:}begin
   end;
  end;
 
@@ -1380,7 +1377,7 @@ begin
 
 end;
 
-procedure TpvFrameGraph.TResourcePhysicalAttachmentData.BeforeDestroySwapChain;
+procedure TpvFrameGraph.TResourcePhysicalImageData.BeforeDestroySwapChain;
 var SwapChainImageIndex:TpvSizeInt;
 begin
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
@@ -2043,12 +2040,8 @@ begin
      Assert((BarrierMapItem^.BarrierIndex>=0) and (BarrierMapItem^.BarrierIndex<fImageMemoryBarrierDynamicArray.Count));
      ImageMemoryBarrier:=@fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Items[BarrierMapItem^.BarrierIndex];
      Assert(assigned(BarrierMapItem^.ResourcePhysicalData));
-     if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalAttachmentData then begin
-      ImageMemoryBarrier^.image:=TResourcePhysicalAttachmentData(BarrierMapItem^.ResourcePhysicalData).fVulkanImages[SwapChainImageIndex].Handle;
-     end else if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalImageData then begin
-      // TODO
-//    ImageMemoryBarrier^.image:=TResourcePhysicalImageData(BarrierMapItem^.ResourcePhysicalData).fVulkanImages[SwapChainImageIndex].Handle;
-      Assert(false,'TODO');
+     if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalImageData then begin
+      ImageMemoryBarrier^.image:=TResourcePhysicalImageData(BarrierMapItem^.ResourcePhysicalData).fVulkanImages[SwapChainImageIndex].Handle;
      end else begin
       Assert(false);
      end;
@@ -2521,9 +2514,9 @@ end;
 function TpvFrameGraph.AddResourceType(const aName:TpvRawByteString;
                                        const aPersientent:boolean;
                                        const aMetaType:TResourceType.TMetaType;
-                                       const aAttachmentData:TResourceType.TAttachmentData):TResourceType;
+                                       const aImageData:TResourceType.TImageData):TResourceType;
 begin
- result:=TResourceType.Create(self,aName,aPersientent,aMetaType,aAttachmentData);
+ result:=TResourceType.Create(self,aName,aPersientent,aMetaType,aImageData);
 end;
 
 function TpvFrameGraph.AddResourceType(const aName:TpvRawByteString;
@@ -2537,23 +2530,23 @@ function TpvFrameGraph.AddResourceType(const aName:TpvRawByteString;
                                        const aPersientent:boolean;
                                        const aFormat:TVkFormat;
                                        const aSamples:TVkSampleCountFlagBits;
-                                       const aAttachmentType:TAttachmentType;
-                                       const aAttachmentSize:TAttachmentSize;
+                                       const aImageType:TImageType;
+                                       const aImageSize:TImageSize;
                                        const aImageUsage:TVkImageUsageFlags;
                                        const aComponents:TVkComponentMapping):TResourceType;
 begin
- result:=TResourceType.Create(self,aName,aPersientent,aFormat,aSamples,aAttachmentType,aAttachmentSize,aImageUsage,aComponents);
+ result:=TResourceType.Create(self,aName,aPersientent,aFormat,aSamples,aImageType,aImageSize,aImageUsage,aComponents);
 end;
 
 function TpvFrameGraph.AddResourceType(const aName:TpvRawByteString;
                                        const aPersientent:boolean;
                                        const aFormat:TVkFormat;
                                        const aSamples:TVkSampleCountFlagBits;
-                                       const aAttachmentType:TAttachmentType;
-                                       const aAttachmentSize:TAttachmentSize;
+                                       const aImageType:TImageType;
+                                       const aImageSize:TImageSize;
                                        const aImageUsage:TVkImageUsageFlags):TResourceType;
 begin
- result:=TResourceType.Create(self,aName,aPersientent,aFormat,aSamples,aAttachmentType,aAttachmentSize,aImageUsage);
+ result:=TResourceType.Create(self,aName,aPersientent,aFormat,aSamples,aImageType,aImageSize,aImageUsage);
 end;
 
 procedure TpvFrameGraph.Setup;
@@ -2737,8 +2730,8 @@ type TBeforeAfter=(Before,After);
     RenderPass:=Pass as TRenderPass;
     for ResourceTransition in RenderPass.fResourceTransitions do begin
      if (ResourceTransition.fKind in TResourceTransition.AllAttachments) and
-        (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentSize<>RenderPass.fAttachmentSize) then begin
-      raise EpvFrameGraphMismatchAttachmentSize.Create('Mismatch attachment size between pass "'+String(Pass.fName)+'" and resource "'+String(ResourceTransition.fResource.fName)+'"');
+        (ResourceTransition.fResource.fResourceType.fImageData.ImageSize<>RenderPass.fSize) then begin
+      raise EpvFrameGraphMismatchImageSize.Create('Mismatch attachment size between pass "'+String(Pass.fName)+'" and resource "'+String(ResourceTransition.fResource.fName)+'"');
      end;
     end;
    end;
@@ -2810,10 +2803,10 @@ type TBeforeAfter=(Before,After);
       if ResourceTransition.fKind in TResourceTransition.AllAttachmentOutputs then begin
        Resource:=ResourceTransition.fResource;
        if (Resource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
-          (Resource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface) then begin
+          (Resource.fResourceType.fImageData.ImageType=TImageType.Surface) then begin
         Temporary:=Temporary or 1;
        end else if not ((Resource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
-                        (Resource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Depth)) then begin
+                        (Resource.fResourceType.fImageData.ImageType=TImageType.Depth)) then begin
         Temporary:=Temporary or 2;
         break;
        end;
@@ -2920,8 +2913,8 @@ type TBeforeAfter=(Before,After);
          end else begin
           Weight:=(ord(Passes[0] is TRenderPass) and 1)-(ord(Passes[1] is TRenderPass) and 1);
           if Weight=0 then begin
-           Weight:=(ord(TRenderPass(Passes[0]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) and 1)-
-                   (ord(TRenderPass(Passes[1]).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) and 1);
+           Weight:=(ord(TRenderPass(Passes[0]).fSize=TRenderPass(Pass).fSize) and 1)-
+                   (ord(TRenderPass(Passes[1]).fSize=TRenderPass(Pass).fSize) and 1);
           end;
          end;
          if Weight<0 then begin
@@ -2988,7 +2981,7 @@ type TBeforeAfter=(Before,After);
       if (not (TPass.TFlag.Toggleable in OtherPass.fFlags)) and
          (OtherPass is TRenderPass) and
          (TRenderPass(OtherPass).fQueue=TRenderPass(Pass).fQueue) and
-         (TRenderPass(OtherPass).fAttachmentSize=TRenderPass(Pass).fAttachmentSize) then begin
+         (TRenderPass(OtherPass).fSize=TRenderPass(Pass).fSize) then begin
        OtherPass.fPhysicalPass:=Pass.fPhysicalPass;
        TRenderPass(OtherPass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(OtherPass));
        TRenderPass(OtherPass).fPhysicalRenderPassSubPass.fIndex:=PhysicalRenderPass.fSubPasses.Add(TRenderPass(OtherPass).fPhysicalRenderPassSubPass);
@@ -3074,7 +3067,7 @@ type TBeforeAfter=(Before,After);
      if ((ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
                                      TResourceTransition.TFlag.NextFrameOutput])<>[]) or
         ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
-         (ResourceTransition.fResource.fResourceType.fAttachmentData.AttachmentType=TAttachmentType.Surface)) then begin
+         (ResourceTransition.fResource.fResourceType.fImageData.ImageType=TImageType.Surface)) then begin
       // In this cases, this one resource must life from the begin to the end of the whole
       // directed acyclic graph for the simplicity of safety, because it can be still optimized
       // in a better way later
@@ -3100,7 +3093,8 @@ type TBeforeAfter=(Before,After);
  procedure CreateResourceReuseGroups;
   function CanResourceReused(const aResource:TResource):boolean;
   begin
-   result:=(aResource.fResourceType.fAttachmentData.AttachmentType<>TAttachmentType.Surface) and
+   result:=(not aResource.fResourceType.fPersientent) and
+           (aResource.fResourceType.fImageData.ImageType<>TImageType.Surface) and
            (not ((aResource.fResourceType.fMetaType<>TResourceType.TMetaType.Attachment) and
                  assigned(aResource.fAssociatedMemoryData)));
   end;
@@ -3151,7 +3145,7 @@ type TBeforeAfter=(Before,After);
  var MinimumTopologicalSortIndex:TpvSizeInt;
      ResourceReuseGroup:TResourceReuseGroup;
      ResourceType:TResourceType;
-     ResourcePhysicalAttachmentData:TResourcePhysicalAttachmentData;
+     ResourcePhysicalImageData:TResourcePhysicalImageData;
      Resource:TResource;
      ResourceTransition:TResourceTransition;
  begin
@@ -3159,62 +3153,63 @@ type TBeforeAfter=(Before,After);
   for ResourceReuseGroup in fResourceReuseGroups do begin
    ResourceType:=ResourceReuseGroup.fResourceType;
    case ResourceType.fMetaType of
-    TpvFrameGraph.TResourceType.TMetaType.Attachment:begin
+    TpvFrameGraph.TResourceType.TMetaType.Attachment,
+    TpvFrameGraph.TResourceType.TMetaType.Image:begin
      if not assigned(ResourceReuseGroup.fResourcePhysicalData) then begin
-      ResourceReuseGroup.fResourcePhysicalData:=TResourcePhysicalAttachmentData.Create(self);
-      ResourcePhysicalAttachmentData:=TResourcePhysicalAttachmentData(ResourceReuseGroup.fResourcePhysicalData);
-      ResourcePhysicalAttachmentData.fResourceType:=ResourceType;
-      ResourcePhysicalAttachmentData.fImageUsageFlags:=TVkImageUsageFlags(ResourceType.AttachmentData.ImageUsage);
-      ResourcePhysicalAttachmentData.fFormat:=ResourceType.AttachmentData.Format;
-      ResourcePhysicalAttachmentData.fExtent.width:=Max(1,trunc(ResourceType.AttachmentData.AttachmentSize.Size.x));
-      ResourcePhysicalAttachmentData.fExtent.height:=Max(1,trunc(ResourceType.AttachmentData.AttachmentSize.Size.y));
-      ResourcePhysicalAttachmentData.fExtent.depth:=Max(1,trunc(ResourceType.AttachmentData.AttachmentSize.Size.z));
-      ResourcePhysicalAttachmentData.fCountMipMaps:=1;
-      ResourcePhysicalAttachmentData.fCountArrayLayers:=trunc(ResourceType.AttachmentData.AttachmentSize.Size.w);
-      ResourcePhysicalAttachmentData.fSamples:=ResourceType.AttachmentData.Samples;
-      ResourcePhysicalAttachmentData.fTiling:=VK_IMAGE_TILING_OPTIMAL;
-      ResourcePhysicalAttachmentData.fInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
-      ResourcePhysicalAttachmentData.fFirstInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+      ResourceReuseGroup.fResourcePhysicalData:=TResourcePhysicalImageData.Create(self);
+      ResourcePhysicalImageData:=TResourcePhysicalImageData(ResourceReuseGroup.fResourcePhysicalData);
+      ResourcePhysicalImageData.fResourceType:=ResourceType;
+      ResourcePhysicalImageData.fImageUsageFlags:=TVkImageUsageFlags(ResourceType.ImageData.ImageUsage);
+      ResourcePhysicalImageData.fFormat:=ResourceType.ImageData.Format;
+      ResourcePhysicalImageData.fExtent.width:=Max(1,trunc(ResourceType.ImageData.ImageSize.Size.x));
+      ResourcePhysicalImageData.fExtent.height:=Max(1,trunc(ResourceType.ImageData.ImageSize.Size.y));
+      ResourcePhysicalImageData.fExtent.depth:=Max(1,trunc(ResourceType.ImageData.ImageSize.Size.z));
+      ResourcePhysicalImageData.fCountMipMaps:=1;
+      ResourcePhysicalImageData.fCountArrayLayers:=trunc(ResourceType.ImageData.ImageSize.Size.w);
+      ResourcePhysicalImageData.fSamples:=ResourceType.ImageData.Samples;
+      ResourcePhysicalImageData.fTiling:=VK_IMAGE_TILING_OPTIMAL;
+      ResourcePhysicalImageData.fInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+      ResourcePhysicalImageData.fFirstInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
       MinimumTopologicalSortIndex:=High(TpvSizeInt);
       for Resource in ResourceReuseGroup.fResources do begin
        for ResourceTransition in Resource.fResourceTransitions do begin
         if ResourceTransition.fPass.fTopologicalSortIndex<MinimumTopologicalSortIndex then begin
          MinimumTopologicalSortIndex:=ResourceTransition.fPass.fTopologicalSortIndex;
-         ResourcePhysicalAttachmentData.fFirstInitialLayout:=ResourceTransition.fLayout;
+         ResourcePhysicalImageData.fFirstInitialLayout:=ResourceTransition.fLayout;
         end;
        end;
       end;
-      ResourcePhysicalAttachmentData.fImageCreateFlags:=0;
-      if ResourcePhysicalAttachmentData.fExtent.depth>1 then begin
-       ResourcePhysicalAttachmentData.fImageType:=VK_IMAGE_TYPE_3D;
+      ResourcePhysicalImageData.fImageCreateFlags:=0;
+      if ResourcePhysicalImageData.fExtent.depth>1 then begin
+       ResourcePhysicalImageData.fImageType:=VK_IMAGE_TYPE_3D;
       end else begin
-       ResourcePhysicalAttachmentData.fImageType:=VK_IMAGE_TYPE_2D;
+       ResourcePhysicalImageData.fImageType:=VK_IMAGE_TYPE_2D;
       end;
-      ResourcePhysicalAttachmentData.fSharingMode:=VK_SHARING_MODE_EXCLUSIVE;
-      ResourcePhysicalAttachmentData.fImageSubresourceRange.aspectMask:=ResourceType.AttachmentData.AttachmentType.GetAspectMask;
-      ResourcePhysicalAttachmentData.fImageSubresourceRange.baseMipLevel:=0;
-      ResourcePhysicalAttachmentData.fImageSubresourceRange.levelCount:=1;
-      ResourcePhysicalAttachmentData.fImageSubresourceRange.baseArrayLayer:=0;
-      ResourcePhysicalAttachmentData.fImageSubresourceRange.layerCount:=ResourcePhysicalAttachmentData.fCountArrayLayers;
-      if ResourcePhysicalAttachmentData.fExtent.depth>1 then begin
-       if ResourcePhysicalAttachmentData.fImageSubresourceRange.layerCount>1 then begin
+      ResourcePhysicalImageData.fSharingMode:=VK_SHARING_MODE_EXCLUSIVE;
+      ResourcePhysicalImageData.fImageSubresourceRange.aspectMask:=ResourceType.ImageData.ImageType.GetAspectMask;
+      ResourcePhysicalImageData.fImageSubresourceRange.baseMipLevel:=0;
+      ResourcePhysicalImageData.fImageSubresourceRange.levelCount:=1;
+      ResourcePhysicalImageData.fImageSubresourceRange.baseArrayLayer:=0;
+      ResourcePhysicalImageData.fImageSubresourceRange.layerCount:=ResourcePhysicalImageData.fCountArrayLayers;
+      if ResourcePhysicalImageData.fExtent.depth>1 then begin
+       if ResourcePhysicalImageData.fImageSubresourceRange.layerCount>1 then begin
         raise EpvFrameGraph.Create('3D array image not supported');
        end else begin
-        ResourcePhysicalAttachmentData.fImageViewType:=VK_IMAGE_VIEW_TYPE_3D;
+        ResourcePhysicalImageData.fImageViewType:=VK_IMAGE_VIEW_TYPE_3D;
        end;
       end else begin
-       if ResourcePhysicalAttachmentData.fImageSubresourceRange.layerCount>1 then begin
-        ResourcePhysicalAttachmentData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+       if ResourcePhysicalImageData.fImageSubresourceRange.layerCount>1 then begin
+        ResourcePhysicalImageData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
        end else begin
-        ResourcePhysicalAttachmentData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D;
+        ResourcePhysicalImageData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D;
        end;
       end;
-      ResourcePhysicalAttachmentData.fComponents:=ResourceType.fAttachmentData.Components;
+      ResourcePhysicalImageData.fComponents:=ResourceType.fImageData.Components;
      end;
     end;
-    TpvFrameGraph.TResourceType.TMetaType.Image:begin
-    end;
     TpvFrameGraph.TResourceType.TMetaType.Buffer:begin
+     // TODO
+     Assert(false,'TODO');
     end;
     else {TpvFrameGraph.TResourceType.TMetaType.None:}begin
  //  raise EpvFrameGraph.Create('Invalid meta type');
@@ -3317,7 +3312,7 @@ type TBeforeAfter=(Before,After);
     PipelineBarrierGroups.Add(PipelineBarrierGroup);
    end;
    // TODO
-   if aResourcePhysicalData is TResourcePhysicalAttachmentData then begin
+   if aResourcePhysicalData is TResourcePhysicalImageData then begin
     FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
     ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     ImageMemoryBarrier.srcAccessMask:=aSrcAccessMask;
@@ -3327,7 +3322,7 @@ type TBeforeAfter=(Before,After);
     ImageMemoryBarrier.srcQueueFamilyIndex:=aSrcQueueFamilyIndex;
     ImageMemoryBarrier.dstQueueFamilyIndex:=aDstQueueFamilyIndex;
     ImageMemoryBarrier.image:=0;
-    ImageMemoryBarrier.subresourceRange:=TResourcePhysicalAttachmentData(aResourcePhysicalData).fImageSubresourceRange;
+    ImageMemoryBarrier.subresourceRange:=TResourcePhysicalImageData(aResourcePhysicalData).fImageSubresourceRange;
     BarrierMapItem.Kind:=TPhysicalPass.TPipelineBarrierGroup.TBarrierMapItemKind.Image;
     BarrierMapItem.BarrierIndex:=PipelineBarrierGroup.fImageMemoryBarrierDynamicArray.Add(ImageMemoryBarrier);
     BarrierMapItem.ResourcePhysicalData:=aResourcePhysicalData;
@@ -3354,8 +3349,6 @@ type TBeforeAfter=(Before,After);
     BarrierMapItem.BarrierIndex:=PipelineBarrierGroup.fBufferMemoryBarrierDynamicArray.Add(BufferMemoryBarrier);
     BarrierMapItem.ResourcePhysicalData:=aResourcePhysicalData;
     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
-   end else if aResourcePhysicalData is TResourcePhysicalImageData then begin
-    // TODO
    end else begin
     Assert(false);
    end;
