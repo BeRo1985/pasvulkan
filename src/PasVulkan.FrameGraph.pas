@@ -223,6 +223,19 @@ type EpvFrameGraph=class(Exception);
                       class operator NotEqual(const aLeft,aRight:TImageData):boolean;
                     end;
                     PImageData=^TImageData;
+                    TBufferData=record
+                     fSize:TVkDeviceSize;
+                     fUsage:TVkBufferUsageFlags;
+                     fSharingMode:TVkSharingMode;
+                     fMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+                     fMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
+                     fMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+                     fMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
+                     fMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
+                     fMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+                     fBufferFlags:TpvVulkanBufferFlags;
+                    end;
+                    PBufferData=^TBufferData;
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
@@ -230,12 +243,19 @@ type EpvFrameGraph=class(Exception);
               fMetaType:TMetaType;
               fImageData:TImageData;
               fPointerToImageData:PImageData;
+              fBufferData:TBufferData;
+              fPointerToBufferData:PBufferData;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
                                  const aPersientent:boolean;
                                  const aMetaType:TMetaType;
                                  const aImageData:TImageData); reintroduce; overload;
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aName:TpvRawByteString;
+                                 const aPersientent:boolean;
+                                 const aMetaType:TMetaType;
+                                 const aBufferData:TBufferData); reintroduce; overload;
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
                                  const aPersientent:boolean;
@@ -261,6 +281,9 @@ type EpvFrameGraph=class(Exception);
              public
               property ImageData:TImageData read fImageData write fImageData;
               property PointerToImageData:PImageData read fPointerToImageData write fPointerToImageData;
+             public
+              property BufferData:TBufferData read fBufferData write fBufferData;
+              property PointerToBufferData:PBufferData read fPointerToBufferData write fPointerToBufferData;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName;
@@ -1094,6 +1117,31 @@ begin
  fMetaType:=aMetaType;
  fImageData:=aImageData;
  fPointerToImageData:=@fImageData;
+ fPointerToBufferData:=@fBufferData;
+end;
+
+constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
+                                               const aName:TpvRawByteString;
+                                               const aPersientent:boolean;
+                                               const aMetaType:TMetaType;
+                                               const aBufferData:TBufferData);
+begin
+ inherited Create;
+ if length(trim(String(aName)))=0 then begin
+  raise EpvFrameGraphEmptyName.Create('Empty name');
+ end;
+ if aFrameGraph.fResourceTypeNameHashMap.ExistKey(aName) then begin
+  raise EpvFrameGraphDuplicateName.Create('Duplicate name');
+ end;
+ fFrameGraph:=aFrameGraph;
+ fName:=aName;
+ fFrameGraph.fResourceTypes.Add(self);
+ fFrameGraph.fResourceTypeNameHashMap.Add(fName,self);
+ fPersientent:=aPersientent;
+ fMetaType:=aMetaType;
+ fPointerToImageData:=@fImageData;
+ fBufferData:=aBufferData;
+ fPointerToBufferData:=@fBufferData;
 end;
 
 constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
@@ -1123,11 +1171,11 @@ begin
         aPersientent,
         TMetaType.Attachment,
         TImageData.Create(aFormat,
-                               aSamples,
-                               aImageType,
-                               aImageSize,
-                               aImageUsage,
-                               aComponents));
+                          aSamples,
+                          aImageType,
+                          aImageSize,
+                          aImageUsage,
+                          aComponents));
 end;
 
 constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
@@ -2802,10 +2850,12 @@ type TBeforeAfter=(Before,After);
      for ResourceTransition in RenderPass.fResourceTransitions do begin
       if ResourceTransition.fKind in TResourceTransition.AllAttachmentOutputs then begin
        Resource:=ResourceTransition.fResource;
-       if (Resource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
+       if (Resource.fResourceType.fMetaType in [TResourceType.TMetaType.Attachment,
+                                                TResourceType.TMetaType.Image]) and
           (Resource.fResourceType.fImageData.ImageType=TImageType.Surface) then begin
         Temporary:=Temporary or 1;
-       end else if not ((Resource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
+       end else if not ((Resource.fResourceType.fMetaType in [TResourceType.TMetaType.Attachment,
+                                                              TResourceType.TMetaType.Image]) and
                         (Resource.fResourceType.fImageData.ImageType=TImageType.Depth)) then begin
         Temporary:=Temporary or 2;
         break;
@@ -3066,7 +3116,8 @@ type TBeforeAfter=(Before,After);
     if assigned(Pass.fPhysicalPass) then begin
      if ((ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
                                      TResourceTransition.TFlag.NextFrameOutput])<>[]) or
-        ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Attachment) and
+        ((ResourceTransition.fResource.fResourceType.fMetaType in [TResourceType.TMetaType.Attachment,
+                                                                   TResourceType.TMetaType.Image]) and
          (ResourceTransition.fResource.fResourceType.fImageData.ImageType=TImageType.Surface)) then begin
       // In this cases, this one resource must life from the begin to the end of the whole
       // directed acyclic graph for the simplicity of safety, because it can be still optimized
