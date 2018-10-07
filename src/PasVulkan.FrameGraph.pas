@@ -199,7 +199,6 @@ type EpvFrameGraph=class(Exception);
               type TMetaType=
                     (
                      None,
-                     Attachment,
                      Image,
                      Buffer
                     );
@@ -1169,7 +1168,7 @@ begin
  Create(aFrameGraph,
         aName,
         aPersientent,
-        TMetaType.Attachment,
+        TMetaType.Image,
         TImageData.Create(aFormat,
                           aSamples,
                           aImageType,
@@ -1697,7 +1696,7 @@ begin
  end else begin
   Resource:=TResource.Create(fFrameGraph,aResourceName,ResourceType);
  end;
- if ResourceType.fMetaType<>TResourceType.TMetaType.Attachment then begin
+ if ResourceType.fMetaType<>TResourceType.TMetaType.Image then begin
   raise EpvFrameGraph.Create('Resource meta type mismatch');
  end;
  result:=TResourceTransition.Create(fFrameGraph,
@@ -1768,8 +1767,7 @@ begin
  end else begin
   Resource:=TResource.Create(fFrameGraph,aResourceName,ResourceType);
  end;
- if not (ResourceType.fMetaType in [TResourceType.TMetaType.Attachment,
-                                    TResourceType.TMetaType.Image]) then begin
+ if ResourceType.fMetaType<>TResourceType.TMetaType.Image then begin
   raise EpvFrameGraph.Create('Resource meta type mismatch');
  end;
  result:=TResourceTransition.Create(fFrameGraph,
@@ -2850,12 +2848,10 @@ type TBeforeAfter=(Before,After);
      for ResourceTransition in RenderPass.fResourceTransitions do begin
       if ResourceTransition.fKind in TResourceTransition.AllAttachmentOutputs then begin
        Resource:=ResourceTransition.fResource;
-       if (Resource.fResourceType.fMetaType in [TResourceType.TMetaType.Attachment,
-                                                TResourceType.TMetaType.Image]) and
+       if (Resource.fResourceType.fMetaType=TResourceType.TMetaType.Image) and
           (Resource.fResourceType.fImageData.ImageType=TImageType.Surface) then begin
         Temporary:=Temporary or 1;
-       end else if not ((Resource.fResourceType.fMetaType in [TResourceType.TMetaType.Attachment,
-                                                              TResourceType.TMetaType.Image]) and
+       end else if not ((Resource.fResourceType.fMetaType=TResourceType.TMetaType.Image) and
                         (Resource.fResourceType.fImageData.ImageType=TImageType.Depth)) then begin
         Temporary:=Temporary or 2;
         break;
@@ -3116,8 +3112,7 @@ type TBeforeAfter=(Before,After);
     if assigned(Pass.fPhysicalPass) then begin
      if ((ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
                                      TResourceTransition.TFlag.NextFrameOutput])<>[]) or
-        ((ResourceTransition.fResource.fResourceType.fMetaType in [TResourceType.TMetaType.Attachment,
-                                                                   TResourceType.TMetaType.Image]) and
+        ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Image) and
          (ResourceTransition.fResource.fResourceType.fImageData.ImageType=TImageType.Surface)) then begin
       // In this cases, this one resource must life from the begin to the end of the whole
       // directed acyclic graph for the simplicity of safety, because it can be still optimized
@@ -3146,7 +3141,7 @@ type TBeforeAfter=(Before,After);
   begin
    result:=(not aResource.fResourceType.fPersientent) and
            (aResource.fResourceType.fImageData.ImageType<>TImageType.Surface) and
-           (not ((aResource.fResourceType.fMetaType<>TResourceType.TMetaType.Attachment) and
+           (not ((aResource.fResourceType.fMetaType<>TResourceType.TMetaType.Image) and
                  assigned(aResource.fAssociatedMemoryData)));
   end;
  var Index,
@@ -3205,7 +3200,6 @@ type TBeforeAfter=(Before,After);
   for ResourceReuseGroup in fResourceReuseGroups do begin
    ResourceType:=ResourceReuseGroup.fResourceType;
    case ResourceType.fMetaType of
-    TpvFrameGraph.TResourceType.TMetaType.Attachment,
     TpvFrameGraph.TResourceType.TMetaType.Image:begin
      if not assigned(ResourceReuseGroup.fResourcePhysicalData) then begin
       ResourceReuseGroup.fResourcePhysicalData:=TResourcePhysicalImageData.Create(self);
