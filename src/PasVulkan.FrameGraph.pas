@@ -288,6 +288,7 @@ type EpvFrameGraph=class(Exception);
              private
               fIsSurface:boolean;
               fImageUsageFlags:TVkImageUsageFlags;
+              fRequestedFormat:TVkFormat;
               fFormat:TVkFormat;
               fExtent:TVkExtent3D;
               fCountMipMaps:TpvSizeInt;
@@ -1098,6 +1099,7 @@ begin
  inherited Create(aFrameGraph);
  fIsSurface:=false;
  fImageUsageFlags:=TVkImageUsageFlags(VK_IMAGE_USAGE_SAMPLED_BIT);
+ fRequestedFormat:=VK_FORMAT_B8G8R8A8_UNORM;
  fFormat:=VK_FORMAT_B8G8R8A8_UNORM;
  fExtent:=TVkExtent3D.Create(1,1,1);
  fCountMipMaps:=1;
@@ -1147,7 +1149,6 @@ var SwapChainImageIndex:TpvSizeInt;
     PrefersDedicatedAllocation:boolean;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
     MemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
-    Format:TVkFormat;
 begin
 
  Assert(fResourceType is TImageResourceType);
@@ -1171,13 +1172,15 @@ begin
 
  if fIsSurface then begin
 
+  fFormat:=fFrameGraph.fSurfaceColorFormat;
+
   for SwapChainImageIndex:=0 to Min(Max(fFrameGraph.fCountSwapChainImages,1),MaxSwapChainImages)-1 do begin
    fVulkanImages[SwapChainImageIndex]:=fFrameGraph.fSurfaceImages[SwapChainImageIndex];
    fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
    fVulkanImageViews[SwapChainImageIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
                                                                      fVulkanImages[SwapChainImageIndex],
                                                                      fImageViewType,
-                                                                     fFrameGraph.fSurfaceColorFormat,
+                                                                     fFormat,
                                                                      fComponents.r,
                                                                      fComponents.g,
                                                                      fComponents.b,
@@ -1192,17 +1195,17 @@ begin
 
  end else begin
 
-  Format:=fFormat;
+  fFormat:=fRequestedFormat;
 
-  if Format=VK_FORMAT_UNDEFINED then begin
+  if fFormat=VK_FORMAT_UNDEFINED then begin
    case (fResourceType as TImageResourceType).fImageType of
     TImageType.Color:begin
-     Format:=fFrameGraph.fSurfaceColorFormat;
+     fFormat:=fFrameGraph.fSurfaceColorFormat;
     end;
     TImageType.Depth,
     TImageType.DepthStencil,
     TImageType.Stencil:begin
-     Format:=fFrameGraph.fSurfaceDepthFormat;
+     fFormat:=fFrameGraph.fSurfaceDepthFormat;
     end;
    end;
   end;
@@ -1212,7 +1215,7 @@ begin
    fVulkanImages[SwapChainImageIndex]:=TpvVulkanImage.Create(fFrameGraph.fVulkanDevice,
                                                              0,
                                                              fImageType,
-                                                             Format,
+                                                             fFormat,
                                                              fExtent.width,
                                                              fExtent.height,
                                                              fExtent.depth,
@@ -1266,7 +1269,7 @@ begin
    fVulkanImageViews[SwapChainImageIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
                                                                      fVulkanImages[SwapChainImageIndex],
                                                                      fImageViewType,
-                                                                     Format,
+                                                                     fFormat,
                                                                      fComponents.r,
                                                                      fComponents.g,
                                                                      fComponents.b,
@@ -2157,9 +2160,10 @@ end;
 procedure TpvFrameGraph.TPhysicalRenderPass.AfterCreateSwapChain;
 type TAttachment=record
       Resource:TResource;
-      ImageResourceType:TImageResourceType;
-      Index:TVkInt32;
+      Persientent:boolean;
+      ImageType:TImageType;
       Format:TVkFormat;
+      Samples:TVkSampleCountFlagBits;
       LoadOp:TVkAttachmentLoadOp;
       StoreOp:TVkAttachmentStoreOp;
       StencilLoadOp:TVkAttachmentLoadOp;
@@ -2270,11 +2274,11 @@ begin
        AttachmentIndex:=Attachments.AddNew;
        Attachment:=@Attachments.Items[AttachmentIndex];
        Attachment^.Resource:=ResourceTransition.fResource;
-       Attachment^.ImageResourceType:=ImageResourceType;
-       Attachment^.Index:=AttachmentIndex;
+       Attachment^.Persientent:=ImageResourceType.fPersientent;
+       Attachment^.ImageType:=ImageResourceType.fImageType;
        Attachment^.Format:=ImageResourceType.fFormat;
        if Attachment^.Format=VK_FORMAT_UNDEFINED then begin
-        case ImageResourceType.fImageType of
+        case Attachment^.ImageType of
          TImageType.Color:begin
           Attachment^.Format:=fFrameGraph.fSurfaceColorFormat;
          end;
@@ -2285,6 +2289,7 @@ begin
          end;
         end;
        end;
+       Attachment^.Samples:=ImageResourceType.fSamples;
        Attachment^.LoadOp:=VK_ATTACHMENT_LOAD_OP_DONT_CARE;
        Attachment^.StoreOp:=VK_ATTACHMENT_STORE_OP_DONT_CARE;
        Attachment^.StencilLoadOp:=VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -2306,11 +2311,10 @@ begin
      for AttachmentIndex:=0 to Attachments.Count-1 do begin
       Attachment:=@Attachments.Items[AttachmentIndex];
       if Attachment^.Resource=ResourceTransition.fResource then begin
-       ImageResourceType:=Attachment^.ImageResourceType;
-       if (Attachment^.LoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and (ImageResourceType.fImageType in [TImageType.Surface,TImageType.Color,TImageType.Depth]) then begin
+       if (Attachment^.LoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and (Attachment^.ImageType in [TImageType.Surface,TImageType.Color,TImageType.Depth]) then begin
         Attachment^.LoadOp:=TLoadOp.Values[ResourceTransition.fLoadOp.Kind];
        end;
-       if (Attachment^.StencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and (ImageResourceType.fImageType in [TImageType.DepthStencil,TImageType.Stencil]) then begin
+       if (Attachment^.StencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and (Attachment^.ImageType in [TImageType.DepthStencil,TImageType.Stencil]) then begin
         Attachment^.StencilLoadOp:=TLoadOp.Values[ResourceTransition.fLoadOp.Kind];
        end;
        case ResourceTransition.fLayout of
@@ -2351,7 +2355,7 @@ begin
        Attachment^.FinalLayout:=ResourceTransition.fLayout;
        if not Attachment^.ClearValueInitialized then begin
         Attachment^.ClearValueInitialized:=true;
-        if ImageResourceType.fImageType in [TImageType.DepthStencil,TImageType.Stencil,TImageType.Depth] then begin
+        if Attachment^.ImageType in [TImageType.DepthStencil,TImageType.Stencil,TImageType.Depth] then begin
          Attachment^.ClearValue.depthStencil.depth:=ResourceTransition.fLoadOp.ClearColor[0];
          Attachment^.ClearValue.depthStencil.stencil:=trunc(ResourceTransition.fLoadOp.ClearColor[1]);
         end else begin
@@ -2454,12 +2458,12 @@ begin
       end;
       UsedBefore:=Resource.fMinimumTopologicalSortPassIndex<SubPass.fRenderPass.fTopologicalSortIndex;
       UsedAfter:=SubPass.fRenderPass.fTopologicalSortIndex<Resource.fMaximumTopologicalSortPassIndex;
-      IsSurfaceOrPersistent:=(Attachment^.ImageResourceType.fImageType=TImageType.Surface) or Attachment^.ImageResourceType.fPersientent;
+      IsSurfaceOrPersistent:=(Attachment^.ImageType=TImageType.Surface) or Attachment^.Persientent;
       if UsedBefore and (not UsedNow) and (UsedAfter or IsSurfaceOrPersistent) then begin
        PreserveAttachments.Add(AttachmentIndex);
       end;
       if (SubPassIndex>0) and (UsedAfter or isSurfaceOrPersistent) then begin
-       case Attachment^.ImageResourceType.fImageType of
+       case Attachment^.ImageType of
         TImageType.Surface,TImageType.Color,TImageType.Depth:begin
          Attachment^.StoreOp:=VK_ATTACHMENT_STORE_OP_STORE;
         end;
@@ -2529,7 +2533,7 @@ begin
     end;
     fVulkanRenderPass.AddAttachmentDescription(AttachmentDescriptionFlags,
                                                Attachment^.Format,
-                                               Attachment^.ImageResourceType.fSamples,
+                                               Attachment^.Samples,
                                                Attachment^.LoadOp,
                                                Attachment^.StoreOp,
                                                Attachment^.StencilLoadOp,
@@ -3413,6 +3417,7 @@ type TBeforeAfter=(Before,After);
      ResourcePhysicalImageData.fResourceType:=ResourceType;
      ResourcePhysicalImageData.fIsSurface:=ImageResourceType.fImageType=TImageType.Surface;
      ResourcePhysicalImageData.fImageUsageFlags:=TVkImageUsageFlags(ImageResourceType.fImageUsage);
+     ResourcePhysicalImageData.fRequestedFormat:=ImageResourceType.fFormat;
      ResourcePhysicalImageData.fFormat:=ImageResourceType.fFormat;
      ResourcePhysicalImageData.fExtent.width:=Max(1,trunc(ImageResourceType.fImageSize.Size.x));
      ResourcePhysicalImageData.fExtent.height:=Max(1,trunc(ImageResourceType.fImageSize.Size.y));
