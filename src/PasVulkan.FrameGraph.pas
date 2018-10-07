@@ -195,72 +195,30 @@ type EpvFrameGraph=class(Exception);
             TQueues=TpvObjectGenericList<TQueue>;
             TQueueFamilyIndices=TpvDynamicArray<TVkUInt32>;
             TResourceType=class
-             public
-              type TMetaType=
-                    (
-                     None,
-                     Image,
-                     Buffer
-                    );
-                    PMetaType=^TMetaType;
-                    TImageData=record
-                     public
-                      Format:TVkFormat;
-                      Samples:TVkSampleCountFlagBits;
-                      ImageType:TImageType;
-                      ImageSize:TImageSize;
-                      ImageUsage:TVkImageUsageFlags;
-                      CountMipMapLevels:TVkUInt32;
-                      Components:TVkComponentMapping;
-                      class function CreateEmpty:TImageData; static;
-                      constructor Create(const aFormat:TVkFormat;
-                                         const aSamples:TVkSampleCountFlagBits;
-                                         const aImageType:TImageType;
-                                         const aImageSize:TImageSize;
-                                         const aImageUsage:TVkImageUsageFlags;
-                                         const aCountMipMapLevels:TVkUInt32;
-                                         const aComponents:TVkComponentMapping); overload;
-                      class operator Equal(const aLeft,aRight:TImageData):boolean;
-                      class operator NotEqual(const aLeft,aRight:TImageData):boolean;
-                    end;
-                    PImageData=^TImageData;
-                    TBufferData=record
-                     fSize:TVkDeviceSize;
-                     fUsage:TVkBufferUsageFlags;
-                     fSharingMode:TVkSharingMode;
-                     fMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
-                     fMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
-                     fMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
-                     fMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
-                     fMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
-                     fMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
-                     fBufferFlags:TpvVulkanBufferFlags;
-                    end;
-                    PBufferData=^TBufferData;
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
               fPersientent:boolean;
-              fMetaType:TMetaType;
-              fImageData:TImageData;
-              fPointerToImageData:PImageData;
-              fBufferData:TBufferData;
-              fPointerToBufferData:PBufferData;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
-                                 const aPersientent:boolean;
-                                 const aMetaType:TMetaType;
-                                 const aImageData:TImageData); reintroduce; overload;
-              constructor Create(const aFrameGraph:TpvFrameGraph;
-                                 const aName:TpvRawByteString;
-                                 const aPersientent:boolean;
-                                 const aMetaType:TMetaType;
-                                 const aBufferData:TBufferData); reintroduce; overload;
-              constructor Create(const aFrameGraph:TpvFrameGraph;
-                                 const aName:TpvRawByteString;
-                                 const aPersientent:boolean;
-                                 const aMetaType:TMetaType); reintroduce; overload;
+                                 const aPersientent:boolean); reintroduce; virtual;
+              destructor Destroy; override;
+             published
+              property FrameGraph:TpvFrameGraph read fFrameGraph;
+              property Name:TpvRawByteString read fName;
+              property Persientent:boolean read fPersientent write fPersientent;
+            end;
+            TImageResourceType=class(TResourceType)
+             private
+              fFormat:TVkFormat;
+              fSamples:TVkSampleCountFlagBits;
+              fImageType:TImageType;
+              fImageSize:TImageSize;
+              fImageUsage:TVkImageUsageFlags;
+              fCountMipMapLevels:TVkUInt32;
+              fComponents:TVkComponentMapping;
+             public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
                                  const aPersientent:boolean;
@@ -282,16 +240,16 @@ type EpvFrameGraph=class(Exception);
                                  const aCountMipMapLevels:TVkUInt32); reintroduce; overload;
               destructor Destroy; override;
              public
-              property ImageData:TImageData read fImageData write fImageData;
-              property PointerToImageData:PImageData read fPointerToImageData write fPointerToImageData;
-             public
-              property BufferData:TBufferData read fBufferData write fBufferData;
-              property PointerToBufferData:PBufferData read fPointerToBufferData write fPointerToBufferData;
+              property ImageType:TImageType read fImageType;
+              property ImageSize:TImageSize read fImageSize;
+              property Components:TVkComponentMapping read fComponents;
              published
-              property FrameGraph:TpvFrameGraph read fFrameGraph;
-              property Name:TpvRawByteString read fName;
-              property Persientent:boolean read fPersientent write fPersientent;
-              property MetaType:TMetaType read fMetaType write fMetaType;
+              property Format:TVkFormat read fFormat;
+              property Samples:TVkSampleCountFlagBits read fSamples;
+              property ImageUsage:TVkImageUsageFlags read fImageUsage;
+              property CountMipMapLevels:TVkUInt32 read fCountMipMapLevels;
+            end;
+            TBufferResourceType=class(TResourceType)
             end;
             TResource=class;
             TResourceList=TpvObjectGenericList<TResource>;
@@ -791,13 +749,6 @@ type EpvFrameGraph=class(Exception);
        function AddQueue(const aPhysicalQueue:TpvVulkanQueue):TQueue;
        function AddResourceType(const aName:TpvRawByteString;
                                 const aPersientent:boolean;
-                                const aMetaType:TResourceType.TMetaType;
-                                const aImageData:TResourceType.TImageData):TResourceType; overload;
-       function AddResourceType(const aName:TpvRawByteString;
-                                const aPersientent:boolean;
-                                const aMetaType:TResourceType.TMetaType):TResourceType; overload;
-       function AddResourceType(const aName:TpvRawByteString;
-                                const aPersientent:boolean;
                                 const aFormat:TVkFormat;
                                 const aSamples:TVkSampleCountFlagBits;
                                 const aImageType:TImageType;
@@ -1008,73 +959,9 @@ begin
 
 end;
 
-{ TpvFrameGraph.TResourceType.TImageData }
-
-class function TpvFrameGraph.TResourceType.TImageData.CreateEmpty:TImageData;
-begin
- result.Format:=VK_FORMAT_UNDEFINED;
- result.Samples:=VK_SAMPLE_COUNT_1_BIT;
- result.ImageType:=TImageType.Undefined;
- result.ImageSize:=TImageSize.CreateEmpty;
- result.ImageUsage:=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
- result.Components:=TVkComponentMapping.Create(VK_COMPONENT_SWIZZLE_R,
-                                               VK_COMPONENT_SWIZZLE_G,
-                                               VK_COMPONENT_SWIZZLE_B,
-                                               VK_COMPONENT_SWIZZLE_A);
-end;
-
-constructor TpvFrameGraph.TResourceType.TImageData.Create(const aFormat:TVkFormat;
-                                                               const aSamples:TVkSampleCountFlagBits;
-                                                               const aImageType:TImageType;
-                                                               const aImageSize:TImageSize;
-                                                               const aImageUsage:TVkImageUsageFlags;
-                                                               const aCountMipMapLevels:TVkUInt32;
-                                                               const aComponents:TVkComponentMapping);
-begin
- Format:=aFormat;
- Samples:=aSamples;
- ImageType:=aImageType;
- ImageSize:=aImageSize;
- ImageUsage:=aImageUsage;
- CountMipMapLevels:=aCountMipMapLevels;
- Components:=aComponents;
-end;
-
-class operator TpvFrameGraph.TResourceType.TImageData.Equal(const aLeft,aRight:TImageData):boolean;
-begin
- result:=(aLeft.Format=aRight.Format) and
-         (aLeft.Samples=aRight.Samples) and
-         (aLeft.ImageType=aRight.ImageType) and
-         (aLeft.ImageSize=aRight.ImageSize) and
-         (aLeft.ImageUsage=aRight.ImageUsage) and
-         (aLeft.CountMipMapLevels=aRight.CountMipMapLevels) and
-         (aLeft.Components.r=aRight.Components.r) and
-         (aLeft.Components.g=aRight.Components.g) and
-         (aLeft.Components.b=aRight.Components.b) and
-         (aLeft.Components.a=aRight.Components.a);
-end;
-
-class operator TpvFrameGraph.TResourceType.TImageData.NotEqual(const aLeft,aRight:TImageData):boolean;
-begin
- result:=(aLeft.Format<>aRight.Format) or
-         (aLeft.Samples<>aRight.Samples) or
-         (aLeft.ImageType<>aRight.ImageType) or
-         (aLeft.ImageSize<>aRight.ImageSize) or
-         (aLeft.ImageUsage<>aRight.ImageUsage) or
-         (aLeft.CountMipMapLevels<>aRight.CountMipMapLevels) or
-         (aLeft.Components.r<>aRight.Components.r) or
-         (aLeft.Components.g<>aRight.Components.g) or
-         (aLeft.Components.b<>aRight.Components.b) or
-         (aLeft.Components.a<>aRight.Components.a);
-end;
-
 { TpvFrameGraph.TResourceType }
 
-constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
-                                               const aName:TpvRawByteString;
-                                               const aPersientent:boolean;
-                                               const aMetaType:TMetaType;
-                                               const aImageData:TImageData);
+constructor TpvFrameGraph.TResourceType.Create;
 begin
  inherited Create;
  if length(trim(String(aName)))=0 then begin
@@ -1088,81 +975,47 @@ begin
  fFrameGraph.fResourceTypes.Add(self);
  fFrameGraph.fResourceTypeNameHashMap.Add(fName,self);
  fPersientent:=aPersientent;
- fMetaType:=aMetaType;
- fImageData:=aImageData;
- fPointerToImageData:=@fImageData;
- fPointerToBufferData:=@fBufferData;
 end;
 
-constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
-                                               const aName:TpvRawByteString;
-                                               const aPersientent:boolean;
-                                               const aMetaType:TMetaType;
-                                               const aBufferData:TBufferData);
+destructor TpvFrameGraph.TResourceType.Destroy;
 begin
- inherited Create;
- if length(trim(String(aName)))=0 then begin
-  raise EpvFrameGraphEmptyName.Create('Empty name');
- end;
- if aFrameGraph.fResourceTypeNameHashMap.ExistKey(aName) then begin
-  raise EpvFrameGraphDuplicateName.Create('Duplicate name');
- end;
- fFrameGraph:=aFrameGraph;
- fName:=aName;
- fFrameGraph.fResourceTypes.Add(self);
- fFrameGraph.fResourceTypeNameHashMap.Add(fName,self);
- fPersientent:=aPersientent;
- fMetaType:=aMetaType;
- fPointerToImageData:=@fImageData;
- fBufferData:=aBufferData;
- fPointerToBufferData:=@fBufferData;
+ inherited Destroy;
 end;
 
-constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
-                                               const aName:TpvRawByteString;
-                                               const aPersientent:boolean;
-                                               const aMetaType:TMetaType);
+{ TpvFrameGraph.TImageResourceType }
+
+constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGraph;
+                                                    const aName:TpvRawByteString;
+                                                    const aPersientent:boolean;
+                                                    const aFormat:TVkFormat;
+                                                    const aSamples:TVkSampleCountFlagBits;
+                                                    const aImageType:TImageType;
+                                                    const aImageSize:TImageSize;
+                                                    const aImageUsage:TVkImageUsageFlags;
+                                                    const aCountMipMapLevels:TVkUInt32;
+                                                    const aComponents:TVkComponentMapping);
 begin
  Create(aFrameGraph,
         aName,
-        aPersientent,
-        aMetaType,
-        TImageData.CreateEmpty);
+        aPersientent);
+ fFormat:=aFormat;
+ fSamples:=aSamples;
+ fImageType:=aImageType;
+ fImageSize:=aImageSize;
+ fImageUsage:=aImageUsage;
+ fCountMipMapLevels:=aCountMipMapLevels;
+ fComponents:=aComponents;
 end;
 
-constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
-                                               const aName:TpvRawByteString;
-                                               const aPersientent:boolean;
-                                               const aFormat:TVkFormat;
-                                               const aSamples:TVkSampleCountFlagBits;
-                                               const aImageType:TImageType;
-                                               const aImageSize:TImageSize;
-                                               const aImageUsage:TVkImageUsageFlags;
-                                               const aCountMipMapLevels:TVkUInt32;
-                                               const aComponents:TVkComponentMapping);
-begin
- Create(aFrameGraph,
-        aName,
-        aPersientent,
-        TMetaType.Image,
-        TImageData.Create(aFormat,
-                          aSamples,
-                          aImageType,
-                          aImageSize,
-                          aImageUsage,
-                          aCountMipMapLevels,
-                          aComponents));
-end;
-
-constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
-                                               const aName:TpvRawByteString;
-                                               const aPersientent:boolean;
-                                               const aFormat:TVkFormat;
-                                               const aSamples:TVkSampleCountFlagBits;
-                                               const aImageType:TImageType;
-                                               const aImageSize:TImageSize;
-                                               const aImageUsage:TVkImageUsageFlags;
-                                               const aCountMipMapLevels:TVkUInt32);
+constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGraph;
+                                                    const aName:TpvRawByteString;
+                                                    const aPersientent:boolean;
+                                                    const aFormat:TVkFormat;
+                                                    const aSamples:TVkSampleCountFlagBits;
+                                                    const aImageType:TImageType;
+                                                    const aImageSize:TImageSize;
+                                                    const aImageUsage:TVkImageUsageFlags;
+                                                    const aCountMipMapLevels:TVkUInt32);
 begin
  Create(aFrameGraph,
         aName,
@@ -1179,7 +1032,8 @@ begin
                                    VK_COMPONENT_SWIZZLE_A));
 end;
 
-destructor TpvFrameGraph.TResourceType.Destroy;
+
+destructor TpvFrameGraph.TImageResourceType.Destroy;
 begin
  inherited Destroy;
 end;
@@ -1263,6 +1117,7 @@ end;
 
 procedure TpvFrameGraph.TResourcePhysicalImageData.AfterCreateSwapChain;
 var SwapChainImageIndex:TpvSizeInt;
+    ImageResourceType:TImageResourceType;
     MemoryRequirements:TVkMemoryRequirements;
     RequiresDedicatedAllocation,
     PrefersDedicatedAllocation:boolean;
@@ -1270,16 +1125,20 @@ var SwapChainImageIndex:TpvSizeInt;
     MemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
 begin
 
- case fResourceType.fImageData.ImageSize.Kind of
+ Assert(fResourceType is TImageResourceType);
+
+ ImageResourceType:=TImageResourceType(fResourceType);
+
+ case ImageResourceType.fImageSize.Kind of
   TpvFrameGraph.TImageSize.TKind.Absolute:begin
-   fExtent.width:=Max(1,trunc(fResourceType.fImageData.ImageSize.Size.x));
-   fExtent.height:=Max(1,trunc(fResourceType.fImageData.ImageSize.Size.y));
-   fExtent.depth:=Max(1,trunc(fResourceType.fImageData.ImageSize.Size.z));
+   fExtent.width:=Max(1,trunc(ImageResourceType.fImageSize.Size.x));
+   fExtent.height:=Max(1,trunc(ImageResourceType.fImageSize.Size.y));
+   fExtent.depth:=Max(1,trunc(ImageResourceType.fImageSize.Size.z));
   end;
   TpvFrameGraph.TImageSize.TKind.SurfaceDependent:begin
-   fExtent.width:=Max(1,trunc(fResourceType.fImageData.ImageSize.Size.x*fFrameGraph.fSurfaceWidth));
-   fExtent.height:=Max(1,trunc(fResourceType.fImageData.ImageSize.Size.y*fFrameGraph.fSurfaceHeight));
-   fExtent.depth:=Max(1,trunc(fResourceType.fImageData.ImageSize.Size.z));
+   fExtent.width:=Max(1,trunc(ImageResourceType.fImageSize.Size.x*fFrameGraph.fSurfaceWidth));
+   fExtent.height:=Max(1,trunc(ImageResourceType.fImageSize.Size.y*fFrameGraph.fSurfaceHeight));
+   fExtent.depth:=Max(1,trunc(ImageResourceType.fImageSize.Size.z));
   end;
   else {TpvFrameGraph.TImageSize.TKind.Undefined:}begin
   end;
@@ -1689,7 +1548,7 @@ begin
  end else begin
   Resource:=TResource.Create(fFrameGraph,aResourceName,ResourceType);
  end;
- if ResourceType.fMetaType<>TResourceType.TMetaType.Image then begin
+ if not (ResourceType is TImageResourceType) then begin
   raise EpvFrameGraph.Create('Resource meta type mismatch');
  end;
  result:=TResourceTransition.Create(fFrameGraph,
@@ -1724,7 +1583,7 @@ begin
  end else begin
   Resource:=TResource.Create(fFrameGraph,aResourceName,ResourceType);
  end;
- if ResourceType.fMetaType<>TResourceType.TMetaType.Buffer then begin
+ if not (ResourceType is TBufferResourceType) then begin
   raise EpvFrameGraph.Create('Resource meta type mismatch');
  end;
  result:=TResourceTransition.Create(fFrameGraph,
@@ -2464,21 +2323,6 @@ end;
 
 function TpvFrameGraph.AddResourceType(const aName:TpvRawByteString;
                                        const aPersientent:boolean;
-                                       const aMetaType:TResourceType.TMetaType;
-                                       const aImageData:TResourceType.TImageData):TResourceType;
-begin
- result:=TResourceType.Create(self,aName,aPersientent,aMetaType,aImageData);
-end;
-
-function TpvFrameGraph.AddResourceType(const aName:TpvRawByteString;
-                                       const aPersientent:boolean;
-                                       const aMetaType:TResourceType.TMetaType):TResourceType;
-begin
- result:=TResourceType.Create(self,aName,aPersientent,aMetaType);
-end;
-
-function TpvFrameGraph.AddResourceType(const aName:TpvRawByteString;
-                                       const aPersientent:boolean;
                                        const aFormat:TVkFormat;
                                        const aSamples:TVkSampleCountFlagBits;
                                        const aImageType:TImageType;
@@ -2487,7 +2331,7 @@ function TpvFrameGraph.AddResourceType(const aName:TpvRawByteString;
                                        const aCountMipMapLevels:TVkUInt32;
                                        const aComponents:TVkComponentMapping):TResourceType;
 begin
- result:=TResourceType.Create(self,aName,aPersientent,aFormat,aSamples,aImageType,aImageSize,aImageUsage,aCountMipMapLevels,aComponents);
+ result:=TImageResourceType.Create(self,aName,aPersientent,aFormat,aSamples,aImageType,aImageSize,aImageUsage,aCountMipMapLevels,aComponents);
 end;
 
 function TpvFrameGraph.AddResourceType(const aName:TpvRawByteString;
@@ -2499,7 +2343,7 @@ function TpvFrameGraph.AddResourceType(const aName:TpvRawByteString;
                                        const aImageUsage:TVkImageUsageFlags;
                                        const aCountMipMapLevels:TVkUInt32):TResourceType;
 begin
- result:=TResourceType.Create(self,aName,aPersientent,aFormat,aSamples,aImageType,aImageSize,aImageUsage,aCountMipMapLevels);
+ result:=TImageResourceType.Create(self,aName,aPersientent,aFormat,aSamples,aImageType,aImageSize,aImageUsage,aCountMipMapLevels);
 end;
 
 procedure TpvFrameGraph.Setup;
@@ -2684,7 +2528,8 @@ type TBeforeAfter=(Before,After);
     RenderPass:=Pass as TRenderPass;
     for ResourceTransition in RenderPass.fResourceTransitions do begin
      if (ResourceTransition.fKind in TResourceTransition.AllImages) and
-        (ResourceTransition.fResource.fResourceType.fImageData.ImageSize<>RenderPass.fSize) then begin
+        (ResourceTransition.fResource.fResourceType is TImageResourceType) and
+        (TImageResourceType(ResourceTransition.fResource.fResourceType).fImageSize<>RenderPass.fSize) then begin
       raise EpvFrameGraphMismatchImageSize.Create('Mismatch attachment image size between pass "'+String(Pass.fName)+'" and resource "'+String(ResourceTransition.fResource.fName)+'"');
      end;
     end;
@@ -2756,11 +2601,11 @@ type TBeforeAfter=(Before,After);
      for ResourceTransition in RenderPass.fResourceTransitions do begin
       if ResourceTransition.fKind in TResourceTransition.AllImages then begin
        Resource:=ResourceTransition.fResource;
-       if (Resource.fResourceType.fMetaType=TResourceType.TMetaType.Image) and
-          (Resource.fResourceType.fImageData.ImageType=TImageType.Surface) then begin
+       if (Resource.fResourceType is TImageResourceType) and
+          (TImageResourceType(Resource.fResourceType).fImageType=TImageType.Surface) then begin
         Temporary:=Temporary or 1;
-       end else if not ((Resource.fResourceType.fMetaType=TResourceType.TMetaType.Image) and
-                        (Resource.fResourceType.fImageData.ImageType=TImageType.Depth)) then begin
+       end else if not ((Resource.fResourceType is TImageResourceType) and
+                        (TImageResourceType(Resource.fResourceType).fImageType=TImageType.Depth)) then begin
         Temporary:=Temporary or 2;
         break;
        end;
@@ -3020,8 +2865,8 @@ type TBeforeAfter=(Before,After);
     if assigned(Pass.fPhysicalPass) then begin
      if ((ResourceTransition.fFlags*[TResourceTransition.TFlag.PreviousFrameInput,
                                      TResourceTransition.TFlag.NextFrameOutput])<>[]) or
-        ((ResourceTransition.fResource.fResourceType.fMetaType=TResourceType.TMetaType.Image) and
-         (ResourceTransition.fResource.fResourceType.fImageData.ImageType=TImageType.Surface)) then begin
+        ((ResourceTransition.fResource.fResourceType is TImageResourceType) and
+         (TImageResourceType(ResourceTransition.fResource.fResourceType).fImageType=TImageType.Surface)) then begin
       // In this cases, this one resource must life from the begin to the end of the whole
       // directed acyclic graph for the simplicity of safety, because it can be still optimized
       // in a better way later
@@ -3048,9 +2893,8 @@ type TBeforeAfter=(Before,After);
   function CanResourceReused(const aResource:TResource):boolean;
   begin
    result:=(not aResource.fResourceType.fPersientent) and
-           (aResource.fResourceType.fImageData.ImageType<>TImageType.Surface) and
-           (not ((aResource.fResourceType.fMetaType<>TResourceType.TMetaType.Image) and
-                 assigned(aResource.fAssociatedMemoryData)));
+           (not ((aResource.fResourceType is TImageResourceType) and
+                 (TImageResourceType(aResource.fResourceType).fImageType=TImageType.Surface)));
   end;
  var Index,
      OtherIndex:TpvSizeInt;
@@ -3099,6 +2943,8 @@ type TBeforeAfter=(Before,After);
  var MinimumTopologicalSortIndex:TpvSizeInt;
      ResourceReuseGroup:TResourceReuseGroup;
      ResourceType:TResourceType;
+     ImageResourceType:TImageResourceType;
+     BufferResourceType:TBufferResourceType;
      ResourcePhysicalImageData:TResourcePhysicalImageData;
      ResourcePhysicalBufferData:TResourcePhysicalBufferData;
      Resource:TResource;
@@ -3107,71 +2953,68 @@ type TBeforeAfter=(Before,After);
   // Create data for the resource reuse groups
   for ResourceReuseGroup in fResourceReuseGroups do begin
    ResourceType:=ResourceReuseGroup.fResourceType;
-   case ResourceType.fMetaType of
-    TpvFrameGraph.TResourceType.TMetaType.Image:begin
-     if not assigned(ResourceReuseGroup.fResourcePhysicalData) then begin
-      ResourceReuseGroup.fResourcePhysicalData:=TResourcePhysicalImageData.Create(self);
-      ResourcePhysicalImageData:=TResourcePhysicalImageData(ResourceReuseGroup.fResourcePhysicalData);
-      ResourcePhysicalImageData.fResourceType:=ResourceType;
-      ResourcePhysicalImageData.fIsSurface:=ResourceType.fImageData.ImageType=TImageType.Surface;
-      ResourcePhysicalImageData.fImageUsageFlags:=TVkImageUsageFlags(ResourceType.ImageData.ImageUsage);
-      ResourcePhysicalImageData.fFormat:=ResourceType.ImageData.Format;
-      ResourcePhysicalImageData.fExtent.width:=Max(1,trunc(ResourceType.ImageData.ImageSize.Size.x));
-      ResourcePhysicalImageData.fExtent.height:=Max(1,trunc(ResourceType.ImageData.ImageSize.Size.y));
-      ResourcePhysicalImageData.fExtent.depth:=Max(1,trunc(ResourceType.ImageData.ImageSize.Size.z));
-      ResourcePhysicalImageData.fCountMipMaps:=1;
-      ResourcePhysicalImageData.fCountArrayLayers:=trunc(ResourceType.ImageData.ImageSize.Size.w);
-      ResourcePhysicalImageData.fSamples:=ResourceType.ImageData.Samples;
-      ResourcePhysicalImageData.fTiling:=VK_IMAGE_TILING_OPTIMAL;
-      ResourcePhysicalImageData.fInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
-      ResourcePhysicalImageData.fFirstInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
-      MinimumTopologicalSortIndex:=High(TpvSizeInt);
-      for Resource in ResourceReuseGroup.fResources do begin
-       for ResourceTransition in Resource.fResourceTransitions do begin
-        if ResourceTransition.fPass.fTopologicalSortIndex<MinimumTopologicalSortIndex then begin
-         MinimumTopologicalSortIndex:=ResourceTransition.fPass.fTopologicalSortIndex;
-         ResourcePhysicalImageData.fFirstInitialLayout:=ResourceTransition.fLayout;
-        end;
+   if ResourceType is TImageResourceType then begin
+    ImageResourceType:=TImageResourceType(ResourceType);
+    if not assigned(ResourceReuseGroup.fResourcePhysicalData) then begin
+     ResourceReuseGroup.fResourcePhysicalData:=TResourcePhysicalImageData.Create(self);
+     ResourcePhysicalImageData:=TResourcePhysicalImageData(ResourceReuseGroup.fResourcePhysicalData);
+     ResourcePhysicalImageData.fResourceType:=ResourceType;
+     ResourcePhysicalImageData.fIsSurface:=ImageResourceType.fImageType=TImageType.Surface;
+     ResourcePhysicalImageData.fImageUsageFlags:=TVkImageUsageFlags(ImageResourceType.fImageUsage);
+     ResourcePhysicalImageData.fFormat:=ImageResourceType.fFormat;
+     ResourcePhysicalImageData.fExtent.width:=Max(1,trunc(ImageResourceType.fImageSize.Size.x));
+     ResourcePhysicalImageData.fExtent.height:=Max(1,trunc(ImageResourceType.fImageSize.Size.y));
+     ResourcePhysicalImageData.fExtent.depth:=Max(1,trunc(ImageResourceType.fImageSize.Size.z));
+     ResourcePhysicalImageData.fCountMipMaps:=1;
+     ResourcePhysicalImageData.fCountArrayLayers:=trunc(ImageResourceType.fImageSize.Size.w);
+     ResourcePhysicalImageData.fSamples:=ImageResourceType.fSamples;
+     ResourcePhysicalImageData.fTiling:=VK_IMAGE_TILING_OPTIMAL;
+     ResourcePhysicalImageData.fInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+     ResourcePhysicalImageData.fFirstInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+     MinimumTopologicalSortIndex:=High(TpvSizeInt);
+     for Resource in ResourceReuseGroup.fResources do begin
+      for ResourceTransition in Resource.fResourceTransitions do begin
+       if ResourceTransition.fPass.fTopologicalSortIndex<MinimumTopologicalSortIndex then begin
+        MinimumTopologicalSortIndex:=ResourceTransition.fPass.fTopologicalSortIndex;
+        ResourcePhysicalImageData.fFirstInitialLayout:=ResourceTransition.fLayout;
        end;
       end;
-      ResourcePhysicalImageData.fImageCreateFlags:=0;
-      if ResourcePhysicalImageData.fExtent.depth>1 then begin
-       ResourcePhysicalImageData.fImageType:=VK_IMAGE_TYPE_3D;
-      end else begin
-       ResourcePhysicalImageData.fImageType:=VK_IMAGE_TYPE_2D;
-      end;
-      ResourcePhysicalImageData.fSharingMode:=VK_SHARING_MODE_EXCLUSIVE;
-      ResourcePhysicalImageData.fImageSubresourceRange.aspectMask:=ResourceType.ImageData.ImageType.GetAspectMask;
-      ResourcePhysicalImageData.fImageSubresourceRange.baseMipLevel:=0;
-      ResourcePhysicalImageData.fImageSubresourceRange.levelCount:=ResourceType.ImageData.CountMipMapLevels;
-      ResourcePhysicalImageData.fImageSubresourceRange.baseArrayLayer:=0;
-      ResourcePhysicalImageData.fImageSubresourceRange.layerCount:=ResourcePhysicalImageData.fCountArrayLayers;
-      if ResourcePhysicalImageData.fExtent.depth>1 then begin
-       if ResourcePhysicalImageData.fImageSubresourceRange.layerCount>1 then begin
-        raise EpvFrameGraph.Create('3D array image not supported');
-       end else begin
-        ResourcePhysicalImageData.fImageViewType:=VK_IMAGE_VIEW_TYPE_3D;
-       end;
-      end else begin
-       if ResourcePhysicalImageData.fImageSubresourceRange.layerCount>1 then begin
-        ResourcePhysicalImageData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-       end else begin
-        ResourcePhysicalImageData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D;
-       end;
-      end;
-      ResourcePhysicalImageData.fComponents:=ResourceType.fImageData.Components;
      end;
+     ResourcePhysicalImageData.fImageCreateFlags:=0;
+     if ResourcePhysicalImageData.fExtent.depth>1 then begin
+      ResourcePhysicalImageData.fImageType:=VK_IMAGE_TYPE_3D;
+     end else begin
+      ResourcePhysicalImageData.fImageType:=VK_IMAGE_TYPE_2D;
+     end;
+     ResourcePhysicalImageData.fSharingMode:=VK_SHARING_MODE_EXCLUSIVE;
+     ResourcePhysicalImageData.fImageSubresourceRange.aspectMask:=ImageResourceType.fImageType.GetAspectMask;
+     ResourcePhysicalImageData.fImageSubresourceRange.baseMipLevel:=0;
+     ResourcePhysicalImageData.fImageSubresourceRange.levelCount:=ImageResourceType.fCountMipMapLevels;
+     ResourcePhysicalImageData.fImageSubresourceRange.baseArrayLayer:=0;
+     ResourcePhysicalImageData.fImageSubresourceRange.layerCount:=ResourcePhysicalImageData.fCountArrayLayers;
+     if ResourcePhysicalImageData.fExtent.depth>1 then begin
+      if ResourcePhysicalImageData.fImageSubresourceRange.layerCount>1 then begin
+       raise EpvFrameGraph.Create('3D array image not supported');
+      end else begin
+       ResourcePhysicalImageData.fImageViewType:=VK_IMAGE_VIEW_TYPE_3D;
+      end;
+     end else begin
+      if ResourcePhysicalImageData.fImageSubresourceRange.layerCount>1 then begin
+       ResourcePhysicalImageData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+      end else begin
+       ResourcePhysicalImageData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D;
+      end;
+     end;
+     ResourcePhysicalImageData.fComponents:=ImageResourceType.fComponents;
     end;
-    TpvFrameGraph.TResourceType.TMetaType.Buffer:begin
-     ResourceReuseGroup.fResourcePhysicalData:=TResourcePhysicalBufferData.Create(self);
-     ResourcePhysicalBufferData:=TResourcePhysicalBufferData(ResourceReuseGroup.fResourcePhysicalData);
-     ResourcePhysicalBufferData.fResourceType:=ResourceType;
-     // TODO
-     Assert(false,'TODO');
-    end;
-    else {TpvFrameGraph.TResourceType.TMetaType.None:}begin
- //  raise EpvFrameGraph.Create('Invalid meta type');
-    end;
+   end else if ResourceType is TBufferResourceType then begin
+    ResourceReuseGroup.fResourcePhysicalData:=TResourcePhysicalBufferData.Create(self);
+    ResourcePhysicalBufferData:=TResourcePhysicalBufferData(ResourceReuseGroup.fResourcePhysicalData);
+    ResourcePhysicalBufferData.fResourceType:=ResourceType;
+    // TODO
+    Assert(false,'TODO');
+   end else begin
+    raise EpvFrameGraph.Create('Invalid resource type');
    end;
   end;
  end;
