@@ -1186,7 +1186,7 @@ begin
                                                              fCountArrayLayers,
                                                              fSamples,
                                                              fTiling,
-                                                             fImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
+                                                             fImageUsageFlags, // or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT),
                                                              fSharingMode,
                                                              fFrameGraph.fQueueFamilyIndices.Count,
                                                              @fFrameGraph.fQueueFamilyIndices.Items[0],
