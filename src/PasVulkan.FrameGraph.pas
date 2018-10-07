@@ -210,6 +210,7 @@ type EpvFrameGraph=class(Exception);
                       ImageType:TImageType;
                       ImageSize:TImageSize;
                       ImageUsage:TVkImageUsageFlags;
+                      CountMipMapLevels:TVkUInt32;
                       Components:TVkComponentMapping;
                       class function CreateEmpty:TImageData; static;
                       constructor Create(const aFormat:TVkFormat;
@@ -217,6 +218,7 @@ type EpvFrameGraph=class(Exception);
                                          const aImageType:TImageType;
                                          const aImageSize:TImageSize;
                                          const aImageUsage:TVkImageUsageFlags;
+                                         const aCountMipMapLevels:TVkUInt32;
                                          const aComponents:TVkComponentMapping); overload;
                       class operator Equal(const aLeft,aRight:TImageData):boolean;
                       class operator NotEqual(const aLeft,aRight:TImageData):boolean;
@@ -267,6 +269,7 @@ type EpvFrameGraph=class(Exception);
                                  const aImageType:TImageType;
                                  const aImageSize:TImageSize;
                                  const aImageUsage:TVkImageUsageFlags;
+                                 const aCountMipMapLevels:TVkUInt32;
                                  const aComponents:TVkComponentMapping); reintroduce; overload;
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
@@ -275,7 +278,8 @@ type EpvFrameGraph=class(Exception);
                                  const aSamples:TVkSampleCountFlagBits;
                                  const aImageType:TImageType;
                                  const aImageSize:TImageSize;
-                                 const aImageUsage:TVkImageUsageFlags); reintroduce; overload;
+                                 const aImageUsage:TVkImageUsageFlags;
+                                 const aCountMipMapLevels:TVkUInt32); reintroduce; overload;
               destructor Destroy; override;
              public
               property ImageData:TImageData read fImageData write fImageData;
@@ -391,15 +395,13 @@ type EpvFrameGraph=class(Exception);
              public
               type TKind=
                     (
-                     AttachmentInput,
-                     AttachmentOutput,
-                     AttachmentResolveOutput,
-                     AttachmentDepthOutput,
-                     AttachmentDepthInput,
-                     BufferInput,
-                     BufferOutput,
                      ImageInput,
-                     ImageOutput
+                     ImageOutput,
+                     ImageResolveOutput,
+                     ImageDepthOutput,
+                     ImageDepthInput,
+                     BufferInput,
+                     BufferOutput
                     );
                     PKind=^TKind;
                     TKinds=set of TKind;
@@ -412,39 +414,37 @@ type EpvFrameGraph=class(Exception);
                     PFlag=^TFlag;
                     TFlags=set of TFlag;
                     PFlags=^TFlags;
-                const AllAttachments=
+                const AllImages=
                        [
-                        TKind.AttachmentInput,
-                        TKind.AttachmentOutput,
-                        TKind.AttachmentResolveOutput,
-                        TKind.AttachmentDepthOutput,
-                        TKind.AttachmentDepthInput
+                        TKind.ImageInput,
+                        TKind.ImageOutput,
+                        TKind.ImageResolveOutput,
+                        TKind.ImageDepthOutput,
+                        TKind.ImageDepthInput
                        ];
-                      AllAttachmentInputs=
+                      AllImageInputs=
                        [
-                        TKind.AttachmentInput,
-                        TKind.AttachmentDepthInput
+                        TKind.ImageInput,
+                        TKind.ImageDepthInput
                        ];
-                      AllAttachmentOutputs=
+                      AllImageOutputs=
                        [
-                        TKind.AttachmentOutput,
-                        TKind.AttachmentResolveOutput,
-                        TKind.AttachmentDepthOutput
+                        TKind.ImageOutput,
+                        TKind.ImageResolveOutput,
+                        TKind.ImageDepthOutput
                        ];
                       AllInputs=
                        [
-                        TKind.AttachmentInput,
-                        TKind.AttachmentDepthInput,
-                        TKind.BufferInput,
-                        TKind.ImageInput
+                        TKind.ImageInput,
+                        TKind.ImageDepthInput,
+                        TKind.BufferInput
                        ];
                       AllOutputs=
                        [
-                        TKind.AttachmentOutput,
-                        TKind.AttachmentResolveOutput,
-                        TKind.AttachmentDepthOutput,
-                        TKind.BufferOutput,
-                        TKind.ImageOutput
+                        TKind.ImageOutput,
+                        TKind.ImageResolveOutput,
+                        TKind.ImageDepthOutput,
+                        TKind.BufferOutput
                        ];
                       AllInputsOutputs=AllInputs+AllOutputs;
              private
@@ -456,7 +456,6 @@ type EpvFrameGraph=class(Exception);
               fLayout:TVkImageLayout;
               fLoad:TLoadOp;
               fResolveResource:TResource;
-              fImageSubresourceRange:TVkImageSubresourceRange;
               fPipelineStage:TVkPipelineStageFlags;
               fAccessFlags:TVkAccessFlags;
               fBufferSubresourceRange:TBufferSubresourceRange;
@@ -466,14 +465,6 @@ type EpvFrameGraph=class(Exception);
                                  const aResource:TResource;
                                  const aKind:TKind;
                                  const aFlags:TFlags); reintroduce; overload;
-              constructor Create(const aFrameGraph:TpvFrameGraph;
-                                 const aPass:TPass;
-                                 const aResource:TResource;
-                                 const aKind:TKind;
-                                 const aFlags:TFlags;
-                                 const aLayout:TVkImageLayout;
-                                 const aLoadOp:TLoadOp;
-                                 const aImageSubresourceRange:TVkImageSubresourceRange); reintroduce; overload;
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aPass:TPass;
                                  const aResource:TResource;
@@ -492,7 +483,6 @@ type EpvFrameGraph=class(Exception);
               destructor Destroy; override;
              public
               property Load:TLoadOp read fLoad write fLoad;
-              property ImageSubresourceRange:TVkImageSubresourceRange read fImageSubresourceRange write fImageSubresourceRange;
               property BufferSubresourceRange:TBufferSubresourceRange read fBufferSubresourceRange write fBufferSubresourceRange;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
@@ -682,40 +672,33 @@ type EpvFrameGraph=class(Exception);
                                    const aPipelineStage:TVkPipelineStageFlags;
                                    const aAccessFlags:TVkAccessFlags;
                                    const aBufferSubresourceRange:TBufferSubresourceRange):TResourceTransition; overload;
-              function AddResource(const aResourceTypeName:TpvRawByteString;
-                                   const aResourceName:TpvRawByteString;
-                                   const aKind:TResourceTransition.TKind;
-                                   const aFlags:TResourceTransition.TFlags;
-                                   const aLayout:TVkImageLayout;
-                                   const aLoadOp:TLoadOp;
-                                   const aImageSubresourceRange:TVkImageSubresourceRange):TResourceTransition; overload;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
-              procedure AddAttachmentInput(const aResourceTypeName:TpvRawByteString;
+              procedure AddImageInput(const aResourceTypeName:TpvRawByteString;
+                                      const aResourceName:TpvRawByteString;
+                                      const aLayout:TVkImageLayout;
+                                      const aFlags:TResourceTransition.TFlags=[]);
+              procedure AddImageOutput(const aResourceTypeName:TpvRawByteString;
+                                       const aResourceName:TpvRawByteString;
+                                       const aLayout:TVkImageLayout;
+                                       const aLoadOp:TLoadOp;
+                                       const aFlags:TResourceTransition.TFlags=[]);
+              procedure AddImageResolveOutput(const aResourceTypeName:TpvRawByteString;
+                                              const aResourceName:TpvRawByteString;
+                                              const aResourceSourceName:TpvRawByteString;
+                                              const aLayout:TVkImageLayout;
+                                              const aLoadOp:TLoadOp;
+                                              const aFlags:TResourceTransition.TFlags=[]);
+              procedure AddImageDepthInput(const aResourceTypeName:TpvRawByteString;
                                            const aResourceName:TpvRawByteString;
                                            const aLayout:TVkImageLayout;
                                            const aFlags:TResourceTransition.TFlags=[]);
-              procedure AddAttachmentOutput(const aResourceTypeName:TpvRawByteString;
+              procedure AddImageDepthOutput(const aResourceTypeName:TpvRawByteString;
                                             const aResourceName:TpvRawByteString;
                                             const aLayout:TVkImageLayout;
                                             const aLoadOp:TLoadOp;
                                             const aFlags:TResourceTransition.TFlags=[]);
-              procedure AddAttachmentResolveOutput(const aResourceTypeName:TpvRawByteString;
-                                                   const aResourceName:TpvRawByteString;
-                                                   const aResourceSourceName:TpvRawByteString;
-                                                   const aLayout:TVkImageLayout;
-                                                   const aLoadOp:TLoadOp;
-                                                   const aFlags:TResourceTransition.TFlags=[]);
-              procedure AddAttachmentDepthInput(const aResourceTypeName:TpvRawByteString;
-                                                const aResourceName:TpvRawByteString;
-                                                const aLayout:TVkImageLayout;
-                                                const aFlags:TResourceTransition.TFlags=[]);
-              procedure AddAttachmentDepthOutput(const aResourceTypeName:TpvRawByteString;
-                                                 const aResourceName:TpvRawByteString;
-                                                 const aLayout:TVkImageLayout;
-                                                 const aLoadOp:TLoadOp;
-                                                 const aFlags:TResourceTransition.TFlags=[]);
               procedure AddBufferInput(const aResourceTypeName:TpvRawByteString;
                                        const aResourceName:TpvRawByteString;
                                        const aPipelineStage:TVkPipelineStageFlags;
@@ -738,26 +721,6 @@ type EpvFrameGraph=class(Exception);
                                         const aPipelineStage:TVkPipelineStageFlags;
                                         const aAccessFlags:TVkAccessFlags;
                                         const aFlags:TResourceTransition.TFlags=[]); overload;
-              procedure AddImageInput(const aResourceTypeName:TpvRawByteString;
-                                      const aResourceName:TpvRawByteString;
-                                      const aLayout:TVkImageLayout;
-                                      const aImageSubresourceRange:TVkImageSubresourceRange;
-                                      const aFlags:TResourceTransition.TFlags=[]); overload;
-              procedure AddImageInput(const aResourceTypeName:TpvRawByteString;
-                                      const aResourceName:TpvRawByteString;
-                                      const aLayout:TVkImageLayout;
-                                      const aFlags:TResourceTransition.TFlags=[]); overload;
-              procedure AddImageOutput(const aResourceTypeName:TpvRawByteString;
-                                       const aResourceName:TpvRawByteString;
-                                       const aLayout:TVkImageLayout;
-                                       const aLoadOp:TLoadOp;
-                                       const aImageSubresourceRange:TVkImageSubresourceRange;
-                                       const aFlags:TResourceTransition.TFlags=[]); overload;
-              procedure AddImageOutput(const aResourceTypeName:TpvRawByteString;
-                                       const aResourceName:TpvRawByteString;
-                                       const aLayout:TVkImageLayout;
-                                       const aLoadOp:TLoadOp;
-                                       const aFlags:TResourceTransition.TFlags=[]); overload;
              public
               procedure Setup; virtual;
               procedure Execute; virtual;
@@ -835,6 +798,7 @@ type EpvFrameGraph=class(Exception);
                                 const aImageType:TImageType;
                                 const aImageSize:TImageSize;
                                 const aImageUsage:TVkImageUsageFlags;
+                                const aCountMipMapLevels:TVkUInt32;
                                 const aComponents:TVkComponentMapping):TResourceType; overload;
        function AddResourceType(const aName:TpvRawByteString;
                                 const aPersientent:boolean;
@@ -842,7 +806,8 @@ type EpvFrameGraph=class(Exception);
                                 const aSamples:TVkSampleCountFlagBits;
                                 const aImageType:TImageType;
                                 const aImageSize:TImageSize;
-                                const aImageUsage:TVkImageUsageFlags):TResourceType; overload;
+                                const aImageUsage:TVkImageUsageFlags;
+                                const aCountMipMapLevels:TVkUInt32):TResourceType; overload;
       public
        procedure Setup; virtual;
        procedure Compile; virtual;
@@ -1057,6 +1022,7 @@ constructor TpvFrameGraph.TResourceType.TImageData.Create(const aFormat:TVkForma
                                                                const aImageType:TImageType;
                                                                const aImageSize:TImageSize;
                                                                const aImageUsage:TVkImageUsageFlags;
+                                                               const aCountMipMapLevels:TVkUInt32;
                                                                const aComponents:TVkComponentMapping);
 begin
  Format:=aFormat;
@@ -1064,6 +1030,7 @@ begin
  ImageType:=aImageType;
  ImageSize:=aImageSize;
  ImageUsage:=aImageUsage;
+ CountMipMapLevels:=aCountMipMapLevels;
  Components:=aComponents;
 end;
 
@@ -1074,6 +1041,7 @@ begin
          (aLeft.ImageType=aRight.ImageType) and
          (aLeft.ImageSize=aRight.ImageSize) and
          (aLeft.ImageUsage=aRight.ImageUsage) and
+         (aLeft.CountMipMapLevels=aRight.CountMipMapLevels) and
          (aLeft.Components.r=aRight.Components.r) and
          (aLeft.Components.g=aRight.Components.g) and
          (aLeft.Components.b=aRight.Components.b) and
@@ -1087,6 +1055,7 @@ begin
          (aLeft.ImageType<>aRight.ImageType) or
          (aLeft.ImageSize<>aRight.ImageSize) or
          (aLeft.ImageUsage<>aRight.ImageUsage) or
+         (aLeft.CountMipMapLevels<>aRight.CountMipMapLevels) or
          (aLeft.Components.r<>aRight.Components.r) or
          (aLeft.Components.g<>aRight.Components.g) or
          (aLeft.Components.b<>aRight.Components.b) or
@@ -1163,6 +1132,7 @@ constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                const aImageType:TImageType;
                                                const aImageSize:TImageSize;
                                                const aImageUsage:TVkImageUsageFlags;
+                                               const aCountMipMapLevels:TVkUInt32;
                                                const aComponents:TVkComponentMapping);
 begin
  Create(aFrameGraph,
@@ -1174,6 +1144,7 @@ begin
                           aImageType,
                           aImageSize,
                           aImageUsage,
+                          aCountMipMapLevels,
                           aComponents));
 end;
 
@@ -1184,7 +1155,8 @@ constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
                                                const aSamples:TVkSampleCountFlagBits;
                                                const aImageType:TImageType;
                                                const aImageSize:TImageSize;
-                                               const aImageUsage:TVkImageUsageFlags);
+                                               const aImageUsage:TVkImageUsageFlags;
+                                               const aCountMipMapLevels:TVkUInt32);
 begin
  Create(aFrameGraph,
         aName,
@@ -1194,6 +1166,7 @@ begin
         aImageType,
         aImageSize,
         aImageUsage,
+        aCountMipMapLevels,
         TVkComponentMapping.Create(VK_COMPONENT_SWIZZLE_R,
                                    VK_COMPONENT_SWIZZLE_G,
                                    VK_COMPONENT_SWIZZLE_B,
@@ -1556,24 +1529,9 @@ constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameG
                                                      const aKind:TKind;
                                                      const aFlags:TFlags;
                                                      const aLayout:TVkImageLayout;
-                                                     const aLoadOp:TLoadOp;
-                                                     const aImageSubresourceRange:TVkImageSubresourceRange);
-begin
- Create(aFrameGraph,aPass,aResource,aKind,aFlags);
- fLayout:=aLayout;
- fLoad:=aLoadOp;
- fImageSubresourceRange:=aImageSubresourceRange;
-end;
-
-constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameGraph;
-                                                     const aPass:TPass;
-                                                     const aResource:TResource;
-                                                     const aKind:TKind;
-                                                     const aFlags:TFlags;
-                                                     const aLayout:TVkImageLayout;
                                                      const aLoadOp:TLoadOp);
 begin
- Create(aFrameGraph,aPass,aResource,aKind,aFlags,aLayout,aLoadOp,TVkImageSubresourceRange.Create(0,0,1,0,1));
+ Create(aFrameGraph,aPass,aResource,aKind,aFlags,aLayout,aLoadOp);
 end;
 
 constructor TpvFrameGraph.TResourceTransition.Create(const aFrameGraph:TpvFrameGraph;
@@ -1745,75 +1703,39 @@ begin
  fFrameGraph.fValid:=false;
 end;
 
-function TpvFrameGraph.TPass.AddResource(const aResourceTypeName:TpvRawByteString;
-                                         const aResourceName:TpvRawByteString;
-                                         const aKind:TResourceTransition.TKind;
-                                         const aFlags:TResourceTransition.TFlags;
-                                         const aLayout:TVkImageLayout;
-                                         const aLoadOp:TLoadOp;
-                                         const aImageSubresourceRange:TVkImageSubresourceRange):TResourceTransition;
-var ResourceType:TResourceType;
-    Resource:TResource;
-begin
- ResourceType:=fFrameGraph.fResourceTypeNameHashMap[aResourceTypeName];
- if not assigned(ResourceType) then begin
-  raise EpvFrameGraph.Create('Invalid resource type');
- end;
- Resource:=fFrameGraph.fResourceNameHashMap[aResourceName];
- if assigned(Resource) then begin
-  if Resource.fResourceType<>ResourceType then begin
-   raise EpvFrameGraph.Create('Resource type mismatch');
-  end;
- end else begin
-  Resource:=TResource.Create(fFrameGraph,aResourceName,ResourceType);
- end;
- if ResourceType.fMetaType<>TResourceType.TMetaType.Image then begin
-  raise EpvFrameGraph.Create('Resource meta type mismatch');
- end;
- result:=TResourceTransition.Create(fFrameGraph,
-                                    self,
-                                    Resource,
-                                    aKind,
-                                    aFlags,
-                                    aLayout,
-                                    aLoadOp,
-                                    aImageSubresourceRange);
- fFrameGraph.fValid:=false;
-end;
-
-procedure TpvFrameGraph.TPass.AddAttachmentInput(const aResourceTypeName:TpvRawByteString;
-                                                 const aResourceName:TpvRawByteString;
-                                                 const aLayout:TVkImageLayout;
-                                                 const aFlags:TResourceTransition.TFlags=[]);
+procedure TpvFrameGraph.TPass.AddImageInput(const aResourceTypeName:TpvRawByteString;
+                                            const aResourceName:TpvRawByteString;
+                                            const aLayout:TVkImageLayout;
+                                            const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddResource(aResourceTypeName,
              aResourceName,
-             TResourceTransition.TKind.AttachmentInput,
+             TResourceTransition.TKind.ImageInput,
              aFlags,
              aLayout,
              TLoadOp.Create(TLoadOp.TKind.Load));
 end;
 
-procedure TpvFrameGraph.TPass.AddAttachmentOutput(const aResourceTypeName:TpvRawByteString;
-                                                  const aResourceName:TpvRawByteString;
-                                                  const aLayout:TVkImageLayout;
-                                                  const aLoadOp:TLoadOp;
-                                                  const aFlags:TResourceTransition.TFlags=[]);
+procedure TpvFrameGraph.TPass.AddImageOutput(const aResourceTypeName:TpvRawByteString;
+                                             const aResourceName:TpvRawByteString;
+                                             const aLayout:TVkImageLayout;
+                                             const aLoadOp:TLoadOp;
+                                             const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddResource(aResourceTypeName,
              aResourceName,
-             TResourceTransition.TKind.AttachmentOutput,
+             TResourceTransition.TKind.ImageOutput,
              aFlags,
              aLayout,
              aLoadOp);
 end;
 
-procedure TpvFrameGraph.TPass.AddAttachmentResolveOutput(const aResourceTypeName:TpvRawByteString;
-                                                         const aResourceName:TpvRawByteString;
-                                                         const aResourceSourceName:TpvRawByteString;
-                                                         const aLayout:TVkImageLayout;
-                                                         const aLoadOp:TLoadOp;
-                                                         const aFlags:TResourceTransition.TFlags=[]);
+procedure TpvFrameGraph.TPass.AddImageResolveOutput(const aResourceTypeName:TpvRawByteString;
+                                                    const aResourceName:TpvRawByteString;
+                                                    const aResourceSourceName:TpvRawByteString;
+                                                    const aLayout:TVkImageLayout;
+                                                    const aLoadOp:TLoadOp;
+                                                    const aFlags:TResourceTransition.TFlags=[]);
 var ResourceSource:TResource;
 begin
  ResourceSource:=fFrameGraph.fResourceNameHashMap[aResourceSourceName];
@@ -1822,34 +1744,34 @@ begin
  end;
  AddResource(aResourceTypeName,
              aResourceName,
-             TResourceTransition.TKind.AttachmentResolveOutput,
+             TResourceTransition.TKind.ImageResolveOutput,
              aFlags,
              aLayout,
              aLoadOp).fResolveResource:=ResourceSource;
 end;
 
-procedure TpvFrameGraph.TPass.AddAttachmentDepthInput(const aResourceTypeName:TpvRawByteString;
-                                                      const aResourceName:TpvRawByteString;
-                                                      const aLayout:TVkImageLayout;
-                                                      const aFlags:TResourceTransition.TFlags=[]);
+procedure TpvFrameGraph.TPass.AddImageDepthInput(const aResourceTypeName:TpvRawByteString;
+                                                 const aResourceName:TpvRawByteString;
+                                                 const aLayout:TVkImageLayout;
+                                                 const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddResource(aResourceTypeName,
              aResourceName,
-             TResourceTransition.TKind.AttachmentDepthInput,
+             TResourceTransition.TKind.ImageDepthInput,
              aFlags,
              aLayout,
              TLoadOp.Create(TLoadOp.TKind.Load));
 end;
 
-procedure TpvFrameGraph.TPass.AddAttachmentDepthOutput(const aResourceTypeName:TpvRawByteString;
-                                                       const aResourceName:TpvRawByteString;
-                                                       const aLayout:TVkImageLayout;
-                                                       const aLoadOp:TLoadOp;
-                                                       const aFlags:TResourceTransition.TFlags=[]);
+procedure TpvFrameGraph.TPass.AddImageDepthOutput(const aResourceTypeName:TpvRawByteString;
+                                                  const aResourceName:TpvRawByteString;
+                                                  const aLayout:TVkImageLayout;
+                                                  const aLoadOp:TLoadOp;
+                                                  const aFlags:TResourceTransition.TFlags=[]);
 begin
  AddResource(aResourceTypeName,
              aResourceName,
-             TResourceTransition.TKind.AttachmentDepthOutput,
+             TResourceTransition.TKind.ImageDepthOutput,
              aFlags,
              aLayout,
              aLoadOp);
@@ -1913,71 +1835,6 @@ begin
                  aAccessFlags,
                  TBufferSubresourceRange.Create(0,VK_WHOLE_SIZE),
                  aFlags);
-end;
-
-procedure TpvFrameGraph.TPass.AddImageInput(const aResourceTypeName:TpvRawByteString;
-                                            const aResourceName:TpvRawByteString;
-                                            const aLayout:TVkImageLayout;
-                                            const aImageSubresourceRange:TVkImageSubresourceRange;
-                                            const aFlags:TResourceTransition.TFlags=[]);
-begin
- AddResource(aResourceTypeName,
-             aResourceName,
-             TResourceTransition.TKind.ImageInput,
-             aFlags,
-             aLayout,
-             TLoadOp.Create(TLoadOp.TKind.Load),
-             aImageSubresourceRange);
-end;
-
-procedure TpvFrameGraph.TPass.AddImageInput(const aResourceTypeName:TpvRawByteString;
-                                            const aResourceName:TpvRawByteString;
-                                            const aLayout:TVkImageLayout;
-                                            const aFlags:TResourceTransition.TFlags=[]);
-begin
- AddImageInput(aResourceTypeName,
-               aResourceName,
-               aLayout,
-               TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                               0,
-                                               VK_REMAINING_MIP_LEVELS,
-                                               0,
-                                               VK_REMAINING_ARRAY_LAYERS),
-               aFlags);
-end;
-
-procedure TpvFrameGraph.TPass.AddImageOutput(const aResourceTypeName:TpvRawByteString;
-                                             const aResourceName:TpvRawByteString;
-                                             const aLayout:TVkImageLayout;
-                                             const aLoadOp:TLoadOp;
-                                             const aImageSubresourceRange:TVkImageSubresourceRange;
-                                             const aFlags:TResourceTransition.TFlags=[]);
-begin
- AddResource(aResourceTypeName,
-             aResourceName,
-             TResourceTransition.TKind.ImageOutput,
-             aFlags,
-             aLayout,
-             aLoadOp,
-             aImageSubresourceRange);
-end;
-
-procedure TpvFrameGraph.TPass.AddImageOutput(const aResourceTypeName:TpvRawByteString;
-                                             const aResourceName:TpvRawByteString;
-                                             const aLayout:TVkImageLayout;
-                                             const aLoadOp:TLoadOp;
-                                             const aFlags:TResourceTransition.TFlags=[]);
-begin
- AddImageOutput(aResourceTypeName,
-                aResourceName,
-                aLayout,
-                aLoadOp,
-                TVkImageSubresourceRange.Create(TVkImageAspectFlags(VK_IMAGE_ASPECT_COLOR_BIT),
-                                                0,
-                                                VK_REMAINING_MIP_LEVELS,
-                                                0,
-                                                VK_REMAINING_ARRAY_LAYERS),
-                aFlags);
 end;
 
 procedure TpvFrameGraph.TPass.Setup;
@@ -2363,11 +2220,11 @@ begin
    RenderPass:=SubPass.fRenderPass;
    for ResourceTransition in RenderPass.fResourceTransitions do begin
     case ResourceTransition.Kind of
-     TpvFrameGraph.TResourceTransition.TKind.AttachmentInput,
-     TpvFrameGraph.TResourceTransition.TKind.AttachmentOutput,
-     TpvFrameGraph.TResourceTransition.TKind.AttachmentResolveOutput,
-     TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthOutput,
-     TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthInput:begin
+     TpvFrameGraph.TResourceTransition.TKind.ImageInput,
+     TpvFrameGraph.TResourceTransition.TKind.ImageOutput,
+     TpvFrameGraph.TResourceTransition.TKind.ImageResolveOutput,
+     TpvFrameGraph.TResourceTransition.TKind.ImageDepthOutput,
+     TpvFrameGraph.TResourceTransition.TKind.ImageDepthInput:begin
      // ResourceTransition.
      end;
     end;
@@ -2579,9 +2436,10 @@ function TpvFrameGraph.AddResourceType(const aName:TpvRawByteString;
                                        const aImageType:TImageType;
                                        const aImageSize:TImageSize;
                                        const aImageUsage:TVkImageUsageFlags;
+                                       const aCountMipMapLevels:TVkUInt32;
                                        const aComponents:TVkComponentMapping):TResourceType;
 begin
- result:=TResourceType.Create(self,aName,aPersientent,aFormat,aSamples,aImageType,aImageSize,aImageUsage,aComponents);
+ result:=TResourceType.Create(self,aName,aPersientent,aFormat,aSamples,aImageType,aImageSize,aImageUsage,aCountMipMapLevels,aComponents);
 end;
 
 function TpvFrameGraph.AddResourceType(const aName:TpvRawByteString;
@@ -2590,9 +2448,10 @@ function TpvFrameGraph.AddResourceType(const aName:TpvRawByteString;
                                        const aSamples:TVkSampleCountFlagBits;
                                        const aImageType:TImageType;
                                        const aImageSize:TImageSize;
-                                       const aImageUsage:TVkImageUsageFlags):TResourceType;
+                                       const aImageUsage:TVkImageUsageFlags;
+                                       const aCountMipMapLevels:TVkUInt32):TResourceType;
 begin
- result:=TResourceType.Create(self,aName,aPersientent,aFormat,aSamples,aImageType,aImageSize,aImageUsage);
+ result:=TResourceType.Create(self,aName,aPersientent,aFormat,aSamples,aImageType,aImageSize,aImageUsage,aCountMipMapLevels);
 end;
 
 procedure TpvFrameGraph.Setup;
@@ -2605,11 +2464,11 @@ type TBeforeAfter=(Before,After);
  function GetPipelineStageMask(const aResourceTransition:TResourceTransition):TVkPipelineStageFlags;
  begin
   case aResourceTransition.fKind of
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentInput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentOutput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentResolveOutput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthInput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthOutput:begin
+   TpvFrameGraph.TResourceTransition.TKind.ImageInput,
+   TpvFrameGraph.TResourceTransition.TKind.ImageOutput,
+   TpvFrameGraph.TResourceTransition.TKind.ImageResolveOutput,
+   TpvFrameGraph.TResourceTransition.TKind.ImageDepthInput,
+   TpvFrameGraph.TResourceTransition.TKind.ImageDepthOutput:begin
     case aResourceTransition.fLayout of
      VK_IMAGE_LAYOUT_GENERAL,
      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:begin
@@ -2650,9 +2509,9 @@ type TBeforeAfter=(Before,After);
                                  out aDstStageMask:TVkPipelineStageFlags);
  begin
   case aFromResourceTransition.fKind of
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentOutput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentResolveOutput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthOutput,
+   TpvFrameGraph.TResourceTransition.TKind.ImageOutput,
+   TpvFrameGraph.TResourceTransition.TKind.ImageResolveOutput,
+   TpvFrameGraph.TResourceTransition.TKind.ImageDepthOutput,
    TpvFrameGraph.TResourceTransition.TKind.BufferOutput:begin
     aSrcStageMask:=GetPipelineStageMask(aFromResourceTransition);
    end;
@@ -2661,8 +2520,8 @@ type TBeforeAfter=(Before,After);
    end;
   end;
   case aToResourceTransition.fKind of
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentInput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthInput,
+   TpvFrameGraph.TResourceTransition.TKind.ImageInput,
+   TpvFrameGraph.TResourceTransition.TKind.ImageDepthInput,
    TpvFrameGraph.TResourceTransition.TKind.BufferInput:begin
     aDstStageMask:=GetPipelineStageMask(aToResourceTransition);
    end;
@@ -2677,9 +2536,9 @@ type TBeforeAfter=(Before,After);
                           out aDstAccessMask:TVkAccessFlags);
  begin
   case aFromResourceTransition.fKind of
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentOutput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentResolveOutput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthOutput:begin
+   TpvFrameGraph.TResourceTransition.TKind.ImageOutput,
+   TpvFrameGraph.TResourceTransition.TKind.ImageResolveOutput,
+   TpvFrameGraph.TResourceTransition.TKind.ImageDepthOutput:begin
     case aFromResourceTransition.fLayout of
      VK_IMAGE_LAYOUT_GENERAL:begin
       aSrcAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_WRITE_BIT);
@@ -2716,8 +2575,8 @@ type TBeforeAfter=(Before,After);
    end;
   end;
   case aToResourceTransition.fKind of
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentInput,
-   TpvFrameGraph.TResourceTransition.TKind.AttachmentDepthInput:begin
+   TpvFrameGraph.TResourceTransition.TKind.ImageInput,
+   TpvFrameGraph.TResourceTransition.TKind.ImageDepthInput:begin
     case aToResourceTransition.fLayout of
      VK_IMAGE_LAYOUT_GENERAL:begin
       aDstAccessMask:=TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
@@ -2762,12 +2621,13 @@ type TBeforeAfter=(Before,After);
    fPasses[Index].fIndex:=Index;
   end;
  end;
- procedure ValidateAttachments;
+ procedure ValidateAttachmentImages;
  var Pass:TPass;
      RenderPass:TRenderPass;
      ResourceTransition:TResourceTransition;
  begin
-  // Validate that all attachments have the same size as defined in the render pass and that alll passes have a assigned queue
+  // Validate that all input attachment images, output attachment images have the same size as defined
+  // in the render pass and that all passes have a assigned queue
   for Pass in fPasses do begin
    if not assigned(Pass.fQueue) then begin
     raise EpvFrameGraphMissingQueue.Create('Pass "'+String(Pass.fName)+'" is without assigned queue');
@@ -2775,9 +2635,9 @@ type TBeforeAfter=(Before,After);
    if Pass is TRenderPass then begin
     RenderPass:=Pass as TRenderPass;
     for ResourceTransition in RenderPass.fResourceTransitions do begin
-     if (ResourceTransition.fKind in TResourceTransition.AllAttachments) and
+     if (ResourceTransition.fKind in TResourceTransition.AllImages) and
         (ResourceTransition.fResource.fResourceType.fImageData.ImageSize<>RenderPass.fSize) then begin
-      raise EpvFrameGraphMismatchImageSize.Create('Mismatch attachment size between pass "'+String(Pass.fName)+'" and resource "'+String(ResourceTransition.fResource.fName)+'"');
+      raise EpvFrameGraphMismatchImageSize.Create('Mismatch attachment image size between pass "'+String(Pass.fName)+'" and resource "'+String(ResourceTransition.fResource.fName)+'"');
      end;
     end;
    end;
@@ -2838,7 +2698,7 @@ type TBeforeAfter=(Before,After);
      ResourceTransition:TResourceTransition;
      Temporary:TpvSizeUInt;
  begin
-  // Find root pass (a render pass, which have only a single attachment output to a surface/swapchain)
+  // Find root pass (a render pass, which have only a single attachment image output to a surface/swapchain)
   fRootPass:=fEnforcedRootPass;
   if not assigned(fRootPass) then begin
    for Pass in fPasses do begin
@@ -2846,7 +2706,7 @@ type TBeforeAfter=(Before,After);
      RenderPass:=Pass as TRenderPass;
      Temporary:=0;
      for ResourceTransition in RenderPass.fResourceTransitions do begin
-      if ResourceTransition.fKind in TResourceTransition.AllAttachmentOutputs then begin
+      if ResourceTransition.fKind in TResourceTransition.AllImages then begin
        Resource:=ResourceTransition.fResource;
        if (Resource.fResourceType.fMetaType=TResourceType.TMetaType.Image) and
           (Resource.fResourceType.fImageData.ImageType=TImageType.Surface) then begin
@@ -3234,7 +3094,7 @@ type TBeforeAfter=(Before,After);
       ResourcePhysicalImageData.fSharingMode:=VK_SHARING_MODE_EXCLUSIVE;
       ResourcePhysicalImageData.fImageSubresourceRange.aspectMask:=ResourceType.ImageData.ImageType.GetAspectMask;
       ResourcePhysicalImageData.fImageSubresourceRange.baseMipLevel:=0;
-      ResourcePhysicalImageData.fImageSubresourceRange.levelCount:=1;
+      ResourcePhysicalImageData.fImageSubresourceRange.levelCount:=ResourceType.ImageData.CountMipMapLevels;
       ResourcePhysicalImageData.fImageSubresourceRange.baseArrayLayer:=0;
       ResourcePhysicalImageData.fImageSubresourceRange.layerCount:=ResourcePhysicalImageData.fCountArrayLayers;
       if ResourcePhysicalImageData.fExtent.depth>1 then begin
@@ -3437,8 +3297,8 @@ type TBeforeAfter=(Before,After);
            (OtherResourceTransition.fPass is TRenderPass) and
            (ResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
            (OtherResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
-           (ResourceTransition.fKind in TResourceTransition.AllAttachmentOutputs) and
-           (OtherResourceTransition.fKind in TResourceTransition.AllAttachmentInputs) then begin
+           (ResourceTransition.fKind in TResourceTransition.AllImageOutputs) and
+           (OtherResourceTransition.fKind in TResourceTransition.AllImageInputs) then begin
          GetPipelineStageMasks(ResourceTransition,
                                OtherResourceTransition,
                                SubPassDependency.SrcStageMask,
@@ -3557,7 +3417,7 @@ begin
 
  IndexingPasses;
 
- ValidateAttachments;
+ ValidateAttachmentImages;
 
  ValidateResources;
 
