@@ -2359,10 +2359,12 @@ begin
         end;
        end;
        TResourceTransition.TKind.ImageDepthInput,TResourceTransition.TKind.ImageDepthOutput:begin
-        for AttachmentIndex:=0 to Attachments.Count-1 do begin
-         if Attachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
-          DepthStencilAttachment:=AttachmentIndex;
-          break;
+        if DepthStencilAttachment<0 then begin
+         for AttachmentIndex:=0 to Attachments.Count-1 do begin
+          if Attachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
+           DepthStencilAttachment:=fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,ResourceTransition.fLayout);
+           break;
+          end;
          end;
         end;
        end;
