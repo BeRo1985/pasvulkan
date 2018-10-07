@@ -2140,16 +2140,14 @@ var AttachmentIndex,
     ColorAttachments,
     ResolveAttachments:TInt32AttachmentLists;
     PreserveAttachments:TUInt32AttachmentLists;
-    DepthStencilAttachment:TpvInt32;
+    DepthStencilAttachment:TpvInt64;
     SrcSubPassIndex,
     DstSubPassIndex:TVkUInt32;
     SrcStageMask,
     DstStageMask:TVkPipelineStageFlags;
     SubPassDependency:PSubPassDependency;
     Format:TVkFormat;
-    ColorDepthAttachment,
-    StencilAttachment,
-    StencilDepthAttachment,
+    HasResolveOutputs,
     Found:boolean;
 begin
 
@@ -2290,14 +2288,56 @@ begin
    ResolveAttachments.Initialize;
    PreserveAttachments.Initialize;
    try
+
     for SubPassIndex:=0 to fSubPasses.Count-1 do begin
+
      SubPass:=fSubPasses[SubPassIndex];
+
+     RenderPass:=SubPass.fRenderPass;
 
      InputAttachments.Clear;
      ColorAttachments.Clear;
      ResolveAttachments.Clear;
      PreserveAttachments.Clear;
      DepthStencilAttachment:=-1;
+
+     HasResolveOutputs:=false;
+     for ResourceTransition in RenderPass.fResourceTransitions do begin
+      if ResourceTransition.fKind=TResourceTransition.TKind.ImageResolveOutput then begin
+       HasResolveOutputs:=true;
+       break;
+      end;
+     end;
+
+     for ResourceTransition in RenderPass.fResourceTransitions do begin
+      case ResourceTransition.fKind of
+       TResourceTransition.TKind.ImageInput:begin
+        for AttachmentIndex:=0 to Attachments.Count-1 do begin
+         if Attachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
+          InputAttachments.Add(fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,
+                                                                        ResourceTransition.fLayout));
+         end;
+        end;
+       end;
+       TResourceTransition.TKind.ImageOutput:begin
+        ColorAttachments.Add(fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,
+                                                                      ResourceTransition.fLayout));
+
+       end;
+       TResourceTransition.TKind.ImageDepthInput,TResourceTransition.TKind.ImageDepthOutput:begin
+        DepthStencilAttachment:=AttachmentIndex;
+       end;
+      end;
+     end;
+
+     InputAttachments.Finish;
+     ColorAttachments.Finish;
+     ResolveAttachments.Finish;
+     PreserveAttachments.Finish;
+
+     if DepthStencilAttachment<0 then begin
+      DepthStencilAttachment:=VK_ATTACHMENT_UNUSED;
+     end;
 
     end;
    finally
