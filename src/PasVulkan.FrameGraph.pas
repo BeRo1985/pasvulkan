@@ -2170,10 +2170,7 @@ begin
   SubPass.AfterCreateSwapChain;
  end;
 
-{fVulkanRenderPass:=TpvVulkanRenderPass.Create(fFrameGraph.fVulkanDevice);
- fVulkanRenderPass.}
-
- fVulkanRenderPass:=nil;
+ fVulkanRenderPass:=TpvVulkanRenderPass.Create(fFrameGraph.fVulkanDevice);
 
  if assigned(fVulkanRenderPass) then begin
 
@@ -2471,6 +2468,11 @@ begin
    end;
 
    fVulkanRenderPass.Initialize;
+
+   for AttachmentIndex:=0 to Attachments.Count-1 do begin
+    Attachment:=@Attachments.Items[AttachmentIndex];
+    fVulkanRenderPass.ClearValues[0]^:=Attachment^.ClearValue;
+   end;
 
   finally
    Attachments.Finalize;
