@@ -771,6 +771,10 @@ type EpvFrameGraph=class(Exception);
        fSurfaceHeight:TpvSizeInt;
        fCountSwapChainImages:TpvSizeInt;
        fQueues:TQueues;
+       fUniversalQueue:TQueue;
+       fGraphicsQueue:TQueue;
+       fComputeQueue:TQueue;
+       fTransferQueue:TQueue;
        fResourceTypes:TResourceTypeList;
        fResourceTypeNameHashMap:TResourceTypeNameHashMap;
        fResources:TResourceList;
@@ -838,6 +842,10 @@ type EpvFrameGraph=class(Exception);
        property SurfaceHeight:TpvSizeInt read fSurfaceHeight write fSurfaceHeight;
        property CountSwapChainImages:TpvSizeInt read fCountSwapChainImages write fCountSwapChainImages;
        property Queues:TQueues read fQueues;
+       property UniversalQueue:TQueue read fUniversalQueue;
+       property GraphicsQueue:TQueue read fGraphicsQueue;
+       property ComputeQueue:TQueue read fComputeQueue;
+       property TransferQueue:TQueue read fTransferQueue;
        property ResourceTypes:TResourceTypeList read fResourceTypes;
        property ResourceTypeByName:TResourceTypeNameHashMap read fResourceTypeNameHashMap;
        property Resources:TResourceList read fResources;
@@ -1553,7 +1561,7 @@ begin
 
  fFrameGraph.fPasses.Add(self);
 
- fQueue:=nil;
+ fQueue:=fFrameGraph.fUniversalQueue;
 
  fResources:=TResourceList.Create;
  fResources.OwnsObjects:=false;
@@ -2424,6 +2432,14 @@ begin
 
  fPhysicalPasses:=TPhysicalPasses.Create;
  fPhysicalPasses.OwnsObjects:=true;
+
+ fUniversalQueue:=AddQueue(fVulkanDevice.UniversalQueue);
+
+ fGraphicsQueue:=AddQueue(fVulkanDevice.GraphicsQueue);
+
+ fComputeQueue:=AddQueue(fVulkanDevice.ComputeQueue);
+
+ fTransferQueue:=AddQueue(fVulkanDevice.TransferQueue);
 
  fVulkanGraphicsCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
                                                          fVulkanDevice.GraphicsQueueFamilyIndex,
