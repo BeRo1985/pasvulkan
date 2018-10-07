@@ -302,9 +302,9 @@ type EpvFrameGraph=class(Exception);
               fImageSubresourceRange:TVkImageSubresourceRange;
               fImageViewType:TVkImageViewType;
               fComponents:TVkComponentMapping;
-              fVulkanImage:array[0..MaxSwapChainImages-1] of TpvVulkanImage;
-              fVulkanImageView:array[0..MaxSwapChainImages-1] of TpvVulkanImageView;
-              fVulkanMemoryBlock:array[0..MaxSwapChainImages-1] of TpvVulkanDeviceMemoryBlock;
+              fVulkanImages:array[0..MaxSwapChainImages-1] of TpvVulkanImage;
+              fVulkanImageViews:array[0..MaxSwapChainImages-1] of TpvVulkanImageView;
+              fVulkanMemoryBlocks:array[0..MaxSwapChainImages-1] of TpvVulkanDeviceMemoryBlock;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); override;
               destructor Destroy; override;
@@ -1201,9 +1201,9 @@ destructor TpvFrameGraph.TResourcePhysicalAttachmentData.Destroy;
 var SwapChainImageIndex:TpvSizeInt;
 begin
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  FreeAndNil(fVulkanImageView[SwapChainImageIndex]);
-  FreeAndNil(fVulkanImage[SwapChainImageIndex]);
-  FreeAndNil(fVulkanMemoryBlock[SwapChainImageIndex]);
+  FreeAndNil(fVulkanImageViews[SwapChainImageIndex]);
+  FreeAndNil(fVulkanImages[SwapChainImageIndex]);
+  FreeAndNil(fVulkanMemoryBlocks[SwapChainImageIndex]);
  end;
  inherited Destroy;
 end;
@@ -1244,7 +1244,7 @@ begin
 
  for SwapChainImageIndex:=0 to Min(Max(fFrameGraph.fCountSwapChainImages,1),MaxSwapChainImages)-1 do begin
 
-  fVulkanImage[SwapChainImageIndex]:=TpvVulkanImage.Create(fFrameGraph.fVulkanDevice,
+  fVulkanImages[SwapChainImageIndex]:=TpvVulkanImage.Create(fFrameGraph.fVulkanDevice,
                                                            0,
                                                            fImageType,
                                                            fFormat,
@@ -1261,7 +1261,7 @@ begin
                                                            nil,
                                                            VK_IMAGE_LAYOUT_UNDEFINED);
 
-  MemoryRequirements:=fFrameGraph.fVulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImage[SwapChainImageIndex].Handle,
+  MemoryRequirements:=fFrameGraph.fVulkanDevice.MemoryManager.GetImageMemoryRequirements(fVulkanImages[SwapChainImageIndex].Handle,
                                                                                          RequiresDedicatedAllocation,
                                                                                          PrefersDedicatedAllocation);
 
@@ -1277,7 +1277,7 @@ begin
    MemoryAllocationType:=TpvVulkanDeviceMemoryAllocationType.ImageLinear;
   end;
 
-  fVulkanMemoryBlock[SwapChainImageIndex]:=fFrameGraph.fVulkanDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
+  fVulkanMemoryBlocks[SwapChainImageIndex]:=fFrameGraph.fVulkanDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
                                                                                                        MemoryRequirements.size,
                                                                                                        MemoryRequirements.alignment,
                                                                                                        MemoryRequirements.memoryTypeBits,
@@ -1288,18 +1288,18 @@ begin
                                                                                                        0,
                                                                                                        0,
                                                                                                        MemoryAllocationType,
-                                                                                                       @fVulkanImage[SwapChainImageIndex].Handle);
-  if not assigned(fVulkanMemoryBlock[SwapChainImageIndex]) then begin
+                                                                                                       @fVulkanImages[SwapChainImageIndex].Handle);
+  if not assigned(fVulkanMemoryBlocks[SwapChainImageIndex]) then begin
    raise EpvVulkanMemoryAllocationException.Create('Memory for frame buffer attachment couldn''t be allocated!');
   end;
 
-  VulkanCheckResult(fFrameGraph.fVulkanDevice.Commands.BindImageMemory(fVulkanImage[SwapChainImageIndex].Device.Handle,
-                                                                       fVulkanImage[SwapChainImageIndex].Handle,
-                                                                       fVulkanMemoryBlock[SwapChainImageIndex].MemoryChunk.Handle,
-                                                                       fVulkanMemoryBlock[SwapChainImageIndex].Offset));
+  VulkanCheckResult(fFrameGraph.fVulkanDevice.Commands.BindImageMemory(fVulkanImages[SwapChainImageIndex].Device.Handle,
+                                                                       fVulkanImages[SwapChainImageIndex].Handle,
+                                                                       fVulkanMemoryBlocks[SwapChainImageIndex].MemoryChunk.Handle,
+                                                                       fVulkanMemoryBlocks[SwapChainImageIndex].Offset));
 
-  fVulkanImageView[SwapChainImageIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
-                                                                   fVulkanImage[SwapChainImageIndex],
+  fVulkanImageViews[SwapChainImageIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
+                                                                   fVulkanImages[SwapChainImageIndex],
                                                                    fImageViewType,
                                                                    fFormat,
                                                                    fComponents.r,
@@ -1314,7 +1314,7 @@ begin
 
   if fFirstInitialLayout<>VK_IMAGE_LAYOUT_UNDEFINED then begin
    if (fImageUsageFlags and TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))<>0 then begin
-    fVulkanImage[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
+    fVulkanImages[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
                                                 VK_IMAGE_LAYOUT_UNDEFINED,
                                                 fFirstInitialLayout,
                                                 TVkAccessFlags(0),
@@ -1330,7 +1330,7 @@ begin
    end else begin
     case fFirstInitialLayout of
      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
-      fVulkanImage[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
+      fVulkanImages[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
                                                   VK_IMAGE_LAYOUT_UNDEFINED,
                                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                                                   TVkAccessFlags(0),
@@ -1344,7 +1344,7 @@ begin
                                                   true);
      end;
      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:begin
-      fVulkanImage[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
+      fVulkanImages[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
                                                   VK_IMAGE_LAYOUT_UNDEFINED,
                                                   VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                                                   TVkAccessFlags(0),
@@ -1373,9 +1373,9 @@ procedure TpvFrameGraph.TResourcePhysicalAttachmentData.BeforeDestroySwapChain;
 var SwapChainImageIndex:TpvSizeInt;
 begin
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  FreeAndNil(fVulkanImageView[SwapChainImageIndex]);
-  FreeAndNil(fVulkanImage[SwapChainImageIndex]);
-  FreeAndNil(fVulkanMemoryBlock[SwapChainImageIndex]);
+  FreeAndNil(fVulkanImageViews[SwapChainImageIndex]);
+  FreeAndNil(fVulkanImages[SwapChainImageIndex]);
+  FreeAndNil(fVulkanMemoryBlocks[SwapChainImageIndex]);
  end;
 end;
 
@@ -2022,7 +2022,7 @@ begin
      Assert(assigned(BarrierMapItem^.ResourcePhysicalData));
      if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalBufferData then begin
       // TODO
-//    BufferMemoryBarrier^.buffer:=TResourcePhysicalBufferData(BarrierMapItem^.ResourcePhysicalData).fBufferHandles[SwapChainImageIndex];
+//    BufferMemoryBarrier^.buffer:=TResourcePhysicalBufferData(BarrierMapItem^.ResourcePhysicalData).fVulkanBuffers[SwapChainImageIndex].Handle;
       Assert(false,'TODO');
      end else begin
       Assert(false);
@@ -2033,10 +2033,10 @@ begin
      ImageMemoryBarrier:=@fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Items[BarrierMapItem^.BarrierIndex];
      Assert(assigned(BarrierMapItem^.ResourcePhysicalData));
      if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalAttachmentData then begin
-      ImageMemoryBarrier^.image:=TResourcePhysicalAttachmentData(BarrierMapItem^.ResourcePhysicalData).fVulkanImage[SwapChainImageIndex].Handle;
+      ImageMemoryBarrier^.image:=TResourcePhysicalAttachmentData(BarrierMapItem^.ResourcePhysicalData).fVulkanImages[SwapChainImageIndex].Handle;
      end else if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalImageData then begin
       // TODO
-//    ImageMemoryBarrier^.image:=TResourcePhysicalImageData(BarrierMapItem^.ResourcePhysicalData).fImageHandles[SwapChainImageIndex];
+//    ImageMemoryBarrier^.image:=TResourcePhysicalImageData(BarrierMapItem^.ResourcePhysicalData).fVulkanImages[SwapChainImageIndex].Handle;
       Assert(false,'TODO');
      end else begin
       Assert(false);
