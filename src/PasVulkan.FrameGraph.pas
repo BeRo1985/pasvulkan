@@ -2277,18 +2277,6 @@ begin
        Attachment^.Persientent:=ImageResourceType.fPersientent;
        Attachment^.ImageType:=ImageResourceType.fImageType;
        Attachment^.Format:=ImageResourceType.fFormat;
-       if Attachment^.Format=VK_FORMAT_UNDEFINED then begin
-        case Attachment^.ImageType of
-         TImageType.Color:begin
-          Attachment^.Format:=fFrameGraph.fSurfaceColorFormat;
-         end;
-         TImageType.Depth,
-         TImageType.DepthStencil,
-         TImageType.Stencil:begin
-          Attachment^.Format:=fFrameGraph.fSurfaceDepthFormat;
-         end;
-        end;
-       end;
        Attachment^.Samples:=ImageResourceType.fSamples;
        Attachment^.LoadOp:=VK_ATTACHMENT_LOAD_OP_DONT_CARE;
        Attachment^.StoreOp:=VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -2527,6 +2515,8 @@ begin
 
    for AttachmentIndex:=0 to Attachments.Count-1 do begin
     Attachment:=@Attachments.Items[AttachmentIndex];
+    ResourcePhysicalImageData:=Attachment^.Resource.fResourceReuseGroup.fResourcePhysicalData as TResourcePhysicalImageData;
+    Attachment^.Format:=ResourcePhysicalImageData.fFormat;
     AttachmentDescriptionFlags:=0;
     if Attachment^.Resource.fResourceReuseGroup.fResources.Count>1 then begin
      AttachmentDescriptionFlags:=AttachmentDescriptionFlags or TVkAttachmentDescriptionFlags(VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT);
