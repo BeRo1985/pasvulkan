@@ -338,6 +338,8 @@ type EpvFrameGraph=class(Exception);
               fName:TpvRawByteString;
               fResourceType:TResourceType;
               fResourceTransitions:TResourceTransitionList;
+              fMinimumTopologicalSortPassIndex:TpvSizeInt;
+              fMaximumTopologicalSortPassIndex:TpvSizeInt;
               fMinimumPhysicalPassStepIndex:TpvSizeInt;
               fMaximumPhysicalPassStepIndex:TpvSizeInt;
               fResourceReuseGroup:TResourceReuseGroup;
@@ -1405,6 +1407,9 @@ begin
  fResourceTransitions:=TResourceTransitionList.Create;
  fResourceTransitions.OwnsObjects:=false;
 
+ fMinimumTopologicalSortPassIndex:=High(TpvSizeInt);
+ fMaximumTopologicalSortPassIndex:=Low(TpvSizeInt);
+
  fMinimumPhysicalPassStepIndex:=High(TpvSizeInt);
  fMaximumPhysicalPassStepIndex:=Low(TpvSizeInt);
 
@@ -2377,8 +2382,8 @@ begin
         break;
        end;
       end;
-      UsedBefore:=(Resource.fMinimumPhysicalPassStepIndex<=SubPass.fPhysicalRenderPass.fIndex) and not UsedNow;
-      UsedAfter:=(SubPass.fPhysicalRenderPass.fIndex<=Resource.fMaximumPhysicalPassStepIndex) and not UsedNow;
+      UsedBefore:=Resource.fMinimumTopologicalSortPassIndex<SubPass.fRenderPass.fTopologicalSortIndex;
+      UsedAfter:=SubPass.fRenderPass.fTopologicalSortIndex<Resource.fMaximumTopologicalSortPassIndex;
       IsSurfaceOrPersistent:=(Attachment^.ImageResourceType.fImageType=TImageType.Surface) or Attachment^.ImageResourceType.fPersientent;
       if UsedBefore and (not UsedNow) and (UsedAfter or IsSurfaceOrPersistent) then begin
        PreserveAttachments.Add(fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,
@@ -3172,6 +3177,8 @@ type TBeforeAfter=(Before,After);
   // Calculate resource lifetimes (from minimum physical pass step index to maximum
   // physical pass step index) for calculating aliasing and reusing of resources at a later point
   for Resource in fResources do begin
+   Resource.fMinimumTopologicalSortPassIndex:=High(TpvSizeInt);
+   Resource.fMaximumTopologicalSortPassIndex:=Low(TpvSizeInt);
    Resource.fMinimumPhysicalPassStepIndex:=High(TpvSizeInt);
    Resource.fMaximumPhysicalPassStepIndex:=Low(TpvSizeInt);
    for ResourceTransition in Resource.fResourceTransitions do begin
@@ -3186,15 +3193,21 @@ type TBeforeAfter=(Before,After);
       // in a better way later
       if not Resource.fUsed then begin
        Resource.fUsed:=true;
+       Resource.fMinimumTopologicalSortPassIndex:=0;
+       Resource.fMaximumTopologicalSortPassIndex:=High(TpvSizeInt);
        Resource.fMinimumPhysicalPassStepIndex:=0;
        Resource.fMaximumPhysicalPassStepIndex:=fMaximumOverallPhysicalPassIndex;
       end;
      end else begin
       if Resource.fUsed then begin
+       Resource.fMinimumTopologicalSortPassIndex:=Min(Resource.fMinimumTopologicalSortPassIndex,Pass.fTopologicalSortIndex);
+       Resource.fMaximumTopologicalSortPassIndex:=Max(Resource.fMinimumTopologicalSortPassIndex,Pass.fTopologicalSortIndex);
        Resource.fMinimumPhysicalPassStepIndex:=Min(Resource.fMinimumPhysicalPassStepIndex,Pass.fPhysicalPass.fIndex);
        Resource.fMaximumPhysicalPassStepIndex:=Max(Resource.fMaximumPhysicalPassStepIndex,Pass.fPhysicalPass.fIndex);
       end else begin
        Resource.fUsed:=true;
+       Resource.fMinimumTopologicalSortPassIndex:=Pass.fTopologicalSortIndex;
+       Resource.fMaximumTopologicalSortPassIndex:=Pass.fTopologicalSortIndex;
        Resource.fMinimumPhysicalPassStepIndex:=Pass.fPhysicalPass.fIndex;
        Resource.fMaximumPhysicalPassStepIndex:=Pass.fPhysicalPass.fIndex;
       end;
