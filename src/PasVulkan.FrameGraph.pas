@@ -2124,6 +2124,7 @@ type TAttachment=record
      TInt32AttachmentLists=TpvDynamicArray<TpvInt32>;
      TUInt32AttachmentLists=TpvDynamicArray<TpvUInt32>;
 var AttachmentIndex,
+    OtherAttachmentIndex,
     SubPassDependencyIndex,
     SubPassIndex:TpvSizeInt;
     SubPass,
@@ -2132,6 +2133,7 @@ var AttachmentIndex,
     ResourceType:TResourceType;
     ImageResourceType:TImageResourceType;
     ResourceTransition,
+    OtherResourceTransition,
     FromResourceTransition,
     ToResourceTransition:TResourceTransition;
     Attachments:TAttachments;
@@ -2316,16 +2318,45 @@ begin
          if Attachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
           InputAttachments.Add(fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,
                                                                         ResourceTransition.fLayout));
+          break;
          end;
         end;
        end;
        TResourceTransition.TKind.ImageOutput:begin
-        ColorAttachments.Add(fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,
-                                                                      ResourceTransition.fLayout));
-
+        for AttachmentIndex:=0 to Attachments.Count-1 do begin
+         if Attachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
+          ColorAttachments.Add(fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,
+                                                                        ResourceTransition.fLayout));
+          for OtherResourceTransition in RenderPass.fResourceTransitions do begin
+           if (ResourceTransition<>OtherResourceTransition) and
+              (OtherResourceTransition.ResolveResource=ResourceTransition.Resource) then begin
+            Found:=false;
+            for OtherAttachmentIndex:=0 to Attachments.Count-1 do begin
+             if Attachments.Items[OtherAttachmentIndex].Resource=ResourceTransition.fResource then begin
+              ResolveAttachments.Add(fVulkanRenderPass.AddAttachmentReference(OtherAttachmentIndex,
+                                                                              OtherResourceTransition.fLayout));
+              Found:=true;
+              break;
+             end;
+            end;
+            if not Found then begin
+             ResolveAttachments.Add(fVulkanRenderPass.AddAttachmentReference(VK_ATTACHMENT_UNUSED,
+                                                                             VK_IMAGE_LAYOUT_UNDEFINED));
+            end;
+            break;
+           end;
+          end;
+          break;
+         end;
+        end;
        end;
        TResourceTransition.TKind.ImageDepthInput,TResourceTransition.TKind.ImageDepthOutput:begin
-        DepthStencilAttachment:=AttachmentIndex;
+        for AttachmentIndex:=0 to Attachments.Count-1 do begin
+         if Attachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
+          DepthStencilAttachment:=AttachmentIndex;
+          break;
+         end;
+        end;
        end;
       end;
      end;
