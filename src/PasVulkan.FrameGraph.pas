@@ -193,6 +193,7 @@ type EpvFrameGraph=class(Exception);
               destructor Destroy; override;
             end;
             TQueues=TpvObjectGenericList<TQueue>;
+            TQueueFamilyIndices=TpvDynamicArray<TVkUInt32>;
             TResourceType=class
              public
               type TMetaType=
@@ -771,6 +772,7 @@ type EpvFrameGraph=class(Exception);
        fSurfaceHeight:TpvSizeInt;
        fCountSwapChainImages:TpvSizeInt;
        fQueues:TQueues;
+       fQueueFamilyIndices:TQueueFamilyIndices;
        fUniversalQueue:TQueue;
        fGraphicsQueue:TQueue;
        fComputeQueue:TQueue;
@@ -2405,6 +2407,8 @@ begin
  fQueues:=TQueues.Create;
  fQueues.OwnsObjects:=true;
 
+ fQueueFamilyIndices.Initialize;
+
  fResourceTypes:=TResourceTypeList.Create;
  fResourceTypes.OwnsObjects:=true;
 
@@ -2476,12 +2480,16 @@ begin
 
  FreeAndNil(fQueues);
 
+ fQueueFamilyIndices.Finalize;
+
  inherited Destroy;
 
 end;
 
 function TpvFrameGraph.AddQueue(const aPhysicalQueue:TpvVulkanQueue):TQueue;
-var Queue:TQueue;
+var Index:TpvSizeInt;
+    Found:boolean;
+    Queue:TQueue;
 begin
  result:=nil;
  for Queue in fQueues do begin
@@ -2491,6 +2499,16 @@ begin
   end;
  end;
  if not assigned(result) then begin
+  Found:=false;
+  for Index:=0 to fQueueFamilyIndices.Count-1 do begin
+   if fQueueFamilyIndices.Items[Index]=aPhysicalQueue.QueueFamilyIndex then begin
+    Found:=true;
+    break;
+   end;
+  end;
+  if not Found then begin
+   fQueueFamilyIndices.Add(aPhysicalQueue.QueueFamilyIndex);
+  end;
   result:=TQueue.Create(self,aPhysicalQueue);
   fQueues.Add(result);
  end;
