@@ -277,6 +277,7 @@ type EpvFrameGraph=class(Exception);
             TResourcePhysicalData=class
              private
               fFrameGraph:TpvFrameGraph;
+              fResourceType:TResourceType;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
@@ -287,7 +288,6 @@ type EpvFrameGraph=class(Exception);
             end;
             TResourcePhysicalImageData=class(TResourcePhysicalData)
              private
-              fResourceType:TResourceType;
               fImageUsageFlags:TVkImageUsageFlags;
               fFormat:TVkFormat;
               fExtent:TVkExtent3D;
@@ -3146,6 +3146,7 @@ type TBeforeAfter=(Before,After);
      ResourceReuseGroup:TResourceReuseGroup;
      ResourceType:TResourceType;
      ResourcePhysicalImageData:TResourcePhysicalImageData;
+     ResourcePhysicalBufferData:TResourcePhysicalBufferData;
      Resource:TResource;
      ResourceTransition:TResourceTransition;
  begin
@@ -3208,6 +3209,9 @@ type TBeforeAfter=(Before,After);
      end;
     end;
     TpvFrameGraph.TResourceType.TMetaType.Buffer:begin
+     ResourceReuseGroup.fResourcePhysicalData:=TResourcePhysicalBufferData.Create(self);
+     ResourcePhysicalBufferData:=TResourcePhysicalBufferData(ResourceReuseGroup.fResourcePhysicalData);
+     ResourcePhysicalBufferData.fResourceType:=ResourceType;
      // TODO
      Assert(false,'TODO');
     end;
