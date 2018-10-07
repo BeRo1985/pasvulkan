@@ -2129,7 +2129,7 @@ var SwapChainImageIndex:TpvSizeInt;
 begin
  fSubPassDependencies.Finalize;
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fVulkanFrameBuffers[SwapChainImageIndex]:=nil;
+  FreeAndNil(fVulkanFrameBuffers[SwapChainImageIndex]);
  end;
  FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fSubPasses);
@@ -2580,7 +2580,7 @@ var SwapChainImageIndex:TpvSizeInt;
 begin
 
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fVulkanFrameBuffers[SwapChainImageIndex]:=nil;
+  FreeAndNil(fVulkanFrameBuffers[SwapChainImageIndex]);
  end;
 
  FreeAndNil(fVulkanRenderPass);
