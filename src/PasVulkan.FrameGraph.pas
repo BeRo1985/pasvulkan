@@ -1177,7 +1177,7 @@ begin
    fVulkanImageViews[SwapChainImageIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
                                                                      fVulkanImages[SwapChainImageIndex],
                                                                      fImageViewType,
-                                                                     Format,
+                                                                     fFrameGraph.fSurfaceColorFormat,
                                                                      fComponents.r,
                                                                      fComponents.g,
                                                                      fComponents.b,
