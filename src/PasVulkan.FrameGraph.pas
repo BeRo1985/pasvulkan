@@ -408,6 +408,7 @@ type EpvFrameGraph=class(Exception);
                     PKinds=^TKinds;
                     TFlag=
                     (
+                     FullAreaReadAccess,
                      PreviousFrameInput,
                      NextFrameOutput
                     );
