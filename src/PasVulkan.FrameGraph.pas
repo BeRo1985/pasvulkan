@@ -791,9 +791,8 @@ type EpvFrameGraph=class(Exception);
        fCanDoParallelProcessing:boolean;
        fPhysicalPasses:TPhysicalPasses;
        fRootPhysicalPass:TPhysicalPass;
-       fVulkanGraphicsCommandPool:TpvVulkanCommandPool;
-       fVulkanGraphicsCommandBuffer:TpvVulkanCommandBuffer;
-       fVulkanGraphicsCommandBufferFence:TpvVulkanFence;
+       fVulkanUniversalQueueCommandBuffer:TpvVulkanCommandBuffer;
+       fVulkanUniversalQueueCommandBufferFence:TpvVulkanFence;
        fDrawFrameIndex:TpvSizeInt;
       public
        constructor Create(const aVulkanDevice:TpvVulkanDevice);
@@ -1323,48 +1322,48 @@ begin
   if fFirstInitialLayout<>VK_IMAGE_LAYOUT_UNDEFINED then begin
    if (fImageUsageFlags and TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT))<>0 then begin
     fVulkanImages[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
-                                                VK_IMAGE_LAYOUT_UNDEFINED,
-                                                fFirstInitialLayout,
-                                                TVkAccessFlags(0),
-                                                TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or
-                                                TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT),
-                                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                fFrameGraph.fVulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
-                                                nil,
-                                                fFrameGraph.fVulkanGraphicsCommandBuffer,
-                                                fFrameGraph.fVulkanDevice.GraphicsQueue,
-                                                fFrameGraph.fVulkanGraphicsCommandBufferFence,
-                                                true);
+                                                 VK_IMAGE_LAYOUT_UNDEFINED,
+                                                 fFirstInitialLayout,
+                                                 TVkAccessFlags(0),
+                                                 TVkAccessFlags(VK_ACCESS_SHADER_READ_BIT) or
+                                                 TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT),
+                                                 TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                 fFrameGraph.fVulkanDevice.PhysicalDevice.PipelineStageAllShaderBits,
+                                                 nil,
+                                                 fFrameGraph.fVulkanUniversalQueueCommandBuffer,
+                                                 fFrameGraph.fVulkanDevice.GraphicsQueue,
+                                                 fFrameGraph.fVulkanUniversalQueueCommandBufferFence,
+                                                 true);
    end else begin
     case fFirstInitialLayout of
      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
       fVulkanImages[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
-                                                  VK_IMAGE_LAYOUT_UNDEFINED,
-                                                  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                  TVkAccessFlags(0),
-                                                  TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
-                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                  nil,
-                                                  fFrameGraph.fVulkanGraphicsCommandBuffer,
-                                                  fFrameGraph.fVulkanDevice.GraphicsQueue,
-                                                  fFrameGraph.fVulkanGraphicsCommandBufferFence,
-                                                  true);
+                                                   VK_IMAGE_LAYOUT_UNDEFINED,
+                                                   VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                                   TVkAccessFlags(0),
+                                                   TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT),
+                                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                   nil,
+                                                   fFrameGraph.fVulkanUniversalQueueCommandBuffer,
+                                                   fFrameGraph.fVulkanDevice.GraphicsQueue,
+                                                   fFrameGraph.fVulkanUniversalQueueCommandBufferFence,
+                                                   true);
      end;
      VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:begin
       fVulkanImages[SwapChainImageIndex].SetLayout(fImageSubresourceRange.aspectMask,
-                                                  VK_IMAGE_LAYOUT_UNDEFINED,
-                                                  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-                                                  TVkAccessFlags(0),
-                                                  TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
-                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
-                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
-                                                  TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
-                                                  nil,
-                                                  fFrameGraph.fVulkanGraphicsCommandBuffer,
-                                                  fFrameGraph.fVulkanDevice.GraphicsQueue,
-                                                  fFrameGraph.fVulkanGraphicsCommandBufferFence,
-                                                  true);
+                                                   VK_IMAGE_LAYOUT_UNDEFINED,
+                                                   VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+                                                   TVkAccessFlags(0),
+                                                   TVkAccessFlags(VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT),
+                                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT),
+                                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT) or
+                                                   TVkPipelineStageFlags(VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT),
+                                                   nil,
+                                                   fFrameGraph.fVulkanUniversalQueueCommandBuffer,
+                                                   fFrameGraph.fVulkanDevice.GraphicsQueue,
+                                                   fFrameGraph.fVulkanUniversalQueueCommandBufferFence,
+                                                   true);
      end;
      else begin
       raise EpvVulkanException.Create('Invalid frame buffer attachment');
@@ -2441,13 +2440,10 @@ begin
 
  fTransferQueue:=AddQueue(fVulkanDevice.TransferQueue);
 
- fVulkanGraphicsCommandPool:=TpvVulkanCommandPool.Create(fVulkanDevice,
-                                                         fVulkanDevice.GraphicsQueueFamilyIndex,
-                                                         TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
+ fVulkanUniversalQueueCommandBuffer:=TpvVulkanCommandBuffer.Create(fUniversalQueue.fCommandPool,
+                                                                   VK_COMMAND_BUFFER_LEVEL_PRIMARY);
 
- fVulkanGraphicsCommandBuffer:=TpvVulkanCommandBuffer.Create(fVulkanGraphicsCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-
- fVulkanGraphicsCommandBufferFence:=TpvVulkanFence.Create(fVulkanDevice);
+ fVulkanUniversalQueueCommandBufferFence:=TpvVulkanFence.Create(fVulkanDevice);
 
 end;
 
@@ -2474,13 +2470,11 @@ begin
 
  FreeAndNil(fPassNameHashMap);
 
+ FreeAndNil(fVulkanUniversalQueueCommandBufferFence);
+
+ FreeAndNil(fVulkanUniversalQueueCommandBuffer);
+
  FreeAndNil(fQueues);
-
- FreeAndNil(fVulkanGraphicsCommandBufferFence);
-
- FreeAndNil(fVulkanGraphicsCommandBuffer);
-
- FreeAndNil(fVulkanGraphicsCommandPool);
 
  inherited Destroy;
 
