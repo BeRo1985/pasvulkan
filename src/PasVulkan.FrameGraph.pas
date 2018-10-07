@@ -2377,8 +2377,8 @@ begin
         break;
        end;
       end;
-      UsedBefore:=Resource.fMinimumPhysicalPassStepIndex<SubPass.fPhysicalRenderPass.fIndex;
-      UsedAfter:=SubPass.fPhysicalRenderPass.fIndex<Resource.fMaximumPhysicalPassStepIndex;
+      UsedBefore:=(Resource.fMinimumPhysicalPassStepIndex<=SubPass.fPhysicalRenderPass.fIndex) and not UsedNow;
+      UsedAfter:=(SubPass.fPhysicalRenderPass.fIndex<=Resource.fMaximumPhysicalPassStepIndex) and not UsedNow;
       IsSurfaceOrPersistent:=(Attachment^.ImageResourceType.fImageType=TImageType.Surface) or Attachment^.ImageResourceType.fPersientent;
       if UsedBefore and (not UsedNow) and (UsedAfter or IsSurfaceOrPersistent) then begin
        PreserveAttachments.Add(fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,
