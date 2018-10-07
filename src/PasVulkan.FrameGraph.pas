@@ -599,6 +599,7 @@ type EpvFrameGraph=class(Exception);
               fSubPassDependencies:TSubPassDependencies;
               fMultiView:boolean;
               fVulkanRenderPass:TpvVulkanRenderPass;
+              fVulkanFrameBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanFrameBuffer;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); override;
               destructor Destroy; override;
@@ -2098,17 +2099,25 @@ end;
 { TpvFrameGraph.TVulkanRenderPass }
 
 constructor TpvFrameGraph.TPhysicalRenderPass.Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue);
+var SwapChainImageIndex:TpvSizeInt;
 begin
  inherited Create(aFrameGraph,aQueue);
  fSubPasses:=TSubPasses.Create;
  fSubPasses.OwnsObjects:=true;
  fSubPassDependencies.Initialize;
  fVulkanRenderPass:=nil;
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  fVulkanFrameBuffers[SwapChainImageIndex]:=nil;
+ end;
 end;
 
 destructor TpvFrameGraph.TPhysicalRenderPass.Destroy;
+var SwapChainImageIndex:TpvSizeInt;
 begin
  fSubPassDependencies.Finalize;
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  fVulkanFrameBuffers[SwapChainImageIndex]:=nil;
+ end;
  FreeAndNil(fVulkanRenderPass);
  FreeAndNil(fSubPasses);
  inherited Destroy;
@@ -2155,7 +2164,8 @@ type TAttachment=record
 var AttachmentIndex,
     OtherAttachmentIndex,
     SubPassDependencyIndex,
-    SubPassIndex:TpvSizeInt;
+    SubPassIndex,
+    SwapChainImageIndex:TpvSizeInt;
     SubPass,
     OtherSubPass:TSubPass;
     RenderPass:TRenderPass;
@@ -2502,11 +2512,21 @@ begin
 
  end;
 
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  fVulkanFrameBuffers[SwapChainImageIndex]:=nil;
+ end;
+
+
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.BeforeDestroySwapChain;
-var SubPass:TSubPass;
+var SwapChainImageIndex:TpvSizeInt;
+    SubPass:TSubPass;
 begin
+
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  fVulkanFrameBuffers[SwapChainImageIndex]:=nil;
+ end;
 
  FreeAndNil(fVulkanRenderPass);
 
@@ -2526,6 +2546,13 @@ begin
  inherited Execute;
  CommandBuffer:=fCommandBuffers[fFrameGraph.fDrawSwapChainImageIndex];
  CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+ fVulkanRenderPass.BeginRenderPass(CommandBuffer,
+                                   fVulkanFrameBuffers[fFrameGraph.fDrawSwapChainImageIndex],
+                                   VK_SUBPASS_CONTENTS_INLINE,
+                                   0,
+                                   0,
+                                   fVulkanFrameBuffers[fFrameGraph.fDrawSwapChainImageIndex].Width,
+                                   fVulkanFrameBuffers[fFrameGraph.fDrawSwapChainImageIndex].Height);
  for SubPassIndex:=0 to fSubPasses.Count-1 do begin
   SubPass:=fSubPasses[SubPassIndex];
   if SubPass.fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
@@ -2533,6 +2560,7 @@ begin
   end;
   CommandBuffer.CmdNextSubpass(VK_SUBPASS_CONTENTS_INLINE);
  end;
+ fVulkanRenderPass.EndRenderPass(CommandBuffer);
  CommandBuffer.EndRecording;
 end;
 
