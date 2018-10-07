@@ -2324,8 +2324,7 @@ begin
        TResourceTransition.TKind.ImageInput:begin
         for AttachmentIndex:=0 to Attachments.Count-1 do begin
          if Attachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
-          InputAttachments.Add(fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,
-                                                                        ResourceTransition.fLayout));
+          InputAttachments.Add(fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,ResourceTransition.fLayout));
           break;
          end;
         end;
@@ -2333,16 +2332,14 @@ begin
        TResourceTransition.TKind.ImageOutput:begin
         for AttachmentIndex:=0 to Attachments.Count-1 do begin
          if Attachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
-          ColorAttachments.Add(fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,
-                                                                        ResourceTransition.fLayout));
+          ColorAttachments.Add(fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,ResourceTransition.fLayout));
           for OtherResourceTransition in RenderPass.fResourceTransitions do begin
            if (ResourceTransition<>OtherResourceTransition) and
               (OtherResourceTransition.ResolveResource=ResourceTransition.Resource) then begin
             Found:=false;
             for OtherAttachmentIndex:=0 to Attachments.Count-1 do begin
              if Attachments.Items[OtherAttachmentIndex].Resource=ResourceTransition.fResource then begin
-              ResolveAttachments.Add(fVulkanRenderPass.AddAttachmentReference(OtherAttachmentIndex,
-                                                                              OtherResourceTransition.fLayout));
+              ResolveAttachments.Add(fVulkanRenderPass.AddAttachmentReference(OtherAttachmentIndex,OtherResourceTransition.fLayout));
               Found:=true;
               break;
              end;
