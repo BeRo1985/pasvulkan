@@ -114,6 +114,12 @@ type EpvFrameGraph=class(Exception);
                      Clear,
                      DontCare
                     );
+              const Values:array[TKind] of TVkAttachmentLoadOp=
+                     (
+                      VK_ATTACHMENT_LOAD_OP_LOAD,
+                      VK_ATTACHMENT_LOAD_OP_CLEAR,
+                      VK_ATTACHMENT_LOAD_OP_DONT_CARE
+                     );
              public
               Kind:TKind;
               ClearColor:TpvVector4;
@@ -129,6 +135,11 @@ type EpvFrameGraph=class(Exception);
                      Store,
                      DontCare
                     );
+              const Values:array[TKind] of TVkAttachmentStoreOp=
+                     (
+                      VK_ATTACHMENT_STORE_OP_STORE,
+                      VK_ATTACHMENT_STORE_OP_DONT_CARE
+                     );
              public
               Kind:TKind;
               constructor Create(const aKind:TKind);
@@ -1221,7 +1232,7 @@ begin
                                                                                                         MemoryAllocationType,
                                                                                                         @fVulkanImages[SwapChainImageIndex].Handle);
    if not assigned(fVulkanMemoryBlocks[SwapChainImageIndex]) then begin
-    raise EpvVulkanMemoryAllocationException.Create('Memory for frame buffer attachment couldn''t be allocated!');
+    raise EpvVulkanMemoryAllocationException.Create('Memory for image resource couldn''t be allocated!');
    end;
 
    VulkanCheckResult(fFrameGraph.fVulkanDevice.Commands.BindImageMemory(fVulkanImages[SwapChainImageIndex].Device.Handle,
@@ -2093,15 +2104,38 @@ begin
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.AfterCreateSwapChain;
-type TInt32AttachmentLists=TpvDynamicArray<TpvInt32>;
+type TAttachment=record
+      Resource:TResource;
+      ImageResourceType:TImageResourceType;
+      Index:TVkInt32;
+      Format:TVkFormat;
+      LoadOp:TVkAttachmentLoadOp;
+      StoreOp:TVkAttachmentStoreOp;
+      StencilLoadOp:TVkAttachmentLoadOp;
+      StencilStoreOp:TVkAttachmentStoreOp;
+      InitialLayout:TVkImageLayout;
+      FinalLayout:TVkImageLayout;
+      ImageUsageFlags:TVkImageUsageFlags;
+      ClearValueInitialized:boolean;
+      ClearValue:TVkClearValue;
+     end;
+     PAttachment=^TAttachment;
+     TAttachments=TpvDynamicArray<TAttachment>;
+     TInt32AttachmentLists=TpvDynamicArray<TpvInt32>;
      TUInt32AttachmentLists=TpvDynamicArray<TpvUInt32>;
-var SubPassDependencyIndex:TpvSizeInt;
+var AttachmentIndex,
+    SubPassDependencyIndex,
+    SubPassIndex:TpvSizeInt;
     SubPass,
     OtherSubPass:TSubPass;
     RenderPass:TRenderPass;
+    ResourceType:TResourceType;
+    ImageResourceType:TImageResourceType;
     ResourceTransition,
     FromResourceTransition,
     ToResourceTransition:TResourceTransition;
+    Attachments:TAttachments;
+    Attachment:PAttachment;
     InputAttachments,
     ColorAttachments,
     ResolveAttachments:TInt32AttachmentLists;
@@ -2112,6 +2146,11 @@ var SubPassDependencyIndex:TpvSizeInt;
     SrcStageMask,
     DstStageMask:TVkPipelineStageFlags;
     SubPassDependency:PSubPassDependency;
+    Format:TVkFormat;
+    ColorDepthAttachment,
+    StencilAttachment,
+    StencilDepthAttachment,
+    Found:boolean;
 begin
 
  inherited AfterCreateSwapChain;
@@ -2123,37 +2162,150 @@ begin
 {fVulkanRenderPass:=TpvVulkanRenderPass.Create(fFrameGraph.fVulkanDevice);
  fVulkanRenderPass.}
 
- InputAttachments.Initialize;
- ColorAttachments.Initialize;
- ResolveAttachments.Initialize;
- PreserveAttachments.Initialize;
- try
+ fVulkanRenderPass:=nil;
 
-  DepthStencilAttachment:=-1;
+ if assigned(fVulkanRenderPass) then begin
 
-  for SubPass in fSubPasses do begin
-   RenderPass:=SubPass.fRenderPass;
-   for ResourceTransition in RenderPass.fResourceTransitions do begin
-    case ResourceTransition.Kind of
-     TpvFrameGraph.TResourceTransition.TKind.ImageInput,
-     TpvFrameGraph.TResourceTransition.TKind.ImageOutput,
-     TpvFrameGraph.TResourceTransition.TKind.ImageResolveOutput,
-     TpvFrameGraph.TResourceTransition.TKind.ImageDepthOutput,
-     TpvFrameGraph.TResourceTransition.TKind.ImageDepthInput:begin
-     // ResourceTransition.
+  Attachments.Initialize;
+  try
+
+   for SubPass in fSubPasses do begin
+    RenderPass:=SubPass.fRenderPass;
+    for ResourceTransition in RenderPass.fResourceTransitions do begin
+     ResourceType:=ResourceTransition.fResource.fResourceType;
+     if ResourceTransition.Kind in TResourceTransition.AllImages then begin
+      Assert(ResourceType is TImageResourceType);
+      Found:=false;
+      for AttachmentIndex:=0 to Attachments.Count-1 do begin
+       Attachment:=@Attachments.Items[AttachmentIndex];
+       if Attachment^.Resource=ResourceTransition.fResource then begin
+        Found:=true;
+        break;
+       end;
+      end;
+      if not Found then begin
+       ImageResourceType:=TImageResourceType(ResourceType);
+       AttachmentIndex:=Attachments.AddNew;
+       Attachment:=@Attachments.Items[AttachmentIndex];
+       Attachment^.Resource:=ResourceTransition.fResource;
+       Attachment^.ImageResourceType:=ImageResourceType;
+       Attachment^.Index:=AttachmentIndex;
+       Attachment^.Format:=ImageResourceType.fFormat;
+       if Attachment^.Format=VK_FORMAT_UNDEFINED then begin
+        case ImageResourceType.fImageType of
+         TImageType.Color:begin
+          Attachment^.Format:=fFrameGraph.fSurfaceColorFormat;
+         end;
+         TImageType.Depth,
+         TImageType.DepthStencil,
+         TImageType.Stencil:begin
+          Attachment^.Format:=fFrameGraph.fSurfaceDepthFormat;
+         end;
+        end;
+       end;
+       Attachment^.LoadOp:=VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+       Attachment^.StoreOp:=VK_ATTACHMENT_STORE_OP_DONT_CARE;
+       Attachment^.StencilLoadOp:=VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+       Attachment^.StencilStoreOp:=VK_ATTACHMENT_STORE_OP_DONT_CARE;
+       Attachment^.InitialLayout:=ResourceTransition.fLayout;
+       Attachment^.FinalLayout:=ResourceTransition.fLayout;
+       Attachment^.ImageUsageFlags:=0;
+       Attachment^.ClearValueInitialized:=false;
+      end;
      end;
     end;
    end;
-  end;
 
-  InputAttachments.Finish;
-  ColorAttachments.Finish;
-  ResolveAttachments.Finish;
-  PreserveAttachments.Finish;
+   Attachments.Finish;
 
-  fVulkanRenderPass:=nil;
+   for SubPass in fSubPasses do begin
+    RenderPass:=SubPass.fRenderPass;
+    for ResourceTransition in RenderPass.fResourceTransitions do begin
+     for AttachmentIndex:=0 to Attachments.Count-1 do begin
+      Attachment:=@Attachments.Items[AttachmentIndex];
+      if Attachment^.Resource=ResourceTransition.fResource then begin
+       ImageResourceType:=Attachment^.ImageResourceType;
+       if (Attachment^.LoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and (ImageResourceType.fImageType in [TImageType.Surface,TImageType.Color,TImageType.Depth]) then begin
+        Attachment^.LoadOp:=TLoadOp.Values[ResourceTransition.fLoadOp.Kind];
+       end;
+       if (Attachment^.StencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and (ImageResourceType.fImageType in [TImageType.DepthStencil,TImageType.Stencil]) then begin
+        Attachment^.StencilLoadOp:=TLoadOp.Values[ResourceTransition.fLoadOp.Kind];
+       end;
+       case ResourceTransition.fLayout of
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
+         Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+        end;
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:begin
+         Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+        end;
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:begin
+         Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+        end;
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:begin
+         Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+        end;
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:begin
+         Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+        end;
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:begin
+         Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        end;
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:begin
+         Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        end;
+        VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR:begin
+         Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        end;
+        VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:begin
+         Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+        end;
+        VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:begin
+         Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+        end;
+        VK_IMAGE_LAYOUT_SHADING_RATE_OPTIMAL_NV:begin
+         Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+        end;
+       end;
+       Attachment^.FinalLayout:=ResourceTransition.fLayout;
+       if not Attachment^.ClearValueInitialized then begin
+        Attachment^.ClearValueInitialized:=true;
+        if ImageResourceType.fImageType in [TImageType.DepthStencil,TImageType.Stencil,TImageType.Depth] then begin
+         Attachment^.ClearValue.depthStencil.depth:=ResourceTransition.fLoadOp.ClearColor[0];
+         Attachment^.ClearValue.depthStencil.stencil:=trunc(ResourceTransition.fLoadOp.ClearColor[1]);
+        end else begin
+         Attachment^.ClearValue.color.float32[0]:=ResourceTransition.fLoadOp.ClearColor[0];
+         Attachment^.ClearValue.color.float32[1]:=ResourceTransition.fLoadOp.ClearColor[1];
+         Attachment^.ClearValue.color.float32[2]:=ResourceTransition.fLoadOp.ClearColor[2];
+         Attachment^.ClearValue.color.float32[3]:=ResourceTransition.fLoadOp.ClearColor[3];
+        end;
+       end;
+       break;
+      end;
+     end;
+    end;
+   end;
 
-  if assigned(fVulkanRenderPass) then begin
+   InputAttachments.Initialize;
+   ColorAttachments.Initialize;
+   ResolveAttachments.Initialize;
+   PreserveAttachments.Initialize;
+   try
+    for SubPassIndex:=0 to fSubPasses.Count-1 do begin
+     SubPass:=fSubPasses[SubPassIndex];
+
+     InputAttachments.Clear;
+     ColorAttachments.Clear;
+     ResolveAttachments.Clear;
+     PreserveAttachments.Clear;
+     DepthStencilAttachment:=-1;
+
+    end;
+   finally
+    InputAttachments.Finalize;
+    ColorAttachments.Finalize;
+    ResolveAttachments.Finalize;
+    PreserveAttachments.Finalize;
+   end;
 
    for SubPassDependencyIndex:=0 to fSubPassDependencies.Count-1 do begin
     SubPassDependency:=@fSubPassDependencies.Items[SubPassDependencyIndex];
@@ -2176,13 +2328,10 @@ begin
                                            SubPassDependency^.DependencyFlags);
    end;
 
+  finally
+   Attachments.Finalize;
   end;
 
- finally
-  InputAttachments.Finalize;
-  ColorAttachments.Finalize;
-  ResolveAttachments.Finalize;
-  PreserveAttachments.Finalize;
  end;
 
 end;
