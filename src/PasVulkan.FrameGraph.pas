@@ -885,34 +885,34 @@ begin
 end;
 
 constructor TpvFrameGraph.TImageSize.Create(const aKind:TImageSize.TKind;
-                                                 const aWidth:TpvFloat=1.0;
-                                                 const aHeight:TpvFloat=1.0;
-                                                 const aDepth:TpvFloat=1.0;
-                                                 const aLayers:TpvFloat=1.0);
+                                            const aWidth:TpvFloat=1.0;
+                                            const aHeight:TpvFloat=1.0;
+                                            const aDepth:TpvFloat=1.0;
+                                            const aLayers:TpvFloat=1.0);
 begin
  Kind:=aKind;
  Size:=TpvVector4.InlineableCreate(aWidth,aHeight,aDepth,aLayers);
 end;
 
 constructor TpvFrameGraph.TImageSize.Create(const aKind:TImageSize.TKind;
-                                                 const aSize:TpvVector2;
-                                                 const aDepth:TpvFloat=1.0;
-                                                 const aLayers:TpvFloat=1.0);
+                                            const aSize:TpvVector2;
+                                            const aDepth:TpvFloat=1.0;
+                                            const aLayers:TpvFloat=1.0);
 begin
  Kind:=aKind;
  Size:=TpvVector4.InlineableCreate(aSize.x,aSize.y,aDepth,aLayers);
 end;
 
 constructor TpvFrameGraph.TImageSize.Create(const aKind:TImageSize.TKind;
-                                                 const aSize:TpvVector3;
-                                                 const aLayers:TpvFloat=1.0);
+                                            const aSize:TpvVector3;
+                                            const aLayers:TpvFloat=1.0);
 begin
  Kind:=aKind;
  Size:=TpvVector4.InlineableCreate(aSize,aLayers);
 end;
 
 constructor TpvFrameGraph.TImageSize.Create(const aKind:TImageSize.TKind;
-                                                 const aSize:TpvVector4);
+                                            const aSize:TpvVector4);
 begin
  Kind:=aKind;
  Size:=aSize;
