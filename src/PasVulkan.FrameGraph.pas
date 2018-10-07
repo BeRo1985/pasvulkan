@@ -2130,6 +2130,7 @@ var AttachmentIndex,
     SubPass,
     OtherSubPass:TSubPass;
     RenderPass:TRenderPass;
+    Resource:TResource;
     ResourceType:TResourceType;
     ImageResourceType:TImageResourceType;
     ResourceTransition,
@@ -2149,6 +2150,10 @@ var AttachmentIndex,
     DstStageMask:TVkPipelineStageFlags;
     SubPassDependency:PSubPassDependency;
     Format:TVkFormat;
+    UsedNow,
+    UsedBefore,
+    UsedAfter,
+    IsSurfaceOrPersistent,
     HasResolveOutputs,
     Found:boolean;
     AttachmentDescriptionFlags:TVkAttachmentDescriptionFlags;
@@ -2364,34 +2369,34 @@ begin
 
      for AttachmentIndex:=0 to Attachments.Count-1 do begin
       Attachment:=@Attachments.Items[AttachmentIndex];
-      Found:=DepthStencilAttachment<>AttachmentIndex;
-      if not Found then begin
-       for OtherAttachmentIndex:=0 to InputAttachments.Count-1 do begin
-        if InputAttachments.Items[OtherAttachmentIndex]=AttachmentIndex then begin
-         Found:=true;
-         break;
-        end;
+      Resource:=Attachment^.Resource;
+      UsedNow:=false;
+      for ResourceTransition in SubPass.fRenderPass.fResourceTransitions do begin
+       if ResourceTransition.Resource=Resource then begin
+        UsedNow:=true;
+        break;
        end;
       end;
-      if not Found then begin
-       for OtherAttachmentIndex:=0 to ColorAttachments.Count-1 do begin
-        if ColorAttachments.Items[OtherAttachmentIndex]=AttachmentIndex then begin
-         Found:=true;
-         break;
-        end;
-       end;
-      end;
-      if not Found then begin
-       for OtherAttachmentIndex:=0 to ResolveAttachments.Count-1 do begin
-        if ResolveAttachments.Items[OtherAttachmentIndex]=AttachmentIndex then begin
-         Found:=true;
-         break;
-        end;
-       end;
-      end;
-      if not Found then begin
+      UsedBefore:=Resource.fMinimumPhysicalPassStepIndex<SubPass.fPhysicalRenderPass.fIndex;
+      UsedAfter:=SubPass.fPhysicalRenderPass.fIndex<Resource.fMaximumPhysicalPassStepIndex;
+      IsSurfaceOrPersistent:=(Attachment^.ImageResourceType.fImageType=TImageType.Surface) or Attachment^.ImageResourceType.fPersientent;
+      if UsedBefore and (not UsedNow) and (UsedAfter or IsSurfaceOrPersistent) then begin
        PreserveAttachments.Add(fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,
                                                                         Attachments.Items[AttachmentIndex].FinalLayout));
+      end;
+      if (SubPassIndex>0) and (UsedAfter or isSurfaceOrPersistent) then begin
+       case Attachment^.ImageResourceType.fImageType of
+        TImageType.Surface,TImageType.Color,TImageType.Depth:begin
+         Attachment^.StoreOp:=VK_ATTACHMENT_STORE_OP_STORE;
+        end;
+        TImageType.DepthStencil:begin
+         Attachment^.StoreOp:=VK_ATTACHMENT_STORE_OP_STORE;
+         Attachment^.StencilStoreOp:=VK_ATTACHMENT_STORE_OP_STORE;
+        end;
+        TImageType.Stencil:begin
+         Attachment^.StencilStoreOp:=VK_ATTACHMENT_STORE_OP_STORE;
+        end;
+       end;
       end;
      end;
 
