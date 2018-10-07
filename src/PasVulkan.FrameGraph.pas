@@ -2151,6 +2151,7 @@ var AttachmentIndex,
     Format:TVkFormat;
     HasResolveOutputs,
     Found:boolean;
+    AttachmentDescriptionFlags:TVkAttachmentDescriptionFlags;
 begin
 
  inherited AfterCreateSwapChain;
@@ -2361,6 +2362,39 @@ begin
       end;
      end;
 
+     for AttachmentIndex:=0 to Attachments.Count-1 do begin
+      Attachment:=@Attachments.Items[AttachmentIndex];
+      Found:=DepthStencilAttachment<>AttachmentIndex;
+      if not Found then begin
+       for OtherAttachmentIndex:=0 to InputAttachments.Count-1 do begin
+        if InputAttachments.Items[OtherAttachmentIndex]=AttachmentIndex then begin
+         Found:=true;
+         break;
+        end;
+       end;
+      end;
+      if not Found then begin
+       for OtherAttachmentIndex:=0 to ColorAttachments.Count-1 do begin
+        if ColorAttachments.Items[OtherAttachmentIndex]=AttachmentIndex then begin
+         Found:=true;
+         break;
+        end;
+       end;
+      end;
+      if not Found then begin
+       for OtherAttachmentIndex:=0 to ResolveAttachments.Count-1 do begin
+        if ResolveAttachments.Items[OtherAttachmentIndex]=AttachmentIndex then begin
+         Found:=true;
+         break;
+        end;
+       end;
+      end;
+      if not Found then begin
+       PreserveAttachments.Add(fVulkanRenderPass.AddAttachmentReference(AttachmentIndex,
+                                                                        Attachments.Items[AttachmentIndex].FinalLayout));
+      end;
+     end;
+
      InputAttachments.Finish;
      ColorAttachments.Finish;
      ResolveAttachments.Finish;
@@ -2369,6 +2403,15 @@ begin
      if DepthStencilAttachment<0 then begin
       DepthStencilAttachment:=VK_ATTACHMENT_UNUSED;
      end;
+
+     fVulkanRenderPass.AddSubpassDescription(0,
+                                             VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                             InputAttachments.Items,
+                                             ColorAttachments.Items,
+                                             ResolveAttachments.Items,
+                                             DepthStencilAttachment,
+                                             PreserveAttachments.Items
+                                            );
 
     end;
    finally
@@ -2398,6 +2441,26 @@ begin
                                            SubPassDependency^.DstAccessMask,
                                            SubPassDependency^.DependencyFlags);
    end;
+
+   for AttachmentIndex:=0 to Attachments.Count-1 do begin
+    Attachment:=@Attachments.Items[AttachmentIndex];
+    AttachmentDescriptionFlags:=0;
+    if Attachment^.Resource.fResourceReuseGroup.fResources.Count>1 then begin
+     AttachmentDescriptionFlags:=AttachmentDescriptionFlags or TVkAttachmentDescriptionFlags(VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT);
+    end;
+    fVulkanRenderPass.AddAttachmentDescription(AttachmentDescriptionFlags,
+                                               Attachment^.Format,
+                                               Attachment^.ImageResourceType.fSamples,
+                                               Attachment^.LoadOp,
+                                               Attachment^.StoreOp,
+                                               Attachment^.StencilLoadOp,
+                                               Attachment^.StencilStoreOp,
+                                               Attachment^.InitialLayout,
+                                               Attachment^.FinalLayout
+                                              );
+   end;
+
+   fVulkanRenderPass.Initialize;
 
   finally
    Attachments.Finalize;
