@@ -619,19 +619,19 @@ type EpvFrameGraph=class(Exception);
               function GetEnabled:boolean;
               procedure SetEnabled(const aEnabled:boolean);
               procedure SetName(const aName:TpvRawByteString);
-              function AddResource(const aResourceTypeName:TpvRawByteString;
-                                   const aResourceName:TpvRawByteString;
-                                   const aKind:TResourceTransition.TKind;
-                                   const aFlags:TResourceTransition.TFlags;
-                                   const aLayout:TVkImageLayout;
-                                   const aLoadOp:TLoadOp):TResourceTransition; overload;
-              function AddResource(const aResourceTypeName:TpvRawByteString;
-                                   const aResourceName:TpvRawByteString;
-                                   const aKind:TResourceTransition.TKind;
-                                   const aFlags:TResourceTransition.TFlags;
-                                   const aPipelineStage:TVkPipelineStageFlags;
-                                   const aAccessFlags:TVkAccessFlags;
-                                   const aBufferSubresourceRange:TBufferSubresourceRange):TResourceTransition; overload;
+              function AddImageResource(const aResourceTypeName:TpvRawByteString;
+                                        const aResourceName:TpvRawByteString;
+                                        const aKind:TResourceTransition.TKind;
+                                        const aFlags:TResourceTransition.TFlags;
+                                        const aLayout:TVkImageLayout;
+                                        const aLoadOp:TLoadOp):TResourceTransition; overload;
+              function AddBufferResource(const aResourceTypeName:TpvRawByteString;
+                                         const aResourceName:TpvRawByteString;
+                                         const aKind:TResourceTransition.TKind;
+                                         const aFlags:TResourceTransition.TFlags;
+                                         const aPipelineStage:TVkPipelineStageFlags;
+                                         const aAccessFlags:TVkAccessFlags;
+                                         const aBufferSubresourceRange:TBufferSubresourceRange):TResourceTransition; overload;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
@@ -1527,12 +1527,12 @@ begin
  end;
 end;
 
-function TpvFrameGraph.TPass.AddResource(const aResourceTypeName:TpvRawByteString;
-                                         const aResourceName:TpvRawByteString;
-                                         const aKind:TResourceTransition.TKind;
-                                         const aFlags:TResourceTransition.TFlags;
-                                         const aLayout:TVkImageLayout;
-                                         const aLoadOp:TLoadOp):TResourceTransition;
+function TpvFrameGraph.TPass.AddImageResource(const aResourceTypeName:TpvRawByteString;
+                                              const aResourceName:TpvRawByteString;
+                                              const aKind:TResourceTransition.TKind;
+                                              const aFlags:TResourceTransition.TFlags;
+                                              const aLayout:TVkImageLayout;
+                                              const aLoadOp:TLoadOp):TResourceTransition;
 var ResourceType:TResourceType;
     Resource:TResource;
 begin
@@ -1561,13 +1561,13 @@ begin
  fFrameGraph.fValid:=false;
 end;
 
-function TpvFrameGraph.TPass.AddResource(const aResourceTypeName:TpvRawByteString;
-                                         const aResourceName:TpvRawByteString;
-                                         const aKind:TResourceTransition.TKind;
-                                         const aFlags:TResourceTransition.TFlags;
-                                         const aPipelineStage:TVkPipelineStageFlags;
-                                         const aAccessFlags:TVkAccessFlags;
-                                         const aBufferSubresourceRange:TBufferSubresourceRange):TResourceTransition;
+function TpvFrameGraph.TPass.AddBufferResource(const aResourceTypeName:TpvRawByteString;
+                                               const aResourceName:TpvRawByteString;
+                                               const aKind:TResourceTransition.TKind;
+                                               const aFlags:TResourceTransition.TFlags;
+                                               const aPipelineStage:TVkPipelineStageFlags;
+                                               const aAccessFlags:TVkAccessFlags;
+                                               const aBufferSubresourceRange:TBufferSubresourceRange):TResourceTransition;
 var ResourceType:TResourceType;
     Resource:TResource;
 begin
@@ -1602,12 +1602,12 @@ procedure TpvFrameGraph.TPass.AddImageInput(const aResourceTypeName:TpvRawByteSt
                                             const aLayout:TVkImageLayout;
                                             const aFlags:TResourceTransition.TFlags=[]);
 begin
- AddResource(aResourceTypeName,
-             aResourceName,
-             TResourceTransition.TKind.ImageInput,
-             aFlags,
-             aLayout,
-             TLoadOp.Create(TLoadOp.TKind.Load));
+ AddImageResource(aResourceTypeName,
+                  aResourceName,
+                  TResourceTransition.TKind.ImageInput,
+                  aFlags,
+                  aLayout,
+                  TLoadOp.Create(TLoadOp.TKind.Load));
 end;
 
 procedure TpvFrameGraph.TPass.AddImageOutput(const aResourceTypeName:TpvRawByteString;
@@ -1616,12 +1616,12 @@ procedure TpvFrameGraph.TPass.AddImageOutput(const aResourceTypeName:TpvRawByteS
                                              const aLoadOp:TLoadOp;
                                              const aFlags:TResourceTransition.TFlags=[]);
 begin
- AddResource(aResourceTypeName,
-             aResourceName,
-             TResourceTransition.TKind.ImageOutput,
-             aFlags,
-             aLayout,
-             aLoadOp);
+ AddImageResource(aResourceTypeName,
+                  aResourceName,
+                  TResourceTransition.TKind.ImageOutput,
+                  aFlags,
+                  aLayout,
+                  aLoadOp);
 end;
 
 procedure TpvFrameGraph.TPass.AddImageResolveOutput(const aResourceTypeName:TpvRawByteString;
@@ -1636,12 +1636,12 @@ begin
  if not assigned(ResourceSource) then begin
   raise EpvFrameGraph.Create('Invalid source resource');
  end;
- AddResource(aResourceTypeName,
-             aResourceName,
-             TResourceTransition.TKind.ImageResolveOutput,
-             aFlags,
-             aLayout,
-             aLoadOp).fResolveResource:=ResourceSource;
+ AddImageResource(aResourceTypeName,
+                  aResourceName,
+                  TResourceTransition.TKind.ImageResolveOutput,
+                  aFlags,
+                  aLayout,
+                  aLoadOp).fResolveResource:=ResourceSource;
 end;
 
 procedure TpvFrameGraph.TPass.AddImageDepthInput(const aResourceTypeName:TpvRawByteString;
@@ -1649,12 +1649,12 @@ procedure TpvFrameGraph.TPass.AddImageDepthInput(const aResourceTypeName:TpvRawB
                                                  const aLayout:TVkImageLayout;
                                                  const aFlags:TResourceTransition.TFlags=[]);
 begin
- AddResource(aResourceTypeName,
-             aResourceName,
-             TResourceTransition.TKind.ImageDepthInput,
-             aFlags,
-             aLayout,
-             TLoadOp.Create(TLoadOp.TKind.Load));
+ AddImageResource(aResourceTypeName,
+                  aResourceName,
+                  TResourceTransition.TKind.ImageDepthInput,
+                  aFlags,
+                  aLayout,
+                  TLoadOp.Create(TLoadOp.TKind.Load));
 end;
 
 procedure TpvFrameGraph.TPass.AddImageDepthOutput(const aResourceTypeName:TpvRawByteString;
@@ -1663,12 +1663,12 @@ procedure TpvFrameGraph.TPass.AddImageDepthOutput(const aResourceTypeName:TpvRaw
                                                   const aLoadOp:TLoadOp;
                                                   const aFlags:TResourceTransition.TFlags=[]);
 begin
- AddResource(aResourceTypeName,
-             aResourceName,
-             TResourceTransition.TKind.ImageDepthOutput,
-             aFlags,
-             aLayout,
-             aLoadOp);
+ AddImageResource(aResourceTypeName,
+                  aResourceName,
+                  TResourceTransition.TKind.ImageDepthOutput,
+                  aFlags,
+                  aLayout,
+                  aLoadOp);
 end;
 
 procedure TpvFrameGraph.TPass.AddBufferInput(const aResourceTypeName:TpvRawByteString;
@@ -1678,13 +1678,13 @@ procedure TpvFrameGraph.TPass.AddBufferInput(const aResourceTypeName:TpvRawByteS
                                              const aBufferSubresourceRange:TBufferSubresourceRange;
                                              const aFlags:TResourceTransition.TFlags=[]);
 begin
- AddResource(aResourceTypeName,
-             aResourceName,
-             TResourceTransition.TKind.BufferInput,
-             aFlags,
-             aPipelineStage,
-             aAccessFlags,
-             aBufferSubresourceRange);
+ AddBufferResource(aResourceTypeName,
+                   aResourceName,
+                   TResourceTransition.TKind.BufferInput,
+                   aFlags,
+                   aPipelineStage,
+                   aAccessFlags,
+                   aBufferSubresourceRange);
 end;
 
 procedure TpvFrameGraph.TPass.AddBufferInput(const aResourceTypeName:TpvRawByteString;
@@ -1708,13 +1708,13 @@ procedure TpvFrameGraph.TPass.AddBufferOutput(const aResourceTypeName:TpvRawByte
                                               const aBufferSubresourceRange:TBufferSubresourceRange;
                                               const aFlags:TResourceTransition.TFlags=[]);
 begin
- AddResource(aResourceTypeName,
-             aResourceName,
-             TResourceTransition.TKind.BufferOutput,
-             aFlags,
-             aPipelineStage,
-             aAccessFlags,
-             aBufferSubresourceRange);
+ AddBufferResource(aResourceTypeName,
+                   aResourceName,
+                   TResourceTransition.TKind.BufferOutput,
+                   aFlags,
+                   aPipelineStage,
+                   aAccessFlags,
+                   aBufferSubresourceRange);
 end;
 
 procedure TpvFrameGraph.TPass.AddBufferOutput(const aResourceTypeName:TpvRawByteString;
