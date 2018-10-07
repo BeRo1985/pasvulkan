@@ -777,6 +777,7 @@ type EpvFrameGraph=class(Exception);
        fGraphicsQueue:TQueue;
        fComputeQueue:TQueue;
        fTransferQueue:TQueue;
+       fPresentQueue:TQueue;
        fResourceTypes:TResourceTypeList;
        fResourceTypeNameHashMap:TResourceTypeNameHashMap;
        fResources:TResourceList;
@@ -847,6 +848,7 @@ type EpvFrameGraph=class(Exception);
        property GraphicsQueue:TQueue read fGraphicsQueue;
        property ComputeQueue:TQueue read fComputeQueue;
        property TransferQueue:TQueue read fTransferQueue;
+       property PresentQueue:TQueue read fPresentQueue;
        property ResourceTypes:TResourceTypeList read fResourceTypes;
        property ResourceTypeByName:TResourceTypeNameHashMap read fResourceTypeNameHashMap;
        property Resources:TResourceList read fResources;
@@ -2443,6 +2445,8 @@ begin
  fComputeQueue:=AddQueue(fVulkanDevice.ComputeQueue);
 
  fTransferQueue:=AddQueue(fVulkanDevice.TransferQueue);
+
+ fPresentQueue:=AddQueue(fVulkanDevice.PresentQueue);
 
  fVulkanUniversalQueueCommandBuffer:=TpvVulkanCommandBuffer.Create(fUniversalQueue.fCommandPool,
                                                                    VK_COMMAND_BUFFER_LEVEL_PRIMARY);
