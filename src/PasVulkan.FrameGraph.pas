@@ -4090,7 +4090,7 @@ begin
     PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
     if PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
      PhysicalComputePass.Execute;
-     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)]:=PhysicalComputePass.fSubmitInfos[fDrawSwapChainImageIndex];
+     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalComputePass.fSubmitInfos[fDrawSwapChainImageIndex];
     end;
    end else if PhysicalPass is TPhysicalRenderPass then begin
     PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
@@ -4098,7 +4098,7 @@ begin
      PhysicalRenderPassSubPass:=PhysicalRenderPass.fSubPasses[SubPassIndex];
      if PhysicalRenderPassSubPass.fRenderPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
       PhysicalRenderPass.Execute;
-      Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)]:=PhysicalRenderPass.fSubmitInfos[fDrawSwapChainImageIndex];
+      Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalRenderPass.fSubmitInfos[fDrawSwapChainImageIndex];
       break;
      end;
     end;
