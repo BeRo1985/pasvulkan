@@ -600,20 +600,20 @@ type EpvFrameGraph=class(Exception);
                    TAttachmentReferences=TpvDynamicArray<TVkAttachmentReference>;
                    TInt32AttachmentLists=TpvDynamicArray<TpvInt32>;
                    TUInt32AttachmentLists=TpvDynamicArray<TpvUInt32>;
-                   TSubPass=class;
-                   TSubPasses=TpvObjectGenericList<TSubPass>;
-                   TSubPassDependency=record
-                    SrcSubPass:TSubPass;
-                    DstSubPass:TSubPass;
+                   TSubpass=class;
+                   TSubpasses=TpvObjectGenericList<TSubpass>;
+                   TSubpassDependency=record
+                    SrcSubpass:TSubpass;
+                    DstSubpass:TSubpass;
                     SrcStageMask:TVkPipelineStageFlags;
                     DstStageMask:TVkPipelineStageFlags;
                     SrcAccessMask:TVkAccessFlags;
                     DstAccessMask:TVkAccessFlags;
                     DependencyFlags:TVkDependencyFlags;
                    end;
-                   PSubPassDependency=^TSubPassDependency;
-                   TSubPassDependencies=TpvDynamicArray<TSubPassDependency>;
-                   TSubPass=class
+                   PSubpassDependency=^TSubpassDependency;
+                   TSubpassDependencies=TpvDynamicArray<TSubpassDependency>;
+                   TSubpass=class
                     private
                      fPhysicalRenderPass:TPhysicalRenderPass;
                      fIndex:TpvSizeInt;
@@ -633,10 +633,10 @@ type EpvFrameGraph=class(Exception);
                      procedure BeforeDestroySwapChain; virtual;
                    end;
              private
-              fSubPasses:TSubPasses;
-              fSubPassDependencies:TSubPassDependencies;
+              fSubpasses:TSubpasses;
+              fSubpassDependencies:TSubpassDependencies;
               fMultiView:boolean;
-              fHasSurfaceSubPassDependencies:boolean;
+              fHasSurfaceSubpassDependencies:boolean;
               fAttachments:TAttachments;
               fAttachmentReferences:TAttachmentReferences;
               fVulkanRenderPass:TpvVulkanRenderPass;
@@ -659,7 +659,7 @@ type EpvFrameGraph=class(Exception);
                      Used,
                      Processed,
                      Marked,
-                     SubPass
+                     Subpass
                     );
                    PFlag=^TFlag;
                    TFlags=set of TFlag;
@@ -760,7 +760,7 @@ type EpvFrameGraph=class(Exception);
              private
               fMultiViewMask:TpvUInt32;
               fSize:TImageSize;
-              fPhysicalRenderPassSubPass:TPhysicalRenderPass.TSubPass;
+              fPhysicalRenderPassSubpass:TPhysicalRenderPass.TSubpass;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); override;
               destructor Destroy; override;
@@ -880,27 +880,27 @@ type EpvFrameGraph=class(Exception);
 
 implementation
 
-function ComparePhysicalRenderPassSubPassDependencies(const a,b:TpvFrameGraph.TPhysicalRenderPass.TSubpassDependency):TpvInt32;
- function GetSrcSubPassIndex(const aSubpassDependency:TpvFrameGraph.TPhysicalRenderPass.TSubpassDependency):TpvInt64;
+function ComparePhysicalRenderPassSubpassDependencies(const a,b:TpvFrameGraph.TPhysicalRenderPass.TSubpassDependency):TpvInt32;
+ function GetSrcSubpassIndex(const aSubpassDependency:TpvFrameGraph.TPhysicalRenderPass.TSubpassDependency):TpvInt64;
  begin
-  if assigned(aSubpassDependency.SrcSubPass) then begin
-   result:=aSubpassDependency.SrcSubPass.fIndex;
+  if assigned(aSubpassDependency.SrcSubpass) then begin
+   result:=aSubpassDependency.SrcSubpass.fIndex;
   end else begin
    result:=-1;
   end;
  end;
- function GetDstSubPassIndex(const aSubpassDependency:TpvFrameGraph.TPhysicalRenderPass.TSubpassDependency):TpvInt64;
+ function GetDstSubpassIndex(const aSubpassDependency:TpvFrameGraph.TPhysicalRenderPass.TSubpassDependency):TpvInt64;
  begin
-  if assigned(aSubpassDependency.DstSubPass) then begin
-   result:=aSubpassDependency.DstSubPass.fIndex;
+  if assigned(aSubpassDependency.DstSubpass) then begin
+   result:=aSubpassDependency.DstSubpass.fIndex;
   end else begin
    result:=TpvInt64(High(TpvUInt32))+1;
   end;
  end;
 begin
- result:=TpvInt64(Sign(TpvInt64(GetSrcSubPassIndex(a)-GetSrcSubPassIndex(b))));
+ result:=TpvInt64(Sign(TpvInt64(GetSrcSubpassIndex(a)-GetSrcSubpassIndex(b))));
  if result=0 then begin
-  result:=TpvInt64(Sign(TpvInt64(GetDstSubPassIndex(a)-GetDstSubPassIndex(b))));
+  result:=TpvInt64(Sign(TpvInt64(GetDstSubpassIndex(a)-GetDstSubpassIndex(b))));
  end;
 end;
 
@@ -1868,7 +1868,7 @@ end;
 constructor TpvFrameGraph.TRenderPass.Create(const aFrameGraph:TpvFrameGraph);
 begin
  inherited Create(aFrameGraph);
- fPhysicalRenderPassSubPass:=nil;
+ fPhysicalRenderPassSubpass:=nil;
 end;
 
 destructor TpvFrameGraph.TRenderPass.Destroy;
@@ -2188,9 +2188,9 @@ begin
  CommandBuffer.EndRecording;
 end;
 
-{ TpvFrameGraph.TVulkanRenderPass.TSubPass }
+{ TpvFrameGraph.TVulkanRenderPass.TSubpass }
 
-constructor TpvFrameGraph.TPhysicalRenderPass.TSubPass.Create(const aPhysicalRenderPass:TPhysicalRenderPass;
+constructor TpvFrameGraph.TPhysicalRenderPass.TSubpass.Create(const aPhysicalRenderPass:TPhysicalRenderPass;
                                                               const aRenderPass:TRenderPass);
 begin
  inherited Create;
@@ -2203,7 +2203,7 @@ begin
  fDepthStencilAttachment:=-1;
 end;
 
-destructor TpvFrameGraph.TPhysicalRenderPass.TSubPass.Destroy;
+destructor TpvFrameGraph.TPhysicalRenderPass.TSubpass.Destroy;
 begin
  fInputAttachments.Finalize;
  fColorAttachments.Finalize;
@@ -2212,19 +2212,19 @@ begin
  inherited Destroy;
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.TSubPass.Show;
+procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.Show;
 begin
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.TSubPass.Hide;
+procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.Hide;
 begin
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.TSubPass.AfterCreateSwapChain;
+procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.AfterCreateSwapChain;
 begin
 end;
 
-procedure TpvFrameGraph.TPhysicalRenderPass.TSubPass.BeforeDestroySwapChain;
+procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.BeforeDestroySwapChain;
 begin
 end;
 
@@ -2234,11 +2234,11 @@ constructor TpvFrameGraph.TPhysicalRenderPass.Create(const aFrameGraph:TpvFrameG
 var SwapChainImageIndex:TpvSizeInt;
 begin
  inherited Create(aFrameGraph,aQueue);
- fSubPasses:=TSubPasses.Create;
- fSubPasses.OwnsObjects:=true;
- fSubPassDependencies.Initialize;
+ fSubpasses:=TSubpasses.Create;
+ fSubpasses.OwnsObjects:=true;
+ fSubpassDependencies.Initialize;
  fMultiView:=false;
- fHasSurfaceSubPassDependencies:=false;
+ fHasSurfaceSubpassDependencies:=false;
  fAttachments.Initialize;
  fAttachmentReferences.Initialize;
  fVulkanRenderPass:=nil;
@@ -2250,31 +2250,31 @@ end;
 destructor TpvFrameGraph.TPhysicalRenderPass.Destroy;
 var SwapChainImageIndex:TpvSizeInt;
 begin
- fSubPassDependencies.Finalize;
+ fSubpassDependencies.Finalize;
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fVulkanFrameBuffers[SwapChainImageIndex]);
  end;
  FreeAndNil(fVulkanRenderPass);
  fAttachments.Finalize;
  fAttachmentReferences.Finalize;
- FreeAndNil(fSubPasses);
+ FreeAndNil(fSubpasses);
  inherited Destroy;
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.Show;
-var SubPass:TSubPass;
+var Subpass:TSubpass;
 begin
  inherited Show;
- for SubPass in fSubPasses do begin
-  SubPass.Show;
+ for Subpass in fSubpasses do begin
+  Subpass.Show;
  end;
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.Hide;
-var SubPass:TSubPass;
+var Subpass:TSubpass;
 begin
- for SubPass in fSubPasses do begin
-  SubPass.Hide;
+ for Subpass in fSubpasses do begin
+  Subpass.Hide;
  end;
  inherited Hide;
 end;
@@ -2282,34 +2282,34 @@ end;
 procedure TpvFrameGraph.TPhysicalRenderPass.AfterCreateSwapChain;
 var AttachmentIndex,
     AttachmentReferenceIndex,
-    SubPassIndex,
-    SubPassDependencyIndex,
+    SubpassIndex,
+    SubpassDependencyIndex,
     SwapChainImageIndex,
     Width,
     Height,
     Layers:TpvSizeInt;
-    SrcSubPassIndex,
-    DstSubPassIndex:TVkUInt32;
+    SrcSubpassIndex,
+    DstSubpassIndex:TVkUInt32;
     Attachment:PAttachment;
     AttachmentReference:PVkAttachmentReference;
-    SubPass:TSubPass;
-    SubPassDependency:PSubPassDependency;
+    Subpass:TSubpass;
+    SubpassDependency:PSubpassDependency;
     RenderPass:TRenderPass;
     ResourcePhysicalImageData:TResourcePhysicalImageData;
     AttachmentDescriptionFlags:TVkAttachmentDescriptionFlags;
 begin
  inherited AfterCreateSwapChain;
 
- for SubPass in fSubPasses do begin
-  SubPass.AfterCreateSwapChain;
+ for Subpass in fSubpasses do begin
+  Subpass.AfterCreateSwapChain;
  end;
 
  Width:=1;
  Height:=1;
  Layers:=1;
 
- for SubPass in fSubPasses do begin
-  RenderPass:=SubPass.fRenderPass;
+ for Subpass in fSubpasses do begin
+  RenderPass:=Subpass.fRenderPass;
   case RenderPass.fSize.Kind of
    TpvFrameGraph.TImageSize.TKind.Absolute:begin
     Width:=Max(1,trunc(RenderPass.fSize.Size.x));
@@ -2355,37 +2355,37 @@ begin
                                            AttachmentReference^.Layout);
  end;
 
- for SubPassIndex:=0 to fSubPasses.Count-1 do begin
-  SubPass:=fSubPasses[SubPassIndex];
+ for SubpassIndex:=0 to fSubpasses.Count-1 do begin
+  Subpass:=fSubpasses[SubpassIndex];
   fVulkanRenderPass.AddSubpassDescription(0,
                                           VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                          SubPass.fInputAttachments.Items,
-                                          SubPass.fColorAttachments.Items,
-                                          SubPass.fResolveAttachments.Items,
-                                          SubPass.fDepthStencilAttachment,
-                                          SubPass.fPreserveAttachments.Items
+                                          Subpass.fInputAttachments.Items,
+                                          Subpass.fColorAttachments.Items,
+                                          Subpass.fResolveAttachments.Items,
+                                          Subpass.fDepthStencilAttachment,
+                                          Subpass.fPreserveAttachments.Items
                                          );
  end;
 
- for SubPassDependencyIndex:=0 to fSubPassDependencies.Count-1 do begin
-  SubPassDependency:=@fSubPassDependencies.Items[SubPassDependencyIndex];
-  if assigned(SubPassDependency^.SrcSubPass) then begin
-   SrcSubPassIndex:=SubPassDependency^.SrcSubPass.fIndex;
+ for SubpassDependencyIndex:=0 to fSubpassDependencies.Count-1 do begin
+  SubpassDependency:=@fSubpassDependencies.Items[SubpassDependencyIndex];
+  if assigned(SubpassDependency^.SrcSubpass) then begin
+   SrcSubpassIndex:=SubpassDependency^.SrcSubpass.fIndex;
   end else begin
-   SrcSubPassIndex:=VK_SUBPASS_EXTERNAL;
+   SrcSubpassIndex:=VK_Subpass_EXTERNAL;
   end;
-  if assigned(SubPassDependency.DstSubPass) then begin
-   DstSubPassIndex:=SubPassDependency^.DstSubPass.fIndex;
+  if assigned(SubpassDependency.DstSubpass) then begin
+   DstSubpassIndex:=SubpassDependency^.DstSubpass.fIndex;
   end else begin
-   DstSubPassIndex:=VK_SUBPASS_EXTERNAL;
+   DstSubpassIndex:=VK_Subpass_EXTERNAL;
   end;
-  fVulkanRenderPass.AddSubpassDependency(SrcSubPassIndex,
-                                         DstSubPassIndex,
-                                         SubPassDependency^.SrcStageMask,
-                                         SubPassDependency^.DstStageMask,
-                                         SubPassDependency^.SrcAccessMask,
-                                         SubPassDependency^.DstAccessMask,
-                                         SubPassDependency^.DependencyFlags);
+  fVulkanRenderPass.AddSubpassDependency(SrcSubpassIndex,
+                                         DstSubpassIndex,
+                                         SubpassDependency^.SrcStageMask,
+                                         SubpassDependency^.DstStageMask,
+                                         SubpassDependency^.SrcAccessMask,
+                                         SubpassDependency^.DstAccessMask,
+                                         SubpassDependency^.DependencyFlags);
  end;
 
  fVulkanRenderPass.Initialize;
@@ -2419,7 +2419,7 @@ end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.BeforeDestroySwapChain;
 var SwapChainImageIndex:TpvSizeInt;
-    SubPass:TSubPass;
+    Subpass:TSubpass;
 begin
 
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
@@ -2428,8 +2428,8 @@ begin
 
  FreeAndNil(fVulkanRenderPass);
 
- for SubPass in fSubPasses do begin
-  SubPass.BeforeDestroySwapChain;
+ for Subpass in fSubpasses do begin
+  Subpass.BeforeDestroySwapChain;
  end;
 
  inherited BeforeDestroySwapChain;
@@ -2437,8 +2437,8 @@ begin
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.Execute;
-var SubPassIndex:TpvSizeInt;
-    SubPass:TSubPass;
+var SubpassIndex:TpvSizeInt;
+    Subpass:TSubpass;
     CommandBuffer:TpvVulkanCommandBuffer;
 begin
  inherited Execute;
@@ -2447,17 +2447,17 @@ begin
  fBeforePipelineBarrierGroups.Execute(CommandBuffer);
  fVulkanRenderPass.BeginRenderPass(CommandBuffer,
                                    fVulkanFrameBuffers[fFrameGraph.fDrawSwapChainImageIndex],
-                                   VK_SUBPASS_CONTENTS_INLINE,
+                                   VK_Subpass_CONTENTS_INLINE,
                                    0,
                                    0,
                                    fVulkanFrameBuffers[fFrameGraph.fDrawSwapChainImageIndex].Width,
                                    fVulkanFrameBuffers[fFrameGraph.fDrawSwapChainImageIndex].Height);
- for SubPassIndex:=0 to fSubPasses.Count-1 do begin
-  SubPass:=fSubPasses[SubPassIndex];
-  if SubPass.fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
-   SubPass.fRenderPass.Execute(CommandBuffer,fFrameGraph.fDrawSwapChainImageIndex,fFrameGraph.fDrawFrameIndex);
+ for SubpassIndex:=0 to fSubpasses.Count-1 do begin
+  Subpass:=fSubpasses[SubpassIndex];
+  if Subpass.fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
+   Subpass.fRenderPass.Execute(CommandBuffer,fFrameGraph.fDrawSwapChainImageIndex,fFrameGraph.fDrawFrameIndex);
   end;
-  CommandBuffer.CmdNextSubpass(VK_SUBPASS_CONTENTS_INLINE);
+  CommandBuffer.CmdNextSubpass(VK_Subpass_CONTENTS_INLINE);
  end;
  fVulkanRenderPass.EndRenderPass(CommandBuffer);
  fAfterPipelineBarrierGroups.Execute(CommandBuffer);
@@ -2963,7 +2963,7 @@ type TBeforeAfter=(Before,After);
    for Pass in fPasses do begin
     Pass.fPhysicalPass:=nil;
     if Pass is TRenderPass then begin
-     TRenderPass(Pass).fPhysicalRenderPassSubPass:=nil;
+     TRenderPass(Pass).fPhysicalRenderPassSubpass:=nil;
     end;
     Pass.fFlags:=Pass.fFlags-[TPass.TFlag.Used,TPass.TFlag.Processed,TPass.TFlag.Marked];
     Pass.fPreviousPasses.Clear;
@@ -2999,7 +2999,7 @@ type TBeforeAfter=(Before,After);
         end;
        end;
        if Pass is TRenderPass then begin
-        // Pre-sort for better subpass grouping at a later point
+        // Pre-sort for better Subpass grouping at a later point
         Index:=0;
         Count:=Pass.fPreviousPasses.Count;
         while (Index+1)<Count do begin
@@ -3075,8 +3075,8 @@ type TBeforeAfter=(Before,After);
     PhysicalRenderPass:=TPhysicalRenderPass.Create(self,Pass.fQueue);
     Pass.fPhysicalPass:=PhysicalRenderPass;
     Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
-    TRenderPass(Pass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(Pass));
-    TRenderPass(Pass).fPhysicalRenderPassSubPass.fIndex:=PhysicalRenderPass.fSubPasses.Add(TRenderPass(Pass).fPhysicalRenderPassSubPass);
+    TRenderPass(Pass).fPhysicalRenderPassSubpass:=TPhysicalRenderPass.TSubpass.Create(PhysicalRenderPass,TRenderPass(Pass));
+    TRenderPass(Pass).fPhysicalRenderPassSubpass.fIndex:=PhysicalRenderPass.fSubpasses.Add(TRenderPass(Pass).fPhysicalRenderPassSubpass);
     PhysicalRenderPass.fMultiView:=TRenderPass(Pass).fMultiViewMask<>0;
     inc(Index);
     if not (TPass.TFlag.Toggleable in Pass.fFlags) then begin
@@ -3087,8 +3087,8 @@ type TBeforeAfter=(Before,After);
          (TRenderPass(OtherPass).fQueue=TRenderPass(Pass).fQueue) and
          (TRenderPass(OtherPass).fSize=TRenderPass(Pass).fSize) then begin
        OtherPass.fPhysicalPass:=Pass.fPhysicalPass;
-       TRenderPass(OtherPass).fPhysicalRenderPassSubPass:=TPhysicalRenderPass.TSubPass.Create(PhysicalRenderPass,TRenderPass(OtherPass));
-       TRenderPass(OtherPass).fPhysicalRenderPassSubPass.fIndex:=PhysicalRenderPass.fSubPasses.Add(TRenderPass(OtherPass).fPhysicalRenderPassSubPass);
+       TRenderPass(OtherPass).fPhysicalRenderPassSubpass:=TPhysicalRenderPass.TSubpass.Create(PhysicalRenderPass,TRenderPass(OtherPass));
+       TRenderPass(OtherPass).fPhysicalRenderPassSubpass.fIndex:=PhysicalRenderPass.fSubpasses.Add(TRenderPass(OtherPass).fPhysicalRenderPassSubpass);
        PhysicalRenderPass.fMultiView:=PhysicalRenderPass.fMultiView or (TRenderPass(OtherPass).fMultiViewMask<>0);
        fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,OtherPass.fPhysicalPass.fIndex);
        inc(Index);
@@ -3332,27 +3332,27 @@ type TBeforeAfter=(Before,After);
    end;
   end;
  end;
- procedure CreatePhysicalPassPipelineBarriersAndPhysicalRenderPassSubPassDependencies;
-  procedure AddSubPassDependency(const aSubPassDependencies:TPhysicalRenderPass.TSubPassDependencies;
-                                 const aSubPassDependency:TPhysicalRenderPass.TSubPassDependency);
+ procedure CreatePhysicalPassPipelineBarriersAndPhysicalRenderPassSubpassDependencies;
+  procedure AddSubpassDependency(const aSubpassDependencies:TPhysicalRenderPass.TSubpassDependencies;
+                                 const aSubpassDependency:TPhysicalRenderPass.TSubpassDependency);
   var Index:TpvSizeInt;
-      SubPassDependency:TPhysicalRenderPass.PSubPassDependency;
+      SubpassDependency:TPhysicalRenderPass.PSubpassDependency;
   begin
-   SubPassDependency:=nil;
-   for Index:=0 to aSubPassDependencies.Count-1 do begin
-    if (aSubPassDependencies.Items[Index].SrcSubPass=aSubPassDependency.SrcSubPass) and
-       (aSubPassDependencies.Items[Index].DstSubPass=aSubPassDependency.DstSubPass) then begin
-     SubPassDependency:=@aSubPassDependencies.Items[Index];
+   SubpassDependency:=nil;
+   for Index:=0 to aSubpassDependencies.Count-1 do begin
+    if (aSubpassDependencies.Items[Index].SrcSubpass=aSubpassDependency.SrcSubpass) and
+       (aSubpassDependencies.Items[Index].DstSubpass=aSubpassDependency.DstSubpass) then begin
+     SubpassDependency:=@aSubpassDependencies.Items[Index];
     end;
    end;
-   if assigned(SubPassDependency) then begin
-    SubPassDependency^.SrcStageMask:=SubPassDependency^.SrcStageMask or aSubPassDependency.SrcStageMask;
-    SubPassDependency^.DstStageMask:=SubPassDependency^.DstStageMask or aSubPassDependency.DstStageMask;
-    SubPassDependency^.SrcAccessMask:=SubPassDependency^.SrcAccessMask or aSubPassDependency.SrcAccessMask;
-    SubPassDependency^.DstAccessMask:=SubPassDependency^.DstAccessMask or aSubPassDependency.DstAccessMask;
-    SubPassDependency^.DependencyFlags:=SubPassDependency^.DependencyFlags or aSubPassDependency.DependencyFlags;
+   if assigned(SubpassDependency) then begin
+    SubpassDependency^.SrcStageMask:=SubpassDependency^.SrcStageMask or aSubpassDependency.SrcStageMask;
+    SubpassDependency^.DstStageMask:=SubpassDependency^.DstStageMask or aSubpassDependency.DstStageMask;
+    SubpassDependency^.SrcAccessMask:=SubpassDependency^.SrcAccessMask or aSubpassDependency.SrcAccessMask;
+    SubpassDependency^.DstAccessMask:=SubpassDependency^.DstAccessMask or aSubpassDependency.DstAccessMask;
+    SubpassDependency^.DependencyFlags:=SubpassDependency^.DependencyFlags or aSubpassDependency.DependencyFlags;
    end else begin
-    aSubPassDependencies.Add(aSubPassDependency);
+    aSubpassDependencies.Add(aSubpassDependency);
    end;
   end;
   procedure AddSemaphoreSignalWait(const aSignallingPhysicalPass:TPhysicalPass;
@@ -3477,7 +3477,7 @@ type TBeforeAfter=(Before,After);
      Resource:TResource;
      ResourceTransition,
      OtherResourceTransition:TResourceTransition;
-     SubPassDependency:TPhysicalRenderPass.TSubPassDependency;
+     SubpassDependency:TPhysicalRenderPass.TSubpassDependency;
      SrcQueueFamilyIndex,
      DstQueueFamilyIndex:TVkUInt32;
      SrcStageMask,
@@ -3489,7 +3489,7 @@ type TBeforeAfter=(Before,After);
      DependencyFlags:TVkDependencyFlags;
  begin
 
-  // First to try add the external subpass dependencies
+  // First to try add the external Subpass dependencies
   for Resource in fResources do begin
    for ResourceTransitionIndex:=0 to Resource.fResourceTransitions.Count-1 do begin
     ResourceTransition:=Resource.fResourceTransitions[ResourceTransitionIndex];
@@ -3500,34 +3500,34 @@ type TBeforeAfter=(Before,After);
        assigned(ResourceTransition.fResource.fResourceType) and
        (ResourceTransition.fResource.fResourceType is TImageResourceType) and
        (TImageResourceType(ResourceTransition.fResource.fResourceType).fImageType=TImageType.Surface) and
-       (TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPasses.Count>0) and
-       (not TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fHasSurfaceSubPassDependencies) then begin
-     TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fHasSurfaceSubPassDependencies:=true;
+       (TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubpasses.Count>0) and
+       (not TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fHasSurfaceSubpassDependencies) then begin
+     TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fHasSurfaceSubpassDependencies:=true;
      begin
-      SubPassDependency.SrcSubPass:=nil;
-      SubPassDependency.DstSubPass:=TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPasses[0];
-      SubPassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-      SubPassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-      SubPassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
-      SubPassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-      SubPassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
-      AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
+      SubpassDependency.SrcSubpass:=nil;
+      SubpassDependency.DstSubpass:=TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubpasses[0];
+      SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+      SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+      SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+      SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+      SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+      AddSubpassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,SubpassDependency);
      end;
      begin
-      SubPassDependency.SrcSubPass:=TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPasses[TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPasses.Count-1];
-      SubPassDependency.DstSubPass:=nil;
-      SubPassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-      SubPassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-      SubPassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-      SubPassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
-      SubPassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
-      AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
+      SubpassDependency.SrcSubpass:=TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubpasses[TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubpasses.Count-1];
+      SubpassDependency.DstSubpass:=nil;
+      SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+      SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+      SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+      SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+      SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+      AddSubpassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,SubpassDependency);
      end;
     end;
    end;
   end;
 
-  // Then add the remaining subpass dependencies
+  // Then add the remaining Subpass dependencies
   for Resource in fResources do begin
    for ResourceTransitionIndex:=0 to Resource.fResourceTransitions.Count-1 do begin
     ResourceTransition:=Resource.fResourceTransitions[ResourceTransitionIndex];
@@ -3550,26 +3550,26 @@ type TBeforeAfter=(Before,After);
            (OtherResourceTransition.fKind in TResourceTransition.AllImageInputs) then begin
          GetPipelineStageMasks(ResourceTransition,
                                OtherResourceTransition,
-                               SubPassDependency.SrcStageMask,
-                               SubPassDependency.DstStageMask
+                               SubpassDependency.SrcStageMask,
+                               SubpassDependency.DstStageMask
                               );
          GetAccessMasks(ResourceTransition,
                         OtherResourceTransition,
-                        SubPassDependency.SrcAccessMask,
-                        SubPassDependency.DstAccessMask
+                        SubpassDependency.SrcAccessMask,
+                        SubpassDependency.DstAccessMask
                        );
-         SubPassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+         SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
          if ResourceTransition.fPass.fPhysicalPass=OtherResourceTransition.fPass.fPhysicalPass then begin
-          SubPassDependency.SrcSubPass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass;
-          SubPassDependency.DstSubPass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass;
-          AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
+          SubpassDependency.SrcSubpass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubpass;
+          SubpassDependency.DstSubpass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubpass;
+          AddSubpassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,SubpassDependency);
          end else begin
-          SubPassDependency.SrcSubPass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubPass;
-          SubPassDependency.DstSubPass:=nil;
-          AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
-          SubPassDependency.SrcSubPass:=nil;
-          SubPassDependency.DstSubPass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubPass;
-          AddSubPassDependency(TPhysicalRenderPass(OtherResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
+          SubpassDependency.SrcSubpass:=TRenderPass(ResourceTransition.fPass).fPhysicalRenderPassSubpass;
+          SubpassDependency.DstSubpass:=nil;
+          AddSubpassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,SubpassDependency);
+          SubpassDependency.SrcSubpass:=nil;
+          SubpassDependency.DstSubpass:=TRenderPass(OtherResourceTransition.fPass).fPhysicalRenderPassSubpass;
+          AddSubpassDependency(TPhysicalRenderPass(OtherResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,SubpassDependency);
          end;
         end else begin
          if ResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex<>OtherResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex then begin
@@ -3645,18 +3645,18 @@ type TBeforeAfter=(Before,After);
   end;
 
  end;
- procedure SortPhysicalRenderPassSubPassDependencies;
+ procedure SortPhysicalRenderPassSubpassDependencies;
  var PhysicalPass:TPhysicalPass;
      PhysicalRenderPass:TPhysicalRenderPass;
  begin
   for PhysicalPass in fPhysicalPasses do begin
    if PhysicalPass is TPhysicalRenderPass then begin
     PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
-    if PhysicalRenderPass.fSubPassDependencies.Count>1 then begin
-     TpvTypedSort<TPhysicalRenderPass.TSubPassDependency>.IntroSort(@PhysicalRenderPass.fSubPassDependencies.Items[0],
+    if PhysicalRenderPass.fSubpassDependencies.Count>1 then begin
+     TpvTypedSort<TPhysicalRenderPass.TSubpassDependency>.IntroSort(@PhysicalRenderPass.fSubpassDependencies.Items[0],
                                                                     0,
-                                                                    PhysicalRenderPass.fSubPassDependencies.Count-1,
-                                                                    ComparePhysicalRenderPassSubPassDependencies);
+                                                                    PhysicalRenderPass.fSubpassDependencies.Count-1,
+                                                                    ComparePhysicalRenderPassSubpassDependencies);
     end;
    end;
   end;
@@ -3670,10 +3670,10 @@ type TBeforeAfter=(Before,After);
   end;
  var AttachmentIndex,
      OtherAttachmentIndex,
-     SubPassIndex:TpvSizeInt;
+     SubpassIndex:TpvSizeInt;
      PhysicalPass:TPhysicalPass;
      PhysicalRenderPass:TPhysicalRenderPass;
-     SubPass:TPhysicalRenderPass.TSubPass;
+     Subpass:TPhysicalRenderPass.TSubpass;
      RenderPass:TRenderPass;
      ResourceTransition,
      OtherResourceTransition:TResourceTransition;
@@ -3698,8 +3698,8 @@ type TBeforeAfter=(Before,After);
     PhysicalRenderPass.fAttachmentReferences.Clear;
     try
 
-     for SubPass in PhysicalRenderPass.fSubPasses do begin
-      RenderPass:=SubPass.fRenderPass;
+     for Subpass in PhysicalRenderPass.fSubpasses do begin
+      RenderPass:=Subpass.fRenderPass;
       for ResourceTransition in RenderPass.fResourceTransitions do begin
        ResourceType:=ResourceTransition.fResource.fResourceType;
        if ResourceTransition.Kind in TResourceTransition.AllImages then begin
@@ -3734,8 +3734,8 @@ type TBeforeAfter=(Before,After);
       end;
      end;
 
-     for SubPass in PhysicalRenderPass.fSubPasses do begin
-      RenderPass:=SubPass.fRenderPass;
+     for Subpass in PhysicalRenderPass.fSubpasses do begin
+      RenderPass:=Subpass.fRenderPass;
       for ResourceTransition in RenderPass.fResourceTransitions do begin
        for AttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
         Attachment:=@PhysicalRenderPass.fAttachments.Items[AttachmentIndex];
@@ -3800,17 +3800,17 @@ type TBeforeAfter=(Before,After);
       end;
      end;
 
-     for SubPassIndex:=0 to PhysicalRenderPass.fSubPasses.Count-1 do begin
+     for SubpassIndex:=0 to PhysicalRenderPass.fSubpasses.Count-1 do begin
 
-      SubPass:=PhysicalRenderPass.fSubPasses[SubPassIndex];
+      Subpass:=PhysicalRenderPass.fSubpasses[SubpassIndex];
 
-      RenderPass:=SubPass.fRenderPass;
+      RenderPass:=Subpass.fRenderPass;
 
-      SubPass.fInputAttachments.Clear;
-      SubPass.fColorAttachments.Clear;
-      SubPass.fResolveAttachments.Clear;
-      SubPass.fPreserveAttachments.Clear;
-      SubPass.fDepthStencilAttachment:=-1;
+      Subpass.fInputAttachments.Clear;
+      Subpass.fColorAttachments.Clear;
+      Subpass.fResolveAttachments.Clear;
+      Subpass.fPreserveAttachments.Clear;
+      Subpass.fDepthStencilAttachment:=-1;
 
       HasResolveOutputs:=false;
       for ResourceTransition in RenderPass.fResourceTransitions do begin
@@ -3825,7 +3825,7 @@ type TBeforeAfter=(Before,After);
         TResourceTransition.TKind.ImageInput:begin
          for AttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
           if PhysicalRenderPass.fAttachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
-           SubPass.fInputAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
+           Subpass.fInputAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
            break;
           end;
          end;
@@ -3833,20 +3833,20 @@ type TBeforeAfter=(Before,After);
         TResourceTransition.TKind.ImageOutput:begin
          for AttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
           if PhysicalRenderPass.fAttachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
-           SubPass.fColorAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
+           Subpass.fColorAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
            for OtherResourceTransition in RenderPass.fResourceTransitions do begin
             if (ResourceTransition<>OtherResourceTransition) and
                (OtherResourceTransition.ResolveResource=ResourceTransition.Resource) then begin
              Found:=false;
              for OtherAttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
               if PhysicalRenderPass.fAttachments.Items[OtherAttachmentIndex].Resource=ResourceTransition.fResource then begin
-               SubPass.fResolveAttachments.Add(AddAttachmentReference(PhysicalRenderPass,OtherAttachmentIndex,OtherResourceTransition.fLayout));
+               Subpass.fResolveAttachments.Add(AddAttachmentReference(PhysicalRenderPass,OtherAttachmentIndex,OtherResourceTransition.fLayout));
                Found:=true;
                break;
               end;
              end;
              if not Found then begin
-              SubPass.fResolveAttachments.Add(AddAttachmentReference(PhysicalRenderPass,VK_ATTACHMENT_UNUSED,VK_IMAGE_LAYOUT_UNDEFINED));
+              Subpass.fResolveAttachments.Add(AddAttachmentReference(PhysicalRenderPass,VK_ATTACHMENT_UNUSED,VK_IMAGE_LAYOUT_UNDEFINED));
              end;
              break;
             end;
@@ -3856,10 +3856,10 @@ type TBeforeAfter=(Before,After);
          end;
         end;
         TResourceTransition.TKind.ImageDepthInput,TResourceTransition.TKind.ImageDepthOutput:begin
-         if SubPass.fDepthStencilAttachment<0 then begin
+         if Subpass.fDepthStencilAttachment<0 then begin
           for AttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
            if PhysicalRenderPass.fAttachments.Items[AttachmentIndex].Resource=ResourceTransition.fResource then begin
-            SubPass.fDepthStencilAttachment:=AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout);
+            Subpass.fDepthStencilAttachment:=AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout);
             break;
            end;
           end;
@@ -3872,19 +3872,19 @@ type TBeforeAfter=(Before,After);
        Attachment:=@PhysicalRenderPass.fAttachments.Items[AttachmentIndex];
        Resource:=Attachment^.Resource;
        UsedNow:=false;
-       for ResourceTransition in SubPass.fRenderPass.fResourceTransitions do begin
+       for ResourceTransition in Subpass.fRenderPass.fResourceTransitions do begin
         if ResourceTransition.Resource=Resource then begin
          UsedNow:=true;
          break;
         end;
        end;
-       UsedBefore:=Resource.fMinimumTopologicalSortPassIndex<SubPass.fRenderPass.fTopologicalSortIndex;
-       UsedAfter:=SubPass.fRenderPass.fTopologicalSortIndex<Resource.fMaximumTopologicalSortPassIndex;
+       UsedBefore:=Resource.fMinimumTopologicalSortPassIndex<Subpass.fRenderPass.fTopologicalSortIndex;
+       UsedAfter:=Subpass.fRenderPass.fTopologicalSortIndex<Resource.fMaximumTopologicalSortPassIndex;
        IsSurfaceOrPersistent:=(Attachment^.ImageType=TImageType.Surface) or Attachment^.Persientent;
        if UsedBefore and (not UsedNow) and (UsedAfter or IsSurfaceOrPersistent) then begin
-        SubPass.fPreserveAttachments.Add(AttachmentIndex);
+        Subpass.fPreserveAttachments.Add(AttachmentIndex);
        end;
-       if (SubPassIndex>0) and (UsedAfter or isSurfaceOrPersistent) then begin
+       if (SubpassIndex>0) and (UsedAfter or isSurfaceOrPersistent) then begin
         case Attachment^.ImageType of
          TImageType.Surface,TImageType.Color,TImageType.Depth:begin
           Attachment^.StoreOp:=VK_ATTACHMENT_STORE_OP_STORE;
@@ -3900,13 +3900,13 @@ type TBeforeAfter=(Before,After);
        end;
       end;
 
-      SubPass.fInputAttachments.Finish;
-      SubPass.fColorAttachments.Finish;
-      SubPass.fResolveAttachments.Finish;
-      SubPass.fPreserveAttachments.Finish;
+      Subpass.fInputAttachments.Finish;
+      Subpass.fColorAttachments.Finish;
+      Subpass.fResolveAttachments.Finish;
+      Subpass.fPreserveAttachments.Finish;
 
-      if SubPass.fDepthStencilAttachment<0 then begin
-       SubPass.fDepthStencilAttachment:=VK_ATTACHMENT_UNUSED;
+      if Subpass.fDepthStencilAttachment<0 then begin
+       Subpass.fDepthStencilAttachment:=VK_ATTACHMENT_UNUSED;
       end;
 
      end;
@@ -3971,9 +3971,9 @@ begin
 
  CreateResourceAliasGroupData;
 
- CreatePhysicalPassPipelineBarriersAndPhysicalRenderPassSubPassDependencies;
+ CreatePhysicalPassPipelineBarriersAndPhysicalRenderPassSubpassDependencies;
 
- SortPhysicalRenderPassSubPassDependencies;
+ SortPhysicalRenderPassSubpassDependencies;
 
  CreatePhysicalRenderPasses;
 
@@ -4100,12 +4100,12 @@ begin
 end;
 
 procedure TpvFrameGraph.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
-var QueueIndex,Index,SubPassIndex:TpvSizeInt;
+var QueueIndex,Index,SubpassIndex:TpvSizeInt;
     Queue:TQueue;
     PhysicalPass:TPhysicalPass;
     PhysicalComputePass:TPhysicalComputePass;
     PhysicalRenderPass:TPhysicalRenderPass;
-    PhysicalRenderPassSubPass:TPhysicalRenderPass.TSubPass;
+    PhysicalRenderPassSubpass:TPhysicalRenderPass.TSubpass;
 begin
  for QueueIndex:=0 to fQueues.Count-1 do begin
   Queue:=fQueues[QueueIndex];
@@ -4117,9 +4117,9 @@ begin
      PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalComputePass.fComputePass.fFlags;
     end else if PhysicalPass is TPhysicalRenderPass then begin
      PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
-     for SubPassIndex:=0 to PhysicalRenderPass.fSubPasses.Count-1 do begin
-      PhysicalRenderPassSubPass:=PhysicalRenderPass.fSubPasses[SubPassIndex];
-      PhysicalRenderPassSubPass.fRenderPass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalRenderPassSubPass.fRenderPass.fFlags;
+     for SubpassIndex:=0 to PhysicalRenderPass.fSubpasses.Count-1 do begin
+      PhysicalRenderPassSubpass:=PhysicalRenderPass.fSubpasses[SubpassIndex];
+      PhysicalRenderPassSubpass.fRenderPass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalRenderPassSubpass.fRenderPass.fFlags;
      end;
     end;
    end;
@@ -4128,12 +4128,12 @@ begin
 end;
 
 procedure TpvFrameGraph.ExecuteQueuePhysicalPassParallelForJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
-var Index,SubPassIndex:TpvSizeInt;
+var Index,SubpassIndex:TpvSizeInt;
     Queue:TQueue;
     PhysicalPass:TPhysicalPass;
     PhysicalComputePass:TPhysicalComputePass;
     PhysicalRenderPass:TPhysicalRenderPass;
-    PhysicalRenderPassSubPass:TPhysicalRenderPass.TSubPass;
+    PhysicalRenderPassSubpass:TPhysicalRenderPass.TSubpass;
 begin
  Queue:=aData;
  for Index:=aFromIndex to aToIndex do begin
@@ -4147,9 +4147,9 @@ begin
     end;
    end else if PhysicalPass is TPhysicalRenderPass then begin
     PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
-    for SubPassIndex:=0 to PhysicalRenderPass.fSubPasses.Count-1 do begin
-     PhysicalRenderPassSubPass:=PhysicalRenderPass.fSubPasses[SubPassIndex];
-     if PhysicalRenderPassSubPass.fRenderPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
+    for SubpassIndex:=0 to PhysicalRenderPass.fSubpasses.Count-1 do begin
+     PhysicalRenderPassSubpass:=PhysicalRenderPass.fSubpasses[SubpassIndex];
+     if PhysicalRenderPassSubpass.fRenderPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
       PhysicalRenderPass.Execute;
       Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalRenderPass.fSubmitInfos[fDrawSwapChainImageIndex];
       break;
