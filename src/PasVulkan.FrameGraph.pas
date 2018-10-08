@@ -497,6 +497,7 @@ type EpvFrameGraph=class(Exception);
                           PBarrierMapItem=^TBarrierMapItem;
                           TBarrierMapItemDynamicArray=TpvDynamicArray<TBarrierMapItem>;
                     private
+                     fFrameGraph:TpvFrameGraph;
                      fSrcStageMask:TVkPipelineStageFlags;
                      fDstStageMask:TVkPipelineStageFlags;
                      fDependencyFlags:TVkDependencyFlags;
@@ -508,7 +509,8 @@ type EpvFrameGraph=class(Exception);
                      fWorkBufferMemoryBarrierDynamicArray:array[0..MaxSwapChainImages-1] of TVkBufferMemoryBarrierDynamicArray;
                      fWorkImageMemoryBarrierDynamicArray:array[0..MaxSwapChainImages-1] of TVkImageMemoryBarrierDynamicArray;
                     public
-                     constructor Create(const aSrcStageMask:TVkPipelineStageFlags;
+                     constructor Create(const aFrameGraph:TpvFrameGraph;
+                                        const aSrcStageMask:TVkPipelineStageFlags;
                                         const aDstStageMask:TVkPipelineStageFlags;
                                         const aDependencyFlags:TVkDependencyFlags);
                      destructor Destroy; override;
@@ -516,12 +518,16 @@ type EpvFrameGraph=class(Exception);
                      procedure Hide;
                      procedure AfterCreateSwapChain;
                      procedure BeforeDestroySwapChain;
+                     procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
                     published
                      property SrcStageMask:TVkPipelineStageFlags read fSrcStageMask write fSrcStageMask;
                      property DstStageMask:TVkPipelineStageFlags read fDstStageMask write fDstStageMask;
                      property DependencyFlags:TVkDependencyFlags read fDependencyFlags write fDependencyFlags;
                    end;
-                   TPipelineBarrierGroups=TpvObjectGenericList<TPipelineBarrierGroup>;
+                   TPipelineBarrierGroups=class(TpvObjectGenericList<TPipelineBarrierGroup>)
+                    public
+                     procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+                   end;
                    TWaitingSemaphore=record
                     SignallingPhysicalPass:TPhysicalPass;
                     DstStageMask:TVkPipelineStageFlags;
@@ -1845,12 +1851,14 @@ end;
 
 { TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup }
 
-constructor TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Create(const aSrcStageMask:TVkPipelineStageFlags;
+constructor TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Create(const aFrameGraph:TpvFrameGraph;
+                                                                     const aSrcStageMask:TVkPipelineStageFlags;
                                                                      const aDstStageMask:TVkPipelineStageFlags;
                                                                      const aDependencyFlags:TVkDependencyFlags);
 var Index:TpvSizeInt;
 begin
  inherited Create;
+ fFrameGraph:=aFrameGraph;
  fSrcStageMask:=aSrcStageMask;
  fDstStageMask:=aDstStageMask;
  fDependencyFlags:=aDependencyFlags;
@@ -1947,6 +1955,48 @@ begin
   fWorkMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
   fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
   fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Clear;
+ end;
+end;
+
+procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+var MemoryBarriers,
+    BufferMemoryBarriers,
+    ImageMemoryBarriers:pointer;
+begin
+ if fWorkMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count>0 then begin
+  MemoryBarriers:=@fWorkMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Items[0];
+ end else begin
+  MemoryBarriers:=nil;
+ end;
+ if fWorkBufferMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count>0 then begin
+  BufferMemoryBarriers:=@fWorkBufferMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Items[0];
+ end else begin
+  BufferMemoryBarriers:=nil;
+ end;
+ if fWorkImageMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count>0 then begin
+  ImageMemoryBarriers:=@fWorkImageMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Items[0];
+ end else begin
+  ImageMemoryBarriers:=nil;
+ end;
+ aCommandBuffer.CmdPipelineBarrier(fSrcStageMask,
+                                   fDstStageMask,
+                                   fDependencyFlags,
+                                   fWorkMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count,
+                                   MemoryBarriers,
+                                   fWorkBufferMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count,
+                                   BufferMemoryBarriers,
+                                   fWorkImageMemoryBarrierDynamicArray[fFrameGraph.fDrawSwapChainImageIndex].Count,
+                                   ImageMemoryBarriers
+                                  );
+end;
+
+{ TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroups }
+
+procedure TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroups.Execute(const aCommandBuffer:TpvVulkanCommandBuffer);
+var Index:TpvSizeInt;
+begin
+ for Index:=0 to Count-1 do begin
+  Items[Index].Execute(aCommandBuffer);
  end;
 end;
 
@@ -2102,10 +2152,12 @@ var CommandBuffer:TpvVulkanCommandBuffer;
 begin
  inherited Execute;
  CommandBuffer:=fCommandBuffers[fFrameGraph.fDrawSwapChainImageIndex];
+ fBeforePipelineBarrierGroups.Execute(CommandBuffer);
  CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
  if fComputePass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
   fComputePass.Execute(CommandBuffer,fFrameGraph.fDrawSwapChainImageIndex,fFrameGraph.fDrawFrameIndex);
  end;
+ fAfterPipelineBarrierGroups.Execute(CommandBuffer);
  CommandBuffer.EndRecording;
 end;
 
@@ -2363,6 +2415,7 @@ begin
  inherited Execute;
  CommandBuffer:=fCommandBuffers[fFrameGraph.fDrawSwapChainImageIndex];
  CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
+ fBeforePipelineBarrierGroups.Execute(CommandBuffer);
  fVulkanRenderPass.BeginRenderPass(CommandBuffer,
                                    fVulkanFrameBuffers[fFrameGraph.fDrawSwapChainImageIndex],
                                    VK_SUBPASS_CONTENTS_INLINE,
@@ -2378,6 +2431,7 @@ begin
   CommandBuffer.CmdNextSubpass(VK_SUBPASS_CONTENTS_INLINE);
  end;
  fVulkanRenderPass.EndRenderPass(CommandBuffer);
+ fAfterPipelineBarrierGroups.Execute(CommandBuffer);
  CommandBuffer.EndRecording;
 end;
 
@@ -3324,7 +3378,10 @@ type TBeforeAfter=(Before,After);
    if assigned(FoundPipelineBarrierGroup) then begin
     PipelineBarrierGroup:=FoundPipelineBarrierGroup;
    end else begin
-    PipelineBarrierGroup:=TPhysicalPass.TPipelineBarrierGroup.Create(aSrcStageMask,aDstStageMask,aDependencyFlags);
+    PipelineBarrierGroup:=TPhysicalPass.TPipelineBarrierGroup.Create(self,
+                                                                     aSrcStageMask,
+                                                                     aDstStageMask,
+                                                                     aDependencyFlags);
     PipelineBarrierGroups.Add(PipelineBarrierGroup);
    end;
    // TODO
