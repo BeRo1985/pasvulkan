@@ -2372,12 +2372,12 @@ begin
   if assigned(SubpassDependency^.SrcSubpass) then begin
    SrcSubpassIndex:=SubpassDependency^.SrcSubpass.fIndex;
   end else begin
-   SrcSubpassIndex:=VK_Subpass_EXTERNAL;
+   SrcSubpassIndex:=VK_SUBPASS_EXTERNAL;
   end;
   if assigned(SubpassDependency.DstSubpass) then begin
    DstSubpassIndex:=SubpassDependency^.DstSubpass.fIndex;
   end else begin
-   DstSubpassIndex:=VK_Subpass_EXTERNAL;
+   DstSubpassIndex:=VK_SUBPASS_EXTERNAL;
   end;
   fVulkanRenderPass.AddSubpassDependency(SrcSubpassIndex,
                                          DstSubpassIndex,
@@ -2447,7 +2447,7 @@ begin
  fBeforePipelineBarrierGroups.Execute(CommandBuffer);
  fVulkanRenderPass.BeginRenderPass(CommandBuffer,
                                    fVulkanFrameBuffers[fFrameGraph.fDrawSwapChainImageIndex],
-                                   VK_Subpass_CONTENTS_INLINE,
+                                   VK_SUBPASS_CONTENTS_INLINE,
                                    0,
                                    0,
                                    fVulkanFrameBuffers[fFrameGraph.fDrawSwapChainImageIndex].Width,
@@ -2457,7 +2457,7 @@ begin
   if Subpass.fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
    Subpass.fRenderPass.Execute(CommandBuffer,fFrameGraph.fDrawSwapChainImageIndex,fFrameGraph.fDrawFrameIndex);
   end;
-  CommandBuffer.CmdNextSubpass(VK_Subpass_CONTENTS_INLINE);
+  CommandBuffer.CmdNextSubpass(VK_SUBPASS_CONTENTS_INLINE);
  end;
  fVulkanRenderPass.EndRenderPass(CommandBuffer);
  fAfterPipelineBarrierGroups.Execute(CommandBuffer);
