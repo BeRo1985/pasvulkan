@@ -204,6 +204,7 @@ type EpvFrameGraph=class(Exception);
               fPhysicalPasses:TPhysicalPasses;
               fCommandPool:TpvVulkanCommandPool;
               fSubmitInfos:TVkSubmitInfos;
+              fCountSubmitInfos:TPasMPInt32;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aPhysicalQueue:TpvVulkanQueue); reintroduce;
@@ -839,6 +840,7 @@ type EpvFrameGraph=class(Exception);
        procedure AfterCreateSwapChain; virtual;
        procedure BeforeDestroySwapChain; virtual;
       private
+       procedure ExecuteQueuePhysicalPassParallelForJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
        procedure ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
        procedure ExecuteQueueParallelForJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
       public
@@ -3881,6 +3883,13 @@ type TBeforeAfter=(Before,After);
    end;
   end;
  end;
+ procedure PrepareQueues;
+ var Queue:TQueue;
+ begin
+  for Queue in fQueues do begin
+   SetLength(Queue.fSubmitInfos,Queue.fPhysicalPasses.Count);
+  end;
+ end;
 begin
 
  fPhysicalPasses.Clear;
@@ -3915,7 +3924,9 @@ begin
 
  CreatePhysicalRenderPasses;
 
- CreatePhysicalPassExternalSemaphoreDependencies; // <= important: it must be the last step, because of final dynamic array freezing and dynamic pointer assignments
+ CreatePhysicalPassExternalSemaphoreDependencies;
+
+ PrepareQueues;
 
 end;
 
@@ -4063,26 +4074,23 @@ begin
  end;
 end;
 
-procedure TpvFrameGraph.ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
-var Index,SubPassIndex,CountSubmitInfos:TpvSizeInt;
+procedure TpvFrameGraph.ExecuteQueuePhysicalPassParallelForJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
+var Index,SubPassIndex:TpvSizeInt;
+    Queue:TQueue;
     PhysicalPass:TPhysicalPass;
     PhysicalComputePass:TPhysicalComputePass;
     PhysicalRenderPass:TPhysicalRenderPass;
     PhysicalRenderPassSubPass:TPhysicalRenderPass.TSubPass;
 begin
- CountSubmitInfos:=0;
- if length(aQueue.fSubmitInfos)<aQueue.fPhysicalPasses.Count then begin
-  SetLength(aQueue.fSubmitInfos,aQueue.fPhysicalPasses.Count);
- end;
- for Index:=0 to aQueue.fPhysicalPasses.Count-1 do begin
-  PhysicalPass:=aQueue.fPhysicalPasses[Index];
+ Queue:=aData;
+ for Index:=aFromIndex to aToIndex do begin
+  PhysicalPass:=Queue.fPhysicalPasses[Index];
   if assigned(PhysicalPass) then begin
    if PhysicalPass is TPhysicalComputePass then begin
     PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
     if PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
      PhysicalComputePass.Execute;
-     aQueue.fSubmitInfos[CountSubmitInfos]:=PhysicalComputePass.fSubmitInfos[fDrawSwapChainImageIndex];
-     inc(CountSubmitInfos);
+     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)]:=PhysicalComputePass.fSubmitInfos[fDrawSwapChainImageIndex];
     end;
    end else if PhysicalPass is TPhysicalRenderPass then begin
     PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
@@ -4090,19 +4098,28 @@ begin
      PhysicalRenderPassSubPass:=PhysicalRenderPass.fSubPasses[SubPassIndex];
      if PhysicalRenderPassSubPass.fRenderPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
       PhysicalRenderPass.Execute;
-      aQueue.fSubmitInfos[CountSubmitInfos]:=PhysicalRenderPass.fSubmitInfos[fDrawSwapChainImageIndex];
-      inc(CountSubmitInfos);
+      Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)]:=PhysicalRenderPass.fSubmitInfos[fDrawSwapChainImageIndex];
       break;
      end;
     end;
    end;
   end;
  end;
- if CountSubmitInfos>0 then begin
+end;
+
+procedure TpvFrameGraph.ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
+begin
+ aQueue.fCountSubmitInfos:=0;
+ if fCanDoParallelProcessing and assigned(pvApplication) then begin
+  pvApplication.PasMPInstance.ParallelFor(aQueue,0,aQueue.fPhysicalPasses.Count-1,ExecuteQueuePhysicalPassParallelForJobMethod,1,16,aJob,0);
+ end else begin
+  ExecuteQueuePhysicalPassParallelForJobMethod(nil,0,aQueue,0,aQueue.fPhysicalPasses.Count-1);
+ end;
+ if aQueue.fCountSubmitInfos>0 then begin
   if fRootPhysicalPass.fQueue=aQueue then begin
-   aQueue.fPhysicalQueue.Submit(CountSubmitInfos,@aQueue.fSubmitInfos[0],fDrawWaitFence);
+   aQueue.fPhysicalQueue.Submit(aQueue.fCountSubmitInfos,@aQueue.fSubmitInfos[0],fDrawWaitFence);
   end else begin
-   aQueue.fPhysicalQueue.Submit(CountSubmitInfos,@aQueue.fSubmitInfos[0]);
+   aQueue.fPhysicalQueue.Submit(aQueue.fCountSubmitInfos,@aQueue.fSubmitInfos[0]);
   end;
  end;
 end;
