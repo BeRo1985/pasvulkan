@@ -321,7 +321,7 @@ type EpvFrameGraph=class(Exception);
             TResourcePhysicalBufferData=class(TResourcePhysicalData)
              // TODO
             end;
-            TResourceReuseGroup=class
+            TResourceAliasGroup=class
              private
               fFrameGraph:TpvFrameGraph;
               fResourceType:TResourceType;
@@ -335,7 +335,7 @@ type EpvFrameGraph=class(Exception);
               procedure AfterCreateSwapChain; virtual;
               procedure BeforeDestroySwapChain; virtual;
             end;
-            TResourceReuseGroupList=TpvObjectGenericList<TResourceReuseGroup>;
+            TResourceAliasGroupList=TpvObjectGenericList<TResourceAliasGroup>;
             TResource=class
              private
               fFrameGraph:TpvFrameGraph;
@@ -346,7 +346,7 @@ type EpvFrameGraph=class(Exception);
               fMaximumTopologicalSortPassIndex:TpvSizeInt;
               fMinimumPhysicalPassStepIndex:TpvSizeInt;
               fMaximumPhysicalPassStepIndex:TpvSizeInt;
-              fResourceReuseGroup:TResourceReuseGroup;
+              fResourceAliasGroup:TResourceAliasGroup;
               fAssociatedMemoryData:TObject;
               fUsed:boolean;
              public
@@ -783,7 +783,7 @@ type EpvFrameGraph=class(Exception);
        fResources:TResourceList;
        fResourceNameHashMap:TResourceNameHashMap;
        fResourceTransitions:TResourceTransitionList;
-       fResourceReuseGroups:TResourceReuseGroupList;
+       fResourceAliasGroups:TResourceAliasGroupList;
        fPasses:TPassList;
        fPassNameHashMap:TPassNameHashMap;
        fTopologicalSortedPasses:TPassList;
@@ -1391,48 +1391,48 @@ begin
  end;
 end;
 
-{ TpvFrameGraph.TResourceReuseGroup }
+{ TpvFrameGraph.TResourceAliasGroup }
 
-constructor TpvFrameGraph.TResourceReuseGroup.Create(const aFrameGraph:TpvFrameGraph);
+constructor TpvFrameGraph.TResourceAliasGroup.Create(const aFrameGraph:TpvFrameGraph);
 begin
  inherited Create;
  fFrameGraph:=aFrameGraph;
- fFrameGraph.fResourceReuseGroups.Add(self);
+ fFrameGraph.fResourceAliasGroups.Add(self);
  fResourceType:=nil;
  fResources:=TResourceList.Create;
  fResources.OwnsObjects:=false;
  fResourcePhysicalData:=nil;
 end;
 
-destructor TpvFrameGraph.TResourceReuseGroup.Destroy;
+destructor TpvFrameGraph.TResourceAliasGroup.Destroy;
 begin
  FreeAndNil(fResources);
  FreeAndNil(fResourcePhysicalData);
  inherited Destroy;
 end;
 
-procedure TpvFrameGraph.TResourceReuseGroup.Show;
+procedure TpvFrameGraph.TResourceAliasGroup.Show;
 begin
  if assigned(fResourcePhysicalData) then begin
   fResourcePhysicalData.Show;
  end;
 end;
 
-procedure TpvFrameGraph.TResourceReuseGroup.Hide;
+procedure TpvFrameGraph.TResourceAliasGroup.Hide;
 begin
  if assigned(fResourcePhysicalData) then begin
   fResourcePhysicalData.Hide;
  end;
 end;
 
-procedure TpvFrameGraph.TResourceReuseGroup.AfterCreateSwapChain;
+procedure TpvFrameGraph.TResourceAliasGroup.AfterCreateSwapChain;
 begin
  if assigned(fResourcePhysicalData) then begin
   fResourcePhysicalData.AfterCreateSwapChain;
  end;
 end;
 
-procedure TpvFrameGraph.TResourceReuseGroup.BeforeDestroySwapChain;
+procedure TpvFrameGraph.TResourceAliasGroup.BeforeDestroySwapChain;
 begin
  if assigned(fResourcePhysicalData) then begin
   fResourcePhysicalData.BeforeDestroySwapChain;
@@ -2302,10 +2302,10 @@ begin
 
  for AttachmentIndex:=0 to fAttachments.Count-1 do begin
   Attachment:=@fAttachments.Items[AttachmentIndex];
-  ResourcePhysicalImageData:=Attachment^.Resource.fResourceReuseGroup.fResourcePhysicalData as TResourcePhysicalImageData;
+  ResourcePhysicalImageData:=Attachment^.Resource.fResourceAliasGroup.fResourcePhysicalData as TResourcePhysicalImageData;
   Attachment^.Format:=ResourcePhysicalImageData.fFormat;
   AttachmentDescriptionFlags:=0;
-  if Attachment^.Resource.fResourceReuseGroup.fResources.Count>1 then begin
+  if Attachment^.Resource.fResourceAliasGroup.fResources.Count>1 then begin
    AttachmentDescriptionFlags:=AttachmentDescriptionFlags or TVkAttachmentDescriptionFlags(VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT);
   end;
   fVulkanRenderPass.AddAttachmentDescription(AttachmentDescriptionFlags,
@@ -2374,7 +2374,7 @@ begin
                                                                         Layers);
   for AttachmentIndex:=0 to fAttachments.Count-1 do begin
    Attachment:=@fAttachments.Items[AttachmentIndex];
-   ResourcePhysicalImageData:=TResourcePhysicalImageData(Attachment^.Resource.fResourceReuseGroup.fResourcePhysicalData);
+   ResourcePhysicalImageData:=TResourcePhysicalImageData(Attachment^.Resource.fResourceAliasGroup.fResourcePhysicalData);
    fVulkanFrameBuffers[SwapChainImageIndex].AddAttachment(TpvVulkanFrameBufferAttachment.Create(fFrameGraph.fVulkanDevice,
                                                                                                 ResourcePhysicalImageData.fVulkanImages[SwapChainImageIndex],
                                                                                                 ResourcePhysicalImageData.fVulkanImageViews[SwapChainImageIndex],
@@ -2473,8 +2473,8 @@ begin
  fResourceTransitions:=TResourceTransitionList.Create;
  fResourceTransitions.OwnsObjects:=true;
 
- fResourceReuseGroups:=TResourceReuseGroupList.Create;
- fResourceReuseGroups.OwnsObjects:=true;
+ fResourceAliasGroups:=TResourceAliasGroupList.Create;
+ fResourceAliasGroups.OwnsObjects:=true;
 
  fPasses:=TPassList.Create;
  fPasses.OwnsObjects:=true;
@@ -2519,7 +2519,7 @@ begin
 
  FreeAndNil(fResourceTransitions);
 
- FreeAndNil(fResourceReuseGroups);
+ FreeAndNil(fResourceAliasGroups);
 
  FreeAndNil(fTopologicalSortedPasses);
 
@@ -3157,7 +3157,7 @@ type TBeforeAfter=(Before,After);
    end;
   end;
  end;
- procedure CreateResourceReuseGroups;
+ procedure CreateResourceAliasGroups;
   function CanResourceReused(const aResource:TResource):boolean;
   begin
    result:=(not aResource.fResourceType.fPersientent) and
@@ -3173,26 +3173,26 @@ type TBeforeAfter=(Before,After);
   // Calculate resource reuse groups, depending on the non-intersecting resource lifetime span
   // segments and resource types
   for Resource in fResources do begin
-   Resource.fResourceReuseGroup:=nil;
+   Resource.fResourceAliasGroup:=nil;
   end;
-  fResourceReuseGroups.Clear;
+  fResourceAliasGroups.Clear;
   for Index:=0 to fResources.Count-1 do begin
    Resource:=fResources.Items[Index];
-   if not assigned(Resource.fResourceReuseGroup) then begin
-    Resource.fResourceReuseGroup:=TResourceReuseGroup.Create(self);
-    Resource.fResourceReuseGroup.fResourceType:=Resource.fResourceType;
-    Resource.fResourceReuseGroup.fResources.Add(Resource);
+   if not assigned(Resource.fResourceAliasGroup) then begin
+    Resource.fResourceAliasGroup:=TResourceAliasGroup.Create(self);
+    Resource.fResourceAliasGroup.fResourceType:=Resource.fResourceType;
+    Resource.fResourceAliasGroup.fResources.Add(Resource);
     if CanResourceReused(Resource) then begin
      for OtherIndex:=Index+1 to fResources.Count-1 do begin
       OtherResource:=fResources.Items[OtherIndex];
-      if (not assigned(OtherResource.fResourceReuseGroup)) and
+      if (not assigned(OtherResource.fResourceAliasGroup)) and
          (Resource.fResourceType=OtherResource.fResourceType) and
          CanResourceReused(OtherResource) and
          (Min(Resource.fMaximumPhysicalPassStepIndex,
               OtherResource.fMaximumPhysicalPassStepIndex)>Max(Resource.fMinimumPhysicalPassStepIndex,
                                                                OtherResource.fMinimumPhysicalPassStepIndex)) then begin
-       OtherResource.fResourceReuseGroup:=Resource.fResourceReuseGroup;
-       OtherResource.fResourceReuseGroup.fResources.Add(OtherResource);
+       OtherResource.fResourceAliasGroup:=Resource.fResourceAliasGroup;
+       OtherResource.fResourceAliasGroup.fResources.Add(OtherResource);
       end;
      end;
     end;
@@ -3207,9 +3207,9 @@ type TBeforeAfter=(Before,After);
    PhysicalPass.fQueue.fPhysicalPasses.Add(PhysicalPass);
   end;
  end;
- procedure CreateResourceReuseGroupData;
+ procedure CreateResourceAliasGroupData;
  var MinimumTopologicalSortIndex:TpvSizeInt;
-     ResourceReuseGroup:TResourceReuseGroup;
+     ResourceAliasGroup:TResourceAliasGroup;
      ResourceType:TResourceType;
      ImageResourceType:TImageResourceType;
      BufferResourceType:TBufferResourceType;
@@ -3219,13 +3219,13 @@ type TBeforeAfter=(Before,After);
      ResourceTransition:TResourceTransition;
  begin
   // Create data for the resource reuse groups
-  for ResourceReuseGroup in fResourceReuseGroups do begin
-   ResourceType:=ResourceReuseGroup.fResourceType;
+  for ResourceAliasGroup in fResourceAliasGroups do begin
+   ResourceType:=ResourceAliasGroup.fResourceType;
    if ResourceType is TImageResourceType then begin
     ImageResourceType:=TImageResourceType(ResourceType);
-    if not assigned(ResourceReuseGroup.fResourcePhysicalData) then begin
-     ResourceReuseGroup.fResourcePhysicalData:=TResourcePhysicalImageData.Create(self);
-     ResourcePhysicalImageData:=TResourcePhysicalImageData(ResourceReuseGroup.fResourcePhysicalData);
+    if not assigned(ResourceAliasGroup.fResourcePhysicalData) then begin
+     ResourceAliasGroup.fResourcePhysicalData:=TResourcePhysicalImageData.Create(self);
+     ResourcePhysicalImageData:=TResourcePhysicalImageData(ResourceAliasGroup.fResourcePhysicalData);
      ResourcePhysicalImageData.fResourceType:=ResourceType;
      ResourcePhysicalImageData.fIsSurface:=ImageResourceType.fImageType=TImageType.Surface;
      ResourcePhysicalImageData.fImageUsageFlags:=TVkImageUsageFlags(ImageResourceType.fImageUsage);
@@ -3241,7 +3241,7 @@ type TBeforeAfter=(Before,After);
      ResourcePhysicalImageData.fInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
      ResourcePhysicalImageData.fFirstInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
      MinimumTopologicalSortIndex:=High(TpvSizeInt);
-     for Resource in ResourceReuseGroup.fResources do begin
+     for Resource in ResourceAliasGroup.fResources do begin
       for ResourceTransition in Resource.fResourceTransitions do begin
        if ResourceTransition.fPass.fTopologicalSortIndex<MinimumTopologicalSortIndex then begin
         MinimumTopologicalSortIndex:=ResourceTransition.fPass.fTopologicalSortIndex;
@@ -3277,8 +3277,8 @@ type TBeforeAfter=(Before,After);
      ResourcePhysicalImageData.fComponents:=ImageResourceType.fComponents;
     end;
    end else if ResourceType is TBufferResourceType then begin
-    ResourceReuseGroup.fResourcePhysicalData:=TResourcePhysicalBufferData.Create(self);
-    ResourcePhysicalBufferData:=TResourcePhysicalBufferData(ResourceReuseGroup.fResourcePhysicalData);
+    ResourceAliasGroup.fResourcePhysicalData:=TResourcePhysicalBufferData.Create(self);
+    ResourcePhysicalBufferData:=TResourcePhysicalBufferData(ResourceAliasGroup.fResourcePhysicalData);
     ResourcePhysicalBufferData.fResourceType:=ResourceType;
     // TODO
     Assert(false,'TODO');
@@ -3508,7 +3508,7 @@ type TBeforeAfter=(Before,After);
          if ResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex<>OtherResourceTransition.fPass.fQueue.fPhysicalQueue.QueueFamilyIndex then begin
           AddPipelineBarrier(TBeforeAfter.After, // Release
                              ResourceTransition.fPass.fPhysicalPass,
-                             Resource.fResourceReuseGroup.fResourcePhysicalData,
+                             Resource.fResourceAliasGroup.fResourcePhysicalData,
                              ResourceTransition,
                              OtherResourceTransition,
                              SrcQueueFamilyIndex,
@@ -3521,7 +3521,7 @@ type TBeforeAfter=(Before,After);
                             );
           AddPipelineBarrier(TBeforeAfter.Before, // Acquire
                              OtherResourceTransition.fPass.fPhysicalPass,
-                             Resource.fResourceReuseGroup.fResourcePhysicalData,
+                             Resource.fResourceAliasGroup.fResourcePhysicalData,
                              ResourceTransition,
                              OtherResourceTransition,
                              SrcQueueFamilyIndex,
@@ -3539,7 +3539,7 @@ type TBeforeAfter=(Before,After);
          end else begin
           AddPipelineBarrier(TBeforeAfter.Before,
                              OtherResourceTransition.fPass.fPhysicalPass,
-                             Resource.fResourceReuseGroup.fResourcePhysicalData,
+                             Resource.fResourceAliasGroup.fResourcePhysicalData,
                              ResourceTransition,
                              OtherResourceTransition,
                              SrcQueueFamilyIndex,
@@ -3857,11 +3857,11 @@ begin
 
  CalculateResourceLifetimes;
 
- CreateResourceReuseGroups;
+ CreateResourceAliasGroups;
 
  CreatePhysicalPassQueueSequences;
 
- CreateResourceReuseGroupData;
+ CreateResourceAliasGroupData;
 
  CreatePhysicalPassPipelineBarriersAndPhysicalRenderPassSubPassDependencies;
 
@@ -3872,11 +3872,11 @@ begin
 end;
 
 procedure TpvFrameGraph.Show;
-var ResourceReuseGroup:TResourceReuseGroup;
+var ResourceAliasGroup:TResourceAliasGroup;
     PhysicalPass:TPhysicalPass;
 begin
- for ResourceReuseGroup in fResourceReuseGroups do begin
-  ResourceReuseGroup.Show;
+ for ResourceAliasGroup in fResourceAliasGroups do begin
+  ResourceAliasGroup.Show;
  end;
  for PhysicalPass in fPhysicalPasses do begin
   PhysicalPass.Show;
@@ -3884,27 +3884,27 @@ begin
 end;
 
 procedure TpvFrameGraph.Hide;
-var ResourceReuseGroup:TResourceReuseGroup;
+var ResourceAliasGroup:TResourceAliasGroup;
     PhysicalPass:TPhysicalPass;
 begin
  for PhysicalPass in fPhysicalPasses do begin
   PhysicalPass.Hide;
  end;
- for ResourceReuseGroup in fResourceReuseGroups do begin
-  ResourceReuseGroup.Hide;
+ for ResourceAliasGroup in fResourceAliasGroups do begin
+  ResourceAliasGroup.Hide;
  end;
 end;
 
 procedure TpvFrameGraph.AfterCreateSwapChain;
 var SwapChainImageIndex,
     WaitingSemaphoreIndex:TpvSizeInt;
-    ResourceReuseGroup:TResourceReuseGroup;
+    ResourceAliasGroup:TResourceAliasGroup;
     PhysicalPass:TPhysicalPass;
     SubmitInfo:PVkSubmitInfo;
     WaitingSemaphore:TPhysicalPass.PWaitingSemaphore;
 begin
- for ResourceReuseGroup in fResourceReuseGroups do begin
-  ResourceReuseGroup.AfterCreateSwapChain;
+ for ResourceAliasGroup in fResourceAliasGroups do begin
+  ResourceAliasGroup.AfterCreateSwapChain;
  end;
  for PhysicalPass in fPhysicalPasses do begin
   PhysicalPass.AfterCreateSwapChain;
@@ -3947,14 +3947,14 @@ begin
 end;
 
 procedure TpvFrameGraph.BeforeDestroySwapChain;
-var ResourceReuseGroup:TResourceReuseGroup;
+var ResourceAliasGroup:TResourceAliasGroup;
     PhysicalPass:TPhysicalPass;
 begin
  for PhysicalPass in fPhysicalPasses do begin
   PhysicalPass.BeforeDestroySwapChain;
  end;
- for ResourceReuseGroup in fResourceReuseGroups do begin
-  ResourceReuseGroup.BeforeDestroySwapChain;
+ for ResourceAliasGroup in fResourceAliasGroups do begin
+  ResourceAliasGroup.BeforeDestroySwapChain;
  end;
 end;
 
