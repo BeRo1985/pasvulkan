@@ -2200,6 +2200,142 @@ end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.AfterCreateSwapChain;
 var AttachmentIndex,
+    AttachmentReferenceIndex,
+    SubPassIndex,
+    SubPassDependencyIndex,
+    SwapChainImageIndex,
+    Width,
+    Height,
+    Layers:TpvSizeInt;
+    SrcSubPassIndex,
+    DstSubPassIndex:TVkUInt32;
+    Attachment:PAttachment;
+    AttachmentReference:PVkAttachmentReference;
+    SubPass:TSubPass;
+    SubPassDependency:PSubPassDependency;
+    RenderPass:TRenderPass;
+    ResourcePhysicalImageData:TResourcePhysicalImageData;
+    AttachmentDescriptionFlags:TVkAttachmentDescriptionFlags;
+begin
+ inherited AfterCreateSwapChain;
+
+ for SubPass in fSubPasses do begin
+  SubPass.AfterCreateSwapChain;
+ end;
+
+ Width:=1;
+ Height:=1;
+ Layers:=1;
+
+ for SubPass in fSubPasses do begin
+  RenderPass:=SubPass.fRenderPass;
+  case RenderPass.fSize.Kind of
+   TpvFrameGraph.TImageSize.TKind.Absolute:begin
+    Width:=Max(1,trunc(RenderPass.fSize.Size.x));
+    Height:=Max(1,trunc(RenderPass.fSize.Size.y));
+    Layers:=Max(1,trunc(RenderPass.fSize.Size.w));
+   end;
+   TpvFrameGraph.TImageSize.TKind.SurfaceDependent:begin
+    Width:=Max(1,trunc(RenderPass.fSize.Size.x*fFrameGraph.fSurfaceWidth));
+    Height:=Max(1,trunc(RenderPass.fSize.Size.y*fFrameGraph.fSurfaceHeight));
+    Layers:=Max(1,trunc(RenderPass.fSize.Size.w));
+   end;
+   else {TpvFrameGraph.TImageSize.TKind.Undefined:}begin
+   end;
+  end;
+  break;
+ end;
+
+ fVulkanRenderPass:=TpvVulkanRenderPass.Create(fFrameGraph.fVulkanDevice);
+
+ for AttachmentIndex:=0 to fAttachments.Count-1 do begin
+  Attachment:=@fAttachments.Items[AttachmentIndex];
+  ResourcePhysicalImageData:=Attachment^.Resource.fResourceReuseGroup.fResourcePhysicalData as TResourcePhysicalImageData;
+  Attachment^.Format:=ResourcePhysicalImageData.fFormat;
+  AttachmentDescriptionFlags:=0;
+  if Attachment^.Resource.fResourceReuseGroup.fResources.Count>1 then begin
+   AttachmentDescriptionFlags:=AttachmentDescriptionFlags or TVkAttachmentDescriptionFlags(VK_ATTACHMENT_DESCRIPTION_MAY_ALIAS_BIT);
+  end;
+  fVulkanRenderPass.AddAttachmentDescription(AttachmentDescriptionFlags,
+                                             Attachment^.Format,
+                                             Attachment^.Samples,
+                                             Attachment^.LoadOp,
+                                             Attachment^.StoreOp,
+                                             Attachment^.StencilLoadOp,
+                                             Attachment^.StencilStoreOp,
+                                             Attachment^.InitialLayout,
+                                             Attachment^.FinalLayout
+                                            );
+ end;
+
+ for AttachmentReferenceIndex:=0 to fAttachmentReferences.Count-1 do begin
+  AttachmentReference:=@fAttachmentReferences.Items[AttachmentReferenceIndex];
+  fVulkanRenderPass.AddAttachmentReference(AttachmentReference^.Attachment,
+                                           AttachmentReference^.Layout);
+ end;
+
+ for SubPassIndex:=0 to fSubPasses.Count-1 do begin
+  SubPass:=fSubPasses[SubPassIndex];
+  fVulkanRenderPass.AddSubpassDescription(0,
+                                          VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                          SubPass.fInputAttachments.Items,
+                                          SubPass.fColorAttachments.Items,
+                                          SubPass.fResolveAttachments.Items,
+                                          SubPass.fDepthStencilAttachment,
+                                          SubPass.fPreserveAttachments.Items
+                                         );
+ end;
+
+ for SubPassDependencyIndex:=0 to fSubPassDependencies.Count-1 do begin
+  SubPassDependency:=@fSubPassDependencies.Items[SubPassDependencyIndex];
+  if assigned(SubPassDependency^.SrcSubPass) then begin
+   SrcSubPassIndex:=SubPassDependency^.SrcSubPass.fIndex;
+  end else begin
+   SrcSubPassIndex:=VK_SUBPASS_EXTERNAL;
+  end;
+  if assigned(SubPassDependency.DstSubPass) then begin
+   DstSubPassIndex:=SubPassDependency^.DstSubPass.fIndex;
+  end else begin
+   DstSubPassIndex:=VK_SUBPASS_EXTERNAL;
+  end;
+  fVulkanRenderPass.AddSubpassDependency(SrcSubPassIndex,
+                                         DstSubPassIndex,
+                                         SubPassDependency^.SrcStageMask,
+                                         SubPassDependency^.DstStageMask,
+                                         SubPassDependency^.SrcAccessMask,
+                                         SubPassDependency^.DstAccessMask,
+                                         SubPassDependency^.DependencyFlags);
+ end;
+
+ fVulkanRenderPass.Initialize;
+
+ for AttachmentIndex:=0 to fAttachments.Count-1 do begin
+  Attachment:=@fAttachments.Items[AttachmentIndex];
+  fVulkanRenderPass.ClearValues[0]^:=Attachment^.ClearValue;
+ end;
+
+ for SwapChainImageIndex:=0 to fFrameGraph.fCountSwapChainImages-1 do begin
+  fVulkanFrameBuffers[SwapChainImageIndex]:=TpvVulkanFrameBuffer.Create(fFrameGraph.fVulkanDevice,
+                                                                        fVulkanRenderPass,
+                                                                        Width,
+                                                                        Height,
+                                                                        Layers);
+  for AttachmentIndex:=0 to fAttachments.Count-1 do begin
+   Attachment:=@fAttachments.Items[AttachmentIndex];
+   ResourcePhysicalImageData:=TResourcePhysicalImageData(Attachment^.Resource.fResourceReuseGroup.fResourcePhysicalData);
+   fVulkanFrameBuffers[SwapChainImageIndex].AddAttachment(TpvVulkanFrameBufferAttachment.Create(fFrameGraph.fVulkanDevice,
+                                                                                                ResourcePhysicalImageData.fVulkanImages[SwapChainImageIndex],
+                                                                                                ResourcePhysicalImageData.fVulkanImageViews[SwapChainImageIndex],
+                                                                                                ResourcePhysicalImageData.fExtent.width,
+                                                                                                ResourcePhysicalImageData.fExtent.height,
+                                                                                                Attachment^.Format,
+                                                                                                false));
+  end;
+  fVulkanFrameBuffers[SwapChainImageIndex].Initialize;
+ end;
+
+end;
+(*var AttachmentIndex,
     OtherAttachmentIndex,
     SubPassDependencyIndex,
     SubPassIndex,
@@ -2210,20 +2346,7 @@ var AttachmentIndex,
     SubPass,
     OtherSubPass:TSubPass;
     RenderPass:TRenderPass;
-    Resource:TResource;
-    ResourceType:TResourceType;
-    ImageResourceType:TImageResourceType;
-    ResourceTransition,
-    OtherResourceTransition,
-    FromResourceTransition,
-    ToResourceTransition:TResourceTransition;
-    Attachments:TAttachments;
     Attachment:PAttachment;
-    InputAttachments,
-    ColorAttachments,
-    ResolveAttachments:TInt32AttachmentLists;
-    PreserveAttachments:TUInt32AttachmentLists;
-    DepthStencilAttachment:TpvInt64;
     SrcSubPassIndex,
     DstSubPassIndex:TVkUInt32;
     SrcStageMask,
@@ -2587,7 +2710,7 @@ begin
 
  end;
 
-end;
+end;*)
 
 procedure TpvFrameGraph.TPhysicalRenderPass.BeforeDestroySwapChain;
 var SwapChainImageIndex:TpvSizeInt;
