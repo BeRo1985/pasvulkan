@@ -4126,6 +4126,7 @@ begin
  fDrawFrameIndex:=aDrawFrameIndex;
  fDrawWaitFence:=aWaitFence;
  if assigned(aToWaitOnSemaphore) then begin
+  Assert(fDrawToWaitOnSemaphores[aDrawSwapChainImageIndex].Count>0);
   for SemaphoreIndex:=0 to fDrawToWaitOnSemaphores[aDrawSwapChainImageIndex].Count-1 do begin
    fDrawToWaitOnSemaphores[aDrawSwapChainImageIndex].Items[SemaphoreIndex]^:=aToWaitOnSemaphore.Handle;
   end;
@@ -4133,6 +4134,7 @@ begin
   Assert(fDrawToWaitOnSemaphores[aDrawSwapChainImageIndex].Count=0);
  end;
  if assigned(aToSignalSemaphore) then begin
+  Assert(fDrawToSignalSemaphores[aDrawSwapChainImageIndex].Count>0);
   for SemaphoreIndex:=0 to fDrawToSignalSemaphores[aDrawSwapChainImageIndex].Count-1 do begin
    fDrawToSignalSemaphores[aDrawSwapChainImageIndex].Items[SemaphoreIndex]^:=aToSignalSemaphore.Handle;
   end;
