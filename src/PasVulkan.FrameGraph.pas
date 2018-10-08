@@ -636,6 +636,7 @@ type EpvFrameGraph=class(Exception);
               fSubPasses:TSubPasses;
               fSubPassDependencies:TSubPassDependencies;
               fMultiView:boolean;
+              fHasSurfaceSubPassDependencies:boolean;
               fAttachments:TAttachments;
               fAttachmentReferences:TAttachmentReferences;
               fVulkanRenderPass:TpvVulkanRenderPass;
@@ -880,17 +881,26 @@ type EpvFrameGraph=class(Exception);
 implementation
 
 function ComparePhysicalRenderPassSubPassDependencies(const a,b:TpvFrameGraph.TPhysicalRenderPass.TSubpassDependency):TpvInt32;
+ function GetSrcSubPassIndex(const aSubpassDependency:TpvFrameGraph.TPhysicalRenderPass.TSubpassDependency):TpvInt64;
+ begin
+  if assigned(aSubpassDependency.SrcSubPass) then begin
+   result:=aSubpassDependency.SrcSubPass.fIndex;
+  end else begin
+   result:=-1;
+  end;
+ end;
+ function GetDstSubPassIndex(const aSubpassDependency:TpvFrameGraph.TPhysicalRenderPass.TSubpassDependency):TpvInt64;
+ begin
+  if assigned(aSubpassDependency.DstSubPass) then begin
+   result:=aSubpassDependency.DstSubPass.fIndex;
+  end else begin
+   result:=TpvInt64(High(TpvUInt32))+1;
+  end;
+ end;
 begin
- if a.SrcSubPass.fIndex<b.SrcSubPass.fIndex then begin
-  result:=-1;
- end else if a.SrcSubPass.fIndex>b.SrcSubPass.fIndex then begin
-  result:=1;
- end else if a.DstSubPass.fIndex<b.DstSubPass.fIndex then begin
-  result:=-1;
- end else if a.DstSubPass.fIndex>b.DstSubPass.fIndex then begin
-  result:=1;
- end else begin
-  result:=0;
+ result:=TpvInt64(Sign(TpvInt64(GetSrcSubPassIndex(a)-GetSrcSubPassIndex(b))));
+ if result=0 then begin
+  result:=TpvInt64(Sign(TpvInt64(GetDstSubPassIndex(a)-GetDstSubPassIndex(b))));
  end;
 end;
 
@@ -2227,6 +2237,8 @@ begin
  fSubPasses:=TSubPasses.Create;
  fSubPasses.OwnsObjects:=true;
  fSubPassDependencies.Initialize;
+ fMultiView:=false;
+ fHasSurfaceSubPassDependencies:=false;
  fAttachments.Initialize;
  fAttachmentReferences.Initialize;
  fVulkanRenderPass:=nil;
@@ -3476,6 +3488,46 @@ type TBeforeAfter=(Before,After);
      FoundPipelineBarrierGroup:TPhysicalPass.TPipelineBarrierGroup;
      DependencyFlags:TVkDependencyFlags;
  begin
+
+  // First to try add the external subpass dependencies
+  for Resource in fResources do begin
+   for ResourceTransitionIndex:=0 to Resource.fResourceTransitions.Count-1 do begin
+    ResourceTransition:=Resource.fResourceTransitions[ResourceTransitionIndex];
+    if (ResourceTransition.fKind in TResourceTransition.AllImages) and
+       (TPass.TFlag.Used in ResourceTransition.fPass.fFlags) and
+       assigned(ResourceTransition.fPass.fPhysicalPass) and
+       (ResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
+       assigned(ResourceTransition.fResource.fResourceType) and
+       (ResourceTransition.fResource.fResourceType is TImageResourceType) and
+       (TImageResourceType(ResourceTransition.fResource.fResourceType).fImageType=TImageType.Surface) and
+       (TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPasses.Count>0) and
+       (not TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fHasSurfaceSubPassDependencies) then begin
+     TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fHasSurfaceSubPassDependencies:=true;
+     begin
+      SubPassDependency.SrcSubPass:=nil;
+      SubPassDependency.DstSubPass:=TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPasses[0];
+      SubPassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+      SubPassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+      SubPassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+      SubPassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+      SubPassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+      AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
+     end;
+     begin
+      SubPassDependency.SrcSubPass:=TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPasses[TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPasses.Count-1];
+      SubPassDependency.DstSubPass:=nil;
+      SubPassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+      SubPassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+      SubPassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+      SubPassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+      SubPassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+      AddSubPassDependency(TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubPassDependencies,SubPassDependency);
+     end;
+    end;
+   end;
+  end;
+
+  // Then add the remaining subpass dependencies
   for Resource in fResources do begin
    for ResourceTransitionIndex:=0 to Resource.fResourceTransitions.Count-1 do begin
     ResourceTransition:=Resource.fResourceTransitions[ResourceTransitionIndex];
@@ -3591,6 +3643,7 @@ type TBeforeAfter=(Before,After);
     end;
    end;
   end;
+
  end;
  procedure SortPhysicalRenderPassSubPassDependencies;
  var PhysicalPass:TPhysicalPass;
