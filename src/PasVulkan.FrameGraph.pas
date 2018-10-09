@@ -564,6 +564,7 @@ type EpvFrameGraph=class(Exception);
               procedure Hide; virtual;
               procedure AfterCreateSwapChain; virtual;
               procedure BeforeDestroySwapChain; virtual;
+              procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); virtual;
               procedure Execute; virtual;
             end;
             TPhysicalComputePass=class(TPhysicalPass)
@@ -576,6 +577,7 @@ type EpvFrameGraph=class(Exception);
               procedure Hide; override;
               procedure AfterCreateSwapChain; override;
               procedure BeforeDestroySwapChain; override;
+              procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
               procedure Execute; override;
             end;
             TPhysicalRenderPass=class(TPhysicalPass)
@@ -649,6 +651,7 @@ type EpvFrameGraph=class(Exception);
               procedure Hide; override;
               procedure AfterCreateSwapChain; override;
               procedure BeforeDestroySwapChain; override;
+              procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
               procedure Execute; override;
             end;
             TPass=class
@@ -747,7 +750,11 @@ type EpvFrameGraph=class(Exception);
                                         const aAccessFlags:TVkAccessFlags;
                                         const aFlags:TResourceTransition.TFlags=[]); overload;
              public
-              procedure Setup; virtual;
+              procedure Show; virtual;
+              procedure Hide; virtual;
+              procedure AfterCreateSwapChain; virtual;
+              procedure BeforeDestroySwapChain; virtual;
+              procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); virtual;
               procedure Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt); virtual;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
@@ -839,12 +846,12 @@ type EpvFrameGraph=class(Exception);
                                      const aImageUsage:TVkImageUsageFlags;
                                      const aCountMipMapLevels:TVkUInt32):TResourceType; overload;
       public
-       procedure Setup; virtual;
-       procedure Compile; virtual;
        procedure Show; virtual;
        procedure Hide; virtual;
        procedure AfterCreateSwapChain; virtual;
        procedure BeforeDestroySwapChain; virtual;
+       procedure Setup; virtual;
+       procedure Compile; virtual;
       private
        procedure ExecuteQueuePhysicalPassParallelForJobMethod(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aData:pointer;const aFromIndex,aToIndex:TPasMPNativeInt);
        procedure ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
@@ -1874,14 +1881,28 @@ begin
                  aFlags);
 end;
 
-procedure TpvFrameGraph.TPass.Setup;
+procedure TpvFrameGraph.TPass.Show;
 begin
+end;
 
+procedure TpvFrameGraph.TPass.Hide;
+begin
+end;
+
+procedure TpvFrameGraph.TPass.AfterCreateSwapChain;
+begin
+end;
+
+procedure TpvFrameGraph.TPass.BeforeDestroySwapChain;
+begin
+end;
+
+procedure TpvFrameGraph.TPass.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
+begin
 end;
 
 procedure TpvFrameGraph.TPass.Execute(const aCommandBuffer:TpvVulkanCommandBuffer;const aSwapChainImageIndex,aFrameIndex:TpvSizeInt);
 begin
-
 end;
 
 { TpvFrameGraph.TRenderPass }
@@ -2158,6 +2179,10 @@ begin
  end;
 end;
 
+procedure TpvFrameGraph.TPhysicalPass.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
+begin
+end;
+
 procedure TpvFrameGraph.TPhysicalPass.Execute;
 begin
 
@@ -2195,6 +2220,14 @@ end;
 procedure TpvFrameGraph.TPhysicalComputePass.BeforeDestroySwapChain;
 begin
  inherited BeforeDestroySwapChain;
+end;
+
+procedure TpvFrameGraph.TPhysicalComputePass.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
+begin
+ inherited Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+ if TPass.TFlag.Enabled in fComputePass.fFlags then begin
+  fComputePass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+ end;
 end;
 
 procedure TpvFrameGraph.TPhysicalComputePass.Execute;
@@ -2457,6 +2490,19 @@ begin
 
  inherited BeforeDestroySwapChain;
 
+end;
+
+procedure TpvFrameGraph.TPhysicalRenderPass.Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt);
+var SubpassIndex:TpvSizeInt;
+    Subpass:TSubpass;
+begin
+ inherited Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+ for SubpassIndex:=0 to fSubpasses.Count-1 do begin
+  Subpass:=fSubpasses[SubpassIndex];
+  if TPass.TFlag.Enabled in Subpass.fRenderPass.fFlags then begin
+   Subpass.fRenderPass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
+  end;
+ end;
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.Execute;
@@ -4148,11 +4194,13 @@ begin
    if assigned(PhysicalPass) then begin
     if PhysicalPass is TPhysicalComputePass then begin
      PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
+     PhysicalComputePass.fComputePass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
      PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalComputePass.fComputePass.fFlags;
     end else if PhysicalPass is TPhysicalRenderPass then begin
      PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
      for SubpassIndex:=0 to PhysicalRenderPass.fSubpasses.Count-1 do begin
       PhysicalRenderPassSubpass:=PhysicalRenderPass.fSubpasses[SubpassIndex];
+      PhysicalRenderPassSubpass.fRenderPass.Update(aUpdateSwapChainImageIndex,aUpdateFrameIndex);
       PhysicalRenderPassSubpass.fRenderPass.fDoubleBufferedEnabledState[aUpdateFrameIndex and 1]:=TPass.TFlag.Enabled in PhysicalRenderPassSubpass.fRenderPass.fFlags;
      end;
     end;
