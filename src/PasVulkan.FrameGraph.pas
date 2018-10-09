@@ -544,6 +544,7 @@ type EpvFrameGraph=class(Exception);
               fFrameGraph:TpvFrameGraph;
               fIndex:TpvSizeInt;
               fProcessed:boolean;
+              fHasSecondaryBuffers:boolean;
               fQueue:TQueue;
               fInputDependencies:TPhysicalPasses;
               fOutputDependencies:TPhysicalPasses;
@@ -659,7 +660,8 @@ type EpvFrameGraph=class(Exception);
                      Used,
                      Processed,
                      Marked,
-                     Subpass
+                     Subpass,
+                     HasSecondaryBuffers
                     );
                    PFlag=^TFlag;
                    TFlags=set of TFlag;
@@ -677,8 +679,10 @@ type EpvFrameGraph=class(Exception);
               fPhysicalPass:TPhysicalPass;
               fTopologicalSortIndex:TpvSizeInt;
               fDoubleBufferedEnabledState:array[0..1] of longbool;
-              function GetEnabled:boolean;
+              function GetEnabled:boolean; inline;
               procedure SetEnabled(const aEnabled:boolean);
+              function GetHasSecondaryBuffers:boolean; inline;
+              procedure SetHasSecondaryBuffers(const aHasSecondaryBuffers:boolean);
               procedure SetName(const aName:TpvRawByteString);
               function AddImageResource(const aResourceTypeName:TpvRawByteString;
                                         const aResourceName:TpvRawByteString;
@@ -750,6 +754,7 @@ type EpvFrameGraph=class(Exception);
               property Name:TpvRawByteString read fName write SetName;
               property Queue:TQueue read fQueue write fQueue;
               property Enabled:boolean read GetEnabled write SetEnabled;
+              property HasSecondaryBuffers:boolean read GetHasSecondaryBuffers write SetHasSecondaryBuffers;
             end;
             TComputePass=class(TPass)
              private
@@ -1633,6 +1638,22 @@ begin
  end;
 end;
 
+function TpvFrameGraph.TPass.GetHasSecondaryBuffers:boolean;
+begin
+ result:=TFlag.HasSecondaryBuffers in fFlags;
+end;
+
+procedure TpvFrameGraph.TPass.SetHasSecondaryBuffers(const aHasSecondaryBuffers:boolean);
+begin
+ if aHasSecondaryBuffers<>(TFlag.HasSecondaryBuffers in fFlags) then begin
+  if aHasSecondaryBuffers then begin
+   Include(fFlags,TFlag.HasSecondaryBuffers);
+  end else begin
+   Exclude(fFlags,TFlag.HasSecondaryBuffers);
+  end;
+ end;
+end;
+
 procedure TpvFrameGraph.TPass.SetName(const aName:TpvRawByteString);
 begin
  if fName<>aName then begin
@@ -2037,6 +2058,8 @@ begin
 
  fFrameGraph:=aFrameGraph;
 
+ fHasSecondaryBuffers:=false;
+
  fQueue:=aQueue;
 
  fInputDependencies:=TPhysicalPasses.Create;
@@ -2439,15 +2462,21 @@ end;
 procedure TpvFrameGraph.TPhysicalRenderPass.Execute;
 var SubpassIndex:TpvSizeInt;
     Subpass:TSubpass;
+    SubpassContents:TVkSubpassContents;
     CommandBuffer:TpvVulkanCommandBuffer;
 begin
  inherited Execute;
+ if fHasSecondaryBuffers then begin
+  SubpassContents:=VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS;
+ end else begin
+  SubpassContents:=VK_SUBPASS_CONTENTS_INLINE;
+ end;
  CommandBuffer:=fCommandBuffers[fFrameGraph.fDrawSwapChainImageIndex];
  CommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
  fBeforePipelineBarrierGroups.Execute(CommandBuffer);
  fVulkanRenderPass.BeginRenderPass(CommandBuffer,
                                    fVulkanFrameBuffers[fFrameGraph.fDrawSwapChainImageIndex],
-                                   VK_SUBPASS_CONTENTS_INLINE,
+                                   SubpassContents,
                                    0,
                                    0,
                                    fVulkanFrameBuffers[fFrameGraph.fDrawSwapChainImageIndex].Width,
@@ -2458,7 +2487,7 @@ begin
    Subpass.fRenderPass.Execute(CommandBuffer,fFrameGraph.fDrawSwapChainImageIndex,fFrameGraph.fDrawFrameIndex);
   end;
   if (SubpassIndex+1)<fSubpasses.Count then begin
-   CommandBuffer.CmdNextSubpass(VK_SUBPASS_CONTENTS_INLINE);
+   CommandBuffer.CmdNextSubpass(SubpassContents);
   end;
  end;
  fVulkanRenderPass.EndRenderPass(CommandBuffer);
@@ -3072,11 +3101,13 @@ type TBeforeAfter=(Before,After);
    if Pass is TComputePass then begin
     Pass.fPhysicalPass:=TPhysicalComputePass.Create(self,TComputePass(Pass));
     Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
+    Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
     inc(Index);
    end else if Pass is TRenderPass then begin
     PhysicalRenderPass:=TPhysicalRenderPass.Create(self,Pass.fQueue);
     Pass.fPhysicalPass:=PhysicalRenderPass;
     Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
+    Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
     TRenderPass(Pass).fPhysicalRenderPassSubpass:=TPhysicalRenderPass.TSubpass.Create(PhysicalRenderPass,TRenderPass(Pass));
     TRenderPass(Pass).fPhysicalRenderPassSubpass.fIndex:=PhysicalRenderPass.fSubpasses.Add(TRenderPass(Pass).fPhysicalRenderPassSubpass);
     PhysicalRenderPass.fMultiView:=TRenderPass(Pass).fMultiViewMask<>0;
@@ -3091,6 +3122,7 @@ type TBeforeAfter=(Before,After);
        OtherPass.fPhysicalPass:=Pass.fPhysicalPass;
        TRenderPass(OtherPass).fPhysicalRenderPassSubpass:=TPhysicalRenderPass.TSubpass.Create(PhysicalRenderPass,TRenderPass(OtherPass));
        TRenderPass(OtherPass).fPhysicalRenderPassSubpass.fIndex:=PhysicalRenderPass.fSubpasses.Add(TRenderPass(OtherPass).fPhysicalRenderPassSubpass);
+       Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.fPhysicalPass.fHasSecondaryBuffers or Pass.GetHasSecondaryBuffers;
        PhysicalRenderPass.fMultiView:=PhysicalRenderPass.fMultiView or (TRenderPass(OtherPass).fMultiViewMask<>0);
        fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,OtherPass.fPhysicalPass.fIndex);
        inc(Index);
