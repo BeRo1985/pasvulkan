@@ -779,6 +779,9 @@ type EpvFrameGraph=class(Exception);
               fMultiViewMask:TpvUInt32;
               fSize:TImageSize;
               fPhysicalRenderPassSubpass:TPhysicalRenderPass.TSubpass;
+              function GetPhysicalRenderPass:TPhysicalRenderPass; inline;
+              function GetVulkanRenderPass:TpvVulkanRenderPass; inline;
+              function GetVulkanRenderPassSubpassIndex:TpvSizeInt; inline;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); override;
               destructor Destroy; override;
@@ -786,7 +789,10 @@ type EpvFrameGraph=class(Exception);
               property Size:TImageSize read fSize write fSize;
              published
               property MultiViewMask:TpvUInt32 read fMultiViewMask write fMultiViewMask;
+              property PhysicalRenderPass:TPhysicalRenderPass read GetPhysicalRenderPass;
               property PhysicalRenderPassSubpass:TPhysicalRenderPass.TSubpass read fPhysicalRenderPassSubpass;
+              property VulkanRenderPass:TpvVulkanRenderPass read GetVulkanRenderPass;
+              property VulkanRenderPassSubpassIndex:TpvSizeInt read GetVulkanRenderPassSubpassIndex;
             end;
       private
        fVulkanDevice:TpvVulkanDevice;
@@ -1938,6 +1944,29 @@ end;
 destructor TpvFrameGraph.TRenderPass.Destroy;
 begin
  inherited Destroy;
+end;
+
+function TpvFrameGraph.TRenderPass.GetPhysicalRenderPass:TPhysicalRenderPass;
+begin
+ result:=TPhysicalRenderPass(fPhysicalPass);
+end;
+
+function TpvFrameGraph.TRenderPass.GetVulkanRenderPass:TpvVulkanRenderPass;
+begin
+ if assigned(fPhysicalPass) then begin
+  result:=TPhysicalRenderPass(fPhysicalPass).fVulkanRenderPass;
+ end else begin
+  result:=nil;
+ end;
+end;
+
+function TpvFrameGraph.TRenderPass.GetVulkanRenderPassSubpassIndex:TpvSizeInt;
+begin
+ if assigned(fPhysicalRenderPassSubpass) then begin
+  result:=fPhysicalRenderPassSubpass.fIndex;
+ end else begin
+  result:=-1;
+ end;
 end;
 
 { TpvFrameGraph.TPhysicalPass.TPipelineBarrierGroup }
