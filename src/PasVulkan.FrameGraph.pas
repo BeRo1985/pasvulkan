@@ -656,6 +656,8 @@ type EpvFrameGraph=class(Exception);
               procedure BeforeDestroySwapChain; override;
               procedure Update(const aUpdateSwapChainImageIndex,aUpdateFrameIndex:TpvSizeInt); override;
               procedure Execute; override;
+             published
+              property VulkanRenderPass:TpvVulkanRenderPass read fVulkanRenderPass;
             end;
             TPass=class
              public
@@ -765,6 +767,7 @@ type EpvFrameGraph=class(Exception);
               property Queue:TQueue read fQueue write fQueue;
               property Enabled:boolean read GetEnabled write SetEnabled;
               property HasSecondaryBuffers:boolean read GetHasSecondaryBuffers write SetHasSecondaryBuffers;
+              property PhysicalPass:TPhysicalPass read fPhysicalPass;
             end;
             TComputePass=class(TPass)
              private
@@ -783,6 +786,7 @@ type EpvFrameGraph=class(Exception);
               property Size:TImageSize read fSize write fSize;
              published
               property MultiViewMask:TpvUInt32 read fMultiViewMask write fMultiViewMask;
+              property PhysicalRenderPassSubpass:TPhysicalRenderPass.TSubpass read fPhysicalRenderPassSubpass;
             end;
       private
        fVulkanDevice:TpvVulkanDevice;
@@ -2382,10 +2386,6 @@ var AttachmentIndex,
 begin
  inherited AfterCreateSwapChain;
 
- for Subpass in fSubpasses do begin
-  Subpass.AfterCreateSwapChain;
- end;
-
  Width:=1;
  Height:=1;
  Layers:=1;
@@ -2497,6 +2497,10 @@ begin
   fVulkanFrameBuffers[SwapChainImageIndex].Initialize;
  end;
 
+ for Subpass in fSubpasses do begin
+  Subpass.AfterCreateSwapChain;
+ end;
+
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.BeforeDestroySwapChain;
@@ -2504,15 +2508,15 @@ var SwapChainImageIndex:TpvSizeInt;
     Subpass:TSubpass;
 begin
 
+ for Subpass in fSubpasses do begin
+  Subpass.BeforeDestroySwapChain;
+ end;
+
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fVulkanFrameBuffers[SwapChainImageIndex]);
  end;
 
  FreeAndNil(fVulkanRenderPass);
-
- for Subpass in fSubpasses do begin
-  Subpass.BeforeDestroySwapChain;
- end;
 
  inherited BeforeDestroySwapChain;
 
