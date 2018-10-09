@@ -310,6 +310,9 @@ type EpvFrameGraph=class(Exception);
               fVulkanImages:array[0..MaxSwapChainImages-1] of TpvVulkanImage;
               fVulkanImageViews:array[0..MaxSwapChainImages-1] of TpvVulkanImageView;
               fVulkanMemoryBlocks:array[0..MaxSwapChainImages-1] of TpvVulkanDeviceMemoryBlock;
+              function GetVulkanImage(const aIndex:TpvSizeInt):TpvVulkanImage; inline;
+              function GetVulkanImageView(const aIndex:TpvSizeInt):TpvVulkanImageView; inline;
+              function GetVulkanMemoryBlock(const aIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock; inline;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); override;
               destructor Destroy; override;
@@ -317,10 +320,11 @@ type EpvFrameGraph=class(Exception);
               procedure Hide; override;
               procedure AfterCreateSwapChain; override;
               procedure BeforeDestroySwapChain; override;
+             public
+              property VulkanImages[const aIndex:TpvSizeInt]:TpvVulkanImage read GetVulkanImage;
+              property VulkanImageViews[const aIndex:TpvSizeInt]:TpvVulkanImageView read GetVulkanImageView;
+              property VulkanMemoryBlocks[const aIndex:TpvSizeInt]:TpvVulkanDeviceMemoryBlock read GetVulkanMemoryBlock;
              published
-{             property VulkanImage:TpvVulkanImage read fVulkanImage write fVulkanImage;
-              property VulkanImageView:TpvVulkanImageView read fVulkanImageView write fVulkanImageView;
-              property VulkanMemoryBlock:TpvVulkanDeviceMemoryBlock read fVulkanMemoryBlock write fVulkanMemoryBlock;}
             end;
             TResourcePhysicalBufferData=class(TResourcePhysicalData)
              // TODO
@@ -365,8 +369,7 @@ type EpvFrameGraph=class(Exception);
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName;
               property ResourceType:TResourceType read fResourceType;
-              property MinimumPhysicalPassStepIndex:TpvSizeInt read fMinimumPhysicalPassStepIndex;
-              property MaximumPhysicalPassStepIndex:TpvSizeInt read fMaximumPhysicalPassStepIndex;
+              property ResourceAliasGroup:TResourceAliasGroup read fResourceAliasGroup;
               property AssociatedMemoryData:TObject read fAssociatedMemoryData write fAssociatedMemoryData;
               property Used:boolean read fUsed;
             end;
@@ -1202,6 +1205,21 @@ begin
   end;
  end;
  inherited Destroy;
+end;
+
+function TpvFrameGraph.TResourcePhysicalImageData.GetVulkanImage(const aIndex:TpvSizeInt):TpvVulkanImage;
+begin
+ result:=fVulkanImages[aIndex];
+end;
+
+function TpvFrameGraph.TResourcePhysicalImageData.GetVulkanImageView(const aIndex:TpvSizeInt):TpvVulkanImageView;
+begin
+ result:=fVulkanImageViews[aIndex];
+end;
+
+function TpvFrameGraph.TResourcePhysicalImageData.GetVulkanMemoryBlock(const aIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock;
+begin
+ result:=fVulkanMemoryBlocks[aIndex];
 end;
 
 procedure TpvFrameGraph.TResourcePhysicalImageData.Show;
