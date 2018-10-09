@@ -2205,20 +2205,24 @@ end;
 procedure TpvFrameGraph.TPhysicalComputePass.Show;
 begin
  inherited Show;
+ fComputePass.Show;
 end;
 
 procedure TpvFrameGraph.TPhysicalComputePass.Hide;
 begin
+ fComputePass.Hide;
  inherited Hide;
 end;
 
 procedure TpvFrameGraph.TPhysicalComputePass.AfterCreateSwapChain;
 begin
  inherited AfterCreateSwapChain;
+ fComputePass.AfterCreateSwapChain;
 end;
 
 procedure TpvFrameGraph.TPhysicalComputePass.BeforeDestroySwapChain;
 begin
+ fComputePass.BeforeDestroySwapChain;
  inherited BeforeDestroySwapChain;
 end;
 
@@ -2270,18 +2274,22 @@ end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.Show;
 begin
+ fRenderPass.Show;
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.Hide;
 begin
+ fRenderPass.Hide;
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.AfterCreateSwapChain;
 begin
+ fRenderPass.AfterCreateSwapChain;
 end;
 
 procedure TpvFrameGraph.TPhysicalRenderPass.TSubpass.BeforeDestroySwapChain;
 begin
+ fRenderPass.BeforeDestroySwapChain;
 end;
 
 { TpvFrameGraph.TVulkanRenderPass }
