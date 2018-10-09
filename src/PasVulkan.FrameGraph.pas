@@ -2457,7 +2457,9 @@ begin
   if Subpass.fRenderPass.fDoubleBufferedEnabledState[fFrameGraph.fDrawFrameIndex and 1] then begin
    Subpass.fRenderPass.Execute(CommandBuffer,fFrameGraph.fDrawSwapChainImageIndex,fFrameGraph.fDrawFrameIndex);
   end;
-  CommandBuffer.CmdNextSubpass(VK_SUBPASS_CONTENTS_INLINE);
+  if (SubpassIndex+1)<fSubpasses.Count then begin
+   CommandBuffer.CmdNextSubpass(VK_SUBPASS_CONTENTS_INLINE);
+  end;
  end;
  fVulkanRenderPass.EndRenderPass(CommandBuffer);
  fAfterPipelineBarrierGroups.Execute(CommandBuffer);
