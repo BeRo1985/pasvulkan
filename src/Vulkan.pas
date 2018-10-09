@@ -87,6 +87,7 @@ uses {$if defined(Windows)}
      {$if defined(Mir) and defined(VulkanUseMirUnits)}Mir,{$ifend}
      {$if defined(Wayland) and defined(VulkanUseWaylandUnits)}Wayland,{$ifend}
      {$if defined(Android) and defined(VulkanUseAndroidUnits)}Android,{$ifend}
+     {$if defined(Fuchsia) and defined(VulkanUseFuchsiaUnits)}Fuchsia,{$ifend}
      SysUtils;
 
 const VK_DEFAULT_LIB_NAME={$ifdef Windows}'vulkan-1.dll'{$else}{$ifdef Android}'libvulkan.so'{$else}{$ifdef Unix}'libvulkan.so.1'{$else}'libvulkan'{$endif}{$endif}{$endif};
@@ -205,6 +206,12 @@ type PPVkInt8=^PVkInt8;
      PVkAndroidAHardwareBuffer={$ifdef VulkanUseAndroidUnits}PAHardwareBuffer{$else}TVkPointer{$endif};
 {$endif}
 
+{$ifdef Fuchsia}
+     PPVkFuchsiaZXHandle=^PVkFuchsiaZXHandle;
+     PVkFuchsiaZXHandle=^TVkFuchsiaZXHandle;
+     TVkFuchsiaZXHandle={$ifdef VulkanUseFuchsiaUnits}Tzx_handle_t{$else}TVkSizeUInt{$endif};
+{$endif}
+
 {$ifdef Mir}
      PPVkMirConnection=^PVkMirConnection;
      PVkMirConnection={$ifdef VulkanUseMirUnits}PMirConnection{$else}TVkPointer{$endif};
@@ -258,7 +265,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=86;
+      VK_HEADER_VERSION=87;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -711,8 +718,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_213_EXTENSION_NAME='VK_KHR_extension_213';
       VK_KHR_EXTENSION_214_SPEC_VERSION=0;
       VK_KHR_EXTENSION_214_EXTENSION_NAME='VK_KHR_extension_214';
-      VK_KHR_EXTENSION_215_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_215_EXTENSION_NAME='VK_KHR_extension_215';
+      VK_FUCHSIA_IMAGEPIPE_SURFACE_SPEC_VERSION=1;
+      VK_FUCHSIA_IMAGEPIPE_SURFACE_EXTENSION_NAME='VK_FUCHSIA_imagepipe_surface';
       VK_KHR_EXTENSION_216_SPEC_VERSION=0;
       VK_KHR_EXTENSION_216_EXTENSION_NAME='VK_KHR_extension_216';
       VK_KHR_EXTENSION_217_SPEC_VERSION=0;
@@ -755,8 +762,8 @@ const VK_NULL_HANDLE=0;
       VK_AMD_EXTENSION_235_EXTENSION_NAME='VK_AMD_extension_235';
       VK_AMD_EXTENSION_236_SPEC_VERSION=0;
       VK_AMD_EXTENSION_236_EXTENSION_NAME='VK_AMD_extension_236';
-      VK_AMD_EXTENSION_237_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_237_EXTENSION_NAME='VK_KHR_extension_237';
+      VK_KHR_EXTENSION_237_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_237_EXTENSION_NAME='VK_KHR_extension_237';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1119,6 +1126,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkMacOSSurfaceCreateFlagsMVK=^PVkMacOSSurfaceCreateFlagsMVK;
      PVkMacOSSurfaceCreateFlagsMVK=^TVkMacOSSurfaceCreateFlagsMVK;
      TVkMacOSSurfaceCreateFlagsMVK=TVkFlags;
+
+     PPVkImagePipeSurfaceCreateFlagsFUCHSIA=^PVkImagePipeSurfaceCreateFlagsFUCHSIA;
+     PVkImagePipeSurfaceCreateFlagsFUCHSIA=^TVkImagePipeSurfaceCreateFlagsFUCHSIA;
+     TVkImagePipeSurfaceCreateFlagsFUCHSIA=TVkFlags;
 
      PPVkPeerMemoryFeatureFlags=^PVkPeerMemoryFeatureFlags;
      PVkPeerMemoryFeatureFlags=^TVkPeerMemoryFeatureFlags;
@@ -2401,6 +2412,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV=1000206000,
        VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV=1000206001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR=1000211000,
+       VK_STRUCTURE_TYPE_IMAGEPIPE_SURFACE_CREATE_INFO_FUCHSIA=1000214000,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
        VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO,
@@ -6633,6 +6645,24 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const aFlags:TVkXcbSurfaceCreateFlagsKHR;
                           const aConnection:PVkXCBConnection;
                           const aWindow:TVkXCBWindow);
+{$endif}
+     end;
+{$endif}
+
+{$ifdef Fuchsia}
+     PPVkImagePipeSurfaceCreateInfoFUCHSIA=^PVkImagePipeSurfaceCreateInfoFUCHSIA;
+     PVkImagePipeSurfaceCreateInfoFUCHSIA=^TVkImagePipeSurfaceCreateInfoFUCHSIA;
+     TVkImagePipeSurfaceCreateInfoFUCHSIA=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGEPIPE_SURFACE_CREATE_INFO_FUCHSIA
+       pNext:PVkVoid;
+       flags:TVkImagePipeSurfaceCreateFlagsFUCHSIA;
+       imagePipeHandle:TVkFuchsiaZXHandle;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TVkImagePipeSurfaceCreateFlagsFUCHSIA;
+                          const aImagePipeHandle:TVkFuchsiaZXHandle);
 {$endif}
      end;
 {$endif}
@@ -11935,6 +11965,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkGetPhysicalDeviceXcbPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PVkXCBConnection;visual_id:TVkXCBVisualID):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 {$endif}
 
+{$ifdef Fuchsia}
+     TvkCreateImagePipeSurfaceFUCHSIA=function(instance:TVkInstance;const pCreateInfo:PVkImagePipeSurfaceCreateInfoFUCHSIA;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+{$endif}
+
      TvkCreateDebugReportCallbackEXT=function(instance:TVkInstance;const pCreateInfo:PVkDebugReportCallbackCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pCallback:PVkDebugReportCallbackEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkDestroyDebugReportCallbackEXT=procedure(instance:TVkInstance;callback:TVkDebugReportCallbackEXT;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -12661,6 +12695,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
 {$ifdef XCB}
       GetPhysicalDeviceXcbPresentationSupportKHR:TvkGetPhysicalDeviceXcbPresentationSupportKHR;
+{$endif}
+
+{$ifdef Fuchsia}
+      CreateImagePipeSurfaceFUCHSIA:TvkCreateImagePipeSurfaceFUCHSIA;
 {$endif}
 
       CreateDebugReportCallbackEXT:TvkCreateDebugReportCallbackEXT;
@@ -13396,6 +13434,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function GetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PVkXCBConnection;visual_id:TVkXCBVisualID):TVkBool32; virtual;
 {$endif}
 
+{$ifdef Fuchsia}
+       function CreateImagePipeSurfaceFUCHSIA(instance:TVkInstance;const pCreateInfo:PVkImagePipeSurfaceCreateInfoFUCHSIA;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
+{$endif}
+
        function CreateDebugReportCallbackEXT(instance:TVkInstance;const pCreateInfo:PVkDebugReportCallbackCreateInfoEXT;const pAllocator:PVkAllocationCallbacks;pCallback:PVkDebugReportCallbackEXT):TVkResult; virtual;
 
        procedure DestroyDebugReportCallbackEXT(instance:TVkInstance;callback:TVkDebugReportCallbackEXT;const pAllocator:PVkAllocationCallbacks); virtual;
@@ -14125,6 +14167,10 @@ var LibVulkan:pointer=nil;
 
 {$ifdef XCB}
     vkGetPhysicalDeviceXcbPresentationSupportKHR:TvkGetPhysicalDeviceXcbPresentationSupportKHR=nil;
+{$endif}
+
+{$ifdef Fuchsia}
+    vkCreateImagePipeSurfaceFUCHSIA:TvkCreateImagePipeSurfaceFUCHSIA=nil;
 {$endif}
 
     vkCreateDebugReportCallbackEXT:TvkCreateDebugReportCallbackEXT=nil;
@@ -15303,6 +15349,12 @@ begin
    @vk.fCommands.GetPhysicalDeviceXcbPresentationSupportKHR:=addr(vkGetPhysicalDeviceXcbPresentationSupportKHR);
   end;
 {$endif}
+{$ifdef Fuchsia}
+  if not assigned(vkCreateImagePipeSurfaceFUCHSIA) then begin
+   @vkCreateImagePipeSurfaceFUCHSIA:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateImagePipeSurfaceFUCHSIA'));
+   @vk.fCommands.CreateImagePipeSurfaceFUCHSIA:=addr(vkCreateImagePipeSurfaceFUCHSIA);
+  end;
+{$endif}
   if not assigned(vkCreateDebugReportCallbackEXT) then begin
    @vkCreateDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateDebugReportCallbackEXT'));
    @vk.fCommands.CreateDebugReportCallbackEXT:=addr(vkCreateDebugReportCallbackEXT);
@@ -16201,6 +16253,9 @@ begin
 {$endif}
 {$ifdef XCB}
   @InstanceCommands.GetPhysicalDeviceXcbPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceXcbPresentationSupportKHR')));
+{$endif}
+{$ifdef Fuchsia}
+  @InstanceCommands.CreateImagePipeSurfaceFUCHSIA:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateImagePipeSurfaceFUCHSIA')));
 {$endif}
   @InstanceCommands.CreateDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateDebugReportCallbackEXT')));
   @InstanceCommands.DestroyDebugReportCallbackEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyDebugReportCallbackEXT')));
@@ -18736,6 +18791,17 @@ begin
  flags:=aFlags;
  connection:=aConnection;
  window:=aWindow;
+end;
+{$endif}
+
+{$ifdef Fuchsia}
+constructor TVkImagePipeSurfaceCreateInfoFUCHSIA.Create(const aFlags:TVkImagePipeSurfaceCreateFlagsFUCHSIA;
+                                                        const aImagePipeHandle:TVkFuchsiaZXHandle);
+begin
+ sType:=VK_STRUCTURE_TYPE_IMAGEPIPE_SURFACE_CREATE_INFO_FUCHSIA;
+ pNext:=nil;
+ flags:=aFlags;
+ imagePipeHandle:=aImagePipeHandle;
 end;
 {$endif}
 
@@ -22560,6 +22626,13 @@ end;
 function TVulkan.GetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PVkXCBConnection;visual_id:TVkXCBVisualID):TVkBool32;
 begin
  result:=fCommands.GetPhysicalDeviceXcbPresentationSupportKHR(physicalDevice,queueFamilyIndex,connection,visual_id);
+end;
+{$endif}
+
+{$ifdef Fuchsia}
+function TVulkan.CreateImagePipeSurfaceFUCHSIA(instance:TVkInstance;const pCreateInfo:PVkImagePipeSurfaceCreateInfoFUCHSIA;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
+begin
+ result:=fCommands.CreateImagePipeSurfaceFUCHSIA(instance,pCreateInfo,pAllocator,pSurface);
 end;
 {$endif}
 

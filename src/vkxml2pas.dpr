@@ -2,7 +2,7 @@
  *                                zlib license                                *
  *============================================================================*
  *                                                                            *
- * Copyright (C) 2016, Benjamin Rosseaux (benjamin@rosseaux.de)               *
+ * Copyright (C) 2016-2018, Benjamin Rosseaux (benjamin@rosseaux.de)          *
  *                                                                            *
  * This software is provided 'as-is', without any express or implied          *
  * warranty. In no event will the authors be held liable for any damages      *
@@ -2935,6 +2935,8 @@ begin
     result:='PVkAndroidAHardwareBuffer';
    end else if Type_='SECURITY_ATTRIBUTES' then begin
     result:='PSecurityAttributes';
+   end else if Type_='zx_handle_t' then begin
+    result:='PVkFuchsiaZXHandle';
    end else begin
     result:='P'+Type_;
    end;
@@ -2998,6 +3000,8 @@ begin
     result:='PPVkAndroidANativeWindow';
    end else if Type_='AHardwareBuffer' then begin
     result:='PPVkAndroidAHardwareBuffer';
+   end else if Type_='zx_handle_t' then begin
+    result:='PPVkFuchsiaZXHandle';
    end else begin
     result:='PP'+Type_;
    end;
@@ -3064,6 +3068,8 @@ begin
     result:='TVkAndroidAHardwareBuffer';
    end else if Type_='LPCWSTR' then begin
     result:='PWideChar';
+   end else if Type_='zx_handle_t' then begin
+    result:='TVkFuchsiaZXHandle';
    end else begin
     result:='T'+Type_;
    end;
@@ -3822,6 +3828,8 @@ begin
             TypeDefinition^.Define:='Mir';
            end else if (Type_='ANativeWindow') or (Type_='AHardwareBuffer') then begin
             TypeDefinition^.Define:='Android';
+           end else if (Type_='zx_handle_t') or (pos('FUCHSIA',UpperCase(Type_))>0) then begin
+            TypeDefinition^.Define:='Fuchsia';
            end;
           end;
          end;
@@ -4476,6 +4484,8 @@ begin
           Define:='MoltenVK';
          end else if (ParamType='ANativeWindow') or (ParamType='AHardwareBuffer') or (pos('Android',ParamType)>0) or (pos('ANDROID',ParamType)>0) then begin
           Define:='Android';
+         end else if (ParamType='zx_handle_t') or (pos('FUCHSIA',UpperCase(ParamType))>0) then begin
+          Define:='Fuchsia';
          end;
         end;
        end;
@@ -4803,6 +4813,7 @@ begin
    OutputPAS.Add('     {$if defined(Mir) and defined(VulkanUseMirUnits)}Mir,{$ifend}');
    OutputPAS.Add('     {$if defined(Wayland) and defined(VulkanUseWaylandUnits)}Wayland,{$ifend}');
    OutputPAS.Add('     {$if defined(Android) and defined(VulkanUseAndroidUnits)}Android,{$ifend}');
+   OutputPAS.Add('     {$if defined(Fuchsia) and defined(VulkanUseFuchsiaUnits)}Fuchsia,{$ifend}');
    OutputPAS.Add('     SysUtils;');
    OutputPAS.Add('');
    OutputPAS.Add('const VK_DEFAULT_LIB_NAME={$ifdef Windows}''vulkan-1.dll''{$else}{$ifdef Android}''libvulkan.so''{$else}{$ifdef Unix}''libvulkan.so.1''{$else}''libvulkan''{$endif}{$endif}{$endif};');
@@ -4919,6 +4930,12 @@ begin
    OutputPAS.Add('');
    OutputPAS.Add('     PPVkAndroidAHardwareBuffer=^PVkAndroidAHardwareBuffer;');
    OutputPAS.Add('     PVkAndroidAHardwareBuffer={$ifdef VulkanUseAndroidUnits}PAHardwareBuffer{$else}TVkPointer{$endif};');
+   OutputPAS.Add('{$endif}');
+   OutputPAS.Add('');
+   OutputPAS.Add('{$ifdef Fuchsia}');
+   OutputPAS.Add('     PPVkFuchsiaZXHandle=^PVkFuchsiaZXHandle;');
+   OutputPAS.Add('     PVkFuchsiaZXHandle=^TVkFuchsiaZXHandle;');
+   OutputPAS.Add('     TVkFuchsiaZXHandle={$ifdef VulkanUseFuchsiaUnits}Tzx_handle_t{$else}TVkSizeUInt{$endif};');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('');
    OutputPAS.Add('{$ifdef Mir}');
