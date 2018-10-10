@@ -1099,7 +1099,7 @@ begin
                                              fCountVertices*SizeOf(TVulkanModelVertex),
                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                             nil,
+                                             [],
                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                             );
    fVertexBuffers[0].UploadData(aQueue,
@@ -1114,7 +1114,7 @@ begin
                                             fCountIndices*SizeOf(TVulkanModelIndex),
                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                            nil,
+                                            [],
                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                            );
    fIndexBuffers[0].UploadData(aQueue,
@@ -1196,7 +1196,7 @@ begin
                                                          CountTemporaryVertices*SizeOf(TVulkanModelVertex),
                                                          TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
                                                          TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                         nil,
+                                                         [],
                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                                         );
      fVertexBuffers[BufferIndex].UploadData(aQueue,
@@ -1211,7 +1211,7 @@ begin
                                                         fBufferSizes[BufferIndex]*SizeOf(TVulkanModelIndex),
                                                         TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
                                                         TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                                        nil,
+                                                        [],
                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                                                        );
      fIndexBuffers[BufferIndex].UploadData(aQueue,
