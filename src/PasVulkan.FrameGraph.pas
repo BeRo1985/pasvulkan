@@ -3939,7 +3939,7 @@ type TBeforeAfter=(Before,After);
      OtherResource:TResource;
      ResourceTransition:TResourceTransition;
  begin
-  // Calculate resource reuse groups, depending on the non-intersecting resource lifetime span
+  // Construct resource alias groups, depending on the non-intersecting resource lifetime span
   // segments and resource types
   for Resource in fResources do begin
    Resource.fResourceAliasGroup:=nil;
@@ -3987,7 +3987,7 @@ type TBeforeAfter=(Before,After);
      Resource:TResource;
      ResourceTransition:TResourceTransition;
  begin
-  // Create data for the resource reuse groups
+  // Create data for the resource alias groups
   for ResourceAliasGroup in fResourceAliasGroups do begin
    if not assigned(ResourceAliasGroup.fResourcePhysicalData) then begin
     ResourceType:=ResourceAliasGroup.fResourceType;
