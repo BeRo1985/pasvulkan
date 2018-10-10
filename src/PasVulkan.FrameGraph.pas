@@ -352,6 +352,7 @@ type EpvFrameGraph=class(Exception);
              private
               fFrameGraph:TpvFrameGraph;
               fResourceType:TResourceType;
+              fIsExternal:boolean;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
@@ -1401,6 +1402,7 @@ constructor TpvFrameGraph.TResourcePhysicalData.Create(const aFrameGraph:TpvFram
 begin
  inherited Create;
  fFrameGraph:=aFrameGraph;
+ fIsExternal:=false;
 end;
 
 destructor TpvFrameGraph.TResourcePhysicalData.Destroy;
@@ -1447,7 +1449,7 @@ end;
 destructor TpvFrameGraph.TResourcePhysicalImageData.Destroy;
 var SwapChainImageIndex:TpvSizeInt;
 begin
- if fIsSurface then begin
+ if fIsExternal or fIsSurface then begin
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
    FreeAndNil(fVulkanImageViews[SwapChainImageIndex]);
    fVulkanImages[SwapChainImageIndex]:=nil;
@@ -1519,7 +1521,30 @@ begin
   end;
  end;
 
- if fIsSurface then begin
+ if fIsExternal then begin
+
+  fFormat:=fFrameGraph.fSurfaceColorFormat;
+
+  for SwapChainImageIndex:=0 to Min(Max(fFrameGraph.fCountSwapChainImages,1),MaxSwapChainImages)-1 do begin
+   fVulkanImages[SwapChainImageIndex]:=TImageResourceType(TResourceType).fExternalImageData.fVulkanImages[SwapChainImageIndex mod TImageResourceType(TResourceType).fExternalImageData.fVulkanImages.Count];
+   fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
+   fVulkanImageViews[SwapChainImageIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
+                                                                     fVulkanImages[SwapChainImageIndex],
+                                                                     fImageViewType,
+                                                                     fFormat,
+                                                                     fComponents.r,
+                                                                     fComponents.g,
+                                                                     fComponents.b,
+                                                                     fComponents.a,
+                                                                     fImageSubresourceRange.aspectMask,
+                                                                     0,
+                                                                     fCountMipMaps,
+                                                                     0,
+                                                                     fCountArrayLayers);
+
+  end;
+
+ end else if fIsSurface then begin
 
   fFormat:=fFrameGraph.fSurfaceColorFormat;
 
@@ -1691,7 +1716,7 @@ end;
 procedure TpvFrameGraph.TResourcePhysicalImageData.BeforeDestroySwapChain;
 var SwapChainImageIndex:TpvSizeInt;
 begin
- if fIsSurface then begin
+ if fIsExternal or fIsSurface then begin
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
    FreeAndNil(fVulkanImageViews[SwapChainImageIndex]);
    fVulkanImages[SwapChainImageIndex]:=nil;
@@ -3900,6 +3925,7 @@ type TBeforeAfter=(Before,After);
      ResourceAliasGroup.fResourcePhysicalData:=TResourcePhysicalImageData.Create(self);
      ResourcePhysicalImageData:=TResourcePhysicalImageData(ResourceAliasGroup.fResourcePhysicalData);
      ResourcePhysicalImageData.fResourceType:=ResourceType;
+     ResourcePhysicalImageData.fIsExternal:=assigned(ImageResourceType.fExternalImageData);
      ResourcePhysicalImageData.fIsSurface:=ImageResourceType.fImageType=TImageType.Surface;
      ResourcePhysicalImageData.fImageUsageFlags:=TVkImageUsageFlags(ImageResourceType.fImageUsage);
      ResourcePhysicalImageData.fRequestedFormat:=ImageResourceType.fFormat;
@@ -3953,6 +3979,7 @@ type TBeforeAfter=(Before,After);
      ResourceAliasGroup.fResourcePhysicalData:=TResourcePhysicalBufferData.Create(self);
      ResourcePhysicalBufferData:=TResourcePhysicalBufferData(ResourceAliasGroup.fResourcePhysicalData);
      ResourcePhysicalBufferData.fResourceType:=ResourceType;
+     ResourcePhysicalBufferData.fIsExternal:=assigned(BufferResourceType.fExternalBufferData);
      ResourcePhysicalBufferData.fSize:=BufferResourceType.fSize;
      ResourcePhysicalBufferData.fUsage:=BufferResourceType.fUsage;
      ResourcePhysicalBufferData.fMemoryRequiredPropertyFlags:=BufferResourceType.fMemoryRequiredPropertyFlags;
