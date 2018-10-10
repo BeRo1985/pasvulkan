@@ -167,7 +167,7 @@ begin
                                              SizeOf(TriangleVertices),
                                              TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT),
                                              TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                             nil,
+                                             [],
                                              TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
  fVulkanVertexBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
                                 fVulkanTransferCommandBuffer,
@@ -181,7 +181,7 @@ begin
                                             SizeOf(TriangleIndices),
                                             TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_INDEX_BUFFER_BIT),
                                             TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                            nil,
+                                            [],
                                             TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
  fVulkanIndexBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
                                fVulkanTransferCommandBuffer,
@@ -195,7 +195,7 @@ begin
                                               SizeOf(UniformBuffer),
                                               TVkBufferUsageFlags(VK_BUFFER_USAGE_TRANSFER_DST_BIT) or TVkBufferUsageFlags(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT),
                                               TVkSharingMode(VK_SHARING_MODE_EXCLUSIVE),
-                                              nil,
+                                              [],
                                               TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
  fVulkanUniformBuffer.UploadData(pvApplication.VulkanDevice.TransferQueue,
                                  fVulkanTransferCommandBuffer,
