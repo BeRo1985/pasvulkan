@@ -311,6 +311,7 @@ type EpvFrameGraph=class(Exception);
               fMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
               fMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
               fBufferFlags:TpvVulkanBufferFlags;
+              fExternalBufferData:TExternalBufferData;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
@@ -323,7 +324,11 @@ type EpvFrameGraph=class(Exception);
                                  const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
                                  const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                                  const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
-                                 const aBufferFlags:TpvVulkanBufferFlags=[]); reintroduce;
+                                 const aBufferFlags:TpvVulkanBufferFlags=[]); reintroduce; overload;
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aName:TpvRawByteString;
+                                 const aPersientent:boolean;
+                                 const aExternalBufferData:TExternalBufferData); reintroduce; overload;
               destructor Destroy; override;
              published
               property Size:TVkDeviceSize read fSize;
@@ -1373,6 +1378,16 @@ begin
  fMemoryPreferredHeapFlags:=aMemoryPreferredHeapFlags;
  fMemoryAvoidHeapFlags:=aMemoryAvoidHeapFlags;
  fBufferFlags:=aBufferFlags;
+ fExternalBufferData:=nil;
+end;
+
+constructor TpvFrameGraph.TBufferResourceType.Create(const aFrameGraph:TpvFrameGraph;
+                                                     const aName:TpvRawByteString;
+                                                     const aPersientent:boolean;
+                                                     const aExternalBufferData:TExternalBufferData);
+begin
+ inherited Create(aFrameGraph,aName,aPersientent);
+ fExternalBufferData:=aExternalBufferData;
 end;
 
 destructor TpvFrameGraph.TBufferResourceType.Destroy;
