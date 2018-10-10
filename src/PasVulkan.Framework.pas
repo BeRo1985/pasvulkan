@@ -263,29 +263,6 @@ type EpvVulkanException=class(Exception);
        property ItemPointers[const Index:TVkSizeInt]:TpvPointer read GetItem; default;
      end;
 
-     TpvVulkanObjectList=class(TpvVulkanBaseList)
-      private
-       fOwnObjects:boolean;
-       function GetItem(const Index:TVkSizeInt):TpvVulkanObject;
-       procedure SetItem(const Index:TVkSizeInt;const Item:TpvVulkanObject);
-      protected
-       procedure InitializeItem(var Item); override;
-       procedure FinalizeItem(var Item); override;
-       procedure CopyItem(const Source;var Destination); override;
-       procedure ExchangeItem(var Source,Destination); override;
-       function CompareItem(const Source,Destination):TpvInt32; override;
-      public
-       constructor Create;
-       destructor Destroy; override;
-       procedure Clear; override;
-       function Add(const Item:TpvVulkanObject):TVkSizeInt; reintroduce;
-       function Find(const Item:TpvVulkanObject):TVkSizeInt; reintroduce;
-       procedure Insert(const Index:TVkSizeInt;const Item:TpvVulkanObject); reintroduce;
-       procedure Remove(const Item:TpvVulkanObject); reintroduce;
-       property Items[const Index:TVkSizeInt]:TpvVulkanObject read GetItem write SetItem; default;
-       property OwnObjects:boolean read fOwnObjects write fOwnObjects;
-     end;
-
      TpvVulkanAllocationManager=class(TpvVulkanObject)
       private
        fAllocationCallbacks:TVkAllocationCallbacks;
@@ -573,6 +550,10 @@ type EpvVulkanException=class(Exception);
      TpvVulkanQueueFamilyQueues=array of TpvVulkanQueues;
 
      TpvVulkanCommandBuffer=class;
+
+     TpvVulkanCommandBufferList=TpvObjectGenericList<TpvVulkanCommandBuffer>;
+
+     TpvVulkanCommandBufferArray=array of TpvVulkanCommandBuffer;
 
      TpvVulkanDeviceDebugMarker=class;
 
@@ -1217,7 +1198,7 @@ type EpvVulkanException=class(Exception);
        destructor Destroy; override;
        class function Allocate(const aCommandPool:TpvVulkanCommandPool;
                                const aLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-                               const aCommandBufferCount:TpvUInt32=1):TpvVulkanObjectList;
+                               const aCommandBufferCount:TpvUInt32=1):TpvVulkanCommandBufferArray;
        procedure BeginRecording(const aFlags:TVkCommandBufferUsageFlags=0;const aInheritanceInfo:PVkCommandBufferInheritanceInfo=nil);
        procedure BeginRecordingPrimary;
        procedure BeginRecordingSecondary(const aRenderPass:TVkRenderPass;const aSubPass:TpvUInt32;const aFrameBuffer:TVkFramebuffer;const aOcclusionQueryEnable:boolean;const aQueryFlags:TVkQueryControlFlags;const aPipelineStatistics:TVkQueryPipelineStatisticFlags;const aFlags:TVkCommandBufferUsageFlags=TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT));
@@ -1895,11 +1876,13 @@ type EpvVulkanException=class(Exception);
        property StageFlags:TVkShaderStageFlags read GetStageFlags write SetStageFlags;
      end;
 
+     TpvVulkanDescriptorSetLayoutBindingList=TpvObjectGenericList<TpvVulkanDescriptorSetLayoutBinding>;
+
      TpvVulkanDescriptorSetLayout=class(TpvVulkanObject)
       private
        fDevice:TpvVulkanDevice;
        fDescriptorSetLayoutHandle:TVkDescriptorSetLayout;
-       fDescriptorSetLayoutBindingList:TpvVulkanObjectList;
+       fDescriptorSetLayoutBindingList:TpvVulkanDescriptorSetLayoutBindingList;
        fDescriptorSetLayoutBindingArray:TVkDescriptorSetLayoutBindingArray;
       public
        constructor Create(const aDevice:TpvVulkanDevice);
@@ -1923,6 +1906,10 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDescriptorSetWriteDescriptorSetMetaDataArray=array of TpvVulkanDescriptorSetWriteDescriptorSetMetaData;
 
+     TpvVulkanDescriptorSet=class;
+
+     TpvVulkanDescriptorSetArray=array of TpvVulkanDescriptorSet;
+
      TpvVulkanDescriptorSet=class(TpvVulkanObject)
       private
        fDevice:TpvVulkanDevice;
@@ -1940,7 +1927,7 @@ type EpvVulkanException=class(Exception);
                           const aDescriptorSetLayout:TpvVulkanDescriptorSetLayout);
        destructor Destroy; override;
        class function Allocate(const aDescriptorPool:TpvVulkanDescriptorPool;
-                               const aDescriptorSetLayouts:array of TpvVulkanDescriptorSetLayout):TpvVulkanObjectList;
+                               const aDescriptorSetLayouts:array of TpvVulkanDescriptorSetLayout):TpvVulkanDescriptorSetArray;
        procedure CopyFromDescriptorSet(const aSourceDescriptorSet:TpvVulkanDescriptorSet;
                                        const aSourceBinding:TpvUInt32;
                                        const aSourceArrayElement:TpvUInt32;
@@ -6320,89 +6307,6 @@ begin
  if (Index>=0) and (Index<fCount) and (WithIndex>=0) and (WithIndex<fCount) then begin
   ExchangeItem(TpvPointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Index)*TpvPtrUInt(fItemSize))))^,TpvPointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(WithIndex)*TpvPtrUInt(fItemSize))))^);
  end;
-end;
-
-constructor TpvVulkanObjectList.Create;
-begin
- fOwnObjects:=true;
- inherited Create(SizeOf(TpvVulkanObject));
-end;
-
-destructor TpvVulkanObjectList.Destroy;
-begin
- inherited Destroy;
-end;
-
-procedure TpvVulkanObjectList.Clear;
-begin
- inherited Clear;
-end;
-
-function TpvVulkanObjectList.GetItem(const Index:TVkSizeInt):TpvVulkanObject;
-begin
- if (Index>=0) and (Index<fCount) then begin
-  result:=TpvVulkanObject(TpvPointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Index)*TpvPtrUInt(fItemSize))))^);
- end else begin
-  result:=nil;
- end;
-end;
-
-procedure TpvVulkanObjectList.SetItem(const Index:TVkSizeInt;const Item:TpvVulkanObject);
-begin
- if (Index>=0) and (Index<fCount) then begin
-  TpvVulkanObject(TpvPointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Index)*TpvPtrUInt(fItemSize))))^):=Item;
- end;
-end;
-
-procedure TpvVulkanObjectList.InitializeItem(var Item);
-begin
- TpvVulkanObject(TpvPointer(Item)):=nil;
-end;
-
-procedure TpvVulkanObjectList.FinalizeItem(var Item);
-begin
- if fOwnObjects then begin
-  TpvVulkanObject(TpvPointer(Item)).Free;
- end;
- TpvVulkanObject(TpvPointer(Item)):=nil;
-end;
-
-procedure TpvVulkanObjectList.CopyItem(const Source;var Destination);
-begin
- TpvVulkanObject(TpvPointer(Destination)):=TpvVulkanObject(TpvPointer(Source));
-end;
-
-procedure TpvVulkanObjectList.ExchangeItem(var Source,Destination);
-var Temporary:TpvVulkanObject;
-begin
- Temporary:=TpvVulkanObject(TpvPointer(Source));
- TpvVulkanObject(TpvPointer(Source)):=TpvVulkanObject(TpvPointer(Destination));
- TpvVulkanObject(TpvPointer(Destination)):=Temporary;
-end;
-
-function TpvVulkanObjectList.CompareItem(const Source,Destination):TpvInt32;
-begin
- result:=TpvPtrDiff(Source)-TpvPtrDiff(Destination);
-end;
-
-function TpvVulkanObjectList.Add(const Item:TpvVulkanObject):TVkSizeInt;
-begin
- result:=inherited Add(Item);
-end;
-
-function TpvVulkanObjectList.Find(const Item:TpvVulkanObject):TVkSizeInt;
-begin
- result:=inherited Find(Item);
-end;
-
-procedure TpvVulkanObjectList.Insert(const Index:TVkSizeInt;const Item:TpvVulkanObject);
-begin
- inherited Insert(Index,Item);
-end;
-
-procedure TpvVulkanObjectList.Remove(const Item:TpvVulkanObject);
-begin
- inherited Remove(Item);
 end;
 
 function VulkanAllocationCallback(UserData:PVkVoid;Size:TVkSize;Alignment:TVkSize;Scope:TVkSystemAllocationScope):PVkVoid; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -10983,7 +10887,7 @@ end;
 
 class function TpvVulkanCommandBuffer.Allocate(const aCommandPool:TpvVulkanCommandPool;
                                                const aLevel:TVkCommandBufferLevel=VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-                                               const aCommandBufferCount:TpvUInt32=1):TpvVulkanObjectList;
+                                               const aCommandBufferCount:TpvUInt32=1):TpvVulkanCommandBufferArray;
 var Index:TpvInt32;
     CommandBufferHandles:array of TVkCommandBuffer;
     CommandBufferAllocateInfo:TVkCommandBufferAllocateInfo;
@@ -11001,9 +10905,9 @@ begin
 
   VulkanCheckResult(aCommandPool.fDevice.fDeviceVulkan.AllocateCommandBuffers(aCommandPool.fDevice.fDeviceHandle,@CommandBufferAllocateInfo,@CommandBufferHandles[0]));
 
-  result:=TpvVulkanObjectList.Create;
+  SetLength(result,aCommandBufferCount);
   for Index:=0 to aCommandBufferCount-1 do begin
-   result.Add(TpvVulkanCommandBuffer.Create(aCommandPool,aLevel,CommandBufferHandles[Index]));
+   result[Index]:=TpvVulkanCommandBuffer.Create(aCommandPool,aLevel,CommandBufferHandles[Index]);
   end;
 
  finally
@@ -14560,8 +14464,8 @@ begin
 
  fDescriptorSetLayoutHandle:=VK_NULL_HANDLE;
 
- fDescriptorSetLayoutBindingList:=TpvVulkanObjectList.Create;
- fDescriptorSetLayoutBindingList.OwnObjects:=true;
+ fDescriptorSetLayoutBindingList:=TpvVulkanDescriptorSetLayoutBindingList.Create;
+ fDescriptorSetLayoutBindingList.OwnsObjects:=true;
 
  fDescriptorSetLayoutBindingArray:=nil;
 
@@ -14653,17 +14557,13 @@ begin
 end;
 
 class function TpvVulkanDescriptorSet.Allocate(const aDescriptorPool:TpvVulkanDescriptorPool;
-                                               const aDescriptorSetLayouts:array of TpvVulkanDescriptorSetLayout):TpvVulkanObjectList;
+                                               const aDescriptorSetLayouts:array of TpvVulkanDescriptorSetLayout):TpvVulkanDescriptorSetArray;
 var Index:TpvInt32;
 begin
- result:=TpvVulkanObjectList.Create;
- try
-  for Index:=0 to length(aDescriptorSetLayouts)-1 do begin
-   result.Add(TpvVulkanDescriptorSet.Create(aDescriptorPool,aDescriptorSetLayouts[Index]));
-  end;
- except
-  FreeAndNil(result);
-  raise;
+ result:=nil;
+ SetLength(result,length(aDescriptorSetLayouts));
+ for Index:=0 to length(aDescriptorSetLayouts)-1 do begin
+  result[Index]:=TpvVulkanDescriptorSet.Create(aDescriptorPool,aDescriptorSetLayouts[Index]);
  end;
 end;
 
