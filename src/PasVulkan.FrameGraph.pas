@@ -109,6 +109,11 @@ type EpvFrameGraph=class(Exception);
               constructor Create(const aOffset,aRange:TVkDeviceSize);
             end;
             PBufferSubresourceRange=^TBufferSubresourceRange;
+            TResourceInstanceType=
+             (
+              SingleInstance,
+              InstancePerSwapChainImage
+             );
             TLoadOp=record
              public
               type TKind=
@@ -418,6 +423,7 @@ type EpvFrameGraph=class(Exception);
              private
               fFrameGraph:TpvFrameGraph;
               fResourceType:TResourceType;
+              fResourceInstanceType:TResourceInstanceType;
               fResources:TResourceList;
               fResourcePhysicalData:TResourcePhysicalData;
               fExternalData:TExternalData;
@@ -435,6 +441,7 @@ type EpvFrameGraph=class(Exception);
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
               fResourceType:TResourceType;
+              fResourceInstanceType:TResourceInstanceType;
               fResourceTransitions:TResourceTransitionList;
               fMinimumTopologicalSortPassIndex:TpvSizeInt;
               fMaximumTopologicalSortPassIndex:TpvSizeInt;
@@ -446,10 +453,12 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
-                                 const aResourceType:TResourceType=nil); reintroduce; overload;
+                                 const aResourceType:TResourceType=nil;
+                                 const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage); reintroduce; overload;
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
-                                 const aResourceTypeName:TpvRawByteString); reintroduce; overload;
+                                 const aResourceTypeName:TpvRawByteString;
+                                 const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage); reintroduce; overload;
               destructor Destroy; override;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
@@ -837,6 +846,7 @@ type EpvFrameGraph=class(Exception);
                                         const aFlags:TResourceTransition.TFlags;
                                         const aLayout:TVkImageLayout;
                                         const aLoadOp:TLoadOp;
+                                        const aResourceInstanceType:TResourceInstanceType;
                                         const aExternalImageData:TExternalImageData):TResourceTransition; overload;
               function AddBufferResource(const aResourceTypeName:TpvRawByteString;
                                          const aResourceName:TpvRawByteString;
@@ -845,6 +855,7 @@ type EpvFrameGraph=class(Exception);
                                          const aPipelineStage:TVkPipelineStageFlags;
                                          const aAccessFlags:TVkAccessFlags;
                                          const aBufferSubresourceRange:TBufferSubresourceRange;
+                                         const aResourceInstanceType:TResourceInstanceType;
                                          const aExternalBufferData:TExternalBufferData):TResourceTransition; overload;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
@@ -853,12 +864,14 @@ type EpvFrameGraph=class(Exception);
                                      const aResourceName:TpvRawByteString;
                                      const aLayout:TVkImageLayout;
                                      const aFlags:TResourceTransition.TFlags=[];
+                                     const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                      const aExternalImageData:TExternalImageData=nil):TUsedImageResource;
               function AddImageOutput(const aResourceTypeName:TpvRawByteString;
                                       const aResourceName:TpvRawByteString;
                                       const aLayout:TVkImageLayout;
                                       const aLoadOp:TLoadOp;
                                       const aFlags:TResourceTransition.TFlags=[];
+                                      const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                       const aExternalImageData:TExternalImageData=nil):TUsedImageResource;
               function AddImageResolveOutput(const aResourceTypeName:TpvRawByteString;
                                              const aResourceName:TpvRawByteString;
@@ -866,17 +879,20 @@ type EpvFrameGraph=class(Exception);
                                              const aLayout:TVkImageLayout;
                                              const aLoadOp:TLoadOp;
                                              const aFlags:TResourceTransition.TFlags=[];
+                                             const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                              const aExternalImageData:TExternalImageData=nil):TUsedImageResource;
               function AddImageDepthInput(const aResourceTypeName:TpvRawByteString;
                                           const aResourceName:TpvRawByteString;
                                           const aLayout:TVkImageLayout;
                                           const aFlags:TResourceTransition.TFlags=[];
+                                          const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                           const aExternalImageData:TExternalImageData=nil):TUsedImageResource;
               function AddImageDepthOutput(const aResourceTypeName:TpvRawByteString;
                                            const aResourceName:TpvRawByteString;
                                            const aLayout:TVkImageLayout;
                                            const aLoadOp:TLoadOp;
                                            const aFlags:TResourceTransition.TFlags=[];
+                                           const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                            const aExternalImageData:TExternalImageData=nil):TUsedImageResource;
               function AddBufferInput(const aResourceTypeName:TpvRawByteString;
                                       const aResourceName:TpvRawByteString;
@@ -884,12 +900,14 @@ type EpvFrameGraph=class(Exception);
                                       const aAccessFlags:TVkAccessFlags;
                                       const aBufferSubresourceRange:TBufferSubresourceRange;
                                       const aFlags:TResourceTransition.TFlags=[];
+                                      const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                       const aExternalBufferData:TExternalBufferData=nil):TUsedBufferResource; overload;
               function AddBufferInput(const aResourceTypeName:TpvRawByteString;
                                       const aResourceName:TpvRawByteString;
                                       const aPipelineStage:TVkPipelineStageFlags;
                                       const aAccessFlags:TVkAccessFlags;
                                       const aFlags:TResourceTransition.TFlags=[];
+                                      const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                       const aExternalBufferData:TExternalBufferData=nil):TUsedBufferResource; overload;
               function AddBufferOutput(const aResourceTypeName:TpvRawByteString;
                                        const aResourceName:TpvRawByteString;
@@ -897,12 +915,14 @@ type EpvFrameGraph=class(Exception);
                                        const aAccessFlags:TVkAccessFlags;
                                        const aBufferSubresourceRange:TBufferSubresourceRange;
                                        const aFlags:TResourceTransition.TFlags=[];
+                                       const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                        const aExternalBufferData:TExternalBufferData=nil):TUsedBufferResource; overload;
               function AddBufferOutput(const aResourceTypeName:TpvRawByteString;
                                        const aResourceName:TpvRawByteString;
                                        const aPipelineStage:TVkPipelineStageFlags;
                                        const aAccessFlags:TVkAccessFlags;
                                        const aFlags:TResourceTransition.TFlags=[];
+                                       const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                        const aExternalBufferData:TExternalBufferData=nil):TUsedBufferResource; overload;
              public
               procedure Show; virtual;
@@ -1286,7 +1306,9 @@ end;
 
 { TpvFrameGraph.TResourceType }
 
-constructor TpvFrameGraph.TResourceType.Create;
+constructor TpvFrameGraph.TResourceType.Create(const aFrameGraph:TpvFrameGraph;
+                                               const aName:TpvRawByteString;
+                                               const aPersientent:boolean);
 begin
  inherited Create;
  if length(trim(String(aName)))=0 then begin
@@ -1865,7 +1887,8 @@ end;
 
 constructor TpvFrameGraph.TResource.Create(const aFrameGraph:TpvFrameGraph;
                                            const aName:TpvRawByteString;
-                                           const aResourceType:TResourceType=nil);
+                                           const aResourceType:TResourceType=nil;
+                                           const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage);
 begin
 
  inherited Create;
@@ -1884,6 +1907,8 @@ begin
 
  fResourceType:=aResourceType;
 
+ fResourceInstanceType:=aResourceInstanceType;
+
  fResourceTransitions:=TResourceTransitionList.Create;
  fResourceTransitions.OwnsObjects:=false;
 
@@ -1898,13 +1923,18 @@ begin
  fFrameGraph.fResources.Add(self);
 
  fFrameGraph.fResourceNameHashMap.Add(fName,self);
+
 end;
 
 constructor TpvFrameGraph.TResource.Create(const aFrameGraph:TpvFrameGraph;
                                            const aName:TpvRawByteString;
-                                           const aResourceTypeName:TpvRawByteString);
+                                           const aResourceTypeName:TpvRawByteString;
+                                           const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage);
 begin
- Create(aFrameGraph,aName,aFrameGraph.ResourceTypeByName[aResourceTypeName]);
+ Create(aFrameGraph,
+        aName,
+        aFrameGraph.ResourceTypeByName[aResourceTypeName],
+        aResourceInstanceType);
 end;
 
 destructor TpvFrameGraph.TResource.Destroy;
@@ -2133,6 +2163,7 @@ function TpvFrameGraph.TPass.AddImageResource(const aResourceTypeName:TpvRawByte
                                               const aFlags:TResourceTransition.TFlags;
                                               const aLayout:TVkImageLayout;
                                               const aLoadOp:TLoadOp;
+                                              const aResourceInstanceType:TResourceInstanceType;
                                               const aExternalImageData:TExternalImageData):TResourceTransition;
 var ResourceType:TResourceType;
     Resource:TResource;
@@ -2146,8 +2177,14 @@ begin
   if Resource.fResourceType<>ResourceType then begin
    raise EpvFrameGraph.Create('Resource type mismatch');
   end;
+  if Resource.fResourceInstanceType<>aResourceInstanceType then begin
+   raise EpvFrameGraph.Create('Resource instance type mismatch');
+  end;
  end else begin
-  Resource:=TResource.Create(fFrameGraph,aResourceName,ResourceType);
+  Resource:=TResource.Create(fFrameGraph,
+                             aResourceName,
+                             ResourceType,
+                             aResourceInstanceType);
  end;
  if not (ResourceType is TImageResourceType) then begin
   raise EpvFrameGraph.Create('Resource meta type mismatch');
@@ -2175,6 +2212,7 @@ function TpvFrameGraph.TPass.AddBufferResource(const aResourceTypeName:TpvRawByt
                                                const aPipelineStage:TVkPipelineStageFlags;
                                                const aAccessFlags:TVkAccessFlags;
                                                const aBufferSubresourceRange:TBufferSubresourceRange;
+                                               const aResourceInstanceType:TResourceInstanceType;
                                                const aExternalBufferData:TExternalBufferData):TResourceTransition;
 var ResourceType:TResourceType;
     Resource:TResource;
@@ -2188,8 +2226,14 @@ begin
   if Resource.fResourceType<>ResourceType then begin
    raise EpvFrameGraph.Create('Resource type mismatch');
   end;
+  if Resource.fResourceInstanceType<>aResourceInstanceType then begin
+   raise EpvFrameGraph.Create('Resource instance type mismatch');
+  end;
  end else begin
-  Resource:=TResource.Create(fFrameGraph,aResourceName,ResourceType);
+  Resource:=TResource.Create(fFrameGraph,
+                             aResourceName,
+                             ResourceType,
+                             aResourceInstanceType);
  end;
  if not (ResourceType is TBufferResourceType) then begin
   raise EpvFrameGraph.Create('Resource meta type mismatch');
@@ -2215,6 +2259,7 @@ function TpvFrameGraph.TPass.AddImageInput(const aResourceTypeName:TpvRawByteStr
                                            const aResourceName:TpvRawByteString;
                                            const aLayout:TVkImageLayout;
                                            const aFlags:TResourceTransition.TFlags=[];
+                                           const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                            const aExternalImageData:TExternalImageData=nil):TUsedImageResource;
 begin
  result:=TUsedImageResource.Create(self,
@@ -2224,6 +2269,7 @@ begin
                                                     aFlags,
                                                     aLayout,
                                                     TLoadOp.Create(TLoadOp.TKind.Load),
+                                                    aResourceInstanceType,
                                                     aExternalImageData));
  fUsedResources.Add(result);
 end;
@@ -2233,6 +2279,7 @@ function TpvFrameGraph.TPass.AddImageOutput(const aResourceTypeName:TpvRawByteSt
                                             const aLayout:TVkImageLayout;
                                             const aLoadOp:TLoadOp;
                                             const aFlags:TResourceTransition.TFlags=[];
+                                            const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                             const aExternalImageData:TExternalImageData=nil):TUsedImageResource;
 begin
  result:=TUsedImageResource.Create(self,
@@ -2242,6 +2289,7 @@ begin
                                                     aFlags,
                                                     aLayout,
                                                     aLoadOp,
+                                                    aResourceInstanceType,
                                                     aExternalImageData));
  fUsedResources.Add(result);
 end;
@@ -2252,6 +2300,7 @@ function TpvFrameGraph.TPass.AddImageResolveOutput(const aResourceTypeName:TpvRa
                                                    const aLayout:TVkImageLayout;
                                                    const aLoadOp:TLoadOp;
                                                    const aFlags:TResourceTransition.TFlags=[];
+                                                   const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                                    const aExternalImageData:TExternalImageData=nil):TUsedImageResource;
 var ResourceSource:TResource;
 begin
@@ -2266,6 +2315,7 @@ begin
                                                     aFlags,
                                                     aLayout,
                                                     aLoadOp,
+                                                    aResourceInstanceType,
                                                     aExternalImageData));
  fUsedResources.Add(result);
  result.fResourceTransition.fResolveResource:=ResourceSource;
@@ -2275,6 +2325,7 @@ function TpvFrameGraph.TPass.AddImageDepthInput(const aResourceTypeName:TpvRawBy
                                                 const aResourceName:TpvRawByteString;
                                                 const aLayout:TVkImageLayout;
                                                 const aFlags:TResourceTransition.TFlags=[];
+                                                const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                                 const aExternalImageData:TExternalImageData=nil):TUsedImageResource;
 begin
  result:=TUsedImageResource.Create(self,
@@ -2284,6 +2335,7 @@ begin
                                                     aFlags,
                                                     aLayout,
                                                     TLoadOp.Create(TLoadOp.TKind.Load),
+                                                    aResourceInstanceType,
                                                     aExternalImageData));
  fUsedResources.Add(result);
 end;
@@ -2293,6 +2345,7 @@ function TpvFrameGraph.TPass.AddImageDepthOutput(const aResourceTypeName:TpvRawB
                                                  const aLayout:TVkImageLayout;
                                                  const aLoadOp:TLoadOp;
                                                  const aFlags:TResourceTransition.TFlags=[];
+                                                 const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                                  const aExternalImageData:TExternalImageData=nil):TUsedImageResource;
 begin
  result:=TUsedImageResource.Create(self,
@@ -2302,6 +2355,7 @@ begin
                                                     aFlags,
                                                     aLayout,
                                                     aLoadOp,
+                                                    aResourceInstanceType,
                                                     aExternalImageData));
  fUsedResources.Add(result);
 end;
@@ -2312,6 +2366,7 @@ function TpvFrameGraph.TPass.AddBufferInput(const aResourceTypeName:TpvRawByteSt
                                             const aAccessFlags:TVkAccessFlags;
                                             const aBufferSubresourceRange:TBufferSubresourceRange;
                                             const aFlags:TResourceTransition.TFlags=[];
+                                            const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                             const aExternalBufferData:TExternalBufferData=nil):TUsedBufferResource;
 begin
  result:=TUsedBufferResource.Create(self,
@@ -2322,6 +2377,7 @@ begin
                                                       aPipelineStage,
                                                       aAccessFlags,
                                                       aBufferSubresourceRange,
+                                                      aResourceInstanceType,
                                                       aExternalBufferData));
  fUsedResources.Add(result);
 end;
@@ -2331,6 +2387,7 @@ function TpvFrameGraph.TPass.AddBufferInput(const aResourceTypeName:TpvRawByteSt
                                             const aPipelineStage:TVkPipelineStageFlags;
                                             const aAccessFlags:TVkAccessFlags;
                                             const aFlags:TResourceTransition.TFlags=[];
+                                            const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                             const aExternalBufferData:TExternalBufferData=nil):TUsedBufferResource;
 begin
  result:=AddBufferInput(aResourceTypeName,
@@ -2339,6 +2396,7 @@ begin
                         aAccessFlags,
                         TBufferSubresourceRange.Create(0,VK_WHOLE_SIZE),
                         aFlags,
+                        aResourceInstanceType,
                         aExternalBufferData);
 end;
 
@@ -2348,6 +2406,7 @@ function TpvFrameGraph.TPass.AddBufferOutput(const aResourceTypeName:TpvRawByteS
                                              const aAccessFlags:TVkAccessFlags;
                                              const aBufferSubresourceRange:TBufferSubresourceRange;
                                              const aFlags:TResourceTransition.TFlags=[];
+                                             const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                              const aExternalBufferData:TExternalBufferData=nil):TUsedBufferResource;
 begin
  result:=TUsedBufferResource.Create(self,
@@ -2358,6 +2417,7 @@ begin
                                                       aPipelineStage,
                                                       aAccessFlags,
                                                       aBufferSubresourceRange,
+                                                      aResourceInstanceType,
                                                       aExternalBufferData));
  fUsedResources.Add(result);
 end;
@@ -2367,6 +2427,7 @@ function TpvFrameGraph.TPass.AddBufferOutput(const aResourceTypeName:TpvRawByteS
                                              const aPipelineStage:TVkPipelineStageFlags;
                                              const aAccessFlags:TVkAccessFlags;
                                              const aFlags:TResourceTransition.TFlags=[];
+                                             const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                              const aExternalBufferData:TExternalBufferData=nil):TUsedBufferResource;
 begin
  result:=AddBufferOutput(aResourceTypeName,
@@ -2375,6 +2436,7 @@ begin
                          aAccessFlags,
                          TBufferSubresourceRange.Create(0,VK_WHOLE_SIZE),
                          aFlags,
+                         aResourceInstanceType,
                          aExternalBufferData);
 end;
 
@@ -3951,6 +4013,7 @@ type TBeforeAfter=(Before,After);
    if not assigned(Resource.fResourceAliasGroup) then begin
     Resource.fResourceAliasGroup:=TResourceAliasGroup.Create(self);
     Resource.fResourceAliasGroup.fResourceType:=Resource.fResourceType;
+    Resource.fResourceAliasGroup.fResourceInstanceType:=Resource.fResourceInstanceType;
     Resource.fResourceAliasGroup.fExternalData:=Resource.fExternalData;
     Resource.fResourceAliasGroup.fResources.Add(Resource);
     if CanResourceReused(Resource) then begin
@@ -3958,6 +4021,7 @@ type TBeforeAfter=(Before,After);
       OtherResource:=fResources.Items[OtherIndex];
       if (not assigned(OtherResource.fResourceAliasGroup)) and
          (Resource.fResourceType=OtherResource.fResourceType) and
+         (Resource.fResourceInstanceType=OtherResource.fResourceInstanceType) and
          (Resource.fExternalData=OtherResource.fExternalData) and
          CanResourceReused(OtherResource) and
          (Min(Resource.fMaximumPhysicalPassStepIndex,
