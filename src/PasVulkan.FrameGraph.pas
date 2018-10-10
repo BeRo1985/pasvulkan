@@ -290,7 +290,7 @@ type EpvFrameGraph=class(Exception);
                                  const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
                                  const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                                  const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
-                                 const aBufferFlags:TpvVulkanBufferFlags=[]);
+                                 const aBufferFlags:TpvVulkanBufferFlags=[]); reintroduce;
               destructor Destroy; override;
              published
               property Size:TVkDeviceSize read fSize;
@@ -1588,7 +1588,7 @@ end;
 
 function TpvFrameGraph.TResourcePhysicalBufferData.GetVulkanBuffer(const aIndex:TpvSizeInt):TpvVulkanBuffer;
 begin
-
+ result:=fVulkanBuffers[aIndex];
 end;
 
 procedure TpvFrameGraph.TResourcePhysicalBufferData.Show;
