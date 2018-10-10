@@ -3878,7 +3878,10 @@ type TBeforeAfter=(Before,After);
   begin
    result:=(not aResource.fResourceType.fPersientent) and
            (not ((aResource.fResourceType is TImageResourceType) and
-                 (TImageResourceType(aResource.fResourceType).fImageType=TImageType.Surface)));
+                 ((TImageResourceType(aResource.fResourceType).fImageType=TImageType.Surface) or
+                  assigned(TImageResourceType(aResource.fResourceType).fExternalImageData)))) and
+           (not ((aResource.fResourceType is TBufferResourceType) and
+                 assigned(TBufferResourceType(aResource.fResourceType).fExternalBufferData)));
   end;
  var Index,
      OtherIndex:TpvSizeInt;
