@@ -554,6 +554,7 @@ type EpvFrameGraph=class(Exception);
                           TBarrierMapItem=record
                            Kind:TBarrierMapItemKind;
                            BarrierIndex:TpvSizeInt;
+                           ImageIndexOffset:TpvSizeInt;
                            ResourcePhysicalData:TResourcePhysicalData;
                           end;
                           PBarrierMapItem=^TBarrierMapItem;
@@ -2215,7 +2216,7 @@ begin
      BufferMemoryBarrier:=@fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Items[BarrierMapItem^.BarrierIndex];
      Assert(assigned(BarrierMapItem^.ResourcePhysicalData));
      if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalBufferData then begin
-      BufferMemoryBarrier^.buffer:=TResourcePhysicalBufferData(BarrierMapItem^.ResourcePhysicalData).fVulkanBuffers[SwapChainImageIndex].Handle;
+      BufferMemoryBarrier^.buffer:=TResourcePhysicalBufferData(BarrierMapItem^.ResourcePhysicalData).fVulkanBuffers[(SwapChainImageIndex+(BarrierMapItem^.ImageIndexOffset+fFrameGraph.fCountSwapChainImages)) mod fFrameGraph.fCountSwapChainImages].Handle;
      end else begin
       Assert(false);
      end;
@@ -2225,7 +2226,7 @@ begin
      ImageMemoryBarrier:=@fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Items[BarrierMapItem^.BarrierIndex];
      Assert(assigned(BarrierMapItem^.ResourcePhysicalData));
      if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalImageData then begin
-      ImageMemoryBarrier^.image:=TResourcePhysicalImageData(BarrierMapItem^.ResourcePhysicalData).fVulkanImages[SwapChainImageIndex].Handle;
+      ImageMemoryBarrier^.image:=TResourcePhysicalImageData(BarrierMapItem^.ResourcePhysicalData).fVulkanImages[(SwapChainImageIndex+(BarrierMapItem^.ImageIndexOffset+fFrameGraph.fCountSwapChainImages)) mod fFrameGraph.fCountSwapChainImages].Handle;
      end else begin
       Assert(false);
      end;
@@ -3824,8 +3825,17 @@ type TBeforeAfter=(Before,After);
     ImageMemoryBarrier.subresourceRange:=TResourcePhysicalImageData(aResourcePhysicalData).fImageSubresourceRange;
     BarrierMapItem.Kind:=TPhysicalPass.TPipelineBarrierGroup.TBarrierMapItemKind.Image;
     BarrierMapItem.BarrierIndex:=PipelineBarrierGroup.fImageMemoryBarrierDynamicArray.Add(ImageMemoryBarrier);
+    BarrierMapItem.ImageIndexOffset:=0;
     BarrierMapItem.ResourcePhysicalData:=aResourcePhysicalData;
     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+    if TResourceTransition.TFlag.PreviousFrameInput in (aFromResourceTransition.fFlags+aToResourceTransition.fFlags) then begin
+     BarrierMapItem.ImageIndexOffset:=-1;
+     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+    end;
+    if TResourceTransition.TFlag.NextFrameOutput in (aFromResourceTransition.fFlags+aToResourceTransition.fFlags) then begin
+     BarrierMapItem.ImageIndexOffset:=1;
+     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+    end;
    end else if aResourcePhysicalData is TResourcePhysicalBufferData then begin
     FillChar(BufferMemoryBarrier,SizeOf(TVkBufferMemoryBarrier),#0);
     BufferMemoryBarrier.sType:=VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -3846,8 +3856,17 @@ type TBeforeAfter=(Before,After);
     end;
     BarrierMapItem.Kind:=TPhysicalPass.TPipelineBarrierGroup.TBarrierMapItemKind.Buffer;
     BarrierMapItem.BarrierIndex:=PipelineBarrierGroup.fBufferMemoryBarrierDynamicArray.Add(BufferMemoryBarrier);
+    BarrierMapItem.ImageIndexOffset:=0;
     BarrierMapItem.ResourcePhysicalData:=aResourcePhysicalData;
     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+    if TResourceTransition.TFlag.PreviousFrameInput in (aFromResourceTransition.fFlags+aToResourceTransition.fFlags) then begin
+     BarrierMapItem.ImageIndexOffset:=-1;
+     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+    end;
+    if TResourceTransition.TFlag.NextFrameOutput in (aFromResourceTransition.fFlags+aToResourceTransition.fFlags) then begin
+     BarrierMapItem.ImageIndexOffset:=1;
+     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+    end;
    end else begin
     Assert(false);
    end;
