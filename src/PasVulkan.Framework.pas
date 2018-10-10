@@ -286,26 +286,6 @@ type EpvVulkanException=class(Exception);
 property OwnObjects:boolean read fOwnObjects write fOwnObjects;
      end;
 
-     TVkUInt32List=class(TpvVulkanBaseList)
-      private
-       function GetItem(const Index:TVkSizeInt):TpvUInt32;
-       procedure SetItem(const Index:TVkSizeInt;const Item:TpvUInt32);
-      protected
-       procedure InitializeItem(var Item); override;
-       procedure FinalizeItem(var Item); override;
-       procedure CopyItem(const Source;var Destination); override;
-       procedure ExchangeItem(var Source,Destination); override;
-       function CompareItem(const Source,Destination):TpvInt32; override;
-      public
-       constructor Create;
-       destructor Destroy; override;
-       function Add(const Item:TpvUInt32):TVkSizeInt; reintroduce;
-       function Find(const Item:TpvUInt32):TVkSizeInt; reintroduce;
-       procedure Insert(const Index:TVkSizeInt;const Item:TpvUInt32); reintroduce;
-       procedure Remove(const Item:TpvUInt32); reintroduce;
-       property Items[const Index:TVkSizeInt]:TpvUInt32 read GetItem write SetItem; default;
-     end;
-
      TVkFloatList=class(TpvVulkanBaseList)
       private
        function GetItem(const Index:TVkSizeInt):TpvFloat;
@@ -6597,80 +6577,6 @@ begin
 end;
 
 procedure TpvVulkanObjectList.Remove(const Item:TpvVulkanObject);
-begin
- inherited Remove(Item);
-end;
-
-constructor TVkUInt32List.Create;
-begin
- inherited Create(SizeOf(TpvUInt32));
-end;
-
-destructor TVkUInt32List.Destroy;
-begin
- inherited Destroy;
-end;
-
-function TVkUInt32List.GetItem(const Index:TVkSizeInt):TpvUInt32;
-begin
- if (Index>=0) and (Index<fCount) then begin
-  result:=TpvUInt32(TpvPointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Index)*TpvPtrUInt(fItemSize))))^);
- end else begin
-  result:=0;
- end;
-end;
-
-procedure TVkUInt32List.SetItem(const Index:TVkSizeInt;const Item:TpvUInt32);
-begin
- if (Index>=0) and (Index<fCount) then begin
-  TpvUInt32(TpvPointer(TpvPtrUInt(TpvPtrUInt(fMemory)+(TpvPtrUInt(Index)*TpvPtrUInt(fItemSize))))^):=Item;
- end;
-end;
-
-procedure TVkUInt32List.InitializeItem(var Item);
-begin
- TpvUInt32(Item):=0;
-end;
-
-procedure TVkUInt32List.FinalizeItem(var Item);
-begin
- TpvUInt32(Item):=0;
-end;
-
-procedure TVkUInt32List.CopyItem(const Source;var Destination);
-begin
- TpvUInt32(Destination):=TpvUInt32(Source);
-end;
-
-procedure TVkUInt32List.ExchangeItem(var Source,Destination);
-var Temporary:TpvUInt32;
-begin
- Temporary:=TpvUInt32(Source);
- TpvUInt32(Source):=TpvUInt32(Destination);
- TpvUInt32(Destination):=Temporary;
-end;
-
-function TVkUInt32List.CompareItem(const Source,Destination):TpvInt32;
-begin
- result:=TpvUInt32(Source)-TpvUInt32(Destination);
-end;
-
-function TVkUInt32List.Add(const Item:TpvUInt32):TVkSizeInt;
-begin
- result:=inherited Add(Item);
-end;
-
-function TVkUInt32List.Find(const Item:TpvUInt32):TVkSizeInt;
-begin
- result:=inherited Find(Item);
-end;
-
-procedure TVkUInt32List.Insert(const Index:TVkSizeInt;const Item:TpvUInt32);
-begin
- inherited Insert(Index,Item);
-end;
-
-procedure TVkUInt32List.Remove(const Item:TpvUInt32);
 begin
  inherited Remove(Item);
 end;
