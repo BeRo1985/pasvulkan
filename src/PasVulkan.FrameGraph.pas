@@ -292,6 +292,16 @@ type EpvFrameGraph=class(Exception);
                                  const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
                                  const aBufferFlags:TpvVulkanBufferFlags=[]);
               destructor Destroy; override;
+             published
+              property Size:TVkDeviceSize read fSize;
+              property Usage:TVkBufferUsageFlags read fUsage;
+              property MemoryRequiredPropertyFlags:TVkMemoryPropertyFlags read fMemoryRequiredPropertyFlags;
+              property MemoryPreferredPropertyFlags:TVkMemoryPropertyFlags read fMemoryPreferredPropertyFlags;
+              property MemoryAvoidPropertyFlags:TVkMemoryPropertyFlags read fMemoryAvoidPropertyFlags;
+              property MemoryRequiredHeapFlags:TVkMemoryHeapFlags read fMemoryRequiredHeapFlags;
+              property MemoryPreferredHeapFlags:TVkMemoryHeapFlags read fMemoryPreferredHeapFlags;
+              property MemoryAvoidHeapFlags:TVkMemoryHeapFlags read fMemoryAvoidHeapFlags;
+              property BufferFlags:TpvVulkanBufferFlags read fBufferFlags;
             end;
             TResource=class;
             TResourceList=TpvObjectGenericList<TResource>;
