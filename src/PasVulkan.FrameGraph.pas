@@ -361,7 +361,27 @@ type EpvFrameGraph=class(Exception);
              published
             end;
             TResourcePhysicalBufferData=class(TResourcePhysicalData)
-             // TODO
+             private
+              fSize:TVkDeviceSize;
+              fUsage:TVkBufferUsageFlags;
+              fMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+              fMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
+              fMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+              fMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
+              fMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
+              fMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+              fBufferFlags:TpvVulkanBufferFlags;
+              fVulkanBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanBuffer;
+              function GetVulkanBuffer(const aIndex:TpvSizeInt):TpvVulkanBuffer; inline;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph); override;
+              destructor Destroy; override;
+              procedure Show; override;
+              procedure Hide; override;
+              procedure AfterCreateSwapChain; override;
+              procedure BeforeDestroySwapChain; override;
+             public
+              property VulkanBuffers[const aIndex:TpvSizeInt]:TpvVulkanBuffer read GetVulkanBuffer;
             end;
             TResourceAliasGroup=class
              private
@@ -1319,12 +1339,12 @@ end;
 
 procedure TpvFrameGraph.TResourcePhysicalImageData.Show;
 begin
-
+ inherited Show;
 end;
 
 procedure TpvFrameGraph.TResourcePhysicalImageData.Hide;
 begin
-
+ inherited Hide;
 end;
 
 procedure TpvFrameGraph.TResourcePhysicalImageData.AfterCreateSwapChain;
@@ -1336,6 +1356,8 @@ var SwapChainImageIndex:TpvSizeInt;
     MemoryBlockFlags:TpvVulkanDeviceMemoryBlockFlags;
     MemoryAllocationType:TpvVulkanDeviceMemoryAllocationType;
 begin
+
+ inherited AfterCreateSwapChain;
 
  Assert(fResourceType is TImageResourceType);
 
@@ -1541,6 +1563,71 @@ begin
    FreeAndNil(fVulkanMemoryBlocks[SwapChainImageIndex]);
   end;
  end;
+ inherited BeforeDestroySwapChain;
+end;
+
+{ TpvFrameGraph.TResourcePhysicalBufferData }
+
+constructor TpvFrameGraph.TResourcePhysicalBufferData.Create(const aFrameGraph:TpvFrameGraph);
+var SwapChainImageIndex:TpvSizeInt;
+begin
+ inherited Create(aFrameGraph);
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  fVulkanBuffers[SwapChainImageIndex]:=nil;
+ end;
+end;
+
+destructor TpvFrameGraph.TResourcePhysicalBufferData.Destroy;
+var SwapChainImageIndex:TpvSizeInt;
+begin
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  FreeAndNil(fVulkanBuffers[SwapChainImageIndex]);
+ end;
+ inherited Destroy;
+end;
+
+function TpvFrameGraph.TResourcePhysicalBufferData.GetVulkanBuffer(const aIndex:TpvSizeInt):TpvVulkanBuffer;
+begin
+
+end;
+
+procedure TpvFrameGraph.TResourcePhysicalBufferData.Show;
+begin
+ inherited Show;
+end;
+
+procedure TpvFrameGraph.TResourcePhysicalBufferData.Hide;
+begin
+ inherited Hide;
+end;
+
+procedure TpvFrameGraph.TResourcePhysicalBufferData.AfterCreateSwapChain;
+var SwapChainImageIndex:TpvSizeInt;
+begin
+ inherited AfterCreateSwapChain;
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  fVulkanBuffers[SwapChainImageIndex]:=TpvVulkanBuffer.Create(fFrameGraph.fVulkanDevice,
+                                                              fSize,
+                                                              fUsage,
+                                                              VK_SHARING_MODE_EXCLUSIVE,
+                                                              fFrameGraph.fQueueFamilyIndices.Items,
+                                                              fMemoryRequiredPropertyFlags,
+                                                              fMemoryPreferredPropertyFlags,
+                                                              fMemoryAvoidPropertyFlags,
+                                                              fMemoryRequiredHeapFlags,
+                                                              fMemoryPreferredHeapFlags,
+                                                              fMemoryAvoidHeapFlags,
+                                                              fBufferFlags);
+ end;
+end;
+
+procedure TpvFrameGraph.TResourcePhysicalBufferData.BeforeDestroySwapChain;
+var SwapChainImageIndex:TpvSizeInt;
+begin
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  FreeAndNil(fVulkanBuffers[SwapChainImageIndex]);
+ end;
+ inherited BeforeDestroySwapChain;
 end;
 
 { TpvFrameGraph.TResourceAliasGroup }
@@ -4520,5 +4607,6 @@ begin
   ExecuteQueueParallelForJobMethod(nil,0,nil,0,fQueues.Count-1);
  end;
 end;
+
 
 end.

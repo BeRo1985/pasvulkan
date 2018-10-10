@@ -224,6 +224,10 @@ type EpvVulkanException=class(Exception);
      TVkPipelineCacheArray=array of TVkPipelineCache;
      TVkBufferImageCopyArray=array of TVkBufferImageCopy;
 
+     TVkUInt32DynamicArray=TpvDynamicArray<TVkUInt32>;
+
+     TVkFloatDynamicArray=TpvDynamicArray<TVkFloat>;
+
      TpvVulkanBaseList=class(TpvVulkanObject)
       private
        fItemSize:TVkSizeInt;
@@ -1247,6 +1251,18 @@ type EpvVulkanException=class(Exception);
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aSize:TVkDeviceSize;
                           const aUsage:TVkBufferUsageFlags;
+                          const aSharingMode:TVkSharingMode;
+                          const aQueueFamilyIndices:array of TVkUInt32;
+                          const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                          const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                          const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                          const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
+                          const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
+                          const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                          const aBufferFlags:TpvVulkanBufferFlags=[]); reintroduce; overload;
+       constructor Create(const aDevice:TpvVulkanDevice;
+                          const aSize:TVkDeviceSize;
+                          const aUsage:TVkBufferUsageFlags;
                           const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
                           const aQueueFamilyIndices:TVkUInt32List=nil;
                           const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -1255,7 +1271,7 @@ type EpvVulkanException=class(Exception);
                           const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
                           const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                           const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
-                          const aBufferFlags:TpvVulkanBufferFlags=[]);
+                          const aBufferFlags:TpvVulkanBufferFlags=[]); reintroduce; overload;
        destructor Destroy; override;
        procedure UploadData(const aTransferQueue:TpvVulkanQueue;
                             const aTransferCommandBuffer:TpvVulkanCommandBuffer;
@@ -11212,8 +11228,8 @@ end;
 constructor TpvVulkanBuffer.Create(const aDevice:TpvVulkanDevice;
                                    const aSize:TVkDeviceSize;
                                    const aUsage:TVkBufferUsageFlags;
-                                   const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
-                                   const aQueueFamilyIndices:TVkUInt32List=nil;
+                                   const aSharingMode:TVkSharingMode;
+                                   const aQueueFamilyIndices:array of TVkUInt32;
                                    const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
                                    const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
                                    const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
@@ -11240,11 +11256,11 @@ begin
  fMemoryBlock:=nil;
 
  fQueueFamilyIndices:=nil;
- if assigned(aQueueFamilyIndices) and (aQueueFamilyIndices.Count>0) then begin
-  fCountQueueFamilyIndices:=aQueueFamilyIndices.Count;
+ if length(aQueueFamilyIndices)>0 then begin
+  fCountQueueFamilyIndices:=length(aQueueFamilyIndices);
   SetLength(fQueueFamilyIndices,fCountQueueFamilyIndices);
   for Index:=0 to fCountQueueFamilyIndices-1 do begin
-   fQueueFamilyIndices[Index]:=aQueueFamilyIndices.Items[Index];
+   fQueueFamilyIndices[Index]:=aQueueFamilyIndices[Index];
   end;
  end else begin
   fCountQueueFamilyIndices:=0;
@@ -11329,6 +11345,46 @@ begin
 
  end;
 
+end;
+
+constructor TpvVulkanBuffer.Create(const aDevice:TpvVulkanDevice;
+                                   const aSize:TVkDeviceSize;
+                                   const aUsage:TVkBufferUsageFlags;
+                                   const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
+                                   const aQueueFamilyIndices:TVkUInt32List=nil;
+                                   const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                   const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                                   const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                                   const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
+                                   const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
+                                   const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                                   const aBufferFlags:TpvVulkanBufferFlags=[]);
+var Index:TpvSizeInt;
+    QueueFamilyIndices:TVkUInt32DynamicArray;
+begin
+ QueueFamilyIndices.Initialize;
+ try
+  if aQueueFamilyIndices.Count>0 then begin
+   QueueFamilyIndices.Resize(aQueueFamilyIndices.Count);
+   for Index:=0 to aQueueFamilyIndices.Count-1 do begin
+    QueueFamilyIndices.Items[Index]:=aQueueFamilyIndices.Items[Index];
+   end;
+  end;
+  Create(aDevice,
+         aSize,
+         aUsage,
+         aSharingMode,
+         QueueFamilyIndices.Items,
+         aMemoryRequiredPropertyFlags,
+         aMemoryPreferredPropertyFlags,
+         aMemoryAvoidPropertyFlags,
+         aMemoryRequiredHeapFlags,
+         aMemoryPreferredHeapFlags,
+         aMemoryAvoidHeapFlags,
+         aBufferFlags);
+ finally
+  QueueFamilyIndices.Finalize;
+ end;
 end;
 
 destructor TpvVulkanBuffer.Destroy;
