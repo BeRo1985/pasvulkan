@@ -1800,7 +1800,12 @@ begin
   end;
  end else begin
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   FreeAndNil(fVulkanBuffers[SwapChainImageIndex]);
+   if (fResourceInstanceType=TResourceInstanceType.SingleInstance) and
+      (SwapChainImageIndex>0) then begin
+    fVulkanBuffers[SwapChainImageIndex]:=nil;
+   end else begin
+    FreeAndNil(fVulkanBuffers[SwapChainImageIndex]);
+   end;
   end;
  end;
  inherited Destroy;
@@ -1831,18 +1836,23 @@ begin
   end;
  end else begin
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   fVulkanBuffers[SwapChainImageIndex]:=TpvVulkanBuffer.Create(fFrameGraph.fVulkanDevice,
-                                                               fSize,
-                                                               fUsage,
-                                                               VK_SHARING_MODE_EXCLUSIVE,
-                                                               fFrameGraph.fQueueFamilyIndices.Items,
-                                                               fMemoryRequiredPropertyFlags,
-                                                               fMemoryPreferredPropertyFlags,
-                                                               fMemoryAvoidPropertyFlags,
-                                                               fMemoryRequiredHeapFlags,
-                                                               fMemoryPreferredHeapFlags,
-                                                               fMemoryAvoidHeapFlags,
-                                                               fBufferFlags);
+   if (fResourceInstanceType=TResourceInstanceType.SingleInstance) and
+      (SwapChainImageIndex>0) then begin
+    fVulkanBuffers[SwapChainImageIndex]:=fVulkanBuffers[0];
+   end else begin
+    fVulkanBuffers[SwapChainImageIndex]:=TpvVulkanBuffer.Create(fFrameGraph.fVulkanDevice,
+                                                                fSize,
+                                                                fUsage,
+                                                                VK_SHARING_MODE_EXCLUSIVE,
+                                                                fFrameGraph.fQueueFamilyIndices.Items,
+                                                                fMemoryRequiredPropertyFlags,
+                                                                fMemoryPreferredPropertyFlags,
+                                                                fMemoryAvoidPropertyFlags,
+                                                                fMemoryRequiredHeapFlags,
+                                                                fMemoryPreferredHeapFlags,
+                                                                fMemoryAvoidHeapFlags,
+                                                                fBufferFlags);
+   end;
   end;
  end;
 end;
@@ -1856,7 +1866,12 @@ begin
   end;
  end else begin
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   FreeAndNil(fVulkanBuffers[SwapChainImageIndex]);
+   if (fResourceInstanceType=TResourceInstanceType.SingleInstance) and
+      (SwapChainImageIndex>0) then begin
+    fVulkanBuffers[SwapChainImageIndex]:=nil;
+   end else begin
+    FreeAndNil(fVulkanBuffers[SwapChainImageIndex]);
+   end;
   end;
  end;
  inherited BeforeDestroySwapChain;
