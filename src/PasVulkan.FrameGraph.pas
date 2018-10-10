@@ -773,6 +773,12 @@ type EpvFrameGraph=class(Exception);
                      property VulkanImageViews[const aSwapChainImageIndex:TpvSizeInt]:TpvVulkanImageView read GetVulkanImageView;
                      property VulkanMemoryBlocks[const aSwapChainImageIndex:TpvSizeInt]:TpvVulkanDeviceMemoryBlock read GetVulkanMemoryBlock;
                    end;
+                   TUsedBufferResource=class(TUsedResource)
+                    private
+                     function GetVulkanBuffer(const aSwapChainBufferIndex:TpvSizeInt):TpvVulkanBuffer;
+                    public
+                     property VulkanBuffers[const aSwapChainBufferIndex:TpvSizeInt]:TpvVulkanBuffer read GetVulkanBuffer;
+                   end;
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
@@ -1868,6 +1874,14 @@ function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanMemoryBlock(const aSwap
 begin
  Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
  result:=TResourcePhysicalImageData(fResourcePhysicalData).fVulkanMemoryBlocks[AdjustSwapChainImageIndex(aSwapChainImageIndex)];
+end;
+
+{ TpvFrameGraph.TPass.TUsedBufferResource }
+
+function TpvFrameGraph.TPass.TUsedBufferResource.GetVulkanBuffer(const aSwapChainBufferIndex:TpvSizeInt):TpvVulkanBuffer;
+begin
+ Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalBufferData));
+ result:=TResourcePhysicalBufferData(fResourcePhysicalData).fVulkanBuffers[AdjustSwapChainImageIndex(aSwapChainBufferIndex)];
 end;
 
 { TpvFrameGraph.TPass }
