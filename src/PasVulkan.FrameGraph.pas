@@ -912,6 +912,7 @@ type EpvFrameGraph=class(Exception);
        constructor Create(const aVulkanDevice:TpvVulkanDevice);
        destructor Destroy; override;
       public
+       function ConvertRelativeToAbsoluteSwapChainImageIndex(const aCurrentSwapChainImageIndex,aRelativeSwapChainImageIndex:TpvSizeInt):TpvSizeInt;
        procedure SetSwapChain(const aSwapChain:TpvVulkanSwapChain;
                               const aSurfaceDepthFormat:TVkFormat);
        function AddQueue(const aPhysicalQueue:TpvVulkanQueue):TQueue;
@@ -2216,7 +2217,7 @@ begin
      BufferMemoryBarrier:=@fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Items[BarrierMapItem^.BarrierIndex];
      Assert(assigned(BarrierMapItem^.ResourcePhysicalData));
      if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalBufferData then begin
-      BufferMemoryBarrier^.buffer:=TResourcePhysicalBufferData(BarrierMapItem^.ResourcePhysicalData).fVulkanBuffers[(SwapChainImageIndex+(BarrierMapItem^.ImageIndexOffset+fFrameGraph.fCountSwapChainImages)) mod fFrameGraph.fCountSwapChainImages].Handle;
+      BufferMemoryBarrier^.buffer:=TResourcePhysicalBufferData(BarrierMapItem^.ResourcePhysicalData).fVulkanBuffers[fFrameGraph.ConvertRelativeToAbsoluteSwapChainImageIndex(SwapChainImageIndex,BarrierMapItem^.ImageIndexOffset)].Handle;
      end else begin
       Assert(false);
      end;
@@ -2226,7 +2227,7 @@ begin
      ImageMemoryBarrier:=@fWorkImageMemoryBarrierDynamicArray[SwapChainImageIndex].Items[BarrierMapItem^.BarrierIndex];
      Assert(assigned(BarrierMapItem^.ResourcePhysicalData));
      if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalImageData then begin
-      ImageMemoryBarrier^.image:=TResourcePhysicalImageData(BarrierMapItem^.ResourcePhysicalData).fVulkanImages[(SwapChainImageIndex+(BarrierMapItem^.ImageIndexOffset+fFrameGraph.fCountSwapChainImages)) mod fFrameGraph.fCountSwapChainImages].Handle;
+      ImageMemoryBarrier^.image:=TResourcePhysicalImageData(BarrierMapItem^.ResourcePhysicalData).fVulkanImages[fFrameGraph.ConvertRelativeToAbsoluteSwapChainImageIndex(SwapChainImageIndex,BarrierMapItem^.ImageIndexOffset)].Handle;
      end else begin
       Assert(false);
      end;
@@ -2949,6 +2950,11 @@ begin
 
  inherited Destroy;
 
+end;
+
+function TpvFrameGraph.ConvertRelativeToAbsoluteSwapChainImageIndex(const aCurrentSwapChainImageIndex,aRelativeSwapChainImageIndex:TpvSizeInt):TpvSizeInt;
+begin
+ result:=((((aCurrentSwapChainImageIndex+aRelativeSwapChainImageIndex)+fCountSwapChainImages) mod fCountSwapChainImages)+fCountSwapChainImages) mod fCountSwapChainImages;
 end;
 
 procedure TpvFrameGraph.SetSwapChain(const aSwapChain:TpvVulkanSwapChain;
