@@ -212,6 +212,12 @@ type EpvFrameGraph=class(Exception);
             end;
             TQueues=TpvObjectGenericList<TQueue>;
             TQueueFamilyIndices=TpvDynamicArray<TVkUInt32>;
+            TExternalData=class
+            end;
+            TExternalImageData=class(TExternalData)
+            end;
+            TExternalBufferData=class(TExternalData)
+            end;
             TResourceType=class
              private
               fFrameGraph:TpvFrameGraph;
@@ -236,6 +242,7 @@ type EpvFrameGraph=class(Exception);
               fImageUsage:TVkImageUsageFlags;
               fCountMipMapLevels:TVkUInt32;
               fComponents:TVkComponentMapping;
+              fExternalImageData:TExternalImageData;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
@@ -246,7 +253,8 @@ type EpvFrameGraph=class(Exception);
                                  const aImageSize:TImageSize;
                                  const aImageUsage:TVkImageUsageFlags;
                                  const aCountMipMapLevels:TVkUInt32;
-                                 const aComponents:TVkComponentMapping); reintroduce; overload;
+                                 const aComponents:TVkComponentMapping;
+                                 const aExternalImageData:TExternalImageData); reintroduce; overload;
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
                                  const aPersientent:boolean;
@@ -255,7 +263,8 @@ type EpvFrameGraph=class(Exception);
                                  const aImageType:TImageType;
                                  const aImageSize:TImageSize;
                                  const aImageUsage:TVkImageUsageFlags;
-                                 const aCountMipMapLevels:TVkUInt32); reintroduce; overload;
+                                 const aCountMipMapLevels:TVkUInt32;
+                                 const aExternalImageData:TExternalImageData); reintroduce; overload;
               destructor Destroy; override;
              public
               property ImageType:TImageType read fImageType;
@@ -962,7 +971,8 @@ type EpvFrameGraph=class(Exception);
                                      const aImageSize:TImageSize;
                                      const aImageUsage:TVkImageUsageFlags;
                                      const aCountMipMapLevels:TVkUInt32;
-                                     const aComponents:TVkComponentMapping):TResourceType; overload;
+                                     const aComponents:TVkComponentMapping;
+                                     const aExternalImageData:TExternalImageData=nil):TResourceType; overload;
        function AddImageResourceType(const aName:TpvRawByteString;
                                      const aPersientent:boolean;
                                      const aFormat:TVkFormat;
@@ -970,7 +980,8 @@ type EpvFrameGraph=class(Exception);
                                      const aImageType:TImageType;
                                      const aImageSize:TImageSize;
                                      const aImageUsage:TVkImageUsageFlags;
-                                     const aCountMipMapLevels:TVkUInt32):TResourceType; overload;
+                                     const aCountMipMapLevels:TVkUInt32;
+                                     const aExternalImageData:TExternalImageData=nil):TResourceType; overload;
       public
        procedure Show; virtual;
        procedure Hide; virtual;
@@ -1217,7 +1228,8 @@ constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGr
                                                     const aImageSize:TImageSize;
                                                     const aImageUsage:TVkImageUsageFlags;
                                                     const aCountMipMapLevels:TVkUInt32;
-                                                    const aComponents:TVkComponentMapping);
+                                                    const aComponents:TVkComponentMapping;
+                                                    const aExternalImageData:TExternalImageData);
 begin
  Create(aFrameGraph,
         aName,
@@ -1229,6 +1241,7 @@ begin
  fImageUsage:=aImageUsage;
  fCountMipMapLevels:=aCountMipMapLevels;
  fComponents:=aComponents;
+ fExternalImageData:=aExternalImageData;
 end;
 
 constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGraph;
@@ -1239,7 +1252,8 @@ constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGr
                                                     const aImageType:TImageType;
                                                     const aImageSize:TImageSize;
                                                     const aImageUsage:TVkImageUsageFlags;
-                                                    const aCountMipMapLevels:TVkUInt32);
+                                                    const aCountMipMapLevels:TVkUInt32;
+                                                    const aExternalImageData:TExternalImageData);
 begin
  Create(aFrameGraph,
         aName,
@@ -1253,7 +1267,8 @@ begin
         TVkComponentMapping.Create(VK_COMPONENT_SWIZZLE_R,
                                    VK_COMPONENT_SWIZZLE_G,
                                    VK_COMPONENT_SWIZZLE_B,
-                                   VK_COMPONENT_SWIZZLE_A));
+                                   VK_COMPONENT_SWIZZLE_A),
+        aExternalImageData);
 end;
 
 
@@ -3127,9 +3142,20 @@ function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
                                             const aImageSize:TImageSize;
                                             const aImageUsage:TVkImageUsageFlags;
                                             const aCountMipMapLevels:TVkUInt32;
-                                            const aComponents:TVkComponentMapping):TResourceType;
+                                            const aComponents:TVkComponentMapping;
+                                            const aExternalImageData:TExternalImageData=nil):TResourceType;
 begin
- result:=TImageResourceType.Create(self,aName,aPersientent,aFormat,aSamples,aImageType,aImageSize,aImageUsage,aCountMipMapLevels,aComponents);
+ result:=TImageResourceType.Create(self,
+                                   aName,
+                                   aPersientent,
+                                   aFormat,
+                                   aSamples,
+                                   aImageType,
+                                   aImageSize,
+                                   aImageUsage,
+                                   aCountMipMapLevels,
+                                   aComponents,
+                                   aExternalImageData);
 end;
 
 function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
@@ -3139,9 +3165,19 @@ function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
                                             const aImageType:TImageType;
                                             const aImageSize:TImageSize;
                                             const aImageUsage:TVkImageUsageFlags;
-                                            const aCountMipMapLevels:TVkUInt32):TResourceType;
+                                            const aCountMipMapLevels:TVkUInt32;
+                                            const aExternalImageData:TExternalImageData=nil):TResourceType;
 begin
- result:=TImageResourceType.Create(self,aName,aPersientent,aFormat,aSamples,aImageType,aImageSize,aImageUsage,aCountMipMapLevels);
+ result:=TImageResourceType.Create(self,
+                                   aName,
+                                   aPersientent,
+                                   aFormat,
+                                   aSamples,
+                                   aImageType,
+                                   aImageSize,
+                                   aImageUsage,
+                                   aCountMipMapLevels,
+                                   aExternalImageData);
 end;
 
 procedure TpvFrameGraph.Setup;
