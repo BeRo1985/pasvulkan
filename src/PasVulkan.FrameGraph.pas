@@ -268,6 +268,30 @@ type EpvFrameGraph=class(Exception);
               property CountMipMapLevels:TVkUInt32 read fCountMipMapLevels;
             end;
             TBufferResourceType=class(TResourceType)
+             private
+              fSize:TVkDeviceSize;
+              fUsage:TVkBufferUsageFlags;
+              fMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags;
+              fMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags;
+              fMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags;
+              fMemoryRequiredHeapFlags:TVkMemoryHeapFlags;
+              fMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
+              fMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
+              fBufferFlags:TpvVulkanBufferFlags;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph;
+                                 const aName:TpvRawByteString;
+                                 const aPersientent:boolean;
+                                 const aSize:TVkDeviceSize;
+                                 const aUsage:TVkBufferUsageFlags;
+                                 const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                 const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                                 const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                                 const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
+                                 const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
+                                 const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                                 const aBufferFlags:TpvVulkanBufferFlags=[]);
+              destructor Destroy; override;
             end;
             TResource=class;
             TResourceList=TpvObjectGenericList<TResource>;
@@ -1164,6 +1188,38 @@ end;
 
 
 destructor TpvFrameGraph.TImageResourceType.Destroy;
+begin
+ inherited Destroy;
+end;
+
+{ TpvFrameGraph.TBufferResourceType }
+
+constructor TpvFrameGraph.TBufferResourceType.Create(const aFrameGraph:TpvFrameGraph;
+                                                     const aName:TpvRawByteString;
+                                                     const aPersientent:boolean;
+                                                     const aSize:TVkDeviceSize;
+                                                     const aUsage:TVkBufferUsageFlags;
+                                                     const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                                     const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                                                     const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                                                     const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
+                                                     const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
+                                                     const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                                                     const aBufferFlags:TpvVulkanBufferFlags=[]);
+begin
+ inherited Create(aFrameGraph,aName,aPersientent);
+ fSize:=aSize;
+ fUsage:=fUsage;
+ fMemoryRequiredPropertyFlags:=aMemoryRequiredPropertyFlags;
+ fMemoryPreferredPropertyFlags:=aMemoryPreferredPropertyFlags;
+ fMemoryAvoidPropertyFlags:=fMemoryAvoidPropertyFlags;
+ fMemoryRequiredHeapFlags:=aMemoryRequiredHeapFlags;
+ fMemoryPreferredHeapFlags:=aMemoryPreferredHeapFlags;
+ fMemoryAvoidHeapFlags:=aMemoryAvoidHeapFlags;
+ fBufferFlags:=aBufferFlags;
+end;
+
+destructor TpvFrameGraph.TBufferResourceType.Destroy;
 begin
  inherited Destroy;
 end;
