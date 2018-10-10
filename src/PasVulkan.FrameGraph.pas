@@ -349,6 +349,7 @@ type EpvFrameGraph=class(Exception);
              private
               fFrameGraph:TpvFrameGraph;
               fResourceType:TResourceType;
+              fResourceInstanceType:TResourceInstanceType;
               fExternalData:TExternalData;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
@@ -1423,6 +1424,7 @@ constructor TpvFrameGraph.TResourcePhysicalData.Create(const aFrameGraph:TpvFram
 begin
  inherited Create;
  fFrameGraph:=aFrameGraph;
+ fResourceInstanceType:=TResourceInstanceType.InstancePerSwapChainImage;
  fExternalData:=nil;
 end;
 
@@ -4064,6 +4066,7 @@ type TBeforeAfter=(Before,After);
      ResourceAliasGroup.fResourcePhysicalData:=TResourcePhysicalImageData.Create(self);
      ResourcePhysicalImageData:=TResourcePhysicalImageData(ResourceAliasGroup.fResourcePhysicalData);
      ResourcePhysicalImageData.fResourceType:=ResourceType;
+     ResourcePhysicalImageData.fResourceInstanceType:=ResourceAliasGroup.fResourceInstanceType;
      ResourcePhysicalImageData.fExternalData:=ResourceAliasGroup.fExternalData;
      ResourcePhysicalImageData.fIsSurface:=ImageResourceType.fImageType=TImageType.Surface;
      ResourcePhysicalImageData.fImageUsageFlags:=TVkImageUsageFlags(ImageResourceType.fImageUsage);
@@ -4119,6 +4122,7 @@ type TBeforeAfter=(Before,After);
      ResourceAliasGroup.fResourcePhysicalData:=TResourcePhysicalBufferData.Create(self);
      ResourcePhysicalBufferData:=TResourcePhysicalBufferData(ResourceAliasGroup.fResourcePhysicalData);
      ResourcePhysicalBufferData.fResourceType:=ResourceType;
+     ResourcePhysicalBufferData.fResourceInstanceType:=ResourceAliasGroup.fResourceInstanceType;
      ResourcePhysicalBufferData.fExternalData:=ResourceAliasGroup.fExternalData;
      ResourcePhysicalBufferData.fSize:=BufferResourceType.fSize;
      ResourcePhysicalBufferData.fUsage:=BufferResourceType.fUsage;
