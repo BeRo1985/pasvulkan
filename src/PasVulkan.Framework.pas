@@ -324,7 +324,7 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanPhysicalDevice=class;
 
-     TpvVulkanPhysicalDeviceList=class;
+     TpvVulkanPhysicalDeviceList=TpvObjectGenericList<TpvVulkanPhysicalDevice>;
 
      TpvVulkanInstanceDebugReportCallback=function(const flags:TVkDebugReportFlagsEXT;const objectType:TVkDebugReportObjectTypeEXT;const object_:TVkUInt64;const location:TVkSize;messageCode:TpvInt32;const aLayerPrefix,aMessage:string):TVkBool32 of object;
 
@@ -458,14 +458,6 @@ type EpvVulkanException=class(Exception);
        property PipelineStageAllShaderBits:TpvUInt32 read fPipelineStageAllShaderBits;
      end;
 
-     TpvVulkanPhysicalDeviceList=class(TpvVulkanObjectList)
-      private
-       function GetItem(const Index:TVkSizeInt):TpvVulkanPhysicalDevice;
-       procedure SetItem(const Index:TVkSizeInt;const Item:TpvVulkanPhysicalDevice);
-      public
-       property Items[const Index:TVkSizeInt]:TpvVulkanPhysicalDevice read GetItem write SetItem; default;
-     end;
-
      PpvVulkanSurfacePlatform=^TpvVulkanSurfacePlatform;
      TpvVulkanSurfacePlatform=
       (
@@ -570,7 +562,7 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanDeviceQueueCreateInfo=class;
 
-     TpvVulkanDeviceQueueCreateInfoList=class;
+     TpvVulkanDeviceQueueCreateInfoList=TpvObjectGenericList<TpvVulkanDeviceQueueCreateInfo>;
 
      TpvVulkanDeviceMemoryManager=class;
 
@@ -707,14 +699,6 @@ type EpvVulkanException=class(Exception);
       published
        property QueueFamilyIndex:TpvUInt32 read fQueueFamilyIndex;
        property QueuePriorities:TVkFloatArray read fQueuePriorities;
-     end;
-
-     TpvVulkanDeviceQueueCreateInfoList=class(TpvVulkanObjectList)
-      private
-       function GetItem(const Index:TVkSizeInt):TpvVulkanDeviceQueueCreateInfo;
-       procedure SetItem(const Index:TVkSizeInt;const Item:TpvVulkanDeviceQueueCreateInfo);
-      public
-       property Items[const Index:TVkSizeInt]:TpvVulkanDeviceQueueCreateInfo read GetItem write SetItem; default;
      end;
 
      TpvVulkanResource=class(TpvVulkanObject)
@@ -7306,16 +7290,6 @@ begin
 
 end;
 
-function TpvVulkanPhysicalDeviceList.GetItem(const Index:TVkSizeInt):TpvVulkanPhysicalDevice;
-begin
- result:=TpvVulkanPhysicalDevice(inherited Items[Index]);
-end;
-
-procedure TpvVulkanPhysicalDeviceList.SetItem(const Index:TVkSizeInt;const Item:TpvVulkanPhysicalDevice);
-begin
- inherited Items[Index]:=Item;
-end;
-
 (*constructor TpvVulkanSurface.Create(const aInstance:TpvVulkanInstance;
 {$if defined(Android)}
                                       const aWindow:PANativeWindow
@@ -8311,16 +8285,6 @@ destructor TpvVulkanDeviceQueueCreateInfo.Destroy;
 begin
  SetLength(fQueuePriorities,0);
  inherited Destroy;
-end;
-
-function TpvVulkanDeviceQueueCreateInfoList.GetItem(const Index:TVkSizeInt):TpvVulkanDeviceQueueCreateInfo;
-begin
- result:=TpvVulkanDeviceQueueCreateInfo(inherited Items[Index]);
-end;
-
-procedure TpvVulkanDeviceQueueCreateInfoList.SetItem(const Index:TVkSizeInt;const Item:TpvVulkanDeviceQueueCreateInfo);
-begin
- inherited Items[Index]:=Item;
 end;
 
 constructor TpvVulkanResource.Create;
