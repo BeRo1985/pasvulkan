@@ -744,19 +744,35 @@ type EpvFrameGraph=class(Exception);
                    TFlags=set of TFlag;
                    TUsedResource=class
                     private
+                     fFrameGraph:TpvFrameGraph;
                      fPass:TPass;
                      fResourceTransition:TResourceTransition;
                      fResource:TResource;
+                     fResourceType:TResourceType;
+                     fResourcePhysicalData:TResourcePhysicalData;
+                     function AdjustSwapChainImageIndex(const aSwapChainImageIndex:TpvSizeInt):TpvSizeInt; inline;
                     public
                      constructor Create(const aPass:TPass;
                                         const aResourceTransition:TResourceTransition); reintroduce; virtual;
                      destructor Destroy; override;
+                     procedure Finish;
                     published
                      property Pass:TPass read fPass;
                      property ResourceTransition:TResourceTransition read fResourceTransition;
                      property Resource:TResource read fResource;
+                     property ResourceType:TResourceType read fResourceType;
                    end;
                    TUsedResources=TpvObjectGenericList<TUsedResource>;
+                   TUsedImageResource=class(TUsedResource)
+                    private
+                     function GetVulkanImage(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanImage;
+                     function GetVulkanImageView(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanImageView;
+                     function GetVulkanMemoryBlock(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock;
+                    public
+                     property VulkanImages[const aSwapChainImageIndex:TpvSizeInt]:TpvVulkanImage read GetVulkanImage;
+                     property VulkanImageViews[const aSwapChainImageIndex:TpvSizeInt]:TpvVulkanImageView read GetVulkanImageView;
+                     property VulkanMemoryBlocks[const aSwapChainImageIndex:TpvSizeInt]:TpvVulkanDeviceMemoryBlock read GetVulkanMemoryBlock;
+                   end;
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
@@ -1800,20 +1816,58 @@ begin
  inherited Destroy;
 end;
 
-{ TpvFrameGraph.TPass.TInputOutput }
+{ TpvFrameGraph.TPass.TUsedResource }
 
 constructor TpvFrameGraph.TPass.TUsedResource.Create(const aPass:TPass;
                                                      const aResourceTransition:TResourceTransition);
 begin
  inherited Create;
+ fFrameGraph:=aPass.fFrameGraph;
  fPass:=aPass;
  fResourceTransition:=aResourceTransition;
- fResource:=aResourceTransition.fResource;
+ fResource:=fResourceTransition.fResource;
+ fResourceType:=fResource.fResourceType;
+ fResourcePhysicalData:=nil;
 end;
 
 destructor TpvFrameGraph.TPass.TUsedResource.Destroy;
 begin
  inherited Destroy;
+end;
+
+procedure TpvFrameGraph.TPass.TUsedResource.Finish;
+begin
+ if assigned(fResource.fResourceAliasGroup) then begin
+  fResourcePhysicalData:=fResource.fResourceAliasGroup.fResourcePhysicalData;
+ end;
+end;
+
+function TpvFrameGraph.TPass.TUsedResource.AdjustSwapChainImageIndex(const aSwapChainImageIndex:TpvSizeInt):TpvSizeInt;
+var Offset:TpvSizeInt;
+begin
+ Offset:=(ord(TpvFrameGraph.TResourceTransition.TFlag.NextFrameOutput in fResourceTransition.fFlags) and 1)-
+         (ord(TpvFrameGraph.TResourceTransition.TFlag.PreviousFrameInput in fResourceTransition.fFlags) and 1);
+ result:=fFrameGraph.ConvertRelativeToAbsoluteSwapChainImageIndex(aSwapChainImageIndex,Offset);
+end;
+
+{ TpvFrameGraph.TPass.TUsedImageResource }
+
+function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanImage(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanImage;
+begin
+ Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
+ result:=TResourcePhysicalImageData(fResourcePhysicalData).fVulkanImages[AdjustSwapChainImageIndex(aSwapChainImageIndex)];
+end;
+
+function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanImageView(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanImageView;
+begin
+ Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
+ result:=TResourcePhysicalImageData(fResourcePhysicalData).fVulkanImageViews[AdjustSwapChainImageIndex(aSwapChainImageIndex)];
+end;
+
+function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanMemoryBlock(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock;
+begin
+ Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
+ result:=TResourcePhysicalImageData(fResourcePhysicalData).fVulkanMemoryBlocks[AdjustSwapChainImageIndex(aSwapChainImageIndex)];
 end;
 
 { TpvFrameGraph.TPass }
@@ -4401,6 +4455,16 @@ type TBeforeAfter=(Before,After);
    SetLength(Queue.fSubmitInfos,Queue.fPhysicalPasses.Count);
   end;
  end;
+ procedure FinishPassUsedResources;
+ var Pass:TPass;
+     UsedResource:TPass.TUsedResource;
+ begin
+  for Pass in fPasses do begin
+   for UsedResource in Pass.fUsedResources do begin
+    UsedResource.Finish;
+   end;
+  end;
+ end;
 begin
 
  fPhysicalPasses.Clear;
@@ -4438,6 +4502,8 @@ begin
  CreatePhysicalPassExternalSemaphoreDependencies;
 
  PrepareQueues;
+
+ FinishPassUsedResources;
 
 end;
 
