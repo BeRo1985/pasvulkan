@@ -228,6 +228,10 @@ type EpvVulkanException=class(Exception);
 
      TVkFloatDynamicArray=TpvDynamicArray<TVkFloat>;
 
+     TVkUInt32DynamicArrayList=TpvDynamicArrayList<TVkUInt32>;
+
+     TVkFloatDynamicArrayList=TpvDynamicArrayList<TVkFloat>;
+
      TpvVulkanBaseList=class(TpvVulkanObject)
       private
        fItemSize:TVkSizeInt;
@@ -279,7 +283,7 @@ type EpvVulkanException=class(Exception);
        procedure Insert(const Index:TVkSizeInt;const Item:TpvVulkanObject); reintroduce;
        procedure Remove(const Item:TpvVulkanObject); reintroduce;
        property Items[const Index:TVkSizeInt]:TpvVulkanObject read GetItem write SetItem; default;
-       property OwnObjects:boolean read fOwnObjects write fOwnObjects;
+property OwnObjects:boolean read fOwnObjects write fOwnObjects;
      end;
 
      TVkUInt32List=class(TpvVulkanBaseList)
@@ -784,7 +788,7 @@ type EpvVulkanException=class(Exception);
        fGraphicsQueueFamilyIndex:TpvInt32;
        fComputeQueueFamilyIndex:TpvInt32;
        fTransferQueueFamilyIndex:TpvInt32;
-       fQueueFamilyIndices:TVkUInt32List;
+       fQueueFamilyIndices:TVkUInt32DynamicArrayList;
        fQueueFamilyQueues:TpvVulkanQueueFamilyQueues;
        fUniversalQueue:TpvVulkanQueue;
        fPresentQueue:TpvVulkanQueue;
@@ -829,7 +833,7 @@ type EpvVulkanException=class(Exception);
        property GraphicsQueueFamilyIndex:TpvInt32 read fGraphicsQueueFamilyIndex;
        property ComputeQueueFamilyIndex:TpvInt32 read fComputeQueueFamilyIndex;
        property TransferQueueFamilyIndex:TpvInt32 read fTransferQueueFamilyIndex;
-       property QueueFamilyIndices:TVkUInt32List read fQueueFamilyIndices;
+       property QueueFamilyIndices:TVkUInt32DynamicArrayList read fQueueFamilyIndices;
        property QueueFamilyQueues:TpvVulkanQueueFamilyQueues read fQueueFamilyQueues;
        property UniversalQueue:TpvVulkanQueue read fUniversalQueue;
        property PresentQueue:TpvVulkanQueue read fPresentQueue;
@@ -1767,8 +1771,17 @@ type EpvVulkanException=class(Exception);
                           const aHeight:TpvUInt32;
                           const aFormat:TVkFormat;
                           const aUsage:TVkBufferUsageFlags;
-                          const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
-                          const aQueueFamilyIndices:TVkUInt32List=nil); reintroduce; overload;
+                          const aSharingMode:TVkSharingMode;
+                          const aQueueFamilyIndices:array of TVkUInt32); reintroduce; overload;
+       constructor Create(const aDevice:TpvVulkanDevice;
+                          const aGraphicsQueue:TpvVulkanQueue;
+                          const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                          const aGraphicsCommandBufferFence:TpvVulkanFence;
+                          const aWidth:TpvUInt32;
+                          const aHeight:TpvUInt32;
+                          const aFormat:TVkFormat;
+                          const aUsage:TVkBufferUsageFlags;
+                          const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE); reintroduce; overload;
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aImage:TpvVulkanImage;
                           const aImageView:TpvVulkanImageView;
@@ -1872,6 +1885,24 @@ type EpvVulkanException=class(Exception);
       public
        constructor Create(const aDevice:TpvVulkanDevice;
                           const aSurface:TpvVulkanSurface;
+                          const aOldSwapChain:TpvVulkanSwapChain;
+                          const aDesiredImageWidth:TpvUInt32;
+                          const aDesiredImageHeight:TpvUInt32;
+                          const aDesiredImageCount:TpvUInt32;
+                          const aImageArrayLayers:TpvUInt32;
+                          const aImageFormat:TVkFormat;
+                          const aImageColorSpace:TVkColorSpaceKHR;
+                          const aImageUsage:TVkImageUsageFlags;
+                          const aImageSharingMode:TVkSharingMode;
+                          const aQueueFamilyIndices:array of TVKUInt32;
+                          const aForceCompositeAlpha:boolean=false;
+                          const aCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=TVkCompositeAlphaFlagBitsKHR(VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
+                          const aPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
+                          const aClipped:boolean=true;
+                          const aDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff);
+                          const aSRGB:boolean=false); reintroduce; overload;
+       constructor Create(const aDevice:TpvVulkanDevice;
+                          const aSurface:TpvVulkanSurface;
                           const aOldSwapChain:TpvVulkanSwapChain=nil;
                           const aDesiredImageWidth:TpvUInt32=0;
                           const aDesiredImageHeight:TpvUInt32=0;
@@ -1880,14 +1911,7 @@ type EpvVulkanException=class(Exception);
                           const aImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
                           const aImageColorSpace:TVkColorSpaceKHR=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
                           const aImageUsage:TVkImageUsageFlags=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-                          const aImageSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
-                          const aQueueFamilyIndices:TVkUInt32List=nil;
-                          const aForceCompositeAlpha:boolean=false;
-                          const aCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=TVkCompositeAlphaFlagBitsKHR(VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
-                          const aPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
-                          const aClipped:boolean=true;
-                          const aDesiredTransform:TVkSurfaceTransformFlagsKHR=TVkSurfaceTransformFlagsKHR($ffffffff);
-                          const aSRGB:boolean=false);
+                          const aImageSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE); reintroduce; overload;
        destructor Destroy; override;
        function QueuePresent(const aQueue:TpvVulkanQueue;const aSemaphore:TpvVulkanSemaphore=nil):TVkResult;
        function AcquireNextImage(const aSemaphore:TpvVulkanSemaphore=nil;const aFence:TpvVulkanFence=nil;const aTimeOut:TpvUInt64=TpvUInt64(high(TpvUInt64))):TVkResult;
@@ -8494,7 +8518,7 @@ begin
 
  fDeviceVulkan:=nil;
 
- fQueueFamilyIndices:=TVkUInt32List.Create;
+ fQueueFamilyIndices:=TVkUInt32DynamicArrayList.Create;
 
  fQueueFamilyQueues:=nil;
 
@@ -13368,8 +13392,8 @@ constructor TpvVulkanFrameBufferAttachment.Create(const aDevice:TpvVulkanDevice;
                                                   const aHeight:TpvUInt32;
                                                   const aFormat:TVkFormat;
                                                   const aUsage:TVkBufferUsageFlags;
-                                                  const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
-                                                  const aQueueFamilyIndices:TVkUInt32List=nil);
+                                                  const aSharingMode:TVkSharingMode;
+                                                  const aQueueFamilyIndices:array of TVkUInt32);
 var MemoryRequirements:TVkMemoryRequirements;
     AspectMask:TVkImageAspectFlags;
     ImageLayout:TVkImageLayout;
@@ -13415,9 +13439,9 @@ begin
   QueueFamilyIndices:=nil;
   try
 
-   if assigned(aQueueFamilyIndices) and (aQueueFamilyIndices.Count>0) then begin
-    SetLength(QueueFamilyIndices,aQueueFamilyIndices.Count);
-    Move(aQueueFamilyIndices.Memory^,QueueFamilyIndices[0],aQueueFamilyIndices.Count*SizeOf(TVkUInt32));
+   if length(aQueueFamilyIndices)>0 then begin
+    SetLength(QueueFamilyIndices,length(aQueueFamilyIndices));
+    Move(aQueueFamilyIndices[0],QueueFamilyIndices[0],length(aQueueFamilyIndices)*SizeOf(TVkUInt32));
    end;
 
    fImage:=TpvVulkanImage.Create(fDevice,
@@ -13553,6 +13577,28 @@ begin
   raise;
 
  end;
+end;
+
+constructor TpvVulkanFrameBufferAttachment.Create(const aDevice:TpvVulkanDevice;
+                                                  const aGraphicsQueue:TpvVulkanQueue;
+                                                  const aGraphicsCommandBuffer:TpvVulkanCommandBuffer;
+                                                  const aGraphicsCommandBufferFence:TpvVulkanFence;
+                                                  const aWidth:TpvUInt32;
+                                                  const aHeight:TpvUInt32;
+                                                  const aFormat:TVkFormat;
+                                                  const aUsage:TVkBufferUsageFlags;
+                                                  const aSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE);
+begin
+ Create(aDevice,
+        aGraphicsQueue,
+        aGraphicsCommandBuffer,
+        aGraphicsCommandBufferFence,
+        aWidth,
+        aHeight,
+        aFormat,
+        aUsage,
+        aSharingMode,
+        []);
 end;
 
 constructor TpvVulkanFrameBufferAttachment.Create(const aDevice:TpvVulkanDevice;
@@ -13803,16 +13849,16 @@ end;
 
 constructor TpvVulkanSwapChain.Create(const aDevice:TpvVulkanDevice;
                                       const aSurface:TpvVulkanSurface;
-                                      const aOldSwapChain:TpvVulkanSwapChain=nil;
-                                      const aDesiredImageWidth:TpvUInt32=0;
-                                      const aDesiredImageHeight:TpvUInt32=0;
-                                      const aDesiredImageCount:TpvUInt32=2;
-                                      const aImageArrayLayers:TpvUInt32=1;
-                                      const aImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
-                                      const aImageColorSpace:TVkColorSpaceKHR=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-                                      const aImageUsage:TVkImageUsageFlags=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-                                      const aImageSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE;
-                                      const aQueueFamilyIndices:TVkUInt32List=nil;
+                                      const aOldSwapChain:TpvVulkanSwapChain;
+                                      const aDesiredImageWidth:TpvUInt32;
+                                      const aDesiredImageHeight:TpvUInt32;
+                                      const aDesiredImageCount:TpvUInt32;
+                                      const aImageArrayLayers:TpvUInt32;
+                                      const aImageFormat:TVkFormat;
+                                      const aImageColorSpace:TVkColorSpaceKHR;
+                                      const aImageUsage:TVkImageUsageFlags;
+                                      const aImageSharingMode:TVkSharingMode;
+                                      const aQueueFamilyIndices:array of TVkUInt32;
                                       const aForceCompositeAlpha:boolean=false;
                                       const aCompositeAlpha:TVkCompositeAlphaFlagBitsKHR=TVkCompositeAlphaFlagBitsKHR(VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR);
                                       const aPresentMode:TVkPresentModeKHR=VK_PRESENT_MODE_MAILBOX_KHR;
@@ -13873,11 +13919,11 @@ begin
    raise EpvVulkanSurfaceException.Create('Surface not supported by device');
   end;
 
-  if assigned(aQueueFamilyIndices) then begin
-   fCountQueueFamilyIndices:=aQueueFamilyIndices.Count;
+  if length(aQueueFamilyIndices)>0 then begin
+   fCountQueueFamilyIndices:=length(aQueueFamilyIndices);
    SetLength(fQueueFamilyIndices,fCountQueueFamilyIndices);
    for Index:=0 to fCountQueueFamilyIndices-1 do begin
-    fQueueFamilyIndices[Index]:=aQueueFamilyIndices.Items[Index];
+    fQueueFamilyIndices[Index]:=aQueueFamilyIndices[Index];
    end;
   end else begin
    fCountQueueFamilyIndices:=0;
@@ -14089,6 +14135,32 @@ begin
   raise;
 
  end;
+end;
+
+constructor TpvVulkanSwapChain.Create(const aDevice:TpvVulkanDevice;
+                                      const aSurface:TpvVulkanSurface;
+                                      const aOldSwapChain:TpvVulkanSwapChain=nil;
+                                      const aDesiredImageWidth:TpvUInt32=0;
+                                      const aDesiredImageHeight:TpvUInt32=0;
+                                      const aDesiredImageCount:TpvUInt32=2;
+                                      const aImageArrayLayers:TpvUInt32=1;
+                                      const aImageFormat:TVkFormat=VK_FORMAT_UNDEFINED;
+                                      const aImageColorSpace:TVkColorSpaceKHR=VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+                                      const aImageUsage:TVkImageUsageFlags=TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+                                      const aImageSharingMode:TVkSharingMode=VK_SHARING_MODE_EXCLUSIVE);
+begin
+ Create(aDevice,
+        aSurface,
+        aOldSwapChain,
+        aDesiredImageWidth,
+        aDesiredImageHeight,
+        aDesiredImageCount,
+        aImageArrayLayers,
+        aImageFormat,
+        aImageColorSpace,
+        aImageUsage,
+        aImageSharingMode,
+        []);
 end;
 
 destructor TpvVulkanSwapChain.Destroy;

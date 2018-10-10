@@ -1178,7 +1178,7 @@ type EpvApplication=class(Exception)
 
        fVulkanWaitFence:TpvVulkanFence;
 
-       fVulkanSwapChainQueueFamilyIndices:TVkUInt32List;
+       fVulkanSwapChainQueueFamilyIndices:TVkUInt32DynamicArray;
 
        fVulkanSwapChain:TpvVulkanSwapChain;
 
@@ -5323,7 +5323,7 @@ begin
 
  fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.None;
 
- fVulkanSwapChainQueueFamilyIndices:=nil;
+ fVulkanSwapChainQueueFamilyIndices.Initialize;
 
  fVulkanSwapChain:=nil;
 
@@ -6052,9 +6052,10 @@ begin
  DestroyVulkanSwapChain;
 
  if fVulkanDevice.GraphicsQueueFamilyIndex<>fVulkanDevice.PresentQueueFamilyIndex then begin
-  fVulkanSwapChainQueueFamilyIndices:=TVkUInt32List.Create;
+  fVulkanSwapChainQueueFamilyIndices.Clear;
   fVulkanSwapChainQueueFamilyIndices.Add(fVulkanDevice.GraphicsQueueFamilyIndex);
   fVulkanSwapChainQueueFamilyIndices.Add(fVulkanDevice.PresentQueueFamilyIndex);
+  fVulkanSwapChainQueueFamilyIndices.Finish;
  end;
 
  fVulkanSwapChain:=TpvVulkanSwapChain.Create(fVulkanDevice,
@@ -6068,7 +6069,7 @@ begin
                                              VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
                                              TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT),
                                              VK_SHARING_MODE_EXCLUSIVE,
-                                             fVulkanSwapChainQueueFamilyIndices,
+                                             fVulkanSwapChainQueueFamilyIndices.Items,
                                              false,
                                              VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
                                              PresentModeToVulkanPresentMode[fPresentMode],
@@ -6111,7 +6112,7 @@ begin
   FreeAndNil(fVulkanPresentCompleteFences[Index]);
  end;
  FreeAndNil(fVulkanSwapChain);
- FreeAndNil(fVulkanSwapChainQueueFamilyIndices);
+ fVulkanSwapChainQueueFamilyIndices.Finalize;
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Leaving TpvApplication.DestroyVulkanSwapChain');
 {$ifend}
@@ -6288,7 +6289,7 @@ begin
                                                                           fVulkanDepthImageFormat,
                                                                           TVkBufferUsageFlags(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT),
                                                                           VK_SHARING_MODE_EXCLUSIVE,
-                                                                          fVulkanSwapChainQueueFamilyIndices);
+                                                                          fVulkanSwapChainQueueFamilyIndices.Items);
 
  SetLength(fVulkanFrameBuffers,fVulkanSwapChain.CountImages);
  for Index:=0 to fVulkanSwapChain.CountImages-1 do begin
