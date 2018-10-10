@@ -1013,6 +1013,20 @@ type EpvFrameGraph=class(Exception);
                                      const aImageUsage:TVkImageUsageFlags;
                                      const aCountMipMapLevels:TVkUInt32;
                                      const aExternalImageData:TExternalImageData=nil):TResourceType; overload;
+       function AddBufferResourceType(const aName:TpvRawByteString;
+                                      const aPersientent:boolean;
+                                      const aSize:TVkDeviceSize;
+                                      const aUsage:TVkBufferUsageFlags;
+                                      const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                      const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                                      const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                                      const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
+                                      const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
+                                      const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                                      const aBufferFlags:TpvVulkanBufferFlags=[]):TResourceType; overload;
+       function AddBufferResourceType(const aName:TpvRawByteString;
+                                      const aPersientent:boolean;
+                                      const aExternalBufferData:TExternalBufferData):TResourceType; overload;
       public
        procedure Show; virtual;
        procedure Hide; virtual;
@@ -3312,6 +3326,42 @@ begin
                                    aImageUsage,
                                    aCountMipMapLevels,
                                    aExternalImageData);
+end;
+
+function TpvFrameGraph.AddBufferResourceType(const aName:TpvRawByteString;
+                                             const aPersientent:boolean;
+                                             const aSize:TVkDeviceSize;
+                                             const aUsage:TVkBufferUsageFlags;
+                                             const aMemoryRequiredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) or TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+                                             const aMemoryPreferredPropertyFlags:TVkMemoryPropertyFlags=TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+                                             const aMemoryAvoidPropertyFlags:TVkMemoryPropertyFlags=0;
+                                             const aMemoryRequiredHeapFlags:TVkMemoryHeapFlags=0;
+                                             const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
+                                             const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
+                                             const aBufferFlags:TpvVulkanBufferFlags=[]):TResourceType;
+begin
+ result:=TBufferResourceType.Create(self,
+                                    aName,
+                                    aPersientent,
+                                    aSize,
+                                    aUsage,
+                                    aMemoryRequiredPropertyFlags,
+                                    aMemoryPreferredPropertyFlags,
+                                    aMemoryAvoidPropertyFlags,
+                                    aMemoryRequiredHeapFlags,
+                                    aMemoryPreferredHeapFlags,
+                                    aMemoryAvoidHeapFlags,
+                                    aBufferFlags);
+end;
+
+function TpvFrameGraph.AddBufferResourceType(const aName:TpvRawByteString;
+                                             const aPersientent:boolean;
+                                             const aExternalBufferData:TExternalBufferData):TResourceType;
+begin
+ result:=TBufferResourceType.Create(self,
+                                    aName,
+                                    aPersientent,
+                                    aExternalBufferData);
 end;
 
 procedure TpvFrameGraph.Setup;
