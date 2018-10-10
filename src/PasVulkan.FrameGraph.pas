@@ -2215,9 +2215,7 @@ begin
      BufferMemoryBarrier:=@fWorkBufferMemoryBarrierDynamicArray[SwapChainImageIndex].Items[BarrierMapItem^.BarrierIndex];
      Assert(assigned(BarrierMapItem^.ResourcePhysicalData));
      if BarrierMapItem^.ResourcePhysicalData is TResourcePhysicalBufferData then begin
-      // TODO
-//    BufferMemoryBarrier^.buffer:=TResourcePhysicalBufferData(BarrierMapItem^.ResourcePhysicalData).fVulkanBuffers[SwapChainImageIndex].Handle;
-      Assert(false,'TODO');
+      BufferMemoryBarrier^.buffer:=TResourcePhysicalBufferData(BarrierMapItem^.ResourcePhysicalData).fVulkanBuffers[SwapChainImageIndex].Handle;
      end else begin
       Assert(false);
      end;
