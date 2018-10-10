@@ -1746,8 +1746,14 @@ end;
 destructor TpvFrameGraph.TResourcePhysicalBufferData.Destroy;
 var SwapChainImageIndex:TpvSizeInt;
 begin
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  FreeAndNil(fVulkanBuffers[SwapChainImageIndex]);
+ if fIsExternal then begin
+  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+   fVulkanBuffers[SwapChainImageIndex]:=nil;
+  end;
+ end else begin
+  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+   FreeAndNil(fVulkanBuffers[SwapChainImageIndex]);
+  end;
  end;
  inherited Destroy;
 end;
@@ -1771,27 +1777,39 @@ procedure TpvFrameGraph.TResourcePhysicalBufferData.AfterCreateSwapChain;
 var SwapChainImageIndex:TpvSizeInt;
 begin
  inherited AfterCreateSwapChain;
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  fVulkanBuffers[SwapChainImageIndex]:=TpvVulkanBuffer.Create(fFrameGraph.fVulkanDevice,
-                                                              fSize,
-                                                              fUsage,
-                                                              VK_SHARING_MODE_EXCLUSIVE,
-                                                              fFrameGraph.fQueueFamilyIndices.Items,
-                                                              fMemoryRequiredPropertyFlags,
-                                                              fMemoryPreferredPropertyFlags,
-                                                              fMemoryAvoidPropertyFlags,
-                                                              fMemoryRequiredHeapFlags,
-                                                              fMemoryPreferredHeapFlags,
-                                                              fMemoryAvoidHeapFlags,
-                                                              fBufferFlags);
+ if fIsExternal then begin
+  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+   fVulkanBuffers[SwapChainImageIndex]:=TBufferResourceType(TResourceType).fExternalBufferData.fVulkanBuffers[SwapChainImageIndex mod TBufferResourceType(TResourceType).fExternalBufferData.fVulkanBuffers.Count];
+  end;
+ end else begin
+  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+   fVulkanBuffers[SwapChainImageIndex]:=TpvVulkanBuffer.Create(fFrameGraph.fVulkanDevice,
+                                                               fSize,
+                                                               fUsage,
+                                                               VK_SHARING_MODE_EXCLUSIVE,
+                                                               fFrameGraph.fQueueFamilyIndices.Items,
+                                                               fMemoryRequiredPropertyFlags,
+                                                               fMemoryPreferredPropertyFlags,
+                                                               fMemoryAvoidPropertyFlags,
+                                                               fMemoryRequiredHeapFlags,
+                                                               fMemoryPreferredHeapFlags,
+                                                               fMemoryAvoidHeapFlags,
+                                                               fBufferFlags);
+  end;
  end;
 end;
 
 procedure TpvFrameGraph.TResourcePhysicalBufferData.BeforeDestroySwapChain;
 var SwapChainImageIndex:TpvSizeInt;
 begin
- for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-  FreeAndNil(fVulkanBuffers[SwapChainImageIndex]);
+ if fIsExternal then begin
+  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+   fVulkanBuffers[SwapChainImageIndex]:=nil;
+  end;
+ end else begin
+  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+   FreeAndNil(fVulkanBuffers[SwapChainImageIndex]);
+  end;
  end;
  inherited BeforeDestroySwapChain;
 end;
