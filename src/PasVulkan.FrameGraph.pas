@@ -266,7 +266,6 @@ type EpvFrameGraph=class(Exception);
               fImageUsage:TVkImageUsageFlags;
               fCountMipMapLevels:TVkUInt32;
               fComponents:TVkComponentMapping;
-              fExternalImageData:TExternalImageData;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
@@ -277,8 +276,7 @@ type EpvFrameGraph=class(Exception);
                                  const aImageSize:TImageSize;
                                  const aImageUsage:TVkImageUsageFlags;
                                  const aCountMipMapLevels:TVkUInt32;
-                                 const aComponents:TVkComponentMapping;
-                                 const aExternalImageData:TExternalImageData); reintroduce; overload;
+                                 const aComponents:TVkComponentMapping); reintroduce; overload;
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
                                  const aPersientent:boolean;
@@ -287,8 +285,7 @@ type EpvFrameGraph=class(Exception);
                                  const aImageType:TImageType;
                                  const aImageSize:TImageSize;
                                  const aImageUsage:TVkImageUsageFlags;
-                                 const aCountMipMapLevels:TVkUInt32;
-                                 const aExternalImageData:TExternalImageData); reintroduce; overload;
+                                 const aCountMipMapLevels:TVkUInt32); reintroduce; overload;
               destructor Destroy; override;
              public
               property ImageType:TImageType read fImageType;
@@ -311,7 +308,6 @@ type EpvFrameGraph=class(Exception);
               fMemoryPreferredHeapFlags:TVkMemoryHeapFlags;
               fMemoryAvoidHeapFlags:TVkMemoryHeapFlags;
               fBufferFlags:TpvVulkanBufferFlags;
-              fExternalBufferData:TExternalBufferData;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
@@ -325,10 +321,6 @@ type EpvFrameGraph=class(Exception);
                                  const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                                  const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
                                  const aBufferFlags:TpvVulkanBufferFlags=[]); reintroduce; overload;
-              constructor Create(const aFrameGraph:TpvFrameGraph;
-                                 const aName:TpvRawByteString;
-                                 const aPersientent:boolean;
-                                 const aExternalBufferData:TExternalBufferData); reintroduce; overload;
               destructor Destroy; override;
              published
               property Size:TVkDeviceSize read fSize;
@@ -352,7 +344,7 @@ type EpvFrameGraph=class(Exception);
              private
               fFrameGraph:TpvFrameGraph;
               fResourceType:TResourceType;
-              fIsExternal:boolean;
+              fExternalData:TExternalData;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
@@ -428,6 +420,7 @@ type EpvFrameGraph=class(Exception);
               fResourceType:TResourceType;
               fResources:TResourceList;
               fResourcePhysicalData:TResourcePhysicalData;
+              fExternalData:TExternalData;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce;
               destructor Destroy; override;
@@ -448,7 +441,7 @@ type EpvFrameGraph=class(Exception);
               fMinimumPhysicalPassStepIndex:TpvSizeInt;
               fMaximumPhysicalPassStepIndex:TpvSizeInt;
               fResourceAliasGroup:TResourceAliasGroup;
-              fAssociatedMemoryData:TObject;
+              fExternalData:TExternalData;
               fUsed:boolean;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
@@ -463,7 +456,7 @@ type EpvFrameGraph=class(Exception);
               property Name:TpvRawByteString read fName;
               property ResourceType:TResourceType read fResourceType;
               property ResourceAliasGroup:TResourceAliasGroup read fResourceAliasGroup;
-              property AssociatedMemoryData:TObject read fAssociatedMemoryData write fAssociatedMemoryData;
+              property ExternalData:TExternalData read fExternalData write fExternalData;
               property Used:boolean read fUsed;
             end;
             TPass=class;
@@ -1002,8 +995,7 @@ type EpvFrameGraph=class(Exception);
                                      const aImageSize:TImageSize;
                                      const aImageUsage:TVkImageUsageFlags;
                                      const aCountMipMapLevels:TVkUInt32;
-                                     const aComponents:TVkComponentMapping;
-                                     const aExternalImageData:TExternalImageData=nil):TResourceType; overload;
+                                     const aComponents:TVkComponentMapping):TResourceType; overload;
        function AddImageResourceType(const aName:TpvRawByteString;
                                      const aPersientent:boolean;
                                      const aFormat:TVkFormat;
@@ -1011,8 +1003,7 @@ type EpvFrameGraph=class(Exception);
                                      const aImageType:TImageType;
                                      const aImageSize:TImageSize;
                                      const aImageUsage:TVkImageUsageFlags;
-                                     const aCountMipMapLevels:TVkUInt32;
-                                     const aExternalImageData:TExternalImageData=nil):TResourceType; overload;
+                                     const aCountMipMapLevels:TVkUInt32):TResourceType; overload;
        function AddBufferResourceType(const aName:TpvRawByteString;
                                       const aPersientent:boolean;
                                       const aSize:TVkDeviceSize;
@@ -1024,9 +1015,6 @@ type EpvFrameGraph=class(Exception);
                                       const aMemoryPreferredHeapFlags:TVkMemoryHeapFlags=0;
                                       const aMemoryAvoidHeapFlags:TVkMemoryHeapFlags=0;
                                       const aBufferFlags:TpvVulkanBufferFlags=[]):TResourceType; overload;
-       function AddBufferResourceType(const aName:TpvRawByteString;
-                                      const aPersientent:boolean;
-                                      const aExternalBufferData:TExternalBufferData):TResourceType; overload;
       public
        procedure Show; virtual;
        procedure Hide; virtual;
@@ -1319,8 +1307,7 @@ constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGr
                                                     const aImageSize:TImageSize;
                                                     const aImageUsage:TVkImageUsageFlags;
                                                     const aCountMipMapLevels:TVkUInt32;
-                                                    const aComponents:TVkComponentMapping;
-                                                    const aExternalImageData:TExternalImageData);
+                                                    const aComponents:TVkComponentMapping);
 begin
  Create(aFrameGraph,
         aName,
@@ -1332,7 +1319,6 @@ begin
  fImageUsage:=aImageUsage;
  fCountMipMapLevels:=aCountMipMapLevels;
  fComponents:=aComponents;
- fExternalImageData:=aExternalImageData;
 end;
 
 constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGraph;
@@ -1343,8 +1329,7 @@ constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGr
                                                     const aImageType:TImageType;
                                                     const aImageSize:TImageSize;
                                                     const aImageUsage:TVkImageUsageFlags;
-                                                    const aCountMipMapLevels:TVkUInt32;
-                                                    const aExternalImageData:TExternalImageData);
+                                                    const aCountMipMapLevels:TVkUInt32);
 begin
  Create(aFrameGraph,
         aName,
@@ -1358,8 +1343,7 @@ begin
         TVkComponentMapping.Create(VK_COMPONENT_SWIZZLE_R,
                                    VK_COMPONENT_SWIZZLE_G,
                                    VK_COMPONENT_SWIZZLE_B,
-                                   VK_COMPONENT_SWIZZLE_A),
-        aExternalImageData);
+                                   VK_COMPONENT_SWIZZLE_A));
 end;
 
 
@@ -1393,16 +1377,6 @@ begin
  fMemoryPreferredHeapFlags:=aMemoryPreferredHeapFlags;
  fMemoryAvoidHeapFlags:=aMemoryAvoidHeapFlags;
  fBufferFlags:=aBufferFlags;
- fExternalBufferData:=nil;
-end;
-
-constructor TpvFrameGraph.TBufferResourceType.Create(const aFrameGraph:TpvFrameGraph;
-                                                     const aName:TpvRawByteString;
-                                                     const aPersientent:boolean;
-                                                     const aExternalBufferData:TExternalBufferData);
-begin
- inherited Create(aFrameGraph,aName,aPersientent);
- fExternalBufferData:=aExternalBufferData;
 end;
 
 destructor TpvFrameGraph.TBufferResourceType.Destroy;
@@ -1416,7 +1390,7 @@ constructor TpvFrameGraph.TResourcePhysicalData.Create(const aFrameGraph:TpvFram
 begin
  inherited Create;
  fFrameGraph:=aFrameGraph;
- fIsExternal:=false;
+ fExternalData:=nil;
 end;
 
 destructor TpvFrameGraph.TResourcePhysicalData.Destroy;
@@ -1463,7 +1437,7 @@ end;
 destructor TpvFrameGraph.TResourcePhysicalImageData.Destroy;
 var SwapChainImageIndex:TpvSizeInt;
 begin
- if fIsExternal or fIsSurface then begin
+ if assigned(fExternalData) or fIsSurface then begin
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
    FreeAndNil(fVulkanImageViews[SwapChainImageIndex]);
    fVulkanImages[SwapChainImageIndex]:=nil;
@@ -1535,12 +1509,12 @@ begin
   end;
  end;
 
- if fIsExternal then begin
+ if assigned(fExternalData) then begin
 
   fFormat:=fFrameGraph.fSurfaceColorFormat;
 
   for SwapChainImageIndex:=0 to Min(Max(fFrameGraph.fCountSwapChainImages,1),MaxSwapChainImages)-1 do begin
-   fVulkanImages[SwapChainImageIndex]:=TImageResourceType(TResourceType).fExternalImageData.fVulkanImages[SwapChainImageIndex mod TImageResourceType(TResourceType).fExternalImageData.fVulkanImages.Count];
+   fVulkanImages[SwapChainImageIndex]:=TExternalImageData(fExternalData).fVulkanImages[SwapChainImageIndex mod TExternalImageData(fExternalData).fVulkanImages.Count];
    fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
    fVulkanImageViews[SwapChainImageIndex]:=TpvVulkanImageView.Create(fFrameGraph.fVulkanDevice,
                                                                      fVulkanImages[SwapChainImageIndex],
@@ -1730,7 +1704,7 @@ end;
 procedure TpvFrameGraph.TResourcePhysicalImageData.BeforeDestroySwapChain;
 var SwapChainImageIndex:TpvSizeInt;
 begin
- if fIsExternal or fIsSurface then begin
+ if assigned(fExternalData) or fIsSurface then begin
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
    FreeAndNil(fVulkanImageViews[SwapChainImageIndex]);
    fVulkanImages[SwapChainImageIndex]:=nil;
@@ -1760,7 +1734,7 @@ end;
 destructor TpvFrameGraph.TResourcePhysicalBufferData.Destroy;
 var SwapChainImageIndex:TpvSizeInt;
 begin
- if fIsExternal then begin
+ if assigned(fExternalData) then begin
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
    fVulkanBuffers[SwapChainImageIndex]:=nil;
   end;
@@ -1791,9 +1765,9 @@ procedure TpvFrameGraph.TResourcePhysicalBufferData.AfterCreateSwapChain;
 var SwapChainImageIndex:TpvSizeInt;
 begin
  inherited AfterCreateSwapChain;
- if fIsExternal then begin
+ if assigned(fExternalData) then begin
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   fVulkanBuffers[SwapChainImageIndex]:=TBufferResourceType(TResourceType).fExternalBufferData.fVulkanBuffers[SwapChainImageIndex mod TBufferResourceType(TResourceType).fExternalBufferData.fVulkanBuffers.Count];
+   fVulkanBuffers[SwapChainImageIndex]:=TExternalBufferData(fExternalData).fVulkanBuffers[SwapChainImageIndex mod TExternalBufferData(fExternalData).fVulkanBuffers.Count];
   end;
  end else begin
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
@@ -1816,7 +1790,7 @@ end;
 procedure TpvFrameGraph.TResourcePhysicalBufferData.BeforeDestroySwapChain;
 var SwapChainImageIndex:TpvSizeInt;
 begin
- if fIsExternal then begin
+ if assigned(fExternalData) then begin
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
    fVulkanBuffers[SwapChainImageIndex]:=nil;
   end;
@@ -3290,8 +3264,7 @@ function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
                                             const aImageSize:TImageSize;
                                             const aImageUsage:TVkImageUsageFlags;
                                             const aCountMipMapLevels:TVkUInt32;
-                                            const aComponents:TVkComponentMapping;
-                                            const aExternalImageData:TExternalImageData=nil):TResourceType;
+                                            const aComponents:TVkComponentMapping):TResourceType;
 begin
  result:=TImageResourceType.Create(self,
                                    aName,
@@ -3302,8 +3275,7 @@ begin
                                    aImageSize,
                                    aImageUsage,
                                    aCountMipMapLevels,
-                                   aComponents,
-                                   aExternalImageData);
+                                   aComponents);
 end;
 
 function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
@@ -3313,8 +3285,7 @@ function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
                                             const aImageType:TImageType;
                                             const aImageSize:TImageSize;
                                             const aImageUsage:TVkImageUsageFlags;
-                                            const aCountMipMapLevels:TVkUInt32;
-                                            const aExternalImageData:TExternalImageData=nil):TResourceType;
+                                            const aCountMipMapLevels:TVkUInt32):TResourceType;
 begin
  result:=TImageResourceType.Create(self,
                                    aName,
@@ -3324,8 +3295,7 @@ begin
                                    aImageType,
                                    aImageSize,
                                    aImageUsage,
-                                   aCountMipMapLevels,
-                                   aExternalImageData);
+                                   aCountMipMapLevels);
 end;
 
 function TpvFrameGraph.AddBufferResourceType(const aName:TpvRawByteString;
@@ -3352,16 +3322,6 @@ begin
                                     aMemoryPreferredHeapFlags,
                                     aMemoryAvoidHeapFlags,
                                     aBufferFlags);
-end;
-
-function TpvFrameGraph.AddBufferResourceType(const aName:TpvRawByteString;
-                                             const aPersientent:boolean;
-                                             const aExternalBufferData:TExternalBufferData):TResourceType;
-begin
- result:=TBufferResourceType.Create(self,
-                                    aName,
-                                    aPersientent,
-                                    aExternalBufferData);
 end;
 
 procedure TpvFrameGraph.Setup;
@@ -3927,11 +3887,9 @@ type TBeforeAfter=(Before,After);
   function CanResourceReused(const aResource:TResource):boolean;
   begin
    result:=(not aResource.fResourceType.fPersientent) and
+           (not assigned(aResource.fExternalData)) and
            (not ((aResource.fResourceType is TImageResourceType) and
-                 ((TImageResourceType(aResource.fResourceType).fImageType=TImageType.Surface) or
-                  assigned(TImageResourceType(aResource.fResourceType).fExternalImageData)))) and
-           (not ((aResource.fResourceType is TBufferResourceType) and
-                 assigned(TBufferResourceType(aResource.fResourceType).fExternalBufferData)));
+                 (TImageResourceType(aResource.fResourceType).fImageType=TImageType.Surface)));
   end;
  var Index,
      OtherIndex:TpvSizeInt;
@@ -3950,12 +3908,14 @@ type TBeforeAfter=(Before,After);
    if not assigned(Resource.fResourceAliasGroup) then begin
     Resource.fResourceAliasGroup:=TResourceAliasGroup.Create(self);
     Resource.fResourceAliasGroup.fResourceType:=Resource.fResourceType;
+    Resource.fResourceAliasGroup.fExternalData:=Resource.fExternalData;
     Resource.fResourceAliasGroup.fResources.Add(Resource);
     if CanResourceReused(Resource) then begin
      for OtherIndex:=Index+1 to fResources.Count-1 do begin
       OtherResource:=fResources.Items[OtherIndex];
       if (not assigned(OtherResource.fResourceAliasGroup)) and
          (Resource.fResourceType=OtherResource.fResourceType) and
+         (Resource.fExternalData=OtherResource.fExternalData) and
          CanResourceReused(OtherResource) and
          (Min(Resource.fMaximumPhysicalPassStepIndex,
               OtherResource.fMaximumPhysicalPassStepIndex)>Max(Resource.fMinimumPhysicalPassStepIndex,
@@ -3996,7 +3956,7 @@ type TBeforeAfter=(Before,After);
      ResourceAliasGroup.fResourcePhysicalData:=TResourcePhysicalImageData.Create(self);
      ResourcePhysicalImageData:=TResourcePhysicalImageData(ResourceAliasGroup.fResourcePhysicalData);
      ResourcePhysicalImageData.fResourceType:=ResourceType;
-     ResourcePhysicalImageData.fIsExternal:=assigned(ImageResourceType.fExternalImageData);
+     ResourcePhysicalImageData.fExternalData:=ResourceAliasGroup.fExternalData;
      ResourcePhysicalImageData.fIsSurface:=ImageResourceType.fImageType=TImageType.Surface;
      ResourcePhysicalImageData.fImageUsageFlags:=TVkImageUsageFlags(ImageResourceType.fImageUsage);
      ResourcePhysicalImageData.fRequestedFormat:=ImageResourceType.fFormat;
@@ -4050,7 +4010,7 @@ type TBeforeAfter=(Before,After);
      ResourceAliasGroup.fResourcePhysicalData:=TResourcePhysicalBufferData.Create(self);
      ResourcePhysicalBufferData:=TResourcePhysicalBufferData(ResourceAliasGroup.fResourcePhysicalData);
      ResourcePhysicalBufferData.fResourceType:=ResourceType;
-     ResourcePhysicalBufferData.fIsExternal:=assigned(BufferResourceType.fExternalBufferData);
+     ResourcePhysicalBufferData.fExternalData:=ResourceAliasGroup.fExternalData;
      ResourcePhysicalBufferData.fSize:=BufferResourceType.fSize;
      ResourcePhysicalBufferData.fUsage:=BufferResourceType.fUsage;
      ResourcePhysicalBufferData.fMemoryRequiredPropertyFlags:=BufferResourceType.fMemoryRequiredPropertyFlags;
