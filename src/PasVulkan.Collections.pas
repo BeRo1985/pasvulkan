@@ -122,6 +122,8 @@ type TpvDynamicArray<T>=record
      end;
 
      TpvDynamicArrayList<T>=class
+      public
+       type TItemArray=array of T;
       private
        type TValueEnumerator=record
              private
@@ -134,7 +136,7 @@ type TpvDynamicArray<T>=record
               property Current:T read GetCurrent;
             end;
       private
-       fItems:array of T;
+       fItems:TItemArray;
        fCount:TpvSizeInt;
        fAllocated:TpvSizeInt;
        procedure SetCount(const pNewCount:TpvSizeInt);
@@ -153,6 +155,7 @@ type TpvDynamicArray<T>=record
        function Memory:TpvPointer; inline;
        property Count:TpvSizeInt read fCount write SetCount;
        property Allocated:TpvSizeInt read fAllocated;
+       property ItemArray:TItemArray read fItems;
        property Items[const pIndex:TpvSizeInt]:T read GetItem write SetItem; default;
      end;
 
