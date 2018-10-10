@@ -1,7 +1,7 @@
-(******************************************************************************
+﻿(******************************************************************************
  *                                 PasVulkan                                  *
  ******************************************************************************
- *                       Version see PasVulkan.FrameFrame.pas                  *
+ *                       Version see PasVulkan.FrameFrame.pas                 *
  ******************************************************************************
  *                                zlib license                                *
  *============================================================================*
@@ -213,10 +213,34 @@ type EpvFrameGraph=class(Exception);
             TQueues=TpvObjectGenericList<TQueue>;
             TQueueFamilyIndices=TpvDynamicArray<TVkUInt32>;
             TExternalData=class
+             private
+              fFrameGraph:TpvFrameGraph;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
+              destructor Destroy; override;
             end;
+            TExternalDataList=TpvObjectGenericList<TExternalData>;
             TExternalImageData=class(TExternalData)
+             public
+              type TVulkanImages=TpvObjectGenericList<TpvVulkanImage>;
+             private
+              fVulkanImages:TVulkanImages;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph); override;
+              destructor Destroy; override;
+             published
+              property VulkanImages:TVulkanImages read fVulkanImages;
             end;
             TExternalBufferData=class(TExternalData)
+             public
+              type TVulkanBuffers=TpvObjectGenericList<TpvVulkanBuffer>;
+             private
+              fVulkanBuffers:TVulkanBuffers;
+             public
+              constructor Create(const aFrameGraph:TpvFrameGraph); override;
+              destructor Destroy; override;
+             published
+              property VulkanBuffers:TVulkanBuffers read fVulkanBuffers;
             end;
             TResourceType=class
              private
@@ -936,6 +960,7 @@ type EpvFrameGraph=class(Exception);
        fResourceNameHashMap:TResourceNameHashMap;
        fResourceTransitions:TResourceTransitionList;
        fResourceAliasGroups:TResourceAliasGroupList;
+       fExternalDataList:TExternalDataList;
        fPasses:TPassList;
        fPassNameHashMap:TPassNameHashMap;
        fTopologicalSortedPasses:TPassList;
@@ -1192,6 +1217,52 @@ begin
 
  inherited Destroy;
 
+end;
+
+{ TpvFrameGraph.TExternalData }
+
+constructor TpvFrameGraph.TExternalData.Create(const aFrameGraph:TpvFrameGraph);
+begin
+ inherited Create;
+ fFrameGraph:=aFrameGraph;
+ if fFrameGraph.fExternalDataList.IndexOf(self)<0 then begin
+  fFrameGraph.fExternalDataList.Add(self);
+ end;
+end;
+
+destructor TpvFrameGraph.TExternalData.Destroy;
+begin
+ inherited Destroy;
+end;
+
+{ TpvFrameGraph.TExternalImageData }
+
+constructor TpvFrameGraph.TExternalImageData.Create(const aFrameGraph:TpvFrameGraph);
+begin
+ inherited Create(aFrameGraph);
+ fVulkanImages:=TVulkanImages.Create;
+ fVulkanImages.OwnsObjects:=false;
+end;
+
+destructor TpvFrameGraph.TExternalImageData.Destroy;
+begin
+ FreeAndNil(fVulkanImages);
+ inherited Destroy;
+end;
+
+{ TpvFrameGraph.TExternalBufferData }
+
+constructor TpvFrameGraph.TExternalBufferData.Create(const aFrameGraph:TpvFrameGraph);
+begin
+ inherited Create(aFrameGraph);
+ fVulkanBuffers:=TVulkanBuffers.Create;
+ fVulkanBuffers.OwnsObjects:=false;
+end;
+
+destructor TpvFrameGraph.TExternalBufferData.Destroy;
+begin
+ FreeAndNil(fVulkanBuffers);
+ inherited Destroy;
 end;
 
 { TpvFrameGraph.TResourceType }
@@ -3013,6 +3084,9 @@ begin
  fResourceAliasGroups:=TResourceAliasGroupList.Create;
  fResourceAliasGroups.OwnsObjects:=true;
 
+ fExternalDataList:=TExternalDataList.Create;
+ fExternalDataList.OwnsObjects:=true;
+
  fPasses:=TPassList.Create;
  fPasses.OwnsObjects:=true;
 
@@ -3065,6 +3139,8 @@ begin
  FreeAndNil(fResourceAliasGroups);
 
  FreeAndNil(fTopologicalSortedPasses);
+
+ FreeAndNil(fExternalDataList);
 
  FreeAndNil(fPasses);
 
