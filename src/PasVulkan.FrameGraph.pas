@@ -3639,10 +3639,10 @@ type TBeforeAfter=(Before,After);
  begin
   // Create data for the resource reuse groups
   for ResourceAliasGroup in fResourceAliasGroups do begin
-   ResourceType:=ResourceAliasGroup.fResourceType;
-   if ResourceType is TImageResourceType then begin
-    ImageResourceType:=TImageResourceType(ResourceType);
-    if not assigned(ResourceAliasGroup.fResourcePhysicalData) then begin
+   if not assigned(ResourceAliasGroup.fResourcePhysicalData) then begin
+    ResourceType:=ResourceAliasGroup.fResourceType;
+    if ResourceType is TImageResourceType then begin
+     ImageResourceType:=TImageResourceType(ResourceType);
      ResourceAliasGroup.fResourcePhysicalData:=TResourcePhysicalImageData.Create(self);
      ResourcePhysicalImageData:=TResourcePhysicalImageData(ResourceAliasGroup.fResourcePhysicalData);
      ResourcePhysicalImageData.fResourceType:=ResourceType;
@@ -3694,15 +3694,23 @@ type TBeforeAfter=(Before,After);
       end;
      end;
      ResourcePhysicalImageData.fComponents:=ImageResourceType.fComponents;
+    end else if ResourceType is TBufferResourceType then begin
+     BufferResourceType:=TBufferResourceType(ResourceType);
+     ResourceAliasGroup.fResourcePhysicalData:=TResourcePhysicalBufferData.Create(self);
+     ResourcePhysicalBufferData:=TResourcePhysicalBufferData(ResourceAliasGroup.fResourcePhysicalData);
+     ResourcePhysicalBufferData.fResourceType:=ResourceType;
+     ResourcePhysicalBufferData.fSize:=BufferResourceType.fSize;
+     ResourcePhysicalBufferData.fUsage:=BufferResourceType.fUsage;
+     ResourcePhysicalBufferData.fMemoryRequiredPropertyFlags:=BufferResourceType.fMemoryRequiredPropertyFlags;
+     ResourcePhysicalBufferData.fMemoryPreferredPropertyFlags:=BufferResourceType.fMemoryPreferredPropertyFlags;
+     ResourcePhysicalBufferData.fMemoryAvoidPropertyFlags:=BufferResourceType.fMemoryAvoidPropertyFlags;
+     ResourcePhysicalBufferData.fMemoryRequiredHeapFlags:=BufferResourceType.fMemoryRequiredHeapFlags;
+     ResourcePhysicalBufferData.fMemoryPreferredHeapFlags:=BufferResourceType.fMemoryPreferredHeapFlags;
+     ResourcePhysicalBufferData.fMemoryAvoidHeapFlags:=BufferResourceType.fMemoryAvoidHeapFlags;
+     ResourcePhysicalBufferData.fBufferFlags:=BufferResourceType.fBufferFlags;
+    end else begin
+     raise EpvFrameGraph.Create('Invalid resource type');
     end;
-   end else if ResourceType is TBufferResourceType then begin
-    ResourceAliasGroup.fResourcePhysicalData:=TResourcePhysicalBufferData.Create(self);
-    ResourcePhysicalBufferData:=TResourcePhysicalBufferData(ResourceAliasGroup.fResourcePhysicalData);
-    ResourcePhysicalBufferData.fResourceType:=ResourceType;
-    // TODO
-    Assert(false,'TODO');
-   end else begin
-    raise EpvFrameGraph.Create('Invalid resource type');
    end;
   end;
  end;
@@ -3803,7 +3811,6 @@ type TBeforeAfter=(Before,After);
                                                                      aDependencyFlags);
     PipelineBarrierGroups.Add(PipelineBarrierGroup);
    end;
-   // TODO
    if aResourcePhysicalData is TResourcePhysicalImageData then begin
     FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
     ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
