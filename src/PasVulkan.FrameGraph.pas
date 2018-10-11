@@ -3724,13 +3724,13 @@ type TBeforeAfter=(Before,After);
      RenderPass:=Pass as TRenderPass;
      Temporary:=0;
      for ResourceTransition in RenderPass.fResourceTransitions do begin
-      if ResourceTransition.fKind in TResourceTransition.AllImages then begin
+      if ResourceTransition.fKind in TResourceTransition.AllImageOutputs then begin
        Resource:=ResourceTransition.fResource;
        if (Resource.fResourceType is TImageResourceType) and
           (TImageResourceType(Resource.fResourceType).fImageType=TImageType.Surface) then begin
         Temporary:=Temporary or 1;
-       end else if (Resource.fResourceType is TImageResourceType) and
-                   (TImageResourceType(Resource.fResourceType).fImageType=TImageType.Depth) then begin
+       end else if not ((Resource.fResourceType is TImageResourceType) and
+                        (TImageResourceType(Resource.fResourceType).fImageType=TImageType.Depth)) then begin
         Temporary:=Temporary or 2;
         break;
        end;
