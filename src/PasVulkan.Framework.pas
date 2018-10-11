@@ -1274,6 +1274,10 @@ type EpvVulkanException=class(Exception);
 
      TpvVulkanRenderPassSubpassDescriptions=array of TpvVulkanRenderPassSubpassDescription;
 
+     TpvVulkanRenderPassMultiviewMasks=array of TVkUInt32;
+
+     TpvVulkanRenderPassCorrelationMasks=array of TVkUInt32;
+
      TpvVulkanFrameBuffer=class;
 
      TpvVulkanRenderPass=class(TpvVulkanObject)
@@ -1290,6 +1294,10 @@ type EpvVulkanException=class(Exception);
        fSubpassDependencies:TVkSubpassDependencyArray;
        fCountSubpassDependencies:TpvInt32;
        fClearValues:TVkClearValueArray;
+       fMultiviewMasks:TpvVulkanRenderPassMultiviewMasks;
+       fCountMultiviewMasks:TpvInt32;
+       fCorrelationMasks:TpvVulkanRenderPassCorrelationMasks;
+       fCountCorrelationMasks:TpvInt32;
        function GetClearValue(const Index:TpvUInt32):PVkClearValue;
       public
        constructor Create(const aDevice:TpvVulkanDevice);
@@ -1319,6 +1327,8 @@ type EpvVulkanException=class(Exception);
                                      const aSrcAccessMask:TVkAccessFlags;
                                      const aDstAccessMask:TVkAccessFlags;
                                      const aDependencyFlags:TVkDependencyFlags):TpvUInt32;
+       function AddMultiviewMask(const aMultiviewMask:TpvUInt32):TpvUInt32;
+       function AddCorrelationMask(const aCorrelationMask:TpvUInt32):TpvUInt32;
        procedure Initialize;
        procedure BeginRenderPass(const aCommandBuffer:TpvVulkanCommandBuffer;
                                  const aFrameBuffer:TpvVulkanFrameBuffer;
@@ -11218,6 +11228,12 @@ begin
 
  fClearValues:=nil;
 
+ fMultiviewMasks:=nil;
+ fCountMultiviewMasks:=0;
+
+ fCorrelationMasks:=nil;
+ fCountCorrelationMasks:=0;
+
 end;
 
 destructor TpvVulkanRenderPass.Destroy;
@@ -11226,12 +11242,14 @@ begin
   fDevice.fDeviceVulkan.DestroyRenderPass(fDevice.fDeviceHandle,fRenderPassHandle,fDevice.fAllocationCallbacks);
   fRenderPassHandle:=VK_NULL_HANDLE;
  end;
- SetLength(fAttachmentDescriptions,0);
- SetLength(fAttachmentReferences,0);
- SetLength(fRenderPassSubpassDescriptions,0);
- SetLength(fSubpassDescriptions,0);
- SetLength(fSubpassDependencies,0);
- SetLength(fClearValues,0);
+ fAttachmentDescriptions:=nil;
+ fAttachmentReferences:=nil;
+ fRenderPassSubpassDescriptions:=nil;
+ fSubpassDescriptions:=nil;
+ fSubpassDependencies:=nil;
+ fClearValues:=nil;
+ fMultiviewMasks:=nil;
+ fCorrelationMasks:=nil;
  inherited Destroy;
 end;
 
@@ -11350,13 +11368,35 @@ begin
  SubpassDependency^.DependencyFlags:=aDependencyFlags;
 end;
 
+function TpvVulkanRenderPass.AddMultiviewMask(const aMultiviewMask:TpvUInt32):TpvUInt32;
+begin
+ result:=fCountMultiviewMasks;
+ inc(fCountMultiviewMasks);
+ if fCountMultiviewMasks>length(fMultiviewMasks) then begin
+  SetLength(fMultiviewMasks,fCountMultiviewMasks*2);
+ end;
+ fMultiviewMasks[result]:=aMultiviewMask;
+end;
+
+function TpvVulkanRenderPass.AddCorrelationMask(const aCorrelationMask:TpvUInt32):TpvUInt32;
+begin
+ result:=fCountCorrelationMasks;
+ inc(fCountCorrelationMasks);
+ if fCountCorrelationMasks>length(fCorrelationMasks) then begin
+  SetLength(fCorrelationMasks,fCountCorrelationMasks*2);
+ end;
+ fCorrelationMasks[result]:=aCorrelationMask;
+end;
+
 procedure TpvVulkanRenderPass.Initialize;
+const DefaultCorrelationMask:TVkUInt32=1 or 2;
 var Index,SubIndex,fCountClearValues:TpvInt32;
     AttachmentDescription:PVkAttachmentDescription;
     SubpassDescription:PVkSubpassDescription;
     RenderPassSubpassDescription:PpvVulkanRenderPassSubpassDescription;
     ClearValue:PVkClearValue;
     RenderPassCreateInfo:TVkRenderPassCreateInfo;
+    MultiviewCreateInfo:TVkRenderPassMultiviewCreateInfo;
 begin
 
  FillChar(RenderPassCreateInfo,Sizeof(TVkRenderPassCreateInfo),#0);
@@ -11367,6 +11407,8 @@ begin
  SetLength(fRenderPassSubpassDescriptions,fCountSubpassDescriptions);
  SetLength(fSubpassDescriptions,fCountSubpassDescriptions);
  SetLength(fSubpassDependencies,fCountSubpassDependencies);
+ SetLength(fMultiviewMasks,fCountMultiviewMasks);
+ SetLength(fCorrelationMasks,fCountCorrelationMasks);
 
  fCountClearValues:=0;
  for Index:=0 to fCountAttachmentDescriptions-1 do begin
@@ -11457,7 +11499,22 @@ begin
   RenderPassCreateInfo.dependencyCount:=fCountSubpassDependencies;
   RenderPassCreateInfo.pDependencies:=@fSubpassDependencies[0];
  end;
- 
+
+ if fCountMultiviewMasks>0 then begin
+  FillChar(MultiviewCreateInfo,SizeOf(TVkRenderPassMultiviewCreateInfo),#0);
+  MultiviewCreateInfo.sType:=VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO;
+  MultiviewCreateInfo.subpassCount:=fCountMultiviewMasks;
+  MultiviewCreateInfo.pViewMasks:=@fMultiviewMasks[0];
+  if fCountCorrelationMasks>0 then begin
+   MultiviewCreateInfo.correlationMaskCount:=fCountCorrelationMasks;
+   MultiviewCreateInfo.pCorrelationMasks:=@fCorrelationMasks[0];
+  end else begin
+   MultiviewCreateInfo.correlationMaskCount:=1;
+   MultiviewCreateInfo.pCorrelationMasks:=@DefaultCorrelationMask;
+  end;
+  RenderPassCreateInfo.pNext:=@MultiviewCreateInfo;
+ end;
+
  VulkanCheckResult(fDevice.fDeviceVulkan.CreateRenderPass(fDevice.fDeviceHandle,@RenderPassCreateInfo,fDevice.fAllocationCallbacks,@fRenderPassHandle));
 
 end;

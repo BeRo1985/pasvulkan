@@ -740,6 +740,7 @@ type EpvFrameGraph=class(Exception);
                      fResolveAttachments:TInt32AttachmentLists;
                      fPreserveAttachments:TUInt32AttachmentLists;
                      fDepthStencilAttachment:TpvInt64;
+                     fMultiviewMask:TVkUInt32;
                     public
                      constructor Create(const aPhysicalRenderPass:TPhysicalRenderPass;
                                         const aRenderPass:TRenderPass); reintroduce;
@@ -752,7 +753,7 @@ type EpvFrameGraph=class(Exception);
              private
               fSubpasses:TSubpasses;
               fSubpassDependencies:TSubpassDependencies;
-              fMultiView:boolean;
+              fMultiview:boolean;
               fHasSurfaceSubpassDependencies:boolean;
               fAttachments:TAttachments;
               fAttachmentReferences:TAttachmentReferences;
@@ -952,7 +953,7 @@ type EpvFrameGraph=class(Exception);
             end;
             TRenderPass=class(TPass)
              private
-              fMultiViewMask:TpvUInt32;
+              fMultiviewMask:TpvUInt32;
               fSize:TImageSize;
               fPhysicalRenderPassSubpass:TPhysicalRenderPass.TSubpass;
               function GetPhysicalRenderPass:TPhysicalRenderPass; inline;
@@ -964,7 +965,7 @@ type EpvFrameGraph=class(Exception);
              public
               property Size:TImageSize read fSize write fSize;
              published
-              property MultiViewMask:TpvUInt32 read fMultiViewMask write fMultiViewMask;
+              property MultiviewMask:TpvUInt32 read fMultiviewMask write fMultiviewMask;
               property PhysicalRenderPass:TPhysicalRenderPass read GetPhysicalRenderPass;
               property PhysicalRenderPassSubpass:TPhysicalRenderPass.TSubpass read fPhysicalRenderPassSubpass;
               property VulkanRenderPass:TpvVulkanRenderPass read GetVulkanRenderPass;
@@ -972,6 +973,7 @@ type EpvFrameGraph=class(Exception);
             end;
       private
        fVulkanDevice:TpvVulkanDevice;
+       fMultiviewEnabled:boolean;
        fSurfaceWidth:TpvSizeInt;
        fSurfaceHeight:TpvSizeInt;
        fSurfaceColorFormat:TVkFormat;
@@ -2943,6 +2945,7 @@ begin
  fResolveAttachments.Initialize;
  fPreserveAttachments.Initialize;
  fDepthStencilAttachment:=-1;
+ fMultiviewMask:=fRenderPass.fMultiviewMask;
 end;
 
 destructor TpvFrameGraph.TPhysicalRenderPass.TSubpass.Destroy;
@@ -2983,7 +2986,7 @@ begin
  fSubpasses:=TSubpasses.Create;
  fSubpasses.OwnsObjects:=true;
  fSubpassDependencies.Initialize;
- fMultiView:=false;
+ fMultiview:=false;
  fHasSurfaceSubpassDependencies:=false;
  fAttachments.Initialize;
  fAttachmentReferences.Initialize;
@@ -3107,6 +3110,9 @@ begin
                                           Subpass.fDepthStencilAttachment,
                                           Subpass.fPreserveAttachments.Items
                                          );
+  if fMultiview and fFrameGraph.fMultiviewEnabled then begin
+   fVulkanRenderPass.AddMultiviewMask(Subpass.fMultiviewMask);
+  end;
  end;
 
  for SubpassDependencyIndex:=0 to fSubpassDependencies.Count-1 do begin
@@ -3240,6 +3246,8 @@ begin
  inherited Create;
 
  fVulkanDevice:=aVulkanDevice;
+
+ fMultiviewEnabled:=fVulkanDevice.EnabledExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>0;
 
  fSurfaceWidth:=1;
  fSurfaceHeight:=1;
@@ -3904,7 +3912,7 @@ type TBeforeAfter=(Before,After);
     Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
     TRenderPass(Pass).fPhysicalRenderPassSubpass:=TPhysicalRenderPass.TSubpass.Create(PhysicalRenderPass,TRenderPass(Pass));
     TRenderPass(Pass).fPhysicalRenderPassSubpass.fIndex:=PhysicalRenderPass.fSubpasses.Add(TRenderPass(Pass).fPhysicalRenderPassSubpass);
-    PhysicalRenderPass.fMultiView:=TRenderPass(Pass).fMultiViewMask<>0;
+    PhysicalRenderPass.fMultiview:=TRenderPass(Pass).fMultiviewMask<>0;
     inc(Index);
     if not (TPass.TFlag.Toggleable in Pass.fFlags) then begin
      while Index<Count do begin
@@ -3917,7 +3925,7 @@ type TBeforeAfter=(Before,After);
        TRenderPass(OtherPass).fPhysicalRenderPassSubpass:=TPhysicalRenderPass.TSubpass.Create(PhysicalRenderPass,TRenderPass(OtherPass));
        TRenderPass(OtherPass).fPhysicalRenderPassSubpass.fIndex:=PhysicalRenderPass.fSubpasses.Add(TRenderPass(OtherPass).fPhysicalRenderPassSubpass);
        Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.fPhysicalPass.fHasSecondaryBuffers or Pass.GetHasSecondaryBuffers;
-       PhysicalRenderPass.fMultiView:=PhysicalRenderPass.fMultiView or (TRenderPass(OtherPass).fMultiViewMask<>0);
+       PhysicalRenderPass.fMultiview:=PhysicalRenderPass.fMultiview or (TRenderPass(OtherPass).fMultiviewMask<>0);
        fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,OtherPass.fPhysicalPass.fIndex);
        inc(Index);
       end else begin
