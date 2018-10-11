@@ -777,8 +777,8 @@ type EpvFrameGraph=class(Exception);
                      Toggleable,
                      Enabled,
                      Used,
-                     Processed,
-                     Marked,
+                     PermanentlyMarked,
+                     TemporaryMarked,
                      Subpass,
                      HasSecondaryBuffers
                     );
@@ -3751,7 +3751,7 @@ type TBeforeAfter=(Before,After);
  type TAction=
        (
         Process,
-        Unmark,
+        RemoveTemporaryMarkFlag,
         Add
        );
       TStackItem=record
@@ -3785,7 +3785,7 @@ type TBeforeAfter=(Before,After);
     if Pass is TRenderPass then begin
      TRenderPass(Pass).fPhysicalRenderPassSubpass:=nil;
     end;
-    Pass.fFlags:=Pass.fFlags-[TPass.TFlag.Used,TPass.TFlag.Processed,TPass.TFlag.Marked];
+    Pass.fFlags:=Pass.fFlags-[TPass.TFlag.Used,TPass.TFlag.PermanentlyMarked,TPass.TFlag.TemporaryMarked];
     Pass.fPreviousPasses.Clear;
     Pass.fNextPasses.Clear;
    end;
@@ -3794,12 +3794,12 @@ type TBeforeAfter=(Before,After);
     Pass:=StackItem.Pass;
     case StackItem.Action of
      TAction.Process:begin
-      if TPass.TFlag.Marked in Pass.fFlags then begin
+      if TPass.TFlag.TemporaryMarked in Pass.fFlags then begin
        raise EpvFrameGraphRecursion.Create('Recursion detected');
       end;
-      Include(Pass.fFlags,TPass.TFlag.Marked);
-      if not (TPass.TFlag.Processed in Pass.fFlags) then begin
-       Pass.fFlags:=Pass.fFlags+[TPass.TFlag.Used,TPass.TFlag.Processed];
+      Include(Pass.fFlags,TPass.TFlag.TemporaryMarked);
+      if not (TPass.TFlag.PermanentlyMarked in Pass.fFlags) then begin
+       Pass.fFlags:=Pass.fFlags+[TPass.TFlag.Used,TPass.TFlag.PermanentlyMarked];
        for ResourceTransition in Pass.fResourceTransitions do begin
         if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
            not (TResourceTransition.TFlag.PreviousFrameInput in ResourceTransition.Flags) then begin
@@ -3855,13 +3855,13 @@ type TBeforeAfter=(Before,After);
        end;
        Stack.Push(NewStackItem(TAction.Add,Pass));
       end;
-      Stack.Push(NewStackItem(TAction.Unmark,Pass));
+      Stack.Push(NewStackItem(TAction.RemoveTemporaryMarkFlag,Pass));
       for OtherPass in Pass.fPreviousPasses do begin
        Stack.Push(NewStackItem(TAction.Process,OtherPass));
       end;
      end;
-     TAction.Unmark:begin
-      Exclude(Pass.fFlags,TPass.TFlag.Marked);
+     TAction.RemoveTemporaryMarkFlag:begin
+      Exclude(Pass.fFlags,TPass.TFlag.TemporaryMarked);
      end;
      TAction.Add:begin
       Pass.fTopologicalSortIndex:=fTopologicalSortedPasses.Add(Pass);
