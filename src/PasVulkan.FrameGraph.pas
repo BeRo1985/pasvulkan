@@ -662,7 +662,8 @@ type EpvFrameGraph=class(Exception);
               fWaitingSemaphores:TWaitingSemaphores;
               fWaitingSemaphoreHandles:TVulkanSemaphoreHandles;
               fWaitingSemaphoreDstStageMasks:TWaitingSemaphoreDstStageMasks;
-              fSubmitInfos:array[0..MaxSwapChainImages-1] of TVkSubmitInfo;
+              fActiveSubmitInfos:array[0..MaxSwapChainImages-1] of TVkSubmitInfo;
+              fInactiveSubmitInfos:array[0..MaxSwapChainImages-1] of TVkSubmitInfo;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;const aQueue:TQueue); reintroduce; virtual;
               destructor Destroy; override;
@@ -5034,29 +5035,37 @@ begin
    PhysicalPass.fWaitingSemaphoreDstStageMasks.Finish;
   end;
   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-   SubmitInfo:=@PhysicalPass.fSubmitInfos[SwapChainImageIndex];
-   FillChar(SubmitInfo^,SizeOf(TVkSubmitInfo),#0);
-   SubmitInfo^.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-   SubmitInfo^.pNext:=nil;
-   SubmitInfo^.waitSemaphoreCount:=PhysicalPass.fWaitingSemaphores.Count;
-   if SubmitInfo^.waitSemaphoreCount>0 then begin
-    SubmitInfo^.pWaitSemaphores:=@PhysicalPass.fWaitingSemaphoreHandles.Items[PhysicalPass.fWaitingSemaphores.Count*SwapChainImageIndex];
-    SubmitInfo^.pWaitDstStageMask:=@PhysicalPass.fWaitingSemaphores.Items[0];
-   end;
-   SubmitInfo^.commandBufferCount:=1;
-   SubmitInfo^.pCommandBuffers:=@PhysicalPass.fCommandBuffers[SwapChainImageIndex].Handle;
-   if fDoSignalSemaphore and assigned(fRootPhysicalPass) then begin
-    Semaphore:=TpvVulkanSemaphore.Create(fVulkanDevice);
-    PhysicalPass.fSignallingSemaphores[SwapChainImageIndex].Add(Semaphore);
-    PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
-    fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
-    fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Add(TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
-   end;
-   SubmitInfo^.signalSemaphoreCount:=PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Count;
-   if SubmitInfo^.signalSemaphoreCount>0 then begin
-    SubmitInfo^.pSignalSemaphores:=@PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Items[0];
-   end else begin
-    SubmitInfo^.pSignalSemaphores:=nil;
+   for Index:=0 to 1 do begin
+    if Index=0 then begin
+     SubmitInfo:=@PhysicalPass.fActiveSubmitInfos[SwapChainImageIndex];
+    end else begin
+     SubmitInfo:=@PhysicalPass.fInactiveSubmitInfos[SwapChainImageIndex];
+    end;
+    FillChar(SubmitInfo^,SizeOf(TVkSubmitInfo),#0);
+    SubmitInfo^.sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    SubmitInfo^.pNext:=nil;
+    SubmitInfo^.waitSemaphoreCount:=PhysicalPass.fWaitingSemaphores.Count;
+    if SubmitInfo^.waitSemaphoreCount>0 then begin
+     SubmitInfo^.pWaitSemaphores:=@PhysicalPass.fWaitingSemaphoreHandles.Items[PhysicalPass.fWaitingSemaphores.Count*SwapChainImageIndex];
+     SubmitInfo^.pWaitDstStageMask:=@PhysicalPass.fWaitingSemaphores.Items[0];
+    end;
+    if Index=0 then begin
+     SubmitInfo^.commandBufferCount:=1;
+     SubmitInfo^.pCommandBuffers:=@PhysicalPass.fCommandBuffers[SwapChainImageIndex].Handle;
+     if fDoSignalSemaphore and assigned(fRootPhysicalPass) then begin
+      Semaphore:=TpvVulkanSemaphore.Create(fVulkanDevice);
+      PhysicalPass.fSignallingSemaphores[SwapChainImageIndex].Add(Semaphore);
+      PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
+      fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
+      fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Add(TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
+     end;
+     SubmitInfo^.signalSemaphoreCount:=PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Count;
+     if SubmitInfo^.signalSemaphoreCount>0 then begin
+      SubmitInfo^.pSignalSemaphores:=@PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Items[0];
+     end;
+    end else begin
+     // Nothing to do
+    end;
    end;
   end;
  end;
@@ -5162,17 +5171,17 @@ begin
     PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
     if PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
      PhysicalComputePass.Execute;
-     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalComputePass.fSubmitInfos[fDrawSwapChainImageIndex];
+     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalComputePass.fActiveSubmitInfos[fDrawSwapChainImageIndex];
     end else begin
-     // TODO: Add pass wait semaphores to a dummy unsignaling TVkSubmitInfo
+     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalComputePass.fInactiveSubmitInfos[fDrawSwapChainImageIndex];
     end;
    end else if PhysicalPass is TPhysicalTransferPass then begin
     PhysicalTransferPass:=TPhysicalTransferPass(PhysicalPass);
     if PhysicalTransferPass.fTransferPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
      PhysicalTransferPass.Execute;
-     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalTransferPass.fSubmitInfos[fDrawSwapChainImageIndex];
+     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalTransferPass.fActiveSubmitInfos[fDrawSwapChainImageIndex];
     end else begin
-     // TODO: Add pass wait semaphores to a dummy unsignaling TVkSubmitInfo
+     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalTransferPass.fInactiveSubmitInfos[fDrawSwapChainImageIndex];
     end;
    end else if PhysicalPass is TPhysicalRenderPass then begin
     PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
@@ -5186,9 +5195,9 @@ begin
     end;
     if Used then begin
      PhysicalRenderPass.Execute;
-     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalRenderPass.fSubmitInfos[fDrawSwapChainImageIndex];
+     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalRenderPass.fActiveSubmitInfos[fDrawSwapChainImageIndex];
     end else begin
-     // TODO: Add pass wait semaphores to a dummy unsignaling TVkSubmitInfo
+     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalRenderPass.fInactiveSubmitInfos[fDrawSwapChainImageIndex];
     end;
    end;
   end;
