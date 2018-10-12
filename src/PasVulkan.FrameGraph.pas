@@ -820,6 +820,7 @@ type EpvFrameGraph=class(Exception);
                      function GetWidth:TpvSizeInt;
                      function GetHeight:TpvSizeInt;
                      function GetDepth:TpvSizeInt;
+                     function GetCountMipMapLevels:TpvSizeInt;
                      function GetCountArrayLayers:TpvSizeInt;
                     public
                      property VulkanImages[const aSwapChainImageIndex:TpvSizeInt]:TpvVulkanImage read GetVulkanImage;
@@ -828,6 +829,7 @@ type EpvFrameGraph=class(Exception);
                      property Width:TpvSizeInt read GetWidth;
                      property Height:TpvSizeInt read GetHeight;
                      property Depth:TpvSizeInt read GetDepth;
+                     property CountMipMapLevels:TpvSizeInt read GetCountMipMapLevels;
                      property CountArrayLayers:TpvSizeInt read GetCountArrayLayers;
                    end;
                    TUsedBufferResource=class(TUsedResource)
@@ -2123,6 +2125,12 @@ function TpvFrameGraph.TPass.TUsedImageResource.GetDepth:TpvSizeInt;
 begin
  Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
  result:=TResourcePhysicalImageData(fResourcePhysicalData).fExtent.Depth;
+end;
+
+function TpvFrameGraph.TPass.TUsedImageResource.GetCountMipMapLevels:TpvSizeInt;
+begin
+ Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
+ result:=TResourcePhysicalImageData(fResourcePhysicalData).fCountMipMaps;
 end;
 
 function TpvFrameGraph.TPass.TUsedImageResource.GetCountArrayLayers:TpvSizeInt;
