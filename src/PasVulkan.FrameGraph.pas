@@ -5047,8 +5047,8 @@ begin
    SubmitInfo^.pCommandBuffers:=@PhysicalPass.fCommandBuffers[SwapChainImageIndex].Handle;
    if fDoSignalSemaphore and assigned(fRootPhysicalPass) then begin
     Semaphore:=TpvVulkanSemaphore.Create(fVulkanDevice);
-    WaitingSemaphore^.SignallingPhysicalPass.fSignallingSemaphores[SwapChainImageIndex].Add(Semaphore);
-    WaitingSemaphore^.SignallingPhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
+    PhysicalPass.fSignallingSemaphores[SwapChainImageIndex].Add(Semaphore);
+    PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
     fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
     fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Add(TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
    end;
