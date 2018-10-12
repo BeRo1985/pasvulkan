@@ -4904,30 +4904,34 @@ type TBeforeAfter=(Before,After);
    begin
     FillChar(fDrawToWaitSubmitInfos[SwapChainImageIndex],SizeOf(TVkSubmitInfo),#0);
     fDrawToWaitSubmitInfos[SwapChainImageIndex].sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    fDrawToWaitSubmitInfos[SwapChainImageIndex].pNext:=nil;
-    fDrawToWaitSubmitInfos[SwapChainImageIndex].waitSemaphoreCount:=1;
-    fDrawToWaitSubmitInfos[SwapChainImageIndex].pWaitSemaphores:=@fDrawToWaitOnSemaphoreExternalHandles[SwapChainImageIndex];
-    fDrawToWaitSubmitInfos[SwapChainImageIndex].pWaitDstStageMask:=@fDrawToWaitOnSemaphoreExternalDstStageMask;
-    fDrawToWaitSubmitInfos[SwapChainImageIndex].commandBufferCount:=0;
-    fDrawToWaitSubmitInfos[SwapChainImageIndex].pCommandBuffers:=nil;
-    fDrawToWaitSubmitInfos[SwapChainImageIndex].signalSemaphoreCount:=fDrawToWaitOnSemaphores[SwapChainImageIndex].Count;
-    if fDrawToWaitSubmitInfos[SwapChainImageIndex].signalSemaphoreCount>0 then begin
-     fDrawToWaitSubmitInfos[SwapChainImageIndex].pSignalSemaphores:=@fDrawToWaitOnSemaphores[SwapChainImageIndex].Items[0];
+    if fDoWaitOnSemaphore then begin
+     fDrawToWaitSubmitInfos[SwapChainImageIndex].pNext:=nil;
+     fDrawToWaitSubmitInfos[SwapChainImageIndex].waitSemaphoreCount:=1;
+     fDrawToWaitSubmitInfos[SwapChainImageIndex].pWaitSemaphores:=@fDrawToWaitOnSemaphoreExternalHandles[SwapChainImageIndex];
+     fDrawToWaitSubmitInfos[SwapChainImageIndex].pWaitDstStageMask:=@fDrawToWaitOnSemaphoreExternalDstStageMask;
+     fDrawToWaitSubmitInfos[SwapChainImageIndex].commandBufferCount:=0;
+     fDrawToWaitSubmitInfos[SwapChainImageIndex].pCommandBuffers:=nil;
+     fDrawToWaitSubmitInfos[SwapChainImageIndex].signalSemaphoreCount:=fDrawToWaitOnSemaphores[SwapChainImageIndex].Count;
+     if fDrawToWaitSubmitInfos[SwapChainImageIndex].signalSemaphoreCount>0 then begin
+      fDrawToWaitSubmitInfos[SwapChainImageIndex].pSignalSemaphores:=@fDrawToWaitOnSemaphores[SwapChainImageIndex].Items[0];
+     end;
     end;
    end;
    begin
     FillChar(fDrawToSignalSubmitInfos[SwapChainImageIndex],SizeOf(TVkSubmitInfo),#0);
     fDrawToSignalSubmitInfos[SwapChainImageIndex].sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    fDrawToSignalSubmitInfos[SwapChainImageIndex].pNext:=nil;
-    fDrawToSignalSubmitInfos[SwapChainImageIndex].waitSemaphoreCount:=fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Count;
-    if fDrawToSignalSubmitInfos[SwapChainImageIndex].waitSemaphoreCount>0 then begin
-     fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitSemaphores:=@fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Items[0];
-     fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitDstStageMask:=@fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Items[0];
+    if fDoSignalSemaphore then begin
+     fDrawToSignalSubmitInfos[SwapChainImageIndex].pNext:=nil;
+     fDrawToSignalSubmitInfos[SwapChainImageIndex].waitSemaphoreCount:=fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Count;
+     if fDrawToSignalSubmitInfos[SwapChainImageIndex].waitSemaphoreCount>0 then begin
+      fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitSemaphores:=@fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Items[0];
+      fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitDstStageMask:=@fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Items[0];
+     end;
+     fDrawToSignalSubmitInfos[SwapChainImageIndex].commandBufferCount:=0;
+     fDrawToSignalSubmitInfos[SwapChainImageIndex].pCommandBuffers:=nil;
+     fDrawToSignalSubmitInfos[SwapChainImageIndex].signalSemaphoreCount:=1;
+     fDrawToSignalSubmitInfos[SwapChainImageIndex].pSignalSemaphores:=@fDrawToSignalSemaphoreExternalHandles[SwapChainImageIndex];
     end;
-    fDrawToSignalSubmitInfos[SwapChainImageIndex].commandBufferCount:=0;
-    fDrawToSignalSubmitInfos[SwapChainImageIndex].pCommandBuffers:=nil;
-    fDrawToSignalSubmitInfos[SwapChainImageIndex].signalSemaphoreCount:=1;
-    fDrawToSignalSubmitInfos[SwapChainImageIndex].pSignalSemaphores:=@fDrawToSignalSemaphoreExternalHandles[SwapChainImageIndex];
    end;
   end;
  end;
