@@ -3384,6 +3384,17 @@ begin
 
  fVulkanUniversalQueueCommandBufferFence:=TpvVulkanFence.Create(fVulkanDevice);
 
+ for SwapChainImageIndex:=0 to fCountSwapChainImages-1 do begin
+  begin
+   FillChar(fDrawToWaitSubmitInfos[SwapChainImageIndex],SizeOf(TVkSubmitInfo),#0);
+   fDrawToWaitSubmitInfos[SwapChainImageIndex].sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  end;
+  begin
+   FillChar(fDrawToSignalSubmitInfos[SwapChainImageIndex],SizeOf(TVkSubmitInfo),#0);
+   fDrawToSignalSubmitInfos[SwapChainImageIndex].sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+  end;
+ end;
+
  fDrawToWaitOnSemaphoreExternalDstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 
 end;
@@ -4897,44 +4908,6 @@ type TBeforeAfter=(Before,After);
    end;
   end;
  end;
- procedure CreateExternalSubmitInfos;
- var SwapChainImageIndex:TpvSizeInt;
- begin
-  for SwapChainImageIndex:=0 to fCountSwapChainImages-1 do begin
-   begin
-    FillChar(fDrawToWaitSubmitInfos[SwapChainImageIndex],SizeOf(TVkSubmitInfo),#0);
-    fDrawToWaitSubmitInfos[SwapChainImageIndex].sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    if fDoWaitOnSemaphore then begin
-     fDrawToWaitSubmitInfos[SwapChainImageIndex].pNext:=nil;
-     fDrawToWaitSubmitInfos[SwapChainImageIndex].waitSemaphoreCount:=1;
-     fDrawToWaitSubmitInfos[SwapChainImageIndex].pWaitSemaphores:=@fDrawToWaitOnSemaphoreExternalHandles[SwapChainImageIndex];
-     fDrawToWaitSubmitInfos[SwapChainImageIndex].pWaitDstStageMask:=@fDrawToWaitOnSemaphoreExternalDstStageMask;
-     fDrawToWaitSubmitInfos[SwapChainImageIndex].commandBufferCount:=0;
-     fDrawToWaitSubmitInfos[SwapChainImageIndex].pCommandBuffers:=nil;
-     fDrawToWaitSubmitInfos[SwapChainImageIndex].signalSemaphoreCount:=fDrawToWaitOnSemaphores[SwapChainImageIndex].Count;
-     if fDrawToWaitSubmitInfos[SwapChainImageIndex].signalSemaphoreCount>0 then begin
-      fDrawToWaitSubmitInfos[SwapChainImageIndex].pSignalSemaphores:=@fDrawToWaitOnSemaphores[SwapChainImageIndex].Items[0];
-     end;
-    end;
-   end;
-   begin
-    FillChar(fDrawToSignalSubmitInfos[SwapChainImageIndex],SizeOf(TVkSubmitInfo),#0);
-    fDrawToSignalSubmitInfos[SwapChainImageIndex].sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    if fDoSignalSemaphore then begin
-     fDrawToSignalSubmitInfos[SwapChainImageIndex].pNext:=nil;
-     fDrawToSignalSubmitInfos[SwapChainImageIndex].waitSemaphoreCount:=fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Count;
-     if fDrawToSignalSubmitInfos[SwapChainImageIndex].waitSemaphoreCount>0 then begin
-      fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitSemaphores:=@fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Items[0];
-      fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitDstStageMask:=@fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Items[0];
-     end;
-     fDrawToSignalSubmitInfos[SwapChainImageIndex].commandBufferCount:=0;
-     fDrawToSignalSubmitInfos[SwapChainImageIndex].pCommandBuffers:=nil;
-     fDrawToSignalSubmitInfos[SwapChainImageIndex].signalSemaphoreCount:=1;
-     fDrawToSignalSubmitInfos[SwapChainImageIndex].pSignalSemaphores:=@fDrawToSignalSemaphoreExternalHandles[SwapChainImageIndex];
-    end;
-   end;
-  end;
- end;
 begin
 
  fPhysicalPasses.Clear;
@@ -4974,8 +4947,6 @@ begin
  PrepareQueues;
 
  FinishPassUsedResources;
-
- CreateExternalSubmitInfos;
 
 end;
 
@@ -5094,6 +5065,24 @@ begin
   fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Finish;
   fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Finish;
   fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Finish;
+ end;
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  fDrawToWaitSubmitInfos[SwapChainImageIndex].signalSemaphoreCount:=fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Count;
+  if fDrawToWaitSubmitInfos[SwapChainImageIndex].signalSemaphoreCount>0 then begin
+   fDrawToWaitSubmitInfos[SwapChainImageIndex].pSignalSemaphores:=@fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Items[0];
+  end else begin
+   fDrawToWaitSubmitInfos[SwapChainImageIndex].pSignalSemaphores:=nil;
+  end;
+ end;
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  fDrawToSignalSubmitInfos[SwapChainImageIndex].waitSemaphoreCount:=fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Count;
+  if fDrawToSignalSubmitInfos[SwapChainImageIndex].waitSemaphoreCount>0 then begin
+   fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitSemaphores:=@fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Items[0];
+   fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitDstStageMask:=@fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Items[0];
+  end else begin
+   fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitSemaphores:=nil;
+   fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitDstStageMask:=nil;
+  end;
  end;
 end;
 
@@ -5242,14 +5231,26 @@ begin
  if assigned(aToWaitOnSemaphore) then begin
   Assert(fDrawToWaitOnSemaphoreHandles[aDrawSwapChainImageIndex].Count>0);
   fDrawToWaitOnSemaphoreExternalHandles[fDrawSwapChainImageIndex]:=aToWaitOnSemaphore.Handle;
+  fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex].waitSemaphoreCount:=1;
+  fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex].pWaitSemaphores:=@fDrawToWaitOnSemaphoreExternalHandles[fDrawSwapChainImageIndex];
+  fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex].pWaitDstStageMask:=@fDrawToWaitOnSemaphoreExternalDstStageMask;
  end else begin
   Assert(fDrawToWaitOnSemaphoreHandles[aDrawSwapChainImageIndex].Count=0);
+  fDrawToWaitOnSemaphoreExternalHandles[fDrawSwapChainImageIndex]:=VK_NULL_HANDLE;
+  fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex].waitSemaphoreCount:=0;
+  fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex].pWaitSemaphores:=nil;
+  fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex].pWaitDstStageMask:=nil;
  end;
  if assigned(aToSignalSemaphore) then begin
   Assert(fDrawToSignalSemaphoreHandles[aDrawSwapChainImageIndex].Count>0);
   fDrawToSignalSemaphoreExternalHandles[fDrawSwapChainImageIndex]:=aToSignalSemaphore.Handle;
+  fDrawToSignalSubmitInfos[fDrawSwapChainImageIndex].signalSemaphoreCount:=1;
+  fDrawToSignalSubmitInfos[fDrawSwapChainImageIndex].pSignalSemaphores:=@fDrawToSignalSemaphoreExternalHandles[fDrawSwapChainImageIndex];
  end else begin
   Assert(fDrawToSignalSemaphoreHandles[aDrawSwapChainImageIndex].Count=0);
+  fDrawToSignalSemaphoreExternalHandles[fDrawSwapChainImageIndex]:=VK_NULL_HANDLE;
+  fDrawToSignalSubmitInfos[fDrawSwapChainImageIndex].signalSemaphoreCount:=0;
+  fDrawToSignalSubmitInfos[fDrawSwapChainImageIndex].pSignalSemaphores:=nil;
  end;
  if fCanDoParallelProcessing and assigned(pvApplication) then begin
   pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0);
