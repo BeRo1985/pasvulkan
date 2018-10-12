@@ -214,6 +214,9 @@ type EpvFrameGraph=class(Exception);
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aPhysicalQueue:TpvVulkanQueue); reintroduce;
               destructor Destroy; override;
+             published
+              property FrameGraph:TpvFrameGraph read fFrameGraph;
+              property CommandPool:TpvVulkanCommandPool read fCommandPool;
             end;
             TQueues=TpvObjectGenericList<TQueue>;
             TQueueFamilyIndices=TpvDynamicArray<TVkUInt32>;
@@ -749,6 +752,9 @@ type EpvFrameGraph=class(Exception);
                      procedure Hide; virtual;
                      procedure AfterCreateSwapChain; virtual;
                      procedure BeforeDestroySwapChain; virtual;
+                    published
+                     property Index:TpvSizeInt read fIndex;
+                     property MultiviewMask:TVkUInt32 read fMultiviewMask;
                    end;
              private
               fSubpasses:TSubpasses;
