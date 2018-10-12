@@ -102,6 +102,8 @@ type EpvFrameGraph=class(Exception);
        type PpvVulkanSemaphore=^TpvVulkanSemaphore;
             TpvVulkanSemaphorePointers=TpvDynamicArray<PpvVulkanSemaphore>;
             TpvVkSemaphorePointers=TpvDynamicArray<PVkSemaphore>;
+            TVulkanSemaphores=TpvDynamicArray<TpvVulkanSemaphore>;
+            TVulkanSemaphoreHandles=TpvDynamicArray<TVkSemaphore>;
             TBufferSubresourceRange=record
              public
               Offset:TVkDeviceSize;
@@ -642,7 +644,6 @@ type EpvFrameGraph=class(Exception);
                    end;
                    PWaitingSemaphore=^TWaitingSemaphore;
                    TWaitingSemaphores=TpvDynamicArray<TWaitingSemaphore>;
-                   TWaitingSemaphoreHandles=TpvDynamicArray<TVkSemaphore>;
                    TWaitingSemaphoreDstStageMasks=TpvDynamicArray<TVkPipelineStageFlags>;
              private
               fFrameGraph:TpvFrameGraph;
@@ -655,10 +656,10 @@ type EpvFrameGraph=class(Exception);
               fBeforePipelineBarrierGroups:TPipelineBarrierGroups;
               fAfterPipelineBarrierGroups:TPipelineBarrierGroups;
               fCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
-              fSignallingSemaphores:array[0..MaxSwapChainImages-1] of TpvVulkanSemaphore;
-              fSignallingSemaphoreHandles:array[0..MaxSwapChainImages-1] of array[0..1] of TVkSemaphore;
+              fSignallingSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphores;
+              fSignallingSemaphoreHandles:array[0..MaxSwapChainImages-1] of TVulkanSemaphoreHandles;
               fWaitingSemaphores:TWaitingSemaphores;
-              fWaitingSemaphoreHandles:TWaitingSemaphoreHandles;
+              fWaitingSemaphoreHandles:TVulkanSemaphoreHandles;
               fWaitingSemaphoreDstStageMasks:TWaitingSemaphoreDstStageMasks;
               fSubmitInfos:array[0..MaxSwapChainImages-1] of TVkSubmitInfo;
              public
@@ -1022,8 +1023,14 @@ type EpvFrameGraph=class(Exception);
        fDoSignalSemaphore:boolean;
        fPhysicalPasses:TPhysicalPasses;
        fRootPhysicalPass:TPhysicalPass;
-       fDrawToWaitOnSemaphores:array[0..MaxSwapChainImages-1] of TpvVkSemaphorePointers;
-       fDrawToSignalSemaphores:array[0..MaxSwapChainImages-1] of TpvVkSemaphorePointers;
+       fDrawToWaitOnSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphores;
+       fDrawToWaitOnSemaphoreHandles:array[0..MaxSwapChainImages-1] of TVulkanSemaphoreHandles;
+       fDrawToSignalSemaphoreHandles:array[0..MaxSwapChainImages-1] of TVulkanSemaphoreHandles;
+       fDrawToWaitOnSemaphoreExternalHandles:array[0..MaxSwapChainImages-1] of TVkSemaphore;
+       fDrawToWaitOnSemaphoreExternalDstStageMask:TVkPipelineStageFlags;
+       fDrawToSignalSemaphoreExternalHandles:array[0..MaxSwapChainImages-1] of TVkSemaphore;
+       fDrawToWaitSubmitInfos:array[0..MaxSwapChainImages-1] of TVkSubmitInfo;
+       fDrawToSignalSubmitInfos:array[0..MaxSwapChainImages-1] of TVkSubmitInfo;
        fVulkanUniversalQueueCommandBuffer:TpvVulkanCommandBuffer;
        fVulkanUniversalQueueCommandBufferFence:TpvVulkanFence;
        fDrawSwapChainImageIndex:TpvSizeInt;
@@ -2767,7 +2774,8 @@ begin
 
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   fCommandBuffers[SwapChainImageIndex]:=nil;
-  fSignallingSemaphores[SwapChainImageIndex]:=nil;
+  fSignallingSemaphores[SwapChainImageIndex].Initialize;
+  fSignallingSemaphoreHandles[SwapChainImageIndex].Initialize;
  end;
 
  fWaitingSemaphores.Initialize;
@@ -2779,14 +2787,18 @@ begin
 end;
 
 destructor TpvFrameGraph.TPhysicalPass.Destroy;
-var SwapChainImageIndex:TpvSizeInt;
+var SwapChainImageIndex,Index:TpvSizeInt;
 begin
  fWaitingSemaphores.Finalize;
  fWaitingSemaphoreHandles.Finalize;
  fWaitingSemaphoreDstStageMasks.Finalize;
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fCommandBuffers[SwapChainImageIndex]);
-  FreeAndNil(fSignallingSemaphores[SwapChainImageIndex]);
+  for Index:=0 to fSignallingSemaphores[SwapChainImageIndex].Count-1 do begin
+   FreeAndNil(fSignallingSemaphores[SwapChainImageIndex].Items[Index]);
+  end;
+  fSignallingSemaphores[SwapChainImageIndex].Finalize;
+  fSignallingSemaphoreHandles[SwapChainImageIndex].Finalize;
  end;
  FreeAndNil(fBeforePipelineBarrierGroups);
  FreeAndNil(fAfterPipelineBarrierGroups);
@@ -2823,7 +2835,7 @@ var SwapChainImageIndex:TpvSizeInt;
 begin
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   fCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fQueue.fCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-  fSignallingSemaphores[SwapChainImageIndex]:=TpvVulkanSemaphore.Create(fFrameGraph.fVulkanDevice);
+  fSignallingSemaphores[SwapChainImageIndex].Clear;
  end;
  for PipelineBarrierGroup in fBeforePipelineBarrierGroups do begin
   PipelineBarrierGroup.AfterCreateSwapChain;
@@ -2834,12 +2846,15 @@ begin
 end;
 
 procedure TpvFrameGraph.TPhysicalPass.BeforeDestroySwapChain;
-var SwapChainImageIndex:TpvSizeInt;
+var SwapChainImageIndex,Index:TpvSizeInt;
     PipelineBarrierGroup:TPipelineBarrierGroup;
 begin
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fCommandBuffers[SwapChainImageIndex]);
-  FreeAndNil(fSignallingSemaphores[SwapChainImageIndex]);
+  for Index:=0 to fSignallingSemaphores[SwapChainImageIndex].Count-1 do begin
+   FreeAndNil(fSignallingSemaphores[SwapChainImageIndex].Items[Index]);
+  end;
+  fSignallingSemaphores[SwapChainImageIndex].Clear;
  end;
  for PipelineBarrierGroup in fBeforePipelineBarrierGroups do begin
   PipelineBarrierGroup.BeforeDestroySwapChain;
@@ -3357,7 +3372,8 @@ begin
 
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   fDrawToWaitOnSemaphores[SwapChainImageIndex].Initialize;
-  fDrawToSignalSemaphores[SwapChainImageIndex].Initialize;
+  fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Initialize;
+  fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Initialize;
  end;
 
  fVulkanUniversalQueueCommandBuffer:=TpvVulkanCommandBuffer.Create(fUniversalQueue.fCommandPool,
@@ -3365,10 +3381,12 @@ begin
 
  fVulkanUniversalQueueCommandBufferFence:=TpvVulkanFence.Create(fVulkanDevice);
 
+ fDrawToWaitOnSemaphoreExternalDstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+
 end;
 
 destructor TpvFrameGraph.Destroy;
-var SwapChainImageIndex:TpvSizeInt;
+var SwapChainImageIndex,Index:TpvSizeInt;
 begin
 
  FreeAndNil(fPhysicalPasses);
@@ -3402,8 +3420,12 @@ begin
  fQueueFamilyIndices.Finalize;
 
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  for Index:=0 to fDrawToWaitOnSemaphores[SwapChainImageIndex].Count-1 do begin
+   FreeAndNil(fDrawToWaitOnSemaphores[SwapChainImageIndex].Items[Index]);
+  end;
   fDrawToWaitOnSemaphores[SwapChainImageIndex].Finalize;
-  fDrawToSignalSemaphores[SwapChainImageIndex].Finalize;
+  fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Finalize;
+  fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Finalize;
  end;
 
  inherited Destroy;
@@ -4858,7 +4880,7 @@ type TBeforeAfter=(Before,After);
  var Queue:TQueue;
  begin
   for Queue in fQueues do begin
-   SetLength(Queue.fSubmitInfos,Queue.fPhysicalPasses.Count);
+   SetLength(Queue.fSubmitInfos,Queue.fPhysicalPasses.Count+((ord(Queue=fUniversalQueue) and 1) shl 1));
   end;
  end;
  procedure FinishPassUsedResources;
@@ -4868,6 +4890,40 @@ type TBeforeAfter=(Before,After);
   for Pass in fPasses do begin
    for UsedResource in Pass.fUsedResources do begin
     UsedResource.Finish;
+   end;
+  end;
+ end;
+ procedure CreateExternalSubmitInfos;
+ var SwapChainImageIndex:TpvSizeInt;
+ begin
+  for SwapChainImageIndex:=0 to fCountSwapChainImages-1 do begin
+   begin
+    FillChar(fDrawToWaitSubmitInfos[SwapChainImageIndex],SizeOf(TVkSubmitInfo),#0);
+    fDrawToWaitSubmitInfos[SwapChainImageIndex].sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    fDrawToWaitSubmitInfos[SwapChainImageIndex].pNext:=nil;
+    fDrawToWaitSubmitInfos[SwapChainImageIndex].waitSemaphoreCount:=1;
+    fDrawToWaitSubmitInfos[SwapChainImageIndex].pWaitSemaphores:=@fDrawToWaitOnSemaphoreExternalHandles[SwapChainImageIndex];
+    fDrawToWaitSubmitInfos[SwapChainImageIndex].pWaitDstStageMask:=@fDrawToWaitOnSemaphoreExternalDstStageMask;
+    fDrawToWaitSubmitInfos[SwapChainImageIndex].commandBufferCount:=0;
+    fDrawToWaitSubmitInfos[SwapChainImageIndex].pCommandBuffers:=nil;
+    fDrawToWaitSubmitInfos[SwapChainImageIndex].signalSemaphoreCount:=fDrawToWaitOnSemaphores[SwapChainImageIndex].Count;
+    if fDrawToWaitSubmitInfos[SwapChainImageIndex].signalSemaphoreCount>0 then begin
+     fDrawToWaitSubmitInfos[SwapChainImageIndex].pSignalSemaphores:=@fDrawToWaitOnSemaphores[SwapChainImageIndex].Items[0];
+    end;
+   end;
+   begin
+    FillChar(fDrawToSignalSubmitInfos[SwapChainImageIndex],SizeOf(TVkSubmitInfo),#0);
+    fDrawToSignalSubmitInfos[SwapChainImageIndex].sType:=VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    fDrawToSignalSubmitInfos[SwapChainImageIndex].pNext:=nil;
+    fDrawToSignalSubmitInfos[SwapChainImageIndex].waitSemaphoreCount:=fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Count;
+    if fDrawToSignalSubmitInfos[SwapChainImageIndex].waitSemaphoreCount>0 then begin
+     fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitSemaphores:=@fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Items[0];
+     fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitDstStageMask:=nil;
+    end;
+    fDrawToSignalSubmitInfos[SwapChainImageIndex].commandBufferCount:=0;
+    fDrawToSignalSubmitInfos[SwapChainImageIndex].pCommandBuffers:=nil;
+    fDrawToSignalSubmitInfos[SwapChainImageIndex].signalSemaphoreCount:=1;
+    fDrawToSignalSubmitInfos[SwapChainImageIndex].pSignalSemaphores:=@fDrawToSignalSemaphoreExternalHandles[SwapChainImageIndex];
    end;
   end;
  end;
@@ -4911,6 +4967,8 @@ begin
 
  FinishPassUsedResources;
 
+ CreateExternalSubmitInfos;
+
 end;
 
 procedure TpvFrameGraph.Show;
@@ -4939,12 +4997,14 @@ end;
 
 procedure TpvFrameGraph.AfterCreateSwapChain;
 var SwapChainImageIndex,
+    Index,
     WaitingSemaphoreIndex,
     AbsoluteWaitingSemaphoreIndex:TpvSizeInt;
     ResourceAliasGroup:TResourceAliasGroup;
     PhysicalPass:TPhysicalPass;
     SubmitInfo:PVkSubmitInfo;
     WaitingSemaphore:TPhysicalPass.PWaitingSemaphore;
+    Semaphore:TpvVulkanSemaphore;
 begin
  for ResourceAliasGroup in fResourceAliasGroups do begin
   ResourceAliasGroup.AfterCreateSwapChain;
@@ -4952,33 +5012,38 @@ begin
  for PhysicalPass in fPhysicalPasses do begin
   PhysicalPass.AfterCreateSwapChain;
  end;
+ for PhysicalPass in fPhysicalPasses do begin
+  PhysicalPass.fWaitingSemaphoreHandles.Clear;
+  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+   PhysicalPass.fSignallingSemaphores[SwapChainImageIndex].Clear;
+   PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Clear;
+  end;
+ end;
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  for Index:=0 to fDrawToWaitOnSemaphores[SwapChainImageIndex].Count-1 do begin
+   FreeAndNil(fDrawToWaitOnSemaphores[SwapChainImageIndex].Items[Index]);
+  end;
   fDrawToWaitOnSemaphores[SwapChainImageIndex].Clear;
-  fDrawToSignalSemaphores[SwapChainImageIndex].Clear;
+  fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Clear;
+  fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Clear;
  end;
  for PhysicalPass in fPhysicalPasses do begin
   begin
-   PhysicalPass.fWaitingSemaphoreHandles.Clear;
    for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
     for WaitingSemaphoreIndex:=0 to PhysicalPass.fWaitingSemaphores.Count-1 do begin
      WaitingSemaphore:=@PhysicalPass.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
+     Semaphore:=TpvVulkanSemaphore.Create(fVulkanDevice);
      if assigned(WaitingSemaphore^.SignallingPhysicalPass) then begin
-      PhysicalPass.fWaitingSemaphoreHandles.Add(WaitingSemaphore^.SignallingPhysicalPass.fSignallingSemaphores[SwapChainImageIndex].Handle);
+      WaitingSemaphore^.SignallingPhysicalPass.fSignallingSemaphores[SwapChainImageIndex].Add(Semaphore);
+      WaitingSemaphore^.SignallingPhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
      end else begin
-      PhysicalPass.fWaitingSemaphoreHandles.Add(VK_NULL_HANDLE);
+      fDrawToWaitOnSemaphores[SwapChainImageIndex].Add(Semaphore);
+      fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
      end;
+     PhysicalPass.fWaitingSemaphoreHandles.Add(Semaphore.Handle);
     end;
    end;
    PhysicalPass.fWaitingSemaphoreHandles.Finish;
-   AbsoluteWaitingSemaphoreIndex:=0;
-   for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
-    for WaitingSemaphoreIndex:=0 to PhysicalPass.fWaitingSemaphores.Count-1 do begin
-     if PhysicalPass.fWaitingSemaphoreHandles.Items[AbsoluteWaitingSemaphoreIndex]=VK_NULL_HANDLE then begin
-      fDrawToWaitOnSemaphores[SwapChainImageIndex].Add(@PhysicalPass.fWaitingSemaphoreHandles.Items[AbsoluteWaitingSemaphoreIndex]);
-     end;
-     inc(AbsoluteWaitingSemaphoreIndex);
-    end;
-   end;
   end;
   begin
    PhysicalPass.fWaitingSemaphoreDstStageMasks.Clear;
@@ -5001,24 +5066,30 @@ begin
    SubmitInfo^.commandBufferCount:=1;
    SubmitInfo^.pCommandBuffers:=@PhysicalPass.fCommandBuffers[SwapChainImageIndex].Handle;
    if fDoSignalSemaphore and assigned(fRootPhysicalPass) then begin
-    PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex,0]:=PhysicalPass.fSignallingSemaphores[SwapChainImageIndex].Handle;
-    fDrawToSignalSemaphores[SwapChainImageIndex].Add(@PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex,1]);
-    SubmitInfo^.signalSemaphoreCount:=2;
-    SubmitInfo^.pSignalSemaphores:=@PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex,0];
+    Semaphore:=TpvVulkanSemaphore.Create(fVulkanDevice);
+    WaitingSemaphore^.SignallingPhysicalPass.fSignallingSemaphores[SwapChainImageIndex].Add(Semaphore);
+    WaitingSemaphore^.SignallingPhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
+    fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
+   end;
+   SubmitInfo^.signalSemaphoreCount:=PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Count;
+   if SubmitInfo^.signalSemaphoreCount>0 then begin
+    SubmitInfo^.pSignalSemaphores:=@PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Items[0];
    end else begin
-    SubmitInfo^.signalSemaphoreCount:=1;
-    SubmitInfo^.pSignalSemaphores:=@PhysicalPass.fSignallingSemaphores[SwapChainImageIndex].Handle;
+    SubmitInfo^.pSignalSemaphores:=nil;
    end;
   end;
  end;
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   fDrawToWaitOnSemaphores[SwapChainImageIndex].Finish;
-  fDrawToSignalSemaphores[SwapChainImageIndex].Finish;
+  fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Finish;
+  fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Finish;
  end;
 end;
 
 procedure TpvFrameGraph.BeforeDestroySwapChain;
-var ResourceAliasGroup:TResourceAliasGroup;
+var SwapChainImageIndex,
+    Index:TpvSizeInt;
+    ResourceAliasGroup:TResourceAliasGroup;
     PhysicalPass:TPhysicalPass;
 begin
  for PhysicalPass in fPhysicalPasses do begin
@@ -5026,6 +5097,14 @@ begin
  end;
  for ResourceAliasGroup in fResourceAliasGroups do begin
   ResourceAliasGroup.BeforeDestroySwapChain;
+ end;
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  for Index:=0 to fDrawToWaitOnSemaphores[SwapChainImageIndex].Count-1 do begin
+   FreeAndNil(fDrawToWaitOnSemaphores[SwapChainImageIndex].Items[Index]);
+  end;
+  fDrawToWaitOnSemaphores[SwapChainImageIndex].Clear;
+  fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Clear;
+  fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Clear;
  end;
 end;
 
@@ -5107,6 +5186,14 @@ end;
 procedure TpvFrameGraph.ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
 begin
  aQueue.fCountSubmitInfos:=0;
+ if aQueue=fUniversalQueue then begin
+  if fDrawToWaitOnSemaphoreHandles[fDrawSwapChainImageIndex].Count>0 then begin
+   fUniversalQueue.fSubmitInfos[TPasMPInterlocked.Increment(fUniversalQueue.fCountSubmitInfos)-1]:=fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex];
+  end;
+  if fDrawToSignalSemaphoreHandles[fDrawSwapChainImageIndex].Count>0 then begin
+   fUniversalQueue.fSubmitInfos[TPasMPInterlocked.Increment(fUniversalQueue.fCountSubmitInfos)-1]:=fDrawToSignalSubmitInfos[fDrawSwapChainImageIndex];
+  end;
+ end;
  if fCanDoParallelProcessing and assigned(pvApplication) then begin
   pvApplication.PasMPInstance.ParallelFor(aQueue,0,aQueue.fPhysicalPasses.Count-1,ExecuteQueuePhysicalPassParallelForJobMethod,1,16,aJob,0);
  end else begin
@@ -5135,25 +5222,22 @@ procedure TpvFrameGraph.Draw(const aDrawSwapChainImageIndex:TpvSizeInt;
                              const aToSignalSemaphore:TpvVulkanSemaphore=nil;
                              const aWaitFence:TpvVulkanFence=nil);
 var SemaphoreIndex:TpvSizeInt;
+    SubmitInfo:TVkSubmitInfo;
 begin
  fDrawSwapChainImageIndex:=aDrawSwapChainImageIndex;
  fDrawFrameIndex:=aDrawFrameIndex;
  fDrawWaitFence:=aWaitFence;
  if assigned(aToWaitOnSemaphore) then begin
-  Assert(fDrawToWaitOnSemaphores[aDrawSwapChainImageIndex].Count>0);
-  for SemaphoreIndex:=0 to fDrawToWaitOnSemaphores[aDrawSwapChainImageIndex].Count-1 do begin
-   fDrawToWaitOnSemaphores[aDrawSwapChainImageIndex].Items[SemaphoreIndex]^:=aToWaitOnSemaphore.Handle;
-  end;
+  Assert(fDrawToWaitOnSemaphoreHandles[aDrawSwapChainImageIndex].Count>0);
+  fDrawToWaitOnSemaphoreExternalHandles[fDrawSwapChainImageIndex]:=aToWaitOnSemaphore.Handle;
  end else begin
-  Assert(fDrawToWaitOnSemaphores[aDrawSwapChainImageIndex].Count=0);
+  Assert(fDrawToWaitOnSemaphoreHandles[aDrawSwapChainImageIndex].Count=0);
  end;
  if assigned(aToSignalSemaphore) then begin
-  Assert(fDrawToSignalSemaphores[aDrawSwapChainImageIndex].Count>0);
-  for SemaphoreIndex:=0 to fDrawToSignalSemaphores[aDrawSwapChainImageIndex].Count-1 do begin
-   fDrawToSignalSemaphores[aDrawSwapChainImageIndex].Items[SemaphoreIndex]^:=aToSignalSemaphore.Handle;
-  end;
+  Assert(fDrawToSignalSemaphoreHandles[aDrawSwapChainImageIndex].Count>0);
+  fDrawToSignalSemaphoreExternalHandles[fDrawSwapChainImageIndex]:=aToSignalSemaphore.Handle;
  end else begin
-  Assert(fDrawToSignalSemaphores[aDrawSwapChainImageIndex].Count=0);
+  Assert(fDrawToSignalSemaphoreHandles[aDrawSwapChainImageIndex].Count=0);
  end;
  if fCanDoParallelProcessing and assigned(pvApplication) then begin
   pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0);
