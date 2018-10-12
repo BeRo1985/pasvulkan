@@ -5152,6 +5152,7 @@ var Index,SubpassIndex:TpvSizeInt;
     PhysicalTransferPass:TPhysicalTransferPass;
     PhysicalRenderPass:TPhysicalRenderPass;
     PhysicalRenderPassSubpass:TPhysicalRenderPass.TSubpass;
+    Used:boolean;
 begin
  Queue:=aData;
  for Index:=aFromIndex to aToIndex do begin
@@ -5162,22 +5163,32 @@ begin
     if PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
      PhysicalComputePass.Execute;
      Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalComputePass.fSubmitInfos[fDrawSwapChainImageIndex];
+    end else begin
+     // TODO: Add pass wait semaphores to a dummy unsignaling TVkSubmitInfo
     end;
    end else if PhysicalPass is TPhysicalTransferPass then begin
     PhysicalTransferPass:=TPhysicalTransferPass(PhysicalPass);
     if PhysicalTransferPass.fTransferPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
      PhysicalTransferPass.Execute;
      Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalTransferPass.fSubmitInfos[fDrawSwapChainImageIndex];
+    end else begin
+     // TODO: Add pass wait semaphores to a dummy unsignaling TVkSubmitInfo
     end;
    end else if PhysicalPass is TPhysicalRenderPass then begin
     PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
+    Used:=false;
     for SubpassIndex:=0 to PhysicalRenderPass.fSubpasses.Count-1 do begin
      PhysicalRenderPassSubpass:=PhysicalRenderPass.fSubpasses[SubpassIndex];
      if PhysicalRenderPassSubpass.fRenderPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
-      PhysicalRenderPass.Execute;
-      Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalRenderPass.fSubmitInfos[fDrawSwapChainImageIndex];
+      Used:=true;
       break;
      end;
+    end;
+    if Used then begin
+     PhysicalRenderPass.Execute;
+     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalRenderPass.fSubmitInfos[fDrawSwapChainImageIndex];
+    end else begin
+     // TODO: Add pass wait semaphores to a dummy unsignaling TVkSubmitInfo
     end;
    end;
   end;
