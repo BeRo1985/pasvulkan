@@ -104,6 +104,7 @@ type EpvFrameGraph=class(Exception);
             TpvVkSemaphorePointers=TpvDynamicArray<PVkSemaphore>;
             TVulkanSemaphores=TpvDynamicArray<TpvVulkanSemaphore>;
             TVulkanSemaphoreHandles=TpvDynamicArray<TVkSemaphore>;
+            TVkPipelineStageFlagsDynamicArray=TpvDynamicArray<TVkPipelineStageFlags>;
             TBufferSubresourceRange=record
              public
               Offset:TVkDeviceSize;
@@ -1026,6 +1027,7 @@ type EpvFrameGraph=class(Exception);
        fDrawToWaitOnSemaphores:array[0..MaxSwapChainImages-1] of TVulkanSemaphores;
        fDrawToWaitOnSemaphoreHandles:array[0..MaxSwapChainImages-1] of TVulkanSemaphoreHandles;
        fDrawToSignalSemaphoreHandles:array[0..MaxSwapChainImages-1] of TVulkanSemaphoreHandles;
+       fDrawToSignalSemaphoreDstStageMasks:array[0..MaxSwapChainImages-1] of TVkPipelineStageFlagsDynamicArray;
        fDrawToWaitOnSemaphoreExternalHandles:array[0..MaxSwapChainImages-1] of TVkSemaphore;
        fDrawToWaitOnSemaphoreExternalDstStageMask:TVkPipelineStageFlags;
        fDrawToSignalSemaphoreExternalHandles:array[0..MaxSwapChainImages-1] of TVkSemaphore;
@@ -3374,6 +3376,7 @@ begin
   fDrawToWaitOnSemaphores[SwapChainImageIndex].Initialize;
   fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Initialize;
   fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Initialize;
+  fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Initialize;
  end;
 
  fVulkanUniversalQueueCommandBuffer:=TpvVulkanCommandBuffer.Create(fUniversalQueue.fCommandPool,
@@ -3426,6 +3429,7 @@ begin
   fDrawToWaitOnSemaphores[SwapChainImageIndex].Finalize;
   fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Finalize;
   fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Finalize;
+  fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Finalize;
  end;
 
  inherited Destroy;
@@ -4918,7 +4922,7 @@ type TBeforeAfter=(Before,After);
     fDrawToSignalSubmitInfos[SwapChainImageIndex].waitSemaphoreCount:=fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Count;
     if fDrawToSignalSubmitInfos[SwapChainImageIndex].waitSemaphoreCount>0 then begin
      fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitSemaphores:=@fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Items[0];
-     fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitDstStageMask:=nil;
+     fDrawToSignalSubmitInfos[SwapChainImageIndex].pWaitDstStageMask:=@fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Items[0];
     end;
     fDrawToSignalSubmitInfos[SwapChainImageIndex].commandBufferCount:=0;
     fDrawToSignalSubmitInfos[SwapChainImageIndex].pCommandBuffers:=nil;
@@ -5026,6 +5030,7 @@ begin
   fDrawToWaitOnSemaphores[SwapChainImageIndex].Clear;
   fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Clear;
   fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Clear;
+  fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Clear;
  end;
  for PhysicalPass in fPhysicalPasses do begin
   begin
@@ -5070,6 +5075,7 @@ begin
     WaitingSemaphore^.SignallingPhysicalPass.fSignallingSemaphores[SwapChainImageIndex].Add(Semaphore);
     WaitingSemaphore^.SignallingPhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
     fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
+    fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Add(TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
    end;
    SubmitInfo^.signalSemaphoreCount:=PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Count;
    if SubmitInfo^.signalSemaphoreCount>0 then begin
@@ -5083,6 +5089,7 @@ begin
   fDrawToWaitOnSemaphores[SwapChainImageIndex].Finish;
   fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Finish;
   fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Finish;
+  fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Finish;
  end;
 end;
 
@@ -5105,6 +5112,7 @@ begin
   fDrawToWaitOnSemaphores[SwapChainImageIndex].Clear;
   fDrawToWaitOnSemaphoreHandles[SwapChainImageIndex].Clear;
   fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Clear;
+  fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Clear;
  end;
 end;
 
