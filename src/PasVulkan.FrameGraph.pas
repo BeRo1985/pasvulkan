@@ -817,10 +817,18 @@ type EpvFrameGraph=class(Exception);
                      function GetVulkanImage(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanImage;
                      function GetVulkanImageView(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanImageView;
                      function GetVulkanMemoryBlock(const aSwapChainImageIndex:TpvSizeInt):TpvVulkanDeviceMemoryBlock;
+                     function GetWidth:TpvSizeInt;
+                     function GetHeight:TpvSizeInt;
+                     function GetDepth:TpvSizeInt;
+                     function GetCountArrayLayers:TpvSizeInt;
                     public
                      property VulkanImages[const aSwapChainImageIndex:TpvSizeInt]:TpvVulkanImage read GetVulkanImage;
                      property VulkanImageViews[const aSwapChainImageIndex:TpvSizeInt]:TpvVulkanImageView read GetVulkanImageView;
                      property VulkanMemoryBlocks[const aSwapChainImageIndex:TpvSizeInt]:TpvVulkanDeviceMemoryBlock read GetVulkanMemoryBlock;
+                     property Width:TpvSizeInt read GetWidth;
+                     property Height:TpvSizeInt read GetHeight;
+                     property Depth:TpvSizeInt read GetDepth;
+                     property CountArrayLayers:TpvSizeInt read GetCountArrayLayers;
                    end;
                    TUsedBufferResource=class(TUsedResource)
                     private
@@ -2097,6 +2105,30 @@ function TpvFrameGraph.TPass.TUsedImageResource.GetVulkanMemoryBlock(const aSwap
 begin
  Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
  result:=TResourcePhysicalImageData(fResourcePhysicalData).fVulkanMemoryBlocks[AdjustSwapChainImageIndex(aSwapChainImageIndex)];
+end;
+
+function TpvFrameGraph.TPass.TUsedImageResource.GetWidth:TpvSizeInt;
+begin
+ Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
+ result:=TResourcePhysicalImageData(fResourcePhysicalData).fExtent.Width;
+end;
+
+function TpvFrameGraph.TPass.TUsedImageResource.GetHeight:TpvSizeInt;
+begin
+ Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
+ result:=TResourcePhysicalImageData(fResourcePhysicalData).fExtent.Height;
+end;
+
+function TpvFrameGraph.TPass.TUsedImageResource.GetDepth:TpvSizeInt;
+begin
+ Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
+ result:=TResourcePhysicalImageData(fResourcePhysicalData).fExtent.Depth;
+end;
+
+function TpvFrameGraph.TPass.TUsedImageResource.GetCountArrayLayers:TpvSizeInt;
+begin
+ Assert(assigned(fResourcePhysicalData) and (fResourcePhysicalData is TResourcePhysicalImageData));
+ result:=TResourcePhysicalImageData(fResourcePhysicalData).fCountArrayLayers;
 end;
 
 { TpvFrameGraph.TPass.TUsedBufferResource }
