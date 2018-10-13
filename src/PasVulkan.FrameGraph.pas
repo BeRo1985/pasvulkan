@@ -4834,9 +4834,9 @@ type TBeforeAfter=(Before,After);
          end;
          if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
             (Attachment^.ImageType in [TImageType.Surface]) and
-            fSurfaceIsSwapchain and
+            fSurfaceIsSwapchain{and
             ((RenderPass.fTopologicalSortIndex=Attachment^.Resource.fMaximumTopologicalSortPassIndex) or
-             (fRootPass=RenderPass)) then begin
+             (fRootPass=RenderPass))} then begin
           Attachment^.FinalLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
          end else begin
           Attachment^.FinalLayout:=ResourceTransition.fLayout;
