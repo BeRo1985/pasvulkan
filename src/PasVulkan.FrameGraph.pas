@@ -3369,13 +3369,13 @@ begin
 
  fUniversalQueue:=AddQueue(fVulkanDevice.UniversalQueue);
 
- fGraphicsQueue:=AddQueue(fVulkanDevice.UniversalQueue);//.GraphicsQueue);
+ fGraphicsQueue:=AddQueue(fVulkanDevice.GraphicsQueue);
 
- fComputeQueue:=AddQueue(fVulkanDevice.UniversalQueue);//.ComputeQueue);
+ fComputeQueue:=AddQueue(fVulkanDevice.ComputeQueue);
 
- fTransferQueue:=AddQueue(fVulkanDevice.UniversalQueue);//.TransferQueue);
+ fTransferQueue:=AddQueue(fVulkanDevice.TransferQueue);
 
- fPresentQueue:=AddQueue(fVulkanDevice.UniversalQueue);//.PresentQueue);
+ fPresentQueue:=AddQueue(fVulkanDevice.PresentQueue);
 
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   fDrawToWaitOnSemaphores[SwapChainImageIndex].Initialize;
