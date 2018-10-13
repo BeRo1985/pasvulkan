@@ -649,6 +649,7 @@ type EpvFrameGraph=class(Exception);
              private
               fFrameGraph:TpvFrameGraph;
               fIndex:TpvSizeInt;
+              fSubmitInfoIndex:TpvSizeInt;
               fProcessed:boolean;
               fHasSecondaryBuffers:boolean;
               fQueue:TQueue;
@@ -4895,10 +4896,24 @@ type TBeforeAfter=(Before,After);
   end;
  end;
  procedure PrepareQueues;
- var Queue:TQueue;
+ var Additional,SubmitInfoIndex:TpvSizeInt;
+     Queue:TQueue;
+     PhysicalPass:TPhysicalPass;
  begin
   for Queue in fQueues do begin
-   SetLength(Queue.fSubmitInfos,Queue.fPhysicalPasses.Count+((ord(Queue=fUniversalQueue) and 1) shl 1));
+   if Queue=fUniversalQueue then begin
+    Additional:=2;
+    SubmitInfoIndex:=1;
+   end else begin
+    Additional:=0;
+    SubmitInfoIndex:=0;
+   end;
+   Queue.fCountSubmitInfos:=Queue.fPhysicalPasses.Count+Additional;
+   SetLength(Queue.fSubmitInfos,Queue.fCountSubmitInfos);
+   for PhysicalPass in Queue.fPhysicalPasses do begin
+    PhysicalPass.fSubmitInfoIndex:=SubmitInfoIndex;
+    inc(SubmitInfoIndex);
+   end;
   end;
  end;
  procedure FinishPassUsedResources;
@@ -5175,17 +5190,17 @@ begin
     PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
     if PhysicalComputePass.fComputePass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
      PhysicalComputePass.Execute;
-     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalComputePass.fActiveSubmitInfos[fDrawSwapChainImageIndex];
+     Queue.fSubmitInfos[PhysicalComputePass.fSubmitInfoIndex]:=PhysicalComputePass.fActiveSubmitInfos[fDrawSwapChainImageIndex];
     end else begin
-     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalComputePass.fInactiveSubmitInfos[fDrawSwapChainImageIndex];
+     Queue.fSubmitInfos[PhysicalComputePass.fSubmitInfoIndex]:=PhysicalComputePass.fInactiveSubmitInfos[fDrawSwapChainImageIndex];
     end;
    end else if PhysicalPass is TPhysicalTransferPass then begin
     PhysicalTransferPass:=TPhysicalTransferPass(PhysicalPass);
     if PhysicalTransferPass.fTransferPass.fDoubleBufferedEnabledState[fDrawFrameIndex and 1] then begin
      PhysicalTransferPass.Execute;
-     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalTransferPass.fActiveSubmitInfos[fDrawSwapChainImageIndex];
+     Queue.fSubmitInfos[PhysicalTransferPass.fSubmitInfoIndex]:=PhysicalTransferPass.fActiveSubmitInfos[fDrawSwapChainImageIndex];
     end else begin
-     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalTransferPass.fInactiveSubmitInfos[fDrawSwapChainImageIndex];
+     Queue.fSubmitInfos[PhysicalTransferPass.fSubmitInfoIndex]:=PhysicalTransferPass.fInactiveSubmitInfos[fDrawSwapChainImageIndex];
     end;
    end else if PhysicalPass is TPhysicalRenderPass then begin
     PhysicalRenderPass:=TPhysicalRenderPass(PhysicalPass);
@@ -5199,9 +5214,9 @@ begin
     end;
     if Used then begin
      PhysicalRenderPass.Execute;
-     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalRenderPass.fActiveSubmitInfos[fDrawSwapChainImageIndex];
+     Queue.fSubmitInfos[PhysicalRenderPass.fSubmitInfoIndex]:=PhysicalRenderPass.fActiveSubmitInfos[fDrawSwapChainImageIndex];
     end else begin
-     Queue.fSubmitInfos[TPasMPInterlocked.Increment(Queue.fCountSubmitInfos)-1]:=PhysicalRenderPass.fInactiveSubmitInfos[fDrawSwapChainImageIndex];
+     Queue.fSubmitInfos[PhysicalRenderPass.fSubmitInfoIndex]:=PhysicalRenderPass.fInactiveSubmitInfos[fDrawSwapChainImageIndex];
     end;
    end;
   end;
@@ -5210,19 +5225,18 @@ end;
 
 procedure TpvFrameGraph.ExecuteQueue(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32;const aQueue:TQueue);
 begin
- aQueue.fCountSubmitInfos:=0;
- if aQueue=fUniversalQueue then begin
-  if fDrawToWaitOnSemaphoreHandles[fDrawSwapChainImageIndex].Count>0 then begin
-   fUniversalQueue.fSubmitInfos[TPasMPInterlocked.Increment(fUniversalQueue.fCountSubmitInfos)-1]:=fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex];
-  end;
-  if fDrawToSignalSemaphoreHandles[fDrawSwapChainImageIndex].Count>0 then begin
-   fUniversalQueue.fSubmitInfos[TPasMPInterlocked.Increment(fUniversalQueue.fCountSubmitInfos)-1]:=fDrawToSignalSubmitInfos[fDrawSwapChainImageIndex];
-  end;
+ if (aQueue=fUniversalQueue) and
+    (fDrawToWaitOnSemaphoreHandles[fDrawSwapChainImageIndex].Count>0) then begin
+  fUniversalQueue.fSubmitInfos[0]:=fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex];
  end;
  if fCanDoParallelProcessing and assigned(pvApplication) then begin
   pvApplication.PasMPInstance.ParallelFor(aQueue,0,aQueue.fPhysicalPasses.Count-1,ExecuteQueuePhysicalPassParallelForJobMethod,1,16,aJob,0);
  end else begin
   ExecuteQueuePhysicalPassParallelForJobMethod(nil,0,aQueue,0,aQueue.fPhysicalPasses.Count-1);
+ end;
+ if (aQueue=fUniversalQueue) and
+    (fDrawToSignalSemaphoreHandles[fDrawSwapChainImageIndex].Count>0) then begin
+  fUniversalQueue.fSubmitInfos[fUniversalQueue.fCountSubmitInfos-1]:=fDrawToSignalSubmitInfos[fDrawSwapChainImageIndex];
  end;
  if aQueue.fCountSubmitInfos>0 then begin
   if fRootPhysicalPass.fQueue=aQueue then begin
