@@ -4913,6 +4913,8 @@ type TBeforeAfter=(Before,After);
  end;
 begin
 
+ fQueueFamilyIndices.Finish;
+
  fPhysicalPasses.Clear;
 
  IndexingPasses;
