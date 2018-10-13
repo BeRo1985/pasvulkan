@@ -1093,6 +1093,8 @@ type EpvFrameGraph=class(Exception);
                       const aToWaitOnSemaphore:TpvVulkanSemaphore=nil;
                       const aToSignalSemaphore:TpvVulkanSemaphore=nil;
                       const aWaitFence:TpvVulkanFence=nil); virtual;
+      public
+       property QueueFamilyIndices:TQueueFamilyIndices read fQueueFamilyIndices;
       published
        property CanDoParallelProcessing:boolean read fCanDoParallelProcessing write fCanDoParallelProcessing;
        property DoWaitOnSemaphore:boolean read fDoWaitOnSemaphore write fDoWaitOnSemaphore;
