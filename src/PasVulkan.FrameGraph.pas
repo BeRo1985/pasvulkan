@@ -167,6 +167,7 @@ type EpvFrameGraph=class(Exception);
              );
             TImageTypeHelper=record helper for TImageType
              public
+              class function From(const aFormat:TVkFormat):TImageType; static;
               function GetAspectMask:TVkImageAspectFlags;
             end;
             PImageType=^TImageType;
@@ -727,6 +728,7 @@ type EpvFrameGraph=class(Exception);
                     ImageUsageFlags:TVkImageUsageFlags;
                     ClearValueInitialized:boolean;
                     ClearValue:TVkClearValue;
+                    HasInitialLayout:boolean;
                    end;
                    PAttachment=^TAttachment;
                    TAttachments=TpvDynamicArray<TAttachment>;
@@ -1003,6 +1005,7 @@ type EpvFrameGraph=class(Exception);
       private
        fVulkanDevice:TpvVulkanDevice;
        fMultiviewEnabled:boolean;
+       fSurfaceIsSwapchain:boolean;
        fSurfaceWidth:TpvSizeInt;
        fSurfaceHeight:TpvSizeInt;
        fSurfaceColorFormat:TVkFormat;
@@ -1114,6 +1117,7 @@ type EpvFrameGraph=class(Exception);
        property DoWaitOnSemaphore:boolean read fDoWaitOnSemaphore write fDoWaitOnSemaphore;
        property DoSignalSemaphore:boolean read fDoSignalSemaphore write fDoSignalSemaphore;
        property VulkanDevice:TpvVulkanDevice read fVulkanDevice;
+       property SurfaceIsSwapchain:boolean read fSurfaceIsSwapchain write fSurfaceIsSwapchain;
        property SurfaceWidth:TpvSizeInt read fSurfaceWidth write fSurfaceWidth;
        property SurfaceHeight:TpvSizeInt read fSurfaceHeight write fSurfaceHeight;
        property SurfaceColorFormat:TVkFormat read fSurfaceColorFormat write fSurfaceColorFormat;
@@ -1192,6 +1196,31 @@ begin
 end;
 
 { TpvFrameGraph.TImageTypeHelper }
+
+class function TpvFrameGraph.TImageTypeHelper.From(const aFormat:TVkFormat):TImageType;
+begin
+ case aFormat of
+  VK_FORMAT_UNDEFINED:begin
+   result:=TImageType.Undefined;
+  end;
+  VK_FORMAT_D16_UNORM,
+  VK_FORMAT_X8_D24_UNORM_PACK32,
+  VK_FORMAT_D32_SFLOAT:begin
+   result:=TImageType.Depth;
+  end;
+  VK_FORMAT_S8_UINT:begin
+   result:=TImageType.Stencil;
+  end;
+  VK_FORMAT_D16_UNORM_S8_UINT,
+  VK_FORMAT_D24_UNORM_S8_UINT,
+  VK_FORMAT_D32_SFLOAT_S8_UINT:begin
+   result:=TImageType.DepthStencil;
+  end;
+  else begin
+   result:=TImageType.Color;
+  end;
+ end;
+end;
 
 function TpvFrameGraph.TImageTypeHelper.GetAspectMask:TVkImageAspectFlags;
 begin
@@ -3337,6 +3366,8 @@ begin
 
  fMultiviewEnabled:=fVulkanDevice.EnabledExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>0;
 
+ fSurfaceIsSwapchain:=false;
+
  fSurfaceWidth:=1;
  fSurfaceHeight:=1;
 
@@ -3481,6 +3512,7 @@ procedure TpvFrameGraph.SetSwapChain(const aSwapChain:TpvVulkanSwapChain;
                                      const aSurfaceDepthFormat:TVkFormat);
 var SwapChainImageIndex:TpvSizeInt;
 begin
+ fSurfaceIsSwapchain:=true;
  fSurfaceWidth:=aSwapChain.Width;
  fSurfaceHeight:=aSwapChain.Height;
  fCountSwapChainImages:=aSwapChain.CountImages;
@@ -4132,7 +4164,7 @@ type TBeforeAfter=(Before,After);
       if not Resource.fUsed then begin
        Resource.fUsed:=true;
        Resource.fMinimumTopologicalSortPassIndex:=0;
-       Resource.fMaximumTopologicalSortPassIndex:=High(TpvSizeInt);
+       Resource.fMaximumTopologicalSortPassIndex:=fTopologicalSortedPasses.Count-1;
        Resource.fMinimumPhysicalPassStepIndex:=0;
        Resource.fMaximumPhysicalPassStepIndex:=fMaximumOverallPhysicalPassIndex;
       end;
@@ -4946,6 +4978,7 @@ type TBeforeAfter=(Before,After);
          Attachment^.FinalLayout:=ResourceTransition.fLayout;
          Attachment^.ImageUsageFlags:=0;
          Attachment^.ClearValueInitialized:=false;
+         Attachment^.HasInitialLayout:=false;
         end;
        end;
       end;
@@ -4957,10 +4990,15 @@ type TBeforeAfter=(Before,After);
        for AttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
         Attachment:=@PhysicalRenderPass.fAttachments.Items[AttachmentIndex];
         if Attachment^.Resource=ResourceTransition.fResource then begin
-         if (Attachment^.LoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and (Attachment^.ImageType in [TImageType.Surface,TImageType.Color,TImageType.Depth]) then begin
+         if (Attachment^.LoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and
+            (Attachment^.ImageType in [TImageType.Surface,
+                                       TImageType.Color,
+                                       TImageType.Depth]) then begin
           Attachment^.LoadOp:=TLoadOp.Values[ResourceTransition.fLoadOp.Kind];
          end;
-         if (Attachment^.StencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and (Attachment^.ImageType in [TImageType.DepthStencil,TImageType.Stencil]) then begin
+         if (Attachment^.StencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and
+            (Attachment^.ImageType in [TImageType.DepthStencil,
+                                       TImageType.Stencil]) then begin
           Attachment^.StencilLoadOp:=TLoadOp.Values[ResourceTransition.fLoadOp.Kind];
          end;
          case ResourceTransition.fLayout of
@@ -4998,7 +5036,38 @@ type TBeforeAfter=(Before,After);
            Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
           end;
          end;
-         Attachment^.FinalLayout:=ResourceTransition.fLayout;
+         if not Attachment^.HasInitialLayout then begin
+          if ((ResourceTransition.fKind in TResourceTransition.AllOutputs) or
+              (RenderPass.fTopologicalSortIndex=Attachment^.Resource.fMinimumTopologicalSortPassIndex)) or
+             ((Attachment^.ImageType in [TImageType.Surface,
+                                         TImageType.Color,
+                                         TImageType.Depth]) and
+              (Attachment^.LoadOp in [VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                      VK_ATTACHMENT_LOAD_OP_DONT_CARE])) or
+             ((Attachment^.ImageType in [TImageType.DepthStencil,
+                                         TImageType.Stencil]) and
+              ((Attachment^.ImageType=TImageType.Stencil) or
+               (Attachment^.LoadOp in [VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                       VK_ATTACHMENT_LOAD_OP_DONT_CARE])) and
+              (Attachment^.StencilLoadOp in [VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                             VK_ATTACHMENT_LOAD_OP_DONT_CARE])) then begin
+           Attachment^.HasInitialLayout:=true;
+           Attachment^.InitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+          end else if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+                      (Attachment^.InitialLayout=VK_IMAGE_LAYOUT_UNDEFINED) then begin
+           Attachment^.HasInitialLayout:=true;
+           Attachment^.InitialLayout:=ResourceTransition.fLayout;
+          end;
+         end;
+         if (Attachment^.ImageType in [TImageType.Surface]) and
+            fSurfaceIsSwapchain and
+            (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+            ((RenderPass.fTopologicalSortIndex=Attachment^.Resource.fMaximumTopologicalSortPassIndex) or
+             (fRootPass=RenderPass)) then begin
+          Attachment^.FinalLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+         end else begin
+          Attachment^.FinalLayout:=ResourceTransition.fLayout;
+         end;
          if not Attachment^.ClearValueInitialized then begin
           Attachment^.ClearValueInitialized:=true;
           if Attachment^.ImageType in [TImageType.DepthStencil,TImageType.Stencil,TImageType.Depth] then begin
