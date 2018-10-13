@@ -278,6 +278,8 @@ type EpvFrameGraph=class(Exception);
               fImageUsage:TVkImageUsageFlags;
               fCountMipMapLevels:TVkUInt32;
               fComponents:TVkComponentMapping;
+              fInitialLayout:TVkImageLayout;
+              fFinalLayout:TVkImageLayout;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
@@ -288,7 +290,9 @@ type EpvFrameGraph=class(Exception);
                                  const aImageSize:TImageSize;
                                  const aImageUsage:TVkImageUsageFlags;
                                  const aCountMipMapLevels:TVkUInt32;
-                                 const aComponents:TVkComponentMapping); reintroduce; overload;
+                                 const aComponents:TVkComponentMapping;
+                                 const aInitialLayout:TVkImageLayout;
+                                 const aFinalLayout:TVkImageLayout); reintroduce; overload;
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aName:TpvRawByteString;
                                  const aPersientent:boolean;
@@ -297,7 +301,9 @@ type EpvFrameGraph=class(Exception);
                                  const aImageType:TImageType;
                                  const aImageSize:TImageSize;
                                  const aImageUsage:TVkImageUsageFlags;
-                                 const aCountMipMapLevels:TVkUInt32); reintroduce; overload;
+                                 const aCountMipMapLevels:TVkUInt32;
+                                 const aInitialLayout:TVkImageLayout;
+                                 const aFinalLayout:TVkImageLayout); reintroduce; overload;
               destructor Destroy; override;
              public
               property ImageType:TImageType read fImageType;
@@ -308,6 +314,8 @@ type EpvFrameGraph=class(Exception);
               property Samples:TVkSampleCountFlagBits read fSamples;
               property ImageUsage:TVkImageUsageFlags read fImageUsage;
               property CountMipMapLevels:TVkUInt32 read fCountMipMapLevels;
+              property InitialLayout:TVkImageLayout read fInitialLayout;
+              property FinalLayout:TVkImageLayout read fFinalLayout;
             end;
             TBufferResourceType=class(TResourceType)
              private
@@ -1057,7 +1065,9 @@ type EpvFrameGraph=class(Exception);
                                      const aImageSize:TImageSize;
                                      const aImageUsage:TVkImageUsageFlags;
                                      const aCountMipMapLevels:TVkUInt32;
-                                     const aComponents:TVkComponentMapping):TResourceType; overload;
+                                     const aComponents:TVkComponentMapping;
+                                     const aInitialLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+                                     const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED):TResourceType; overload;
        function AddImageResourceType(const aName:TpvRawByteString;
                                      const aPersientent:boolean;
                                      const aFormat:TVkFormat;
@@ -1065,7 +1075,9 @@ type EpvFrameGraph=class(Exception);
                                      const aImageType:TImageType;
                                      const aImageSize:TImageSize;
                                      const aImageUsage:TVkImageUsageFlags;
-                                     const aCountMipMapLevels:TVkUInt32):TResourceType; overload;
+                                     const aCountMipMapLevels:TVkUInt32;
+                                     const aInitialLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+                                     const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED):TResourceType; overload;
        function AddBufferResourceType(const aName:TpvRawByteString;
                                       const aPersientent:boolean;
                                       const aSize:TVkDeviceSize;
@@ -1373,7 +1385,9 @@ constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGr
                                                     const aImageSize:TImageSize;
                                                     const aImageUsage:TVkImageUsageFlags;
                                                     const aCountMipMapLevels:TVkUInt32;
-                                                    const aComponents:TVkComponentMapping);
+                                                    const aComponents:TVkComponentMapping;
+                                                    const aInitialLayout:TVkImageLayout;
+                                                    const aFinalLayout:TVkImageLayout);
 begin
  Create(aFrameGraph,
         aName,
@@ -1385,6 +1399,8 @@ begin
  fImageUsage:=aImageUsage;
  fCountMipMapLevels:=aCountMipMapLevels;
  fComponents:=aComponents;
+ fInitialLayout:=aInitialLayout;
+ fFinalLayout:=aFinalLayout;
 end;
 
 constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGraph;
@@ -1395,7 +1411,9 @@ constructor TpvFrameGraph.TImageResourceType.Create(const aFrameGraph:TpvFrameGr
                                                     const aImageType:TImageType;
                                                     const aImageSize:TImageSize;
                                                     const aImageUsage:TVkImageUsageFlags;
-                                                    const aCountMipMapLevels:TVkUInt32);
+                                                    const aCountMipMapLevels:TVkUInt32;
+                                                    const aInitialLayout:TVkImageLayout;
+                                                    const aFinalLayout:TVkImageLayout);
 begin
  Create(aFrameGraph,
         aName,
@@ -1409,7 +1427,9 @@ begin
         TVkComponentMapping.Create(VK_COMPONENT_SWIZZLE_R,
                                    VK_COMPONENT_SWIZZLE_G,
                                    VK_COMPONENT_SWIZZLE_B,
-                                   VK_COMPONENT_SWIZZLE_A));
+                                   VK_COMPONENT_SWIZZLE_A),
+        aInitialLayout,
+        aFinalLayout);
 end;
 
 
@@ -3400,7 +3420,7 @@ begin
   end;
  end;
 
- fDrawToWaitOnSemaphoreExternalDstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+ fDrawToWaitOnSemaphoreExternalDstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT );
 
 end;
 
@@ -3507,7 +3527,9 @@ function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
                                             const aImageSize:TImageSize;
                                             const aImageUsage:TVkImageUsageFlags;
                                             const aCountMipMapLevels:TVkUInt32;
-                                            const aComponents:TVkComponentMapping):TResourceType;
+                                            const aComponents:TVkComponentMapping;
+                                            const aInitialLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+                                            const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED):TResourceType;
 begin
  result:=TImageResourceType.Create(self,
                                    aName,
@@ -3518,7 +3540,9 @@ begin
                                    aImageSize,
                                    aImageUsage,
                                    aCountMipMapLevels,
-                                   aComponents);
+                                   aComponents,
+                                   aInitialLayout,
+                                   aFinalLayout);
 end;
 
 function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
@@ -3528,7 +3552,9 @@ function TpvFrameGraph.AddImageResourceType(const aName:TpvRawByteString;
                                             const aImageType:TImageType;
                                             const aImageSize:TImageSize;
                                             const aImageUsage:TVkImageUsageFlags;
-                                            const aCountMipMapLevels:TVkUInt32):TResourceType;
+                                            const aCountMipMapLevels:TVkUInt32;
+                                            const aInitialLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+                                            const aFinalLayout:TVkImageLayout=VK_IMAGE_LAYOUT_UNDEFINED):TResourceType;
 begin
  result:=TImageResourceType.Create(self,
                                    aName,
@@ -3538,7 +3564,9 @@ begin
                                    aImageType,
                                    aImageSize,
                                    aImageUsage,
-                                   aCountMipMapLevels);
+                                   aCountMipMapLevels,
+                                   aInitialLayout,
+                                   aFinalLayout);
 end;
 
 function TpvFrameGraph.AddBufferResourceType(const aName:TpvRawByteString;
@@ -4431,6 +4459,139 @@ type TBeforeAfter=(Before,After);
     Assert(false);
    end;
   end;
+  procedure AddImagePipelineBarrier(const aBeforeAfter:TBeforeAfter;
+                                    const aPhysicalPass:TPhysicalPass;
+                                    const aResourcePhysicalData:TResourcePhysicalData;
+                                    const aOldLayout:TVkImageLayout;
+                                    const aNewLayout:TVkImageLayout;
+                                    const aSrcQueueFamilyIndex:TVkUInt32;
+                                    const aDstQueueFamilyIndex:TVkUInt32;
+                                    const aSrcStageMask:TVkPipelineStageFlags;
+                                    const aDstStageMask:TVkPipelineStageFlags;
+                                    const aSrcAccessMask:TVkAccessFlags;
+                                    const aDstAccessMask:TVkAccessFlags;
+                                    const aDependencyFlags:TVkDependencyFlags);
+  var PipelineBarrierGroupIndex:TpvSizeInt;
+      PipelineBarrierGroups:TPhysicalPass.TPipelineBarrierGroups;
+      PipelineBarrierGroup,
+      FoundPipelineBarrierGroup:TPhysicalPass.TPipelineBarrierGroup;
+      BarrierMapItem:TPhysicalPass.TPipelineBarrierGroup.TBarrierMapItem;
+      BufferMemoryBarrier:TVkBufferMemoryBarrier;
+      ImageMemoryBarrier:TVkImageMemoryBarrier;
+  begin
+   case aBeforeAfter of
+    TBeforeAfter.Before:begin
+     PipelineBarrierGroups:=aPhysicalPass.fBeforePipelineBarrierGroups;
+    end;
+    TBeforeAfter.After:begin
+     PipelineBarrierGroups:=aPhysicalPass.fAfterPipelineBarrierGroups;
+    end;
+    else begin
+     PipelineBarrierGroups:=nil;
+    end;
+   end;
+   if not assigned(PipelineBarrierGroups) then begin
+    raise EpvFrameGraph.Create('Invalid error 2018-10-06-23-37-0000');
+   end;
+   FoundPipelineBarrierGroup:=nil;
+   for PipelineBarrierGroupIndex:=0 to PipelineBarrierGroups.Count-1 do begin
+    PipelineBarrierGroup:=PipelineBarrierGroups[PipelineBarrierGroupIndex];
+    if (PipelineBarrierGroup.fSrcStageMask=aSrcStageMask) and
+       (PipelineBarrierGroup.fDstStageMask=aDstStageMask) and
+       (PipelineBarrierGroup.fDependencyFlags=aDependencyFlags) then begin
+     FoundPipelineBarrierGroup:=PipelineBarrierGroup;
+     break;
+    end;
+   end;
+   if assigned(FoundPipelineBarrierGroup) then begin
+    PipelineBarrierGroup:=FoundPipelineBarrierGroup;
+   end else begin
+    PipelineBarrierGroup:=TPhysicalPass.TPipelineBarrierGroup.Create(self,
+                                                                     aSrcStageMask,
+                                                                     aDstStageMask,
+                                                                     aDependencyFlags);
+    PipelineBarrierGroups.Add(PipelineBarrierGroup);
+   end;
+   if aResourcePhysicalData is TResourcePhysicalImageData then begin
+    FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+    ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    ImageMemoryBarrier.srcAccessMask:=aSrcAccessMask;
+    ImageMemoryBarrier.dstAccessMask:=aDstAccessMask;
+    ImageMemoryBarrier.oldLayout:=aOldLayout;
+    ImageMemoryBarrier.newLayout:=aNewLayout;
+    ImageMemoryBarrier.srcQueueFamilyIndex:=aSrcQueueFamilyIndex;
+    ImageMemoryBarrier.dstQueueFamilyIndex:=aDstQueueFamilyIndex;
+    ImageMemoryBarrier.image:=0;
+    ImageMemoryBarrier.subresourceRange:=TResourcePhysicalImageData(aResourcePhysicalData).fImageSubresourceRange;
+    BarrierMapItem.Kind:=TPhysicalPass.TPipelineBarrierGroup.TBarrierMapItemKind.Image;
+    BarrierMapItem.BarrierIndex:=PipelineBarrierGroup.fImageMemoryBarrierDynamicArray.Add(ImageMemoryBarrier);
+    BarrierMapItem.ImageIndexOffset:=0;
+    BarrierMapItem.ResourcePhysicalData:=aResourcePhysicalData;
+    PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+{   if TResourceTransition.TFlag.PreviousFrameInput in aResourceTransition.fFlags then begin
+     BarrierMapItem.ImageIndexOffset:=-1;
+     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+    end;
+    if TResourceTransition.TFlag.NextFrameOutput in aFromResourceTransition.fFlags+aToResourceTransition.fFlags) then begin
+     BarrierMapItem.ImageIndexOffset:=1;
+     PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+    end;}
+   end else begin
+    Assert(false);
+   end;
+  end;
+  procedure AddFinalSurfacePipelineBarrier(const aPhysicalPass:TPhysicalPass;
+                                           const aResourcePhysicalData:TResourcePhysicalData);
+  var PipelineBarrierGroupIndex:TpvSizeInt;
+      PipelineBarrierGroups:TPhysicalPass.TPipelineBarrierGroups;
+      PipelineBarrierGroup,
+      FoundPipelineBarrierGroup:TPhysicalPass.TPipelineBarrierGroup;
+      BarrierMapItem:TPhysicalPass.TPipelineBarrierGroup.TBarrierMapItem;
+      ImageMemoryBarrier:TVkImageMemoryBarrier;
+  begin
+   PipelineBarrierGroups:=aPhysicalPass.fAfterPipelineBarrierGroups;
+   if not assigned(PipelineBarrierGroups) then begin
+    raise EpvFrameGraph.Create('Invalid error 2018-10-13-06-54-0000');
+   end;
+   FoundPipelineBarrierGroup:=nil;
+   for PipelineBarrierGroupIndex:=0 to PipelineBarrierGroups.Count-1 do begin
+    PipelineBarrierGroup:=PipelineBarrierGroups[PipelineBarrierGroupIndex];
+    if (PipelineBarrierGroup.fSrcStageMask=TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)) and
+       (PipelineBarrierGroup.fDstStageMask=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)) and
+       (PipelineBarrierGroup.fDependencyFlags=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT)) then begin
+     FoundPipelineBarrierGroup:=PipelineBarrierGroup;
+     break;
+    end;
+   end;
+   if assigned(FoundPipelineBarrierGroup) then begin
+    PipelineBarrierGroup:=FoundPipelineBarrierGroup;
+   end else begin
+    PipelineBarrierGroup:=TPhysicalPass.TPipelineBarrierGroup.Create(self,
+                                                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT),
+                                                                     TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                                                     TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT));
+    PipelineBarrierGroups.Add(PipelineBarrierGroup);
+   end;
+   if aResourcePhysicalData is TResourcePhysicalImageData then begin
+    FillChar(ImageMemoryBarrier,SizeOf(TVkImageMemoryBarrier),#0);
+    ImageMemoryBarrier.sType:=VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    ImageMemoryBarrier.srcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+    ImageMemoryBarrier.dstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+    ImageMemoryBarrier.oldLayout:=VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    ImageMemoryBarrier.newLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    ImageMemoryBarrier.srcQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+    ImageMemoryBarrier.dstQueueFamilyIndex:=VK_QUEUE_FAMILY_IGNORED;
+    ImageMemoryBarrier.image:=0;
+    ImageMemoryBarrier.subresourceRange:=TResourcePhysicalImageData(aResourcePhysicalData).fImageSubresourceRange;
+    BarrierMapItem.Kind:=TPhysicalPass.TPipelineBarrierGroup.TBarrierMapItemKind.Image;
+    BarrierMapItem.BarrierIndex:=PipelineBarrierGroup.fImageMemoryBarrierDynamicArray.Add(ImageMemoryBarrier);
+    BarrierMapItem.ImageIndexOffset:=0;
+    BarrierMapItem.ResourcePhysicalData:=aResourcePhysicalData;
+    PipelineBarrierGroup.fBarrierMapItemDynamicArray.Add(BarrierMapItem);
+   end else begin
+    raise EpvFrameGraph.Create('Invalid error 2018-10-13-06-58-0000');
+   end;
+  end;
  var ResourceTransitionIndex,
      OtherResourceTransitionIndex,
      PipelineBarrierGroupIndex:TpvSizeInt;
@@ -4447,6 +4608,9 @@ type TBeforeAfter=(Before,After);
      PipelineBarrierGroup,
      FoundPipelineBarrierGroup:TPhysicalPass.TPipelineBarrierGroup;
      DependencyFlags:TVkDependencyFlags;
+     Found:boolean;
+     FirstPass,
+     LastPass:TPass;
  begin
 
   // First to try add the external Subpass dependencies
@@ -4486,6 +4650,97 @@ type TBeforeAfter=(Before,After);
     end;
    end;
   end;
+
+(* for Resource in fResources do begin
+   FirstPass:=nil;
+   LastPass:=nil;
+   if Resource.fResourceType is TImageResourceType then begin
+    for ResourceTransitionIndex:=0 to Resource.fResourceTransitions.Count-1 do begin
+     ResourceTransition:=Resource.fResourceTransitions[ResourceTransitionIndex];
+{    if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+        (TPass.TFlag.Used in ResourceTransition.fPass.fFlags) and
+        assigned(ResourceTransition.fPass.fPhysicalPass) then begin
+      Found:=false;
+      for OtherResourceTransitionIndex:=0 to Resource.fResourceTransitions.Count-1 do begin
+       if ResourceTransitionIndex<>OtherResourceTransitionIndex then begin
+        OtherResourceTransition:=Resource.fResourceTransitions[OtherResourceTransitionIndex];
+        if (ResourceTransition<>OtherResourceTransition) and
+           (ResourceTransition.fPass<>OtherResourceTransition.fPass) and
+           (ResourceTransition.fPass.fTopologicalSortIndex<OtherResourceTransition.fPass.fTopologicalSortIndex) and
+           (OtherResourceTransition.fKind in TResourceTransition.AllInputs) and
+           (TPass.TFlag.Used in OtherResourceTransition.fPass.fFlags) and
+           assigned(OtherResourceTransition.fPass.fPhysicalPass) then begin
+         Found:=true;
+         break;
+        end;
+       end;
+       if not Found then begin
+        AddImagePipelineBarrier(TBeforeAfter.After,
+                                ResourceTransition.fPass.fPhysicalPass,
+                                Resource.fResourceAliasGroup.fResourcePhysicalData,
+                                ResourceTransition.fLayout,
+                                TImageResourceType(Resource.fResourceType).fFinalLayout,
+                                VK_QUEUE_FAMILY_IGNORED,
+                                VK_QUEUE_FAMILY_IGNORED,
+                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT),
+                                TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                                sam,
+                                dam,
+                                TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT)
+                               );
+       end;
+      end;
+     end;}
+     if TImageResourceType(Resource.fResourceType).fImageType=TImageType.Surface then begin
+      if (ResourceTransition.fKind in TResourceTransition.AllImages) and
+         (TPass.TFlag.Used in ResourceTransition.fPass.fFlags) and
+         (Resource.fResourceType is TImageResourceType) then begin
+       if (not assigned(FirstPass)) or
+          (ResourceTransition.fPass.fTopologicalSortIndex<FirstPass.fTopologicalSortIndex) then begin
+        FirstPass:=ResourceTransition.fPass;
+       end;
+       if (not assigned(LastPass)) or
+          (ResourceTransition.fPass.fTopologicalSortIndex>LastPass.fTopologicalSortIndex) then begin
+        LastPass:=ResourceTransition.fPass;
+       end;
+      end;
+     end;
+    end;
+   end;
+   if assigned(FirstPass) then begin
+    AddImagePipelineBarrier(TBeforeAfter.After,
+                            ResourceTransition.fPass.fPhysicalPass,
+                            Resource.fResourceAliasGroup.fResourcePhysicalData,
+                            ResourceTransition.fLayout,
+                            TImageResourceType(Resource.fResourceType).fFinalLayout,
+                            VK_QUEUE_FAMILY_IGNORED,
+                            VK_QUEUE_FAMILY_IGNORED,
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT),
+                            TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT),
+                            sam,
+                            dam,
+                            TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT)
+                           );
+   end;
+   if assigned(LastPass) then begin
+   end;
+  end;*)
+
+{ if assigned(fRootPhysicalPass) then begin
+   for Resource in fResources do begin
+    for ResourceTransitionIndex:=0 to Resource.fResourceTransitions.Count-1 do begin
+     ResourceTransition:=Resource.fResourceTransitions[ResourceTransitionIndex];
+     if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+        (TPass.TFlag.Used in ResourceTransition.fPass.fFlags) and
+        (ResourceTransition.fPass.fPhysicalPass=fRootPhysicalPass) and
+        (Resource.fResourceType is TImageResourceType) and
+        (TImageResourceType(Resource.fResourceType).fImageType=TImageType.Surface) then begin
+      AddFinalSurfacePipelineBarrier(fRootPhysicalPass,
+                                     Resource.fResourceAliasGroup.fResourcePhysicalData);
+     end;
+    end;
+   end;
+  end;}
 
   // Then add the remaining Subpass dependencies
   for Resource in fResources do begin
@@ -4630,10 +4885,12 @@ type TBeforeAfter=(Before,After);
   end;
  var AttachmentIndex,
      OtherAttachmentIndex,
-     SubpassIndex:TpvSizeInt;
+     SubpassIndex,
+     PassIndex:TpvSizeInt;
      PhysicalPass:TPhysicalPass;
      PhysicalRenderPass:TPhysicalRenderPass;
      Subpass:TPhysicalRenderPass.TSubpass;
+     OtherPass:TPass;
      RenderPass:TRenderPass;
      ResourceTransition,
      OtherResourceTransition:TResourceTransition;
@@ -4756,6 +5013,19 @@ type TBeforeAfter=(Before,After);
          end;
          break;
         end;
+       end;
+      end;
+     end;
+
+     for AttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
+      Attachment:=@PhysicalRenderPass.fAttachments.Items[AttachmentIndex];
+      Resource:=Attachment^.Resource;
+      if Resource.fResourceType is TImageResourceType then begin
+       if TImageResourceType(Resource.fResourceType).fInitialLayout<>VK_IMAGE_LAYOUT_UNDEFINED then begin
+        Attachment^.InitialLayout:=TImageResourceType(Resource.fResourceType).fInitialLayout;
+       end;
+       if TImageResourceType(Resource.fResourceType).fFinalLayout<>VK_IMAGE_LAYOUT_UNDEFINED then begin
+        Attachment^.FinalLayout:=TImageResourceType(Resource.fResourceType).fFinalLayout;
        end;
       end;
      end;
@@ -5077,7 +5347,7 @@ begin
       PhysicalPass.fSignallingSemaphores[SwapChainImageIndex].Add(Semaphore);
       PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
       fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
-      fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Add(TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
+      fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Add(TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT ));
      end;
      SubmitInfo^.signalSemaphoreCount:=PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Count;
      if SubmitInfo^.signalSemaphoreCount>0 then begin
