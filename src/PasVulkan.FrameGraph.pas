@@ -219,6 +219,7 @@ type EpvFrameGraph=class(Exception);
               destructor Destroy; override;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
+              property PhysicalQueue:TpvVulkanQueue read fPhysicalQueue;
               property CommandPool:TpvVulkanCommandPool read fCommandPool;
             end;
             TQueues=TpvObjectGenericList<TQueue>;
@@ -3368,13 +3369,13 @@ begin
 
  fUniversalQueue:=AddQueue(fVulkanDevice.UniversalQueue);
 
- fGraphicsQueue:=AddQueue(fVulkanDevice.GraphicsQueue);
+ fGraphicsQueue:=AddQueue(fVulkanDevice.UniversalQueue);//.GraphicsQueue);
 
- fComputeQueue:=AddQueue(fVulkanDevice.ComputeQueue);
+ fComputeQueue:=AddQueue(fVulkanDevice.UniversalQueue);//.ComputeQueue);
 
- fTransferQueue:=AddQueue(fVulkanDevice.TransferQueue);
+ fTransferQueue:=AddQueue(fVulkanDevice.UniversalQueue);//.TransferQueue);
 
- fPresentQueue:=AddQueue(fVulkanDevice.PresentQueue);
+ fPresentQueue:=AddQueue(fVulkanDevice.UniversalQueue);//.PresentQueue);
 
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   fDrawToWaitOnSemaphores[SwapChainImageIndex].Initialize;

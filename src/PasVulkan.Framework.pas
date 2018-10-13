@@ -10207,7 +10207,7 @@ begin
    aTransferCommandBuffer.BeginRecording;
    aTransferCommandBuffer.CmdCopyBuffer(StagingBuffer.Handle,Handle,1,@VkBufferCopy);
    aTransferCommandBuffer.EndRecording;
-   aTransferCommandBuffer.Execute(fDevice.TransferQueue,0,nil,nil,aTransferFence,true);
+   aTransferCommandBuffer.Execute(aTransferQueue,0,nil,nil,aTransferFence,true);
 
   finally
    StagingBuffer.Free;
