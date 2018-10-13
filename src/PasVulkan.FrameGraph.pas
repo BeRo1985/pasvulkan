@@ -5051,7 +5051,7 @@ begin
     SubmitInfo^.waitSemaphoreCount:=PhysicalPass.fWaitingSemaphores.Count;
     if SubmitInfo^.waitSemaphoreCount>0 then begin
      SubmitInfo^.pWaitSemaphores:=@PhysicalPass.fWaitingSemaphoreHandles.Items[PhysicalPass.fWaitingSemaphores.Count*SwapChainImageIndex];
-     SubmitInfo^.pWaitDstStageMask:=@PhysicalPass.fWaitingSemaphores.Items[0];
+     SubmitInfo^.pWaitDstStageMask:=@PhysicalPass.fWaitingSemaphoreDstStageMasks.Items[0];
     end;
     if Index=0 then begin
      SubmitInfo^.commandBufferCount:=1;
