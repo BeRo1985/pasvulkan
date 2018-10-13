@@ -5037,31 +5037,31 @@ type TBeforeAfter=(Before,After);
           end;
          end;
          if not Attachment^.HasInitialLayout then begin
-          if ((ResourceTransition.fKind in TResourceTransition.AllOutputs) or
-              (RenderPass.fTopologicalSortIndex=Attachment^.Resource.fMinimumTopologicalSortPassIndex)) or
-             ((Attachment^.ImageType in [TImageType.Surface,
-                                         TImageType.Color,
-                                         TImageType.Depth]) and
-              (Attachment^.LoadOp in [VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                      VK_ATTACHMENT_LOAD_OP_DONT_CARE])) or
-             ((Attachment^.ImageType in [TImageType.DepthStencil,
-                                         TImageType.Stencil]) and
-              ((Attachment^.ImageType=TImageType.Stencil) or
-               (Attachment^.LoadOp in [VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                       VK_ATTACHMENT_LOAD_OP_DONT_CARE])) and
-              (Attachment^.StencilLoadOp in [VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                             VK_ATTACHMENT_LOAD_OP_DONT_CARE])) then begin
-           Attachment^.HasInitialLayout:=true;
-           Attachment^.InitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
-          end else if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
-                      (Attachment^.InitialLayout=VK_IMAGE_LAYOUT_UNDEFINED) then begin
-           Attachment^.HasInitialLayout:=true;
-           Attachment^.InitialLayout:=ResourceTransition.fLayout;
+          if ResourceTransition.fKind in TResourceTransition.AllOutputs then begin
+           if (RenderPass.fTopologicalSortIndex=Attachment^.Resource.fMinimumTopologicalSortPassIndex) or
+              (((Attachment^.ImageType in [TImageType.Surface,
+                                           TImageType.Color,
+                                           TImageType.Depth]) and
+                (Attachment^.LoadOp in [VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                        VK_ATTACHMENT_LOAD_OP_DONT_CARE])) or
+               ((Attachment^.ImageType in [TImageType.DepthStencil,
+                                           TImageType.Stencil]) and
+                ((Attachment^.ImageType=TImageType.Stencil) or
+                 (Attachment^.LoadOp in [VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                         VK_ATTACHMENT_LOAD_OP_DONT_CARE])) and
+                (Attachment^.StencilLoadOp in [VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                               VK_ATTACHMENT_LOAD_OP_DONT_CARE]))) then begin
+            Attachment^.HasInitialLayout:=true;
+            Attachment^.InitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
+           end else if Attachment^.InitialLayout=VK_IMAGE_LAYOUT_UNDEFINED then begin
+            Attachment^.HasInitialLayout:=true;
+            Attachment^.InitialLayout:=ResourceTransition.fLayout;
+           end;
           end;
          end;
-         if (Attachment^.ImageType in [TImageType.Surface]) and
+         if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
+            (Attachment^.ImageType in [TImageType.Surface]) and
             fSurfaceIsSwapchain and
-            (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
             ((RenderPass.fTopologicalSortIndex=Attachment^.Resource.fMaximumTopologicalSortPassIndex) or
              (fRootPass=RenderPass)) then begin
           Attachment^.FinalLayout:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
