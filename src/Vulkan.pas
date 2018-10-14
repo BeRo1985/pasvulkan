@@ -265,7 +265,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=87;
+      VK_HEADER_VERSION=88;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -348,8 +348,8 @@ const VK_NULL_HANDLE=0;
       VK_NV_DEDICATED_ALLOCATION_EXTENSION_NAME='VK_NV_dedicated_allocation';
       VK_EXT_EXTENSION_28_SPEC_VERSION=0;
       VK_EXT_EXTENSION_28_EXTENSION_NAME='VK_NV_extension_28';
-      VK_NVX_EXTENSION_29_SPEC_VERSION=0;
-      VK_NVX_EXTENSION_29_EXTENSION_NAME='VK_NVX_extension_29';
+      VK_EXT_TRANSFORM_FEEDBACK_SPEC_VERSION=1;
+      VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME='VK_EXT_transform_feedback';
       VK_NVX_EXTENSION_30_SPEC_VERSION=0;
       VK_NVX_EXTENSION_30_EXTENSION_NAME='VK_NVX_extension_30';
       VK_NVX_EXTENSION_31_SPEC_VERSION=0;
@@ -658,8 +658,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_183_EXTENSION_NAME='VK_AMD_extension_183';
       VK_KHR_EXTENSION_184_SPEC_VERSION=0;
       VK_KHR_EXTENSION_184_EXTENSION_NAME='VK_AMD_extension_184';
-      VK_KHR_EXTENSION_185_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_185_EXTENSION_NAME='VK_AMD_extension_185';
+      VK_EXT_CALIBRATED_TIMESTAMPS_SPEC_VERSION=1;
+      VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME='VK_EXT_calibrated_timestamps';
       VK_AMD_SHADER_CORE_PROPERTIES_SPEC_VERSION=1;
       VK_AMD_SHADER_CORE_PROPERTIES_EXTENSION_NAME='VK_AMD_shader_core_properties';
       VK_KHR_EXTENSION_187_SPEC_VERSION=0;
@@ -714,8 +714,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_211_EXTENSION_NAME='VK_KHR_extension_211';
       VK_KHR_VULKAN_MEMORY_MODEL_SPEC_VERSION=2;
       VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME='VK_KHR_vulkan_memory_model';
-      VK_KHR_EXTENSION_213_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_213_EXTENSION_NAME='VK_KHR_extension_213';
+      VK_EXT_PCI_BUS_INFO_SPEC_VERSION=1;
+      VK_EXT_PCI_BUS_INFO_EXTENSION_NAME='VK_EXT_pci_bus_info';
       VK_KHR_EXTENSION_214_SPEC_VERSION=0;
       VK_KHR_EXTENSION_214_EXTENSION_NAME='VK_KHR_extension_214';
       VK_FUCHSIA_IMAGEPIPE_SURFACE_SPEC_VERSION=1;
@@ -736,10 +736,10 @@ const VK_NULL_HANDLE=0;
       VK_EXT_EXTENSION_222_EXTENSION_NAME='VK_EXT_extension_222';
       VK_EXT_EXTENSION_223_SPEC_VERSION=0;
       VK_EXT_EXTENSION_223_EXTENSION_NAME='VK_EXT_extension_223';
-      VK_AMD_EXTENSION_224_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_224_EXTENSION_NAME='VK_AMD_extension_224';
-      VK_AMD_EXTENSION_225_SPEC_VERSION=0;
-      VK_AMD_EXTENSION_225_EXTENSION_NAME='VK_AMD_extension_225';
+      VK_GOOGLE_HLSL_FUNCTIONALITY1_SPEC_VERSION=0;
+      VK_GOOGLE_HLSL_FUNCTIONALITY1_EXTENSION_NAME='VK_GOOGLE_hlsl_functionality1';
+      VK_GOOGLE_DECORATE_STRING_SPEC_VERSION=0;
+      VK_GOOGLE_DECORATE_STRING_EXTENSION_NAME='VK_GOOGLE_decorate_string';
       VK_AMD_EXTENSION_226_SPEC_VERSION=0;
       VK_AMD_EXTENSION_226_EXTENSION_NAME='VK_AMD_extension_226';
       VK_AMD_EXTENSION_227_SPEC_VERSION=0;
@@ -764,6 +764,12 @@ const VK_NULL_HANDLE=0;
       VK_AMD_EXTENSION_236_EXTENSION_NAME='VK_AMD_extension_236';
       VK_KHR_EXTENSION_237_SPEC_VERSION=0;
       VK_KHR_EXTENSION_237_EXTENSION_NAME='VK_KHR_extension_237';
+      VK_KHR_EXTENSION_238_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_238_EXTENSION_NAME='VK_KHR_extension_238';
+      VK_KHR_EXTENSION_239_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_239_EXTENSION_NAME='VK_KHR_extension_239';
+      VK_KHR_EXTENSION_240_SPEC_VERSION=0;
+      VK_KHR_EXTENSION_240_EXTENSION_NAME='VK_KHR_extension_240';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1287,6 +1293,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkConditionalRenderingFlagsEXT=^TVkConditionalRenderingFlagsEXT;
      TVkConditionalRenderingFlagsEXT=TVkFlags;
 
+     PPVkPipelineRasterizationStateStreamCreateFlagsEXT=^PVkPipelineRasterizationStateStreamCreateFlagsEXT;
+     PVkPipelineRasterizationStateStreamCreateFlagsEXT=^TVkPipelineRasterizationStateStreamCreateFlagsEXT;
+     TVkPipelineRasterizationStateStreamCreateFlagsEXT=TVkFlags;
+
      PPVkInstance=^PVkInstance;
      PVkInstance=^TVkInstance;
      TVkInstance=TVkDispatchableHandle;
@@ -1560,6 +1570,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_QUERY_TYPE_OCCLUSION=0,
        VK_QUERY_TYPE_PIPELINE_STATISTICS=1,                                      //< Optional
        VK_QUERY_TYPE_TIMESTAMP=2,
+       VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT=1000028004,
        VK_QUERY_TYPE_COMPACTED_SIZE_NVX=1000165000
       );
 
@@ -2189,6 +2200,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV=1000026000,
        VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV=1000026001,
        VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV=1000026002,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT=1000028000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT=1000028001,
+       VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT=1000028002,
        VK_STRUCTURE_TYPE_TEXTURE_LOD_GATHER_FORMAT_PROPERTIES_AMD=1000041000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV=1000050000,
        VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO=1000053000,
@@ -2397,6 +2411,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT=1000178001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT=1000178002,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR=1000180000,
+       VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT=1000184000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD=1000185000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT=1000190000,
        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT=1000190001,
@@ -2412,6 +2427,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_CHECKPOINT_DATA_NV=1000206000,
        VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV=1000206001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES_KHR=1000211000,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT=1000212000,
        VK_STRUCTURE_TYPE_IMAGEPIPE_SURFACE_CREATE_INFO_FUCHSIA=1000214000,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO,
        VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO_KHR=VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO,
@@ -2673,7 +2689,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NVX=$00200000,
        VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NVX=$00400000,
        VK_ACCESS_SHADING_RATE_IMAGE_READ_BIT_NV=$00800000,
-       VK_ACCESS_RESERVED_24_BIT_EXT=$01000000
+       VK_ACCESS_RESERVED_24_BIT_EXT=$01000000,
+       VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT=$02000000,
+       VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT=$04000000,
+       VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT=$08000000
       );
 
      PPVkBufferUsageFlagBits=^PVkBufferUsageFlagBits;
@@ -2690,7 +2709,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT=$00000080,                              //< Can be used as source of fixed-function vertex fetch (VBO)
        VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT=$00000100,                            //< Can be the source of indirect parameters (e.g. indirect buffer, parameter buffer)
        VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT=$00000200,
-       VK_BUFFER_USAGE_RAYTRACING_BIT_NVX=$00000400
+       VK_BUFFER_USAGE_RAYTRACING_BIT_NVX=$00000400,
+       VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT=$00000800,
+       VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT=$00001000
       );
 
      PPVkBufferCreateFlagBits=^PVkBufferCreateFlagBits;
@@ -2945,7 +2966,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_PIPELINE_STAGE_MESH_SHADER_BIT_NV=$00100000,
        VK_PIPELINE_STAGE_RAYTRACING_BIT_NVX=$00200000,
        VK_PIPELINE_STAGE_SHADING_RATE_IMAGE_BIT_NV=$00400000,
-       VK_PIPELINE_STAGE_RESERVED_23_BIT_EXT=$00800000
+       VK_PIPELINE_STAGE_RESERVED_23_BIT_EXT=$00800000,
+       VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT=$01000000
       );
 
      PPVkCommandPoolCreateFlagBits=^PVkCommandPoolCreateFlagBits;
@@ -3086,6 +3108,16 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_180_BIT_KHR=$00000040,
        VK_SURFACE_TRANSFORM_HORIZONTAL_MIRROR_ROTATE_270_BIT_KHR=$00000080,
        VK_SURFACE_TRANSFORM_INHERIT_BIT_KHR=$00000100
+      );
+
+     PPVkTimeDomainEXT=^PVkTimeDomainEXT;
+     PVkTimeDomainEXT=^TVkTimeDomainEXT;
+     TVkTimeDomainEXT=
+      (
+       VK_TIME_DOMAIN_DEVICE_EXT=0,
+       VK_TIME_DOMAIN_CLOCK_MONOTONIC_EXT=1,
+       VK_TIME_DOMAIN_CLOCK_MONOTONIC_RAW_EXT=2,
+       VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_EXT=3
       );
 
      PPVkDebugReportFlagBitsEXT=^PVkDebugReportFlagBitsEXT;
@@ -7491,12 +7523,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR
        pNext:PVkVoid;
-       driverID:TVkUInt32;
+       driverID:TVkDriverIdKHR;
        driverName:array[0..VK_MAX_DRIVER_NAME_SIZE_KHR-1] of TVkChar;
        driverInfo:array[0..VK_MAX_DRIVER_INFO_SIZE_KHR-1] of TVkChar;
        conformanceVersion:TVkConformanceVersionKHR;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aDriverID:TVkUInt32;
+       constructor Create(const aDriverID:TVkDriverIdKHR;
                           const aDriverName:TVkCharString;
                           const aDriverInfo:TVkCharString;
                           const aConformanceVersion:TVkConformanceVersionKHR);
@@ -10211,7 +10243,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      PPPFN_vkDebugUtilsMessengerCallbackEXT=^PPFN_vkDebugUtilsMessengerCallbackEXT;
      PPFN_vkDebugUtilsMessengerCallbackEXT=^TPFN_vkDebugUtilsMessengerCallbackEXT;
-     TPFN_vkDebugUtilsMessengerCallbackEXT=function(messageSeverity:TVkDebugUtilsMessageSeverityFlagBitsEXT;messageType:TVkDebugUtilsMessageTypeFlagsEXT;const pCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;pUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TPFN_vkDebugUtilsMessengerCallbackEXT=function(messageSeverity:TVkDebugUtilsMessageSeverityFlagBitsEXT;messageTypes:TVkDebugUtilsMessageTypeFlagsEXT;const pCallbackData:PVkDebugUtilsMessengerCallbackDataEXT;pUserData:PVkVoid):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      PPVkDebugUtilsMessengerCreateInfoEXT=^PVkDebugUtilsMessengerCreateInfoEXT;
      PVkDebugUtilsMessengerCreateInfoEXT=^TVkDebugUtilsMessengerCreateInfoEXT;
@@ -10306,6 +10338,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
                           const aDegenerateLinesRasterized:TVkBool32;
                           const aFullyCoveredFragmentShaderInputVariable:TVkBool32;
                           const aConservativeRasterizationPostDepthCoverage:TVkBool32);
+{$endif}
+     end;
+
+     PPVkCalibratedTimestampInfoEXT=^PVkCalibratedTimestampInfoEXT;
+     PVkCalibratedTimestampInfoEXT=^TVkCalibratedTimestampInfoEXT;
+     TVkCalibratedTimestampInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT
+       pNext:PVkVoid;
+       timeDomain:TVkTimeDomainEXT;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aTimeDomain:TVkTimeDomainEXT);
 {$endif}
      end;
 
@@ -10733,6 +10779,26 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
+     PPVkPhysicalDevicePCIBusInfoPropertiesEXT=^PVkPhysicalDevicePCIBusInfoPropertiesEXT;
+     PVkPhysicalDevicePCIBusInfoPropertiesEXT=^TVkPhysicalDevicePCIBusInfoPropertiesEXT;
+     TVkPhysicalDevicePCIBusInfoPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT
+       pNext:PVkVoid;
+       pciDomain:TVkUInt16;
+       pciBus:TVkUInt8;
+       pciDevice:TVkUInt8;
+       pciFunction:TVkUInt8;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aPciDomain:TVkUInt16;
+                          const aPciBus:TVkUInt8;
+                          const aPciDevice:TVkUInt8;
+                          const aPciFunction:TVkUInt8);
+{$endif}
+     end;
+
 {$ifdef Android}
      PPVkImportAndroidHardwareBufferInfoANDROID=^PVkImportAndroidHardwareBufferInfoANDROID;
      PVkImportAndroidHardwareBufferInfoANDROID=^TVkImportAndroidHardwareBufferInfoANDROID;
@@ -10996,6 +11062,70 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        decodeModeSharedExponent:TVkBool32;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aDecodeModeSharedExponent:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceTransformFeedbackFeaturesEXT=^PVkPhysicalDeviceTransformFeedbackFeaturesEXT;
+     PVkPhysicalDeviceTransformFeedbackFeaturesEXT=^TVkPhysicalDeviceTransformFeedbackFeaturesEXT;
+     TVkPhysicalDeviceTransformFeedbackFeaturesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT
+       pNext:PVkVoid;
+       transformFeedback:TVkBool32;
+       geometryStreams:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aTransformFeedback:TVkBool32;
+                          const aGeometryStreams:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPhysicalDeviceTransformFeedbackPropertiesEXT=^PVkPhysicalDeviceTransformFeedbackPropertiesEXT;
+     PVkPhysicalDeviceTransformFeedbackPropertiesEXT=^TVkPhysicalDeviceTransformFeedbackPropertiesEXT;
+     TVkPhysicalDeviceTransformFeedbackPropertiesEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT
+       pNext:PVkVoid;
+       maxTransformFeedbackStreams:TVkUInt32;
+       maxTransformFeedbackBuffers:TVkUInt32;
+       maxTransformFeedbackBufferSize:TVkDeviceSize;
+       maxTransformFeedbackStreamDataSize:TVkUInt32;
+       maxTransformFeedbackBufferDataSize:TVkUInt32;
+       maxTransformFeedbackBufferDataStride:TVkUInt32;
+       transformFeedbackQueries:TVkBool32;
+       transformFeedbackStreamsLinesTriangles:TVkBool32;
+       transformFeedbackRasterizationStreamSelect:TVkBool32;
+       transformFeedbackDraw:TVkBool32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aMaxTransformFeedbackStreams:TVkUInt32;
+                          const aMaxTransformFeedbackBuffers:TVkUInt32;
+                          const aMaxTransformFeedbackBufferSize:TVkDeviceSize;
+                          const aMaxTransformFeedbackStreamDataSize:TVkUInt32;
+                          const aMaxTransformFeedbackBufferDataSize:TVkUInt32;
+                          const aMaxTransformFeedbackBufferDataStride:TVkUInt32;
+                          const aTransformFeedbackQueries:TVkBool32;
+                          const aTransformFeedbackStreamsLinesTriangles:TVkBool32;
+                          const aTransformFeedbackRasterizationStreamSelect:TVkBool32;
+                          const aTransformFeedbackDraw:TVkBool32);
+{$endif}
+     end;
+
+     PPVkPipelineRasterizationStateStreamCreateInfoEXT=^PVkPipelineRasterizationStateStreamCreateInfoEXT;
+     PVkPipelineRasterizationStateStreamCreateInfoEXT=^TVkPipelineRasterizationStateStreamCreateInfoEXT;
+     TVkPipelineRasterizationStateStreamCreateInfoEXT=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT
+       pNext:PVkVoid;
+       flags:TVkPipelineRasterizationStateStreamCreateFlagsEXT;
+       rasterizationStream:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aFlags:TVkPipelineRasterizationStateStreamCreateFlagsEXT;
+                          const aRasterizationStream:TVkUInt32);
 {$endif}
      end;
 
@@ -11550,8 +11680,14 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT
        pNext:PVkVoid;
        drmFormatModifier:TVkUInt64;
+       sharingMode:TVkSharingMode;
+       queueFamilyIndexCount:TVkUInt32;
+       pQueueFamilyIndices:PVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aDrmFormatModifier:TVkUInt64);
+       constructor Create(const aDrmFormatModifier:TVkUInt64;
+                          const aSharingMode:TVkSharingMode;
+                          const aQueueFamilyIndexCount:TVkUInt32;
+                          const aPQueueFamilyIndices:PVkUInt32);
 {$endif}
      end;
 
@@ -12239,6 +12375,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkGetShaderInfoAMD=function(device:TVkDevice;pipeline:TVkPipeline;shaderStage:TVkShaderStageFlagBits;infoType:TVkShaderInfoTypeAMD;pInfoSize:PVkSize;pInfo:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
+     TvkGetPhysicalDeviceCalibrateableTimeDomainsEXT=function(physicalDevice:TVkPhysicalDevice;pTimeDomainCount:PVkUInt32;pTimeDomains:PVkTimeDomainEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkGetCalibratedTimestampsEXT=function(device:TVkDevice;timestampCount:TVkUInt32;const pTimestampInfos:PVkCalibratedTimestampInfoEXT;pTimestamps:PVkUInt64;pMaxDeviation:PVkUInt64):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
      TvkSetDebugUtilsObjectNameEXT=function(device:TVkDevice;const pNameInfo:PVkDebugUtilsObjectNameInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkSetDebugUtilsObjectTagEXT=function(device:TVkDevice;const pTagInfo:PVkDebugUtilsObjectTagInfoEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
@@ -12288,6 +12428,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkCmdSetCheckpointNV=procedure(commandBuffer:TVkCommandBuffer;const pCheckpointMarker:PVkVoid); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetQueueCheckpointDataNV=procedure(queue:TVkQueue;pCheckpointDataCount:PVkUInt32;pCheckpointData:PVkCheckpointDataNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdBindTransformFeedbackBuffersEXT=procedure(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize;const pSizes:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdBeginTransformFeedbackEXT=procedure(commandBuffer:TVkCommandBuffer;firstCounterBuffer:TVkUInt32;counterBufferCount:TVkUInt32;const pCounterBuffers:PVkBuffer;const pCounterBufferOffsets:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdEndTransformFeedbackEXT=procedure(commandBuffer:TVkCommandBuffer;firstCounterBuffer:TVkUInt32;counterBufferCount:TVkUInt32;const pCounterBuffers:PVkBuffer;const pCounterBufferOffsets:PVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdBeginQueryIndexedEXT=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags;index:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdEndQueryIndexedEXT=procedure(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;index:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+
+     TvkCmdDrawIndirectByteCountEXT=procedure(commandBuffer:TVkCommandBuffer;instanceCount:TVkUInt32;firstInstance:TVkUInt32;counterBuffer:TVkBuffer;counterBufferOffset:TVkDeviceSize;counterOffset:TVkUInt32;vertexStride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCmdSetExclusiveScissorNV=procedure(commandBuffer:TVkCommandBuffer;firstExclusiveScissor:TVkUInt32;exclusiveScissorCount:TVkUInt32;const pExclusiveScissors:PVkRect2D); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -12971,6 +13123,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       GetShaderInfoAMD:TvkGetShaderInfoAMD;
 
+      GetPhysicalDeviceCalibrateableTimeDomainsEXT:TvkGetPhysicalDeviceCalibrateableTimeDomainsEXT;
+
+      GetCalibratedTimestampsEXT:TvkGetCalibratedTimestampsEXT;
+
       SetDebugUtilsObjectNameEXT:TvkSetDebugUtilsObjectNameEXT;
 
       SetDebugUtilsObjectTagEXT:TvkSetDebugUtilsObjectTagEXT;
@@ -13020,6 +13176,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       CmdSetCheckpointNV:TvkCmdSetCheckpointNV;
 
       GetQueueCheckpointDataNV:TvkGetQueueCheckpointDataNV;
+
+      CmdBindTransformFeedbackBuffersEXT:TvkCmdBindTransformFeedbackBuffersEXT;
+
+      CmdBeginTransformFeedbackEXT:TvkCmdBeginTransformFeedbackEXT;
+
+      CmdEndTransformFeedbackEXT:TvkCmdEndTransformFeedbackEXT;
+
+      CmdBeginQueryIndexedEXT:TvkCmdBeginQueryIndexedEXT;
+
+      CmdEndQueryIndexedEXT:TvkCmdEndQueryIndexedEXT;
+
+      CmdDrawIndirectByteCountEXT:TvkCmdDrawIndirectByteCountEXT;
 
       CmdSetExclusiveScissorNV:TvkCmdSetExclusiveScissorNV;
 
@@ -13708,6 +13876,10 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        function GetShaderInfoAMD(device:TVkDevice;pipeline:TVkPipeline;shaderStage:TVkShaderStageFlagBits;infoType:TVkShaderInfoTypeAMD;pInfoSize:PVkSize;pInfo:PVkVoid):TVkResult; virtual;
 
+       function GetPhysicalDeviceCalibrateableTimeDomainsEXT(physicalDevice:TVkPhysicalDevice;pTimeDomainCount:PVkUInt32;pTimeDomains:PVkTimeDomainEXT):TVkResult; virtual;
+
+       function GetCalibratedTimestampsEXT(device:TVkDevice;timestampCount:TVkUInt32;const pTimestampInfos:PVkCalibratedTimestampInfoEXT;pTimestamps:PVkUInt64;pMaxDeviation:PVkUInt64):TVkResult; virtual;
+
        function SetDebugUtilsObjectNameEXT(device:TVkDevice;const pNameInfo:PVkDebugUtilsObjectNameInfoEXT):TVkResult; virtual;
 
        function SetDebugUtilsObjectTagEXT(device:TVkDevice;const pTagInfo:PVkDebugUtilsObjectTagInfoEXT):TVkResult; virtual;
@@ -13757,6 +13929,18 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        procedure CmdSetCheckpointNV(commandBuffer:TVkCommandBuffer;const pCheckpointMarker:PVkVoid); virtual;
 
        procedure GetQueueCheckpointDataNV(queue:TVkQueue;pCheckpointDataCount:PVkUInt32;pCheckpointData:PVkCheckpointDataNV); virtual;
+
+       procedure CmdBindTransformFeedbackBuffersEXT(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize;const pSizes:PVkDeviceSize); virtual;
+
+       procedure CmdBeginTransformFeedbackEXT(commandBuffer:TVkCommandBuffer;firstCounterBuffer:TVkUInt32;counterBufferCount:TVkUInt32;const pCounterBuffers:PVkBuffer;const pCounterBufferOffsets:PVkDeviceSize); virtual;
+
+       procedure CmdEndTransformFeedbackEXT(commandBuffer:TVkCommandBuffer;firstCounterBuffer:TVkUInt32;counterBufferCount:TVkUInt32;const pCounterBuffers:PVkBuffer;const pCounterBufferOffsets:PVkDeviceSize); virtual;
+
+       procedure CmdBeginQueryIndexedEXT(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags;index:TVkUInt32); virtual;
+
+       procedure CmdEndQueryIndexedEXT(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;index:TVkUInt32); virtual;
+
+       procedure CmdDrawIndirectByteCountEXT(commandBuffer:TVkCommandBuffer;instanceCount:TVkUInt32;firstInstance:TVkUInt32;counterBuffer:TVkBuffer;counterBufferOffset:TVkDeviceSize;counterOffset:TVkUInt32;vertexStride:TVkUInt32); virtual;
 
        procedure CmdSetExclusiveScissorNV(commandBuffer:TVkCommandBuffer;firstExclusiveScissor:TVkUInt32;exclusiveScissorCount:TVkUInt32;const pExclusiveScissors:PVkRect2D); virtual;
 
@@ -14443,6 +14627,10 @@ var LibVulkan:pointer=nil;
 
     vkGetShaderInfoAMD:TvkGetShaderInfoAMD=nil;
 
+    vkGetPhysicalDeviceCalibrateableTimeDomainsEXT:TvkGetPhysicalDeviceCalibrateableTimeDomainsEXT=nil;
+
+    vkGetCalibratedTimestampsEXT:TvkGetCalibratedTimestampsEXT=nil;
+
     vkSetDebugUtilsObjectNameEXT:TvkSetDebugUtilsObjectNameEXT=nil;
 
     vkSetDebugUtilsObjectTagEXT:TvkSetDebugUtilsObjectTagEXT=nil;
@@ -14492,6 +14680,18 @@ var LibVulkan:pointer=nil;
     vkCmdSetCheckpointNV:TvkCmdSetCheckpointNV=nil;
 
     vkGetQueueCheckpointDataNV:TvkGetQueueCheckpointDataNV=nil;
+
+    vkCmdBindTransformFeedbackBuffersEXT:TvkCmdBindTransformFeedbackBuffersEXT=nil;
+
+    vkCmdBeginTransformFeedbackEXT:TvkCmdBeginTransformFeedbackEXT=nil;
+
+    vkCmdEndTransformFeedbackEXT:TvkCmdEndTransformFeedbackEXT=nil;
+
+    vkCmdBeginQueryIndexedEXT:TvkCmdBeginQueryIndexedEXT=nil;
+
+    vkCmdEndQueryIndexedEXT:TvkCmdEndQueryIndexedEXT=nil;
+
+    vkCmdDrawIndirectByteCountEXT:TvkCmdDrawIndirectByteCountEXT=nil;
 
     vkCmdSetExclusiveScissorNV:TvkCmdSetExclusiveScissorNV=nil;
 
@@ -15873,6 +16073,14 @@ begin
    @vkGetShaderInfoAMD:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetShaderInfoAMD'));
    @vk.fCommands.GetShaderInfoAMD:=addr(vkGetShaderInfoAMD);
   end;
+  if not assigned(vkGetPhysicalDeviceCalibrateableTimeDomainsEXT) then begin
+   @vkGetPhysicalDeviceCalibrateableTimeDomainsEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceCalibrateableTimeDomainsEXT'));
+   @vk.fCommands.GetPhysicalDeviceCalibrateableTimeDomainsEXT:=addr(vkGetPhysicalDeviceCalibrateableTimeDomainsEXT);
+  end;
+  if not assigned(vkGetCalibratedTimestampsEXT) then begin
+   @vkGetCalibratedTimestampsEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetCalibratedTimestampsEXT'));
+   @vk.fCommands.GetCalibratedTimestampsEXT:=addr(vkGetCalibratedTimestampsEXT);
+  end;
   if not assigned(vkSetDebugUtilsObjectNameEXT) then begin
    @vkSetDebugUtilsObjectNameEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkSetDebugUtilsObjectNameEXT'));
    @vk.fCommands.SetDebugUtilsObjectNameEXT:=addr(vkSetDebugUtilsObjectNameEXT);
@@ -15968,6 +16176,30 @@ begin
   if not assigned(vkGetQueueCheckpointDataNV) then begin
    @vkGetQueueCheckpointDataNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetQueueCheckpointDataNV'));
    @vk.fCommands.GetQueueCheckpointDataNV:=addr(vkGetQueueCheckpointDataNV);
+  end;
+  if not assigned(vkCmdBindTransformFeedbackBuffersEXT) then begin
+   @vkCmdBindTransformFeedbackBuffersEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBindTransformFeedbackBuffersEXT'));
+   @vk.fCommands.CmdBindTransformFeedbackBuffersEXT:=addr(vkCmdBindTransformFeedbackBuffersEXT);
+  end;
+  if not assigned(vkCmdBeginTransformFeedbackEXT) then begin
+   @vkCmdBeginTransformFeedbackEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBeginTransformFeedbackEXT'));
+   @vk.fCommands.CmdBeginTransformFeedbackEXT:=addr(vkCmdBeginTransformFeedbackEXT);
+  end;
+  if not assigned(vkCmdEndTransformFeedbackEXT) then begin
+   @vkCmdEndTransformFeedbackEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdEndTransformFeedbackEXT'));
+   @vk.fCommands.CmdEndTransformFeedbackEXT:=addr(vkCmdEndTransformFeedbackEXT);
+  end;
+  if not assigned(vkCmdBeginQueryIndexedEXT) then begin
+   @vkCmdBeginQueryIndexedEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBeginQueryIndexedEXT'));
+   @vk.fCommands.CmdBeginQueryIndexedEXT:=addr(vkCmdBeginQueryIndexedEXT);
+  end;
+  if not assigned(vkCmdEndQueryIndexedEXT) then begin
+   @vkCmdEndQueryIndexedEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdEndQueryIndexedEXT'));
+   @vk.fCommands.CmdEndQueryIndexedEXT:=addr(vkCmdEndQueryIndexedEXT);
+  end;
+  if not assigned(vkCmdDrawIndirectByteCountEXT) then begin
+   @vkCmdDrawIndirectByteCountEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawIndirectByteCountEXT'));
+   @vk.fCommands.CmdDrawIndirectByteCountEXT:=addr(vkCmdDrawIndirectByteCountEXT);
   end;
   if not assigned(vkCmdSetExclusiveScissorNV) then begin
    @vkCmdSetExclusiveScissorNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdSetExclusiveScissorNV'));
@@ -16403,6 +16635,8 @@ begin
   @InstanceCommands.AcquireImageANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkAcquireImageANDROID')));
   @InstanceCommands.QueueSignalReleaseImageANDROID:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkQueueSignalReleaseImageANDROID')));
   @InstanceCommands.GetShaderInfoAMD:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetShaderInfoAMD')));
+  @InstanceCommands.GetPhysicalDeviceCalibrateableTimeDomainsEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceCalibrateableTimeDomainsEXT')));
+  @InstanceCommands.GetCalibratedTimestampsEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetCalibratedTimestampsEXT')));
   @InstanceCommands.SetDebugUtilsObjectNameEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkSetDebugUtilsObjectNameEXT')));
   @InstanceCommands.SetDebugUtilsObjectTagEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkSetDebugUtilsObjectTagEXT')));
   @InstanceCommands.QueueBeginDebugUtilsLabelEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkQueueBeginDebugUtilsLabelEXT')));
@@ -16430,6 +16664,12 @@ begin
   @InstanceCommands.CmdDrawIndexedIndirectCountKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawIndexedIndirectCountKHR')));
   @InstanceCommands.CmdSetCheckpointNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetCheckpointNV')));
   @InstanceCommands.GetQueueCheckpointDataNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetQueueCheckpointDataNV')));
+  @InstanceCommands.CmdBindTransformFeedbackBuffersEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdBindTransformFeedbackBuffersEXT')));
+  @InstanceCommands.CmdBeginTransformFeedbackEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdBeginTransformFeedbackEXT')));
+  @InstanceCommands.CmdEndTransformFeedbackEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdEndTransformFeedbackEXT')));
+  @InstanceCommands.CmdBeginQueryIndexedEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdBeginQueryIndexedEXT')));
+  @InstanceCommands.CmdEndQueryIndexedEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdEndQueryIndexedEXT')));
+  @InstanceCommands.CmdDrawIndirectByteCountEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawIndirectByteCountEXT')));
   @InstanceCommands.CmdSetExclusiveScissorNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetExclusiveScissorNV')));
   @InstanceCommands.CmdBindShadingRateImageNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdBindShadingRateImageNV')));
   @InstanceCommands.CmdSetViewportShadingRatePaletteNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdSetViewportShadingRatePaletteNV')));
@@ -16696,6 +16936,7 @@ begin
   @DeviceCommands.AcquireImageANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkAcquireImageANDROID')));
   @DeviceCommands.QueueSignalReleaseImageANDROID:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkQueueSignalReleaseImageANDROID')));
   @DeviceCommands.GetShaderInfoAMD:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetShaderInfoAMD')));
+  @DeviceCommands.GetCalibratedTimestampsEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetCalibratedTimestampsEXT')));
   @DeviceCommands.SetDebugUtilsObjectNameEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkSetDebugUtilsObjectNameEXT')));
   @DeviceCommands.SetDebugUtilsObjectTagEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkSetDebugUtilsObjectTagEXT')));
   @DeviceCommands.QueueBeginDebugUtilsLabelEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkQueueBeginDebugUtilsLabelEXT')));
@@ -16720,6 +16961,12 @@ begin
   @DeviceCommands.CmdDrawIndexedIndirectCountKHR:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawIndexedIndirectCountKHR')));
   @DeviceCommands.CmdSetCheckpointNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetCheckpointNV')));
   @DeviceCommands.GetQueueCheckpointDataNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetQueueCheckpointDataNV')));
+  @DeviceCommands.CmdBindTransformFeedbackBuffersEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdBindTransformFeedbackBuffersEXT')));
+  @DeviceCommands.CmdBeginTransformFeedbackEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdBeginTransformFeedbackEXT')));
+  @DeviceCommands.CmdEndTransformFeedbackEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdEndTransformFeedbackEXT')));
+  @DeviceCommands.CmdBeginQueryIndexedEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdBeginQueryIndexedEXT')));
+  @DeviceCommands.CmdEndQueryIndexedEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdEndQueryIndexedEXT')));
+  @DeviceCommands.CmdDrawIndirectByteCountEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawIndirectByteCountEXT')));
   @DeviceCommands.CmdSetExclusiveScissorNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetExclusiveScissorNV')));
   @DeviceCommands.CmdBindShadingRateImageNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdBindShadingRateImageNV')));
   @DeviceCommands.CmdSetViewportShadingRatePaletteNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdSetViewportShadingRatePaletteNV')));
@@ -19292,7 +19539,7 @@ begin
  patch:=aPatch;
 end;
 
-constructor TVkPhysicalDeviceDriverPropertiesKHR.Create(const aDriverID:TVkUInt32;
+constructor TVkPhysicalDeviceDriverPropertiesKHR.Create(const aDriverID:TVkDriverIdKHR;
                                                         const aDriverName:TVkCharString;
                                                         const aDriverInfo:TVkCharString;
                                                         const aConformanceVersion:TVkConformanceVersionKHR);
@@ -20905,6 +21152,13 @@ begin
  conservativeRasterizationPostDepthCoverage:=aConservativeRasterizationPostDepthCoverage;
 end;
 
+constructor TVkCalibratedTimestampInfoEXT.Create(const aTimeDomain:TVkTimeDomainEXT);
+begin
+ sType:=VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT;
+ pNext:=nil;
+ timeDomain:=aTimeDomain;
+end;
+
 constructor TVkPhysicalDeviceShaderCorePropertiesAMD.Create(const aShaderEngineCount:TVkUInt32;
                                                             const aShaderArraysPerEngineCount:TVkUInt32;
                                                             const aComputeUnitsPerShaderArray:TVkUInt32;
@@ -21205,6 +21459,19 @@ begin
  maxVertexAttribDivisor:=aMaxVertexAttribDivisor;
 end;
 
+constructor TVkPhysicalDevicePCIBusInfoPropertiesEXT.Create(const aPciDomain:TVkUInt16;
+                                                            const aPciBus:TVkUInt8;
+                                                            const aPciDevice:TVkUInt8;
+                                                            const aPciFunction:TVkUInt8);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT;
+ pNext:=nil;
+ pciDomain:=aPciDomain;
+ pciBus:=aPciBus;
+ pciDevice:=aPciDevice;
+ pciFunction:=aPciFunction;
+end;
+
 {$ifdef Android}
 constructor TVkImportAndroidHardwareBufferInfoANDROID.Create(const aBuffer:PVkAndroidAHardwareBuffer);
 begin
@@ -21357,6 +21624,49 @@ begin
  sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ASTC_DECODE_FEATURES_EXT;
  pNext:=nil;
  decodeModeSharedExponent:=aDecodeModeSharedExponent;
+end;
+
+constructor TVkPhysicalDeviceTransformFeedbackFeaturesEXT.Create(const aTransformFeedback:TVkBool32;
+                                                                 const aGeometryStreams:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
+ pNext:=nil;
+ transformFeedback:=aTransformFeedback;
+ geometryStreams:=aGeometryStreams;
+end;
+
+constructor TVkPhysicalDeviceTransformFeedbackPropertiesEXT.Create(const aMaxTransformFeedbackStreams:TVkUInt32;
+                                                                   const aMaxTransformFeedbackBuffers:TVkUInt32;
+                                                                   const aMaxTransformFeedbackBufferSize:TVkDeviceSize;
+                                                                   const aMaxTransformFeedbackStreamDataSize:TVkUInt32;
+                                                                   const aMaxTransformFeedbackBufferDataSize:TVkUInt32;
+                                                                   const aMaxTransformFeedbackBufferDataStride:TVkUInt32;
+                                                                   const aTransformFeedbackQueries:TVkBool32;
+                                                                   const aTransformFeedbackStreamsLinesTriangles:TVkBool32;
+                                                                   const aTransformFeedbackRasterizationStreamSelect:TVkBool32;
+                                                                   const aTransformFeedbackDraw:TVkBool32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT;
+ pNext:=nil;
+ maxTransformFeedbackStreams:=aMaxTransformFeedbackStreams;
+ maxTransformFeedbackBuffers:=aMaxTransformFeedbackBuffers;
+ maxTransformFeedbackBufferSize:=aMaxTransformFeedbackBufferSize;
+ maxTransformFeedbackStreamDataSize:=aMaxTransformFeedbackStreamDataSize;
+ maxTransformFeedbackBufferDataSize:=aMaxTransformFeedbackBufferDataSize;
+ maxTransformFeedbackBufferDataStride:=aMaxTransformFeedbackBufferDataStride;
+ transformFeedbackQueries:=aTransformFeedbackQueries;
+ transformFeedbackStreamsLinesTriangles:=aTransformFeedbackStreamsLinesTriangles;
+ transformFeedbackRasterizationStreamSelect:=aTransformFeedbackRasterizationStreamSelect;
+ transformFeedbackDraw:=aTransformFeedbackDraw;
+end;
+
+constructor TVkPipelineRasterizationStateStreamCreateInfoEXT.Create(const aFlags:TVkPipelineRasterizationStateStreamCreateFlagsEXT;
+                                                                    const aRasterizationStream:TVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT;
+ pNext:=nil;
+ flags:=aFlags;
+ rasterizationStream:=aRasterizationStream;
 end;
 
 constructor TVkPhysicalDeviceRepresentativeFragmentTestFeaturesNV.Create(const aRepresentativeFragmentTest:TVkBool32);
@@ -21705,11 +22015,17 @@ begin
  pDrmFormatModifierProperties:=aPDrmFormatModifierProperties;
 end;
 
-constructor TVkPhysicalDeviceImageDrmFormatModifierInfoEXT.Create(const aDrmFormatModifier:TVkUInt64);
+constructor TVkPhysicalDeviceImageDrmFormatModifierInfoEXT.Create(const aDrmFormatModifier:TVkUInt64;
+                                                                  const aSharingMode:TVkSharingMode;
+                                                                  const aQueueFamilyIndexCount:TVkUInt32;
+                                                                  const aPQueueFamilyIndices:PVkUInt32);
 begin
  sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT;
  pNext:=nil;
  drmFormatModifier:=aDrmFormatModifier;
+ sharingMode:=aSharingMode;
+ queueFamilyIndexCount:=aQueueFamilyIndexCount;
+ pQueueFamilyIndices:=aPQueueFamilyIndices;
 end;
 
 constructor TVkImageDrmFormatModifierListCreateInfoEXT.Create(const aDrmFormatModifierCount:TVkUInt32;
@@ -23278,6 +23594,16 @@ begin
  result:=fCommands.GetShaderInfoAMD(device,pipeline,shaderStage,infoType,pInfoSize,pInfo);
 end;
 
+function TVulkan.GetPhysicalDeviceCalibrateableTimeDomainsEXT(physicalDevice:TVkPhysicalDevice;pTimeDomainCount:PVkUInt32;pTimeDomains:PVkTimeDomainEXT):TVkResult;
+begin
+ result:=fCommands.GetPhysicalDeviceCalibrateableTimeDomainsEXT(physicalDevice,pTimeDomainCount,pTimeDomains);
+end;
+
+function TVulkan.GetCalibratedTimestampsEXT(device:TVkDevice;timestampCount:TVkUInt32;const pTimestampInfos:PVkCalibratedTimestampInfoEXT;pTimestamps:PVkUInt64;pMaxDeviation:PVkUInt64):TVkResult;
+begin
+ result:=fCommands.GetCalibratedTimestampsEXT(device,timestampCount,pTimestampInfos,pTimestamps,pMaxDeviation);
+end;
+
 function TVulkan.SetDebugUtilsObjectNameEXT(device:TVkDevice;const pNameInfo:PVkDebugUtilsObjectNameInfoEXT):TVkResult;
 begin
  result:=fCommands.SetDebugUtilsObjectNameEXT(device,pNameInfo);
@@ -23395,6 +23721,36 @@ end;
 procedure TVulkan.GetQueueCheckpointDataNV(queue:TVkQueue;pCheckpointDataCount:PVkUInt32;pCheckpointData:PVkCheckpointDataNV);
 begin
  fCommands.GetQueueCheckpointDataNV(queue,pCheckpointDataCount,pCheckpointData);
+end;
+
+procedure TVulkan.CmdBindTransformFeedbackBuffersEXT(commandBuffer:TVkCommandBuffer;firstBinding:TVkUInt32;bindingCount:TVkUInt32;const pBuffers:PVkBuffer;const pOffsets:PVkDeviceSize;const pSizes:PVkDeviceSize);
+begin
+ fCommands.CmdBindTransformFeedbackBuffersEXT(commandBuffer,firstBinding,bindingCount,pBuffers,pOffsets,pSizes);
+end;
+
+procedure TVulkan.CmdBeginTransformFeedbackEXT(commandBuffer:TVkCommandBuffer;firstCounterBuffer:TVkUInt32;counterBufferCount:TVkUInt32;const pCounterBuffers:PVkBuffer;const pCounterBufferOffsets:PVkDeviceSize);
+begin
+ fCommands.CmdBeginTransformFeedbackEXT(commandBuffer,firstCounterBuffer,counterBufferCount,pCounterBuffers,pCounterBufferOffsets);
+end;
+
+procedure TVulkan.CmdEndTransformFeedbackEXT(commandBuffer:TVkCommandBuffer;firstCounterBuffer:TVkUInt32;counterBufferCount:TVkUInt32;const pCounterBuffers:PVkBuffer;const pCounterBufferOffsets:PVkDeviceSize);
+begin
+ fCommands.CmdEndTransformFeedbackEXT(commandBuffer,firstCounterBuffer,counterBufferCount,pCounterBuffers,pCounterBufferOffsets);
+end;
+
+procedure TVulkan.CmdBeginQueryIndexedEXT(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;flags:TVkQueryControlFlags;index:TVkUInt32);
+begin
+ fCommands.CmdBeginQueryIndexedEXT(commandBuffer,queryPool,query,flags,index);
+end;
+
+procedure TVulkan.CmdEndQueryIndexedEXT(commandBuffer:TVkCommandBuffer;queryPool:TVkQueryPool;query:TVkUInt32;index:TVkUInt32);
+begin
+ fCommands.CmdEndQueryIndexedEXT(commandBuffer,queryPool,query,index);
+end;
+
+procedure TVulkan.CmdDrawIndirectByteCountEXT(commandBuffer:TVkCommandBuffer;instanceCount:TVkUInt32;firstInstance:TVkUInt32;counterBuffer:TVkBuffer;counterBufferOffset:TVkDeviceSize;counterOffset:TVkUInt32;vertexStride:TVkUInt32);
+begin
+ fCommands.CmdDrawIndirectByteCountEXT(commandBuffer,instanceCount,firstInstance,counterBuffer,counterBufferOffset,counterOffset,vertexStride);
 end;
 
 procedure TVulkan.CmdSetExclusiveScissorNV(commandBuffer:TVkCommandBuffer;firstExclusiveScissor:TVkUInt32;exclusiveScissorCount:TVkUInt32;const pExclusiveScissors:PVkRect2D);
