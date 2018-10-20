@@ -796,6 +796,7 @@ type EpvFrameGraph=class(Exception);
              public
               type TFlag=
                     (
+                     Separated,
                      Toggleable,
                      Enabled,
                      Used,
@@ -868,6 +869,10 @@ type EpvFrameGraph=class(Exception);
               fPhysicalPass:TPhysicalPass;
               fTopologicalSortIndex:TpvSizeInt;
               fDoubleBufferedEnabledState:array[0..1] of longbool;
+              function GetSeparated:boolean; inline;
+              procedure SetSeparated(const aSeparated:boolean);
+              function GetToggleable:boolean; inline;
+              procedure SetToggleable(const aToggleable:boolean);
               function GetEnabled:boolean; inline;
               procedure SetEnabled(const aEnabled:boolean);
               function GetHasSecondaryBuffers:boolean; inline;
@@ -968,6 +973,8 @@ type EpvFrameGraph=class(Exception);
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName write SetName;
               property Queue:TQueue read fQueue write fQueue;
+              property Separated:boolean read GetSeparated write SetSeparated;
+              property Toggleable:boolean read GetToggleable write SetToggleable;
               property Enabled:boolean read GetEnabled write SetEnabled;
               property HasSecondaryBuffers:boolean read GetHasSecondaryBuffers write SetHasSecondaryBuffers;
               property PhysicalPass:TPhysicalPass read fPhysicalPass;
@@ -2260,6 +2267,38 @@ begin
 
  inherited Destroy;
 
+end;
+
+function TpvFrameGraph.TPass.GetToggleable:boolean;
+begin
+ result:=TFlag.Toggleable in fFlags;
+end;
+
+procedure TpvFrameGraph.TPass.SetSeparated(const aSeparated:boolean);
+begin
+ if aSeparated<>(TFlag.Separated in fFlags) then begin
+  if aSeparated then begin
+   Include(fFlags,TFlag.Separated);
+  end else begin
+   Exclude(fFlags,TFlag.Separated);
+  end;
+ end;
+end;
+
+function TpvFrameGraph.TPass.GetSeparated:boolean;
+begin
+ result:=TFlag.Separated in fFlags;
+end;
+
+procedure TpvFrameGraph.TPass.SetToggleable(const aToggleable:boolean);
+begin
+ if aToggleable<>(TFlag.Toggleable in fFlags) then begin
+  if aToggleable then begin
+   Include(fFlags,TFlag.Toggleable);
+  end else begin
+   Exclude(fFlags,TFlag.Toggleable);
+  end;
+ end;
 end;
 
 function TpvFrameGraph.TPass.GetEnabled:boolean;
@@ -4062,10 +4101,10 @@ type TBeforeAfter=(Before,After);
     TRenderPass(Pass).fPhysicalRenderPassSubpass.fIndex:=PhysicalRenderPass.fSubpasses.Add(TRenderPass(Pass).fPhysicalRenderPassSubpass);
     PhysicalRenderPass.fMultiview:=TRenderPass(Pass).fMultiviewMask<>0;
     inc(Index);
-    if not (TPass.TFlag.Toggleable in Pass.fFlags) then begin
+    if (Pass.fFlags*[TPass.TFlag.Separated,TPass.TFlag.Toggleable])=[] then begin
      while Index<Count do begin
       OtherPass:=fTopologicalSortedPasses[Index];
-      if (not (TPass.TFlag.Toggleable in OtherPass.fFlags)) and
+      if ((OtherPass.fFlags*[TPass.TFlag.Separated,TPass.TFlag.Toggleable])=[]) and
          (OtherPass is TRenderPass) and
          (TRenderPass(OtherPass).fQueue=TRenderPass(Pass).fQueue) and
          (TRenderPass(OtherPass).fSize=TRenderPass(Pass).fSize) then begin
