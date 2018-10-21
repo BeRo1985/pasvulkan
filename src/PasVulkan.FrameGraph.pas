@@ -3582,7 +3582,7 @@ begin
   end;
  end;
 
- fDrawToWaitOnSemaphoreExternalDstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+ fDrawToWaitOnSemaphoreExternalDstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT{VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT});
 
 end;
 
@@ -5244,7 +5244,7 @@ type TEventBeforeAfter=(Event,Before,After);
      WaitingSemaphoreIndex:=PhysicalPass.fWaitingSemaphores.AddNew;
      WaitingSemaphore:=@PhysicalPass.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
      WaitingSemaphore^.SignallingPhysicalPass:=nil;
-     WaitingSemaphore^.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+     WaitingSemaphore^.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT{VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT});
     end;
    end;
   end;
@@ -5440,7 +5440,7 @@ begin
       PhysicalPass.fSignallingSemaphores[SwapChainImageIndex].Add(Semaphore);
       PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
       fDrawToSignalSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
-      fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Add(TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT{K_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT}));
+      fDrawToSignalSemaphoreDstStageMasks[SwapChainImageIndex].Add(TVkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT{VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT}));
      end;
      SubmitInfo^.signalSemaphoreCount:=PhysicalPass.fSignallingSemaphoreHandles[SwapChainImageIndex].Count;
      if SubmitInfo^.signalSemaphoreCount>0 then begin
