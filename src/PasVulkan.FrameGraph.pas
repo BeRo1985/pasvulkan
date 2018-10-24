@@ -454,6 +454,8 @@ type EpvFrameGraph=class(Exception);
             end;
             TResourceAliasGroupList=TpvObjectGenericList<TResourceAliasGroup>;
             TResource=class
+             public
+              type TLayoutHistory=TpvInt64SkipList<TVkImageLayout>;
              private
               fFrameGraph:TpvFrameGraph;
               fName:TpvRawByteString;
@@ -465,6 +467,7 @@ type EpvFrameGraph=class(Exception);
               fMinimumPhysicalPassStepIndex:TpvSizeInt;
               fMaximumPhysicalPassStepIndex:TpvSizeInt;
               fResourceAliasGroup:TResourceAliasGroup;
+              fLayoutHistory:TLayoutHistory;
               fExternalData:TExternalData;
               fUsed:boolean;
              public
@@ -2063,6 +2066,8 @@ begin
  fMinimumPhysicalPassStepIndex:=High(TpvSizeInt);
  fMaximumPhysicalPassStepIndex:=Low(TpvSizeInt);
 
+ fLayoutHistory:=TLayoutHistory.Create(VK_IMAGE_LAYOUT_UNDEFINED);
+
  fUsed:=false;
 
  fFrameGraph.fResources.Add(self);
@@ -2085,6 +2090,7 @@ end;
 destructor TpvFrameGraph.TResource.Destroy;
 begin
  FreeAndNil(fResourceTransitions);
+ FreeAndNil(fLayoutHistory);
  inherited Destroy;
 end;
 
@@ -4472,13 +4478,20 @@ type TEventBeforeAfter=(Event,Before,After);
      ResourceTransition:TResourceTransition;
  begin
   for Resource in fResources do begin
-// Resource.fLayouts.Add(VK_LAYOUT_UNDEFINED);
+   if Resource.fResourceType is TImageResourceType then begin
+    Resource.fLayoutHistory[Low(TResource.TLayoutHistory.TKey)]:=VK_IMAGE_LAYOUT_UNDEFINED;
+    if TImageResourceType(Resource.fResourceType).fImageType=TImageType.Surface then begin
+     Resource.fLayoutHistory[High(TResource.TLayoutHistory.TKey)]:=VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    end;
+   end;
   end;
   for Pass in fTopologicalSortedPasses do begin
    for ResourceTransition in Pass.fResourceTransitions do begin
     if ResourceTransition.Kind in TResourceTransition.AllImages then begin
      Resource:=ResourceTransition.fResource;
-//   Resource.fLayouts.Add(ResourceTransition.fLayout);
+     if Resource.fResourceType is TImageResourceType then begin
+      Resource.fLayoutHistory[Pass.fTopologicalSortIndex]:=ResourceTransition.fLayout;
+     end;
     end;
    end;
   end;
