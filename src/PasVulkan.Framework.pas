@@ -11410,13 +11410,13 @@ begin
  SetLength(fMultiviewMasks,fCountMultiviewMasks);
  SetLength(fCorrelationMasks,fCountCorrelationMasks);
 
- fCountClearValues:=0;
- for Index:=0 to fCountAttachmentDescriptions-1 do begin
+ fCountClearValues:=fCountAttachmentDescriptions;
+{for Index:=0 to fCountAttachmentDescriptions-1 do begin
   AttachmentDescription:=@fAttachmentDescriptions[Index];
   if AttachmentDescription^.loadOp in [VK_ATTACHMENT_LOAD_OP_CLEAR] then begin
    fCountClearValues:=Max(fCountClearValues,Index+1);
   end;
- end;
+ end;}
  SetLength(fClearValues,fCountClearValues);
  for Index:=0 to fCountClearValues-1 do begin
   AttachmentDescription:=@fAttachmentDescriptions[Index];
