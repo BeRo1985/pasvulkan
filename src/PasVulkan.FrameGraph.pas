@@ -358,6 +358,8 @@ type EpvFrameGraph=class(Exception);
             end;
             TResource=class;
             TResourceList=TpvObjectGenericList<TResource>;
+            TResourceDynamicArray=TpvDynamicArray<TResource>;
+            TResourceHashMap=TpvHashMap<TResource,TpvPtrInt>;
             TResourceNameHashMap=TpvStringHashMap<TResource>;
             TResourceTypeList=TpvObjectGenericList<TResourceType>;
             TResourceTypeNameHashMap=TpvStringHashMap<TResourceType>;
@@ -4177,46 +4179,80 @@ type TEventBeforeAfter=(Event,Before,After);
   end;
  end;
  procedure CreatePhysicalPasses;
+ type TOutputAttachmentImagesResources=TpvHashMap<TResource,boolean>;
  var Index,
      Count:TpvSizeInt;
      Pass,
      OtherPass:TPass;
      PhysicalRenderPass:TPhysicalRenderPass;
+     ResourceTransition:TResourceTransition;
+     Compatible:boolean;
+     OutputAttachmentImagesResources:TOutputAttachmentImagesResources;
  begin
   // Create physical passes together with merging render passes to sub passes of a real
   // physical render pass
-  fPhysicalPasses.Clear;
-  fMaximumOverallPhysicalPassIndex:=0;
-  Index:=0;
-  Count:=fTopologicalSortedPasses.Count;
-  while Index<Count do begin
-   Pass:=fTopologicalSortedPasses[Index];
-   if Pass is TComputePass then begin
-    Pass.fPhysicalPass:=TPhysicalComputePass.Create(self,TComputePass(Pass));
-    Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
-    Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
-    inc(Index);
-   end else if Pass is TTransferPass then begin
-    Pass.fPhysicalPass:=TPhysicalTransferPass.Create(self,TTransferPass(Pass));
-    Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
-    Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
-    inc(Index);
-   end else if Pass is TRenderPass then begin
-    PhysicalRenderPass:=TPhysicalRenderPass.Create(self,Pass.fQueue);
-    Pass.fPhysicalPass:=PhysicalRenderPass;
-    Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
-    Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
-    TRenderPass(Pass).fPhysicalRenderPassSubpass:=TPhysicalRenderPass.TSubpass.Create(PhysicalRenderPass,TRenderPass(Pass));
-    TRenderPass(Pass).fPhysicalRenderPassSubpass.fIndex:=PhysicalRenderPass.fSubpasses.Add(TRenderPass(Pass).fPhysicalRenderPassSubpass);
-    PhysicalRenderPass.fMultiview:=TRenderPass(Pass).fMultiviewMask<>0;
-    inc(Index);
-    if (Pass.fFlags*[TPass.TFlag.Separated,TPass.TFlag.Toggleable])=[] then begin
-     while Index<Count do begin
-      OtherPass:=fTopologicalSortedPasses[Index];
-      if ((OtherPass.fFlags*[TPass.TFlag.Separated,TPass.TFlag.Toggleable])=[]) and
-         (OtherPass is TRenderPass) and
-         (TRenderPass(OtherPass).fQueue=TRenderPass(Pass).fQueue) and
-         (TRenderPass(OtherPass).fSize=TRenderPass(Pass).fSize) then begin
+  OutputAttachmentImagesResources:=TOutputAttachmentImagesResources.Create(false);
+  try
+   fPhysicalPasses.Clear;
+   fMaximumOverallPhysicalPassIndex:=0;
+   Index:=0;
+   Count:=fTopologicalSortedPasses.Count;
+   while Index<Count do begin
+    Pass:=fTopologicalSortedPasses[Index];
+    if Pass is TComputePass then begin
+     Pass.fPhysicalPass:=TPhysicalComputePass.Create(self,TComputePass(Pass));
+     Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
+     Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
+     inc(Index);
+    end else if Pass is TTransferPass then begin
+     Pass.fPhysicalPass:=TPhysicalTransferPass.Create(self,TTransferPass(Pass));
+     Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
+     Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
+     inc(Index);
+    end else if Pass is TRenderPass then begin
+     OutputAttachmentImagesResources.Clear;
+     for ResourceTransition in Pass.fResourceTransitions do begin
+      if (ResourceTransition.Kind in TResourceTransition.AllImageOutputs) and
+         (TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags) then begin
+       OutputAttachmentImagesResources[ResourceTransition.fResource]:=true;
+      end;
+     end;
+     PhysicalRenderPass:=TPhysicalRenderPass.Create(self,Pass.fQueue);
+     Pass.fPhysicalPass:=PhysicalRenderPass;
+     Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
+     Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
+     TRenderPass(Pass).fPhysicalRenderPassSubpass:=TPhysicalRenderPass.TSubpass.Create(PhysicalRenderPass,TRenderPass(Pass));
+     TRenderPass(Pass).fPhysicalRenderPassSubpass.fIndex:=PhysicalRenderPass.fSubpasses.Add(TRenderPass(Pass).fPhysicalRenderPassSubpass);
+     PhysicalRenderPass.fMultiview:=TRenderPass(Pass).fMultiviewMask<>0;
+     inc(Index);
+     if (Pass.fFlags*[TPass.TFlag.Separated,TPass.TFlag.Toggleable])=[] then begin
+      while Index<Count do begin
+       OtherPass:=fTopologicalSortedPasses[Index];
+       if ((OtherPass.fFlags*[TPass.TFlag.Separated,TPass.TFlag.Toggleable])=[]) and
+          (OtherPass is TRenderPass) and
+          (TRenderPass(OtherPass).fQueue=TRenderPass(Pass).fQueue) and
+          (TRenderPass(OtherPass).fSize=TRenderPass(Pass).fSize) then begin
+        Compatible:=true;
+        for ResourceTransition in OtherPass.fResourceTransitions do begin
+         if (ResourceTransition.Kind in TResourceTransition.AllImageInputs) and
+            (TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags) and
+            (not OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource)) then begin
+          Compatible:=false;
+          break;
+         end;
+        end;
+        if not Compatible then begin
+         break;
+        end;
+       end else begin
+        break;
+       end;
+       for ResourceTransition in OtherPass.fResourceTransitions do begin
+        if (ResourceTransition.Kind in TResourceTransition.AllImageOutputs) and
+           (TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags) then begin
+         OutputAttachmentImagesResources[ResourceTransition.fResource]:=true;
+        end;
+       end;
        OtherPass.fPhysicalPass:=Pass.fPhysicalPass;
        TRenderPass(OtherPass).fPhysicalRenderPassSubpass:=TPhysicalRenderPass.TSubpass.Create(PhysicalRenderPass,TRenderPass(OtherPass));
        TRenderPass(OtherPass).fPhysicalRenderPassSubpass.fIndex:=PhysicalRenderPass.fSubpasses.Add(TRenderPass(OtherPass).fPhysicalRenderPassSubpass);
@@ -4224,15 +4260,15 @@ type TEventBeforeAfter=(Event,Before,After);
        PhysicalRenderPass.fMultiview:=PhysicalRenderPass.fMultiview or (TRenderPass(OtherPass).fMultiviewMask<>0);
        fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,OtherPass.fPhysicalPass.fIndex);
        inc(Index);
-      end else begin
-       break;
       end;
      end;
+    end else begin
+     inc(Index);
     end;
-   end else begin
-    inc(Index);
+    fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,Pass.fPhysicalPass.fIndex);
    end;
-   fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,Pass.fPhysicalPass.fIndex);
+  finally
+   FreeAndNil(OutputAttachmentImagesResources);
   end;
  end;
  procedure FindRootPhysicalPass;
