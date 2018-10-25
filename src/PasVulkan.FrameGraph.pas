@@ -4235,8 +4235,12 @@ type TEventBeforeAfter=(Event,Before,After);
         Compatible:=true;
         for ResourceTransition in OtherPass.fResourceTransitions do begin
          if (ResourceTransition.Kind in TResourceTransition.AllImageInputs) and
-            (TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags) and
-            (not OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource)) then begin
+            ((TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags) xor
+             OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource))
+{           (((TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags) and
+              (not OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource))) or
+             ((not (TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags)) and
+              OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource)))} then begin
           Compatible:=false;
           break;
          end;
