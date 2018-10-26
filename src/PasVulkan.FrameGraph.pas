@@ -228,6 +228,7 @@ type EpvFrameGraph=class(Exception);
                      fWaitingSemaphoreHandles:TVulkanSemaphoreHandles;
                      fWaitingSemaphoreDstStageMasks:TWaitingSemaphoreDstStageMasks;
                      fSubmitInfos:array[0..MaxSwapChainImages-1] of TVkSubmitInfo;
+                     fSubmitInfoIndex:TpvSizeInt;
                     public
                      constructor Create(const aQueue:TQueue); reintroduce;
                      destructor Destroy; override;
@@ -702,7 +703,6 @@ type EpvFrameGraph=class(Exception);
              private
               fFrameGraph:TpvFrameGraph;
               fIndex:TpvSizeInt;
-              fSubmitInfoIndex:TpvSizeInt;
               fProcessed:boolean;
               fHasSecondaryBuffers:boolean;
               fQueue:TQueue;
@@ -5531,7 +5531,7 @@ type TEventBeforeAfter=(Event,Before,After);
  procedure PrepareQueues;
  var Additional,SubmitInfoIndex:TpvSizeInt;
      Queue:TQueue;
-     PhysicalPass:TPhysicalPass;
+     CommandBuffer:TQueue.TCommandBuffer;
  begin
   for Queue in fQueues do begin
    if Queue=fUniversalQueue then begin
@@ -5541,10 +5541,10 @@ type TEventBeforeAfter=(Event,Before,After);
     Additional:=0;
     SubmitInfoIndex:=0;
    end;
-   Queue.fCountSubmitInfos:=Queue.fPhysicalPasses.Count+Additional;
+   Queue.fCountSubmitInfos:=Queue.fCommandBuffers.Count+Additional;
    SetLength(Queue.fSubmitInfos,Queue.fCountSubmitInfos);
-   for PhysicalPass in Queue.fPhysicalPasses do begin
-    PhysicalPass.fSubmitInfoIndex:=SubmitInfoIndex;
+   for CommandBuffer in Queue.fCommandBuffers do begin
+    CommandBuffer.fSubmitInfoIndex:=SubmitInfoIndex;
     inc(SubmitInfoIndex);
    end;
   end;
@@ -5889,7 +5889,7 @@ begin
    end;
   end;
   VulkanCommandBuffer.EndRecording;
-  Queue.fSubmitInfos[CommandBufferIndex]:=CommandBuffer.fSubmitInfos[fDrawSwapChainImageIndex];
+  Queue.fSubmitInfos[CommandBuffer.fSubmitInfoIndex]:=CommandBuffer.fSubmitInfos[fDrawSwapChainImageIndex];
  end;
 end;
 
