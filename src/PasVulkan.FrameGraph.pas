@@ -213,6 +213,7 @@ type EpvFrameGraph=class(Exception);
                     private
                      fQueue:TQueue;
                      fPhysicalPasses:TPhysicalPasses;
+                     fCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
                     public
                      constructor Create(const aQueue:TQueue); reintroduce;
                      destructor Destroy; override;
@@ -227,6 +228,7 @@ type EpvFrameGraph=class(Exception);
               fPhysicalQueue:TpvVulkanQueue;
               fPhysicalPasses:TPhysicalPasses;
               fCommandPool:TpvVulkanCommandPool;
+              fCommandBufferCommandPool:TpvVulkanCommandPool;
               fCommandBuffers:TCommandBuffers;
               fSubmitInfos:TVkSubmitInfos;
               fCountSubmitInfos:TPasMPInt32;
@@ -1353,16 +1355,24 @@ end;
 { TpvFrameGraph.TQueue.TCommandBuffer }
 
 constructor TpvFrameGraph.TQueue.TCommandBuffer.Create(const aQueue:TQueue);
+var SwapChainImageIndex:TpvSizeInt;
 begin
  inherited Create;
  fQueue:=aQueue;
  fPhysicalPasses:=TPhysicalPasses.Create;
  fPhysicalPasses.OwnsObjects:=false;
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  fCommandBuffers[SwapChainImageIndex]:=nil;
+ end;
 end;
 
 destructor TpvFrameGraph.TQueue.TCommandBuffer.Destroy;
+var SwapChainImageIndex:TpvSizeInt;
 begin
  FreeAndNil(fPhysicalPasses);
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  FreeAndNil(fCommandBuffers[SwapChainImageIndex]);
+ end;
  inherited Destroy;
 end;
 
@@ -1375,11 +1385,19 @@ begin
 end;
 
 procedure TpvFrameGraph.TQueue.TCommandBuffer.AfterCreateSwapChain;
+var SwapChainImageIndex:TpvSizeInt;
 begin
+ for SwapChainImageIndex:=0 to fQueue.fFrameGraph.fCountSwapChainImages-1 do begin
+  fCommandBuffers[SwapChainImageIndex]:=TpvVulkanCommandBuffer.Create(fQueue.fCommandBufferCommandPool,VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+ end;
 end;
 
 procedure TpvFrameGraph.TQueue.TCommandBuffer.BeforeDestroySwapChain;
+var SwapChainImageIndex:TpvSizeInt;
 begin
+ for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
+  FreeAndNil(fCommandBuffers[SwapChainImageIndex]);
+ end;
 end;
 
 { TpvFrameGraph.TQueue }
@@ -1401,6 +1419,8 @@ begin
                                            fPhysicalQueue.QueueFamilyIndex,
                                            TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
+ fCommandBufferCommandPool:=nil;
+
  fCommandBuffers:=TCommandBuffers.Create;
  fCommandBuffers.OwnsObjects:=true;
 
@@ -1412,6 +1432,8 @@ begin
  FreeAndNil(fCommandBuffers);
 
  FreeAndNil(fPhysicalPasses);
+
+ FreeAndNil(fCommandBufferCommandPool);
 
  FreeAndNil(fCommandPool);
 
@@ -1438,6 +1460,9 @@ end;
 procedure TpvFrameGraph.TQueue.AfterCreateSwapChain;
 var CommandBuffer:TCommandBuffer;
 begin
+ fCommandBufferCommandPool:=TpvVulkanCommandPool.Create(fFrameGraph.fVulkanDevice,
+                                                        fPhysicalQueue.QueueFamilyIndex,
+                                                        TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
  for CommandBuffer in fCommandBuffers do begin
   CommandBuffer.AfterCreateSwapChain;
  end;
@@ -1449,6 +1474,7 @@ begin
  for CommandBuffer in fCommandBuffers do begin
   CommandBuffer.BeforeDestroySwapChain;
  end;
+ FreeAndNil(fCommandBufferCommandPool);
 end;
 
 { TpvFrameGraph.TExternalData }
