@@ -209,17 +209,35 @@ type EpvFrameGraph=class(Exception);
             TQueue=class
              public
               type TVkSubmitInfos=array of TVkSubmitInfo;
+                   TCommandBuffer=class
+                    private
+                     fQueue:TQueue;
+                     fPhysicalPasses:TPhysicalPasses;
+                    public
+                     constructor Create(const aQueue:TQueue); reintroduce;
+                     destructor Destroy; override;
+                     procedure Show;
+                     procedure Hide;
+                     procedure AfterCreateSwapChain;
+                     procedure BeforeDestroySwapChain;
+                   end;
+                   TCommandBuffers=TpvObjectGenericList<TCommandBuffer>;
              private
               fFrameGraph:TpvFrameGraph;
               fPhysicalQueue:TpvVulkanQueue;
               fPhysicalPasses:TPhysicalPasses;
               fCommandPool:TpvVulkanCommandPool;
+              fCommandBuffers:TCommandBuffers;
               fSubmitInfos:TVkSubmitInfos;
               fCountSubmitInfos:TPasMPInt32;
              public
               constructor Create(const aFrameGraph:TpvFrameGraph;
                                  const aPhysicalQueue:TpvVulkanQueue); reintroduce;
               destructor Destroy; override;
+              procedure Show;
+              procedure Hide;
+              procedure AfterCreateSwapChain;
+              procedure BeforeDestroySwapChain;
              published
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property PhysicalQueue:TpvVulkanQueue read fPhysicalQueue;
@@ -1332,6 +1350,38 @@ begin
          (aLeft.Size<>aRight.Size);
 end;
 
+{ TpvFrameGraph.TQueue.TCommandBuffer }
+
+constructor TpvFrameGraph.TQueue.TCommandBuffer.Create(const aQueue:TQueue);
+begin
+ inherited Create;
+ fQueue:=aQueue;
+ fPhysicalPasses:=TPhysicalPasses.Create;
+ fPhysicalPasses.OwnsObjects:=false;
+end;
+
+destructor TpvFrameGraph.TQueue.TCommandBuffer.Destroy;
+begin
+ FreeAndNil(fPhysicalPasses);
+ inherited Destroy;
+end;
+
+procedure TpvFrameGraph.TQueue.TCommandBuffer.Show;
+begin
+end;
+
+procedure TpvFrameGraph.TQueue.TCommandBuffer.Hide;
+begin
+end;
+
+procedure TpvFrameGraph.TQueue.TCommandBuffer.AfterCreateSwapChain;
+begin
+end;
+
+procedure TpvFrameGraph.TQueue.TCommandBuffer.BeforeDestroySwapChain;
+begin
+end;
+
 { TpvFrameGraph.TQueue }
 
 constructor TpvFrameGraph.TQueue.Create(const aFrameGraph:TpvFrameGraph;
@@ -1351,10 +1401,15 @@ begin
                                            fPhysicalQueue.QueueFamilyIndex,
                                            TVkCommandPoolCreateFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT));
 
+ fCommandBuffers:=TCommandBuffers.Create;
+ fCommandBuffers.OwnsObjects:=true;
+
 end;
 
 destructor TpvFrameGraph.TQueue.Destroy;
 begin
+
+ FreeAndNil(fCommandBuffers);
 
  FreeAndNil(fPhysicalPasses);
 
@@ -1362,6 +1417,38 @@ begin
 
  inherited Destroy;
 
+end;
+
+procedure TpvFrameGraph.TQueue.Show;
+var CommandBuffer:TCommandBuffer;
+begin
+ for CommandBuffer in fCommandBuffers do begin
+  CommandBuffer.Show;
+ end;
+end;
+
+procedure TpvFrameGraph.TQueue.Hide;
+var CommandBuffer:TCommandBuffer;
+begin
+ for CommandBuffer in fCommandBuffers do begin
+  CommandBuffer.Hide;
+ end;
+end;
+
+procedure TpvFrameGraph.TQueue.AfterCreateSwapChain;
+var CommandBuffer:TCommandBuffer;
+begin
+ for CommandBuffer in fCommandBuffers do begin
+  CommandBuffer.AfterCreateSwapChain;
+ end;
+end;
+
+procedure TpvFrameGraph.TQueue.BeforeDestroySwapChain;
+var CommandBuffer:TCommandBuffer;
+begin
+ for CommandBuffer in fCommandBuffers do begin
+  CommandBuffer.BeforeDestroySwapChain;
+ end;
 end;
 
 { TpvFrameGraph.TExternalData }
@@ -5477,6 +5564,7 @@ end;
 procedure TpvFrameGraph.Show;
 var ResourceAliasGroup:TResourceAliasGroup;
     PhysicalPass:TPhysicalPass;
+    Queue:TQueue;
 begin
  for ResourceAliasGroup in fResourceAliasGroups do begin
   ResourceAliasGroup.Show;
@@ -5484,12 +5572,19 @@ begin
  for PhysicalPass in fPhysicalPasses do begin
   PhysicalPass.Show;
  end;
+ for Queue in fQueues do begin
+  Queue.Show;
+ end;
 end;
 
 procedure TpvFrameGraph.Hide;
 var ResourceAliasGroup:TResourceAliasGroup;
     PhysicalPass:TPhysicalPass;
+    Queue:TQueue;
 begin
+ for Queue in fQueues do begin
+  Queue.Hide;
+ end;
  for PhysicalPass in fPhysicalPasses do begin
   PhysicalPass.Hide;
  end;
@@ -5509,12 +5604,16 @@ var SwapChainImageIndex,
     WaitingSemaphore:TPhysicalPass.PWaitingSemaphore;
     Semaphore:TpvVulkanSemaphore;
     ResetEvent:TPhysicalPass.TResetEvent;
+    Queue:TQueue;
 begin
  for ResourceAliasGroup in fResourceAliasGroups do begin
   ResourceAliasGroup.AfterCreateSwapChain;
  end;
  for PhysicalPass in fPhysicalPasses do begin
   PhysicalPass.AfterCreateSwapChain;
+ end;
+ for Queue in fQueues do begin
+  Queue.AfterCreateSwapChain;
  end;
  for PhysicalPass in fPhysicalPasses do begin
   PhysicalPass.fWaitingSemaphoreHandles.Clear;
@@ -5645,7 +5744,11 @@ var SwapChainImageIndex,
     Index:TpvSizeInt;
     ResourceAliasGroup:TResourceAliasGroup;
     PhysicalPass:TPhysicalPass;
+    Queue:TQueue;
 begin
+ for Queue in fQueues do begin
+  Queue.BeforeDestroySwapChain;
+ end;
  for PhysicalPass in fPhysicalPasses do begin
   PhysicalPass.BeforeDestroySwapChain;
  end;
