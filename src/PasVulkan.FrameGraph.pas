@@ -4585,28 +4585,30 @@ type TEventBeforeAfter=(Event,Before,After);
      OtherPhysicalPass:TPhysicalPass;
      Queue:TQueue;
      CommandBuffer:TQueue.TCommandBuffer;
-     PhysicalPassCrossQueueDependencies:boolean;
+     PhysicalPassWithCrossQueueDependencies:boolean;
      ResourceTransition:TResourceTransition;
  begin
   for Queue in fQueues do begin
    CommandBuffer:=nil;
    for PhysicalPass in Queue.fPhysicalPasses do begin
-    PhysicalPassCrossQueueDependencies:=false;
+    PhysicalPassWithCrossQueueDependencies:=false;
     for OtherPhysicalPass in PhysicalPass.fInputDependencies do begin
      if Queue<>OtherPhysicalPass.fQueue then begin
-      PhysicalPassCrossQueueDependencies:=true;
+      PhysicalPassWithCrossQueueDependencies:=true;
       break;
      end;
     end;
-    for OtherPhysicalPass in PhysicalPass.fOutputDependencies do begin
-     if Queue<>OtherPhysicalPass.fQueue then begin
-      PhysicalPassCrossQueueDependencies:=true;
-      break;
+    if not PhysicalPassWithCrossQueueDependencies then begin
+     for OtherPhysicalPass in PhysicalPass.fOutputDependencies do begin
+      if Queue<>OtherPhysicalPass.fQueue then begin
+       PhysicalPassWithCrossQueueDependencies:=true;
+       break;
+      end;
      end;
     end;
     if (not assigned(CommandBuffer)) or
        (PhysicalPass.fSeparateCommandBuffer or
-        PhysicalPassCrossQueueDependencies) then begin
+        PhysicalPassWithCrossQueueDependencies) then begin
      CommandBuffer:=TQueue.TCommandBuffer.Create(Queue);
      Queue.fCommandBuffers.Add(CommandBuffer);
      fAllQueueCommandBuffers.Add(CommandBuffer);
@@ -4614,7 +4616,7 @@ type TEventBeforeAfter=(Event,Before,After);
     CommandBuffer.fPhysicalPasses.Add(PhysicalPass);
     PhysicalPass.fQueueCommandBuffer:=CommandBuffer;
     if PhysicalPass.fSeparateCommandBuffer or
-       PhysicalPassCrossQueueDependencies then begin
+       PhysicalPassWithCrossQueueDependencies then begin
      CommandBuffer:=nil;
     end;
    end;
