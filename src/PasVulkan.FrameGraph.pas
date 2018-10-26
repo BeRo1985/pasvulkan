@@ -4583,6 +4583,7 @@ type TEventBeforeAfter=(Event,Before,After);
        PhysicalPassCrossQueueDependencies or
        LastPhysicalPassCrossQueueDependencies then begin
      CommandBuffer:=TQueue.TCommandBuffer.Create(Queue);
+     Queue.fCommandBuffers.Add(CommandBuffer);
     end;
     CommandBuffer.fPhysicalPasses.Add(PhysicalPass);
     PhysicalPass.fQueueCommandBuffer:=CommandBuffer;
