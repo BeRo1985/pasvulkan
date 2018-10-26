@@ -4181,7 +4181,8 @@ type TEventBeforeAfter=(Event,Before,After);
  procedure CreatePhysicalPasses;
  type TOutputAttachmentImagesResources=TpvHashMap<TResource,boolean>;
  var Index,
-     Count:TpvSizeInt;
+     Count,
+     CountFoundCrossSubpassAttachmentPairs:TpvSizeInt;
      Pass,
      OtherPass:TPass;
      PhysicalRenderPass:TPhysicalRenderPass;
@@ -4232,20 +4233,27 @@ type TEventBeforeAfter=(Event,Before,After);
           (OtherPass is TRenderPass) and
           (TRenderPass(OtherPass).fQueue=TRenderPass(Pass).fQueue) and
           (TRenderPass(OtherPass).fSize=TRenderPass(Pass).fSize) then begin
+        CountFoundCrossSubpassAttachmentPairs:=0;
         Compatible:=true;
         for ResourceTransition in OtherPass.fResourceTransitions do begin
-         if (ResourceTransition.Kind in TResourceTransition.AllImageInputs) and
-            ((TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags) xor
-             OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource))
-{           (((TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags) and
-              (not OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource))) or
-             ((not (TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags)) and
-              OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource)))} then begin
-          Compatible:=false;
-          break;
+         if (ResourceTransition.Kind in TResourceTransition.AllImageInputs) then begin
+          if TResourceTransition.TFlag.Attachment in ResourceTransition.fFlags then begin
+           if not OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource) then begin
+            Compatible:=false;
+            break;
+           end;
+           inc(CountFoundCrossSubpassAttachmentPairs);
+          end else begin
+           if OutputAttachmentImagesResources.ExistKey(ResourceTransition.Resource) then begin
+            Compatible:=false;
+            break;
+           end;
+          end;
          end;
         end;
-        if not Compatible then begin
+        if (CountFoundCrossSubpassAttachmentPairs=0) or // In this case it's compatible but not useful, so no merge in order to avoid
+                                                        // unnecessarily exhausting the attachment count limits per physical render pass
+           (not Compatible) then begin                  // And when it's not compatible, then we don't merge the subpasses anyway
          break;
         end;
        end else begin
