@@ -5462,7 +5462,7 @@ type TEventBeforeAfter=(Event,Before,After);
        if UsedBefore and (not UsedNow) and (UsedAfter or IsSurfaceOrPersistent) then begin
         Subpass.fPreserveAttachments.Add(AttachmentIndex);
        end;
-       if (SubpassIndex>0) and (UsedAfter or isSurfaceOrPersistent) then begin
+       if (SubpassIndex>=0) and (UsedAfter or isSurfaceOrPersistent) then begin
         case Attachment^.ImageType of
          TImageType.Surface,TImageType.Color,TImageType.Depth:begin
           Attachment^.StoreOp:=VK_ATTACHMENT_STORE_OP_STORE;
