@@ -5108,6 +5108,7 @@ type TEventBeforeAfter=(Event,Before,After);
         end;
 
         if NeedBarriers then begin
+
          if ResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer=OtherResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer then begin
 
           // Same command buffer (which also means: same queue and same queue family)
@@ -5238,9 +5239,13 @@ type TEventBeforeAfter=(Event,Before,After);
        end;
 
       end;
+
      end;
+
     end;
+
    end;
+
   end;
 
  end;
