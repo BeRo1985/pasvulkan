@@ -5069,14 +5069,13 @@ type TEventBeforeAfter=(Event,Before,After);
           AddSubpassDependency(TPhysicalRenderPass(OtherResourceTransition.fPass.fPhysicalPass).fSubpassDependencies,SubpassDependency);
          end;
 
+         SubpassDependency.DependencyFlags:=0;
+
          NeedBarriers:=true;
 
         end;
 
         if NeedBarriers then begin
-
-         SubpassDependency.DependencyFlags:=0;
-
          if ResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer=OtherResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer then begin
 
           // Same command buffer (which also means: same queue and same queue family)
