@@ -210,10 +210,21 @@ type EpvFrameGraph=class(Exception);
              public
               type TVkSubmitInfos=array of TVkSubmitInfo;
                    TCommandBuffer=class
+                    public
+                     type TWaitingSemaphore=record
+                           SignallingCommandBuffer:TCommandBuffer;
+                           DstStageMask:TVkPipelineStageFlags;
+                          end;
+                          PWaitingSemaphore=^TWaitingSemaphore;
+                          TWaitingSemaphores=TpvDynamicArray<TWaitingSemaphore>;
+                          TWaitingSemaphoreDstStageMasks=TpvDynamicArray<TVkPipelineStageFlags>;
                     private
                      fQueue:TQueue;
                      fPhysicalPasses:TPhysicalPasses;
                      fCommandBuffers:array[0..MaxSwapChainImages-1] of TpvVulkanCommandBuffer;
+                     fWaitingSemaphores:TWaitingSemaphores;
+                     fWaitingSemaphoreHandles:TVulkanSemaphoreHandles;
+                     fWaitingSemaphoreDstStageMasks:TWaitingSemaphoreDstStageMasks;
                     public
                      constructor Create(const aQueue:TQueue); reintroduce;
                      destructor Destroy; override;
@@ -1359,21 +1370,41 @@ constructor TpvFrameGraph.TQueue.TCommandBuffer.Create(const aQueue:TQueue);
 var SwapChainImageIndex:TpvSizeInt;
 begin
  inherited Create;
+
  fQueue:=aQueue;
+
  fPhysicalPasses:=TPhysicalPasses.Create;
+
  fPhysicalPasses.OwnsObjects:=false;
+
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   fCommandBuffers[SwapChainImageIndex]:=nil;
  end;
+
+ fWaitingSemaphores.Initialize;
+
+ fWaitingSemaphoreHandles.Initialize;
+
+ fWaitingSemaphoreDstStageMasks.Initialize;
+
 end;
 
 destructor TpvFrameGraph.TQueue.TCommandBuffer.Destroy;
 var SwapChainImageIndex:TpvSizeInt;
 begin
+
+ fWaitingSemaphores.Finalize;
+
+ fWaitingSemaphoreHandles.Finalize;
+
+ fWaitingSemaphoreDstStageMasks.Finalize;
+
  FreeAndNil(fPhysicalPasses);
+
  for SwapChainImageIndex:=0 to MaxSwapChainImages-1 do begin
   FreeAndNil(fCommandBuffers[SwapChainImageIndex]);
  end;
+
  inherited Destroy;
 end;
 
@@ -4732,23 +4763,23 @@ type TEventBeforeAfter=(Event,Before,After);
     aSubpassDependencies.Add(aSubpassDependency);
    end;
   end;
-  procedure AddSemaphoreSignalWait(const aSignallingPhysicalPass:TPhysicalPass;
-                                   const aWaitingPhysicalPass:TPhysicalPass;
+  procedure AddSemaphoreSignalWait(const aSignallingCommandBuffer:TQueue.TCommandBuffer;
+                                   const aWaitingCommandBuffer:TQueue.TCommandBuffer;
                                    const aDstStageMask:TVkPipelineStageFlags);
   var WaitingSemaphoreIndex:TpvSizeInt;
-      WaitingSemaphore:TPhysicalPass.PWaitingSemaphore;
+      WaitingSemaphore:TQueue.TCommandBuffer.PWaitingSemaphore;
   begin
    WaitingSemaphore:=nil;
-   for WaitingSemaphoreIndex:=0 to aWaitingPhysicalPass.fWaitingSemaphores.Count-1 do begin
-    if aWaitingPhysicalPass.fWaitingSemaphores.Items[WaitingSemaphoreIndex].SignallingPhysicalPass=aSignallingPhysicalPass then begin
-     WaitingSemaphore:=@aWaitingPhysicalPass.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
+   for WaitingSemaphoreIndex:=0 to aWaitingCommandBuffer.fWaitingSemaphores.Count-1 do begin
+    if aWaitingCommandBuffer.fWaitingSemaphores.Items[WaitingSemaphoreIndex].SignallingCommandBuffer=aSignallingCommandBuffer then begin
+     WaitingSemaphore:=@aWaitingCommandBuffer.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
      break;
     end;
    end;
    if not assigned(WaitingSemaphore) then begin
-    WaitingSemaphoreIndex:=aWaitingPhysicalPass.fWaitingSemaphores.AddNew;
-    WaitingSemaphore:=@aWaitingPhysicalPass.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
-    WaitingSemaphore^.SignallingPhysicalPass:=aSignallingPhysicalPass;
+    WaitingSemaphoreIndex:=aWaitingCommandBuffer.fWaitingSemaphores.AddNew;
+    WaitingSemaphore:=@aWaitingCommandBuffer.fWaitingSemaphores.Items[WaitingSemaphoreIndex];
+    WaitingSemaphore^.SignallingCommandBuffer:=aSignallingCommandBuffer;
     WaitingSemaphore^.DstStageMask:=0;
    end;
    WaitingSemaphore^.DstStageMask:=WaitingSemaphore^.DstStageMask or aDstStageMask;
@@ -5120,12 +5151,6 @@ type TEventBeforeAfter=(Event,Before,After);
                               SubpassDependency.DependencyFlags
                              );
 
-           // Add a semaphore
-           AddSemaphoreSignalWait(ResourceTransition.fPass.fPhysicalPass, // Signalling / After
-                                  OtherResourceTransition.fPass.fPhysicalPass, // Waiting / Before
-                                  SubpassDependency.DstStageMask
-                                 );
-
           end else begin
 
            // Different queue families (and different queues, of course)
@@ -5162,13 +5187,13 @@ type TEventBeforeAfter=(Event,Before,After);
                               SubpassDependency.DependencyFlags
                              );
 
-           // Add a semaphore
-           AddSemaphoreSignalWait(ResourceTransition.fPass.fPhysicalPass, // Signalling / After
-                                  OtherResourceTransition.fPass.fPhysicalPass, // Waiting / Before
-                                  SubpassDependency.DstStageMask
-                                 );
-
           end;
+
+          // Add a semaphore
+          AddSemaphoreSignalWait(ResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer, // Signalling / After
+                                 OtherResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer, // Waiting / Before
+                                 SubpassDependency.DstStageMask
+                                );
 
          end;
 
