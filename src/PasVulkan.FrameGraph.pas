@@ -704,6 +704,7 @@ type EpvFrameGraph=class(Exception);
               fFrameGraph:TpvFrameGraph;
               fIndex:TpvSizeInt;
               fProcessed:boolean;
+              fSeparateCommandBuffer:boolean;
               fHasSecondaryBuffers:boolean;
               fQueue:TQueue;
               fInputDependencies:TPhysicalPasses;
@@ -841,7 +842,8 @@ type EpvFrameGraph=class(Exception);
              public
               type TFlag=
                     (
-                     Separated,
+                     SeparatePhysicalPass,
+                     SeparateCommandBuffer,
                      Toggleable,
                      Enabled,
                      Used,
@@ -914,8 +916,10 @@ type EpvFrameGraph=class(Exception);
               fPhysicalPass:TPhysicalPass;
               fTopologicalSortIndex:TpvSizeInt;
               fDoubleBufferedEnabledState:array[0..1] of longbool;
-              function GetSeparated:boolean; inline;
-              procedure SetSeparated(const aSeparated:boolean);
+              function GetSeparatePhysicalPass:boolean; inline;
+              procedure SetSeparatePhysicalPass(const aSeparatePhysicalPass:boolean);
+              function GetSeparateCommandBuffer:boolean; inline;
+              procedure SetSeparateCommandBuffer(const aSeparateCommandBuffer:boolean);
               function GetToggleable:boolean; inline;
               procedure SetToggleable(const aToggleable:boolean);
               function GetEnabled:boolean; inline;
@@ -1018,7 +1022,8 @@ type EpvFrameGraph=class(Exception);
               property FrameGraph:TpvFrameGraph read fFrameGraph;
               property Name:TpvRawByteString read fName write SetName;
               property Queue:TQueue read fQueue write fQueue;
-              property Separated:boolean read GetSeparated write SetSeparated;
+              property SeparatePhysicalPass:boolean read GetSeparatePhysicalPass write SetSeparatePhysicalPass;
+              property SeparateCommandBuffer:boolean read GetSeparateCommandBuffer write SetSeparateCommandBuffer;
               property Toggleable:boolean read GetToggleable write SetToggleable;
               property Enabled:boolean read GetEnabled write SetEnabled;
               property HasSecondaryBuffers:boolean read GetHasSecondaryBuffers write SetHasSecondaryBuffers;
@@ -2442,25 +2447,41 @@ begin
 
 end;
 
-function TpvFrameGraph.TPass.GetToggleable:boolean;
+function TpvFrameGraph.TPass.GetSeparatePhysicalPass:boolean;
 begin
- result:=TFlag.Toggleable in fFlags;
+ result:=TFlag.SeparatePhysicalPass in fFlags;
 end;
 
-procedure TpvFrameGraph.TPass.SetSeparated(const aSeparated:boolean);
+procedure TpvFrameGraph.TPass.SetSeparatePhysicalPass(const aSeparatePhysicalPass:boolean);
 begin
- if aSeparated<>(TFlag.Separated in fFlags) then begin
-  if aSeparated then begin
-   Include(fFlags,TFlag.Separated);
+ if aSeparatePhysicalPass<>(TFlag.SeparatePhysicalPass in fFlags) then begin
+  if aSeparatePhysicalPass then begin
+   Include(fFlags,TFlag.SeparatePhysicalPass);
   end else begin
-   Exclude(fFlags,TFlag.Separated);
+   Exclude(fFlags,TFlag.SeparatePhysicalPass);
   end;
  end;
 end;
 
-function TpvFrameGraph.TPass.GetSeparated:boolean;
+function TpvFrameGraph.TPass.GetSeparateCommandBuffer:boolean;
 begin
- result:=TFlag.Separated in fFlags;
+ result:=TFlag.SeparateCommandBuffer in fFlags;
+end;
+
+procedure TpvFrameGraph.TPass.SetSeparateCommandBuffer(const aSeparateCommandBuffer:boolean);
+begin
+ if aSeparateCommandBuffer<>(TFlag.SeparateCommandBuffer in fFlags) then begin
+  if aSeparateCommandBuffer then begin
+   Include(fFlags,TFlag.SeparateCommandBuffer);
+  end else begin
+   Exclude(fFlags,TFlag.SeparateCommandBuffer);
+  end;
+ end;
+end;
+
+function TpvFrameGraph.TPass.GetToggleable:boolean;
+begin
+ result:=TFlag.Toggleable in fFlags;
 end;
 
 procedure TpvFrameGraph.TPass.SetToggleable(const aToggleable:boolean);
@@ -3051,6 +3072,8 @@ begin
  inherited Create;
 
  fFrameGraph:=aFrameGraph;
+
+ fSeparateCommandBuffer:=false;
 
  fHasSecondaryBuffers:=false;
 
@@ -4315,11 +4338,13 @@ type TEventBeforeAfter=(Event,Before,After);
     if Pass is TComputePass then begin
      Pass.fPhysicalPass:=TPhysicalComputePass.Create(self,TComputePass(Pass));
      Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
+     Pass.fPhysicalPass.fSeparateCommandBuffer:=Pass.GetSeparateCommandBuffer;
      Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
      inc(Index);
     end else if Pass is TTransferPass then begin
      Pass.fPhysicalPass:=TPhysicalTransferPass.Create(self,TTransferPass(Pass));
      Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
+     Pass.fPhysicalPass.fSeparateCommandBuffer:=Pass.GetSeparateCommandBuffer;
      Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
      inc(Index);
     end else if Pass is TRenderPass then begin
@@ -4333,15 +4358,20 @@ type TEventBeforeAfter=(Event,Before,After);
      PhysicalRenderPass:=TPhysicalRenderPass.Create(self,Pass.fQueue);
      Pass.fPhysicalPass:=PhysicalRenderPass;
      Pass.fPhysicalPass.fIndex:=fPhysicalPasses.Add(Pass.fPhysicalPass);
+     Pass.fPhysicalPass.fSeparateCommandBuffer:=Pass.GetSeparateCommandBuffer;
      Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.GetHasSecondaryBuffers;
      TRenderPass(Pass).fPhysicalRenderPassSubpass:=TPhysicalRenderPass.TSubpass.Create(PhysicalRenderPass,TRenderPass(Pass));
      TRenderPass(Pass).fPhysicalRenderPassSubpass.fIndex:=PhysicalRenderPass.fSubpasses.Add(TRenderPass(Pass).fPhysicalRenderPassSubpass);
      PhysicalRenderPass.fMultiview:=TRenderPass(Pass).fMultiviewMask<>0;
      inc(Index);
-     if (Pass.fFlags*[TPass.TFlag.Separated,TPass.TFlag.Toggleable])=[] then begin
+     if (Pass.fFlags*[TPass.TFlag.SeparatePhysicalPass,
+                      TPass.TFlag.SeparateCommandBuffer,
+                      TPass.TFlag.Toggleable])=[] then begin
       while Index<Count do begin
        OtherPass:=fTopologicalSortedPasses[Index];
-       if ((OtherPass.fFlags*[TPass.TFlag.Separated,TPass.TFlag.Toggleable])=[]) and
+       if ((OtherPass.fFlags*[TPass.TFlag.SeparatePhysicalPass,
+                              TPass.TFlag.SeparateCommandBuffer,
+                              TPass.TFlag.Toggleable])=[]) and
           (OtherPass is TRenderPass) and
           (TRenderPass(OtherPass).fQueue=TRenderPass(Pass).fQueue) and
           (TRenderPass(OtherPass).fSize=TRenderPass(Pass).fSize) then begin
@@ -4380,6 +4410,7 @@ type TEventBeforeAfter=(Event,Before,After);
        OtherPass.fPhysicalPass:=Pass.fPhysicalPass;
        TRenderPass(OtherPass).fPhysicalRenderPassSubpass:=TPhysicalRenderPass.TSubpass.Create(PhysicalRenderPass,TRenderPass(OtherPass));
        TRenderPass(OtherPass).fPhysicalRenderPassSubpass.fIndex:=PhysicalRenderPass.fSubpasses.Add(TRenderPass(OtherPass).fPhysicalRenderPassSubpass);
+       Pass.fPhysicalPass.fSeparateCommandBuffer:=Pass.fPhysicalPass.fSeparateCommandBuffer or Pass.GetSeparateCommandBuffer;
        Pass.fPhysicalPass.fHasSecondaryBuffers:=Pass.fPhysicalPass.fHasSecondaryBuffers or Pass.GetHasSecondaryBuffers;
        PhysicalRenderPass.fMultiview:=PhysicalRenderPass.fMultiview or (TRenderPass(OtherPass).fMultiviewMask<>0);
        fMaximumOverallPhysicalPassIndex:=Max(fMaximumOverallPhysicalPassIndex,OtherPass.fPhysicalPass.fIndex);
@@ -4554,13 +4585,11 @@ type TEventBeforeAfter=(Event,Before,After);
      OtherPhysicalPass:TPhysicalPass;
      Queue:TQueue;
      CommandBuffer:TQueue.TCommandBuffer;
-     PhysicalPassCrossQueueDependencies,
-     LastPhysicalPassCrossQueueDependencies:boolean;
+     PhysicalPassCrossQueueDependencies:boolean;
      ResourceTransition:TResourceTransition;
  begin
   for Queue in fQueues do begin
    CommandBuffer:=nil;
-   LastPhysicalPassCrossQueueDependencies:=false;
    for PhysicalPass in Queue.fPhysicalPasses do begin
     PhysicalPassCrossQueueDependencies:=false;
     for OtherPhysicalPass in PhysicalPass.fInputDependencies do begin
@@ -4576,15 +4605,18 @@ type TEventBeforeAfter=(Event,Before,After);
      end;
     end;
     if (not assigned(CommandBuffer)) or
-       PhysicalPassCrossQueueDependencies or
-       LastPhysicalPassCrossQueueDependencies then begin
+       (PhysicalPass.fSeparateCommandBuffer or
+        PhysicalPassCrossQueueDependencies) then begin
      CommandBuffer:=TQueue.TCommandBuffer.Create(Queue);
      Queue.fCommandBuffers.Add(CommandBuffer);
      fAllQueueCommandBuffers.Add(CommandBuffer);
     end;
     CommandBuffer.fPhysicalPasses.Add(PhysicalPass);
     PhysicalPass.fQueueCommandBuffer:=CommandBuffer;
-    LastPhysicalPassCrossQueueDependencies:=PhysicalPassCrossQueueDependencies;
+    if PhysicalPass.fSeparateCommandBuffer or
+       PhysicalPassCrossQueueDependencies then begin
+     CommandBuffer:=nil;
+    end;
    end;
   end;
  end;
