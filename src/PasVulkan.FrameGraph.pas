@@ -4920,7 +4920,8 @@ type TEventBeforeAfter=(Event,Before,After);
      PipelineBarrierGroup,
      FoundPipelineBarrierGroup:TPhysicalPass.TPipelineBarrierGroup;
      PhyiscalPass:TPhysicalPass;
-     NeedBarriers:boolean;
+     NeedBarriers,
+     NeedSemaphore:boolean;
  begin
 
   // First to try add the external Subpass dependencies
@@ -5136,20 +5137,49 @@ type TEventBeforeAfter=(Event,Before,After);
 
            // Same queue family
 
-           AddPipelineBarrier(TEventBeforeAfter.Before,
-                              nil,
-                              OtherResourceTransition.fPass.fPhysicalPass,
-                              Resource.fResourceAliasGroup.fResourcePhysicalData,
-                              ResourceTransition,
-                              OtherResourceTransition,
-                              SrcQueueFamilyIndex,
-                              DstQueueFamilyIndex,
-                              SubpassDependency.SrcStageMask,
-                              SubpassDependency.DstStageMask,
-                              SubpassDependency.SrcAccessMask,
-                              SubpassDependency.DstAccessMask,
-                              SubpassDependency.DependencyFlags
-                             );
+           if ResourceTransition.fPass.fQueue.fPhysicalQueue=OtherResourceTransition.fPass.fQueue.fPhysicalQueue then begin
+
+            // Same queue
+
+            AddPipelineBarrier(TEventBeforeAfter.Event,
+                               ResourceTransition.fPass.fPhysicalPass,
+                               OtherResourceTransition.fPass.fPhysicalPass,
+                               Resource.fResourceAliasGroup.fResourcePhysicalData,
+                               ResourceTransition,
+                               OtherResourceTransition,
+                               SrcQueueFamilyIndex,
+                               DstQueueFamilyIndex,
+                               SubpassDependency.SrcStageMask,
+                               SubpassDependency.DstStageMask,
+                               SubpassDependency.SrcAccessMask,
+                               SubpassDependency.DstAccessMask,
+                               SubpassDependency.DependencyFlags
+                              );
+
+            NeedSemaphore:=false;
+
+           end else begin
+
+            // Different queues
+
+            AddPipelineBarrier(TEventBeforeAfter.Before,
+                               nil,
+                               OtherResourceTransition.fPass.fPhysicalPass,
+                               Resource.fResourceAliasGroup.fResourcePhysicalData,
+                               ResourceTransition,
+                               OtherResourceTransition,
+                               SrcQueueFamilyIndex,
+                               DstQueueFamilyIndex,
+                               SubpassDependency.SrcStageMask,
+                               SubpassDependency.DstStageMask,
+                               SubpassDependency.SrcAccessMask,
+                               SubpassDependency.DstAccessMask,
+                               SubpassDependency.DependencyFlags
+                              );
+
+            NeedSemaphore:=true;
+
+           end;
 
           end else begin
 
@@ -5187,13 +5217,19 @@ type TEventBeforeAfter=(Event,Before,After);
                               SubpassDependency.DependencyFlags
                              );
 
+           NeedSemaphore:=true;
+
           end;
 
-          // Add a semaphore
-          AddSemaphoreSignalWait(ResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer, // Signalling / After
-                                 OtherResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer, // Waiting / Before
-                                 SubpassDependency.DstStageMask
-                                );
+          if NeedSemaphore then begin
+
+           // Add a semaphore
+           AddSemaphoreSignalWait(ResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer, // Signalling / After
+                                  OtherResourceTransition.fPass.fPhysicalPass.fQueueCommandBuffer, // Waiting / Before
+                                  SubpassDependency.DstStageMask
+                                 );
+
+          end;
 
          end;
 
