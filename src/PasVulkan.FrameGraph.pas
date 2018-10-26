@@ -5935,8 +5935,8 @@ begin
   CommandBuffer:=Queue.fCommandBuffers[CommandBufferIndex];
   VulkanCommandBuffer:=CommandBuffer.fCommandBuffers[fDrawSwapChainImageIndex];
   VulkanCommandBuffer.BeginRecording(TVkCommandBufferUsageFlags(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT));
-  for PhysicalPassIndex:=0 to Queue.fPhysicalPasses.Count-1 do begin
-   PhysicalPass:=Queue.fPhysicalPasses[PhysicalPassIndex];
+  for PhysicalPassIndex:=0 to CommandBuffer.fPhysicalPasses.Count-1 do begin
+   PhysicalPass:=CommandBuffer.fPhysicalPasses[PhysicalPassIndex];
    if assigned(PhysicalPass) then begin
     if PhysicalPass is TPhysicalComputePass then begin
      PhysicalComputePass:=TPhysicalComputePass(PhysicalPass);
