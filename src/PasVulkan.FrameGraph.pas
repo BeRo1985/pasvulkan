@@ -701,6 +701,7 @@ type EpvFrameGraph=class(Exception);
               fQueue:TQueue;
               fInputDependencies:TPhysicalPasses;
               fOutputDependencies:TPhysicalPasses;
+              fQueueCommandBuffer:TQueue.TCommandBuffer;
               fEventPipelineBarrierGroups:TPipelineBarrierGroups;
               fBeforePipelineBarrierGroups:TPipelineBarrierGroups;
               fAfterPipelineBarrierGroups:TPipelineBarrierGroups;
@@ -3030,6 +3031,8 @@ begin
  fOutputDependencies:=TPhysicalPasses.Create;
  fOutputDependencies.OwnsObjects:=false;
 
+ fQueueCommandBuffer:=nil;
+
  fEventPipelineBarrierGroups:=TPipelineBarrierGroups.Create;
  fEventPipelineBarrierGroups.OwnsObjects:=true;
 
@@ -4545,9 +4548,33 @@ type TEventBeforeAfter=(Event,Before,After);
  procedure CreatePhysicalPassQueueSequences;
  var PhysicalPass:TPhysicalPass;
  begin
-  // fPhysicalPasses is already toplogically sorted, so it's easy here
+  // PhysicalPasses is already toplogically sorted, so it's easy here
   for PhysicalPass in fPhysicalPasses do begin
    PhysicalPass.fQueue.fPhysicalPasses.Add(PhysicalPass);
+  end;
+ end;
+ procedure CreatePhysicalPassQueueCommandBuffers;
+  function HasPhysicalPassCrossQueueDependencies(const aPhysicalPass:TPhysicalPass):boolean;
+  begin
+   result:=false;
+   // TODO
+  end;
+ var PhysicalPassIndex:TpvSizeInt;
+     PhysicalPass:TPhysicalPass;
+     Queue:TQueue;
+     CommandBuffer:TQueue.TCommandBuffer;
+ begin
+  for Queue in fQueues do begin
+   CommandBuffer:=nil;
+   for PhysicalPassIndex:=0 to Queue.fPhysicalPasses.Count-1 do begin
+    PhysicalPass:=Queue.fPhysicalPasses[PhysicalPassIndex];
+    if (not assigned(CommandBuffer)) or
+       HasPhysicalPassCrossQueueDependencies(PhysicalPass) then begin
+     CommandBuffer:=TQueue.TCommandBuffer.Create(Queue);
+    end;
+    CommandBuffer.fPhysicalPasses.Add(PhysicalPass);
+    PhysicalPass.fQueueCommandBuffer:=CommandBuffer;
+   end;
   end;
  end;
  procedure CreateResourceAliasGroupData;
@@ -5566,6 +5593,8 @@ begin
  CreateResourceAliasGroups;
 
  CreatePhysicalPassQueueSequences;
+
+ CreatePhysicalPassQueueCommandBuffers;
 
  CreateResourceAliasGroupData;
 
