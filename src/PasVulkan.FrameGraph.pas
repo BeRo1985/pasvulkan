@@ -4554,26 +4554,39 @@ type TEventBeforeAfter=(Event,Before,After);
   end;
  end;
  procedure CreatePhysicalPassQueueCommandBuffers;
-  function HasPhysicalPassCrossQueueDependencies(const aPhysicalPass:TPhysicalPass):boolean;
-  begin
-   result:=false;
-   // TODO
-  end;
- var PhysicalPassIndex:TpvSizeInt;
-     PhysicalPass:TPhysicalPass;
+ var PhysicalPass,
+     OtherPhysicalPass:TPhysicalPass;
      Queue:TQueue;
      CommandBuffer:TQueue.TCommandBuffer;
+     PhysicalPassCrossQueueDependencies,
+     LastPhysicalPassCrossQueueDependencies:boolean;
+     ResourceTransition:TResourceTransition;
  begin
   for Queue in fQueues do begin
    CommandBuffer:=nil;
-   for PhysicalPassIndex:=0 to Queue.fPhysicalPasses.Count-1 do begin
-    PhysicalPass:=Queue.fPhysicalPasses[PhysicalPassIndex];
+   LastPhysicalPassCrossQueueDependencies:=false;
+   for PhysicalPass in Queue.fPhysicalPasses do begin
+    PhysicalPassCrossQueueDependencies:=false;
+    for OtherPhysicalPass in PhysicalPass.fInputDependencies do begin
+     if Queue<>OtherPhysicalPass.fQueue then begin
+      PhysicalPassCrossQueueDependencies:=true;
+      break;
+     end;
+    end;
+    for OtherPhysicalPass in PhysicalPass.fOutputDependencies do begin
+     if Queue<>OtherPhysicalPass.fQueue then begin
+      PhysicalPassCrossQueueDependencies:=true;
+      break;
+     end;
+    end;
     if (not assigned(CommandBuffer)) or
-       HasPhysicalPassCrossQueueDependencies(PhysicalPass) then begin
+       PhysicalPassCrossQueueDependencies or
+       LastPhysicalPassCrossQueueDependencies then begin
      CommandBuffer:=TQueue.TCommandBuffer.Create(Queue);
     end;
     CommandBuffer.fPhysicalPasses.Add(PhysicalPass);
     PhysicalPass.fQueueCommandBuffer:=CommandBuffer;
+    LastPhysicalPassCrossQueueDependencies:=PhysicalPassCrossQueueDependencies;
    end;
   end;
  end;
