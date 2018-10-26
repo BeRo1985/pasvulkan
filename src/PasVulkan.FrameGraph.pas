@@ -5718,7 +5718,8 @@ begin
    end;
    SubmitInfo^.commandBufferCount:=1;
    SubmitInfo^.pCommandBuffers:=@CommandBuffer.fCommandBuffers[SwapChainImageIndex].Handle;
-   if fDoSignalSemaphore and assigned(fRootPhysicalPass) then begin
+   if fDoSignalSemaphore and
+      (CommandBuffer=CommandBuffer.fQueue.fCommandBuffers[CommandBuffer.fQueue.fCommandBuffers.Count-1]) then begin
     Semaphore:=TpvVulkanSemaphore.Create(fVulkanDevice);
     CommandBuffer.fSignallingSemaphores[SwapChainImageIndex].Add(Semaphore);
     CommandBuffer.fSignallingSemaphoreHandles[SwapChainImageIndex].Add(Semaphore.Handle);
