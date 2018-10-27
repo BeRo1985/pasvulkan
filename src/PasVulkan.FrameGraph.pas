@@ -5977,7 +5977,7 @@ begin
   fUniversalQueue.fSubmitInfos[0]:=fDrawToWaitSubmitInfos[fDrawSwapChainImageIndex];
  end;
  if fCanDoParallelProcessing and assigned(pvApplication) then begin
-  pvApplication.PasMPInstance.ParallelFor(aQueue,0,aQueue.fCommandBuffers.Count-1,ExecuteQueueCommandBufferParallelForJobMethod,1,16,aJob,0);
+  pvApplication.PasMPInstance.Invoke(pvApplication.PasMPInstance.ParallelFor(aQueue,0,aQueue.fCommandBuffers.Count-1,ExecuteQueueCommandBufferParallelForJobMethod,1,16,aJob,0));
  end else begin
   ExecuteQueueCommandBufferParallelForJobMethod(nil,0,aQueue,0,aQueue.fCommandBuffers.Count-1);
  end;
@@ -6038,7 +6038,7 @@ begin
   fDrawToSignalSubmitInfos[fDrawSwapChainImageIndex].pSignalSemaphores:=nil;
  end;
  if fCanDoParallelProcessing and assigned(pvApplication) then begin
-  pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0);
+  pvApplication.PasMPInstance.Invoke(pvApplication.PasMPInstance.ParallelFor(nil,0,fQueues.Count-1,ExecuteQueueParallelForJobMethod,1,16,nil,0));
  end else begin
   ExecuteQueueParallelForJobMethod(nil,0,nil,0,fQueues.Count-1);
  end;
