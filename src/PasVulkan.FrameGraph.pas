@@ -1088,7 +1088,6 @@ type EpvFrameGraph=class(Exception);
        fPassNameHashMap:TPassNameHashMap;
        fTopologicalSortedPasses:TPassList;
        fRootPass:TPass;
-       fEnforcedRootPass:TPass;
        fMaximumOverallPhysicalPassIndex:TpvSizeInt;
        fValid:boolean;
        fCanDoParallelProcessing:boolean;
@@ -1193,8 +1192,7 @@ type EpvFrameGraph=class(Exception);
        property ResourceByName:TResourceNameHashMap read fResourceNameHashMap;
        property Passes:TPassList read fPasses;
        property PassByName:TPassNameHashMap read fPassNameHashMap;
-       property RootPass:TPass read fRootPass;
-       property EnforcedRootPass:TPass read fEnforcedRootPass write fEnforcedRootPass;
+       property RootPass:TPass read fRootPass write fRootPass;
        property RootPhysicalPass:TPhysicalPass read fRootPhysicalPass;
      end;
 
@@ -4157,7 +4155,6 @@ type TEventBeforeAfter=(Event,Before,After);
      Temporary:TpvSizeUInt;
  begin
   // Find root pass (a render pass, which have only a single attachment image output to a surface/swapchain)
-  fRootPass:=fEnforcedRootPass;
   if not assigned(fRootPass) then begin
    for Pass in fPasses do begin
     if Pass is TRenderPass then begin
