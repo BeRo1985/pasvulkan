@@ -5352,7 +5352,8 @@ type TEventBeforeAfter=(Event,Before,After);
           if (Attachment^.LoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and
              (Attachment^.ImageType in [TImageType.Surface,
                                         TImageType.Color,
-                                        TImageType.Depth]) then begin
+                                        TImageType.Depth,
+                                        TImageType.DepthStencil]) then begin
            Attachment^.LoadOp:=TLoadOp.Values[ResourceTransition.fLoadOp.Kind];
           end;
           if (Attachment^.StencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and
