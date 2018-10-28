@@ -20131,21 +20131,21 @@ begin
  end;
  AnisotropyEnable:=fMaxAnisotropy>1.0;
  fSampler:=TpvVulkanSampler.Create(fDevice,
-                                 MagFilter,
-                                 MinFilter,
-                                 MipmapMode,
-                                 AddressModeU,
-                                 AddressModeV,
-                                 AddressModeW,
-                                 0.0,
-                                 AnisotropyEnable,
-                                 fMaxAnisotropy,
-                                 false,
-                                 VK_COMPARE_OP_NEVER,
-                                 0.0,
-                                 fCountStorageLevels,
-                                 fBorderColor,
-                                 false);
+                                   MagFilter,
+                                   MinFilter,
+                                   MipmapMode,
+                                   AddressModeU,
+                                   AddressModeV,
+                                   AddressModeW,
+                                   0.0,
+                                   AnisotropyEnable,
+                                   fMaxAnisotropy,
+                                   false,
+                                   VK_COMPARE_OP_NEVER,
+                                   0.0,
+                                   fCountStorageLevels,
+                                   fBorderColor,
+                                   false);
  if assigned(fSampler) then begin
   fDescriptorImageInfo.sampler:=fSampler.fSamplerHandle;
  end else begin
