@@ -841,6 +841,18 @@ type EpvFrameGraph=class(Exception);
              published
               property VulkanRenderPass:TpvVulkanRenderPass read fVulkanRenderPass;
             end;
+            TExplicitPassDependency=class
+             private
+              fPass:TPass;
+              fDstStageMask:TVkPipelineStageFlags;
+            end;
+            TExplicitPassDependencyList=TpvObjectGenericList<TExplicitPassDependency>;
+            TExplicitPassNameDependency=class
+             private
+              fPassName:TpvRawByteString;
+              fDstStageMask:TVkPipelineStageFlags;
+            end;
+            TExplicitPassNameDependencyList=TpvObjectGenericList<TExplicitPassNameDependency>;
             TPass=class
              public
               type TFlag=
@@ -912,8 +924,8 @@ type EpvFrameGraph=class(Exception);
               fResources:TResourceList;
               fResourceTransitions:TResourceTransitionList;
               fUsedResources:TUsedResources;
-              fExplicitPassDependencies:TPassList;
-              fExplicitPassNameDependencies:TPassNameList;
+              fExplicitPassDependencies:TExplicitPassDependencyList;
+              fExplicitPassNameDependencies:TExplicitPassNameDependencyList;
               fPreviousPasses:TPassList;
               fNextPasses:TPassList;
               fIndex:TpvSizeInt;
@@ -953,8 +965,8 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
-              procedure AddExplicitPassDependency(const aPass:TPass); overload;
-              procedure AddExplicitPassDependency(const aPassName:TpvRawByteString); overload;
+              procedure AddExplicitPassDependency(const aPass:TPass;const aDstStageMask:TVkPipelineStageFlags=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)); overload;
+              procedure AddExplicitPassDependency(const aPassName:TpvRawByteString;const aDstStageMask:TVkPipelineStageFlags=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)); overload;
               function AddImageInput(const aResourceTypeName:TpvRawByteString;
                                      const aResourceName:TpvRawByteString;
                                      const aLayout:TVkImageLayout;
@@ -2424,10 +2436,11 @@ begin
  fUsedResources:=TUsedResources.Create;
  fUsedResources.OwnsObjects:=true;
 
- fExplicitPassDependencies:=TPassList.Create;
- fExplicitPassDependencies.OwnsObjects:=false;
+ fExplicitPassDependencies:=TExplicitPassDependencyList.Create;
+ fExplicitPassDependencies.OwnsObjects:=true;
 
- fExplicitPassNameDependencies:=TPassNameList.Create;
+ fExplicitPassNameDependencies:=TExplicitPassNameDependencyList.Create;
+ fExplicitPassNameDependencies.OwnsObjects:=true;
 
  fPreviousPasses:=TPassList.Create;
  fPreviousPasses.OwnsObjects:=false;
@@ -2558,40 +2571,52 @@ begin
  end;
 end;
 
-procedure TpvFrameGraph.TPass.AddExplicitPassDependency(const aPass:TPass);
+procedure TpvFrameGraph.TPass.AddExplicitPassDependency(const aPass:TPass;const aDstStageMask:TVkPipelineStageFlags=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
+var ExplicitPassDependency:TExplicitPassDependency;
 begin
- if fExplicitPassDependencies.IndexOf(aPass)<0 then begin
-  fExplicitPassDependencies.Add(aPass);
+ for ExplicitPassDependency in fExplicitPassDependencies do begin
+  if ExplicitPassDependency.fPass=aPass then begin
+   ExplicitPassDependency.fDstStageMask:=ExplicitPassDependency.fDstStageMask or aDstStageMask;
+   exit;
+  end;
  end;
+ ExplicitPassDependency:=TExplicitPassDependency.Create;
+ fExplicitPassDependencies.Add(ExplicitPassDependency);
+ ExplicitPassDependency.fPass:=aPass;
+ ExplicitPassDependency.fDstStageMask:=aDstStageMask;
 end;
 
-procedure TpvFrameGraph.TPass.AddExplicitPassDependency(const aPassName:TpvRawByteString);
-var Pass:TPass;
+procedure TpvFrameGraph.TPass.AddExplicitPassDependency(const aPassName:TpvRawByteString;const aDstStageMask:TVkPipelineStageFlags=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
+var ExplicitPassNameDependency:TExplicitPassNameDependency;
+    Pass:TPass;
 begin
  Pass:=fFrameGraph.fPassNameHashMap[aPassName];
  if assigned(Pass) then begin
-  if fExplicitPassDependencies.IndexOf(Pass)<0 then begin
-   fExplicitPassDependencies.Add(Pass);
-  end;
+  AddExplicitPassDependency(Pass,aDstStageMask);
  end else begin
-  if fExplicitPassNameDependencies.IndexOf(aPassName)<0 then begin
-   fExplicitPassNameDependencies.Add(aPassName);
+  for ExplicitPassNameDependency in fExplicitPassNameDependencies do begin
+   if ExplicitPassNameDependency.fPassName=aPassName then begin
+    ExplicitPassNameDependency.fDstStageMask:=ExplicitPassNameDependency.fDstStageMask or aDstStageMask;
+    exit;
+   end;
   end;
+  ExplicitPassNameDependency:=TExplicitPassNameDependency.Create;
+  fExplicitPassNameDependencies.Add(ExplicitPassNameDependency);
+  ExplicitPassNameDependency.fPassName:=aPassName;
+  ExplicitPassNameDependency.fDstStageMask:=aDstStageMask;
  end;
 end;
 
 procedure TpvFrameGraph.TPass.ResolveExplicitPassDependencies;
-var PassName:TpvRawByteString;
+var ExplicitPassNameDependency:TExplicitPassNameDependency;
     Pass:TPass;
 begin
- for PassName in fExplicitPassNameDependencies do begin
-  Pass:=fFrameGraph.fPassNameHashMap[PassName];
+ for ExplicitPassNameDependency in fExplicitPassNameDependencies do begin
+  Pass:=fFrameGraph.fPassNameHashMap[ExplicitPassNameDependency.fPassName];
   if assigned(Pass) then begin
-   if fExplicitPassDependencies.IndexOf(Pass)<0 then begin
-    fExplicitPassDependencies.Add(Pass);
-   end;
+  AddExplicitPassDependency(Pass,ExplicitPassNameDependency.fDstStageMask);
   end else begin
-   raise EpvFrameGraphMissingExplicitPassDependency.Create('Missing explicit pass dependency "'+PassName+'"');
+   raise EpvFrameGraphMissingExplicitPassDependency.Create('Missing explicit pass dependency "'+ExplicitPassNameDependency.fPassName+'"');
   end;
  end;
  fExplicitPassNameDependencies.Clear;
@@ -4273,6 +4298,7 @@ type TEventBeforeAfter=(Event,Before,After);
      StackItem:TStackItem;
      Pass,
      OtherPass:TPass;
+     ExplicitPassDependency:TExplicitPassDependency;
      ResourceTransition,
      OtherResourceTransition:TResourceTransition;
      Resource:TResource;
@@ -4301,12 +4327,15 @@ type TEventBeforeAfter=(Event,Before,After);
       Include(Pass.fFlags,TPass.TFlag.TemporaryMarked);
       if not (TPass.TFlag.PermanentlyMarked in Pass.fFlags) then begin
        Pass.fFlags:=Pass.fFlags+[TPass.TFlag.Used,TPass.TFlag.PermanentlyMarked];
-       for OtherPass in Pass.fExplicitPassDependencies do begin
-        if Pass.fPreviousPasses.IndexOf(OtherPass)<0 then begin
-         Pass.fPreviousPasses.Add(OtherPass);
-        end;
-        if OtherPass.fNextPasses.IndexOf(Pass)<0 then begin
-         OtherPass.fNextPasses.Add(Pass);
+       for ExplicitPassDependency in Pass.fExplicitPassDependencies do begin
+        OtherPass:=ExplicitPassDependency.fPass;
+        if Pass<>OtherPass then begin
+         if Pass.fPreviousPasses.IndexOf(OtherPass)<0 then begin
+          Pass.fPreviousPasses.Add(OtherPass);
+         end;
+         if OtherPass.fNextPasses.IndexOf(Pass)<0 then begin
+          OtherPass.fNextPasses.Add(Pass);
+         end;
         end;
        end;
        for ResourceTransition in Pass.fResourceTransitions do begin
@@ -4808,7 +4837,7 @@ type TEventBeforeAfter=(Event,Before,After);
    end;
   end;
  end;
- procedure CreatePhysicalPassPipelineBarriersAndPhysicalRenderPassSubpassDependencies;
+ procedure CreatePhysicalPassPipelineBarriersAndPhysicalRenderPassSubpassDependenciesAndExplicitPassDependencies;
   procedure AddSubpassDependency(const aSubpassDependencies:TPhysicalRenderPass.TSubpassDependencies;
                                  const aSubpassDependency:TPhysicalRenderPass.TSubpassDependency);
   var Index:TpvSizeInt;
@@ -4979,6 +5008,9 @@ type TEventBeforeAfter=(Event,Before,After);
  var ResourceTransitionIndex,
      OtherResourceTransitionIndex,
      PipelineBarrierGroupIndex:TpvSizeInt;
+     ExplicitPassDependency:TExplicitPassDependency;
+     Pass,
+     OtherPass:TPass;
      Resource:TResource;
      ResourceTransition,
      OtherResourceTransition:TResourceTransition;
@@ -5314,6 +5346,24 @@ type TEventBeforeAfter=(Event,Before,After);
 
    end;
 
+  end;
+
+  // Then add the explicit pass dependencies
+  for Pass in fPasses do begin
+   for ExplicitPassDependency in Pass.fExplicitPassDependencies do begin
+    OtherPass:=ExplicitPassDependency.fPass;
+    if Pass<>OtherPass then begin
+     if Pass.fPhysicalPass.fQueueCommandBuffer=OtherPass.fPhysicalPass.fQueueCommandBuffer then begin
+      // Do nothing in this case
+     end else begin
+      // Add a semaphore
+      AddSemaphoreSignalWait(OtherPass.fPhysicalPass.fQueueCommandBuffer, // Signalling / After
+                             Pass.fPhysicalPass.fQueueCommandBuffer, // Waiting / Before
+                             ExplicitPassDependency.fDstStageMask
+                            );
+     end;
+    end;
+   end;
   end;
 
  end;
@@ -5739,7 +5789,7 @@ begin
 
  ConstructResourceLayoutTransitionHistory;
 
- CreatePhysicalPassPipelineBarriersAndPhysicalRenderPassSubpassDependencies;
+ CreatePhysicalPassPipelineBarriersAndPhysicalRenderPassSubpassDependenciesAndExplicitPassDependencies;
 
  SortPhysicalRenderPassSubpassDependencies;
 
