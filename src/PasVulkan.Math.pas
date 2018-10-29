@@ -376,7 +376,7 @@ type PpvScalar=^TpvScalar;
      TpvHalfFloatVector2=record
       public
        case TpvUInt8 of
-        0:(RawComponents:array[0..1] of TpvScalar);
+        0:(RawComponents:array[0..1] of TpvHalfFloat);
         1:(x,y:TpvHalfFloat);
         2:(r,g:TpvHalfFloat);
         3:(s,t:TpvHalfFloat);
@@ -386,7 +386,7 @@ type PpvScalar=^TpvScalar;
      TpvHalfFloatVector3=record
       public
        case TpvUInt8 of
-        0:(RawComponents:array[0..2] of TpvScalar);
+        0:(RawComponents:array[0..2] of TpvHalfFloat);
         1:(x,y,z:TpvHalfFloat);
         2:(r,g,b:TpvHalfFloat);
         3:(s,t,p:TpvHalfFloat);
@@ -397,7 +397,7 @@ type PpvScalar=^TpvScalar;
      TpvHalfFloatVector4=record
       public
        case TpvUInt8 of
-        0:(RawComponents:array[0..3] of TpvScalar);
+        0:(RawComponents:array[0..3] of TpvHalfFloat);
         1:(x,y,z,w:TpvHalfFloat);
         2:(r,g,b,a:TpvHalfFloat);
         3:(s,t,p,q:TpvHalfFloat);
