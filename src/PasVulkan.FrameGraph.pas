@@ -87,6 +87,8 @@ type EpvFrameGraph=class(Exception);
 
      EpvFrameGraphDuplicateName=class(EpvFrameGraph);
 
+     EpvFrameGraphMissingExplicitPassDependency=class(EpvFrameGraph);
+
      EpvFrameGraphMissingQueue=class(EpvFrameGraph);
 
      EpvFrameGraphMismatchImageSize=class(EpvFrameGraph);
@@ -635,6 +637,7 @@ type EpvFrameGraph=class(Exception);
             end;
             TPassList=TpvObjectGenericList<TPass>;
             TPassNameHashMap=TpvStringHashMap<TPass>;
+            TPassNameList=TpvGenericList<TpvRawByteString>;
             TComputePass=class;
             TTransferPass=class;
             TRenderPass=class;
@@ -909,6 +912,8 @@ type EpvFrameGraph=class(Exception);
               fResources:TResourceList;
               fResourceTransitions:TResourceTransitionList;
               fUsedResources:TUsedResources;
+              fExplicitPassDependencies:TPassList;
+              fExplicitPassNameDependencies:TPassNameList;
               fPreviousPasses:TPassList;
               fNextPasses:TPassList;
               fIndex:TpvSizeInt;
@@ -927,6 +932,7 @@ type EpvFrameGraph=class(Exception);
               function GetHasSecondaryBuffers:boolean; inline;
               procedure SetHasSecondaryBuffers(const aHasSecondaryBuffers:boolean);
               procedure SetName(const aName:TpvRawByteString);
+              procedure ResolveExplicitPassDependencies;
               function AddImageResource(const aResourceTypeName:TpvRawByteString;
                                         const aResourceName:TpvRawByteString;
                                         const aKind:TResourceTransition.TKind;
@@ -947,6 +953,8 @@ type EpvFrameGraph=class(Exception);
              public
               constructor Create(const aFrameGraph:TpvFrameGraph); reintroduce; virtual;
               destructor Destroy; override;
+              procedure AddExplicitPassDependency(const aPass:TPass); overload;
+              procedure AddExplicitPassDependency(const aPassName:TpvRawByteString); overload;
               function AddImageInput(const aResourceTypeName:TpvRawByteString;
                                      const aResourceName:TpvRawByteString;
                                      const aLayout:TVkImageLayout;
@@ -2416,6 +2424,11 @@ begin
  fUsedResources:=TUsedResources.Create;
  fUsedResources.OwnsObjects:=true;
 
+ fExplicitPassDependencies:=TPassList.Create;
+ fExplicitPassDependencies.OwnsObjects:=false;
+
+ fExplicitPassNameDependencies:=TPassNameList.Create;
+
  fPreviousPasses:=TPassList.Create;
  fPreviousPasses.OwnsObjects:=false;
 
@@ -2440,6 +2453,10 @@ begin
  FreeAndNil(fPreviousPasses);
 
  FreeAndNil(fNextPasses);
+
+ FreeAndNil(fExplicitPassNameDependencies);
+
+ FreeAndNil(fExplicitPassDependencies);
 
  inherited Destroy;
 
@@ -2539,6 +2556,45 @@ begin
    fFrameGraph.fPassNameHashMap.Add(fName,self);
   end;
  end;
+end;
+
+procedure TpvFrameGraph.TPass.AddExplicitPassDependency(const aPass:TPass);
+begin
+ if fExplicitPassDependencies.IndexOf(aPass)<0 then begin
+  fExplicitPassDependencies.Add(aPass);
+ end;
+end;
+
+procedure TpvFrameGraph.TPass.AddExplicitPassDependency(const aPassName:TpvRawByteString);
+var Pass:TPass;
+begin
+ Pass:=fFrameGraph.fPassNameHashMap[aPassName];
+ if assigned(Pass) then begin
+  if fExplicitPassDependencies.IndexOf(Pass)<0 then begin
+   fExplicitPassDependencies.Add(Pass);
+  end;
+ end else begin
+  if fExplicitPassNameDependencies.IndexOf(aPassName)<0 then begin
+   fExplicitPassNameDependencies.Add(aPassName);
+  end;
+ end;
+end;
+
+procedure TpvFrameGraph.TPass.ResolveExplicitPassDependencies;
+var PassName:TpvRawByteString;
+    Pass:TPass;
+begin
+ for PassName in fExplicitPassNameDependencies do begin
+  Pass:=fFrameGraph.fPassNameHashMap[PassName];
+  if assigned(Pass) then begin
+   if fExplicitPassDependencies.IndexOf(Pass)<0 then begin
+    fExplicitPassDependencies.Add(Pass);
+   end;
+  end else begin
+   raise EpvFrameGraphMissingExplicitPassDependency.Create('Missing explicit pass dependency "'+PassName+'"');
+  end;
+ end;
+ fExplicitPassNameDependencies.Clear;
 end;
 
 function TpvFrameGraph.TPass.AddImageResource(const aResourceTypeName:TpvRawByteString;
@@ -4075,6 +4131,13 @@ type TEventBeforeAfter=(Event,Before,After);
    fPasses[Index].fIndex:=Index;
   end;
  end;
+ procedure ResolveExplicitPassDependencies;
+ var Index:TpvSizeInt;
+ begin
+  for Index:=0 to fPasses.Count-1 do begin
+   fPasses[Index].ResolveExplicitPassDependencies;
+  end;
+ end;
  procedure ValidateAttachmentImages;
  var Pass:TPass;
      RenderPass:TRenderPass;
@@ -4238,6 +4301,14 @@ type TEventBeforeAfter=(Event,Before,After);
       Include(Pass.fFlags,TPass.TFlag.TemporaryMarked);
       if not (TPass.TFlag.PermanentlyMarked in Pass.fFlags) then begin
        Pass.fFlags:=Pass.fFlags+[TPass.TFlag.Used,TPass.TFlag.PermanentlyMarked];
+       for OtherPass in Pass.fExplicitPassDependencies do begin
+        if Pass.fPreviousPasses.IndexOf(OtherPass)<0 then begin
+         Pass.fPreviousPasses.Add(OtherPass);
+        end;
+        if OtherPass.fNextPasses.IndexOf(Pass)<0 then begin
+         OtherPass.fNextPasses.Add(Pass);
+        end;
+       end;
        for ResourceTransition in Pass.fResourceTransitions do begin
         if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
            not (TResourceTransition.TFlag.PreviousFrameInput in ResourceTransition.Flags) then begin
@@ -5639,6 +5710,8 @@ begin
  fPhysicalPasses.Clear;
 
  IndexingPasses;
+
+ ResolveExplicitPassDependencies;
 
  ValidateAttachmentImages;
 
