@@ -5007,7 +5007,8 @@ type TEventBeforeAfter=(Event,Before,After);
   end;
  var ResourceTransitionIndex,
      OtherResourceTransitionIndex,
-     PipelineBarrierGroupIndex:TpvSizeInt;
+     PipelineBarrierGroupIndex,
+     Index:TpvSizeInt;
      ExplicitPassDependency:TExplicitPassDependency;
      Pass,
      OtherPass:TPass;
@@ -5065,42 +5066,8 @@ type TEventBeforeAfter=(Event,Before,After);
    end;
   end;
 
-{ for PhyiscalPass in fPhysicalPasses do begin
-   if (PhyiscalPass is TPhysicalRenderPass) and
-      (TPhysicalRenderPass(PhyiscalPass).fSubpasses.Count>0) then begin
-    begin
-     SubpassDependency.SrcSubpass:=nil;
-     SubpassDependency.DstSubpass:=TPhysicalRenderPass(PhyiscalPass).fSubpasses[0];
-     SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-     SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-     SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
-     SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
-                                      TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
-                                      TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
-     SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
-     AddSubpassDependency(TPhysicalRenderPass(PhyiscalPass).fSubpassDependencies,SubpassDependency);
-    end;
-    begin
-     SubpassDependency.SrcSubpass:=TPhysicalRenderPass(PhyiscalPass).fSubpasses[TPhysicalRenderPass(PhyiscalPass).fSubpasses.Count-1];
-     SubpassDependency.DstSubpass:=nil;
-     SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-     SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
-     SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
-                                      TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
-                                      TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
-     SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
-     SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
-     AddSubpassDependency(TPhysicalRenderPass(PhyiscalPass).fSubpassDependencies,SubpassDependency);
-    end;
-   end;
-  end;}
-
   // Then add the remaining Subpass dependencies
   for Resource in fResources do begin
-   if Resource.fName='resource_color' then begin
-    if Resource.fName='resource_color' then begin
-    end;
-   end;
    for ResourceTransitionIndex:=0 to Resource.fResourceTransitions.Count-1 do begin
     ResourceTransition:=Resource.fResourceTransitions[ResourceTransitionIndex];
     if (ResourceTransition.fKind in TResourceTransition.AllOutputs) and
@@ -5352,9 +5319,45 @@ type TEventBeforeAfter=(Event,Before,After);
   for Pass in fPasses do begin
    for ExplicitPassDependency in Pass.fExplicitPassDependencies do begin
     OtherPass:=ExplicitPassDependency.fPass;
-    if Pass<>OtherPass then begin
+    if (Pass<>OtherPass) and
+       (TPass.TFlag.Used in Pass.fFlags) and
+       (TPass.TFlag.Used in OtherPass.fFlags) then begin
+     for Index:=0 to 1 do begin
+      if Index=0 then begin
+       PhyiscalPass:=OtherPass.fPhysicalPass;
+      end else begin
+       PhyiscalPass:=Pass.fPhysicalPass;
+      end;
+      if (PhyiscalPass is TPhysicalRenderPass) and
+         (TPhysicalRenderPass(PhyiscalPass).fSubpasses.Count>0) then begin
+       begin
+        SubpassDependency.SrcSubpass:=nil;
+        SubpassDependency.DstSubpass:=TPhysicalRenderPass(PhyiscalPass).fSubpasses[0];
+        SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+        SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+        SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                         TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                         TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
+        SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+        AddSubpassDependency(TPhysicalRenderPass(PhyiscalPass).fSubpassDependencies,SubpassDependency);
+       end;
+       begin
+        SubpassDependency.SrcSubpass:=TPhysicalRenderPass(PhyiscalPass).fSubpasses[TPhysicalRenderPass(PhyiscalPass).fSubpasses.Count-1];
+        SubpassDependency.DstSubpass:=nil;
+        SubpassDependency.SrcStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        SubpassDependency.DstStageMask:=TVkPipelineStageFlags(VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+        SubpassDependency.SrcAccessMask:=TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_READ_BIT) or
+                                         TVkAccessFlags(VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT) or
+                                         TVkAccessFlags(VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
+        SubpassDependency.DstAccessMask:=TVkAccessFlags(VK_ACCESS_MEMORY_READ_BIT);
+        SubpassDependency.DependencyFlags:=TVkDependencyFlags(VK_DEPENDENCY_BY_REGION_BIT);
+        AddSubpassDependency(TPhysicalRenderPass(PhyiscalPass).fSubpassDependencies,SubpassDependency);
+       end;
+      end;
+     end;
      if Pass.fPhysicalPass.fQueueCommandBuffer=OtherPass.fPhysicalPass.fQueueCommandBuffer then begin
-      // Do nothing in this case
+      // TODO: Pipeline barriers and so on?
      end else begin
       // Add a semaphore
       AddSemaphoreSignalWait(OtherPass.fPhysicalPass.fQueueCommandBuffer, // Signalling / After
