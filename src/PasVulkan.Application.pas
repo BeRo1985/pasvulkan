@@ -5360,7 +5360,7 @@ begin
  fDrawSwapChainImageIndex:=0;
 
  fRealUsedDrawSwapChainImageIndex:=0;
- 
+
  fOnEvent:=nil;
 
  pvApplication:=self;
@@ -6596,16 +6596,16 @@ begin
 
  if fVulkanRecreationKind=TpvApplicationVulkanRecreationKind.None then begin
 
-  if fVulkanPresentCompleteFencesReady[fRealUsedDrawSwapChainImageIndex] then begin
-   if fVulkanPresentCompleteFences[fRealUsedDrawSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
+  if fVulkanPresentCompleteFencesReady[fDrawSwapChainImageIndex] then begin
+   if fVulkanPresentCompleteFences[fDrawSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
     if fBlocking then begin
-     fVulkanPresentCompleteFences[fRealUsedDrawSwapChainImageIndex].WaitFor;
+     fVulkanPresentCompleteFences[fDrawSwapChainImageIndex].WaitFor;
     end else begin
      exit;
     end;
    end;
-   fVulkanPresentCompleteFences[fRealUsedDrawSwapChainImageIndex].Reset;
-   fVulkanPresentCompleteFencesReady[fRealUsedDrawSwapChainImageIndex]:=false;
+   fVulkanPresentCompleteFences[fDrawSwapChainImageIndex].Reset;
+   fVulkanPresentCompleteFencesReady[fDrawSwapChainImageIndex]:=false;
   end;
 
   if not fBlocking then begin
@@ -6737,6 +6737,10 @@ begin
 
   fVulkanWaitSemaphore:=nil;
   fVulkanWaitFence:=nil;
+
+  fDrawSwapChainImageIndex:=0;
+
+  fRealUsedDrawSwapChainImageIndex:=0;
 
  end else begin
 
