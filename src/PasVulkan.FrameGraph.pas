@@ -5474,18 +5474,6 @@ type TEventBeforeAfter=(Event,Before,After);
         for AttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
          Attachment:=@PhysicalRenderPass.fAttachments.Items[AttachmentIndex];
          if Attachment^.Resource=ResourceTransition.fResource then begin
-          if (Attachment^.LoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and
-             (Attachment^.ImageType in [TImageType.Surface,
-                                        TImageType.Color,
-                                        TImageType.Depth,
-                                        TImageType.DepthStencil]) then begin
-           Attachment^.LoadOp:=TLoadOp.Values[ResourceTransition.fLoadOp.Kind];
-          end;
-          if (Attachment^.StencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and
-             (Attachment^.ImageType in [TImageType.DepthStencil,
-                                        TImageType.Stencil]) then begin
-           Attachment^.StencilLoadOp:=TLoadOp.Values[ResourceTransition.fLoadOp.Kind];
-          end;
           case ResourceTransition.fLayout of
            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:begin
             Attachment^.ImageUsageFlags:=Attachment^.ImageUsageFlags or TVkImageUsageFlags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
@@ -5522,6 +5510,18 @@ type TEventBeforeAfter=(Event,Before,After);
            end;
           end;
           if not Attachment^.HasInitialLayout then begin
+           if (Attachment^.LoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and
+              (Attachment^.ImageType in [TImageType.Surface,
+                                         TImageType.Color,
+                                         TImageType.Depth,
+                                         TImageType.DepthStencil]) then begin
+            Attachment^.LoadOp:=TLoadOp.Values[ResourceTransition.fLoadOp.Kind];
+           end;
+           if (Attachment^.StencilLoadOp=VK_ATTACHMENT_LOAD_OP_DONT_CARE) and
+              (Attachment^.ImageType in [TImageType.DepthStencil,
+                                         TImageType.Stencil]) then begin
+            Attachment^.StencilLoadOp:=TLoadOp.Values[ResourceTransition.fLoadOp.Kind];
+           end;
            if ResourceTransition.fKind in TResourceTransition.AllOutputs then begin
             if (RenderPass.fTopologicalSortIndex=Attachment^.Resource.fMinimumTopologicalSortPassIndex) or
                (((Attachment^.ImageType in [TImageType.Surface,
