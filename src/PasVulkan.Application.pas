@@ -1767,6 +1767,7 @@ var i:TpvInt32;
 begin
  i:=ExpandEnvironmentStringsA(pansichar(s),nil,0);
  if i>0 then begin
+  result:='';
   SetLength(result,i);
   ExpandEnvironmentStringsA(pansichar(s),pansichar(result),i);
   SetLength(result,i-1);
@@ -1780,6 +1781,7 @@ var i:TpvInt32;
 begin
  i:=GetEnvironmentVariableA(pansichar(s),nil,0);
  if i>0 then begin
+  result:='';
   SetLength(result,i);
   GetEnvironmentVariableA(pansichar(s),pansichar(result),i);
   SetLength(result,i-1);
