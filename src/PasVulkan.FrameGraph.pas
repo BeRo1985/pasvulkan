@@ -595,7 +595,7 @@ type EpvFrameGraph=class(Exception);
               fFlags:TFlags;
               fLayout:TVkImageLayout;
               fLoadOp:TLoadOp;
-              fResolveResource:TResource;
+              fResolveSourceResource:TResource;
               fPipelineStage:TVkPipelineStageFlags;
               fAccessFlags:TVkAccessFlags;
               fBufferSubresourceRange:TBufferSubresourceRange;
@@ -631,7 +631,7 @@ type EpvFrameGraph=class(Exception);
               property Kind:TKind read fKind;
               property Flags:TFlags read fFlags;
               property Layout:TVkImageLayout read fLayout write fLayout;
-              property ResolveResource:TResource read fResolveResource;
+              property ResolveSourceResource:TResource read fResolveSourceResource;
               property PipelineStage:TVkPipelineStageFlags read fPipelineStage write fPipelineStage;
               property AccessFlags:TVkAccessFlags read fAccessFlags write fAccessFlags;
             end;
@@ -982,7 +982,7 @@ type EpvFrameGraph=class(Exception);
                                       const aExternalImageData:TExternalImageData=nil):TUsedImageResource;
               function AddImageResolveOutput(const aResourceTypeName:TpvRawByteString;
                                              const aResourceName:TpvRawByteString;
-                                             const aResourceSourceName:TpvRawByteString;
+                                             const aResolveSourceResourceName:TpvRawByteString;
                                              const aLayout:TVkImageLayout;
                                              const aLoadOp:TLoadOp;
                                              const aFlags:TResourceTransition.TFlags=[];
@@ -2761,17 +2761,17 @@ end;
 
 function TpvFrameGraph.TPass.AddImageResolveOutput(const aResourceTypeName:TpvRawByteString;
                                                    const aResourceName:TpvRawByteString;
-                                                   const aResourceSourceName:TpvRawByteString;
+                                                   const aResolveSourceResourceName:TpvRawByteString;
                                                    const aLayout:TVkImageLayout;
                                                    const aLoadOp:TLoadOp;
                                                    const aFlags:TResourceTransition.TFlags=[];
                                                    const aResourceInstanceType:TResourceInstanceType=TResourceInstanceType.InstancePerSwapChainImage;
                                                    const aExternalImageData:TExternalImageData=nil):TUsedImageResource;
-var ResourceSource:TResource;
+var ResolveSourceResource:TResource;
 begin
- ResourceSource:=fFrameGraph.fResourceNameHashMap[aResourceSourceName];
- if not assigned(ResourceSource) then begin
-  raise EpvFrameGraph.Create('Invalid source resource');
+ ResolveSourceResource:=fFrameGraph.fResourceNameHashMap[aResolveSourceResourceName];
+ if not assigned(ResolveSourceResource) then begin
+  raise EpvFrameGraph.Create('Invalid resolve resource');
  end;
  result:=TUsedImageResource.Create(self,
                                    AddImageResource(aResourceTypeName,
@@ -2783,7 +2783,7 @@ begin
                                                     aResourceInstanceType,
                                                     aExternalImageData));
  fUsedResources.Add(result);
- result.fResourceTransition.fResolveResource:=ResourceSource;
+ result.fResourceTransition.fResolveSourceResource:=ResolveSourceResource;
 end;
 
 function TpvFrameGraph.TPass.AddImageDepthInput(const aResourceTypeName:TpvRawByteString;
@@ -4341,7 +4341,7 @@ type TEventBeforeAfter=(Event,Before,After);
        for ResourceTransition in Pass.fResourceTransitions do begin
         if (ResourceTransition.fKind in TResourceTransition.AllInputs) and
            not (TResourceTransition.TFlag.PreviousFrameInput in ResourceTransition.Flags) then begin
-         Resource:=ResourceTransition.Resource;
+         Resource:=ResourceTransition.fResource;
          for OtherResourceTransition in Resource.fResourceTransitions do begin
           if (ResourceTransition<>OtherResourceTransition) and
              (Pass<>OtherResourceTransition.fPass) and
@@ -5034,10 +5034,14 @@ type TEventBeforeAfter=(Event,Before,After);
        (TPass.TFlag.Used in ResourceTransition.fPass.fFlags) and
        assigned(ResourceTransition.fPass.fPhysicalPass) and
        (ResourceTransition.fPass.fPhysicalPass is TPhysicalRenderPass) and
-       assigned(ResourceTransition.fResource.fResourceType) and
-       (ResourceTransition.fResource.fResourceType is TImageResourceType) and
-       (TImageResourceType(ResourceTransition.fResource.fResourceType).fImageType=TImageType.Surface) and
-       (TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubpasses.Count>0) and
+       ((assigned(ResourceTransition.fResource.fResourceType) and
+         (ResourceTransition.fResource.fResourceType is TImageResourceType) and
+         (TImageResourceType(ResourceTransition.fResource.fResourceType).fImageType=TImageType.Surface)) or
+        (assigned(ResourceTransition.fResolveSourceResource) and
+         (assigned(ResourceTransition.fResolveSourceResource.fResourceType) and
+          (ResourceTransition.fResolveSourceResource.fResourceType is TImageResourceType) and
+          (TImageResourceType(ResourceTransition.fResolveSourceResource.fResourceType).fImageType=TImageType.Surface)))) and
+        (TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fSubpasses.Count>0) and
        (not TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fHasSurfaceSubpassDependencies) then begin
      TPhysicalRenderPass(ResourceTransition.fPass.fPhysicalPass).fHasSurfaceSubpassDependencies:=true;
      begin
@@ -5606,10 +5610,10 @@ type TEventBeforeAfter=(Event,Before,After);
             Subpass.fColorAttachments.Add(AddAttachmentReference(PhysicalRenderPass,AttachmentIndex,ResourceTransition.fLayout));
             for OtherResourceTransition in RenderPass.fResourceTransitions do begin
              if (ResourceTransition<>OtherResourceTransition) and
-                (OtherResourceTransition.ResolveResource=ResourceTransition.Resource) then begin
+                (OtherResourceTransition.fResolveSourceResource=ResourceTransition.fResource) then begin
               Found:=false;
               for OtherAttachmentIndex:=0 to PhysicalRenderPass.fAttachments.Count-1 do begin
-               if PhysicalRenderPass.fAttachments.Items[OtherAttachmentIndex].Resource=ResourceTransition.fResource then begin
+               if PhysicalRenderPass.fAttachments.Items[OtherAttachmentIndex].Resource=OtherResourceTransition.fResource then begin
                 Subpass.fResolveAttachments.Add(AddAttachmentReference(PhysicalRenderPass,OtherAttachmentIndex,OtherResourceTransition.fLayout));
                 Found:=true;
                 break;
