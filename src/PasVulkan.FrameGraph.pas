@@ -1769,7 +1769,8 @@ begin
    end else begin
     FreeAndNil(fVulkanImageViews[SwapChainImageIndex]);
     FreeAndNil(fVulkanImages[SwapChainImageIndex]);
-    FreeAndNil(fVulkanMemoryBlocks[SwapChainImageIndex]);
+    fFrameGraph.fVulkanDevice.MemoryManager.FreeMemoryBlock(fVulkanMemoryBlocks[SwapChainImageIndex]);
+    fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
    end;
   end;
  end;
@@ -1940,17 +1941,17 @@ begin
     end;
 
     fVulkanMemoryBlocks[SwapChainImageIndex]:=fFrameGraph.fVulkanDevice.MemoryManager.AllocateMemoryBlock(MemoryBlockFlags,
-                                                                                                         MemoryRequirements.size,
-                                                                                                         MemoryRequirements.alignment,
-                                                                                                         MemoryRequirements.memoryTypeBits,
-                                                                                                         TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-                                                                                                         0,
-                                                                                                         0,
-                                                                                                         0,
-                                                                                                         0,
-                                                                                                         0,
-                                                                                                         MemoryAllocationType,
-                                                                                                         @fVulkanImages[SwapChainImageIndex].Handle);
+                                                                                                          MemoryRequirements.size,
+                                                                                                          MemoryRequirements.alignment,
+                                                                                                          MemoryRequirements.memoryTypeBits,
+                                                                                                          TVkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+                                                                                                          0,
+                                                                                                          0,
+                                                                                                          0,
+                                                                                                          0,
+                                                                                                          0,
+                                                                                                          MemoryAllocationType,
+                                                                                                          @fVulkanImages[SwapChainImageIndex].Handle);
     if not assigned(fVulkanMemoryBlocks[SwapChainImageIndex]) then begin
      raise EpvVulkanMemoryAllocationException.Create('Memory for image resource couldn''t be allocated!');
     end;
@@ -2054,7 +2055,8 @@ begin
    end else begin
     FreeAndNil(fVulkanImageViews[SwapChainImageIndex]);
     FreeAndNil(fVulkanImages[SwapChainImageIndex]);
-    FreeAndNil(fVulkanMemoryBlocks[SwapChainImageIndex]);
+    fFrameGraph.fVulkanDevice.MemoryManager.FreeMemoryBlock(fVulkanMemoryBlocks[SwapChainImageIndex]);
+    fVulkanMemoryBlocks[SwapChainImageIndex]:=nil;
    end;
   end;
  end;
