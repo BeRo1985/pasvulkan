@@ -1074,6 +1074,10 @@ type EpvApplication=class(Exception)
 
        fVulkanMultiviewSupportEnabled:boolean;
 
+       fVulkanMultiviewGeometryShader:boolean;
+
+       fVulkanMultiviewTessellationShader:boolean;
+
        fVulkanInstance:TpvVulkanInstance;
 
        fVulkanDevice:TpvVulkanDevice;
@@ -1419,6 +1423,10 @@ type EpvApplication=class(Exception)
        property VulkanDebuggingEnabled:boolean read fVulkanDebuggingEnabled;
 
        property VulkanMultiviewSupportEnabled:boolean read fVulkanMultiviewSupportEnabled;
+
+       property VulkanMultiviewGeometryShader:boolean read fVulkanMultiviewGeometryShader;
+
+       property VulkanMultiviewTessellationShader:boolean read fVulkanMultiviewTessellationShader;
 
        property VulkanInstance:TpvVulkanInstance read fVulkanInstance;
 
@@ -5296,6 +5304,10 @@ begin
 
  fVulkanMultiviewSupportEnabled:=false;
 
+ fVulkanMultiviewGeometryShader:=false;
+
+ fVulkanMultiviewTessellationShader:=false;
+
  fVulkanInstance:=nil;
 
  fVulkanDevice:=nil;
@@ -5552,6 +5564,8 @@ end;
 procedure TpvApplication.CreateVulkanDevice(const aSurface:TpvVulkanSurface=nil);
 var QueueFamilyIndex,ThreadIndex,SwapChainImageIndex,Index:TpvInt32;
     FormatProperties:TVkFormatProperties;
+    PhysicalDeviceFeatures2KHR:TVkPhysicalDeviceFeatures2KHR;
+    PhysicalDeviceMultiviewFeaturesKHR:TVkPhysicalDeviceMultiviewFeaturesKHR;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanDevice');
@@ -5597,11 +5611,17 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
   end;
 
-  if fVulkanInstance.EnabledExtensionNames.IndexOf(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)>=0 then begin
-   if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>=0 then begin
-    fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_MULTIVIEW_EXTENSION_NAME);
-    fVulkanMultiviewSupportEnabled:=true;
+  if fVulkanInstance.APIVersion=VK_API_VERSION_1_0 then begin
+   // > Vulkan API version 1.0
+   if fVulkanInstance.EnabledExtensionNames.IndexOf(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)>=0 then begin
+    if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>=0 then begin
+     fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_MULTIVIEW_EXTENSION_NAME);
+     fVulkanMultiviewSupportEnabled:=true;
+    end;
    end;
+  end else begin
+   // >= Vulkan API version 1.1
+   fVulkanMultiviewSupportEnabled:=true;
   end;
 
   SetupVulkanDevice(fVulkanDevice);
@@ -5749,6 +5769,35 @@ begin
   fVulkanInstance.Commands.GetPhysicalDeviceFormatProperties(fVulkanDevice.PhysicalDevice.Handle,fVulkanDepthImageFormat,@FormatProperties);
   if (FormatProperties.OptimalTilingFeatures and TVkFormatFeatureFlags(VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))=0 then begin
    raise EpvVulkanException.Create('No suitable depth image format!');
+  end;
+
+  if fVulkanMultiviewSupportEnabled then begin
+
+   FillChar(PhysicalDeviceMultiviewFeaturesKHR,SizeOf(TVkPhysicalDeviceMultiviewFeaturesKHR),#0);
+   PhysicalDeviceMultiviewFeaturesKHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
+
+   FillChar(PhysicalDeviceFeatures2KHR,SizeOf(TVkPhysicalDeviceFeatures2KHR),#0);
+   PhysicalDeviceFeatures2KHR.sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+   PhysicalDeviceFeatures2KHR.pNext:=@PhysicalDeviceMultiviewFeaturesKHR;
+
+   if fVulkanInstance.APIVersion=VK_API_VERSION_1_0 then begin
+    fVulkanInstance.Commands.GetPhysicalDeviceFeatures2KHR(fVulkanDevice.PhysicalDevice.Handle,@PhysicalDeviceFeatures2KHR);
+   end else begin
+    fVulkanInstance.Commands.GetPhysicalDeviceFeatures2(fVulkanDevice.PhysicalDevice.Handle,@PhysicalDeviceFeatures2KHR);
+   end;
+
+   fVulkanMultiviewSupportEnabled:=PhysicalDeviceMultiviewFeaturesKHR.multiview<>0;
+
+   if fVulkanMultiviewSupportEnabled then begin
+
+    fVulkanMultiviewGeometryShader:=PhysicalDeviceMultiviewFeaturesKHR.multiviewGeometryShader<>0;
+
+    fVulkanMultiviewTessellationShader:=PhysicalDeviceMultiviewFeaturesKHR.multiviewTessellationShader<>0;
+
+
+
+   end;
+
   end;
 
  end;
