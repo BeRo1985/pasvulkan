@@ -1307,6 +1307,10 @@ type EpvApplication=class(Exception)
 
        procedure Run;
 
+       procedure SetupVulkanInstance(const aVulkanInstance:TpvVulkanInstance); virtual;
+
+       procedure SetupVulkanDevice(const aVulkanDevice:TpvVulkanDevice); virtual;
+
        procedure Setup; virtual;
 
        procedure Start; virtual;
@@ -5587,6 +5591,8 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
   end;
 
+  SetupVulkanDevice(fVulkanDevice);
+
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Created vulkan device');
 {$ifend}
@@ -5846,6 +5852,7 @@ begin
    end else begin
     fVulkanDebuggingEnabled:=false;
    end;
+   SetupVulkanInstance(fVulkanInstance);
    fVulkanInstance.Initialize;
    if fVulkanDebuggingEnabled then begin
     fVulkanInstance.OnInstanceDebugReportCallback:=VulkanOnDebugReportCallback;
@@ -8120,6 +8127,14 @@ begin
  end;
 {$ifend}
 
+end;
+
+procedure TpvApplication.SetupVulkanInstance(const aVulkanInstance:TpvVulkanInstance);
+begin
+end;
+
+procedure TpvApplication.SetupVulkanDevice(const aVulkanDevice:TpvVulkanDevice);
+begin
 end;
 
 procedure TpvApplication.Setup;
