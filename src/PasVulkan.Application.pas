@@ -1072,6 +1072,8 @@ type EpvApplication=class(Exception)
 
        fVulkanDebuggingEnabled:boolean;
 
+       fVulkanMultiviewSupportEnabled:boolean;
+
        fVulkanInstance:TpvVulkanInstance;
 
        fVulkanDevice:TpvVulkanDevice;
@@ -1415,6 +1417,8 @@ type EpvApplication=class(Exception)
        property VulkanValidation:boolean read fVulkanValidation write fVulkanValidation;
 
        property VulkanDebuggingEnabled:boolean read fVulkanDebuggingEnabled;
+
+       property VulkanMultiviewSupportEnabled:boolean read fVulkanMultiviewSupportEnabled;
 
        property VulkanInstance:TpvVulkanInstance read fVulkanInstance;
 
@@ -5290,6 +5294,8 @@ begin
 
  fVulkanValidation:=false;
 
+ fVulkanMultiviewSupportEnabled:=false;
+
  fVulkanInstance:=nil;
 
  fVulkanDevice:=nil;
@@ -5591,6 +5597,13 @@ begin
    fVulkanDevice.EnabledExtensionNames.Add(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
   end;
 
+  if fVulkanInstance.EnabledExtensionNames.IndexOf(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)>=0 then begin
+   if fVulkanDevice.PhysicalDevice.AvailableExtensionNames.IndexOf(VK_KHR_MULTIVIEW_EXTENSION_NAME)>=0 then begin
+    fVulkanDevice.EnabledExtensionNames.Add(VK_KHR_MULTIVIEW_EXTENSION_NAME);
+    fVulkanMultiviewSupportEnabled:=true;
+   end;
+  end;
+
   SetupVulkanDevice(fVulkanDevice);
 
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
@@ -5851,6 +5864,9 @@ begin
     end;
    end else begin
     fVulkanDebuggingEnabled:=false;
+   end;
+   if fVulkanInstance.AvailableExtensionNames.IndexOf(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)>=0 then begin
+    fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
    end;
    SetupVulkanInstance(fVulkanInstance);
    fVulkanInstance.Initialize;
