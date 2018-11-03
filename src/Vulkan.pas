@@ -265,7 +265,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=89;
+      VK_HEADER_VERSION=90;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -776,6 +776,8 @@ const VK_NULL_HANDLE=0;
       VK_NV_EXTENSION_242_EXTENSION_NAME='VK_NV_extension_242';
       VK_INTEL_EXTENSION_243_SPEC_VERSION=0;
       VK_INTEL_EXTENSION_243_EXTENSION_NAME='VK_INTEL_extension_243';
+      VK_MESA_EXTENSION_244_SPEC_VERSION=0;
+      VK_MESA_EXTENSION_244_EXTENSION_NAME='VK_MESA_extension_244';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -2383,7 +2385,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT=1000158001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT=1000158002,
        VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT=1000158003,
-       VK_STRUCTURE_TYPE_IMAGE_EXCPLICIT_DRM_FORMAT_MODIFIER_CREATE_INFO_EXT=1000158004,
+       VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT=1000158004,
        VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT=1000158005,
        VK_STRUCTURE_TYPE_VALIDATION_CACHE_CREATE_INFO_EXT=1000160000,
        VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT=1000160001,
@@ -11719,7 +11721,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_EXCPLICIT_DRM_FORMAT_MODIFIER_CREATE_INFO_EXT
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT
        pNext:PVkVoid;
        drmFormatModifier:TVkUInt64;
        drmFormatModifierPlaneCount:TVkUInt32;
@@ -22047,7 +22049,7 @@ constructor TVkImageDrmFormatModifierExplicitCreateInfoEXT.Create(const aDrmForm
                                                                   const aDrmFormatModifierPlaneCount:TVkUInt32;
                                                                   const aPPlaneLayouts:PVkSubresourceLayout);
 begin
- sType:=VK_STRUCTURE_TYPE_IMAGE_EXCPLICIT_DRM_FORMAT_MODIFIER_CREATE_INFO_EXT;
+ sType:=VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT;
  pNext:=nil;
  drmFormatModifier:=aDrmFormatModifier;
  drmFormatModifierPlaneCount:=aDrmFormatModifierPlaneCount;
