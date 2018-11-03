@@ -867,6 +867,8 @@ type EpvApplication=class(Exception)
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
+       procedure FinishFrame(const aDeltaTime:TpvDouble); virtual;
+
        procedure UpdateAudio; virtual;
 
      end;
@@ -1361,11 +1363,13 @@ type EpvApplication=class(Exception)
 
        function CanBeParallelProcessed:boolean; virtual;
 
-       procedure Check(const aDeltaTime:TpvDouble); virtual;
+       procedure Check(const aDeltaTime:TpvDouble); virtual; // example for VR input handling
 
        procedure Update(const aDeltaTime:TpvDouble); virtual;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
+
+       procedure FinishFrame(const aDeltaTime:TpvDouble); virtual; // example for VR output handling of the rendered stereo images
 
        procedure UpdateAudio; virtual;
 
@@ -4946,6 +4950,10 @@ procedure TpvApplicationScreen.Draw(const aSwapChainImageIndex:TpvInt32;var aWai
 begin
 end;
 
+procedure TpvApplicationScreen.FinishFrame(const aDeltaTime:TpvDouble);
+begin
+end;
+
 procedure TpvApplicationScreen.UpdateAudio;
 begin
 end;
@@ -7732,6 +7740,8 @@ begin
       fPasMPInstance.Invoke(Jobs);
 {$endif}
 
+      FinishFrame(fUpdateDeltaTime);
+
      end else begin
 
       fUpdateFrameCounter:=fFrameCounter;
@@ -7743,6 +7753,8 @@ begin
       UpdateJobFunction(nil,0);
 
       DrawJobFunction(nil,0);
+
+      FinishFrame(fUpdateDeltaTime);
 
      end;
 
@@ -8397,6 +8409,13 @@ procedure TpvApplication.Update(const aDeltaTime:TpvDouble);
 begin
  if assigned(fScreen) then begin
   fScreen.Update(aDeltaTime);
+ end;
+end;
+
+procedure TpvApplication.FinishFrame(const aDeltaTime:TpvDouble);
+begin
+ if assigned(fScreen) then begin
+  fScreen.FinishFrame(aDeltaTime);
  end;
 end;
 
