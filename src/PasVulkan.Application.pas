@@ -1331,6 +1331,8 @@ type EpvApplication=class(Exception)
 
        procedure SetupVulkanInstance(const aVulkanInstance:TpvVulkanInstance); virtual;
 
+       procedure ChooseVulkanPhysicalDevice(const aVulkanInstance:TpvVulkanInstance;var aVulkanPhysicalDevice:TpvVulkanPhysicalDevice); virtual;
+
        procedure SetupVulkanDevice(const aVulkanDevice:TpvVulkanDevice); virtual;
 
        procedure Setup; virtual;
@@ -5611,7 +5613,9 @@ begin
 
   PhysicalDevice:=nil;
 
-  if fVulkanPhysicalDeviceHandle<>VK_NULL_HANDLE then begin
+  ChooseVulkanPhysicalDevice(fVulkanInstance,PhysicalDevice);
+
+  if (fVulkanPhysicalDeviceHandle<>VK_NULL_HANDLE) and not assigned(PhysicalDevice) then begin
    for Index:=0 to fVulkanInstance.PhysicalDevices.Count-1 do begin
     if fVulkanInstance.PhysicalDevices.Items[Index].Handle=fVulkanPhysicalDeviceHandle then begin
      PhysicalDevice:=fVulkanInstance.PhysicalDevices.Items[Index];
@@ -8263,6 +8267,10 @@ begin
 end;
 
 procedure TpvApplication.SetupVulkanInstance(const aVulkanInstance:TpvVulkanInstance);
+begin
+end;
+
+procedure TpvApplication.ChooseVulkanPhysicalDevice(const aVulkanInstance:TpvVulkanInstance;var aVulkanPhysicalDevice:TpvVulkanPhysicalDevice);
 begin
 end;
 
