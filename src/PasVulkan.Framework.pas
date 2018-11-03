@@ -7314,8 +7314,25 @@ begin
  fTransferQueues:=nil;
 
  if assigned(aPhysicalDevice) then begin
+
   fPhysicalDevice:=aPhysicalDevice;
+
+  // Check for surface support, if needed
+  if assigned(aSurface) then begin
+   OK:=false;
+   for SubIndex:=0 to length(CurrentPhysicalDevice.fQueueFamilyProperties)-1 do begin
+    if CurrentPhysicalDevice.GetSurfaceSupport(SubIndex,aSurface) then begin
+     OK:=true;
+     break;
+    end;
+   end;
+   if not OK then begin
+    raise EpvVulkanException.Create('No suitable vulkan device found');
+   end;
+  end;
+
  end else begin
+
   BestPhysicalDevice:=nil;
   BestScore:=0;
   for Index:=0 to fInstance.fPhysicalDevices.Count-1 do begin
@@ -7403,6 +7420,7 @@ begin
   end else begin
    raise EpvVulkanException.Create('No suitable vulkan device found');
   end;
+
  end;
 
  fEnabledLayerNames:=TStringList.Create;

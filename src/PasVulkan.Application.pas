@@ -1192,6 +1192,8 @@ type EpvApplication=class(Exception)
 
        fRealUsedDrawSwapChainImageIndex:TpvInt32;
 
+       fVulkanPhysicalDeviceHandle:TVkPhysicalDevice;
+
        fVulkanRecreationKind:TpvApplicationVulkanRecreationKind;
 
        fVulkanWaitSemaphore:TpvVulkanSemaphore;
@@ -1431,6 +1433,8 @@ type EpvApplication=class(Exception)
 
        property OnEvent:TpvApplicationOnEvent read fOnEvent write fOnEvent;
        property OnStep:TpvApplicationOnStep read fOnStep write fOnStep;
+
+       property VulkanPhysicalDeviceHandle:TVkPhysicalDevice read fVulkanPhysicalDeviceHandle write fVulkanPhysicalDeviceHandle;
 
        property VulkanDebugging:boolean read fVulkanDebugging write fVulkanDebugging;
 
@@ -5373,6 +5377,8 @@ begin
  fVulkanTransferCommandBuffers:=nil;
  fVulkanTransferCommandBufferFences:=nil;}
 
+ fVulkanPhysicalDeviceHandle:=VK_NULL_HANDLE;
+
  fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.None;
 
  fVulkanSwapChainQueueFamilyIndices.Initialize;
@@ -5592,6 +5598,7 @@ end;
 procedure TpvApplication.CreateVulkanDevice(const aSurface:TpvVulkanSurface=nil);
 var QueueFamilyIndex,ThreadIndex,SwapChainImageIndex,Index:TpvInt32;
     FormatProperties:TVkFormatProperties;
+    PhysicalDevice:TpvVulkanPhysicalDevice;
 begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
  __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Entering TpvApplication.CreateVulkanDevice');
@@ -5601,7 +5608,23 @@ begin
 {$if (defined(fpc) and defined(android)) and not defined(Release)}
   __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication','Creating vulkan device');
 {$ifend}
-  fVulkanDevice:=TpvVulkanDevice.Create(VulkanInstance,nil,aSurface,nil);
+
+  PhysicalDevice:=nil;
+
+  if fVulkanPhysicalDeviceHandle<>VK_NULL_HANDLE then begin
+   for Index:=0 to fVulkanInstance.PhysicalDevices.Count-1 do begin
+    if fVulkanInstance.PhysicalDevices.Items[Index].Handle=fVulkanPhysicalDeviceHandle then begin
+     PhysicalDevice:=fVulkanInstance.PhysicalDevices.Items[Index];
+    end;
+   end;
+   if not assigned(PhysicalDevice) then begin
+    VulkanDebugLn('Failed to find requested physical device, falling back to choosing best physical device');
+   end;
+  end;
+
+  fVulkanDevice:=TpvVulkanDevice.Create(fVulkanInstance,PhysicalDevice,aSurface,nil);
+
+  fVulkanPhysicalDeviceHandle:=fVulkanDevice.PhysicalDevice.Handle;
 
   VulkanDebugLn('Device name: '+string(fVulkanDevice.PhysicalDevice.DeviceName));
 
