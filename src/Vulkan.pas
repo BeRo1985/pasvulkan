@@ -61,9 +61,6 @@ unit Vulkan;
 {$elseif defined(Windows)}
  {$define VK_USE_PLATFORM_WIN32_KHR}
 {$elseif defined(Unix) or defined(Linux)}
- {$ifdef MIR}
-  {$define VK_USE_PLATFORM_MIR_KHR}
- {$endif}
  {$ifdef WAYLAND}
   {$define VK_USE_PLATFORM_WAYLAND_KHR}
  {$endif}
@@ -84,7 +81,6 @@ uses {$if defined(Windows)}
      {$ifend}
      {$if defined(XLIB) and defined(VulkanUseXLIBUnits)}x,xlib,{$ifend}
      {$if defined(XCB) and defined(VulkanUseXCBUnits)}xcb,{$ifend}
-     {$if defined(Mir) and defined(VulkanUseMirUnits)}Mir,{$ifend}
      {$if defined(Wayland) and defined(VulkanUseWaylandUnits)}Wayland,{$ifend}
      {$if defined(Android) and defined(VulkanUseAndroidUnits)}Android,{$ifend}
      {$if defined(Fuchsia) and defined(VulkanUseFuchsiaUnits)}Fuchsia,{$ifend}
@@ -212,14 +208,6 @@ type PPVkInt8=^PVkInt8;
      TVkFuchsiaZXHandle={$ifdef VulkanUseFuchsiaUnits}Tzx_handle_t{$else}TVkSizeUInt{$endif};
 {$endif}
 
-{$ifdef Mir}
-     PPVkMirConnection=^PVkMirConnection;
-     PVkMirConnection={$ifdef VulkanUseMirUnits}PMirConnection{$else}TVkPointer{$endif};
-
-     PPVkMirSurface=^PVkMirSurface;
-     PVkMirSurface={$ifdef VulkanUseMirUnits}PMirSurface{$else}TVkPointer{$endif};
-{$endif}
-
 {$ifdef Wayland}
      PPVkWaylandDisplay=^PVkWaylandDisplay;
      PVkWaylandDisplay={$ifdef VulkanUseWaylandUnits}Pwl_display{$else}TVkPointer{$endif};
@@ -265,7 +253,7 @@ const VK_NULL_HANDLE=0;
 
       VK_API_VERSION_1_1=(1 shl 22) or (1 shl 12) or (0 shl 0);
 
-      VK_HEADER_VERSION=90;
+      VK_HEADER_VERSION=91;
 
       VK_MAX_PHYSICAL_DEVICE_NAME_SIZE=256;
       VK_UUID_SIZE=16;
@@ -291,6 +279,7 @@ const VK_NULL_HANDLE=0;
       VK_MAX_DEVICE_GROUP_SIZE_KHR=VK_MAX_DEVICE_GROUP_SIZE;
       VK_MAX_DRIVER_NAME_SIZE_KHR=256;
       VK_MAX_DRIVER_INFO_SIZE_KHR=256;
+      VK_SHADER_UNUSED_NV=TVkUInt32($ffffffff);
       VK_KHR_SURFACE_SPEC_VERSION=25;
       VK_KHR_SURFACE_EXTENSION_NAME='VK_KHR_surface';
       VK_KHR_SWAPCHAIN_SPEC_VERSION=70;
@@ -620,8 +609,8 @@ const VK_NULL_HANDLE=0;
       VK_EXT_EXTENSION_164_EXTENSION_NAME='VK_NV_extension_164';
       VK_NV_SHADING_RATE_IMAGE_SPEC_VERSION=3;
       VK_NV_SHADING_RATE_IMAGE_EXTENSION_NAME='VK_NV_shading_rate_image';
-      VK_NVX_RAYTRACING_SPEC_VERSION=1;
-      VK_NVX_RAYTRACING_EXTENSION_NAME='VK_NVX_raytracing';
+      VK_NV_RAY_TRACING_SPEC_VERSION=2;
+      VK_NV_RAY_TRACING_EXTENSION_NAME='VK_NV_ray_tracing';
       VK_NV_REPRESENTATIVE_FRAGMENT_TEST_SPEC_VERSION=1;
       VK_NV_REPRESENTATIVE_FRAGMENT_TEST_EXTENSION_NAME='VK_NV_representative_fragment_test';
       VK_EXT_EXTENSION_168_SPEC_VERSION=0;
@@ -668,8 +657,8 @@ const VK_NULL_HANDLE=0;
       VK_KHR_EXTENSION_188_EXTENSION_NAME='VK_AMD_extension_188';
       VK_KHR_EXTENSION_189_SPEC_VERSION=0;
       VK_KHR_EXTENSION_189_EXTENSION_NAME='VK_AMD_extension_189';
-      VK_KHR_EXTENSION_190_SPEC_VERSION=0;
-      VK_KHR_EXTENSION_190_EXTENSION_NAME='VK_AMD_extension_190';
+      VK_AMD_MEMORY_OVERALLOCATION_BEHAVIOR_SPEC_VERSION=1;
+      VK_AMD_MEMORY_OVERALLOCATION_BEHAVIOR_EXTENSION_NAME='VK_AMD_memory_overallocation_behavior';
       VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_SPEC_VERSION=3;
       VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME='VK_EXT_vertex_attribute_divisor';
       VK_GOOGLE_EXTENSION_192_SPEC_VERSION=0;
@@ -778,6 +767,8 @@ const VK_NULL_HANDLE=0;
       VK_INTEL_EXTENSION_243_EXTENSION_NAME='VK_INTEL_extension_243';
       VK_MESA_EXTENSION_244_SPEC_VERSION=0;
       VK_MESA_EXTENSION_244_EXTENSION_NAME='VK_MESA_extension_244';
+      VK_NV_EXTENSION_245_SPEC_VERSION=0;
+      VK_NV_EXTENSION_245_EXTENSION_NAME='VK_NV_extension_245';
 
 type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkDispatchableHandle=^TVkDispatchableHandle;
@@ -1061,17 +1052,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkObjectEntryUsageFlagsNVX=^TVkObjectEntryUsageFlagsNVX;
      TVkObjectEntryUsageFlagsNVX=TVkFlags;
 
-     PPVkGeometryFlagsNVX=^PVkGeometryFlagsNVX;
-     PVkGeometryFlagsNVX=^TVkGeometryFlagsNVX;
-     TVkGeometryFlagsNVX=TVkFlags;
+     PPVkGeometryFlagsNV=^PVkGeometryFlagsNV;
+     PVkGeometryFlagsNV=^TVkGeometryFlagsNV;
+     TVkGeometryFlagsNV=TVkFlags;
 
-     PPVkGeometryInstanceFlagsNVX=^PVkGeometryInstanceFlagsNVX;
-     PVkGeometryInstanceFlagsNVX=^TVkGeometryInstanceFlagsNVX;
-     TVkGeometryInstanceFlagsNVX=TVkFlags;
+     PPVkGeometryInstanceFlagsNV=^PVkGeometryInstanceFlagsNV;
+     PVkGeometryInstanceFlagsNV=^TVkGeometryInstanceFlagsNV;
+     TVkGeometryInstanceFlagsNV=TVkFlags;
 
-     PPVkBuildAccelerationStructureFlagsNVX=^PVkBuildAccelerationStructureFlagsNVX;
-     PVkBuildAccelerationStructureFlagsNVX=^TVkBuildAccelerationStructureFlagsNVX;
-     TVkBuildAccelerationStructureFlagsNVX=TVkFlags;
+     PPVkBuildAccelerationStructureFlagsNV=^PVkBuildAccelerationStructureFlagsNV;
+     PVkBuildAccelerationStructureFlagsNV=^TVkBuildAccelerationStructureFlagsNV;
+     TVkBuildAccelerationStructureFlagsNV=TVkFlags;
 
      PPVkDescriptorUpdateTemplateCreateFlags=^PVkDescriptorUpdateTemplateCreateFlags;
      PVkDescriptorUpdateTemplateCreateFlags=^TVkDescriptorUpdateTemplateCreateFlags;
@@ -1108,10 +1099,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PPVkAndroidSurfaceCreateFlagsKHR=^PVkAndroidSurfaceCreateFlagsKHR;
      PVkAndroidSurfaceCreateFlagsKHR=^TVkAndroidSurfaceCreateFlagsKHR;
      TVkAndroidSurfaceCreateFlagsKHR=TVkFlags;
-
-     PPVkMirSurfaceCreateFlagsKHR=^PVkMirSurfaceCreateFlagsKHR;
-     PVkMirSurfaceCreateFlagsKHR=^TVkMirSurfaceCreateFlagsKHR;
-     TVkMirSurfaceCreateFlagsKHR=TVkFlags;
 
      PPVkViSurfaceCreateFlagsNN=^PVkViSurfaceCreateFlagsNN;
      PVkViSurfaceCreateFlagsNN=^TVkViSurfaceCreateFlagsNN;
@@ -1433,9 +1420,9 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      PVkValidationCacheEXT=^TVkValidationCacheEXT;
      TVkValidationCacheEXT=TVkNonDispatchableHandle;
 
-     PPVkAccelerationStructureNVX=^PVkAccelerationStructureNVX;
-     PVkAccelerationStructureNVX=^TVkAccelerationStructureNVX;
-     TVkAccelerationStructureNVX=TVkNonDispatchableHandle;
+     PPVkAccelerationStructureNV=^PVkAccelerationStructureNV;
+     PVkAccelerationStructureNV=^TVkAccelerationStructureNV;
+     TVkAccelerationStructureNV=TVkNonDispatchableHandle;
 
      PPVkDisplayKHR=^PVkDisplayKHR;
      PVkDisplayKHR=^TVkDisplayKHR;
@@ -1568,7 +1555,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC=9,
        VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT=10,
        VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT=1000138000,
-       VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NVX=1000165000
+       VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV=1000165000
       );
 
      PPVkQueryType=^PVkQueryType;
@@ -1579,7 +1566,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_QUERY_TYPE_PIPELINE_STATISTICS=1,                                      //< Optional
        VK_QUERY_TYPE_TIMESTAMP=2,
        VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT=1000028004,
-       VK_QUERY_TYPE_COMPACTED_SIZE_NVX=1000165000
+       VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_NV=1000165000
       );
 
      PPVkBorderColor=^PVkBorderColor;
@@ -1600,7 +1587,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       (
        VK_PIPELINE_BIND_POINT_GRAPHICS=0,
        VK_PIPELINE_BIND_POINT_COMPUTE=1,
-       VK_PIPELINE_BIND_POINT_RAYTRACING_NVX=1000165000
+       VK_PIPELINE_BIND_POINT_RAY_TRACING_NV=1000165000
       );
 
      PPVkPipelineCacheHeaderVersion=^PVkPipelineCacheHeaderVersion;
@@ -1640,7 +1627,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TVkIndexType=
       (
        VK_INDEX_TYPE_UINT16=0,
-       VK_INDEX_TYPE_UINT32=1
+       VK_INDEX_TYPE_UINT32=1,
+       VK_INDEX_TYPE_NONE_NV=1000165000
       );
 
      PPVkFilter=^PVkFilter;
@@ -2196,7 +2184,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR=1000004000,
        VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR=1000005000,
        VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR=1000006000,
-       VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR=1000007000,
        VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR=1000008000,
        VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR=1000009000,
        VK_STRUCTURE_TYPE_NATIVE_BUFFER_ANDROID=1000010000,
@@ -2398,17 +2385,17 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_FEATURES_NV=1000164001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_PROPERTIES_NV=1000164002,
        VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_COARSE_SAMPLE_ORDER_STATE_CREATE_INFO_NV=1000164005,
-       VK_STRUCTURE_TYPE_RAYTRACING_PIPELINE_CREATE_INFO_NVX=1000165000,
-       VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NVX=1000165001,
-       VK_STRUCTURE_TYPE_GEOMETRY_INSTANCE_NVX=1000165002,
-       VK_STRUCTURE_TYPE_GEOMETRY_NVX=1000165003,
-       VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NVX=1000165004,
-       VK_STRUCTURE_TYPE_GEOMETRY_AABB_NVX=1000165005,
-       VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NVX=1000165006,
-       VK_STRUCTURE_TYPE_DESCRIPTOR_ACCELERATION_STRUCTURE_INFO_NVX=1000165007,
-       VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NVX=1000165008,
-       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAYTRACING_PROPERTIES_NVX=1000165009,
-       VK_STRUCTURE_TYPE_HIT_SHADER_MODULE_CREATE_INFO_NVX=1000165010,
+       VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_NV=1000165000,
+       VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV=1000165001,
+       VK_STRUCTURE_TYPE_GEOMETRY_NV=1000165003,
+       VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV=1000165004,
+       VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV=1000165005,
+       VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV=1000165006,
+       VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_NV=1000165007,
+       VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV=1000165008,
+       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV=1000165009,
+       VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV=1000165011,
+       VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV=1000165012,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV=1000166000,
        VK_STRUCTURE_TYPE_PIPELINE_REPRESENTATIVE_FRAGMENT_TEST_STATE_CREATE_INFO_NV=1000166001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES=1000168000,
@@ -2421,6 +2408,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES_KHR=1000180000,
        VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT=1000184000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD=1000185000,
+       VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD=1000189000,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT=1000190000,
        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT=1000190001,
        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT=1000190002,
@@ -2618,7 +2606,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT=1000128000,
        VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION=1000156000,
        VK_OBJECT_TYPE_VALIDATION_CACHE_EXT=1000160000,
-       VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NVX=1000165000,
+       VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV=1000165000,
        VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR=VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE,
        VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR=VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION
       );
@@ -2694,8 +2682,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_ACCESS_COMMAND_PROCESS_WRITE_BIT_NVX=$00040000,
        VK_ACCESS_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT=$00080000,
        VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT=$00100000,
-       VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NVX=$00200000,
-       VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NVX=$00400000,
+       VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_NV=$00200000,
+       VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_NV=$00400000,
        VK_ACCESS_SHADING_RATE_IMAGE_READ_BIT_NV=$00800000,
        VK_ACCESS_RESERVED_24_BIT_EXT=$01000000,
        VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT=$02000000,
@@ -2717,7 +2705,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT=$00000080,                              //< Can be used as source of fixed-function vertex fetch (VBO)
        VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT=$00000100,                            //< Can be the source of indirect parameters (e.g. indirect buffer, parameter buffer)
        VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT=$00000200,
-       VK_BUFFER_USAGE_RAYTRACING_BIT_NVX=$00000400,
+       VK_BUFFER_USAGE_RAY_TRACING_BIT_NV=$00000400,
        VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT=$00000800,
        VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT=$00001000
       );
@@ -2745,12 +2733,12 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_SHADER_STAGE_COMPUTE_BIT=$00000020,
        VK_SHADER_STAGE_TASK_BIT_NV=$00000040,
        VK_SHADER_STAGE_MESH_BIT_NV=$00000080,
-       VK_SHADER_STAGE_RAYGEN_BIT_NVX=$00000100,
-       VK_SHADER_STAGE_ANY_HIT_BIT_NVX=$00000200,
-       VK_SHADER_STAGE_CLOSEST_HIT_BIT_NVX=$00000400,
-       VK_SHADER_STAGE_MISS_BIT_NVX=$00000800,
-       VK_SHADER_STAGE_INTERSECTION_BIT_NVX=$00001000,
-       VK_SHADER_STAGE_CALLABLE_BIT_NVX=$00002000,
+       VK_SHADER_STAGE_RAYGEN_BIT_NV=$00000100,
+       VK_SHADER_STAGE_ANY_HIT_BIT_NV=$00000200,
+       VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV=$00000400,
+       VK_SHADER_STAGE_MISS_BIT_NV=$00000800,
+       VK_SHADER_STAGE_INTERSECTION_BIT_NV=$00001000,
+       VK_SHADER_STAGE_CALLABLE_BIT_NV=$00002000,
        VK_SHADER_STAGE_ALL=2147483647
       );
 
@@ -2806,7 +2794,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_PIPELINE_CREATE_DERIVATIVE_BIT=$00000004,
        VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT=$00000008,
        VK_PIPELINE_CREATE_DISPATCH_BASE=$00000010,
-       VK_PIPELINE_CREATE_DEFER_COMPILE_BIT_NVX=$00000020,
+       VK_PIPELINE_CREATE_DEFER_COMPILE_BIT_NV=$00000020,
        VK_PIPELINE_CREATE_DISPATCH_BASE_KHR=VK_PIPELINE_CREATE_DISPATCH_BASE,
        VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT_KHR=VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT
       );
@@ -2972,10 +2960,11 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT=$00040000,
        VK_PIPELINE_STAGE_TASK_SHADER_BIT_NV=$00080000,
        VK_PIPELINE_STAGE_MESH_SHADER_BIT_NV=$00100000,
-       VK_PIPELINE_STAGE_RAYTRACING_BIT_NVX=$00200000,
+       VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV=$00200000,
        VK_PIPELINE_STAGE_SHADING_RATE_IMAGE_BIT_NV=$00400000,
        VK_PIPELINE_STAGE_RESERVED_23_BIT_EXT=$00800000,
-       VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT=$01000000
+       VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT=$01000000,
+       VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV=$02000000
       );
 
      PPVkCommandPoolCreateFlagBits=^PVkCommandPoolCreateFlagBits;
@@ -3179,7 +3168,7 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_DEBUG_REPORT_OBJECT_TYPE_VALIDATION_CACHE_EXT_EXT=33,
        VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT=1000085000,
        VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT=1000156000,
-       VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_NVX_EXT=1000165000,
+       VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_NV_EXT=1000165000,
        VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT=VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT_EXT, //< Backwards-compatible alias containing a typo
        VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_KHR_EXT=VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT,
        VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_KHR_EXT=VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT,
@@ -3701,57 +3690,84 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        VK_COARSE_SAMPLE_ORDER_TYPE_SAMPLE_MAJOR_NV=3
       );
 
-     PPVkGeometryInstanceFlagBitsNVX=^PVkGeometryInstanceFlagBitsNVX;
-     PVkGeometryInstanceFlagBitsNVX=^TVkGeometryInstanceFlagBitsNVX;
-     TVkGeometryInstanceFlagBitsNVX=
+     PPVkGeometryInstanceFlagBitsNV=^PVkGeometryInstanceFlagBitsNV;
+     PVkGeometryInstanceFlagBitsNV=^TVkGeometryInstanceFlagBitsNV;
+     TVkGeometryInstanceFlagBitsNV=
       (
-       VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_DISABLE_BIT_NVX=$00000001,
-       VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_FLIP_WINDING_BIT_NVX=$00000002,
-       VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_NVX=$00000004,
-       VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_NVX=$00000008
+       VK_GEOMETRY_INSTANCE_TRIANGLE_CULL_DISABLE_BIT_NV=$00000001,
+       VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_NV=$00000002,
+       VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_NV=$00000004,
+       VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_NV=$00000008
       );
 
-     PPVkGeometryFlagBitsNVX=^PVkGeometryFlagBitsNVX;
-     PVkGeometryFlagBitsNVX=^TVkGeometryFlagBitsNVX;
-     TVkGeometryFlagBitsNVX=
+     PPVkGeometryFlagBitsNV=^PVkGeometryFlagBitsNV;
+     PVkGeometryFlagBitsNV=^TVkGeometryFlagBitsNV;
+     TVkGeometryFlagBitsNV=
       (
-       VK_GEOMETRY_OPAQUE_BIT_NVX=$00000001,
-       VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_NVX=$00000002
+       VK_GEOMETRY_OPAQUE_BIT_NV=$00000001,
+       VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_NV=$00000002
       );
 
-     PPVkBuildAccelerationStructureFlagBitsNVX=^PVkBuildAccelerationStructureFlagBitsNVX;
-     PVkBuildAccelerationStructureFlagBitsNVX=^TVkBuildAccelerationStructureFlagBitsNVX;
-     TVkBuildAccelerationStructureFlagBitsNVX=
+     PPVkBuildAccelerationStructureFlagBitsNV=^PVkBuildAccelerationStructureFlagBitsNV;
+     PVkBuildAccelerationStructureFlagBitsNV=^TVkBuildAccelerationStructureFlagBitsNV;
+     TVkBuildAccelerationStructureFlagBitsNV=
       (
-       VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_NVX=$00000001,
-       VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_NVX=$00000002,
-       VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_NVX=$00000004,
-       VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_NVX=$00000008,
-       VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_NVX=$00000010
+       VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_NV=$00000001,
+       VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_NV=$00000002,
+       VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_NV=$00000004,
+       VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_NV=$00000008,
+       VK_BUILD_ACCELERATION_STRUCTURE_LOW_MEMORY_BIT_NV=$00000010
       );
 
-     PPVkCopyAccelerationStructureModeNVX=^PVkCopyAccelerationStructureModeNVX;
-     PVkCopyAccelerationStructureModeNVX=^TVkCopyAccelerationStructureModeNVX;
-     TVkCopyAccelerationStructureModeNVX=
+     PPVkCopyAccelerationStructureModeNV=^PVkCopyAccelerationStructureModeNV;
+     PVkCopyAccelerationStructureModeNV=^TVkCopyAccelerationStructureModeNV;
+     TVkCopyAccelerationStructureModeNV=
       (
-       VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_NVX=0,
-       VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_NVX=1
+       VK_COPY_ACCELERATION_STRUCTURE_MODE_CLONE_NV=0,
+       VK_COPY_ACCELERATION_STRUCTURE_MODE_COMPACT_NV=1
       );
 
-     PPVkAccelerationStructureTypeNVX=^PVkAccelerationStructureTypeNVX;
-     PVkAccelerationStructureTypeNVX=^TVkAccelerationStructureTypeNVX;
-     TVkAccelerationStructureTypeNVX=
+     PPVkAccelerationStructureTypeNV=^PVkAccelerationStructureTypeNV;
+     PVkAccelerationStructureTypeNV=^TVkAccelerationStructureTypeNV;
+     TVkAccelerationStructureTypeNV=
       (
-       VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_NVX=0,
-       VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_NVX=1
+       VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_NV=0,
+       VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_NV=1
       );
 
-     PPVkGeometryTypeNVX=^PVkGeometryTypeNVX;
-     PVkGeometryTypeNVX=^TVkGeometryTypeNVX;
-     TVkGeometryTypeNVX=
+     PPVkGeometryTypeNV=^PVkGeometryTypeNV;
+     PVkGeometryTypeNV=^TVkGeometryTypeNV;
+     TVkGeometryTypeNV=
       (
-       VK_GEOMETRY_TYPE_TRIANGLES_NVX=0,
-       VK_GEOMETRY_TYPE_AABBS_NVX=1
+       VK_GEOMETRY_TYPE_TRIANGLES_NV=0,
+       VK_GEOMETRY_TYPE_AABBS_NV=1
+      );
+
+     PPVkAccelerationStructureMemoryRequirementsTypeNV=^PVkAccelerationStructureMemoryRequirementsTypeNV;
+     PVkAccelerationStructureMemoryRequirementsTypeNV=^TVkAccelerationStructureMemoryRequirementsTypeNV;
+     TVkAccelerationStructureMemoryRequirementsTypeNV=
+      (
+       VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_OBJECT_NV=0,
+       VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_NV=1,
+       VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_UPDATE_SCRATCH_NV=2
+      );
+
+     PPVkRayTracingShaderGroupTypeNV=^PVkRayTracingShaderGroupTypeNV;
+     PVkRayTracingShaderGroupTypeNV=^TVkRayTracingShaderGroupTypeNV;
+     TVkRayTracingShaderGroupTypeNV=
+      (
+       VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_NV=0,
+       VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_NV=1,
+       VK_RAY_TRACING_SHADER_GROUP_TYPE_PROCEDURAL_HIT_GROUP_NV=2
+      );
+
+     PPVkMemoryOverallocationBehaviorAMD=^PVkMemoryOverallocationBehaviorAMD;
+     PVkMemoryOverallocationBehaviorAMD=^TVkMemoryOverallocationBehaviorAMD;
+     TVkMemoryOverallocationBehaviorAMD=
+      (
+       VK_MEMORY_OVERALLOCATION_BEHAVIOR_DEFAULT_AMD=0,
+       VK_MEMORY_OVERALLOCATION_BEHAVIOR_ALLOWED_AMD=1,
+       VK_MEMORY_OVERALLOCATION_BEHAVIOR_DISALLOWED_AMD=2
       );
 
      PPVkDescriptorUpdateTemplateTypeKHR=PPVkDescriptorUpdateTemplateType;
@@ -6569,26 +6585,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aFlags:TVkAndroidSurfaceCreateFlagsKHR;
                           const aWindow:PVkAndroidANativeWindow);
-{$endif}
-     end;
-{$endif}
-
-{$ifdef Mir}
-     PPVkMirSurfaceCreateInfoKHR=^PVkMirSurfaceCreateInfoKHR;
-     PVkMirSurfaceCreateInfoKHR=^TVkMirSurfaceCreateInfoKHR;
-     TVkMirSurfaceCreateInfoKHR=record
-{$ifdef HAS_ADVANCED_RECORDS}
-      public
-{$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR
-       pNext:PVkVoid;
-       flags:TVkMirSurfaceCreateFlagsKHR;
-       connection:PVkMirConnection;
-       mirSurface:PVkMirSurface;
-{$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aFlags:TVkMirSurfaceCreateFlagsKHR;
-                          const aConnection:PVkMirConnection;
-                          const aMirSurface:PVkMirSurface);
 {$endif}
      end;
 {$endif}
@@ -11439,18 +11435,41 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     PPVkRaytracingPipelineCreateInfoNVX=^PVkRaytracingPipelineCreateInfoNVX;
-     PVkRaytracingPipelineCreateInfoNVX=^TVkRaytracingPipelineCreateInfoNVX;
-     TVkRaytracingPipelineCreateInfoNVX=record
+     PPVkRayTracingShaderGroupCreateInfoNV=^PVkRayTracingShaderGroupCreateInfoNV;
+     PVkRayTracingShaderGroupCreateInfoNV=^TVkRayTracingShaderGroupCreateInfoNV;
+     TVkRayTracingShaderGroupCreateInfoNV=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RAYTRACING_PIPELINE_CREATE_INFO_NVX
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV
+       pNext:PVkVoid;
+       type_:TVkRayTracingShaderGroupTypeNV;
+       generalShader:TVkUInt32;
+       closestHitShader:TVkUInt32;
+       anyHitShader:TVkUInt32;
+       intersectionShader:TVkUInt32;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aType_:TVkRayTracingShaderGroupTypeNV;
+                          const aGeneralShader:TVkUInt32;
+                          const aClosestHitShader:TVkUInt32;
+                          const aAnyHitShader:TVkUInt32;
+                          const aIntersectionShader:TVkUInt32);
+{$endif}
+     end;
+
+     PPVkRayTracingPipelineCreateInfoNV=^PVkRayTracingPipelineCreateInfoNV;
+     PVkRayTracingPipelineCreateInfoNV=^TVkRayTracingPipelineCreateInfoNV;
+     TVkRayTracingPipelineCreateInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_NV
        pNext:PVkVoid;
        flags:TVkPipelineCreateFlags;
        stageCount:TVkUInt32;
        pStages:PVkPipelineShaderStageCreateInfo;
-       pGroupNumbers:PVkUInt32;
+       groupCount:TVkUInt32;
+       pGroups:PVkRayTracingShaderGroupCreateInfoNV;
        maxRecursionDepth:TVkUInt32;
        layout:TVkPipelineLayout;
        basePipelineHandle:TVkPipeline;
@@ -11459,7 +11478,8 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        constructor Create(const aFlags:TVkPipelineCreateFlags;
                           const aStageCount:TVkUInt32;
                           const aPStages:PVkPipelineShaderStageCreateInfo;
-                          const aPGroupNumbers:PVkUInt32;
+                          const aGroupCount:TVkUInt32;
+                          const aPGroups:PVkRayTracingShaderGroupCreateInfoNV;
                           const aMaxRecursionDepth:TVkUInt32;
                           const aLayout:TVkPipelineLayout;
                           const aBasePipelineHandle:TVkPipeline;
@@ -11467,13 +11487,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     PPVkGeometryTrianglesNVX=^PVkGeometryTrianglesNVX;
-     PVkGeometryTrianglesNVX=^TVkGeometryTrianglesNVX;
-     TVkGeometryTrianglesNVX=record
+     PPVkGeometryTrianglesNV=^PVkGeometryTrianglesNV;
+     PVkGeometryTrianglesNV=^TVkGeometryTrianglesNV;
+     TVkGeometryTrianglesNV=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NVX
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV
        pNext:PVkVoid;
        vertexData:TVkBuffer;
        vertexOffset:TVkDeviceSize;
@@ -11501,13 +11521,13 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     PPVkGeometryAABBNVX=^PVkGeometryAABBNVX;
-     PVkGeometryAABBNVX=^TVkGeometryAABBNVX;
-     TVkGeometryAABBNVX=record
+     PPVkGeometryAABBNV=^PVkGeometryAABBNV;
+     PVkGeometryAABBNV=^TVkGeometryAABBNV;
+     TVkGeometryAABBNV=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_GEOMETRY_AABB_NVX
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV
        pNext:PVkVoid;
        aabbData:TVkBuffer;
        numAABBs:TVkUInt32;
@@ -11521,77 +11541,91 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     PPVkGeometryDataNVX=^PVkGeometryDataNVX;
-     PVkGeometryDataNVX=^TVkGeometryDataNVX;
-     TVkGeometryDataNVX=record
+     PPVkGeometryDataNV=^PVkGeometryDataNV;
+     PVkGeometryDataNV=^TVkGeometryDataNV;
+     TVkGeometryDataNV=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       triangles:TVkGeometryTrianglesNVX;
-       aabbs:TVkGeometryAABBNVX;
+       triangles:TVkGeometryTrianglesNV;
+       aabbs:TVkGeometryAABBNV;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aTriangles:TVkGeometryTrianglesNVX;
-                          const aAabbs:TVkGeometryAABBNVX);
+       constructor Create(const aTriangles:TVkGeometryTrianglesNV;
+                          const aAabbs:TVkGeometryAABBNV);
 {$endif}
      end;
 
-     PPVkGeometryNVX=^PVkGeometryNVX;
-     PVkGeometryNVX=^TVkGeometryNVX;
-     TVkGeometryNVX=record
+     PPVkGeometryNV=^PVkGeometryNV;
+     PVkGeometryNV=^TVkGeometryNV;
+     TVkGeometryNV=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_GEOMETRY_NVX
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_GEOMETRY_NV
        pNext:PVkVoid;
-       geometryType:TVkGeometryTypeNVX;
-       geometry:TVkGeometryDataNVX;
-       flags:TVkGeometryFlagsNVX;
+       geometryType:TVkGeometryTypeNV;
+       geometry:TVkGeometryDataNV;
+       flags:TVkGeometryFlagsNV;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aGeometryType:TVkGeometryTypeNVX;
-                          const aGeometry:TVkGeometryDataNVX;
-                          const aFlags:TVkGeometryFlagsNVX);
+       constructor Create(const aGeometryType:TVkGeometryTypeNV;
+                          const aGeometry:TVkGeometryDataNV;
+                          const aFlags:TVkGeometryFlagsNV);
 {$endif}
      end;
 
-     PPVkAccelerationStructureCreateInfoNVX=^PVkAccelerationStructureCreateInfoNVX;
-     PVkAccelerationStructureCreateInfoNVX=^TVkAccelerationStructureCreateInfoNVX;
-     TVkAccelerationStructureCreateInfoNVX=record
+     PPVkAccelerationStructureInfoNV=^PVkAccelerationStructureInfoNV;
+     PVkAccelerationStructureInfoNV=^TVkAccelerationStructureInfoNV;
+     TVkAccelerationStructureInfoNV=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NVX
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV
        pNext:PVkVoid;
-       type_:TVkAccelerationStructureTypeNVX;
-       flags:TVkBuildAccelerationStructureFlagsNVX;
-       compactedSize:TVkDeviceSize;
+       type_:TVkAccelerationStructureTypeNV;
+       flags:TVkBuildAccelerationStructureFlagsNV;
        instanceCount:TVkUInt32;
        geometryCount:TVkUInt32;
-       pGeometries:PVkGeometryNVX;
+       pGeometries:PVkGeometryNV;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aType_:TVkAccelerationStructureTypeNVX;
-                          const aFlags:TVkBuildAccelerationStructureFlagsNVX;
-                          const aCompactedSize:TVkDeviceSize;
+       constructor Create(const aType_:TVkAccelerationStructureTypeNV;
+                          const aFlags:TVkBuildAccelerationStructureFlagsNV;
                           const aInstanceCount:TVkUInt32;
                           const aGeometryCount:TVkUInt32;
-                          const aPGeometries:PVkGeometryNVX);
+                          const aPGeometries:PVkGeometryNV);
 {$endif}
      end;
 
-     PPVkBindAccelerationStructureMemoryInfoNVX=^PVkBindAccelerationStructureMemoryInfoNVX;
-     PVkBindAccelerationStructureMemoryInfoNVX=^TVkBindAccelerationStructureMemoryInfoNVX;
-     TVkBindAccelerationStructureMemoryInfoNVX=record
+     PPVkAccelerationStructureCreateInfoNV=^PVkAccelerationStructureCreateInfoNV;
+     PVkAccelerationStructureCreateInfoNV=^TVkAccelerationStructureCreateInfoNV;
+     TVkAccelerationStructureCreateInfoNV=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NVX
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV
        pNext:PVkVoid;
-       accelerationStructure:TVkAccelerationStructureNVX;
+       compactedSize:TVkDeviceSize;
+       info:TVkAccelerationStructureInfoNV;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aCompactedSize:TVkDeviceSize;
+                          const aInfo:TVkAccelerationStructureInfoNV);
+{$endif}
+     end;
+
+     PPVkBindAccelerationStructureMemoryInfoNV=^PVkBindAccelerationStructureMemoryInfoNV;
+     PVkBindAccelerationStructureMemoryInfoNV=^TVkBindAccelerationStructureMemoryInfoNV;
+     TVkBindAccelerationStructureMemoryInfoNV=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV
+       pNext:PVkVoid;
+       accelerationStructure:TVkAccelerationStructureNV;
        memory:TVkDeviceMemory;
        memoryOffset:TVkDeviceSize;
        deviceIndexCount:TVkUInt32;
        pDeviceIndices:PVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aAccelerationStructure:TVkAccelerationStructureNVX;
+       constructor Create(const aAccelerationStructure:TVkAccelerationStructureNV;
                           const aMemory:TVkDeviceMemory;
                           const aMemoryOffset:TVkDeviceSize;
                           const aDeviceIndexCount:TVkUInt32;
@@ -11599,51 +11633,63 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 {$endif}
      end;
 
-     PPVkDescriptorAccelerationStructureInfoNVX=^PVkDescriptorAccelerationStructureInfoNVX;
-     PVkDescriptorAccelerationStructureInfoNVX=^TVkDescriptorAccelerationStructureInfoNVX;
-     TVkDescriptorAccelerationStructureInfoNVX=record
+     PPVkWriteDescriptorSetAccelerationStructureNV=^PVkWriteDescriptorSetAccelerationStructureNV;
+     PVkWriteDescriptorSetAccelerationStructureNV=^TVkWriteDescriptorSetAccelerationStructureNV;
+     TVkWriteDescriptorSetAccelerationStructureNV=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DESCRIPTOR_ACCELERATION_STRUCTURE_INFO_NVX
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_NV
        pNext:PVkVoid;
        accelerationStructureCount:TVkUInt32;
-       pAccelerationStructures:PVkAccelerationStructureNVX;
+       pAccelerationStructures:PVkAccelerationStructureNV;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aAccelerationStructureCount:TVkUInt32;
-                          const aPAccelerationStructures:PVkAccelerationStructureNVX);
+                          const aPAccelerationStructures:PVkAccelerationStructureNV);
 {$endif}
      end;
 
-     PPVkAccelerationStructureMemoryRequirementsInfoNVX=^PVkAccelerationStructureMemoryRequirementsInfoNVX;
-     PVkAccelerationStructureMemoryRequirementsInfoNVX=^TVkAccelerationStructureMemoryRequirementsInfoNVX;
-     TVkAccelerationStructureMemoryRequirementsInfoNVX=record
+     PPVkAccelerationStructureMemoryRequirementsInfoNV=^PVkAccelerationStructureMemoryRequirementsInfoNV;
+     PVkAccelerationStructureMemoryRequirementsInfoNV=^TVkAccelerationStructureMemoryRequirementsInfoNV;
+     TVkAccelerationStructureMemoryRequirementsInfoNV=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NVX
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV
        pNext:PVkVoid;
-       accelerationStructure:TVkAccelerationStructureNVX;
+       type_:TVkAccelerationStructureMemoryRequirementsTypeNV;
+       accelerationStructure:TVkAccelerationStructureNV;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aAccelerationStructure:TVkAccelerationStructureNVX);
+       constructor Create(const aType_:TVkAccelerationStructureMemoryRequirementsTypeNV;
+                          const aAccelerationStructure:TVkAccelerationStructureNV);
 {$endif}
      end;
 
-     PPVkPhysicalDeviceRaytracingPropertiesNVX=^PVkPhysicalDeviceRaytracingPropertiesNVX;
-     PVkPhysicalDeviceRaytracingPropertiesNVX=^TVkPhysicalDeviceRaytracingPropertiesNVX;
-     TVkPhysicalDeviceRaytracingPropertiesNVX=record
+     PPVkPhysicalDeviceRayTracingPropertiesNV=^PVkPhysicalDeviceRayTracingPropertiesNV;
+     PVkPhysicalDeviceRayTracingPropertiesNV=^TVkPhysicalDeviceRayTracingPropertiesNV;
+     TVkPhysicalDeviceRayTracingPropertiesNV=record
 {$ifdef HAS_ADVANCED_RECORDS}
       public
 {$endif}
-       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAYTRACING_PROPERTIES_NVX
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV
        pNext:PVkVoid;
-       shaderHeaderSize:TVkUInt32;
+       shaderGroupHandleSize:TVkUInt32;
        maxRecursionDepth:TVkUInt32;
-       maxGeometryCount:TVkUInt32;
+       maxShaderGroupStride:TVkUInt32;
+       shaderGroupBaseAlignment:TVkUInt32;
+       maxGeometryCount:TVkUInt64;
+       maxInstanceCount:TVkUInt64;
+       maxTriangleCount:TVkUInt64;
+       maxDescriptorSetAccelerationStructures:TVkUInt32;
 {$ifdef HAS_ADVANCED_RECORDS}
-       constructor Create(const aShaderHeaderSize:TVkUInt32;
+       constructor Create(const aShaderGroupHandleSize:TVkUInt32;
                           const aMaxRecursionDepth:TVkUInt32;
-                          const aMaxGeometryCount:TVkUInt32);
+                          const aMaxShaderGroupStride:TVkUInt32;
+                          const aShaderGroupBaseAlignment:TVkUInt32;
+                          const aMaxGeometryCount:TVkUInt64;
+                          const aMaxInstanceCount:TVkUInt64;
+                          const aMaxTriangleCount:TVkUInt64;
+                          const aMaxDescriptorSetAccelerationStructures:TVkUInt32);
 {$endif}
      end;
 
@@ -11744,6 +11790,20 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        drmFormatModifier:TVkUInt64;
 {$ifdef HAS_ADVANCED_RECORDS}
        constructor Create(const aDrmFormatModifier:TVkUInt64);
+{$endif}
+     end;
+
+     PPVkDeviceMemoryOverallocationCreateInfoAMD=^PVkDeviceMemoryOverallocationCreateInfoAMD;
+     PVkDeviceMemoryOverallocationCreateInfoAMD=^TVkDeviceMemoryOverallocationCreateInfoAMD;
+     TVkDeviceMemoryOverallocationCreateInfoAMD=record
+{$ifdef HAS_ADVANCED_RECORDS}
+      public
+{$endif}
+       sType:TVkStructureType; //< Must be VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD
+       pNext:PVkVoid;
+       overallocationBehavior:TVkMemoryOverallocationBehaviorAMD;
+{$ifdef HAS_ADVANCED_RECORDS}
+       constructor Create(const aOverallocationBehavior:TVkMemoryOverallocationBehaviorAMD);
 {$endif}
      end;
 
@@ -12046,14 +12106,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
      TvkCreateDisplayPlaneSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkDisplaySurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkCreateSharedSwapchainsKHR=function(device:TVkDevice;swapchainCount:TVkUInt32;const pCreateInfos:PVkSwapchainCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSwapchains:PVkSwapchainKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-
-{$ifdef Mir}
-     TvkCreateMirSurfaceKHR=function(instance:TVkInstance;const pCreateInfo:PVkMirSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-{$endif}
-
-{$ifdef Mir}
-     TvkGetPhysicalDeviceMirPresentationSupportKHR=function(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PVkMirConnection):TVkBool32; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-{$endif}
 
      TvkDestroySurfaceKHR=procedure(instance:TVkInstance;surface:TVkSurfaceKHR;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -12463,31 +12515,29 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
      TvkCmdDrawMeshTasksIndirectCountNV=procedure(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkCompileDeferredNVX=function(device:TVkDevice;pipeline:TVkPipeline;shader:TVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCompileDeferredNV=function(device:TVkDevice;pipeline:TVkPipeline;shader:TVkUInt32):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkCreateAccelerationStructureNVX=function(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureNVX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateAccelerationStructureNV=function(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkDestroyAccelerationStructureNVX=procedure(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNVX;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkDestroyAccelerationStructureNV=procedure(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNV;const pAllocator:PVkAllocationCallbacks); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetAccelerationStructureMemoryRequirementsNVX=procedure(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNVX;pMemoryRequirements:PVkMemoryRequirements2KHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetAccelerationStructureMemoryRequirementsNV=procedure(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNV;pMemoryRequirements:PVkMemoryRequirements2KHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetAccelerationStructureScratchMemoryRequirementsNVX=procedure(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNVX;pMemoryRequirements:PVkMemoryRequirements2KHR); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkBindAccelerationStructureMemoryNV=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindAccelerationStructureMemoryInfoNV):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkBindAccelerationStructureMemoryNVX=function(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindAccelerationStructureMemoryInfoNVX):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdCopyAccelerationStructureNV=procedure(commandBuffer:TVkCommandBuffer;dst:TVkAccelerationStructureNV;src:TVkAccelerationStructureNV;mode:TVkCopyAccelerationStructureModeNV); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdCopyAccelerationStructureNVX=procedure(commandBuffer:TVkCommandBuffer;dst:TVkAccelerationStructureNVX;src:TVkAccelerationStructureNVX;mode:TVkCopyAccelerationStructureModeNVX); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdWriteAccelerationStructuresPropertiesNV=procedure(commandBuffer:TVkCommandBuffer;accelerationStructureCount:TVkUInt32;const pAccelerationStructures:PVkAccelerationStructureNV;queryType:TVkQueryType;queryPool:TVkQueryPool;firstQuery:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdWriteAccelerationStructurePropertiesNVX=procedure(commandBuffer:TVkCommandBuffer;accelerationStructure:TVkAccelerationStructureNVX;queryType:TVkQueryType;queryPool:TVkQueryPool;query:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdBuildAccelerationStructureNV=procedure(commandBuffer:TVkCommandBuffer;const pInfo:PVkAccelerationStructureInfoNV;instanceData:TVkBuffer;instanceOffset:TVkDeviceSize;update:TVkBool32;dst:TVkAccelerationStructureNV;src:TVkAccelerationStructureNV;scratch:TVkBuffer;scratchOffset:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdBuildAccelerationStructureNVX=procedure(commandBuffer:TVkCommandBuffer;type_:TVkAccelerationStructureTypeNVX;instanceCount:TVkUInt32;instanceData:TVkBuffer;instanceOffset:TVkDeviceSize;geometryCount:TVkUInt32;const pGeometries:PVkGeometryNVX;flags:TVkBuildAccelerationStructureFlagsNVX;update:TVkBool32;dst:TVkAccelerationStructureNVX;src:TVkAccelerationStructureNVX;scratch:TVkBuffer;scratchOffset:TVkDeviceSize); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCmdTraceRaysNV=procedure(commandBuffer:TVkCommandBuffer;raygenShaderBindingTableBuffer:TVkBuffer;raygenShaderBindingOffset:TVkDeviceSize;missShaderBindingTableBuffer:TVkBuffer;missShaderBindingOffset:TVkDeviceSize;missShaderBindingStride:TVkDeviceSize;hitShaderBindingTableBuffer:TVkBuffer;hitShaderBindingOffset:TVkDeviceSize;hitShaderBindingStride:TVkDeviceSize;callableShaderBindingTableBuffer:TVkBuffer;callableShaderBindingOffset:TVkDeviceSize;callableShaderBindingStride:TVkDeviceSize;width:TVkUInt32;height:TVkUInt32;depth:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkCmdTraceRaysNVX=procedure(commandBuffer:TVkCommandBuffer;raygenShaderBindingTableBuffer:TVkBuffer;raygenShaderBindingOffset:TVkDeviceSize;missShaderBindingTableBuffer:TVkBuffer;missShaderBindingOffset:TVkDeviceSize;missShaderBindingStride:TVkDeviceSize;hitShaderBindingTableBuffer:TVkBuffer;hitShaderBindingOffset:TVkDeviceSize;hitShaderBindingStride:TVkDeviceSize;width:TVkUInt32;height:TVkUInt32); {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetRayTracingShaderGroupHandlesNV=function(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetRaytracingShaderHandlesNVX=function(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkGetAccelerationStructureHandleNV=function(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNV;dataSize:TVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
-     TvkGetAccelerationStructureHandleNVX=function(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNVX;dataSize:TVkSize;pData:PVkVoid):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
-
-     TvkCreateRaytracingPipelinesNVX=function(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkRaytracingPipelineCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
+     TvkCreateRayTracingPipelinesNV=function(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkRayTracingPipelineCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
      TvkGetImageDrmFormatModifierPropertiesEXT=function(device:TVkDevice;image:TVkImage;pProperties:PVkImageDrmFormatModifierPropertiesEXT):TVkResult; {$ifdef Windows}stdcall;{$else}{$ifdef Android}{$ifdef cpuarm}hardfloat;{$else}cdecl;{$endif}{$else}cdecl;{$endif}{$endif}
 
@@ -12794,14 +12844,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
       CreateDisplayPlaneSurfaceKHR:TvkCreateDisplayPlaneSurfaceKHR;
 
       CreateSharedSwapchainsKHR:TvkCreateSharedSwapchainsKHR;
-
-{$ifdef Mir}
-      CreateMirSurfaceKHR:TvkCreateMirSurfaceKHR;
-{$endif}
-
-{$ifdef Mir}
-      GetPhysicalDeviceMirPresentationSupportKHR:TvkGetPhysicalDeviceMirPresentationSupportKHR;
-{$endif}
 
       DestroySurfaceKHR:TvkDestroySurfaceKHR;
 
@@ -13211,31 +13253,29 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
       CmdDrawMeshTasksIndirectCountNV:TvkCmdDrawMeshTasksIndirectCountNV;
 
-      CompileDeferredNVX:TvkCompileDeferredNVX;
+      CompileDeferredNV:TvkCompileDeferredNV;
 
-      CreateAccelerationStructureNVX:TvkCreateAccelerationStructureNVX;
+      CreateAccelerationStructureNV:TvkCreateAccelerationStructureNV;
 
-      DestroyAccelerationStructureNVX:TvkDestroyAccelerationStructureNVX;
+      DestroyAccelerationStructureNV:TvkDestroyAccelerationStructureNV;
 
-      GetAccelerationStructureMemoryRequirementsNVX:TvkGetAccelerationStructureMemoryRequirementsNVX;
+      GetAccelerationStructureMemoryRequirementsNV:TvkGetAccelerationStructureMemoryRequirementsNV;
 
-      GetAccelerationStructureScratchMemoryRequirementsNVX:TvkGetAccelerationStructureScratchMemoryRequirementsNVX;
+      BindAccelerationStructureMemoryNV:TvkBindAccelerationStructureMemoryNV;
 
-      BindAccelerationStructureMemoryNVX:TvkBindAccelerationStructureMemoryNVX;
+      CmdCopyAccelerationStructureNV:TvkCmdCopyAccelerationStructureNV;
 
-      CmdCopyAccelerationStructureNVX:TvkCmdCopyAccelerationStructureNVX;
+      CmdWriteAccelerationStructuresPropertiesNV:TvkCmdWriteAccelerationStructuresPropertiesNV;
 
-      CmdWriteAccelerationStructurePropertiesNVX:TvkCmdWriteAccelerationStructurePropertiesNVX;
+      CmdBuildAccelerationStructureNV:TvkCmdBuildAccelerationStructureNV;
 
-      CmdBuildAccelerationStructureNVX:TvkCmdBuildAccelerationStructureNVX;
+      CmdTraceRaysNV:TvkCmdTraceRaysNV;
 
-      CmdTraceRaysNVX:TvkCmdTraceRaysNVX;
+      GetRayTracingShaderGroupHandlesNV:TvkGetRayTracingShaderGroupHandlesNV;
 
-      GetRaytracingShaderHandlesNVX:TvkGetRaytracingShaderHandlesNVX;
+      GetAccelerationStructureHandleNV:TvkGetAccelerationStructureHandleNV;
 
-      GetAccelerationStructureHandleNVX:TvkGetAccelerationStructureHandleNVX;
-
-      CreateRaytracingPipelinesNVX:TvkCreateRaytracingPipelinesNVX;
+      CreateRayTracingPipelinesNV:TvkCreateRayTracingPipelinesNV;
 
       GetImageDrmFormatModifierPropertiesEXT:TvkGetImageDrmFormatModifierPropertiesEXT;
 
@@ -13547,14 +13587,6 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
        function CreateDisplayPlaneSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkDisplaySurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
 
        function CreateSharedSwapchainsKHR(device:TVkDevice;swapchainCount:TVkUInt32;const pCreateInfos:PVkSwapchainCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSwapchains:PVkSwapchainKHR):TVkResult; virtual;
-
-{$ifdef Mir}
-       function CreateMirSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkMirSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult; virtual;
-{$endif}
-
-{$ifdef Mir}
-       function GetPhysicalDeviceMirPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PVkMirConnection):TVkBool32; virtual;
-{$endif}
 
        procedure DestroySurfaceKHR(instance:TVkInstance;surface:TVkSurfaceKHR;const pAllocator:PVkAllocationCallbacks); virtual;
 
@@ -13964,31 +13996,29 @@ type PPVkDispatchableHandle=^PVkDispatchableHandle;
 
        procedure CmdDrawMeshTasksIndirectCountNV(commandBuffer:TVkCommandBuffer;buffer:TVkBuffer;offset:TVkDeviceSize;countBuffer:TVkBuffer;countBufferOffset:TVkDeviceSize;maxDrawCount:TVkUInt32;stride:TVkUInt32); virtual;
 
-       function CompileDeferredNVX(device:TVkDevice;pipeline:TVkPipeline;shader:TVkUInt32):TVkResult; virtual;
+       function CompileDeferredNV(device:TVkDevice;pipeline:TVkPipeline;shader:TVkUInt32):TVkResult; virtual;
 
-       function CreateAccelerationStructureNVX(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureNVX):TVkResult; virtual;
+       function CreateAccelerationStructureNV(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureNV):TVkResult; virtual;
 
-       procedure DestroyAccelerationStructureNVX(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNVX;const pAllocator:PVkAllocationCallbacks); virtual;
+       procedure DestroyAccelerationStructureNV(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNV;const pAllocator:PVkAllocationCallbacks); virtual;
 
-       procedure GetAccelerationStructureMemoryRequirementsNVX(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNVX;pMemoryRequirements:PVkMemoryRequirements2KHR); virtual;
+       procedure GetAccelerationStructureMemoryRequirementsNV(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNV;pMemoryRequirements:PVkMemoryRequirements2KHR); virtual;
 
-       procedure GetAccelerationStructureScratchMemoryRequirementsNVX(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNVX;pMemoryRequirements:PVkMemoryRequirements2KHR); virtual;
+       function BindAccelerationStructureMemoryNV(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindAccelerationStructureMemoryInfoNV):TVkResult; virtual;
 
-       function BindAccelerationStructureMemoryNVX(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindAccelerationStructureMemoryInfoNVX):TVkResult; virtual;
+       procedure CmdCopyAccelerationStructureNV(commandBuffer:TVkCommandBuffer;dst:TVkAccelerationStructureNV;src:TVkAccelerationStructureNV;mode:TVkCopyAccelerationStructureModeNV); virtual;
 
-       procedure CmdCopyAccelerationStructureNVX(commandBuffer:TVkCommandBuffer;dst:TVkAccelerationStructureNVX;src:TVkAccelerationStructureNVX;mode:TVkCopyAccelerationStructureModeNVX); virtual;
+       procedure CmdWriteAccelerationStructuresPropertiesNV(commandBuffer:TVkCommandBuffer;accelerationStructureCount:TVkUInt32;const pAccelerationStructures:PVkAccelerationStructureNV;queryType:TVkQueryType;queryPool:TVkQueryPool;firstQuery:TVkUInt32); virtual;
 
-       procedure CmdWriteAccelerationStructurePropertiesNVX(commandBuffer:TVkCommandBuffer;accelerationStructure:TVkAccelerationStructureNVX;queryType:TVkQueryType;queryPool:TVkQueryPool;query:TVkUInt32); virtual;
+       procedure CmdBuildAccelerationStructureNV(commandBuffer:TVkCommandBuffer;const pInfo:PVkAccelerationStructureInfoNV;instanceData:TVkBuffer;instanceOffset:TVkDeviceSize;update:TVkBool32;dst:TVkAccelerationStructureNV;src:TVkAccelerationStructureNV;scratch:TVkBuffer;scratchOffset:TVkDeviceSize); virtual;
 
-       procedure CmdBuildAccelerationStructureNVX(commandBuffer:TVkCommandBuffer;type_:TVkAccelerationStructureTypeNVX;instanceCount:TVkUInt32;instanceData:TVkBuffer;instanceOffset:TVkDeviceSize;geometryCount:TVkUInt32;const pGeometries:PVkGeometryNVX;flags:TVkBuildAccelerationStructureFlagsNVX;update:TVkBool32;dst:TVkAccelerationStructureNVX;src:TVkAccelerationStructureNVX;scratch:TVkBuffer;scratchOffset:TVkDeviceSize); virtual;
+       procedure CmdTraceRaysNV(commandBuffer:TVkCommandBuffer;raygenShaderBindingTableBuffer:TVkBuffer;raygenShaderBindingOffset:TVkDeviceSize;missShaderBindingTableBuffer:TVkBuffer;missShaderBindingOffset:TVkDeviceSize;missShaderBindingStride:TVkDeviceSize;hitShaderBindingTableBuffer:TVkBuffer;hitShaderBindingOffset:TVkDeviceSize;hitShaderBindingStride:TVkDeviceSize;callableShaderBindingTableBuffer:TVkBuffer;callableShaderBindingOffset:TVkDeviceSize;callableShaderBindingStride:TVkDeviceSize;width:TVkUInt32;height:TVkUInt32;depth:TVkUInt32); virtual;
 
-       procedure CmdTraceRaysNVX(commandBuffer:TVkCommandBuffer;raygenShaderBindingTableBuffer:TVkBuffer;raygenShaderBindingOffset:TVkDeviceSize;missShaderBindingTableBuffer:TVkBuffer;missShaderBindingOffset:TVkDeviceSize;missShaderBindingStride:TVkDeviceSize;hitShaderBindingTableBuffer:TVkBuffer;hitShaderBindingOffset:TVkDeviceSize;hitShaderBindingStride:TVkDeviceSize;width:TVkUInt32;height:TVkUInt32); virtual;
+       function GetRayTracingShaderGroupHandlesNV(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult; virtual;
 
-       function GetRaytracingShaderHandlesNVX(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult; virtual;
+       function GetAccelerationStructureHandleNV(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNV;dataSize:TVkSize;pData:PVkVoid):TVkResult; virtual;
 
-       function GetAccelerationStructureHandleNVX(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNVX;dataSize:TVkSize;pData:PVkVoid):TVkResult; virtual;
-
-       function CreateRaytracingPipelinesNVX(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkRaytracingPipelineCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; virtual;
+       function CreateRayTracingPipelinesNV(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkRayTracingPipelineCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult; virtual;
 
        function GetImageDrmFormatModifierPropertiesEXT(device:TVkDevice;image:TVkImage;pProperties:PVkImageDrmFormatModifierPropertiesEXT):TVkResult; virtual;
 
@@ -14298,14 +14328,6 @@ var LibVulkan:pointer=nil;
     vkCreateDisplayPlaneSurfaceKHR:TvkCreateDisplayPlaneSurfaceKHR=nil;
 
     vkCreateSharedSwapchainsKHR:TvkCreateSharedSwapchainsKHR=nil;
-
-{$ifdef Mir}
-    vkCreateMirSurfaceKHR:TvkCreateMirSurfaceKHR=nil;
-{$endif}
-
-{$ifdef Mir}
-    vkGetPhysicalDeviceMirPresentationSupportKHR:TvkGetPhysicalDeviceMirPresentationSupportKHR=nil;
-{$endif}
 
     vkDestroySurfaceKHR:TvkDestroySurfaceKHR=nil;
 
@@ -14715,31 +14737,29 @@ var LibVulkan:pointer=nil;
 
     vkCmdDrawMeshTasksIndirectCountNV:TvkCmdDrawMeshTasksIndirectCountNV=nil;
 
-    vkCompileDeferredNVX:TvkCompileDeferredNVX=nil;
+    vkCompileDeferredNV:TvkCompileDeferredNV=nil;
 
-    vkCreateAccelerationStructureNVX:TvkCreateAccelerationStructureNVX=nil;
+    vkCreateAccelerationStructureNV:TvkCreateAccelerationStructureNV=nil;
 
-    vkDestroyAccelerationStructureNVX:TvkDestroyAccelerationStructureNVX=nil;
+    vkDestroyAccelerationStructureNV:TvkDestroyAccelerationStructureNV=nil;
 
-    vkGetAccelerationStructureMemoryRequirementsNVX:TvkGetAccelerationStructureMemoryRequirementsNVX=nil;
+    vkGetAccelerationStructureMemoryRequirementsNV:TvkGetAccelerationStructureMemoryRequirementsNV=nil;
 
-    vkGetAccelerationStructureScratchMemoryRequirementsNVX:TvkGetAccelerationStructureScratchMemoryRequirementsNVX=nil;
+    vkBindAccelerationStructureMemoryNV:TvkBindAccelerationStructureMemoryNV=nil;
 
-    vkBindAccelerationStructureMemoryNVX:TvkBindAccelerationStructureMemoryNVX=nil;
+    vkCmdCopyAccelerationStructureNV:TvkCmdCopyAccelerationStructureNV=nil;
 
-    vkCmdCopyAccelerationStructureNVX:TvkCmdCopyAccelerationStructureNVX=nil;
+    vkCmdWriteAccelerationStructuresPropertiesNV:TvkCmdWriteAccelerationStructuresPropertiesNV=nil;
 
-    vkCmdWriteAccelerationStructurePropertiesNVX:TvkCmdWriteAccelerationStructurePropertiesNVX=nil;
+    vkCmdBuildAccelerationStructureNV:TvkCmdBuildAccelerationStructureNV=nil;
 
-    vkCmdBuildAccelerationStructureNVX:TvkCmdBuildAccelerationStructureNVX=nil;
+    vkCmdTraceRaysNV:TvkCmdTraceRaysNV=nil;
 
-    vkCmdTraceRaysNVX:TvkCmdTraceRaysNVX=nil;
+    vkGetRayTracingShaderGroupHandlesNV:TvkGetRayTracingShaderGroupHandlesNV=nil;
 
-    vkGetRaytracingShaderHandlesNVX:TvkGetRaytracingShaderHandlesNVX=nil;
+    vkGetAccelerationStructureHandleNV:TvkGetAccelerationStructureHandleNV=nil;
 
-    vkGetAccelerationStructureHandleNVX:TvkGetAccelerationStructureHandleNVX=nil;
-
-    vkCreateRaytracingPipelinesNVX:TvkCreateRaytracingPipelinesNVX=nil;
+    vkCreateRayTracingPipelinesNV:TvkCreateRayTracingPipelinesNV=nil;
 
     vkGetImageDrmFormatModifierPropertiesEXT:TvkGetImageDrmFormatModifierPropertiesEXT=nil;
 
@@ -15453,18 +15473,6 @@ begin
    @vkCreateSharedSwapchainsKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateSharedSwapchainsKHR'));
    @vk.fCommands.CreateSharedSwapchainsKHR:=addr(vkCreateSharedSwapchainsKHR);
   end;
-{$ifdef Mir}
-  if not assigned(vkCreateMirSurfaceKHR) then begin
-   @vkCreateMirSurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateMirSurfaceKHR'));
-   @vk.fCommands.CreateMirSurfaceKHR:=addr(vkCreateMirSurfaceKHR);
-  end;
-{$endif}
-{$ifdef Mir}
-  if not assigned(vkGetPhysicalDeviceMirPresentationSupportKHR) then begin
-   @vkGetPhysicalDeviceMirPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetPhysicalDeviceMirPresentationSupportKHR'));
-   @vk.fCommands.GetPhysicalDeviceMirPresentationSupportKHR:=addr(vkGetPhysicalDeviceMirPresentationSupportKHR);
-  end;
-{$endif}
   if not assigned(vkDestroySurfaceKHR) then begin
    @vkDestroySurfaceKHR:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroySurfaceKHR'));
    @vk.fCommands.DestroySurfaceKHR:=addr(vkDestroySurfaceKHR);
@@ -16237,57 +16245,53 @@ begin
    @vkCmdDrawMeshTasksIndirectCountNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdDrawMeshTasksIndirectCountNV'));
    @vk.fCommands.CmdDrawMeshTasksIndirectCountNV:=addr(vkCmdDrawMeshTasksIndirectCountNV);
   end;
-  if not assigned(vkCompileDeferredNVX) then begin
-   @vkCompileDeferredNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCompileDeferredNVX'));
-   @vk.fCommands.CompileDeferredNVX:=addr(vkCompileDeferredNVX);
+  if not assigned(vkCompileDeferredNV) then begin
+   @vkCompileDeferredNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCompileDeferredNV'));
+   @vk.fCommands.CompileDeferredNV:=addr(vkCompileDeferredNV);
   end;
-  if not assigned(vkCreateAccelerationStructureNVX) then begin
-   @vkCreateAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateAccelerationStructureNVX'));
-   @vk.fCommands.CreateAccelerationStructureNVX:=addr(vkCreateAccelerationStructureNVX);
+  if not assigned(vkCreateAccelerationStructureNV) then begin
+   @vkCreateAccelerationStructureNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateAccelerationStructureNV'));
+   @vk.fCommands.CreateAccelerationStructureNV:=addr(vkCreateAccelerationStructureNV);
   end;
-  if not assigned(vkDestroyAccelerationStructureNVX) then begin
-   @vkDestroyAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyAccelerationStructureNVX'));
-   @vk.fCommands.DestroyAccelerationStructureNVX:=addr(vkDestroyAccelerationStructureNVX);
+  if not assigned(vkDestroyAccelerationStructureNV) then begin
+   @vkDestroyAccelerationStructureNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkDestroyAccelerationStructureNV'));
+   @vk.fCommands.DestroyAccelerationStructureNV:=addr(vkDestroyAccelerationStructureNV);
   end;
-  if not assigned(vkGetAccelerationStructureMemoryRequirementsNVX) then begin
-   @vkGetAccelerationStructureMemoryRequirementsNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetAccelerationStructureMemoryRequirementsNVX'));
-   @vk.fCommands.GetAccelerationStructureMemoryRequirementsNVX:=addr(vkGetAccelerationStructureMemoryRequirementsNVX);
+  if not assigned(vkGetAccelerationStructureMemoryRequirementsNV) then begin
+   @vkGetAccelerationStructureMemoryRequirementsNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetAccelerationStructureMemoryRequirementsNV'));
+   @vk.fCommands.GetAccelerationStructureMemoryRequirementsNV:=addr(vkGetAccelerationStructureMemoryRequirementsNV);
   end;
-  if not assigned(vkGetAccelerationStructureScratchMemoryRequirementsNVX) then begin
-   @vkGetAccelerationStructureScratchMemoryRequirementsNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetAccelerationStructureScratchMemoryRequirementsNVX'));
-   @vk.fCommands.GetAccelerationStructureScratchMemoryRequirementsNVX:=addr(vkGetAccelerationStructureScratchMemoryRequirementsNVX);
+  if not assigned(vkBindAccelerationStructureMemoryNV) then begin
+   @vkBindAccelerationStructureMemoryNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBindAccelerationStructureMemoryNV'));
+   @vk.fCommands.BindAccelerationStructureMemoryNV:=addr(vkBindAccelerationStructureMemoryNV);
   end;
-  if not assigned(vkBindAccelerationStructureMemoryNVX) then begin
-   @vkBindAccelerationStructureMemoryNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkBindAccelerationStructureMemoryNVX'));
-   @vk.fCommands.BindAccelerationStructureMemoryNVX:=addr(vkBindAccelerationStructureMemoryNVX);
+  if not assigned(vkCmdCopyAccelerationStructureNV) then begin
+   @vkCmdCopyAccelerationStructureNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdCopyAccelerationStructureNV'));
+   @vk.fCommands.CmdCopyAccelerationStructureNV:=addr(vkCmdCopyAccelerationStructureNV);
   end;
-  if not assigned(vkCmdCopyAccelerationStructureNVX) then begin
-   @vkCmdCopyAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdCopyAccelerationStructureNVX'));
-   @vk.fCommands.CmdCopyAccelerationStructureNVX:=addr(vkCmdCopyAccelerationStructureNVX);
+  if not assigned(vkCmdWriteAccelerationStructuresPropertiesNV) then begin
+   @vkCmdWriteAccelerationStructuresPropertiesNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdWriteAccelerationStructuresPropertiesNV'));
+   @vk.fCommands.CmdWriteAccelerationStructuresPropertiesNV:=addr(vkCmdWriteAccelerationStructuresPropertiesNV);
   end;
-  if not assigned(vkCmdWriteAccelerationStructurePropertiesNVX) then begin
-   @vkCmdWriteAccelerationStructurePropertiesNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdWriteAccelerationStructurePropertiesNVX'));
-   @vk.fCommands.CmdWriteAccelerationStructurePropertiesNVX:=addr(vkCmdWriteAccelerationStructurePropertiesNVX);
+  if not assigned(vkCmdBuildAccelerationStructureNV) then begin
+   @vkCmdBuildAccelerationStructureNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBuildAccelerationStructureNV'));
+   @vk.fCommands.CmdBuildAccelerationStructureNV:=addr(vkCmdBuildAccelerationStructureNV);
   end;
-  if not assigned(vkCmdBuildAccelerationStructureNVX) then begin
-   @vkCmdBuildAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdBuildAccelerationStructureNVX'));
-   @vk.fCommands.CmdBuildAccelerationStructureNVX:=addr(vkCmdBuildAccelerationStructureNVX);
+  if not assigned(vkCmdTraceRaysNV) then begin
+   @vkCmdTraceRaysNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdTraceRaysNV'));
+   @vk.fCommands.CmdTraceRaysNV:=addr(vkCmdTraceRaysNV);
   end;
-  if not assigned(vkCmdTraceRaysNVX) then begin
-   @vkCmdTraceRaysNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCmdTraceRaysNVX'));
-   @vk.fCommands.CmdTraceRaysNVX:=addr(vkCmdTraceRaysNVX);
+  if not assigned(vkGetRayTracingShaderGroupHandlesNV) then begin
+   @vkGetRayTracingShaderGroupHandlesNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetRayTracingShaderGroupHandlesNV'));
+   @vk.fCommands.GetRayTracingShaderGroupHandlesNV:=addr(vkGetRayTracingShaderGroupHandlesNV);
   end;
-  if not assigned(vkGetRaytracingShaderHandlesNVX) then begin
-   @vkGetRaytracingShaderHandlesNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetRaytracingShaderHandlesNVX'));
-   @vk.fCommands.GetRaytracingShaderHandlesNVX:=addr(vkGetRaytracingShaderHandlesNVX);
+  if not assigned(vkGetAccelerationStructureHandleNV) then begin
+   @vkGetAccelerationStructureHandleNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetAccelerationStructureHandleNV'));
+   @vk.fCommands.GetAccelerationStructureHandleNV:=addr(vkGetAccelerationStructureHandleNV);
   end;
-  if not assigned(vkGetAccelerationStructureHandleNVX) then begin
-   @vkGetAccelerationStructureHandleNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetAccelerationStructureHandleNVX'));
-   @vk.fCommands.GetAccelerationStructureHandleNVX:=addr(vkGetAccelerationStructureHandleNVX);
-  end;
-  if not assigned(vkCreateRaytracingPipelinesNVX) then begin
-   @vkCreateRaytracingPipelinesNVX:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateRaytracingPipelinesNVX'));
-   @vk.fCommands.CreateRaytracingPipelinesNVX:=addr(vkCreateRaytracingPipelinesNVX);
+  if not assigned(vkCreateRayTracingPipelinesNV) then begin
+   @vkCreateRayTracingPipelinesNV:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkCreateRayTracingPipelinesNV'));
+   @vk.fCommands.CreateRayTracingPipelinesNV:=addr(vkCreateRayTracingPipelinesNV);
   end;
   if not assigned(vkGetImageDrmFormatModifierPropertiesEXT) then begin
    @vkGetImageDrmFormatModifierPropertiesEXT:=vkVoidFunctionToPointer(vkGetProcAddress(LibVulkan,'vkGetImageDrmFormatModifierPropertiesEXT'));
@@ -16453,12 +16457,6 @@ begin
   @InstanceCommands.GetDisplayPlaneCapabilitiesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetDisplayPlaneCapabilitiesKHR')));
   @InstanceCommands.CreateDisplayPlaneSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateDisplayPlaneSurfaceKHR')));
   @InstanceCommands.CreateSharedSwapchainsKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateSharedSwapchainsKHR')));
-{$ifdef Mir}
-  @InstanceCommands.CreateMirSurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateMirSurfaceKHR')));
-{$endif}
-{$ifdef Mir}
-  @InstanceCommands.GetPhysicalDeviceMirPresentationSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceMirPresentationSupportKHR')));
-{$endif}
   @InstanceCommands.DestroySurfaceKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroySurfaceKHR')));
   @InstanceCommands.GetPhysicalDeviceSurfaceSupportKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSurfaceSupportKHR')));
   @InstanceCommands.GetPhysicalDeviceSurfaceCapabilitiesKHR:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetPhysicalDeviceSurfaceCapabilitiesKHR')));
@@ -16685,19 +16683,18 @@ begin
   @InstanceCommands.CmdDrawMeshTasksNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawMeshTasksNV')));
   @InstanceCommands.CmdDrawMeshTasksIndirectNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawMeshTasksIndirectNV')));
   @InstanceCommands.CmdDrawMeshTasksIndirectCountNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdDrawMeshTasksIndirectCountNV')));
-  @InstanceCommands.CompileDeferredNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCompileDeferredNVX')));
-  @InstanceCommands.CreateAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateAccelerationStructureNVX')));
-  @InstanceCommands.DestroyAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyAccelerationStructureNVX')));
-  @InstanceCommands.GetAccelerationStructureMemoryRequirementsNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetAccelerationStructureMemoryRequirementsNVX')));
-  @InstanceCommands.GetAccelerationStructureScratchMemoryRequirementsNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetAccelerationStructureScratchMemoryRequirementsNVX')));
-  @InstanceCommands.BindAccelerationStructureMemoryNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkBindAccelerationStructureMemoryNVX')));
-  @InstanceCommands.CmdCopyAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdCopyAccelerationStructureNVX')));
-  @InstanceCommands.CmdWriteAccelerationStructurePropertiesNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdWriteAccelerationStructurePropertiesNVX')));
-  @InstanceCommands.CmdBuildAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdBuildAccelerationStructureNVX')));
-  @InstanceCommands.CmdTraceRaysNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdTraceRaysNVX')));
-  @InstanceCommands.GetRaytracingShaderHandlesNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetRaytracingShaderHandlesNVX')));
-  @InstanceCommands.GetAccelerationStructureHandleNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetAccelerationStructureHandleNVX')));
-  @InstanceCommands.CreateRaytracingPipelinesNVX:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateRaytracingPipelinesNVX')));
+  @InstanceCommands.CompileDeferredNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCompileDeferredNV')));
+  @InstanceCommands.CreateAccelerationStructureNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateAccelerationStructureNV')));
+  @InstanceCommands.DestroyAccelerationStructureNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkDestroyAccelerationStructureNV')));
+  @InstanceCommands.GetAccelerationStructureMemoryRequirementsNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetAccelerationStructureMemoryRequirementsNV')));
+  @InstanceCommands.BindAccelerationStructureMemoryNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkBindAccelerationStructureMemoryNV')));
+  @InstanceCommands.CmdCopyAccelerationStructureNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdCopyAccelerationStructureNV')));
+  @InstanceCommands.CmdWriteAccelerationStructuresPropertiesNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdWriteAccelerationStructuresPropertiesNV')));
+  @InstanceCommands.CmdBuildAccelerationStructureNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdBuildAccelerationStructureNV')));
+  @InstanceCommands.CmdTraceRaysNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCmdTraceRaysNV')));
+  @InstanceCommands.GetRayTracingShaderGroupHandlesNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetRayTracingShaderGroupHandlesNV')));
+  @InstanceCommands.GetAccelerationStructureHandleNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetAccelerationStructureHandleNV')));
+  @InstanceCommands.CreateRayTracingPipelinesNV:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkCreateRayTracingPipelinesNV')));
   @InstanceCommands.GetImageDrmFormatModifierPropertiesEXT:=vkVoidFunctionToPointer(vkGetInstanceProcAddr(Instance,PVkChar('vkGetImageDrmFormatModifierPropertiesEXT')));
   if not assigned(InstanceCommands.EnumerateInstanceExtensionProperties) then begin
    InstanceCommands.EnumerateInstanceExtensionProperties:=addr(vkEnumerateInstanceExtensionProperties);
@@ -16982,19 +16979,18 @@ begin
   @DeviceCommands.CmdDrawMeshTasksNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawMeshTasksNV')));
   @DeviceCommands.CmdDrawMeshTasksIndirectNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawMeshTasksIndirectNV')));
   @DeviceCommands.CmdDrawMeshTasksIndirectCountNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdDrawMeshTasksIndirectCountNV')));
-  @DeviceCommands.CompileDeferredNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCompileDeferredNVX')));
-  @DeviceCommands.CreateAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateAccelerationStructureNVX')));
-  @DeviceCommands.DestroyAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkDestroyAccelerationStructureNVX')));
-  @DeviceCommands.GetAccelerationStructureMemoryRequirementsNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetAccelerationStructureMemoryRequirementsNVX')));
-  @DeviceCommands.GetAccelerationStructureScratchMemoryRequirementsNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetAccelerationStructureScratchMemoryRequirementsNVX')));
-  @DeviceCommands.BindAccelerationStructureMemoryNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkBindAccelerationStructureMemoryNVX')));
-  @DeviceCommands.CmdCopyAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdCopyAccelerationStructureNVX')));
-  @DeviceCommands.CmdWriteAccelerationStructurePropertiesNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdWriteAccelerationStructurePropertiesNVX')));
-  @DeviceCommands.CmdBuildAccelerationStructureNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdBuildAccelerationStructureNVX')));
-  @DeviceCommands.CmdTraceRaysNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdTraceRaysNVX')));
-  @DeviceCommands.GetRaytracingShaderHandlesNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetRaytracingShaderHandlesNVX')));
-  @DeviceCommands.GetAccelerationStructureHandleNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetAccelerationStructureHandleNVX')));
-  @DeviceCommands.CreateRaytracingPipelinesNVX:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateRaytracingPipelinesNVX')));
+  @DeviceCommands.CompileDeferredNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCompileDeferredNV')));
+  @DeviceCommands.CreateAccelerationStructureNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateAccelerationStructureNV')));
+  @DeviceCommands.DestroyAccelerationStructureNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkDestroyAccelerationStructureNV')));
+  @DeviceCommands.GetAccelerationStructureMemoryRequirementsNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetAccelerationStructureMemoryRequirementsNV')));
+  @DeviceCommands.BindAccelerationStructureMemoryNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkBindAccelerationStructureMemoryNV')));
+  @DeviceCommands.CmdCopyAccelerationStructureNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdCopyAccelerationStructureNV')));
+  @DeviceCommands.CmdWriteAccelerationStructuresPropertiesNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdWriteAccelerationStructuresPropertiesNV')));
+  @DeviceCommands.CmdBuildAccelerationStructureNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdBuildAccelerationStructureNV')));
+  @DeviceCommands.CmdTraceRaysNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCmdTraceRaysNV')));
+  @DeviceCommands.GetRayTracingShaderGroupHandlesNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetRayTracingShaderGroupHandlesNV')));
+  @DeviceCommands.GetAccelerationStructureHandleNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetAccelerationStructureHandleNV')));
+  @DeviceCommands.CreateRayTracingPipelinesNV:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkCreateRayTracingPipelinesNV')));
   @DeviceCommands.GetImageDrmFormatModifierPropertiesEXT:=vkVoidFunctionToPointer(vkGetDeviceProcAddr(Device,PVkChar('vkGetImageDrmFormatModifierPropertiesEXT')));
   result:=assigned(DeviceCommands.DestroyDevice);
  end;
@@ -18972,19 +18968,6 @@ begin
  pNext:=nil;
  flags:=aFlags;
  window:=aWindow;
-end;
-{$endif}
-
-{$ifdef Mir}
-constructor TVkMirSurfaceCreateInfoKHR.Create(const aFlags:TVkMirSurfaceCreateFlagsKHR;
-                                              const aConnection:PVkMirConnection;
-                                              const aMirSurface:PVkMirSurface);
-begin
- sType:=VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR;
- pNext:=nil;
- flags:=aFlags;
- connection:=aConnection;
- mirSurface:=aMirSurface;
 end;
 {$endif}
 
@@ -21867,40 +21850,57 @@ begin
  firstTask:=aFirstTask;
 end;
 
-constructor TVkRaytracingPipelineCreateInfoNVX.Create(const aFlags:TVkPipelineCreateFlags;
-                                                      const aStageCount:TVkUInt32;
-                                                      const aPStages:PVkPipelineShaderStageCreateInfo;
-                                                      const aPGroupNumbers:PVkUInt32;
-                                                      const aMaxRecursionDepth:TVkUInt32;
-                                                      const aLayout:TVkPipelineLayout;
-                                                      const aBasePipelineHandle:TVkPipeline;
-                                                      const aBasePipelineIndex:TVkInt32);
+constructor TVkRayTracingShaderGroupCreateInfoNV.Create(const aType_:TVkRayTracingShaderGroupTypeNV;
+                                                        const aGeneralShader:TVkUInt32;
+                                                        const aClosestHitShader:TVkUInt32;
+                                                        const aAnyHitShader:TVkUInt32;
+                                                        const aIntersectionShader:TVkUInt32);
 begin
- sType:=VK_STRUCTURE_TYPE_RAYTRACING_PIPELINE_CREATE_INFO_NVX;
+ sType:=VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV;
+ pNext:=nil;
+ type_:=aType_;
+ generalShader:=aGeneralShader;
+ closestHitShader:=aClosestHitShader;
+ anyHitShader:=aAnyHitShader;
+ intersectionShader:=aIntersectionShader;
+end;
+
+constructor TVkRayTracingPipelineCreateInfoNV.Create(const aFlags:TVkPipelineCreateFlags;
+                                                     const aStageCount:TVkUInt32;
+                                                     const aPStages:PVkPipelineShaderStageCreateInfo;
+                                                     const aGroupCount:TVkUInt32;
+                                                     const aPGroups:PVkRayTracingShaderGroupCreateInfoNV;
+                                                     const aMaxRecursionDepth:TVkUInt32;
+                                                     const aLayout:TVkPipelineLayout;
+                                                     const aBasePipelineHandle:TVkPipeline;
+                                                     const aBasePipelineIndex:TVkInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_NV;
  pNext:=nil;
  flags:=aFlags;
  stageCount:=aStageCount;
  pStages:=aPStages;
- pGroupNumbers:=aPGroupNumbers;
+ groupCount:=aGroupCount;
+ pGroups:=aPGroups;
  maxRecursionDepth:=aMaxRecursionDepth;
  layout:=aLayout;
  basePipelineHandle:=aBasePipelineHandle;
  basePipelineIndex:=aBasePipelineIndex;
 end;
 
-constructor TVkGeometryTrianglesNVX.Create(const aVertexData:TVkBuffer;
-                                           const aVertexOffset:TVkDeviceSize;
-                                           const aVertexCount:TVkUInt32;
-                                           const aVertexStride:TVkDeviceSize;
-                                           const aVertexFormat:TVkFormat;
-                                           const aIndexData:TVkBuffer;
-                                           const aIndexOffset:TVkDeviceSize;
-                                           const aIndexCount:TVkUInt32;
-                                           const aIndexType:TVkIndexType;
-                                           const aTransformData:TVkBuffer;
-                                           const aTransformOffset:TVkDeviceSize);
+constructor TVkGeometryTrianglesNV.Create(const aVertexData:TVkBuffer;
+                                          const aVertexOffset:TVkDeviceSize;
+                                          const aVertexCount:TVkUInt32;
+                                          const aVertexStride:TVkDeviceSize;
+                                          const aVertexFormat:TVkFormat;
+                                          const aIndexData:TVkBuffer;
+                                          const aIndexOffset:TVkDeviceSize;
+                                          const aIndexCount:TVkUInt32;
+                                          const aIndexType:TVkIndexType;
+                                          const aTransformData:TVkBuffer;
+                                          const aTransformOffset:TVkDeviceSize);
 begin
- sType:=VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NVX;
+ sType:=VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV;
  pNext:=nil;
  vertexData:=aVertexData;
  vertexOffset:=aVertexOffset;
@@ -21915,12 +21915,12 @@ begin
  transformOffset:=aTransformOffset;
 end;
 
-constructor TVkGeometryAABBNVX.Create(const aAabbData:TVkBuffer;
-                                      const aNumAABBs:TVkUInt32;
-                                      const aStride:TVkUInt32;
-                                      const aOffset:TVkDeviceSize);
+constructor TVkGeometryAABBNV.Create(const aAabbData:TVkBuffer;
+                                     const aNumAABBs:TVkUInt32;
+                                     const aStride:TVkUInt32;
+                                     const aOffset:TVkDeviceSize);
 begin
- sType:=VK_STRUCTURE_TYPE_GEOMETRY_AABB_NVX;
+ sType:=VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV;
  pNext:=nil;
  aabbData:=aAabbData;
  numAABBs:=aNumAABBs;
@@ -21928,48 +21928,55 @@ begin
  offset:=aOffset;
 end;
 
-constructor TVkGeometryDataNVX.Create(const aTriangles:TVkGeometryTrianglesNVX;
-                                      const aAabbs:TVkGeometryAABBNVX);
+constructor TVkGeometryDataNV.Create(const aTriangles:TVkGeometryTrianglesNV;
+                                     const aAabbs:TVkGeometryAABBNV);
 begin
  triangles:=aTriangles;
  aabbs:=aAabbs;
 end;
 
-constructor TVkGeometryNVX.Create(const aGeometryType:TVkGeometryTypeNVX;
-                                  const aGeometry:TVkGeometryDataNVX;
-                                  const aFlags:TVkGeometryFlagsNVX);
+constructor TVkGeometryNV.Create(const aGeometryType:TVkGeometryTypeNV;
+                                 const aGeometry:TVkGeometryDataNV;
+                                 const aFlags:TVkGeometryFlagsNV);
 begin
- sType:=VK_STRUCTURE_TYPE_GEOMETRY_NVX;
+ sType:=VK_STRUCTURE_TYPE_GEOMETRY_NV;
  pNext:=nil;
  geometryType:=aGeometryType;
  geometry:=aGeometry;
  flags:=aFlags;
 end;
 
-constructor TVkAccelerationStructureCreateInfoNVX.Create(const aType_:TVkAccelerationStructureTypeNVX;
-                                                         const aFlags:TVkBuildAccelerationStructureFlagsNVX;
-                                                         const aCompactedSize:TVkDeviceSize;
-                                                         const aInstanceCount:TVkUInt32;
-                                                         const aGeometryCount:TVkUInt32;
-                                                         const aPGeometries:PVkGeometryNVX);
+constructor TVkAccelerationStructureInfoNV.Create(const aType_:TVkAccelerationStructureTypeNV;
+                                                  const aFlags:TVkBuildAccelerationStructureFlagsNV;
+                                                  const aInstanceCount:TVkUInt32;
+                                                  const aGeometryCount:TVkUInt32;
+                                                  const aPGeometries:PVkGeometryNV);
 begin
- sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NVX;
+ sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV;
  pNext:=nil;
  type_:=aType_;
  flags:=aFlags;
- compactedSize:=aCompactedSize;
  instanceCount:=aInstanceCount;
  geometryCount:=aGeometryCount;
  pGeometries:=aPGeometries;
 end;
 
-constructor TVkBindAccelerationStructureMemoryInfoNVX.Create(const aAccelerationStructure:TVkAccelerationStructureNVX;
-                                                             const aMemory:TVkDeviceMemory;
-                                                             const aMemoryOffset:TVkDeviceSize;
-                                                             const aDeviceIndexCount:TVkUInt32;
-                                                             const aPDeviceIndices:PVkUInt32);
+constructor TVkAccelerationStructureCreateInfoNV.Create(const aCompactedSize:TVkDeviceSize;
+                                                        const aInfo:TVkAccelerationStructureInfoNV);
 begin
- sType:=VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NVX;
+ sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV;
+ pNext:=nil;
+ compactedSize:=aCompactedSize;
+ info:=aInfo;
+end;
+
+constructor TVkBindAccelerationStructureMemoryInfoNV.Create(const aAccelerationStructure:TVkAccelerationStructureNV;
+                                                            const aMemory:TVkDeviceMemory;
+                                                            const aMemoryOffset:TVkDeviceSize;
+                                                            const aDeviceIndexCount:TVkUInt32;
+                                                            const aPDeviceIndices:PVkUInt32);
+begin
+ sType:=VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV;
  pNext:=nil;
  accelerationStructure:=aAccelerationStructure;
  memory:=aMemory;
@@ -21978,31 +21985,43 @@ begin
  pDeviceIndices:=aPDeviceIndices;
 end;
 
-constructor TVkDescriptorAccelerationStructureInfoNVX.Create(const aAccelerationStructureCount:TVkUInt32;
-                                                             const aPAccelerationStructures:PVkAccelerationStructureNVX);
+constructor TVkWriteDescriptorSetAccelerationStructureNV.Create(const aAccelerationStructureCount:TVkUInt32;
+                                                                const aPAccelerationStructures:PVkAccelerationStructureNV);
 begin
- sType:=VK_STRUCTURE_TYPE_DESCRIPTOR_ACCELERATION_STRUCTURE_INFO_NVX;
+ sType:=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_NV;
  pNext:=nil;
  accelerationStructureCount:=aAccelerationStructureCount;
  pAccelerationStructures:=aPAccelerationStructures;
 end;
 
-constructor TVkAccelerationStructureMemoryRequirementsInfoNVX.Create(const aAccelerationStructure:TVkAccelerationStructureNVX);
+constructor TVkAccelerationStructureMemoryRequirementsInfoNV.Create(const aType_:TVkAccelerationStructureMemoryRequirementsTypeNV;
+                                                                    const aAccelerationStructure:TVkAccelerationStructureNV);
 begin
- sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NVX;
+ sType:=VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV;
  pNext:=nil;
+ type_:=aType_;
  accelerationStructure:=aAccelerationStructure;
 end;
 
-constructor TVkPhysicalDeviceRaytracingPropertiesNVX.Create(const aShaderHeaderSize:TVkUInt32;
-                                                            const aMaxRecursionDepth:TVkUInt32;
-                                                            const aMaxGeometryCount:TVkUInt32);
+constructor TVkPhysicalDeviceRayTracingPropertiesNV.Create(const aShaderGroupHandleSize:TVkUInt32;
+                                                           const aMaxRecursionDepth:TVkUInt32;
+                                                           const aMaxShaderGroupStride:TVkUInt32;
+                                                           const aShaderGroupBaseAlignment:TVkUInt32;
+                                                           const aMaxGeometryCount:TVkUInt64;
+                                                           const aMaxInstanceCount:TVkUInt64;
+                                                           const aMaxTriangleCount:TVkUInt64;
+                                                           const aMaxDescriptorSetAccelerationStructures:TVkUInt32);
 begin
- sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAYTRACING_PROPERTIES_NVX;
+ sType:=VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV;
  pNext:=nil;
- shaderHeaderSize:=aShaderHeaderSize;
+ shaderGroupHandleSize:=aShaderGroupHandleSize;
  maxRecursionDepth:=aMaxRecursionDepth;
+ maxShaderGroupStride:=aMaxShaderGroupStride;
+ shaderGroupBaseAlignment:=aShaderGroupBaseAlignment;
  maxGeometryCount:=aMaxGeometryCount;
+ maxInstanceCount:=aMaxInstanceCount;
+ maxTriangleCount:=aMaxTriangleCount;
+ maxDescriptorSetAccelerationStructures:=aMaxDescriptorSetAccelerationStructures;
 end;
 
 constructor TVkDrmFormatModifierPropertiesEXT.Create(const aDrmFormatModifier:TVkUInt64;
@@ -22061,6 +22080,13 @@ begin
  sType:=VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT;
  pNext:=nil;
  drmFormatModifier:=aDrmFormatModifier;
+end;
+
+constructor TVkDeviceMemoryOverallocationCreateInfoAMD.Create(const aOverallocationBehavior:TVkMemoryOverallocationBehaviorAMD);
+begin
+ sType:=VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD;
+ pNext:=nil;
+ overallocationBehavior:=aOverallocationBehavior;
 end;
 {$endif}
 
@@ -22827,20 +22853,6 @@ function TVulkan.CreateSharedSwapchainsKHR(device:TVkDevice;swapchainCount:TVkUI
 begin
  result:=fCommands.CreateSharedSwapchainsKHR(device,swapchainCount,pCreateInfos,pAllocator,pSwapchains);
 end;
-
-{$ifdef Mir}
-function TVulkan.CreateMirSurfaceKHR(instance:TVkInstance;const pCreateInfo:PVkMirSurfaceCreateInfoKHR;const pAllocator:PVkAllocationCallbacks;pSurface:PVkSurfaceKHR):TVkResult;
-begin
- result:=fCommands.CreateMirSurfaceKHR(instance,pCreateInfo,pAllocator,pSurface);
-end;
-{$endif}
-
-{$ifdef Mir}
-function TVulkan.GetPhysicalDeviceMirPresentationSupportKHR(physicalDevice:TVkPhysicalDevice;queueFamilyIndex:TVkUInt32;connection:PVkMirConnection):TVkBool32;
-begin
- result:=fCommands.GetPhysicalDeviceMirPresentationSupportKHR(physicalDevice,queueFamilyIndex,connection);
-end;
-{$endif}
 
 procedure TVulkan.DestroySurfaceKHR(instance:TVkInstance;surface:TVkSurfaceKHR;const pAllocator:PVkAllocationCallbacks);
 begin
@@ -23796,69 +23808,64 @@ begin
  fCommands.CmdDrawMeshTasksIndirectCountNV(commandBuffer,buffer,offset,countBuffer,countBufferOffset,maxDrawCount,stride);
 end;
 
-function TVulkan.CompileDeferredNVX(device:TVkDevice;pipeline:TVkPipeline;shader:TVkUInt32):TVkResult;
+function TVulkan.CompileDeferredNV(device:TVkDevice;pipeline:TVkPipeline;shader:TVkUInt32):TVkResult;
 begin
- result:=fCommands.CompileDeferredNVX(device,pipeline,shader);
+ result:=fCommands.CompileDeferredNV(device,pipeline,shader);
 end;
 
-function TVulkan.CreateAccelerationStructureNVX(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureNVX):TVkResult;
+function TVulkan.CreateAccelerationStructureNV(device:TVkDevice;const pCreateInfo:PVkAccelerationStructureCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pAccelerationStructure:PVkAccelerationStructureNV):TVkResult;
 begin
- result:=fCommands.CreateAccelerationStructureNVX(device,pCreateInfo,pAllocator,pAccelerationStructure);
+ result:=fCommands.CreateAccelerationStructureNV(device,pCreateInfo,pAllocator,pAccelerationStructure);
 end;
 
-procedure TVulkan.DestroyAccelerationStructureNVX(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNVX;const pAllocator:PVkAllocationCallbacks);
+procedure TVulkan.DestroyAccelerationStructureNV(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNV;const pAllocator:PVkAllocationCallbacks);
 begin
- fCommands.DestroyAccelerationStructureNVX(device,accelerationStructure,pAllocator);
+ fCommands.DestroyAccelerationStructureNV(device,accelerationStructure,pAllocator);
 end;
 
-procedure TVulkan.GetAccelerationStructureMemoryRequirementsNVX(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNVX;pMemoryRequirements:PVkMemoryRequirements2KHR);
+procedure TVulkan.GetAccelerationStructureMemoryRequirementsNV(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNV;pMemoryRequirements:PVkMemoryRequirements2KHR);
 begin
- fCommands.GetAccelerationStructureMemoryRequirementsNVX(device,pInfo,pMemoryRequirements);
+ fCommands.GetAccelerationStructureMemoryRequirementsNV(device,pInfo,pMemoryRequirements);
 end;
 
-procedure TVulkan.GetAccelerationStructureScratchMemoryRequirementsNVX(device:TVkDevice;const pInfo:PVkAccelerationStructureMemoryRequirementsInfoNVX;pMemoryRequirements:PVkMemoryRequirements2KHR);
+function TVulkan.BindAccelerationStructureMemoryNV(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindAccelerationStructureMemoryInfoNV):TVkResult;
 begin
- fCommands.GetAccelerationStructureScratchMemoryRequirementsNVX(device,pInfo,pMemoryRequirements);
+ result:=fCommands.BindAccelerationStructureMemoryNV(device,bindInfoCount,pBindInfos);
 end;
 
-function TVulkan.BindAccelerationStructureMemoryNVX(device:TVkDevice;bindInfoCount:TVkUInt32;const pBindInfos:PVkBindAccelerationStructureMemoryInfoNVX):TVkResult;
+procedure TVulkan.CmdCopyAccelerationStructureNV(commandBuffer:TVkCommandBuffer;dst:TVkAccelerationStructureNV;src:TVkAccelerationStructureNV;mode:TVkCopyAccelerationStructureModeNV);
 begin
- result:=fCommands.BindAccelerationStructureMemoryNVX(device,bindInfoCount,pBindInfos);
+ fCommands.CmdCopyAccelerationStructureNV(commandBuffer,dst,src,mode);
 end;
 
-procedure TVulkan.CmdCopyAccelerationStructureNVX(commandBuffer:TVkCommandBuffer;dst:TVkAccelerationStructureNVX;src:TVkAccelerationStructureNVX;mode:TVkCopyAccelerationStructureModeNVX);
+procedure TVulkan.CmdWriteAccelerationStructuresPropertiesNV(commandBuffer:TVkCommandBuffer;accelerationStructureCount:TVkUInt32;const pAccelerationStructures:PVkAccelerationStructureNV;queryType:TVkQueryType;queryPool:TVkQueryPool;firstQuery:TVkUInt32);
 begin
- fCommands.CmdCopyAccelerationStructureNVX(commandBuffer,dst,src,mode);
+ fCommands.CmdWriteAccelerationStructuresPropertiesNV(commandBuffer,accelerationStructureCount,pAccelerationStructures,queryType,queryPool,firstQuery);
 end;
 
-procedure TVulkan.CmdWriteAccelerationStructurePropertiesNVX(commandBuffer:TVkCommandBuffer;accelerationStructure:TVkAccelerationStructureNVX;queryType:TVkQueryType;queryPool:TVkQueryPool;query:TVkUInt32);
+procedure TVulkan.CmdBuildAccelerationStructureNV(commandBuffer:TVkCommandBuffer;const pInfo:PVkAccelerationStructureInfoNV;instanceData:TVkBuffer;instanceOffset:TVkDeviceSize;update:TVkBool32;dst:TVkAccelerationStructureNV;src:TVkAccelerationStructureNV;scratch:TVkBuffer;scratchOffset:TVkDeviceSize);
 begin
- fCommands.CmdWriteAccelerationStructurePropertiesNVX(commandBuffer,accelerationStructure,queryType,queryPool,query);
+ fCommands.CmdBuildAccelerationStructureNV(commandBuffer,pInfo,instanceData,instanceOffset,update,dst,src,scratch,scratchOffset);
 end;
 
-procedure TVulkan.CmdBuildAccelerationStructureNVX(commandBuffer:TVkCommandBuffer;type_:TVkAccelerationStructureTypeNVX;instanceCount:TVkUInt32;instanceData:TVkBuffer;instanceOffset:TVkDeviceSize;geometryCount:TVkUInt32;const pGeometries:PVkGeometryNVX;flags:TVkBuildAccelerationStructureFlagsNVX;update:TVkBool32;dst:TVkAccelerationStructureNVX;src:TVkAccelerationStructureNVX;scratch:TVkBuffer;scratchOffset:TVkDeviceSize);
+procedure TVulkan.CmdTraceRaysNV(commandBuffer:TVkCommandBuffer;raygenShaderBindingTableBuffer:TVkBuffer;raygenShaderBindingOffset:TVkDeviceSize;missShaderBindingTableBuffer:TVkBuffer;missShaderBindingOffset:TVkDeviceSize;missShaderBindingStride:TVkDeviceSize;hitShaderBindingTableBuffer:TVkBuffer;hitShaderBindingOffset:TVkDeviceSize;hitShaderBindingStride:TVkDeviceSize;callableShaderBindingTableBuffer:TVkBuffer;callableShaderBindingOffset:TVkDeviceSize;callableShaderBindingStride:TVkDeviceSize;width:TVkUInt32;height:TVkUInt32;depth:TVkUInt32);
 begin
- fCommands.CmdBuildAccelerationStructureNVX(commandBuffer,type_,instanceCount,instanceData,instanceOffset,geometryCount,pGeometries,flags,update,dst,src,scratch,scratchOffset);
+ fCommands.CmdTraceRaysNV(commandBuffer,raygenShaderBindingTableBuffer,raygenShaderBindingOffset,missShaderBindingTableBuffer,missShaderBindingOffset,missShaderBindingStride,hitShaderBindingTableBuffer,hitShaderBindingOffset,hitShaderBindingStride,callableShaderBindingTableBuffer,callableShaderBindingOffset,callableShaderBindingStride,width,height,depth);
 end;
 
-procedure TVulkan.CmdTraceRaysNVX(commandBuffer:TVkCommandBuffer;raygenShaderBindingTableBuffer:TVkBuffer;raygenShaderBindingOffset:TVkDeviceSize;missShaderBindingTableBuffer:TVkBuffer;missShaderBindingOffset:TVkDeviceSize;missShaderBindingStride:TVkDeviceSize;hitShaderBindingTableBuffer:TVkBuffer;hitShaderBindingOffset:TVkDeviceSize;hitShaderBindingStride:TVkDeviceSize;width:TVkUInt32;height:TVkUInt32);
+function TVulkan.GetRayTracingShaderGroupHandlesNV(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult;
 begin
- fCommands.CmdTraceRaysNVX(commandBuffer,raygenShaderBindingTableBuffer,raygenShaderBindingOffset,missShaderBindingTableBuffer,missShaderBindingOffset,missShaderBindingStride,hitShaderBindingTableBuffer,hitShaderBindingOffset,hitShaderBindingStride,width,height);
+ result:=fCommands.GetRayTracingShaderGroupHandlesNV(device,pipeline,firstGroup,groupCount,dataSize,pData);
 end;
 
-function TVulkan.GetRaytracingShaderHandlesNVX(device:TVkDevice;pipeline:TVkPipeline;firstGroup:TVkUInt32;groupCount:TVkUInt32;dataSize:TVkSize;pData:PVkVoid):TVkResult;
+function TVulkan.GetAccelerationStructureHandleNV(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNV;dataSize:TVkSize;pData:PVkVoid):TVkResult;
 begin
- result:=fCommands.GetRaytracingShaderHandlesNVX(device,pipeline,firstGroup,groupCount,dataSize,pData);
+ result:=fCommands.GetAccelerationStructureHandleNV(device,accelerationStructure,dataSize,pData);
 end;
 
-function TVulkan.GetAccelerationStructureHandleNVX(device:TVkDevice;accelerationStructure:TVkAccelerationStructureNVX;dataSize:TVkSize;pData:PVkVoid):TVkResult;
+function TVulkan.CreateRayTracingPipelinesNV(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkRayTracingPipelineCreateInfoNV;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult;
 begin
- result:=fCommands.GetAccelerationStructureHandleNVX(device,accelerationStructure,dataSize,pData);
-end;
-
-function TVulkan.CreateRaytracingPipelinesNVX(device:TVkDevice;pipelineCache:TVkPipelineCache;createInfoCount:TVkUInt32;const pCreateInfos:PVkRaytracingPipelineCreateInfoNVX;const pAllocator:PVkAllocationCallbacks;pPipelines:PVkPipeline):TVkResult;
-begin
- result:=fCommands.CreateRaytracingPipelinesNVX(device,pipelineCache,createInfoCount,pCreateInfos,pAllocator,pPipelines);
+ result:=fCommands.CreateRayTracingPipelinesNV(device,pipelineCache,createInfoCount,pCreateInfos,pAllocator,pPipelines);
 end;
 
 function TVulkan.GetImageDrmFormatModifierPropertiesEXT(device:TVkDevice;image:TVkImage;pProperties:PVkImageDrmFormatModifierPropertiesEXT):TVkResult;

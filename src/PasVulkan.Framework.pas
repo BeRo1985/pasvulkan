@@ -68,7 +68,6 @@ uses {$if defined(Windows)}
      {$ifend}
      {$if defined(XLIB) and defined(VulkanUseXLIBUnits)}x,xlib,{$ifend}
      {$if defined(XCB) and defined(VulkanUseXCBUnits)}xcb,{$ifend}
-     {$if defined(Mir) and defined(VulkanUseMirUnits)}Mir,{$ifend}
      {$if defined(Wayland) and defined(VulkanUseWaylandUnits)}Wayland,{$ifend}
      {$if defined(Android)}PasVulkan.Android,{$ifend}
      SysUtils,Classes,SyncObjs,Math,
@@ -409,7 +408,6 @@ type EpvVulkanException=class(Exception);
       (
        Unknown,
        Android,
-       Mir,
        Wayland,
        Win32,
        XCB,
@@ -429,11 +427,6 @@ type EpvVulkanException=class(Exception);
 {$if defined(Android) and defined(Unix)}
        TpvVulkanSurfacePlatform.Android:(
         Android:TVkAndroidSurfaceCreateInfoKHR;
-       );
-{$ifend}
-{$if defined(Mir) and defined(Unix)}
-       TpvVulkanSurfacePlatform.Mir:(
-        Mir:TVkMirSurfaceCreateInfoKHR;
        );
 {$ifend}
 {$if defined(Wayland) and defined(Unix)}
@@ -479,9 +472,6 @@ type EpvVulkanException=class(Exception);
        constructor CreateHandle(const aInstance:TpvVulkanInstance;const aSurfaceHandle:TVkSurfaceKHR);
 {$if defined(Android)}
        constructor CreateAndroid(const aInstance:TpvVulkanInstance;const aWindow:PVkAndroidANativeWindow);
-{$ifend}
-{$if defined(Mir) and defined(Unix)}
-       constructor CreateMir(const aInstance:TpvVulkanInstance;const aConnection:PVkMirConnection;const aSurface:PVkMirSurface);
 {$ifend}
 {$if defined(Wayland) and defined(Unix)}
        constructor CreateWayland(const aInstance:TpvVulkanInstance;const aDisplay:PVkWaylandDisplay;const aSurface:PVkWaylandSurface);
@@ -6938,8 +6928,6 @@ end;
 (*constructor TpvVulkanSurface.Create(const aInstance:TpvVulkanInstance;
 {$if defined(Android)}
                                       const aWindow:PANativeWindow
-{$elseif defined(Mir)}
-                                      const aConnection:PMirConnection;const aMirSurface:PMirSurface
 {$elseif defined(Wayland)}
                                       const aDisplay:Pwl_display;const aSurface:Pwl_surface
 {$elseif defined(Windows)}
@@ -6965,11 +6953,6 @@ begin
 {$if defined(Android)}
   VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR:begin
    VulkanCheckResult(fInstance.fVulkan.CreateAndroidSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Android,fInstance.fAllocationCallbacks,@fSurfaceHandle));
-  end;
-{$ifend}
-{$if defined(Mir) and defined(Unix)}
-  VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR:begin
-   VulkanCheckResult(fInstance.fVulkan.CreateMirSurfaceKHR(fInstance.fInstanceHandle,@fSurfaceCreateInfo.Mir,fInstance.fAllocationCallbacks,@fSurfaceHandle));
   end;
 {$ifend}
 {$if defined(Wayland) and defined(Unix)}
@@ -7029,18 +7012,6 @@ begin
  FillChar(SurfaceCreateInfo,SizeOf(TpvVulkanSurfaceCreateInfo),#0);
  SurfaceCreateInfo.Android.sType:=VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
  SurfaceCreateInfo.Android.window:=aWindow;
- Create(aInstance,SurfaceCreateInfo);
-end;
-{$ifend}
-
-{$if defined(Mir) and defined(Unix)}
-constructor TpvVulkanSurface.CreateMir(const aInstance:TpvVulkanInstance;const aConnection:PVkMirConnection;const aSurface:PVkMirSurface);
-var SurfaceCreateInfo:TpvVulkanSurfaceCreateInfo;
-begin
- FillChar(SurfaceCreateInfo,SizeOf(TpvVulkanSurfaceCreateInfo),#0);
- SurfaceCreateInfo.Mir.sType:=VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR;
- SurfaceCreateInfo.Mir.connection:=aConnection;
- SurfaceCreateInfo.Mir.mirSurface:=aSurface;
  Create(aInstance,SurfaceCreateInfo);
 end;
 {$ifend}

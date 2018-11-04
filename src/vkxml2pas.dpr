@@ -2925,10 +2925,6 @@ begin
     result:='PVkWaylandDisplay';
    end else if Type_='wl_surface' then begin
     result:='PVkWaylandSurface';
-   end else if Type_='MirConnection' then begin
-    result:='PVkMirConnection';
-   end else if Type_='MirSurface' then begin
-    result:='PVkMirSurface';
    end else if Type_='ANativeWindow' then begin
     result:='PVkAndroidANativeWindow';
    end else if Type_='AHardwareBuffer' then begin
@@ -2992,10 +2988,6 @@ begin
     result:='PPVkWaylandDisplay';
    end else if Type_='wl_surface' then begin
     result:='PPVkWaylandSurface';
-   end else if Type_='MirConnection' then begin
-    result:='PPVkMirConnection';
-   end else if Type_='MirSurface' then begin
-    result:='PPVkMirSurface';
    end else if Type_='ANativeWindow' then begin
     result:='PPVkAndroidANativeWindow';
    end else if Type_='AHardwareBuffer' then begin
@@ -3058,10 +3050,6 @@ begin
     result:='TVkWaylandDisplay';
    end else if Type_='wl_surface' then begin
     result:='TVkWaylandSurface';
-   end else if Type_='MirConnection' then begin
-    result:='TVkMirConnection';
-   end else if Type_='MirSurface' then begin
-    result:='TVkMirSurface';
    end else if Type_='ANativeWindow' then begin
     result:='TVkAndroidANativeWindow';
    end else if Type_='AHardwareBuffer' then begin
@@ -3824,8 +3812,6 @@ begin
             TypeDefinition^.Define:='XCB';
            end else if (Type_='wl_display') or (Type_='wl_surface') then begin
             TypeDefinition^.Define:='Wayland';
-           end else if (Type_='MirConnection') or (Type_='MirSurface') then begin
-            TypeDefinition^.Define:='Mir';
            end else if (Type_='ANativeWindow') or (Type_='AHardwareBuffer') then begin
             TypeDefinition^.Define:='Android';
            end else if (Type_='zx_handle_t') or (pos('FUCHSIA',UpperCase(Type_))>0) then begin
@@ -4474,8 +4460,6 @@ begin
           Define:='XCB';
          end else if (ParamType='wl_display') or (ParamType='wl_surface') or (pos('Wayland',ParamType)>0) then begin
           Define:='Wayland';
-         end else if (ParamType='MirConnection') or (ParamType='MirSurface') or (pos('Mir',ParamType)>0) then begin
-          Define:='Mir';
          end else if (pos('IOS',UpperCase(ParamType))>0) and (pos('MVK',ParamType)>0) then begin
           Define:='MoltenVK_IOS';
          end else if (pos('MACOS',UpperCase(ParamType))>0) and (pos('MVK',ParamType)>0) then begin
@@ -4787,9 +4771,6 @@ begin
    OutputPAS.Add('{$elseif defined(Windows)}');
    OutputPAS.Add(' {$define VK_USE_PLATFORM_WIN32_KHR}');
    OutputPAS.Add('{$elseif defined(Unix) or defined(Linux)}');
-   OutputPAS.Add(' {$ifdef MIR}');
-   OutputPAS.Add('  {$define VK_USE_PLATFORM_MIR_KHR}');
-   OutputPAS.Add(' {$endif}');
    OutputPAS.Add(' {$ifdef WAYLAND}');
    OutputPAS.Add('  {$define VK_USE_PLATFORM_WAYLAND_KHR}');
    OutputPAS.Add(' {$endif}');
@@ -4810,7 +4791,6 @@ begin
    OutputPAS.Add('     {$ifend}');
    OutputPAS.Add('     {$if defined(XLIB) and defined(VulkanUseXLIBUnits)}x,xlib,{$ifend}');
    OutputPAS.Add('     {$if defined(XCB) and defined(VulkanUseXCBUnits)}xcb,{$ifend}');
-   OutputPAS.Add('     {$if defined(Mir) and defined(VulkanUseMirUnits)}Mir,{$ifend}');
    OutputPAS.Add('     {$if defined(Wayland) and defined(VulkanUseWaylandUnits)}Wayland,{$ifend}');
    OutputPAS.Add('     {$if defined(Android) and defined(VulkanUseAndroidUnits)}Android,{$ifend}');
    OutputPAS.Add('     {$if defined(Fuchsia) and defined(VulkanUseFuchsiaUnits)}Fuchsia,{$ifend}');
@@ -4936,14 +4916,6 @@ begin
    OutputPAS.Add('     PPVkFuchsiaZXHandle=^PVkFuchsiaZXHandle;');
    OutputPAS.Add('     PVkFuchsiaZXHandle=^TVkFuchsiaZXHandle;');
    OutputPAS.Add('     TVkFuchsiaZXHandle={$ifdef VulkanUseFuchsiaUnits}Tzx_handle_t{$else}TVkSizeUInt{$endif};');
-   OutputPAS.Add('{$endif}');
-   OutputPAS.Add('');
-   OutputPAS.Add('{$ifdef Mir}');
-   OutputPAS.Add('     PPVkMirConnection=^PVkMirConnection;');
-   OutputPAS.Add('     PVkMirConnection={$ifdef VulkanUseMirUnits}PMirConnection{$else}TVkPointer{$endif};');
-   OutputPAS.Add('');
-   OutputPAS.Add('     PPVkMirSurface=^PVkMirSurface;');
-   OutputPAS.Add('     PVkMirSurface={$ifdef VulkanUseMirUnits}PMirSurface{$else}TVkPointer{$endif};');
    OutputPAS.Add('{$endif}');
    OutputPAS.Add('');
    OutputPAS.Add('{$ifdef Wayland}');

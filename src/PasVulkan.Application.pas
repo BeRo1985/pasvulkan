@@ -5920,11 +5920,6 @@ begin
       fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
      end;
 {$ifend}
-{$if defined(Mir) and defined(Unix)}
-     SDL_SYSWM_MIR:begin
-      fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_MIR_SURFACE_EXTENSION_NAME);
-     end;
-{$ifend}
 {$if defined(Wayland) and defined(Unix)}
      SDL_SYSWM_WAYLAND:begin
       fVulkanInstance.EnabledExtensionNames.Add(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
@@ -6104,16 +6099,9 @@ begin
       VulkanSurfaceCreateInfo.Android.window:=SDL_SysWMinfo.Window;
      end;
 {$ifend}
-{$if defined(Mir) and defined(Unix)}
-     SDL_SYSWM_MIR:begin
-      VulkanSurfaceCreateInfo.Mir.sType:=VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR;
-      VulkanSurfaceCreateInfo.Mir.connection:=SDL_SysWMinfo.Mir.Connection;
-      VulkanSurfaceCreateInfo.Mir.mirSurface:=SDL_SysWMinfo.Mir.Surface;
-     end;
-{$ifend}
 {$if defined(Wayland) and defined(Unix)}
      SDL_SYSWM_WAYLAND:begin
-      VulkanSurfaceCreateInfo.Wayland.sType:=VK_STRUCTURE_TYPE_MIR_SURFACE_CREATE_INFO_KHR;
+      VulkanSurfaceCreateInfo.Wayland.sType:=VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
       VulkanSurfaceCreateInfo.Wayland.display:=SDL_SysWMinfo.Wayland.Display;
       VulkanSurfaceCreateInfo.Wayland.surface:=SDL_SysWMinfo.Wayland.surface;
      end;

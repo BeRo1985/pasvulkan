@@ -59,7 +59,6 @@ After you've compiled the projectmanager binary, just execute `projectmanager -h
         - Android (x86-32, x86-64, ARM)
         - Linux (x86-32, x86-64, ARM)
             - X11
-            - Mir (deprecated, will be removed in the next time)
             - Wayland
         - MoltenVK wrapper (untested)
             - iOS
