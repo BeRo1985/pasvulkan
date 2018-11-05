@@ -624,9 +624,7 @@ type EpvVulkanException=class(Exception);
        procedure Insert(const aCommandBuffer:TpvVulkanCommandBuffer;
                         const aMarkerName:TpvRawByteString;
                         const aColor:array of TVkFloat);
-       procedure EndRegion(const aCommandBuffer:TpvVulkanCommandBuffer;
-                           const aMarkerName:TpvRawByteString;
-                           const aColor:array of TVkFloat);
+       procedure EndRegion(const aCommandBuffer:TpvVulkanCommandBuffer);
      end;
 
      TpvVulkanDeviceQueueCreateInfo=class(TpvVulkanObject)
@@ -7212,9 +7210,7 @@ begin
  end;
 end;
 
-procedure TpvVulkanDeviceDebugMarker.EndRegion(const aCommandBuffer:TpvVulkanCommandBuffer;
-                                               const aMarkerName:TpvRawByteString;
-                                               const aColor:array of TVkFloat);
+procedure TpvVulkanDeviceDebugMarker.EndRegion(const aCommandBuffer:TpvVulkanCommandBuffer);
 begin
  if fEnabled and assigned(fDevice.Commands.Commands.CmdDebugMarkerEndEXT) then begin
   fDevice.Commands.CmdDebugMarkerEndEXT(aCommandBuffer.Handle);

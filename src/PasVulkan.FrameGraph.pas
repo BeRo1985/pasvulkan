@@ -350,7 +350,7 @@ type EpvFrameGraph=class(Exception);
               property ImageSize:TImageSize read fImageSize;
               property Components:TVkComponentMapping read fComponents;
              published
-              property Format:TVkFormat read fFormat;
+              property Format:TVkFormat read fFormat write fFormat;
               property Samples:TVkSampleCountFlagBits read fSamples;
               property ImageUsage:TVkImageUsageFlags read fImageUsage;
               property CountMipMapLevels:TVkUInt32 read fCountMipMapLevels;
