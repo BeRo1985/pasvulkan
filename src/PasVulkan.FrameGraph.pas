@@ -192,14 +192,14 @@ type EpvFrameGraph=class(Exception);
                                  const aWidth:tpvFloat=1.0;
                                  const aHeight:TpvFloat=1.0;
                                  const aDepth:TpvFloat=1.0;
-                                 const aLayers:TpvFloat=1.0); overload;
+                                 const aLayers:TpvFloat=0.0); overload;
               constructor Create(const aKind:TImageSize.TKind;
                                  const aSize:TpvVector2;
                                  const aDepth:TpvFloat=1.0;
-                                 const aLayers:TpvFloat=1.0); overload;
+                                 const aLayers:TpvFloat=0.0); overload;
               constructor Create(const aKind:TImageSize.TKind;
                                  const aSize:TpvVector3;
-                                 const aLayers:TpvFloat=1.0); overload;
+                                 const aLayers:TpvFloat=0.0); overload;
               constructor Create(const aKind:TImageSize.TKind;
                                  const aSize:TpvVector4); overload;
               class operator Equal(const aLeft,aRight:TImageSize):boolean;
@@ -425,6 +425,7 @@ type EpvFrameGraph=class(Exception);
               fExtent:TVkExtent3D;
               fCountMipMaps:TpvSizeInt;
               fCountArrayLayers:TpvSizeInt;
+              fTextureArray:boolean;
               fSamples:TVkSampleCountFlagBits;
               fTiling:TVkImageTiling;
               fInitialLayout:TVkImageLayout;
@@ -1334,7 +1335,7 @@ constructor TpvFrameGraph.TImageSize.Create(const aKind:TImageSize.TKind;
                                             const aWidth:TpvFloat=1.0;
                                             const aHeight:TpvFloat=1.0;
                                             const aDepth:TpvFloat=1.0;
-                                            const aLayers:TpvFloat=1.0);
+                                            const aLayers:TpvFloat=0.0);
 begin
  Kind:=aKind;
  Size:=TpvVector4.InlineableCreate(aWidth,aHeight,aDepth,aLayers);
@@ -1343,7 +1344,7 @@ end;
 constructor TpvFrameGraph.TImageSize.Create(const aKind:TImageSize.TKind;
                                             const aSize:TpvVector2;
                                             const aDepth:TpvFloat=1.0;
-                                            const aLayers:TpvFloat=1.0);
+                                            const aLayers:TpvFloat=0.0);
 begin
  Kind:=aKind;
  Size:=TpvVector4.InlineableCreate(aSize.x,aSize.y,aDepth,aLayers);
@@ -1351,7 +1352,7 @@ end;
 
 constructor TpvFrameGraph.TImageSize.Create(const aKind:TImageSize.TKind;
                                             const aSize:TpvVector3;
-                                            const aLayers:TpvFloat=1.0);
+                                            const aLayers:TpvFloat=0.0);
 begin
  Kind:=aKind;
  Size:=TpvVector4.InlineableCreate(aSize,aLayers);
@@ -1742,6 +1743,7 @@ begin
  fExtent:=TVkExtent3D.Create(1,1,1);
  fCountMipMaps:=1;
  fCountArrayLayers:=1;
+ fTextureArray:=false;
  fSamples:=TVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
  fTiling:=VK_IMAGE_TILING_OPTIMAL;
  fInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
@@ -4753,6 +4755,8 @@ type TEventBeforeAfter=(Event,Before,After);
      ResourcePhysicalImageData.fExtent.depth:=Max(1,trunc(ImageResourceType.fImageSize.Size.z));
      ResourcePhysicalImageData.fCountMipMaps:=1;
      ResourcePhysicalImageData.fCountArrayLayers:=trunc(ImageResourceType.fImageSize.Size.w);
+     ResourcePhysicalImageData.fTextureArray:=ResourcePhysicalImageData.fCountArrayLayers>0;
+     ResourcePhysicalImageData.fCountArrayLayers:=Max(1,ResourcePhysicalImageData.fCountArrayLayers);
      ResourcePhysicalImageData.fSamples:=ImageResourceType.fSamples;
      ResourcePhysicalImageData.fTiling:=VK_IMAGE_TILING_OPTIMAL;
      ResourcePhysicalImageData.fInitialLayout:=VK_IMAGE_LAYOUT_UNDEFINED;
@@ -4779,13 +4783,13 @@ type TEventBeforeAfter=(Event,Before,After);
      ResourcePhysicalImageData.fImageSubresourceRange.baseArrayLayer:=0;
      ResourcePhysicalImageData.fImageSubresourceRange.layerCount:=ResourcePhysicalImageData.fCountArrayLayers;
      if ResourcePhysicalImageData.fExtent.depth>1 then begin
-      if ResourcePhysicalImageData.fImageSubresourceRange.layerCount>1 then begin
+      if ResourcePhysicalImageData.fTextureArray then begin
        raise EpvFrameGraph.Create('3D array image not supported');
       end else begin
        ResourcePhysicalImageData.fImageViewType:=VK_IMAGE_VIEW_TYPE_3D;
       end;
      end else begin
-      if ResourcePhysicalImageData.fImageSubresourceRange.layerCount>1 then begin
+      if ResourcePhysicalImageData.fTextureArray then begin
        ResourcePhysicalImageData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D_ARRAY;
       end else begin
        ResourcePhysicalImageData.fImageViewType:=VK_IMAGE_VIEW_TYPE_2D;
