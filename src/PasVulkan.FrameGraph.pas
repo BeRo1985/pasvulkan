@@ -3538,12 +3538,20 @@ begin
    TpvFrameGraph.TImageSize.TKind.Absolute:begin
     Width:=Max(1,trunc(RenderPass.fSize.Size.x));
     Height:=Max(1,trunc(RenderPass.fSize.Size.y));
-    Layers:=Max(1,trunc(RenderPass.fSize.Size.w));
+    if fMultiview then begin
+     Layers:=1;
+    end else begin
+     Layers:=Max(1,trunc(RenderPass.fSize.Size.w));
+    end;
    end;
    TpvFrameGraph.TImageSize.TKind.SurfaceDependent:begin
     Width:=Max(1,trunc(RenderPass.fSize.Size.x*fFrameGraph.fSurfaceWidth));
     Height:=Max(1,trunc(RenderPass.fSize.Size.y*fFrameGraph.fSurfaceHeight));
-    Layers:=Max(1,trunc(RenderPass.fSize.Size.w));
+    if fMultiview then begin
+     Layers:=1;
+    end else begin
+     Layers:=Max(1,trunc(RenderPass.fSize.Size.w));
+    end;
    end;
    else {TpvFrameGraph.TImageSize.TKind.Undefined:}begin
    end;
@@ -3591,6 +3599,7 @@ begin
                                          );
   if fMultiview and fFrameGraph.fMultiviewEnabled then begin
    fVulkanRenderPass.AddMultiviewMask(Subpass.fMultiviewMask);
+   fVulkanRenderPass.AddCorrelationMask(Subpass.fMultiviewMask);
   end;
  end;
 
