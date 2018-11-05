@@ -3599,7 +3599,7 @@ begin
                                          );
   if fMultiview and fFrameGraph.fMultiviewEnabled then begin
    fVulkanRenderPass.AddMultiviewMask(Subpass.fMultiviewMask);
-   fVulkanRenderPass.AddCorrelationMask(Subpass.fMultiviewMask);
+// fVulkanRenderPass.AddCorrelationMask(Subpass.fMultiviewMask);
   end;
  end;
 
