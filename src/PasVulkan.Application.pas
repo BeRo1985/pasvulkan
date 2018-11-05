@@ -1032,6 +1032,8 @@ type EpvApplication=class(Exception)
 
        fDebugging:boolean;
 
+       fLoadWasCalled:boolean;
+
        fActive:boolean;
 
        fTerminated:boolean;
@@ -1297,6 +1299,10 @@ type EpvApplication=class(Exception)
        procedure DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 
        procedure UpdateAudioHook;
+
+       procedure AfterCreateSwapChainWithCheck;
+
+       procedure BeforeDestroySwapChainWithCheck;
 
        function IsVisibleToUser:boolean;
 
@@ -5240,6 +5246,8 @@ begin
  fDebugging:=true;
 {$ifend}
 
+ fLoadWasCalled:=false;
+
  fTitle:='PasVulkan Application';
  fVersion:=$0100;
 
@@ -6684,7 +6692,7 @@ begin
     if fGraphicsPipelinesReady then begin
      fScreen.BeforeDestroySwapChain;
     end else begin
-     BeforeDestroySwapChain;
+     BeforeDestroySwapChainWithCheck;
     end;
    end;
    fScreen.Pause;
@@ -6703,7 +6711,7 @@ begin
     if fGraphicsPipelinesReady then begin
      fScreen.AfterCreateSwapChain;
     end else begin
-     AfterCreateSwapChain;
+     AfterCreateSwapChainWithCheck;
     end;
    end;
    if CanBeParallelProcessed then begin
@@ -6836,7 +6844,7 @@ begin
   end;
   try
    VulkanWaitIdle;
-   BeforeDestroySwapChain;
+   BeforeDestroySwapChainWithCheck;
    if fVulkanTransferInflightCommandsFromOldSwapChain then begin
     fVulkanSwapChain:=nil;
    end;
@@ -6853,7 +6861,7 @@ begin
    CreateVulkanFrameBuffers;
    CreateVulkanCommandBuffers;
    VulkanWaitIdle;
-   AfterCreateSwapChain;
+   AfterCreateSwapChainWithCheck;
   finally
    FreeAndNil(fVulkanOldSwapChain);
   end;
@@ -7087,7 +7095,7 @@ begin
    CreateVulkanFrameBuffers;
    CreateVulkanCommandBuffers;
    VulkanWaitIdle;
-   AfterCreateSwapChain;
+   AfterCreateSwapChainWithCheck;
   except
    Terminate;
    raise;
@@ -7105,7 +7113,7 @@ begin
 {$ifend}
  if fGraphicsReady then begin
   VulkanWaitIdle;
-  BeforeDestroySwapChain;
+  BeforeDestroySwapChainWithCheck;
   DestroyVulkanCommandBuffers;
   DestroyVulkanFrameBuffers;
   DestroyVulkanRenderPass;
@@ -7271,6 +7279,20 @@ begin
   end;
  finally
   fRunnableListCriticalSection.Release;
+ end;
+end;
+
+procedure TpvApplication.AfterCreateSwapChainWithCheck;
+begin
+ if fLoadWasCalled then begin
+  AfterCreateSwapChain;
+ end;
+end;
+
+procedure TpvApplication.BeforeDestroySwapChainWithCheck;
+begin
+ if fLoadWasCalled then begin
+  BeforeDestroySwapChain;
  end;
 end;
 
@@ -8142,6 +8164,10 @@ begin
        Load;
        try
 
+        fLoadWasCalled:=true;
+
+        AfterCreateSwapChainWithCheck;
+
         fLifecycleListenerListCriticalSection.Acquire;
         try
          for Index:=0 to fLifecycleListenerList.Count-1 do begin
@@ -8361,7 +8387,7 @@ begin
  if assigned(fScreen) then begin
   fScreen.AfterCreateSwapChain;
  end;
-end;                           
+end;
 
 procedure TpvApplication.BeforeDestroySwapChain;
 begin
