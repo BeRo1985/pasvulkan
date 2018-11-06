@@ -949,6 +949,7 @@ type EpvApplication=class(Exception)
        type TAcquireVulkanBackBufferState=
              (
               Entry,
+              WaitOnPreviousFrame,
               WaitOnPresentCompleteFence,
               CheckSettings,
               Acquire,
@@ -1011,6 +1012,7 @@ type EpvApplication=class(Exception)
        fCurrentCatchMouse:TpvInt32;
        fCurrentHideSystemBars:TpvInt32;
        fCurrentBlocking:TpvInt32;
+       fCurrentWaitOnPreviousFrame:TpvInt32;
 
        fSwapChainColorSpace:TpvApplicationSwapChainColorSpace;
 
@@ -1025,6 +1027,7 @@ type EpvApplication=class(Exception)
        fAndroidSeparateMouseAndTouch:boolean;
        fUseAudio:boolean;
        fBlocking:boolean;
+       fWaitOnPreviousFrame:boolean;
 
 {$if defined(PasVulkanUseSDL2)}
        fSDLVersion:TSDL_Version;
@@ -1434,6 +1437,8 @@ type EpvApplication=class(Exception)
        property UseAudio:boolean read fUseAudio write fUseAudio;
 
        property Blocking:boolean read fBlocking write fBlocking;
+
+       property WaitOnPreviousFrame:boolean read fWaitOnPreviousFrame write fWaitOnPreviousFrame;
 
        property Debugging:boolean read fDebugging;
        
@@ -5315,6 +5320,7 @@ begin
  fCurrentCatchMouse:=-1;
  fCurrentHideSystemBars:=-1;
  fCurrentBlocking:=-1;
+ fCurrentWaitOnPreviousFrame:=-1;
 
  fSwapChainColorSpace:=TpvApplicationSwapChainColorSpace.SRGB;
 
@@ -5329,6 +5335,7 @@ begin
  fAndroidSeparateMouseAndTouch:=true;
  fUseAudio:=false;
  fBlocking:=true;
+ fWaitOnPreviousFrame:=false;
 
  fActive:=true;
 
@@ -6745,6 +6752,38 @@ begin
   case fAcquireVulkanBackBufferState of
 
    TAcquireVulkanBackBufferState.Entry:begin
+    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnPreviousFrame;
+    continue;
+   end;
+
+   TAcquireVulkanBackBufferState.WaitOnPreviousFrame:begin
+    if fWaitOnPreviousFrame then begin
+     for ImageIndex:=0 to fCountSwapChainImages-1 do begin
+      if fVulkanPresentCompleteFencesReady[ImageIndex] then begin
+       if fVulkanPresentCompleteFences[ImageIndex].GetStatus<>VK_SUCCESS then begin
+        if fBlocking then begin
+         fVulkanPresentCompleteFences[ImageIndex].WaitFor;
+        end else begin
+         exit;
+        end;
+       end;
+       fVulkanPresentCompleteFences[ImageIndex].Reset;
+       fVulkanPresentCompleteFencesReady[ImageIndex]:=false;
+      end;
+      if fVulkanWaitFencesReady[ImageIndex] then begin
+       if fVulkanWaitFences[ImageIndex].GetStatus<>VK_SUCCESS then begin
+        if fBlocking then begin
+         fVulkanWaitFences[ImageIndex].WaitFor;
+        end else begin
+         exit;
+        end;
+       end;
+       fVulkanWaitFences[ImageIndex].Reset;
+       fVulkanWaitFencesReady[ImageIndex]:=false;
+      end;
+     end;
+     fVulkanDevice.WaitIdle; // even when fBlocking is false, for to satisfy the validation layers in some edge-cases
+    end;
     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnPresentCompleteFence;
     continue;
    end;
