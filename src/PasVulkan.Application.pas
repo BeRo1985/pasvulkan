@@ -1081,6 +1081,8 @@ type EpvApplication=class(Exception)
 
        fVulkanValidation:boolean;
 
+       fVulkanNoUniqueObjectsValidation:boolean;
+
        fVulkanDebuggingEnabled:boolean;
 
        fVulkanMultiviewSupportEnabled:boolean;
@@ -1456,6 +1458,8 @@ type EpvApplication=class(Exception)
        property VulkanDebugging:boolean read fVulkanDebugging write fVulkanDebugging;
 
        property VulkanValidation:boolean read fVulkanValidation write fVulkanValidation;
+
+       property VulkanNoUniqueObjectsValidation:boolean read fVulkanNoUniqueObjectsValidation write fVulkanNoUniqueObjectsValidation;
 
        property VulkanDebuggingEnabled:boolean read fVulkanDebuggingEnabled;
 
@@ -5351,6 +5355,8 @@ begin
 
  fVulkanValidation:=false;
 
+ fVulkanNoUniqueObjectsValidation:=false;
+
  fVulkanMultiviewSupportEnabled:=false;
 
  fVulkanMultiviewGeometryShader:=false;
@@ -5984,12 +5990,30 @@ begin
      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_swapchain')>=0 then begin
       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_swapchain');
      end;
-     if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_GOOGLE_unique_objects')>=0 then begin
+     if (fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_GOOGLE_unique_objects')>=0) and not fVulkanNoUniqueObjectsValidation then begin
       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_GOOGLE_unique_objects');
      end;
 {$else}
-     if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_standard_validation')>=0 then begin
-      fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_standard_validation');
+     if fVulkanNoUniqueObjectsValidation then begin
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_GOOGLE_threading')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_GOOGLE_threading');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_parameter_validation')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_parameter_validation');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_object_tracker')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_object_tracker');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_core_validation')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_core_validation');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_swapchain')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_swapchain');
+      end;
+     end else begin
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_standard_validation')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_standard_validation');
+      end;
      end;
 {$ifend}
     end;
