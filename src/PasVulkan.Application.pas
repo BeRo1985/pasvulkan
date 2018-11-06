@@ -5981,8 +5981,14 @@ begin
      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_parameter_validation')>=0 then begin
       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_parameter_validation');
      end;
+     if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_device_limits')>=0 then begin
+      fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_device_limits');
+     end;
      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_object_tracker')>=0 then begin
       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_object_tracker');
+     end;
+     if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_image')>=0 then begin
+      fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_image');
      end;
      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_core_validation')>=0 then begin
       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_core_validation');
@@ -6001,8 +6007,14 @@ begin
       if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_parameter_validation')>=0 then begin
        fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_parameter_validation');
       end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_device_limits')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_device_limits');
+      end;
       if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_object_tracker')>=0 then begin
        fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_object_tracker');
+      end;
+      if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_image')>=0 then begin
+       fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_image');
       end;
       if fVulkanInstance.AvailableLayerNames.IndexOf('VK_LAYER_LUNARG_core_validation')>=0 then begin
        fVulkanInstance.EnabledLayerNames.Add('VK_LAYER_LUNARG_core_validation');
