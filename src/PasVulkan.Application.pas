@@ -946,13 +946,17 @@ type EpvApplication=class(Exception)
 
      TpvApplication=class
       private
-       type //PpvApplicationVulkanRecreationKind=^TpvApplicationVulkanRecreationKind;
-            TpvApplicationVulkanRecreationKind=
+       type TAcquireVulkanBackBufferState=
              (
-              None,
-              SwapChain,
-              Surface,
-              Device
+              Entry,
+              WaitOnPresentCompleteFence,
+              CheckSettings,
+              Acquire,
+              WaitOnFence,
+              Apply,
+              RecreateSwapChain,
+              RecreateSurface,
+              RecreateDevice
              );
        const PresentModeToVulkanPresentMode:array[TpvApplicationPresentMode.Immediate..TpvApplicationPresentMode.FIFORelaxed] of TVkPresentModeKHR=
               (
@@ -1196,7 +1200,7 @@ type EpvApplication=class(Exception)
 
        fVulkanPhysicalDeviceHandle:TVkPhysicalDevice;
 
-       fVulkanRecreationKind:TpvApplicationVulkanRecreationKind;
+       fAcquireVulkanBackBufferState:TAcquireVulkanBackBufferState;
 
        fVulkanWaitSemaphore:TpvVulkanSemaphore;
 
@@ -5389,7 +5393,7 @@ begin
 
  fVulkanPhysicalDeviceHandle:=VK_NULL_HANDLE;
 
- fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.None;
+ fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Entry;
 
  fVulkanSwapChainQueueFamilyIndices.Initialize;
 
@@ -6723,209 +6727,244 @@ begin
 end;
 
 function TpvApplication.AcquireVulkanBackBuffer:boolean;
-var ImageIndex:TpvInt32;
+var RecreationTries,
+    ImageIndex:TpvInt32;
     TimeOut:TpvUInt64;
 begin
+
  result:=false;
 
  if not assigned(fVulkanSwapChain) then begin
-  fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.Surface;
+  fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
  end;
 
- if fVulkanRecreationKind=TpvApplicationVulkanRecreationKind.None then begin
+ RecreationTries:=0;
 
-  if fVulkanPresentCompleteFencesReady[fDrawSwapChainImageIndex] then begin
-   if fVulkanPresentCompleteFences[fDrawSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
-    if fBlocking then begin
-     fVulkanPresentCompleteFences[fDrawSwapChainImageIndex].WaitFor;
-    end else begin
-     exit;
-    end;
-   end;
-   fVulkanPresentCompleteFences[fDrawSwapChainImageIndex].Reset;
-   fVulkanPresentCompleteFencesReady[fDrawSwapChainImageIndex]:=false;
-  end;
+ repeat
 
-  if not fBlocking then begin
+  case fAcquireVulkanBackBufferState of
 
-   if fVulkanWaitFencesReady[fRealUsedDrawSwapChainImageIndex] then begin
-    if fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
-     exit;
-    end;
-    fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex].Reset;
-    fVulkanWaitFencesReady[fRealUsedDrawSwapChainImageIndex]:=false;
+   TAcquireVulkanBackBufferState.Entry:begin
+    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnPresentCompleteFence;
+    continue;
    end;
 
-  end;
-
-  if (fVulkanSwapChain.Width<>Width) or
-     (fVulkanSwapChain.Height<>Height) or
-     (fVulkanSwapChain.PresentMode<>PresentModeToVulkanPresentMode[fPresentMode]) then begin
-   if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.SwapChain then begin
-    fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.SwapChain;
-   end;
-   VulkanDebugLn('New surface dimension size and/or vertical synchronization setting detected!');
-  end else begin
-   try
-    if fBlocking then begin
-     TimeOut:=TpvUInt64(high(TpvUInt64));
-    end else begin
-     TimeOut:=0;
-    end;
-    case fVulkanSwapChain.AcquireNextImage(fVulkanPresentCompleteSemaphores[fDrawSwapChainImageIndex],
-                                           fVulkanPresentCompleteFences[fDrawSwapChainImageIndex],
-                                           TimeOut) of
-     VK_SUCCESS:begin
-      fVulkanPresentCompleteFencesReady[fDrawSwapChainImageIndex]:=true;
-      fRealUsedDrawSwapChainImageIndex:=fVulkanSwapChain.CurrentImageIndex;
-     end;
-     VK_SUBOPTIMAL_KHR:begin
-      if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.SwapChain then begin
-       fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.SwapChain;
+   TAcquireVulkanBackBufferState.WaitOnPresentCompleteFence:begin
+    if fVulkanPresentCompleteFencesReady[fDrawSwapChainImageIndex] then begin
+     if fVulkanPresentCompleteFences[fDrawSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
+      if fBlocking then begin
+       fVulkanPresentCompleteFences[fDrawSwapChainImageIndex].WaitFor;
+      end else begin
+       break;
       end;
-      VulkanDebugLn('Suboptimal surface detected!');
      end;
-     else {VK_SUCCESS,VK_TIMEOUT:}begin
-      exit;
-     end;
+     fVulkanPresentCompleteFences[fDrawSwapChainImageIndex].Reset;
+     fVulkanPresentCompleteFencesReady[fDrawSwapChainImageIndex]:=false;
     end;
-   except
-    on VulkanResultException:EpvVulkanResultException do begin
-     case VulkanResultException.ResultCode of
-      VK_ERROR_SURFACE_LOST_KHR:begin
-       if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.Surface then begin
-        fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.Surface;
-       end;
-       VulkanDebugLn(VulkanResultException.ClassName+': '+VulkanResultException.Message);
+    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.CheckSettings;
+    continue;
+   end;
+
+   TAcquireVulkanBackBufferState.CheckSettings:begin
+    if (fVulkanSwapChain.Width<>fWidth) or
+       (fVulkanSwapChain.Height<>fHeight) or
+       (fVulkanSwapChain.PresentMode<>PresentModeToVulkanPresentMode[fPresentMode]) then begin
+     VulkanDebugLn('New surface dimension size and/or vertical synchronization setting detected!');
+     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+    end else begin
+     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Acquire;
+    end;
+    continue;
+   end;
+
+   TAcquireVulkanBackBufferState.Acquire:begin
+    try
+     if fBlocking then begin
+      TimeOut:=TpvUInt64(high(TpvUInt64));
+     end else begin
+      TimeOut:=0;
+     end;
+     case fVulkanSwapChain.AcquireNextImage(fVulkanPresentCompleteSemaphores[fDrawSwapChainImageIndex],
+                                            fVulkanPresentCompleteFences[fDrawSwapChainImageIndex],
+                                            TimeOut) of
+      VK_SUCCESS:begin
+       fVulkanPresentCompleteFencesReady[fDrawSwapChainImageIndex]:=true;
+       fRealUsedDrawSwapChainImageIndex:=fVulkanSwapChain.CurrentImageIndex;
+       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnFence;
+       continue;
       end;
-      VK_ERROR_OUT_OF_DATE_KHR,
       VK_SUBOPTIMAL_KHR:begin
-       if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.SwapChain then begin
-        fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.SwapChain;
-       end;
-       VulkanDebugLn(VulkanResultException.ClassName+': '+VulkanResultException.Message);
+       VulkanDebugLn('Suboptimal surface detected!');
+       fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+       continue;
       end;
-      else begin
-       raise;
+      else {VK_TIMEOUT:}begin
+       break;
+      end;
+     end;
+    except
+     on VulkanResultException:EpvVulkanResultException do begin
+      case VulkanResultException.ResultCode of
+       VK_ERROR_SURFACE_LOST_KHR:begin
+        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
+        VulkanDebugLn(VulkanResultException.ClassName+': '+VulkanResultException.Message);
+       end;
+       VK_ERROR_OUT_OF_DATE_KHR,
+       VK_SUBOPTIMAL_KHR:begin
+        fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+        VulkanDebugLn(VulkanResultException.ClassName+': '+VulkanResultException.Message);
+       end;
+       else begin
+        raise;
+       end;
       end;
      end;
     end;
    end;
-  end;
 
- end;
-
- if fVulkanRecreationKind in [TpvApplicationVulkanRecreationKind.SwapChain,TpvApplicationVulkanRecreationKind.Surface] then begin
-
-  for ImageIndex:=0 to fCountSwapChainImages-1 do begin
-   if fVulkanPresentCompleteFencesReady[ImageIndex] then begin
-    fVulkanPresentCompleteFences[ImageIndex].WaitFor;
-    fVulkanPresentCompleteFences[ImageIndex].Reset;
-    fVulkanPresentCompleteFencesReady[ImageIndex]:=false;
-   end;
-   if fVulkanWaitFencesReady[ImageIndex] then begin
-    fVulkanWaitFences[ImageIndex].WaitFor;
-    fVulkanWaitFences[ImageIndex].Reset;
-    fVulkanWaitFencesReady[ImageIndex]:=false;
-   end;
-  end;
-
-  fVulkanDevice.WaitIdle;
-
-  if fVulkanRecreationKind=TpvApplicationVulkanRecreationKind.Surface then begin
-   VulkanDebugLn('Recreating vulkan surface... ');
-  end else begin
-   VulkanDebugLn('Recreating vulkan swap chain... ');
-  end;
-  if fVulkanTransferInflightCommandsFromOldSwapChain then begin
-   fVulkanOldSwapChain:=fVulkanSwapChain;
-  end else begin
-   fVulkanOldSwapChain:=nil;
-  end;
-  try
-   VulkanWaitIdle;
-   BeforeDestroySwapChainWithCheck;
-   if fVulkanTransferInflightCommandsFromOldSwapChain then begin
-    fVulkanSwapChain:=nil;
-   end;
-   DestroyVulkanCommandBuffers;
-   DestroyVulkanFrameBuffers;
-   DestroyVulkanRenderPass;
-   DestroyVulkanSwapChain;
-   if fVulkanRecreationKind=TpvApplicationVulkanRecreationKind.Surface then begin
-    DestroyVulkanSurface;
-    CreateVulkanSurface;
-   end;
-   CreateVulkanSwapChain;
-   CreateVulkanRenderPass;
-   CreateVulkanFrameBuffers;
-   CreateVulkanCommandBuffers;
-   VulkanWaitIdle;
-   AfterCreateSwapChainWithCheck;
-  finally
-   FreeAndNil(fVulkanOldSwapChain);
-  end;
-  if fVulkanRecreationKind=TpvApplicationVulkanRecreationKind.Surface then begin
-   VulkanDebugLn('Recreated vulkan surface... ');
-  end else begin
-   VulkanDebugLn('Recreated vulkan swap chain... ');
-  end;
-
-  fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.None;
-
-  fVulkanWaitSemaphore:=nil;
-  fVulkanWaitFence:=nil;
-
-  fDrawSwapChainImageIndex:=0;
-
-  fRealUsedDrawSwapChainImageIndex:=0;
-
- end else begin
-
-  if fBlocking then begin
-   if fVulkanWaitFencesReady[fRealUsedDrawSwapChainImageIndex] then begin
-    if fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
-     fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex].WaitFor;
+   TAcquireVulkanBackBufferState.WaitOnFence:begin
+    if fVulkanWaitFencesReady[fRealUsedDrawSwapChainImageIndex] then begin
+     if fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex].GetStatus<>VK_SUCCESS then begin
+      if fBlocking then begin
+       fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex].WaitFor;
+      end else begin
+       break;
+      end;
+     end;
+     fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex].Reset;
+     fVulkanWaitFencesReady[fRealUsedDrawSwapChainImageIndex]:=false;
     end;
-    fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex].Reset;
-    fVulkanWaitFencesReady[fRealUsedDrawSwapChainImageIndex]:=false;
+    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Apply;
+    continue;
    end;
+
+   TAcquireVulkanBackBufferState.Apply:begin
+
+    fVulkanWaitSemaphore:=fVulkanPresentCompleteSemaphores[fDrawSwapChainImageIndex];
+
+    if assigned(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex]) then begin
+
+     // If present and graphics queue families are different, then a image barrier is required
+
+     fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex].Execute(fVulkanDevice.PresentQueue,
+                                                                                                          TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                                          fVulkanWaitSemaphore,
+                                                                                                          fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex],
+                                                                                                          nil,
+                                                                                                          false);
+     fVulkanWaitSemaphore:=fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex];
+
+     fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex].Execute(fVulkanDevice.GraphicsQueue,
+                                                                                                           TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
+                                                                                                           fVulkanWaitSemaphore,
+                                                                                                           fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex],
+                                                                                                           nil,
+                                                                                                           false);
+     fVulkanWaitSemaphore:=fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex];
+
+    end;
+
+    if assigned(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex]) and
+       assigned(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex]) then begin
+     fVulkanWaitFence:=nil;
+    end else begin
+     fVulkanWaitFence:=fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex];
+    end;
+
+    result:=true;
+
+    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Entry;
+
+    break;
+
+   end;
+
+   TAcquireVulkanBackBufferState.RecreateSwapChain,
+   TAcquireVulkanBackBufferState.RecreateSurface:begin
+
+    for ImageIndex:=0 to fCountSwapChainImages-1 do begin
+     if fVulkanPresentCompleteFencesReady[ImageIndex] then begin
+      fVulkanPresentCompleteFences[ImageIndex].WaitFor;
+      fVulkanPresentCompleteFences[ImageIndex].Reset;
+      fVulkanPresentCompleteFencesReady[ImageIndex]:=false;
+     end;
+     if fVulkanWaitFencesReady[ImageIndex] then begin
+      fVulkanWaitFences[ImageIndex].WaitFor;
+      fVulkanWaitFences[ImageIndex].Reset;
+      fVulkanWaitFencesReady[ImageIndex]:=false;
+     end;
+    end;
+
+    fVulkanDevice.WaitIdle;
+
+    if fAcquireVulkanBackBufferState=TAcquireVulkanBackBufferState.RecreateSurface then begin
+     VulkanDebugLn('Recreating vulkan surface... ');
+    end else begin
+     VulkanDebugLn('Recreating vulkan swap chain... ');
+    end;
+    if fVulkanTransferInflightCommandsFromOldSwapChain then begin
+     fVulkanOldSwapChain:=fVulkanSwapChain;
+    end else begin
+     fVulkanOldSwapChain:=nil;
+    end;
+    try
+     VulkanWaitIdle;
+     BeforeDestroySwapChainWithCheck;
+     if fVulkanTransferInflightCommandsFromOldSwapChain then begin
+      fVulkanSwapChain:=nil;
+     end;
+     DestroyVulkanCommandBuffers;
+     DestroyVulkanFrameBuffers;
+     DestroyVulkanRenderPass;
+     DestroyVulkanSwapChain;
+     if fAcquireVulkanBackBufferState=TAcquireVulkanBackBufferState.RecreateSurface then begin
+      DestroyVulkanSurface;
+      CreateVulkanSurface;
+     end;
+     CreateVulkanSwapChain;
+     CreateVulkanRenderPass;
+     CreateVulkanFrameBuffers;
+     CreateVulkanCommandBuffers;
+     VulkanWaitIdle;
+     AfterCreateSwapChainWithCheck;
+    finally
+     FreeAndNil(fVulkanOldSwapChain);
+    end;
+    if fAcquireVulkanBackBufferState=TAcquireVulkanBackBufferState.RecreateSurface then begin
+     VulkanDebugLn('Recreated vulkan surface... ');
+    end else begin
+     VulkanDebugLn('Recreated vulkan swap chain... ');
+    end;
+
+    fVulkanWaitSemaphore:=nil;
+    fVulkanWaitFence:=nil;
+
+    fDrawSwapChainImageIndex:=0;
+
+    fRealUsedDrawSwapChainImageIndex:=0;
+
+    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.Entry;
+
+    if RecreationTries<3 then begin
+     inc(RecreationTries);
+     continue;
+    end else begin
+     // For to avoid main loop deadlocks
+     break;
+    end;
+
+   end;
+
+   else begin
+    break;
+   end;
+
   end;
 
-  fVulkanWaitSemaphore:=fVulkanPresentCompleteSemaphores[fDrawSwapChainImageIndex];
+  break;
 
-  if assigned(fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex]) then begin
+ until false;
 
-   // If present and graphics queue families are different, then a image barrier is required
-
-   fVulkanPresentToDrawImageBarrierPresentQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex].Execute(fVulkanDevice.PresentQueue,
-                                                                                                        TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                                                                        fVulkanWaitSemaphore,
-                                                                                                        fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex],
-                                                                                                        nil,
-                                                                                                        false);
-   fVulkanWaitSemaphore:=fVulkanPresentToDrawImageBarrierPresentQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex];
-
-   fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex].Execute(fVulkanDevice.GraphicsQueue,
-                                                                                                         TVkPipelineStageFlags(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT),
-                                                                                                         fVulkanWaitSemaphore,
-                                                                                                         fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex],
-                                                                                                         nil,
-                                                                                                         false);
-   fVulkanWaitSemaphore:=fVulkanPresentToDrawImageBarrierGraphicsQueueCommandBufferSemaphores[fRealUsedDrawSwapChainImageIndex];
-
-  end;
-
-  if assigned(fVulkanDrawToPresentImageBarrierGraphicsQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex]) and
-     assigned(fVulkanDrawToPresentImageBarrierPresentQueueCommandBuffers[fRealUsedDrawSwapChainImageIndex]) then begin
-   fVulkanWaitFence:=nil;
-  end else begin
-   fVulkanWaitFence:=fVulkanWaitFences[fRealUsedDrawSwapChainImageIndex];
-  end;
-
-  result:=true;
-
- end;
 end;
 
 function TpvApplication.PresentVulkanBackBuffer:boolean;
@@ -6975,8 +7014,10 @@ begin
     result:=true;
    end;
    VK_SUBOPTIMAL_KHR:begin
-    if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.SwapChain then begin
-     fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.SwapChain;
+    if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                              TAcquireVulkanBackBufferState.RecreateSurface,
+                                              TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+     fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
     end;
    end;
   end;
@@ -6984,14 +7025,17 @@ begin
   on VulkanResultException:EpvVulkanResultException do begin
    case VulkanResultException.ResultCode of
     VK_ERROR_SURFACE_LOST_KHR:begin
-     if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.Surface then begin
-      fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.Surface;
+     if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSurface,
+                                               TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+      fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSurface;
      end;
     end;
     VK_ERROR_OUT_OF_DATE_KHR,
     VK_SUBOPTIMAL_KHR:begin
-     if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.SwapChain then begin
-      fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.SwapChain;
+     if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                               TAcquireVulkanBackBufferState.RecreateSurface,
+                                               TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+      fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
      end;
     end;
     else begin
@@ -7332,7 +7376,7 @@ end;
 
 procedure TpvApplication.ProcessMessages;
 {$define TpvApplicationUpdateJobOnMainThread}
-var Index,Counter:TpvInt32;
+var Index,Counter,Tries:TpvInt32;
     Joystick:TpvApplicationJoystick;
 {$if defined(PasVulkanUseSDL2)}
     SDLJoystick:PSDL_Joystick;
@@ -7412,301 +7456,313 @@ begin
   end;
  end;
 
- fInput.fCriticalSection.Acquire;
- try
+ for Tries:=0 to 1 do begin
 
-   if fInput.fLastTextInput<>fInput.fTextInput then begin
-    fInput.fLastTextInput:=fInput.fTextInput;
-    if fInput.fTextInput then begin
-     SDL_StartTextInput;
-    end else begin
-     SDL_StopTextInput;
+  fInput.fCriticalSection.Acquire;
+  try
+
+    if fInput.fLastTextInput<>fInput.fTextInput then begin
+     fInput.fLastTextInput:=fInput.fTextInput;
+     if fInput.fTextInput then begin
+      SDL_StartTextInput;
+     end else begin
+      SDL_StopTextInput;
+     end;
     end;
-   end;
 
-  fInput.fEventCount:=0;
+   fInput.fEventCount:=0;
 
-  fInput.fMouseDeltaX:=0;
-  fInput.fMouseDeltaY:=0;
-  FillChar(fInput.fPointerDeltaX,SizeOf(fInput.fPointerDeltaX[0])*max(fInput.fMaxPointerID+1,0),AnsiChar(#0));
-  FillChar(fInput.fPointerDeltaY,SizeOf(fInput.fPointerDeltaY[0])*max(fInput.fMaxPointerID+1,0),AnsiChar(#0));
+   fInput.fMouseDeltaX:=0;
+   fInput.fMouseDeltaY:=0;
+   FillChar(fInput.fPointerDeltaX,SizeOf(fInput.fPointerDeltaX[0])*max(fInput.fMaxPointerID+1,0),AnsiChar(#0));
+   FillChar(fInput.fPointerDeltaY,SizeOf(fInput.fPointerDeltaY[0])*max(fInput.fMaxPointerID+1,0),AnsiChar(#0));
 
 {$if defined(PasVulkanUseSDL2)}
-  if fLastPressedKeyEvent.SDLEvent.type_<>0 then begin
-   if fKeyRepeatTimeAccumulator>0 then begin
-    dec(fKeyRepeatTimeAccumulator,fDeltaTime);
-    while fKeyRepeatTimeAccumulator<0 do begin
-     inc(fKeyRepeatTimeAccumulator,fKeyRepeatInterval);
-     fInput.AddEvent(fLastPressedKeyEvent);
+   if fLastPressedKeyEvent.SDLEvent.type_<>0 then begin
+    if fKeyRepeatTimeAccumulator>0 then begin
+     dec(fKeyRepeatTimeAccumulator,fDeltaTime);
+     while fKeyRepeatTimeAccumulator<0 do begin
+      inc(fKeyRepeatTimeAccumulator,fKeyRepeatInterval);
+      fInput.AddEvent(fLastPressedKeyEvent);
+     end;
     end;
    end;
-  end;
 
-  while SDL_PollEvent(@fEvent.SDLEvent)<>0 do begin
-   if HandleEvent(fEvent) then begin
-    continue;
-   end;
-   case fEvent.SDLEvent.type_ of
-    SDL_QUITEV,
-    SDL_APP_TERMINATING:begin
-     VulkanWaitIdle;
-     Pause;
-     DeinitializeGraphics;
-     Terminate;
+   while SDL_PollEvent(@fEvent.SDLEvent)<>0 do begin
+    if HandleEvent(fEvent) then begin
+     continue;
     end;
-    SDL_APP_LOWMEMORY:begin
-     LowMemory;
-    end;                       
-    SDL_APP_WILLENTERBACKGROUND:begin
-     //writeln('SDL_APP_WILLENTERBACKGROUND');
-{$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERBACKGROUND')));
-{$ifend}
-     fActive:=false;
-     VulkanWaitIdle;
-     Pause;
-     DeinitializeGraphics;
-     fHasLastTime:=false;
-    end;
-    SDL_APP_DIDENTERBACKGROUND:begin
-     //writeln('SDL_APP_DIDENTERBACKGROUND');
-{$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERBACKGROUND')));
-{$ifend}
-    end;
-    SDL_APP_WILLENTERFOREGROUND:begin
-     //writeln('SDL_APP_WILLENTERFOREGROUND');
-{$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERFOREGROUND')));
-{$ifend}
-    end;
-    SDL_APP_DIDENTERFOREGROUND:begin
-     //writeln('SDL_APP_DIDENTERFOREGROUND');
-     InitializeGraphics;
-     Resume;
-     fActive:=true;
-     fHasLastTime:=false;
-{$if defined(fpc) and defined(android)}
-     __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERFOREGROUND')));
-{$ifend}
-    end;
-    SDL_RENDER_TARGETS_RESET,
-    SDL_RENDER_DEVICE_RESET:begin
-     VulkanWaitIdle;
-     if fActive then begin
+    case fEvent.SDLEvent.type_ of
+     SDL_QUITEV,
+     SDL_APP_TERMINATING:begin
+      VulkanWaitIdle;
       Pause;
-     end;
-     if fGraphicsReady then begin
       DeinitializeGraphics;
+      Terminate;
+     end;
+     SDL_APP_LOWMEMORY:begin
+      LowMemory;
+     end;
+     SDL_APP_WILLENTERBACKGROUND:begin
+      //writeln('SDL_APP_WILLENTERBACKGROUND');
+{$if defined(fpc) and defined(android)}
+      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERBACKGROUND')));
+{$ifend}
+      fActive:=false;
+      VulkanWaitIdle;
+      Pause;
+      DeinitializeGraphics;
+      fHasLastTime:=false;
+     end;
+     SDL_APP_DIDENTERBACKGROUND:begin
+      //writeln('SDL_APP_DIDENTERBACKGROUND');
+{$if defined(fpc) and defined(android)}
+      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERBACKGROUND')));
+{$ifend}
+     end;
+     SDL_APP_WILLENTERFOREGROUND:begin
+      //writeln('SDL_APP_WILLENTERFOREGROUND');
+{$if defined(fpc) and defined(android)}
+      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_WILLENTERFOREGROUND')));
+{$ifend}
+     end;
+     SDL_APP_DIDENTERFOREGROUND:begin
+      //writeln('SDL_APP_DIDENTERFOREGROUND');
       InitializeGraphics;
-     end;
-     if fActive then begin
       Resume;
+      fActive:=true;
+      fHasLastTime:=false;
+{$if defined(fpc) and defined(android)}
+      __android_log_write(ANDROID_LOG_VERBOSE,'PasVulkanApplication',PAnsiChar(TpvApplicationRawByteString('SDL_APP_DIDENTERFOREGROUND')));
+{$ifend}
      end;
-     fHasLastTime:=false;
-    end;
-    SDL_WINDOWEVENT:begin
-     case fEvent.SDLEvent.window.event of
-      SDL_WINDOWEVENT_RESIZED:begin
-       fWidth:=fEvent.SDLEvent.window.Data1;
-       fHeight:=fEvent.SDLEvent.window.Data2;
+     SDL_RENDER_TARGETS_RESET,
+     SDL_RENDER_DEVICE_RESET:begin
+      VulkanWaitIdle;
+      if fActive then begin
+       Pause;
+      end;
+      if fGraphicsReady then begin
+       DeinitializeGraphics;
+       InitializeGraphics;
+      end;
+      if fActive then begin
+       Resume;
+      end;
+      fHasLastTime:=false;
+     end;
+     SDL_WINDOWEVENT:begin
+      case fEvent.SDLEvent.window.event of
+       SDL_WINDOWEVENT_RESIZED:begin
+        fWidth:=fEvent.SDLEvent.window.Data1;
+        fHeight:=fEvent.SDLEvent.window.Data2;
 {$if defined(PasVulkanUseSDL2) and defined(PasVulkanUseSDL2WithVulkanSupport)}
-       if fSDLVersionWithVulkanSupport then begin
-        SDL_Vulkan_GetDrawableSize(fSurfaceWindow,@fWidth,@fHeight);
-       end;
+        if fSDLVersionWithVulkanSupport then begin
+         SDL_Vulkan_GetDrawableSize(fSurfaceWindow,@fWidth,@fHeight);
+        end;
 {$ifend}
-       fCurrentWidth:=fWidth;
-       fCurrentHeight:=fHeight;
-       if fGraphicsReady then begin
-        VulkanDebugLn('New surface dimension size detected!');
+        fCurrentWidth:=fWidth;
+        fCurrentHeight:=fHeight;
+        if fGraphicsReady then begin
+         VulkanDebugLn('New surface dimension size detected!');
 {$if true}
-        if fVulkanRecreationKind<TpvApplicationVulkanRecreationKind.SwapChain then begin
-         fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.SwapChain;
-        end;
+         if not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                                   TAcquireVulkanBackBufferState.RecreateSurface,
+                                                   TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+          fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+         end;
 {$else}
-        DeinitializeGraphics;
-        InitializeGraphics;
+         DeinitializeGraphics;
+         InitializeGraphics;
 {$ifend}
-       end;
-       if assigned(fScreen) then begin
-        fScreen.Resize(fWidth,fHeight);
-       end;
-      end;
-     end;
-    end;
-    SDL_JOYDEVICEADDED:begin
-     Index:=fEvent.SDLEvent.jdevice.which;
-     Found:=false;
-     for Counter:=0 to fInput.fJoysticks.Count-1 do begin
-      Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
-      if assigned(Joystick) and (Joystick.Index=Index) then begin
-       Found:=true;
-       break;
-      end;
-     end;
-     if not Found then begin
-      if SDL_IsGameController(Index)<>0 then begin
-       SDLGameController:=SDL_GameControllerOpen(Index);
-       if assigned(SDLGameController) then begin
-        SDLJoystick:=SDL_GameControllerGetJoystick(SDLGameController);
-       end else begin
-        SDLJoystick:=nil;
-       end;
-      end else begin
-       SDLGameController:=nil;
-       SDLJoystick:=SDL_JoystickOpen(Index);
-      end;
-      if assigned(SDLJoystick) then begin
-       Joystick:=TpvApplicationJoystick.Create(Index,SDLJoystick,SDLGameController);
-       if Index<fInput.fJoysticks.Count then begin
-        fInput.fJoysticks.Items[Index]:=Joystick;
-       end else begin
-        while fInput.fJoysticks.Count<Index do begin
-         fInput.fJoysticks.Add(nil);
         end;
-        fInput.fJoysticks.Add(Joystick);
-       end;
-       Joystick.Initialize;
-       DoUpdateMainJoystick:=true;
-      end;
-     end;
-    end;
-    SDL_JOYDEVICEREMOVED:begin
-     for Counter:=0 to fInput.fJoysticks.Count-1 do begin
-      Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
-      if assigned(Joystick) and (Joystick.ID=fEvent.SDLEvent.jdevice.which) then begin
-       Joystick.Free;
-       fInput.fJoysticks.Delete(Counter);
-       DoUpdateMainJoystick:=true;
-       break;
-      end;
-     end;
-    end;
-    SDL_CONTROLLERDEVICEADDED:begin
-    end;
-    SDL_CONTROLLERDEVICEREMOVED:begin
-    end;
-    SDL_CONTROLLERDEVICEREMAPPED:begin
-    end;
-    SDL_KEYDOWN:begin
-     OK:=true;
-     case fEvent.SDLEvent.key.keysym.sym of
-      SDLK_F4:begin
-       if ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
-        OK:=false;
-        if fEvent.SDLEvent.key.repeat_=0 then begin
-         Terminate;
+        if assigned(fScreen) then begin
+         fScreen.Resize(fWidth,fHeight);
         end;
        end;
       end;
-      SDLK_RETURN:begin
-       if ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
-        if fEvent.SDLEvent.key.repeat_=0 then begin
+     end;
+     SDL_JOYDEVICEADDED:begin
+      Index:=fEvent.SDLEvent.jdevice.which;
+      Found:=false;
+      for Counter:=0 to fInput.fJoysticks.Count-1 do begin
+       Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
+       if assigned(Joystick) and (Joystick.Index=Index) then begin
+        Found:=true;
+        break;
+       end;
+      end;
+      if not Found then begin
+       if SDL_IsGameController(Index)<>0 then begin
+        SDLGameController:=SDL_GameControllerOpen(Index);
+        if assigned(SDLGameController) then begin
+         SDLJoystick:=SDL_GameControllerGetJoystick(SDLGameController);
+        end else begin
+         SDLJoystick:=nil;
+        end;
+       end else begin
+        SDLGameController:=nil;
+        SDLJoystick:=SDL_JoystickOpen(Index);
+       end;
+       if assigned(SDLJoystick) then begin
+        Joystick:=TpvApplicationJoystick.Create(Index,SDLJoystick,SDLGameController);
+        if Index<fInput.fJoysticks.Count then begin
+         fInput.fJoysticks.Items[Index]:=Joystick;
+        end else begin
+         while fInput.fJoysticks.Count<Index do begin
+          fInput.fJoysticks.Add(nil);
+         end;
+         fInput.fJoysticks.Add(Joystick);
+        end;
+        Joystick.Initialize;
+        DoUpdateMainJoystick:=true;
+       end;
+      end;
+     end;
+     SDL_JOYDEVICEREMOVED:begin
+      for Counter:=0 to fInput.fJoysticks.Count-1 do begin
+       Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
+       if assigned(Joystick) and (Joystick.ID=fEvent.SDLEvent.jdevice.which) then begin
+        Joystick.Free;
+        fInput.fJoysticks.Delete(Counter);
+        DoUpdateMainJoystick:=true;
+        break;
+       end;
+      end;
+     end;
+     SDL_CONTROLLERDEVICEADDED:begin
+     end;
+     SDL_CONTROLLERDEVICEREMOVED:begin
+     end;
+     SDL_CONTROLLERDEVICEREMAPPED:begin
+     end;
+     SDL_KEYDOWN:begin
+      OK:=true;
+      case fEvent.SDLEvent.key.keysym.sym of
+       SDLK_F4:begin
+        if ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
          OK:=false;
-         fFullScreen:=not fFullScreen;
+         if fEvent.SDLEvent.key.repeat_=0 then begin
+          Terminate;
+         end;
+        end;
+       end;
+       SDLK_RETURN:begin
+        if ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
+         if fEvent.SDLEvent.key.repeat_=0 then begin
+          OK:=false;
+          fFullScreen:=not fFullScreen;
+         end;
         end;
        end;
       end;
+      if OK then begin
+       if fNativeKeyRepeat then begin
+        if fEvent.SDLEvent.key.repeat_=0 then begin
+         fInput.AddEvent(fEvent);
+        end;
+        fEvent.SDLEvent.type_:=SDL_KEYTYPED;
+        fInput.AddEvent(fEvent);
+       end else if fEvent.SDLEvent.key.repeat_=0 then begin
+        fInput.AddEvent(fEvent);
+        fEvent.SDLEvent.type_:=SDL_KEYTYPED;
+        fInput.AddEvent(fEvent);
+        fLastPressedKeyEvent:=fEvent;
+        fKeyRepeatTimeAccumulator:=fKeyRepeatInitialInterval;
+       end;
+      end;
      end;
-     if OK then begin
-      if fNativeKeyRepeat then begin
+     SDL_KEYUP:begin
+      OK:=true;
+      case fEvent.SDLEvent.key.keysym.sym of
+       SDLK_F4:begin
+        if ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
+         OK:=false;
+        end;
+       end;
+       SDLK_RETURN:begin
+        if ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
+         OK:=false;
+        end;
+       end;
+      end;
+      if OK then begin
        if fEvent.SDLEvent.key.repeat_=0 then begin
         fInput.AddEvent(fEvent);
-       end;
-       fEvent.SDLEvent.type_:=SDL_KEYTYPED;
-       fInput.AddEvent(fEvent);
-      end else if fEvent.SDLEvent.key.repeat_=0 then begin
-       fInput.AddEvent(fEvent);
-       fEvent.SDLEvent.type_:=SDL_KEYTYPED;
-       fInput.AddEvent(fEvent);
-       fLastPressedKeyEvent:=fEvent;
-       fKeyRepeatTimeAccumulator:=fKeyRepeatInitialInterval;
-      end;
-     end;
-    end;
-    SDL_KEYUP:begin
-     OK:=true;
-     case fEvent.SDLEvent.key.keysym.sym of
-      SDLK_F4:begin
-       if ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
-        OK:=false;
-       end;
-      end;
-      SDLK_RETURN:begin
-       if ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
-        OK:=false;
+        fLastPressedKeyEvent.SDLEvent.type_:=0;
        end;
       end;
      end;
-     if OK then begin
-      if fEvent.SDLEvent.key.repeat_=0 then begin
-       fInput.AddEvent(fEvent);
-       fLastPressedKeyEvent.SDLEvent.type_:=0;
-      end;
+     SDL_TEXTINPUT:begin
+      fInput.AddEvent(fEvent);
      end;
-    end;
-    SDL_TEXTINPUT:begin
-     fInput.AddEvent(fEvent);
-    end;
-    SDL_MOUSEMOTION:begin
-     fInput.AddEvent(fEvent);
-    end;
-    SDL_MOUSEBUTTONDOWN:begin
-     fInput.AddEvent(fEvent);
-    end;
-    SDL_MOUSEBUTTONUP:begin
-     fInput.AddEvent(fEvent);
-    end;
-    SDL_MOUSEWHEEL:begin
-     fInput.AddEvent(fEvent);
-    end;
-    SDL_FINGERMOTION:begin
-     fInput.AddEvent(fEvent);
-    end;
-    SDL_FINGERDOWN:begin
-     fInput.AddEvent(fEvent);
-    end;
-    SDL_FINGERUP:begin
-     fInput.AddEvent(fEvent);
-    end;
-   end;
-  end;
-{$else}
-{$ifend}
-  if DoUpdateMainJoystick then begin
-   fInput.fMainJoystick:=nil;
-   if fInput.fJoysticks.Count>0 then begin
-    for Counter:=0 to fInput.fJoysticks.Count-1 do begin
-     Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
-     if assigned(Joystick) then begin
-      fInput.fMainJoystick:=Joystick;
-      break;
+     SDL_MOUSEMOTION:begin
+      fInput.AddEvent(fEvent);
+     end;
+     SDL_MOUSEBUTTONDOWN:begin
+      fInput.AddEvent(fEvent);
+     end;
+     SDL_MOUSEBUTTONUP:begin
+      fInput.AddEvent(fEvent);
+     end;
+     SDL_MOUSEWHEEL:begin
+      fInput.AddEvent(fEvent);
+     end;
+     SDL_FINGERMOTION:begin
+      fInput.AddEvent(fEvent);
+     end;
+     SDL_FINGERDOWN:begin
+      fInput.AddEvent(fEvent);
+     end;
+     SDL_FINGERUP:begin
+      fInput.AddEvent(fEvent);
      end;
     end;
    end;
+ {$else}
+ {$ifend}
+   if DoUpdateMainJoystick then begin
+    fInput.fMainJoystick:=nil;
+    if fInput.fJoysticks.Count>0 then begin
+     for Counter:=0 to fInput.fJoysticks.Count-1 do begin
+      Joystick:=TpvApplicationJoystick(fInput.fJoysticks.Items[Counter]);
+      if assigned(Joystick) then begin
+       fInput.fMainJoystick:=Joystick;
+       break;
+      end;
+     end;
+    end;
+   end;
+   fInput.ProcessEvents;
+  finally
+   fInput.fCriticalSection.Release;
   end;
-  fInput.ProcessEvents;
- finally
-  fInput.fCriticalSection.Release;
- end;
 
- if assigned(fOnStep) then begin
-  fOnStep(self);
- end;
-
- if fCurrentFullScreen<>ord(fFullScreen) then begin
-  fCurrentFullScreen:=ord(fFullScreen);
-  if fVulkanRecreationKind=TpvApplicationVulkanRecreationKind.None then begin
-   fVulkanRecreationKind:=TpvApplicationVulkanRecreationKind.SwapChain;
+  if assigned(fOnStep) then begin
+   fOnStep(self);
   end;
+
+  if fCurrentFullScreen<>ord(fFullScreen) then begin
+   fCurrentFullScreen:=ord(fFullScreen);
+   if (Tries=0) and
+      not (fAcquireVulkanBackBufferState in [TAcquireVulkanBackBufferState.RecreateSwapChain,
+                                             TAcquireVulkanBackBufferState.RecreateSurface,
+                                             TAcquireVulkanBackBufferState.RecreateDevice]) then begin
+    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.RecreateSwapChain;
+   end;
 {$if defined(PasVulkanUseSDL2)}
-  if fFullScreen then begin
-   SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
-  end else begin
-   SDL_SetWindowFullscreen(fSurfaceWindow,0);
-  end;
+   if fFullScreen then begin
+    SDL_SetWindowFullscreen(fSurfaceWindow,SDL_WINDOW_FULLSCREEN_DESKTOP);
+   end else begin
+    SDL_SetWindowFullscreen(fSurfaceWindow,0);
+   end;
 {$else}
 {$ifend}
+   continue;
+  end;
+
+  break;
+
  end;
 
  if fGraphicsReady and IsVisibleToUser then begin
