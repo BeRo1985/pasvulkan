@@ -7287,8 +7287,8 @@ begin
   // Check for surface support, if needed
   if assigned(aSurface) then begin
    OK:=false;
-   for SubIndex:=0 to length(CurrentPhysicalDevice.fQueueFamilyProperties)-1 do begin
-    if CurrentPhysicalDevice.GetSurfaceSupport(SubIndex,aSurface) then begin
+   for SubIndex:=0 to length(fPhysicalDevice.fQueueFamilyProperties)-1 do begin
+    if fPhysicalDevice.GetSurfaceSupport(SubIndex,aSurface) then begin
      OK:=true;
      break;
     end;
