@@ -869,6 +869,8 @@ type EpvApplication=class(Exception)
 
        procedure FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
+       procedure AfterPresentFrame(const aSwapChainImageIndex:TpvInt32); virtual;
+
        procedure UpdateAudio; virtual;
 
      end;
@@ -1389,6 +1391,8 @@ type EpvApplication=class(Exception)
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
        procedure FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual; // example for VR output handling of the rendered stereo images
+
+       procedure AfterPresentFrame(const aSwapChainImageIndex:TpvInt32); virtual;
 
        procedure UpdateAudio; virtual;
 
@@ -4979,6 +4983,10 @@ procedure TpvApplicationScreen.FinishFrame(const aSwapChainImageIndex:TpvInt32;v
 begin
 end;
 
+procedure TpvApplicationScreen.AfterPresentFrame(const aSwapChainImageIndex:TpvInt32);
+begin
+end;
+
 procedure TpvApplicationScreen.UpdateAudio;
 begin
 end;
@@ -7927,7 +7935,11 @@ begin
      end;
 
     finally
-     PresentVulkanBackBuffer;
+     try
+      PresentVulkanBackBuffer;
+     finally
+      AfterPresentFrame(fRealUsedDrawSwapChainImageIndex);
+     end;
     end;
 
     inc(fFrameCounter);
@@ -8592,6 +8604,13 @@ procedure TpvApplication.FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWa
 begin
  if assigned(fScreen) then begin
   fScreen.FinishFrame(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
+ end;
+end;
+
+procedure TpvApplication.AfterPresentFrame(const aSwapChainImageIndex:TpvInt32);
+begin
+ if assigned(fScreen) then begin
+  fScreen.AfterPresentFrame(aSwapChainImageIndex);
  end;
 end;
 
