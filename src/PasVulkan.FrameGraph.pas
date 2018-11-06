@@ -1851,7 +1851,20 @@ begin
 
  if assigned(fExternalData) then begin
 
-  fFormat:=fFrameGraph.fSurfaceColorFormat;
+  fFormat:=fRequestedFormat;
+
+  if fFormat=VK_FORMAT_UNDEFINED then begin
+   case (fResourceType as TImageResourceType).fImageType of
+    TImageType.Color:begin
+     fFormat:=fFrameGraph.fSurfaceColorFormat;
+    end;
+    TImageType.Depth,
+    TImageType.DepthStencil,
+    TImageType.Stencil:begin
+     fFormat:=fFrameGraph.fSurfaceDepthFormat;
+    end;
+   end;
+  end;
 
   for SwapChainImageIndex:=0 to Min(Max(fFrameGraph.fCountSwapChainImages,1),MaxSwapChainImages)-1 do begin
    fVulkanImages[SwapChainImageIndex]:=TExternalImageData(fExternalData).fVulkanImages[SwapChainImageIndex mod TExternalImageData(fExternalData).fVulkanImages.Count];
