@@ -949,7 +949,7 @@ type EpvApplication=class(Exception)
        type TAcquireVulkanBackBufferState=
              (
               Entry,
-              WaitOnPreviousFrame,
+              WaitOnPreviousFrames,
               WaitOnPresentCompleteFence,
               CheckSettings,
               Acquire,
@@ -1012,7 +1012,7 @@ type EpvApplication=class(Exception)
        fCurrentCatchMouse:TpvInt32;
        fCurrentHideSystemBars:TpvInt32;
        fCurrentBlocking:TpvInt32;
-       fCurrentWaitOnPreviousFrame:TpvInt32;
+       fCurrentWaitOnPreviousFrames:TpvInt32;
 
        fSwapChainColorSpace:TpvApplicationSwapChainColorSpace;
 
@@ -1027,7 +1027,7 @@ type EpvApplication=class(Exception)
        fAndroidSeparateMouseAndTouch:boolean;
        fUseAudio:boolean;
        fBlocking:boolean;
-       fWaitOnPreviousFrame:boolean;
+       fWaitOnPreviousFrames:boolean;
 
 {$if defined(PasVulkanUseSDL2)}
        fSDLVersion:TSDL_Version;
@@ -1438,7 +1438,7 @@ type EpvApplication=class(Exception)
 
        property Blocking:boolean read fBlocking write fBlocking;
 
-       property WaitOnPreviousFrame:boolean read fWaitOnPreviousFrame write fWaitOnPreviousFrame;
+       property WaitOnPreviousFrames:boolean read fWaitOnPreviousFrames write fWaitOnPreviousFrames;
 
        property Debugging:boolean read fDebugging;
        
@@ -5320,7 +5320,7 @@ begin
  fCurrentCatchMouse:=-1;
  fCurrentHideSystemBars:=-1;
  fCurrentBlocking:=-1;
- fCurrentWaitOnPreviousFrame:=-1;
+ fCurrentWaitOnPreviousFrames:=-1;
 
  fSwapChainColorSpace:=TpvApplicationSwapChainColorSpace.SRGB;
 
@@ -5335,7 +5335,7 @@ begin
  fAndroidSeparateMouseAndTouch:=true;
  fUseAudio:=false;
  fBlocking:=true;
- fWaitOnPreviousFrame:=false;
+ fWaitOnPreviousFrames:=false;
 
  fActive:=true;
 
@@ -6752,12 +6752,12 @@ begin
   case fAcquireVulkanBackBufferState of
 
    TAcquireVulkanBackBufferState.Entry:begin
-    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnPreviousFrame;
+    fAcquireVulkanBackBufferState:=TAcquireVulkanBackBufferState.WaitOnPreviousFrames;
     continue;
    end;
 
-   TAcquireVulkanBackBufferState.WaitOnPreviousFrame:begin
-    if fWaitOnPreviousFrame then begin
+   TAcquireVulkanBackBufferState.WaitOnPreviousFrames:begin
+    if fWaitOnPreviousFrames then begin
      for ImageIndex:=0 to fCountSwapChainImages-1 do begin
       if fVulkanPresentCompleteFencesReady[ImageIndex] then begin
        if fVulkanPresentCompleteFences[ImageIndex].GetStatus<>VK_SUCCESS then begin
