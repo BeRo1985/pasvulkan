@@ -133,6 +133,7 @@ begin
  HideSystemBars:=true;
  AndroidSeparateMouseAndTouch:=true;
  UseAudio:=true;
+ WaitOnPreviousFrames:=false;
 //DesiredCountSwapChainImages:=2;
  if fForceNoVSync then begin
   PresentMode:=TpvApplicationPresentMode.Mailbox;
