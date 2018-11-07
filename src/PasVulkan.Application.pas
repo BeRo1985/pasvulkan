@@ -865,6 +865,8 @@ type EpvApplication=class(Exception)
 
        procedure Update(const aDeltaTime:TpvDouble); virtual;
 
+       procedure BeginFrame(const aDeltaTime:TpvDouble); virtual;
+
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
        procedure FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
@@ -1387,6 +1389,8 @@ type EpvApplication=class(Exception)
        procedure Check(const aDeltaTime:TpvDouble); virtual; // example for VR input handling
 
        procedure Update(const aDeltaTime:TpvDouble); virtual;
+
+       procedure BeginFrame(const aDeltaTime:TpvDouble); virtual;
 
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); virtual;
 
@@ -4975,6 +4979,10 @@ procedure TpvApplicationScreen.Update(const aDeltaTime:TpvDouble);
 begin
 end;
 
+procedure TpvApplicationScreen.BeginFrame(const aDeltaTime:TpvDouble);
+begin
+end;
+
 procedure TpvApplicationScreen.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 begin
 end;
@@ -7902,6 +7910,8 @@ begin
 
       Check(fUpdateDeltaTime);
 
+      BeginFrame(fUpdateDeltaTime);
+
 {$ifdef TpvApplicationUpdateJobOnMainThread}
       DrawJob:=fPasMPInstance.Acquire(DrawJobFunction);
       try
@@ -7927,6 +7937,8 @@ begin
       Check(fUpdateDeltaTime);
 
       UpdateJobFunction(nil,0);
+
+      BeginFrame(fUpdateDeltaTime);
 
       DrawJobFunction(nil,0);
 
@@ -8600,24 +8612,10 @@ begin
  end;
 end;
 
-procedure TpvApplication.FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+procedure TpvApplication.BeginFrame(const aDeltaTime:TpvDouble);
 begin
  if assigned(fScreen) then begin
-  fScreen.FinishFrame(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
- end;
-end;
-
-procedure TpvApplication.PostPresent(const aSwapChainImageIndex:TpvInt32);
-begin
- if assigned(fScreen) then begin
-  fScreen.PostPresent(aSwapChainImageIndex);
- end;
-end;
-
-procedure TpvApplication.UpdateAudio;
-begin
- if assigned(fScreen) then begin
-  fScreen.UpdateAudio;
+  fScreen.BeginFrame(aDeltaTime);
  end;
 end;
 
@@ -8653,6 +8651,27 @@ begin
 
   aWaitSemaphore:=fVulkanBlankCommandBufferSemaphores[aSwapChainImageIndex];
 
+ end;
+end;
+
+procedure TpvApplication.FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
+begin
+ if assigned(fScreen) then begin
+  fScreen.FinishFrame(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
+ end;
+end;
+
+procedure TpvApplication.PostPresent(const aSwapChainImageIndex:TpvInt32);
+begin
+ if assigned(fScreen) then begin
+  fScreen.PostPresent(aSwapChainImageIndex);
+ end;
+end;
+
+procedure TpvApplication.UpdateAudio;
+begin
+ if assigned(fScreen) then begin
+  fScreen.UpdateAudio;
  end;
 end;
 
