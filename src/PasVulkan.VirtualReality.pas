@@ -83,6 +83,8 @@ uses SysUtils,
       PasVulkan.VirtualReality.OpenVR,
      {$endif}
      PasVulkan.Types,
+     PasVulkan.Assets,
+     PasVulkan.Streams,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
@@ -616,9 +618,9 @@ begin
  fCountImagesInt32:=fCountImages;
 
  if fCountImages>1 then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/vr_enabled_to_screen_blit_vert.spv');
+  Stream:=TpvDataStream.Create(@PasVulkan.Assets.VREnabledToScreenBlitVertSPIRVData[0],PasVulkan.Assets.VREnabledToScreenBlitVertSPIRVDataSize);
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/vr_disabled_to_screen_blit_vert.spv');
+  Stream:=TpvDataStream.Create(@PasVulkan.Assets.VRDisabledToScreenBlitVertSPIRVData[0],PasVulkan.Assets.VRDisabledToScreenBlitVertSPIRVDataSize);
  end;
  try
   fVulkanVertexShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
@@ -627,9 +629,9 @@ begin
  end;
 
  if fCountImages>1 then begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/vr_enabled_to_screen_blit_frag.spv');
+  Stream:=TpvDataStream.Create(@PasVulkan.Assets.VREnabledToScreenBlitFragSPIRVData[0],PasVulkan.Assets.VREnabledToScreenBlitFragSPIRVDataSize);
  end else begin
-  Stream:=pvApplication.Assets.GetAssetStream('shaders/vr_disabled_to_screen_blit_frag.spv');
+  Stream:=TpvDataStream.Create(@PasVulkan.Assets.VRDisabledToScreenBlitFragSPIRVData[0],PasVulkan.Assets.VRDisabledToScreenBlitFragSPIRVDataSize);
  end;
  try
   fVulkanFragmentShaderModule:=TpvVulkanShaderModule.Create(pvApplication.VulkanDevice,Stream);
