@@ -1922,7 +1922,11 @@ begin
  case fMode of
   TpvVirtualReality.TMode.OpenVR:begin
 {$ifdef TargetWithOpenVRSupport}
-   fOpenVR_BaseInverseHMDMatrix:=fOpenVR_HMDMatrixOriginal;
+   if fTrackingMode=TTrackingMode.Seated then begin
+    fOpenVR_VR_IVRSystem_FnTable^.ResetSeatedZeroPose;
+   end else begin
+    fOpenVR_BaseInverseHMDMatrix:=fOpenVR_HMDMatrixOriginal;
+   end;
 {$endif}
   end;
   TpvVirtualReality.TMode.Faked:begin
