@@ -187,6 +187,7 @@ type EpvVirtualReality=class(Exception);
        fOpenVR_EyeToHeadTransformMatrices:array[0..1] of TpvMatrix4x4;
        fOpenVR_LeftRightHandControllerPresent:array[0..1] of boolean;
        fOpenVR_LeftRightHandControllerMatrices:array[0..1] of TpvMatrix4x4;
+       fOpenVR_HMDMatrixOriginal:TpvMatrix4x4;
        fOpenVR_HMDMatrix:TpvMatrix4x4;
        fOpenVR_BaseInverseHMDMatrix:TpvMatrix4x4;
 {$endif}
@@ -328,6 +329,8 @@ constructor TpvVirtualReality.Create(const aMode:TMode);
   fOpenVR_LeftRightHandControllerMatrices[0]:=TpvMatrix4x4.Identity;
 
   fOpenVR_LeftRightHandControllerMatrices[1]:=TpvMatrix4x4.Identity;
+
+  fOpenVR_HMDMatrixOriginal:=TpvMatrix4x4.Identity;
 
   fOpenVR_HMDMatrix:=TpvMatrix4x4.Identity;
 
@@ -610,6 +613,8 @@ procedure TpvVirtualReality.Load;
   fOpenVR_LeftRightHandControllerMatrices[0]:=TpvMatrix4x4.Identity;
 
   fOpenVR_LeftRightHandControllerMatrices[1]:=TpvMatrix4x4.Identity;
+
+  fOpenVR_HMDMatrixOriginal:=TpvMatrix4x4.Identity;
 
   fOpenVR_HMDMatrix:=TpvMatrix4x4.Identity;
 
@@ -1555,7 +1560,7 @@ begin
  case fMode of
 {$ifdef TargetWithOpenVRSupport}
   TMode.OpenVR:begin
-   result:=fOpenVR_EyeToHeadTransformMatrices[aIndex]*(fOpenVR_HMDMatrix*fOpenVR_BaseInverseHMDMatrix);
+   result:=fOpenVR_EyeToHeadTransformMatrices[aIndex]*(fOpenVR_BaseInverseHMDMatrix*fOpenVR_HMDMatrix);
   end;
 {$endif}
   TMode.Faked:begin
@@ -1586,16 +1591,12 @@ procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
      Error:TETrackedPropertyError;
  begin
 
-  if pvApplication.PresentMode=TpvApplicationPresentMode.Immediate then begin
-   fOpenVR_VR_IVRSystem_FnTable^.GetTimeSinceLastVsync(@SecondsSinceLastVSync,nil);
-   DisplayFrequency:=fOpenVR_VR_IVRSystem_FnTable^.GetFloatTrackedDeviceProperty(k_unTrackedDeviceIndex_Hmd,Prop_DisplayFrequency_Float,@Error);
-   if not IsZero(DisplayFrequency) then begin
-    FrameDuration:=1.0/DisplayFrequency;
-    VSyncToPhotons:=fOpenVR_VR_IVRSystem_FnTable^.GetFloatTrackedDeviceProperty(k_unTrackedDeviceIndex_Hmd,Prop_SecondsFromVSyncToPhotons_Float,@Error);
-    PredictedSecondsFromNow:=(FrameDuration-SecondsSinceLastVsync)+VSyncToPhotons;
-   end else begin
-    PredictedSecondsFromNow:=0.0;
-   end;
+  fOpenVR_VR_IVRSystem_FnTable^.GetTimeSinceLastVsync(@SecondsSinceLastVSync,nil);
+  DisplayFrequency:=fOpenVR_VR_IVRSystem_FnTable^.GetFloatTrackedDeviceProperty(k_unTrackedDeviceIndex_Hmd,Prop_DisplayFrequency_Float,@Error);
+  if not IsZero(DisplayFrequency) then begin
+   FrameDuration:=1.0/DisplayFrequency;
+   VSyncToPhotons:=fOpenVR_VR_IVRSystem_FnTable^.GetFloatTrackedDeviceProperty(k_unTrackedDeviceIndex_Hmd,Prop_SecondsFromVSyncToPhotons_Float,@Error);
+   PredictedSecondsFromNow:=(FrameDuration-SecondsSinceLastVsync)+VSyncToPhotons;
   end else begin
    PredictedSecondsFromNow:=0.0;
   end;
@@ -1605,60 +1606,7 @@ procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
 
   FillChar(fOpenVR_TrackedDevicePoses[0],SizeOf(fOpenVR_TrackedDevicePoses),#0);
 
-  fOpenVR_VR_IVRCompositor_FnTable^.WaitGetPoses(@fOpenVR_TrackedDevicePoses,Length(fOpenVR_TrackedDevicePoses),nil,0);
-
-  for Index:=Low(fOpenVR_TrackedDevicePoses) to High(fOpenVR_TrackedDevicePoses) do begin
-
-   if fOpenVR_TrackedDevicePoses[Index].bDeviceIsConnected then begin
-
-    OpenVRMatrix.m34:=fOpenVR_TrackedDevicePoses[Index].mDeviceToAbsoluteTracking;
-    OpenVRMatrix.m44.m[3,0]:=0.0;
-    OpenVRMatrix.m44.m[3,1]:=0.0;
-    OpenVRMatrix.m44.m[3,2]:=0.0;
-    OpenVRMatrix.m44.m[3,3]:=1.0;
-    OpenVRMatrix.Matrix:=OpenVRMatrix.Matrix.Transpose;
-
-    case fOpenVR_VR_IVRSystem_FnTable.GetTrackedDeviceClass(Index) of
-
-     TrackedDeviceClass_HMD:begin
-
-      if fOpenVR_TrackedDevicePoses[Index].bPoseIsValid then begin
-       fOpenVR_HMDMatrix:=OpenVRMatrix.Matrix.Inverse;
-      end;
-
-     end;
-
-     TrackedDeviceClass_Controller:begin
-
-      if fOpenVR_TrackedDevicePoses[Index].bPoseIsValid then begin
-
-       case fOpenVR_VR_IVRSystem_FnTable.GetControllerRoleForTrackedDeviceIndex(Index) of
-
-        TrackedControllerRole_LeftHand:begin
-
-        end;
-
-        TrackedControllerRole_RightHand:begin
-
-        end;
-
-        else {TrackedControllerRole_Invalid:}begin
-
-        end;
-
-       end;
-
-      end;
-
-     end;
-
-    end;
-
-   end;
-
-  end;
-
-  FillChar(fOpenVR_TrackedDevicePoses[0],SizeOf(fOpenVR_TrackedDevicePoses),#0);
+  fOpenVR_VR_IVRCompositor_FnTable^.WaitGetPoses(nil,0,nil,0);
 
   fOpenVR_VR_IVRSystem_FnTable^.GetDeviceToAbsoluteTrackingPose(TrackingUniverseModes[fTrackingMode],PredictedSecondsFromNow,@fOpenVR_TrackedDevicePoses,Length(fOpenVR_TrackedDevicePoses));
 
@@ -1676,6 +1624,14 @@ procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
     case fOpenVR_VR_IVRSystem_FnTable^.GetTrackedDeviceClass(Index) of
 
      TrackedDeviceClass_HMD:begin
+
+      if fOpenVR_TrackedDevicePoses[Index].bPoseIsValid then begin
+
+       fOpenVR_HMDMatrixOriginal:=OpenVRMatrix.Matrix;
+
+       fOpenVR_HMDMatrix:=fOpenVR_HMDMatrixOriginal.Inverse;
+
+      end;
 
      end;
 
@@ -1843,7 +1799,7 @@ begin
  case fMode of
   TpvVirtualReality.TMode.OpenVR:begin
 {$ifdef TargetWithOpenVRSupport}
-   fOpenVR_BaseInverseHMDMatrix:=fOpenVR_HMDMatrix.Inverse;
+   fOpenVR_BaseInverseHMDMatrix:=fOpenVR_HMDMatrixOriginal;
 {$endif}
   end;
   TpvVirtualReality.TMode.Faked:begin
