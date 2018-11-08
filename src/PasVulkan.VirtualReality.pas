@@ -107,6 +107,11 @@ type EpvVirtualReality=class(Exception);
               OpenVR,
               Faked
              );
+            TProjectionMatrixMode=
+             (
+              Normal,
+              InfiniteFarPlaneReversedZ
+             );
             TVulkanMemoryBlocks=TpvObjectGenericList<TpvVulkanDeviceMemoryBlock>;
             TVulkanImages=TpvObjectGenericList<TpvVulkanImage>;
             TVulkanImageViews=TpvObjectGenericList<TpvVulkanImageView>;
@@ -127,6 +132,7 @@ type EpvVirtualReality=class(Exception);
 {$endif}
       private
        fMode:TMode;
+       fProjectionMatrixMode:TProjectionMatrixMode;
        fFOV:TpvScalar;
        fZNear:TpvScalar;
        fZFar:TpvScalar;
@@ -198,6 +204,7 @@ type EpvVirtualReality=class(Exception);
        procedure ResetOrientation;
       published
        property Mode:TMode read fMode write fMode default TMode.Disabled;
+       property ProjectionMatrixMode:TProjectionMatrixMode read fProjectionMatrixMode write fProjectionMatrixMode;
        property FOV:TpvScalar read fFOV write fFOV;
        property ZNear:TpvScalar read fZNear write fZNear;
        property ZFar:TpvScalar read fZFar write fZFar;
@@ -325,6 +332,8 @@ begin
  inherited Create;
 
  fMode:=aMode;
+
+ fProjectionMatrixMode:=TProjectionMatrixMode.Normal;
 
  fFOV:=53.13010235415598;
 
@@ -1504,6 +1513,20 @@ var AspectRatio,WidthRatio,ZNearOverFocalLength,EyeOffset,Left,Right,Bottom,Top:
                                                               fZNear,
                                                               fZFar)*
                        TpvMatrix4x4.FlipYClipSpace;
+  end;
+ end;
+ case fProjectionMatrixMode of
+  TProjectionMatrixMode.InfiniteFarPlaneReversedZ:begin
+   result.RawComponents[2,0]:=0.0;
+   result.RawComponents[2,1]:=0.0;
+   result.RawComponents[2,2]:=0.0;
+   result.RawComponents[2,3]:=-1.0;
+   result.RawComponents[3,0]:=0.0;
+   result.RawComponents[3,1]:=0.0;
+   result.RawComponents[3,2]:=fZNear;
+   result.RawComponents[3,3]:=0.0;
+  end;
+  else {TProjectionMatrixMode.Normal:}begin
   end;
  end;
 end;
