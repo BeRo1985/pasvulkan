@@ -1,4 +1,7 @@
 @echo off
+
+setlocal enabledelayedexpansion
+
 set FILLTYPE_NO_TEXTURE=0
 set FILLTYPE_TEXTURE=1
 set FILLTYPE_ATLAS_TEXTURE=2
@@ -44,6 +47,65 @@ for %%f in (*.spv) do (
   spirv-opt --strip-debug --unify-const --flatten-decorations --eliminate-dead-const --strength-reduction --simplify-instructions --remove-duplicates -O %%f -o %%f
 )
 
+for %%f in (*.glsl) do (
+  
+  echo Processing %%f . . .
+
+  set glslfile=%%~dpnf.glsl
+  set spvfile=%%~dpnf.spv
+
+  set currentfilename=%%f
+
+  set filename=%%~nf
+  
+  if not "x!filename:_frag=!" == "x!filename!" (
+    set stage=frag 
+  ) else (
+    if not "x!filename:_comp=!" == "x!filename!" (
+      set stage=comp
+    ) else (
+      if not "x!filename:_tesc=!" == "x!filename!" (
+        set stage=tesc
+      ) else (
+        if not "x!filename:_tese=!" == "x!filename!" (
+          set stage=tese
+        ) else (
+          if not "x!filename:_geom=!" == "x!filename!" (
+            set stage=geom
+          ) else (
+            if not "x!filename:_vert=!" == "x!filename!" (
+              set stage=vert
+            ) else (
+              echo Unknown shader program stage
+              exit /b 1
+            )
+          )
+        )
+      )
+    )
+  )
+  
+  "%VULKAN_SDK%/Bin/glslangValidator.exe" -S !stage! -V "!glslfile!" -o "!spvfile!" && (
+    "%VULKAN_SDK%/Bin/spirv-opt.exe" --strip-debug --unify-const --flatten-decorations --strength-reduction --simplify-instructions --remove-duplicates --redundancy-elimination --eliminate-dead-code-aggressive --eliminate-dead-branches --eliminate-dead-const "!spvfile!" -o "!spvfile!" && (
+      echo "!spvfile! generated . . ."
+    ) || (
+      goto :Error
+    )
+  ) || (
+    goto :Error
+  )
+  
+)
+
+goto Done
+
+:Error
+echo Error at processing !currentfilename!
+exit /b 1
+
+:Done
+
+exit /b 0
 
 
 

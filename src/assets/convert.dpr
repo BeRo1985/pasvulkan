@@ -180,6 +180,10 @@ begin
   ConvertFile('shaders/canvas/canvas_frag_atlas_texture_no_blending_clip_distance_no_discard.spv','CanvasFragmentAtlasTextureNoBlendingClipDistanceNoDiscardSPIRV');
   ConvertFile('shaders/canvas/canvas_vert.spv','CanvasVertexSPIRV');
   ConvertFile('shaders/canvas/canvas_vert_clip_distance.spv','CanvasVertexClipDistanceSPIRV');
+  ConvertFile('shaders/canvas/vr_disabled_to_screen_blit_frag.spv','VRDisabledToScreenBlitFragSPIRV');
+  ConvertFile('shaders/canvas/vr_disabled_to_screen_blit_vert.spv','VRDisabledToScreenBlitVertSPIRV');
+  ConvertFile('shaders/canvas/vr_enabled_to_screen_blit_frag.spv','VREnabledToScreenBlitFragSPIRV');
+  ConvertFile('shaders/canvas/vr_enabled_to_screen_blit_vert.spv','VREnabledToScreenBlitVertSPIRV');
   StringList.SaveToFile(IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0)))+'..')+'PasVulkanAssets.inc');
  finally
   StringList.Free;
