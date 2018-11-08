@@ -184,7 +184,7 @@ begin
    EntityID:=EntityIDs[EntityIndex];
    if (fVisitedBitmap[EntityID shr 5] and (TpvUInt32(1) shl (EntityID and 31)))=0 then begin
     Entity:=Entities[EntityIndex];
-    ComponentTransform:=TpvComponentTransform(Entity.ComponentByClassID[fComponentTransformClassID]);
+    ComponentTransform:=TpvComponentTransform(Entity.FastComponentByClassID[fComponentTransformClassID]);
     if ComponentTransform.Parent<0 then begin
      fVisitedBitmap[EntityID shr 5]:=fVisitedBitmap[EntityID shr 5] or (TpvUInt32(1) shl (EntityID and 31));
      Matrix:=TpvMatrix4x4.CreateFromQuaternion(ComponentTransform.RawRotation);

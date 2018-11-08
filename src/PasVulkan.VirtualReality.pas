@@ -79,12 +79,14 @@ uses SysUtils,
      Classes,
      Math,
      Vulkan,
+     {$ifdef TargetWithOpenVRSupport}
+      PasVulkan.VirtualReality.OpenVR,
+     {$endif}
      PasVulkan.Types,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
-     PasVulkan.Collections{$ifdef TargetWithOpenVRSupport},
-     PasVulkan.VirtualReality.OpenVR{$endif};
+     PasVulkan.Collections;
 
 type EpvVirtualReality=class(Exception);
 
