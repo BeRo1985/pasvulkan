@@ -1740,9 +1740,11 @@ procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
 
    end else begin
 
-    if assigned(fOpenVR_TrackedDevices[Index]) then begin
+    TrackedDevice:=fOpenVR_TrackedDevices[Index];
+
+    if assigned(TrackedDevice) then begin
      fTrackedDeviceIDHashMap.Delete(Index);
-     fTrackedDevices.Remove(fOpenVR_TrackedDevices[Index]);
+     fTrackedDevices.Remove(TrackedDevice); // <= includes Free of the TrackedDevice object class instance
      fOpenVR_TrackedDevices[Index]:=nil;
     end;
 
