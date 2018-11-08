@@ -236,6 +236,8 @@ constructor TpvVirtualReality.Create(const aMode:TMode);
      OpenVRHeight:TpovrUInt32;
  begin
 
+  pvApplication.VulkanNoUniqueObjectsValidation:=true;
+
   PasVulkan.VirtualReality.OpenVR.LoadOpenVR;
 
   if not VR_IsRuntimeInstalled then begin
