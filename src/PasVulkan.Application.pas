@@ -6264,7 +6264,7 @@ begin
                                              fVulkanOldSwapChain,
                                              fWidth,
                                              fHeight,
-                                             IfThen(fPresentMode<>TpvApplicationPresentMode.Immediate,fDesiredCountSwapChainImages,1),
+                                             fDesiredCountSwapChainImages, //IfThen(fPresentMode<>TpvApplicationPresentMode.Immediate,fDesiredCountSwapChainImages,1),
                                              1,
                                              VK_FORMAT_UNDEFINED,
                                              VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
