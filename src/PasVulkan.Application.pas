@@ -6871,7 +6871,11 @@ begin
    TAcquireVulkanBackBufferState.Acquire:begin
     try
      if fBlocking then begin
-      TimeOut:=TpvUInt64(high(TpvUInt64));
+      if fCountSwapChainImages>1 then begin
+       TimeOut:=TpvUInt64(high(TpvUInt64));
+      end else begin
+       TimeOut:=1000000000; // 1e+9 nanoseconds = 1000 milliseconds = 1 second, for AMD drivers, which have a immediate-present-mode deadlock problem at fullscreen otherwise
+      end;
      end else begin
       TimeOut:=0;
      end;
