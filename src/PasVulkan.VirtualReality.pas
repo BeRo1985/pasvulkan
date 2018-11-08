@@ -153,6 +153,8 @@ type EpvVirtualReality=class(Exception);
             end;
 {$endif}
             TTrackedDevice=class
+             public
+              type TAxes=array[0..4] of TpvVector2;
              private
               fParent:TpvVirtualReality;
               fTrackedDeviceID:TpvUInt64;
@@ -162,6 +164,9 @@ type EpvVirtualReality=class(Exception);
               fVelocity:TpvVector3;
               fAngularVelocity:TpvVector3;
               fPoseIsValid:boolean;
+              fButtonPressed:TpvUInt64;
+              fButtonTouched:TpvUInt64;
+              fAxes:TAxes;
              public
               constructor Create(const aParent:TpvVirtualReality); reintroduce;
               destructor Destroy; override;
@@ -169,6 +174,9 @@ type EpvVirtualReality=class(Exception);
               property Matrix:TpvMatrix4x4 read fMatrix;
               property Velocity:TpvVector3 read fVelocity;
               property AngularVelocity:TpvVector3 read fAngularVelocity;
+              property ButtonPressed:TpvUInt64 read fButtonPressed;
+              property ButtonTouched:TpvUInt64 read fButtonTouched;
+              property Axes:TAxes read fAxes;
              published
               property TrackedDeviceID:TpvUInt64 read fTrackedDeviceID;
               property TrackedDeviceClass:TTrackedDeviceClass read fTrackedDeviceClass;
@@ -1712,6 +1720,7 @@ procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
      Error:TETrackedPropertyError;
      TrackedDevice:TTrackedDevice;
      Event:PasVulkan.VirtualReality.OpenVR.TVREvent_t;
+     VRControllerState:PasVulkan.VirtualReality.OpenVR.TVRControllerState_t;
      TrackedDevicePose:PasVulkan.VirtualReality.OpenVR.TTrackedDevicePose_t;
  begin
 
@@ -1782,6 +1791,16 @@ procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
        fOpenVR_HMDMatrix:=fOpenVR_HMDMatrixOriginal.Inverse;
       end;
      end;
+    end;
+
+    if fOpenVR_VR_IVRSystem_FnTable^.GetControllerState(Index,@VRControllerState,SizeOf(PasVulkan.VirtualReality.OpenVR.TVRControllerState_t)) then begin
+     TrackedDevice.fButtonPressed:=VRControllerState.ulButtonPressed;
+     TrackedDevice.fButtonTouched:=VRControllerState.ulButtonTouched;
+     TrackedDevice.fAxes[0]:=PpvVector2(pointer(@VRControllerState.rAxis[0]))^;
+     TrackedDevice.fAxes[1]:=PpvVector2(pointer(@VRControllerState.rAxis[1]))^;
+     TrackedDevice.fAxes[2]:=PpvVector2(pointer(@VRControllerState.rAxis[2]))^;
+     TrackedDevice.fAxes[3]:=PpvVector2(pointer(@VRControllerState.rAxis[3]))^;
+     TrackedDevice.fAxes[4]:=PpvVector2(pointer(@VRControllerState.rAxis[4]))^;
     end;
 
    end else begin
