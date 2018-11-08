@@ -161,7 +161,7 @@ type EpvVirtualReality=class(Exception);
               fMatrix:TpvMatrix4x4;
               fVelocity:TpvVector3;
               fAngularVelocity:TpvVector3;
-              fPresent:boolean;
+              fPoseIsValid:boolean;
              public
               constructor Create(const aParent:TpvVirtualReality); reintroduce;
               destructor Destroy; override;
@@ -173,7 +173,7 @@ type EpvVirtualReality=class(Exception);
               property TrackedDeviceID:TpvUInt64 read fTrackedDeviceID;
               property TrackedDeviceClass:TTrackedDeviceClass read fTrackedDeviceClass;
               property TrackedControllerRole:TTrackedControllerRole read fTrackedControllerRole;
-              property Present:boolean read fPresent;
+              property PoseIsValid:boolean read fPoseIsValid;
             end;
             TTrackedDevices=TpvObjectGenericList<TTrackedDevice>;
             TTrackedDeviceIDHashMap=TpvHashMap<TpvUInt64,TTrackedDevice>;
@@ -1638,6 +1638,70 @@ procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
          TrackingUniverseStanding,
          TrackingUniverseOrigin_TrackingUniverseRawAndUncalibrated
         );
+  procedure AddTrackedDevice(const aIndex:TpvSizeInt);
+  var TrackedDevice:TTrackedDevice;
+  begin
+   if (aIndex>=0) and (aIndex<=High(fOpenVR_TrackedDevices)) then begin
+
+    TrackedDevice:=TTrackedDevice.Create(self);
+    fOpenVR_TrackedDevices[aIndex]:=TrackedDevice;
+    fTrackedDevices.Add(TrackedDevice);
+    fTrackedDeviceIDHashMap.Add(aIndex,TrackedDevice);
+
+    TrackedDevice.fTrackedDeviceID:=aIndex;
+
+    case fOpenVR_VR_IVRSystem_FnTable^.GetTrackedDeviceClass(aIndex) of
+     TrackedDeviceClass_HMD:begin
+      TrackedDevice.fTrackedDeviceClass:=TTrackedDeviceClass.HMD;
+     end;
+     TrackedDeviceClass_Controller:begin
+      TrackedDevice.fTrackedDeviceClass:=TTrackedDeviceClass.Controller;
+      case fOpenVR_VR_IVRSystem_FnTable^.GetControllerRoleForTrackedDeviceIndex(aIndex) of
+       TrackedControllerRole_LeftHand:begin
+        TrackedDevice.fTrackedControllerRole:=TTrackedControllerRole.LeftHand;
+       end;
+       TrackedControllerRole_RightHand:begin
+        TrackedDevice.fTrackedControllerRole:=TTrackedControllerRole.RightHand;
+       end;
+       TrackedControllerRole_OptOut:begin
+        TrackedDevice.fTrackedControllerRole:=TTrackedControllerRole.OptOut;
+       end;
+       else begin
+        TrackedDevice.fTrackedControllerRole:=TTrackedControllerRole.Invalid;
+       end;
+      end;
+     end;
+     TrackedDeviceClass_GenericTracker:begin
+      TrackedDevice.fTrackedDeviceClass:=TTrackedDeviceClass.GenericTracker;
+     end;
+     TrackedDeviceClass_TrackingReference:begin
+      TrackedDevice.fTrackedDeviceClass:=TTrackedDeviceClass.TrackingReference;
+     end;
+     TrackedDeviceClass_DisplayRedirect:begin
+      TrackedDevice.fTrackedDeviceClass:=TTrackedDeviceClass.DisplayRedirect;
+     end;
+     else begin
+      TrackedDevice.fTrackedDeviceClass:=TTrackedDeviceClass.Invalid;
+     end;
+    end;
+
+    TrackedDevice.fPoseIsValid:=false;
+
+   end;
+
+  end;
+  procedure RemoveTrackedDevice(const aIndex:TpvSizeInt);
+  var TrackedDevice:TTrackedDevice;
+  begin
+   if (aIndex>=0) and (aIndex<=High(fOpenVR_TrackedDevices)) then begin
+    TrackedDevice:=fOpenVR_TrackedDevices[aIndex];
+    if assigned(TrackedDevice) then begin
+     fTrackedDeviceIDHashMap.Delete(aIndex);
+     fTrackedDevices.Remove(TrackedDevice); // <= includes Free of the TrackedDevice object class instance
+     fOpenVR_TrackedDevices[aIndex]:=nil;
+    end;
+   end;
+  end;
  var Index:TpvSizeInt;
      OpenVRMatrix:TOpenVRMatrix;
      SecondsSinceLastVSync,
@@ -1647,7 +1711,27 @@ procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
      PredictedSecondsFromNow:TpvFloat;
      Error:TETrackedPropertyError;
      TrackedDevice:TTrackedDevice;
+     Event:PasVulkan.VirtualReality.OpenVR.TVREvent_t;
+     TrackedDevicePose:PasVulkan.VirtualReality.OpenVR.TTrackedDevicePose_t;
  begin
+
+  while fOpenVR_VR_IVRSystem_FnTable^.PollNextEventWithPose(TrackingUniverseModes[fTrackingMode],
+                                                            @Event,
+                                                            SizeOf(PasVulkan.VirtualReality.OpenVR.TVREvent_t),
+                                                            @TrackedDevicePose) do begin
+   case Event.eventType of
+    VREvent_TrackedDeviceActivated:begin
+     AddTrackedDevice(Event.trackedDeviceIndex);
+    end;
+    VREvent_TrackedDeviceDeactivated:begin
+     RemoveTrackedDevice(Event.trackedDeviceIndex);
+    end;
+    VREvent_TrackedDeviceUpdated:begin
+     RemoveTrackedDevice(Event.trackedDeviceIndex);
+     AddTrackedDevice(Event.trackedDeviceIndex);
+    end;
+   end;
+  end;
 
   fOpenVR_VR_IVRSystem_FnTable^.GetTimeSinceLastVsync(@SecondsSinceLastVSync,nil);
   DisplayFrequency:=fOpenVR_VR_IVRSystem_FnTable^.GetFloatTrackedDeviceProperty(k_unTrackedDeviceIndex_Hmd,Prop_DisplayFrequency_Float,@Error);
@@ -1672,70 +1756,32 @@ procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
     TrackedDevice:=fOpenVR_TrackedDevices[Index];
 
     if not assigned(TrackedDevice) then begin
-     TrackedDevice:=TTrackedDevice.Create(self);
-     fOpenVR_TrackedDevices[Index]:=TrackedDevice;
-     fTrackedDevices.Add(TrackedDevice);
-     fTrackedDeviceIDHashMap.Add(Index,TrackedDevice);
-     case fOpenVR_VR_IVRSystem_FnTable^.GetTrackedDeviceClass(Index) of
-      TrackedDeviceClass_HMD:begin
-       TrackedDevice.fTrackedDeviceClass:=TTrackedDeviceClass.HMD;
-      end;
-      TrackedDeviceClass_Controller:begin
-       TrackedDevice.fTrackedDeviceClass:=TTrackedDeviceClass.Controller;
-       case fOpenVR_VR_IVRSystem_FnTable^.GetControllerRoleForTrackedDeviceIndex(Index) of
-        TrackedControllerRole_LeftHand:begin
-         TrackedDevice.fTrackedControllerRole:=TTrackedControllerRole.LeftHand;
-        end;
-        TrackedControllerRole_RightHand:begin
-         TrackedDevice.fTrackedControllerRole:=TTrackedControllerRole.RightHand;
-        end;
-        TrackedControllerRole_OptOut:begin
-         TrackedDevice.fTrackedControllerRole:=TTrackedControllerRole.OptOut;
-        end;
-        else begin
-         TrackedDevice.fTrackedControllerRole:=TTrackedControllerRole.Invalid;
-        end;
-       end;
-      end;
-      TrackedDeviceClass_GenericTracker:begin
-       TrackedDevice.fTrackedDeviceClass:=TTrackedDeviceClass.GenericTracker;
-      end;
-      TrackedDeviceClass_TrackingReference:begin
-       TrackedDevice.fTrackedDeviceClass:=TTrackedDeviceClass.TrackingReference;
-      end;
-      TrackedDeviceClass_DisplayRedirect:begin
-       TrackedDevice.fTrackedDeviceClass:=TTrackedDeviceClass.DisplayRedirect;
-      end;
-      else begin
-       TrackedDevice.fTrackedDeviceClass:=TTrackedDeviceClass.Invalid;
-      end;
-     end;
+     AddTrackedDevice(Index);
+     TrackedDevice:=fOpenVR_TrackedDevices[Index];
     end;
 
-    TrackedDevice.fPresent:=fOpenVR_TrackedDevicePoses[Index].bPoseIsValid;
+    TrackedDevice.fPoseIsValid:=fOpenVR_TrackedDevicePoses[Index].bPoseIsValid;
+
+    OpenVRMatrix.m34:=fOpenVR_TrackedDevicePoses[Index].mDeviceToAbsoluteTracking;
+    OpenVRMatrix.m44.m[3,0]:=0.0;
+    OpenVRMatrix.m44.m[3,1]:=0.0;
+    OpenVRMatrix.m44.m[3,2]:=0.0;
+    OpenVRMatrix.m44.m[3,3]:=1.0;
+    OpenVRMatrix.Matrix:=OpenVRMatrix.Matrix.Transpose;
+
+    TrackedDevice.fMatrix:=OpenVRMatrix.Matrix;
+
+    TrackedDevice.fVelocity:=PpvVector3(pointer(@fOpenVR_TrackedDevicePoses[Index].vVelocity.v[0]))^;
+
+    TrackedDevice.fAngularVelocity:=PpvVector3(pointer(@fOpenVR_TrackedDevicePoses[Index].vAngularVelocity.v[0]))^;
 
     if fOpenVR_TrackedDevicePoses[Index].bPoseIsValid then begin
-
-     OpenVRMatrix.m34:=fOpenVR_TrackedDevicePoses[Index].mDeviceToAbsoluteTracking;
-     OpenVRMatrix.m44.m[3,0]:=0.0;
-     OpenVRMatrix.m44.m[3,1]:=0.0;
-     OpenVRMatrix.m44.m[3,2]:=0.0;
-     OpenVRMatrix.m44.m[3,3]:=1.0;
-     OpenVRMatrix.Matrix:=OpenVRMatrix.Matrix.Transpose;
-
-     TrackedDevice.fMatrix:=OpenVRMatrix.Matrix;
-
-     TrackedDevice.fVelocity:=PpvVector3(pointer(@fOpenVR_TrackedDevicePoses[Index].vVelocity.v[0]))^;
-
-     TrackedDevice.fAngularVelocity:=PpvVector3(pointer(@fOpenVR_TrackedDevicePoses[Index].vAngularVelocity.v[0]))^;
-
      case fOpenVR_VR_IVRSystem_FnTable^.GetTrackedDeviceClass(Index) of
       TrackedDeviceClass_HMD:begin
        fOpenVR_HMDMatrixOriginal:=OpenVRMatrix.Matrix;
        fOpenVR_HMDMatrix:=fOpenVR_HMDMatrixOriginal.Inverse;
       end;
      end;
-
     end;
 
    end else begin
@@ -1743,9 +1789,7 @@ procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
     TrackedDevice:=fOpenVR_TrackedDevices[Index];
 
     if assigned(TrackedDevice) then begin
-     fTrackedDeviceIDHashMap.Delete(Index);
-     fTrackedDevices.Remove(TrackedDevice); // <= includes Free of the TrackedDevice object class instance
-     fOpenVR_TrackedDevices[Index]:=nil;
+     RemoveTrackedDevice(Index);
     end;
 
    end;
