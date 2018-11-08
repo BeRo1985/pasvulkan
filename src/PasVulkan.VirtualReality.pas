@@ -1793,7 +1793,9 @@ procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
      end;
     end;
 
-    if fOpenVR_VR_IVRSystem_FnTable^.GetControllerState(Index,@VRControllerState,SizeOf(PasVulkan.VirtualReality.OpenVR.TVRControllerState_t)) then begin
+    if fOpenVR_VR_IVRSystem_FnTable^.GetControllerState(Index,
+                                                        @VRControllerState,
+                                                        SizeOf(PasVulkan.VirtualReality.OpenVR.TVRControllerState_t)) then begin
      TrackedDevice.fButtonPressed:=VRControllerState.ulButtonPressed;
      TrackedDevice.fButtonTouched:=VRControllerState.ulButtonTouched;
      TrackedDevice.fAxes[0]:=PpvVector2(pointer(@VRControllerState.rAxis[0]))^;
