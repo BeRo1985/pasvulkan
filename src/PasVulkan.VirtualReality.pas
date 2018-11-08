@@ -139,6 +139,7 @@ type EpvVirtualReality=class(Exception);
        fImageFormat:TVkFormat;
        fWidth:TpvSizeInt;
        fHeight:TpvSizeInt;
+       fPixelCountLimit:TpvInt64;
        fMultiviewMask:TpvUInt32;
        fCountImages:TpvSizeInt;
        fCountImagesInt32:TpvInt32;
@@ -202,6 +203,8 @@ type EpvVirtualReality=class(Exception);
        procedure FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
        procedure PostPresent(const aSwapChainImageIndex:TpvInt32);
        procedure ResetOrientation;
+      public
+       property PixelCountLimit:TpvInt64 read fPixelCountLimit write fPixelCountLimit;
       published
        property Mode:TMode read fMode write fMode default TMode.Disabled;
        property ProjectionMatrixMode:TProjectionMatrixMode read fProjectionMatrixMode write fProjectionMatrixMode;
@@ -241,7 +244,7 @@ constructor TpvVirtualReality.Create(const aMode:TMode);
   PasVulkan.VirtualReality.OpenVR.LoadOpenVR;
 
   if not VR_IsRuntimeInstalled then begin
-   raise EpvVirtualReality.Create('OpenVR Runtime not detected on the system');
+   raise EpvVirtualReality.Create('OpenVR runtime not detected on the system');
   end;
 
   if not VR_IsHmdPresent then begin
@@ -280,11 +283,6 @@ constructor TpvVirtualReality.Create(const aMode:TMode);
 
   fWidth:=OpenVRWidth;
   fHeight:=OpenVRHeight;
-
-{ while (int64(fWidth)*fHeight)>(1280*720) do begin
-   fWidth:=(fWidth+1) div 2;
-   fHeight:=(fHeight+1) div 2;
-  end;}
 
   StrBufLen:=fOpenVR_VR_IVRSystem_FnTable^.GetStringTrackedDeviceProperty(k_unTrackedDeviceIndex_Hmd,Prop_TrackingSystemName_String,nil,0,@eError);
   if StrBufLen>0 then begin
@@ -348,6 +346,8 @@ begin
  fWidth:=1280;
 
  fHeight:=720;
+
+ fPixelCountLimit:=0;
 
  fCountImages:=1;
 
@@ -585,6 +585,13 @@ procedure TpvVirtualReality.Load;
 
   fWidth:=OpenVRWidth;
   fHeight:=OpenVRHeight;
+
+  if fPixelCountLimit>0 then begin
+   while (TpvInt64(fWidth)*fHeight)>fPixelCountLimit do begin
+    fWidth:=(fWidth+1) div 2;
+    fHeight:=(fHeight+1) div 2;
+   end;
+  end;
 
   fCountImages:=2;
 
