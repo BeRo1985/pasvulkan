@@ -107,6 +107,12 @@ type EpvVirtualReality=class(Exception);
               OpenVR,
               Faked
              );
+            TTrackingMode=
+             (
+              Seated,
+              Standing,
+              Raw
+             );
             TProjectionMatrixMode=
              (
               Normal,
@@ -132,6 +138,7 @@ type EpvVirtualReality=class(Exception);
 {$endif}
       private
        fMode:TMode;
+       fTrackingMode:TTrackingMode;
        fProjectionMatrixMode:TProjectionMatrixMode;
        fFOV:TpvScalar;
        fZNear:TpvScalar;
@@ -207,7 +214,8 @@ type EpvVirtualReality=class(Exception);
        property PixelCountLimit:TpvInt64 read fPixelCountLimit write fPixelCountLimit;
       published
        property Mode:TMode read fMode write fMode default TMode.Disabled;
-       property ProjectionMatrixMode:TProjectionMatrixMode read fProjectionMatrixMode write fProjectionMatrixMode;
+       property TrackingMode:TTrackingMode read fTrackingMode write fTrackingMode default TTrackingMode.Seated;
+       property ProjectionMatrixMode:TProjectionMatrixMode read fProjectionMatrixMode write fProjectionMatrixMode default TProjectionMatrixMode.Normal;
        property FOV:TpvScalar read fFOV write fFOV;
        property ZNear:TpvScalar read fZNear write fZNear;
        property ZFar:TpvScalar read fZFar write fZFar;
@@ -332,6 +340,8 @@ begin
  inherited Create;
 
  fMode:=aMode;
+
+ fTrackingMode:=TTrackingMode.Seated;
 
  fProjectionMatrixMode:=TProjectionMatrixMode.Normal;
 
@@ -1560,6 +1570,12 @@ end;
 procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
 {$ifdef TargetWithOpenVRSupport}
  procedure DoOpenVR;
+ const TrackingUniverseModes:array[TTrackingMode] of TpovrInt32=
+        (
+         TrackingUniverseSeated,
+         TrackingUniverseStanding,
+         TrackingUniverseOrigin_TrackingUniverseRawAndUncalibrated
+        );
  var Index:TpvSizeInt;
      OpenVRMatrix:TOpenVRMatrix;
      SecondsSinceLastVSync,
@@ -1644,7 +1660,7 @@ procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
 
   FillChar(fOpenVR_TrackedDevicePoses[0],SizeOf(fOpenVR_TrackedDevicePoses),#0);
 
-  fOpenVR_VR_IVRSystem_FnTable^.GetDeviceToAbsoluteTrackingPose(TrackingUniverseStanding,PredictedSecondsFromNow,@fOpenVR_TrackedDevicePoses,Length(fOpenVR_TrackedDevicePoses));
+  fOpenVR_VR_IVRSystem_FnTable^.GetDeviceToAbsoluteTrackingPose(TrackingUniverseModes[fTrackingMode],PredictedSecondsFromNow,@fOpenVR_TrackedDevicePoses,Length(fOpenVR_TrackedDevicePoses));
 
   for Index:=Low(fOpenVR_TrackedDevicePoses) to High(fOpenVR_TrackedDevicePoses) do begin
 
