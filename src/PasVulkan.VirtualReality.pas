@@ -1539,7 +1539,7 @@ procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
  begin
 
   if pvApplication.PresentMode=TpvApplicationPresentMode.Immediate then begin
-   fOpenVR_VR_IVRSystem_FnTable^.GetTimeSinceLastVsync(@SecondsSinceLastVSync,0);
+   fOpenVR_VR_IVRSystem_FnTable^.GetTimeSinceLastVsync(@SecondsSinceLastVSync,nil);
    DisplayFrequency:=fOpenVR_VR_IVRSystem_FnTable^.GetFloatTrackedDeviceProperty(k_unTrackedDeviceIndex_Hmd,Prop_DisplayFrequency_Float,@Error);
    if not IsZero(DisplayFrequency) then begin
     FrameDuration:=1.0/DisplayFrequency;
