@@ -359,6 +359,7 @@ constructor TpvVirtualReality.Create(const aMode:TMode);
 
   StrBufLen:=fOpenVR_VR_IVRSystem_FnTable^.GetStringTrackedDeviceProperty(k_unTrackedDeviceIndex_Hmd,Prop_TrackingSystemName_String,nil,0,@eError);
   if StrBufLen>0 then begin
+   StrBuf:=nil;
    SetLength(StrBuf,StrBufLen+1);
    FillChar(StrBuf[0],StrBufLen+1,#0);
    StrBufLen:=fOpenVR_VR_IVRSystem_FnTable^.GetStringTrackedDeviceProperty(k_unTrackedDeviceIndex_Hmd,Prop_TrackingSystemName_String,@StrBuf[0],StrBufLen,@eError);
@@ -373,6 +374,7 @@ constructor TpvVirtualReality.Create(const aMode:TMode);
 
   StrBufLen:=fOpenVR_VR_IVRSystem_FnTable^.GetStringTrackedDeviceProperty(k_unTrackedDeviceIndex_Hmd,Prop_SerialNumber_String,nil,0,@eError);
   if StrBufLen>0 then begin
+   StrBuf:=nil;
    SetLength(StrBuf,StrBufLen+1);
    FillChar(StrBuf[0],StrBufLen+1,#0);
    StrBufLen:=fOpenVR_VR_IVRSystem_FnTable^.GetStringTrackedDeviceProperty(k_unTrackedDeviceIndex_Hmd,Prop_SerialNumber_String,@StrBuf[0],StrBufLen,@eError);
@@ -514,6 +516,7 @@ procedure TpvVirtualReality.CheckVulkanInstanceExtensions(const aInstance:TpvVul
  begin
   StrBufLen:=fOpenVR_VR_IVRCompositor_FnTable^.GetVulkanInstanceExtensionsRequired(nil,0);
   if StrBufLen>0 then begin
+   StrBuf:=nil;
    SetLength(StrBuf,StrBufLen+1);
    FillChar(StrBuf[0],StrBufLen+1,#0);
    StrBufLen:=fOpenVR_VR_IVRCompositor_FnTable^.GetVulkanInstanceExtensionsRequired(@StrBuf[0],StrBufLen);
@@ -597,6 +600,7 @@ procedure TpvVirtualReality.CheckVulkanDeviceExtensions(const aPhysicalDevice:TV
  begin
   StrBufLen:=fOpenVR_VR_IVRCompositor_FnTable^.GetVulkanDeviceExtensionsRequired(aPhysicalDevice,nil,0);
   if StrBufLen>0 then begin
+   StrBuf:=nil;
    SetLength(StrBuf,StrBufLen+1);
    FillChar(StrBuf[0],StrBufLen+1,#0);
    StrBufLen:=fOpenVR_VR_IVRCompositor_FnTable^.GetVulkanDeviceExtensionsRequired(aPhysicalDevice,@StrBuf[0],StrBufLen);

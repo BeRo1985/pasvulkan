@@ -29,6 +29,8 @@ interface
 
 {$ifdef TargetWithOpenVRSupport}
 
+{$define PasOpenVRPasVulkan}
+
 uses SysUtils{$ifdef Windows},Windows{$else},DynLibs{$endif}{$ifdef PasOpenVRPasVulkan},Vulkan{$endif};
 
 const OpenVRLibraryName={$if defined(Windows)}
@@ -1945,7 +1947,7 @@ type PEVREye=^TEVREye;
      end;
 {$if defined(fpc) and (fpc_version>=3)}{$pop}{$else}{$align 8}{$ifend}
 
-{$if defined(fpc) and (fpc_version>=3)}{$push}{$packrecords 4}}{$else}{$align 4}{$ifend}
+{$if defined(fpc) and (fpc_version>=3)}{$push}{$packrecords 4}{$else}{$align 4}{$ifend}
      PRenderModel_t=^TRenderModel_t;
      TRenderModel_t=record
       rVertexData:PRenderModel_Vertex_t;
