@@ -66,9 +66,9 @@ unit PasVulkan.VirtualReality;
 {$ifend}
 
 {$if defined(Windows) or defined(Linux) or defined(Darwin)}
- {$define TargetHasOpenVRSupport}
+ {$define TargetWithOpenVRSupport}
 {$else}
- {$undef TargetHasOpenVRSupport}
+ {$undef TargetWithOpenVRSupport}
 {$ifend}
 
 // Attention: It is still work in progress
@@ -83,8 +83,8 @@ uses SysUtils,
      PasVulkan.Math,
      PasVulkan.Framework,
      PasVulkan.Application,
-     PasVulkan.Collections,
-     PasVulkan.VirtualReality.OpenVR;
+     PasVulkan.Collections{$ifdef TargetWithOpenVRSupport},
+     PasVulkan.VirtualReality.OpenVR{$endif};
 
 type EpvVirtualReality=class(Exception);
 
@@ -94,7 +94,9 @@ type EpvVirtualReality=class(Exception);
              FocalLength=0.5;
              EyeSeparation=0.08;
              BooleanToSign:array[boolean] of TpvInt32=(1,-1);
+{$ifdef TargetWithOpenVRSupport}
              OpenVREyes:array[0..1] of TpvInt32=(PasVulkan.VirtualReality.OpenVR.Eye_Left,PasVulkan.VirtualReality.OpenVR.Eye_Right);
+{$endif}
        type TMode=
              (
               Disabled,
@@ -105,6 +107,7 @@ type EpvVirtualReality=class(Exception);
             TVulkanImages=TpvObjectGenericList<TpvVulkanImage>;
             TVulkanImageViews=TpvObjectGenericList<TpvVulkanImageView>;
             TVulkanCommandBuffers=TpvObjectGenericList<TpvVulkanCommandBuffer>;
+{$ifdef TargetWithOpenVRSupport}
             TOpenVRMatrix=record
              case TpvSizeInt of
               0:(
@@ -117,6 +120,7 @@ type EpvVirtualReality=class(Exception);
                Matrix:TpvMatrix4x4;
               );
             end;
+{$endif}
       private
        fMode:TMode;
        fFOV:TpvScalar;
@@ -155,6 +159,7 @@ type EpvVirtualReality=class(Exception);
        fVulkanUniversalQueueCommandBufferFence:TpvVulkanFence;
        fRequiredVulkanInstanceExtensions:TStringList;
        fRequiredVulkanDeviceExtensions:TStringList;
+{$ifdef TargetWithOpenVRSupport}
        fOpenVR_HMD:PasVulkan.VirtualReality.OpenVR.TpovrIntPtr;
        fOpenVR_VR_IVRSystem_FnTable:PasVulkan.VirtualReality.OpenVR.PVR_IVRSystem_FnTable;
        fOpenVR_VR_IVRCompositor_FnTable:PasVulkan.VirtualReality.OpenVR.PVR_IVRCompositor_FnTable;
@@ -166,6 +171,7 @@ type EpvVirtualReality=class(Exception);
        fOpenVR_LeftRightHandControllerMatrices:array[0..1] of TpvMatrix4x4;
        fOpenVR_HMDMatrix:TpvMatrix4x4;
        fOpenVR_BaseInverseHMDMatrix:TpvMatrix4x4;
+{$endif}
       public
        constructor Create(const aMode:TMode); reintroduce;
        destructor Destroy; override;
@@ -209,7 +215,8 @@ implementation
 { TpvVirtualReality }
 
 constructor TpvVirtualReality.Create(const aMode:TMode);
- procedure CreateOpenVR;
+{$ifdef TargetWithOpenVRSupport}
+ procedure DoOpenVR;
  var eError:TEVRInitError;
      StrBuf:array of AnsiChar;
      StrBufLen:TpovrIntPtr;
@@ -308,6 +315,7 @@ constructor TpvVirtualReality.Create(const aMode:TMode);
   fOpenVR_BaseInverseHMDMatrix:=TpvMatrix4x4.Identity;
 
  end;
+{$endif}
 begin
 
  inherited Create;
@@ -356,7 +364,11 @@ begin
 
  case fMode of
   TpvVirtualReality.TMode.OpenVR:begin
-   CreateOpenVR;
+{$ifdef TargetWithOpenVRSupport}
+   DoOpenVR;
+{$else}
+   raise EpvVirtualReality.Create('No OpenVR support for this target');
+{$endif}
   end;
   TpvVirtualReality.TMode.Faked:begin
   end;
@@ -367,14 +379,18 @@ begin
 end;
 
 destructor TpvVirtualReality.Destroy;
- procedure DestroyOpenVR;
+{$ifdef TargetWithOpenVRSupport}
+ procedure DoOpenVR;
  begin
-  //VR_ShutdownInternal;
+  //VR_ShutdownInternal; // <= if it is uncommented, then it raises access violation exceptions inside the vrclient-*.dll
  end;
+{$endif}
 begin
  case fMode of
   TpvVirtualReality.TMode.OpenVR:begin
-   DestroyOpenVR;
+{$ifdef TargetWithOpenVRSupport}
+   DoOpenVR;
+{$endif}
   end;
   TpvVirtualReality.TMode.Faked:begin
   end;
@@ -393,29 +409,38 @@ begin
 end;
 
 procedure TpvVirtualReality.CheckVulkanInstanceExtensions(const aInstance:TpvVulkanInstance);
-var StrBuf:array of AnsiChar;
-    StrBufLen:TpovrIntPtr;
-    StrExtensions:AnsiString;
+{$ifdef TargetWithOpenVRSupport}
+ procedure DoOpenVR;
+ var StrBuf:array of AnsiChar;
+     StrBufLen:TpovrIntPtr;
+     StrExtensions:AnsiString;
+ begin
+  StrBufLen:=fOpenVR_VR_IVRCompositor_FnTable^.GetVulkanInstanceExtensionsRequired(nil,0);
+  if StrBufLen>0 then begin
+   SetLength(StrBuf,StrBufLen+1);
+   FillChar(StrBuf[0],StrBufLen+1,#0);
+   StrBufLen:=fOpenVR_VR_IVRCompositor_FnTable^.GetVulkanInstanceExtensionsRequired(@StrBuf[0],StrBufLen);
+   if StrBufLen>0 then begin
+    StrExtensions:=PAnsiChar(@StrBuf[0]);
+    fRequiredVulkanInstanceExtensions.Delimiter:=#32;
+    fRequiredVulkanInstanceExtensions.StrictDelimiter:=true;
+    fRequiredVulkanInstanceExtensions.DelimitedText:=String(StrExtensions);
+   end;
+  end;
+ end;
+{$endif}
 begin
  case fMode of
   TMode.OpenVR:begin
-   StrBufLen:=fOpenVR_VR_IVRCompositor_FnTable^.GetVulkanInstanceExtensionsRequired(nil,0);
-   if StrBufLen>0 then begin
-    SetLength(StrBuf,StrBufLen+1);
-    FillChar(StrBuf[0],StrBufLen+1,#0);
-    StrBufLen:=fOpenVR_VR_IVRCompositor_FnTable^.GetVulkanInstanceExtensionsRequired(@StrBuf[0],StrBufLen);
-    if StrBufLen>0 then begin
-     StrExtensions:=PAnsiChar(@StrBuf[0]);
-     fRequiredVulkanInstanceExtensions.Delimiter:=#32;
-     fRequiredVulkanInstanceExtensions.StrictDelimiter:=true;
-     fRequiredVulkanInstanceExtensions.DelimitedText:=String(StrExtensions);
-    end;
-   end;
+{$ifdef TargetWithOpenVRSupport}
+   DoOpenVR;
+{$endif}
   end;
  end;
 end;
 
 procedure TpvVirtualReality.ChooseVulkanPhysicalDevice(const aInstance:TpvVulkanInstance;var aPhysicalDevice:TVkPhysicalDevice);
+{$ifdef TargetWithOpenVRSupport}
  procedure DoOpenVR;
  var PhysicalDeviceIDPropertiesKHR:TVkPhysicalDeviceIDPropertiesKHR;
      PhysicalDeviceProperties2KHR:TVkPhysicalDeviceProperties2KHR;
@@ -455,38 +480,50 @@ procedure TpvVirtualReality.ChooseVulkanPhysicalDevice(const aInstance:TpvVulkan
   end;
 
  end;
+{$endif}
 begin
  case fMode of
   TMode.OpenVR:begin
+{$ifdef TargetWithOpenVRSupport}
    DoOpenVR;
+{$endif}
   end;
  end;
 end;
 
 procedure TpvVirtualReality.CheckVulkanDeviceExtensions(const aPhysicalDevice:TVkPhysicalDevice);
-var StrBuf:array of AnsiChar;
-    StrBufLen:TpovrIntPtr;
-    StrExtensions:AnsiString;
+{$ifdef TargetWithOpenVRSupport}
+ procedure DoOpenVR;
+ var StrBuf:array of AnsiChar;
+     StrBufLen:TpovrIntPtr;
+     StrExtensions:AnsiString;
+ begin
+  StrBufLen:=fOpenVR_VR_IVRCompositor_FnTable^.GetVulkanDeviceExtensionsRequired(aPhysicalDevice,nil,0);
+  if StrBufLen>0 then begin
+   SetLength(StrBuf,StrBufLen+1);
+   FillChar(StrBuf[0],StrBufLen+1,#0);
+   StrBufLen:=fOpenVR_VR_IVRCompositor_FnTable^.GetVulkanDeviceExtensionsRequired(aPhysicalDevice,@StrBuf[0],StrBufLen);
+   if StrBufLen>0 then begin
+    StrExtensions:=PAnsiChar(@StrBuf[0]);
+    fRequiredVulkanDeviceExtensions.Delimiter:=#32;
+    fRequiredVulkanDeviceExtensions.StrictDelimiter:=true;
+    fRequiredVulkanDeviceExtensions.DelimitedText:=String(StrExtensions);
+   end;
+  end;
+ end;
+{$endif}
 begin
  case fMode of
   TMode.OpenVR:begin
-   StrBufLen:=fOpenVR_VR_IVRCompositor_FnTable^.GetVulkanDeviceExtensionsRequired(aPhysicalDevice,nil,0);
-   if StrBufLen>0 then begin
-    SetLength(StrBuf,StrBufLen+1);
-    FillChar(StrBuf[0],StrBufLen+1,#0);
-    StrBufLen:=fOpenVR_VR_IVRCompositor_FnTable^.GetVulkanDeviceExtensionsRequired(aPhysicalDevice,@StrBuf[0],StrBufLen);
-    if StrBufLen>0 then begin
-     StrExtensions:=PAnsiChar(@StrBuf[0]);
-     fRequiredVulkanDeviceExtensions.Delimiter:=#32;
-     fRequiredVulkanDeviceExtensions.StrictDelimiter:=true;
-     fRequiredVulkanDeviceExtensions.DelimitedText:=String(StrExtensions);
-    end;
-   end;
+{$ifdef TargetWithOpenVRSupport}
+   DoOpenVR;
+{$endif}
   end;
  end;
 end;
 
 procedure TpvVirtualReality.UpdateMatrices;
+{$ifdef TargetWithOpenVRSupport}
  procedure DoOpenVR;
  var EyeIndex:TpvSizeInt;
      OpenVRMatrix:TOpenVRMatrix;
@@ -507,10 +544,13 @@ procedure TpvVirtualReality.UpdateMatrices;
   end;
 
  end;
+{$endif}
 begin
  case fMode of
   TMode.OpenVR:begin
+{$ifdef TargetWithOpenVRSupport}
    DoOpenVR;
+{$endif}
   end;
   TMode.Faked:begin
   end;
@@ -520,6 +560,7 @@ begin
 end;
 
 procedure TpvVirtualReality.Load;
+{$ifdef TargetWithOpenVRSupport}
  procedure DoOpenVR;
  var OpenVRWidth,
      OpenVRHeight:TpovrUInt32;
@@ -543,6 +584,7 @@ procedure TpvVirtualReality.Load;
   fOpenVR_BaseInverseHMDMatrix:=TpvMatrix4x4.Identity;
 
  end;
+{$endif}
 var Index:TpvSizeInt;
     Stream:TStream;
 begin
@@ -553,7 +595,9 @@ begin
 
  case fMode of
   TMode.OpenVR:begin
+{$ifdef TargetWithOpenVRSupport}
    DoOpenVR;
+{$endif}
   end;
   TMode.Faked:begin
    fWidth:=640;
@@ -1432,12 +1476,13 @@ end;
 
 function TpvVirtualReality.GetProjectionMatrix(const aIndex:TpvSizeInt):TpvMatrix4x4;
 var AspectRatio,WidthRatio,ZNearOverFocalLength,EyeOffset,Left,Right,Bottom,Top:TpvFloat;
-    m44:PasVulkan.VirtualReality.OpenVR.THmdMatrix44_t;
  begin
  case fMode of
+{$ifdef TargetWithOpenVRSupport}
   TMode.OpenVR:begin
    result:=fOpenVR_ProjectionMatrices[aIndex];
   end;
+{$endif}
   TMode.Faked:begin
    AspectRatio:=(fWidth*0.5)/fHeight;
    WidthRatio:=fZNear*tan(DEG2RAD*FakedFOV*0.5);
@@ -1460,12 +1505,13 @@ var AspectRatio,WidthRatio,ZNearOverFocalLength,EyeOffset,Left,Right,Bottom,Top:
 end;
 
 function TpvVirtualReality.GetPositionMatrix(const aIndex:TpvSizeInt):TpvMatrix4x4;
-var m34:PasVulkan.VirtualReality.OpenVR.THmdMatrix34_t;
 begin
  case fMode of
+{$ifdef TargetWithOpenVRSupport}
   TMode.OpenVR:begin
    result:=fOpenVR_EyeToHeadTransformMatrices[aIndex]*(fOpenVR_HMDMatrix*fOpenVR_BaseInverseHMDMatrix);
   end;
+{$endif}
   TMode.Faked:begin
    result:=TpvMatrix4x4.CreateTranslation(EyeSeparation*0.5*BooleanToSign[aIndex>0],0.0,0.0);
   end;
@@ -1476,7 +1522,8 @@ begin
 end;
 
 procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
- procedure CheckOpenVR;
+{$ifdef TargetWithOpenVRSupport}
+ procedure DoOpenVR;
  var Index:TpvSizeInt;
      OpenVRMatrix:TOpenVRMatrix;
      SecondsSinceLastVSync,
@@ -1619,10 +1666,13 @@ procedure TpvVirtualReality.Check(const aDeltaTime:TpvDouble);
   end;
 
  end;
+{$endif}
 begin
  case fMode of
   TpvVirtualReality.TMode.OpenVR:begin
-   CheckOpenVR;
+{$ifdef TargetWithOpenVRSupport}
+   DoOpenVR;
+{$endif}
   end;
   TpvVirtualReality.TMode.Faked:begin
   end;
@@ -1639,7 +1689,9 @@ procedure TpvVirtualReality.BeginFrame(const aDeltaTime:TpvDouble);
 begin
  case fMode of
   TpvVirtualReality.TMode.OpenVR:begin
+{$ifdef TargetWithOpenVRSupport}
    fOpenVR_VR_IVRCompositor_FnTable^.SubmitExplicitTimingData;
+{$endif}
   end;
   TpvVirtualReality.TMode.Faked:begin
   end;
@@ -1660,7 +1712,8 @@ begin
 end;
 
 procedure TpvVirtualReality.FinishFrame(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
- procedure FinishFrameOpenVR;
+{$ifdef TargetWithOpenVRSupport}
+ procedure DoOpenVR;
  var Index:TpvSizeInt;
      VulkanTextureData:PasVulkan.VirtualReality.OpenVR.TVRVulkanTextureData_t;
      VulkanTexture:PasVulkan.VirtualReality.OpenVR.TTexture_t;
@@ -1696,10 +1749,13 @@ procedure TpvVirtualReality.FinishFrame(const aSwapChainImageIndex:TpvInt32;var 
   end;
 
  end;
+{$endif}
 begin
  case fMode of
   TpvVirtualReality.TMode.OpenVR:begin
-   FinishFrameOpenVR;
+{$ifdef TargetWithOpenVRSupport}
+   DoOpenVR;
+{$endif}
   end;
   TpvVirtualReality.TMode.Faked:begin
   end;
@@ -1709,15 +1765,19 @@ begin
 end;
 
 procedure TpvVirtualReality.PostPresent(const aSwapChainImageIndex:TpvInt32);
- procedure AfterPresentFrameOpenVR;
+{$ifdef TargetWithOpenVRSupport}
+ procedure DoOpenVR;
  begin
   fOpenVR_VR_IVRCompositor_FnTable^.PostPresentHandoff;
   pvApplication.VulkanDevice.UniversalQueue.WaitIdle;
  end;
+{$endif}
 begin
  case fMode of
   TpvVirtualReality.TMode.OpenVR:begin
-   AfterPresentFrameOpenVR;
+{$ifdef TargetWithOpenVRSupport}
+   DoOpenVR;
+{$endif}
   end;
   TpvVirtualReality.TMode.Faked:begin
   end;
@@ -1730,7 +1790,9 @@ procedure TpvVirtualReality.ResetOrientation;
 begin
  case fMode of
   TpvVirtualReality.TMode.OpenVR:begin
+{$ifdef TargetWithOpenVRSupport}
    fOpenVR_BaseInverseHMDMatrix:=fOpenVR_HMDMatrix.Inverse;
+{$endif}
   end;
   TpvVirtualReality.TMode.Faked:begin
   end;

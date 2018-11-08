@@ -20,14 +20,14 @@ unit PasVulkan.VirtualReality.OpenVR; // 1.0.17
 {$ifend}
 
 {$if defined(Windows) or defined(Linux) or defined(Darwin)}
- {$define TargetHasOpenVRSupport}
+ {$define TargetWithOpenVRSupport}
 {$else}
- {$undef TargetHasOpenVRSupport}
+ {$undef TargetWithOpenVRSupport}
 {$ifend}
 
 interface
 
-{$ifdef TargetHasOpenVRSupport}
+{$ifdef TargetWithOpenVRSupport}
 
 uses SysUtils{$ifdef Windows},Windows{$else},DynLibs{$endif}{$ifdef PasOpenVRPasVulkan},Vulkan{$endif};
 
@@ -2525,7 +2525,7 @@ procedure FreeOpenVR;
 
 implementation
 
-{$ifdef TargetHasOpenVRSupport}
+{$ifdef TargetWithOpenVRSupport}
 {$ifdef Windows}
 type TLibHandle=HMODULE;
 {$endif}
