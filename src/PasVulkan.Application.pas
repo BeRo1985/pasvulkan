@@ -105,6 +105,7 @@ const MaxSwapChainImages=3;
       EVENT_POINTER=2;
       EVENT_SCROLLED=3;
 
+      KEYCODE_QUIT=-2;
       KEYCODE_ANYKEY=-1;
       KEYCODE_UNKNOWN=0;
       KEYCODE_FIRST=0;
@@ -4258,6 +4259,17 @@ begin
     Event:=@fEvents[Index];
     fCurrentEventTime:=fEventTimes[fEventCount];
     case Event^.type_ of
+     SDL_QUITEV:begin
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Down,KEYCODE_QUIT,[]));
+      end;
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Typed,KEYCODE_QUIT,[]));
+      end;
+      if (not pvApplication.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,[]))) and assigned(fProcessor) then begin
+       fProcessor.KeyEvent(TpvApplicationInputKeyEvent.Create(TpvApplicationInputKeyEventType.Up,KEYCODE_QUIT,[]));
+      end;
+     end;
      SDL_KEYDOWN,SDL_KEYUP,SDL_KEYTYPED:begin
       KeyCode:=TranslateSDLKeyCode(Event^.key.keysym.sym,Event^.key.keysym.scancode);
       KeyModifiers:=TranslateSDLKeyModifier(Event^.key.keysym.modifier);
@@ -7602,6 +7614,8 @@ begin
        Pause;
        DeinitializeGraphics;
        Terminate;
+      end else begin
+       fInput.AddEvent(fEvent);
       end;
      end;
      SDL_APP_TERMINATING:begin
