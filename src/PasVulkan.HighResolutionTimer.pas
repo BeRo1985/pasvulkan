@@ -355,11 +355,11 @@ begin
 {$ifdef windows}
   NowTime:=GetTime;
   EndTime:=NowTime+aDelay;
-  while (NowTime+fTwoMillisecondsInterval)<EndTime do begin
+  while (NowTime+fFourMillisecondsInterval)<EndTime do begin
    Sleep(1);
    NowTime:=GetTime;
   end;
-  while (NowTime+fMillisecondInterval)<EndTime do begin
+  while (NowTime+fTwoMillisecondsInterval)<EndTime do begin
    Sleep(0);
    NowTime:=GetTime;
   end;
