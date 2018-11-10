@@ -5482,7 +5482,11 @@ begin
          if ChildFixedSize>0.0 then begin
           ChildTargetSize:=ChildFixedSize;
          end else begin
-          ChildTargetSize:=ChildPreferredSize;
+          if Anchor.Alignment.Axis[AxisIndex]=TpvGUILayoutAlignment.Fill then begin
+           ChildTargetSize:=0.0;
+          end else begin
+           ChildTargetSize:=ChildPreferredSize;
+          end;
          end;
         end else begin
          ChildTargetSize:=ChildWidget.fSize[AxisIndex];

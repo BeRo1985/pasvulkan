@@ -264,7 +264,7 @@ begin
 
  TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Rows.Add(200.0,1.0);
  TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Rows.Add(80.0,0.0);
- TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Columns.Add(100.0,1.0);
+ TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Columns.Add(0.0,1.0);
 
  fGUILeftTabPanel:=TpvGUITabPanel.Create(fGUIRootSplitterPanel0.LeftTopPanel);
  TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Anchors[fGUILeftTabPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,0,1,1);
