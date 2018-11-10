@@ -50,6 +50,8 @@ type TScreenMain=class(TpvApplicationScreen)
        fScreenToCanvasScale:TpvVector2;
        fGUIInstance:TpvGUIInstance;
        fGUIRootPanel:TpvGUIPanel;
+       fGUIRootSplitterPanel0:TpvGUISplitterPanel;
+       fGUIRootSplitterPanel1:TpvGUISplitterPanel;
        fGUIWindow:TpvGUIWindow;
        fGUILabel:TpvGUILabel;
        fGUIButton:TpvGUIButton;
@@ -242,185 +244,22 @@ begin
 
  fGUIRootPanel:=TpvGUIPanel.Create(fGUIInstance.Content);
  fGUIRootPanel.Background:=true;
- fGUIRootPanel.Layout:=TpvGUIFillLayout.Create(fGUIRootPanel,8.0);
+ fGUIRootPanel.Layout:=TpvGUIFillLayout.Create(fGUIRootPanel,0.0);
 
-// fGUIInstance.Layout
-(*fGUIWindow:=TpvGUIWindow.Create(fGUIInstance);
- fGUIWindow.Left:=50;
- fGUIWindow.Top:=400;
- fGUIWindow.Title:='Window with GridLayout';
- fGUIWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIWindow.Content,TpvGUILayoutAlignment.Fill,TpvGUILayoutOrientation.Vertical,8.0,8.0);
- fGUIWindow.AddMinimizationButton;
- fGUIWindow.AddMaximizationButton;
- fGUIWindow.AddCloseButton;
+ fGUIRootSplitterPanel0:=TpvGUISplitterPanel.Create(fGUIRootPanel);
+ fGUIRootSplitterPanel0.Orientation:=TpvGUISplitterPanelOrientation.Horizontal;
+ fGUIRootSplitterPanel0.LeftTopPanel.Layout:=TpvGUIFillLayout.Create(fGUIRootSplitterPanel0.LeftTopPanel,4.0);
+ fGUIRootSplitterPanel0.LeftTopPanel.Background:=true;
+ fGUIRootSplitterPanel0.RightBottomPanel.Layout:=TpvGUIFillLayout.Create(fGUIRootSplitterPanel0.RightBottomPanel,4.0);
+ fGUIRootSplitterPanel0.RightBottomPanel.Background:=true;
 
- begin
-  WindowMenu:=fGUIWindow.AddMenu;
+ fGUIRootSplitterPanel1:=TpvGUISplitterPanel.Create(fGUIRootSplitterPanel0.RightBottomPanel);
+ fGUIRootSplitterPanel1.Orientation:=TpvGUISplitterPanelOrientation.Vertical;
+ fGUIRootSplitterPanel1.LeftTopPanel.Layout:=TpvGUIFillLayout.Create(fGUIRootSplitterPanel1.LeftTopPanel,4.0);
+ fGUIRootSplitterPanel1.LeftTopPanel.Background:=true;
+ fGUIRootSplitterPanel1.RightBottomPanel.Layout:=TpvGUIFillLayout.Create(fGUIRootSplitterPanel1.RightBottomPanel,4.0);
+ fGUIRootSplitterPanel1.RightBottomPanel.Background:=true;
 
-  MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
-  MenuItem.Caption:='File';
-
-  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
-  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
-  MenuItem.Caption:='New';
-  MenuItem.ShortcutHint:='Ctrl-N';
-  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
-  MenuItem.Caption:='-';
-  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
-  MenuItem.Caption:='Open';
-  MenuItem.ShortcutHint:='Ctrl-O';
-  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
-  MenuItem.Caption:='Open recent';
-  MenuItem.ShortcutHint:='Shift-Ctrl-O';
-  TpvGUIMenuItem.Create(TpvGUIPopupMenu.Create(MenuItem)).Caption:='Test';
-  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
-  MenuItem.Caption:='-';
-  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
-  MenuItem.Caption:='Save';
-  MenuItem.ShortcutHint:='Ctrl-S';
-  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
-  MenuItem.Caption:='Save as';
-  MenuItem.ShortcutHint:='Shift-Ctrl-S';
-  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
-  MenuItem.Caption:='-';
-  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
-  MenuItem.Caption:='Exit';
-  MenuItem.ShortcutHint:='Alt+F4';
-
-  MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
-  MenuItem.Caption:='Edit';
-  MenuItem.Enabled:=false;
-
-  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
-  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
-  MenuItem.Caption:='Undo';
-  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
-  MenuItem.Caption:='Redo';
-
-  MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
-  MenuItem.Caption:='Settings';
-
-  PopupMenu:=TpvGUIPopupMenu.Create(MenuItem);
-  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
-  MenuItem.Caption:='Audio';
-  MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
-  MenuItem.Caption:='Video';
-
-  MenuItem:=TpvGUIMenuItem.Create(WindowMenu);
-  MenuItem.Caption:='Help';
- end;
-
- Panel:=TPvGUIPanel.Create(fGUIWindow.Content);
- Panel.Layout:=TpvGUIGridLayout.Create(Panel,4,TpvGUILayoutAlignment.Leading,TpvGUILayoutAlignment.Middle,TpvGUILayoutOrientation.Horizontal,0.0,8.0,8.0);
-
- fGUILabel:=TpvGUILabel.Create(Panel);
- fGUILabel.Caption:='An example label';
- fGUILabel.Cursor:=TpvGUICursor.Link;
-
-{fGUIButton:=TpvGUIButton.Create(fGUIWindow.ButtonPanel);
- fGUIButton.Caption:=TpvRawByteString(#$e2#$80#$a6);}
-
- fGUIButton:=TpvGUIButton.Create(Panel);
- fGUIButton.Caption:='An example button';
- fGUIButton.OnClick:=Button0OnClick;
-
- fGUIButton:=TpvGUIToggleButton.Create(Panel);
- fGUIButton.Caption:='An example toggle button';
-
- fGUIButton:=TpvGUIButton.Create(Panel);
- fGUIButton.Caption:='An example disabled button';
- fGUIButton.Enabled:=false;
-
- fGUITextEdit:=TpvGUITextEdit.Create(fGUIWindow.Content);
- fGUITextEdit.Text:='An example text edit';
- fGUITextEdit.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
- fGUITextEdit.MinimumWidth:=320;
- fGUITextEdit.MinimumHeight:=32;
- fGUITextEdit.Enabled:=true;
-
- IntegerEdit:=TpvGUIIntegerEdit.Create(fGUIWindow.Content);
- IntegerEdit.Value:=1337;
- IntegerEdit.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
- IntegerEdit.MinimumWidth:=320;
- IntegerEdit.MinimumHeight:=32;
- IntegerEdit.Enabled:=true;
-
- FloatEdit:=TpvGUIFloatEdit.Create(fGUIWindow.Content);
- FloatEdit.Value:=PI;
- FloatEdit.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
- FloatEdit.MinimumWidth:=320;
- FloatEdit.MinimumHeight:=32;
- FloatEdit.Enabled:=true;
-
-{Popup:=TpvGUIPopup.Create(fGUITextEdit);
- Popup.FixedSize.Vector:=TpvVector2.Create(160,100);
- Popup.AnchorSide:=TpvGUIPopupAnchorSide.Bottom;}
-
- fGUIOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
- fGUIOtherWindow.Left:=550;
- fGUIOtherWindow.Top:=50;
- fGUIOtherWindow.Title:='Window with BoxLayout';
- fGUIOtherWindow.Content.Layout:=TpvGUIBoxLayout.Create(fGUIOtherWindow.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,8.0);
- fGUIOtherWindow.AddMinimizationButton;
- fGUIOtherWindow.AddMaximizationButton;
- fGUIOtherWindow.AddCloseButton;
-
- Panel:=TPvGUIPanel.Create(fGUIOtherWindow.Content);
- Panel.Layout:=TpvGUIGridLayout.Create(Panel,4,TpvGUILayoutAlignment.Leading,TpvGUILayoutAlignment.Middle,TpvGUILayoutOrientation.Horizontal,0.0,8.0,8.0);
-
- fGUILabel:=TpvGUILabel.Create(Panel);
- fGUILabel.Caption:='An other example label';
- fGUILabel.Cursor:=TpvGUICursor.Busy;
-
- fGUILabel:=TpvGUILabel.Create(Panel);
- fGUILabel.Caption:='An another example label';
- fGUILabel.Cursor:=TpvGUICursor.Unavailable;
-
- fGUILabel:=TpvGUILabel.Create(Panel);
- fGUILabel.Caption:='Yet another example label';
- fGUILabel.Cursor:=TpvGUICursor.Pen;
-
- fGUILabel:=TpvGUILabel.Create(Panel);
- fGUILabel.Caption:='Again another example label';
- fGUILabel.Cursor:=TpvGUICursor.Link;
-
- TpvGUICheckBox.Create(Panel).Caption:='Check box';
-
- TpvGUIRadioCheckBox.Create(Panel).Caption:='Radio check box (0)';
-
- TpvGUIRadioCheckBox.Create(Panel).Caption:='Radio check box (1)';
-
- TpvGUIRadioCheckBox.Create(Panel).Caption:='Radio check box (2)';
-
- fGUIButton:=TpvGUIRadioButton.Create(Panel);
- fGUIButton.Caption:='Radio button (0)';
-
- fGUIButton:=TpvGUIRadioButton.Create(Panel);
- fGUIButton.Caption:='Radio button (1)';
-
- fGUIButton:=TpvGUIRadioButton.Create(Panel);
- fGUIButton.Caption:='Radio button (2)';
-
- fGUIButton:=TpvGUIRadioButton.Create(Panel);
- fGUIButton.Caption:='Radio button (3)';
-
- fGUIYetOtherWindow:=TpvGUIWindow.Create(fGUIInstance);
- fGUIYetOtherWindow.Left:=750;
- fGUIYetOtherWindow.Top:=350;
- fGUIYetOtherWindow.Title:='Window with FillLayout and ScrollPanel';
- fGUIYetOtherWindow.Content.Layout:=TpvGUIFillLayout.Create(fGUIOtherWindow.Content,0.0);
- fGUIYetOtherWindow.AddMinimizationButton;
- fGUIYetOtherWindow.AddMaximizationButton;
- fGUIYetOtherWindow.AddCloseButton;
-
- ScrollPanel:=TpvGUIScrollPanel.Create(fGUIYetOtherWindow.Content);
- ScrollPanel.Content.Layout:=TpvGUIBoxLayout.Create(ScrollPanel.Content,TpvGUILayoutAlignment.Leading,TpvGUILayoutOrientation.Vertical,8.0,8.0);
-
- fGUIButton:=TpvGUIToggleButton.Create(ScrollPanel.Content);
- fGUIButton.Caption:='Toggle button';
- fGUIButton.FixedWidth:=480;
- fGUIButton.FixedHeight:=240;
-  *)
 
 end;
 
