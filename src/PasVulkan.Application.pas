@@ -1032,6 +1032,7 @@ type EpvApplication=class(Exception)
        fUseAudio:boolean;
        fBlocking:boolean;
        fWaitOnPreviousFrames:boolean;
+       fTerminationWithAltF4:boolean;
 
 {$if defined(PasVulkanUseSDL2)}
        fSDLVersion:TSDL_Version;
@@ -1449,6 +1450,8 @@ type EpvApplication=class(Exception)
        property Blocking:boolean read fBlocking write fBlocking;
 
        property WaitOnPreviousFrames:boolean read fWaitOnPreviousFrames write fWaitOnPreviousFrames;
+
+       property TerminationWithAltF4:boolean read fTerminationWithAltF4 write fTerminationWithAltF4;
 
        property Debugging:boolean read fDebugging;
        
@@ -5356,6 +5359,7 @@ begin
  fUseAudio:=false;
  fBlocking:=true;
  fWaitOnPreviousFrames:=false;
+ fTerminationWithAltF4:=true;
 
  fActive:=true;
 
@@ -7735,7 +7739,7 @@ begin
       OK:=true;
       case fEvent.SDLEvent.key.keysym.sym of
        SDLK_F4:begin
-        if ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
+        if fTerminationWithAltF4 and ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
          OK:=false;
          if fEvent.SDLEvent.key.repeat_=0 then begin
           Terminate;
