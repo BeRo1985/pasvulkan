@@ -419,11 +419,11 @@ begin
 {$else}
   NowTime:=GetTime;
   EndTime:=NowTime+pDelay;
-  while (NowTime+4)<EndTime then begin
+  while (NowTime+fFourMillisecondsInterval)<EndTime then begin
    SDL_Delay(1);
    NowTime:=GetTime;
   end;
-  while (NowTime+2)<EndTime do begin
+  while (NowTime+fTwoMillisecondsInterval)<EndTime do begin
    SDL_Delay(0);
    NowTime:=GetTime;
   end;
