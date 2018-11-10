@@ -69,10 +69,10 @@ type TScreenMain=class(TpvApplicationScreen)
        fReady:boolean;
        fTerminationMessageDialogVisible:boolean;
        fTime:TpvDouble;
+       procedure NewProject;
        procedure OnTerminationMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
        procedure OnTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
        procedure ShowTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
-       procedure Button0OnClick(const aSender:TpvGUIObject);
       public
 
        constructor Create; override;
@@ -126,15 +126,20 @@ begin
  inherited Destroy;
 end;
 
-procedure TScreenMain.Button0OnClick(const aSender:TpvGUIObject);
+procedure TScreenMain.NewProject;
 begin
 
- TpvGUIMessageDialog.Create(fGUIInstance,
-                            'Question',
-                            'Do you like this GUI?',
-                            [TpvGUIMessageDialogButton.Create(0,'Yes',KEYCODE_RETURN,fGUIInstance.Skin.IconThumbUp,24.0),
-                             TpvGUIMessageDialogButton.Create(1,'No',KEYCODE_ESCAPE,fGUIInstance.Skin.IconThumbDown,24.0)],
-                            fGUIInstance.Skin.IconDialogQuestion);
+ fGUISignedDistanceFieldCodeEditor.Text:=#13#10+
+                                         'const float normalOffsetFactor = 1e-4;'#13#10+
+                                         #13#10+
+                                         'float getDistance(vec3 p){'#13#10+
+                                         '  return length(p) - 1.0;'#13#10+
+                                         '}'#13#10+
+                                         #13#10+
+                                         'mat2x4 getParameters(vec3 p){'#13#10+
+                                         '  return mat2x4(vec4(vec3(1.0), 0.0), // first three values => rgb color'#13#10+
+                                         '                vec4(0.0));'#13#10+
+                                         '}'#13#10;
 
 end;
 
@@ -298,6 +303,8 @@ begin
  fGUIMeshFragmentCodeEditor.TextEditor.SyntaxHighlighting:=TpvTextEditor.TSyntaxHighlighting.GetSyntaxHighlightingClassByFileExtension('.glsl').Create(fGUIMeshFragmentCodeEditor.TextEditor);
  fGUIMeshFragmentCodeEditor.TextEditor.TabWidth:=2;
  fGUIMeshFragmentCodeEditor.LineWrap:=false;
+
+ NewProject;
 
 end;
 
