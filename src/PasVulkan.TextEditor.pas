@@ -5157,6 +5157,9 @@ begin
   FreeAndNil(fStates[Index]);
  end;
  fStates:=nil;
+ fCountStates:=0;
+ fCodePointIndex:=0;
+ fLevel:=0;
 end;
 
 procedure TpvTextEditor.TSyntaxHighlighting.Truncate(const aUntilCodePoint:TpvSizeInt);
@@ -5178,6 +5181,7 @@ begin
    FreeAndNil(fStates[fCountStates]);
   end;
   fStates:=nil;
+  fCountStates:=0;
   fCodePointIndex:=0;
   fLevel:=0;
  end else begin
@@ -8996,7 +9000,7 @@ begin
 
     LevelStateIndex:=fParent.fSyntaxHighlighting.GetStateIndexFromCodePointIndex(fCodePointIndex);
 
-    if LevelStateIndex>=0 then begin
+    if (LevelStateIndex>=0) and (LevelStateIndex<fParent.fSyntaxHighlighting.fCountStates) then begin
 
      StartLevelState:=fParent.fSyntaxHighlighting.fStates[LevelStateIndex];
 

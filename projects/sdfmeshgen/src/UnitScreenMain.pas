@@ -84,9 +84,13 @@ type TScreenMain=class(TpvApplicationScreen)
        fLastMousePosition:TpvVector2;
        fLastMouseButtons:TpvApplicationInputPointerButtons;
        fReady:boolean;
+       fNewProjectMessageDialogVisible:boolean;
        fTerminationMessageDialogVisible:boolean;
        fTime:TpvDouble;
        procedure NewProject;
+       procedure OnNewProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
+       procedure OnNewProjectMessageDialogDestroy(const aSender:TpvGUIObject);
+       procedure ShowNewProjectMessageDialogDestroy(const aSender:TpvGUIObject);
        procedure OnTerminationMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
        procedure OnTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
        procedure ShowTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
@@ -132,6 +136,7 @@ constructor TScreenMain.Create;
 begin
  inherited Create;
  fReady:=false;
+ fNewProjectMessageDialogVisible:=false;
  fTerminationMessageDialogVisible:=false;
  fTime:=0.48;
  fLastMousePosition:=TpvVector2.Null;
@@ -181,6 +186,62 @@ begin
 
  fFloatEditWorldSizeDepth.Value:=2.0;
 
+end;
+
+procedure TScreenMain.OnNewProjectMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
+begin
+ if aID=0 then begin
+  NewProject;
+ end;
+end;
+
+procedure TScreenMain.OnNewProjectMessageDialogDestroy(const aSender:TpvGUIObject);
+begin
+ fNewProjectMessageDialogVisible:=false;
+end;
+
+procedure TScreenMain.ShowNewProjectMessageDialogDestroy(const aSender:TpvGUIObject);
+var MessageDialog:TpvGUIMessageDialog;
+begin
+ if not fNewProjectMessageDialogVisible then begin
+  fNewProjectMessageDialogVisible:=true;
+  MessageDialog:=TpvGUIMessageDialog.Create(fGUIInstance,
+                                            'Question',
+                                            'Do you really want to create a new project?',
+                                            [TpvGUIMessageDialogButton.Create(0,'Yes',KEYCODE_RETURN,fGUIInstance.Skin.IconThumbUp,24.0),
+                                             TpvGUIMessageDialogButton.Create(1,'No',KEYCODE_ESCAPE,fGUIInstance.Skin.IconThumbDown,24.0)],
+                                            fGUIInstance.Skin.IconDialogQuestion);
+  MessageDialog.OnButtonClick:=OnNewProjectMessageDialogButtonClick;
+  MessageDialog.OnDestroy:=OnNewProjectMessageDialogDestroy;
+ end;
+end;
+
+procedure TScreenMain.OnTerminationMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
+begin
+ if aID=0 then begin
+  pvApplication.Terminate;
+ end;
+end;
+
+procedure TScreenMain.OnTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
+begin
+ fTerminationMessageDialogVisible:=false;
+end;
+
+procedure TScreenMain.ShowTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
+var MessageDialog:TpvGUIMessageDialog;
+begin
+ if not fTerminationMessageDialogVisible then begin
+  fTerminationMessageDialogVisible:=true;
+  MessageDialog:=TpvGUIMessageDialog.Create(fGUIInstance,
+                                            'Question',
+                                            'Do you really want to quit this application?',
+                                            [TpvGUIMessageDialogButton.Create(0,'Yes',KEYCODE_RETURN,fGUIInstance.Skin.IconThumbUp,24.0),
+                                             TpvGUIMessageDialogButton.Create(1,'No',KEYCODE_ESCAPE,fGUIInstance.Skin.IconThumbDown,24.0)],
+                                            fGUIInstance.Skin.IconDialogQuestion);
+  MessageDialog.OnButtonClick:=OnTerminationMessageDialogButtonClick;
+  MessageDialog.OnDestroy:=OnTerminationMessageDialogDestroy;
+ end;
 end;
 
 procedure TScreenMain.Show;
@@ -258,6 +319,7 @@ begin
    MenuItem.IconHeight:=12;
    MenuItem.Caption:='New';
    MenuItem.ShortcutHint:='Shift+Ctrl+N';
+   MenuItem.OnClick:=ShowNewProjectMessageDialogDestroy;
 
    MenuItem:=TpvGUIMenuItem.Create(PopupMenu);
    MenuItem.Icon:=fGUIInstance.Skin.IconContentPaste;
@@ -631,34 +693,6 @@ begin
  inherited BeforeDestroySwapChain;
 end;
 
-procedure TScreenMain.OnTerminationMessageDialogButtonClick(const aSender:TpvGUIObject;const aID:TpvInt32);
-begin
- if aID=0 then begin
-  pvApplication.Terminate;
- end;
-end;
-
-procedure TScreenMain.OnTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
-begin
- fTerminationMessageDialogVisible:=false;
-end;
-
-procedure TScreenMain.ShowTerminationMessageDialogDestroy(const aSender:TpvGUIObject);
-var MessageDialog:TpvGUIMessageDialog;
-begin
- if not fTerminationMessageDialogVisible then begin
-  fTerminationMessageDialogVisible:=true;
-  MessageDialog:=TpvGUIMessageDialog.Create(fGUIInstance,
-                                            'Question',
-                                            'Do you really want to quit this application?',
-                                            [TpvGUIMessageDialogButton.Create(0,'Yes',KEYCODE_RETURN,fGUIInstance.Skin.IconThumbUp,24.0),
-                                             TpvGUIMessageDialogButton.Create(1,'No',KEYCODE_ESCAPE,fGUIInstance.Skin.IconThumbDown,24.0)],
-                                            fGUIInstance.Skin.IconDialogQuestion);
-  MessageDialog.OnButtonClick:=OnTerminationMessageDialogButtonClick;
-  MessageDialog.OnDestroy:=OnTerminationMessageDialogDestroy;
- end;
-end;
-
 function TScreenMain.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=false;
@@ -673,6 +707,15 @@ begin
                                    TpvApplicationInputKeyModifier.SHIFT,
                                    TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.ALT])) then begin
       ShowTerminationMessageDialogDestroy(nil);
+      result:=true;
+     end;
+    end;
+    KEYCODE_N:begin
+     if (aKeyEvent.KeyModifiers*[TpvApplicationInputKeyModifier.ALT,
+                                 TpvApplicationInputKeyModifier.CTRL,
+                                 TpvApplicationInputKeyModifier.SHIFT,
+                                 TpvApplicationInputKeyModifier.META])=[TpvApplicationInputKeyModifier.CTRL,TpvApplicationInputKeyModifier.SHIFT] then begin
+      ShowNewProjectMessageDialogDestroy(nil);
       result:=true;
      end;
     end;
