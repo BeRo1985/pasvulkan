@@ -54,6 +54,10 @@ type TScreenMain=class(TpvApplicationScreen)
        fGUIRootSplitterPanel1:TpvGUISplitterPanel;
        fGUILeftTabPanel:TpvGUITabPanel;
        fGUILeftToolPanel:TpvGUIPanel;
+       fGUISignedDistanceFieldCodeEditorTab:TpvGUITab;
+       fGUIMeshFragmentCodeEditorTab:TpvGUITab;
+       fGUISignedDistanceFieldCodeEditor:TpvGUIMultiLineTextEdit;
+       fGUIMeshFragmentCodeEditor:TpvGUIMultiLineTextEdit;
        fGUIWindow:TpvGUIWindow;
        fGUILabel:TpvGUILabel;
        fGUIButton:TpvGUIButton;
@@ -271,13 +275,29 @@ begin
  fGUILeftTabPanel.VisibleHeader:=true;
  fGUILeftTabPanel.VisibleContent:=true;
  fGUILeftTabPanel.VisibleContentBackground:=true;
- fGUILeftTabPanel.Tabs.Add('Signed distance field');
- fGUILeftTabPanel.Tabs.Add('Mesh fragment');
+ fGUISignedDistanceFieldCodeEditorTab:=fGUILeftTabPanel.Tabs.Add('Signed distance field');
+ fGUIMeshFragmentCodeEditorTab:=fGUILeftTabPanel.Tabs.Add('Mesh fragment');
  fGUILeftTabPanel.TabIndex:=0;
 
  fGUILeftToolPanel:=TpvGUIPanel.Create(fGUIRootSplitterPanel0.LeftTopPanel);
  TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Anchors[fGUILeftToolPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,1,1);
  fGUILeftToolPanel.Background:=true;
+
+ fGUISignedDistanceFieldCodeEditorTab.Content:=TpvGUIPanel.Create(fGUILeftTabPanel.Content);
+ fGUISignedDistanceFieldCodeEditorTab.Content.Layout:=TpvGUIFillLayout.Create(fGUISignedDistanceFieldCodeEditorTab.Content,4.0);
+
+ fGUIMeshFragmentCodeEditorTab.Content:=TpvGUIPanel.Create(fGUILeftTabPanel.Content);
+ fGUIMeshFragmentCodeEditorTab.Content.Layout:=TpvGUIFillLayout.Create(fGUIMeshFragmentCodeEditorTab.Content,4.0);
+
+ fGUISignedDistanceFieldCodeEditor:=TpvGUIMultiLineTextEdit.Create(fGUISignedDistanceFieldCodeEditorTab.Content);
+ fGUISignedDistanceFieldCodeEditor.TextEditor.SyntaxHighlighting:=TpvTextEditor.TSyntaxHighlighting.GetSyntaxHighlightingClassByFileExtension('.glsl').Create(fGUISignedDistanceFieldCodeEditor.TextEditor);
+ fGUISignedDistanceFieldCodeEditor.TextEditor.TabWidth:=2;
+ fGUISignedDistanceFieldCodeEditor.LineWrap:=false;
+
+ fGUIMeshFragmentCodeEditor:=TpvGUIMultiLineTextEdit.Create(fGUIMeshFragmentCodeEditorTab.Content);
+ fGUIMeshFragmentCodeEditor.TextEditor.SyntaxHighlighting:=TpvTextEditor.TSyntaxHighlighting.GetSyntaxHighlightingClassByFileExtension('.glsl').Create(fGUIMeshFragmentCodeEditor.TextEditor);
+ fGUIMeshFragmentCodeEditor.TextEditor.TabWidth:=2;
+ fGUIMeshFragmentCodeEditor.LineWrap:=false;
 
 end;
 
