@@ -62,6 +62,13 @@ type TScreenMain=class(TpvApplicationScreen)
        fIntegerEditGridSizeHeight:TpvGUIIntegerEdit;
        fLabelGridSizeDepth:TpvGUILabel;
        fIntegerEditGridSizeDepth:TpvGUIIntegerEdit;
+       fGUIWorldSizePanel:TpvGUIPanel;
+       fLabelWorldSizeWidth:TpvGUILabel;
+       fFloatEditWorldSizeWidth:TpvGUIFloatEdit;
+       fLabelWorldSizeHeight:TpvGUILabel;
+       fFloatEditWorldSizeHeight:TpvGUIFloatEdit;
+       fLabelWorldSizeDepth:TpvGUILabel;
+       fFloatEditWorldSizeDepth:TpvGUIFloatEdit;
        fGUISignedDistanceFieldCodeEditorTab:TpvGUITab;
        fGUIMeshFragmentCodeEditorTab:TpvGUITab;
        fGUISignedDistanceFieldCodeEditor:TpvGUIMultiLineTextEdit;
@@ -167,6 +174,12 @@ begin
  fIntegerEditGridSizeHeight.Value:=64;
 
  fIntegerEditGridSizeDepth.Value:=64;
+
+ fFloatEditWorldSizeWidth.Value:=2.0;
+
+ fFloatEditWorldSizeHeight.Value:=2.0;
+
+ fFloatEditWorldSizeDepth.Value:=2.0;
 
 end;
 
@@ -351,62 +364,129 @@ begin
 
  fGUIVulkanCanvas:=TpvGUIVulkanCanvas.Create(fGUIRootSplitterPanel1.LeftTopPanel);
 
- fGUIGridSizePanel:=TpvGUIPanel.Create(fGUIRootSplitterPanel1.RightBottomPanel);
- fGUIGridSizePanel.Layout:=TpvGUIGroupLayout.Create(fGUIGridSizePanel,
-                                                    15,
-                                                    6,
-                                                    14,
-                                                    20);
- fGUIGridSizePanel.Background:=true;
-
  begin
 
-  fLabelGridSizeWidth:=TpvGUILabel.Create(fGUIGridSizePanel);
-  fLabelGridSizeWidth.Caption:='Grid width';
-  fLabelGridSizeWidth.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+  fGUIGridSizePanel:=TpvGUIPanel.Create(fGUIRootSplitterPanel1.RightBottomPanel);
+  fGUIGridSizePanel.Layout:=TpvGUIGroupLayout.Create(fGUIGridSizePanel,
+                                                     15,
+                                                     6,
+                                                     14,
+                                                     20);
+  fGUIGridSizePanel.Background:=true;
 
-  fIntegerEditGridSizeWidth:=TpvGUIIntegerEdit.Create(fGUIGridSizePanel);
-  fIntegerEditGridSizeWidth.FixedWidth:=96.0;
-  fIntegerEditGridSizeWidth.FixedHeight:=32.0;
-  fIntegerEditGridSizeWidth.MinimumValue:=1;
-  fIntegerEditGridSizeWidth.MaximumValue:=4096;
-  fIntegerEditGridSizeWidth.SmallStep:=1;
-  fIntegerEditGridSizeWidth.LargeStep:=16;
- //fIntegerEditGridSizeWidth.OnChange:=IntegerEditGridSizeWidthOnChange;
+  begin
+
+   fLabelGridSizeWidth:=TpvGUILabel.Create(fGUIGridSizePanel);
+   fLabelGridSizeWidth.Caption:='Grid width';
+   fLabelGridSizeWidth.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+   fIntegerEditGridSizeWidth:=TpvGUIIntegerEdit.Create(fGUIGridSizePanel);
+   fIntegerEditGridSizeWidth.FixedWidth:=96.0;
+   fIntegerEditGridSizeWidth.FixedHeight:=32.0;
+   fIntegerEditGridSizeWidth.MinimumValue:=1;
+   fIntegerEditGridSizeWidth.MaximumValue:=4096;
+   fIntegerEditGridSizeWidth.SmallStep:=1;
+   fIntegerEditGridSizeWidth.LargeStep:=16;
+  //fIntegerEditGridSizeWidth.OnChange:=IntegerEditGridSizeWidthOnChange;
+
+  end;
+
+  begin
+
+   fLabelGridSizeHeight:=TpvGUILabel.Create(fGUIGridSizePanel);
+   fLabelGridSizeHeight.Caption:='Grid height';
+   fLabelGridSizeHeight.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+   fIntegerEditGridSizeHeight:=TpvGUIIntegerEdit.Create(fGUIGridSizePanel);
+   fIntegerEditGridSizeHeight.FixedWidth:=96.0;
+   fIntegerEditGridSizeHeight.FixedHeight:=32.0;
+   fIntegerEditGridSizeHeight.MinimumValue:=1;
+   fIntegerEditGridSizeHeight.MaximumValue:=4096;
+   fIntegerEditGridSizeHeight.SmallStep:=1;
+   fIntegerEditGridSizeHeight.LargeStep:=16;
+  //fIntegerEditGridSizeHeight.OnChange:=IntegerEditGridSizeHeightOnChange;
+
+  end;
+
+  begin
+
+   fLabelGridSizeDepth:=TpvGUILabel.Create(fGUIGridSizePanel);
+   fLabelGridSizeDepth.Caption:='Grid depth';
+   fLabelGridSizeDepth.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+   fIntegerEditGridSizeDepth:=TpvGUIIntegerEdit.Create(fGUIGridSizePanel);
+   fIntegerEditGridSizeDepth.FixedWidth:=96.0;
+   fIntegerEditGridSizeDepth.FixedHeight:=32.0;
+   fIntegerEditGridSizeDepth.MinimumValue:=1;
+   fIntegerEditGridSizeDepth.MaximumValue:=4096;
+   fIntegerEditGridSizeDepth.SmallStep:=1;
+   fIntegerEditGridSizeDepth.LargeStep:=16;
+  //fIntegerEditGridSizeDepth.OnChange:=IntegerEditGridSizeDepthOnChange;
+
+  end;
 
  end;
 
  begin
 
-  fLabelGridSizeHeight:=TpvGUILabel.Create(fGUIGridSizePanel);
-  fLabelGridSizeHeight.Caption:='Grid height';
-  fLabelGridSizeHeight.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+  fGUIWorldSizePanel:=TpvGUIPanel.Create(fGUIRootSplitterPanel1.RightBottomPanel);
+  fGUIWorldSizePanel.Layout:=TpvGUIGroupLayout.Create(fGUIWorldSizePanel,
+                                                     15,
+                                                     6,
+                                                     14,
+                                                     20);
+  fGUIWorldSizePanel.Background:=true;
 
-  fIntegerEditGridSizeHeight:=TpvGUIIntegerEdit.Create(fGUIGridSizePanel);
-  fIntegerEditGridSizeHeight.FixedWidth:=96.0;
-  fIntegerEditGridSizeHeight.FixedHeight:=32.0;
-  fIntegerEditGridSizeHeight.MinimumValue:=1;
-  fIntegerEditGridSizeHeight.MaximumValue:=4096;
-  fIntegerEditGridSizeHeight.SmallStep:=1;
-  fIntegerEditGridSizeHeight.LargeStep:=16;
- //fIntegerEditGridSizeHeight.OnChange:=IntegerEditGridSizeHeightOnChange;
+  begin
 
- end;
+   fLabelWorldSizeWidth:=TpvGUILabel.Create(fGUIWorldSizePanel);
+   fLabelWorldSizeWidth.Caption:='World width';
+   fLabelWorldSizeWidth.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
 
- begin
+   fFloatEditWorldSizeWidth:=TpvGUIFloatEdit.Create(fGUIWorldSizePanel);
+   fFloatEditWorldSizeWidth.FixedWidth:=96.0;
+   fFloatEditWorldSizeWidth.FixedHeight:=32.0;
+   fFloatEditWorldSizeWidth.MinimumValue:=0.0;
+   fFloatEditWorldSizeWidth.MaximumValue:=4096.0;
+   fFloatEditWorldSizeWidth.SmallStep:=0.1;
+   fFloatEditWorldSizeWidth.LargeStep:=1.0;
+  //fFloatEditWorldSizeWidth.OnChange:=FloatEditWorldSizeWidthOnChange;
 
-  fLabelGridSizeDepth:=TpvGUILabel.Create(fGUIGridSizePanel);
-  fLabelGridSizeDepth.Caption:='Grid depth';
-  fLabelGridSizeDepth.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+  end;
 
-  fIntegerEditGridSizeDepth:=TpvGUIIntegerEdit.Create(fGUIGridSizePanel);
-  fIntegerEditGridSizeDepth.FixedWidth:=96.0;
-  fIntegerEditGridSizeDepth.FixedHeight:=32.0;
-  fIntegerEditGridSizeDepth.MinimumValue:=1;
-  fIntegerEditGridSizeDepth.MaximumValue:=4096;
-  fIntegerEditGridSizeDepth.SmallStep:=1;
-  fIntegerEditGridSizeDepth.LargeStep:=16;
- //fIntegerEditGridSizeDepth.OnChange:=IntegerEditGridSizeDepthOnChange;
+  begin
+
+   fLabelWorldSizeHeight:=TpvGUILabel.Create(fGUIWorldSizePanel);
+   fLabelWorldSizeHeight.Caption:='World height';
+   fLabelWorldSizeHeight.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+   fFloatEditWorldSizeHeight:=TpvGUIFloatEdit.Create(fGUIWorldSizePanel);
+   fFloatEditWorldSizeHeight.FixedWidth:=96.0;
+   fFloatEditWorldSizeHeight.FixedHeight:=32.0;
+   fFloatEditWorldSizeHeight.MinimumValue:=0.0;
+   fFloatEditWorldSizeHeight.MaximumValue:=4096.0;
+   fFloatEditWorldSizeHeight.SmallStep:=0.1;
+   fFloatEditWorldSizeHeight.LargeStep:=1.0;
+  //fFloatEditWorldSizeHeight.OnChange:=FloatEditWorldSizeHeightOnChange;
+
+  end;
+
+  begin
+
+   fLabelWorldSizeDepth:=TpvGUILabel.Create(fGUIWorldSizePanel);
+   fLabelWorldSizeDepth.Caption:='World depth';
+   fLabelWorldSizeDepth.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+   fFloatEditWorldSizeDepth:=TpvGUIFloatEdit.Create(fGUIWorldSizePanel);
+   fFloatEditWorldSizeDepth.FixedWidth:=96.0;
+   fFloatEditWorldSizeDepth.FixedHeight:=32.0;
+   fFloatEditWorldSizeDepth.MinimumValue:=0.0;
+   fFloatEditWorldSizeDepth.MaximumValue:=4096.0;
+   fFloatEditWorldSizeDepth.SmallStep:=0.1;
+   fFloatEditWorldSizeDepth.LargeStep:=1.0;
+  //fFloatEditWorldSizeDepth.OnChange:=FloatEditWorldSizeDepthOnChange;
+
+  end;
 
  end;
 
