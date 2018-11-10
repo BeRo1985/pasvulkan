@@ -54,6 +54,7 @@ type TScreenMain=class(TpvApplicationScreen)
        fGUIRootSplitterPanel1:TpvGUISplitterPanel;
        fGUILeftTabPanel:TpvGUITabPanel;
        fGUILeftToolPanel:TpvGUIPanel;
+       fGUIVulkanCanvas:TpvGUIVulkanCanvas;
        fGUISignedDistanceFieldCodeEditorTab:TpvGUITab;
        fGUIMeshFragmentCodeEditorTab:TpvGUITab;
        fGUISignedDistanceFieldCodeEditor:TpvGUIMultiLineTextEdit;
@@ -279,6 +280,7 @@ begin
  fGUIRootSplitterPanel1.Orientation:=TpvGUISplitterPanelOrientation.Vertical;
  fGUIRootSplitterPanel1.LeftTopPanel.Layout:=TpvGUIFillLayout.Create(fGUIRootSplitterPanel1.LeftTopPanel,4.0);
  fGUIRootSplitterPanel1.LeftTopPanel.Background:=true;
+
  fGUIRootSplitterPanel1.RightBottomPanel.Layout:=TpvGUIFillLayout.Create(fGUIRootSplitterPanel1.RightBottomPanel,4.0);
  fGUIRootSplitterPanel1.RightBottomPanel.Background:=true;
 
@@ -314,6 +316,8 @@ begin
  fGUIMeshFragmentCodeEditor.TextEditor.SyntaxHighlighting:=TpvTextEditor.TSyntaxHighlighting.GetSyntaxHighlightingClassByFileExtension('.glsl').Create(fGUIMeshFragmentCodeEditor.TextEditor);
  fGUIMeshFragmentCodeEditor.TextEditor.TabWidth:=2;
  fGUIMeshFragmentCodeEditor.LineWrap:=false;
+
+ fGUIVulkanCanvas:=TpvGUIVulkanCanvas.Create(fGUIRootSplitterPanel1.LeftTopPanel);
 
  NewProject;
 
