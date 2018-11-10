@@ -46,8 +46,10 @@ type TApplication=class(TpvApplication)
        procedure Resume; override;
        procedure Pause; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       procedure Check(const aDeltaTime:TpvDouble); override;
        procedure Update(const aDeltaTime:TpvDouble); override;
        procedure Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil); override;
+       procedure PostPresent(const aSwapChainImageIndex:TpvInt32); override;
      end;
 
 var Application:TApplication=nil;
@@ -84,6 +86,7 @@ begin
  UseAudio:=true;
  TerminationWithAltF4:=false;
  TerminationOnQuitEvent:=false;
+ MaximumFramesPerSecond:=120.0; // 120 FPS as frame rate limit should be enough for to be smooth enough and for to be CPU&GPU-time-saving at the same time
 //DesiredCountSwapChainImages:=2;
  PresentMode:={$ifdef NoVSync}TpvApplicationPresentMode.Mailbox{TpvApplicationPresentMode.NoVSync}{$else}TpvApplicationPresentMode.VSync{$endif};
 end;
@@ -133,6 +136,11 @@ begin
  result:=inherited KeyEvent(aKeyEvent);
 end;
 
+procedure TApplication.Check(const aDeltaTime:TpvDouble);
+begin
+ inherited Check(aDeltaTime);
+end;
+
 procedure TApplication.Update(const aDeltaTime:TpvDouble);
 begin
  inherited Update(aDeltaTime);
@@ -141,6 +149,11 @@ end;
 procedure TApplication.Draw(const aSwapChainImageIndex:TpvInt32;var aWaitSemaphore:TpvVulkanSemaphore;const aWaitFence:TpvVulkanFence=nil);
 begin
  inherited Draw(aSwapChainImageIndex,aWaitSemaphore,aWaitFence);
+end;
+
+procedure TApplication.PostPresent(const aSwapChainImageIndex:TpvInt32);
+begin
+ inherited PostPresent(aSwapChainImageIndex);
 end;
 
 end.

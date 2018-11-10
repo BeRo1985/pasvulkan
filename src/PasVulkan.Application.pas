@@ -87,6 +87,7 @@ uses {$if defined(Unix)}
 {$if defined(PasVulkanUseSDL2)}
      PasVulkan.SDL2,
 {$ifend}
+     PasVulkan.HighResolutionTimer,
      PasVulkan.Android,
      PasVulkan.Audio;
 
@@ -484,43 +485,6 @@ type EpvApplication=class(Exception)
      TpvApplicationUTF8String={$if declared(UnicodeString)}UTF8String{$else}AnsiString{$ifend};
 
      TpvApplicationOnStep=procedure(const aVulkanApplication:TpvApplication) of object;
-
-     PPpvApplicationHighResolutionTime=^PpvApplicationHighResolutionTime;
-     PpvApplicationHighResolutionTime=^TpvApplicationHighResolutionTime;
-     TpvApplicationHighResolutionTime=TpvInt64;
-
-     TpvApplicationHighResolutionTimer=class
-      private
-       fFrequency:TpvInt64;
-       fFrequencyShift:TpvInt32;
-       fMillisecondInterval:TpvApplicationHighResolutionTime;
-       fTwoMillisecondsInterval:TpvApplicationHighResolutionTime;
-       fFourMillisecondsInterval:TpvApplicationHighResolutionTime;
-       fQuarterSecondInterval:TpvApplicationHighResolutionTime;
-       fMinuteInterval:TpvApplicationHighResolutionTime;
-       fHourInterval:TpvApplicationHighResolutionTime;
-      public
-       constructor Create;
-       destructor Destroy; override;
-       function GetTime:TpvInt64;
-       procedure Sleep(const aDelay:TpvApplicationHighResolutionTime);
-       function ToFloatSeconds(const aTime:TpvApplicationHighResolutionTime):TpvDouble;
-       function FromFloatSeconds(const aTime:TpvDouble):TpvApplicationHighResolutionTime;
-       function ToMilliseconds(const aTime:TpvApplicationHighResolutionTime):TpvInt64;
-       function FromMilliseconds(const aTime:TpvInt64):TpvApplicationHighResolutionTime;
-       function ToMicroseconds(const aTime:TpvApplicationHighResolutionTime):TpvInt64;
-       function FromMicroseconds(const aTime:TpvInt64):TpvApplicationHighResolutionTime;
-       function ToNanoseconds(const aTime:TpvApplicationHighResolutionTime):TpvInt64;
-       function FromNanoseconds(const aTime:TpvInt64):TpvApplicationHighResolutionTime;
-       property Frequency:TpvInt64 read fFrequency;
-       property MillisecondInterval:TpvApplicationHighResolutionTime read fMillisecondInterval;
-       property TwoMillisecondsInterval:TpvApplicationHighResolutionTime read fTwoMillisecondsInterval;
-       property FourMillisecondsInterval:TpvApplicationHighResolutionTime read fFourMillisecondsInterval;
-       property QuarterSecondInterval:TpvApplicationHighResolutionTime read fQuarterSecondInterval;
-       property SecondInterval:TpvApplicationHighResolutionTime read fFrequency;
-       property MinuteInterval:TpvApplicationHighResolutionTime read fMinuteInterval;
-       property HourInterval:TpvApplicationHighResolutionTime read fHourInterval;
-     end;
 
      PpvApplicationInputKeyEventType=^TpvApplicationInputKeyEventType;
      TpvApplicationInputKeyEventType=
@@ -990,7 +954,7 @@ type EpvApplication=class(Exception)
 
        fDoDestroyGlobalPasMPInstance:TPasMPBool32;
 
-       fHighResolutionTimer:TpvApplicationHighResolutionTimer;
+       fHighResolutionTimer:TpvHighResolutionTimer;
 
        fAssets:TpvApplicationAssets;
 
@@ -1070,9 +1034,9 @@ type EpvApplication=class(Exception)
        fEvent:TpvApplicationEvent;
 
        fLastPressedKeyEvent:TpvApplicationEvent;
-       fKeyRepeatTimeAccumulator:TpvApplicationHighResolutionTime;
-       fKeyRepeatInterval:TpvApplicationHighResolutionTime;
-       fKeyRepeatInitialInterval:TpvApplicationHighResolutionTime;
+       fKeyRepeatTimeAccumulator:TpvHighResolutionTime;
+       fKeyRepeatInterval:TpvHighResolutionTime;
+       fKeyRepeatInitialInterval:TpvHighResolutionTime;
        fNativeKeyRepeat:boolean;
 
        fScreenWidth:TpvInt32;
@@ -1181,18 +1145,21 @@ type EpvApplication=class(Exception)
 
        fHasLastTime:boolean;
 
-       fLastTime:TpvApplicationHighResolutionTime;
-       fNowTime:TpvApplicationHighResolutionTime;
-       fDeltaTime:TpvApplicationHighResolutionTime;
+       fLastTime:TpvHighResolutionTime;
+       fNowTime:TpvHighResolutionTime;
+       fDeltaTime:TpvHighResolutionTime;
+       fNextTime:TpvHighResolutionTime;
        fFloatDeltaTime:TpvDouble;
        fUpdateDeltaTime:TpvDouble;
 
        fFrameTimesHistoryDeltaTimes:array[0..FrameTimesHistorySize-1] of TpvDouble;
-       fFrameTimesHistoryTimePoints:array[0..FrameTimesHistorySize-1] of TpvApplicationHighResolutionTime;
+       fFrameTimesHistoryTimePoints:array[0..FrameTimesHistorySize-1] of TpvHighResolutionTime;
        fFrameTimesHistoryReadIndex:TPasMPInt32;
        fFrameTimesHistoryWriteIndex:TPasMPInt32;
 
        fFramesPerSecond:TpvDouble;
+
+       fMaximumFramesPerSecond:TpvDouble;
 
        fFrameCounter:TpvInt64;
 
@@ -1311,6 +1278,8 @@ type EpvApplication=class(Exception)
 
        procedure UpdateFrameTimesHistory;
 
+       procedure FrameRateLimiter;
+
        procedure UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
        procedure DrawJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 
@@ -1411,7 +1380,7 @@ type EpvApplication=class(Exception)
 
        property PasMPInstance:TPasMP read fPasMPInstance;
 
-       property HighResolutionTimer:TpvApplicationHighResolutionTimer read fHighResolutionTimer;
+       property HighResolutionTimer:TpvHighResolutionTimer read fHighResolutionTimer;
 
        property Assets:TpvApplicationAssets read fAssets;
 
@@ -1536,6 +1505,8 @@ type EpvApplication=class(Exception)
        property DeltaTime:TpvDouble read fFloatDeltaTime;
 
        property FramesPerSecond:TpvDouble read fFramesPerSecond;
+
+       property MaximumFramesPerSecond:TpvDouble read fMaximumFramesPerSecond write fMaximumFramesPerSecond;
 
        property FrameCounter:TpvInt64 read fFrameCounter;
 
@@ -2167,238 +2138,6 @@ destructor EpvApplication.Destroy;
 begin
  fTag:='';
  inherited Destroy;
-end;
-
-constructor TpvApplicationHighResolutionTimer.Create;
-begin
- inherited Create;
- fFrequencyShift:=0;
-{$ifdef windows}
- if QueryPerformanceFrequency(fFrequency) then begin
-  while (fFrequency and $ffffffffe0000000)<>0 do begin
-   fFrequency:=fFrequency shr 1;
-   inc(fFrequencyShift);
-  end;
- end else begin
-  fFrequency:=1000;
- end;
-{$else}
-{$ifdef linux}
-  fFrequency:=1000000000;
-{$else}
-{$ifdef unix}
-  fFrequency:=1000000;
-{$else}
-  fFrequency:=1000;
-{$endif}
-{$endif}
-{$endif}
- fMillisecondInterval:=(fFrequency+500) div 1000;
- fTwoMillisecondsInterval:=(fFrequency+250) div 500;
- fFourMillisecondsInterval:=(fFrequency+125) div 250;
- fQuarterSecondInterval:=(fFrequency+2) div 4;
- fMinuteInterval:=fFrequency*60;
- fHourInterval:=fFrequency*3600;
-end;
-
-destructor TpvApplicationHighResolutionTimer.Destroy;
-begin
- inherited Destroy;
-end;
-
-function TpvApplicationHighResolutionTimer.GetTime:TpvInt64;
-{$ifdef linux}
-var NowTimeSpec:TimeSpec;
-    ia,ib:TpvInt64;
-{$else}
-{$ifdef unix}
-var tv:timeval;
-    tz:timezone;
-    ia,ib:TpvInt64;
-{$endif}
-{$endif}
-begin
-{$ifdef windows}
- if not QueryPerformanceCounter(result) then begin
-  result:=timeGetTime;
- end;
-{$else}
-{$ifdef linux}
- clock_gettime(CLOCK_MONOTONIC,@NowTimeSpec);
- ia:=TpvInt64(NowTimeSpec.tv_sec)*TpvInt64(1000000000);
- ib:=NowTimeSpec.tv_nsec;
- result:=ia+ib;
-{$else}
-{$ifdef unix}
-  tz.tz_minuteswest:=0;
-  tz.tz_dsttime:=0;
-  fpgettimeofday(@tv,@tz);
-  ia:=TpvInt64(tv.tv_sec)*TpvInt64(1000000);
-  ib:=tv.tv_usec;
-  result:=ia+ib;
-{$else}
- result:=SDL_GetTicks;
-{$endif}
-{$endif}
-{$endif}
- result:=result shr fFrequencyShift;
-end;
-
-procedure TpvApplicationHighResolutionTimer.Sleep(const aDelay:TpvInt64);
-var EndTime,NowTime{$ifdef unix},SleepTime{$endif}:TpvInt64;
-{$ifdef unix}
-    req,rem:timespec;
-{$endif}
-begin
- if aDelay>0 then begin
-{$ifdef windows}
-  NowTime:=GetTime;
-  EndTime:=NowTime+aDelay;
-  while (NowTime+fTwoMillisecondsInterval)<EndTime do begin
-   Sleep(1);
-   NowTime:=GetTime;
-  end;
-  while (NowTime+fMillisecondInterval)<EndTime do begin
-   Sleep(0);
-   NowTime:=GetTime;
-  end;
-  while NowTime<EndTime do begin
-   NowTime:=GetTime;
-  end;
-{$else}
-{$ifdef linux}
-  NowTime:=GetTime;
-  EndTime:=NowTime+aDelay;
-  while true do begin
-   SleepTime:=abs(EndTime-NowTime);
-   if SleepTime>=fFourMillisecondsInterval then begin
-    SleepTime:=(SleepTime+2) shr 2;
-    if SleepTime>0 then begin
-     req.tv_sec:=SleepTime div 1000000000;
-     req.tv_nsec:=SleepTime mod 10000000000;
-     fpNanoSleep(@req,@rem);
-     NowTime:=GetTime;
-     continue;
-    end;
-   end;
-   break;
-  end;
-  while (NowTime+fTwoMillisecondsInterval)<EndTime do begin
-   ThreadSwitch;
-   NowTime:=GetTime;
-  end;
-  while NowTime<EndTime do begin
-   NowTime:=GetTime;
-  end;
-{$else}
-{$ifdef unix}
-  NowTime:=GetTime;
-  EndTime:=NowTime+aDelay;
-  while true do begin
-   SleepTime:=abs(EndTime-NowTime);
-   if SleepTime>=fFourMillisecondsInterval then begin
-    SleepTime:=(SleepTime+2) shr 2;
-    if SleepTime>0 then begin
-     req.tv_sec:=SleepTime div 1000000;
-     req.tv_nsec:=(SleepTime mod 1000000)*1000;
-     fpNanoSleep(@req,@rem);
-     NowTime:=GetTime;
-     continue;
-    end;
-   end;
-   break;
-  end;
-  while (NowTime+fTwoMillisecondsInterval)<EndTime do begin
-   ThreadSwitch;
-   NowTime:=GetTime;
-  end;
-  while NowTime<EndTime do begin
-   NowTime:=GetTime;
-  end;
-{$else}
-  NowTime:=GetTime;
-  EndTime:=NowTime+aDelay;
-  while (NowTime+4)<EndTime then begin
-   SDL_Delay(1);
-   NowTime:=GetTime;
-  end;
-  while (NowTime+2)<EndTime do begin
-   SDL_Delay(0);
-   NowTime:=GetTime;
-  end;
-  while NowTime<EndTime do begin
-   NowTime:=GetTime;
-  end;
-{$endif}
-{$endif}
-{$endif}
- end;
-end;
-
-function TpvApplicationHighResolutionTimer.ToFloatSeconds(const aTime:TpvApplicationHighResolutionTime):TpvDouble;
-begin
- if fFrequency<>0 then begin
-  result:=aTime/fFrequency;
- end else begin
-  result:=0;
- end;
-end;
-
-function TpvApplicationHighResolutionTimer.FromFloatSeconds(const aTime:TpvDouble):TpvApplicationHighResolutionTime;
-begin
- if fFrequency<>0 then begin
-  result:=trunc(aTime*fFrequency);
- end else begin
-  result:=0;
- end;
-end;
-
-function TpvApplicationHighResolutionTimer.ToMilliseconds(const aTime:TpvApplicationHighResolutionTime):TpvInt64;
-begin
- result:=aTime;
- if fFrequency<>1000 then begin
-  result:=((aTime*1000)+((fFrequency+1) shr 1)) div fFrequency;
- end;
-end;
-
-function TpvApplicationHighResolutionTimer.FromMilliseconds(const aTime:TpvInt64):TpvApplicationHighResolutionTime;
-begin
- result:=aTime;
- if fFrequency<>1000 then begin
-  result:=((aTime*fFrequency)+500) div 1000;
- end;
-end;
-
-function TpvApplicationHighResolutionTimer.ToMicroseconds(const aTime:TpvApplicationHighResolutionTime):TpvInt64;
-begin
- result:=aTime;
- if fFrequency<>1000000 then begin
-  result:=((aTime*1000000)+((fFrequency+1) shr 1)) div fFrequency;
- end;
-end;
-
-function TpvApplicationHighResolutionTimer.FromMicroseconds(const aTime:TpvInt64):TpvApplicationHighResolutionTime;
-begin
- result:=aTime;
- if fFrequency<>1000000 then begin
-  result:=((aTime*fFrequency)+500000) div 1000000;
- end;
-end;
-
-function TpvApplicationHighResolutionTimer.ToNanoseconds(const aTime:TpvApplicationHighResolutionTime):TpvInt64;
-begin
- result:=aTime;
- if fFrequency<>1000000000 then begin
-  result:=((aTime*1000000000)+((fFrequency+1) shr 1)) div fFrequency;
- end;
-end;
-
-function TpvApplicationHighResolutionTimer.FromNanoseconds(const aTime:TpvInt64):TpvApplicationHighResolutionTime;
-begin
- result:=aTime;
- if fFrequency<>1000000000 then begin
-  result:=((aTime*fFrequency)+500000000) div 1000000000;
- end;
 end;
 
 constructor TpvApplicationInputKeyEvent.Create(const aKeyEventType:TpvApplicationInputKeyEventType;
@@ -5322,7 +5061,7 @@ begin
   fDoDestroyGlobalPasMPInstance:=true;
  end;
 
- fHighResolutionTimer:=TpvApplicationHighResolutionTimer.Create;
+ fHighResolutionTimer:=TpvHighResolutionTimer.Create;
 
  fAssets:=TpvApplicationAssets.Create(self);
 
@@ -5376,6 +5115,8 @@ begin
  fWaitOnPreviousFrames:=false;
  fTerminationWithAltF4:=true;
  fTerminationOnQuitEvent:=true;
+
+ fMaximumFramesPerSecond:=0.0;
 
  fActive:=true;
 
@@ -5465,6 +5206,7 @@ begin
  fLastTime:=0;
  fNowTime:=0;
  fDeltaTime:=0;
+ fNextTime:=0;
 
  fFrameCounter:=0;
 
@@ -7390,6 +7132,25 @@ begin
 
 end;
 
+procedure TpvApplication.FrameRateLimiter;
+var NowTime:TpvHighResolutionTime;
+begin
+ if (fMaximumFramesPerSecond>0.0) and not IsZero(fMaximumFramesPerSecond) then begin
+  NowTime:=fHighResolutionTimer.GetTime;
+  if (NowTime<fNextTime) and
+     (fNextTime<=(NowTime+fHighResolutionTimer.SecondInterval)) then begin
+   fHighResolutionTimer.Sleep(fNextTime-NowTime);
+  end;
+  fNextTime:=NowTime+fHighResolutionTimer.FromFloatSeconds(1.0/fMaximumFramesPerSecond);
+ end else begin
+  if NowTime>0 then begin
+   fNextTime:=NowTime-1;
+  end else begin
+   fNextTime:=0;
+  end;
+ end;
+end;
+
 procedure TpvApplication.UpdateJobFunction(const aJob:PPasMPJob;const aThreadIndex:TPasMPInt32);
 begin
  Update(fUpdateDeltaTime);
@@ -7913,7 +7674,10 @@ begin
    fDrawFrameCounter:=fFrameCounter;
    Check(fUpdateDeltaTime);
    UpdateJobFunction(nil,0);
+
    inc(fFrameCounter);
+
+   FrameRateLimiter;
 
   end else begin
 
@@ -7988,6 +7752,8 @@ begin
     end;
 
     inc(fFrameCounter);
+
+    FrameRateLimiter;
 
    end;
 
