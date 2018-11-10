@@ -55,6 +55,13 @@ type TScreenMain=class(TpvApplicationScreen)
        fGUILeftTabPanel:TpvGUITabPanel;
        fGUILeftToolPanel:TpvGUIPanel;
        fGUIVulkanCanvas:TpvGUIVulkanCanvas;
+       fGUIGridSizePanel:TpvGUIPanel;
+       fLabelGridSizeWidth:TpvGUILabel;
+       fIntegerEditGridSizeWidth:TpvGUIIntegerEdit;
+       fLabelGridSizeHeight:TpvGUILabel;
+       fIntegerEditGridSizeHeight:TpvGUIIntegerEdit;
+       fLabelGridSizeDepth:TpvGUILabel;
+       fIntegerEditGridSizeDepth:TpvGUIIntegerEdit;
        fGUISignedDistanceFieldCodeEditorTab:TpvGUITab;
        fGUIMeshFragmentCodeEditorTab:TpvGUITab;
        fGUISignedDistanceFieldCodeEditor:TpvGUIMultiLineTextEdit;
@@ -283,7 +290,9 @@ begin
  fGUIRootSplitterPanel1.LeftTopPanel.Layout:=TpvGUIFillLayout.Create(fGUIRootSplitterPanel1.LeftTopPanel,4.0);
  fGUIRootSplitterPanel1.LeftTopPanel.Background:=true;
 
- fGUIRootSplitterPanel1.RightBottomPanel.Layout:=TpvGUIFillLayout.Create(fGUIRootSplitterPanel1.RightBottomPanel,4.0);
+ fGUIRootSplitterPanel1.RightBottomPanel.Layout:=TpvGUIFlowLayout.Create(fGUIRootSplitterPanel1.RightBottomPanel,
+                                                                         TpvGUILayoutOrientation.Horizontal,
+                                                                         8.0);
  fGUIRootSplitterPanel1.RightBottomPanel.Background:=true;
 
  TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Rows.Add(200.0,1.0);
@@ -335,6 +344,65 @@ begin
  fGUIUpdateProgressBar.Width:=30.0;
 
  fGUIVulkanCanvas:=TpvGUIVulkanCanvas.Create(fGUIRootSplitterPanel1.LeftTopPanel);
+
+ fGUIGridSizePanel:=TpvGUIPanel.Create(fGUIRootSplitterPanel1.RightBottomPanel);
+ fGUIGridSizePanel.Layout:=TpvGUIGroupLayout.Create(fGUIGridSizePanel,
+                                                    15,
+                                                    6,
+                                                    14,
+                                                    20);
+ fGUIGridSizePanel.Background:=true;
+
+ begin
+
+  fLabelGridSizeWidth:=TpvGUILabel.Create(fGUIGridSizePanel);
+  fLabelGridSizeWidth.Caption:='Grid width';
+  fLabelGridSizeWidth.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+  fIntegerEditGridSizeWidth:=TpvGUIIntegerEdit.Create(fGUIGridSizePanel);
+  fIntegerEditGridSizeWidth.FixedWidth:=96.0;
+  fIntegerEditGridSizeWidth.FixedHeight:=32.0;
+  fIntegerEditGridSizeWidth.MinimumValue:=1;
+  fIntegerEditGridSizeWidth.MaximumValue:=4096;
+  fIntegerEditGridSizeWidth.SmallStep:=1;
+  fIntegerEditGridSizeWidth.LargeStep:=16;
+ //fIntegerEditGridSizeWidth.OnChange:=IntegerEditGridSizeWidthOnChange;
+
+ end;
+
+ begin
+
+  fLabelGridSizeHeight:=TpvGUILabel.Create(fGUIGridSizePanel);
+  fLabelGridSizeHeight.Caption:='Grid height';
+  fLabelGridSizeHeight.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+  fIntegerEditGridSizeHeight:=TpvGUIIntegerEdit.Create(fGUIGridSizePanel);
+  fIntegerEditGridSizeHeight.FixedWidth:=96.0;
+  fIntegerEditGridSizeHeight.FixedHeight:=32.0;
+  fIntegerEditGridSizeHeight.MinimumValue:=1;
+  fIntegerEditGridSizeHeight.MaximumValue:=4096;
+  fIntegerEditGridSizeHeight.SmallStep:=1;
+  fIntegerEditGridSizeHeight.LargeStep:=16;
+ //fIntegerEditGridSizeHeight.OnChange:=IntegerEditGridSizeHeightOnChange;
+
+ end;
+
+ begin
+
+  fLabelGridSizeDepth:=TpvGUILabel.Create(fGUIGridSizePanel);
+  fLabelGridSizeDepth.Caption:='Grid depth';
+  fLabelGridSizeDepth.TextHorizontalAlignment:=TpvGUITextAlignment.Leading;
+
+  fIntegerEditGridSizeDepth:=TpvGUIIntegerEdit.Create(fGUIGridSizePanel);
+  fIntegerEditGridSizeDepth.FixedWidth:=96.0;
+  fIntegerEditGridSizeDepth.FixedHeight:=32.0;
+  fIntegerEditGridSizeDepth.MinimumValue:=1;
+  fIntegerEditGridSizeDepth.MaximumValue:=4096;
+  fIntegerEditGridSizeDepth.SmallStep:=1;
+  fIntegerEditGridSizeDepth.LargeStep:=16;
+ //fIntegerEditGridSizeDepth.OnChange:=IntegerEditGridSizeDepthOnChange;
+
+ end;
 
  NewProject;
 
