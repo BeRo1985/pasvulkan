@@ -59,6 +59,8 @@ type TScreenMain=class(TpvApplicationScreen)
        fGUIMeshFragmentCodeEditorTab:TpvGUITab;
        fGUISignedDistanceFieldCodeEditor:TpvGUIMultiLineTextEdit;
        fGUIMeshFragmentCodeEditor:TpvGUIMultiLineTextEdit;
+       fGUIUpdateButton:TpvGUIButton;
+       fGUIUpdateProgressBar:TpvGUIProgressBar;
        fGUIWindow:TpvGUIWindow;
        fGUILabel:TpvGUILabel;
        fGUIButton:TpvGUIButton;
@@ -148,8 +150,8 @@ begin
                                   '                      mat2x4 parameters,'#13#10+
                                   '                      vec3 rayDirection){'#13#10+
                                   '  return vec4(max(0.0,'#13#10+
-                                  '                 -dot(tangentSpace[2],'#13#10+
-                                  '                      rayDirection)) * parameters[0].xyz,'#13#10+
+                                  '                  -dot(tangentSpace[2],'#13#10+
+                                  '                       rayDirection)) * parameters[0].xyz,'#13#10+
                                   '              1.0);'#13#10+
                                   '}'#13#10;
 
@@ -285,7 +287,7 @@ begin
  fGUIRootSplitterPanel1.RightBottomPanel.Background:=true;
 
  TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Rows.Add(200.0,1.0);
- TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Rows.Add(80.0,0.0);
+ TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Rows.Add(70.0,0.0);
  TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Columns.Add(0.0,1.0);
 
  fGUILeftTabPanel:=TpvGUITabPanel.Create(fGUIRootSplitterPanel0.LeftTopPanel);
@@ -298,8 +300,16 @@ begin
  fGUILeftTabPanel.TabIndex:=0;
 
  fGUILeftToolPanel:=TpvGUIPanel.Create(fGUIRootSplitterPanel0.LeftTopPanel);
- TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Anchors[fGUILeftToolPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,1,1);
- fGUILeftToolPanel.Background:=true;
+ TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Anchors[fGUILeftToolPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,1,1,4.0,0.0,4.0,0.0);
+ fGUILeftToolPanel.Layout:=TpvGUIGridLayout.Create(fGUILeftToolPanel,
+                                                   1,
+                                                   TpvGUILayoutAlignment.Fill,
+                                                   TpvGUILayoutAlignment.Middle,
+                                                   TpvGUILayoutOrientation.Horizontal,
+                                                   4.0,
+                                                   4.0,
+                                                   4.0);
+ fGUILeftToolPanel.Background:=false;
 
  fGUISignedDistanceFieldCodeEditorTab.Content:=TpvGUIPanel.Create(fGUILeftTabPanel.Content);
  fGUISignedDistanceFieldCodeEditorTab.Content.Layout:=TpvGUIFillLayout.Create(fGUISignedDistanceFieldCodeEditorTab.Content,4.0);
@@ -316,6 +326,13 @@ begin
  fGUIMeshFragmentCodeEditor.TextEditor.SyntaxHighlighting:=TpvTextEditor.TSyntaxHighlighting.GetSyntaxHighlightingClassByFileExtension('.glsl').Create(fGUIMeshFragmentCodeEditor.TextEditor);
  fGUIMeshFragmentCodeEditor.TextEditor.TabWidth:=2;
  fGUIMeshFragmentCodeEditor.LineWrap:=false;
+
+ fGUIUpdateButton:=TpvGUIButton.Create(fGUILeftToolPanel);
+ fGUIUpdateButton.Caption:='Update (F9)';
+
+ fGUIUpdateProgressBar:=TpvGUIProgressBar.Create(fGUILeftToolPanel);
+ fGUIUpdateProgressBar.Orientation:=TpvGUIProgressBarOrientation.Horizontal;
+ fGUIUpdateProgressBar.Width:=30.0;
 
  fGUIVulkanCanvas:=TpvGUIVulkanCanvas.Create(fGUIRootSplitterPanel1.LeftTopPanel);
 
