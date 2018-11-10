@@ -1033,6 +1033,7 @@ type EpvApplication=class(Exception)
        fBlocking:boolean;
        fWaitOnPreviousFrames:boolean;
        fTerminationWithAltF4:boolean;
+       fTerminationOnQuitEvent:boolean;
 
 {$if defined(PasVulkanUseSDL2)}
        fSDLVersion:TSDL_Version;
@@ -1452,6 +1453,8 @@ type EpvApplication=class(Exception)
        property WaitOnPreviousFrames:boolean read fWaitOnPreviousFrames write fWaitOnPreviousFrames;
 
        property TerminationWithAltF4:boolean read fTerminationWithAltF4 write fTerminationWithAltF4;
+
+       property TerminationOnQuitEvent:boolean read fTerminationOnQuitEvent write fTerminationOnQuitEvent;
 
        property Debugging:boolean read fDebugging;
        
@@ -5360,6 +5363,7 @@ begin
  fBlocking:=true;
  fWaitOnPreviousFrames:=false;
  fTerminationWithAltF4:=true;
+ fTerminationOnQuitEvent:=true;
 
  fActive:=true;
 
@@ -7592,7 +7596,14 @@ begin
      continue;
     end;
     case fEvent.SDLEvent.type_ of
-     SDL_QUITEV,
+     SDL_QUITEV:begin
+      if fTerminationOnQuitEvent then begin
+       VulkanWaitIdle;
+       Pause;
+       DeinitializeGraphics;
+       Terminate;
+      end;
+     end;
      SDL_APP_TERMINATING:begin
       VulkanWaitIdle;
       Pause;
@@ -7775,7 +7786,7 @@ begin
       OK:=true;
       case fEvent.SDLEvent.key.keysym.sym of
        SDLK_F4:begin
-        if ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
+        if fTerminationWithAltF4 and ((fEvent.SDLEvent.key.keysym.modifier and ((KMOD_LALT or KMOD_RALT) or (KMOD_LMETA or KMOD_RMETA)))<>0) then begin
          OK:=false;
         end;
        end;
