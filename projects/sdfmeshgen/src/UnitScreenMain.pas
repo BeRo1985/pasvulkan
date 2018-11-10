@@ -132,14 +132,25 @@ begin
  fGUISignedDistanceFieldCodeEditor.Text:=#13#10+
                                          'const float normalOffsetFactor = 1e-4;'#13#10+
                                          #13#10+
-                                         'float getDistance(vec3 p){'#13#10+
-                                         '  return length(p) - 1.0;'#13#10+
+                                         'float getDistance(vec3 position){'#13#10+
+                                         '  return length(position) - 1.0;'#13#10+
                                          '}'#13#10+
                                          #13#10+
-                                         'mat2x4 getParameters(vec3 p){'#13#10+
+                                         'mat2x4 getParameters(vec3 position){'#13#10+
                                          '  return mat2x4(vec4(vec3(1.0), 0.0), // first three values => rgb color'#13#10+
                                          '                vec4(0.0));'#13#10+
                                          '}'#13#10;
+
+ fGUIMeshFragmentCodeEditor.Text:=#13#10+
+                                  'vec4 getFragmentColor(vec3 position,'#13#10+
+                                  '                      mat3 tangentSpace,'#13#10+
+                                  '                      mat2x4 parameters,'#13#10+
+                                  '                      vec3 rayDirection){'#13#10+
+                                  '  return vec4(max(0.0,'#13#10+
+                                  '                 -dot(tangentSpace[2],'#13#10+
+                                  '                      rayDirection)) * parameters[0].xyz,'#13#10+
+                                  '              1.0);'#13#10+
+                                  '}'#13#10;
 
 end;
 
