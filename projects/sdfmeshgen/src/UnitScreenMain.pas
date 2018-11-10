@@ -52,6 +52,8 @@ type TScreenMain=class(TpvApplicationScreen)
        fGUIRootPanel:TpvGUIPanel;
        fGUIRootSplitterPanel0:TpvGUISplitterPanel;
        fGUIRootSplitterPanel1:TpvGUISplitterPanel;
+       fGUILeftTabPanel:TpvGUITabPanel;
+       fGUILeftToolPanel:TpvGUIPanel;
        fGUIWindow:TpvGUIWindow;
        fGUILabel:TpvGUILabel;
        fGUIButton:TpvGUIButton;
@@ -248,7 +250,7 @@ begin
 
  fGUIRootSplitterPanel0:=TpvGUISplitterPanel.Create(fGUIRootPanel);
  fGUIRootSplitterPanel0.Orientation:=TpvGUISplitterPanelOrientation.Horizontal;
- fGUIRootSplitterPanel0.LeftTopPanel.Layout:=TpvGUIFillLayout.Create(fGUIRootSplitterPanel0.LeftTopPanel,4.0);
+ fGUIRootSplitterPanel0.LeftTopPanel.Layout:=TpvGUIAdvancedGridLayout.Create(fGUIRootSplitterPanel0.LeftTopPanel,4.0);
  fGUIRootSplitterPanel0.LeftTopPanel.Background:=true;
  fGUIRootSplitterPanel0.RightBottomPanel.Layout:=TpvGUIFillLayout.Create(fGUIRootSplitterPanel0.RightBottomPanel,4.0);
  fGUIRootSplitterPanel0.RightBottomPanel.Background:=true;
@@ -260,6 +262,21 @@ begin
  fGUIRootSplitterPanel1.RightBottomPanel.Layout:=TpvGUIFillLayout.Create(fGUIRootSplitterPanel1.RightBottomPanel,4.0);
  fGUIRootSplitterPanel1.RightBottomPanel.Background:=true;
 
+ TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Rows.Add(200.0,1.0);
+ TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Rows.Add(80.0,0.0);
+ TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Columns.Add(100.0,1.0);
+
+ fGUILeftTabPanel:=TpvGUITabPanel.Create(fGUIRootSplitterPanel0.LeftTopPanel);
+ TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Anchors[fGUILeftTabPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,0,1,1);
+ fGUILeftTabPanel.VisibleHeader:=true;
+ fGUILeftTabPanel.VisibleContent:=true;
+ fGUILeftTabPanel.VisibleContentBackground:=true;
+ fGUILeftTabPanel.Tabs.Add('Signed distance field');
+ fGUILeftTabPanel.Tabs.Add('Mesh fragment');
+
+ fGUILeftToolPanel:=TpvGUIPanel.Create(fGUIRootSplitterPanel0.LeftTopPanel);
+ TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Anchors[fGUILeftToolPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,1,1);
+ fGUILeftToolPanel.Background:=true;
 
 end;
 

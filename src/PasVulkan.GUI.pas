@@ -17984,8 +17984,8 @@ begin
  ExecuteInvalidateActions;
  if TpvGUITabPanelFlag.VisibleHeader in fFlags then begin
   p:=fInstance.MousePosition-GetAbsolutePosition;
-  if ((fTabIndex>=0) and (fTabIndex<fTabs.Count) and
-      fTabs.Items[fTabIndex].fRect.Touched(p)) or not fHeaderRect.Touched(p) then begin
+  if ((fTabIndex>=0) and (fTabIndex<fTabs.Count)) and
+     (fTabs.Items[fTabIndex].fRect.Touched(p) or not fHeaderRect.Touched(p)) then begin
    result:=fTabs.Items[fTabIndex].fRect;
   end else begin
    result:=fHeaderRect;
