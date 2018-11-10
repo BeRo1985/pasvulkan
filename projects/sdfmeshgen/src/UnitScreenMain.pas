@@ -162,6 +162,12 @@ begin
                                   '              1.0);'#13#10+
                                   '}'#13#10;
 
+ fIntegerEditGridSizeWidth.Value:=64;
+
+ fIntegerEditGridSizeHeight.Value:=64;
+
+ fIntegerEditGridSizeDepth.Value:=64;
+
 end;
 
 procedure TScreenMain.Show;
