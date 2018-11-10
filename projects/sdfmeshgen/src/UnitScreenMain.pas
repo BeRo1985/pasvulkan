@@ -273,6 +273,7 @@ begin
  fGUILeftTabPanel.VisibleContentBackground:=true;
  fGUILeftTabPanel.Tabs.Add('Signed distance field');
  fGUILeftTabPanel.Tabs.Add('Mesh fragment');
+ fGUILeftTabPanel.TabIndex:=0;
 
  fGUILeftToolPanel:=TpvGUIPanel.Create(fGUIRootSplitterPanel0.LeftTopPanel);
  TpvGUIAdvancedGridLayout(fGUIRootSplitterPanel0.LeftTopPanel.Layout).Anchors[fGUILeftToolPanel]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,1,1);

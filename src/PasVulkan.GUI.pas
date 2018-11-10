@@ -11201,6 +11201,9 @@ begin
  result:=false;
  if assigned(fInstance) then begin
   ParentWidget:=aFromWidget.Window;
+  if not assigned(ParentWidget) then begin
+   ParentWidget:=aFromWidget.Instance;
+  end;
   if assigned(ParentWidget) then begin
    CurrentWidget:=ParentWidget.FindNextWidget(aFromWidget,not aToPrevious,true,false);
    if assigned(CurrentWidget) and
@@ -12274,7 +12277,7 @@ begin
       if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
        if fCurrentFocusPath.Count>0 then begin
         Current:=fCurrentFocusPath.Items[fCurrentFocusPath.Count-1];
-        if (Current<>self) and (Current is TpvGUIWidget) then begin
+        if assigned(Current) and (Current<>self) and (Current is TpvGUIWidget) then begin
          CurrentWidget:=Current as TpvGUIWidget;
          if CurrentWidget.Focused and not (CurrentWidget.WantAllKeys or CurrentWidget.WantTabKey) then begin
           result:=ProcessTab(CurrentWidget,TpvApplicationInputKeyModifier.SHIFT in aKeyEvent.KeyModifiers);
