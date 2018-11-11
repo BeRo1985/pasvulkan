@@ -11082,15 +11082,35 @@ begin
       aDrawEngine.Color:=FontColor;
      end;
 
-     if assigned(aListView.fOnGetItemText) then begin
-      ItemText:=aListView.fOnGetItemText(aListView,ItemIndex,0);
-     end else begin
-      ItemText:=TpvUTF8String(aListView.fItems[ItemIndex].fCaption);
+     for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
+
+      if ColumnIndex<aListView.fColumns.Count then begin
+       Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
+      end else begin
+       Column:=nil;
+      end;
+
+      if assigned(aListView.fOnGetItemText) then begin
+       ItemText:=aListView.fOnGetItemText(aListView,ItemIndex,ColumnIndex);
+      end else begin
+       if ColumnIndex=0 then begin
+        ItemText:=TpvUTF8String(aListView.fItems[ItemIndex].fCaption);
+       end else if (ColumnIndex-1)<aListView.fItems[ItemIndex].fSubItems.Count then begin
+        ItemText:=TpvUTF8String(aListView.fItems[ItemIndex].fSubItems[ColumnIndex-1]);
+       end else begin
+        ItemText:='';
+       end;
+      end;
+
+      aDrawEngine.Transparent:=true;
+
+      if assigned(Column) then begin
+       aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(Column.fRect.Left,ItemHeight*0.5));
+      end else begin
+       aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,ItemHeight*0.5));
+      end;
+
      end;
-
-     aDrawEngine.Transparent:=true;
-
-     aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,ItemHeight*0.5));
 
      if aListView.fItemIndex=ItemIndex then begin
       if aListView.Focused then begin
@@ -23032,16 +23052,17 @@ end;
 
 constructor TpvGUIFileDialog.Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open);
 var Column:TpvGUIListViewColumn;
+    ListViewItem:TpvGUIListViewItem;
 begin
 
  inherited Create(aParent);
 
  Modal:=true;
 
- Left:=450;
+ Left:=640-400;
  Top:=160;
 
- Width:=400;
+ Width:=800;
  Height:=400;
 
  fMode:=aMode;
@@ -23060,7 +23081,7 @@ begin
  fAdvancedGridLayout.Rows.Add(40.0,0.0); // Filter
  fAdvancedGridLayout.Rows.Add(40.0,0.0); // Buttons
  fAdvancedGridLayout.Columns.Add(80.0,0.0);  // Label
- fAdvancedGridLayout.Columns.Add(320.0,1.0); // TextEditor
+ fAdvancedGridLayout.Columns.Add(720.0,1.0); // TextEditor
 //AddMinimizationButton;
  AddMaximizationButton;
  AddCloseButton;
@@ -23093,16 +23114,24 @@ begin
   Column:=TpvGUIListViewColumn(fListView.Columns.Add);
   Column.fCaption:='Ext';
   Column.fAutoSize:=true;
+  Column.fMinWidth:=64;
 
   Column:=TpvGUIListViewColumn(fListView.Columns.Add);
   Column.fCaption:='Size';
   Column.fAutoSize:=true;
+  Column.fMinWidth:=128;
 
   Column:=TpvGUIListViewColumn(fListView.Columns.Add);
   Column.fCaption:='Date';
   Column.fAutoSize:=true;
+  Column.fMinWidth:=192;
 
-  fListView.Items.New.fCaption:='0';
+  ListViewItem:=fListView.Items.New;
+  ListViewItem.fCaption:='file';
+  ListViewItem.SubItems.Add('ext');
+  ListViewItem.SubItems.Add('1337 bytes');
+  ListViewItem.SubItems.Add('11. November 2018, 18:17:42');
+
   fListView.Items.New.fCaption:='1';
   fListView.Items.New.fCaption:='2';
   fListView.Items.New.fCaption:='3';
