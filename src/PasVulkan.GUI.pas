@@ -2995,6 +2995,7 @@ type TpvGUIObject=class;
       public
        constructor Create; reintroduce;
        destructor Destroy; override;
+       function New:TpvGUIListViewItem;
      end;
 
      PpvGUIListViewFlag=^TpvGUIListViewFlag;
@@ -3037,6 +3038,7 @@ type TpvGUIObject=class;
        fItemIndex:TpvSizeInt;
        fItemWidth:TpvFloat;
        fItemHeight:TpvFloat;
+       fHeaderHeight:TpvFloat;
        fWorkYOffset:TpvFloat;
        fWorkItemWidth:TpvFloat;
        fWorkItemHeight:TpvFloat;
@@ -3087,6 +3089,7 @@ type TpvGUIObject=class;
        property ItemIndex:TpvSizeInt read fItemIndex write SetItemIndex;
        property ItemWidth:TpvFloat read fItemWidth write fItemWidth;
        property ItemHeight:TpvFloat read fItemHeight write fItemHeight;
+       property HeaderHeight:TpvFloat read fHeaderHeight write fHeaderHeight;
        property MultiSelect:boolean read GetMultiSelect write SetMultiSelect;
        property Header:boolean read GetHeader write SetHeader;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
@@ -10825,6 +10828,11 @@ begin
 
  aListView.fWorkYOffset:=BoxCornerMargin;
 
+ if (aListView.fViewMode=TpvGUIListView.TViewMode.List) and
+    (TpvGUIListViewFlag.Header in aListView.fFlags) then begin
+  aListView.fWorkYOffset:=aListView.fWorkYOffset+aListView.fHeaderHeight;
+ end;
+
  aListView.fWorkItemWidth:=ItemWidth;
 
  aListView.fWorkItemHeight:=ItemHeight;
@@ -10838,7 +10846,10 @@ procedure TpvGUIDefaultVectorBasedSkin.DrawListView(const aDrawEngine:TpvGUIDraw
 var Element:TpvInt32;
     ItemIndex:TpvSizeInt;
     CurrentFont:TpvFont;
-    CurrentFontSize,ItemWidth,ItemHeight:TpvFloat;
+    CurrentFontSize,
+    ItemWidth,
+    ItemHeight,
+    YOffset:TpvFloat;
     Position:TpvVector2;
     FontColor:TpvVector4;
     ClipRect,DrawRect,Rect:TpvRect;
@@ -10906,17 +10917,58 @@ begin
 
  aListView.fWorkYOffset:=BoxCornerMargin;
 
+ if (aListView.fViewMode=TpvGUIListView.TViewMode.List) and
+    (TpvGUIListViewFlag.Header in aListView.fFlags) then begin
+  YOffset:=aListView.fHeaderHeight;
+  aListView.fWorkYOffset:=aListView.fWorkYOffset+YOffset;
+ end else begin
+  YOffset:=0.0;
+ end;
+
+ Position.y:=Position.y+YOffset;
+
  aListView.fWorkItemWidth:=ItemWidth;
 
  aListView.fWorkItemHeight:=ItemHeight;
-
- aDrawEngine.Color:=FontColor;
 
  ClipRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
 
  ClipRect.RightBottom:=ClipRect.RightBottom-TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
 
  aDrawEngine.ClipRect:=ClipRect;
+
+ if (aListView.fViewMode=TpvGUIListView.TViewMode.List) and
+    (TpvGUIListViewFlag.Header in aListView.fFlags) then begin
+  if aListView.Enabled then begin
+   FontColor:=aListView.FontColor;
+   if aListView.Focused then begin
+//  Element:=GUI_ELEMENT_BUTTON_FOCUSED;
+    Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
+   end else begin
+    Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
+   end;
+  end else begin
+   Element:=GUI_ELEMENT_BUTTON_DISABLED;
+   FontColor:=TpvVector4.InlineableCreate(aListView.FontColor.rgb,aListView.FontColor.a*0.25);
+  end;
+
+  DrawRect.LeftTop:=ClipRect.LeftTop-aListView.fClipRect.LeftTop;
+  DrawRect.RightBottom:=TpvVector2.InlineableCreate(ClipRect.Right-aListView.fClipRect.Left,aListView.fHeaderHeight);
+
+  aDrawEngine.Transparent:=false;
+
+  aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                 true,
+                                                 DrawRect.LeftTop,
+                                                 DrawRect.RightBottom,
+                                                 DrawRect.LeftTop,
+                                                 DrawRect.RightBottom,
+                                                 0.0,
+                                                 TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                 true);
+ end;
+
+ aDrawEngine.Color:=FontColor;
 
  DrawRect.LeftTop:=ClipRect.LeftTop-aListView.fClipRect.LeftTop;
  DrawRect.RightBottom:=ClipRect.RightBottom-aListView.fClipRect.LeftTop;
@@ -10925,11 +10977,11 @@ begin
 
   if not (assigned(aListView.fOnDrawItem) and
           aListView.fOnDrawItem(aListView,
-                               ItemIndex,
-                               TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left,
-                                                                                  Position.y),
-                                                      TpvVector2.InlineableCreate(DrawRect.Right,
-                                                                                  Position.y+ItemHeight)))) then begin
+                                ItemIndex,
+                                TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left,
+                                                                                   Position.y),
+                                                       TpvVector2.InlineableCreate(DrawRect.Right,
+                                                                                   Position.y+ItemHeight)))) then begin
 
    aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
 
@@ -22291,6 +22343,12 @@ begin
  inherited Destroy;
 end;
 
+function TpvGUIListViewItems.New:TpvGUIListViewItem;
+begin
+ result:=TpvGUIListViewItem.Create(self);
+ Add(result);
+end;
+
 constructor TpvGUIListView.Create(const aParent:TpvGUIObject);
 begin
 
@@ -22305,7 +22363,9 @@ begin
  fScrollBar.MinimumValue:=0;
  fScrollBar.MaximumValue:=1;
 
- fFlags:=[];
+ fFlags:=[TpvGUIListViewFlag.Header];
+
+ fViewMode:=TViewMode.List;
 
  fColumns:=TpvGUIListViewColumns.Create;
 
@@ -22316,6 +22376,8 @@ begin
  fItemWidth:=0.0;
 
  fItemHeight:=0.0;
+
+ fHeaderHeight:=32.0;
 
  fWorkItemWidth:=0.0;
 
@@ -22850,6 +22912,28 @@ begin
 
   fListView:=TpvGUIListView.Create(Content);
   fAdvancedGridLayout.Anchors[fListView]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,2,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+
+  fListView.Items.New.fCaption:='0';
+  fListView.Items.New.fCaption:='1';
+  fListView.Items.New.fCaption:='2';
+  fListView.Items.New.fCaption:='3';
+  fListView.Items.New.fCaption:='4';
+  fListView.Items.New.fCaption:='5';
+  fListView.Items.New.fCaption:='6';
+  fListView.Items.New.fCaption:='7';
+  fListView.Items.New.fCaption:='8';
+  fListView.Items.New.fCaption:='9';
+  fListView.Items.New.fCaption:='10';
+  fListView.Items.New.fCaption:='11';
+  fListView.Items.New.fCaption:='12';
+  fListView.Items.New.fCaption:='13';
+  fListView.Items.New.fCaption:='14';
+  fListView.Items.New.fCaption:='15';
+  fListView.Items.New.fCaption:='16';
+  fListView.Items.New.fCaption:='17';
+  fListView.Items.New.fCaption:='18';
+  fListView.Items.New.fCaption:='19';
+  fListView.Items.New.fCaption:='20';
 
  end;
 
