@@ -10960,14 +10960,9 @@ begin
    if TpvGUIListViewFlag.Header in aListView.fFlags then begin
     if aListView.Enabled then begin
      FontColor:=aListView.FontColor;
-     if aListView.Focused then begin
-  //  Element:=GUI_ELEMENT_BUTTON_FOCUSED;
-      Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
-     end else begin
-      Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
-     end;
+     Element:=GUI_ELEMENT_PANEL_ENABLED;
     end else begin
-     Element:=GUI_ELEMENT_BUTTON_DISABLED;
+     Element:=GUI_ELEMENT_PANEL_DISABLED;
      FontColor:=TpvVector4.InlineableCreate(aListView.FontColor.rgb,aListView.FontColor.a*0.25);
     end;
 
@@ -11111,10 +11106,10 @@ begin
       if assigned(Column) then begin
        case Column.fAlignment of
         TpvGUIListViewColumn.TAlignment.Center:begin
-         XOffset:=((Column.fRect.Width-8)-CurrentFont.TextWidth(ItemText,CurrentFontSize))*0.5;
+         XOffset:=(Column.fRect.Width-CurrentFont.TextWidth(ItemText,CurrentFontSize))*0.5;
         end;
         TpvGUIListViewColumn.TAlignment.Tailing:begin
-         XOffset:=(Column.fRect.Width-8)-CurrentFont.TextWidth(ItemText,CurrentFontSize);
+         XOffset:=Column.fRect.Width-CurrentFont.TextWidth(ItemText,CurrentFontSize);
         end;
         else {TpvGUIListViewColumn.TAlignment.Leading:}begin
          XOffset:=0;
