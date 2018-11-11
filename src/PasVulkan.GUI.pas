@@ -2931,12 +2931,14 @@ type TpvGUIObject=class;
       private
        fAlignment:TAlignment;
        fAutoSize:boolean;
+       fSizeExpand:boolean;
        fCaption:TpvUTF8String;
        fMinWidth:TpvFloat;
        fMaxWidth:TpvFloat;
        fTag:TpvSizeInt;
        fVisible:boolean;
        fWidth:TpvFloat;
+       fRect:TpvRect;
       protected
        procedure SetIndex(Value:integer); override;
        function GetDisplayName:string; override;
@@ -2948,6 +2950,7 @@ type TpvGUIObject=class;
       published
        property Alignment:TAlignment read fAlignment write fAlignment default TAlignment.Leading;
        property AutoSize:boolean read fAutoSize write fAutoSize default false;
+       property SizeExpand:boolean read fSizeExpand write fSizeExpand default false;
        property Caption:TpvUTF8String read fCaption write fCaption;
        property MinWidth:TpvFloat read fMinWidth write fMinWidth;
        property MaxWidth:TpvFloat read fMaxWidth write fMaxWidth;
@@ -3027,7 +3030,8 @@ type TpvGUIObject=class;
        type TViewMode=
              (
               List,
-              Icon
+              Icon,
+              Report
              );
       private
        fFlags:TpvGUIListViewFlags;
@@ -10831,7 +10835,7 @@ begin
 
  aListView.fWorkYBottomOffset:=BoxCornerMargin;
 
- if (aListView.fViewMode=TpvGUIListView.TViewMode.List) and
+ if (aListView.fViewMode=TpvGUIListView.TViewMode.Report) and
     (TpvGUIListViewFlag.Header in aListView.fFlags) then begin
   aListView.fWorkYTopOffset:=aListView.fWorkYTopOffset+aListView.fHeaderHeight;
  end;
@@ -10847,16 +10851,21 @@ end;
 
 procedure TpvGUIDefaultVectorBasedSkin.DrawListView(const aDrawEngine:TpvGUIDrawEngine;const aListView:TpvGUIListView);
 var Element:TpvInt32;
-    ItemIndex:TpvSizeInt;
+    ItemIndex,
+    ColumnIndex:TpvSizeInt;
     CurrentFont:TpvFont;
     CurrentFontSize,
     ItemWidth,
     ItemHeight,
-    YOffset:TpvFloat;
-    Position:TpvVector2;
+    LastX,
+    YOffset,
+    SumWidth:TpvFloat;
+    Position,
+    TextPosition:TpvVector2;
     FontColor:TpvVector4;
     ClipRect,DrawRect,Rect:TpvRect;
     ItemText:TpvUTF8String;
+    Column:TpvGUIListViewColumn;
 begin
 
  aDrawEngine.ModelMatrix:=aListView.fModelMatrix;
@@ -10922,7 +10931,7 @@ begin
 
  aListView.fWorkYBottomOffset:=BoxCornerMargin;
 
- if (aListView.fViewMode=TpvGUIListView.TViewMode.List) and
+ if (aListView.fViewMode=TpvGUIListView.TViewMode.Report) and
     (TpvGUIListViewFlag.Header in aListView.fFlags) then begin
   YOffset:=aListView.fHeaderHeight;
   aListView.fWorkYTopOffset:=aListView.fWorkYTopOffset+YOffset;
@@ -10942,111 +10951,264 @@ begin
 
  aDrawEngine.ClipRect:=ClipRect;
 
- if (aListView.fViewMode=TpvGUIListView.TViewMode.List) and
-    (TpvGUIListViewFlag.Header in aListView.fFlags) then begin
-  if aListView.Enabled then begin
-   FontColor:=aListView.FontColor;
-   if aListView.Focused then begin
-//  Element:=GUI_ELEMENT_BUTTON_FOCUSED;
-    Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
-   end else begin
-    Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
-   end;
-  end else begin
-   Element:=GUI_ELEMENT_BUTTON_DISABLED;
-   FontColor:=TpvVector4.InlineableCreate(aListView.FontColor.rgb,aListView.FontColor.a*0.25);
+ case aListView.fViewMode of
+  TpvGUIListView.TViewMode.Icon:begin
   end;
+  TpvGUIListView.TViewMode.Report:begin
 
-  DrawRect.LeftTop:=ClipRect.LeftTop-aListView.fClipRect.LeftTop;
-  DrawRect.RightBottom:=TpvVector2.InlineableCreate(ClipRect.Right-aListView.fClipRect.Left,aListView.fHeaderHeight);
-
-  aDrawEngine.Transparent:=false;
-
-  aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
-                                                 true,
-                                                 DrawRect.LeftTop,
-                                                 DrawRect.RightBottom,
-                                                 DrawRect.LeftTop,
-                                                 DrawRect.RightBottom,
-                                                 0.0,
-                                                 TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
-                                                 true);
- end;
-
- aDrawEngine.Color:=FontColor;
-
- DrawRect.LeftTop:=ClipRect.LeftTop-aListView.fClipRect.LeftTop;
- DrawRect.RightBottom:=ClipRect.RightBottom-aListView.fClipRect.LeftTop;
-
- for ItemIndex:=aListView.fScrollBar.Value to aListView.fItems.Count-1 do begin
-
-  if not (assigned(aListView.fOnDrawItem) and
-          aListView.fOnDrawItem(aListView,
-                                ItemIndex,
-                                TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left,
-                                                                                   Position.y),
-                                                       TpvVector2.InlineableCreate(DrawRect.Right,
-                                                                                   Position.y+ItemHeight)))) then begin
-
-   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
-
-   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
-
-   if aListView.Selected[ItemIndex] then begin
-    aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
-    aDrawEngine.Transparent:=true;
-    aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
-                                                                                       Position.y),
-                                                           TpvVector2.InlineableCreate(aListView.fSize.x-(BoxCornerMargin*2.0),
-                                                                                       ItemHeight)));
-    aDrawEngine.Color:=FontColor;
-   end;
-
-   if assigned(aListView.fOnGetItemText) then begin
-    ItemText:=aListView.fOnGetItemText(aListView,ItemIndex,0);
-   end else begin
-    ItemText:=TpvUTF8String(aListView.fItems[ItemIndex].fCaption);
-   end;
-
-   aDrawEngine.Transparent:=true;
-
-   aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,ItemHeight*0.5));
-
-   if aListView.fItemIndex=ItemIndex then begin
-    if aListView.Focused then begin
-     Element:=GUI_ELEMENT_FOCUSED;
+   if TpvGUIListViewFlag.Header in aListView.fFlags then begin
+    if aListView.Enabled then begin
+     FontColor:=aListView.FontColor;
+     if aListView.Focused then begin
+  //  Element:=GUI_ELEMENT_BUTTON_FOCUSED;
+      Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
+     end else begin
+      Element:=GUI_ELEMENT_BUTTON_UNFOCUSED;
+     end;
     end else begin
-     Element:=GUI_ELEMENT_HOVERED;
+     Element:=GUI_ELEMENT_BUTTON_DISABLED;
+     FontColor:=TpvVector4.InlineableCreate(aListView.FontColor.rgb,aListView.FontColor.a*0.25);
     end;
-    Rect:=ClipRect;
-    Rect.Left:=ClipRect.Left-1.0;
-    Rect.Right:=ClipRect.Right+1.0;
-    aDrawEngine.ClipRect:=Rect;
-    Rect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(BoxCornerMargin,
-                                                             Position.y),
-                                 TpvVector2.InlineableCreate(DrawRect.Right,
-                                                             Position.y+ItemHeight));
+
+    aDrawEngine.Transparent:=false;
+
+    SumWidth:=0.0;
+
+    for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
+     Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
+     if not Column.fSizeExpand then begin
+      if Column.fAutoSize then begin
+       Column.fWidth:=CurrentFont.TextWidth(Column.fCaption,CurrentFontSize)+16.0;
+      end;
+      if (Column.fMinWidth>0.0) and (Column.fWidth<Column.fMinWidth) then begin
+       Column.fWidth:=Column.fMinWidth;
+      end;
+      if (Column.fMaxWidth>0.0) and (Column.fWidth>Column.fMaxWidth) then begin
+       Column.fWidth:=Column.fMaxWidth;
+      end;
+      SumWidth:=SumWidth+Column.fWidth;
+     end;
+    end;
+
+    for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
+     Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
+     if Column.fSizeExpand then begin
+      Column.fWidth:=Max(0.0,ClipRect.Width-SumWidth);
+      if (Column.fMinWidth>0.0) and (Column.fWidth<Column.fMinWidth) then begin
+       Column.fWidth:=Column.fMinWidth;
+      end;
+      if (Column.fMaxWidth>0.0) and (Column.fWidth>Column.fMaxWidth) then begin
+       Column.fWidth:=Column.fMaxWidth;
+      end;
+      break;
+     end;
+    end;
+
+    LastX:=-1.0;
+    for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
+     Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
+     Column.fRect.LeftTop:=(ClipRect.LeftTop-aListView.fClipRect.LeftTop)+TpvVector2.InlineableCreate(LastX+1,0);
+     Column.fRect.RightBottom:=TpvVector2.InlineableCreate(ClipRect.Left-aListView.fClipRect.Left,aListView.fHeaderHeight)+TpvVector2.InlineableCreate(LastX+1+Column.fWidth,0);
+     LastX:=LastX+Column.fWidth;
+    end;
+
+    for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
+     Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
+     DrawRect:=Column.fRect;
+     aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                    true,
+                                                    DrawRect.LeftTop,
+                                                    DrawRect.RightBottom,
+                                                    DrawRect.LeftTop,
+                                                    DrawRect.RightBottom,
+                                                    0.0,
+                                                    TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                    true);
+    end;
+
+    if LastX<(ClipRect.Right-ClipRect.Left) then begin
+     DrawRect.LeftTop:=(ClipRect.LeftTop-aListView.fClipRect.LeftTop)+TpvVector2.InlineableCreate(LastX+1,0);
+     DrawRect.RightBottom:=TpvVector2.InlineableCreate(ClipRect.Right-aListView.fClipRect.Left,aListView.fHeaderHeight);
+     aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                    true,
+                                                    DrawRect.LeftTop,
+                                                    DrawRect.RightBottom,
+                                                    DrawRect.LeftTop,
+                                                    DrawRect.RightBottom,
+                                                    0.0,
+                                                    TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                    true);
+    end;
+
+    aDrawEngine.Color:=FontColor;
+
     aDrawEngine.Transparent:=true;
-    aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
-                                                   true,
-                                                   Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
-                                                   Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
-                                                   Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
-                                                   Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0),
-                                                   0.0,
-                                                   TpvRect.CreateAbsolute(32.0,32.0,32.0,32.0),
-                                                   true);
-    aDrawEngine.ClipRect:=ClipRect;
+
+    for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
+     Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
+     DrawRect:=Column.fRect;
+     TextPosition:=Column.fRect.LeftTop+((Column.fRect.Size+TpvVector2.InlineableCreate(-CurrentFont.TextWidth(Column.fCaption,CurrentFontSize),0.0))*0.5);
+     aDrawEngine.DrawText(Column.fCaption,TextPosition);
+    end;
+
+   end;
+
+   aDrawEngine.Color:=FontColor;
+
+   DrawRect.LeftTop:=ClipRect.LeftTop-aListView.fClipRect.LeftTop;
+   DrawRect.RightBottom:=ClipRect.RightBottom-aListView.fClipRect.LeftTop;
+
+   for ItemIndex:=aListView.fScrollBar.Value to aListView.fItems.Count-1 do begin
+
+    if not (assigned(aListView.fOnDrawItem) and
+            aListView.fOnDrawItem(aListView,
+                                  ItemIndex,
+                                  TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left,
+                                                                                     Position.y),
+                                                         TpvVector2.InlineableCreate(DrawRect.Right,
+                                                                                     Position.y+ItemHeight)))) then begin
+
+     aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+
+     aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+
+     if aListView.Selected[ItemIndex] then begin
+      aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+      aDrawEngine.Transparent:=true;
+      aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                                                         Position.y),
+                                                             TpvVector2.InlineableCreate(aListView.fSize.x-(BoxCornerMargin*2.0),
+                                                                                         ItemHeight)));
+      aDrawEngine.Color:=FontColor;
+     end;
+
+     if assigned(aListView.fOnGetItemText) then begin
+      ItemText:=aListView.fOnGetItemText(aListView,ItemIndex,0);
+     end else begin
+      ItemText:=TpvUTF8String(aListView.fItems[ItemIndex].fCaption);
+     end;
+
+     aDrawEngine.Transparent:=true;
+
+     aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,ItemHeight*0.5));
+
+     if aListView.fItemIndex=ItemIndex then begin
+      if aListView.Focused then begin
+       Element:=GUI_ELEMENT_FOCUSED;
+      end else begin
+       Element:=GUI_ELEMENT_HOVERED;
+      end;
+      Rect:=ClipRect;
+      Rect.Left:=ClipRect.Left-1.0;
+      Rect.Right:=ClipRect.Right+1.0;
+      aDrawEngine.ClipRect:=Rect;
+      Rect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                               Position.y),
+                                   TpvVector2.InlineableCreate(DrawRect.Right,
+                                                               Position.y+ItemHeight));
+      aDrawEngine.Transparent:=true;
+      aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                     true,
+                                                     Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
+                                                     Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
+                                                     Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
+                                                     Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0),
+                                                     0.0,
+                                                     TpvRect.CreateAbsolute(32.0,32.0,32.0,32.0),
+                                                     true);
+      aDrawEngine.ClipRect:=ClipRect;
+     end;
+
+    end;
+
+    Position.y:=Position.y+ItemHeight;
+
+    if Position.y>aListView.fSize.y then begin
+     break;
+    end;
+
    end;
 
   end;
+  else {TpvGUIListView.TViewMode.List:}begin
 
-  Position.y:=Position.y+ItemHeight;
+   aDrawEngine.Color:=FontColor;
 
-  if Position.y>aListView.fSize.y then begin
-   break;
+   DrawRect.LeftTop:=ClipRect.LeftTop-aListView.fClipRect.LeftTop;
+   DrawRect.RightBottom:=ClipRect.RightBottom-aListView.fClipRect.LeftTop;
+
+   for ItemIndex:=aListView.fScrollBar.Value to aListView.fItems.Count-1 do begin
+
+    if not (assigned(aListView.fOnDrawItem) and
+            aListView.fOnDrawItem(aListView,
+                                  ItemIndex,
+                                  TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left,
+                                                                                     Position.y),
+                                                         TpvVector2.InlineableCreate(DrawRect.Right,
+                                                                                     Position.y+ItemHeight)))) then begin
+
+     aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+
+     aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+
+     if aListView.Selected[ItemIndex] then begin
+      aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+      aDrawEngine.Transparent:=true;
+      aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                                                         Position.y),
+                                                             TpvVector2.InlineableCreate(aListView.fSize.x-(BoxCornerMargin*2.0),
+                                                                                         ItemHeight)));
+      aDrawEngine.Color:=FontColor;
+     end;
+
+     if assigned(aListView.fOnGetItemText) then begin
+      ItemText:=aListView.fOnGetItemText(aListView,ItemIndex,0);
+     end else begin
+      ItemText:=TpvUTF8String(aListView.fItems[ItemIndex].fCaption);
+     end;
+
+     aDrawEngine.Transparent:=true;
+
+     aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,ItemHeight*0.5));
+
+     if aListView.fItemIndex=ItemIndex then begin
+      if aListView.Focused then begin
+       Element:=GUI_ELEMENT_FOCUSED;
+      end else begin
+       Element:=GUI_ELEMENT_HOVERED;
+      end;
+      Rect:=ClipRect;
+      Rect.Left:=ClipRect.Left-1.0;
+      Rect.Right:=ClipRect.Right+1.0;
+      aDrawEngine.ClipRect:=Rect;
+      Rect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                               Position.y),
+                                   TpvVector2.InlineableCreate(DrawRect.Right,
+                                                               Position.y+ItemHeight));
+      aDrawEngine.Transparent:=true;
+      aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                     true,
+                                                     Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
+                                                     Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
+                                                     Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
+                                                     Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0),
+                                                     0.0,
+                                                     TpvRect.CreateAbsolute(32.0,32.0,32.0,32.0),
+                                                     true);
+      aDrawEngine.ClipRect:=ClipRect;
+     end;
+
+    end;
+
+    Position.y:=Position.y+ItemHeight;
+
+    if Position.y>aListView.fSize.y then begin
+     break;
+    end;
+
+   end;
+
   end;
-
  end;
 
  aDrawEngine.Next;
@@ -22227,6 +22389,7 @@ begin
  inherited Create(Collection);
  fAlignment:=TAlignment.Leading;
  fAutoSize:=false;
+ fSizeExpand:=false;
  fCaption:='';
  fMinWidth:=-1.0;
  fMaxWidth:=-1.0;
@@ -22245,6 +22408,7 @@ begin
  if Source is TpvGUIListViewColumn then begin
   fAlignment:=TpvGUIListViewColumn(Source).fAlignment;
   fAutoSize:=TpvGUIListViewColumn(Source).fAutoSize;
+  fSizeExpand:=TpvGUIListViewColumn(Source).fSizeExpand;
   fCaption:=TpvGUIListViewColumn(Source).fCaption;
   fMinWidth:=TpvGUIListViewColumn(Source).fMinWidth;
   fMaxWidth:=TpvGUIListViewColumn(Source).fMaxWidth;
@@ -22370,7 +22534,7 @@ begin
 
  fFlags:=[TpvGUIListViewFlag.Header];
 
- fViewMode:=TViewMode.List;
+ fViewMode:=TViewMode.Report;
 
  fColumns:=TpvGUIListViewColumns.Create;
 
@@ -22867,6 +23031,7 @@ begin
 end;
 
 constructor TpvGUIFileDialog.Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open);
+var Column:TpvGUIListViewColumn;
 begin
 
  inherited Create(aParent);
@@ -22919,6 +23084,23 @@ begin
 
   fListView:=TpvGUIListView.Create(Content);
   fAdvancedGridLayout.Anchors[fListView]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,2,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+
+  Column:=TpvGUIListViewColumn(fListView.Columns.Add);
+  Column.fCaption:='Name';
+  Column.fAutoSize:=true;
+  Column.fSizeExpand:=true;
+
+  Column:=TpvGUIListViewColumn(fListView.Columns.Add);
+  Column.fCaption:='Ext';
+  Column.fAutoSize:=true;
+
+  Column:=TpvGUIListViewColumn(fListView.Columns.Add);
+  Column.fCaption:='Size';
+  Column.fAutoSize:=true;
+
+  Column:=TpvGUIListViewColumn(fListView.Columns.Add);
+  Column.fCaption:='Date';
+  Column.fAutoSize:=true;
 
   fListView.Items.New.fCaption:='0';
   fListView.Items.New.fCaption:='1';
