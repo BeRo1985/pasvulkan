@@ -3039,7 +3039,8 @@ type TpvGUIObject=class;
        fItemWidth:TpvFloat;
        fItemHeight:TpvFloat;
        fHeaderHeight:TpvFloat;
-       fWorkYOffset:TpvFloat;
+       fWorkYTopOffset:TpvFloat;
+       fWorkYBottomOffset:TpvFloat;
        fWorkItemWidth:TpvFloat;
        fWorkItemHeight:TpvFloat;
        fOnChange:TpvGUIOnEvent;
@@ -10826,11 +10827,13 @@ begin
   ItemHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
  end;
 
- aListView.fWorkYOffset:=BoxCornerMargin;
+ aListView.fWorkYTopOffset:=BoxCornerMargin;
+
+ aListView.fWorkYBottomOffset:=BoxCornerMargin;
 
  if (aListView.fViewMode=TpvGUIListView.TViewMode.List) and
     (TpvGUIListViewFlag.Header in aListView.fFlags) then begin
-  aListView.fWorkYOffset:=aListView.fWorkYOffset+aListView.fHeaderHeight;
+  aListView.fWorkYTopOffset:=aListView.fWorkYTopOffset+aListView.fHeaderHeight;
  end;
 
  aListView.fWorkItemWidth:=ItemWidth;
@@ -10915,12 +10918,14 @@ begin
   ItemHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
  end;
 
- aListView.fWorkYOffset:=BoxCornerMargin;
+ aListView.fWorkYTopOffset:=BoxCornerMargin;
+
+ aListView.fWorkYBottomOffset:=BoxCornerMargin;
 
  if (aListView.fViewMode=TpvGUIListView.TViewMode.List) and
     (TpvGUIListViewFlag.Header in aListView.fFlags) then begin
   YOffset:=aListView.fHeaderHeight;
-  aListView.fWorkYOffset:=aListView.fWorkYOffset+YOffset;
+  aListView.fWorkYTopOffset:=aListView.fWorkYTopOffset+YOffset;
  end else begin
   YOffset:=0.0;
  end;
@@ -22383,7 +22388,9 @@ begin
 
  fWorkItemHeight:=0.0;
 
- fWorkYOffset:=0.0;
+ fWorkYTopOffset:=0.0;
+
+ fWorkYBottomOffset:=0.0;
 
  fOnChange:=nil;
 
@@ -22584,7 +22591,7 @@ end;
 
 function TpvGUIListView.GetCountVisibleItems:TpvSizeInt;
 begin
- result:=trunc((fSize.y-(fWorkYOffset*2.0))/Max(fWorkItemHeight,1));
+ result:=trunc((fSize.y-(fWorkYTopOffset+fWorkYBottomOffset))/Max(fWorkItemHeight,1));
 end;
 
 procedure TpvGUIListView.AdjustScrollBar;
@@ -22774,7 +22781,7 @@ begin
     TpvApplicationInputPointerEventType.Down:begin
      RequestFocus;
      fAction:=TpvGUIListViewAction.None;
-     SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
+     SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYTopOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
      if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
       SetSelected(fItemIndex,not GetSelected(fItemIndex));
      end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
@@ -22788,7 +22795,7 @@ begin
     end;
     TpvApplicationInputPointerEventType.Up:begin
      if fAction=TpvGUIListViewAction.Mark then begin
-      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
+      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYTopOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
       fActionStopIndex:=fItemIndex;
       fSelectedBitmap:=nil;
       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
@@ -22803,7 +22810,7 @@ begin
     end;
     TpvApplicationInputPointerEventType.Motion:begin
      if fAction=TpvGUIListViewAction.Mark then begin
-      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
+      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYTopOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
       fActionStopIndex:=fItemIndex;
       fSelectedBitmap:=nil;
       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
@@ -22817,7 +22824,7 @@ begin
     end;
     TpvApplicationInputPointerEventType.Drag:begin
      if fAction=TpvGUIListViewAction.Mark then begin
-      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
+      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYTopOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
       fActionStopIndex:=fItemIndex;
       fSelectedBitmap:=nil;
       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
