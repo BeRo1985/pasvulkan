@@ -2987,6 +2987,37 @@ type TpvGUIObject=class;
        destructor Destroy; override;
      end;
 
+     TpvGUIFileDialog=class(TpvGUIWindow)
+      public
+       type TMode=
+             (
+              Open,
+              Save
+             );
+      private
+       fMode:TMode;
+       fAdvancedGridLayout:TpvGUIAdvancedGridLayout;
+       fLabelPath:TpvGUILabel;
+       fTextEditPath:TpvGUITextEdit;
+       fListBox:TpvGUIListBox;
+       fLabelFileName:TpvGUILabel;
+       fTextEditFileName:TpvGUITextEdit;
+       fLabelFilter:TpvGUILabel;
+       fTextEditFilter:TpvGUITextEdit;
+       fPanelButtons:TpvGUIPanel;
+       fButtonOpenSave:TpvGUIButton;
+       fButtonCancel:TpvGUIButton;
+       function TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       function TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       function TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       procedure ButtonOpenSaveOnClick(const aSender:TpvGUIObject);
+       procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
+      public
+       constructor Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open); reintroduce;
+       destructor Destroy; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+     end;
+
 implementation
 
 uses PasDblStrUtils,
@@ -20990,8 +21021,8 @@ begin
   fIntegerEditLineNumber:=TpvGUIIntegerEdit.Create(Content);
   fIntegerEditLineNumber.MinimumHeight:=32;
   fIntegerEditLineNumber.OnKeyEvent:=IntegerEditLineNumberOnKeyEvent;
-  fIntegerEditLineNumber.fSmallStep:=1;  
-  fIntegerEditLineNumber.fLargeStep:=16;  
+  fIntegerEditLineNumber.fSmallStep:=1;
+  fIntegerEditLineNumber.fLargeStep:=16;
   fIntegerEditLineNumber.MinimumValue:=1;
   fIntegerEditLineNumber.MaximumValue:=Max(1,aMultiLineTextEdit.fView.CountLines);
   fIntegerEditLineNumber.Value:=aMultiLineTextEdit.fView.VisualLineColumn.Line+1;
@@ -21247,7 +21278,7 @@ begin
        if assigned(fOnChange) then begin
        fOnChange(self);
       end;
-     result:=true;
+      result:=true;
      end;
      KEYCODE_HOME:begin
       result:=true;
@@ -21945,6 +21976,189 @@ end;
 destructor TpvGUIListViewItems.Destroy;
 begin
  inherited Destroy;
+end;
+
+constructor TpvGUIFileDialog.Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open);
+begin
+
+ inherited Create(aParent);
+
+ Modal:=true;
+
+ Left:=450;
+ Top:=160;
+
+ Width:=400;
+ Height:=400;
+
+ fMode:=aMode;
+
+ if fMode=TMode.Open then begin
+  Title:='Open';
+ end else begin
+  Title:='Save';
+ end;
+
+ fAdvancedGridLayout:=TpvGUIAdvancedGridLayout.Create(Window.Content,4.0);
+ Content.Layout:=fAdvancedGridLayout;
+ fAdvancedGridLayout.Rows.Add(40.0,0.0); // Path
+ fAdvancedGridLayout.Rows.Add(240.0,1.0); // List
+ fAdvancedGridLayout.Rows.Add(40.0,0.0); // File name
+ fAdvancedGridLayout.Rows.Add(40.0,0.0); // Filter
+ fAdvancedGridLayout.Rows.Add(40.0,0.0); // Buttons
+ fAdvancedGridLayout.Columns.Add(80.0,0.0);  // Label
+ fAdvancedGridLayout.Columns.Add(320.0,1.0); // TextEditor
+//AddMinimizationButton;
+ AddMaximizationButton;
+ AddCloseButton;
+
+ begin
+
+  fLabelPath:=TpvGUILabel.Create(Content);
+  fLabelPath.Caption:='Path';
+  fLabelPath.TextHorizontalAlignment:=TpvGUITextAlignment.Tailing;
+  fAdvancedGridLayout.Anchors[fLabelPath]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,0,1,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Tailing,TpvGUILayoutAlignment.Middle);
+
+  fTextEditPath:=TpvGUITextEdit.Create(Content);
+  fTextEditPath.MinimumHeight:=32;
+  fTextEditPath.OnKeyEvent:=TextEditPathOnKeyEvent;
+  fTextEditPath.Text:='';
+  fAdvancedGridLayout.Anchors[fTextEditPath]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,0,1,1,4.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
+
+ end;
+
+ begin
+
+  fListBox:=TpvGUIListBox.Create(Content);
+  fAdvancedGridLayout.Anchors[fListBox]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,2,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+
+ end;
+
+ begin
+
+  fLabelFileName:=TpvGUILabel.Create(Content);
+  fLabelFileName.Caption:='File name';
+  fLabelFileName.TextHorizontalAlignment:=TpvGUITextAlignment.Tailing;
+  fAdvancedGridLayout.Anchors[fLabelFileName]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,2,1,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Tailing,TpvGUILayoutAlignment.Middle);
+
+  fTextEditFileName:=TpvGUITextEdit.Create(Content);
+  fTextEditFileName.MinimumWidth:=400;
+  fTextEditFileName.MinimumHeight:=32;
+  fTextEditFileName.OnKeyEvent:=TextEditFileNameOnKeyEvent;
+  fTextEditFileName.Text:='';
+  fAdvancedGridLayout.Anchors[fTextEditFileName]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,2,1,1,4.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
+
+ end;
+
+ begin
+
+  fLabelFilter:=TpvGUILabel.Create(Content);
+  fLabelFilter.Caption:='Filter';
+  fLabelFilter.TextHorizontalAlignment:=TpvGUITextAlignment.Tailing;
+  fAdvancedGridLayout.Anchors[fLabelFilter]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,3,1,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Tailing,TpvGUILayoutAlignment.Middle);
+
+  fTextEditFilter:=TpvGUITextEdit.Create(Content);
+  fTextEditFilter.MinimumHeight:=32;
+  fTextEditFilter.OnKeyEvent:=TextEditFilterOnKeyEvent;
+  fTextEditFilter.Text:='*.*';
+  fAdvancedGridLayout.Anchors[fTextEditFilter]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,3,1,1,4.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
+
+ end;
+
+ begin
+
+  fPanelButtons:=TpvGUIPanel.Create(Content);
+  fAdvancedGridLayout.Anchors[fPanelButtons]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,4,2,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+  fPanelButtons.Layout:=TpvGUIGridLayout.Create(Window.Content,
+                                                2,
+                                                TpvGUILayoutAlignment.Fill,
+                                                TpvGUILayoutAlignment.Middle,
+                                                TpvGUILayoutOrientation.Horizontal,
+                                                0.0,
+                                                4.0,
+                                                0.0);
+
+  begin
+
+   fButtonOpenSave:=TpvGUIButton.Create(fPanelButtons);
+   if fMode=TMode.Open then begin
+    fButtonOpenSave.Caption:='Open';
+   end else begin
+    fButtonOpenSave.Caption:='Save';
+   end;
+   fButtonOpenSave.OnClick:=ButtonOpenSaveOnClick;
+
+   fButtonCancel:=TpvGUIButton.Create(fPanelButtons);
+   fButtonCancel.Caption:='Cancel';
+   fButtonCancel.OnClick:=ButtonCancelOnClick;
+
+  end;
+
+ end;
+
+end;
+
+destructor TpvGUIFileDialog.Destroy;
+begin
+ inherited Destroy;
+end;
+
+function TpvGUIFileDialog.TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=false;
+ if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_RETURN,KEYCODE_RETURN2:begin
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIFileDialog.TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=false;
+ if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_RETURN,KEYCODE_RETURN2:begin
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIFileDialog.TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=false;
+ if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_RETURN,KEYCODE_RETURN2:begin
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvGUIFileDialog.ButtonOpenSaveOnClick(const aSender:TpvGUIObject);
+begin
+end;
+
+procedure TpvGUIFileDialog.ButtonCancelOnClick(const aSender:TpvGUIObject);
+begin
+ Close;
+end;
+
+function TpvGUIFileDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_ESCAPE:begin
+    result:=true;
+    Close;
+   end;
+  end;
+ end;
 end;
 
 end.

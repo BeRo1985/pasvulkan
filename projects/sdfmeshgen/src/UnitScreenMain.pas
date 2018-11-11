@@ -135,12 +135,19 @@ implementation
 constructor TScreenMain.Create;
 begin
  inherited Create;
+
  fReady:=false;
+
  fNewProjectMessageDialogVisible:=false;
+
  fTerminationMessageDialogVisible:=false;
+
  fTime:=0.48;
+
  fLastMousePosition:=TpvVector2.Null;
+
  fLastMouseButtons:=[];
+
 end;
 
 destructor TScreenMain.Destroy;
@@ -423,6 +430,9 @@ begin
  fGUIUpdateProgressBar:=TpvGUIProgressBar.Create(fGUILeftToolPanel);
  fGUIUpdateProgressBar.Orientation:=TpvGUIProgressBarOrientation.Horizontal;
  fGUIUpdateProgressBar.Width:=30.0;
+ fGUIUpdateProgressBar.MinimumValue:=0;
+ fGUIUpdateProgressBar.MaximumValue:=65536;
+ fGUIUpdateProgressBar.Value:=0;
 
  fGUIVulkanCanvas:=TpvGUIVulkanCanvas.Create(fGUIRootSplitterPanel1.LeftTopPanel);
 
@@ -552,6 +562,8 @@ begin
 
  end;
 
+ TpvGUIFileDialog.Create(fGUIInstance);
+
  NewProject;
 
 end;
@@ -660,6 +672,8 @@ begin
   fVulkanCanvas.Width:=1280;
   fVulkanCanvas.Height:=(1280*pvApplication.Height) div pvApplication.Width;
  end;
+{fVulkanCanvas.Width:=(pvApplication.Width*12) div 16;
+ fVulkanCanvas.Height:=(pvApplication.Height*12) div 16;}
  fVulkanCanvas.Viewport.x:=0;
  fVulkanCanvas.Viewport.y:=0;
  fVulkanCanvas.Viewport.width:=pvApplication.Width;
@@ -803,6 +817,8 @@ begin
  fVulkanCanvas.DrawFilledCircle(fLastMousePosition,4.0);
  fVulkanCanvas.Color:=TpvVector4.Create(1.0,1.0,1.0,1.0);
 {$ifend}
+
+// fGUIUpdateProgressBar.Value:=trunc(fTime*65536) and $ffff;
 
  fGUIInstance.DrawWidgetBounds:=false;
  fGUIInstance.UpdateBufferIndex:=pvApplication.UpdateSwapChainImageIndex;
