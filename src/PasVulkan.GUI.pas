@@ -2625,6 +2625,8 @@ type TpvGUIObject=class;
 
      TpvGUIMultiLineTextEditSearchReplaceWindow=class;
 
+     TpvGUIMultiLineTextEditGoToLineWindow=class;
+
      TpvGUIMultiLineTextEditSearchReplaceState=class
       private
        fParent:TpvGUIMultiLineTextEdit;
@@ -2693,6 +2695,7 @@ type TpvGUIObject=class;
        fOnChange:TpvGUIOnEvent;
        fSearchReplaceWindow:TpvGUIMultiLineTextEditSearchReplaceWindow;
        fSearchReplaceState:TpvGUIMultiLineTextEditSearchReplaceState;
+       fGoToLineWindow:TpvGUIMultiLineTextEditGoToLineWindow;
        procedure OpenSearchReplaceDialog(const aReplace:boolean);
        procedure FindNext;
        procedure PopupMenuOnCutClick(const aSender:TpvGUIObject);
@@ -2703,6 +2706,7 @@ type TpvGUIObject=class;
        procedure PopupMenuOnSelectNoneClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnUndoClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnRedoClick(const aSender:TpvGUIObject);
+       procedure PopupMenuOnGoToLineNumberClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnSearchClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnFindNextClick(const aSender:TpvGUIObject);
        procedure PopupMenuOnReplaceClick(const aSender:TpvGUIObject);
@@ -2783,6 +2787,24 @@ type TpvGUIObject=class;
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
       public
        constructor Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit;const aReplace:boolean); reintroduce;
+       destructor Destroy; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+     end;
+
+     TpvGUIMultiLineTextEditGoToLineWindow=class(TpvGUIWindow)
+      private
+       fMultiLineTextEdit:TpvGUIMultiLineTextEdit;
+       fAdvancedGridLayout:TpvGUIAdvancedGridLayout;
+       fLabelLineNumber:TpvGUILabel;
+       fIntegerEditLineNumber:TpvGUIIntegerEdit;
+       fPanelButtons:TpvGUIPanel;
+       fButtonOK:TpvGUIButton;
+       fButtonCancel:TpvGUIButton;
+       function IntegerEditLineNumberOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       procedure ButtonOKOnClick(const aSender:TpvGUIObject);
+       procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
+      public
+       constructor Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit); reintroduce;
        destructor Destroy; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
      end;
@@ -19681,6 +19703,16 @@ begin
  MenuItem.Caption:='-';
 
  MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
+ MenuItem.Caption:='Go to line number';
+ MenuItem.ShortcutHint:='Ctrl-G';
+ MenuItem.fIcon:=Skin.fIconSearch;
+ MenuItem.fIconHeight:=Skin.fIconPopupMenuHeight;
+ MenuItem.OnClick:=PopupMenuOnGoToLineNumberClick;
+
+ MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
+ MenuItem.Caption:='-';
+
+ MenuItem:=TpvGUIMenuItem.Create(fPopupMenu);
  MenuItem.Caption:='Search';
  MenuItem.ShortcutHint:='Ctrl-F';
  MenuItem.fIcon:=Skin.fIconSearch;
@@ -19737,6 +19769,8 @@ begin
 
  fSearchReplaceState:=nil;
 
+ fGoToLineWindow:=nil;
+
 end;
 
 destructor TpvGUIMultiLineTextEdit.Destroy;
@@ -19753,6 +19787,12 @@ begin
   fSearchReplaceWindow:=nil;
  end;
 
+ if assigned(fGoToLineWindow) then begin
+  fGoToLineWindow.fMultiLineTextEdit:=nil;
+  fGoToLineWindow.DisposeWindow;
+  fGoToLineWindow:=nil;
+ end;
+ 
  fViewBuffer:=nil;
 
  FreeAndNil(fView);
@@ -19847,6 +19887,15 @@ begin
   fTime:=0.0;
   if assigned(fOnChange) then begin
    fOnChange(self);
+  end;
+ end;
+end;
+
+procedure TpvGUIMultiLineTextEdit.PopupMenuOnGoToLineNumberClick(const aSender:TpvGUIObject);
+begin
+ if assigned(fView) then begin
+  if not assigned(fGoToLineWindow) then begin
+   fGoToLineWindow:=TpvGUIMultiLineTextEditGoToLineWindow.Create(fInstance,self);
   end;
  end;
 end;
@@ -20427,6 +20476,12 @@ begin
        result:=true;
       end;
      end;
+     KEYCODE_G:begin
+      if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
+       PopupMenuOnGoToLineNumberClick(nil);
+       result:=true;
+      end;
+     end;
      KEYCODE_H,KEYCODE_R:begin
       if TpvApplicationInputKeyModifier.CTRL in aKeyEvent.KeyModifiers then begin
        OpenSearchReplaceDialog(true);
@@ -20897,6 +20952,139 @@ begin
 end;
 
 procedure TpvGUIMultiLineTextEditSearchReplaceWindow.ButtonCancelOnClick(const aSender:TpvGUIObject);
+begin
+ Close;
+end;
+///
+constructor TpvGUIMultiLineTextEditGotoLineWindow.Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
+begin
+
+ inherited Create(aParent);
+
+ Modal:=true;
+
+ fMultiLineTextEdit:=aMultiLineTextEdit;
+
+ Left:=450;
+ Top:=170;
+
+ Title:='Go to line number';
+ 
+ fAdvancedGridLayout:=TpvGUIAdvancedGridLayout.Create(Window.Content,0.0);
+ Content.Layout:=fAdvancedGridLayout;
+ fAdvancedGridLayout.Rows.Add(80.0,1.0);
+ fAdvancedGridLayout.Columns.Add(80.0,0.0);
+ fAdvancedGridLayout.Columns.Add(150.0,1.0);
+ fAdvancedGridLayout.Columns.Add(100.0,0.0);
+ AddMinimizationButton;
+ AddMaximizationButton;
+ AddCloseButton;
+
+ begin
+
+  fLabelLineNumber:=TpvGUILabel.Create(Content);
+  fLabelLineNumber.Caption:='Line number';
+  fLabelLineNumber.TextHorizontalAlignment:=TpvGUITextAlignment.Tailing;
+  fAdvancedGridLayout.Anchors[fLabelLineNumber]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,0,1,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Tailing,TpvGUILayoutAlignment.Middle);
+
+  fIntegerEditLineNumber:=TpvGUIIntegerEdit.Create(Content);
+  fIntegerEditLineNumber.MinimumHeight:=32;
+  fIntegerEditLineNumber.OnKeyEvent:=IntegerEditLineNumberOnKeyEvent;
+  fIntegerEditLineNumber.fSmallStep:=1;  
+  fIntegerEditLineNumber.fLargeStep:=16;  
+  fIntegerEditLineNumber.MinimumValue:=1;
+  fIntegerEditLineNumber.MaximumValue:=Max(1,aMultiLineTextEdit.fView.CountLines);
+  fIntegerEditLineNumber.Value:=aMultiLineTextEdit.fView.VisualLineColumn.Line+1;
+  fAdvancedGridLayout.Anchors[fIntegerEditLineNumber]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,0,1,1,2.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
+
+ end;                                         
+
+ begin
+
+  fPanelButtons:=TpvGUIPanel.Create(Content);
+  fPanelButtons.Layout:=TpvGUIGridLayout.Create(fPanelButtons,
+                                                1,
+                                                TpvGUILayoutAlignment.Fill,
+                                                TpvGUILayoutAlignment.Middle,
+                                                TpvGUILayoutOrientation.Horizontal,
+                                                0.0,
+                                                0.0,
+                                                4.0);
+  fAdvancedGridLayout.Anchors[fPanelButtons]:=TpvGUIAdvancedGridLayoutAnchor.Create(2,0,1,1,2.0,4.0,6.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
+
+  fButtonOK:=TpvGUIButton.Create(fPanelButtons);
+  fButtonOK.Caption:='OK';
+  fButtonOK.OnClick:=ButtonOKOnClick;
+
+  fButtonCancel:=TpvGUIButton.Create(fPanelButtons);
+  fButtonCancel.Caption:='Cancel';
+  fButtonCancel.OnClick:=ButtonCancelOnClick;
+
+ end;
+
+ Center;
+
+ RequestFocus;
+
+ fIntegerEditLineNumber.RequestFocus;
+
+ fIntegerEditLineNumber.SelectAll;
+
+end;
+
+destructor TpvGUIMultiLineTextEditGotoLineWindow.Destroy;
+begin
+ if assigned(fMultiLineTextEdit) then begin
+  fMultiLineTextEdit.RequestFocus;
+  fMultiLineTextEdit.fGoToLineWindow:=nil;
+  fMultiLineTextEdit:=nil;
+ end;
+ inherited Destroy;
+end;
+
+function TpvGUIMultiLineTextEditGotoLineWindow.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_ESCAPE:begin
+    result:=true;
+    Close;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIMultiLineTextEditGotoLineWindow.IntegerEditLineNumberOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=false;
+ if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_RETURN,KEYCODE_RETURN2:begin
+    ButtonOKOnClick(self);
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvGUIMultiLineTextEditGotoLineWindow.ButtonOKOnClick(const aSender:TpvGUIObject);
+var LineColumn:TpvTextEditor.TLineColumn;
+begin
+ if assigned(fMultiLineTextEdit) then begin 
+  LineColumn:=fMultiLineTextEdit.fView.LineColumn;
+  if LineColumn.Line<>(Max(1,fIntegerEditLineNumber.Value)-1) then begin
+   LineColumn.Line:=Max(1,fIntegerEditLineNumber.Value)-1;
+   LineColumn.Column:=0;
+   fMultiLineTextEdit.fView.LineColumn:=LineColumn;
+   fMultiLineTextEdit.fView.EnsureCodePointIndexIsInRange;
+   fMultiLineTextEdit.fDirty:=true;  
+  end;
+ end;
+ Close;
+end;
+
+procedure TpvGUIMultiLineTextEditGotoLineWindow.ButtonCancelOnClick(const aSender:TpvGUIObject);
 begin
  Close;
 end;
