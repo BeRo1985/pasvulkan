@@ -10858,6 +10858,7 @@ var Element:TpvInt32;
     ItemWidth,
     ItemHeight,
     LastX,
+    XOffset,
     YOffset,
     SumWidth:TpvFloat;
     Position,
@@ -11007,8 +11008,11 @@ begin
     LastX:=-1.0;
     for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
      Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
-     Column.fRect.LeftTop:=(ClipRect.LeftTop-aListView.fClipRect.LeftTop)+TpvVector2.InlineableCreate(LastX+1,0);
-     Column.fRect.RightBottom:=TpvVector2.InlineableCreate(ClipRect.Left-aListView.fClipRect.Left,aListView.fHeaderHeight)+TpvVector2.InlineableCreate(LastX+1+Column.fWidth,0);
+     Column.fRect.LeftTop:=(ClipRect.LeftTop-aListView.fClipRect.LeftTop)+
+                           TpvVector2.InlineableCreate(LastX,0);
+     Column.fRect.RightBottom:=TpvVector2.InlineableCreate(ClipRect.Left-aListView.fClipRect.Left,
+                                                           aListView.fHeaderHeight)+
+                               TpvVector2.InlineableCreate(LastX+Column.fWidth,0);
      LastX:=LastX+Column.fWidth;
     end;
 
@@ -11105,7 +11109,18 @@ begin
       aDrawEngine.Transparent:=true;
 
       if assigned(Column) then begin
-       aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(Column.fRect.Left,ItemHeight*0.5));
+       case Column.fAlignment of
+        TpvGUIListViewColumn.TAlignment.Center:begin
+         XOffset:=((Column.fRect.Width-8)-CurrentFont.TextWidth(ItemText,CurrentFontSize))*0.5;
+        end;
+        TpvGUIListViewColumn.TAlignment.Tailing:begin
+         XOffset:=(Column.fRect.Width-8)-CurrentFont.TextWidth(ItemText,CurrentFontSize);
+        end;
+        else {TpvGUIListViewColumn.TAlignment.Leading:}begin
+         XOffset:=0;
+        end;
+       end;
+       aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(Column.fRect.Left+XOffset,ItemHeight*0.5));
       end else begin
        aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,ItemHeight*0.5));
       end;
@@ -23108,21 +23123,25 @@ begin
 
   Column:=TpvGUIListViewColumn(fListView.Columns.Add);
   Column.fCaption:='Name';
+  Column.fAlignment:=TpvGUIListViewColumn.TAlignment.Leading;
   Column.fAutoSize:=true;
   Column.fSizeExpand:=true;
 
   Column:=TpvGUIListViewColumn(fListView.Columns.Add);
   Column.fCaption:='Ext';
+  Column.fAlignment:=TpvGUIListViewColumn.TAlignment.Center;
   Column.fAutoSize:=true;
   Column.fMinWidth:=64;
 
   Column:=TpvGUIListViewColumn(fListView.Columns.Add);
   Column.fCaption:='Size';
+  Column.fAlignment:=TpvGUIListViewColumn.TAlignment.Center;
   Column.fAutoSize:=true;
   Column.fMinWidth:=128;
 
   Column:=TpvGUIListViewColumn(fListView.Columns.Add);
   Column.fCaption:='Date';
+  Column.fAlignment:=TpvGUIListViewColumn.TAlignment.Center;
   Column.fAutoSize:=true;
   Column.fMinWidth:=192;
 
