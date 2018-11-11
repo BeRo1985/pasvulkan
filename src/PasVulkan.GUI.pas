@@ -10402,7 +10402,8 @@ begin
   Color:=CurrentFontColor;
   if (aMultiLineTextEdit.fViewBufferCursorY>=0) and
      (aMultiLineTextEdit.fViewBufferCursorY<aMultiLineTextEdit.fViewBufferHeight) then begin
-   aDrawEngine.Color:=Color*TpvVector4.InlineableCreate(0.015625,0.015625,0.015625,1.0);
+   aDrawEngine.Color:=TpvVector4.InlineableCreate(0.00226295316,0.00226295316,0.00226295316,1.0);
+// aDrawEngine.Color:=Color*TpvVector4.InlineableCreate(0.015625,0.015625,0.015625,1.0);
    Rect:=TpvRect.CreateAbsolute(aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
                                 TpvVector2.Create(0.0,aMultiLineTextEdit.fFontCharSize.y*aMultiLineTextEdit.fViewBufferCursorY),
                                 aMultiLineTextEdit.fLeftSideBarAreaRect.Offset+
@@ -10471,7 +10472,8 @@ begin
     until (ViewBufferX>=aMultiLineTextEdit.fViewBufferWidth) or
           ((aMultiLineTextEdit.fViewBuffer[ViewBufferIndex].Attribute and TpvTextEditor.TSyntaxHighlighting.TAttributes.Highlight)=0);
     if StartViewBufferX<ViewBufferX then begin
-     aDrawEngine.Color:=TpvVector4.InlineableCreate(0.03125,0.03125,0.03125,1.0);
+     aDrawEngine.Color:=TpvVector4.InlineableCreate(0.00226295316,0.00226295316,0.00226295316,1.0);
+//   aDrawEngine.Color:=TpvVector4.InlineableCreate(0.03125,0.03125,0.03125,1.0);
      aDrawEngine.DrawFilledRectangle(TpvRect.CreateAbsolute(aMultiLineTextEdit.fTextAreaRect.Offset+
                                                             (aMultiLineTextEdit.fFontCharSize*TpvVector2.Create(StartViewBufferX,ViewBufferY)),
                                                             aMultiLineTextEdit.fTextAreaRect.Offset+
