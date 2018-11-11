@@ -138,6 +138,10 @@ type TpvGUIObject=class;
 
      TpvGUIColorPicker=class;
 
+     TpvGUIListView=class;
+
+     TpvGUIFileDialog=class;
+
      EpvGUIWidget=class(Exception);
 
      TpvGUIOnEvent=procedure(const aSender:TpvGUIObject) of object;
@@ -899,6 +903,9 @@ type TpvGUIObject=class;
        function GetColorWheelPreferredSize(const aColorWheel:TpvGUIColorWheel):TpvVector2; virtual;
        procedure DrawColorWheel(const aDrawEngine:TpvGUIDrawEngine;const aColorWheel:TpvGUIColorWheel); virtual;
       public
+       function GetListViewPreferredSize(const aListView:TpvGUIListView):TpvVector2; virtual;
+       procedure DrawListView(const aDrawEngine:TpvGUIDrawEngine;const aListView:TpvGUIListView); virtual;
+      public
        property FontColor:TpvVector4 read fFontColor write fFontColor;
        property WindowFontColor:TpvVector4 read fWindowFontColor write fWindowFontColor;
        property ButtonFontColor:TpvVector4 read fButtonFontColor write fButtonFontColor;
@@ -1067,6 +1074,9 @@ type TpvGUIObject=class;
       public
        function GetColorWheelPreferredSize(const aColorWheel:TpvGUIColorWheel):TpvVector2; override;
        procedure DrawColorWheel(const aDrawEngine:TpvGUIDrawEngine;const aColorWheel:TpvGUIColorWheel); override;
+      public
+       function GetListViewPreferredSize(const aListView:TpvGUIListView):TpvVector2; override;
+       procedure DrawListView(const aDrawEngine:TpvGUIDrawEngine;const aListView:TpvGUIListView); override;
       public
        property UnfocusedWindowHeaderFontShadowOffset:TpvVector2 read fUnfocusedWindowHeaderFontShadowOffset write fUnfocusedWindowHeaderFontShadowOffset;
        property FocusedWindowHeaderFontShadowOffset:TpvVector2 read fFocusedWindowHeaderFontShadowOffset write fFocusedWindowHeaderFontShadowOffset;
@@ -2987,6 +2997,105 @@ type TpvGUIObject=class;
        destructor Destroy; override;
      end;
 
+     PpvGUIListViewFlag=^TpvGUIListViewFlag;
+     TpvGUIListViewFlag=
+      (
+       MultiSelect,
+       Header
+      );
+
+     PpvGUIListViewFlags=^TpvGUIListViewFlags;
+     TpvGUIListViewFlags=set of TpvGUIListViewFlag;
+
+     TpvGUIListViewSelectedBitmap=array of TpvUInt32;
+
+     PpvGUIListViewAction=^TpvGUIListViewAction;
+     TpvGUIListViewAction=
+      (
+       None,
+       PreMark,
+       Mark
+      );
+
+     TpvGUIListViewOnDrawItem=function(const aSender:TpvGUIListView;const aItemIndex:TpvSizeInt;const aRect:TpvRect):boolean of object;
+
+     TpvGUIListViewOnGetItemText=function(const aSender:TpvGUIListView;const aItemIndex,aSubItemIndex:TpvSizeInt):TpvUTF8String of object;
+
+     TpvGUIListView=class(TpvGUIWidget)
+      public
+       type TViewMode=
+             (
+              List,
+              Icon
+             );
+      private
+       fFlags:TpvGUIListViewFlags;
+       fViewMode:TViewMode;
+       fScrollBar:TpvGUIScrollBar;
+       fColumns:TpvGUIListViewColumns;
+       fItems:TpvGUIListViewItems;
+       fItemIndex:TpvSizeInt;
+       fItemWidth:TpvFloat;
+       fItemHeight:TpvFloat;
+       fWorkYOffset:TpvFloat;
+       fWorkItemWidth:TpvFloat;
+       fWorkItemHeight:TpvFloat;
+       fOnChange:TpvGUIOnEvent;
+       fOnChangeItemIndex:TpvGUIOnEvent;
+       fOnChangeSelection:TpvGUIOnEvent;
+       fOnDrawItem:TpvGUIListViewOnDrawItem;
+       fOnGetItemText:TpvGUIListViewOnGetItemText;
+       fSelectedBitmap:TpvGUIListViewSelectedBitmap;
+       fAction:TpvGUIListViewAction;
+       fActionStartIndex:TpvSizeInt;
+       fActionStopIndex:TpvSizeInt;
+       procedure SetViewMode(const aViewMode:TViewMode);
+       procedure SetItems(const aItems:TpvGUIListViewItems);
+       procedure SetItemIndex(const aItemIndex:TpvSizeInt);
+       function GetSelected(const aItemIndex:TpvSizeInt):boolean;
+       procedure ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:boolean);
+       procedure SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
+       function GetMultiSelect:boolean; inline;
+       procedure SetMultiSelect(const aMultiSelect:boolean);
+       function GetHeader:boolean; inline;
+       procedure SetHeader(const aHeader:boolean);
+       function GetHighlightRect:TpvRect; override;
+       function GetPreferredSize:TpvVector2; override;
+       function GetCountVisibleItems:TpvSizeInt;
+       procedure AdjustScrollBar;
+       procedure UpdateScrollBar;
+      public
+       constructor Create(const aParent:TpvGUIObject); override;
+       destructor Destroy; override;
+       procedure ClearSelection;
+       procedure PerformLayout; override;
+       function Enter:boolean; override;
+       function Leave:boolean; override;
+       function PointerEnter:boolean; override;
+       function PointerLeave:boolean; override;
+       function DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean; override;
+       function DragReleaseEvent:boolean; override;
+       function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
+       function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure Draw; override;
+       property Selected[const aItemIndex:TpvSizeInt]:boolean read GetSelected write SetSelected;
+      published
+       property ViewMode:TViewMode read fViewMode write SetViewMode;
+       property Columns:TpvGUIListViewColumns read fColumns;
+       property Items:TpvGUIListViewItems read fItems write SetItems;
+       property ItemIndex:TpvSizeInt read fItemIndex write SetItemIndex;
+       property ItemWidth:TpvFloat read fItemWidth write fItemWidth;
+       property ItemHeight:TpvFloat read fItemHeight write fItemHeight;
+       property MultiSelect:boolean read GetMultiSelect write SetMultiSelect;
+       property Header:boolean read GetHeader write SetHeader;
+       property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
+       property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
+       property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
+       property OnDrawItem:TpvGUIListViewOnDrawItem read fOnDrawItem write fOnDrawItem;
+       property OnGetItemText:TpvGUIListViewOnGetItemText read fOnGetItemText write fOnGetItemText;
+     end;
+
      TpvGUIFileDialog=class(TpvGUIWindow)
       public
        type TMode=
@@ -2999,7 +3108,7 @@ type TpvGUIObject=class;
        fAdvancedGridLayout:TpvGUIAdvancedGridLayout;
        fLabelPath:TpvGUILabel;
        fTextEditPath:TpvGUITextEdit;
-       fListBox:TpvGUIListBox;
+       fListView:TpvGUIListView;
        fLabelFileName:TpvGUILabel;
        fTextEditFileName:TpvGUITextEdit;
        fLabelFilter:TpvGUILabel;
@@ -6451,6 +6560,16 @@ end;
 
 procedure TpvGUISkin.DrawColorWheel(const aDrawEngine:TpvGUIDrawEngine;const aColorWheel:TpvGUIColorWheel);
 begin
+end;
+
+function TpvGUISkin.GetListViewPreferredSize(const aListView:TpvGUIListView):TpvVector2;
+begin
+ result:=GetWidgetPreferredSize(aListView);
+end;
+
+procedure TpvGUISkin.DrawListView(const aDrawEngine:TpvGUIDrawEngine;const aListView:TpvGUIListView);
+begin
+
 end;
 
 constructor TpvGUIDefaultVectorBasedSkin.Create(const aParent:TpvGUIObject);
@@ -10678,6 +10797,200 @@ begin
                             aColorWheel.fDrawOffset,
                             aColorWheel.fDrawOffset+aColorWheel.fDrawSize,
                             IfThen(aColorWheel.fSRGB,1.0,0.0));
+
+ aDrawEngine.Next;
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.GetListViewPreferredSize(const aListView:TpvGUIListView):TpvVector2;
+var CurrentFont:TpvFont;
+    CurrentFontSize,ItemWidth,ItemHeight:TpvFloat;
+begin
+
+ CurrentFont:=aListView.Font;
+
+ CurrentFontSize:=aListView.FontSize;
+
+ if aListView.fItemWidth>0.0 then begin
+  ItemWidth:=aListView.fItemWidth;
+ end else begin
+  ItemWidth:=128.0;
+ end;
+
+ if aListView.fItemHeight>0.0 then begin
+  ItemHeight:=aListView.fItemHeight;
+ end else begin
+  ItemHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
+ end;
+
+ aListView.fWorkYOffset:=BoxCornerMargin;
+
+ aListView.fWorkItemWidth:=ItemWidth;
+
+ aListView.fWorkItemHeight:=ItemHeight;
+
+ result:=TpvVector2.InlineableCreate(ItemWidth+(BoxCornerMargin*2.0),
+                                     (ItemHeight*8.0)+(BoxCornerMargin*2.0));
+
+end;
+
+procedure TpvGUIDefaultVectorBasedSkin.DrawListView(const aDrawEngine:TpvGUIDrawEngine;const aListView:TpvGUIListView);
+var Element:TpvInt32;
+    ItemIndex:TpvSizeInt;
+    CurrentFont:TpvFont;
+    CurrentFontSize,ItemWidth,ItemHeight:TpvFloat;
+    Position:TpvVector2;
+    FontColor:TpvVector4;
+    ClipRect,DrawRect,Rect:TpvRect;
+    ItemText:TpvUTF8String;
+begin
+
+ aDrawEngine.ModelMatrix:=aListView.fModelMatrix;
+
+ ClipRect:=aListView.fClipRect;
+
+ if aListView.fScrollBar.Visible then begin
+  ClipRect.Right:=ClipRect.Right-aListView.fScrollBar.fSize.x;
+ end;
+
+ aDrawEngine.ClipRect:=ClipRect;
+
+ CurrentFont:=aListView.Font;
+
+ CurrentFontSize:=aListView.FontSize;
+
+ aDrawEngine.Font:=CurrentFont;
+
+ aDrawEngine.FontSize:=CurrentFontSize;
+
+ if aListView.Enabled then begin
+  FontColor:=aListView.FontColor;
+  if aListView.Focused then begin
+   Element:=GUI_ELEMENT_BOX_FOCUSED;
+  end else begin
+   Element:=GUI_ELEMENT_BOX_UNFOCUSED;
+  end;
+ end else begin
+  Element:=GUI_ELEMENT_BOX_DISABLED;
+  FontColor:=TpvVector4.InlineableCreate(aListView.FontColor.rgb,aListView.FontColor.a*0.25);
+ end;
+
+ DrawRect.LeftTop:=ClipRect.LeftTop-aListView.fClipRect.LeftTop;
+ DrawRect.RightBottom:=ClipRect.RightBottom-aListView.fClipRect.LeftTop;
+
+ aDrawEngine.Transparent:=false;
+
+ aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                true,
+                                                DrawRect.LeftTop,
+                                                DrawRect.RightBottom,
+                                                DrawRect.LeftTop,
+                                                DrawRect.RightBottom,
+                                                0.0,
+                                                TpvRect.CreateAbsolute(5.0,5.0,5.0,5.0),
+                                                true);
+
+ Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
+
+ if aListView.fItemWidth>0.0 then begin
+  ItemWidth:=aListView.fItemWidth;
+ end else begin
+  ItemWidth:=128.0;
+ end;
+
+ if aListView.fItemHeight>0.0 then begin
+  ItemHeight:=aListView.fItemHeight;
+ end else begin
+  ItemHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
+ end;
+
+ aListView.fWorkYOffset:=BoxCornerMargin;
+
+ aListView.fWorkItemWidth:=ItemWidth;
+
+ aListView.fWorkItemHeight:=ItemHeight;
+
+ aDrawEngine.Color:=FontColor;
+
+ ClipRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
+
+ ClipRect.RightBottom:=ClipRect.RightBottom-TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
+
+ aDrawEngine.ClipRect:=ClipRect;
+
+ DrawRect.LeftTop:=ClipRect.LeftTop-aListView.fClipRect.LeftTop;
+ DrawRect.RightBottom:=ClipRect.RightBottom-aListView.fClipRect.LeftTop;
+
+ for ItemIndex:=aListView.fScrollBar.Value to aListView.fItems.Count-1 do begin
+
+  if not (assigned(aListView.fOnDrawItem) and
+          aListView.fOnDrawItem(aListView,
+                               ItemIndex,
+                               TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left,
+                                                                                  Position.y),
+                                                      TpvVector2.InlineableCreate(DrawRect.Right,
+                                                                                  Position.y+ItemHeight)))) then begin
+
+   aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
+
+   aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
+
+   if aListView.Selected[ItemIndex] then begin
+    aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
+    aDrawEngine.Transparent:=true;
+    aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                                                       Position.y),
+                                                           TpvVector2.InlineableCreate(aListView.fSize.x-(BoxCornerMargin*2.0),
+                                                                                       ItemHeight)));
+    aDrawEngine.Color:=FontColor;
+   end;
+
+   if assigned(aListView.fOnGetItemText) then begin
+    ItemText:=aListView.fOnGetItemText(aListView,ItemIndex,0);
+   end else begin
+    ItemText:=TpvUTF8String(aListView.fItems[ItemIndex].fCaption);
+   end;
+
+   aDrawEngine.Transparent:=true;
+
+   aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,ItemHeight*0.5));
+
+   if aListView.fItemIndex=ItemIndex then begin
+    if aListView.Focused then begin
+     Element:=GUI_ELEMENT_FOCUSED;
+    end else begin
+     Element:=GUI_ELEMENT_HOVERED;
+    end;
+    Rect:=ClipRect;
+    Rect.Left:=ClipRect.Left-1.0;
+    Rect.Right:=ClipRect.Right+1.0;
+    aDrawEngine.ClipRect:=Rect;
+    Rect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(BoxCornerMargin,
+                                                             Position.y),
+                                 TpvVector2.InlineableCreate(DrawRect.Right,
+                                                             Position.y+ItemHeight));
+    aDrawEngine.Transparent:=true;
+    aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
+                                                   true,
+                                                   Rect.LeftTop+TpvVector2.InlineableCreate(-8.0,-8.0),
+                                                   Rect.RightBottom+TpvVector2.InlineableCreate(8.0,8.0),
+                                                   Rect.LeftTop+TpvVector2.InlineableCreate(-1.0,0.0),
+                                                   Rect.RightBottom+TpvVector2.InlineableCreate(1.0,0.0),
+                                                   0.0,
+                                                   TpvRect.CreateAbsolute(32.0,32.0,32.0,32.0),
+                                                   true);
+    aDrawEngine.ClipRect:=ClipRect;
+   end;
+
+  end;
+
+  Position.y:=Position.y+ItemHeight;
+
+  if Position.y>aListView.fSize.y then begin
+   break;
+  end;
+
+ end;
 
  aDrawEngine.Next;
 
@@ -21978,6 +22291,512 @@ begin
  inherited Destroy;
 end;
 
+constructor TpvGUIListView.Create(const aParent:TpvGUIObject);
+begin
+
+ inherited Create(aParent);
+
+ Include(fWidgetFlags,TpvGUIWidgetFlag.TabStop);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.DrawFocus);
+ Include(fWidgetFlags,TpvGUIWidgetFlag.Draggable);
+
+ fScrollBar:=TpvGUIScrollBar.Create(self);
+ fScrollBar.Orientation:=TpvGUIScrollBarOrientation.Vertical;
+ fScrollBar.MinimumValue:=0;
+ fScrollBar.MaximumValue:=1;
+
+ fFlags:=[];
+
+ fColumns:=TpvGUIListViewColumns.Create;
+
+ fItems:=TpvGUIListViewItems.Create;
+
+ fItemIndex:=-1;
+
+ fItemWidth:=0.0;
+
+ fItemHeight:=0.0;
+
+ fWorkItemWidth:=0.0;
+
+ fWorkItemHeight:=0.0;
+
+ fWorkYOffset:=0.0;
+
+ fOnChange:=nil;
+
+ fOnChangeItemIndex:=nil;
+
+ fOnChangeSelection:=nil;
+
+ fOnDrawItem:=nil;
+
+ fOnGetItemText:=nil;
+
+ fSelectedBitmap:=nil;
+
+ fAction:=TpvGUIListViewAction.None;
+
+end;
+
+destructor TpvGUIListView.Destroy;
+begin
+ FreeAndNil(fItems);
+ FreeandNil(fColumns);
+ fSelectedBitmap:=nil;
+ inherited Destroy;
+end;
+
+procedure TpvGUIListView.SetViewMode(const aViewMode:TViewMode);
+begin
+ if fViewMode<>aViewMode then begin
+  fViewMode:=aViewMode;
+ end;
+end;
+
+function TpvGUIListView.GetMultiSelect:boolean;
+begin
+ result:=TpvGUIListViewFlag.MultiSelect in fFlags;
+end;
+
+procedure TpvGUIListView.SetMultiSelect(const aMultiSelect:boolean);
+begin
+ if (TpvGUIListViewFlag.MultiSelect in fFlags)<>aMultiSelect then begin
+  if aMultiSelect then begin
+   Include(fFlags,TpvGUIListViewFlag.MultiSelect);
+  end else begin
+   Exclude(fFlags,TpvGUIListViewFlag.MultiSelect);
+  end;
+  fSelectedBitmap:=nil;
+  if assigned(fOnChangeSelection) then begin
+   fOnChangeSelection(self);
+  end;
+ end;
+end;
+
+function TpvGUIListView.GetHeader:boolean;
+begin
+ result:=TpvGUIListViewFlag.Header in fFlags;
+end;
+
+procedure TpvGUIListView.SetHeader(const aHeader:boolean);
+begin
+ if (TpvGUIListViewFlag.Header in fFlags)<>aHeader then begin
+  if aHeader then begin
+   Include(fFlags,TpvGUIListViewFlag.Header);
+  end else begin
+   Exclude(fFlags,TpvGUIListViewFlag.Header);
+  end;
+ end;
+end;
+
+procedure TpvGUIListView.SetItems(const aItems:TpvGUIListViewItems);
+var Index:TpvSizeInt;
+    Item:TpvGUIListViewItem;
+begin
+ fItems.Clear;
+ for Index:=0 to aItems.Count-1 do begin
+  Item:=TpvGUIListViewItem.Create(fItems);
+  try
+   Item.Assign(aItems[Index]);
+  finally
+   fItems.Add(Item);
+  end;
+ end;
+ SetItemIndex(Min(Max(fItemIndex,0),fItems.Count-1));
+ AdjustScrollBar;
+ if assigned(fOnChange) then begin
+  fOnChange(self);
+ end;
+end;
+
+procedure TpvGUIListView.SetItemIndex(const aItemIndex:TpvSizeInt);
+begin
+ if fItemIndex<>aItemIndex then begin
+  fItemIndex:=Min(Max(aItemIndex,-1),fItems.Count-1);
+  AdjustScrollBar;
+  if assigned(fOnChangeItemIndex) then begin
+   fOnChangeItemIndex(self);
+  end;
+ end;
+end;
+
+function TpvGUIListView.GetSelected(const aItemIndex:TpvSizeInt):boolean;
+begin
+ if TpvGUIListViewFlag.MultiSelect in fFlags then begin
+  result:=((aItemIndex>=0) and (aItemIndex<fItems.Count) and ((aItemIndex shr 5)<length(fSelectedBitmap))) and
+          ((fSelectedBitmap[aItemIndex shr 5] and (TpvUInt32(1) shl (aItemIndex and 31)))<>0);
+ end else begin
+  result:=fItemIndex=aItemIndex;
+ end;
+end;
+
+procedure TpvGUIListView.ChangeSelected(const aItemIndex:TpvSizeInt;const aSelected,aEvent:boolean);
+var OldSize,NewSize:TpvSizeInt;
+begin
+ if TpvGUIListViewFlag.MultiSelect in fFlags then begin
+  if (aItemIndex>=0) and (aItemIndex<fItems.Count) then begin
+   OldSize:=length(fSelectedBitmap);
+   NewSize:=RoundUpToPowerOfTwoSizeUInt((aItemIndex shr 5)+1);
+   if OldSize<NewSize then begin
+    SetLength(fSelectedBitmap,NewSize);
+    FillChar(fSelectedBitmap[OldSize],(NewSize-OldSize)*SizeOf(TpvUInt32),0);
+   end;
+   if GetSelected(aItemIndex)<>aSelected then begin
+    if aSelected then begin
+     fSelectedBitmap[aItemIndex shr 5]:=fSelectedBitmap[aItemIndex shr 5] or (TpvUInt32(1) shl (aItemIndex and 31));
+    end else begin
+     fSelectedBitmap[aItemIndex shr 5]:=fSelectedBitmap[aItemIndex shr 5] and not (TpvUInt32(1) shl (aItemIndex and 31));
+    end;
+    if assigned(fOnChangeSelection) and aEvent then begin
+     fOnChangeSelection(self);
+    end;
+   end;
+  end;
+ end else begin
+  if aSelected then begin
+   if fItemIndex<>aItemIndex then begin
+    SetItemIndex(aItemIndex);
+    if assigned(fOnChangeSelection) and aEvent then begin
+     fOnChangeSelection(self);
+    end;
+   end;
+  end else begin
+   if fItemIndex>=0 then begin
+    SetItemIndex(-1);
+    if assigned(fOnChangeSelection) and aEvent then begin
+     fOnChangeSelection(self);
+    end;
+   end;
+  end;
+ end;
+end;
+
+procedure TpvGUIListView.SetSelected(const aItemIndex:TpvSizeInt;const aSelected:boolean);
+begin
+ ChangeSelected(aItemIndex,aSelected,true);
+end;
+
+procedure TpvGUIListView.ClearSelection;
+begin
+ if TpvGUIListViewFlag.MultiSelect in fFlags then begin
+  fSelectedBitmap:=nil;
+ end else begin
+  SetItemIndex(-1);
+ end;
+ if assigned(fOnChangeSelection) then begin
+  fOnChangeSelection(self);
+ end;
+end;
+
+function TpvGUIListView.GetHighlightRect:TpvRect;
+begin
+ if fScrollBar.Visible then begin
+  if fScrollBar.Focused and fScrollBar.PointerFocused then begin
+   result:=TpvRect.CreateRelative(TpvVector2.InlineableCreate(-16777216.0,-16777216.0),TpvVector2.Null);
+  end else begin
+   result:=TpvRect.CreateRelative(TpvVector2.Null,fSize-TpvVector2.InlineableCreate(fScrollBar.fSize.x,0.0));
+  end;
+ end else begin
+  result:=inherited GetHighlightRect;
+ end;
+end;
+
+function TpvGUIListView.GetPreferredSize:TpvVector2;
+begin
+ result:=Skin.GetListViewPreferredSize(self);
+end;
+
+procedure TpvGUIListView.PerformLayout;
+var ScrollBarSize:TpvVector2;
+begin
+ fScrollBar.Visible:=false;
+ inherited PerformLayout;
+ fScrollBar.Visible:=true;
+ ScrollBarSize:=fScrollBar.GetPreferredSize;
+ fScrollBar.fPosition:=TpvVector2.InlineableCreate(fSize.x-ScrollBarSize.x,0.0);
+ fScrollBar.fSize:=TpvVector2.InlineableCreate(ScrollBarSize.x,fSize.y);
+ UpdateScrollBar;
+ AdjustScrollBar;
+end;
+
+function TpvGUIListView.GetCountVisibleItems:TpvSizeInt;
+begin
+ result:=trunc((fSize.y-(fWorkYOffset*2.0))/Max(fWorkItemHeight,1));
+end;
+
+procedure TpvGUIListView.AdjustScrollBar;
+var VisibleItems:TpvSizeInt;
+begin
+ if fScrollBar.Visible then begin
+  if (fItemIndex-fScrollBar.Value)<0 then begin
+   fScrollBar.Value:=fItemIndex;
+  end else begin
+   VisibleItems:=GetCountVisibleItems;
+   if ((fItemIndex-fScrollBar.Value)+1)>=VisibleItems then begin
+    fScrollBar.Value:=Max(0,(fItemIndex-VisibleItems)+1);
+   end;
+  end;
+ end else begin
+  fScrollBar.Value:=0;
+ end;
+end;
+
+procedure TpvGUIListView.UpdateScrollBar;
+var VisibleItems:TpvSizeInt;
+begin
+ VisibleItems:=GetCountVisibleItems;
+ fScrollBar.Visible:=fItems.Count>VisibleItems;
+ fScrollBar.MaximumValue:=Max(1,fItems.Count-VisibleItems);
+ if not fScrollBar.Visible then begin
+  fScrollBar.Value:=0;
+ end;
+end;
+
+function TpvGUIListView.Enter:boolean;
+begin
+ result:=inherited Enter;
+end;
+
+function TpvGUIListView.Leave:boolean;
+begin
+ result:=inherited Leave;
+end;
+
+function TpvGUIListView.PointerEnter:boolean;
+begin
+ result:=inherited PointerEnter;
+end;
+
+function TpvGUIListView.PointerLeave:boolean;
+begin
+ fAction:=TpvGUIListViewAction.None;
+ result:=inherited PointerLeave;
+end;
+
+function TpvGUIListView.DragAcquireEvent(const aPosition:TpvVector2;const aButton:TpvApplicationInputPointerButton):boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUIListView.DragReleaseEvent:boolean;
+begin
+ result:=false;
+end;
+
+function TpvGUIListView.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+ procedure DoSelection(const aForce:boolean);
+ var CurrentItemIndex:TpvSizeInt;
+ begin
+  if aForce or (fAction in [TpvGUIListViewAction.PreMark,TpvGUIListViewAction.Mark]) then begin
+   fAction:=TpvGUIListViewAction.Mark;
+   fActionStopIndex:=fItemIndex;
+   fSelectedBitmap:=nil;
+   for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+    ChangeSelected(CurrentItemIndex,true,false);
+   end;
+   if assigned(fOnChangeSelection) then begin
+    fOnChangeSelection(self);
+   end;
+  end;
+ end;
+begin
+ result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
+ if Enabled and not result then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_LSHIFT,KEYCODE_RSHIFT:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Down:begin
+      fAction:=TpvGUIListViewAction.PreMark;
+      fActionStartIndex:=fItemIndex;
+      fActionStopIndex:=fItemIndex;
+     end;
+     TpvApplicationInputKeyEventType.Up:begin
+      if fAction=TpvGUIListViewAction.Mark then begin
+       DoSelection(true);
+       fAction:=TpvGUIListViewAction.None;
+      end else if fAction=TpvGUIListViewAction.PreMark then begin
+       fAction:=TpvGUIListViewAction.None;
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(Max(fItemIndex-1,0),fItems.Count-1));
+      DoSelection(false);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(Max(fItemIndex+1,0),fItems.Count-1));
+      DoSelection(false);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_PAGEDOWN:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(Max(fItemIndex+4,0),fItems.Count-1));
+      DoSelection(false);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_PAGEUP:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(Max(fItemIndex-4,0),fItems.Count-1));
+      DoSelection(false);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_HOME:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(Min(0,fItems.Count-1));
+      DoSelection(false);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_END:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      SetItemIndex(fItems.Count-1);
+      DoSelection(false);
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_BACKSPACE:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      if MultiSelect then begin
+       ClearSelection;
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+   KEYCODE_SPACE:begin
+    case aKeyEvent.KeyEventType of
+     TpvApplicationInputKeyEventType.Typed:begin
+      if MultiSelect then begin
+       SetSelected(fItemIndex,not GetSelected(fItemIndex));
+      end;
+     end;
+    end;
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIListView.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
+var CurrentItemIndex:TpvSizeInt;
+begin
+ UpdateScrollBar;
+ result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
+ if not result then begin
+  result:=inherited PointerEvent(aPointerEvent);
+  if not result then begin
+   case aPointerEvent.PointerEventType of
+    TpvApplicationInputPointerEventType.Down:begin
+     RequestFocus;
+     fAction:=TpvGUIListViewAction.None;
+     SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
+     if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
+      SetSelected(fItemIndex,not GetSelected(fItemIndex));
+     end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
+      fAction:=TpvGUIListViewAction.Mark;
+      fActionStartIndex:=fItemIndex;
+      fActionStopIndex:=fItemIndex;
+      fSelectedBitmap:=nil;
+      SetSelected(fItemIndex,true);
+     end;
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Up:begin
+     if fAction=TpvGUIListViewAction.Mark then begin
+      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
+      fActionStopIndex:=fItemIndex;
+      fSelectedBitmap:=nil;
+      for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+       ChangeSelected(CurrentItemIndex,true,false);
+      end;
+      if assigned(fOnChangeSelection) then begin
+       fOnChangeSelection(self);
+      end;
+     end;
+     fAction:=TpvGUIListViewAction.None;
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Motion:begin
+     if fAction=TpvGUIListViewAction.Mark then begin
+      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
+      fActionStopIndex:=fItemIndex;
+      fSelectedBitmap:=nil;
+      for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+       ChangeSelected(CurrentItemIndex,true,false);
+      end;
+      if assigned(fOnChangeSelection) then begin
+       fOnChangeSelection(self);
+      end;
+     end;
+     result:=true;
+    end;
+    TpvApplicationInputPointerEventType.Drag:begin
+     if fAction=TpvGUIListViewAction.Mark then begin
+      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
+      fActionStopIndex:=fItemIndex;
+      fSelectedBitmap:=nil;
+      for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+       ChangeSelected(CurrentItemIndex,true,false);
+      end;
+      if assigned(fOnChangeSelection) then begin
+       fOnChangeSelection(self);
+      end;
+     end;
+     result:=true;
+    end;
+   end;
+  end;
+ end;
+end;
+
+function TpvGUIListView.Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean;
+var TemporaryValue,Step:TpvInt64;
+    v:TpvFloat;
+begin
+ result:=inherited Scrolled(aPosition,aRelativeAmount);
+ if not result then begin
+  TemporaryValue:=fItemIndex;
+  v:=aRelativeAmount.x-aRelativeAmount.y;
+  if v<0.0 then begin
+   Step:=floor(v);
+  end else begin
+   Step:=ceil(v);
+  end;
+  SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
+  result:=true;
+ end;
+end;
+
+procedure TpvGUIListView.Draw;
+begin
+ UpdateScrollBar;
+ Skin.DrawListView(fInstance.DrawEngine,self);
+ inherited Draw;
+end;
+
 constructor TpvGUIFileDialog.Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open);
 begin
 
@@ -22029,8 +22848,8 @@ begin
 
  begin
 
-  fListBox:=TpvGUIListBox.Create(Content);
-  fAdvancedGridLayout.Anchors[fListBox]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,2,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
+  fListView:=TpvGUIListView.Create(Content);
+  fAdvancedGridLayout.Anchors[fListView]:=TpvGUIAdvancedGridLayoutAnchor.Create(0,1,2,1,2.0,2.0,2.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Fill);
 
  end;
 
