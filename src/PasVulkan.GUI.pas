@@ -23535,7 +23535,7 @@ procedure TpvGUIFileDialog.Refresh;
   result:=fListItems.AddNew;
   ListItem:=@fListItems.Items[result];
   ListItem^.FileName:=aFileName;
-  ListItem^.LowerCaseFileName:=LowerCase(aFileName);
+  ListItem^.LowerCaseFileName:=TpvUTF8String(LowerCase(String(aFileName)));
   ListItem^.Directory:=aDirectory;
   ListItem^.Size:=aSize;
   ListItem^.DateTime:=aDateTime;
@@ -23552,12 +23552,17 @@ begin
 {$ifndef Unix}
   if length(fPath)=0 then begin
    for Index:=0 to 25 do begin
-    Add(AnsiChar(TpvUInt8(TpvUInt8(AnsiChar('A'))+Index))+':',
+    Add(TpvUTF8String(AnsiChar(TpvUInt8(TpvUInt8(AnsiChar('A'))+Index))+':'),
         true,
         -($11000-Index),
         SysUtils.Now);
    end;
   end else{$endif}begin
+{$ifdef Unix}
+   if length(fPath)=0 then begin
+    fPath:=PathDelim;
+   end;
+{$endif}
    if {$ifdef Unix}length(fPath)>1{$else}length(fPath)>0{$endif} then begin
     Add('.',
         true,
@@ -23568,13 +23573,13 @@ begin
         -1,
         SysUtils.Now);
    end;
-   if SysUtils.FindFirst(IncludeTrailingPathDelimiter(fPath)+{$ifdef Unix}'*'{$else}'*.*'{$endif},
+   if SysUtils.FindFirst(IncludeTrailingPathDelimiter(String(fPath))+{$ifdef Unix}'*'{$else}'*.*'{$endif},
                          SysUtils.faDirectory or SysUtils.faArchive,
                          SearchRec)=0 then begin
     repeat
      ListViewItem:=fListView.Items.New;
-     ListViewItem.fCaption:=SearchRec.Name;
-     Add(SearchRec.Name,
+     ListViewItem.fCaption:=TpvUTF8String(SearchRec.Name);
+     Add(TpvUTF8String(SearchRec.Name),
          (SearchRec.Attr and SysUtils.faDirectory)<>0,
          SearchRec.Size,
          FileDateToDateTime(SearchRec.Time));
@@ -23606,8 +23611,8 @@ begin
    end;
    ListViewItem.fSubItems.Add('');
   end else begin
-   ListViewItem.fCaption:=ChangeFileExt(ExtractFileName(ListItem^.FileName),'');
-   ListViewItem.fSubItems.Add(ExtractFileExt(ListItem^.FileName));
+   ListViewItem.fCaption:=TpvUTF8String(ChangeFileExt(ExtractFileName(String(ListItem^.FileName)),''));
+   ListViewItem.fSubItems.Add(ExtractFileExt(String(ListItem^.FileName)));
    if ListItem^.Directory then begin
     ListViewItem.fSubItems.Add('[DIR]');
    end else begin
@@ -23639,9 +23644,17 @@ begin
 end;
 
 procedure TpvGUIFileDialog.SetPath(const aPath:TpvUTF8String);
+var NewPath:TpvUTF8String;
 begin
- if fPath<>aPath then begin
-  fPath:=aPath;
+ NewPath:=aPath;
+ if length(NewPath)>0 then begin
+  if not (((length(NewPath)>0) and (NewPath[1]=PathDelim)){$ifndef Unix} or
+          ((length(NewPath)>1) and (NewPath[1] in ['A'..'Z','a'..'z']) and (NewPath[2]=':')){$endif}) then begin
+   NewPath:=TpvUTF8String(ExpandFileName(IncludeTrailingPathDelimiter(String(fPath))+String(NewPath)));
+  end;
+ end;
+ if fPath<>NewPath then begin
+  fPath:=NewPath;
   Refresh;
  end;
 end;
