@@ -903,6 +903,7 @@ type TpvGUIObject=class;
        function GetColorWheelPreferredSize(const aColorWheel:TpvGUIColorWheel):TpvVector2; virtual;
        procedure DrawColorWheel(const aDrawEngine:TpvGUIDrawEngine;const aColorWheel:TpvGUIColorWheel); virtual;
       public
+       procedure ComputeListView(const aListView:TpvGUIListView;const aSize:TpvVector2); virtual;
        function GetListViewPreferredSize(const aListView:TpvGUIListView):TpvVector2; virtual;
        procedure DrawListView(const aDrawEngine:TpvGUIDrawEngine;const aListView:TpvGUIListView); virtual;
       public
@@ -1075,6 +1076,7 @@ type TpvGUIObject=class;
        function GetColorWheelPreferredSize(const aColorWheel:TpvGUIColorWheel):TpvVector2; override;
        procedure DrawColorWheel(const aDrawEngine:TpvGUIDrawEngine;const aColorWheel:TpvGUIColorWheel); override;
       public
+       procedure ComputeListView(const aListView:TpvGUIListView;const aSize:TpvVector2); override;
        function GetListViewPreferredSize(const aListView:TpvGUIListView):TpvVector2; override;
        procedure DrawListView(const aDrawEngine:TpvGUIDrawEngine;const aListView:TpvGUIListView); override;
       public
@@ -6574,6 +6576,11 @@ procedure TpvGUISkin.DrawColorWheel(const aDrawEngine:TpvGUIDrawEngine;const aCo
 begin
 end;
 
+procedure TpvGUISkin.ComputeListView(const aListView:TpvGUIListView;const aSize:TpvVector2);
+begin
+
+end;
+
 function TpvGUISkin.GetListViewPreferredSize(const aListView:TpvGUIListView):TpvVector2;
 begin
  result:=GetWidgetPreferredSize(aListView);
@@ -10814,9 +10821,17 @@ begin
 
 end;
 
-function TpvGUIDefaultVectorBasedSkin.GetListViewPreferredSize(const aListView:TpvGUIListView):TpvVector2;
-var CurrentFont:TpvFont;
-    CurrentFontSize,ItemWidth,ItemHeight:TpvFloat;
+procedure TpvGUIDefaultVectorBasedSkin.ComputeListView(const aListView:TpvGUIListView;const aSize:TpvVector2);
+var ColumnIndex:TpvSizeInt;
+    CurrentFont:TpvFont;
+    CurrentFontSize,
+    ItemWidth,
+    ItemHeight,
+    SumWidth,
+    LastX:TpvFloat;
+    ClipRect:TpvRect;
+    Position:TpvVector2;
+    Column:TpvGUIListViewColumn;
 begin
 
  CurrentFont:=aListView.Font;
@@ -10848,8 +10863,97 @@ begin
 
  aListView.fWorkItemHeight:=ItemHeight;
 
- result:=TpvVector2.InlineableCreate(ItemWidth+(BoxCornerMargin*2.0),
-                                     (ItemHeight*8.0)+(BoxCornerMargin*2.0));
+ if (aSize.x>0.0) and (aSize.y>0.0) then begin
+
+  ClipRect.LeftTop:=TpvVector2.Create(BoxCornerMargin,BoxCornerMargin);
+  ClipRect.RightBottom:=aSize-TpvVector2.Create(BoxCornerMargin,BoxCornerMargin);
+
+  if aListView.fScrollBar.Visible then begin
+   ClipRect.Right:=ClipRect.Right-aListView.fScrollBar.fSize.x;
+  end;
+
+  case aListView.fViewMode of
+   TpvGUIListView.TViewMode.Icon:begin
+
+    Position:=TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
+
+
+
+   end;
+   TpvGUIListView.TViewMode.Report:begin
+
+    Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
+
+    if TpvGUIListViewFlag.Header in aListView.fFlags then begin
+
+     Position.y:=Position.y+aListView.fHeaderHeight;
+
+    end;
+
+    begin
+
+     SumWidth:=0.0;
+
+     for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
+      Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
+      if not Column.fSizeExpand then begin
+       if Column.fAutoSize then begin
+        Column.fWidth:=CurrentFont.TextWidth(Column.fCaption,CurrentFontSize)+16.0;
+       end;
+       if (Column.fMinWidth>0.0) and (Column.fWidth<Column.fMinWidth) then begin
+        Column.fWidth:=Column.fMinWidth;
+       end;
+       if (Column.fMaxWidth>0.0) and (Column.fWidth>Column.fMaxWidth) then begin
+        Column.fWidth:=Column.fMaxWidth;
+       end;
+       SumWidth:=SumWidth+Column.fWidth;
+      end;
+     end;
+
+     for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
+      Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
+      if Column.fSizeExpand then begin
+       Column.fWidth:=Max(0.0,ClipRect.Width-SumWidth);
+       if (Column.fMinWidth>0.0) and (Column.fWidth<Column.fMinWidth) then begin
+        Column.fWidth:=Column.fMinWidth;
+       end;
+       if (Column.fMaxWidth>0.0) and (Column.fWidth>Column.fMaxWidth) then begin
+        Column.fWidth:=Column.fMaxWidth;
+       end;
+       break;
+      end;
+     end;
+
+     LastX:=0.0;
+     for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
+      Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
+      Column.fRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(LastX,0);
+      Column.fRect.RightBottom:=ClipRect.LeftTop+TpvVector2.InlineableCreate(LastX+Column.fWidth,
+                                                                             aListView.fHeaderHeight);
+      LastX:=LastX+Column.fWidth;
+     end;
+
+    end;
+
+   end;
+   TpvGUIListView.TViewMode.List:begin
+
+    Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
+
+   end;
+  end;
+
+ end;
+
+end;
+
+function TpvGUIDefaultVectorBasedSkin.GetListViewPreferredSize(const aListView:TpvGUIListView):TpvVector2;
+begin
+
+ ComputeListView(aListView,TpvVector2.Null);
+
+ result:=TpvVector2.InlineableCreate(aListView.fWorkItemWidth+(BoxCornerMargin*2.0),
+                                     (aListView.fWorkItemHeight*8.0)+(BoxCornerMargin*2.0));
 
 end;
 
@@ -10875,6 +10979,8 @@ begin
 
  aDrawEngine.ModelMatrix:=aListView.fModelMatrix;
 
+ ComputeListView(aListView,aListView.fSize);
+
  ClipRect:=aListView.fClipRect;
 
  if aListView.fScrollBar.Visible then begin
@@ -10882,6 +10988,10 @@ begin
  end;
 
  aDrawEngine.ClipRect:=ClipRect;
+
+ ItemWidth:=aListView.fWorkItemWidth;
+
+ ItemHeight:=aListView.fWorkItemHeight;
 
  CurrentFont:=aListView.Font;
 
@@ -10920,36 +11030,6 @@ begin
 
  Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
 
- if aListView.fItemWidth>0.0 then begin
-  ItemWidth:=aListView.fItemWidth;
- end else begin
-  ItemWidth:=128.0;
- end;
-
- if aListView.fItemHeight>0.0 then begin
-  ItemHeight:=aListView.fItemHeight;
- end else begin
-  ItemHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
- end;
-
- aListView.fWorkYTopOffset:=BoxCornerMargin;
-
- aListView.fWorkYBottomOffset:=BoxCornerMargin;
-
- if (aListView.fViewMode=TpvGUIListView.TViewMode.Report) and
-    (TpvGUIListViewFlag.Header in aListView.fFlags) then begin
-  YOffset:=aListView.fHeaderHeight;
-  aListView.fWorkYTopOffset:=aListView.fWorkYTopOffset+YOffset;
- end else begin
-  YOffset:=0.0;
- end;
-
- Position.y:=Position.y+YOffset;
-
- aListView.fWorkItemWidth:=ItemWidth;
-
- aListView.fWorkItemHeight:=ItemHeight;
-
  ClipRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
 
  ClipRect.RightBottom:=ClipRect.RightBottom-TpvVector2.InlineableCreate(BoxCornerMargin,BoxCornerMargin);
@@ -10962,6 +11042,11 @@ begin
   TpvGUIListView.TViewMode.Report:begin
 
    if TpvGUIListViewFlag.Header in aListView.fFlags then begin
+
+    YOffset:=aListView.fHeaderHeight;
+
+    Position.y:=Position.y+YOffset;
+
     if aListView.Enabled then begin
      FontColor:=aListView.FontColor;
      Element:=GUI_ELEMENT_PANEL_ENABLED;
@@ -10972,52 +11057,12 @@ begin
 
     aDrawEngine.Transparent:=false;
 
-    SumWidth:=0.0;
-
-    for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
-     Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
-     if not Column.fSizeExpand then begin
-      if Column.fAutoSize then begin
-       Column.fWidth:=CurrentFont.TextWidth(Column.fCaption,CurrentFontSize)+16.0;
-      end;
-      if (Column.fMinWidth>0.0) and (Column.fWidth<Column.fMinWidth) then begin
-       Column.fWidth:=Column.fMinWidth;
-      end;
-      if (Column.fMaxWidth>0.0) and (Column.fWidth>Column.fMaxWidth) then begin
-       Column.fWidth:=Column.fMaxWidth;
-      end;
-      SumWidth:=SumWidth+Column.fWidth;
-     end;
-    end;
-
-    for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
-     Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
-     if Column.fSizeExpand then begin
-      Column.fWidth:=Max(0.0,ClipRect.Width-SumWidth);
-      if (Column.fMinWidth>0.0) and (Column.fWidth<Column.fMinWidth) then begin
-       Column.fWidth:=Column.fMinWidth;
-      end;
-      if (Column.fMaxWidth>0.0) and (Column.fWidth>Column.fMaxWidth) then begin
-       Column.fWidth:=Column.fMaxWidth;
-      end;
-      break;
-     end;
-    end;
-
     LastX:=-1.0;
-    for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
-     Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
-     Column.fRect.LeftTop:=(ClipRect.LeftTop-aListView.fClipRect.LeftTop)+
-                           TpvVector2.InlineableCreate(LastX,0);
-     Column.fRect.RightBottom:=TpvVector2.InlineableCreate(ClipRect.Left-aListView.fClipRect.Left,
-                                                           aListView.fHeaderHeight)+
-                               TpvVector2.InlineableCreate(LastX+Column.fWidth,0);
-     LastX:=LastX+Column.fWidth;
-    end;
 
     for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
      Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
      DrawRect:=Column.fRect;
+     LastX:=Max(LastX,DrawRect.Right);
      aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
                                                     true,
                                                     DrawRect.LeftTop,
@@ -11029,7 +11074,7 @@ begin
                                                     true);
     end;
 
-    if LastX<(ClipRect.Right-ClipRect.Left) then begin
+    if LastX<ClipRect.Width then begin
      DrawRect.LeftTop:=(ClipRect.LeftTop-aListView.fClipRect.LeftTop)+TpvVector2.InlineableCreate(LastX+1,0);
      DrawRect.RightBottom:=TpvVector2.InlineableCreate(ClipRect.Right-aListView.fClipRect.Left,aListView.fHeaderHeight);
      aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
