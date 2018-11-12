@@ -3058,7 +3058,7 @@ type TpvGUIObject=class;
        fOnChange:TpvGUIOnEvent;
        fOnChangeItemIndex:TpvGUIOnEvent;
        fOnChangeSelection:TpvGUIOnEvent;
-       fOnDoubleClickOnItem:TpvGUIOnEvent;
+       fOnDoubleClick:TpvGUIOnEvent;
        fOnDrawItem:TpvGUIListViewOnDrawItem;
        fOnGetItemText:TpvGUIListViewOnGetItemText;
        fSelectedBitmap:TpvGUIListViewSelectedBitmap;
@@ -3114,7 +3114,7 @@ type TpvGUIObject=class;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
        property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
-       property OnDoubleClickOnItem:TpvGUIOnEvent read fOnDoubleClickOnItem write fOnDoubleClickOnItem;
+       property OnDoubleClick:TpvGUIOnEvent read fOnDoubleClick write fOnDoubleClick;
        property OnDrawItem:TpvGUIListViewOnDrawItem read fOnDrawItem write fOnDrawItem;
        property OnGetItemText:TpvGUIListViewOnGetItemText read fOnGetItemText write fOnGetItemText;
      end;
@@ -3153,8 +3153,9 @@ type TpvGUIObject=class;
        function TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       function ListViewOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        procedure ListViewOnChangeItemIndex(const aSender:TpvGUIObject);
-       procedure ListViewOnDoubleClickOnItem(const aSender:TpvGUIObject);
+       procedure ListViewOnDoubleClick(const aSender:TpvGUIObject);
        procedure ButtonOpenSaveOnClick(const aSender:TpvGUIObject);
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
        procedure Refresh;
@@ -3164,6 +3165,7 @@ type TpvGUIObject=class;
        destructor Destroy; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        procedure Check; override;
+       procedure Accept;
       published
        property Path:TpvUTF8String read fPath write SetPath;
      end;
@@ -22761,7 +22763,7 @@ begin
 
  fOnChangeSelection:=nil;
 
- fOnDoubleClickOnItem:=nil;
+ fOnDoubleClick:=nil;
 
  fOnDrawItem:=nil;
 
@@ -23238,8 +23240,8 @@ begin
        if fDoubleClickCounter=2 then begin
         fDoubleClickCounter:=0;
         fDoubleClickTimeAccumulator:=0.0;
-        if assigned(fOnDoubleClickOnItem) then begin
-         fOnDoubleClickOnItem(self);
+        if assigned(fOnDoubleClick) then begin
+         fOnDoubleClick(self);
         end;
        end;
       end;
@@ -23419,16 +23421,11 @@ begin
   Column.fAutoSize:=true;
   Column.fMinWidth:=192;
 
-{ ListViewItem:=fListView.Items.New;
-  ListViewItem.fCaption:='file';
-  ListViewItem.SubItems.Add('ext');
-  ListViewItem.SubItems.Add('1337 bytes');
-  ListViewItem.SubItems.Add('11. November 2018, 18:17:42');
-}
+  fListView.OnKeyEvent:=ListViewOnKeyEvent;
 
   fListView.OnChangeItemIndex:=ListViewOnChangeItemIndex;
 
-  fListView.OnDoubleClickOnItem:=ListViewOnDoubleClickOnItem;
+  fListView.OnDoubleClick:=ListViewOnDoubleClick;
 
  end;
 
@@ -23521,7 +23518,7 @@ begin
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
    KEYCODE_RETURN,KEYCODE_RETURN2:begin
-    SetPath(fTextEditFileName.Text);
+    Accept;
     result:=true;
    end;
   end;
@@ -23540,6 +23537,19 @@ begin
  end;
 end;
 
+function TpvGUIFileDialog.ListViewOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+begin
+ result:=false;
+ if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
+  case aKeyEvent.KeyCode of
+   KEYCODE_RETURN,KEYCODE_RETURN2:begin
+    Accept;
+    result:=true;
+   end;
+  end;
+ end;
+end;
+
 procedure TpvGUIFileDialog.ListViewOnChangeItemIndex(const aSender:TpvGUIObject);
 begin
  if (fListView.fItemIndex>=0) and (fListView.fItemIndex<fListItems.Count) then begin
@@ -23549,13 +23559,14 @@ begin
  end;
 end;
 
-procedure TpvGUIFileDialog.ListViewOnDoubleClickOnItem(const aSender:TpvGUIObject);
+procedure TpvGUIFileDialog.ListViewOnDoubleClick(const aSender:TpvGUIObject);
 begin
- SetPath(fTextEditFileName.Text);
+ Accept;
 end;
 
 procedure TpvGUIFileDialog.ButtonOpenSaveOnClick(const aSender:TpvGUIObject);
 begin
+ Accept;
 end;
 
 procedure TpvGUIFileDialog.ButtonCancelOnClick(const aSender:TpvGUIObject);
@@ -23630,10 +23641,10 @@ begin
    end;
 {$endif}
    if {$ifdef Unix}length(fPath)>1{$else}length(fPath)>0{$endif} then begin
-    Add('.',
+{   Add(PathDelim,
         true,
         -2,
-        SysUtils.Now);
+        SysUtils.Now);}
     Add('..',
         true,
         -1,
@@ -23675,29 +23686,38 @@ begin
    if ListItem^.Size<=-$10000 then begin
     ListViewItem.fSubItems.Add('[DRIVE]');
    end else begin
-    ListViewItem.fSubItems.Add('[DIR]');
+    if ListItem^.FileName='..' then begin
+     ListViewItem.fSubItems.Add('[PARENT]');
+    end else begin
+     ListViewItem.fSubItems.Add('[DIR]');
+    end;
    end;
    ListViewItem.fSubItems.Add('');
   end else begin
-   ListViewItem.fCaption:=TpvUTF8String(ChangeFileExt(ExtractFileName(String(ListItem^.FileName)),''));
-   ListViewItem.fSubItems.Add(ExtractFileExt(String(ListItem^.FileName)));
+   if (length(ListItem^.FileName)>0) and (ListItem^.FileName[1]='.') then begin
+    ListViewItem.fCaption:=ListItem^.FileName;
+    ListViewItem.fSubItems.Add('');
+   end else begin
+    ListViewItem.fCaption:=TpvUTF8String(ChangeFileExt(ExtractFileName(String(ListItem^.FileName)),''));
+    ListViewItem.fSubItems.Add(copy(ExtractFileExt(String(ListItem^.FileName)),2,length(ListItem^.FileName)));
+   end;
    if ListItem^.Directory then begin
     ListViewItem.fSubItems.Add('[DIR]');
    end else begin
     if ListItem^.Size<1024 then begin
      ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size)+' bytes');
     end else if ListItem^.Size<1048576 then begin
-     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 10)+' KiB');
+     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 10)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 10)-1))*1000) shr 10) div 100)+' KiB');
     end else if ListItem^.Size<1073741824 then begin
-     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 20)+' MiB');
+     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 20)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 20)-1))*1000) shr 20) div 100)+' MiB');
     end else if ListItem^.Size<TpvInt64(1099511627776) then begin
-     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 30)+' GiB');
+     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 30)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 30)-1))*1000) shr 30) div 100)+' GiB');
     end else if ListItem^.Size<TpvInt64(1125899906842624) then begin
-     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 40)+' TiB');
+     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 40)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 40)-1))*1000) shr 40) div 100)+' TiB');
     end else if ListItem^.Size<TpvInt64(1152921504606846976) then begin
-     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 50)+' PiB');
+     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 50)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 50)-1))*1000) shr 50) div 100)+' PiB');
     end else {if ListItem^.Size<TpvInt64(1180591620717411303424) then}begin
-     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 60)+' EiB');
+     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 60)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 60)-1))*1000) shr 60) div 100)+' EiB');
     end;
   end;
   end;
@@ -23724,8 +23744,9 @@ var NewPath:TpvUTF8String;
 begin
  NewPath:=TpvUTF8String(Trim(String(aPath)));
  if length(NewPath)>0 then begin
-{$ifndef Unix}
-  if (NewPath='..') and ((length(fPath) in [2,3]) and (fPath[1] in ['A'..'Z','a'..'z']) and (fPath[2]=':')) then begin
+  if (NewPath='/') or (NewPath='\') then begin
+   NewPath:='';
+  end else{$ifndef Unix}if (NewPath='..') and ((length(fPath) in [2,3]) and (fPath[1] in ['A'..'Z','a'..'z']) and (fPath[2]=':')) then begin
    NewPath:='';
   end else if (length(NewPath) in [2]) and (NewPath[1] in ['A'..'Z','a'..'z']) and (NewPath[2]=':') then begin
    NewPath:=TpvUTF8String(IncludeTrailingPathDelimiter(String(NewPath)));
@@ -23797,6 +23818,11 @@ begin
   SetPath({$ifdef Unix}'/'{$else}'C:\'{$endif});
  end;*)
  inherited Check;
+end;
+
+procedure TpvGUIFileDialog.Accept;
+begin
+ SetPath(fTextEditFileName.Text);
 end;
 
 end.
