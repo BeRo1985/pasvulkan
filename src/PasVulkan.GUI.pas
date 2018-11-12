@@ -3146,6 +3146,7 @@ type TpvGUIObject=class;
        function TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
+       procedure ListViewOnChangeItemIndex(const aSender:TpvGUIObject);
        procedure ButtonOpenSaveOnClick(const aSender:TpvGUIObject);
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
        procedure Refresh;
@@ -23446,6 +23447,8 @@ begin
 
  end;
 
+ fListView.OnChangeItemIndex:=ListViewOnChangeItemIndex;
+
 end;
 
 destructor TpvGUIFileDialog.Destroy;
@@ -23489,6 +23492,15 @@ begin
     result:=true;
    end;
   end;
+ end;
+end;
+
+procedure TpvGUIFileDialog.ListViewOnChangeItemIndex(const aSender:TpvGUIObject);
+begin
+ if (fListView.fItemIndex>=0) and (fListView.fItemIndex<fListItems.Count) then begin
+  fTextEditFileName.Text:=fListItems.Items[fListView.fItemIndex].FileName;
+ end else begin
+  fTextEditFileName.Text:='';
  end;
 end;
 
@@ -23700,6 +23712,7 @@ begin
     fPath:=NewPath;
     fTextEditPath.Text:=fPath;
     Refresh;
+    fListView.fItemIndex:=-1;
     fTextEditFileName.Text:='';
    end else begin
     fTextEditPath.Text:=fPath;
