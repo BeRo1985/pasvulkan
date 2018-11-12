@@ -3149,7 +3149,9 @@ type TpvGUIObject=class;
        fButtonOpenSave:TpvGUIButton;
        fButtonCancel:TpvGUIButton;
        fPath:TpvUTF8String;
+       fFileName:TpvUTF8String;
        fListItems:TListItems;
+       fOverwritePrompt:boolean;
        function TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -3168,6 +3170,8 @@ type TpvGUIObject=class;
        procedure Accept;
       published
        property Path:TpvUTF8String read fPath write SetPath;
+       property FileName:TpvUTF8String read fFileName {write fFileName};
+       property OverwritePrompt:boolean read fOverwritePrompt write fOverwritePrompt;
      end;
 
 implementation
@@ -23356,6 +23360,10 @@ begin
 
  fPath:=#0;
 
+ fFileName:='';
+
+ fOverwritePrompt:=false;
+
  fListItems.Initialize;
 
  if fMode=TMode.Open then begin
@@ -23822,8 +23830,34 @@ begin
 end;
 
 procedure TpvGUIFileDialog.Accept;
+var NewPath:TpvUTF8String;
 begin
- SetPath(fTextEditFileName.Text);
+ NewPath:=fTextEditFileName.Text;
+ if (NewPath='/') or (NewPath='\') then begin
+  NewPath:='';
+ end else{$ifndef Unix}if (NewPath='..') and ((length(fPath) in [2,3]) and (fPath[1] in ['A'..'Z','a'..'z']) and (fPath[2]=':')) then begin
+  NewPath:='';
+ end else if (length(NewPath) in [2]) and (NewPath[1] in ['A'..'Z','a'..'z']) and (NewPath[2]=':') then begin
+  NewPath:=TpvUTF8String(IncludeTrailingPathDelimiter(String(NewPath)));
+ end else{$endif}if not (((length(NewPath)>0) and (NewPath[1]=PathDelim)){$ifndef Unix} or
+                        ((length(NewPath)>1) and (NewPath[1] in ['A'..'Z','a'..'z']) and (NewPath[2]=':')){$endif}) then begin
+  NewPath:=TpvUTF8String(ExpandFileName(IncludeTrailingPathDelimiter(String(fPath))+String(NewPath)));
+ end;
+ if (length(NewPath)>0) and DirectoryExists(NewPath) then begin
+  SetPath(NewPath);
+ end else if (fMode=TMode.Open) and (length(NewPath)>0) and FileExists(NewPath) then begin
+  fFileName:=NewPath;
+  Close;
+ end else if (fMode=TMode.Save) and (length(NewPath)>0) then begin
+  if FileExists(NewPath) and fOverwritePrompt then begin
+
+  end else begin
+   fFileName:=NewPath;
+   Close;
+  end;
+ end else begin
+  SetPath(fTextEditFileName.Text);
+ end;
 end;
 
 end.
