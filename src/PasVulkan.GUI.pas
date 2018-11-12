@@ -23460,6 +23460,7 @@ begin
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
    KEYCODE_RETURN,KEYCODE_RETURN2:begin
+    SetPath(fTextEditPath.Text);
     result:=true;
    end;
   end;
@@ -23577,12 +23578,14 @@ begin
                          SysUtils.faDirectory or SysUtils.faArchive,
                          SearchRec)=0 then begin
     repeat
-     ListViewItem:=fListView.Items.New;
-     ListViewItem.fCaption:=TpvUTF8String(SearchRec.Name);
-     Add(TpvUTF8String(SearchRec.Name),
-         (SearchRec.Attr and SysUtils.faDirectory)<>0,
-         SearchRec.Size,
-         FileDateToDateTime(SearchRec.Time));
+     if (SearchRec.Name<>'.') and (SearchRec.Name<>'..') then begin
+      ListViewItem:=fListView.Items.New;
+      ListViewItem.fCaption:=TpvUTF8String(SearchRec.Name);
+      Add(TpvUTF8String(SearchRec.Name),
+          (SearchRec.Attr and SysUtils.faDirectory)<>0,
+          SearchRec.Size,
+          FileDateToDateTime(SearchRec.Time));
+     end;
     until SysUtils.FindNext(SearchRec)<>0;
    end;
   end;
@@ -23648,13 +23651,17 @@ var NewPath:TpvUTF8String;
 begin
  NewPath:=aPath;
  if length(NewPath)>0 then begin
-  if not (((length(NewPath)>0) and (NewPath[1]=PathDelim)){$ifndef Unix} or
-          ((length(NewPath)>1) and (NewPath[1] in ['A'..'Z','a'..'z']) and (NewPath[2]=':')){$endif}) then begin
+{$ifndef Unix}
+  if (NewPath='..') and ((length(fPath) in [2,3]) and (fPath[1] in ['A'..'Z','a'..'z']) and (fPath[2]=':')) then begin
+   NewPath:='';
+  end else{$endif}if not (((length(NewPath)>0) and (NewPath[1]=PathDelim)){$ifndef Unix} or
+                         ((length(NewPath)>1) and (NewPath[1] in ['A'..'Z','a'..'z']) and (NewPath[2]=':')){$endif}) then begin
    NewPath:=TpvUTF8String(ExpandFileName(IncludeTrailingPathDelimiter(String(fPath))+String(NewPath)));
   end;
  end;
  if fPath<>NewPath then begin
   fPath:=NewPath;
+  fTextEditPath.Text:=fPath;
   Refresh;
  end;
 end;
