@@ -674,7 +674,7 @@ type TpvGUIObject=class;
        fSizes:TpvVector2Array;
        fFixedSizes:TpvVector2Array;
        fTargetSizes:TpvVector2Array;
-       procedure ComputeLayout(const aWidget:TpvGUIWidget);
+       procedure ComputeLayout(const aWidget:TpvGUIWidget;const aForPreferredSize:boolean);
       protected
        function GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2; override;
        procedure PerformLayout(const aWidget:TpvGUIWidget); override;
@@ -5583,7 +5583,7 @@ begin
 
 end;
 
-procedure TpvGUIAdvancedGridLayout.ComputeLayout(const aWidget:TpvGUIWidget);
+procedure TpvGUIAdvancedGridLayout.ComputeLayout(const aWidget:TpvGUIWidget;const aForPreferredSize:boolean);
 var AxisIndex,PhaseIndex,ChildIndex,Index:TpvInt32;
     FixedSize,ContainerSize:TpvVector2;
     ColumnRows:TpvGUIAdvancedGridLayoutColumnRows;
@@ -5632,7 +5632,11 @@ begin
   SetLength(fGrid[AxisIndex],fGridDimensions[AxisIndex]);
 
   for Index:=0 to fGridDimensions[AxisIndex]-1 do begin
-   fGrid[AxisIndex,Index]:=ColumnRows[Index].fSize;
+   if (not aForPreferredSize) and (ColumnRows[Index].fStretch>0.0) then begin
+    fGrid[AxisIndex,Index]:=0.0;
+   end else begin
+    fGrid[AxisIndex,Index]:=ColumnRows[Index].fSize;
+   end;
   end;
 
   for PhaseIndex:=0 to 1 do begin
@@ -5716,7 +5720,7 @@ end;
 function TpvGUIAdvancedGridLayout.GetPreferredSize(const aWidget:TpvGUIWidget):TpvVector2;
 var AxisIndex,Index:TpvInt32;
 begin
- ComputeLayout(aWidget);
+ ComputeLayout(aWidget,true);
  result:=TpvVector2.InlineableCreate(fMargin*2.0,fMargin*2.0);
  for AxisIndex:=0 to 1 do begin
   for Index:=0 to fGridDimensions[AxisIndex]-1 do begin
@@ -5744,7 +5748,7 @@ var AxisIndex,Index,ChildIndex:TpvInt32;
     ChildPreferredSize,ChildFixedSize,ChildTargetSize:TpvVector2;
 begin
 
- ComputeLayout(aWidget);
+ ComputeLayout(aWidget,false);
 
  if length(fPositions)<>aWidget.fChildren.Count then begin
   SetLength(fPositions,aWidget.fChildren.Count);
