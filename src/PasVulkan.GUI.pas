@@ -23557,6 +23557,7 @@ begin
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
    KEYCODE_RETURN,KEYCODE_RETURN2:begin
+    Refresh;
     result:=true;
    end;
   end;
@@ -23646,6 +23647,11 @@ begin
 end;
 
 procedure TpvGUIFileDialog.Refresh;
+type TFilter=record
+      Pattern:TpvUTF8String;
+     end;
+     PFilter=^TFilter;
+     TFilters=TpvDynamicArray<TFilter>;
  function Add(const aFileName:TpvUTF8String;const aDirectory:boolean;const aSize:TpvInt64;const aDateTime:TDateTime):TpvSizeInt;
  var ListItem:PListItem;
  begin
@@ -23662,120 +23668,173 @@ var Index:TpvSizeInt;
     ListItem:PListItem;
     ListViewItem:TpvGUIListViewItem;
     DateTimeString:string;
+    CurrentFileName:TpvUTF8String;
+    FilterStringList:TStringList;
+    Filters:TFilters;
+    Filter:TFilter;
 begin
 
- fListItems.Clear;
+ Filters.Initialize;
  try
-{$ifndef Unix}
-  if length(fPath)=0 then begin
-   for Index:=0 to 25 do begin
-    if DirectoryExists(String(AnsiChar(TpvUInt8(TpvUInt8(AnsiChar('A'))+Index))+':\')) then begin
-     Add(TpvUTF8String(AnsiChar(TpvUInt8(TpvUInt8(AnsiChar('A'))+Index))+':'),
+
+  FilterStringList:=TStringList.Create;
+  try
+   FilterStringList.Delimiter:=';';
+   FilterStringList.StrictDelimiter:=true;
+   if length(fTextEditFilter.Text)=0 then begin
+    FilterStringList.DelimitedText:='*.*';
+   end else begin
+    FilterStringList.DelimitedText:=String(fTextEditFilter.Text)+';';
+   end;
+   for Index:=0 to FilterStringList.Count-1 do begin
+    Filter.Pattern:=TpvUTF8String(Trim(LowerCase(FilterStringList[Index])));
+    if length(Filter.Pattern)>0 then begin
+     Filters.Add(Filter);
+    end;
+   end;
+  finally
+   FreeAndNil(FilterStringList);
+  end;
+
+  fListItems.Clear;
+  try
+ {$ifndef Unix}
+   if length(fPath)=0 then begin
+    for Index:=0 to 25 do begin
+     if DirectoryExists(String(AnsiChar(TpvUInt8(TpvUInt8(AnsiChar('A'))+Index))+':\')) then begin
+      Add(TpvUTF8String(AnsiChar(TpvUInt8(TpvUInt8(AnsiChar('A'))+Index))+':'),
+          true,
+          -($11000-Index),
+          SysUtils.Now);
+     end;
+    end;
+   end else{$endif}begin
+ {$ifdef Unix}
+    if length(fPath)=0 then begin
+     fPath:=PathDelim;
+    end;
+ {$endif}
+    if {$ifdef Unix}length(fPath)>1{$else}length(fPath)>0{$endif} then begin
+ {   Add(PathDelim,
          true,
-         -($11000-Index),
+         -2,
+         SysUtils.Now);}
+     Add('..',
+         true,
+         -1,
          SysUtils.Now);
     end;
-   end;
-  end else{$endif}begin
-{$ifdef Unix}
-   if length(fPath)=0 then begin
-    fPath:=PathDelim;
-   end;
-{$endif}
-   if {$ifdef Unix}length(fPath)>1{$else}length(fPath)>0{$endif} then begin
-{   Add(PathDelim,
-        true,
-        -2,
-        SysUtils.Now);}
-    Add('..',
-        true,
-        -1,
-        SysUtils.Now);
-   end;
-   if SysUtils.FindFirst(IncludeTrailingPathDelimiter(String(fPath))+{$ifdef Unix}'*'{$else}'*.*'{$endif},
-                         SysUtils.faDirectory or SysUtils.faArchive,
-                         SearchRec)=0 then begin
-    repeat
-     if (SearchRec.Name<>'.') and (SearchRec.Name<>'..') then begin
-      ListViewItem:=fListView.Items.New;
-      ListViewItem.fCaption:=TpvUTF8String(SearchRec.Name);
-      Add(TpvUTF8String(SearchRec.Name),
-          (SearchRec.Attr and SysUtils.faDirectory)<>0,
-          SearchRec.Size,
-          FileDateToDateTime(SearchRec.Time));
-     end;
-    until SysUtils.FindNext(SearchRec)<>0;
-   end;
-  end;
- finally
-  fListItems.Finish;
- end;
-
- if fListItems.Count>1 then begin
-  TpvTypedSort<TListItem>.IntroSort(@fListItems.Items[0],0,fListItems.Count-1,TpvGUIFileDialogCompareListItems);
- end;
-
- DateTimeString:='';
-
- fListView.Items.Clear;
- for Index:=0 to fListItems.Count-1 do begin
-  ListItem:=@fListItems.Items[Index];
-  ListViewItem:=fListView.Items.New;
-  ListViewItem.fTag:=Index;
-  if ListItem^.Size<0 then begin
-   ListViewItem.fCaption:=ListItem^.FileName;
-   ListViewItem.fSubItems.Add('');
-   if ListItem^.Size<=-$10000 then begin
-    ListViewItem.fSubItems.Add('[DRIVE]');
-   end else begin
-    if ListItem^.FileName='..' then begin
-     ListViewItem.fSubItems.Add('[PARENT]');
-    end else begin
-     ListViewItem.fSubItems.Add('[DIR]');
+    if SysUtils.FindFirst(IncludeTrailingPathDelimiter(String(fPath))+{$ifdef Unix}'*'{$else}'*.*'{$endif},
+                          SysUtils.faDirectory or SysUtils.faArchive,
+                          SearchRec)=0 then begin
+     repeat
+      if (SearchRec.Name<>'.') and (SearchRec.Name<>'..') then begin
+       if (SearchRec.Attr and SysUtils.faDirectory)<>0 then begin
+        OK:=true;
+       end else begin
+        CurrentFileName:=LowerCase(SearchRec.Name);
+        OK:=false;
+        for Index:=0 to Filters.Count-1 do begin
+         if MatchPattern(PAnsiChar(CurrentFileName),PAnsiChar(Filters.Items[Index].Pattern)) then begin
+          OK:=true;
+          break;
+         end;
+        end;
+        if (not OK) and (length(ExtractFileExt(String(CurrentFileName)))<2) then begin
+         CurrentFileName:=CurrentFileName+'.';
+         for Index:=0 to Filters.Count-1 do begin
+          if MatchPattern(PAnsiChar(CurrentFileName),PAnsiChar(Filters.Items[Index].Pattern)) then begin
+           OK:=true;
+           break;
+          end;
+         end;
+        end;
+       end;
+       if OK then begin
+        ListViewItem:=fListView.Items.New;
+        ListViewItem.fCaption:=TpvUTF8String(SearchRec.Name);
+        Add(TpvUTF8String(SearchRec.Name),
+            (SearchRec.Attr and SysUtils.faDirectory)<>0,
+            SearchRec.Size,
+            FileDateToDateTime(SearchRec.Time));
+       end;
+      end;
+     until SysUtils.FindNext(SearchRec)<>0;
     end;
    end;
-   ListViewItem.fSubItems.Add('');
-  end else begin
-   if (length(ListItem^.FileName)>0) and (ListItem^.FileName[1]='.') then begin
+  finally
+   fListItems.Finish;
+  end;
+
+  if fListItems.Count>1 then begin
+   TpvTypedSort<TListItem>.IntroSort(@fListItems.Items[0],0,fListItems.Count-1,TpvGUIFileDialogCompareListItems);
+  end;
+
+  DateTimeString:='';
+
+  fListView.Items.Clear;
+  for Index:=0 to fListItems.Count-1 do begin
+   ListItem:=@fListItems.Items[Index];
+   ListViewItem:=fListView.Items.New;
+   ListViewItem.fTag:=Index;
+   if ListItem^.Size<0 then begin
     ListViewItem.fCaption:=ListItem^.FileName;
     ListViewItem.fSubItems.Add('');
-   end else begin
-    ListViewItem.fCaption:=TpvUTF8String(ChangeFileExt(ExtractFileName(String(ListItem^.FileName)),''));
-    ListViewItem.fSubItems.Add(copy(ExtractFileExt(String(ListItem^.FileName)),2,length(ListItem^.FileName)));
-   end;
-   if ListItem^.Directory then begin
-    ListViewItem.fSubItems.Add('[DIR]');
-   end else begin
-    if ListItem^.Size<1024 then begin
-     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size)+' bytes');
-    end else if ListItem^.Size<1048576 then begin
-     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 10)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 10)-1))*1000) shr 10) div 100)+' KiB');
-    end else if ListItem^.Size<1073741824 then begin
-     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 20)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 20)-1))*1000) shr 20) div 100)+' MiB');
-    end else if ListItem^.Size<TpvInt64(1099511627776) then begin
-     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 30)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 30)-1))*1000) shr 30) div 100)+' GiB');
-    end else if ListItem^.Size<TpvInt64(1125899906842624) then begin
-     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 40)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 40)-1))*1000) shr 40) div 100)+' TiB');
-    end else if ListItem^.Size<TpvInt64(1152921504606846976) then begin
-     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 50)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 50)-1))*1000) shr 50) div 100)+' PiB');
-    end else {if ListItem^.Size<TpvInt64(1180591620717411303424) then}begin
-     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 60)+'.'+IntToStr(TpvInt64(TpvUInt128.Mul64(ListItem^.Size and ((TpvInt64(1) shl 60)-1),1000) div (TpvInt64(1) shl 60)) div 100)+' EiB');
+    if ListItem^.Size<=-$10000 then begin
+     ListViewItem.fSubItems.Add('[DRIVE]');
+    end else begin
+     if ListItem^.FileName='..' then begin
+      ListViewItem.fSubItems.Add('[PARENT]');
+     end else begin
+      ListViewItem.fSubItems.Add('[DIR]');
+     end;
     end;
+    ListViewItem.fSubItems.Add('');
+   end else begin
+    if (length(ListItem^.FileName)>0) and (ListItem^.FileName[1]='.') then begin
+     ListViewItem.fCaption:=ListItem^.FileName;
+     ListViewItem.fSubItems.Add('');
+    end else begin
+     ListViewItem.fCaption:=TpvUTF8String(ChangeFileExt(ExtractFileName(String(ListItem^.FileName)),''));
+     ListViewItem.fSubItems.Add(copy(ExtractFileExt(String(ListItem^.FileName)),2,length(ListItem^.FileName)));
+    end;
+    if ListItem^.Directory then begin
+     ListViewItem.fSubItems.Add('[DIR]');
+    end else begin
+     if ListItem^.Size<1024 then begin
+      ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size)+' bytes');
+     end else if ListItem^.Size<1048576 then begin
+      ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 10)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 10)-1))*1000) shr 10) div 100)+' KiB');
+     end else if ListItem^.Size<1073741824 then begin
+      ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 20)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 20)-1))*1000) shr 20) div 100)+' MiB');
+     end else if ListItem^.Size<TpvInt64(1099511627776) then begin
+      ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 30)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 30)-1))*1000) shr 30) div 100)+' GiB');
+     end else if ListItem^.Size<TpvInt64(1125899906842624) then begin
+      ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 40)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 40)-1))*1000) shr 40) div 100)+' TiB');
+     end else if ListItem^.Size<TpvInt64(1152921504606846976) then begin
+      ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 50)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 50)-1))*1000) shr 50) div 100)+' PiB');
+     end else {if ListItem^.Size<TpvInt64(1180591620717411303424) then}begin
+      ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 60)+'.'+IntToStr(TpvInt64(TpvUInt128.Mul64(ListItem^.Size and ((TpvInt64(1) shl 60)-1),1000) div (TpvInt64(1) shl 60)) div 100)+' EiB');
+     end;
+   end;
+   end;
+ (*try
+    DateTimeToString(DateTimeString,FormatSettings. {'d. mmm yyyy, h:mm:ss'},ListItem^.DateTime);
+   except
+    DateTimeString:='???';
+   end;*)
+   DateTimeString:=DateTimeToStr(ListItem^.DateTime);
+   ListViewItem.fSubItems.Add(DateTimeString);
   end;
-  end;
-(*try
-   DateTimeToString(DateTimeString,FormatSettings. {'d. mmm yyyy, h:mm:ss'},ListItem^.DateTime);
-  except
-   DateTimeString:='???';
-  end;*)
-  DateTimeString:=DateTimeToStr(ListItem^.DateTime);
-  ListViewItem.fSubItems.Add(DateTimeString);
+
+  fListView.UpdateScrollBar;
+  fListView.AdjustScrollBar;
+
+  fListView.fScrollBar.Value:=0;
+
+ finally
+  Filters.Finalize;
  end;
-
- fListView.UpdateScrollBar;
- fListView.AdjustScrollBar;
-
- fListView.fScrollBar.Value:=0;
 
 end;
 
@@ -23829,7 +23888,7 @@ begin
 {$ifend}
   end;
   if fPath<>NewPath then begin
-   if {$ifndef Unix}(length(NewPath)=0) or{$endif} DirectoryExists(ExcludeTrailingPathDelimiter(NewPath),true) then begin
+   if {$ifndef Unix}(length(NewPath)=0) or{$endif} DirectoryExists(ExcludeTrailingPathDelimiter(String(NewPath)),true) then begin
     fPath:=NewPath;
     fTextEditPath.Text:=fPath;
     Refresh;
@@ -23877,17 +23936,17 @@ begin
                         ((length(NewPath)>1) and (NewPath[1] in ['A'..'Z','a'..'z']) and (NewPath[2]=':')){$endif}) then begin
   NewPath:=TpvUTF8String(ExpandFileName(IncludeTrailingPathDelimiter(String(fPath))+String(NewPath)));
  end;
- if (length(NewPath)>0) and DirectoryExists(NewPath) then begin
+ if (length(NewPath)>0) and DirectoryExists(String(NewPath)) then begin
   SetPath(NewPath);
- end else if (fMode=TMode.Open) and (length(NewPath)>0) and FileExists(NewPath) then begin
+ end else if (fMode=TMode.Open) and (length(NewPath)>0) and FileExists(String(NewPath)) then begin
   fFileName:=NewPath;
   Close;
  end else if (fMode=TMode.Save) and (length(NewPath)>0) then begin
-  if FileExists(NewPath) and fOverwritePrompt then begin
+  if FileExists(String(NewPath)) and fOverwritePrompt then begin
    fOverwritePromptFileName:=NewPath;
    fOverwritePromptDialog:=TpvGUIMessageDialog.Create(fInstance,
                                                       'Overwrite prompt',
-                                                      'Do you really want to overwrite the file named "'+TpvUTF8String(ExtractFileName(NewPath))+'"?',
+                                                      'Do you really want to overwrite the file named "'+TpvUTF8String(ExtractFileName(String(NewPath)))+'"?',
                                                       [TpvGUIMessageDialogButton.Create(0,
                                                                                         'Yes',
                                                                                         KEYCODE_RETURN,
