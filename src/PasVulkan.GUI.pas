@@ -3121,6 +3121,7 @@ type TpvGUIObject=class;
              );
              TListItem=record
               FileName:TpvUTF8String;
+              LowerCaseFileName:TpvUTF8String;
               Directory:boolean;
               Size:TpvInt64;
               DateTime:TDateTime;
@@ -11268,8 +11269,8 @@ begin
        XOffset:=0.0;
       end;
 
-      aDrawEngine.ClipRect:=TpvRect.CreateRelative(ClipRect.LeftTop+ColumnRect.LeftTop-TpvVector2.InlineableCreate(2.0,2.0),
-                                                   ColumnRect.Size+TpvVector2.InlineableCreate(4.0,4.0)).GetIntersection(ClipRect);
+      aDrawEngine.ClipRect:=TpvRect.CreateRelative(ClipRect.LeftTop+ColumnRect.LeftTop-TpvVector2.InlineableCreate(8.0,8.0),
+                                                   ColumnRect.Size+TpvVector2.InlineableCreate(16.0,16.0)).GetIntersection(ClipRect);
 
       aDrawEngine.DrawText(ItemText,
                            ColumnRect.LeftTop+TpvVector2.InlineableCreate(XOffset,
@@ -11348,7 +11349,14 @@ begin
 
      aDrawEngine.Transparent:=true;
 
-     aDrawEngine.DrawText(ItemText,Item.fColumnRects[0].LeftTop+TpvVector2.InlineableCreate(0.0,Item.fColumnRects[0].Height*0.5));
+     ColumnRect:=Item.fColumnRects[0];
+
+     aDrawEngine.ClipRect:=TpvRect.CreateRelative(ClipRect.LeftTop+ColumnRect.LeftTop-TpvVector2.InlineableCreate(8.0,8.0),
+                                                  ColumnRect.Size+TpvVector2.InlineableCreate(16.0,16.0)).GetIntersection(ClipRect);
+
+     aDrawEngine.DrawText(ItemText,
+                          ColumnRect.LeftTop+TpvVector2.InlineableCreate(0.0,
+                                                                         ColumnRect.Height*0.5));
 
      if aListView.fItemIndex=ItemIndex then begin
       if aListView.Focused then begin
@@ -23300,7 +23308,7 @@ begin
 
  fMode:=aMode;
 
- fPath:='';
+ fPath:=#0;
 
  fListItems.Initialize;
 
@@ -23491,6 +23499,35 @@ begin
  Close;
 end;
 
+function TpvGUIFileDialogCompareListItems(const a,b:TpvGUIFileDialog.TListItem):TpvInt32;
+begin
+ if a.Size<0 then begin
+  if b.Size<0 then begin
+   result:=a.Size-b.Size;
+  end else begin
+   result:=-1;
+  end;
+ end else if b.Size<0 then begin
+  result:=1;
+ end else begin
+  result:=0;
+ end;
+ if result=0 then begin
+  result:=(ord(b.Directory) and 1)-(ord(a.Directory) and 1);
+  if result=0 then begin
+   if a.LowerCaseFileName<b.LowerCaseFileName then begin
+    result:=-1;
+   end else if a.LowerCaseFileName>b.LowerCaseFileName then begin
+    result:=1;
+   end else if a.FileName<b.FileName then begin
+    result:=-1;
+   end else if a.FileName>b.FileName then begin
+    result:=1;
+   end;
+  end;
+ end;
+end;
+
 procedure TpvGUIFileDialog.Refresh;
  function Add(const aFileName:TpvUTF8String;const aDirectory:boolean;const aSize:TpvInt64;const aDateTime:TDateTime):TpvSizeInt;
  var ListItem:PListItem;
@@ -23498,6 +23535,7 @@ procedure TpvGUIFileDialog.Refresh;
   result:=fListItems.AddNew;
   ListItem:=@fListItems.Items[result];
   ListItem^.FileName:=aFileName;
+  ListItem^.LowerCaseFileName:=LowerCase(aFileName);
   ListItem^.Directory:=aDirectory;
   ListItem^.Size:=aSize;
   ListItem^.DateTime:=aDateTime;
@@ -23511,20 +23549,44 @@ begin
 
  fListItems.Clear;
  try
-  if SysUtils.FindFirst(IncludeTrailingPathDelimiter(fPath)+{$ifdef Unix}'*'{$else}'*.*'{$endif},
-                        SysUtils.faDirectory or SysUtils.faArchive,
-                        SearchRec)=0 then begin
-   repeat
-    ListViewItem:=fListView.Items.New;
-    ListViewItem.fCaption:=SearchRec.Name;
-    Add(SearchRec.Name,
-        (SearchRec.Attr and SysUtils.faDirectory)<>0,
-        SearchRec.Size,
-        FileDateToDateTime(SearchRec.Time));
-   until SysUtils.FindNext(SearchRec)<>0;
+{$ifndef Unix}
+  if length(fPath)=0 then begin
+   for Index:=0 to 25 do begin
+    Add(AnsiChar(TpvUInt8(TpvUInt8(AnsiChar('A'))+Index))+':',
+        true,
+        -($11000-Index),
+        SysUtils.Now);
+   end;
+  end else{$endif}begin
+   if {$ifdef Unix}length(fPath)>1{$else}length(fPath)>0{$endif} then begin
+    Add('.',
+        true,
+        -2,
+        SysUtils.Now);
+    Add('..',
+        true,
+        -1,
+        SysUtils.Now);
+   end;
+   if SysUtils.FindFirst(IncludeTrailingPathDelimiter(fPath)+{$ifdef Unix}'*'{$else}'*.*'{$endif},
+                         SysUtils.faDirectory or SysUtils.faArchive,
+                         SearchRec)=0 then begin
+    repeat
+     ListViewItem:=fListView.Items.New;
+     ListViewItem.fCaption:=SearchRec.Name;
+     Add(SearchRec.Name,
+         (SearchRec.Attr and SysUtils.faDirectory)<>0,
+         SearchRec.Size,
+         FileDateToDateTime(SearchRec.Time));
+    until SysUtils.FindNext(SearchRec)<>0;
+   end;
   end;
  finally
   fListItems.Finish;
+ end;
+
+ if fListItems.Count>1 then begin
+  TpvTypedSort<TListItem>.IntroSort(@fListItems.Items[0],0,fListItems.Count-1,TpvGUIFileDialogCompareListItems);
  end;
 
  DateTimeString:='';
@@ -23533,26 +23595,38 @@ begin
  for Index:=0 to fListItems.Count-1 do begin
   ListItem:=@fListItems.Items[Index];
   ListViewItem:=fListView.Items.New;
-  ListViewItem.fCaption:=ChangeFileExt(ExtractFileName(ListItem^.FileName),'');
-  ListViewItem.fSubItems.Add(ExtractFileExt(ListItem^.FileName));
-  if ListItem^.Directory then begin
-   ListViewItem.fSubItems.Add('[DIR]');
-  end else begin
-   if ListItem^.Size<1024 then begin
-    ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size)+' bytes');
-   end else if ListItem^.Size<1048576 then begin
-    ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 10)+' KiB');
-   end else if ListItem^.Size<1073741824 then begin
-    ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 20)+' MiB');
-   end else if ListItem^.Size<TpvInt64(1099511627776) then begin
-    ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 30)+' GiB');
-   end else if ListItem^.Size<TpvInt64(1125899906842624) then begin
-    ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 40)+' TiB');
-   end else if ListItem^.Size<TpvInt64(1152921504606846976) then begin
-    ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 50)+' PiB');
-   end else {if ListItem^.Size<TpvInt64(1180591620717411303424) then}begin
-    ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 60)+' EiB');
+  ListViewItem.fTag:=Index;
+  if ListItem^.Size<0 then begin
+   ListViewItem.fCaption:=ListItem^.FileName;
+   ListViewItem.fSubItems.Add('');
+   if ListItem^.Size<=-$10000 then begin
+    ListViewItem.fSubItems.Add('[DRIVE]');
+   end else begin
+    ListViewItem.fSubItems.Add('[DIR]');
    end;
+   ListViewItem.fSubItems.Add('');
+  end else begin
+   ListViewItem.fCaption:=ChangeFileExt(ExtractFileName(ListItem^.FileName),'');
+   ListViewItem.fSubItems.Add(ExtractFileExt(ListItem^.FileName));
+   if ListItem^.Directory then begin
+    ListViewItem.fSubItems.Add('[DIR]');
+   end else begin
+    if ListItem^.Size<1024 then begin
+     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size)+' bytes');
+    end else if ListItem^.Size<1048576 then begin
+     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 10)+' KiB');
+    end else if ListItem^.Size<1073741824 then begin
+     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 20)+' MiB');
+    end else if ListItem^.Size<TpvInt64(1099511627776) then begin
+     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 30)+' GiB');
+    end else if ListItem^.Size<TpvInt64(1125899906842624) then begin
+     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 40)+' TiB');
+    end else if ListItem^.Size<TpvInt64(1152921504606846976) then begin
+     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 50)+' PiB');
+    end else {if ListItem^.Size<TpvInt64(1180591620717411303424) then}begin
+     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 60)+' EiB');
+    end;
+  end;
   end;
   try
    DateTimeToString(DateTimeString,'d. mmm yyyy, h:mm:ss',ListItem^.DateTime);
