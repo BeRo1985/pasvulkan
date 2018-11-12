@@ -3170,7 +3170,7 @@ type TpvGUIObject=class;
        procedure Refresh;
        procedure SetPath(const aPath:TpvUTF8String);
       public
-       constructor Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open); reintroduce;
+       constructor Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open;const aFilters:TpvUTF8String='*.*'); reintroduce;
        destructor Destroy; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        procedure Check; override;
@@ -23349,7 +23349,7 @@ begin
  inherited Draw;
 end;
 
-constructor TpvGUIFileDialog.Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open);
+constructor TpvGUIFileDialog.Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open;const aFilters:TpvUTF8String='*.*');
 var Column:TpvGUIListViewColumn;
     ListViewItem:TpvGUIListViewItem;
 begin
@@ -23475,7 +23475,7 @@ begin
   fTextEditFilter:=TpvGUITextEdit.Create(Content);
   fTextEditFilter.MinimumHeight:=32;
   fTextEditFilter.OnKeyEvent:=TextEditFilterOnKeyEvent;
-  fTextEditFilter.Text:='*.*';
+  fTextEditFilter.Text:=aFilters;
   fAdvancedGridLayout.Anchors[fTextEditFilter]:=TpvGUIAdvancedGridLayoutAnchor.Create(1,3,1,1,4.0,2.0,4.0,2.0,TpvGUILayoutAlignment.Fill,TpvGUILayoutAlignment.Middle);
 
  end;
