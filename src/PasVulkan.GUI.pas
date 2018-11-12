@@ -3051,6 +3051,7 @@ type TpvGUIObject=class;
        fWorkYBottomOffset:TpvFloat;
        fWorkItemWidth:TpvFloat;
        fWorkItemHeight:TpvFloat;
+       fWorkHeaderHeight:TpvFloat;
        fOnChange:TpvGUIOnEvent;
        fOnChangeItemIndex:TpvGUIOnEvent;
        fOnChangeSelection:TpvGUIOnEvent;
@@ -10870,6 +10871,12 @@ begin
 
  aListView.fWorkItemHeight:=ItemHeight;
 
+ if IsZero(aListView.fHeaderHeight) then begin
+  aListView.fWorkHeaderHeight:=Maximum(CurrentFont.RowHeight(250,CurrentFontSize),CurrentFont.LineSpace(200,CurrentFontSize));
+ end else begin
+  aListView.fWorkHeaderHeight:=aListView.fHeaderHeight;
+ end;
+
  if (aSize.x>0.0) and (aSize.y>0.0) then begin
 
   ClipRect.LeftTop:=TpvVector2.Create(BoxCornerMargin,BoxCornerMargin);
@@ -10893,7 +10900,7 @@ begin
 
     if TpvGUIListViewFlag.Header in aListView.fFlags then begin
 
-     Position.y:=Position.y+(aListView.fHeaderHeight-2);
+     Position.y:=Position.y+(aListView.fWorkHeaderHeight-2);
 
     end;
 
@@ -10934,9 +10941,9 @@ begin
      LastX:=0.0;
      for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
       Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
-      Column.fRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(LastX,0);
+      Column.fRect.LeftTop:=ClipRect.LeftTop+TpvVector2.InlineableCreate(LastX,1);
       Column.fRect.RightBottom:=ClipRect.LeftTop+TpvVector2.InlineableCreate(LastX+Column.fWidth,
-                                                                             aListView.fHeaderHeight);
+                                                                             aListView.fWorkHeaderHeight-1);
       LastX:=LastX+Column.fWidth;
      end;
 
@@ -11123,7 +11130,7 @@ begin
 
    if TpvGUIListViewFlag.Header in aListView.fFlags then begin
 
-    YOffset:=aListView.fHeaderHeight;
+    YOffset:=aListView.fWorkHeaderHeight;
 
     Position.y:=Position.y+YOffset;
 
@@ -11155,8 +11162,8 @@ begin
     end;
 
     if LastX<ClipRect.Width then begin
-     DrawRect.LeftTop:=(ClipRect.LeftTop-aListView.fClipRect.LeftTop)+TpvVector2.InlineableCreate(LastX+1,0);
-     DrawRect.RightBottom:=TpvVector2.InlineableCreate(ClipRect.Right-aListView.fClipRect.Left,aListView.fHeaderHeight);
+     DrawRect.LeftTop:=(ClipRect.LeftTop-aListView.fClipRect.LeftTop)+TpvVector2.InlineableCreate(LastX+1,1);
+     DrawRect.RightBottom:=TpvVector2.InlineableCreate(ClipRect.Right-aListView.fClipRect.Left,aListView.fWorkHeaderHeight-1);
      aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
                                                     true,
                                                     DrawRect.LeftTop,
@@ -22701,11 +22708,13 @@ begin
 
  fItemHeight:=0.0;
 
- fHeaderHeight:=32.0;
+ fHeaderHeight:=0.0;
 
  fWorkItemWidth:=0.0;
 
  fWorkItemHeight:=0.0;
+
+ fWorkHeaderHeight:=0.0;
 
  fWorkYTopOffset:=0.0;
 
@@ -23338,32 +23347,12 @@ begin
   Column.fAutoSize:=true;
   Column.fMinWidth:=192;
 
-  ListViewItem:=fListView.Items.New;
+{ ListViewItem:=fListView.Items.New;
   ListViewItem.fCaption:='file';
   ListViewItem.SubItems.Add('ext');
   ListViewItem.SubItems.Add('1337 bytes');
   ListViewItem.SubItems.Add('11. November 2018, 18:17:42');
-
-  fListView.Items.New.fCaption:='1';
-  fListView.Items.New.fCaption:='2';
-  fListView.Items.New.fCaption:='3';
-  fListView.Items.New.fCaption:='4';
-  fListView.Items.New.fCaption:='5';
-  fListView.Items.New.fCaption:='6';
-  fListView.Items.New.fCaption:='7';
-  fListView.Items.New.fCaption:='8';
-  fListView.Items.New.fCaption:='9';
-  fListView.Items.New.fCaption:='10';
-  fListView.Items.New.fCaption:='11';
-  fListView.Items.New.fCaption:='12';
-  fListView.Items.New.fCaption:='13';
-  fListView.Items.New.fCaption:='14';
-  fListView.Items.New.fCaption:='15';
-  fListView.Items.New.fCaption:='16';
-  fListView.Items.New.fCaption:='17';
-  fListView.Items.New.fCaption:='18';
-  fListView.Items.New.fCaption:='19';
-  fListView.Items.New.fCaption:='20';
+}
 
  end;
 
