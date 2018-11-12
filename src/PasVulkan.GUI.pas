@@ -1355,6 +1355,7 @@ type TpvGUIObject=class;
        fDrawBufferIndex:TpvInt32;
        fDeltaTime:TpvDouble;
        fTime:TpvDouble;
+       fDoubleClickTime:TpvDouble;
        fPopupMenuStack:TpvGUIObjectList;
        fModalWindowStack:TpvGUIObjectList;
        fWindowList:TpvGUIObjectList;
@@ -1413,6 +1414,7 @@ type TpvGUIObject=class;
        property UpdateBufferIndex:TpvInt32 read fUpdateBufferIndex write fUpdateBufferIndex;
        property DrawBufferIndex:TpvInt32 read fDrawBufferIndex write fDrawBufferIndex;
        property DeltaTime:TpvDouble read fDeltaTime write fDeltaTime;
+       property DoubleClickTime:TpvDouble read fDoubleClickTime write fDoubleClickTime;
        property FocusedWidget:TpvGUIWidget read fFocusedWidget write UpdateFocus;
        property HoveredWidget:TpvGUIWidget read fHoveredWidget;
        property Content:TpvGUIPanel read fContent;
@@ -3056,12 +3058,15 @@ type TpvGUIObject=class;
        fOnChange:TpvGUIOnEvent;
        fOnChangeItemIndex:TpvGUIOnEvent;
        fOnChangeSelection:TpvGUIOnEvent;
+       fOnDoubleClickOnItem:TpvGUIOnEvent;
        fOnDrawItem:TpvGUIListViewOnDrawItem;
        fOnGetItemText:TpvGUIListViewOnGetItemText;
        fSelectedBitmap:TpvGUIListViewSelectedBitmap;
        fAction:TpvGUIListViewAction;
        fActionStartIndex:TpvSizeInt;
        fActionStopIndex:TpvSizeInt;
+       fDoubleClickTimeAccumulator:double;
+       fDoubleClickCounter:TpvSizeInt;
        procedure SetViewMode(const aViewMode:TViewMode);
        procedure SetItems(const aItems:TpvGUIListViewItems);
        procedure SetItemIndex(const aItemIndex:TpvSizeInt);
@@ -3093,6 +3098,7 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        function PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean; override;
        function Scrolled(const aPosition,aRelativeAmount:TpvVector2):boolean; override;
+       procedure Check; override;
        procedure Draw; override;
        property Selected[const aItemIndex:TpvSizeInt]:boolean read GetSelected write SetSelected;
       published
@@ -3108,6 +3114,7 @@ type TpvGUIObject=class;
        property OnChange:TpvGUIOnEvent read fOnChange write fOnChange;
        property OnChangeItemIndex:TpvGUIOnEvent read fOnChangeItemIndex write fOnChangeItemIndex;
        property OnChangeSelection:TpvGUIOnEvent read fOnChangeSelection write fOnChangeSelection;
+       property OnDoubleClickOnItem:TpvGUIOnEvent read fOnDoubleClickOnItem write fOnDoubleClickOnItem;
        property OnDrawItem:TpvGUIListViewOnDrawItem read fOnDrawItem write fOnDrawItem;
        property OnGetItemText:TpvGUIListViewOnGetItemText read fOnGetItemText write fOnGetItemText;
      end;
@@ -3147,6 +3154,7 @@ type TpvGUIObject=class;
        function TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        procedure ListViewOnChangeItemIndex(const aSender:TpvGUIObject);
+       procedure ListViewOnDoubleClickOnItem(const aSender:TpvGUIObject);
        procedure ButtonOpenSaveOnClick(const aSender:TpvGUIObject);
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
        procedure Refresh;
@@ -12477,6 +12485,8 @@ begin
  fDeltaTime:=0.0;
 
  fTime:=0.0;
+
+ fDoubleClickTime:=0.5;
 
  fPopupMenuStack:=TpvGUIObjectList.Create(false);
 
@@ -22751,6 +22761,8 @@ begin
 
  fOnChangeSelection:=nil;
 
+ fOnDoubleClickOnItem:=nil;
+
  fOnDrawItem:=nil;
 
  fOnGetItemText:=nil;
@@ -22758,6 +22770,10 @@ begin
  fSelectedBitmap:=nil;
 
  fAction:=TpvGUIListViewAction.None;
+
+ fDoubleClickTimeAccumulator:=0.0;
+
+ fDoubleClickCounter:=0;
 
 end;
 
@@ -23187,6 +23203,11 @@ begin
        SetSelected(fItemIndex,true);
       end;
      end;
+     if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+      if fDoubleClickCounter=0 then begin
+       fDoubleClickTimeAccumulator:=0.0;
+      end;
+     end;
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Up:begin
@@ -23208,6 +23229,18 @@ begin
        end;
        if assigned(fOnChangeSelection) then begin
         fOnChangeSelection(self);
+       end;
+      end;
+     end;
+     if aPointerEvent.Button=TpvApplicationInputPointerButton.Left then begin
+      if fDoubleClickCounter<2 then begin
+       inc(fDoubleClickCounter);
+       if fDoubleClickCounter=2 then begin
+        fDoubleClickCounter:=0;
+        fDoubleClickTimeAccumulator:=0.0;
+        if assigned(fOnDoubleClickOnItem) then begin
+         fOnDoubleClickOnItem(self);
+        end;
        end;
       end;
      end;
@@ -23283,6 +23316,16 @@ begin
   SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
   result:=true;
  end;
+end;
+
+procedure TpvGUIListView.Check;
+begin
+ fDoubleClickTimeAccumulator:=fDoubleClickTimeAccumulator+fInstance.fDeltaTime;
+ if (fDoubleClickTimeAccumulator>=fInstance.fDoubleClickTime) and (fInstance.fDoubleClickTime>0.0) then begin
+  fDoubleClickTimeAccumulator:=frac((fDoubleClickTimeAccumulator-fInstance.fDoubleClickTime)/fInstance.fDoubleClickTime)*fInstance.fDoubleClickTime;
+  fDoubleClickCounter:=0;
+ end;
+ inherited Check;
 end;
 
 procedure TpvGUIListView.Draw;
@@ -23383,6 +23426,10 @@ begin
   ListViewItem.SubItems.Add('11. November 2018, 18:17:42');
 }
 
+  fListView.OnChangeItemIndex:=ListViewOnChangeItemIndex;
+
+  fListView.OnDoubleClickOnItem:=ListViewOnDoubleClickOnItem;
+
  end;
 
  begin
@@ -23447,8 +23494,6 @@ begin
 
  end;
 
- fListView.OnChangeItemIndex:=ListViewOnChangeItemIndex;
-
 end;
 
 destructor TpvGUIFileDialog.Destroy;
@@ -23502,6 +23547,11 @@ begin
  end else begin
   fTextEditFileName.Text:='';
  end;
+end;
+
+procedure TpvGUIFileDialog.ListViewOnDoubleClickOnItem(const aSender:TpvGUIObject);
+begin
+ SetPath(fTextEditFileName.Text);
 end;
 
 procedure TpvGUIFileDialog.ButtonOpenSaveOnClick(const aSender:TpvGUIObject);
@@ -23566,10 +23616,12 @@ begin
 {$ifndef Unix}
   if length(fPath)=0 then begin
    for Index:=0 to 25 do begin
-    Add(TpvUTF8String(AnsiChar(TpvUInt8(TpvUInt8(AnsiChar('A'))+Index))+':'),
-        true,
-        -($11000-Index),
-        SysUtils.Now);
+    if DirectoryExists(String(AnsiChar(TpvUInt8(TpvUInt8(AnsiChar('A'))+Index))+':\')) then begin
+     Add(TpvUTF8String(AnsiChar(TpvUInt8(TpvUInt8(AnsiChar('A'))+Index))+':'),
+         true,
+         -($11000-Index),
+         SysUtils.Now);
+    end;
    end;
   end else{$endif}begin
 {$ifdef Unix}
@@ -23656,6 +23708,11 @@ begin
   end;
   ListViewItem.fSubItems.Add(DateTimeString);
  end;
+
+ fListView.UpdateScrollBar;
+ fListView.AdjustScrollBar;
+
+ fListView.fScrollBar.Value:=0;
 
 end;
 
