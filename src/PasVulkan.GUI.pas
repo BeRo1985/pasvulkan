@@ -65,6 +65,7 @@ interface
 uses SysUtils,
      Classes,
      Math,
+     DateUtils,
      Generics.Collections,
      PasMP,
      PUCU,
@@ -3118,6 +3119,14 @@ type TpvGUIObject=class;
               Open,
               Save
              );
+             TListItem=record
+              FileName:TpvUTF8String;
+              Directory:boolean;
+              Size:TpvInt64;
+              DateTime:TDateTime;
+             end;
+             PListItem=^TListItem;
+             TListItems=TpvDynamicArray<TListItem>;
       private
        fMode:TMode;
        fAdvancedGridLayout:TpvGUIAdvancedGridLayout;
@@ -3131,15 +3140,22 @@ type TpvGUIObject=class;
        fPanelButtons:TpvGUIPanel;
        fButtonOpenSave:TpvGUIButton;
        fButtonCancel:TpvGUIButton;
+       fPath:TpvUTF8String;
+       fListItems:TListItems;
        function TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        procedure ButtonOpenSaveOnClick(const aSender:TpvGUIObject);
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
+       procedure Refresh;
+       procedure SetPath(const aPath:TpvUTF8String);
       public
        constructor Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open); reintroduce;
        destructor Destroy; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
+       procedure Check; override;
+      published
+       property Path:TpvUTF8String read fPath write SetPath;
      end;
 
 implementation
@@ -10858,24 +10874,24 @@ begin
   ItemHeight:=Maximum(CurrentFont.RowHeight(150,CurrentFontSize),CurrentFont.LineSpace(100,CurrentFontSize));
  end;
 
+ if IsZero(aListView.fHeaderHeight) then begin
+  aListView.fWorkHeaderHeight:=Maximum(CurrentFont.RowHeight(250,CurrentFontSize),CurrentFont.LineSpace(200,CurrentFontSize));
+ end else begin
+  aListView.fWorkHeaderHeight:=aListView.fHeaderHeight;
+ end;
+
  aListView.fWorkYTopOffset:=BoxCornerMargin;
 
  aListView.fWorkYBottomOffset:=BoxCornerMargin;
 
  if (aListView.fViewMode=TpvGUIListView.TViewMode.Report) and
     (TpvGUIListViewFlag.Header in aListView.fFlags) then begin
-  aListView.fWorkYTopOffset:=aListView.fWorkYTopOffset+aListView.fHeaderHeight;
+  aListView.fWorkYTopOffset:=aListView.fWorkYTopOffset+aListView.fWorkHeaderHeight;
  end;
 
  aListView.fWorkItemWidth:=ItemWidth;
 
  aListView.fWorkItemHeight:=ItemHeight;
-
- if IsZero(aListView.fHeaderHeight) then begin
-  aListView.fWorkHeaderHeight:=Maximum(CurrentFont.RowHeight(250,CurrentFontSize),CurrentFont.LineSpace(200,CurrentFontSize));
- end else begin
-  aListView.fWorkHeaderHeight:=aListView.fHeaderHeight;
- end;
 
  if (aSize.x>0.0) and (aSize.y>0.0) then begin
 
@@ -21678,7 +21694,7 @@ procedure TpvGUIMultiLineTextEditSearchReplaceWindow.ButtonCancelOnClick(const a
 begin
  Close;
 end;
-///
+
 constructor TpvGUIMultiLineTextEditGotoLineWindow.Create(const aParent:TpvGUIObject;const aMultiLineTextEdit:TpvGUIMultiLineTextEdit);
 begin
 
@@ -23284,6 +23300,10 @@ begin
 
  fMode:=aMode;
 
+ fPath:='';
+
+ fListItems.Initialize;
+
  if fMode=TMode.Open then begin
   Title:='Open';
  end else begin
@@ -23422,6 +23442,7 @@ end;
 
 destructor TpvGUIFileDialog.Destroy;
 begin
+ fListItems.Finalize;
  inherited Destroy;
 end;
 
@@ -23470,6 +23491,87 @@ begin
  Close;
 end;
 
+procedure TpvGUIFileDialog.Refresh;
+ function Add(const aFileName:TpvUTF8String;const aDirectory:boolean;const aSize:TpvInt64;const aDateTime:TDateTime):TpvSizeInt;
+ var ListItem:PListItem;
+ begin
+  result:=fListItems.AddNew;
+  ListItem:=@fListItems.Items[result];
+  ListItem^.FileName:=aFileName;
+  ListItem^.Directory:=aDirectory;
+  ListItem^.Size:=aSize;
+  ListItem^.DateTime:=aDateTime;
+ end;
+var Index:TpvSizeInt;
+    SearchRec:SysUtils.TSearchRec;
+    ListItem:PListItem;
+    ListViewItem:TpvGUIListViewItem;
+    DateTimeString:string;
+begin
+
+ fListItems.Clear;
+ try
+  if SysUtils.FindFirst(IncludeTrailingPathDelimiter(fPath)+{$ifdef Unix}'*'{$else}'*.*'{$endif},
+                        SysUtils.faDirectory or SysUtils.faArchive,
+                        SearchRec)=0 then begin
+   repeat
+    ListViewItem:=fListView.Items.New;
+    ListViewItem.fCaption:=SearchRec.Name;
+    Add(SearchRec.Name,
+        (SearchRec.Attr and SysUtils.faDirectory)<>0,
+        SearchRec.Size,
+        FileDateToDateTime(SearchRec.Time));
+   until SysUtils.FindNext(SearchRec)<>0;
+  end;
+ finally
+  fListItems.Finish;
+ end;
+
+ DateTimeString:='';
+
+ fListView.Items.Clear;
+ for Index:=0 to fListItems.Count-1 do begin
+  ListItem:=@fListItems.Items[Index];
+  ListViewItem:=fListView.Items.New;
+  ListViewItem.fCaption:=ChangeFileExt(ExtractFileName(ListItem^.FileName),'');
+  ListViewItem.fSubItems.Add(ExtractFileExt(ListItem^.FileName));
+  if ListItem^.Directory then begin
+   ListViewItem.fSubItems.Add('[DIR]');
+  end else begin
+   if ListItem^.Size<1024 then begin
+    ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size)+' bytes');
+   end else if ListItem^.Size<1048576 then begin
+    ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 10)+' KiB');
+   end else if ListItem^.Size<1073741824 then begin
+    ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 20)+' MiB');
+   end else if ListItem^.Size<TpvInt64(1099511627776) then begin
+    ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 30)+' GiB');
+   end else if ListItem^.Size<TpvInt64(1125899906842624) then begin
+    ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 40)+' TiB');
+   end else if ListItem^.Size<TpvInt64(1152921504606846976) then begin
+    ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 50)+' PiB');
+   end else {if ListItem^.Size<TpvInt64(1180591620717411303424) then}begin
+    ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 60)+' EiB');
+   end;
+  end;
+  try
+   DateTimeToString(DateTimeString,'d. mmm yyyy, h:mm:ss',ListItem^.DateTime);
+  except
+   DateTimeString:='???';
+  end;
+  ListViewItem.fSubItems.Add(DateTimeString);
+ end;
+
+end;
+
+procedure TpvGUIFileDialog.SetPath(const aPath:TpvUTF8String);
+begin
+ if fPath<>aPath then begin
+  fPath:=aPath;
+  Refresh;
+ end;
+end;
+
 function TpvGUIFileDialog.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
@@ -23481,6 +23583,14 @@ begin
    end;
   end;
  end;
+end;
+
+procedure TpvGUIFileDialog.Check;
+begin
+(*if length(fPath)=0 then begin
+  SetPath({$ifdef Unix}'/'{$else}'C:\'{$endif});
+ end;*)
+ inherited Check;
 end;
 
 end.

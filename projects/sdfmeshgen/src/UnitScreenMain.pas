@@ -562,7 +562,7 @@ begin
 
  end;
 
- TpvGUIFileDialog.Create(fGUIInstance);
+ TpvGUIFileDialog.Create(fGUIInstance).Path:='C:\';
 
  NewProject;
 
