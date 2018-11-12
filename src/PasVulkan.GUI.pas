@@ -3129,6 +3129,8 @@ type TpvGUIObject=class;
              TListItem=record
               FileName:TpvUTF8String;
               LowerCaseFileName:TpvUTF8String;
+              FileExtension:TpvUTF8String;
+              LowerCaseFileExtension:TpvUTF8String;
               Directory:boolean;
               Size:TpvInt64;
               DateTime:TDateTime;
@@ -23633,7 +23635,15 @@ begin
  if result=0 then begin
   result:=(ord(b.Directory) and 1)-(ord(a.Directory) and 1);
   if result=0 then begin
-   if a.LowerCaseFileName<b.LowerCaseFileName then begin
+   if a.LowerCaseFileExtension<b.LowerCaseFileExtension then begin
+    result:=-1;
+   end else if a.LowerCaseFileExtension>b.LowerCaseFileExtension then begin
+    result:=1;
+   end else if a.FileExtension<b.FileExtension then begin
+    result:=-1;
+   end else if a.FileExtension>b.FileExtension then begin
+    result:=1;
+   end else if a.LowerCaseFileName<b.LowerCaseFileName then begin
     result:=-1;
    end else if a.LowerCaseFileName>b.LowerCaseFileName then begin
     result:=1;
@@ -23659,6 +23669,8 @@ type TFilter=record
   ListItem:=@fListItems.Items[result];
   ListItem^.FileName:=aFileName;
   ListItem^.LowerCaseFileName:=TpvUTF8String(LowerCase(String(aFileName)));
+  ListItem^.FileExtension:=ExtractFileExt(aFileName);
+  ListItem^.LowerCaseFileExtension:=TpvUTF8String(LowerCase(String(ListItem^.FileExtension)));
   ListItem^.Directory:=aDirectory;
   ListItem^.Size:=aSize;
   ListItem^.DateTime:=aDateTime;
