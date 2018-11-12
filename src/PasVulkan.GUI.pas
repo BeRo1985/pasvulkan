@@ -11117,6 +11117,7 @@ begin
 
  case aListView.fViewMode of
   TpvGUIListView.TViewMode.Icon:begin
+   // TODO
   end;
   TpvGUIListView.TViewMode.Report:begin
 
@@ -22951,7 +22952,7 @@ procedure TpvGUIListView.UpdateScrollBar;
 var ItemsPerRow,
     VisibleRows:TpvSizeInt;
 begin
- ItemsPerRow:=Max(1,GetCountItemsPerRow);
+ ItemsPerRow:=GetCountItemsPerRow;
  VisibleRows:=GetCountVisibleRows;
  fScrollBar.Visible:=(fItems.Count*ItemsPerRow)>VisibleRows;
  fScrollBar.MaximumValue:=Max(1,(fItems.Count*ItemsPerRow)-VisibleRows);
@@ -23007,6 +23008,7 @@ function TpvGUIListView.KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):bo
    end;
   end;
  end;
+var Step:TpvSizeInt;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if Enabled and not result then begin
@@ -23032,7 +23034,12 @@ begin
    KEYCODE_LEFT,KEYCODE_UP,KEYCODE_MINUS,KEYCODE_KP_MINUS:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex-1,0),fItems.Count-1));
+      if aKeyEvent.KeyCode=KEYCODE_UP then begin
+       Step:=GetCountItemsPerRow;
+      end else begin
+       Step:=1;
+      end;
+      SetItemIndex(Min(Max(fItemIndex-Step,0),fItems.Count-1));
       DoSelection(false);
      end;
     end;
@@ -23041,7 +23048,12 @@ begin
    KEYCODE_RIGHT,KEYCODE_DOWN,KEYCODE_PLUS,KEYCODE_KP_PLUS:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex+1,0),fItems.Count-1));
+      if aKeyEvent.KeyCode=KEYCODE_DOWN then begin
+       Step:=GetCountItemsPerRow;
+      end else begin
+       Step:=1;
+      end;
+      SetItemIndex(Min(Max(fItemIndex+Step,0),fItems.Count-1));
       DoSelection(false);
      end;
     end;
@@ -23050,7 +23062,7 @@ begin
    KEYCODE_PAGEDOWN:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex+4,0),fItems.Count-1));
+      SetItemIndex(Min(Max(fItemIndex+(GetCountItemsPerRow*4),0),fItems.Count-1));
       DoSelection(false);
      end;
     end;
@@ -23059,7 +23071,7 @@ begin
    KEYCODE_PAGEUP:begin
     case aKeyEvent.KeyEventType of
      TpvApplicationInputKeyEventType.Typed:begin
-      SetItemIndex(Min(Max(fItemIndex-4,0),fItems.Count-1));
+      SetItemIndex(Min(Max(fItemIndex-(GetCountItemsPerRow*4),0),fItems.Count-1));
       DoSelection(false);
      end;
     end;
