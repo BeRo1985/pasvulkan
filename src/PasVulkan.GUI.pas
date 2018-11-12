@@ -3072,6 +3072,8 @@ type TpvGUIObject=class;
        procedure SetHeader(const aHeader:boolean);
        function GetHighlightRect:TpvRect; override;
        function GetPreferredSize:TpvVector2; override;
+       function GetCountItemsPerRow:TpvSizeInt;
+       function GetCountVisibleRows:TpvSizeInt;
        function GetCountVisibleItems:TpvSizeInt;
        procedure AdjustScrollBar;
        procedure UpdateScrollBar;
@@ -11200,6 +11202,7 @@ begin
      aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
 
      if aListView.Selected[ItemIndex] then begin
+      aDrawEngine.ClipRect:=ClipRect;
       aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
       aDrawEngine.Transparent:=true;
       aDrawEngine.DrawFilledRectangle(Item.fRect);
@@ -11306,6 +11309,7 @@ begin
      aDrawEngine.TextVerticalAlignment:=TpvCanvasTextVerticalAlignment.Middle;
 
      if aListView.Selected[ItemIndex] then begin
+      aDrawEngine.ClipRect:=ClipRect;
       aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
       aDrawEngine.Transparent:=true;
       aDrawEngine.DrawFilledRectangle(Item.fRect);
@@ -22903,21 +22907,39 @@ begin
  AdjustScrollBar;
 end;
 
-function TpvGUIListView.GetCountVisibleItems:TpvSizeInt;
+function TpvGUIListView.GetCountItemsPerRow:TpvSizeInt;
+begin
+ case fViewMode of
+  TpvGUIListView.TViewMode.Icon:begin
+   result:=Max(1,trunc(fSize.x/Max(1.0,fWorkItemWidth)));
+  end;
+  else {TpvGUIListView.TViewMode.List,TpvGUIListView.TViewMode.Report:}begin
+   result:=1;
+  end;
+ end;
+end;
+
+function TpvGUIListView.GetCountVisibleRows:TpvSizeInt;
 begin
  result:=trunc((fSize.y-(fWorkYTopOffset+fWorkYBottomOffset))/Max(fWorkItemHeight,1));
 end;
 
+function TpvGUIListView.GetCountVisibleItems:TpvSizeInt;
+begin
+ result:=GetCountVisibleRows*GetCountItemsPerRow;
+end;
+
 procedure TpvGUIListView.AdjustScrollBar;
-var VisibleItems:TpvSizeInt;
+var ItemsPerRow,VisibleRows:TpvSizeInt;
 begin
  if fScrollBar.Visible then begin
-  if (fItemIndex-fScrollBar.Value)<0 then begin
-   fScrollBar.Value:=fItemIndex;
+  ItemsPerRow:=GetCountItemsPerRow;
+  if (fItemIndex-(fScrollBar.Value*ItemsPerRow))<0 then begin
+   fScrollBar.Value:=fItemIndex*ItemsPerRow;
   end else begin
-   VisibleItems:=GetCountVisibleItems;
-   if ((fItemIndex-fScrollBar.Value)+1)>=VisibleItems then begin
-    fScrollBar.Value:=Max(0,(fItemIndex-VisibleItems)+1);
+   VisibleRows:=GetCountVisibleRows;
+   if (((fItemIndex*ItemsPerRow)-fScrollBar.Value)+1)>=VisibleRows then begin
+    fScrollBar.Value:=Max(0,((fItemIndex*ItemsPerRow)-VisibleRows)+1);
    end;
   end;
  end else begin
@@ -22926,11 +22948,13 @@ begin
 end;
 
 procedure TpvGUIListView.UpdateScrollBar;
-var VisibleItems:TpvSizeInt;
+var ItemsPerRow,
+    VisibleRows:TpvSizeInt;
 begin
- VisibleItems:=GetCountVisibleItems;
- fScrollBar.Visible:=fItems.Count>VisibleItems;
- fScrollBar.MaximumValue:=Max(1,fItems.Count-VisibleItems);
+ ItemsPerRow:=Max(1,GetCountItemsPerRow);
+ VisibleRows:=GetCountVisibleRows;
+ fScrollBar.Visible:=(fItems.Count*ItemsPerRow)>VisibleRows;
+ fScrollBar.MaximumValue:=Max(1,(fItems.Count*ItemsPerRow)-VisibleRows);
  if not fScrollBar.Visible then begin
   fScrollBar.Value:=0;
  end;
