@@ -23648,21 +23648,61 @@ end;
 
 procedure TpvGUIFileDialog.SetPath(const aPath:TpvUTF8String);
 var NewPath:TpvUTF8String;
+{$if declared(ExpandFileNameCase) and declared(TFilenameCaseMatch)}
+    MatchFound:TFileNameCaseMatch;
+{$ifend}
 begin
- NewPath:=aPath;
+ NewPath:=TpvUTF8String(Trim(String(aPath)));
  if length(NewPath)>0 then begin
 {$ifndef Unix}
   if (NewPath='..') and ((length(fPath) in [2,3]) and (fPath[1] in ['A'..'Z','a'..'z']) and (fPath[2]=':')) then begin
    NewPath:='';
+  end else if (length(NewPath) in [2]) and (NewPath[1] in ['A'..'Z','a'..'z']) and (NewPath[2]=':') then begin
+   NewPath:=TpvUTF8String(IncludeTrailingPathDelimiter(String(NewPath)));
   end else{$endif}if not (((length(NewPath)>0) and (NewPath[1]=PathDelim)){$ifndef Unix} or
                          ((length(NewPath)>1) and (NewPath[1] in ['A'..'Z','a'..'z']) and (NewPath[2]=':')){$endif}) then begin
    NewPath:=TpvUTF8String(ExpandFileName(IncludeTrailingPathDelimiter(String(fPath))+String(NewPath)));
   end;
  end;
  if fPath<>NewPath then begin
-  fPath:=NewPath;
-  fTextEditPath.Text:=fPath;
-  Refresh;
+  if length(NewPath)>0 then begin
+{$if declared(ExpandFileNameCase) and declared(TFilenameCaseMatch)}
+   NewPath:=TpvUTF8String(ExpandFileNameCase(String(NewPath),MatchFound));
+   case MatchFound of
+    TFileNameCaseMatch.mkExactMatch:begin
+     // Accept new path
+    end;
+    TFileNameCaseMatch.mkSingleMatch:begin
+{$if defined(Unix) or defined(Posix)}
+     NewPath:=fPath; // Ignore new path
+{$else}
+    // Accept new path
+{$ifend}
+    end;
+    TFileNameCaseMatch.mkAmbiguous:begin
+{$if defined(Unix) or defined(Posix)}
+     NewPath:=fPath; // Ignore new path
+{$else}
+    // Accept new path
+{$ifend}
+    end;
+    else {TFileNameCaseMatch.mkNone:}begin
+     // Accept new path
+    end;
+   end;
+{$else}
+   NewPath:=TpvUTF8String(ExpandFileName(String(NewPath)));
+{$ifend}
+  end;
+  if fPath<>NewPath then begin
+   if {$ifndef Unix}(length(NewPath)=0) or{$endif} DirectoryExists(ExcludeTrailingPathDelimiter(NewPath),true) then begin
+    fPath:=NewPath;
+    fTextEditPath.Text:=fPath;
+    Refresh;
+   end else begin
+    fTextEditPath.Text:=fPath;
+   end;
+  end;
  end;
 end;
 
