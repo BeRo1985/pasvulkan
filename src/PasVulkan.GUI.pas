@@ -3034,8 +3034,8 @@ type TpvGUIObject=class;
        type TViewMode=
              (
               List,
-              Icon,
-              Report
+              Report,
+              Icon
              );
       private
        fFlags:TpvGUIListViewFlags;
