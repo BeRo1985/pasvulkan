@@ -23473,6 +23473,7 @@ begin
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
    KEYCODE_RETURN,KEYCODE_RETURN2:begin
+    SetPath(fTextEditFileName.Text);
     result:=true;
    end;
   end;
@@ -23699,6 +23700,7 @@ begin
     fPath:=NewPath;
     fTextEditPath.Text:=fPath;
     Refresh;
+    fTextEditFileName.Text:='';
    end else begin
     fTextEditPath.Text:=fPath;
    end;
