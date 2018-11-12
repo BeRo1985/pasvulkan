@@ -23404,16 +23404,16 @@ begin
   Column.fSizeExpand:=true;
 
   Column:=TpvGUIListViewColumn(fListView.Columns.Add);
-  Column.fCaption:='Ext';
+  Column.fCaption:='Extension';
   Column.fAlignment:=TpvGUIListViewColumn.TAlignment.Center;
   Column.fAutoSize:=true;
-  Column.fMinWidth:=64;
+  Column.fMinWidth:=96;
 
   Column:=TpvGUIListViewColumn(fListView.Columns.Add);
   Column.fCaption:='Size';
   Column.fAlignment:=TpvGUIListViewColumn.TAlignment.Center;
   Column.fAutoSize:=true;
-  Column.fMinWidth:=128;
+  Column.fMinWidth:=96;
 
   Column:=TpvGUIListViewColumn(fListView.Columns.Add);
   Column.fCaption:='Date';
@@ -23721,11 +23721,12 @@ begin
     end;
   end;
   end;
-  try
-   DateTimeToString(DateTimeString,'d. mmm yyyy, h:mm:ss',ListItem^.DateTime);
+(*try
+   DateTimeToString(DateTimeString,FormatSettings. {'d. mmm yyyy, h:mm:ss'},ListItem^.DateTime);
   except
    DateTimeString:='???';
-  end;
+  end;*)
+  DateTimeString:=DateTimeToStr(ListItem^.DateTime);
   ListViewItem.fSubItems.Add(DateTimeString);
  end;
 
