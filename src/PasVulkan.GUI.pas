@@ -23078,7 +23078,9 @@ begin
 end;
 
 function TpvGUIListView.PointerEvent(const aPointerEvent:TpvApplicationInputPointerEvent):boolean;
-var CurrentItemIndex:TpvSizeInt;
+var CurrentItemIndex,
+    FoundItemIndex:TpvSizeInt;
+    Item:TpvGUIListViewItem;
 begin
  UpdateScrollBar;
  result:=assigned(fOnPointerEvent) and fOnPointerEvent(self,aPointerEvent);
@@ -23089,28 +23091,48 @@ begin
     TpvApplicationInputPointerEventType.Down:begin
      RequestFocus;
      fAction:=TpvGUIListViewAction.None;
-     SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYTopOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
-     if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
-      SetSelected(fItemIndex,not GetSelected(fItemIndex));
-     end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
-      fAction:=TpvGUIListViewAction.Mark;
-      fActionStartIndex:=fItemIndex;
-      fActionStopIndex:=fItemIndex;
-      fSelectedBitmap:=nil;
-      SetSelected(fItemIndex,true);
+     FoundItemIndex:=-1;
+     for CurrentItemIndex:=0 to fItems.Count-1 do begin
+      Item:=fItems.Items[CurrentItemIndex];
+      if Item.fRect.Touched(aPointerEvent.Position) then begin
+       FoundItemIndex:=CurrentItemIndex;
+       break;
+      end;
+     end;
+     if FoundItemIndex>=0 then begin
+      SetItemIndex(FoundItemIndex);
+      if TpvApplicationInputKeyModifier.CTRL in aPointerEvent.KeyModifiers then begin
+       SetSelected(fItemIndex,not GetSelected(fItemIndex));
+      end else if TpvApplicationInputKeyModifier.SHIFT in aPointerEvent.KeyModifiers then begin
+       fAction:=TpvGUIListViewAction.Mark;
+       fActionStartIndex:=fItemIndex;
+       fActionStopIndex:=fItemIndex;
+       fSelectedBitmap:=nil;
+       SetSelected(fItemIndex,true);
+      end;
      end;
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Up:begin
      if fAction=TpvGUIListViewAction.Mark then begin
-      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYTopOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
-      fActionStopIndex:=fItemIndex;
-      fSelectedBitmap:=nil;
-      for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
-       ChangeSelected(CurrentItemIndex,true,false);
+      FoundItemIndex:=-1;
+      for CurrentItemIndex:=0 to fItems.Count-1 do begin
+       Item:=fItems.Items[CurrentItemIndex];
+       if Item.fRect.Touched(aPointerEvent.Position) then begin
+        FoundItemIndex:=CurrentItemIndex;
+        break;
+       end;
       end;
-      if assigned(fOnChangeSelection) then begin
-       fOnChangeSelection(self);
+      if FoundItemIndex>=0 then begin
+       SetItemIndex(FoundItemIndex);
+       fActionStopIndex:=fItemIndex;
+       fSelectedBitmap:=nil;
+       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+        ChangeSelected(CurrentItemIndex,true,false);
+       end;
+       if assigned(fOnChangeSelection) then begin
+        fOnChangeSelection(self);
+       end;
       end;
      end;
      fAction:=TpvGUIListViewAction.None;
@@ -23118,28 +23140,48 @@ begin
     end;
     TpvApplicationInputPointerEventType.Motion:begin
      if fAction=TpvGUIListViewAction.Mark then begin
-      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYTopOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
-      fActionStopIndex:=fItemIndex;
-      fSelectedBitmap:=nil;
-      for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
-       ChangeSelected(CurrentItemIndex,true,false);
+      FoundItemIndex:=-1;
+      for CurrentItemIndex:=0 to fItems.Count-1 do begin
+       Item:=fItems.Items[CurrentItemIndex];
+       if Item.fRect.Touched(aPointerEvent.Position) then begin
+        FoundItemIndex:=CurrentItemIndex;
+        break;
+       end;
       end;
-      if assigned(fOnChangeSelection) then begin
-       fOnChangeSelection(self);
+      if FoundItemIndex>=0 then begin
+       SetItemIndex(FoundItemIndex);
+       fActionStopIndex:=fItemIndex;
+       fSelectedBitmap:=nil;
+       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+        ChangeSelected(CurrentItemIndex,true,false);
+       end;
+       if assigned(fOnChangeSelection) then begin
+        fOnChangeSelection(self);
+       end;
       end;
      end;
      result:=true;
     end;
     TpvApplicationInputPointerEventType.Drag:begin
      if fAction=TpvGUIListViewAction.Mark then begin
-      SetItemIndex(trunc((aPointerEvent.Position.y-fWorkYTopOffset)/Max(fWorkItemHeight,1.0))+fScrollBar.Value);
-      fActionStopIndex:=fItemIndex;
-      fSelectedBitmap:=nil;
-      for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
-       ChangeSelected(CurrentItemIndex,true,false);
+      FoundItemIndex:=-1;
+      for CurrentItemIndex:=0 to fItems.Count-1 do begin
+       Item:=fItems.Items[CurrentItemIndex];
+       if Item.fRect.Touched(aPointerEvent.Position) then begin
+        FoundItemIndex:=CurrentItemIndex;
+        break;
+       end;
       end;
-      if assigned(fOnChangeSelection) then begin
-       fOnChangeSelection(self);
+      if FoundItemIndex>=0 then begin
+       SetItemIndex(FoundItemIndex);
+       fActionStopIndex:=fItemIndex;
+       fSelectedBitmap:=nil;
+       for CurrentItemIndex:=Min(fActionStartIndex,fActionStopIndex) to Max(fActionStartIndex,fActionStopIndex) do begin
+        ChangeSelected(CurrentItemIndex,true,false);
+       end;
+       if assigned(fOnChangeSelection) then begin
+        fOnChangeSelection(self);
+       end;
       end;
      end;
      result:=true;
