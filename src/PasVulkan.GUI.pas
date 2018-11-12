@@ -23717,7 +23717,7 @@ begin
     end else if ListItem^.Size<TpvInt64(1152921504606846976) then begin
      ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 50)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 50)-1))*1000) shr 50) div 100)+' PiB');
     end else {if ListItem^.Size<TpvInt64(1180591620717411303424) then}begin
-     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 60)+'.'+IntToStr((((ListItem^.Size and ((TpvInt64(1) shl 60)-1))*1000) shr 60) div 100)+' EiB');
+     ListViewItem.fSubItems.Add(IntToStr(ListItem^.Size shr 60)+'.'+IntToStr(TpvInt64(TpvUInt128.Mul64(ListItem^.Size and ((TpvInt64(1) shl 60)-1),1000) div (TpvInt64(1) shl 60)) div 100)+' EiB');
     end;
   end;
   end;
