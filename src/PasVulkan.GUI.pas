@@ -21263,7 +21263,7 @@ begin
  fAdvancedGridLayout.Columns.Add(80.0,0.0);
  fAdvancedGridLayout.Columns.Add(150.0,1.0);
  fAdvancedGridLayout.Columns.Add(100.0,0.0);
- AddMinimizationButton;
+//AddMinimizationButton;
  AddMaximizationButton;
  AddCloseButton;
 
@@ -21566,14 +21566,14 @@ begin
  Top:=170;
 
  Title:='Go to line number';
- 
+
  fAdvancedGridLayout:=TpvGUIAdvancedGridLayout.Create(Window.Content,0.0);
  Content.Layout:=fAdvancedGridLayout;
  fAdvancedGridLayout.Rows.Add(80.0,1.0);
  fAdvancedGridLayout.Columns.Add(80.0,0.0);
  fAdvancedGridLayout.Columns.Add(150.0,1.0);
  fAdvancedGridLayout.Columns.Add(100.0,0.0);
- AddMinimizationButton;
+//AddMinimizationButton;
  AddMaximizationButton;
  AddCloseButton;
 
