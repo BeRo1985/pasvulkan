@@ -11171,10 +11171,13 @@ begin
 
     for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
      Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
-     DrawRect:=Column.fRect;
      TextPosition:=Column.fRect.LeftTop+((Column.fRect.Size+TpvVector2.InlineableCreate(-CurrentFont.TextWidth(Column.fCaption,CurrentFontSize),0.0))*0.5);
+     aDrawEngine.ClipRect:=TpvRect.CreateRelative(ClipRect.LeftTop+Column.fRect.LeftTop,
+                                                  Column.fRect.Size);
      aDrawEngine.DrawText(Column.fCaption,TextPosition);
     end;
+
+    aDrawEngine.ClipRect:=ClipRect;
 
    end;
 
@@ -11237,6 +11240,9 @@ begin
       end else begin
        XOffset:=0.0;
       end;
+
+      aDrawEngine.ClipRect:=TpvRect.CreateRelative(ClipRect.LeftTop+ColumnRect.LeftTop-TpvVector2.InlineableCreate(2.0,2.0),
+                                                   ColumnRect.Size+TpvVector2.InlineableCreate(4.0,4.0)).GetIntersection(ClipRect);
 
       aDrawEngine.DrawText(ItemText,
                            ColumnRect.LeftTop+TpvVector2.InlineableCreate(XOffset,
