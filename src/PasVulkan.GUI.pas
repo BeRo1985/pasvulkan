@@ -2979,6 +2979,8 @@ type TpvGUIObject=class;
        fSelected:boolean;
        fSubItems:TStrings;
        fTag:TpvSizeInt;
+       fRect:TpvRect;
+       fColumnRects:TpvRectArray;
        function GetIndex:TpvSizeInt;
        procedure SetSubItems(const aSubItems:TStrings);
       public
@@ -10822,7 +10824,9 @@ begin
 end;
 
 procedure TpvGUIDefaultVectorBasedSkin.ComputeListView(const aListView:TpvGUIListView;const aSize:TpvVector2);
-var ColumnIndex:TpvSizeInt;
+var ColumnIndex,
+    ItemIndex,
+    CountColumns:TpvSizeInt;
     CurrentFont:TpvFont;
     CurrentFontSize,
     ItemWidth,
@@ -10832,6 +10836,7 @@ var ColumnIndex:TpvSizeInt;
     ClipRect:TpvRect;
     Position:TpvVector2;
     Column:TpvGUIListViewColumn;
+    Item:TpvGUIListViewItem;
 begin
 
  CurrentFont:=aListView.Font;
@@ -10886,7 +10891,7 @@ begin
 
     if TpvGUIListViewFlag.Header in aListView.fFlags then begin
 
-     Position.y:=Position.y+aListView.fHeaderHeight;
+     Position.y:=Position.y+(aListView.fHeaderHeight-2);
 
     end;
 
@@ -10935,10 +10940,78 @@ begin
 
     end;
 
+    Position.y:=Position.y-(aListView.fScrollBar.Value*aListView.fWorkItemHeight);
+
+    CountColumns:=Max(1,aListView.fColumns.Count);
+
+    for ItemIndex:=0 to aListView.fItems.Count-1 do begin
+
+     Item:=aListView.fItems[ItemIndex];
+
+     Item.fRect:=TpvRect.CreateRelative(ClipRect.LeftTop+TpvVector2.Create(0.0,
+                                                                           Position.y),
+                                        TpvVector2.Create(ClipRect.Width,
+                                                          aListView.fWorkItemHeight));
+
+     if length(Item.fColumnRects)<>CountColumns then begin
+      SetLength(Item.fColumnRects,CountColumns);
+     end;
+
+     if aListView.fColumns.Count=0 then begin
+
+      Item.fColumnRects[0]:=Item.fRect;
+      Item.fColumnRects[0].Left:=Item.fColumnRects[0].Left+ListBoxHorizontalMargin;
+      Item.fColumnRects[0].Right:=Item.fColumnRects[0].Right-ListBoxHorizontalMargin;
+
+     end else begin
+
+      for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
+
+       Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
+
+       Item.fColumnRects[ColumnIndex]:=TpvRect.CreateRelative(TpvVector2.Create(Column.fRect.Left+ListBoxHorizontalMargin,
+                                                                                Item.fRect.Top),
+                                                              TpvVector2.Create(Column.fRect.Width-(ListBoxHorizontalMargin*2.0),
+                                                                                Item.fRect.Height));
+
+      end;
+
+     end;
+
+     Position.y:=Position.y+aListView.fWorkItemHeight;
+
+    end;
+
    end;
+
    TpvGUIListView.TViewMode.List:begin
 
     Position:=TpvVector2.InlineableCreate(BoxCornerMargin+ListBoxHorizontalMargin,BoxCornerMargin);
+
+    Position.y:=Position.y-(aListView.fScrollBar.Value*aListView.fWorkItemHeight);
+
+    CountColumns:=1;
+
+    for ItemIndex:=0 to aListView.fItems.Count-1 do begin
+
+     Item:=aListView.fItems[ItemIndex];
+
+     Item.fRect:=TpvRect.CreateRelative(ClipRect.LeftTop+TpvVector2.Create(0.0,
+                                                                           Position.y),
+                                        TpvVector2.Create(ClipRect.Width,
+                                                          aListView.fWorkItemHeight));
+
+     if length(Item.fColumnRects)<>CountColumns then begin
+      SetLength(Item.fColumnRects,CountColumns);
+     end;
+
+     Item.fColumnRects[0]:=Item.fRect;
+     Item.fColumnRects[0].Left:=Item.fColumnRects[0].Left+ListBoxHorizontalMargin;
+     Item.fColumnRects[0].Right:=Item.fColumnRects[0].Right-ListBoxHorizontalMargin;
+
+     Position.y:=Position.y+aListView.fWorkItemHeight;
+
+    end;
 
    end;
   end;
@@ -10972,9 +11045,13 @@ var Element:TpvInt32;
     Position,
     TextPosition:TpvVector2;
     FontColor:TpvVector4;
-    ClipRect,DrawRect,Rect:TpvRect;
+    ClipRect,
+    DrawRect,
+    Rect,
+    ColumnRect:TpvRect;
     ItemText:TpvUTF8String;
     Column:TpvGUIListViewColumn;
+    Item:TpvGUIListViewItem;
 begin
 
  aDrawEngine.ModelMatrix:=aListView.fModelMatrix;
@@ -11108,13 +11185,12 @@ begin
 
    for ItemIndex:=aListView.fScrollBar.Value to aListView.fItems.Count-1 do begin
 
+    Item:=aListView.fItems[ItemIndex];
+
     if not (assigned(aListView.fOnDrawItem) and
             aListView.fOnDrawItem(aListView,
                                   ItemIndex,
-                                  TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left,
-                                                                                     Position.y),
-                                                         TpvVector2.InlineableCreate(DrawRect.Right,
-                                                                                     Position.y+ItemHeight)))) then begin
+                                  Item.fRect)) then begin
 
      aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
 
@@ -11123,20 +11199,11 @@ begin
      if aListView.Selected[ItemIndex] then begin
       aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
       aDrawEngine.Transparent:=true;
-      aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
-                                                                                         Position.y),
-                                                             TpvVector2.InlineableCreate(aListView.fSize.x-(BoxCornerMargin*2.0),
-                                                                                         ItemHeight)));
+      aDrawEngine.DrawFilledRectangle(Item.fRect);
       aDrawEngine.Color:=FontColor;
      end;
 
-     for ColumnIndex:=0 to aListView.fColumns.Count-1 do begin
-
-      if ColumnIndex<aListView.fColumns.Count then begin
-       Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
-      end else begin
-       Column:=nil;
-      end;
+     for ColumnIndex:=0 to length(Item.fColumnRects)-1 do begin
 
       if assigned(aListView.fOnGetItemText) then begin
        ItemText:=aListView.fOnGetItemText(aListView,ItemIndex,ColumnIndex);
@@ -11152,22 +11219,28 @@ begin
 
       aDrawEngine.Transparent:=true;
 
-      if assigned(Column) then begin
+      ColumnRect:=Item.fColumnRects[ColumnIndex];
+
+      if ColumnIndex<aListView.fColumns.Count then begin
+       Column:=TpvGUIListViewColumn(aListView.fColumns.Items[ColumnIndex]);
        case Column.fAlignment of
         TpvGUIListViewColumn.TAlignment.Center:begin
-         XOffset:=(Column.fRect.Width-CurrentFont.TextWidth(ItemText,CurrentFontSize))*0.5;
+         XOffset:=(ColumnRect.Width-CurrentFont.TextWidth(ItemText,CurrentFontSize))*0.5;
         end;
         TpvGUIListViewColumn.TAlignment.Tailing:begin
-         XOffset:=Column.fRect.Width-CurrentFont.TextWidth(ItemText,CurrentFontSize);
+         XOffset:=ColumnRect.Width-CurrentFont.TextWidth(ItemText,CurrentFontSize);
         end;
         else {TpvGUIListViewColumn.TAlignment.Leading:}begin
-         XOffset:=0;
+         XOffset:=0.0;
         end;
        end;
-       aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(Column.fRect.Left+XOffset,ItemHeight*0.5));
       end else begin
-       aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,ItemHeight*0.5));
+       XOffset:=0.0;
       end;
+
+      aDrawEngine.DrawText(ItemText,
+                           ColumnRect.LeftTop+TpvVector2.InlineableCreate(XOffset,
+                                                                          ColumnRect.Height*0.5));
 
      end;
 
@@ -11181,10 +11254,7 @@ begin
       Rect.Left:=ClipRect.Left-1.0;
       Rect.Right:=ClipRect.Right+1.0;
       aDrawEngine.ClipRect:=Rect;
-      Rect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(BoxCornerMargin,
-                                                               Position.y),
-                                   TpvVector2.InlineableCreate(DrawRect.Right,
-                                                               Position.y+ItemHeight));
+      Rect:=Item.fRect;
       aDrawEngine.Transparent:=true;
       aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
                                                      true,
@@ -11218,13 +11288,12 @@ begin
 
    for ItemIndex:=aListView.fScrollBar.Value to aListView.fItems.Count-1 do begin
 
+    Item:=aListView.fItems[ItemIndex];
+
     if not (assigned(aListView.fOnDrawItem) and
             aListView.fOnDrawItem(aListView,
                                   ItemIndex,
-                                  TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(DrawRect.Left,
-                                                                                     Position.y),
-                                                         TpvVector2.InlineableCreate(DrawRect.Right,
-                                                                                     Position.y+ItemHeight)))) then begin
+                                  Item.fRect)) then begin
 
      aDrawEngine.TextHorizontalAlignment:=TpvCanvasTextHorizontalAlignment.Leading;
 
@@ -11233,10 +11302,7 @@ begin
      if aListView.Selected[ItemIndex] then begin
       aDrawEngine.Color:=TpvVector4.InlineableCreate(0.016275,0.016275,0.016275,1.0);
       aDrawEngine.Transparent:=true;
-      aDrawEngine.DrawFilledRectangle(TpvRect.CreateRelative(TpvVector2.InlineableCreate(BoxCornerMargin,
-                                                                                         Position.y),
-                                                             TpvVector2.InlineableCreate(aListView.fSize.x-(BoxCornerMargin*2.0),
-                                                                                         ItemHeight)));
+      aDrawEngine.DrawFilledRectangle(Item.fRect);
       aDrawEngine.Color:=FontColor;
      end;
 
@@ -11248,7 +11314,7 @@ begin
 
      aDrawEngine.Transparent:=true;
 
-     aDrawEngine.DrawText(ItemText,Position+TpvVector2.InlineableCreate(0.0,ItemHeight*0.5));
+     aDrawEngine.DrawText(ItemText,Item.fColumnRects[0].LeftTop+TpvVector2.InlineableCreate(0.0,Item.fColumnRects[0].Height*0.5));
 
      if aListView.fItemIndex=ItemIndex then begin
       if aListView.Focused then begin
@@ -11260,10 +11326,7 @@ begin
       Rect.Left:=ClipRect.Left-1.0;
       Rect.Right:=ClipRect.Right+1.0;
       aDrawEngine.ClipRect:=Rect;
-      Rect:=TpvRect.CreateAbsolute(TpvVector2.InlineableCreate(BoxCornerMargin,
-                                                               Position.y),
-                                   TpvVector2.InlineableCreate(DrawRect.Right,
-                                                               Position.y+ItemHeight));
+      Rect:=Item.fRect;
       aDrawEngine.Transparent:=true;
       aDrawEngine.DrawGUIElementWithTransparentEdges(Element,
                                                      true,
@@ -22540,10 +22603,12 @@ begin
  fSelected:=false;
  fSubItems:=TStringList.Create;
  fTag:=0;
+ fColumnRects:=nil;
 end;
 
 destructor TpvGUIListViewItem.Destroy;
 begin
+ fColumnRects:=nil;
  FreeAndNil(fSubItems);
  inherited Destroy;
 end;
