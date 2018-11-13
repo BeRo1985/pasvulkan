@@ -3181,18 +3181,19 @@ type TpvGUIObject=class;
        procedure ButtonUpOnClick(const aSender:TpvGUIObject);
        procedure ButtonOpenSaveOnClick(const aSender:TpvGUIObject);
        procedure ButtonCancelOnClick(const aSender:TpvGUIObject);
-       procedure Refresh;
+       procedure Refresh(const aNewItemIndex:TpvSizeInt);
+       procedure SetPathEx(const aPath:TpvUTF8String;const aNewItemIndex:TpvSizeInt);
        procedure SetPath(const aPath:TpvUTF8String);
        procedure SetFileName(const aFileName:TpvUTF8String);
        function GetFilter:TpvUTF8String;
        procedure SetFilter(const aFilter:TpvUTF8String);
+       procedure Accept(const aNewItemIndex:TpvSizeInt=-1);
+       procedure Reject;
       public
        constructor Create(const aParent:TpvGUIObject;const aMode:TMode=TMode.Open); reintroduce;
        destructor Destroy; override;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        procedure Check; override;
-       procedure Accept;
-       procedure Reject;
       published
        property Path:TpvUTF8String read fPath write SetPath;
        property FileName:TpvUTF8String read fFileName write SetFileName;
@@ -23682,7 +23683,11 @@ begin
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
    KEYCODE_RETURN,KEYCODE_RETURN2:begin
-    Accept;
+    Accept(-1);
+    if Visible then begin
+     fListView.ItemIndex:=-1;
+     fTextEditFileName.Text:='';
+    end;
     result:=true;
    end;
   end;
@@ -23695,7 +23700,7 @@ begin
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
    KEYCODE_RETURN,KEYCODE_RETURN2:begin
-    Refresh;
+    Refresh(-1);
     result:=true;
    end;
   end;
@@ -23708,12 +23713,7 @@ begin
  if aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed then begin
   case aKeyEvent.KeyCode of
    KEYCODE_RETURN,KEYCODE_RETURN2:begin
-    if fListView.ItemIndex=0 then begin
-     Accept;
-    end else begin
-     Accept;
-     fListView.ItemIndex:=0;
-    end;
+    Accept(0);
     result:=true;
    end;
    KEYCODE_BACKSPACE:begin
@@ -23735,7 +23735,7 @@ end;
 
 procedure TpvGUIFileDialog.ListViewOnDoubleClick(const aSender:TpvGUIObject);
 begin
- Accept;
+ Accept(-1);
 end;
 
 procedure TpvGUIFileDialog.ButtonUpOnClick(const aSender:TpvGUIObject);
@@ -23745,7 +23745,7 @@ end;
 
 procedure TpvGUIFileDialog.ButtonOpenSaveOnClick(const aSender:TpvGUIObject);
 begin
- Accept;
+ Accept(0);
 end;
 
 procedure TpvGUIFileDialog.ButtonCancelOnClick(const aSender:TpvGUIObject);
@@ -23790,7 +23790,7 @@ begin
  end;
 end;
 
-procedure TpvGUIFileDialog.Refresh;
+procedure TpvGUIFileDialog.Refresh(const aNewItemIndex:TpvSizeInt);
 type TFilter=record
       Pattern:TpvUTF8String;
      end;
@@ -23803,7 +23803,7 @@ type TFilter=record
   ListItem:=@fListItems.Items[result];
   ListItem^.FileName:=aFileName;
   ListItem^.LowerCaseFileName:=TpvUTF8String(LowerCase(String(aFileName)));
-  ListItem^.FileExtension:=ExtractFileExt(aFileName);
+  ListItem^.FileExtension:=TpvUTF8String(ExtractFileExt(String(aFileName)));
   ListItem^.LowerCaseFileExtension:=TpvUTF8String(LowerCase(String(ListItem^.FileExtension)));
   ListItem^.Directory:=aDirectory;
   ListItem^.Size:=aSize;
@@ -23878,7 +23878,7 @@ begin
        if (SearchRec.Attr and SysUtils.faDirectory)<>0 then begin
         OK:=true;
        end else begin
-        CurrentFileName:=LowerCase(SearchRec.Name);
+        CurrentFileName:=TpvUTF8String(LowerCase(String(SearchRec.Name)));
         OK:=false;
         for Index:=0 to Filters.Count-1 do begin
          if MatchPattern(PAnsiChar(CurrentFileName),PAnsiChar(Filters.Items[Index].Pattern)) then begin
@@ -23978,9 +23978,9 @@ begin
 
   fListView.fScrollBar.Value:=0;
 
-  fListView.fItemIndex:=-1;
-
   fTextEditFileName.Text:='';
+
+  fListView.ItemIndex:=aNewItemIndex;
 
  finally
   Filters.Finalize;
@@ -23988,7 +23988,7 @@ begin
 
 end;
 
-procedure TpvGUIFileDialog.SetPath(const aPath:TpvUTF8String);
+procedure TpvGUIFileDialog.SetPathEx(const aPath:TpvUTF8String;const aNewItemIndex:TpvSizeInt);
 var Index:TpvSizeInt;
     ListItem:PListItem;
     NewPath,PreviousDirectory:TpvUTF8String;
@@ -24048,13 +24048,14 @@ begin
    if {$ifndef Unix}(length(NewPath)=0) or{$endif} DirectoryExists(ExcludeTrailingPathDelimiter(String(NewPath)),true) then begin
     fPath:=NewPath;
     fTextEditPath.Text:=fPath;
-    Refresh;
+    Refresh(aNewItemIndex);
     if length(PreviousDirectory)>0 then begin
      for Index:=0 to fListItems.Count-1 do begin
       ListItem:=@fListItems.Items[Index];
       if ListItem^.Directory and
          (ListItem^.FileName=PreviousDirectory) then begin
        fListView.ItemIndex:=Index;
+       fTextEditFileName.Text:=ListItem^.FileName;
        break;
       end;
      end;
@@ -24066,10 +24067,15 @@ begin
  end;
 end;
 
+procedure TpvGUIFileDialog.SetPath(const aPath:TpvUTF8String);
+begin
+ SetPathEx(aPath,-1);
+end;
+
 procedure TpvGUIFileDialog.SetFileName(const aFileName:TpvUTF8String);
 begin
- SetPath(ExtractFilePath(aFileName));
- fTextEditFileName.Text:=ExtractFileName(aFileName);
+ SetPath(TpvUTF8String(ExtractFilePath(String(aFileName))));
+ fTextEditFileName.Text:=TpvUTF8String(ExtractFileName(String(aFileName)));
  fTextEditFileName.SelectAll;
 end;
 
@@ -24082,7 +24088,7 @@ procedure TpvGUIFileDialog.SetFilter(const aFilter:TpvUTF8String);
 begin
  if fTextEditFilter.Text<>aFilter then begin
   fTextEditFilter.Text:=aFilter;
-  Refresh;
+  Refresh(-1);
  end;
 end;
 
@@ -24107,12 +24113,12 @@ begin
  inherited Check;
 end;
 
-procedure TpvGUIFileDialog.Accept;
+procedure TpvGUIFileDialog.Accept(const aNewItemIndex:TpvSizeInt=-1);
 var NewPath:TpvUTF8String;
 begin
  NewPath:=fTextEditFileName.Text;
  if Trim(String(NewPath))='..' then begin
-  SetPath(NewPath);
+  SetPathEx(NewPath,aNewItemIndex);
  end else begin
   if (NewPath='/') or (NewPath='\') then begin
    NewPath:='';
@@ -24125,7 +24131,7 @@ begin
    NewPath:=TpvUTF8String(ExpandFileName(IncludeTrailingPathDelimiter(String(fPath))+String(NewPath)));
   end;
   if (length(NewPath)>0) and DirectoryExists(String(NewPath)) then begin
-   SetPath(NewPath);
+   SetPathEx(NewPath,aNewItemIndex);
   end else if (fMode=TMode.Open) and (length(NewPath)>0) and FileExists(String(NewPath)) then begin
    fFileName:=NewPath;
    Close;
@@ -24145,7 +24151,7 @@ begin
     Close;
    end;
   end else begin
-   SetPath(fTextEditFileName.Text);
+   SetPathEx(fTextEditFileName.Text,aNewItemIndex);
   end;
  end;
 end;
