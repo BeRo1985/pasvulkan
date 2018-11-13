@@ -3129,6 +3129,8 @@ type TpvGUIObject=class;
        destructor Destroy; override;
      end;
 
+     TpvGUIFileDialogOnResult=procedure(const aSender:TpvGUIObject;const aOK:boolean;const aFileName:TpvUTF8String) of object;
+
      TpvGUIFileDialog=class(TpvGUIWindow)
       public
        type TMode=
@@ -3167,6 +3169,7 @@ type TpvGUIObject=class;
        fOK:boolean;
        fOverwritePrompt:boolean;
        fOverwritePromptDialog:TpvGUIFileDialogOverwritePromptMessageDialog;
+       fOnResult:TpvGUIFileDialogOnResult;
        function TextEditPathOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditFileNameOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
        function TextEditFilterOnKeyEvent(const aSender:TpvGUIObject;const aKeyEvent:TpvApplicationInputKeyEvent):boolean;
@@ -3183,11 +3186,13 @@ type TpvGUIObject=class;
        function KeyEvent(const aKeyEvent:TpvApplicationInputKeyEvent):boolean; override;
        procedure Check; override;
        procedure Accept;
+       procedure Reject;
       published
        property Path:TpvUTF8String read fPath write SetPath;
        property FileName:TpvUTF8String read fFileName {write fFileName};
        property OK:boolean read fOK write fOK;
        property OverwritePrompt:boolean read fOverwritePrompt write fOverwritePrompt;
+       property OnResult:TpvGUIFileDialogOnResult read fOnResult write fOnResult;
      end;
 
 implementation
@@ -23399,6 +23404,10 @@ begin
   if aID=0 then begin
    FileDialog.fFileName:=FileDialog.fOverwritePromptFileName;
    FileDialog.fOK:=true;
+   if assigned(FileDialog.fOnResult) then begin
+    FileDialog.fOnResult(FileDialog,true,FileDialog.fFileName);
+    FileDialog.fOnResult:=nil;
+   end;
    FileDialog.Close;
   end;
  end;
@@ -23576,6 +23585,8 @@ begin
 
  fOverwritePromptDialog:=nil;
 
+ fOnResult:=nil;
+
 end;
 
 destructor TpvGUIFileDialog.Destroy;
@@ -23664,8 +23675,7 @@ end;
 
 procedure TpvGUIFileDialog.ButtonCancelOnClick(const aSender:TpvGUIObject);
 begin
- fOK:=false;
- Close;
+ Reject;
 end;
 
 function TpvGUIFileDialogCompareListItems(const a,b:TpvGUIFileDialog.TListItem):TpvInt32;
@@ -23968,8 +23978,8 @@ begin
  if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
   case aKeyEvent.KeyCode of
    KEYCODE_ESCAPE:begin
+    Reject;
     result:=true;
-    Close;
    end;
   end;
  end;
@@ -24011,11 +24021,25 @@ begin
   end else begin
    fFileName:=NewPath;
    fOK:=true;
+   if assigned(fOnResult) then begin
+    fOnResult(self,true,fFileName);
+    fOnResult:=nil;
+   end;
    Close;
   end;
  end else begin
   SetPath(fTextEditFileName.Text);
  end;
+end;
+
+procedure TpvGUIFileDialog.Reject;
+begin
+ fOK:=false;
+ if assigned(fOnResult) then begin
+  fOnResult(self,false,'');
+  fOnResult:=nil;
+ end;
+ Close;
 end;
 
 end.
