@@ -24036,6 +24036,9 @@ begin
  NewPath:=TpvUTF8String(Trim(String(aPath)));
  if NewPath='..' then begin
   PreviousDirectory:=TpvUTF8String(ExtractFileName(ExcludeTrailingPathDelimiter(ExtractFilePath(IncludeTrailingPathDelimiter(String(fPath))))));
+  if length(PreviousDirectory)=0 then begin
+   PreviousDirectory:=TpvUTF8String(UpperCase(ExtractFileDrive(ExcludeTrailingPathDelimiter(ExtractFilePath(IncludeTrailingPathDelimiter(String(fPath)))))));
+  end;
  end else begin
   PreviousDirectory:='';
  end;
@@ -24048,7 +24051,11 @@ begin
    NewPath:=TpvUTF8String(IncludeTrailingPathDelimiter(String(NewPath)));
   end else{$endif}if not (((length(NewPath)>0) and (NewPath[1]=PathDelim)){$ifndef Unix} or
                          ((length(NewPath)>1) and (NewPath[1] in ['A'..'Z','a'..'z']) and (NewPath[2]=':')){$endif}) then begin
-   NewPath:=TpvUTF8String(ExpandFileName(IncludeTrailingPathDelimiter(String(fPath))+String(NewPath)));
+   if (NewPath='..') and (length(fPath)<{$ifdef Unix}2{$else}1{$endif}) then begin
+    NewPath:=fPath;
+   end else begin
+    NewPath:=TpvUTF8String(ExpandFileName(IncludeTrailingPathDelimiter(String(fPath))+String(NewPath)));
+   end;
   end;
  end;
  if fPath<>NewPath then begin
