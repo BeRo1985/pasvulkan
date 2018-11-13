@@ -14386,7 +14386,7 @@ var Index,KeyCodeIndex:TpvSizeInt;
 begin
  result:=assigned(fOnKeyEvent) and fOnKeyEvent(self,aKeyEvent);
  if (aKeyEvent.KeyEventType=TpvApplicationInputKeyEventType.Typed) and not result then begin
-  for Index:=0 to length(fButtons) do begin
+  for Index:=0 to length(fButtons)-1 do begin
    MessageDialogButton:=@fButtons[Index];
    for KeyCodeIndex:=0 to length(MessageDialogButton^.fKeyCodes)-1 do begin
     if MessageDialogButton^.fKeyCodes[KeyCodeIndex]=aKeyEvent.KeyCode then begin
