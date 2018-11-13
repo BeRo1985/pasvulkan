@@ -215,8 +215,8 @@ begin
   MessageDialog:=TpvGUIMessageDialog.Create(fGUIInstance,
                                             'Question',
                                             'Do you really want to create a new project?',
-                                            [TpvGUIMessageDialogButton.Create(0,'Yes',KEYCODE_RETURN,fGUIInstance.Skin.IconThumbUp,24.0),
-                                             TpvGUIMessageDialogButton.Create(1,'No',KEYCODE_ESCAPE,fGUIInstance.Skin.IconThumbDown,24.0)],
+                                            [TpvGUIMessageDialogButton.Create(0,'Yes',[KEYCODE_Y,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER],fGUIInstance.Skin.IconThumbUp,24.0),
+                                             TpvGUIMessageDialogButton.Create(1,'No',[KEYCODE_N,KEYCODE_ESCAPE],fGUIInstance.Skin.IconThumbDown,24.0)],
                                             fGUIInstance.Skin.IconDialogQuestion);
   MessageDialog.OnButtonClick:=OnNewProjectMessageDialogButtonClick;
   MessageDialog.OnDestroy:=OnNewProjectMessageDialogDestroy;
@@ -243,8 +243,8 @@ begin
   MessageDialog:=TpvGUIMessageDialog.Create(fGUIInstance,
                                             'Question',
                                             'Do you really want to quit this application?',
-                                            [TpvGUIMessageDialogButton.Create(0,'Yes',KEYCODE_RETURN,fGUIInstance.Skin.IconThumbUp,24.0),
-                                             TpvGUIMessageDialogButton.Create(1,'No',KEYCODE_ESCAPE,fGUIInstance.Skin.IconThumbDown,24.0)],
+                                            [TpvGUIMessageDialogButton.Create(0,'Yes',[KEYCODE_Y,KEYCODE_RETURN,KEYCODE_RETURN2,KEYCODE_KP_ENTER],fGUIInstance.Skin.IconThumbUp,24.0),
+                                             TpvGUIMessageDialogButton.Create(1,'No',[KEYCODE_N,KEYCODE_ESCAPE],fGUIInstance.Skin.IconThumbDown,24.0)],
                                             fGUIInstance.Skin.IconDialogQuestion);
   MessageDialog.OnButtonClick:=OnTerminationMessageDialogButtonClick;
   MessageDialog.OnDestroy:=OnTerminationMessageDialogDestroy;
